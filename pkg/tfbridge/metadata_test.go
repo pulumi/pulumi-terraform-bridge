@@ -63,7 +63,7 @@ func TestMetadataInfo(t *testing.T) {
     ]
 }`).Equal(t, string(marshalledInfo))
 
-	runtimeMetadata := info.ExtractRuntimeMetadata()
+	runtimeMetadata := ExtractRuntimeMetadata(info)
 	assert.Equal(t, "runtime-bridge-metadata.json", runtimeMetadata.Path)
 	runtimeMarshalled := (*md.Data)(runtimeMetadata.Data).MarshalIndent()
 	autogold.Expect(`{
