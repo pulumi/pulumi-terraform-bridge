@@ -34,22 +34,24 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/logging"
 )
 
-type urnCtxKeyType string
+type urnCtxKeyType struct{}
 
-const urnCtxKey urnCtxKeyType = "urn"
+var urnCtxKey = urnCtxKeyType{}
 
-// WithUrn returns a copy of ctx with the resource URN value
-func WithUrn(ctx context.Context, urn resource.URN) context.Context {
+// XWithUrn returns a copy of ctx with the resource URN value.
+//
+// XWithUrn is unstable and may be changed or removed in any release.
+func XWithUrn(ctx context.Context, urn resource.URN) context.Context {
 	return context.WithValue(ctx, urnCtxKey, urn)
 }
 
-// GetUrn gets a resource URN from context
+// GetUrn gets a resource URN from context.
 //
-//	urn, ok := GetUrn(ctx)
-//	if !ok {
-//	    // urn was not found
-//	}
-func GetUrn(ctx context.Context) (resource.URN, bool) {
+//	urn := GetUrn(ctx)
+//
+// GetUrn is available on any context associated with a resource. 
+// Calling GetUrn on a context associated with an Invoke will panic.
+func GetUrn(ctx context.Context) resource.URN {
 	urn, ok := ctx.Value(urnCtxKey).(resource.URN)
 	return urn, ok
 }
