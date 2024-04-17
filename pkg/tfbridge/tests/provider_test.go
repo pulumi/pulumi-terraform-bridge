@@ -68,6 +68,59 @@ func TestWithNewTestProvider(t *testing.T) {
 	`)
 }
 
+func TestRegressAws3835(t *testing.T) {
+	ctx := context.Background()
+	p := newTestProvider(ctx, tfbridge.ProviderInfo{
+		P: shimv2.NewProvider(&schema.Provider{
+			Schema: map[string]*schema.Schema{},
+			ResourcesMap: map[string]*schema.Resource{
+				"aws_db_proxy": {
+					Schema: map[string]*schema.Schema{
+						"auth": {
+							Type:     schema.TypeList,
+							Required: true,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									"auth_scheme": {
+										Type:     schema.TypeString,
+										Optional: true,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		}),
+		Name:           "aws",
+		ResourcePrefix: "example",
+		Resources: map[string]*tfbridge.ResourceInfo{
+			"aws_db_proxy": {Tok: "aws:rds/proxy:Proxy"},
+		},
+	}, newTestProviderOptions{})
+
+	replay.Replay(t, p, `
+	{
+	  "method": "/pulumirpc.ResourceProvider/Check",
+	  "request": {
+	    "urn": "urn:pulumi:dev::golevel::aws:rds/proxy:Proxy::proxy",
+	    "olds": {},
+	    "news": {
+	      "auths": "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+	    },
+	    "randomSeed": "J0Aw7NUBOt6y1jrDNci17siIDTE0toDNdhPxKB6L5w8="
+	  },
+	  "response": {
+	    "inputs": {
+	      "__defaults": [],
+	      "auths": [
+		{}
+	      ]
+	    }
+	  }
+	}`)
+}
+
 func nilSink() diag.Sink {
 	nilSink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
 		Color: colors.Never,
