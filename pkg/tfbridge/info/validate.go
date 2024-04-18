@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tfbridge
+package info
 
 import (
 	"context"
@@ -24,10 +24,10 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/walk"
 )
 
-// Validate ProviderInfo.
+// Validate [Provider].
 //
 // Validate is automatically called as part of `make tfgen`.
-func (p *ProviderInfo) Validate(context.Context) error {
+func (p *Provider) Validate(context.Context) error {
 	c := new(infoCheck)
 
 	res := p.P.ResourcesMap()
@@ -37,11 +37,7 @@ func (p *ProviderInfo) Validate(context.Context) error {
 			// This is checked elsewhere.
 			continue
 		}
-		c.checkResource(&Resource{
-			Schema: schema,
-			TF:     tf,
-			TFName: tk,
-		})
+		c.checkResource(tk, tf.Schema(), schema.Fields)
 	}
 
 	return c.errorOrNil()
@@ -95,17 +91,17 @@ var (
 	errElemForObject                  = fmt.Errorf("cannot set .Elem on a singly nested object block")
 )
 
-func (c *infoCheck) checkResource(res *Resource) {
+func (c *infoCheck) checkResource(tfToken string, schema shim.SchemaMap, info map[string]*Schema) {
 	c.finishError = func(e *checkError) {
-		e.tfToken = res.TFName
+		e.tfToken = tfToken
 	}
 	defer func() {
 		c.finishError = nil
 	}()
-	c.checkFields(walk.NewSchemaPath(), res.TF.Schema(), res.Schema.Fields)
+	c.checkFields(walk.NewSchemaPath(), schema, info)
 }
 
-func (c *infoCheck) checkProperty(path walk.SchemaPath, tfs shim.Schema, ps *SchemaInfo) {
+func (c *infoCheck) checkProperty(path walk.SchemaPath, tfs shim.Schema, ps *Schema) {
 	// If there is no override, then there were no mistakes.
 	if ps == nil {
 		return
@@ -186,7 +182,7 @@ func (c *infoCheck) checkProperty(path walk.SchemaPath, tfs shim.Schema, ps *Sch
 }
 
 // Check a nested element.
-func (c *infoCheck) checkElem(path walk.SchemaPath, tfs shim.Schema, ps *SchemaInfo) {
+func (c *infoCheck) checkElem(path walk.SchemaPath, tfs shim.Schema, ps *Schema) {
 	if ps == nil {
 		return
 	}
@@ -200,7 +196,7 @@ func (c *infoCheck) checkElem(path walk.SchemaPath, tfs shim.Schema, ps *SchemaI
 	c.checkProperty(path, tfs, ps)
 }
 
-func (c *infoCheck) checkFields(path walk.SchemaPath, tfs shim.SchemaMap, ps map[string]*SchemaInfo) {
+func (c *infoCheck) checkFields(path walk.SchemaPath, tfs shim.SchemaMap, ps map[string]*Schema) {
 	for k, p := range ps {
 		elemPath := path.GetAttr(k)
 		elemTfs, ok := tfs.GetOk(k)

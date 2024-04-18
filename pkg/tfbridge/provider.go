@@ -37,7 +37,6 @@ import (
 	"google.golang.org/grpc/codes"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/propertyvalue"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -47,6 +46,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/logging"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
@@ -73,13 +73,7 @@ type Provider struct {
 
 // MuxProvider defines an interface which must be implemented by providers
 // that shall be used as mixins of a wrapped Terraform provider
-type MuxProvider interface {
-	GetSpec(ctx context.Context,
-		name, version string) (schema.PackageSpec, error)
-	GetInstance(ctx context.Context,
-		name, version string,
-		host *provider.HostClient) (pulumirpc.ResourceProviderServer, error)
-}
+type MuxProvider = info.MuxProvider
 
 // Resource wraps both the Terraform resource type info plus the overlay resource info.
 type Resource struct {
@@ -297,6 +291,17 @@ func (p *Provider) loggingContext(ctx context.Context, urn resource.URN) context
 
 func (p *Provider) label() string {
 	return fmt.Sprintf("tf.Provider[%s]", p.module)
+}
+
+func ignoredTokens(info *info.Provider) map[string]bool {
+	ignored := map[string]bool{}
+	if info == nil {
+		return ignored
+	}
+	for _, tk := range info.IgnoreMappings {
+		ignored[tk] = true
+	}
+	return ignored
 }
 
 // initResourceMaps creates maps from Pulumi types and tokens to Terraform resource type.
@@ -1552,131 +1557,7 @@ func initializationError(id string, props *pbstruct.Struct, reasons []string) er
 	return rpcerror.WithDetails(rpcerror.New(codes.Unknown, reasons[0]), &detail)
 }
 
-func (p *ProviderInfo) RenameResourceWithAlias(resourceName string, legacyTok tokens.Type, newTok tokens.Type,
-	legacyModule string, newModule string, info *ResourceInfo,
-) {
-	resourcePrefix := p.Name + "_"
-	legacyResourceName := resourceName + RenamedEntitySuffix
-	if info == nil {
-		info = &ResourceInfo{}
-	}
-	legacyInfo := *info
-	currentInfo := *info
-
-	legacyInfo.Tok = legacyTok
-	legacyType := legacyInfo.Tok.String()
-
-	if newTok != "" {
-		legacyTok = newTok
-	}
-
-	currentInfo.Tok = legacyTok
-	currentInfo.Aliases = []AliasInfo{
-		{Type: &legacyType},
-	}
-
-	if legacyInfo.Docs == nil {
-		legacyInfo.Docs = &DocInfo{
-			Source: resourceName[len(resourcePrefix):] + ".html.markdown",
-		}
-	}
-
-	legacyInfo.DeprecationMessage = fmt.Sprintf("%s has been deprecated in favor of %s",
-		generateResourceName(legacyInfo.Tok.Module().Package(), strings.ToLower(legacyModule),
-			legacyInfo.Tok.Name().String()),
-		generateResourceName(currentInfo.Tok.Module().Package(), strings.ToLower(newModule),
-			currentInfo.Tok.Name().String()))
-	p.Resources[resourceName] = &currentInfo
-	p.Resources[legacyResourceName] = &legacyInfo
-	p.P.ResourcesMap().Set(legacyResourceName, p.P.ResourcesMap().Get(resourceName))
-}
-
-const (
-	RenamedEntitySuffix string = "_legacy"
-)
-
-func (p *ProviderInfo) RenameDataSource(resourceName string, legacyTok tokens.ModuleMember, newTok tokens.ModuleMember,
-	legacyModule string, newModule string, info *DataSourceInfo,
-) {
-	resourcePrefix := p.Name + "_"
-	legacyResourceName := resourceName + RenamedEntitySuffix
-	if info == nil {
-		info = &DataSourceInfo{}
-	}
-	legacyInfo := *info
-	currentInfo := *info
-
-	legacyInfo.Tok = legacyTok
-
-	if newTok != "" {
-		legacyTok = newTok
-	}
-
-	currentInfo.Tok = legacyTok
-
-	if legacyInfo.Docs == nil {
-		legacyInfo.Docs = &DocInfo{
-			Source: resourceName[len(resourcePrefix):] + ".html.markdown",
-		}
-	}
-
-	legacyInfo.DeprecationMessage = fmt.Sprintf("%s has been deprecated in favor of %s",
-		generateResourceName(legacyInfo.Tok.Module().Package(), strings.ToLower(legacyModule),
-			legacyInfo.Tok.Name().String()),
-		generateResourceName(currentInfo.Tok.Module().Package(), strings.ToLower(newModule),
-			currentInfo.Tok.Name().String()))
-	p.DataSources[resourceName] = &currentInfo
-	p.DataSources[legacyResourceName] = &legacyInfo
-	p.P.DataSourcesMap().Set(legacyResourceName, p.P.DataSourcesMap().Get(resourceName))
-}
-
-func generateResourceName(packageName tokens.Package, moduleName string, moduleMemberName string) string {
-	// We don't want DeprecationMessages that read
-	// `postgresql.index.DefaultPrivileg` has been deprecated in favour of `postgresql.index.DefaultPrivileges`
-	// we would never use `index` in a reference to the Class. So we should remove this where needed
-	if moduleName == "" || moduleName == "index" {
-		return fmt.Sprintf("%s.%s", packageName, moduleMemberName)
-	}
-
-	return fmt.Sprintf("%s.%s.%s", packageName, moduleName, moduleMemberName)
-}
-
-// SetAutonaming auto-names all resource properties that are literally called "name".
-//
-// The effect is identical to configuring each matching property with [AutoName]. Pulumi will propose an auto-computed
-// value for these properties when no value is given by the user program. If a property was required before auto-naming,
-// it becomes optional.
-//
-// The maxLength and separator parameters configure how AutoName generates default values. See [AutoNameOptions].
-//
-// SetAutonaming will skip properties that already have a [SchemaInfo] entry in [ResourceInfo.Fields], assuming those
-// are already customized by the user. If those properties need AutoName functionality, please use AutoName directly to
-// populate their SchemaInfo entry.
-//
-// Note that when constructing a ProviderInfo incrementally, some care is required to make sure SetAutonaming is called
-// after [ProviderInfo.Resources] map is fully populated, as it relies on this map to find resources to auto-name.
-func (p *ProviderInfo) SetAutonaming(maxLength int, separator string) {
-	if p.P == nil {
-		glog.Warningln("SetAutonaming found a `ProviderInfo.P` nil. No Autonames were applied.")
-		return
-	}
-
-	const nameProperty = "name"
-	for resname, res := range p.Resources {
-		if schema := p.P.ResourcesMap().Get(resname); schema != nil {
-			// Only apply auto-name to input properties (Optional || Required)
-			// of type `string` named `name`
-			if sch, hasName := schema.Schema().GetOk(nameProperty); hasName &&
-				(sch.Optional() || sch.Required()) && // Is an input type
-				sch.Type() == shim.TypeString { // has type string
-
-				if _, hasfield := res.Fields[nameProperty]; !hasfield {
-					ensureMap(&res.Fields)[nameProperty] = AutoName(nameProperty, maxLength, separator)
-				}
-			}
-		}
-	}
-}
+const RenamedEntitySuffix = info.RenamedEntitySuffix
 
 // SetProviderLicense is used to pass a license type to a provider metadata
 func SetProviderLicense(license TFProviderLicense) *TFProviderLicense {
