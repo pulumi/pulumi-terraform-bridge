@@ -2,7 +2,6 @@ package tfbridge
 
 import (
 	"fmt"
-	"slices"
 	"strings"
 
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -35,63 +34,19 @@ func NewInputValidator(urn resource.URN, schema pschema.PackageSpec) *PulumiInpu
 	}
 }
 
-func propertiesWithDefaults(
-	propertyTypes map[string]pschema.PropertySpec,
-) []resource.PropertyKey {
-	keysWithDefaults := []resource.PropertyKey{}
-	for key, spec := range propertyTypes {
-		if spec.Default != nil {
-			keysWithDefaults = append(keysWithDefaults, resource.PropertyKey(key))
-
-		}
-	}
-	return keysWithDefaults
-}
-
 // validatePropertyValue is the main function for validating a PropertyMap against the Pulumi Schema. It is a
 // recursive function that will validate nested types and arrays. Returns a list of type failures if any are found.
 func (v *PulumiInputValidator) validatePropertyMap(
 	propertyMap resource.PropertyMap,
-	required []string,
 	propertyTypes map[string]pschema.PropertySpec,
 	propertyPath resource.PropertyPath,
 ) []TypeFailure {
 	stableKeys := propertyMap.StableKeys()
 	failures := []TypeFailure{}
 
-	// handle required properties
-	//
-	// add properties that have defaults to the list since those will have
-	// their values populated later and we do not want to error now if they
-	// are missing
-	keysAndDefaults := append(stableKeys, propertiesWithDefaults(propertyTypes)...)
-	if len(required) > 0 {
-		if len(keysAndDefaults) == 0 {
-			failures = append(failures, TypeFailure{
-				ResourcePath: propertyPath.String(),
-				Reason: fmt.Sprintf(
-					"%s is missing required properties: %s",
-					propertyPath.String(), strings.Join(required, ", "),
-				),
-			})
-			return failures
-		}
-		for _, requiredProp := range required {
-			if !slices.Contains(keysAndDefaults, resource.PropertyKey(requiredProp)) {
-				failures = append(failures, TypeFailure{
-					ResourcePath: propertyPath.String(),
-					Reason: fmt.Sprintf(
-						"%s is missing a required property: %s",
-						propertyPath.String(), requiredProp,
-					),
-				})
-			}
-		}
-		if len(failures) > 0 {
-			return failures
-		}
-	}
-
+	// TODO: handle required properties. Deferring for now
+	// because properties can be filled in later and we don't want to
+	// fail too aggressively
 	for _, objectKey := range stableKeys {
 		objectValue := propertyMap[objectKey]
 		objType, knownType := propertyTypes[string(objectKey)]
@@ -175,7 +130,6 @@ func (v *PulumiInputValidator) validatePropertyValue(
 
 		return v.validatePropertyMap(
 			propertyValue.ObjectValue(),
-			objType.Required,
 			objType.Properties,
 			propertyPath,
 		)
@@ -210,6 +164,30 @@ func (v *PulumiInputValidator) validatePropertyValue(
 				return nil
 			}
 			failures = append(failures, failure...)
+		}
+		// try to find the best failure message
+		// which will probably be the one where we have
+		// recursed the furthest.
+		//
+		// TODO: there are some cases where a branch could occur
+		// and we only return the error from one branch. Ideally we
+		// would return the "best" failure from each branch. e.g.
+		// we could have:
+		//	ResourcePath: prop.foo
+		//	ResourcePath: prop.bar
+		// For now the user will get the other error once they fix the
+		// first one and run again
+		if len(failures) > 0 {
+			largestPath := 0
+			var bestFailure TypeFailure
+			for _, failure := range failures {
+				parts := strings.Split(failure.ResourcePath, ".")
+				if len(parts) > largestPath {
+					largestPath = len(parts)
+					bestFailure = failure
+				}
+			}
+			return []TypeFailure{bestFailure}
 		}
 		return failures
 	}
@@ -295,7 +273,6 @@ func (v *PulumiInputValidator) validatePropertyValue(
 
 				return v.validatePropertyMap(
 					propertyValue.ObjectValue(),
-					objType.Required,
 					objType.Properties,
 					propertyPath,
 				)
@@ -349,7 +326,6 @@ func (v *PulumiInputValidator) ValidateInputs(resourceToken tokens.Type, inputs 
 	}
 	failures := v.validatePropertyMap(
 		inputs,
-		resourceSpec.RequiredInputs,
 		resourceSpec.InputProperties,
 		resource.PropertyPath{},
 	)

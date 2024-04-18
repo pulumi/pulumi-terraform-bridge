@@ -264,8 +264,10 @@ func TestValidateInputType_objects(t *testing.T) {
 				"prop": []interface{}{"foo"},
 			})),
 			failures: []TypeFailure{
-				{Reason: "expected string type, got [] type", ResourcePath: "oneof_object_multi_type_failure_object.prop"},
-				{Reason: "expected object type, got [] type", ResourcePath: "oneof_object_multi_type_failure_object.prop"},
+				{
+					Reason:       "expected string type, got [] type",
+					ResourcePath: "oneof_object_multi_type_failure_object.prop",
+				},
 			},
 			types: map[string]pschema.ComplexTypeSpec{
 				"pkg:index/type:ObjectMultiType": {
@@ -336,10 +338,6 @@ func TestValidateInputType_objects(t *testing.T) {
 			failures: []TypeFailure{
 				{
 					Reason:       "expected string type, got [] type",
-					ResourcePath: "oneof_object_multi_type_failure.prop",
-				},
-				{
-					Reason:       "expected number type, got [] type",
 					ResourcePath: "oneof_object_multi_type_failure.prop",
 				},
 			},
@@ -469,125 +467,6 @@ func TestValidateInputType_objects(t *testing.T) {
 									// not using ref to test arbitrary object keys
 									AdditionalProperties: &pschema.TypeSpec{
 										Type: "string",
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-		{
-			name:     "object_double_nested_object_type_required_failure",
-			typeRef:  "ObjectDoubleNestedObjectType",
-			typeName: "object",
-			input: resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
-				"prop": map[string]interface{}{},
-			})),
-			failures: []TypeFailure{
-				{
-					Reason: "object_double_nested_object_type_required_failure.prop" +
-						" is missing required properties: objectStringProp",
-					ResourcePath: "object_double_nested_object_type_required_failure.prop",
-				},
-			},
-			types: map[string]pschema.ComplexTypeSpec{
-				"pkg:index/type:ObjectStringType": {
-					ObjectTypeSpec: pschema.ObjectTypeSpec{
-						Type:     "object",
-						Required: []string{"objectStringProp"},
-						Properties: map[string]pschema.PropertySpec{
-							"objectStringProp": {
-								TypeSpec: pschema.TypeSpec{
-									Type: "object",
-									AdditionalProperties: &pschema.TypeSpec{
-										Type: "string",
-									},
-								},
-							},
-						},
-					},
-				},
-				"pkg:index/type:ObjectDoubleNestedObjectType": {
-					ObjectTypeSpec: pschema.ObjectTypeSpec{
-						Type: "object",
-						Properties: map[string]pschema.PropertySpec{
-							"prop": {
-								TypeSpec: pschema.TypeSpec{
-									Type: "object",
-									// not using ref to test arbitrary object keys
-									AdditionalProperties: &pschema.TypeSpec{
-										Type: "object",
-										Ref:  "#/types/pkg:index/type:ObjectStringType",
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-		{
-			name:     "object_double_nested_object_type_required_failure_2",
-			typeRef:  "ObjectDoubleNestedObjectType",
-			typeName: "object",
-			input: resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
-				"prop": []map[string]interface{}{
-					{"objectStringProp": "foo", "foo": "bar"},
-					{"foo": "bar"},
-					{"bar": "baz"},
-				},
-			})),
-			failures: []TypeFailure{
-				{
-					Reason: "object_double_nested_object_type_required_failure_2.prop[1]" +
-						" is missing a required property: objectStringProp",
-					ResourcePath: "object_double_nested_object_type_required_failure_2.prop[1]",
-				},
-				{
-					Reason: "object_double_nested_object_type_required_failure_2.prop[2]" +
-						" is missing a required property: objectStringProp",
-					ResourcePath: "object_double_nested_object_type_required_failure_2.prop[2]",
-				},
-				{
-					Reason: "object_double_nested_object_type_required_failure_2.prop[2]" +
-						" is missing a required property: foo",
-					ResourcePath: "object_double_nested_object_type_required_failure_2.prop[2]",
-				},
-			},
-			types: map[string]pschema.ComplexTypeSpec{
-				"pkg:index/type:ObjectStringType": {
-					ObjectTypeSpec: pschema.ObjectTypeSpec{
-						Type:     "object",
-						Required: []string{"objectStringProp", "foo"},
-						Properties: map[string]pschema.PropertySpec{
-							"objectStringProp": {
-								TypeSpec: pschema.TypeSpec{
-									Type: "string",
-								},
-							},
-							"foo": {
-								TypeSpec: pschema.TypeSpec{
-									Type: "string",
-								},
-							},
-						},
-					},
-				},
-				"pkg:index/type:ObjectDoubleNestedObjectType": {
-					ObjectTypeSpec: pschema.ObjectTypeSpec{
-						Type: "object",
-						Properties: map[string]pschema.PropertySpec{
-							"prop": {
-								TypeSpec: pschema.TypeSpec{
-									Type: "array",
-									Items: &pschema.TypeSpec{
-										Type: "object",
-										// not using ref to test arbitrary object keys
-										AdditionalProperties: &pschema.TypeSpec{
-											Type: "object",
-											Ref:  "#/types/pkg:index/type:ObjectStringType",
-										},
 									},
 								},
 							},
@@ -976,15 +855,7 @@ func TestValidateInputType_objects(t *testing.T) {
 			})),
 			failures: []TypeFailure{
 				{
-					Reason:       "expected array type, got object type",
-					ResourcePath: "oneof_object_multi_type_nested_failure2.prop",
-				},
-				{
 					Reason:       "expected string type, got [] type",
-					ResourcePath: "oneof_object_multi_type_nested_failure2.prop.bar",
-				},
-				{
-					Reason:       "expected object type, got [] type",
 					ResourcePath: "oneof_object_multi_type_nested_failure2.prop.bar",
 				},
 			},
@@ -1053,10 +924,6 @@ func TestValidateInputType_objects(t *testing.T) {
 				{
 					Reason:       "expected string type, got [] type",
 					ResourcePath: "oneof_object_multi_type_nested_failure.prop[0].objectStringProp",
-				},
-				{
-					Reason:       "expected object type, got [] type",
-					ResourcePath: "oneof_object_multi_type_nested_failure.prop",
 				},
 			},
 			types: map[string]pschema.ComplexTypeSpec{

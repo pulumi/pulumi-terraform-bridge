@@ -21,7 +21,6 @@ import (
 	"os"
 	"sort"
 	"strings"
-	"sync"
 	"time"
 	"unicode"
 
@@ -61,19 +60,19 @@ import (
 type Provider struct {
 	pulumirpc.UnimplementedResourceProviderServer
 
-	host            *provider.HostClient               // the RPC link back to the Pulumi engine.
-	module          string                             // the Terraform module name.
-	version         string                             // the plugin version number.
-	tf              shim.Provider                      // the Terraform resource provider to use.
-	info            ProviderInfo                       // overlaid info about this provider.
-	config          shim.SchemaMap                     // the Terraform config schema.
-	configValues    resource.PropertyMap               // this package's config values.
-	resources       map[tokens.Type]Resource           // a map of Pulumi type tokens to resource info.
-	dataSources     map[tokens.ModuleMember]DataSource // a map of Pulumi module tokens to data sources.
-	supportsSecrets bool                               // true if the engine supports secret property values
-	pulumiSchema    []byte                             // the JSON-encoded Pulumi schema.
-	cachedSchema    func() *pschema.PackageSpec
-	memStats        memStatCollector
+	host             *provider.HostClient               // the RPC link back to the Pulumi engine.
+	module           string                             // the Terraform module name.
+	version          string                             // the plugin version number.
+	tf               shim.Provider                      // the Terraform resource provider to use.
+	info             ProviderInfo                       // overlaid info about this provider.
+	config           shim.SchemaMap                     // the Terraform config schema.
+	configValues     resource.PropertyMap               // this package's config values.
+	resources        map[tokens.Type]Resource           // a map of Pulumi type tokens to resource info.
+	dataSources      map[tokens.ModuleMember]DataSource // a map of Pulumi module tokens to data sources.
+	supportsSecrets  bool                               // true if the engine supports secret property values
+	pulumiSchema     []byte                             // the JSON-encoded Pulumi schema.
+	pulumiSchemaSpec *pschema.PackageSpec
+	memStats         memStatCollector
 }
 
 // MuxProvider defines an interface which must be implemented by providers
@@ -213,16 +212,16 @@ func newProvider(ctx context.Context, host *provider.HostClient,
 		info:         info,
 		config:       tf.Schema(),
 		pulumiSchema: pulumiSchema,
-		cachedSchema: sync.OnceValue(func() *pschema.PackageSpec {
-			var schema pschema.PackageSpec
-			if err := json.Unmarshal(pulumiSchema, &schema); err != nil {
-				return nil
-			}
-			return &schema
-		}),
 	}
-	p.loggingContext(ctx, "")
+	ctx = p.loggingContext(ctx, "")
 	p.initResourceMaps()
+	if pulumiSchema != nil || len(pulumiSchema) != 0 {
+		var schema pschema.PackageSpec
+		if err := json.Unmarshal(pulumiSchema, &schema); err != nil {
+			GetLogger(ctx).Debug(fmt.Sprintf("unable to unmarshal pulumi package spec: %s", err.Error()))
+		}
+		p.pulumiSchemaSpec = &schema
+	}
 	return p
 }
 
@@ -784,7 +783,7 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 	_, validateShouldError := os.LookupEnv("PULUMI_ERROR_TYPE_CHECKER")
 	schemaMap, schemaInfos := res.TF.Schema(), res.Schema.GetFields()
 	if p.pulumiSchema != nil {
-		schema := p.cachedSchema()
+		schema := p.pulumiSchemaSpec
 		if schema != nil {
 			iv := NewInputValidator(urn, *schema)
 			typeFailures := iv.ValidateInputs(t, news)
