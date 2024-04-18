@@ -716,34 +716,38 @@ subtitle 2 content
 	assert.Equal(t, expected, groupLines(strings.Split(input, "\n"), "## "))
 }
 
-//func TestParseArgFromMarkdownLine(t *testing.T) {
-//	//nolint:lll
-//	tests := []struct {
-//		input         string
-//		expectedName  string
-//		expectedDesc  string
-//		expectedFound bool
-//	}{
-//		{"* `name` - (Required) A unique name to give the role.", "name", "A unique name to give the role.", true},
-//		{"* `key_vault_key_id` - (Optional) The Key Vault key URI for CMK encryption. Changing this forces a new resource to be created.", "key_vault_key_id", "The Key Vault key URI for CMK encryption. Changing this forces a new resource to be created.", true},
-//		{"* `urn` - The uniform resource name of the Droplet", "urn", "The uniform resource name of the Droplet", true},
-//		{"* `name`- The name of the Droplet", "name", "The name of the Droplet", true},
-//		{"* `jumbo_frame_capable` -Indicates whether jumbo frames (9001 MTU) are supported.", "jumbo_frame_capable", "Indicates whether jumbo frames (9001 MTU) are supported.", true},
-//		{"* `ssl_support_method`: Specifies how you want CloudFront to serve HTTPS", "ssl_support_method", "Specifies how you want CloudFront to serve HTTPS", true},
-//		{"* `principal_tags`: (Optional: []) - String to string map of variables.", "principal_tags", "String to string map of variables.", true},
-//		// In rare cases, we may have a match where description is empty like the following, taken from https://github.com/hashicorp/terraform-provider-aws/blob/main/website/docs/r/spot_fleet_request.html.markdown
-//		{"* `instance_pools_to_use_count` - (Optional; Default: 1)", "instance_pools_to_use_count", "", true},
-//		{"", "", "", false},
-//		{"Most of these arguments directly correspond to the", "", "", false},
-//	}
-//
-//	for _, test := range tests {
-//		name, desc, found := parseArgFromMarkdownLine(test.input)
-//		assert.Equal(t, test.expectedName, name)
-//		assert.Equal(t, test.expectedDesc, desc)
-//		assert.Equal(t, test.expectedFound, found)
-//	}
-//}
+func TestParseArgFromMarkdownLine(t *testing.T) {
+	//nolint:lll
+	tests := []struct {
+		input          string
+		expectedName   string
+		expectedDesc   string
+		expectedFound  bool
+		expectedIndent bool
+	}{
+		{"* `name` - (Required) A unique name to give the role.", "name", "A unique name to give the role.", true, false},
+		{"* `key_vault_key_id` - (Optional) The Key Vault key URI for CMK encryption. Changing this forces a new resource to be created.", "key_vault_key_id", "The Key Vault key URI for CMK encryption. Changing this forces a new resource to be created.", true, false},
+		{"* `urn` - The uniform resource name of the Droplet", "urn", "The uniform resource name of the Droplet", true, false},
+		{"* `name`- The name of the Droplet", "name", "The name of the Droplet", true, false},
+		{"* `jumbo_frame_capable` -Indicates whether jumbo frames (9001 MTU) are supported.", "jumbo_frame_capable", "Indicates whether jumbo frames (9001 MTU) are supported.", true, false},
+		{"* `ssl_support_method`: Specifies how you want CloudFront to serve HTTPS", "ssl_support_method", "Specifies how you want CloudFront to serve HTTPS", true, false},
+		{"* `principal_tags`: (Optional: []) - String to string map of variables.", "principal_tags", "String to string map of variables.", true, false},
+		{"  * `id` - The id of the property", "id", "The id of the property", true, true},
+		{"  * id - The id of the property", "", "", false, false},
+		//In rare cases, we may have a match where description is empty like the following, taken from https://github.com/hashicorp/terraform-provider-aws/blob/main/website/docs/r/spot_fleet_request.html.markdown
+		{"* `instance_pools_to_use_count` - (Optional; Default: 1)", "instance_pools_to_use_count", "", true, false},
+		{"", "", "", false, false},
+		{"Most of these arguments directly correspond to the", "", "", false, false},
+	}
+
+	for _, test := range tests {
+		name, desc, found, indented := parseArgFromMarkdownLine(test.input)
+		assert.Equal(t, test.expectedName, name)
+		assert.Equal(t, test.expectedDesc, desc)
+		assert.Equal(t, test.expectedFound, found)
+		assert.Equal(t, test.expectedIndent, indented)
+	}
+}
 
 func TestParseAttributesReferenceSection(t *testing.T) {
 	ret := entityDocs{
@@ -822,26 +826,26 @@ func TestGetNestedBlockName(t *testing.T) {
 	}{
 		//{"", []string(nil)},
 		//{"The `website` object supports the following:", []string{"website"}},
-		{"The `website` and `pages` objects support the following:", []string{"website", "pages"}},
-		//{"The optional `settings.location_preference` subblock supports:", []string{"location_preference"}},
-		//{"The optional `settings.ip_configuration.authorized_networks[]` sublist supports:", []string{"authorized_networks"}},
+		//{"The `website` and `pages` objects support the following:", []string{"website", "pages"}},
+		//{"The optional `settings.location_preference` subblock supports:", []string{"settings.location_preference"}},
+		//{"The optional `settings.ip_configuration.authorized_networks[]` sublist supports:", []string{"settings.ip_configuration.authorized_networks"}},
 		//{"#### result_configuration Argument Reference", []string{"result_configuration"}},
 		//{"### advanced_security_options", []string{"advanced_security_options"}},
 		//{"### `server_side_encryption`", []string{"server_side_encryption"}},
 		//{"### Failover Routing Policy", []string{"failover_routing_policy"}},
 		//{"##### `log_configuration`", []string{"log_configuration"}},
 		//{"### data_format_conversion_configuration", []string{"data_format_conversion_configuration"}},
-		////// This is a common starting line of base arguments, so should result in nil value:
+		{"#### build_batch_config: restrictions", []string{"build_batch_config.restrictions"}},
+		//{"#### logs_config: s3_logs", []string{"logs_config.s3_logs"}},
+		//{"###### S3 Input Format Config", []string{"s3_input_format_config"}},
+		//// This is a common starting line of base arguments, so should result in nil value:
 		//{"The following arguments are supported:", []string(nil)},
 		//{"* `kms_key_id` - ...", []string(nil)},
 		//{"## Import", []string(nil)},
-		//{"#### build_batch_config: restrictions", []string{"build_batch_config.restrictions"}},
-		//{"#### logs_config: s3_logs", []string{"logs_config.s3_logs"}},
-		//{"###### S3 Input Format Config", []string{"s3_input_format_config"}},
 	}
 
 	for _, tt := range tests {
-		assert.Equal(t, tt.expected, getNestedBlockName(tt.input))
+		assert.Equal(t, tt.expected, getNestedBlockNames(tt.input))
 	}
 }
 

@@ -825,7 +825,7 @@ func parseArgFromMarkdownLine(line string) (string, string, bool, bool) {
 	matches := argumentBulletRegexp.FindStringSubmatch(line)
 	indentedBullet := false
 	if len(matches) > 4 {
-		if strings.HasPrefix(matches[0], " ") {
+		if strings.HasPrefix(matches[0], "  ") {
 			indentedBullet = true
 		}
 		return matches[1], matches[4], true, indentedBullet
@@ -838,6 +838,7 @@ var genericNestedRegexp = regexp.MustCompile("supports? the following:")
 var nestedObjectRegexps = []*regexp.Regexp{
 	// For example:
 	// s3_bucket.html.markdown: "The `website` object supports the following:"
+	// appmesh_gateway_route.html.markdown: "The `grpc_route`, `http_route` and `http2_route` objects supports the following:"
 	// ami.html.markdown: "When `virtualization_type` is "hvm" the following additional arguments apply:"
 	regexp.MustCompile("`([a-z_0-9]+)`.*following"),
 
@@ -869,14 +870,68 @@ var nestedObjectRegexps = []*regexp.Regexp{
 	regexp.MustCompile("`([a-zA-Z_.\\[\\]]+)`.*supports:"),
 }
 
-// getNestedBlockName takes line of a Terraform docs Markdown page and returns the name of the nested block it
+// getMultipleNestedBlockNames is called when we detect that a resource matches the "`([a-z_0-9]+)`.*following" regex.
+// We check if more than one nested block name is listed on this line, and we additionally check if there's an
+// indication of an extra nested object, denoted by "'s", as in:
+// "The `grpc_route`, `http_route` and `http2_route` 's `action` object supports the following:".
+func getMultipleNestedBlockNames(match string) []string {
+	subNest := ""
+	var nestedBlockNames []string
+	// First we check for the presence of a possible nested property via 's
+	if strings.Contains(match, "'s ") {
+		// split the match along the 's
+		part1, part2, _ := strings.Cut(match, "'s")
+		match = part1
+		// Extract our subheading. It should be the second item in part2 of the match.
+		part2Slice := strings.Split(part2, "`")
+		if len(part2Slice) >= 2 {
+			subNest = part2Slice[1]
+		}
+	}
+	// As per previous regex match, the resource names will be surrounded by backticks, so we extract them
+	tokenInBackticks := regexp.MustCompile("`[^`]+`")
+	blockNames := tokenInBackticks.FindAllString(match, -1)
+	for _, blockName := range blockNames {
+		if blockName != "" {
+			blockName = strings.Trim(blockName, "`")
+			blockName = strings.ToLower(blockName)
+			blockName = strings.Replace(blockName, " ", "_", -1)
+			blockName = strings.TrimSuffix(blockName, "[]")
+			if subNest != "" {
+				// For the format ""The `grpc_route`, `http_route` and `http2_route` 's `action` object
+				//supports the following:" the result should be grpc_route.action
+				blockName = blockName + "." + subNest
+			}
+			nestedBlockNames = append(nestedBlockNames, blockName)
+		}
+	}
+	return nestedBlockNames
+}
+
+func splitMatchOnColon(match string) []string {
+	var nestedBlockNames []string
+	parts := strings.Split(match, ":")
+
+	blockName := strings.ToLower(parts[0])
+	blockName = strings.Replace(blockName, " ", "_", -1)
+
+	subNest := strings.ToLower(parts[1])
+	subNest = strings.TrimSpace(subNest)
+	subNest = strings.Replace(subNest, " ", "_", -1)
+
+	blockName = blockName + "." + subNest
+	nestedBlockNames = append(nestedBlockNames, blockName)
+	return nestedBlockNames
+}
+
+// getNestedBlockNames takes line of a Terraform docs Markdown page and returns the name(s) of the nested block it
 // describes. If the line does not describe a nested block, an empty string is returned.
 //
 // Examples of nested blocks include (but are not limited to):
 //
 // - "The `private_cluster_config` block supports:" -> "private_cluster_config"
 // - "The optional settings.backup_configuration subblock supports:" -> "settings.backup_configuration"
-func getNestedBlockName(line string) []string {
+func getNestedBlockNames(line string) []string {
 	nested := ""
 	var nestedBlockNames []string
 
@@ -885,55 +940,16 @@ func getNestedBlockName(line string) []string {
 
 		// If we match with the first regex, we have to see if we've got many to many matching for resources going on.
 		if len(matches) >= 2 && i == 0 {
-			firstMatch := matches[0]
-			subNest := ""
-			if strings.Contains(firstMatch, "'s ") {
-				// we have even more nesting!
-				// split the line into all of its components
-				part1, part2, _ := strings.Cut(matches[0], "'s")
-				firstMatch = part1
-				// find our subheading. it should be the second item in the second part.
-				part2Slice := strings.Split(part2, "`")
-				subNest = part2Slice[1]
-			}
-			tokenInBackticks := regexp.MustCompile("`[^`]+`")
-			newStrs := tokenInBackticks.FindAllString(firstMatch, -1)
-			for _, newStr := range newStrs {
-				if newStr != "" {
-					newStr = strings.Trim(newStr, "`")
-					nested = strings.ToLower(newStr)
-					nested = strings.Replace(nested, " ", "_", -1)
-					nested = strings.TrimSuffix(nested, "[]")
-					parts := strings.Split(nested, ".")
-					nested = parts[len(parts)-1]
-					if subNest != "" {
-						// For the format ""The `grpc_route`, `http_route` and `http2_route` 's `action` object
-						//supports the following:" the result should be grpc_route.action
-						nested = nested + "." + subNest
-					}
-					nestedBlockNames = append(nestedBlockNames, nested)
-				}
-			}
+			nestedBlockNames = getMultipleNestedBlockNames(matches[0])
 			break
 		} else if len(matches) >= 2 && i == 2 {
 			// there's a colon in the subheader; split the line
-			parts := strings.Split(matches[1], ":")
-			nested = strings.ToLower(parts[0])
-			nested = strings.Replace(nested, " ", "_", -1)
-			nested = strings.TrimSuffix(nested, ":")
-			subNest := strings.ToLower(parts[1])
-			subNest = strings.TrimSpace(subNest)
-			subNest = strings.Replace(subNest, " ", "_", -1)
-
-			nested = nested + "." + subNest
-			nestedBlockNames = append(nestedBlockNames, nested)
+			nestedBlockNames = splitMatchOnColon(matches[1])
 			break
 		} else if len(matches) >= 2 {
 			nested = strings.ToLower(matches[1])
 			nested = strings.Replace(nested, " ", "_", -1)
 			nested = strings.TrimSuffix(nested, "[]")
-			parts := strings.Split(nested, ".")
-			nested = parts[len(parts)-1]
 			nestedBlockNames = append(nestedBlockNames, nested)
 			break
 		}
@@ -1011,7 +1027,7 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 			// section is over, but we take it to mean that the current
 			// heading is over.
 			lastMatch = ""
-		} else if nestedBlockCurrentLine := getNestedBlockName(line); hadSpace && len(nestedBlockCurrentLine) > 0 {
+		} else if nestedBlockCurrentLine := getNestedBlockNames(line); hadSpace && len(nestedBlockCurrentLine) > 0 {
 			// This tells us if there's a resource that is about to have subfields (nesteds)
 			// in subsequent lines.
 			//empty nesteds
@@ -1024,7 +1040,7 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 			// This appends the current line to the previous match's description.
 			extendExistingHeading(line)
 
-		} else if nestedBlockCurrentLine := getNestedBlockName(line); len(nestedBlockCurrentLine) > 0 {
+		} else if nestedBlockCurrentLine := getNestedBlockNames(line); len(nestedBlockCurrentLine) > 0 {
 			// This tells us if there's a resource that is about to have subfields (nesteds)
 			// in subsequent lines.
 			//empty nesteds
