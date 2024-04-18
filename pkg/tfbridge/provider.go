@@ -260,6 +260,9 @@ func (p *Provider) Attach(context context.Context, req *pulumirpc.PluginAttach) 
 }
 
 func (p *Provider) loggingContext(ctx context.Context, urn resource.URN) context.Context {
+	// add the resource URN to the context
+	ctx = XWithUrn(ctx, urn)
+
 	// There is no host in a testing context.
 	if p.host == nil {
 		// For tests that did not call InitLogging yet, we should call it here so that

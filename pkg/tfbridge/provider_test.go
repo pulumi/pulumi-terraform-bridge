@@ -771,6 +771,9 @@ func TestCheckCallback(t *testing.T) {
 		// We test that we have access to the logger in this callback.
 		GetLogger(ctx).Status().Info("Did not panic")
 
+		urn := GetUrn(ctx)
+		assert.Equal(t, urn, resource.URN("urn:pulumi:st::pg::testprovider:index/res:Res::r"))
+
 		config["arrayPropertyValues"] = resource.NewArrayProperty(
 			[]resource.PropertyValue{meta["prop"]},
 		)
