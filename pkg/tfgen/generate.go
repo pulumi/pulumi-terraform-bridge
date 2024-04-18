@@ -943,7 +943,7 @@ func (g *Generator) UnstableGenerateFromSchema(genSchemaResult *GenerateSchemaRe
 		if info := g.info.MetadataInfo; info != nil {
 			files[info.Path] = (*metadata.Data)(info.Data).MarshalIndent()
 			if g.info.GenerateRuntimeMetadata {
-				runtimeInfo := info.ExtractRuntimeMetadata()
+				runtimeInfo := tfbridge.ExtractRuntimeMetadata(info)
 				files[runtimeInfo.Path] = (*metadata.Data)(runtimeInfo.Data).Marshal()
 			}
 		}

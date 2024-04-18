@@ -397,9 +397,10 @@ type PropertyVisitor = func(PropertyVisitInfo) (PropertyVisitResult, error)
 
 // A wrapper around [TraverseProperties] that panics on error. See [TraverseProperties] for
 // documentation.
-func (prov *ProviderInfo) MustTraverseProperties(traversalID string, visitor PropertyVisitor,
+func MustTraverseProperties(
+	prov *ProviderInfo, traversalID string, visitor PropertyVisitor,
 	opts ...TraversalOption) {
-	err := prov.TraverseProperties(traversalID, visitor, opts...)
+	err := TraverseProperties(prov, traversalID, visitor, opts...)
 	contract.AssertNoErrorf(err, "failed to traverse provider schemas")
 }
 
@@ -418,11 +419,12 @@ func (prov *ProviderInfo) MustTraverseProperties(traversalID string, visitor Pro
 // traversalId must be unique for each traversal within a `make tfgen`, but the same
 // between `make tfgen` and the provider runtime. A simple descriptive string like `"apply
 // labels"` works great here.
-func (prov *ProviderInfo) TraverseProperties(
-	traversalID string, visitor PropertyVisitor,
+func TraverseProperties(
+	prov *ProviderInfo, traversalID string, visitor PropertyVisitor,
 	opts ...TraversalOption,
 ) error {
-	prov.MetadataInfo.assertValid() // We must have metadata info for an efficient (sparse) traversal.
+	contract.Assertf(prov.MetadataInfo != nil,
+		"We must have metadata info for an efficient (sparse) traversal.")
 
 	var errs []error
 

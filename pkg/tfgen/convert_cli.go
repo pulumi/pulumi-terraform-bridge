@@ -22,7 +22,9 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/hashicorp/hcl/v2"
 
@@ -241,6 +243,149 @@ func (cc *cliConverter) bulkConvert() error {
 func (cc *cliConverter) convertViaPulumiCLI(
 	examples map[string]string,
 	mappings []tfbridge.ProviderInfo,
+) (map[string]translatedExample, error) {
+	translated, err := cc.convertViaPulumiCLIStep(examples, mappings)
+	if err == nil {
+		return translated, nil
+	}
+
+	// Try to bisect examples to a subset that still errors out.
+	for len(examples) >= 2 {
+		e1, e2 := cc.split2(examples)
+		if _, err := cc.convertViaPulumiCLIStep(e1, mappings); err != nil {
+			examples = e1
+		} else if _, err := cc.convertViaPulumiCLIStep(e2, mappings); err != nil {
+			examples = e2
+		} else {
+			break
+		}
+	}
+
+	dir, err2 := cc.convertViaPulumiPrepareDebugFolder(examples, mappings)
+	contract.IgnoreError(err2)
+
+	return nil, fmt.Errorf("\n######\n  pulumi convert failed\n  minimal repro: %s\n  full error below\n######\n%w",
+		dir, err)
+}
+
+func (*cliConverter) split2(xs map[string]string) (map[string]string, map[string]string) {
+	h1 := map[string]string{}
+	h2 := map[string]string{}
+	keys := []string{}
+	for k := range xs {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys[0 : len(xs)/2] {
+		h1[k] = xs[k]
+	}
+	for _, k := range keys[len(xs)/2:] {
+		h2[k] = xs[k]
+	}
+	return h1, h2
+}
+
+// To help with debugging failures prepares a temp folder with a repro script and returns a path to it.
+func (cc *cliConverter) convertViaPulumiPrepareDebugFolder(
+	examples map[string]string,
+	mappings []tfbridge.ProviderInfo,
+) (string, error) {
+	d, err := os.MkdirTemp("", "convert-examples-repro")
+	if err != nil {
+		return "", err
+	}
+
+	_, args, err := cc.convertViaPulumiCLICommandArgs(examples, mappings, d, filepath.Join(d, "examples.json"))
+	if err != nil {
+		return "", err
+	}
+
+	// write out all examples into tf files for easy consumption
+	for k, v := range examples {
+		err := os.WriteFile(filepath.Join(d, fmt.Sprintf("%s.tf", k)), []byte(v), 0600)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	// write a repro.sh script to show how pulumi is invoked
+	script := []byte(fmt.Sprintf(`#!/usr/bin/env bash
+set -euo pipefail
+
+pulumi %s
+`, strings.Join(args, " ")))
+
+	if err := os.WriteFile(filepath.Join(d, "repro.sh"), script, 0600); err != nil {
+		return "", err
+	}
+
+	return d, nil
+}
+
+func (cc *cliConverter) convertViaPulumiCLICommandArgs(
+	examples map[string]string,
+	mappings []tfbridge.ProviderInfo,
+	outDir string,
+	examplesJSONPath string,
+) (string, []string, error) {
+	// Write example to bridge-examples.json.
+	examplesBytes, err := json.Marshal(examples)
+	if err != nil {
+		return "", nil, fmt.Errorf("convertViaPulumiCLI: failed to marshal examples to JSON: %w", err)
+	}
+	if err := os.WriteFile(examplesJSONPath, examplesBytes, 0600); err != nil {
+		return "", nil, fmt.Errorf("convertViaPulumiCLI: failed to write a temp examples.json file: %w", err)
+	}
+
+	pulumiPath, err := exec.LookPath("pulumi")
+	if err != nil {
+		return "", nil, fmt.Errorf("convertViaPulumiCLI: pulumi executable not in PATH: %w", err)
+	}
+
+	mappingsDir := filepath.Join(outDir, "mappings")
+
+	// Prepare mappings folder if necessary.
+	if len(mappings) > 0 {
+		if err := os.MkdirAll(mappingsDir, 0755); err != nil {
+			return "", nil, fmt.Errorf("convertViaPulumiCLI: failed to write mappings folder: %w", err)
+		}
+	}
+
+	// Write out mappings files if necessary.
+	for _, info := range mappings {
+		info := info // remove aliasing lint
+		mpi := tfbridge.MarshalProviderInfo(&info)
+		bytes, err := json.Marshal(mpi)
+		if err != nil {
+			return "", nil, fmt.Errorf("convertViaPulumiCLI: failed to write mappings folder: %w", err)
+		}
+		mf := cc.mappingsFile(mappingsDir, info)
+		if err := os.WriteFile(mf, bytes, 0600); err != nil {
+			return "", nil, fmt.Errorf("convertViaPulumiCLI: failed to write mappings file: %w", err)
+		}
+	}
+
+	var mappingsArgs []string
+	for _, info := range mappings {
+		mappingsArgs = append(mappingsArgs, "--mappings", cc.mappingsFile(mappingsDir, info))
+	}
+
+	cmdArgs := []string{
+		"convert",
+		"--from", "terraform",
+		"--language", "pcl",
+		"--out", outDir,
+		"--generate-only",
+	}
+
+	cmdArgs = append(cmdArgs, mappingsArgs...)
+	cmdArgs = append(cmdArgs, "--", "--convert-examples", filepath.Base(examplesJSONPath))
+	return pulumiPath, cmdArgs, nil
+}
+
+func (cc *cliConverter) convertViaPulumiCLIStep(
+	examples map[string]string,
+	mappings []tfbridge.ProviderInfo,
 ) (
 	output map[string]translatedExample,
 	finalError error,
@@ -273,64 +418,10 @@ func (cc *cliConverter) convertViaPulumiCLI(
 		}
 	}()
 
-	// Write example to bridge-examples.json.
-	examplesBytes, err := json.Marshal(examples)
+	pulumiPath, cmdArgs, err := cc.convertViaPulumiCLICommandArgs(examples, mappings, outDir, examplesJSON.Name())
 	if err != nil {
-		return nil, fmt.Errorf("convertViaPulumiCLI: failed to marshal examples "+
-			"to JSON: %w", err)
+		return nil, err
 	}
-	if err := os.WriteFile(examplesJSON.Name(), examplesBytes, 0600); err != nil {
-		return nil, fmt.Errorf("convertViaPulumiCLI: failed to write a temp "+
-			"bridge-examples.json file: %w", err)
-	}
-
-	mappingsDir := filepath.Join(outDir, "mappings")
-
-	// Prepare mappings folder if necessary.
-	if len(mappings) > 0 {
-		if err := os.MkdirAll(mappingsDir, 0755); err != nil {
-			return nil, fmt.Errorf("convertViaPulumiCLI: failed to write "+
-				"mappings folder: %w", err)
-		}
-	}
-
-	// Write out mappings files if necessary.
-	for _, info := range mappings {
-		info := info // remove aliasing lint
-		mpi := tfbridge.MarshalProviderInfo(&info)
-		bytes, err := json.Marshal(mpi)
-		if err != nil {
-			return nil, fmt.Errorf("convertViaPulumiCLI: failed to write "+
-				"mappings folder: %w", err)
-		}
-		mf := cc.mappingsFile(mappingsDir, info)
-		if err := os.WriteFile(mf, bytes, 0600); err != nil {
-			return nil, fmt.Errorf("convertViaPulumiCLI: failed to write "+
-				"mappings file: %w", err)
-		}
-	}
-
-	pulumiPath, err := exec.LookPath("pulumi")
-	if err != nil {
-		return nil, fmt.Errorf("convertViaPulumiCLI: pulumi executalbe not "+
-			"in PATH: %w", err)
-	}
-
-	var mappingsArgs []string
-	for _, info := range mappings {
-		mappingsArgs = append(mappingsArgs, "--mappings", cc.mappingsFile(mappingsDir, info))
-	}
-
-	cmdArgs := []string{
-		"convert",
-		"--from", "terraform",
-		"--language", "pcl",
-		"--out", outDir,
-		"--generate-only",
-	}
-
-	cmdArgs = append(cmdArgs, mappingsArgs...)
-	cmdArgs = append(cmdArgs, "--", "--convert-examples", filepath.Base(examplesJSON.Name()))
 
 	cmd := exec.Command(pulumiPath, cmdArgs...)
 

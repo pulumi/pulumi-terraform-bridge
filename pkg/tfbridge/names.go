@@ -19,11 +19,9 @@ import (
 	"fmt"
 	"unicode"
 
-	"github.com/pkg/errors"
-
 	"github.com/gedex/inflector"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/walk"
@@ -234,20 +232,7 @@ func terraformToPulumiName(name string, sch shim.SchemaMap, ps map[string]*Schem
 }
 
 // AutoNameOptions provides parameters to AutoName to control how names will be generated
-type AutoNameOptions struct {
-	// A separator between name and random portions of the
-	Separator string
-	// Maximum length of the generated name
-	Maxlen int
-	// Number of random characters to add to the name
-	Randlen int
-	// What characters to use for the random portion of the name, defaults to hex digits
-	Charset []rune
-	// A transform to apply to the name prior to adding random characters
-	Transform func(string) string
-	// A transform to apply after the auto naming has been computed
-	PostTransform func(res *PulumiResource, name string) (string, error)
-}
+type AutoNameOptions = info.AutoNameOptions
 
 // AutoName configures a property to automatically populate with auto-computed names when no values are given to it by
 // the user program.
@@ -279,20 +264,7 @@ type AutoNameOptions struct {
 //
 // Note how the automatic name combines the resource name from the program with a random suffix.
 func AutoName(name string, maxlength int, separator string) *SchemaInfo {
-	autoNameOptions := AutoNameOptions{
-		Separator: separator,
-		Maxlen:    maxlength,
-		Randlen:   7,
-	}
-	return &SchemaInfo{
-		Name: name,
-		Default: &DefaultInfo{
-			AutoNamed: true,
-			ComputeDefault: func(ctx context.Context, opts ComputeDefaultOptions) (interface{}, error) {
-				return ComputeAutoNameDefault(ctx, autoNameOptions, opts)
-			},
-		},
-	}
+	return info.AutoName(name, maxlength, separator)
 }
 
 // AutoNameWithCustomOptions is similar to [AutoName] but exposes more options for configuring the generated names.
@@ -346,42 +318,5 @@ func ComputeAutoNameDefault(
 	options AutoNameOptions,
 	defaultOptions ComputeDefaultOptions,
 ) (interface{}, error) {
-	if defaultOptions.URN == "" {
-		return nil, fmt.Errorf("AutoName is onnly supported for resources, expected Resource URN to be set")
-	}
-
-	// Reuse the value from prior state if available. Note that this code currently only runs for Plugin Framework
-	// resources, as SDKv2 based resources avoid calling ComputedDefaults in the first place in update situations.
-	// To do that SDKv2 based resources track __defaults meta-key to distinguish between values originating from
-	// defaulting machinery from values originating from user code. Unfortunately Plugin Framework cannot reliably
-	// disinguish default values, therefore it always calls ComputedDefaults. To compensate, this code block avoids
-	// re-generating the auto-name if it is located in PriorState and reuses the old one; this avoids generating a
-	// fresh random value and causing a replace plan.
-	if defaultOptions.PriorState != nil && defaultOptions.PriorValue.V != nil {
-		if defaultOptions.PriorValue.IsString() {
-			return defaultOptions.PriorValue.StringValue(), nil
-		}
-	}
-
-	// Take the URN name part, transform it if required, and then append some unique characters if requested.
-	vs := defaultOptions.URN.Name()
-	if options.Transform != nil {
-		vs = options.Transform(vs)
-	}
-	if options.Randlen > 0 {
-		uniqueHex, err := resource.NewUniqueName(
-			defaultOptions.Seed, vs+options.Separator, options.Randlen, options.Maxlen, options.Charset)
-		if err != nil {
-			return uniqueHex, errors.Wrapf(err, "could not make instance of '%v'", defaultOptions.URN.Type())
-		}
-		vs = uniqueHex
-	}
-	if options.PostTransform != nil {
-		return options.PostTransform(&PulumiResource{
-			URN:        defaultOptions.URN,
-			Properties: defaultOptions.Properties,
-			Seed:       defaultOptions.Seed,
-		}, vs)
-	}
-	return vs, nil
+	return info.ComputeAutoNameDefault(ctx, options, defaultOptions)
 }

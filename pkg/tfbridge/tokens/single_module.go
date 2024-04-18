@@ -14,8 +14,6 @@
 
 package tokens
 
-import b "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
-
 // A strategy that assigns all tokens to the same module.
 //
 // For example:
@@ -25,6 +23,6 @@ import b "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 // The above example would transform "pkgName_foo" into "pkgName:index:Foo".
 func SingleModule(
 	tfPackagePrefix, moduleName string, finalize Make,
-) b.Strategy {
+) Strategy {
 	return KnownModules(tfPackagePrefix, moduleName, nil, finalize)
 }

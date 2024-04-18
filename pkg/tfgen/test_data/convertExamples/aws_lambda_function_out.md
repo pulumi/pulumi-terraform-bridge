@@ -831,7 +831,7 @@ return await Deployment.RunAsync(() =>
     {
         DependsOn =
         {
-            alpha, 
+            alpha,
         },
     });
 
@@ -1183,8 +1183,8 @@ return await Deployment.RunAsync(() =>
     {
         DependsOn =
         {
-            lambdaLogs, 
-            example, 
+            lambdaLogs,
+            example,
         },
     });
 

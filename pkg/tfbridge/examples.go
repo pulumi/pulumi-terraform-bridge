@@ -5,22 +5,12 @@ import (
 	"os"
 	"path/filepath"
 	"text/template"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
 // HclExampler represents a supplemental HCL example for a given resource or function.
-type HclExampler interface {
-	// GetToken returns the fully qualified path to the resource or function in the schema, e.g.
-	// "provider:module/getFoo:getFoo" (function), or
-	// "provider:module/bar:Bar" (resource)
-	GetToken() string
-	// GetMarkdown returns the Markdown that comprises the entire example, including the header.
-	//
-	// Headers should be an H3 ("###") and the header content should not contain any prefix, e.g. "Foo with Bar" not,
-	// "Example Usage - Foo with Bar".
-	//
-	// Code should be surrounded with code fences with an indicator of the language on the opening fence, e.g. "```hcl".
-	GetMarkdown() (string, error)
-}
+type HclExampler = info.HclExampler
 
 // LocalFileHclExample represents a supplemental HCL example that is on a relative path within the Pulumi provider repo.
 type LocalFileHclExample struct {
