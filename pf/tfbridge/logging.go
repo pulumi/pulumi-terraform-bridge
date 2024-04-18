@@ -19,6 +19,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/logging"
 )
 
@@ -26,6 +27,8 @@ import (
 //
 // See https://developer.hashicorp.com/terraform/plugin/log/writing
 func (p *provider) initLogging(ctx context.Context, sink logging.Sink, urn resource.URN) context.Context {
+	// add the resource URN to the context
+	ctx = tfbridge.XWithUrn(ctx, urn)
 	return logging.InitLogging(ctx, logging.LogOptions{
 		LogSink:         sink,
 		URN:             urn,

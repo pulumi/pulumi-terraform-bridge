@@ -24,6 +24,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/stretchr/testify/assert"
 
 	testutils "github.com/pulumi/providertest/replay"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/providerbuilder"
@@ -252,11 +253,13 @@ func TestCheck(t *testing.T) {
 			  }
 			]`,
 			callback: func(
-				_ context.Context, config, meta resource.PropertyMap,
+				ctx context.Context, config, meta resource.PropertyMap,
 			) (resource.PropertyMap, error) {
 				t.Logf("Meta: %#v", meta)
 				result := config.Copy()
 				result["prop"] = meta["prop"]
+				urn := tfbridge0.GetUrn(ctx)
+				assert.Equal(t, urn, resource.URN("urn:pulumi:st::pg::testprovider:index/res:Res::r"))
 				return result, nil
 			},
 		},
