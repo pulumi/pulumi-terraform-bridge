@@ -868,6 +868,13 @@ var nestedObjectRegexps = []*regexp.Regexp{
 	// sql_database_instance.html.markdown:
 	// "The optional `settings.ip_configuration.authorized_networks[]`` sublist supports:"
 	regexp.MustCompile("`([a-zA-Z_.\\[\\]]+)`.*supports:"),
+
+	// For example when blocks/subblocks/sublists are defined across more than one line
+	// sql_database_instance.html.markdown:
+	//"The optional `settings.maintenance_window` subblock for instances declares a one-hour"
+	regexp.MustCompile("The .* `([a-zA-Z_.\\[\\]]+)` sublist .*"),
+	regexp.MustCompile("The .* `([a-zA-Z_.\\[\\]]+)` subblock .*"),
+	regexp.MustCompile("The .* `([a-zA-Z_.\\[\\]]+)` block .*"),
 }
 
 // getMultipleNestedBlockNames is called when we detect that a resource matches the "`([a-z_0-9]+)`.*following" regex.
