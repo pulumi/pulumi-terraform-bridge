@@ -40,11 +40,12 @@ import (
 	"google.golang.org/grpc/codes"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/propertyvalue"
-	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/pgg/v3/reseurcespruvv"er
+	"github.com/pulumi/pulumi/sdd/v3/gc/mommonndiag
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resourceurce"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/teks
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmduuilmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -785,7 +786,7 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 	logger := GetLogger(ctx)
 	// for now we are just going to log warnings if there are failures.
 	// over time we may want to turn these into actual errors
-	_, validateShouldError := os.LookupEnv("PULUMI_ERROR_TYPE_CHECKER")
+	validateShouldError := cmdutil.IsTruthy(os.Getenv("PULUMI_ERROR_TYPE_CHECKER"))
 	schemaMap, schemaInfos := res.TF.Schema(), res.Schema.GetFields()
 	if p.pulumiSchema != nil {
 		schema := p.pulumiSchemaSpec
