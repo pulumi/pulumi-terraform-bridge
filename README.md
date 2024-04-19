@@ -86,3 +86,4 @@ tfgen, the command that generates Pulumi schema/code for a bridged provider supp
 * `PULUMI_MISSING_DOCS_ERROR`: If truthy, tfgen will fail if docs cannot be found for a data source or resource. Default is `false`.
 * `PULUMI_CONVERT`: If truthy, tfgen will shell out to `pulumi convert` for converting example code from TF HCL to Pulumi PCL
 * `PULUMI_CONVERT_ONLY`: If set to a resource or data source ID such as "aws_acm_certificate" will convert docs only for that single resource; useful to speed up debugging docs issues
+* `COVERAGE_OUTPUT_DIR`: If set to a folder path, will generate a report on TF to Pulumi example code translation, including detailed errors and overall coverage statistics
