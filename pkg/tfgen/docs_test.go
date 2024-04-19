@@ -949,30 +949,20 @@ func TestParseImports_WithOverride(t *testing.T) {
 	assert.Equal(t, "## Import\n\noverridden import details", parser.ret.Import)
 }
 
+func ref[T any](t T) *T { return &t }
+
 func TestConvertExamples(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skipf("Skipping on windows to avoid failing on incorrect newline handling")
 	}
-
-	inmem := afero.NewMemMapFs()
-	info := testprovider.ProviderMiniRandom()
-	g, err := NewGenerator(GeneratorOptions{
-		Package:      info.Name,
-		Version:      info.Version,
-		Language:     Schema,
-		ProviderInfo: info,
-		Root:         inmem,
-		Sink: diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
-			Color: colors.Never,
-		}),
-	})
-	assert.NoError(t, err)
 
 	type testCase struct {
 		name string
 		path examplePath
 
 		needsProviders map[string]pluginDesc
+
+		language *Language
 	}
 
 	testCases := []testCase{
@@ -985,6 +975,17 @@ func TestConvertExamples(t *testing.T) {
 			needsProviders: map[string]pluginDesc{
 				"wavefront": {version: "3.0.0"},
 			},
+		},
+		{
+			name: "golang_wavefront_dashboard_json",
+			path: examplePath{
+				fullPath: "#/resources/wavefront:index/dashboardJson:DashboardJson",
+				token:    "wavefront:index/dashboardJson:DashboardJson",
+			},
+			needsProviders: map[string]pluginDesc{
+				"wavefront": {version: "3.0.0"},
+			},
+			language: ref(Golang),
 		},
 		{
 			name: "equinix_fabric_connection",
@@ -1026,6 +1027,24 @@ func TestConvertExamples(t *testing.T) {
 		})
 
 		t.Run(tc.name, func(t *testing.T) {
+			inmem := afero.NewMemMapFs()
+			info := testprovider.ProviderMiniRandom()
+			language := Schema
+			if tc.language != nil {
+				language = *tc.language
+			}
+			g, err := NewGenerator(GeneratorOptions{
+				Package:      info.Name,
+				Version:      info.Version,
+				Language:     language,
+				ProviderInfo: info,
+				Root:         inmem,
+				Sink: diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
+					Color: colors.Never,
+				}),
+			})
+			assert.NoError(t, err)
+
 			docs, err := os.ReadFile(filepath.Join("test_data", "convertExamples",
 				fmt.Sprintf("%s.md", tc.name)))
 			require.NoError(t, err)

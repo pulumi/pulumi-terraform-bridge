@@ -1466,7 +1466,9 @@ func (g *Generator) convertExamplesInner(
 
 					if err != nil {
 						// We do not write this section, ever.
-						// We have to strip the entire section: any header, the code block, and any surrounding text.
+						//
+						// We have to strip the entire section: any header, the code
+						// block, and any surrounding text.
 						stripSection = true
 						stripSectionHeader = tfBlock.headerStart
 					} else {
@@ -1474,8 +1476,21 @@ func (g *Generator) convertExamplesInner(
 						if hasHeader {
 							fprintf("%s", docs[tfBlock.headerStart:tfBlock.start])
 						}
-						fprintf("%s\n%s\n%s",
-							startPulumiCodeChooser, convertedBlock, endPulumiCodeChooser)
+
+						switch g.language {
+						// If we are targeting the schema, then print code switcher
+						// fences for the registry.
+						case Schema:
+							fprintf("%s\n%s\n%s",
+								startPulumiCodeChooser,
+								convertedBlock,
+								endPulumiCodeChooser)
+						// Otherwise skip code switcher fences so they don't show up
+						// in generated SDKs.
+						default:
+							fprintf("%s", convertedBlock)
+						}
+
 					}
 				}
 			} else {
