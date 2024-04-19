@@ -384,7 +384,7 @@ func (g *Generator) makePropertyType(typePath paths.TypePath,
 
 	// Handle single-nested blocks next.
 	if blockType, ok := sch.Elem().(shim.Resource); ok && sch.Type() == shim.TypeMap {
-		return g.makeObjectPropertyType(typePath, docsPath(objectName), blockType, elemInfo, out, entityDocs)
+		return g.makeObjectPropertyType(typePath, blockType, elemInfo, out, entityDocs)
 	}
 
 	// IsMaxItemOne lists and sets are flattened, transforming List[T] to T. Detect if this is the case.
@@ -409,7 +409,7 @@ func (g *Generator) makePropertyType(typePath paths.TypePath,
 	case shim.Schema:
 		element = g.makePropertyType(elemPath, objectName, elem, elemInfo, out, entityDocs)
 	case shim.Resource:
-		element = g.makeObjectPropertyType(elemPath, docsPath(objectName), elem, elemInfo, out, entityDocs)
+		element = g.makeObjectPropertyType(elemPath, elem, elemInfo, out, entityDocs)
 	}
 
 	if flatten {
@@ -436,7 +436,7 @@ func getDocsFromSchemaMap(key string, schemaMap shim.SchemaMap) string {
 }
 
 func (g *Generator) makeObjectPropertyType(typePath paths.TypePath,
-	objPath docsPath, res shim.Resource, info *tfbridge.SchemaInfo,
+	res shim.Resource, info *tfbridge.SchemaInfo,
 	out bool, entityDocs entityDocs) *propertyType {
 	t := &propertyType{
 		kind: kindObject,
@@ -470,7 +470,7 @@ func (g *Generator) makeObjectPropertyType(typePath paths.TypePath,
 		fullDocsPath = strings.TrimSuffix(fullDocsPath, ".")
 	}
 
-	objPath = docsPath(fullDocsPath)
+	objPath := docsPath(fullDocsPath)
 
 	for _, key := range stableSchemas(res.Schema()) {
 		propertySchema := res.Schema()

@@ -819,18 +819,27 @@ func (p *tfMarkdownParser) parseSchemaWithNestedSections(subsection []string) {
 	parseTopLevelSchemaIntoDocs(&p.ret, topLevelSchema, p.sink.warn)
 }
 
+type markdownLineInfo struct {
+	name, desc          string
+	isFound, isIndented bool
+}
+
 // parseArgFromMarkdownLine takes a line of Markdown and attempts to parse it for a Terraform argument and its
-// description
-func parseArgFromMarkdownLine(line string) (string, string, bool, bool) {
+// description. It returns a struct containing the name and description of the arg, whether an arg was found,
+// and whether it has indented space, denoting it as a subproperty of a previously found property.
+func parseArgFromMarkdownLine(line string) markdownLineInfo {
 	matches := argumentBulletRegexp.FindStringSubmatch(line)
-	indentedBullet := false
+	var parsed markdownLineInfo
 	if len(matches) > 4 {
 		if strings.HasPrefix(matches[0], "  ") {
-			indentedBullet = true
+			parsed.isIndented = true
 		}
-		return matches[1], matches[4], true, indentedBullet
+		parsed.name = matches[1]
+		parsed.desc = matches[4]
+		parsed.isFound = true
+
 	}
-	return "", "", false, indentedBullet
+	return parsed
 }
 
 var genericNestedRegexp = regexp.MustCompile("supports? the following:")
@@ -838,7 +847,8 @@ var genericNestedRegexp = regexp.MustCompile("supports? the following:")
 var nestedObjectRegexps = []*regexp.Regexp{
 	// For example:
 	// s3_bucket.html.markdown: "The `website` object supports the following:"
-	// appmesh_gateway_route.html.markdown: "The `grpc_route`, `http_route` and `http2_route` objects supports the following:"
+	// appmesh_gateway_route.html.markdown:
+	//		"The `grpc_route`, `http_route` and `http2_route` objects supports the following:"
 	// ami.html.markdown: "When `virtualization_type` is "hvm" the following additional arguments apply:"
 	regexp.MustCompile("`([a-z_0-9]+)`.*following"),
 
@@ -866,12 +876,12 @@ var nestedObjectRegexps = []*regexp.Regexp{
 
 	// For example:
 	// sql_database_instance.html.markdown:
-	// "The optional `settings.ip_configuration.authorized_networks[]`` sublist supports:"
+	// 		"The optional `settings.ip_configuration.authorized_networks[]`` sublist supports:"
 	regexp.MustCompile("`([a-zA-Z_.\\[\\]]+)`.*supports:"),
 
 	// For example when blocks/subblocks/sublists are defined across more than one line
 	// sql_database_instance.html.markdown:
-	//"The optional `settings.maintenance_window` subblock for instances declares a one-hour"
+	//		"The optional `settings.maintenance_window` subblock for instances declares a one-hour"
 	regexp.MustCompile("The .* `([a-zA-Z_.\\[\\]]+)` sublist .*"),
 	regexp.MustCompile("The .* `([a-zA-Z_.\\[\\]]+)` subblock .*"),
 	regexp.MustCompile("The .* `([a-zA-Z_.\\[\\]]+)` block .*"),
@@ -905,8 +915,11 @@ func getMultipleNestedBlockNames(match string) []string {
 			blockName = strings.Replace(blockName, " ", "_", -1)
 			blockName = strings.TrimSuffix(blockName, "[]")
 			if subNest != "" {
-				// For the format ""The `grpc_route`, `http_route` and `http2_route` 's `action` object
-				//supports the following:" the result should be grpc_route.action
+				// For the format:
+				//
+				//		The `grpc_route`, `http_route` and `http2_route` 's `action` object supports the following:
+				//
+				// the result should be grpc_route.action
 				blockName = blockName + "." + subNest
 			}
 			nestedBlockNames = append(nestedBlockNames, blockName)
@@ -915,7 +928,13 @@ func getMultipleNestedBlockNames(match string) []string {
 	return nestedBlockNames
 }
 
-func splitMatchOnColon(match string) []string {
+// getNestedNameWithColon handles cases where a property is shown as a subpoperty by means of a colon in the docs.
+// For example:
+//
+//	#### logs_config: s3_logs
+//
+// should return []string{"logs_config.s3_logs"}.
+func getNestedNameWithColon(match string) []string {
 	var nestedBlockNames []string
 	parts := strings.Split(match, ":")
 
@@ -951,7 +970,7 @@ func getNestedBlockNames(line string) []string {
 			break
 		} else if len(matches) >= 2 && i == 2 {
 			// there's a colon in the subheader; split the line
-			nestedBlockNames = splitMatchOnColon(matches[1])
+			nestedBlockNames = getNestedNameWithColon(matches[1])
 			break
 		} else if len(matches) >= 2 {
 			nested = strings.ToLower(matches[1])
@@ -1017,7 +1036,12 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 
 	for _, line := range subsection {
 		// We have found a new resource on this line.
-		if name, desc, matchFound, isIndented := parseArgFromMarkdownLine(line); matchFound {
+		parsedArg := parseArgFromMarkdownLine(line)
+		name := parsedArg.name
+		desc := parsedArg.desc
+		matchFound := parsedArg.isFound
+		isIndented := parsedArg.isIndented
+		if matchFound {
 			// We have found a new argument.
 			// If a bullet point is indented, we have most likely found a sub-field of the previous line.
 			// See: https://github.com/pulumi/pulumi-terraform-bridge/issues/1875

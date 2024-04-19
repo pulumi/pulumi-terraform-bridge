@@ -805,11 +805,11 @@ func TestParseArgFromMarkdownLine(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		name, desc, found, indented := parseArgFromMarkdownLine(test.input)
-		assert.Equal(t, test.expectedName, name)
-		assert.Equal(t, test.expectedDesc, desc)
-		assert.Equal(t, test.expectedFound, found)
-		assert.Equal(t, test.expectedIndent, indented)
+		parsedLine := parseArgFromMarkdownLine(test.input)
+		assert.Equal(t, test.expectedName, parsedLine.name)
+		assert.Equal(t, test.expectedDesc, parsedLine.desc)
+		assert.Equal(t, test.expectedFound, parsedLine.isFound)
+		assert.Equal(t, test.expectedIndent, parsedLine.isIndented)
 	}
 }
 
@@ -888,24 +888,24 @@ func TestGetNestedBlockName(t *testing.T) {
 		input    string
 		expected []string
 	}{
-		//{"", []string(nil)},
-		//{"The `website` object supports the following:", []string{"website"}},
-		//{"The `website` and `pages` objects support the following:", []string{"website", "pages"}},
-		//{"The optional `settings.location_preference` subblock supports:", []string{"settings.location_preference"}},
-		//{"The optional `settings.ip_configuration.authorized_networks[]` sublist supports:", []string{"settings.ip_configuration.authorized_networks"}},
-		//{"#### result_configuration Argument Reference", []string{"result_configuration"}},
-		//{"### advanced_security_options", []string{"advanced_security_options"}},
-		//{"### `server_side_encryption`", []string{"server_side_encryption"}},
-		//{"### Failover Routing Policy", []string{"failover_routing_policy"}},
-		//{"##### `log_configuration`", []string{"log_configuration"}},
-		//{"### data_format_conversion_configuration", []string{"data_format_conversion_configuration"}},
+		{"", []string(nil)},
+		{"The `website` object supports the following:", []string{"website"}},
+		{"The `website` and `pages` objects support the following:", []string{"website", "pages"}},
+		{"The optional `settings.location_preference` subblock supports:", []string{"settings.location_preference"}},
+		{"The optional `settings.ip_configuration.authorized_networks[]` sublist supports:", []string{"settings.ip_configuration.authorized_networks"}},
+		{"#### result_configuration Argument Reference", []string{"result_configuration"}},
+		{"### advanced_security_options", []string{"advanced_security_options"}},
+		{"### `server_side_encryption`", []string{"server_side_encryption"}},
+		{"### Failover Routing Policy", []string{"failover_routing_policy"}},
+		{"##### `log_configuration`", []string{"log_configuration"}},
+		{"### data_format_conversion_configuration", []string{"data_format_conversion_configuration"}},
 		{"#### build_batch_config: restrictions", []string{"build_batch_config.restrictions"}},
-		//{"#### logs_config: s3_logs", []string{"logs_config.s3_logs"}},
-		//{"###### S3 Input Format Config", []string{"s3_input_format_config"}},
-		//// This is a common starting line of base arguments, so should result in nil value:
-		//{"The following arguments are supported:", []string(nil)},
-		//{"* `kms_key_id` - ...", []string(nil)},
-		//{"## Import", []string(nil)},
+		{"#### logs_config: s3_logs", []string{"logs_config.s3_logs"}},
+		{"###### S3 Input Format Config", []string{"s3_input_format_config"}},
+		// This is a common starting line of base arguments, so should result in nil value:
+		{"The following arguments are supported:", []string(nil)},
+		{"* `kms_key_id` - ...", []string(nil)},
+		{"## Import", []string(nil)},
 	}
 
 	for _, tt := range tests {
