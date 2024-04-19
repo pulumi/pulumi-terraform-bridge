@@ -44,7 +44,7 @@ func (v *PulumiInputValidator) validatePropertyMap(
 	stableKeys := propertyMap.StableKeys()
 	failures := []TypeFailure{}
 
-	// TODO: handle required properties. Deferring for now
+	// TODO[pulumi/pulumi-terrafor-bridge#1892]: handle required properties. Deferring for now
 	// because properties can be filled in later and we don't want to
 	// fail too aggressively
 	for _, objectKey := range stableKeys {
@@ -136,60 +136,13 @@ func (v *PulumiInputValidator) validatePropertyValue(
 	}
 
 	if typeSpec.OneOf != nil {
+		// TODO[pulumi/pulumi-terrafor-bridge#1891]: handle OneOf types
 		// bindTypeSpecOneOf provides a good hint of how to interpret these:
 		//
 		// https://github.com/pulumi/pulumi/blob/master/pkg/codegen/schema/bind.go#L842
 		//
 		// Specifically it defines the defaultType, discriminator, mapping and elements.
-		if len(typeSpec.OneOf) < 2 {
-			// invalid type, don't validate
-			return nil
-		}
-
-		// don't validate types with Discriminator (yet)
-		if typeSpec.Discriminator != nil {
-			return nil
-		}
-
-		// default type
-		if typeSpec.Type != "" {
-			typeSpec.OneOf = append(typeSpec.OneOf, pschema.TypeSpec{Type: typeSpec.Type})
-		}
-
-		failures := []TypeFailure{}
-		for _, spec := range typeSpec.OneOf {
-			failure := v.validatePropertyValue(propertyValue, spec, propertyPath)
-			if len(failure) == 0 {
-				// we have found the correct type
-				return nil
-			}
-			failures = append(failures, failure...)
-		}
-		// try to find the best failure message
-		// which will probably be the one where we have
-		// recursed the furthest.
-		//
-		// TODO: there are some cases where a branch could occur
-		// and we only return the error from one branch. Ideally we
-		// would return the "best" failure from each branch. e.g.
-		// we could have:
-		//	ResourcePath: prop.foo
-		//	ResourcePath: prop.bar
-		// For now the user will get the other error once they fix the
-		// first one and run again
-		if len(failures) > 0 {
-			largestPath := 0
-			var bestFailure TypeFailure
-			for _, failure := range failures {
-				parts := strings.Split(failure.ResourcePath, ".")
-				if len(parts) > largestPath {
-					largestPath = len(parts)
-					bestFailure = failure
-				}
-			}
-			return []TypeFailure{bestFailure}
-		}
-		return failures
+		return nil
 	}
 
 	switch typeSpec.Type {
@@ -262,20 +215,6 @@ func (v *PulumiInputValidator) validatePropertyValue(
 			if typeSpec.AdditionalProperties == nil {
 				// Unknown item type so nothing more to check
 				return nil
-			}
-			// if there is a ref to another type, get that and then validate
-			if typeSpec.AdditionalProperties.Ref != "" {
-				objType := v.getType(typeSpec.AdditionalProperties.Ref)
-				// Refusing to validate unknown or unresolved type.
-				if objType == nil {
-					return nil
-				}
-
-				return v.validatePropertyMap(
-					propertyValue.ObjectValue(),
-					objType.Properties,
-					propertyPath,
-				)
 			}
 			objectValue := propertyValue.ObjectValue()
 			failures := []TypeFailure{}

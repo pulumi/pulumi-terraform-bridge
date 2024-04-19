@@ -257,44 +257,6 @@ func TestValidateInputType_objects(t *testing.T) {
 			},
 		},
 		{
-			name:     "oneof_object_multi_type_failure_object",
-			typeRef:  "ObjectMultiType",
-			typeName: "object",
-			input: resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
-				"prop": []interface{}{"foo"},
-			})),
-			failures: []TypeFailure{
-				{
-					Reason:       "expected string type, got [] type",
-					ResourcePath: "oneof_object_multi_type_failure_object.prop",
-				},
-			},
-			types: map[string]pschema.ComplexTypeSpec{
-				"pkg:index/type:ObjectMultiType": {
-					ObjectTypeSpec: pschema.ObjectTypeSpec{
-						Type: "object",
-						Properties: map[string]pschema.PropertySpec{
-							"prop": {
-								TypeSpec: pschema.TypeSpec{
-									OneOf: []pschema.TypeSpec{
-										{
-											Type: "string",
-										},
-										{
-											Type: "object",
-											AdditionalProperties: &pschema.TypeSpec{
-												Type: "string",
-											},
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-		{
 			name:     "top_level_type_failure",
 			typeRef:  "ObjectMultiType",
 			typeName: "object",
@@ -305,41 +267,6 @@ func TestValidateInputType_objects(t *testing.T) {
 			}),
 			failures: []TypeFailure{
 				{Reason: "expected object type, got [] type", ResourcePath: "top_level_type_failure"},
-			},
-			types: map[string]pschema.ComplexTypeSpec{
-				"pkg:index/type:ObjectMultiType": {
-					ObjectTypeSpec: pschema.ObjectTypeSpec{
-						Type: "object",
-						Properties: map[string]pschema.PropertySpec{
-							"prop": {
-								TypeSpec: pschema.TypeSpec{
-									OneOf: []pschema.TypeSpec{
-										{
-											Type: "string",
-										},
-										{
-											Type: "number",
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-		{
-			name:     "oneof_object_multi_type_failure",
-			typeRef:  "ObjectMultiType",
-			typeName: "object",
-			input: resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
-				"prop": []string{"foo"},
-			})),
-			failures: []TypeFailure{
-				{
-					Reason:       "expected string type, got [] type",
-					ResourcePath: "oneof_object_multi_type_failure.prop",
-				},
 			},
 			types: map[string]pschema.ComplexTypeSpec{
 				"pkg:index/type:ObjectMultiType": {
@@ -842,132 +769,6 @@ func TestValidateInputType_objects(t *testing.T) {
 				},
 			},
 		},
-		{
-			name:     "oneof_object_multi_type_nested_failure2",
-			typeRef:  "ObjectNestedArrayObjectType",
-			typeName: "object",
-			input: resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
-				"prop": map[string]interface{}{
-					"objectStringProp": "foo",
-					"foo":              map[string]interface{}{"bar": "baz"},
-					"bar":              []interface{}{1},
-				},
-			})),
-			failures: []TypeFailure{
-				{
-					Reason:       "expected string type, got [] type",
-					ResourcePath: "oneof_object_multi_type_nested_failure2.prop.bar",
-				},
-			},
-			types: map[string]pschema.ComplexTypeSpec{
-				"pkg:index/type:ObjectStringType": {
-					ObjectTypeSpec: pschema.ObjectTypeSpec{
-						Type: "object",
-						Properties: map[string]pschema.PropertySpec{
-							"objectStringProp": {
-								TypeSpec: pschema.TypeSpec{
-									Type: "string",
-								},
-							},
-						},
-					},
-				},
-				"pkg:index/type:ObjectNestedArrayObjectType": {
-					ObjectTypeSpec: pschema.ObjectTypeSpec{
-						Type: "object",
-						Properties: map[string]pschema.PropertySpec{
-							"prop": {
-								TypeSpec: pschema.TypeSpec{
-									OneOf: []pschema.TypeSpec{
-										{
-											Type: "array",
-											Items: &pschema.TypeSpec{
-												Type: "object",
-												// using ref to test specific object keys
-												Ref: "#/types/pkg:index/type:ObjectStringType",
-											},
-										},
-										{
-											Type: "object",
-											AdditionalProperties: &pschema.TypeSpec{
-												OneOf: []pschema.TypeSpec{
-													{
-														Type: "string",
-													},
-													{
-														Type: "object",
-														AdditionalProperties: &pschema.TypeSpec{
-															Type: "string",
-														},
-													},
-												},
-											},
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-		{
-			name:     "oneof_object_multi_type_nested_failure",
-			typeRef:  "ObjectNestedArrayObjectType",
-			typeName: "object",
-			input: resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
-				"prop": []map[string]interface{}{
-					{"objectStringProp": []string{"foo"}},
-				},
-			})),
-			failures: []TypeFailure{
-				{
-					Reason:       "expected string type, got [] type",
-					ResourcePath: "oneof_object_multi_type_nested_failure.prop[0].objectStringProp",
-				},
-			},
-			types: map[string]pschema.ComplexTypeSpec{
-				"pkg:index/type:ObjectStringType": {
-					ObjectTypeSpec: pschema.ObjectTypeSpec{
-						Type: "object",
-						Properties: map[string]pschema.PropertySpec{
-							"objectStringProp": {
-								TypeSpec: pschema.TypeSpec{
-									Type: "string",
-								},
-							},
-						},
-					},
-				},
-				"pkg:index/type:ObjectNestedArrayObjectType": {
-					ObjectTypeSpec: pschema.ObjectTypeSpec{
-						Type: "object",
-						Properties: map[string]pschema.PropertySpec{
-							"prop": {
-								TypeSpec: pschema.TypeSpec{
-									OneOf: []pschema.TypeSpec{
-										{
-											Type: "array",
-											Items: &pschema.TypeSpec{
-												Type: "object",
-												// using ref to test specific object keys
-												Ref: "#/types/pkg:index/type:ObjectStringType",
-											},
-										},
-										{
-											Type: "object",
-											AdditionalProperties: &pschema.TypeSpec{
-												Type: "string",
-											},
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
 	}
 
 	for _, tc := range testCases {
@@ -1252,49 +1053,6 @@ func TestValidateInputType_arrays(t *testing.T) {
 									// not using ref to test arbitrary object keys
 									AdditionalProperties: &pschema.TypeSpec{
 										Type: "string",
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-		{
-			name:     "object_double_nested_object_type_success",
-			typeRef:  "ObjectDoubleNestedObjectType",
-			typeName: "object",
-			input: resource.NewArrayProperty([]resource.PropertyValue{
-				resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
-					"prop": map[string]interface{}{
-						"objectStringProp": "foo",
-					},
-				})),
-			}),
-			types: map[string]pschema.ComplexTypeSpec{
-				"pkg:index/type:ObjectStringType": {
-					ObjectTypeSpec: pschema.ObjectTypeSpec{
-						Type: "object",
-						Properties: map[string]pschema.PropertySpec{
-							"objectStringProp": {
-								TypeSpec: pschema.TypeSpec{
-									Type: "string",
-								},
-							},
-						},
-					},
-				},
-				"pkg:index/type:ObjectDoubleNestedObjectType": {
-					ObjectTypeSpec: pschema.ObjectTypeSpec{
-						Type: "object",
-						Properties: map[string]pschema.PropertySpec{
-							"prop": {
-								TypeSpec: pschema.TypeSpec{
-									Type: "object",
-									// not using ref to test arbitrary object keys
-									AdditionalProperties: &pschema.TypeSpec{
-										Type: "object",
-										Ref:  "#/types/pkg:index/type:ObjectStringType",
 									},
 								},
 							},
