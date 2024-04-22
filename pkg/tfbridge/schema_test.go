@@ -1243,6 +1243,22 @@ func TestInvalidAsset(t *testing.T) {
 func TestOverridingTFSchema(t *testing.T) {
 	t.Parallel()
 
+	const (
+		k                 = "prop"
+		largeNumber int64 = 1<<62 + 1
+	)
+
+	// We need to assert that when both the Pulumi type (String) and the Terraoform
+	// type (Int) are large enough to hold a large number, we never round trip it
+	// through a smaller type like a float64.
+	//
+	// We assert this requirement by checking that the number we use *does not* round
+	// trip through float64.
+	t.Run("number_is_large", func(t *testing.T) {
+		t.Parallel()
+		assert.NotEqual(t, largeNumber, int64(float64(largeNumber)))
+	})
+
 	tests := []struct {
 		name string
 
@@ -1309,9 +1325,16 @@ func TestOverridingTFSchema(t *testing.T) {
 			tfInput:  MyString(""),
 			tfOutput: resource.NewNullProperty(),
 		},
-	}
+		{
+			name: "tf_int_to_pulumi_string",
 
-	const k = "prop"
+			tfSchema: &schemav1.Schema{Type: schemav1.TypeInt},
+			info:     &SchemaInfo{Type: "string"},
+
+			tfInput:  largeNumber,
+			tfOutput: resource.NewProperty(strconv.FormatInt(largeNumber, 10)),
+		},
+	}
 
 	for _, tt := range tests {
 		tt := tt
@@ -1360,12 +1383,18 @@ func TestOverridingTFSchema(t *testing.T) {
 					// SDKv2 Providers have __defaults included.
 					"__defaults": []any{},
 				}
+
+				switch tfInput := tt.tfInput.(type) {
 				// We don't transform nil values because terraform distinguished
 				// between nil and "" values.
-				if s := string(tt.tfInput.(MyString)); s == "" {
-					expected[k] = nil
-				} else {
-					expected[k] = s
+				case MyString:
+					if tfInput == "" {
+						expected[k] = nil
+					} else {
+						expected[k] = string(tfInput)
+					}
+				default:
+					expected[k] = tfInput
 				}
 				assert.Equal(t, expected, result)
 			})
