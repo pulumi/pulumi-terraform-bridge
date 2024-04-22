@@ -384,7 +384,7 @@ func (g *Generator) makePropertyType(typePath paths.TypePath,
 
 	// Handle single-nested blocks next.
 	if blockType, ok := sch.Elem().(shim.Resource); ok && sch.Type() == shim.TypeMap {
-		return g.makeObjectPropertyType(typePath, docsPath(objectName), blockType, elemInfo, out, entityDocs)
+		return g.makeObjectPropertyType(typePath, blockType, elemInfo, out, entityDocs)
 	}
 
 	// IsMaxItemOne lists and sets are flattened, transforming List[T] to T. Detect if this is the case.
@@ -409,7 +409,7 @@ func (g *Generator) makePropertyType(typePath paths.TypePath,
 	case shim.Schema:
 		element = g.makePropertyType(elemPath, objectName, elem, elemInfo, out, entityDocs)
 	case shim.Resource:
-		element = g.makeObjectPropertyType(elemPath, docsPath(objectName), elem, elemInfo, out, entityDocs)
+		element = g.makeObjectPropertyType(elemPath, elem, elemInfo, out, entityDocs)
 	}
 
 	if flatten {
@@ -438,7 +438,7 @@ func getDocsFromSchemaMap(key string, schemaMap shim.SchemaMap) string {
 }
 
 func (g *Generator) makeObjectPropertyType(typePath paths.TypePath,
-	objPath docsPath, res shim.Resource, info *tfbridge.SchemaInfo,
+	res shim.Resource, info *tfbridge.SchemaInfo,
 	out bool, entityDocs entityDocs) *propertyType {
 	t := &propertyType{
 		kind: kindObject,
@@ -455,6 +455,24 @@ func (g *Generator) makeObjectPropertyType(typePath paths.TypePath,
 	if info != nil {
 		propertyInfos = info.Fields
 	}
+
+	// Look up the parent path and prepend it to the docs path, to allow for precise lookup in the entityDOcs.
+	fullDocsPath := ""
+	currentPath := typePath
+	for {
+		if p, ok := currentPath.(*paths.PropertyPath); ok {
+			fullDocsPath = p.PropertyName.Key + "." + fullDocsPath
+		}
+		if currentPath.Parent() != nil {
+			currentPath = currentPath.Parent()
+		} else {
+			break
+		}
+
+		fullDocsPath = strings.TrimSuffix(fullDocsPath, ".")
+	}
+
+	objPath := docsPath(fullDocsPath)
 
 	for _, key := range stableSchemas(res.Schema()) {
 		propertySchema := res.Schema()
@@ -1239,7 +1257,6 @@ func (g *Generator) gatherResource(rawname string,
 		rawdoc := propschema.Description()
 
 		propinfo := info.Fields[key]
-
 		// If we are generating a provider, we do not emit output property definitions as provider outputs are not
 		// yet implemented.
 		if !isProvider {
@@ -1839,9 +1856,11 @@ func getNestedDescriptionFromParsedDocs(entityDocs entityDocs, path docsPath) (s
 	// 1. ruleset.rules.type
 	// 2. rules.type
 	// 3. type
+
 	for p := path; p != ""; {
 		// See if we have an appropriately nested argument:
-		if v, ok := entityDocs.Arguments[p]; ok {
+		v, ok := entityDocs.Arguments[p]
+		if ok {
 			return v.description, false
 		}
 		p = p.withOutRoot()
@@ -1853,18 +1872,17 @@ func getNestedDescriptionFromParsedDocs(entityDocs entityDocs, path docsPath) (s
 	// For example, this will match `production_branch.status` with
 	// `dev_branch.status`. This provides docs when we mess up parsing, but also leads
 	// to incorrect docs.
-	keys := make([]docsPath, 0, len(entityDocs.Arguments)/2)
-	leaf := path.leaf()
-	for k := range entityDocs.Arguments {
-		if k.leaf() == leaf {
-			keys = append(keys, k)
-		}
-	}
-	if len(keys) > 0 {
-		docsPathArr(keys).Sort()
-		return entityDocs.Arguments[keys[0]].description, false
-	}
-
+	//keys := make([]docsPath, 0, len(entityDocs.Arguments)/2)
+	//leaf := path.leaf()
+	//for k := range entityDocs.Arguments {
+	//	if k.leaf() == leaf {
+	//		keys = append(keys, k)
+	//	}
+	//}
+	//if len(keys) > 0 {
+	//	docsPathArr(keys).Sort()
+	//	return entityDocs.Arguments[keys[0]].description, false
+	//}
 	for attrPath := path; attrPath != ""; {
 		// We return a description in the upstream attributes if none is found  in the upstream arguments. This condition
 		// may be met for one of the following reasons:
