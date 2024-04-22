@@ -1241,92 +1241,136 @@ func TestInvalidAsset(t *testing.T) {
 }
 
 func TestOverridingTFSchema(t *testing.T) {
-	ctx := context.Background()
+	t.Parallel()
 
-	tfInputs := map[string]interface{}{
-		"pulumi_override_tf_string_to_boolean":    MyString("true"),
-		"pulumi_override_tf_string_to_bool":       MyString("true"),
-		"pulumi_empty_tf_override":                MyString("true"),
-		"pulumi_override_tf_string_to_int":        MyString("1"),
-		"pulumi_override_tf_string_to_integer":    MyString("1"),
-		"tf_empty_string_to_pulumi_bool_override": MyString(""),
+	tests := []struct {
+		name string
+
+		tfSchema *schemav1.Schema
+		info     *SchemaInfo
+
+		tfInput  any
+		tfOutput resource.PropertyValue
+	}{
+		{
+			name: "pulumi_override_tf_string_to_boolean",
+
+			tfSchema: &schemav1.Schema{Type: schemav1.TypeString},
+			info:     &SchemaInfo{Type: "boolean"},
+
+			tfInput:  MyString("true"),
+			tfOutput: resource.NewProperty(true),
+		},
+		{
+			name: "pulumi_override_tf_string_to_bool",
+
+			tfSchema: &schemav1.Schema{Type: schemav1.TypeString},
+			info:     &SchemaInfo{Type: "bool"},
+
+			tfInput:  MyString("true"),
+			tfOutput: resource.NewProperty(true),
+		},
+		{
+			name: "pulumi_empty_tf_override",
+
+			tfSchema: &schemav1.Schema{Type: schemav1.TypeString},
+			info:     &SchemaInfo{Type: ""},
+
+			tfInput:  MyString("true"),
+			tfOutput: resource.NewProperty("true"),
+		},
+		{
+			name: "pulumi_override_tf_string_to_int",
+
+			tfSchema: &schemav1.Schema{Type: schemav1.TypeString},
+			info:     &SchemaInfo{Type: "int"},
+
+			tfInput:  MyString("1"),
+			tfOutput: resource.NewProperty(1.0),
+		},
+		{
+			name: "pulumi_override_tf_string_to_integer",
+
+			tfSchema: &schemav1.Schema{Type: schemav1.TypeString},
+			info:     &SchemaInfo{Type: "integer"},
+
+			tfInput:  MyString("1"),
+			tfOutput: resource.NewProperty(1.0),
+		},
+		{
+			name: "tf_empty_string_to_pulumi_bool_override",
+
+			tfSchema: &schemav1.Schema{Type: schemav1.TypeString},
+			info: &SchemaInfo{
+				Type:           "boolean",
+				MarkAsOptional: True(),
+			},
+
+			tfInput:  MyString(""),
+			tfOutput: resource.NewNullProperty(),
+		},
 	}
 
-	tfSchema := shimv1.NewSchemaMap(map[string]*schemav1.Schema{
-		"pulumi_override_tf_string_to_boolean":    {Type: schemav1.TypeString},
-		"pulumi_override_tf_string_to_bool":       {Type: schemav1.TypeString},
-		"pulumi_empty_tf_override":                {Type: schemav1.TypeString},
-		"pulumi_override_tf_string_to_int":        {Type: schemav1.TypeString},
-		"pulumi_override_tf_string_to_integer":    {Type: schemav1.TypeString},
-		"tf_empty_string_to_pulumi_bool_override": {Type: schemav1.TypeString},
-	})
+	const k = "prop"
 
-	typeOverrides := map[string]*SchemaInfo{
-		"pulumi_override_tf_string_to_boolean": {
-			Type: "boolean",
-		},
-		"pulumi_override_tf_string_to_bool": {
-			Type: "bool",
-		},
-		"pulumi_empty_tf_override": {
-			Type: "",
-		},
-		"pulumi_override_tf_string_to_int": {
-			Type: "int",
-		},
-		"pulumi_override_tf_string_to_integer": {
-			Type: "integer",
-		},
-		"tf_empty_string_to_pulumi_bool_override": {
-			Type:           "boolean",
-			MarkAsOptional: boolPointer(true),
-		},
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			t.Run("MakeTerraformOutputs", func(t *testing.T) {
+				t.Parallel()
+
+				ctx := context.Background()
+				result := MakeTerraformOutputs(
+					ctx,
+					shimv1.NewProvider(testTFProvider),
+					map[string]any{
+						k: tt.tfInput,
+					},
+					shimv1.NewSchemaMap(map[string]*schemav1.Schema{
+						k: tt.tfSchema,
+					}),
+					map[string]*SchemaInfo{
+						k: tt.info,
+					},
+					nil, /* assets */
+					true,
+				)
+				assert.Equal(t, resource.PropertyMap{
+					k: tt.tfOutput,
+				}, result)
+			})
+			t.Run("MakeTerraformInputs", func(t *testing.T) {
+				t.Parallel()
+
+				result, _, err := makeTerraformInputsForConfig(
+					nil,
+					resource.PropertyMap{
+						k: tt.tfOutput,
+					},
+					shimv1.NewSchemaMap(map[string]*schemav1.Schema{
+						k: tt.tfSchema,
+					}),
+					map[string]*SchemaInfo{
+						k: tt.info,
+					},
+				)
+				require.NoError(t, err)
+				expected := map[string]any{
+					// SDKv2 Providers have __defaults included.
+					"__defaults": []any{},
+				}
+				// We don't transform nil values because terraform distinguished
+				// between nil and "" values.
+				if s := string(tt.tfInput.(MyString)); s == "" {
+					expected[k] = nil
+				} else {
+					expected[k] = s
+				}
+				assert.Equal(t, expected, result)
+			})
+		})
 	}
-
-	tfOutputs := resource.NewPropertyMapFromMap(map[string]interface{}{
-		"pulumiOverrideTfStringToBoolean":   true,
-		"pulumiOverrideTfStringToBool":      true,
-		"pulumiEmptyTfOverride":             "true",
-		"pulumiOverrideTfStringToInt":       1,
-		"pulumiOverrideTfStringToInteger":   1,
-		"tfEmptyStringToPulumiBoolOverride": nil,
-	})
-
-	t.Run("MakeTerraformOutputs", func(t *testing.T) {
-		result := MakeTerraformOutputs(
-			ctx,
-			shimv1.NewProvider(testTFProvider),
-			tfInputs,
-			tfSchema,
-			typeOverrides,
-			nil, /* assets */
-			true,
-		)
-		assert.Equal(t, tfOutputs, result)
-	})
-	t.Run("MakeTerraformInputs", func(t *testing.T) {
-		result, _, err := makeTerraformInputsForConfig(
-			nil,
-			tfOutputs,
-			tfSchema,
-			typeOverrides,
-		)
-		require.NoError(t, err)
-		expected := map[string]interface{}{
-			// SDKv2 Providers have __defaults included.
-			"__defaults": []interface{}{},
-		}
-		for k, v := range tfInputs {
-			// We don't transform nil values because terraform distinguished
-			// between nil and "" values.
-			if s := string(v.(MyString)); s == "" {
-				expected[k] = nil
-			} else {
-				expected[k] = s
-			}
-		}
-		assert.Equal(t, expected, result)
-	})
 }
 
 func TestArchiveAsAsset(t *testing.T) {
