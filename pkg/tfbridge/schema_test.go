@@ -1243,12 +1243,9 @@ func TestInvalidAsset(t *testing.T) {
 func TestOverridingTFSchema(t *testing.T) {
 	t.Parallel()
 
-	const (
-		k                 = "prop"
-		largeNumber int64 = 1<<62 + 1
-	)
+	const largeNumber int64 = 1<<62 + 1
 
-	// We need to assert that when both the Pulumi type (String) and the Terraoform
+	// We need to assert that when both the Pulumi type (String) and the Terraform
 	// type (Int) are large enough to hold a large number, we never round trip it
 	// through a smaller type like a float64.
 	//
@@ -1336,6 +1333,8 @@ func TestOverridingTFSchema(t *testing.T) {
 		},
 	}
 
+	const testProp = "prop"
+
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
@@ -1348,19 +1347,19 @@ func TestOverridingTFSchema(t *testing.T) {
 					ctx,
 					shimv1.NewProvider(testTFProvider),
 					map[string]any{
-						k: tt.tfInput,
+						testProp: tt.tfInput,
 					},
 					shimv1.NewSchemaMap(map[string]*schemav1.Schema{
-						k: tt.tfSchema,
+						testProp: tt.tfSchema,
 					}),
 					map[string]*SchemaInfo{
-						k: tt.info,
+						testProp: tt.info,
 					},
 					nil, /* assets */
 					true,
 				)
 				assert.Equal(t, resource.PropertyMap{
-					k: tt.tfOutput,
+					testProp: tt.tfOutput,
 				}, result)
 			})
 			t.Run("MakeTerraformInputs", func(t *testing.T) {
@@ -1369,13 +1368,13 @@ func TestOverridingTFSchema(t *testing.T) {
 				result, _, err := makeTerraformInputsForConfig(
 					nil,
 					resource.PropertyMap{
-						k: tt.tfOutput,
+						testProp: tt.tfOutput,
 					},
 					shimv1.NewSchemaMap(map[string]*schemav1.Schema{
-						k: tt.tfSchema,
+						testProp: tt.tfSchema,
 					}),
 					map[string]*SchemaInfo{
-						k: tt.info,
+						testProp: tt.info,
 					},
 				)
 				require.NoError(t, err)
@@ -1389,12 +1388,12 @@ func TestOverridingTFSchema(t *testing.T) {
 				// between nil and "" values.
 				case MyString:
 					if tfInput == "" {
-						expected[k] = nil
+						expected[testProp] = nil
 					} else {
-						expected[k] = string(tfInput)
+						expected[testProp] = string(tfInput)
 					}
 				default:
-					expected[k] = tfInput
+					expected[testProp] = tfInput
 				}
 				assert.Equal(t, expected, result)
 			})

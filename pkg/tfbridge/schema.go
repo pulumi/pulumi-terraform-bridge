@@ -384,25 +384,25 @@ func (ctx *conversionContext) makeTerraformInput(
 		v = wrap(v)
 	}
 
+	wrapError := func(v any, err error) (any, error) {
+		if err == nil {
+			return v, nil
+		}
+
+		return v, fmt.Errorf("%s: %w", name, err)
+	}
+
 	// If there is a custom transform for this value, run it before processing the value.
 	if ps != nil && ps.Transform != nil {
 		nv, err := ps.Transform(v)
 		if err != nil {
-			return nil, err
+			return wrapError(nv, err)
 		}
 		v = nv
 	}
 
 	if tfs == nil {
 		tfs = (&schema.Schema{}).Shim()
-	}
-
-	pathErr := func(v any, err error) (any, error) {
-		if err == nil {
-			return v, nil
-		}
-
-		return v, fmt.Errorf("%s: %w", name, err)
 	}
 
 	switch {
@@ -430,7 +430,7 @@ func (ctx *conversionContext) makeTerraformInput(
 	case v.IsString():
 		switch tfs.Type() {
 		case shim.TypeInt:
-			return pathErr(strconv.ParseInt(v.StringValue(), 10, 64))
+			return wrapError(strconv.ParseInt(v.StringValue(), 10, 64))
 		default:
 			return v.StringValue(), nil
 		}
