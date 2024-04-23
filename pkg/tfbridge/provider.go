@@ -18,10 +18,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"os"
 	"sort"
 	"strings"
 	"time"
 	"unicode"
+
+	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -42,6 +45,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -57,18 +61,19 @@ import (
 type Provider struct {
 	pulumirpc.UnimplementedResourceProviderServer
 
-	host            *provider.HostClient               // the RPC link back to the Pulumi engine.
-	module          string                             // the Terraform module name.
-	version         string                             // the plugin version number.
-	tf              shim.Provider                      // the Terraform resource provider to use.
-	info            ProviderInfo                       // overlaid info about this provider.
-	config          shim.SchemaMap                     // the Terraform config schema.
-	configValues    resource.PropertyMap               // this package's config values.
-	resources       map[tokens.Type]Resource           // a map of Pulumi type tokens to resource info.
-	dataSources     map[tokens.ModuleMember]DataSource // a map of Pulumi module tokens to data sources.
-	supportsSecrets bool                               // true if the engine supports secret property values
-	pulumiSchema    []byte                             // the JSON-encoded Pulumi schema.
-	memStats        memStatCollector
+	host             *provider.HostClient               // the RPC link back to the Pulumi engine.
+	module           string                             // the Terraform module name.
+	version          string                             // the plugin version number.
+	tf               shim.Provider                      // the Terraform resource provider to use.
+	info             ProviderInfo                       // overlaid info about this provider.
+	config           shim.SchemaMap                     // the Terraform config schema.
+	configValues     resource.PropertyMap               // this package's config values.
+	resources        map[tokens.Type]Resource           // a map of Pulumi type tokens to resource info.
+	dataSources      map[tokens.ModuleMember]DataSource // a map of Pulumi module tokens to data sources.
+	supportsSecrets  bool                               // true if the engine supports secret property values
+	pulumiSchema     []byte                             // the JSON-encoded Pulumi schema.
+	pulumiSchemaSpec *pschema.PackageSpec
+	memStats         memStatCollector
 }
 
 // MuxProvider defines an interface which must be implemented by providers
@@ -203,8 +208,15 @@ func newProvider(ctx context.Context, host *provider.HostClient,
 		config:       tf.Schema(),
 		pulumiSchema: pulumiSchema,
 	}
-	p.loggingContext(ctx, "")
+	ctx = p.loggingContext(ctx, "")
 	p.initResourceMaps()
+	if pulumiSchema != nil || len(pulumiSchema) != 0 {
+		var schema pschema.PackageSpec
+		if err := json.Unmarshal(pulumiSchema, &schema); err != nil {
+			GetLogger(ctx).Debug(fmt.Sprintf("unable to unmarshal pulumi package spec: %s", err.Error()))
+		}
+		p.pulumiSchemaSpec = &schema
+	}
 	return p
 }
 
@@ -734,6 +746,7 @@ func (p *Provider) Configure(ctx context.Context,
 func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pulumirpc.CheckResponse, error) {
 	ctx = p.loggingContext(ctx, resource.URN(req.GetUrn()))
 	urn := resource.URN(req.GetUrn())
+	failures := []*pulumirpc.CheckFailure{}
 	t := urn.Type()
 	res, has := p.resources[t]
 	if !has {
@@ -773,6 +786,36 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 		return nil, err
 	}
 
+	logger := GetLogger(ctx)
+	// for now we are just going to log warnings if there are failures.
+	// over time we may want to turn these into actual errors
+	validateShouldError := cmdutil.IsTruthy(os.Getenv("PULUMI_ERROR_TYPE_CHECKER"))
+	schemaMap, schemaInfos := res.TF.Schema(), res.Schema.GetFields()
+	if p.pulumiSchema != nil {
+		schema := p.pulumiSchemaSpec
+		if schema != nil {
+			iv := NewInputValidator(urn, *schema)
+			typeFailures := iv.ValidateInputs(t, news)
+			if typeFailures != nil {
+				logger.Warn("Type checking failed. If any of these are incorrect, please let us know by creating an" +
+					"issue at https://github.com/pului/pulumi-terraform-bridge/issues.",
+				)
+				for _, e := range *typeFailures {
+					if validateShouldError {
+						pp := NewCheckFailurePath(schemaMap, schemaInfos, e.ResourcePath)
+						cf := NewCheckFailure(MiscFailure, e.Reason, &pp, urn, false, p.module, schemaMap, schemaInfos)
+						failures = append(failures, &pulumirpc.CheckFailure{
+							Reason:   cf.Reason,
+							Property: string(cf.Property),
+						})
+					} else {
+						logger.Warn(fmt.Sprintf("%v verification warning: %s: Examine values at %s", urn, e.Reason, e.ResourcePath))
+					}
+				}
+			}
+		}
+	}
+
 	if check := res.Schema.PreCheckCallback; check != nil {
 		news, err = check(ctx, news, p.configValues.Copy())
 		if err != nil {
@@ -783,7 +826,7 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 	tfname := res.TFName
 	inputs, _, err := makeTerraformInputsWithOptions(ctx,
 		&PulumiResource{URN: urn, Properties: news, Seed: req.RandomSeed},
-		p.configValues, olds, news, res.TF.Schema(), res.Schema.Fields,
+		p.configValues, olds, news, schemaMap, res.Schema.Fields,
 		makeTerraformInputsOptions{DisableTFDefaults: true})
 	if err != nil {
 		return nil, err
@@ -793,35 +836,26 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 	rescfg := MakeTerraformConfigFromInputs(ctx, p.tf, inputs)
 	warns, errs := p.tf.ValidateResource(ctx, tfname, rescfg)
 	for _, warn := range warns {
-		warning := fmt.Sprintf("%v verification warning: %v", urn, warn)
-		// TODO: This is needed for tests, since tests don't have a host defined.
-		// We should clean this up once we fix that.
-		if p.host == nil {
-			glog.Warning(warning)
-		} else {
-			if err = p.host.Log(ctx, diag.Warning, urn, warning); err != nil {
-				return nil, err
-			}
-		}
+		logger.Warn(fmt.Sprintf("%v verification warning: %v", urn, warn))
 	}
 
 	// Now produce CheckFalures for any properties that failed verification.
-	failures := p.adaptCheckFailures(ctx, urn, false /*isProvider*/, res.TF.Schema(), res.Schema.GetFields(), errs)
+	failures = append(failures, p.adaptCheckFailures(ctx, urn, false /*isProvider*/, schemaMap, schemaInfos, errs)...)
 
 	// Now re-generate the inputs WITH the TF defaults
 	inputs, assets, err := MakeTerraformInputs(ctx,
 		&PulumiResource{URN: urn, Properties: news, Seed: req.RandomSeed},
-		p.configValues, olds, news, res.TF.Schema(), res.Schema.Fields)
+		p.configValues, olds, news, schemaMap, res.Schema.Fields)
 	if err != nil {
 		return nil, err
 	}
 
 	// After all is said and done, we need to go back and return only what got populated as a diff from the origin.
 	pinputs := MakeTerraformOutputs(
-		ctx, p.tf, inputs, res.TF.Schema(), res.Schema.Fields, assets, p.supportsSecrets,
+		ctx, p.tf, inputs, schemaMap, res.Schema.Fields, assets, p.supportsSecrets,
 	)
 
-	pinputsWithSecrets := MarkSchemaSecrets(ctx, res.TF.Schema(), res.Schema.Fields,
+	pinputsWithSecrets := MarkSchemaSecrets(ctx, schemaMap, res.Schema.Fields,
 		resource.NewObjectProperty(pinputs)).ObjectValue()
 
 	minputs, err := plugin.MarshalProperties(pinputsWithSecrets, plugin.MarshalOptions{
