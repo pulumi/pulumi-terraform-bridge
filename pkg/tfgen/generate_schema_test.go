@@ -24,9 +24,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	bridgetesting "github.com/pulumi/pulumi-terraform-bridge/v3/internal/testing"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/internal/testprovider"
+	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 	"github.com/pulumi/pulumi-terraform-bridge/x/muxer"
 	csgen "github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
@@ -471,4 +473,38 @@ func TestRegress1626(t *testing.T) {
 	s, err := GenerateSchema(info, sink)
 	t.Logf("SPEC: %v", s)
 	require.NoError(t, err)
+}
+
+func TestOptionalComputed(t *testing.T) {
+	schemaProvider := &schema.Provider{
+		Schema: map[string]*schema.Schema{},
+		ResourcesMap: map[string]*schema.Resource{
+			"my_resource": {
+				Schema: map[string]*schema.Schema{
+					"my_prop": {
+						Type:     schema.TypeString,
+						Computed: true,
+						Optional: true,
+					},
+				},
+			},
+		},
+	}
+
+	provider := tfbridge.ProviderInfo{
+		P:    shimv2.NewProvider(schemaProvider),
+		Name: "my",
+		Resources: map[string]*tfbridge.ResourceInfo{
+			"my_resource": {
+				Tok:    tfbridge.MakeResource("my", "index", "Resource"),
+				Fields: map[string]*tfbridge.SchemaInfo{},
+			},
+		},
+	}
+
+	schema, err := GenerateSchema(provider, diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
+		Color: colors.Never,
+	}))
+	assert.NoError(t, err)
+	bridgetesting.AssertEqualsJSONFile(t, "test_data/computed-optional.json", schema)
 }
