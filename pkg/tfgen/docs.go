@@ -2183,8 +2183,9 @@ func extractExamples(description string) string {
 }
 
 var (
-	reTerraform = regexp.MustCompile("[Tt]erraform")
-	reHashicorp = regexp.MustCompile("[Hh]ashicorp")
+	reTerraform        = regexp.MustCompile("[Tt]erraform")
+	reHashicorp        = regexp.MustCompile("[Hh]ashicorp")
+	illegalJavaPattern = regexp.MustCompile("(?m)^@pattern.*")
 )
 
 func elide(text string) bool {
@@ -2194,6 +2195,9 @@ func elide(text string) bool {
 
 // reformatText processes markdown strings from TF docs and cleans them for inclusion in Pulumi docs
 func reformatText(g infoContext, text string, footerLinks map[string]string) (string, bool) {
+	// TODO[pulumi/pulumi-java#1271]: This should be fixed in pulumi/pulumi-java
+	text = illegalJavaPattern.ReplaceAllString(text, "")
+
 	cleanupText := func(text string) (string, bool) {
 		// Remove incorrect documentation.
 		if elide(text) {
