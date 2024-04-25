@@ -51,7 +51,7 @@
           "additionalProperties": {
             "$ref": "pulumi.json#/Any"
           },
-          "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See [the main provider\ndocumentation](../index.html) for more information.\n"
+          "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for\nmore information.\n"
         },
         "max": {
           "type": "integer",
@@ -81,7 +81,7 @@
           "additionalProperties": {
             "$ref": "pulumi.json#/Any"
           },
-          "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See [the main provider\ndocumentation](../index.html) for more information.\n",
+          "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for\nmore information.\n",
           "willReplaceOnChanges": true
         },
         "max": {
@@ -112,7 +112,7 @@
             "additionalProperties": {
               "$ref": "pulumi.json#/Any"
             },
-            "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See [the main provider\ndocumentation](../index.html) for more information.\n",
+            "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for\nmore information.\n",
             "willReplaceOnChanges": true
           },
           "max": {
