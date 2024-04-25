@@ -265,8 +265,7 @@
         "tls:index/certRequest:CertRequest": {
             "properties": {
                 "certRequestPem": {
-                    "type": "string",
-                    "description": "The certificate request data in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format. **NOTE**: the\n[underlying](https://pkg.go.dev/encoding/pem#Encode)\n[libraries](https://pkg.go.dev/golang.org/x/crypto/ssh#MarshalAuthorizedKey) that generate this value append a `\\n` at\nthe end of the PEM. In case this disrupts your use case, we recommend using\n[`trimspace()`](https://www.terraform.io/language/functions/trimspace).\n"
+                    "type": "string"
                 },
                 "dnsNames": {
                     "type": "array",
@@ -288,7 +287,6 @@
                 },
                 "privateKeyPem": {
                     "type": "string",
-                    "description": "Private key in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format, that the certificate will belong\nto. This can be read from a separate file using the [`file`](https://www.terraform.io/language/functions/file)\ninterpolation function. Only an irreversible secure hash of the private key will be stored in the Terraform state.\n",
                     "secret": true
                 },
                 "subject": {
@@ -325,7 +323,6 @@
                 },
                 "privateKeyPem": {
                     "type": "string",
-                    "description": "Private key in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format, that the certificate will belong\nto. This can be read from a separate file using the [`file`](https://www.terraform.io/language/functions/file)\ninterpolation function. Only an irreversible secure hash of the private key will be stored in the Terraform state.\n",
                     "secret": true
                 },
                 "subject": {
@@ -347,8 +344,7 @@
                 "description": "Input properties used for looking up and filtering CertRequest resources.\n",
                 "properties": {
                     "certRequestPem": {
-                        "type": "string",
-                        "description": "The certificate request data in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format. **NOTE**: the\n[underlying](https://pkg.go.dev/encoding/pem#Encode)\n[libraries](https://pkg.go.dev/golang.org/x/crypto/ssh#MarshalAuthorizedKey) that generate this value append a `\\n` at\nthe end of the PEM. In case this disrupts your use case, we recommend using\n[`trimspace()`](https://www.terraform.io/language/functions/trimspace).\n"
+                        "type": "string"
                     },
                     "dnsNames": {
                         "type": "array",
@@ -370,7 +366,6 @@
                     },
                     "privateKeyPem": {
                         "type": "string",
-                        "description": "Private key in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format, that the certificate will belong\nto. This can be read from a separate file using the [`file`](https://www.terraform.io/language/functions/file)\ninterpolation function. Only an irreversible secure hash of the private key will be stored in the Terraform state.\n",
                         "secret": true
                     },
                     "subject": {
@@ -411,16 +406,14 @@
                     "secret": true
                 },
                 "certPem": {
-                    "type": "string",
-                    "description": "Certificate data in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format. **NOTE**: the\n[underlying](https://pkg.go.dev/encoding/pem#Encode)\n[libraries](https://pkg.go.dev/golang.org/x/crypto/ssh#MarshalAuthorizedKey) that generate this value append a `\\n` at\nthe end of the PEM. In case this disrupts your use case, we recommend using\n[`trimspace()`](https://www.terraform.io/language/functions/trimspace).\n"
+                    "type": "string"
                 },
                 "certRequestPem": {
                     "type": "string",
                     "description": "Certificate request data in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format.\n"
                 },
                 "earlyRenewalHours": {
-                    "type": "integer",
-                    "description": "The resource will consider the certificate to have expired the given number of hours before its actual expiry time. This\ncan be useful to deploy an updated certificate in advance of the expiration of the current certificate. However, the old\ncertificate remains valid until its true expiration time, since this resource does not (and cannot) support certificate\nrevocation. Also, this advance update can only be performed should the Terraform configuration be applied during the\nearly renewal period. (default: `0`)\n"
+                    "type": "integer"
                 },
                 "isCaCertificate": {
                     "type": "boolean",
@@ -484,8 +477,7 @@
                     "description": "Certificate request data in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format.\n"
                 },
                 "earlyRenewalHours": {
-                    "type": "integer",
-                    "description": "The resource will consider the certificate to have expired the given number of hours before its actual expiry time. This\ncan be useful to deploy an updated certificate in advance of the expiration of the current certificate. However, the old\ncertificate remains valid until its true expiration time, since this resource does not (and cannot) support certificate\nrevocation. Also, this advance update can only be performed should the Terraform configuration be applied during the\nearly renewal period. (default: `0`)\n"
+                    "type": "integer"
                 },
                 "isCaCertificate": {
                     "type": "boolean",
@@ -531,16 +523,14 @@
                         "secret": true
                     },
                     "certPem": {
-                        "type": "string",
-                        "description": "Certificate data in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format. **NOTE**: the\n[underlying](https://pkg.go.dev/encoding/pem#Encode)\n[libraries](https://pkg.go.dev/golang.org/x/crypto/ssh#MarshalAuthorizedKey) that generate this value append a `\\n` at\nthe end of the PEM. In case this disrupts your use case, we recommend using\n[`trimspace()`](https://www.terraform.io/language/functions/trimspace).\n"
+                        "type": "string"
                     },
                     "certRequestPem": {
                         "type": "string",
                         "description": "Certificate request data in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format.\n"
                     },
                     "earlyRenewalHours": {
-                        "type": "integer",
-                        "description": "The resource will consider the certificate to have expired the given number of hours before its actual expiry time. This\ncan be useful to deploy an updated certificate in advance of the expiration of the current certificate. However, the old\ncertificate remains valid until its true expiration time, since this resource does not (and cannot) support certificate\nrevocation. Also, this advance update can only be performed should the Terraform configuration be applied during the\nearly renewal period. (default: `0`)\n"
+                        "type": "integer"
                     },
                     "isCaCertificate": {
                         "type": "boolean",
@@ -597,19 +587,17 @@
                 },
                 "publicKeyFingerprintMd5": {
                     "type": "string",
-                    "description": "The fingerprint of the public key data in OpenSSH MD5 hash format, e.g. `aa:bb:cc:...`. Only available if the selected\nprivate key format is compatible, similarly to `public_key_openssh` and the [ECDSA P224\nlimitations](../../docs#limitations).\n"
+                    "description": "The fingerprint of the public key data in OpenSSH MD5 hash format, e.g. `aa:bb:cc:...`. Only available if the selected\nprivate key format is compatible, similarly to `public_key_openssh` and the ECDSA P224 limitations.\n"
                 },
                 "publicKeyFingerprintSha256": {
                     "type": "string",
-                    "description": "The fingerprint of the public key data in OpenSSH SHA256 hash format, e.g. `SHA256:...`. Only available if the selected\nprivate key format is compatible, similarly to `public_key_openssh` and the [ECDSA P224\nlimitations](../../docs#limitations).\n"
+                    "description": "The fingerprint of the public key data in OpenSSH SHA256 hash format, e.g. `SHA256:...`. Only available if the selected\nprivate key format is compatible, similarly to `public_key_openssh` and the ECDSA P224 limitations.\n"
                 },
                 "publicKeyOpenssh": {
-                    "type": "string",
-                    "description": "The public key data in [\"Authorized\nKeys\"](https://www.ssh.com/academy/ssh/authorized_keys/openssh#format-of-the-authorized-keys-file) format. This is not\npopulated for `ECDSA` with curve `P224`, as it is [not supported](../../docs#limitations). **NOTE**: the\n[underlying](https://pkg.go.dev/encoding/pem#Encode)\n[libraries](https://pkg.go.dev/golang.org/x/crypto/ssh#MarshalAuthorizedKey) that generate this value append a `\\n` at\nthe end of the PEM. In case this disrupts your use case, we recommend using\n[`trimspace()`](https://www.terraform.io/language/functions/trimspace).\n"
+                    "type": "string"
                 },
                 "publicKeyPem": {
-                    "type": "string",
-                    "description": "Public key data in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format. **NOTE**: the\n[underlying](https://pkg.go.dev/encoding/pem#Encode)\n[libraries](https://pkg.go.dev/golang.org/x/crypto/ssh#MarshalAuthorizedKey) that generate this value append a `\\n` at\nthe end of the PEM. In case this disrupts your use case, we recommend using\n[`trimspace()`](https://www.terraform.io/language/functions/trimspace).\n"
+                    "type": "string"
                 },
                 "rsaBits": {
                     "type": "integer",
@@ -673,19 +661,17 @@
                     },
                     "publicKeyFingerprintMd5": {
                         "type": "string",
-                        "description": "The fingerprint of the public key data in OpenSSH MD5 hash format, e.g. `aa:bb:cc:...`. Only available if the selected\nprivate key format is compatible, similarly to `public_key_openssh` and the [ECDSA P224\nlimitations](../../docs#limitations).\n"
+                        "description": "The fingerprint of the public key data in OpenSSH MD5 hash format, e.g. `aa:bb:cc:...`. Only available if the selected\nprivate key format is compatible, similarly to `public_key_openssh` and the ECDSA P224 limitations.\n"
                     },
                     "publicKeyFingerprintSha256": {
                         "type": "string",
-                        "description": "The fingerprint of the public key data in OpenSSH SHA256 hash format, e.g. `SHA256:...`. Only available if the selected\nprivate key format is compatible, similarly to `public_key_openssh` and the [ECDSA P224\nlimitations](../../docs#limitations).\n"
+                        "description": "The fingerprint of the public key data in OpenSSH SHA256 hash format, e.g. `SHA256:...`. Only available if the selected\nprivate key format is compatible, similarly to `public_key_openssh` and the ECDSA P224 limitations.\n"
                     },
                     "publicKeyOpenssh": {
-                        "type": "string",
-                        "description": "The public key data in [\"Authorized\nKeys\"](https://www.ssh.com/academy/ssh/authorized_keys/openssh#format-of-the-authorized-keys-file) format. This is not\npopulated for `ECDSA` with curve `P224`, as it is [not supported](../../docs#limitations). **NOTE**: the\n[underlying](https://pkg.go.dev/encoding/pem#Encode)\n[libraries](https://pkg.go.dev/golang.org/x/crypto/ssh#MarshalAuthorizedKey) that generate this value append a `\\n` at\nthe end of the PEM. In case this disrupts your use case, we recommend using\n[`trimspace()`](https://www.terraform.io/language/functions/trimspace).\n"
+                        "type": "string"
                     },
                     "publicKeyPem": {
-                        "type": "string",
-                        "description": "Public key data in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format. **NOTE**: the\n[underlying](https://pkg.go.dev/encoding/pem#Encode)\n[libraries](https://pkg.go.dev/golang.org/x/crypto/ssh#MarshalAuthorizedKey) that generate this value append a `\\n` at\nthe end of the PEM. In case this disrupts your use case, we recommend using\n[`trimspace()`](https://www.terraform.io/language/functions/trimspace).\n"
+                        "type": "string"
                     },
                     "rsaBits": {
                         "type": "integer",
@@ -705,8 +691,7 @@
                     "description": "List of key usages allowed for the issued certificate. Values are defined in [RFC\n5280](https://datatracker.ietf.org/doc/html/rfc5280) and combine flags defined by both [Key\nUsages](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.3) and [Extended Key\nUsages](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.12). Accepted values: `any_extended`,\n`cert_signing`, `client_auth`, `code_signing`, `content_commitment`, `crl_signing`, `data_encipherment`,\n`decipher_only`, `digital_signature`, `email_protection`, `encipher_only`, `ipsec_end_system`, `ipsec_tunnel`,\n`ipsec_user`, `key_agreement`, `key_encipherment`, `microsoft_commercial_code_signing`, `microsoft_kernel_code_signing`,\n`microsoft_server_gated_crypto`, `netscape_server_gated_crypto`, `ocsp_signing`, `server_auth`, `timestamping`.\n"
                 },
                 "certPem": {
-                    "type": "string",
-                    "description": "Certificate data in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format. **NOTE**: the\n[underlying](https://pkg.go.dev/encoding/pem#Encode)\n[libraries](https://pkg.go.dev/golang.org/x/crypto/ssh#MarshalAuthorizedKey) that generate this value append a `\\n` at\nthe end of the PEM. In case this disrupts your use case, we recommend using\n[`trimspace()`](https://www.terraform.io/language/functions/trimspace).\n"
+                    "type": "string"
                 },
                 "dnsNames": {
                     "type": "array",
@@ -716,8 +701,7 @@
                     "description": "List of DNS names for which a certificate is being requested (i.e. certificate subjects).\n"
                 },
                 "earlyRenewalHours": {
-                    "type": "integer",
-                    "description": "The resource will consider the certificate to have expired the given number of hours before its actual expiry time. This\ncan be useful to deploy an updated certificate in advance of the expiration of the current certificate. However, the old\ncertificate remains valid until its true expiration time, since this resource does not (and cannot) support certificate\nrevocation. Also, this advance update can only be performed should the Terraform configuration be applied during the\nearly renewal period. (default: `0`)\n"
+                    "type": "integer"
                 },
                 "ipAddresses": {
                     "type": "array",
@@ -736,7 +720,6 @@
                 },
                 "privateKeyPem": {
                     "type": "string",
-                    "description": "Private key in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format, that the certificate will belong\nto. This can be read from a separate file using the [`file`](https://www.terraform.io/language/functions/file)\ninterpolation function. Only an irreversible secure hash of the private key will be stored in the Terraform state.\n",
                     "secret": true
                 },
                 "readyForRenewal": {
@@ -805,8 +788,7 @@
                     "description": "List of DNS names for which a certificate is being requested (i.e. certificate subjects).\n"
                 },
                 "earlyRenewalHours": {
-                    "type": "integer",
-                    "description": "The resource will consider the certificate to have expired the given number of hours before its actual expiry time. This\ncan be useful to deploy an updated certificate in advance of the expiration of the current certificate. However, the old\ncertificate remains valid until its true expiration time, since this resource does not (and cannot) support certificate\nrevocation. Also, this advance update can only be performed should the Terraform configuration be applied during the\nearly renewal period. (default: `0`)\n"
+                    "type": "integer"
                 },
                 "ipAddresses": {
                     "type": "array",
@@ -821,7 +803,6 @@
                 },
                 "privateKeyPem": {
                     "type": "string",
-                    "description": "Private key in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format, that the certificate will belong\nto. This can be read from a separate file using the [`file`](https://www.terraform.io/language/functions/file)\ninterpolation function. Only an irreversible secure hash of the private key will be stored in the Terraform state.\n",
                     "secret": true
                 },
                 "setAuthorityKeyId": {
@@ -864,8 +845,7 @@
                         "description": "List of key usages allowed for the issued certificate. Values are defined in [RFC\n5280](https://datatracker.ietf.org/doc/html/rfc5280) and combine flags defined by both [Key\nUsages](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.3) and [Extended Key\nUsages](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.12). Accepted values: `any_extended`,\n`cert_signing`, `client_auth`, `code_signing`, `content_commitment`, `crl_signing`, `data_encipherment`,\n`decipher_only`, `digital_signature`, `email_protection`, `encipher_only`, `ipsec_end_system`, `ipsec_tunnel`,\n`ipsec_user`, `key_agreement`, `key_encipherment`, `microsoft_commercial_code_signing`, `microsoft_kernel_code_signing`,\n`microsoft_server_gated_crypto`, `netscape_server_gated_crypto`, `ocsp_signing`, `server_auth`, `timestamping`.\n"
                     },
                     "certPem": {
-                        "type": "string",
-                        "description": "Certificate data in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format. **NOTE**: the\n[underlying](https://pkg.go.dev/encoding/pem#Encode)\n[libraries](https://pkg.go.dev/golang.org/x/crypto/ssh#MarshalAuthorizedKey) that generate this value append a `\\n` at\nthe end of the PEM. In case this disrupts your use case, we recommend using\n[`trimspace()`](https://www.terraform.io/language/functions/trimspace).\n"
+                        "type": "string"
                     },
                     "dnsNames": {
                         "type": "array",
@@ -875,8 +855,7 @@
                         "description": "List of DNS names for which a certificate is being requested (i.e. certificate subjects).\n"
                     },
                     "earlyRenewalHours": {
-                        "type": "integer",
-                        "description": "The resource will consider the certificate to have expired the given number of hours before its actual expiry time. This\ncan be useful to deploy an updated certificate in advance of the expiration of the current certificate. However, the old\ncertificate remains valid until its true expiration time, since this resource does not (and cannot) support certificate\nrevocation. Also, this advance update can only be performed should the Terraform configuration be applied during the\nearly renewal period. (default: `0`)\n"
+                        "type": "integer"
                     },
                     "ipAddresses": {
                         "type": "array",
@@ -895,7 +874,6 @@
                     },
                     "privateKeyPem": {
                         "type": "string",
-                        "description": "Private key in [PEM (RFC 1421)](https://datatracker.ietf.org/doc/html/rfc1421) format, that the certificate will belong\nto. This can be read from a separate file using the [`file`](https://www.terraform.io/language/functions/file)\ninterpolation function. Only an irreversible secure hash of the private key will be stored in the Terraform state.\n",
                         "secret": true
                     },
                     "readyForRenewal": {

@@ -101,7 +101,7 @@
                     "additionalProperties": {
                         "type": "string"
                     },
-                    "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See [the main provider\ndocumentation](../index.html) for more information.\n"
+                    "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for\nmore information.\n"
                 },
                 "length": {
                     "type": "integer",
@@ -119,7 +119,7 @@
                     "additionalProperties": {
                         "type": "string"
                     },
-                    "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See [the main provider\ndocumentation](../index.html) for more information.\n"
+                    "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for\nmore information.\n"
                 },
                 "length": {
                     "type": "integer",
@@ -147,7 +147,7 @@
                         "additionalProperties": {
                             "type": "string"
                         },
-                        "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See [the main provider\ndocumentation](../index.html) for more information.\n"
+                        "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for\nmore information.\n"
                     },
                     "length": {
                         "type": "integer",
@@ -242,7 +242,7 @@
                     "additionalProperties": {
                         "type": "string"
                     },
-                    "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See [the main provider\ndocumentation](../index.html) for more information.\n"
+                    "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for\nmore information.\n"
                 },
                 "prefix": {
                     "type": "string",
@@ -266,7 +266,7 @@
                     "additionalProperties": {
                         "type": "string"
                     },
-                    "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See [the main provider\ndocumentation](../index.html) for more information.\n"
+                    "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for\nmore information.\n"
                 },
                 "prefix": {
                     "type": "string",
@@ -304,7 +304,7 @@
                         "additionalProperties": {
                             "type": "string"
                         },
-                        "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See [the main provider\ndocumentation](../index.html) for more information.\n"
+                        "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for\nmore information.\n"
                     },
                     "prefix": {
                         "type": "string",
@@ -321,7 +321,7 @@
                     "additionalProperties": {
                         "type": "string"
                     },
-                    "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See [the main provider\ndocumentation](../index.html) for more information.\n"
+                    "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for\nmore information.\n"
                 },
                 "max": {
                     "type": "integer",
@@ -351,7 +351,7 @@
                     "additionalProperties": {
                         "type": "string"
                     },
-                    "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See [the main provider\ndocumentation](../index.html) for more information.\n"
+                    "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for\nmore information.\n"
                 },
                 "max": {
                     "type": "integer",
@@ -378,7 +378,7 @@
                         "additionalProperties": {
                             "type": "string"
                         },
-                        "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See [the main provider\ndocumentation](../index.html) for more information.\n"
+                        "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for\nmore information.\n"
                     },
                     "max": {
                         "type": "integer",
@@ -412,7 +412,7 @@
                     "additionalProperties": {
                         "type": "string"
                     },
-                    "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See [the main provider\ndocumentation](../index.html) for more information.\n"
+                    "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for\nmore information.\n"
                 },
                 "length": {
                     "type": "integer",
@@ -485,7 +485,7 @@
                     "additionalProperties": {
                         "type": "string"
                     },
-                    "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See [the main provider\ndocumentation](../index.html) for more information.\n"
+                    "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for\nmore information.\n"
                 },
                 "length": {
                     "type": "integer",
@@ -549,7 +549,7 @@
                         "additionalProperties": {
                             "type": "string"
                         },
-                        "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See [the main provider\ndocumentation](../index.html) for more information.\n"
+                        "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for\nmore information.\n"
                     },
                     "length": {
                         "type": "integer",
@@ -612,7 +612,7 @@
                     "additionalProperties": {
                         "type": "string"
                     },
-                    "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See [the main provider\ndocumentation](../index.html) for more information.\n"
+                    "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for\nmore information.\n"
                 },
                 "length": {
                     "type": "integer",
@@ -637,7 +637,7 @@
                     "additionalProperties": {
                         "type": "string"
                     },
-                    "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See [the main provider\ndocumentation](../index.html) for more information.\n"
+                    "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for\nmore information.\n"
                 },
                 "length": {
                     "type": "integer",
@@ -660,7 +660,7 @@
                         "additionalProperties": {
                             "type": "string"
                         },
-                        "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See [the main provider\ndocumentation](../index.html) for more information.\n"
+                        "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for\nmore information.\n"
                     },
                     "length": {
                         "type": "integer",
@@ -692,7 +692,7 @@
                     "additionalProperties": {
                         "type": "string"
                     },
-                    "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See [the main provider\ndocumentation](../index.html) for more information.\n"
+                    "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for\nmore information.\n"
                 },
                 "resultCount": {
                     "type": "integer",
@@ -706,8 +706,7 @@
                     "description": "Random permutation of the list of strings given in `input`.\n"
                 },
                 "seed": {
-                    "type": "string",
-                    "description": "Arbitrary string with which to seed the random number generator, in order to produce less-volatile permutations of the\nlist. **Important:** Even with an identical seed, it is not guaranteed that the same permutation will be produced across\ndifferent versions of Terraform. This argument causes the result to be *less volatile*, but not fixed for all time.\n"
+                    "type": "string"
                 }
             },
             "required": [
@@ -727,15 +726,14 @@
                     "additionalProperties": {
                         "type": "string"
                     },
-                    "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See [the main provider\ndocumentation](../index.html) for more information.\n"
+                    "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for\nmore information.\n"
                 },
                 "resultCount": {
                     "type": "integer",
                     "description": "The number of results to return. Defaults to the number of items in the `input` list. If fewer items are requested, some\nelements will be excluded from the result. If more items are requested, items will be repeated in the result but not\nmore frequently than the number of items in the input list.\n"
                 },
                 "seed": {
-                    "type": "string",
-                    "description": "Arbitrary string with which to seed the random number generator, in order to produce less-volatile permutations of the\nlist. **Important:** Even with an identical seed, it is not guaranteed that the same permutation will be produced across\ndifferent versions of Terraform. This argument causes the result to be *less volatile*, but not fixed for all time.\n"
+                    "type": "string"
                 }
             },
             "requiredInputs": [
@@ -756,7 +754,7 @@
                         "additionalProperties": {
                             "type": "string"
                         },
-                        "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See [the main provider\ndocumentation](../index.html) for more information.\n"
+                        "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for\nmore information.\n"
                     },
                     "resultCount": {
                         "type": "integer",
@@ -770,8 +768,7 @@
                         "description": "Random permutation of the list of strings given in `input`.\n"
                     },
                     "seed": {
-                        "type": "string",
-                        "description": "Arbitrary string with which to seed the random number generator, in order to produce less-volatile permutations of the\nlist. **Important:** Even with an identical seed, it is not guaranteed that the same permutation will be produced across\ndifferent versions of Terraform. This argument causes the result to be *less volatile*, but not fixed for all time.\n"
+                        "type": "string"
                     }
                 },
                 "type": "object"
@@ -784,7 +781,7 @@
                     "additionalProperties": {
                         "type": "string"
                     },
-                    "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See [the main provider\ndocumentation](../index.html) for more information.\n"
+                    "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for\nmore information.\n"
                 },
                 "length": {
                     "type": "integer",
@@ -855,7 +852,7 @@
                     "additionalProperties": {
                         "type": "string"
                     },
-                    "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See [the main provider\ndocumentation](../index.html) for more information.\n"
+                    "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for\nmore information.\n"
                 },
                 "length": {
                     "type": "integer",
@@ -914,7 +911,7 @@
                         "additionalProperties": {
                             "type": "string"
                         },
-                        "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See [the main provider\ndocumentation](../index.html) for more information.\n"
+                        "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for\nmore information.\n"
                     },
                     "length": {
                         "type": "integer",
@@ -976,7 +973,7 @@
                     "additionalProperties": {
                         "type": "string"
                     },
-                    "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See [the main provider\ndocumentation](../index.html) for more information.\n"
+                    "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for\nmore information.\n"
                 },
                 "result": {
                     "type": "string",
@@ -992,7 +989,7 @@
                     "additionalProperties": {
                         "type": "string"
                     },
-                    "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See [the main provider\ndocumentation](../index.html) for more information.\n"
+                    "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for\nmore information.\n"
                 }
             },
             "stateInputs": {
@@ -1003,7 +1000,7 @@
                         "additionalProperties": {
                             "type": "string"
                         },
-                        "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See [the main provider\ndocumentation](../index.html) for more information.\n"
+                        "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for\nmore information.\n"
                     },
                     "result": {
                         "type": "string",
