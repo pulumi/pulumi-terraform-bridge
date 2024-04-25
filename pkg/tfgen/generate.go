@@ -181,7 +181,7 @@ func (l Language) emitSDK(pkg *pschema.Package, info tfbridge.ProviderInfo, root
 		if err != nil && !os.IsNotExist(err) {
 			return nil, err
 		}
-		return dotnetgen.GeneratePackage(tfgen, pkg, extraFiles)
+		return dotnetgen.GeneratePackage(tfgen, pkg, extraFiles, nil)
 	default:
 		return nil, errors.Errorf("%v does not support SDK generation", l)
 	}
