@@ -3116,13 +3116,14 @@ func Test_makeTerraformInputsNoDefaults(t *testing.T) {
 					}).Shim(),
 				},
 			},
-			propMap: resource.NewPropertyMapFromMap(map[string]interface{}{
+			propMap: resource.PropertyMap{
 				// The string property inside Computed is irrelevant.
-				"objectValue": resource.Computed{Element: resource.NewStringProperty("")},
-			}),
+				"objectValue": resource.MakeComputed(resource.NewProperty("")),
+			},
 			// NOTE: is this what we want? Should this be [unk] or unk?
-			//nolint:lll
-			expect: autogold.Expect(map[string]interface{}{"object_value": []interface{}{"74D93920-ED26-11E3-AC10-0800200C9A66"}}),
+			expect: autogold.Expect(map[string]any{
+				"object_value": []any{"74D93920-ED26-11E3-AC10-0800200C9A66"},
+			}),
 		},
 		{
 			testCaseName: "object",

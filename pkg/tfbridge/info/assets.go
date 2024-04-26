@@ -19,6 +19,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -123,7 +125,7 @@ func translateToFile(hash string, hasContents bool, writeFunc func(w io.Writer) 
 }
 
 // TranslateAsset translates the given asset using the directives provided by the translation info.
-func (a *AssetTranslation) TranslateAsset(asset *resource.Asset) (interface{}, error) {
+func (a *AssetTranslation) TranslateAsset(asset *resource.Asset) (tftypes.Value, error) {
 	contract.Assertf(a.IsAsset(), "a.IsAsset()")
 
 	// TODO[pulumi/pulumi#153]: support HashField.
@@ -141,15 +143,16 @@ func (a *AssetTranslation) TranslateAsset(asset *resource.Asset) (interface{}, e
 			_, err = io.Copy(w, blob)
 			return err
 		})
-		return path, err
+		return tftypes.NewValue(tftypes.String, path), err
 	case BytesAsset:
 		if !asset.HasContents() {
-			return []byte{}, nil
+			return tftypes.NewValue(tftypes.String, ""), nil
 		}
-		return asset.Bytes()
+		b, err := asset.Bytes()
+		return tftypes.NewValue(tftypes.String, string(b)), err
 	default:
 		contract.Failf("Unrecognized asset translation kind: %v", a.Kind)
-		return nil, nil
+		return tftypes.Value{}, nil
 	}
 }
 

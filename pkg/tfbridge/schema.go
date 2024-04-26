@@ -26,12 +26,14 @@ import (
 
 	"github.com/golang/glog"
 	pbstruct "github.com/golang/protobuf/ptypes/struct"
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfrepr"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 	shimutil "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/util"
@@ -307,7 +309,7 @@ func makeTerraformInputsWithOptions(
 	ctx context.Context, instance *PulumiResource, config resource.PropertyMap,
 	olds, news resource.PropertyMap, tfs shim.SchemaMap, ps map[string]*SchemaInfo,
 	opts makeTerraformInputsOptions,
-) (map[string]interface{}, AssetTable, error) {
+) (map[string]tftypes.Value, AssetTable, error) {
 	cdOptions := ComputeDefaultOptions{}
 	if instance != nil {
 		cdOptions = ComputeDefaultOptions{
@@ -338,7 +340,7 @@ func makeTerraformInputsWithOptions(
 func MakeTerraformInputs(
 	ctx context.Context, instance *PulumiResource, config resource.PropertyMap,
 	olds, news resource.PropertyMap, tfs shim.SchemaMap, ps map[string]*SchemaInfo,
-) (map[string]interface{}, AssetTable, error) {
+) (map[string]tftypes.Value, AssetTable, error) {
 	return makeTerraformInputsWithOptions(ctx, instance, config, olds, news, tfs, ps, makeTerraformInputsOptions{})
 }
 
@@ -351,7 +353,7 @@ func (ctx *conversionContext) makeTerraformInput(
 	old, v resource.PropertyValue,
 	tfs shim.Schema,
 	ps *SchemaInfo,
-) (interface{}, error) {
+) (tftypes.Value, error) {
 	// For TypeList or TypeSet with MaxItems==1, we will have projected as a scalar
 	// nested value, and need to wrap it into a single-element array before passing to
 	// Terraform.
@@ -384,19 +386,11 @@ func (ctx *conversionContext) makeTerraformInput(
 		v = wrap(v)
 	}
 
-	wrapError := func(v any, err error) (any, error) {
-		if err == nil {
-			return v, nil
-		}
-
-		return v, fmt.Errorf("%s: %w", name, err)
-	}
-
 	// If there is a custom transform for this value, run it before processing the value.
 	if ps != nil && ps.Transform != nil {
 		nv, err := ps.Transform(v)
 		if err != nil {
-			return wrapError(nv, err)
+			return tftypes.Value{}, fmt.Errorf("%s: %w", name, err)
 		}
 		v = nv
 	}
@@ -407,32 +401,37 @@ func (ctx *conversionContext) makeTerraformInput(
 
 	switch {
 	case v.IsNull():
-		return nil, nil
+		return tfrepr.NewNull(tfs), nil
 	case v.IsBool():
 		switch tfs.Type() {
 		case shim.TypeString:
 			if v.BoolValue() {
-				return "true", nil
+				return tftypes.NewValue(tftypes.String, "true"), nil
 			}
-			return "false", nil
+			return tftypes.NewValue(tftypes.String, "false"), nil
 		default:
-			return v.BoolValue(), nil
+			return tftypes.NewValue(tftypes.Bool, v.BoolValue()), nil
 		}
 	case v.IsNumber():
 		switch tfs.Type() {
 		case shim.TypeFloat:
-			return v.NumberValue(), nil
+			return tftypes.NewValue(tftypes.Number, v.NumberValue()), nil
 		case shim.TypeString:
-			return strconv.FormatFloat(v.NumberValue(), 'f', -1, 64), nil
+			return tftypes.NewValue(tftypes.String,
+				strconv.FormatFloat(v.NumberValue(), 'f', -1, 64)), nil
 		default: // By default, we return ints
-			return int(v.NumberValue()), nil
+			return tftypes.NewValue(tftypes.Number, int(v.NumberValue())), nil
 		}
 	case v.IsString():
 		switch tfs.Type() {
 		case shim.TypeInt:
-			return wrapError(strconv.ParseInt(v.StringValue(), 10, 64))
+			i, err := strconv.ParseInt(v.StringValue(), 10, 64)
+			if err != nil {
+				return tftypes.Value{}, fmt.Errorf("%s: %w", name, err)
+			}
+			return tftypes.NewValue(tftypes.Number, i), nil
 		default:
-			return v.StringValue(), nil
+			return tftypes.NewValue(tftypes.String, v.StringValue()), nil
 		}
 	case v.IsArray():
 		var oldArr []resource.PropertyValue
@@ -442,7 +441,7 @@ func (ctx *conversionContext) makeTerraformInput(
 
 		etfs, eps := elemSchemas(tfs, ps)
 
-		var arr []interface{}
+		var arr []tftypes.Value
 		for i, elem := range v.ArrayValue() {
 			var oldElem resource.PropertyValue
 			if i < len(oldArr) {
@@ -451,24 +450,29 @@ func (ctx *conversionContext) makeTerraformInput(
 			elemName := fmt.Sprintf("%v[%v]", name, i)
 			e, err := ctx.makeTerraformInput(elemName, oldElem, elem, etfs, eps)
 			if err != nil {
-				return nil, err
+				return tftypes.Value{}, err
 			}
 
 			if ps != nil && ps.SuppressEmptyMapElements != nil && *ps.SuppressEmptyMapElements {
-				if eMap, ok := e.(map[string]interface{}); ok && len(eMap) > 0 {
+				var eMap map[string]tftypes.Value
+				if err := e.As(&eMap); err == nil && len(eMap) > 0 {
 					arr = append(arr, e)
 				}
 			} else {
 				arr = append(arr, e)
 			}
 		}
-		return arr, nil
+		innerValue, err := tftypes.TypeFromElements(arr)
+		if err != nil {
+			return tftypes.Value{}, fmt.Errorf("%s: %w", name, err)
+		}
+		return tftypes.NewValue(tftypes.List{ElementType: innerValue}, arr), nil
 	case v.IsAsset():
 		// We require that there be asset information, otherwise an error occurs.
 		if ps == nil || ps.Asset == nil {
-			return nil, errors.Errorf("unexpected asset %s", name)
+			return tftypes.Value{}, errors.Errorf("unexpected asset %s", name)
 		} else if !ps.Asset.IsAsset() {
-			return nil, errors.Errorf("expected an asset, but %s is not an asset", name)
+			return tftypes.Value{}, errors.Errorf("expected an asset, but %s is not an asset", name)
 		}
 		if ctx.Assets != nil {
 			_, has := ctx.Assets[ps]
@@ -479,7 +483,7 @@ func (ctx *conversionContext) makeTerraformInput(
 	case v.IsArchive():
 		// We require that there be archive information, otherwise an error occurs.
 		if ps == nil || ps.Asset == nil {
-			return nil, errors.Errorf("unexpected archive %s", name)
+			return tftypes.Value{}, errors.Errorf("unexpected archive %s", name)
 		}
 		if ctx.Assets != nil {
 			_, has := ctx.Assets[ps]
@@ -510,7 +514,7 @@ func (ctx *conversionContext) makeTerraformInput(
 			}
 			obj, err := ctx.makeObjectTerraformInputs(oldObject, v.ObjectValue(), tfflds, psflds)
 			if err != nil {
-				return nil, err
+				return tftypes.Value{}, err
 			}
 
 			if tfs.Type() == shim.TypeMap {
@@ -527,7 +531,7 @@ func (ctx *conversionContext) makeTerraformInput(
 
 		etfs, eps := elemSchemas(tfs, ps)
 		return ctx.makeMapTerraformInputs(oldObject, v.ObjectValue(), etfs, eps)
-	case v.IsComputed() || v.IsOutput():
+	case v.IsComputed() || (v.IsOutput() && !v.OutputValue().Known):
 		// If any variables are unknown, we need to mark them in the inputs so the config map treats it right.  This
 		// requires the use of the special UnknownVariableValue sentinel in Terraform, which is how it internally stores
 		// interpolated variables whose inputs are currently unknown.
@@ -546,7 +550,7 @@ func (ctx *conversionContext) makeTerraformInputs(
 	olds, news resource.PropertyMap,
 	tfs shim.SchemaMap,
 	ps map[string]*SchemaInfo,
-) (map[string]interface{}, error) {
+) (map[string]tftypes.Value, error) {
 	return ctx.makeObjectTerraformInputs(olds, news, tfs, ps)
 }
 
@@ -593,7 +597,7 @@ func (ctx *conversionContext) makeObjectTerraformInputs(
 	olds, news resource.PropertyMap,
 	tfs shim.SchemaMap,
 	ps map[string]*SchemaInfo,
-) (map[string]interface{}, error) {
+) (map[string]tftypes.Value, error) {
 	result := make(map[string]interface{})
 	tfAttributesToPulumiProperties := make(map[string]string)
 
@@ -1053,7 +1057,7 @@ func MakeTerraformResult(
 func MakeTerraformOutputs(
 	ctx context.Context,
 	p shim.Provider,
-	outs map[string]interface{},
+	outs map[string]tftypes.Value,
 	tfs shim.SchemaMap,
 	ps map[string]*SchemaInfo,
 	assets AssetTable,
@@ -1299,7 +1303,7 @@ func makeConfig(v interface{}) interface{} {
 
 // MakeTerraformConfigFromInputs creates a new Terraform configuration object from a set of Terraform inputs.
 func MakeTerraformConfigFromInputs(
-	ctx context.Context, p shim.Provider, inputs map[string]interface{},
+	ctx context.Context, p shim.Provider, inputs map[string]tftypes.Value,
 ) shim.ResourceConfig {
 	raw := makeConfig(inputs).(map[string]interface{})
 	return p.NewResourceConfig(ctx, raw)
