@@ -3,7 +3,6 @@ package sdkv2
 import (
 	"context"
 	"fmt"
-
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/logging"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
@@ -165,7 +164,18 @@ func (p v2Provider) ReadDataDiff(
 	if !ok {
 		return nil, fmt.Errorf("unknown resource %v", t)
 	}
-	diff, err := r.Diff(ctx, nil, configFromShim(c), p.tf.Meta())
+
+	providerOpts, err := getProviderOptions(p.opts)
+	if err != nil {
+		return nil, err
+	}
+	config := configFromShim(c)
+	rawConfig := makeResourceRawConfig(providerOpts.diffStrategy, config, r)
+
+	instanceState := terraform.InstanceState{
+		RawConfig: rawConfig,
+	}
+	diff, err := r.Diff(ctx, &instanceState, configFromShim(c), p.tf.Meta())
 	return diffToShim(diff), err
 }
 
