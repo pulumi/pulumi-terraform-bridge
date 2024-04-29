@@ -62,6 +62,45 @@ func TestDiffConvergence(outerT *testing.T) {
 	})
 }
 
+func TestCreateInputsConvergence(outerT *testing.T) {
+	_, ok := os.LookupEnv("PULUMI_EXPERIMENTAL")
+	if !ok {
+		outerT.Skip("TODO - we do not currently pass all cases; using this as an exploration tool")
+	}
+	outerT.Parallel()
+
+	log.SetOutput(io.Discard)
+	tvg := &tvGen{
+		// TODO: fix TestInputsEmptyString
+		skipEmptyStrings: true,
+		// TODO: fix TestInputsEmptySchema
+		skipEmptyBlocks: true,
+	}
+
+	rapid.Check(outerT, func(t *rapid.T) {
+		outerT.Logf("Iterating..")
+		depth := rapid.IntRange(1, 3).Draw(t, "schemaDepth")
+		tv := tvg.GenBlockWithDepth(depth).Draw(t, "tv")
+
+		t.Logf("Schema:\n%v\n", (&prettySchemaWrapper{schema.Schema{Elem: &schema.Resource{
+			Schema: tv.schemaMap,
+		}}}).GoString())
+
+		config := rapid.Map(tv.valueGen, newPrettyValueWrapper).Draw(t, "config1").Value()
+		ty := tv.typ
+
+		tc := inputTestCase{
+			Resource: &schema.Resource{
+				Schema: tv.schemaMap,
+			},
+			Config:     config,
+			ObjectType: &ty,
+		}
+
+		runCreateInputCheck(&rapidTWithCleanup{t, outerT}, tc)
+	})
+}
+
 type rapidTWithCleanup struct {
 	*rapid.T
 	outerT *testing.T
