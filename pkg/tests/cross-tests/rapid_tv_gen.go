@@ -52,6 +52,8 @@ const (
 
 type tvGen struct {
 	generateUnknowns       bool
+	skipEmptyStrings       bool
+	skipEmptyBlocks        bool
 	generateConfigModeAttr bool
 }
 
@@ -183,7 +185,11 @@ func (tvg *tvGen) GenBlockWithDepth(depth int) *rapid.Generator[tb] {
 		fieldSchemas := map[string]*schema.Schema{}
 		fieldTypes := map[string]tftypes.Type{}
 		fieldGenerators := map[string]*rapid.Generator[tftypes.Value]{}
-		nFields := rapid.IntRange(0, 3).Draw(t, "nFields")
+		minFields := 0
+		if tvg.skipEmptyBlocks {
+			minFields = 1
+		}
+		nFields := rapid.IntRange(minFields, 3).Draw(t, "nFields")
 		for i := 0; i < nFields; i++ {
 			fieldName := fmt.Sprintf("f%d", i)
 			fieldTV := tvg.GenBlockOrAttrWithDepth(depth-1).Draw(t, fieldName)
@@ -322,10 +328,13 @@ func (tvg *tvGen) GenAttrKind() *rapid.Generator[attrKind] {
 }
 
 func (tvg *tvGen) GenString() *rapid.Generator[tv] {
-	return tvg.GenScalar(schema.TypeString, []tftypes.Value{
-		tftypes.NewValue(tftypes.String, ""),
+	vals := []tftypes.Value{
 		tftypes.NewValue(tftypes.String, "text"),
-	})
+	}
+	if !tvg.skipEmptyStrings {
+		vals = append(vals, tftypes.NewValue(tftypes.String, ""))
+	}
+	return tvg.GenScalar(schema.TypeString, vals)
 }
 
 func (tvg *tvGen) GenBool() *rapid.Generator[tv] {
