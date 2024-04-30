@@ -44,6 +44,8 @@ type diffTestCase struct {
 
 	// Optional object type for the resource. If left nil will be inferred from Resource schema.
 	ObjectType *tftypes.Object
+
+	SkipPulumi bool
 }
 
 func runDiffCheck(t T, tc diffTestCase) {
@@ -60,6 +62,10 @@ func runDiffCheck(t T, tc diffTestCase) {
 	tfd := newTfDriver(t, tfwd, providerShortName, rtype, tc.Resource)
 	_ = tfd.writePlanApply(t, tc.Resource.SchemaMap(), rtype, "example", tc.Config1)
 	tfDiffPlan := tfd.writePlanApply(t, tc.Resource.SchemaMap(), rtype, "example", tc.Config2)
+
+	if tc.SkipPulumi {
+		return
+	}
 
 	tfp := &schema.Provider{
 		ResourcesMap: map[string]*schema.Resource{

@@ -26,6 +26,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	webaclschema "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/internal/webaclschema"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -405,6 +406,52 @@ func TestAws2442(t *testing.T) {
 	})
 }
 
+func TestHash(t *testing.T) {
+	expected := map[string]interface{}{
+		"action": []interface{}{map[string]interface{}{
+			"allow":     []interface{}{},
+			"block":     []interface{}{interface{}(nil)},
+			"captcha":   []interface{}{},
+			"challenge": []interface{}{},
+			"count":     []interface{}{}}},
+		"captcha_config":  []interface{}{},
+		"name":            "IPAllowRule",
+		"override_action": []interface{}{},
+		"priority":        0,
+		//"rule_label":      schema.NewSet(nil, nil),
+		"statement": []interface{}{map[string]interface{}{
+			"and_statement":        []interface{}{},
+			"byte_match_statement": []interface{}{},
+			"geo_match_statement":  []interface{}{},
+			"ip_set_reference_statement": []interface{}{map[string]interface{}{
+				"arn":                        "some-arn",
+				"ip_set_forwarded_ip_config": []interface{}{},
+			}},
+			"label_match_statement":                 []interface{}{},
+			"managed_rule_group_statement":          []interface{}{},
+			"not_statement":                         []interface{}{},
+			"or_statement":                          []interface{}{},
+			"rate_based_statement":                  []interface{}{},
+			"regex_match_statement":                 []interface{}{},
+			"regex_pattern_set_reference_statement": []interface{}{},
+			"rule_group_reference_statement":        []interface{}{},
+			"size_constraint_statement":             []interface{}{},
+			"sqli_match_statement":                  []interface{}{},
+			"xss_match_statement":                   []interface{}{}}},
+		"visibility_config": []interface{}{map[string]interface{}{
+			"cloudwatch_metrics_enabled": true,
+			"metric_name":                "IPAllowRule",
+			"sampled_requests_enabled":   true,
+		}}}
+	resource := webaclschema.ResourceWebACL()
+	resource.Schema = resource.SchemaFunc()
+	for i := 0; i < 100; i++ {
+		t.Logf("@ %d", i)
+		actual := schema.HashResource(resource.Schema["rule"].Elem.(*schema.Resource))(expected)
+		assert.Equalf(t, 835885598, actual, "attempt %d", i)
+	}
+}
+
 func TestAws3880(t *testing.T) {
 	cfg := map[string]any{
 		"scope": "REGIONAL",
@@ -454,9 +501,112 @@ func TestAws3880(t *testing.T) {
 	delete(resource.Schema, "tags")
 	delete(resource.Schema, "tags_all")
 
+	// Here i may receive maps or slices over base types and *schema.Set which is not friendly to diffing.
+	resource.Schema["rule"].Set = func(i interface{}) int {
+		actual := schema.HashResource(resource.Schema["rule"].Elem.(*schema.Resource))(i)
+
+		require.NotEqualf(t, 835885598, actual, "This number does not happen under TF")
+
+		im := i.(map[string]interface{})
+		ruleLabel := im["rule_label"]
+		action := im["action"].([]any)[0].(map[string]interface{})["block"]
+
+		delete(im, "rule_label")
+
+		expected := map[string]interface{}{
+			"action": []interface{}{map[string]interface{}{
+				"allow":     []interface{}{},
+				"block":     []interface{}{interface{}(nil)},
+				"captcha":   []interface{}{},
+				"challenge": []interface{}{},
+				"count":     []interface{}{}}},
+			"captcha_config":  []interface{}{},
+			"name":            "IPAllowRule",
+			"override_action": []interface{}{},
+			"priority":        0,
+			// "rule_label":      []interface{}{},
+			// "rule_label_type": "set",
+			"statement": []interface{}{map[string]interface{}{
+				"and_statement":        []interface{}{},
+				"byte_match_statement": []interface{}{},
+				"geo_match_statement":  []interface{}{},
+				"ip_set_reference_statement": []interface{}{map[string]interface{}{
+					"arn":                        "some-arn",
+					"ip_set_forwarded_ip_config": []interface{}{},
+				}},
+				"label_match_statement":                 []interface{}{},
+				"managed_rule_group_statement":          []interface{}{},
+				"not_statement":                         []interface{}{},
+				"or_statement":                          []interface{}{},
+				"rate_based_statement":                  []interface{}{},
+				"regex_match_statement":                 []interface{}{},
+				"regex_pattern_set_reference_statement": []interface{}{},
+				"rule_group_reference_statement":        []interface{}{},
+				"size_constraint_statement":             []interface{}{},
+				"sqli_match_statement":                  []interface{}{},
+				"xss_match_statement":                   []interface{}{}}},
+			"visibility_config": []interface{}{map[string]interface{}{
+				"cloudwatch_metrics_enabled": true,
+				"metric_name":                "IPAllowRule",
+				"sampled_requests_enabled":   true,
+			}}}
+
+		expected2 := map[string]interface{}{
+			"action": []interface{}{map[string]interface{}{
+				"allow": []interface{}{},
+				"block": []interface{}{
+					map[string]any{
+						"custom_response": []interface{}{},
+					},
+				},
+				"captcha":   []interface{}{},
+				"challenge": []interface{}{},
+				"count":     []interface{}{}}},
+			"captcha_config":  []interface{}{},
+			"name":            "IPAllowRule",
+			"override_action": []interface{}{},
+			"priority":        0,
+			//"rule_label":      schema.NewSet(nil, nil),
+			"statement": []interface{}{map[string]interface{}{
+				"and_statement":        []interface{}{},
+				"byte_match_statement": []interface{}{},
+				"geo_match_statement":  []interface{}{},
+				"ip_set_reference_statement": []interface{}{map[string]interface{}{
+					"arn":                        "some-arn",
+					"ip_set_forwarded_ip_config": []interface{}{},
+				}},
+				"label_match_statement":                 []interface{}{},
+				"managed_rule_group_statement":          []interface{}{},
+				"not_statement":                         []interface{}{},
+				"or_statement":                          []interface{}{},
+				"rate_based_statement":                  []interface{}{},
+				"regex_match_statement":                 []interface{}{},
+				"regex_pattern_set_reference_statement": []interface{}{},
+				"rule_group_reference_statement":        []interface{}{},
+				"size_constraint_statement":             []interface{}{},
+				"sqli_match_statement":                  []interface{}{},
+				"xss_match_statement":                   []interface{}{}}},
+			"visibility_config": []interface{}{map[string]interface{}{
+				"cloudwatch_metrics_enabled": true,
+				"metric_name":                "IPAllowRule",
+				"sampled_requests_enabled":   true,
+			}}}
+
+		switch {
+		case assert.ObjectsAreEqual(expected, i):
+			fmt.Printf("\n\n#### Computing hash set for rule <<expected>> (action=%#v, ruleLabel=%#v)==> %d\n\n", action, ruleLabel, actual)
+		case assert.ObjectsAreEqual(expected2, i):
+			fmt.Printf("\n\n#### Computing hash set for rule <<expected2>> (action=%#v, ruleLabel=%#v)==> %d\n\n", action, ruleLabel, actual)
+		default:
+			assert.Equal(t, expected, i)
+		}
+		return actual
+	}
+
 	runDiffCheck(t, diffTestCase{
-		Resource: resource,
-		Config1:  cfg,
-		Config2:  cfg,
+		Resource:   resource,
+		Config1:    cfg,
+		Config2:    cfg,
+		SkipPulumi: false,
 	})
 }
