@@ -119,8 +119,7 @@ func (d *tfDriver) coalesce(t T, x any) *tftypes.Value {
 	if x == nil {
 		return nil
 	}
-	objectType := convert.InferObjectType(sdkv2.NewSchemaMap(d.res.Schema), nil)
-	t.Logf("infer object type: %v", objectType)
+	objectType := convert.InferObjectType(sdkv2.NewSchemaMap(d.res.SchemaMap()), nil)
 	v := fromType(objectType).NewValue(x)
 	return &v
 }

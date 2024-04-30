@@ -58,8 +58,8 @@ func runDiffCheck(t T, tc diffTestCase) {
 	tfwd := t.TempDir()
 
 	tfd := newTfDriver(t, tfwd, providerShortName, rtype, tc.Resource)
-	_ = tfd.writePlanApply(t, tc.Resource.Schema, rtype, "example", tc.Config1)
-	tfDiffPlan := tfd.writePlanApply(t, tc.Resource.Schema, rtype, "example", tc.Config2)
+	_ = tfd.writePlanApply(t, tc.Resource.SchemaMap(), rtype, "example", tc.Config1)
+	tfDiffPlan := tfd.writePlanApply(t, tc.Resource.SchemaMap(), rtype, "example", tc.Config2)
 
 	tfp := &schema.Provider{
 		ResourcesMap: map[string]*schema.Resource{
@@ -102,6 +102,7 @@ func runDiffCheck(t T, tc diffTestCase) {
 	x := pt.Up()
 
 	tfAction := tfd.parseChangesFromTFPlan(*tfDiffPlan)
+	t.Logf("Terraform decided to take the %q action", tfAction)
 
 	tc.verifyBasicDiffAgreement(t, tfAction, x.Summary)
 }

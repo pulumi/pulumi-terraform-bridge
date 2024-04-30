@@ -102,9 +102,14 @@ func (ta *typeAdapter) NewValue(value any) tftypes.Value {
 		switch v := value.(type) {
 		case map[string]any:
 			values := map[string]tftypes.Value{}
-			for k, el := range v {
-				values[k] = fromType(aT[k]).NewValue(el)
+			for key, expectedType := range aT {
+				if vk, ok := v[key]; ok {
+					values[key] = fromType(expectedType).NewValue(vk)
+				} else {
+					values[key] = tftypes.NewValue(expectedType, nil)
+				}
 			}
+			// Could detect and warn on extraneous keys here but do not do that for now.
 			return tftypes.NewValue(t, values)
 		}
 	}
@@ -112,7 +117,8 @@ func (ta *typeAdapter) NewValue(value any) tftypes.Value {
 }
 
 func fromType(t tftypes.Type) *typeAdapter {
-	return &typeAdapter{t}
+	contract.Assertf(t != nil, "t cannot be nil here")
+	return &typeAdapter{typ: t}
 }
 
 type valueAdapter struct {

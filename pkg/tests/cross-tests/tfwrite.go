@@ -56,14 +56,18 @@ func writeBlock(body *hclwrite.Body, schemas map[string]*schema.Schema, values m
 			if sch.Type == schema.TypeMap {
 				body.SetAttributeValue(key, value)
 			} else if sch.Type == schema.TypeSet {
-				for _, v := range value.AsValueSet().Values() {
-					newBlock := body.AppendNewBlock(key, nil)
-					writeBlock(newBlock.Body(), elem.Schema, v.AsValueMap())
+				if !value.IsNull() {
+					for _, v := range value.AsValueSet().Values() {
+						newBlock := body.AppendNewBlock(key, nil)
+						writeBlock(newBlock.Body(), elem.Schema, v.AsValueMap())
+					}
 				}
 			} else if sch.Type == schema.TypeList {
-				for _, v := range value.AsValueSlice() {
-					newBlock := body.AppendNewBlock(key, nil)
-					writeBlock(newBlock.Body(), elem.Schema, v.AsValueMap())
+				if !value.IsNull() {
+					for _, v := range value.AsValueSlice() {
+						newBlock := body.AppendNewBlock(key, nil)
+						writeBlock(newBlock.Body(), elem.Schema, v.AsValueMap())
+					}
 				}
 			} else {
 				contract.Failf("unexpected schema type %v", sch.Type)
