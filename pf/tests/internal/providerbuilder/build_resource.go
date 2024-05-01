@@ -24,6 +24,11 @@ import (
 type Resource struct {
 	Name           string
 	ResourceSchema schema.Schema
+
+	CreateFunc func(context.Context, resource.CreateRequest, *resource.CreateResponse)
+	ReadFunc   func(context.Context, resource.ReadRequest, *resource.ReadResponse)
+	UpdateFunc func(context.Context, resource.UpdateRequest, *resource.UpdateResponse)
+	DeleteFunc func(context.Context, resource.DeleteRequest, *resource.DeleteResponse)
 }
 
 func (r *Resource) Metadata(ctx context.Context, req resource.MetadataRequest, re *resource.MetadataResponse) {
@@ -34,9 +39,32 @@ func (r *Resource) Schema(ctx context.Context, _ resource.SchemaRequest, re *res
 	re.Schema = r.ResourceSchema
 }
 
-func (*Resource) Create(context.Context, resource.CreateRequest, *resource.CreateResponse) {}
-func (*Resource) Read(context.Context, resource.ReadRequest, *resource.ReadResponse)       {}
-func (*Resource) Update(context.Context, resource.UpdateRequest, *resource.UpdateResponse) {}
-func (*Resource) Delete(context.Context, resource.DeleteRequest, *resource.DeleteResponse) {}
+func (r *Resource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	if r.CreateFunc == nil {
+		return
+	}
+	r.CreateFunc(ctx, req, resp)
+}
+
+func (r *Resource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	if r.ReadFunc == nil {
+		return
+	}
+	r.ReadFunc(ctx, req, resp)
+}
+
+func (r *Resource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	if r.UpdateFunc == nil {
+		return
+	}
+	r.UpdateFunc(ctx, req, resp)
+}
+
+func (r *Resource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	if r.DeleteFunc == nil {
+		return
+	}
+	r.DeleteFunc(ctx, req, resp)
+}
 
 var _ resource.Resource = &Resource{}
