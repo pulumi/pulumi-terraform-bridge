@@ -99,6 +99,17 @@ func (s prettyValueWrapper) GoString() string {
 				fmt.Fprintf(&buf, ",")
 			}
 			fmt.Fprintf(&buf, "\n%s})", indent)
+		case v.Type().Is(tftypes.Set{}):
+			fmt.Fprintf(&buf, `tftypes.NewValue(%s, []tftypes.Value{`, tL)
+			var els []tftypes.Value
+			err := v.As(&els)
+			contract.AssertNoErrorf(err, "this cast should always succeed")
+			for _, el := range els {
+				fmt.Fprintf(&buf, "\n. %s", indent)
+				walk(level+1, el)
+				fmt.Fprintf(&buf, ",")
+			}
+			fmt.Fprintf(&buf, "\n%s})", indent)
 		case v.Type().Is(tftypes.Number):
 			var n big.Float
 			err := v.As(&n)
