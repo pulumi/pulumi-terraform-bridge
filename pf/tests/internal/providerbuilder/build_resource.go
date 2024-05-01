@@ -25,10 +25,10 @@ type Resource struct {
 	Name           string
 	ResourceSchema schema.Schema
 
-	CreateFunc func(context.Context, resource.CreateRequest, *resource.CreateResponse)
-	ReadFunc   func(context.Context, resource.ReadRequest, *resource.ReadResponse)
-	UpdateFunc func(context.Context, resource.UpdateRequest, *resource.UpdateResponse)
-	DeleteFunc func(context.Context, resource.DeleteRequest, *resource.DeleteResponse)
+	CreateFunc func(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse)
+	ReadFunc   func(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse)
+	UpdateFunc func(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse)
+	DeleteFunc func(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse)
 }
 
 func (r *Resource) Metadata(ctx context.Context, req resource.MetadataRequest, re *resource.MetadataResponse) {
