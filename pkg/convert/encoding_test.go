@@ -15,6 +15,7 @@
 package convert
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -169,7 +170,7 @@ func TestResourceDecoder(t *testing.T) {
 			enc := NewEncoding(makeProvider(tc.schema).Shim(), tc.info)
 			decoder, err := enc.NewResourceDecoder(myResource, tc.typ)
 			require.NoError(t, err)
-			got, err := DecodePropertyMap(decoder, tc.val)
+			got, err := DecodePropertyMap(context.Background(), decoder, tc.val)
 			require.NoError(t, err)
 			if tc.expectMap != nil {
 				require.Equal(t, tc.expectMap, got)
@@ -340,7 +341,7 @@ func TestDataSourceDecoder(t *testing.T) {
 			enc := NewEncoding(makeProvider(tc.schema).Shim(), tc.info)
 			decoder, err := enc.NewDataSourceDecoder(myDataSource, tc.typ)
 			require.NoError(t, err)
-			got, err := DecodePropertyMap(decoder, tc.val)
+			got, err := DecodePropertyMap(context.Background(), decoder, tc.val)
 			require.NoError(t, err)
 			tc.expect.Equal(t, got)
 		})
@@ -549,7 +550,7 @@ func TestTypeDerivations(t *testing.T) {
 
 			tc.expected.Equal(t, tfv.String())
 
-			back, err := DecodePropertyMap(dec, tfv)
+			back, err := DecodePropertyMap(context.Background(), dec, tfv)
 			require.NoError(t, err)
 			require.Equal(t, tc.sample, back)
 		})
@@ -626,7 +627,7 @@ func TestTupleDerivations(t *testing.T) {
 
 			tc.expected.Equal(t, tfv.String())
 
-			back, err := DecodePropertyMap(dec, tfv)
+			back, err := DecodePropertyMap(context.Background(), dec, tfv)
 			require.NoError(t, err)
 			require.Equal(t, tc.sample, back)
 		})
