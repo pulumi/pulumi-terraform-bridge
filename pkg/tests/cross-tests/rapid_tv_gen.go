@@ -297,6 +297,7 @@ func (tvg *tvGen) GenSetNestedBlock(depth int) *rapid.Generator[tv] {
 		maxItems := rapid.IntRange(0, 1).Draw(t, "maxItemsOne")
 		maxPropValues := 3
 		if maxItems == 1 {
+			// We only generate valid values for the schema.
 			maxPropValues = 1
 		}
 		vg := rapid.Map(rapid.SliceOfN(bl.valueGen, 0, maxPropValues), setWrap)

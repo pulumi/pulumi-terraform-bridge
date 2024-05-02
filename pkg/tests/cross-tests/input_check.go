@@ -46,6 +46,7 @@ func assertCtyValEqual(t T, name string, tfVal, pulVal cty.Value) {
 
 // Adapted from diff_check.go
 func runCreateInputCheck(t T, tc inputTestCase) {
+	//nolint:staticcheck
 	if tc.Resource.CreateContext != nil || tc.Resource.Create != nil {
 		t.Errorf("Create methods should not be set for these tests!")
 	}
@@ -112,6 +113,7 @@ func runCreateInputCheck(t T, tc inputTestCase) {
 
 	pt.Up()
 
+	// TODO: verify that these comparisons ensure full equality.
 	// compare the two inputs
 	assertCtyValEqual(t, "RawConfig", tfResData.GetRawConfig(), pulResData.GetRawConfig())
 	assertCtyValEqual(t, "RawPlan", tfResData.GetRawPlan(), pulResData.GetRawPlan())
