@@ -78,7 +78,7 @@ func (p *provider) UpdateWithContext(
 	}
 
 	if preview {
-		plannedStatePropertyMap, err := convert.DecodePropertyMapFromDynamic(
+		plannedStatePropertyMap, err := convert.DecodePropertyMapFromDynamic(ctx,
 			rh.decoder, tfType, planResp.PlannedState)
 		if err != nil {
 			return nil, 0, err
@@ -123,7 +123,7 @@ func (p *provider) UpdateWithContext(
 		return nil, 0, err
 	}
 
-	updatedStateMap, err := updatedState.ToPropertyMap(&rh)
+	updatedStateMap, err := updatedState.ToPropertyMap(ctx, &rh)
 	if err != nil {
 		return nil, 0, err
 	}
