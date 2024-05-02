@@ -112,6 +112,7 @@ func runCreateInputCheck(t T, tc inputTestCase) {
 
 	pt.Up()
 
+	// TODO: verify that these comparisons ensure full equality.
 	// compare the two inputs
 	assertCtyValEqual(t, "RawConfig", tfResData.GetRawConfig(), pulResData.GetRawConfig())
 	assertCtyValEqual(t, "RawPlan", tfResData.GetRawPlan(), pulResData.GetRawPlan())

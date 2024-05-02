@@ -70,7 +70,7 @@ func TestCreateInputsConvergence(outerT *testing.T) {
 	outerT.Parallel()
 
 	log.SetOutput(io.Discard)
-	tvg := &tvGen{
+	typedValGenerator := &tvGen{
 		// TODO: fix TestInputsEmptyString
 		skipEmptyStrings: true,
 		// TODO: fix TestInputsEmptySchema
@@ -80,7 +80,7 @@ func TestCreateInputsConvergence(outerT *testing.T) {
 	rapid.Check(outerT, func(t *rapid.T) {
 		outerT.Logf("Iterating..")
 		depth := rapid.IntRange(1, 3).Draw(t, "schemaDepth")
-		tv := tvg.GenBlockWithDepth(depth).Draw(t, "tv")
+		tv := typedValGenerator.GenBlockWithDepth(depth).Draw(t, "tv")
 
 		t.Logf("Schema:\n%v\n", (&prettySchemaWrapper{schema.Schema{Elem: &schema.Resource{
 			Schema: tv.schemaMap,
