@@ -610,3 +610,82 @@ func TestAws3880(t *testing.T) {
 		SkipPulumi: false,
 	})
 }
+
+func TestAws3880Minimal(t *testing.T) {
+	customResponseSchema := func() *schema.Schema {
+		return &schema.Schema{
+			Type:     schema.TypeList,
+			Optional: true,
+			MaxItems: 1,
+			Elem: &schema.Resource{
+				Schema: map[string]*schema.Schema{
+					"custom_response_body_key": {
+						Type:     schema.TypeString,
+						Optional: true,
+					},
+				},
+			},
+		}
+	}
+	blockConfigSchema := func() *schema.Schema {
+		return &schema.Schema{
+			Type:     schema.TypeList,
+			Optional: true,
+			MaxItems: 1,
+			Elem: &schema.Resource{
+				Schema: map[string]*schema.Schema{
+					"custom_response": customResponseSchema(),
+				},
+			},
+		}
+	}
+	ruleElement := &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"action": {
+				Type:     schema.TypeList,
+				Optional: true,
+				MaxItems: 1,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"block": blockConfigSchema(),
+					},
+				},
+			},
+		},
+	}
+	cfg := map[string]any{
+		"rule": []any{
+			map[string]any{
+				"action": []any{
+					map[string]any{
+						"block": []any{map[string]any{}},
+					},
+				},
+			},
+		},
+	}
+
+	resource := &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"rule": {
+				Type:     schema.TypeSet,
+				Optional: true,
+				Elem:     ruleElement,
+			},
+		},
+	}
+
+	// Here i may receive maps or slices over base types and *schema.Set which is not friendly to diffing.
+	resource.Schema["rule"].Set = func(i interface{}) int {
+		actual := schema.HashResource(resource.Schema["rule"].Elem.(*schema.Resource))(i)
+		fmt.Printf("hashing %#v as %d\n", i, actual)
+		return actual
+	}
+
+	runDiffCheck(t, diffTestCase{
+		Resource:   resource,
+		Config1:    cfg,
+		Config2:    cfg,
+		SkipPulumi: false,
+	})
+}
