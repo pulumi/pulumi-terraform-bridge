@@ -102,7 +102,7 @@ func TestInputsEqualObjectBasic(t *testing.T) {
 // Isolated from rapid-generated tests
 func TestInputsEmptySchema(t *testing.T) {
 	t.Skip("We represent resources with empty schemas wrong.")
-	// TODO: https://github.com/pulumi/pulumi-terraform-bridge/issues/1914
+	// TODO[pulumi/pulumi-terraform-bridge#1914]
 	runCreateInputCheck(
 		t, inputTestCase{
 			Resource: &schema.Resource{
@@ -115,7 +115,7 @@ func TestInputsEmptySchema(t *testing.T) {
 
 func TestInputsEqualEmptyList(t *testing.T) {
 	t.Skip("We misrepresent empty lists")
-	// TODO: https://github.com/pulumi/pulumi-terraform-bridge/issues/1915
+	// TODO[pulumi/pulumi-terraform-bridge#1915]
 	for _, maxItems := range []int{0, 1} {
 		for _, configMode := range []schema.SchemaConfigMode{schema.SchemaConfigModeAuto, schema.SchemaConfigModeBlock, schema.SchemaConfigModeAttr} {
 			name := fmt.Sprintf("MaxItems: %v, ConfigMode: %v", maxItems, configMode)
@@ -157,7 +157,7 @@ func TestInputsEqualEmptyList(t *testing.T) {
 // Isolated from rapid-generated tests
 func TestInputsEmptyString(t *testing.T) {
 	t.Skip("Empty strings are misrepresented")
-	// TODO: https://github.com/pulumi/pulumi-terraform-bridge/issues/1916
+	// TODO[pulumi/pulumi-terraform-bridge#1916]
 	runCreateInputCheck(t, inputTestCase{
 		Resource: &schema.Resource{
 			Schema: map[string]*schema.Schema{
@@ -182,7 +182,7 @@ func TestInputsEmptyString(t *testing.T) {
 // Isolated from rapid-generated tests
 func TestInputsEmptyConfigModeAttrSet(t *testing.T) {
 	t.Skip("Our handling of ConfigModeAttr is wrong.")
-	// TODO: https://github.com/pulumi/pulumi-terraform-bridge/issues/1762
+	// TODO[pulumi/pulumi-terraform-bridge#1762]
 	t2 := tftypes.Object{AttributeTypes: map[string]tftypes.Type{
 		"f0": tftypes.String,
 	}}
