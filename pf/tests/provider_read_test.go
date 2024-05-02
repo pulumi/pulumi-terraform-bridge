@@ -18,9 +18,15 @@ import (
 	"context"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework/path"
+	fwres "github.com/hashicorp/terraform-plugin-framework/resource"
+	fwsch "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	testutils "github.com/pulumi/providertest/replay"
-
+	pb "github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/providerbuilder"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/testprovider"
+	tfpf "github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
@@ -273,6 +279,64 @@ func TestRefreshMissingResources(t *testing.T) {
                 }
               ],
               "services": []
+            }
+          },
+          "response": {
+            "inputs": {},
+            "properties": {}
+          }
+        }`
+	testutils.Replay(t, server, testCase)
+}
+
+// Provider may indicate intent with resp.State.RemoveResource(ctx) - test that Pulumi respects that.
+//
+// See https://github.com/pulumi/pulumi-terraform-bridge/issues/1919
+func TestRefreshResourceNotFound(t *testing.T) {
+	r := pb.Resource{
+		Name: "resource",
+		ResourceSchema: fwsch.Schema{
+			Attributes: map[string]fwsch.Attribute{
+				"id": fwsch.StringAttribute{Optional: true, Computed: true},
+				"x":  fwsch.StringAttribute{Optional: true},
+			},
+		},
+		ReadFunc: func(ctx context.Context, req fwres.ReadRequest, resp *fwres.ReadResponse) {
+			// Even if the provider sets some attributes, RemoveResource should discard them.
+			resp.State.SetAttribute(ctx, path.Root("x"), "value")
+			// Indicate that it was no found and should be removed from state.
+			resp.State.RemoveResource(ctx)
+		},
+	}
+
+	p := &pb.Provider{
+		TypeName: "my",
+		Version:  "0.0.1",
+		AllResources: []pb.Resource{
+			r,
+		},
+	}
+	info := tfbridge.ProviderInfo{
+		Name:         "my",
+		P:            tfpf.ShimProvider(p),
+		MetadataInfo: &info.Metadata{},
+		Version:      "0.0.1",
+		Resources: map[string]*info.Resource{
+			"my_resource": {
+				Tok: "my:index/resource:Resource",
+			},
+		},
+	}
+	server := newProviderServer(t, info)
+
+	testCase := `
+	{
+          "method": "/pulumirpc.ResourceProvider/Read",
+          "request": {
+            "id": "myresource",
+            "urn": "urn:pulumi:testing::testing::my:index/resource:Resource::myresource",
+            "properties": {
+              "id": "myresource"
             }
           },
           "response": {

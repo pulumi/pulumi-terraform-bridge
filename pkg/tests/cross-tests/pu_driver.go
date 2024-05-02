@@ -178,7 +178,7 @@ func (pd *pulumiDriver) convertConfigToPulumi(
 	}
 
 	// There is not yet a way to opt out of marking schema secrets, so the resulting map might have secrets marked.
-	pm, err := convert.DecodePropertyMap(decoder, *v)
+	pm, err := convert.DecodePropertyMap(context.Background(), decoder, *v)
 	if err != nil {
 		return nil, err
 	}

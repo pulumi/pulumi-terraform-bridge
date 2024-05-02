@@ -15,6 +15,7 @@
 package convert
 
 import (
+	"context"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
@@ -137,7 +138,7 @@ func TestSecretDecoderInjectsSchemaSecrets(t *testing.T) {
 				SchemaInfos: tc.schemaInfos,
 			})
 			require.NoError(t, err)
-			pm, err := DecodePropertyMap(d, tc.val)
+			pm, err := DecodePropertyMap(context.Background(), d, tc.val)
 			require.NoError(t, err)
 			tc.expect.Equal(t, pm)
 		})

@@ -19,6 +19,7 @@
 package convert
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
@@ -102,13 +103,18 @@ func EncodePropertyMap(enc Encoder, pmap resource.PropertyMap) (tftypes.Value, e
 	return enc.fromPropertyValue(propertyvalue.RemoveSecrets(resource.NewObjectProperty(pmap)))
 }
 
-func DecodePropertyMap(dec Decoder, v tftypes.Value) (resource.PropertyMap, error) {
+func DecodePropertyMap(ctx context.Context, dec Decoder, v tftypes.Value) (resource.PropertyMap, error) {
 	pv, err := dec.toPropertyValue(v)
 	if err != nil {
 		return nil, err
 	}
 	if !pv.IsObject() {
-		return nil, fmt.Errorf("Expected an Object, got: %v", pv.String())
+		details := fmt.Sprintf(`DecodePropertyMap expected the decoder to return an Object
+PropertyValue returned by the decoder: %v
+tftypes.Value passed to the decoder:   %v`, pv.String(), v.String())
+		tfbridge.GetLogger(ctx).Debug(details)
+		return nil, fmt.Errorf(`Internal error: DecodePropertyMap expected the decoder to return an Object.
+Please report to https://github.com/pulumi/pulumi-terraform-bridge/issues`)
 	}
 	return pv.ObjectValue(), nil
 }
@@ -123,11 +129,15 @@ func EncodePropertyMapToDynamic(enc Encoder, objectType tftypes.Object,
 	return &dv, err
 }
 
-func DecodePropertyMapFromDynamic(dec Decoder, objectType tftypes.Object,
-	dv *tfprotov6.DynamicValue) (resource.PropertyMap, error) {
+func DecodePropertyMapFromDynamic(
+	ctx context.Context,
+	dec Decoder,
+	objectType tftypes.Object,
+	dv *tfprotov6.DynamicValue,
+) (resource.PropertyMap, error) {
 	v, err := dv.Unmarshal(objectType)
 	if err != nil {
 		return nil, fmt.Errorf("DynamicValue.Unmarshal failed: %w", err)
 	}
-	return DecodePropertyMap(dec, v)
+	return DecodePropertyMap(ctx, dec, v)
 }
