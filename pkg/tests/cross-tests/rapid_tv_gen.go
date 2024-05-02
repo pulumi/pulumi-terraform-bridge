@@ -254,11 +254,19 @@ func (tvg *tvGen) GenListNestedBlock(depth int) *rapid.Generator[tv] {
 		listWrap := func(vs []tftypes.Value) tftypes.Value {
 			return tftypes.NewValue(listWrapType, vs)
 		}
-		vg := rapid.Map(rapid.SliceOfN(bl.valueGen, 0, 3), listWrap)
+
+		maxItems := rapid.IntRange(0, 1).Draw(t, "maxItemsOne")
+		maxPropValues := 3
+		if maxItems == 1 {
+			maxPropValues = 1
+		}
+		// TODO: fix empty lists and revert the min value here to be randomly 0
+		minVals := 1
+		vg := rapid.Map(rapid.SliceOfN(bl.valueGen, minVals, maxPropValues), listWrap)
 		return tv{
 			schema: schema.Schema{
-				Type: schema.TypeList,
-				// TODO: randomly trigger MaxItems: 1
+				Type:     schema.TypeList,
+				MaxItems: maxItems,
 				Elem: &schema.Resource{
 					Schema: bl.schemaMap,
 				},
@@ -279,11 +287,18 @@ func (tvg *tvGen) GenSetNestedBlock(depth int) *rapid.Generator[tv] {
 		setWrap := func(vs []tftypes.Value) tftypes.Value {
 			return tftypes.NewValue(setWrapType, vs)
 		}
-		vg := rapid.Map(rapid.SliceOfN(bl.valueGen, 0, 3), setWrap)
+
+		maxItems := rapid.IntRange(0, 1).Draw(t, "maxItemsOne")
+		maxPropValues := 3
+		if maxItems == 1 {
+			// We only generate valid values for the schema.
+			maxPropValues = 1
+		}
+		vg := rapid.Map(rapid.SliceOfN(bl.valueGen, 0, maxPropValues), setWrap)
 		return tv{
 			schema: schema.Schema{
-				Type: schema.TypeSet,
-				// TODO: randomly trigger MaxItems: 1
+				Type:     schema.TypeSet,
+				MaxItems: maxItems,
 				// TODO: get a bit inventive with custom hash functions
 				Elem: &schema.Resource{
 					Schema: bl.schemaMap,
