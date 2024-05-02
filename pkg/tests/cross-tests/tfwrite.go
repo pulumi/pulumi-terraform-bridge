@@ -50,10 +50,10 @@ func writeBlock(body *hclwrite.Body, schemas map[string]*schema.Schema, values m
 		if !ok {
 			continue
 		}
-		contract.Assertf(sch.ConfigMode == 0, "ConfigMode > 0 is not yet supported: %v", sch.ConfigMode)
+
 		switch elem := sch.Elem.(type) {
 		case *schema.Resource:
-			if sch.Type == schema.TypeMap {
+			if sch.Type == schema.TypeMap || sch.ConfigMode == schema.SchemaConfigModeAttr {
 				body.SetAttributeValue(key, value)
 			} else if sch.Type == schema.TypeSet {
 				for _, v := range value.AsValueSet().Values() {
@@ -69,6 +69,11 @@ func writeBlock(body *hclwrite.Body, schemas map[string]*schema.Schema, values m
 				contract.Failf("unexpected schema type %v", sch.Type)
 			}
 		default:
+			// TODO: Check if SchemaConfigModeBlock is valid at all here.
+			contract.Assertf(
+				sch.ConfigMode != schema.SchemaConfigModeBlock,
+				"This is not yet supported",
+			)
 			body.SetAttributeValue(key, value)
 		}
 	}

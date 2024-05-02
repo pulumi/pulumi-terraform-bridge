@@ -20,7 +20,6 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"pgregory.net/rapid"
 )
 
@@ -52,7 +51,8 @@ const (
 )
 
 type tvGen struct {
-	generateUnknowns bool
+	generateUnknowns       bool
+	generateConfigModeAttr bool
 }
 
 func (tvg *tvGen) GenBlock() *rapid.Generator[tv] {
@@ -206,7 +206,10 @@ func (tvg *tvGen) GenBlockWithDepth(depth int) *rapid.Generator[tb] {
 			objGen = rapid.Just(tftypes.NewValue(objType, map[string]tftypes.Value{}))
 		}
 		err := schema.InternalMap(fieldSchemas).InternalValidate(nil)
-		contract.AssertNoErrorf(err, "rapid_tv_gen generated an invalid schema: please fix")
+		if err != nil {
+			t.Log(fieldSchemas)
+			t.Errorf("rapid_tv_gen generated an invalid schema: please fix: %s", err)
+		}
 		return tb{fieldSchemas, objType, objGen}
 	})
 }
@@ -389,6 +392,7 @@ func (tvg *tvGen) GenSchemaTransform() *rapid.Generator[schemaT] {
 		attrKind := tvg.GenAttrKind().Draw(t, "attrKind")
 		secret := rapid.Bool().Draw(t, "secret")
 		forceNew := rapid.Bool().Draw(t, "forceNew")
+		configModeAttr := rapid.Bool().Draw(t, "configMode")
 
 		return func(s schema.Schema) schema.Schema {
 			switch attrKind {
@@ -411,6 +415,15 @@ func (tvg *tvGen) GenSchemaTransform() *rapid.Generator[schemaT] {
 			if secret {
 				s.Sensitive = true
 			}
+
+			if tvg.generateConfigModeAttr && configModeAttr {
+				if _, ok := s.Elem.(*schema.Resource); ok {
+					if s.Type == schema.TypeSet || s.Type == schema.TypeList {
+						s.ConfigMode = schema.SchemaConfigModeAttr
+					}
+				}
+			}
+
 			return s
 		}
 	})
