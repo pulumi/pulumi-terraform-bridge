@@ -141,19 +141,14 @@ func (p *provider) readResource(
 		return plugin.ReadResult{}, nil
 	}
 
-	// TF interpretes a null new state as an indication that the resource does not
-	// exist in the cloud provider.
-	newStateNull, err := resp.NewState.IsNull()
-	if err != nil {
-		return plugin.ReadResult{}, fmt.Errorf("checking null state: %w", err)
-	}
-	if newStateNull {
-		return plugin.ReadResult{}, nil
-	}
-
 	readState, err := parseResourceStateFromTF(ctx, rh, resp.NewState, resp.Private)
 	if err != nil {
 		return plugin.ReadResult{}, fmt.Errorf("parsing resource state: %w", err)
+	}
+
+	// TF interprets a null new state as an indication that the resource does not exist in the cloud provider.
+	if readState.state.Value.IsNull() {
+		return plugin.ReadResult{}, nil
 	}
 
 	readStateMap, err := readState.ToPropertyMap(rh)
