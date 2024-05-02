@@ -115,15 +115,30 @@ func parseResourceStateFromTF(
 	private []byte,
 ) (*upgradedResourceState, error) {
 	tfType := rh.schema.Type().TerraformType(ctx)
-	v, err := state.Unmarshal(tfType)
-	if err != nil {
-		return nil, err
-	}
-	return &upgradedResourceState{state: &resourceState{
-		TFSchemaVersion: rh.schema.ResourceSchemaVersion(),
-		Value:           v,
+	return parseResourceStateFromTFInner(ctx, tfType, rh.schema.ResourceSchemaVersion(), state, private)
+}
+
+func parseResourceStateFromTFInner(
+	ctx context.Context,
+	resourceTerraformType tftypes.Type,
+	resourceSchemaVersion int64,
+	state *tfprotov6.DynamicValue,
+	private []byte,
+) (*upgradedResourceState, error) {
+	rs := &resourceState{
+		TFSchemaVersion: resourceSchemaVersion,
 		Private:         private,
-	}}, nil
+	}
+	if state == nil {
+		rs.Value = tftypes.NewValue(resourceTerraformType, nil)
+	} else {
+		v, err := state.Unmarshal(resourceTerraformType)
+		if err != nil {
+			return nil, err
+		}
+		rs.Value = v
+	}
+	return &upgradedResourceState{state: rs}, nil
 }
 
 type metaState struct {
