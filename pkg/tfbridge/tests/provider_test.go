@@ -121,17 +121,6 @@ func TestReproMinimalDiffCycle(t *testing.T) {
 			},
 		},
 	}
-	// cfg := map[string]any{
-	// 	"rule": []any{
-	// 		map[string]any{
-	// 			"action": []any{
-	// 				map[string]any{
-	// 					"block": []any{map[string]any{}},
-	// 				},
-	// 			},
-	// 		},
-	// 	},
-	// }
 
 	// Here i may receive maps or slices over base types and *schema.Set which is not friendly to diffing.
 	resource.Schema["rule"].Set = func(i interface{}) int {
@@ -146,7 +135,9 @@ func TestReproMinimalDiffCycle(t *testing.T) {
 			ResourcesMap: map[string]*schema.Resource{
 				"example_resource": resource,
 			},
-		}),
+		}, shimv2.WithPlanResourceChange(func(tfResourceType string) bool {
+			return true
+		})),
 		Name:           "testprov",
 		ResourcePrefix: "example",
 		Resources: map[string]*tfbridge.ResourceInfo{
