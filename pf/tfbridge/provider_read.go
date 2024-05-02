@@ -151,7 +151,7 @@ func (p *provider) readResource(
 		return plugin.ReadResult{}, nil
 	}
 
-	readStateMap, err := readState.ToPropertyMap(rh)
+	readStateMap, err := readState.ToPropertyMap(ctx, rh)
 	if err != nil {
 		return plugin.ReadResult{}, fmt.Errorf("converting to property map: %w", err)
 	}
@@ -225,7 +225,7 @@ func (p *provider) importResource(
 		return plugin.ReadResult{}, err
 	}
 
-	readStateMap, err := readState.ToPropertyMap(rh)
+	readStateMap, err := readState.ToPropertyMap(ctx, rh)
 	if err != nil {
 		return plugin.ReadResult{}, err
 	}

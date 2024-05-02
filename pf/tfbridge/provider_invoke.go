@@ -101,7 +101,7 @@ func (p *provider) readDataSource(ctx context.Context, handle datasourceHandle,
 		return nil, failures, err
 	}
 
-	propertyMap, err := convert.DecodePropertyMapFromDynamic(handle.decoder, typ, resp.State)
+	propertyMap, err := convert.DecodePropertyMapFromDynamic(ctx, handle.decoder, typ, resp.State)
 	if err != nil {
 		return nil, nil, fmt.Errorf("cannot decode state from a call to ReadDataSource for %q: %w",
 			handle.terraformDataSourceName, err)

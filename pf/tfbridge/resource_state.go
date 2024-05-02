@@ -47,8 +47,8 @@ func (u *upgradedResourceState) PrivateState() []byte {
 	return u.state.Private
 }
 
-func (u *upgradedResourceState) ToPropertyMap(rh *resourceHandle) (resource.PropertyMap, error) {
-	propMap, err := convert.DecodePropertyMap(rh.decoder, u.state.Value)
+func (u *upgradedResourceState) ToPropertyMap(ctx context.Context, rh *resourceHandle) (resource.PropertyMap, error) {
+	propMap, err := convert.DecodePropertyMap(ctx, rh.decoder, u.state.Value)
 	if err != nil {
 		return nil, err
 	}

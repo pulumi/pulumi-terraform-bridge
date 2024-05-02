@@ -61,7 +61,7 @@ func (p *provider) CreateWithContext(
 	// NOTE: it seems that planResp.RequiresReplace can be ignored in Create and must be false.
 
 	if preview {
-		plannedStatePropertyMap, err := convert.DecodePropertyMapFromDynamic(
+		plannedStatePropertyMap, err := convert.DecodePropertyMapFromDynamic(ctx,
 			rh.decoder, tfType, planResp.PlannedState)
 		if err != nil {
 			return "", nil, 0, err
@@ -109,7 +109,7 @@ func (p *provider) CreateWithContext(
 		return "", nil, 0, err
 	}
 
-	createdStateMap, err := createdState.ToPropertyMap(&rh)
+	createdStateMap, err := createdState.ToPropertyMap(ctx, &rh)
 	if err != nil {
 		return "", nil, 0, err
 	}
