@@ -20,6 +20,7 @@ import (
 	"sync"
 
 	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -88,7 +89,7 @@ func (p *inmemoryProvider) GetPluginInfo() (workspace.PluginInfo, error) {
 	}
 	return workspace.PluginInfo{
 		Name:    p.info.Name,
-		Kind:    workspace.ResourcePlugin,
+		Kind:    apitype.ResourcePlugin,
 		Version: version,
 	}, nil
 }
@@ -118,7 +119,7 @@ func (host *inmemoryProviderHost) Provider(pkg tokens.Package, version *semver.V
 // to load. inmemoryProviderHost does this by checking if the generating provider is being
 // loaded. If it is, it returns it's provider. Otherwise, we defer
 // inmemoryProviderHost.Host.
-func (host *inmemoryProviderHost) ResolvePlugin(kind workspace.PluginKind, name string,
+func (host *inmemoryProviderHost) ResolvePlugin(kind apitype.PluginKind, name string,
 	version *semver.Version) (*workspace.PluginInfo, error) {
 	if name == host.provider.name.String() {
 		info, err := host.provider.GetPluginInfo()

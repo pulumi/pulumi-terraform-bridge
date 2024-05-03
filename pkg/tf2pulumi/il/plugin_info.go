@@ -27,6 +27,7 @@ import (
 	jsoniter "github.com/json-iterator/go"
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -185,7 +186,7 @@ func (pluginProviderInfoSource) GetProviderInfo(
 	diag := diag.DefaultSink(os.Stdout, os.Stderr, diag.FormatOptions{
 		Color: colors.Never,
 	})
-	path, err := workspace.GetPluginPath(diag, workspace.ResourcePlugin, pluginName, nil, nil)
+	path, err := workspace.GetPluginPath(diag, apitype.ResourcePlugin, pluginName, nil, nil)
 	if err != nil {
 		return nil, err
 	} else if path == "" {
