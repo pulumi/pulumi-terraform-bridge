@@ -25,6 +25,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -197,7 +198,7 @@ func (p *provider) GetPluginInfoWithContext(_ context.Context) (workspace.Plugin
 	info := workspace.PluginInfo{
 		Name:    p.info.Name,
 		Version: &p.version,
-		Kind:    workspace.ResourcePlugin,
+		Kind:    apitype.ResourcePlugin,
 	}
 	return info, nil
 }
