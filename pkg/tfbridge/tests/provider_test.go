@@ -193,19 +193,7 @@ func TestReproMinimalDiffCycle(t *testing.T) {
 	    }
 	  },
 	  "response": {
-	    "changes": "DIFF_SOME",
-	    "diffs": [
-	      "rules",
-	      "rules"
-	    ],
-	    "detailedDiff": {
-	      "rules[0].action": {
-		"kind": "UPDATE"
-	      },
-	      "rules[0].action.block": {
-		"kind": "UPDATE"
-	      }
-	    },
+	    "changes": "DIFF_NONE",
 	    "hasDetailedDiff": true
 	  }
 	}`)
