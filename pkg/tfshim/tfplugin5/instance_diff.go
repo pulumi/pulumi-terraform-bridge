@@ -63,6 +63,10 @@ func (d *instanceDiff) Attributes() map[string]shim.ResourceAttrDiff {
 	return d.attributes
 }
 
+func (d *instanceDiff) HasNoChanges() bool {
+	return len(d.attributes) == 0
+}
+
 func (d *instanceDiff) ProposedState(res shim.Resource, priorState shim.InstanceState) (shim.InstanceState, error) {
 	plannedObject, err := ctyToGo(d.planned)
 	if err != nil {
