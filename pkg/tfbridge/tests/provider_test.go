@@ -3,6 +3,7 @@ package tfbridgetests
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"testing"
 
