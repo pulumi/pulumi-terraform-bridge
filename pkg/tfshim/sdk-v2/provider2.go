@@ -444,6 +444,17 @@ func (s *grpcServer) PlanResourceChange(
 	if err != nil {
 		return nil, err
 	}
+
+	// There are cases where planned state is equal to the original state, but InstanceDiff still displays changes.
+	// Pulumi considers this to be a no-change diff, and as a workaround here any InstanceDiff changes are deleted
+	// and ignored (simlar to processIgnoreChanges).
+	//
+	// See pulumi/pulumi-aws#3880
+	same := plannedState.Equals(priorState)
+	if same.IsKnown() && same.True() {
+		resp.InstanceDiff.Attributes = map[string]*terraform.ResourceAttrDiff{}
+	}
+
 	var meta map[string]interface{}
 	if resp.PlannedPrivate != nil {
 		if err := json.Unmarshal(resp.PlannedPrivate, &meta); err != nil {

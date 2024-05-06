@@ -57,6 +57,10 @@ func (d v1InstanceDiff) Attribute(key string) *shim.ResourceAttrDiff {
 	return resourceAttrDiffToShim(d.tf.Attributes[key])
 }
 
+func (d v1InstanceDiff) HasNoChanges() bool {
+	return len(d.Attributes()) == 0
+}
+
 func (d v1InstanceDiff) Attributes() map[string]shim.ResourceAttrDiff {
 	m := map[string]shim.ResourceAttrDiff{}
 	for k, v := range d.tf.Attributes {

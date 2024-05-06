@@ -3,6 +3,7 @@ package tfbridgetests
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"testing"
 
@@ -66,6 +67,136 @@ func TestWithNewTestProvider(t *testing.T) {
 	  }
 	}
 	`)
+}
+
+func TestReproMinimalDiffCycle(t *testing.T) {
+	customResponseSchema := func() *schema.Schema {
+		return &schema.Schema{
+			Type:     schema.TypeList,
+			Optional: true,
+			MaxItems: 1,
+			Elem: &schema.Resource{
+				Schema: map[string]*schema.Schema{
+					"custom_response_body_key": {
+						Type:     schema.TypeString,
+						Optional: true,
+					},
+				},
+			},
+		}
+	}
+	blockConfigSchema := func() *schema.Schema {
+		return &schema.Schema{
+			Type:     schema.TypeList,
+			Optional: true,
+			MaxItems: 1,
+			Elem: &schema.Resource{
+				Schema: map[string]*schema.Schema{
+					"custom_response": customResponseSchema(),
+				},
+			},
+		}
+	}
+	ruleElement := &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"action": {
+				Type:     schema.TypeList,
+				Optional: true,
+				MaxItems: 1,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"block": blockConfigSchema(),
+					},
+				},
+			},
+		},
+	}
+
+	resource := &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"rule": {
+				Type:     schema.TypeSet,
+				Optional: true,
+				Elem:     ruleElement,
+			},
+		},
+	}
+
+	// Here i may receive maps or slices over base types and *schema.Set which is not friendly to diffing.
+	resource.Schema["rule"].Set = func(i interface{}) int {
+		actual := schema.HashResource(resource.Schema["rule"].Elem.(*schema.Resource))(i)
+		fmt.Printf("hashing %#v as %d\n", i, actual)
+		return actual
+	}
+	ctx := context.Background()
+	p := newTestProvider(ctx, tfbridge.ProviderInfo{
+		P: shimv2.NewProvider(&schema.Provider{
+			Schema: map[string]*schema.Schema{},
+			ResourcesMap: map[string]*schema.Resource{
+				"example_resource": resource,
+			},
+		}, shimv2.WithPlanResourceChange(func(tfResourceType string) bool {
+			return true
+		})),
+		Name:           "testprov",
+		ResourcePrefix: "example",
+		Resources: map[string]*tfbridge.ResourceInfo{
+			"example_resource": {Tok: "testprov:index:ExampleResource"},
+		},
+	}, newTestProviderOptions{})
+
+	replay.Replay(t, p, `
+	{
+	  "method": "/pulumirpc.ResourceProvider/Diff",
+	  "request": {
+	    "id": "newid",
+	    "urn": "urn:pulumi:test::project::testprov:index:ExampleResource::example",
+	    "olds": {
+	      "id": "newid",
+	      "rules": [
+		{
+		  "action": {
+		    "block": {
+		      "customResponse": null
+		    }
+		  }
+		}
+	      ]
+	    },
+	    "news": {
+	      "__defaults": [],
+	      "rules": [
+		{
+		  "__defaults": [],
+		  "action": {
+		    "__defaults": [],
+		    "block": {
+		      "__defaults": []
+		    }
+		  }
+		}
+	      ]
+	    },
+	    "oldInputs": {
+	      "__defaults": [],
+	      "rules": [
+		{
+		  "__defaults": [],
+		  "action": {
+		    "__defaults": [],
+		    "block": {
+		      "__defaults": []
+		    }
+		  }
+		}
+	      ]
+	    }
+	  },
+	  "response": {
+	    "changes": "DIFF_NONE",
+	    "hasDetailedDiff": true
+	  }
+	}`)
 }
 
 func nilSink() diag.Sink {

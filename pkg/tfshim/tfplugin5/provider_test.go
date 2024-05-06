@@ -1180,7 +1180,7 @@ func TestApply(t *testing.T) {
 			diff, err := p.Diff(ctx, "example_resource", state, config, shim.DiffOptions{})
 			require.NoError(t, err)
 
-			if len(diff.Attributes()) == 0 {
+			if diff.HasNoChanges() {
 				return
 			}
 
