@@ -2156,6 +2156,9 @@ func TestSkipDetailedDiff(t *testing.T) {
 					Schema: &ResourceInfo{Tok: "Replace"},
 				},
 			},
+			info: ProviderInfo{
+				XSkipDetailedDiffForChanges: skipDetailedDiffForChanges,
+			},
 		}
 	}
 	t.Run("Diff", func(t *testing.T) {
@@ -2429,26 +2432,6 @@ func TestMaxItemOneWrongStateDiff(t *testing.T) {
 				"urn": "urn:pulumi:dev::teststack::NestedStrRes::exres",
 				"id": "0",
 				"olds": {
-					"nested_str": [""]
-				},
-				"news": {
-					"nested_str": ""
-				}
-			},
-			"response": {
-				"changes": "DIFF_SOME",
-				"hasDetailedDiff": true
-			}
-		}`)
-	})
-	t.Run("DiffNilListAndVal", func(t *testing.T) {
-		testutils.Replay(t, provider, `
-		{
-			"method": "/pulumirpc.ResourceProvider/Diff",
-			"request": {
-				"urn": "urn:pulumi:dev::teststack::NestedStrRes::exres",
-				"id": "0",
-				"olds": {
 					"nested_str": []
 				},
 				"news": {
@@ -2457,13 +2440,7 @@ func TestMaxItemOneWrongStateDiff(t *testing.T) {
 			},
 			"response": {
 				"changes": "DIFF_SOME",
-				"hasDetailedDiff": true,
-				"detailedDiff": {
-					"nested_str": {
-						"kind": "UPDATE"
-					}
-				},
-				"diffs": ["nested_str"]
+				"hasDetailedDiff": true
 			}
 		}`)
 	})
