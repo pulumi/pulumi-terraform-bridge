@@ -2071,14 +2071,13 @@ func TestListNestedAddMaxItemsOne(t *testing.T) {
 }
 
 type diffTestCase struct {
-	resourceSchema              map[string]*schema.Schema
-	resourceFields              map[string]*SchemaInfo
-	state                       resource.PropertyMap
-	inputs                      resource.PropertyMap
-	expected                    map[string]*pulumirpc.PropertyDiff
-	expectedDiffChanges         pulumirpc.DiffResponse_DiffChanges
-	ignoreChanges               []string
-	XSkipDetailedDiffForChanges bool
+	resourceSchema      map[string]*schema.Schema
+	resourceFields      map[string]*SchemaInfo
+	state               resource.PropertyMap
+	inputs              resource.PropertyMap
+	expected            map[string]*pulumirpc.PropertyDiff
+	expectedDiffChanges pulumirpc.DiffResponse_DiffChanges
+	ignoreChanges       []string
 }
 
 func diffTest2(t *testing.T, tc diffTestCase) {
@@ -2100,7 +2099,6 @@ func diffTest2(t *testing.T, tc diffTestCase) {
 	p := Provider{
 		tf: provider,
 		info: ProviderInfo{
-			XSkipDetailedDiffForChanges: tc.XSkipDetailedDiffForChanges,
 			Resources: map[string]*ResourceInfo{
 				"p_resource": {
 					Tok:    "pkg:index:PResource",
@@ -2151,8 +2149,7 @@ func TestChangingMaxItems1FilterProperty(t *testing.T) {
 		},
 	}
 	diffTest2(t, diffTestCase{
-		XSkipDetailedDiffForChanges: true,
-		resourceSchema:              schema,
+		resourceSchema: schema,
 		state: resource.PropertyMap{
 			"rules": resource.NewArrayProperty(
 				[]resource.PropertyValue{
