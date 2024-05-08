@@ -69,6 +69,83 @@ func TestWithNewTestProvider(t *testing.T) {
 	`)
 }
 
+func TestRegress1932(t *testing.T) {
+	ctx := context.Background()
+	p := newTestProvider(ctx, tfbridge.ProviderInfo{
+		P: shimv2.NewProvider(&schema.Provider{
+			Schema: map[string]*schema.Schema{},
+			ResourcesMap: map[string]*schema.Resource{
+				"aws_launch_template": {
+					Schema: map[string]*schema.Schema{
+						"tag_specifications": {
+							Type:     schema.TypeList,
+							Optional: true,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									"resource_type": {
+										Type:     schema.TypeString,
+										Optional: true,
+									},
+									"tags": {
+										Type:     schema.TypeMap,
+										Optional: true,
+										Elem:     &schema.Schema{Type: schema.TypeString},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		}, shimv2.WithPlanResourceChange(func(s string) bool {
+			return true
+		})),
+		Name:           "aws",
+		ResourcePrefix: "example",
+		Resources: map[string]*tfbridge.ResourceInfo{
+			"aws_launch_template": {Tok: "aws:ec2/launchTemplate:LaunchTemplate"},
+		},
+	}, newTestProviderOptions{})
+
+	replay.Replay(t, p, `
+{
+  "method": "/pulumirpc.ResourceProvider/Create",
+  "request": {
+    "urn": "urn:pulumi:dev::pulumi-go-app::aws:ec2/launchTemplate:LaunchTemplate::launch-template",
+    "properties": {
+      "__defaults": [ ],
+      "tagSpecifications": [
+        {
+          "__defaults": [],
+          "resourceType": "resourceType1",
+          "tags": {
+            "Name": "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+          }
+        },
+        {
+          "__defaults": [],
+          "resourceType": "resourceType2",
+          "tags": {
+            "Name": "Bucket Arn"
+          }
+        }
+      ]
+    },
+    "preview": true
+  },
+  "errors": [
+    "rpc error: code = Unavailable desc = error reading from server: EOF"
+  ],
+  "metadata": {
+    "kind": "resource",
+    "mode": "client",
+    "name": "aws"
+  }
+}
+
+	`)
+}
+
 func TestReproMinimalDiffCycle(t *testing.T) {
 	customResponseSchema := func() *schema.Schema {
 		return &schema.Schema{
