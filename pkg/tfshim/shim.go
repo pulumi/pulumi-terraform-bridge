@@ -188,6 +188,20 @@ type ResourceMap interface {
 	Set(key string, value Resource)
 }
 
+type ResourceMapWithClone interface {
+	ResourceMap
+	Clone(oldKey, newKey string) error
+}
+
+func CloneResource(rm ResourceMap, oldKey string, newKey string) {
+	switch rm := rm.(type) {
+	case ResourceMapWithClone:
+		rm.Clone(oldKey, newKey)
+	default:
+		rm.Set(newKey, rm.Get(oldKey))
+	}
+}
+
 type Provider interface {
 	Schema() SchemaMap
 	ResourcesMap() ResourceMap

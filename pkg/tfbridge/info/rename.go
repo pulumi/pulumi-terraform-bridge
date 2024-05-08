@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"strings"
 
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
@@ -59,7 +60,7 @@ func (p *Provider) RenameResourceWithAlias(resourceName string, legacyTok tokens
 			currentInfo.Tok.Name().String()))
 	p.Resources[resourceName] = &currentInfo
 	p.Resources[legacyResourceName] = &legacyInfo
-	p.P.ResourcesMap().Set(legacyResourceName, p.P.ResourcesMap().Get(resourceName))
+	shim.CloneResource(p.P.ResourcesMap(), resourceName, legacyResourceName)
 }
 
 func (p *Provider) RenameDataSource(resourceName string, legacyTok tokens.ModuleMember, newTok tokens.ModuleMember,
