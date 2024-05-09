@@ -4014,15 +4014,44 @@ func TestProviderMetaPlanResourceChangeNoError(t *testing.T) {
 	})
 }
 
-func TestStringValForIntProperty(t *testing.T) {
+func TestStringValForOtherProperty(t *testing.T) {
 	p := &schemav2.Provider{
 		Schema: map[string]*schemav2.Schema{},
 		ResourcesMap: map[string]*schemav2.Resource{
 			"res": {
 				Schema: map[string]*schemav2.Schema{
-					"IntProp": {
+					"int_prop": {
 						Optional: true,
 						Type:     schema.TypeInt,
+					},
+					"float_prop": {
+						Optional: true,
+						Type:     schema.TypeFloat,
+					},
+					"bool_prop": {
+						Optional: true,
+						Type:     schema.TypeBool,
+					},
+					"nested_int": {
+						Optional: true,
+						Type:     schema.TypeList,
+						Elem: &schemav2.Schema{
+							Type: schema.TypeInt,
+						},
+					},
+					"nested_float": {
+						Optional: true,
+						Type:     schema.TypeList,
+						Elem: &schemav2.Schema{
+							Type: schema.TypeFloat,
+						},
+					},
+					"nested_bool": {
+						Optional: true,
+						Type:     schema.TypeList,
+						Elem: &schemav2.Schema{
+							Type: schema.TypeBool,
+						},
 					},
 				},
 			},
@@ -4042,25 +4071,187 @@ func TestStringValForIntProperty(t *testing.T) {
 		},
 	}
 
-	testutils.Replay(t, provider, `
-	{
-		"method": "/pulumirpc.ResourceProvider/Check",
-		"request": {
-			"urn": "urn:pulumi:dev::teststack::Res::exres",
-			"olds": {
-				"__defaults": []
+	t.Run("String value for int property", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+		{
+			"method": "/pulumirpc.ResourceProvider/Check",
+			"request": {
+				"urn": "urn:pulumi:dev::teststack::Res::exres",
+				"olds": {
+				},
+				"news": {
+					"__defaults": [],
+					"intProp": "80"
+				},
+				"randomSeed": "zjSL8IMF68r5aLLepOpsIT53uBTbkDryYFDnHQHkjko="
 			},
-			"news": {
-				"__defaults": [],
-				"IntProp": "80"
-			},
-			"randomSeed": "zjSL8IMF68r5aLLepOpsIT53uBTbkDryYFDnHQHkjko="
-		},
-		"response": {
-			"inputs": {
-				"__defaults": [],
-				"IntProp": 80
+			"response": {
+				"inputs": {
+					"__defaults": [],
+					"intProp": 80
+				}
 			}
-		}
-	}`)
+		}`)
+	})
+
+	t.Run("String value for bool property", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+		{
+			"method": "/pulumirpc.ResourceProvider/Check",
+			"request": {
+				"urn": "urn:pulumi:dev::teststack::Res::exres",
+				"olds": {
+				},
+				"news": {
+					"__defaults": [],
+					"boolProp": "true"
+				},
+				"randomSeed": "zjSL8IMF68r5aLLepOpsIT53uBTbkDryYFDnHQHkjko="
+			},
+			"response": {
+				"inputs": {
+					"__defaults": [],
+					"boolProp": true
+				}
+			}
+		}`)
+	})
+
+	t.Run("String num value for bool property", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+		{
+			"method": "/pulumirpc.ResourceProvider/Check",
+			"request": {
+				"urn": "urn:pulumi:dev::teststack::Res::exres",
+				"olds": {
+				},
+				"news": {
+					"__defaults": [],
+					"boolProp": "1"
+				},
+				"randomSeed": "zjSL8IMF68r5aLLepOpsIT53uBTbkDryYFDnHQHkjko="
+			},
+			"response": {
+				"inputs": {
+					"__defaults": [],
+					"boolProp": true
+				}
+			}
+		}`)
+	})
+
+	t.Run("String value for float property", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+		{
+			"method": "/pulumirpc.ResourceProvider/Check",
+			"request": {
+				"urn": "urn:pulumi:dev::teststack::Res::exres",
+				"olds": {
+				},
+				"news": {
+					"__defaults": [],
+					"floatProp": "8.2"
+				},
+				"randomSeed": "zjSL8IMF68r5aLLepOpsIT53uBTbkDryYFDnHQHkjko="
+			},
+			"response": {
+				"inputs": {
+					"__defaults": [],
+					"floatProp": 8.2
+				}
+			}
+		}`)
+	})
+
+	t.Run("String value for nested int property", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+		{
+			"method": "/pulumirpc.ResourceProvider/Check",
+			"request": {
+				"urn": "urn:pulumi:dev::teststack::Res::exres",
+				"olds": {
+				},
+				"news": {
+					"__defaults": [],
+					"nestedInts": ["80"]
+				},
+				"randomSeed": "zjSL8IMF68r5aLLepOpsIT53uBTbkDryYFDnHQHkjko="
+			},
+			"response": {
+				"inputs": {
+					"__defaults": [],
+					"nestedInts": [80]
+				}
+			}
+		}`)
+	})
+
+	t.Run("String value for nested float property", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+		{
+			"method": "/pulumirpc.ResourceProvider/Check",
+			"request": {
+				"urn": "urn:pulumi:dev::teststack::Res::exres",
+				"olds": {
+				},
+				"news": {
+					"__defaults": [],
+					"nestedFloats": ["8.2"]
+				},
+				"randomSeed": "zjSL8IMF68r5aLLepOpsIT53uBTbkDryYFDnHQHkjko="
+			},
+			"response": {
+				"inputs": {
+					"__defaults": [],
+					"nestedFloats": [8.2]
+				}
+			}
+		}`)
+	})
+
+	t.Run("String value for nested bool property", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+		{
+			"method": "/pulumirpc.ResourceProvider/Check",
+			"request": {
+				"urn": "urn:pulumi:dev::teststack::Res::exres",
+				"olds": {
+				},
+				"news": {
+					"__defaults": [],
+					"nestedBools": ["true"]
+				},
+				"randomSeed": "zjSL8IMF68r5aLLepOpsIT53uBTbkDryYFDnHQHkjko="
+			},
+			"response": {
+				"inputs": {
+					"__defaults": [],
+					"nestedBools": [true]
+				}
+			}
+		}`)
+	})
+
+	t.Run("String num value for nested bool property", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+		{
+			"method": "/pulumirpc.ResourceProvider/Check",
+			"request": {
+				"urn": "urn:pulumi:dev::teststack::Res::exres",
+				"olds": {
+				},
+				"news": {
+					"__defaults": [],
+					"nestedBools": ["1"]
+				},
+				"randomSeed": "zjSL8IMF68r5aLLepOpsIT53uBTbkDryYFDnHQHkjko="
+			},
+			"response": {
+				"inputs": {
+					"__defaults": [],
+					"nestedBools": [true]
+				}
+			}
+		}`)
+	})
 }
