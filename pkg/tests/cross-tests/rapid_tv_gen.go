@@ -191,7 +191,7 @@ func (tvg *tvGen) GenBlockWithDepth(depth int) *rapid.Generator[tb] {
 		}
 		nFields := rapid.IntRange(minFields, 3).Draw(t, "nFields")
 		for i := 0; i < nFields; i++ {
-			fieldName := fmt.Sprintf("f%d", i)
+			fieldName := fmt.Sprintf("d%df%d", depth, i)
 			fieldTV := tvg.GenBlockOrAttrWithDepth(depth-1).Draw(t, fieldName)
 			fieldSchemas[fieldName] = &fieldTV.schema
 			fieldGenerators[fieldName] = fieldTV.valueGen
