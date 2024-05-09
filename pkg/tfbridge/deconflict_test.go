@@ -120,6 +120,95 @@ func TestDeconflict(t *testing.T) {
 		},
 	}
 
+	// aws_autoscaling_group has three-way partial triangle of ConflictsWith.
+	asgSchema := &schema.SchemaMap{
+		"load_balancers": (&schema.Schema{
+			Type:          shim.TypeSet,
+			Optional:      true,
+			Computed:      true,
+			Elem:          (&schema.Schema{Type: shim.TypeString}).Shim(),
+			ConflictsWith: []string{"traffic_source"},
+		}).Shim(),
+		"target_group_arns": (&schema.Schema{
+			Type:          shim.TypeSet,
+			Optional:      true,
+			Computed:      true,
+			Elem:          (&schema.Schema{Type: shim.TypeString}).Shim(),
+			ConflictsWith: []string{"traffic_source"},
+		}).Shim(),
+		"traffic_source": (&schema.Schema{
+			Type:     shim.TypeSet,
+			Optional: true,
+			Computed: true,
+			Elem: (&schema.Resource{
+				Schema: &schema.SchemaMap{
+					"identifier": (&schema.Schema{
+						Type:     shim.TypeString,
+						Required: true,
+					}).Shim(),
+				},
+			}).Shim(),
+			ConflictsWith: []string{"load_balancers", "target_group_arns"},
+		}).Shim(),
+	}
+
+	testCases = append(testCases, []testCase{
+		{
+			name:      "aws-autoscaling-group-keep",
+			schemaMap: asgSchema,
+			inputs: resource.PropertyMap{
+				"loadBalancers": resource.NewArrayProperty([]resource.PropertyValue{
+					resource.NewStringProperty("lb1"),
+					resource.NewStringProperty("lb2"),
+				}),
+				"targetGroupArns": resource.NewArrayProperty([]resource.PropertyValue{
+					resource.NewStringProperty("arn1"),
+					resource.NewStringProperty("arn2"),
+				}),
+			},
+			expected: resource.PropertyMap{
+				"loadBalancers": resource.NewArrayProperty([]resource.PropertyValue{
+					resource.NewStringProperty("lb1"),
+					resource.NewStringProperty("lb2"),
+				}),
+				"targetGroupArns": resource.NewArrayProperty([]resource.PropertyValue{
+					resource.NewStringProperty("arn1"),
+					resource.NewStringProperty("arn2"),
+				}),
+			},
+		},
+		{
+			name:      "aws-autoscaling-group-drop-traffic-sources",
+			schemaMap: asgSchema,
+			inputs: resource.PropertyMap{
+				"loadBalancers": resource.NewArrayProperty([]resource.PropertyValue{
+					resource.NewStringProperty("lb1"),
+					resource.NewStringProperty("lb2"),
+				}),
+				"targetGroupArns": resource.NewArrayProperty([]resource.PropertyValue{
+					resource.NewStringProperty("arn1"),
+					resource.NewStringProperty("arn2"),
+				}),
+				"trafficSources": resource.NewArrayProperty([]resource.PropertyValue{
+					resource.NewObjectProperty(resource.PropertyMap{
+						"identifier": resource.NewStringProperty("id1"),
+					}),
+				}),
+			},
+			expected: resource.PropertyMap{
+				"loadBalancers": resource.NewArrayProperty([]resource.PropertyValue{
+					resource.NewStringProperty("lb1"),
+					resource.NewStringProperty("lb2"),
+				}),
+				"targetGroupArns": resource.NewArrayProperty([]resource.PropertyValue{
+					resource.NewStringProperty("arn1"),
+					resource.NewStringProperty("arn2"),
+				}),
+				"trafficSources": resource.NewNullProperty(),
+			},
+		},
+	}...)
+
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
