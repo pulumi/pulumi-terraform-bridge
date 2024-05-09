@@ -48,7 +48,8 @@ func deconflict(
 ) resource.PropertyMap {
 	cm := newConflictsMap(schemaMap)
 	visitedPaths := map[string]struct{}{}
-	visit := func(pp resource.PropertyPath, pv resource.PropertyValue) (resource.PropertyValue, error) {
+
+	hasConflict := func(pp resource.PropertyPath) bool {
 		sp := PropertyPathToSchemaPath(pp, schemaMap, schemaInfos)
 		conflict := false
 		var conflictAt walk.SchemaPath
@@ -63,10 +64,33 @@ func deconflict(
 			msg := fmt.Sprintf("Dropping property at %q to respect ConflictsWith constraint from %q",
 				pp.String(), conflictAt.MustEncodeSchemaPath())
 			GetLogger(ctx).Debug(msg)
-			return resource.NewNullProperty(), nil
+			return true
 		}
 		visitedPaths[sp.MustEncodeSchemaPath()] = struct{}{}
-		return pv, nil
+		return false
+	}
+
+	visitObject := func(pp resource.PropertyPath, pm resource.PropertyMap) (resource.PropertyMap, error) {
+		result := pm.Copy()
+		// Default TransformPropertyValue does not sort on keys; would like to avoid non-determinism here.
+		for _, key := range pm.StableKeys() {
+			subPath := append(pp, string(key))
+			if hasConflict(subPath) {
+				delete(result, key)
+			}
+		}
+		return result, nil
+	}
+
+	visit := func(pp resource.PropertyPath, pv resource.PropertyValue) (resource.PropertyValue, error) {
+		if !pv.IsObject() {
+			return pv, nil
+		}
+		pm, err := visitObject(pp, pv.ObjectValue())
+		if err != err {
+			return resource.NewNullProperty(), err
+		}
+		return resource.NewObjectProperty(pm), nil
 	}
 
 	obj := resource.NewObjectProperty(inputs)

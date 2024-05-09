@@ -88,8 +88,7 @@ func TestDeconflict(t *testing.T) {
 				"availabilityZoneId": resource.NewStringProperty("use1-az1"),
 			},
 			expected: resource.PropertyMap{
-				"availabilityZone":   resource.NewStringProperty("us-east-1c"),
-				"availabilityZoneId": resource.NewNullProperty(),
+				"availabilityZone": resource.NewStringProperty("us-east-1c"),
 			},
 		},
 		{
@@ -114,8 +113,7 @@ func TestDeconflict(t *testing.T) {
 				"netmaskLength": resource.NewNumberProperty(24),
 			},
 			expected: resource.PropertyMap{
-				"cidr":          resource.NewStringProperty("192.0.2.0/24"),
-				"netmaskLength": resource.NewNullProperty(),
+				"cidr": resource.NewStringProperty("192.0.2.0/24"),
 			},
 		},
 	}
@@ -204,7 +202,6 @@ func TestDeconflict(t *testing.T) {
 					resource.NewStringProperty("arn1"),
 					resource.NewStringProperty("arn2"),
 				}),
-				"trafficSources": resource.NewNullProperty(),
 			},
 		},
 	}...)
