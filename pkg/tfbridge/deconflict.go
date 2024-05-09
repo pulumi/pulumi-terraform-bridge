@@ -34,6 +34,12 @@ import (
 //
 // Why is this necessary: Read in Pulumi is expected to produce an input bag that is going to subsequently pass Check,
 // but TF providers are not always well-behaved in this regard.
+//
+// TODO[pulumi/pulumi-terraform-bridge#1949] handle too-many ExactlyOneOf values specified violations similarly.
+//
+// There may be cases where the dropout strategy is going to generate new issues with ExactlyOneOf or RequiredWith
+// constraints. Before a SAT solver is brought to bear at this problem to solve it in full generality, it is good to
+// collect some evidence it happens in practice.
 func deconflict(
 	ctx context.Context,
 	schemaMap shim.SchemaMap,
