@@ -16,7 +16,6 @@ package tfbridge
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
@@ -30,30 +29,60 @@ func TestDeconflict(t *testing.T) {
 	ctx := context.Background()
 
 	ctx = logging.InitLogging(ctx, logging.LogOptions{})
-	schema := &schema.SchemaMap{
-		"availability_zone": (&schema.Schema{
-			Type:          shim.TypeString,
-			Optional:      true,
-			Computed:      true,
-			ForceNew:      true,
-			ConflictsWith: []string{"availability_zone_id"},
-		}).Shim(),
-		"availability_zone_id": (&schema.Schema{
-			Type:          shim.TypeString,
-			Optional:      true,
-			Computed:      true,
-			ForceNew:      true,
-			ConflictsWith: []string{"availability_zone"},
-		}).Shim(),
-	}
 
 	type testCase struct {
-		inputs   resource.PropertyMap
-		expected resource.PropertyMap
+		name      string
+		schemaMap shim.SchemaMap
+		inputs    resource.PropertyMap
+		expected  resource.PropertyMap
 	}
 
 	testCases := []testCase{
 		{
+			// The base case is not modifying inputs when there is no conflict.
+			name: "aws-subnet-no-conflict",
+			schemaMap: &schema.SchemaMap{
+				"availability_zone": (&schema.Schema{
+					Type:          shim.TypeString,
+					Optional:      true,
+					Computed:      true,
+					ForceNew:      true,
+					ConflictsWith: []string{"availability_zone_id"},
+				}).Shim(),
+				"availability_zone_id": (&schema.Schema{
+					Type:          shim.TypeString,
+					Optional:      true,
+					Computed:      true,
+					ForceNew:      true,
+					ConflictsWith: []string{"availability_zone"},
+				}).Shim(),
+			},
+			inputs: resource.PropertyMap{
+				"availabilityZone": resource.NewStringProperty("us-east-1c"),
+			},
+			expected: resource.PropertyMap{
+				"availabilityZone": resource.NewStringProperty("us-east-1c"),
+			},
+		},
+		{
+			// Typical example of ConflictsWith, highly voted AWS resource excerpt here.
+			name: "aws-subnet",
+			schemaMap: &schema.SchemaMap{
+				"availability_zone": (&schema.Schema{
+					Type:          shim.TypeString,
+					Optional:      true,
+					Computed:      true,
+					ForceNew:      true,
+					ConflictsWith: []string{"availability_zone_id"},
+				}).Shim(),
+				"availability_zone_id": (&schema.Schema{
+					Type:          shim.TypeString,
+					Optional:      true,
+					Computed:      true,
+					ForceNew:      true,
+					ConflictsWith: []string{"availability_zone"},
+				}).Shim(),
+			},
 			inputs: resource.PropertyMap{
 				"availabilityZone":   resource.NewStringProperty("us-east-1c"),
 				"availabilityZoneId": resource.NewStringProperty("use1-az1"),
@@ -63,12 +92,38 @@ func TestDeconflict(t *testing.T) {
 				"availabilityZoneId": resource.NewNullProperty(),
 			},
 		},
+		{
+			// Usually ConflictsWith are bi-directional but this AWS resource has it one-directional.
+			name: "aws-ipam-pool-cidr",
+			schemaMap: &schema.SchemaMap{
+				"cidr": (&schema.Schema{
+					Type:     shim.TypeString,
+					Optional: true,
+					ForceNew: true,
+					Computed: true,
+				}).Shim(),
+				"netmask_length": (&schema.Schema{
+					Type:          shim.TypeInt,
+					Optional:      true,
+					ForceNew:      true,
+					ConflictsWith: []string{"cidr"},
+				}).Shim(),
+			},
+			inputs: resource.PropertyMap{
+				"cidr":          resource.NewStringProperty("192.0.2.0/24"),
+				"netmaskLength": resource.NewNumberProperty(24),
+			},
+			expected: resource.PropertyMap{
+				"cidr":          resource.NewStringProperty("192.0.2.0/24"),
+				"netmaskLength": resource.NewNullProperty(),
+			},
+		},
 	}
 
-	for i, tc := range testCases {
+	for _, tc := range testCases {
 		tc := tc
-		t.Run(fmt.Sprintf("case-%d", i), func(t *testing.T) {
-			actual := deconflict(ctx, schema, nil, tc.inputs)
+		t.Run(tc.name, func(t *testing.T) {
+			actual := deconflict(ctx, tc.schemaMap, nil, tc.inputs)
 			require.Equal(t, tc.expected, actual)
 		})
 	}
