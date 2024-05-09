@@ -4013,3 +4013,53 @@ func TestProviderMetaPlanResourceChangeNoError(t *testing.T) {
 		  }`)
 	})
 }
+
+func TestStringValForIntProperty(t *testing.T) {
+	p := &schemav2.Provider{
+		Schema: map[string]*schemav2.Schema{},
+		ResourcesMap: map[string]*schemav2.Resource{
+			"res": {
+				Schema: map[string]*schemav2.Schema{
+					"IntProp": {
+						Optional: true,
+						Type:     schema.TypeInt,
+					},
+				},
+			},
+		},
+	}
+	shimProv := shimv2.NewProvider(p)
+	provider := &Provider{
+		tf:     shimProv,
+		config: shimv2.NewSchemaMap(p.Schema),
+		info:   ProviderInfo{P: shimProv},
+		resources: map[tokens.Type]Resource{
+			"Res": {
+				TF:     shimv2.NewResource(p.ResourcesMap["res"]),
+				TFName: "res",
+				Schema: &ResourceInfo{},
+			},
+		},
+	}
+
+	testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Check",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::Res::exres",
+			"olds": {
+				"__defaults": []
+			},
+			"news": {
+				"__defaults": [],
+				"IntProp": "80"
+			},
+			"randomSeed": "zjSL8IMF68r5aLLepOpsIT53uBTbkDryYFDnHQHkjko="
+		},
+		"response": {
+			"inputs": {
+				"__defaults": []
+			}
+		}
+	}`)
+}
