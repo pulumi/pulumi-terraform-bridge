@@ -1245,6 +1245,8 @@ func TestOverridingTFSchema(t *testing.T) {
 
 	const largeNumber int64 = 1<<62 + 1
 
+	const notSoLargeNumber int64 = 1<<50 + 1
+
 	// We need to assert that when both the Pulumi type (String) and the Terraform
 	// type (Int) are large enough to hold a large number, we never round trip it
 	// through a smaller type like a float64.
@@ -1254,6 +1256,11 @@ func TestOverridingTFSchema(t *testing.T) {
 	t.Run("number_is_large", func(t *testing.T) {
 		t.Parallel()
 		assert.NotEqual(t, largeNumber, int64(float64(largeNumber)))
+	})
+
+	t.Run("number_is_not_so_large", func(t *testing.T) {
+		t.Parallel()
+		assert.Equal(t, notSoLargeNumber, int64(float64(notSoLargeNumber)))
 	})
 
 	tests := []struct {
@@ -1323,12 +1330,19 @@ func TestOverridingTFSchema(t *testing.T) {
 			tfOutput: resource.NewNullProperty(),
 		},
 		{
+			name:     "tf_mid_int_to_pulumi_string",
+			tfSchema: &schemav1.Schema{Type: schemav1.TypeInt},
+			info:     &SchemaInfo{Type: "string"},
+			tfInput:  int(notSoLargeNumber),
+			tfOutput: resource.NewProperty(strconv.FormatInt(notSoLargeNumber, 10)),
+		},
+		{
 			name: "tf_int_to_pulumi_string",
 
 			tfSchema: &schemav1.Schema{Type: schemav1.TypeInt},
 			info:     &SchemaInfo{Type: "string"},
 
-			tfInput:  largeNumber,
+			tfInput:  int(largeNumber),
 			tfOutput: resource.NewProperty(strconv.FormatInt(largeNumber, 10)),
 		},
 	}
@@ -2624,7 +2638,6 @@ func TestExtractDefaultIntegerInputs(t *testing.T) {
 }
 
 func TestExtractSchemaInputsNestedMaxItemsOne(t *testing.T) {
-
 	provider := func(info *ResourceInfo) *Provider {
 		if info == nil {
 			info = &ResourceInfo{}
@@ -2682,12 +2695,14 @@ func TestExtractSchemaInputsNestedMaxItemsOne(t *testing.T) {
 			set(d, "list_object", []any{
 				map[string]any{
 					"field1":      false,
-					"list_scalar": []any{1}},
+					"list_scalar": []any{1},
+				},
 			})
 			set(d, "list_object_maxitems", []any{
 				map[string]any{
 					"field1":      true,
-					"list_scalar": []any{2}},
+					"list_scalar": []any{2},
+				},
 			})
 			return nil
 		}
