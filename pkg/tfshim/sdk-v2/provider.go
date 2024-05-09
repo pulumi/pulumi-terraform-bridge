@@ -160,7 +160,7 @@ func (p v2Provider) ReadDataDiff(
 	t string,
 	c shim.ResourceConfig,
 ) (shim.InstanceDiff, error) {
-	r, ok := p.tf.DataSourcesMap[t]
+	resource, ok := p.tf.DataSourcesMap[t]
 	if !ok {
 		return nil, fmt.Errorf("unknown resource %v", t)
 	}
@@ -170,12 +170,12 @@ func (p v2Provider) ReadDataDiff(
 		return nil, err
 	}
 	config := configFromShim(c)
-	rawConfig := makeResourceRawConfig(providerOpts.diffStrategy, config, r)
+	rawConfig := makeResourceRawConfig(providerOpts.diffStrategy, config, resource)
 
-	instanceState := terraform.InstanceState{
-		RawConfig: rawConfig,
+	diff, err := resource.Diff(ctx, nil, config, p.tf.Meta())
+	if diff != nil {
+		diff.RawConfig = rawConfig
 	}
-	diff, err := r.Diff(ctx, &instanceState, configFromShim(c), p.tf.Meta())
 	return diffToShim(diff), err
 }
 
