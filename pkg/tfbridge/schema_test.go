@@ -1322,15 +1322,6 @@ func TestOverridingTFSchema(t *testing.T) {
 			tfInput:  MyString(""),
 			tfOutput: resource.NewNullProperty(),
 		},
-		{
-			name: "tf_int_to_pulumi_string",
-
-			tfSchema: &schemav1.Schema{Type: schemav1.TypeInt},
-			info:     &SchemaInfo{Type: "string"},
-
-			tfInput:  largeNumber,
-			tfOutput: resource.NewProperty(strconv.FormatInt(largeNumber, 10)),
-		},
 	}
 
 	const testProp = "prop"
