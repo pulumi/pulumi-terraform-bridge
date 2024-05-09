@@ -1239,7 +1239,10 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 		if err != nil {
 			return nil, err
 		}
-		minputs, err := plugin.MarshalProperties(inputs, plugin.MarshalOptions{
+
+		cleanInputs := deconflict(ctx, res.TF.Schema(), res.Schema.Fields, inputs)
+
+		minputs, err := plugin.MarshalProperties(cleanInputs, plugin.MarshalOptions{
 			Label:       label + ".inputs",
 			KeepSecrets: p.supportsSecrets,
 		})
