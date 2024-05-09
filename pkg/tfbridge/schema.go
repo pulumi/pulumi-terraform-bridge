@@ -430,7 +430,8 @@ func (ctx *conversionContext) makeTerraformInput(
 	case v.IsString():
 		switch tfs.Type() {
 		case shim.TypeInt:
-			return wrapError(strconv.ParseInt(v.StringValue(), 10, 64))
+			v, err := wrapError(strconv.ParseInt(v.StringValue(), 10, 0))
+			return int(v.(int64)), err
 		default:
 			return v.StringValue(), nil
 		}

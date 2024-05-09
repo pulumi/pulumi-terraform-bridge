@@ -4058,7 +4058,8 @@ func TestStringValForIntProperty(t *testing.T) {
 		},
 		"response": {
 			"inputs": {
-				"__defaults": []
+				"__defaults": [],
+				"IntProp": 80
 			}
 		}
 	}`)
