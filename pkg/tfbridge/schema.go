@@ -384,42 +384,32 @@ func (ctx *conversionContext) makeTerraformInput(
 		v = wrap(v)
 	}
 
-	wrapError := func(v any, err error) (any, error) {
-		if err == nil {
-			return v, nil
-		}
-
-		return v, fmt.Errorf("%s: %w", name, err)
-	}
-
 	// If there is a custom transform for this value, run it before processing the value.
 	if ps != nil && ps.Transform != nil {
 		nv, err := ps.Transform(v)
 		if err != nil {
-			return wrapError(nv, err)
+			return nil, err
 		}
 		v = nv
-	}
-
-	if tfs == nil {
-		tfs = (&schema.Schema{}).Shim()
 	}
 
 	switch {
 	case v.IsNull():
 		return nil, nil
 	case v.IsBool():
-		switch tfs.Type() {
-		case shim.TypeString:
+		if tfs != nil && tfs.Type() == shim.TypeString {
 			if v.BoolValue() {
 				return "true", nil
 			}
 			return "false", nil
-		default:
-			return v.BoolValue(), nil
 		}
+		return v.BoolValue(), nil
 	case v.IsNumber():
-		switch tfs.Type() {
+		var typ shim.ValueType
+		if tfs != nil {
+			typ = tfs.Type()
+		}
+		switch typ {
 		case shim.TypeFloat:
 			return v.NumberValue(), nil
 		case shim.TypeString:
@@ -428,12 +418,7 @@ func (ctx *conversionContext) makeTerraformInput(
 			return int(v.NumberValue()), nil
 		}
 	case v.IsString():
-		switch tfs.Type() {
-		case shim.TypeInt:
-			return wrapError(strconv.ParseInt(v.StringValue(), 10, 64))
-		default:
-			return v.StringValue(), nil
-		}
+		return v.StringValue(), nil
 	case v.IsArray():
 		var oldArr []resource.PropertyValue
 		if old.IsArray() {
@@ -1115,10 +1100,6 @@ func MakeTerraformOutput(
 			v = list
 		}
 
-		if ps == nil {
-			ps = &SchemaInfo{}
-		}
-
 		// We use reflection instead of a type switch so that we can support mapping values whose underlying type is
 		// supported into a Pulumi value, even if they stored as a wrapper type (such as a strongly-typed enum).
 		//
@@ -1130,12 +1111,7 @@ func MakeTerraformOutput(
 		case reflect.Bool:
 			return resource.NewBoolProperty(val.Bool())
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-			switch ps.Type {
-			case "string":
-				return resource.NewProperty(strconv.FormatInt(val.Int(), 10))
-			default:
-				return resource.NewNumberProperty(float64(val.Int()))
-			}
+			return resource.NewNumberProperty(float64(val.Int()))
 		case reflect.Float32, reflect.Float64:
 			return resource.NewNumberProperty(val.Float())
 		case reflect.String:
