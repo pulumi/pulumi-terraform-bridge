@@ -430,8 +430,7 @@ func (ctx *conversionContext) makeTerraformInput(
 	case v.IsString():
 		switch tfs.Type() {
 		case shim.TypeInt:
-			v, err := wrapError(strconv.ParseInt(v.StringValue(), 10, 0))
-			// We can't pass int64 to the Terraform plugin-sdk, so we convert to int.
+			v, err := wrapError(strconv.ParseInt(v.StringValue(), 10, 64))
 			return int(v.(int64)), err
 		default:
 			return v.StringValue(), nil

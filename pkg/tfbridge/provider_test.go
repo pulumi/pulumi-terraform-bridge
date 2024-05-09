@@ -4015,6 +4015,8 @@ func TestProviderMetaPlanResourceChangeNoError(t *testing.T) {
 }
 
 func TestStringValForOtherProperty(t *testing.T) {
+	const largeNumber int64 = 1<<62 + 1
+
 	p := &schemav2.Provider{
 		Schema: map[string]*schemav2.Schema{},
 		ResourcesMap: map[string]*schemav2.Resource{
@@ -4092,6 +4094,29 @@ func TestStringValForOtherProperty(t *testing.T) {
 				}
 			}
 		}`)
+	})
+
+	t.Run("String value for large int property", func(t *testing.T) {
+		testutils.Replay(t, provider, fmt.Sprintf(`
+		{
+			"method": "/pulumirpc.ResourceProvider/Check",
+			"request": {
+				"urn": "urn:pulumi:dev::teststack::Res::exres",
+				"olds": {
+				},
+				"news": {
+					"__defaults": [],
+					"intProp": "%d"
+				},
+				"randomSeed": "zjSL8IMF68r5aLLepOpsIT53uBTbkDryYFDnHQHkjko="
+			},
+			"response": {
+				"inputs": {
+					"__defaults": [],
+					"intProp": %d
+				}
+			}
+		}`, largeNumber, largeNumber))
 	})
 
 	t.Run("String value for bool property", func(t *testing.T) {
