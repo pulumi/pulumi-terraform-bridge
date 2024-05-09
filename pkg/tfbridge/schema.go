@@ -431,6 +431,7 @@ func (ctx *conversionContext) makeTerraformInput(
 		switch tfs.Type() {
 		case shim.TypeInt:
 			v, err := wrapError(strconv.ParseInt(v.StringValue(), 10, 64))
+			// The plugin sdk asserts against the type - need this to be an int.
 			return int(v.(int64)), err
 		default:
 			return v.StringValue(), nil
