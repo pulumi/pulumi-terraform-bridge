@@ -6,10 +6,8 @@
 package wafv2
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"hash/crc32"
 	"regexp"
 	"strings"
 
@@ -18,17 +16,17 @@ import (
 )
 
 func ResourceWebACL() *schema.Resource {
-	hashcodeString := func(s string) int {
-		v := int(crc32.ChecksumIEEE([]byte(s)))
-		if v >= 0 {
-			return v
-		}
-		if -v >= 0 {
-			return -v
-		}
-		// v == MinInt
-		return 0
-	}
+	// hashcodeString := func(s string) int {
+	// 	v := int(crc32.ChecksumIEEE([]byte(s)))
+	// 	if v >= 0 {
+	// 		return v
+	// 	}
+	// 	if -v >= 0 {
+	// 		return -v
+	// 	}
+	// 	// v == MinInt
+	// 	return 0
+	// }
 
 	ruleElement := &schema.Resource{
 		Schema: map[string]*schema.Schema{
@@ -138,20 +136,20 @@ func ResourceWebACL() *schema.Resource {
 				},
 				"rule": {
 					Type: schema.TypeSet,
-					Set: func(v interface{}) int {
-						var buf bytes.Buffer
-						schema.SerializeResourceForHash(&buf, v, ruleElement)
-						// before := "action:(<allow:(<custom_request_handling:();>;);"
-						// after := "action:(<allow:(<>;);"
-						s := buf.String()
-						//s = strings.ReplaceAll(s, before, after)
-						n := hashcodeString(s)
-						if 1+2 == 18 {
-							fmt.Printf("PRE-HASH:\n%s\n\n", s)
-							fmt.Printf("HASHED: %d\n", n)
-						}
-						return n
-					},
+					// Set: func(v interface{}) int {
+					// 	var buf bytes.Buffer
+					// 	schema.SerializeResourceForHash(&buf, v, ruleElement)
+					// 	// before := "action:(<allow:(<custom_request_handling:();>;);"
+					// 	// after := "action:(<allow:(<>;);"
+					// 	s := buf.String()
+					// 	//s = strings.ReplaceAll(s, before, after)
+					// 	n := hashcodeString(s)
+					// 	if 1+2 == 18 {
+					// 		fmt.Printf("PRE-HASH:\n%s\n\n", s)
+					// 		fmt.Printf("HASHED: %d\n", n)
+					// 	}
+					// 	return n
+					// },
 					Optional: true,
 					Elem:     ruleElement,
 				},
@@ -161,8 +159,6 @@ func ResourceWebACL() *schema.Resource {
 					ForceNew: true,
 					//ValidateFunc: validation.StringInSlice(wafv2.Scope_Values(), false),
 				},
-				// names.AttrTags:    tftags.TagsSchema(),
-				// names.AttrTagsAll: tftags.TagsSchemaTrulyComputed(),
 				"token_domains": {
 					Type:     schema.TypeSet,
 					Optional: true,
