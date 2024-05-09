@@ -15,6 +15,8 @@
 package sdkv2
 
 import (
+	"bytes"
+	"encoding/json"
 	"strings"
 
 	"github.com/hashicorp/go-cty/cty"
@@ -66,23 +68,24 @@ func (s v2InstanceState) Object(sch shim.SchemaMap) (map[string]interface{}, err
 	return s.objectV1(sch)
 }
 
+// objectFromCtyValue takes a cty.Value and converts it to JSON object.
+// We do not care about type checking the values, we just want to do our best to recursively convert
+// the cty.Value to the underlying value
+//
+// NOTE: one of the transforms this needs to handle is converting unknown values.
+// cty.Value that are also unknown cannot be converted to their underlying value. To get
+// around this we just convert to a sentinel, which so far does not seem to cause any issues downstream
 func objectFromCtyValue(v cty.Value) map[string]interface{} {
-	// Now we need to translate cty.Value to a JSON-like form. This could have been avoided if surrounding Pulumi
-	// code accepted a cty.Value and translated that to resource.PropertyValue, but that is currently not the case.
-	//
-	// An additional complication is that unknown values cannot serialize, so first replace them with sentinels.
-	v, err := cty.Transform(v, func(_ cty.Path, v cty.Value) (cty.Value, error) {
-		if !v.IsKnown() {
-			return cty.StringVal(UnknownVariableValue), nil
-		}
-		return v, nil
-	})
-	contract.AssertNoErrorf(err, "Failed to encode unknowns with UnknownVariableValue")
+	var path cty.Path
+	buf := &bytes.Buffer{}
+	err := marshal(v, v.Type(), path, buf)
+	contract.AssertNoErrorf(err, "Failed to marshal cty.Value to a JSON string value")
 
-	obj, err := schema.StateValueToJSONMap(v, v.Type())
-	contract.AssertNoErrorf(err, "schema.StateValueToJSONMap failed")
+	var m map[string]interface{}
+	err = json.Unmarshal(buf.Bytes(), &m)
+	contract.AssertNoErrorf(err, "failed to unmarshal: %s", buf.String())
 
-	return obj
+	return m
 }
 
 // The legacy version of Object used custom Pulumi code forked from TF sources.
