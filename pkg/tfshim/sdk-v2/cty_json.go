@@ -10,15 +10,15 @@ import (
 	cty_json "github.com/hashicorp/go-cty/cty/json"
 )
 
-// marshal takes a cty.Value and coverts it to a JSON string
-// This is a fork of the mashal function for the hashicorp/go-cty package
+// marshal takes a cty.Value and converts it to a JSON string
+// This is a fork of the marshal function for the hashicorp/go-cty package
 // https://github.com/hashicorp/go-cty/blob/master/cty/json/marshal.go
 //
 // The only difference being the handling of Unknown values. In our case we want to convert
 // the unknown value into a string value
 func marshal(val cty.Value, t cty.Type, path cty.Path, b *bytes.Buffer) error {
 	if val.IsMarked() {
-		return path.NewErrorf("value has marks, so it cannot be seralized")
+		return path.NewErrorf("value has marks, so it cannot be serialized")
 	}
 
 	// If we're going to decode as DynamicPseudoType then we need to save
@@ -32,7 +32,7 @@ func marshal(val cty.Value, t cty.Type, path cty.Path, b *bytes.Buffer) error {
 		return nil
 	}
 
-	// This is the one difference between the hashicorp/go-cty mashal function
+	// This is the one difference between the hashicorp/go-cty marshal function
 	// This function does not correctly handle Unknown values. At this point it could be any unknown type,
 	// an unknown map, list, etc, but it is not possible to further recurse on an Unknown type
 	// so the best we can do is just convert it to a string sentinel
