@@ -675,6 +675,12 @@ func (p *configDiffer) DiffConfig(
 		keyPath, err := resource.ParsePropertyPath(key)
 		contract.AssertNoErrorf(err, "Unexpected failed parse of PropertyPath %q", key)
 		if p.forcesProviderReplace(keyPath) {
+			// NOTE: for states provisioned on the older versions of Pulumi CLI oldInputs will have no entry
+			// for the changing property. Causing cascading replacements in this case is undesirable, since
+			// it is not a real change. Err on the side of not replacing (pulumi/pulumi-aws#3826).
+			if _, ok := keyPath.Get(resource.NewObjectProperty(oldInputs)); !ok {
+				continue
+			}
 			detailedDiff[key] = change.ToReplace()
 		}
 	}
