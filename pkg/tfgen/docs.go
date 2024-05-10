@@ -725,11 +725,11 @@ func (p *tfMarkdownParser) parseSection(h2Section []string) error {
 		p.sink.debug("Ignoring doc section [%v] for [%v]", header, p.rawname)
 		ignoredDocHeaders[header]++
 		return nil
-	case "Example Usage":
+	case "Example Usage", "Example":
 		sectionKind = sectionExampleUsage
-	case "Arguments Reference", "Argument Reference", "Argument reference", "Nested Blocks", "Nested blocks":
+	case "Arguments Reference", "Argument Reference", "Argument reference", "Nested Blocks", "Nested blocks", "Arguments":
 		sectionKind = sectionArgsReference
-	case "Attributes Reference", "Attribute Reference", "Attribute reference":
+	case "Attributes Reference", "Attribute Reference", "Attribute reference", "Attributes":
 		sectionKind = sectionAttributesReference
 	case "Import", "Imports":
 		sectionKind = sectionImports
