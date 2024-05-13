@@ -441,11 +441,11 @@ var (
 	linkFooterRegexp = regexp.MustCompile(`(?m)^(\[\d+\]):\s(.*)`)
 
 	argumentBulletRegexp = regexp.MustCompile(
-		"^\\s*[*+-]\\s*`([a-zA-z0-9_]*)`\\s*(\\([a-zA-Z]*\\)\\s*)?\\s*[:–-]?\\s*(\\([^\\)]*\\)[-\\s]*)?(.*)",
+		"^\\s*[*+-]\\s*`([a-z0-9_]*)`\\s*(\\([a-zA-Z]*\\)\\s*)?\\s*[:–-]?\\s*(\\([^\\)]*\\)[-\\s]*)?(.*)",
 	)
 
-	bulletPointRegexStr       = "^\\s*[*+-]"             // matches any bullet point-like character
-	attributePathNameRegexStr = "\\s*`([a-zA-z0-9._]*)`" // matches any TF attribute path name
+	bulletPointRegexStr       = "^\\s*[*+-]"          // matches any bullet point-like character
+	attributePathNameRegexStr = "\\s*`([a-z0-9._]*)`" // matches any TF attribute path name
 
 	// matches any line starting with a bullet point followed by a TF path or resource name)
 	attributeBulletRegexp = regexp.MustCompile(

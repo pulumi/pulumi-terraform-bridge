@@ -104,10 +104,12 @@ func TestReformatText(t *testing.T) {
 
 func TestArgumentRegex(t *testing.T) {
 	tests := []struct {
+		name     string
 		input    []string
 		expected map[docsPath]*argumentDocs
 	}{
 		{
+			name: "Discovers * bullet descriptions",
 			input: []string{
 				"* `iam_instance_profile` - (Optional) The IAM Instance Profile to",
 				"launch the instance with. Specified as the name of the Instance Profile. Ensure your credentials have the correct permission to assign the instance profile according to the [EC2 documentation](http://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_use_switch-role-ec2.html#roles-usingrole-ec2instance-permissions), notably `iam:PassRole`.",
@@ -132,6 +134,7 @@ func TestArgumentRegex(t *testing.T) {
 			},
 		},
 		{
+			name: "Parses nested arguments via `object supports the following`",
 			input: []string{
 				"* `jwt_configuration` - (Optional) The configuration of a JWT authorizer. Required for the `JWT` authorizer type.",
 				"Supported only for HTTP APIs.",
@@ -155,6 +158,7 @@ func TestArgumentRegex(t *testing.T) {
 			},
 		},
 		{
+			name: "Renders ~> **NOTE:** and continues parsing as expected",
 			input: []string{
 				"* `website` - (Optional) A website object (documented below).",
 				"~> **NOTE:** You cannot use `acceleration_status` in `cn-north-1` or `us-gov-west-1`",
@@ -187,6 +191,7 @@ func TestArgumentRegex(t *testing.T) {
 			},
 		},
 		{
+			name: "Displays in-text backticked values as given",
 			input: []string{
 				"* `action` - (Optional) The action that CloudFront or AWS WAF takes when a web request matches the conditions in the rule. Not used if `type` is `GROUP`.",
 				"  * `type` - (Required) valid values are: `BLOCK`, `ALLOW`, or `COUNT`",
@@ -209,6 +214,7 @@ func TestArgumentRegex(t *testing.T) {
 			},
 		},
 		{
+			name: "Retains second mention of property if named twice",
 			input: []string{
 				"* `priority` - (Optional) The priority associated with the rule.",
 				"",
@@ -221,6 +227,7 @@ func TestArgumentRegex(t *testing.T) {
 			},
 		},
 		{
+			name: "Correctly handles markdown sectioning",
 			input: []string{
 				"* `allowed_audiences` (Optional) Allowed audience values to consider when validating JWTs issued by Azure Active Directory.",
 				"* `retention_policy` - (Required) A `retention_policy` block as documented below.",
@@ -238,6 +245,7 @@ func TestArgumentRegex(t *testing.T) {
 			},
 		},
 		{
+			name: "Cleans up `TF Optional; Default` parentheses",
 			input: []string{
 				"* `launch_template_config` - (Optional) Launch template configuration block. See [Launch Template Configs](#launch-template-configs) below for more details. Conflicts with `launch_specification`. At least one of `launch_specification` or `launch_template_config` is required.",
 				"* `spot_maintenance_strategies` - (Optional) Nested argument containing maintenance strategies for managing your Spot Instances that are at an elevated risk of being interrupted. Defined below.",
@@ -282,6 +290,7 @@ func TestArgumentRegex(t *testing.T) {
 			},
 		},
 		{
+			name: "Doesn't associate unbackticked properties in supports block regexp",
 			input: []string{
 				"The following arguments are supported:",
 				"",
@@ -304,6 +313,7 @@ func TestArgumentRegex(t *testing.T) {
 			},
 		},
 		{
+			name: "Parses `property1`, `property2`, and `property3`'s `subproperty` object supports the following",
 			input: []string{
 				"The `grpc_route`, `http_route` and `http2_route`'s `action` object supports the following:",
 				"",
@@ -330,6 +340,7 @@ func TestArgumentRegex(t *testing.T) {
 			},
 		},
 		{
+			name: "Parses H3 and H4 headers and their bullets as nested properties",
 			input: []string{
 				"### certificate_authority_configuration",
 				"",
@@ -354,6 +365,7 @@ func TestArgumentRegex(t *testing.T) {
 			},
 		},
 		{
+			name: "Appends information on newlines to correct nested description",
 			input: []string{
 				"* `header` - (Optional) Contains additional header parameters for the connection. Each parameter can contain the following:",
 				"  * `key` - (Required) The key for the parameter.",
@@ -369,6 +381,7 @@ func TestArgumentRegex(t *testing.T) {
 			},
 		},
 		{
+			name: "Cleans up tabs",
 			input: []string{
 				"* `node_pool_config` (Input only) The configuration for the GKE node pool. ",
 				"       If specified, Dataproc attempts to create a node pool with the specified shape. ",
@@ -384,6 +397,7 @@ func TestArgumentRegex(t *testing.T) {
 			},
 		},
 		{
+			name: "Parses subblock regexp",
 			input: []string{
 				"The optional `settings.location_preference` subblock supports:",
 				"",
@@ -412,6 +426,7 @@ func TestArgumentRegex(t *testing.T) {
 			},
 		},
 		{
+			name: "Parses block regexp",
 			input: []string{
 				"The optional `settings.location_preference` subblock supports:",
 				"",
@@ -430,6 +445,7 @@ func TestArgumentRegex(t *testing.T) {
 			},
 		},
 		{
+			name: "Parses sublist regexp",
 			input: []string{
 				"The optional `settings.location_preference` subblock supports:",
 				"",
@@ -447,11 +463,50 @@ func TestArgumentRegex(t *testing.T) {
 				"settings.maintenance_window.day":                     {description: "Day of week (`1-7`), starting on Monday"},
 			},
 		},
+
+		{
+			name: "All caps bullet points are not parsed as TF properties",
+			input: []string{
+				"* `status` - Status of the AWS PrivateLink connection.",
+				"	Returns one of the following values:",
+				"	* `AVAILABLE` Atlas created the load balancer and the Private Link Service.",
+				"	* `INITIATING` Atlas is creating the network load balancer and VPC endpoint service.",
+				"	* `WAITING_FOR_USER` The Atlas network load balancer and VPC endpoint service are created and ready to receive connection requests. " +
+					"When you receive this status, create an interface endpoint to continue configuring the AWS PrivateLink connection.",
+				"	* `FAILED` A system failure has occurred.",
+				"	* `DELETING` The Private Link service is being deleted.",
+			},
+			expected: map[docsPath]*argumentDocs{
+				"status": {description: "Status of the AWS PrivateLink connection.\n" +
+					"Returns one of the following values:\n" +
+					"* `AVAILABLE` Atlas created the load balancer and the Private Link Service.\n" +
+					"* `INITIATING` Atlas is creating the network load balancer and VPC endpoint service.\n" +
+					"* `WAITING_FOR_USER` The Atlas network load balancer and VPC endpoint service are created and ready to receive connection requests. " +
+					"When you receive this status, create an interface endpoint to continue configuring the AWS PrivateLink connection.\n" +
+					"* `FAILED` A system failure has occurred.\n*" +
+					" `DELETING` The Private Link service is being deleted."},
+			},
+		},
+		{
+			name: "Bullet points in backticks containing any uppercase letters are not parsed as TF properties",
+			input: []string{
+				"* `status` - Status of the AWS PrivateLink connection.",
+				"	Returns one of the following values:",
+				"	* `Available` Atlas created the load balancer and the Private Link Service.",
+				"	* `Initiating` Atlas is creating the network load balancer and VPC endpoint service.",
+			},
+			expected: map[docsPath]*argumentDocs{
+				"status": {description: "Status of the AWS PrivateLink connection.\n" +
+					"Returns one of the following values:\n" +
+					"* `Available` Atlas created the load balancer and the Private Link Service.\n" +
+					"* `Initiating` Atlas is creating the network load balancer and VPC endpoint service."},
+			},
+		},
 	}
 
 	for _, tt := range tests {
 		tt := tt
-		t.Run("", func(t *testing.T) {
+		t.Run(tt.name, func(t *testing.T) {
 			ret := entityDocs{
 				Arguments: make(map[docsPath]*argumentDocs),
 			}
