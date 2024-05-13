@@ -409,17 +409,21 @@ type (
 )
 
 func DelegateIDField(field resource.PropertyKey, providerName, repoURL string) ComputeID {
+	return DelegateIDProperty(resource.PropertyPath{string(field)}, providerName, repoURL)
+}
+
+func DelegateIDProperty(prop resource.PropertyPath, providerName, repoURL string) ComputeID {
 	return func(ctx context.Context, state resource.PropertyMap) (resource.ID, error) {
 		err := func(msg string, a ...any) error {
-			return delegateIDFieldError{
+			return delegateIDPropertyError{
 				msg:          fmt.Sprintf(msg, a...),
 				providerName: providerName,
 				repoURL:      repoURL,
 			}
 		}
-		fieldValue, ok := state[field]
+		fieldValue, ok := prop.Get(resource.NewProperty(state))
 		if !ok {
-			return "", err("Could not find required property '%s' in state", field)
+			return "", err("Could not find required property '%s' in state", prop)
 		}
 
 		contract.Assertf(
@@ -429,7 +433,7 @@ func DelegateIDField(field resource.PropertyKey, providerName, repoURL string) C
 		)
 
 		if fieldValue.IsSecret() || (fieldValue.IsOutput() && fieldValue.OutputValue().Secret) {
-			msg := fmt.Sprintf("Setting non-secret resource ID as '%s' (which is secret)", field)
+			msg := fmt.Sprintf("Setting non-secret resource ID as '%s' (which is secret)", prop)
 			GetLogger(ctx).Warn(msg)
 			if fieldValue.IsSecret() {
 				fieldValue = fieldValue.SecretValue().Element
@@ -440,24 +444,24 @@ func DelegateIDField(field resource.PropertyKey, providerName, repoURL string) C
 
 		if !fieldValue.IsString() {
 			return "", err("Expected '%s' property to be a string, found %s",
-				field, fieldValue.TypeString())
+				prop, fieldValue.TypeString())
 		}
 
 		return resource.ID(fieldValue.StringValue()), nil
 	}
 }
 
-type delegateIDFieldError struct {
+type delegateIDPropertyError struct {
 	msg                   string
 	providerName, repoURL string
 }
 
-func (err delegateIDFieldError) Error() string {
+func (err delegateIDPropertyError) Error() string {
 	return fmt.Sprintf("%s. This is an error in %s resource provider, please report at %s",
 		err.msg, err.providerName, err.repoURL)
 }
 
-func (err delegateIDFieldError) Is(target error) bool {
-	target, ok := target.(delegateIDFieldError)
+func (err delegateIDPropertyError) Is(target error) bool {
+	target, ok := target.(delegateIDPropertyError)
 	return ok && err == target
 }
