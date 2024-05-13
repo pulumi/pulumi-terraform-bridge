@@ -203,7 +203,7 @@ func TestDelegateIDField(t *testing.T) {
 	)
 
 	errMsg := func(msg string, a ...any) error {
-		return delegateIDFieldError{
+		return delegateIDPropertyError{
 			msg:          fmt.Sprintf(msg, a...),
 			providerName: providerName,
 			repoURL:      repoURL,
