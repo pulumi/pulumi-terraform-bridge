@@ -307,6 +307,33 @@ func TestDiffConfig(t *testing.T) {
 		}`)
 	})
 
+	t.Run("changing region from empty does not result in a cascading replace", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+		{
+		  "method": "/pulumirpc.ResourceProvider/DiffConfig",
+		  "request": {
+		    "urn": "urn:pulumi:dev2::bridge-244::pulumi:providers:aws::name1",
+		    "olds": {
+		      "version": "6.22.0"
+		    },
+		    "news": {
+		      "region": "us-west-1",
+		      "version": "6.22.0"
+		    },
+		    "oldInputs": {
+		      "version": "6.22.0"
+		    }
+		  },
+		  "response": {
+                    "diffs": ["region"],
+		    "changes": "DIFF_SOME",
+                    "detailedDiff": {
+                      "region": {"inputDiff": true}
+                    }
+		  }
+		}`)
+	})
+
 	t.Run("changing region can be ignored", func(t *testing.T) {
 		testutils.Replay(t, provider, `
 		{
