@@ -221,9 +221,9 @@ func TestInputsEmptyConfigModeAttrSet(t *testing.T) {
 }
 
 func TestOptionalSetNotSpecified(t *testing.T) {
-	skipUnlessLinux(t)
+	//skipUnlessLinux(t)
 
-	t.Skip("We misrepresent empty sets")
+	//t.Skip("We misrepresent empty sets")
 	// TODO[pulumi/pulumi-terraform-bridge#1970]
 
 	runCreateInputCheck(t, inputTestCase{
@@ -243,3 +243,10 @@ func TestOptionalSetNotSpecified(t *testing.T) {
 		Config: tftypes.NewValue(tftypes.Object{}, map[string]tftypes.Value{}),
 	})
 }
+
+// input_check.go:40: RawConfig not equal!
+// input_check.go:41: TF value cty.ObjectVal(map[string]cty.Value{"f0":cty.SetValEmpty(cty.Object(map[string]cty.Type{"x":cty.String})), "id":cty.NullVal(cty.String)})
+// input_check.go:42: PU value cty.ObjectVal(map[string]cty.Value{"f0":cty.NullVal(cty.Set(cty.Object(map[string]cty.Type{"x":cty.String}))), "id":cty.NullVal(cty.String)})
+// input_check.go:40: RawPlan not equal!
+// input_check.go:41: TF value cty.ObjectVal(map[string]cty.Value{"f0":cty.SetValEmpty(cty.Object(map[string]cty.Type{"x":cty.String})), "id":cty.UnknownVal(cty.String)})
+// input_check.go:42: PU value cty.ObjectVal(map[string]cty.Value{"f0":cty.NullVal(cty.Set(cty.Object(map[string]cty.Type{"x":cty.String}))), "id":cty.NullVal(cty.String)})

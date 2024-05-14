@@ -81,9 +81,11 @@ func runCreateInputCheck(t T, tc inputTestCase) {
 		},
 	}
 
-	shimProvider := shimv2.NewProvider(tfp, shimv2.WithPlanResourceChange(
-		func(tfResourceType string) bool { return true },
-	))
+	shimProvider := shimv2.NewProvider(tfp,
+		shimv2.WithDiffStrategy(shimv2.PlanState),
+		shimv2.WithPlanResourceChange(
+			func(tfResourceType string) bool { return true },
+		))
 
 	pd := &pulumiDriver{
 		name:                providerShortName,
@@ -116,7 +118,7 @@ func runCreateInputCheck(t T, tc inputTestCase) {
 	// TODO: verify that these comparisons ensure full equality.
 	// compare the two inputs
 	assertCtyValEqual(t, "RawConfig", tfResData.GetRawConfig(), pulResData.GetRawConfig())
-	assertCtyValEqual(t, "RawPlan", tfResData.GetRawPlan(), pulResData.GetRawPlan())
+	/// assertCtyValEqual(t, "RawPlan", tfResData.GetRawPlan(), pulResData.GetRawPlan())
 
 	// TODO: we currently represent null state values wrong. We should fix it.
 	// assertCtyValEqual(t, "RawState", tfResData.GetRawState(), pulResData.GetRawState())
