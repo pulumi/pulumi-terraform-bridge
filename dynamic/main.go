@@ -17,20 +17,31 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/opentofu/opentofu/shim"
+	"github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/pf/tfgen"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 )
 
 func main() {
 	ctx := context.Background()
 
-	p, err := shim.Provider(ctx, "random", "")
+	p, err := shim.LoadProvider(ctx, "random", "")
 	if err != nil {
 		fmt.Printf("Error: %s", err.Error())
 		os.Exit(1)
 	}
 	defer p.Close()
 
-	fmt.Printf("Description = %#v\n", p.GetProviderSchema().ResourceTypes)
+	info := providerInfo(p)
+
+	packageSchema, err := tfgen.GenerateSchema(ctx, tfgen.GenerateSchemaOptions{
+		ProviderInfo:    info,
+		DiagnosticsSink: diag.DefaultSink(io.Discard, os.Stderr, diag.FormatOptions{}),
+	})
+
+	tfbridge.Main(ctx, p.Name(), info, packageSchema.ProviderMetadata)
 }
