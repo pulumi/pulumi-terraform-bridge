@@ -161,7 +161,7 @@ func loadProviderServer(ctx context.Context, addr tfaddr.Provider, version getpr
 		return nil, fmt.Errorf("provider not found in cache: %v\n", addr)
 	}
 
-	i, err := providerFactory(p)()
+	i, err := runProvider(p)
 	if err != nil {
 		return nil, err
 	}
@@ -169,54 +169,52 @@ func loadProviderServer(ctx context.Context, addr tfaddr.Provider, version getpr
 	return provider{i, addr.Type, p.Version.String()}, nil
 }
 
-// providerFactory produces a provider factory that runs up the executable
+// runProvider produces a provider factory that runs up the executable
 // file in the given cache package and uses go-plugin to implement
 // providers.Interface against it.
-func providerFactory(meta *providercache.CachedProvider) providers.Factory {
-	return func() (providers.Interface, error) {
-		execFile, err := meta.ExecutableFile()
-		if err != nil {
-			return nil, err
-		}
+func runProvider(meta *providercache.CachedProvider) (providers.Interface, error) {
+	execFile, err := meta.ExecutableFile()
+	if err != nil {
+		return nil, err
+	}
 
-		config := &plugin.ClientConfig{
-			HandshakeConfig:  tfplugin.Handshake,
-			Logger:           logging.NewProviderLogger(""),
-			AllowedProtocols: []plugin.Protocol{plugin.ProtocolGRPC},
-			Managed:          true,
-			Cmd:              exec.Command(execFile),
-			AutoMTLS:         true,
-			VersionedPlugins: tfplugin.VersionedPlugins,
-			SyncStdout:       logging.PluginOutputMonitor(fmt.Sprintf("%s:stdout", meta.Provider)),
-			SyncStderr:       logging.PluginOutputMonitor(fmt.Sprintf("%s:stderr", meta.Provider)),
-		}
+	config := &plugin.ClientConfig{
+		HandshakeConfig:  tfplugin.Handshake,
+		Logger:           logging.NewProviderLogger(""),
+		AllowedProtocols: []plugin.Protocol{plugin.ProtocolGRPC},
+		Managed:          true,
+		Cmd:              exec.Command(execFile),
+		AutoMTLS:         true,
+		VersionedPlugins: tfplugin.VersionedPlugins,
+		SyncStdout:       logging.PluginOutputMonitor(fmt.Sprintf("%s:stdout", meta.Provider)),
+		SyncStderr:       logging.PluginOutputMonitor(fmt.Sprintf("%s:stderr", meta.Provider)),
+	}
 
-		client := plugin.NewClient(config)
-		rpcClient, err := client.Client()
-		if err != nil {
-			return nil, err
-		}
+	client := plugin.NewClient(config)
+	rpcClient, err := client.Client()
+	if err != nil {
+		return nil, err
+	}
 
-		raw, err := rpcClient.Dispense(tfplugin.ProviderPluginName)
-		if err != nil {
-			return nil, err
-		}
+	raw, err := rpcClient.Dispense(tfplugin.ProviderPluginName)
+	if err != nil {
+		return nil, err
+	}
 
-		// store the client so that the plugin can kill the child process
-		protoVer := client.NegotiatedVersion()
-		switch protoVer {
-		case 5:
-			p := raw.(*tfplugin.GRPCProvider)
-			p.PluginClient = client
-			p.Addr = meta.Provider
-			return p, nil
-		case 6:
-			p := raw.(*tfplugin6.GRPCProvider)
-			p.PluginClient = client
-			p.Addr = meta.Provider
-			return p, nil
-		default:
-			panic("unsupported protocol version")
-		}
+	// store the client so that the plugin can kill the child process
+	protoVer := client.NegotiatedVersion()
+	switch protoVer {
+	case 5:
+		p := raw.(*tfplugin.GRPCProvider)
+		p.PluginClient = client
+		p.Addr = meta.Provider
+		return p, nil
+	case 6:
+		p := raw.(*tfplugin6.GRPCProvider)
+		p.PluginClient = client
+		p.Addr = meta.Provider
+		return p, nil
+	default:
+		panic("unsupported protocol version")
 	}
 }
