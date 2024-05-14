@@ -12,17 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package load
+package shim
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"os/exec"
+	"path/filepath"
 
 	plugin "github.com/hashicorp/go-plugin"
+	disco "github.com/hashicorp/terraform-svchost/disco"
+	"github.com/opentofu/opentofu/internal/depsfile"
+	"github.com/opentofu/opentofu/internal/getproviders"
+	"github.com/opentofu/opentofu/internal/logging"
+	tfplugin "github.com/opentofu/opentofu/internal/plugin"
+	tfplugin6 "github.com/opentofu/opentofu/internal/plugin6"
+	"github.com/opentofu/opentofu/internal/providercache"
+	"github.com/opentofu/opentofu/internal/providers"
 	tfaddr "github.com/opentofu/registry-address"
-
-	"github.com/opentofu/opentofu/shim/providercache"
-	"github.com/opentofu/opentofu/shim/providers"
 )
 
 // TODO:
@@ -33,22 +41,63 @@ import (
 // - If not, but TF is setup we should probably contribute to the existing cache.
 //
 // - If TF is not setup, we should cache within PULUMI_HOME to avoid creating new dirs.
-const envPluginCache = "TF_PLUGIN_CACHE_DIR"
+const EnvPluginCache = "TF_PLUGIN_CACHE_DIR"
 
-func Provider(key, version string) {
+type Interface = providers.Interface
+
+func Provider(ctx context.Context, key, version string) (Interface, error) {
 	p := tfaddr.Provider{Type: key}
+	v, err := getproviders.ParseVersionConstraints(version)
+	if err != nil {
+		return nil, err
+	}
+
+	return loadProviderServer(ctx, p, v)
 }
 
-func loadProviderServer(addr tfaddr.Provider) (providers.Interface, error) {
-	providerCacheDir := os.Getenv(envPluginCache)
+func getPluginCache() (string, error) {
+	if dir := os.Getenv(EnvPluginCache); dir != "" {
+		return dir, nil
+	}
+
+	pulumiHome := os.Getenv("PULUMI_HOME")
+	if pulumiHome == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", err
+		}
+		pulumiHome = filepath.Join(home, ".pulumi")
+	}
+
+	return filepath.Join(pulumiHome, "dynamic_tf_plugins"), nil
+}
+
+func loadProviderServer(ctx context.Context, addr tfaddr.Provider, version getproviders.VersionConstraints) (providers.Interface, error) {
+	cacheDir, err := getPluginCache()
+	if err != nil {
+		return nil, err
+	}
+	providerCacheDir := os.Getenv(cacheDir)
 	providersMap := providercache.NewDir(providerCacheDir)
+
+	installer := providercache.NewInstaller(providersMap, getproviders.NewRegistrySource(disco.New()))
+
+	// TODO: Check if not having a lockfile is problematic. If it is, persist it.
+	//
+	// It might not be problematic if the requirements we give are always strict.
+	_, err = installer.EnsureProviderVersions(ctx, depsfile.NewLocks(), getproviders.Requirements{
+		addr: version,
+	}, providercache.InstallNewProvidersOnly)
+	if err != nil {
+		return nil, err
+	}
 
 	p := providersMap.ProviderLatestVersion(addr)
 	if p == nil {
 		return nil, fmt.Errorf("provider not found in cache: %v\n", addr)
 	}
 
-	return providerfactory(p)
+	return providerFactory(p)()
 }
 
 // providerFactory produces a provider factory that runs up the executable
@@ -67,7 +116,7 @@ func providerFactory(meta *providercache.CachedProvider) providers.Factory {
 			AllowedProtocols: []plugin.Protocol{plugin.ProtocolGRPC},
 			Managed:          true,
 			Cmd:              exec.Command(execFile),
-			AutoMTLS:         enableProviderAutoMTLS,
+			AutoMTLS:         true,
 			VersionedPlugins: tfplugin.VersionedPlugins,
 			SyncStdout:       logging.PluginOutputMonitor(fmt.Sprintf("%s:stdout", meta.Provider)),
 			SyncStderr:       logging.PluginOutputMonitor(fmt.Sprintf("%s:stderr", meta.Provider)),
