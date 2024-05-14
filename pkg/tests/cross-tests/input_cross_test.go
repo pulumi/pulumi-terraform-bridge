@@ -219,3 +219,27 @@ func TestInputsEmptyConfigModeAttrSet(t *testing.T) {
 		}),
 	})
 }
+
+func TestOptionalSetNotSpecified(t *testing.T) {
+	skipUnlessLinux(t)
+
+	t.Skip("We misrepresent empty sets")
+	// TODO[pulumi/pulumi-terraform-bridge#1970]
+
+	runCreateInputCheck(t, inputTestCase{
+		Resource: &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				"f0": {
+					Optional: true,
+					Type:     schema.TypeSet,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"x": {Optional: true, Type: schema.TypeString},
+						},
+					},
+				},
+			},
+		},
+		Config: tftypes.NewValue(tftypes.Object{}, map[string]tftypes.Value{}),
+	})
+}
