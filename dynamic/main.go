@@ -25,9 +25,12 @@ import (
 func main() {
 	ctx := context.Background()
 
-	_, err := shim.Provider(ctx, "random", "")
+	p, err := shim.Provider(ctx, "random", "")
 	if err != nil {
-		fmt.Printf("Error: %#v", err)
+		fmt.Printf("Error: %s", err.Error())
 		os.Exit(1)
 	}
+	defer p.Close()
+
+	fmt.Printf("Description = %#v\n", p.GetProviderSchema().ResourceTypes)
 }

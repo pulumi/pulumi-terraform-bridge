@@ -41,12 +41,38 @@ import (
 // - If not, but TF is setup we should probably contribute to the existing cache.
 //
 // - If TF is not setup, we should cache within PULUMI_HOME to avoid creating new dirs.
-const EnvPluginCache = "TF_PLUGIN_CACHE_DIR"
+const envPluginCache = "TF_PLUGIN_CACHE_DIR"
 
-type Interface = providers.Interface
+// A loaded and running provider.
+//
+// You must call Close on any Provider that has been created.
+type Provider interface {
+	providers.Interface
 
-func Provider(ctx context.Context, key, version string) (Interface, error) {
-	p := tfaddr.Provider{Type: key}
+	Name() string
+	Version() string
+}
+
+// Load a TF provider with key and version specified.
+//
+// If version is "", then whatever version is currently installed will be used. If no
+// version is installed then the latest version can be used.
+//
+// `=`, `<=`, `>=` sigils can be used just like in TF.
+func LoadProvider(ctx context.Context, key, version string) (Provider, error) {
+	p := tfaddr.Provider{
+		Type: key,
+
+		// We assume that all providers are hosted in the registry.
+		//
+		// TODO: We will need to support providers at a specified path at minimum.
+		//
+		// TODO: If we ever relax the requirement to have one host, we will need
+		// to find some way to keep `key & version => provider` true.
+		Hostname:  tfaddr.DefaultProviderRegistryHost,
+		Namespace: "opentofu",
+	}
+
 	v, err := getproviders.ParseVersionConstraints(version)
 	if err != nil {
 		return nil, err
@@ -56,7 +82,7 @@ func Provider(ctx context.Context, key, version string) (Interface, error) {
 }
 
 func getPluginCache() (string, error) {
-	if dir := os.Getenv(EnvPluginCache); dir != "" {
+	if dir := os.Getenv(envPluginCache); dir != "" {
 		return dir, nil
 	}
 
@@ -72,24 +98,62 @@ func getPluginCache() (string, error) {
 	return filepath.Join(pulumiHome, "dynamic_tf_plugins"), nil
 }
 
-func loadProviderServer(ctx context.Context, addr tfaddr.Provider, version getproviders.VersionConstraints) (providers.Interface, error) {
+func loadLockFile(path string) (*depsfile.Locks, error) {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return depsfile.NewLocks(), nil
+	}
+
+	l, diags := depsfile.LoadLocksFromFile(path)
+	if diags.HasErrors() {
+		return l, diags.Err()
+	}
+	// TODO: Don't swallow warnings
+	return l, nil
+}
+
+type provider struct {
+	providers.Interface
+
+	name, version string
+}
+
+func (p provider) Name() string { return p.name }
+
+func (p provider) Version() string { return p.version }
+
+func loadProviderServer(ctx context.Context, addr tfaddr.Provider, version getproviders.VersionConstraints) (Provider, error) {
 	cacheDir, err := getPluginCache()
 	if err != nil {
 		return nil, err
 	}
-	providerCacheDir := os.Getenv(cacheDir)
-	providersMap := providercache.NewDir(providerCacheDir)
+	providersMap := providercache.NewDir(cacheDir)
+
+	// Check if we have addr at version already.
+	//
+	// If we do, we don't need to invoke the Install machinery. Calling
+	// providersMap.AllAvailablePackages()
 
 	installer := providercache.NewInstaller(providersMap, getproviders.NewRegistrySource(disco.New()))
+
+	const lockFile = "/Users/ianwahbe/go/src/github.com/pulumi/pulumi-terraform-bridge/dynamic/test.lock"
+	lock, err := loadLockFile(lockFile)
+	if err != nil {
+		return nil, err
+	}
 
 	// TODO: Check if not having a lockfile is problematic. If it is, persist it.
 	//
 	// It might not be problematic if the requirements we give are always strict.
-	_, err = installer.EnsureProviderVersions(ctx, depsfile.NewLocks(), getproviders.Requirements{
+	lock, err = installer.EnsureProviderVersions(ctx, lock, getproviders.Requirements{
 		addr: version,
-	}, providercache.InstallNewProvidersOnly)
+	}, providercache.InstallUpgrades)
 	if err != nil {
 		return nil, err
+	}
+
+	diags := depsfile.SaveLocksToFile(lock, lockFile)
+	if diags.HasErrors() {
+		return nil, diags.Err()
 	}
 
 	p := providersMap.ProviderLatestVersion(addr)
@@ -97,7 +161,12 @@ func loadProviderServer(ctx context.Context, addr tfaddr.Provider, version getpr
 		return nil, fmt.Errorf("provider not found in cache: %v\n", addr)
 	}
 
-	return providerFactory(p)()
+	i, err := providerFactory(p)()
+	if err != nil {
+		return nil, err
+	}
+
+	return provider{i, addr.Type, p.Version.String()}, nil
 }
 
 // providerFactory produces a provider factory that runs up the executable
