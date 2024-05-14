@@ -14,6 +14,12 @@
 
 package tfbridge
 
+import (
+	"context"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+)
+
 // Defines bridged provider metadata that is pre-computed at build time with tfgen (tfgen
 // ("github.com/pulumi/pulumi-terraform-bridge/pf/tfgen") and typically made available to the provider
 // binary at runtime with [embed].
@@ -25,4 +31,20 @@ type ProviderMetadata struct {
 
 	// Deprecated. This field is no longer in use and will be removed in future versions.
 	BridgeMetadata []byte
+
+	// XParamaterize overrides the functionality of the Paramaterize call.
+	//
+	// XParamaterize is an experimental API and should not be used by 3rd parties. It
+	// does not have a backwards compatibility guarantee and may be removed in the
+	// future.
+	XParamaterize func(context.Context, plugin.ParameterizeRequest) (plugin.ParameterizeResponse, error)
+
+	// XGetSchema overrides the functionality of the GetSchema call. Either XGetSchema
+	// or PackageSchema must be set. If both are set, then the provider will panic
+	// during startup.
+	//
+	// XGetSchema is an experimental API and should not be used by 3rd parties. It
+	// does not have a backwards compatibility guarantee and may be removed in the
+	// future.
+	XGetSchema func(context.Context, plugin.GetSchemaRequest) ([]byte, error)
 }

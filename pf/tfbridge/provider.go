@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
@@ -52,13 +53,15 @@ type provider struct {
 	info          tfbridge.ProviderInfo
 	resources     runtypes.Resources
 	datasources   runtypes.DataSources
-	pulumiSchema  []byte
+	pulumiSchema  func(context.Context, plugin.GetSchemaRequest) ([]byte, error)
 	encoding      convert.Encoding
 	diagSink      diag.Sink
 	configEncoder convert.Encoder
 	configType    tftypes.Object
 	version       semver.Version
 	logSink       logging.Sink
+
+	parameterize func(context.Context, plugin.ParameterizeRequest) (plugin.ParameterizeResponse, error)
 
 	// Used by CheckConfig to remember the current Provider configuration so that it can be recalled and used for
 	// populating defaults specified via DefaultInfo.Config.
@@ -136,17 +139,28 @@ func newProviderWithContext(ctx context.Context, info tfbridge.ProviderInfo,
 			info.Version)
 	}
 
+	contract.Assertf((meta.PackageSchema == nil) != (meta.XGetSchema == nil),
+		"Exactly one of PackageSchema or XGetSchema should be specified.")
+
+	schema := meta.XGetSchema
+	if meta.XGetSchema == nil {
+		schema = func(context.Context, plugin.GetSchemaRequest) ([]byte, error) {
+			return meta.PackageSchema, nil
+		}
+	}
+
 	return &provider{
 		tfServer:           server6,
 		info:               info,
 		resources:          resources,
 		datasources:        datasources,
-		pulumiSchema:       meta.PackageSchema,
+		pulumiSchema:       schema,
 		encoding:           enc,
 		configEncoder:      configEncoder,
 		configType:         providerConfigType,
 		version:            semverVersion,
 		schemaOnlyProvider: info.P,
+		parameterize:       meta.XParamaterize,
 	}, nil
 }
 
@@ -181,12 +195,15 @@ func (p *provider) PkgWithContext(_ context.Context) tokens.Package {
 func (p *provider) ParameterizeWithContext(
 	ctx context.Context, req plugin.ParameterizeRequest,
 ) (plugin.ParameterizeResponse, error) {
-	return (&plugin.UnimplementedProvider{}).Parameterize(ctx, req)
+	if p.parameterize == nil {
+		return (&plugin.UnimplementedProvider{}).Parameterize(ctx, req)
+	}
+	return p.parameterize(ctx, req)
 }
 
 // GetSchema returns the schema for the provider.
-func (p *provider) GetSchemaWithContext(context.Context, plugin.GetSchemaRequest) ([]byte, error) {
-	return p.pulumiSchema, nil
+func (p *provider) GetSchemaWithContext(ctx context.Context, req plugin.GetSchemaRequest) ([]byte, error) {
+	return p.pulumiSchema(ctx, req)
 }
 
 // GetPluginInfo returns this plugin's information.
