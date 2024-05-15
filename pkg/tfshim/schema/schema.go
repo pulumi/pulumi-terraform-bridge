@@ -4,12 +4,6 @@ import (
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
-// UnknownVariableValue is the sentinal defined in github.com/hashicorp/terraform/configs/hcl2shim,
-// representing a variable whose value is not known at some particular time. The value is duplicated here in
-// order to prevent an additional dependency - it is unlikely to ever change upstream since that would break
-// rather a lot of things.
-const UnknownVariableValue = "74D93920-ED26-11E3-AC10-0800200C9A66"
-
 var _ = shim.SchemaMap(SchemaMap{})
 
 type Schema struct {
@@ -123,10 +117,6 @@ func (s SchemaShim) Deprecated() string {
 
 func (s SchemaShim) Sensitive() bool {
 	return s.V.Sensitive
-}
-
-func (s SchemaShim) UnknownValue() interface{} {
-	return UnknownVariableValue
 }
 
 func (s SchemaShim) SetElement(v interface{}) (interface{}, error) {

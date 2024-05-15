@@ -134,8 +134,6 @@ type Schema interface {
 	Removed() string
 	Sensitive() bool
 
-	UnknownValue() interface{}
-
 	SetElement(config interface{}) (interface{}, error)
 	SetHash(v interface{}) int
 }

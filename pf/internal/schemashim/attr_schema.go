@@ -138,10 +138,6 @@ func (s *attrSchema) Sensitive() bool {
 	return s.attr.IsSensitive()
 }
 
-func (*attrSchema) UnknownValue() interface{} {
-	panic("UnknownValue() should not be called during schema generation")
-}
-
 func (*attrSchema) SetElement(config interface{}) (interface{}, error) {
 	panic("SetElement() should not be called during schema generation")
 }

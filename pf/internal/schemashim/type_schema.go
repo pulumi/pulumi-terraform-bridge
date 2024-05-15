@@ -118,10 +118,6 @@ func (*typeSchema) ExactlyOneOf() []string {
 
 func (*typeSchema) Removed() string { panic("Removed() should not be called during schema generation") }
 
-func (*typeSchema) UnknownValue() interface{} {
-	panic("UnknownValue() should not be called during schema generation")
-}
-
 func (*typeSchema) SetElement(config interface{}) (interface{}, error) {
 	panic("SetElement() should not be called during schema generation")
 }
