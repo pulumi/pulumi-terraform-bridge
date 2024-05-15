@@ -2,6 +2,7 @@ package shim
 
 import (
 	"context"
+	"fmt"
 	"time"
 )
 
@@ -193,12 +194,17 @@ type ResourceMapWithClone interface {
 	Clone(oldKey, newKey string) error
 }
 
-func CloneResource(rm ResourceMap, oldKey string, newKey string) {
+func CloneResource(rm ResourceMap, oldKey string, newKey string) error {
 	switch rm := rm.(type) {
 	case ResourceMapWithClone:
-		rm.Clone(oldKey, newKey)
+		return rm.Clone(oldKey, newKey)
 	default:
-		rm.Set(newKey, rm.Get(oldKey))
+		v, ok := rm.GetOk(oldKey)
+		if !ok {
+			return fmt.Errorf("key not found: %q", oldKey)
+		}
+		rm.Set(newKey, v)
+		return nil
 	}
 }
 
