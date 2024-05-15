@@ -108,6 +108,9 @@ func (m *unionMap[T]) Set(key string, value T) {
 	}
 }
 
+// Clone will delegate the operation to the sub-map owning oldKey, or fail if the owner is ambiguous. In the sub-map the
+// value associated with oldKey will now be also associated with newKey. In Pulumi this is relied on to track ownership
+// of aliased resources in muxed providers as RenameResourceWithAlias uses Clone.
 func (m *unionMap[T]) Clone(oldKey, newKey string) error {
 	// Sending the clone operation to the owner map.
 	bv, b := m.baseline.GetOk(oldKey)
