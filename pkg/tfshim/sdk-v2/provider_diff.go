@@ -133,23 +133,3 @@ func (p v2Provider) simpleDiff(
 
 	return diff, nil
 }
-
-func showDiffChangeType(b byte) string {
-	// based on diffChangeType enumeration from terraform.InstanceDiff ChangeType() result
-	switch b {
-	case 1:
-		return "diffNone"
-	case 2:
-		return "diffCreate"
-	case 3:
-		return "diffCreate"
-	case 4:
-		return "diffUpdate"
-	case 5:
-		return "diffDestroy"
-	case 6:
-		return "diffDestroyCreate"
-	default:
-		return "diffInvalid"
-	}
-}
