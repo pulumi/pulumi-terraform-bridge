@@ -23,6 +23,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/stretchr/testify/require"
@@ -110,6 +111,77 @@ func TestSetReordering(t *testing.T) {
 		Config2: map[string]any{
 			"set": []any{"B", "A"},
 		},
+	})
+}
+
+func TestComputedSetFieldsNoDiff(t *testing.T) {
+	skipUnlessLinux(t)
+
+	elemSchema := schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"metro_code": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Computed: true,
+			},
+			"metro_name": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Computed: true,
+			},
+		},
+	}
+
+	resource := &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"location": {
+				Required: true,
+				MaxItems: 1,
+				Type:     schema.TypeSet,
+				Elem:     &elemSchema,
+			},
+		},
+		CreateContext: func(ctx context.Context, rd *schema.ResourceData, i interface{}) diag.Diagnostics {
+			rd.SetId("r1")
+			// The field is computed and the provider always returns a metro_name.
+			err := rd.Set("location", schema.NewSet(schema.HashResource(&elemSchema), []interface{}{
+				map[string]interface{}{"metro_name": "Frankfurt"},
+			}))
+			require.NoError(t, err)
+			return diag.Diagnostics{}
+		},
+	}
+
+	t1 := tftypes.Object{
+		AttributeTypes: map[string]tftypes.Type{
+			"metro_code": tftypes.String,
+		},
+	}
+
+	t0 := tftypes.NewValue(
+		tftypes.Object{
+			AttributeTypes: map[string]tftypes.Type{
+				"location": tftypes.Set{
+					ElementType: t1,
+				},
+			},
+		},
+		map[string]tftypes.Value{
+			"location": tftypes.NewValue(
+				tftypes.Set{ElementType: t1},
+				[]tftypes.Value{
+					tftypes.NewValue(t1, map[string]tftypes.Value{
+						// We try to set the metro_code but the provider should return metro_name
+						"metro_code": tftypes.NewValue(tftypes.String, "FRA"),
+					}),
+				},
+			),
+		},
+	)
+	runDiffCheck(t, diffTestCase{
+		Resource: resource,
+		Config1:  t0,
+		Config2:  t0,
 	})
 }
 
