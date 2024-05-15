@@ -119,50 +119,6 @@ func (s v2Schema) Sensitive() bool {
 	return s.tf.Sensitive
 }
 
-// makeUnknownElement creates an unknown value to be used as an element of a list or set using the given
-// element schema to guide the shape of the value.
-func makeUnknownElement(elem interface{}) interface{} {
-	// If we have no element schema, just return a simple unknown.
-	if elem == nil {
-		return UnknownVariableValue
-	}
-
-	switch e := elem.(type) {
-	case *schema.Schema:
-		// If the element uses a normal schema, defer to UnknownValue.
-		return v2Schema{e}.UnknownValue()
-	case *schema.Resource:
-		// If the element uses a resource schema, fill in unknown values for any required properties.
-		res := make(map[string]interface{})
-		for k, v := range e.SchemaMap() {
-			if v.Required {
-				res[k] = v2Schema{v}.UnknownValue()
-			}
-		}
-		return res
-	default:
-		return UnknownVariableValue
-	}
-}
-
-func (s v2Schema) UnknownValue() interface{} {
-	switch s.tf.Type {
-	case schema.TypeList, schema.TypeSet:
-		// TF does not accept unknown lists or sets. Instead, it accepts lists or sets of unknowns.
-		count := 1
-		if s.tf.MinItems > 0 {
-			count = s.tf.MinItems
-		}
-		arr := make([]interface{}, count)
-		for i := range arr {
-			arr[i] = makeUnknownElement(s.tf.Elem)
-		}
-		return arr
-	default:
-		return UnknownVariableValue
-	}
-}
-
 func (s v2Schema) SetElement(v interface{}) (interface{}, error) {
 	raw := map[string]interface{}{"e": []interface{}{v}}
 	reader := &schema.ConfigFieldReader{
