@@ -22,27 +22,33 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-type unionResourceMap struct {
-	baseline  shim.ResourceMap
-	extension shim.ResourceMap
+type unionMap[T any] struct {
+	baseline  mapLike[T]
+	extension mapLike[T]
 }
 
-var _ shim.ResourceMapWithClone = (*unionResourceMap)(nil)
+type mapLike[T any] interface {
+	Range(func(key string, value T) bool)
+	GetOk(key string) (T, bool)
+	Set(key string, value T)
+}
 
-func newUnionResourceMap(baseline, extension shim.ResourceMap) *unionResourceMap {
-	return &unionResourceMap{
+var _ shim.ResourceMapWithClone = (*unionMap[shim.Resource])(nil)
+
+func newUnionMap[T any](baseline, extension mapLike[T]) *unionMap[T] {
+	return &unionMap[T]{
 		baseline:  baseline,
 		extension: extension,
 	}
 }
 
-func (m *unionResourceMap) Len() int {
+func (m *unionMap[T]) Len() int {
 	n := 0
-	m.baseline.Range(func(key string, value shim.Resource) bool {
+	m.baseline.Range(func(key string, value T) bool {
 		n++
 		return true
 	})
-	m.extension.Range(func(key string, value shim.Resource) bool {
+	m.extension.Range(func(key string, value T) bool {
 		if _, conflict := m.baseline.GetOk(key); !conflict {
 			n++
 		}
@@ -51,59 +57,50 @@ func (m *unionResourceMap) Len() int {
 	return n
 }
 
-func (m *unionResourceMap) Get(key string) shim.Resource {
+func (m *unionMap[T]) Get(key string) T {
 	if v, ok := m.GetOk(key); ok {
 		return v
 	}
 	contract.Failf("key not found: %v", key)
-	return nil
+	var zero T
+	return zero
 }
 
-func (m *unionResourceMap) GetOk(key string) (shim.Resource, bool) {
+func (m *unionMap[T]) GetOk(key string) (T, bool) {
 	if v, ok := m.baseline.GetOk(key); ok {
 		return v, true
 	}
 	if v, ok := m.extension.GetOk(key); ok {
 		return v, true
 	}
-	return nil, false
+	var zero T
+	return zero, false
 }
 
-func (m *unionResourceMap) Range(each func(key string, value shim.Resource) bool) {
+func (m *unionMap[T]) Range(each func(key string, value T) bool) {
 	iterating := true
-	m.baseline.Range(func(key string, value shim.Resource) bool {
-		if value == nil {
-			panic("GAH1! nil resource in baseline")
-		}
+	m.baseline.Range(func(key string, value T) bool {
 		iterating = iterating && each(key, value)
 		return iterating
 	})
 	if !iterating {
 		return
 	}
-	m.extension.Range(func(key string, value shim.Resource) bool {
+	m.extension.Range(func(key string, value T) bool {
 		if _, conflict := m.baseline.GetOk(key); conflict {
 			return true
-		}
-		if value == nil {
-			panic("GAH2! nil resource in extension")
 		}
 		return each(key, value)
 	})
 }
 
-func (m *unionResourceMap) Set(key string, value shim.Resource) {
-	if value == nil {
-		panic("GAH! nil in Set")
-	}
+func (m *unionMap[T]) Set(key string, value T) {
 	// Sending edits to the owner map.
 	_, b := m.baseline.GetOk(key)
 	_, e := m.extension.GetOk(key)
 	switch {
 	case b && e:
-		// In the case of conflict, send the edit to both.
-		m.baseline.Set(key, value)
-		m.extension.Set(key, value)
+		contract.Failf("Cannot set a conflicting key in a union of two maps: %q", key)
 	case b:
 		m.baseline.Set(key, value)
 	case e:
@@ -114,36 +111,33 @@ func (m *unionResourceMap) Set(key string, value shim.Resource) {
 	}
 }
 
-func (m *unionResourceMap) Clone(oldKey, newKey string) error {
+func (m *unionMap[T]) Clone(oldKey, newKey string) error {
 	// Sending the clone operation to the owner map.
-	_, b := m.baseline.GetOk(oldKey)
-	_, e := m.extension.GetOk(oldKey)
+	bv, b := m.baseline.GetOk(oldKey)
+	ev, e := m.extension.GetOk(oldKey)
 
 	switch {
 	case b && e:
-		// In the case of conflict, send the clone operation to both.
-		m.baseline.Set(newKey, m.baseline.Get(oldKey))
-		m.extension.Set(newKey, m.extension.Get(oldKey))
-		return nil
+		return fmt.Errorf("Cannot clone a conflicting key in a union of two maps: %q", oldKey)
 	case b:
-		m.baseline.Set(newKey, m.baseline.Get(oldKey))
+		m.baseline.Set(newKey, bv)
 		return nil
 	case e:
-		m.extension.Set(newKey, m.extension.Get(oldKey))
+		m.extension.Set(newKey, ev)
 		return nil
 	default:
-		return fmt.Errorf("Cannot clone non-existing key %q to %q", oldKey, newKey)
+		return fmt.Errorf("Cannot clone a non-existing key %q to %q", oldKey, newKey)
 	}
 }
 
-func (m *unionResourceMap) ConflictingKeys() []string {
+func (m *unionMap[T]) ConflictingKeys() []string {
 	conflicts := []string{}
-	m.baseline.Range(func(key string, value shim.Resource) bool {
+	m.baseline.Range(func(key string, value T) bool {
 		if _, ok := m.extension.GetOk(key); ok {
 			conflicts = append(conflicts, key)
 		}
 		return true
 	})
 	sort.Strings(conflicts)
-	return nil
+	return conflicts
 }

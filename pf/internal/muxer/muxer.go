@@ -122,9 +122,9 @@ func (m *ProviderShim) DataSourceIsPF(token string) bool {
 //
 // `provider` will be the `len(m.MuxedProviders)` when mappings are computed.
 func (m *ProviderShim) extend(provider shim.Provider) ([]string, []string) {
-	res := newUnionResourceMap(m.resources, provider.ResourcesMap())
+	res := newUnionMap(m.resources, provider.ResourcesMap())
 	conflictingResources := res.ConflictingKeys()
-	data := newUnionResourceMap(m.dataSources, provider.DataSourcesMap())
+	data := newUnionMap(m.dataSources, provider.DataSourcesMap())
 	conflictingDataSources := data.ConflictingKeys()
 	m.resources = res
 	m.dataSources = data
