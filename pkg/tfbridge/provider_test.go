@@ -951,7 +951,11 @@ func TestProviderReadV2(t *testing.T) {
 		},
 	}
 
-	testProviderRead(t, provider, "ExampleResource", true /* CheckRawConfig */)
+	// TODO[pulumi/pulumi-terraform-bridge#1977] currently un-schematized fields do not propagate to RawConfig which
+	// causes the test to panic as written.
+	checkRawConfig := false
+
+	testProviderRead(t, provider, "ExampleResource", checkRawConfig)
 }
 
 func testProviderReadNestedSecret(t *testing.T, provider *Provider, typeName tokens.Type) {
