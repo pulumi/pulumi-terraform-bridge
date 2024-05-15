@@ -12,10 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package provider
 
 import (
 	"context"
+	"sync"
 
 	otshim "github.com/opentofu/opentofu/shim"
 
@@ -24,10 +25,21 @@ import (
 
 var _ shim.Provider = (*shimProvider)(nil)
 
-type shimProvider struct{ remote otshim.Provider }
+func New(p otshim.Provider) shim.Provider {
+	return &shimProvider{p, sync.OnceValue(p.GetProviderSchema)}
+}
 
+type shimProvider struct {
+	remote otshim.Provider
+
+	schema func() otshim.ProviderSchema
+}
+
+// Unlike the GetProviderSchema on remote, Schema is just the schema of the provider
+// itself (not associated resources or datasources).
 func (p *shimProvider) Schema() shim.SchemaMap {
-	panic("TODO")
+	schema := p.schema().Provider
+	return object{schema}
 }
 
 func (p *shimProvider) ResourcesMap() shim.ResourceMap {
@@ -85,9 +97,10 @@ func (p *shimProvider) ReadDataApply(ctx context.Context, t string, d shim.Insta
 	panic("I'm not sure what this does")
 }
 
-func (p *shimProvider) Meta(ctx context.Context) interface{} {
-	panic("Meta should not be part of this interface - I will need to remove it in a separate PR")
-}
+// Meta is impossible to implement, since it allows non-serializable values.
+//
+// That said, as long as we don't use the result of Meta it should be fine.
+func (p *shimProvider) Meta(ctx context.Context) interface{} { return nil }
 
 func (p *shimProvider) Stop(ctx context.Context) error { return p.remote.Stop() }
 

@@ -19,11 +19,13 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/tokens"
+
+	"github.com/pulumi/pulumi-terraform-bridge/dynamic/internal/provider"
 )
 
 func providerInfo(p shim.Provider) tfbridge.ProviderInfo {
 	prov := tfbridge.ProviderInfo{
-		P:           &shimProvider{p},
+		P:           provider.New(p),
 		Name:        p.Name(),
 		Version:     p.Version(),
 		Description: "A Pulumi provider dynamically bridged from " + p.Name() + ".",
