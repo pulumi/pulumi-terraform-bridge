@@ -150,49 +150,45 @@ func TestCustomizeDiff(t *testing.T) {
 	})
 
 	t.Run("CustomDiffDoesNotPanicOnGetRawStateOrRawConfig", func(t *testing.T) {
-		for _, diffStrat := range []shimv2.DiffStrategy{shimv2.PlanState, shimv2.ClassicDiff} {
-			diffStrat := diffStrat
-			t.Run(fmt.Sprintf("%v", diffStrat), func(t *testing.T) {
-				ctx := context.Background()
-				customDiffRes := &v2Schema.Resource{
-					Schema: tfs,
-					CustomizeDiff: func(_ context.Context, diff *v2Schema.ResourceDiff, _ interface{}) error {
-						rawStateType := diff.GetRawState().Type()
-						if !rawStateType.HasAttribute("outp") {
-							return fmt.Errorf("Expected rawState type to have attribute: outp")
-						}
-						rawConfigType := diff.GetRawConfig().Type()
-						if !rawConfigType.HasAttribute("outp") {
-							return fmt.Errorf("Expected rawConfig type to have attribute: outp")
-						}
-						return nil
-					},
+
+		ctx := context.Background()
+		customDiffRes := &v2Schema.Resource{
+			Schema: tfs,
+			CustomizeDiff: func(_ context.Context, diff *v2Schema.ResourceDiff, _ interface{}) error {
+				rawStateType := diff.GetRawState().Type()
+				if !rawStateType.HasAttribute("outp") {
+					return fmt.Errorf("Expected rawState type to have attribute: outp")
 				}
-
-				v2Provider := &v2Schema.Provider{
-					ResourcesMap: map[string]*v2Schema.Resource{
-						"resource": customDiffRes,
-					},
+				rawConfigType := diff.GetRawConfig().Type()
+				if !rawConfigType.HasAttribute("outp") {
+					return fmt.Errorf("Expected rawConfig type to have attribute: outp")
 				}
-
-				provider := shimv2.NewProvider(v2Provider, shimv2.WithDiffStrategy(diffStrat))
-
-				// Convert the inputs and state to TF config and resource attributes.
-				r := Resource{
-					TF:     shimv2.NewResource(customDiffRes),
-					Schema: &ResourceInfo{Fields: info},
-				}
-				tfState, err := MakeTerraformState(ctx, r, "id", stateMap)
-				assert.NoError(t, err)
-
-				config, _, err := MakeTerraformConfig(ctx, &Provider{tf: provider}, inputsMap, sch, info)
-				assert.NoError(t, err)
-
-				// Calling Diff with the given CustomizeDiff used to panic, no more asserts needed.
-				_, err = provider.Diff(ctx, "resource", tfState, config, shim.DiffOptions{})
-				assert.NoError(t, err)
-			})
+				return nil
+			},
 		}
+
+		v2Provider := &v2Schema.Provider{
+			ResourcesMap: map[string]*v2Schema.Resource{
+				"resource": customDiffRes,
+			},
+		}
+
+		provider := shimv2.NewProvider(v2Provider)
+
+		// Convert the inputs and state to TF config and resource attributes.
+		r := Resource{
+			TF:     shimv2.NewResource(customDiffRes),
+			Schema: &ResourceInfo{Fields: info},
+		}
+		tfState, err := MakeTerraformState(ctx, r, "id", stateMap)
+		assert.NoError(t, err)
+
+		config, _, err := MakeTerraformConfig(ctx, &Provider{tf: provider}, inputsMap, sch, info)
+		assert.NoError(t, err)
+
+		// Calling Diff with the given CustomizeDiff used to panic, no more asserts needed.
+		_, err = provider.Diff(ctx, "resource", tfState, config, shim.DiffOptions{})
+		assert.NoError(t, err)
 	})
 }
 

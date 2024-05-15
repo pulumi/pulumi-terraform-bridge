@@ -21,6 +21,8 @@ import (
 
 // Configures how the provider performs Diff. Since this is a sensitive method that can result in unexpected breaking
 // changes, using a configurable DiffStrategy as a feature flag assists gradual rollout.
+//
+// Deprecated.
 type DiffStrategy int
 
 const (
@@ -49,6 +51,7 @@ func (s DiffStrategy) String() string {
 	}
 }
 
+// Deprecated.
 func ParseDiffStrategy(text string) (DiffStrategy, error) {
 	switch text {
 	case "ClassicDiff":
@@ -64,6 +67,7 @@ func ParseDiffStrategy(text string) (DiffStrategy, error) {
 
 const diffStrategyEnvVar = "PULUMI_DIFF_STRATEGY"
 
+// Deprecated.
 func ParseDiffStrategyFromEnv() (DiffStrategy, bool, error) {
 	s := os.Getenv(diffStrategyEnvVar)
 	if s == "" {
