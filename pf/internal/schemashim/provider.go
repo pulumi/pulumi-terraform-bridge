@@ -24,8 +24,9 @@ import (
 )
 
 type SchemaOnlyProvider struct {
-	ctx context.Context
-	tf  pfprovider.Provider
+	ctx         context.Context
+	tf          pfprovider.Provider
+	resourceMap shim.ResourceMap
 }
 
 func (p *SchemaOnlyProvider) PfProvider() pfprovider.Provider {
@@ -45,11 +46,7 @@ func (p *SchemaOnlyProvider) Schema() shim.SchemaMap {
 }
 
 func (p *SchemaOnlyProvider) ResourcesMap() shim.ResourceMap {
-	resources, err := pfutils.GatherResources(context.TODO(), p.tf)
-	if err != nil {
-		panic(err)
-	}
-	return &schemaOnlyResourceMap{resources}
+	return p.resourceMap
 }
 
 func (p *SchemaOnlyProvider) DataSourcesMap() shim.ResourceMap {

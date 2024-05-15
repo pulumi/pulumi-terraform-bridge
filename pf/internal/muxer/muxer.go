@@ -16,7 +16,6 @@ package muxer
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 
 	"context"
@@ -26,7 +25,6 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/schemashim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
-	shimSchema "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 	"github.com/pulumi/pulumi-terraform-bridge/x/muxer"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -124,10 +122,10 @@ func (m *ProviderShim) DataSourceIsPF(token string) bool {
 //
 // `provider` will be the `len(m.MuxedProviders)` when mappings are computed.
 func (m *ProviderShim) extend(provider shim.Provider) ([]string, []string) {
-	res, conflictingResources := union(m.resources, provider.ResourcesMap())
-
-	data, conflictingDataSources := union(m.dataSources, provider.DataSourcesMap())
-
+	res := newUnionMap(m.resources, provider.ResourcesMap())
+	conflictingResources := res.ConflictingKeys()
+	data := newUnionMap(m.dataSources, provider.DataSourcesMap())
+	conflictingDataSources := data.ConflictingKeys()
 	m.resources = res
 	m.dataSources = data
 	m.MuxedProviders = append(m.MuxedProviders, provider)
@@ -255,46 +253,3 @@ func (p *simpleSchemaProvider) DataSourcesMap() shim.ResourceMap {
 }
 
 var _ shim.Provider = (*simpleSchemaProvider)(nil)
-
-func union(baseline, extension shim.ResourceMap) (shim.ResourceMap, []string) {
-	union, conflictingKeys := mapUnion(toResourceMap(baseline), toResourceMap(extension))
-	return shimSchema.ResourceMap(union), conflictingKeys
-}
-
-func toResourceMap(rmap shim.ResourceMap) shimSchema.ResourceMap {
-	m := map[string]shim.Resource{}
-	rmap.Range(func(key string, value shim.Resource) bool {
-		m[key] = value
-		return true
-	})
-	return m
-}
-
-func mapUnion[T any](baseline, extension map[string]T) (map[string]T, []string) {
-	u := copyMap(baseline)
-
-	var conflictingKeys []string
-
-	for k, v := range extension {
-		if _, conflict := baseline[k]; conflict {
-			conflictingKeys = append(conflictingKeys, k)
-			continue
-		}
-		u[k] = v
-	}
-
-	sort.Strings(conflictingKeys)
-
-	return u, conflictingKeys
-}
-
-func copyMap[K comparable, V any](m map[K]V) map[K]V {
-	if m == nil {
-		return nil
-	}
-	out := make(map[K]V, len(m))
-	for k, v := range m {
-		out[k] = v
-	}
-	return out
-}
