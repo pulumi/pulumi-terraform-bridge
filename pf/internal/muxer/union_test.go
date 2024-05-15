@@ -119,6 +119,10 @@ type testMap map[string]string
 
 var _ mapLike[string] = make(testMap)
 
+func (x testMap) Len() int {
+	return len(x)
+}
+
 func (x testMap) GetOk(key string) (string, bool) {
 	v, ok := x[key]
 	return v, ok

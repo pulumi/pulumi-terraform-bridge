@@ -28,6 +28,7 @@ type unionMap[T any] struct {
 }
 
 type mapLike[T any] interface {
+	Len() int
 	Range(func(key string, value T) bool)
 	GetOk(key string) (T, bool)
 	Set(key string, value T)
@@ -43,11 +44,7 @@ func newUnionMap[T any](baseline, extension mapLike[T]) *unionMap[T] {
 }
 
 func (m *unionMap[T]) Len() int {
-	n := 0
-	m.baseline.Range(func(key string, value T) bool {
-		n++
-		return true
-	})
+	n := m.baseline.Len()
 	m.extension.Range(func(key string, value T) bool {
 		if _, conflict := m.baseline.GetOk(key); !conflict {
 			n++
