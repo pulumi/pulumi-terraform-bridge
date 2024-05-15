@@ -15,6 +15,8 @@
 package provider
 
 import (
+	"fmt"
+
 	otshim "github.com/opentofu/opentofu/shim"
 	"github.com/zclconf/go-cty/cty"
 
@@ -38,10 +40,41 @@ func (a attribute) Removed() string     { return "" }
 
 // Type information
 
-func (a attribute) MaxItems() int        { return 0 }
-func (a attribute) MinItems() int        { return 0 }
-func (a attribute) Type() shim.ValueType {}
-func (a attribute) Elem() interface{}    {}
+func (a attribute) MaxItems() int { return 0 }
+func (a attribute) MinItems() int { return 0 }
+func (a attribute) Type() shim.ValueType {
+	switch {
+	case a.attr.Type.Equals(cty.Bool):
+		return shim.TypeBool
+	case a.attr.Type.Equals(cty.Number):
+		// TODO: It looks like this interface only exposes "number", not integer.
+		//
+		// We should see if there is a work-around here.
+		return shim.TypeFloat
+	case a.attr.Type.Equals(cty.String):
+		return shim.TypeString
+	case a.attr.Type.IsListType() || a.attr.Type.IsSetType():
+		return shim.TypeList
+	case a.attr.Type.IsMapType() || a.attr.Type.IsObjectType() || a.attr.NestedType != nil:
+		return shim.TypeMap
+	default:
+		panic(fmt.Sprintf("UNKNOWN TYPE of %#v", a.attr.Type)) // TODO: Remove for release
+		return shim.TypeInvalid
+	}
+}
+
+func (a attribute) Elem() interface{} {
+	switch {
+	case a.attr.NestedType != nil:
+		return object{obj: *a.attr.NestedType}
+	case a.attr.Type.IsObjectType():
+		panic("Not implemented, this feature may not be used :)")
+	case a.attr.Type.IsCollectionType():
+		return attribute{otshim.SchemaAttribute{Type: a.attr.Type}}
+	default:
+		return nil
+	}
+}
 
 // Defaults are applied in the provider binary, not here
 
@@ -49,15 +82,12 @@ func (a attribute) Default() interface{}                { return nil }
 func (a attribute) DefaultFunc() shim.SchemaDefaultFunc { return nil }
 func (a attribute) DefaultValue() (interface{}, error)  { return nil, nil }
 
-func (a attribute) StateFunc() shim.SchemaStateFunc {}
-func (a attribute) ConflictsWith() []string         {}
-func (a attribute) ExactlyOneOf() []string {
+func (a attribute) StateFunc() shim.SchemaStateFunc { return nil }
+func (a attribute) ConflictsWith() []string         { return nil }
+func (a attribute) ExactlyOneOf() []string          { return nil }
 
+func (a attribute) SetElement(config interface{}) (interface{}, error) {
+	panic("UNIMPLIMENTED")
 }
 
-func (a attribute) UnknownValue() interface{} {
-	return cty.UnknownVal(a.attr.Type)
-}
-
-func (a attribute) SetElement(config interface{}) (interface{}, error) {}
-func (a attribute) SetHash(v interface{}) int                          {}
+func (a attribute) SetHash(v interface{}) int { panic("UNIMPLIMENTED") }

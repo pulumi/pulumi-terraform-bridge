@@ -15,62 +15,27 @@
 package provider
 
 import (
-	otshim "github.com/opentofu/opentofu/shim"
-
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-var _ = shim.SchemaMap(object{})
+// pseudoResource represents a type that must pretent to be a [shim.Resource], but does not represent a resource.
+type pseudoResource struct{}
 
-type object struct {
-
-	// schema is assumed to be valid.
-	//
-	// It is assumed that `schema.Block.Attributes` does not have any conflicts with
-	// `schema.Block.BlockTypes`.
-	schema otshim.Schema
+func (pseudoResource) SchemaVersion() int              { return 0 }
+func (pseudoResource) Importer() shim.ImportFunc       { return nil }
+func (pseudoResource) Timeouts() *shim.ResourceTimeout { return nil }
+func (pseudoResource) InstanceState(id string, object, meta map[string]interface{}) (shim.InstanceState, error) {
+	panic("Cannot invoke InstanceState on a pseudoResource")
+}
+func (pseudoResource) DecodeTimeouts(config shim.ResourceConfig) (*shim.ResourceTimeout, error) {
+	panic("Cannot invoke DecodeTimeouts on a pseudoResource")
 }
 
-func (o object) Len() int {
-	return len(o.schema.Block.Attributes) + len(o.schema.Block.BlockTypes)
+func getSchemaMap[T any](m interface {
+	GetOk(string) (T, bool)
+}, key string) T {
+	v, ok := m.GetOk(key)
+	contract.Assertf(ok, "Could not find key %q", key)
+	return v
 }
-
-func (o object) Get(key string) shim.Schema {
-	s, ok := o.GetOk(key)
-	contract.Assertf(ok, "Could not find object %s in object", key)
-	return s
-}
-
-func (o object) GetOk(key string) (shim.Schema, bool) {
-	if a, ok := o.schema.Block.Attributes[key]; ok {
-		return attribute{a}, true
-	}
-	if n, ok := o.schema.Block.BlockTypes[key]; ok {
-		return block{n}, true
-	}
-
-	return nil, false
-}
-
-func (o object) Range(each func(key string, value shim.Schema) bool) {
-	for key, a := range o.schema.Block.Attributes {
-		if !each(key, attribute{a}) {
-			return
-		}
-	}
-
-	for key, n := range o.schema.Block.BlockTypes {
-		if !each(key, block{n}) {
-			return
-		}
-	}
-}
-
-func (o object) Set(key string, value shim.Schema) { panic("CANNOT MUTATE AN OBJECT") }
-
-func (o object) Delete(key string) { panic("CANNOT MUTATE AN OBJECT") }
-
-// TODO: Do we need to do this, since it should have already been called when the provider
-// was loaded remotely.
-func (o object) Validate() error { return o.schema.Block.InternalValidate() }

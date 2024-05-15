@@ -8,7 +8,9 @@ import (
 type (
 	ProviderSchema = providers.ProviderSchema
 
-	Schema          = providers.Schema
-	SchemaBlock     = configschema.Block
-	SchemaAttribute = configschema.Attribute
+	Schema            = providers.Schema
+	SchemaBlock       = configschema.Block
+	SchemaNestedBlock = configschema.NestedBlock
+	SchemaAttribute   = configschema.Attribute
+	SchemaObject      = configschema.Object
 )

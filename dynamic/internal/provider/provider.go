@@ -32,25 +32,28 @@ func New(p otshim.Provider) shim.Provider {
 type shimProvider struct {
 	remote otshim.Provider
 
+	// schema fetches the upstream provider's schema. schema must be safe to call
+	// concurrently and efficient.
 	schema func() otshim.ProviderSchema
 }
 
 // Unlike the GetProviderSchema on remote, Schema is just the schema of the provider
 // itself (not associated resources or datasources).
 func (p *shimProvider) Schema() shim.SchemaMap {
-	schema := p.schema().Provider
-	return object{schema}
+	return block{block: *p.schema().Provider.Block}.Schema()
 }
 
 func (p *shimProvider) ResourcesMap() shim.ResourceMap {
-	panic("TODO")
+	return resourceMap(p.schema().ResourceTypes)
 }
 
 func (p *shimProvider) DataSourcesMap() shim.ResourceMap {
-	panic("TODO")
+	return resourceMap(p.schema().DataSources)
 }
 
-// Doesn't apply
+// It is assumed that this will have been called within the upstream provider already.
+//
+// We don't need to duplicate the effort here.
 func (p *shimProvider) InternalValidate() error { return nil }
 
 func (p *shimProvider) Validate(ctx context.Context, c shim.ResourceConfig) ([]string, []error) {
