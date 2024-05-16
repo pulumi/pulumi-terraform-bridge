@@ -50,6 +50,17 @@ func assertCtyValEqual(t T, name string, tfVal, pulVal cty.Value) {
 	}
 }
 
+func assertValEqual(t T, name string, tfVal, pulVal any) {
+	// usually plugin-sdk schema types
+	if hasEqualTfVal, ok := tfVal.(interface{ Equal(interface{}) bool }); ok {
+		if !hasEqualTfVal.Equal(pulVal) {
+			FailNotEqual(t, name, tfVal, pulVal)
+		}
+	} else {
+		require.Equal(t, tfVal, pulVal, "Values for key %s do not match", name)
+	}
+}
+
 // Adapted from diff_check.go
 func runCreateInputCheck(t T, tc inputTestCase) {
 	//nolint:staticcheck
@@ -123,14 +134,13 @@ func runCreateInputCheck(t T, tc inputTestCase) {
 		// TODO: make this recursive
 		tfVal := tfResData.Get(k)
 		pulVal := pulResData.Get(k)
-		// usually plugin-sdk schema types
-		if hasEqualTfVal, ok := tfVal.(interface{ Equal(interface{}) bool }); ok {
-			if !hasEqualTfVal.Equal(pulVal) {
-				FailNotEqual(t, k, tfVal, pulVal)
-			}
-		} else {
-			require.Equal(t, tfVal, pulVal, "Values for key %s do not match", k)
-		}
+
+		tfChangeValOld, tfChangeValNew := tfResData.GetChange(k)
+		pulChangeValOld, pulChangeValNew := pulResData.GetChange(k)
+
+		assertValEqual(t, k, tfVal, pulVal)
+		assertValEqual(t, k+" Change Old", tfChangeValOld, pulChangeValOld)
+		assertValEqual(t, k+" Change New", tfChangeValNew, pulChangeValNew)
 	}
 
 	if !tc.SkipCompareRaw {
