@@ -46,7 +46,7 @@ func FailNotEqual(t T, name string, tfVal, pulVal any) {
 
 func assertCtyValEqual(t T, name string, tfVal, pulVal cty.Value) {
 	if !tfVal.RawEquals(pulVal) {
-		FailNotEqual(t, name, tfVal, pulVal)
+		FailNotEqual(t, name, tfVal.GoString(), pulVal.GoString())
 	}
 }
 
