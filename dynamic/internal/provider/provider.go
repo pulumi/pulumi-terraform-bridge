@@ -16,11 +16,14 @@ package provider
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	otshim "github.com/opentofu/opentofu/shim"
+	"github.com/zclconf/go-cty/cty"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 var _ shim.Provider = (*shimProvider)(nil)
@@ -56,20 +59,69 @@ func (p *shimProvider) DataSourcesMap() shim.ResourceMap {
 // We don't need to duplicate the effort here.
 func (p *shimProvider) InternalValidate() error { return nil }
 
+type config struct{ value cty.Value }
+
+func (c config) IsSet(key string) bool {
+	t := c.value.Type()
+
+	contract.Assertf(t.IsObjectType(),
+		"The top level config object must be an *object*")
+
+	if !t.HasAttribute(key) {
+		return false
+	}
+
+	return t.AttributeType(key).IsSetType()
+
+}
+
+// Validate the configuration of a [shim.Provider].
 func (p *shimProvider) Validate(ctx context.Context, c shim.ResourceConfig) ([]string, []error) {
-	panic("Needs to be implemented in terms of p.remote.ValidateProviderConfig")
+	config, ok := c.(config)
+	contract.Assertf(ok, "Expected type %T, found type %T", config, c)
+	response := p.remote.ValidateProviderConfig(otshim.ValidateProviderConfigRequest{
+		Config: config.value,
+	})
+
+	return splitDiagnostics(response.Diagnostics)
 }
 
 func (p *shimProvider) ValidateResource(ctx context.Context, t string, c shim.ResourceConfig) ([]string, []error) {
-	panic("Needs to be implement in terms of p.remote.ValidateResourceConfig")
+	config, ok := c.(config)
+	contract.Assertf(ok, "Expected type %T, found type %T", config, c)
+
+	resp := p.remote.ValidateResourceConfig(otshim.ValidateResourceConfigRequest{
+		TypeName: t,
+		Config:   config.value,
+	})
+
+	return splitDiagnostics(resp.Diagnostics)
 }
 
 func (p *shimProvider) ValidateDataSource(ctx context.Context, t string, c shim.ResourceConfig) ([]string, []error) {
-	panic("Needs to be implement in terms of p.remote.ValidateDataResourceConfig")
+	config, ok := c.(config)
+	contract.Assertf(ok, "Expected type %T, found type %T", config, c)
+
+	resp := p.remote.ValidateDataResourceConfig(otshim.ValidateDataResourceConfigRequest{
+		TypeName: t,
+		Config:   config.value,
+	})
+
+	return splitDiagnostics(resp.Diagnostics)
 }
 
 func (p *shimProvider) Configure(ctx context.Context, c shim.ResourceConfig) error {
-	panic("Needs to be implement in terms of p.remote.ConfigureProvider")
+	config, ok := c.(config)
+	contract.Assertf(ok, "Expected type %T, found type %T", config, c)
+
+	resp := p.remote.ConfigureProvider(otshim.ConfigureProviderRequest{
+		TerraformVersion: "pulumi", // TODO: Set the bridge version here
+		Config:           config.value,
+	})
+
+	// TODO: Display warnings
+
+	return resp.Diagnostics.Err()
 }
 
 func (p *shimProvider) Diff(
@@ -123,4 +175,18 @@ func (p *shimProvider) NewResourceConfig(ctx context.Context, object map[string]
 // Checks if a value is representing a Set, and unpacks its elements on success.
 func (p *shimProvider) IsSet(ctx context.Context, v interface{}) ([]interface{}, bool) {
 	panic("I'm not sure how or why this exists")
+}
+
+func splitDiagnostics(diags otshim.Diagnostics) ([]string, []error) {
+	info, errors := []string{}, []error{}
+
+	for _, diag := range diags {
+		if diag.Severity() == otshim.DiagError {
+			errors = append(errors, fmt.Errorf("%s", diag.Description().Summary))
+		} else {
+			info = append(info, diag.Description().Summary)
+		}
+	}
+
+	return info, errors
 }
