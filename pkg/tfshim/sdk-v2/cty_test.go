@@ -12,7 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/internal/testprovider"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2/internal/rapid"
+	rapidgen "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2/internal/rapid"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -820,6 +820,12 @@ func normalizeCtyValue(v cty.Value) cty.Value {
 			f := v.AsBigFloat()
 			f.SetPrec(512)
 			return cty.NumberVal(f), nil
+		}
+		if v.Type().IsSetType() && v.IsNull() {
+			return cty.SetValEmpty(v.Type().ElementType()), nil
+		}
+		if v.Type().IsListType() && v.IsNull() {
+			return cty.ListValEmpty(v.Type().ElementType()), nil
 		}
 		return v, nil
 	})
