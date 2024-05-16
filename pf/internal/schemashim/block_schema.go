@@ -151,7 +151,3 @@ func (*blockSchema) SetHash(v interface{}) int {
 func (*blockSchema) StateFunc() shim.SchemaStateFunc {
 	panic("StateFunc() should not be called during schema generation")
 }
-
-func (*blockSchema) UnknownValue() interface{} {
-	panic("UnknownValue() should not be called during schema generation")
-}

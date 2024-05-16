@@ -104,10 +104,6 @@ func (s *attributeSchema) Sensitive() bool {
 	return s.sensitive
 }
 
-func (s *attributeSchema) UnknownValue() interface{} {
-	return UnknownVariableValue
-}
-
 func (s *attributeSchema) SetElement(v interface{}) (interface{}, error) {
 	val, err := goToCty(v, s.ctyType)
 	if err != nil {

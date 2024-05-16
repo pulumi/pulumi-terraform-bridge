@@ -441,11 +441,11 @@ var (
 	linkFooterRegexp = regexp.MustCompile(`(?m)^(\[\d+\]):\s(.*)`)
 
 	argumentBulletRegexp = regexp.MustCompile(
-		"^\\s*[*+-]\\s*`([a-zA-z0-9_]*)`\\s*(\\([a-zA-Z]*\\)\\s*)?\\s*[:–-]?\\s*(\\([^\\)]*\\)[-\\s]*)?(.*)",
+		"^\\s*[*+-]\\s*`([a-z0-9_]*)`\\s*(\\([a-zA-Z]*\\)\\s*)?\\s*[:–-]?\\s*(\\([^\\)]*\\)[-\\s]*)?(.*)",
 	)
 
-	bulletPointRegexStr       = "^\\s*[*+-]"             // matches any bullet point-like character
-	attributePathNameRegexStr = "\\s*`([a-zA-z0-9._]*)`" // matches any TF attribute path name
+	bulletPointRegexStr       = "^\\s*[*+-]"          // matches any bullet point-like character
+	attributePathNameRegexStr = "\\s*`([a-z0-9._]*)`" // matches any TF attribute path name
 
 	// matches any line starting with a bullet point followed by a TF path or resource name)
 	attributeBulletRegexp = regexp.MustCompile(
@@ -2183,9 +2183,8 @@ func extractExamples(description string) string {
 }
 
 var (
-	reTerraform        = regexp.MustCompile("[Tt]erraform")
-	reHashicorp        = regexp.MustCompile("[Hh]ashicorp")
-	illegalJavaPattern = regexp.MustCompile("(?m)^@pattern.*")
+	reTerraform = regexp.MustCompile("[Tt]erraform")
+	reHashicorp = regexp.MustCompile("[Hh]ashicorp")
 )
 
 func elide(text string) bool {
@@ -2195,8 +2194,6 @@ func elide(text string) bool {
 
 // reformatText processes markdown strings from TF docs and cleans them for inclusion in Pulumi docs
 func reformatText(g infoContext, text string, footerLinks map[string]string) (string, bool) {
-	// TODO[pulumi/pulumi-java#1271]: This should be fixed in pulumi/pulumi-java
-	text = illegalJavaPattern.ReplaceAllString(text, "")
 
 	cleanupText := func(text string) (string, bool) {
 		// Remove incorrect documentation.

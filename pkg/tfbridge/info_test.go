@@ -203,7 +203,7 @@ func TestDelegateIDField(t *testing.T) {
 	)
 
 	errMsg := func(msg string, a ...any) error {
-		return delegateIDFieldError{
+		return delegateIDPropertyError{
 			msg:          fmt.Sprintf(msg, a...),
 			providerName: providerName,
 			repoURL:      repoURL,
@@ -284,4 +284,80 @@ func TestDelegateIDField(t *testing.T) {
 
 		})
 	})
+}
+
+func TestDelegateIDProperty(t *testing.T) {
+	t.Parallel()
+
+	const (
+		providerName = "test-provider"
+		repoURL      = "https://example.git"
+	)
+
+	errMsg := func(msg string, a ...any) error {
+		return delegateIDPropertyError{
+			msg:          fmt.Sprintf(msg, a...),
+			providerName: providerName,
+			repoURL:      repoURL,
+		}
+	}
+
+	tests := []struct {
+		delegate       resource.PropertyPath
+		state          resource.PropertyMap
+		expectedID     resource.ID
+		expectedError  error
+		expectedLogMsg string
+	}{
+		{
+			delegate: resource.PropertyPath{"key"},
+			state: resource.PropertyMap{
+				"key":   resource.NewProperty("some-id"),
+				"other": resource.NewProperty(3.0),
+			},
+			expectedID: "some-id",
+		},
+		{
+			delegate: resource.PropertyPath{"nested", "id"},
+			state: resource.PropertyMap{
+				"nested": resource.NewProperty(resource.PropertyMap{
+					"id": resource.NewProperty("my-nested-id"),
+				}),
+				"other": resource.NewProperty(3.0),
+			},
+			expectedID: "my-nested-id",
+		},
+		{
+			delegate: resource.PropertyPath{"nested", "id"},
+			state: resource.PropertyMap{
+				"other": resource.NewProperty(3.0),
+			},
+			expectedError: errMsg("Could not find required property 'nested.id' in state"),
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run("", func(t *testing.T) {
+			t.Parallel()
+			ctx := context.Background()
+			var logs bytes.Buffer
+
+			ctx = logging.InitLogging(ctx, logging.LogOptions{
+				LogSink: &testLogSink{&logs},
+			})
+
+			computeID := DelegateIDProperty(tt.delegate, providerName, repoURL)
+			id, err := computeID(ctx, tt.state)
+
+			if tt.expectedError == nil {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.expectedID, id)
+			} else {
+				assert.ErrorIs(t, err, tt.expectedError)
+			}
+
+			assert.Equal(t, tt.expectedLogMsg, logs.String())
+		})
+	}
 }

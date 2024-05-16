@@ -17,41 +17,16 @@ package schemashim
 import (
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/pfutils"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 )
 
-type schemaOnlyResourceMap struct {
-	resources pfutils.Resources
-}
-
-var _ shim.ResourceMap = (*schemaOnlyResourceMap)(nil)
-
-func (m *schemaOnlyResourceMap) Len() int {
-	return len(m.resources.All())
-}
-
-func (m *schemaOnlyResourceMap) Get(key string) shim.Resource {
-	n := pfutils.TypeName(key)
-	s := m.resources.Schema(n)
-	return &schemaOnlyResource{s}
-}
-
-func (m *schemaOnlyResourceMap) GetOk(key string) (shim.Resource, bool) {
-	n := pfutils.TypeName(key)
-	if !m.resources.Has(n) {
-		return nil, false
-	}
-	return m.Get(key), true
-}
-
-func (m *schemaOnlyResourceMap) Range(each func(key string, value shim.Resource) bool) {
-	for _, name := range m.resources.All() {
+// Resource map needs to support Set (mutability) for RenameResourceWithAlias.
+func newSchemaOnlyResourceMap(resources pfutils.Resources) shim.ResourceMap {
+	m := schema.ResourceMap{}
+	for _, name := range resources.All() {
 		key := string(name)
-		if !each(key, m.Get(key)) {
-			return
-		}
+		v := resources.Schema(name)
+		m[key] = &schemaOnlyResource{v}
 	}
-}
-
-func (*schemaOnlyResourceMap) Set(key string, value shim.Resource) {
-	panic("Set not supported - is it possible to treat this as immutable?")
+	return m
 }
