@@ -14,7 +14,6 @@ package crosstests
 
 import (
 	"context"
-	"q"
 
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
@@ -124,11 +123,6 @@ func runCreateInputCheck(t T, tc inputTestCase) {
 		// TODO: make this recursive
 		tfVal := tfResData.Get(k)
 		pulVal := pulResData.Get(k)
-		q.Q(tfVal, pulVal)
-		if tfVal == nil && pulVal == nil {
-			continue
-		}
-		t.Logf("%T\n", tfVal)
 		// usually plugin-sdk schema types
 		if hasEqualTfVal, ok := tfVal.(interface{ Equal(interface{}) bool }); ok {
 			if !hasEqualTfVal.Equal(pulVal) {
