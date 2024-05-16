@@ -422,21 +422,21 @@ func TestMakeResourceRawConfig(t *testing.T) {
 				"friendly_name": "Tenant Name",
 			},
 			expected: cty.ObjectVal(map[string]cty.Value{
-				"allowed_logout_urls": cty.NullVal(cty.List(cty.String)),
-				"change_password": cty.NullVal(cty.List(cty.Object(map[string]cty.Type{
+				"allowed_logout_urls": cty.ListValEmpty(cty.String),
+				"change_password": cty.ListValEmpty(cty.Object(map[string]cty.Type{
 					"enabled": cty.Bool,
 					"html":    cty.String,
-				}))),
+				})),
 				"default_audience":        cty.NullVal(cty.String),
 				"default_directory":       cty.NullVal(cty.String),
 				"default_redirection_uri": cty.NullVal(cty.String),
-				"enabled_locales":         cty.NullVal(cty.List(cty.String)),
-				"error_page": cty.NullVal(cty.List(cty.Object(map[string]cty.Type{
+				"enabled_locales":         cty.ListValEmpty(cty.String),
+				"error_page": cty.ListValEmpty(cty.Object(map[string]cty.Type{
 					"html":          cty.String,
 					"show_log_link": cty.Bool,
 					"url":           cty.String,
-				}))),
-				"flags": cty.NullVal(cty.List(cty.Object(map[string]cty.Type{
+				})),
+				"flags": cty.ListValEmpty(cty.Object(map[string]cty.Type{
 					"allow_legacy_delegation_grant_types":    cty.Bool,
 					"allow_legacy_ro_grant_types":            cty.Bool,
 					"allow_legacy_tokeninfo_endpoint":        cty.Bool,
@@ -459,28 +459,28 @@ func TestMakeResourceRawConfig(t *testing.T) {
 					"revoke_refresh_token_grant":             cty.Bool,
 					"universal_login":                        cty.Bool,
 					"use_scope_descriptions_for_consent":     cty.Bool,
-				}))),
+				})),
 				"friendly_name": cty.StringVal("Tenant Name"),
-				"guardian_mfa_page": cty.NullVal(cty.List(cty.Object(map[string]cty.Type{
+				"guardian_mfa_page": cty.ListValEmpty(cty.Object(map[string]cty.Type{
 					"enabled": cty.Bool,
 					"html":    cty.String,
-				}))),
+				})),
 				"id":                    cty.NullVal(cty.String),
 				"idle_session_lifetime": cty.NullVal(cty.Number),
 				"picture_url":           cty.NullVal(cty.String),
 				"sandbox_version":       cty.NullVal(cty.String),
-				"session_cookie": cty.NullVal(cty.List(cty.Object(map[string]cty.Type{
+				"session_cookie": cty.ListValEmpty(cty.Object(map[string]cty.Type{
 					"mode": cty.String,
-				}))),
+				})),
 				"session_lifetime": cty.NullVal(cty.Number),
 				"support_email":    cty.NullVal(cty.String),
 				"support_url":      cty.NullVal(cty.String),
-				"universal_login": cty.NullVal(cty.List(cty.Object(map[string]cty.Type{
+				"universal_login": cty.ListValEmpty(cty.Object(map[string]cty.Type{
 					"colors": cty.List(cty.Object(map[string]cty.Type{
 						"page_background": cty.String,
 						"primary":         cty.String,
 					})),
-				}))),
+				})),
 			}),
 		},
 		{
@@ -521,20 +521,20 @@ func TestMakeResourceRawConfig(t *testing.T) {
 				},
 			},
 			expected: cty.ObjectVal(map[string]cty.Value{
-				"allowed_logout_urls": cty.NullVal(cty.List(cty.String)),
-				"change_password": cty.NullVal(cty.List(cty.Object(map[string]cty.Type{
+				"allowed_logout_urls": cty.ListValEmpty(cty.String),
+				"change_password": cty.ListValEmpty(cty.Object(map[string]cty.Type{
 					"enabled": cty.Bool,
 					"html":    cty.String,
-				}))),
+				})),
 				"default_audience":        cty.NullVal(cty.String),
 				"default_directory":       cty.NullVal(cty.String),
 				"default_redirection_uri": cty.NullVal(cty.String),
-				"enabled_locales":         cty.NullVal(cty.List(cty.String)),
-				"error_page": cty.NullVal(cty.List(cty.Object(map[string]cty.Type{
+				"enabled_locales":         cty.ListValEmpty(cty.String),
+				"error_page": cty.ListValEmpty(cty.Object(map[string]cty.Type{
 					"html":          cty.String,
 					"show_log_link": cty.Bool,
 					"url":           cty.String,
-				}))),
+				})),
 				"flags": cty.ListVal([]cty.Value{
 					cty.ObjectVal(map[string]cty.Value{
 						"allow_legacy_delegation_grant_types":    cty.NullVal(cty.Bool),
@@ -562,17 +562,17 @@ func TestMakeResourceRawConfig(t *testing.T) {
 					}),
 				}),
 				"friendly_name": cty.StringVal("Tenant Name"),
-				"guardian_mfa_page": cty.NullVal(cty.List(cty.Object(map[string]cty.Type{
+				"guardian_mfa_page": cty.ListValEmpty(cty.Object(map[string]cty.Type{
 					"enabled": cty.Bool,
 					"html":    cty.String,
-				}))),
+				})),
 				"id":                    cty.NullVal(cty.String),
 				"idle_session_lifetime": cty.NullVal(cty.Number),
 				"picture_url":           cty.NullVal(cty.String),
 				"sandbox_version":       cty.NullVal(cty.String),
-				"session_cookie": cty.NullVal(cty.List(cty.Object(map[string]cty.Type{
+				"session_cookie": cty.ListValEmpty(cty.Object(map[string]cty.Type{
 					"mode": cty.String,
-				}))),
+				})),
 				"session_lifetime": cty.NullVal(cty.Number),
 				"support_email":    cty.NullVal(cty.String),
 				"support_url":      cty.NullVal(cty.String),
@@ -604,6 +604,11 @@ func TestMakeResourceRawConfig(t *testing.T) {
 					cty.StringVal("e1"),
 					cty.StringVal("e2"),
 				}),
+				"array_property_value": cty.ListValEmpty(cty.String),
+				"nested_resources": cty.ListValEmpty(
+					cty.Object(map[string]cty.Type{
+						"configuration": cty.Map(cty.String), "kind": cty.String, "opt_bool": cty.Bool,
+					})),
 			}),
 		},
 		{
@@ -659,7 +664,7 @@ func TestMakeResourceRawConfig(t *testing.T) {
 			expected: cty.ObjectVal(map[string]cty.Value{
 				"ingress": cty.SetVal([]cty.Value{
 					cty.ObjectVal(map[string]cty.Value{
-						"cidr_blocks": cty.NullVal(cty.List(cty.String)),
+						"cidr_blocks": cty.ListValEmpty(cty.String),
 						"from_port":   cty.UnknownVal(cty.Number),
 						"to_port":     cty.UnknownVal(cty.Number),
 					}),
