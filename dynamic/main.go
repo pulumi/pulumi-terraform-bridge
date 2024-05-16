@@ -32,7 +32,7 @@ import (
 func main() {
 	ctx := context.Background()
 
-	p, err := shim.LoadProvider(ctx, "random", "")
+	p, err := shim.LoadProvider(ctx, "random", ">3.0.0")
 	if err != nil {
 		fmt.Printf("Error: %s", err.Error())
 		os.Exit(1)

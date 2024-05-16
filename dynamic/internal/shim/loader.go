@@ -21,6 +21,7 @@ import (
 	"os/exec"
 	"path/filepath"
 
+	"github.com/apparentlymart/go-versions/versions"
 	plugin "github.com/hashicorp/go-plugin"
 	disco "github.com/hashicorp/terraform-svchost/disco"
 	"github.com/opentofu/opentofu/internal/depsfile"
@@ -31,6 +32,8 @@ import (
 	"github.com/opentofu/opentofu/internal/providercache"
 	"github.com/opentofu/opentofu/internal/providers"
 	tfaddr "github.com/opentofu/registry-address"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // TODO:
@@ -78,7 +81,7 @@ func LoadProvider(ctx context.Context, key, version string) (Provider, error) {
 		return nil, err
 	}
 
-	return loadProviderServer(ctx, p, v)
+	return getProviderServer(ctx, p, v)
 }
 
 func getPluginCache() (string, error) {
@@ -108,6 +111,8 @@ func loadLockFile(path string) (*depsfile.Locks, error) {
 		return l, diags.Err()
 	}
 	// TODO: Don't swallow warnings
+	ignore(diags)
+
 	return l, nil
 }
 
@@ -121,57 +126,74 @@ func (p provider) Name() string { return p.name }
 
 func (p provider) Version() string { return p.version }
 
-func loadProviderServer(
+// ignore signals to the reader that a returned value is intentionally ignored.
+//
+// It's usage should always be accompanied by a "TO DO" or a explanation.
+func ignore[T any](t T) {}
+
+func getProviderServer(
 	ctx context.Context, addr tfaddr.Provider, version getproviders.VersionConstraints,
 ) (Provider, error) {
 	cacheDir, err := getPluginCache()
 	if err != nil {
 		return nil, err
 	}
-	providersMap := providercache.NewDir(cacheDir)
 
-	// Check if we have addr at version already.
-	//
-	// If we do, we don't need to invoke the Install machinery. Calling
-	// providersMap.AllAvailablePackages()
+	systemCache := providercache.NewDir(cacheDir)
 
-	installer := providercache.NewInstaller(providersMap, getproviders.NewRegistrySource(disco.New()))
+	// Look through existing packages to see if the package we want is already downloaded.
+	for k, packages := range systemCache.AllAvailablePackages() {
+		if k != addr {
+			continue
+		}
+		// packages is sorted by precedence, so the first cached result is safe to
+		// use.
+		for _, p := range packages {
+			if versions.MeetingConstraints(version).Has(p.Version) {
+				return runProvider(&p)
+			}
+		}
+	}
 
-	const lockFile = "/Users/ianwahbe/go/src/github.com/pulumi/pulumi-terraform-bridge/dynamic/test.lock"
-	lock, err := loadLockFile(lockFile)
+	// We have not found a package that fits our constraints, so we need to download
+	// one.
+
+	source := getproviders.NewRegistrySource(disco.New())
+
+	availableVersions, warnings, err := source.AvailableVersions(ctx, addr)
+	if err != nil {
+		// TODO Handle error kinds with distinct error messages
+		return nil, err
+	}
+
+	// TODO: Don't ignore warnings
+	ignore(warnings)
+
+	desiredVersion := availableVersions.NewestInSet(versions.MeetingConstraints(version))
+	if desiredVersion == versions.Unspecified {
+		return nil, fmt.Errorf("Could not resolve a version from %s: %s", addr, version)
+	}
+
+	meta, err := source.PackageMeta(ctx, addr, desiredVersion, getproviders.CurrentPlatform)
 	if err != nil {
 		return nil, err
 	}
 
-	lock, err = installer.EnsureProviderVersions(ctx, lock, getproviders.Requirements{
-		addr: version,
-	}, providercache.InstallUpgrades)
+	_, err = systemCache.InstallPackage(ctx, meta, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	diags := depsfile.SaveLocksToFile(lock, lockFile)
-	if diags.HasErrors() {
-		return nil, diags.Err()
-	}
+	p := systemCache.ProviderVersion(addr, desiredVersion)
+	contract.Assertf(p != nil, "We just downloaded (%s,%s) so it should be in the cache", addr, desiredVersion)
 
-	p := providersMap.ProviderLatestVersion(addr)
-	if p == nil {
-		return nil, fmt.Errorf("provider not found in cache: %v", addr)
-	}
-
-	i, err := runProvider(p)
-	if err != nil {
-		return nil, err
-	}
-
-	return provider{i, addr.Type, p.Version.String()}, nil
+	return runProvider(p)
 }
 
 // runProvider produces a provider factory that runs up the executable
 // file in the given cache package and uses go-plugin to implement
 // providers.Interface against it.
-func runProvider(meta *providercache.CachedProvider) (providers.Interface, error) {
+func runProvider(meta *providercache.CachedProvider) (Provider, error) {
 	execFile, err := meta.ExecutableFile()
 	if err != nil {
 		return nil, err
@@ -207,12 +229,12 @@ func runProvider(meta *providercache.CachedProvider) (providers.Interface, error
 		p := raw.(*tfplugin.GRPCProvider)
 		p.PluginClient = client
 		p.Addr = meta.Provider
-		return p, nil
+		return provider{p, meta.Provider.Type, meta.Version.String()}, nil
 	case 6:
 		p := raw.(*tfplugin6.GRPCProvider)
 		p.PluginClient = client
 		p.Addr = meta.Provider
-		return p, nil
+		return provider{p, meta.Provider.Type, meta.Version.String()}, nil
 	default:
 		panic("unsupported protocol version")
 	}
