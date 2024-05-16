@@ -21,42 +21,49 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
+// Each conceptual block has three components:
+//
+// - blockSchema can be directly returned from a [shim.SchemaMap], as it implements
+// [shim.Schema].
+//
+// - blockResource is the pseudoResource that represents a partial access of the fields in
+// a map. It is only created as the result of [blockSchema.Elem()].
+//
+// - blockMap is the attribute map returned from calling [blockResource.Schema()].
+
 var (
-	_ = shim.Resource(block{})
-	_ = shim.SchemaMap(blockSchema{})
-	_ = shim.Schema(nestedBlockAttr{})
+	_ = shim.Schema(blockSchema{})
+	_ = shim.Resource(blockResource{})
+	_ = shim.SchemaMap(blockMap{})
 )
 
-type block struct {
+type blockResource struct {
 	pseudoResource
 	block otshim.SchemaBlock
 }
 
-func (b block) Schema() shim.SchemaMap {
-	return blockSchema{b.block}
-}
+func (b blockResource) Schema() shim.SchemaMap     { return blockMap{b.block} }
+func (b blockResource) DeprecationMessage() string { return deprecated(b.block.Deprecated) }
 
-func (b block) DeprecationMessage() string { return b.block.Description }
+type blockMap struct{ block otshim.SchemaBlock }
 
-type blockSchema struct{ block otshim.SchemaBlock }
+func (m blockMap) Len() int { return len(m.block.Attributes) + len(m.block.BlockTypes) }
 
-func (m blockSchema) Len() int { return len(m.block.Attributes) + len(m.block.BlockTypes) }
+func (m blockMap) Get(key string) shim.Schema { return getSchemaMap(m, key) }
 
-func (m blockSchema) Get(key string) shim.Schema { return getSchemaMap(m, key) }
-
-func (m blockSchema) GetOk(key string) (shim.Schema, bool) {
+func (m blockMap) GetOk(key string) (shim.Schema, bool) {
 	if a, ok := m.block.Attributes[key]; ok {
 		return attribute{*a}, true
 	}
 
 	if b, ok := m.block.BlockTypes[key]; ok {
-		return nestedBlockAttr{*b}, true
+		return blockSchema{*b}, true
 	}
 
 	return nil, false
 }
 
-func (m blockSchema) Range(each func(key string, value shim.Schema) bool) {
+func (m blockMap) Range(each func(key string, value shim.Schema) bool) {
 	for k, a := range m.block.Attributes {
 		if !each(k, attribute{*a}) {
 			return
@@ -64,60 +71,54 @@ func (m blockSchema) Range(each func(key string, value shim.Schema) bool) {
 	}
 
 	for k, b := range m.block.BlockTypes {
-		if !each(k, nestedBlockAttr{*b}) {
+		if !each(k, blockSchema{*b}) {
 			return
 		}
 	}
 }
 
-func (m blockSchema) Set(key string, value shim.Schema) {
+func (m blockMap) Set(key string, value shim.Schema) {
 	switch v := value.(type) {
 	case attribute:
 		m.block.Attributes[key] = &v.attr
-	case nestedBlockAttr:
+	case blockSchema:
 		m.block.BlockTypes[key] = &v.block
 	default:
 		contract.Failf("Must set an %T, found %T", v, value)
 	}
 }
 
-func (m blockSchema) Delete(key string) {
+func (m blockMap) Delete(key string) {
 	// Because blocks are attributes are disjoint, we can just attempt to delete from
 	// both.
 	delete(m.block.Attributes, key)
 	delete(m.block.BlockTypes, key)
 }
 
-func (m blockSchema) Validate() error { return m.block.InternalValidate() }
+func (m blockMap) Validate() error { return m.block.InternalValidate() }
 
-type nestedBlockAttr struct{ block otshim.SchemaNestedBlock }
+type blockSchema struct{ block otshim.SchemaNestedBlock }
 
-func (m nestedBlockAttr) Type() shim.ValueType                { return shim.TypeMap }
-func (m nestedBlockAttr) Optional() bool                      { return false }
-func (m nestedBlockAttr) Required() bool                      { return false }
-func (m nestedBlockAttr) Default() interface{}                { return nil }
-func (m nestedBlockAttr) DefaultFunc() shim.SchemaDefaultFunc { return nil }
-func (m nestedBlockAttr) DefaultValue() (interface{}, error)  { return nil, nil }
-func (m nestedBlockAttr) Description() string                 { return m.block.Description }
-func (m nestedBlockAttr) Computed() bool                      { return false }
-func (m nestedBlockAttr) ForceNew() bool                      { return false }
-func (m nestedBlockAttr) StateFunc() shim.SchemaStateFunc     { return nil }
-func (m nestedBlockAttr) Elem() interface{}                   { return block{block: m.block.Block} }
-func (m nestedBlockAttr) MaxItems() int                       { return m.block.MaxItems }
-func (m nestedBlockAttr) MinItems() int                       { return m.block.MinItems }
-func (m nestedBlockAttr) ConflictsWith() []string             { return nil }
-func (m nestedBlockAttr) ExactlyOneOf() []string              { return nil }
-func (m nestedBlockAttr) Removed() string                     { return "" }
-func (m nestedBlockAttr) Sensitive() bool                     { return false }
+func (m blockSchema) Type() shim.ValueType                { return shim.TypeMap }
+func (m blockSchema) Optional() bool                      { return false }
+func (m blockSchema) Required() bool                      { return false }
+func (m blockSchema) Default() interface{}                { return nil }
+func (m blockSchema) DefaultFunc() shim.SchemaDefaultFunc { return nil }
+func (m blockSchema) DefaultValue() (interface{}, error)  { return nil, nil }
+func (m blockSchema) Description() string                 { return m.block.Description }
+func (m blockSchema) Computed() bool                      { return false }
+func (m blockSchema) ForceNew() bool                      { return false }
+func (m blockSchema) StateFunc() shim.SchemaStateFunc     { return nil }
+func (m blockSchema) Elem() interface{}                   { return blockResource{block: m.block.Block} }
+func (m blockSchema) MaxItems() int                       { return m.block.MaxItems }
+func (m blockSchema) MinItems() int                       { return m.block.MinItems }
+func (m blockSchema) ConflictsWith() []string             { return nil }
+func (m blockSchema) ExactlyOneOf() []string              { return nil }
+func (m blockSchema) Removed() string                     { return "" }
+func (m blockSchema) Sensitive() bool                     { return false }
+func (m blockSchema) Deprecated() string                  { return deprecated(m.block.Deprecated) }
 
-func (m nestedBlockAttr) Deprecated() string {
-	if m.block.Deprecated {
-		return "Deprecated"
-	}
-	return ""
-}
-
-func (m nestedBlockAttr) SetElement(config interface{}) (interface{}, error) {
+func (m blockSchema) SetElement(config interface{}) (interface{}, error) {
 	panic("Cannot set a an element for a map type")
 }
-func (m nestedBlockAttr) SetHash(v interface{}) int { panic("Cannot set an hash for an object type") }
+func (m blockSchema) SetHash(v interface{}) int { panic("Cannot set an hash for an object type") }

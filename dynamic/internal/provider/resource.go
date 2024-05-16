@@ -56,17 +56,10 @@ func (m resourceMap) Set(key string, value shim.Resource) {
 
 type resource struct{ res otshim.Schema }
 
-func (r resource) Schema() shim.SchemaMap    { return blockSchema{*r.res.Block} }
-func (r resource) SchemaVersion() int        { return int(r.res.Version) }
-func (r resource) Importer() shim.ImportFunc { return nil }
-
-func (r resource) DeprecationMessage() string {
-	if r.res.Block.Deprecated {
-		return "Deprecated"
-	}
-	return ""
-}
-
+func (r resource) Schema() shim.SchemaMap          { return blockMap{*r.res.Block} }
+func (r resource) SchemaVersion() int              { return int(r.res.Version) }
+func (r resource) Importer() shim.ImportFunc       { return nil }
+func (r resource) DeprecationMessage() string      { return deprecated(r.res.Block.Deprecated) }
 func (r resource) Timeouts() *shim.ResourceTimeout { return nil }
 
 func (r resource) InstanceState(id string, object, meta map[string]interface{}) (shim.InstanceState, error) {

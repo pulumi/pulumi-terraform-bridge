@@ -40,7 +40,7 @@ type shimProvider struct {
 // Unlike the GetProviderSchema on remote, Schema is just the schema of the provider
 // itself (not associated resources or datasources).
 func (p *shimProvider) Schema() shim.SchemaMap {
-	return block{block: *p.schema().Provider.Block}.Schema()
+	return blockResource{block: *p.schema().Provider.Block}.Schema()
 }
 
 func (p *shimProvider) ResourcesMap() shim.ResourceMap {

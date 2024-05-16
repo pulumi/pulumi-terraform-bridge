@@ -34,9 +34,9 @@ func (a attribute) Required() bool      { return a.attr.Required }
 func (a attribute) Description() string { return a.attr.Description }
 func (a attribute) Computed() bool      { return a.attr.Computed }
 func (a attribute) ForceNew() bool      { return false }
-func (a attribute) Deprecated() string  { return a.attr.Description }
 func (a attribute) Sensitive() bool     { return a.attr.Sensitive }
 func (a attribute) Removed() string     { return "" }
+func (a attribute) Deprecated() string  { return deprecated(a.attr.Deprecated) }
 
 // Type information
 
@@ -70,7 +70,7 @@ func (a attribute) Elem() interface{} {
 	case a.attr.Type.IsObjectType():
 		panic("Not implemented, this feature may not be used :)")
 	case a.attr.Type.IsCollectionType():
-		return attribute{otshim.SchemaAttribute{Type: a.attr.Type}}
+		return attribute{otshim.SchemaAttribute{Type: a.attr.Type.ElementType()}}
 	default:
 		return nil
 	}

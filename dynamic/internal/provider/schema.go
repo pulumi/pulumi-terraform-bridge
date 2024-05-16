@@ -39,3 +39,10 @@ func getSchemaMap[T any](m interface {
 	contract.Assertf(ok, "Could not find key %q", key)
 	return v
 }
+
+func deprecated(isDeprecated bool) string {
+	if isDeprecated {
+		return "Deprecated"
+	}
+	return ""
+}
