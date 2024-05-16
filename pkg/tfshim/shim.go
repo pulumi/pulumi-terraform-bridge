@@ -2,6 +2,7 @@ package shim
 
 import (
 	"context"
+	"fmt"
 	"time"
 )
 
@@ -134,8 +135,6 @@ type Schema interface {
 	Removed() string
 	Sensitive() bool
 
-	UnknownValue() interface{}
-
 	SetElement(config interface{}) (interface{}, error)
 	SetHash(v interface{}) int
 }
@@ -186,6 +185,25 @@ type ResourceMap interface {
 	Range(each func(key string, value Resource) bool)
 
 	Set(key string, value Resource)
+}
+
+type ResourceMapWithClone interface {
+	ResourceMap
+	Clone(oldKey, newKey string) error
+}
+
+func CloneResource(rm ResourceMap, oldKey string, newKey string) error {
+	switch rm := rm.(type) {
+	case ResourceMapWithClone:
+		return rm.Clone(oldKey, newKey)
+	default:
+		v, ok := rm.GetOk(oldKey)
+		if !ok {
+			return fmt.Errorf("key not found: %q", oldKey)
+		}
+		rm.Set(newKey, v)
+		return nil
+	}
 }
 
 type Provider interface {

@@ -18,12 +18,19 @@ import (
 	"context"
 
 	pfprovider "github.com/hashicorp/terraform-plugin-framework/provider"
+	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/pfutils"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
 func ShimSchemaOnlyProvider(ctx context.Context, provider pfprovider.Provider) shim.Provider {
+	resources, err := pfutils.GatherResources(ctx, provider)
+	if err != nil {
+		panic(err)
+	}
+	resourceMap := newSchemaOnlyResourceMap(resources)
 	return &SchemaOnlyProvider{
-		ctx: ctx,
-		tf:  provider,
+		ctx:         ctx,
+		tf:          provider,
+		resourceMap: resourceMap,
 	}
 }
