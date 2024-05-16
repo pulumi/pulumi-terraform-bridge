@@ -245,7 +245,7 @@ public class App {
                 .build())
             .build());
 
-        var iamForLambda = new Role("iamForLambda", RoleArgs.builder()        
+        var iamForLambda = new Role("iamForLambda", RoleArgs.builder()
             .assumeRolePolicy(assumeRole.applyValue(getPolicyDocumentResult -> getPolicyDocumentResult.json()))
             .build());
 
@@ -255,7 +255,7 @@ public class App {
             .outputPath("lambda_function_payload.zip")
             .build());
 
-        var testLambda = new Function("testLambda", FunctionArgs.builder()        
+        var testLambda = new Function("testLambda", FunctionArgs.builder()
             .code(new FileArchive("lambda_function_payload.zip"))
             .role(iamForLambda.arn())
             .handler("index.test")
@@ -401,7 +401,7 @@ public class App {
         var exampleLayerVersion = new LayerVersion("exampleLayerVersion");
 
         // ... other configuration ...
-        var exampleFunction = new Function("exampleFunction", FunctionArgs.builder()        
+        var exampleFunction = new Function("exampleFunction", FunctionArgs.builder()
             .layers(exampleLayerVersion.arn())
             .build());
 
@@ -618,11 +618,11 @@ public class App {
                 .build())
             .build());
 
-        var iamForLambda = new Role("iamForLambda", RoleArgs.builder()        
+        var iamForLambda = new Role("iamForLambda", RoleArgs.builder()
             .assumeRolePolicy(assumeRole.applyValue(getPolicyDocumentResult -> getPolicyDocumentResult.json()))
             .build());
 
-        var testLambda = new Function("testLambda", FunctionArgs.builder()        
+        var testLambda = new Function("testLambda", FunctionArgs.builder()
             .code(new FileArchive("lambda_function_payload.zip"))
             .role(iamForLambda.arn())
             .handler("index.test")
@@ -946,19 +946,19 @@ public class App {
 
     public static void stack(Context ctx) {
         // EFS file system
-        var efsForLambda = new FileSystem("efsForLambda", FileSystemArgs.builder()        
+        var efsForLambda = new FileSystem("efsForLambda", FileSystemArgs.builder()
             .tags(Map.of("Name", "efs_for_lambda"))
             .build());
 
         // Mount target connects the file system to the subnet
-        var alpha = new MountTarget("alpha", MountTargetArgs.builder()        
+        var alpha = new MountTarget("alpha", MountTargetArgs.builder()
             .fileSystemId(efsForLambda.id())
             .subnetId(aws_subnet.subnet_for_lambda().id())
             .securityGroups(aws_security_group.sg_for_lambda().id())
             .build());
 
         // EFS access point used by lambda file system
-        var accessPointForLambda = new AccessPoint("accessPointForLambda", AccessPointArgs.builder()        
+        var accessPointForLambda = new AccessPoint("accessPointForLambda", AccessPointArgs.builder()
             .fileSystemId(efsForLambda.id())
             .rootDirectory(AccessPointRootDirectoryArgs.builder()
                 .path("/lambda")
@@ -976,7 +976,7 @@ public class App {
 
         // A lambda function connected to an EFS file system
         // ... other configuration ...
-        var example = new Function("example", FunctionArgs.builder()        
+        var example = new Function("example", FunctionArgs.builder()
             .fileSystemConfig(FunctionFileSystemConfigArgs.builder()
                 .arn(accessPointForLambda.arn())
                 .localMountPath("/mnt/efs")
@@ -1299,7 +1299,7 @@ public class App {
         final var lambdaFunctionName = config.get("lambdaFunctionName").orElse("lambda_function_name");
         // This is to optionally manage the CloudWatch Log Group for the Lambda Function.
         // If skipping this resource configuration, also add "logs:CreateLogGroup" to the IAM policy below.
-        var example = new LogGroup("example", LogGroupArgs.builder()        
+        var example = new LogGroup("example", LogGroupArgs.builder()
             .retentionInDays(14)
             .build());
 
@@ -1314,18 +1314,18 @@ public class App {
                 .build())
             .build());
 
-        var lambdaLoggingPolicy = new Policy("lambdaLoggingPolicy", PolicyArgs.builder()        
+        var lambdaLoggingPolicy = new Policy("lambdaLoggingPolicy", PolicyArgs.builder()
             .path("/")
             .description("IAM policy for logging from a lambda")
             .policy(lambdaLoggingPolicyDocument.applyValue(getPolicyDocumentResult -> getPolicyDocumentResult.json()))
             .build());
 
-        var lambdaLogs = new RolePolicyAttachment("lambdaLogs", RolePolicyAttachmentArgs.builder()        
+        var lambdaLogs = new RolePolicyAttachment("lambdaLogs", RolePolicyAttachmentArgs.builder()
             .role(aws_iam_role.iam_for_lambda().name())
             .policyArn(lambdaLoggingPolicy.arn())
             .build());
 
-        var testLambda = new Function("testLambda", FunctionArgs.builder()        
+        var testLambda = new Function("testLambda", FunctionArgs.builder()
             .loggingConfig(FunctionLoggingConfigArgs.builder()
                 .logFormat("Text")
                 .build())
