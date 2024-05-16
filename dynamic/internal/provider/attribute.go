@@ -59,7 +59,7 @@ func (a attribute) Type() shim.ValueType {
 		return shim.TypeMap
 	default:
 		panic(fmt.Sprintf("UNKNOWN TYPE of %#v", a.attr.Type)) // TODO: Remove for release
-		return shim.TypeInvalid
+		// return shim.TypeInvalid
 	}
 }
 

@@ -82,7 +82,9 @@ func (p *shimProvider) Diff(
 	panic("Needs to be implement in terms of p.remote.PlanResourceChange")
 }
 
-func (p *shimProvider) Apply(ctx context.Context, t string, s shim.InstanceState, d shim.InstanceDiff) (shim.InstanceState, error) {
+func (p *shimProvider) Apply(
+	ctx context.Context, t string, s shim.InstanceState, d shim.InstanceDiff,
+) (shim.InstanceState, error) {
 	panic("Needs to be implement in terms of p.remote.ApplyResourceChange")
 }
 

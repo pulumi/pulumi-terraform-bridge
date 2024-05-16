@@ -121,7 +121,9 @@ func (p provider) Name() string { return p.name }
 
 func (p provider) Version() string { return p.version }
 
-func loadProviderServer(ctx context.Context, addr tfaddr.Provider, version getproviders.VersionConstraints) (Provider, error) {
+func loadProviderServer(
+	ctx context.Context, addr tfaddr.Provider, version getproviders.VersionConstraints,
+) (Provider, error) {
 	cacheDir, err := getPluginCache()
 	if err != nil {
 		return nil, err
@@ -141,9 +143,6 @@ func loadProviderServer(ctx context.Context, addr tfaddr.Provider, version getpr
 		return nil, err
 	}
 
-	// TODO: Check if not having a lockfile is problematic. If it is, persist it.
-	//
-	// It might not be problematic if the requirements we give are always strict.
 	lock, err = installer.EnsureProviderVersions(ctx, lock, getproviders.Requirements{
 		addr: version,
 	}, providercache.InstallUpgrades)
@@ -158,7 +157,7 @@ func loadProviderServer(ctx context.Context, addr tfaddr.Provider, version getpr
 
 	p := providersMap.ProviderLatestVersion(addr)
 	if p == nil {
-		return nil, fmt.Errorf("provider not found in cache: %v\n", addr)
+		return nil, fmt.Errorf("provider not found in cache: %v", addr)
 	}
 
 	i, err := runProvider(p)
