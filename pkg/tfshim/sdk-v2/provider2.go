@@ -302,15 +302,10 @@ func (p *planResourceChangeImpl) unpackInstanceState(
 	switch s := s.(type) {
 	case nil:
 		res := p.tf.ResourcesMap[t]
-		ty := res.CoreConfigSchema()
-		// val, err := recoverAndCoerceCtyValueWithSchema(ty, map[string]interface{}{})
-		// if err != nil {
-		// 	contract.Failf("Failed to recover cty.Value: %v", err)
-		// }
-		val := cty.NullVal(ty.ImpliedType())
+		ty := res.CoreConfigSchema().ImpliedType()
 		return &v2InstanceState2{
 			resourceType: t,
-			stateValue:   val,
+			stateValue:   cty.NullVal(ty),
 		}
 	case *v2InstanceState2:
 		return s
@@ -381,10 +376,17 @@ func (p *planResourceChangeImpl) upgradeState(
 		return nil, err
 	}
 
+	newMeta := make(map[string]interface{})
+	// copy old meta into new meta
+	for k, v := range state.meta {
+		newMeta[k] = v
+	}
+	newMeta["schema_version"] = strconv.Itoa(res.SchemaVersion)
+
 	return &v2InstanceState2{
 		resourceType: t,
 		stateValue:   newState,
-		meta:         map[string]interface{}{"schema_version": strconv.Itoa(res.SchemaVersion)},
+		meta:         newMeta,
 	}, nil
 }
 
