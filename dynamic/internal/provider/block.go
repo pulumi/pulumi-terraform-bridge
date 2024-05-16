@@ -56,7 +56,19 @@ func (m blockSchema) GetOk(key string) (shim.Schema, bool) {
 	return nil, false
 }
 
-func (m blockSchema) Range(each func(key string, value shim.Schema) bool) {}
+func (m blockSchema) Range(each func(key string, value shim.Schema) bool) {
+	for k, a := range m.block.Attributes {
+		if !each(k, attribute{*a}) {
+			return
+		}
+	}
+
+	for k, b := range m.block.BlockTypes {
+		if !each(k, nestedBlockAttr{*b}) {
+			return
+		}
+	}
+}
 
 func (m blockSchema) Set(key string, value shim.Schema) {
 	switch v := value.(type) {

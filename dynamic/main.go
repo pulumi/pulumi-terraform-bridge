@@ -16,14 +16,17 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 
 	"github.com/opentofu/opentofu/shim"
-	"github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
-	"github.com/pulumi/pulumi-terraform-bridge/pf/tfgen"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 func main() {
@@ -38,10 +41,20 @@ func main() {
 
 	info := providerInfo(p)
 
-	packageSchema, err := tfgen.GenerateSchema(ctx, tfgen.GenerateSchemaOptions{
-		ProviderInfo:    info,
-		DiagnosticsSink: diag.DefaultSink(io.Discard, os.Stderr, diag.FormatOptions{}),
+	packageSchema, err := tfgen.GenerateSchemaWithOptions(tfgen.GenerateSchemaOptions{
+		ProviderInfo: info,
+		DiagnosticsSink: diag.DefaultSink(io.Discard, os.Stderr, diag.FormatOptions{
+			Color: colors.Always,
+		}),
+		XInMemoryDocs: true,
 	})
+	if err != nil {
+		fmt.Printf("Error: %s", err.Error())
+		os.Exit(1)
+	}
 
-	tfbridge.Main(ctx, p.Name(), info, packageSchema.ProviderMetadata)
+	schemaBytes, err := json.Marshal(packageSchema.PackageSpec)
+	contract.AssertNoErrorf(err, "This is a provider bug, the SchemaSpec should always marshal.")
+
+	tfbridge.Main(p.Name(), info.Version, info, schemaBytes)
 }

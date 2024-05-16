@@ -726,6 +726,7 @@ func GenerateSchema(info tfbridge.ProviderInfo, sink diag.Sink) (pschema.Package
 type GenerateSchemaOptions struct {
 	ProviderInfo    tfbridge.ProviderInfo
 	DiagnosticsSink diag.Sink
+	XInMemoryDocs   bool
 }
 
 type GenerateSchemaResult struct {
@@ -736,12 +737,13 @@ func GenerateSchemaWithOptions(opts GenerateSchemaOptions) (*GenerateSchemaResul
 	info := opts.ProviderInfo
 	sink := opts.DiagnosticsSink
 	g, err := NewGenerator(GeneratorOptions{
-		Package:      info.Name,
-		Version:      info.Version,
-		Language:     Schema,
-		ProviderInfo: info,
-		Root:         afero.NewMemMapFs(),
-		Sink:         sink,
+		Package:       info.Name,
+		Version:       info.Version,
+		Language:      Schema,
+		ProviderInfo:  info,
+		Root:          afero.NewMemMapFs(),
+		Sink:          sink,
+		XInMemoryDocs: opts.XInMemoryDocs,
 	})
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to create generator")
@@ -777,6 +779,7 @@ type GeneratorOptions struct {
 	SkipDocs           bool
 	SkipExamples       bool
 	CoverageTracker    *CoverageTracker
+	XInMemoryDocs      bool
 }
 
 // NewGenerator returns a code-generator for the given language runtime and package info.
@@ -856,6 +859,7 @@ func NewGenerator(opts GeneratorOptions) (*Generator, error) {
 		skipExamples:     opts.SkipExamples,
 		coverageTracker:  opts.CoverageTracker,
 		editRules:        getEditRules(info.DocRules),
+		noDocsRepo:       opts.XInMemoryDocs,
 	}, nil
 }
 
@@ -1226,12 +1230,16 @@ func (g *Generator) gatherResource(rawname string,
 	// Collect documentation information
 	var entityDocs entityDocs
 	if !isProvider {
-		source := NewGitRepoDocsSource(g)
-		pulumiDocs, err := getDocsForResource(g, source, ResourceDocs, rawname, info)
-		if err == nil {
-			entityDocs = pulumiDocs
-		} else if !g.checkNoDocsError(err) {
-			return nil, err
+		// If g.noDocsRepo is set, we have established that it's pointless to get
+		// docs from the repo, so we don't try.
+		if !g.noDocsRepo {
+			source := NewGitRepoDocsSource(g)
+			pulumiDocs, err := getDocsForResource(g, source, ResourceDocs, rawname, info)
+			if err == nil {
+				entityDocs = pulumiDocs
+			} else if !g.checkNoDocsError(err) {
+				return nil, err
+			}
 		}
 	} else {
 		entityDocs.Description = fmt.Sprintf(
