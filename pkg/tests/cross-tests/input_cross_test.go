@@ -110,8 +110,6 @@ func TestInputsEmptySchema(t *testing.T) {
 				Schema: map[string]*schema.Schema{},
 			},
 			Config: tftypes.NewValue(tftypes.Object{}, map[string]tftypes.Value{}),
-			// TODO[pulumi/pulumi-terraform-bridge#1914]
-			SkipCompareRaw: true,
 		},
 	)
 }
@@ -150,8 +148,6 @@ func TestInputsEqualEmptyList(t *testing.T) {
 							"f0": tftypes.NewValue(t1, []tftypes.Value{}),
 						},
 					),
-					// TODO[pulumi/pulumi-terraform-bridge#1915]
-					SkipCompareRaw: true,
 				})
 			})
 		}
@@ -180,8 +176,6 @@ func TestInputsEmptyString(t *testing.T) {
 				"f0": tftypes.NewValue(tftypes.String, ""),
 			},
 		),
-		// TODO[pulumi/pulumi-terraform-bridge#1916]
-		SkipCompareRaw: true,
 	})
 }
 
@@ -216,17 +210,11 @@ func TestInputsEmptyConfigModeAttrSet(t *testing.T) {
 		Config: tftypes.NewValue(t0, map[string]tftypes.Value{
 			"f1": tftypes.NewValue(tftypes.Set{ElementType: t2}, []tftypes.Value{}),
 		}),
-		// TODO[pulumi/pulumi-terraform-bridge#1762]
-		SkipCompareRaw: true,
 	})
 }
 
 func TestOptionalSetNotSpecified(t *testing.T) {
-	//skipUnlessLinux(t)
-
-	//t.Skip("We misrepresent empty sets")
-	// TODO[pulumi/pulumi-terraform-bridge#1970]
-
+	skipUnlessLinux(t)
 	runCreateInputCheck(t, inputTestCase{
 		Resource: &schema.Resource{
 			Schema: map[string]*schema.Schema{
@@ -244,10 +232,3 @@ func TestOptionalSetNotSpecified(t *testing.T) {
 		Config: tftypes.NewValue(tftypes.Object{}, map[string]tftypes.Value{}),
 	})
 }
-
-// input_check.go:40: RawConfig not equal!
-// input_check.go:41: TF value cty.ObjectVal(map[string]cty.Value{"f0":cty.SetValEmpty(cty.Object(map[string]cty.Type{"x":cty.String})), "id":cty.NullVal(cty.String)})
-// input_check.go:42: PU value cty.ObjectVal(map[string]cty.Value{"f0":cty.NullVal(cty.Set(cty.Object(map[string]cty.Type{"x":cty.String}))), "id":cty.NullVal(cty.String)})
-// input_check.go:40: RawPlan not equal!
-// input_check.go:41: TF value cty.ObjectVal(map[string]cty.Value{"f0":cty.SetValEmpty(cty.Object(map[string]cty.Type{"x":cty.String})), "id":cty.UnknownVal(cty.String)})
-// input_check.go:42: PU value cty.ObjectVal(map[string]cty.Value{"f0":cty.NullVal(cty.Set(cty.Object(map[string]cty.Type{"x":cty.String}))), "id":cty.NullVal(cty.String)})

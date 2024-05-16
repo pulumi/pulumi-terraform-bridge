@@ -109,13 +109,14 @@ func recoverAndCoerceCtyValueWithSchema(schema blockLike, value any) (cty.Value,
 // discarded. No type conversions such as string to bool are attempted, as the code calls
 // CoerceValue on the result of this method and that traversal takes care of that.
 func recoverCtyValue(dT cty.Type, value interface{}) (cty.Value, error) {
-	fmt.Println("recoverCtyValue", dT.GoString(), value)
 	switch value := value.(type) {
 	case nil:
 		switch {
 		case dT.IsSetType():
 			rv, err := recoverCtyValueOfSetType(dT, []any{})
-			fmt.Println("RECOVERING", rv.GoString(), err)
+			return rv, err
+		case dT.IsListType():
+			rv, err := recoverCtyValueOfListType(dT, []any{})
 			return rv, err
 		default:
 			return cty.NullVal(dT), nil
