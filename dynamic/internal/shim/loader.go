@@ -17,6 +17,7 @@ package shim
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -150,6 +151,9 @@ func getProviderServer(
 		// use.
 		for _, p := range packages {
 			if versions.MeetingConstraints(version).Has(p.Version) {
+				slog.InfoContext(ctx, "Found cached provider",
+					slog.Any("addr", addr.String()),
+					slog.Any("version", p.Version.String()))
 				return runProvider(&p)
 			}
 		}
