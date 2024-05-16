@@ -14,6 +14,7 @@ package crosstests
 
 import (
 	"context"
+	"q"
 
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
@@ -33,14 +34,20 @@ type inputTestCase struct {
 
 	Config     any
 	ObjectType *tftypes.Object
+
+	SkipCompareRaw bool
+}
+
+func FailNotEqual(t T, name string, tfVal, pulVal any) {
+	t.Logf(name + " not equal!")
+	t.Logf("TF value %s", tfVal)
+	t.Logf("PU value %s", pulVal)
+	t.Fail()
 }
 
 func assertCtyValEqual(t T, name string, tfVal, pulVal cty.Value) {
 	if !tfVal.RawEquals(pulVal) {
-		t.Logf(name + " not equal!")
-		t.Logf("TF value " + tfVal.GoString())
-		t.Logf("PU value " + pulVal.GoString())
-		t.Fail()
+		FailNotEqual(t, name, tfVal, pulVal)
 	}
 }
 
@@ -113,11 +120,29 @@ func runCreateInputCheck(t T, tc inputTestCase) {
 
 	pt.Up()
 
-	// TODO: verify that these comparisons ensure full equality.
-	// compare the two inputs
-	assertCtyValEqual(t, "RawConfig", tfResData.GetRawConfig(), pulResData.GetRawConfig())
-	assertCtyValEqual(t, "RawPlan", tfResData.GetRawPlan(), pulResData.GetRawPlan())
+	for k := range tc.Resource.Schema {
+		// TODO: make this recursive
+		tfVal := tfResData.Get(k)
+		pulVal := pulResData.Get(k)
+		q.Q(tfVal, pulVal)
+		if tfVal == nil && pulVal == nil {
+			continue
+		}
+		t.Logf("%T\n", tfVal)
+		// usually plugin-sdk schema types
+		if hasEqualTfVal, ok := tfVal.(interface{ Equal(interface{}) bool }); ok {
+			if !hasEqualTfVal.Equal(pulVal) {
+				FailNotEqual(t, k, tfVal, pulVal)
+			}
+		} else {
+			require.Equal(t, tfVal, pulVal, "Values for key %s do not match", k)
+		}
+	}
 
-	// TODO: we currently represent null state values wrong. We should fix it.
-	// assertCtyValEqual(t, "RawState", tfResData.GetRawState(), pulResData.GetRawState())
+	if !tc.SkipCompareRaw {
+		assertCtyValEqual(t, "RawConfig", tfResData.GetRawConfig(), pulResData.GetRawConfig())
+		assertCtyValEqual(t, "RawPlan", tfResData.GetRawPlan(), pulResData.GetRawPlan())
+		// TODO: we currently represent null state values wrong. We should fix it.
+		// assertCtyValEqual(t, "RawState", tfResData.GetRawState(), pulResData.GetRawState())
+	}
 }
