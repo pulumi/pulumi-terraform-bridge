@@ -97,8 +97,8 @@ func runCreateInputCheck(t T, tc inputTestCase) {
 	}
 
 	shimProvider := shimv2.NewProvider(tfp, shimv2.WithPlanResourceChange(
-			func(tfResourceType string) bool { return true },
-		))
+		func(tfResourceType string) bool { return true },
+	))
 
 	pd := &pulumiDriver{
 		name:                providerShortName,
