@@ -80,6 +80,19 @@ tftypes.NewValue(t0, map[string]tftypes.Value{
   "f1": tftypes.NewValue(tftypes.Bool, true),
 })`),
 		},
+		{
+			tftypes.NewValue(tftypes.Map{
+				ElementType: tftypes.Number,
+			}, map[string]tftypes.Value{
+				"foo": tftypes.NewValue(tftypes.Number, 42),
+				"bar": tftypes.NewValue(tftypes.Number, 55),
+			}),
+			autogold.Expect(`
+tftypes.NewValue(tftypes.Map{ElementType: tftypes.Number}, map[string]tftypes.Value{
+	  "bar": tftypes.NewValue(tftypes.Number, 55),
+	  "foo": tftypes.NewValue(tftypes.Number, 42),
+})`),
+		},
 	}
 
 	for i, tc := range testCases {
