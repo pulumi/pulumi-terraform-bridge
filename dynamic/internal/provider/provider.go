@@ -16,177 +16,155 @@ package provider
 
 import (
 	"context"
-	"fmt"
-	"sync"
 
+	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	otshim "github.com/opentofu/opentofu/shim"
-	"github.com/zclconf/go-cty/cty"
-
-	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/opentofu/opentofu/shim/tfplugin6"
+	grpc "google.golang.org/grpc"
 )
 
-var _ shim.Provider = (*shimProvider)(nil)
+var _ tfprotov6.ProviderServer = (*shimProvider)(nil)
 
-func New(p otshim.Provider) shim.Provider {
-	return &shimProvider{p, sync.OnceValue(p.GetProviderSchema)}
+func New(p otshim.Provider) tfprotov6.ProviderServer {
+	return shimProvider{p}
 }
 
-type shimProvider struct {
-	remote otshim.Provider
+type shimProvider struct{ remote otshim.Provider }
 
-	// schema fetches the upstream provider's schema. schema must be safe to call
-	// concurrently and efficient.
-	schema func() otshim.ProviderSchema
-}
-
-// Unlike the GetProviderSchema on remote, Schema is just the schema of the provider
-// itself (not associated resources or datasources).
-func (p *shimProvider) Schema() shim.SchemaMap {
-	return blockResource{block: *p.schema().Provider.Block}.Schema()
-}
-
-func (p *shimProvider) ResourcesMap() shim.ResourceMap {
-	return resourceMap(p.schema().ResourceTypes)
-}
-
-func (p *shimProvider) DataSourcesMap() shim.ResourceMap {
-	return resourceMap(p.schema().DataSources)
-}
-
-// It is assumed that this will have been called within the upstream provider already.
-//
-// We don't need to duplicate the effort here.
-func (p *shimProvider) InternalValidate() error { return nil }
-
-type config struct{ value cty.Value }
-
-func (c config) IsSet(key string) bool {
-	t := c.value.Type()
-
-	contract.Assertf(t.IsObjectType(),
-		"The top level config object must be an *object*")
-
-	if !t.HasAttribute(key) {
-		return false
-	}
-
-	return t.AttributeType(key).IsSetType()
-
-}
-
-// Validate the configuration of a [shim.Provider].
-func (p *shimProvider) Validate(ctx context.Context, c shim.ResourceConfig) ([]string, []error) {
-	config, ok := c.(config)
-	contract.Assertf(ok, "Expected type %T, found type %T", config, c)
-	response := p.remote.ValidateProviderConfig(otshim.ValidateProviderConfigRequest{
-		Config: config.value,
-	})
-
-	return splitDiagnostics(response.Diagnostics)
-}
-
-func (p *shimProvider) ValidateResource(ctx context.Context, t string, c shim.ResourceConfig) ([]string, []error) {
-	config, ok := c.(config)
-	contract.Assertf(ok, "Expected type %T, found type %T", config, c)
-
-	resp := p.remote.ValidateResourceConfig(otshim.ValidateResourceConfigRequest{
-		TypeName: t,
-		Config:   config.value,
-	})
-
-	return splitDiagnostics(resp.Diagnostics)
-}
-
-func (p *shimProvider) ValidateDataSource(ctx context.Context, t string, c shim.ResourceConfig) ([]string, []error) {
-	config, ok := c.(config)
-	contract.Assertf(ok, "Expected type %T, found type %T", config, c)
-
-	resp := p.remote.ValidateDataResourceConfig(otshim.ValidateDataResourceConfigRequest{
-		TypeName: t,
-		Config:   config.value,
-	})
-
-	return splitDiagnostics(resp.Diagnostics)
-}
-
-func (p *shimProvider) Configure(ctx context.Context, c shim.ResourceConfig) error {
-	config, ok := c.(config)
-	contract.Assertf(ok, "Expected type %T, found type %T", config, c)
-
-	resp := p.remote.ConfigureProvider(otshim.ConfigureProviderRequest{
-		TerraformVersion: "pulumi", // TODO: Set the bridge version here
-		Config:           config.value,
-	})
-
-	// TODO: Display warnings
-
-	return resp.Diagnostics.Err()
-}
-
-func (p *shimProvider) Diff(
+func translateGRPC[
+	In, Out, Final any,
+	Call func(context.Context, In, ...grpc.CallOption) (Out, error),
+	MapResult func(Out) Final,
+](
 	ctx context.Context,
-	t string,
-	s shim.InstanceState,
-	c shim.ResourceConfig,
-	opts shim.DiffOptions,
-) (shim.InstanceDiff, error) {
-	panic("Needs to be implement in terms of p.remote.PlanResourceChange")
-}
-
-func (p *shimProvider) Apply(
-	ctx context.Context, t string, s shim.InstanceState, d shim.InstanceDiff,
-) (shim.InstanceState, error) {
-	panic("Needs to be implement in terms of p.remote.ApplyResourceChange")
-}
-
-func (p *shimProvider) Refresh(
-	ctx context.Context, t string, s shim.InstanceState, c shim.ResourceConfig,
-) (shim.InstanceState, error) {
-	panic("Needs to be implement in terms of p.remote.ReadResource")
-}
-
-func (p *shimProvider) ReadDataDiff(ctx context.Context, t string, c shim.ResourceConfig) (shim.InstanceDiff, error) {
-	panic("Needs to be implement in terms of p.remote.ReadDataSource")
-}
-
-func (p *shimProvider) ReadDataApply(ctx context.Context, t string, d shim.InstanceDiff) (shim.InstanceState, error) {
-	panic("I'm not sure what this does")
-}
-
-// Meta is impossible to implement, since it allows non-serializable values.
-//
-// That said, as long as we don't use the result of Meta it should be fine.
-func (p *shimProvider) Meta(ctx context.Context) interface{} { return nil }
-
-func (p *shimProvider) Stop(ctx context.Context) error { return p.remote.Stop() }
-
-func (p *shimProvider) InitLogging(ctx context.Context) { /* no-op */ }
-
-// Create a Destroy diff for a resource identified by the TF token t.
-func (p *shimProvider) NewDestroyDiff(ctx context.Context, t string, opts shim.TimeoutOptions) shim.InstanceDiff {
-	panic("Needs to be implement in terms of p.remote.PlanResourceChange")
-}
-
-func (p *shimProvider) NewResourceConfig(ctx context.Context, object map[string]interface{}) shim.ResourceConfig {
-	panic("Needs to be implement in terms of p.remote.ApplyResourceChange, I think?")
-}
-
-// Checks if a value is representing a Set, and unpacks its elements on success.
-func (p *shimProvider) IsSet(ctx context.Context, v interface{}) ([]interface{}, bool) {
-	panic("I'm not sure how or why this exists")
-}
-
-func splitDiagnostics(diags otshim.Diagnostics) ([]string, []error) {
-	info, errors := []string{}, []error{}
-
-	for _, diag := range diags {
-		if diag.Severity() == otshim.DiagError {
-			errors = append(errors, fmt.Errorf("%s", diag.Description().Summary))
-		} else {
-			info = append(info, diag.Description().Summary)
-		}
+	call Call,
+	i In,
+	m MapResult,
+) (Final, error) {
+	v, err := call(ctx, i)
+	if err != nil {
+		var tmp Final
+		return tmp, err
 	}
+	return m(v), nil
+}
 
-	return info, errors
+// GetMetadata returns upfront information about server capabilities and
+// supported resource types without requiring the server to instantiate all
+// schema information, which may be memory intensive. This RPC is optional,
+// where clients may receive an unimplemented RPC error. Clients should
+// ignore the error and call the GetProviderSchema RPC as a fallback.
+func (p shimProvider) GetMetadata(ctx context.Context, req *tfprotov6.GetMetadataRequest) (*tfprotov6.GetMetadataResponse, error) {
+	return translateGRPC(ctx, p.remote.GetMetadata, tfplugin6.GetMetadataRequest(req), tfplugin6.GetMetadataResult)
+}
+
+// GetProviderSchema is called when Terraform needs to know what the
+// provider's schema is, along with the schemas of all its resources
+// and data sources.
+func (p shimProvider) GetProviderSchema(ctx context.Context, req *tfprotov6.GetProviderSchemaRequest) (*tfprotov6.GetProviderSchemaResponse, error) {
+	panic("UNIMPLIMENTED")
+}
+
+// ValidateProviderConfig is called to give a provider a chance to
+// validate the configuration the user specified.
+func (p shimProvider) ValidateProviderConfig(context.Context, *tfprotov6.ValidateProviderConfigRequest) (*tfprotov6.ValidateProviderConfigResponse, error) {
+	panic("UNIMPLIMENTED")
+}
+
+// ConfigureProvider is called to pass the user-specified provider
+// configuration to the provider.
+func (p shimProvider) ConfigureProvider(context.Context, *tfprotov6.ConfigureProviderRequest) (*tfprotov6.ConfigureProviderResponse, error) {
+	panic("UNIMPLIMENTED")
+}
+
+// StopProvider is called when Terraform would like providers to shut
+// down as quickly as possible, and usually represents an interrupt.
+func (p shimProvider) StopProvider(context.Context, *tfprotov6.StopProviderRequest) (*tfprotov6.StopProviderResponse, error) {
+	panic("UNIMPLIMENTED")
+}
+
+// ValidateResourceConfig is called when Terraform is checking that
+// a resource's configuration is valid. It is guaranteed to have types
+// conforming to your schema. This is your opportunity to do custom or
+// advanced validation prior to a plan being generated.
+func (p shimProvider) ValidateResourceConfig(context.Context, *tfprotov6.ValidateResourceConfigRequest) (*tfprotov6.ValidateResourceConfigResponse, error) {
+	panic("UNIMPLIMENTED")
+}
+
+// UpgradeResourceState is called when Terraform has encountered a
+// resource with a state in a schema that doesn't match the schema's
+// current version. It is the provider's responsibility to modify the
+// state to upgrade it to the latest state schema.
+func (p shimProvider) UpgradeResourceState(context.Context, *tfprotov6.UpgradeResourceStateRequest) (*tfprotov6.UpgradeResourceStateResponse, error) {
+	panic("UNIMPLIMENTED")
+}
+
+// ReadResource is called when Terraform is refreshing a resource's
+// state.
+func (p shimProvider) ReadResource(context.Context, *tfprotov6.ReadResourceRequest) (*tfprotov6.ReadResourceResponse, error) {
+	panic("UNIMPLIMENTED")
+}
+
+// PlanResourceChange is called when Terraform is attempting to
+// calculate a plan for a resource. Terraform will suggest a proposed
+// new state, which the provider can modify or return unmodified to
+// influence Terraform's plan.
+func (p shimProvider) PlanResourceChange(context.Context, *tfprotov6.PlanResourceChangeRequest) (*tfprotov6.PlanResourceChangeResponse, error) {
+	panic("UNIMPLIMENTED")
+}
+
+// ApplyResourceChange is called when Terraform has detected a diff
+// between the resource's state and the user's config, and the user has
+// approved a planned change. The provider is to apply the changes
+// contained in the plan, and return the resulting state.
+func (p shimProvider) ApplyResourceChange(context.Context, *tfprotov6.ApplyResourceChangeRequest) (*tfprotov6.ApplyResourceChangeResponse, error) {
+	panic("UNIMPLIMENTED")
+}
+
+// ImportResourceState is called when a user has requested Terraform
+// import a resource. The provider should fetch the information
+// specified by the passed ID and return it as one or more resource
+// states for Terraform to assume control of.
+func (p shimProvider) ImportResourceState(context.Context, *tfprotov6.ImportResourceStateRequest) (*tfprotov6.ImportResourceStateResponse, error) {
+	panic("UNIMPLIMENTED")
+}
+
+// ValidateDataResourceConfig is called when Terraform is checking that a
+// data source's configuration is valid. It is guaranteed to have types
+// conforming to your schema, but it is not guaranteed that all values
+// will be known. This is your opportunity to do custom or advanced
+// validation prior to a plan being generated.
+func (p shimProvider) ValidateDataResourceConfig(context.Context, *tfprotov6.ValidateDataResourceConfigRequest) (*tfprotov6.ValidateDataResourceConfigResponse, error) {
+	panic("UNIMPLIMENTED")
+}
+
+// MoveResourceState is called when Terraform is asked to change a resource
+// type for an existing resource. The provider must accept the change as
+// valid by ensuring the source resource type, schema version, and provider
+// address are compatible to convert the source state into the target
+// resource type and latest state version.
+//
+// This functionality is only supported in Terraform 1.8 and later. The
+// provider must have enabled the MoveResourceState server capability to
+// enable these requests.
+func (p shimProvider) MoveResourceState(context.Context, *tfprotov6.MoveResourceStateRequest) (*tfprotov6.MoveResourceStateResponse, error) {
+	panic("UNIMPLIMENTED")
+}
+
+// ReadDataSource is called when Terraform is refreshing a data
+// source's state.
+func (p shimProvider) ReadDataSource(context.Context, *tfprotov6.ReadDataSourceRequest) (*tfprotov6.ReadDataSourceResponse, error) {
+	panic("UNIMPLIMENTED")
+}
+
+// CallFunction is called when Terraform wants to execute the logic of a
+// function referenced in the configuration.
+func (p shimProvider) CallFunction(context.Context, *tfprotov6.CallFunctionRequest) (*tfprotov6.CallFunctionResponse, error) {
+	panic("UNIMPLIMENTED")
+}
+
+// GetFunctions is called when Terraform wants to lookup which functions a
+// provider supports when not calling GetProviderSchema.
+func (p shimProvider) GetFunctions(context.Context, *tfprotov6.GetFunctionsRequest) (*tfprotov6.GetFunctionsResponse, error) {
+	panic("UNIMPLIMENTED")
 }

@@ -17,6 +17,7 @@ package shim
 import (
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"os/exec"
@@ -29,9 +30,8 @@ import (
 	"github.com/opentofu/opentofu/internal/getproviders"
 	"github.com/opentofu/opentofu/internal/logging"
 	tfplugin "github.com/opentofu/opentofu/internal/plugin"
-	tfplugin6 "github.com/opentofu/opentofu/internal/plugin6"
 	"github.com/opentofu/opentofu/internal/providercache"
-	"github.com/opentofu/opentofu/internal/providers"
+	"github.com/opentofu/opentofu/internal/tfplugin6"
 	tfaddr "github.com/opentofu/registry-address"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -51,7 +51,8 @@ const envPluginCache = "TF_PLUGIN_CACHE_DIR"
 //
 // You must call Close on any Provider that has been created.
 type Provider interface {
-	providers.Interface
+	tfplugin6.ProviderClient
+	io.Closer
 
 	Name() string
 	Version() string
@@ -118,14 +119,18 @@ func loadLockFile(path string) (*depsfile.Locks, error) {
 }
 
 type provider struct {
-	providers.Interface
+	tfplugin6.ProviderClient
 
 	name, version string
+
+	close func() error
 }
 
 func (p provider) Name() string { return p.name }
 
 func (p provider) Version() string { return p.version }
+
+func (p provider) Close() error { return p.close() }
 
 // ignore signals to the reader that a returned value is intentionally ignored.
 //
@@ -221,24 +226,20 @@ func runProvider(meta *providercache.CachedProvider) (Provider, error) {
 		return nil, err
 	}
 
-	raw, err := rpcClient.Dispense(tfplugin.ProviderPluginName)
-	if err != nil {
-		return nil, err
-	}
+	// raw, err := rpcClient.Dispense(tfplugin.ProviderPluginName)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	// store the client so that the plugin can kill the child process
 	protoVer := client.NegotiatedVersion()
 	switch protoVer {
 	case 5:
-		p := raw.(*tfplugin.GRPCProvider)
-		p.PluginClient = client
-		p.Addr = meta.Provider
-		return provider{p, meta.Provider.Type, meta.Version.String()}, nil
+		// TODO Mux up to v6 and then fall-through
+		panic("unsupported protocol version")
 	case 6:
-		p := raw.(*tfplugin6.GRPCProvider)
-		p.PluginClient = client
-		p.Addr = meta.Provider
-		return provider{p, meta.Provider.Type, meta.Version.String()}, nil
+		p := tfplugin6.NewProviderClient(rpcClient.(*plugin.GRPCClient).Conn)
+		return provider{p, meta.Provider.Type, meta.Version.String(), rpcClient.Close}, nil
 	default:
 		panic("unsupported protocol version")
 	}

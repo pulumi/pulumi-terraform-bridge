@@ -4,6 +4,7 @@ import (
 	"github.com/opentofu/opentofu/internal/configs/configschema"
 	"github.com/opentofu/opentofu/internal/providers"
 	"github.com/opentofu/opentofu/internal/tfdiags"
+	"github.com/opentofu/opentofu/internal/tfplugin6"
 )
 
 type (
@@ -32,4 +33,9 @@ type (
 
 var (
 	DiagError = tfdiags.Error
+)
+
+// RawGRPC
+type (
+	GetMetadata_Request = tfplugin6.GetMetadata_Request
 )
