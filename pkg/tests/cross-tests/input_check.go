@@ -96,9 +96,7 @@ func runCreateInputCheck(t T, tc inputTestCase) {
 		},
 	}
 
-	shimProvider := shimv2.NewProvider(tfp,
-		shimv2.WithDiffStrategy(shimv2.PlanState),
-		shimv2.WithPlanResourceChange(
+	shimProvider := shimv2.NewProvider(tfp, shimv2.WithPlanResourceChange(
 			func(tfResourceType string) bool { return true },
 		))
 
