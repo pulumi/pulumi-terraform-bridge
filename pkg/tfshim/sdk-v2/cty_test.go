@@ -12,7 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/internal/testprovider"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2/internal/rapid"
+	rapidgen "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2/internal/rapid"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -814,6 +814,7 @@ func TestRecoverAndCoerceCtyValue(t *testing.T) {
 		}
 
 		v = normalizeCtyValue(v)
+		v = normalizeNullCollections(v)
 		result = normalizeCtyValue(result)
 		require.Equal(t, result, v)
 	})
@@ -826,6 +827,14 @@ func normalizeCtyValue(v cty.Value) cty.Value {
 			f.SetPrec(512)
 			return cty.NumberVal(f), nil
 		}
+		return v, nil
+	})
+	contract.AssertNoErrorf(err, "Transform should never fail here")
+	return v
+}
+
+func normalizeNullCollections(v cty.Value) cty.Value {
+	v, err := cty.Transform(v, func(p cty.Path, v cty.Value) (cty.Value, error) {
 		if v.Type().IsSetType() && v.IsNull() {
 			return cty.SetValEmpty(v.Type().ElementType()), nil
 		}
@@ -836,6 +845,7 @@ func normalizeCtyValue(v cty.Value) cty.Value {
 	})
 	contract.AssertNoErrorf(err, "Transform should never fail here")
 	return v
+
 }
 
 func numGen() *rapid.Generator[interface{}] {
