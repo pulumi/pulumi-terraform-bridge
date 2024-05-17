@@ -315,11 +315,11 @@ func (p *planResourceChangeImpl) unpackInstanceState(
 }
 
 // Wrapping the pre-existing upgradeInstanceState method here. Since the method is written against
-// terraform.InstanceState interface some adapters are needed to convert to/from cty.Value and meta private bag.
+// terraform.InstanceState interface some adapters are needed to convert to/from cty.Value and meta
+// private bag.
 func (p *planResourceChangeImpl) upgradeState(
 	ctx context.Context,
-	t string,
-	s shim.InstanceState,
+	t string, s shim.InstanceState,
 ) (shim.InstanceState, error) {
 	res := p.tf.ResourcesMap[t]
 	state := p.unpackInstanceState(t, s)
@@ -431,8 +431,7 @@ func (s *grpcServer) PlanResourceChange(
 	PlannedState cty.Value
 	PlannedMeta  map[string]interface{}
 	PlannedDiff  *terraform.InstanceDiff
-}, error,
-) {
+}, error) {
 	configVal, err := msgpack.Marshal(config, ty)
 	if err != nil {
 		return nil, err
