@@ -62,7 +62,7 @@ func (p shimProvider) GetMetadata(ctx context.Context, req *tfprotov6.GetMetadat
 // provider's schema is, along with the schemas of all its resources
 // and data sources.
 func (p shimProvider) GetProviderSchema(ctx context.Context, req *tfprotov6.GetProviderSchemaRequest) (*tfprotov6.GetProviderSchemaResponse, error) {
-	panic("UNIMPLIMENTED")
+	return translateGRPC(ctx, p.remote.GetProviderSchema, tfplugin6.GetProviderSchemaRequest(req), tfplugin6.GetProviderSchemaResponse)
 }
 
 // ValidateProviderConfig is called to give a provider a chance to
