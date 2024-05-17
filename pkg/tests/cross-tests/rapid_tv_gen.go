@@ -325,8 +325,8 @@ func (tvg *tvGen) GenAttrKind() *rapid.Generator[attrKind] {
 func (tvg *tvGen) GenString() *rapid.Generator[tv] {
 	vals := []tftypes.Value{
 		tftypes.NewValue(tftypes.String, "text"),
+		tftypes.NewValue(tftypes.String, ""),
 	}
-	vals = append(vals, tftypes.NewValue(tftypes.String, ""))
 	return tvg.GenScalar(schema.TypeString, vals)
 }
 
