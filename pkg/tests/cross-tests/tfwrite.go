@@ -56,11 +56,19 @@ func writeBlock(body *hclwrite.Body, schemas map[string]*schema.Schema, values m
 			if sch.Type == schema.TypeMap || sch.ConfigMode == schema.SchemaConfigModeAttr {
 				body.SetAttributeValue(key, value)
 			} else if sch.Type == schema.TypeSet {
+				if value.IsNull() {
+					continue
+				}
+
 				for _, v := range value.AsValueSet().Values() {
 					newBlock := body.AppendNewBlock(key, nil)
 					writeBlock(newBlock.Body(), elem.Schema, v.AsValueMap())
 				}
 			} else if sch.Type == schema.TypeList {
+				if value.IsNull() {
+					continue
+				}
+
 				for _, v := range value.AsValueSlice() {
 					newBlock := body.AppendNewBlock(key, nil)
 					writeBlock(newBlock.Body(), elem.Schema, v.AsValueMap())
