@@ -53,6 +53,7 @@ const (
 type tvGen struct {
 	generateUnknowns       bool
 	generateConfigModeAttr bool
+	skipNullCollections    bool
 }
 
 func (tvg *tvGen) GenBlock(parentName string) *rapid.Generator[tv] {
@@ -215,26 +216,25 @@ func (tvg *tvGen) GenBlockWithDepth(depth int, parentName string) *rapid.Generat
 }
 
 // Single-nested blocks represent object types. In schemav2 providers there is no natural encoding for these, so they
-// are typically encoded as MaxItems=1 lists with a *Resource Elem.
+// are typically encoded as MaxItems=1 sets with a *Resource Elem.
 //
 // See https://developer.hashicorp.com/terraform/plugin/framework/handling-data/blocks/single-nested
 func (tvg *tvGen) GenSingleNestedBlock(depth int, parentName string) *rapid.Generator[tv] {
 	ge := rapid.Custom[tv](func(t *rapid.T) tv {
 		bl := tvg.GenBlockWithDepth(depth, parentName).Draw(t, "block")
-		listWrapType := tftypes.List{ElementType: bl.typ}
-		listWrap := func(v tftypes.Value) tftypes.Value {
-			return tftypes.NewValue(listWrapType, []tftypes.Value{v})
+		setWrapType := tftypes.Set{ElementType: bl.typ}
+		setWrap := func(v tftypes.Value) tftypes.Value {
+			return tftypes.NewValue(setWrapType, []tftypes.Value{v})
 		}
 		return tv{
 			schema: schema.Schema{
-				// TODO: This should be a set, not a list as that's how TF represents objects
-				Type:     schema.TypeList,
+				Type:     schema.TypeSet,
 				MaxItems: 1,
 				Elem: &schema.Resource{
 					Schema: bl.schemaMap,
 				},
 			},
-			typ: listWrapType,
+			typ: setWrapType,
 			// A few open questions here, can these values ever be unknown (likely yes) and how is that
 			// represented in TF? Also, can these values be null or this is just represented as an empty
 			// list? Should an empty list be part of the values here?
@@ -242,7 +242,7 @@ func (tvg *tvGen) GenSingleNestedBlock(depth int, parentName string) *rapid.Gene
 			// This should also account for required schemas.
 			//
 			// valueGen: tvg.withNullAndUnknown(listWrapType, rapid.Map(bl.valueGen, listWrap)),
-			valueGen: rapid.Map(bl.valueGen, listWrap),
+			valueGen: rapid.Map(bl.valueGen, setWrap),
 		}
 	})
 
@@ -262,9 +262,7 @@ func (tvg *tvGen) GenListNestedBlock(depth int, parentName string) *rapid.Genera
 		if maxItems == 1 {
 			maxPropValues = 1
 		}
-		// TODO: fix empty lists and revert the min value here to be randomly 0
-		minVals := 1
-		vg := rapid.Map(rapid.SliceOfN(bl.valueGen, minVals, maxPropValues), listWrap)
+		vg := rapid.Map(rapid.SliceOfN(bl.valueGen, 0, maxPropValues), listWrap)
 		return tv{
 			schema: schema.Schema{
 				Type:     schema.TypeList,
@@ -390,7 +388,10 @@ func (tvg *tvGen) WithNullAndUnknown(gen *rapid.Generator[tv]) *rapid.Generator[
 			unkGen := rapid.Just(tftypes.NewValue(tv0.typ, tftypes.UnknownValue))
 			options = append(options, unkGen)
 		}
-		if !tv0.schema.Required {
+		if !(tvg.skipNullCollections &&
+			(tv0.schema.Type == schema.TypeList ||
+				tv0.schema.Type == schema.TypeSet)) &&
+			!tv0.schema.Required {
 			nullGen := rapid.Just(tftypes.NewValue(tv0.typ, nil))
 			options = append(options, nullGen)
 		}

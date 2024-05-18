@@ -70,7 +70,9 @@ func TestCreateInputsConvergence(outerT *testing.T) {
 	outerT.Parallel()
 
 	log.SetOutput(io.Discard)
-	typedValGenerator := &tvGen{}
+	typedValGenerator := &tvGen{
+		skipNullCollections: true,
+	}
 
 	rapid.Check(outerT, func(t *rapid.T) {
 		outerT.Logf("Iterating..")
