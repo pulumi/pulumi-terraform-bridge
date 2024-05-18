@@ -22,7 +22,9 @@ import (
 	"github.com/pulumi/providertest/providers"
 	"github.com/pulumi/providertest/pulumitest"
 	"github.com/pulumi/providertest/pulumitest/opttest"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/require"
 )
 
@@ -35,6 +37,16 @@ type inputTestCase struct {
 	ObjectType *tftypes.Object
 
 	SkipCompareRaw bool
+
+	// The Pulumi ResourceInfo for the resource under test.
+	//
+	// ResourceInfo.Tok *will* be overwritten.
+	ResourceInfo *tfbridge.ResourceInfo
+
+	// The Pulumi config for the resource under test.
+	//
+	// If nil, then it will be naively inferred from Config.
+	PulumiConfig resource.PropertyMap
 }
 
 func FailNotEqual(t T, name string, tfVal, pulVal any) {
@@ -109,10 +121,11 @@ func runCreateInputCheck(t T, tc inputTestCase) {
 		pulumiResourceToken: rtoken,
 		tfResourceName:      rtype,
 		objectType:          nil,
+		resouceInfo:         tc.ResourceInfo,
 	}
 
 	puwd := t.TempDir()
-	pd.writeYAML(t, puwd, tc.Config)
+	pd.writeYAML(t, puwd, tc.Config, tc.PulumiConfig)
 
 	pt := pulumitest.NewPulumiTest(t, puwd,
 		opttest.TestInPlace(),

@@ -6,6 +6,8 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
 func TestInputsEqualStringBasic(t *testing.T) {
@@ -99,6 +101,32 @@ func TestInputsEqualObjectBasic(t *testing.T) {
 			})
 		})
 	}
+}
+
+func TestInputsLargeInteger(t *testing.T) {
+	skipUnlessLinux(t)
+
+	runCreateInputCheck(t, inputTestCase{
+		Resource: &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				"x": {
+					Required: true,
+					Type:     schema.TypeInt,
+				},
+			},
+		},
+		Config: map[string]any{
+			"x": 641577219598130723,
+		},
+		PulumiConfig: resource.PropertyMap{
+			"x": resource.NewProperty("641577219598130723"),
+		},
+		ResourceInfo: &tfbridge.ResourceInfo{
+			Fields: map[string]*tfbridge.SchemaInfo{
+				"x": {Type: "string"},
+			},
+		},
+	})
 }
 
 // Isolated from rapid-generated tests

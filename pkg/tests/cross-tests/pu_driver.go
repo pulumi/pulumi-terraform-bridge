@@ -46,17 +46,22 @@ type pulumiDriver struct {
 	pulumiResourceToken string
 	tfResourceName      string
 	objectType          *tftypes.Object
+
+	resouceInfo *tfbridge.ResourceInfo
 }
 
 func (pd *pulumiDriver) providerInfo() tfbridge.ProviderInfo {
+	rInfo := pd.resouceInfo
+	if rInfo == nil {
+		rInfo = &tfbridge.ResourceInfo{}
+	}
+	rInfo.Tok = tokens.Type(pd.pulumiResourceToken)
 	return tfbridge.ProviderInfo{
 		Name: pd.name,
 		P:    pd.shimProvider,
 
 		Resources: map[string]*tfbridge.ResourceInfo{
-			pd.tfResourceName: {
-				Tok: tokens.Type(pd.pulumiResourceToken),
-			},
+			pd.tfResourceName: rInfo,
 		},
 	}
 }
@@ -93,14 +98,18 @@ func (pd *pulumiDriver) startPulumiProvider(ctx context.Context) (*rpcutil.Serve
 	return &handle, nil
 }
 
-func (pd *pulumiDriver) writeYAML(t T, workdir string, tfConfig any) {
+func (pd *pulumiDriver) writeYAML(t T, workdir string, tfConfig any, pConfig resource.PropertyMap) {
 	res := pd.shimProvider.ResourcesMap().Get(pd.tfResourceName)
 	schema := res.Schema()
-	pConfig, err := pd.convertConfigToPulumi(schema, nil, pd.objectType, tfConfig)
-	require.NoErrorf(t, err, "convertConfigToPulumi failed")
 
-	// TODO[pulumi/pulumi-terraform-bridge#1864]: schema secrets may be set by convertConfigToPulumi.
-	pConfig = propertyvalue.RemoveSecrets(resource.NewObjectProperty(pConfig)).ObjectValue()
+	if pConfig == nil {
+		var err error
+		pConfig, err = pd.convertConfigToPulumi(schema, nil, pd.objectType, tfConfig)
+		require.NoErrorf(t, err, "convertConfigToPulumi failed")
+
+		// TODO[pulumi/pulumi-terraform-bridge#1864]: schema secrets may be set by convertConfigToPulumi.
+		pConfig = propertyvalue.RemoveSecrets(resource.NewObjectProperty(pConfig)).ObjectValue()
+	}
 
 	// This is a bit of a leap of faith that serializing PropertyMap to YAML in this way will yield valid Pulumi
 	// YAML. This probably needs refinement.

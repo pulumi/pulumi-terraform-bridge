@@ -1618,14 +1618,11 @@ func False() *bool { return ref(false) }
 func transformFromState(
 	ctx context.Context, res *ResourceInfo, inputs resource.PropertyMap,
 ) (resource.PropertyMap, error) {
-	if res == nil {
+	if res == nil || res.TransformFromState == nil {
 		return inputs, nil
 	}
-	f := res.TransformFromState
-	if f == nil {
-		return inputs, nil
-	}
-	o, err := f(ctx, inputs)
+
+	o, err := res.TransformFromState(ctx, inputs)
 	if err != nil {
 		return nil, fmt.Errorf("transforming inputs: %w", err)
 	}

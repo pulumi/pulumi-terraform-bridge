@@ -22,27 +22,53 @@ func upgradeResourceState(ctx context.Context, p *schema.Provider, res *schema.R
 	// Ensure that we have an ID in the attributes.
 	m["id"] = instanceState.ID
 
+	var json map[string]any
 	version, hasVersion := 0, false
-	if versionValue, ok := instanceState.Meta["schema_version"]; ok {
-		versionString, ok := versionValue.(string)
-		if !ok {
-			return nil, fmt.Errorf("unexpected type %T for schema_version", versionValue)
+	if instanceState.RawState.IsNull() {
+		if versionValue, ok := instanceState.Meta["schema_version"]; ok {
+			versionString, ok := versionValue.(string)
+			if !ok {
+				return nil, fmt.Errorf("unexpected type %T for schema_version", versionValue)
+			}
+			v, err := strconv.ParseInt(versionString, 0, 32)
+			if err != nil {
+				return nil, err
+			}
+			version, hasVersion = int(v), true
 		}
-		v, err := strconv.ParseInt(versionString, 0, 32)
+
+		var err error
+		// First, build a JSON state from the InstanceState.
+		json, version, err = schema.UpgradeFlatmapState(ctx, version, m, res, p.Meta())
 		if err != nil {
 			return nil, err
 		}
-		version, hasVersion = int(v), true
+	} else {
+		v := instanceState.RawState.AsValueMap()
+		if _, ok := v["id"]; !ok {
+			v["id"] = cty.StringVal(instanceState.ID)
+			instanceState.RawState = cty.ObjectVal(v)
+		}
+
+		var err error
+		// Cannot call schema.StateValueToJSONMap since it round-trips through float64
+		json, err = schema.StateValueToJSONMap(instanceState.RawState, res.CoreConfigSchema().ImpliedType())
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	// First, build a JSON state from the InstanceState.
-	json, version, err := schema.UpgradeFlatmapState(ctx, version, m, res, p.Meta())
-	if err != nil {
-		return nil, err
-	}
+	fmt.Printf("- %#v\n", json)
+	fmt.Printf("-x %#v (%[1]T)\n", json["x"])
 
 	// Next, migrate the JSON state up to the current version.
-	json, err = schema.UpgradeJSONState(ctx, version, json, res, p.Meta())
+
+	// Discovery: schema.UpgradeJSONState works on a lossy representation; numbers as
+	// float64. To maintain fidelity, we must avoid it if possible.
+	//
+	// The best way I can think of is to only round-trip through JSON when upgrades
+	// are needed.
+	json, err := schema.UpgradeJSONState(ctx, version, json, res, p.Meta())
 	if err != nil {
 		return nil, err
 	}
@@ -70,12 +96,17 @@ func upgradeResourceState(ctx context.Context, p *schema.Provider, res *schema.R
 	// Normalize the value and fill in any missing blocks.
 	v = schema.NormalizeObjectFromLegacySDK(v, configBlock)
 
+	fmt.Printf("!- %s\n", v.GoString())
+	fmt.Printf("!-x %#v\n", v.GetAttr("x").AsBigFloat().Text('f', 0))
+
 	// Convert the value back to an InstanceState.
 	newState, err := res.ShimInstanceStateFromValue(v)
 	if err != nil {
 		return nil, err
 	}
 	newState.RawConfig = instanceState.RawConfig
+
+	fmt.Printf("!!- %s\n", newState.Attributes)
 
 	// Copy the original ID and meta to the new state and stamp in the new version.
 	newState.ID = instanceState.ID

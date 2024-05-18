@@ -81,7 +81,7 @@ func runDiffCheck(t T, tc diffTestCase) {
 	}
 
 	puwd := t.TempDir()
-	pd.writeYAML(t, puwd, tc.Config1)
+	pd.writeYAML(t, puwd, tc.Config1, nil)
 
 	pt := pulumitest.NewPulumiTest(t, puwd,
 		opttest.TestInPlace(),
@@ -98,7 +98,7 @@ func runDiffCheck(t T, tc diffTestCase) {
 
 	pt.Up()
 
-	pd.writeYAML(t, puwd, tc.Config2)
+	pd.writeYAML(t, puwd, tc.Config2, nil)
 	x := pt.Up()
 
 	tfAction := tfd.parseChangesFromTFPlan(*tfDiffPlan)
