@@ -232,3 +232,31 @@ func TestOptionalSetNotSpecified(t *testing.T) {
 		Config: tftypes.NewValue(tftypes.Object{}, map[string]tftypes.Value{}),
 	})
 }
+
+func TestExplicitNilList(t *testing.T) {
+	skipUnlessLinux(t)
+	t.Skipf("We've regressed on explicit nills")
+	// TODO: fix.
+	runCreateInputCheck(t, inputTestCase{
+		Resource: &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				"f0": {
+					Optional: true,
+					Type:     schema.TypeList,
+					Elem: &schema.Schema{
+						Type:     schema.TypeMap,
+						Optional: true,
+						Computed: true,
+						Elem: &schema.Schema{
+							Type:      schema.TypeInt,
+							Optional:  true,
+							Sensitive: true,
+						},
+					},
+				},
+			},
+		},
+		// TODO: How does one express this with tftypes?
+		Config: map[string]interface{}{"f0": nil},
+	})
+}
