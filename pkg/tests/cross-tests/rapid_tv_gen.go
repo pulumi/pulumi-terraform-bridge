@@ -204,6 +204,7 @@ func (tvg *tvGen) GenBlockWithDepth(depth int, parentName string) *rapid.Generat
 				return tftypes.NewValue(objType, fields)
 			})
 		} else {
+			_ = rapid.Bool().Draw(t, "consumeBitstream3")
 			objGen = rapid.Just(tftypes.NewValue(objType, map[string]tftypes.Value{}))
 		}
 		err := schema.InternalMap(fieldSchemas).InternalValidate(nil)
@@ -221,7 +222,7 @@ func (tvg *tvGen) GenBlockWithDepth(depth int, parentName string) *rapid.Generat
 // See https://developer.hashicorp.com/terraform/plugin/framework/handling-data/blocks/single-nested
 func (tvg *tvGen) GenSingleNestedBlock(depth int, parentName string) *rapid.Generator[tv] {
 	ge := rapid.Custom[tv](func(t *rapid.T) tv {
-		bl := tvg.GenBlockWithDepth(depth, parentName).Draw(t, "block")
+		bl := tvg.GenBlockWithDepth(depth-1, parentName).Draw(t, "block")
 		setWrapType := tftypes.Set{ElementType: bl.typ}
 		setWrap := func(v tftypes.Value) tftypes.Value {
 			return tftypes.NewValue(setWrapType, []tftypes.Value{v})
@@ -385,6 +386,7 @@ func (tvg *tvGen) WithNullAndUnknown(gen *rapid.Generator[tv]) *rapid.Generator[
 		gen := tv0.valueGen
 		options := []*rapid.Generator[tftypes.Value]{gen}
 		if tvg.generateUnknowns {
+			_ = rapid.Bool().Draw(t, "consumeBitstream1")
 			unkGen := rapid.Just(tftypes.NewValue(tv0.typ, tftypes.UnknownValue))
 			options = append(options, unkGen)
 		}
@@ -392,6 +394,7 @@ func (tvg *tvGen) WithNullAndUnknown(gen *rapid.Generator[tv]) *rapid.Generator[
 			(tv0.schema.Type == schema.TypeList ||
 				tv0.schema.Type == schema.TypeSet)) &&
 			!tv0.schema.Required {
+			_ = rapid.Bool().Draw(t, "consumeBitstream2")
 			nullGen := rapid.Just(tftypes.NewValue(tv0.typ, nil))
 			options = append(options, nullGen)
 		}
