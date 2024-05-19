@@ -168,6 +168,7 @@ resource "res" "ex" {
 }
 `),
 		},
+		// TODO: empty list/set test case
 	}
 
 	for _, tc := range testCases {
