@@ -16,6 +16,7 @@ package convert
 
 import (
 	"fmt"
+
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -42,6 +43,7 @@ func (enc *flattenedEncoder) fromPropertyValue(v resource.PropertyValue) (tftype
 
 type flattenedDecoder struct {
 	elementDecoder Decoder
+	elementType    tftypes.Type
 }
 
 func (dec *flattenedDecoder) toPropertyValue(v tftypes.Value) (resource.PropertyValue, error) {
@@ -51,6 +53,18 @@ func (dec *flattenedDecoder) toPropertyValue(v tftypes.Value) (resource.Property
 	}
 	switch len(list) {
 	case 0:
+		if dec.elementType.Is(tftypes.Object{}) {
+			tfVal := tftypes.NewValue(dec.elementType, map[string]tftypes.Value{})
+			return dec.elementDecoder.toPropertyValue(tfVal)
+		} else if dec.elementType.Is(tftypes.List{}) {
+			tfVal := tftypes.NewValue(dec.elementType, []tftypes.Value{})
+			return dec.elementDecoder.toPropertyValue(tfVal)
+		} else if dec.elementType.Is(tftypes.Set{}) {
+			tfVal := tftypes.NewValue(dec.elementType, []tftypes.Value{})
+			return dec.elementDecoder.toPropertyValue(tfVal)
+		}
+		// TODO: handle nested flattened decoders.
+		// TestNonEmptyNestedMaxItemsOnes
 		return resource.NewNullProperty(), nil
 	case 1:
 		return dec.elementDecoder.toPropertyValue(list[0])

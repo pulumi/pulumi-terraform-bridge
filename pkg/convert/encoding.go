@@ -232,6 +232,7 @@ func deriveDecoder(pctx *schemaPropContext, t tftypes.Type) (Decoder, error) {
 		}
 		return &flattenedDecoder{
 			elementDecoder: decoder,
+			elementType:    elementType,
 		}, nil
 	}
 
