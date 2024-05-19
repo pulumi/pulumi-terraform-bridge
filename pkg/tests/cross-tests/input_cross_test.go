@@ -365,12 +365,12 @@ func TestNonEmptyNestedMaxItemsOnes(t *testing.T) {
 	config2 := tftypes.NewValue(t0, map[string]tftypes.Value{
 		"d3f0": tftypes.NewValue(tftypes.List{ElementType: t1}, []tftypes.Value{}),
 	})
-	// second level empty
-	// config3 := tftypes.NewValue(t0, map[string]tftypes.Value{
-	// 	"d3f0": tftypes.NewValue(tftypes.List{ElementType: t1}, []tftypes.Value{
-	// 		tftypes.NewValue(t1, []tftypes.Value{}),
-	// 	}),
-	// })
+	// second level empty - this is impossible to handle because of flattening
+	_ = tftypes.NewValue(t0, map[string]tftypes.Value{
+		"d3f0": tftypes.NewValue(tftypes.List{ElementType: t1}, []tftypes.Value{
+			tftypes.NewValue(t1, []tftypes.Value{}),
+		}),
+	})
 
 	for _, tc := range []struct {
 		name   string
@@ -378,7 +378,6 @@ func TestNonEmptyNestedMaxItemsOnes(t *testing.T) {
 	}{
 		{"non-empty", config1},
 		{"first-level-empty", config2},
-		// TODO: fix.
 		// {"second-level-empty", config3},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

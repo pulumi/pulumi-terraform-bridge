@@ -63,8 +63,6 @@ func (dec *flattenedDecoder) toPropertyValue(v tftypes.Value) (resource.Property
 			tfVal := tftypes.NewValue(dec.elementType, []tftypes.Value{})
 			return dec.elementDecoder.toPropertyValue(tfVal)
 		}
-		// TODO: handle nested flattened decoders.
-		// TestNonEmptyNestedMaxItemsOnes
 		return resource.NewNullProperty(), nil
 	case 1:
 		return dec.elementDecoder.toPropertyValue(list[0])
