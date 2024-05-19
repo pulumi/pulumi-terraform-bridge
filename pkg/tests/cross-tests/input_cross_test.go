@@ -401,3 +401,32 @@ func TestNonEmptyNestedMaxItemsOnes(t *testing.T) {
 		})
 	}
 }
+
+func TestEmptySetOfEmptyObjects(t *testing.T) {
+	skipUnlessLinux(t)
+	t.Skipf("Fix")
+	// TODO
+	// RawPlan not equal!
+    // TF value cty.ObjectVal(map[string]cty.Value{"d2f0":cty.SetVal([]cty.Value{cty.EmptyObjectVal}), "d2f1":cty.SetVal([]cty.Value{cty.EmptyObjectVal}), "id":cty.UnknownVal(cty.String)})
+    // PU value cty.ObjectVal(map[string]cty.Value{"d2f0":cty.SetValEmpty(cty.EmptyObject), "d2f1":cty.SetVal([]cty.Value{cty.EmptyObjectVal}), "id":cty.UnknownVal(cty.String)})
+	t1 := tftypes.Object{}
+	t0 := tftypes.Object{AttributeTypes: map[string]tftypes.Type{
+		"d3f0": tftypes.Set{ElementType: t1},
+	}}
+	config := tftypes.NewValue(t0, map[string]tftypes.Value{
+		"d3f0": tftypes.NewValue(tftypes.Set{ElementType: t1}, []tftypes.Value{}),
+	})
+
+	runCreateInputCheck(t, inputTestCase{
+		Resource: &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				"d3f0": {
+        			Type:     schema.TypeSet,
+        			Optional: true,
+        			Elem:     &schema.Resource{Schema: map[string]*schema.Schema{}},
+        		},
+			},
+		},
+		Config: config,
+	})
+}
