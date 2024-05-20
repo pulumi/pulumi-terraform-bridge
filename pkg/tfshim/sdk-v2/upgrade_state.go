@@ -19,10 +19,8 @@ func upgradeResourceState(ctx context.Context, typeName string, p *schema.Provid
 		return nil, nil
 	}
 
-	m := instanceState.Attributes
-
 	// Ensure that we have an ID in the attributes.
-	m["id"] = instanceState.ID
+	instanceState.Attributes["id"] = instanceState.ID
 
 	version, hasVersion := int64(0), false
 	if versionValue, ok := instanceState.Meta["schema_version"]; ok {
@@ -32,7 +30,7 @@ func upgradeResourceState(ctx context.Context, typeName string, p *schema.Provid
 		}
 		v, err := strconv.ParseInt(versionString, 0, 32)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to parse schema_version: %w", err)
 		}
 		version, hasVersion = v, true
 	}
@@ -43,7 +41,7 @@ func upgradeResourceState(ctx context.Context, typeName string, p *schema.Provid
 		UpgradeResourceState(ctx, &tfprotov5.UpgradeResourceStateRequest{
 			TypeName: typeName,
 			Version:  version,
-			RawState: &tfprotov5.RawState{Flatmap: m},
+			RawState: &tfprotov5.RawState{Flatmap: instanceState.Attributes},
 		})
 	if err != nil {
 		return nil, fmt.Errorf("upgrade resource state GRPC: %w", err)
@@ -60,13 +58,13 @@ func upgradeResourceState(ctx context.Context, typeName string, p *schema.Provid
 		logDiag(ctx, rd)
 	}
 	if err := diagToError(dd); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("diag: %w", err)
 	}
 
 	// Unmarshal to get back the underlying type.
 	rawState, err := msgpack.Unmarshal(resp.UpgradedState.MsgPack, res.CoreConfigSchema().ImpliedType())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to unmarshal: %w", err)
 	}
 
 	newState, err := res.ShimInstanceStateFromValue(rawState)
