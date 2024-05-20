@@ -431,6 +431,36 @@ func TestOptionalComputedNoChange(t *testing.T) {
 	})
 }
 
+func TestListOptionalComputedNoChange(t *testing.T) {
+	skipUnlessLinux(t)
+	config := tftypes.NewValue(tftypes.Object{}, map[string]tftypes.Value{})
+	runDiffCheck(t, diffTestCase{
+		Resource: &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				"security_groups": {
+					Type:     schema.TypeList,
+					Optional: true,
+					Computed: true,
+					Elem: &schema.Schema{
+						Type: schema.TypeString,
+					},
+				},
+			},
+			CreateContext: func(
+				ctx context.Context, rd *schema.ResourceData, i interface{},
+			) diag.Diagnostics {
+				err := rd.Set("security_groups", []string{"sg1", "sg2"})
+				require.NoError(t, err)
+				rd.SetId("someid")
+				return make(diag.Diagnostics, 0)
+			},
+		},
+		Config1: config,
+		Config2: config,
+	})
+}
+
+
 func TestMaxItemsOneOptionalComputedNoChange(t *testing.T) {
 	skipUnlessLinux(t)
 	config := tftypes.NewValue(tftypes.Object{}, map[string]tftypes.Value{})
