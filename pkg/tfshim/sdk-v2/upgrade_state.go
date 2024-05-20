@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/hashicorp/go-cty/cty"
+	ctyjson "github.com/hashicorp/go-cty/cty/json"
 	"github.com/hashicorp/go-cty/cty/msgpack"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov5"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -20,7 +21,10 @@ func upgradeResourceState(ctx context.Context, typeName string, p *schema.Provid
 	}
 
 	// Ensure that we have an ID in the attributes.
-	instanceState.Attributes["id"] = instanceState.ID
+	if state := instanceState.RawState.AsValueMap(); !has(state, "id") {
+		state["id"] = cty.StringVal(instanceState.ID)
+		instanceState.RawState = cty.ObjectVal(state)
+	}
 
 	version, hasVersion := int64(0), false
 	if versionValue, ok := instanceState.Meta["schema_version"]; ok {
@@ -35,13 +39,18 @@ func upgradeResourceState(ctx context.Context, typeName string, p *schema.Provid
 		version, hasVersion = v, true
 	}
 
-	// Now, we perform the UpgradeResourceState operation by re-implementing TF's UpgradeResourceState.
+	json, err := ctyjson.Marshal(instanceState.RawState, res.CoreConfigSchema().ImpliedType())
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal RawState: %w", err)
+	}
+
+	// Now, we perform the UpgradeResourceState operation by calling into TF's UpgradeResourceState.
 
 	resp, err := schema.NewGRPCProviderServer(p).
 		UpgradeResourceState(ctx, &tfprotov5.UpgradeResourceStateRequest{
 			TypeName: typeName,
 			Version:  version,
-			RawState: &tfprotov5.RawState{Flatmap: instanceState.Attributes},
+			RawState: &tfprotov5.RawState{JSON: json},
 		})
 	if err != nil {
 		return nil, fmt.Errorf("upgrade resource state GRPC: %w", err)
@@ -62,7 +71,13 @@ func upgradeResourceState(ctx context.Context, typeName string, p *schema.Provid
 	}
 
 	// Unmarshal to get back the underlying type.
-	rawState, err := msgpack.Unmarshal(resp.UpgradedState.MsgPack, res.CoreConfigSchema().ImpliedType())
+	var rawState cty.Value
+	if resp.UpgradedState.JSON != nil {
+		rawState, err = ctyjson.Unmarshal(resp.UpgradedState.JSON, res.CoreConfigSchema().ImpliedType())
+	}
+	if resp.UpgradedState.MsgPack != nil {
+		rawState, err = msgpack.Unmarshal(resp.UpgradedState.MsgPack, res.CoreConfigSchema().ImpliedType())
+	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal: %w", err)
 	}
@@ -104,4 +119,9 @@ func findID(v cty.Value) (string, bool) {
 		return "", false
 	}
 	return id.AsString(), true
+}
+
+func has[K comparable, V any](m map[K]V, k K) bool {
+	_, ok := m[k]
+	return ok
 }

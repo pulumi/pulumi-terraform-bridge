@@ -40,6 +40,7 @@ func TestUpgradeResourceState(t *testing.T) {
 	actual, err := upgradeResourceState(context.Background(), tfToken, &schema.Provider{
 		ResourcesMap: map[string]*schema.Resource{
 			tfToken: {
+				UseJSONNumber: true,
 				Schema: map[string]*schema.Schema{
 					"x": {Type: schema.TypeInt, Optional: true},
 				},
