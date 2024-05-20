@@ -405,88 +405,46 @@ func TestAws2442(t *testing.T) {
 	})
 }
 
-func TestOptionalComputedNoChange(t *testing.T) {
+func TestOptionalComputedUnspecifiedNoChange(t *testing.T) {
 	skipUnlessLinux(t)
 	config := tftypes.NewValue(tftypes.Object{}, map[string]tftypes.Value{})
-	runDiffCheck(t, diffTestCase{
-		Resource: &schema.Resource{
-			Schema: map[string]*schema.Schema{
-				"name": {
-					Type:     schema.TypeString,
-					Optional: true,
-					Computed: true,
-				},
-			},
-			CreateContext: func(
-				ctx context.Context, rd *schema.ResourceData, i interface{},
-			) diag.Diagnostics {
-				err := rd.Set("name", "ComputedVal")
-				require.NoError(t, err)
-				rd.SetId("someid")
-				return make(diag.Diagnostics, 0)
-			},
-		},
-		Config1: config,
-		Config2: config,
-	})
-}
 
-func TestListOptionalComputedNoChange(t *testing.T) {
-	skipUnlessLinux(t)
-	config := tftypes.NewValue(tftypes.Object{}, map[string]tftypes.Value{})
-	runDiffCheck(t, diffTestCase{
-		Resource: &schema.Resource{
-			Schema: map[string]*schema.Schema{
-				"security_groups": {
-					Type:     schema.TypeList,
-					Optional: true,
-					Computed: true,
-					Elem: &schema.Schema{
-						Type: schema.TypeString,
+	for _, tc := range []struct {
+		name     string
+		maxItems int
+		typ      schema.ValueType
+	}{
+		{"list", 0, schema.TypeList},
+		{"set", 0, schema.TypeSet},
+		{"list max items one", 1, schema.TypeList},
+		{"set max items one", 1, schema.TypeSet},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			runDiffCheck(t, diffTestCase{
+				Resource: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"security_groups": {
+							Type:     tc.typ,
+							Optional: true,
+							Computed: true,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+							},
+							MaxItems: tc.maxItems,
+						},
+					},
+					CreateContext: func(
+						ctx context.Context, rd *schema.ResourceData, i interface{},
+					) diag.Diagnostics {
+						err := rd.Set("security_groups", []string{"sg1"})
+						require.NoError(t, err)
+						rd.SetId("someid")
+						return make(diag.Diagnostics, 0)
 					},
 				},
-			},
-			CreateContext: func(
-				ctx context.Context, rd *schema.ResourceData, i interface{},
-			) diag.Diagnostics {
-				err := rd.Set("security_groups", []string{"sg1", "sg2"})
-				require.NoError(t, err)
-				rd.SetId("someid")
-				return make(diag.Diagnostics, 0)
-			},
-		},
-		Config1: config,
-		Config2: config,
-	})
-}
-
-
-func TestMaxItemsOneOptionalComputedNoChange(t *testing.T) {
-	skipUnlessLinux(t)
-	config := tftypes.NewValue(tftypes.Object{}, map[string]tftypes.Value{})
-	runDiffCheck(t, diffTestCase{
-		Resource: &schema.Resource{
-			Schema: map[string]*schema.Schema{
-				"security_groups": {
-					Type:     schema.TypeList,
-					Optional: true,
-					Computed: true,
-					MaxItems: 1,
-					Elem: &schema.Schema{
-						Type: schema.TypeString,
-					},
-				},
-			},
-			CreateContext: func(
-				ctx context.Context, rd *schema.ResourceData, i interface{},
-			) diag.Diagnostics {
-				err := rd.Set("security_groups", []string{"sg1"})
-				require.NoError(t, err)
-				rd.SetId("someid")
-				return make(diag.Diagnostics, 0)
-			},
-		},
-		Config1: config,
-		Config2: config,
-	})
+				Config1: config,
+				Config2: config,
+			})
+		})
+	}
 }
