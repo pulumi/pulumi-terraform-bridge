@@ -74,6 +74,7 @@ type Provider struct {
 	pulumiSchema     []byte                             // the JSON-encoded Pulumi schema.
 	pulumiSchemaSpec *pschema.PackageSpec
 	memStats         memStatCollector
+	hasTypeErrors    bool
 }
 
 // MuxProvider defines an interface which must be implemented by providers
@@ -802,7 +803,8 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 		if schema != nil {
 			iv := NewInputValidator(urn, *schema)
 			typeFailures := iv.ValidateInputs(t, news)
-			if typeFailures != nil {
+			if typeFailures != nil && len(*typeFailures) > 0 {
+				p.hasTypeErrors = true
 				logger.Warn("Type checking failed. If any of these are incorrect, please let us know by creating an" +
 					"issue at https://github.com/pulumi/pulumi-terraform-bridge/issues.",
 				)
@@ -1056,6 +1058,16 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 // Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID
 // must be blank.)  If this call fails, the resource must not have been created (i.e., it is "transactional").
 func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*pulumirpc.CreateResponse, error) {
+	// if we have type errors that were generated during check
+	// we don't want to log the panic. In the future these type errors
+	// will hard fail during check and we will never make it to create
+	defer func() {
+		if r := recover(); r != nil {
+			if !p.hasTypeErrors {
+				panic(r)
+			}
+		}
+	}()
 	ctx = p.loggingContext(ctx, resource.URN(req.GetUrn()))
 	urn := resource.URN(req.GetUrn())
 	t := urn.Type()

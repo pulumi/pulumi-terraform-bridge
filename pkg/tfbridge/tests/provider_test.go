@@ -283,6 +283,111 @@ func TestReproMinimalDiffCycle(t *testing.T) {
 	}`)
 }
 
+func TestValidateInputsNoPanic(t *testing.T) {
+	ctx := context.Background()
+	p := newTestProvider(ctx, tfbridge.ProviderInfo{
+		P: shimv2.NewProvider(&schema.Provider{
+			Schema: map[string]*schema.Schema{},
+			ResourcesMap: map[string]*schema.Resource{
+				"example_resource": {
+					Schema: map[string]*schema.Schema{
+						"network_configuration": {
+							Type:     schema.TypeList,
+							Optional: true,
+							MaxItems: 1,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									"assign_public_ip": {
+										Type:     schema.TypeBool,
+										Optional: true,
+										Default:  false,
+									},
+									"security_groups": {
+										Type:     schema.TypeSet,
+										Optional: true,
+										Elem:     &schema.Schema{Type: schema.TypeString},
+									},
+									"subnets": {
+										Type:     schema.TypeSet,
+										Required: true,
+										Elem:     &schema.Schema{Type: schema.TypeString},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		}, shimv2.WithDiffStrategy(shimv2.PlanState)),
+		Name:           "testprov",
+		ResourcePrefix: "example",
+		Resources: map[string]*tfbridge.ResourceInfo{
+			"example_resource": {Tok: "testprov:index:ExampleResource"},
+		},
+	}, newTestProviderOptions{})
+
+	// stringArrayPropertyValues is a test that ensures
+	// that we don't fail on values that can be converted. i.e. 1 -> "1"
+	replay.ReplaySequence(t, p, `
+	[
+		{
+			"method": "/pulumirpc.ResourceProvider/Check",
+			"request": {
+				"urn": "urn:pulumi:dev::teststack::testprov:index:ExampleResource::exres",
+				"randomSeed": "ZCiVOcvG/CT5jx4XriguWgj2iMpQEb8P3ZLqU/AS2yg=",
+				"olds": {
+					"__defaults": []
+				},
+				"news": {
+					"networkConfiguration": {
+						"securityGroups": [
+						"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+						],
+						"subnets": "[\"first\",\"second\"]"
+					}
+				}
+			},
+			"response": {
+				"inputs": {
+					"__defaults": [],
+					"networkConfiguration": {
+						"__defaults": [
+						"assignPublicIp"
+						],
+						"assignPublicIp": false,
+						"securityGroups": [
+						"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+						],
+						"subnets": "[\"first\",\"second\"]"
+					}
+				}
+			}
+		},
+		{
+			"method": "/pulumirpc.ResourceProvider/Create",
+			"request": {
+				"urn": "urn:pulumi:dev::teststack::testprov:index:ExampleResource::exres",
+				"properties": {
+					"networkConfiguration": {
+						"__defaults": [
+						"assignPublicIp"
+						],
+						"assignPublicIp": false,
+						"securityGroups": [
+						"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+						],
+						"subnets": "[\"first\",\"second\"]"
+					}
+				},
+				"preview": true
+			},
+			"response": {
+			}
+		}
+	]
+	`)
+}
+
 func nilSink() diag.Sink {
 	nilSink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
 		Color: colors.Never,
