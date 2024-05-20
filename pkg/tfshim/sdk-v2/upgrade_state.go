@@ -20,6 +20,16 @@ func upgradeResourceState(ctx context.Context, typeName string, p *schema.Provid
 		return nil, nil
 	}
 
+	if instanceState.RawState.IsNull() {
+		// If RawState is not set but attributes is, we need to hydrate RawState
+		// from attributes.
+		state, err := instanceState.AttrsAsObjectValue(res.CoreConfigSchema().ImpliedType())
+		if err != nil {
+			return nil, fmt.Errorf("state from attributes: %w", err)
+		}
+		instanceState.RawState = state
+	}
+
 	// Ensure that we have an ID in the attributes.
 	if state := instanceState.RawState.AsValueMap(); !has(state, "id") {
 		state["id"] = cty.StringVal(instanceState.ID)
@@ -115,7 +125,7 @@ func findID(v cty.Value) (string, bool) {
 	if !ok {
 		return "", false
 	}
-	if !id.Type().Equals(cty.String) {
+	if !id.Type().Equals(cty.String) || id.IsNull() {
 		return "", false
 	}
 	return id.AsString(), true
