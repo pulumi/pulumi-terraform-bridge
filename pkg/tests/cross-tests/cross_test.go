@@ -405,7 +405,33 @@ func TestAws2442(t *testing.T) {
 	})
 }
 
-func TestOptionalComputedUnspecifiedNoChange(t *testing.T) {
+func TestSimpleOptionalComputedNoChange(t *testing.T) {
+	skipUnlessLinux(t)
+	config := tftypes.NewValue(tftypes.Object{}, map[string]tftypes.Value{})
+	runDiffCheck(t, diffTestCase{
+		Resource: &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				"name": {
+					Type:     schema.TypeString,
+					Optional: true,
+					Computed: true,
+				},
+			},
+			CreateContext: func(
+				ctx context.Context, rd *schema.ResourceData, i interface{},
+			) diag.Diagnostics {
+				err := rd.Set("name", "ComputedVal")
+				require.NoError(t, err)
+				rd.SetId("someid")
+				return make(diag.Diagnostics, 0)
+			},
+		},
+		Config1: config,
+		Config2: config,
+	})
+}
+
+func TestOptionalComputedCollectionNoChange(t *testing.T) {
 	skipUnlessLinux(t)
 	config := tftypes.NewValue(tftypes.Object{}, map[string]tftypes.Value{})
 
