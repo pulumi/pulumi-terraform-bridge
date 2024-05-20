@@ -183,6 +183,36 @@ func TestUpgradeResourceState(t *testing.T) {
 				"x":  cty.SetVal([]cty.Value{cty.StringVal("1"), cty.StringVal("2")}),
 			}),
 		},
+		{
+			name: "large number",
+			state: func() cty.Value {
+				n, err := cty.ParseNumberVal("641577219598130723")
+				require.NoError(t, err)
+				return cty.ObjectVal(map[string]cty.Value{
+					"x":  n,
+					"id": cty.StringVal("id"),
+				})
+			}(),
+			expected: func() cty.Value {
+				n, err := cty.ParseNumberVal("641577219598130723")
+				require.NoError(t, err)
+
+				// We set the precision so it agrees with the test. We
+				// don't have any semantic requirement that the precision
+				// is 64.
+				n = cty.NumberVal(n.AsBigFloat().SetPrec(64))
+				return cty.ObjectVal(map[string]cty.Value{
+					"x":  n,
+					"id": cty.StringVal("id"),
+				})
+			}(),
+			rSchema: &schema.Resource{
+				UseJSONNumber: true,
+				Schema: map[string]*schema.Schema{
+					"x": {Type: schema.TypeInt, Optional: true},
+				},
+			},
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			tf := &schema.Provider{
