@@ -382,7 +382,6 @@ func TestInputsNestedBlocksEmpty(t *testing.T) {
 				},
 				Config: tc.config,
 			})
-			panic("here!")
 		})
 	}
 }
