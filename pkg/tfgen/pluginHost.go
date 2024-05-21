@@ -25,7 +25,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/il"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 
@@ -103,7 +102,6 @@ func (p *inmemoryProvider) SignalCancellation() error {
 
 type inmemoryProviderHost struct {
 	plugin.Host
-	il.ProviderInfoSource
 
 	provider *inmemoryProvider
 }
@@ -129,15 +127,6 @@ func (host *inmemoryProviderHost) ResolvePlugin(kind apitype.PluginKind, name st
 		return &info, nil
 	}
 	return host.Host.ResolvePlugin(kind, name, version)
-}
-
-func (host *inmemoryProviderHost) GetProviderInfo(
-	registryName, namespace, name, version string) (*tfbridge.ProviderInfo, error) {
-
-	if name == il.GetTerraformProviderName(host.provider.info) {
-		return &host.provider.info, nil
-	}
-	return host.ProviderInfoSource.GetProviderInfo(registryName, namespace, name, version)
 }
 
 type cachingProviderHost struct {

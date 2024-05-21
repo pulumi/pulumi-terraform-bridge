@@ -23,7 +23,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"runtime/debug"
 	"sort"
 	"strings"
 	"unicode"
@@ -31,7 +30,6 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/hcl/v2"
 	bf "github.com/russross/blackfriday/v2"
-	"github.com/spf13/afero"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 
@@ -40,7 +38,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/convert"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 
@@ -1749,66 +1746,6 @@ func (err *ConversionError) Unwrap() error {
 // Statically enforce that ConversionError implements the Error interface.
 var _ error = &ConversionError{}
 
-// convert wraps convert.Convert so that it returns an error in the event of a panic in convert.Convert
-//
-// Note: If this issue is fixed, the call to convert.Convert can be unwrapped and this function can be deleted:
-// https://github.com/pulumi/pulumi-terraform-bridge/issues/477
-func (g *Generator) convert(
-	e *Example, input afero.Fs, languageName string,
-) (files map[string][]byte, diags convert.Diagnostics, err error) {
-	defer func() {
-		v := recover()
-		if v == nil {
-			return
-		}
-		files = map[string][]byte{}
-		diags = convert.Diagnostics{}
-		var trace = string(debug.Stack())
-		err = newConversionError(v, trace)
-		g.coverageTracker.languageConversionPanic(e, languageName, fmt.Sprintf("%v", v))
-	}()
-
-	files, diags, err = convert.Convert(convert.Options{
-		Loader:                   newLoader(g.pluginHost),
-		Root:                     input,
-		TargetLanguage:           languageName,
-		AllowMissingProperties:   true,
-		AllowMissingVariables:    true,
-		FilterResourceNames:      true,
-		PackageCache:             g.packageCache,
-		PluginHost:               g.pluginHost,
-		ProviderInfoSource:       g.infoSource,
-		SkipResourceTypechecking: true,
-		TerraformVersion:         g.terraformVersion,
-	})
-
-	return
-}
-
-func (g *Generator) legacyConvert(
-	e *Example, hclCode, fileName, languageName string,
-) (string, hcl.Diagnostics, error) {
-	input := afero.NewMemMapFs()
-	f, err := input.Create(fileName)
-	contract.AssertNoErrorf(err, "err != nil")
-	_, err = f.Write([]byte(hclCode))
-	contract.AssertNoErrorf(err, "err != nil")
-	contract.IgnoreClose(f)
-
-	files, diags, err := g.convert(e, input, languageName)
-	if diags.All.HasErrors() || err != nil {
-		return "", diags.All, err
-	}
-
-	contract.Assertf(len(files) == 1, `len(files) == 1`)
-
-	convertedHcl := ""
-	for _, output := range files {
-		convertedHcl = strings.TrimSpace(string(output))
-	}
-	return convertedHcl, diags.All, nil
-}
-
 // convertHCLToString hides the implementation details of the upstream implementation for HCL conversion and provides
 // simplified parameters and return values
 func (g *Generator) convertHCLToString(e *Example, hclCode, path, languageName string) (string, error) {
@@ -1835,22 +1772,18 @@ func (g *Generator) convertHCLToString(e *Example, hclCode, path, languageName s
 	var diags hcl.Diagnostics
 	var err error
 
-	if cliConverterEnabled() {
-		// The cliConverter has a slightly different error behavior as it can return both
-		// err and diags but does not panic. Handle this by re-coding err as a diag and
-		// proceeding to handle diags normally.
-		convertedHcl, diags, err = g.cliConverter().Convert(hclCode, languageName)
-		if err != nil {
-			diags = append(diags, &hcl.Diagnostic{
-				Severity: hcl.DiagError,
-				Summary:  err.Error(),
-			})
-		}
-		if diags.HasErrors() {
-			return "", failure(diags)
-		}
-	} else {
-		convertedHcl, diags, err = g.legacyConvert(e, hclCode, fileName, languageName)
+	// The cliConverter has a slightly different error behavior as it can return both
+	// err and diags but does not panic. Handle this by re-coding err as a diag and
+	// proceeding to handle diags normally.
+	convertedHcl, diags, err = g.cliConverter().Convert(hclCode, languageName)
+	if err != nil {
+		diags = append(diags, &hcl.Diagnostic{
+			Severity: hcl.DiagError,
+			Summary:  err.Error(),
+		})
+	}
+	if diags.HasErrors() {
+		return "", failure(diags)
 	}
 
 	// By observation on the GCP provider, convert.Convert() will either panic (in which case the wrapped method above
@@ -1876,6 +1809,16 @@ func (g *Generator) convertHCLToString(e *Example, hclCode, path, languageName s
 // So we can sort the keys of a map of examples in a deterministic order:
 type languages []string
 
+const (
+	languageTypescript string = "typescript"
+	languagePulumi     string = "pulumi"
+	languagePython     string = "python"
+	languageCSharp     string = "csharp"
+	languageGo         string = "go"
+	languageJava       string = "java"
+	languageYaml       string = "yaml"
+)
+
 func (s languages) Len() int      { return len(s) }
 func (s languages) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
 func (s languages) Less(i, j int) bool {
@@ -1891,10 +1834,10 @@ func (s languages) Less(i, j int) bool {
 	}
 
 	var languages languages = []string{
-		convert.LanguageTypescript,
-		convert.LanguagePython,
-		convert.LanguageCSharp,
-		convert.LanguageGo,
+		languageTypescript,
+		languagePython,
+		languageCSharp,
+		languageGo,
 	}
 
 	ii := indexOf(s[i], languages)
@@ -2032,23 +1975,23 @@ func (g *Generator) warnUnableToConvertHCLExample(path string, failedLangs map[s
 func genLanguageToSlice(input Language) []string {
 	switch input {
 	case NodeJS:
-		return []string{convert.LanguageTypescript}
+		return []string{languageTypescript}
 	case Python:
-		return []string{convert.LanguagePython}
+		return []string{languagePython}
 	case CSharp:
-		return []string{convert.LanguageCSharp}
+		return []string{languageCSharp}
 	case Golang:
-		return []string{convert.LanguageGo}
+		return []string{languageGo}
 	case PCL:
-		return []string{convert.LanguagePulumi}
+		return []string{languagePulumi}
 	case Schema:
 		return []string{
-			convert.LanguageTypescript,
-			convert.LanguagePython,
-			convert.LanguageCSharp,
-			convert.LanguageGo,
-			convert.LanguageYaml,
-			convert.LanguageJava,
+			languageTypescript,
+			languagePython,
+			languageCSharp,
+			languageGo,
+			languageYaml,
+			languageJava,
 		}
 	default:
 		msg := fmt.Sprintf("Unable to convert generator language '%v' to a list of languages the Bridge understands.", input)
