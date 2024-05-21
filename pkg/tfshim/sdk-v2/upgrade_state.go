@@ -20,22 +20,6 @@ func upgradeResourceState(ctx context.Context, typeName string, p *schema.Provid
 		return nil, nil
 	}
 
-	if instanceState.RawState.IsNull() {
-		// If RawState is not set but attributes is, we need to hydrate RawState
-		// from attributes.
-		state, err := instanceState.AttrsAsObjectValue(res.CoreConfigSchema().ImpliedType())
-		if err != nil {
-			return nil, fmt.Errorf("state from attributes: %w", err)
-		}
-		instanceState.RawState = state
-	}
-
-	// Ensure that we have an ID in the attributes.
-	if state := instanceState.RawState.AsValueMap(); !has(state, "id") {
-		state["id"] = cty.StringVal(instanceState.ID)
-		instanceState.RawState = cty.ObjectVal(state)
-	}
-
 	version, hasVersion := int64(0), false
 	if versionValue, ok := instanceState.Meta["schema_version"]; ok {
 		versionString, ok := versionValue.(string)
@@ -49,7 +33,38 @@ func upgradeResourceState(ctx context.Context, typeName string, p *schema.Provid
 		version, hasVersion = v, true
 	}
 
-	json, err := ctyjson.Marshal(instanceState.RawState, res.CoreConfigSchema().ImpliedType())
+	// If RawState is not set but attributes is, we need to hydrate RawState
+	// from attributes.
+	if instanceState.RawState.IsNull() {
+		// We default to assuming that the old state has the same shape as the new
+		// resource.
+		typ := res.CoreConfigSchema().ImpliedType()
+
+		// If we have a version, we use the schema shape that matches the version
+		// specified.
+		if hasVersion {
+			for _, t := range res.StateUpgraders {
+				if t.Version == int(version) {
+					typ = t.Type
+					break
+				}
+			}
+		}
+
+		state, err := instanceState.AttrsAsObjectValue(typ)
+		if err != nil {
+			return nil, fmt.Errorf("state from attributes: %w", err)
+		}
+		instanceState.RawState = state
+	}
+
+	// Ensure that we have an ID in the attributes.
+	if state := instanceState.RawState.AsValueMap(); !has(state, "id") {
+		state["id"] = cty.StringVal(instanceState.ID)
+		instanceState.RawState = cty.ObjectVal(state)
+	}
+
+	json, err := ctyjson.Marshal(instanceState.RawState, instanceState.RawState.Type())
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal RawState: %w", err)
 	}
@@ -84,8 +99,7 @@ func upgradeResourceState(ctx context.Context, typeName string, p *schema.Provid
 	var rawState cty.Value
 	if resp.UpgradedState.JSON != nil {
 		rawState, err = ctyjson.Unmarshal(resp.UpgradedState.JSON, res.CoreConfigSchema().ImpliedType())
-	}
-	if resp.UpgradedState.MsgPack != nil {
+	} else if resp.UpgradedState.MsgPack != nil {
 		rawState, err = msgpack.Unmarshal(resp.UpgradedState.MsgPack, res.CoreConfigSchema().ImpliedType())
 	}
 	if err != nil {
@@ -114,6 +128,7 @@ func upgradeResourceState(ctx context.Context, typeName string, p *schema.Provid
 		}
 		newState.Meta["schema_version"] = strconv.Itoa(int(version))
 	}
+
 	return newState, nil
 }
 
