@@ -15,6 +15,7 @@
 package tfbridge
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"sort"
@@ -25,6 +26,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hexops/autogold/v2"
+	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	pdiag "github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -42,6 +45,7 @@ import (
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	shimv1 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v1"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/logging"
 )
 
 func TestConvertStringToPropertyValue(t *testing.T) {
@@ -1150,6 +1154,148 @@ func TestCheck(t *testing.T) {
 		}
                 `)
 	})
+}
+
+func TestCheckWarnings(t *testing.T) {
+	ctx := context.Background()
+	var logs bytes.Buffer
+	ctx = logging.InitLogging(ctx, logging.LogOptions{
+		LogSink: &testWarnLogSink{&logs},
+	})
+	p := &schemav2.Provider{
+		Schema: map[string]*schemav2.Schema{},
+		ResourcesMap: map[string]*schemav2.Resource{
+			"example_resource": {
+				Schema: map[string]*schema.Schema{
+					"network_configuration": {
+						Type:     schema.TypeList,
+						Optional: true,
+						MaxItems: 1,
+						Elem: &schema.Resource{
+							Schema: map[string]*schema.Schema{
+								"assign_public_ip": {
+									Type:     schema.TypeBool,
+									Optional: true,
+									Default:  false,
+								},
+								"security_groups": {
+									Type:     schema.TypeSet,
+									Optional: true,
+									Elem:     &schema.Schema{Type: schema.TypeString},
+								},
+								"subnets": {
+									Type:     schema.TypeSet,
+									Required: true,
+									Elem:     &schema.Schema{Type: schema.TypeString},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// we need the pschema for type checking
+	pulumiSchemaSpec := &pschema.PackageSpec{
+		Resources: map[string]pschema.ResourceSpec{
+			"ExampleResource": {
+				StateInputs: &pschema.ObjectTypeSpec{
+					Properties: map[string]pschema.PropertySpec{
+						"networkConfiguration": {
+							TypeSpec: pschema.TypeSpec{
+								Ref: "#/types/testprov:ExampleResourceNetworkConfiguration",
+							},
+						},
+					},
+				},
+				InputProperties: map[string]pschema.PropertySpec{
+					"networkConfiguration": {
+						TypeSpec: pschema.TypeSpec{
+							Ref: "#/types/testprov:ExampleResourceNetworkConfiguration",
+						},
+					},
+				},
+				ObjectTypeSpec: pschema.ObjectTypeSpec{
+					Properties: map[string]pschema.PropertySpec{
+						"networkConfiguration": {
+							TypeSpec: pschema.TypeSpec{
+								Ref: "#/types/testprov:ExampleResourceNetworkConfiguration",
+							},
+						},
+					},
+				},
+			},
+		},
+		Types: map[string]pschema.ComplexTypeSpec{
+			"testprov:ExampleResourceNetworkConfiguration": {
+				ObjectTypeSpec: pschema.ObjectTypeSpec{
+					Properties: map[string]pschema.PropertySpec{
+						"securityGroups": {
+							TypeSpec: pschema.TypeSpec{
+								Type: "array",
+								Items: &pschema.TypeSpec{
+									Type: "string",
+								},
+							},
+						},
+						"subnets": {
+							TypeSpec: pschema.TypeSpec{
+								Type: "array",
+								Items: &pschema.TypeSpec{
+									Type: "string",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	provider := &Provider{
+		tf:               shimv2.NewProvider(p, shimv2.WithDiffStrategy(shimv2.PlanState)),
+		module:           "testprov",
+		config:           shimv2.NewSchemaMap(p.Schema),
+		pulumiSchema:     []byte("hello"), // we only check whether this is nil in type checking
+		pulumiSchemaSpec: pulumiSchemaSpec,
+		resources: map[tokens.Type]Resource{
+			"ExampleResource": {
+				TF:     shimv2.NewResource(p.ResourcesMap["example_resource"]),
+				TFName: "example_resource",
+				Schema: &ResourceInfo{
+					Tok: "ExampleResource",
+				},
+			},
+		},
+	}
+
+	args, err := structpb.NewStruct(map[string]interface{}{
+		"networkConfiguration": []interface{}{
+			map[string]interface{}{
+				"securityGroups": []interface{}{
+					"04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+				},
+				"subnets": "[\"first\",\"second\"]", // this is a type error
+			},
+		},
+	})
+	require.NoError(t, err)
+	_, err = provider.Check(ctx, &pulumirpc.CheckRequest{
+		Urn:  "urn:pulumi:dev::teststack::ExampleResource::exres",
+		Olds: &structpb.Struct{},
+		News: args,
+	})
+	require.NoError(t, err)
+
+	// run 'go test  -run=TestCheckWarnings -v ./pkg/tfbridge/ -update' to update
+	autogold.Expect(`warning: Type checking failed:
+warning: Unexpected type at field "networkConfiguration":
+           expected object type, got [] type
+warning: Type checking is still experimental. If you believe that a warning is incorrect,
+please let us know by creating an issue at https://github.com/pulumi/pulumi-terraform-bridge/issues.
+This will become a hard error in the future.
+`).Equal(t, logs.String())
 }
 
 func TestCheckConfig(t *testing.T) {
@@ -4306,4 +4452,20 @@ func TestStringValForOtherProperty(t *testing.T) {
 			}
 		}`)
 	})
+}
+
+type testWarnLogSink struct {
+	buf *bytes.Buffer
+}
+
+var _ logging.Sink = &testWarnLogSink{}
+
+func (s *testWarnLogSink) Log(context context.Context, sev pdiag.Severity, urn resource.URN, msg string) error {
+	fmt.Fprintf(s.buf, "%v: %s\n", sev, msg)
+	return nil
+}
+
+func (s *testWarnLogSink) LogStatus(context context.Context, sev pdiag.Severity, urn resource.URN, msg string) error {
+	fmt.Fprintf(s.buf, "[status] [%v] [%v] %s\n", sev, urn, msg)
+	return nil
 }

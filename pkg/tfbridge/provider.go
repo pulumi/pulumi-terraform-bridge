@@ -803,6 +803,7 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 			iv := NewInputValidator(urn, *schema)
 			typeFailures := iv.ValidateInputs(t, news)
 			if typeFailures != nil {
+				logger.Warn("Type checking failed: ")
 				for _, e := range *typeFailures {
 					if validateShouldError {
 						pp := NewCheckFailurePath(schemaMap, schemaInfos, e.ResourcePath)
@@ -813,7 +814,7 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 						})
 					} else {
 						logger.Warn(
-							fmt.Sprintf("Type checking failed:\n  Unexpected type at field %q: \n    %s", e.ResourcePath, e.Reason),
+							fmt.Sprintf("Unexpected type at field %q: \n           %s", e.ResourcePath, e.Reason),
 						)
 					}
 				}
