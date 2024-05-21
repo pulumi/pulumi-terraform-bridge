@@ -318,6 +318,35 @@ func TestNormalizeBlockCollections(t *testing.T) {
 			),
 		},
 		{
+			name: "list block no val config mode attr",
+			input: cty.ObjectVal(
+				map[string]cty.Value{
+					"prop": cty.NullVal(
+						cty.List(cty.Object(map[string]cty.Type{"field": cty.String})),
+					),
+				},
+			),
+			res: &schema.Resource{
+				Schema: map[string]*schema.Schema{
+					"prop": {
+						Type:       schema.TypeList,
+						Optional:   true,
+						ConfigMode: schema.SchemaConfigModeAttr,
+						Elem: &schema.Resource{
+							Schema: map[string]*schema.Schema{
+								"field": {Type: schema.TypeString, Optional: true},
+							},
+						},
+					},
+				},
+			},
+			expected: cty.ObjectVal(
+				map[string]cty.Value{
+					"prop": cty.NullVal(cty.List(cty.Object(map[string]cty.Type{"field": cty.String}))),
+				},
+			),
+		},
+		{
 			name: "set block no val",
 			input: cty.ObjectVal(
 				map[string]cty.Value{
@@ -347,6 +376,9 @@ func TestNormalizeBlockCollections(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			err := tc.res.InternalValidate(nil, false)
+			require.NoError(t, err)
+
 			res := normalizeBlockCollections(
 				tc.input,
 				tc.res,
