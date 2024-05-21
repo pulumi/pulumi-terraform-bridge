@@ -92,11 +92,6 @@ func upgradeResourceState(ctx context.Context, t string, p *schema.Provider, res
 		return nil, nil
 	}
 
-	version, hasVersion, err := extractSchemaVersion(instanceState.Meta)
-	if err != nil {
-		return nil, err
-	}
-
 	rawState := instanceState.RawState
 
 	// If RawState is not set but attributes is, we need to hydrate RawState
@@ -105,6 +100,12 @@ func upgradeResourceState(ctx context.Context, t string, p *schema.Provider, res
 		// We default to assuming that the old state has the same shape as the new
 		// resource.
 		typ := res.CoreConfigSchema().ImpliedType()
+
+		// Find the version, if present, to deserialize instanceState into.
+		version, hasVersion, err := extractSchemaVersion(instanceState.Meta)
+		if err != nil {
+			return nil, err
+		}
 
 		// If we have a version, we use the schema shape that matches the version
 		// specified.
