@@ -49,6 +49,8 @@ func (r *v2Resource2) InstanceState(
 	// TODO[pulumi/pulumi-terraform-bridge#1667]: This is not right since it uses the
 	// current schema. 1667 should make this redundant
 	s, err := recoverAndCoerceCtyValueWithSchema(r.v2Resource.tf.CoreConfigSchema(), object)
+
+	// TODO: normalize blocks
 	if err != nil {
 		return nil, fmt.Errorf("InstanceState: %v", err)
 	}
@@ -152,6 +154,7 @@ func (p *planResourceChangeImpl) Diff(
 	if err != nil {
 		return nil, fmt.Errorf("Resource %q: %w", t, err)
 	}
+	// TODO: normalize blocks
 	prop, err := proposedNew(res, state.stateValue, cfg)
 	if err != nil {
 		return nil, err

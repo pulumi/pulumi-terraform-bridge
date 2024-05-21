@@ -232,3 +232,52 @@ func TestOptionalSetNotSpecified(t *testing.T) {
 		Config: tftypes.NewValue(tftypes.Object{}, map[string]tftypes.Value{}),
 	})
 }
+
+func TestInputsCollections(t *testing.T) {
+	skipUnlessLinux(t)
+	config := tftypes.NewValue(tftypes.Object{}, map[string]tftypes.Value{})
+
+	// signifies a block
+	resourceElem := &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"x": {Optional: true, Type: schema.TypeString},
+		},
+	}
+
+	// signifies an attribute
+	schemaElem := &schema.Schema{
+		Type: schema.TypeMap,
+	}
+
+	for _, tc := range []struct {
+		name     string
+		maxItems int
+		typ      schema.ValueType
+		elem     any
+	}{
+		{"list block", 0, schema.TypeList, resourceElem},
+		{"set block", 0, schema.TypeSet, resourceElem},
+		{"list max items one block", 1, schema.TypeList, resourceElem},
+		{"set max items one block", 1, schema.TypeSet, resourceElem},
+		{"list attr", 0, schema.TypeList, schemaElem},
+		{"set attr", 0, schema.TypeSet, schemaElem},
+		{"list max items one attr", 1, schema.TypeList, schemaElem},
+		{"set max items one attr", 1, schema.TypeSet, schemaElem},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			runCreateInputCheck(t, inputTestCase{
+				Resource: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"f0": {
+							Type:     tc.typ,
+							MaxItems: tc.maxItems,
+							Elem:     tc.elem,
+							Optional: true,
+						},
+					},
+				},
+				Config: config,
+			})
+		})
+	}
+}

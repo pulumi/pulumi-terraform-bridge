@@ -111,16 +111,7 @@ func recoverAndCoerceCtyValueWithSchema(schema blockLike, value any) (cty.Value,
 func recoverCtyValue(dT cty.Type, value interface{}) (cty.Value, error) {
 	switch value := value.(type) {
 	case nil:
-		switch {
-		case dT.IsSetType():
-			rv, err := recoverCtyValueOfSetType(dT, []any{})
-			return rv, err
-		case dT.IsListType():
-			rv, err := recoverCtyValueOfListType(dT, []any{})
-			return rv, err
-		default:
-			return cty.NullVal(dT), nil
-		}
+		return cty.NullVal(dT), nil
 	case map[string]interface{}:
 		switch {
 		case dT.IsMapType():
@@ -236,12 +227,7 @@ func recoverCtyValueOfObjectType(dT cty.Type, value map[string]interface{}) (cty
 				return cty.NilVal, err
 			}
 		} else {
-			rv, err := recoverCtyValue(attrType, nil)
-			if err == nil {
-				attrs[attrName] = rv
-			} else {
-				attrs[attrName] = cty.NullVal(attrType)
-			}
+			attrs[attrName] = cty.NullVal(attrType)
 		}
 	}
 	return cty.ObjectVal(attrs), nil
