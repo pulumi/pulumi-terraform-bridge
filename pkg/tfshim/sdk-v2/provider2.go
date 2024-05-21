@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/golang/glog"
 	"github.com/hashicorp/go-cty/cty"
 	ctyjson "github.com/hashicorp/go-cty/cty/json"
 	"github.com/hashicorp/go-cty/cty/msgpack"
@@ -50,7 +51,9 @@ func (r *v2Resource2) InstanceState(
 	// current schema. 1667 should make this redundant
 	s, err := recoverAndCoerceCtyValueWithSchema(r.v2Resource.tf.CoreConfigSchema(), object)
 	if err != nil {
-		return nil, fmt.Errorf("InstanceState: %v", err)
+		glog.V(9).Infof("failed to coerce config: %v, proceeding with imprecise value", err)
+		original := schema.HCL2ValueFromConfigValue(object)
+		s = original
 	}
 	return &v2InstanceState2{
 		stateValue:   s,
