@@ -813,7 +813,7 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 						})
 					} else {
 						logger.Warn(
-							fmt.Sprintf("Type checking failed:\n  Unexpected type at field %s: \n    %s", e.ResourcePath, e.Reason),
+							fmt.Sprintf("Type checking failed:\n  Unexpected type at field %q: \n    %s", e.ResourcePath, e.Reason),
 						)
 					}
 				}
