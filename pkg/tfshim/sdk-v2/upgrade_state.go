@@ -6,91 +6,147 @@ import (
 	"strconv"
 
 	"github.com/hashicorp/go-cty/cty"
+	ctyjson "github.com/hashicorp/go-cty/cty/json"
+	"github.com/hashicorp/go-cty/cty/msgpack"
+	"github.com/hashicorp/terraform-plugin-go/tfprotov5"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
 
-func upgradeResourceState(ctx context.Context, p *schema.Provider, res *schema.Resource,
+func upgradeResourceStateGRPC(
+	ctx context.Context, t string, res *schema.Resource,
+	state cty.Value, meta map[string]any,
+	server tfprotov5.ProviderServer,
+) (cty.Value, map[string]any, error) {
+	// TODO[pulumi/pulumi-terraform-bridge#1667]: This is not quite right but we need
+	// the old TF state to get it right.
+	jsonBytes, err := ctyjson.Marshal(state, state.Type())
+	if err != nil {
+		return cty.Value{}, nil, err
+	}
+
+	version, _, err := extractSchemaVersion(meta)
+	if err != nil {
+		return cty.Value{}, nil, err
+	}
+
+	//nolint:lll
+	// https://github.com/opentofu/opentofu/blob/2ef3047ec6bb266e8d91c55519967212c1a0975d/internal/tofu/upgrade_resource_state.go#L52
+	if version > int64(res.SchemaVersion) {
+		return cty.Value{}, nil, fmt.Errorf(
+			"State version %d is greater than schema version %d for resource %s. "+
+				"Please upgrade the provider to work with this resource.",
+			version, res.SchemaVersion, t,
+		)
+	}
+
+	// Note upgrade is always called, even if the versions match
+	//nolint:lll
+	// https://github.com/opentofu/opentofu/blob/2ef3047ec6bb266e8d91c55519967212c1a0975d/internal/tofu/upgrade_resource_state.go#L72
+
+	resp, err := server.UpgradeResourceState(ctx, &tfprotov5.UpgradeResourceStateRequest{
+		TypeName: t,
+		RawState: &tfprotov5.RawState{JSON: jsonBytes},
+		Version:  version,
+	})
+	if err != nil {
+		return cty.Value{}, nil, err
+	}
+
+	newState, err := msgpack.Unmarshal(resp.UpgradedState.MsgPack, res.CoreConfigSchema().ImpliedType())
+	if err != nil {
+		return cty.Value{}, nil, err
+	}
+
+	newMeta := make(map[string]interface{}, len(meta))
+	// copy old meta into new meta
+	for k, v := range meta {
+		newMeta[k] = v
+	}
+	newMeta["schema_version"] = strconv.Itoa(res.SchemaVersion)
+
+	return newState, newMeta, nil
+}
+
+func extractSchemaVersion(meta map[string]any) (int64, bool, error) {
+	versionValue, ok := meta["schema_version"]
+	if !ok {
+		return 0, false, nil
+	}
+
+	versionString, ok := versionValue.(string)
+	if !ok {
+		return 0, true, fmt.Errorf("unexpected type %T for schema_version", versionValue)
+	}
+	v, err := strconv.ParseInt(versionString, 0, 32)
+	if err != nil {
+		return 0, true, err
+	}
+	return v, true, nil
+}
+
+func upgradeResourceState(ctx context.Context, t string, p *schema.Provider, res *schema.Resource,
 	instanceState *terraform.InstanceState) (*terraform.InstanceState, error) {
 
 	if instanceState == nil {
 		return nil, nil
 	}
 
-	m := instanceState.Attributes
+	version, hasVersion, err := extractSchemaVersion(instanceState.Meta)
+	if err != nil {
+		return nil, err
+	}
 
-	// Ensure that we have an ID in the attributes.
-	m["id"] = instanceState.ID
+	rawState := instanceState.RawState
 
-	version, hasVersion := 0, false
-	if versionValue, ok := instanceState.Meta["schema_version"]; ok {
-		versionString, ok := versionValue.(string)
-		if !ok {
-			return nil, fmt.Errorf("unexpected type %T for schema_version", versionValue)
+	// If RawState is not set but attributes is, we need to hydrate RawState
+	// from attributes.
+	if rawState.IsNull() {
+		// We default to assuming that the old state has the same shape as the new
+		// resource.
+		typ := res.CoreConfigSchema().ImpliedType()
+
+		// If we have a version, we use the schema shape that matches the version
+		// specified.
+		if hasVersion {
+			for _, t := range res.StateUpgraders {
+				if t.Version == int(version) {
+					typ = t.Type
+					break
+				}
+			}
 		}
-		v, err := strconv.ParseInt(versionString, 0, 32)
+
+		rawState, err = instanceState.AttrsAsObjectValue(typ)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("state from attributes: %w", err)
 		}
-		version, hasVersion = int(v), true
 	}
 
-	// First, build a JSON state from the InstanceState.
-	json, version, err := schema.UpgradeFlatmapState(ctx, version, m, res, p.Meta())
+	if state := rawState.AsValueMap(); !has(state, "id") {
+		state["id"] = cty.StringVal(instanceState.ID)
+		rawState = cty.ObjectVal(state)
+	}
+
+	v, newMeta, err := upgradeResourceStateGRPC(ctx, t, res, rawState, instanceState.Meta, p.GRPCProvider())
 	if err != nil {
 		return nil, err
 	}
-
-	// Next, migrate the JSON state up to the current version.
-	json, err = schema.UpgradeJSONState(ctx, version, json, res, p.Meta())
-	if err != nil {
-		return nil, err
-	}
-
-	configBlock := res.CoreConfigSchema()
-
-	// Strip out removed fields.
-	schema.RemoveAttributes(ctx, json, configBlock.ImpliedType())
-
-	// now we need to turn the state into the default json representation, so
-	// that it can be re-decoded using the actual schema.
-	v, err := schema.JSONMapToStateValue(json, configBlock)
-	if err != nil {
-		return nil, err
-	}
-
-	// Now we need to make sure blocks are represented correctly, which means
-	// that missing blocks are empty collections, rather than null.
-	// First we need to CoerceValue to ensure that all object types match.
-	v, err = configBlock.CoerceValue(v)
-	if err != nil {
-		return nil, err
-	}
-
-	// Normalize the value and fill in any missing blocks.
-	v = schema.NormalizeObjectFromLegacySDK(v, configBlock)
 
 	// Convert the value back to an InstanceState.
 	newState, err := res.ShimInstanceStateFromValue(v)
 	if err != nil {
 		return nil, err
 	}
-	newState.RawConfig = instanceState.RawConfig
 
-	// Copy the original ID and meta to the new state and stamp in the new version.
+	newState.RawConfig = instanceState.RawConfig
+	newState.RawState = v
+	newState.Meta = newMeta
 	newState.ID = instanceState.ID
 
 	// If state upgraders have modified the ID, respect the modification.
 	if updatedID, ok := findID(v); ok {
 		newState.ID = updatedID
-	}
-
-	newState.Meta = instanceState.Meta
-	if hasVersion || version > 0 {
-		if newState.Meta == nil {
-			newState.Meta = map[string]interface{}{}
-		}
-		newState.Meta["schema_version"] = strconv.Itoa(version)
 	}
 	return newState, nil
 }
@@ -103,8 +159,13 @@ func findID(v cty.Value) (string, bool) {
 	if !ok {
 		return "", false
 	}
-	if !id.Type().Equals(cty.String) {
+	if !id.Type().Equals(cty.String) || id.IsNull() {
 		return "", false
 	}
 	return id.AsString(), true
+}
+
+func has[K comparable, V any](m map[K]V, k K) bool {
+	_, ok := m[k]
+	return ok
 }
