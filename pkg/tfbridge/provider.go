@@ -74,7 +74,7 @@ type Provider struct {
 	pulumiSchema     []byte                             // the JSON-encoded Pulumi schema.
 	pulumiSchemaSpec *pschema.PackageSpec
 	memStats         memStatCollector
-	hasTypeErrors    bool
+	hasTypeErrors    map[resource.URN]bool
 }
 
 // MuxProvider defines an interface which must be implemented by providers
@@ -201,13 +201,14 @@ func newProvider(ctx context.Context, host *provider.HostClient,
 	module, version string, tf shim.Provider, info ProviderInfo, pulumiSchema []byte,
 ) *Provider {
 	p := &Provider{
-		host:         host,
-		module:       module,
-		version:      version,
-		tf:           tf,
-		info:         info,
-		config:       tf.Schema(),
-		pulumiSchema: pulumiSchema,
+		host:          host,
+		module:        module,
+		version:       version,
+		tf:            tf,
+		info:          info,
+		config:        tf.Schema(),
+		pulumiSchema:  pulumiSchema,
+		hasTypeErrors: make(map[resource.URN]bool),
 	}
 	ctx = p.loggingContext(ctx, "")
 	p.initResourceMaps()
@@ -804,7 +805,7 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 			iv := NewInputValidator(urn, *schema)
 			typeFailures := iv.ValidateInputs(t, news)
 			if typeFailures != nil && len(*typeFailures) > 0 {
-				p.hasTypeErrors = true
+				p.hasTypeErrors[urn] = true
 				logger.Warn("Type checking failed. If any of these are incorrect, please let us know by creating an" +
 					"issue at https://github.com/pulumi/pulumi-terraform-bridge/issues.",
 				)
@@ -951,11 +952,34 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 
 	ic := newIgnoreChanges(ctx, schema, fields, olds, news, req.GetIgnoreChanges())
 
+	// if we have type errors that were generated during check
+	// we don't want to log the panic. In the future these type errors
+	// will hard fail during check and we will never make it to create
+	//
+	// We do our best to restrict catching panics to where the panic will
+	// occur. The type checking will catch panics that occur as part
+	// of the `Diff` function
+	recoverFunc := func(r interface{}) {
+		if _, ok := p.hasTypeErrors[urn]; !ok {
+			panic(r)
+		}
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			recoverFunc(r)
+		}
+	}()
+
 	diff, err := p.tf.Diff(ctx, res.TFName, state, config, shim.DiffOptions{
 		IgnoreChanges: ic,
 	})
 	if err != nil {
 		return nil, errors.Wrapf(err, "diffing %s", urn)
+	}
+	// if we've made it past Diff without a panic, remove the recover
+	// so the rest of the function will throw a panic if one exists
+	recoverFunc = func(r interface{}) {
+		panic(r)
 	}
 
 	dd := makeDetailedDiffExtra(ctx, schema, fields, olds, news, diff)
@@ -1058,16 +1082,6 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 // Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID
 // must be blank.)  If this call fails, the resource must not have been created (i.e., it is "transactional").
 func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*pulumirpc.CreateResponse, error) {
-	// if we have type errors that were generated during check
-	// we don't want to log the panic. In the future these type errors
-	// will hard fail during check and we will never make it to create
-	defer func() {
-		if r := recover(); r != nil {
-			if !p.hasTypeErrors {
-				panic(r)
-			}
-		}
-	}()
 	ctx = p.loggingContext(ctx, resource.URN(req.GetUrn()))
 	urn := resource.URN(req.GetUrn())
 	t := urn.Type()
@@ -1105,6 +1119,24 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 		return nil, errors.Errorf("error decoding timeout: %s", err)
 	}
 
+	// if we have type errors that were generated during check
+	// we don't want to log the panic. In the future these type errors
+	// will hard fail during check and we will never make it to create
+	//
+	// We do our best to restrict catching panics to where the panic will
+	// occur. The type checking will catch panics that occur as part
+	// of the `Diff` function
+	recoverFunc := func(r interface{}) {
+		if _, ok := p.hasTypeErrors[urn]; !ok {
+			panic(r)
+		}
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			recoverFunc(r)
+		}
+	}()
+
 	diff, err := p.tf.Diff(ctx, res.TFName, nil, config, shim.DiffOptions{
 		TimeoutOptions: shim.TimeoutOptions{
 			ResourceTimeout:  timeouts,
@@ -1113,6 +1145,12 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 	})
 	if err != nil {
 		return nil, errors.Wrapf(err, "diffing %s", urn)
+	}
+
+	// if we've made it past Diff without a panic, remove the recover
+	// so the rest of the function will throw a panic if one exists
+	recoverFunc = func(r interface{}) {
+		panic(r)
 	}
 
 	var newstate shim.InstanceState
@@ -1331,6 +1369,24 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 		return nil, errors.Errorf("error decoding timeout: %s", err)
 	}
 
+	// if we have type errors that were generated during check
+	// we don't want to log the panic. In the future these type errors
+	// will hard fail during check and we will never make it to create
+	//
+	// We do our best to restrict catching panics to where the panic will
+	// occur. The type checking will catch panics that occur as part
+	// of the `Diff` function
+	recoverFunc := func(r interface{}) {
+		if _, ok := p.hasTypeErrors[urn]; !ok {
+			panic(r)
+		}
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			recoverFunc(r)
+		}
+	}()
+
 	diff, err := p.tf.Diff(ctx, res.TFName, state, config, shim.DiffOptions{
 		IgnoreChanges: ic,
 		TimeoutOptions: shim.TimeoutOptions{
@@ -1340,6 +1396,11 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 	})
 	if err != nil {
 		return nil, errors.Wrapf(err, "diffing %s", urn)
+	}
+	// if we've made it past Diff without a panic, remove the recover
+	// so the rest of the function will throw a panic if one exists
+	recoverFunc = func(r interface{}) {
+		panic(r)
 	}
 	if diff == nil {
 		// It is very possible for us to get here with a nil diff: custom diffing behavior, etc. can cause

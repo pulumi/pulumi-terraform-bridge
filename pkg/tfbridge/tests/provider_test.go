@@ -283,7 +283,7 @@ func TestReproMinimalDiffCycle(t *testing.T) {
 	}`)
 }
 
-func TestValidateInputsNoPanic(t *testing.T) {
+func TestValidateInputsPanic(t *testing.T) {
 	ctx := context.Background()
 	p := newTestProvider(ctx, tfbridge.ProviderInfo{
 		P: shimv2.NewProvider(&schema.Provider{
@@ -326,9 +326,52 @@ func TestValidateInputsNoPanic(t *testing.T) {
 		},
 	}, newTestProviderOptions{})
 
-	// stringArrayPropertyValues is a test that ensures
-	// that we don't fail on values that can be converted. i.e. 1 -> "1"
-	replay.ReplaySequence(t, p, `
+	t.Run("diff_panic", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r == nil {
+				t.Fatal("Expected diff to panic")
+			}
+		}()
+		replay.ReplaySequence(t, p, `
+	[
+		{
+			"method": "/pulumirpc.ResourceProvider/Diff",
+			"request": {
+				"urn": "urn:pulumi:dev::teststack::testprov:index:ExampleResource::exres",
+				"olds": {
+					"networkConfiguration": {
+						"__defaults": [
+						"assignPublicIp"
+						],
+						"assignPublicIp": false,
+						"securityGroups": [
+						"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+						],
+						"subnets": "[\"first\",\"second\"]"
+					}
+				},
+				"news": {
+					"networkConfiguration": {
+						"__defaults": [
+						"assignPublicIp"
+						],
+						"assignPublicIp": false,
+						"securityGroups": [
+						"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+						],
+						"subnets": "[\"first\",\"second\"]"
+					}
+				}
+			},
+			"response": {
+			}
+		}
+	]
+	`)
+	})
+
+	t.Run("diff_no_panic", func(t *testing.T) {
+		replay.ReplaySequence(t, p, `
 	[
 		{
 			"method": "/pulumirpc.ResourceProvider/Check",
@@ -364,9 +407,201 @@ func TestValidateInputsNoPanic(t *testing.T) {
 			}
 		},
 		{
-			"method": "/pulumirpc.ResourceProvider/Create",
+			"method": "/pulumirpc.ResourceProvider/Diff",
 			"request": {
 				"urn": "urn:pulumi:dev::teststack::testprov:index:ExampleResource::exres",
+				"olds": {
+					"networkConfiguration": {
+						"__defaults": [
+						"assignPublicIp"
+						],
+						"assignPublicIp": false,
+						"securityGroups": [
+						"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+						],
+						"subnets": "[\"first\",\"second\"]"
+					}
+				},
+				"news": {
+					"networkConfiguration": {
+						"__defaults": [
+						"assignPublicIp"
+						],
+						"assignPublicIp": false,
+						"securityGroups": [
+						"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+						],
+						"subnets": "[\"first\",\"second\"]"
+					}
+				}
+			},
+			"response": {
+			}
+		}
+	]
+	`)
+	})
+
+	t.Run("update_panic", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r == nil {
+				t.Fatal("Expected update to panic")
+			}
+		}()
+		replay.ReplaySequence(t, p, `
+	[
+		{
+			"method": "/pulumirpc.ResourceProvider/Update",
+			"request": {
+				"urn": "urn:pulumi:dev::teststack::testprov:index:ExampleResource::exres1",
+				"olds": {
+					"networkConfiguration": {
+						"__defaults": [
+						"assignPublicIp"
+						],
+						"assignPublicIp": false,
+						"securityGroups": [
+						"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+						],
+						"subnets": "[\"first\",\"second\"]"
+					}
+				},
+				"news": {
+					"networkConfiguration": {
+						"__defaults": [
+						"assignPublicIp"
+						],
+						"assignPublicIp": false,
+						"securityGroups": [
+						"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+						],
+						"subnets": "[\"first\",\"second\"]"
+					}
+				},
+				"preview": true
+			},
+			"response": {
+			}
+		}
+	]
+	`)
+
+	})
+
+	t.Run("update_no_panic", func(t *testing.T) {
+		replay.ReplaySequence(t, p, `
+	[
+		{
+			"method": "/pulumirpc.ResourceProvider/Check",
+			"request": {
+				"urn": "urn:pulumi:dev::teststack::testprov:index:ExampleResource::exres2",
+				"randomSeed": "ZCiVOcvG/CT5jx4XriguWgj2iMpQEb8P3ZLqU/AS2yg=",
+				"olds": {
+					"__defaults": []
+				},
+				"news": {
+					"networkConfiguration": {
+						"securityGroups": [
+						"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+						],
+						"subnets": "[\"first\",\"second\"]"
+					}
+				}
+			},
+			"response": {
+				"inputs": {
+					"__defaults": [],
+					"networkConfiguration": {
+						"__defaults": [
+						"assignPublicIp"
+						],
+						"assignPublicIp": false,
+						"securityGroups": [
+						"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+						],
+						"subnets": "[\"first\",\"second\"]"
+					}
+				}
+			}
+		},
+		{
+			"method": "/pulumirpc.ResourceProvider/Update",
+			"request": {
+				"urn": "urn:pulumi:dev::teststack::testprov:index:ExampleResource::exres2",
+				"olds": {
+					"networkConfiguration": {
+						"__defaults": [
+						"assignPublicIp"
+						],
+						"assignPublicIp": false,
+						"securityGroups": [
+						"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+						],
+						"subnets": "[\"first\",\"second\"]"
+					}
+				},
+				"news": {
+					"networkConfiguration": {
+						"__defaults": [
+						"assignPublicIp"
+						],
+						"assignPublicIp": false,
+						"securityGroups": [
+						"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+						],
+						"subnets": "[\"first\",\"second\"]"
+					}
+				},
+				"preview": true
+			},
+			"response": {
+			}
+		}
+	]
+	`)
+
+	})
+
+	t.Run("create_no_panic", func(t *testing.T) {
+		replay.ReplaySequence(t, p, `
+	[
+		{
+			"method": "/pulumirpc.ResourceProvider/Check",
+			"request": {
+				"urn": "urn:pulumi:dev::teststack::testprov:index:ExampleResource::exres3",
+				"randomSeed": "ZCiVOcvG/CT5jx4XriguWgj2iMpQEb8P3ZLqU/AS2yg=",
+				"olds": {
+					"__defaults": []
+				},
+				"news": {
+					"networkConfiguration": {
+						"securityGroups": [
+						"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+						],
+						"subnets": "[\"first\",\"second\"]"
+					}
+				}
+			},
+			"response": {
+				"inputs": {
+					"__defaults": [],
+					"networkConfiguration": {
+						"__defaults": [
+						"assignPublicIp"
+						],
+						"assignPublicIp": false,
+						"securityGroups": [
+						"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+						],
+						"subnets": "[\"first\",\"second\"]"
+					}
+				}
+			}
+		},
+		{
+			"method": "/pulumirpc.ResourceProvider/Create",
+			"request": {
+				"urn": "urn:pulumi:dev::teststack::testprov:index:ExampleResource::exres3",
 				"properties": {
 					"networkConfiguration": {
 						"__defaults": [
@@ -386,6 +621,41 @@ func TestValidateInputsNoPanic(t *testing.T) {
 		}
 	]
 	`)
+	})
+
+	t.Run("create_panic", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r == nil {
+				t.Fatal("Expected create to panic")
+			}
+		}()
+		replay.ReplaySequence(t, p, `
+	[
+		{
+			"method": "/pulumirpc.ResourceProvider/Create",
+			"request": {
+				"urn": "urn:pulumi:dev::teststack::testprov:index:ExampleResource::exres4",
+				"properties": {
+					"networkConfiguration": {
+						"__defaults": [
+						"assignPublicIp"
+						],
+						"assignPublicIp": false,
+						"securityGroups": [
+						"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+						],
+						"subnets": "[\"first\",\"second\"]"
+					}
+				},
+				"preview": true
+			},
+			"response": {
+			}
+		}
+	]
+	`)
+	})
+
 }
 
 func nilSink() diag.Sink {
