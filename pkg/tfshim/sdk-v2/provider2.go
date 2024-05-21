@@ -49,11 +49,11 @@ func (r *v2Resource2) InstanceState(
 	// TODO[pulumi/pulumi-terraform-bridge#1667]: This is not right since it uses the
 	// current schema. 1667 should make this redundant
 	s, err := recoverAndCoerceCtyValueWithSchema(r.v2Resource.tf.CoreConfigSchema(), object)
-
-	// TODO: normalize blocks
 	if err != nil {
 		return nil, fmt.Errorf("InstanceState: %v", err)
 	}
+	s = normalizeBlockCollections(s, r.tf)
+	
 	return &v2InstanceState2{
 		stateValue:   s,
 		resourceType: r.resourceType,
@@ -154,7 +154,8 @@ func (p *planResourceChangeImpl) Diff(
 	if err != nil {
 		return nil, fmt.Errorf("Resource %q: %w", t, err)
 	}
-	// TODO: normalize blocks
+	cfg = normalizeBlockCollections(cfg, res)
+
 	prop, err := proposedNew(res, state.stateValue, cfg)
 	if err != nil {
 		return nil, err
@@ -433,7 +434,8 @@ func (s *grpcServer) PlanResourceChange(
 	PlannedState cty.Value
 	PlannedMeta  map[string]interface{}
 	PlannedDiff  *terraform.InstanceDiff
-}, error) {
+}, error,
+) {
 	configVal, err := msgpack.Marshal(config, ty)
 	if err != nil {
 		return nil, err
@@ -849,4 +851,41 @@ func recoverDiagnostic(d tfprotov5.Diagnostic) diag.Diagnostic {
 		}
 	}
 	return dd
+}
+
+// Full rules about block vs attr
+//nollint:lll
+// https://github.com/hashicorp/terraform-plugin-sdk/blob/1f499688ebd9420768f501d4ed622a51b2135ced/helper/schema/core_schema.go#L60
+func normalizeBlockCollections(val cty.Value, res *schema.Resource) cty.Value {
+	sch := res.CoreConfigSchema()
+	if !val.Type().IsObjectType() {
+		contract.Failf("normalizeBlockCollections: Expected object type")
+	}
+	valMap := val.AsValueMap()
+	if len(valMap) == 0 {
+		valMap = map[string]cty.Value{}
+	}
+
+	for fieldName := range sch.BlockTypes {
+		if !val.Type().HasAttribute(fieldName) {
+			continue
+		}
+		if val.GetAttr(fieldName).IsNull() {
+			// normalize it
+			fieldType := val.Type().AttributeType(fieldName)
+			if fieldType.IsListType() {
+				valMap[fieldName] = cty.ListValEmpty(fieldType.ElementType())
+			} else if fieldType.IsSetType() {
+				valMap[fieldName] = cty.SetValEmpty(fieldType.ElementType())
+			} else if fieldType.IsMapType() {
+				valMap[fieldName] = cty.MapValEmpty(fieldType.ElementType())
+			} else if fieldType.IsObjectType() {
+				valMap[fieldName] = cty.ObjectVal(map[string]cty.Value{})
+			} else {
+				contract.Failf("normalizeBlockCollections: Unexpected field type %v", fieldType)
+			}
+		}
+	}
+	// TODO nested blocks?
+	return cty.ObjectVal(valMap)
 }

@@ -257,12 +257,18 @@ func TestInputsCollections(t *testing.T) {
 	}{
 		{"list block", 0, schema.TypeList, resourceElem},
 		{"set block", 0, schema.TypeSet, resourceElem},
+		// This isn't quite valid but should work
+		{"map block", 0, schema.TypeMap, resourceElem},
 		{"list max items one block", 1, schema.TypeList, resourceElem},
 		{"set max items one block", 1, schema.TypeSet, resourceElem},
+		// This isn't quite valid but should work
+		{"map max items one block", 1, schema.TypeMap, resourceElem},
 		{"list attr", 0, schema.TypeList, schemaElem},
 		{"set attr", 0, schema.TypeSet, schemaElem},
+		{"map attr", 0, schema.TypeMap, schemaElem},
 		{"list max items one attr", 1, schema.TypeList, schemaElem},
 		{"set max items one attr", 1, schema.TypeSet, schemaElem},
+		{"map max items one attr", 1, schema.TypeMap, schemaElem},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			runCreateInputCheck(t, inputTestCase{
@@ -281,3 +287,5 @@ func TestInputsCollections(t *testing.T) {
 		})
 	}
 }
+
+// TODO add tests for nested blocks
