@@ -147,7 +147,7 @@ func (l *testLogger) StandardWriter(opts *hclog.StandardLoggerOptions) io.Writer
 	panic("unsupported")
 }
 
-func startTestProvider(t *testing.T) (*provider, bool) {
+func startTestProvider(t *testing.T) *provider {
 	ctx := context.Background()
 	const testProviderEnv = "PULUMI_TERRAFORM_BRIDGE_TEST_PROVIDER"
 
@@ -198,14 +198,11 @@ func startTestProvider(t *testing.T) (*provider, bool) {
 		pluginClient.Kill()
 	})
 
-	return provider, true
+	return provider
 }
 
 func TestProviderSchema(t *testing.T) {
-	p, ok := startTestProvider(t)
-	if !ok {
-		return
-	}
+	p := startTestProvider(t)
 
 	properties := map[string]*attributeSchema{}
 	p.Schema().Range(func(k string, v shim.Schema) bool {
@@ -222,10 +219,7 @@ func TestProviderSchema(t *testing.T) {
 }
 
 func TestProviderResourcesMap(t *testing.T) {
-	p, ok := startTestProvider(t)
-	if !ok {
-		return
-	}
+	p := startTestProvider(t)
 
 	expected := map[string]*resource{
 		"nested_secret_resource": {
@@ -622,10 +616,7 @@ func TestProviderResourcesMap(t *testing.T) {
 }
 
 func TestProviderDataSourcesMap(t *testing.T) {
-	p, ok := startTestProvider(t)
-	if !ok {
-		return
-	}
+	p := startTestProvider(t)
 
 	expected := map[string]*resource{
 		"example_resource": {
@@ -776,10 +767,7 @@ func TestProviderDataSourcesMap(t *testing.T) {
 
 func TestValidate(t *testing.T) {
 	ctx := context.Background()
-	p, ok := startTestProvider(t)
-	if !ok {
-		return
-	}
+	p := startTestProvider(t)
 
 	warnings, errors := p.Validate(ctx, p.NewResourceConfig(ctx, map[string]interface{}{
 		"config_value": "foo",
@@ -790,10 +778,7 @@ func TestValidate(t *testing.T) {
 
 func TestValidateResource(t *testing.T) {
 	ctx := context.Background()
-	p, ok := startTestProvider(t)
-	if !ok {
-		return
-	}
+	p := startTestProvider(t)
 
 	warnings, errors := p.ValidateResource(ctx, "example_resource", p.NewResourceConfig(ctx, map[string]interface{}{}))
 	assert.Empty(t, warnings)
@@ -843,10 +828,7 @@ func TestValidateResource(t *testing.T) {
 
 func TestValidateDataSource(t *testing.T) {
 	ctx := context.Background()
-	p, ok := startTestProvider(t)
-	if !ok {
-		return
-	}
+	p := startTestProvider(t)
 
 	warnings, errors := p.ValidateDataSource(ctx, "example_resource", p.NewResourceConfig(ctx, map[string]interface{}{}))
 	assert.Empty(t, warnings)
@@ -880,10 +862,7 @@ func TestValidateDataSource(t *testing.T) {
 
 func TestConfigure(t *testing.T) {
 	ctx := context.Background()
-	p, ok := startTestProvider(t)
-	if !ok {
-		return
-	}
+	p := startTestProvider(t)
 
 	err := p.Configure(ctx, p.NewResourceConfig(ctx, map[string]interface{}{
 		"config_value": "foo",
@@ -893,10 +872,7 @@ func TestConfigure(t *testing.T) {
 
 func TestDiff(t *testing.T) {
 	ctx := context.Background()
-	p, ok := startTestProvider(t)
-	if !ok {
-		return
-	}
+	p := startTestProvider(t)
 
 	res, ok := p.ResourcesMap().GetOk("example_resource")
 	require.True(t, ok)
@@ -1068,10 +1044,7 @@ func TestDiff(t *testing.T) {
 
 func TestApply(t *testing.T) {
 	ctx := context.Background()
-	p, ok := startTestProvider(t)
-	if !ok {
-		return
-	}
+	p := startTestProvider(t)
 
 	resource, ok := p.ResourcesMap().GetOk("example_resource")
 	require.True(t, ok)
@@ -1250,10 +1223,7 @@ func TestApply(t *testing.T) {
 
 func TestRefresh(t *testing.T) {
 	ctx := context.Background()
-	p, ok := startTestProvider(t)
-	if !ok {
-		return
-	}
+	p := startTestProvider(t)
 
 	resource, ok := p.ResourcesMap().GetOk("example_resource")
 	require.True(t, ok)
@@ -1319,10 +1289,7 @@ func TestRefresh(t *testing.T) {
 
 func TestReadDataDiff(t *testing.T) {
 	ctx := context.Background()
-	p, ok := startTestProvider(t)
-	if !ok {
-		return
-	}
+	p := startTestProvider(t)
 
 	config := p.NewResourceConfig(ctx, map[string]interface{}{
 		"array_property_value": []interface{}{"foo"},
@@ -1353,10 +1320,7 @@ func TestReadDataDiff(t *testing.T) {
 
 func TestReadDataApply(t *testing.T) {
 	ctx := context.Background()
-	p, ok := startTestProvider(t)
-	if !ok {
-		return
-	}
+	p := startTestProvider(t)
 
 	config := p.NewResourceConfig(ctx, map[string]interface{}{
 		"array_property_value": []interface{}{"foo"},
@@ -1404,10 +1368,7 @@ func TestReadDataApply(t *testing.T) {
 }
 
 func TestImportResourceState(t *testing.T) {
-	p, ok := startTestProvider(t)
-	if !ok {
-		return
-	}
+	p := startTestProvider(t)
 
 	resource, ok := p.ResourcesMap().GetOk("example_resource")
 	require.True(t, ok)
