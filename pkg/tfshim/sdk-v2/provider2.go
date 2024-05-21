@@ -873,9 +873,8 @@ func normalizeBlockCollections(val cty.Value, res *schema.Resource) cty.Value {
 		if val.GetAttr(fieldName).IsNull() {
 			// normalize it
 			fieldType := val.Type().AttributeType(fieldName)
-			// TODO: Only values which pass InternalValidate
-			// Can we assume InternalValidate passes on the schema?
-			// Only lists and sets can be blocks
+			// TODO: Can we assume InternalValidate passes on the schema?
+			// Only lists and sets can be blocks and pass InternalValidate
 			if fieldType.IsListType() {
 				valMap[fieldName] = cty.ListValEmpty(fieldType.ElementType())
 			} else if fieldType.IsSetType() {
