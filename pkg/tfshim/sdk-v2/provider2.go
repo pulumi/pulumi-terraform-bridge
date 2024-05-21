@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/hashicorp/go-cty/cty"
+	ctyjson "github.com/hashicorp/go-cty/cty/json"
 	"github.com/hashicorp/go-cty/cty/msgpack"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov5"
@@ -324,13 +325,9 @@ func (p *planResourceChangeImpl) upgradeState(
 	res := p.tf.ResourcesMap[t]
 	state := p.unpackInstanceState(t, s)
 
-	ty := res.CoreConfigSchema().ImpliedType()
-
-	jsonIsh, err := schema.StateValueToJSONMap(state.stateValue, ty)
-	if err != nil {
-		return nil, err
-	}
-	jsonBytes, err := json.Marshal(jsonIsh)
+	// TODO[pulumi/pulumi-terraform-bridge#1667]: This is not quite right but we need
+	// the old TF state to get it right.
+	jsonBytes, err := ctyjson.Marshal(state.stateValue, state.stateValue.Type())
 	if err != nil {
 		return nil, err
 	}
@@ -371,12 +368,12 @@ func (p *planResourceChangeImpl) upgradeState(
 		return nil, err
 	}
 
-	newState, err := msgpack.Unmarshal(resp.UpgradedState.MsgPack, ty)
+	newState, err := msgpack.Unmarshal(resp.UpgradedState.MsgPack, res.CoreConfigSchema().ImpliedType())
 	if err != nil {
 		return nil, err
 	}
 
-	newMeta := make(map[string]interface{})
+	newMeta := make(map[string]interface{}, len(state.meta))
 	// copy old meta into new meta
 	for k, v := range state.meta {
 		newMeta[k] = v
