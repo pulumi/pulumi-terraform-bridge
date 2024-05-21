@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 
 	"github.com/hashicorp/go-cty/cty"
+	ctyjson "github.com/hashicorp/go-cty/cty/json"
 	"github.com/hashicorp/go-cty/cty/msgpack"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov5"
@@ -44,6 +46,8 @@ func (r *v2Resource2) InstanceState(
 		copy["id"] = id
 		object = copy
 	}
+	// TODO[pulumi/pulumi-terraform-bridge#1667]: This is not right since it uses the
+	// current schema. 1667 should make this redundant
 	s, err := recoverAndCoerceCtyValueWithSchema(r.v2Resource.tf.CoreConfigSchema(), object)
 	if err != nil {
 		return nil, fmt.Errorf("InstanceState: %v", err)
@@ -322,31 +326,66 @@ func (p *planResourceChangeImpl) upgradeState(
 ) (shim.InstanceState, error) {
 	res := p.tf.ResourcesMap[t]
 	state := p.unpackInstanceState(t, s)
-	instanceState, err := res.ShimInstanceStateFromValue(state.stateValue)
+
+	// TODO[pulumi/pulumi-terraform-bridge#1667]: This is not quite right but we need
+	// the old TF state to get it right.
+	jsonBytes, err := ctyjson.Marshal(state.stateValue, state.stateValue.Type())
 	if err != nil {
 		return nil, err
 	}
-	// Looks like this definitely can happen, but upgradeResourceState assumes a non-nil map.
-	if instanceState.Attributes == nil {
-		instanceState.Attributes = map[string]string{}
+
+	version := int64(0)
+	if versionValue, ok := state.meta["schema_version"]; ok {
+		versionString, ok := versionValue.(string)
+		if !ok {
+			return nil, fmt.Errorf("unexpected type %T for schema_version", versionValue)
+		}
+		v, err := strconv.ParseInt(versionString, 0, 32)
+		if err != nil {
+			return nil, err
+		}
+		version = v
 	}
-	instanceState.Meta = state.meta
-	newInstanceState, err := upgradeResourceState(ctx, p.tf, res, instanceState)
+
+	//nolint:lll
+	// https://github.com/opentofu/opentofu/blob/2ef3047ec6bb266e8d91c55519967212c1a0975d/internal/tofu/upgrade_resource_state.go#L52
+	if version > int64(res.SchemaVersion) {
+		return nil, fmt.Errorf(
+			"State version %d is greater than schema version %d for resource %s. "+
+				"Please upgrade the provider to work with this resource.",
+			version, res.SchemaVersion, t,
+		)
+	}
+
+	// Note upgrade is always called, even if the versions match
+	//nolint:lll
+	// https://github.com/opentofu/opentofu/blob/2ef3047ec6bb266e8d91c55519967212c1a0975d/internal/tofu/upgrade_resource_state.go#L72
+
+	resp, err := p.server.gserver.UpgradeResourceState(ctx, &tfprotov5.UpgradeResourceStateRequest{
+		TypeName: t,
+		RawState: &tfprotov5.RawState{JSON: jsonBytes},
+		Version:  version,
+	})
 	if err != nil {
 		return nil, err
 	}
-	if newInstanceState == nil {
-		return nil, nil
-	}
-	ty := res.CoreConfigSchema().ImpliedType()
-	stateValue, err := newInstanceState.AttrsAsObjectValue(ty)
+
+	newState, err := msgpack.Unmarshal(resp.UpgradedState.MsgPack, res.CoreConfigSchema().ImpliedType())
 	if err != nil {
 		return nil, err
 	}
+
+	newMeta := make(map[string]interface{}, len(state.meta))
+	// copy old meta into new meta
+	for k, v := range state.meta {
+		newMeta[k] = v
+	}
+	newMeta["schema_version"] = strconv.Itoa(res.SchemaVersion)
+
 	return &v2InstanceState2{
 		resourceType: t,
-		stateValue:   stateValue,
-		meta:         newInstanceState.Meta,
+		stateValue:   newState,
+		meta:         newMeta,
 	}, nil
 }
 

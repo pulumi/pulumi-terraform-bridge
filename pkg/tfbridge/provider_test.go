@@ -22,6 +22,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hexops/autogold/v2"
@@ -4306,4 +4307,70 @@ func TestStringValForOtherProperty(t *testing.T) {
 			}
 		}`)
 	})
+}
+
+func TestPlanResourceChangeStateUpgrade(t *testing.T) {
+	// TODO[pulumi/pulumi-terraform-bridge#1667]
+	t.Skipf("Skip since we try to use the current schema for the state.")
+	p := &schemav2.Provider{
+		Schema: map[string]*schemav2.Schema{},
+		ResourcesMap: map[string]*schemav2.Resource{
+			"example_resource": {
+				Schema: map[string]*schemav2.Schema{
+					"prop": &schema.Schema{
+						Type:     schema.TypeSet,
+						Optional: true,
+						Elem:     &schemav2.Schema{Type: schemav2.TypeString},
+					},
+				},
+				StateUpgraders: []schema.StateUpgrader{
+					{
+						Version: 0,
+						Type:    cty.Object(map[string]cty.Type{"prop": cty.String}),
+						Upgrade: func(
+							ctx context.Context, rawState map[string]interface{}, meta interface{},
+						) (map[string]interface{}, error) {
+							rawState["prop"] = []interface{}{rawState["prop"]}
+							return rawState, nil
+						},
+					},
+				},
+			},
+		},
+	}
+	shimProv := shimv2.NewProvider(p, shimv2.WithPlanResourceChange(func(tfResourceType string) bool { return true }))
+	provider := &Provider{
+		tf:     shimProv,
+		config: shimv2.NewSchemaMap(p.Schema),
+		info: ProviderInfo{
+			P:              shimProv,
+			ResourcePrefix: "example",
+			Resources: map[string]*ResourceInfo{
+				"example_resource": {Tok: "ExampleResource"},
+			},
+		},
+	}
+	provider.initResourceMaps()
+
+	testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Diff",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"id": "0",
+			"olds": {
+				"__meta": {
+					"version": 0
+				},
+				"prop": "val"
+			},
+			"news": {
+				"prop": ["val"]
+			}
+		},
+		"response": {
+			"changes": "DIFF_NONE",
+			"hasDetailedDiff": true
+		}
+	}`)
 }
