@@ -829,14 +829,17 @@ type bulletListEntry struct {
 	index int
 }
 
-// trackBulletListIndentation looks at the index of the bullet list marker ( `*`, `-` or `+`) in a docs line and compares it
-// to a collection that tracks the level of list nesting by comparing to the previous list entry's nested level (if any).
+// trackBulletListIndentation looks at the index of the bullet list marker ( `*`, `-` or `+`) in a docs line and
+// compares it to a collection that tracks the level of list nesting by comparing to the previous list entry's nested
+// level (if any).
 // Note that this function only looks at the placement of the bullet list marker, and assumes same-level list markers
 // to be in the same location in each line. This is not necessarily the case for Markdown, which considers a range of
 // locations within 1-4 whitespace characters, as well as considers the start index of the text following the bullet
 // point. If and when this becomes an issue during docs parsing, we may consider adding some of those rules here.
-// Read more about nested lists in GutHub-flavored Markdown:
+// Read more about nested lists in GitHub-flavored Markdown:
 // https://docs.github.com/en/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax#nested-lists
+//
+//nolint:lll
 func trackBulletListIndentation(line, name string, tracker []bulletListEntry) []bulletListEntry {
 	listMarkerRegex := regexp.MustCompile("[-*+]")
 	listMarkerIndex := listMarkerRegex.FindStringIndex(line)[0]
