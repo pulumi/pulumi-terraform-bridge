@@ -4318,7 +4318,6 @@ func TestPlanResourceChangeStateUpgrade(t *testing.T) {
 					"prop": &schema.Schema{
 						Type:     schema.TypeSet,
 						Optional: true,
-						MaxItems: 1,
 						Elem:     &schemav2.Schema{Type: schemav2.TypeString},
 					},
 				},
@@ -4358,6 +4357,9 @@ func TestPlanResourceChangeStateUpgrade(t *testing.T) {
 			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
 			"id": "0",
 			"olds": {
+				"__meta": {
+					"version": 0
+				},
 				"prop": "val"
 			},
 			"news": {
