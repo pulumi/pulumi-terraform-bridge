@@ -850,8 +850,7 @@ func trackBulletListIndentation(line, name string, tracker []bulletListEntry) []
 			name:  name,
 			index: listMarkerIndex,
 		}
-		tracker = append(tracker, newEntry)
-		return tracker
+		return append(tracker, newEntry)
 	}
 	// Always compare to last entry in tracker
 	lastListEntry := tracker[len(tracker)-1]
@@ -864,8 +863,7 @@ func trackBulletListIndentation(line, name string, tracker []bulletListEntry) []
 			name:  name,
 			index: listMarkerIndex,
 		}
-		tracker = append(tracker, newEntry)
-		return tracker
+		return append(tracker, newEntry)
 	}
 	// if current line's listMarkerIndex is the same as the last entry's, we're at the same level.
 	if listMarkerIndex == lastListEntry.index {
@@ -875,23 +873,17 @@ func trackBulletListIndentation(line, name string, tracker []bulletListEntry) []
 		}
 		if len(tracker) == 1 {
 			replaceEntry.name = name
-
 		} else {
 			// use the penultimate entry name to build current name
 			replaceName := tracker[(len(tracker)-2)].name + "." + name
 			replaceEntry.name = replaceName
 		}
-
-		tracker = tracker[:len(tracker)-1]
-		tracker = append(tracker, replaceEntry)
-		return tracker
+		return append(tracker[:len(tracker)-1], replaceEntry)
 	}
 
 	// The current line's listMarkerIndex is smaller that the previous entry's.
 	// Pop off the latest entry, and retry to see if the next previous entry is a match.
-	tracker = tracker[:len(tracker)-1]
-	tracker = trackBulletListIndentation(line, name, tracker)
-	return tracker
+	return trackBulletListIndentation(line, name, tracker[:len(tracker)-1])
 }
 
 // parseArgFromMarkdownLine takes a line of Markdown and attempts to parse it for a Terraform argument and its
@@ -1115,7 +1107,7 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 			// section is over, but we take it to mean that the current
 			// heading is over.
 			lastMatch = ""
-			bulletListTracker = []bulletListEntry{}
+			bulletListTracker = nil
 		} else if nestedBlockCurrentLine := getNestedBlockNames(line); hadSpace && len(nestedBlockCurrentLine) > 0 {
 			// This tells us if there's a resource that is about to have subfields (nesteds)
 			// in subsequent lines.
@@ -1125,7 +1117,7 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 				nesteds = append(nesteds, docsPath(item))
 			}
 			lastMatch = ""
-			bulletListTracker = []bulletListEntry{}
+			bulletListTracker = nil
 		} else if !isBlank(line) && lastMatch != "" {
 			// This appends the current line to the previous match's description.
 			extendExistingHeading(line)
@@ -1139,7 +1131,7 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 				nesteds = append(nesteds, docsPath(item))
 			}
 			lastMatch = ""
-			bulletListTracker = []bulletListEntry{}
+			bulletListTracker = nil
 		} else if lastMatch != "" {
 			extendExistingHeading(line)
 		}

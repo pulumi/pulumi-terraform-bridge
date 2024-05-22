@@ -416,6 +416,27 @@ func TestArgumentRegex(t *testing.T) {
 			},
 		},
 		{
+			name: "Handles single increments of nesting in either direction",
+			input: []string{
+				"* `rules` - (Required) Collection of real time alert rules",
+				"  * `type` - (Required) Rule type.",
+				"    * `rule_name` - (Required) Rule name.",
+				"      * `spec` - A spec for the issue detection configuration rule name.",
+				"    * `keywords` - (Required) Collection of keywords to match.",
+				"  * `sentiment_configuration` - (Optional) Configuration for a sentiment rule.",
+				"* `disabled` - (Optional) Disables real time alert rules.",
+			},
+			expected: map[docsPath]*argumentDocs{
+				"rules":                         {description: "Collection of real time alert rules"},
+				"rules.type":                    {description: "Rule type."},
+				"rules.type.rule_name":          {description: "Rule name."},
+				"rules.type.rule_name.spec":     {description: "A spec for the issue detection configuration rule name."},
+				"rules.type.keywords":           {description: "Collection of keywords to match."},
+				"rules.sentiment_configuration": {description: "Configuration for a sentiment rule."},
+				"disabled":                      {description: "Disables real time alert rules."},
+			},
+		},
+		{
 			name: "Parses four-space indents for nested lists",
 			input: []string{
 				"* `keyword_match_configuration` - (Optional) Configuration for a keyword match rule.",
@@ -917,40 +938,36 @@ subtitle 2 content
 	assert.Equal(t, expected, groupLines(strings.Split(input, "\n"), "## "))
 }
 
-//TODO: readjust this
+func TestParseArgFromMarkdownLine(t *testing.T) {
+	//nolint:lll
+	tests := []struct {
+		input         string
+		expectedName  string
+		expectedDesc  string
+		expectedFound bool
+	}{
+		{"* `name` - (Required) A unique name to give the role.", "name", "A unique name to give the role.", true},
+		{"* `key_vault_key_id` - (Optional) The Key Vault key URI for CMK encryption. Changing this forces a new resource to be created.", "key_vault_key_id", "The Key Vault key URI for CMK encryption. Changing this forces a new resource to be created.", true},
+		{"* `urn` - The uniform resource name of the Droplet", "urn", "The uniform resource name of the Droplet", true},
+		{"* `name`- The name of the Droplet", "name", "The name of the Droplet", true},
+		{"* `jumbo_frame_capable` -Indicates whether jumbo frames (9001 MTU) are supported.", "jumbo_frame_capable", "Indicates whether jumbo frames (9001 MTU) are supported.", true},
+		{"* `ssl_support_method`: Specifies how you want CloudFront to serve HTTPS", "ssl_support_method", "Specifies how you want CloudFront to serve HTTPS", true},
+		{"* `principal_tags`: (Optional: []) - String to string map of variables.", "principal_tags", "String to string map of variables.", true},
+		{"  * `id` - The id of the property", "id", "The id of the property", true},
+		{"  * id - The id of the property", "", "", false},
+		//In rare cases, we may have a match where description is empty like the following, taken from https://github.com/hashicorp/terraform-provider-aws/blob/main/website/docs/r/spot_fleet_request.html.markdown
+		{"* `instance_pools_to_use_count` - (Optional; Default: 1)", "instance_pools_to_use_count", "", true},
+		{"", "", "", false},
+		{"Most of these arguments directly correspond to the", "", "", false},
+	}
 
-//func TestParseArgFromMarkdownLine(t *testing.T) {
-//	//nolint:lll
-//	tests := []struct {
-//		input          string
-//		expectedName   string
-//		expectedDesc   string
-//		expectedFound  bool
-//		expectedIndent bool
-//	}{
-//		{"* `name` - (Required) A unique name to give the role.", "name", "A unique name to give the role.", true, false},
-//		{"* `key_vault_key_id` - (Optional) The Key Vault key URI for CMK encryption. Changing this forces a new resource to be created.", "key_vault_key_id", "The Key Vault key URI for CMK encryption. Changing this forces a new resource to be created.", true, false},
-//		{"* `urn` - The uniform resource name of the Droplet", "urn", "The uniform resource name of the Droplet", true, false},
-//		{"* `name`- The name of the Droplet", "name", "The name of the Droplet", true, false},
-//		{"* `jumbo_frame_capable` -Indicates whether jumbo frames (9001 MTU) are supported.", "jumbo_frame_capable", "Indicates whether jumbo frames (9001 MTU) are supported.", true, false},
-//		{"* `ssl_support_method`: Specifies how you want CloudFront to serve HTTPS", "ssl_support_method", "Specifies how you want CloudFront to serve HTTPS", true, false},
-//		{"* `principal_tags`: (Optional: []) - String to string map of variables.", "principal_tags", "String to string map of variables.", true, false},
-//		{"  * `id` - The id of the property", "id", "The id of the property", true, true},
-//		{"  * id - The id of the property", "", "", false, false},
-//		//In rare cases, we may have a match where description is empty like the following, taken from https://github.com/hashicorp/terraform-provider-aws/blob/main/website/docs/r/spot_fleet_request.html.markdown
-//		{"* `instance_pools_to_use_count` - (Optional; Default: 1)", "instance_pools_to_use_count", "", true, false},
-//		{"", "", "", false, false},
-//		{"Most of these arguments directly correspond to the", "", "", false, false},
-//	}
-//
-//	for _, test := range tests {
-//		parsedLine := parseArgFromMarkdownLine(test.input)
-//		assert.Equal(t, test.expectedName, parsedLine.name)
-//		assert.Equal(t, test.expectedDesc, parsedLine.desc)
-//		assert.Equal(t, test.expectedFound, parsedLine.isFound)
-//		assert.Equal(t, test.expectedIndent, parsedLine.isIndented)
-//	}
-//}
+	for _, test := range tests {
+		parsedLine := parseArgFromMarkdownLine(test.input)
+		assert.Equal(t, test.expectedName, parsedLine.name)
+		assert.Equal(t, test.expectedDesc, parsedLine.desc)
+		assert.Equal(t, test.expectedFound, parsedLine.isFound)
+	}
+}
 
 func TestParseAttributesReferenceSection(t *testing.T) {
 	ret := entityDocs{
