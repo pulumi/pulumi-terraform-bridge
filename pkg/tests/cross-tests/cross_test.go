@@ -23,6 +23,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/stretchr/testify/require"
@@ -180,7 +181,6 @@ func TestAws2442(t *testing.T) {
 			}
 		}
 		hashes[n] = name
-		//fmt.Println("setting hash name", n, name)
 		return n
 	}
 
@@ -402,4 +402,202 @@ func TestAws2442(t *testing.T) {
 		Config1:  cfg,
 		Config2:  cfg2,
 	})
+}
+
+func TestSimpleOptionalComputed(t *testing.T) {
+	skipUnlessLinux(t)
+	emptyConfig := tftypes.NewValue(tftypes.Object{}, map[string]tftypes.Value{})
+	nonEmptyConfig := tftypes.NewValue(
+		tftypes.Object{
+			AttributeTypes: map[string]tftypes.Type{
+				"name": tftypes.String,
+			},
+		},
+		map[string]tftypes.Value{"name": tftypes.NewValue(tftypes.String, "A")},
+	)
+	for _, tc := range []struct {
+		name    string
+		config1 tftypes.Value
+		config2 tftypes.Value
+	}{
+		{"empty to empty", emptyConfig, emptyConfig},
+		{"empty to non-empty", emptyConfig, nonEmptyConfig},
+		{"non-empty to empty", nonEmptyConfig, emptyConfig},
+		{"non-empty to non-empty", nonEmptyConfig, nonEmptyConfig},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			runDiffCheck(t, diffTestCase{
+				Resource: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"name": {
+							Type:     schema.TypeString,
+							Optional: true,
+							Computed: true,
+						},
+					},
+					CreateContext: func(
+						ctx context.Context, rd *schema.ResourceData, i interface{},
+					) diag.Diagnostics {
+						err := rd.Set("name", "ComputedVal")
+						require.NoError(t, err)
+						rd.SetId("someid")
+						return make(diag.Diagnostics, 0)
+					},
+				},
+				Config1: tc.config1,
+				Config2: tc.config2,
+			})
+		})
+	}
+}
+
+func TestOptionalComputedAttrCollection(t *testing.T) {
+	skipUnlessLinux(t)
+	emptyConfig := tftypes.NewValue(tftypes.Object{}, map[string]tftypes.Value{})
+	t0 := tftypes.List{ElementType: tftypes.String}
+	t1 := tftypes.Object{
+		AttributeTypes: map[string]tftypes.Type{
+			"security_groups": t0,
+		},
+	}
+	nonEmptyConfig := tftypes.NewValue(
+		t1,
+		map[string]tftypes.Value{
+			"security_groups": tftypes.NewValue(
+				t0, []tftypes.Value{tftypes.NewValue(tftypes.String, "sg1")},
+			),
+		},
+	)
+	for _, tc := range []struct {
+		name     string
+		maxItems int
+		typ      schema.ValueType
+		config1  tftypes.Value
+		config2  tftypes.Value
+	}{
+		{"list empty to empty", 0, schema.TypeList, emptyConfig, emptyConfig},
+		{"list empty to non-empty", 0, schema.TypeList, emptyConfig, nonEmptyConfig},
+		{"list non-empty to empty", 0, schema.TypeList, nonEmptyConfig, emptyConfig},
+		{"list non-empty to non-empty", 0, schema.TypeList, nonEmptyConfig, nonEmptyConfig},
+		{"set empty to empty", 0, schema.TypeSet, emptyConfig, emptyConfig},
+		{"set empty to non-empty", 0, schema.TypeSet, emptyConfig, nonEmptyConfig},
+		{"set non-empty to empty", 0, schema.TypeSet, nonEmptyConfig, emptyConfig},
+		{"set non-empty to non-empty", 0, schema.TypeSet, nonEmptyConfig, nonEmptyConfig},
+		{"list max items one empty to empty", 1, schema.TypeList, emptyConfig, emptyConfig},
+		{"list max items one empty to non-empty", 1, schema.TypeList, emptyConfig, nonEmptyConfig},
+		{"list max items one non-empty to empty", 1, schema.TypeList, nonEmptyConfig, emptyConfig},
+		{"list max items one non-empty to non-empty", 1, schema.TypeList, nonEmptyConfig, nonEmptyConfig},
+		{"set max items one empty to empty", 1, schema.TypeSet, emptyConfig, emptyConfig},
+		{"set max items one empty to non-empty", 1, schema.TypeSet, emptyConfig, nonEmptyConfig},
+		{"set max items one non-empty to empty", 1, schema.TypeSet, nonEmptyConfig, emptyConfig},
+		{"set max items one non-empty to non-empty", 1, schema.TypeSet, nonEmptyConfig, nonEmptyConfig},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			runDiffCheck(t, diffTestCase{
+				Resource: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"security_groups": {
+							Type:     tc.typ,
+							Optional: true,
+							Computed: true,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+							},
+							MaxItems: tc.maxItems,
+						},
+					},
+					CreateContext: func(
+						ctx context.Context, rd *schema.ResourceData, i interface{},
+					) diag.Diagnostics {
+						err := rd.Set("security_groups", []string{"ComputedSG"})
+						require.NoError(t, err)
+						rd.SetId("someid")
+						return make(diag.Diagnostics, 0)
+					},
+				},
+				Config1: tc.config1,
+				Config2: tc.config2,
+			})
+		})
+	}
+}
+
+func TestOptionalComputedBlockCollection(t *testing.T) {
+	skipUnlessLinux(t)
+	emptyConfig := tftypes.NewValue(tftypes.Object{}, map[string]tftypes.Value{})
+	t0 := tftypes.Object{
+		AttributeTypes: map[string]tftypes.Type{
+			"foo": tftypes.String,
+		},
+	}
+	t1 := tftypes.Object{
+		AttributeTypes: map[string]tftypes.Type{
+			"security_groups": tftypes.List{ElementType: t0},
+		},
+	}
+
+	nonEmptyConfig := tftypes.NewValue(t1, map[string]tftypes.Value{
+		"security_groups": tftypes.NewValue(tftypes.List{ElementType: t0}, []tftypes.Value{
+			tftypes.NewValue(t0,
+				map[string]tftypes.Value{"foo": tftypes.NewValue(tftypes.String, "sg1")}),
+		}),
+	})
+
+	for _, tc := range []struct {
+		name     string
+		maxItems int
+		typ      schema.ValueType
+		config1  tftypes.Value
+		config2  tftypes.Value
+	}{
+		{"list empty to empty", 0, schema.TypeList, emptyConfig, emptyConfig},
+		{"list empty to non-empty", 0, schema.TypeList, emptyConfig, nonEmptyConfig},
+		{"list non-empty to empty", 0, schema.TypeList, nonEmptyConfig, emptyConfig},
+		{"list non-empty to non-empty", 0, schema.TypeList, nonEmptyConfig, nonEmptyConfig},
+		{"set empty to empty", 0, schema.TypeSet, emptyConfig, emptyConfig},
+		{"set empty to non-empty", 0, schema.TypeSet, emptyConfig, nonEmptyConfig},
+		{"set non-empty to empty", 0, schema.TypeSet, nonEmptyConfig, emptyConfig},
+		{"set non-empty to non-empty", 0, schema.TypeSet, nonEmptyConfig, nonEmptyConfig},
+		{"list max items one empty to empty", 1, schema.TypeList, emptyConfig, emptyConfig},
+		{"list max items one empty to non-empty", 1, schema.TypeList, emptyConfig, nonEmptyConfig},
+		{"list max items one non-empty to empty", 1, schema.TypeList, nonEmptyConfig, emptyConfig},
+		{"list max items one non-empty to non-empty", 1, schema.TypeList, nonEmptyConfig, nonEmptyConfig},
+		{"set max items one empty to empty", 1, schema.TypeSet, emptyConfig, emptyConfig},
+		{"set max items one empty to non-empty", 1, schema.TypeSet, emptyConfig, nonEmptyConfig},
+		{"set max items one non-empty to empty", 1, schema.TypeSet, nonEmptyConfig, emptyConfig},
+		{"set max items one non-empty to non-empty", 1, schema.TypeSet, nonEmptyConfig, nonEmptyConfig},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			runDiffCheck(t, diffTestCase{
+				Resource: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"security_groups": {
+							Type:     tc.typ,
+							Optional: true,
+							Computed: true,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									"foo": {
+										Optional: true,
+										Type:     schema.TypeString,
+									},
+								},
+							},
+							MaxItems: tc.maxItems,
+						},
+					},
+					CreateContext: func(
+						ctx context.Context, rd *schema.ResourceData, i interface{},
+					) diag.Diagnostics {
+						err := rd.Set("security_groups", []any{map[string]any{"foo": "ComputedSG"}})
+						require.NoError(t, err)
+						rd.SetId("someid")
+						return make(diag.Diagnostics, 0)
+					},
+				},
+				Config1: tc.config1,
+				Config2: tc.config2,
+			})
+		})
+	}
 }
