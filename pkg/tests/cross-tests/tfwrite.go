@@ -63,17 +63,7 @@ func writeBlock(body *hclwrite.Body, schemas map[string]*schema.Schema, values m
 			}
 			writeBlock(newBlock.Body(), res.Schema, v.AsValueMap())
 		case "NestingGroup":
-			// Needs to always be present
-			newBlock := body.AppendNewBlock(key, nil)
-			v, ok := values[key]
-			if !ok {
-				continue
-			}
-			res, ok := schemas[key].Elem.(*schema.Resource)
-			if !ok {
-				contract.Failf("unexpected schema type %s", key)
-			}
-			writeBlock(newBlock.Body(), res.Schema, v.AsValueMap())
+			contract.Failf("unexpected NestingGroup for %s with schema %s", key, schemas[key].GoString())
 		case "NestingList", "NestingSet":
 			v, ok := values[key]
 			if !ok {
@@ -88,18 +78,7 @@ func writeBlock(body *hclwrite.Body, schemas map[string]*schema.Schema, values m
 				writeBlock(newBlock.Body(), res.Schema, elem.AsValueMap())
 			}
 		case "NestingMap":
-			v, ok := values[key]
-			if !ok {
-				continue
-			}
-			res, ok := schemas[key].Elem.(*schema.Resource)
-			if !ok {
-				contract.Failf("unexpected schema type %s", key)
-			}
-			for k, elem := range v.AsValueMap() {
-				newBlock := body.AppendNewBlock(key, []string{k})
-				writeBlock(newBlock.Body(), res.Schema, elem.AsValueMap())
-			}
+			contract.Failf("unexpected NestingMap for %s with schema %s", key, schemas[key].GoString())
 		default:
 			contract.Failf("unexpected nesting mode %v", bl.Nesting)
 		}
