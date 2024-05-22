@@ -110,6 +110,22 @@ func (s prettyValueWrapper) GoString() string {
 				fmt.Fprintf(&buf, ",")
 			}
 			fmt.Fprintf(&buf, "\n%s})", indent)
+		case v.Type().Is(tftypes.Map{}):
+			fmt.Fprintf(&buf, `tftypes.NewValue(%s, map[string]tftypes.Value{`, tL)
+			var elements map[string]tftypes.Value
+			err := v.As(&elements)
+			contract.AssertNoErrorf(err, "this cast should always succeed")
+			keys := []string{}
+			for k := range elements {
+				keys = append(keys, k)
+			}
+			sort.Strings(keys)
+			for _, k := range keys {
+				fmt.Fprintf(&buf, "\n%s  %q: ", indent, k)
+				walk(level+1, elements[k])
+				fmt.Fprintf(&buf, ",")
+			}
+			fmt.Fprintf(&buf, "\n%s})", indent)
 		case v.Type().Is(tftypes.Number):
 			var n big.Float
 			err := v.As(&n)
