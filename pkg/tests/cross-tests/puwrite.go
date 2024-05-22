@@ -12,7 +12,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
-
 func generateYaml(schema shim.SchemaMap, resourceToken string, objectType *tftypes.Object, tfConfig any) (map[string]any, error) {
 	pConfig, err := convertConfigToPulumi(schema, nil, objectType, tfConfig)
 	if err != nil {
