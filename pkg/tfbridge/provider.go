@@ -183,12 +183,19 @@ func (e CheckFailureError) Error() string {
 	return fmt.Sprintf("CheckFailureErrors %s", e.Failures)
 }
 
-// callWithRecover is a generic function that takes a resource URN, a recovery function, and a callable function as parameters.
-// It attempts to call the provided callable function and returns its results.
-// If the callable function panics, callWithRecover will recover from the panic and call the recovery function with the resource URN and the panic value.
-// The recovery function is expected to convert the panic value into an error, which is then returned by callWithRecover.
-// This function is useful for handling panics in a controlled manner and converting them into errors.
-func callWithRecover[T any](urn resource.URN, rec func(resource.URN, any) error, call func() (T, error)) (_ T, err error) {
+// callWithRecover is a generic function that takes a resource URN, a recovery
+// function, and a callable function as parameters. It attempts to call the
+// provided callable function and returns its results. If the callable function
+// panics, callWithRecover will recover from the panic and call the recovery
+// function with the resource URN and the panic value. The recovery function is
+// expected to convert the panic value into an error, which is then returned by
+// callWithRecover. This function is useful for handling panics in a controlled
+// manner and converting them into errors.
+func callWithRecover[T any](
+	urn resource.URN,
+	rec func(resource.URN, any) error,
+	call func() (T, error),
+) (_ T, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = rec(urn, r)
