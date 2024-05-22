@@ -23,6 +23,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hexops/autogold/v2"
@@ -4468,4 +4469,68 @@ func (s *testWarnLogSink) Log(context context.Context, sev pdiag.Severity, urn r
 func (s *testWarnLogSink) LogStatus(context context.Context, sev pdiag.Severity, urn resource.URN, msg string) error {
 	fmt.Fprintf(s.buf, "[status] [%v] [%v] %s\n", sev, urn, msg)
 	return nil
+}
+
+func TestPlanResourceChangeStateUpgrade(t *testing.T) {
+	p := &schemav2.Provider{
+		Schema: map[string]*schemav2.Schema{},
+		ResourcesMap: map[string]*schemav2.Resource{
+			"example_resource": {
+				Schema: map[string]*schemav2.Schema{
+					"prop": &schema.Schema{
+						Type:     schema.TypeSet,
+						Optional: true,
+						Elem:     &schemav2.Schema{Type: schemav2.TypeString},
+					},
+				},
+				StateUpgraders: []schema.StateUpgrader{
+					{
+						Version: 0,
+						Type:    cty.Object(map[string]cty.Type{"prop": cty.String}),
+						Upgrade: func(
+							ctx context.Context, rawState map[string]interface{}, meta interface{},
+						) (map[string]interface{}, error) {
+							rawState["prop"] = []interface{}{rawState["prop"]}
+							return rawState, nil
+						},
+					},
+				},
+			},
+		},
+	}
+	shimProv := shimv2.NewProvider(p, shimv2.WithPlanResourceChange(func(tfResourceType string) bool { return true }))
+	provider := &Provider{
+		tf:     shimProv,
+		config: shimv2.NewSchemaMap(p.Schema),
+		info: ProviderInfo{
+			P:              shimProv,
+			ResourcePrefix: "example",
+			Resources: map[string]*ResourceInfo{
+				"example_resource": {Tok: "ExampleResource"},
+			},
+		},
+	}
+	provider.initResourceMaps()
+
+	testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Diff",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"id": "0",
+			"olds": {
+				"__meta": {
+					"version": 0
+				},
+				"prop": "val"
+			},
+			"news": {
+				"prop": ["val"]
+			}
+		},
+		"response": {
+			"changes": "DIFF_NONE",
+			"hasDetailedDiff": true
+		}
+	}`)
 }

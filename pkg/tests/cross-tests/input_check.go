@@ -34,7 +34,9 @@ type inputTestCase struct {
 	Config     any
 	ObjectType *tftypes.Object
 
-	SkipCompareRaw bool
+	SkipCompareRawPlan   bool
+	SkipCompareRawConfig bool
+	SkipCompareRawState  bool
 }
 
 func FailNotEqual(t T, name string, tfVal, pulVal any) {
@@ -143,10 +145,15 @@ func runCreateInputCheck(t T, tc inputTestCase) {
 		assertValEqual(t, k+" Change New", tfChangeValNew, pulChangeValNew)
 	}
 
-	if !tc.SkipCompareRaw {
+	if !tc.SkipCompareRawConfig {
 		assertCtyValEqual(t, "RawConfig", tfResData.GetRawConfig(), pulResData.GetRawConfig())
+	}
+
+	if !tc.SkipCompareRawPlan {
 		assertCtyValEqual(t, "RawPlan", tfResData.GetRawPlan(), pulResData.GetRawPlan())
-		// TODO: we currently represent null state values wrong. We should fix it.
-		// assertCtyValEqual(t, "RawState", tfResData.GetRawState(), pulResData.GetRawState())
+	}
+
+	if !tc.SkipCompareRawState {
+		assertCtyValEqual(t, "RawState", tfResData.GetRawState(), pulResData.GetRawState())
 	}
 }
