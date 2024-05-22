@@ -63,7 +63,9 @@ func upgradeResourceStateGRPC(
 	for k, v := range meta {
 		newMeta[k] = v
 	}
-	newMeta["schema_version"] = strconv.Itoa(res.SchemaVersion)
+	if res.SchemaVersion != 0 {
+		newMeta["schema_version"] = strconv.Itoa(res.SchemaVersion)
+	}
 
 	return newState, newMeta, nil
 }
