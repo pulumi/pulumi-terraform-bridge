@@ -229,8 +229,6 @@ func TestExplicitNilList(t *testing.T) {
 	// resource "crossprovider_testres" "example" {
 	//     f0 = null
 	// }
-	// This is different to an unspecified value.
-	// We might not be able to distinguish between null and missing collections.
 	runCreateInputCheck(t, inputTestCase{
 		Resource: &schema.Resource{
 			Schema: map[string]*schema.Schema{
