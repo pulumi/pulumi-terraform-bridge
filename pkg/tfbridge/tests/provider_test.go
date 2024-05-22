@@ -436,7 +436,11 @@ func TestValidateInputsPanic(t *testing.T) {
 				}
 			},
 			"response": {
-			}
+			},
+			"errors": [
+			"diffing urn:pulumi:dev::teststack::testprov:index:ExampleResource::exres: panicked: \"value has no attribute of that name\""
+
+			]
 		}
 	]
 	`)
@@ -555,7 +559,10 @@ func TestValidateInputsPanic(t *testing.T) {
 				"preview": true
 			},
 			"response": {
-			}
+			},
+			"errors": [
+			"diffing urn:pulumi:dev::teststack::testprov:index:ExampleResource::exres2: panicked: \"value has no attribute of that name\""
+			]
 		}
 	]
 	`)
@@ -617,7 +624,10 @@ func TestValidateInputsPanic(t *testing.T) {
 				"preview": true
 			},
 			"response": {
-			}
+			},
+			"errors": [
+			"diffing urn:pulumi:dev::teststack::testprov:index:ExampleResource::exres3: panicked: \"value has no attribute of that name\""
+			]
 		}
 	]
 	`)

@@ -805,14 +805,14 @@ func TestValidateInputType_objects(t *testing.T) {
 			failures := v.ValidateInputs(tokens.Type("pkg:mod:ResA"), resource.PropertyMap{
 				resource.PropertyKey(tc.name): tc.input,
 			})
-			if failures != nil && len(*failures) != len(tc.failures) {
-				t.Fatalf("%d failures, got %d: %v", len(tc.failures), len(*failures), *failures)
+			if failures != nil && len(failures) != len(tc.failures) {
+				t.Fatalf("%d failures, got %d: %v", len(tc.failures), len(failures), failures)
 			}
 			if len(tc.failures) > 0 {
 				if failures == nil {
 					t.Fatalf("expected failures, got none")
 				} else {
-					assert.Equal(t, tc.failures, *failures)
+					assert.Equal(t, tc.failures, failures)
 				}
 			}
 		})
@@ -1305,14 +1305,14 @@ func TestValidateInputType_arrays(t *testing.T) {
 			failures := v.ValidateInputs(tokens.Type("pkg:mod:ResA"), resource.PropertyMap{
 				resource.PropertyKey(tc.name): tc.input,
 			})
-			if failures != nil && len(*failures) != len(tc.failures) {
-				t.Fatalf("%d failures, got %d: %v", len(tc.failures), len(*failures), *failures)
+			if failures != nil && len(failures) != len(tc.failures) {
+				t.Fatalf("%d failures, got %d: %v", len(tc.failures), len(failures), failures)
 			}
 			if len(tc.failures) > 0 {
 				if failures == nil {
 					t.Fatalf("expected failures, got none")
 				} else {
-					assert.Equal(t, tc.failures, *failures)
+					assert.Equal(t, tc.failures, failures)
 				}
 			}
 		})
@@ -1626,14 +1626,14 @@ func TestValidateInputType_toplevel(t *testing.T) {
 			failures := v.ValidateInputs(tokens.Type("pkg:mod:ResA"), resource.PropertyMap{
 				resource.PropertyKey(tc.name): tc.input,
 			})
-			if failures != nil && len(*failures) != len(tc.failures) {
-				t.Fatalf("%d failures, got %d: %v", len(tc.failures), len(*failures), *failures)
+			if failures != nil && len(failures) != len(tc.failures) {
+				t.Fatalf("%d failures, got %d: %v", len(tc.failures), len(failures), failures)
 			}
 			if len(tc.failures) > 0 {
 				if failures == nil {
 					t.Fatalf("expected failures, got none")
 				} else {
-					assert.Equal(t, tc.failures, *failures)
+					assert.Equal(t, tc.failures, failures)
 				}
 			}
 		})
