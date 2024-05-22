@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestUpgradeResourceState(t *testing.T) {
+func TestProvider2UpgradeResourceState(t *testing.T) {
 	const tfToken = "test_token"
 	for _, tc := range []struct {
 		name     string
