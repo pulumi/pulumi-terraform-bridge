@@ -23,6 +23,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/stretchr/testify/require"
@@ -402,4 +403,123 @@ func TestAws2442(t *testing.T) {
 		Config1:  cfg,
 		Config2:  cfg2,
 	})
+}
+
+func TestSimpleOptionalComputedNoChange(t *testing.T) {
+	skipUnlessLinux(t)
+	config := tftypes.NewValue(tftypes.Object{}, map[string]tftypes.Value{})
+	runDiffCheck(t, diffTestCase{
+		Resource: &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				"name": {
+					Type:     schema.TypeString,
+					Optional: true,
+					Computed: true,
+				},
+			},
+			CreateContext: func(
+				ctx context.Context, rd *schema.ResourceData, i interface{},
+			) diag.Diagnostics {
+				err := rd.Set("name", "ComputedVal")
+				require.NoError(t, err)
+				rd.SetId("someid")
+				return make(diag.Diagnostics, 0)
+			},
+		},
+		Config1: config,
+		Config2: config,
+	})
+}
+
+func TestOptionalComputedAttrCollectionNoChange(t *testing.T) {
+	skipUnlessLinux(t)
+	config := tftypes.NewValue(tftypes.Object{}, map[string]tftypes.Value{})
+
+	for _, tc := range []struct {
+		name     string
+		maxItems int
+		typ      schema.ValueType
+	}{
+		{"list", 0, schema.TypeList},
+		{"set", 0, schema.TypeSet},
+		{"list max items one", 1, schema.TypeList},
+		{"set max items one", 1, schema.TypeSet},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			runDiffCheck(t, diffTestCase{
+				Resource: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"security_groups": {
+							Type:     tc.typ,
+							Optional: true,
+							Computed: true,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+							},
+							MaxItems: tc.maxItems,
+						},
+					},
+					CreateContext: func(
+						ctx context.Context, rd *schema.ResourceData, i interface{},
+					) diag.Diagnostics {
+						err := rd.Set("security_groups", []string{"sg1"})
+						require.NoError(t, err)
+						rd.SetId("someid")
+						return make(diag.Diagnostics, 0)
+					},
+				},
+				Config1: config,
+				Config2: config,
+			})
+		})
+	}
+}
+
+func TestOptionalComputedBlockCollectionNoChange(t *testing.T) {
+	skipUnlessLinux(t)
+	config := tftypes.NewValue(tftypes.Object{}, map[string]tftypes.Value{})
+
+	for _, tc := range []struct {
+		name     string
+		maxItems int
+		typ      schema.ValueType
+	}{
+		{"list", 0, schema.TypeList},
+		{"set", 0, schema.TypeSet},
+		{"list max items one", 1, schema.TypeList},
+		{"set max items one", 1, schema.TypeSet},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			runDiffCheck(t, diffTestCase{
+				Resource: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"security_groups": {
+							Type:     tc.typ,
+							Optional: true,
+							Computed: true,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									"foo": {
+										Optional: true,
+										Type:     schema.TypeString,
+									},
+								},
+							},
+							MaxItems: tc.maxItems,
+						},
+					},
+					CreateContext: func(
+						ctx context.Context, rd *schema.ResourceData, i interface{},
+					) diag.Diagnostics {
+						err := rd.Set("security_groups", []any{map[string]any{"foo": "sg1"}})
+						require.NoError(t, err)
+						rd.SetId("someid")
+						return make(diag.Diagnostics, 0)
+					},
+				},
+				Config1: config,
+				Config2: config,
+			})
+		})
+	}
 }
