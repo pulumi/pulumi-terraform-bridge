@@ -241,8 +241,6 @@ func TestOptionalSetNotSpecified(t *testing.T) {
 
 func TestInputsEmptyCollections(t *testing.T) {
 	skipUnlessLinux(t)
-	// TODO[pulumi/pulumi-terraform-bridge#1971]
-	t.Skipf("We don't handle missing collections correctly")
 	config := tftypes.NewValue(tftypes.Object{}, map[string]tftypes.Value{})
 
 	// signifies a block
@@ -255,6 +253,7 @@ func TestInputsEmptyCollections(t *testing.T) {
 	// signifies an attribute
 	schemaElem := &schema.Schema{
 		Type: schema.TypeMap,
+		Elem: &schema.Schema{Type: schema.TypeString},
 	}
 
 	for _, tc := range []struct {
@@ -295,6 +294,8 @@ func TestInputsEmptyCollections(t *testing.T) {
 					},
 				},
 				Config: config,
+				// TODO[pulumi/pulumi-terraform-bridge#1971]: We don't handle missing collections correctly
+				SkipCompareRawConfig: true,
 			})
 		})
 	}
