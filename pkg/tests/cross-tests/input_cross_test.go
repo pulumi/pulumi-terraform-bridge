@@ -393,3 +393,27 @@ func TestInputsNestedBlocksEmpty(t *testing.T) {
 		})
 	}
 }
+
+func TestEmptySetOfEmptyObjects(t *testing.T) {
+	skipUnlessLinux(t)
+	t1 := tftypes.Object{}
+	t0 := tftypes.Object{AttributeTypes: map[string]tftypes.Type{
+		"d3f0": tftypes.Set{ElementType: t1},
+	}}
+	config := tftypes.NewValue(t0, map[string]tftypes.Value{
+		"d3f0": tftypes.NewValue(tftypes.Set{ElementType: t1}, []tftypes.Value{}),
+	})
+
+	runCreateInputCheck(t, inputTestCase{
+		Resource: &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				"d3f0": {
+					Type:     schema.TypeSet,
+					Optional: true,
+					Elem:     &schema.Resource{Schema: map[string]*schema.Schema{}},
+				},
+			},
+		},
+		Config: config,
+	})
+}
