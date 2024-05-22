@@ -393,16 +393,16 @@ func (tvg *tvGen) WithNullAndUnknown(gen *rapid.Generator[tv]) *rapid.Generator[
 	return rapid.Custom[tv](func(t *rapid.T) tv {
 		tv0 := gen.Draw(t, "tv")
 		gen := tv0.valueGen
-		options := []*rapid.Generator[tftypes.Value]{gen}
-		if tvg.generateUnknowns {
-			unkGen := rapid.Just(tftypes.NewValue(tv0.typ, tftypes.UnknownValue))
-			options = append(options, unkGen)
-		}
-		if !tv0.schema.Required {
-			nullGen := rapid.Just(tftypes.NewValue(tv0.typ, nil))
-			options = append(options, nullGen)
-		}
-		if len(options) > 1 {
+		if tvg.generateUnknowns || tv0.schema.Required {
+			options := []*rapid.Generator[tftypes.Value]{gen}
+			if tvg.generateUnknowns {
+				unkGen := rapid.Just(tftypes.NewValue(tv0.typ, tftypes.UnknownValue))
+				options = append(options, unkGen)
+			}
+			if !tv0.schema.Required {
+				nullGen := rapid.Just(tftypes.NewValue(tv0.typ, nil))
+				options = append(options, nullGen)
+			}
 			gen = rapid.OneOf(options...)
 		}
 
