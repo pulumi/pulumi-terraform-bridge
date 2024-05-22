@@ -454,3 +454,160 @@ func TestEmptySetOfEmptyObjects(t *testing.T) {
 		Config: config,
 	})
 }
+
+func TestRequiredEmptyListOfObjects(t *testing.T) {
+	skipUnlessLinux(t)
+	t.Skipf("TODO[pulumi/pulumi-terraform-bridge#2021]: This must be a bug in tfwrite")
+	// │ Error: Insufficient d3f0 blocks
+	// │
+	// │   on test.tf line 1, in resource "crossprovider_testres" "example":
+	// │    1: resource "crossprovider_testres" "example" {
+	// │
+	// │ At least 1 "d3f0" blocks are required.
+
+	t1 := tftypes.Object{}
+	t0 := tftypes.Object{AttributeTypes: map[string]tftypes.Type{
+		"d3f0": tftypes.List{ElementType: t1},
+	}}
+	config := tftypes.NewValue(t0, map[string]tftypes.Value{
+		"d3f0": tftypes.NewValue(tftypes.List{ElementType: t1}, []tftypes.Value{}),
+	})
+
+	runCreateInputCheck(t, inputTestCase{
+		Resource: &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				"d3f0": {
+					Type:     schema.TypeList,
+					Required: true,
+					Elem:     &schema.Resource{Schema: map[string]*schema.Schema{}},
+					MaxItems: 1,
+				},
+			},
+		},
+		Config: config,
+	})
+}
+
+func TestRequiredEmptyListOfLists(t *testing.T) {
+	skipUnlessLinux(t)
+	t.Skipf("TODO[pulumi/pulumi-terraform-bridge#2021]: This must be a bug in puwrite")
+	// Error: crossprovider:index:TestRes is not assignable from {}
+	// Cannot assign '{}' to 'crossprovider:index:TestRes':
+	//   d3f0: Missing required property 'd3f0'
+
+	t1 := tftypes.List{ElementType: tftypes.String}
+	t0 := tftypes.Object{AttributeTypes: map[string]tftypes.Type{
+		"d3f0": tftypes.List{ElementType: t1},
+	}}
+	config := tftypes.NewValue(t0, map[string]tftypes.Value{
+		"d3f0": tftypes.NewValue(tftypes.List{ElementType: t1}, []tftypes.Value{}),
+	})
+
+	runCreateInputCheck(t, inputTestCase{
+		Resource: &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				"d3f0": {
+					Type:     schema.TypeList,
+					Required: true,
+					Elem: &schema.Schema{
+						Type: schema.TypeList, Elem: &schema.Schema{Type: schema.TypeString},
+					},
+					MaxItems: 1,
+				},
+			},
+		},
+		Config: config,
+	})
+}
+
+func TestRequiredEmptyListOfSets(t *testing.T) {
+	skipUnlessLinux(t)
+	t.Skipf("TODO[pulumi/pulumi-terraform-bridge#2021]: This must be a bug in puwrite")
+	// Error: crossprovider:index:TestRes is not assignable from {}
+	// Cannot assign '{}' to 'crossprovider:index:TestRes':
+	//   d3f0: Missing required property 'd3f0'
+
+	t1 := tftypes.Set{ElementType: tftypes.String}
+	t0 := tftypes.Object{AttributeTypes: map[string]tftypes.Type{
+		"d3f0": tftypes.List{ElementType: t1},
+	}}
+	config := tftypes.NewValue(t0, map[string]tftypes.Value{
+		"d3f0": tftypes.NewValue(tftypes.List{ElementType: t1}, []tftypes.Value{}),
+	})
+
+	runCreateInputCheck(t, inputTestCase{
+		Resource: &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				"d3f0": {
+					Type:     schema.TypeList,
+					Required: true,
+					Elem: &schema.Schema{
+						Type: schema.TypeSet, Elem: &schema.Schema{Type: schema.TypeString},
+					},
+					MaxItems: 1,
+				},
+			},
+		},
+		Config: config,
+	})
+}
+
+func TestNonEmptyNestedMaxItemsOnes(t *testing.T) {
+	skipUnlessLinux(t)
+	t.Skipf("TODO[pulumi/pulumi-terraform-bridge#2021]: This must be a bug in puwrite")
+	// Error: crossprovider:index:TestRes is not assignable from {}
+	// Cannot assign '{}' to 'crossprovider:index:TestRes':
+	//   d3f0: Missing required property 'd3f0'
+
+	t1 := tftypes.List{ElementType: tftypes.String}
+	t0 := tftypes.Object{AttributeTypes: map[string]tftypes.Type{
+		"d3f0": tftypes.List{ElementType: t1},
+	}}
+	// Non-empty
+	config1 := tftypes.NewValue(t0, map[string]tftypes.Value{
+		"d3f0": tftypes.NewValue(tftypes.List{ElementType: t1}, []tftypes.Value{
+			tftypes.NewValue(t1, []tftypes.Value{
+				tftypes.NewValue(tftypes.String, "foo"),
+			}),
+		}),
+	})
+	// first level empty
+	config2 := tftypes.NewValue(t0, map[string]tftypes.Value{
+		"d3f0": tftypes.NewValue(tftypes.List{ElementType: t1}, []tftypes.Value{}),
+	})
+	// second level empty - this is impossible to handle because of flattening
+	_ = tftypes.NewValue(t0, map[string]tftypes.Value{
+		"d3f0": tftypes.NewValue(tftypes.List{ElementType: t1}, []tftypes.Value{
+			tftypes.NewValue(t1, []tftypes.Value{}),
+		}),
+	})
+
+	for _, tc := range []struct {
+		name   string
+		config tftypes.Value
+	}{
+		{"non-empty", config1},
+		{"first-level-empty", config2},
+		// {"second-level-empty", config3},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			runCreateInputCheck(t, inputTestCase{
+				Resource: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"d3f0": {
+							Type:     schema.TypeList,
+							Required: true,
+							Elem: &schema.Schema{
+								Type:     schema.TypeList,
+								MaxItems: 1,
+								Elem:     &schema.Schema{Type: schema.TypeString},
+							},
+							MaxItems: 1,
+						},
+					},
+				},
+				Config: tc.config,
+			})
+		})
+	}
+}
