@@ -95,10 +95,10 @@ resource "res" "ex" {
 			},
 			autogold.Expect(`
 resource "res" "ex" {
-  x = "OK"
   y = {
     foo = 42
   }
+  x = "OK"
 }
 `),
 		},
