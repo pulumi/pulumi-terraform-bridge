@@ -73,7 +73,6 @@ func (s prettyValueWrapper) GoString() string {
 		indent := strings.Repeat("  ", level)
 		switch {
 		case v.IsNull():
-			// TODO
 			fmt.Fprintf(&buf, "tftypes.NewValue(%s, nil)", tL)
 		case v.Type().Is(tftypes.Object{}):
 			fmt.Fprintf(&buf, `tftypes.NewValue(%s, map[string]tftypes.Value{`, tL)

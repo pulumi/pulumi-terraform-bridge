@@ -220,6 +220,11 @@ func TestInputsEmptyConfigModeAttrSet(t *testing.T) {
 
 func TestExplicitNilList(t *testing.T) {
 	skipUnlessLinux(t)
+	t0 := tftypes.Map{ElementType: tftypes.Number}
+	t1 := tftypes.Object{AttributeTypes: map[string]tftypes.Type{
+		"f0": tftypes.List{ElementType: t0},
+	}}
+
 	// This is an explicit null on the tf side:
 	// resource "crossprovider_testres" "example" {
 	//     f0 = null
@@ -245,7 +250,8 @@ func TestExplicitNilList(t *testing.T) {
 				},
 			},
 		},
-		// TODO: How does one express this with tftypes?
-		Config: map[string]interface{}{"f0": nil},
+		Config: tftypes.NewValue(t1, map[string]tftypes.Value{
+			"f0": tftypes.NewValue(tftypes.List{ElementType: t0}, nil),
+		}),
 	})
 }
