@@ -229,7 +229,43 @@ func TestOptionalSetNotSpecified(t *testing.T) {
 				},
 			},
 		},
-		Config: tftypes.NewValue(tftypes.Object{}, map[string]tftypes.Value{}),
+		Config:               tftypes.NewValue(tftypes.Object{}, map[string]tftypes.Value{}),
+	})
+}
+
+func TestExplicitNilList(t *testing.T) {
+	skipUnlessLinux(t)
+	t0 := tftypes.Map{ElementType: tftypes.Number}
+	t1 := tftypes.Object{AttributeTypes: map[string]tftypes.Type{
+		"f0": tftypes.List{ElementType: t0},
+	}}
+
+	// This is an explicit null on the tf side:
+	// resource "crossprovider_testres" "example" {
+	//     f0 = null
+	// }
+	runCreateInputCheck(t, inputTestCase{
+		Resource: &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				"f0": {
+					Optional: true,
+					Type:     schema.TypeList,
+					Elem: &schema.Schema{
+						Type:     schema.TypeMap,
+						Optional: true,
+						Computed: true,
+						Elem: &schema.Schema{
+							Type:      schema.TypeInt,
+							Optional:  true,
+							Sensitive: true,
+						},
+					},
+				},
+			},
+		},
+		Config: tftypes.NewValue(t1, map[string]tftypes.Value{
+			"f0": tftypes.NewValue(tftypes.List{ElementType: t0}, nil),
+		}),
 	})
 }
 
@@ -247,6 +283,7 @@ func TestInputsEmptyCollections(t *testing.T) {
 	// signifies an attribute
 	schemaElem := &schema.Schema{
 		Type: schema.TypeMap,
+		Elem: &schema.Schema{Type: schema.TypeString},
 	}
 
 	for _, tc := range []struct {
@@ -321,14 +358,14 @@ func TestInputsNestedBlocksEmpty(t *testing.T) {
 	// TODO: Investigate why this produces the wrong tf program
 	// resource "crossprovider_testres" "example" {
 	// 	f0 {
- 	//  }
+	//  }
 	// }
 
 	// it should produce
 	// resource "crossprovider_testres" "example" {
 	// 	f0 {
 	//   f1 {}
- 	//  }
+	//  }
 	// }
 	nestedNonEmptyConfig := tftypes.NewValue(
 		tftypes.Object{
@@ -384,4 +421,28 @@ func TestInputsNestedBlocksEmpty(t *testing.T) {
 			})
 		})
 	}
+}
+
+func TestEmptySetOfEmptyObjects(t *testing.T) {
+	skipUnlessLinux(t)
+	t1 := tftypes.Object{}
+	t0 := tftypes.Object{AttributeTypes: map[string]tftypes.Type{
+		"d3f0": tftypes.Set{ElementType: t1},
+	}}
+	config := tftypes.NewValue(t0, map[string]tftypes.Value{
+		"d3f0": tftypes.NewValue(tftypes.Set{ElementType: t1}, []tftypes.Value{}),
+	})
+
+	runCreateInputCheck(t, inputTestCase{
+		Resource: &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				"d3f0": {
+					Type:     schema.TypeSet,
+					Optional: true,
+					Elem:     &schema.Resource{Schema: map[string]*schema.Schema{}},
+				},
+			},
+		},
+		Config: config,
+	})
 }
