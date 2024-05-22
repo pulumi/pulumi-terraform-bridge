@@ -181,7 +181,7 @@ func TestAws2442(t *testing.T) {
 			}
 		}
 		hashes[n] = name
-		//fmt.Println("setting hash name", n, name)
+		// fmt.Println("setting hash name", n, name)
 		return n
 	}
 
