@@ -52,8 +52,6 @@ const (
 
 type tvGen struct {
 	generateUnknowns       bool
-	skipEmptyStrings       bool
-	skipEmptyBlocks        bool
 	generateConfigModeAttr bool
 }
 
@@ -185,11 +183,7 @@ func (tvg *tvGen) GenBlockWithDepth(depth int, parentName string) *rapid.Generat
 		fieldSchemas := map[string]*schema.Schema{}
 		fieldTypes := map[string]tftypes.Type{}
 		fieldGenerators := map[string]*rapid.Generator[tftypes.Value]{}
-		minFields := 0
-		if tvg.skipEmptyBlocks {
-			minFields = 1
-		}
-		nFields := rapid.IntRange(minFields, 3).Draw(t, "nFields")
+		nFields := rapid.IntRange(0, 3).Draw(t, "nFields")
 		for i := 0; i < nFields; i++ {
 			fieldName := fmt.Sprintf("%sd%df%d", parentName, depth, i)
 			fieldTV := tvg.GenBlockOrAttrWithDepth(depth, fieldName).Draw(t, fieldName)
@@ -332,9 +326,7 @@ func (tvg *tvGen) GenAttrKind() *rapid.Generator[attrKind] {
 func (tvg *tvGen) GenString() *rapid.Generator[tv] {
 	vals := []tftypes.Value{
 		tftypes.NewValue(tftypes.String, "text"),
-	}
-	if !tvg.skipEmptyStrings {
-		vals = append(vals, tftypes.NewValue(tftypes.String, ""))
+		tftypes.NewValue(tftypes.String, ""),
 	}
 	return tvg.GenScalar(schema.TypeString, vals)
 }
@@ -392,19 +384,16 @@ func (tvg *tvGen) WithNullAndUnknown(gen *rapid.Generator[tv]) *rapid.Generator[
 	return rapid.Custom[tv](func(t *rapid.T) tv {
 		tv0 := gen.Draw(t, "tv")
 		gen := tv0.valueGen
-		if tvg.generateUnknowns || tv0.schema.Required {
-			options := []*rapid.Generator[tftypes.Value]{gen}
-			if tvg.generateUnknowns {
-				unkGen := rapid.Just(tftypes.NewValue(tv0.typ, tftypes.UnknownValue))
-				options = append(options, unkGen)
-			}
-			if !tv0.schema.Required {
-				nullGen := rapid.Just(tftypes.NewValue(tv0.typ, nil))
-				options = append(options, nullGen)
-			}
-			gen = rapid.OneOf(options...)
+		options := []*rapid.Generator[tftypes.Value]{gen}
+		if tvg.generateUnknowns {
+			unkGen := rapid.Just(tftypes.NewValue(tv0.typ, tftypes.UnknownValue))
+			options = append(options, unkGen)
 		}
-
+		if !tv0.schema.Required {
+			nullGen := rapid.Just(tftypes.NewValue(tv0.typ, nil))
+			options = append(options, nullGen)
+		}
+		gen = rapid.OneOf(options...)
 		return tv{
 			schema:   tv0.schema,
 			typ:      tv0.typ,
