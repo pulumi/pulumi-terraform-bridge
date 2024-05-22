@@ -220,8 +220,12 @@ func TestInputsEmptyConfigModeAttrSet(t *testing.T) {
 
 func TestExplicitNilList(t *testing.T) {
 	skipUnlessLinux(t)
-	t.Skipf("We've regressed on explicit nills")
-	// TODO: fix.
+	// This is an explicit null on the tf side:
+	// resource "crossprovider_testres" "example" {
+	//     f0 = null
+	// }
+	// This is different to an unspecified value.
+	// We might not be able to distinguish between null and missing collections.
 	runCreateInputCheck(t, inputTestCase{
 		Resource: &schema.Resource{
 			Schema: map[string]*schema.Schema{
