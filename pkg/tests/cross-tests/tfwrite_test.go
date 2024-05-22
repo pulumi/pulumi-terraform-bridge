@@ -168,6 +168,72 @@ resource "res" "ex" {
 }
 `),
 		},
+		{
+			"list-list-nested-block",
+			cty.ObjectVal(map[string]cty.Value{
+				"blk": cty.ListVal([]cty.Value{
+					cty.ObjectVal(map[string]cty.Value{
+						"foo": cty.ListVal([]cty.Value{
+							cty.ObjectVal(map[string]cty.Value{
+								"bar": cty.NumberIntVal(1),
+							}),
+							cty.ObjectVal(map[string]cty.Value{
+								"bar": cty.NumberIntVal(2),
+							}),
+						}),
+					}),
+					cty.ObjectVal(map[string]cty.Value{
+						"foo": cty.ListVal([]cty.Value{
+							cty.ObjectVal(map[string]cty.Value{
+								"bar": cty.NumberIntVal(4),
+							}),
+							cty.ObjectVal(map[string]cty.Value{
+								"bar": cty.NumberIntVal(3),
+							}),
+						}),
+					}),
+				}),
+			}),
+			map[string]*schema.Schema{
+				"blk": {
+					Type:     schema.TypeList,
+					Optional: true,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"foo": {
+								Optional: true,
+								Type:     schema.TypeList,
+								Elem: &schema.Resource{
+									Schema: map[string]*schema.Schema{
+										"bar": {Type: schema.TypeInt, Required: true},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			autogold.Expect(`
+resource "res" "ex" {
+  blk {
+    foo {
+      bar = 1
+    }
+    foo {
+      bar = 2
+    }
+  }
+  blk {
+    foo {
+      bar = 4
+    }
+    foo {
+      bar = 3
+    }
+  }
+}
+`),
+		},
 	}
 
 	for _, tc := range testCases {

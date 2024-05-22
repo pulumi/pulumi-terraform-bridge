@@ -18,7 +18,6 @@ package crosstests
 import (
 	"fmt"
 	"io"
-	"sort"
 
 	"github.com/hashicorp/hcl/v2/hclwrite"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -39,42 +38,70 @@ func WriteHCL(out io.Writer, sch map[string]*schema.Schema, resourceType, resour
 }
 
 func writeBlock(body *hclwrite.Body, schemas map[string]*schema.Schema, values map[string]cty.Value) {
-	keys := make([]string, 0, len(schemas))
-	for key := range schemas {
-		keys = append(keys, key)
+	internalMap := schema.InternalMap(schemas)
+	coreConfigSchema := internalMap.CoreConfigSchema()
+
+	for key, bl := range coreConfigSchema.BlockTypes {
+		switch bl.Nesting.String() {
+		case "NestingSingle":
+			v, ok := values[key]
+			if !ok {
+				continue
+			}
+			newBlock := body.AppendNewBlock(key, nil)
+			res, ok := schemas[key].Elem.(*schema.Resource)
+			if !ok {
+				contract.Failf("unexpected schema type %s", key)
+			}
+			writeBlock(newBlock.Body(), res.Schema, v.AsValueMap())
+		case "NestingGroup":
+			// Needs to always be present
+			newBlock := body.AppendNewBlock(key, nil)
+			v, ok := values[key]
+			if !ok {
+				continue
+			}
+			res, ok := schemas[key].Elem.(*schema.Resource)
+			if !ok {
+				contract.Failf("unexpected schema type %s", key)
+			}
+			writeBlock(newBlock.Body(), res.Schema, v.AsValueMap())
+		case "NestingList", "NestingSet":
+			v, ok := values[key]
+			if !ok {
+				continue
+			}
+			res, ok := schemas[key].Elem.(*schema.Resource)
+			if !ok {
+				contract.Failf("unexpected schema type %s", key)
+			}
+			for _, elem := range v.AsValueSlice() {
+				newBlock := body.AppendNewBlock(key, nil)
+				writeBlock(newBlock.Body(), res.Schema, elem.AsValueMap())
+			}
+		case "NestingMap":
+			v, ok := values[key]
+			if !ok {
+				continue
+			}
+			res, ok := schemas[key].Elem.(*schema.Resource)
+			if !ok {
+				contract.Failf("unexpected schema type %s", key)
+			}
+			for k, elem := range v.AsValueMap() {
+				newBlock := body.AppendNewBlock(key, []string{k})
+				writeBlock(newBlock.Body(), res.Schema, elem.AsValueMap())
+			}
+		default:
+			contract.Failf("unexpected nesting mode %v", bl.Nesting)
+		}
 	}
-	sort.Strings(keys)
-	for _, key := range keys {
-		sch := schemas[key]
-		value, ok := values[key]
+
+	for key := range coreConfigSchema.Attributes {
+		v, ok := values[key]
 		if !ok {
 			continue
 		}
-
-		switch elem := sch.Elem.(type) {
-		case *schema.Resource:
-			if sch.Type == schema.TypeMap || sch.ConfigMode == schema.SchemaConfigModeAttr {
-				body.SetAttributeValue(key, value)
-			} else if sch.Type == schema.TypeSet {
-				for _, v := range value.AsValueSet().Values() {
-					newBlock := body.AppendNewBlock(key, nil)
-					writeBlock(newBlock.Body(), elem.Schema, v.AsValueMap())
-				}
-			} else if sch.Type == schema.TypeList {
-				for _, v := range value.AsValueSlice() {
-					newBlock := body.AppendNewBlock(key, nil)
-					writeBlock(newBlock.Body(), elem.Schema, v.AsValueMap())
-				}
-			} else {
-				contract.Failf("unexpected schema type %v", sch.Type)
-			}
-		default:
-			// TODO: Check if SchemaConfigModeBlock is valid at all here.
-			contract.Assertf(
-				sch.ConfigMode != schema.SchemaConfigModeBlock,
-				"This is not yet supported",
-			)
-			body.SetAttributeValue(key, value)
-		}
+		body.SetAttributeValue(key, v)
 	}
 }
