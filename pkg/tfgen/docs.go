@@ -453,6 +453,7 @@ var (
 	)
 
 	attributionFormatString = "This Pulumi package is based on the [`%[1]s` Terraform Provider](https://%[3]s/%[2]s/terraform-provider-%[1]s)."
+	listMarkerRegex         = regexp.MustCompile("[-*+]")
 )
 
 // groupLines take a slice of strings, lines, and returns a nested slice of strings. When groupLines encounters a line
@@ -841,7 +842,6 @@ type bulletListEntry struct {
 //
 //nolint:lll
 func trackBulletListIndentation(line, name string, tracker []bulletListEntry) []bulletListEntry {
-	listMarkerRegex := regexp.MustCompile("[-*+]")
 	listMarkerIndex := listMarkerRegex.FindStringIndex(line)[0]
 
 	// If our tracker is empty, we are at list nested level 0.
