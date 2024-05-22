@@ -72,6 +72,8 @@ func (s prettyValueWrapper) GoString() string {
 		tL := tp.TypeReferenceString(v.Type())
 		indent := strings.Repeat("  ", level)
 		switch {
+		case v.IsNull():
+			fmt.Fprintf(&buf, "tftypes.NewValue(%s, nil)", tL)
 		case v.Type().Is(tftypes.Object{}):
 			fmt.Fprintf(&buf, `tftypes.NewValue(%s, map[string]tftypes.Value{`, tL)
 			var elements map[string]tftypes.Value

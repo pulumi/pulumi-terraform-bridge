@@ -234,6 +234,31 @@ resource "res" "ex" {
 }
 `),
 		},
+		{
+			"explicit-null-val",
+			cty.ObjectVal(map[string]cty.Value{"f0": cty.NilVal}),
+			map[string]*schema.Schema{
+				"f0": {
+					Optional: true,
+					Type:     schema.TypeList,
+					Elem: &schema.Schema{
+						Type:     schema.TypeMap,
+						Optional: true,
+						Computed: true,
+						Elem: &schema.Schema{
+							Type:      schema.TypeInt,
+							Optional:  true,
+							Sensitive: true,
+						},
+					},
+				},
+			},
+			autogold.Expect(`
+resource "res" "ex" {
+  f0 = null
+}
+`),
+		},
 	}
 
 	for _, tc := range testCases {

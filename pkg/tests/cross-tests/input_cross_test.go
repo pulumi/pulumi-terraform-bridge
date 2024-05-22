@@ -239,6 +239,42 @@ func TestOptionalSetNotSpecified(t *testing.T) {
 	})
 }
 
+func TestExplicitNilList(t *testing.T) {
+	skipUnlessLinux(t)
+	t0 := tftypes.Map{ElementType: tftypes.Number}
+	t1 := tftypes.Object{AttributeTypes: map[string]tftypes.Type{
+		"f0": tftypes.List{ElementType: t0},
+	}}
+
+	// This is an explicit null on the tf side:
+	// resource "crossprovider_testres" "example" {
+	//     f0 = null
+	// }
+	runCreateInputCheck(t, inputTestCase{
+		Resource: &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				"f0": {
+					Optional: true,
+					Type:     schema.TypeList,
+					Elem: &schema.Schema{
+						Type:     schema.TypeMap,
+						Optional: true,
+						Computed: true,
+						Elem: &schema.Schema{
+							Type:      schema.TypeInt,
+							Optional:  true,
+							Sensitive: true,
+						},
+					},
+				},
+			},
+		},
+		Config: tftypes.NewValue(t1, map[string]tftypes.Value{
+			"f0": tftypes.NewValue(tftypes.List{ElementType: t0}, nil),
+		}),
+	})
+}
+
 func TestInputsEmptyCollections(t *testing.T) {
 	skipUnlessLinux(t)
 	config := tftypes.NewValue(tftypes.Object{}, map[string]tftypes.Value{})
