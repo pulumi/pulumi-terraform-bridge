@@ -23,14 +23,11 @@ import (
 	"path/filepath"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/convert"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/propertyvalue"
 	pulumidiag "github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -96,91 +93,14 @@ func (pd *pulumiDriver) startPulumiProvider(ctx context.Context) (*rpcutil.Serve
 func (pd *pulumiDriver) writeYAML(t T, workdir string, tfConfig any) {
 	res := pd.shimProvider.ResourcesMap().Get(pd.tfResourceName)
 	schema := res.Schema()
-	pConfig, err := pd.convertConfigToPulumi(schema, nil, pd.objectType, tfConfig)
-	require.NoErrorf(t, err, "convertConfigToPulumi failed")
 
-	// TODO[pulumi/pulumi-terraform-bridge#1864]: schema secrets may be set by convertConfigToPulumi.
-	pConfig = propertyvalue.RemoveSecrets(resource.NewObjectProperty(pConfig)).ObjectValue()
+	data, err := generateYaml(schema, pd.pulumiResourceToken, pd.objectType, tfConfig)
+	require.NoErrorf(t, err, "generateYaml")
 
-	// This is a bit of a leap of faith that serializing PropertyMap to YAML in this way will yield valid Pulumi
-	// YAML. This probably needs refinement.
-	yamlProperties := pConfig.Mappable()
-
-	data := map[string]any{
-		"name":    "project",
-		"runtime": "yaml",
-		"resources": map[string]any{
-			"example": map[string]any{
-				"type":       pd.pulumiResourceToken,
-				"properties": yamlProperties,
-			},
-		},
-		"backend": map[string]any{
-			"url": "file://./data",
-		},
-	}
 	b, err := yaml.Marshal(data)
 	require.NoErrorf(t, err, "marshaling Pulumi.yaml")
 	t.Logf("\n\n%s", b)
 	p := filepath.Join(workdir, "Pulumi.yaml")
-	err = os.WriteFile(p, b, 0600)
+	err = os.WriteFile(p, b, 0o600)
 	require.NoErrorf(t, err, "writing Pulumi.yaml")
-}
-
-func (pd *pulumiDriver) convertConfigToPulumi(
-	schemaMap shim.SchemaMap,
-	schemaInfos map[string]*tfbridge.SchemaInfo,
-	objectType *tftypes.Object,
-	tfConfig any,
-) (resource.PropertyMap, error) {
-	var v *tftypes.Value
-
-	switch tfConfig := tfConfig.(type) {
-	case tftypes.Value:
-		v = &tfConfig
-		if objectType == nil {
-			ty := v.Type().(tftypes.Object)
-			objectType = &ty
-		}
-	case *tftypes.Value:
-		v = tfConfig
-		if objectType == nil {
-			ty := v.Type().(tftypes.Object)
-			objectType = &ty
-		}
-	default:
-		if objectType == nil {
-			t := convert.InferObjectType(schemaMap, nil)
-			objectType = &t
-		}
-		bytes, err := json.Marshal(tfConfig)
-		if err != nil {
-			return nil, err
-		}
-		// Knowingly using a deprecated function so we can connect back up to tftypes.Value; if this disappears
-		// it should not be prohibitively difficult to rewrite or vendor.
-		//
-		//nolint:staticcheck
-		value, err := tftypes.ValueFromJSON(bytes, *objectType)
-		if err != nil {
-			return nil, err
-		}
-		v = &value
-	}
-
-	decoder, err := convert.NewObjectDecoder(convert.ObjectSchema{
-		SchemaMap:   schemaMap,
-		SchemaInfos: schemaInfos,
-		Object:      objectType,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	// There is not yet a way to opt out of marking schema secrets, so the resulting map might have secrets marked.
-	pm, err := convert.DecodePropertyMap(context.Background(), decoder, *v)
-	if err != nil {
-		return nil, err
-	}
-	return pm, nil
 }
