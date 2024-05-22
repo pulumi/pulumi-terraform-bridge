@@ -233,7 +233,6 @@ func (tvg *tvGen) GenSingleNestedBlock(depth int, parentName string) *rapid.Gene
 		}
 		return tv{
 			schema: schema.Schema{
-				// TODO: This should be a set, not a list as that's how TF represents objects
 				Type:     schema.TypeList,
 				MaxItems: 1,
 				Elem: &schema.Resource{
