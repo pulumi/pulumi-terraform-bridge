@@ -18,6 +18,7 @@ package crosstests
 import (
 	"fmt"
 	"io"
+	"sort"
 
 	"github.com/hashicorp/hcl/v2/hclwrite"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -41,7 +42,14 @@ func writeBlock(body *hclwrite.Body, schemas map[string]*schema.Schema, values m
 	internalMap := schema.InternalMap(schemas)
 	coreConfigSchema := internalMap.CoreConfigSchema()
 
-	for key, bl := range coreConfigSchema.BlockTypes {
+	blockKeys := make([]string, 0, len(coreConfigSchema.BlockTypes))
+	for key := range coreConfigSchema.BlockTypes {
+		blockKeys = append(blockKeys, key)
+	}
+	sort.Strings(blockKeys)
+
+	for _, key := range blockKeys {
+		bl := coreConfigSchema.BlockTypes[key]
 		switch bl.Nesting.String() {
 		case "NestingSingle":
 			v, ok := values[key]
@@ -97,7 +105,13 @@ func writeBlock(body *hclwrite.Body, schemas map[string]*schema.Schema, values m
 		}
 	}
 
+	attrKeys := make([]string, 0, len(coreConfigSchema.Attributes))
 	for key := range coreConfigSchema.Attributes {
+		attrKeys = append(attrKeys, key)
+	}
+	sort.Strings(attrKeys)
+
+	for _, key := range attrKeys {
 		v, ok := values[key]
 		if !ok {
 			continue
