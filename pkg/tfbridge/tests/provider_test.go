@@ -371,8 +371,8 @@ func TestValidateInputsPanic(t *testing.T) {
 	})
 
 	t.Run("diff_no_panic", func(t *testing.T) {
-		replay.ReplaySequence(t, p, `
-	[
+		replay.ReplaySequence(t, p, fmt.Sprintf(`
+		[
 		{
 			"method": "/pulumirpc.ResourceProvider/Check",
 			"request": {
@@ -438,12 +438,12 @@ func TestValidateInputsPanic(t *testing.T) {
 			"response": {
 			},
 			"errors": [
-			"diffing urn:pulumi:dev::teststack::testprov:index:ExampleResource::exres: panicked: \"value has no attribute of that name\""
-
+			"%s"
 			]
 		}
-	]
-	`)
+		]
+		`, "diffing urn:pulumi:dev::teststack::testprov:index:ExampleResource::exres: "+
+			`panicked: \"value has no attribute of that name\"`))
 	})
 
 	t.Run("update_panic", func(t *testing.T) {
@@ -493,7 +493,7 @@ func TestValidateInputsPanic(t *testing.T) {
 	})
 
 	t.Run("update_no_panic", func(t *testing.T) {
-		replay.ReplaySequence(t, p, `
+		replay.ReplaySequence(t, p, fmt.Sprintf(`
 	[
 		{
 			"method": "/pulumirpc.ResourceProvider/Check",
@@ -561,16 +561,17 @@ func TestValidateInputsPanic(t *testing.T) {
 			"response": {
 			},
 			"errors": [
-			"diffing urn:pulumi:dev::teststack::testprov:index:ExampleResource::exres2: panicked: \"value has no attribute of that name\""
+			"%s"
 			]
 		}
 	]
-	`)
+	`, "diffing urn:pulumi:dev::teststack::testprov:index:ExampleResource::exres2: "+
+			`panicked: \"value has no attribute of that name\"`))
 
 	})
 
 	t.Run("create_no_panic", func(t *testing.T) {
-		replay.ReplaySequence(t, p, `
+		replay.ReplaySequence(t, p, fmt.Sprintf(`
 	[
 		{
 			"method": "/pulumirpc.ResourceProvider/Check",
@@ -626,11 +627,12 @@ func TestValidateInputsPanic(t *testing.T) {
 			"response": {
 			},
 			"errors": [
-			"diffing urn:pulumi:dev::teststack::testprov:index:ExampleResource::exres3: panicked: \"value has no attribute of that name\""
+			"%s"
 			]
 		}
 	]
-	`)
+	`, "diffing urn:pulumi:dev::teststack::testprov:index:ExampleResource::exres3: "+
+			`panicked: \"value has no attribute of that name\"`))
 	})
 
 	t.Run("create_panic", func(t *testing.T) {
