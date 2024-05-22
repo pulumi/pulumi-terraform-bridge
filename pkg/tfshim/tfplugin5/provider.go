@@ -90,7 +90,9 @@ func (p *provider) decodeState(resource *resource, s *instanceState,
 	return s, nil
 }
 
-func (p *provider) upgradeResourceState(resource *resource, s *instanceState) (*instanceState, error) {
+func (p *provider) upgradeResourceState(
+	ctx context.Context, resource *resource, s *instanceState,
+) (*instanceState, error) {
 	if s == nil {
 		return nil, nil
 	}
@@ -111,7 +113,7 @@ func (p *provider) upgradeResourceState(resource *resource, s *instanceState) (*
 		return nil, err
 	}
 
-	resp, err := p.client.UpgradeResourceState(context.TODO(), &proto.UpgradeResourceState_Request{
+	resp, err := p.client.UpgradeResourceState(ctx, &proto.UpgradeResourceState_Request{
 		TypeName: resource.resourceType,
 		Version:  schemaVersion,
 		RawState: &proto.RawState{Json: stateBytes},
@@ -194,7 +196,7 @@ func (p *provider) Validate(ctx context.Context, c shim.ResourceConfig) ([]strin
 		return nil, []error{err}
 	}
 
-	resp, err := p.client.PrepareProviderConfig(context.TODO(), &proto.PrepareProviderConfig_Request{
+	resp, err := p.client.PrepareProviderConfig(ctx, &proto.PrepareProviderConfig_Request{
 		Config: &proto.DynamicValue{Msgpack: val},
 	})
 	if err != nil {
@@ -220,7 +222,7 @@ func (p *provider) ValidateResource(ctx context.Context, t string, c shim.Resour
 		return nil, []error{err}
 	}
 
-	resp, err := p.client.ValidateResourceTypeConfig(context.TODO(), &proto.ValidateResourceTypeConfig_Request{
+	resp, err := p.client.ValidateResourceTypeConfig(ctx, &proto.ValidateResourceTypeConfig_Request{
 		TypeName: t,
 		Config:   &proto.DynamicValue{Msgpack: val},
 	})
@@ -247,7 +249,7 @@ func (p *provider) ValidateDataSource(ctx context.Context, t string, c shim.Reso
 		return nil, []error{err}
 	}
 
-	resp, err := p.client.ValidateDataSourceConfig(context.TODO(), &proto.ValidateDataSourceConfig_Request{
+	resp, err := p.client.ValidateDataSourceConfig(ctx, &proto.ValidateDataSourceConfig_Request{
 		TypeName: t,
 		Config:   &proto.DynamicValue{Msgpack: val},
 	})
@@ -269,7 +271,7 @@ func (p *provider) Configure(ctx context.Context, c shim.ResourceConfig) error {
 		return err
 	}
 
-	resp, err := p.client.Configure(context.TODO(), &proto.Configure_Request{
+	resp, err := p.client.Configure(ctx, &proto.Configure_Request{
 		TerraformVersion: p.terraformVersion,
 		Config:           &proto.DynamicValue{Msgpack: val},
 	})
@@ -302,7 +304,7 @@ func (p *provider) Diff(
 		return nil, fmt.Errorf("unknown resource type %v", t)
 	}
 
-	state, err := p.upgradeResourceState(resource, state)
+	state, err := p.upgradeResourceState(ctx, resource, state)
 	if err != nil {
 		return nil, err
 	}
@@ -333,7 +335,7 @@ func (p *provider) Diff(
 		return nil, err
 	}
 
-	resp, err := p.client.PlanResourceChange(context.TODO(), &proto.PlanResourceChange_Request{
+	resp, err := p.client.PlanResourceChange(ctx, &proto.PlanResourceChange_Request{
 		TypeName:         resource.resourceType,
 		PriorState:       &proto.DynamicValue{Msgpack: stateBytes},
 		ProposedNewState: &proto.DynamicValue{Msgpack: configBytes},
@@ -374,7 +376,7 @@ func (p *provider) Apply(
 		return nil, fmt.Errorf("unknown resource type %v", t)
 	}
 
-	state, err := p.upgradeResourceState(resource, state)
+	state, err := p.upgradeResourceState(ctx, resource, state)
 	if err != nil {
 		return nil, err
 	}
@@ -403,7 +405,7 @@ func (p *provider) Apply(
 		return nil, err
 	}
 
-	resp, err := p.client.ApplyResourceChange(context.TODO(), &proto.ApplyResourceChange_Request{
+	resp, err := p.client.ApplyResourceChange(ctx, &proto.ApplyResourceChange_Request{
 		TypeName:       resource.resourceType,
 		PriorState:     &proto.DynamicValue{Msgpack: stateBytes},
 		PlannedState:   &proto.DynamicValue{Msgpack: plannedStateBytes},
@@ -447,7 +449,7 @@ func (p *provider) Refresh(
 		return nil, fmt.Errorf("unknown resource type %v", t)
 	}
 
-	state, err := p.upgradeResourceState(resource, state)
+	state, err := p.upgradeResourceState(ctx, resource, state)
 	if err != nil {
 		return nil, err
 	}
@@ -461,7 +463,7 @@ func (p *provider) Refresh(
 		return nil, err
 	}
 
-	resp, err := p.client.ReadResource(context.TODO(), &proto.ReadResource_Request{
+	resp, err := p.client.ReadResource(ctx, &proto.ReadResource_Request{
 		TypeName:     resource.resourceType,
 		CurrentState: &proto.DynamicValue{Msgpack: stateBytes},
 		Private:      metaBytes,
@@ -524,7 +526,7 @@ func (p *provider) ReadDataApply(ctx context.Context, t string, d shim.InstanceD
 		return nil, err
 	}
 
-	resp, err := p.client.ReadDataSource(context.TODO(), &proto.ReadDataSource_Request{
+	resp, err := p.client.ReadDataSource(ctx, &proto.ReadDataSource_Request{
 		TypeName: t,
 		Config:   &proto.DynamicValue{Msgpack: configBytes},
 	})
@@ -545,7 +547,7 @@ func (p *provider) Meta(ctx context.Context) interface{} {
 }
 
 func (p *provider) Stop(ctx context.Context) error {
-	resp, err := p.client.Stop(context.TODO(), &proto.Stop_Request{})
+	resp, err := p.client.Stop(ctx, &proto.Stop_Request{})
 	switch {
 	case err != nil:
 		return err

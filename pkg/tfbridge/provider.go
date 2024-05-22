@@ -838,9 +838,7 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 			typeFailures := iv.ValidateInputs(t, news)
 			if len(typeFailures) > 0 {
 				p.hasTypeErrors[urn] = struct{}{}
-				logger.Warn("Type checking failed. If any of these are incorrect, please let us know by creating an" +
-					"issue at https://github.com/pulumi/pulumi-terraform-bridge/issues.",
-				)
+				logger.Warn("Type checking failed: ")
 				for _, e := range typeFailures {
 					if validateShouldError {
 						pp := NewCheckFailurePath(schemaMap, schemaInfos, e.ResourcePath)
@@ -850,9 +848,16 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 							Property: string(cf.Property),
 						})
 					} else {
-						logger.Warn(fmt.Sprintf("%v verification warning: %s: Examine values at %s", urn, e.Reason, e.ResourcePath))
+						logger.Warn(
+							fmt.Sprintf("Unexpected type at field %q: \n           %s", e.ResourcePath, e.Reason),
+						)
 					}
 				}
+				logger.Warn("Type checking is still experimental. If you believe that a warning is incorrect,\n" +
+					"please let us know by creating an " +
+					"issue at https://github.com/pulumi/pulumi-terraform-bridge/issues.\n" +
+					"This will become a hard error in the future.",
+				)
 			}
 		}
 	}

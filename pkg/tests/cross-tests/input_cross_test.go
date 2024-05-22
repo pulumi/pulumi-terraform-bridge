@@ -110,8 +110,6 @@ func TestInputsEmptySchema(t *testing.T) {
 				Schema: map[string]*schema.Schema{},
 			},
 			Config: tftypes.NewValue(tftypes.Object{}, map[string]tftypes.Value{}),
-			// TODO[pulumi/pulumi-terraform-bridge#1914]
-			SkipCompareRaw: true,
 		},
 	)
 }
@@ -151,7 +149,8 @@ func TestInputsEqualEmptyList(t *testing.T) {
 						},
 					),
 					// TODO[pulumi/pulumi-terraform-bridge#1915]
-					SkipCompareRaw: true,
+					SkipCompareRawPlan:   true,
+					SkipCompareRawConfig: true,
 				})
 			})
 		}
@@ -180,8 +179,6 @@ func TestInputsEmptyString(t *testing.T) {
 				"f0": tftypes.NewValue(tftypes.String, ""),
 			},
 		),
-		// TODO[pulumi/pulumi-terraform-bridge#1916]
-		SkipCompareRaw: true,
 	})
 }
 
@@ -217,6 +214,6 @@ func TestInputsEmptyConfigModeAttrSet(t *testing.T) {
 			"f1": tftypes.NewValue(tftypes.Set{ElementType: t2}, []tftypes.Value{}),
 		}),
 		// TODO[pulumi/pulumi-terraform-bridge#1762]
-		SkipCompareRaw: true,
+		SkipCompareRawConfig: true,
 	})
 }
