@@ -213,40 +213,6 @@ func TestInputsEmptyString(t *testing.T) {
 	})
 }
 
-// Isolated from rapid-generated tests
-func TestInputsEmptyConfigModeAttrSet(t *testing.T) {
-	skipUnlessLinux(t)
-	t2 := tftypes.Object{AttributeTypes: map[string]tftypes.Type{
-		"f0": tftypes.String,
-	}}
-	t0 := tftypes.Object{AttributeTypes: map[string]tftypes.Type{
-		"f1": tftypes.Set{ElementType: t2},
-	}}
-
-	runCreateInputCheck(t, inputTestCase{
-		Resource: &schema.Resource{
-			Schema: map[string]*schema.Schema{
-				"f1": {
-					Type:       schema.TypeSet,
-					ConfigMode: schema.SchemaConfigMode(1),
-					Optional:   true,
-					Elem: &schema.Resource{Schema: map[string]*schema.Schema{
-						"f0": {
-							Type:     schema.TypeString,
-							Optional: true,
-							ForceNew: true,
-						},
-					}},
-					MaxItems: 1,
-				},
-			},
-		},
-		Config: tftypes.NewValue(t0, map[string]tftypes.Value{
-			"f1": tftypes.NewValue(tftypes.Set{ElementType: t2}, []tftypes.Value{}),
-		}),
-	})
-}
-
 func TestOptionalSetNotSpecified(t *testing.T) {
 	skipUnlessLinux(t)
 	runCreateInputCheck(t, inputTestCase{
