@@ -1260,6 +1260,7 @@ func TestCheckWarnings(t *testing.T) {
 		config:           shimv2.NewSchemaMap(p.Schema),
 		pulumiSchema:     []byte("hello"), // we only check whether this is nil in type checking
 		pulumiSchemaSpec: pulumiSchemaSpec,
+		hasTypeErrors:    make(map[resource.URN]struct{}),
 		resources: map[tokens.Type]Resource{
 			"ExampleResource": {
 				TF:     shimv2.NewResource(p.ResourcesMap["example_resource"]),

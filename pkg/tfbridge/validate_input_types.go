@@ -258,7 +258,7 @@ func (v *PulumiInputValidator) getType(typeRef string) *pschema.ObjectTypeSpec {
 
 // ValidateInputs will validate a set of inputs against the pulumi schema. It will
 // return a list of type failures if any are found
-func (v *PulumiInputValidator) ValidateInputs(resourceToken tokens.Type, inputs resource.PropertyMap) *[]TypeFailure {
+func (v *PulumiInputValidator) ValidateInputs(resourceToken tokens.Type, inputs resource.PropertyMap) []TypeFailure {
 	resourceSpec, knownResourceSpec := v.schema.Resources[string(resourceToken)]
 	if !knownResourceSpec {
 		return nil
@@ -269,7 +269,7 @@ func (v *PulumiInputValidator) ValidateInputs(resourceToken tokens.Type, inputs 
 		resource.PropertyPath{},
 	)
 	if len(failures) > 0 {
-		return &failures
+		return failures
 	}
 
 	return nil
