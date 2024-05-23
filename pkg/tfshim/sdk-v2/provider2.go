@@ -54,7 +54,7 @@ func (r *v2Resource2) InstanceState(
 		s = original
 	}
 	s = normalizeBlockCollections(s, r.tf)
-	
+
 	return &v2InstanceState2{
 		stateValue:   s,
 		resourceType: r.resourceType,
@@ -804,13 +804,13 @@ func recoverDiagnostic(d tfprotov5.Diagnostic) diag.Diagnostic {
 	return dd
 }
 
-// Full rules about block vs attr
-//nollint:lll
-// https://github.com/hashicorp/terraform-plugin-sdk/blob/1f499688ebd9420768f501d4ed622a51b2135ced/helper/schema/core_schema.go#L60
 func normalizeBlockCollections(val cty.Value, res *schema.Resource) cty.Value {
+	// Full rules about block vs attr
+	//nolint:lll
+	// https://github.com/hashicorp/terraform-plugin-sdk/blob/1f499688ebd9420768f501d4ed622a51b2135ced/helper/schema/core_schema.go#L60
 	sch := res.CoreConfigSchema()
 	if !val.Type().IsObjectType() {
-		contract.Failf("normalizeBlockCollections: Expected object type")
+		contract.Failf("normalizeBlockCollections: Expected object type, got %v", val.Type().GoString())
 	}
 	valMap := val.AsValueMap()
 	if len(valMap) == 0 {
@@ -822,9 +822,7 @@ func normalizeBlockCollections(val cty.Value, res *schema.Resource) cty.Value {
 			continue
 		}
 		if val.GetAttr(fieldName).IsNull() {
-			// normalize it
 			fieldType := val.Type().AttributeType(fieldName)
-			// TODO: Can we assume InternalValidate passes on the schema?
 			// Only lists and sets can be blocks and pass InternalValidate
 			if fieldType.IsListType() {
 				valMap[fieldName] = cty.ListValEmpty(fieldType.ElementType())
@@ -833,8 +831,53 @@ func normalizeBlockCollections(val cty.Value, res *schema.Resource) cty.Value {
 			} else {
 				contract.Failf("normalizeBlockCollections: Unexpected field type %v", fieldType)
 			}
+		} else {
+			subBlockSchema := res.SchemaMap()[fieldName]
+			if subBlockSchema == nil {
+				contract.Failf("normalizeBlockCollections: Unexpected nil subBlockSchema for %s", fieldName)
+			}
+			subBlockRes, ok := subBlockSchema.Elem.(*schema.Resource)
+			if !ok {
+				contract.Failf("normalizeBlockCollections: Unexpected schema type %s", fieldName)
+			}
+
+			subBlockVal := val.GetAttr(fieldName)
+			if subBlockVal.Type().IsListType() {
+				newSlice := normalizeIterable(subBlockVal, subBlockRes)
+				if len(newSlice) != 0 {
+					valMap[fieldName] = cty.ListVal(newSlice)
+				} else {
+					valMap[fieldName] = cty.ListValEmpty(subBlockVal.Type().ElementType())
+				}
+				continue
+			} else if subBlockVal.Type().IsSetType() {
+				newSlice := normalizeIterable(subBlockVal, subBlockRes)
+				if len(newSlice) != 0 {
+					valMap[fieldName] = cty.SetVal(newSlice)
+				} else {
+					valMap[fieldName] = cty.SetValEmpty(subBlockVal.Type().ElementType())
+				}
+			} else {
+				contract.Failf("normalizeBlockCollections: Unexpected field type %v", subBlockVal.Type().GoString())
+			}
+
+			valMap[fieldName] = normalizeBlockCollections(val.GetAttr(fieldName), subBlockRes)
+
 		}
 	}
-	// TODO nested blocks?
 	return cty.ObjectVal(valMap)
+}
+
+func normalizeIterable(blockVal cty.Value, blockRes *schema.Resource) []cty.Value {
+	if blockVal.IsNull() ||
+		(!blockVal.Type().IsListType() &&
+			!blockVal.Type().IsSetType()) {
+		contract.Failf("normalizeIterable: Expected list or set type, got %v", blockVal.Type().GoString())
+	}
+	blockValSlice := blockVal.AsValueSlice()
+	newSlice := make([]cty.Value, len(blockValSlice))
+	for i, v := range blockValSlice {
+		newSlice[i] = normalizeBlockCollections(v, blockRes)
+	}
+	return newSlice
 }
