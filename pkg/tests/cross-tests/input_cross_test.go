@@ -3,6 +3,7 @@ package crosstests
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -216,7 +217,7 @@ func TestOptionalSetNotSpecified(t *testing.T) {
 				},
 			},
 		},
-		Config:               tftypes.NewValue(tftypes.Object{}, map[string]tftypes.Value{}),
+		Config: tftypes.NewValue(tftypes.Object{}, map[string]tftypes.Value{}),
 	})
 }
 
@@ -333,11 +334,25 @@ func TestInputsNestedBlocksEmpty(t *testing.T) {
 		},
 	)
 
-	nestedNonEmptyConfig := tftypes.NewValue(
+	nestedListListConfig := tftypes.NewValue(
 		tftypes.Object{
 			AttributeTypes: map[string]tftypes.Type{"f0": t0},
 		}, map[string]tftypes.Value{
 			"f0": tftypes.NewValue(t0, []tftypes.Value{
+				tftypes.NewValue(t1, map[string]tftypes.Value{
+					"f2": tftypes.NewValue(tftypes.String, "val"),
+				}),
+			}),
+		},
+	)
+
+	t2 := tftypes.Set{ElementType: t1}
+
+	nestedSetSetConfig := tftypes.NewValue(
+		tftypes.Object{
+			AttributeTypes: map[string]tftypes.Type{"f0": t2},
+		}, map[string]tftypes.Value{
+			"f0": tftypes.NewValue(t2, []tftypes.Value{
 				tftypes.NewValue(t1, map[string]tftypes.Value{
 					"f2": tftypes.NewValue(tftypes.String, "val"),
 				}),
@@ -355,12 +370,10 @@ func TestInputsNestedBlocksEmpty(t *testing.T) {
 		{"empty set set block", schema.TypeSet, schema.TypeSet, emptyConfig},
 		{"empty list set block", schema.TypeList, schema.TypeSet, emptyConfig},
 		{"non empty list list block", schema.TypeList, schema.TypeList, topLevelNonEmptyConfig},
-		{"nested non empty list list block", schema.TypeList, schema.TypeList, nestedNonEmptyConfig},
+		{"nested non empty list list block", schema.TypeList, schema.TypeList, nestedListListConfig},
+		{"nested non empty set set block", schema.TypeSet, schema.TypeSet, nestedSetSetConfig},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			if tc.name != "nested non empty list list block" {
-				t.SkipNow()
-			}
 			runCreateInputCheck(t, inputTestCase{
 				Resource: &schema.Resource{
 					Schema: map[string]*schema.Schema{
@@ -425,7 +438,7 @@ func TestMap(t *testing.T) {
 		"tags": t0,
 	}}
 	mapVal := tftypes.NewValue(t0, map[string]tftypes.Value{
-		"key": tftypes.NewValue(tftypes.String, "val"),
+		"key":  tftypes.NewValue(tftypes.String, "val"),
 		"key2": tftypes.NewValue(tftypes.String, "val2"),
 	})
 	config := tftypes.NewValue(t1, map[string]tftypes.Value{
@@ -440,7 +453,7 @@ func TestMap(t *testing.T) {
 					Optional: true,
 					Elem: &schema.Schema{
 						Optional: true,
-						Type: schema.TypeString,
+						Type:     schema.TypeString,
 					},
 				},
 			},
@@ -460,12 +473,12 @@ func TestTimeouts(t *testing.T) {
 					Optional: true,
 					Elem: &schema.Schema{
 						Optional: true,
-						Type: schema.TypeString,
+						Type:     schema.TypeString,
 					},
 				},
 			},
 			Timeouts: &schema.ResourceTimeout{
-				Create: schema.DefaultTimeout(120),
+				Create: schema.DefaultTimeout(time.Duration(120)),
 			},
 		},
 		Config: emptyConfig,
