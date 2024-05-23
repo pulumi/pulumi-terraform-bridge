@@ -55,10 +55,10 @@ type tvGen struct {
 	generateConfigModeAttr bool
 }
 
-func (tvg *tvGen) GenBlock() *rapid.Generator[tv] {
+func (tvg *tvGen) GenBlock(parentName string) *rapid.Generator[tv] {
 	return rapid.Custom[tv](func(t *rapid.T) tv {
 		depth := rapid.IntRange(0, 3).Draw(t, "depth")
-		tv := tvg.GenBlockOrAttrWithDepth(depth).Draw(t, "tv")
+		tv := tvg.GenBlockOrAttrWithDepth(depth, parentName).Draw(t, "tv")
 		return tv
 	})
 }
@@ -71,15 +71,15 @@ func (tvg *tvGen) GenAttr() *rapid.Generator[tv] {
 	})
 }
 
-func (tvg *tvGen) GenBlockOrAttrWithDepth(depth int) *rapid.Generator[tv] {
+func (tvg *tvGen) GenBlockOrAttrWithDepth(depth int, parentName string) *rapid.Generator[tv] {
 	opts := []*rapid.Generator[tv]{
 		tvg.GenAttrWithDepth(depth),
 	}
 	if depth > 1 {
 		opts = append(opts,
-			tvg.GenSingleNestedBlock(depth-1),
-			tvg.GenListNestedBlock(depth-1),
-			tvg.GenSetNestedBlock(depth-1),
+			tvg.GenSingleNestedBlock(depth-1, parentName),
+			tvg.GenListNestedBlock(depth-1, parentName),
+			tvg.GenSetNestedBlock(depth-1, parentName),
 		)
 	}
 	return rapid.OneOf(opts...)
@@ -178,15 +178,15 @@ func (tvg *tvGen) GenSetAttr(depth int) *rapid.Generator[tv] {
 }
 
 // TF blocks can be resource or datasource inputs, or nested blocks.
-func (tvg *tvGen) GenBlockWithDepth(depth int) *rapid.Generator[tb] {
+func (tvg *tvGen) GenBlockWithDepth(depth int, parentName string) *rapid.Generator[tb] {
 	return rapid.Custom[tb](func(t *rapid.T) tb {
 		fieldSchemas := map[string]*schema.Schema{}
 		fieldTypes := map[string]tftypes.Type{}
 		fieldGenerators := map[string]*rapid.Generator[tftypes.Value]{}
 		nFields := rapid.IntRange(0, 3).Draw(t, "nFields")
 		for i := 0; i < nFields; i++ {
-			fieldName := fmt.Sprintf("d%df%d", depth, i)
-			fieldTV := tvg.GenBlockOrAttrWithDepth(depth-1).Draw(t, fieldName)
+			fieldName := fmt.Sprintf("%sd%df%d", parentName, depth, i)
+			fieldTV := tvg.GenBlockOrAttrWithDepth(depth, fieldName).Draw(t, fieldName)
 			fieldSchemas[fieldName] = &fieldTV.schema
 			fieldGenerators[fieldName] = fieldTV.valueGen
 			fieldTypes[fieldName] = fieldTV.typ
@@ -218,22 +218,21 @@ func (tvg *tvGen) GenBlockWithDepth(depth int) *rapid.Generator[tb] {
 // are typically encoded as MaxItems=1 lists with a *Resource Elem.
 //
 // See https://developer.hashicorp.com/terraform/plugin/framework/handling-data/blocks/single-nested
-func (tvg *tvGen) GenSingleNestedBlock(depth int) *rapid.Generator[tv] {
-	return rapid.Custom[tv](func(t *rapid.T) tv {
-		st := tvg.GenSchemaTransform().Draw(t, "schemaTransform")
-		bl := tvg.GenBlockWithDepth(depth).Draw(t, "block")
+func (tvg *tvGen) GenSingleNestedBlock(depth int, parentName string) *rapid.Generator[tv] {
+	ge := rapid.Custom[tv](func(t *rapid.T) tv {
+		bl := tvg.GenBlockWithDepth(depth, parentName).Draw(t, "block")
 		listWrapType := tftypes.List{ElementType: bl.typ}
 		listWrap := func(v tftypes.Value) tftypes.Value {
 			return tftypes.NewValue(listWrapType, []tftypes.Value{v})
 		}
 		return tv{
-			schema: st(schema.Schema{
+			schema: schema.Schema{
 				Type:     schema.TypeList,
 				MaxItems: 1,
 				Elem: &schema.Resource{
 					Schema: bl.schemaMap,
 				},
-			}),
+			},
 			typ: listWrapType,
 			// A few open questions here, can these values ever be unknown (likely yes) and how is that
 			// represented in TF? Also, can these values be null or this is just represented as an empty
@@ -245,11 +244,13 @@ func (tvg *tvGen) GenSingleNestedBlock(depth int) *rapid.Generator[tv] {
 			valueGen: rapid.Map(bl.valueGen, listWrap),
 		}
 	})
+
+	return tvg.WithSchemaTransform(ge)
 }
 
-func (tvg *tvGen) GenListNestedBlock(depth int) *rapid.Generator[tv] {
+func (tvg *tvGen) GenListNestedBlock(depth int, parentName string) *rapid.Generator[tv] {
 	ge := rapid.Custom[tv](func(t *rapid.T) tv {
-		bl := tvg.GenBlockWithDepth(depth).Draw(t, "block")
+		bl := tvg.GenBlockWithDepth(depth, parentName).Draw(t, "block")
 		listWrapType := tftypes.List{ElementType: bl.typ}
 		listWrap := func(vs []tftypes.Value) tftypes.Value {
 			return tftypes.NewValue(listWrapType, vs)
@@ -280,9 +281,9 @@ func (tvg *tvGen) GenListNestedBlock(depth int) *rapid.Generator[tv] {
 	return ge
 }
 
-func (tvg *tvGen) GenSetNestedBlock(depth int) *rapid.Generator[tv] {
+func (tvg *tvGen) GenSetNestedBlock(depth int, parentName string) *rapid.Generator[tv] {
 	ge := rapid.Custom[tv](func(t *rapid.T) tv {
-		bl := tvg.GenBlockWithDepth(depth).Draw(t, "block")
+		bl := tvg.GenBlockWithDepth(depth, parentName).Draw(t, "block")
 		setWrapType := tftypes.Set{ElementType: bl.typ}
 		setWrap := func(vs []tftypes.Value) tftypes.Value {
 			return tftypes.NewValue(setWrapType, vs)

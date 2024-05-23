@@ -59,6 +59,18 @@ func assertValEqual(t T, name string, tfVal, pulVal any) {
 	}
 }
 
+func ensureProviderValid(t T, tfp *schema.Provider) {
+	for _, r := range tfp.ResourcesMap {
+		//nolint:staticcheck
+		if r.Read == nil && r.ReadContext == nil {
+			r.ReadContext = func(_ context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+				return nil
+			}
+		}
+	}
+	require.NoError(t, tfp.InternalValidate())
+}
+
 // Adapted from diff_check.go
 func runCreateInputCheck(t T, tc inputTestCase) {
 	//nolint:staticcheck
@@ -95,6 +107,7 @@ func runCreateInputCheck(t T, tc inputTestCase) {
 			rtype: tc.Resource,
 		},
 	}
+	ensureProviderValid(t, tfp)
 
 	shimProvider := shimv2.NewProvider(tfp, shimv2.WithPlanResourceChange(
 		func(tfResourceType string) bool { return true },
@@ -106,7 +119,7 @@ func runCreateInputCheck(t T, tc inputTestCase) {
 		shimProvider:        shimProvider,
 		pulumiResourceToken: rtoken,
 		tfResourceName:      rtype,
-		objectType:          nil,
+		objectType:          tc.ObjectType,
 	}
 
 	puwd := t.TempDir()

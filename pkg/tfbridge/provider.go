@@ -74,6 +74,7 @@ type Provider struct {
 	pulumiSchema     []byte                             // the JSON-encoded Pulumi schema.
 	pulumiSchemaSpec *pschema.PackageSpec
 	memStats         memStatCollector
+	hasTypeErrors    map[resource.URN]struct{}
 }
 
 // MuxProvider defines an interface which must be implemented by providers
@@ -182,6 +183,46 @@ func (e CheckFailureError) Error() string {
 	return fmt.Sprintf("CheckFailureErrors %s", e.Failures)
 }
 
+// callWithRecover is a generic function that takes a resource URN, a recovery
+// function, and a callable function as parameters. It attempts to call the
+// provided callable function and returns its results. If the callable function
+// panics, callWithRecover will recover from the panic and call the recovery
+// function with the resource URN and the panic value. The recovery function is
+// expected to convert the panic value into an error, which is then returned by
+// callWithRecover. This function is useful for handling panics in a controlled
+// manner and converting them into errors.
+func callWithRecover[T any](
+	urn resource.URN,
+	rec func(resource.URN, any) error,
+	call func() (T, error),
+) (_ T, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = rec(urn, r)
+			contract.Assertf(err != nil, "Panic handlers must return an error")
+		}
+	}()
+
+	return call()
+}
+
+// if we have type errors that were generated during check
+// we don't want to log the panic. In the future these type errors
+// will hard fail during check and we will never make it to create
+//
+// We do our best to restrict catching panics to where the panic will
+// occur. The type checking will catch panics that occur as part
+// of the `Diff` function
+func (p *Provider) recoverOnTypeError(urn resource.URN, payload any) error {
+	if _, ok := p.hasTypeErrors[urn]; !ok {
+		panic(payload)
+	}
+	if err, ok := payload.(error); ok {
+		return fmt.Errorf("panicked: %w", err)
+	}
+	return fmt.Errorf("panicked: %#v", payload)
+}
+
 // NewProvider creates a new Pulumi RPC server wired up to the given host and wrapping the given Terraform provider.
 func NewProvider(ctx context.Context, host *provider.HostClient, module, version string,
 	tf shim.Provider, info ProviderInfo, pulumiSchema []byte,
@@ -200,13 +241,14 @@ func newProvider(ctx context.Context, host *provider.HostClient,
 	module, version string, tf shim.Provider, info ProviderInfo, pulumiSchema []byte,
 ) *Provider {
 	p := &Provider{
-		host:         host,
-		module:       module,
-		version:      version,
-		tf:           tf,
-		info:         info,
-		config:       tf.Schema(),
-		pulumiSchema: pulumiSchema,
+		host:          host,
+		module:        module,
+		version:       version,
+		tf:            tf,
+		info:          info,
+		config:        tf.Schema(),
+		pulumiSchema:  pulumiSchema,
+		hasTypeErrors: make(map[resource.URN]struct{}),
 	}
 	ctx = p.loggingContext(ctx, "")
 	p.initResourceMaps()
@@ -802,9 +844,10 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 		if schema != nil {
 			iv := NewInputValidator(urn, *schema)
 			typeFailures := iv.ValidateInputs(t, news)
-			if typeFailures != nil {
+			if len(typeFailures) > 0 {
+				p.hasTypeErrors[urn] = struct{}{}
 				logger.Warn("Type checking failed: ")
-				for _, e := range *typeFailures {
+				for _, e := range typeFailures {
 					if validateShouldError {
 						pp := NewCheckFailurePath(schemaMap, schemaInfos, e.ResourcePath)
 						cf := NewCheckFailure(MiscFailure, e.Reason, &pp, urn, false, p.module, schemaMap, schemaInfos)
@@ -954,8 +997,10 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 
 	ic := newIgnoreChanges(ctx, schema, fields, olds, news, req.GetIgnoreChanges())
 
-	diff, err := p.tf.Diff(ctx, res.TFName, state, config, shim.DiffOptions{
-		IgnoreChanges: ic,
+	diff, err := callWithRecover(urn, p.recoverOnTypeError, func() (shim.InstanceDiff, error) {
+		return p.tf.Diff(ctx, res.TFName, state, config, shim.DiffOptions{
+			IgnoreChanges: ic,
+		})
 	})
 	if err != nil {
 		return nil, errors.Wrapf(err, "diffing %s", urn)
@@ -1098,11 +1143,13 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 		return nil, errors.Errorf("error decoding timeout: %s", err)
 	}
 
-	diff, err := p.tf.Diff(ctx, res.TFName, nil, config, shim.DiffOptions{
-		TimeoutOptions: shim.TimeoutOptions{
-			ResourceTimeout:  timeouts,
-			TimeoutOverrides: newTimeoutOverrides(shim.TimeoutCreate, req.Timeout),
-		},
+	diff, err := callWithRecover(urn, p.recoverOnTypeError, func() (shim.InstanceDiff, error) {
+		return p.tf.Diff(ctx, res.TFName, nil, config, shim.DiffOptions{
+			TimeoutOptions: shim.TimeoutOptions{
+				ResourceTimeout:  timeouts,
+				TimeoutOverrides: newTimeoutOverrides(shim.TimeoutCreate, req.Timeout),
+			},
+		})
 	})
 	if err != nil {
 		return nil, errors.Wrapf(err, "diffing %s", urn)
@@ -1324,12 +1371,14 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 		return nil, errors.Errorf("error decoding timeout: %s", err)
 	}
 
-	diff, err := p.tf.Diff(ctx, res.TFName, state, config, shim.DiffOptions{
-		IgnoreChanges: ic,
-		TimeoutOptions: shim.TimeoutOptions{
-			TimeoutOverrides: newTimeoutOverrides(shim.TimeoutUpdate, req.Timeout),
-			ResourceTimeout:  timeouts,
-		},
+	diff, err := callWithRecover(urn, p.recoverOnTypeError, func() (shim.InstanceDiff, error) {
+		return p.tf.Diff(ctx, res.TFName, state, config, shim.DiffOptions{
+			IgnoreChanges: ic,
+			TimeoutOptions: shim.TimeoutOptions{
+				TimeoutOverrides: newTimeoutOverrides(shim.TimeoutUpdate, req.Timeout),
+				ResourceTimeout:  timeouts,
+			},
+		})
 	})
 	if err != nil {
 		return nil, errors.Wrapf(err, "diffing %s", urn)
