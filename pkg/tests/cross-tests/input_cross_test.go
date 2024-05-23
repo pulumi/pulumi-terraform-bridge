@@ -1,7 +1,6 @@
 package crosstests
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
@@ -115,70 +114,77 @@ func TestInputsConfigModeEqual(t *testing.T) {
 		},
 	}
 	t3 := tftypes.Object{}
-	for _, maxItems := range []int{0, 1} {
-		for _, configMode := range []schema.SchemaConfigMode{
-			schema.SchemaConfigModeAuto,
-			schema.SchemaConfigModeBlock,
-			schema.SchemaConfigModeAttr,
-		} {
-			for _, config := range []struct {
-				val      tftypes.Value
-				testName string
-			}{
-				{
-					tftypes.NewValue(
-						t3,
-						map[string]tftypes.Value{},
-					),
-					"empty",
-				},
-				{
-					tftypes.NewValue(
-						t0,
-						map[string]tftypes.Value{
-							"f0": tftypes.NewValue(t1, []tftypes.Value{}),
-						},
-					),
-					"empty list",
-				},
 
-				{
-					tftypes.NewValue(
-						t0,
-						map[string]tftypes.Value{
-							"f0": tftypes.NewValue(t1, []tftypes.Value{
-								tftypes.NewValue(t2, map[string]tftypes.Value{
-									"x": tftypes.NewValue(tftypes.String, "val"),
-								}),
-							}),
-						},
-					),
-					"non-empty list",
-				},
-			} {
-				name := fmt.Sprintf("MaxItems: %v, ConfigMode: %v,  %s", maxItems, configMode, config.testName)
-				t.Run(name, func(t *testing.T) {
-					runCreateInputCheck(t, inputTestCase{
-						Resource: &schema.Resource{
-							Schema: map[string]*schema.Schema{
-								"f0": {
-									Optional:   true,
-									Type:       schema.TypeList,
-									MaxItems:   maxItems,
-									ConfigMode: configMode,
-									Elem: &schema.Resource{
-										Schema: map[string]*schema.Schema{
-											"x": {Optional: true, Type: schema.TypeString},
-										},
-									},
+	emptyConfig := tftypes.NewValue(
+		t3,
+		map[string]tftypes.Value{},
+	)
+
+	emptyListConfig := tftypes.NewValue(
+		t0,
+		map[string]tftypes.Value{
+			"f0": tftypes.NewValue(t1, []tftypes.Value{}),
+		},
+	)
+
+	nonEmptyConfig := tftypes.NewValue(
+		t0,
+		map[string]tftypes.Value{
+			"f0": tftypes.NewValue(t1, []tftypes.Value{
+				tftypes.NewValue(t2, map[string]tftypes.Value{
+					"x": tftypes.NewValue(tftypes.String, "val"),
+				}),
+			}),
+		},
+	)
+
+	for _, tc := range []struct {
+		name       string
+		config     tftypes.Value
+		maxItems   int
+		configMode schema.SchemaConfigMode
+	}{
+		{"MaxItems: 0, ConfigMode: Auto, Empty", emptyConfig, 0, schema.SchemaConfigModeAuto},
+		{"MaxItems: 0, ConfigMode: Auto, EmptyList", emptyListConfig, 0, schema.SchemaConfigModeAuto},
+		{"MaxItems: 0, ConfigMode: Auto, NonEmpty", nonEmptyConfig, 0, schema.SchemaConfigModeAuto},
+		{"MaxItems: 0, ConfigMode: Block, Empty", emptyConfig, 0, schema.SchemaConfigModeBlock},
+		{"MaxItems: 0, ConfigMode: Block, EmptyList", emptyListConfig, 0, schema.SchemaConfigModeBlock},
+		{"MaxItems: 0, ConfigMode: Block, NonEmpty", nonEmptyConfig, 0, schema.SchemaConfigModeBlock},
+		{"MaxItems: 0, ConfigMode: Attr, Empty", emptyConfig, 0, schema.SchemaConfigModeAttr},
+		{"MaxItems: 0, ConfigMode: Attr, EmptyList", emptyListConfig, 0, schema.SchemaConfigModeAttr},
+		{"MaxItems: 0, ConfigMode: Attr, NonEmpty", nonEmptyConfig, 0, schema.SchemaConfigModeAttr},
+		{"MaxItems: 1, ConfigMode: Auto, Empty", emptyConfig, 1, schema.SchemaConfigModeAuto},
+		{"MaxItems: 1, ConfigMode: Auto, EmptyList", emptyListConfig, 1, schema.SchemaConfigModeAuto},
+		{"MaxItems: 1, ConfigMode: Auto, NonEmpty", nonEmptyConfig, 1, schema.SchemaConfigModeAuto},
+		{"MaxItems: 1, ConfigMode: Block, Empty", emptyConfig, 1, schema.SchemaConfigModeBlock},
+		{"MaxItems: 1, ConfigMode: Block, EmptyList", emptyListConfig, 1, schema.SchemaConfigModeBlock},
+		{"MaxItems: 1, ConfigMode: Block, NonEmpty", nonEmptyConfig, 1, schema.SchemaConfigModeBlock},
+		{"MaxItems: 1, ConfigMode: Attr, Empty", emptyConfig, 1, schema.SchemaConfigModeAttr},
+		// TODO[pulumi/pulumi-terraform-bridge#2025]
+		// This is not expressible in pulumi after the ConfigModeOne flattening.
+		// {"MaxItems: 1, ConfigMode: Attr, EmptyList", emptyListConfig, 1, schema.SchemaConfigModeAttr},
+		{"MaxItems: 1, ConfigMode: Attr, NonEmpty", nonEmptyConfig, 1, schema.SchemaConfigModeAttr},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			runCreateInputCheck(t, inputTestCase{
+				Resource: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"f0": {
+							Optional:   true,
+							Type:       schema.TypeList,
+							MaxItems:   tc.maxItems,
+							ConfigMode: tc.configMode,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									"x": {Optional: true, Type: schema.TypeString},
 								},
 							},
 						},
-						Config: config.val,
-					})
-				})
-			}
-		}
+					},
+				},
+				Config: tc.config,
+			})
+		})
 	}
 }
 
