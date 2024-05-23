@@ -457,7 +457,7 @@ func TestEmptySetOfEmptyObjects(t *testing.T) {
 
 func TestRequiredEmptyListOfObjects(t *testing.T) {
 	skipUnlessLinux(t)
-	t.Skipf("TODO[pulumi/pulumi-terraform-bridge#2021]: This must be a bug in tfwrite")
+	t.Skipf("TODO[pulumi/pulumi-terraform-bridge#2021]: Make sure we also error on the pulumi side!")
 	// │ Error: Insufficient d3f0 blocks
 	// │
 	// │   on test.tf line 1, in resource "crossprovider_testres" "example":
@@ -488,9 +488,42 @@ func TestRequiredEmptyListOfObjects(t *testing.T) {
 	})
 }
 
+func TestRequiredListOfEmptyObjects(t *testing.T) {
+	skipUnlessLinux(t)
+
+	t1 := tftypes.Map{ElementType: tftypes.String}
+	emptyObj := tftypes.NewValue(t1, map[string]tftypes.Value{})
+	t0 := tftypes.Object{AttributeTypes: map[string]tftypes.Type{
+		"d3f0": tftypes.List{ElementType: t1},
+	}}
+
+	listOfEmptyObj := tftypes.NewValue(
+		tftypes.List{ElementType: t1}, []tftypes.Value{emptyObj},
+	)
+	config := tftypes.NewValue(t0, map[string]tftypes.Value{
+		"d3f0": listOfEmptyObj,
+	})
+
+	runCreateInputCheck(t, inputTestCase{
+		Resource: &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				"d3f0": {
+					Type:     schema.TypeList,
+					Required: true,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{},
+					},
+					MaxItems: 1,
+				},
+			},
+		},
+		Config:     config,
+		ObjectType: &t0,
+	})
+}
+
 func TestRequiredEmptyListOfLists(t *testing.T) {
 	skipUnlessLinux(t)
-	t.Skipf("TODO[pulumi/pulumi-terraform-bridge#2021]: This must be a bug in puwrite")
 	// Error: crossprovider:index:TestRes is not assignable from {}
 	// Cannot assign '{}' to 'crossprovider:index:TestRes':
 	//   d3f0: Missing required property 'd3f0'
@@ -522,7 +555,6 @@ func TestRequiredEmptyListOfLists(t *testing.T) {
 
 func TestRequiredEmptyListOfSets(t *testing.T) {
 	skipUnlessLinux(t)
-	t.Skipf("TODO[pulumi/pulumi-terraform-bridge#2021]: This must be a bug in puwrite")
 	// Error: crossprovider:index:TestRes is not assignable from {}
 	// Cannot assign '{}' to 'crossprovider:index:TestRes':
 	//   d3f0: Missing required property 'd3f0'
@@ -554,7 +586,6 @@ func TestRequiredEmptyListOfSets(t *testing.T) {
 
 func TestNonEmptyNestedMaxItemsOnes(t *testing.T) {
 	skipUnlessLinux(t)
-	t.Skipf("TODO[pulumi/pulumi-terraform-bridge#2021]: This must be a bug in puwrite")
 	// Error: crossprovider:index:TestRes is not assignable from {}
 	// Cannot assign '{}' to 'crossprovider:index:TestRes':
 	//   d3f0: Missing required property 'd3f0'
