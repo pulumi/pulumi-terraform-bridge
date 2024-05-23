@@ -102,42 +102,82 @@ func TestInputsEqualObjectBasic(t *testing.T) {
 	}
 }
 
-func TestInputsEqualEmptyList(t *testing.T) {
+func TestInputsConfigModeEqual(t *testing.T) {
 	skipUnlessLinux(t)
+	t2 := tftypes.Object{AttributeTypes: map[string]tftypes.Type{
+		"x": tftypes.String,
+	}}
+
+	t1 := tftypes.List{ElementType: t2}
+	t0 := tftypes.Object{
+		AttributeTypes: map[string]tftypes.Type{
+			"f0": t1,
+		},
+	}
+	t3 := tftypes.Object{}
 	for _, maxItems := range []int{0, 1} {
-		for _, configMode := range []schema.SchemaConfigMode{schema.SchemaConfigModeAuto, schema.SchemaConfigModeBlock, schema.SchemaConfigModeAttr} {
-			name := fmt.Sprintf("MaxItems: %v, ConfigMode: %v", maxItems, configMode)
-			t.Run(name, func(t *testing.T) {
-				t1 := tftypes.List{ElementType: tftypes.String}
-				t0 := tftypes.Object{
-					AttributeTypes: map[string]tftypes.Type{
-						"f0": t1,
-					},
-				}
-				runCreateInputCheck(t, inputTestCase{
-					Resource: &schema.Resource{
-						Schema: map[string]*schema.Schema{
-							"f0": {
-								Optional:   true,
-								Type:       schema.TypeList,
-								MaxItems:   maxItems,
-								ConfigMode: configMode,
-								Elem: &schema.Resource{
-									Schema: map[string]*schema.Schema{
-										"x": {Optional: true, Type: schema.TypeString},
-									},
-								},
-							},
-						},
-					},
-					Config: tftypes.NewValue(
+		for _, configMode := range []schema.SchemaConfigMode{
+			schema.SchemaConfigModeAuto,
+			schema.SchemaConfigModeBlock,
+			schema.SchemaConfigModeAttr,
+		} {
+			for _, config := range []struct {
+				val      tftypes.Value
+				testName string
+			}{
+				{
+					tftypes.NewValue(
+						t3,
+						map[string]tftypes.Value{},
+					),
+					"empty",
+				},
+				{
+					tftypes.NewValue(
 						t0,
 						map[string]tftypes.Value{
 							"f0": tftypes.NewValue(t1, []tftypes.Value{}),
 						},
 					),
+					"empty list",
+				},
+
+				{
+					tftypes.NewValue(
+						t0,
+						map[string]tftypes.Value{
+							"f0": tftypes.NewValue(t1, []tftypes.Value{
+								tftypes.NewValue(t2, map[string]tftypes.Value{
+									"x": tftypes.NewValue(tftypes.String, "val"),
+								}),
+							}),
+						},
+					),
+					"non-empty list",
+				},
+			} {
+				name := fmt.Sprintf("MaxItems: %v, ConfigMode: %v,  %s", maxItems, configMode, config.testName)
+				t.Run(name, func(t *testing.T) {
+					runCreateInputCheck(t, inputTestCase{
+						Resource: &schema.Resource{
+							Schema: map[string]*schema.Schema{
+								"f0": {
+									Optional:   true,
+									Type:       schema.TypeList,
+									MaxItems:   maxItems,
+									ConfigMode: configMode,
+									Elem: &schema.Resource{
+										Schema: map[string]*schema.Schema{
+											"x": {Optional: true, Type: schema.TypeString},
+										},
+									},
+								},
+							},
+						},
+						Config: config.val,
+					})
 				})
-			})
+			}
 		}
 	}
 }
