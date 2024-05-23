@@ -284,8 +284,8 @@ func TestInputsEmptyCollections(t *testing.T) {
 	}{
 		{"list block", 0, schema.TypeList, resourceElem, schema.SchemaConfigModeAuto},
 		{"set block", 0, schema.TypeSet, resourceElem, schema.SchemaConfigModeAuto},
-		// This isn't quite valid but should work
-		{"map block", 0, schema.TypeMap, resourceElem, schema.SchemaConfigModeAuto},
+		// TypeMap with Elem *Resource not supported
+		// {"map block", 0, schema.TypeMap, resourceElem, schema.SchemaConfigModeAuto},
 		{"list max items one block", 1, schema.TypeList, resourceElem, schema.SchemaConfigModeAuto},
 		{"set max items one block", 1, schema.TypeSet, resourceElem, schema.SchemaConfigModeAuto},
 		// MaxItems is only valid on lists and sets
