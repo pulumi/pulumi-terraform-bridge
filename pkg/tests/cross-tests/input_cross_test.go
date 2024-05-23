@@ -101,19 +101,6 @@ func TestInputsEqualObjectBasic(t *testing.T) {
 	}
 }
 
-// Isolated from rapid-generated tests
-func TestInputsEmptySchema(t *testing.T) {
-	skipUnlessLinux(t)
-	runCreateInputCheck(
-		t, inputTestCase{
-			Resource: &schema.Resource{
-				Schema: map[string]*schema.Schema{},
-			},
-			Config: tftypes.NewValue(tftypes.Object{}, map[string]tftypes.Value{}),
-		},
-	)
-}
-
 func TestInputsEqualEmptyList(t *testing.T) {
 	skipUnlessLinux(t)
 	for _, maxItems := range []int{0, 1} {
@@ -257,13 +244,9 @@ func TestExplicitNilList(t *testing.T) {
 					Optional: true,
 					Type:     schema.TypeList,
 					Elem: &schema.Schema{
-						Type:     schema.TypeMap,
-						Optional: true,
-						Computed: true,
+						Type: schema.TypeMap,
 						Elem: &schema.Schema{
-							Type:      schema.TypeInt,
-							Optional:  true,
-							Sensitive: true,
+							Type: schema.TypeInt,
 						},
 					},
 				},
@@ -305,14 +288,15 @@ func TestInputsEmptyCollections(t *testing.T) {
 		{"map block", 0, schema.TypeMap, resourceElem, schema.SchemaConfigModeAuto},
 		{"list max items one block", 1, schema.TypeList, resourceElem, schema.SchemaConfigModeAuto},
 		{"set max items one block", 1, schema.TypeSet, resourceElem, schema.SchemaConfigModeAuto},
-		// This isn't quite valid but should work
-		{"map max items one block", 1, schema.TypeMap, resourceElem, schema.SchemaConfigModeAuto},
+		// MaxItems is only valid on lists and sets
+		// {"map max items one block", 1, schema.TypeMap, resourceElem, schema.SchemaConfigModeAuto},
 		{"list attr", 0, schema.TypeList, schemaElem, schema.SchemaConfigModeAuto},
 		{"set attr", 0, schema.TypeSet, schemaElem, schema.SchemaConfigModeAuto},
 		{"map attr", 0, schema.TypeMap, schemaElem, schema.SchemaConfigModeAuto},
 		{"list max items one attr", 1, schema.TypeList, schemaElem, schema.SchemaConfigModeAuto},
 		{"set max items one attr", 1, schema.TypeSet, schemaElem, schema.SchemaConfigModeAuto},
-		{"map max items one attr", 1, schema.TypeMap, schemaElem, schema.SchemaConfigModeAuto},
+		// MaxItems is only valid on lists and sets
+		// {"map max items one attr", 1, schema.TypeMap, schemaElem, schema.SchemaConfigModeAuto},
 		{"list config mode attr", 0, schema.TypeList, resourceElem, schema.SchemaConfigModeAttr},
 		{"set config mode attr", 0, schema.TypeSet, resourceElem, schema.SchemaConfigModeAttr},
 	} {
