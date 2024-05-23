@@ -812,6 +812,10 @@ func normalizeBlockCollections(val cty.Value, res *schema.Resource) cty.Value {
 	if !val.Type().IsObjectType() {
 		contract.Failf("normalizeBlockCollections: Expected object type, got %v", val.Type().GoString())
 	}
+	// Unknowns should be replaced with the sentinel value by this point.
+	if !val.IsWhollyKnown() {
+		contract.Failf("normalizeBlockCollections: Expected known value, got %v", val.GoString())
+	}
 	valMap := val.AsValueMap()
 	if len(valMap) == 0 {
 		valMap = map[string]cty.Value{}
@@ -830,7 +834,7 @@ func normalizeBlockCollections(val cty.Value, res *schema.Resource) cty.Value {
 			} else if fieldType.IsSetType() {
 				valMap[fieldName] = cty.SetValEmpty(fieldType.ElementType())
 			} else {
-				contract.Failf("normalizeBlockCollections: Unexpected field type %v", fieldType)
+				contract.Failf("normalizeBlockCollections: Unexpected field type %v for %s", fieldType.GoString(), fieldName)
 			}
 		} else {
 			subBlockSchema := res.SchemaMap()[fieldName]

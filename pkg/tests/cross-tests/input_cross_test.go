@@ -417,3 +417,57 @@ func TestEmptySetOfEmptyObjects(t *testing.T) {
 		Config: config,
 	})
 }
+
+func TestMap(t *testing.T) {
+	skipUnlessLinux(t)
+	t0 := tftypes.Map{ElementType: tftypes.String}
+	t1 := tftypes.Object{AttributeTypes: map[string]tftypes.Type{
+		"tags": t0,
+	}}
+	mapVal := tftypes.NewValue(t0, map[string]tftypes.Value{
+		"key": tftypes.NewValue(tftypes.String, "val"),
+		"key2": tftypes.NewValue(tftypes.String, "val2"),
+	})
+	config := tftypes.NewValue(t1, map[string]tftypes.Value{
+		"tags": mapVal,
+	})
+
+	runCreateInputCheck(t, inputTestCase{
+		Resource: &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				"tags": {
+					Type:     schema.TypeMap,
+					Optional: true,
+					Elem: &schema.Schema{
+						Optional: true,
+						Type: schema.TypeString,
+					},
+				},
+			},
+		},
+		Config: config,
+	})
+}
+
+func TestTimeouts(t *testing.T) {
+	skipUnlessLinux(t)
+	emptyConfig := tftypes.NewValue(tftypes.Object{}, map[string]tftypes.Value{})
+	runCreateInputCheck(t, inputTestCase{
+		Resource: &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				"tags": {
+					Type:     schema.TypeMap,
+					Optional: true,
+					Elem: &schema.Schema{
+						Optional: true,
+						Type: schema.TypeString,
+					},
+				},
+			},
+			Timeouts: &schema.ResourceTimeout{
+				Create: schema.DefaultTimeout(120),
+			},
+		},
+		Config: emptyConfig,
+	})
+}
