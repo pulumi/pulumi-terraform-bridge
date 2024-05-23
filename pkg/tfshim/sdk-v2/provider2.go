@@ -812,10 +812,6 @@ func normalizeBlockCollections(val cty.Value, res *schema.Resource) cty.Value {
 	if !val.Type().IsObjectType() {
 		contract.Failf("normalizeBlockCollections: Expected object type, got %v", val.Type().GoString())
 	}
-	// Unknowns should be replaced with the sentinel value by this point.
-	if !val.IsWhollyKnown() {
-		contract.Failf("normalizeBlockCollections: Expected known value, got %v", val.GoString())
-	}
 	valMap := val.AsValueMap()
 
 	for fieldName := range sch.BlockTypes {
@@ -854,6 +850,10 @@ func normalizeBlockCollections(val cty.Value, res *schema.Resource) cty.Value {
 }
 
 func normalizeSubBlock(val cty.Value, subBlockRes *schema.Resource) cty.Value {
+	if !val.IsKnown() {
+		// Blocks shouldn't be unknown, but if they are, we can't do anything with them.
+		return val
+	}
 	if val.Type().IsListType() {
 		newSlice := normalizeIterable(val, subBlockRes)
 		if len(newSlice) != 0 {
@@ -875,7 +875,7 @@ func normalizeIterable(blockVal cty.Value, blockRes *schema.Resource) []cty.Valu
 		!blockVal.Type().IsSetType() {
 		contract.Failf("normalizeIterable: Expected list or set type, got %v", blockVal.Type().GoString())
 	}
-	if blockVal.IsNull() {
+	if blockVal.IsNull() || !blockVal.IsKnown() {
 		return []cty.Value{}
 	}
 	blockValSlice := blockVal.AsValueSlice()
