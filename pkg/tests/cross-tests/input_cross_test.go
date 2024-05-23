@@ -318,15 +318,9 @@ func TestInputsNestedBlocksEmpty(t *testing.T) {
 
 	emptyConfig := tftypes.NewValue(tftypes.Object{}, map[string]tftypes.Value{})
 
-	t3 := tftypes.Object{
-		AttributeTypes: map[string]tftypes.Type{
-			"x": tftypes.String,
-		},
-	}
-	t2 := tftypes.List{ElementType: t3}
 	t1 := tftypes.Object{
 		AttributeTypes: map[string]tftypes.Type{
-			"f1": t2,
+			"f2": tftypes.String,
 		},
 	}
 	t0 := tftypes.List{ElementType: t1}
@@ -339,25 +333,13 @@ func TestInputsNestedBlocksEmpty(t *testing.T) {
 		},
 	)
 
-	// TODO: Investigate why this produces the wrong tf program
-	// resource "crossprovider_testres" "example" {
-	// 	f0 {
-	//  }
-	// }
-
-	// it should produce
-	// resource "crossprovider_testres" "example" {
-	// 	f0 {
-	//   f1 {}
-	//  }
-	// }
 	nestedNonEmptyConfig := tftypes.NewValue(
 		tftypes.Object{
 			AttributeTypes: map[string]tftypes.Type{"f0": t0},
 		}, map[string]tftypes.Value{
 			"f0": tftypes.NewValue(t0, []tftypes.Value{
 				tftypes.NewValue(t1, map[string]tftypes.Value{
-					"f1": tftypes.NewValue(t2, []tftypes.Value{}),
+					"f2": tftypes.NewValue(tftypes.String, "val"),
 				}),
 			}),
 		},
@@ -395,6 +377,11 @@ func TestInputsNestedBlocksEmpty(t *testing.T) {
 												"x": {Optional: true, Type: schema.TypeString},
 											},
 										},
+									},
+									// This allows us to specify non-empty f0s with an empty f1
+									"f2": {
+										Type:     schema.TypeString,
+										Optional: true,
 									},
 								},
 							},
