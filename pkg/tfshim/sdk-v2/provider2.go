@@ -821,7 +821,8 @@ func normalizeBlockCollections(val cty.Value, res *schema.Resource) cty.Value {
 		if !val.Type().HasAttribute(fieldName) {
 			continue
 		}
-		if val.GetAttr(fieldName).IsNull() {
+		subVal := val.GetAttr(fieldName)
+		if subVal.IsNull() {
 			fieldType := val.Type().AttributeType(fieldName)
 			// Only lists and sets can be blocks and pass InternalValidate
 			if fieldType.IsListType() {
@@ -840,32 +841,30 @@ func normalizeBlockCollections(val cty.Value, res *schema.Resource) cty.Value {
 			if !ok {
 				contract.Failf("normalizeBlockCollections: Unexpected schema type %s", fieldName)
 			}
-
-			subBlockVal := val.GetAttr(fieldName)
-			if subBlockVal.Type().IsListType() {
-				newSlice := normalizeIterable(subBlockVal, subBlockRes)
-				if len(newSlice) != 0 {
-					valMap[fieldName] = cty.ListVal(newSlice)
-				} else {
-					valMap[fieldName] = cty.ListValEmpty(subBlockVal.Type().ElementType())
-				}
-				continue
-			} else if subBlockVal.Type().IsSetType() {
-				newSlice := normalizeIterable(subBlockVal, subBlockRes)
-				if len(newSlice) != 0 {
-					valMap[fieldName] = cty.SetVal(newSlice)
-				} else {
-					valMap[fieldName] = cty.SetValEmpty(subBlockVal.Type().ElementType())
-				}
-			} else {
-				contract.Failf("normalizeBlockCollections: Unexpected field type %v", subBlockVal.Type().GoString())
-			}
-
-			valMap[fieldName] = normalizeBlockCollections(val.GetAttr(fieldName), subBlockRes)
-
+			normalizedVal := normalizeSubBlock(val, subBlockRes)
+			valMap[fieldName] = normalizedVal
 		}
 	}
 	return cty.ObjectVal(valMap)
+}
+
+func normalizeSubBlock(val cty.Value, subBlockRes *schema.Resource) cty.Value {
+	if val.Type().IsListType() {
+		newSlice := normalizeIterable(val, subBlockRes)
+		if len(newSlice) != 0 {
+			return cty.ListVal(newSlice)
+		}
+		return cty.ListValEmpty(val.Type().ElementType())
+	} else if val.Type().IsSetType() {
+		newSlice := normalizeIterable(val, subBlockRes)
+		if len(newSlice) != 0 {
+			return cty.SetVal(newSlice)
+		}
+		return cty.SetValEmpty(val.Type().ElementType())
+	}
+	contract.Failf("normalizeBlockCollections: Unexpected field type %v", val.Type().GoString())
+	// unreachable
+	return cty.NilVal
 }
 
 func normalizeIterable(blockVal cty.Value, blockRes *schema.Resource) []cty.Value {
