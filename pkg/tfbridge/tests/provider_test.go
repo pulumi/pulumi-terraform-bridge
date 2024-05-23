@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/providertest/replay"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
@@ -327,12 +328,8 @@ func TestValidateInputsPanic(t *testing.T) {
 	}, newTestProviderOptions{})
 
 	t.Run("diff_panic", func(t *testing.T) {
-		defer func() {
-			if r := recover(); r == nil {
-				t.Fatal("Expected diff to panic")
-			}
-		}()
-		replay.ReplaySequence(t, p, `
+		assert.Panics(t, func() {
+			replay.ReplaySequence(t, p, `
 	[
 		{
 			"method": "/pulumirpc.ResourceProvider/Diff",
@@ -368,6 +365,7 @@ func TestValidateInputsPanic(t *testing.T) {
 		}
 	]
 	`)
+		})
 	})
 
 	t.Run("diff_no_panic", func(t *testing.T) {
@@ -447,12 +445,8 @@ func TestValidateInputsPanic(t *testing.T) {
 	})
 
 	t.Run("update_panic", func(t *testing.T) {
-		defer func() {
-			if r := recover(); r == nil {
-				t.Fatal("Expected update to panic")
-			}
-		}()
-		replay.ReplaySequence(t, p, `
+		assert.Panics(t, func() {
+			replay.ReplaySequence(t, p, `
 	[
 		{
 			"method": "/pulumirpc.ResourceProvider/Update",
@@ -490,6 +484,7 @@ func TestValidateInputsPanic(t *testing.T) {
 	]
 	`)
 
+		})
 	})
 
 	t.Run("update_no_panic", func(t *testing.T) {
@@ -636,12 +631,9 @@ func TestValidateInputsPanic(t *testing.T) {
 	})
 
 	t.Run("create_panic", func(t *testing.T) {
-		defer func() {
-			if r := recover(); r == nil {
-				t.Fatal("Expected create to panic")
-			}
-		}()
-		replay.ReplaySequence(t, p, `
+		assert.Panics(t, func() {
+
+			replay.ReplaySequence(t, p, `
 	[
 		{
 			"method": "/pulumirpc.ResourceProvider/Create",
@@ -666,6 +658,7 @@ func TestValidateInputsPanic(t *testing.T) {
 		}
 	]
 	`)
+		})
 	})
 
 }

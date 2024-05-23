@@ -199,6 +199,7 @@ func callWithRecover[T any](
 	defer func() {
 		if r := recover(); r != nil {
 			err = rec(urn, r)
+			contract.Assertf(err != nil, "Panic handlers must return an error")
 		}
 	}()
 
