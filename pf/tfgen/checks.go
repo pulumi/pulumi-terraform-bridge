@@ -22,10 +22,17 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 )
 
-func checkIDProperties(sink diag.Sink, info tfbridge.ProviderInfo) error {
+func checkAllIDProperties(sink diag.Sink, info tfbridge.ProviderInfo) error {
+	return checkIDProperties(sink, info, func(string) bool { return true })
+}
+
+func checkIDProperties(sink diag.Sink, info tfbridge.ProviderInfo, doCheck func(tfToken string) bool) error {
 	errors := 0
 
 	info.P.ResourcesMap().Range(func(rname string, resource shim.Resource) bool {
+		if !doCheck(rname) {
+			return true
+		}
 		if resourceHasComputeID(info, rname) {
 			return true
 		}

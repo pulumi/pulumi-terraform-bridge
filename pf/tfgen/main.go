@@ -57,7 +57,7 @@ func Main(provider string, info sdkBridge.ProviderInfo) {
 			return err
 		}
 
-		if err := checkIDProperties(g.Sink(), opts.ProviderInfo); err != nil {
+		if err := checkAllIDProperties(g.Sink(), opts.ProviderInfo); err != nil {
 			return err
 		}
 
@@ -94,6 +94,15 @@ func MainWithMuxer(provider string, info sdkBridge.ProviderInfo) {
 	}
 
 	tfgen.MainWithCustomGenerate(provider, info.Version, info, func(opts tfgen.GeneratorOptions) error {
+		g, err := tfgen.NewGenerator(opts)
+		if err != nil {
+			return err
+		}
+
+		if err := checkIDProperties(g.Sink(), opts.ProviderInfo, shim.ResourceIsPF); err != nil {
+			return err
+		}
+
 		if info.MetadataInfo == nil {
 			return fmt.Errorf("ProviderInfo.MetadataInfo is required and cannot be nil")
 		}
@@ -108,11 +117,6 @@ func MainWithMuxer(provider string, info sdkBridge.ProviderInfo) {
 		}
 
 		if err := notSupported(opts.Sink, info); err != nil {
-			return err
-		}
-
-		g, err := tfgen.NewGenerator(opts)
-		if err != nil {
 			return err
 		}
 
