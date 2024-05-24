@@ -68,20 +68,39 @@ func (p shimProvider) GetProviderSchema(ctx context.Context, req *tfprotov6.GetP
 
 // ValidateProviderConfig is called to give a provider a chance to
 // validate the configuration the user specified.
-func (p shimProvider) ValidateProviderConfig(context.Context, *tfprotov6.ValidateProviderConfigRequest) (*tfprotov6.ValidateProviderConfigResponse, error) {
-	panic("UNIMPLIMENTED")
+func (p shimProvider) ValidateProviderConfig(ctx context.Context, req *tfprotov6.ValidateProviderConfigRequest) (*tfprotov6.ValidateProviderConfigResponse, error) {
+	v, err := p.remote.ValidateProviderConfig(ctx, tfplugin6.ValidateProviderConfigRequest(req))
+	if err != nil {
+		return nil, err
+	}
+	resp := tfplugin6.ValidateProviderConfigResponse(v)
+
+	// From the docs on PreparedConfig:
+	//
+	// This RPC call exists because early versions of the Terraform Plugin
+	// SDK allowed providers to set defaults for provider configurations in
+	// such a way that Terraform couldn't validate the provider config
+	// without retrieving the default values first. As providers using
+	// terraform-plugin-go directly and new frameworks built on top of it
+	// have no such requirement, it is safe and recommended to simply set
+	// PreparedConfig to the value of the PrepareProviderConfigRequest's
+	// Config property, indicating that no changes are needed to the
+	// configuration.
+	resp.PreparedConfig = req.Config
+
+	return resp, nil
 }
 
 // ConfigureProvider is called to pass the user-specified provider
 // configuration to the provider.
-func (p shimProvider) ConfigureProvider(context.Context, *tfprotov6.ConfigureProviderRequest) (*tfprotov6.ConfigureProviderResponse, error) {
-	panic("UNIMPLIMENTED")
+func (p shimProvider) ConfigureProvider(ctx context.Context, req *tfprotov6.ConfigureProviderRequest) (*tfprotov6.ConfigureProviderResponse, error) {
+	return translateGRPC(ctx, p.remote.ConfigureProvider, tfplugin6.ConfigureProviderRequest(req), tfplugin6.ConfigureProviderResponse)
 }
 
 // StopProvider is called when Terraform would like providers to shut
 // down as quickly as possible, and usually represents an interrupt.
-func (p shimProvider) StopProvider(context.Context, *tfprotov6.StopProviderRequest) (*tfprotov6.StopProviderResponse, error) {
-	panic("UNIMPLIMENTED")
+func (p shimProvider) StopProvider(ctx context.Context, req *tfprotov6.StopProviderRequest) (*tfprotov6.StopProviderResponse, error) {
+	return translateGRPC(ctx, p.remote.StopProvider, tfplugin6.StopProviderRequest(req), tfplugin6.StopProviderResponse)
 }
 
 // ValidateResourceConfig is called when Terraform is checking that

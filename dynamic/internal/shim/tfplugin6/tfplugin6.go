@@ -290,3 +290,68 @@ func functionReturn(i *tfplugin6.Function_Return) *tfprotov6.FunctionReturn {
 		Type: _type(i.Type),
 	}
 }
+
+func ValidateProviderConfigRequest(i *tfprotov6.ValidateProviderConfigRequest) *tfplugin6.ValidateProviderConfig_Request {
+	if i == nil {
+		return nil
+	}
+	return &tfplugin6.ValidateProviderConfig_Request{
+		Config: dynamicValueRequest(i.Config),
+	}
+}
+
+func ValidateProviderConfigResponse(i *tfplugin6.ValidateProviderConfig_Response) *tfprotov6.ValidateProviderConfigResponse {
+	if i == nil {
+		return nil
+	}
+	return &tfprotov6.ValidateProviderConfigResponse{
+		// This field is filled in where ValidateProviderConfigResponse is called.
+		PreparedConfig: nil,
+		Diagnostics:    diagnostics(i.Diagnostics),
+	}
+}
+
+func dynamicValueRequest(i *tfprotov6.DynamicValue) *tfplugin6.DynamicValue {
+	if i == nil {
+		return nil
+	}
+	return &tfplugin6.DynamicValue{
+		Msgpack: i.MsgPack,
+		Json:    i.JSON,
+	}
+}
+
+func ConfigureProviderRequest(i *tfprotov6.ConfigureProviderRequest) *tfplugin6.ConfigureProvider_Request {
+	if i == nil {
+		return nil
+	}
+	return &tfplugin6.ConfigureProvider_Request{
+		TerraformVersion: i.TerraformVersion,
+		Config:           dynamicValueRequest(i.Config),
+	}
+}
+
+func ConfigureProviderResponse(i *tfplugin6.ConfigureProvider_Response) *tfprotov6.ConfigureProviderResponse {
+	if i == nil {
+		return nil
+	}
+	return &tfprotov6.ConfigureProviderResponse{
+		Diagnostics: diagnostics(i.Diagnostics),
+	}
+}
+
+func StopProviderRequest(i *tfprotov6.StopProviderRequest) *tfplugin6.StopProvider_Request {
+	if i == nil {
+		return nil
+	}
+
+	return &tfplugin6.StopProvider_Request{}
+}
+
+func StopProviderResponse(i *tfplugin6.StopProvider_Response) *tfprotov6.StopProviderResponse {
+	if i == nil {
+		return nil
+	}
+
+	return &tfprotov6.StopProviderResponse{Error: i.Error}
+}
