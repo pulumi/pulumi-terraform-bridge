@@ -44,24 +44,16 @@ func Main(provider string, info sdkBridge.ProviderInfo) {
 			return fmt.Errorf("ProviderInfo.MetadataInfo is required and cannot be nil")
 		}
 
-		if err := notSupported(opts.Sink, info); err != nil {
-			return err
-		}
-
 		g, err := tfgen.NewGenerator(opts)
 		if err != nil {
 			return err
 		}
 
-		if err := g.Generate(); err != nil {
+		if err := checkProvider(g.Sink(), info); err != nil {
 			return err
 		}
 
-		if err := checkAllIDProperties(g.Sink(), opts.ProviderInfo); err != nil {
-			return err
-		}
-
-		return nil
+		return g.Generate()
 	})
 }
 
@@ -99,7 +91,7 @@ func MainWithMuxer(provider string, info sdkBridge.ProviderInfo) {
 			return err
 		}
 
-		if err := checkIDProperties(g.Sink(), opts.ProviderInfo, shim.ResourceIsPF); err != nil {
+		if err := checkProvider(g.Sink(), info); err != nil {
 			return err
 		}
 
@@ -113,10 +105,6 @@ func MainWithMuxer(provider string, info sdkBridge.ProviderInfo) {
 		}
 		err = metadata.Set(info.GetMetadata(), "mux", dispatch)
 		if err != nil {
-			return err
-		}
-
-		if err := notSupported(opts.Sink, info); err != nil {
 			return err
 		}
 

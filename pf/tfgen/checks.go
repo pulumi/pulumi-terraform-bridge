@@ -15,15 +15,28 @@
 package tfgen
 
 import (
+	"errors"
 	"fmt"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+
+	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/muxer"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 )
 
-func checkAllIDProperties(sink diag.Sink, info tfbridge.ProviderInfo) error {
-	return checkIDProperties(sink, info, func(string) bool { return true })
+func checkProvider(sink diag.Sink, info tfbridge.ProviderInfo) error {
+	isPFResource := func(string) bool { return true }
+	isPFDataSource := func(string) bool { return true }
+	if p, ok := info.P.(*muxer.ProviderShim); ok {
+		isPFResource = p.ResourceIsPF
+		isPFDataSource = p.DataSourceIsPF
+	}
+
+	return errors.Join(
+		checkIDProperties(sink, info, isPFResource),
+		notSupported(sink, info, isPFResource, isPFDataSource),
+	)
 }
 
 func checkIDProperties(sink diag.Sink, info tfbridge.ProviderInfo, doCheck func(tfToken string) bool) error {
