@@ -208,6 +208,8 @@ func runProvider(meta *providercache.CachedProvider) (Provider, error) {
 		return nil, err
 	}
 
+	versions := map[int]plugin.PluginSet{6: tfplugin.VersionedPlugins[6]}
+
 	config := &plugin.ClientConfig{
 		HandshakeConfig:  tfplugin.Handshake,
 		Logger:           logging.NewProviderLogger(""),
@@ -215,7 +217,7 @@ func runProvider(meta *providercache.CachedProvider) (Provider, error) {
 		Managed:          true,
 		Cmd:              exec.Command(execFile),
 		AutoMTLS:         true,
-		VersionedPlugins: tfplugin.VersionedPlugins,
+		VersionedPlugins: versions, // tfplugin.VersionedPlugins,
 		SyncStdout:       logging.PluginOutputMonitor(fmt.Sprintf("%s:stdout", meta.Provider)),
 		SyncStderr:       logging.PluginOutputMonitor(fmt.Sprintf("%s:stderr", meta.Provider)),
 	}

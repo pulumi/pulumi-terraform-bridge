@@ -15,17 +15,19 @@
 package main
 
 import (
+	"context"
+
 	"github.com/opentofu/opentofu/shim"
 
+	"github.com/pulumi/pulumi-terraform-bridge/dynamic/internal/provider"
+	"github.com/pulumi/pulumi-terraform-bridge/pf/proto"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/tokens"
-
-	"github.com/pulumi/pulumi-terraform-bridge/dynamic/internal/provider"
 )
 
-func providerInfo(p shim.Provider) tfbridge.ProviderInfo {
+func providerInfo(ctx context.Context, p shim.Provider) tfbridge.ProviderInfo {
 	prov := tfbridge.ProviderInfo{
-		P:           provider.New(p),
+		P:           proto.Provider(ctx, provider.New(p)),
 		Name:        p.Name(),
 		Version:     p.Version(),
 		Description: "A Pulumi provider dynamically bridged from " + p.Name() + ".",

@@ -39,7 +39,7 @@ func main() {
 	}
 	defer p.Close()
 
-	info := providerInfo(p)
+	info := providerInfo(ctx, p)
 
 	packageSchema, err := tfgen.GenerateSchemaWithOptions(tfgen.GenerateSchemaOptions{
 		ProviderInfo: info,
