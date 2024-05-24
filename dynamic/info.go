@@ -19,7 +19,6 @@ import (
 
 	"github.com/opentofu/opentofu/shim"
 
-	"github.com/pulumi/pulumi-terraform-bridge/dynamic/internal/provider"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/proto"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/tokens"
@@ -27,7 +26,7 @@ import (
 
 func providerInfo(ctx context.Context, p shim.Provider) tfbridge.ProviderInfo {
 	prov := tfbridge.ProviderInfo{
-		P:           proto.Provider(ctx, provider.New(p)),
+		P:           proto.Provider(ctx, p),
 		Name:        p.Name(),
 		Version:     p.Version(),
 		Description: "A Pulumi provider dynamically bridged from " + p.Name() + ".",

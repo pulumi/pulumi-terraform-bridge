@@ -12,24 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package provider
+package protov6
 
 import (
 	"context"
 
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
-	otshim "github.com/opentofu/opentofu/shim"
+	otshim "github.com/opentofu/opentofu/internal/tfplugin6"
 	"github.com/opentofu/opentofu/shim/tfplugin6"
+
 	grpc "google.golang.org/grpc"
 )
 
 var _ tfprotov6.ProviderServer = (*shimProvider)(nil)
 
-func New(p otshim.Provider) tfprotov6.ProviderServer {
+func New(p otshim.ProviderClient) tfprotov6.ProviderServer {
 	return shimProvider{p}
 }
 
-type shimProvider struct{ remote otshim.Provider }
+type shimProvider struct{ remote otshim.ProviderClient }
 
 func translateGRPC[
 	In, Out, Final any,

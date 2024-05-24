@@ -25,13 +25,19 @@ import (
 
 	"github.com/apparentlymart/go-versions/versions"
 	plugin "github.com/hashicorp/go-plugin"
+	"github.com/hashicorp/terraform-plugin-go/tfprotov5"
+	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
+	"github.com/hashicorp/terraform-plugin-mux/tf5to6server"
 	disco "github.com/hashicorp/terraform-svchost/disco"
 	"github.com/opentofu/opentofu/internal/depsfile"
 	"github.com/opentofu/opentofu/internal/getproviders"
 	"github.com/opentofu/opentofu/internal/logging"
 	tfplugin "github.com/opentofu/opentofu/internal/plugin"
 	"github.com/opentofu/opentofu/internal/providercache"
+	"github.com/opentofu/opentofu/internal/tfplugin5"
 	"github.com/opentofu/opentofu/internal/tfplugin6"
+	v5shim "github.com/opentofu/opentofu/shim/protov5"
+	v6shim "github.com/opentofu/opentofu/shim/protov6"
 	tfaddr "github.com/opentofu/registry-address"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -51,7 +57,7 @@ const envPluginCache = "TF_PLUGIN_CACHE_DIR"
 //
 // You must call Close on any Provider that has been created.
 type Provider interface {
-	tfplugin6.ProviderClient
+	tfprotov6.ProviderServer
 	io.Closer
 
 	Name() string
@@ -119,7 +125,7 @@ func loadLockFile(path string) (*depsfile.Locks, error) {
 }
 
 type provider struct {
-	tfplugin6.ProviderClient
+	tfprotov6.ProviderServer
 
 	name, version string
 
@@ -159,7 +165,7 @@ func getProviderServer(
 				slog.InfoContext(ctx, "Found cached provider",
 					slog.Any("addr", addr.String()),
 					slog.Any("version", p.Version.String()))
-				return runProvider(&p)
+				return runProvider(ctx, &p)
 			}
 		}
 	}
@@ -196,19 +202,17 @@ func getProviderServer(
 	p := systemCache.ProviderVersion(addr, desiredVersion)
 	contract.Assertf(p != nil, "We just downloaded (%s,%s) so it should be in the cache", addr, desiredVersion)
 
-	return runProvider(p)
+	return runProvider(ctx, p)
 }
 
 // runProvider produces a provider factory that runs up the executable
 // file in the given cache package and uses go-plugin to implement
 // providers.Interface against it.
-func runProvider(meta *providercache.CachedProvider) (Provider, error) {
+func runProvider(ctx context.Context, meta *providercache.CachedProvider) (Provider, error) {
 	execFile, err := meta.ExecutableFile()
 	if err != nil {
 		return nil, err
 	}
-
-	versions := map[int]plugin.PluginSet{6: tfplugin.VersionedPlugins[6]}
 
 	config := &plugin.ClientConfig{
 		HandshakeConfig:  tfplugin.Handshake,
@@ -217,7 +221,7 @@ func runProvider(meta *providercache.CachedProvider) (Provider, error) {
 		Managed:          true,
 		Cmd:              exec.Command(execFile),
 		AutoMTLS:         true,
-		VersionedPlugins: versions, // tfplugin.VersionedPlugins,
+		VersionedPlugins: tfplugin.VersionedPlugins,
 		SyncStdout:       logging.PluginOutputMonitor(fmt.Sprintf("%s:stdout", meta.Provider)),
 		SyncStderr:       logging.PluginOutputMonitor(fmt.Sprintf("%s:stderr", meta.Provider)),
 	}
@@ -228,20 +232,29 @@ func runProvider(meta *providercache.CachedProvider) (Provider, error) {
 		return nil, err
 	}
 
-	// raw, err := rpcClient.Dispense(tfplugin.ProviderPluginName)
-	// if err != nil {
-	// 	return nil, err
-	// }
+	raw, err := rpcClient.Dispense(tfplugin.ProviderPluginName)
+	if err != nil {
+		return nil, err
+	}
 
 	// store the client so that the plugin can kill the child process
 	protoVer := client.NegotiatedVersion()
 	switch protoVer {
 	case 5:
-		// TODO Mux up to v6 and then fall-through
-		panic("unsupported protocol version")
+		p := raw.(*tfplugin.GRPCProvider)
+		p.PluginClient = client
+		p.Addr = meta.Provider
+
+		v6, err := tf5to6server.UpgradeServer(ctx, func() tfprotov5.ProviderServer {
+			return v5shim.New(tfplugin5.NewProviderClient(rpcClient.(*plugin.GRPCClient).Conn))
+		})
+		if err != nil {
+			return nil, err
+		}
+		return provider{v6, meta.Provider.Type, meta.Version.String(), rpcClient.Close}, nil
 	case 6:
 		p := tfplugin6.NewProviderClient(rpcClient.(*plugin.GRPCClient).Conn)
-		return provider{p, meta.Provider.Type, meta.Version.String(), rpcClient.Close}, nil
+		return provider{v6shim.New(p), meta.Provider.Type, meta.Version.String(), rpcClient.Close}, nil
 	default:
 		panic("unsupported protocol version")
 	}
