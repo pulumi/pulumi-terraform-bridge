@@ -20,6 +20,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
+	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/check"
 	pfmuxer "github.com/pulumi/pulumi-terraform-bridge/pf/internal/muxer"
 	sdkBridge "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
@@ -49,7 +50,7 @@ func Main(provider string, info sdkBridge.ProviderInfo) {
 			return err
 		}
 
-		if err := checkProvider(g.Sink(), info); err != nil {
+		if err := check.Provider(g.Sink(), info); err != nil {
 			return err
 		}
 
@@ -91,7 +92,7 @@ func MainWithMuxer(provider string, info sdkBridge.ProviderInfo) {
 			return err
 		}
 
-		if err := checkProvider(g.Sink(), info); err != nil {
+		if err := check.Provider(g.Sink(), info); err != nil {
 			return err
 		}
 
