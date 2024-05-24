@@ -355,3 +355,94 @@ func StopProviderResponse(i *tfplugin6.StopProvider_Response) *tfprotov6.StopPro
 
 	return &tfprotov6.StopProviderResponse{Error: i.Error}
 }
+
+func ValidateResourceConfigRequest(i *tfprotov6.ValidateResourceConfigRequest) *tfplugin6.ValidateResourceConfig_Request {
+	if i == nil {
+		return nil
+	}
+
+	return &tfplugin6.ValidateResourceConfig_Request{
+		TypeName: i.TypeName,
+		Config:   dynamicValueRequest(i.Config),
+	}
+}
+
+func ValidateResourceConfigResponse(i *tfplugin6.ValidateResourceConfig_Response) *tfprotov6.ValidateResourceConfigResponse {
+	if i == nil {
+		return nil
+	}
+
+	return &tfprotov6.ValidateResourceConfigResponse{
+		Diagnostics: diagnostics(i.Diagnostics),
+	}
+}
+
+func ReadResourceRequest(i *tfprotov6.ReadResourceRequest) *tfplugin6.ReadResource_Request {
+	if i == nil {
+		return nil
+	}
+
+	return &tfplugin6.ReadResource_Request{
+		TypeName:     i.TypeName,
+		CurrentState: dynamicValueRequest(i.CurrentState),
+		Private:      i.Private,
+		ProviderMeta: dynamicValueRequest(i.ProviderMeta),
+	}
+}
+
+func ReadResourceResponse(i *tfplugin6.ReadResource_Response) *tfprotov6.ReadResourceResponse {
+	if i == nil {
+		return nil
+	}
+
+	return &tfprotov6.ReadResourceResponse{
+		NewState:    dynamicValueResponse(i.NewState),
+		Diagnostics: diagnostics(i.Diagnostics),
+		Private:     i.Private,
+		Deferred:    nil, // The provider won't specify a read as deferred.
+	}
+}
+
+func dynamicValueResponse(i *tfplugin6.DynamicValue) *tfprotov6.DynamicValue {
+	if i == nil {
+		return nil
+	}
+	return &tfprotov6.DynamicValue{
+		MsgPack: i.Msgpack,
+		JSON:    i.Json,
+	}
+}
+
+func UpgradeResourceStateRequest(i *tfprotov6.UpgradeResourceStateRequest) *tfplugin6.UpgradeResourceState_Request {
+	if i == nil {
+		return nil
+	}
+
+	return &tfplugin6.UpgradeResourceState_Request{
+		TypeName: i.TypeName,
+		Version:  i.Version,
+		RawState: rawStateRequest(i.RawState),
+	}
+}
+
+func UpgradeResourceStateResponse(i *tfplugin6.UpgradeResourceState_Response) *tfprotov6.UpgradeResourceStateResponse {
+	if i == nil {
+		return nil
+	}
+
+	return &tfprotov6.UpgradeResourceStateResponse{
+		UpgradedState: dynamicValueResponse(i.UpgradedState),
+		Diagnostics:   diagnostics(i.Diagnostics),
+	}
+}
+
+func rawStateRequest(i *tfprotov6.RawState) *tfplugin6.RawState {
+	if i == nil {
+		return nil
+	}
+
+	return &tfplugin6.RawState{
+		Json:    i.JSON,
+		Flatmap: i.Flatmap,
+	}
+}

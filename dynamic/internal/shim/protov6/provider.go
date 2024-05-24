@@ -107,22 +107,22 @@ func (p shimProvider) StopProvider(ctx context.Context, req *tfprotov6.StopProvi
 // a resource's configuration is valid. It is guaranteed to have types
 // conforming to your schema. This is your opportunity to do custom or
 // advanced validation prior to a plan being generated.
-func (p shimProvider) ValidateResourceConfig(context.Context, *tfprotov6.ValidateResourceConfigRequest) (*tfprotov6.ValidateResourceConfigResponse, error) {
-	panic("UNIMPLIMENTED")
+func (p shimProvider) ValidateResourceConfig(ctx context.Context, req *tfprotov6.ValidateResourceConfigRequest) (*tfprotov6.ValidateResourceConfigResponse, error) {
+	return translateGRPC(ctx, p.remote.ValidateResourceConfig, tfplugin6.ValidateResourceConfigRequest(req), tfplugin6.ValidateResourceConfigResponse)
 }
 
 // UpgradeResourceState is called when Terraform has encountered a
 // resource with a state in a schema that doesn't match the schema's
 // current version. It is the provider's responsibility to modify the
 // state to upgrade it to the latest state schema.
-func (p shimProvider) UpgradeResourceState(context.Context, *tfprotov6.UpgradeResourceStateRequest) (*tfprotov6.UpgradeResourceStateResponse, error) {
-	panic("UNIMPLIMENTED")
+func (p shimProvider) UpgradeResourceState(ctx context.Context, req *tfprotov6.UpgradeResourceStateRequest) (*tfprotov6.UpgradeResourceStateResponse, error) {
+	return translateGRPC(ctx, p.remote.UpgradeResourceState, tfplugin6.UpgradeResourceStateRequest(req), tfplugin6.UpgradeResourceStateResponse)
 }
 
 // ReadResource is called when Terraform is refreshing a resource's
 // state.
-func (p shimProvider) ReadResource(context.Context, *tfprotov6.ReadResourceRequest) (*tfprotov6.ReadResourceResponse, error) {
-	panic("UNIMPLIMENTED")
+func (p shimProvider) ReadResource(ctx context.Context, req *tfprotov6.ReadResourceRequest) (*tfprotov6.ReadResourceResponse, error) {
+	return translateGRPC(ctx, p.remote.ReadResource, tfplugin6.ReadResourceRequest(req), tfplugin6.ReadResourceResponse)
 }
 
 // PlanResourceChange is called when Terraform is attempting to
