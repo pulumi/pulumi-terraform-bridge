@@ -1017,6 +1017,7 @@ func (g *Generator) UnstableGenerateFromSchema(genSchemaResult *GenerateSchemaRe
 		if err != nil {
 			return errors.Wrapf(err, "failed to marshal schema")
 		}
+
 		files = map[string][]byte{"schema.json": bytes}
 
 		if info := g.info.MetadataInfo; info != nil {

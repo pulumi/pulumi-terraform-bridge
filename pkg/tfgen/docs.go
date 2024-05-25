@@ -2272,7 +2272,6 @@ var (
 func guessIsHCL(code string) bool {
 	return guessIsHCLPattern.MatchString(code)
 }
-
 func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
 	// Get file content without front matter, and split title
 	contentStr, title := getBodyAndTitle(string(docFile.Content))
@@ -2315,4 +2314,73 @@ func getBodyAndTitle(content string) (string, string) {
 	title := content[titleIndex+2 : nextNewLine]
 	// strip the title and any front matter
 	return content[nextNewLine+1:], title
+}
+
+func translateCodeBlocks(contentStr string, g *Generator) (string, error) {
+
+	var returnContent string
+
+	examples := map[string]string{}
+	// Extract code blocks
+	codeFence := "```"
+	var codeBlocks []codeBlock
+	for i := 0; i < (len(contentStr) - len(codeFence)); i++ {
+		block, found := findCodeBlock(contentStr, i)
+		if found {
+			codeBlocks = append(codeBlocks, block)
+			i = block.end + 1
+		}
+	}
+	if len(codeBlocks) == 0 {
+		return contentStr, nil
+	}
+	startIndex := 0
+	for i, block := range codeBlocks {
+		// Write the content up to the start of the code block
+		returnContent = returnContent + contentStr[startIndex:block.start]
+		nextNewLine := strings.Index(contentStr[block.start:block.end], "\n")
+		if nextNewLine == -1 {
+			//Write the inline block
+			returnContent = returnContent + contentStr[block.start:block.end] + codeFence + "\n"
+			continue
+		}
+		fenceLanguage := contentStr[block.start : block.start+nextNewLine+1]
+		code := contentStr[block.start+nextNewLine+1 : block.end]
+		// Only convert code blocks that we have reasonable suspicion of actually being Terraform.
+		if fenceLanguage == "```terraform\n" || fenceLanguage == "```hcl\n" ||
+			(fenceLanguage == "```\n" && guessIsHCL(code)) {
+
+			//  Make an example to record in the cliConverter.
+			fileName := fmt.Sprintf("configuration-installation-%d", i)
+			examples[fileName] = code
+
+			// Convert to PCL, which is what ConvertViaPulumiCLI does.
+			// This gives us a map of translatedExamples.
+			result, err := g.cliConverter().convertViaPulumiCLI(examples, []tfbridge.ProviderInfo{
+				g.cliConverter().info,
+			})
+			if err != nil {
+				return "", err
+			}
+
+			// Write the result to the pcls map of our cli converter.
+			g.cliConverter().pcls[code] = translatedExample{
+				PCL: result[fileName].PCL, // TODO: hook up to diagnostics if necessary
+			}
+
+			//  Now we can call ConvertHCL
+			exPath := examplePath{fullPath: fileName}
+			var conversionResult *Example
+			conversionResult = g.coverageTracker.getOrCreateExample(
+				exPath.String(), code)
+
+			langs := genLanguageToSlice(g.language)
+			convertedBlock, err := g.convertHCL(conversionResult, code, exPath.String(), langs)
+			returnContent = returnContent + convertedBlock
+			startIndex = block.end + len(codeFence)
+		}
+	}
+	// Write any remainder.
+	returnContent = returnContent + contentStr[codeBlocks[len(codeBlocks)-1].end+len(codeFence):]
+	return returnContent, nil
 }
