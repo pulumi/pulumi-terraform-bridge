@@ -20,7 +20,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	otshim "github.com/opentofu/opentofu/internal/tfplugin6"
 	"github.com/opentofu/opentofu/shim/tfplugin6"
-
 	grpc "google.golang.org/grpc"
 )
 

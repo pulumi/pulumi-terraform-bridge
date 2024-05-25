@@ -27,13 +27,16 @@ type SchemaOnlyProvider struct {
 }
 
 func (p SchemaOnlyProvider) Schema() shim.SchemaMap {
-	s := p.getSchema()
-
-	return blockMap{s.Provider.Block}
+	return blockMap{p.getSchema().Provider.Block}
 }
 
-func (p SchemaOnlyProvider) ResourcesMap() shim.ResourceMap   { panic("Unimplemented") }
-func (p SchemaOnlyProvider) DataSourcesMap() shim.ResourceMap { panic("Unimplemented") }
+func (p SchemaOnlyProvider) ResourcesMap() shim.ResourceMap {
+	return resourceMap(p.getSchema().ResourceSchemas)
+}
+
+func (p SchemaOnlyProvider) DataSourcesMap() shim.ResourceMap {
+	return resourceMap(p.getSchema().DataSourceSchemas)
+}
 
 func filter[T any](m []T, keep func(T) bool) []T {
 	for i := len(m) - 1; i >= 0; i-- {
