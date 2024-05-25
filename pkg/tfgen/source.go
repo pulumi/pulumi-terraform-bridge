@@ -33,6 +33,9 @@ type DocsSource interface {
 
 	// Get the bytes for a datasource with TF token rawname.
 	getDatasource(rawname string, info *tfbridge.DocInfo) (*DocFile, error)
+
+	// Get the bytes for the provider installation doc.
+	getInstallation(info *tfbridge.DocInfo) (*DocFile, error)
 }
 
 type DocFile struct {
@@ -70,6 +73,11 @@ func (gh *gitRepoSource) getDatasource(rawname string, info *tfbridge.DocInfo) (
 	return gh.getFile(rawname, info, DataSourceDocs)
 }
 
+func (gh *gitRepoSource) getInstallation(info *tfbridge.DocInfo) (*DocFile, error) {
+	// The installation docs do not have a rawname.
+	return gh.getFile("", info, InstallationDocs)
+}
+
 // getFile implements the private logic necessary to get a file from a TF Git repo's website section.
 func (gh *gitRepoSource) getFile(
 	rawname string, info *tfbridge.DocInfo, kind DocKind,
@@ -86,13 +94,18 @@ func (gh *gitRepoSource) getFile(
 			return nil, fmt.Errorf("repo for token %q: %w", rawname, err)
 		}
 	}
-
-	possibleMarkdownNames := getMarkdownNames(gh.resourcePrefix, rawname, gh.docRules)
-
-	if info != nil && info.Source != "" {
-		possibleMarkdownNames = append(possibleMarkdownNames, info.Source)
+	var possibleMarkdownNames []string
+	switch kind {
+	case InstallationDocs:
+		possibleMarkdownNames = append(possibleMarkdownNames, "index.md", "index.html.markdown")
+	case ResourceDocs, DataSourceDocs:
+		possibleMarkdownNames = getMarkdownNames(gh.resourcePrefix, rawname, gh.docRules)
+		if info != nil && info.Source != "" {
+			possibleMarkdownNames = append(possibleMarkdownNames, info.Source)
+		}
+	default:
+		return nil, fmt.Errorf("unknown docs kind: %s", kind)
 	}
-
 	return readMarkdown(repoPath, kind, possibleMarkdownNames)
 }
 
@@ -197,7 +210,6 @@ func readMarkdown(repo string, kind DocKind, possibleLocations []string) (*DocFi
 	if err != nil {
 		return nil, fmt.Errorf("could not gather location prefix for %q: %w", repo, err)
 	}
-
 	for _, prefix := range locationPrefix {
 		for _, name := range possibleLocations {
 			location := filepath.Join(prefix, name)
@@ -236,6 +248,13 @@ func getDocsPath(repo string, kind DocKind) ([]string, error) {
 
 	var paths []string
 
+	if kind == InstallationDocs {
+		// ${repo}/docs/
+		if p := filepath.Join(repo, "docs"); exists(p) {
+			paths = append(paths, p)
+		}
+		return paths, err
+	}
 	// ${repo}/website/docs/r
 	//
 	// This is the legacy way to describe docs.

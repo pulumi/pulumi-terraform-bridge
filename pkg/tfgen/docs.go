@@ -145,6 +145,8 @@ const (
 	ResourceDocs DocKind = "resources"
 	// DataSourceDocs indicates documentation pertaining to data source entities.
 	DataSourceDocs DocKind = "data-sources"
+	// InstallationDocs indicates documentation pertaining to provider configuration and installation.
+	InstallationDocs DocKind = "installation"
 )
 
 // Create a regexp based replace rule that is bounded by non-ascii letter text.
@@ -1507,7 +1509,6 @@ func (g *Generator) convertExamples(docs string, path examplePath) string {
 			strings.TrimRightFunc(docs[:exampleIndex], unicode.IsSpace),
 			docs[exampleIndex:])
 	}
-
 	if cliConverterEnabled() {
 		return g.cliConverter().StartConvertingExamples(docs, path)
 	}
@@ -1659,7 +1660,6 @@ func (g *Generator) convertExamplesInner(
 					}
 					langs := genLanguageToSlice(g.language)
 					convertedBlock, err := convertHCL(e, hcl, path.String(), langs)
-
 					if err != nil {
 						// We do not write this section, ever.
 						//
@@ -2041,7 +2041,7 @@ func genLanguageToSlice(input Language) []string {
 		return []string{convert.LanguageGo}
 	case PCL:
 		return []string{convert.LanguagePulumi}
-	case Schema:
+	case Schema, RegistryDocs:
 		return []string{
 			convert.LanguageTypescript,
 			convert.LanguagePython,
@@ -2357,4 +2357,112 @@ var (
 
 func guessIsHCL(code string) bool {
 	return guessIsHCLPattern.MatchString(code)
+}
+
+func plainDocsParser(docFile *DocFile, pkgName string, g *Generator) ([]byte, error) {
+	// Replace upstream front matter with Pulumi registry's
+	contentStr, err := replaceUpstreamFrontMatter(string(docFile.Content), pkgName)
+	if err != nil {
+		return nil, err
+	}
+
+	contentStr, err = translateCodeBlocks(contentStr, g)
+
+	//TODO: apply default edit rules
+
+	//TODO: reformat text
+
+	//TODO: Light translation / possible eliding for certain headers such as "Arguments Reference"
+	// or "Configuration block"
+	return []byte(contentStr), nil
+}
+
+func replaceUpstreamFrontMatter(content, pkgName string) (string, error) {
+	// Capitalize the package name
+	capitalize := cases.Title(language.English)
+	pkgName = capitalize.String(pkgName)
+
+	start := strings.Index(content, "---\n")
+	if start == -1 {
+		return "", errors.New("finding front matter")
+	}
+	end := start + len("---\n") + strings.Index(content[start+len("---\n"):], "---\n") + len("---\n")
+
+	newFrontMatter := fmt.Sprintf("---\n"+
+		"title: %s Installation & Configuration\n"+
+		"meta_desc: Provides an overview on how to configure the Pulumi %s Provider.\n"+
+		"layout: package\n"+
+		"---\n",
+		pkgName, pkgName)
+	content = newFrontMatter + content[end:]
+	return content, nil
+}
+
+func translateCodeBlocks(contentStr string, g *Generator) (string, error) {
+
+	var returnContent string
+
+	examples := map[string]string{}
+	// Extract code blocks
+	codeFence := "```"
+	var codeBlocks []codeBlock
+	for i := 0; i < (len(contentStr) - len(codeFence)); i++ {
+		block, found := findCodeBlock(contentStr, i)
+		if found {
+			codeBlocks = append(codeBlocks, block)
+			i = block.end + 1
+		}
+	}
+	if len(codeBlocks) == 0 {
+		return contentStr, nil
+	}
+	startIndex := 0
+	for i, block := range codeBlocks {
+		// Write the content up to the start of the code block
+		returnContent = returnContent + contentStr[startIndex:block.start]
+		nextNewLine := strings.Index(contentStr[block.start:block.end], "\n")
+		if nextNewLine == -1 {
+			//Write the inline block
+			returnContent = returnContent + contentStr[block.start:block.end] + codeFence + "\n"
+			continue
+		}
+		fenceLanguage := contentStr[block.start : block.start+nextNewLine+1]
+		code := contentStr[block.start+nextNewLine+1 : block.end]
+		// Only convert code blocks that we have reasonable suspicion of actually being Terraform.
+		if fenceLanguage == "```terraform\n" || fenceLanguage == "```hcl\n" ||
+			(fenceLanguage == "```\n" && guessIsHCL(code)) {
+
+			//  Make an example to record in the cliConverter.
+			fileName := fmt.Sprintf("configuration-installation-%d", i)
+			examples[fileName] = code
+
+			// Convert to PCL, which is what ConvertViaPulumiCLI does.
+			// This gives us a map of translatedExamples.
+			result, err := g.cliConverter().convertViaPulumiCLI(examples, []tfbridge.ProviderInfo{
+				g.cliConverter().info,
+			})
+			if err != nil {
+				return "", err
+			}
+
+			// Write the result to the pcls map of our cli converter.
+			g.cliConverter().pcls[code] = translatedExample{
+				PCL: result[fileName].PCL, // TODO: hook up to diagnostics if necessary
+			}
+
+			//  Now we can call ConvertHCL
+			exPath := examplePath{fullPath: fileName}
+			var conversionResult *Example
+			conversionResult = g.coverageTracker.getOrCreateExample(
+				exPath.String(), code)
+
+			langs := genLanguageToSlice(g.language)
+			convertedBlock, err := g.convertHCL(conversionResult, code, exPath.String(), langs)
+			returnContent = returnContent + convertedBlock
+			startIndex = block.end + len(codeFence)
+		}
+	}
+	// Write any remainder.
+	returnContent = returnContent + contentStr[codeBlocks[len(codeBlocks)-1].end+len(codeFence):]
+	return returnContent, nil
 }

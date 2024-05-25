@@ -88,12 +88,13 @@ type Generator struct {
 type Language string
 
 const (
-	Golang Language = "go"
-	NodeJS Language = "nodejs"
-	Python Language = "python"
-	CSharp Language = "dotnet"
-	Schema Language = "schema"
-	PCL    Language = "pulumi"
+	Golang       Language = "go"
+	NodeJS       Language = "nodejs"
+	Python       Language = "python"
+	CSharp       Language = "dotnet"
+	Schema       Language = "schema"
+	PCL          Language = "pulumi"
+	RegistryDocs Language = "registry-docs"
 )
 
 func (l Language) shouldConvertExamples() bool {
@@ -787,7 +788,7 @@ func NewGenerator(opts GeneratorOptions) (*Generator, error) {
 
 	// Ensure the language is valid.
 	switch lang {
-	case Golang, NodeJS, Python, CSharp, Schema, PCL:
+	case Golang, NodeJS, Python, CSharp, Schema, PCL, RegistryDocs:
 		// OK
 	default:
 		return nil, errors.Errorf("unrecognized language runtime: %s", lang)
@@ -946,8 +947,26 @@ func (g *Generator) UnstableGenerateFromSchema(genSchemaResult *GenerateSchemaRe
 
 	// Go ahead and let the language generator do its thing. If we're emitting the schema, just go ahead and serialize
 	// it out.
-	var files map[string][]byte
+	files := make(map[string][]byte)
+
 	switch g.language {
+	case RegistryDocs:
+
+		source := NewGitRepoDocsSource(g)
+		info := &tfbridge.ResourceInfo{
+			Tok:    tokens.Type(g.pkg.String()),
+			Fields: g.info.Config,
+		}
+		docInfo := info.GetDocs()
+		pkgName := g.info.Name
+		docFile, err := source.getInstallation(docInfo)
+		content, err := plainDocsParser(docFile, pkgName, g)
+		if err != nil {
+			return errors.Wrapf(err, "failed to stupidly parse the docs")
+		}
+
+		files["installation-configuration.md"] = content
+
 	case Schema:
 		// Omit the version so that the spec is stable if the version is e.g. derived from the current Git commit hash.
 		pulumiPackageSpec.Version = ""
@@ -956,6 +975,7 @@ func (g *Generator) UnstableGenerateFromSchema(genSchemaResult *GenerateSchemaRe
 		if err != nil {
 			return errors.Wrapf(err, "failed to marshal schema")
 		}
+
 		files = map[string][]byte{"schema.json": bytes}
 
 		if info := g.info.MetadataInfo; info != nil {
@@ -1000,8 +1020,10 @@ func (g *Generator) UnstableGenerateFromSchema(genSchemaResult *GenerateSchemaRe
 	}
 
 	// Emit the Pulumi project information.
-	if err = g.emitProjectMetadata(g.pkg, g.language); err != nil {
-		return errors.Wrapf(err, "failed to create project file")
+	if g.language != RegistryDocs {
+		if err = g.emitProjectMetadata(g.pkg, g.language); err != nil {
+			return errors.Wrapf(err, "failed to create project file")
+		}
 	}
 
 	// Close the plugin host.
@@ -1538,7 +1560,7 @@ func (g *Generator) gatherOverlays() (moduleMap, error) {
 		if csharpinfo := g.info.CSharp; csharpinfo != nil {
 			overlay = csharpinfo.Overlay
 		}
-	case Schema, PCL:
+	case Schema, PCL, RegistryDocs:
 		// N/A
 	default:
 		contract.Failf("unrecognized language: %s", g.language)
