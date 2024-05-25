@@ -4,6 +4,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/opentofu/opentofu/internal/tfplugin6"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 func GetMetadataRequest(i *tfprotov6.GetMetadataRequest) *tfplugin6.GetMetadata_Request {
@@ -77,7 +78,7 @@ func diagnostic(i *tfplugin6.Diagnostic) *tfprotov6.Diagnostic {
 		Severity:  diagnosticSeverity(i.Severity),
 		Summary:   i.Summary,
 		Detail:    i.Detail,
-		Attribute: attributePath(i.Attribute),
+		Attribute: attributePathRequest(i.Attribute),
 	}
 }
 func diagnosticSeverity(i tfplugin6.Diagnostic_Severity) tfprotov6.DiagnosticSeverity {
@@ -91,7 +92,7 @@ func diagnosticSeverity(i tfplugin6.Diagnostic_Severity) tfprotov6.DiagnosticSev
 	}
 }
 
-func attributePath(i *tfplugin6.AttributePath) *tftypes.AttributePath {
+func attributePathRequest(i *tfplugin6.AttributePath) *tftypes.AttributePath {
 	if i == nil {
 		return nil
 	}
@@ -444,5 +445,252 @@ func rawStateRequest(i *tfprotov6.RawState) *tfplugin6.RawState {
 	return &tfplugin6.RawState{
 		Json:    i.JSON,
 		Flatmap: i.Flatmap,
+	}
+}
+
+func PlanResourceChangeRequest(i *tfprotov6.PlanResourceChangeRequest) *tfplugin6.PlanResourceChange_Request {
+	if i == nil {
+		return nil
+	}
+
+	return &tfplugin6.PlanResourceChange_Request{
+		TypeName:         i.TypeName,
+		PriorState:       dynamicValueRequest(i.PriorState),
+		ProposedNewState: dynamicValueRequest(i.ProposedNewState),
+		Config:           dynamicValueRequest(i.Config),
+		PriorPrivate:     i.PriorPrivate,
+		ProviderMeta:     dynamicValueRequest(i.ProviderMeta),
+	}
+}
+
+func PlanResourceChangeResponse(i *tfplugin6.PlanResourceChange_Response) *tfprotov6.PlanResourceChangeResponse {
+	if i == nil {
+		return nil
+	}
+
+	return &tfprotov6.PlanResourceChangeResponse{
+		PlannedState:                dynamicValueResponse(i.PlannedState),
+		RequiresReplace:             attributePathsResponse(i.RequiresReplace),
+		PlannedPrivate:              i.PlannedPrivate,
+		Diagnostics:                 diagnostics(i.Diagnostics),
+		UnsafeToUseLegacyTypeSystem: i.LegacyTypeSystem,
+		Deferred:                    nil, // tfplugin does not have a deferred concept
+	}
+}
+
+func attributePathsResponse(i []*tfplugin6.AttributePath) []*tftypes.AttributePath {
+	return applyArray(i, attributePathResponse)
+}
+
+func attributePathResponse(i *tfplugin6.AttributePath) *tftypes.AttributePath {
+	if i == nil {
+		return nil
+	}
+
+	steps := make([]tftypes.AttributePathStep, len(i.Steps))
+	for i, v := range i.Steps {
+		switch v := v.GetSelector().(type) {
+		case *tfplugin6.AttributePath_Step_AttributeName:
+			steps[i] = tftypes.AttributeName(v.AttributeName)
+		case *tfplugin6.AttributePath_Step_ElementKeyInt:
+			steps[i] = tftypes.ElementKeyInt(v.ElementKeyInt)
+		case *tfplugin6.AttributePath_Step_ElementKeyString:
+			steps[i] = tftypes.ElementKeyString(v.ElementKeyString)
+		default:
+			contract.Failf("%d: unknown attribute path of type %T", i, v)
+		}
+	}
+
+	return tftypes.NewAttributePathWithSteps(steps)
+}
+
+func ApplyResourceChangeRequest(i *tfprotov6.ApplyResourceChangeRequest) *tfplugin6.ApplyResourceChange_Request {
+	if i == nil {
+		return nil
+	}
+
+	return &tfplugin6.ApplyResourceChange_Request{
+		TypeName:       i.TypeName,
+		PriorState:     dynamicValueRequest(i.PriorState),
+		PlannedState:   dynamicValueRequest(i.PlannedState),
+		Config:         dynamicValueRequest(i.Config),
+		PlannedPrivate: i.PlannedPrivate,
+		ProviderMeta:   dynamicValueRequest(i.ProviderMeta),
+	}
+}
+
+func ApplyResourceChangeResponse(i *tfplugin6.ApplyResourceChange_Response) *tfprotov6.ApplyResourceChangeResponse {
+	if i == nil {
+		return nil
+	}
+
+	return &tfprotov6.ApplyResourceChangeResponse{
+		NewState:                    dynamicValueResponse(i.NewState),
+		Private:                     i.Private,
+		Diagnostics:                 diagnostics(i.Diagnostics),
+		UnsafeToUseLegacyTypeSystem: i.LegacyTypeSystem,
+	}
+}
+
+func ImportResourceStateRequest(i *tfprotov6.ImportResourceStateRequest) *tfplugin6.ImportResourceState_Request {
+	if i == nil {
+		return nil
+	}
+
+	return &tfplugin6.ImportResourceState_Request{
+		TypeName: i.TypeName,
+		Id:       i.ID,
+	}
+}
+
+func ImportResourceStateResponse(i *tfplugin6.ImportResourceState_Response) *tfprotov6.ImportResourceStateResponse {
+	if i == nil {
+		return nil
+	}
+
+	return &tfprotov6.ImportResourceStateResponse{
+		ImportedResources: importedResources(i.ImportedResources),
+		Diagnostics:       diagnostics(i.Diagnostics),
+		Deferred:          nil, // tfplugin6 does not support Deferred
+	}
+}
+
+func importedResources(i []*tfplugin6.ImportResourceState_ImportedResource) []*tfprotov6.ImportedResource {
+	return applyArray(i, importedResource)
+}
+
+func importedResource(i *tfplugin6.ImportResourceState_ImportedResource) *tfprotov6.ImportedResource {
+	if i == nil {
+		return nil
+	}
+
+	return &tfprotov6.ImportedResource{
+		TypeName: i.TypeName,
+		State:    dynamicValueResponse(i.State),
+		Private:  i.Private,
+	}
+}
+
+func ValidateDataResourceConfigRequest(i *tfprotov6.ValidateDataResourceConfigRequest) *tfplugin6.ValidateDataResourceConfig_Request {
+	if i == nil {
+		return nil
+	}
+
+	return &tfplugin6.ValidateDataResourceConfig_Request{
+		TypeName: i.TypeName,
+		Config:   dynamicValueRequest(i.Config),
+	}
+}
+
+func ValidateDataResourceConfigResponse(i *tfplugin6.ValidateDataResourceConfig_Response) *tfprotov6.ValidateDataResourceConfigResponse {
+	if i == nil {
+		return nil
+	}
+
+	return &tfprotov6.ValidateDataResourceConfigResponse{
+		Diagnostics: diagnostics(i.Diagnostics),
+	}
+}
+
+func MoveResourceStateRequest(i *tfprotov6.MoveResourceStateRequest) *tfplugin6.MoveResourceState_Request {
+	if i == nil {
+		return nil
+	}
+
+	return &tfplugin6.MoveResourceState_Request{
+		SourceProviderAddress: i.SourceProviderAddress,
+		SourceTypeName:        i.SourceTypeName,
+		SourceSchemaVersion:   i.SourceSchemaVersion,
+		SourceState:           rawStateRequest(i.SourceState),
+		TargetTypeName:        i.TargetTypeName,
+		SourcePrivate:         i.SourcePrivate,
+	}
+}
+
+func MoveResourceStateResponse(i *tfplugin6.MoveResourceState_Response) *tfprotov6.MoveResourceStateResponse {
+	if i == nil {
+		return nil
+	}
+
+	return &tfprotov6.MoveResourceStateResponse{
+		TargetPrivate: i.TargetPrivate,
+		TargetState:   dynamicValueResponse(i.TargetState),
+		Diagnostics:   diagnostics(i.Diagnostics),
+	}
+}
+
+func ReadDataSourceRequest(i *tfprotov6.ReadDataSourceRequest) *tfplugin6.ReadDataSource_Request {
+	if i == nil {
+		return nil
+	}
+
+	return &tfplugin6.ReadDataSource_Request{
+		TypeName:     i.TypeName,
+		Config:       dynamicValueRequest(i.Config),
+		ProviderMeta: dynamicValueRequest(i.ProviderMeta),
+	}
+}
+
+func ReadDataSourceResponse(i *tfplugin6.ReadDataSource_Response) *tfprotov6.ReadDataSourceResponse {
+	if i == nil {
+		return nil
+	}
+
+	return &tfprotov6.ReadDataSourceResponse{
+		State:       dynamicValueResponse(i.State),
+		Diagnostics: diagnostics(i.Diagnostics),
+		Deferred:    nil, // tfplugin6 does not support deferred
+	}
+}
+
+func CallFunctionRequest(i *tfprotov6.CallFunctionRequest) *tfplugin6.CallFunction_Request {
+	if i == nil {
+		return nil
+	}
+
+	return &tfplugin6.CallFunction_Request{
+		Name:      i.Name,
+		Arguments: applyArray(i.Arguments, dynamicValueRequest),
+	}
+}
+
+func CallFunctionResponse(i *tfplugin6.CallFunction_Response) *tfprotov6.CallFunctionResponse {
+	if i == nil {
+		return nil
+	}
+
+	return &tfprotov6.CallFunctionResponse{
+		Error:  functionError(i.Error),
+		Result: dynamicValueResponse(i.Result),
+	}
+}
+
+func functionError(i *tfplugin6.FunctionError) *tfprotov6.FunctionError {
+	if i == nil {
+		return nil
+	}
+
+	return &tfprotov6.FunctionError{
+		Text:             i.Text,
+		FunctionArgument: i.FunctionArgument,
+	}
+}
+
+func GetFunctionsRequest(i *tfprotov6.GetFunctionsRequest) *tfplugin6.GetFunctions_Request {
+	if i == nil {
+		return nil
+	}
+
+	return &tfplugin6.GetFunctions_Request{}
+}
+
+func GetFunctionsResponse(i *tfplugin6.GetFunctions_Response) *tfprotov6.GetFunctionsResponse {
+	if i == nil {
+		return nil
+	}
+
+	return &tfprotov6.GetFunctionsResponse{
+		Diagnostics: diagnostics(i.Diagnostics),
+		Functions:   applyMap(i.Functions, function),
 	}
 }

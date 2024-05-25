@@ -129,24 +129,24 @@ func (p shimProvider) ReadResource(ctx context.Context, req *tfprotov6.ReadResou
 // calculate a plan for a resource. Terraform will suggest a proposed
 // new state, which the provider can modify or return unmodified to
 // influence Terraform's plan.
-func (p shimProvider) PlanResourceChange(context.Context, *tfprotov6.PlanResourceChangeRequest) (*tfprotov6.PlanResourceChangeResponse, error) {
-	panic("UNIMPLIMENTED")
+func (p shimProvider) PlanResourceChange(ctx context.Context, req *tfprotov6.PlanResourceChangeRequest) (*tfprotov6.PlanResourceChangeResponse, error) {
+	return translateGRPC(ctx, p.remote.PlanResourceChange, tfplugin6.PlanResourceChangeRequest(req), tfplugin6.PlanResourceChangeResponse)
 }
 
 // ApplyResourceChange is called when Terraform has detected a diff
 // between the resource's state and the user's config, and the user has
 // approved a planned change. The provider is to apply the changes
 // contained in the plan, and return the resulting state.
-func (p shimProvider) ApplyResourceChange(context.Context, *tfprotov6.ApplyResourceChangeRequest) (*tfprotov6.ApplyResourceChangeResponse, error) {
-	panic("UNIMPLIMENTED")
+func (p shimProvider) ApplyResourceChange(ctx context.Context, req *tfprotov6.ApplyResourceChangeRequest) (*tfprotov6.ApplyResourceChangeResponse, error) {
+	return translateGRPC(ctx, p.remote.ApplyResourceChange, tfplugin6.ApplyResourceChangeRequest(req), tfplugin6.ApplyResourceChangeResponse)
 }
 
 // ImportResourceState is called when a user has requested Terraform
 // import a resource. The provider should fetch the information
 // specified by the passed ID and return it as one or more resource
 // states for Terraform to assume control of.
-func (p shimProvider) ImportResourceState(context.Context, *tfprotov6.ImportResourceStateRequest) (*tfprotov6.ImportResourceStateResponse, error) {
-	panic("UNIMPLIMENTED")
+func (p shimProvider) ImportResourceState(ctx context.Context, req *tfprotov6.ImportResourceStateRequest) (*tfprotov6.ImportResourceStateResponse, error) {
+	return translateGRPC(ctx, p.remote.ImportResourceState, tfplugin6.ImportResourceStateRequest(req), tfplugin6.ImportResourceStateResponse)
 }
 
 // ValidateDataResourceConfig is called when Terraform is checking that a
@@ -154,8 +154,8 @@ func (p shimProvider) ImportResourceState(context.Context, *tfprotov6.ImportReso
 // conforming to your schema, but it is not guaranteed that all values
 // will be known. This is your opportunity to do custom or advanced
 // validation prior to a plan being generated.
-func (p shimProvider) ValidateDataResourceConfig(context.Context, *tfprotov6.ValidateDataResourceConfigRequest) (*tfprotov6.ValidateDataResourceConfigResponse, error) {
-	panic("UNIMPLIMENTED")
+func (p shimProvider) ValidateDataResourceConfig(ctx context.Context, req *tfprotov6.ValidateDataResourceConfigRequest) (*tfprotov6.ValidateDataResourceConfigResponse, error) {
+	return translateGRPC(ctx, p.remote.ValidateDataResourceConfig, tfplugin6.ValidateDataResourceConfigRequest(req), tfplugin6.ValidateDataResourceConfigResponse)
 }
 
 // MoveResourceState is called when Terraform is asked to change a resource
@@ -167,24 +167,24 @@ func (p shimProvider) ValidateDataResourceConfig(context.Context, *tfprotov6.Val
 // This functionality is only supported in Terraform 1.8 and later. The
 // provider must have enabled the MoveResourceState server capability to
 // enable these requests.
-func (p shimProvider) MoveResourceState(context.Context, *tfprotov6.MoveResourceStateRequest) (*tfprotov6.MoveResourceStateResponse, error) {
-	panic("UNIMPLIMENTED")
+func (p shimProvider) MoveResourceState(ctx context.Context, req *tfprotov6.MoveResourceStateRequest) (*tfprotov6.MoveResourceStateResponse, error) {
+	return translateGRPC(ctx, p.remote.MoveResourceState, tfplugin6.MoveResourceStateRequest(req), tfplugin6.MoveResourceStateResponse)
 }
 
 // ReadDataSource is called when Terraform is refreshing a data
 // source's state.
-func (p shimProvider) ReadDataSource(context.Context, *tfprotov6.ReadDataSourceRequest) (*tfprotov6.ReadDataSourceResponse, error) {
-	panic("UNIMPLIMENTED")
+func (p shimProvider) ReadDataSource(ctx context.Context, req *tfprotov6.ReadDataSourceRequest) (*tfprotov6.ReadDataSourceResponse, error) {
+	return translateGRPC(ctx, p.remote.ReadDataSource, tfplugin6.ReadDataSourceRequest(req), tfplugin6.ReadDataSourceResponse)
 }
 
 // CallFunction is called when Terraform wants to execute the logic of a
 // function referenced in the configuration.
-func (p shimProvider) CallFunction(context.Context, *tfprotov6.CallFunctionRequest) (*tfprotov6.CallFunctionResponse, error) {
-	panic("UNIMPLIMENTED")
+func (p shimProvider) CallFunction(ctx context.Context, req *tfprotov6.CallFunctionRequest) (*tfprotov6.CallFunctionResponse, error) {
+	return translateGRPC(ctx, p.remote.CallFunction, tfplugin6.CallFunctionRequest(req), tfplugin6.CallFunctionResponse)
 }
 
 // GetFunctions is called when Terraform wants to lookup which functions a
 // provider supports when not calling GetProviderSchema.
-func (p shimProvider) GetFunctions(context.Context, *tfprotov6.GetFunctionsRequest) (*tfprotov6.GetFunctionsResponse, error) {
-	panic("UNIMPLIMENTED")
+func (p shimProvider) GetFunctions(ctx context.Context, req *tfprotov6.GetFunctionsRequest) (*tfprotov6.GetFunctionsResponse, error) {
+	return translateGRPC(ctx, p.remote.GetFunctions, tfplugin6.GetFunctionsRequest(req), tfplugin6.GetFunctionsResponse)
 }
