@@ -31,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
@@ -49,7 +50,6 @@ import (
 //
 // https://www.terraform.io/plugin/framework
 type provider struct {
-	tfProvider    pfprovider.Provider
 	tfServer      tfprotov6.ProviderServer
 	info          tfbridge.ProviderInfo
 	resources     pfutils.Resources
@@ -97,14 +97,40 @@ func newProviderWithContext(ctx context.Context, info tfbridge.ProviderInfo,
 	meta ProviderMetadata) (pl.ProviderWithContext, error) {
 	const infoPErrMSg string = "info.P must be constructed with ShimProvider or ShimProviderWithContext"
 
-	var server6 tfprotov6.ProviderServer
+	var (
+		server6            tfprotov6.ProviderServer
+		resources          pfutils.Resources
+		datasources        pfutils.DataSources
+		providerConfigType *tftypes.Object
+	)
 	switch p := info.P.(type) {
 	case *schemashim.SchemaOnlyProvider:
+
 		var err error
 		server6, err = newProviderServer6(ctx, p.PfProvider())
 		if err != nil {
 			return nil, fmt.Errorf("Fatal failure starting a provider server: %w", err)
 		}
+		resources, err = pfutils.GatherResources(ctx, p.PfProvider())
+		if err != nil {
+			return nil, fmt.Errorf("Fatal failure gathering resource metadata: %w", err)
+		}
+
+		datasources, err = pfutils.GatherDatasources(ctx, p.PfProvider())
+		if err != nil {
+			return nil, fmt.Errorf("Fatal failure gathering datasource metadata: %w", err)
+		}
+
+		schemaResponse := &pfprovider.SchemaResponse{}
+		p.PfProvider().Schema(ctx, pfprovider.SchemaRequest{}, schemaResponse)
+		schema, diags := schemaResponse.Schema, schemaResponse.Diagnostics
+		if diags.HasError() {
+			return nil, fmt.Errorf("Schema() returned diagnostics with HasError")
+		}
+
+		c := schema.Type().TerraformType(ctx).(tftypes.Object)
+		providerConfigType = &c
+
 	case *proto.Provider:
 		server6 = p.Server
 	case nil:
@@ -113,32 +139,16 @@ func newProviderWithContext(ctx context.Context, info tfbridge.ProviderInfo,
 		return nil, fmt.Errorf("Unknown inner type for info.P: %T, %s", p, infoPErrMSg)
 	}
 
-	resources, err := pfutils.GatherResources(ctx, p)
-	if err != nil {
-		return nil, fmt.Errorf("Fatal failure gathering resource metadata: %w", err)
-	}
-
-	datasources, err := pfutils.GatherDatasources(ctx, p)
-	if err != nil {
-		return nil, fmt.Errorf("Fatal failure gathering datasource metadata: %w", err)
-	}
+	contract.Assertf(resources != nil, "resources must be set")
+	contract.Assertf(datasources != nil, "datasources must be set")
+	contract.Assertf(providerConfigType != nil, "providerConfigType must be set")
 
 	if info.MetadataInfo == nil {
 		return nil, fmt.Errorf("[pf/tfbridge] ProviderInfo.BridgeMetadata is required but is nil")
 	}
 
 	enc := convert.NewEncoding(info.P, &info)
-
-	schemaResponse := &pfprovider.SchemaResponse{}
-	p.Schema(ctx, pfprovider.SchemaRequest{}, schemaResponse)
-	schema, diags := schemaResponse.Schema, schemaResponse.Diagnostics
-	if diags.HasError() {
-		return nil, fmt.Errorf("Schema() returned diagnostics with HasError")
-	}
-
-	providerConfigType := schema.Type().TerraformType(ctx).(tftypes.Object)
-
-	configEncoder, err := enc.NewConfigEncoder(providerConfigType)
+	configEncoder, err := enc.NewConfigEncoder(*providerConfigType)
 	if err != nil {
 		return nil, fmt.Errorf("NewConfigEncoder failed: %w", err)
 	}
@@ -150,7 +160,6 @@ func newProviderWithContext(ctx context.Context, info tfbridge.ProviderInfo,
 	}
 
 	return &provider{
-		tfProvider:         p,
 		tfServer:           server6,
 		info:               info,
 		resources:          resources,
@@ -158,7 +167,7 @@ func newProviderWithContext(ctx context.Context, info tfbridge.ProviderInfo,
 		pulumiSchema:       meta.PackageSchema,
 		encoding:           enc,
 		configEncoder:      configEncoder,
-		configType:         providerConfigType,
+		configType:         *providerConfigType,
 		version:            semverVersion,
 		schemaOnlyProvider: info.P,
 	}, nil
