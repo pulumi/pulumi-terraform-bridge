@@ -1,5 +1,5 @@
-[![Build Status](https://travis-ci.com/pulumi/pulumi-terraform-bridge.svg?token=cTUUEgrxaTEGyecqJpDn&branch=master)](https://travis-ci.com/pulumi/pulumi-terraform-bridge)
-[![Go Report Card](https://goreportcard.com/badge/github.com/pulumi/pulumi-terraform-bridge)](https://goreportcard.com/report/github.com/pulumi/pulumi-terraform-bridge)
+[![Build Status](https://github.com/pulumi/pulumi-terraform-bridge/actions/workflows/master.yml/badge.svg)](https://github.com/pulumi/pulumi-terraform-bridge/actions/workflows/master.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/pulumi/pulumi-terraform-bridge)](https://goreportcard.com/report/github.com/pulumi/pulumi-terraform-bridge/v3)
 [![GoDoc](https://godoc.org/github.com/pulumi/pulumi-terraform-bridge?status.svg)](https://godoc.org/github.com/pulumi/pulumi-terraform-bridge/v3)
 
 # Pulumi Terraform Bridge
