@@ -130,7 +130,7 @@ func newProviderWithContext(ctx context.Context, info tfbridge.ProviderInfo,
 		c := schema.Type().TerraformType(ctx).(tftypes.Object)
 		providerConfigType = &c
 
-	case *proto.Provider:
+	case proto.Provider:
 		server6 = p.Server()
 
 		resources = p.GatherResources()

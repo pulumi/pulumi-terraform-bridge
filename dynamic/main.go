@@ -22,7 +22,7 @@ import (
 	"os"
 
 	"github.com/opentofu/opentofu/shim"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -56,5 +56,7 @@ func main() {
 	schemaBytes, err := json.Marshal(packageSchema.PackageSpec)
 	contract.AssertNoErrorf(err, "This is a provider bug, the SchemaSpec should always marshal.")
 
-	tfbridge.Main(p.Name(), info.Version, info, schemaBytes)
+	tfbridge.Main(ctx, p.Name(), info, tfbridge.ProviderMetadata{
+		PackageSchema: schemaBytes,
+	})
 }

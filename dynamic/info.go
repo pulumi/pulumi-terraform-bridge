@@ -33,6 +33,10 @@ func providerInfo(ctx context.Context, p shim.Provider) tfbridge.ProviderInfo {
 
 		// To avoid bogging down schema generation speed, we skip all examples.
 		SkipExamples: func(tfbridge.SkipExamplesArgs) bool { return true },
+
+		MetadataInfo: &tfbridge.MetadataInfo{
+			Path: "", Data: tfbridge.ProviderMetadata(nil),
+		},
 	}
 
 	prov.MustComputeTokens(tokens.SingleModule(p.Name()+"_", "index", tokens.MakeStandard(p.Name())))
