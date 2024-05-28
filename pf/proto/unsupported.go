@@ -31,7 +31,9 @@ func (Provider) Diff(
 	panic("Unimplemented")
 }
 
-func (Provider) Apply(ctx context.Context, t string, s shim.InstanceState, d shim.InstanceDiff) (shim.InstanceState, error) {
+func (Provider) Apply(
+	ctx context.Context, t string, s shim.InstanceState, d shim.InstanceDiff,
+) (shim.InstanceState, error) {
 	panic("Unimplemented")
 }
 
