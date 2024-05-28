@@ -146,21 +146,14 @@ func (cc *cliConverter) FinishConvertingExamples(p pschema.PackageSpec) pschema.
 
 	bytes, err := json.Marshal(p)
 	contract.AssertNoErrorf(err, "json.Marshal failed on PackageSpec")
-	re := regexp.MustCompile("[{]convertExamples[:]([^}]+)[}]")
 
 	// Convert all stubs populated by StartConvertingExamples.
-	fixedBytes := re.ReplaceAllFunc(bytes, func(match []byte) []byte {
-		groups := re.FindSubmatch(match)
-		i, err := strconv.Atoi(string(groups[1]))
-		contract.AssertNoErrorf(err, "strconv.Atoi")
-		ex := cc.convertExamplesList[i]
-
-		// Use coverage tracker here on the second pass.
-		useCoverageTracker := true
-		source := cc.generator.convertExamplesInner(ex.docs, ex.path, cc.generator.convertHCL, useCoverageTracker)
+	// Use coverage tracker here on the second pass; it was disabled during StartPopulatingExamples.
+	useCovTracker := true
+	fixedBytes := cc.finishConvertingExamples(bytes, useCovTracker, func(code []byte) []byte {
 		// JSON-escaping to splice into JSON string literals.
-		bytes, err := json.Marshal(source)
-		contract.AssertNoErrorf(err, "json.Masrhal(sourceCode)")
+		bytes, err := json.Marshal(code)
+		contract.AssertNoErrorf(err, "json.Masrhal(code)")
 		return bytes[1 : len(bytes)-1]
 	})
 
@@ -168,6 +161,21 @@ func (cc *cliConverter) FinishConvertingExamples(p pschema.PackageSpec) pschema.
 	err = json.Unmarshal(fixedBytes, &result)
 	contract.AssertNoErrorf(err, "json.Unmarshal failed to recover PackageSpec")
 	return result
+}
+
+func (cc *cliConverter) finishConvertingExamples(bytes []byte, useCovTracker bool, tr func([]byte) []byte) []byte {
+	re := regexp.MustCompile("[{]convertExamples[:]([^}]+)[}]")
+	return re.ReplaceAllFunc(bytes, func(match []byte) []byte {
+		groups := re.FindSubmatch(match)
+		i, err := strconv.Atoi(string(groups[1]))
+		contract.AssertNoErrorf(err, "strconv.Atoi")
+		ex := cc.convertExamplesList[i]
+		code := cc.generator.convertExamplesInner(ex.docs, ex.path, cc.generator.convertHCL, useCovTracker)
+		if tr != nil {
+			return tr([]byte(code))
+		}
+		return []byte(code)
+	})
 }
 
 const cliConverterErrUnexpectedHCLSnippet = "unexpected HCL snippet in Convert"
