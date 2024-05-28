@@ -105,8 +105,10 @@ def repo_actions_url(repo: str) -> str:
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--hash", required=True)
+    ap.add_argument("--show-closed", action="store_true")
     args = ap.parse_args()
     c = args.hash
+    show_closed: bool = args.show_closed
 
     replaced_query = QUERY.replace("???", c)
     token = sp.check_output(["gh", "auth", "token"]).decode("utf-8").strip()
@@ -122,10 +124,13 @@ def main():
 
         provider_map[repo.removeprefix("pulumi-")] = True
 
+        sentinel_status = get_sentinel_status(pr_checks)
+
         if closed:
+            if show_closed:
+                print("CLOSED", sentinel_status, url)
             continue
 
-        sentinel_status = get_sentinel_status(pr_checks)
         if sentinel_status == "SUCCESS":
             print("SUCCESS", url)
             sp.check_call(["gh", "pr", "close", url])
