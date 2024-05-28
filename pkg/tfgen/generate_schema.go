@@ -1022,11 +1022,7 @@ func (g *Generator) convertExamplesInSchema(spec pschema.PackageSpec) pschema.Pa
 		spec.Functions[token] = g.convertExamplesInFunctionSpec(path, function)
 	}
 
-	if cliConverterEnabled() {
-		return g.cliConverter().FinishConvertingExamples(spec)
-	}
-
-	return spec
+	return g.cliConverter().FinishConvertingExamples(spec)
 }
 
 func addExtraHclExamplesToResources(extraExamples []tfbridge.HclExampler, spec *pschema.PackageSpec) error {

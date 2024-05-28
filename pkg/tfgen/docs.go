@@ -1505,13 +1505,7 @@ func (g *Generator) convertExamples(docs string, path examplePath) string {
 			docs[exampleIndex:])
 	}
 
-	if cliConverterEnabled() {
-		return g.cliConverter().StartConvertingExamples(docs, path)
-	}
-
-	// Use coverage tracker: on by default.
-	cov := true
-	return g.convertExamplesInner(docs, path, g.convertHCL, cov)
+	return g.cliConverter().StartConvertingExamples(docs, path)
 }
 
 // codeBlock represents a code block found in the upstream docs, delineated by code fences (```).
