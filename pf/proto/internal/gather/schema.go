@@ -26,7 +26,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/pfutils"
 )
 
-type schema struct{ s tfprotov6.Schema }
+type schema struct{ s *tfprotov6.Schema }
 
 var _ = pfutils.Schema(schema{})
 
@@ -39,15 +39,15 @@ func (s schema) Type() attr.Type { return _type{s.s.ValueType()} }
 func (s schema) Attrs() map[string]pfutils.Attr {
 	attrs := make(map[string]pfutils.Attr, len(s.s.Block.Attributes))
 	for _, v := range s.s.Block.Attributes {
-		attrs[v.Name] = attr{v}
+		attrs[v.Name] = _attr{v}
 	}
 	return attrs
 }
 
 func (s schema) Blocks() map[string]pfutils.Block {
-	block := make(map[string]pfutils.Block, len(s.s.Block.Attributes))
-	for _, v := range s.s.Block.Attributes {
-		block[v.Name] = block{v}
+	block := make(map[string]pfutils.Block, len(s.s.Block.BlockTypes))
+	for _, v := range s.s.Block.BlockTypes {
+		block[v.TypeName] = _block{v}
 	}
 	return block
 

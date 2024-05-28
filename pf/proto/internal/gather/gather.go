@@ -27,11 +27,8 @@ type getSchema = func() *tfprotov6.GetProviderSchemaResponse
 
 func Resources(p getSchema) pfutils.Resources { return resources{p} }
 
-func DataSources(p getSchema) pfutils.DataSources { return datasources{p} }
-
 type (
-	resources   struct{ schema getSchema }
-	dataSources struct{ schema getSchema }
+	resources struct{ schema getSchema }
 )
 
 func (r resources) All() []pfutils.TypeName {
