@@ -55,7 +55,7 @@ var metadata []byte
 
 ### Giving `ProviderInfo` a reference to the metadata file
 
-    Now that `bridge-metadata.json` is embedded as the `metadata` variable, we need to give the returned `tfbridge.ProviderInfo` access. We do that by setting the `MetadataInfo` field on `tfbridge.ProviderInfo`:
+Now that `bridge-metadata.json` is embedded as the `metadata` variable, we need to give the returned `tfbridge.ProviderInfo` access. We do that by setting the `MetadataInfo` field on `tfbridge.ProviderInfo`:
 
 ```
 import "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
