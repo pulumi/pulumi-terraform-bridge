@@ -1,8 +1,8 @@
 package crosstests
 
 import (
-	"fmt"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -101,46 +101,91 @@ func TestInputsEqualObjectBasic(t *testing.T) {
 	}
 }
 
-func TestInputsEqualEmptyList(t *testing.T) {
+func TestInputsConfigModeEqual(t *testing.T) {
 	skipUnlessLinux(t)
-	for _, maxItems := range []int{0, 1} {
-		for _, configMode := range []schema.SchemaConfigMode{schema.SchemaConfigModeAuto, schema.SchemaConfigModeBlock, schema.SchemaConfigModeAttr} {
-			name := fmt.Sprintf("MaxItems: %v, ConfigMode: %v", maxItems, configMode)
-			t.Run(name, func(t *testing.T) {
-				t1 := tftypes.List{ElementType: tftypes.String}
-				t0 := tftypes.Object{
-					AttributeTypes: map[string]tftypes.Type{
-						"f0": t1,
-					},
-				}
-				runCreateInputCheck(t, inputTestCase{
-					Resource: &schema.Resource{
-						Schema: map[string]*schema.Schema{
-							"f0": {
-								Optional:   true,
-								Type:       schema.TypeList,
-								MaxItems:   maxItems,
-								ConfigMode: configMode,
-								Elem: &schema.Resource{
-									Schema: map[string]*schema.Schema{
-										"x": {Optional: true, Type: schema.TypeString},
-									},
+	t2 := tftypes.Object{AttributeTypes: map[string]tftypes.Type{
+		"x": tftypes.String,
+	}}
+
+	t1 := tftypes.List{ElementType: t2}
+	t0 := tftypes.Object{
+		AttributeTypes: map[string]tftypes.Type{
+			"f0": t1,
+		},
+	}
+	t3 := tftypes.Object{}
+
+	emptyConfig := tftypes.NewValue(
+		t3,
+		map[string]tftypes.Value{},
+	)
+
+	emptyListConfig := tftypes.NewValue(
+		t0,
+		map[string]tftypes.Value{
+			"f0": tftypes.NewValue(t1, []tftypes.Value{}),
+		},
+	)
+
+	nonEmptyConfig := tftypes.NewValue(
+		t0,
+		map[string]tftypes.Value{
+			"f0": tftypes.NewValue(t1, []tftypes.Value{
+				tftypes.NewValue(t2, map[string]tftypes.Value{
+					"x": tftypes.NewValue(tftypes.String, "val"),
+				}),
+			}),
+		},
+	)
+
+	for _, tc := range []struct {
+		name       string
+		config     tftypes.Value
+		maxItems   int
+		configMode schema.SchemaConfigMode
+	}{
+		{"MaxItems: 0, ConfigMode: Auto, Empty", emptyConfig, 0, schema.SchemaConfigModeAuto},
+		{"MaxItems: 0, ConfigMode: Auto, EmptyList", emptyListConfig, 0, schema.SchemaConfigModeAuto},
+		{"MaxItems: 0, ConfigMode: Auto, NonEmpty", nonEmptyConfig, 0, schema.SchemaConfigModeAuto},
+		{"MaxItems: 0, ConfigMode: Block, Empty", emptyConfig, 0, schema.SchemaConfigModeBlock},
+		{"MaxItems: 0, ConfigMode: Block, EmptyList", emptyListConfig, 0, schema.SchemaConfigModeBlock},
+		{"MaxItems: 0, ConfigMode: Block, NonEmpty", nonEmptyConfig, 0, schema.SchemaConfigModeBlock},
+		{"MaxItems: 0, ConfigMode: Attr, Empty", emptyConfig, 0, schema.SchemaConfigModeAttr},
+		{"MaxItems: 0, ConfigMode: Attr, EmptyList", emptyListConfig, 0, schema.SchemaConfigModeAttr},
+		{"MaxItems: 0, ConfigMode: Attr, NonEmpty", nonEmptyConfig, 0, schema.SchemaConfigModeAttr},
+		{"MaxItems: 1, ConfigMode: Auto, Empty", emptyConfig, 1, schema.SchemaConfigModeAuto},
+		{"MaxItems: 1, ConfigMode: Auto, EmptyList", emptyListConfig, 1, schema.SchemaConfigModeAuto},
+		{"MaxItems: 1, ConfigMode: Auto, NonEmpty", nonEmptyConfig, 1, schema.SchemaConfigModeAuto},
+		{"MaxItems: 1, ConfigMode: Block, Empty", emptyConfig, 1, schema.SchemaConfigModeBlock},
+		{"MaxItems: 1, ConfigMode: Block, EmptyList", emptyListConfig, 1, schema.SchemaConfigModeBlock},
+		{"MaxItems: 1, ConfigMode: Block, NonEmpty", nonEmptyConfig, 1, schema.SchemaConfigModeBlock},
+		{"MaxItems: 1, ConfigMode: Attr, Empty", emptyConfig, 1, schema.SchemaConfigModeAttr},
+		// TODO[pulumi/pulumi-terraform-bridge#2025]
+		// This is not expressible in pulumi after the ConfigModeOne flattening.
+		// {"MaxItems: 1, ConfigMode: Attr, EmptyList", emptyListConfig, 1, schema.SchemaConfigModeAttr},
+		{"MaxItems: 1, ConfigMode: Attr, NonEmpty", nonEmptyConfig, 1, schema.SchemaConfigModeAttr},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			runCreateInputCheck(t, inputTestCase{
+				Resource: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"f0": {
+							Optional:   true,
+							Type:       schema.TypeList,
+							MaxItems:   tc.maxItems,
+							ConfigMode: tc.configMode,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									"x": {Optional: true, Type: schema.TypeString},
 								},
 							},
 						},
 					},
-					Config: tftypes.NewValue(
-						t0,
-						map[string]tftypes.Value{
-							"f0": tftypes.NewValue(t1, []tftypes.Value{}),
-						},
-					),
-					// TODO[pulumi/pulumi-terraform-bridge#1915]
-					SkipCompareRawPlan:   true,
-					SkipCompareRawConfig: true,
-				})
+				},
+				Config:               tc.config,
+				SkipCompareRawConfig: true,
 			})
-		}
+		})
 	}
 }
 
@@ -166,42 +211,6 @@ func TestInputsEmptyString(t *testing.T) {
 				"f0": tftypes.NewValue(tftypes.String, ""),
 			},
 		),
-	})
-}
-
-// Isolated from rapid-generated tests
-func TestInputsEmptyConfigModeAttrSet(t *testing.T) {
-	skipUnlessLinux(t)
-	t2 := tftypes.Object{AttributeTypes: map[string]tftypes.Type{
-		"f0": tftypes.String,
-	}}
-	t0 := tftypes.Object{AttributeTypes: map[string]tftypes.Type{
-		"f1": tftypes.Set{ElementType: t2},
-	}}
-
-	runCreateInputCheck(t, inputTestCase{
-		Resource: &schema.Resource{
-			Schema: map[string]*schema.Schema{
-				"f1": {
-					Type:       schema.TypeSet,
-					ConfigMode: schema.SchemaConfigMode(1),
-					Optional:   true,
-					Elem: &schema.Resource{Schema: map[string]*schema.Schema{
-						"f0": {
-							Type:     schema.TypeString,
-							Optional: true,
-							ForceNew: true,
-						},
-					}},
-					MaxItems: 1,
-				},
-			},
-		},
-		Config: tftypes.NewValue(t0, map[string]tftypes.Value{
-			"f1": tftypes.NewValue(tftypes.Set{ElementType: t2}, []tftypes.Value{}),
-		}),
-		// TODO[pulumi/pulumi-terraform-bridge#1762]
-		SkipCompareRawConfig: true,
 	})
 }
 
@@ -313,8 +322,7 @@ func TestInputsEmptyCollections(t *testing.T) {
 						},
 					},
 				},
-				Config: config,
-				// TODO[pulumi/pulumi-terraform-bridge#1971]: We don't handle missing collections correctly
+				Config:               config,
 				SkipCompareRawConfig: true,
 			})
 		})
@@ -326,15 +334,9 @@ func TestInputsNestedBlocksEmpty(t *testing.T) {
 
 	emptyConfig := tftypes.NewValue(tftypes.Object{}, map[string]tftypes.Value{})
 
-	t3 := tftypes.Object{
-		AttributeTypes: map[string]tftypes.Type{
-			"x": tftypes.String,
-		},
-	}
-	t2 := tftypes.List{ElementType: t3}
 	t1 := tftypes.Object{
 		AttributeTypes: map[string]tftypes.Type{
-			"f1": t2,
+			"f2": tftypes.String,
 		},
 	}
 	t0 := tftypes.List{ElementType: t1}
@@ -347,25 +349,27 @@ func TestInputsNestedBlocksEmpty(t *testing.T) {
 		},
 	)
 
-	// TODO: Investigate why this produces the wrong tf program
-	// resource "crossprovider_testres" "example" {
-	// 	f0 {
-	//  }
-	// }
-
-	// it should produce
-	// resource "crossprovider_testres" "example" {
-	// 	f0 {
-	//   f1 {}
-	//  }
-	// }
-	nestedNonEmptyConfig := tftypes.NewValue(
+	nestedListListConfig := tftypes.NewValue(
 		tftypes.Object{
 			AttributeTypes: map[string]tftypes.Type{"f0": t0},
 		}, map[string]tftypes.Value{
 			"f0": tftypes.NewValue(t0, []tftypes.Value{
 				tftypes.NewValue(t1, map[string]tftypes.Value{
-					"f1": tftypes.NewValue(t2, []tftypes.Value{}),
+					"f2": tftypes.NewValue(tftypes.String, "val"),
+				}),
+			}),
+		},
+	)
+
+	t2 := tftypes.Set{ElementType: t1}
+
+	nestedSetSetConfig := tftypes.NewValue(
+		tftypes.Object{
+			AttributeTypes: map[string]tftypes.Type{"f0": t2},
+		}, map[string]tftypes.Value{
+			"f0": tftypes.NewValue(t2, []tftypes.Value{
+				tftypes.NewValue(t1, map[string]tftypes.Value{
+					"f2": tftypes.NewValue(tftypes.String, "val"),
 				}),
 			}),
 		},
@@ -381,12 +385,10 @@ func TestInputsNestedBlocksEmpty(t *testing.T) {
 		{"empty set set block", schema.TypeSet, schema.TypeSet, emptyConfig},
 		{"empty list set block", schema.TypeList, schema.TypeSet, emptyConfig},
 		{"non empty list list block", schema.TypeList, schema.TypeList, topLevelNonEmptyConfig},
-		{"nested non empty list list block", schema.TypeList, schema.TypeList, nestedNonEmptyConfig},
+		{"nested non empty list list block", schema.TypeList, schema.TypeList, nestedListListConfig},
+		{"nested non empty set set block", schema.TypeSet, schema.TypeSet, nestedSetSetConfig},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			if tc.name != "nested non empty list list block" {
-				t.SkipNow()
-			}
 			runCreateInputCheck(t, inputTestCase{
 				Resource: &schema.Resource{
 					Schema: map[string]*schema.Schema{
@@ -404,12 +406,18 @@ func TestInputsNestedBlocksEmpty(t *testing.T) {
 											},
 										},
 									},
+									// This allows us to specify non-empty f0s with an empty f1
+									"f2": {
+										Type:     schema.TypeString,
+										Optional: true,
+									},
 								},
 							},
 						},
 					},
 				},
-				Config: tc.config,
+				Config:               tc.config,
+				SkipCompareRawConfig: true,
 			})
 		})
 	}
@@ -436,5 +444,59 @@ func TestEmptySetOfEmptyObjects(t *testing.T) {
 			},
 		},
 		Config: config,
+	})
+}
+
+func TestMap(t *testing.T) {
+	skipUnlessLinux(t)
+	t0 := tftypes.Map{ElementType: tftypes.String}
+	t1 := tftypes.Object{AttributeTypes: map[string]tftypes.Type{
+		"tags": t0,
+	}}
+	mapVal := tftypes.NewValue(t0, map[string]tftypes.Value{
+		"key":  tftypes.NewValue(tftypes.String, "val"),
+		"key2": tftypes.NewValue(tftypes.String, "val2"),
+	})
+	config := tftypes.NewValue(t1, map[string]tftypes.Value{
+		"tags": mapVal,
+	})
+
+	runCreateInputCheck(t, inputTestCase{
+		Resource: &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				"tags": {
+					Type:     schema.TypeMap,
+					Optional: true,
+					Elem: &schema.Schema{
+						Optional: true,
+						Type:     schema.TypeString,
+					},
+				},
+			},
+		},
+		Config: config,
+	})
+}
+
+func TestTimeouts(t *testing.T) {
+	skipUnlessLinux(t)
+	emptyConfig := tftypes.NewValue(tftypes.Object{}, map[string]tftypes.Value{})
+	runCreateInputCheck(t, inputTestCase{
+		Resource: &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				"tags": {
+					Type:     schema.TypeMap,
+					Optional: true,
+					Elem: &schema.Schema{
+						Optional: true,
+						Type:     schema.TypeString,
+					},
+				},
+			},
+			Timeouts: &schema.ResourceTimeout{
+				Create: schema.DefaultTimeout(time.Duration(120)),
+			},
+		},
+		Config: emptyConfig,
 	})
 }
