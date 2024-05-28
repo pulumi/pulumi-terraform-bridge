@@ -97,10 +97,7 @@ func newProviderWithContext(ctx context.Context, info tfbridge.ProviderInfo,
 	meta ProviderMetadata) (pl.ProviderWithContext, error) {
 	const infoPErrMSg string = "info.P must be constructed with ShimProvider or ShimProviderWithContext"
 
-	var (
-		server6            tfprotov6.ProviderServer
-		schemaOnlyProvider shim.Provider
-	)
+	var server6 tfprotov6.ProviderServer
 	switch p := info.P.(type) {
 	case *schemashim.SchemaOnlyProvider:
 		var err error
@@ -130,7 +127,7 @@ func newProviderWithContext(ctx context.Context, info tfbridge.ProviderInfo,
 		return nil, fmt.Errorf("[pf/tfbridge] ProviderInfo.BridgeMetadata is required but is nil")
 	}
 
-	enc := convert.NewEncoding(schemaOnlyProvider, &info)
+	enc := convert.NewEncoding(info.P, &info)
 
 	schemaResponse := &pfprovider.SchemaResponse{}
 	p.Schema(ctx, pfprovider.SchemaRequest{}, schemaResponse)
