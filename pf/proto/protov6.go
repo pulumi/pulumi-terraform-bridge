@@ -8,8 +8,8 @@ import (
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
-func Provider(ctx context.Context, server tfprotov6.ProviderServer) shim.Provider {
-	return SchemaOnlyProvider{
+func New(ctx context.Context, server tfprotov6.ProviderServer) shim.Provider {
+	return Provider{
 		getSchema: sync.OnceValue(func() *tfprotov6.GetProviderSchemaResponse {
 			resp, err := server.GetProviderSchema(ctx, &tfprotov6.GetProviderSchemaRequest{})
 			if err != nil {
@@ -22,19 +22,21 @@ func Provider(ctx context.Context, server tfprotov6.ProviderServer) shim.Provide
 }
 
 // TODO: Make internal
-type SchemaOnlyProvider struct {
+type Provider struct {
+	Server tfprotov6.ProviderServer
+
 	getSchema func() *tfprotov6.GetProviderSchemaResponse
 }
 
-func (p SchemaOnlyProvider) Schema() shim.SchemaMap {
+func (p Provider) Schema() shim.SchemaMap {
 	return blockMap{p.getSchema().Provider.Block}
 }
 
-func (p SchemaOnlyProvider) ResourcesMap() shim.ResourceMap {
+func (p Provider) ResourcesMap() shim.ResourceMap {
 	return resourceMap(p.getSchema().ResourceSchemas)
 }
 
-func (p SchemaOnlyProvider) DataSourcesMap() shim.ResourceMap {
+func (p Provider) DataSourcesMap() shim.ResourceMap {
 	return resourceMap(p.getSchema().DataSourceSchemas)
 }
 

@@ -37,6 +37,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/pfutils"
 	pl "github.com/pulumi/pulumi-terraform-bridge/pf/internal/plugin"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/schemashim"
+	"github.com/pulumi/pulumi-terraform-bridge/pf/proto"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/convert"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
@@ -95,19 +96,26 @@ func ShimProviderWithContext(ctx context.Context, p pfprovider.Provider) shim.Pr
 func newProviderWithContext(ctx context.Context, info tfbridge.ProviderInfo,
 	meta ProviderMetadata) (pl.ProviderWithContext, error) {
 	const infoPErrMSg string = "info.P must be constructed with ShimProvider or ShimProviderWithContext"
-	if info.P == nil {
-		return nil, fmt.Errorf("%s: cannot be nil", infoPErrMSg)
-	}
-	schemaOnlyProvider, ok := info.P.(*schemashim.SchemaOnlyProvider)
-	if !ok {
-		return nil, fmt.Errorf("%s: found non-conforming type %T", infoPErrMSg, info.P)
-	}
-	p := schemaOnlyProvider.PfProvider()
 
-	server6, err := newProviderServer6(ctx, p)
-	if err != nil {
-		return nil, fmt.Errorf("Fatal failure starting a provider server: %w", err)
+	var (
+		server6            tfprotov6.ProviderServer
+		schemaOnlyProvider shim.Provider
+	)
+	switch p := info.P.(type) {
+	case *schemashim.SchemaOnlyProvider:
+		var err error
+		server6, err = newProviderServer6(ctx, p.PfProvider())
+		if err != nil {
+			return nil, fmt.Errorf("Fatal failure starting a provider server: %w", err)
+		}
+	case *proto.Provider:
+		server6 = p.Server
+	case nil:
+		return nil, fmt.Errorf("%s: cannot be nil", infoPErrMSg)
+	default:
+		return nil, fmt.Errorf("Unknown inner type for info.P: %T, %s", p, infoPErrMSg)
 	}
+
 	resources, err := pfutils.GatherResources(ctx, p)
 	if err != nil {
 		return nil, fmt.Errorf("Fatal failure gathering resource metadata: %w", err)
@@ -145,18 +153,17 @@ func newProviderWithContext(ctx context.Context, info tfbridge.ProviderInfo,
 	}
 
 	return &provider{
-		tfProvider:    p,
-		tfServer:      server6,
-		info:          info,
-		resources:     resources,
-		datasources:   datasources,
-		pulumiSchema:  meta.PackageSchema,
-		encoding:      enc,
-		configEncoder: configEncoder,
-		configType:    providerConfigType,
-		version:       semverVersion,
-
-		schemaOnlyProvider: schemaOnlyProvider,
+		tfProvider:         p,
+		tfServer:           server6,
+		info:               info,
+		resources:          resources,
+		datasources:        datasources,
+		pulumiSchema:       meta.PackageSchema,
+		encoding:           enc,
+		configEncoder:      configEncoder,
+		configType:         providerConfigType,
+		version:            semverVersion,
+		schemaOnlyProvider: info.P,
 	}, nil
 }
 

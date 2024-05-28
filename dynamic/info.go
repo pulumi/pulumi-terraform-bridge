@@ -26,7 +26,7 @@ import (
 
 func providerInfo(ctx context.Context, p shim.Provider) tfbridge.ProviderInfo {
 	prov := tfbridge.ProviderInfo{
-		P:           proto.Provider(ctx, p),
+		P:           proto.New(ctx, p),
 		Name:        p.Name(),
 		Version:     p.Version(),
 		Description: "A Pulumi provider dynamically bridged from " + p.Name() + ".",
