@@ -106,9 +106,11 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--hash", required=True)
     ap.add_argument("--show-closed", action="store_true")
+    ap.add_argument("--only-failed", action="store_true")
     args = ap.parse_args()
     c = args.hash
     show_closed: bool = args.show_closed
+    only_failed: bool = args.only_failed
 
     replaced_query = QUERY.replace("???", c)
     token = sp.check_output(["gh", "auth", "token"]).decode("utf-8").strip()
@@ -126,16 +128,14 @@ def main():
 
         sentinel_status = get_sentinel_status(pr_checks)
 
-        if closed:
-            if show_closed:
-                print("CLOSED", sentinel_status, url)
-            continue
-
         if sentinel_status == "SUCCESS":
-            print("SUCCESS", url)
-            sp.check_call(["gh", "pr", "close", url])
+            if not only_failed:
+                print("SUCCESS", url)
+            if not closed:
+                sp.check_call(["gh", "pr", "close", url])
         else:
-            print(sentinel_status, url)
+            if not closed or show_closed:
+                print(sentinel_status, url)
 
     for missing_repo in {repo for repo in provider_map if not provider_map[repo]}:
         print("MISSING", repo_actions_url(missing_repo))
