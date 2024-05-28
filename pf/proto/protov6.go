@@ -10,6 +10,7 @@ import (
 
 func New(ctx context.Context, server tfprotov6.ProviderServer) shim.Provider {
 	return Provider{
+		server: server,
 		getSchema: sync.OnceValue(func() *tfprotov6.GetProviderSchemaResponse {
 			resp, err := server.GetProviderSchema(ctx, &tfprotov6.GetProviderSchemaRequest{})
 			if err != nil {
@@ -23,9 +24,27 @@ func New(ctx context.Context, server tfprotov6.ProviderServer) shim.Provider {
 
 // TODO: Make internal
 type Provider struct {
-	Server tfprotov6.ProviderServer
+	// The underlying server.
+	server tfprotov6.ProviderServer
+	// A cached GetSchema on the underlying server.
+	getSchema func() *tfprotov6.GetProviderSchemaResponse
+}
+
+// Get access to the underlying sever used in Provide
+func (p Provider) Server() tfprotov6.ProviderServer {
+	return cachedSchemaProvider{p.server, p.getSchema}
+}
+
+type cachedSchemaProvider struct {
+	tfprotov6.ProviderServer
 
 	getSchema func() *tfprotov6.GetProviderSchemaResponse
+}
+
+func (p cachedSchemaProvider) GetProviderSchema(
+	context.Context, *tfprotov6.GetProviderSchemaRequest,
+) (*tfprotov6.GetProviderSchemaResponse, error) {
+	return p.getSchema(), nil
 }
 
 func (p Provider) Schema() shim.SchemaMap {

@@ -105,7 +105,6 @@ func newProviderWithContext(ctx context.Context, info tfbridge.ProviderInfo,
 	)
 	switch p := info.P.(type) {
 	case *schemashim.SchemaOnlyProvider:
-
 		var err error
 		server6, err = newProviderServer6(ctx, p.PfProvider())
 		if err != nil {
@@ -132,7 +131,19 @@ func newProviderWithContext(ctx context.Context, info tfbridge.ProviderInfo,
 		providerConfigType = &c
 
 	case *proto.Provider:
-		server6 = p.Server
+		server6 = p.Server()
+
+		resources = p.GatherResources()
+		datasources = p.GatherDataSources()
+
+		resp, err := p.Server().GetProviderSchema(ctx, &tfprotov6.GetProviderSchemaRequest{})
+		if err != nil {
+			return nil, err
+		}
+
+		c := resp.Provider.ValueType().(tftypes.Object)
+		providerConfigType = &c
+
 	case nil:
 		return nil, fmt.Errorf("%s: cannot be nil", infoPErrMSg)
 	default:
