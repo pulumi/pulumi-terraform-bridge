@@ -259,6 +259,44 @@ resource "res" "ex" {
 }
 `),
 		},
+		{
+			"empty-block-of-objects",
+			cty.ObjectVal(map[string]cty.Value{"f0": cty.ListValEmpty(cty.EmptyObject)}),
+			map[string]*schema.Schema{
+				"f0": {
+					Required: true,
+					Type:     schema.TypeList,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{},
+					},
+					MaxItems: 1,
+				},
+			},
+			autogold.Expect(`
+resource "res" "ex" {
+}
+`),
+		},
+		{
+			"block-of-empty-object",
+			cty.ObjectVal(map[string]cty.Value{"f0": cty.ListVal([]cty.Value{cty.ObjectVal(map[string]cty.Value{})})}),
+			map[string]*schema.Schema{
+				"f0": {
+					Required: true,
+					Type:     schema.TypeList,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{},
+					},
+					MaxItems: 1,
+				},
+			},
+			autogold.Expect(`
+resource "res" "ex" {
+  f0 {
+  }
+}
+`),
+		},
 	}
 
 	for _, tc := range testCases {
