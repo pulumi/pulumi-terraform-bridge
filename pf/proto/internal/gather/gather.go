@@ -17,54 +17,9 @@ package gather
 import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
-
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-
-	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/pfutils"
 )
 
 type getSchema = func() *tfprotov6.GetProviderSchemaResponse
-
-func Resources(p getSchema) pfutils.Resources { return resources{p} }
-
-type (
-	resources struct{ schema getSchema }
-)
-
-func (r resources) All() []pfutils.TypeName {
-	s := r.schema().ResourceSchemas
-	arr := make([]pfutils.TypeName, 0, len(s))
-	for k := range s {
-		arr = append(arr, pfutils.TypeName(k))
-	}
-	return arr
-}
-
-func (r resources) Has(key pfutils.TypeName) bool {
-	_, ok := r.schema().ResourceSchemas[string(key)]
-	return ok
-}
-
-func (r resources) Schema(key pfutils.TypeName) pfutils.Schema {
-	s, ok := r.schema().ResourceSchemas[string(key)]
-	contract.Assertf(ok, "called Schema on a resource that does not exist")
-
-	return schema{s}
-}
-
-func (r resources) Diagnostics(pfutils.TypeName) diag.Diagnostics {
-	// It's not clear how to split diagnostics by resource
-	return nil
-}
-
-func (r resources) AllDiagnostics() diag.Diagnostics {
-	diags := r.schema().Diagnostics
-	result := make([]diag.Diagnostic, len(diags))
-	for i, v := range diags {
-		result[i] = diagnostic{v}
-	}
-	return result
-}
 
 type diagnostic struct{ d *tfprotov6.Diagnostic }
 
