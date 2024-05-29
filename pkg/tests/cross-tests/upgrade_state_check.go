@@ -9,6 +9,7 @@ import (
 	"github.com/pulumi/providertest/pulumitest"
 	"github.com/pulumi/providertest/pulumitest/opttest"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -73,10 +74,6 @@ func runPulumiUpgrade(t T, res1, res2 *schema.Resource, config any) {
 }
 
 func runUpgradeStateInputCheck(t T, tc inputTestCase) {
-	var tfUpgradeRawState, pulUpgradeRawState map[string]interface{}
-
-	upgradeRes := *tc.Resource
-
 	upgrades := make([]schema.StateUpgrader, 0)
 	for i := 0; i < tc.Resource.SchemaVersion; i++ {
 		upgrades = append(upgrades, schema.StateUpgrader{
@@ -92,6 +89,8 @@ func runUpgradeStateInputCheck(t T, tc inputTestCase) {
 		})
 	}
 
+	upgradeRawStates := make([]map[string]interface{}, 0)
+
 	upgrades = append(upgrades,
 		schema.StateUpgrader{
 			Version: tc.Resource.SchemaVersion,
@@ -101,16 +100,13 @@ func runUpgradeStateInputCheck(t T, tc inputTestCase) {
 				rawState map[string]interface{},
 				meta interface{},
 			) (map[string]interface{}, error) {
-				if tfUpgradeRawState == nil {
-					tfUpgradeRawState = rawState
-				} else {
-					pulUpgradeRawState = rawState
-				}
+				upgradeRawStates = append(upgradeRawStates, rawState)
 				return rawState, nil
 			},
 		},
 	)
 
+	upgradeRes := *tc.Resource
 	upgradeRes.SchemaVersion = upgradeRes.SchemaVersion + 1
 	upgradeRes.StateUpgraders = upgrades
 
@@ -124,5 +120,6 @@ func runUpgradeStateInputCheck(t T, tc inputTestCase) {
 
 	runPulumiUpgrade(t, tc.Resource, &upgradeRes, tc.Config)
 
-	assertValEqual(t, "UpgradeRawState", tfUpgradeRawState, pulUpgradeRawState)
+	assert.Len(t, upgradeRawStates, 2)
+	assertValEqual(t, "UpgradeRawState", upgradeRawStates[0], upgradeRawStates[1])
 }
