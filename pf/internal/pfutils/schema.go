@@ -15,14 +15,8 @@
 package pfutils
 
 import (
-	"context"
-	"fmt"
-	"reflect"
-
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	dschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
-	"github.com/hashicorp/terraform-plugin-framework/path"
 	pschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
@@ -39,7 +33,6 @@ type Schema interface {
 	Blocks() map[string]Block
 
 	DeprecationMessage() string
-	AttributeAtPath(context.Context, path.Path) (Attr, diag.Diagnostics)
 
 	// Resource schemas are versioned for [State Upgrade].
 	//
@@ -52,7 +45,7 @@ func FromProviderSchema(x pschema.Schema) Schema {
 	blocks := convertMap(FromProviderBlock, x.Blocks)
 	// Provider schemas cannot be versioned, see also x.GetVersion() always returning 0.
 	version := int64(0)
-	return newSchemaAdapter(x, x.Type(), x.DeprecationMessage, attrs, blocks, x.AttributeAtPath, version)
+	return newSchemaAdapter(x, x.Type(), x.DeprecationMessage, attrs, blocks, version)
 }
 
 func FromDataSourceSchema(x dschema.Schema) Schema {
@@ -60,76 +53,61 @@ func FromDataSourceSchema(x dschema.Schema) Schema {
 	blocks := convertMap(FromDataSourceBlock, x.Blocks)
 	// Data source schemas cannot be versioned, see also x.GetVersion() always returning 0.
 	version := int64(0)
-	return newSchemaAdapter(x, x.Type(), x.DeprecationMessage, attrs, blocks, x.AttributeAtPath, version)
+	return newSchemaAdapter(x, x.Type(), x.DeprecationMessage, attrs, blocks, version)
 }
 
 func FromResourceSchema(x rschema.Schema) Schema {
 	attrs := convertMap(FromResourceAttribute, x.Attributes)
 	blocks := convertMap(FromResourceBlock, x.Blocks)
-	return newSchemaAdapter(x, x.Type(), x.DeprecationMessage, attrs, blocks, x.AttributeAtPath, x.Version)
+	return newSchemaAdapter(x, x.Type(), x.DeprecationMessage, attrs, blocks, x.Version)
 }
 
-type schemaAdapter[T any] struct {
+type schemaAdapter struct {
 	tftypes.AttributePathStepper
 	attrType              attr.Type
 	deprecationMessage    string
 	attrs                 map[string]Attr
 	blocks                map[string]Block
-	attributeAtPath       func(context.Context, path.Path) (T, diag.Diagnostics)
 	resourceSchemaVersion int64
 }
 
-var _ Schema = (*schemaAdapter[interface{}])(nil)
+var _ Schema = (*schemaAdapter)(nil)
 
-func newSchemaAdapter[T any](
+func newSchemaAdapter(
 	stepper tftypes.AttributePathStepper,
 	t attr.Type,
 	deprecationMessage string,
 	attrs map[string]Attr,
 	blocks map[string]Block,
-	atPath func(context.Context, path.Path) (T, diag.Diagnostics),
 	resourceSchemaVersion int64,
-) *schemaAdapter[T] {
-	return &schemaAdapter[T]{
+) *schemaAdapter {
+	return &schemaAdapter{
 		AttributePathStepper:  stepper,
 		attrType:              t,
 		deprecationMessage:    deprecationMessage,
-		attributeAtPath:       atPath,
 		attrs:                 attrs,
 		blocks:                blocks,
 		resourceSchemaVersion: resourceSchemaVersion,
 	}
 }
 
-func (a *schemaAdapter[T]) ResourceSchemaVersion() int64 {
+func (a *schemaAdapter) ResourceSchemaVersion() int64 {
 	return a.resourceSchemaVersion
 }
 
-func (a *schemaAdapter[T]) DeprecationMessage() string {
+func (a *schemaAdapter) DeprecationMessage() string {
 	return a.deprecationMessage
 }
 
-func (a *schemaAdapter[T]) AttributeAtPath(ctx context.Context, p path.Path) (Attr, diag.Diagnostics) {
-	raw, diag := a.attributeAtPath(ctx, p)
-	var rawbox interface{} = raw
-	attrLike, ok := rawbox.(AttrLike)
-	if !ok {
-		detail := fmt.Sprintf("Expected an AttrLike at path %s, got %s", p, reflect.TypeOf(raw))
-		diag.AddError("Bad attributeAtPath result", detail)
-		return nil, diag
-	}
-	return FromAttrLike(attrLike), diag
-}
-
-func (a *schemaAdapter[T]) Attrs() map[string]Attr {
+func (a *schemaAdapter) Attrs() map[string]Attr {
 	return a.attrs
 }
 
-func (a *schemaAdapter[T]) Blocks() map[string]Block {
+func (a *schemaAdapter) Blocks() map[string]Block {
 	return a.blocks
 }
 
-func (a *schemaAdapter[T]) Type() attr.Type {
+func (a *schemaAdapter) Type() attr.Type {
 	return a.attrType
 }
 
