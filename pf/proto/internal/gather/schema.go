@@ -15,11 +15,7 @@
 package gather
 
 import (
-	"context"
-
 	"github.com/hashicorp/terraform-plugin-framework/attr"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
-	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
@@ -54,9 +50,5 @@ func (s schema) Blocks() map[string]pfutils.Block {
 }
 
 func (s schema) DeprecationMessage() string { return deprecated(s.s.Block.Deprecated) }
-
-func (s schema) AttributeAtPath(context.Context, path.Path) (pfutils.Attr, diag.Diagnostics) {
-	panic("UNIMPLIMENTED")
-}
 
 func (s schema) ResourceSchemaVersion() int64 { return s.s.Version }
