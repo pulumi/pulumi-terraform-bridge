@@ -19,11 +19,14 @@ import (
 	dschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	pschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
 )
 
 // Attr type works around not being able to link to fwschema.Schema from
 // "github.com/hashicorp/terraform-plugin-framework/internal/fwschema"
 type Schema interface {
+	tftypes.AttributePathStepper
+
 	Type() attr.Type
 
 	Attrs() map[string]Attr
@@ -42,7 +45,7 @@ func FromProviderSchema(x pschema.Schema) Schema {
 	blocks := convertMap(FromProviderBlock, x.Blocks)
 	// Provider schemas cannot be versioned, see also x.GetVersion() always returning 0.
 	version := int64(0)
-	return newSchemaAdapter(x.Type(), x.DeprecationMessage, attrs, blocks, version)
+	return newSchemaAdapter(x, x.Type(), x.DeprecationMessage, attrs, blocks, version)
 }
 
 func FromDataSourceSchema(x dschema.Schema) Schema {
@@ -50,16 +53,17 @@ func FromDataSourceSchema(x dschema.Schema) Schema {
 	blocks := convertMap(FromDataSourceBlock, x.Blocks)
 	// Data source schemas cannot be versioned, see also x.GetVersion() always returning 0.
 	version := int64(0)
-	return newSchemaAdapter(x.Type(), x.DeprecationMessage, attrs, blocks, version)
+	return newSchemaAdapter(x, x.Type(), x.DeprecationMessage, attrs, blocks, version)
 }
 
 func FromResourceSchema(x rschema.Schema) Schema {
 	attrs := convertMap(FromResourceAttribute, x.Attributes)
 	blocks := convertMap(FromResourceBlock, x.Blocks)
-	return newSchemaAdapter(x.Type(), x.DeprecationMessage, attrs, blocks, x.Version)
+	return newSchemaAdapter(x, x.Type(), x.DeprecationMessage, attrs, blocks, x.Version)
 }
 
 type schemaAdapter struct {
+	tftypes.AttributePathStepper
 	attrType              attr.Type
 	deprecationMessage    string
 	attrs                 map[string]Attr
@@ -70,6 +74,7 @@ type schemaAdapter struct {
 var _ Schema = (*schemaAdapter)(nil)
 
 func newSchemaAdapter(
+	stepper tftypes.AttributePathStepper,
 	t attr.Type,
 	deprecationMessage string,
 	attrs map[string]Attr,
@@ -77,6 +82,7 @@ func newSchemaAdapter(
 	resourceSchemaVersion int64,
 ) *schemaAdapter {
 	return &schemaAdapter{
+		AttributePathStepper:  stepper,
 		attrType:              t,
 		deprecationMessage:    deprecationMessage,
 		attrs:                 attrs,
