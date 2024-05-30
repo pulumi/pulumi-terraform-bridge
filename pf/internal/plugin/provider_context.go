@@ -20,6 +20,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	p "github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -32,7 +33,7 @@ type ProviderWithContext interface {
 
 	PkgWithContext(ctx context.Context) tokens.Package
 
-	GetSchemaWithContext(ctx context.Context, version int) ([]byte, error)
+	GetSchemaWithContext(ctx context.Context, req plugin.GetSchemaRequest) ([]byte, error)
 
 	CheckConfigWithContext(ctx context.Context, urn resource.URN, olds, news resource.PropertyMap,
 		allowUnknowns bool) (resource.PropertyMap, []p.CheckFailure, error)
@@ -84,6 +85,8 @@ type ProviderWithContext interface {
 	GetMappingWithContext(ctx context.Context, key, provider string) ([]byte, string, error)
 
 	GetMappingsWithContext(ctx context.Context, key string) ([]string, error)
+
+	ParameterizeWithContext(context.Context, *pulumirpc.ParameterizeRequest) (*pulumirpc.ParameterizeResponse, error)
 }
 
 func NewProvider(ctx context.Context, p ProviderWithContext) plugin.Provider {
@@ -99,8 +102,14 @@ var _ plugin.Provider = (*provider)(nil)
 
 func (prov *provider) Pkg() tokens.Package { return prov.PkgWithContext(prov.ctx) }
 
-func (prov *provider) GetSchema(version int) ([]byte, error) {
-	return prov.ProviderWithContext.GetSchemaWithContext(prov.ctx, version)
+func (prov *provider) Parameterize(
+	ctx context.Context, req *pulumirpc.ParameterizeRequest,
+) (*pulumirpc.ParameterizeResponse, error) {
+	return prov.ProviderWithContext.ParameterizeWithContext(ctx, req)
+}
+
+func (prov *provider) GetSchema(req plugin.GetSchemaRequest) ([]byte, error) {
+	return prov.ProviderWithContext.GetSchemaWithContext(prov.ctx, req)
 }
 
 func (prov *provider) CheckConfig(urn resource.URN, olds, news resource.PropertyMap,
