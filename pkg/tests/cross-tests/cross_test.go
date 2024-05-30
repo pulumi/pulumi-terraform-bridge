@@ -145,7 +145,7 @@ func TestComputedSetFieldsNoDiff(t *testing.T) {
 			rd.SetId("r1")
 			// The field is computed and the provider always returns a metro_name.
 			err := rd.Set("location", schema.NewSet(schema.HashResource(&elemSchema), []interface{}{
-				map[string]interface{}{"metro_name": "Frankfurt"},
+				map[string]interface{}{"metro_name": "Frankfurt", "metro_code": "FR"},
 			}))
 			require.NoError(t, err)
 			return diag.Diagnostics{}
@@ -172,7 +172,7 @@ func TestComputedSetFieldsNoDiff(t *testing.T) {
 				[]tftypes.Value{
 					tftypes.NewValue(t1, map[string]tftypes.Value{
 						// We try to set the metro_code but the provider should return metro_name
-						"metro_code": tftypes.NewValue(tftypes.String, "FRA"),
+						"metro_code": tftypes.NewValue(tftypes.String, "FR"),
 					}),
 				},
 			),
