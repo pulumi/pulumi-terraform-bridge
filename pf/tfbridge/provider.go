@@ -67,6 +67,9 @@ type provider struct {
 	lastKnownProviderConfig resource.PropertyMap
 
 	schemaOnlyProvider shim.Provider
+
+	parameterize func(context.Context, plugin.ParameterizeRequest) (plugin.ParameterizeResponse, error)
+	schemaFunc   func(context.Context) ([]byte, error)
 }
 
 var _ pl.ProviderWithContext = &provider{}
@@ -181,6 +184,8 @@ func newProviderWithContext(ctx context.Context, info tfbridge.ProviderInfo,
 		configType:         *providerConfigType,
 		version:            semverVersion,
 		schemaOnlyProvider: info.P,
+		parameterize:       meta.Parameterize,
+		schemaFunc:         meta.PackageSchemaFunc,
 	}, nil
 }
 
@@ -212,8 +217,20 @@ func (p *provider) PkgWithContext(_ context.Context) tokens.Package {
 	return tokens.Package(p.info.Name)
 }
 
+func (p *provider) ParameterizeWithContext(
+	ctx context.Context, req plugin.ParameterizeRequest,
+) (plugin.ParameterizeResponse, error) {
+	if p.parameterize != nil {
+		return p.parameterize(ctx, req)
+	}
+	return (&plugin.UnimplementedProvider{}).Parameterize(ctx, req)
+}
+
 // GetSchema returns the schema for the provider.
-func (p *provider) GetSchemaWithContext(_ context.Context, version int) ([]byte, error) {
+func (p *provider) GetSchemaWithContext(ctx context.Context, _ plugin.GetSchemaRequest) ([]byte, error) {
+	if p.schemaFunc != nil {
+		return p.schemaFunc(ctx)
+	}
 	return p.pulumiSchema, nil
 }
 

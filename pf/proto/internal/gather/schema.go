@@ -26,8 +26,8 @@ type schema struct{ s *tfprotov6.Schema }
 
 var _ = pfutils.Schema(schema{})
 
-func (s schema) ApplyTerraform5AttributePathStep(tftypes.AttributePathStep) (interface{}, error) {
-	panic("UNIMPLIMENTED")
+func (s schema) ApplyTerraform5AttributePathStep(step tftypes.AttributePathStep) (interface{}, error) {
+	return s.s.ValueType().ApplyTerraform5AttributePathStep(step)
 }
 
 func (s schema) Type() attr.Type { return _type{s.s.ValueType()} }

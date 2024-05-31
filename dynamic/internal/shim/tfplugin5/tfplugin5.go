@@ -311,3 +311,350 @@ func applyMap[K comparable, From, To any, F func(From) To](m map[K]From, f F) ma
 	}
 	return out
 }
+
+func PrepareProviderConfigRequest(i *tfprotov5.PrepareProviderConfigRequest) *tfplugin5.PrepareProviderConfig_Request {
+	if i == nil {
+		return nil
+	}
+	return &tfplugin5.PrepareProviderConfig_Request{
+		Config: dynamicValueRequest(i.Config),
+	}
+}
+
+func dynamicValueRequest(i *tfprotov5.DynamicValue) *tfplugin5.DynamicValue {
+	if i == nil {
+		return nil
+	}
+	return &tfplugin5.DynamicValue{
+		Msgpack: i.MsgPack,
+		Json:    i.JSON,
+	}
+}
+
+func dynamicValueResponse(i *tfplugin5.DynamicValue) *tfprotov5.DynamicValue {
+	if i == nil {
+		return nil
+	}
+	return &tfprotov5.DynamicValue{
+		MsgPack: i.Msgpack,
+		JSON:    i.Json,
+	}
+}
+
+func PrepareProviderConfigResponse(i *tfplugin5.PrepareProviderConfig_Response) *tfprotov5.PrepareProviderConfigResponse {
+	if i == nil {
+		return nil
+	}
+	return &tfprotov5.PrepareProviderConfigResponse{
+		PreparedConfig: dynamicValueResponse(i.PreparedConfig),
+		Diagnostics:    diagnostics(i.Diagnostics),
+	}
+}
+
+func ConfigureProviderRequest(i *tfprotov5.ConfigureProviderRequest) *tfplugin5.Configure_Request {
+	if i == nil {
+		return nil
+	}
+	return &tfplugin5.Configure_Request{
+		TerraformVersion: i.TerraformVersion,
+		Config:           dynamicValueRequest(i.Config),
+	}
+}
+
+func ConfigureProviderResponse(i *tfplugin5.Configure_Response) *tfprotov5.ConfigureProviderResponse {
+	if i == nil {
+		return nil
+	}
+	return &tfprotov5.ConfigureProviderResponse{
+		Diagnostics: diagnostics(i.Diagnostics),
+	}
+}
+
+func StopProviderRequest(i *tfprotov5.StopProviderRequest) *tfplugin5.Stop_Request {
+	if i == nil {
+		return nil
+	}
+	return &tfplugin5.Stop_Request{}
+}
+
+func StopProviderResponse(i *tfplugin5.Stop_Response) *tfprotov5.StopProviderResponse {
+	if i == nil {
+		return nil
+	}
+	return &tfprotov5.StopProviderResponse{
+		Error: i.Error,
+	}
+}
+
+func ValidateResourceTypeConfigRequest(i *tfprotov5.ValidateResourceTypeConfigRequest) *tfplugin5.ValidateResourceTypeConfig_Request {
+	if i == nil {
+		return nil
+	}
+	return &tfplugin5.ValidateResourceTypeConfig_Request{
+		TypeName: i.TypeName,
+		Config:   dynamicValueRequest(i.Config),
+	}
+}
+
+func ValidateResourceTypeConfigResponse(i *tfplugin5.ValidateResourceTypeConfig_Response) *tfprotov5.ValidateResourceTypeConfigResponse {
+	if i == nil {
+		return nil
+	}
+	return &tfprotov5.ValidateResourceTypeConfigResponse{
+		Diagnostics: diagnostics(i.Diagnostics),
+	}
+}
+
+func UpgradeResourceStateRequest(i *tfprotov5.UpgradeResourceStateRequest) *tfplugin5.UpgradeResourceState_Request {
+	if i == nil {
+		return nil
+	}
+	return &tfplugin5.UpgradeResourceState_Request{
+		TypeName: i.TypeName,
+		Version:  i.Version,
+		RawState: rawState(i.RawState),
+	}
+}
+
+func rawState(i *tfprotov5.RawState) *tfplugin5.RawState {
+	if i == nil {
+		return nil
+	}
+	return &tfplugin5.RawState{
+		Json:    i.JSON,
+		Flatmap: i.Flatmap,
+	}
+}
+
+func UpgradeResourceStateResponse(i *tfplugin5.UpgradeResourceState_Response) *tfprotov5.UpgradeResourceStateResponse {
+	if i == nil {
+		return nil
+	}
+	return &tfprotov5.UpgradeResourceStateResponse{
+		UpgradedState: dynamicValueResponse(i.UpgradedState),
+		Diagnostics:   diagnostics(i.Diagnostics),
+	}
+}
+
+func ReadResourceRequest(i *tfprotov5.ReadResourceRequest) *tfplugin5.ReadResource_Request {
+	if i == nil {
+		return nil
+	}
+	return &tfplugin5.ReadResource_Request{
+		TypeName:     i.TypeName,
+		CurrentState: dynamicValueRequest(i.CurrentState),
+		Private:      i.Private,
+		ProviderMeta: dynamicValueRequest(i.ProviderMeta),
+	}
+}
+
+func ReadResourceResponse(i *tfplugin5.ReadResource_Response) *tfprotov5.ReadResourceResponse {
+	if i == nil {
+		return nil
+	}
+	return &tfprotov5.ReadResourceResponse{
+		NewState:    dynamicValueResponse(i.NewState),
+		Diagnostics: diagnostics(i.Diagnostics),
+		Private:     i.Private,
+		Deferred:    nil, // Deferred is not supported in tfprotov5
+	}
+}
+
+func PlanResourceChangeRequest(i *tfprotov5.PlanResourceChangeRequest) *tfplugin5.PlanResourceChange_Request {
+	if i == nil {
+		return nil
+	}
+	return &tfplugin5.PlanResourceChange_Request{
+		TypeName:         i.TypeName,
+		PriorState:       dynamicValueRequest(i.PriorState),
+		ProposedNewState: dynamicValueRequest(i.ProposedNewState),
+		Config:           dynamicValueRequest(i.Config),
+		PriorPrivate:     i.PriorPrivate,
+		ProviderMeta:     dynamicValueRequest(i.ProviderMeta),
+	}
+}
+
+func PlanResourceChangeResponse(i *tfplugin5.PlanResourceChange_Response) *tfprotov5.PlanResourceChangeResponse {
+	if i == nil {
+		return nil
+	}
+	return &tfprotov5.PlanResourceChangeResponse{
+		PlannedState:                dynamicValueResponse(i.PlannedState),
+		RequiresReplace:             applyArray(i.RequiresReplace, attributePath),
+		PlannedPrivate:              i.PlannedPrivate,
+		Diagnostics:                 diagnostics(i.Diagnostics),
+		UnsafeToUseLegacyTypeSystem: i.LegacyTypeSystem,
+		Deferred:                    nil, // Deferred is not supported in tfprotov5
+	}
+}
+
+func ApplyResourceChangeRequest(i *tfprotov5.ApplyResourceChangeRequest) *tfplugin5.ApplyResourceChange_Request {
+	if i == nil {
+		return nil
+	}
+	return &tfplugin5.ApplyResourceChange_Request{
+		TypeName:       i.TypeName,
+		PriorState:     dynamicValueRequest(i.PriorState),
+		PlannedState:   dynamicValueRequest(i.PlannedState),
+		Config:         dynamicValueRequest(i.Config),
+		PlannedPrivate: i.PlannedPrivate,
+		ProviderMeta:   dynamicValueRequest(i.ProviderMeta),
+	}
+}
+
+func ApplyResourceChangeResponse(i *tfplugin5.ApplyResourceChange_Response) *tfprotov5.ApplyResourceChangeResponse {
+	if i == nil {
+		return nil
+	}
+	return &tfprotov5.ApplyResourceChangeResponse{
+		NewState:                    dynamicValueResponse(i.NewState),
+		Private:                     i.Private,
+		Diagnostics:                 diagnostics(i.Diagnostics),
+		UnsafeToUseLegacyTypeSystem: i.LegacyTypeSystem,
+	}
+}
+
+func ImportResourceStateRequest(i *tfprotov5.ImportResourceStateRequest) *tfplugin5.ImportResourceState_Request {
+	if i == nil {
+		return nil
+	}
+	return &tfplugin5.ImportResourceState_Request{
+		TypeName: i.TypeName,
+		Id:       i.ID,
+	}
+}
+
+func ImportResourceStateResponse(i *tfplugin5.ImportResourceState_Response) *tfprotov5.ImportResourceStateResponse {
+	if i == nil {
+		return nil
+	}
+	return &tfprotov5.ImportResourceStateResponse{
+		ImportedResources: applyArray(i.ImportedResources, importedResource),
+		Diagnostics:       diagnostics(i.Diagnostics),
+		Deferred:          nil, // Deferred is not supported in tfprotov5
+	}
+}
+
+func importedResource(i *tfplugin5.ImportResourceState_ImportedResource) *tfprotov5.ImportedResource {
+	if i == nil {
+		return nil
+	}
+	return &tfprotov5.ImportedResource{
+		TypeName: i.TypeName,
+		State:    dynamicValueResponse(i.State),
+		Private:  i.Private,
+	}
+}
+
+func MoveResourceStateRequest(i *tfprotov5.MoveResourceStateRequest) *tfplugin5.MoveResourceState_Request {
+	if i == nil {
+		return nil
+	}
+	return &tfplugin5.MoveResourceState_Request{
+		SourceProviderAddress: i.SourceProviderAddress,
+		SourceTypeName:        i.SourceTypeName,
+		SourceSchemaVersion:   i.SourceSchemaVersion,
+		SourceState:           rawState(i.SourceState),
+		TargetTypeName:        i.TargetTypeName,
+		SourcePrivate:         i.SourcePrivate,
+	}
+}
+
+func MoveResourceStateResponse(i *tfplugin5.MoveResourceState_Response) *tfprotov5.MoveResourceStateResponse {
+	if i == nil {
+		return nil
+	}
+	return &tfprotov5.MoveResourceStateResponse{
+		TargetPrivate: i.TargetPrivate,
+		TargetState:   dynamicValueResponse(i.TargetState),
+		Diagnostics:   diagnostics(i.Diagnostics),
+	}
+}
+
+func ValidateDataSourceConfigRequest(i *tfprotov5.ValidateDataSourceConfigRequest) *tfplugin5.ValidateDataSourceConfig_Request {
+	if i == nil {
+		return nil
+	}
+	return &tfplugin5.ValidateDataSourceConfig_Request{
+		TypeName: i.TypeName,
+		Config:   dynamicValueRequest(i.Config),
+	}
+}
+
+func ValidateDataSourceConfigResponse(i *tfplugin5.ValidateDataSourceConfig_Response) *tfprotov5.ValidateDataSourceConfigResponse {
+	if i == nil {
+		return nil
+	}
+	return &tfprotov5.ValidateDataSourceConfigResponse{
+		Diagnostics: diagnostics(i.Diagnostics),
+	}
+}
+
+func ReadDataSourceRequest(i *tfprotov5.ReadDataSourceRequest) *tfplugin5.ReadDataSource_Request {
+	if i == nil {
+		return nil
+	}
+	return &tfplugin5.ReadDataSource_Request{
+		TypeName:     i.TypeName,
+		Config:       dynamicValueRequest(i.Config),
+		ProviderMeta: dynamicValueRequest(i.ProviderMeta),
+	}
+}
+
+func ReadDataSourceResponse(i *tfplugin5.ReadDataSource_Response) *tfprotov5.ReadDataSourceResponse {
+	if i == nil {
+		return nil
+	}
+	return &tfprotov5.ReadDataSourceResponse{
+		State:       dynamicValueResponse(i.State),
+		Diagnostics: diagnostics(i.Diagnostics),
+		Deferred:    nil, // Deferred is not supported in tfprotov5
+	}
+}
+
+func CallFunctionRequest(i *tfprotov5.CallFunctionRequest) *tfplugin5.CallFunction_Request {
+	if i == nil {
+		return nil
+	}
+	return &tfplugin5.CallFunction_Request{
+		Name:      i.Name,
+		Arguments: applyArray(i.Arguments, dynamicValueRequest),
+	}
+}
+
+func CallFunctionResponse(i *tfplugin5.CallFunction_Response) *tfprotov5.CallFunctionResponse {
+	if i == nil {
+		return nil
+	}
+	return &tfprotov5.CallFunctionResponse{
+		Error:  functionError(i.Error),
+		Result: dynamicValueResponse(i.Result),
+	}
+}
+
+func functionError(i *tfplugin5.FunctionError) *tfprotov5.FunctionError {
+	if i == nil {
+		return nil
+	}
+	return &tfprotov5.FunctionError{
+		Text:             i.Text,
+		FunctionArgument: i.FunctionArgument,
+	}
+}
+
+func GetFunctionsRequest(i *tfprotov5.GetFunctionsRequest) *tfplugin5.GetFunctions_Request {
+	if i == nil {
+		return nil
+	}
+	return &tfplugin5.GetFunctions_Request{}
+}
+
+func GetFunctionsResponse(i *tfplugin5.GetFunctions_Response) *tfprotov5.GetFunctionsResponse {
+	if i == nil {
+		return nil
+	}
+	return &tfprotov5.GetFunctionsResponse{
+		Diagnostics: diagnostics(i.Diagnostics),
+		Functions:   applyMap(i.Functions, function),
+	}
+}

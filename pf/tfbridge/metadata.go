@@ -14,6 +14,12 @@
 
 package tfbridge
 
+import (
+	"context"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+)
+
 // Defines bridged provider metadata that is pre-computed at build time with tfgen (tfgen
 // ("github.com/pulumi/pulumi-terraform-bridge/pf/tfgen") and typically made available to the provider
 // binary at runtime with [embed].
@@ -23,6 +29,10 @@ type ProviderMetadata struct {
 	// JSON-serialzed Pulumi Package Schema.
 	PackageSchema []byte
 
+	PackageSchemaFunc func(ctx context.Context) ([]byte, error)
+
 	// Deprecated. This field is no longer in use and will be removed in future versions.
 	BridgeMetadata []byte
+
+	Parameterize func(ctx context.Context, req plugin.ParameterizeRequest) (plugin.ParameterizeResponse, error)
 }

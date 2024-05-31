@@ -16,6 +16,7 @@ package proto
 
 import (
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -24,6 +25,7 @@ import (
 var (
 	_ = shim.Resource(object{})
 	_ = shim.SchemaMap(attrMap{})
+	_ = shim.Resource(tftypesObject{})
 )
 
 type object struct {
@@ -74,3 +76,19 @@ func (m attrMap) Delete(key string) {
 }
 
 func (m attrMap) Validate() error { return nil }
+
+type tftypesObject struct {
+	pseudoResource
+	obj tftypes.Object
+}
+
+func (o tftypesObject) Schema() shim.SchemaMap {
+	attrMap := attrMap{}
+	for k, v := range o.obj.AttributeTypes {
+		_, optional := o.obj.OptionalAttributes[k]
+		attrMap[k] = &tfprotov6.SchemaAttribute{Type: v, Optional: optional}
+	}
+	return attrMap
+}
+
+func (o tftypesObject) DeprecationMessage() string { return "" }

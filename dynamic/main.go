@@ -21,42 +21,99 @@ import (
 	"io"
 	"os"
 
+	"github.com/blang/semver"
 	"github.com/opentofu/opentofu/shim"
-	"github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/pf/proto"
+	pfbridge "github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 func main() {
 	ctx := context.Background()
 
-	p, err := shim.LoadProvider(ctx, "random", ">3.0.0")
-	if err != nil {
-		fmt.Printf("Error: %s", err.Error())
-		os.Exit(1)
-	}
-	defer p.Close()
+	var packageSchemaBytes []byte
+	var toClose func() error
 
-	info := providerInfo(ctx, p)
+	defer func() {
+		if toClose != nil {
+			toClose()
+		}
+	}()
 
-	packageSchema, err := tfgen.GenerateSchemaWithOptions(tfgen.GenerateSchemaOptions{
-		ProviderInfo: info,
-		DiagnosticsSink: diag.DefaultSink(io.Discard, os.Stderr, diag.FormatOptions{
-			Color: colors.Always,
-		}),
-		XInMemoryDocs: true,
-	})
-	if err != nil {
-		fmt.Printf("Error: %s", err.Error())
-		os.Exit(1)
-	}
+	pfbridge.Main(ctx, "terraform-bridge", tfbridge.ProviderInfo{
+		P:       proto.New(ctx, nil),
+		Name:    "terraform-bridge",
+		Version: "0.0.1",
 
-	schemaBytes, err := json.Marshal(packageSchema.PackageSpec)
-	contract.AssertNoErrorf(err, "This is a provider bug, the SchemaSpec should always marshal.")
+		// To avoid bogging down schema generation speed, we skip all examples.
+		SkipExamples: func(tfbridge.SkipExamplesArgs) bool { return true },
 
-	tfbridge.Main(ctx, p.Name(), info, tfbridge.ProviderMetadata{
-		PackageSchema: schemaBytes,
+		MetadataInfo: &tfbridge.MetadataInfo{
+			Path: "", Data: tfbridge.ProviderMetadata(nil),
+		},
+	}, pfbridge.ProviderMetadata{
+		PackageSchema: []byte("{}"),
+		PackageSchemaFunc: func(context.Context) ([]byte, error) {
+			return packageSchemaBytes, nil
+		},
+		Parameterize: func(ctx context.Context, req plugin.ParameterizeRequest) (plugin.ParameterizeResponse, error) {
+			var name, version string
+
+			switch p := req.Parameters.(type) {
+			case plugin.ParameterizeArgs:
+				switch len(p.Args) {
+				case 2:
+					version = p.Args[1]
+					fallthrough
+				case 1:
+					name = p.Args[0]
+				default:
+					return plugin.ParameterizeResponse{}, fmt.Errorf("Unknown number of params")
+				}
+			}
+
+			p, err := shim.LoadProvider(ctx, name, version)
+			if err != nil {
+				return plugin.ParameterizeResponse{}, err
+			}
+			toClose = p.Close
+
+			info := providerInfo(ctx, p)
+
+			packageSchema, err := tfgen.GenerateSchemaWithOptions(tfgen.GenerateSchemaOptions{
+				ProviderInfo: info,
+				DiagnosticsSink: diag.DefaultSink(io.Discard, os.Stderr, diag.FormatOptions{
+					Color: colors.Always,
+				}),
+				XInMemoryDocs: true,
+			})
+			if err != nil {
+				return plugin.ParameterizeResponse{}, err
+			}
+
+			schemaBytes, err := json.Marshal(packageSchema.PackageSpec)
+			contract.AssertNoErrorf(err, "This is a provider bug, the SchemaSpec should always marshal.")
+
+			packageSchemaBytes = schemaBytes
+
+			var v *semver.Version
+			if info.Version != "" {
+				ver, err := semver.Parse(info.Version)
+				if err != nil {
+					return plugin.ParameterizeResponse{}, err
+				}
+				v = &ver
+			}
+
+			return plugin.ParameterizeResponse{
+				Name:    info.Name,
+				Version: v,
+			}, nil
+		},
 	})
 }

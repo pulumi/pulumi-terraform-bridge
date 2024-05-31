@@ -12,6 +12,19 @@ func New(ctx context.Context, server tfprotov6.ProviderServer) shim.Provider {
 	return Provider{
 		server: server,
 		getSchema: sync.OnceValue(func() *tfprotov6.GetProviderSchemaResponse {
+			if server == nil {
+				return &tfprotov6.GetProviderSchemaResponse{
+					ServerCapabilities: &tfprotov6.ServerCapabilities{},
+					Provider: &tfprotov6.Schema{
+						Version: 0,
+						Block:   &tfprotov6.SchemaBlock{},
+					},
+					ProviderMeta:      &tfprotov6.Schema{},
+					ResourceSchemas:   map[string]*tfprotov6.Schema{},
+					DataSourceSchemas: map[string]*tfprotov6.Schema{},
+					Functions:         map[string]*tfprotov6.Function{},
+				}
+			}
 			resp, err := server.GetProviderSchema(ctx, &tfprotov6.GetProviderSchemaRequest{})
 			if err != nil {
 				// TODO: Return error to the user

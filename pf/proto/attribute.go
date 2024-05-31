@@ -68,7 +68,7 @@ func (a attribute) Elem() interface{} {
 	case a.attr.NestedType != nil:
 		return object{obj: *a.attr.NestedType}
 	case a.attr.Type.Is(tftypes.Object{}):
-		panic("Not implemented, this feature may not be used :)")
+		return tftypesObject{obj: a.attr.Type.(tftypes.Object)}
 	}
 
 	switch t := a.attr.Type.(type) {
