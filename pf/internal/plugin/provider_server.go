@@ -143,10 +143,21 @@ func (p *providerServer) marshalDiff(diff pl.DiffResult) (*pulumirpc.DiffRespons
 	}, nil
 }
 
+type delegateServer struct {
+	plugin.UnimplementedProvider
+	parameterize func(context.Context, plugin.ParameterizeRequest) (plugin.ParameterizeResponse, error)
+}
+
+func (d delegateServer) Parameterize(ctx context.Context, req plugin.ParameterizeRequest) (plugin.ParameterizeResponse, error) {
+	return d.parameterize(ctx, req)
+}
+
 func (p *providerServer) Parameterize(
 	ctx context.Context, req *pulumirpc.ParameterizeRequest,
 ) (*pulumirpc.ParameterizeResponse, error) {
-	return p.provider.ParameterizeWithContext(ctx, req)
+	return plugin.NewProviderServer(&delegateServer{
+		parameterize: p.provider.ParameterizeWithContext,
+	}).Parameterize(ctx, req)
 }
 
 func (p *providerServer) GetSchema(ctx context.Context,

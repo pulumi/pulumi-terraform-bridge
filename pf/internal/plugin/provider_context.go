@@ -20,7 +20,6 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	p "github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -86,7 +85,7 @@ type ProviderWithContext interface {
 
 	GetMappingsWithContext(ctx context.Context, key string) ([]string, error)
 
-	ParameterizeWithContext(context.Context, *pulumirpc.ParameterizeRequest) (*pulumirpc.ParameterizeResponse, error)
+	ParameterizeWithContext(context.Context, plugin.ParameterizeRequest) (plugin.ParameterizeResponse, error)
 }
 
 func NewProvider(ctx context.Context, p ProviderWithContext) plugin.Provider {
@@ -94,8 +93,9 @@ func NewProvider(ctx context.Context, p ProviderWithContext) plugin.Provider {
 }
 
 type provider struct {
-	ctx context.Context
 	ProviderWithContext
+	plugin.NotForwardCompatibleProvider
+	ctx context.Context
 }
 
 var _ plugin.Provider = (*provider)(nil)
@@ -103,8 +103,8 @@ var _ plugin.Provider = (*provider)(nil)
 func (prov *provider) Pkg() tokens.Package { return prov.PkgWithContext(prov.ctx) }
 
 func (prov *provider) Parameterize(
-	ctx context.Context, req *pulumirpc.ParameterizeRequest,
-) (*pulumirpc.ParameterizeResponse, error) {
+	ctx context.Context, req plugin.ParameterizeRequest,
+) (plugin.ParameterizeResponse, error) {
 	return prov.ProviderWithContext.ParameterizeWithContext(ctx, req)
 }
 
