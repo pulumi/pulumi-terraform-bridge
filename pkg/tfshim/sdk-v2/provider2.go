@@ -871,10 +871,8 @@ func normalizeSubBlock(val cty.Value, subBlockRes *schema.Resource) cty.Value {
 }
 
 func normalizeIterable(blockVal cty.Value, blockRes *schema.Resource) []cty.Value {
-	if !blockVal.Type().IsListType() &&
-		!blockVal.Type().IsSetType() {
-		contract.Failf("normalizeIterable: Expected list or set type, got %v", blockVal.Type().GoString())
-	}
+	contract.Assertf(blockVal.Type().IsListType() || blockVal.Type().IsSetType(),
+		"normalizeIterable: Expected list or set type, got %v", blockVal.Type().GoString())
 	if blockVal.IsNull() || !blockVal.IsKnown() {
 		return []cty.Value{}
 	}
