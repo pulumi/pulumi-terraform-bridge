@@ -360,7 +360,6 @@ func ignoredTokens(info *info.Provider) map[string]bool {
 
 // initResourceMaps creates maps from Pulumi types and tokens to Terraform resource type.
 func (p *Provider) initResourceMaps() {
-
 	ignoredTokens := ignoredTokens(&p.info)
 
 	// Fetch a list of all resource types handled by this provider and make a map.
