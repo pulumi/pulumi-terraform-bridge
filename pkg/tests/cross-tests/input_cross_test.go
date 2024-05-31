@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
-	//"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
@@ -537,7 +536,6 @@ func TestCreateDoesNotPanicWithStateUpgraders(t *testing.T) {
 
 	runCreateInputCheck(t, inputTestCase{
 		Resource: &schema.Resource{
-			//CreateWithoutTimeout: resourceRuleCreate,
 			SchemaVersion: 1,
 			StateUpgraders: []schema.StateUpgrader{
 				{
