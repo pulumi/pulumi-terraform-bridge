@@ -120,6 +120,9 @@ func (d *tfDriver) coalesce(t T, x any) *tftypes.Value {
 		return nil
 	}
 	objectType := convert.InferObjectType(sdkv2.NewSchemaMap(d.res.Schema), nil)
+	for k := range objectType.AttributeTypes {
+		objectType.OptionalAttributes[k] = struct{}{}
+	}
 	t.Logf("infer object type: %v", objectType)
 	v := fromType(objectType).NewValue(x)
 	return &v

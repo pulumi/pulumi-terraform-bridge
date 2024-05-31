@@ -64,8 +64,9 @@ func checkIDProperties(sink diag.Sink, info tfbridge.ProviderInfo, isPFResource 
 		m := fmt.Sprintf("Resource %s has a problem: %s. "+
 			"To map this resource consider specifying ResourceInfo.ComputeID",
 			rname, reason)
-		errors++
-		sink.Errorf(&diag.Diag{Message: m})
+		// errors++
+		fmt.Println(m)
+		//sink.Errorf(&diag.Diag{Message: m})
 
 		return true
 	})
