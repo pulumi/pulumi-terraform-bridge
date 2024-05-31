@@ -505,6 +505,8 @@ func TestTimeouts(t *testing.T) {
 // TestAccCloudWatch failed with PlanResourceChange to do a simple Create preview because the state upgrade was
 // unexpectedly called with nil state. Emulate this here to test it does not fail.
 func TestCreateDoesNotPanicWithStateUpgraders(t *testing.T) {
+	skipUnlessLinux(t)
+
 	resourceRuleV0 := func() *schema.Resource {
 		return &schema.Resource{
 			Schema: map[string]*schema.Schema{
