@@ -19,12 +19,14 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	pl "github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -141,10 +143,28 @@ func (p *providerServer) marshalDiff(diff pl.DiffResult) (*pulumirpc.DiffRespons
 	}, nil
 }
 
+func (p *providerServer) Parameterize(
+	ctx context.Context, req *pulumirpc.ParameterizeRequest,
+) (*pulumirpc.ParameterizeResponse, error) {
+	return p.provider.ParameterizeWithContext(ctx, req)
+}
+
 func (p *providerServer) GetSchema(ctx context.Context,
 	req *pulumirpc.GetSchemaRequest,
 ) (*pulumirpc.GetSchemaResponse, error) {
-	schema, err := p.provider.GetSchemaWithContext(ctx, int(req.GetVersion()))
+	var subpackageVersion *semver.Version
+	if v := req.GetSubpackageVersion(); v != "" {
+		ver, err := semver.Parse(v)
+		if err != nil {
+			return nil, fmt.Errorf("invalid SubpackageVersion: %w", err)
+		}
+		subpackageVersion = &ver
+	}
+	schema, err := p.provider.GetSchemaWithContext(ctx, plugin.GetSchemaRequest{
+		Version:           int(req.GetVersion()),
+		SubpackageName:    req.SubpackageName,
+		SubpackageVersion: subpackageVersion,
+	})
 	if err != nil {
 		return nil, err
 	}

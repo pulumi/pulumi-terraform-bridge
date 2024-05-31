@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tfgen
+package check
 
 import (
 	"os"
@@ -28,7 +28,7 @@ import (
 
 // Check if the user has customiezed ProviderInfo asking for features that are not yet supported for Plugin Framework
 // based providers, emit warnings in this case.
-func notSupported(sink diag.Sink, prov tfbridge.ProviderInfo) error {
+func notSupported(sink diag.Sink, prov tfbridge.ProviderInfo, isPFResource, isPFDataSource func(string) bool) error {
 	if sink == nil {
 		sink = diag.DefaultSink(os.Stdout, os.Stderr, diag.FormatOptions{
 			Color: colors.Always,
@@ -37,18 +37,8 @@ func notSupported(sink diag.Sink, prov tfbridge.ProviderInfo) error {
 
 	u := &notSupportedUtil{sink: sink}
 
-	skipResource := func(tfToken string) bool { return false }
-	skipDataSource := func(tfToken string) bool { return false }
 	muxedProvider := false
-	if mixed, ok := prov.P.(*muxer.ProviderShim); ok {
-		not := func(f func(string) bool) func(string) bool {
-			return func(s string) bool {
-				return !f(s)
-			}
-		}
-
-		skipResource = not(mixed.ResourceIsPF)
-		skipDataSource = not(mixed.DataSourceIsPF)
+	if _, ok := prov.P.(*muxer.ProviderShim); ok {
 		muxedProvider = true
 	} else if _, ok := prov.P.(*schemaShim.SchemaOnlyProvider); !ok {
 		warning := "Bridged Plugin Framework providers must have ProviderInfo.P be created from" +
@@ -60,7 +50,7 @@ func notSupported(sink diag.Sink, prov tfbridge.ProviderInfo) error {
 
 	if prov.Resources != nil {
 		for path, res := range prov.Resources {
-			if skipResource(path) {
+			if !isPFResource(path) {
 				continue
 			}
 			u.resource("resource:"+path, res)
@@ -69,7 +59,7 @@ func notSupported(sink diag.Sink, prov tfbridge.ProviderInfo) error {
 
 	if prov.DataSources != nil {
 		for path, ds := range prov.DataSources {
-			if skipDataSource(path) {
+			if !isPFDataSource(path) {
 				continue
 			}
 			u.datasource("datasource:"+path, ds)
