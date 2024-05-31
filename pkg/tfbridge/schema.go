@@ -199,8 +199,7 @@ var ErrSchemaDefaultValue = fmt.Errorf("default values not supported")
 // nameRequiresDeleteBeforeReplace returns true if the given set of resource inputs includes an autonameable
 // property with a value that was not populated by the autonamer.
 func nameRequiresDeleteBeforeReplace(news resource.PropertyMap, olds resource.PropertyMap,
-	tfs shim.SchemaMap, resourceInfo *ResourceInfo,
-) bool {
+	tfs shim.SchemaMap, resourceInfo *ResourceInfo) bool {
 	fields := resourceInfo.Fields
 
 	defaults, hasDefaults := news[defaultsKey]
@@ -727,6 +726,7 @@ func (ctx *conversionContext) applyDefaults(
 	tfs shim.SchemaMap,
 	ps map[string]*SchemaInfo,
 ) error {
+
 	if !ctx.ApplyDefaults {
 		return nil
 	}
@@ -1026,6 +1026,7 @@ func MakeTerraformResult(
 	assets AssetTable,
 	supportsSecrets bool,
 ) (resource.PropertyMap, error) {
+
 	var outs map[string]interface{}
 	if state != nil {
 		obj, err := state.Object(tfs)
@@ -1067,7 +1068,7 @@ func MakeTerraformOutputs(
 
 		// Next perform a translation of the value accordingly.
 		out := MakeTerraformOutput(ctx, p, value, tfi, psi, assets, supportsSecrets)
-		// if !out.IsNull() {
+		//if !out.IsNull() {
 		result[name] = out
 		//}
 	}
@@ -1091,9 +1092,9 @@ func MakeTerraformOutput(
 	assets AssetTable,
 	supportsSecrets bool,
 ) resource.PropertyValue {
+
 	buildOutput := func(p shim.Provider, v interface{},
-		tfs shim.Schema, ps *SchemaInfo, assets AssetTable, supportsSecrets bool,
-	) resource.PropertyValue {
+		tfs shim.Schema, ps *SchemaInfo, assets AssetTable, supportsSecrets bool) resource.PropertyValue {
 		if assets != nil && ps != nil && ps.Asset != nil {
 			if asset, has := assets[ps]; has {
 				// if we have the value, it better actually be an asset or an archive.
@@ -1231,8 +1232,7 @@ func MakeTerraformOutput(
 
 // MakeTerraformConfig creates a Terraform config map, used in state and diff calculations, from a Pulumi property map.
 func MakeTerraformConfig(ctx context.Context, p *Provider, m resource.PropertyMap,
-	tfs shim.SchemaMap, ps map[string]*SchemaInfo,
-) (shim.ResourceConfig, AssetTable, error) {
+	tfs shim.SchemaMap, ps map[string]*SchemaInfo) (shim.ResourceConfig, AssetTable, error) {
 	inputs, assets, err := makeTerraformInputsWithOptions(ctx, nil, p.configValues, nil, m, tfs, ps,
 		makeTerraformInputsOptions{DisableDefaults: true, DisableTFDefaults: true})
 	if err != nil {
@@ -1245,8 +1245,8 @@ func MakeTerraformConfig(ctx context.Context, p *Provider, m resource.PropertyMa
 // Unused internally.
 func UnmarshalTerraformConfig(ctx context.Context, p *Provider, m *pbstruct.Struct,
 	tfs shim.SchemaMap, ps map[string]*SchemaInfo,
-	label string,
-) (shim.ResourceConfig, AssetTable, error) {
+	label string) (shim.ResourceConfig, AssetTable, error) {
+
 	props, err := plugin.UnmarshalProperties(m,
 		plugin.MarshalOptions{Label: label, KeepUnknowns: true, SkipNulls: true})
 	if err != nil {
@@ -1385,8 +1385,7 @@ func getInfoFromTerraformName(key string,
 // getInfoFromPulumiName does a reverse map lookup to find the Terraform name and schema info for a Pulumi name, if any.
 func getInfoFromPulumiName(key resource.PropertyKey,
 	tfs shim.SchemaMap, ps map[string]*SchemaInfo) (string,
-	shim.Schema, *SchemaInfo,
-) {
+	shim.Schema, *SchemaInfo) {
 	// To do this, we will first look to see if there's a known custom schema that uses this name.  If yes, we
 	// prefer to use that.  To do this, we must use a reverse lookup.  (In the future we may want to make a
 	// lookaside map to avoid the traversal of this map.)  Otherwise, use the standard name mangling scheme.
@@ -1477,6 +1476,7 @@ func min(a int, b int) int {
 func extractInputs(
 	oldInput, newState resource.PropertyValue, tfs shim.Schema, ps *SchemaInfo,
 ) (resource.PropertyValue, bool) {
+
 	if IsMaxItemsOne(tfs, ps) {
 		tfs, ps = elemSchemas(tfs, ps)
 	}
@@ -1586,6 +1586,7 @@ func extractInputsObject(
 	}
 
 	return oldInput, possibleDefault || !hasOldDefaults
+
 }
 
 func getDefaultValue(tfs shim.Schema, ps *SchemaInfo) interface{} {
@@ -1655,6 +1656,7 @@ func isDefaultOrZeroValue(tfs shim.Schema, ps *SchemaInfo, v resource.PropertyVa
 func extractSchemaInputs(
 	state resource.PropertyValue, tfs shim.Schema, ps *SchemaInfo,
 ) resource.PropertyValue {
+
 	if ps == nil {
 		ps = &SchemaInfo{}
 	}
@@ -1754,8 +1756,8 @@ func extractSchemaInputsObject(
 }
 
 func ExtractInputsFromOutputs(oldInputs, outs resource.PropertyMap,
-	tfs shim.SchemaMap, ps map[string]*SchemaInfo, isRefresh bool,
-) (resource.PropertyMap, error) {
+	tfs shim.SchemaMap, ps map[string]*SchemaInfo, isRefresh bool) (resource.PropertyMap, error) {
+
 	if isRefresh {
 		// If this is a refresh, only extract new values for inputs that are already present.
 		inputs, _ := extractInputsObject(oldInputs, outs, tfs, ps)
