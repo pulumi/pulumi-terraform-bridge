@@ -7,6 +7,7 @@ import (
 
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hexops/autogold/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -14,10 +15,11 @@ import (
 func TestProvider2UpgradeResourceState(t *testing.T) {
 	const tfToken = "test_token"
 	for _, tc := range []struct {
-		name     string
-		state    cty.Value
-		rSchema  *schema.Resource
-		expected cty.Value
+		name      string
+		state     cty.Value
+		rSchema   *schema.Resource
+		expected  cty.Value
+		expectErr func(*testing.T, error)
 	}{
 		{
 			name: "no upgrade",
@@ -213,6 +215,61 @@ func TestProvider2UpgradeResourceState(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "handle errors",
+			state: func() cty.Value {
+				return cty.ObjectVal(map[string]cty.Value{
+					"compute_resources": cty.ObjectVal(map[string]cty.Value{
+						"ec2_configuration": cty.ObjectVal(map[string]cty.Value{
+							"image_id_override": cty.StringVal("override"),
+						}),
+					}),
+					"id": cty.StringVal("id"),
+				})
+			}(),
+			expectErr: func(t *testing.T, err error) {
+				require.Error(t, err)
+				autogold.Expect(`1 error occurred:
+* missing expected [
+
+`).Equal(t, err.Error())
+			},
+			rSchema: &schema.Resource{
+				Schema: map[string]*schema.Schema{
+					"compute_resources": {
+						Type:     schema.TypeList,
+						Optional: true,
+						ForceNew: true,
+						MinItems: 0,
+						MaxItems: 1,
+						Elem: &schema.Resource{
+							Schema: map[string]*schema.Schema{
+								"ec2_configuration": {
+									Type:     schema.TypeList,
+									Optional: true,
+									Computed: true,
+									ForceNew: true,
+									MaxItems: 2,
+									Elem: &schema.Resource{
+										Schema: map[string]*schema.Schema{
+											"image_id_override": {
+												Type:     schema.TypeString,
+												Optional: true,
+												Computed: true,
+											},
+											"image_type": {
+												Type:     schema.TypeString,
+												Optional: true,
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			tf := &schema.Provider{
@@ -227,9 +284,12 @@ func TestProvider2UpgradeResourceState(t *testing.T) {
 				resourceType: tfToken,
 				stateValue:   tc.state,
 			})
-			require.NoError(t, err)
-
-			assert.Equal(t, tc.expected, actual.(*v2InstanceState2).stateValue)
+			if tc.expectErr != nil {
+				tc.expectErr(t, err)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tc.expected, actual.(*v2InstanceState2).stateValue)
+			}
 		})
 	}
 }
