@@ -840,7 +840,6 @@ func normalizeBlockCollections(val cty.Value, res *schema.Resource) cty.Value {
 				glog.V(5).Info("normalizeBlockCollections: Unexpected schema type %s", fieldName)
 				continue
 			}
-			glog.V(10).Info("normalizing block %s %s", fieldName, subVal.Type().GoString())
 			normalizedVal := normalizeSubBlock(subVal, subBlockRes)
 			valMap[fieldName] = normalizedVal
 		}
