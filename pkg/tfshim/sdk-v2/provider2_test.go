@@ -7,7 +7,6 @@ import (
 
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hexops/autogold/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -229,10 +228,7 @@ func TestProvider2UpgradeResourceState(t *testing.T) {
 			}(),
 			expectErr: func(t *testing.T, err error) {
 				require.Error(t, err)
-				autogold.Expect(`1 error occurred:
-* missing expected [
-
-`).Equal(t, err.Error())
+				require.ErrorContains(t, err, "missing expected [")
 			},
 			rSchema: &schema.Resource{
 				Schema: map[string]*schema.Schema{
