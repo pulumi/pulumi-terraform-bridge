@@ -863,12 +863,9 @@ func normalizeBlockCollections(val cty.Value, res *schema.Resource) cty.Value {
 }
 
 func normalizeSubBlock(val cty.Value, subBlockRes *schema.Resource) cty.Value {
-	if !val.IsKnown() {
+	if !val.IsKnown() || val.IsNull() {
 		// Blocks shouldn't be unknown, but if they are, we can't do anything with them.
-		return val
-	}
-
-	if val.IsNull() {
+		// val should also not be nil here as that case is handled separately above.
 		return val
 	}
 
