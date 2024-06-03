@@ -1,6 +1,7 @@
 package crosstests
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -498,5 +499,57 @@ func TestTimeouts(t *testing.T) {
 			},
 		},
 		Config: emptyConfig,
+	})
+}
+
+// TestAccCloudWatch failed with PlanResourceChange to do a simple Create preview because the state upgrade was
+// unexpectedly called with nil state. Emulate this here to test it does not fail.
+func TestCreateDoesNotPanicWithStateUpgraders(t *testing.T) {
+	skipUnlessLinux(t)
+
+	resourceRuleV0 := func() *schema.Resource {
+		return &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				"event_bus_name": {
+					Type:     schema.TypeString,
+					Optional: true,
+				},
+				"is_enabled": {
+					Type:     schema.TypeBool,
+					Optional: true,
+				},
+			},
+		}
+	}
+
+	resourceRuleUpgradeV0 := func(ctx context.Context, rawState map[string]any, meta any) (map[string]any, error) {
+		if rawState == nil {
+			rawState = map[string]any{}
+		}
+
+		if rawState["is_enabled"].(bool) { // used to panic here
+			t.Logf("enabled")
+		} else {
+			t.Logf("disabled")
+		}
+
+		return rawState, nil
+	}
+
+	runCreateInputCheck(t, inputTestCase{
+		Resource: &schema.Resource{
+			SchemaVersion: 1,
+			StateUpgraders: []schema.StateUpgrader{
+				{
+					Type:    resourceRuleV0().CoreConfigSchema().ImpliedType(),
+					Upgrade: resourceRuleUpgradeV0,
+					Version: 0,
+				},
+			},
+			Schema: resourceRuleV0().Schema,
+		},
+		Config: map[string]any{
+			"event_bus_name": "default",
+		},
 	})
 }
