@@ -26,14 +26,14 @@ func pulTest(t *testing.T, providerName string, resMap map[string]*schema.Resour
 	))
 
 	provider := tfbridge.ProviderInfo{
-		P:    shimProvider,
-		Name: providerName,
+		P:            shimProvider,
+		Name:         providerName,
+		MetadataInfo: &tfbridge.MetadataInfo{},
 	}
 	makeToken := func(module, name string) (string, error) {
 		return tokens.MakeStandard(providerName)(module, name)
 	}
 	provider.MustComputeTokens(tokens.SingleModule("prov", "index", makeToken))
-	provider.MustApplyAutoAliases()
 
 	puwd := t.TempDir()
 	p := filepath.Join(puwd, "Pulumi.yaml")
@@ -42,10 +42,11 @@ func pulTest(t *testing.T, providerName string, resMap map[string]*schema.Resour
 	require.NoError(t, err)
 
 	opts := []opttest.Option{
+		opttest.Env("DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "true"),
 		opttest.TestInPlace(),
 		opttest.SkipInstall(),
 		opttest.AttachProvider(
-			defProviderShortName,
+			providerName,
 			func(ctx context.Context, pt providers.PulumiTest) (providers.Port, error) {
 				handle, err := startPulumiProvider(ctx, providerName, "0.0.1", provider)
 				require.NoError(t, err)
@@ -59,7 +60,7 @@ func pulTest(t *testing.T, providerName string, resMap map[string]*schema.Resour
 
 func TestUnknownHandling(t *testing.T) {
 	resMap := map[string]*schema.Resource{
-		"test": {
+		"prov_test": {
 			Schema: map[string]*schema.Schema{
 				"test": {
 					Type:     schema.TypeString,
@@ -67,7 +68,7 @@ func TestUnknownHandling(t *testing.T) {
 				},
 			},
 		},
-		"aux": {
+		"prov_aux": {
 			Schema: map[string]*schema.Schema{
 				"aux": {
 					Type:     schema.TypeString,
@@ -91,12 +92,12 @@ resources:
     type: prov:index:Aux
   mainRes:
     type: prov:index:Test
-	properties:
-	  test: ${auxRes.aux}
+    properties:
+      test: ${auxRes.aux}
 outputs:
   test: ${mainRes.test}
 `
 	pt := pulTest(t, "prov", resMap, program)
 	res := pt.Up()
-	require.Equal(t, "aux", res.Outputs["test"])
+	require.Equal(t, "aux", res.Outputs["test"].Value)
 }
