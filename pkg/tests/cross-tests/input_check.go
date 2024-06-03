@@ -71,6 +71,28 @@ func ensureProviderValid(t T, tfp *schema.Provider) {
 				return nil
 			}
 		}
+		if r.DeleteContext == nil {
+			r.DeleteContext = func(
+				ctx context.Context, rd *schema.ResourceData, i interface{},
+			) diag.Diagnostics {
+				return diag.Diagnostics{}
+			}
+		}
+
+		if r.CreateContext == nil {
+			r.CreateContext = func(
+				ctx context.Context, rd *schema.ResourceData, i interface{},
+			) diag.Diagnostics {
+				rd.SetId("newid")
+				return diag.Diagnostics{}
+			}
+		}
+
+		r.UpdateContext = func(
+			ctx context.Context, rd *schema.ResourceData, i interface{},
+		) diag.Diagnostics {
+			return diag.Diagnostics{}
+		}
 	}
 	require.NoError(t, tfp.InternalValidate())
 }

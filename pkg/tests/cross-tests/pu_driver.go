@@ -45,6 +45,37 @@ type pulumiDriver struct {
 	objectType          *tftypes.Object
 }
 
+
+func startPulumiProvider(ctx context.Context, name, version string, providerInfo tfbridge.ProviderInfo) (*rpcutil.ServeHandle, error) {
+	sink := pulumidiag.DefaultSink(io.Discard, io.Discard, pulumidiag.FormatOptions{
+		Color: colors.Never,
+	})
+
+	schema, err := tfgen.GenerateSchema(providerInfo, sink)
+	if err != nil {
+		return nil, fmt.Errorf("tfgen.GenerateSchema failed: %w", err)
+	}
+
+	schemaBytes, err := json.MarshalIndent(schema, "", " ")
+	if err != nil {
+		return nil, fmt.Errorf("json.MarshalIndent(schema, ..) failed: %w", err)
+	}
+
+	prov := tfbridge.NewProvider(ctx, nil, name, version, providerInfo.P, providerInfo, schemaBytes)
+
+	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
+		Init: func(srv *grpc.Server) error {
+			pulumirpc.RegisterResourceProviderServer(srv, prov)
+			return nil
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("rpcutil.ServeWithOptions failed: %w", err)
+	}
+
+	return &handle, nil
+}
+
 func (pd *pulumiDriver) providerInfo() tfbridge.ProviderInfo {
 	return tfbridge.ProviderInfo{
 		Name: pd.name,
@@ -60,34 +91,7 @@ func (pd *pulumiDriver) providerInfo() tfbridge.ProviderInfo {
 
 func (pd *pulumiDriver) startPulumiProvider(ctx context.Context) (*rpcutil.ServeHandle, error) {
 	info := pd.providerInfo()
-
-	sink := pulumidiag.DefaultSink(io.Discard, io.Discard, pulumidiag.FormatOptions{
-		Color: colors.Never,
-	})
-
-	schema, err := tfgen.GenerateSchema(info, sink)
-	if err != nil {
-		return nil, fmt.Errorf("tfgen.GenerateSchema failed: %w", err)
-	}
-
-	schemaBytes, err := json.MarshalIndent(schema, "", " ")
-	if err != nil {
-		return nil, fmt.Errorf("json.MarshalIndent(schema, ..) failed: %w", err)
-	}
-
-	prov := tfbridge.NewProvider(ctx, nil, pd.name, pd.version, info.P, info, schemaBytes)
-
-	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
-		Init: func(srv *grpc.Server) error {
-			pulumirpc.RegisterResourceProviderServer(srv, prov)
-			return nil
-		},
-	})
-	if err != nil {
-		return nil, fmt.Errorf("rpcutil.ServeWithOptions failed: %w", err)
-	}
-
-	return &handle, nil
+	return startPulumiProvider(ctx, pd.name, pd.version, info)
 }
 
 func (pd *pulumiDriver) writeYAML(t T, workdir string, tfConfig any) {
