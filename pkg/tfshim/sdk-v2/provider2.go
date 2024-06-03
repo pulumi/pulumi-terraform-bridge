@@ -811,6 +811,15 @@ func normalizeBlockCollections(val cty.Value, res *schema.Resource) cty.Value {
 	if !val.Type().IsObjectType() {
 		contract.Failf("normalizeBlockCollections: Expected object type, got %v", val.Type().GoString())
 	}
+
+	if val.IsNull() {
+		return val
+	}
+
+	if !val.IsKnown() {
+		contract.Failf("normalizeBlockCollections: Expected known value, got %v", val.GoString())
+	}
+
 	valMap := val.AsValueMap()
 
 	for fieldName := range sch.BlockTypes {
@@ -823,10 +832,16 @@ func normalizeBlockCollections(val cty.Value, res *schema.Resource) cty.Value {
 			// Only lists and sets can be blocks and pass InternalValidate
 			// Ignore other types.
 			if fieldType.IsListType() {
-				glog.V(10).Info("normalizing list %s, %s", fieldName, fieldType.ElementType())
+				glog.V(10).Info(
+					"normalizeBlockCollections: replacing a nil list with an empty list because the underlying "+
+						"TF property is a block %s, %s",
+					fieldName, fieldType.ElementType())
 				valMap[fieldName] = cty.ListValEmpty(fieldType.ElementType())
 			} else if fieldType.IsSetType() {
-				glog.V(10).Info("normalizing set %s, %s", fieldName, fieldType.ElementType())
+				glog.V(10).Info(
+					"normalizeBlockCollections: replacing a nil set with an empty set because the underlying "+
+						"TF property is a block %s, %s",
+					fieldName, fieldType.ElementType())
 				valMap[fieldName] = cty.SetValEmpty(fieldType.ElementType())
 			}
 		} else {
@@ -852,6 +867,11 @@ func normalizeSubBlock(val cty.Value, subBlockRes *schema.Resource) cty.Value {
 		// Blocks shouldn't be unknown, but if they are, we can't do anything with them.
 		return val
 	}
+
+	if val.IsNull() {
+		return val
+	}
+
 	if val.Type().IsListType() {
 		newSlice := normalizeIterable(val, subBlockRes)
 		if len(newSlice) != 0 {
