@@ -189,8 +189,8 @@ func (p *provider) PkgWithContext(_ context.Context) tokens.Package {
 }
 
 func (p *provider) ParameterizeWithContext(
-	ctx context.Context, req *pulumirpc.ParameterizeRequest,
-) (*pulumirpc.ParameterizeResponse, error) {
+	ctx context.Context, req plugin.ParameterizeRequest,
+) (plugin.ParameterizeResponse, error) {
 	return (&plugin.UnimplementedProvider{}).Parameterize(ctx, req)
 }
 
