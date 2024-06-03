@@ -815,10 +815,7 @@ func normalizeBlockCollections(val cty.Value, res *schema.Resource) cty.Value {
 	if val.IsNull() {
 		return val
 	}
-
-	if !val.IsKnown() {
-		contract.Failf("normalizeBlockCollections: Expected known value, got %v", val.GoString())
-	}
+	contract.Assertf(val.IsKnown(), "normalizeBlockCollections: Expected known value, got %v", val.GoString())
 
 	valMap := val.AsValueMap()
 
@@ -870,31 +867,25 @@ func normalizeSubBlock(val cty.Value, subBlockRes *schema.Resource) cty.Value {
 	}
 
 	if val.Type().IsListType() {
-		newSlice := normalizeIterable(val, subBlockRes)
+		blockValSlice := val.AsValueSlice()
+		newSlice := make([]cty.Value, len(blockValSlice))
+		for i, v := range blockValSlice {
+			newSlice[i] = normalizeBlockCollections(v, subBlockRes)
+		}
 		if len(newSlice) != 0 {
 			return cty.ListVal(newSlice)
 		}
 		return cty.ListValEmpty(val.Type().ElementType())
 	} else if val.Type().IsSetType() {
-		newSlice := normalizeIterable(val, subBlockRes)
+		blockValSlice := val.AsValueSlice()
+		newSlice := make([]cty.Value, len(blockValSlice))
+		for i, v := range blockValSlice {
+			newSlice[i] = normalizeBlockCollections(v, subBlockRes)
+		}
 		if len(newSlice) != 0 {
 			return cty.SetVal(newSlice)
 		}
 		return cty.SetValEmpty(val.Type().ElementType())
 	}
 	return val
-}
-
-func normalizeIterable(blockVal cty.Value, blockRes *schema.Resource) []cty.Value {
-	contract.Assertf(blockVal.Type().IsListType() || blockVal.Type().IsSetType(),
-		"normalizeIterable: Expected list or set type, got %v", blockVal.Type().GoString())
-	if blockVal.IsNull() || !blockVal.IsKnown() {
-		return []cty.Value{}
-	}
-	blockValSlice := blockVal.AsValueSlice()
-	newSlice := make([]cty.Value, len(blockValSlice))
-	for i, v := range blockValSlice {
-		newSlice[i] = normalizeBlockCollections(v, blockRes)
-	}
-	return newSlice
 }
