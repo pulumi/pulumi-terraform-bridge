@@ -109,6 +109,23 @@ type v2InstanceDiff2 struct {
 	plannedState cty.Value
 }
 
+func (d *v2InstanceDiff2) String() string {
+	return d.GoString()
+}
+
+func (d *v2InstanceDiff2) GoString() string {
+	if d == nil {
+		return "nil"
+	}
+	return fmt.Sprintf(`&v2InstanceDiff2{
+    v2InstanceDiff: v2InstanceDiff{
+        tf: %#v,
+    },
+    config:         %#v,
+    plannedState:   %#v,
+}`, d.v2InstanceDiff.tf, d.config, d.plannedState)
+}
+
 var _ shim.InstanceDiff = (*v2InstanceDiff2)(nil)
 
 func (d *v2InstanceDiff2) ProposedState(
