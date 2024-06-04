@@ -817,11 +817,7 @@ func normalizeBlockCollections(val cty.Value, res *schema.Resource) cty.Value {
 		contract.Failf("normalizeBlockCollections: Expected object type, got %v", val.Type().GoString())
 	}
 
-	if val.IsNull() {
-		return val
-	}
-
-	if !val.IsKnown() {
+	if val.IsNull() || !val.IsKnown() {
 		return val
 	}
 
