@@ -5520,7 +5520,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 	}`)
 	})
 
-	t.Run("unknown for max items one block prop", func(t *testing.T) {
+	t.Run("unknown for max items one block subprop", func(t *testing.T) {
 		testutils.Replay(t, provider, `
 	{
 		"method": "/pulumirpc.ResourceProvider/Create",
