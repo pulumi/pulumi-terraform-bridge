@@ -4691,7 +4691,7 @@ func TestUnknowns(t *testing.T) {
 	}`)
 	})
 
-	t.Run("unknown for set block prop", func(t *testing.T) {
+	t.Run("unknown for set block prop subprop", func(t *testing.T) {
 		testutils.Replay(t, provider, `
 	{
 		"method": "/pulumirpc.ResourceProvider/Create",
@@ -4706,6 +4706,47 @@ func TestUnknowns(t *testing.T) {
 		"response": {
 			"properties":{
 				"id":""
+			}
+		}
+	}`)
+	})
+
+	t.Run("unknown for set block prop", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"setBlockProps":["04da6b54-80e4-46f7-96ec-b56ff0331ba9"]
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":""
+			}
+		}
+	}`)
+	})
+
+	t.Run("unknown for set block prop collection", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"setBlockProps":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":"",
+				"setBlockProps":[{"prop":""}]
 			}
 		}
 	}`)
@@ -4731,7 +4772,7 @@ func TestUnknowns(t *testing.T) {
 	}`)
 	})
 
-	t.Run("unknown for list block prop", func(t *testing.T) {
+	t.Run("unknown for list block prop subprop", func(t *testing.T) {
 		testutils.Replay(t, provider, `
 	{
 		"method": "/pulumirpc.ResourceProvider/Create",
@@ -4747,6 +4788,47 @@ func TestUnknowns(t *testing.T) {
 			"properties":{
 				"id":"",
 				"listBlockProps":[{"prop":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"}]
+			}
+		}
+	}`)
+	})
+
+	t.Run("unknown for list block prop", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"listBlockProps":["04da6b54-80e4-46f7-96ec-b56ff0331ba9"]
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":""
+			}
+		}
+	}`)
+	})
+
+	t.Run("unknown for list block prop collection", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"listBlockProps":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":"",
+				"listBlockProps":[null]
 			}
 		}
 	}`)
@@ -4773,7 +4855,7 @@ func TestUnknowns(t *testing.T) {
 	}`)
 	})
 
-	t.Run("unknown for nested list block prop", func(t *testing.T) {
+	t.Run("unknown for nested list block prop nested subprop", func(t *testing.T) {
 		testutils.Replay(t, provider, `
 	{
 		"method": "/pulumirpc.ResourceProvider/Create",
@@ -4789,6 +4871,89 @@ func TestUnknowns(t *testing.T) {
 			"properties":{
 				"id":"",
 				"nestedListBlockProps":[{"nestedProps":[{"prop":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"}]}]
+			}
+		}
+	}`)
+	})
+
+	t.Run("unknown for nested list block nested prop", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"nestedListBlockProps":[{"nestedProps":["04da6b54-80e4-46f7-96ec-b56ff0331ba9"]}]
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":"",
+				"nestedListBlockProps":[{"nestedProps":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"}]
+			}
+		}
+	}`)
+	})
+
+	t.Run("unknown for nested list block prop nested collection", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"nestedListBlockProps":[{"nestedProps":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"}]
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":"",
+				"nestedListBlockProps":[{"nestedProps":[null]}]
+			}
+		}
+	}`)
+	})
+
+	t.Run("unknown for nested list block prop", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"nestedListBlockProps":["04da6b54-80e4-46f7-96ec-b56ff0331ba9"]
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":""
+			}
+		}
+	}`)
+	})
+
+	t.Run("unknown for nested list block prop collection", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"nestedListBlockProps":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":"",
+				"nestedListBlockProps":[null]
 			}
 		}
 	}`)
@@ -4830,6 +4995,26 @@ func TestUnknowns(t *testing.T) {
 			"properties":{
 				"id":"",
 				"maxItemsOneBlockProp": {"prop":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"}
+			}
+		}
+	}`)
+	})
+
+	t.Run("unknown for max items one block", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"maxItemsOneBlockProp":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":""
 			}
 		}
 	}`)
@@ -4915,7 +5100,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 	}`)
 	})
 
-	t.Run("unknown for set block prop", func(t *testing.T) {
+	t.Run("unknown for set block prop subprop", func(t *testing.T) {
 		testutils.Replay(t, provider, `
 	{
 		"method": "/pulumirpc.ResourceProvider/Create",
@@ -4938,6 +5123,64 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 				"setBlockProps":[{
 				  "prop": "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
 				}],
+				"listBlockProps":[],
+				"nestedListBlockProps":[],
+				"maxItemsOneBlockProp":null
+			}
+		}
+	}`)
+	})
+
+	t.Run("unknown for set block prop", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"setBlockProps":["04da6b54-80e4-46f7-96ec-b56ff0331ba9"]
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":"04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+				"stringProp":null,
+				"setProps":null,
+				"listProps":null,
+				"nestedListProps":null,
+				"maxItemsOneProp":null,
+				"setBlockProps":["04da6b54-80e4-46f7-96ec-b56ff0331ba9"],
+				"listBlockProps":[],
+				"nestedListBlockProps":[],
+				"maxItemsOneBlockProp":null
+			}
+		}
+	}`)
+	})
+
+	t.Run("unknown for set block prop collection", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"setBlockProps":["04da6b54-80e4-46f7-96ec-b56ff0331ba9"]
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":"04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+				"stringProp":null,
+				"setProps":null,
+				"listProps":null,
+				"nestedListProps":null,
+				"maxItemsOneProp":null,
+				"setBlockProps":["04da6b54-80e4-46f7-96ec-b56ff0331ba9"],
 				"listBlockProps":[],
 				"nestedListBlockProps":[],
 				"maxItemsOneBlockProp":null
@@ -4976,7 +5219,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 	}`)
 	})
 
-	t.Run("unknown for list block prop", func(t *testing.T) {
+	t.Run("unknown for list block prop subprop", func(t *testing.T) {
 		testutils.Replay(t, provider, `
 	{
 		"method": "/pulumirpc.ResourceProvider/Create",
@@ -5000,6 +5243,64 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 				"listBlockProps":[{
 					"prop": "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
 				  }],
+				"nestedListBlockProps":[],
+				"maxItemsOneBlockProp":null
+			}
+		}
+	}`)
+	})
+
+	t.Run("unknown for list block prop", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"listBlockProps":["04da6b54-80e4-46f7-96ec-b56ff0331ba9"]
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":"04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+				"stringProp":null,
+				"setProps":null,
+				"listProps":null,
+				"nestedListProps":null,
+				"maxItemsOneProp":null,
+				"setBlockProps":[],
+				"listBlockProps":["04da6b54-80e4-46f7-96ec-b56ff0331ba9"],
+				"nestedListBlockProps":[],
+				"maxItemsOneBlockProp":null
+			}
+		}
+	}`)
+	})
+
+	t.Run("unknown for list block prop collection", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"listBlockProps":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":"04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+				"stringProp":null,
+				"setProps":null,
+				"listProps":null,
+				"nestedListProps":null,
+				"maxItemsOneProp":null,
+				"setBlockProps":[],
+				"listBlockProps":"04da6b54-80e4-46f7-96ec-b56ff0331ba9",
 				"nestedListBlockProps":[],
 				"maxItemsOneBlockProp":null
 			}
@@ -5037,7 +5338,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 	}`)
 	})
 
-	t.Run("unknown for nested list block prop", func(t *testing.T) {
+	t.Run("unknown for nested list block prop nested subprop", func(t *testing.T) {
 		testutils.Replay(t, provider, `
 	{
 		"method": "/pulumirpc.ResourceProvider/Create",
@@ -5064,6 +5365,128 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 						{"prop":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"}
 					]
 				  }],
+				"maxItemsOneBlockProp":null
+			}
+		}
+	}`)
+	})
+
+	t.Run("unknown for nested list block prop nested prop", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"nestedListBlockProps":[{"nestedProps":["04da6b54-80e4-46f7-96ec-b56ff0331ba9"]}]
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":"04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+				"stringProp":null,
+				"setProps":null,
+				"listProps":null,
+				"nestedListProps":null,
+				"maxItemsOneProp":null,
+				"setBlockProps":[],
+				"listBlockProps":[],
+				"nestedListBlockProps":[{
+					"nestedProps": [
+						"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+					]
+				  }],
+				"maxItemsOneBlockProp":null
+			}
+		}
+	}`)
+	})
+
+	t.Run("unknown for nested list block prop nested collection", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"nestedListBlockProps":[{"nestedProps":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"}]
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":"04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+				"stringProp":null,
+				"setProps":null,
+				"listProps":null,
+				"nestedListProps":null,
+				"maxItemsOneProp":null,
+				"setBlockProps":[],
+				"listBlockProps":[],
+				"nestedListBlockProps":[{
+					"nestedProps": "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+				  }],
+				"maxItemsOneBlockProp":null
+			}
+		}
+	}`)
+	})
+
+	t.Run("unknown for nested list block prop", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"nestedListBlockProps":["04da6b54-80e4-46f7-96ec-b56ff0331ba9"]
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":"04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+				"stringProp":null,
+				"setProps":null,
+				"listProps":null,
+				"nestedListProps":null,
+				"maxItemsOneProp":null,
+				"setBlockProps":[],
+				"listBlockProps":[],
+				"nestedListBlockProps":["04da6b54-80e4-46f7-96ec-b56ff0331ba9"],
+				"maxItemsOneBlockProp":null
+			}
+		}
+	}`)
+	})
+
+	t.Run("unknown for nested list block collection", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"nestedListBlockProps":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":"04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+				"stringProp":null,
+				"setProps":null,
+				"listProps":null,
+				"nestedListProps":null,
+				"maxItemsOneProp":null,
+				"setBlockProps":[],
+				"listBlockProps":[],
+				"nestedListBlockProps":"04da6b54-80e4-46f7-96ec-b56ff0331ba9",
 				"maxItemsOneBlockProp":null
 			}
 		}
@@ -5123,6 +5546,35 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 				"listBlockProps":[],
 				"nestedListBlockProps":[],
 				"maxItemsOneBlockProp":{"prop":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"}
+			}
+		}
+	}`)
+	})
+
+	t.Run("unknown for max items one block prop", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"maxItemsOneBlockProp":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":"04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+				"stringProp":null,
+				"setProps":null,
+				"listProps":null,
+				"nestedListProps":null,
+				"maxItemsOneProp":null,
+				"setBlockProps":[],
+				"listBlockProps":[],
+				"nestedListBlockProps":[],
+				"maxItemsOneBlockProp":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
 			}
 		}
 	}`)
