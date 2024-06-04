@@ -717,10 +717,10 @@ func testCheckFailuresV1(t *testing.T, failures []*pulumirpc.CheckFailure) {
 }
 
 func testCheckFailuresV2(t *testing.T, failures []*pulumirpc.CheckFailure) {
-	assert.Equal(t, "Conflicting configuration arguments: \"conflicting_property\": conflicts with "+
+	assert.Equal(t, "Conflicting configuration arguments. \"conflicting_property\": conflicts with "+
 		"conflicting_property2. Examine values at 'name.conflictingProperty'.", failures[0].Reason)
 	assert.Equal(t, "", failures[0].Property)
-	assert.Equal(t, "Conflicting configuration arguments: \"conflicting_property2\": conflicts with "+
+	assert.Equal(t, "Conflicting configuration arguments. \"conflicting_property2\": conflicts with "+
 		"conflicting_property. Examine values at 'name.conflictingProperty2'.", failures[1].Reason)
 	assert.Equal(t, "", failures[1].Property)
 	assert.Equal(t, "Missing required argument. The argument \"array_property_value\" is required"+
