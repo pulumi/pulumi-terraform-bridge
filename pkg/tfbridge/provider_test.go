@@ -4536,45 +4536,106 @@ func TestPlanResourceChangeStateUpgrade(t *testing.T) {
 	}`)
 }
 
-func TestUnknowns(t *testing.T) {
-	// Related to [pulumi/pulumi-terraform-bridge#1885]
-	p := &schemav2.Provider{
-		Schema: map[string]*schemav2.Schema{},
-		ResourcesMap: map[string]*schemav2.Resource{
-			"example_resource": {
-				Schema: map[string]*schemav2.Schema{
-					"set_prop": {
-						Type:     schema.TypeSet,
-						Optional: true,
-						Elem:     &schemav2.Schema{Type: schemav2.TypeString},
-					},
-					"string_prop": {
-						Type:     schema.TypeString,
-						Optional: true,
-					},
-					"list_prop": {
-						Type:     schema.TypeList,
-						Optional: true,
-						Elem:     &schemav2.Schema{Type: schemav2.TypeString},
-					},
-					"nested_list_prop": {
-						Type:     schema.TypeList,
-						Optional: true,
-						Elem: &schemav2.Schema{
-							Type:     schema.TypeList,
-							Optional: true,
-							Elem:     &schemav2.Schema{Type: schemav2.TypeString},
+func UnknownsSchema() map[string]*schemav2.Resource {
+	return map[string]*schemav2.Resource{
+		"example_resource": {
+			Schema: map[string]*schemav2.Schema{
+				"set_prop": {
+					Type:     schema.TypeSet,
+					Optional: true,
+					Elem:     &schemav2.Schema{Type: schemav2.TypeString},
+				},
+				"set_block_prop": {
+					Type:     schema.TypeSet,
+					Optional: true,
+					Elem: &schemav2.Resource{
+						Schema: map[string]*schemav2.Schema{
+							"prop": {
+								Type:     schema.TypeString,
+								Optional: true,
+							},
 						},
 					},
-					"max_items_one_prop": {
+				},
+				"string_prop": {
+					Type:     schema.TypeString,
+					Optional: true,
+				},
+				"list_prop": {
+					Type:     schema.TypeList,
+					Optional: true,
+					Elem:     &schemav2.Schema{Type: schemav2.TypeString},
+				},
+				"list_block_prop": {
+					Type:     schema.TypeList,
+					Optional: true,
+					Elem: &schemav2.Resource{
+						Schema: map[string]*schemav2.Schema{
+							"prop": {
+								Type:     schema.TypeString,
+								Optional: true,
+							},
+						},
+					},
+				},
+				"nested_list_prop": {
+					Type:     schema.TypeList,
+					Optional: true,
+					Elem: &schemav2.Schema{
 						Type:     schema.TypeList,
 						Optional: true,
-						MaxItems: 1,
 						Elem:     &schemav2.Schema{Type: schemav2.TypeString},
+					},
+				},
+				"nested_list_block_prop": {
+					Type:     schema.TypeList,
+					Optional: true,
+					Elem: &schemav2.Resource{
+						Schema: map[string]*schemav2.Schema{
+							"nested_prop": {
+								Type:     schema.TypeList,
+								Optional: true,
+								Elem: &schemav2.Resource{
+									Schema: map[string]*schemav2.Schema{
+										"prop": {
+											Type:     schema.TypeString,
+											Optional: true,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				"max_items_one_prop": {
+					Type:     schema.TypeList,
+					Optional: true,
+					MaxItems: 1,
+					Elem:     &schemav2.Schema{Type: schemav2.TypeString},
+				},
+				"max_items_one_block_prop": {
+					Type:     schema.TypeList,
+					Optional: true,
+					MaxItems: 1,
+					Elem: &schemav2.Resource{
+						Schema: map[string]*schemav2.Schema{
+							"prop": {
+								Type:     schema.TypeString,
+								Optional: true,
+							},
+						},
 					},
 				},
 			},
 		},
+	}
+}
+
+func TestUnknowns(t *testing.T) {
+	// Related to [pulumi/pulumi-terraform-bridge#1885]
+	p := &schemav2.Provider{
+		Schema:       map[string]*schemav2.Schema{},
+		ResourcesMap: UnknownsSchema(),
 	}
 	shimProv := shimv2.NewProvider(p, shimv2.WithPlanResourceChange(func(tfResourceType string) bool { return false }))
 	provider := &Provider{
@@ -4630,6 +4691,26 @@ func TestUnknowns(t *testing.T) {
 	}`)
 	})
 
+	t.Run("unknown for set block prop", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"setBlockProps":[{"prop":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"}]
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":""
+			}
+		}
+	}`)
+	})
+
 	t.Run("unknown for list prop", func(t *testing.T) {
 		testutils.Replay(t, provider, `
 	{
@@ -4645,6 +4726,27 @@ func TestUnknowns(t *testing.T) {
 		"response": {
 			"properties":{
 				"id": ""
+			}
+		}
+	}`)
+	})
+
+	t.Run("unknown for list block prop", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"listBlockProps":[{"prop":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"}]
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":"",
+				"listBlockProps":[{"prop":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"}]
 			}
 		}
 	}`)
@@ -4671,6 +4773,27 @@ func TestUnknowns(t *testing.T) {
 	}`)
 	})
 
+	t.Run("unknown for nested list block prop", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"nestedListBlockProps":[{"nestedProps":[{"prop":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"}]}]
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":"",
+				"nestedListBlockProps":[{"nestedProps":[{"prop":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"}]}]
+			}
+		}
+	}`)
+	})
+
 	t.Run("unknown for max items one prop", func(t *testing.T) {
 		testutils.Replay(t, provider, `
 	{
@@ -4690,47 +4813,34 @@ func TestUnknowns(t *testing.T) {
 		}
 	}`)
 	})
+
+	t.Run("unknown for max items one block prop", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"maxItemsOneBlockProp":{"prop":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"}
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":"",
+				"maxItemsOneBlockProp": {"prop":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"}
+			}
+		}
+	}`)
+	})
 }
 
 func TestPlanResourceChangeUnknowns(t *testing.T) {
 	// Related to [pulumi/pulumi-terraform-bridge#1885]
 	p := &schemav2.Provider{
-		Schema: map[string]*schemav2.Schema{},
-		ResourcesMap: map[string]*schemav2.Resource{
-			"example_resource": {
-				Schema: map[string]*schemav2.Schema{
-					"set_prop": {
-						Type:     schema.TypeSet,
-						Optional: true,
-						Elem:     &schemav2.Schema{Type: schemav2.TypeString},
-					},
-					"string_prop": {
-						Type:     schema.TypeString,
-						Optional: true,
-					},
-					"list_prop": {
-						Type:     schema.TypeList,
-						Optional: true,
-						Elem:     &schemav2.Schema{Type: schemav2.TypeString},
-					},
-					"nested_list_prop": {
-						Type:     schema.TypeList,
-						Optional: true,
-						Elem: &schemav2.Schema{
-							Type:     schema.TypeList,
-							Optional: true,
-							Elem:     &schemav2.Schema{Type: schemav2.TypeString},
-						},
-					},
-					"max_items_one_prop": {
-						Type:     schema.TypeList,
-						Optional: true,
-						MaxItems: 1,
-						Elem:     &schemav2.Schema{Type: schemav2.TypeString},
-					},
-				},
-			},
-		},
+		Schema:       map[string]*schemav2.Schema{},
+		ResourcesMap: UnknownsSchema(),
 	}
 	shimProv := shimv2.NewProvider(p, shimv2.WithPlanResourceChange(func(tfResourceType string) bool { return true }))
 	provider := &Provider{
@@ -4765,7 +4875,11 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 				"setProps":null,
 				"listProps":null,
 				"nestedListProps":null,
-				"maxItemsOneProp":null
+				"maxItemsOneProp":null,
+				"setBlockProps":[],
+				"listBlockProps":[],
+				"nestedListBlockProps":[],
+				"maxItemsOneBlockProp":null
 			}
 		}
 	}`)
@@ -4790,7 +4904,43 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 				"setProps":"04da6b54-80e4-46f7-96ec-b56ff0331ba9",
 				"listProps":null,
 				"nestedListProps":null,
-				"maxItemsOneProp":null
+				"maxItemsOneProp":null,
+				"maxItemsOneProp":null,
+				"setBlockProps":[],
+				"listBlockProps":[],
+				"nestedListBlockProps":[],
+				"maxItemsOneBlockProp":null
+			}
+		}
+	}`)
+	})
+
+	t.Run("unknown for set block prop", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"setBlockProps":[{"prop":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"}]
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":"04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+				"stringProp":null,
+				"setProps":null,
+				"listProps":null,
+				"nestedListProps":null,
+				"maxItemsOneProp":null,
+				"setBlockProps":[{
+				  "prop": "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+				}],
+				"listBlockProps":[],
+				"nestedListBlockProps":[],
+				"maxItemsOneBlockProp":null
 			}
 		}
 	}`)
@@ -4815,7 +4965,43 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 				"setProps":null,
 				"listProps":"04da6b54-80e4-46f7-96ec-b56ff0331ba9",
 				"maxItemsOneProp":null,
-				"nestedListProps":null
+				"nestedListProps":null,
+				"maxItemsOneProp":null,
+				"setBlockProps":[],
+				"listBlockProps":[],
+				"nestedListBlockProps":[],
+				"maxItemsOneBlockProp":null
+			}
+		}
+	}`)
+	})
+
+	t.Run("unknown for list block prop", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"listBlockProps":[{"prop":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"}]
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":"04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+				"stringProp":null,
+				"setProps":null,
+				"listProps":null,
+				"nestedListProps":null,
+				"maxItemsOneProp":null,
+				"setBlockProps":[],
+				"listBlockProps":[{
+					"prop": "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+				  }],
+				"nestedListBlockProps":[],
+				"maxItemsOneBlockProp":null
 			}
 		}
 	}`)
@@ -4840,7 +5026,45 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 				"setProps":null,
 				"listProps":null,
 				"maxItemsOneProp":null,
-				"nestedListProps":["04da6b54-80e4-46f7-96ec-b56ff0331ba9"]
+				"nestedListProps":["04da6b54-80e4-46f7-96ec-b56ff0331ba9"],
+				"maxItemsOneProp":null,
+				"setBlockProps":[],
+				"listBlockProps":[],
+				"nestedListBlockProps":[],
+				"maxItemsOneBlockProp":null
+			}
+		}
+	}`)
+	})
+
+	t.Run("unknown for nested list block prop", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"nestedListBlockProps":[{"nestedProp":[{"prop":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"}]}]
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":"04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+				"stringProp":null,
+				"setProps":null,
+				"listProps":null,
+				"nestedListProps":null,
+				"maxItemsOneProp":null,
+				"setBlockProps":[],
+				"listBlockProps":[],
+				"nestedListBlockProps":[{
+					"nestedProps": [
+						{"prop":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"}
+					]
+				  }],
+				"maxItemsOneBlockProp":null
 			}
 		}
 	}`)
@@ -4865,7 +5089,40 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 				"setProps":null,
 				"listProps":null,
 				"nestedListProps":null,
-				"maxItemsOneProp":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+				"maxItemsOneProp":"04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+				"setBlockProps":[],
+				"listBlockProps":[],
+				"nestedListBlockProps":[],
+				"maxItemsOneBlockProp":null
+			}
+		}
+	}`)
+	})
+
+	t.Run("unknown for max items one block prop", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"maxItemsOneBlockProp":{"prop":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"}
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":"04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+				"stringProp":null,
+				"setProps":null,
+				"listProps":null,
+				"nestedListProps":null,
+				"maxItemsOneProp":null,
+				"setBlockProps":[],
+				"listBlockProps":[],
+				"nestedListBlockProps":[],
+				"maxItemsOneBlockProp":{"prop":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"}
 			}
 		}
 	}`)
