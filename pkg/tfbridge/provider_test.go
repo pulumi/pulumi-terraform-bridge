@@ -4536,7 +4536,138 @@ func TestPlanResourceChangeStateUpgrade(t *testing.T) {
 	}`)
 }
 
+func TestUnknowns(t *testing.T) {
+	// Related to [pulumi/pulumi-terraform-bridge#1885]
+	p := &schemav2.Provider{
+		Schema: map[string]*schemav2.Schema{},
+		ResourcesMap: map[string]*schemav2.Resource{
+			"example_resource": {
+				Schema: map[string]*schemav2.Schema{
+					"set_prop": &schema.Schema{
+						Type:     schema.TypeSet,
+						Optional: true,
+						Elem:     &schemav2.Schema{Type: schemav2.TypeString},
+					},
+					"string_prop": &schema.Schema{
+						Type:     schema.TypeString,
+						Optional: true,
+					},
+					"list_prop": &schema.Schema{
+						Type:     schema.TypeList,
+						Optional: true,
+						Elem:     &schemav2.Schema{Type: schemav2.TypeString},
+					},
+					"nested_list_prop": &schema.Schema{
+						Type:     schema.TypeList,
+						Optional: true,
+						Elem: &schemav2.Schema{
+							Type:     schema.TypeList,
+							Optional: true,
+							Elem:     &schemav2.Schema{Type: schemav2.TypeString},
+						},
+					},
+				},
+			},
+		},
+	}
+	shimProv := shimv2.NewProvider(p, shimv2.WithPlanResourceChange(func(tfResourceType string) bool { return false }))
+	provider := &Provider{
+		tf:     shimProv,
+		config: shimv2.NewSchemaMap(p.Schema),
+		info: ProviderInfo{
+			P:              shimProv,
+			ResourcePrefix: "example",
+			Resources: map[string]*ResourceInfo{
+				"example_resource": {Tok: "ExampleResource"},
+			},
+		},
+	}
+	provider.initResourceMaps()
+
+	t.Run("unknown for string prop", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"string_prop":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":""
+			}
+		}
+	}`)
+	})
+
+	t.Run("unknown for set prop", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"setProps":["04da6b54-80e4-46f7-96ec-b56ff0331ba9"]
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":""
+			}
+		}
+	}`)
+	})
+
+	t.Run("unknown for list prop", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"listProps":["04da6b54-80e4-46f7-96ec-b56ff0331ba9"]
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id": ""
+			}
+		}
+	}`)
+	})
+
+	t.Run("unknown for nested list prop", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"nestedListProps":[["04da6b54-80e4-46f7-96ec-b56ff0331ba9"]]
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":"",
+				"nestedListProps":["04da6b54-80e4-46f7-96ec-b56ff0331ba9"]
+			}
+		}
+	}`)
+	})
+}
+
 func TestPlanResourceChangeUnknowns(t *testing.T) {
+	// Related to [pulumi/pulumi-terraform-bridge#1885]
 	p := &schemav2.Provider{
 		Schema: map[string]*schemav2.Schema{},
 		ResourcesMap: map[string]*schemav2.Resource{
