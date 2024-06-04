@@ -820,7 +820,10 @@ func normalizeBlockCollections(val cty.Value, res *schema.Resource) cty.Value {
 	if val.IsNull() {
 		return val
 	}
-	contract.Assertf(val.IsKnown(), "normalizeBlockCollections: Expected known value, got %v", val.GoString())
+
+	if !val.IsKnown() {
+		return val
+	}
 
 	valMap := val.AsValueMap()
 

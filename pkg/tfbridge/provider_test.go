@@ -5484,7 +5484,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 				"maxItemsOneProp":null,
 				"setBlockProps":[],
 				"listBlockProps":[],
-				"nestedListBlockProps":[{"nestedProps":null}],
+				"nestedListBlockProps":[{"nestedProps":[]}],
 				"maxItemsOneBlockProp":null
 			}
 		}
