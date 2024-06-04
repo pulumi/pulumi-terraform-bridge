@@ -4633,6 +4633,19 @@ func UnknownsSchema() map[string]*schemav2.Resource {
 
 func TestUnknowns(t *testing.T) {
 	// Related to [pulumi/pulumi-terraform-bridge#1885]
+	// This test is to ensure that we can handle unknowns in the schema.
+	// Note that the behaviour here might not match TF and can NOT match TF completely
+	// as HCL has no way of expressing unknown blocks.
+	// We currently have a workaround in makeTerraformInputs where we convert unknown blocks
+	// to blocks of unknown.
+	//
+	// The structure is that for each property we inject an unknown at every level.
+	// For the block tests:
+	// _subprop is an unknown for the subproperty in the block object
+	// _prop is an unknown for the whole block
+	// _collection is an unknown for the whole collection
+	// The nested match the above convention but also iterate over the nested object.
+
 	p := &schemav2.Provider{
 		Schema:       map[string]*schemav2.Schema{},
 		ResourcesMap: UnknownsSchema(),
@@ -5023,6 +5036,19 @@ func TestUnknowns(t *testing.T) {
 
 func TestPlanResourceChangeUnknowns(t *testing.T) {
 	// Related to [pulumi/pulumi-terraform-bridge#1885]
+	// This test is to ensure that we can handle unknowns in the schema.
+	// Note that the behaviour here might not match TF and can NOT match TF completely
+	// as HCL has no way of expressing unknown blocks.
+	// We currently have a workaround in makeTerraformInputs where we convert unknown blocks
+	// to blocks of unknown.
+	//
+	// The structure is that for each property we inject an unknown at every level.
+	// For the block tests:
+	// _subprop is an unknown for the subproperty in the block object
+	// _prop is an unknown for the whole block
+	// _collection is an unknown for the whole collection
+	// The nested match the above convention but also iterate over the nested object.
+
 	p := &schemav2.Provider{
 		Schema:       map[string]*schemav2.Schema{},
 		ResourcesMap: UnknownsSchema(),
