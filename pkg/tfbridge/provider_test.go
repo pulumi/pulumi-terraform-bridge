@@ -4543,21 +4543,21 @@ func TestUnknowns(t *testing.T) {
 		ResourcesMap: map[string]*schemav2.Resource{
 			"example_resource": {
 				Schema: map[string]*schemav2.Schema{
-					"set_prop": &schema.Schema{
+					"set_prop": {
 						Type:     schema.TypeSet,
 						Optional: true,
 						Elem:     &schemav2.Schema{Type: schemav2.TypeString},
 					},
-					"string_prop": &schema.Schema{
+					"string_prop": {
 						Type:     schema.TypeString,
 						Optional: true,
 					},
-					"list_prop": &schema.Schema{
+					"list_prop": {
 						Type:     schema.TypeList,
 						Optional: true,
 						Elem:     &schemav2.Schema{Type: schemav2.TypeString},
 					},
-					"nested_list_prop": &schema.Schema{
+					"nested_list_prop": {
 						Type:     schema.TypeList,
 						Optional: true,
 						Elem: &schemav2.Schema{
@@ -4565,6 +4565,12 @@ func TestUnknowns(t *testing.T) {
 							Optional: true,
 							Elem:     &schemav2.Schema{Type: schemav2.TypeString},
 						},
+					},
+					"max_items_one_prop": {
+						Type:     schema.TypeList,
+						Optional: true,
+						MaxItems: 1,
+						Elem:     &schemav2.Schema{Type: schemav2.TypeString},
 					},
 				},
 			},
@@ -4664,6 +4670,26 @@ func TestUnknowns(t *testing.T) {
 		}
 	}`)
 	})
+
+	t.Run("unknown for max items one prop", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"maxItemsOneProp":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":""
+			}
+		}
+	}`)
+	})
 }
 
 func TestPlanResourceChangeUnknowns(t *testing.T) {
@@ -4673,21 +4699,21 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 		ResourcesMap: map[string]*schemav2.Resource{
 			"example_resource": {
 				Schema: map[string]*schemav2.Schema{
-					"set_prop": &schema.Schema{
+					"set_prop": {
 						Type:     schema.TypeSet,
 						Optional: true,
 						Elem:     &schemav2.Schema{Type: schemav2.TypeString},
 					},
-					"string_prop": &schema.Schema{
+					"string_prop": {
 						Type:     schema.TypeString,
 						Optional: true,
 					},
-					"list_prop": &schema.Schema{
+					"list_prop": {
 						Type:     schema.TypeList,
 						Optional: true,
 						Elem:     &schemav2.Schema{Type: schemav2.TypeString},
 					},
-					"nested_list_prop": &schema.Schema{
+					"nested_list_prop": {
 						Type:     schema.TypeList,
 						Optional: true,
 						Elem: &schemav2.Schema{
@@ -4695,6 +4721,12 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 							Optional: true,
 							Elem:     &schemav2.Schema{Type: schemav2.TypeString},
 						},
+					},
+					"max_items_one_prop": {
+						Type:     schema.TypeList,
+						Optional: true,
+						MaxItems: 1,
+						Elem:     &schemav2.Schema{Type: schemav2.TypeString},
 					},
 				},
 			},
@@ -4732,7 +4764,8 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 				"stringProp":"04da6b54-80e4-46f7-96ec-b56ff0331ba9",
 				"setProps":null,
 				"listProps":null,
-				"nestedListProps":null
+				"nestedListProps":null,
+				"maxItemsOneProp":null
 			}
 		}
 	}`)
@@ -4756,7 +4789,8 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 				"stringProp":null,
 				"setProps":"04da6b54-80e4-46f7-96ec-b56ff0331ba9",
 				"listProps":null,
-				"nestedListProps":null
+				"nestedListProps":null,
+				"maxItemsOneProp":null
 			}
 		}
 	}`)
@@ -4780,6 +4814,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 				"stringProp":null,
 				"setProps":null,
 				"listProps":"04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+				"maxItemsOneProp":null,
 				"nestedListProps":null
 			}
 		}
@@ -4804,7 +4839,33 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 				"stringProp":null,
 				"setProps":null,
 				"listProps":null,
+				"maxItemsOneProp":null,
 				"nestedListProps":["04da6b54-80e4-46f7-96ec-b56ff0331ba9"]
+			}
+		}
+	}`)
+	})
+
+	t.Run("unknown for max items one prop", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"maxItemsOneProp":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":"04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+				"stringProp":null,
+				"setProps":null,
+				"listProps":null,
+				"nestedListProps":null,
+				"maxItemsOneProp":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
 			}
 		}
 	}`)
