@@ -5045,7 +5045,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
 			"properties":{
 				"__defaults":[],
-				"nestedListBlockProps":[{"nestedProp":[{"prop":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"}]}]
+				"nestedListBlockProps":[{"nestedProps":[{"prop":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"}]}]
 			},
 			"preview":true
 		},
