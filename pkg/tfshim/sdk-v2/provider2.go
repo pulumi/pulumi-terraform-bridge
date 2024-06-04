@@ -332,6 +332,11 @@ func (p *planResourceChangeImpl) upgradeState(
 	res := p.tf.ResourcesMap[t]
 	state := p.unpackInstanceState(t, s)
 
+	// In the case of Create, prior state is encoded as Null and should not be subject to upgrades.
+	if state.stateValue.IsNull() {
+		return s, nil
+	}
+
 	newState, newMeta, err := upgradeResourceStateGRPC(ctx, t, res, state.stateValue, state.meta, p.server.gserver)
 	if err != nil {
 		return nil, err
