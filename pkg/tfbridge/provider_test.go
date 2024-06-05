@@ -5669,25 +5669,25 @@ func TestCheckPlanResourceChangeUnknowns(t *testing.T) {
 	}`)
 	})
 
-	// t.Run("unknown for string prop", func(t *testing.T) {
-	// 	testutils.Replay(t, provider, `
-	// {
-	// 	"method": "/pulumirpc.ResourceProvider/Check",
-	// 	"request": {
-	// 		"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
-	// 		"olds": {},
-	// 		"news":{
-	// 			"__defaults":[],
-	// 			"stringProp":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
-	// 		},
-	// 		"randomSeed": "ROwbJVHmCcN8pilnAHgl2qU626UEO6pWtcnBFUc63uY="
-	// 	},
-	// 	"response": {
-	// 		"inputs":{
-	// 			"__defaults":[],
-	// 			"stringProp":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
-	// 		}
-	// 	}
-	// }`)
-	// })
+	t.Run("unknown for string prop", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Check",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"olds": {},
+			"news":{
+				"__defaults":[],
+				"stringProp":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+			},
+			"randomSeed": "ROwbJVHmCcN8pilnAHgl2qU626UEO6pWtcnBFUc63uY="
+		},
+		"response": {
+			"inputs":{
+				"__defaults":[],
+				"stringProp":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+			}
+		}
+	}`)
+	})
 }
