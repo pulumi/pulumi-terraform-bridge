@@ -49,8 +49,8 @@ func upgradeResourceStateGRPC(
 		RawState: &tfprotov5.RawState{JSON: jsonBytes},
 		Version:  version,
 	})
-	if err != nil {
-		return cty.Value{}, nil, err
+	if uerr := handleDiagnostics(ctx, resp.Diagnostics, err); uerr != nil {
+		return cty.Value{}, nil, uerr
 	}
 
 	newState, err := msgpack.Unmarshal(resp.UpgradedState.MsgPack, res.CoreConfigSchema().ImpliedType())

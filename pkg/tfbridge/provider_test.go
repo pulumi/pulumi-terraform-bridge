@@ -4633,6 +4633,19 @@ func UnknownsSchema() map[string]*schemav2.Resource {
 
 func TestUnknowns(t *testing.T) {
 	// Related to [pulumi/pulumi-terraform-bridge#1885]
+	// This test is to ensure that we can handle unknowns in the schema.
+	// Note that the behaviour here might not match TF and can NOT match TF completely
+	// as HCL has no way of expressing unknown blocks.
+	// We currently have a workaround in makeTerraformInputs where we convert unknown blocks
+	// to blocks of unknown.
+	//
+	// The structure is that for each property we inject an unknown at every level.
+	// For the block tests:
+	// _subprop is an unknown for the subproperty in the block object
+	// _prop is an unknown for the whole block
+	// _collection is an unknown for the whole collection
+	// The nested match the above convention but also iterate over the nested object.
+
 	p := &schemav2.Provider{
 		Schema:       map[string]*schemav2.Schema{},
 		ResourcesMap: UnknownsSchema(),
@@ -4659,7 +4672,7 @@ func TestUnknowns(t *testing.T) {
 			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
 			"properties":{
 				"__defaults":[],
-				"string_prop":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+				"stringProp":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
 			},
 			"preview":true
 		},
@@ -4732,6 +4745,7 @@ func TestUnknowns(t *testing.T) {
 	})
 
 	t.Run("unknown for set block prop collection", func(t *testing.T) {
+		// TODO[pulumi/pulumi-terraform-bridge#1885]
 		testutils.Replay(t, provider, `
 	{
 		"method": "/pulumirpc.ResourceProvider/Create",
@@ -4814,6 +4828,7 @@ func TestUnknowns(t *testing.T) {
 	})
 
 	t.Run("unknown for list block prop collection", func(t *testing.T) {
+		// TODO[pulumi/pulumi-terraform-bridge#1885]
 		testutils.Replay(t, provider, `
 	{
 		"method": "/pulumirpc.ResourceProvider/Create",
@@ -4835,6 +4850,7 @@ func TestUnknowns(t *testing.T) {
 	})
 
 	t.Run("unknown for nested list prop", func(t *testing.T) {
+		// The unknownness gets promoted one level up. This seems to be TF behaviour, independent of PRC.
 		testutils.Replay(t, provider, `
 	{
 		"method": "/pulumirpc.ResourceProvider/Create",
@@ -4898,6 +4914,7 @@ func TestUnknowns(t *testing.T) {
 	})
 
 	t.Run("unknown for nested list block prop nested collection", func(t *testing.T) {
+		// TODO[pulumi/pulumi-terraform-bridge#1885]
 		testutils.Replay(t, provider, `
 	{
 		"method": "/pulumirpc.ResourceProvider/Create",
@@ -4939,6 +4956,7 @@ func TestUnknowns(t *testing.T) {
 	})
 
 	t.Run("unknown for nested list block prop collection", func(t *testing.T) {
+		// TODO[pulumi/pulumi-terraform-bridge#1885]
 		testutils.Replay(t, provider, `
 	{
 		"method": "/pulumirpc.ResourceProvider/Create",
@@ -5023,6 +5041,19 @@ func TestUnknowns(t *testing.T) {
 
 func TestPlanResourceChangeUnknowns(t *testing.T) {
 	// Related to [pulumi/pulumi-terraform-bridge#1885]
+	// This test is to ensure that we can handle unknowns in the schema.
+	// Note that the behaviour here might not match TF and can NOT match TF completely
+	// as HCL has no way of expressing unknown blocks.
+	// We currently have a workaround in makeTerraformInputs where we convert unknown blocks
+	// to blocks of unknown.
+	//
+	// The structure is that for each property we inject an unknown at every level.
+	// For the block tests:
+	// _subprop is an unknown for the subproperty in the block object
+	// _prop is an unknown for the whole block
+	// _collection is an unknown for the whole collection
+	// The nested match the above convention but also iterate over the nested object.
+
 	p := &schemav2.Provider{
 		Schema:       map[string]*schemav2.Schema{},
 		ResourcesMap: UnknownsSchema(),
@@ -5071,6 +5102,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 	})
 
 	t.Run("unknown for set prop", func(t *testing.T) {
+		// The unknownness gets promoted one level up. This seems to be TF behaviour, independent of PRC.
 		testutils.Replay(t, provider, `
 	{
 		"method": "/pulumirpc.ResourceProvider/Create",
@@ -5132,6 +5164,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 	})
 
 	t.Run("unknown for set block prop", func(t *testing.T) {
+		// TODO[pulumi/pulumi-terraform-bridge#1885]
 		testutils.Replay(t, provider, `
 	{
 		"method": "/pulumirpc.ResourceProvider/Create",
@@ -5161,6 +5194,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 	})
 
 	t.Run("unknown for set block prop collection", func(t *testing.T) {
+		// TODO[pulumi/pulumi-terraform-bridge#1885]
 		testutils.Replay(t, provider, `
 	{
 		"method": "/pulumirpc.ResourceProvider/Create",
@@ -5168,7 +5202,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
 			"properties":{
 				"__defaults":[],
-				"setBlockProps":["04da6b54-80e4-46f7-96ec-b56ff0331ba9"]
+				"setBlockProps":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
 			},
 			"preview":true
 		},
@@ -5190,6 +5224,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 	})
 
 	t.Run("unknown for list prop", func(t *testing.T) {
+		// The unknownness gets promoted one level up. This seems to be TF behaviour, independent of PRC.
 		testutils.Replay(t, provider, `
 	{
 		"method": "/pulumirpc.ResourceProvider/Create",
@@ -5251,6 +5286,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 	})
 
 	t.Run("unknown for list block prop", func(t *testing.T) {
+		// The unknownness gets promoted one level up. This seems to be TF behaviour, independent of PRC.
 		testutils.Replay(t, provider, `
 	{
 		"method": "/pulumirpc.ResourceProvider/Create",
@@ -5280,6 +5316,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 	})
 
 	t.Run("unknown for list block prop collection", func(t *testing.T) {
+		// TODO[pulumi/pulumi-terraform-bridge#1885]
 		testutils.Replay(t, provider, `
 	{
 		"method": "/pulumirpc.ResourceProvider/Create",
@@ -5309,6 +5346,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 	})
 
 	t.Run("unknown for nested list prop", func(t *testing.T) {
+		// The unknownness gets promoted one level up. This seems to be TF behaviour, independent of PRC.
 		testutils.Replay(t, provider, `
 	{
 		"method": "/pulumirpc.ResourceProvider/Create",
@@ -5403,6 +5441,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 	})
 
 	t.Run("unknown for nested list block prop nested collection", func(t *testing.T) {
+		// TODO[pulumi/pulumi-terraform-bridge#1885]
 		testutils.Replay(t, provider, `
 	{
 		"method": "/pulumirpc.ResourceProvider/Create",
@@ -5434,6 +5473,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 	})
 
 	t.Run("unknown for nested list block prop", func(t *testing.T) {
+		// The unknownness gets promoted one level up. This seems to be TF behaviour, independent of PRC.
 		testutils.Replay(t, provider, `
 	{
 		"method": "/pulumirpc.ResourceProvider/Create",
@@ -5463,6 +5503,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 	})
 
 	t.Run("unknown for nested list block collection", func(t *testing.T) {
+		// TODO[pulumi/pulumi-terraform-bridge#1885]
 		testutils.Replay(t, provider, `
 	{
 		"method": "/pulumirpc.ResourceProvider/Create",

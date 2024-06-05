@@ -111,6 +111,23 @@ type v2InstanceDiff2 struct {
 	plannedState cty.Value
 }
 
+func (d *v2InstanceDiff2) String() string {
+	return d.GoString()
+}
+
+func (d *v2InstanceDiff2) GoString() string {
+	if d == nil {
+		return "nil"
+	}
+	return fmt.Sprintf(`&v2InstanceDiff2{
+    v2InstanceDiff: v2InstanceDiff{
+        tf: %#v,
+    },
+    config:         %#v,
+    plannedState:   %#v,
+}`, d.v2InstanceDiff.tf, d.config, d.plannedState)
+}
+
 var _ shim.InstanceDiff = (*v2InstanceDiff2)(nil)
 
 func (d *v2InstanceDiff2) ProposedState(
@@ -357,7 +374,7 @@ type grpcServer struct {
 // This will return an error if any of the diagnostics are error-level, or a given err is non-nil.
 // It will also logs the diagnostics into TF loggers, so they appear when debugging with the bridged
 // provider with TF_LOG=TRACE or similar.
-func (s *grpcServer) handle(ctx context.Context, diags []*tfprotov5.Diagnostic, err error) error {
+func handleDiagnostics(ctx context.Context, diags []*tfprotov5.Diagnostic, err error) error {
 	var dd diag.Diagnostics
 	for _, d := range diags {
 		if d == nil {
@@ -434,7 +451,7 @@ func (s *grpcServer) PlanResourceChange(
 		req.ProviderMeta = &tfprotov5.DynamicValue{MsgPack: providerMetaVal}
 	}
 	resp, err := s.gserver.PlanResourceChangeExtra(ctx, req)
-	if err := s.handle(ctx, resp.Diagnostics, err); err != nil {
+	if err := handleDiagnostics(ctx, resp.Diagnostics, err); err != nil {
 		return nil, err
 	}
 	// Ignore resp.UnsafeToUseLegacyTypeSystem - does not matter for Pulumi bridged providers.
@@ -512,7 +529,7 @@ func (s *grpcServer) ApplyResourceChange(
 		req.ProviderMeta = &tfprotov5.DynamicValue{MsgPack: providerMetaVal}
 	}
 	resp, err := s.gserver.ApplyResourceChange(ctx, req)
-	if err := s.handle(ctx, resp.Diagnostics, err); err != nil {
+	if err := handleDiagnostics(ctx, resp.Diagnostics, err); err != nil {
 		return nil, err
 	}
 	newState, err := msgpack.Unmarshal(resp.NewState.MsgPack, ty)
@@ -563,7 +580,7 @@ func (s *grpcServer) ReadResource(
 		req.ProviderMeta = &tfprotov5.DynamicValue{MsgPack: providerMetaVal}
 	}
 	resp, err := s.gserver.ReadResource(ctx, req)
-	if err := s.handle(ctx, resp.Diagnostics, err); err != nil {
+	if err := handleDiagnostics(ctx, resp.Diagnostics, err); err != nil {
 		return nil, err
 	}
 	newState, err := msgpack.Unmarshal(resp.NewState.MsgPack, ty)
@@ -594,7 +611,7 @@ func (s *grpcServer) ImportResourceState(
 		ID:       id,
 	}
 	resp, err := s.gserver.ImportResourceState(ctx, req)
-	if err := s.handle(ctx, resp.Diagnostics, err); err != nil {
+	if err := handleDiagnostics(ctx, resp.Diagnostics, err); err != nil {
 		return nil, err
 	}
 	out := []v2InstanceState2{}
