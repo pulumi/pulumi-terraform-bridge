@@ -21,6 +21,7 @@ type providerOptions struct {
 type providerOption func(providerOptions) (providerOptions, error)
 
 // Deprecated.
+// TODO[pulumi/pulumi-terraform-bridge#2062] clean up deprecation.
 func WithDiffStrategy(s DiffStrategy) providerOption { //nolint:revive
 	return func(opts providerOptions) (providerOptions, error) {
 		return opts, nil
