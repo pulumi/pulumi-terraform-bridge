@@ -39,9 +39,9 @@ func TestTagsMap(t *testing.T) {
 		{"setemp", false, true, map[string]string{}, map[string]any{"id": "*", "tags": map[string]any{}}},
 		{"setone", false, true, map[string]string{"a": "b"}, map[string]any{"id": "*", "tags": map[string]any{"a": "b"}}},
 
-		{"basic-prc", true, false, nil, map[string]any{"id": "*", "tags": nil}}, // suspect
-		{"setnil-prc", true, true, nil, map[string]any{"id": "*", "tags": map[string]any{}}},
-		{"setemp-prc", true, true, map[string]string{}, map[string]any{"id": "*", "tags": map[string]any{}}},
+		{"basic-prc", true, false, nil, map[string]any{"id": "*", "tags": nil}},                 // suspect
+		{"setnil-prc", true, true, nil, map[string]any{"id": "*", "tags": nil}},                 // suspect
+		{"setemp-prc", true, true, map[string]string{}, map[string]any{"id": "*", "tags": nil}}, // suspect
 		{"setone-prc", true, true, map[string]string{"a": "b"}, map[string]any{"id": "*", "tags": map[string]any{"a": "b"}}},
 	}
 
@@ -49,7 +49,6 @@ func TestTagsMap(t *testing.T) {
 		tc := tc
 
 		t.Run(tc.name, func(t *testing.T) {
-
 			ctx := context.Background()
 			p := newTestProvider(ctx, tfbridge.ProviderInfo{
 				P: shimv2.NewProvider(&schema.Provider{
@@ -67,7 +66,6 @@ func TestTagsMap(t *testing.T) {
 								"tags": {
 									Type:     schema.TypeMap,
 									Optional: true,
-									Computed: true,
 									Elem:     &schema.Schema{Type: schema.TypeString},
 								},
 							},
@@ -75,7 +73,7 @@ func TestTagsMap(t *testing.T) {
 					},
 				}, shimv2.WithPlanResourceChange(func(tfResourceType string) bool {
 					return tc.planResourceChange
-				})),
+				}), shimv2.WithDiffStrategy(shimv2.PlanState)),
 				Name:           "testprov",
 				ResourcePrefix: "example",
 				Resources: map[string]*tfbridge.ResourceInfo{
