@@ -27,10 +27,6 @@ func TestValidationError(t *testing.T) {
 			"[foo[0]] Bad input",
 		},
 		{
-			ValidationError{Summary: "Bad input", Detail: "the input is very bad"},
-			"Bad input: the input is very bad",
-		},
-		{
 			ValidationError{
 				Summary:       "Bad input",
 				Detail:        "the input is very bad",
