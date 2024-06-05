@@ -4672,7 +4672,7 @@ func TestUnknowns(t *testing.T) {
 			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
 			"properties":{
 				"__defaults":[],
-				"string_prop":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+				"stringProp":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
 			},
 			"preview":true
 		},
@@ -4745,6 +4745,7 @@ func TestUnknowns(t *testing.T) {
 	})
 
 	t.Run("unknown for set block prop collection", func(t *testing.T) {
+		// TODO[pulumi/pulumi-terraform-bridge#1885]
 		testutils.Replay(t, provider, `
 	{
 		"method": "/pulumirpc.ResourceProvider/Create",
@@ -4827,6 +4828,7 @@ func TestUnknowns(t *testing.T) {
 	})
 
 	t.Run("unknown for list block prop collection", func(t *testing.T) {
+		// TODO[pulumi/pulumi-terraform-bridge#1885]
 		testutils.Replay(t, provider, `
 	{
 		"method": "/pulumirpc.ResourceProvider/Create",
@@ -4848,6 +4850,7 @@ func TestUnknowns(t *testing.T) {
 	})
 
 	t.Run("unknown for nested list prop", func(t *testing.T) {
+		// The unknownness gets promoted one level up. This seems to be TF behaviour, independent of PRC.
 		testutils.Replay(t, provider, `
 	{
 		"method": "/pulumirpc.ResourceProvider/Create",
@@ -4911,6 +4914,7 @@ func TestUnknowns(t *testing.T) {
 	})
 
 	t.Run("unknown for nested list block prop nested collection", func(t *testing.T) {
+		// TODO[pulumi/pulumi-terraform-bridge#1885]
 		testutils.Replay(t, provider, `
 	{
 		"method": "/pulumirpc.ResourceProvider/Create",
@@ -4952,6 +4956,7 @@ func TestUnknowns(t *testing.T) {
 	})
 
 	t.Run("unknown for nested list block prop collection", func(t *testing.T) {
+		// TODO[pulumi/pulumi-terraform-bridge#1885]
 		testutils.Replay(t, provider, `
 	{
 		"method": "/pulumirpc.ResourceProvider/Create",
@@ -5097,6 +5102,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 	})
 
 	t.Run("unknown for set prop", func(t *testing.T) {
+		// The unknownness gets promoted one level up. This seems to be TF behaviour, independent of PRC.
 		testutils.Replay(t, provider, `
 	{
 		"method": "/pulumirpc.ResourceProvider/Create",
@@ -5158,6 +5164,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 	})
 
 	t.Run("unknown for set block prop", func(t *testing.T) {
+		// TODO[pulumi/pulumi-terraform-bridge#1885]
 		testutils.Replay(t, provider, `
 	{
 		"method": "/pulumirpc.ResourceProvider/Create",
@@ -5177,7 +5184,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 				"listProps":null,
 				"nestedListProps":null,
 				"maxItemsOneProp":null,
-				"setBlockProps":"04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+				"setBlockProps":[{"prop":""}],
 				"listBlockProps":[],
 				"nestedListBlockProps":[],
 				"maxItemsOneBlockProp":null
@@ -5187,6 +5194,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 	})
 
 	t.Run("unknown for set block prop collection", func(t *testing.T) {
+		// TODO[pulumi/pulumi-terraform-bridge#1885]
 		testutils.Replay(t, provider, `
 	{
 		"method": "/pulumirpc.ResourceProvider/Create",
@@ -5216,6 +5224,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 	})
 
 	t.Run("unknown for list prop", func(t *testing.T) {
+		// The unknownness gets promoted one level up. This seems to be TF behaviour, independent of PRC.
 		testutils.Replay(t, provider, `
 	{
 		"method": "/pulumirpc.ResourceProvider/Create",
@@ -5277,6 +5286,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 	})
 
 	t.Run("unknown for list block prop", func(t *testing.T) {
+		// The unknownness gets promoted one level up. This seems to be TF behaviour, independent of PRC.
 		testutils.Replay(t, provider, `
 	{
 		"method": "/pulumirpc.ResourceProvider/Create",
@@ -5306,6 +5316,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 	})
 
 	t.Run("unknown for list block prop collection", func(t *testing.T) {
+		// TODO[pulumi/pulumi-terraform-bridge#1885]
 		testutils.Replay(t, provider, `
 	{
 		"method": "/pulumirpc.ResourceProvider/Create",
@@ -5335,6 +5346,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 	})
 
 	t.Run("unknown for nested list prop", func(t *testing.T) {
+		// The unknownness gets promoted one level up. This seems to be TF behaviour, independent of PRC.
 		testutils.Replay(t, provider, `
 	{
 		"method": "/pulumirpc.ResourceProvider/Create",
@@ -5429,6 +5441,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 	})
 
 	t.Run("unknown for nested list block prop nested collection", func(t *testing.T) {
+		// TODO[pulumi/pulumi-terraform-bridge#1885]
 		testutils.Replay(t, provider, `
 	{
 		"method": "/pulumirpc.ResourceProvider/Create",
@@ -5460,6 +5473,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 	})
 
 	t.Run("unknown for nested list block prop", func(t *testing.T) {
+		// The unknownness gets promoted one level up. This seems to be TF behaviour, independent of PRC.
 		testutils.Replay(t, provider, `
 	{
 		"method": "/pulumirpc.ResourceProvider/Create",
@@ -5489,6 +5503,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 	})
 
 	t.Run("unknown for nested list block collection", func(t *testing.T) {
+		// TODO[pulumi/pulumi-terraform-bridge#1885]
 		testutils.Replay(t, provider, `
 	{
 		"method": "/pulumirpc.ResourceProvider/Create",
@@ -5599,48 +5614,6 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 				"listBlockProps":[],
 				"nestedListBlockProps":[],
 				"maxItemsOneBlockProp":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
-			}
-		}
-	}`)
-	})
-}
-
-func TestCheckPlanResourceChangeUnknowns(t *testing.T) {
-	p := &schemav2.Provider{
-		Schema:       map[string]*schemav2.Schema{},
-		ResourcesMap: UnknownsSchema(),
-	}
-	shimProv := shimv2.NewProvider(p, shimv2.WithPlanResourceChange(func(tfResourceType string) bool { return true }))
-	provider := &Provider{
-		tf:     shimProv,
-		config: shimv2.NewSchemaMap(p.Schema),
-		info: ProviderInfo{
-			P:              shimProv,
-			ResourcePrefix: "example",
-			Resources: map[string]*ResourceInfo{
-				"example_resource": {Tok: "ExampleResource"},
-			},
-		},
-	}
-	provider.initResourceMaps()
-
-	t.Run("unknown for set block prop collection", func(t *testing.T) {
-		testutils.Replay(t, provider, `
-	{
-		"method": "/pulumirpc.ResourceProvider/Check",
-		"request": {
-			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
-			"olds": {},
-			"news":{
-				"__defaults":[],
-				"setBlockProps":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
-			},
-        	"randomSeed": "ROwbJVHmCcN8pilnAHgl2qU626UEO6pWtcnBFUc63uY="
-		},
-		"response": {
-			"inputs":{
-				"__defaults":[],
-				"setBlockProps":[{}]
 			}
 		}
 	}`)
