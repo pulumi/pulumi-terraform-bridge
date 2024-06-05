@@ -5206,7 +5206,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 				"listProps":null,
 				"nestedListProps":null,
 				"maxItemsOneProp":null,
-				"setBlockProps":[{"prop":""}],
+				"setBlockProps":"04da6b54-80e4-46f7-96ec-b56ff0331ba9",
 				"listBlockProps":[],
 				"nestedListBlockProps":[],
 				"maxItemsOneBlockProp":null
@@ -5326,7 +5326,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 				"nestedListProps":null,
 				"maxItemsOneProp":null,
 				"setBlockProps":[],
-				"listBlockProps":[{ "prop": null }],
+				"listBlockProps":"04da6b54-80e4-46f7-96ec-b56ff0331ba9",
 				"nestedListBlockProps":[],
 				"maxItemsOneBlockProp":null
 			}
@@ -5451,7 +5451,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 				"setBlockProps":[],
 				"listBlockProps":[],
 				"nestedListBlockProps":[{
-					"nestedProps": [{"prop":null}]
+					"nestedProps": "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
 				  }],
 				"maxItemsOneBlockProp":null
 			}
@@ -5510,7 +5510,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 				"maxItemsOneProp":null,
 				"setBlockProps":[],
 				"listBlockProps":[],
-				"nestedListBlockProps":[{"nestedProps":null}],
+				"nestedListBlockProps":"04da6b54-80e4-46f7-96ec-b56ff0331ba9",
 				"maxItemsOneBlockProp":null
 			}
 		}
@@ -5605,7 +5605,6 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 	})
 }
 
-
 func TestCheckPlanResourceChangeUnknowns(t *testing.T) {
 	p := &schemav2.Provider{
 		Schema:       map[string]*schemav2.Schema{},
@@ -5625,6 +5624,29 @@ func TestCheckPlanResourceChangeUnknowns(t *testing.T) {
 	}
 	provider.initResourceMaps()
 
+	// TODO Finish these, maybe add to above tests
+	t.Run("unknown for set block prop", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Check",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"olds": {},
+			"news":{
+				"__defaults":[],
+				"setBlockProps":["04da6b54-80e4-46f7-96ec-b56ff0331ba9"]
+			},
+        	"randomSeed": "ROwbJVHmCcN8pilnAHgl2qU626UEO6pWtcnBFUc63uY="
+		},
+		"response": {
+			"inputs":{
+				"__defaults":[],
+				"setBlockProps":["04da6b54-80e4-46f7-96ec-b56ff0331ba9"]
+			}
+		}
+	}`)
+	})
+
 	t.Run("unknown for set block prop collection", func(t *testing.T) {
 		testutils.Replay(t, provider, `
 	{
@@ -5641,9 +5663,31 @@ func TestCheckPlanResourceChangeUnknowns(t *testing.T) {
 		"response": {
 			"inputs":{
 				"__defaults":[],
-				"setBlockProps":[{}]
+				"setBlockProps":["04da6b54-80e4-46f7-96ec-b56ff0331ba9"]
 			}
 		}
 	}`)
 	})
+
+	// t.Run("unknown for string prop", func(t *testing.T) {
+	// 	testutils.Replay(t, provider, `
+	// {
+	// 	"method": "/pulumirpc.ResourceProvider/Check",
+	// 	"request": {
+	// 		"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+	// 		"olds": {},
+	// 		"news":{
+	// 			"__defaults":[],
+	// 			"stringProp":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+	// 		},
+	// 		"randomSeed": "ROwbJVHmCcN8pilnAHgl2qU626UEO6pWtcnBFUc63uY="
+	// 	},
+	// 	"response": {
+	// 		"inputs":{
+	// 			"__defaults":[],
+	// 			"stringProp":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+	// 		}
+	// 	}
+	// }`)
+	// })
 }

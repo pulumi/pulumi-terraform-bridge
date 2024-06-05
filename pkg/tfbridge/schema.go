@@ -972,15 +972,7 @@ func makeTerraformUnknownElement(elem interface{}) interface{} {
 		// If the element uses a normal schema, defer to makeTerraformUnknown.
 		return makeTerraformUnknown(e)
 	case shim.Resource:
-		// If the element uses a resource schema, fill in unknown values for any required properties.
-		res := make(map[string]interface{})
-		e.Schema().Range(func(k string, v shim.Schema) bool {
-			if v.Required() {
-				res[k] = makeTerraformUnknown(v)
-			}
-			return true
-		})
-		return res
+		return TerraformUnknownVariableValue
 	default:
 		return TerraformUnknownVariableValue
 	}
