@@ -5605,7 +5605,6 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 	})
 }
 
-
 func TestCheckPlanResourceChangeUnknowns(t *testing.T) {
 	p := &schemav2.Provider{
 		Schema:       map[string]*schemav2.Schema{},
