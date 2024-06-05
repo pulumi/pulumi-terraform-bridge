@@ -4758,8 +4758,7 @@ func TestUnknowns(t *testing.T) {
 		},
 		"response": {
 			"properties":{
-				"id":"",
-				"setBlockProps":[{"prop":""}]
+				"id":""
 			}
 		}
 	}`)
@@ -4840,8 +4839,7 @@ func TestUnknowns(t *testing.T) {
 		},
 		"response": {
 			"properties":{
-				"id":"",
-				"listBlockProps":[null]
+				"id":""
 			}
 		}
 	}`)
@@ -4925,7 +4923,7 @@ func TestUnknowns(t *testing.T) {
 		"response": {
 			"properties":{
 				"id":"",
-				"nestedListBlockProps":[{"nestedProps":[null]}]
+				"nestedListBlockProps":[{"nestedProps":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"}]
 			}
 		}
 	}`)
@@ -4965,8 +4963,7 @@ func TestUnknowns(t *testing.T) {
 		},
 		"response": {
 			"properties":{
-				"id":"",
-				"nestedListBlockProps":[null]
+				"id":""
 			}
 		}
 	}`)
