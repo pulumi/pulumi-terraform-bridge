@@ -12,13 +12,95 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
 
+	sdkdiag "github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/pulumi/providertest/replay"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/stretchr/testify/require"
 )
+
+// Demonstrating the use of the newTestProvider helper.
+func TestTagsMap(t *testing.T) {
+
+	type testCase struct {
+		name               string
+		planResourceChange bool
+		doSetTags          bool
+		createTagsAs       map[string]string
+		createdProperties  any
+	}
+
+	testCases := []testCase{
+		{"basic", false, false, nil, map[string]any{"id": "*"}},
+		{"setnil", false, true, nil, map[string]any{"id": "*", "tags": map[string]any{}}},
+		{"setemp", false, true, map[string]string{}, map[string]any{"id": "*", "tags": map[string]any{}}},
+		{"setone", false, true, map[string]string{"a": "b"}, map[string]any{"id": "*", "tags": map[string]any{"a": "b"}}},
+
+		{"basic-prc", true, false, nil, map[string]any{"id": "*", "tags": nil}}, // suspect
+		{"setnil-prc", true, true, nil, map[string]any{"id": "*", "tags": map[string]any{}}},
+		{"setemp-prc", true, true, map[string]string{}, map[string]any{"id": "*", "tags": map[string]any{}}},
+		{"setone-prc", true, true, map[string]string{"a": "b"}, map[string]any{"id": "*", "tags": map[string]any{"a": "b"}}},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+
+			ctx := context.Background()
+			p := newTestProvider(ctx, tfbridge.ProviderInfo{
+				P: shimv2.NewProvider(&schema.Provider{
+					Schema: map[string]*schema.Schema{},
+					ResourcesMap: map[string]*schema.Resource{
+						"example_resource": {
+							CreateContext: func(ctx context.Context, rd *schema.ResourceData, i interface{}) sdkdiag.Diagnostics {
+								rd.SetId("id0")
+								if tc.doSetTags {
+									rd.Set("tags", tc.createTagsAs)
+								}
+								return sdkdiag.Diagnostics{}
+							},
+							Schema: map[string]*schema.Schema{
+								"tags": {
+									Type:     schema.TypeMap,
+									Optional: true,
+									Computed: true,
+									Elem:     &schema.Schema{Type: schema.TypeString},
+								},
+							},
+						},
+					},
+				}, shimv2.WithPlanResourceChange(func(tfResourceType string) bool {
+					return tc.planResourceChange
+				})),
+				Name:           "testprov",
+				ResourcePrefix: "example",
+				Resources: map[string]*tfbridge.ResourceInfo{
+					"example_resource": {Tok: "testprov:index:ExampleResource"},
+				},
+			}, newTestProviderOptions{})
+
+			props, err := json.Marshal(tc.createdProperties)
+			require.NoError(t, err)
+
+			replay.Replay(t, p, fmt.Sprintf(`
+			{
+			  "method": "/pulumirpc.ResourceProvider/Create",
+			  "request": {
+			    "urn": "urn:pulumi:dev::teststack::testprov:index:ExampleResource::exres",
+			    "properties": {}
+			  },
+			  "response": {
+			    "id": "*",
+			    "properties": %s
+			  }
+			}`, props))
+		})
+	}
+}
 
 // Demonstrating the use of the newTestProvider helper.
 func TestWithNewTestProvider(t *testing.T) {
