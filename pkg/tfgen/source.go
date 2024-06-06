@@ -106,6 +106,7 @@ func (gh *gitRepoSource) getFile(
 	default:
 		return nil, fmt.Errorf("unknown docs kind: %s", kind)
 	}
+
 	return readMarkdown(repoPath, kind, possibleMarkdownNames)
 }
 
