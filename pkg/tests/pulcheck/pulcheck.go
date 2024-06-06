@@ -135,7 +135,6 @@ func PulCheck(t T, bridgedProvider info.Provider, program string) *pulumitest.Pu
 
 	opts := []opttest.Option{
 		opttest.Env("DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "true"),
-		opttest.Env("PULUMI_ACCESS_TOKEN", "token"),
 		opttest.TestInPlace(),
 		opttest.SkipInstall(),
 		opttest.AttachProvider(
