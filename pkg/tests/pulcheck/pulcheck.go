@@ -93,6 +93,7 @@ func StartPulumiProvider(ctx context.Context, name, version string, providerInfo
 type T interface {
 	Logf(string, ...any)
 	TempDir() string
+	Skip(...any)
 	require.TestingT
 	assert.TestingT
 	pulumitest.PT

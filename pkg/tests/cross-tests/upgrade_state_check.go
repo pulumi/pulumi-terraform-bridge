@@ -26,7 +26,7 @@ func runPulumiUpgrade(t T, res1, res2 *schema.Resource, config any) {
 
 	pt.Up()
 
-	handle, err := pulcheck.StartPulumiProvider(context.Background(), defProviderShortName, DefProviderVer, prov2)
+	handle, err := pulcheck.StartPulumiProvider(context.Background(), defProviderShortName, defProviderVer, prov2)
 	require.NoError(t, err)
 	pt.CurrentStack().Workspace().SetEnvVar("PULUMI_DEBUG_PROVIDERS", fmt.Sprintf("%s:%d", defProviderShortName, handle.Port))
 	pt.Up()

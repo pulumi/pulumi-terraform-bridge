@@ -24,6 +24,7 @@ import (
 type T interface {
 	Logf(string, ...any)
 	TempDir() string
+	Skip(...any)
 	require.TestingT
 	assert.TestingT
 	pulumitest.PT
