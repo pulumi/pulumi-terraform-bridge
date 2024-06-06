@@ -553,3 +553,21 @@ func TestCreateDoesNotPanicWithStateUpgraders(t *testing.T) {
 		},
 	})
 }
+
+func TestEmptyMap(t *testing.T) {
+	skipUnlessLinux(t)
+	runCreateInputCheck(t, inputTestCase{
+		Resource: &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				"tags": {
+					Type:     schema.TypeMap,
+					Optional: true,
+					Elem: &schema.Schema{
+						Type: schema.TypeString,
+					},
+				},
+			},
+		},
+		Config: tftypes.NewValue(tftypes.Object{}, map[string]tftypes.Value{}),
+	})
+}
