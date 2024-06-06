@@ -254,11 +254,76 @@ func (p *planResourceChangeImpl) Refresh(
 	if rr.stateValue.IsNull() {
 		return nil, nil
 	}
+	normStateValue := p.normalizeNullValues(res, c, rr.stateValue)
 	return &v2InstanceState2{
 		resourceType: rr.resourceType,
-		stateValue:   rr.stateValue,
+		stateValue:   normStateValue,
 		meta:         rr.meta,
 	}, nil
+}
+
+// Compensate for a TF problem causing spurious diffs between null and empty collections highlighted as dirty refresh in
+// Pulumi. When applying resource changes TF will call normalizeNullValues with apply=true which may erase the
+// distinction between empty and null collections. This makes state returned from Read differ from the state returned by
+// Create and Update and written to the state store. While the problem is present in both TF and Pulumi bridged
+// providers, it is worse in Pulumi because refresh is emitting a warning that something is changing.
+//
+// To compensate for this problem, this method corrects the Pulumi Read result during `pulumi refresh` to also erase
+// empty collections from the Read result if the old input is missing or null.
+//
+// This currently only handles top-level properties.
+//
+// See: https://github.com/pulumi/terraform-plugin-sdk/blob/upstream-v2.33.0/helper/schema/grpc_provider.go#L1514
+func (p *planResourceChangeImpl) normalizeNullValues(
+	res *schema.Resource,
+	config shim.ResourceConfig,
+	state cty.Value,
+) cty.Value {
+	if config == nil {
+		return state
+	}
+	sm := res.SchemaMap()
+	m := state.AsValueMap()
+	// fmt.Println("oldInputs", resource.NewObjectProperty(oldInputs).String())
+	// fmt.Println("inputs", resource.NewObjectProperty(inputs).String())
+	for tfName, v := range m {
+		sch, ok := sm[tfName]
+		if !ok {
+			fmt.Println("SKIP", tfName, "because unknown schema")
+			continue
+		}
+		t := sch.Type
+		isCollection := t == schema.TypeList || t == schema.TypeMap || t == schema.TypeSet
+		if !isCollection {
+			fmt.Println("SKIP", tfName, "because not a collection")
+			continue
+		}
+
+		if _, ok := sch.Elem.(*schema.Resource); ok || sch.ConfigMode == schema.SchemaConfigModeBlock {
+			fmt.Println("SKIP", tfName, "because it is a block in TF")
+			continue
+		}
+		if config.IsSet(tfName) {
+			fmt.Println("SKIP", tfName, "because it is set in config")
+			continue
+		}
+
+		// oldInput, gotOldInput := oldInputs[k]
+		// if gotOldInput && !oldInput.IsNull() {
+		// 	fmt.Println("SKIP", k, "because gotOldInput that is not null")
+		// 	continue
+		// }
+
+		if !(v.Type().IsCollectionType() && !v.IsNull() && v.LengthInt() == 0) {
+			fmt.Println("SKIP", tfName, "because not an empty collection")
+			continue
+		}
+
+		msg := fmt.Sprintf("normalizeNullValues: replacing %s=[] not found in config", tfName)
+		fmt.Println(msg)
+		m[tfName] = cty.NullVal(v.Type())
+	}
+	return cty.ObjectVal(m)
 }
 
 func (p *planResourceChangeImpl) NewDestroyDiff(

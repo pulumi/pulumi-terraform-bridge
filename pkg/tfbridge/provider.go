@@ -1296,10 +1296,6 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 			return nil, err
 		}
 
-		if isRefresh {
-			inputs = normalizeNullValues(ctx, res.TF.Schema(), res.Schema.Fields, oldInputs, inputs)
-		}
-
 		cleanInputs := deconflict(ctx, res.TF.Schema(), res.Schema.Fields, inputs)
 
 		minputs, err := plugin.MarshalProperties(cleanInputs, plugin.MarshalOptions{
