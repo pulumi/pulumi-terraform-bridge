@@ -14,7 +14,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
-
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -254,7 +254,7 @@ func (p *planResourceChangeImpl) Refresh(
 	if rr.stateValue.IsNull() {
 		return nil, nil
 	}
-	normStateValue := p.normalizeNullValues(res, c, rr.stateValue)
+	normStateValue := p.normalizeNullValues(ctx, res, c, rr.stateValue)
 	return &v2InstanceState2{
 		resourceType: rr.resourceType,
 		stateValue:   normStateValue,
@@ -275,6 +275,7 @@ func (p *planResourceChangeImpl) Refresh(
 //
 // See: https://github.com/pulumi/terraform-plugin-sdk/blob/upstream-v2.33.0/helper/schema/grpc_provider.go#L1514
 func (p *planResourceChangeImpl) normalizeNullValues(
+	ctx context.Context,
 	res *schema.Resource,
 	config shim.ResourceConfig,
 	state cty.Value,
@@ -284,18 +285,14 @@ func (p *planResourceChangeImpl) normalizeNullValues(
 	}
 	sm := res.SchemaMap()
 	m := state.AsValueMap()
-	// fmt.Println("oldInputs", resource.NewObjectProperty(oldInputs).String())
-	// fmt.Println("inputs", resource.NewObjectProperty(inputs).String())
 	for tfName, v := range m {
 		sch, ok := sm[tfName]
 		if !ok {
-			fmt.Println("SKIP", tfName, "because unknown schema")
 			continue
 		}
 		t := sch.Type
 		isCollection := t == schema.TypeList || t == schema.TypeMap || t == schema.TypeSet
 		if !isCollection {
-			fmt.Println("SKIP", tfName, "because not a collection")
 			continue
 		}
 
@@ -304,23 +301,15 @@ func (p *planResourceChangeImpl) normalizeNullValues(
 			continue
 		}
 		if config.IsSet(tfName) {
-			fmt.Println("SKIP", tfName, "because it is set in config")
 			continue
 		}
 
-		// oldInput, gotOldInput := oldInputs[k]
-		// if gotOldInput && !oldInput.IsNull() {
-		// 	fmt.Println("SKIP", k, "because gotOldInput that is not null")
-		// 	continue
-		// }
-
 		if !(v.Type().IsCollectionType() && !v.IsNull() && v.LengthInt() == 0) {
-			fmt.Println("SKIP", tfName, "because not an empty collection")
 			continue
 		}
 
 		msg := fmt.Sprintf("normalizeNullValues: replacing %s=[] not found in config", tfName)
-		fmt.Println(msg)
+		tfbridge.GetLogger(ctx).Debug(msg)
 		m[tfName] = cty.NullVal(v.Type())
 	}
 	return cty.ObjectVal(m)
