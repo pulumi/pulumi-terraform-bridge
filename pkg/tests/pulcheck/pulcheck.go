@@ -27,10 +27,9 @@ import (
 	"gotest.tools/assert"
 )
 
-func ensureProviderValid(t T, tfp *schema.Provider) {
+func EnsureProviderValid(t T, tfp *schema.Provider) {
 	for _, r := range tfp.ResourcesMap {
-		//nolint:staticcheck
-		if r.Read == nil && r.ReadContext == nil {
+		if r.ReadContext == nil {
 			r.ReadContext = func(_ context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 				return nil
 			}
@@ -101,7 +100,7 @@ type T interface {
 
 func BridgedProvider(t T, providerName string, resMap map[string]*schema.Resource) info.Provider {
 	tfp := &schema.Provider{ResourcesMap: resMap}
-	ensureProviderValid(t, tfp)
+	EnsureProviderValid(t, tfp)
 
 	shimProvider := shimv2.NewProvider(tfp, shimv2.WithPlanResourceChange(
 		func(tfResourceType string) bool { return true },
@@ -116,7 +115,7 @@ func BridgedProvider(t T, providerName string, resMap map[string]*schema.Resourc
 	makeToken := func(module, name string) (string, error) {
 		return tokens.MakeStandard(providerName)(module, name)
 	}
-	provider.MustComputeTokens(tokens.SingleModule("prov", "index", makeToken))
+	provider.MustComputeTokens(tokens.SingleModule(providerName, "index", makeToken))
 
 	return provider
 }

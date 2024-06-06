@@ -33,6 +33,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/convert"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/pulcheck"
 	sdkv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/stretchr/testify/require"
@@ -61,6 +62,7 @@ func newTfDriver(t T, dir, providerName, resName string, res *schema.Resource) *
 			resName: res,
 		},
 	}
+	pulcheck.EnsureProviderValid(t, p)
 
 	serverFactory := func() tfprotov5.ProviderServer {
 		return p.GRPCProvider()

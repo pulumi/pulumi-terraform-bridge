@@ -36,8 +36,7 @@ type inputTestCase struct {
 
 // Adapted from diff_check.go
 func runCreateInputCheck(t T, tc inputTestCase) {
-	//nolint:staticcheck
-	if tc.Resource.CreateContext != nil || tc.Resource.Create != nil {
+	if tc.Resource.CreateContext != nil {
 		t.Errorf("Create methods should not be set for these tests!")
 	}
 
