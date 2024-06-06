@@ -10,15 +10,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var (
-	defProviderShortName = "crossprovider"
-	defRtype             = "crossprovider_testres"
-	defRtok              = "TestRes"
-	defRtoken            = defProviderShortName + ":index:" + defRtok
-	DefProviderVer       = "0.0.1"
-)
-
-
 func runPulumiUpgrade(t T, res1, res2 *schema.Resource, config any) {
 	prov1 := pulcheck.BridgedProvider(t, defProviderShortName, map[string]*schema.Resource{defRtype: res1})
 	prov2 := pulcheck.BridgedProvider(t, defProviderShortName, map[string]*schema.Resource{defRtype: res2})

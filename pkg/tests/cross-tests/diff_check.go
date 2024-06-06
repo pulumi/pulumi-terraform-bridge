@@ -45,26 +45,19 @@ type diffTestCase struct {
 }
 
 func runDiffCheck(t T, tc diffTestCase) {
-	var (
-		providerShortName = "crossprovider"
-		rtype             = "crossprovider_testres"
-		rtok              = "TestRes"
-		rtoken            = providerShortName + ":index:" + rtok
-	)
-
 	tfwd := t.TempDir()
 
-	tfd := newTfDriver(t, tfwd, providerShortName, rtype, tc.Resource)
-	_ = tfd.writePlanApply(t, tc.Resource.Schema, rtype, "example", tc.Config1)
-	tfDiffPlan := tfd.writePlanApply(t, tc.Resource.Schema, rtype, "example", tc.Config2)
+	tfd := newTfDriver(t, tfwd, defProviderShortName, defRtype, tc.Resource)
+	_ = tfd.writePlanApply(t, tc.Resource.Schema, defRtype, "example", tc.Config1)
+	tfDiffPlan := tfd.writePlanApply(t, tc.Resource.Schema, defRtype, "example", tc.Config2)
 
-	resMap := map[string]*schema.Resource{rtype: tc.Resource}
-	bridgedProvider := pulcheck.BridgedProvider(t, providerShortName, resMap)
+	resMap := map[string]*schema.Resource{defRtype: tc.Resource}
+	bridgedProvider := pulcheck.BridgedProvider(t, defProviderShortName, resMap)
 
 	pd := &pulumiDriver{
-		name:                providerShortName,
-		pulumiResourceToken: rtoken,
-		tfResourceName:      rtype,
+		name:                defProviderShortName,
+		pulumiResourceToken: defRtoken,
+		tfResourceName:      defRtype,
 		objectType:          nil,
 	}
 	yamlProgram := pd.generateYAML(t, bridgedProvider.P.ResourcesMap(), tc.Config1)
