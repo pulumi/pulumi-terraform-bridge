@@ -11,6 +11,7 @@ import (
 )
 
 func TestInputsEqualStringBasic(t *testing.T) {
+	skipUnlessLinux(t)
 	// Test both config representations.
 	for _, tc := range []struct {
 		name   string
@@ -45,6 +46,7 @@ func TestInputsEqualStringBasic(t *testing.T) {
 }
 
 func TestInputsEqualObjectBasic(t *testing.T) {
+	skipUnlessLinux(t)
 	t1 := tftypes.Object{
 		AttributeTypes: map[string]tftypes.Type{
 			"x": tftypes.String,
@@ -103,6 +105,7 @@ func TestInputsEqualObjectBasic(t *testing.T) {
 
 func TestInputsConfigModeEqual(t *testing.T) {
 	// Regression test for [pulumi/pulumi-terraform-bridge#1762]
+	skipUnlessLinux(t)
 	t2 := tftypes.Object{AttributeTypes: map[string]tftypes.Type{
 		"x": tftypes.String,
 	}}
@@ -190,6 +193,7 @@ func TestInputsConfigModeEqual(t *testing.T) {
 
 // Isolated from rapid-generated tests
 func TestInputsEmptyString(t *testing.T) {
+	skipUnlessLinux(t)
 	runCreateInputCheck(t, inputTestCase{
 		Resource: &schema.Resource{
 			Schema: map[string]*schema.Schema{
@@ -238,6 +242,7 @@ func TestInputsUnspecifiedMaxItemsOne(t *testing.T) {
 
 func TestOptionalSetNotSpecified(t *testing.T) {
 	// Regression test for [pulumi/pulumi-terraform-bridge#1970] and [pulumi/pulumi-terraform-bridge#1964]
+	skipUnlessLinux(t)
 	runCreateInputCheck(t, inputTestCase{
 		Resource: &schema.Resource{
 			Schema: map[string]*schema.Schema{
@@ -294,6 +299,7 @@ func TestInputsEqualEmptyList(t *testing.T) {
 }
 
 func TestExplicitNilList(t *testing.T) {
+	skipUnlessLinux(t)
 	t0 := tftypes.Map{ElementType: tftypes.Number}
 	t1 := tftypes.Object{AttributeTypes: map[string]tftypes.Type{
 		"f0": tftypes.List{ElementType: t0},
@@ -325,6 +331,7 @@ func TestExplicitNilList(t *testing.T) {
 }
 
 func TestInputsEmptyCollections(t *testing.T) {
+	skipUnlessLinux(t)
 	config := tftypes.NewValue(tftypes.Object{}, map[string]tftypes.Value{})
 
 	// signifies a block
@@ -385,6 +392,7 @@ func TestInputsEmptyCollections(t *testing.T) {
 }
 
 func TestInputsNestedBlocksEmpty(t *testing.T) {
+	skipUnlessLinux(t)
 
 	emptyConfig := tftypes.NewValue(tftypes.Object{}, map[string]tftypes.Value{})
 
@@ -477,6 +485,7 @@ func TestInputsNestedBlocksEmpty(t *testing.T) {
 }
 
 func TestEmptySetOfEmptyObjects(t *testing.T) {
+	skipUnlessLinux(t)
 	t1 := tftypes.Object{}
 	t0 := tftypes.Object{AttributeTypes: map[string]tftypes.Type{
 		"d3f0": tftypes.Set{ElementType: t1},
@@ -500,6 +509,7 @@ func TestEmptySetOfEmptyObjects(t *testing.T) {
 }
 
 func TestMap(t *testing.T) {
+	skipUnlessLinux(t)
 	t0 := tftypes.Map{ElementType: tftypes.String}
 	t1 := tftypes.Object{AttributeTypes: map[string]tftypes.Type{
 		"tags": t0,
@@ -530,6 +540,7 @@ func TestMap(t *testing.T) {
 }
 
 func TestTimeouts(t *testing.T) {
+	skipUnlessLinux(t)
 	emptyConfig := tftypes.NewValue(tftypes.Object{}, map[string]tftypes.Value{})
 	runCreateInputCheck(t, inputTestCase{
 		Resource: &schema.Resource{
@@ -554,6 +565,7 @@ func TestTimeouts(t *testing.T) {
 // TestAccCloudWatch failed with PlanResourceChange to do a simple Create preview because the state upgrade was
 // unexpectedly called with nil state. Emulate this here to test it does not fail.
 func TestCreateDoesNotPanicWithStateUpgraders(t *testing.T) {
+	skipUnlessLinux(t)
 
 	resourceRuleV0 := func() *schema.Resource {
 		return &schema.Resource{

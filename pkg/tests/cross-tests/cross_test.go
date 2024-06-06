@@ -30,6 +30,7 @@ import (
 )
 
 func TestUnchangedBasicObject(t *testing.T) {
+	skipUnlessLinux(t)
 	cfg := map[string]any{"f0": []any{map[string]any{"x": "ok"}}}
 	runDiffCheck(t, diffTestCase{
 		Resource: &schema.Resource{
@@ -52,6 +53,7 @@ func TestUnchangedBasicObject(t *testing.T) {
 }
 
 func TestSimpleStringNoChange(t *testing.T) {
+	skipUnlessLinux(t)
 	config := map[string]any{"name": "A"}
 	runDiffCheck(t, diffTestCase{
 		Resource: &schema.Resource{
@@ -68,6 +70,7 @@ func TestSimpleStringNoChange(t *testing.T) {
 }
 
 func TestSimpleStringRename(t *testing.T) {
+	skipUnlessLinux(t)
 	runDiffCheck(t, diffTestCase{
 		Resource: &schema.Resource{
 			Schema: map[string]*schema.Schema{
@@ -87,6 +90,7 @@ func TestSimpleStringRename(t *testing.T) {
 }
 
 func TestSetReordering(t *testing.T) {
+	skipUnlessLinux(t)
 	resource := &schema.Resource{
 		Schema: map[string]*schema.Schema{
 			"set": {
@@ -117,6 +121,7 @@ func TestSetReordering(t *testing.T) {
 //	│    1: resource "crossprovider_testres" "example" {
 func TestEmptyRequiredList(t *testing.T) {
 	t.Skip("TODO - fix panic and make a negative test here")
+	skipUnlessLinux(t)
 	resource := &schema.Resource{
 		Schema: map[string]*schema.Schema{
 			"f0": {
@@ -141,6 +146,7 @@ func TestEmptyRequiredList(t *testing.T) {
 }
 
 func TestAws2442(t *testing.T) {
+	skipUnlessLinux(t)
 	hashes := map[int]string{}
 
 	stringHashcode := func(s string) int {
@@ -398,6 +404,7 @@ func TestAws2442(t *testing.T) {
 }
 
 func TestSimpleOptionalComputed(t *testing.T) {
+	skipUnlessLinux(t)
 	emptyConfig := tftypes.NewValue(tftypes.Object{}, map[string]tftypes.Value{})
 	nonEmptyConfig := tftypes.NewValue(
 		tftypes.Object{
@@ -444,6 +451,7 @@ func TestSimpleOptionalComputed(t *testing.T) {
 }
 
 func TestOptionalComputedAttrCollection(t *testing.T) {
+	skipUnlessLinux(t)
 	emptyConfig := tftypes.NewValue(tftypes.Object{}, map[string]tftypes.Value{})
 	t0 := tftypes.List{ElementType: tftypes.String}
 	t1 := tftypes.Object{
@@ -514,6 +522,7 @@ func TestOptionalComputedAttrCollection(t *testing.T) {
 }
 
 func TestOptionalComputedBlockCollection(t *testing.T) {
+	skipUnlessLinux(t)
 	emptyConfig := tftypes.NewValue(tftypes.Object{}, map[string]tftypes.Value{})
 	t0 := tftypes.Object{
 		AttributeTypes: map[string]tftypes.Type{
