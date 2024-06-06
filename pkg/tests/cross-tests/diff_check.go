@@ -15,14 +15,12 @@
 package crosstests
 
 import (
-	"context"
+	"os"
+	"path/filepath"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/pulumi/providertest/providers"
-	"github.com/pulumi/providertest/pulumitest"
-	"github.com/pulumi/providertest/pulumitest/opttest"
-	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/pulcheck"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/stretchr/testify/assert"
@@ -47,58 +45,30 @@ type diffTestCase struct {
 }
 
 func runDiffCheck(t T, tc diffTestCase) {
-	var (
-		providerShortName = "crossprovider"
-		rtype             = "crossprovider_testres"
-		rtok              = "TestRes"
-		rtoken            = providerShortName + ":index:" + rtok
-		providerVer       = "0.0.1"
-	)
-
 	tfwd := t.TempDir()
 
-	tfd := newTfDriver(t, tfwd, providerShortName, rtype, tc.Resource)
-	_ = tfd.writePlanApply(t, tc.Resource.Schema, rtype, "example", tc.Config1)
-	tfDiffPlan := tfd.writePlanApply(t, tc.Resource.Schema, rtype, "example", tc.Config2)
+	tfd := newTfDriver(t, tfwd, defProviderShortName, defRtype, tc.Resource)
+	_ = tfd.writePlanApply(t, tc.Resource.Schema, defRtype, "example", tc.Config1)
+	tfDiffPlan := tfd.writePlanApply(t, tc.Resource.Schema, defRtype, "example", tc.Config2)
 
-	tfp := &schema.Provider{
-		ResourcesMap: map[string]*schema.Resource{
-			rtype: tc.Resource,
-		},
-	}
-
-	shimProvider := shimv2.NewProvider(tfp, shimv2.WithPlanResourceChange(
-		func(tfResourceType string) bool { return true },
-	))
+	resMap := map[string]*schema.Resource{defRtype: tc.Resource}
+	bridgedProvider := pulcheck.BridgedProvider(t, defProviderShortName, resMap)
 
 	pd := &pulumiDriver{
-		name:                providerShortName,
-		version:             providerVer,
-		shimProvider:        shimProvider,
-		pulumiResourceToken: rtoken,
-		tfResourceName:      rtype,
+		name:                defProviderShortName,
+		pulumiResourceToken: defRtoken,
+		tfResourceName:      defRtype,
 		objectType:          nil,
 	}
-
-	puwd := t.TempDir()
-	pd.writeYAML(t, puwd, tc.Config1)
-
-	pt := pulumitest.NewPulumiTest(t, puwd,
-		opttest.TestInPlace(),
-		opttest.SkipInstall(),
-		opttest.AttachProvider(
-			providerShortName,
-			func(ctx context.Context, pt providers.PulumiTest) (providers.Port, error) {
-				handle, err := pd.startPulumiProvider(ctx)
-				require.NoError(t, err)
-				return providers.Port(handle.Port), nil
-			},
-		),
-	)
+	yamlProgram := pd.generateYAML(t, bridgedProvider.P.ResourcesMap(), tc.Config1)
+	pt := pulcheck.PulCheck(t, bridgedProvider, string(yamlProgram))
 
 	pt.Up()
 
-	pd.writeYAML(t, puwd, tc.Config2)
+	yamlProgram = pd.generateYAML(t, bridgedProvider.P.ResourcesMap(), tc.Config2)
+	p := filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml")
+	err := os.WriteFile(p, yamlProgram, 0o600)
+	require.NoErrorf(t, err, "writing Pulumi.yaml")
 	x := pt.Up()
 
 	tfAction := tfd.parseChangesFromTFPlan(*tfDiffPlan)

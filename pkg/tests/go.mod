@@ -14,6 +14,7 @@ require (
 	github.com/pulumi/providertest v0.0.12
 	github.com/pulumi/pulumi-terraform-bridge/v3 v3.80.0
 	github.com/stretchr/testify v1.9.0
+	gotest.tools v2.2.0+incompatible
 	pgregory.net/rapid v0.6.1
 )
 
