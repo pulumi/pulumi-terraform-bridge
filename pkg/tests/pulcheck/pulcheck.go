@@ -133,7 +133,6 @@ func skipUnlessLinux(t T) {
 	}
 }
 
-
 // This is an experimental API.
 func PulCheck(t T, bridgedProvider info.Provider, program string) *pulumitest.PulumiTest {
 	skipUnlessLinux(t)
