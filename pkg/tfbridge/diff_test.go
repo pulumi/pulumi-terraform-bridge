@@ -150,9 +150,8 @@ func TestCustomizeDiff(t *testing.T) {
 	})
 
 	t.Run("CustomDiffDoesNotPanicOnGetRawStateOrRawConfig", func(t *testing.T) {
-		for _, diffStrat := range []shimv2.DiffStrategy{shimv2.PlanState, shimv2.ClassicDiff} {
-			diffStrat := diffStrat
-			t.Run(fmt.Sprintf("%v", diffStrat), func(t *testing.T) {
+		{
+			{
 				ctx := context.Background()
 				customDiffRes := &v2Schema.Resource{
 					Schema: tfs,
@@ -175,7 +174,7 @@ func TestCustomizeDiff(t *testing.T) {
 					},
 				}
 
-				provider := shimv2.NewProvider(v2Provider, shimv2.WithDiffStrategy(diffStrat))
+				provider := shimv2.NewProvider(v2Provider)
 
 				// Convert the inputs and state to TF config and resource attributes.
 				r := Resource{
@@ -191,7 +190,7 @@ func TestCustomizeDiff(t *testing.T) {
 				// Calling Diff with the given CustomizeDiff used to panic, no more asserts needed.
 				_, err = provider.Diff(ctx, "resource", tfState, config, shim.DiffOptions{})
 				assert.NoError(t, err)
-			})
+			}
 		}
 	})
 }

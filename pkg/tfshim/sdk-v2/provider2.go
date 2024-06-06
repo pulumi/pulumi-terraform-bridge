@@ -53,6 +53,8 @@ func (r *v2Resource2) InstanceState(
 		original := schema.HCL2ValueFromConfigValue(object)
 		s = original
 	}
+	s = normalizeBlockCollections(s, r.tf)
+
 	return &v2InstanceState2{
 		stateValue:   s,
 		resourceType: r.resourceType,
@@ -170,6 +172,8 @@ func (p *planResourceChangeImpl) Diff(
 	if err != nil {
 		return nil, fmt.Errorf("Resource %q: %w", t, err)
 	}
+	cfg = normalizeBlockCollections(cfg, res)
+
 	prop, err := proposedNew(res, state.stateValue, cfg)
 	if err != nil {
 		return nil, err
@@ -819,4 +823,90 @@ func recoverDiagnostic(d tfprotov5.Diagnostic) diag.Diagnostic {
 		}
 	}
 	return dd
+}
+
+func normalizeBlockCollections(val cty.Value, res *schema.Resource) cty.Value {
+	// Full rules about block vs attr
+	//nolint:lll
+	// https://github.com/hashicorp/terraform-plugin-sdk/blob/1f499688ebd9420768f501d4ed622a51b2135ced/helper/schema/core_schema.go#L60
+	sch := res.CoreConfigSchema()
+	if !val.Type().IsObjectType() {
+		contract.Failf("normalizeBlockCollections: Expected object type, got %v", val.Type().GoString())
+	}
+
+	if val.IsNull() || !val.IsKnown() {
+		return val
+	}
+
+	valMap := val.AsValueMap()
+
+	for fieldName := range sch.BlockTypes {
+		if !val.Type().HasAttribute(fieldName) {
+			continue
+		}
+		subVal := val.GetAttr(fieldName)
+		if subVal.IsNull() {
+			fieldType := val.Type().AttributeType(fieldName)
+			// Only lists and sets can be blocks and pass InternalValidate
+			// Ignore other types.
+			if fieldType.IsListType() {
+				glog.V(10).Info(
+					"normalizeBlockCollections: replacing a nil list with an empty list because the underlying "+
+						"TF property is a block %s, %s",
+					fieldName, fieldType.ElementType())
+				valMap[fieldName] = cty.ListValEmpty(fieldType.ElementType())
+			} else if fieldType.IsSetType() {
+				glog.V(10).Info(
+					"normalizeBlockCollections: replacing a nil set with an empty set because the underlying "+
+						"TF property is a block %s, %s",
+					fieldName, fieldType.ElementType())
+				valMap[fieldName] = cty.SetValEmpty(fieldType.ElementType())
+			}
+		} else {
+			subBlockSchema := res.SchemaMap()[fieldName]
+			if subBlockSchema == nil {
+				glog.V(5).Info("normalizeBlockCollections: Unexpected nil subBlockSchema for %s", fieldName)
+				continue
+			}
+			subBlockRes, ok := subBlockSchema.Elem.(*schema.Resource)
+			if !ok {
+				glog.V(5).Info("normalizeBlockCollections: Unexpected schema type %s", fieldName)
+				continue
+			}
+			normalizedVal := normalizeSubBlock(subVal, subBlockRes)
+			valMap[fieldName] = normalizedVal
+		}
+	}
+	return cty.ObjectVal(valMap)
+}
+
+func normalizeSubBlock(val cty.Value, subBlockRes *schema.Resource) cty.Value {
+	if !val.IsKnown() || val.IsNull() {
+		// Blocks shouldn't be unknown, but if they are, we can't do anything with them.
+		// val should also not be nil here as that case is handled separately above.
+		return val
+	}
+
+	if val.Type().IsListType() {
+		blockValSlice := val.AsValueSlice()
+		newSlice := make([]cty.Value, len(blockValSlice))
+		for i, v := range blockValSlice {
+			newSlice[i] = normalizeBlockCollections(v, subBlockRes)
+		}
+		if len(newSlice) != 0 {
+			return cty.ListVal(newSlice)
+		}
+		return cty.ListValEmpty(val.Type().ElementType())
+	} else if val.Type().IsSetType() {
+		blockValSlice := val.AsValueSlice()
+		newSlice := make([]cty.Value, len(blockValSlice))
+		for i, v := range blockValSlice {
+			newSlice[i] = normalizeBlockCollections(v, subBlockRes)
+		}
+		if len(newSlice) != 0 {
+			return cty.SetVal(newSlice)
+		}
+		return cty.SetValEmpty(val.Type().ElementType())
+	}
+	return val
 }

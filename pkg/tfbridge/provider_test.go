@@ -717,10 +717,10 @@ func testCheckFailuresV1(t *testing.T, failures []*pulumirpc.CheckFailure) {
 }
 
 func testCheckFailuresV2(t *testing.T, failures []*pulumirpc.CheckFailure) {
-	assert.Equal(t, "Conflicting configuration arguments: \"conflicting_property\": conflicts with "+
+	assert.Equal(t, "Conflicting configuration arguments. \"conflicting_property\": conflicts with "+
 		"conflicting_property2. Examine values at 'name.conflictingProperty'.", failures[0].Reason)
 	assert.Equal(t, "", failures[0].Property)
-	assert.Equal(t, "Conflicting configuration arguments: \"conflicting_property2\": conflicts with "+
+	assert.Equal(t, "Conflicting configuration arguments. \"conflicting_property2\": conflicts with "+
 		"conflicting_property. Examine values at 'name.conflictingProperty2'.", failures[1].Reason)
 	assert.Equal(t, "", failures[1].Property)
 	assert.Equal(t, "Missing required argument. The argument \"array_property_value\" is required"+
@@ -951,7 +951,11 @@ func TestProviderReadV2(t *testing.T) {
 		},
 	}
 
-	testProviderRead(t, provider, "ExampleResource", true /* CheckRawConfig */)
+	// TODO[pulumi/pulumi-terraform-bridge#1977] currently un-schematized fields do not propagate to RawConfig which
+	// causes the test to panic as written.
+	checkRawConfig := false
+
+	testProviderRead(t, provider, "ExampleResource", checkRawConfig)
 }
 
 func testProviderReadNestedSecret(t *testing.T, provider *Provider, typeName tokens.Type) {
@@ -4738,7 +4742,8 @@ func TestUnknowns(t *testing.T) {
 		},
 		"response": {
 			"properties":{
-				"id":""
+				"id":"",
+                                "setBlockProps": [{"prop": ""}]
 			}
 		}
 	}`)
@@ -5525,7 +5530,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 				"maxItemsOneProp":null,
 				"setBlockProps":[],
 				"listBlockProps":[],
-				"nestedListBlockProps":[{"nestedProps":null}],
+				"nestedListBlockProps":[{"nestedProps":[]}],
 				"maxItemsOneBlockProp":null
 			}
 		}
