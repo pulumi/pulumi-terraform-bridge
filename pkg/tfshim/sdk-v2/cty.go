@@ -36,14 +36,9 @@ const (
 // makeResourceRawConfig converts the decoded Go values in a terraform.ResourceConfig into a cty.Value that is
 // appropriate for Instance{Diff,State}.RawConfig.
 func makeResourceRawConfig(
-	strategy DiffStrategy,
 	config *terraform.ResourceConfig,
 	resource *schema.Resource,
 ) cty.Value {
-	if strategy == ClassicDiff {
-		return makeResourceRawConfigClassic(config, resource)
-	}
-
 	value, err := recoverAndCoerceCtyValue(resource, config.Raw)
 	if err == nil {
 		return value

@@ -15,26 +15,15 @@
 package sdkv2
 
 type providerOptions struct {
-	diffStrategy             DiffStrategy
 	planResourceChangeFilter func(string) bool
 }
 
 type providerOption func(providerOptions) (providerOptions, error)
 
+// Deprecated.
+// TODO[pulumi/pulumi-terraform-bridge#2062] clean up deprecation.
 func WithDiffStrategy(s DiffStrategy) providerOption { //nolint:revive
 	return func(opts providerOptions) (providerOptions, error) {
-
-		diffStrategyFromEnv, gotDiffStrategyFromEnv, err := ParseDiffStrategyFromEnv()
-		if err != nil {
-			return opts, err
-		}
-
-		if gotDiffStrategyFromEnv {
-			opts.diffStrategy = diffStrategyFromEnv
-			return opts, nil
-		}
-
-		opts.diffStrategy = s
 		return opts, nil
 	}
 }
