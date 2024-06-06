@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -99,6 +98,7 @@ func StartPulumiProvider(ctx context.Context, name, version string, providerInfo
 type T interface {
 	Logf(string, ...any)
 	TempDir() string
+	Skip(...any)
 	require.TestingT
 	assert.TestingT
 	pulumitest.PT
@@ -127,7 +127,7 @@ func BridgedProvider(t T, providerName string, resMap map[string]*schema.Resourc
 	return provider
 }
 
-func skipUnlessLinux(t *testing.T) {
+func skipUnlessLinux(t T) {
 	if ci, ok := os.LookupEnv("CI"); ok && ci == "true" && !strings.Contains(strings.ToLower(runtime.GOOS), "linux") {
 		t.Skip("Skipping on non-Linux platforms as our CI does not yet install Terraform CLI required for these tests")
 	}
