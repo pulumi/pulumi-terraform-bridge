@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/pulcheck"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optrefresh"
 	"github.com/stretchr/testify/require"
 )
 
@@ -58,4 +59,50 @@ outputs:
 	resUp := pt.Up()
 	// assert that the property gets resolved
 	require.Equal(t, "aux", resUp.Outputs["testOut"].Value)
+}
+
+func TestEmptyMapsRefreshClean(t *testing.T) {
+	resMap := map[string]*schema.Resource{
+		"prov_test": {
+			Schema: map[string]*schema.Schema{
+				"map_prop": {
+					Type:     schema.TypeMap,
+					Optional: true,
+					Elem: &schema.Schema{
+						Type: schema.TypeString,
+					},
+				},
+				"other_prop": {
+					Type:     schema.TypeString,
+					Optional: true,
+				},
+			},
+			ReadContext: func(_ context.Context, d *schema.ResourceData, _ interface{}) diag.Diagnostics {
+				err := d.Set("map_prop", map[string]interface{}{})
+				require.NoError(t, err)
+				err = d.Set("other_prop", "test")
+				require.NoError(t, err)
+				return nil
+			},
+		},
+	}
+	bridgedProvider := pulcheck.BridgedProvider(t, "prov", resMap)
+	program := `
+name: test
+runtime: yaml
+resources:
+  mainRes:
+    type: prov:index:Test
+    properties:
+      otherProp: "test"
+outputs:
+  mapPropOut: ${mainRes.mapProp}
+`
+	pt := pulcheck.PulCheck(t, bridgedProvider, program)
+
+	upRes := pt.Up()
+	require.Equal(t, nil, upRes.Outputs["mapPropOut"].Value)
+
+	res := pt.Refresh(optrefresh.ExpectNoChanges())
+	t.Logf(res.StdOut)
 }
