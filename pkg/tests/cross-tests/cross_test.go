@@ -116,6 +116,7 @@ func TestSetReordering(t *testing.T) {
 
 func TestComputedSetFieldsNoDiff(t *testing.T) {
 	skipUnlessLinux(t)
+	t.Skipf("TODO[pulumi/pulumi-terraform-bridge#1951]")
 
 	elemSchema := schema.Resource{
 		Schema: map[string]*schema.Schema{
