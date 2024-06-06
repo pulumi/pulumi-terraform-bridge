@@ -27,7 +27,7 @@ import (
 	"gotest.tools/assert"
 )
 
-func CheckProviderValid(tfp *schema.Provider) error {
+func ensureProviderValid(t T, tfp *schema.Provider) {
 	for _, r := range tfp.ResourcesMap {
 		//nolint:staticcheck
 		if r.Read == nil && r.ReadContext == nil {
@@ -58,7 +58,7 @@ func CheckProviderValid(tfp *schema.Provider) error {
 			return diag.Diagnostics{}
 		}
 	}
-	return tfp.InternalValidate()
+	require.NoError(t, tfp.InternalValidate())
 }
 
 func StartPulumiProvider(ctx context.Context, name, version string, providerInfo tfbridge.ProviderInfo) (*rpcutil.ServeHandle, error) {
@@ -101,8 +101,7 @@ type T interface {
 
 func BridgedProvider(t T, providerName string, resMap map[string]*schema.Resource) info.Provider {
 	tfp := &schema.Provider{ResourcesMap: resMap}
-	err := CheckProviderValid(tfp)
-	require.NoError(t, err)
+	ensureProviderValid(t, tfp)
 
 	shimProvider := shimv2.NewProvider(tfp, shimv2.WithPlanResourceChange(
 		func(tfResourceType string) bool { return true },
