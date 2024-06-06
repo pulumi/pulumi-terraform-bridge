@@ -67,7 +67,7 @@ func runDiffCheck(t T, tc diffTestCase) {
 		tfResourceName:      rtype,
 		objectType:          nil,
 	}
-	yamlProgram := pd.generateYAML(t, bridgedProvider.P.ResourcesMap(),tc.Config1)
+	yamlProgram := pd.generateYAML(t, bridgedProvider.P.ResourcesMap(), tc.Config1)
 	pt := pulcheck.PulCheck(t, bridgedProvider, string(yamlProgram))
 
 	pt.Up()
