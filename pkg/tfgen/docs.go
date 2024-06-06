@@ -2321,7 +2321,12 @@ func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
 	contentStr = strings.ReplaceAll(contentStr, "hashicorp", "pulumi")
 	contentStr = strings.ReplaceAll(contentStr, "Hashicorp", "Pulumi")
 
-	//TODO: reformat text
+	//Reformat text - TODO: make a language decision. Do we want a language chooser here?
+	contentStr, _ = reformatText(infoContext{
+		language: "nodejs",
+		pkg:      g.pkg,
+		info:     g.info,
+	}, contentStr, nil)
 
 	//TODO: Light translation for certain headers such as "Arguments Reference"
 	// or "Configuration block"
