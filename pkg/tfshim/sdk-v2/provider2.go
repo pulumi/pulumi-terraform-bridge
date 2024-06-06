@@ -297,7 +297,6 @@ func (p *planResourceChangeImpl) normalizeNullValues(
 		}
 
 		if _, ok := sch.Elem.(*schema.Resource); ok || sch.ConfigMode == schema.SchemaConfigModeBlock {
-			fmt.Println("SKIP", tfName, "because it is a block in TF")
 			continue
 		}
 		if config.IsSet(tfName) {
