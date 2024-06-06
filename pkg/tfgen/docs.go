@@ -2304,6 +2304,7 @@ func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	// A markdown link that has terraform in the link component.
 	contentBytes, err = reReplace(`\[([^\]]*)\]\(.*terraform([^\)]*)\)`, "$1").Edit(docFile.FileName, contentBytes)
 	if err != nil {
@@ -2314,20 +2315,31 @@ func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	// Replace all "T/terraform" strings to avoid eliding sections in reformatText TODO: use reReplace?
-	contentStr = strings.ReplaceAll(string(contentBytes), "terraform", "pulumi")
-	contentStr = strings.ReplaceAll(contentStr, "Terraform", "Pulumi")
-
+	// Replace all "T/terraform" with "P/pulumi"
+	contentBytes, err = reReplace("terraform", "pulumi").Edit(docFile.FileName, contentBytes)
+	if err != nil {
+		return nil, err
+	}
+	contentBytes, err = reReplace("Terraform", "Pulumi").Edit(docFile.FileName, contentBytes)
+	if err != nil {
+		return nil, err
+	}
 	// Replace all "H/hashicorp strings
-	contentStr = strings.ReplaceAll(contentStr, "hashicorp", "pulumi")
-	contentStr = strings.ReplaceAll(contentStr, "Hashicorp", "Pulumi")
+	contentBytes, err = reReplace("hashicorp", "pulumi").Edit(docFile.FileName, contentBytes)
+	if err != nil {
+		return nil, err
+	}
+	contentBytes, err = reReplace("Hashicorp", "Pulumi").Edit(docFile.FileName, contentBytes)
+	if err != nil {
+		return nil, err
+	}
 
 	//Reformat text - TODO: make a language decision. Do we want a language chooser here?
 	contentStr, _ = reformatText(infoContext{
 		language: "nodejs",
 		pkg:      g.pkg,
 		info:     g.info,
-	}, contentStr, nil)
+	}, string(contentBytes), nil)
 
 	//TODO: Light translation for certain headers such as "Arguments Reference"
 	// or "Configuration block"
