@@ -2,6 +2,7 @@ package crosstests
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -103,6 +104,7 @@ func TestInputsEqualObjectBasic(t *testing.T) {
 }
 
 func TestInputsConfigModeEqual(t *testing.T) {
+	// Regression test for [pulumi/pulumi-terraform-bridge#1762]
 	skipUnlessLinux(t)
 	t2 := tftypes.Object{AttributeTypes: map[string]tftypes.Type{
 		"x": tftypes.String,
@@ -183,8 +185,7 @@ func TestInputsConfigModeEqual(t *testing.T) {
 						},
 					},
 				},
-				Config:               tc.config,
-				SkipCompareRawConfig: true,
+				Config: tc.config,
 			})
 		})
 	}
@@ -215,7 +216,33 @@ func TestInputsEmptyString(t *testing.T) {
 	})
 }
 
+func TestInputsUnspecifiedMaxItemsOne(t *testing.T) {
+	// Regression test for [pulumi/pulumi-terraform-bridge#1767]
+	skipUnlessLinux(t)
+	runCreateInputCheck(t, inputTestCase{
+		Resource: &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				"f0": {
+					Type:     schema.TypeList,
+					MaxItems: 1,
+					Optional: true,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"x": {Optional: true, Type: schema.TypeString},
+						},
+					},
+				},
+			},
+		},
+		Config: tftypes.NewValue(
+			tftypes.Object{},
+			map[string]tftypes.Value{},
+		),
+	})
+}
+
 func TestOptionalSetNotSpecified(t *testing.T) {
+	// Regression test for [pulumi/pulumi-terraform-bridge#1970] and [pulumi/pulumi-terraform-bridge#1964]
 	skipUnlessLinux(t)
 	runCreateInputCheck(t, inputTestCase{
 		Resource: &schema.Resource{
@@ -231,9 +258,46 @@ func TestOptionalSetNotSpecified(t *testing.T) {
 				},
 			},
 		},
-		Config:               tftypes.NewValue(tftypes.Object{}, map[string]tftypes.Value{}),
-		SkipCompareRawConfig: true,
+		Config: tftypes.NewValue(tftypes.Object{}, map[string]tftypes.Value{}),
 	})
+}
+
+func TestInputsEqualEmptyList(t *testing.T) {
+	// Regression test for [pulumi/pulumi-terraform-bridge#1915]
+	skipUnlessLinux(t)
+	for _, maxItems := range []int{0, 1} {
+		name := fmt.Sprintf("MaxItems: %v", maxItems)
+		t.Run(name, func(t *testing.T) {
+			t1 := tftypes.List{ElementType: tftypes.String}
+			t0 := tftypes.Object{
+				AttributeTypes: map[string]tftypes.Type{
+					"f0": t1,
+				},
+			}
+			runCreateInputCheck(t, inputTestCase{
+				Resource: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"f0": {
+							Optional: true,
+							Type:     schema.TypeList,
+							MaxItems: maxItems,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									"x": {Optional: true, Type: schema.TypeString},
+								},
+							},
+						},
+					},
+				},
+				Config: tftypes.NewValue(
+					t0,
+					map[string]tftypes.Value{
+						"f0": tftypes.NewValue(t1, []tftypes.Value{}),
+					},
+				),
+			})
+		})
+	}
 }
 
 func TestExplicitNilList(t *testing.T) {
@@ -323,8 +387,7 @@ func TestInputsEmptyCollections(t *testing.T) {
 						},
 					},
 				},
-				Config:               config,
-				SkipCompareRawConfig: true,
+				Config: config,
 			})
 		})
 	}
@@ -417,8 +480,7 @@ func TestInputsNestedBlocksEmpty(t *testing.T) {
 						},
 					},
 				},
-				Config:               tc.config,
-				SkipCompareRawConfig: true,
+				Config: tc.config,
 			})
 		})
 	}
