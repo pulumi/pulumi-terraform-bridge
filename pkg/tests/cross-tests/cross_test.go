@@ -98,7 +98,6 @@ func TestSetReordering(t *testing.T) {
 				Optional: true,
 				Elem: &schema.Schema{
 					Type:     schema.TypeString,
-					Optional: true,
 				},
 			},
 		},
