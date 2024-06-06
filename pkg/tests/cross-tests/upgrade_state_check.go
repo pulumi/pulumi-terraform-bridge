@@ -5,10 +5,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/pulumi/providertest/providers"
-	"github.com/pulumi/providertest/pulumitest"
-	"github.com/pulumi/providertest/pulumitest/opttest"
-	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/pulcheck"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -21,53 +18,24 @@ var (
 	DefProviderVer       = "0.0.1"
 )
 
-func pulumiDriverFromRes(t T, res *schema.Resource) *pulumiDriver {
-	tfp := &schema.Provider{
-		ResourcesMap: map[string]*schema.Resource{
-			defRtype: res,
-		},
-	}
-	ensureProviderValid(t, tfp)
 
-	shimProvider := shimv2.NewProvider(tfp, shimv2.WithPlanResourceChange(
-		func(tfResourceType string) bool { return true },
-	))
+func runPulumiUpgrade(t T, res1, res2 *schema.Resource, config any) {
+	prov1 := pulcheck.BridgedProvider(t, defProviderShortName, map[string]*schema.Resource{defRtype: res1})
+	prov2 := pulcheck.BridgedProvider(t, defProviderShortName, map[string]*schema.Resource{defRtype: res2})
 
-	return &pulumiDriver{
+	pd := &pulumiDriver{
 		name:                defProviderShortName,
-		version:             DefProviderVer,
-		shimProvider:        shimProvider,
 		pulumiResourceToken: defRtoken,
 		tfResourceName:      defRtype,
 		objectType:          nil,
 	}
-}
 
-func runPulumiUpgrade(t T, res1, res2 *schema.Resource, config any) {
-	pd := pulumiDriverFromRes(t, res1)
-	pd2 := pulumiDriverFromRes(t, res2)
-
-	puwd := t.TempDir()
-	pd.writeYAML(t, puwd, config)
-
-	opts := []opttest.Option{
-		opttest.TestInPlace(),
-		opttest.SkipInstall(),
-		opttest.AttachProvider(
-			defProviderShortName,
-			func(ctx context.Context, pt providers.PulumiTest) (providers.Port, error) {
-				handle, err := pd.startPulumiProvider(ctx)
-				require.NoError(t, err)
-				return providers.Port(handle.Port), nil
-			},
-		),
-	}
-
-	pt := pulumitest.NewPulumiTest(t, puwd, opts...)
+	yamlProgram := pd.generateYAML(t, prov1.P.ResourcesMap(), config)
+	pt := pulcheck.PulCheck(t, prov1, string(yamlProgram))
 
 	pt.Up()
 
-	handle, err := pd2.startPulumiProvider(context.Background())
+	handle, err := pulcheck.StartPulumiProvider(context.Background(), defProviderShortName, DefProviderVer, prov2)
 	require.NoError(t, err)
 	pt.CurrentStack().Workspace().SetEnvVar("PULUMI_DEBUG_PROVIDERS", fmt.Sprintf("%s:%d", defProviderShortName, handle.Port))
 	pt.Up()
