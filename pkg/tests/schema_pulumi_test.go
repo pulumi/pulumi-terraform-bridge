@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/pulcheck"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
 	"github.com/stretchr/testify/require"
 )
 
@@ -48,9 +49,13 @@ resources:
     properties:
       test: ${auxRes.aux}
 outputs:
-  test: ${mainRes.test}
+  testOut: ${mainRes.test}
 `
 	pt := pulcheck.PulCheck(t, bridgedProvider, program)
-	res := pt.Up()
-	require.Equal(t, "aux", res.Outputs["test"].Value)
+	res := pt.Preview(optpreview.Diff())
+	// Test that the test property is unknown at preview time
+	require.Contains(t, res.StdOut, "test      : output<string>")
+	resUp := pt.Up()
+	// assert that the property gets resolved
+	require.Equal(t, "aux", resUp.Outputs["testOut"].Value)
 }
