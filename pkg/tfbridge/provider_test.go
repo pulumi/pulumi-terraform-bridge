@@ -4742,8 +4742,7 @@ func TestUnknowns(t *testing.T) {
 		},
 		"response": {
 			"properties":{
-				"id":"",
-                                "setBlockProps": [{"prop": ""}]
+				"id":""
 			}
 		}
 	}`)
