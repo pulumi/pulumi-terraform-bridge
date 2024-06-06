@@ -100,6 +100,83 @@ func TestTagsMap(t *testing.T) {
 	}
 }
 
+func TestTagsList(t *testing.T) {
+
+	type testCase struct {
+		name               string
+		planResourceChange bool
+		doSetTags          bool
+		createTagsAs       []string
+		createdProperties  any
+	}
+
+	testCases := []testCase{
+		{"basic", false, false, nil, map[string]any{"id": "*"}},
+		{"setnil", false, true, nil, map[string]any{"id": "*", "tags": []string{}}},
+		{"setemp", false, true, []string{}, map[string]any{"id": "*", "tags": []any{}}},
+		{"setone", false, true, []string{"a"}, map[string]any{"id": "*", "tags": []string{"a"}}},
+
+		{"basic-prc", true, false, nil, map[string]any{"id": "*", "tags": nil}},        // suspect
+		{"setnil-prc", true, true, nil, map[string]any{"id": "*", "tags": nil}},        // suspect
+		{"setemp-prc", true, true, []string{}, map[string]any{"id": "*", "tags": nil}}, // suspect
+		{"setone-prc", true, true, []string{"a"}, map[string]any{"id": "*", "tags": []string{"a"}}},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			p := newTestProvider(ctx, tfbridge.ProviderInfo{
+				P: shimv2.NewProvider(&schema.Provider{
+					Schema: map[string]*schema.Schema{},
+					ResourcesMap: map[string]*schema.Resource{
+						"example_resource": {
+							CreateContext: func(ctx context.Context, rd *schema.ResourceData, i interface{}) sdkdiag.Diagnostics {
+								rd.SetId("id0")
+								if tc.doSetTags {
+									rd.Set("tags", tc.createTagsAs)
+								}
+								return sdkdiag.Diagnostics{}
+							},
+							Schema: map[string]*schema.Schema{
+								"tags": {
+									Type:     schema.TypeList,
+									Optional: true,
+									Elem:     &schema.Schema{Type: schema.TypeString},
+								},
+							},
+						},
+					},
+				}, shimv2.WithPlanResourceChange(func(tfResourceType string) bool {
+					return tc.planResourceChange
+				}), shimv2.WithDiffStrategy(shimv2.PlanState)),
+				Name:           "testprov",
+				ResourcePrefix: "example",
+				Resources: map[string]*tfbridge.ResourceInfo{
+					"example_resource": {Tok: "testprov:index:ExampleResource"},
+				},
+			}, newTestProviderOptions{})
+
+			props, err := json.Marshal(tc.createdProperties)
+			require.NoError(t, err)
+
+			replay.Replay(t, p, fmt.Sprintf(`
+			{
+			  "method": "/pulumirpc.ResourceProvider/Create",
+			  "request": {
+			    "urn": "urn:pulumi:dev::teststack::testprov:index:ExampleResource::exres",
+			    "properties": {}
+			  },
+			  "response": {
+			    "id": "*",
+			    "properties": %s
+			  }
+			}`, props))
+		})
+	}
+}
+
 // Demonstrating the use of the newTestProvider helper.
 func TestWithNewTestProvider(t *testing.T) {
 	ctx := context.Background()
