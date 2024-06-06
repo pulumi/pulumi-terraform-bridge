@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/golang/glog"
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/go-cty/cty/msgpack"
 	"github.com/hashicorp/go-multierror"
@@ -44,10 +45,16 @@ func (r *v2Resource2) InstanceState(
 		copy["id"] = id
 		object = copy
 	}
+	// TODO[pulumi/pulumi-terraform-bridge#1667]: This is not right since it uses the
+	// current schema. 1667 should make this redundant
 	s, err := recoverAndCoerceCtyValueWithSchema(r.v2Resource.tf.CoreConfigSchema(), object)
 	if err != nil {
-		return nil, fmt.Errorf("InstanceState: %v", err)
+		glog.V(9).Infof("failed to coerce config: %v, proceeding with imprecise value", err)
+		original := schema.HCL2ValueFromConfigValue(object)
+		s = original
 	}
+	s = normalizeBlockCollections(s, r.tf)
+
 	return &v2InstanceState2{
 		stateValue:   s,
 		resourceType: r.resourceType,
@@ -104,6 +111,23 @@ type v2InstanceDiff2 struct {
 	plannedState cty.Value
 }
 
+func (d *v2InstanceDiff2) String() string {
+	return d.GoString()
+}
+
+func (d *v2InstanceDiff2) GoString() string {
+	if d == nil {
+		return "nil"
+	}
+	return fmt.Sprintf(`&v2InstanceDiff2{
+    v2InstanceDiff: v2InstanceDiff{
+        tf: %#v,
+    },
+    config:         %#v,
+    plannedState:   %#v,
+}`, d.v2InstanceDiff.tf, d.config, d.plannedState)
+}
+
 var _ shim.InstanceDiff = (*v2InstanceDiff2)(nil)
 
 func (d *v2InstanceDiff2) ProposedState(
@@ -148,6 +172,8 @@ func (p *planResourceChangeImpl) Diff(
 	if err != nil {
 		return nil, fmt.Errorf("Resource %q: %w", t, err)
 	}
+	cfg = normalizeBlockCollections(cfg, res)
+
 	prop, err := proposedNew(res, state.stateValue, cfg)
 	if err != nil {
 		return nil, err
@@ -322,31 +348,21 @@ func (p *planResourceChangeImpl) upgradeState(
 ) (shim.InstanceState, error) {
 	res := p.tf.ResourcesMap[t]
 	state := p.unpackInstanceState(t, s)
-	instanceState, err := res.ShimInstanceStateFromValue(state.stateValue)
+
+	// In the case of Create, prior state is encoded as Null and should not be subject to upgrades.
+	if state.stateValue.IsNull() {
+		return s, nil
+	}
+
+	newState, newMeta, err := upgradeResourceStateGRPC(ctx, t, res, state.stateValue, state.meta, p.server.gserver)
 	if err != nil {
 		return nil, err
 	}
-	// Looks like this definitely can happen, but upgradeResourceState assumes a non-nil map.
-	if instanceState.Attributes == nil {
-		instanceState.Attributes = map[string]string{}
-	}
-	instanceState.Meta = state.meta
-	newInstanceState, err := upgradeResourceState(ctx, p.tf, res, instanceState)
-	if err != nil {
-		return nil, err
-	}
-	if newInstanceState == nil {
-		return nil, nil
-	}
-	ty := res.CoreConfigSchema().ImpliedType()
-	stateValue, err := newInstanceState.AttrsAsObjectValue(ty)
-	if err != nil {
-		return nil, err
-	}
+
 	return &v2InstanceState2{
 		resourceType: t,
-		stateValue:   stateValue,
-		meta:         newInstanceState.Meta,
+		stateValue:   newState,
+		meta:         newMeta,
 	}, nil
 }
 
@@ -358,7 +374,7 @@ type grpcServer struct {
 // This will return an error if any of the diagnostics are error-level, or a given err is non-nil.
 // It will also logs the diagnostics into TF loggers, so they appear when debugging with the bridged
 // provider with TF_LOG=TRACE or similar.
-func (s *grpcServer) handle(ctx context.Context, diags []*tfprotov5.Diagnostic, err error) error {
+func handleDiagnostics(ctx context.Context, diags []*tfprotov5.Diagnostic, err error) error {
 	var dd diag.Diagnostics
 	for _, d := range diags {
 		if d == nil {
@@ -435,7 +451,7 @@ func (s *grpcServer) PlanResourceChange(
 		req.ProviderMeta = &tfprotov5.DynamicValue{MsgPack: providerMetaVal}
 	}
 	resp, err := s.gserver.PlanResourceChangeExtra(ctx, req)
-	if err := s.handle(ctx, resp.Diagnostics, err); err != nil {
+	if err := handleDiagnostics(ctx, resp.Diagnostics, err); err != nil {
 		return nil, err
 	}
 	// Ignore resp.UnsafeToUseLegacyTypeSystem - does not matter for Pulumi bridged providers.
@@ -513,7 +529,7 @@ func (s *grpcServer) ApplyResourceChange(
 		req.ProviderMeta = &tfprotov5.DynamicValue{MsgPack: providerMetaVal}
 	}
 	resp, err := s.gserver.ApplyResourceChange(ctx, req)
-	if err := s.handle(ctx, resp.Diagnostics, err); err != nil {
+	if err := handleDiagnostics(ctx, resp.Diagnostics, err); err != nil {
 		return nil, err
 	}
 	newState, err := msgpack.Unmarshal(resp.NewState.MsgPack, ty)
@@ -564,7 +580,7 @@ func (s *grpcServer) ReadResource(
 		req.ProviderMeta = &tfprotov5.DynamicValue{MsgPack: providerMetaVal}
 	}
 	resp, err := s.gserver.ReadResource(ctx, req)
-	if err := s.handle(ctx, resp.Diagnostics, err); err != nil {
+	if err := handleDiagnostics(ctx, resp.Diagnostics, err); err != nil {
 		return nil, err
 	}
 	newState, err := msgpack.Unmarshal(resp.NewState.MsgPack, ty)
@@ -595,7 +611,7 @@ func (s *grpcServer) ImportResourceState(
 		ID:       id,
 	}
 	resp, err := s.gserver.ImportResourceState(ctx, req)
-	if err := s.handle(ctx, resp.Diagnostics, err); err != nil {
+	if err := handleDiagnostics(ctx, resp.Diagnostics, err); err != nil {
 		return nil, err
 	}
 	out := []v2InstanceState2{}
@@ -807,4 +823,90 @@ func recoverDiagnostic(d tfprotov5.Diagnostic) diag.Diagnostic {
 		}
 	}
 	return dd
+}
+
+func normalizeBlockCollections(val cty.Value, res *schema.Resource) cty.Value {
+	// Full rules about block vs attr
+	//nolint:lll
+	// https://github.com/hashicorp/terraform-plugin-sdk/blob/1f499688ebd9420768f501d4ed622a51b2135ced/helper/schema/core_schema.go#L60
+	sch := res.CoreConfigSchema()
+	if !val.Type().IsObjectType() {
+		contract.Failf("normalizeBlockCollections: Expected object type, got %v", val.Type().GoString())
+	}
+
+	if val.IsNull() || !val.IsKnown() {
+		return val
+	}
+
+	valMap := val.AsValueMap()
+
+	for fieldName := range sch.BlockTypes {
+		if !val.Type().HasAttribute(fieldName) {
+			continue
+		}
+		subVal := val.GetAttr(fieldName)
+		if subVal.IsNull() {
+			fieldType := val.Type().AttributeType(fieldName)
+			// Only lists and sets can be blocks and pass InternalValidate
+			// Ignore other types.
+			if fieldType.IsListType() {
+				glog.V(10).Info(
+					"normalizeBlockCollections: replacing a nil list with an empty list because the underlying "+
+						"TF property is a block %s, %s",
+					fieldName, fieldType.ElementType())
+				valMap[fieldName] = cty.ListValEmpty(fieldType.ElementType())
+			} else if fieldType.IsSetType() {
+				glog.V(10).Info(
+					"normalizeBlockCollections: replacing a nil set with an empty set because the underlying "+
+						"TF property is a block %s, %s",
+					fieldName, fieldType.ElementType())
+				valMap[fieldName] = cty.SetValEmpty(fieldType.ElementType())
+			}
+		} else {
+			subBlockSchema := res.SchemaMap()[fieldName]
+			if subBlockSchema == nil {
+				glog.V(5).Info("normalizeBlockCollections: Unexpected nil subBlockSchema for %s", fieldName)
+				continue
+			}
+			subBlockRes, ok := subBlockSchema.Elem.(*schema.Resource)
+			if !ok {
+				glog.V(5).Info("normalizeBlockCollections: Unexpected schema type %s", fieldName)
+				continue
+			}
+			normalizedVal := normalizeSubBlock(subVal, subBlockRes)
+			valMap[fieldName] = normalizedVal
+		}
+	}
+	return cty.ObjectVal(valMap)
+}
+
+func normalizeSubBlock(val cty.Value, subBlockRes *schema.Resource) cty.Value {
+	if !val.IsKnown() || val.IsNull() {
+		// Blocks shouldn't be unknown, but if they are, we can't do anything with them.
+		// val should also not be nil here as that case is handled separately above.
+		return val
+	}
+
+	if val.Type().IsListType() {
+		blockValSlice := val.AsValueSlice()
+		newSlice := make([]cty.Value, len(blockValSlice))
+		for i, v := range blockValSlice {
+			newSlice[i] = normalizeBlockCollections(v, subBlockRes)
+		}
+		if len(newSlice) != 0 {
+			return cty.ListVal(newSlice)
+		}
+		return cty.ListValEmpty(val.Type().ElementType())
+	} else if val.Type().IsSetType() {
+		blockValSlice := val.AsValueSlice()
+		newSlice := make([]cty.Value, len(blockValSlice))
+		for i, v := range blockValSlice {
+			newSlice[i] = normalizeBlockCollections(v, subBlockRes)
+		}
+		if len(newSlice) != 0 {
+			return cty.SetVal(newSlice)
+		}
+		return cty.SetValEmpty(val.Type().ElementType())
+	}
+	return val
 }

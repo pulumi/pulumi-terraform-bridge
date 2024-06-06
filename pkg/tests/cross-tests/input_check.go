@@ -33,8 +33,6 @@ type inputTestCase struct {
 
 	Config     any
 	ObjectType *tftypes.Object
-
-	SkipCompareRaw bool
 }
 
 func FailNotEqual(t T, name string, tfVal, pulVal any) {
@@ -59,6 +57,18 @@ func assertValEqual(t T, name string, tfVal, pulVal any) {
 	} else {
 		require.Equal(t, tfVal, pulVal, "Values for key %s do not match", name)
 	}
+}
+
+func ensureProviderValid(t T, tfp *schema.Provider) {
+	for _, r := range tfp.ResourcesMap {
+		//nolint:staticcheck
+		if r.Read == nil && r.ReadContext == nil {
+			r.ReadContext = func(_ context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+				return nil
+			}
+		}
+	}
+	require.NoError(t, tfp.InternalValidate())
 }
 
 // Adapted from diff_check.go
@@ -97,6 +107,7 @@ func runCreateInputCheck(t T, tc inputTestCase) {
 			rtype: tc.Resource,
 		},
 	}
+	ensureProviderValid(t, tfp)
 
 	shimProvider := shimv2.NewProvider(tfp, shimv2.WithPlanResourceChange(
 		func(tfResourceType string) bool { return true },
@@ -108,7 +119,7 @@ func runCreateInputCheck(t T, tc inputTestCase) {
 		shimProvider:        shimProvider,
 		pulumiResourceToken: rtoken,
 		tfResourceName:      rtype,
-		objectType:          nil,
+		objectType:          tc.ObjectType,
 	}
 
 	puwd := t.TempDir()
@@ -143,10 +154,7 @@ func runCreateInputCheck(t T, tc inputTestCase) {
 		assertValEqual(t, k+" Change New", tfChangeValNew, pulChangeValNew)
 	}
 
-	if !tc.SkipCompareRaw {
-		assertCtyValEqual(t, "RawConfig", tfResData.GetRawConfig(), pulResData.GetRawConfig())
-		assertCtyValEqual(t, "RawPlan", tfResData.GetRawPlan(), pulResData.GetRawPlan())
-		// TODO: we currently represent null state values wrong. We should fix it.
-		// assertCtyValEqual(t, "RawState", tfResData.GetRawState(), pulResData.GetRawState())
-	}
+	assertCtyValEqual(t, "RawConfig", tfResData.GetRawConfig(), pulResData.GetRawConfig())
+	assertCtyValEqual(t, "RawPlan", tfResData.GetRawPlan(), pulResData.GetRawPlan())
+	assertCtyValEqual(t, "RawState", tfResData.GetRawState(), pulResData.GetRawState())
 }

@@ -453,6 +453,7 @@ var (
 	)
 
 	attributionFormatString = "This Pulumi package is based on the [`%[1]s` Terraform Provider](https://%[3]s/%[2]s/terraform-provider-%[1]s)."
+	listMarkerRegex         = regexp.MustCompile("[-*+]")
 )
 
 // groupLines take a slice of strings, lines, and returns a nested slice of strings. When groupLines encounters a line
@@ -820,24 +821,84 @@ func (p *tfMarkdownParser) parseSchemaWithNestedSections(subsection []string) {
 }
 
 type markdownLineInfo struct {
-	name, desc          string
-	isFound, isIndented bool
+	name, desc string
+	isFound    bool
+}
+
+type bulletListEntry struct {
+	name  string
+	index int
+}
+
+// trackBulletListIndentation looks at the index of the bullet list marker ( `*`, `-` or `+`) in a docs line and
+// compares it to a collection that tracks the level of list nesting by comparing to the previous list entry's nested
+// level (if any).
+// Note that this function only looks at the placement of the bullet list marker, and assumes same-level list markers
+// to be in the same location in each line. This is not necessarily the case for Markdown, which considers a range of
+// locations within 1-4 whitespace characters, as well as considers the start index of the text following the bullet
+// point. If and when this becomes an issue during docs parsing, we may consider adding some of those rules here.
+// Read more about nested lists in GitHub-flavored Markdown:
+// https://docs.github.com/en/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax#nested-lists
+//
+//nolint:lll
+func trackBulletListIndentation(line, name string, tracker []bulletListEntry) []bulletListEntry {
+
+	listMarkerLocation := listMarkerRegex.FindStringIndex(line)
+	contract.Assertf(len(listMarkerLocation) == 2,
+		fmt.Sprintf("Expected to find bullet list marker in line %s", line))
+	listMarkerIndex := listMarkerLocation[0]
+
+	// If our tracker is empty, we are at list nested level 0.
+	if len(tracker) == 0 {
+		newEntry := bulletListEntry{
+			name:  name,
+			index: listMarkerIndex,
+		}
+		return append(tracker, newEntry)
+	}
+	// Always compare to last entry in tracker
+	lastListEntry := tracker[len(tracker)-1]
+
+	// if current line's listMarkerIndex is greater than the tracker's last entry's listMarkerIndex,
+	// make a new tracker entry and push it on there with all the info.
+	if listMarkerIndex > lastListEntry.index {
+		name = lastListEntry.name + "." + name
+		newEntry := bulletListEntry{
+			name:  name,
+			index: listMarkerIndex,
+		}
+		return append(tracker, newEntry)
+	}
+	// if current line's listMarkerIndex is the same as the last entry's, we're at the same level.
+	if listMarkerIndex == lastListEntry.index {
+		// Replace the last entry in our tracker
+		replaceEntry := bulletListEntry{
+			index: listMarkerIndex,
+		}
+		if len(tracker) == 1 {
+			replaceEntry.name = name
+		} else {
+			// use the penultimate entry name to build current name
+			replaceName := tracker[(len(tracker)-2)].name + "." + name
+			replaceEntry.name = replaceName
+		}
+		return append(tracker[:len(tracker)-1], replaceEntry)
+	}
+
+	// The current line's listMarkerIndex is smaller that the previous entry's.
+	// Pop off the latest entry, and retry to see if the next previous entry is a match.
+	return trackBulletListIndentation(line, name, tracker[:len(tracker)-1])
 }
 
 // parseArgFromMarkdownLine takes a line of Markdown and attempts to parse it for a Terraform argument and its
-// description. It returns a struct containing the name and description of the arg, whether an arg was found,
-// and whether it has indented space, denoting it as a subproperty of a previously found property.
+// description. It returns a struct containing the name and description of the arg, and whether an arg was found.
 func parseArgFromMarkdownLine(line string) markdownLineInfo {
 	matches := argumentBulletRegexp.FindStringSubmatch(line)
 	var parsed markdownLineInfo
 	if len(matches) > 4 {
-		if strings.HasPrefix(matches[0], "  ") {
-			parsed.isIndented = true
-		}
 		parsed.name = matches[1]
 		parsed.desc = matches[4]
 		parsed.isFound = true
-
 	}
 	return parsed
 }
@@ -1031,25 +1092,17 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 	// hadSpace tells us if the previous line was blank.
 	var hadSpace bool
 
-	// parentName tracks the name of the previous resource, in case we get indented child resources.
-	var parentName string
+	// bulletListTracker is a stack-like collection that tracks the level of nesting for a bulleted list with
+	// nested lists. The name of the topmost entry represents the nested docs path for the current line.
+	var bulletListTracker []bulletListEntry
 
 	for _, line := range subsection {
-		// We have found a new resource on this line.
 		parsedArg := parseArgFromMarkdownLine(line)
-		name := parsedArg.name
-		desc := parsedArg.desc
 		matchFound := parsedArg.isFound
-		isIndented := parsedArg.isIndented
-		if matchFound {
-			// We have found a new argument.
-			// If a bullet point is indented, we have most likely found a sub-field of the previous line.
-			// See: https://github.com/pulumi/pulumi-terraform-bridge/issues/1875
-			if isIndented {
-				name = parentName + "." + name
-			} else {
-				parentName = name
-			}
+		if matchFound { // We have found a new property bullet point.
+			desc := parsedArg.desc
+			bulletListTracker = trackBulletListIndentation(line, parsedArg.name, bulletListTracker)
+			name := bulletListTracker[len(bulletListTracker)-1].name
 			lastMatch = name
 			addNewHeading(name, desc, line)
 
@@ -1058,6 +1111,7 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 			// section is over, but we take it to mean that the current
 			// heading is over.
 			lastMatch = ""
+			bulletListTracker = nil
 		} else if nestedBlockCurrentLine := getNestedBlockNames(line); hadSpace && len(nestedBlockCurrentLine) > 0 {
 			// This tells us if there's a resource that is about to have subfields (nesteds)
 			// in subsequent lines.
@@ -1067,6 +1121,7 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 				nesteds = append(nesteds, docsPath(item))
 			}
 			lastMatch = ""
+			bulletListTracker = nil
 		} else if !isBlank(line) && lastMatch != "" {
 			// This appends the current line to the previous match's description.
 			extendExistingHeading(line)
@@ -1080,6 +1135,7 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 				nesteds = append(nesteds, docsPath(item))
 			}
 			lastMatch = ""
+			bulletListTracker = nil
 		} else if lastMatch != "" {
 			extendExistingHeading(line)
 		}

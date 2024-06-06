@@ -52,7 +52,7 @@ func (p *inmemoryProvider) Pkg() tokens.Package {
 	return p.name
 }
 
-func (p *inmemoryProvider) GetSchema(version int) ([]byte, error) {
+func (p *inmemoryProvider) GetSchema(plugin.GetSchemaRequest) ([]byte, error) {
 	return p.schema, nil
 }
 

@@ -15,6 +15,7 @@
 package tfbridge
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"sort"
@@ -22,9 +23,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hexops/autogold/v2"
+	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	pdiag "github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -42,6 +46,7 @@ import (
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	shimv1 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v1"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/logging"
 )
 
 func TestConvertStringToPropertyValue(t *testing.T) {
@@ -712,10 +717,10 @@ func testCheckFailuresV1(t *testing.T, failures []*pulumirpc.CheckFailure) {
 }
 
 func testCheckFailuresV2(t *testing.T, failures []*pulumirpc.CheckFailure) {
-	assert.Equal(t, "Conflicting configuration arguments: \"conflicting_property\": conflicts with "+
+	assert.Equal(t, "Conflicting configuration arguments. \"conflicting_property\": conflicts with "+
 		"conflicting_property2. Examine values at 'name.conflictingProperty'.", failures[0].Reason)
 	assert.Equal(t, "", failures[0].Property)
-	assert.Equal(t, "Conflicting configuration arguments: \"conflicting_property2\": conflicts with "+
+	assert.Equal(t, "Conflicting configuration arguments. \"conflicting_property2\": conflicts with "+
 		"conflicting_property. Examine values at 'name.conflictingProperty2'.", failures[1].Reason)
 	assert.Equal(t, "", failures[1].Property)
 	assert.Equal(t, "Missing required argument. The argument \"array_property_value\" is required"+
@@ -1150,6 +1155,149 @@ func TestCheck(t *testing.T) {
 		}
                 `)
 	})
+}
+
+func TestCheckWarnings(t *testing.T) {
+	ctx := context.Background()
+	var logs bytes.Buffer
+	ctx = logging.InitLogging(ctx, logging.LogOptions{
+		LogSink: &testWarnLogSink{&logs},
+	})
+	p := &schemav2.Provider{
+		Schema: map[string]*schemav2.Schema{},
+		ResourcesMap: map[string]*schemav2.Resource{
+			"example_resource": {
+				Schema: map[string]*schema.Schema{
+					"network_configuration": {
+						Type:     schema.TypeList,
+						Optional: true,
+						MaxItems: 1,
+						Elem: &schema.Resource{
+							Schema: map[string]*schema.Schema{
+								"assign_public_ip": {
+									Type:     schema.TypeBool,
+									Optional: true,
+									Default:  false,
+								},
+								"security_groups": {
+									Type:     schema.TypeSet,
+									Optional: true,
+									Elem:     &schema.Schema{Type: schema.TypeString},
+								},
+								"subnets": {
+									Type:     schema.TypeSet,
+									Required: true,
+									Elem:     &schema.Schema{Type: schema.TypeString},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// we need the pschema for type checking
+	pulumiSchemaSpec := &pschema.PackageSpec{
+		Resources: map[string]pschema.ResourceSpec{
+			"ExampleResource": {
+				StateInputs: &pschema.ObjectTypeSpec{
+					Properties: map[string]pschema.PropertySpec{
+						"networkConfiguration": {
+							TypeSpec: pschema.TypeSpec{
+								Ref: "#/types/testprov:ExampleResourceNetworkConfiguration",
+							},
+						},
+					},
+				},
+				InputProperties: map[string]pschema.PropertySpec{
+					"networkConfiguration": {
+						TypeSpec: pschema.TypeSpec{
+							Ref: "#/types/testprov:ExampleResourceNetworkConfiguration",
+						},
+					},
+				},
+				ObjectTypeSpec: pschema.ObjectTypeSpec{
+					Properties: map[string]pschema.PropertySpec{
+						"networkConfiguration": {
+							TypeSpec: pschema.TypeSpec{
+								Ref: "#/types/testprov:ExampleResourceNetworkConfiguration",
+							},
+						},
+					},
+				},
+			},
+		},
+		Types: map[string]pschema.ComplexTypeSpec{
+			"testprov:ExampleResourceNetworkConfiguration": {
+				ObjectTypeSpec: pschema.ObjectTypeSpec{
+					Properties: map[string]pschema.PropertySpec{
+						"securityGroups": {
+							TypeSpec: pschema.TypeSpec{
+								Type: "array",
+								Items: &pschema.TypeSpec{
+									Type: "string",
+								},
+							},
+						},
+						"subnets": {
+							TypeSpec: pschema.TypeSpec{
+								Type: "array",
+								Items: &pschema.TypeSpec{
+									Type: "string",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	provider := &Provider{
+		tf:               shimv2.NewProvider(p, shimv2.WithDiffStrategy(shimv2.PlanState)),
+		module:           "testprov",
+		config:           shimv2.NewSchemaMap(p.Schema),
+		pulumiSchema:     []byte("hello"), // we only check whether this is nil in type checking
+		pulumiSchemaSpec: pulumiSchemaSpec,
+		hasTypeErrors:    make(map[resource.URN]struct{}),
+		resources: map[tokens.Type]Resource{
+			"ExampleResource": {
+				TF:     shimv2.NewResource(p.ResourcesMap["example_resource"]),
+				TFName: "example_resource",
+				Schema: &ResourceInfo{
+					Tok: "ExampleResource",
+				},
+			},
+		},
+	}
+
+	args, err := structpb.NewStruct(map[string]interface{}{
+		"networkConfiguration": []interface{}{
+			map[string]interface{}{
+				"securityGroups": []interface{}{
+					"04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+				},
+				"subnets": "[\"first\",\"second\"]", // this is a type error
+			},
+		},
+	})
+	require.NoError(t, err)
+	_, err = provider.Check(ctx, &pulumirpc.CheckRequest{
+		Urn:  "urn:pulumi:dev::teststack::ExampleResource::exres",
+		Olds: &structpb.Struct{},
+		News: args,
+	})
+	require.NoError(t, err)
+
+	// run 'go test  -run=TestCheckWarnings -v ./pkg/tfbridge/ -update' to update
+	autogold.Expect(`warning: Type checking failed:
+warning: Unexpected type at field "networkConfiguration":
+           expected object type, got [] type
+warning: Type checking is still experimental. If you believe that a warning is incorrect,
+please let us know by creating an issue at https://github.com/pulumi/pulumi-terraform-bridge/issues.
+This will become a hard error in the future.
+`).Equal(t, logs.String())
 }
 
 func TestCheckConfig(t *testing.T) {
@@ -4305,5 +4453,1169 @@ func TestStringValForOtherProperty(t *testing.T) {
 				}
 			}
 		}`)
+	})
+}
+
+type testWarnLogSink struct {
+	buf *bytes.Buffer
+}
+
+var _ logging.Sink = &testWarnLogSink{}
+
+func (s *testWarnLogSink) Log(context context.Context, sev pdiag.Severity, urn resource.URN, msg string) error {
+	fmt.Fprintf(s.buf, "%v: %s\n", sev, msg)
+	return nil
+}
+
+func (s *testWarnLogSink) LogStatus(context context.Context, sev pdiag.Severity, urn resource.URN, msg string) error {
+	fmt.Fprintf(s.buf, "[status] [%v] [%v] %s\n", sev, urn, msg)
+	return nil
+}
+
+func TestPlanResourceChangeStateUpgrade(t *testing.T) {
+	p := &schemav2.Provider{
+		Schema: map[string]*schemav2.Schema{},
+		ResourcesMap: map[string]*schemav2.Resource{
+			"example_resource": {
+				Schema: map[string]*schemav2.Schema{
+					"prop": &schema.Schema{
+						Type:     schema.TypeSet,
+						Optional: true,
+						Elem:     &schemav2.Schema{Type: schemav2.TypeString},
+					},
+				},
+				StateUpgraders: []schema.StateUpgrader{
+					{
+						Version: 0,
+						Type:    cty.Object(map[string]cty.Type{"prop": cty.String}),
+						Upgrade: func(
+							ctx context.Context, rawState map[string]interface{}, meta interface{},
+						) (map[string]interface{}, error) {
+							rawState["prop"] = []interface{}{rawState["prop"]}
+							return rawState, nil
+						},
+					},
+				},
+			},
+		},
+	}
+	shimProv := shimv2.NewProvider(p, shimv2.WithPlanResourceChange(func(tfResourceType string) bool { return true }))
+	provider := &Provider{
+		tf:     shimProv,
+		config: shimv2.NewSchemaMap(p.Schema),
+		info: ProviderInfo{
+			P:              shimProv,
+			ResourcePrefix: "example",
+			Resources: map[string]*ResourceInfo{
+				"example_resource": {Tok: "ExampleResource"},
+			},
+		},
+	}
+	provider.initResourceMaps()
+
+	testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Diff",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"id": "0",
+			"olds": {
+				"__meta": {
+					"version": 0
+				},
+				"prop": "val"
+			},
+			"news": {
+				"prop": ["val"]
+			}
+		},
+		"response": {
+			"changes": "DIFF_NONE",
+			"hasDetailedDiff": true
+		}
+	}`)
+}
+
+func UnknownsSchema() map[string]*schemav2.Resource {
+	return map[string]*schemav2.Resource{
+		"example_resource": {
+			Schema: map[string]*schemav2.Schema{
+				"set_prop": {
+					Type:     schema.TypeSet,
+					Optional: true,
+					Elem:     &schemav2.Schema{Type: schemav2.TypeString},
+				},
+				"set_block_prop": {
+					Type:     schema.TypeSet,
+					Optional: true,
+					Elem: &schemav2.Resource{
+						Schema: map[string]*schemav2.Schema{
+							"prop": {
+								Type:     schema.TypeString,
+								Optional: true,
+							},
+						},
+					},
+				},
+				"string_prop": {
+					Type:     schema.TypeString,
+					Optional: true,
+				},
+				"list_prop": {
+					Type:     schema.TypeList,
+					Optional: true,
+					Elem:     &schemav2.Schema{Type: schemav2.TypeString},
+				},
+				"list_block_prop": {
+					Type:     schema.TypeList,
+					Optional: true,
+					Elem: &schemav2.Resource{
+						Schema: map[string]*schemav2.Schema{
+							"prop": {
+								Type:     schema.TypeString,
+								Optional: true,
+							},
+						},
+					},
+				},
+				"nested_list_prop": {
+					Type:     schema.TypeList,
+					Optional: true,
+					Elem: &schemav2.Schema{
+						Type:     schema.TypeList,
+						Optional: true,
+						Elem:     &schemav2.Schema{Type: schemav2.TypeString},
+					},
+				},
+				"nested_list_block_prop": {
+					Type:     schema.TypeList,
+					Optional: true,
+					Elem: &schemav2.Resource{
+						Schema: map[string]*schemav2.Schema{
+							"nested_prop": {
+								Type:     schema.TypeList,
+								Optional: true,
+								Elem: &schemav2.Resource{
+									Schema: map[string]*schemav2.Schema{
+										"prop": {
+											Type:     schema.TypeString,
+											Optional: true,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				"max_items_one_prop": {
+					Type:     schema.TypeList,
+					Optional: true,
+					MaxItems: 1,
+					Elem:     &schemav2.Schema{Type: schemav2.TypeString},
+				},
+				"max_items_one_block_prop": {
+					Type:     schema.TypeList,
+					Optional: true,
+					MaxItems: 1,
+					Elem: &schemav2.Resource{
+						Schema: map[string]*schemav2.Schema{
+							"prop": {
+								Type:     schema.TypeString,
+								Optional: true,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func TestUnknowns(t *testing.T) {
+	// Related to [pulumi/pulumi-terraform-bridge#1885]
+	// This test is to ensure that we can handle unknowns in the schema.
+	// Note that the behaviour here might not match TF and can NOT match TF completely
+	// as HCL has no way of expressing unknown blocks.
+	// We currently have a workaround in makeTerraformInputs where we convert unknown blocks
+	// to blocks of unknown.
+	//
+	// The structure is that for each property we inject an unknown at every level.
+	// For the block tests:
+	// _subprop is an unknown for the subproperty in the block object
+	// _prop is an unknown for the whole block
+	// _collection is an unknown for the whole collection
+	// The nested match the above convention but also iterate over the nested object.
+
+	p := &schemav2.Provider{
+		Schema:       map[string]*schemav2.Schema{},
+		ResourcesMap: UnknownsSchema(),
+	}
+	shimProv := shimv2.NewProvider(p, shimv2.WithPlanResourceChange(func(tfResourceType string) bool { return false }))
+	provider := &Provider{
+		tf:     shimProv,
+		config: shimv2.NewSchemaMap(p.Schema),
+		info: ProviderInfo{
+			P:              shimProv,
+			ResourcePrefix: "example",
+			Resources: map[string]*ResourceInfo{
+				"example_resource": {Tok: "ExampleResource"},
+			},
+		},
+	}
+	provider.initResourceMaps()
+
+	t.Run("unknown for string prop", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"stringProp":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":""
+			}
+		}
+	}`)
+	})
+
+	t.Run("unknown for set prop", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"setProps":["04da6b54-80e4-46f7-96ec-b56ff0331ba9"]
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":""
+			}
+		}
+	}`)
+	})
+
+	t.Run("unknown for set block prop subprop", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"setBlockProps":[{"prop":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"}]
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":""
+			}
+		}
+	}`)
+	})
+
+	t.Run("unknown for set block prop", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"setBlockProps":["04da6b54-80e4-46f7-96ec-b56ff0331ba9"]
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":""
+			}
+		}
+	}`)
+	})
+
+	t.Run("unknown for set block prop collection", func(t *testing.T) {
+		// TODO[pulumi/pulumi-terraform-bridge#1885]
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"setBlockProps":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":"",
+				"setBlockProps":[{"prop":""}]
+			}
+		}
+	}`)
+	})
+
+	t.Run("unknown for list prop", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"listProps":["04da6b54-80e4-46f7-96ec-b56ff0331ba9"]
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id": ""
+			}
+		}
+	}`)
+	})
+
+	t.Run("unknown for list block prop subprop", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"listBlockProps":[{"prop":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"}]
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":"",
+				"listBlockProps":[{"prop":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"}]
+			}
+		}
+	}`)
+	})
+
+	t.Run("unknown for list block prop", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"listBlockProps":["04da6b54-80e4-46f7-96ec-b56ff0331ba9"]
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":""
+			}
+		}
+	}`)
+	})
+
+	t.Run("unknown for list block prop collection", func(t *testing.T) {
+		// TODO[pulumi/pulumi-terraform-bridge#1885]
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"listBlockProps":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":"",
+				"listBlockProps":[null]
+			}
+		}
+	}`)
+	})
+
+	t.Run("unknown for nested list prop", func(t *testing.T) {
+		// The unknownness gets promoted one level up. This seems to be TF behaviour, independent of PRC.
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"nestedListProps":[["04da6b54-80e4-46f7-96ec-b56ff0331ba9"]]
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":"",
+				"nestedListProps":["04da6b54-80e4-46f7-96ec-b56ff0331ba9"]
+			}
+		}
+	}`)
+	})
+
+	t.Run("unknown for nested list block prop nested subprop", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"nestedListBlockProps":[{"nestedProps":[{"prop":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"}]}]
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":"",
+				"nestedListBlockProps":[{"nestedProps":[{"prop":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"}]}]
+			}
+		}
+	}`)
+	})
+
+	t.Run("unknown for nested list block nested prop", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"nestedListBlockProps":[{"nestedProps":["04da6b54-80e4-46f7-96ec-b56ff0331ba9"]}]
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":"",
+				"nestedListBlockProps":[{"nestedProps":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"}]
+			}
+		}
+	}`)
+	})
+
+	t.Run("unknown for nested list block prop nested collection", func(t *testing.T) {
+		// TODO[pulumi/pulumi-terraform-bridge#1885]
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"nestedListBlockProps":[{"nestedProps":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"}]
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":"",
+				"nestedListBlockProps":[{"nestedProps":[null]}]
+			}
+		}
+	}`)
+	})
+
+	t.Run("unknown for nested list block prop", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"nestedListBlockProps":["04da6b54-80e4-46f7-96ec-b56ff0331ba9"]
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":""
+			}
+		}
+	}`)
+	})
+
+	t.Run("unknown for nested list block prop collection", func(t *testing.T) {
+		// TODO[pulumi/pulumi-terraform-bridge#1885]
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"nestedListBlockProps":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":"",
+				"nestedListBlockProps":[null]
+			}
+		}
+	}`)
+	})
+
+	t.Run("unknown for max items one prop", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"maxItemsOneProp":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":""
+			}
+		}
+	}`)
+	})
+
+	t.Run("unknown for max items one block prop", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"maxItemsOneBlockProp":{"prop":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"}
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":"",
+				"maxItemsOneBlockProp": {"prop":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"}
+			}
+		}
+	}`)
+	})
+
+	t.Run("unknown for max items one block", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"maxItemsOneBlockProp":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":""
+			}
+		}
+	}`)
+	})
+}
+
+func TestPlanResourceChangeUnknowns(t *testing.T) {
+	// Related to [pulumi/pulumi-terraform-bridge#1885]
+	// This test is to ensure that we can handle unknowns in the schema.
+	// Note that the behaviour here might not match TF and can NOT match TF completely
+	// as HCL has no way of expressing unknown blocks.
+	// We currently have a workaround in makeTerraformInputs where we convert unknown blocks
+	// to blocks of unknown.
+	//
+	// The structure is that for each property we inject an unknown at every level.
+	// For the block tests:
+	// _subprop is an unknown for the subproperty in the block object
+	// _prop is an unknown for the whole block
+	// _collection is an unknown for the whole collection
+	// The nested match the above convention but also iterate over the nested object.
+
+	p := &schemav2.Provider{
+		Schema:       map[string]*schemav2.Schema{},
+		ResourcesMap: UnknownsSchema(),
+	}
+	shimProv := shimv2.NewProvider(p, shimv2.WithPlanResourceChange(func(tfResourceType string) bool { return true }))
+	provider := &Provider{
+		tf:     shimProv,
+		config: shimv2.NewSchemaMap(p.Schema),
+		info: ProviderInfo{
+			P:              shimProv,
+			ResourcePrefix: "example",
+			Resources: map[string]*ResourceInfo{
+				"example_resource": {Tok: "ExampleResource"},
+			},
+		},
+	}
+	provider.initResourceMaps()
+
+	t.Run("unknown for string prop", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"string_prop":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":"04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+				"stringProp":"04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+				"setProps":null,
+				"listProps":null,
+				"nestedListProps":null,
+				"maxItemsOneProp":null,
+				"setBlockProps":[],
+				"listBlockProps":[],
+				"nestedListBlockProps":[],
+				"maxItemsOneBlockProp":null
+			}
+		}
+	}`)
+	})
+
+	t.Run("unknown for set prop", func(t *testing.T) {
+		// The unknownness gets promoted one level up. This seems to be TF behaviour, independent of PRC.
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"setProps":["04da6b54-80e4-46f7-96ec-b56ff0331ba9"]
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":"04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+				"stringProp":null,
+				"setProps":"04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+				"listProps":null,
+				"nestedListProps":null,
+				"maxItemsOneProp":null,
+				"maxItemsOneProp":null,
+				"setBlockProps":[],
+				"listBlockProps":[],
+				"nestedListBlockProps":[],
+				"maxItemsOneBlockProp":null
+			}
+		}
+	}`)
+	})
+
+	t.Run("unknown for set block prop subprop", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"setBlockProps":[{"prop":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"}]
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":"04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+				"stringProp":null,
+				"setProps":null,
+				"listProps":null,
+				"nestedListProps":null,
+				"maxItemsOneProp":null,
+				"setBlockProps":[{
+				  "prop": "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+				}],
+				"listBlockProps":[],
+				"nestedListBlockProps":[],
+				"maxItemsOneBlockProp":null
+			}
+		}
+	}`)
+	})
+
+	t.Run("unknown for set block prop", func(t *testing.T) {
+		// TODO[pulumi/pulumi-terraform-bridge#1885]
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"setBlockProps":["04da6b54-80e4-46f7-96ec-b56ff0331ba9"]
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":"04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+				"stringProp":null,
+				"setProps":null,
+				"listProps":null,
+				"nestedListProps":null,
+				"maxItemsOneProp":null,
+				"setBlockProps":[{"prop":""}],
+				"listBlockProps":[],
+				"nestedListBlockProps":[],
+				"maxItemsOneBlockProp":null
+			}
+		}
+	}`)
+	})
+
+	t.Run("unknown for set block prop collection", func(t *testing.T) {
+		// TODO[pulumi/pulumi-terraform-bridge#1885]
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"setBlockProps":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":"04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+				"stringProp":null,
+				"setProps":null,
+				"listProps":null,
+				"nestedListProps":null,
+				"maxItemsOneProp":null,
+				"setBlockProps":[{"prop":""}],
+				"listBlockProps":[],
+				"nestedListBlockProps":[],
+				"maxItemsOneBlockProp":null
+			}
+		}
+	}`)
+	})
+
+	t.Run("unknown for list prop", func(t *testing.T) {
+		// The unknownness gets promoted one level up. This seems to be TF behaviour, independent of PRC.
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"listProps":["04da6b54-80e4-46f7-96ec-b56ff0331ba9"]
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":"04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+				"stringProp":null,
+				"setProps":null,
+				"listProps":"04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+				"maxItemsOneProp":null,
+				"nestedListProps":null,
+				"maxItemsOneProp":null,
+				"setBlockProps":[],
+				"listBlockProps":[],
+				"nestedListBlockProps":[],
+				"maxItemsOneBlockProp":null
+			}
+		}
+	}`)
+	})
+
+	t.Run("unknown for list block prop subprop", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"listBlockProps":[{"prop":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"}]
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":"04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+				"stringProp":null,
+				"setProps":null,
+				"listProps":null,
+				"nestedListProps":null,
+				"maxItemsOneProp":null,
+				"setBlockProps":[],
+				"listBlockProps":[{
+					"prop": "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+				  }],
+				"nestedListBlockProps":[],
+				"maxItemsOneBlockProp":null
+			}
+		}
+	}`)
+	})
+
+	t.Run("unknown for list block prop", func(t *testing.T) {
+		// The unknownness gets promoted one level up. This seems to be TF behaviour, independent of PRC.
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"listBlockProps":["04da6b54-80e4-46f7-96ec-b56ff0331ba9"]
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":"04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+				"stringProp":null,
+				"setProps":null,
+				"listProps":null,
+				"nestedListProps":null,
+				"maxItemsOneProp":null,
+				"setBlockProps":[],
+				"listBlockProps":"04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+				"nestedListBlockProps":[],
+				"maxItemsOneBlockProp":null
+			}
+		}
+	}`)
+	})
+
+	t.Run("unknown for list block prop collection", func(t *testing.T) {
+		// TODO[pulumi/pulumi-terraform-bridge#1885]
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"listBlockProps":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":"04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+				"stringProp":null,
+				"setProps":null,
+				"listProps":null,
+				"nestedListProps":null,
+				"maxItemsOneProp":null,
+				"setBlockProps":[],
+				"listBlockProps":[{ "prop": null }],
+				"nestedListBlockProps":[],
+				"maxItemsOneBlockProp":null
+			}
+		}
+	}`)
+	})
+
+	t.Run("unknown for nested list prop", func(t *testing.T) {
+		// The unknownness gets promoted one level up. This seems to be TF behaviour, independent of PRC.
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"nestedListProps":[["04da6b54-80e4-46f7-96ec-b56ff0331ba9"]]
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":"04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+				"stringProp":null,
+				"setProps":null,
+				"listProps":null,
+				"maxItemsOneProp":null,
+				"nestedListProps":["04da6b54-80e4-46f7-96ec-b56ff0331ba9"],
+				"maxItemsOneProp":null,
+				"setBlockProps":[],
+				"listBlockProps":[],
+				"nestedListBlockProps":[],
+				"maxItemsOneBlockProp":null
+			}
+		}
+	}`)
+	})
+
+	t.Run("unknown for nested list block prop nested subprop", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"nestedListBlockProps":[{"nestedProps":[{"prop":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"}]}]
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":"04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+				"stringProp":null,
+				"setProps":null,
+				"listProps":null,
+				"nestedListProps":null,
+				"maxItemsOneProp":null,
+				"setBlockProps":[],
+				"listBlockProps":[],
+				"nestedListBlockProps":[{
+					"nestedProps": [
+						{"prop":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"}
+					]
+				  }],
+				"maxItemsOneBlockProp":null
+			}
+		}
+	}`)
+	})
+
+	t.Run("unknown for nested list block prop nested prop", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"nestedListBlockProps":[{"nestedProps":["04da6b54-80e4-46f7-96ec-b56ff0331ba9"]}]
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":"04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+				"stringProp":null,
+				"setProps":null,
+				"listProps":null,
+				"nestedListProps":null,
+				"maxItemsOneProp":null,
+				"setBlockProps":[],
+				"listBlockProps":[],
+				"nestedListBlockProps":[{
+					"nestedProps": "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+				  }],
+				"maxItemsOneBlockProp":null
+			}
+		}
+	}`)
+	})
+
+	t.Run("unknown for nested list block prop nested collection", func(t *testing.T) {
+		// TODO[pulumi/pulumi-terraform-bridge#1885]
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"nestedListBlockProps":[{"nestedProps":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"}]
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":"04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+				"stringProp":null,
+				"setProps":null,
+				"listProps":null,
+				"nestedListProps":null,
+				"maxItemsOneProp":null,
+				"setBlockProps":[],
+				"listBlockProps":[],
+				"nestedListBlockProps":[{
+					"nestedProps": [{"prop":null}]
+				  }],
+				"maxItemsOneBlockProp":null
+			}
+		}
+	}`)
+	})
+
+	t.Run("unknown for nested list block prop", func(t *testing.T) {
+		// The unknownness gets promoted one level up. This seems to be TF behaviour, independent of PRC.
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"nestedListBlockProps":["04da6b54-80e4-46f7-96ec-b56ff0331ba9"]
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":"04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+				"stringProp":null,
+				"setProps":null,
+				"listProps":null,
+				"nestedListProps":null,
+				"maxItemsOneProp":null,
+				"setBlockProps":[],
+				"listBlockProps":[],
+				"nestedListBlockProps":"04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+				"maxItemsOneBlockProp":null
+			}
+		}
+	}`)
+	})
+
+	t.Run("unknown for nested list block collection", func(t *testing.T) {
+		// TODO[pulumi/pulumi-terraform-bridge#1885]
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"nestedListBlockProps":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":"04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+				"stringProp":null,
+				"setProps":null,
+				"listProps":null,
+				"nestedListProps":null,
+				"maxItemsOneProp":null,
+				"setBlockProps":[],
+				"listBlockProps":[],
+				"nestedListBlockProps":[{"nestedProps":[]}],
+				"maxItemsOneBlockProp":null
+			}
+		}
+	}`)
+	})
+
+	t.Run("unknown for max items one prop", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"maxItemsOneProp":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":"04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+				"stringProp":null,
+				"setProps":null,
+				"listProps":null,
+				"nestedListProps":null,
+				"maxItemsOneProp":"04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+				"setBlockProps":[],
+				"listBlockProps":[],
+				"nestedListBlockProps":[],
+				"maxItemsOneBlockProp":null
+			}
+		}
+	}`)
+	})
+
+	t.Run("unknown for max items one block subprop", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"maxItemsOneBlockProp":{"prop":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"}
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":"04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+				"stringProp":null,
+				"setProps":null,
+				"listProps":null,
+				"nestedListProps":null,
+				"maxItemsOneProp":null,
+				"setBlockProps":[],
+				"listBlockProps":[],
+				"nestedListBlockProps":[],
+				"maxItemsOneBlockProp":{"prop":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"}
+			}
+		}
+	}`)
+	})
+
+	t.Run("unknown for max items one block prop", func(t *testing.T) {
+		testutils.Replay(t, provider, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+			"properties":{
+				"__defaults":[],
+				"maxItemsOneBlockProp":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+			},
+			"preview":true
+		},
+		"response": {
+			"properties":{
+				"id":"04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+				"stringProp":null,
+				"setProps":null,
+				"listProps":null,
+				"nestedListProps":null,
+				"maxItemsOneProp":null,
+				"setBlockProps":[],
+				"listBlockProps":[],
+				"nestedListBlockProps":[],
+				"maxItemsOneBlockProp":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+			}
+		}
+	}`)
 	})
 }

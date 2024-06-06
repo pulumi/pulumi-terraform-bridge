@@ -188,8 +188,14 @@ func (p *provider) PkgWithContext(_ context.Context) tokens.Package {
 	return tokens.Package(p.info.Name)
 }
 
+func (p *provider) ParameterizeWithContext(
+	ctx context.Context, req plugin.ParameterizeRequest,
+) (plugin.ParameterizeResponse, error) {
+	return (&plugin.UnimplementedProvider{}).Parameterize(ctx, req)
+}
+
 // GetSchema returns the schema for the provider.
-func (p *provider) GetSchemaWithContext(_ context.Context, version int) ([]byte, error) {
+func (p *provider) GetSchemaWithContext(context.Context, plugin.GetSchemaRequest) ([]byte, error) {
 	return p.pulumiSchema, nil
 }
 

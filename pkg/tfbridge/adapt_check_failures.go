@@ -67,6 +67,21 @@ func parseCheckError(
 	schemaInfos map[string]*SchemaInfo,
 	err error,
 ) (*CheckFailurePath, CheckFailureReason, string) {
+	if d := (*diagnostics.ValidationError)(nil); errors.As(err, &d) {
+		failType := MiscFailure
+		switch {
+		case strings.Contains(d.Summary, "Invalid or unknown key"):
+			failType = InvalidKey
+		case strings.Contains(d.Summary, "required field is not set"):
+			failType = MissingKey
+		}
+		pp := formatAttributePathAsPropertyPath(schemaMap, schemaInfos, d.AttributePath)
+		s := d.Summary
+		if d.Detail != "" {
+			s += ". " + d.Detail
+		}
+		return pp, failType, s
+	}
 	if parts := requiredFieldRegex.FindStringSubmatch(err.Error()); len(parts) == 2 {
 		name := parts[1]
 		pp := NewCheckFailurePath(schemaMap, schemaInfos, name)
@@ -76,18 +91,6 @@ func parseCheckError(
 		name := parts[1]
 		pp := NewCheckFailurePath(schemaMap, schemaInfos, name)
 		return &pp, MiscFailure, err.Error()
-	}
-	if d := (*diagnostics.ValidationError)(nil); errors.As(err, &d) {
-		failType := MiscFailure
-		if strings.Contains(d.Summary, "Invalid or unknown key") {
-			failType = InvalidKey
-		}
-		pp := formatAttributePathAsPropertyPath(schemaMap, schemaInfos, d.AttributePath)
-		s := d.Summary
-		if d.Detail != "" {
-			s += ". " + d.Detail
-		}
-		return pp, failType, s
 	}
 	// If there is no way to identify a propertyPath, still report a generic CheckFailure.
 	return nil, MiscFailure, err.Error()

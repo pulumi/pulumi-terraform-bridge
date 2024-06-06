@@ -298,9 +298,8 @@ type conversionContext struct {
 }
 
 type makeTerraformInputsOptions struct {
-	DisableDefaults           bool
-	DisableTFDefaults         bool
-	EnableMaxItemsOneDefaults bool
+	DisableDefaults   bool
+	DisableTFDefaults bool
 }
 
 func makeTerraformInputsWithOptions(
@@ -319,13 +318,12 @@ func makeTerraformInputsWithOptions(
 	}
 
 	cctx := &conversionContext{
-		Ctx:                      ctx,
-		ComputeDefaultOptions:    cdOptions,
-		ProviderConfig:           config,
-		ApplyDefaults:            !opts.DisableDefaults,
-		ApplyTFDefaults:          !opts.DisableTFDefaults,
-		ApplyMaxItemsOneDefaults: opts.EnableMaxItemsOneDefaults,
-		Assets:                   AssetTable{},
+		Ctx:                   ctx,
+		ComputeDefaultOptions: cdOptions,
+		ProviderConfig:        config,
+		ApplyDefaults:         !opts.DisableDefaults,
+		ApplyTFDefaults:       !opts.DisableTFDefaults,
+		Assets:                AssetTable{},
 	}
 
 	inputs, err := cctx.makeTerraformInputs(olds, news, tfs, ps)
@@ -1232,22 +1230,6 @@ func MakeTerraformOutput(
 	return output
 }
 
-type makeTerraformConfigOpts struct {
-	EnableMaxItemsOneDefaults bool
-}
-
-func makeTerraformConfigWithOpts(ctx context.Context, p *Provider, m resource.PropertyMap,
-	tfs shim.SchemaMap, ps map[string]*SchemaInfo, opts makeTerraformConfigOpts) (shim.ResourceConfig, AssetTable, error) {
-	inputs, assets, err := makeTerraformInputsWithOptions(ctx, nil, p.configValues, nil, m, tfs, ps,
-		makeTerraformInputsOptions{
-			DisableDefaults: true, DisableTFDefaults: true, EnableMaxItemsOneDefaults: opts.EnableMaxItemsOneDefaults},
-	)
-	if err != nil {
-		return nil, nil, err
-	}
-	return MakeTerraformConfigFromInputs(ctx, p.tf, inputs), assets, nil
-}
-
 // MakeTerraformConfig creates a Terraform config map, used in state and diff calculations, from a Pulumi property map.
 func MakeTerraformConfig(ctx context.Context, p *Provider, m resource.PropertyMap,
 	tfs shim.SchemaMap, ps map[string]*SchemaInfo) (shim.ResourceConfig, AssetTable, error) {
@@ -1307,12 +1289,11 @@ func MakeTerraformConfigFromInputs(
 	return p.NewResourceConfig(ctx, raw)
 }
 
-type makeTerraformStateOpts struct {
-	EnableMaxItemsOneDefaults bool
-}
-
-func makeTerraformStateWithOpts(
-	ctx context.Context, res Resource, id string, m resource.PropertyMap, opts makeTerraformStateOpts,
+// MakeTerraformState converts a Pulumi property bag into its Terraform equivalent.  This requires
+// flattening everything and serializing individual properties as strings.  This is a little awkward, but it's how
+// Terraform represents resource properties (schemas are simply sugar on top).
+func MakeTerraformState(
+	ctx context.Context, res Resource, id string, m resource.PropertyMap,
 ) (shim.InstanceState, error) {
 	// Parse out any metadata from the state.
 	var meta map[string]interface{}
@@ -1332,21 +1313,13 @@ func makeTerraformStateWithOpts(
 	// ints, to represent numbers.
 	inputs, _, err := makeTerraformInputsWithOptions(ctx, nil, nil, nil, m, res.TF.Schema(), res.Schema.Fields,
 		makeTerraformInputsOptions{
-			DisableDefaults: true, DisableTFDefaults: true, EnableMaxItemsOneDefaults: opts.EnableMaxItemsOneDefaults})
+			DisableDefaults: true, DisableTFDefaults: true,
+		})
 	if err != nil {
 		return nil, err
 	}
 
 	return res.TF.InstanceState(id, inputs, meta)
-}
-
-// MakeTerraformState converts a Pulumi property bag into its Terraform equivalent.  This requires
-// flattening everything and serializing individual properties as strings.  This is a little awkward, but it's how
-// Terraform represents resource properties (schemas are simply sugar on top).
-func MakeTerraformState(
-	ctx context.Context, res Resource, id string, m resource.PropertyMap,
-) (shim.InstanceState, error) {
-	return makeTerraformStateWithOpts(ctx, res, id, m, makeTerraformStateOpts{})
 }
 
 // UnmarshalTerraformState unmarshals a Terraform instance state from an RPC property map.
@@ -1366,7 +1339,7 @@ func UnmarshalTerraformState(
 		return nil, err
 	}
 
-	return makeTerraformStateWithOpts(ctx, r, id, props, makeTerraformStateOpts{})
+	return MakeTerraformState(ctx, r, id, props)
 }
 
 // IsMaxItemsOne returns true if the schema/info pair represents a TypeList or TypeSet which should project
@@ -1387,7 +1360,8 @@ func IsMaxItemsOne(tfs shim.Schema, info *SchemaInfo) bool {
 // getInfoFromTerraformName does a map lookup to find the Pulumi name and schema info, if any.
 func getInfoFromTerraformName(key string,
 	tfs shim.SchemaMap, ps map[string]*SchemaInfo, rawName bool) (resource.PropertyKey,
-	shim.Schema, *SchemaInfo) {
+	shim.Schema, *SchemaInfo,
+) {
 	info := ps[key]
 
 	var name string

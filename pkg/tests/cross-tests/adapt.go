@@ -103,6 +103,8 @@ func (ta *typeAdapter) NewValue(value any) tftypes.Value {
 		case map[string]any:
 			values := map[string]tftypes.Value{}
 			for k, el := range v {
+				_, ok := aT[k]
+				contract.Assertf(ok, "no type for attribute %q", k)
 				values[k] = fromType(aT[k]).NewValue(el)
 			}
 			return tftypes.NewValue(t, values)
@@ -112,6 +114,7 @@ func (ta *typeAdapter) NewValue(value any) tftypes.Value {
 }
 
 func fromType(t tftypes.Type) *typeAdapter {
+	contract.Assertf(t != nil, "type cannot be nil")
 	return &typeAdapter{t}
 }
 
