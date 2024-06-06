@@ -951,22 +951,17 @@ func (g *Generator) UnstableGenerateFromSchema(genSchemaResult *GenerateSchemaRe
 
 	switch g.language {
 	case RegistryDocs:
-
 		source := NewGitRepoDocsSource(g)
-		info := &tfbridge.ResourceInfo{
-			Tok:    tokens.Type(g.pkg.String()),
-			Fields: g.info.Config,
-		}
-		docInfo := info.GetDocs()
 		pkgName := g.info.Name
-		docFile, err := source.getInstallation(docInfo)
-		content, err := plainDocsParser(docFile, pkgName, g)
+		installationFile, err := source.getInstallation(nil)
+		content, err := plainDocsParser(installationFile, pkgName, g)
 		if err != nil {
-			return errors.Wrapf(err, "failed to stupidly parse the docs")
+			return errors.Wrapf(err, "failed to parse installation docs")
 		}
-
 		files["installation-configuration.md"] = content
-
+		// Populate minimal _index.md file
+		indexContent := writeIndexFrontMatter(pkgName)
+		files["_index.md"] = []byte(indexContent)
 	case Schema:
 		// Omit the version so that the spec is stable if the version is e.g. derived from the current Git commit hash.
 		pulumiPackageSpec.Version = ""
@@ -975,7 +970,6 @@ func (g *Generator) UnstableGenerateFromSchema(genSchemaResult *GenerateSchemaRe
 		if err != nil {
 			return errors.Wrapf(err, "failed to marshal schema")
 		}
-
 		files = map[string][]byte{"schema.json": bytes}
 
 		if info := g.info.MetadataInfo; info != nil {

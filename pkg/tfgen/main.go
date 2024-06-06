@@ -163,6 +163,7 @@ func newTFGenCmd(pkg string, version string, prov tfbridge.ProviderInfo,
 				SkipExamples:    skipExamples,
 				CoverageTracker: coverageTracker,
 			}
+
 			err := gen(opts)
 
 			// Exporting collected coverage data to the directory specified by COVERAGE_OUTPUT_DIR
