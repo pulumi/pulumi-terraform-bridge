@@ -2422,8 +2422,25 @@ func translateCodeBlocks(contentStr string, g *Generator) (string, error) {
 				exPath.String(), code)
 
 			langs := genLanguageToSlice(g.language)
-			convertedBlock, err := g.convertHCL(conversionResult, code, exPath.String(), langs)
-			returnContent = returnContent + convertedBlock
+			chooserStart := `{{< chooser language "typescript,python,go,csharp,java,yaml" >}}` + "\n"
+			returnContent = returnContent + chooserStart
+			chooserEnd := "{{< /chooser >}}\n"
+			// we will gen each language in turn, so that we can mark up the output with the correct Hugo shortcodes.
+			//TODO: do we need shortcodes?
+
+			for _, lang := range langs {
+				langSlice := []string{lang}
+				choosableStart := fmt.Sprintf("{{%% choosable language %s %%}}\n", lang)
+				choosableEnd := "\n{{% /choosable %}}\n"
+				convertedLang, err := g.convertHCL(conversionResult, code, exPath.String(), langSlice)
+				if err != nil {
+					//TODO: maybe this is too strict
+					return "", err
+				}
+				returnContent = returnContent + choosableStart + convertedLang + choosableEnd
+			}
+			returnContent += chooserEnd
+
 			startIndex = block.end + len(codeFence)
 		} else {
 			// Write any code block as-is.
