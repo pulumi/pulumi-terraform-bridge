@@ -16,6 +16,7 @@ package tfbridge
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
@@ -65,8 +66,13 @@ func normalizeNullValues(
 		}
 		// An empty collection (not MaxItems=1) with missing/null oldInput is getting replaced to match.
 		if gotOldInput {
+			p := string(k)
+			msg := fmt.Sprintf("normalizeNullValues: replacing %s=[] with oldInputs.%s=null", p, p)
+			GetLogger(ctx).Debug(msg)
 			copy[k] = oldInput
 		} else {
+			msg := fmt.Sprintf("normalizeNullValues: removing %s=[] to match oldInputs", string(k))
+			GetLogger(ctx).Debug(msg)
 			delete(copy, k)
 		}
 	}

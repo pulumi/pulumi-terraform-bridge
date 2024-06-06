@@ -1297,7 +1297,7 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 		}
 
 		if isRefresh {
-			inputs = normalizeNullValues(oldInputs, res.TF.Schema(), res.Schema.Fields, inputs)
+			inputs = normalizeNullValues(ctx, res.TF.Schema(), res.Schema.Fields, oldInputs, inputs)
 		}
 
 		cleanInputs := deconflict(ctx, res.TF.Schema(), res.Schema.Fields, inputs)
