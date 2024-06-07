@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/walk"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -279,44 +280,28 @@ func normalizeNullValues(res *schema.Resource, state cty.Value) cty.Value {
 	if !state.Type().IsObjectType() {
 		return state
 	}
-	m := state.AsValueMap()
-	sch := res.CoreConfigSchema()
-	for key, attr := range sch.Attributes {
-		stateVal, ok := m[key]
-		if !ok {
-			continue
+	tr, err := cty.Transform(state, func(p cty.Path, v cty.Value) (cty.Value, error) {
+		// Only interested in non-null empty collection values.
+		if v.IsNull() || !v.Type().IsCollectionType() || v.LengthInt() > 0 {
+			return v, nil
 		}
-
-		m[key] = normalizeNullValuesAttr(attr.Type, stateVal)
-	}
-
-	for key := range sch.BlockTypes {
-		subBlockRes := res.SchemaMap()[key]
-		if subBlockRes == nil {
-			continue
+		sp := walk.FromHCtyPath(p)
+		sc := findSchemaContext(res, sp)
+		switch sc := sc.(type) {
+		// Only interested in attributes.
+		case *attrSchemaContext:
+			attr := sc.resource.CoreConfigSchema().Attributes[sc.name]
+			if !attr.Type.IsCollectionType() {
+				return v, nil
+			}
+			// Do substitute a null for the empty collection here.
+			return cty.NullVal(attr.Type), nil
+		default:
+			return v, nil
 		}
-
-		elemRes, ok := subBlockRes.Elem.(*schema.Resource)
-		if !ok {
-			continue
-		}
-		if !m[key].CanIterateElements() {
-			continue
-		}
-		it := m[key].ElementIterator()
-		newElems := make([]cty.Value, 0)
-		for it.Next() {
-			_, elemVal := it.Element()
-			newElems = append(newElems, normalizeNullValues(elemRes, elemVal))
-		}
-		// Blocks are either lists or sets.
-		if subBlockRes.Type == schema.TypeSet {
-			m[key] = cty.SetVal(newElems)
-		} else {
-			m[key] = cty.ListVal(newElems)
-		}
-	}
-	return cty.ObjectVal(m)
+	})
+	contract.AssertNoErrorf(err, "Transform never errors")
+	return tr
 }
 
 func normalizeNullValuesAttr(attrType cty.Type, stateVal cty.Value) cty.Value {
