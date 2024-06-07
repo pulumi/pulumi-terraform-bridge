@@ -255,6 +255,7 @@ func (p *planResourceChangeImpl) Refresh(
 	}
 	normStateValue := rr.stateValue
 	if c != nil {
+		// This means we are doing a refresh and not an import.
 		normStateValue = normalizeNullValues(res, rr.stateValue)
 	}
 	return &v2InstanceState2{
