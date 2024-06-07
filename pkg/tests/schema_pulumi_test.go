@@ -65,85 +65,175 @@ outputs:
 // The clean refresh on empty/nil collections is an intentional divergence from TF behaviour.
 func TestCollectionsRefreshClean(t *testing.T) {
 	for _, tc := range []struct {
-		name       string
-		schemaType schema.ValueType
-		readVal    interface{}
+		name               string
+		planResourceChange bool
+		schemaType         schema.ValueType
+		readVal            interface{}
 		// Note maps are not pluralized in the program while lists and sets are.
 		programVal     string
 		outputString   string
 		expectedOutput interface{}
 	}{
 		{
-			name:           "map null",
-			schemaType:     schema.TypeMap,
-			readVal:        map[string]interface{}{},
-			programVal:     "collectionProp: null",
-			outputString:   "${mainRes.collectionProp}",
-			expectedOutput: nil,
+			name:               "map null with planResourceChange",
+			planResourceChange: true,
+			schemaType:         schema.TypeMap,
+			readVal:            map[string]interface{}{},
+			programVal:         "collectionProp: null",
+			outputString:       "${mainRes.collectionProp}",
+			expectedOutput:     nil,
 		},
 		{
-			name:           "map empty",
-			schemaType:     schema.TypeMap,
-			readVal:        map[string]interface{}{},
-			programVal:     "collectionProp: {}",
-			outputString:   "${mainRes.collectionProp}",
-			expectedOutput: nil,
+			name:               "map null without planResourceChange",
+			planResourceChange: false,
+			schemaType:         schema.TypeMap,
+			readVal:            map[string]interface{}{},
+			programVal:         "collectionProp: null",
+			outputString:       "${mainRes.collectionProp}",
+			expectedOutput:     nil,
 		},
 		{
-			name:           "map nonempty",
-			schemaType:     schema.TypeMap,
-			readVal:        map[string]interface{}{"val": "test"},
-			programVal:     `collectionProp: {"val": "test"}`,
-			outputString:   "${mainRes.collectionProp}",
-			expectedOutput: map[string]interface{}{"val": "test"},
+			name:               "map empty with planResourceChange",
+			planResourceChange: true,
+			schemaType:         schema.TypeMap,
+			readVal:            map[string]interface{}{},
+			programVal:         "collectionProp: {}",
+			outputString:       "${mainRes.collectionProp}",
+			expectedOutput:     nil,
 		},
 		{
-			name:           "list null",
-			schemaType:     schema.TypeList,
-			readVal:        []interface{}{},
-			programVal:     "collectionProps: null",
-			outputString:   "${mainRes.collectionProps}",
-			expectedOutput: nil,
+			name:               "map empty without planResourceChange",
+			planResourceChange: false,
+			schemaType:         schema.TypeMap,
+			readVal:            map[string]interface{}{},
+			programVal:         "collectionProp: {}",
+			outputString:       "${mainRes.collectionProp}",
+			expectedOutput:     nil,
 		},
 		{
-			name:           "list empty",
-			schemaType:     schema.TypeList,
-			readVal:        []interface{}{},
-			programVal:     "collectionProps: []",
-			outputString:   "${mainRes.collectionProps}",
-			expectedOutput: nil,
+			name:               "map nonempty with planResourceChange",
+			planResourceChange: true,
+			schemaType:         schema.TypeMap,
+			readVal:            map[string]interface{}{"val": "test"},
+			programVal:         `collectionProp: {"val": "test"}`,
+			outputString:       "${mainRes.collectionProp}",
+			expectedOutput:     map[string]interface{}{"val": "test"},
 		},
 		{
-			name:           "list nonempty",
-			schemaType:     schema.TypeList,
+			name:               "map nonempty without planResourceChange",
+			planResourceChange: false,
+			schemaType:         schema.TypeMap,
+			readVal:            map[string]interface{}{"val": "test"},
+			programVal:         `collectionProp: {"val": "test"}`,
+			outputString:       "${mainRes.collectionProp}",
+			expectedOutput:     map[string]interface{}{"val": "test"},
+		},
+		{
+			name:               "list null with planResourceChange",
+			planResourceChange: true,
+			schemaType:         schema.TypeList,
+			readVal:            []interface{}{},
+			programVal:         "collectionProps: null",
+			outputString:       "${mainRes.collectionProps}",
+			expectedOutput:     nil,
+		},
+		{
+			name:               "list null without planResourceChange",
+			planResourceChange: false,
+			schemaType:         schema.TypeList,
+			readVal:            []interface{}{},
+			programVal:         "collectionProps: null",
+			outputString:       "${mainRes.collectionProps}",
+			expectedOutput:     nil,
+		},
+		{
+			name:               "list empty with planResourceChange",
+			planResourceChange: true,
+			schemaType:         schema.TypeList,
+			readVal:            []string{},
+			programVal:         "collectionProps: []",
+			outputString:       "${mainRes.collectionProps}",
+			expectedOutput:     []interface{}{},
+		},
+		{
+			name:               "list empty without planResourceChange",
+			planResourceChange: false,
+			schemaType:         schema.TypeList,
+			readVal:            []string{},
+			programVal:         "collectionProps: []",
+			outputString:       "${mainRes.collectionProps}",
+			expectedOutput:     []interface{}{},
+		},
+		{
+			name:               "list nonempty with planResourceChange",
+			planResourceChange: true,
+			schemaType:         schema.TypeList,
+			readVal:            []interface{}{"val"},
+			programVal:         `collectionProps: ["val"]`,
+			outputString:       "${mainRes.collectionProps}",
+			expectedOutput:     []interface{}{"val"},
+		},
+		{
+			name:               "list nonempty without planResourceChange",
+			planResourceChange: false,
+			schemaType:         schema.TypeList,
+			readVal:            []interface{}{"val"},
+			programVal:         `collectionProps: ["val"]`,
+			outputString:       "${mainRes.collectionProps}",
+			expectedOutput:     []interface{}{"val"},
+		},
+		{
+			name:               "set null with planResourceChange",
+			planResourceChange: true,
+			schemaType:         schema.TypeSet,
+			readVal:            []interface{}{},
+			programVal:         "collectionProps: null",
+			outputString:       "${mainRes.collectionProps}",
+			expectedOutput:     nil,
+		},
+		{
+			name:               "set null without planResourceChange",
+			planResourceChange: false,
+			schemaType:         schema.TypeSet,
+			readVal:            []interface{}{},
+			programVal:         "collectionProps: null",
+			outputString:       "${mainRes.collectionProps}",
+			expectedOutput:     nil,
+		},
+		{
+			name:               "set empty with planResourceChange",
+			planResourceChange: true,
+			schemaType:         schema.TypeSet,
+			readVal:            []interface{}{},
+			programVal:         "collectionProps: []",
+			outputString:       "${mainRes.collectionProps}",
+			expectedOutput:     nil,
+		},
+		{
+			name:               "set empty without planResourceChange",
+			planResourceChange: false,
+			schemaType:         schema.TypeSet,
+			readVal:            []interface{}{},
+			programVal:         "collectionProps: []",
+			outputString:       "${mainRes.collectionProps}",
+			expectedOutput:     nil,
+		},
+		{
+			name:           "set nonempty with planResourceChange",
+			schemaType:     schema.TypeSet,
 			readVal:        []interface{}{"val"},
 			programVal:     `collectionProps: ["val"]`,
 			outputString:   "${mainRes.collectionProps}",
 			expectedOutput: []interface{}{"val"},
 		},
 		{
-			name:           "set null",
-			schemaType:     schema.TypeSet,
-			readVal:        []interface{}{},
-			programVal:     "collectionProps: null",
-			outputString:   "${mainRes.collectionProps}",
-			expectedOutput: nil,
-		},
-		{
-			name:           "set empty",
-			schemaType:     schema.TypeSet,
-			readVal:        []interface{}{},
-			programVal:     "collectionProps: []",
-			outputString:   "${mainRes.collectionProps}",
-			expectedOutput: nil,
-		},
-		{
-			name:           "set nonempty",
-			schemaType:     schema.TypeSet,
-			readVal:        []interface{}{"val"},
-			programVal:     `collectionProps: ["val"]`,
-			outputString:   "${mainRes.collectionProps}",
-			expectedOutput: []interface{}{"val"},
+			name:               "set nonempty without planResourceChange",
+			planResourceChange: false,
+			schemaType:         schema.TypeSet,
+			readVal:            []interface{}{"val"},
+			programVal:         `collectionProps: ["val"]`,
+			outputString:       "${mainRes.collectionProps}",
+			expectedOutput:     []interface{}{"val"},
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -169,7 +259,11 @@ func TestCollectionsRefreshClean(t *testing.T) {
 					},
 				},
 			}
-			bridgedProvider := pulcheck.BridgedProvider(t, "prov", resMap)
+			opts := []pulcheck.BridgedProviderOpt{}
+			if !tc.planResourceChange {
+				opts = append(opts, pulcheck.DisablePlanResourceChange())
+			}
+			bridgedProvider := pulcheck.BridgedProvider(t, "prov", resMap, opts...)
 			program := fmt.Sprintf(`
 name: test
 runtime: yaml
