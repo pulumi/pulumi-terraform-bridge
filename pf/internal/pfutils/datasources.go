@@ -30,7 +30,6 @@ type DataSources interface {
 	Has(runtypes.TypeName) bool
 	Schema(runtypes.TypeName) Schema
 	Diagnostics(runtypes.TypeName) diag.Diagnostics
-	AllDiagnostics() diag.Diagnostics
 }
 
 func GatherDatasources(ctx context.Context, prov provider.Provider) (DataSources, error) {

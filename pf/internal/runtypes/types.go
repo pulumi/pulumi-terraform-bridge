@@ -47,5 +47,4 @@ type Resources interface {
 	Has(TypeName) bool
 	Schema(TypeName) Schema
 	Diagnostics(TypeName) diag.Diagnostics
-	AllDiagnostics() diag.Diagnostics
 }

@@ -77,11 +77,3 @@ func (c collection[T]) Schema(name runtypes.TypeName) Schema {
 func (c collection[T]) Diagnostics(name runtypes.TypeName) diag.Diagnostics {
 	return c[name].diagnostics
 }
-
-func (c collection[T]) AllDiagnostics() diag.Diagnostics {
-	var diags diag.Diagnostics
-	for _, name := range c.All() {
-		diags.Append(c.Diagnostics(name)...)
-	}
-	return diags
-}
