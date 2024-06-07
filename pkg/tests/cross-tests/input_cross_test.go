@@ -218,6 +218,7 @@ func TestInputsEmptyString(t *testing.T) {
 
 func TestInputsUnspecifiedMaxItemsOne(t *testing.T) {
 	// Regression test for [pulumi/pulumi-terraform-bridge#1767]
+	skipUnlessLinux(t)
 	runCreateInputCheck(t, inputTestCase{
 		Resource: &schema.Resource{
 			Schema: map[string]*schema.Schema{
@@ -263,6 +264,7 @@ func TestOptionalSetNotSpecified(t *testing.T) {
 
 func TestInputsEqualEmptyList(t *testing.T) {
 	// Regression test for [pulumi/pulumi-terraform-bridge#1915]
+	skipUnlessLinux(t)
 	for _, maxItems := range []int{0, 1} {
 		name := fmt.Sprintf("MaxItems: %v", maxItems)
 		t.Run(name, func(t *testing.T) {
