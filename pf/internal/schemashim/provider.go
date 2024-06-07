@@ -51,7 +51,7 @@ func (p *SchemaOnlyProvider) Server(ctx context.Context) (tfprotov6.ProviderServ
 }
 
 func (p *SchemaOnlyProvider) Resources(ctx context.Context) (pfutils.Resources, error) {
-	return pfutils.GatherResources(ctx, p.tf)
+	return pfutils.GatherResources(ctx, p.tf, NewSchemaMap)
 }
 
 func (p *SchemaOnlyProvider) DataSources(ctx context.Context) (pfutils.DataSources, error) {

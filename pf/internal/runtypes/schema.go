@@ -33,4 +33,5 @@ type Schema interface {
 	ResourceSchemaVersion() int64
 
 	Shim() shim.SchemaMap
+	DeprecationMessage() string
 }

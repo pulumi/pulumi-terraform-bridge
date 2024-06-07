@@ -23,7 +23,7 @@ import (
 )
 
 func ShimSchemaOnlyProvider(ctx context.Context, provider pfprovider.Provider) shim.Provider {
-	resources, err := pfutils.GatherResources(ctx, provider)
+	resources, err := pfutils.GatherResources(ctx, provider, NewSchemaMap)
 	if err != nil {
 		panic(err)
 	}

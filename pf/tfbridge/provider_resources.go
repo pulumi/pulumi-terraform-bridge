@@ -24,7 +24,6 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/pfutils"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/runtypes"
-	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/schemashim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/convert"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
@@ -40,12 +39,6 @@ type resourceHandle struct {
 	schemaOnlyShimResource shim.Resource
 }
 
-type schemaAdapter struct{ pfutils.Schema }
-
-func (s schemaAdapter) Shim() shim.SchemaMap {
-	return schemashim.NewSchemaMap(s.Schema)
-}
-
 func (p *provider) resourceHandle(ctx context.Context, urn pulumiresource.URN) (resourceHandle, error) {
 	typeName, err := p.terraformResourceName(urn.Type())
 	if err != nil {
@@ -57,7 +50,7 @@ func (p *provider) resourceHandle(ctx context.Context, urn pulumiresource.URN) (
 
 	result := resourceHandle{
 		terraformResourceName: typeName,
-		schema:                schemaAdapter{schema},
+		schema:                schema,
 	}
 
 	if info, ok := p.info.Resources[typeName]; ok {

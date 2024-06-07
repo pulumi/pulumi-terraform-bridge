@@ -21,19 +21,23 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/runtypes"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
 // Represents all provider's resources pre-indexed by TypeName.
 type Resources interface {
 	All() []TypeName
 	Has(TypeName) bool
-	Schema(TypeName) Schema
+	Schema(TypeName) runtypes.Schema
 	Diagnostics(TypeName) diag.Diagnostics
 	AllDiagnostics() diag.Diagnostics
 }
 
 // Collects all resources from prov and indexes them by TypeName.
-func GatherResources(ctx context.Context, prov provider.Provider) (Resources, error) {
+func GatherResources[F func(Schema) shim.SchemaMap](
+	ctx context.Context, prov provider.Provider, f F,
+) (Resources, error) {
 	provMetadata := queryProviderMetadata(ctx, prov)
 	rs := make(collection[func() resource.Resource])
 
@@ -60,9 +64,23 @@ func GatherResources(ctx context.Context, prov provider.Provider) (Resources, er
 		}
 	}
 
-	return &resources{collection: rs}, nil
+	return &resources{collection: rs, convert: f}, nil
 }
 
 type resources struct {
 	collection[func() resource.Resource]
+	convert func(Schema) shim.SchemaMap
+}
+
+type runtypesSchemaAdapter struct {
+	Schema
+	converter func(Schema) shim.SchemaMap
+}
+
+func (r runtypesSchemaAdapter) Shim() shim.SchemaMap {
+	return r.converter(r.Schema)
+}
+
+func (r resources) Schema(t TypeName) runtypes.Schema {
+	return runtypesSchemaAdapter{r.collection.Schema(t), r.convert}
 }
