@@ -29,6 +29,7 @@ import (
 	"gotest.tools/assert"
 )
 
+// This is an experimental API.
 func EnsureProviderValid(t T, tfp *schema.Provider) {
 	for _, r := range tfp.ResourcesMap {
 		if r.ReadContext == nil {
@@ -62,6 +63,7 @@ func EnsureProviderValid(t T, tfp *schema.Provider) {
 	require.NoError(t, tfp.InternalValidate())
 }
 
+// This is an experimental API.
 func StartPulumiProvider(ctx context.Context, name, version string, providerInfo tfbridge.ProviderInfo) (*rpcutil.ServeHandle, error) {
 	sink := pulumidiag.DefaultSink(io.Discard, io.Discard, pulumidiag.FormatOptions{
 		Color: colors.Never,
@@ -92,6 +94,7 @@ func StartPulumiProvider(ctx context.Context, name, version string, providerInfo
 	return &handle, nil
 }
 
+// This is an experimental API.
 type T interface {
 	Logf(string, ...any)
 	TempDir() string
@@ -101,6 +104,7 @@ type T interface {
 	pulumitest.PT
 }
 
+// This is an experimental API.
 func BridgedProvider(t T, providerName string, resMap map[string]*schema.Resource) info.Provider {
 	tfp := &schema.Provider{ResourcesMap: resMap}
 	EnsureProviderValid(t, tfp)
