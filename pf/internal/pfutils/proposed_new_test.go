@@ -18,6 +18,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/runtypes"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/stretchr/testify/require"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -28,11 +30,15 @@ import (
 )
 
 type testcase struct {
-	Schema Schema
+	Schema runtypes.Schema
 	Prior  valueBuilder
 	Config valueBuilder
 	Want   valueBuilder
 }
+
+type runtiemSchemaAdapter struct{ Schema }
+
+func (runtiemSchemaAdapter) Shim() shim.SchemaMap { panic("UNIMPLIMENTED") }
 
 func TestComputedOptionalBecomingUnknown(t *testing.T) {
 	schema := rschema.Schema{Attributes: map[string]rschema.Attribute{
@@ -48,7 +54,7 @@ func TestComputedOptionalBecomingUnknown(t *testing.T) {
 		},
 	}}
 	checkTestCase(t, "basic", testcase{
-		Schema: FromResourceSchema(schema),
+		Schema: runtiemSchemaAdapter{FromResourceSchema(schema)},
 		Prior:  obj(field("foo", unk())),
 		Config: obj(field("foo", obj(field("bar", prim(nil))))),
 		Want:   obj(field("foo", obj(field("bar", unk())))),
@@ -195,7 +201,7 @@ func TestProposedNewBaseCases(t *testing.T) {
 	}
 
 	for name, tc := range testcases {
-		tc.Schema = FromResourceSchema(schema)
+		tc.Schema = runtiemSchemaAdapter{FromResourceSchema(schema)}
 		checkTestCase(t, name, tc)
 	}
 }
@@ -223,7 +229,9 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 	tests := map[string]testcase{
 
 		"empty": {
-			FromResourceSchema(rschema.Schema{Attributes: map[string]rschema.Attribute{}}),
+			runtiemSchemaAdapter{
+				FromResourceSchema(rschema.Schema{Attributes: map[string]rschema.Attribute{}}),
+			},
 			prim(nil),
 			prim(nil),
 			prim(nil),
@@ -294,7 +302,7 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 			)
 
 			return testcase{
-				Schema: FromResourceSchema(schema),
+				Schema: runtiemSchemaAdapter{FromResourceSchema(schema)},
 				Prior:  prim(nil),
 				Config: config,
 				Want:   want,
@@ -341,7 +349,7 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 				field("baz", prim(nil)),
 			)
 			return testcase{
-				Schema: FromResourceSchema(schema),
+				Schema: runtiemSchemaAdapter{FromResourceSchema(schema)},
 				Prior:  prim(nil),
 				Config: config,
 				Want:   want,
@@ -387,7 +395,7 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 				field("bloop", set(obj(field("blop", prim("blub"))))),
 			)
 			return testcase{
-				Schema: FromResourceSchema(schema),
+				Schema: runtiemSchemaAdapter{FromResourceSchema(schema)},
 				Prior:  prim(nil),
 				Config: config,
 				Want:   want,
@@ -443,7 +451,7 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 				field("bloop", obj(field("blop", prim("bleep")))),
 			)
 			return testcase{
-				Schema: FromResourceSchema(schema),
+				Schema: runtiemSchemaAdapter{FromResourceSchema(schema)},
 				Prior:  prior,
 				Config: config,
 				Want:   want,
@@ -451,7 +459,7 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 		})(),
 
 		"prior nested single": {
-			FromResourceSchema(rschema.Schema{
+			runtiemSchemaAdapter{FromResourceSchema(rschema.Schema{
 				Blocks: map[string]rschema.Block{
 					"foo": rschema.SingleNestedBlock{
 						Attributes: map[string]rschema.Attribute{
@@ -479,7 +487,7 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 						Optional: true,
 					},
 				},
-			}),
+			})},
 			object(map[string]valueBuilder{
 				"foo": object(map[string]valueBuilder{
 					"bar": prim("beep"),
@@ -514,7 +522,7 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 		},
 
 		"prior nested list": {
-			FromResourceSchema(rschema.Schema{
+			runtiemSchemaAdapter{FromResourceSchema(rschema.Schema{
 				Blocks: map[string]rschema.Block{
 					"foo": rschema.ListNestedBlock{
 						NestedObject: rschema.NestedBlockObject{
@@ -543,7 +551,7 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 						Optional: true,
 					},
 				},
-			}),
+			})},
 			object(map[string]valueBuilder{
 				"foo": list(
 					object(map[string]valueBuilder{
@@ -608,7 +616,7 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 		},
 
 		"prior nested map": {
-			FromResourceSchema(rschema.Schema{
+			runtiemSchemaAdapter{FromResourceSchema(rschema.Schema{
 				Attributes: map[string]rschema.Attribute{
 					"bloop": rschema.MapNestedAttribute{
 						NestedObject: rschema.NestedAttributeObject{
@@ -621,7 +629,7 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 						Optional: true,
 					},
 				},
-			}),
+			})},
 			object(map[string]valueBuilder{
 				"bloop": mapv(map[string]valueBuilder{
 					"a": object(map[string]valueBuilder{
@@ -659,7 +667,7 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 			}),
 		},
 		"prior nested set": {
-			FromResourceSchema(rschema.Schema{
+			runtiemSchemaAdapter{FromResourceSchema(rschema.Schema{
 				Blocks: map[string]rschema.Block{
 					"foo": rschema.SetNestedBlock{
 						NestedObject: rschema.NestedBlockObject{
@@ -693,7 +701,7 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 						Optional: true,
 					},
 				},
-			}),
+			})},
 			object(map[string]valueBuilder{
 				"foo": set(
 					object(map[string]valueBuilder{
@@ -768,7 +776,7 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 		},
 
 		"sets differing only by unknown": {
-			FromResourceSchema(rschema.Schema{
+			runtiemSchemaAdapter{FromResourceSchema(rschema.Schema{
 				Blocks: map[string]rschema.Block{
 					"multi": rschema.SetNestedBlock{
 						NestedObject: rschema.NestedBlockObject{
@@ -793,7 +801,7 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 						Optional: true,
 					},
 				},
-			}),
+			})},
 			prim(nil),
 			object(map[string]valueBuilder{
 				"multi": set(
@@ -838,7 +846,7 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 		},
 
 		"nested list in set": {
-			FromResourceSchema(rschema.Schema{
+			runtiemSchemaAdapter{FromResourceSchema(rschema.Schema{
 				Blocks: map[string]rschema.Block{
 					"foo": rschema.SetNestedBlock{
 						NestedObject: rschema.NestedBlockObject{
@@ -858,7 +866,7 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 						},
 					},
 				},
-			}),
+			})},
 			object(map[string]valueBuilder{
 				"foo": set(
 					object(map[string]valueBuilder{
@@ -894,7 +902,7 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 		},
 
 		"empty nested list in set": {
-			FromResourceSchema(rschema.Schema{
+			runtiemSchemaAdapter{FromResourceSchema(rschema.Schema{
 				Blocks: map[string]rschema.Block{
 					"foo": rschema.SetNestedBlock{
 						NestedObject: rschema.NestedBlockObject{
@@ -908,7 +916,7 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 						},
 					},
 				},
-			}),
+			})},
 			object(map[string]valueBuilder{
 				"foo": set(
 					object(map[string]valueBuilder{
@@ -934,7 +942,7 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 		// Could not port empty nested map in set since tfsdk.BlockNestingModeMap is not supported, substituting
 		// an empty object instead.
 		"empty nested object in set": {
-			FromResourceSchema(rschema.Schema{
+			runtiemSchemaAdapter{FromResourceSchema(rschema.Schema{
 				Blocks: map[string]rschema.Block{
 					"foo": rschema.SetNestedBlock{
 						NestedObject: rschema.NestedBlockObject{
@@ -950,7 +958,7 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 						},
 					},
 				},
-			}),
+			})},
 			object(map[string]valueBuilder{
 				"foo": set(
 					object(map[string]valueBuilder{
@@ -975,7 +983,7 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 
 		// This example has a mixture of optional, computed and required in a deeply-nested NestedType attribute
 		"deeply NestedType": {
-			FromResourceSchema(rschema.Schema{
+			runtiemSchemaAdapter{FromResourceSchema(rschema.Schema{
 				Attributes: map[string]rschema.Attribute{
 					"foo": rschema.SingleNestedAttribute{
 						Attributes: map[string]rschema.Attribute{
@@ -991,7 +999,7 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 						Optional: true,
 					},
 				},
-			}),
+			})},
 
 			object(map[string]valueBuilder{
 				"foo": object(map[string]valueBuilder{
@@ -1033,7 +1041,7 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 		},
 
 		"deeply nested set": {
-			FromResourceSchema(rschema.Schema{
+			runtiemSchemaAdapter{FromResourceSchema(rschema.Schema{
 				Attributes: map[string]rschema.Attribute{
 					"foo": rschema.SetNestedAttribute{
 						NestedObject: rschema.NestedAttributeObject{
@@ -1048,7 +1056,7 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 						},
 					},
 				},
-			}),
+			})},
 
 			object(map[string]valueBuilder{
 				"foo": set(
@@ -1116,7 +1124,7 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 		},
 
 		"expected null NestedTypes": {
-			FromResourceSchema(rschema.Schema{
+			runtiemSchemaAdapter{FromResourceSchema(rschema.Schema{
 				Attributes: map[string]rschema.Attribute{
 					"single": rschema.SingleNestedAttribute{
 						Attributes: map[string]rschema.Attribute{
@@ -1159,7 +1167,7 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 						Optional: true,
 					},
 				},
-			}),
+			})},
 			object(map[string]valueBuilder{
 				"single": object(map[string]valueBuilder{"bar": prim("baz")}),
 				"list":   list(object(map[string]valueBuilder{"bar": prim("baz")})),
@@ -1197,7 +1205,7 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 		},
 
 		"expected empty NestedTypes": {
-			FromResourceSchema(rschema.Schema{
+			runtiemSchemaAdapter{FromResourceSchema(rschema.Schema{
 				Attributes: map[string]rschema.Attribute{
 					"set": rschema.SetNestedAttribute{
 						NestedObject: rschema.NestedAttributeObject{
@@ -1216,7 +1224,7 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 						Optional: true,
 					},
 				},
-			}),
+			})},
 			object(map[string]valueBuilder{
 				"map": mapv(nil),
 				"set": set(),
@@ -1234,7 +1242,7 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 		},
 
 		"optional types set replacement": {
-			FromResourceSchema(rschema.Schema{
+			runtiemSchemaAdapter{FromResourceSchema(rschema.Schema{
 				Attributes: map[string]rschema.Attribute{
 					"set": rschema.SetNestedAttribute{
 						NestedObject: rschema.NestedAttributeObject{
@@ -1247,7 +1255,7 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 						Optional: true,
 					},
 				},
-			}),
+			})},
 			object(map[string]valueBuilder{
 				"set": set(
 					object(map[string]valueBuilder{
@@ -1271,7 +1279,7 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 		},
 
 		"prior null nested objects": {
-			FromResourceSchema(rschema.Schema{
+			runtiemSchemaAdapter{FromResourceSchema(rschema.Schema{
 				Attributes: map[string]rschema.Attribute{
 					"single": rschema.SingleNestedAttribute{
 						Attributes: map[string]rschema.Attribute{
@@ -1302,7 +1310,7 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 						Optional: true,
 					},
 				},
-			}),
+			})},
 			prim(nil),
 
 			object(map[string]valueBuilder{
@@ -1360,7 +1368,7 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 
 		// data sources are planned with an unknown value
 		"unknown prior nested objects": {
-			FromResourceSchema(rschema.Schema{
+			runtiemSchemaAdapter{FromResourceSchema(rschema.Schema{
 				Attributes: map[string]rschema.Attribute{
 					"list": rschema.ListNestedAttribute{
 						NestedObject: rschema.NestedAttributeObject{
@@ -1378,7 +1386,7 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 						Computed: true,
 					},
 				},
-			}),
+			})},
 			unk(),
 
 			prim(nil),
@@ -1388,14 +1396,14 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 
 		// This test is simple but regresses panis in helper code around sets.
 		"simple set attribute": {
-			FromResourceSchema(rschema.Schema{
+			runtiemSchemaAdapter{FromResourceSchema(rschema.Schema{
 				Attributes: map[string]rschema.Attribute{
 					"set_optional": rschema.SetAttribute{
 						ElementType: basetypes.StringType{},
 						Optional:    true,
 					},
 				},
-			}),
+			})},
 			obj(field("set_optional", set(prim("input1")))),
 			obj(field("set_optional", set(prim("a"), prim("b"), prim("c")))),
 			obj(field("set_optional", set(prim("a"), prim("b"), prim("c")))),
@@ -1410,7 +1418,7 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 func checkTestCase(t *testing.T, name string, test testcase) {
 	t.Run(name, func(t *testing.T) {
 		ctx := context.Background()
-		ty := test.Schema.Type().TerraformType(ctx)
+		ty := test.Schema.Type(ctx)
 		got, err := ProposedNew(ctx, test.Schema, test.Prior(ty), test.Config(ty))
 		require.NoError(t, err)
 		if !got.Equal(test.Want(ty)) {

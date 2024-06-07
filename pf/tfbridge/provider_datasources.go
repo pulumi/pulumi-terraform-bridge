@@ -46,7 +46,7 @@ func (p *provider) datasourceHandle(ctx context.Context, token tokens.ModuleMemb
 	typeName := pfutils.TypeName(dsName)
 	schema := p.datasources.Schema(typeName)
 
-	typ := schema.Type().TerraformType(ctx).(tftypes.Object)
+	typ := schema.Type(ctx).(tftypes.Object)
 
 	encoder, err := p.encoding.NewDataSourceEncoder(dsName, typ)
 	if err != nil {
