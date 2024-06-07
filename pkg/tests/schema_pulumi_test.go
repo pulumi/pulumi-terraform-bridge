@@ -2,6 +2,7 @@ package tests
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -61,33 +62,114 @@ outputs:
 	require.Equal(t, "aux", resUp.Outputs["testOut"].Value)
 }
 
-func TestUnspecifiedMapsRefreshClean(t *testing.T) {
-	resMap := map[string]*schema.Resource{
-		"prov_test": {
-			Schema: map[string]*schema.Schema{
-				"map_prop": {
-					Type:     schema.TypeMap,
-					Optional: true,
-					Elem: &schema.Schema{
-						Type: schema.TypeString,
+func TestCollectionsRefreshClean(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		schemaType schema.ValueType
+		readVal    interface{}
+		// Note maps are not pluralized in the program while lists and sets are.
+		programVal     string
+		outputString   string
+		expectedOutput interface{}
+	}{
+		{
+			name:           "map null",
+			schemaType:     schema.TypeMap,
+			readVal:        map[string]interface{}{},
+			programVal:     "collectionProp: null",
+			outputString:   "${mainRes.collectionProp}",
+			expectedOutput: nil,
+		},
+		{
+			name:           "map empty",
+			schemaType:     schema.TypeMap,
+			readVal:        map[string]interface{}{},
+			programVal:     "collectionProp: {}",
+			outputString:   "${mainRes.collectionProp}",
+			expectedOutput: nil,
+		},
+		{
+			name:           "map nonempty",
+			schemaType:     schema.TypeMap,
+			readVal:        map[string]interface{}{"val": "test"},
+			programVal:     `collectionProp: {"val": "test"}`,
+			outputString:   "${mainRes.collectionProp}",
+			expectedOutput: map[string]interface{}{"val": "test"},
+		},
+		{
+			name:           "list null",
+			schemaType:     schema.TypeList,
+			readVal:        []interface{}{},
+			programVal:     "collectionProps: null",
+			outputString:   "${mainRes.collectionProps}",
+			expectedOutput: nil,
+		},
+		{
+			name:           "list empty",
+			schemaType:     schema.TypeList,
+			readVal:        []interface{}{},
+			programVal:     "collectionProps: []",
+			outputString:   "${mainRes.collectionProps}",
+			expectedOutput: nil,
+		},
+		{
+			name:           "list nonempty",
+			schemaType:     schema.TypeList,
+			readVal:        []interface{}{"val"},
+			programVal:     `collectionProps: ["val"]`,
+			outputString:   "${mainRes.collectionProps}",
+			expectedOutput: []interface{}{"val"},
+		},
+		{
+			name:           "set null",
+			schemaType:     schema.TypeSet,
+			readVal:        []interface{}{},
+			programVal:     "collectionProps: null",
+			outputString:   "${mainRes.collectionProps}",
+			expectedOutput: nil,
+		},
+		{
+			name:           "set empty",
+			schemaType:     schema.TypeSet,
+			readVal:        []interface{}{},
+			programVal:     "collectionProps: []",
+			outputString:   "${mainRes.collectionProps}",
+			expectedOutput: nil,
+		},
+		{
+			name:           "set nonempty",
+			schemaType:     schema.TypeSet,
+			readVal:        []interface{}{"val"},
+			programVal:     `collectionProps: ["val"]`,
+			outputString:   "${mainRes.collectionProps}",
+			expectedOutput: []interface{}{"val"},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			resMap := map[string]*schema.Resource{
+				"prov_test": {
+					Schema: map[string]*schema.Schema{
+						"collection_prop": {
+							Type:     tc.schemaType,
+							Optional: true,
+							Elem:     &schema.Schema{Type: schema.TypeString},
+						},
+						"other_prop": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+					},
+					ReadContext: func(_ context.Context, d *schema.ResourceData, _ interface{}) diag.Diagnostics {
+						err := d.Set("collection_prop", tc.readVal)
+						require.NoError(t, err)
+						err = d.Set("other_prop", "test")
+						require.NoError(t, err)
+						return nil
 					},
 				},
-				"other_prop": {
-					Type:     schema.TypeString,
-					Optional: true,
-				},
-			},
-			ReadContext: func(_ context.Context, d *schema.ResourceData, _ interface{}) diag.Diagnostics {
-				err := d.Set("map_prop", map[string]interface{}{})
-				require.NoError(t, err)
-				err = d.Set("other_prop", "test")
-				require.NoError(t, err)
-				return nil
-			},
-		},
-	}
-	bridgedProvider := pulcheck.BridgedProvider(t, "prov", resMap)
-	program := `
+			}
+			bridgedProvider := pulcheck.BridgedProvider(t, "prov", resMap)
+			program := fmt.Sprintf(`
 name: test
 runtime: yaml
 resources:
@@ -95,63 +177,17 @@ resources:
     type: prov:index:Test
     properties:
       otherProp: "test"
+      %s
 outputs:
-  mapPropOut: ${mainRes.mapProp}
-`
-	pt := pulcheck.PulCheck(t, bridgedProvider, program)
-
-	upRes := pt.Up()
-	require.Equal(t, nil, upRes.Outputs["mapPropOut"].Value)
-
-	res := pt.Refresh(optrefresh.ExpectNoChanges())
-	t.Logf(res.StdOut)
-}
-
-func TestEmptyMapsRefreshClean(t *testing.T) {
-	resMap := map[string]*schema.Resource{
-		"prov_test": {
-			Schema: map[string]*schema.Schema{
-				"map_prop": {
-					Type:     schema.TypeMap,
-					Optional: true,
-					Elem: &schema.Schema{
-						Type: schema.TypeString,
-					},
-				},
-				"other_prop": {
-					Type:     schema.TypeString,
-					Optional: true,
-				},
-			},
-			ReadContext: func(_ context.Context, d *schema.ResourceData, _ interface{}) diag.Diagnostics {
-				err := d.Set("map_prop", map[string]interface{}{})
-				require.NoError(t, err)
-				err = d.Set("other_prop", "test")
-				require.NoError(t, err)
-				return nil
-			},
-		},
+  collectionOutput: %s
+`, tc.programVal, tc.outputString)
+			pt := pulcheck.PulCheck(t, bridgedProvider, program)
+			upRes := pt.Up()
+			require.Equal(t, tc.expectedOutput, upRes.Outputs["collectionOutput"].Value)
+			res := pt.Refresh(optrefresh.ExpectNoChanges())
+			t.Logf(res.StdOut)
+		})
 	}
-	bridgedProvider := pulcheck.BridgedProvider(t, "prov", resMap)
-	program := `
-name: test
-runtime: yaml
-resources:
-  mainRes:
-    type: prov:index:Test
-    properties:
-      otherProp: "test"
-      mapProp: {}
-outputs:
-  mapPropOut: ${mainRes.mapProp}
-`
-	pt := pulcheck.PulCheck(t, bridgedProvider, program)
-
-	upRes := pt.Up()
-	require.Equal(t, nil, upRes.Outputs["mapPropOut"].Value)
-
-	res := pt.Refresh(optrefresh.ExpectNoChanges())
-	t.Logf(res.StdOut)
 }
 
 func TestNestedEmptyMapRefreshClean(t *testing.T) {
