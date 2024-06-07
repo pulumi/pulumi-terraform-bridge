@@ -147,6 +147,16 @@ type planResourceChangeImpl struct {
 
 var _ planResourceChangeProvider = (*planResourceChangeImpl)(nil)
 
+func (p *planResourceChangeImpl) recoverConfig(t string, c shim.ResourceConfig) (cty.Value, error) {
+	res := p.tf.ResourcesMap[t]
+	config := configFromShim(c)
+	cfg, err := recoverAndCoerceCtyValueWithSchema(res.CoreConfigSchema(), config.Config)
+	if err != nil {
+		return cty.NilVal, fmt.Errorf("Resource %q: %w", t, err)
+	}
+	return cfg, nil
+}
+
 func (p *planResourceChangeImpl) Diff(
 	ctx context.Context,
 	t string,
@@ -154,7 +164,6 @@ func (p *planResourceChangeImpl) Diff(
 	c shim.ResourceConfig,
 	opts shim.DiffOptions,
 ) (shim.InstanceDiff, error) {
-	config := configFromShim(c)
 	s, err := p.upgradeState(ctx, t, s)
 	if err != nil {
 		return nil, err
@@ -168,9 +177,9 @@ func (p *planResourceChangeImpl) Diff(
 	if err != nil {
 		return nil, err
 	}
-	cfg, err := recoverAndCoerceCtyValueWithSchema(res.CoreConfigSchema(), config.Config)
+	cfg, err := p.recoverConfig(t, c)
 	if err != nil {
-		return nil, fmt.Errorf("Resource %q: %w", t, err)
+		return nil, err
 	}
 	cfg = normalizeBlockCollections(cfg, res)
 
@@ -257,7 +266,7 @@ func (p *planResourceChangeImpl) Refresh(
 	normStateValue := rr.stateValue
 	if c != nil {
 		// This means we are doing a refresh and not an import.
-		normStateValue = normalizeNullValues(res, rr.stateValue)
+		normStateValue = normalizeNullValues(res, state.stateValue, rr.stateValue)
 	}
 	return &v2InstanceState2{
 		resourceType: rr.resourceType,
@@ -276,30 +285,72 @@ func (p *planResourceChangeImpl) Refresh(
 // empty collections from the Read result if the old input is missing or null.
 //
 // See: https://github.com/pulumi/terraform-plugin-sdk/blob/upstream-v2.33.0/helper/schema/grpc_provider.go#L1514
-func normalizeNullValues(res *schema.Resource, state cty.Value) cty.Value {
-	if !state.Type().IsObjectType() {
+func normalizeNullValues(res *schema.Resource, oldState, state cty.Value) cty.Value {
+	if !oldState.Type().IsObjectType() || !state.Type().IsObjectType() {
 		return state
 	}
+
+	// Only interested in nulls and non-null empty collection values.
+	interesting := func(v cty.Value) bool {
+		if !v.IsKnown() {
+			return false
+		}
+		if v.IsNull() {
+			return true
+		}
+		return v.Type().IsCollectionType() && v.LengthInt() == 0
+	}
+
+	matchingOldStateValue := func(t cty.Type, p cty.Path) cty.Value {
+		if v, err := p.Apply(oldState); err == nil {
+			return v
+		}
+		return cty.NullVal(t)
+	}
+
+	fmt.Println("WALK", state.GoString())
+
 	tr, err := cty.Transform(state, func(p cty.Path, v cty.Value) (cty.Value, error) {
-		// Only interested in non-null empty collection values.
-		if v.IsNull() || !v.Type().IsCollectionType() || v.LengthInt() > 0 {
-			return v, nil
-		}
 		sp := walk.FromHCtyPath(p)
-		sc := findSchemaContext(res, sp)
-		switch sc := sc.(type) {
-		// Only interested in attributes.
-		case *attrSchemaContext:
-			attr := sc.resource.CoreConfigSchema().Attributes[sc.name]
-			if !attr.Type.IsCollectionType() {
-				return v, nil
-			}
-			// Do substitute a null for the empty collection here.
-			return cty.NullVal(attr.Type), nil
-		default:
+		fmt.Println("walking", sp.MustEncodeSchemaPath())
+		if !interesting(v) {
+			fmt.Println("value not interesting", sp.MustEncodeSchemaPath())
 			return v, nil
 		}
+
+		// Only interested in attributes.
+		sc, ok := findSchemaContext(res, sp).(*attrSchemaContext)
+		if !ok {
+			fmt.Println("no schema context")
+			return v, nil
+		}
+
+		// Must be a collection attribute.
+		attr := sc.resource.CoreConfigSchema().Attributes[sc.name]
+		if !attr.Type.IsCollectionType() {
+			fmt.Println("attr.Type NOT A COLLECTION")
+			return v, nil
+		}
+
+		// Matching config value must be interesting.
+		mv := matchingOldStateValue(v.Type(), p)
+		if !interesting(mv) {
+			fmt.Println("mv not interesting")
+			return v, nil
+		}
+
+		// Config value must be different from state.
+		if mv.Equals(v).True() {
+			fmt.Println("SAME", mv.GoString(), v.GoString())
+			return v, nil
+		}
+
+		// Do prefer the config value at this point.
+		fmt.Println("SUBSTITUTE", sp.MustEncodeSchemaPath())
+		return mv, nil
 	})
+	fmt.Println("WALKED", tr.GoString())
+
 	contract.AssertNoErrorf(err, "Transform never errors")
 	return tr
 }
