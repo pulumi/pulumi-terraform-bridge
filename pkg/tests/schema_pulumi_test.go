@@ -153,3 +153,55 @@ outputs:
 	res := pt.Refresh(optrefresh.ExpectNoChanges())
 	t.Logf(res.StdOut)
 }
+
+func TestNestedEmptyMapRefreshClean(t *testing.T) {
+	resMap := map[string]*schema.Resource{
+		"prov_test": {
+			Schema: map[string]*schema.Schema{
+				"prop": {
+					Type:     schema.TypeList,
+					Optional: true,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"map_prop": {
+								Type:     schema.TypeMap,
+								Optional: true,
+								Elem: &schema.Schema{
+									Type: schema.TypeString,
+								},
+							},
+						},
+					},
+				},
+				"other_prop": {
+					Type:     schema.TypeString,
+					Optional: true,
+				},
+			},
+			ReadContext: func(_ context.Context, d *schema.ResourceData, _ interface{}) diag.Diagnostics {
+				err := d.Set("prop", []map[string]interface{}{{"map_prop": map[string]interface{}{}}})
+				require.NoError(t, err)
+				err = d.Set("other_prop", "test")
+				require.NoError(t, err)
+				return nil
+			},
+		},
+	}
+	bridgedProvider := pulcheck.BridgedProvider(t, "prov", resMap)
+	program := `
+name: test
+runtime: yaml
+resources:
+  mainRes:
+    type: prov:index:Test
+    properties:
+      otherProp: "test"
+      props:
+        - mapProp: {}
+`
+	pt := pulcheck.PulCheck(t, bridgedProvider, program)
+	pt.Up()
+
+	res := pt.Refresh(optrefresh.ExpectNoChanges())
+	t.Logf(res.StdOut)
+}
