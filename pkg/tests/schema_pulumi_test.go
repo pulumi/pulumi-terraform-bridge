@@ -90,7 +90,7 @@ func TestCollectionsRefreshClean(t *testing.T) {
 			readVal:            map[string]interface{}{},
 			programVal:         "collectionProp: null",
 			outputString:       "${mainRes.collectionProp}",
-			expectedOutput:     nil,
+			expectedOutput:     map[string]interface{}{},
 		},
 		{
 			name:               "map empty with planResourceChange",
@@ -108,7 +108,7 @@ func TestCollectionsRefreshClean(t *testing.T) {
 			readVal:            map[string]interface{}{},
 			programVal:         "collectionProp: {}",
 			outputString:       "${mainRes.collectionProp}",
-			expectedOutput:     nil,
+			expectedOutput:     map[string]interface{}{},
 		},
 		{
 			name:               "map nonempty with planResourceChange",
@@ -144,7 +144,7 @@ func TestCollectionsRefreshClean(t *testing.T) {
 			readVal:            []interface{}{},
 			programVal:         "collectionProps: null",
 			outputString:       "${mainRes.collectionProps}",
-			expectedOutput:     nil,
+			expectedOutput:     []interface{}{},
 		},
 		{
 			name:               "list empty with planResourceChange",
@@ -162,7 +162,7 @@ func TestCollectionsRefreshClean(t *testing.T) {
 			readVal:            []string{},
 			programVal:         "collectionProps: []",
 			outputString:       "${mainRes.collectionProps}",
-			expectedOutput:     nil,
+			expectedOutput:     []interface{}{},
 		},
 		{
 			name:               "list nonempty with planResourceChange",
@@ -198,7 +198,7 @@ func TestCollectionsRefreshClean(t *testing.T) {
 			readVal:            []interface{}{},
 			programVal:         "collectionProps: null",
 			outputString:       "${mainRes.collectionProps}",
-			expectedOutput:     nil,
+			expectedOutput:     []interface{}{},
 		},
 		{
 			name:               "set empty with planResourceChange",
@@ -216,7 +216,7 @@ func TestCollectionsRefreshClean(t *testing.T) {
 			readVal:            []interface{}{},
 			programVal:         "collectionProps: []",
 			outputString:       "${mainRes.collectionProps}",
-			expectedOutput:     nil,
+			expectedOutput:     []interface{}{},
 		},
 		{
 			name:           "set nonempty with planResourceChange",
