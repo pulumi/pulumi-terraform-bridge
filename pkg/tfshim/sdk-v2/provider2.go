@@ -14,7 +14,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
-
+	// "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -254,11 +254,65 @@ func (p *planResourceChangeImpl) Refresh(
 	if rr.stateValue.IsNull() {
 		return nil, nil
 	}
+	normStateValue := p.normalizeNullValues(ctx, res, c, rr.stateValue)
 	return &v2InstanceState2{
 		resourceType: rr.resourceType,
-		stateValue:   rr.stateValue,
+		stateValue:   normStateValue,
 		meta:         rr.meta,
 	}, nil
+}
+
+// Compensate for a TF problem causing spurious diffs between null and empty collections highlighted as dirty refresh in
+// Pulumi. When applying resource changes TF will call normalizeNullValues with apply=true which may erase the
+// distinction between empty and null collections. This makes state returned from Read differ from the state returned by
+// Create and Update and written to the state store. While the problem is present in both TF and Pulumi bridged
+// providers, it is worse in Pulumi because refresh is emitting a warning that something is changing.
+//
+// To compensate for this problem, this method corrects the Pulumi Read result during `pulumi refresh` to also erase
+// empty collections from the Read result if the old input is missing or null.
+//
+// This currently only handles top-level properties.
+//
+// See: https://github.com/pulumi/terraform-plugin-sdk/blob/upstream-v2.33.0/helper/schema/grpc_provider.go#L1514
+func (p *planResourceChangeImpl) normalizeNullValues(
+	ctx context.Context,
+	res *schema.Resource,
+	config shim.ResourceConfig,
+	state cty.Value,
+) cty.Value {
+	if config == nil {
+		return state
+	}
+	sm := res.SchemaMap()
+	m := state.AsValueMap()
+	for tfName, v := range m {
+		sch, ok := sm[tfName]
+		if !ok {
+			continue
+		}
+		t := sch.Type
+		isCollection := t == schema.TypeList || t == schema.TypeMap || t == schema.TypeSet
+		if !isCollection {
+			continue
+		}
+
+		if _, ok := sch.Elem.(*schema.Resource); ok || sch.ConfigMode == schema.SchemaConfigModeBlock {
+			continue
+		}
+		if config.IsSet(tfName) {
+			continue
+		}
+
+		if !(v.Type().IsCollectionType() && !v.IsNull() && v.LengthInt() == 0) {
+			continue
+		}
+
+		// Cannot use GetLogger yet as that introduces an import cycle.
+		// msg := fmt.Sprintf("normalizeNullValues: replacing %s=[] not found in config", tfName)
+		// tfbridge.GetLogger(ctx).Debug(msg)
+		m[tfName] = cty.NullVal(v.Type())
+	}
+	return cty.ObjectVal(m)
 }
 
 func (p *planResourceChangeImpl) NewDestroyDiff(
