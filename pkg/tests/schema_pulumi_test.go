@@ -62,6 +62,7 @@ outputs:
 	require.Equal(t, "aux", resUp.Outputs["testOut"].Value)
 }
 
+// The clean refresh on empty/nil collections is an intentional divergence from TF behaviour.
 func TestCollectionsRefreshClean(t *testing.T) {
 	for _, tc := range []struct {
 		name       string
