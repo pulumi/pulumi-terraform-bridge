@@ -21,8 +21,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 
+	"github.com/pulumi/pulumi-terraform-bridge/pf"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/muxer"
-	schemaShim "github.com/pulumi/pulumi-terraform-bridge/pf/internal/schemashim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 
@@ -40,7 +40,7 @@ func notSupported(sink diag.Sink, prov tfbridge.ProviderInfo, isPFResource, isPF
 	muxedProvider := false
 	if _, ok := prov.P.(*muxer.ProviderShim); ok {
 		muxedProvider = true
-	} else if _, ok := prov.P.(*schemaShim.SchemaOnlyProvider); !ok {
+	} else if _, ok := prov.P.(pf.ShimProvider); !ok {
 		warning := "Bridged Plugin Framework providers must have ProviderInfo.P be created from" +
 			" pf/tfbridge.ShimProvider or pf/tfbridge.ShimProviderWithContext.\nMuxed SDK and" +
 			" Plugin Framework based providers must have ProviderInfo.P be created from" +

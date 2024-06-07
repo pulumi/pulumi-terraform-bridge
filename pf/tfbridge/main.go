@@ -27,8 +27,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
+	"github.com/pulumi/pulumi-terraform-bridge/pf"
 	pfmuxer "github.com/pulumi/pulumi-terraform-bridge/pf/internal/muxer"
-	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/schemashim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 	"github.com/pulumi/pulumi-terraform-bridge/x/muxer"
@@ -167,8 +167,8 @@ func MakeMuxedServer(
 		for _, prov := range shim.MuxedProviders {
 			prov := prov // https://github.com/golang/go/wiki/CommonMistakes#using-goroutines-on-loop-iterator-variables
 
-			switch prov := prov.(type) {
-			case *schemashim.SchemaOnlyProvider:
+			switch prov.(type) {
+			case pf.ShimProvider:
 				m.Servers = append(m.Servers, muxer.Endpoint{
 					Server: func(host *rprovider.HostClient) (pulumirpc.ResourceProviderServer, error) {
 						infoCopy := info

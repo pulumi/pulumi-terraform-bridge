@@ -22,6 +22,7 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
+	"github.com/pulumi/pulumi-terraform-bridge/pf"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/schemashim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
@@ -96,7 +97,7 @@ func (m *ProviderShim) ResourceIsPF(token string) bool {
 		if _, ok := p.ResourcesMap().GetOk(token); !ok {
 			continue
 		}
-		_, ok := p.(*schemashim.SchemaOnlyProvider)
+		_, ok := p.(pf.ShimProvider)
 		return ok
 
 	}
@@ -111,7 +112,7 @@ func (m *ProviderShim) DataSourceIsPF(token string) bool {
 		if _, ok := p.DataSourcesMap().GetOk(token); !ok {
 			continue
 		}
-		_, ok := p.(*schemashim.SchemaOnlyProvider)
+		_, ok := p.(pf.ShimProvider)
 		return ok
 
 	}
