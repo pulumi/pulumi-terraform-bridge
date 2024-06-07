@@ -478,8 +478,7 @@ func (s *grpcServer) PlanResourceChange(
 	PlannedState cty.Value
 	PlannedMeta  map[string]interface{}
 	PlannedDiff  *terraform.InstanceDiff
-}, error,
-) {
+}, error) {
 	configVal, err := msgpack.Marshal(config, ty)
 	if err != nil {
 		return nil, err
