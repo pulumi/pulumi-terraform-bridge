@@ -274,8 +274,6 @@ func (p *planResourceChangeImpl) Refresh(
 // To compensate for this problem, this method corrects the Pulumi Read result during `pulumi refresh` to also erase
 // empty collections from the Read result if the old input is missing or null.
 //
-// This currently only handles top-level properties.
-//
 // See: https://github.com/pulumi/terraform-plugin-sdk/blob/upstream-v2.33.0/helper/schema/grpc_provider.go#L1514
 func normalizeNullValues(res *schema.Resource, state cty.Value) cty.Value {
 	if !state.Type().IsObjectType() {
