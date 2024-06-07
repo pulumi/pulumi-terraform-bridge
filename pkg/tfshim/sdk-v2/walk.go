@@ -45,9 +45,13 @@ func (b *blockSchemaContext) attribute(name string) schemaContext {
 	blk, isBlock := s.BlockTypes[name]
 	if isBlock {
 		switch int(blk.Nesting) {
-		case 1, 2: // single, group
-			// One exception seems to be timeout blocks but presumably they do not matter here.
-			contract.Failf("NestingMode={Single,Group} blocks not expressible with SDKv2: %v", blk.Nesting)
+		case 1:
+			// The only SDKv2- expressible blocks of NestingMode=Single seem to be the special "timeout"
+			// blocks that are not part of the user-defined schema. The code cannot panic on these but opts
+			// to silently skip processing.
+			return nil
+		case 2: // group
+			contract.Failf("NestingMode=Group blocks not expressible with SDKv2: %v", blk.Nesting)
 		case 3, 4: // list, set
 			x, ok := b.resource.SchemaMap()[name]
 			contract.Assertf(ok, "expected to find %q in SchemaMap()", name)
