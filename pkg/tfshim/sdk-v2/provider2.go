@@ -310,6 +310,7 @@ func normalizeNullValues(res *schema.Resource, state cty.Value) cty.Value {
 			_, elemVal := it.Element()
 			newElems = append(newElems, normalizeNullValues(elemRes, elemVal))
 		}
+		// Blocks are either lists or sets.
 		if subBlockRes.Type == schema.TypeSet {
 			m[key] = cty.SetVal(newElems)
 		} else {
