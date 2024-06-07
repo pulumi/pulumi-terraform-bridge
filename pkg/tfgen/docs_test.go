@@ -1647,30 +1647,33 @@ func TestParseTFMarkdown(t *testing.T) {
 		return tc
 	}
 
+	editRule := func(edit func(string, []byte) ([]byte, error)) func(*testCase) {
+		rule := tfbridge.DocsEdit{
+			Path: "*",
+			Edit: edit,
+		}
+		return func(tc *testCase) {
+			tc.providerInfo.DocRules = &tfbridge.DocRuleInfo{
+				EditRules: func(defaults []tfbridge.DocsEdit) []tfbridge.DocsEdit {
+					return append([]tfbridge.DocsEdit{rule}, defaults...)
+				},
+			}
+		}
+	}
+
 	tests := []testCase{
 		test("simple"),
 		test("link"),
 		test("azurerm-sql-firewall-rule"),
 		test("address_map"),
 		test("signalfx-log-timeline"),
-
-		test("custom-replaces", func(tc *testCase) {
-			rule := tfbridge.DocsEdit{
-				Path: "*",
-				Edit: func(path string, content []byte) ([]byte, error) {
-					assert.Equal(t, "mod1_res1.md", path)
-					return bytes.ReplaceAll(content,
-						[]byte(`CUSTOM_REPLACES`),
-						[]byte(`checking custom replaces`)), nil
-				},
-			}
-
-			tc.providerInfo.DocRules = &tfbridge.DocRuleInfo{
-				EditRules: func(defaults []tfbridge.DocsEdit) []tfbridge.DocsEdit {
-					return append([]tfbridge.DocsEdit{rule}, defaults...)
-				},
-			}
-		}),
+		test("custom-replaces",
+			editRule(func(path string, content []byte) ([]byte, error) {
+				assert.Equal(t, "mod1_res1.md", path)
+				return bytes.ReplaceAll(content,
+					[]byte(`CUSTOM_REPLACES`),
+					[]byte(`checking custom replaces`)), nil
+			})),
 	}
 
 	for _, tt := range tests {

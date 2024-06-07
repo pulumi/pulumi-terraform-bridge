@@ -1,5 +1,5 @@
 {
-  "Description": "You can add logs data to your Observability Cloud dashboards without turning your logs into metrics first.\n\nA log timeline chart displays timeline visualization in a dashboard and shows you in detail what is happening and why.\n\n## Example\n\n```tf\nresource \"signalfx_log_timeline\" \"my_log_timeline\" {\n  name        = \"Sample Log Timeline\"\n  description = \"Lorem ipsum dolor sit amet, laudem tibique iracundia at mea. Nam posse dolores ex, nec cu adhuc putent honestatis\"\n\n  program_text = <<-EOF\n  logs(filter=field('message') == 'Transaction processed' and field('service.name') == 'paymentservice').publish()\n  EOF\n\n  time_range = 900\n\n}\n```",
+  "Description": "You can add logs data to your Observability Cloud dashboards without turning your logs into metrics first.\n\nA log timeline chart displays timeline visualization in a dashboard and shows you in detail what is happening and why.\n\n## Example\n\n```tf\nresource \"signalfx_log_timeline\" \"my_log_timeline\" {\n  name        = \"Sample Log Timeline\"\n  description = \"Lorem ipsum dolor sit amet, laudem tibique iracundia at mea. Nam posse dolores ex, nec cu adhuc putent honestatis\"\n\n  program_text = \u003c\u003c-EOF\n  logs(filter=field('message') == 'Transaction processed' and field('service.name') == 'paymentservice').publish()\n  EOF\n\n  time_range = 900\n\n}\n```",
   "Arguments": {
     "default_connection": {
       "description": "The connection that the log timeline uses to fetch data. This could be Splunk Enterprise, Splunk Enterprise Cloud or Observability Cloud."
@@ -24,8 +24,8 @@
     }
   },
   "Attributes": {
-    "url": "The URL of the log timeline.",
-    "id": "The ID of the log timeline."
+    "id": "The ID of the log timeline.",
+    "url": "The URL of the log timeline."
   },
   "Import": ""
 }
