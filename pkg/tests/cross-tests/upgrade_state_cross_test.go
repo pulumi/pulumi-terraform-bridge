@@ -8,7 +8,6 @@ import (
 )
 
 func TestUpgradeInputsStringBasic(t *testing.T) {
-	skipUnlessLinux(t)
 	t.Skipf("TODO[pulumi/pulumi-terraform-bridge#2039] - Zero schema version does not work")
 	runUpgradeStateInputCheck(t, inputTestCase{
 		Resource: &schema.Resource{
@@ -30,8 +29,6 @@ func TestUpgradeInputsStringBasic(t *testing.T) {
 }
 
 func TestUpgradeInputsStringBasicNonZeroVersion(t *testing.T) {
-	skipUnlessLinux(t)
-
 	runUpgradeStateInputCheck(t, inputTestCase{
 		Resource: &schema.Resource{
 			Schema: map[string]*schema.Schema{
@@ -53,7 +50,6 @@ func TestUpgradeInputsStringBasicNonZeroVersion(t *testing.T) {
 }
 
 func TestUpgradeInputsObjectBasic(t *testing.T) {
-	skipUnlessLinux(t)
 	t.Skipf("TODO[pulumi/pulumi-terraform-bridge#2039] - Zero schema version does not work")
 	t1 := tftypes.Object{
 		AttributeTypes: map[string]tftypes.Type{
