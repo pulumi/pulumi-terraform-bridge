@@ -104,13 +104,32 @@ type T interface {
 	pulumitest.PT
 }
 
+type bridgedProviderOpts struct {
+	DisablePlanResourceChange bool
+}
+
+// BridgedProviderOpts
+type BridgedProviderOpt func(*bridgedProviderOpts)
+
+// WithPlanResourceChange
+func DisablePlanResourceChange() BridgedProviderOpt {
+	return func(o *bridgedProviderOpts) {
+		o.DisablePlanResourceChange = true
+	}
+}
+
 // This is an experimental API.
-func BridgedProvider(t T, providerName string, resMap map[string]*schema.Resource) info.Provider {
+func BridgedProvider(t T, providerName string, resMap map[string]*schema.Resource, opts ...BridgedProviderOpt) info.Provider {
+	options := &bridgedProviderOpts{}
+	for _, opt := range opts {
+		opt(options)
+	}
+
 	tfp := &schema.Provider{ResourcesMap: resMap}
 	EnsureProviderValid(t, tfp)
 
 	shimProvider := shimv2.NewProvider(tfp, shimv2.WithPlanResourceChange(
-		func(tfResourceType string) bool { return true },
+		func(tfResourceType string) bool { return !options.DisablePlanResourceChange },
 	))
 
 	provider := tfbridge.ProviderInfo{
