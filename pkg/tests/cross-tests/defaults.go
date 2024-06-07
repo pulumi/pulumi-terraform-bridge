@@ -1,6 +1,6 @@
 package crosstests
 
-var (
+const (
 	defProviderShortName = "crossprovider"
 	defRtype             = "crossprovider_test_res"
 	defRtok              = "TestRes"
