@@ -23,7 +23,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pf"
-	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/pfutils"
+	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/runtypes"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/testprovider"
 )
 
@@ -32,7 +32,7 @@ func TestNestedType(t *testing.T) {
 	info := testprovider.SyntheticTestBridgeProvider()
 	res, err := info.P.(pf.ShimProvider).Resources(ctx)
 	require.NoError(t, err)
-	testresTypeName := pfutils.TypeName("testbridge_testres")
+	testresTypeName := runtypes.TypeName("testbridge_testres")
 	testresType := res.Schema(testresTypeName).Type(ctx)
 
 	obj := testresType.(tftypes.Object).AttributeTypes["services"].(tftypes.List).ElementType.(tftypes.Object)

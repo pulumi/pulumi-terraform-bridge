@@ -21,14 +21,15 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
+	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/runtypes"
 )
 
 // Represents all provider's datasources pre-indexed by TypeName.
 type DataSources interface {
-	All() []TypeName
-	Has(TypeName) bool
-	Schema(TypeName) Schema
-	Diagnostics(TypeName) diag.Diagnostics
+	All() []runtypes.TypeName
+	Has(runtypes.TypeName) bool
+	Schema(runtypes.TypeName) Schema
+	Diagnostics(runtypes.TypeName) diag.Diagnostics
 	AllDiagnostics() diag.Diagnostics
 }
 
@@ -53,7 +54,7 @@ func GatherDatasources(ctx context.Context, prov provider.Provider) (DataSources
 			return nil, fmt.Errorf("Resource %s GetSchema() error: %w", meta.TypeName, err)
 		}
 
-		ds[TypeName(meta.TypeName)] = entry[func() datasource.DataSource]{
+		ds[runtypes.TypeName(meta.TypeName)] = entry[func() datasource.DataSource]{
 			t:           makeDataSource,
 			schema:      FromDataSourceSchema(dataSourceSchema),
 			diagnostics: diag,

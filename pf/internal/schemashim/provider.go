@@ -26,6 +26,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/pulumi/pulumi-terraform-bridge/pf"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/pfutils"
+	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/runtypes"
 )
 
 var _ = pf.ShimProvider(&SchemaOnlyProvider{})
@@ -50,7 +51,7 @@ func (p *SchemaOnlyProvider) Server(ctx context.Context) (tfprotov6.ProviderServ
 	return server6, nil
 }
 
-func (p *SchemaOnlyProvider) Resources(ctx context.Context) (pfutils.Resources, error) {
+func (p *SchemaOnlyProvider) Resources(ctx context.Context) (runtypes.Resources, error) {
 	return pfutils.GatherResources(ctx, p.tf, NewSchemaMap)
 }
 

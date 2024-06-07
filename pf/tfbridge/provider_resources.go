@@ -22,7 +22,6 @@ import (
 	pulumiresource "github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 
-	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/pfutils"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/runtypes"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/convert"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
@@ -45,7 +44,7 @@ func (p *provider) resourceHandle(ctx context.Context, urn pulumiresource.URN) (
 		return resourceHandle{}, err
 	}
 
-	n := pfutils.TypeName(typeName)
+	n := runtypes.TypeName(typeName)
 	schema := p.resources.Schema(n)
 
 	result := resourceHandle{

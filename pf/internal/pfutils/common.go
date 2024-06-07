@@ -21,6 +21,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
+	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/runtypes"
 )
 
 func queryProviderMetadata(ctx context.Context, prov provider.Provider) *provider.MetadataResponse {
@@ -48,13 +49,13 @@ type entry[T any] struct {
 	diagnostics diag.Diagnostics
 }
 
-type collection[T any] map[TypeName]entry[T]
+type collection[T any] map[runtypes.TypeName]entry[T]
 
-func (c collection[T]) All() []TypeName {
+func (c collection[T]) All() []runtypes.TypeName {
 	if c == nil {
 		return nil
 	}
-	var names []TypeName
+	var names []runtypes.TypeName
 	for name := range c {
 		names = append(names, name)
 	}
@@ -64,16 +65,16 @@ func (c collection[T]) All() []TypeName {
 	return names
 }
 
-func (c collection[T]) Has(name TypeName) bool {
+func (c collection[T]) Has(name runtypes.TypeName) bool {
 	_, ok := c[name]
 	return ok
 }
 
-func (c collection[T]) Schema(name TypeName) Schema {
+func (c collection[T]) Schema(name runtypes.TypeName) Schema {
 	return c[name].schema
 }
 
-func (c collection[T]) Diagnostics(name TypeName) diag.Diagnostics {
+func (c collection[T]) Diagnostics(name runtypes.TypeName) diag.Diagnostics {
 	return c[name].diagnostics
 }
 

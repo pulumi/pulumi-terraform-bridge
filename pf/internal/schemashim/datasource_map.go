@@ -16,6 +16,7 @@ package schemashim
 
 import (
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/pfutils"
+	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/runtypes"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
@@ -30,12 +31,12 @@ func (m *schemaOnlyDataSourceMap) Len() int {
 }
 
 func (m *schemaOnlyDataSourceMap) Get(key string) shim.Resource {
-	s := m.dataSources.Schema(pfutils.TypeName(key))
+	s := m.dataSources.Schema(runtypes.TypeName(key))
 	return &schemaOnlyDataSource{s}
 }
 
 func (m *schemaOnlyDataSourceMap) GetOk(key string) (shim.Resource, bool) {
-	if !m.dataSources.Has(pfutils.TypeName(key)) {
+	if !m.dataSources.Has(runtypes.TypeName(key)) {
 		return nil, false
 	}
 	return m.Get(key), true

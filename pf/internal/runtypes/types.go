@@ -17,6 +17,7 @@ package runtypes
 import (
 	"context"
 
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
@@ -34,4 +35,17 @@ type Schema interface {
 
 	Shim() shim.SchemaMap
 	DeprecationMessage() string
+}
+
+// Full resource type, including the provider type prefix and an underscore. For example,
+// examplecloud_thing.
+type TypeName string
+
+// Represents all provider's resources pre-indexed by TypeName.
+type Resources interface {
+	All() []TypeName
+	Has(TypeName) bool
+	Schema(TypeName) Schema
+	Diagnostics(TypeName) diag.Diagnostics
+	AllDiagnostics() diag.Diagnostics
 }
