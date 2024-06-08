@@ -74,3 +74,5 @@ func (r runtypesSchemaAdapter) Shim() shim.SchemaMap {
 func (r resources) Schema(t runtypes.TypeName) runtypes.Schema {
 	return runtypesSchemaAdapter{r.collection.Schema(t), r.convert}
 }
+
+func (resources) IsResources() {}

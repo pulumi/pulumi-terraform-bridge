@@ -19,7 +19,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
-	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/pfutils"
+
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/runtypes"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
@@ -33,6 +33,6 @@ type ShimProvider interface {
 
 	Server(context.Context) (tfprotov6.ProviderServer, error)
 	Resources(context.Context) (runtypes.Resources, error)
-	DataSources(context.Context) (pfutils.DataSources, error)
+	DataSources(context.Context) (runtypes.DataSources, error)
 	Config(context.Context) (tftypes.Object, error)
 }

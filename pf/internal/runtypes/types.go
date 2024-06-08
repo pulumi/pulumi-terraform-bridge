@@ -41,10 +41,21 @@ type Schema interface {
 // examplecloud_thing.
 type TypeName string
 
-// Represents all provider's resources pre-indexed by TypeName.
-type Resources interface {
+type collection interface {
 	All() []TypeName
 	Has(TypeName) bool
 	Schema(TypeName) Schema
 	Diagnostics(TypeName) diag.Diagnostics
+}
+
+// Represents all provider's resources pre-indexed by TypeName.
+type Resources interface {
+	collection
+	IsResources()
+}
+
+// Represents all provider's datasources pre-indexed by TypeName.
+type DataSources interface {
+	collection
+	IsDataSources()
 }

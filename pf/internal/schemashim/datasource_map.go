@@ -15,13 +15,12 @@
 package schemashim
 
 import (
-	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/pfutils"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/runtypes"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
 type schemaOnlyDataSourceMap struct {
-	dataSources pfutils.DataSources
+	dataSources runtypes.DataSources
 }
 
 var _ shim.ResourceMap = (*schemaOnlyDataSourceMap)(nil)

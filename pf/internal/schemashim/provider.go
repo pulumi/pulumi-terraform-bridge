@@ -55,8 +55,8 @@ func (p *SchemaOnlyProvider) Resources(ctx context.Context) (runtypes.Resources,
 	return pfutils.GatherResources(ctx, p.tf, NewSchemaMap)
 }
 
-func (p *SchemaOnlyProvider) DataSources(ctx context.Context) (pfutils.DataSources, error) {
-	return pfutils.GatherDatasources(ctx, p.tf)
+func (p *SchemaOnlyProvider) DataSources(ctx context.Context) (runtypes.DataSources, error) {
+	return pfutils.GatherDatasources(ctx, p.tf, NewSchemaMap)
 }
 
 func (p *SchemaOnlyProvider) Config(ctx context.Context) (tftypes.Object, error) {
@@ -87,7 +87,7 @@ func (p *SchemaOnlyProvider) ResourcesMap() shim.ResourceMap {
 }
 
 func (p *SchemaOnlyProvider) DataSourcesMap() shim.ResourceMap {
-	dataSources, err := pfutils.GatherDatasources(context.TODO(), p.tf)
+	dataSources, err := pfutils.GatherDatasources(context.TODO(), p.tf, NewSchemaMap)
 	if err != nil {
 		panic(err)
 	}

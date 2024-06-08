@@ -21,7 +21,6 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 
-	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/pfutils"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/runtypes"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/convert"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
@@ -31,7 +30,7 @@ import (
 type datasourceHandle struct {
 	token                   tokens.ModuleMember
 	terraformDataSourceName string
-	schema                  pfutils.Schema
+	schema                  runtypes.Schema
 	encoder                 convert.Encoder
 	decoder                 convert.Decoder
 	schemaOnlyShim          shim.Resource
