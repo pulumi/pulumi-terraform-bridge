@@ -42,7 +42,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/spf13/afero"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/il"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/internal/paths"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
@@ -66,7 +65,6 @@ type Generator struct {
 	providerShim     *inmemoryProvider     // a provider shim to hold the provider schema during example conversion.
 	pluginHost       plugin.Host           // the plugin host for tf2pulumi.
 	packageCache     *pcl.PackageCache     // the package cache for tf2pulumi.
-	infoSource       il.ProviderInfoSource // the provider info source for tf2pulumi.
 	terraformVersion string                // the Terraform version to target for example codegen, if any
 	sink             diag.Sink
 	skipDocs         bool
@@ -764,19 +762,18 @@ func GenerateSchemaWithOptions(opts GenerateSchemaOptions) (*GenerateSchemaResul
 }
 
 type GeneratorOptions struct {
-	Package            string
-	Version            string
-	Language           Language
-	ProviderInfo       tfbridge.ProviderInfo
-	Root               afero.Fs
-	ProviderInfoSource il.ProviderInfoSource
-	PluginHost         plugin.Host
-	TerraformVersion   string
-	Sink               diag.Sink
-	Debug              bool
-	SkipDocs           bool
-	SkipExamples       bool
-	CoverageTracker    *CoverageTracker
+	Package          string
+	Version          string
+	Language         Language
+	ProviderInfo     tfbridge.ProviderInfo
+	Root             afero.Fs
+	PluginHost       plugin.Host
+	TerraformVersion string
+	Sink             diag.Sink
+	Debug            bool
+	SkipDocs         bool
+	SkipExamples     bool
+	CoverageTracker  *CoverageTracker
 }
 
 // NewGenerator returns a code-generator for the given language runtime and package info.
@@ -830,14 +827,10 @@ func NewGenerator(opts GeneratorOptions) (*Generator, error) {
 		pluginHost = ctx.Host
 	}
 
-	infoSources := append([]il.ProviderInfoSource{}, opts.ProviderInfoSource, il.PluginProviderInfoSource)
-	infoSource := il.NewCachingProviderInfoSource(il.NewMultiProviderInfoSource(infoSources...))
-
 	providerShim := newInMemoryProvider(pkg, nil, info)
 	host := &inmemoryProviderHost{
-		Host:               pluginHost,
-		ProviderInfoSource: infoSource,
-		provider:           providerShim,
+		Host:     pluginHost,
+		provider: providerShim,
 	}
 
 	return &Generator{
@@ -849,7 +842,6 @@ func NewGenerator(opts GeneratorOptions) (*Generator, error) {
 		providerShim:     providerShim,
 		pluginHost:       newCachingProviderHost(host),
 		packageCache:     pcl.NewPackageCache(),
-		infoSource:       host,
 		terraformVersion: opts.TerraformVersion,
 		sink:             sink,
 		skipDocs:         opts.SkipDocs,

@@ -132,7 +132,7 @@ func (ec *examplesCache) inferToolingVersions() {
 	ec.PulumiVersion = ec.inferPulumiVersion()
 	ec.Plugins = ec.inferPlugins()
 	ec.BuildFileHashes = ec.inferBuildFileHashes()
-	ec.CliConverterEnabled = cliConverterEnabled()
+	ec.CliConverterEnabled = true
 	ec.SoftwareVersions = ec.inferSoftwareVersions()
 }
 

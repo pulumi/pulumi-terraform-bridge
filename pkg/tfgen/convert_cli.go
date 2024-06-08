@@ -40,13 +40,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
-
-func cliConverterEnabled() bool {
-	return cmdutil.IsTruthy(os.Getenv("PULUMI_CONVERT"))
-}
 
 // Integrates with `pulumi convert` command for converting TF examples.
 //
@@ -151,28 +146,39 @@ func (cc *cliConverter) FinishConvertingExamples(p pschema.PackageSpec) pschema.
 
 	bytes, err := json.Marshal(p)
 	contract.AssertNoErrorf(err, "json.Marshal failed on PackageSpec")
-	re := regexp.MustCompile("[{]convertExamples[:]([^}]+)[}]")
 
 	// Convert all stubs populated by StartConvertingExamples.
-	fixedBytes := re.ReplaceAllFunc(bytes, func(match []byte) []byte {
-		groups := re.FindSubmatch(match)
-		i, err := strconv.Atoi(string(groups[1]))
-		contract.AssertNoErrorf(err, "strconv.Atoi")
-		ex := cc.convertExamplesList[i]
-
-		// Use coverage tracker here on the second pass.
-		useCoverageTracker := true
-		source := cc.generator.convertExamplesInner(ex.docs, ex.path, cc.generator.convertHCL, useCoverageTracker)
+	// Use coverage tracker here on the second pass; it was disabled during StartPopulatingExamples.
+	useCovTracker := true
+	fixedBytes := cc.finishConvertingExamples(bytes, useCovTracker, func(code string) string {
 		// JSON-escaping to splice into JSON string literals.
-		bytes, err := json.Marshal(source)
-		contract.AssertNoErrorf(err, "json.Masrhal(sourceCode)")
-		return bytes[1 : len(bytes)-1]
+		bytes, err := json.Marshal(code)
+		contract.AssertNoErrorf(err, "json.Masrhal(code)")
+		return string(bytes[1 : len(bytes)-1])
 	})
 
 	var result pschema.PackageSpec
 	err = json.Unmarshal(fixedBytes, &result)
 	contract.AssertNoErrorf(err, "json.Unmarshal failed to recover PackageSpec")
 	return result
+}
+
+// Replaces all stubs created by StartConvertingExamples in bytes with the actual conversion result.
+// If useCovTracker is true, tracks conversion stats.
+// If tr is non-nil, applies a given transformation to every conversion result.
+func (cc *cliConverter) finishConvertingExamples(bytes []byte, useCovTracker bool, tr func(string) string) []byte {
+	re := regexp.MustCompile("[{]convertExamples[:]([^}]+)[}]")
+	return re.ReplaceAllFunc(bytes, func(match []byte) []byte {
+		groups := re.FindSubmatch(match)
+		i, err := strconv.Atoi(string(groups[1]))
+		contract.AssertNoErrorf(err, "strconv.Atoi")
+		ex := cc.convertExamplesList[i]
+		source := cc.generator.convertExamplesInner(ex.docs, ex.path, cc.generator.convertHCL, useCovTracker)
+		if tr != nil {
+			return []byte(tr(source))
+		}
+		return []byte(source)
+	})
 }
 
 const cliConverterErrUnexpectedHCLSnippet = "unexpected HCL snippet in Convert"

@@ -178,21 +178,6 @@ func (ct *CoverageTracker) languageConversionFailure(
 	})
 }
 
-// Used when: generator encountered a fatal internal error when trying to convert the
-// current example to a certain language
-func (ct *CoverageTracker) languageConversionPanic(
-	e *Example, languageName string, panicInfo string,
-) {
-	if ct == nil {
-		return
-	}
-	ct.insertLanguageConversionResult(e, languageName, LanguageConversionResult{
-		FailureSeverity:  Fatal,
-		FailureInfo:      panicInfo,
-		TranslationCount: 1,
-	})
-}
-
 // Adding a language conversion result to the current example. If a conversion result with the same
 // target language already exists, keep the lowest severity one and mark the example as possibly
 // duplicated

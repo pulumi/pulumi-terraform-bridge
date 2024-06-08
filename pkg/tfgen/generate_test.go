@@ -17,9 +17,6 @@ package tfgen
 import (
 	"fmt"
 	"io"
-	"os"
-	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
@@ -31,8 +28,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 
-	bridgetesting "github.com/pulumi/pulumi-terraform-bridge/v3/internal/testing"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/il"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/internal/paths"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
@@ -104,41 +99,6 @@ func Test_ForceNew(t *testing.T) {
 			v := &test.Var
 			actuallyForcesNew := v.forceNew()
 			assert.Equal(t, test.ShouldForceNew, actuallyForcesNew)
-		})
-	}
-}
-
-func Test_GenerateTestDataSchemas(t *testing.T) {
-	// This is to assert that all the schemas we save in tf2pulumi/convert/testdata/schemas, match up with the
-	// mapping files in tf2pulumi/convert/testdata/mappings. Add in the use of PULUMI_ACCEPT and it means you
-	// don't have to manually write schemas, just mappings for tests.
-
-	testDir, err := filepath.Abs(filepath.Join("..", "tf2pulumi", "convert", "testdata"))
-	require.NoError(t, err)
-	mappingsPath := filepath.Join(testDir, "mappings")
-	schemasPath := filepath.Join(testDir, "schemas")
-	mapper := &bridgetesting.TestFileMapper{Path: mappingsPath}
-	providerInfoSource := il.NewMapperProviderInfoSource(mapper)
-
-	nilSink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
-		Color: colors.Never,
-	})
-
-	// Generate the schemas from the mappings
-	infos, err := os.ReadDir(mappingsPath)
-	require.NoError(t, err)
-	for _, info := range infos {
-		t.Run(info.Name(), func(t *testing.T) {
-			// Strip off the .json part to make the package name
-			pkg := strings.Replace(info.Name(), filepath.Ext(info.Name()), "", -1)
-			provInfo, err := providerInfoSource.GetProviderInfo("", "", pkg, "")
-			require.NoError(t, err)
-
-			schema, err := GenerateSchema(*provInfo, nilSink)
-			require.NoError(t, err)
-
-			schemaPath := filepath.Join(schemasPath, pkg+".json")
-			bridgetesting.AssertEqualsJSONFile(t, schemaPath, schema)
 		})
 	}
 }

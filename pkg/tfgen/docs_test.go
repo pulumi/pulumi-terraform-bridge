@@ -1362,7 +1362,12 @@ func TestConvertExamples(t *testing.T) {
 			docs, err := os.ReadFile(filepath.Join("test_data", "convertExamples",
 				fmt.Sprintf("%s.md", tc.name)))
 			require.NoError(t, err)
-			result := g.convertExamples(string(docs), tc.path)
+
+			stubs := g.convertExamples(string(docs), tc.path)
+			err = g.cliConverter().bulkConvert()
+			require.NoError(t, err)
+			useCovTracker := false
+			result := string(g.cliConverter().finishConvertingExamples([]byte(stubs), useCovTracker, nil))
 
 			out := filepath.Join("test_data", "convertExamples",
 				fmt.Sprintf("%s_out.md", tc.name))
