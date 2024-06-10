@@ -144,7 +144,8 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 			// Note the difference in expected output between top level and nested properties
 			expectedOutputTopLevel: nil,
 			expectedOutputNested:   map[string]interface{}{},
-			expectFailTopLevel:     true,
+			// Note only fails at the top level
+			expectFailTopLevel: true,
 		},
 		{
 			name:                   "map empty with planResourceChange with cloud override",
@@ -226,7 +227,8 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 			// Note the difference in expected output between top level and nested properties
 			expectedOutputTopLevel: nil,
 			expectedOutputNested:   []interface{}{},
-			expectFailTopLevel:     true,
+			// Note only fails at the top level
+			expectFailTopLevel: true,
 		},
 		{
 			name:                   "list null with planResourceChange with cloud override",
@@ -268,7 +270,7 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 			// Note the difference in expected output between top level and nested properties
 			expectedOutputTopLevel: nil,
 			expectedOutputNested:   []interface{}{},
-			// Note only fails at the top level!
+			// Note only fails at the top level
 			expectFailTopLevel: true,
 		},
 		{
@@ -349,7 +351,8 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 			// Note the difference in expected output between top level and nested properties
 			expectedOutputTopLevel: nil,
 			expectedOutputNested:   []interface{}{},
-			expectFailTopLevel:     true,
+			// Note only fails at the top level
+			expectFailTopLevel: true,
 		},
 		{
 			name:                   "set null with planResourceChange with cloud override",
@@ -393,7 +396,8 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 			// Note the difference in expected output between top level and nested properties
 			expectedOutputTopLevel: nil,
 			expectedOutputNested:   []interface{}{},
-			expectFailTopLevel:     true,
+			// Note only fails at the top level
+			expectFailTopLevel: true,
 		},
 		{
 			name:                   "set empty with planResourceChange with cloud override",
