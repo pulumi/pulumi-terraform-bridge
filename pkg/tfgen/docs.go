@@ -2368,15 +2368,12 @@ func plainDocsParser(docFile *DocFile, pkgName string, g *Generator) ([]byte, er
 	if err != nil {
 		return nil, err
 	}
-
-	// TODO: translate code blocks
-
-	//TODO: apply default edit rules
-
-	//TODO: reformat text
-
-	//TODO: Light translation / possible eliding for certain headers such as "Arguments Reference"
-	// or "Configuration block"
+	//TODO: See https://github.com/pulumi/pulumi-terraform-bridge/issues/2078
+	// - translate code blocks with code choosers
+	// - apply default edit rules
+	// - reformat TF names
+	// - Translation for certain headers such as "Arguments Reference" or "Configuration block"
+	// - Ability to omit irrelevant sections
 	return []byte(contentStr), nil
 }
 
