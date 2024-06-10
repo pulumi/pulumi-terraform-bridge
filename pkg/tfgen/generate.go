@@ -90,12 +90,19 @@ type Generator struct {
 type Language string
 
 const (
-	Golang       Language = "go"
-	NodeJS       Language = "nodejs"
-	Python       Language = "python"
-	CSharp       Language = "dotnet"
-	Schema       Language = "schema"
-	PCL          Language = "pulumi"
+	Golang Language = "go"
+	NodeJS Language = "nodejs"
+	Python Language = "python"
+	CSharp Language = "dotnet"
+	Schema Language = "schema"
+	PCL    Language = "pulumi"
+	// RegistryDocs
+	// Setting RegistryDocs as a separate bridge "language" in the bridge allows us to create custom logic specific to
+	// transforming and emitting upstream installation docs.
+	// When we generate registry docs, we want to:
+	//- be able to generate them via a separate command so we can enable it on a per-provider basis
+	//- be able to pass a separate output location from the schema location (in this case, `docs/`)
+	//- convert examples into all Pulumi-supported languages
 	RegistryDocs Language = "registry-docs"
 )
 
