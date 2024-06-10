@@ -355,19 +355,6 @@ func normalizeNullValues(res *schema.Resource, oldState, state cty.Value) cty.Va
 	return tr
 }
 
-func normalizeNullValuesAttr(attrType cty.Type, stateVal cty.Value) cty.Value {
-	if !attrType.IsCollectionType() {
-		return stateVal
-	}
-	if !stateVal.Type().IsCollectionType() {
-		return stateVal
-	}
-	if !stateVal.IsNull() && stateVal.LengthInt() > 0 {
-		return stateVal
-	}
-	return cty.NullVal(attrType)
-}
-
 func (p *planResourceChangeImpl) NewDestroyDiff(
 	ctx context.Context, t string, opts shim.TimeoutOptions,
 ) shim.InstanceDiff {
@@ -514,7 +501,8 @@ func (s *grpcServer) PlanResourceChange(
 	PlannedState cty.Value
 	PlannedMeta  map[string]interface{}
 	PlannedDiff  *terraform.InstanceDiff
-}, error) {
+}, error,
+) {
 	configVal, err := msgpack.Marshal(config, ty)
 	if err != nil {
 		return nil, err
