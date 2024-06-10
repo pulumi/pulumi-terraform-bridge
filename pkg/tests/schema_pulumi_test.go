@@ -7,7 +7,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/pulcheck"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/internal/pulcheck"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optrefresh"
 	"github.com/stretchr/testify/require"
@@ -62,181 +62,420 @@ outputs:
 	require.Equal(t, "aux", resUp.Outputs["testOut"].Value)
 }
 
-// The clean refresh on empty/nil collections is an intentional divergence from TF behaviour.
-func TestCollectionsRefreshClean(t *testing.T) {
+func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 	for _, tc := range []struct {
 		name               string
 		planResourceChange bool
 		schemaType         schema.ValueType
-		readVal            interface{}
-		// Note maps are not pluralized in the program while lists and sets are.
-		programVal     string
-		outputString   string
-		expectedOutput interface{}
+		cloudVal           interface{}
+		programVal         string
+		// If true, the cloud value will be set in the CreateContext
+		// This is behaviour observed in both AWS and GCP providers, as well as a few others
+		// where the provider returns an empty collections when a nil one was specified in inputs.
+		// See [pulumi/pulumi-terraform-bridge#2047] for more details around this behavior
+		createCloudValOverride bool
+		expectedOutputTopLevel interface{}
+		expectedOutputNested   interface{}
+		expectFailTopLevel     bool
+		expectFailNested       bool
 	}{
 		{
-			name:               "map null with planResourceChange",
-			planResourceChange: true,
-			schemaType:         schema.TypeMap,
-			readVal:            map[string]interface{}{},
-			programVal:         "collectionProp: null",
-			outputString:       "${mainRes.collectionProp}",
-			expectedOutput:     nil,
+			name:                   "map null with planResourceChange",
+			planResourceChange:     true,
+			schemaType:             schema.TypeMap,
+			cloudVal:               map[string]interface{}{},
+			programVal:             "null",
+			expectedOutputTopLevel: nil,
+			expectedOutputNested:   nil,
+			expectFailTopLevel:     true,
+			expectFailNested:       true,
 		},
 		{
-			name:               "map null without planResourceChange",
-			planResourceChange: false,
-			schemaType:         schema.TypeMap,
-			readVal:            map[string]interface{}{},
-			programVal:         "collectionProp: null",
-			outputString:       "${mainRes.collectionProp}",
-			expectedOutput:     nil,
+			name:                   "map null without planResourceChange",
+			planResourceChange:     false,
+			schemaType:             schema.TypeMap,
+			cloudVal:               map[string]interface{}{},
+			programVal:             "null",
+			expectedOutputTopLevel: nil,
+			expectedOutputNested:   nil,
+			expectFailTopLevel:     true,
+			expectFailNested:       true,
 		},
 		{
-			name:               "map empty with planResourceChange",
-			planResourceChange: true,
-			schemaType:         schema.TypeMap,
-			readVal:            map[string]interface{}{},
-			programVal:         "collectionProp: {}",
-			outputString:       "${mainRes.collectionProp}",
-			expectedOutput:     nil,
+			name:                   "map null with planResourceChange with cloud override",
+			planResourceChange:     true,
+			schemaType:             schema.TypeMap,
+			cloudVal:               map[string]interface{}{},
+			programVal:             "null",
+			createCloudValOverride: true,
+			expectedOutputTopLevel: nil,
+			expectedOutputNested:   nil,
+			expectFailTopLevel:     true,
+			expectFailNested:       true,
 		},
 		{
-			name:               "map empty without planResourceChange",
-			planResourceChange: false,
-			schemaType:         schema.TypeMap,
-			readVal:            map[string]interface{}{},
-			programVal:         "collectionProp: {}",
-			outputString:       "${mainRes.collectionProp}",
-			expectedOutput:     nil,
+			name:                   "map null without planResourceChange with cloud override",
+			planResourceChange:     false,
+			schemaType:             schema.TypeMap,
+			cloudVal:               map[string]interface{}{},
+			programVal:             "null",
+			createCloudValOverride: true,
+			// Note the difference in expected output between top level and nested properties
+			expectedOutputTopLevel: map[string]interface{}{},
+			expectedOutputNested:   nil,
+			// Note only fails at the nested level!
+			expectFailNested: true,
 		},
 		{
-			name:               "map nonempty with planResourceChange",
-			planResourceChange: true,
-			schemaType:         schema.TypeMap,
-			readVal:            map[string]interface{}{"val": "test"},
-			programVal:         `collectionProp: {"val": "test"}`,
-			outputString:       "${mainRes.collectionProp}",
-			expectedOutput:     map[string]interface{}{"val": "test"},
+			name:                   "map empty with planResourceChange",
+			planResourceChange:     true,
+			schemaType:             schema.TypeMap,
+			cloudVal:               map[string]interface{}{},
+			programVal:             "{}",
+			expectedOutputTopLevel: nil,
+			expectedOutputNested:   nil,
+			expectFailTopLevel:     true,
+			expectFailNested:       true,
 		},
 		{
-			name:               "map nonempty without planResourceChange",
-			planResourceChange: false,
-			schemaType:         schema.TypeMap,
-			readVal:            map[string]interface{}{"val": "test"},
-			programVal:         `collectionProp: {"val": "test"}`,
-			outputString:       "${mainRes.collectionProp}",
-			expectedOutput:     map[string]interface{}{"val": "test"},
+			name:                   "map empty without planResourceChange",
+			planResourceChange:     false,
+			schemaType:             schema.TypeMap,
+			cloudVal:               map[string]interface{}{},
+			programVal:             "{}",
+			expectedOutputTopLevel: nil,
+			expectedOutputNested:   nil,
+			expectFailTopLevel:     true,
+			expectFailNested:       true,
 		},
 		{
-			name:               "list null with planResourceChange",
-			planResourceChange: true,
-			schemaType:         schema.TypeList,
-			readVal:            []interface{}{},
-			programVal:         "collectionProps: null",
-			outputString:       "${mainRes.collectionProps}",
-			expectedOutput:     nil,
+			name:                   "map empty with planResourceChange with cloud override",
+			planResourceChange:     true,
+			schemaType:             schema.TypeMap,
+			cloudVal:               map[string]interface{}{},
+			programVal:             "{}",
+			createCloudValOverride: true,
+			expectedOutputTopLevel: nil,
+			expectedOutputNested:   nil,
+			expectFailTopLevel:     true,
+			expectFailNested:       true,
 		},
 		{
-			name:               "list null without planResourceChange",
-			planResourceChange: false,
-			schemaType:         schema.TypeList,
-			readVal:            []interface{}{},
-			programVal:         "collectionProps: null",
-			outputString:       "${mainRes.collectionProps}",
-			expectedOutput:     nil,
+			name:                   "map empty without planResourceChange with cloud override",
+			planResourceChange:     false,
+			schemaType:             schema.TypeMap,
+			cloudVal:               map[string]interface{}{},
+			programVal:             "{}",
+			createCloudValOverride: true,
+			// Note the difference in expected output between top level and nested properties
+			expectedOutputTopLevel: map[string]interface{}{},
+			expectedOutputNested:   nil,
+			// Note only fails at the nested level!
+			expectFailNested: true,
 		},
 		{
-			name:               "list empty with planResourceChange",
-			planResourceChange: true,
-			schemaType:         schema.TypeList,
-			readVal:            []string{},
-			programVal:         "collectionProps: []",
-			outputString:       "${mainRes.collectionProps}",
-			expectedOutput:     []interface{}{},
+			name:                   "map nonempty with planResourceChange",
+			planResourceChange:     true,
+			schemaType:             schema.TypeMap,
+			cloudVal:               map[string]interface{}{"val": "test"},
+			programVal:             `{"val": "test"}`,
+			expectedOutputTopLevel: map[string]interface{}{"val": "test"},
+			expectedOutputNested:   map[string]interface{}{"val": "test"},
+		},
+		{
+			name:                   "map nonempty without planResourceChange",
+			planResourceChange:     false,
+			schemaType:             schema.TypeMap,
+			cloudVal:               map[string]interface{}{"val": "test"},
+			programVal:             `{"val": "test"}`,
+			expectedOutputTopLevel: map[string]interface{}{"val": "test"},
+			expectedOutputNested:   map[string]interface{}{"val": "test"},
+		},
+		{
+			name:                   "map nonempty with planResourceChange with cloud override",
+			planResourceChange:     true,
+			schemaType:             schema.TypeMap,
+			cloudVal:               map[string]interface{}{"val": "test"},
+			programVal:             `{"val": "test"}`,
+			createCloudValOverride: true,
+			expectedOutputTopLevel: map[string]interface{}{"val": "test"},
+			expectedOutputNested:   map[string]interface{}{"val": "test"},
+		},
+		{
+			name:                   "map nonempty without planResourceChange with cloud override",
+			planResourceChange:     false,
+			schemaType:             schema.TypeMap,
+			cloudVal:               map[string]interface{}{"val": "test"},
+			programVal:             `{"val": "test"}`,
+			createCloudValOverride: true,
+			expectedOutputTopLevel: map[string]interface{}{"val": "test"},
+			expectedOutputNested:   map[string]interface{}{"val": "test"},
+		},
+		{
+			name:                   "list null with planResourceChange",
+			planResourceChange:     true,
+			schemaType:             schema.TypeList,
+			cloudVal:               []interface{}{},
+			programVal:             "null",
+			expectedOutputTopLevel: nil,
+			expectedOutputNested:   nil,
+			expectFailTopLevel:     true,
+			expectFailNested:       true,
+		},
+		{
+			name:                   "list null without planResourceChange",
+			planResourceChange:     false,
+			schemaType:             schema.TypeList,
+			cloudVal:               []interface{}{},
+			programVal:             "null",
+			expectedOutputTopLevel: nil,
+			expectedOutputNested:   nil,
+			expectFailTopLevel:     true,
+			expectFailNested:       true,
+		},
+		{
+			name:                   "list null with planResourceChange with cloud override",
+			planResourceChange:     true,
+			schemaType:             schema.TypeList,
+			cloudVal:               []interface{}{},
+			programVal:             "null",
+			createCloudValOverride: true,
+			expectedOutputTopLevel: nil,
+			expectedOutputNested:   nil,
+			expectFailTopLevel:     true,
+			expectFailNested:       true,
+		},
+		{
+			name:                   "list null without planResourceChange with cloud override",
+			planResourceChange:     false,
+			schemaType:             schema.TypeList,
+			cloudVal:               []interface{}{},
+			programVal:             "null",
+			createCloudValOverride: true,
+			// Note the difference in expected output between top level and nested properties
+			expectedOutputTopLevel: []interface{}{},
+			expectedOutputNested:   nil,
+			// Note only fails at the nested level!
+			expectFailNested: true,
+		},
+		{
+			name:                   "list empty with planResourceChange",
+			planResourceChange:     true,
+			schemaType:             schema.TypeList,
+			cloudVal:               []string{},
+			programVal:             "[]",
+			expectedOutputTopLevel: []interface{}{},
+			expectedOutputNested:   []interface{}{},
 		},
 		{
 			name:               "list empty without planResourceChange",
 			planResourceChange: false,
 			schemaType:         schema.TypeList,
-			readVal:            []string{},
-			programVal:         "collectionProps: []",
-			outputString:       "${mainRes.collectionProps}",
-			expectedOutput:     []interface{}{},
+			cloudVal:           []string{},
+			programVal:         "[]",
+			// Note the difference in expected output between top level and nested properties
+			// This is the opposite of all other cases of difference - the top level is nil and the nested is empty
+			expectedOutputTopLevel: nil,
+			expectedOutputNested:   []interface{}{},
+			// Note only fails at the top level!
+			expectFailTopLevel: true,
 		},
 		{
-			name:               "list nonempty with planResourceChange",
-			planResourceChange: true,
-			schemaType:         schema.TypeList,
-			readVal:            []interface{}{"val"},
-			programVal:         `collectionProps: ["val"]`,
-			outputString:       "${mainRes.collectionProps}",
-			expectedOutput:     []interface{}{"val"},
+			name:                   "list empty with planResourceChange with cloud override",
+			planResourceChange:     true,
+			schemaType:             schema.TypeList,
+			cloudVal:               []string{},
+			programVal:             "[]",
+			createCloudValOverride: true,
+			expectedOutputTopLevel: []interface{}{},
+			expectedOutputNested:   []interface{}{},
 		},
 		{
-			name:               "list nonempty without planResourceChange",
-			planResourceChange: false,
-			schemaType:         schema.TypeList,
-			readVal:            []interface{}{"val"},
-			programVal:         `collectionProps: ["val"]`,
-			outputString:       "${mainRes.collectionProps}",
-			expectedOutput:     []interface{}{"val"},
+			name:                   "list empty without planResourceChange with cloud override",
+			planResourceChange:     false,
+			schemaType:             schema.TypeList,
+			cloudVal:               []string{},
+			programVal:             "[]",
+			createCloudValOverride: true,
+			expectedOutputTopLevel: []interface{}{},
+			expectedOutputNested:   []interface{}{},
 		},
 		{
-			name:               "set null with planResourceChange",
-			planResourceChange: true,
-			schemaType:         schema.TypeSet,
-			readVal:            []interface{}{},
-			programVal:         "collectionProps: null",
-			outputString:       "${mainRes.collectionProps}",
-			expectedOutput:     nil,
+			name:                   "list nonempty with planResourceChange",
+			planResourceChange:     true,
+			schemaType:             schema.TypeList,
+			cloudVal:               []interface{}{"val"},
+			programVal:             `["val"]`,
+			expectedOutputTopLevel: []interface{}{"val"},
+			expectedOutputNested:   []interface{}{"val"},
 		},
 		{
-			name:               "set null without planResourceChange",
-			planResourceChange: false,
-			schemaType:         schema.TypeSet,
-			readVal:            []interface{}{},
-			programVal:         "collectionProps: null",
-			outputString:       "${mainRes.collectionProps}",
-			expectedOutput:     nil,
+			name:                   "list nonempty without planResourceChange",
+			planResourceChange:     false,
+			schemaType:             schema.TypeList,
+			cloudVal:               []interface{}{"val"},
+			programVal:             `["val"]`,
+			expectedOutputTopLevel: []interface{}{"val"},
+			expectedOutputNested:   []interface{}{"val"},
 		},
 		{
-			name:               "set empty with planResourceChange",
-			planResourceChange: true,
-			schemaType:         schema.TypeSet,
-			readVal:            []interface{}{},
-			programVal:         "collectionProps: []",
-			outputString:       "${mainRes.collectionProps}",
-			expectedOutput:     nil,
+			name:                   "list nonempty with planResourceChange with cloud override",
+			planResourceChange:     true,
+			schemaType:             schema.TypeList,
+			cloudVal:               []interface{}{"val"},
+			programVal:             `["val"]`,
+			createCloudValOverride: true,
+			expectedOutputTopLevel: []interface{}{"val"},
+			expectedOutputNested:   []interface{}{"val"},
 		},
 		{
-			name:               "set empty without planResourceChange",
-			planResourceChange: false,
-			schemaType:         schema.TypeSet,
-			readVal:            []interface{}{},
-			programVal:         "collectionProps: []",
-			outputString:       "${mainRes.collectionProps}",
-			expectedOutput:     nil,
+			name:                   "list nonempty without planResourceChange with cloud override",
+			planResourceChange:     false,
+			schemaType:             schema.TypeList,
+			cloudVal:               []interface{}{"val"},
+			programVal:             `["val"]`,
+			createCloudValOverride: true,
+			expectedOutputTopLevel: []interface{}{"val"},
+			expectedOutputNested:   []interface{}{"val"},
 		},
 		{
-			name:           "set nonempty with planResourceChange",
-			schemaType:     schema.TypeSet,
-			readVal:        []interface{}{"val"},
-			programVal:     `collectionProps: ["val"]`,
-			outputString:   "${mainRes.collectionProps}",
-			expectedOutput: []interface{}{"val"},
+			name:                   "set null with planResourceChange",
+			planResourceChange:     true,
+			schemaType:             schema.TypeSet,
+			cloudVal:               []interface{}{},
+			programVal:             "null",
+			expectedOutputTopLevel: nil,
+			expectedOutputNested:   nil,
+			expectFailTopLevel:     true,
+			expectFailNested:       true,
 		},
 		{
-			name:               "set nonempty without planResourceChange",
-			planResourceChange: false,
-			schemaType:         schema.TypeSet,
-			readVal:            []interface{}{"val"},
-			programVal:         `collectionProps: ["val"]`,
-			outputString:       "${mainRes.collectionProps}",
-			expectedOutput:     []interface{}{"val"},
+			name:                   "set null without planResourceChange",
+			planResourceChange:     false,
+			schemaType:             schema.TypeSet,
+			cloudVal:               []interface{}{},
+			programVal:             "null",
+			expectedOutputTopLevel: nil,
+			expectedOutputNested:   nil,
+			expectFailTopLevel:     true,
+			expectFailNested:       true,
+		},
+		{
+			name:                   "set null with planResourceChange with cloud override",
+			planResourceChange:     true,
+			schemaType:             schema.TypeSet,
+			cloudVal:               []interface{}{},
+			programVal:             "null",
+			createCloudValOverride: true,
+			expectedOutputTopLevel: nil,
+			expectedOutputNested:   nil,
+			expectFailTopLevel:     true,
+			expectFailNested:       true,
+		},
+		{
+			name:                   "set null without planResourceChange with cloud override",
+			planResourceChange:     false,
+			schemaType:             schema.TypeSet,
+			cloudVal:               []interface{}{},
+			programVal:             "null",
+			createCloudValOverride: true,
+			// Note the difference in expected output between top level and nested properties
+			expectedOutputTopLevel: []interface{}{},
+			expectedOutputNested:   nil,
+			// Note only fails at the nested level!
+			expectFailNested: true,
+		},
+		{
+			name:                   "set empty with planResourceChange",
+			planResourceChange:     true,
+			schemaType:             schema.TypeSet,
+			cloudVal:               []interface{}{},
+			programVal:             "[]",
+			expectedOutputTopLevel: nil,
+			expectedOutputNested:   nil,
+			expectFailTopLevel:     true,
+			expectFailNested:       true,
+		},
+		{
+			name:                   "set empty without planResourceChange",
+			planResourceChange:     false,
+			schemaType:             schema.TypeSet,
+			cloudVal:               []interface{}{},
+			programVal:             "[]",
+			expectedOutputTopLevel: nil,
+			expectedOutputNested:   nil,
+			expectFailTopLevel:     true,
+			expectFailNested:       true,
+		},
+		{
+			name:                   "set empty with planResourceChange with cloud override",
+			planResourceChange:     true,
+			schemaType:             schema.TypeSet,
+			cloudVal:               []interface{}{},
+			programVal:             "[]",
+			createCloudValOverride: true,
+			expectedOutputTopLevel: nil,
+			expectedOutputNested:   nil,
+			expectFailTopLevel:     true,
+			expectFailNested:       true,
+		},
+		{
+			name:                   "set empty without planResourceChange with cloud override",
+			planResourceChange:     false,
+			schemaType:             schema.TypeSet,
+			cloudVal:               []interface{}{},
+			programVal:             "[]",
+			createCloudValOverride: true,
+			// Note the difference in expected output between top level and nested properties
+			expectedOutputTopLevel: []interface{}{},
+			expectedOutputNested:   nil,
+			// Note only fails at the nested level!
+			expectFailNested: true,
+		},
+		{
+			name:                   "set nonempty with planResourceChange",
+			schemaType:             schema.TypeSet,
+			cloudVal:               []interface{}{"val"},
+			programVal:             `["val"]`,
+			expectedOutputTopLevel: []interface{}{"val"},
+			expectedOutputNested:   []interface{}{"val"},
+		},
+		{
+			name:                   "set nonempty without planResourceChange",
+			planResourceChange:     false,
+			schemaType:             schema.TypeSet,
+			cloudVal:               []interface{}{"val"},
+			programVal:             `["val"]`,
+			expectedOutputTopLevel: []interface{}{"val"},
+			expectedOutputNested:   []interface{}{"val"},
+		},
+		{
+			name:                   "set nonempty with planResourceChange with cloud override",
+			schemaType:             schema.TypeSet,
+			cloudVal:               []interface{}{"val"},
+			programVal:             `["val"]`,
+			createCloudValOverride: true,
+			expectedOutputTopLevel: []interface{}{"val"},
+			expectedOutputNested:   []interface{}{"val"},
+		},
+		{
+			name:                   "set nonempty without planResourceChange with cloud override",
+			planResourceChange:     false,
+			schemaType:             schema.TypeSet,
+			cloudVal:               []interface{}{"val"},
+			programVal:             `["val"]`,
+			createCloudValOverride: true,
+			expectedOutputTopLevel: []interface{}{"val"},
+			expectedOutputNested:   []interface{}{"val"},
 		},
 	} {
-		t.Run(tc.name, func(t *testing.T) {
+		collectionPropPlural := ""
+		pluralized := tc.schemaType == schema.TypeList || tc.schemaType == schema.TypeSet
+		if pluralized {
+			collectionPropPlural += "s"
+		}
+
+		t.Run(tc.name+" top level", func(t *testing.T) {
 			resMap := map[string]*schema.Resource{
 				"prov_test": {
 					Schema: map[string]*schema.Schema{
@@ -250,11 +489,20 @@ func TestCollectionsRefreshClean(t *testing.T) {
 							Optional: true,
 						},
 					},
-					ReadContext: func(_ context.Context, d *schema.ResourceData, _ interface{}) diag.Diagnostics {
-						err := d.Set("collection_prop", tc.readVal)
+					ReadContext: func(_ context.Context, rd *schema.ResourceData, _ interface{}) diag.Diagnostics {
+						err := rd.Set("collection_prop", tc.cloudVal)
 						require.NoError(t, err)
-						err = d.Set("other_prop", "test")
+						err = rd.Set("other_prop", "test")
 						require.NoError(t, err)
+						return nil
+					},
+					CreateContext: func(_ context.Context, rd *schema.ResourceData, _ interface{}) diag.Diagnostics {
+						if tc.createCloudValOverride {
+							err := rd.Set("collection_prop", tc.cloudVal)
+							require.NoError(t, err)
+						}
+
+						rd.SetId("id0")
 						return nil
 					},
 				},
@@ -272,54 +520,69 @@ resources:
     type: prov:index:Test
     properties:
       otherProp: "test"
-      %s
+      collectionProp%s: %s
 outputs:
-  collectionOutput: %s
-`, tc.programVal, tc.outputString)
+  collectionOutput: ${mainRes.collectionProp%s}
+`, collectionPropPlural, tc.programVal, collectionPropPlural)
 			pt := pulcheck.PulCheck(t, bridgedProvider, program)
 			upRes := pt.Up()
-			require.Equal(t, tc.expectedOutput, upRes.Outputs["collectionOutput"].Value)
-			res := pt.Refresh(optrefresh.ExpectNoChanges())
+			require.Equal(t, tc.expectedOutputTopLevel, upRes.Outputs["collectionOutput"].Value)
+			res, err := pt.CurrentStack().Refresh(pt.Context(), optrefresh.ExpectNoChanges())
+			if tc.expectFailTopLevel {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
 			t.Logf(res.StdOut)
 		})
-	}
-}
 
-func TestNestedEmptyMapRefreshClean(t *testing.T) {
-	resMap := map[string]*schema.Resource{
-		"prov_test": {
-			Schema: map[string]*schema.Schema{
-				"prop": {
-					Type:     schema.TypeList,
-					Optional: true,
-					Elem: &schema.Resource{
-						Schema: map[string]*schema.Schema{
-							"map_prop": {
-								Type:     schema.TypeMap,
-								Optional: true,
-								Elem: &schema.Schema{
-									Type: schema.TypeString,
+		t.Run(tc.name+" nested", func(t *testing.T) {
+			resMap := map[string]*schema.Resource{
+				"prov_test": {
+					Schema: map[string]*schema.Schema{
+						"prop": {
+							Type:     schema.TypeList,
+							Optional: true,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									"collection_prop": {
+										Type:     tc.schemaType,
+										Optional: true,
+										Elem:     &schema.Schema{Type: schema.TypeString},
+									},
+									"other_nested_prop": {
+										Type:     schema.TypeString,
+										Optional: true,
+									},
 								},
 							},
 						},
+						"other_prop": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+					},
+					ReadContext: func(_ context.Context, rd *schema.ResourceData, _ interface{}) diag.Diagnostics {
+						err := rd.Set("prop", []map[string]interface{}{{"collection_prop": tc.cloudVal, "other_nested_prop": "test"}})
+						require.NoError(t, err)
+						err = rd.Set("other_prop", "test")
+						require.NoError(t, err)
+
+						return nil
+					},
+					CreateContext: func(_ context.Context, rd *schema.ResourceData, _ interface{}) diag.Diagnostics {
+						if tc.createCloudValOverride {
+							err := rd.Set("prop", []map[string]interface{}{{"collection_prop": tc.cloudVal, "other_nested_prop": "test"}})
+							require.NoError(t, err)
+						}
+						rd.SetId("id0")
+						return nil
 					},
 				},
-				"other_prop": {
-					Type:     schema.TypeString,
-					Optional: true,
-				},
-			},
-			ReadContext: func(_ context.Context, d *schema.ResourceData, _ interface{}) diag.Diagnostics {
-				err := d.Set("prop", []map[string]interface{}{{"map_prop": map[string]interface{}{}}})
-				require.NoError(t, err)
-				err = d.Set("other_prop", "test")
-				require.NoError(t, err)
-				return nil
-			},
-		},
-	}
-	bridgedProvider := pulcheck.BridgedProvider(t, "prov", resMap)
-	program := `
+			}
+
+			bridgedProvider := pulcheck.BridgedProvider(t, "prov", resMap)
+			program := fmt.Sprintf(`
 name: test
 runtime: yaml
 resources:
@@ -328,11 +591,23 @@ resources:
     properties:
       otherProp: "test"
       props:
-        - mapProp: {}
-`
-	pt := pulcheck.PulCheck(t, bridgedProvider, program)
-	pt.Up()
+        - collectionProp%s: %s
+          otherNestedProp: "test"
+outputs:
+  collectionOutput: ${mainRes.props[0].collectionProp%s}
+`, collectionPropPlural, tc.programVal, collectionPropPlural)
+			pt := pulcheck.PulCheck(t, bridgedProvider, program)
+			upRes := pt.Up()
+			require.Equal(t, tc.expectedOutputNested, upRes.Outputs["collectionOutput"].Value)
 
-	res := pt.Refresh(optrefresh.ExpectNoChanges())
-	t.Logf(res.StdOut)
+			res, err := pt.CurrentStack().Refresh(pt.Context(), optrefresh.ExpectNoChanges())
+			if tc.expectFailNested {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+
+			t.Logf(res.StdOut)
+		})
+	}
 }
