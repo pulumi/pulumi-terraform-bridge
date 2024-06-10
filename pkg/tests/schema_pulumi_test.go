@@ -63,12 +63,13 @@ outputs:
 }
 
 // The clean refresh on empty/nil collections is an intentional divergence from TF behaviour.
-func TestCollectionsRefreshClean(t *testing.T) {
+// This is behaviour observed in both AWS and GCP providers, as well as a few others
+func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 	for _, tc := range []struct {
 		name               string
 		planResourceChange bool
 		schemaType         schema.ValueType
-		readVal            interface{}
+		cloudVal           interface{}
 		// Note maps are not pluralized in the program while lists and sets are.
 		programVal     string
 		outputString   string
@@ -78,7 +79,7 @@ func TestCollectionsRefreshClean(t *testing.T) {
 			name:               "map null with planResourceChange",
 			planResourceChange: true,
 			schemaType:         schema.TypeMap,
-			readVal:            map[string]interface{}{},
+			cloudVal:           map[string]interface{}{},
 			programVal:         "collectionProp: null",
 			outputString:       "${mainRes.collectionProp}",
 			expectedOutput:     nil,
@@ -87,16 +88,16 @@ func TestCollectionsRefreshClean(t *testing.T) {
 			name:               "map null without planResourceChange",
 			planResourceChange: false,
 			schemaType:         schema.TypeMap,
-			readVal:            map[string]interface{}{},
+			cloudVal:           map[string]interface{}{},
 			programVal:         "collectionProp: null",
 			outputString:       "${mainRes.collectionProp}",
-			expectedOutput:     nil,
+			expectedOutput:     map[string]interface{}{},
 		},
 		{
 			name:               "map empty with planResourceChange",
 			planResourceChange: true,
 			schemaType:         schema.TypeMap,
-			readVal:            map[string]interface{}{},
+			cloudVal:           map[string]interface{}{},
 			programVal:         "collectionProp: {}",
 			outputString:       "${mainRes.collectionProp}",
 			expectedOutput:     nil,
@@ -105,16 +106,16 @@ func TestCollectionsRefreshClean(t *testing.T) {
 			name:               "map empty without planResourceChange",
 			planResourceChange: false,
 			schemaType:         schema.TypeMap,
-			readVal:            map[string]interface{}{},
+			cloudVal:           map[string]interface{}{},
 			programVal:         "collectionProp: {}",
 			outputString:       "${mainRes.collectionProp}",
-			expectedOutput:     nil,
+			expectedOutput:     map[string]interface{}{},
 		},
 		{
 			name:               "map nonempty with planResourceChange",
 			planResourceChange: true,
 			schemaType:         schema.TypeMap,
-			readVal:            map[string]interface{}{"val": "test"},
+			cloudVal:           map[string]interface{}{"val": "test"},
 			programVal:         `collectionProp: {"val": "test"}`,
 			outputString:       "${mainRes.collectionProp}",
 			expectedOutput:     map[string]interface{}{"val": "test"},
@@ -123,7 +124,7 @@ func TestCollectionsRefreshClean(t *testing.T) {
 			name:               "map nonempty without planResourceChange",
 			planResourceChange: false,
 			schemaType:         schema.TypeMap,
-			readVal:            map[string]interface{}{"val": "test"},
+			cloudVal:           map[string]interface{}{"val": "test"},
 			programVal:         `collectionProp: {"val": "test"}`,
 			outputString:       "${mainRes.collectionProp}",
 			expectedOutput:     map[string]interface{}{"val": "test"},
@@ -132,7 +133,7 @@ func TestCollectionsRefreshClean(t *testing.T) {
 			name:               "list null with planResourceChange",
 			planResourceChange: true,
 			schemaType:         schema.TypeList,
-			readVal:            []interface{}{},
+			cloudVal:           []interface{}{},
 			programVal:         "collectionProps: null",
 			outputString:       "${mainRes.collectionProps}",
 			expectedOutput:     nil,
@@ -141,16 +142,16 @@ func TestCollectionsRefreshClean(t *testing.T) {
 			name:               "list null without planResourceChange",
 			planResourceChange: false,
 			schemaType:         schema.TypeList,
-			readVal:            []interface{}{},
+			cloudVal:           []interface{}{},
 			programVal:         "collectionProps: null",
 			outputString:       "${mainRes.collectionProps}",
-			expectedOutput:     nil,
+			expectedOutput:     []interface{}{},
 		},
 		{
 			name:               "list empty with planResourceChange",
 			planResourceChange: true,
 			schemaType:         schema.TypeList,
-			readVal:            []string{},
+			cloudVal:           []string{},
 			programVal:         "collectionProps: []",
 			outputString:       "${mainRes.collectionProps}",
 			expectedOutput:     []interface{}{},
@@ -159,7 +160,7 @@ func TestCollectionsRefreshClean(t *testing.T) {
 			name:               "list empty without planResourceChange",
 			planResourceChange: false,
 			schemaType:         schema.TypeList,
-			readVal:            []string{},
+			cloudVal:           []string{},
 			programVal:         "collectionProps: []",
 			outputString:       "${mainRes.collectionProps}",
 			expectedOutput:     []interface{}{},
@@ -168,7 +169,7 @@ func TestCollectionsRefreshClean(t *testing.T) {
 			name:               "list nonempty with planResourceChange",
 			planResourceChange: true,
 			schemaType:         schema.TypeList,
-			readVal:            []interface{}{"val"},
+			cloudVal:           []interface{}{"val"},
 			programVal:         `collectionProps: ["val"]`,
 			outputString:       "${mainRes.collectionProps}",
 			expectedOutput:     []interface{}{"val"},
@@ -177,7 +178,7 @@ func TestCollectionsRefreshClean(t *testing.T) {
 			name:               "list nonempty without planResourceChange",
 			planResourceChange: false,
 			schemaType:         schema.TypeList,
-			readVal:            []interface{}{"val"},
+			cloudVal:           []interface{}{"val"},
 			programVal:         `collectionProps: ["val"]`,
 			outputString:       "${mainRes.collectionProps}",
 			expectedOutput:     []interface{}{"val"},
@@ -186,7 +187,7 @@ func TestCollectionsRefreshClean(t *testing.T) {
 			name:               "set null with planResourceChange",
 			planResourceChange: true,
 			schemaType:         schema.TypeSet,
-			readVal:            []interface{}{},
+			cloudVal:           []interface{}{},
 			programVal:         "collectionProps: null",
 			outputString:       "${mainRes.collectionProps}",
 			expectedOutput:     nil,
@@ -195,16 +196,16 @@ func TestCollectionsRefreshClean(t *testing.T) {
 			name:               "set null without planResourceChange",
 			planResourceChange: false,
 			schemaType:         schema.TypeSet,
-			readVal:            []interface{}{},
+			cloudVal:           []interface{}{},
 			programVal:         "collectionProps: null",
 			outputString:       "${mainRes.collectionProps}",
-			expectedOutput:     nil,
+			expectedOutput:     []interface{}{},
 		},
 		{
 			name:               "set empty with planResourceChange",
 			planResourceChange: true,
 			schemaType:         schema.TypeSet,
-			readVal:            []interface{}{},
+			cloudVal:           []interface{}{},
 			programVal:         "collectionProps: []",
 			outputString:       "${mainRes.collectionProps}",
 			expectedOutput:     nil,
@@ -213,15 +214,15 @@ func TestCollectionsRefreshClean(t *testing.T) {
 			name:               "set empty without planResourceChange",
 			planResourceChange: false,
 			schemaType:         schema.TypeSet,
-			readVal:            []interface{}{},
+			cloudVal:           []interface{}{},
 			programVal:         "collectionProps: []",
 			outputString:       "${mainRes.collectionProps}",
-			expectedOutput:     nil,
+			expectedOutput:     []interface{}{},
 		},
 		{
 			name:           "set nonempty with planResourceChange",
 			schemaType:     schema.TypeSet,
-			readVal:        []interface{}{"val"},
+			cloudVal:       []interface{}{"val"},
 			programVal:     `collectionProps: ["val"]`,
 			outputString:   "${mainRes.collectionProps}",
 			expectedOutput: []interface{}{"val"},
@@ -230,7 +231,7 @@ func TestCollectionsRefreshClean(t *testing.T) {
 			name:               "set nonempty without planResourceChange",
 			planResourceChange: false,
 			schemaType:         schema.TypeSet,
-			readVal:            []interface{}{"val"},
+			cloudVal:           []interface{}{"val"},
 			programVal:         `collectionProps: ["val"]`,
 			outputString:       "${mainRes.collectionProps}",
 			expectedOutput:     []interface{}{"val"},
@@ -251,10 +252,16 @@ func TestCollectionsRefreshClean(t *testing.T) {
 						},
 					},
 					ReadContext: func(_ context.Context, d *schema.ResourceData, _ interface{}) diag.Diagnostics {
-						err := d.Set("collection_prop", tc.readVal)
+						err := d.Set("collection_prop", tc.cloudVal)
 						require.NoError(t, err)
 						err = d.Set("other_prop", "test")
 						require.NoError(t, err)
+						return nil
+					},
+					CreateContext: func(ctx context.Context, rd *schema.ResourceData, i interface{}) diag.Diagnostics {
+						err := rd.Set("collection_prop", tc.cloudVal)
+						require.NoError(t, err)
+						rd.SetId("id0")
 						return nil
 					},
 				},
