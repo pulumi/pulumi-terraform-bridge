@@ -18,6 +18,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 	"os"
 	"path"
 	"path/filepath"
@@ -952,15 +954,20 @@ func (g *Generator) UnstableGenerateFromSchema(genSchemaResult *GenerateSchemaRe
 	switch g.language {
 	case RegistryDocs:
 		source := NewGitRepoDocsSource(g)
-		pkgName := g.info.Name
 		installationFile, err := source.getInstallation(nil)
-		content, err := plainDocsParser(installationFile, pkgName, g)
+		content, err := plainDocsParser(installationFile, g)
 		if err != nil {
 			return errors.Wrapf(err, "failed to parse installation docs")
 		}
 		files["installation-configuration.md"] = content
 		// Populate minimal _index.md file
-		indexContent := writeIndexFrontMatter(pkgName)
+		displayName := g.info.DisplayName
+		if displayName == "" {
+			// Capitalize the package name
+			capitalize := cases.Title(language.English)
+			displayName = capitalize.String(g.info.Name)
+		}
+		indexContent := writeIndexFrontMatter(displayName)
 		files["_index.md"] = []byte(indexContent)
 	case Schema:
 		// Omit the version so that the spec is stable if the version is e.g. derived from the current Git commit hash.

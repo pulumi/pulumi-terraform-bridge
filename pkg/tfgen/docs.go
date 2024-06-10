@@ -2362,12 +2362,11 @@ func guessIsHCL(code string) bool {
 	return guessIsHCLPattern.MatchString(code)
 }
 
-func plainDocsParser(docFile *DocFile, pkgName string, g *Generator) ([]byte, error) {
+func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
 	// Replace upstream front matter with Pulumi registry's
-	contentStr, err := replaceUpstreamFrontMatter(string(docFile.Content), pkgName)
-	if err != nil {
-		return nil, err
-	}
+	contentStr, title := getBodyAndTitle(string(docFile.Content))
+	contentStr = writeFrontMatter(title) + contentStr
+
 	//TODO: See https://github.com/pulumi/pulumi-terraform-bridge/issues/2078
 	// - translate code blocks with code choosers
 	// - apply default edit rules
@@ -2377,34 +2376,32 @@ func plainDocsParser(docFile *DocFile, pkgName string, g *Generator) ([]byte, er
 	return []byte(contentStr), nil
 }
 
-func replaceUpstreamFrontMatter(content, pkgName string) (string, error) {
-	// Capitalize the package name
-	capitalize := cases.Title(language.English)
-	pkgName = capitalize.String(pkgName)
-
-	start := strings.Index(content, delimiter)
-	if start == -1 {
-		return "", errors.New("finding front matter")
-	}
-	end := start + len(delimiter) + strings.Index(content[start+len(delimiter):], delimiter) + len(delimiter)
+func writeFrontMatter(title string) string {
 	newFrontMatter := fmt.Sprintf(delimiter+
 		"title: %s Installation & Configuration\n"+
-		"meta_desc: Provides an overview on how to configure the Pulumi %s Provider.\n"+
+		"meta_desc: Provides an overview on how to configure the Pulumi %s.\n"+
 		"layout: package\n"+
 		delimiter,
-		pkgName, pkgName)
-
-	return newFrontMatter + content[end:], nil
+		title, title)
+	return newFrontMatter
 }
 
-func writeIndexFrontMatter(pkgName string) string {
-	// Capitalize the package name
-	capitalize := cases.Title(language.English)
-	pkgName = capitalize.String(pkgName)
+func writeIndexFrontMatter(displayName string) string {
 	return fmt.Sprintf(delimiter+
 		"title: %s\n"+
 		"meta_desc: The %s provider for Pulumi can be used to provision any of the cloud resources available in %s.\n"+
 		"layout: package\n"+
 		delimiter,
-		pkgName, pkgName, pkgName)
+		displayName, displayName, displayName)
+}
+
+func getBodyAndTitle(content string) (string, string) {
+	// The first header in `index.md` is the package name, of the format `# Foo Provider`.
+	titleIndex := strings.Index(content, "# ")
+	// Get the location fo the next newline
+	nextNewLine := strings.Index(content[titleIndex:], "\n") + titleIndex
+	// Get the title line, without the h1 anchor
+	title := content[titleIndex+2 : nextNewLine]
+	// strip the title and any front matter
+	return content[nextNewLine+1:], title
 }
