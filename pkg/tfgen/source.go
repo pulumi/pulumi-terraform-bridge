@@ -254,6 +254,12 @@ func getDocsPath(repo string, kind DocKind) ([]string, error) {
 		if p := filepath.Join(repo, "docs"); exists(p) {
 			paths = append(paths, p)
 		}
+		// ${repo}/website/docs
+		//
+		// This is the legacy way to describe docs.
+		if p := filepath.Join(repo, "website", "docs"); exists(p) {
+			paths = append(paths, p)
+		}
 		return paths, err
 	}
 	// ${repo}/website/docs/r
