@@ -33,7 +33,7 @@ func (p *provider) UpgradeResourceState(
 	if st.TFSchemaVersion >= rh.schema.ResourceSchemaVersion() {
 		return &upgradedResourceState{st}, nil
 	}
-	tfType := rh.schema.Type().TerraformType(ctx).(tftypes.Object)
+	tfType := rh.schema.Type(ctx).(tftypes.Object)
 	rawState, err := pfutils.NewRawState(tfType, st.Value)
 	if err != nil {
 		return nil, fmt.Errorf("error calling NewRawState: %w", err)

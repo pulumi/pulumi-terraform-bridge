@@ -59,7 +59,7 @@ func (u *upgradedResourceState) ToPropertyMap(ctx context.Context, rh *resourceH
 }
 
 func newResourceState(ctx context.Context, rh *resourceHandle, private []byte) *upgradedResourceState {
-	tfType := rh.schema.Type().TerraformType(ctx)
+	tfType := rh.schema.Type(ctx)
 	value := tftypes.NewValue(tfType, nil)
 	schemaVersion := rh.schema.ResourceSchemaVersion()
 	return &upgradedResourceState{
@@ -114,7 +114,7 @@ func parseResourceStateFromTF(
 	state *tfprotov6.DynamicValue,
 	private []byte,
 ) (*upgradedResourceState, error) {
-	tfType := rh.schema.Type().TerraformType(ctx)
+	tfType := rh.schema.Type(ctx)
 	return parseResourceStateFromTFInner(ctx, tfType, rh.schema.ResourceSchemaVersion(), state, private)
 }
 

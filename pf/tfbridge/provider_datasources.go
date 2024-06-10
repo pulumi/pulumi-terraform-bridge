@@ -21,7 +21,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 
-	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/pfutils"
+	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/runtypes"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/convert"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
@@ -30,7 +30,7 @@ import (
 type datasourceHandle struct {
 	token                   tokens.ModuleMember
 	terraformDataSourceName string
-	schema                  pfutils.Schema
+	schema                  runtypes.Schema
 	encoder                 convert.Encoder
 	decoder                 convert.Decoder
 	schemaOnlyShim          shim.Resource
@@ -43,10 +43,10 @@ func (p *provider) datasourceHandle(ctx context.Context, token tokens.ModuleMemb
 		return datasourceHandle{}, err
 	}
 
-	typeName := pfutils.TypeName(dsName)
+	typeName := runtypes.TypeName(dsName)
 	schema := p.datasources.Schema(typeName)
 
-	typ := schema.Type().TerraformType(ctx).(tftypes.Object)
+	typ := schema.Type(ctx).(tftypes.Object)
 
 	encoder, err := p.encoding.NewDataSourceEncoder(dsName, typ)
 	if err != nil {

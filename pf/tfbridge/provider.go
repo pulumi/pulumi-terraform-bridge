@@ -34,8 +34,8 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pf"
-	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/pfutils"
 	pl "github.com/pulumi/pulumi-terraform-bridge/pf/internal/plugin"
+	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/runtypes"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/schemashim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/convert"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
@@ -50,8 +50,8 @@ import (
 type provider struct {
 	tfServer      tfprotov6.ProviderServer
 	info          tfbridge.ProviderInfo
-	resources     pfutils.Resources
-	datasources   pfutils.DataSources
+	resources     runtypes.Resources
+	datasources   runtypes.DataSources
 	pulumiSchema  []byte
 	encoding      convert.Encoding
 	diagSink      diag.Sink

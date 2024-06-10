@@ -15,13 +15,13 @@
 package schemashim
 
 import (
-	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/pfutils"
+	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/runtypes"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 )
 
 // Resource map needs to support Set (mutability) for RenameResourceWithAlias.
-func newSchemaOnlyResourceMap(resources pfutils.Resources) shim.ResourceMap {
+func newSchemaOnlyResourceMap(resources runtypes.Resources) shim.ResourceMap {
 	m := schema.ResourceMap{}
 	for _, name := range resources.All() {
 		key := string(name)

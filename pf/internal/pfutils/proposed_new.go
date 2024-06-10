@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/runtypes"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
@@ -45,13 +46,15 @@ import (
 // When Pulumi programs retract attributes, config (checkedInputs) will have no entry for these, while priorState might
 // have an entry. ProposedNewState must have a Null entry in this case for Diff to work properly and recognize an
 // attribute deletion.
-func ProposedNew(ctx context.Context, schema Schema, priorState, config tftypes.Value) (tftypes.Value, error) {
+func ProposedNew(
+	ctx context.Context, schema runtypes.Schema, priorState, config tftypes.Value,
+) (tftypes.Value, error) {
 	// If the config and prior are both null, return early here before populating the prior block. The prevents
 	// non-null blocks from appearing the proposed state value.
 	if config.IsNull() && priorState.IsNull() {
 		return priorState, nil
 	}
-	objectType := schema.Type().TerraformType(ctx).(tftypes.Object)
+	objectType := schema.Type(ctx).(tftypes.Object)
 	if priorState.IsNull() {
 		priorState = newObjectWithDefaults(objectType, func(t tftypes.Type) tftypes.Value {
 			return tftypes.NewValue(t, nil)
@@ -112,7 +115,7 @@ func ProposedNew(ctx context.Context, schema Schema, priorState, config tftypes.
 	return *joined, nil
 }
 
-func rewriteNullComputedAsUnknown(schema Schema,
+func rewriteNullComputedAsUnknown(schema tftypes.AttributePathStepper,
 	offset *tftypes.AttributePath, val tftypes.Value) (tftypes.Value, error) {
 	return tftypes.Transform(val, func(p *tftypes.AttributePath, v tftypes.Value) (tftypes.Value, error) {
 		pt, err := getNearestEnclosingPathType(schema, joinPaths(offset, p))
@@ -151,7 +154,9 @@ const (
 	pathToMisc                      pathType = 7
 )
 
-func getPathType(schema Schema, path *tftypes.AttributePath) (pathType, error) {
+func getPathType(
+	schema tftypes.AttributePathStepper, path *tftypes.AttributePath,
+) (pathType, error) {
 	if len(path.Steps()) == 0 {
 		return pathToRoot, nil
 	}
@@ -186,7 +191,9 @@ func getPathType(schema Schema, path *tftypes.AttributePath) (pathType, error) {
 //
 // It starts from path and proceeds upward (path.WithoutLastStep()) to try to find the nearest enclosing Attr or Block.
 // It skips over pathToMisc and pathToNestedObject. May return pathToRoot.
-func getNearestEnclosingPathType(schema Schema, path *tftypes.AttributePath) (pathType, error) {
+func getNearestEnclosingPathType(
+	schema tftypes.AttributePathStepper, path *tftypes.AttributePath,
+) (pathType, error) {
 	for {
 		ty, err := getPathType(schema, path)
 		if err != nil {

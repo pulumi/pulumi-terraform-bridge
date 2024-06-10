@@ -55,7 +55,7 @@ func (p *provider) UpdateWithContext(
 		return nil, 0, fmt.Errorf("failed to apply ignore changes: %w", err)
 	}
 
-	tfType := rh.schema.Type().TerraformType(ctx).(tftypes.Object)
+	tfType := rh.schema.Type(ctx).(tftypes.Object)
 
 	rawPriorState, err := parseResourceState(&rh, priorStateMap)
 	if err != nil {
