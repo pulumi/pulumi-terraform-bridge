@@ -2363,8 +2363,9 @@ func guessIsHCL(code string) bool {
 }
 
 func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
-	// Replace upstream front matter with Pulumi registry's
+	// Get file content without front matter, and split title
 	contentStr, title := getBodyAndTitle(string(docFile.Content))
+	// Add pulumi-specific front matter
 	contentStr = writeFrontMatter(title) + contentStr
 
 	//TODO: See https://github.com/pulumi/pulumi-terraform-bridge/issues/2078
@@ -2377,13 +2378,12 @@ func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
 }
 
 func writeFrontMatter(title string) string {
-	newFrontMatter := fmt.Sprintf(delimiter+
+	return fmt.Sprintf(delimiter+
 		"title: %s Installation & Configuration\n"+
 		"meta_desc: Provides an overview on how to configure the Pulumi %s.\n"+
 		"layout: package\n"+
 		delimiter,
 		title, title)
-	return newFrontMatter
 }
 
 func writeIndexFrontMatter(displayName string) string {
