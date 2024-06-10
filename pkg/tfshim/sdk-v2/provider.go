@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/logging"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -62,9 +63,16 @@ func NewProvider(p *schema.Provider, opts ...providerOption) shim.Provider {
 		tf:   p,
 		opts: opts,
 	}
-	if cmdutil.IsTruthy(os.Getenv("PULUMI_ENABLE_PLAN_RESOURCE_CHANGE")) {
+
+	envPRC := os.Getenv("PULUMI_ENABLE_PLAN_RESOURCE_CHANGE")
+	if cmdutil.IsTruthy(envPRC) {
 		return newProviderWithPlanResourceChange(p, prov, func(s string) bool { return true })
 	}
+
+	if strings.EqualFold(envPRC, "false") || envPRC == "0" {
+		return prov
+	}
+
 	if opts, err := getProviderOptions(opts); err == nil && opts.planResourceChangeFilter != nil {
 		return newProviderWithPlanResourceChange(p, prov, opts.planResourceChangeFilter)
 	}
