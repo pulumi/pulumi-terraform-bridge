@@ -62,8 +62,6 @@ outputs:
 	require.Equal(t, "aux", resUp.Outputs["testOut"].Value)
 }
 
-// This is behaviour observed in both AWS and GCP providers, as well as a few others
-// where the provider does not distinguish between nil and empty collections.
 func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 	for _, tc := range []struct {
 		name               string
@@ -72,6 +70,9 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 		cloudVal           interface{}
 		programVal         string
 		// If true, the cloud value will be set in the CreateContext
+		// This is behaviour observed in both AWS and GCP providers, as well as a few others
+		// where the provider returns an empty collections when a nil one was specified in inputs.
+		// See [pulumi/pulumi-terraform-bridge#2047] for more details around this behavior
 		createCloudValOverride bool
 		expectedOutputTopLevel interface{}
 		expectedOutputNested   interface{}
