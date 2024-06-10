@@ -1798,6 +1798,17 @@ func (m mockSource) getDatasource(rawname string, info *tfbridge.DocInfo) (*DocF
 	return nil, nil
 }
 
+func (m mockSource) getInstallation(info *tfbridge.DocInfo) (*DocFile, error) {
+	f, ok := m["index.md"]
+	if !ok {
+		return nil, nil
+	}
+	return &DocFile{
+		Content:  []byte(f),
+		FileName: "index.md",
+	}, nil
+}
+
 type mockSink struct{ t *testing.T }
 
 func (mockSink) warn(string, ...interface{})                                  {}
