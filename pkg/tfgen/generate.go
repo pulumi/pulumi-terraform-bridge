@@ -962,6 +962,9 @@ func (g *Generator) UnstableGenerateFromSchema(genSchemaResult *GenerateSchemaRe
 	case RegistryDocs:
 		source := NewGitRepoDocsSource(g)
 		installationFile, err := source.getInstallation(nil)
+		if err != nil {
+			return errors.Wrapf(err, "failed to obtain an index.md file for this provider")
+		}
 		content, err := plainDocsParser(installationFile, g)
 		if err != nil {
 			return errors.Wrapf(err, "failed to parse installation docs")
