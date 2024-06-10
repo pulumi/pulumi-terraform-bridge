@@ -506,30 +506,6 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 						return nil
 					},
 				},
-				CreateContext: func(ctx context.Context, rd *schema.ResourceData, i interface{}) diag.Diagnostics {
-					err := rd.Set("collection_prop", tc.readVal)
-					require.NoError(t, err)
-					rd.SetId("id0")
-					return nil
-				},
-				ReadContext: func(_ context.Context, d *schema.ResourceData, _ interface{}) diag.Diagnostics {
-					err := d.Set("collection_prop", tc.readVal)
-					require.NoError(t, err)
-					err = d.Set("other_prop", "test")
-					require.NoError(t, err)
-					return nil
-				},
-				UpdateContext: func(ctx context.Context, rd *schema.ResourceData, i interface{}) diag.Diagnostics {
-					return nil
-				},
-				DeleteContext: func(ctx context.Context, rd *schema.ResourceData, i interface{}) diag.Diagnostics {
-					return nil
-				},
-			}
-			require.NoError(t, resource.InternalValidate(nil, true))
-
-			resMap := map[string]*schema.Resource{
-				"prov_test": resource,
 			}
 			opts := []pulcheck.BridgedProviderOpt{}
 			if !tc.planResourceChange {
