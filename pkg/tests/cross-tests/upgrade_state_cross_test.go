@@ -36,6 +36,7 @@ func TestUpgradeInputsStringBasicSame(t *testing.T) {
 					Config1:                   configVal("val"),
 					Config2:                   configVal("val"),
 					DisablePlanResourceChange: !PRC,
+					ExpectEqual:               true,
 				})
 			})
 
@@ -81,6 +82,7 @@ func TestUpgradeInputsStringBasicNonZeroVersionSame(t *testing.T) {
 					Config1:                   configVal("val"),
 					Config2:                   configVal("val"),
 					DisablePlanResourceChange: !PRC,
+					ExpectEqual:               true,
 				})
 			})
 
@@ -148,6 +150,7 @@ func TestUpgradeInputsObjectBasicSame(t *testing.T) {
 					Config1:                   configVal("val"),
 					Config2:                   configVal("val"),
 					DisablePlanResourceChange: !PRC,
+					ExpectEqual:               true,
 				})
 			})
 

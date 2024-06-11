@@ -12,17 +12,18 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/internal/pulcheck"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gotest.tools/v3/assert"
 )
 
 type upgradeStateTestCase struct {
 	// Schema for the resource under test
 	Resource *schema.Resource
 
-	Config1    any
-	Config2    any
-	ObjectType *tftypes.Object
+	Config1     any
+	Config2     any
+	ExpectEqual bool
+	ObjectType  *tftypes.Object
 
 	DisablePlanResourceChange bool
 }
@@ -41,8 +42,8 @@ func getVersionInState(t T, stack apitype.UntypedDeployment) int {
 	resOutputs := testResState["outputs"].(map[string]interface{})
 	metaVar := resOutputs["__meta"]
 	if metaVar == nil {
-		t.Errorf("Expected __meta to be present in the state")
-		return -1
+		// If the resource does not have a meta field, assume the schema version is 0.
+		return 0
 	}
 	meta := metaVar.(string)
 	var metaMap map[string]interface{}
@@ -53,7 +54,7 @@ func getVersionInState(t T, stack apitype.UntypedDeployment) int {
 	return int(schemaVersion)
 }
 
-func runPulumiUpgrade(t T, res1, res2 *schema.Resource, config1, config2 any, disablePlanResourceChange bool) {
+func runPulumiUpgrade(t T, res1, res2 *schema.Resource, config1, config2 any, disablePlanResourceChange bool) (int, int) {
 	opts := []pulcheck.BridgedProviderOpt{}
 	if disablePlanResourceChange {
 		opts = append(opts, pulcheck.DisablePlanResourceChange())
@@ -73,8 +74,7 @@ func runPulumiUpgrade(t T, res1, res2 *schema.Resource, config1, config2 any, di
 	pt := pulcheck.PulCheck(t, prov1, string(yamlProgram))
 	pt.Up()
 	stack := pt.ExportStack()
-	schemaVersion := getVersionInState(t, stack)
-	assert.Equal(t, res1.SchemaVersion, schemaVersion)
+	schemaVersion1 := getVersionInState(t, stack)
 
 	yamlProgram = pd.generateYAML(t, prov2.P.ResourcesMap(), config2)
 	p := filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml")
@@ -87,8 +87,9 @@ func runPulumiUpgrade(t T, res1, res2 *schema.Resource, config1, config2 any, di
 	pt.Up()
 
 	stack = pt.ExportStack()
-	schemaVersion = getVersionInState(t, stack)
-	assert.Equal(t, res2.SchemaVersion, schemaVersion)
+	schemaVersion2 := getVersionInState(t, stack)
+
+	return schemaVersion1, schemaVersion2
 }
 
 func runUpgradeStateInputCheck(t T, tc upgradeStateTestCase) {
@@ -136,11 +137,27 @@ func runUpgradeStateInputCheck(t T, tc upgradeStateTestCase) {
 	tfd2 := newTfDriver(t, tfwd, defProviderShortName, defRtype, &upgradeRes)
 	_ = tfd2.writePlanApply(t, tc.Resource.Schema, defRtype, "example", tc.Config2)
 
-	runPulumiUpgrade(t, tc.Resource, &upgradeRes, tc.Config1, tc.Config2, tc.DisablePlanResourceChange)
+	schemaVersion1, schemaVersion2 := runPulumiUpgrade(t, tc.Resource, &upgradeRes, tc.Config1, tc.Config2, tc.DisablePlanResourceChange)
 
-	assert.Len(t, upgradeRawStates, 2)
-	if len(upgradeRawStates) != 2 {
-		return
+	if tc.ExpectEqual {
+		assert.Equal(t, schemaVersion1, tc.Resource.SchemaVersion)
+		// We never upgrade the state to the new version.
+		// TODO: should we?
+
+		require.Len(t, upgradeRawStates, 2)
+		if len(upgradeRawStates) != 2 {
+			return
+		}
+		assertValEqual(t, "UpgradeRawState", upgradeRawStates[0], upgradeRawStates[1])
+
+	} else {
+		assert.Equal(t, schemaVersion1, tc.Resource.SchemaVersion)
+		assert.Equal(t, schemaVersion2, upgradeRes.SchemaVersion)
+		require.Len(t, upgradeRawStates, 4)
+		if len(upgradeRawStates) != 4 {
+			return
+		}
+		assertValEqual(t, "UpgradeRawState", upgradeRawStates[0], upgradeRawStates[2])
+		assertValEqual(t, "UpgradeRawState", upgradeRawStates[1], upgradeRawStates[3])
 	}
-	assertValEqual(t, "UpgradeRawState", upgradeRawStates[0], upgradeRawStates[1])
 }
