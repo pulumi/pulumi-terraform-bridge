@@ -25,7 +25,12 @@ func getVersionInState(t T, stack apitype.UntypedDeployment) int {
 	require.Len(t, resourcesList, 3)
 	testResState := resourcesList[2].(map[string]interface{})
 	resOutputs := testResState["outputs"].(map[string]interface{})
-	meta := resOutputs["__meta"].(string)
+	metaVar := resOutputs["__meta"]
+	if metaVar == nil {
+		t.Errorf("Expected __meta to be present in the state")
+		return 0
+	}
+	meta := metaVar.(string)
 	var metaMap map[string]interface{}
 	err = json.Unmarshal([]byte(meta), &metaMap)
 	require.NoError(t, err)
@@ -115,5 +120,8 @@ func runUpgradeStateInputCheck(t T, tc inputTestCase) {
 	runPulumiUpgrade(t, tc.Resource, &upgradeRes, tc.Config, tc.DisablePlanResourceChange)
 
 	assert.Len(t, upgradeRawStates, 2)
+	if len(upgradeRawStates) != 2 {
+		return
+	}
 	assertValEqual(t, "UpgradeRawState", upgradeRawStates[0], upgradeRawStates[1])
 }
