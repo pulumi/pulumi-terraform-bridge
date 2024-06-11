@@ -28,7 +28,7 @@ func getVersionInState(t T, stack apitype.UntypedDeployment) int {
 	metaVar := resOutputs["__meta"]
 	if metaVar == nil {
 		t.Errorf("Expected __meta to be present in the state")
-		return 0
+		return -1
 	}
 	meta := metaVar.(string)
 	var metaMap map[string]interface{}

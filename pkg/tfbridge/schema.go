@@ -1305,7 +1305,7 @@ func MakeTerraformState(
 		// If there was no metadata in the inputs and this resource has a non-zero
 		// schema version, return a meta bag with the current schema version. This
 		// helps avoid migration issues.
-		meta = map[string]interface{}{"schema_version": strconv.Itoa(res.TF.SchemaVersion())}
+		meta = map[string]interface{}{"schema_version": "0"}
 	}
 
 	// Turn the resource properties into a map. For the most part, this is a straight
