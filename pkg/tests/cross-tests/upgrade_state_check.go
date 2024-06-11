@@ -2,13 +2,34 @@ package crosstests
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"strconv"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/internal/pulcheck"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func getVersionInState(t T, stack apitype.UntypedDeployment) int64 {
+	data, err := stack.Deployment.MarshalJSON()
+	require.NoError(t, err)
+
+	var stateMap map[string]interface{}
+	err = json.Unmarshal(data, &stateMap)
+	require.NoError(t, err)
+
+	resourcesList := stateMap["resources"].([]interface{})
+	require.Len(t, resourcesList, 3)
+	testResState := resourcesList[2].(map[string]interface{})
+	resOutputs := testResState["outputs"].(map[string]interface{})
+	meta := resOutputs["__meta"].(map[string]interface{})
+	schemaVersion, err := strconv.ParseInt(meta["schema_version"].(string), 10, 64)
+	require.NoError(t, err)
+	return schemaVersion
+}
 
 func runPulumiUpgrade(t T, res1, res2 *schema.Resource, config any, disablePlanResourceChange bool) {
 	opts := []pulcheck.BridgedProviderOpt{}
@@ -30,11 +51,17 @@ func runPulumiUpgrade(t T, res1, res2 *schema.Resource, config any, disablePlanR
 	pt := pulcheck.PulCheck(t, prov1, string(yamlProgram))
 
 	pt.Up()
+	stack := pt.ExportStack()
+	schemaVersion := getVersionInState(t, stack)
+	assert.Equal(t, res1.SchemaVersion, schemaVersion)
 
 	handle, err := pulcheck.StartPulumiProvider(context.Background(), defProviderShortName, defProviderVer, prov2)
 	require.NoError(t, err)
 	pt.CurrentStack().Workspace().SetEnvVar("PULUMI_DEBUG_PROVIDERS", fmt.Sprintf("%s:%d", defProviderShortName, handle.Port))
 	pt.Up()
+	stack = pt.ExportStack()
+	schemaVersion = getVersionInState(t, stack)
+	assert.Equal(t, res2.SchemaVersion, schemaVersion)
 }
 
 func runUpgradeStateInputCheck(t T, tc inputTestCase) {
