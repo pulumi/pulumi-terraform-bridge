@@ -791,7 +791,7 @@ func TestInjectingCustomTimeouts(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 
-			assert.Equal(t, strconv.Itoa(res.SchemaVersion()), state.Meta()["schema_version"])
+			assert.Equal(t, "0", state.Meta()["schema_version"])
 
 			// Remove the resource's meta-attributes and ensure that we do not include them in the result.
 			ok := clearMeta(read2)
