@@ -308,48 +308,38 @@ func normalizeNullValues(res *schema.Resource, oldState, state cty.Value) cty.Va
 		return cty.NullVal(t)
 	}
 
-	fmt.Println("WALK", state.GoString())
-
 	tr, err := cty.Transform(state, func(p cty.Path, v cty.Value) (cty.Value, error) {
 		sp := walk.FromHCtyPath(p)
-		fmt.Println("walking", sp.MustEncodeSchemaPath())
 		if !interesting(v) {
-			fmt.Println("value not interesting", sp.MustEncodeSchemaPath())
 			return v, nil
 		}
 
 		// Only interested in attributes.
 		sc, ok := findSchemaContext(res, sp).(*attrSchemaContext)
 		if !ok {
-			fmt.Println("no schema context")
 			return v, nil
 		}
 
 		// Must be a collection attribute.
 		attr := sc.resource.CoreConfigSchema().Attributes[sc.name]
 		if !attr.Type.IsCollectionType() {
-			fmt.Println("attr.Type NOT A COLLECTION")
 			return v, nil
 		}
 
 		// Matching config value must be interesting.
 		mv := matchingOldStateValue(v.Type(), p)
 		if !interesting(mv) {
-			fmt.Println("mv not interesting")
 			return v, nil
 		}
 
 		// Config value must be different from state.
 		if mv.Equals(v).True() {
-			fmt.Println("SAME", mv.GoString(), v.GoString())
 			return v, nil
 		}
 
 		// Do prefer the config value at this point.
-		fmt.Println("SUBSTITUTE", sp.MustEncodeSchemaPath())
 		return mv, nil
 	})
-	fmt.Println("WALKED", tr.GoString())
 
 	contract.AssertNoErrorf(err, "Transform never errors")
 	return tr
