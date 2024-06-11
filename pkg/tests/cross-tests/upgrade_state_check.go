@@ -10,9 +10,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func runPulumiUpgrade(t T, res1, res2 *schema.Resource, config any) {
-	prov1 := pulcheck.BridgedProvider(t, defProviderShortName, map[string]*schema.Resource{defRtype: res1})
-	prov2 := pulcheck.BridgedProvider(t, defProviderShortName, map[string]*schema.Resource{defRtype: res2})
+func runPulumiUpgrade(t T, res1, res2 *schema.Resource, config any, disablePlanResourceChange bool) {
+	opts := []pulcheck.BridgedProviderOpt{}
+	if disablePlanResourceChange {
+		opts = append(opts, pulcheck.DisablePlanResourceChange())
+	}
+
+	prov1 := pulcheck.BridgedProvider(t, defProviderShortName, map[string]*schema.Resource{defRtype: res1}, opts...)
+	prov2 := pulcheck.BridgedProvider(t, defProviderShortName, map[string]*schema.Resource{defRtype: res2}, opts...)
 
 	pd := &pulumiDriver{
 		name:                defProviderShortName,
@@ -77,7 +82,7 @@ func runUpgradeStateInputCheck(t T, tc inputTestCase) {
 	tfd2 := newTfDriver(t, tfwd, defProviderShortName, defRtype, &upgradeRes)
 	_ = tfd2.writePlanApply(t, tc.Resource.Schema, defRtype, "example", tc.Config)
 
-	runPulumiUpgrade(t, tc.Resource, &upgradeRes, tc.Config)
+	runPulumiUpgrade(t, tc.Resource, &upgradeRes, tc.Config, tc.DisablePlanResourceChange)
 
 	assert.Len(t, upgradeRawStates, 2)
 	assertValEqual(t, "UpgradeRawState", upgradeRawStates[0], upgradeRawStates[1])
