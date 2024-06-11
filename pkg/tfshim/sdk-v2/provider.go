@@ -62,7 +62,6 @@ func NewProvider(p *schema.Provider, opts ...providerOption) shim.Provider {
 		tf:   p,
 		opts: opts,
 	}
-	return newProviderWithPlanResourceChange(p, prov, func(s string) bool { return true })
 	if cmdutil.IsTruthy(os.Getenv("PULUMI_ENABLE_PLAN_RESOURCE_CHANGE")) {
 		return newProviderWithPlanResourceChange(p, prov, func(s string) bool { return true })
 	}
