@@ -87,8 +87,6 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 			programVal:             "null",
 			expectedOutputTopLevel: nil,
 			expectedOutputNested:   nil,
-			expectFailTopLevel:     true,
-			expectFailNested:       true,
 		},
 		{
 			name:               "map null without planResourceChange",
@@ -110,8 +108,6 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 			programVal:             "null",
 			expectedOutputTopLevel: nil,
 			expectedOutputNested:   nil,
-			expectFailTopLevel:     true,
-			expectFailNested:       true,
 		},
 		{
 			name:                   "map null without planResourceChange with nil cloud value",
@@ -133,8 +129,6 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 			createCloudValOverride: true,
 			expectedOutputTopLevel: nil,
 			expectedOutputNested:   nil,
-			expectFailTopLevel:     true,
-			expectFailNested:       true,
 		},
 		{
 			name:                   "map null without planResourceChange with cloud override",
@@ -155,8 +149,6 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 			createCloudValOverride: true,
 			expectedOutputTopLevel: nil,
 			expectedOutputNested:   nil,
-			expectFailTopLevel:     true,
-			expectFailNested:       true,
 		},
 		{
 			name:                   "map null without planResourceChange with nil cloud value and cloud override",
@@ -176,8 +168,6 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 			programVal:             "{}",
 			expectedOutputTopLevel: nil,
 			expectedOutputNested:   nil,
-			expectFailTopLevel:     true,
-			expectFailNested:       true,
 		},
 		{
 			name:               "map empty without planResourceChange",
@@ -200,8 +190,6 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 			createCloudValOverride: true,
 			expectedOutputTopLevel: nil,
 			expectedOutputNested:   nil,
-			expectFailTopLevel:     true,
-			expectFailNested:       true,
 		},
 		{
 			name:                   "map empty without planResourceChange with cloud override",
@@ -259,8 +247,6 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 			programVal:             "null",
 			expectedOutputTopLevel: nil,
 			expectedOutputNested:   nil,
-			expectFailTopLevel:     true,
-			expectFailNested:       true,
 		},
 		{
 			name:               "list null without planResourceChange",
@@ -282,8 +268,6 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 			programVal:             "null",
 			expectedOutputTopLevel: nil,
 			expectedOutputNested:   nil,
-			expectFailTopLevel:     true,
-			expectFailNested:       true,
 		},
 		{
 			name:               "list null without planResourceChange with nil cloud value",
@@ -306,8 +290,6 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 			createCloudValOverride: true,
 			expectedOutputTopLevel: nil,
 			expectedOutputNested:   nil,
-			expectFailTopLevel:     true,
-			expectFailNested:       true,
 		},
 		{
 			name:                   "list null without planResourceChange with cloud override",
@@ -328,8 +310,6 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 			createCloudValOverride: true,
 			expectedOutputTopLevel: nil,
 			expectedOutputNested:   nil,
-			expectFailTopLevel:     true,
-			expectFailNested:       true,
 		},
 		{
 			name:                   "list null without planResourceChange with nil cloud value and cloud override",
@@ -428,8 +408,6 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 			programVal:             "null",
 			expectedOutputTopLevel: nil,
 			expectedOutputNested:   nil,
-			expectFailTopLevel:     true,
-			expectFailNested:       true,
 		},
 		{
 			name:               "set null without planResourceChange",
@@ -451,8 +429,6 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 			programVal:             "null",
 			expectedOutputTopLevel: nil,
 			expectedOutputNested:   nil,
-			expectFailTopLevel:     true,
-			expectFailNested:       true,
 		},
 		{
 			name:                   "set null without planResourceChange with nil cloud value",
@@ -474,8 +450,6 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 			createCloudValOverride: true,
 			expectedOutputTopLevel: nil,
 			expectedOutputNested:   nil,
-			expectFailTopLevel:     true,
-			expectFailNested:       true,
 		},
 		{
 			name:                   "set null without planResourceChange with cloud override",
@@ -496,8 +470,6 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 			createCloudValOverride: true,
 			expectedOutputTopLevel: nil,
 			expectedOutputNested:   nil,
-			expectFailTopLevel:     true,
-			expectFailNested:       true,
 		},
 		{
 			name:                   "set null without planResourceChange with nil cloud value and cloud override",
@@ -517,8 +489,6 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 			programVal:             "[]",
 			expectedOutputTopLevel: nil,
 			expectedOutputNested:   nil,
-			expectFailTopLevel:     true,
-			expectFailNested:       true,
 		},
 		{
 			name:               "set empty without planResourceChange",
@@ -541,8 +511,6 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 			createCloudValOverride: true,
 			expectedOutputTopLevel: nil,
 			expectedOutputNested:   nil,
-			expectFailTopLevel:     true,
-			expectFailNested:       true,
 		},
 		{
 			name:                   "set empty without planResourceChange with cloud override",
