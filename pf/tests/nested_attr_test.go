@@ -22,18 +22,18 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/pfutils"
-	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/schemashim"
+	"github.com/pulumi/pulumi-terraform-bridge/pf"
+	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/runtypes"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/testprovider"
 )
 
 func TestNestedType(t *testing.T) {
-	ctx := context.TODO()
+	ctx := context.Background()
 	info := testprovider.SyntheticTestBridgeProvider()
-	res, err := pfutils.GatherResources(ctx, info.P.(*schemashim.SchemaOnlyProvider).PfProvider())
+	res, err := info.P.(pf.ShimProvider).Resources(ctx)
 	require.NoError(t, err)
-	testresTypeName := pfutils.TypeName("testbridge_testres")
-	testresType := res.Schema(testresTypeName).Type().TerraformType(ctx)
+	testresTypeName := runtypes.TypeName("testbridge_testres")
+	testresType := res.Schema(testresTypeName).Type(ctx)
 
 	obj := testresType.(tftypes.Object).AttributeTypes["services"].(tftypes.List).ElementType.(tftypes.Object)
 	assert.True(t, obj.AttributeTypes["protocol"].Is(tftypes.String))

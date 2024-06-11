@@ -44,7 +44,7 @@ func (p *provider) InvokeWithContext(
 		return nil, nil, err
 	}
 
-	typ := handle.schema.Type().TerraformType(ctx).(tftypes.Object)
+	typ := handle.schema.Type(ctx).(tftypes.Object)
 
 	// Transform args to apply Pulumi-level defaults.
 	argsWithDefaults := defaults.ApplyDefaultInfoValues(ctx, defaults.ApplyDefaultInfoValuesArgs{
@@ -83,7 +83,7 @@ func (p *provider) validateDataResourceConfig(ctx context.Context, handle dataso
 func (p *provider) readDataSource(ctx context.Context, handle datasourceHandle,
 	config *tfprotov6.DynamicValue) (resource.PropertyMap, []plugin.CheckFailure, error) {
 
-	typ := handle.schema.Type().TerraformType(ctx).(tftypes.Object)
+	typ := handle.schema.Type(ctx).(tftypes.Object)
 
 	req := &tfprotov6.ReadDataSourceRequest{
 		Config:   config,

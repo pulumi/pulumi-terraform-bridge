@@ -19,11 +19,10 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
-
 	pulumiresource "github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 
-	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/pfutils"
+	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/runtypes"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/convert"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
@@ -32,7 +31,7 @@ import (
 type resourceHandle struct {
 	token                  tokens.Type
 	terraformResourceName  string
-	schema                 pfutils.Schema
+	schema                 runtypes.Schema
 	pulumiResourceInfo     *tfbridge.ResourceInfo // optional
 	encoder                convert.Encoder
 	decoder                convert.Decoder
@@ -40,15 +39,13 @@ type resourceHandle struct {
 }
 
 func (p *provider) resourceHandle(ctx context.Context, urn pulumiresource.URN) (resourceHandle, error) {
-	resources := p.resources
-
 	typeName, err := p.terraformResourceName(urn.Type())
 	if err != nil {
 		return resourceHandle{}, err
 	}
 
-	n := pfutils.TypeName(typeName)
-	schema := resources.Schema(n)
+	n := runtypes.TypeName(typeName)
+	schema := p.resources.Schema(n)
 
 	result := resourceHandle{
 		terraformResourceName: typeName,
@@ -64,7 +61,7 @@ func (p *provider) resourceHandle(ctx context.Context, urn pulumiresource.URN) (
 		return resourceHandle{}, fmt.Errorf("Tok cannot be empty: %s", token)
 	}
 
-	objectType := result.schema.Type().TerraformType(ctx).(tftypes.Object)
+	objectType := result.schema.Type(ctx).(tftypes.Object)
 
 	encoder, err := p.encoding.NewResourceEncoder(typeName, objectType)
 	if err != nil {

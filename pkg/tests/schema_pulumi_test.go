@@ -87,6 +87,8 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 			programVal:             "null",
 			expectedOutputTopLevel: nil,
 			expectedOutputNested:   nil,
+			expectFailTopLevel:     true,
+			expectFailNested:       true,
 		},
 		{
 			name:               "map null without planResourceChange",
@@ -108,6 +110,8 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 			programVal:             "null",
 			expectedOutputTopLevel: nil,
 			expectedOutputNested:   nil,
+			expectFailTopLevel:     true,
+			expectFailNested:       true,
 		},
 		{
 			name:                   "map null without planResourceChange with nil cloud value",
@@ -129,6 +133,8 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 			createCloudValOverride: true,
 			expectedOutputTopLevel: nil,
 			expectedOutputNested:   nil,
+			expectFailTopLevel:     true,
+			expectFailNested:       true,
 		},
 		{
 			name:                   "map null without planResourceChange with cloud override",
@@ -149,6 +155,8 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 			createCloudValOverride: true,
 			expectedOutputTopLevel: nil,
 			expectedOutputNested:   nil,
+			expectFailTopLevel:     true,
+			expectFailNested:       true,
 		},
 		{
 			name:                   "map null without planResourceChange with nil cloud value and cloud override",
@@ -168,6 +176,8 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 			programVal:             "{}",
 			expectedOutputTopLevel: nil,
 			expectedOutputNested:   nil,
+			expectFailTopLevel:     true,
+			expectFailNested:       true,
 		},
 		{
 			name:               "map empty without planResourceChange",
@@ -190,6 +200,8 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 			createCloudValOverride: true,
 			expectedOutputTopLevel: nil,
 			expectedOutputNested:   nil,
+			expectFailTopLevel:     true,
+			expectFailNested:       true,
 		},
 		{
 			name:                   "map empty without planResourceChange with cloud override",
@@ -247,6 +259,8 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 			programVal:             "null",
 			expectedOutputTopLevel: nil,
 			expectedOutputNested:   nil,
+			expectFailTopLevel:     true,
+			expectFailNested:       true,
 		},
 		{
 			name:               "list null without planResourceChange",
@@ -268,6 +282,8 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 			programVal:             "null",
 			expectedOutputTopLevel: nil,
 			expectedOutputNested:   nil,
+			expectFailTopLevel:     true,
+			expectFailNested:       true,
 		},
 		{
 			name:               "list null without planResourceChange with nil cloud value",
@@ -290,6 +306,8 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 			createCloudValOverride: true,
 			expectedOutputTopLevel: nil,
 			expectedOutputNested:   nil,
+			expectFailTopLevel:     true,
+			expectFailNested:       true,
 		},
 		{
 			name:                   "list null without planResourceChange with cloud override",
@@ -310,6 +328,8 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 			createCloudValOverride: true,
 			expectedOutputTopLevel: nil,
 			expectedOutputNested:   nil,
+			expectFailTopLevel:     true,
+			expectFailNested:       true,
 		},
 		{
 			name:                   "list null without planResourceChange with nil cloud value and cloud override",
@@ -408,6 +428,8 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 			programVal:             "null",
 			expectedOutputTopLevel: nil,
 			expectedOutputNested:   nil,
+			expectFailTopLevel:     true,
+			expectFailNested:       true,
 		},
 		{
 			name:               "set null without planResourceChange",
@@ -429,6 +451,8 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 			programVal:             "null",
 			expectedOutputTopLevel: nil,
 			expectedOutputNested:   nil,
+			expectFailTopLevel:     true,
+			expectFailNested:       true,
 		},
 		{
 			name:                   "set null without planResourceChange with nil cloud value",
@@ -450,6 +474,8 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 			createCloudValOverride: true,
 			expectedOutputTopLevel: nil,
 			expectedOutputNested:   nil,
+			expectFailTopLevel:     true,
+			expectFailNested:       true,
 		},
 		{
 			name:                   "set null without planResourceChange with cloud override",
@@ -470,6 +496,8 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 			createCloudValOverride: true,
 			expectedOutputTopLevel: nil,
 			expectedOutputNested:   nil,
+			expectFailTopLevel:     true,
+			expectFailNested:       true,
 		},
 		{
 			name:                   "set null without planResourceChange with nil cloud value and cloud override",
@@ -489,6 +517,8 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 			programVal:             "[]",
 			expectedOutputTopLevel: nil,
 			expectedOutputNested:   nil,
+			expectFailTopLevel:     true,
+			expectFailNested:       true,
 		},
 		{
 			name:               "set empty without planResourceChange",
@@ -511,6 +541,8 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 			createCloudValOverride: true,
 			expectedOutputTopLevel: nil,
 			expectedOutputNested:   nil,
+			expectFailTopLevel:     true,
+			expectFailNested:       true,
 		},
 		{
 			name:                   "set empty without planResourceChange with cloud override",
@@ -559,7 +591,6 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 			expectedOutputNested:   []interface{}{"val"},
 		},
 	} {
-		tc := tc
 		collectionPropPlural := ""
 		pluralized := tc.schemaType == schema.TypeList || tc.schemaType == schema.TypeSet
 		if pluralized {
@@ -571,42 +602,43 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 			opts = append(opts, pulcheck.DisablePlanResourceChange())
 		}
 
-		t.Run(tc.name+" top level", func(t *testing.T) {
-			t.Parallel()
-			resMap := map[string]*schema.Resource{
-				"prov_test": {
-					Schema: map[string]*schema.Schema{
-						"collection_prop": {
-							Type:     tc.schemaType,
-							Optional: true,
-							Elem:     &schema.Schema{Type: schema.TypeString},
+		t.Run(tc.name, func(t *testing.T) {
+			t.Run("top level", func(t *testing.T) {
+				t.Parallel()
+				resMap := map[string]*schema.Resource{
+					"prov_test": {
+						Schema: map[string]*schema.Schema{
+							"collection_prop": {
+								Type:     tc.schemaType,
+								Optional: true,
+								Elem:     &schema.Schema{Type: schema.TypeString},
+							},
+							"other_prop": {
+								Type:     schema.TypeString,
+								Optional: true,
+							},
 						},
-						"other_prop": {
-							Type:     schema.TypeString,
-							Optional: true,
-						},
-					},
-					ReadContext: func(_ context.Context, rd *schema.ResourceData, _ interface{}) diag.Diagnostics {
-						err := rd.Set("collection_prop", tc.cloudVal)
-						require.NoError(t, err)
-						err = rd.Set("other_prop", "test")
-						require.NoError(t, err)
-						return nil
-					},
-					CreateContext: func(_ context.Context, rd *schema.ResourceData, _ interface{}) diag.Diagnostics {
-						if tc.createCloudValOverride {
+						ReadContext: func(_ context.Context, rd *schema.ResourceData, _ interface{}) diag.Diagnostics {
 							err := rd.Set("collection_prop", tc.cloudVal)
 							require.NoError(t, err)
-						}
+							err = rd.Set("other_prop", "test")
+							require.NoError(t, err)
+							return nil
+						},
+						CreateContext: func(_ context.Context, rd *schema.ResourceData, _ interface{}) diag.Diagnostics {
+							if tc.createCloudValOverride {
+								err := rd.Set("collection_prop", tc.cloudVal)
+								require.NoError(t, err)
+							}
 
-						rd.SetId("id0")
-						return nil
+							rd.SetId("id0")
+							return nil
+						},
 					},
-				},
-			}
+				}
 
-			bridgedProvider := pulcheck.BridgedProvider(t, "prov", resMap, opts...)
-			program := fmt.Sprintf(`
+				bridgedProvider := pulcheck.BridgedProvider(t, "prov", resMap, opts...)
+				program := fmt.Sprintf(`
 name: test
 runtime: yaml
 resources:
@@ -618,66 +650,66 @@ resources:
 outputs:
   collectionOutput: ${mainRes.collectionProp%s}
 `, collectionPropPlural, tc.programVal, collectionPropPlural)
-			pt := pulcheck.PulCheck(t, bridgedProvider, program)
-			upRes := pt.Up()
-			require.Equal(t, tc.expectedOutputTopLevel, upRes.Outputs["collectionOutput"].Value)
-			res, err := pt.CurrentStack().Refresh(pt.Context(), optrefresh.ExpectNoChanges())
-			if tc.expectFailTopLevel {
-				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
-			}
-			t.Logf(res.StdOut)
-		})
+				pt := pulcheck.PulCheck(t, bridgedProvider, program)
+				upRes := pt.Up()
+				require.Equal(t, tc.expectedOutputTopLevel, upRes.Outputs["collectionOutput"].Value)
+				res, err := pt.CurrentStack().Refresh(pt.Context(), optrefresh.ExpectNoChanges())
+				if tc.expectFailTopLevel {
+					require.Error(t, err)
+				} else {
+					require.NoError(t, err)
+				}
+				t.Logf(res.StdOut)
+			})
 
-		t.Run(tc.name+" nested", func(t *testing.T) {
-			t.Parallel()
-			resMap := map[string]*schema.Resource{
-				"prov_test": {
-					Schema: map[string]*schema.Schema{
-						"prop": {
-							Type:     schema.TypeList,
-							Optional: true,
-							Elem: &schema.Resource{
-								Schema: map[string]*schema.Schema{
-									"collection_prop": {
-										Type:     tc.schemaType,
-										Optional: true,
-										Elem:     &schema.Schema{Type: schema.TypeString},
-									},
-									"other_nested_prop": {
-										Type:     schema.TypeString,
-										Optional: true,
+			t.Run("nested", func(t *testing.T) {
+				t.Parallel()
+				resMap := map[string]*schema.Resource{
+					"prov_test": {
+						Schema: map[string]*schema.Schema{
+							"prop": {
+								Type:     schema.TypeList,
+								Optional: true,
+								Elem: &schema.Resource{
+									Schema: map[string]*schema.Schema{
+										"collection_prop": {
+											Type:     tc.schemaType,
+											Optional: true,
+											Elem:     &schema.Schema{Type: schema.TypeString},
+										},
+										"other_nested_prop": {
+											Type:     schema.TypeString,
+											Optional: true,
+										},
 									},
 								},
 							},
+							"other_prop": {
+								Type:     schema.TypeString,
+								Optional: true,
+							},
 						},
-						"other_prop": {
-							Type:     schema.TypeString,
-							Optional: true,
-						},
-					},
-					ReadContext: func(_ context.Context, rd *schema.ResourceData, _ interface{}) diag.Diagnostics {
-						err := rd.Set("prop", []map[string]interface{}{{"collection_prop": tc.cloudVal, "other_nested_prop": "test"}})
-						require.NoError(t, err)
-						err = rd.Set("other_prop", "test")
-						require.NoError(t, err)
-
-						return nil
-					},
-					CreateContext: func(_ context.Context, rd *schema.ResourceData, _ interface{}) diag.Diagnostics {
-						if tc.createCloudValOverride {
+						ReadContext: func(_ context.Context, rd *schema.ResourceData, _ interface{}) diag.Diagnostics {
 							err := rd.Set("prop", []map[string]interface{}{{"collection_prop": tc.cloudVal, "other_nested_prop": "test"}})
 							require.NoError(t, err)
-						}
-						rd.SetId("id0")
-						return nil
-					},
-				},
-			}
+							err = rd.Set("other_prop", "test")
+							require.NoError(t, err)
 
-			bridgedProvider := pulcheck.BridgedProvider(t, "prov", resMap, opts...)
-			program := fmt.Sprintf(`
+							return nil
+						},
+						CreateContext: func(_ context.Context, rd *schema.ResourceData, _ interface{}) diag.Diagnostics {
+							if tc.createCloudValOverride {
+								err := rd.Set("prop", []map[string]interface{}{{"collection_prop": tc.cloudVal, "other_nested_prop": "test"}})
+								require.NoError(t, err)
+							}
+							rd.SetId("id0")
+							return nil
+						},
+					},
+				}
+
+				bridgedProvider := pulcheck.BridgedProvider(t, "prov", resMap, opts...)
+				program := fmt.Sprintf(`
 name: test
 runtime: yaml
 resources:
@@ -691,18 +723,19 @@ resources:
 outputs:
   collectionOutput: ${mainRes.props[0].collectionProp%s}
 `, collectionPropPlural, tc.programVal, collectionPropPlural)
-			pt := pulcheck.PulCheck(t, bridgedProvider, program)
-			upRes := pt.Up()
-			require.Equal(t, tc.expectedOutputNested, upRes.Outputs["collectionOutput"].Value)
+				pt := pulcheck.PulCheck(t, bridgedProvider, program)
+				upRes := pt.Up()
+				require.Equal(t, tc.expectedOutputNested, upRes.Outputs["collectionOutput"].Value)
 
-			res, err := pt.CurrentStack().Refresh(pt.Context(), optrefresh.ExpectNoChanges())
-			if tc.expectFailNested {
-				require.Error(t, err)
-			} else {
-				require.NoError(t, err)
-			}
+				res, err := pt.CurrentStack().Refresh(pt.Context(), optrefresh.ExpectNoChanges())
+				if tc.expectFailNested {
+					require.Error(t, err)
+				} else {
+					require.NoError(t, err)
+				}
 
-			t.Logf(res.StdOut)
+				t.Logf(res.StdOut)
+			})
 		})
 	}
 }
