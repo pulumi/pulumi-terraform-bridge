@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func getVersionInState(t T, stack apitype.UntypedDeployment) int64 {
+func getVersionInState(t T, stack apitype.UntypedDeployment) int {
 	data, err := stack.Deployment.MarshalJSON()
 	require.NoError(t, err)
 
@@ -25,10 +25,13 @@ func getVersionInState(t T, stack apitype.UntypedDeployment) int64 {
 	require.Len(t, resourcesList, 3)
 	testResState := resourcesList[2].(map[string]interface{})
 	resOutputs := testResState["outputs"].(map[string]interface{})
-	meta := resOutputs["__meta"].(map[string]interface{})
-	schemaVersion, err := strconv.ParseInt(meta["schema_version"].(string), 10, 64)
+	meta := resOutputs["__meta"].(string)
+	var metaMap map[string]interface{}
+	err = json.Unmarshal([]byte(meta), &metaMap)
 	require.NoError(t, err)
-	return schemaVersion
+	schemaVersion, err := strconv.ParseInt(metaMap["schema_version"].(string), 10, 64)
+	require.NoError(t, err)
+	return int(schemaVersion)
 }
 
 func runPulumiUpgrade(t T, res1, res2 *schema.Resource, config any, disablePlanResourceChange bool) {
