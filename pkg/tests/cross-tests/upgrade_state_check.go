@@ -4,14 +4,28 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strconv"
 
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/internal/pulcheck"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+type upgradeStateTestCase struct {
+	// Schema for the resource under test
+	Resource *schema.Resource
+
+	Config1    any
+	Config2    any
+	ObjectType *tftypes.Object
+
+	DisablePlanResourceChange bool
+}
 
 func getVersionInState(t T, stack apitype.UntypedDeployment) int {
 	data, err := stack.Deployment.MarshalJSON()
@@ -39,7 +53,7 @@ func getVersionInState(t T, stack apitype.UntypedDeployment) int {
 	return int(schemaVersion)
 }
 
-func runPulumiUpgrade(t T, res1, res2 *schema.Resource, config any, disablePlanResourceChange bool) {
+func runPulumiUpgrade(t T, res1, res2 *schema.Resource, config1, config2 any, disablePlanResourceChange bool) {
 	opts := []pulcheck.BridgedProviderOpt{}
 	if disablePlanResourceChange {
 		opts = append(opts, pulcheck.DisablePlanResourceChange())
@@ -55,24 +69,29 @@ func runPulumiUpgrade(t T, res1, res2 *schema.Resource, config any, disablePlanR
 		objectType:          nil,
 	}
 
-	yamlProgram := pd.generateYAML(t, prov1.P.ResourcesMap(), config)
+	yamlProgram := pd.generateYAML(t, prov1.P.ResourcesMap(), config1)
 	pt := pulcheck.PulCheck(t, prov1, string(yamlProgram))
-
 	pt.Up()
 	stack := pt.ExportStack()
 	schemaVersion := getVersionInState(t, stack)
 	assert.Equal(t, res1.SchemaVersion, schemaVersion)
 
+	yamlProgram = pd.generateYAML(t, prov2.P.ResourcesMap(), config2)
+	p := filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml")
+	err := os.WriteFile(p, yamlProgram, 0o600)
+	require.NoErrorf(t, err, "writing Pulumi.yaml")
+
 	handle, err := pulcheck.StartPulumiProvider(context.Background(), defProviderShortName, defProviderVer, prov2)
 	require.NoError(t, err)
 	pt.CurrentStack().Workspace().SetEnvVar("PULUMI_DEBUG_PROVIDERS", fmt.Sprintf("%s:%d", defProviderShortName, handle.Port))
 	pt.Up()
+
 	stack = pt.ExportStack()
 	schemaVersion = getVersionInState(t, stack)
 	assert.Equal(t, res2.SchemaVersion, schemaVersion)
 }
 
-func runUpgradeStateInputCheck(t T, tc inputTestCase) {
+func runUpgradeStateInputCheck(t T, tc upgradeStateTestCase) {
 	upgrades := make([]schema.StateUpgrader, 0)
 	for i := 0; i < tc.Resource.SchemaVersion; i++ {
 		upgrades = append(upgrades, schema.StateUpgrader{
@@ -112,12 +131,12 @@ func runUpgradeStateInputCheck(t T, tc inputTestCase) {
 	tfwd := t.TempDir()
 
 	tfd := newTfDriver(t, tfwd, defProviderShortName, defRtype, tc.Resource)
-	_ = tfd.writePlanApply(t, tc.Resource.Schema, defRtype, "example", tc.Config)
+	_ = tfd.writePlanApply(t, tc.Resource.Schema, defRtype, "example", tc.Config1)
 
 	tfd2 := newTfDriver(t, tfwd, defProviderShortName, defRtype, &upgradeRes)
-	_ = tfd2.writePlanApply(t, tc.Resource.Schema, defRtype, "example", tc.Config)
+	_ = tfd2.writePlanApply(t, tc.Resource.Schema, defRtype, "example", tc.Config2)
 
-	runPulumiUpgrade(t, tc.Resource, &upgradeRes, tc.Config, tc.DisablePlanResourceChange)
+	runPulumiUpgrade(t, tc.Resource, &upgradeRes, tc.Config1, tc.Config2, tc.DisablePlanResourceChange)
 
 	assert.Len(t, upgradeRawStates, 2)
 	if len(upgradeRawStates) != 2 {
