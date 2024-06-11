@@ -55,6 +55,7 @@ func TestUpgradeInputsStringBasicNonZeroVersion(t *testing.T) {
 				}, map[string]tftypes.Value{
 					"f0": tftypes.NewValue(tftypes.String, "val"),
 				}),
+				DisablePlanResourceChange: !PRC,
 			})
 		})
 	}
@@ -102,6 +103,7 @@ func TestUpgradeInputsObjectBasic(t *testing.T) {
 						),
 					},
 				),
+				DisablePlanResourceChange: !PRC,
 			})
 		})
 	}
