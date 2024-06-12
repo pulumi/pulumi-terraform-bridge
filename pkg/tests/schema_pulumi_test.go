@@ -1,8 +1,11 @@
 package tests
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"sort"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -816,4 +819,96 @@ outputs:
 			}
 		})
 	}
+}
+
+func TestRefreshReorderEmptyNull(t *testing.T) {
+	resourceComputeFirewallRuleHash := func(v interface{}) int {
+		var buf bytes.Buffer
+		m := v.(map[string]interface{})
+		buf.WriteString(fmt.Sprintf("%s-", strings.ToLower(m["protocol"].(string))))
+
+		// We need to make sure to sort the strings below so that we always
+		// generate the same hash code no matter what is in the set.
+		if v, ok := m["ports"]; ok && v != nil {
+			s := make([]string, 0, len(v.([]interface{})))
+			for _, p := range v.([]interface{}) {
+				s = append(s, fmt.Sprintf("%d", p.(int)))
+			}
+			sort.Strings(s)
+
+			for _, v := range s {
+				buf.WriteString(fmt.Sprintf("%s-", v))
+			}
+		}
+
+		return schema.HashString(buf.String())
+	}
+	resMap := map[string]*schema.Resource{
+		"prov_test": {
+			Schema: map[string]*schema.Schema{
+				"allow": {
+					Type:     schema.TypeSet,
+					Optional: true,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"protocol": {
+								Type:     schema.TypeString,
+								Required: true,
+							},
+							"ports": {
+								Type:     schema.TypeList,
+								Optional: true,
+								Elem: &schema.Schema{
+									Type: schema.TypeInt,
+								},
+							},
+						},
+					},
+				},
+			},
+			ReadContext: func(_ context.Context, rd *schema.ResourceData, _ interface{}) diag.Diagnostics {
+				err := rd.Set("allow", schema.NewSet(resourceComputeFirewallRuleHash,
+					[]interface{}{
+						map[string]interface{}{"protocol": "tcp", "ports": []interface{}{80, 443}},
+						map[string]interface{}{"protocol": "icmp", "ports": []interface{}{}},
+					},
+				))
+				require.NoError(t, err)
+				return nil
+			},
+			CreateContext: func(_ context.Context, rd *schema.ResourceData, _ interface{}) diag.Diagnostics {
+				err := rd.Set("allow", schema.NewSet(resourceComputeFirewallRuleHash,
+					[]interface{}{
+						map[string]interface{}{"protocol": "icmp", "ports": []interface{}{}},
+						map[string]interface{}{"protocol": "tcp", "ports": []interface{}{80, 443}},
+					},
+				))
+				require.NoError(t, err)
+
+				rd.SetId("id0")
+				return nil
+			},
+		},
+	}
+	bridgedProvider := pulcheck.BridgedProvider(t, "prov", resMap)
+	program := `
+name: test
+runtime: yaml
+resources:
+  mainRes:
+    type: prov:index:Test
+    properties:
+      allows:
+        - protocol: "tcp"
+          ports: [80, 443]
+        - protocol: "icmp"
+          ports: []
+outputs:
+    allowOut: ${mainRes.allows}
+`
+	pt := pulcheck.PulCheck(t, bridgedProvider, program)
+	pt.Up()
+	res, err := pt.CurrentStack().Refresh(pt.Context(), optrefresh.ExpectNoChanges())
+	require.NoError(t, err)
+	t.Logf(res.StdOut)
 }
