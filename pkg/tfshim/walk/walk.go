@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/ryboe/q"
 	"sort"
 	"strings"
 
@@ -230,6 +231,9 @@ func (step ElementStep) Lookup(s shim.Schema) (shim.Schema, error) {
 	case shim.Schema:
 		return elem, nil
 	default:
+		q.Q("are we hitting this default?")
+		q.Q(elem)
+		panic("wtf is elem")
 		return nil, fmt.Errorf("%s is not applicable", step.GoString())
 	}
 }
