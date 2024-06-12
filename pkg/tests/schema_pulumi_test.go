@@ -739,3 +739,58 @@ outputs:
 		})
 	}
 }
+
+func TestAWS906(t *testing.T) {
+	actualHash := "ABC"
+	resMap := map[string]*schema.Resource{
+		"prov_test": {
+			Schema: map[string]*schema.Schema{
+				"dummy": {
+					Type:     schema.TypeBool,
+					Optional: true,
+				},
+				"code_sha256": {
+					Type:     schema.TypeString,
+					Computed: true,
+				},
+			},
+			ReadContext: func(_ context.Context, rd *schema.ResourceData, _ interface{}) diag.Diagnostics {
+				rd.Set("code_sha256", actualHash)
+
+				return nil
+			},
+			CreateContext: func(_ context.Context, rd *schema.ResourceData, _ interface{}) diag.Diagnostics {
+				rd.Set("code_sha256", actualHash)
+				rd.SetId("id0")
+				return nil
+			},
+			UpdateContext: func(_ context.Context, rd *schema.ResourceData, _ interface{}) diag.Diagnostics {
+				rd.Set("code_sha256", actualHash)
+				return nil
+			},
+		},
+	}
+	opts := []pulcheck.BridgedProviderOpt{}
+	bridgedProvider := pulcheck.BridgedProvider(t, "prov", resMap, opts...)
+	program := fmt.Sprintf(`
+name: test
+runtime: yaml
+resources:
+  mainRes:
+    type: prov:index:Test
+`)
+	pt := pulcheck.PulCheck(t, bridgedProvider, program)
+	upRes := pt.Up()
+	t.Logf("RESULT %s", upRes.StdOut+upRes.StdErr)
+
+	actualHash = "DEF"
+
+	// Refresh indicates dirty refresh.
+	res, err := pt.CurrentStack().Refresh(pt.Context(), optrefresh.ExpectNoChanges())
+	t.Logf("ERROR %v", err)
+	t.Logf("REFRESH %s", res.StdOut)
+
+	// However if you accept it then subsequent pulumi up is no-changes.
+	upRes2 := pt.Up()
+	t.Logf("RESULT %s", upRes2.StdOut+upRes.StdErr)
+}
