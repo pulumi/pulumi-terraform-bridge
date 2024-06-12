@@ -301,13 +301,6 @@ func normalizeNullValues(res *schema.Resource, oldState, state cty.Value) cty.Va
 		return v.Type().IsCollectionType() && v.LengthInt() == 0
 	}
 
-	matchingOldStateValue := func(t cty.Type, p cty.Path) cty.Value {
-		if v, err := p.Apply(oldState); err == nil {
-			return v
-		}
-		return cty.NullVal(t)
-	}
-
 	tr, err := cty.Transform(state, func(p cty.Path, v cty.Value) (cty.Value, error) {
 		sp := walk.FromHCtyPath(p)
 		if !interesting(v) {
@@ -326,18 +319,28 @@ func normalizeNullValues(res *schema.Resource, oldState, state cty.Value) cty.Va
 			return v, nil
 		}
 
-		// Matching config value must be interesting.
-		mv := matchingOldStateValue(v.Type(), p)
+		mv, err := p.Apply(v)
+		if err != nil {
+			// Apply may fail if the paths index through set elements, see:
+			// See https://github.com/zclconf/go-cty/issues/180
+			//
+			// It may also fail on type mismatches due to changing schema.
+			//
+			// In either case just ignore this and bail.
+			return v, nil
+		}
+
+		// Matching old state value must be interesting.
 		if !interesting(mv) {
 			return v, nil
 		}
 
-		// Config value must be different from state.
+		// Old state value must be different from the read state.
 		if mv.Equals(v).True() {
 			return v, nil
 		}
 
-		// Do prefer the config value at this point.
+		// Do prefer the old state value at this point.
 		return mv, nil
 	})
 
