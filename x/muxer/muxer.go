@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
+	"github.com/ryboe/q"
 	"io"
 	"sync"
 
@@ -424,6 +425,7 @@ func (m *muxer) GetPluginInfo(ctx context.Context, e *emptypb.Empty) (*rpc.Plugi
 }
 
 func (m *muxer) Attach(ctx context.Context, req *rpc.PluginAttach) (*emptypb.Empty, error) {
+<<<<<<< HEAD
 	host, err := provider.NewHostClient(req.GetAddress())
 	if err != nil {
 		return nil, err
