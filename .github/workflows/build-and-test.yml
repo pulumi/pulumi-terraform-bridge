@@ -44,6 +44,8 @@ jobs:
         run: make test
       - name: Test PF
         run: cd pf && make test
+      - name: Test Dynamic
+        run: cd dynamic && make test
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v4
         env:

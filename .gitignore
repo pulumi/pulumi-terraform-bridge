@@ -3,7 +3,7 @@
 /.idea/
 *.iml
 .DS_Store
-/bin
+bin
 coverage.txt
 pkg/tests/coverage.txt
 testing/coverage.txt
