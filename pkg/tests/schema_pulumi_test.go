@@ -707,3 +707,113 @@ outputs:
 		})
 	}
 }
+
+func TestConfigModeAttrNullEmptyRefresh(t *testing.T) {
+	for _, cloudOverrideEnabled := range []bool{true, false} {
+		t.Run(fmt.Sprintf("cloudOverride=%v", cloudOverrideEnabled), func(t *testing.T) {
+			for _, tc := range []struct {
+				name        string
+				cloudVal    interface{}
+				programVal  string
+				expectedVal interface{}
+			}{
+				{
+					name:        "null",
+					cloudVal:    nil,
+					programVal:  "null",
+					expectedVal: nil,
+				},
+				{
+					name:        "null with empty cloud value",
+					cloudVal:    []interface{}{},
+					programVal:  "null",
+					expectedVal: nil,
+				},
+				{
+					name:        "empty",
+					cloudVal:    []interface{}{},
+					programVal:  "[]",
+					expectedVal: []interface{}{},
+				},
+				{
+					name:        "empty with nil cloud value",
+					cloudVal:    nil,
+					programVal:  "[]",
+					expectedVal: []interface{}{},
+				},
+				{
+					name:        "non-empty with empty obj",
+					cloudVal:    []interface{}{map[string]interface{}{}},
+					programVal:  `[{}]`,
+					expectedVal: []interface{}{map[string]interface{}{}},
+				},
+				{
+					name:        "nonempty",
+					cloudVal:    []interface{}{map[string]interface{}{"foo": "test"}},
+					programVal:  `[{"foo": "test"}]`,
+					expectedVal: []interface{}{map[string]interface{}{"foo": "test"}},
+				},
+			} {
+				cloudVal := tc.cloudVal
+				programVal := tc.programVal
+				expectedVal := tc.expectedVal
+				t.Run(tc.name, func(t *testing.T) {
+					t.Parallel()
+					resMap := map[string]*schema.Resource{
+						"prov_test": {
+							Schema: map[string]*schema.Schema{
+								"blk": {
+									Type:       schema.TypeList,
+									Optional:   true,
+									ConfigMode: schema.SchemaConfigModeAttr,
+									Elem: &schema.Resource{
+										Schema: map[string]*schema.Schema{
+											"foo": {
+												Type:     schema.TypeString,
+												Optional: true,
+											},
+										},
+									},
+								},
+							},
+							ReadContext: func(_ context.Context, rd *schema.ResourceData, _ interface{}) diag.Diagnostics {
+								err := rd.Set("blk", cloudVal)
+								require.NoError(t, err)
+								return nil
+							},
+							CreateContext: func(_ context.Context, rd *schema.ResourceData, _ interface{}) diag.Diagnostics {
+								if cloudOverrideEnabled {
+									err := rd.Set("blk", cloudVal)
+									require.NoError(t, err)
+								}
+
+								rd.SetId("id0")
+								return nil
+							},
+						},
+					}
+
+					bridgedProvider := pulcheck.BridgedProvider(t, "prov", resMap)
+					program := fmt.Sprintf(`
+name: test
+runtime: yaml
+resources:
+  mainRes:
+    type: prov:index:Test
+    properties:
+      blks: %s
+outputs:
+  blkOut: ${mainRes.blks}
+`, programVal)
+					pt := pulcheck.PulCheck(t, bridgedProvider, program)
+					upRes := pt.Up()
+					require.Equal(t, expectedVal, upRes.Outputs["blkOut"].Value)
+
+					res, err := pt.CurrentStack().Refresh(pt.Context(), optrefresh.ExpectNoChanges())
+					require.NoError(t, err)
+					t.Logf(res.StdOut)
+				})
+			}
+		})
+	}
+}
