@@ -980,6 +980,7 @@ resources:
 		res, err := pt.CurrentStack().Refresh(pt.Context(), optrefresh.ExpectNoChanges())
 		require.NoError(t, err)
 		t.Logf(res.StdOut)
+		pt.Preview(optpreview.ExpectNoChanges(), optpreview.Diff())
 	})
 
 	t.Run("two res", func(t *testing.T) {
@@ -988,5 +989,6 @@ resources:
 		res, err := pt.CurrentStack().Refresh(pt.Context(), optrefresh.ExpectNoChanges())
 		require.NoError(t, err)
 		t.Logf(res.StdOut)
+		pt.Preview(optpreview.ExpectNoChanges(), optpreview.Diff())
 	})
 }
