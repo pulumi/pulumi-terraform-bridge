@@ -238,6 +238,9 @@ func TestResourceEncoder(t *testing.T) {
 					Type: shim.TypeList,
 					Elem: (&schema.Schema{
 						Type: shim.TypeMap,
+						Elem: (&schema.Schema{
+							Type: shim.TypeSet,
+						}).Shim(),
 					}).Shim(),
 				}).Shim(),
 			},

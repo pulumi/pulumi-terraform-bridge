@@ -111,6 +111,7 @@ func (pc *schemaPropContext) Secret() bool {
 }
 
 func (pc *schemaPropContext) Element() (*schemaPropContext, error) {
+	//TODO: setting the lookup path to the element lookup
 	step := walk.NewSchemaPath().Element()
 	var s shim.Schema
 	if pc.schema != nil {

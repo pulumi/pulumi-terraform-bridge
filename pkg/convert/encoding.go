@@ -167,6 +167,8 @@ func deriveEncoder(pctx *schemaPropContext, t tftypes.Type) (Encoder, error) {
 		}, nil
 	}
 
+	//q.Q(pctx.schema)
+
 	switch {
 	case t.Is(tftypes.String):
 		return newStringEncoder(), nil
@@ -180,7 +182,7 @@ func deriveEncoder(pctx *schemaPropContext, t tftypes.Type) (Encoder, error) {
 	case tftypes.Object:
 		mctx, err := pctx.Object()
 		if err != nil {
-			return nil, fmt.Errorf("issue deriving an object encoder: %w", err)
+			return nil, fmt.Errorf(" in pctx.Object issue deriving an object encoder: %w", err)
 		}
 		propertyEncoders, err := buildPropertyEncoders(mctx, tt)
 		if err != nil {
