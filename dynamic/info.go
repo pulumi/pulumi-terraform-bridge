@@ -72,7 +72,7 @@ func parseParamaterizeParameters(req plugin.ParameterizeRequest) (paramaterizeAr
 	switch req := req.Parameters.(type) {
 	case plugin.ParameterizeArgs:
 
-		// Check for a leading '.' or '/' to indicate a
+		// Check for a leading '.' or '/' to indicate a path
 		if len(req.Args) >= 1 &&
 			(strings.HasPrefix(req.Args[0], "./") || strings.HasPrefix(req.Args[0], "/")) {
 			if len(req.Args) > 1 {

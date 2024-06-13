@@ -15,6 +15,9 @@
 package proto
 
 import (
+	"fmt"
+	"slices"
+
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
@@ -97,11 +100,11 @@ func (m blockMap) Set(key string, value shim.Schema) {
 func (m blockMap) Delete(key string) {
 	// Because blocks are attributes are disjoint, we can just attempt to delete from
 	// both.
-	m.block.Attributes = filter(m.block.Attributes, func(a *tfprotov6.SchemaAttribute) bool {
-		return a.Name != key
+	m.block.Attributes = slices.DeleteFunc(m.block.Attributes, func(a *tfprotov6.SchemaAttribute) bool {
+		return a.Name == key
 	})
-	m.block.BlockTypes = filter(m.block.BlockTypes, func(b *tfprotov6.SchemaNestedBlock) bool {
-		return b.TypeName != key
+	m.block.BlockTypes = slices.DeleteFunc(m.block.BlockTypes, func(b *tfprotov6.SchemaNestedBlock) bool {
+		return b.TypeName == key
 	})
 }
 
@@ -109,7 +112,31 @@ func (m blockMap) Validate() error { return nil }
 
 type blockSchema struct{ block tfprotov6.SchemaNestedBlock }
 
-func (m blockSchema) Type() shim.ValueType                { return shim.TypeMap }
+func (m blockSchema) Type() shim.ValueType {
+	switch m.block.Nesting {
+	case tfprotov6.SchemaNestedBlockNestingModeGroup,
+		tfprotov6.SchemaNestedBlockNestingModeSingle,
+		tfprotov6.SchemaNestedBlockNestingModeMap:
+		return shim.TypeMap
+	case tfprotov6.SchemaNestedBlockNestingModeList,
+		tfprotov6.SchemaNestedBlockNestingModeSet:
+		return shim.TypeList
+	default:
+		panic(fmt.Sprintf("Invalid nesting kind %v", m.block.Nesting))
+	}
+}
+
+func (m blockSchema) Elem() interface{} {
+	// If the type of m = { nesting, block } is a list, then m represents List<block>.
+	if m.Type() == shim.TypeList {
+		m.block.Nesting = tfprotov6.SchemaNestedBlockNestingModeSingle
+		return blockSchema{m.block}
+	}
+
+	// Otherwise m = { nesting, block } represents a block.
+	return blockResource{block: m.block.Block}
+}
+
 func (m blockSchema) Optional() bool                      { return false }
 func (m blockSchema) Required() bool                      { return false }
 func (m blockSchema) Default() interface{}                { return nil }
@@ -119,7 +146,6 @@ func (m blockSchema) Description() string                 { return m.block.Block
 func (m blockSchema) Computed() bool                      { return false }
 func (m blockSchema) ForceNew() bool                      { return false }
 func (m blockSchema) StateFunc() shim.SchemaStateFunc     { return nil }
-func (m blockSchema) Elem() interface{}                   { return blockResource{block: m.block.Block} }
 func (m blockSchema) MaxItems() int                       { return int(m.block.MaxItems) }
 func (m blockSchema) MinItems() int                       { return int(m.block.MinItems) }
 func (m blockSchema) ConflictsWith() []string             { return nil }

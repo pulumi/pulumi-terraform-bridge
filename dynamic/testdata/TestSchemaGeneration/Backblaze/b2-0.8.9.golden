@@ -44,7 +44,7 @@
         }
     },
     "types": {
-        "b2:index/BucketCorsRules:BucketCorsRules": {
+        "b2:index/BucketCorsRule:BucketCorsRule": {
             "properties": {
                 "allowedHeaders": {
                     "type": "array",
@@ -188,7 +188,7 @@
             },
             "type": "object"
         },
-        "b2:index/BucketLifecycleRules:BucketLifecycleRules": {
+        "b2:index/BucketLifecycleRule:BucketLifecycleRule": {
             "properties": {
                 "daysFromHidingToDeleting": {
                     "type": "number",
@@ -736,19 +736,28 @@
                     "description": "The bucket type. Either 'allPublic', meaning that files in this bucket can be downloaded by anybody, or 'allPrivate'.\n"
                 },
                 "corsRules": {
-                    "$ref": "#/types/b2:index/BucketCorsRules:BucketCorsRules",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/types/b2:index/BucketCorsRule:BucketCorsRule"
+                    },
                     "description": "The initial list of CORS rules for this bucket.\n"
                 },
                 "defaultServerSideEncryption": {
                     "$ref": "#/types/b2:index/BucketDefaultServerSideEncryption:BucketDefaultServerSideEncryption",
                     "description": "The default server-side encryption settings for this bucket.\n"
                 },
-                "fileLockConfiguration": {
-                    "$ref": "#/types/b2:index/BucketFileLockConfiguration:BucketFileLockConfiguration",
+                "fileLockConfigurations": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/types/b2:index/BucketFileLockConfiguration:BucketFileLockConfiguration"
+                    },
                     "description": "File lock enabled flag, and default retention settings.\n"
                 },
                 "lifecycleRules": {
-                    "$ref": "#/types/b2:index/BucketLifecycleRules:BucketLifecycleRules",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/types/b2:index/BucketLifecycleRule:BucketLifecycleRule"
+                    },
                     "description": "The initial list of lifecycle rules for this bucket.\n"
                 },
                 "options": {
@@ -770,7 +779,7 @@
                 "bucketType",
                 "corsRules",
                 "defaultServerSideEncryption",
-                "fileLockConfiguration",
+                "fileLockConfigurations",
                 "lifecycleRules",
                 "options",
                 "revision"
@@ -823,19 +832,28 @@
                         "description": "The bucket type. Either 'allPublic', meaning that files in this bucket can be downloaded by anybody, or 'allPrivate'.\n"
                     },
                     "corsRules": {
-                        "$ref": "#/types/b2:index/BucketCorsRules:BucketCorsRules",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/types/b2:index/BucketCorsRule:BucketCorsRule"
+                        },
                         "description": "The initial list of CORS rules for this bucket.\n"
                     },
                     "defaultServerSideEncryption": {
                         "$ref": "#/types/b2:index/BucketDefaultServerSideEncryption:BucketDefaultServerSideEncryption",
                         "description": "The default server-side encryption settings for this bucket.\n"
                     },
-                    "fileLockConfiguration": {
-                        "$ref": "#/types/b2:index/BucketFileLockConfiguration:BucketFileLockConfiguration",
+                    "fileLockConfigurations": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/types/b2:index/BucketFileLockConfiguration:BucketFileLockConfiguration"
+                        },
                         "description": "File lock enabled flag, and default retention settings.\n"
                     },
                     "lifecycleRules": {
-                        "$ref": "#/types/b2:index/BucketLifecycleRules:BucketLifecycleRules",
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/types/b2:index/BucketLifecycleRule:BucketLifecycleRule"
+                        },
                         "description": "The initial list of lifecycle rules for this bucket.\n"
                     },
                     "options": {

@@ -15,10 +15,7 @@
 package proto
 
 import (
-	"fmt"
-
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
-	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
@@ -33,7 +30,7 @@ func (a attribute) Optional() bool      { return a.attr.Optional }
 func (a attribute) Required() bool      { return a.attr.Required }
 func (a attribute) Description() string { return a.attr.Description }
 func (a attribute) Computed() bool      { return a.attr.Computed }
-func (a attribute) ForceNew() bool      { return false }
+func (a attribute) ForceNew() bool      { return false } // The information is not available from tfprotov6
 func (a attribute) Sensitive() bool     { return a.attr.Sensitive }
 func (a attribute) Removed() string     { return "" }
 func (a attribute) Deprecated() string  { return deprecated(a.attr.Deprecated) }
@@ -43,60 +40,14 @@ func (a attribute) Deprecated() string  { return deprecated(a.attr.Deprecated) }
 func (a attribute) MaxItems() int { return 0 }
 func (a attribute) MinItems() int { return 0 }
 func (a attribute) Type() shim.ValueType {
-	t := a.attr.ValueType()
-	switch {
-	case t.Is(tftypes.Bool):
-		return shim.TypeBool
-	case t.Is(tftypes.Number):
-		// TODO: It looks like this interface only exposes "number", not integer.
-		//
-		// We should see if there is a work-around here.
-		return shim.TypeFloat
-	case t.Is(tftypes.String):
-		return shim.TypeString
-	case t.Is(tftypes.List{}) || t.Is(tftypes.Set{}):
-		return shim.TypeList
-	case t.Is(tftypes.Map{}) || t.Is(tftypes.Object{}) || a.attr.NestedType != nil:
-		return shim.TypeMap
-	default:
-		panic(fmt.Sprintf("UNKNOWN TYPE of %#v", t)) // TODO: Remove for release
-		// return shim.TypeInvalid
-	}
+	return element{typ: a.attr.ValueType()}.Type()
 }
 
 func (a attribute) Elem() interface{} {
-	t := a.attr.ValueType()
-	switch {
-	case a.attr.NestedType != nil:
+	if a.attr.NestedType != nil {
 		return object{obj: *a.attr.NestedType}
-	case t.Is(tftypes.Object{}):
-		obj := t.(tftypes.Object)
-		attrs := make([]*tfprotov6.SchemaAttribute, 0, len(obj.AttributeTypes))
-		for k, v := range obj.AttributeTypes {
-			_, optional := obj.OptionalAttributes[k]
-			attrs = append(attrs, &tfprotov6.SchemaAttribute{
-				Name:     k,
-				Optional: optional,
-				Type:     v,
-			})
-		}
-
-		return object{obj: tfprotov6.SchemaObject{
-			Attributes: attrs,
-			Nesting:    tfprotov6.SchemaObjectNestingModeMap,
-		}}
 	}
-
-	switch t := t.(type) {
-	case tftypes.Set:
-		return attribute{tfprotov6.SchemaAttribute{Type: t.ElementType}}
-	case tftypes.Map:
-		return attribute{tfprotov6.SchemaAttribute{Type: t.ElementType}}
-	case tftypes.List:
-		return attribute{tfprotov6.SchemaAttribute{Type: t.ElementType}}
-	}
-
-	return nil
+	return element{a.attr.ValueType(), a.Optional()}.Elem()
 
 }
 

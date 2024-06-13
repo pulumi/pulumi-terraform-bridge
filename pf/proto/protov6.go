@@ -130,22 +130,3 @@ func (p Provider) DataSourcesMap() shim.ResourceMap {
 	}
 	return resourceMap(v.DataSourceSchemas)
 }
-
-func filter[T any](m []T, keep func(T) bool) []T {
-	for i := len(m) - 1; i >= 0; i-- {
-		if keep(m[i]) {
-			continue
-		}
-
-		// If i is not the last element in the slice, put the last element in the
-		// slice into i.
-		if i < len(m)-1 {
-			m[i] = m[len(m)-1]
-		}
-
-		// Drop the last element from the slice
-		m = m[:i-1]
-	}
-
-	return m
-}
