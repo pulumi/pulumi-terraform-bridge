@@ -15,6 +15,7 @@
 package itests
 
 import (
+	"github.com/stretchr/testify/require"
 	"path/filepath"
 	"testing"
 
@@ -23,9 +24,9 @@ import (
 )
 
 func TestAttach(t *testing.T) {
-	t.Skip("TODO[pulumi/pulumi#15526] this will work once pulumi-yaml supports PULUMI_DEBUG_PROVIDERS")
 	source := filepath.Join("..", "testdata", "basicprogram")
-	bin := filepath.Join("..", "bin")
+	bin, err := filepath.Abs(filepath.Join("..", "bin"))
+	require.NoError(t, err)
 	pt := pulumitest.NewPulumiTest(t, source,
 		opttest.AttachProviderBinary("testbridge", bin),
 		opttest.SkipInstall())
