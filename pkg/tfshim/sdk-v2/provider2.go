@@ -319,7 +319,7 @@ func normalizeNullValues(res *schema.Resource, oldState, state cty.Value) cty.Va
 			return v, nil
 		}
 
-		mv, err := p.Apply(v)
+		mv, err := p.Apply(oldState)
 		if err != nil {
 			// Apply may fail if the paths index through set elements, see:
 			// See https://github.com/zclconf/go-cty/issues/180
