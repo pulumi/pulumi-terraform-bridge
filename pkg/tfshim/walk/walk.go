@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/ryboe/q"
 	"sort"
 	"strings"
 
@@ -162,6 +163,7 @@ func LookupSchemaPath(path SchemaPath, schema shim.Schema) (shim.Schema, error) 
 		if len(p) == 0 {
 			return result, nil
 		}
+		// TODO: p[0] is a schema path, in our case it is an elem path. Not sure why?. The lookup is filing when calling Elem().
 		nextResult, err := p[0].Lookup(result)
 		if err != nil {
 			return nil, fmt.Errorf("LookupSchemaPath failed at %s: %w", current.GoString(), err)
@@ -230,6 +232,9 @@ func (step ElementStep) Lookup(s shim.Schema) (shim.Schema, error) {
 	case shim.Schema:
 		return elem, nil
 	default:
+		q.Q("are we hitting this default?")
+		q.Q(elem)
+		panic("wtf is elem")
 		return nil, fmt.Errorf("%s is not applicable", step.GoString())
 	}
 }

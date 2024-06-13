@@ -16,8 +16,8 @@ package muxer
 
 import (
 	"context"
-	"errors"
 	"fmt"
+	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"io"
 	"reflect"
 	"sync"
@@ -425,13 +425,9 @@ func (m *muxer) GetPluginInfo(ctx context.Context, e *emptypb.Empty) (*rpc.Plugi
 }
 
 func (m *muxer) Attach(ctx context.Context, req *rpc.PluginAttach) (*emptypb.Empty, error) {
-	attach := make([]func() error, len(m.servers))
-	for i, s := range m.servers {
-		s := s
-		attach[i] = func() error {
-			_, err := s.Attach(ctx, req)
-			return err
-		}
+	host, err := provider.NewHostClient(req.GetAddress())
+	if err != nil {
+		return nil, err
 	}
 
 	var closeErr error

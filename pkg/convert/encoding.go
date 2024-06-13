@@ -15,8 +15,8 @@ package convert
 
 import (
 	"fmt"
-
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
+	"github.com/ryboe/q"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
@@ -51,6 +51,7 @@ func (e *encoding) NewConfigEncoder(configType tftypes.Object) (Encoder, error) 
 
 func (e *encoding) NewResourceEncoder(resource string, objectType tftypes.Object) (Encoder, error) {
 	mctx := newResourceSchemaMapContext(resource, e.SchemaOnlyProvider, e.ProviderInfo)
+
 	enc, err := NewObjectEncoder(ObjectSchema{mctx.schemaMap, mctx.schemaInfos, &objectType})
 	if err != nil {
 		return nil, fmt.Errorf("cannot derive an encoder for resource %q: %w", resource, err)
@@ -130,6 +131,8 @@ func newPropertyEncoder(
 ) (Encoder, error) {
 	enc, err := deriveEncoder(pctx, t)
 	if err != nil {
+		q.Q(name, err, "in encoding.go, we don't have an encoder. I have no idea what an encoder even does. Thanks, Anton!")
+
 		return nil, fmt.Errorf("Cannot derive an encoder for property %q: %w", name, err)
 	}
 	return enc, nil
@@ -149,6 +152,7 @@ func newPropertyDecoder(pctx *schemaPropContext, name terraformPropertyName,
 
 func deriveEncoder(pctx *schemaPropContext, t tftypes.Type) (Encoder, error) {
 	if elementType, mio := pctx.IsMaxItemsOne(t); mio {
+		q.Q(t.String(), mio, elementType.String())
 		elctx, err := pctx.Element()
 		if err != nil {
 			return nil, err
@@ -163,6 +167,8 @@ func deriveEncoder(pctx *schemaPropContext, t tftypes.Type) (Encoder, error) {
 		}, nil
 	}
 
+	//q.Q(pctx.schema)
+
 	switch {
 	case t.Is(tftypes.String):
 		return newStringEncoder(), nil
@@ -176,7 +182,7 @@ func deriveEncoder(pctx *schemaPropContext, t tftypes.Type) (Encoder, error) {
 	case tftypes.Object:
 		mctx, err := pctx.Object()
 		if err != nil {
-			return nil, fmt.Errorf("issue deriving an object encoder: %w", err)
+			return nil, fmt.Errorf(" in pctx.Object issue deriving an object encoder: %w", err)
 		}
 		propertyEncoders, err := buildPropertyEncoders(mctx, tt)
 		if err != nil {
