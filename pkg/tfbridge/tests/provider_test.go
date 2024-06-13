@@ -660,7 +660,61 @@ func TestValidateInputsPanic(t *testing.T) {
 	`)
 		})
 	})
+}
 
+func TestValidateConfig(t *testing.T) {
+	ctx := context.Background()
+	p := newTestProvider(ctx, tfbridge.ProviderInfo{
+		P: shimv2.NewProvider(&schema.Provider{
+			Schema: map[string]*schema.Schema{
+				"endpoints": {
+					Type:     schema.TypeSet,
+					Optional: true,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"abcd": {
+								Type:     schema.TypeString,
+								Optional: true,
+							},
+						},
+					},
+				},
+			},
+		}, shimv2.WithDiffStrategy(shimv2.PlanState)),
+		Name:           "testprov",
+		ResourcePrefix: "example",
+	}, newTestProviderOptions{})
+
+	t.Run("diff_panic", func(t *testing.T) {
+		t.Setenv("PULUMI_ERROR_CONFIG_TYPE_CHECKER", "true")
+		replay.ReplaySequence(t, p, `
+	[
+	{
+		"method": "/pulumirpc.ResourceProvider/CheckConfig",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::testprov:index:ExampleResource::exres",
+			"olds": { },
+			"news": {
+				"endpoints": "[{\"wxyz\":\"http://localhost:4566\"}]",
+				"version": "6.35.0"
+			}
+		},
+		"response": {
+			"failures": [
+			{
+				"reason": "an unexpected argument \"wxyz\" was provided. Examine values at 'exres.endpoints[0]'."
+			}
+			]
+		},
+		"metadata": {
+			"kind": "resource",
+			"mode": "client",
+			"name": "aws"
+		}
+	}
+	]
+	`)
+	})
 }
 
 func nilSink() diag.Sink {
