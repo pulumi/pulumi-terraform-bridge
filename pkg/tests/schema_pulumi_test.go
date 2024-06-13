@@ -912,3 +912,81 @@ outputs:
 	require.NoError(t, err)
 	t.Logf(res.StdOut)
 }
+
+func TestRefreshOutput(t *testing.T) {
+	resMap := map[string]*schema.Resource{
+		"prov_test": {
+			Schema: map[string]*schema.Schema{
+				"test": {
+					Type:     schema.TypeString,
+					Optional: true,
+				},
+				"out_val": {
+					Type:     schema.TypeString,
+					Computed: true,
+				},
+			},
+			CreateContext: func(_ context.Context, rd *schema.ResourceData, _ interface{}) diag.Diagnostics {
+				rd.SetId("id0")
+				err := rd.Set("test", "test")
+				require.NoError(t, err)
+				err = rd.Set("out_val", "test1")
+				require.NoError(t, err)
+				return nil
+			},
+			ReadContext: func(_ context.Context, rd *schema.ResourceData, _ interface{}) diag.Diagnostics {
+				err := rd.Set("test", "test")
+				require.NoError(t, err)
+				err = rd.Set("out_val", "test2")
+				require.NoError(t, err)
+				return nil
+			},
+		},
+		"prov_aux": {
+			Schema: map[string]*schema.Schema{
+				"aux": {
+					Type:     schema.TypeString,
+					Optional: true,
+				},
+			},
+		},
+	}
+	bridgedProvider := pulcheck.BridgedProvider(t, "prov", resMap)
+	program1 := `
+name: test
+runtime: yaml
+resources:
+    mainRes:
+        type: prov:index:Test
+        properties:
+            test: "test"
+`
+	program2 := `
+name: test
+runtime: yaml
+resources:
+    mainRes:
+        type: prov:index:Test
+        properties:
+            test: "test"
+    auxRes:
+        type: prov:index:Aux
+        properties:
+            aux: ${mainRes.outVal}
+`
+	t.Run("one res", func(t *testing.T) {
+		pt := pulcheck.PulCheck(t, bridgedProvider, program1)
+		pt.Up()
+		res, err := pt.CurrentStack().Refresh(pt.Context(), optrefresh.ExpectNoChanges())
+		require.NoError(t, err)
+		t.Logf(res.StdOut)
+	})
+
+	t.Run("two res", func(t *testing.T) {
+		pt := pulcheck.PulCheck(t, bridgedProvider, program2)
+		pt.Up()
+		res, err := pt.CurrentStack().Refresh(pt.Context(), optrefresh.ExpectNoChanges())
+		require.NoError(t, err)
+		t.Logf(res.StdOut)
+	})
+}
