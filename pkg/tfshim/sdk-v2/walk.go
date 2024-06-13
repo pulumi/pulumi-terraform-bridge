@@ -2,6 +2,7 @@ package sdkv2
 
 import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2/internal/tf/configs/configschema"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/walk"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -44,21 +45,21 @@ func (b *blockSchemaContext) attribute(name string) schemaContext {
 	}
 	blk, isBlock := s.BlockTypes[name]
 	if isBlock {
-		switch int(blk.Nesting) {
-		case 1:
+		switch configschema.NestingMode(blk.Nesting) {
+		case configschema.NestingSingle:
 			// The only SDKv2- expressible blocks of NestingMode=Single seem to be the special "timeout"
 			// blocks that are not part of the user-defined schema. The code cannot panic on these but opts
 			// to silently skip processing.
 			return nil
-		case 2: // group
+		case configschema.NestingGroup:
 			contract.Failf("NestingMode=Group blocks not expressible with SDKv2: %v", blk.Nesting)
-		case 3, 4: // list, set
+		case configschema.NestingList, configschema.NestingSet: // list, set
 			x, ok := b.resource.SchemaMap()[name]
 			contract.Assertf(ok, "expected to find %q in SchemaMap()", name)
 			subr, ok := x.Elem.(*schema.Resource)
 			contract.Assertf(ok, "expected Elem() to be a *schema.Resource")
 			return &blockNestingSchemaContext{subr}
-		case 5: // map
+		case configschema.NestingMap: // map
 			contract.Failf("NestingMode={Map} blocks not expressible with SDKv2: %v", blk.Nesting)
 		default:
 			contract.Failf("invalid block type %v", blk.Nesting)
