@@ -529,38 +529,36 @@ func (p *Provider) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest)
 	validateShouldError := cmdutil.IsTruthy(os.Getenv("PULUMI_ERROR_CONFIG_TYPE_CHECKER"))
 	schemaMap := p.config
 	schemaInfos := p.info.GetConfig()
-	if p.pulumiSchema != nil {
-		if p.pulumiSchemaSpec != nil {
-			iv := NewInputValidator(urn, *p.pulumiSchemaSpec, true)
-			typeFailures := iv.ValidateConfig(news)
-			if len(typeFailures) > 0 {
-				logger.Warn("Type checking failed: ")
-				failures := []*pulumirpc.CheckFailure{}
-				for _, e := range typeFailures {
-					if validateShouldError {
-						pp := NewCheckFailurePath(schemaMap, schemaInfos, e.ResourcePath)
-						cf := NewCheckFailure(MiscFailure, e.Reason, &pp, urn, false, p.module, schemaMap, schemaInfos)
-						failures = append(failures, &pulumirpc.CheckFailure{
-							Property: string(cf.Property),
-							Reason:   cf.Reason,
-						})
-					} else {
-						logger.Warn(
-							fmt.Sprintf("Unexpected type at field %q: \n           %s", e.ResourcePath, e.Reason),
-						)
-					}
+	if p.pulumiSchemaSpec != nil {
+		iv := NewInputValidator(urn, *p.pulumiSchemaSpec, true)
+		typeFailures := iv.ValidateConfig(news)
+		if len(typeFailures) > 0 {
+			logger.Warn("Type checking failed: ")
+			failures := []*pulumirpc.CheckFailure{}
+			for _, e := range typeFailures {
+				if validateShouldError {
+					pp := NewCheckFailurePath(schemaMap, schemaInfos, e.ResourcePath)
+					cf := NewCheckFailure(MiscFailure, e.Reason, &pp, urn, false, p.module, schemaMap, schemaInfos)
+					failures = append(failures, &pulumirpc.CheckFailure{
+						Property: string(cf.Property),
+						Reason:   cf.Reason,
+					})
+				} else {
+					logger.Warn(
+						fmt.Sprintf("Unexpected type at field %q: \n           %s", e.ResourcePath, e.Reason),
+					)
 				}
-				if len(failures) > 0 {
-					return &pulumirpc.CheckResponse{
-						Failures: failures,
-					}, nil
-				}
-				logger.Warn("Type checking is still experimental. If you believe that a warning is incorrect,\n" +
-					"please let us know by creating an " +
-					"issue at https://github.com/pulumi/pulumi-terraform-bridge/issues.\n" +
-					"This will become a hard error in the future.",
-				)
 			}
+			if len(failures) > 0 {
+				return &pulumirpc.CheckResponse{
+					Failures: failures,
+				}, nil
+			}
+			logger.Warn("Type checking is still experimental. If you believe that a warning is incorrect,\n" +
+				"please let us know by creating an " +
+				"issue at https://github.com/pulumi/pulumi-terraform-bridge/issues.\n" +
+				"This will become a hard error in the future.",
+			)
 		}
 	}
 

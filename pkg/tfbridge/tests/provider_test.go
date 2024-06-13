@@ -685,7 +685,7 @@ func TestValidateConfig(t *testing.T) {
 		ResourcePrefix: "example",
 	}, newTestProviderOptions{})
 
-	t.Run("diff_panic", func(t *testing.T) {
+	t.Run("type_check_error", func(t *testing.T) {
 		t.Setenv("PULUMI_ERROR_CONFIG_TYPE_CHECKER", "true")
 		replay.ReplaySequence(t, p, `
 	[
