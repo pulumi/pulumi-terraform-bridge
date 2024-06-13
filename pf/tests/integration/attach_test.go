@@ -32,3 +32,13 @@ func TestAttach(t *testing.T) {
 		opttest.SkipInstall())
 	pt.Preview()
 }
+
+func TestAttachMuxed(t *testing.T) {
+	source := filepath.Join("..", "testdata", "muxedbasicprogram")
+	bin, err := filepath.Abs(filepath.Join("..", "bin"))
+	require.NoError(t, err)
+	pt := pulumitest.NewPulumiTest(t, source,
+		opttest.AttachProviderBinary("muxedrandom", bin),
+		opttest.SkipInstall())
+	pt.Preview()
+}
