@@ -231,6 +231,30 @@ func TestResourceEncoder(t *testing.T) {
 			//nolint:lll
 			expect: autogold.Expect(`tftypes.Object["foo":tftypes.String, "id":tftypes.String]<"foo":tftypes.String<"bar">, "id":tftypes.String<"myid">>`),
 		},
+		{
+			testName: "bedrockagent",
+			schema: &schema.SchemaMap{
+				"prompt_override_configuration": (&schema.Schema{
+					Type: shim.TypeList,
+					Elem: (&schema.Schema{
+						Type: shim.TypeMap,
+					}).Shim(),
+				}).Shim(),
+			},
+			info: nil,
+			typ: tftypes.Object{
+				AttributeTypes: map[string]tftypes.Type{
+					"prompt_override_configuration": tftypes.List{},
+				},
+			},
+			//val: resource.PropertyMap{
+			//	resource.PropertyKey("promptOverrideConfiguration"): resource.PropertyValue{
+			//		V: "bar",
+			//	},
+			//},
+			//nolint:lll
+			expect: autogold.Expect(""),
+		},
 	}
 
 	for _, tc := range testCases {
