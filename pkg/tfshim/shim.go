@@ -146,7 +146,6 @@ type SchemaMap interface {
 	Range(each func(key string, value Schema) bool)
 
 	Set(key string, value Schema)
-	Delete(key string)
 
 	Validate() error
 }
