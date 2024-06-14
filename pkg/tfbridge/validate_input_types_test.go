@@ -1663,6 +1663,7 @@ func TestValidateConfigType(t *testing.T) {
 		{
 			name:      "no_error_for_extra_inputs",
 			inputName: "doesnt_exist",
+			failures:  []TypeFailure{},
 			input: resource.NewArrayProperty([]resource.PropertyValue{
 				resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
 					"wxyz": "foo",
@@ -1718,16 +1719,7 @@ func TestValidateConfigType(t *testing.T) {
 			failures := v.ValidateConfig(resource.PropertyMap{
 				resource.PropertyKey(tc.inputName): tc.input,
 			})
-			if failures != nil && len(failures) != len(tc.failures) {
-				t.Fatalf("%d failures, got %d: %v", len(tc.failures), len(failures), failures)
-			}
-			if len(tc.failures) > 0 {
-				if failures == nil {
-					t.Fatalf("expected failures, got none")
-				} else {
-					assert.Equal(t, tc.failures, failures)
-				}
-			}
+			assert.Equal(t, tc.failures, failures)
 		})
 	}
 }

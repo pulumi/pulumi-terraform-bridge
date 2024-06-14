@@ -523,8 +523,8 @@ func (p *Provider) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest)
 		}
 	}
 
-	if err := p.typeCheckConfig(ctx, urn, news); err != nil {
-		return err, nil
+	if check := p.typeCheckConfig(ctx, urn, news); check != nil {
+		return check, nil
 	}
 
 	checkFailures := validateProviderConfig(ctx, urn, p, config)

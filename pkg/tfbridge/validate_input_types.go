@@ -57,10 +57,10 @@ func (v *PulumiInputValidator) validatePropertyMap(
 		objType, knownType := propertyTypes[string(objectKey)]
 		if !knownType {
 			if v.validateUnknownTypes {
-				return []TypeFailure{{
+				failures = append(failures, TypeFailure{
 					Reason:       fmt.Sprintf("an unexpected argument %q was provided", string(objectKey)),
 					ResourcePath: propertyPath.String(),
-				}}
+				})
 			}
 			// permit extraneous properties to flow through
 			continue
@@ -274,16 +274,11 @@ func (v *PulumiInputValidator) ValidateInputs(resourceToken tokens.Type, inputs 
 	if !knownResourceSpec {
 		return nil
 	}
-	failures := v.validatePropertyMap(
+	return v.validatePropertyMap(
 		inputs,
 		resourceSpec.InputProperties,
 		resource.PropertyPath{},
 	)
-	if len(failures) > 0 {
-		return failures
-	}
-
-	return nil
 }
 
 // ValidateConfig will validate the provider config against the pulumi schema. It will
@@ -297,14 +292,9 @@ func (v *PulumiInputValidator) ValidateConfig(inputs resource.PropertyMap) []Typ
 			inputsToValidate[k] = inputs[k]
 		}
 	}
-	failures := v.validatePropertyMap(
+	return v.validatePropertyMap(
 		inputsToValidate,
 		v.schema.Config.Variables,
 		resource.PropertyPath{},
 	)
-	if len(failures) > 0 {
-		return failures
-	}
-
-	return nil
 }
