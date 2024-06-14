@@ -145,8 +145,6 @@ type SchemaMap interface {
 	GetOk(key string) (Schema, bool)
 	Range(each func(key string, value Schema) bool)
 
-	Set(key string, value Schema)
-
 	Validate() error
 }
 

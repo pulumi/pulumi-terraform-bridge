@@ -1755,7 +1755,9 @@ func (b *tf12binder) resourceType(addr addrs.Resource,
 			token = string(resInfo.Tok)
 			schemaInfo.Fields = resInfo.Fields
 		}
-		schemas.TFRes = info.P.ResourcesMap().Get(addr.Type)
+		if r := info.P.ResourcesMap().Get(addr.Type); r != nil {
+			schemas.TFRes = r.Schema()
+		}
 		schemas.Pulumi = schemaInfo
 	} else {
 		schemaInfo := &tfbridge.SchemaInfo{}
@@ -1763,15 +1765,15 @@ func (b *tf12binder) resourceType(addr addrs.Resource,
 			token = string(dsInfo.Tok)
 			schemaInfo.Fields = dsInfo.Fields
 		}
-		schemas.TFRes = info.P.DataSourcesMap().Get(addr.Type)
+		if d := info.P.DataSourcesMap().Get(addr.Type); d != nil {
+			schemas.TFRes = d.Schema()
+		}
 		schemas.Pulumi = schemaInfo
 	}
 	if schemas.TFRes == nil {
-		schemas.TFRes = (&schema.Resource{Schema: schema.SchemaMap{}}).Shim()
+		schemas.TFRes = schema.SchemaMap{}
 	}
-	if _, ok := schemas.TFRes.Schema().GetOk("id"); !ok {
-		schemas.TFRes.Schema().Set("id", (&schema.Schema{Type: shim.TypeString, Computed: true}).Shim())
-	}
+	schemas.TFRes = il.EnsureSchemaMapID(schemas.TFRes)
 
 	return token, schemas, schemas.ModelType(), nil
 }
@@ -1798,9 +1800,7 @@ func (b *tf12binder) providerType(providerName string,
 		Pulumi: &tfbridge.SchemaInfo{
 			Fields: info.Config,
 		},
-		TFRes: (&schema.Resource{
-			Schema: info.P.Schema(),
-		}).Shim(),
+		TFRes: info.P.Schema(),
 	}
 	return tok, schemas, schemas.ModelType(), nil
 }
