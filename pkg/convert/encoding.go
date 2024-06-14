@@ -131,7 +131,7 @@ func newPropertyEncoder(
 ) (Encoder, error) {
 	enc, err := deriveEncoder(pctx, t)
 	if err != nil {
-		q.Q(name, err, "in encoding.go, we don't have an encoder. I have no idea what an encoder even does. Thanks, Anton!")
+		q.Q(name, err, "in encoding.go, and we don't have an encoder.")
 
 		return nil, fmt.Errorf("Cannot derive an encoder for property %q: %w", name, err)
 	}
