@@ -1,0 +1,747 @@
+{
+    "name": "alz",
+    "version": "0.11.1",
+    "description": "A Pulumi provider dynamically bridged from alz.",
+    "attribution": "This Pulumi package is based on the [`alz` Terraform Provider](https://github.com/terraform-providers/terraform-provider-alz).",
+    "meta": {
+        "moduleFormat": "(.*)(?:/[^/]*)"
+    },
+    "language": {
+        "go": {
+            "importBasePath": "github.com/pulumi/pulumi-alz/sdk/go/alz",
+            "liftSingleValueMethodReturns": true,
+            "generateExtraInputTypes": true,
+            "respectSchemaVersion": true
+        },
+        "nodejs": {
+            "packageDescription": "A Pulumi provider dynamically bridged from alz.",
+            "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-alz)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e first check the [`pulumi-alz` repo](/issues); however, if that doesn't turn up anything,\n\u003e please consult the source [`terraform-provider-alz` repo](https://github.com/terraform-providers/terraform-provider-alz/issues).",
+            "compatibility": "tfbridge20",
+            "disableUnionOutputTypes": true
+        },
+        "python": {
+            "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-alz)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e first check the [`pulumi-alz` repo](/issues); however, if that doesn't turn up anything,\n\u003e please consult the source [`terraform-provider-alz` repo](https://github.com/terraform-providers/terraform-provider-alz/issues).",
+            "compatibility": "tfbridge20",
+            "pyproject": {}
+        }
+    },
+    "config": {
+        "variables": {
+            "alzLibRef": {
+                "type": "string",
+                "description": "The reference (tag) in the ALZ library to use. Default is `platform/alz/2024.03.00`.\n"
+            },
+            "auxiliaryTenantIds": {
+                "type": "array",
+                "items": {
+                    "type": "string"
+                },
+                "description": "A list of auxiliary tenant ids which should be used. If not specified, value will be attempted to be read from the\n`ARM_AUXILIARY_TENANT_IDS` environment variable. When configuring from the environment, use a semicolon as a delimiter.\n"
+            },
+            "clientCertificatePassword": {
+                "type": "string",
+                "description": "The password associated with the client certificate. For use when authenticating as a service principal using a client\ncertificate. If not specified, value will be attempted to be read from the `ARM_CLIENT_CERTIFICATE_PASSWORD` environment\nvariable.\n",
+                "secret": true
+            },
+            "clientCertificatePath": {
+                "type": "string",
+                "description": "The path to the client certificate associated with the service principal for use when authenticating as a service\nprincipal using a client certificate. If not specified, value will be attempted to be read from the\n`ARM_CLIENT_CERTIFICATE_PATH` environment variable.\n"
+            },
+            "clientId": {
+                "type": "string",
+                "description": "The client id which should be used. For use when authenticating as a service principal. If not specified, value will be\nattempted to be read from the `ARM_CLIENT_ID` environment variable.\n"
+            },
+            "clientSecret": {
+                "type": "string",
+                "description": "The client secret which should be used. For use when authenticating as a service principal using a client secret. If not\nspecified, value will be attempted to be read from the `ARM_CLIENT_SECRET` environment variable.\n",
+                "secret": true
+            },
+            "environment": {
+                "type": "string",
+                "description": "The cloud environment which should be used. Possible values are `public`, `usgovernment` and `china`. Defaults to\n`public`. If not specified, value will be attempted to be read from the `ARM_ENVIRONMENT` environment variable.\n"
+            },
+            "libOverwriteEnabled": {
+                "type": "boolean",
+                "description": "Whether to allow overwriting of the library by other lib directories. Default is `false`.\n"
+            },
+            "libUrls": {
+                "type": "array",
+                "items": {
+                    "type": "string"
+                }
+            },
+            "oidcRequestToken": {
+                "type": "string",
+                "description": "The bearer token for the request to the OIDC provider. For use when authenticating using OpenID Connect. If not\nspecified, value will be attempted to be read from the first non-empty value of the `ARM_OIDC_REQUEST_TOKEN` and\n`ACTIONS_ID_TOKEN_REQUEST_TOKEN` environment variables.\n",
+                "secret": true
+            },
+            "oidcRequestUrl": {
+                "type": "string",
+                "description": "The URL for the OIDC provider from which to request an id token. For use when authenticating as a service principal\nusing OpenID Connect. If not specified, value will be attempted to be read from the first non-empty value of the\n`ARM_OIDC_REQUEST_URL` and `ACTIONS_ID_TOKEN_REQUEST_URL` environment variables.\n"
+            },
+            "oidcToken": {
+                "type": "string",
+                "description": "The OIDC id token for use when authenticating as a service principal using OpenID Connect. If not specified, value will\nbe attempted to be read from the `ARM_OIDC_TOKEN` environment variable.\n",
+                "secret": true
+            },
+            "oidcTokenFilePath": {
+                "type": "string",
+                "description": "The path to a file containing an OIDC id token for use when authenticating using OpenID Connect. If not specified, value\nwill be attempted to be read from the `ARM_OIDC_TOKEN_FILE_PATH` environment variable.\n"
+            },
+            "skipProviderRegistration": {
+                "type": "boolean",
+                "description": "Should the provider skip registering all of the resource providers that it supports, if they're not already registered?\nDefault is `false`. If not specified, value will be attempted to be read from the `ARM_SKIP_PROVIDER_REGISTRATION`\nenvironment variable.\n"
+            },
+            "tenantId": {
+                "type": "string",
+                "description": "The Tenant ID which should be used. If not specified, value will be attempted to be read from the `ARM_TENANT_ID`\nenvironment variable.\n"
+            },
+            "useAlzLib": {
+                "type": "boolean",
+                "description": "Use the default ALZ library to resolve archetypes. Default is `true`. The ALZ library is always used first, and then the\ndirectories or URLs specified in `lib_urls` are used in order.\n"
+            },
+            "useCli": {
+                "type": "boolean",
+                "description": "Allow Azure CLI to be used for authentication. Default is `true`. If not specified, value will be attempted to be read\nfrom the `ARM_USE_CLI` environment variable.\n"
+            },
+            "useMsi": {
+                "type": "boolean",
+                "description": "Allow managed service identity to be used for authentication. Default is `false`. If not specified, value will be\nattempted to be read from the `ARM_USE_MSI` environment variable.\n"
+            },
+            "useOidc": {
+                "type": "boolean",
+                "description": "Allow OpenID Connect to be used for authentication. Default is `false`. If not specified, value will be attempted to be\nread from the `ARM_USE_OIDC` environment variable.\n"
+            }
+        }
+    },
+    "types": {
+        "alz:index/PolicyRoleAssignmentsAssignments:PolicyRoleAssignmentsAssignments": {
+            "properties": {
+                "principalId": {
+                    "type": "string",
+                    "description": "The name of the policy assignment.\n"
+                },
+                "resourceId": {
+                    "type": "string",
+                    "description": "The resource ID of the role assignment.\n"
+                },
+                "roleDefinitionId": {
+                    "type": "string",
+                    "description": "The role definition ID of the policy assignment.\n"
+                },
+                "scope": {
+                    "type": "string",
+                    "description": "The scope of the policy assignment.\n"
+                }
+            },
+            "type": "object",
+            "required": [
+                "roleDefinitionId",
+                "scope"
+            ],
+            "language": {
+                "nodejs": {
+                    "requiredOutputs": [
+                        "resourceId",
+                        "roleDefinitionId",
+                        "scope"
+                    ]
+                }
+            }
+        },
+        "alz:index/getArchetypeAlzPolicyRoleAssignments:getArchetypeAlzPolicyRoleAssignments": {
+            "properties": {
+                "assignmentName": {
+                    "type": "string",
+                    "description": "The name of the policy assignment.\n"
+                },
+                "roleDefinitionId": {
+                    "type": "string",
+                    "description": "The role definition id to assign with the policy assignment.\n"
+                },
+                "scope": {
+                    "type": "string",
+                    "description": "The scope to assign with the policy assignment.\n"
+                }
+            },
+            "type": "object",
+            "required": [
+                "assignmentName",
+                "roleDefinitionId",
+                "scope"
+            ],
+            "language": {
+                "nodejs": {
+                    "requiredInputs": []
+                }
+            }
+        },
+        "alz:index/getArchetypeDefaults:getArchetypeDefaults": {
+            "properties": {
+                "location": {
+                    "type": "string",
+                    "description": "Default location\n"
+                },
+                "logAnalyticsWorkspaceId": {
+                    "type": "string",
+                    "description": "Default Log Analytics workspace id\n"
+                },
+                "privateDnsZoneResourceGroupId": {
+                    "type": "string",
+                    "description": "Resource group resource id containing private DNS zones. Used in the Deploy-Private-DNS-Zones assignment.\n"
+                }
+            },
+            "type": "object",
+            "required": [
+                "location"
+            ]
+        },
+        "alz:index/getArchetypePolicyAssignmentsToModify:getArchetypePolicyAssignmentsToModify": {
+            "properties": {
+                "enforcementMode": {
+                    "type": "string",
+                    "description": "The enforcement mode of the policy assignment. Must be one of `Default`, or `DoNotEnforce`.\n"
+                },
+                "identity": {
+                    "type": "string",
+                    "description": "The identity type. Must be one of `SystemAssigned` or `UserAssigned`.\n"
+                },
+                "identityIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "A list of zero or one identity ids to assign to the policy assignment. Required if `identity` is `UserAssigned`.\n"
+                },
+                "nonComplianceMessages": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/types/alz:index/getArchetypePolicyAssignmentsToModifyNonComplianceMessage:getArchetypePolicyAssignmentsToModifyNonComplianceMessage"
+                    },
+                    "description": "The non-compliance messages to use for the policy assignment.\n"
+                },
+                "overrides": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/types/alz:index/getArchetypePolicyAssignmentsToModifyOverride:getArchetypePolicyAssignmentsToModifyOverride"
+                    },
+                    "description": "The overrides for this policy assignment. There are a maximum of 10 overrides allowed per assignment. If specified here the overrides will replace the existing overrides.The overrides are processed in the order they are specified.\n"
+                },
+                "parameters": {
+                    "type": "string",
+                    "description": "The parameters to use for the policy assignment. **Note:** This is a JSON string, and not a map. This is because the parameter values have different types, which confuses the type system used by the provider sdk. Use `jsonencode()` to construct the map. The map keys must be strings, the values are `any` type. Example: `jsonencode({\"param1\": \"value1\", \"param2\": 2})`\n"
+                },
+                "resourceSelectors": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/types/alz:index/getArchetypePolicyAssignmentsToModifyResourceSelector:getArchetypePolicyAssignmentsToModifyResourceSelector"
+                    },
+                    "description": "The resource selectors to use for the policy assignment. A maximum of 10 resource selectors are allowed per assignment. If specified here the resource selectors will replace the existing resource selectors.\n"
+                }
+            },
+            "type": "object"
+        },
+        "alz:index/getArchetypePolicyAssignmentsToModifyNonComplianceMessage:getArchetypePolicyAssignmentsToModifyNonComplianceMessage": {
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "description": "The non-compliance message.\n"
+                },
+                "policyDefinitionReferenceId": {
+                    "type": "string",
+                    "description": "The policy definition reference id (not the resource id) to use for the non compliance message. This references the definition within the policy set.\n"
+                }
+            },
+            "type": "object",
+            "required": [
+                "message"
+            ]
+        },
+        "alz:index/getArchetypePolicyAssignmentsToModifyOverride:getArchetypePolicyAssignmentsToModifyOverride": {
+            "properties": {
+                "kind": {
+                    "type": "string",
+                    "description": "The property the assignment will override. The supported kind is `policyEffect`.\n"
+                },
+                "selectors": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/types/alz:index/getArchetypePolicyAssignmentsToModifyOverrideSelector:getArchetypePolicyAssignmentsToModifyOverrideSelector"
+                    },
+                    "description": "The selectors to use for the override.\n"
+                },
+                "value": {
+                    "type": "string",
+                    "description": "The new value which will override the existing value. The supported values are: `addToNetworkGroup`, `append`, `audit`, `auditIfNotExists`, `deny`, `denyAction`, `deployIfNotExists`, `disabled`, `manual`, `modify`, `mutate`.\n\n\u003chttps://learn.microsoft.com/azure/governance/policy/concepts/effects\u003e\n"
+                }
+            },
+            "type": "object",
+            "required": [
+                "kind",
+                "value"
+            ]
+        },
+        "alz:index/getArchetypePolicyAssignmentsToModifyOverrideSelector:getArchetypePolicyAssignmentsToModifyOverrideSelector": {
+            "properties": {
+                "ins": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "The list of values that the selector will match. The values are the policy definition reference ids. Conflicts with `not_in`.\n"
+                },
+                "kind": {
+                    "type": "string",
+                    "description": "The property of a selector that describes what characteristic will narrow down the scope of the override. Allowed value for kind: `policyEffect` is: `policyDefinitionReferenceId`.\n"
+                },
+                "notIns": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "The list of values that the selector will not match. The values are the policy definition reference ids. Conflicts with `in`.\n"
+                }
+            },
+            "type": "object",
+            "required": [
+                "kind"
+            ]
+        },
+        "alz:index/getArchetypePolicyAssignmentsToModifyResourceSelector:getArchetypePolicyAssignmentsToModifyResourceSelector": {
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "The name of the resource selector. The name must be unique within the assignment.\n"
+                },
+                "selectors": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/types/alz:index/getArchetypePolicyAssignmentsToModifyResourceSelectorSelector:getArchetypePolicyAssignmentsToModifyResourceSelectorSelector"
+                    },
+                    "description": "The selectors to use for the resource selector.\n"
+                }
+            },
+            "type": "object",
+            "required": [
+                "name"
+            ]
+        },
+        "alz:index/getArchetypePolicyAssignmentsToModifyResourceSelectorSelector:getArchetypePolicyAssignmentsToModifyResourceSelectorSelector": {
+            "properties": {
+                "ins": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "The list of values that the selector will match. Conflicts with `not_in`.\n"
+                },
+                "kind": {
+                    "type": "string",
+                    "description": "The property of a selector that describes what characteristic will narrow down the set of evaluated resources. Each kind can only be used once in a single resource selector. Allowed values are: `resourceLocation`, `resourceType`, `resourceWithoutLocation`. `resourceWithoutLocation` cannot be used in the same resource selector as `resourceLocation`.\n"
+                },
+                "notIns": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "The list of values that the selector will not match. Conflicts with `in`.\n"
+                }
+            },
+            "type": "object",
+            "required": [
+                "kind"
+            ]
+        },
+        "alz:index/getArchetypeTimeouts:getArchetypeTimeouts": {
+            "properties": {
+                "read": {
+                    "type": "string",
+                    "description": "A string that can be [parsed as a duration](https://pkg.go.dev/time#ParseDuration) consisting of numbers and unit suffixes, such as \"30s\" or \"2h45m\". Valid time units are \"s\" (seconds), \"m\" (minutes), \"h\" (hours). Read operations occur during any refresh or planning operation when refresh is enabled.\n"
+                }
+            },
+            "type": "object"
+        }
+    },
+    "provider": {
+        "description": "The provider type for the alz package. By default, resources use package-wide configuration\nsettings, however an explicit `Provider` instance may be created and passed during resource\nconstruction to achieve fine-grained programmatic control over provider settings. See the\n[documentation](https://www.pulumi.com/docs/reference/programming-model/#providers) for more information.\n",
+        "properties": {
+            "alzLibRef": {
+                "type": "string",
+                "description": "The reference (tag) in the ALZ library to use. Default is `platform/alz/2024.03.00`.\n"
+            },
+            "auxiliaryTenantIds": {
+                "type": "array",
+                "items": {
+                    "type": "string"
+                },
+                "description": "A list of auxiliary tenant ids which should be used. If not specified, value will be attempted to be read from the\n`ARM_AUXILIARY_TENANT_IDS` environment variable. When configuring from the environment, use a semicolon as a delimiter.\n"
+            },
+            "clientCertificatePassword": {
+                "type": "string",
+                "description": "The password associated with the client certificate. For use when authenticating as a service principal using a client\ncertificate. If not specified, value will be attempted to be read from the `ARM_CLIENT_CERTIFICATE_PASSWORD` environment\nvariable.\n",
+                "secret": true
+            },
+            "clientCertificatePath": {
+                "type": "string",
+                "description": "The path to the client certificate associated with the service principal for use when authenticating as a service\nprincipal using a client certificate. If not specified, value will be attempted to be read from the\n`ARM_CLIENT_CERTIFICATE_PATH` environment variable.\n"
+            },
+            "clientId": {
+                "type": "string",
+                "description": "The client id which should be used. For use when authenticating as a service principal. If not specified, value will be\nattempted to be read from the `ARM_CLIENT_ID` environment variable.\n"
+            },
+            "clientSecret": {
+                "type": "string",
+                "description": "The client secret which should be used. For use when authenticating as a service principal using a client secret. If not\nspecified, value will be attempted to be read from the `ARM_CLIENT_SECRET` environment variable.\n",
+                "secret": true
+            },
+            "environment": {
+                "type": "string",
+                "description": "The cloud environment which should be used. Possible values are `public`, `usgovernment` and `china`. Defaults to\n`public`. If not specified, value will be attempted to be read from the `ARM_ENVIRONMENT` environment variable.\n"
+            },
+            "libOverwriteEnabled": {
+                "type": "boolean",
+                "description": "Whether to allow overwriting of the library by other lib directories. Default is `false`.\n"
+            },
+            "libUrls": {
+                "type": "array",
+                "items": {
+                    "type": "string"
+                }
+            },
+            "oidcRequestToken": {
+                "type": "string",
+                "description": "The bearer token for the request to the OIDC provider. For use when authenticating using OpenID Connect. If not\nspecified, value will be attempted to be read from the first non-empty value of the `ARM_OIDC_REQUEST_TOKEN` and\n`ACTIONS_ID_TOKEN_REQUEST_TOKEN` environment variables.\n",
+                "secret": true
+            },
+            "oidcRequestUrl": {
+                "type": "string",
+                "description": "The URL for the OIDC provider from which to request an id token. For use when authenticating as a service principal\nusing OpenID Connect. If not specified, value will be attempted to be read from the first non-empty value of the\n`ARM_OIDC_REQUEST_URL` and `ACTIONS_ID_TOKEN_REQUEST_URL` environment variables.\n"
+            },
+            "oidcToken": {
+                "type": "string",
+                "description": "The OIDC id token for use when authenticating as a service principal using OpenID Connect. If not specified, value will\nbe attempted to be read from the `ARM_OIDC_TOKEN` environment variable.\n",
+                "secret": true
+            },
+            "oidcTokenFilePath": {
+                "type": "string",
+                "description": "The path to a file containing an OIDC id token for use when authenticating using OpenID Connect. If not specified, value\nwill be attempted to be read from the `ARM_OIDC_TOKEN_FILE_PATH` environment variable.\n"
+            },
+            "skipProviderRegistration": {
+                "type": "boolean",
+                "description": "Should the provider skip registering all of the resource providers that it supports, if they're not already registered?\nDefault is `false`. If not specified, value will be attempted to be read from the `ARM_SKIP_PROVIDER_REGISTRATION`\nenvironment variable.\n"
+            },
+            "tenantId": {
+                "type": "string",
+                "description": "The Tenant ID which should be used. If not specified, value will be attempted to be read from the `ARM_TENANT_ID`\nenvironment variable.\n"
+            },
+            "useAlzLib": {
+                "type": "boolean",
+                "description": "Use the default ALZ library to resolve archetypes. Default is `true`. The ALZ library is always used first, and then the\ndirectories or URLs specified in `lib_urls` are used in order.\n"
+            },
+            "useCli": {
+                "type": "boolean",
+                "description": "Allow Azure CLI to be used for authentication. Default is `true`. If not specified, value will be attempted to be read\nfrom the `ARM_USE_CLI` environment variable.\n"
+            },
+            "useMsi": {
+                "type": "boolean",
+                "description": "Allow managed service identity to be used for authentication. Default is `false`. If not specified, value will be\nattempted to be read from the `ARM_USE_MSI` environment variable.\n"
+            },
+            "useOidc": {
+                "type": "boolean",
+                "description": "Allow OpenID Connect to be used for authentication. Default is `false`. If not specified, value will be attempted to be\nread from the `ARM_USE_OIDC` environment variable.\n"
+            }
+        },
+        "inputProperties": {
+            "alzLibRef": {
+                "type": "string",
+                "description": "The reference (tag) in the ALZ library to use. Default is `platform/alz/2024.03.00`.\n"
+            },
+            "auxiliaryTenantIds": {
+                "type": "array",
+                "items": {
+                    "type": "string"
+                },
+                "description": "A list of auxiliary tenant ids which should be used. If not specified, value will be attempted to be read from the\n`ARM_AUXILIARY_TENANT_IDS` environment variable. When configuring from the environment, use a semicolon as a delimiter.\n"
+            },
+            "clientCertificatePassword": {
+                "type": "string",
+                "description": "The password associated with the client certificate. For use when authenticating as a service principal using a client\ncertificate. If not specified, value will be attempted to be read from the `ARM_CLIENT_CERTIFICATE_PASSWORD` environment\nvariable.\n",
+                "secret": true
+            },
+            "clientCertificatePath": {
+                "type": "string",
+                "description": "The path to the client certificate associated with the service principal for use when authenticating as a service\nprincipal using a client certificate. If not specified, value will be attempted to be read from the\n`ARM_CLIENT_CERTIFICATE_PATH` environment variable.\n"
+            },
+            "clientId": {
+                "type": "string",
+                "description": "The client id which should be used. For use when authenticating as a service principal. If not specified, value will be\nattempted to be read from the `ARM_CLIENT_ID` environment variable.\n"
+            },
+            "clientSecret": {
+                "type": "string",
+                "description": "The client secret which should be used. For use when authenticating as a service principal using a client secret. If not\nspecified, value will be attempted to be read from the `ARM_CLIENT_SECRET` environment variable.\n",
+                "secret": true
+            },
+            "environment": {
+                "type": "string",
+                "description": "The cloud environment which should be used. Possible values are `public`, `usgovernment` and `china`. Defaults to\n`public`. If not specified, value will be attempted to be read from the `ARM_ENVIRONMENT` environment variable.\n"
+            },
+            "libOverwriteEnabled": {
+                "type": "boolean",
+                "description": "Whether to allow overwriting of the library by other lib directories. Default is `false`.\n"
+            },
+            "libUrls": {
+                "type": "array",
+                "items": {
+                    "type": "string"
+                }
+            },
+            "oidcRequestToken": {
+                "type": "string",
+                "description": "The bearer token for the request to the OIDC provider. For use when authenticating using OpenID Connect. If not\nspecified, value will be attempted to be read from the first non-empty value of the `ARM_OIDC_REQUEST_TOKEN` and\n`ACTIONS_ID_TOKEN_REQUEST_TOKEN` environment variables.\n",
+                "secret": true
+            },
+            "oidcRequestUrl": {
+                "type": "string",
+                "description": "The URL for the OIDC provider from which to request an id token. For use when authenticating as a service principal\nusing OpenID Connect. If not specified, value will be attempted to be read from the first non-empty value of the\n`ARM_OIDC_REQUEST_URL` and `ACTIONS_ID_TOKEN_REQUEST_URL` environment variables.\n"
+            },
+            "oidcToken": {
+                "type": "string",
+                "description": "The OIDC id token for use when authenticating as a service principal using OpenID Connect. If not specified, value will\nbe attempted to be read from the `ARM_OIDC_TOKEN` environment variable.\n",
+                "secret": true
+            },
+            "oidcTokenFilePath": {
+                "type": "string",
+                "description": "The path to a file containing an OIDC id token for use when authenticating using OpenID Connect. If not specified, value\nwill be attempted to be read from the `ARM_OIDC_TOKEN_FILE_PATH` environment variable.\n"
+            },
+            "skipProviderRegistration": {
+                "type": "boolean",
+                "description": "Should the provider skip registering all of the resource providers that it supports, if they're not already registered?\nDefault is `false`. If not specified, value will be attempted to be read from the `ARM_SKIP_PROVIDER_REGISTRATION`\nenvironment variable.\n"
+            },
+            "tenantId": {
+                "type": "string",
+                "description": "The Tenant ID which should be used. If not specified, value will be attempted to be read from the `ARM_TENANT_ID`\nenvironment variable.\n"
+            },
+            "useAlzLib": {
+                "type": "boolean",
+                "description": "Use the default ALZ library to resolve archetypes. Default is `true`. The ALZ library is always used first, and then the\ndirectories or URLs specified in `lib_urls` are used in order.\n"
+            },
+            "useCli": {
+                "type": "boolean",
+                "description": "Allow Azure CLI to be used for authentication. Default is `true`. If not specified, value will be attempted to be read\nfrom the `ARM_USE_CLI` environment variable.\n"
+            },
+            "useMsi": {
+                "type": "boolean",
+                "description": "Allow managed service identity to be used for authentication. Default is `false`. If not specified, value will be\nattempted to be read from the `ARM_USE_MSI` environment variable.\n"
+            },
+            "useOidc": {
+                "type": "boolean",
+                "description": "Allow OpenID Connect to be used for authentication. Default is `false`. If not specified, value will be attempted to be\nread from the `ARM_USE_OIDC` environment variable.\n"
+            }
+        }
+    },
+    "resources": {
+        "alz:index/policyRoleAssignments:PolicyRoleAssignments": {
+            "properties": {
+                "assignments": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/types/alz:index/PolicyRoleAssignmentsAssignments:PolicyRoleAssignmentsAssignments"
+                    }
+                }
+            },
+            "required": [
+                "assignments"
+            ],
+            "inputProperties": {
+                "assignments": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/types/alz:index/PolicyRoleAssignmentsAssignments:PolicyRoleAssignmentsAssignments"
+                    }
+                }
+            },
+            "requiredInputs": [
+                "assignments"
+            ],
+            "stateInputs": {
+                "description": "Input properties used for looking up and filtering PolicyRoleAssignments resources.\n",
+                "properties": {
+                    "assignments": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "$ref": "#/types/alz:index/PolicyRoleAssignmentsAssignments:PolicyRoleAssignmentsAssignments"
+                        }
+                    }
+                },
+                "type": "object"
+            }
+        }
+    },
+    "functions": {
+        "alz:index/getArchetype:getArchetype": {
+            "inputs": {
+                "description": "A collection of arguments for invoking getArchetype.\n",
+                "properties": {
+                    "baseArchetype": {
+                        "type": "string"
+                    },
+                    "defaults": {
+                        "$ref": "#/types/alz:index/getArchetypeDefaults:getArchetypeDefaults"
+                    },
+                    "displayName": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "parentId": {
+                        "type": "string"
+                    },
+                    "policyAssignmentsToModify": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "$ref": "#/types/alz:index/getArchetypePolicyAssignmentsToModify:getArchetypePolicyAssignmentsToModify"
+                        }
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "baseArchetype",
+                    "defaults",
+                    "id",
+                    "parentId"
+                ]
+            },
+            "outputs": {
+                "description": "A collection of values returned by getArchetype.\n",
+                "properties": {
+                    "alzPolicyAssignments": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    },
+                    "alzPolicyDefinitions": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    },
+                    "alzPolicyRoleAssignments": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "$ref": "#/types/alz:index/getArchetypeAlzPolicyRoleAssignments:getArchetypeAlzPolicyRoleAssignments"
+                        }
+                    },
+                    "alzPolicySetDefinitions": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    },
+                    "alzRoleDefinitions": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    },
+                    "baseArchetype": {
+                        "type": "string"
+                    },
+                    "defaults": {
+                        "$ref": "#/types/alz:index/getArchetypeDefaults:getArchetypeDefaults"
+                    },
+                    "displayName": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "parentId": {
+                        "type": "string"
+                    },
+                    "policyAssignmentsToModify": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "$ref": "#/types/alz:index/getArchetypePolicyAssignmentsToModify:getArchetypePolicyAssignmentsToModify"
+                        }
+                    },
+                    "timeouts": {
+                        "$ref": "#/types/alz:index/getArchetypeTimeouts:getArchetypeTimeouts"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "alzPolicyAssignments",
+                    "alzPolicyDefinitions",
+                    "alzPolicyRoleAssignments",
+                    "alzPolicySetDefinitions",
+                    "alzRoleDefinitions",
+                    "baseArchetype",
+                    "defaults",
+                    "id",
+                    "parentId",
+                    "timeouts"
+                ]
+            }
+        },
+        "alz:index/getArchetypeKeys:getArchetypeKeys": {
+            "inputs": {
+                "description": "A collection of arguments for invoking getArchetypeKeys.\n",
+                "properties": {
+                    "baseArchetype": {
+                        "type": "string"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "baseArchetype"
+                ]
+            },
+            "outputs": {
+                "description": "A collection of values returned by getArchetypeKeys.\n",
+                "properties": {
+                    "alzPolicyAssignmentKeys": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "alzPolicyDefinitionKeys": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "alzPolicySetDefinitionKeys": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "alzRoleDefinitionKeys": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "baseArchetype": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "alzPolicyAssignmentKeys",
+                    "alzPolicyDefinitionKeys",
+                    "alzPolicySetDefinitionKeys",
+                    "alzRoleDefinitionKeys",
+                    "baseArchetype",
+                    "id"
+                ]
+            }
+        }
+    }
+}
