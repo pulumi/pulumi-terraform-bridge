@@ -284,27 +284,18 @@ func (r *ResourceNode) Dependencies() []Node {
 func (r *ResourceNode) Schemas() Schemas {
 	switch {
 	case r.Provider == nil || r.Provider.Info == nil:
-		return Schemas{
-			TFRes: (&schema.Resource{
-				Schema: schema.SchemaMap{
-					"id": (&schema.Schema{Type: shim.TypeString}).Shim(),
-				},
-			}).Shim(),
-		}
+		return Schemas{TFRes: EnsureSchemaMapID(schema.SchemaMap{})}
 	case !r.IsDataSource:
 		schemaInfo := &tfbridge.SchemaInfo{}
 		if resInfo, ok := r.Provider.Info.Resources[r.Type]; ok {
 			schemaInfo.Fields = resInfo.Fields
 		}
-		tf := r.Provider.Info.P.ResourcesMap().Get(r.Type)
-		if tf == nil {
-			tf = (&schema.Resource{Schema: schema.SchemaMap{}}).Shim()
-		}
-		if _, ok := tf.Schema().GetOk("id"); !ok {
-			tf.Schema().Set("id", (&schema.Schema{Type: shim.TypeString, Computed: true}).Shim())
+		var tf shim.SchemaMap = schema.SchemaMap{}
+		if s := r.Provider.Info.P.ResourcesMap().Get(r.Type); s != nil {
+			tf = s.Schema()
 		}
 		return Schemas{
-			TFRes:  tf,
+			TFRes:  EnsureSchemaMapID(tf),
 			Pulumi: schemaInfo,
 		}
 	default:
@@ -312,15 +303,13 @@ func (r *ResourceNode) Schemas() Schemas {
 		if dsInfo, ok := r.Provider.Info.DataSources[r.Type]; ok {
 			schemaInfo.Fields = dsInfo.Fields
 		}
-		tf := r.Provider.Info.P.DataSourcesMap().Get(r.Type)
-		if tf == nil {
-			tf = (&schema.Resource{Schema: schema.SchemaMap{}}).Shim()
+		var tf shim.SchemaMap = schema.SchemaMap{}
+		if d := r.Provider.Info.P.DataSourcesMap().Get(r.Type); d != nil {
+			tf = d.Schema()
 		}
-		if _, ok := tf.Schema().GetOk("id"); !ok {
-			tf.Schema().Set("id", (&schema.Schema{Type: shim.TypeString, Computed: true}).Shim())
-		}
+
 		return Schemas{
-			TFRes:  tf,
+			TFRes:  EnsureSchemaMapID(tf),
 			Pulumi: schemaInfo,
 		}
 	}
@@ -702,12 +691,12 @@ func buildIgnoreChanges(tfIgnoreChanges []string, schemas Schemas) []string {
 			}
 
 			ignoreChanges = ignoreChanges[:0]
-			schemas.TFRes.Schema().Range(func(k string, v shim.Schema) bool {
+			schemas.TFRes.Range(func(k string, v shim.Schema) bool {
 				if k == "id" {
 					return true
 				}
 
-				propName := tfbridge.TerraformToPulumiNameV2(k, schemas.TFRes.Schema(), schemas.Pulumi.Fields)
+				propName := tfbridge.TerraformToPulumiNameV2(k, schemas.TFRes, schemas.Pulumi.Fields)
 				ignoreChanges = append(ignoreChanges, propName)
 				return true
 			})
@@ -722,10 +711,10 @@ func buildIgnoreChanges(tfIgnoreChanges []string, schemas Schemas) []string {
 		for i, element := range elements {
 			// For the last element, we only need a prefix match. Take care of that here.
 			if i == len(elements)-1 && elemSchemas.TFRes != nil {
-				elemSchemas.TFRes.Schema().Range(func(k string, v shim.Schema) bool {
+				elemSchemas.TFRes.Range(func(k string, v shim.Schema) bool {
 					if strings.HasPrefix(k, element) {
 						elementKey := tfbridge.TerraformToPulumiNameV2(k,
-							elemSchemas.TFRes.Schema(), schemas.Pulumi.Fields)
+							elemSchemas.TFRes, schemas.Pulumi.Fields)
 						if path == "" {
 							ignoreChanges = append(ignoreChanges, elementKey)
 						} else {

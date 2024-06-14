@@ -21,6 +21,7 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 )
 
 // Schemas bundles a property's Terraform and Pulumi schema information into a single type. This information is then
@@ -30,7 +31,7 @@ import (
 // TF and TFRes form a union, TF will be set for properties. TFRes will be set for resources.
 type Schemas struct {
 	TF     shim.Schema
-	TFRes  shim.Resource
+	TFRes  shim.SchemaMap
 	Pulumi *tfbridge.SchemaInfo
 }
 
@@ -43,13 +44,13 @@ func (s Schemas) PropertySchemas(key string) Schemas {
 		return s.ElemSchemas()
 	}
 
-	if s.TFRes != nil && s.TFRes.Schema() != nil {
-		propSch.TF = s.TFRes.Schema().Get(key)
+	if s.TFRes != nil {
+		propSch.TF = s.TFRes.Get(key)
 	}
 
 	if propSch.TF != nil {
-		if propResource, ok := propSch.TF.Elem().(shim.Resource); ok {
-			propSch.TFRes = propResource
+		if propResource, ok := propSch.TF.Elem().(shim.Resource); ok && propResource != nil {
+			propSch.TFRes = propResource.Schema()
 		}
 	}
 
@@ -69,7 +70,9 @@ func (s Schemas) ElemSchemas() Schemas {
 		case shim.Schema:
 			elemSch.TF = e
 		case shim.Resource:
-			elemSch.TFRes = e
+			if e != nil {
+				elemSch.TFRes = e.Schema()
+			}
 		}
 	}
 
@@ -127,7 +130,7 @@ func (s Schemas) ModelType() model.Type {
 
 	if s.TFRes != nil {
 		properties := map[string]model.Type{}
-		s.TFRes.Schema().Range(func(prop string, _ shim.Schema) bool {
+		s.TFRes.Range(func(prop string, _ shim.Schema) bool {
 			properties[prop] = s.PropertySchemas(prop).ModelType()
 			return true
 		})
@@ -135,4 +138,51 @@ func (s Schemas) ModelType() model.Type {
 	}
 
 	return model.DynamicType
+}
+
+// EnsureSchemaMapID ensures that m has an "id" field, adding one if it is not found.
+func EnsureSchemaMapID(m shim.SchemaMap) shim.SchemaMap {
+	if _, ok := m.GetOk("id"); ok {
+		return m
+	}
+	return schemaMapExtension{
+		SchemaMap: m,
+		key:       "id",
+		value: schema.Schema{
+			Type:     shim.TypeString,
+			Computed: true,
+		},
+	}
+}
+
+// schemaMapExtension extends its embedded SchemaMap with one additional field.
+type schemaMapExtension struct {
+	shim.SchemaMap
+	key   string
+	value schema.Schema
+}
+
+func (m schemaMapExtension) Len() int {
+	return m.SchemaMap.Len() + 1
+}
+
+func (m schemaMapExtension) Get(key string) shim.Schema {
+	if key == m.key {
+		return m.value.Shim()
+	}
+	return m.SchemaMap.Get(key)
+}
+
+func (m schemaMapExtension) GetOk(key string) (shim.Schema, bool) {
+	if key == m.key {
+		return m.value.Shim(), true
+	}
+	return m.SchemaMap.GetOk(key)
+}
+
+func (m schemaMapExtension) Range(each func(key string, value shim.Schema) bool) {
+	if !each(m.key, m.value.Shim()) {
+		return
+	}
+	m.SchemaMap.Range(each)
 }
