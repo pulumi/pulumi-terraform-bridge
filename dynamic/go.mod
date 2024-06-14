@@ -20,7 +20,7 @@ require (
 	github.com/opentofu/opentofu/shim v0.0.0-00010101000000-000000000000
 	github.com/pulumi/pulumi-terraform-bridge/pf v0.0.0-00010101000000-000000000000
 	github.com/pulumi/pulumi-terraform-bridge/v3 v3.84.0
-	github.com/pulumi/pulumi/sdk/v3 v3.119.0
+	github.com/pulumi/pulumi/sdk/v3 v3.120.0
 	github.com/stretchr/testify v1.9.0
 )
 
@@ -201,7 +201,7 @@ require (
 	github.com/pulumi/pulumi-java/pkg v0.11.0 // indirect
 	github.com/pulumi/pulumi-terraform-bridge/x/muxer v0.0.8 // indirect
 	github.com/pulumi/pulumi-yaml v1.8.0 // indirect
-	github.com/pulumi/pulumi/pkg/v3 v3.119.0 // indirect
+	github.com/pulumi/pulumi/pkg/v3 v3.120.0 // indirect
 	github.com/pulumi/schema-tools v0.1.2 // indirect
 	github.com/rivo/uniseg v0.4.4 // indirect
 	github.com/rogpeppe/go-internal v1.12.0 // indirect

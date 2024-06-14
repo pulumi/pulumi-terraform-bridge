@@ -20,9 +20,13 @@ import (
 	"fmt"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 )
 
-func (p *provider) GetMappingWithContext(ctx context.Context, key, provider string) ([]byte, string, error) {
+func (p *provider) GetMapping(
+	ctx context.Context,
+	req plugin.GetMappingRequest,
+) (plugin.GetMappingResponse, error) {
 	// Code and comments follow Provider.GetMapping in pkg/tfbridge/provider.go
 
 	mapped := p.info.ResourcePrefix
@@ -32,23 +36,27 @@ func (p *provider) GetMappingWithContext(ctx context.Context, key, provider stri
 
 	// The prototype converter uses the key "tf", but the new plugin converter uses "terraform". For now support
 	// both, eventually we can remove the "tf" key.
-	if key == "tf" || key == "terraform" {
+	if req.Key == "tf" || req.Key == "terraform" {
 
 		// The provider key should either be empty (old engines) or the name of the provider we support (new engines)
-		if provider != "" && provider != mapped {
-			return nil, "", fmt.Errorf("unknown provider %q", provider)
+		if req.Provider != "" && req.Provider != mapped {
+			return plugin.GetMappingResponse{}, fmt.Errorf("unknown provider %q", req.Provider)
 		}
 
 		info := p.marshalProviderInfo(ctx)
 		mapping, err := json.Marshal(info)
 		if err != nil {
-			return nil, "", err
+			return plugin.GetMappingResponse{}, err
 		}
-		return mapping, mapped, nil
+
+		return plugin.GetMappingResponse{
+			Data:     mapping,
+			Provider: mapped,
+		}, nil
 	}
 
 	// An empty response is valid for GetMapping, it means we don't have a mapping for the given key
-	return []byte{}, "", nil
+	return plugin.GetMappingResponse{}, nil
 }
 
 func (p *provider) marshalProviderInfo(ctx context.Context) *tfbridge.MarshallableProviderInfo {
@@ -57,15 +65,19 @@ func (p *provider) marshalProviderInfo(ctx context.Context) *tfbridge.Marshallab
 	return tfbridge.MarshalProviderInfo(&providerInfoCopy)
 }
 
-func (p *provider) GetMappingsWithContext(ctx context.Context, key string) ([]string, error) {
+func (p *provider) GetMappings(
+	ctx context.Context,
+	req plugin.GetMappingsRequest,
+) (plugin.GetMappingsResponse, error) {
 	// Code and comments follow Provider.GetMapping in pkg/tfbridge/provider.go
-	if key == "tf" || key == "terraform" {
+	if req.Key == "tf" || req.Key == "terraform" {
 		mapped := p.info.ResourcePrefix
 		if mapped == "" {
 			mapped = p.info.Name
 		}
-		return []string{mapped}, nil
+
+		return plugin.GetMappingsResponse{Keys: []string{mapped}}, nil
 	}
 	// An empty response is valid for GetMappings, it means we don't have a mapping for the given key
-	return nil, nil
+	return plugin.GetMappingsResponse{}, nil
 }

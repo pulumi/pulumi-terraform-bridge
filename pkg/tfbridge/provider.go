@@ -722,7 +722,25 @@ func DiffConfig(
 		schemaMap:   config,
 		schemaInfos: configInfos,
 	}
-	return differ.DiffConfig
+
+	diff := func(
+		urn resource.URN, oldInputs, oldOutputs, newInputs resource.PropertyMap,
+		allowUnknowns bool, ignoreChanges []string,
+	) (plugin.DiffResult, error) {
+		return differ.DiffConfig(
+			context.TODO(),
+			plugin.DiffConfigRequest{
+				URN:           urn,
+				OldInputs:     oldInputs,
+				OldOutputs:    oldOutputs,
+				NewInputs:     newInputs,
+				AllowUnknowns: allowUnknowns,
+				IgnoreChanges: ignoreChanges,
+			},
+		)
+	}
+
+	return diff
 }
 
 type configDiffer struct {
@@ -746,21 +764,21 @@ func (p *configDiffer) forcesProviderReplace(path resource.PropertyPath) bool {
 }
 
 func (p *configDiffer) DiffConfig(
-	urn resource.URN, oldInputs, oldOutputs, newInputs resource.PropertyMap,
-	allowUnknowns bool, ignoreChanges []string,
+	ctx context.Context,
+	req plugin.DiffConfigRequest,
 ) (plugin.DiffResult, error) {
-	contract.Assertf(allowUnknowns, "Expected allowUnknowns to always be true for DiffConfig")
+	contract.Assertf(req.AllowUnknowns, "Expected allowUnknowns to always be true for DiffConfig")
 
 	// Seems that DiffIncludeUnknowns only accepts func (PropertyKey) bool to support ignoring
 	// changes which is awkward for recursive changes, would be better if it supported
 	// func(PropertyPath) bool. Instead of doing this, support IgnoreChanges by copying old
 	// values to new values to disable the diff.
-	newInputsIC, err := propertyvalue.ApplyIgnoreChanges(oldInputs, newInputs, ignoreChanges)
+	newInputsIC, err := propertyvalue.ApplyIgnoreChanges(req.OldInputs, req.NewInputs, req.IgnoreChanges)
 	if err != nil {
 		return plugin.DiffResult{}, fmt.Errorf("Error applying ignoreChanges: %v", err)
 	}
 
-	objDiff := oldInputs.DiffIncludeUnknowns(newInputsIC)
+	objDiff := req.OldInputs.DiffIncludeUnknowns(newInputsIC)
 	inputDiff := true
 	detailedDiff := plugin.NewDetailedDiffFromObjectDiff(objDiff, inputDiff)
 
@@ -772,7 +790,7 @@ func (p *configDiffer) DiffConfig(
 			// NOTE: for states provisioned on the older versions of Pulumi CLI oldInputs will have no entry
 			// for the changing property. Causing cascading replacements in this case is undesirable, since
 			// it is not a real change. Err on the side of not replacing (pulumi/pulumi-aws#3826).
-			if _, ok := keyPath.Get(resource.NewObjectProperty(oldInputs)); !ok {
+			if _, ok := keyPath.Get(resource.NewObjectProperty(req.OldInputs)); !ok {
 				continue
 			}
 			detailedDiff[key] = change.ToReplace()

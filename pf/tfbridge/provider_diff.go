@@ -37,51 +37,47 @@ import (
 //	    proposedNewState = priorState.applyChanges(checkedInputs)
 //	    plannedState = PlanResourceChange(priorState, proposedNewState)
 //	    priorState.Diff(plannedState)
-func (p *provider) DiffWithContext(
+func (p *provider) Diff(
 	ctx context.Context,
-	urn resource.URN,
-	id resource.ID,
-	priorStateMap resource.PropertyMap,
-	checkedInputs resource.PropertyMap,
-	allowUnknowns bool,
-	ignoreChanges []string,
-) (plugin.DiffResult, error) {
-	ctx = p.initLogging(ctx, p.logSink, urn)
-	rh, err := p.resourceHandle(ctx, urn)
+	req plugin.DiffRequest,
+) (plugin.DiffResponse, error) {
+	ctx = p.initLogging(ctx, p.logSink, req.URN)
+	rh, err := p.resourceHandle(ctx, req.URN)
 	if err != nil {
-		return plugin.DiffResult{}, err
+		return plugin.DiffResponse{}, err
 	}
 
-	priorStateMap, err = transformFromState(ctx, rh, priorStateMap)
+	priorStateMap, err := transformFromState(ctx, rh, req.OldOutputs)
 	if err != nil {
-		return plugin.DiffResult{}, err
+		return plugin.DiffResponse{}, err
 	}
 
-	checkedInputs, err = propertyvalue.ApplyIgnoreChanges(priorStateMap, checkedInputs, ignoreChanges)
+	checkedInputs, err := propertyvalue.ApplyIgnoreChanges(
+		priorStateMap, req.NewInputs, req.IgnoreChanges)
 	if err != nil {
-		return plugin.DiffResult{}, fmt.Errorf("failed to apply ignore changes: %w", err)
+		return plugin.DiffResponse{}, fmt.Errorf("failed to apply ignore changes: %w", err)
 	}
 
 	rawPriorState, err := parseResourceState(&rh, priorStateMap)
 	if err != nil {
-		return plugin.DiffResult{}, err
+		return plugin.DiffResponse{}, err
 	}
 
 	priorState, err := p.UpgradeResourceState(ctx, &rh, rawPriorState)
 	if err != nil {
-		return plugin.DiffResult{}, err
+		return plugin.DiffResponse{}, err
 	}
 
 	tfType := rh.schema.Type(ctx).(tftypes.Object)
 
 	checkedInputsValue, err := convert.EncodePropertyMap(rh.encoder, checkedInputs)
 	if err != nil {
-		return plugin.DiffResult{}, err
+		return plugin.DiffResponse{}, err
 	}
 
 	planResp, err := p.plan(ctx, rh.terraformResourceName, rh.schema, priorState, checkedInputsValue)
 	if err != nil {
-		return plugin.DiffResult{}, err
+		return plugin.DiffResponse{}, err
 	}
 
 	// NOTE: this currently ignores planRep.PlanedPrivate but it is unclear if it should signal differences between
@@ -90,18 +86,18 @@ func (p *provider) DiffWithContext(
 	// to surface private state differences to the user from the Diff method.
 
 	if err := p.processDiagnostics(planResp.Diagnostics); err != nil {
-		return plugin.DiffResult{}, err
+		return plugin.DiffResponse{}, err
 	}
 
 	// TODO[pulumi/pulumi-terraform-bridge#751] ignoreChanges support
 	plannedStateValue, err := planResp.PlannedState.Unmarshal(tfType)
 	if err != nil {
-		return plugin.DiffResult{}, err
+		return plugin.DiffResponse{}, err
 	}
 
 	tfDiff, err := priorState.state.Value.Diff(plannedStateValue)
 	if err != nil {
-		return plugin.DiffResult{}, err
+		return plugin.DiffResponse{}, err
 	}
 
 	resSchemaMap := rh.schemaOnlyShimResource.Schema()
@@ -123,7 +119,7 @@ func (p *provider) DiffWithContext(
 		changes = plugin.DiffSome
 	}
 
-	diffResult := plugin.DiffResult{
+	diffResult := plugin.DiffResponse{
 		Changes:             changes,
 		ReplaceKeys:         replaceKeys,
 		ChangedKeys:         changedKeys,

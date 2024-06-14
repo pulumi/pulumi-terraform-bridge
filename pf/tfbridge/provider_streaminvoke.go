@@ -17,13 +17,12 @@ package tfbridge
 import (
 	"context"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
-func (p *provider) StreamInvokeWithContext(_ context.Context,
-	tok tokens.ModuleMember, args resource.PropertyMap,
-	onNext func(resource.PropertyMap) error) ([]plugin.CheckFailure, error) {
+func (p *provider) StreamInvoke(
+	context.Context,
+	plugin.StreamInvokeRequest,
+) (plugin.StreamInvokeResponse, error) {
 	panic("StreamInvoke() should not be called for bridged providers")
 }

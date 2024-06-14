@@ -22,66 +22,62 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/convert"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/propertyvalue"
 )
 
 // Update updates an existing resource with new values.
-func (p *provider) UpdateWithContext(
+func (p *provider) Update(
 	ctx context.Context,
-	urn resource.URN,
-	id resource.ID,
-	priorStateMap resource.PropertyMap,
-	checkedInputs resource.PropertyMap,
-	timeout float64,
-	ignoreChanges []string,
-	preview bool,
-) (resource.PropertyMap, resource.Status, error) {
-	ctx = p.initLogging(ctx, p.logSink, urn)
+	req plugin.UpdateRequest,
+) (plugin.UpdateResponse, error) {
+	ctx = p.initLogging(ctx, p.logSink, req.URN)
 
-	rh, err := p.resourceHandle(ctx, urn)
+	rh, err := p.resourceHandle(ctx, req.URN)
 	if err != nil {
-		return nil, 0, err
+		return plugin.UpdateResponse{}, err
 	}
 
-	priorStateMap, err = transformFromState(ctx, rh, priorStateMap)
+	priorStateMap, err := transformFromState(ctx, rh, req.OldOutputs)
 	if err != nil {
-		return nil, 0, err
+		return plugin.UpdateResponse{}, err
 	}
 
-	checkedInputs, err = propertyvalue.ApplyIgnoreChanges(priorStateMap, checkedInputs, ignoreChanges)
+	checkedInputs, err := propertyvalue.ApplyIgnoreChanges(
+		priorStateMap, req.NewInputs, req.IgnoreChanges)
 	if err != nil {
-		return nil, 0, fmt.Errorf("failed to apply ignore changes: %w", err)
+		return plugin.UpdateResponse{}, fmt.Errorf("failed to apply ignore changes: %w", err)
 	}
 
 	tfType := rh.schema.Type(ctx).(tftypes.Object)
 
 	rawPriorState, err := parseResourceState(&rh, priorStateMap)
 	if err != nil {
-		return nil, 0, err
+		return plugin.UpdateResponse{}, err
 	}
 
 	priorState, err := p.UpgradeResourceState(ctx, &rh, rawPriorState)
 	if err != nil {
-		return nil, 0, err
+		return plugin.UpdateResponse{}, err
 	}
 
 	checkedInputsValue, err := convert.EncodePropertyMap(rh.encoder, checkedInputs)
 	if err != nil {
-		return nil, 0, err
+		return plugin.UpdateResponse{}, err
 	}
 
 	planResp, err := p.plan(ctx, rh.terraformResourceName, rh.schema, priorState, checkedInputsValue)
 	if err != nil {
-		return nil, 0, err
+		return plugin.UpdateResponse{}, err
 	}
 
-	if preview {
+	if req.Preview {
 		plannedStatePropertyMap, err := convert.DecodePropertyMapFromDynamic(ctx,
 			rh.decoder, tfType, planResp.PlannedState)
 		if err != nil {
-			return nil, 0, err
+			return plugin.UpdateResponse{}, err
 		}
 
 		if rh.pulumiResourceInfo.TransformOutputs != nil {
@@ -89,19 +85,22 @@ func (p *provider) UpdateWithContext(
 			plannedStatePropertyMap, err = rh.pulumiResourceInfo.TransformOutputs(ctx,
 				plannedStatePropertyMap)
 			if err != nil {
-				return nil, 0, err
+				return plugin.UpdateResponse{}, err
 			}
 		}
 
-		return plannedStatePropertyMap, resource.StatusOK, nil
+		return plugin.UpdateResponse{
+			Properties: plannedStatePropertyMap,
+			Status:     resource.StatusOK,
+		}, nil
 	}
 
 	priorStateDV, checkedInputsDV, err := makeDynamicValues2(priorState.state.Value, checkedInputsValue)
 	if err != nil {
-		return nil, 0, err
+		return plugin.UpdateResponse{}, err
 	}
 
-	req := tfprotov6.ApplyResourceChangeRequest{
+	tfReq := tfprotov6.ApplyResourceChangeRequest{
 		TypeName:       rh.terraformResourceName,
 		Config:         &checkedInputsDV,
 		PriorState:     &priorStateDV,
@@ -109,32 +108,35 @@ func (p *provider) UpdateWithContext(
 		PlannedPrivate: planResp.PlannedPrivate,
 	}
 
-	resp, err := p.tfServer.ApplyResourceChange(ctx, &req)
+	resp, err := p.tfServer.ApplyResourceChange(ctx, &tfReq)
 	if err != nil {
-		return nil, 0, err
+		return plugin.UpdateResponse{}, err
 	}
 
 	if err := p.processDiagnostics(resp.Diagnostics); err != nil {
-		return nil, 0, err
+		return plugin.UpdateResponse{}, err
 	}
 
 	updatedState, err := parseResourceStateFromTF(ctx, &rh, resp.NewState, resp.Private)
 	if err != nil {
-		return nil, 0, err
+		return plugin.UpdateResponse{}, err
 	}
 
 	updatedStateMap, err := updatedState.ToPropertyMap(ctx, &rh)
 	if err != nil {
-		return nil, 0, err
+		return plugin.UpdateResponse{}, err
 	}
 
 	if rh.pulumiResourceInfo.TransformOutputs != nil {
 		var err error
 		updatedStateMap, err = rh.pulumiResourceInfo.TransformOutputs(ctx, updatedStateMap)
 		if err != nil {
-			return nil, 0, err
+			return plugin.UpdateResponse{}, err
 		}
 	}
 
-	return updatedStateMap, resource.StatusOK, nil
+	return plugin.UpdateResponse{
+		Properties: updatedStateMap,
+		Status:     resource.StatusOK,
+	}, nil
 }
