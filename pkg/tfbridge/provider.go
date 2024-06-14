@@ -523,6 +523,39 @@ func (p *Provider) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest)
 		}
 	}
 
+	if err := p.typeCheckConfig(ctx, urn, news); err != nil {
+		return err, nil
+	}
+
+	checkFailures := validateProviderConfig(ctx, urn, p, config)
+	if len(checkFailures) > 0 {
+		return &pulumirpc.CheckResponse{
+			Failures: checkFailures,
+		}, nil
+	}
+
+	// Ensure properties marked secret in the schema have secret values.
+	secretNews := MarkSchemaSecrets(ctx, p.config, p.info.Config, resource.NewObjectProperty(news)).ObjectValue()
+
+	// In case news was modified by pre-configure callbacks, marshal it again to send out the modified value.
+	newsStruct, err := configEnc.MarshalProperties(secretNews)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pulumirpc.CheckResponse{
+		Inputs: newsStruct,
+	}, nil
+}
+
+func (p *Provider) typeCheckConfig(
+	ctx context.Context,
+	urn resource.URN,
+	news resource.PropertyMap,
+) *pulumirpc.CheckResponse {
+	span, _ := opentracing.StartSpanFromContext(ctx, "sdkv2.typeCheckConfig")
+	defer span.Finish()
+
 	logger := GetLogger(ctx)
 	// for now we are just going to log warnings if there are failures.
 	// over time we may want to turn these into actual errors
@@ -552,7 +585,7 @@ func (p *Provider) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest)
 			if len(failures) > 0 {
 				return &pulumirpc.CheckResponse{
 					Failures: failures,
-				}, nil
+				}
 			}
 			logger.Warn("Type checking is still experimental. If you believe that a warning is incorrect,\n" +
 				"please let us know by creating an " +
@@ -561,26 +594,7 @@ func (p *Provider) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest)
 			)
 		}
 	}
-
-	checkFailures := validateProviderConfig(ctx, urn, p, config)
-	if len(checkFailures) > 0 {
-		return &pulumirpc.CheckResponse{
-			Failures: checkFailures,
-		}, nil
-	}
-
-	// Ensure properties marked secret in the schema have secret values.
-	secretNews := MarkSchemaSecrets(ctx, p.config, p.info.Config, resource.NewObjectProperty(news)).ObjectValue()
-
-	// In case news was modified by pre-configure callbacks, marshal it again to send out the modified value.
-	newsStruct, err := configEnc.MarshalProperties(secretNews)
-	if err != nil {
-		return nil, err
-	}
-
-	return &pulumirpc.CheckResponse{
-		Inputs: newsStruct,
-	}, nil
+	return nil
 }
 
 func (p *Provider) preConfigureCallback(
