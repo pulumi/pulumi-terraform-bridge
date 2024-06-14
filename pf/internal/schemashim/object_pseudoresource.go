@@ -160,14 +160,6 @@ func (r *objectPseudoResource) Range(each func(key string, value shim.Schema) bo
 	}
 }
 
-func (*objectPseudoResource) Set(key string, value shim.Schema) {
-	panic("Set not supported - is it possible to treat this as immutable?")
-}
-
-func (*objectPseudoResource) Delete(key string) {
-	panic("Delete not supported - is it possible to treat this as immutable?")
-}
-
 type tuplePseudoResource struct {
 	schemaOnly
 	attrs map[string]pfutils.Attr
@@ -238,14 +230,6 @@ func (r *tuplePseudoResource) Range(each func(key string, value shim.Schema) boo
 			break
 		}
 	}
-}
-
-func (*tuplePseudoResource) Set(key string, value shim.Schema) {
-	panic("Set not supported - is it possible to treat this as immutable?")
-}
-
-func (*tuplePseudoResource) Delete(key string) {
-	panic("Delete not supported - is it possible to treat this as immutable?")
 }
 
 type schemaOnly struct{ typ string }

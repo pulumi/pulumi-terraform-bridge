@@ -177,11 +177,3 @@ func (m v2SchemaMap) Range(each func(key string, value shim.Schema) bool) {
 		}
 	}
 }
-
-func (m v2SchemaMap) Set(key string, value shim.Schema) {
-	m[key] = value.(v2Schema).tf
-}
-
-func (m v2SchemaMap) Delete(key string) {
-	delete(m, key)
-}

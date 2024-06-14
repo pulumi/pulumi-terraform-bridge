@@ -1140,7 +1140,7 @@ func (g *Generator) gatherConfig() *module {
 	extraConfigMap := schema.SchemaMap{}
 	for key, val := range g.info.ExtraConfig {
 		extraConfigInfo[key] = val.Info
-		extraConfigMap.Set(key, val.Schema)
+		extraConfigMap[key] = val.Schema
 	}
 	for key := range g.info.ExtraConfig {
 		if prop := g.propertyVariable(cfgPath,
