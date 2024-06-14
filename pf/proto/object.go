@@ -65,14 +65,4 @@ func (m attrMap) Range(each func(key string, value shim.Schema) bool) {
 	}
 }
 
-func (m attrMap) Set(key string, value shim.Schema) {
-	v, ok := value.(attribute)
-	contract.Assertf(ok, "Must set an %T, found %T", v, value)
-	m[key] = &v.attr
-}
-
-func (m attrMap) Delete(key string) {
-	delete(m, key)
-}
-
 func (m attrMap) Validate() error { return nil }

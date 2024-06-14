@@ -16,7 +16,6 @@ package proto
 
 import (
 	"fmt"
-	"slices"
 
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 
@@ -82,30 +81,6 @@ func (m blockMap) Range(each func(key string, value shim.Schema) bool) {
 			return
 		}
 	}
-}
-
-func (m blockMap) Set(key string, value shim.Schema) {
-	switch v := value.(type) {
-	case attribute:
-		v.attr.Name = key
-		m.block.Attributes = append([]*tfprotov6.SchemaAttribute{&v.attr}, m.block.Attributes...)
-	case blockSchema:
-		v.block.TypeName = key
-		m.block.BlockTypes = append([]*tfprotov6.SchemaNestedBlock{&v.block}, m.block.BlockTypes...)
-	default:
-		contract.Failf("Must set an %T, found %T", v, value)
-	}
-}
-
-func (m blockMap) Delete(key string) {
-	// Because blocks are attributes are disjoint, we can just attempt to delete from
-	// both.
-	m.block.Attributes = slices.DeleteFunc(m.block.Attributes, func(a *tfprotov6.SchemaAttribute) bool {
-		return a.Name == key
-	})
-	m.block.BlockTypes = slices.DeleteFunc(m.block.BlockTypes, func(b *tfprotov6.SchemaNestedBlock) bool {
-		return b.TypeName == key
-	})
 }
 
 func (m blockMap) Validate() error { return nil }

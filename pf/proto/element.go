@@ -19,8 +19,6 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
@@ -123,20 +121,6 @@ func (m elementObjectMap) Range(each func(key string, value shim.Schema) bool) {
 			return
 		}
 	}
-}
-
-func (m elementObjectMap) Set(key string, value shim.Schema) {
-	v, ok := value.(element)
-	contract.Assertf(ok, "Must set an %T, found %T", v, value)
-	m.AttributeTypes[key] = v.typ
-	if v.optional {
-		m.OptionalAttributes[key] = struct{}{}
-	}
-}
-
-func (m elementObjectMap) Delete(key string) {
-	delete(m.AttributeTypes, key)
-	delete(m.OptionalAttributes, key)
 }
 
 func (m elementObjectMap) Validate() error { return nil }
