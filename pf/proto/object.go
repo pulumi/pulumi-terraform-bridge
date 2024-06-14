@@ -32,6 +32,8 @@ type object struct {
 }
 
 func (o object) Schema() shim.SchemaMap {
+	contract.Assertf(o.obj.Nesting != tfprotov6.SchemaObjectNestingModeMap,
+		"%T cannot be a map, since that would require `o` to represent a Map<Object> type", o)
 	attrMap := attrMap{}
 	for _, v := range o.obj.Attributes {
 		attrMap[v.Name] = v

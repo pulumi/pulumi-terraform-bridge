@@ -18,6 +18,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 var _ = shim.Schema(attribute{})
@@ -39,13 +41,46 @@ func (a attribute) Deprecated() string  { return deprecated(a.attr.Deprecated) }
 
 func (a attribute) MaxItems() int { return 0 }
 func (a attribute) MinItems() int { return 0 }
-func (a attribute) Type() shim.ValueType {
-	return element{typ: a.attr.ValueType()}.Type()
-}
+
+func (a attribute) Type() shim.ValueType { return element{typ: a.attr.ValueType()}.Type() }
 
 func (a attribute) Elem() interface{} {
 	if a.attr.NestedType != nil {
-		return object{obj: *a.attr.NestedType}
+		obj := *a.attr.NestedType
+
+		// How obj.NestedType.Nesting should be handled isn't obvious.
+		//
+		// The case analysis goes:
+		//
+		// [tfprotov6.SchemaObjectNestingModeSingle]: `a` represents an Object, so it's `.Type()`
+		// should be [shim.TypeMap] and it's `.Elem()` should implement [shim.Resource]. This is
+		// correctly handled by `.Type()` and [object] implements [shim.Resource].
+		//
+		// [tfprotov6.SchemaObjectNestingModeList] or [tfprotov6.SchemaObjectNestingModeSet]: `a`
+		// represents a List<Object>, so it's `.Type()` should be [shim.TypeList] and it's `.Elem()`
+		// should implement [shim.Resource]. This is correctly handled by `.Type()` and [object]
+		// implements [shim.Resource].
+		//
+		// [tfprotov6.SchemaObjectNestingModeMap]: `a` represents a Map<Object>, so it's `.Type()`
+		// should be [shim.TypeMap] and it's `.Elem()` should be a [shim.Schema] whose `.Type()` is
+		// [shim.TypeMap] and whose `.Elem()` is a [shim.Resource].
+
+		switch obj.Nesting {
+		case tfprotov6.SchemaObjectNestingModeMap:
+			// We are careful to only assign to variables on [attribute.Elem]'s stack. We *do not*
+			// mutate the caller.
+			obj.Nesting = tfprotov6.SchemaObjectNestingModeSingle
+			a.attr.NestedType = &obj
+			return a
+		case tfprotov6.SchemaObjectNestingModeSingle,
+			tfprotov6.SchemaObjectNestingModeList,
+			tfprotov6.SchemaObjectNestingModeSet:
+			return object{obj: obj}
+		case tfprotov6.SchemaObjectNestingModeInvalid:
+			fallthrough
+		default:
+			contract.Failf("Invalid attribute nesting: %s", a.attr.NestedType.Nesting)
+		}
 	}
 	return element{a.attr.ValueType(), a.Optional()}.Elem()
 

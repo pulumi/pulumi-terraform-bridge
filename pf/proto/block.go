@@ -127,14 +127,16 @@ func (m blockSchema) Type() shim.ValueType {
 }
 
 func (m blockSchema) Elem() interface{} {
-	// If the type of m = { nesting, block } is a list, then m represents List<block>.
-	if m.Type() == shim.TypeList {
+	// for a detailed case analysis of the logic here, see [attribute.Elem].
+	switch m.block.Nesting {
+	// m represents a Map<Object>, so return a [shim.Schema].
+	case tfprotov6.SchemaNestedBlockNestingModeMap:
+		contract.Assertf(m.Type() == shim.TypeMap, "this must be a map")
 		m.block.Nesting = tfprotov6.SchemaNestedBlockNestingModeSingle
 		return blockSchema{m.block}
+	default:
+		return blockResource{block: m.block.Block}
 	}
-
-	// Otherwise m = { nesting, block } represents a block.
-	return blockResource{block: m.block.Block}
 }
 
 func (m blockSchema) Optional() bool                      { return false }

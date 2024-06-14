@@ -543,7 +543,10 @@
         "alz:index/policyRoleAssignments:PolicyRoleAssignments": {
             "properties": {
                 "assignments": {
-                    "$ref": "#/types/alz:index/PolicyRoleAssignmentsAssignments:PolicyRoleAssignmentsAssignments"
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/types/alz:index/PolicyRoleAssignmentsAssignments:PolicyRoleAssignmentsAssignments"
+                    }
                 }
             },
             "required": [
@@ -551,7 +554,10 @@
             ],
             "inputProperties": {
                 "assignments": {
-                    "$ref": "#/types/alz:index/PolicyRoleAssignmentsAssignments:PolicyRoleAssignmentsAssignments"
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/types/alz:index/PolicyRoleAssignmentsAssignments:PolicyRoleAssignmentsAssignments"
+                    }
                 }
             },
             "requiredInputs": [
@@ -561,7 +567,10 @@
                 "description": "Input properties used for looking up and filtering PolicyRoleAssignments resources.\n",
                 "properties": {
                     "assignments": {
-                        "$ref": "#/types/alz:index/PolicyRoleAssignmentsAssignments:PolicyRoleAssignmentsAssignments"
+                        "type": "object",
+                        "additionalProperties": {
+                            "$ref": "#/types/alz:index/PolicyRoleAssignmentsAssignments:PolicyRoleAssignmentsAssignments"
+                        }
                     }
                 },
                 "type": "object"
@@ -589,7 +598,10 @@
                         "type": "string"
                     },
                     "policyAssignmentsToModify": {
-                        "$ref": "#/types/alz:index/getArchetypePolicyAssignmentsToModify:getArchetypePolicyAssignmentsToModify"
+                        "type": "object",
+                        "additionalProperties": {
+                            "$ref": "#/types/alz:index/getArchetypePolicyAssignmentsToModify:getArchetypePolicyAssignmentsToModify"
+                        }
                     }
                 },
                 "type": "object",
@@ -616,7 +628,10 @@
                         }
                     },
                     "alzPolicyRoleAssignments": {
-                        "$ref": "#/types/alz:index/getArchetypeAlzPolicyRoleAssignments:getArchetypeAlzPolicyRoleAssignments"
+                        "type": "object",
+                        "additionalProperties": {
+                            "$ref": "#/types/alz:index/getArchetypeAlzPolicyRoleAssignments:getArchetypeAlzPolicyRoleAssignments"
+                        }
                     },
                     "alzPolicySetDefinitions": {
                         "type": "object",
@@ -646,7 +661,10 @@
                         "type": "string"
                     },
                     "policyAssignmentsToModify": {
-                        "$ref": "#/types/alz:index/getArchetypePolicyAssignmentsToModify:getArchetypePolicyAssignmentsToModify"
+                        "type": "object",
+                        "additionalProperties": {
+                            "$ref": "#/types/alz:index/getArchetypePolicyAssignmentsToModify:getArchetypePolicyAssignmentsToModify"
+                        }
                     },
                     "timeouts": {
                         "$ref": "#/types/alz:index/getArchetypeTimeouts:getArchetypeTimeouts"
