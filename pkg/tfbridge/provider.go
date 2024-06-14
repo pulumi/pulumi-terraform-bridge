@@ -523,6 +523,10 @@ func (p *Provider) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest)
 		}
 	}
 
+	if check := p.typeCheckConfig(ctx, urn, news); check != nil {
+		return check, nil
+	}
+
 	checkFailures := validateProviderConfig(ctx, urn, p, config)
 	if len(checkFailures) > 0 {
 		return &pulumirpc.CheckResponse{
@@ -542,6 +546,55 @@ func (p *Provider) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest)
 	return &pulumirpc.CheckResponse{
 		Inputs: newsStruct,
 	}, nil
+}
+
+func (p *Provider) typeCheckConfig(
+	ctx context.Context,
+	urn resource.URN,
+	news resource.PropertyMap,
+) *pulumirpc.CheckResponse {
+	span, _ := opentracing.StartSpanFromContext(ctx, "sdkv2.typeCheckConfig")
+	defer span.Finish()
+
+	logger := GetLogger(ctx)
+	// for now we are just going to log warnings if there are failures.
+	// over time we may want to turn these into actual errors
+	validateShouldError := cmdutil.IsTruthy(os.Getenv("PULUMI_ERROR_CONFIG_TYPE_CHECKER"))
+	schemaMap := p.config
+	schemaInfos := p.info.GetConfig()
+	if p.pulumiSchemaSpec != nil {
+		iv := NewInputValidator(urn, *p.pulumiSchemaSpec, true)
+		typeFailures := iv.ValidateConfig(news)
+		if len(typeFailures) > 0 {
+			logger.Warn("Type checking failed: ")
+			failures := []*pulumirpc.CheckFailure{}
+			for _, e := range typeFailures {
+				if validateShouldError {
+					pp := NewCheckFailurePath(schemaMap, schemaInfos, e.ResourcePath)
+					cf := NewCheckFailure(MiscFailure, e.Reason, &pp, urn, false, p.module, schemaMap, schemaInfos)
+					failures = append(failures, &pulumirpc.CheckFailure{
+						Property: string(cf.Property),
+						Reason:   cf.Reason,
+					})
+				} else {
+					logger.Warn(
+						fmt.Sprintf("Unexpected type at field %q: \n           %s", e.ResourcePath, e.Reason),
+					)
+				}
+			}
+			if len(failures) > 0 {
+				return &pulumirpc.CheckResponse{
+					Failures: failures,
+				}
+			}
+			logger.Warn("Type checking is still experimental. If you believe that a warning is incorrect,\n" +
+				"please let us know by creating an " +
+				"issue at https://github.com/pulumi/pulumi-terraform-bridge/issues.\n" +
+				"This will become a hard error in the future.",
+			)
+		}
+	}
+	return nil
 }
 
 func (p *Provider) preConfigureCallback(
@@ -841,7 +894,7 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 	if p.pulumiSchema != nil {
 		schema := p.pulumiSchemaSpec
 		if schema != nil {
-			iv := NewInputValidator(urn, *schema)
+			iv := NewInputValidator(urn, *schema, false)
 			typeFailures := iv.ValidateInputs(t, news)
 			if len(typeFailures) > 0 {
 				p.hasTypeErrors[urn] = struct{}{}
