@@ -47,6 +47,9 @@ import (
 const (
 	startPulumiCodeChooser = "<!--Start PulumiCodeChooser -->"
 	endPulumiCodeChooser   = "<!--End PulumiCodeChooser -->"
+
+	// The Hugo front matter delimiter
+	delimiter = "---\n"
 )
 
 // argumentDocs contains the documentation metadata for an argument of the resource.
@@ -145,6 +148,8 @@ const (
 	ResourceDocs DocKind = "resources"
 	// DataSourceDocs indicates documentation pertaining to data source entities.
 	DataSourceDocs DocKind = "data-sources"
+	// InstallationDocs indicates documentation pertaining to provider configuration and installation.
+	InstallationDocs DocKind = "installation"
 )
 
 func (k DocKind) String() string {
@@ -1415,7 +1420,6 @@ func (g *Generator) convertExamples(docs string, path examplePath) string {
 			strings.TrimRightFunc(docs[:exampleIndex], unicode.IsSpace),
 			docs[exampleIndex:])
 	}
-
 	if cliConverterEnabled() {
 		return g.cliConverter().StartConvertingExamples(docs, path)
 	}
@@ -1567,7 +1571,6 @@ func (g *Generator) convertExamplesInner(
 					}
 					langs := genLanguageToSlice(g.language)
 					convertedBlock, err := convertHCL(e, hcl, path.String(), langs)
-
 					if err != nil {
 						// We do not write this section, ever.
 						//
@@ -1949,7 +1952,7 @@ func genLanguageToSlice(input Language) []string {
 		return []string{convert.LanguageGo}
 	case PCL:
 		return []string{convert.LanguagePulumi}
-	case Schema:
+	case Schema, RegistryDocs:
 		return []string{
 			convert.LanguageTypescript,
 			convert.LanguagePython,
@@ -2265,4 +2268,48 @@ var (
 
 func guessIsHCL(code string) bool {
 	return guessIsHCLPattern.MatchString(code)
+}
+
+func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
+	// Get file content without front matter, and split title
+	contentStr, title := getBodyAndTitle(string(docFile.Content))
+	// Add pulumi-specific front matter
+	contentStr = writeFrontMatter(title) + contentStr
+
+	//TODO: See https://github.com/pulumi/pulumi-terraform-bridge/issues/2078
+	// - translate code blocks with code choosers
+	// - apply default edit rules
+	// - reformat TF names
+	// - Translation for certain headers such as "Arguments Reference" or "Configuration block"
+	// - Ability to omit irrelevant sections
+	return []byte(contentStr), nil
+}
+
+func writeFrontMatter(title string) string {
+	return fmt.Sprintf(delimiter+
+		"title: %s Installation & Configuration\n"+
+		"meta_desc: Provides an overview on how to configure the Pulumi %s.\n"+
+		"layout: package\n"+
+		delimiter,
+		title, title)
+}
+
+func writeIndexFrontMatter(displayName string) string {
+	return fmt.Sprintf(delimiter+
+		"title: %s\n"+
+		"meta_desc: The %s provider for Pulumi can be used to provision any of the cloud resources available in %s.\n"+
+		"layout: package\n"+
+		delimiter,
+		displayName, displayName, displayName)
+}
+
+func getBodyAndTitle(content string) (string, string) {
+	// The first header in `index.md` is the package name, of the format `# Foo Provider`.
+	titleIndex := strings.Index(content, "# ")
+	// Get the location fo the next newline
+	nextNewLine := strings.Index(content[titleIndex:], "\n") + titleIndex
+	// Get the title line, without the h1 anchor
+	title := content[titleIndex+2 : nextNewLine]
+	// strip the title and any front matter
+	return content[nextNewLine+1:], title
 }
