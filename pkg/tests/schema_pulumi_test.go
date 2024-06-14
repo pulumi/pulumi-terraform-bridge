@@ -654,12 +654,11 @@ outputs:
 				upRes := pt.Up()
 				require.Equal(t, tc.expectedOutputTopLevel, upRes.Outputs["collectionOutput"].Value)
 				res, err := pt.CurrentStack().Refresh(pt.Context(), optrefresh.ExpectNoChanges())
-				if tc.expectFailTopLevel {
-					require.Error(t, err)
-				} else {
-					require.NoError(t, err)
-				}
+				require.NoError(t, err)
 				t.Logf(res.StdOut)
+				prevRes, err := pt.CurrentStack().Preview(pt.Context(), optpreview.ExpectNoChanges(), optpreview.Diff())
+				require.NoError(t, err)
+				t.Logf(prevRes.StdOut)
 			})
 
 			t.Run("nested", func(t *testing.T) {
@@ -728,13 +727,11 @@ outputs:
 				require.Equal(t, tc.expectedOutputNested, upRes.Outputs["collectionOutput"].Value)
 
 				res, err := pt.CurrentStack().Refresh(pt.Context(), optrefresh.ExpectNoChanges())
-				if tc.expectFailNested {
-					require.Error(t, err)
-				} else {
-					require.NoError(t, err)
-				}
-
+				require.NoError(t, err)
 				t.Logf(res.StdOut)
+				prevRes, err := pt.CurrentStack().Preview(pt.Context(), optpreview.ExpectNoChanges(), optpreview.Diff())
+				require.NoError(t, err)
+				t.Logf(prevRes.StdOut)
 			})
 		})
 	}
