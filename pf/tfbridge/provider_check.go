@@ -29,26 +29,28 @@ import (
 
 // Check validates the given resource inputs from the user program and computes checked inputs that fill out default
 // values. The checked inputs are then passed to subsequent, Diff, Create, or Update.
-func (p *provider) CheckWithContext(
+func (p *provider) Check(
 	ctx context.Context,
-	urn resource.URN,
-	priorState resource.PropertyMap,
-	inputs resource.PropertyMap,
-	allowUnknowns bool,
-	randomSeed []byte,
-) (resource.PropertyMap, []plugin.CheckFailure, error) {
-	ctx = p.initLogging(ctx, p.logSink, urn)
+	req plugin.CheckRequest,
+) (plugin.CheckResponse, error) {
+	ctx = p.initLogging(ctx, p.logSink, req.URN)
 
-	checkedInputs := inputs.Copy()
+	checkedInputs := req.News.Copy()
 
-	rh, err := p.resourceHandle(ctx, urn)
+	rh, err := p.resourceHandle(ctx, req.URN)
 	if err != nil {
-		return checkedInputs, []plugin.CheckFailure{}, err
+		return plugin.CheckResponse{
+			Properties: checkedInputs,
+			Failures:   []plugin.CheckFailure{},
+		}, err
 	}
 
-	priorState, err = transformFromState(ctx, rh, priorState)
+	priorState, err := transformFromState(ctx, rh, req.Olds)
 	if err != nil {
-		return checkedInputs, []plugin.CheckFailure{}, err
+		return plugin.CheckResponse{
+			Properties: checkedInputs,
+			Failures:   []plugin.CheckFailure{},
+		}, err
 	}
 
 	if info := rh.pulumiResourceInfo; info != nil {
@@ -56,7 +58,10 @@ func (p *provider) CheckWithContext(
 			var err error
 			checkedInputs, err = check(ctx, checkedInputs, p.lastKnownProviderConfig.Copy())
 			if err != nil {
-				return checkedInputs, []plugin.CheckFailure{}, err
+				return plugin.CheckResponse{
+					Properties: checkedInputs,
+					Failures:   []plugin.CheckFailure{},
+				}, err
 			}
 		}
 	}
@@ -66,26 +71,32 @@ func (p *provider) CheckWithContext(
 		SchemaMap:   rh.schemaOnlyShimResource.Schema(),
 		SchemaInfos: rh.pulumiResourceInfo.Fields,
 		ComputeDefaultOptions: tfbridge.ComputeDefaultOptions{
-			URN:        urn,
+			URN:        req.URN,
 			Properties: checkedInputs,
-			Seed:       randomSeed,
+			Seed:       req.RandomSeed,
 			PriorState: priorState,
 		},
 		PropertyMap:    checkedInputs,
 		ProviderConfig: p.lastKnownProviderConfig,
 	})
 
-	checkFailures, err := p.validateResourceConfig(ctx, urn, rh, news)
+	checkFailures, err := p.validateResourceConfig(ctx, req.URN, rh, news)
 
 	schemaMap := rh.schemaOnlyShimResource.Schema()
 	schemaInfos := rh.pulumiResourceInfo.GetFields()
 	news = tfbridge.MarkSchemaSecrets(ctx, schemaMap, schemaInfos, resource.NewObjectProperty(news)).ObjectValue()
 
 	if err != nil {
-		return news, checkFailures, err
+		return plugin.CheckResponse{
+			Properties: news,
+			Failures:   checkFailures,
+		}, err
 	}
 
-	return news, checkFailures, nil
+	return plugin.CheckResponse{
+		Properties: news,
+		Failures:   checkFailures,
+	}, nil
 }
 
 func (p *provider) validateResourceConfig(
@@ -94,7 +105,6 @@ func (p *provider) validateResourceConfig(
 	rh resourceHandle,
 	inputs resource.PropertyMap,
 ) ([]plugin.CheckFailure, error) {
-
 	tfType := rh.schema.Type(ctx).(tftypes.Object)
 
 	encodedInputs, err := convert.EncodePropertyMapToDynamic(rh.encoder, tfType, inputs)

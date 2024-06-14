@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/convert"
 )
@@ -68,33 +69,42 @@ func replaceConfigInDiagnostics(
 }
 
 // Configure configures the resource provider with "globals" that control its behavior.
-func (p *provider) ConfigureWithContext(ctx context.Context, inputs resource.PropertyMap) error {
+func (p *provider) Configure(
+	ctx context.Context,
+	req plugin.ConfigureRequest,
+) (plugin.ConfigureResponse, error) {
 	ctx = p.initLogging(ctx, p.logSink, "")
 
 	configureSpan, ctx := opentracing.StartSpanFromContext(ctx, "pf.Configure",
 		opentracing.Tag{Key: "provider", Value: p.info.Name},
 		opentracing.Tag{Key: "version", Value: p.version.String()},
-		opentracing.Tag{Key: "inputs", Value: resource.NewObjectProperty(inputs).String()},
+		opentracing.Tag{Key: "inputs", Value: resource.NewObjectProperty(req.Inputs).String()},
 	)
 	defer configureSpan.Finish()
 
-	p.lastKnownProviderConfig = inputs
+	p.lastKnownProviderConfig = req.Inputs
 
-	config, err := convert.EncodePropertyMapToDynamic(p.configEncoder, p.configType, inputs)
+	config, err := convert.EncodePropertyMapToDynamic(p.configEncoder, p.configType, req.Inputs)
 	if err != nil {
-		return fmt.Errorf("cannot encode provider configuration to call ConfigureProvider: %w", err)
+		return plugin.ConfigureResponse{}, fmt.Errorf(
+			"cannot encode provider configuration to call ConfigureProvider: %w", err)
 	}
 
-	req := &tfprotov6.ConfigureProviderRequest{
+	tfReq := &tfprotov6.ConfigureProviderRequest{
 		Config:           config,
 		TerraformVersion: "pulumi-terraform-bridge",
 	}
 
-	resp, err := p.tfServer.ConfigureProvider(ctx, req)
+	resp, err := p.tfServer.ConfigureProvider(ctx, tfReq)
 	if err != nil {
-		return fmt.Errorf("error calling ConfigureProvider: %w", err)
+		return plugin.ConfigureResponse{}, fmt.Errorf("error calling ConfigureProvider: %w", err)
 	}
 
 	resp.Diagnostics = replaceConfigInDiagnostics(p.info.Config, p.info.P.Schema(), resp.Diagnostics)
-	return p.processDiagnostics(resp.Diagnostics)
+	err = p.processDiagnostics(resp.Diagnostics)
+	if err != nil {
+		return plugin.ConfigureResponse{}, err
+	}
+
+	return plugin.ConfigureResponse{}, nil
 }

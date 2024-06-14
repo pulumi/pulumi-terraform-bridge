@@ -35,7 +35,6 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pf"
-	pl "github.com/pulumi/pulumi-terraform-bridge/pf/internal/plugin"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/runtypes"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/schemashim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/convert"
@@ -49,6 +48,8 @@ import (
 //
 // https://www.terraform.io/plugin/framework
 type provider struct {
+	plugin.NotForwardCompatibleProvider
+
 	tfServer      tfprotov6.ProviderServer
 	info          tfbridge.ProviderInfo
 	resources     runtypes.Resources
@@ -70,32 +71,15 @@ type provider struct {
 	schemaOnlyProvider shim.Provider
 }
 
-var _ pl.ProviderWithContext = &provider{}
-
 // Adapts a provider to Pulumi. Most users do not need to call this directly but instead use Main to build a fully
 // functional binary.
 //
 // info.P must be constructed with ShimProvider or ShimProviderWithContext.
-func NewProvider(ctx context.Context, info tfbridge.ProviderInfo, meta ProviderMetadata) (plugin.Provider, error) {
-	pwc, err := newProviderWithContext(ctx, info, meta)
-	if err != nil {
-		return nil, err
-	}
-	return pl.NewProvider(ctx, pwc), nil
-}
-
-// Wrap a PF Provider in a shim.Provider.
-func ShimProvider(p pfprovider.Provider) shim.Provider {
-	return ShimProviderWithContext(context.Background(), p)
-}
-
-// Wrap a PF Provider in a shim.Provider with the given context.Context.
-func ShimProviderWithContext(ctx context.Context, p pfprovider.Provider) shim.Provider {
-	return schemashim.ShimSchemaOnlyProvider(ctx, p)
-}
-
-func newProviderWithContext(ctx context.Context, info tfbridge.ProviderInfo,
-	meta ProviderMetadata) (*provider, error) {
+func NewProvider(
+	ctx context.Context,
+	info tfbridge.ProviderInfo,
+	meta ProviderMetadata,
+) (plugin.Provider, error) {
 	const infoPErrMSg string = "info.P must be constructed with ShimProvider or ShimProviderWithContext"
 
 	if info.P == nil {
@@ -164,6 +148,16 @@ func newProviderWithContext(ctx context.Context, info tfbridge.ProviderInfo,
 	}, nil
 }
 
+// Wrap a PF Provider in a shim.Provider.
+func ShimProvider(p pfprovider.Provider) shim.Provider {
+	return ShimProviderWithContext(context.Background(), p)
+}
+
+// Wrap a PF Provider in a shim.Provider with the given context.Context.
+func ShimProviderWithContext(ctx context.Context, p pfprovider.Provider) shim.Provider {
+	return schemashim.ShimSchemaOnlyProvider(ctx, p)
+}
+
 // Internal. The signature of this function can change between major releases. Exposed to facilitate testing.
 func NewProviderServer(
 	ctx context.Context,
@@ -171,14 +165,17 @@ func NewProviderServer(
 	info tfbridge.ProviderInfo,
 	meta ProviderMetadata,
 ) (pulumirpc.ResourceProviderServer, error) {
-	p, err := newProviderWithContext(ctx, info, meta)
+	p, err := NewProvider(ctx, info, meta)
 	if err != nil {
 		return nil, err
 	}
 
-	p.logSink = logSink
-	configEnc := tfbridge.NewConfigEncoding(p.schemaOnlyProvider.Schema(), p.info.Config)
-	return pl.NewProviderServerWithContext(p, configEnc), nil
+	p.(*provider).logSink = logSink
+
+	// TODO: What about this?
+	// configEnc := tfbridge.NewConfigEncoding(pp.schemaOnlyProvider.Schema(), pp.info.Config)
+
+	return plugin.NewProviderServer(p), nil
 }
 
 // Closer closes any underlying OS resources associated with this provider (like processes, RPC channels, etc).
@@ -187,7 +184,7 @@ func (p *provider) Close() error {
 }
 
 // Pkg fetches this provider's package.
-func (p *provider) PkgWithContext(_ context.Context) tokens.Package {
+func (p *provider) Pkg() tokens.Package {
 	return tokens.Package(p.info.Name)
 }
 
@@ -203,7 +200,7 @@ func XParameterizeResetProvider(ctx context.Context, info tfbridge.ProviderInfo,
 	return ctx.Value(xResetProviderKey{}).(xParameterizeResetProviderFunc)(ctx, info, meta)
 }
 
-func (p *provider) ParameterizeWithContext(
+func (p *provider) Parameterize(
 	ctx context.Context, req plugin.ParameterizeRequest,
 ) (plugin.ParameterizeResponse, error) {
 	if p.parameterize == nil {
@@ -212,11 +209,11 @@ func (p *provider) ParameterizeWithContext(
 
 	ctx = context.WithValue(ctx, xResetProviderKey{},
 		func(ctx context.Context, info tfbridge.ProviderInfo, meta ProviderMetadata) error {
-			pp, err := newProviderWithContext(ctx, info, meta)
+			pp, err := NewProvider(ctx, info, meta)
 			if err != nil {
 				return err
 			}
-			*p = *pp
+			*p = *pp.(*provider)
 			return nil
 		})
 
@@ -224,12 +221,20 @@ func (p *provider) ParameterizeWithContext(
 }
 
 // GetSchema returns the schema for the provider.
-func (p *provider) GetSchemaWithContext(ctx context.Context, req plugin.GetSchemaRequest) ([]byte, error) {
-	return p.pulumiSchema(ctx, req)
+func (p *provider) GetSchema(
+	ctx context.Context,
+	req plugin.GetSchemaRequest,
+) (plugin.GetSchemaResponse, error) {
+	schema, err := p.pulumiSchema(ctx, req)
+	if err != nil {
+		return plugin.GetSchemaResponse{}, err
+	}
+
+	return plugin.GetSchemaResponse{Schema: schema}, nil
 }
 
 // GetPluginInfo returns this plugin's information.
-func (p *provider) GetPluginInfoWithContext(_ context.Context) (workspace.PluginInfo, error) {
+func (p *provider) GetPluginInfo(context.Context) (workspace.PluginInfo, error) {
 	info := workspace.PluginInfo{
 		Name:    p.info.Name,
 		Version: &p.version,
@@ -242,7 +247,7 @@ func (p *provider) GetPluginInfoWithContext(_ context.Context) (workspace.Plugin
 // aborted in this way will return an error (e.g., `Update` and `Create` will either a creation error or an
 // initialization error. SignalCancellation is advisory and non-blocking; it is up to the host to decide how long to
 // wait after SignalCancellation is called before (e.g.) hard-closing any gRPC connection.
-func (p *provider) SignalCancellationWithContext(_ context.Context) error {
+func (p *provider) SignalCancellation(_ context.Context) error {
 	// Some improvements are possible here to gracefully shut down.
 	return nil
 }
@@ -266,17 +271,13 @@ func (p *provider) terraformDatasourceName(functionToken tokens.ModuleMember) (s
 }
 
 // NOT IMPLEMENTED: Call dynamically executes a method in the provider associated with a component resource.
-func (p *provider) CallWithContext(_ context.Context,
-	tok tokens.ModuleMember, args resource.PropertyMap, info plugin.CallInfo,
-	options plugin.CallOptions) (plugin.CallResult, error) {
+func (p *provider) Call(context.Context, plugin.CallRequest) (plugin.CallResult, error) {
 	return plugin.CallResult{},
 		fmt.Errorf("Call is not implemented for Terraform Plugin Framework bridged providers")
 }
 
 // NOT IMPLEMENTED: Construct creates a new component resource.
-func (p *provider) ConstructWithContext(_ context.Context,
-	info plugin.ConstructInfo, typ tokens.Type, name tokens.QName, parent resource.URN,
-	inputs resource.PropertyMap, options plugin.ConstructOptions) (plugin.ConstructResult, error) {
+func (p *provider) Construct(context.Context, plugin.ConstructRequest) (plugin.ConstructResult, error) {
 	return plugin.ConstructResult{},
 		fmt.Errorf("Construct is not implemented for Terraform Plugin Framework bridged providers")
 }

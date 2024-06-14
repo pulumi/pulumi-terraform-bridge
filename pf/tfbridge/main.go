@@ -40,11 +40,11 @@ import (
 func Main(ctx context.Context, pkg string, prov tfbridge.ProviderInfo, meta ProviderMetadata) {
 	handleFlags(ctx, prov.Version,
 		func() (*tfbridge.MarshallableProviderInfo, error) {
-			pp, err := newProviderWithContext(ctx, prov, meta)
+			p, err := NewProvider(ctx, prov, meta)
 			if err != nil {
 				return nil, err
 			}
-			return pp.marshalProviderInfo(ctx), nil
+			return p.(*provider).marshalProviderInfo(ctx), nil
 		})
 	// TODO[pulumi/pulumi-terraform-bridge#820]
 	// prov.P.InitLogging()
