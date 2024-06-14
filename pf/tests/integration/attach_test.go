@@ -17,6 +17,7 @@ package itests
 import (
 	"github.com/stretchr/testify/require"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/pulumi/providertest/pulumitest"
@@ -24,6 +25,9 @@ import (
 )
 
 func TestAttach(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping on Windows due to a PATH setup issue where the test cannot find pulumi-resource-testbridge.exe")
+	}
 	source := filepath.Join("..", "testdata", "basicprogram")
 	bin, err := filepath.Abs(filepath.Join("..", "bin"))
 	require.NoError(t, err)
@@ -34,6 +38,9 @@ func TestAttach(t *testing.T) {
 }
 
 func TestAttachMuxed(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping on Windows due to a PATH setup issue where the test cannot find pulumi-resource-muxedrandom.exe")
+	}
 	source := filepath.Join("..", "testdata", "muxedbasicprogram")
 	bin, err := filepath.Abs(filepath.Join("..", "bin"))
 	require.NoError(t, err)
