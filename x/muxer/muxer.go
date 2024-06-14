@@ -435,6 +435,8 @@ func (m *muxer) Attach(ctx context.Context, req *rpc.PluginAttach) (*emptypb.Emp
 	}
 
 	var closeErr error
+	// Because in Go, an interface type is not nil even when its underlying value is nil, the nil check here
+	//must test the underlying type.
 	if !reflect.ValueOf(m.host).IsNil() {
 		closeErr = m.host.Close()
 	}
