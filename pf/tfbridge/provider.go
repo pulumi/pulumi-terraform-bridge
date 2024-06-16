@@ -192,12 +192,35 @@ func (p *provider) PkgWithContext(_ context.Context) tokens.Package {
 	return tokens.Package(p.info.Name)
 }
 
+type xResetProviderKey struct{}
+
+type xParameterizeResetProviderFunc = func(context.Context, tfbridge.ProviderInfo, ProviderMetadata) error
+
+// XParameterizeResetProvider resets the enclosing PF provider with a new info and meta combination.
+//
+// XParameterizeResetProvider is an unstable method and may change in any bridge
+// release. It is intended only for internal use.
+func XParameterizeResetProvider(ctx context.Context, info tfbridge.ProviderInfo, meta ProviderMetadata) error {
+	return ctx.Value(xResetProviderKey{}).(xParameterizeResetProviderFunc)(ctx, info, meta)
+}
+
 func (p *provider) ParameterizeWithContext(
 	ctx context.Context, req plugin.ParameterizeRequest,
 ) (plugin.ParameterizeResponse, error) {
 	if p.parameterize == nil {
 		return (&plugin.UnimplementedProvider{}).Parameterize(ctx, req)
 	}
+
+	ctx = context.WithValue(ctx, xResetProviderKey{},
+		func(ctx context.Context, info tfbridge.ProviderInfo, meta ProviderMetadata) error {
+			n, err := newProviderWithContext(ctx, info, meta)
+			if err != nil {
+				return err
+			}
+			*p = *n.(*provider)
+			return nil
+		})
+
 	return p.parameterize(ctx, req)
 }
 

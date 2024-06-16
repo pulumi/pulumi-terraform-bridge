@@ -11,6 +11,8 @@ import (
 	"github.com/hexops/autogold/v2"
 	helper "github.com/pulumi/pulumi-terraform-bridge/dynamic/internal/testing"
 	pfbridge "github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
 	"github.com/stretchr/testify/assert"
@@ -63,4 +65,37 @@ func TestSchemaGeneration(t *testing.T) {
 	testSchema("hashicorp/random", "3.3.0")
 	testSchema("Azure/alz", "0.11.1")
 	testSchema("Backblaze/b2", "0.8.9")
+}
+
+func TestRandomCreate(t *testing.T) {
+	ctx := context.Background()
+	server := grpcTestServer(ctx, t)
+	parameterizeResp, err := server.Parameterize(ctx, &pulumirpc.ParameterizeRequest{
+		Parameters: &pulumirpc.ParameterizeRequest_Args{
+			Args: &pulumirpc.ParameterizeRequest_ParametersArgs{
+				Args: []string{"hashicorp/random", "=3.3.0"},
+			},
+		},
+	})
+	require.NoError(t, err)
+	require.Equal(t, &pulumirpc.ParameterizeResponse{
+		Name:    "random",
+		Version: "3.3.0",
+	}, parameterizeResp)
+
+	createResp, err := server.Create(ctx, &pulumirpc.CreateRequest{
+		Urn: string(resource.NewURN("dev", "test", "", "random:index/string:String", "name")),
+		Properties: must(plugin.MarshalProperties(resource.PropertyMap{
+			"length": resource.NewProperty(6.0),
+		}, plugin.MarshalOptions{})),
+	})
+	require.NoError(t, err)
+	assert.Len(t, createResp.Id, 6)
+}
+
+func must[T any](v T, err error) T {
+	if err != nil {
+		panic(err)
+	}
+	return v
 }
