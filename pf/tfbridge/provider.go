@@ -95,7 +95,7 @@ func ShimProviderWithContext(ctx context.Context, p pfprovider.Provider) shim.Pr
 }
 
 func newProviderWithContext(ctx context.Context, info tfbridge.ProviderInfo,
-	meta ProviderMetadata) (pl.ProviderWithContext, error) {
+	meta ProviderMetadata) (*provider, error) {
 	const infoPErrMSg string = "info.P must be constructed with ShimProvider or ShimProviderWithContext"
 
 	if info.P == nil {
@@ -175,10 +175,9 @@ func NewProviderServer(
 	if err != nil {
 		return nil, err
 	}
-	pp := p.(*provider)
 
-	pp.logSink = logSink
-	configEnc := tfbridge.NewConfigEncoding(pp.schemaOnlyProvider.Schema(), pp.info.Config)
+	p.logSink = logSink
+	configEnc := tfbridge.NewConfigEncoding(p.schemaOnlyProvider.Schema(), p.info.Config)
 	return pl.NewProviderServerWithContext(p, configEnc), nil
 }
 
@@ -213,11 +212,11 @@ func (p *provider) ParameterizeWithContext(
 
 	ctx = context.WithValue(ctx, xResetProviderKey{},
 		func(ctx context.Context, info tfbridge.ProviderInfo, meta ProviderMetadata) error {
-			n, err := newProviderWithContext(ctx, info, meta)
+			pp, err := newProviderWithContext(ctx, info, meta)
 			if err != nil {
 				return err
 			}
-			*p = *n.(*provider)
+			*p = *pp
 			return nil
 		})
 
