@@ -43,21 +43,18 @@ func makeFailuresFromCheckErr(err tfbridge.CheckFailureError) []plugin.CheckFail
 }
 
 // CheckConfig validates the configuration for this resource provider.
-func (p *provider) CheckConfigWithContext(
+func (p *provider) CheckConfig(
 	ctx context.Context,
-	urn resource.URN,
-	_ resource.PropertyMap, // olds aka priorState, not used currently
-	inputs resource.PropertyMap, // aka news
-	_ bool, // a flag that is always true, historical artifact, ignore here
-) (resource.PropertyMap, []plugin.CheckFailure, error) {
-	ctx = p.initLogging(ctx, p.logSink, urn)
+	req plugin.CheckConfigRequest,
+) (plugin.CheckConfigResponse, error) {
+	ctx = p.initLogging(ctx, p.logSink, req.URN)
 
-	inputsText := showMap(inputs)
+	inputsText := showMap(req.News)
 	checkConfigSpan, ctx := opentracing.StartSpanFromContext(ctx, "pf.CheckConfig",
 		opentracing.Tag{Key: "provider", Value: p.info.Name},
 		opentracing.Tag{Key: "version", Value: p.version.String()},
 		opentracing.Tag{Key: "inputs", Value: inputsText},
-		opentracing.Tag{Key: "urn", Value: string(urn)},
+		opentracing.Tag{Key: "urn", Value: string(req.URN)},
 	)
 	defer checkConfigSpan.Finish()
 
@@ -65,8 +62,8 @@ func (p *provider) CheckConfigWithContext(
 	news := defaults.ApplyDefaultInfoValues(ctx, defaults.ApplyDefaultInfoValuesArgs{
 		SchemaMap:      p.schemaOnlyProvider.Schema(),
 		SchemaInfos:    p.info.Config,
-		PropertyMap:    inputs,
-		ProviderConfig: inputs,
+		PropertyMap:    req.News,
+		ProviderConfig: req.News,
 	})
 
 	newsText := showMap(news)
@@ -83,15 +80,21 @@ func (p *provider) CheckConfigWithContext(
 	if !news.ContainsUnknowns() {
 		if err := p.runPreConfigureCallback(ctx, news); err != nil {
 			if failureErr, ok := err.(tfbridge.CheckFailureError); ok {
-				return nil, makeFailuresFromCheckErr(failureErr), nil
+				return plugin.CheckConfigResponse{
+					Failures: makeFailuresFromCheckErr(failureErr),
+				}, nil
 			}
-			return nil, nil, err
+
+			return plugin.CheckConfigResponse{}, err
 		}
 		if err := p.runPreConfigureCallbackWithLogger(ctx, news); err != nil {
 			if failureErr, ok := err.(tfbridge.CheckFailureError); ok {
-				return nil, makeFailuresFromCheckErr(failureErr), nil
+				return plugin.CheckConfigResponse{
+					Failures: makeFailuresFromCheckErr(failureErr),
+				}, nil
 			}
-			return nil, nil, err
+
+			return plugin.CheckConfigResponse{}, err
 		}
 	}
 
@@ -106,9 +109,9 @@ func (p *provider) CheckConfigWithContext(
 	var err error
 
 	if !p.info.SkipValidateProviderConfigForPluginFramework {
-		checkFailures, err = p.validateProviderConfig(ctx, urn, news)
+		checkFailures, err = p.validateProviderConfig(ctx, req.URN, news)
 		if err != nil {
-			return nil, nil, err
+			return plugin.CheckConfigResponse{}, err
 		}
 	}
 
@@ -117,7 +120,10 @@ func (p *provider) CheckConfigWithContext(
 		resource.NewObjectProperty(news)).ObjectValue()
 
 	checkConfigSpan.SetTag("checkedInputs", showMap(secretNews))
-	return secretNews, checkFailures, nil
+	return plugin.CheckConfigResponse{
+		Properties: secretNews,
+		Failures:   checkFailures,
+	}, nil
 }
 
 func (p *provider) runPreConfigureCallback(ctx context.Context, news resource.PropertyMap) error {

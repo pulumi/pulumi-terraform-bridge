@@ -26,22 +26,19 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/defaults"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/convert"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/propertyvalue"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
 // Invoke dynamically executes a built-in function in the provider.
-func (p *provider) InvokeWithContext(
+func (p *provider) Invoke(
 	ctx context.Context,
-	tok tokens.ModuleMember,
-	args resource.PropertyMap,
-) (resource.PropertyMap, []plugin.CheckFailure, error) {
+	req plugin.InvokeRequest,
+) (plugin.InvokeResponse, error) {
 	ctx = p.initLogging(ctx, p.logSink, "")
 
-	handle, err := p.datasourceHandle(ctx, tok)
+	handle, err := p.datasourceHandle(ctx, req.Tok)
 	if err != nil {
-		return nil, nil, err
+		return plugin.InvokeResponse{}, err
 	}
 
 	typ := handle.schema.Type(ctx).(tftypes.Object)
@@ -50,25 +47,28 @@ func (p *provider) InvokeWithContext(
 	argsWithDefaults := defaults.ApplyDefaultInfoValues(ctx, defaults.ApplyDefaultInfoValuesArgs{
 		SchemaMap:      handle.schemaOnlyShim.Schema(),
 		SchemaInfos:    handle.pulumiDataSourceInfo.GetFields(),
-		PropertyMap:    args,
+		PropertyMap:    req.Args,
 		ProviderConfig: p.lastKnownProviderConfig,
 	})
 
 	config, err := convert.EncodePropertyMapToDynamic(handle.encoder, typ, argsWithDefaults)
 	if err != nil {
-		return nil, nil, fmt.Errorf("cannot encode config to call ReadDataSource for %q: %w",
-			handle.terraformDataSourceName, err)
+		return plugin.InvokeResponse{}, fmt.Errorf(
+			"cannot encode config to call ReadDataSource for %q: %w",
+			handle.terraformDataSourceName, err,
+		)
 	}
 
 	if failures, err := p.validateDataResourceConfig(ctx, handle, config); err != nil || len(failures) > 0 {
-		return nil, failures, err
+		return plugin.InvokeResponse{Failures: failures}, err
 	}
 
 	return p.readDataSource(ctx, handle, config)
 }
 
 func (p *provider) validateDataResourceConfig(ctx context.Context, handle datasourceHandle,
-	config *tfprotov6.DynamicValue) ([]plugin.CheckFailure, error) {
+	config *tfprotov6.DynamicValue,
+) ([]plugin.CheckFailure, error) {
 	req := &tfprotov6.ValidateDataResourceConfigRequest{
 		TypeName: handle.terraformDataSourceName,
 		Config:   config,
@@ -81,8 +81,8 @@ func (p *provider) validateDataResourceConfig(ctx context.Context, handle dataso
 }
 
 func (p *provider) readDataSource(ctx context.Context, handle datasourceHandle,
-	config *tfprotov6.DynamicValue) (resource.PropertyMap, []plugin.CheckFailure, error) {
-
+	config *tfprotov6.DynamicValue,
+) (plugin.InvokeResponse, error) {
 	typ := handle.schema.Type(ctx).(tftypes.Object)
 
 	req := &tfprotov6.ReadDataSourceRequest{
@@ -93,18 +93,20 @@ func (p *provider) readDataSource(ctx context.Context, handle datasourceHandle,
 
 	resp, err := p.tfServer.ReadDataSource(ctx, req)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error calling ReadDataSource: %w", err)
+		return plugin.InvokeResponse{}, fmt.Errorf("error calling ReadDataSource: %w", err)
 	}
 
 	failures, err := p.processInvokeDiagnostics(handle, resp.Diagnostics)
 	if err != nil || len(failures) > 0 {
-		return nil, failures, err
+		return plugin.InvokeResponse{Failures: failures}, err
 	}
 
 	propertyMap, err := convert.DecodePropertyMapFromDynamic(ctx, handle.decoder, typ, resp.State)
 	if err != nil {
-		return nil, nil, fmt.Errorf("cannot decode state from a call to ReadDataSource for %q: %w",
-			handle.terraformDataSourceName, err)
+		return plugin.InvokeResponse{}, fmt.Errorf(
+			"cannot decode state from a call to ReadDataSource for %q: %w",
+			handle.terraformDataSourceName, err,
+		)
 	}
 
 	// TODO[pulumi/pulumi#12710] consuming programs (at lest in Go and YAML) are unable to accept secrets from an
@@ -122,11 +124,12 @@ func (p *provider) readDataSource(ctx context.Context, handle datasourceHandle,
 		}
 	}
 
-	return propertyMap, nil, nil
+	return plugin.InvokeResponse{Properties: propertyMap}, nil
 }
 
 func (p *provider) processInvokeDiagnostics(ds datasourceHandle,
-	diags []*tfprotov6.Diagnostic) ([]plugin.CheckFailure, error) {
+	diags []*tfprotov6.Diagnostic,
+) ([]plugin.CheckFailure, error) {
 	failures, rest := p.parseInvokePropertyCheckFailures(ds, diags)
 	return failures, p.processDiagnostics(rest)
 }
@@ -134,7 +137,8 @@ func (p *provider) processInvokeDiagnostics(ds datasourceHandle,
 // Some of the diagnostics pertain to an individual property and should be returned as plugin.CheckFailure for an
 // optimal rendering by Pulumi CLI.
 func (p *provider) parseInvokePropertyCheckFailures(ds datasourceHandle, diags []*tfprotov6.Diagnostic) (
-	[]plugin.CheckFailure, []*tfprotov6.Diagnostic) {
+	[]plugin.CheckFailure, []*tfprotov6.Diagnostic,
+) {
 	rest := []*tfprotov6.Diagnostic{}
 	failures := []plugin.CheckFailure{}
 

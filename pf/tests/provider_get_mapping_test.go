@@ -44,28 +44,39 @@ func TestGetMapping(t *testing.T) {
 	})
 
 	{
-		m, p, err := p.GetMapping("unknown-key", "")
+		resp, err := p.GetMapping(ctx, plugin.GetMappingRequest{
+			Key:      "unknown-key",
+			Provider: "",
+		})
+
 		assert.NoError(t, err)
-		assert.Empty(t, m)
-		assert.Empty(t, p)
+		assert.Empty(t, resp.Data)
+		assert.Empty(t, resp.Provider)
 	}
 
 	{
-		m, p, err := p.GetMapping("terraform", "unknown-provider")
+		resp, err := p.GetMapping(ctx, plugin.GetMappingRequest{
+			Key:      "terraform",
+			Provider: "unknown-provider",
+		})
+
 		assert.Error(t, err) // this should error, e.g. "unknown-provider"
-		assert.Empty(t, m)
-		assert.Empty(t, p)
+		assert.Empty(t, resp.Data)
+		assert.Empty(t, resp.Provider)
 	}
 
 	for _, key := range []string{"tf", "terraform"} {
 		for _, provider := range []string{"", "random"} {
-			m, p, err := p.GetMapping(key, provider)
+			resp, err := p.GetMapping(ctx, plugin.GetMappingRequest{
+				Key:      key,
+				Provider: provider,
+			})
 			assert.NoError(t, err)
 
-			assert.Equal(t, "random", p)
+			assert.Equal(t, "random", resp.Provider)
 
 			var info tfbridge0.MarshallableProviderInfo
-			err = json.Unmarshal(m, &info)
+			err = json.Unmarshal(resp.Data, &info)
 			assert.NoError(t, err)
 
 			assert.Equal(t, "random", info.Name)
