@@ -130,7 +130,9 @@ type LookupResult struct {
 }
 
 // Drills down a Schema with a given AttributePath to classify what is found at that path, see LookupResult.
-func LookupTerraformPath(schema Schema, path *tftypes.AttributePath) (LookupResult, error) {
+func LookupTerraformPath(
+	schema tftypes.AttributePathStepper, path *tftypes.AttributePath,
+) (LookupResult, error) {
 	res, ok, err := tryLookupAttrOrBlock(schema, path)
 	if err != nil {
 		return res, err
@@ -157,7 +159,9 @@ func LookupTerraformPath(schema Schema, path *tftypes.AttributePath) (LookupResu
 	return LookupResult{IsMisc: true}, nil
 }
 
-func tryLookupAttrOrBlock(schema Schema, path *tftypes.AttributePath) (LookupResult, bool, error) {
+func tryLookupAttrOrBlock(
+	schema tftypes.AttributePathStepper, path *tftypes.AttributePath,
+) (LookupResult, bool, error) {
 	res, remaining, err := tftypes.WalkAttributePath(schema, path)
 	if err != nil {
 		return LookupResult{}, false, fmt.Errorf("%v still remains in the path: %w", remaining, err)

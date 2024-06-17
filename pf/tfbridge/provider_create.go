@@ -40,7 +40,7 @@ func (p *provider) CreateWithContext(
 		return "", nil, 0, err
 	}
 
-	tfType := rh.schema.Type().TerraformType(ctx).(tftypes.Object)
+	tfType := rh.schema.Type(ctx).(tftypes.Object)
 
 	priorState := newResourceState(ctx, &rh, nil /*private state*/)
 

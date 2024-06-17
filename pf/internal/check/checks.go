@@ -12,20 +12,48 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tfgen
+package check
 
 import (
+	"errors"
 	"fmt"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+
+	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/muxer"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 )
 
-func checkIDProperties(sink diag.Sink, info tfbridge.ProviderInfo) error {
+// Validate that info is valid as either a PF provider or a PF & SDK based provider.
+//
+// This function should be called in the generate step, but before schema generation (so
+// as to error as soon as possible).
+func Provider(sink diag.Sink, info tfbridge.ProviderInfo) error {
+	// If info.P is not muxed, we assume that all resources are PF based resources and
+	// that all datasources are PF based datasources.
+	isPFResource := func(string) bool { return true }
+	isPFDataSource := func(string) bool { return true }
+	if p, ok := info.P.(*muxer.ProviderShim); ok {
+		isPFResource = p.ResourceIsPF
+		isPFDataSource = p.DataSourceIsPF
+	}
+
+	return errors.Join(
+		checkIDProperties(sink, info, isPFResource),
+		notSupported(sink, info, isPFResource, isPFDataSource),
+	)
+}
+
+func checkIDProperties(sink diag.Sink, info tfbridge.ProviderInfo, isPFResource func(tfToken string) bool) error {
 	errors := 0
 
 	info.P.ResourcesMap().Range(func(rname string, resource shim.Resource) bool {
+		// If a resource is sdk based, it always has an ID, regardless of the
+		// schema it describes.
+		if !isPFResource(rname) {
+			return true
+		}
 		if resourceHasComputeID(info, rname) {
 			return true
 		}

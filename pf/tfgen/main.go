@@ -20,6 +20,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
+	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/check"
 	pfmuxer "github.com/pulumi/pulumi-terraform-bridge/pf/internal/muxer"
 	sdkBridge "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
@@ -44,24 +45,16 @@ func Main(provider string, info sdkBridge.ProviderInfo) {
 			return fmt.Errorf("ProviderInfo.MetadataInfo is required and cannot be nil")
 		}
 
-		if err := notSupported(opts.Sink, info); err != nil {
-			return err
-		}
-
 		g, err := tfgen.NewGenerator(opts)
 		if err != nil {
 			return err
 		}
 
-		if err := g.Generate(); err != nil {
+		if err := check.Provider(g.Sink(), info); err != nil {
 			return err
 		}
 
-		if err := checkIDProperties(g.Sink(), opts.ProviderInfo); err != nil {
-			return err
-		}
-
-		return nil
+		return g.Generate()
 	})
 }
 
@@ -94,6 +87,15 @@ func MainWithMuxer(provider string, info sdkBridge.ProviderInfo) {
 	}
 
 	tfgen.MainWithCustomGenerate(provider, info.Version, info, func(opts tfgen.GeneratorOptions) error {
+		g, err := tfgen.NewGenerator(opts)
+		if err != nil {
+			return err
+		}
+
+		if err := check.Provider(g.Sink(), info); err != nil {
+			return err
+		}
+
 		if info.MetadataInfo == nil {
 			return fmt.Errorf("ProviderInfo.MetadataInfo is required and cannot be nil")
 		}
@@ -103,15 +105,6 @@ func MainWithMuxer(provider string, info sdkBridge.ProviderInfo) {
 			return fmt.Errorf("failed to compute dispatch for muxed provider: %w", err)
 		}
 		err = metadata.Set(info.GetMetadata(), "mux", dispatch)
-		if err != nil {
-			return err
-		}
-
-		if err := notSupported(opts.Sink, info); err != nil {
-			return err
-		}
-
-		g, err := tfgen.NewGenerator(opts)
 		if err != nil {
 			return err
 		}

@@ -22,6 +22,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/pfutils"
+	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/runtypes"
 )
 
 // Simplifies calling PlanResourceChanges in Terraform.
@@ -40,7 +41,7 @@ import (
 func (p *provider) plan(
 	ctx context.Context,
 	typeName string,
-	schema pfutils.Schema,
+	schema runtypes.Schema,
 	priorState *upgradedResourceState,
 	checkedInputs tftypes.Value,
 ) (*tfprotov6.PlanResourceChangeResponse, error) {

@@ -805,14 +805,14 @@ func TestValidateInputType_objects(t *testing.T) {
 			failures := v.ValidateInputs(tokens.Type("pkg:mod:ResA"), resource.PropertyMap{
 				resource.PropertyKey(tc.name): tc.input,
 			})
-			if failures != nil && len(*failures) != len(tc.failures) {
-				t.Fatalf("%d failures, got %d: %v", len(tc.failures), len(*failures), *failures)
+			if failures != nil && len(failures) != len(tc.failures) {
+				t.Fatalf("%d failures, got %d: %v", len(tc.failures), len(failures), failures)
 			}
 			if len(tc.failures) > 0 {
 				if failures == nil {
 					t.Fatalf("expected failures, got none")
 				} else {
-					assert.Equal(t, tc.failures, *failures)
+					assert.Equal(t, tc.failures, failures)
 				}
 			}
 		})
@@ -1305,14 +1305,14 @@ func TestValidateInputType_arrays(t *testing.T) {
 			failures := v.ValidateInputs(tokens.Type("pkg:mod:ResA"), resource.PropertyMap{
 				resource.PropertyKey(tc.name): tc.input,
 			})
-			if failures != nil && len(*failures) != len(tc.failures) {
-				t.Fatalf("%d failures, got %d: %v", len(tc.failures), len(*failures), *failures)
+			if failures != nil && len(failures) != len(tc.failures) {
+				t.Fatalf("%d failures, got %d: %v", len(tc.failures), len(failures), failures)
 			}
 			if len(tc.failures) > 0 {
 				if failures == nil {
 					t.Fatalf("expected failures, got none")
 				} else {
-					assert.Equal(t, tc.failures, *failures)
+					assert.Equal(t, tc.failures, failures)
 				}
 			}
 		})
@@ -1626,16 +1626,100 @@ func TestValidateInputType_toplevel(t *testing.T) {
 			failures := v.ValidateInputs(tokens.Type("pkg:mod:ResA"), resource.PropertyMap{
 				resource.PropertyKey(tc.name): tc.input,
 			})
-			if failures != nil && len(*failures) != len(tc.failures) {
-				t.Fatalf("%d failures, got %d: %v", len(tc.failures), len(*failures), *failures)
+			if failures != nil && len(failures) != len(tc.failures) {
+				t.Fatalf("%d failures, got %d: %v", len(tc.failures), len(failures), failures)
 			}
 			if len(tc.failures) > 0 {
 				if failures == nil {
 					t.Fatalf("expected failures, got none")
 				} else {
-					assert.Equal(t, tc.failures, *failures)
+					assert.Equal(t, tc.failures, failures)
 				}
 			}
+		})
+	}
+}
+
+func TestValidateConfigType(t *testing.T) {
+	testCases := []struct {
+		name      string
+		inputName string
+		input     resource.PropertyValue
+		failures  []TypeFailure
+	}{
+		{
+			name:      "unexpected_argument",
+			inputName: "endpoints",
+			failures: []TypeFailure{{
+				Reason:       "an unexpected argument \"wxyz\" was provided",
+				ResourcePath: "endpoints[0]",
+			}},
+			input: resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
+					"wxyz": "foo",
+				})),
+			}),
+		},
+		{
+			name:      "no_error_for_extra_inputs",
+			inputName: "doesnt_exist",
+			failures:  []TypeFailure{},
+			input: resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
+					"wxyz": "foo",
+				})),
+			}),
+		},
+	}
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			pspec := pschema.PackageSpec{
+				Name: "test",
+				Types: map[string]pschema.ComplexTypeSpec{
+					"aws:config/endpoints:endpoints": {
+						ObjectTypeSpec: pschema.ObjectTypeSpec{
+							Type: "object",
+							Properties: map[string]pschema.PropertySpec{
+								"abcd": {
+									TypeSpec: pschema.TypeSpec{
+										Type: "string",
+									},
+								},
+							},
+						},
+					},
+				},
+				Config: pschema.ConfigSpec{
+					Variables: map[string]pschema.PropertySpec{
+						"endpoints": {
+							TypeSpec: pschema.TypeSpec{
+								Type: "array",
+								Items: &pschema.TypeSpec{
+									Ref: "#/types/aws:config/endpoints:endpoints",
+								},
+							},
+						},
+					},
+				},
+			}
+			urn := resource.CreateURN(
+				"testResource",
+				"pkg:mod:ResA",
+				"",
+				"stack",
+				"project",
+			)
+
+			v := &PulumiInputValidator{
+				urn:                  urn,
+				schema:               pspec,
+				validateUnknownTypes: true,
+			}
+			failures := v.ValidateConfig(resource.PropertyMap{
+				resource.PropertyKey(tc.inputName): tc.input,
+			})
+			assert.Equal(t, tc.failures, failures)
 		})
 	}
 }

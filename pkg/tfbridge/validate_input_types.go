@@ -15,6 +15,10 @@ type PulumiInputValidator struct {
 
 	// The pulumi schema of the package
 	schema pschema.PackageSpec
+
+	// Whether or not to fail when properties are provided
+	// that do not exist in the spec. Defaults to false
+	validateUnknownTypes bool
 }
 
 type TypeFailure struct {
@@ -27,10 +31,11 @@ type TypeFailure struct {
 
 // NewInputValidator creates a new input validator for a given resource and
 // package schema
-func NewInputValidator(urn resource.URN, schema pschema.PackageSpec) *PulumiInputValidator {
+func NewInputValidator(urn resource.URN, schema pschema.PackageSpec, validateUnknownTypes bool) *PulumiInputValidator {
 	return &PulumiInputValidator{
-		urn:    urn,
-		schema: schema,
+		urn:                  urn,
+		schema:               schema,
+		validateUnknownTypes: validateUnknownTypes,
 	}
 }
 
@@ -51,6 +56,12 @@ func (v *PulumiInputValidator) validatePropertyMap(
 		objectValue := propertyMap[objectKey]
 		objType, knownType := propertyTypes[string(objectKey)]
 		if !knownType {
+			if v.validateUnknownTypes {
+				failures = append(failures, TypeFailure{
+					Reason:       fmt.Sprintf("an unexpected argument %q was provided", string(objectKey)),
+					ResourcePath: propertyPath.String(),
+				})
+			}
 			// permit extraneous properties to flow through
 			continue
 		}
@@ -258,19 +269,32 @@ func (v *PulumiInputValidator) getType(typeRef string) *pschema.ObjectTypeSpec {
 
 // ValidateInputs will validate a set of inputs against the pulumi schema. It will
 // return a list of type failures if any are found
-func (v *PulumiInputValidator) ValidateInputs(resourceToken tokens.Type, inputs resource.PropertyMap) *[]TypeFailure {
+func (v *PulumiInputValidator) ValidateInputs(resourceToken tokens.Type, inputs resource.PropertyMap) []TypeFailure {
 	resourceSpec, knownResourceSpec := v.schema.Resources[string(resourceToken)]
 	if !knownResourceSpec {
 		return nil
 	}
-	failures := v.validatePropertyMap(
+	return v.validatePropertyMap(
 		inputs,
 		resourceSpec.InputProperties,
 		resource.PropertyPath{},
 	)
-	if len(failures) > 0 {
-		return &failures
-	}
+}
 
-	return nil
+// ValidateConfig will validate the provider config against the pulumi schema. It will
+// return a list of type failures if any are found
+func (v *PulumiInputValidator) ValidateConfig(inputs resource.PropertyMap) []TypeFailure {
+	// The inputs that are provided to `CheckConfig` also include pulumi options
+	// so make sure we are only checking against properties in the config
+	inputsToValidate := resource.PropertyMap{}
+	for _, k := range inputs.StableKeys() {
+		if _, ok := v.schema.Config.Variables[string(k)]; ok {
+			inputsToValidate[k] = inputs[k]
+		}
+	}
+	return v.validatePropertyMap(
+		inputsToValidate,
+		v.schema.Config.Variables,
+		resource.PropertyPath{},
+	)
 }

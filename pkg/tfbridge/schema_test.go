@@ -59,13 +59,6 @@ func makeTerraformInputsForConfig(olds, news resource.PropertyMap,
 		makeTerraformInputsOptions{})
 }
 
-func makeTerraformInputsForCreate(olds, news resource.PropertyMap,
-	tfs shim.SchemaMap, ps map[string]*SchemaInfo,
-) (map[string]interface{}, AssetTable, error) {
-	return makeTerraformInputsWithOptions(context.Background(), nil, nil, olds, news, tfs, ps,
-		makeTerraformInputsOptions{DisableDefaults: true, DisableTFDefaults: true, EnableMaxItemsOneDefaults: true})
-}
-
 func makeTerraformInput(v resource.PropertyValue, tfs shim.Schema, ps *SchemaInfo) (interface{}, error) {
 	ctx := &conversionContext{}
 	return ctx.makeTerraformInput("v", resource.PropertyValue{}, v, tfs, ps)
@@ -233,7 +226,6 @@ func TestMakeTerraformInputsWithMaxItemsOne(t *testing.T) {
 		news               resource.PropertyMap
 		expectedNoDefaults map[string]interface{}
 		expectedForConfig  map[string]interface{}
-		expectedForCreate  map[string]interface{}
 	}{
 		"empty-olds": {
 			olds: resource.PropertyMap{},
@@ -247,9 +239,6 @@ func TestMakeTerraformInputsWithMaxItemsOne(t *testing.T) {
 			expectedNoDefaults: map[string]interface{}{},
 			expectedForConfig: map[string]interface{}{
 				"__defaults": []interface{}{},
-			},
-			expectedForCreate: map[string]interface{}{
-				"element": []interface{}{},
 			},
 		},
 		"non-empty-olds": {
@@ -271,9 +260,6 @@ func TestMakeTerraformInputsWithMaxItemsOne(t *testing.T) {
 			expectedNoDefaults: map[string]interface{}{},
 			expectedForConfig: map[string]interface{}{
 				"__defaults": []interface{}{},
-			},
-			expectedForCreate: map[string]interface{}{
-				"element": []interface{}{},
 			},
 		},
 		"non-missing-news": {
@@ -299,9 +285,6 @@ func TestMakeTerraformInputsWithMaxItemsOne(t *testing.T) {
 				"__defaults": []interface{}{},
 				"element":    []interface{}{"el"},
 			},
-			expectedForCreate: map[string]interface{}{
-				"element": []interface{}{"el"},
-			},
 		},
 	}
 
@@ -316,11 +299,6 @@ func TestMakeTerraformInputsWithMaxItemsOne(t *testing.T) {
 				tt.olds, tt.news, tfs, nil /* ps */)
 			require.NoError(t, err)
 			assert.Equal(t, tt.expectedForConfig, resultForConfig)
-
-			resultForCreate, _, err := makeTerraformInputsForCreate(
-				tt.olds, tt.news, tfs, nil /* ps */)
-			require.NoError(t, err)
-			assert.Equal(t, tt.expectedForCreate, resultForCreate)
 		})
 	}
 }
@@ -711,8 +689,8 @@ func TestMetaProperties(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, props)
 
-			state, err = makeTerraformStateWithOpts(
-				ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props, makeTerraformStateOpts{})
+			state, err = MakeTerraformState(
+				ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 
@@ -726,8 +704,8 @@ func TestMetaProperties(t *testing.T) {
 			// Delete the resource's meta-property and ensure that we re-populate its schema version.
 			delete(props, metaKey)
 
-			state, err = makeTerraformStateWithOpts(
-				ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props, makeTerraformStateOpts{})
+			state, err = MakeTerraformState(
+				ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 
@@ -765,8 +743,8 @@ func TestMetaProperties(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, props)
 
-			state, err = makeTerraformStateWithOpts(
-				ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props, makeTerraformStateOpts{})
+			state, err = MakeTerraformState(
+				ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 
@@ -793,8 +771,8 @@ func TestInjectingCustomTimeouts(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, props)
 
-			state, err = makeTerraformStateWithOpts(
-				ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props, makeTerraformStateOpts{})
+			state, err = MakeTerraformState(
+				ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 
@@ -808,8 +786,8 @@ func TestInjectingCustomTimeouts(t *testing.T) {
 			// Delete the resource's meta-property and ensure that we re-populate its schema version.
 			delete(props, metaKey)
 
-			state, err = makeTerraformStateWithOpts(
-				ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props, makeTerraformStateOpts{})
+			state, err = MakeTerraformState(
+				ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 
@@ -850,8 +828,8 @@ func TestInjectingCustomTimeouts(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, props)
 
-			state, err = makeTerraformStateWithOpts(
-				ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props, makeTerraformStateOpts{})
+			state, err = MakeTerraformState(
+				ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 
@@ -906,8 +884,8 @@ func TestResultAttributesRoundTrip(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, props)
 
-			state, err = makeTerraformStateWithOpts(
-				ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props, makeTerraformStateOpts{})
+			state, err = MakeTerraformState(
+				ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 

@@ -23,7 +23,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 
-	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/schemashim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 
@@ -84,7 +83,7 @@ func (p *provider) ReadWithContext(
 		result.Inputs, err = tfbridge.ExtractInputsFromOutputs(
 			oldInputs,
 			result.Outputs,
-			schemashim.NewSchemaMap(rh.schema),
+			rh.schema.Shim(),
 			rh.pulumiResourceInfo.Fields,
 			isRefresh)
 		if err != nil {

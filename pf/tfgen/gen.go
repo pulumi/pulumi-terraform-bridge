@@ -23,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 
+	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/check"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
 	sdkbridge "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	realtfgen "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
@@ -50,6 +51,10 @@ func GenerateSchema(_ context.Context, opts GenerateSchemaOptions) (*GenerateSch
 		})
 	}
 
+	if err := check.Provider(sink, opts.ProviderInfo); err != nil {
+		return nil, err
+	}
+
 	generated, err := realtfgen.GenerateSchemaWithOptions(realtfgen.GenerateSchemaOptions{
 		ProviderInfo:    opts.ProviderInfo,
 		DiagnosticsSink: sink,
@@ -61,10 +66,6 @@ func GenerateSchema(_ context.Context, opts GenerateSchemaOptions) (*GenerateSch
 
 	schema, err := json.Marshal(generated.PackageSpec)
 	if err != nil {
-		return nil, err
-	}
-
-	if err := checkIDProperties(sink, opts.ProviderInfo); err != nil {
 		return nil, err
 	}
 

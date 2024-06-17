@@ -19,21 +19,14 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
+	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/runtypes"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
-// Represents all provider's datasources pre-indexed by TypeName.
-type DataSources interface {
-	All() []TypeName
-	Has(TypeName) bool
-	Schema(TypeName) Schema
-	Diagnostics(TypeName) diag.Diagnostics
-	AllDiagnostics() diag.Diagnostics
-	DataSource(TypeName) datasource.DataSource
-}
-
-func GatherDatasources(ctx context.Context, prov provider.Provider) (DataSources, error) {
+func GatherDatasources[F func(Schema) shim.SchemaMap](
+	ctx context.Context, prov provider.Provider, f F,
+) (runtypes.DataSources, error) {
 	provMetadata := queryProviderMetadata(ctx, prov)
 	ds := make(collection[func() datasource.DataSource])
 
@@ -54,20 +47,23 @@ func GatherDatasources(ctx context.Context, prov provider.Provider) (DataSources
 			return nil, fmt.Errorf("Resource %s GetSchema() error: %w", meta.TypeName, err)
 		}
 
-		ds[TypeName(meta.TypeName)] = entry[func() datasource.DataSource]{
+		ds[runtypes.TypeName(meta.TypeName)] = entry[func() datasource.DataSource]{
 			t:           makeDataSource,
 			schema:      FromDataSourceSchema(dataSourceSchema),
 			diagnostics: diag,
 		}
 	}
 
-	return &dataSources{collection: ds}, nil
+	return &dataSources{collection: ds, convert: f}, nil
 }
 
 type dataSources struct {
 	collection[func() datasource.DataSource]
+	convert func(Schema) shim.SchemaMap
 }
 
-func (d *dataSources) DataSource(name TypeName) datasource.DataSource {
-	return d.collection[name].t()
+func (r dataSources) Schema(t runtypes.TypeName) runtypes.Schema {
+	return runtypesSchemaAdapter{r.collection.Schema(t), r.convert}
 }
+
+func (dataSources) IsDataSources() {}

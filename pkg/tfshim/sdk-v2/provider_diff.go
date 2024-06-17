@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/golang/glog"
 	hcty "github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
@@ -43,18 +42,13 @@ func (p v2Provider) Diff(
 		return diffToShim(&terraform.InstanceDiff{Destroy: true}), nil
 	}
 
-	providerOpts, err := getProviderOptions(p.opts)
-	if err != nil {
-		return nil, err
-	}
-
 	r, ok := p.tf.ResourcesMap[t]
 	if !ok {
 		return nil, fmt.Errorf("unknown resource %v", t)
 	}
 
 	config, state := configFromShim(c), stateFromShim(s)
-	rawConfig := makeResourceRawConfig(providerOpts.diffStrategy, config, r)
+	rawConfig := makeResourceRawConfig(config, r)
 
 	if state == nil {
 		// When handling Create Pulumi passes nil for state, but this diverges from how Terraform does things,
@@ -66,13 +60,14 @@ func (p v2Provider) Diff(
 		}
 	} else {
 		// Upgrades are needed only if we have non-empty prior state.
-		state, err = upgradeResourceState(ctx, p.tf, r, state)
+		var err error
+		state, err = upgradeResourceState(ctx, t, p.tf, r, state)
 		if err != nil {
 			return nil, fmt.Errorf("failed to upgrade resource state: %w", err)
 		}
 	}
 
-	diff, err := p.simpleDiff(ctx, providerOpts.diffStrategy, r, state, config, rawConfig, p.tf.Meta())
+	diff, err := p.simpleDiff(ctx, r, state, config, rawConfig, p.tf.Meta())
 	if err != nil {
 		return nil, err
 	}
@@ -91,81 +86,9 @@ func (p v2Provider) Diff(
 
 func (p v2Provider) simpleDiff(
 	ctx context.Context,
-	diffStrat DiffStrategy,
 	res *schema.Resource,
 	s *terraform.InstanceState,
 	c *terraform.ResourceConfig,
-	rawConfigVal hcty.Value,
-	meta interface{},
-) (*terraform.InstanceDiff, error) {
-
-	switch diffStrat {
-	case ClassicDiff:
-		state := s.DeepCopy()
-		if state.RawPlan.IsNull() {
-			// SimpleDiff may read RawPlan and panic if it is nil; while in the case of ClassicDiff we do
-			// not yet do what TF CLI does (that is PlanState), it is better to approximate and assume that
-			// the RawPlan is the same as RawConfig than to have the code panic.
-			state.RawPlan = rawConfigVal
-		}
-		if state.RawState.IsNull() {
-			// Same trick as for nil RawPlan.
-			priorStateVal, err := state.AttrsAsObjectValue(res.CoreConfigSchema().ImpliedType())
-			if err != nil {
-				return nil, err
-			}
-			state.RawState = priorStateVal
-		}
-		if state.RawConfig.IsNull() {
-			// Same trick as above.
-			state.RawConfig = rawConfigVal
-		}
-		return res.SimpleDiff(ctx, state, c, meta)
-	case PlanState:
-		return simpleDiffViaPlanState(ctx, res, s, rawConfigVal, meta)
-	case TryPlanState:
-		classicResult, err := res.SimpleDiff(ctx, s, c, meta)
-		if err != nil {
-			return nil, err
-		}
-		planStateResult, err := simpleDiffViaPlanState(ctx, res, s, rawConfigVal, meta)
-		if err != nil {
-			glog.Errorf("Ignoring PlanState DiffStrategy that failed with an unexpected error. "+
-				"You can set the environment variable %s to %q to avoid this message. "+
-				"Please report the error details to github.com/pulumi/pulumi-terraform-bridge: %v",
-				diffStrategyEnvVar, ClassicDiff.String(), err)
-			return classicResult, nil
-		}
-		if planStateResult.ChangeType() != classicResult.ChangeType() {
-			glog.Warningf("Ignoring PlanState DiffStrategy that returns %q disagreeing "+
-				" with ClassicDiff result %q. "+
-				"You can set the environment variable %s to %q to avoid this message. "+
-				"Please report this warning to github.com/pulumi/pulumi-terraform-bridge",
-				showDiffChangeType(byte(planStateResult.ChangeType())),
-				showDiffChangeType(byte(classicResult.ChangeType())),
-				diffStrategyEnvVar, ClassicDiff.String())
-			return classicResult, nil
-		}
-		if planStateResult.RequiresNew() != classicResult.RequiresNew() {
-			glog.Warningf("Ignoring PlanState DiffStrategy that decided RequiresNew()=%v disagreeing "+
-				" with ClassicDiff result RequiresNew()=%v. "+
-				"You can set the environment variable %s to %q to avoid this message. "+
-				"Please report this warning to github.com/pulumi/pulumi-terraform-bridge",
-				planStateResult.RequiresNew(),
-				classicResult.RequiresNew(),
-				diffStrategyEnvVar, ClassicDiff.String())
-			return classicResult, nil
-		}
-		return classicResult, nil
-	default:
-		return res.SimpleDiff(ctx, s, c, meta)
-	}
-}
-
-func simpleDiffViaPlanState(
-	ctx context.Context,
-	res *schema.Resource,
-	s *terraform.InstanceState,
 	rawConfigVal hcty.Value,
 	meta interface{},
 ) (*terraform.InstanceDiff, error) {
@@ -209,24 +132,4 @@ func simpleDiffViaPlanState(
 	}
 
 	return diff, nil
-}
-
-func showDiffChangeType(b byte) string {
-	// based on diffChangeType enumeration from terraform.InstanceDiff ChangeType() result
-	switch b {
-	case 1:
-		return "diffNone"
-	case 2:
-		return "diffCreate"
-	case 3:
-		return "diffCreate"
-	case 4:
-		return "diffUpdate"
-	case 5:
-		return "diffDestroy"
-	case 6:
-		return "diffDestroyCreate"
-	default:
-		return "diffInvalid"
-	}
 }

@@ -72,7 +72,7 @@ func (p *provider) DiffWithContext(
 		return plugin.DiffResult{}, err
 	}
 
-	tfType := rh.schema.Type().TerraformType(ctx).(tftypes.Object)
+	tfType := rh.schema.Type(ctx).(tftypes.Object)
 
 	checkedInputsValue, err := convert.EncodePropertyMap(rh.encoder, checkedInputs)
 	if err != nil {

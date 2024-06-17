@@ -94,11 +94,3 @@ func (m *schemaMap) Range(each func(key string, value shim.Schema) bool) {
 		}
 	}
 }
-
-func (m *schemaMap) Set(key string, value shim.Schema) {
-	panic("Set not supported - is it possible to treat this as immutable?")
-}
-
-func (m *schemaMap) Delete(key string) {
-	panic("Delete not supported - is it possible to treat this as immutable?")
-}

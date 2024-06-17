@@ -381,6 +381,105 @@ func TestArgumentRegex(t *testing.T) {
 			},
 		},
 		{
+			name: "Finds all levels of nested lists",
+			input: []string{
+				"* `rules` - (Required) Collection of real time alert rules",
+				"  * `type` - (Required) Rule type.",
+				"  * `issue_detection_configuration` - (Optional) Configuration for an issue detection rule.",
+				"    * `rule_name` - (Required) Rule name.",
+				"      * `spec` - A spec for the issue detection configuration rule name.",
+				"  * `keyword_match_configuration` - (Optional) Configuration for a keyword match rule.",
+				"    * `rule_name` - (Required) Rule name.",
+				"    * `keywords` - (Required) Collection of keywords to match.",
+				"    * `negate` - (Optional) Negate the rule.",
+				"  * `sentiment_configuration` - (Optional) Configuration for a sentiment rule.",
+				"    * `rule_name` - (Required) Rule name.",
+				"    * `sentiment_type` - (Required) Sentiment type to match.",
+				"    * `time_period` - (Optional) Analysis interval.",
+				"* `disabled` - (Optional) Disables real time alert rules.",
+			},
+			expected: map[docsPath]*argumentDocs{
+				"rules":                               {description: "Collection of real time alert rules"},
+				"rules.type":                          {description: "Rule type."},
+				"rules.issue_detection_configuration": {description: "Configuration for an issue detection rule."},
+				"rules.issue_detection_configuration.rule_name":      {description: "Rule name."},
+				"rules.issue_detection_configuration.rule_name.spec": {description: "A spec for the issue detection configuration rule name."},
+				"rules.keyword_match_configuration":                  {description: "Configuration for a keyword match rule."},
+				"rules.keyword_match_configuration.rule_name":        {description: "Rule name."},
+				"rules.keyword_match_configuration.keywords":         {description: "Collection of keywords to match."},
+				"rules.keyword_match_configuration.negate":           {description: "Negate the rule."},
+				"rules.sentiment_configuration":                      {description: "Configuration for a sentiment rule."},
+				"rules.sentiment_configuration.rule_name":            {description: "Rule name."},
+				"rules.sentiment_configuration.sentiment_type":       {description: "Sentiment type to match."},
+				"rules.sentiment_configuration.time_period":          {description: "Analysis interval."},
+				"disabled": {description: "Disables real time alert rules."},
+			},
+		},
+		{
+			name: "Handles different whitespace increments for nesting in either direction",
+			input: []string{
+				"* `rules` - (Required) Collection of real time alert rules",
+				"  * `type` - (Required) Rule type.",
+				"     * `rule_name` - (Required) Rule name.",
+				"  * `sentiment_configuration` - (Optional) Configuration for a sentiment rule.",
+				"* `disabled` - (Optional) Disables real time alert rules.",
+			},
+			expected: map[docsPath]*argumentDocs{
+				"rules":                         {description: "Collection of real time alert rules"},
+				"rules.type":                    {description: "Rule type."},
+				"rules.type.rule_name":          {description: "Rule name."},
+				"rules.sentiment_configuration": {description: "Configuration for a sentiment rule."},
+				"disabled":                      {description: "Disables real time alert rules."},
+			},
+		},
+		{
+			name: "Parses four-space indents for nested lists",
+			input: []string{
+				"* `keyword_match_configuration` - (Optional) Configuration for a keyword match rule.",
+				"    * `rule_name` - (Required) Rule name.",
+				"    * `keywords` - (Required) Collection of keywords to match.",
+				"    * `negate` - (Optional) Negate the rule.",
+			},
+			expected: map[docsPath]*argumentDocs{
+				"keyword_match_configuration":           {description: "Configuration for a keyword match rule."},
+				"keyword_match_configuration.rule_name": {description: "Rule name."},
+				"keyword_match_configuration.keywords":  {description: "Collection of keywords to match."},
+				"keyword_match_configuration.negate":    {description: "Negate the rule."},
+			},
+		},
+		{
+			name: "Ignores top-level indent for lists",
+			input: []string{
+				"  * `keyword_match_configuration` - (Optional) Configuration for a keyword match rule.",
+				"      * `rule_name` - (Required) Rule name.",
+				"      * `keywords` - (Required) Collection of keywords to match.",
+				"      * `negate` - (Optional) Negate the rule.",
+			},
+			expected: map[docsPath]*argumentDocs{
+				"keyword_match_configuration":           {description: "Configuration for a keyword match rule."},
+				"keyword_match_configuration.rule_name": {description: "Rule name."},
+				"keyword_match_configuration.keywords":  {description: "Collection of keywords to match."},
+				"keyword_match_configuration.negate":    {description: "Negate the rule."},
+			},
+		},
+		{
+			name: "Tracker resets on a new list",
+			input: []string{
+				"* `keyword_match_configuration` - (Optional) Configuration for a keyword match rule.",
+				"  * `rule_name` - (Required) Rule name.",
+				"---",
+				"  * `keywords` - (Required) Collection of keywords to match.",
+				"  * `negate` - (Optional) Negate the rule.",
+			},
+			expected: map[docsPath]*argumentDocs{
+				"keyword_match_configuration":           {description: "Configuration for a keyword match rule."},
+				"keyword_match_configuration.rule_name": {description: "Rule name."},
+				"keywords":                              {description: "Collection of keywords to match."},
+				"negate":                                {description: "Negate the rule."},
+			},
+		},
+
+		{
 			name: "Cleans up tabs",
 			input: []string{
 				"* `node_pool_config` (Input only) The configuration for the GKE node pool. ",
@@ -838,25 +937,24 @@ subtitle 2 content
 func TestParseArgFromMarkdownLine(t *testing.T) {
 	//nolint:lll
 	tests := []struct {
-		input          string
-		expectedName   string
-		expectedDesc   string
-		expectedFound  bool
-		expectedIndent bool
+		input         string
+		expectedName  string
+		expectedDesc  string
+		expectedFound bool
 	}{
-		{"* `name` - (Required) A unique name to give the role.", "name", "A unique name to give the role.", true, false},
-		{"* `key_vault_key_id` - (Optional) The Key Vault key URI for CMK encryption. Changing this forces a new resource to be created.", "key_vault_key_id", "The Key Vault key URI for CMK encryption. Changing this forces a new resource to be created.", true, false},
-		{"* `urn` - The uniform resource name of the Droplet", "urn", "The uniform resource name of the Droplet", true, false},
-		{"* `name`- The name of the Droplet", "name", "The name of the Droplet", true, false},
-		{"* `jumbo_frame_capable` -Indicates whether jumbo frames (9001 MTU) are supported.", "jumbo_frame_capable", "Indicates whether jumbo frames (9001 MTU) are supported.", true, false},
-		{"* `ssl_support_method`: Specifies how you want CloudFront to serve HTTPS", "ssl_support_method", "Specifies how you want CloudFront to serve HTTPS", true, false},
-		{"* `principal_tags`: (Optional: []) - String to string map of variables.", "principal_tags", "String to string map of variables.", true, false},
-		{"  * `id` - The id of the property", "id", "The id of the property", true, true},
-		{"  * id - The id of the property", "", "", false, false},
+		{"* `name` - (Required) A unique name to give the role.", "name", "A unique name to give the role.", true},
+		{"* `key_vault_key_id` - (Optional) The Key Vault key URI for CMK encryption. Changing this forces a new resource to be created.", "key_vault_key_id", "The Key Vault key URI for CMK encryption. Changing this forces a new resource to be created.", true},
+		{"* `urn` - The uniform resource name of the Droplet", "urn", "The uniform resource name of the Droplet", true},
+		{"* `name`- The name of the Droplet", "name", "The name of the Droplet", true},
+		{"* `jumbo_frame_capable` -Indicates whether jumbo frames (9001 MTU) are supported.", "jumbo_frame_capable", "Indicates whether jumbo frames (9001 MTU) are supported.", true},
+		{"* `ssl_support_method`: Specifies how you want CloudFront to serve HTTPS", "ssl_support_method", "Specifies how you want CloudFront to serve HTTPS", true},
+		{"* `principal_tags`: (Optional: []) - String to string map of variables.", "principal_tags", "String to string map of variables.", true},
+		{"  * `id` - The id of the property", "id", "The id of the property", true},
+		{"  * id - The id of the property", "", "", false},
 		//In rare cases, we may have a match where description is empty like the following, taken from https://github.com/hashicorp/terraform-provider-aws/blob/main/website/docs/r/spot_fleet_request.html.markdown
-		{"* `instance_pools_to_use_count` - (Optional; Default: 1)", "instance_pools_to_use_count", "", true, false},
-		{"", "", "", false, false},
-		{"Most of these arguments directly correspond to the", "", "", false, false},
+		{"* `instance_pools_to_use_count` - (Optional; Default: 1)", "instance_pools_to_use_count", "", true},
+		{"", "", "", false},
+		{"Most of these arguments directly correspond to the", "", "", false},
 	}
 
 	for _, test := range tests {
@@ -864,7 +962,6 @@ func TestParseArgFromMarkdownLine(t *testing.T) {
 		assert.Equal(t, test.expectedName, parsedLine.name)
 		assert.Equal(t, test.expectedDesc, parsedLine.desc)
 		assert.Equal(t, test.expectedFound, parsedLine.isFound)
-		assert.Equal(t, test.expectedIndent, parsedLine.isIndented)
 	}
 }
 
@@ -1550,30 +1647,33 @@ func TestParseTFMarkdown(t *testing.T) {
 		return tc
 	}
 
+	editRule := func(edit func(string, []byte) ([]byte, error)) func(*testCase) {
+		rule := tfbridge.DocsEdit{
+			Path: "*",
+			Edit: edit,
+		}
+		return func(tc *testCase) {
+			tc.providerInfo.DocRules = &tfbridge.DocRuleInfo{
+				EditRules: func(defaults []tfbridge.DocsEdit) []tfbridge.DocsEdit {
+					return append([]tfbridge.DocsEdit{rule}, defaults...)
+				},
+			}
+		}
+	}
+
 	tests := []testCase{
 		test("simple"),
 		test("link"),
 		test("azurerm-sql-firewall-rule"),
 		test("address_map"),
 		test("signalfx-log-timeline"),
-
-		test("custom-replaces", func(tc *testCase) {
-			rule := tfbridge.DocsEdit{
-				Path: "*",
-				Edit: func(path string, content []byte) ([]byte, error) {
-					assert.Equal(t, "mod1_res1.md", path)
-					return bytes.ReplaceAll(content,
-						[]byte(`CUSTOM_REPLACES`),
-						[]byte(`checking custom replaces`)), nil
-				},
-			}
-
-			tc.providerInfo.DocRules = &tfbridge.DocRuleInfo{
-				EditRules: func(defaults []tfbridge.DocsEdit) []tfbridge.DocsEdit {
-					return append([]tfbridge.DocsEdit{rule}, defaults...)
-				},
-			}
-		}),
+		test("custom-replaces",
+			editRule(func(path string, content []byte) ([]byte, error) {
+				assert.Equal(t, "mod1_res1.md", path)
+				return bytes.ReplaceAll(content,
+					[]byte(`CUSTOM_REPLACES`),
+					[]byte(`checking custom replaces`)), nil
+			})),
 	}
 
 	for _, tt := range tests {
@@ -1699,6 +1799,17 @@ func (m mockSource) getResource(rawname string, info *tfbridge.DocInfo) (*DocFil
 }
 func (m mockSource) getDatasource(rawname string, info *tfbridge.DocInfo) (*DocFile, error) {
 	return nil, nil
+}
+
+func (m mockSource) getInstallation(info *tfbridge.DocInfo) (*DocFile, error) {
+	f, ok := m["index.md"]
+	if !ok {
+		return nil, nil
+	}
+	return &DocFile{
+		Content:  []byte(f),
+		FileName: "index.md",
+	}, nil
 }
 
 type mockSink struct{ t *testing.T }
@@ -1898,6 +2009,46 @@ resource "aws_ami" "example" {
 		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
 			actual := guessIsHCL(tc.code)
 			assert.Equal(t, tc.hcl, actual)
+		})
+	}
+}
+
+func TestPlainDocsParser(t *testing.T) {
+	t.Parallel()
+
+	type testCase struct {
+		// The name of the test case.
+		name     string
+		docFile  DocFile
+		expected []byte
+	}
+
+	tests := []testCase{
+		{
+			name: "Replaces Upstream Front Matter With Pulumi Front Matter",
+			docFile: DocFile{
+				Content: []byte("---\nlayout: \"openstack\"\npage_title: \"Provider: OpenStack\"\nsidebar_current: \"docs-openstack-index\"\ndescription: |-\n  The OpenStack provider is used to interact with the many resources supported by OpenStack. The provider needs to be configured with the proper credentials before it can be used.\n---\n\n# OpenStack Provider\n\nThe OpenStack provider is used to interact with the\nmany resources supported by OpenStack. The provider needs to be configured\nwith the proper credentials before it can be used.\n\nUse the navigation to the left to read about the available resources."),
+			},
+			expected: []byte("---\ntitle: OpenStack Provider Installation & Configuration\nmeta_desc: Provides an overview on how to configure the Pulumi OpenStack Provider.\nlayout: package\n---\n\nThe OpenStack provider is used to interact with the\nmany resources supported by OpenStack. The provider needs to be configured\nwith the proper credentials before it can be used.\n\nUse the navigation to the left to read about the available resources."),
+		},
+		{
+			name: "Writes Pulumi Style Front Matter If Not Present",
+			docFile: DocFile{
+				Content: []byte("# Artifactory Provider\n\nThe [Artifactory](https://jfrog.com/artifactory/) provider is used to interact with the resources supported by Artifactory. The provider needs to be configured with the proper credentials before it can be used.\n\nLinks to documentation for specific resources can be found in the table of contents to the left.\n\nThis provider requires access to Artifactory APIs, which are only available in the _licensed_ pro and enterprise editions. You can determine which license you have by accessing the following the URL `${host}/artifactory/api/system/licenses/`.\n\nYou can either access it via API, or web browser - it require admin level credentials."),
+			},
+			expected: []byte("---\ntitle: Artifactory Provider Installation & Configuration\nmeta_desc: Provides an overview on how to configure the Pulumi Artifactory Provider.\nlayout: package\n---\n\nThe [Artifactory](https://jfrog.com/artifactory/) provider is used to interact with the resources supported by Artifactory. The provider needs to be configured with the proper credentials before it can be used.\n\nLinks to documentation for specific resources can be found in the table of contents to the left.\n\nThis provider requires access to Artifactory APIs, which are only available in the _licensed_ pro and enterprise editions. You can determine which license you have by accessing the following the URL `${host}/artifactory/api/system/licenses/`.\n\nYou can either access it via API, or web browser - it require admin level credentials."),
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			g := &Generator{
+				sink: mockSink{t},
+			}
+			actual, err := plainDocsParser(&tt.docFile, g)
+			require.NoError(t, err)
+			require.Equal(t, string(tt.expected), string(actual))
 		})
 	}
 }

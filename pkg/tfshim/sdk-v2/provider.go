@@ -124,7 +124,7 @@ func (p v2Provider) Apply(
 	if !ok {
 		return nil, fmt.Errorf("unknown resource %v", t)
 	}
-	state, err := upgradeResourceState(ctx, p.tf, r, stateFromShim(s))
+	state, err := upgradeResourceState(ctx, t, p.tf, r, stateFromShim(s))
 	if err != nil {
 		return nil, fmt.Errorf("failed to upgrade resource state: %w", err)
 	}
@@ -138,23 +138,18 @@ func (p v2Provider) Refresh(
 	s shim.InstanceState,
 	c shim.ResourceConfig,
 ) (shim.InstanceState, error) {
-	opts, err := getProviderOptions(p.opts)
-	if err != nil {
-		return nil, err
-	}
-
 	r, ok := p.tf.ResourcesMap[t]
 	if !ok {
 		return nil, fmt.Errorf("unknown resource %v", t)
 	}
 
-	state, err := upgradeResourceState(ctx, p.tf, r, stateFromShim(s))
+	state, err := upgradeResourceState(ctx, t, p.tf, r, stateFromShim(s))
 	if err != nil {
 		return nil, fmt.Errorf("failed to upgrade resource state: %w", err)
 	}
 
 	if c != nil {
-		state.RawConfig = makeResourceRawConfig(opts.diffStrategy, configFromShim(c), r)
+		state.RawConfig = makeResourceRawConfig(configFromShim(c), r)
 	}
 
 	state, diags := r.RefreshWithoutUpgrade(context.TODO(), state, p.tf.Meta())
@@ -171,12 +166,8 @@ func (p v2Provider) ReadDataDiff(
 		return nil, fmt.Errorf("unknown resource %v", t)
 	}
 
-	providerOpts, err := getProviderOptions(p.opts)
-	if err != nil {
-		return nil, err
-	}
 	config := configFromShim(c)
-	rawConfig := makeResourceRawConfig(providerOpts.diffStrategy, config, resource)
+	rawConfig := makeResourceRawConfig(config, resource)
 
 	diff, err := resource.Diff(ctx, nil, config, p.tf.Meta())
 	if diff != nil {

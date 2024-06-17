@@ -31,10 +31,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tfprotov5"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov5/tf5server"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/convert"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/internal/pulcheck"
+	sdkv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/stretchr/testify/require"
 )
@@ -57,34 +57,12 @@ func newTfDriver(t T, dir, providerName, resName string, res *schema.Resource) *
 	os.Setenv("TF_LOG_SDK", "off")
 	os.Setenv("TF_LOG_SDK_PROTO", "off")
 
-	if res.DeleteContext == nil {
-		res.DeleteContext = func(
-			ctx context.Context, rd *schema.ResourceData, i interface{},
-		) diag.Diagnostics {
-			return diag.Diagnostics{}
-		}
-	}
-
-	if res.CreateContext == nil {
-		res.CreateContext = func(
-			ctx context.Context, rd *schema.ResourceData, i interface{},
-		) diag.Diagnostics {
-			rd.SetId("newid")
-			return diag.Diagnostics{}
-		}
-	}
-
-	res.UpdateContext = func(
-		ctx context.Context, rd *schema.ResourceData, i interface{},
-	) diag.Diagnostics {
-		return diag.Diagnostics{}
-	}
-
 	p := &schema.Provider{
 		ResourcesMap: map[string]*schema.Resource{
 			resName: res,
 		},
 	}
+	pulcheck.EnsureProviderValid(t, p)
 
 	serverFactory := func() tfprotov5.ProviderServer {
 		return p.GRPCProvider()
@@ -120,6 +98,9 @@ func (d *tfDriver) coalesce(t T, x any) *tftypes.Value {
 		return nil
 	}
 	objectType := convert.InferObjectType(sdkv2.NewSchemaMap(d.res.Schema), nil)
+	for k := range objectType.AttributeTypes {
+		objectType.OptionalAttributes[k] = struct{}{}
+	}
 	t.Logf("infer object type: %v", objectType)
 	v := fromType(objectType).NewValue(x)
 	return &v

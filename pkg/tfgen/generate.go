@@ -18,6 +18,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 	"os"
 	"path"
 	"path/filepath"
@@ -94,6 +96,14 @@ const (
 	CSharp Language = "dotnet"
 	Schema Language = "schema"
 	PCL    Language = "pulumi"
+	// RegistryDocs
+	// Setting RegistryDocs as a separate bridge "language" in the bridge allows us to create custom logic specific to
+	// transforming and emitting upstream installation docs.
+	// When we generate registry docs, we want to:
+	//- be able to generate them via a separate command so we can enable it on a per-provider basis
+	//- be able to pass a separate output location from the schema location (in this case, `docs/`)
+	//- convert examples into all Pulumi-supported languages
+	RegistryDocs Language = "registry-docs"
 )
 
 func (l Language) shouldConvertExamples() bool {
@@ -726,6 +736,7 @@ func GenerateSchema(info tfbridge.ProviderInfo, sink diag.Sink) (pschema.Package
 type GenerateSchemaOptions struct {
 	ProviderInfo    tfbridge.ProviderInfo
 	DiagnosticsSink diag.Sink
+	XInMemoryDocs   bool
 }
 
 type GenerateSchemaResult struct {
@@ -736,12 +747,13 @@ func GenerateSchemaWithOptions(opts GenerateSchemaOptions) (*GenerateSchemaResul
 	info := opts.ProviderInfo
 	sink := opts.DiagnosticsSink
 	g, err := NewGenerator(GeneratorOptions{
-		Package:      info.Name,
-		Version:      info.Version,
-		Language:     Schema,
-		ProviderInfo: info,
-		Root:         afero.NewMemMapFs(),
-		Sink:         sink,
+		Package:       info.Name,
+		Version:       info.Version,
+		Language:      Schema,
+		ProviderInfo:  info,
+		Root:          afero.NewMemMapFs(),
+		Sink:          sink,
+		XInMemoryDocs: opts.XInMemoryDocs,
 	})
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to create generator")
@@ -777,6 +789,12 @@ type GeneratorOptions struct {
 	SkipDocs           bool
 	SkipExamples       bool
 	CoverageTracker    *CoverageTracker
+	// XInMemoryDocs instructs the generator not to attempt to find a repository to
+	// draw docs from, relying only on TF schema level docs.
+	//
+	// XInMemoryDocs is an experimental feature, and does not have any backwards
+	// compatibility guarantees.
+	XInMemoryDocs bool
 }
 
 // NewGenerator returns a code-generator for the given language runtime and package info.
@@ -787,7 +805,7 @@ func NewGenerator(opts GeneratorOptions) (*Generator, error) {
 
 	// Ensure the language is valid.
 	switch lang {
-	case Golang, NodeJS, Python, CSharp, Schema, PCL:
+	case Golang, NodeJS, Python, CSharp, Schema, PCL, RegistryDocs:
 		// OK
 	default:
 		return nil, errors.Errorf("unrecognized language runtime: %s", lang)
@@ -856,6 +874,7 @@ func NewGenerator(opts GeneratorOptions) (*Generator, error) {
 		skipExamples:     opts.SkipExamples,
 		coverageTracker:  opts.CoverageTracker,
 		editRules:        getEditRules(info.DocRules),
+		noDocsRepo:       opts.XInMemoryDocs,
 	}, nil
 }
 
@@ -946,8 +965,29 @@ func (g *Generator) UnstableGenerateFromSchema(genSchemaResult *GenerateSchemaRe
 
 	// Go ahead and let the language generator do its thing. If we're emitting the schema, just go ahead and serialize
 	// it out.
-	var files map[string][]byte
+	files := make(map[string][]byte)
+
 	switch g.language {
+	case RegistryDocs:
+		source := NewGitRepoDocsSource(g)
+		installationFile, err := source.getInstallation(nil)
+		if err != nil {
+			return errors.Wrapf(err, "failed to obtain an index.md file for this provider")
+		}
+		content, err := plainDocsParser(installationFile, g)
+		if err != nil {
+			return errors.Wrapf(err, "failed to parse installation docs")
+		}
+		files["installation-configuration.md"] = content
+		// Populate minimal _index.md file
+		displayName := g.info.DisplayName
+		if displayName == "" {
+			// Capitalize the package name
+			capitalize := cases.Title(language.English)
+			displayName = capitalize.String(g.info.Name)
+		}
+		indexContent := writeIndexFrontMatter(displayName)
+		files["_index.md"] = []byte(indexContent)
 	case Schema:
 		// Omit the version so that the spec is stable if the version is e.g. derived from the current Git commit hash.
 		pulumiPackageSpec.Version = ""
@@ -1000,8 +1040,10 @@ func (g *Generator) UnstableGenerateFromSchema(genSchemaResult *GenerateSchemaRe
 	}
 
 	// Emit the Pulumi project information.
-	if err = g.emitProjectMetadata(g.pkg, g.language); err != nil {
-		return errors.Wrapf(err, "failed to create project file")
+	if g.language != RegistryDocs {
+		if err = g.emitProjectMetadata(g.pkg, g.language); err != nil {
+			return errors.Wrapf(err, "failed to create project file")
+		}
 	}
 
 	// Close the plugin host.
@@ -1107,7 +1149,7 @@ func (g *Generator) gatherConfig() *module {
 	extraConfigMap := schema.SchemaMap{}
 	for key, val := range g.info.ExtraConfig {
 		extraConfigInfo[key] = val.Info
-		extraConfigMap.Set(key, val.Schema)
+		extraConfigMap[key] = val.Schema
 	}
 	for key := range g.info.ExtraConfig {
 		if prop := g.propertyVariable(cfgPath,
@@ -1226,12 +1268,16 @@ func (g *Generator) gatherResource(rawname string,
 	// Collect documentation information
 	var entityDocs entityDocs
 	if !isProvider {
-		source := NewGitRepoDocsSource(g)
-		pulumiDocs, err := getDocsForResource(g, source, ResourceDocs, rawname, info)
-		if err == nil {
-			entityDocs = pulumiDocs
-		} else if !g.checkNoDocsError(err) {
-			return nil, err
+		// If g.noDocsRepo is set, we have established that it's pointless to get
+		// docs from the repo, so we don't try.
+		if !g.noDocsRepo {
+			source := NewGitRepoDocsSource(g)
+			pulumiDocs, err := getDocsForResource(g, source, ResourceDocs, rawname, info)
+			if err == nil {
+				entityDocs = pulumiDocs
+			} else if !g.checkNoDocsError(err) {
+				return nil, err
+			}
 		}
 	} else {
 		entityDocs.Description = fmt.Sprintf(
@@ -1538,7 +1584,7 @@ func (g *Generator) gatherOverlays() (moduleMap, error) {
 		if csharpinfo := g.info.CSharp; csharpinfo != nil {
 			overlay = csharpinfo.Overlay
 		}
-	case Schema, PCL:
+	case Schema, PCL, RegistryDocs:
 		// N/A
 	default:
 		contract.Failf("unrecognized language: %s", g.language)

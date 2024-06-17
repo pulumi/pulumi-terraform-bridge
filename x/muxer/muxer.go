@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"reflect"
 	"sync"
 
 	"github.com/golang/glog"
@@ -434,13 +435,14 @@ func (m *muxer) Attach(ctx context.Context, req *rpc.PluginAttach) (*emptypb.Emp
 	}
 
 	var closeErr error
-	if m.host != nil {
+	// Because in Go, an interface type is not nil even when its underlying value is nil, the nil check here
+	//must test the underlying type.
+	if !reflect.ValueOf(m.host).IsNil() {
 		closeErr = m.host.Close()
 	}
 
 	var err error
 	m.host, err = provider.NewHostClient(req.GetAddress())
-
 	return &emptypb.Empty{}, errors.Join(append(asyncJoin(attach), err, closeErr)...)
 }
 

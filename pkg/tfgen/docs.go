@@ -47,6 +47,9 @@ import (
 const (
 	startPulumiCodeChooser = "<!--Start PulumiCodeChooser -->"
 	endPulumiCodeChooser   = "<!--End PulumiCodeChooser -->"
+
+	// The Hugo front matter delimiter
+	delimiter = "---\n"
 )
 
 // argumentDocs contains the documentation metadata for an argument of the resource.
@@ -145,99 +148,9 @@ const (
 	ResourceDocs DocKind = "resources"
 	// DataSourceDocs indicates documentation pertaining to data source entities.
 	DataSourceDocs DocKind = "data-sources"
+	// InstallationDocs indicates documentation pertaining to provider configuration and installation.
+	InstallationDocs DocKind = "installation"
 )
-
-// Create a regexp based replace rule that is bounded by non-ascii letter text.
-//
-// This function is not appropriate to be called in hot loops.
-func boundedReplace(from, to string) tfbridge.DocsEdit {
-	r := regexp.MustCompile(fmt.Sprintf(`([^a-zA-Z]|^)%s([^a-zA-Z]|$)`, from))
-	bTo := []byte(fmt.Sprintf("${1}%s${%d}", to, r.NumSubexp()))
-	return tfbridge.DocsEdit{
-		Path: "*",
-		Edit: func(_ string, content []byte) ([]byte, error) {
-			return r.ReplaceAll(content, bTo), nil
-		},
-	}
-}
-
-// reReplace creates a regex based replace.
-func reReplace(from, to string) tfbridge.DocsEdit {
-	r := regexp.MustCompile(from)
-	bTo := []byte(to)
-	return tfbridge.DocsEdit{
-		Path: "*",
-		Edit: func(_ string, content []byte) ([]byte, error) {
-			return r.ReplaceAll(content, bTo), nil
-		},
-	}
-}
-
-func fixupImports() tfbridge.DocsEdit {
-
-	var inlineImportRegexp = regexp.MustCompile("% [tT]erraform import.*")
-	var quotedImportRegexp = regexp.MustCompile("`[tT]erraform import`")
-
-	// (?s) makes the '.' match newlines (in addition to everything else).
-	var blockImportRegexp = regexp.MustCompile("(?s)In [tT]erraform v[0-9]+\\.[0-9]+\\.[0-9]+ and later," +
-		" use an `import` block.*?```.+?```\n")
-
-	return tfbridge.DocsEdit{
-		Path: "*",
-		Edit: func(_ string, content []byte) ([]byte, error) {
-			// Strip import blocks
-			content = blockImportRegexp.ReplaceAllLiteral(content, nil)
-			content = inlineImportRegexp.ReplaceAllFunc(content, func(match []byte) []byte {
-				match = bytes.ReplaceAll(match, []byte("terraform"), []byte("pulumi"))
-				match = bytes.ReplaceAll(match, []byte("Terraform"), []byte("Pulumi"))
-				return match
-			})
-			content = quotedImportRegexp.ReplaceAllLiteral(content, []byte("`pulumi import`"))
-			return content, nil
-		},
-	}
-}
-
-type editRules []tfbridge.DocsEdit
-
-func (rr editRules) apply(fileName string, contents []byte) ([]byte, error) {
-	for _, rule := range rr {
-		match, err := filepath.Match(rule.Path, fileName)
-		if err != nil {
-			return nil, fmt.Errorf("invalid glob: %q: %w", rule.Path, err)
-		}
-		if !match {
-			continue
-		}
-		contents, err = rule.Edit(fileName, contents)
-		if err != nil {
-			return nil, fmt.Errorf("replace failed: %w", err)
-		}
-	}
-	return contents, nil
-}
-
-// Get the replace rule set for a DocRuleInfo.
-//
-// getEditRules is only called once during `tfgen`, so we move the cost of compiling
-// regexes into getEditRules, avoiding a marginal startup time penalty.
-func getEditRules(info *tfbridge.DocRuleInfo) editRules {
-	defaults := []tfbridge.DocsEdit{
-		// Replace content such as "`terraform plan`" with "`pulumi preview`"
-		boundedReplace("[tT]erraform [pP]lan", "pulumi preview"),
-		// Replace content such as " Terraform Apply." with " pulumi up."
-		boundedReplace("[tT]erraform [aA]pply", "pulumi up"),
-		// A markdown link that has terraform in the link component.
-		reReplace(`\[([^\]]*)\]\(.*terraform([^\)]*)\)`, "$1"),
-		fixupImports(),
-		// Replace content such as "jdoe@hashicorp.com" with "jdoe@example.com"
-		reReplace("@hashicorp.com", "@example.com"),
-	}
-	if info == nil || info.EditRules == nil {
-		return defaults
-	}
-	return info.EditRules(defaults)
-}
 
 func (k DocKind) String() string {
 	switch k {
@@ -453,6 +366,7 @@ var (
 	)
 
 	attributionFormatString = "This Pulumi package is based on the [`%[1]s` Terraform Provider](https://%[3]s/%[2]s/terraform-provider-%[1]s)."
+	listMarkerRegex         = regexp.MustCompile("[-*+]")
 )
 
 // groupLines take a slice of strings, lines, and returns a nested slice of strings. When groupLines encounters a line
@@ -820,24 +734,84 @@ func (p *tfMarkdownParser) parseSchemaWithNestedSections(subsection []string) {
 }
 
 type markdownLineInfo struct {
-	name, desc          string
-	isFound, isIndented bool
+	name, desc string
+	isFound    bool
+}
+
+type bulletListEntry struct {
+	name  string
+	index int
+}
+
+// trackBulletListIndentation looks at the index of the bullet list marker ( `*`, `-` or `+`) in a docs line and
+// compares it to a collection that tracks the level of list nesting by comparing to the previous list entry's nested
+// level (if any).
+// Note that this function only looks at the placement of the bullet list marker, and assumes same-level list markers
+// to be in the same location in each line. This is not necessarily the case for Markdown, which considers a range of
+// locations within 1-4 whitespace characters, as well as considers the start index of the text following the bullet
+// point. If and when this becomes an issue during docs parsing, we may consider adding some of those rules here.
+// Read more about nested lists in GitHub-flavored Markdown:
+// https://docs.github.com/en/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax#nested-lists
+//
+//nolint:lll
+func trackBulletListIndentation(line, name string, tracker []bulletListEntry) []bulletListEntry {
+
+	listMarkerLocation := listMarkerRegex.FindStringIndex(line)
+	contract.Assertf(len(listMarkerLocation) == 2,
+		fmt.Sprintf("Expected to find bullet list marker in line %s", line))
+	listMarkerIndex := listMarkerLocation[0]
+
+	// If our tracker is empty, we are at list nested level 0.
+	if len(tracker) == 0 {
+		newEntry := bulletListEntry{
+			name:  name,
+			index: listMarkerIndex,
+		}
+		return append(tracker, newEntry)
+	}
+	// Always compare to last entry in tracker
+	lastListEntry := tracker[len(tracker)-1]
+
+	// if current line's listMarkerIndex is greater than the tracker's last entry's listMarkerIndex,
+	// make a new tracker entry and push it on there with all the info.
+	if listMarkerIndex > lastListEntry.index {
+		name = lastListEntry.name + "." + name
+		newEntry := bulletListEntry{
+			name:  name,
+			index: listMarkerIndex,
+		}
+		return append(tracker, newEntry)
+	}
+	// if current line's listMarkerIndex is the same as the last entry's, we're at the same level.
+	if listMarkerIndex == lastListEntry.index {
+		// Replace the last entry in our tracker
+		replaceEntry := bulletListEntry{
+			index: listMarkerIndex,
+		}
+		if len(tracker) == 1 {
+			replaceEntry.name = name
+		} else {
+			// use the penultimate entry name to build current name
+			replaceName := tracker[(len(tracker)-2)].name + "." + name
+			replaceEntry.name = replaceName
+		}
+		return append(tracker[:len(tracker)-1], replaceEntry)
+	}
+
+	// The current line's listMarkerIndex is smaller that the previous entry's.
+	// Pop off the latest entry, and retry to see if the next previous entry is a match.
+	return trackBulletListIndentation(line, name, tracker[:len(tracker)-1])
 }
 
 // parseArgFromMarkdownLine takes a line of Markdown and attempts to parse it for a Terraform argument and its
-// description. It returns a struct containing the name and description of the arg, whether an arg was found,
-// and whether it has indented space, denoting it as a subproperty of a previously found property.
+// description. It returns a struct containing the name and description of the arg, and whether an arg was found.
 func parseArgFromMarkdownLine(line string) markdownLineInfo {
 	matches := argumentBulletRegexp.FindStringSubmatch(line)
 	var parsed markdownLineInfo
 	if len(matches) > 4 {
-		if strings.HasPrefix(matches[0], "  ") {
-			parsed.isIndented = true
-		}
 		parsed.name = matches[1]
 		parsed.desc = matches[4]
 		parsed.isFound = true
-
 	}
 	return parsed
 }
@@ -1031,25 +1005,17 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 	// hadSpace tells us if the previous line was blank.
 	var hadSpace bool
 
-	// parentName tracks the name of the previous resource, in case we get indented child resources.
-	var parentName string
+	// bulletListTracker is a stack-like collection that tracks the level of nesting for a bulleted list with
+	// nested lists. The name of the topmost entry represents the nested docs path for the current line.
+	var bulletListTracker []bulletListEntry
 
 	for _, line := range subsection {
-		// We have found a new resource on this line.
 		parsedArg := parseArgFromMarkdownLine(line)
-		name := parsedArg.name
-		desc := parsedArg.desc
 		matchFound := parsedArg.isFound
-		isIndented := parsedArg.isIndented
-		if matchFound {
-			// We have found a new argument.
-			// If a bullet point is indented, we have most likely found a sub-field of the previous line.
-			// See: https://github.com/pulumi/pulumi-terraform-bridge/issues/1875
-			if isIndented {
-				name = parentName + "." + name
-			} else {
-				parentName = name
-			}
+		if matchFound { // We have found a new property bullet point.
+			desc := parsedArg.desc
+			bulletListTracker = trackBulletListIndentation(line, parsedArg.name, bulletListTracker)
+			name := bulletListTracker[len(bulletListTracker)-1].name
 			lastMatch = name
 			addNewHeading(name, desc, line)
 
@@ -1058,6 +1024,7 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 			// section is over, but we take it to mean that the current
 			// heading is over.
 			lastMatch = ""
+			bulletListTracker = nil
 		} else if nestedBlockCurrentLine := getNestedBlockNames(line); hadSpace && len(nestedBlockCurrentLine) > 0 {
 			// This tells us if there's a resource that is about to have subfields (nesteds)
 			// in subsequent lines.
@@ -1067,6 +1034,7 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 				nesteds = append(nesteds, docsPath(item))
 			}
 			lastMatch = ""
+			bulletListTracker = nil
 		} else if !isBlank(line) && lastMatch != "" {
 			// This appends the current line to the previous match's description.
 			extendExistingHeading(line)
@@ -1080,6 +1048,7 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 				nesteds = append(nesteds, docsPath(item))
 			}
 			lastMatch = ""
+			bulletListTracker = nil
 		} else if lastMatch != "" {
 			extendExistingHeading(line)
 		}
@@ -1451,7 +1420,6 @@ func (g *Generator) convertExamples(docs string, path examplePath) string {
 			strings.TrimRightFunc(docs[:exampleIndex], unicode.IsSpace),
 			docs[exampleIndex:])
 	}
-
 	if cliConverterEnabled() {
 		return g.cliConverter().StartConvertingExamples(docs, path)
 	}
@@ -1603,7 +1571,6 @@ func (g *Generator) convertExamplesInner(
 					}
 					langs := genLanguageToSlice(g.language)
 					convertedBlock, err := convertHCL(e, hcl, path.String(), langs)
-
 					if err != nil {
 						// We do not write this section, ever.
 						//
@@ -1985,7 +1952,7 @@ func genLanguageToSlice(input Language) []string {
 		return []string{convert.LanguageGo}
 	case PCL:
 		return []string{convert.LanguagePulumi}
-	case Schema:
+	case Schema, RegistryDocs:
 		return []string{
 			convert.LanguageTypescript,
 			convert.LanguagePython,
@@ -2301,4 +2268,48 @@ var (
 
 func guessIsHCL(code string) bool {
 	return guessIsHCLPattern.MatchString(code)
+}
+
+func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
+	// Get file content without front matter, and split title
+	contentStr, title := getBodyAndTitle(string(docFile.Content))
+	// Add pulumi-specific front matter
+	contentStr = writeFrontMatter(title) + contentStr
+
+	//TODO: See https://github.com/pulumi/pulumi-terraform-bridge/issues/2078
+	// - translate code blocks with code choosers
+	// - apply default edit rules
+	// - reformat TF names
+	// - Translation for certain headers such as "Arguments Reference" or "Configuration block"
+	// - Ability to omit irrelevant sections
+	return []byte(contentStr), nil
+}
+
+func writeFrontMatter(title string) string {
+	return fmt.Sprintf(delimiter+
+		"title: %s Installation & Configuration\n"+
+		"meta_desc: Provides an overview on how to configure the Pulumi %s.\n"+
+		"layout: package\n"+
+		delimiter,
+		title, title)
+}
+
+func writeIndexFrontMatter(displayName string) string {
+	return fmt.Sprintf(delimiter+
+		"title: %s\n"+
+		"meta_desc: The %s provider for Pulumi can be used to provision any of the cloud resources available in %s.\n"+
+		"layout: package\n"+
+		delimiter,
+		displayName, displayName, displayName)
+}
+
+func getBodyAndTitle(content string) (string, string) {
+	// The first header in `index.md` is the package name, of the format `# Foo Provider`.
+	titleIndex := strings.Index(content, "# ")
+	// Get the location fo the next newline
+	nextNewLine := strings.Index(content[titleIndex:], "\n") + titleIndex
+	// Get the title line, without the h1 anchor
+	title := content[titleIndex+2 : nextNewLine]
+	// strip the title and any front matter
+	return content[nextNewLine+1:], title
 }
