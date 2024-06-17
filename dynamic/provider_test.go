@@ -83,14 +83,49 @@ func TestRandomCreate(t *testing.T) {
 		Version: "3.3.0",
 	}, parameterizeResp)
 
-	createResp, err := server.Create(ctx, &pulumirpc.CreateRequest{
-		Urn: string(resource.NewURN("dev", "test", "", "random:index/string:String", "name")),
-		Properties: must(plugin.MarshalProperties(resource.PropertyMap{
-			"length": resource.NewProperty(6.0),
-		}, plugin.MarshalOptions{})),
+	t.Run("preview", func(t *testing.T) {
+
+		createPreview, err := server.Create(ctx, &pulumirpc.CreateRequest{
+			Urn:     string(resource.NewURN("dev", "test", "", "random:index/string:String", "name")),
+			Preview: true,
+			Properties: must(plugin.MarshalProperties(resource.PropertyMap{
+				"length": resource.NewProperty(6.0),
+			}, plugin.MarshalOptions{})),
+		})
+		require.NoError(t, err)
+		props, err := plugin.UnmarshalProperties(createPreview.Properties, plugin.MarshalOptions{
+			KeepUnknowns:     true,
+			KeepSecrets:      true,
+			KeepResources:    true,
+			KeepOutputValues: true,
+		})
+		require.NoError(t, err)
+		assert.Equal(t, resource.PropertyMap{
+			"id":         resource.MakeComputed(resource.NewProperty("")),
+			"result":     resource.MakeComputed(resource.NewProperty("")),
+			"length":     resource.NewProperty(6.0),
+			"lower":      resource.NewProperty(true),
+			"minLower":   resource.NewProperty(0.0),
+			"minNumeric": resource.NewProperty(0.0),
+			"minSpecial": resource.NewProperty(0.0),
+			"minUpper":   resource.NewProperty(0.0),
+			"number":     resource.NewProperty(true),
+			"numeric":    resource.NewProperty(true),
+			"special":    resource.NewProperty(true),
+			"upper":      resource.NewProperty(true),
+		}, props)
 	})
-	require.NoError(t, err)
-	assert.Len(t, createResp.Id, 6)
+
+	t.Run("up", func(t *testing.T) {
+		createResp, err := server.Create(ctx, &pulumirpc.CreateRequest{
+			Urn: string(resource.NewURN("dev", "test", "", "random:index/string:String", "name")),
+			Properties: must(plugin.MarshalProperties(resource.PropertyMap{
+				"length": resource.NewProperty(6.0),
+			}, plugin.MarshalOptions{})),
+		})
+		require.NoError(t, err)
+		assert.Len(t, createResp.Id, 6)
+	})
 }
 
 func must[T any](v T, err error) T {
