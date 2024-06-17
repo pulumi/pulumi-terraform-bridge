@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"runtime"
 	"strings"
 	"testing"
@@ -117,14 +118,18 @@ func TestRandomCreate(t *testing.T) {
 	})
 
 	t.Run("up", func(t *testing.T) {
-		createResp, err := server.Create(ctx, &pulumirpc.CreateRequest{
-			Urn: string(resource.NewURN("dev", "test", "", "random:index/string:String", "name")),
-			Properties: must(plugin.MarshalProperties(resource.PropertyMap{
-				"length": resource.NewProperty(6.0),
-			}, plugin.MarshalOptions{})),
-		})
-		require.NoError(t, err)
-		assert.Len(t, createResp.Id, 6)
+		for _, i := range []int{3, 8, 12} {
+			t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
+				createResp, err := server.Create(ctx, &pulumirpc.CreateRequest{
+					Urn: string(resource.NewURN("dev", "test", "", "random:index/string:String", "name")),
+					Properties: must(plugin.MarshalProperties(resource.PropertyMap{
+						"length": resource.NewProperty(float64(i)),
+					}, plugin.MarshalOptions{})),
+				})
+				require.NoError(t, err)
+				assert.Len(t, createResp.Id, i)
+			})
+		}
 	})
 }
 
