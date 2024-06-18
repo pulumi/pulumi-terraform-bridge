@@ -1079,7 +1079,7 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 	// If there were changes in this diff, check to see if we have a replacement.
 	var replaces []string
 	var replaced map[string]bool
-	var properties []string
+	uniqueProps := map[string]struct{}{}
 
 	if changes == pulumirpc.DiffResponse_DIFF_SOME {
 		for k, d := range detailedDiff {
@@ -1087,7 +1087,7 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 			if firstSep := strings.IndexAny(k, ".["); firstSep != -1 {
 				k = k[:firstSep]
 			}
-			properties = append(properties, k)
+			uniqueProps[k] = struct{}{}
 
 			switch d.Kind {
 			case pulumirpc.PropertyDiff_ADD_REPLACE,
@@ -1137,6 +1137,11 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 		markWronglyTypedMaxItemsOneStateDiff(schema, fields, olds) {
 
 		changes = pulumirpc.DiffResponse_DIFF_SOME
+	}
+
+	properties := []string{}
+	for key := range uniqueProps {
+		properties = append(properties, key)
 	}
 
 	// Ensure that outputs are deterministic to enable gRPC testing.
