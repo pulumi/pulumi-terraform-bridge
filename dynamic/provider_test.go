@@ -106,9 +106,22 @@ func TestPrimitiveTypes(t *testing.T) {
 // assertGRPC uses autogold to check/save msg.
 func assertGRPC(t *testing.T, msg proto.Message) {
 	t.Helper()
-	autogold.ExpectFile(t, autogold.Raw(must(protojson.MarshalOptions{
+	j, err := protojson.MarshalOptions{
 		Multiline: true,
-	}.Marshal(msg))))
+	}.Marshal(msg)
+	require.NoError(t, err)
+
+	// We now re-marshal and re-un-marshal to get deterministic output from
+	// protojson. protojson inserts random spaces to ensure that output is
+	// non-deterministic here:
+	// https://github.com/protocolbuffers/protobuf-go/blob/d4621760eaa24af1d915dd112919dbb53f94db01/internal/encoding/json/encode.go#L239-L243
+	//
+	//nolint:lll
+	var m map[string]any
+	require.NoError(t, json.Unmarshal(j, &m))
+	j, err = json.MarshalIndent(m, "", "  ")
+	require.NoError(t, err)
+	autogold.ExpectFile(t, autogold.Raw(string(j)))
 }
 
 // pfProviderPath returns the path the the PF provider binary for use in testing.
