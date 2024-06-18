@@ -1647,30 +1647,33 @@ func TestParseTFMarkdown(t *testing.T) {
 		return tc
 	}
 
+	editRule := func(edit func(string, []byte) ([]byte, error)) func(*testCase) {
+		rule := tfbridge.DocsEdit{
+			Path: "*",
+			Edit: edit,
+		}
+		return func(tc *testCase) {
+			tc.providerInfo.DocRules = &tfbridge.DocRuleInfo{
+				EditRules: func(defaults []tfbridge.DocsEdit) []tfbridge.DocsEdit {
+					return append([]tfbridge.DocsEdit{rule}, defaults...)
+				},
+			}
+		}
+	}
+
 	tests := []testCase{
 		test("simple"),
 		test("link"),
 		test("azurerm-sql-firewall-rule"),
 		test("address_map"),
 		test("signalfx-log-timeline"),
-
-		test("custom-replaces", func(tc *testCase) {
-			rule := tfbridge.DocsEdit{
-				Path: "*",
-				Edit: func(path string, content []byte) ([]byte, error) {
-					assert.Equal(t, "mod1_res1.md", path)
-					return bytes.ReplaceAll(content,
-						[]byte(`CUSTOM_REPLACES`),
-						[]byte(`checking custom replaces`)), nil
-				},
-			}
-
-			tc.providerInfo.DocRules = &tfbridge.DocRuleInfo{
-				EditRules: func(defaults []tfbridge.DocsEdit) []tfbridge.DocsEdit {
-					return append([]tfbridge.DocsEdit{rule}, defaults...)
-				},
-			}
-		}),
+		test("custom-replaces",
+			editRule(func(path string, content []byte) ([]byte, error) {
+				assert.Equal(t, "mod1_res1.md", path)
+				return bytes.ReplaceAll(content,
+					[]byte(`CUSTOM_REPLACES`),
+					[]byte(`checking custom replaces`)), nil
+			})),
 	}
 
 	for _, tt := range tests {
@@ -1796,6 +1799,17 @@ func (m mockSource) getResource(rawname string, info *tfbridge.DocInfo) (*DocFil
 }
 func (m mockSource) getDatasource(rawname string, info *tfbridge.DocInfo) (*DocFile, error) {
 	return nil, nil
+}
+
+func (m mockSource) getInstallation(info *tfbridge.DocInfo) (*DocFile, error) {
+	f, ok := m["index.md"]
+	if !ok {
+		return nil, nil
+	}
+	return &DocFile{
+		Content:  []byte(f),
+		FileName: "index.md",
+	}, nil
 }
 
 type mockSink struct{ t *testing.T }
@@ -1995,6 +2009,46 @@ resource "aws_ami" "example" {
 		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
 			actual := guessIsHCL(tc.code)
 			assert.Equal(t, tc.hcl, actual)
+		})
+	}
+}
+
+func TestPlainDocsParser(t *testing.T) {
+	t.Parallel()
+
+	type testCase struct {
+		// The name of the test case.
+		name     string
+		docFile  DocFile
+		expected []byte
+	}
+
+	tests := []testCase{
+		{
+			name: "Replaces Upstream Front Matter With Pulumi Front Matter",
+			docFile: DocFile{
+				Content: []byte("---\nlayout: \"openstack\"\npage_title: \"Provider: OpenStack\"\nsidebar_current: \"docs-openstack-index\"\ndescription: |-\n  The OpenStack provider is used to interact with the many resources supported by OpenStack. The provider needs to be configured with the proper credentials before it can be used.\n---\n\n# OpenStack Provider\n\nThe OpenStack provider is used to interact with the\nmany resources supported by OpenStack. The provider needs to be configured\nwith the proper credentials before it can be used.\n\nUse the navigation to the left to read about the available resources."),
+			},
+			expected: []byte("---\ntitle: OpenStack Provider Installation & Configuration\nmeta_desc: Provides an overview on how to configure the Pulumi OpenStack Provider.\nlayout: package\n---\n\nThe OpenStack provider is used to interact with the\nmany resources supported by OpenStack. The provider needs to be configured\nwith the proper credentials before it can be used.\n\nUse the navigation to the left to read about the available resources."),
+		},
+		{
+			name: "Writes Pulumi Style Front Matter If Not Present",
+			docFile: DocFile{
+				Content: []byte("# Artifactory Provider\n\nThe [Artifactory](https://jfrog.com/artifactory/) provider is used to interact with the resources supported by Artifactory. The provider needs to be configured with the proper credentials before it can be used.\n\nLinks to documentation for specific resources can be found in the table of contents to the left.\n\nThis provider requires access to Artifactory APIs, which are only available in the _licensed_ pro and enterprise editions. You can determine which license you have by accessing the following the URL `${host}/artifactory/api/system/licenses/`.\n\nYou can either access it via API, or web browser - it require admin level credentials."),
+			},
+			expected: []byte("---\ntitle: Artifactory Provider Installation & Configuration\nmeta_desc: Provides an overview on how to configure the Pulumi Artifactory Provider.\nlayout: package\n---\n\nThe [Artifactory](https://jfrog.com/artifactory/) provider is used to interact with the resources supported by Artifactory. The provider needs to be configured with the proper credentials before it can be used.\n\nLinks to documentation for specific resources can be found in the table of contents to the left.\n\nThis provider requires access to Artifactory APIs, which are only available in the _licensed_ pro and enterprise editions. You can determine which license you have by accessing the following the URL `${host}/artifactory/api/system/licenses/`.\n\nYou can either access it via API, or web browser - it require admin level credentials."),
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			g := &Generator{
+				sink: mockSink{t},
+			}
+			actual, err := plainDocsParser(&tt.docFile, g)
+			require.NoError(t, err)
+			require.Equal(t, string(tt.expected), string(actual))
 		})
 	}
 }

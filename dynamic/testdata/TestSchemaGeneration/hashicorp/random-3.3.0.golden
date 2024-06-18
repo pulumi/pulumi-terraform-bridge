@@ -1,0 +1,811 @@
+{
+    "name": "random",
+    "version": "3.3.0",
+    "description": "A Pulumi provider dynamically bridged from random.",
+    "attribution": "This Pulumi package is based on the [`random` Terraform Provider](https://github.com/terraform-providers/terraform-provider-random).",
+    "meta": {
+        "moduleFormat": "(.*)(?:/[^/]*)"
+    },
+    "language": {
+        "go": {
+            "importBasePath": "github.com/pulumi/pulumi-random/sdk/go/random",
+            "liftSingleValueMethodReturns": true,
+            "generateExtraInputTypes": true,
+            "respectSchemaVersion": true
+        },
+        "nodejs": {
+            "packageDescription": "A Pulumi provider dynamically bridged from random.",
+            "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-random)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e first check the [`pulumi-random` repo](/issues); however, if that doesn't turn up anything,\n\u003e please consult the source [`terraform-provider-random` repo](https://github.com/terraform-providers/terraform-provider-random/issues).",
+            "compatibility": "tfbridge20",
+            "disableUnionOutputTypes": true
+        },
+        "python": {
+            "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-random)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e first check the [`pulumi-random` repo](/issues); however, if that doesn't turn up anything,\n\u003e please consult the source [`terraform-provider-random` repo](https://github.com/terraform-providers/terraform-provider-random/issues).",
+            "compatibility": "tfbridge20",
+            "pyproject": {}
+        }
+    },
+    "config": {},
+    "provider": {
+        "description": "The provider type for the random package. By default, resources use package-wide configuration\nsettings, however an explicit `Provider` instance may be created and passed during resource\nconstruction to achieve fine-grained programmatic control over provider settings. See the\n[documentation](https://www.pulumi.com/docs/reference/programming-model/#providers) for more information.\n"
+    },
+    "resources": {
+        "random:index/id:Id": {
+            "properties": {
+                "b64Std": {
+                    "type": "string",
+                    "description": "The generated id presented in base64 without additional transformations.\n"
+                },
+                "b64Url": {
+                    "type": "string",
+                    "description": "The generated id presented in base64, using the URL-friendly character set: case-sensitive letters, digits and the\ncharacters `_` and `-`.\n"
+                },
+                "byteLength": {
+                    "type": "number",
+                    "description": "The number of random bytes to produce. The minimum value is 1, which produces eight bits of randomness.\n"
+                },
+                "dec": {
+                    "type": "string",
+                    "description": "The generated id presented in non-padded decimal digits.\n"
+                },
+                "hex": {
+                    "type": "string",
+                    "description": "The generated id presented in padded hexadecimal digits. This result will always be twice as long as the requested byte\nlength.\n"
+                },
+                "keepers": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    },
+                    "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for\nmore information.\n"
+                },
+                "prefix": {
+                    "type": "string",
+                    "description": "Arbitrary string to prefix the output value with. This string is supplied as-is, meaning it is not guaranteed to be\nURL-safe or base64 encoded.\n"
+                }
+            },
+            "required": [
+                "b64Std",
+                "b64Url",
+                "byteLength",
+                "dec",
+                "hex"
+            ],
+            "inputProperties": {
+                "byteLength": {
+                    "type": "number",
+                    "description": "The number of random bytes to produce. The minimum value is 1, which produces eight bits of randomness.\n"
+                },
+                "keepers": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    },
+                    "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for\nmore information.\n"
+                },
+                "prefix": {
+                    "type": "string",
+                    "description": "Arbitrary string to prefix the output value with. This string is supplied as-is, meaning it is not guaranteed to be\nURL-safe or base64 encoded.\n"
+                }
+            },
+            "requiredInputs": [
+                "byteLength"
+            ],
+            "stateInputs": {
+                "description": "Input properties used for looking up and filtering Id resources.\n",
+                "properties": {
+                    "b64Std": {
+                        "type": "string",
+                        "description": "The generated id presented in base64 without additional transformations.\n"
+                    },
+                    "b64Url": {
+                        "type": "string",
+                        "description": "The generated id presented in base64, using the URL-friendly character set: case-sensitive letters, digits and the\ncharacters `_` and `-`.\n"
+                    },
+                    "byteLength": {
+                        "type": "number",
+                        "description": "The number of random bytes to produce. The minimum value is 1, which produces eight bits of randomness.\n"
+                    },
+                    "dec": {
+                        "type": "string",
+                        "description": "The generated id presented in non-padded decimal digits.\n"
+                    },
+                    "hex": {
+                        "type": "string",
+                        "description": "The generated id presented in padded hexadecimal digits. This result will always be twice as long as the requested byte\nlength.\n"
+                    },
+                    "keepers": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        },
+                        "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for\nmore information.\n"
+                    },
+                    "prefix": {
+                        "type": "string",
+                        "description": "Arbitrary string to prefix the output value with. This string is supplied as-is, meaning it is not guaranteed to be\nURL-safe or base64 encoded.\n"
+                    }
+                },
+                "type": "object"
+            }
+        },
+        "random:index/integer:Integer": {
+            "properties": {
+                "keepers": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    },
+                    "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for\nmore information.\n"
+                },
+                "max": {
+                    "type": "number",
+                    "description": "The maximum inclusive value of the range.\n"
+                },
+                "min": {
+                    "type": "number",
+                    "description": "The minimum inclusive value of the range.\n"
+                },
+                "result": {
+                    "type": "number",
+                    "description": "The random integer result.\n"
+                },
+                "seed": {
+                    "type": "string",
+                    "description": "A custom seed to always produce the same value.\n"
+                }
+            },
+            "required": [
+                "max",
+                "min",
+                "result"
+            ],
+            "inputProperties": {
+                "keepers": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    },
+                    "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for\nmore information.\n"
+                },
+                "max": {
+                    "type": "number",
+                    "description": "The maximum inclusive value of the range.\n"
+                },
+                "min": {
+                    "type": "number",
+                    "description": "The minimum inclusive value of the range.\n"
+                },
+                "seed": {
+                    "type": "string",
+                    "description": "A custom seed to always produce the same value.\n"
+                }
+            },
+            "requiredInputs": [
+                "max",
+                "min"
+            ],
+            "stateInputs": {
+                "description": "Input properties used for looking up and filtering Integer resources.\n",
+                "properties": {
+                    "keepers": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        },
+                        "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for\nmore information.\n"
+                    },
+                    "max": {
+                        "type": "number",
+                        "description": "The maximum inclusive value of the range.\n"
+                    },
+                    "min": {
+                        "type": "number",
+                        "description": "The minimum inclusive value of the range.\n"
+                    },
+                    "result": {
+                        "type": "number",
+                        "description": "The random integer result.\n"
+                    },
+                    "seed": {
+                        "type": "string",
+                        "description": "A custom seed to always produce the same value.\n"
+                    }
+                },
+                "type": "object"
+            }
+        },
+        "random:index/password:Password": {
+            "properties": {
+                "bcryptHash": {
+                    "type": "string",
+                    "description": "A bcrypt hash of the generated random string.\n",
+                    "secret": true
+                },
+                "keepers": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    },
+                    "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for\nmore information.\n"
+                },
+                "length": {
+                    "type": "number",
+                    "description": "The length of the string desired. The minimum value for length is 1 and, length must also be \u003e= (`min_upper` +\n`min_lower` + `min_numeric` + `min_special`).\n"
+                },
+                "lower": {
+                    "type": "boolean",
+                    "description": "Include lowercase alphabet characters in the result. Default value is `true`.\n"
+                },
+                "minLower": {
+                    "type": "number",
+                    "description": "Minimum number of lowercase alphabet characters in the result. Default value is `0`.\n"
+                },
+                "minNumeric": {
+                    "type": "number",
+                    "description": "Minimum number of numeric characters in the result. Default value is `0`.\n"
+                },
+                "minSpecial": {
+                    "type": "number",
+                    "description": "Minimum number of special characters in the result. Default value is `0`.\n"
+                },
+                "minUpper": {
+                    "type": "number",
+                    "description": "Minimum number of uppercase alphabet characters in the result. Default value is `0`.\n"
+                },
+                "number": {
+                    "type": "boolean",
+                    "description": "Include numeric characters in the result. Default value is `true`. **NOTE**: This is deprecated, use `numeric` instead.\n",
+                    "deprecationMessage": "Deprecated"
+                },
+                "numeric": {
+                    "type": "boolean",
+                    "description": "Include numeric characters in the result. Default value is `true`.\n"
+                },
+                "overrideSpecial": {
+                    "type": "string",
+                    "description": "Supply your own list of special characters to use for string generation. This overrides the default character list in\nthe special argument. The `special` argument must still be set to true for any overwritten characters to be used in\ngeneration.\n"
+                },
+                "result": {
+                    "type": "string",
+                    "description": "The generated random string.\n",
+                    "secret": true
+                },
+                "special": {
+                    "type": "boolean",
+                    "description": "Include special characters in the result. These are `!@#$%\u0026*()-_=+[]{}\u003c\u003e:?`. Default value is `true`.\n"
+                },
+                "upper": {
+                    "type": "boolean",
+                    "description": "Include uppercase alphabet characters in the result. Default value is `true`.\n"
+                }
+            },
+            "required": [
+                "bcryptHash",
+                "length",
+                "number",
+                "numeric",
+                "result"
+            ],
+            "inputProperties": {
+                "keepers": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    },
+                    "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for\nmore information.\n"
+                },
+                "length": {
+                    "type": "number",
+                    "description": "The length of the string desired. The minimum value for length is 1 and, length must also be \u003e= (`min_upper` +\n`min_lower` + `min_numeric` + `min_special`).\n"
+                },
+                "lower": {
+                    "type": "boolean",
+                    "description": "Include lowercase alphabet characters in the result. Default value is `true`.\n"
+                },
+                "minLower": {
+                    "type": "number",
+                    "description": "Minimum number of lowercase alphabet characters in the result. Default value is `0`.\n"
+                },
+                "minNumeric": {
+                    "type": "number",
+                    "description": "Minimum number of numeric characters in the result. Default value is `0`.\n"
+                },
+                "minSpecial": {
+                    "type": "number",
+                    "description": "Minimum number of special characters in the result. Default value is `0`.\n"
+                },
+                "minUpper": {
+                    "type": "number",
+                    "description": "Minimum number of uppercase alphabet characters in the result. Default value is `0`.\n"
+                },
+                "number": {
+                    "type": "boolean",
+                    "description": "Include numeric characters in the result. Default value is `true`. **NOTE**: This is deprecated, use `numeric` instead.\n",
+                    "deprecationMessage": "Deprecated"
+                },
+                "numeric": {
+                    "type": "boolean",
+                    "description": "Include numeric characters in the result. Default value is `true`.\n"
+                },
+                "overrideSpecial": {
+                    "type": "string",
+                    "description": "Supply your own list of special characters to use for string generation. This overrides the default character list in\nthe special argument. The `special` argument must still be set to true for any overwritten characters to be used in\ngeneration.\n"
+                },
+                "special": {
+                    "type": "boolean",
+                    "description": "Include special characters in the result. These are `!@#$%\u0026*()-_=+[]{}\u003c\u003e:?`. Default value is `true`.\n"
+                },
+                "upper": {
+                    "type": "boolean",
+                    "description": "Include uppercase alphabet characters in the result. Default value is `true`.\n"
+                }
+            },
+            "requiredInputs": [
+                "length"
+            ],
+            "stateInputs": {
+                "description": "Input properties used for looking up and filtering Password resources.\n",
+                "properties": {
+                    "bcryptHash": {
+                        "type": "string",
+                        "description": "A bcrypt hash of the generated random string.\n",
+                        "secret": true
+                    },
+                    "keepers": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        },
+                        "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for\nmore information.\n"
+                    },
+                    "length": {
+                        "type": "number",
+                        "description": "The length of the string desired. The minimum value for length is 1 and, length must also be \u003e= (`min_upper` +\n`min_lower` + `min_numeric` + `min_special`).\n"
+                    },
+                    "lower": {
+                        "type": "boolean",
+                        "description": "Include lowercase alphabet characters in the result. Default value is `true`.\n"
+                    },
+                    "minLower": {
+                        "type": "number",
+                        "description": "Minimum number of lowercase alphabet characters in the result. Default value is `0`.\n"
+                    },
+                    "minNumeric": {
+                        "type": "number",
+                        "description": "Minimum number of numeric characters in the result. Default value is `0`.\n"
+                    },
+                    "minSpecial": {
+                        "type": "number",
+                        "description": "Minimum number of special characters in the result. Default value is `0`.\n"
+                    },
+                    "minUpper": {
+                        "type": "number",
+                        "description": "Minimum number of uppercase alphabet characters in the result. Default value is `0`.\n"
+                    },
+                    "number": {
+                        "type": "boolean",
+                        "description": "Include numeric characters in the result. Default value is `true`. **NOTE**: This is deprecated, use `numeric` instead.\n",
+                        "deprecationMessage": "Deprecated"
+                    },
+                    "numeric": {
+                        "type": "boolean",
+                        "description": "Include numeric characters in the result. Default value is `true`.\n"
+                    },
+                    "overrideSpecial": {
+                        "type": "string",
+                        "description": "Supply your own list of special characters to use for string generation. This overrides the default character list in\nthe special argument. The `special` argument must still be set to true for any overwritten characters to be used in\ngeneration.\n"
+                    },
+                    "result": {
+                        "type": "string",
+                        "description": "The generated random string.\n",
+                        "secret": true
+                    },
+                    "special": {
+                        "type": "boolean",
+                        "description": "Include special characters in the result. These are `!@#$%\u0026*()-_=+[]{}\u003c\u003e:?`. Default value is `true`.\n"
+                    },
+                    "upper": {
+                        "type": "boolean",
+                        "description": "Include uppercase alphabet characters in the result. Default value is `true`.\n"
+                    }
+                },
+                "type": "object"
+            }
+        },
+        "random:index/pet:Pet": {
+            "properties": {
+                "keepers": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    },
+                    "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for\nmore information.\n"
+                },
+                "length": {
+                    "type": "number",
+                    "description": "The length (in words) of the pet name. Defaults to 2\n"
+                },
+                "prefix": {
+                    "type": "string",
+                    "description": "A string to prefix the name with.\n"
+                },
+                "separator": {
+                    "type": "string",
+                    "description": "The character to separate words in the pet name. Defaults to \"-\"\n"
+                }
+            },
+            "inputProperties": {
+                "keepers": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    },
+                    "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for\nmore information.\n"
+                },
+                "length": {
+                    "type": "number",
+                    "description": "The length (in words) of the pet name. Defaults to 2\n"
+                },
+                "prefix": {
+                    "type": "string",
+                    "description": "A string to prefix the name with.\n"
+                },
+                "separator": {
+                    "type": "string",
+                    "description": "The character to separate words in the pet name. Defaults to \"-\"\n"
+                }
+            },
+            "stateInputs": {
+                "description": "Input properties used for looking up and filtering Pet resources.\n",
+                "properties": {
+                    "keepers": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        },
+                        "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for\nmore information.\n"
+                    },
+                    "length": {
+                        "type": "number",
+                        "description": "The length (in words) of the pet name. Defaults to 2\n"
+                    },
+                    "prefix": {
+                        "type": "string",
+                        "description": "A string to prefix the name with.\n"
+                    },
+                    "separator": {
+                        "type": "string",
+                        "description": "The character to separate words in the pet name. Defaults to \"-\"\n"
+                    }
+                },
+                "type": "object"
+            }
+        },
+        "random:index/shuffle:Shuffle": {
+            "properties": {
+                "inputs": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "The list of strings to shuffle.\n"
+                },
+                "keepers": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    },
+                    "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for\nmore information.\n"
+                },
+                "resultCount": {
+                    "type": "number",
+                    "description": "The number of results to return. Defaults to the number of items in the `input` list. If fewer items are requested, some\nelements will be excluded from the result. If more items are requested, items will be repeated in the result but not\nmore frequently than the number of items in the input list.\n"
+                },
+                "results": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Random permutation of the list of strings given in `input`.\n"
+                },
+                "seed": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "inputs",
+                "results"
+            ],
+            "inputProperties": {
+                "inputs": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "The list of strings to shuffle.\n"
+                },
+                "keepers": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    },
+                    "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for\nmore information.\n"
+                },
+                "resultCount": {
+                    "type": "number",
+                    "description": "The number of results to return. Defaults to the number of items in the `input` list. If fewer items are requested, some\nelements will be excluded from the result. If more items are requested, items will be repeated in the result but not\nmore frequently than the number of items in the input list.\n"
+                },
+                "seed": {
+                    "type": "string"
+                }
+            },
+            "requiredInputs": [
+                "inputs"
+            ],
+            "stateInputs": {
+                "description": "Input properties used for looking up and filtering Shuffle resources.\n",
+                "properties": {
+                    "inputs": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "The list of strings to shuffle.\n"
+                    },
+                    "keepers": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        },
+                        "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for\nmore information.\n"
+                    },
+                    "resultCount": {
+                        "type": "number",
+                        "description": "The number of results to return. Defaults to the number of items in the `input` list. If fewer items are requested, some\nelements will be excluded from the result. If more items are requested, items will be repeated in the result but not\nmore frequently than the number of items in the input list.\n"
+                    },
+                    "results": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Random permutation of the list of strings given in `input`.\n"
+                    },
+                    "seed": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            }
+        },
+        "random:index/string:String": {
+            "properties": {
+                "keepers": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    },
+                    "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for\nmore information.\n"
+                },
+                "length": {
+                    "type": "number",
+                    "description": "The length of the string desired. The minimum value for length is 1 and, length must also be \u003e= (`min_upper` +\n`min_lower` + `min_numeric` + `min_special`).\n"
+                },
+                "lower": {
+                    "type": "boolean",
+                    "description": "Include lowercase alphabet characters in the result. Default value is `true`.\n"
+                },
+                "minLower": {
+                    "type": "number",
+                    "description": "Minimum number of lowercase alphabet characters in the result. Default value is `0`.\n"
+                },
+                "minNumeric": {
+                    "type": "number",
+                    "description": "Minimum number of numeric characters in the result. Default value is `0`.\n"
+                },
+                "minSpecial": {
+                    "type": "number",
+                    "description": "Minimum number of special characters in the result. Default value is `0`.\n"
+                },
+                "minUpper": {
+                    "type": "number",
+                    "description": "Minimum number of uppercase alphabet characters in the result. Default value is `0`.\n"
+                },
+                "number": {
+                    "type": "boolean",
+                    "description": "Include numeric characters in the result. Default value is `true`. **NOTE**: This is deprecated, use `numeric` instead.\n",
+                    "deprecationMessage": "Deprecated"
+                },
+                "numeric": {
+                    "type": "boolean",
+                    "description": "Include numeric characters in the result. Default value is `true`.\n"
+                },
+                "overrideSpecial": {
+                    "type": "string",
+                    "description": "Supply your own list of special characters to use for string generation. This overrides the default character list in\nthe special argument. The `special` argument must still be set to true for any overwritten characters to be used in\ngeneration.\n"
+                },
+                "result": {
+                    "type": "string",
+                    "description": "The generated random string.\n"
+                },
+                "special": {
+                    "type": "boolean",
+                    "description": "Include special characters in the result. These are `!@#$%\u0026*()-_=+[]{}\u003c\u003e:?`. Default value is `true`.\n"
+                },
+                "upper": {
+                    "type": "boolean",
+                    "description": "Include uppercase alphabet characters in the result. Default value is `true`.\n"
+                }
+            },
+            "required": [
+                "length",
+                "number",
+                "numeric",
+                "result"
+            ],
+            "inputProperties": {
+                "keepers": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    },
+                    "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for\nmore information.\n"
+                },
+                "length": {
+                    "type": "number",
+                    "description": "The length of the string desired. The minimum value for length is 1 and, length must also be \u003e= (`min_upper` +\n`min_lower` + `min_numeric` + `min_special`).\n"
+                },
+                "lower": {
+                    "type": "boolean",
+                    "description": "Include lowercase alphabet characters in the result. Default value is `true`.\n"
+                },
+                "minLower": {
+                    "type": "number",
+                    "description": "Minimum number of lowercase alphabet characters in the result. Default value is `0`.\n"
+                },
+                "minNumeric": {
+                    "type": "number",
+                    "description": "Minimum number of numeric characters in the result. Default value is `0`.\n"
+                },
+                "minSpecial": {
+                    "type": "number",
+                    "description": "Minimum number of special characters in the result. Default value is `0`.\n"
+                },
+                "minUpper": {
+                    "type": "number",
+                    "description": "Minimum number of uppercase alphabet characters in the result. Default value is `0`.\n"
+                },
+                "number": {
+                    "type": "boolean",
+                    "description": "Include numeric characters in the result. Default value is `true`. **NOTE**: This is deprecated, use `numeric` instead.\n",
+                    "deprecationMessage": "Deprecated"
+                },
+                "numeric": {
+                    "type": "boolean",
+                    "description": "Include numeric characters in the result. Default value is `true`.\n"
+                },
+                "overrideSpecial": {
+                    "type": "string",
+                    "description": "Supply your own list of special characters to use for string generation. This overrides the default character list in\nthe special argument. The `special` argument must still be set to true for any overwritten characters to be used in\ngeneration.\n"
+                },
+                "special": {
+                    "type": "boolean",
+                    "description": "Include special characters in the result. These are `!@#$%\u0026*()-_=+[]{}\u003c\u003e:?`. Default value is `true`.\n"
+                },
+                "upper": {
+                    "type": "boolean",
+                    "description": "Include uppercase alphabet characters in the result. Default value is `true`.\n"
+                }
+            },
+            "requiredInputs": [
+                "length"
+            ],
+            "stateInputs": {
+                "description": "Input properties used for looking up and filtering String resources.\n",
+                "properties": {
+                    "keepers": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        },
+                        "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for\nmore information.\n"
+                    },
+                    "length": {
+                        "type": "number",
+                        "description": "The length of the string desired. The minimum value for length is 1 and, length must also be \u003e= (`min_upper` +\n`min_lower` + `min_numeric` + `min_special`).\n"
+                    },
+                    "lower": {
+                        "type": "boolean",
+                        "description": "Include lowercase alphabet characters in the result. Default value is `true`.\n"
+                    },
+                    "minLower": {
+                        "type": "number",
+                        "description": "Minimum number of lowercase alphabet characters in the result. Default value is `0`.\n"
+                    },
+                    "minNumeric": {
+                        "type": "number",
+                        "description": "Minimum number of numeric characters in the result. Default value is `0`.\n"
+                    },
+                    "minSpecial": {
+                        "type": "number",
+                        "description": "Minimum number of special characters in the result. Default value is `0`.\n"
+                    },
+                    "minUpper": {
+                        "type": "number",
+                        "description": "Minimum number of uppercase alphabet characters in the result. Default value is `0`.\n"
+                    },
+                    "number": {
+                        "type": "boolean",
+                        "description": "Include numeric characters in the result. Default value is `true`. **NOTE**: This is deprecated, use `numeric` instead.\n",
+                        "deprecationMessage": "Deprecated"
+                    },
+                    "numeric": {
+                        "type": "boolean",
+                        "description": "Include numeric characters in the result. Default value is `true`.\n"
+                    },
+                    "overrideSpecial": {
+                        "type": "string",
+                        "description": "Supply your own list of special characters to use for string generation. This overrides the default character list in\nthe special argument. The `special` argument must still be set to true for any overwritten characters to be used in\ngeneration.\n"
+                    },
+                    "result": {
+                        "type": "string",
+                        "description": "The generated random string.\n"
+                    },
+                    "special": {
+                        "type": "boolean",
+                        "description": "Include special characters in the result. These are `!@#$%\u0026*()-_=+[]{}\u003c\u003e:?`. Default value is `true`.\n"
+                    },
+                    "upper": {
+                        "type": "boolean",
+                        "description": "Include uppercase alphabet characters in the result. Default value is `true`.\n"
+                    }
+                },
+                "type": "object"
+            }
+        },
+        "random:index/uuid:Uuid": {
+            "properties": {
+                "keepers": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    },
+                    "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for\nmore information.\n"
+                },
+                "result": {
+                    "type": "string",
+                    "description": "The generated uuid presented in string format.\n"
+                }
+            },
+            "required": [
+                "result"
+            ],
+            "inputProperties": {
+                "keepers": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    },
+                    "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for\nmore information.\n"
+                }
+            },
+            "stateInputs": {
+                "description": "Input properties used for looking up and filtering Uuid resources.\n",
+                "properties": {
+                    "keepers": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        },
+                        "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for\nmore information.\n"
+                    },
+                    "result": {
+                        "type": "string",
+                        "description": "The generated uuid presented in string format.\n"
+                    }
+                },
+                "type": "object"
+            }
+        }
+    }
+}

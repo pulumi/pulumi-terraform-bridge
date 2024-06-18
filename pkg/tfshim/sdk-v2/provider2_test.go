@@ -14,10 +14,11 @@ import (
 func TestProvider2UpgradeResourceState(t *testing.T) {
 	const tfToken = "test_token"
 	for _, tc := range []struct {
-		name     string
-		state    cty.Value
-		rSchema  *schema.Resource
-		expected cty.Value
+		name      string
+		state     cty.Value
+		rSchema   *schema.Resource
+		expected  cty.Value
+		expectErr func(*testing.T, error)
 	}{
 		{
 			name: "no upgrade",
@@ -213,6 +214,58 @@ func TestProvider2UpgradeResourceState(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "handle errors",
+			state: func() cty.Value {
+				return cty.ObjectVal(map[string]cty.Value{
+					"compute_resources": cty.ObjectVal(map[string]cty.Value{
+						"ec2_configuration": cty.ObjectVal(map[string]cty.Value{
+							"image_id_override": cty.StringVal("override"),
+						}),
+					}),
+					"id": cty.StringVal("id"),
+				})
+			}(),
+			expectErr: func(t *testing.T, err error) {
+				require.Error(t, err)
+				require.ErrorContains(t, err, "missing expected [")
+			},
+			rSchema: &schema.Resource{
+				Schema: map[string]*schema.Schema{
+					"compute_resources": {
+						Type:     schema.TypeList,
+						Optional: true,
+						ForceNew: true,
+						MinItems: 0,
+						MaxItems: 1,
+						Elem: &schema.Resource{
+							Schema: map[string]*schema.Schema{
+								"ec2_configuration": {
+									Type:     schema.TypeList,
+									Optional: true,
+									Computed: true,
+									ForceNew: true,
+									MaxItems: 2,
+									Elem: &schema.Resource{
+										Schema: map[string]*schema.Schema{
+											"image_id_override": {
+												Type:     schema.TypeString,
+												Optional: true,
+												Computed: true,
+											},
+											"image_type": {
+												Type:     schema.TypeString,
+												Optional: true,
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			tf := &schema.Provider{
@@ -227,9 +280,200 @@ func TestProvider2UpgradeResourceState(t *testing.T) {
 				resourceType: tfToken,
 				stateValue:   tc.state,
 			})
+			if tc.expectErr != nil {
+				tc.expectErr(t, err)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tc.expected, actual.(*v2InstanceState2).stateValue)
+			}
+		})
+	}
+}
+
+func TestNormalizeBlockCollections(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		res      *schema.Resource
+		input    cty.Value
+		expected cty.Value
+	}{
+		{
+			name: "basic",
+			input: cty.ObjectVal(
+				map[string]cty.Value{
+					"prop": cty.StringVal("val"),
+				},
+			),
+			res: &schema.Resource{
+				Schema: map[string]*schema.Schema{
+					"prop": {Type: schema.TypeString, Optional: true},
+				},
+			},
+			expected: cty.ObjectVal(
+				map[string]cty.Value{
+					"prop": cty.StringVal("val"),
+				},
+			),
+		},
+		{
+			name: "list attr",
+			input: cty.ObjectVal(
+				map[string]cty.Value{
+					"prop": cty.ListVal([]cty.Value{cty.StringVal("val")}),
+				},
+			),
+			res: &schema.Resource{
+				Schema: map[string]*schema.Schema{
+					"prop": {
+						Type:     schema.TypeList,
+						Optional: true,
+						Elem:     &schema.Schema{Type: schema.TypeString},
+					},
+				},
+			},
+			expected: cty.ObjectVal(
+				map[string]cty.Value{
+					"prop": cty.ListVal([]cty.Value{cty.StringVal("val")}),
+				},
+			),
+		},
+		{
+			name: "list block with val",
+			input: cty.ObjectVal(
+				map[string]cty.Value{
+					"prop": cty.ListVal(
+						[]cty.Value{
+							cty.ObjectVal(
+								map[string]cty.Value{"field": cty.StringVal("val")},
+							),
+						},
+					),
+				},
+			),
+			res: &schema.Resource{
+				Schema: map[string]*schema.Schema{
+					"prop": {
+						Type:     schema.TypeList,
+						Optional: true,
+						Elem: &schema.Resource{
+							Schema: map[string]*schema.Schema{
+								"field": {Type: schema.TypeString, Optional: true},
+							},
+						},
+					},
+				},
+			},
+			expected: cty.ObjectVal(
+				map[string]cty.Value{
+					"prop": cty.ListVal(
+						[]cty.Value{
+							cty.ObjectVal(
+								map[string]cty.Value{"field": cty.StringVal("val")},
+							),
+						},
+					),
+				},
+			),
+		},
+		{
+			name: "list block no val",
+			input: cty.ObjectVal(
+				map[string]cty.Value{
+					"prop": cty.NullVal(
+						cty.List(cty.Object(map[string]cty.Type{"field": cty.String})),
+					),
+				},
+			),
+			res: &schema.Resource{
+				Schema: map[string]*schema.Schema{
+					"prop": {
+						Type:     schema.TypeList,
+						Optional: true,
+						Elem: &schema.Resource{
+							Schema: map[string]*schema.Schema{
+								"field": {Type: schema.TypeString, Optional: true},
+							},
+						},
+					},
+				},
+			},
+			expected: cty.ObjectVal(
+				map[string]cty.Value{
+					"prop": cty.ListValEmpty(cty.Object(map[string]cty.Type{"field": cty.String})),
+				},
+			),
+		},
+		{
+			name: "list block no val config mode attr",
+			input: cty.ObjectVal(
+				map[string]cty.Value{
+					"prop": cty.NullVal(
+						cty.List(cty.Object(map[string]cty.Type{"field": cty.String})),
+					),
+				},
+			),
+			res: &schema.Resource{
+				Schema: map[string]*schema.Schema{
+					"prop": {
+						Type:       schema.TypeList,
+						Optional:   true,
+						ConfigMode: schema.SchemaConfigModeAttr,
+						Elem: &schema.Resource{
+							Schema: map[string]*schema.Schema{
+								"field": {Type: schema.TypeString, Optional: true},
+							},
+						},
+					},
+				},
+			},
+			expected: cty.ObjectVal(
+				map[string]cty.Value{
+					"prop": cty.NullVal(cty.List(cty.Object(map[string]cty.Type{"field": cty.String}))),
+				},
+			),
+		},
+		{
+			name: "set block no val",
+			input: cty.ObjectVal(
+				map[string]cty.Value{
+					"prop": cty.NullVal(
+						cty.Set(cty.Object(map[string]cty.Type{"field": cty.String})),
+					),
+				},
+			),
+			res: &schema.Resource{
+				Schema: map[string]*schema.Schema{
+					"prop": {
+						Type:     schema.TypeSet,
+						Optional: true,
+						Elem: &schema.Resource{
+							Schema: map[string]*schema.Schema{
+								"field": {Type: schema.TypeString, Optional: true},
+							},
+						},
+					},
+				},
+			},
+			expected: cty.ObjectVal(
+				map[string]cty.Value{
+					"prop": cty.SetValEmpty(cty.Object(map[string]cty.Type{"field": cty.String})),
+				},
+			),
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.res.InternalValidate(nil, false)
 			require.NoError(t, err)
 
-			assert.Equal(t, tc.expected, actual.(*v2InstanceState2).stateValue)
+			res := normalizeBlockCollections(
+				tc.input,
+				tc.res,
+			)
+			if !tc.expected.Equals(res).True() {
+				t.Logf("Expect: %s", tc.expected.GoString())
+				t.Logf("Actual: %s", res.GoString())
+				t.FailNow()
+			}
 		})
 	}
 }

@@ -15,6 +15,8 @@
 package pfutils
 
 import (
+	"context"
+
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	dschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	pschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
@@ -22,22 +24,26 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 )
 
-// Attr type works around not being able to link to fwschema.Schema from
-// "github.com/hashicorp/terraform-plugin-framework/internal/fwschema"
-type Schema interface {
+type SchemaType interface {
 	tftypes.AttributePathStepper
 
-	Type() attr.Type
-
-	Attrs() map[string]Attr
-	Blocks() map[string]Block
-
-	DeprecationMessage() string
+	Type(context.Context) tftypes.Type
 
 	// Resource schemas are versioned for [State Upgrade].
 	//
 	// [State Upgrade]: https://developer.hashicorp.com/terraform/plugin/framework/resources/state-upgrade
 	ResourceSchemaVersion() int64
+}
+
+// Attr type works around not being able to link to fwschema.Schema from
+// "github.com/hashicorp/terraform-plugin-framework/internal/fwschema"
+type Schema interface {
+	SchemaType
+
+	Attrs() map[string]Attr
+	Blocks() map[string]Block
+
+	DeprecationMessage() string
 }
 
 func FromProviderSchema(x pschema.Schema) Schema {
@@ -107,8 +113,8 @@ func (a *schemaAdapter) Blocks() map[string]Block {
 	return a.blocks
 }
 
-func (a *schemaAdapter) Type() attr.Type {
-	return a.attrType
+func (a *schemaAdapter) Type(ctx context.Context) tftypes.Type {
+	return a.attrType.TerraformType(ctx)
 }
 
 func convertMap[A any, B any](f func(A) B, m map[string]A) map[string]B {

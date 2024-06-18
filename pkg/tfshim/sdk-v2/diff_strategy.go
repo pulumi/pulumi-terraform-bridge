@@ -21,6 +21,10 @@ import (
 
 // Configures how the provider performs Diff. Since this is a sensitive method that can result in unexpected breaking
 // changes, using a configurable DiffStrategy as a feature flag assists gradual rollout.
+//
+// Deprecated.
+//
+// TODO[pulumi/pulumi-terraform-bridge#2062] clean up deprecation.
 type DiffStrategy int
 
 const (
@@ -49,6 +53,9 @@ func (s DiffStrategy) String() string {
 	}
 }
 
+// Deprecated.
+//
+// TODO[pulumi/pulumi-terraform-bridge#2062] clean up deprecation.
 func ParseDiffStrategy(text string) (DiffStrategy, error) {
 	switch text {
 	case "ClassicDiff":
@@ -64,6 +71,9 @@ func ParseDiffStrategy(text string) (DiffStrategy, error) {
 
 const diffStrategyEnvVar = "PULUMI_DIFF_STRATEGY"
 
+// Deprecated.
+//
+// TODO[pulumi/pulumi-terraform-bridge#2062] clean up deprecation.
 func ParseDiffStrategyFromEnv() (DiffStrategy, bool, error) {
 	s := os.Getenv(diffStrategyEnvVar)
 	if s == "" {

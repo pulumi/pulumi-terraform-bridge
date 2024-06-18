@@ -29,8 +29,8 @@ import (
 
 //go:generate go run generate.go
 
-const terraformRepo = "https://github.com/hashicorp/terraform.git"
-const terraformVer = "v1.3.9"
+const terraformRepo = "https://github.com/opentofu/opentofu.git"
+const terraformVer = "v1.7.2"
 
 type file struct {
 	src        string
@@ -48,7 +48,7 @@ func main() {
 }
 
 func files() []file {
-	oldPkg := "github.com/hashicorp/terraform"
+	oldPkg := "github.com/opentofu/opentofu"
 	newPkg := "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2/internal/tf"
 
 	replacePkg := gofmtReplace(fmt.Sprintf(`"%s/internal/configs/configschema" -> "%s/configs/configschema"`,
@@ -90,8 +90,18 @@ func files() []file {
 			transforms: transforms,
 		},
 		{
+			src:        "internal/configs/configschema/path.go",
+			dest:       "configs/configschema/path.go",
+			transforms: transforms,
+		},
+		{
 			src:        "internal/plans/objchange/objchange.go",
 			dest:       "plans/objchange/objchange.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/plans/objchange/plan_valid.go",
+			dest:       "plans/objchange/plan_valid.go",
 			transforms: transforms,
 		},
 	}

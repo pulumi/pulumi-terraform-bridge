@@ -41,7 +41,7 @@ func TestRawPlanSet(t *testing.T) {
 		ResourcesMap: map[string]*schema.Resource{"myres": r},
 	}
 
-	wp := NewProvider(p, WithDiffStrategy(PlanState))
+	wp := NewProvider(p)
 
 	state := cty.ObjectVal(map[string]cty.Value{
 		"tags": cty.MapVal(map[string]cty.Value{"tag1": cty.StringVal("tag1v")}),

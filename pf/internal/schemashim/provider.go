@@ -16,12 +16,20 @@ package schemashim
 
 import (
 	"context"
+	"fmt"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 
 	pfprovider "github.com/hashicorp/terraform-plugin-framework/provider"
+	"github.com/hashicorp/terraform-plugin-framework/providerserver"
+	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
+	"github.com/pulumi/pulumi-terraform-bridge/pf"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/pfutils"
+	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/runtypes"
 )
+
+var _ = pf.ShimProvider(&SchemaOnlyProvider{})
 
 type SchemaOnlyProvider struct {
 	ctx         context.Context
@@ -29,8 +37,37 @@ type SchemaOnlyProvider struct {
 	resourceMap shim.ResourceMap
 }
 
-func (p *SchemaOnlyProvider) PfProvider() pfprovider.Provider {
-	return p.tf
+func (p *SchemaOnlyProvider) Server(ctx context.Context) (tfprotov6.ProviderServer, error) {
+	newServer6 := providerserver.NewProtocol6(p.tf)
+	server6 := newServer6()
+
+	// Somehow this GetProviderSchema call needs to happen at least once to avoid Resource Type Not Found in the
+	// tfServer, to init it properly to remember provider name and compute correct resource names like
+	// random_integer instead of _integer (unknown provider name).
+	if _, err := server6.GetProviderSchema(ctx, &tfprotov6.GetProviderSchemaRequest{}); err != nil {
+		return nil, err
+	}
+
+	return server6, nil
+}
+
+func (p *SchemaOnlyProvider) Resources(ctx context.Context) (runtypes.Resources, error) {
+	return pfutils.GatherResources(ctx, p.tf, NewSchemaMap)
+}
+
+func (p *SchemaOnlyProvider) DataSources(ctx context.Context) (runtypes.DataSources, error) {
+	return pfutils.GatherDatasources(ctx, p.tf, NewSchemaMap)
+}
+
+func (p *SchemaOnlyProvider) Config(ctx context.Context) (tftypes.Object, error) {
+	schemaResponse := &pfprovider.SchemaResponse{}
+	p.tf.Schema(ctx, pfprovider.SchemaRequest{}, schemaResponse)
+	schema, diags := schemaResponse.Schema, schemaResponse.Diagnostics
+	if diags.HasError() {
+		return tftypes.Object{}, fmt.Errorf("Schema() returned diagnostics with HasError")
+	}
+
+	return schema.Type().TerraformType(ctx).(tftypes.Object), nil
 }
 
 var _ shim.Provider = (*SchemaOnlyProvider)(nil)
@@ -50,7 +87,7 @@ func (p *SchemaOnlyProvider) ResourcesMap() shim.ResourceMap {
 }
 
 func (p *SchemaOnlyProvider) DataSourcesMap() shim.ResourceMap {
-	dataSources, err := pfutils.GatherDatasources(context.TODO(), p.tf)
+	dataSources, err := pfutils.GatherDatasources(context.TODO(), p.tf, NewSchemaMap)
 	if err != nil {
 		panic(err)
 	}

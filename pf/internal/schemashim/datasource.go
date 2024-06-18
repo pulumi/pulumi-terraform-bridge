@@ -15,18 +15,18 @@
 package schemashim
 
 import (
-	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/pfutils"
+	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/runtypes"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
 type schemaOnlyDataSource struct {
-	tf pfutils.Schema
+	tf runtypes.Schema
 }
 
 var _ shim.Resource = (*schemaOnlyDataSource)(nil)
 
 func (r *schemaOnlyDataSource) Schema() shim.SchemaMap {
-	return newSchemaMap(r.tf)
+	return r.tf.Shim()
 }
 
 func (*schemaOnlyDataSource) SchemaVersion() int {

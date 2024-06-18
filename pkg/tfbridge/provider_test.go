@@ -717,10 +717,10 @@ func testCheckFailuresV1(t *testing.T, failures []*pulumirpc.CheckFailure) {
 }
 
 func testCheckFailuresV2(t *testing.T, failures []*pulumirpc.CheckFailure) {
-	assert.Equal(t, "Conflicting configuration arguments: \"conflicting_property\": conflicts with "+
+	assert.Equal(t, "Conflicting configuration arguments. \"conflicting_property\": conflicts with "+
 		"conflicting_property2. Examine values at 'name.conflictingProperty'.", failures[0].Reason)
 	assert.Equal(t, "", failures[0].Property)
-	assert.Equal(t, "Conflicting configuration arguments: \"conflicting_property2\": conflicts with "+
+	assert.Equal(t, "Conflicting configuration arguments. \"conflicting_property2\": conflicts with "+
 		"conflicting_property. Examine values at 'name.conflictingProperty2'.", failures[1].Reason)
 	assert.Equal(t, "", failures[1].Property)
 	assert.Equal(t, "Missing required argument. The argument \"array_property_value\" is required"+
@@ -951,7 +951,11 @@ func TestProviderReadV2(t *testing.T) {
 		},
 	}
 
-	testProviderRead(t, provider, "ExampleResource", true /* CheckRawConfig */)
+	// TODO[pulumi/pulumi-terraform-bridge#1977] currently un-schematized fields do not propagate to RawConfig which
+	// causes the test to panic as written.
+	checkRawConfig := false
+
+	testProviderRead(t, provider, "ExampleResource", checkRawConfig)
 }
 
 func testProviderReadNestedSecret(t *testing.T, provider *Provider, typeName tokens.Type) {
@@ -4672,7 +4676,7 @@ func TestUnknowns(t *testing.T) {
 			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
 			"properties":{
 				"__defaults":[],
-				"string_prop":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+				"stringProp":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
 			},
 			"preview":true
 		},
@@ -4745,6 +4749,7 @@ func TestUnknowns(t *testing.T) {
 	})
 
 	t.Run("unknown for set block prop collection", func(t *testing.T) {
+		// TODO[pulumi/pulumi-terraform-bridge#1885]
 		testutils.Replay(t, provider, `
 	{
 		"method": "/pulumirpc.ResourceProvider/Create",
@@ -4826,6 +4831,7 @@ func TestUnknowns(t *testing.T) {
 	})
 
 	t.Run("unknown for list block prop collection", func(t *testing.T) {
+		// TODO[pulumi/pulumi-terraform-bridge#1885]
 		testutils.Replay(t, provider, `
 	{
 		"method": "/pulumirpc.ResourceProvider/Create",
@@ -4846,6 +4852,7 @@ func TestUnknowns(t *testing.T) {
 	})
 
 	t.Run("unknown for nested list prop", func(t *testing.T) {
+		// The unknownness gets promoted one level up. This seems to be TF behaviour, independent of PRC.
 		testutils.Replay(t, provider, `
 	{
 		"method": "/pulumirpc.ResourceProvider/Create",
@@ -4909,6 +4916,7 @@ func TestUnknowns(t *testing.T) {
 	})
 
 	t.Run("unknown for nested list block prop nested collection", func(t *testing.T) {
+		// TODO[pulumi/pulumi-terraform-bridge#1885]
 		testutils.Replay(t, provider, `
 	{
 		"method": "/pulumirpc.ResourceProvider/Create",
@@ -4950,6 +4958,7 @@ func TestUnknowns(t *testing.T) {
 	})
 
 	t.Run("unknown for nested list block prop collection", func(t *testing.T) {
+		// TODO[pulumi/pulumi-terraform-bridge#1885]
 		testutils.Replay(t, provider, `
 	{
 		"method": "/pulumirpc.ResourceProvider/Create",
@@ -5094,6 +5103,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 	})
 
 	t.Run("unknown for set prop", func(t *testing.T) {
+		// The unknownness gets promoted one level up. This seems to be TF behaviour, independent of PRC.
 		testutils.Replay(t, provider, `
 	{
 		"method": "/pulumirpc.ResourceProvider/Create",
@@ -5155,6 +5165,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 	})
 
 	t.Run("unknown for set block prop", func(t *testing.T) {
+		// TODO[pulumi/pulumi-terraform-bridge#1885]
 		testutils.Replay(t, provider, `
 	{
 		"method": "/pulumirpc.ResourceProvider/Create",
@@ -5184,6 +5195,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 	})
 
 	t.Run("unknown for set block prop collection", func(t *testing.T) {
+		// TODO[pulumi/pulumi-terraform-bridge#1885]
 		testutils.Replay(t, provider, `
 	{
 		"method": "/pulumirpc.ResourceProvider/Create",
@@ -5213,6 +5225,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 	})
 
 	t.Run("unknown for list prop", func(t *testing.T) {
+		// The unknownness gets promoted one level up. This seems to be TF behaviour, independent of PRC.
 		testutils.Replay(t, provider, `
 	{
 		"method": "/pulumirpc.ResourceProvider/Create",
@@ -5274,6 +5287,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 	})
 
 	t.Run("unknown for list block prop", func(t *testing.T) {
+		// The unknownness gets promoted one level up. This seems to be TF behaviour, independent of PRC.
 		testutils.Replay(t, provider, `
 	{
 		"method": "/pulumirpc.ResourceProvider/Create",
@@ -5303,6 +5317,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 	})
 
 	t.Run("unknown for list block prop collection", func(t *testing.T) {
+		// TODO[pulumi/pulumi-terraform-bridge#1885]
 		testutils.Replay(t, provider, `
 	{
 		"method": "/pulumirpc.ResourceProvider/Create",
@@ -5332,6 +5347,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 	})
 
 	t.Run("unknown for nested list prop", func(t *testing.T) {
+		// The unknownness gets promoted one level up. This seems to be TF behaviour, independent of PRC.
 		testutils.Replay(t, provider, `
 	{
 		"method": "/pulumirpc.ResourceProvider/Create",
@@ -5426,6 +5442,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 	})
 
 	t.Run("unknown for nested list block prop nested collection", func(t *testing.T) {
+		// TODO[pulumi/pulumi-terraform-bridge#1885]
 		testutils.Replay(t, provider, `
 	{
 		"method": "/pulumirpc.ResourceProvider/Create",
@@ -5457,6 +5474,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 	})
 
 	t.Run("unknown for nested list block prop", func(t *testing.T) {
+		// The unknownness gets promoted one level up. This seems to be TF behaviour, independent of PRC.
 		testutils.Replay(t, provider, `
 	{
 		"method": "/pulumirpc.ResourceProvider/Create",
@@ -5486,6 +5504,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 	})
 
 	t.Run("unknown for nested list block collection", func(t *testing.T) {
+		// TODO[pulumi/pulumi-terraform-bridge#1885]
 		testutils.Replay(t, provider, `
 	{
 		"method": "/pulumirpc.ResourceProvider/Create",

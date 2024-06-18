@@ -46,7 +46,7 @@ func (p *provider) DeleteWithContext(
 		return resource.StatusOK, err
 	}
 
-	tfType := rh.schema.Type().TerraformType(ctx).(tftypes.Object)
+	tfType := rh.schema.Type(ctx).(tftypes.Object)
 
 	priorState, err := convert.EncodePropertyMapToDynamic(rh.encoder, tfType, props)
 	if err != nil {

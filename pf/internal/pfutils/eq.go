@@ -32,7 +32,7 @@ func (defaultEq) Equal(_ *tftypes.AttributePath, a, b tftypes.Value) (bool, erro
 var DefaultEq Eq = defaultEq(0)
 
 type nonComputedEq struct {
-	Schema Schema
+	Schema tftypes.AttributePathStepper
 }
 
 func (eq *nonComputedEq) Equal(p *tftypes.AttributePath, a, b tftypes.Value) (bool, error) {
@@ -49,11 +49,11 @@ func (eq *nonComputedEq) Equal(p *tftypes.AttributePath, a, b tftypes.Value) (bo
 }
 
 // Considers two tftype.Value values equal if all their non-computed attributes are equal.
-func NonComputedEq(schema Schema) Eq {
+func NonComputedEq(schema tftypes.AttributePathStepper) Eq {
 	return &nonComputedEq{schema}
 }
 
-func replaceComputedAttributesWithNull(schema Schema,
+func replaceComputedAttributesWithNull(schema tftypes.AttributePathStepper,
 	offset *tftypes.AttributePath, val tftypes.Value) (tftypes.Value, error) {
 	return tftypes.Transform(val, func(p *tftypes.AttributePath, v tftypes.Value) (tftypes.Value, error) {
 		realPath := joinPaths(offset, p)
