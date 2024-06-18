@@ -44,9 +44,8 @@ func checkDiagsForErrors(diag diag.Diagnostics) error {
 }
 
 type entry[T any] struct {
-	schema      Schema
-	t           T
-	diagnostics diag.Diagnostics
+	schema Schema
+	t      T
 }
 
 type collection[T any] map[runtypes.TypeName]entry[T]
@@ -72,8 +71,4 @@ func (c collection[T]) Has(name runtypes.TypeName) bool {
 
 func (c collection[T]) Schema(name runtypes.TypeName) Schema {
 	return c[name].schema
-}
-
-func (c collection[T]) Diagnostics(name runtypes.TypeName) diag.Diagnostics {
-	return c[name].diagnostics
 }

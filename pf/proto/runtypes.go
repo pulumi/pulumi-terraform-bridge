@@ -17,7 +17,6 @@ package proto
 import (
 	"context"
 
-	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
@@ -91,9 +90,4 @@ func (c collection) Schema(key runtypes.TypeName) runtypes.Schema {
 	contract.Assertf(ok, "called Schema on a resource that does not exist")
 
 	return schema{s}
-}
-
-func (c collection) Diagnostics(runtypes.TypeName) diag.Diagnostics {
-	// It's not clear how to split diagnostics by resource
-	return nil
 }
