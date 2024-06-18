@@ -26,7 +26,6 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/convert"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
-	"github.com/ryboe/q"
 )
 
 type resourceHandle struct {
@@ -64,7 +63,6 @@ func (p *provider) resourceHandle(ctx context.Context, urn pulumiresource.URN) (
 
 	objectType := result.schema.Type(ctx).(tftypes.Object)
 
-	q.Q(typeName, objectType.String())
 	encoder, err := p.encoding.NewResourceEncoder(typeName, objectType)
 	if err != nil {
 		return resourceHandle{}, fmt.Errorf("Failed to prepare a resource encoder: %s", err)

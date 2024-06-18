@@ -1,8 +1,6 @@
 module github.com/pulumi/pulumi-terraform-bridge/pf
 
-go 1.22
-
-toolchain go1.22.0
+go 1.21
 
 replace (
 	github.com/pulumi/pulumi-terraform-bridge/v3 => ./..
@@ -21,7 +19,6 @@ require (
 	github.com/pulumi/providertest v0.0.11
 	github.com/pulumi/pulumi-terraform-bridge/v3 v3.85.0
 	github.com/pulumi/pulumi-terraform-bridge/x/muxer v0.0.8
-	github.com/ryboe/q v1.0.21
 	github.com/stretchr/testify v1.9.0
 	google.golang.org/grpc v1.63.2
 )
@@ -59,8 +56,6 @@ require (
 	github.com/google/s2a-go v0.1.7 // indirect
 	github.com/hashicorp/go-hclog v1.5.0 // indirect
 	github.com/hashicorp/logutils v1.0.0 // indirect
-	github.com/kr/pretty v0.3.1 // indirect
-	github.com/kr/text v0.2.0 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mattn/go-localereader v0.0.1 // indirect
