@@ -66,6 +66,7 @@ func TestPrimitiveTypes(t *testing.T) {
 		"attrBoolRequired":   resource.NewProperty(true),
 		"attrStringRequired": resource.NewProperty("s"),
 		"attrIntRequired":    resource.NewProperty(64.0),
+		"attrNumberRequired": resource.NewProperty(12.3456),
 	}, plugin.MarshalOptions{}))
 
 	urn := string(resource.NewURN(
@@ -121,6 +122,7 @@ func TestPrimitiveTypes(t *testing.T) {
 				"attrBoolRequired":   resource.NewProperty(true),
 				"attrIntComputed":    resource.NewProperty(128.0),
 				"attrIntRequired":    resource.NewProperty(64.0),
+				"attrNumberRequired": resource.NewProperty(12.3456),
 				"attrStringComputed": resource.NewProperty("t"),
 				"attrStringRequired": resource.NewProperty("s"),
 				"id":                 resource.NewProperty("example-id"),
@@ -145,6 +147,7 @@ func TestPrimitiveTypes(t *testing.T) {
 				"attrBoolRequired":   resource.NewProperty(true),
 				"attrIntComputed":    resource.NewProperty(128.0),
 				"attrIntRequired":    resource.NewProperty(64.0),
+				"attrNumberRequired": resource.NewProperty(12.3456),
 				"attrStringComputed": resource.NewProperty("t"),
 				"attrStringRequired": resource.NewProperty("s"),
 				"id":                 resource.NewProperty("example-id"),
@@ -153,6 +156,7 @@ func TestPrimitiveTypes(t *testing.T) {
 				"attrBoolRequired":   resource.NewProperty(false),
 				"attrStringRequired": resource.NewProperty("u"),
 				"attrIntRequired":    resource.NewProperty(65.0),
+				"attrNumberRequired": resource.NewProperty(12.3456789),
 			}, plugin.MarshalOptions{})),
 			OldInputs: inputs,
 		})

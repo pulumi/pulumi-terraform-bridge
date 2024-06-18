@@ -3,6 +3,8 @@
   "diffs": [
     "attrBoolRequired",
     "attrIntRequired",
+    "attrNumberComputed",
+    "attrNumberRequired",
     "attrStringRequired"
   ]
 }

@@ -2,6 +2,7 @@
   "inputs": {
     "attrBoolRequired": true,
     "attrIntRequired": 64,
+    "attrNumberRequired": 12.3456,
     "attrStringRequired": "s"
   }
 }

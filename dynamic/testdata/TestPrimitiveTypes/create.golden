@@ -5,6 +5,8 @@
     "attrBoolRequired": true,
     "attrIntComputed": 128,
     "attrIntRequired": 64,
+    "attrNumberComputed": 12.3456,
+    "attrNumberRequired": 12.3456,
     "attrStringComputed": "t",
     "attrStringRequired": "s",
     "id": "example-id"

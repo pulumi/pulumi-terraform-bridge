@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"math/big"
 	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -10,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/numberplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -130,6 +132,16 @@ func primitiveAttributes(opts ...attrOpt) map[string]schema.Attribute {
 				int64planmodifier.UseStateForUnknown(),
 			}),
 		},
+		name("number"): schema.NumberAttribute{
+			Required:            o.required,
+			Optional:            o.optional,
+			Computed:            o.computed,
+			Sensitive:           o.sensitive,
+			MarkdownDescription: "The description for " + name("number"),
+			PlanModifiers: when(o.computed, []planmodifier.Number{
+				numberplanmodifier.UseStateForUnknown(),
+			}),
+		},
 	}
 }
 
@@ -171,10 +183,12 @@ func (r *resourceValidateInputs) Create(
 		S types.String `tfsdk:"attr_string_required"`
 		B types.Bool   `tfsdk:"attr_bool_required"`
 		I types.Int64  `tfsdk:"attr_int_required"`
+		N types.Number `tfsdk:"attr_number_required"`
 
 		SR types.String `tfsdk:"attr_string_computed"`
 		BR types.Bool   `tfsdk:"attr_bool_computed"`
 		IR types.Int64  `tfsdk:"attr_int_computed"`
+		NR types.Number `tfsdk:"attr_number_computed"`
 
 		ID types.String `tfsdk:"id"`
 	}
@@ -198,9 +212,14 @@ func (r *resourceValidateInputs) Create(
 		resp.Diagnostics.AddError("int_required: 64 != "+data.I.String(), "test validation failed")
 	}
 
+	if f, _ := data.N.ValueBigFloat().Float64(); f != 12.3456 {
+		resp.Diagnostics.AddError("int_required: 12.3456 != "+data.N.String(), "test validation failed")
+	}
+
 	data.SR = types.StringValue("t") // "t" is after "s"
 	data.BR = types.BoolValue(false)
 	data.IR = types.Int64Value(128)
+	data.NR = types.NumberValue(big.NewFloat(12.3456))
 
 	// For the purposes of this example code, hardcoding a response value to
 	// save into the Terraform state.

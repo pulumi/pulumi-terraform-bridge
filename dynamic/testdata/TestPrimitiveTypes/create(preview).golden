@@ -4,6 +4,8 @@
     "attrBoolRequired": true,
     "attrIntComputed": "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
     "attrIntRequired": 64,
+    "attrNumberComputed": "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+    "attrNumberRequired": 12.3456,
     "attrStringComputed": "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
     "attrStringRequired": "s",
     "id": "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
