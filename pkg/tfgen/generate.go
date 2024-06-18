@@ -1971,6 +1971,35 @@ func getNestedDescriptionFromParsedDocs(entityDocs entityDocs, path docsPath) (s
 		p = p.withOutRoot()
 	}
 
+	//TODO: Compare leaf path descriptions and set those IFF they are unique: https://github.com/pulumi/pulumi-terraform-bridge/issues/1886
+
+	//uniqueLeaves := make([]docsPath, 0, len(entityDocs.Arguments/2)
+	leaf := path.leaf()
+
+	// Get all leaves
+	var allLeaves []string
+	uniqueLeaves := make(map[string]bool)
+	for arg := range entityDocs.Arguments {
+		allLeaves = append(allLeaves, arg.leaf())
+		_, exist := uniqueLeaves[arg.leaf()]
+		if !exist {
+			uniqueLeaves[arg.leaf()] = true
+		}
+	}
+
+	//``
+
+	// Now we have to check if our current leaf is in our unique map.
+	// If yes, then we can grab our description and assign it.
+
+	if _, exist := uniqueLeaves[leaf]; exist {
+		if val, ok := entityDocs.Arguments[path]; ok {
+			return val.description, false
+		}
+	}
+
+	// Determine if they're unique
+
 	// To maintain old behavior, we also check if the last segment of `path` matches
 	// with some other last segment of any other entity.
 	//
