@@ -1,12 +1,12 @@
 {
-  "id":  "example-id",
-  "properties":  {
-    "attrBoolComputed":  false,
-    "attrBoolRequired":  true,
-    "attrIntComputed":  128,
-    "attrIntRequired":  64,
-    "attrStringComputed":  "t",
-    "attrStringRequired":  "s",
-    "id":  "example-id"
+  "id": "example-id",
+  "properties": {
+    "attrBoolComputed": false,
+    "attrBoolRequired": true,
+    "attrIntComputed": 128,
+    "attrIntRequired": 64,
+    "attrStringComputed": "t",
+    "attrStringRequired": "s",
+    "id": "example-id"
   }
 }
