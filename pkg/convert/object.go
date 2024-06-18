@@ -16,6 +16,7 @@ package convert
 
 import (
 	"fmt"
+	"github.com/ryboe/q"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
@@ -69,6 +70,7 @@ func (enc *objectEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.V
 			fmt.Errorf("Expected an Object PropertyValue")
 	}
 	pulumiMap := p.ObjectValue()
+	q.Q(p.ObjectValue())
 	values := map[string]tftypes.Value{}
 	for attr, attrEncoder := range enc.propertyEncoders {
 		t := enc.objectType.AttributeTypes[attr]
@@ -79,7 +81,9 @@ func (enc *objectEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.V
 		}
 		v, err := attrEncoder.fromPropertyValue(pv)
 		if err != nil {
+			q.Q(attrEncoder)
 			return tftypes.NewValue(enc.objectType, nil),
+
 				fmt.Errorf("objectEncoder failed on property %q: %w", attr, err)
 		}
 		values[attr] = v

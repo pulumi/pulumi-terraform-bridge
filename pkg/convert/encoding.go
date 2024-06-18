@@ -96,6 +96,9 @@ func buildPropertyEncoders(
 	propertyEncoders := map[terraformPropertyName]Encoder{}
 	for tfName, t := range objectType.AttributeTypes {
 		pctx, err := mctx.GetAttr(tfName)
+		if tfName == "prompt_override_configuration" || tfName == "override_configurations" {
+			q.Q("in buildPropertyEncoders", pctx)
+		}
 		if err != nil {
 			return nil, err
 		}
@@ -167,8 +170,6 @@ func deriveEncoder(pctx *schemaPropContext, t tftypes.Type) (Encoder, error) {
 		}, nil
 	}
 
-	//q.Q(pctx.schema)
-
 	switch {
 	case t.Is(tftypes.String):
 		return newStringEncoder(), nil
@@ -211,6 +212,7 @@ func deriveEncoder(pctx *schemaPropContext, t tftypes.Type) (Encoder, error) {
 		return newMapEncoder(tt.ElementType, elementEncoder)
 	case tftypes.Set:
 		elctx, err := pctx.Element()
+		q.Q(pctx)
 		if err != nil {
 			return nil, err
 		}

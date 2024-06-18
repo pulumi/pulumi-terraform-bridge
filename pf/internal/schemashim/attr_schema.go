@@ -17,11 +17,8 @@ package schemashim
 import (
 	pfattr "github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
-	bridge "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/ryboe/q"
-
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/pfutils"
+	bridge "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
@@ -94,21 +91,21 @@ func (s *attrSchema) Elem() interface{} {
 	case basetypes.ObjectTypable:
 		var res shim.Resource = newObjectPseudoResource(t, s.attr.Nested(), nil)
 		return res
-	case basetypes.ListTypable:
-		var res shim.Resource
-		q.Q("LIST TYPABLE")
-		q.Q(t, s.attr.Nested())
-		q.Q(shim.Schema(newTypeSchema(t, s.attr.Nested())))
-		contract.Assertf(s.attr.Nested() == nil || len(s.attr.Nested()) == 0,
-			"s.t==ListType should not have any s.nested attrs")
-		return newTypeSchema(s.attr.GetType(), nil)
-		return res
+	//case basetypes.ListTypable:
+	//	var res shim.Resource
+	//	q.Q("LIST TYPABLE")
+	//	q.Q(t, s.attr.Nested())
+	//	q.Q(shim.Schema(newTypeSchema(t, s.attr.Nested())))
+	//	contract.Assertf(s.attr.Nested() == nil || len(s.attr.Nested()) == 0,
+	//		"s.t==ListType should not have any s.nested attrs")
+	//	return newTypeSchema(s.attr.GetType(), nil)
+	//	return res
 	case pfattr.TypeWithElementTypes:
 		var res shim.Resource = newTuplePseudoResource(t)
 		return res
 	case pfattr.TypeWithElementType:
-		q.Q(t.ElementType(), s.attr.Nested())
-		q.Q(shim.Schema(newTypeSchema(t.ElementType(), s.attr.Nested())))
+		//q.Q(t.ElementType(), s.attr.Nested())
+		//q.Q(shim.Schema(newTypeSchema(t.ElementType(), s.attr.Nested())))
 		return shim.Schema(newTypeSchema(t.ElementType(), s.attr.Nested()))
 
 	// t does not support any kind of element type.

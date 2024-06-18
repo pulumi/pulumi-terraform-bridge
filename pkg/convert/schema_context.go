@@ -16,6 +16,7 @@ package convert
 
 import (
 	"fmt"
+	"github.com/ryboe/q"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
@@ -81,6 +82,7 @@ func (sc *schemaMapContext) ToPropertyKey(tfname terraformPropertyName) resource
 }
 
 func (sc *schemaMapContext) GetAttr(tfname terraformPropertyName) (*schemaPropContext, error) {
+	q.Q(tfname)
 	step := walk.NewSchemaPath().GetAttr(tfname)
 	s, err := walk.LookupSchemaMapPath(step, sc.schemaMap)
 	if err != nil {

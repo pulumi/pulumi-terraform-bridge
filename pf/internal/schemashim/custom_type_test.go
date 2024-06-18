@@ -65,7 +65,7 @@ func TestCustomListType(t *testing.T) {
 	ctx := context.Background()
 
 	raw := schema.ListNestedBlock{
-		CustomType: newListNestedObjectTypeOf[searchFilterModel](ctx, types.ObjectType{
+		CustomType: NewListNestedObjectTypeOf[searchFilterModel](ctx, types.ObjectType{
 			AttrTypes: map[string]attr.Type{
 				"filter_string": basetypes.StringType{},
 			},
@@ -93,7 +93,7 @@ func TestCustomListAttribute(t *testing.T) {
 	ctx := context.Background()
 
 	raw := schema.ListNestedAttribute{
-		CustomType: newListNestedObjectTypeOf[searchFilterModel](ctx, types.ObjectType{
+		CustomType: NewListNestedObjectTypeOf[searchFilterModel](ctx, types.ObjectType{
 			AttrTypes: map[string]attr.Type{
 				"filter_string": basetypes.StringType{},
 			},
@@ -121,7 +121,7 @@ func TestCustomSetType(t *testing.T) {
 	ctx := context.Background()
 
 	raw := schema.SetNestedBlock{
-		CustomType: newSetNestedObjectTypeOf[searchFilterModel](ctx, types.ObjectType{
+		CustomType: NewSetNestedObjectTypeOf[searchFilterModel](ctx, types.ObjectType{
 			AttrTypes: map[string]attr.Type{
 				"filter_string": basetypes.StringType{},
 			},
@@ -157,14 +157,23 @@ type setNestedObjectTypeOf[T any] struct {
 	basetypes.SetType
 }
 
+// SetNestedObjectValueOf represents a Terraform Plugin Framework Set value whose elements are of type `ObjectTypeOf[T]`.
+type SetNestedObjectValueOf[T any] struct {
+	basetypes.SetValue
+}
+
 var (
 	_ basetypes.ListTypable = (*listNestedObjectTypeOf[struct{}])(nil)
 )
 
-func newListNestedObjectTypeOf[T any](ctx context.Context, elemType attr.Type) listNestedObjectTypeOf[T] {
+func NewListNestedObjectTypeOf[T any](ctx context.Context, elemType attr.Type) listNestedObjectTypeOf[T] {
 	return listNestedObjectTypeOf[T]{basetypes.ListType{ElemType: elemType}}
 }
 
-func newSetNestedObjectTypeOf[T any](ctx context.Context, elemType attr.Type) setNestedObjectTypeOf[T] {
+func NewSetNestedObjectTypeOf[T any](ctx context.Context, elemType attr.Type) setNestedObjectTypeOf[T] {
 	return setNestedObjectTypeOf[T]{basetypes.SetType{ElemType: elemType}}
 }
+
+//func NewSetNestedValueTypeOf[T any](ctx context.Context, elemType attr.Type) setNestedObjectValueOf[T] {
+//	return setNestedObjectValueOf[T]{basetypes.SetValue{elementType: elemType}}
+//}

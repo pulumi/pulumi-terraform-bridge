@@ -16,6 +16,7 @@ package convert
 
 import (
 	"fmt"
+	"github.com/ryboe/q"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
@@ -46,6 +47,8 @@ func newSetDecoder(elementDecoder Decoder) (Decoder, error) {
 
 func (enc *setEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.Value, error) {
 	setTy := tftypes.Set{ElementType: enc.elementType}
+	q.Q(p)
+	q.Q(setTy)
 
 	if propertyValueIsUnkonwn(p) {
 		return tftypes.NewValue(setTy, tftypes.UnknownValue), nil
@@ -63,11 +66,12 @@ func (enc *setEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.Valu
 			retErr("expected an Array PropertyValue, got a %T", p)
 	}
 	var values []tftypes.Value
-	for i, pv := range p.ArrayValue() {
-		v, err := enc.elementEncoder.fromPropertyValue(pv)
+	for i, propertyValue := range p.ArrayValue() {
+		q.Q(p.ArrayValue())
+		v, err := enc.elementEncoder.fromPropertyValue(propertyValue)
 		if err != nil {
 			return tftypes.NewValue(setTy, nil),
-				retErr("encoding element %d (%v): %w", i, pv, err)
+				retErr("encoding element %d (%v): %w", i, propertyValue, err)
 		}
 		values = append(values, v)
 	}
