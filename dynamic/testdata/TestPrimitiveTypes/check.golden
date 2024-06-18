@@ -1,0 +1,7 @@
+{
+  "inputs":  {
+    "attrBoolRequired":  true,
+    "attrIntRequired":  64,
+    "attrStringRequired":  "s"
+  }
+}

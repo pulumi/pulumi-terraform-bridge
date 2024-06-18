@@ -19,3 +19,5 @@ test.update:
 
 bin:
 	mkdir bin
+
+.PHONY: test

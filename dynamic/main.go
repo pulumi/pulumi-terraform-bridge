@@ -64,6 +64,10 @@ func initialSetup() (tfbridge.ProviderInfo, pfbridge.ProviderMetadata, func() er
 			return json.Marshal(packageSchema.PackageSpec)
 		},
 		XParamaterize: func(ctx context.Context, req plugin.ParameterizeRequest) (plugin.ParameterizeResponse, error) {
+			if tfServer != nil {
+				return plugin.ParameterizeResponse{},
+					newDoubleParameterizeErr(tfServer.Name(), tfServer.Version())
+			}
 			args, err := parseParamaterizeParameters(req)
 			if err != nil {
 				return plugin.ParameterizeResponse{}, err
@@ -102,6 +106,26 @@ func initialSetup() (tfbridge.ProviderInfo, pfbridge.ProviderMetadata, func() er
 		}
 		return tfServer.Close()
 	}
+}
+
+func newDoubleParameterizeErr(name, version string) doubleParameterizeErr {
+	return doubleParameterizeErr{
+		existing: struct {
+			name    string
+			version string
+		}{
+			name:    name,
+			version: version,
+		},
+	}
+}
+
+type doubleParameterizeErr struct {
+	existing struct{ name, version string }
+}
+
+func (d doubleParameterizeErr) Error() string {
+	return fmt.Sprintf("provider is already parameterized to (%s, %s)", d.existing.name, d.existing.version)
 }
 
 func main() {

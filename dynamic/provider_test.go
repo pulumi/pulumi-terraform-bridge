@@ -5,8 +5,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/hexops/autogold/v2"
@@ -14,11 +18,121 @@ import (
 	pfbridge "github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// globalTempDir is a temporary directory scoped to the entire test cycle.
+var globalTempDir string
+
+func TestMain(m *testing.M) {
+	var err error
+	globalTempDir, err = os.MkdirTemp(os.TempDir(), filepath.Base(os.Args[0]))
+	contract.AssertNoErrorf(err, "failed to create tmp dir")
+
+	// Run tests
+	exitVal := m.Run()
+
+	contract.Assertf(globalTempDir != "", "globalTempDir cannot be empty")
+	contract.AssertNoErrorf(os.RemoveAll(globalTempDir), "failed to remove %s", globalTempDir)
+
+	// Exit with exit value from tests
+	os.Exit(exitVal)
+}
+
+func TestPrimitiveTypes(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+
+	grpc := grpcTestServer(ctx, t)
+
+	_, err := grpc.Parameterize(ctx, &pulumirpc.ParameterizeRequest{
+		Parameters: &pulumirpc.ParameterizeRequest_Args{
+			Args: &pulumirpc.ParameterizeRequest_ParametersArgs{
+				Args: []string{pfProviderPath(t)},
+			},
+		},
+	})
+	require.NoError(t, err)
+
+	inputs := must(plugin.MarshalProperties(resource.PropertyMap{
+		"attrBoolRequired":   resource.NewProperty(true),
+		"attrStringRequired": resource.NewProperty("s"),
+		"attrIntRequired":    resource.NewProperty(64.0),
+	}, plugin.MarshalOptions{}))
+
+	t.Run("check", func(t *testing.T) {
+		resp, err := grpc.Check(ctx, &pulumirpc.CheckRequest{
+			Urn: string(resource.NewURN(
+				"test", "test", "", "pfprovider:index/primitive:Primitive", "prim",
+			)),
+			News: inputs,
+		})
+		require.NoError(t, err)
+		assertGRPC(t, resp)
+	})
+
+	t.Run("create(preview)", func(t *testing.T) {
+		resp, err := grpc.Create(ctx, &pulumirpc.CreateRequest{
+			Preview: true,
+			Urn: string(resource.NewURN(
+				"test", "test", "", "pfprovider:index/primitive:Primitive", "prim",
+			)),
+			Properties: inputs,
+		})
+		require.NoError(t, err)
+		assertGRPC(t, resp)
+	})
+
+	t.Run("create", func(t *testing.T) {
+		resp, err := grpc.Create(ctx, &pulumirpc.CreateRequest{
+			Urn: string(resource.NewURN(
+				"test", "test", "", "pfprovider:index/primitive:Primitive", "prim",
+			)),
+			Properties: inputs,
+		})
+		require.NoError(t, err)
+		assertGRPC(t, resp)
+	})
+}
+
+// assertGRPC uses autogold to check/save msg.
+func assertGRPC(t *testing.T, msg proto.Message) {
+	t.Helper()
+	autogold.ExpectFile(t, autogold.Raw(must(protojson.MarshalOptions{
+		Multiline: true,
+		Indent:    "  ",
+	}.Marshal(msg))))
+}
+
+// pfProviderPath returns the path the the PF provider binary for use in testing.
+//
+// It builds the binary running "go build" once per session.
+var pfProviderPath = func() func(t *testing.T) string {
+	mkBin := sync.OnceValues(func() (string, error) {
+		wd, err := os.Getwd()
+		if err != nil {
+			return "", err
+		}
+
+		out := filepath.Join(globalTempDir, "terraform-provider-pfprovider")
+		cmd := exec.Command("go", "build", "-o", out, "github.com/pulumi/pulumi-terraform-bridge/dynamic/tests/pfprovider")
+		cmd.Dir = filepath.Join(wd, "test", "pfprovider")
+		return out, cmd.Run()
+	})
+
+	return func(t *testing.T) string {
+		t.Helper()
+		path, err := mkBin()
+		require.NoError(t, err)
+		return path
+	}
+}()
 
 func grpcTestServer(ctx context.Context, t *testing.T) pulumirpc.ResourceProviderServer {
 	defaultInfo, metadata, close := initialSetup()
