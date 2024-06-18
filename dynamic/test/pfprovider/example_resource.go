@@ -8,6 +8,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -104,6 +106,9 @@ func primitiveAttributes(opts ...attrOpt) map[string]schema.Attribute {
 			Computed:            o.computed,
 			Sensitive:           o.sensitive,
 			MarkdownDescription: "The description for " + name("string"),
+			PlanModifiers: when(o.computed, []planmodifier.String{
+				stringplanmodifier.UseStateForUnknown(),
+			}),
 		},
 		name("bool"): schema.BoolAttribute{
 			Required:            o.required,
@@ -111,6 +116,9 @@ func primitiveAttributes(opts ...attrOpt) map[string]schema.Attribute {
 			Computed:            o.computed,
 			Sensitive:           o.sensitive,
 			MarkdownDescription: "The description for " + name("string"),
+			PlanModifiers: when(o.computed, []planmodifier.Bool{
+				boolplanmodifier.UseStateForUnknown(),
+			}),
 		},
 		name("int"): schema.Int64Attribute{
 			Required:            o.required,
@@ -118,8 +126,19 @@ func primitiveAttributes(opts ...attrOpt) map[string]schema.Attribute {
 			Computed:            o.computed,
 			Sensitive:           o.sensitive,
 			MarkdownDescription: "The description for " + name("int"),
+			PlanModifiers: when(o.computed, []planmodifier.Int64{
+				int64planmodifier.UseStateForUnknown(),
+			}),
 		},
 	}
+}
+
+func when[T any](check bool, value T) T {
+	if !check {
+		var t T
+		return t
+	}
+	return value
 }
 
 func (r *resourceValidateInputs) Configure(

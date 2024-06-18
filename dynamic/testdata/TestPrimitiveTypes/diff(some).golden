@@ -1,0 +1,6 @@
+{
+  "changes": "DIFF_SOME",
+  "diffs": [
+    "attrStringRequired"
+  ]
+}
