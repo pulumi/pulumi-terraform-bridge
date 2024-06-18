@@ -47,6 +47,8 @@ func TestMain(m *testing.M) {
 
 func TestPrimitiveTypes(t *testing.T) {
 	t.Parallel()
+	skipWindows(t)
+
 	ctx := context.Background()
 
 	grpc := grpcTestServer(ctx, t)
@@ -106,7 +108,6 @@ func assertGRPC(t *testing.T, msg proto.Message) {
 	t.Helper()
 	autogold.ExpectFile(t, autogold.Raw(must(protojson.MarshalOptions{
 		Multiline: true,
-		Indent:    "  ",
 	}.Marshal(msg))))
 }
 
@@ -142,10 +143,16 @@ func grpcTestServer(ctx context.Context, t *testing.T) pulumirpc.ResourceProvide
 	return s
 }
 
-func TestSchemaGeneration(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skipf("autogold does not play nice with windows newlines")
+func skipWindows(t *testing.T) {
+	t.Helper()
+	if runtime.GOOS != "windows" {
+		return
 	}
+	t.Skipf("autogold does not play nice with windows newlines")
+}
+
+func TestSchemaGeneration(t *testing.T) {
+	skipWindows(t)
 
 	testSchema := func(name, version string) {
 		t.Run(strings.Join([]string{name, version}, "-"), func(t *testing.T) {
@@ -199,7 +206,7 @@ func TestRandomCreate(t *testing.T) {
 	}, parameterizeResp)
 
 	t.Run("preview", func(t *testing.T) {
-		createPreview, err := server.Create(ctx, &pulumirpc.CreateRequest{
+		resp, err := server.Create(ctx, &pulumirpc.CreateRequest{
 			Urn:     string(resource.NewURN("dev", "test", "", "random:index/string:String", "name")),
 			Preview: true,
 			Properties: must(plugin.MarshalProperties(resource.PropertyMap{
@@ -208,7 +215,23 @@ func TestRandomCreate(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		assertGRPC(t, createPreview)
+		// We do not use [assertGRPC] here because we want to use a testing method
+		// that works on windows in at least one test.
+		var actual map[string]any
+		require.NoError(t, json.Unmarshal(must(protojson.MarshalOptions{}.Marshal(resp)), &actual))
+		autogold.Expect(map[string]interface{}{"properties": map[string]interface{}{
+			"id": "04da6b54-80e4-46f7-96ec-b56ff0331ba9", "length": 6,
+			"lower":      true,
+			"minLower":   0,
+			"minNumeric": 0,
+			"minSpecial": 0,
+			"minUpper":   0,
+			"number":     true,
+			"numeric":    true,
+			"result":     "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+			"special":    true,
+			"upper":      true,
+		}}).Equal(t, actual)
 	})
 
 	t.Run("up", func(t *testing.T) {
