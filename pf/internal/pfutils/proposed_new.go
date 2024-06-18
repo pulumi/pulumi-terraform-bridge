@@ -81,7 +81,11 @@ func ProposedNew(
 			if configValue != nil && !configValue.IsNull() && configValue.IsKnown() {
 				// Here priorStateValue must be unknown. If it was an object, Reconcile would not be
 				// called. If it was null, it got substituted via newObjectWithDefaults.
-				contract.Assertf(!priorStateValue.IsKnown(), "priorStateValue must be known")
+				//
+				// priorStateValue may be null if it is a scalar from a
+				// null value. For example, during a create.
+				contract.Assertf(!priorStateValue.IsKnown() || priorStateValue.IsNull(),
+					"priorStateValue must be unknown or empty")
 				v, err := rewriteNullComputedAsUnknown(schema, diff.Path, *configValue)
 				return &v, err
 			}
@@ -153,6 +157,27 @@ const (
 	pathToNestedObject              pathType = 6
 	pathToMisc                      pathType = 7
 )
+
+func (p pathType) GoString() string {
+	switch p {
+	case pathToRoot:
+		return "pathToRoot"
+	case pathToBlock:
+		return "pathToBlock"
+	case pathToNonComputedAttribute:
+		return "pathToNonComputedAttribute"
+	case pathToReadOnlyAttribute:
+		return "pathToReadOnlyAttribute"
+	case pathToComputedOptionalAttribute:
+		return "pathToComputedOptionalAttribute"
+	case pathToNestedObject:
+		return "pathToNestedObject"
+	case pathToMisc:
+		return "pathToMisc"
+	default:
+		return fmt.Sprintf("pathUnknown(%d)", int(p))
+	}
+}
 
 func getPathType(
 	schema tftypes.AttributePathStepper, path *tftypes.AttributePath,

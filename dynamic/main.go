@@ -39,23 +39,18 @@ const (
 func initialSetup() (tfbridge.ProviderInfo, pfbridge.ProviderMetadata, func() error) {
 
 	var tfServer shim.Provider
-	defaultInfo := tfbridge.ProviderInfo{
+	info := tfbridge.ProviderInfo{
 		DisplayName:  "Any Terraform Provider",
 		P:            proto.Empty(),
 		Name:         name,
 		Version:      version,
-		Description:  "A Pulumi provider for dynamically bridging terraform provdiers.",
+		Description:  "A Pulumi provider for dynamically bridging Terraform providers.",
 		MetadataInfo: &tfbridge.MetadataInfo{Path: "", Data: tfbridge.ProviderMetadata(nil)},
 	}
 
-	metadata := pfbridge.ProviderMetadata{
+	var metadata pfbridge.ProviderMetadata
+	metadata = pfbridge.ProviderMetadata{
 		XGetSchema: func(ctx context.Context, req plugin.GetSchemaRequest) ([]byte, error) {
-
-			info := defaultInfo
-			if tfServer != nil {
-				info = providerInfo(ctx, tfServer)
-			}
-
 			packageSchema, err := tfgen.GenerateSchemaWithOptions(tfgen.GenerateSchemaOptions{
 				ProviderInfo: info,
 				DiagnosticsSink: diag.DefaultSink(os.Stdout, os.Stderr, diag.FormatOptions{
@@ -69,6 +64,10 @@ func initialSetup() (tfbridge.ProviderInfo, pfbridge.ProviderMetadata, func() er
 			return json.Marshal(packageSchema.PackageSpec)
 		},
 		XParamaterize: func(ctx context.Context, req plugin.ParameterizeRequest) (plugin.ParameterizeResponse, error) {
+			if tfServer != nil {
+				return plugin.ParameterizeResponse{},
+					newDoubleParameterizeErr(tfServer.Name(), tfServer.Version())
+			}
 			args, err := parseParamaterizeParameters(req)
 			if err != nil {
 				return plugin.ParameterizeResponse{}, err
@@ -85,7 +84,14 @@ func initialSetup() (tfbridge.ProviderInfo, pfbridge.ProviderMetadata, func() er
 			}
 
 			tfServer = p
-			defaultInfo.P.(*proto.Provider).Replace(p)
+			if tfServer != nil {
+				info = providerInfo(ctx, tfServer)
+			}
+
+			err = pfbridge.XParameterizeResetProvider(ctx, info, metadata)
+			if err != nil {
+				return plugin.ParameterizeResponse{}, err
+			}
 
 			return plugin.ParameterizeResponse{
 				Name:    p.Name(),
@@ -94,12 +100,32 @@ func initialSetup() (tfbridge.ProviderInfo, pfbridge.ProviderMetadata, func() er
 		},
 	}
 
-	return defaultInfo, metadata, func() error {
+	return info, metadata, func() error {
 		if tfServer == nil {
 			return nil
 		}
 		return tfServer.Close()
 	}
+}
+
+func newDoubleParameterizeErr(name, version string) doubleParameterizeErr {
+	return doubleParameterizeErr{
+		existing: struct {
+			name    string
+			version string
+		}{
+			name:    name,
+			version: version,
+		},
+	}
+}
+
+type doubleParameterizeErr struct {
+	existing struct{ name, version string }
+}
+
+func (d doubleParameterizeErr) Error() string {
+	return fmt.Sprintf("provider is already parameterized to (%s, %s)", d.existing.name, d.existing.version)
 }
 
 func main() {
