@@ -62,7 +62,9 @@ func (enc *setEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.Valu
 	}
 
 	if !p.IsArray() {
+
 		return tftypes.NewValue(setTy, nil),
+
 			retErr("expected an Array PropertyValue, got a %T", p)
 	}
 	var values []tftypes.Value
@@ -70,6 +72,7 @@ func (enc *setEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.Valu
 		q.Q(p.ArrayValue())
 		v, err := enc.elementEncoder.fromPropertyValue(propertyValue)
 		if err != nil {
+			panic("at the disco")
 			return tftypes.NewValue(setTy, nil),
 				retErr("encoding element %d (%v): %w", i, propertyValue, err)
 		}
