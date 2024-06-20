@@ -164,7 +164,8 @@ func Test_makePropertyType(t *testing.T) {
 	}).Shim()
 
 	t.Run("String", func(t *testing.T) {
-		p := g.makePropertyType(path, "obj", strType, nil, false, entityDocs{})
+		p, err := g.makePropertyType(path, "obj", strType, nil, false, entityDocs{})
+		assert.NoError(t, err)
 		assert.Equal(t, typeKind(kindString), p.kind)
 	})
 
@@ -173,7 +174,8 @@ func Test_makePropertyType(t *testing.T) {
 			Type: shim.TypeList,
 			Elem: strType,
 		}).Shim()
-		p := g.makePropertyType(path, "obj", strListType, nil, false, entityDocs{})
+		p, err := g.makePropertyType(path, "obj", strListType, nil, false, entityDocs{})
+		assert.NoError(t, err)
 		assert.Equal(t, typeKind(kindList), p.kind)
 		assert.Equal(t, typeKind(kindString), p.element.kind)
 	})
@@ -183,7 +185,8 @@ func Test_makePropertyType(t *testing.T) {
 			Type: shim.TypeMap,
 			Elem: strType,
 		}).Shim()
-		p := g.makePropertyType(path, "obj", strMapType, nil, false, entityDocs{})
+		p, err := g.makePropertyType(path, "obj", strMapType, nil, false, entityDocs{})
+		assert.NoError(t, err)
 		assert.Equal(t, typeKind(kindMap), p.kind)
 		assert.Equal(t, typeKind(kindString), p.element.kind)
 	})
@@ -192,7 +195,8 @@ func Test_makePropertyType(t *testing.T) {
 		unkMapType := (&shimschema.Schema{
 			Type: shim.TypeMap,
 		}).Shim()
-		p := g.makePropertyType(path, "obj", unkMapType, nil, false, entityDocs{})
+		p, err := g.makePropertyType(path, "obj", unkMapType, nil, false, entityDocs{})
+		assert.NoError(t, err)
 		assert.Equal(t, typeKind(kindMap), p.kind)
 		assert.Nil(t, p.element)
 	})
@@ -202,7 +206,8 @@ func Test_makePropertyType(t *testing.T) {
 			Type: shim.TypeMap,
 			Elem: xySchema,
 		}).Shim()
-		p := g.makePropertyType(path, "obj", objType, nil, false, entityDocs{})
+		p, err := g.makePropertyType(path, "obj", objType, nil, false, entityDocs{})
+		assert.NoError(t, err)
 		assert.Equal(t, typeKind(kindObject), p.kind)
 		assert.Equal(t, "config.prop", p.properties[0].parentPath.String())
 	})
@@ -212,7 +217,8 @@ func Test_makePropertyType(t *testing.T) {
 			Type: shim.TypeList,
 			Elem: xySchema,
 		}).Shim()
-		p := g.makePropertyType(path, "obj", objType, nil, false, entityDocs{})
+		p, err := g.makePropertyType(path, "obj", objType, nil, false, entityDocs{})
+		assert.NoError(t, err)
 		assert.Equal(t, typeKind(kindList), p.kind)
 		assert.Equal(t, typeKind(kindObject), p.element.kind)
 		assert.Equal(t, "config.prop.$", p.element.properties[0].parentPath.String())
@@ -224,7 +230,8 @@ func Test_makePropertyType(t *testing.T) {
 			Elem:     xySchema,
 			MaxItems: 1,
 		}).Shim()
-		p := g.makePropertyType(path, "obj", objType, nil, false, entityDocs{})
+		p, err := g.makePropertyType(path, "obj", objType, nil, false, entityDocs{})
+		assert.NoError(t, err)
 		assert.Equal(t, typeKind(kindObject), p.kind)
 		assert.Equal(t, "config.prop", p.properties[0].parentPath.String())
 	})
@@ -234,7 +241,8 @@ func Test_makePropertyType(t *testing.T) {
 			Type: shim.TypeSet,
 			Elem: xySchema,
 		}).Shim()
-		p := g.makePropertyType(path, "obj", objType, nil, false, entityDocs{})
+		p, err := g.makePropertyType(path, "obj", objType, nil, false, entityDocs{})
+		assert.NoError(t, err)
 		assert.Equal(t, typeKind(kindSet), p.kind)
 		assert.Equal(t, typeKind(kindObject), p.element.kind)
 		assert.Equal(t, "config.prop.$", p.element.properties[0].parentPath.String())
@@ -246,7 +254,8 @@ func Test_makePropertyType(t *testing.T) {
 			Elem:     xySchema,
 			MaxItems: 1,
 		}).Shim()
-		p := g.makePropertyType(path, "obj", objType, nil, false, entityDocs{})
+		p, err := g.makePropertyType(path, "obj", objType, nil, false, entityDocs{})
+		assert.NoError(t, err)
 		assert.Equal(t, typeKind(kindObject), p.kind)
 		assert.Equal(t, "config.prop", p.properties[0].parentPath.String())
 	})

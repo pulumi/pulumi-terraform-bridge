@@ -353,7 +353,7 @@ func (g *Generator) Sink() diag.Sink {
 
 func (g *Generator) makePropertyType(typePath paths.TypePath,
 	objectName string, sch shim.Schema, info *tfbridge.SchemaInfo, out bool,
-	entityDocs entityDocs) *propertyType {
+	entityDocs entityDocs) (*propertyType, error) {
 
 	t := &propertyType{}
 
@@ -368,7 +368,7 @@ func (g *Generator) makePropertyType(typePath paths.TypePath,
 
 	if sch == nil {
 		contract.Assertf(info != nil, "missing info when sch is nil on type: "+typePath.String())
-		return t
+		return t, nil
 	}
 
 	// We should carry across any of the deprecation messages, to Pulumi, as per Terraform schema
@@ -380,16 +380,16 @@ func (g *Generator) makePropertyType(typePath paths.TypePath,
 	switch sch.Type() {
 	case shim.TypeBool:
 		t.kind = kindBool
-		return t
+		return t, nil
 	case shim.TypeInt:
 		t.kind = kindInt
-		return t
+		return t, nil
 	case shim.TypeFloat:
 		t.kind = kindFloat
-		return t
+		return t, nil
 	case shim.TypeString:
 		t.kind = kindString
-		return t
+		return t, nil
 	}
 
 	// Handle single-nested blocks next.
@@ -417,13 +417,21 @@ func (g *Generator) makePropertyType(typePath paths.TypePath,
 	var element *propertyType
 	switch elem := sch.Elem().(type) {
 	case shim.Schema:
-		element = g.makePropertyType(elemPath, objectName, elem, elemInfo, out, entityDocs)
+		var err error
+		element, err = g.makePropertyType(elemPath, objectName, elem, elemInfo, out, entityDocs)
+		if err != nil {
+			return nil, err
+		}
 	case shim.Resource:
-		element = g.makeObjectPropertyType(elemPath, elem, elemInfo, out, entityDocs)
+		var err error
+		element, err = g.makeObjectPropertyType(elemPath, elem, elemInfo, out, entityDocs)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if flatten {
-		return element
+		return element, nil
 	}
 
 	switch sch.Type() {
@@ -433,13 +441,15 @@ func (g *Generator) makePropertyType(typePath paths.TypePath,
 		t.kind = kindList
 	case shim.TypeSet:
 		t.kind = kindSet
+	case shim.TypeDynamic:
+		return nil, errors.New("Error in schema generation: Dynamic types are not implemented")
 	default:
 		contract.Failf(
 			"impossible: sch.Type() should be one of TypeMap, TypeList, TypeSet at this point path: %s, type: %s",
 			typePath.String(), sch.Type())
 	}
 	t.element = element
-	return t
+	return t, nil
 }
 
 func getDocsFromSchemaMap(key string, schemaMap shim.SchemaMap) string {
@@ -449,7 +459,7 @@ func getDocsFromSchemaMap(key string, schemaMap shim.SchemaMap) string {
 
 func (g *Generator) makeObjectPropertyType(typePath paths.TypePath,
 	res shim.Resource, info *tfbridge.SchemaInfo,
-	out bool, entityDocs entityDocs) *propertyType {
+	out bool, entityDocs entityDocs) (*propertyType, error) {
 	t := &propertyType{
 		kind: kindObject,
 	}
@@ -505,13 +515,17 @@ func (g *Generator) makeObjectPropertyType(typePath paths.TypePath,
 			fakeFooterLinks := map[string]string{}
 			doc, _ = reformatText(docsInfoCtx, doc, fakeFooterLinks)
 		}
-		if v := g.propertyVariable(typePath, key,
-			propertySchema, propertyInfos, doc, "", out, entityDocs); v != nil {
+		v, err := g.propertyVariable(typePath, key,
+			propertySchema, propertyInfos, doc, "", out, entityDocs)
+		if err != nil {
+			return nil, err
+		}
+		if v != nil {
 			t.properties = append(t.properties, v)
 		}
 	}
 
-	return t
+	return t, nil
 }
 
 func (t *propertyType) equals(other *propertyType) bool {
@@ -1059,7 +1073,11 @@ func (g *Generator) gatherPackage() (*pkg, error) {
 	pack := newPkg(g.pkg, g.version, g.language, g.root)
 
 	// Place all configuration variables into a single config module.
-	if cfg := g.gatherConfig(); cfg != nil {
+	cfg, err := g.gatherConfig()
+	if err != nil {
+		return nil, err
+	}
+	if cfg != nil {
 		pack.addModule(cfg)
 	}
 
@@ -1098,11 +1116,11 @@ func (g *Generator) gatherPackage() (*pkg, error) {
 }
 
 // gatherConfig returns the configuration module for this package.
-func (g *Generator) gatherConfig() *module {
+func (g *Generator) gatherConfig() (*module, error) {
 	// If there's no config, skip creating the module.
 	cfg := g.provider().Schema()
 	if cfg.Len() == 0 {
-		return nil
+		return nil, nil
 	}
 	config := newModule(tokens.NewModuleToken(g.pkg, configMod))
 
@@ -1129,8 +1147,12 @@ func (g *Generator) gatherConfig() *module {
 		}
 		fakeFooterLinks := map[string]string{}
 		rawdoc, _ := reformatText(docsInfoCtx, sch.Description(), fakeFooterLinks)
-		prop := g.propertyVariable(cfgPath,
+		prop, err := g.propertyVariable(cfgPath,
 			key, cfg, custom, "", rawdoc, true /*out*/, entityDocs{})
+		if err != nil {
+			return nil, err
+		}
+
 		if prop != nil {
 			prop.config = true
 			config.addMember(prop)
@@ -1152,14 +1174,17 @@ func (g *Generator) gatherConfig() *module {
 		extraConfigMap[key] = val.Schema
 	}
 	for key := range g.info.ExtraConfig {
-		if prop := g.propertyVariable(cfgPath,
-			key, extraConfigMap, extraConfigInfo, "", "", true /*out*/, entityDocs{}); prop != nil {
+		prop, err := g.propertyVariable(cfgPath,
+			key, extraConfigMap, extraConfigInfo, "", "", true /*out*/, entityDocs{})
+		if err != nil {
+			return nil, err
+		}
+		if prop != nil {
 			prop.config = true
 			config.addMember(prop)
 		}
 	}
-
-	return config
+	return config, nil
 }
 
 // gatherProvider returns the provider resource for this package.
@@ -1315,8 +1340,11 @@ func (g *Generator) gatherResource(rawname string,
 		if !isProvider {
 			// For all properties, generate the output property metadata. Note that this may differ slightly
 			// from the input in that the types may differ.
-			outprop := g.propertyVariable(resourcePath.Outputs(), key, schema.Schema(),
+			outprop, err := g.propertyVariable(resourcePath.Outputs(), key, schema.Schema(),
 				info.Fields, doc, rawdoc, true /*out*/, entityDocs)
+			if err != nil {
+				return nil, err
+			}
 			if outprop != nil {
 				res.outprops = append(res.outprops, outprop)
 			}
@@ -1330,8 +1358,11 @@ func (g *Generator) gatherResource(rawname string,
 				g.debug(msg)
 			}
 
-			inprop := g.propertyVariable(resourcePath.Inputs(),
+			inprop, err := g.propertyVariable(resourcePath.Inputs(),
 				key, schema.Schema(), info.Fields, doc, rawdoc, false /*out*/, entityDocs)
+			if err != nil {
+				return nil, err
+			}
 			if inprop != nil {
 				res.inprops = append(res.inprops, inprop)
 				if !inprop.optional() {
@@ -1341,8 +1372,11 @@ func (g *Generator) gatherResource(rawname string,
 		}
 
 		// Make a state variable.  This is always optional and simply lets callers perform lookups.
-		stateVar := g.propertyVariable(resourcePath.State(), key, schema.Schema(), info.Fields,
+		stateVar, err := g.propertyVariable(resourcePath.State(), key, schema.Schema(), info.Fields,
 			doc, rawdoc, false /*out*/, entityDocs)
+		if err != nil {
+			return nil, err
+		}
 		if stateVar != nil {
 			stateVar.opt = true
 			stateVars = append(stateVars, stateVar)
@@ -1508,8 +1542,11 @@ func (g *Generator) gatherDataSource(rawname string,
 				g.debug(msg)
 			}
 
-			argvar := g.propertyVariable(dataSourcePath.Args(),
+			argvar, err := g.propertyVariable(dataSourcePath.Args(),
 				arg, ds.Schema(), info.Fields, doc, "", false /*out*/, entityDocs)
+			if err != nil {
+				return nil, err
+			}
 			if argvar != nil {
 				fun.args = append(fun.args, argvar)
 				if !argvar.optional() {
@@ -1520,8 +1557,12 @@ func (g *Generator) gatherDataSource(rawname string,
 
 		// Also remember properties for the resulting return data structure.
 		// Emit documentation for the property if available
-		if p := g.propertyVariable(dataSourcePath.Results(), arg, ds.Schema(), info.Fields,
-			entityDocs.Attributes[arg], "", true /*out*/, entityDocs); p != nil {
+		p, err := g.propertyVariable(dataSourcePath.Results(), arg, ds.Schema(), info.Fields,
+			entityDocs.Attributes[arg], "", true /*out*/, entityDocs)
+		if err != nil {
+			return nil, err
+		}
+		if p != nil {
 			fun.rets = append(fun.rets, p)
 		}
 	}
@@ -1534,8 +1575,12 @@ func (g *Generator) gatherDataSource(rawname string,
 		idSchema := schema.SchemaMap(map[string]shim.Schema{
 			"id": (&schema.Schema{Type: shim.TypeString, Computed: true}).Shim(),
 		})
-		if p := g.propertyVariable(dataSourcePath.Results(), "id", idSchema, cust, "",
-			rawdoc, true /*out*/, entityDocs); p != nil {
+		p, err := g.propertyVariable(dataSourcePath.Results(), "id", idSchema, cust, "",
+			rawdoc, true /*out*/, entityDocs)
+		if err != nil {
+			return nil, err
+		}
+		if p != nil {
 			fun.rets = append(fun.rets, p)
 		}
 	}
@@ -1696,7 +1741,7 @@ func propertyName(key string, sch shim.SchemaMap, custom map[string]*tfbridge.Sc
 // parentPath together with key uniquely locates the property in the Terraform schema.
 func (g *Generator) propertyVariable(parentPath paths.TypePath, key string,
 	sch shim.SchemaMap, info map[string]*tfbridge.SchemaInfo,
-	doc string, rawdoc string, out bool, entityDocs entityDocs) *variable {
+	doc string, rawdoc string, out bool, entityDocs entityDocs) (*variable, error) {
 
 	if name := propertyName(key, sch, info); name != "" {
 		propName := paths.PropertyName{Key: key, Name: tokens.Name(name)}
@@ -1717,10 +1762,16 @@ func (g *Generator) propertyVariable(parentPath paths.TypePath, key string,
 		// from g.makePropertyType below, this has the effect of omitting all
 		// types generated by the omitted type, which is what we want.
 		if varInfo != nil && varInfo.Omit {
-			contract.Assertf(isOptional(varInfo, schema, false, false /* config */),
-				"required property %q (@ %s) may not be omitted from binding generation",
-				propName, typePath)
-			return nil
+			if !(isOptional(varInfo, schema, false, false /* config */)) {
+				err := errors.Errorf("required property %q (@ %s) may not be omitted from binding generation",
+					propName, typePath)
+				return nil, err
+			}
+			return nil, nil
+		}
+		typ, err := g.makePropertyType(typePath, strings.ToLower(key), schema, varInfo, out, entityDocs)
+		if err != nil {
+			return nil, err
 		}
 
 		return &variable{
@@ -1730,12 +1781,12 @@ func (g *Generator) propertyVariable(parentPath paths.TypePath, key string,
 			rawdoc:       rawdoc,
 			schema:       schema,
 			info:         varInfo,
-			typ:          g.makePropertyType(typePath, strings.ToLower(key), schema, varInfo, out, entityDocs),
+			typ:          typ,
 			parentPath:   parentPath,
 			propertyName: propName,
-		}
+		}, nil
 	}
-	return nil
+	return nil, nil
 }
 
 // dataSourceName translates a Terraform name into its Pulumi name equivalent.
