@@ -22,6 +22,7 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -62,12 +63,28 @@ func TestPrimitiveTypes(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	inputs := must(plugin.MarshalProperties(resource.PropertyMap{
-		"attrBoolRequired":   resource.NewProperty(true),
-		"attrStringRequired": resource.NewProperty("s"),
-		"attrIntRequired":    resource.NewProperty(64.0),
-		"attrNumberRequired": resource.NewProperty(12.3456),
-	}, plugin.MarshalOptions{}))
+	inputProps := func() resource.PropertyMap {
+		return resource.PropertyMap{
+			"attrBoolRequired":   resource.NewProperty(true),
+			"attrStringRequired": resource.NewProperty("s"),
+			"attrIntRequired":    resource.NewProperty(64.0),
+			"attrNumberRequired": resource.NewProperty(12.3456),
+		}
+	}
+
+	inputs := func() *structpb.Struct {
+		return must(plugin.MarshalProperties(inputProps(), plugin.MarshalOptions{}))
+	}
+
+	outputProps := func() resource.PropertyMap {
+		props := inputProps()
+		props["attrStringDefault"] = resource.NewProperty("default-value")
+		return props
+	}
+
+	outputs := func() *structpb.Struct {
+		return must(plugin.MarshalProperties(outputProps(), plugin.MarshalOptions{}))
+	}
 
 	urn := string(resource.NewURN(
 		"test", "test", "", "pfprovider:index/primitive:Primitive", "prim",
@@ -76,7 +93,7 @@ func TestPrimitiveTypes(t *testing.T) {
 	t.Run("check", func(t *testing.T) {
 		resp, err := grpc.Check(ctx, &pulumirpc.CheckRequest{
 			Urn:  urn,
-			News: inputs,
+			News: inputs(),
 		})
 		require.NoError(t, err)
 		assertGRPC(t, resp)
@@ -86,7 +103,7 @@ func TestPrimitiveTypes(t *testing.T) {
 		resp, err := grpc.Create(ctx, &pulumirpc.CreateRequest{
 			Preview:    true,
 			Urn:        urn,
-			Properties: inputs,
+			Properties: inputs(),
 		})
 		require.NoError(t, err)
 		assertGRPC(t, resp)
@@ -95,7 +112,7 @@ func TestPrimitiveTypes(t *testing.T) {
 	t.Run("create", func(t *testing.T) {
 		resp, err := grpc.Create(ctx, &pulumirpc.CreateRequest{
 			Urn:        urn,
-			Properties: inputs,
+			Properties: inputs(),
 		})
 		require.NoError(t, err)
 		assertGRPC(t, resp)
@@ -105,9 +122,9 @@ func TestPrimitiveTypes(t *testing.T) {
 		resp, err := grpc.Diff(ctx, &pulumirpc.DiffRequest{
 			Id:        "example-id-0",
 			Urn:       urn,
-			Olds:      inputs,
-			News:      inputs,
-			OldInputs: inputs,
+			Olds:      outputs(),
+			News:      inputs(),
+			OldInputs: inputs(),
 		})
 		require.NoError(t, err)
 		assertGRPC(t, resp)
@@ -132,7 +149,7 @@ func TestPrimitiveTypes(t *testing.T) {
 				"attrStringRequired": resource.NewProperty("u"),
 				"attrIntRequired":    resource.NewProperty(64.0),
 			}, plugin.MarshalOptions{})),
-			OldInputs: inputs,
+			OldInputs: inputs(),
 		})
 		require.NoError(t, err)
 		assertGRPC(t, resp)
@@ -158,7 +175,7 @@ func TestPrimitiveTypes(t *testing.T) {
 				"attrIntRequired":    resource.NewProperty(65.0),
 				"attrNumberRequired": resource.NewProperty(12.3456789),
 			}, plugin.MarshalOptions{})),
-			OldInputs: inputs,
+			OldInputs: inputs(),
 		})
 		require.NoError(t, err)
 		assertGRPC(t, resp)

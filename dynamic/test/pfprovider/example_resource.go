@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/numberplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -49,6 +50,11 @@ func (r *resourceValidateInputs) Schema(
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
+			},
+			"attr_string_default": schema.StringAttribute{
+				Computed: true,
+				Optional: true,
+				Default:  stringdefault.StaticString("default-value"),
 			},
 		},
 	}
@@ -190,6 +196,8 @@ func (r *resourceValidateInputs) Create(
 		IR types.Int64  `tfsdk:"attr_int_computed"`
 		NR types.Number `tfsdk:"attr_number_computed"`
 
+		SD types.String `tfsdk:"attr_string_default"`
+
 		ID types.String `tfsdk:"id"`
 	}
 
@@ -206,6 +214,11 @@ func (r *resourceValidateInputs) Create(
 
 	if !data.B.ValueBool() {
 		resp.Diagnostics.AddError("bool_required: true != "+data.B.String(), "test validation failed")
+	}
+
+	if s := data.SD.ValueString(); s != "default-value" {
+		resp.Diagnostics.AddAttributeError(path.Root("attr_string_default"), "unexpected value",
+			fmt.Sprintf(`Expected value to be "default-value", found %q`, s))
 	}
 
 	if data.I.ValueInt64() != 64 {
