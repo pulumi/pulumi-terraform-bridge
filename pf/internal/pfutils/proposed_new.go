@@ -79,13 +79,6 @@ func ProposedNew(
 			return configValue, nil
 		case pathToRoot:
 			if configValue != nil && !configValue.IsNull() && configValue.IsKnown() {
-				// Here priorStateValue must be unknown. If it was an object, Reconcile would not be
-				// called. If it was null, it got substituted via newObjectWithDefaults.
-				//
-				// priorStateValue may be null if it is a scalar from a
-				// null value. For example, during a create.
-				contract.Assertf(!priorStateValue.IsKnown() || priorStateValue.IsNull(),
-					"priorStateValue must be unknown or empty")
 				v, err := rewriteNullComputedAsUnknown(schema, diff.Path, *configValue)
 				return &v, err
 			}

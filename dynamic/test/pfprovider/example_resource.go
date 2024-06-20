@@ -3,12 +3,17 @@ package main
 import (
 	"context"
 	"fmt"
+	"math/big"
 	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/numberplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -45,6 +50,16 @@ func (r *resourceValidateInputs) Schema(
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
+			},
+			"attr_string_default": schema.StringAttribute{
+				Computed: true,
+				Optional: true,
+				Default:  stringdefault.StaticString("default-value"),
+			},
+			"attr_string_default_overridden": schema.StringAttribute{
+				Computed: true,
+				Optional: true,
+				Default:  stringdefault.StaticString("should-be-overridden"),
 			},
 		},
 	}
@@ -104,6 +119,9 @@ func primitiveAttributes(opts ...attrOpt) map[string]schema.Attribute {
 			Computed:            o.computed,
 			Sensitive:           o.sensitive,
 			MarkdownDescription: "The description for " + name("string"),
+			PlanModifiers: when(o.computed, []planmodifier.String{
+				stringplanmodifier.UseStateForUnknown(),
+			}),
 		},
 		name("bool"): schema.BoolAttribute{
 			Required:            o.required,
@@ -111,6 +129,9 @@ func primitiveAttributes(opts ...attrOpt) map[string]schema.Attribute {
 			Computed:            o.computed,
 			Sensitive:           o.sensitive,
 			MarkdownDescription: "The description for " + name("string"),
+			PlanModifiers: when(o.computed, []planmodifier.Bool{
+				boolplanmodifier.UseStateForUnknown(),
+			}),
 		},
 		name("int"): schema.Int64Attribute{
 			Required:            o.required,
@@ -118,8 +139,29 @@ func primitiveAttributes(opts ...attrOpt) map[string]schema.Attribute {
 			Computed:            o.computed,
 			Sensitive:           o.sensitive,
 			MarkdownDescription: "The description for " + name("int"),
+			PlanModifiers: when(o.computed, []planmodifier.Int64{
+				int64planmodifier.UseStateForUnknown(),
+			}),
+		},
+		name("number"): schema.NumberAttribute{
+			Required:            o.required,
+			Optional:            o.optional,
+			Computed:            o.computed,
+			Sensitive:           o.sensitive,
+			MarkdownDescription: "The description for " + name("number"),
+			PlanModifiers: when(o.computed, []planmodifier.Number{
+				numberplanmodifier.UseStateForUnknown(),
+			}),
 		},
 	}
+}
+
+func when[T any](check bool, value T) T {
+	if !check {
+		var t T
+		return t
+	}
+	return value
 }
 
 func (r *resourceValidateInputs) Configure(
@@ -152,10 +194,15 @@ func (r *resourceValidateInputs) Create(
 		S types.String `tfsdk:"attr_string_required"`
 		B types.Bool   `tfsdk:"attr_bool_required"`
 		I types.Int64  `tfsdk:"attr_int_required"`
+		N types.Number `tfsdk:"attr_number_required"`
 
 		SR types.String `tfsdk:"attr_string_computed"`
 		BR types.Bool   `tfsdk:"attr_bool_computed"`
 		IR types.Int64  `tfsdk:"attr_int_computed"`
+		NR types.Number `tfsdk:"attr_number_computed"`
+
+		SD  types.String `tfsdk:"attr_string_default"`
+		SDO types.String `tfsdk:"attr_string_default_overridden"`
 
 		ID types.String `tfsdk:"id"`
 	}
@@ -175,13 +222,28 @@ func (r *resourceValidateInputs) Create(
 		resp.Diagnostics.AddError("bool_required: true != "+data.B.String(), "test validation failed")
 	}
 
+	if s := data.SD.ValueString(); s != "default-value" {
+		resp.Diagnostics.AddAttributeError(path.Root("attr_string_default"), "unexpected value",
+			fmt.Sprintf(`Expected value to be "default-value", found %q`, s))
+	}
+
+	if s := data.SDO.ValueString(); s != "overridden" {
+		resp.Diagnostics.AddAttributeError(path.Root("attr_string_default_overridden"), "unexpected value",
+			fmt.Sprintf(`Expected value to be "overridden", found %q`, s))
+	}
+
 	if data.I.ValueInt64() != 64 {
 		resp.Diagnostics.AddError("int_required: 64 != "+data.I.String(), "test validation failed")
+	}
+
+	if f, _ := data.N.ValueBigFloat().Float64(); f != 12.3456 {
+		resp.Diagnostics.AddError("int_required: 12.3456 != "+data.N.String(), "test validation failed")
 	}
 
 	data.SR = types.StringValue("t") // "t" is after "s"
 	data.BR = types.BoolValue(false)
 	data.IR = types.Int64Value(128)
+	data.NR = types.NumberValue(big.NewFloat(12.3456))
 
 	// For the purposes of this example code, hardcoding a response value to
 	// save into the Terraform state.
