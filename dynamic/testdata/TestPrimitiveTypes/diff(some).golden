@@ -3,6 +3,7 @@
   "diffs": [
     "attrNumberComputed",
     "attrStringDefault",
+    "attrStringDefaultOverridden",
     "attrStringRequired"
   ]
 }

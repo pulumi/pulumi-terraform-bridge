@@ -9,6 +9,7 @@
     "attrNumberRequired": 12.3456,
     "attrStringComputed": "t",
     "attrStringDefault": "default-value",
+    "attrStringDefaultOverridden": "overridden",
     "attrStringRequired": "s",
     "id": "example-id"
   }

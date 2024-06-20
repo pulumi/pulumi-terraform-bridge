@@ -6,6 +6,7 @@
     "attrNumberComputed",
     "attrNumberRequired",
     "attrStringDefault",
+    "attrStringDefaultOverridden",
     "attrStringRequired"
   ]
 }

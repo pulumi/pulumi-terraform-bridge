@@ -56,6 +56,11 @@ func (r *resourceValidateInputs) Schema(
 				Optional: true,
 				Default:  stringdefault.StaticString("default-value"),
 			},
+			"attr_string_default_overridden": schema.StringAttribute{
+				Computed: true,
+				Optional: true,
+				Default:  stringdefault.StaticString("should-be-overridden"),
+			},
 		},
 	}
 	mapInsert(resp.Schema.Attributes,
@@ -196,7 +201,8 @@ func (r *resourceValidateInputs) Create(
 		IR types.Int64  `tfsdk:"attr_int_computed"`
 		NR types.Number `tfsdk:"attr_number_computed"`
 
-		SD types.String `tfsdk:"attr_string_default"`
+		SD  types.String `tfsdk:"attr_string_default"`
+		SDO types.String `tfsdk:"attr_string_default_overridden"`
 
 		ID types.String `tfsdk:"id"`
 	}
@@ -219,6 +225,11 @@ func (r *resourceValidateInputs) Create(
 	if s := data.SD.ValueString(); s != "default-value" {
 		resp.Diagnostics.AddAttributeError(path.Root("attr_string_default"), "unexpected value",
 			fmt.Sprintf(`Expected value to be "default-value", found %q`, s))
+	}
+
+	if s := data.SDO.ValueString(); s != "overridden" {
+		resp.Diagnostics.AddAttributeError(path.Root("attr_string_default_overridden"), "unexpected value",
+			fmt.Sprintf(`Expected value to be "overridden", found %q`, s))
 	}
 
 	if data.I.ValueInt64() != 64 {

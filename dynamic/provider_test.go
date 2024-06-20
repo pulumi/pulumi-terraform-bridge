@@ -65,10 +65,11 @@ func TestPrimitiveTypes(t *testing.T) {
 
 	inputProps := func() resource.PropertyMap {
 		return resource.PropertyMap{
-			"attrBoolRequired":   resource.NewProperty(true),
-			"attrStringRequired": resource.NewProperty("s"),
-			"attrIntRequired":    resource.NewProperty(64.0),
-			"attrNumberRequired": resource.NewProperty(12.3456),
+			"attrBoolRequired":            resource.NewProperty(true),
+			"attrStringRequired":          resource.NewProperty("s"),
+			"attrIntRequired":             resource.NewProperty(64.0),
+			"attrNumberRequired":          resource.NewProperty(12.3456),
+			"attrStringDefaultOverridden": resource.NewProperty("overridden"),
 		}
 	}
 
@@ -145,9 +146,10 @@ func TestPrimitiveTypes(t *testing.T) {
 				"id":                 resource.NewProperty("example-id"),
 			}, plugin.MarshalOptions{})),
 			News: must(plugin.MarshalProperties(resource.PropertyMap{
-				"attrBoolRequired":   resource.NewProperty(true),
-				"attrStringRequired": resource.NewProperty("u"),
-				"attrIntRequired":    resource.NewProperty(64.0),
+				"attrBoolRequired":            resource.NewProperty(true),
+				"attrStringRequired":          resource.NewProperty("u"),
+				"attrIntRequired":             resource.NewProperty(64.0),
+				"attrStringDefaultOverridden": resource.NewProperty("overridden"),
 			}, plugin.MarshalOptions{})),
 			OldInputs: inputs(),
 		})
