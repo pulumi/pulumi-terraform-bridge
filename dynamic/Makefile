@@ -11,11 +11,11 @@ test.unit:
 	go test -short ${LDFLAGS} ./...
 
 test:
-	cd internal/shim && go test ${LDFLAGS} ./...
-	go test ${LDFLAGS} ./... -count 1
+	cd internal/shim && go test -v ${LDFLAGS} ./...
+	go test -v ${LDFLAGS} ./...
 
 test.update:
-	go test ${LDFLAGS} ./... -update
+	go test -v ${LDFLAGS} ./... -update
 
 bin:
 	mkdir bin

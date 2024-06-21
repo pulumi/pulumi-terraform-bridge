@@ -91,6 +91,7 @@ func TestPrimitiveTypes(t *testing.T) {
 		return with(inputProps(), resource.PropertyMap{
 			"attrStringDefault":  resource.NewProperty("default-value"),
 			"attrStringComputed": resource.NewProperty("t"),
+			"id":                 resource.NewProperty("output-id"),
 		})
 	}
 
@@ -100,128 +101,109 @@ func TestPrimitiveTypes(t *testing.T) {
 		"test", "test", "", "pfprovider:index/primitive:Primitive", "prim",
 	))
 
-	t.Run("check", func(t *testing.T) {
-		t.Parallel()
-		resp, err := grpc.Check(ctx, &pulumirpc.CheckRequest{
-			Urn:  urn,
-			News: inputs(),
-		})
-		require.NoError(t, err)
-		assertGRPC(t, resp)
-	})
+	t.Run("check", assertGRPCCall(grpc.Check, &pulumirpc.CheckRequest{
+		Urn:  urn,
+		News: inputs(),
+	}))
 
-	t.Run("create(preview)", func(t *testing.T) {
-		t.Parallel()
-		resp, err := grpc.Create(ctx, &pulumirpc.CreateRequest{
-			Preview:    true,
-			Urn:        urn,
-			Properties: inputs(),
-		})
-		require.NoError(t, err)
-		assertGRPC(t, resp)
-	})
+	t.Run("create(preview)", assertGRPCCall(grpc.Create, &pulumirpc.CreateRequest{
+		Preview:    true,
+		Urn:        urn,
+		Properties: inputs(),
+	}))
 
-	t.Run("create", func(t *testing.T) {
-		t.Parallel()
-		resp, err := grpc.Create(ctx, &pulumirpc.CreateRequest{
-			Urn:        urn,
-			Properties: inputs(),
-		})
-		require.NoError(t, err)
-		assertGRPC(t, resp)
-	})
+	t.Run("create", assertGRPCCall(grpc.Create, &pulumirpc.CreateRequest{
+		Urn:        urn,
+		Properties: inputs(),
+	}))
 
-	t.Run("diff(none)", func(t *testing.T) {
-		t.Parallel()
-		resp, err := grpc.Diff(ctx, &pulumirpc.DiffRequest{
-			Id:        "example-id-0",
-			Urn:       urn,
-			Olds:      outputs(),
-			News:      inputs(),
-			OldInputs: inputs(),
-		})
-		require.NoError(t, err)
-		assertGRPC(t, resp)
-	})
+	t.Run("diff(none)", assertGRPCCall(grpc.Diff, &pulumirpc.DiffRequest{
+		Id:        "example-id-0",
+		Urn:       urn,
+		Olds:      outputs(),
+		News:      inputs(),
+		OldInputs: inputs(),
+	}))
 
-	t.Run("diff(some)", func(t *testing.T) {
-		t.Parallel()
-		resp, err := grpc.Diff(ctx, &pulumirpc.DiffRequest{
-			Id:  "example-id-1",
-			Urn: urn,
-			Olds: must(plugin.MarshalProperties(resource.PropertyMap{
-				"attrBoolComputed":   resource.NewProperty(false),
-				"attrBoolRequired":   resource.NewProperty(true),
-				"attrIntComputed":    resource.NewProperty(128.0),
-				"attrIntRequired":    resource.NewProperty(64.0),
-				"attrNumberRequired": resource.NewProperty(12.3456),
-				"attrStringComputed": resource.NewProperty("t"),
-				"attrStringRequired": resource.NewProperty("s"),
-				"id":                 resource.NewProperty("example-id"),
-			}, plugin.MarshalOptions{})),
-			News: must(plugin.MarshalProperties(resource.PropertyMap{
-				"attrBoolRequired":            resource.NewProperty(true),
-				"attrStringRequired":          resource.NewProperty("u"),
-				"attrIntRequired":             resource.NewProperty(64.0),
-				"attrStringDefaultOverridden": resource.NewProperty("overridden"),
-			}, plugin.MarshalOptions{})),
-			OldInputs: inputs(),
-		})
-		require.NoError(t, err)
-		assertGRPC(t, resp)
-	})
+	t.Run("diff(some)", assertGRPCCall(grpc.Diff, &pulumirpc.DiffRequest{
+		Id:  "example-id-1",
+		Urn: urn,
+		Olds: marshal(resource.PropertyMap{
+			"attrBoolComputed":   resource.NewProperty(false),
+			"attrBoolRequired":   resource.NewProperty(true),
+			"attrIntComputed":    resource.NewProperty(128.0),
+			"attrIntRequired":    resource.NewProperty(64.0),
+			"attrNumberRequired": resource.NewProperty(12.3456),
+			"attrStringComputed": resource.NewProperty("t"),
+			"attrStringRequired": resource.NewProperty("s"),
+			"id":                 resource.NewProperty("example-id"),
+		}),
+		News: marshal(resource.PropertyMap{
+			"attrBoolRequired":            resource.NewProperty(true),
+			"attrStringRequired":          resource.NewProperty("u"),
+			"attrIntRequired":             resource.NewProperty(64.0),
+			"attrStringDefaultOverridden": resource.NewProperty("overridden"),
+		}),
+		OldInputs: inputs(),
+	}))
 
-	t.Run("diff(all)", func(t *testing.T) {
-		t.Parallel()
-		resp, err := grpc.Diff(ctx, &pulumirpc.DiffRequest{
-			Id:  "example-id-2",
-			Urn: urn,
-			Olds: must(plugin.MarshalProperties(resource.PropertyMap{
-				"attrBoolComputed":   resource.NewProperty(false),
-				"attrBoolRequired":   resource.NewProperty(true),
-				"attrIntComputed":    resource.NewProperty(128.0),
-				"attrIntRequired":    resource.NewProperty(64.0),
-				"attrNumberRequired": resource.NewProperty(12.3456),
-				"attrStringComputed": resource.NewProperty("t"),
-				"attrStringRequired": resource.NewProperty("s"),
-				"id":                 resource.NewProperty("example-id"),
-			}, plugin.MarshalOptions{})),
-			News: must(plugin.MarshalProperties(resource.PropertyMap{
-				"attrBoolRequired":   resource.NewProperty(false),
-				"attrStringRequired": resource.NewProperty("u"),
-				"attrIntRequired":    resource.NewProperty(65.0),
-				"attrNumberRequired": resource.NewProperty(12.3456789),
-			}, plugin.MarshalOptions{})),
-			OldInputs: inputs(),
-		})
-		require.NoError(t, err)
-		assertGRPC(t, resp)
-	})
+	t.Run("diff(all)", assertGRPCCall(grpc.Diff, &pulumirpc.DiffRequest{
+		Id:  "example-id-2",
+		Urn: urn,
+		Olds: marshal(resource.PropertyMap{
+			"attrBoolComputed":   resource.NewProperty(false),
+			"attrBoolRequired":   resource.NewProperty(true),
+			"attrIntComputed":    resource.NewProperty(128.0),
+			"attrIntRequired":    resource.NewProperty(64.0),
+			"attrNumberRequired": resource.NewProperty(12.3456),
+			"attrStringComputed": resource.NewProperty("t"),
+			"attrStringRequired": resource.NewProperty("s"),
+			"id":                 resource.NewProperty("example-id"),
+		}),
+		News: marshal(resource.PropertyMap{
+			"attrBoolRequired":   resource.NewProperty(false),
+			"attrStringRequired": resource.NewProperty("u"),
+			"attrIntRequired":    resource.NewProperty(65.0),
+			"attrNumberRequired": resource.NewProperty(12.3456789),
+		}),
+		OldInputs: inputs(),
+	}))
 
-	t.Run("delete", func(t *testing.T) {
-		t.Parallel()
-		resp, err := grpc.Delete(ctx, &pulumirpc.DeleteRequest{
-			Id:         "example-id-delete",
-			Urn:        urn,
-			Properties: outputs(),
-		})
-		require.NoError(t, err)
-		assertGRPC(t, resp)
-	})
+	t.Run("delete", assertGRPCCall(grpc.Delete, &pulumirpc.DeleteRequest{
+		Id:         "example-id-delete",
+		Urn:        urn,
+		Properties: outputs(),
+	}))
 
-	t.Run("update", func(t *testing.T) {
+	t.Run("update", assertGRPCCall(grpc.Update, &pulumirpc.UpdateRequest{
+		Id:   "example-update-id",
+		Urn:  urn,
+		Olds: outputs(),
+		News: marshal(with(outputProps(), resource.PropertyMap{
+			"attrBoolRequired": resource.NewProperty(false),
+		})),
+	}))
+
+	t.Run("read", assertGRPCCall(grpc.Read, &pulumirpc.ReadRequest{
+		Id:         "example-read-id",
+		Urn:        urn,
+		Properties: outputs(),
+	}))
+
+	t.Run("import", assertGRPCCall(grpc.Read, &pulumirpc.ReadRequest{
+		Id:  "example-read-id",
+		Urn: urn,
+	}))
+}
+
+// assertGRPCCall makes a gRPC call and then asserts on the result using [assertGRPC].
+func assertGRPCCall[T any, R proto.Message](method func(context.Context, T) (R, error), req T) func(*testing.T) {
+	return func(t *testing.T) {
 		t.Parallel()
-		resp, err := grpc.Update(ctx, &pulumirpc.UpdateRequest{
-			Id:   "example-update-id",
-			Urn:  urn,
-			Olds: outputs(),
-			News: marshal(with(outputProps(), resource.PropertyMap{
-				"attrBoolRequired": resource.NewProperty(false),
-			})),
-		})
+		resp, err := method(context.Background(), req)
 		require.NoError(t, err)
 		assertGRPC(t, resp)
-	})
+	}
 }
 
 // assertGRPC uses autogold to check/save msg.

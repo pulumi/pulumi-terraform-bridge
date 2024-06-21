@@ -238,7 +238,22 @@ func (r *resourceValidateInputs) Create(
 func (r *resourceValidateInputs) Read(
 	ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse,
 ) {
-	resp.Diagnostics.AddError("Not implemented yet", "")
+	var data data
+	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	if data.ID.ValueString() == "imported" {
+		check{&resp.Diagnostics}.equal(path.Root("attr_string_required"),
+			data.SR.ValueString(), "imported value")
+	} else {
+		check{&resp.Diagnostics}.inputAttributes(data)
+	}
+
+	data.IC = types.Int64Value(10 * 1000)
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
 func (r *resourceValidateInputs) Update(
@@ -302,5 +317,13 @@ func (r *resourceValidateInputs) Delete(
 func (r *resourceValidateInputs) ImportState(
 	ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse,
 ) {
-	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+	var data data
+
+	data.BR = types.BoolValue(true)
+	data.IR = types.Int64Value(1234)
+	data.SR = types.StringValue("imported value")
+	data.NR = types.NumberValue(big.NewFloat(43.21))
+	data.ID = types.StringValue("imported")
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
