@@ -73,25 +73,35 @@ func TestPrimitiveTypes(t *testing.T) {
 		}
 	}
 
-	inputs := func() *structpb.Struct {
-		return must(plugin.MarshalProperties(inputProps(), plugin.MarshalOptions{}))
+	marshal := func(m resource.PropertyMap) *structpb.Struct {
+		return must(plugin.MarshalProperties(m, plugin.MarshalOptions{}))
+	}
+
+	inputs := func() *structpb.Struct { return marshal(inputProps()) }
+
+	with := func(base, layer resource.PropertyMap) resource.PropertyMap {
+		dst := base.Copy()
+		for k, v := range layer {
+			dst[k] = v
+		}
+		return dst
 	}
 
 	outputProps := func() resource.PropertyMap {
-		props := inputProps()
-		props["attrStringDefault"] = resource.NewProperty("default-value")
-		return props
+		return with(inputProps(), resource.PropertyMap{
+			"attrStringDefault":  resource.NewProperty("default-value"),
+			"attrStringComputed": resource.NewProperty("t"),
+		})
 	}
 
-	outputs := func() *structpb.Struct {
-		return must(plugin.MarshalProperties(outputProps(), plugin.MarshalOptions{}))
-	}
+	outputs := func() *structpb.Struct { return marshal(outputProps()) }
 
 	urn := string(resource.NewURN(
 		"test", "test", "", "pfprovider:index/primitive:Primitive", "prim",
 	))
 
 	t.Run("check", func(t *testing.T) {
+		t.Parallel()
 		resp, err := grpc.Check(ctx, &pulumirpc.CheckRequest{
 			Urn:  urn,
 			News: inputs(),
@@ -101,6 +111,7 @@ func TestPrimitiveTypes(t *testing.T) {
 	})
 
 	t.Run("create(preview)", func(t *testing.T) {
+		t.Parallel()
 		resp, err := grpc.Create(ctx, &pulumirpc.CreateRequest{
 			Preview:    true,
 			Urn:        urn,
@@ -111,6 +122,7 @@ func TestPrimitiveTypes(t *testing.T) {
 	})
 
 	t.Run("create", func(t *testing.T) {
+		t.Parallel()
 		resp, err := grpc.Create(ctx, &pulumirpc.CreateRequest{
 			Urn:        urn,
 			Properties: inputs(),
@@ -120,6 +132,7 @@ func TestPrimitiveTypes(t *testing.T) {
 	})
 
 	t.Run("diff(none)", func(t *testing.T) {
+		t.Parallel()
 		resp, err := grpc.Diff(ctx, &pulumirpc.DiffRequest{
 			Id:        "example-id-0",
 			Urn:       urn,
@@ -132,6 +145,7 @@ func TestPrimitiveTypes(t *testing.T) {
 	})
 
 	t.Run("diff(some)", func(t *testing.T) {
+		t.Parallel()
 		resp, err := grpc.Diff(ctx, &pulumirpc.DiffRequest{
 			Id:  "example-id-1",
 			Urn: urn,
@@ -158,6 +172,7 @@ func TestPrimitiveTypes(t *testing.T) {
 	})
 
 	t.Run("diff(all)", func(t *testing.T) {
+		t.Parallel()
 		resp, err := grpc.Diff(ctx, &pulumirpc.DiffRequest{
 			Id:  "example-id-2",
 			Urn: urn,
@@ -178,6 +193,31 @@ func TestPrimitiveTypes(t *testing.T) {
 				"attrNumberRequired": resource.NewProperty(12.3456789),
 			}, plugin.MarshalOptions{})),
 			OldInputs: inputs(),
+		})
+		require.NoError(t, err)
+		assertGRPC(t, resp)
+	})
+
+	t.Run("delete", func(t *testing.T) {
+		t.Parallel()
+		resp, err := grpc.Delete(ctx, &pulumirpc.DeleteRequest{
+			Id:         "example-id-delete",
+			Urn:        urn,
+			Properties: outputs(),
+		})
+		require.NoError(t, err)
+		assertGRPC(t, resp)
+	})
+
+	t.Run("update", func(t *testing.T) {
+		t.Parallel()
+		resp, err := grpc.Update(ctx, &pulumirpc.UpdateRequest{
+			Id:   "example-update-id",
+			Urn:  urn,
+			Olds: outputs(),
+			News: marshal(with(outputProps(), resource.PropertyMap{
+				"attrBoolRequired": resource.NewProperty(false),
+			})),
 		})
 		require.NoError(t, err)
 		assertGRPC(t, resp)

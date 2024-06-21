@@ -1,0 +1,11 @@
+{
+  "properties": {
+    "attrBoolRequired": true,
+    "attrIntComputed": 256,
+    "attrIntRequired": 64,
+    "attrNumberRequired": 12.3456,
+    "attrStringDefault": "default-value",
+    "attrStringDefaultOverridden": "overridden",
+    "attrStringRequired": "s"
+  }
+}

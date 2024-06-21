@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"net/http"
 
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -187,26 +188,28 @@ func (r *resourceValidateInputs) Configure(
 	r.client = client
 }
 
+type data struct {
+	SR types.String `tfsdk:"attr_string_required"`
+	BR types.Bool   `tfsdk:"attr_bool_required"`
+	IR types.Int64  `tfsdk:"attr_int_required"`
+	NR types.Number `tfsdk:"attr_number_required"`
+
+	SC types.String `tfsdk:"attr_string_computed"`
+	BC types.Bool   `tfsdk:"attr_bool_computed"`
+	IC types.Int64  `tfsdk:"attr_int_computed"`
+	NC types.Number `tfsdk:"attr_number_computed"`
+
+	SD  types.String `tfsdk:"attr_string_default"`
+	SDO types.String `tfsdk:"attr_string_default_overridden"`
+
+	ID types.String `tfsdk:"id"`
+}
+
 func (r *resourceValidateInputs) Create(
 	ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse,
 ) {
-	var data struct {
-		S types.String `tfsdk:"attr_string_required"`
-		B types.Bool   `tfsdk:"attr_bool_required"`
-		I types.Int64  `tfsdk:"attr_int_required"`
-		N types.Number `tfsdk:"attr_number_required"`
 
-		SR types.String `tfsdk:"attr_string_computed"`
-		BR types.Bool   `tfsdk:"attr_bool_computed"`
-		IR types.Int64  `tfsdk:"attr_int_computed"`
-		NR types.Number `tfsdk:"attr_number_computed"`
-
-		SD  types.String `tfsdk:"attr_string_default"`
-		SDO types.String `tfsdk:"attr_string_default_overridden"`
-
-		ID types.String `tfsdk:"id"`
-	}
-
+	var data data
 	// Read Terraform plan data into the model
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
 
@@ -214,36 +217,12 @@ func (r *resourceValidateInputs) Create(
 		return
 	}
 
-	if data.S.ValueString() != "s" {
-		resp.Diagnostics.AddError("string_required: s != "+data.S.String(), "test validation failed")
-	}
+	check{&resp.Diagnostics}.inputAttributes(data)
 
-	if !data.B.ValueBool() {
-		resp.Diagnostics.AddError("bool_required: true != "+data.B.String(), "test validation failed")
-	}
-
-	if s := data.SD.ValueString(); s != "default-value" {
-		resp.Diagnostics.AddAttributeError(path.Root("attr_string_default"), "unexpected value",
-			fmt.Sprintf(`Expected value to be "default-value", found %q`, s))
-	}
-
-	if s := data.SDO.ValueString(); s != "overridden" {
-		resp.Diagnostics.AddAttributeError(path.Root("attr_string_default_overridden"), "unexpected value",
-			fmt.Sprintf(`Expected value to be "overridden", found %q`, s))
-	}
-
-	if data.I.ValueInt64() != 64 {
-		resp.Diagnostics.AddError("int_required: 64 != "+data.I.String(), "test validation failed")
-	}
-
-	if f, _ := data.N.ValueBigFloat().Float64(); f != 12.3456 {
-		resp.Diagnostics.AddError("int_required: 12.3456 != "+data.N.String(), "test validation failed")
-	}
-
-	data.SR = types.StringValue("t") // "t" is after "s"
-	data.BR = types.BoolValue(false)
-	data.IR = types.Int64Value(128)
-	data.NR = types.NumberValue(big.NewFloat(12.3456))
+	data.SC = types.StringValue("t") // "t" is after "s"
+	data.BC = types.BoolValue(false)
+	data.IC = types.Int64Value(128)
+	data.NC = types.NumberValue(big.NewFloat(12.3456))
 
 	// For the purposes of this example code, hardcoding a response value to
 	// save into the Terraform state.
@@ -253,7 +232,6 @@ func (r *resourceValidateInputs) Create(
 	// Documentation: https://terraform.io/plugin/log
 	tflog.Trace(ctx, "created a resource")
 
-	// Save data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -266,13 +244,59 @@ func (r *resourceValidateInputs) Read(
 func (r *resourceValidateInputs) Update(
 	ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse,
 ) {
-	resp.Diagnostics.AddError("Not implemented yet", "")
+	var data data
+	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	check := check{&resp.Diagnostics}
+	check.inputAttributes(data)
+	var b bool
+	resp.Diagnostics.Append(req.Plan.GetAttribute(ctx, path.Root("attr_bool_required"), &b)...)
+	check.equal(path.Root("attr_bool_required"), b, false)
+
+	data.IC = types.Int64Value(256)
+	data.SC = types.StringNull()
+
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+}
+
+type check struct{ *diag.Diagnostics }
+
+func (c check) equal(path path.Path, actual, expected any) {
+	if expected != actual {
+		c.AddAttributeError(path, fmt.Sprintf("%#v != %#v", expected, actual), "test validation failed")
+	}
+}
+
+func (c check) inputAttributes(data data) {
+	// Required attributes
+	c.equal(path.Root("attr_string_required"), data.SR.ValueString(), "s")
+	c.equal(path.Root("attr_bool_required"), data.BR.ValueBool(), true)
+	c.equal(path.Root("attr_int_required"), data.IR.ValueInt64(), int64(64))
+	f, _ := data.NR.ValueBigFloat().Float64()
+	c.equal(path.Root("attr_int_required"), f, 12.3456)
+
+	// Default attributes
+	c.equal(path.Root("attr_string_default"), data.SD.ValueString(), "default-value")
+	c.equal(path.Root("attr_string_default_overridden"), data.SDO.ValueString(), "overridden")
 }
 
 func (r *resourceValidateInputs) Delete(
 	ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse,
 ) {
-	resp.Diagnostics.AddError("Not implemented yet", "")
+
+	var data data
+	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	c := check{&resp.Diagnostics}
+	c.inputAttributes(data)
+
+	c.equal(path.Root("attr_string_computed"), data.SC.ValueString(), "t")
 }
 
 func (r *resourceValidateInputs) ImportState(
