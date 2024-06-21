@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/function"
@@ -58,13 +57,7 @@ func (p *PFProvider) Configure(
 		return
 	}
 
-	// Configuration values are now available.
-	// if data.Endpoint.IsNull() { /* ... */ }
-
-	// Example client configuration for data sources and resources
-	client := http.DefaultClient
-	resp.DataSourceData = client
-	resp.ResourceData = client
+	resp.DataSourceData = data.Endpoint.ValueString()
 }
 
 func (p *PFProvider) Resources(ctx context.Context) []func() resource.Resource {

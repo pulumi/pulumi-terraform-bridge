@@ -54,14 +54,13 @@ func TestPrimitiveTypes(t *testing.T) {
 
 	grpc := grpcTestServer(ctx, t)
 
-	_, err := grpc.Parameterize(ctx, &pulumirpc.ParameterizeRequest{
+	t.Run("parameterize", assertGRPCCall(grpc.Parameterize, &pulumirpc.ParameterizeRequest{
 		Parameters: &pulumirpc.ParameterizeRequest_Args{
 			Args: &pulumirpc.ParameterizeRequest_ParametersArgs{
 				Args: []string{pfProviderPath(t)},
 			},
 		},
-	})
-	require.NoError(t, err)
+	}, noParallel))
 
 	inputProps := func() resource.PropertyMap {
 		return resource.PropertyMap{
@@ -71,10 +70,6 @@ func TestPrimitiveTypes(t *testing.T) {
 			"attrNumberRequired":          resource.NewProperty(12.3456),
 			"attrStringDefaultOverridden": resource.NewProperty("overridden"),
 		}
-	}
-
-	marshal := func(m resource.PropertyMap) *structpb.Struct {
-		return must(plugin.MarshalProperties(m, plugin.MarshalOptions{}))
 	}
 
 	inputs := func() *structpb.Struct { return marshal(inputProps()) }
@@ -196,10 +191,66 @@ func TestPrimitiveTypes(t *testing.T) {
 	}))
 }
 
+func TestConfigure(t *testing.T) {
+	t.Parallel()
+	skipWindows(t)
+
+	s := grpcTestServer(context.Background(), t)
+
+	t.Run("parameterize", assertGRPCCall(s.Parameterize, &pulumirpc.ParameterizeRequest{
+		Parameters: &pulumirpc.ParameterizeRequest_Args{
+			Args: &pulumirpc.ParameterizeRequest_ParametersArgs{
+				Args: []string{pfProviderPath(t)},
+			},
+		},
+	}, noParallel))
+
+	t.Run("check-config", assertGRPCCall(s.CheckConfig, &pulumirpc.CheckRequest{
+		News: marshal(resource.PropertyMap{
+			"endpoint": resource.NewProperty("explicit endpoint"),
+		}),
+	}))
+
+	// TODO: This should error
+	t.Run("check-config (invalid)", assertGRPCCall(s.CheckConfig, &pulumirpc.CheckRequest{
+		News: marshal(resource.PropertyMap{
+			"endpoint": resource.NewProperty(123.456),
+		}),
+	}))
+
+	t.Run("configure (args)", assertGRPCCall(s.Configure, &pulumirpc.ConfigureRequest{
+		Args: marshal(resource.PropertyMap{
+			"endpoint": resource.NewProperty("my-endpoint"),
+		}),
+	}))
+
+	t.Run("validate config", assertGRPCCall(s.Invoke, &pulumirpc.InvokeRequest{
+		Tok: "pfprovider:index/getConfigEndpoint:getConfigEndpoint",
+	}))
+}
+
+type assertGRPCCallOptions struct {
+	noParallel bool
+}
+
+func noParallel(o *assertGRPCCallOptions) { o.noParallel = true }
+
+type assertGRPCCallOption func(*assertGRPCCallOptions)
+
 // assertGRPCCall makes a gRPC call and then asserts on the result using [assertGRPC].
-func assertGRPCCall[T any, R proto.Message](method func(context.Context, T) (R, error), req T) func(*testing.T) {
+func assertGRPCCall[T any, R proto.Message](
+	method func(context.Context, T) (R, error), req T,
+	opts ...assertGRPCCallOption,
+) func(*testing.T) {
+	var o assertGRPCCallOptions
+	for _, opt := range opts {
+		opt(&o)
+	}
 	return func(t *testing.T) {
-		t.Parallel()
+		t.Helper()
+		if !o.noParallel {
+			t.Parallel()
+		}
 		resp, err := method(context.Background(), req)
 		require.NoError(t, err)
 		assertGRPC(t, resp)
@@ -240,13 +291,17 @@ var pfProviderPath = func() func(t *testing.T) string {
 		out := filepath.Join(globalTempDir, "terraform-provider-pfprovider")
 		cmd := exec.Command("go", "build", "-o", out, "github.com/pulumi/pulumi-terraform-bridge/dynamic/tests/pfprovider")
 		cmd.Dir = filepath.Join(wd, "test", "pfprovider")
-		return out, cmd.Run()
+		stdoutput, err := cmd.CombinedOutput()
+		if err != nil {
+			return "", fmt.Errorf("failed to build provider: %w:\n%s", err, string(stdoutput))
+		}
+		return out, nil
 	})
 
 	return func(t *testing.T) string {
 		t.Helper()
 		path, err := mkBin()
-		require.NoError(t, err)
+		require.NoErrorf(t, err, "failed find provider path")
 		return path
 	}
 }()
@@ -371,4 +426,8 @@ func must[T any](v T, err error) T {
 		panic(err)
 	}
 	return v
+}
+
+func marshal(m resource.PropertyMap) *structpb.Struct {
+	return must(plugin.MarshalProperties(m, plugin.MarshalOptions{}))
 }
