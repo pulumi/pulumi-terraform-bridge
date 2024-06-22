@@ -29,14 +29,11 @@ import (
 // Read the current live state associated with a resource. Enough state must be include in the inputs to uniquely
 // identify the resource; this is typically just the resource ID, but may also include some properties. If the resource
 // is missing (for instance, because it has been deleted), the resulting property map will be nil.
-func (p *provider) ReadWithContext(
+func (p *provider) Read(
 	ctx context.Context,
-	urn resource.URN,
-	id resource.ID,
-	oldInputs,
-	currentStateMap resource.PropertyMap,
-) (plugin.ReadResult, resource.Status, error) {
-	ctx = p.initLogging(ctx, p.logSink, urn)
+	req plugin.ReadRequest,
+) (plugin.ReadResponse, error) {
+	ctx = p.initLogging(ctx, p.logSink, req.URN)
 
 	var err error
 
@@ -45,56 +42,68 @@ func (p *provider) ReadWithContext(
 
 	// TODO[pulumi/pulumi-terraform-bridge#793] Add a test for Read handling a not-found resource
 
-	rh, err := p.resourceHandle(ctx, urn)
+	rh, err := p.resourceHandle(ctx, req.URN)
 	if err != nil {
-		return plugin.ReadResult{}, 0, err
+		return plugin.ReadResponse{}, err
 	}
 
 	// Both "get" and "refresh" scenarios call Read. Detect and dispatch.
-	isRefresh := len(currentStateMap) != 0
+	isRefresh := len(req.State) != 0
 
 	var result plugin.ReadResult
 
 	if isRefresh {
 		// If we are in a refresh, then currentStateMap was read from the state
 		// and should be transformed.
-		currentStateMap, err = transformFromState(ctx, rh, currentStateMap)
-		if err != nil {
-			return plugin.ReadResult{}, 0, err
+		currentStateMap, transformErr := transformFromState(ctx, rh, req.State)
+		if transformErr != nil {
+			return plugin.ReadResponse{}, transformErr
 		}
 
 		result, err = p.readResource(ctx, &rh, currentStateMap)
 	} else {
-		result, err = p.importResource(ctx, &rh, id)
+		result, err = p.importResource(ctx, &rh, req.ID)
 	}
 	if err != nil {
-		return result, ignoredStatus, err
+		return plugin.ReadResponse{
+			ReadResult: result,
+			Status:     ignoredStatus,
+		}, err
 	}
 
 	if result.Outputs != nil && rh.pulumiResourceInfo.TransformOutputs != nil {
 		var err error
 		result.Outputs, err = rh.pulumiResourceInfo.TransformOutputs(ctx, result.Outputs)
 		if err != nil {
-			return result, ignoredStatus, err
+			return plugin.ReadResponse{
+				ReadResult: result,
+				Status:     ignoredStatus,
+			}, err
 		}
 	}
 
 	if result.Outputs != nil {
 		result.Inputs, err = tfbridge.ExtractInputsFromOutputs(
-			oldInputs,
+			req.Inputs,
 			result.Outputs,
 			rh.schema.Shim(),
 			rh.pulumiResourceInfo.Fields,
 			isRefresh)
 		if err != nil {
-			return result, ignoredStatus, err
+			return plugin.ReadResponse{
+				ReadResult: result,
+				Status:     ignoredStatus,
+			}, err
 		}
 
 		// __defaults is not needed for Plugin Framework bridged providers
 		delete(result.Inputs, "__defaults")
 	}
 
-	return result, ignoredStatus, err
+	return plugin.ReadResponse{
+		ReadResult: result,
+		Status:     ignoredStatus,
+	}, err
 }
 
 // readResource calls the PF's ReadResource method on the given resource.
@@ -103,7 +112,6 @@ func (p *provider) readResource(
 	rh *resourceHandle,
 	currentStateMap resource.PropertyMap,
 ) (plugin.ReadResult, error) {
-
 	currentStateRaw, err := parseResourceState(rh, currentStateMap)
 	if err != nil {
 		return plugin.ReadResult{}, fmt.Errorf("failed to get current raw state: %w", err)

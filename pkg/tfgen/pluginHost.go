@@ -15,6 +15,7 @@
 package tfgen
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"sync"
@@ -52,33 +53,47 @@ func (p *inmemoryProvider) Pkg() tokens.Package {
 	return p.name
 }
 
-func (p *inmemoryProvider) GetSchema(plugin.GetSchemaRequest) ([]byte, error) {
-	return p.schema, nil
+func (p *inmemoryProvider) GetSchema(context.Context, plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error) {
+	return plugin.GetSchemaResponse{Schema: p.schema}, nil
 }
 
-func (p *inmemoryProvider) GetMapping(key, provider string) ([]byte, string, error) {
-	if key == "tf" || key == "terraform" {
-		if provider != "" && provider != p.info.Name {
-			return nil, "", fmt.Errorf("unknown provider %q", provider)
+func (p *inmemoryProvider) GetMapping(
+	ctx context.Context,
+	req plugin.GetMappingRequest,
+) (plugin.GetMappingResponse, error) {
+	if req.Key == "tf" || req.Key == "terraform" {
+		if req.Provider != "" && req.Provider != p.info.Name {
+			return plugin.GetMappingResponse{}, fmt.Errorf("unknown provider %q", req.Provider)
 		}
 		info := tfbridge.MarshalProviderInfo(&p.info)
 		mapping, err := json.Marshal(info)
 		if err != nil {
-			return nil, "", err
+			return plugin.GetMappingResponse{}, err
 		}
-		return mapping, p.info.Name, nil
+
+		res := plugin.GetMappingResponse{
+			Data:     mapping,
+			Provider: p.info.Name,
+		}
+
+		return res, nil
 	}
-	return nil, "", nil
+	return plugin.GetMappingResponse{}, nil
 }
 
-func (p *inmemoryProvider) GetMappings(key string) ([]string, error) {
-	if key == "tf" || key == "terraform" {
-		return []string{p.info.Name}, nil
+func (p *inmemoryProvider) GetMappings(
+	ctx context.Context,
+	req plugin.GetMappingsRequest,
+) (plugin.GetMappingsResponse, error) {
+	if req.Key == "tf" || req.Key == "terraform" {
+		return plugin.GetMappingsResponse{
+			Keys: []string{p.info.Name},
+		}, nil
 	}
-	return nil, nil
+	return plugin.GetMappingsResponse{}, nil
 }
 
-func (p *inmemoryProvider) GetPluginInfo() (workspace.PluginInfo, error) {
+func (p *inmemoryProvider) GetPluginInfo(context.Context) (workspace.PluginInfo, error) {
 	var version *semver.Version
 	if p.info.Version != "" {
 		v, err := semver.ParseTolerant(p.info.Version)
@@ -97,7 +112,8 @@ func (p *inmemoryProvider) GetPluginInfo() (workspace.PluginInfo, error) {
 func (p *inmemoryProvider) Close() error {
 	return nil
 }
-func (p *inmemoryProvider) SignalCancellation() error {
+
+func (p *inmemoryProvider) SignalCancellation(context.Context) error {
 	return nil
 }
 
@@ -122,7 +138,7 @@ func (host *inmemoryProviderHost) Provider(pkg tokens.Package, version *semver.V
 func (host *inmemoryProviderHost) ResolvePlugin(kind apitype.PluginKind, name string,
 	version *semver.Version) (*workspace.PluginInfo, error) {
 	if name == host.provider.name.String() {
-		info, err := host.provider.GetPluginInfo()
+		info, err := host.provider.GetPluginInfo(context.TODO())
 		if err != nil {
 			return nil, err
 		}

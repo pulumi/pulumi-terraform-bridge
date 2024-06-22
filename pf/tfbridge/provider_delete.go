@@ -21,61 +21,57 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/convert"
 )
 
-func (p *provider) DeleteWithContext(
+func (p *provider) Delete(
 	ctx context.Context,
-	urn resource.URN,
-	id resource.ID,
-	_ resource.PropertyMap, /* inputs */
-	outputs resource.PropertyMap,
-	timeout float64,
-) (resource.Status, error) {
+	req plugin.DeleteRequest,
+) (plugin.DeleteResponse, error) {
+	ctx = p.initLogging(ctx, p.logSink, req.URN)
 
-	ctx = p.initLogging(ctx, p.logSink, urn)
-
-	rh, err := p.resourceHandle(ctx, urn)
+	rh, err := p.resourceHandle(ctx, req.URN)
 	if err != nil {
-		return resource.StatusOK, err
+		return plugin.DeleteResponse{Status: resource.StatusOK}, err
 	}
 
-	props, err := transformFromState(ctx, rh, outputs)
+	props, err := transformFromState(ctx, rh, req.Outputs)
 	if err != nil {
-		return resource.StatusOK, err
+		return plugin.DeleteResponse{Status: resource.StatusOK}, err
 	}
 
 	tfType := rh.schema.Type(ctx).(tftypes.Object)
 
 	priorState, err := convert.EncodePropertyMapToDynamic(rh.encoder, tfType, props)
 	if err != nil {
-		return resource.StatusOK, err
+		return plugin.DeleteResponse{Status: resource.StatusOK}, err
 	}
 
 	// terraform-plugin-framework recognizes PlannedState=nil ApplyResourceChangeRequest request as DELETE.
 	//
 	//nolint:lll // See
 	// https://github.com/hashicorp/terraform-plugin-framework/blob/ce2519cf40d45d28eebd81776019e68d1bddca6f/internal/fwserver/server_applyresourcechange.go#L63
-	req := tfprotov6.ApplyResourceChangeRequest{
+	tfReq := tfprotov6.ApplyResourceChangeRequest{
 		TypeName:   rh.terraformResourceName,
 		PriorState: priorState,
 	}
 
-	resp, err := p.tfServer.ApplyResourceChange(ctx, &req)
+	resp, err := p.tfServer.ApplyResourceChange(ctx, &tfReq)
 	if err != nil {
-		return resource.StatusOK, err
+		return plugin.DeleteResponse{Status: resource.StatusOK}, err
 	}
 
 	// NOTE: no need to handle resp.Private in Delete.
 
 	if err := p.processDiagnostics(resp.Diagnostics); err != nil {
-		return resource.StatusPartialFailure, err
+		return plugin.DeleteResponse{Status: resource.StatusPartialFailure}, err
 	}
 
 	// In one example that was tested, resp.NewState after a
 	// successful delete seem to have a record with all null
 	// values. Seems safe to simply ignore it.
 
-	return resource.StatusOK, nil
+	return plugin.DeleteResponse{Status: resource.StatusOK}, nil
 }

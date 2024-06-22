@@ -756,7 +756,7 @@ example = aws.lambda_.Function("example",
         subnet_ids=[aws_subnet["subnet_for_lambda"]["id"]],
         security_group_ids=[aws_security_group["sg_for_lambda"]["id"]],
     ),
-    opts=pulumi.ResourceOptions(depends_on=[alpha]))
+    opts = pulumi.ResourceOptions(depends_on=[alpha]))
 ```
 ```csharp
 using System.Collections.Generic;
@@ -1117,7 +1117,7 @@ lambda_logs = aws.iam.RolePolicyAttachment("lambdaLogs",
 test_lambda = aws.lambda_.Function("testLambda", logging_config=aws.lambda_.FunctionLoggingConfigArgs(
     log_format="Text",
 ),
-opts=pulumi.ResourceOptions(depends_on=[
+opts = pulumi.ResourceOptions(depends_on=[
         lambda_logs,
         example,
     ]))
