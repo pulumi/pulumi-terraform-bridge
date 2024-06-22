@@ -9,7 +9,6 @@ replace (
 
 require (
 	github.com/blang/semver v3.5.1+incompatible
-	github.com/golang/protobuf v1.5.4
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/terraform-plugin-framework v1.6.0
 	github.com/hashicorp/terraform-plugin-framework-validators v0.12.0
@@ -20,14 +19,13 @@ require (
 	github.com/pulumi/pulumi-terraform-bridge/v3 v3.84.0
 	github.com/pulumi/pulumi-terraform-bridge/x/muxer v0.0.8
 	github.com/stretchr/testify v1.9.0
-	google.golang.org/grpc v1.63.2
 )
 
 require (
 	dario.cat/mergo v1.0.0 // indirect
-	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.10.0 // indirect
-	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.5.1 // indirect
-	github.com/Azure/azure-sdk-for-go/sdk/internal v1.5.2 // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.11.1 // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.6.0 // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/internal v1.8.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/keyvault/azkeys v0.10.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/keyvault/internal v0.7.1 // indirect
 	github.com/AzureAD/microsoft-authentication-library-for-go v1.2.2 // indirect
@@ -53,6 +51,7 @@ require (
 	github.com/go-logr/logr v1.4.1 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/golang-jwt/jwt/v5 v5.2.1 // indirect
+	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/google/s2a-go v0.1.7 // indirect
 	github.com/hashicorp/go-hclog v1.5.0 // indirect
@@ -67,6 +66,7 @@ require (
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c // indirect
 	github.com/pulumi/appdash v0.0.0-20231130102222-75f619a67231 // indirect
 	github.com/pulumi/esc v0.9.1 // indirect
+	github.com/pulumi/inflector v0.1.1 // indirect
 	github.com/pulumi/terraform-diff-reader v0.0.2 // indirect
 	github.com/shopspring/decimal v1.3.1 // indirect
 	github.com/vmihailenco/msgpack v4.0.4+incompatible // indirect
@@ -81,6 +81,7 @@ require (
 	golang.org/x/tools v0.22.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20240311173647-c811ad7063a7 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240311173647-c811ad7063a7 // indirect
+	google.golang.org/grpc v1.63.2 // indirect
 )
 
 require (
@@ -194,8 +195,8 @@ require (
 	github.com/posener/complete v1.2.3 // indirect
 	github.com/pulumi/pulumi-java/pkg v0.11.0 // indirect
 	github.com/pulumi/pulumi-yaml v1.8.0 // indirect
-	github.com/pulumi/pulumi/pkg/v3 v3.120.0
-	github.com/pulumi/pulumi/sdk/v3 v3.120.0
+	github.com/pulumi/pulumi/pkg/v3 v3.120.1-0.20240621152920-283bbd23f699
+	github.com/pulumi/pulumi/sdk/v3 v3.120.1-0.20240621152920-283bbd23f699
 	github.com/pulumi/schema-tools v0.1.2 // indirect
 	github.com/rivo/uniseg v0.4.4 // indirect
 	github.com/rogpeppe/go-internal v1.12.0 // indirect

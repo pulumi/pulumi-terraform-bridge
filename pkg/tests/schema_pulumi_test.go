@@ -70,7 +70,7 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 		cloudVal           interface{}
 		programVal         string
 		// If true, the cloud value will be set in the CreateContext
-		// This is behaviour observed in both AWS and GCP providers, as well as a few others
+		// This is behavior observed in both AWS and GCP providers, as well as a few others
 		// where the provider returns an empty collections when a nil one was specified in inputs.
 		// See [pulumi/pulumi-terraform-bridge#2047] for more details around this behavior
 		createCloudValOverride bool
