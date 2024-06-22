@@ -81,7 +81,7 @@ func NewProvider(ctx context.Context, info tfbridge.ProviderInfo, meta ProviderM
 	if err != nil {
 		return nil, err
 	}
-	return pl.NewProvider(ctx, pwc), nil
+	return pl.NewProvider(pwc), nil
 }
 
 // Wrap a PF Provider in a shim.Provider.
@@ -187,7 +187,7 @@ func (p *provider) Close() error {
 }
 
 // Pkg fetches this provider's package.
-func (p *provider) PkgWithContext(_ context.Context) tokens.Package {
+func (p *provider) Pkg() tokens.Package {
 	return tokens.Package(p.info.Name)
 }
 
