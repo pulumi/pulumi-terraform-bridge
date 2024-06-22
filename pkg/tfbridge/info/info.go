@@ -671,6 +671,12 @@ type Python struct {
 	PyProject struct {
 		Enabled bool
 	}
+
+	// Specifies what types are used for inputs.
+	// Allowed values are the following:
+	// - "classes" (default): Args classes only
+	// - "classes-and-dicts": TypedDicts side-by-side with Args classes.
+	InputTypes string
 }
 
 // Golang contains optional overlay information for Golang code-generation.
