@@ -8,7 +8,6 @@ require (
 	github.com/apparentlymart/go-cidr v1.1.0
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/davecgh/go-spew v1.1.1
-	github.com/gedex/inflector v0.0.0-20170307190818-16278e9db813
 	github.com/go-test/deep v1.0.3
 	github.com/golang/glog v1.2.0
 	github.com/golang/protobuf v1.5.4
@@ -36,6 +35,7 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/mitchellh/reflectwalk v1.0.2
 	github.com/pkg/errors v0.9.1
+	github.com/pulumi/inflector v0.1.1
 	github.com/pulumi/providertest v0.0.11
 	github.com/pulumi/pulumi-java/pkg v0.11.0
 	github.com/pulumi/pulumi-terraform-bridge/x/muxer v0.0.8
@@ -98,7 +98,6 @@ require (
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c // indirect
 	github.com/pulumi/appdash v0.0.0-20231130102222-75f619a67231 // indirect
 	github.com/pulumi/esc v0.9.1 // indirect
-	github.com/pulumi/inflector v0.1.1 // indirect
 	github.com/shopspring/decimal v1.3.1 // indirect
 	github.com/vmihailenco/msgpack/v5 v5.4.1 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
