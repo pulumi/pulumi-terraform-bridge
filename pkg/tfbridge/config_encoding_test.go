@@ -55,23 +55,6 @@ func TestConfigEncoding(t *testing.T) {
 		return vv
 	}
 
-	checkMarshal := func(t *testing.T, tc testCase) {
-		enc := makeEnc(tc.ty)
-		s, err := enc.MarshalProperties(resource.PropertyMap{
-			resource.PropertyKey(knownKey): tc.pv,
-		})
-		assert.NoError(t, err)
-		assert.NotNil(t, s)
-		x, ok := s.Fields[knownKey]
-		assert.True(t, ok)
-		expectedJSON, err := tc.v.MarshalJSON()
-		assert.NoError(t, err)
-		actualJSON, err := x.MarshalJSON()
-		assert.NoError(t, err)
-		t.Logf("%s", actualJSON)
-		assert.Equal(t, string(expectedJSON), string(actualJSON))
-	}
-
 	checkUnmarshal := func(t *testing.T, tc testCase) {
 		enc := makeEnc(tc.ty)
 		pv, err := enc.unmarshalPropertyValue(resource.PropertyKey(knownKey), tc.v)
@@ -168,10 +151,6 @@ func TestConfigEncoding(t *testing.T) {
 			t.Run(fmt.Sprintf("UnmarshalPropertyValue/%d", i), func(t *testing.T) {
 				checkUnmarshal(t, tc)
 			})
-
-			t.Run(fmt.Sprintf("MarshalPropertyValue/%d", i), func(t *testing.T) {
-				checkMarshal(t, tc)
-			})
 		}
 	})
 
@@ -224,66 +203,24 @@ func TestConfigEncoding(t *testing.T) {
 			tc := tc
 
 			t.Run(fmt.Sprintf("UnmarshalPropertyValue/%d", i), func(t *testing.T) {
-				// Unknown sentinel unmarshals to a Computed with a type-appropriate zero value.
+				// Unknown sentinel would unmarshal to a Computed with a type-appropriate zero value.
 				checkUnmarshal(t, testCase{
 					tc.ty,
 					unk,
 					resource.MakeComputed(makeEnc(tc.ty).zeroValue(tc.ty)),
 				})
 			})
-
-			t.Run(fmt.Sprintf("MarshalPropertyValue/%d", i), func(t *testing.T) {
-				// When there any unknowns at all in the config, unk sentinel is sent by the engine.
-				checkMarshal(t, testCase{
-					tc.ty,
-					unk,
-					resource.MakeComputed(tc.pv),
-				})
-			})
-		}
-
-		// Checking a few extra cases for nested computedness.
-		nestedUnkownTestCases := []testCase{
-			{
-				shim.TypeList,
-				unk,
-				resource.NewArrayProperty([]resource.PropertyValue{
-					resource.NewStringProperty("hello"),
-					resource.MakeComputed(resource.NewNumberProperty(0)),
-				}),
-			},
-			{
-				shim.TypeSet,
-				unk,
-				resource.NewArrayProperty([]resource.PropertyValue{
-					resource.MakeComputed(resource.NewBoolProperty(false)),
-					resource.NewStringProperty("there"),
-				}),
-			},
-			{
-				shim.TypeMap,
-				unk,
-				resource.NewObjectProperty(resource.PropertyMap{
-					"key": resource.MakeComputed(resource.NewStringProperty("")),
-				}),
-			},
-		}
-		for i, tc := range nestedUnkownTestCases {
-			tc := tc
-			t.Run(fmt.Sprintf("nested/MarshalPropertyValue/%d", i), func(t *testing.T) {
-				checkMarshal(t, tc)
-			})
 		}
 	})
 
 	t.Run("secret", func(t *testing.T) {
-		// Unmarshalling happens with KeepSecrets=false, replacing them with the underlying values. This case
+		// Unmarshal happens with KeepSecrets=false, replacing them with the underlying values. This case
 		// does not need to be tested.
 		//
-		// Marhalling however supports sending secrets back to the engine, intending to mark values as secret
+		// Marshal however supports sending secrets back to the engine, intending to mark values as secret
 		// that happen on paths that are declared as secret in the schema. Due to the limitation of the
 		// JSON-in-proto-encoding, secrets are communicated imprecisely as an approximation: if any nested
-		// element of a property is secret, the entire property is marshalled as secret.
+		// element of a property is secret, the entire property would marshal as secret.
 
 		var secretCases []testCase
 
@@ -305,57 +242,20 @@ func TestConfigEncoding(t *testing.T) {
 		for i, tc := range secretCases {
 			tc := tc
 
-			t.Run(fmt.Sprintf("secret/MarshalPropertyValue/%d", i), func(t *testing.T) {
-				checkMarshal(t, tc)
-			})
-
 			t.Run(fmt.Sprintf("secret/UnmarshalPropertyValue/%d", i), func(t *testing.T) {
-				// Unmarshallin will remove secrts, so the expected value needs to be modified.
+				// Unmarshal will remove secrets, so the expected value needs to be modified.
 				tc.pv = tc.pv.SecretValue().Element
 				checkUnmarshal(t, tc)
 			})
 		}
 
-		// Checking a few extra cases for nested secrets.
-		nestedSecretCases := []testCase{
-			{
-				shim.TypeList,
-				pbSecret(makeValue(`["hello",1]`)),
-				resource.NewArrayProperty([]resource.PropertyValue{
-					resource.NewStringProperty("hello"),
-					resource.MakeSecret(resource.NewNumberProperty(1)),
-				}),
-			},
-			{
-				shim.TypeSet,
-				pbSecret(makeValue(`[false,"there"]`)),
-				resource.NewArrayProperty([]resource.PropertyValue{
-					resource.MakeSecret(resource.NewBoolProperty(false)),
-					resource.NewStringProperty("there"),
-				}),
-			},
-			{
-				shim.TypeMap,
-				pbSecret(makeValue(`{"key":""}`)),
-				resource.NewObjectProperty(resource.PropertyMap{
-					"key": resource.MakeSecret(resource.NewStringProperty("")),
-				}),
-			},
-		}
-		for i, tc := range nestedSecretCases {
-			tc := tc
-			t.Run(fmt.Sprintf("nested/MarshalPropertyValue/%d", i), func(t *testing.T) {
-				checkMarshal(t, tc)
-			})
-		}
-
 		t.Run("tolerate secrets in Configure", func(t *testing.T) {
-			// This is a bit of a histirocal quirk: the engine may send secrets to Configure before
+			// This is a bit of a historical quirk: the engine may send secrets to Configure before
 			// receiving the response from Configure indicating that the provider does not want to receive
 			// secrets. These are simply ignored. The engine does not currently send secrets to CheckConfig.
 			// The engine does take care of making sure the secrets are stored as such in the statefile.
 			//
-			// Check here that unmarshalilng such values removes the secrets.
+			// Check here that unmarshal such values removes the secrets.
 			checkUnmarshal(t, testCase{
 				shim.TypeMap,
 				pbSecret(makeValue(`{"key":"val"}`)),

@@ -105,7 +105,7 @@
     },
     "response": {
       "inputs": {
-          "skipMetadataApiCheck": "true",
+          "skipMetadataApiCheck": true,
           "stringDefaultinfoConfigProp": "DEFAULT"
       }
     },
@@ -357,7 +357,7 @@
     },
     "response": {
       "inputs": {
-          "skipMetadataApiCheck": "true",
+          "skipMetadataApiCheck": true,
           "stringDefaultinfoConfigProp": "DEFAULT"
       }
     },
@@ -642,7 +642,7 @@
     "response": {
         "inputs": {
             "stringDefaultinfoConfigProp": "DEFAULT",
-            "skipMetadataApiCheck": "true"
+            "skipMetadataApiCheck": true
         }
     },
     "metadata": {
@@ -928,7 +928,7 @@
     "response": {
         "inputs": {
             "stringDefaultinfoConfigProp": "DEFAULT",
-            "skipMetadataApiCheck": "true"
+            "skipMetadataApiCheck": true
         }
     },
     "metadata": {
@@ -1284,7 +1284,7 @@
     "response": {
         "inputs": {
             "stringDefaultinfoConfigProp": "DEFAULT",
-            "skipMetadataApiCheck": "true"
+            "skipMetadataApiCheck": true
         }
     },
     "metadata": {
@@ -1610,7 +1610,7 @@
     },
     "response": {
         "inputs": {
-            "skipMetadataApiCheck": "true",
+            "skipMetadataApiCheck": true,
             "stringDefaultinfoConfigProp": "DEFAULT"
         }
     },
