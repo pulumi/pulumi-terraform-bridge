@@ -18,6 +18,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/ryboe/q"
 )
 
 type InferObjectTypeOptions struct{}
@@ -25,11 +26,13 @@ type InferObjectTypeOptions struct{}
 // Working with this package requires knowing the tftypes.Object type approximation, and while it is normally available
 // from the underlying Plugin Framework provider, in some test scenarios it is helpful to infer and compute it.
 func InferObjectType(sm shim.SchemaMap, opts *InferObjectTypeOptions) tftypes.Object {
+	q.Q(sm)
 	o := tftypes.Object{
 		AttributeTypes:     map[string]tftypes.Type{},
 		OptionalAttributes: map[string]struct{}{},
 	}
 	sm.Range(func(key string, value shim.Schema) bool {
+		q.Q(value)
 		o.AttributeTypes[key] = InferType(value, opts)
 		// Looks like the use cases for this module do not accept values that also infer o.OptionalAttributes
 		// from schema for the moment, so continue ignoring that.
@@ -45,6 +48,7 @@ func invalidType() tftypes.Type {
 
 // Similar to [InferObjectType] but generalizes to all types.
 func InferType(s shim.Schema, opts *InferObjectTypeOptions) tftypes.Type {
+	q.Q(s.Type().String(), opts)
 	switch s.Type() {
 	case shim.TypeInvalid:
 		return invalidType()
@@ -69,10 +73,13 @@ func InferType(s shim.Schema, opts *InferObjectTypeOptions) tftypes.Type {
 			return nil
 		}
 	case shim.TypeSet:
+		q.Q("we have a set!", s)
 		switch elem := s.Elem().(type) {
 		case nil:
 			return tftypes.Set{ElementType: invalidType()}
 		case shim.Schema:
+			q.Q("is this the recursive call?", s.Type(), s.Elem())
+			q.Q(s)
 			return tftypes.Set{ElementType: InferType(elem, opts)}
 		case shim.Resource:
 			return tftypes.Set{ElementType: InferObjectType(elem.Schema(), opts)}

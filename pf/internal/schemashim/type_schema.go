@@ -15,6 +15,7 @@
 package schemashim
 
 import (
+	"fmt"
 	pfattr "github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
@@ -22,6 +23,7 @@ import (
 	bridge "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/ryboe/q"
 )
 
 type typeSchema struct {
@@ -62,6 +64,16 @@ func (s *typeSchema) Elem() interface{} {
 		var pseudoResource shim.Resource = newObjectPseudoResource(tt, s.nested, nil)
 		return pseudoResource
 	//TODO: implement a list type here?
+	case basetypes.SetTypable, basetypes.ListTypable:
+		q.Q(s.t)
+		typeWithElementType, ok := s.t.(pfattr.TypeWithElementType)
+		if !ok {
+			panic(fmt.Errorf("List or Set type %T expect to implement TypeWithElementType",
+				s.t))
+		}
+		contract.Assertf(s.nested == nil || len(s.nested) == 0,
+			"s.t==SetTypable should not have any s.nested attrs")
+		return newTypeSchema(typeWithElementType.ElementType(), nil)
 	case types.ListType:
 		contract.Assertf(s.nested == nil || len(s.nested) == 0,
 			"s.t==ListType should not have any s.nested attrs")
@@ -77,18 +89,6 @@ func (s *typeSchema) Elem() interface{} {
 	case pfattr.TypeWithElementTypes:
 		var pseudoResource shim.Resource = newTuplePseudoResource(tt)
 		return pseudoResource
-	//case basetypes.SetTypable:
-	//	q.Q(s.t)
-	//	contract.Assertf(s.nested == nil || len(s.nested) == 0,
-	//		"s.t==SetTypable should not have any s.nested attrs")
-	//	return newTypeSchema(s.t.(pfattr.TypeWithElementType).ElementType(), nil)
-	//////`panic`("at the disco")
-	//case basetypes.ListTypable:
-	//	q.Q(s.t)
-	//	contract.Assertf(s.nested == nil || len(s.nested) == 0,
-	//		"s.t==ListTypable should not have any s.nested attrs")
-	//	return newTypeSchema(s.t.(pfattr.TypeWithElementType).ElementType(), nil)
-
 	default:
 		return nil
 	}

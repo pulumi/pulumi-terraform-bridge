@@ -9,13 +9,14 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/convert"
 	tfbridge0 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/ryboe/q"
+	"github.com/stretchr/testify/assert"
 	"reflect"
 	"testing"
 )
@@ -36,14 +37,14 @@ func TestConversion(t *testing.T) {
 			Name: "res",
 			ResourceSchema: schema.Schema{
 				Attributes: map[string]schema.Attribute{
-					"agent_version": schema.StringAttribute{
-						Computed: true,
-						PlanModifiers: []planmodifier.String{
-							stringplanmodifier.UseStateForUnknown(),
-						},
-					},
+					//"agent_version": schema.StringAttribute{
+					//	Computed: true,
+					//	PlanModifiers: []planmodifier.String{
+					//		stringplanmodifier.UseStateForUnknown(),
+					//	},
+					//},
 					"prompt_override_configuration": schema.ListAttribute{ // proto5 Optional+Computed nested block.
-						CustomType: newListNestedObjectTypeOf[promptOverrideConfigurationModel](context.Background()),
+						CustomType: NewListNestedObjectTypeOf[promptOverrideConfigurationModel](context.Background()),
 						Optional:   true,
 						Computed:   true,
 						PlanModifiers: []planmodifier.List{
@@ -74,34 +75,82 @@ func TestConversion(t *testing.T) {
 		Version:      "0.0.1",
 		MetadataInfo: &tfbridge0.MetadataInfo{},
 		Resources: map[string]*tfbridge0.ResourceInfo{
-			"prompt_override_configuration": &res,
+			"res": &res,
 		},
 	}
 
 	encoding := convert.NewEncoding(info.P, &info)
-	objType := convert.InferObjectType(info.P.ResourcesMap().Get("prompt_override_configuration").Schema(), nil)
-	encoding.NewResourceEncoder("prompt_override_configuration", objType)
+	objType := convert.InferObjectType(info.P.ResourcesMap().Get("testprovider_res").Schema(), nil)
+	q.Q(objType)
+	enc, err := encoding.NewResourceEncoder("testprovider_res", objType)
+	assert.NoError(t, err)
+	q.Q(enc)
 
 }
 
 type promptOverrideConfigurationModel struct {
-	PromptConfigurations setNestedObjectValueOf[promptConfigurationModel] `tfsdk:"prompt_configurations"`
+	PromptConfigurations SetNestedObjectValueOf[promptConfigurationModel] `tfsdk:"prompt_configurations"`
 }
 
 type promptConfigurationModel struct {
-	BasePromptTemplate     types.String                                         `tfsdk:"base_prompt_template"`
-	InferenceConfiguration listNestedObjectValueOf[inferenceConfigurationModel] `tfsdk:"inference_configuration"`
+	BasePromptTemplate types.String `tfsdk:"base_prompt_template"`
 }
 
-type inferenceConfigurationModel struct {
-	MaximumLength types.Int64 `tfsdk:"max_length"`
+// Implementation for set, list, and object typables.
+
+var (
+	_ basetypes.SetTypable  = (*setNestedObjectTypeOf[struct{}])(nil)
+	_ basetypes.SetValuable = (*SetNestedObjectValueOf[struct{}])(nil)
+)
+
+type setNestedObjectTypeOf[T any] struct {
+	basetypes.SetType
 }
 
-type setNestedObjectValueOf[T any] struct {
+type SetNestedObjectValueOf[T any] struct {
 	basetypes.SetValue
 }
 
-type listNestedObjectValueOf[T any] struct {
+func (setNested setNestedObjectTypeOf[T]) ValueFromSet(ctx context.Context, in basetypes.SetValue) (basetypes.SetValuable, diag.Diagnostics) {
+	var diags diag.Diagnostics
+
+	if in.IsNull() {
+		return NewSetNestedObjectValueOfNull[T](ctx), diags
+	}
+	if in.IsUnknown() {
+		return NewSetNestedObjectValueOfUnknown[T](ctx), diags
+	}
+
+	typ, d := newObjectTypeOf[T](ctx)
+	diags.Append(d...)
+	if diags.HasError() {
+		return NewSetNestedObjectValueOfUnknown[T](ctx), diags
+	}
+
+	v, d := basetypes.NewSetValue(typ, in.Elements())
+	diags.Append(d...)
+	if diags.HasError() {
+		return NewSetNestedObjectValueOfUnknown[T](ctx), diags
+	}
+
+	return SetNestedObjectValueOf[T]{SetValue: v}, diags
+}
+
+func NewSetNestedObjectValueOfNull[T any](ctx context.Context) SetNestedObjectValueOf[T] {
+	return SetNestedObjectValueOf[T]{SetValue: basetypes.NewSetNull(NewObjectTypeOf[T](ctx))}
+}
+
+func NewSetNestedObjectValueOfUnknown[T any](ctx context.Context) SetNestedObjectValueOf[T] {
+	return SetNestedObjectValueOf[T]{SetValue: basetypes.NewSetUnknown(NewObjectTypeOf[T](ctx))}
+}
+
+var (
+	_ basetypes.ListTypable  = (*listNestedObjectTypeOf[struct{}])(nil)
+	_ basetypes.ListValuable = (*ListNestedObjectValueOf[struct{}])(nil)
+)
+
+// ListNestedObjectValueOf represents a Terraform Plugin Framework List value whose elements are of type `ObjectTypeOf[T]`.
+type ListNestedObjectValueOf[T any] struct {
 	basetypes.ListValue
 }
 
@@ -110,20 +159,11 @@ type listNestedObjectTypeOf[T any] struct {
 	basetypes.ListType
 }
 
-type setNestedObjectTypeOf[T any] struct {
-	basetypes.SetType
+func NewListNestedObjectTypeOf[T any](ctx context.Context) listNestedObjectTypeOf[T] {
+	return listNestedObjectTypeOf[T]{basetypes.ListType{ElemType: NewObjectTypeOf[T](ctx)}}
 }
 
-type objectTypeOf[T any] struct {
-	basetypes.ObjectType
-}
-
-//func (s setNestedObjectTypeOf[T]) ValueFromList(ctx context.Context, value basetypes.ListValue) (basetypes.ListValuable, diag.Diagnostics) {
-//	//TODO implement me
-//	panic("implement me")
-//}
-
-func (t listNestedObjectTypeOf[T]) ValueFromList(ctx context.Context, listval basetypes.ListValue) (basetypes.ListValuable, diag.Diagnostics) {
+func (listNested listNestedObjectTypeOf[T]) ValueFromList(ctx context.Context, listval basetypes.ListValue) (basetypes.ListValuable, diag.Diagnostics) {
 	var diags diag.Diagnostics
 
 	if listval.IsNull() {
@@ -145,19 +185,28 @@ func (t listNestedObjectTypeOf[T]) ValueFromList(ctx context.Context, listval ba
 		return NewListNestedObjectValueOfUnknown[T](ctx), diags
 	}
 
-	return listNestedObjectValueOf[T]{ListValue: v}, diags
+	return ListNestedObjectValueOf[T]{ListValue: v}, diags
 }
 
-func newSetNestedObjectTypeOf[T any](ctx context.Context, elemType attr.Type) setNestedObjectTypeOf[T] {
-	return setNestedObjectTypeOf[T]{basetypes.SetType{ElemType: elemType}}
+func NewListNestedObjectValueOfNull[T any](ctx context.Context) ListNestedObjectValueOf[T] {
+	return ListNestedObjectValueOf[T]{ListValue: basetypes.NewListNull(NewObjectTypeOf[T](ctx))}
 }
 
-func NewListNestedObjectValueOfNull[T any](ctx context.Context) listNestedObjectValueOf[T] {
-	return listNestedObjectValueOf[T]{ListValue: basetypes.NewListNull(NewObjectTypeOf[T](ctx))}
+func NewListNestedObjectValueOfUnknown[T any](ctx context.Context) ListNestedObjectValueOf[T] {
+	return ListNestedObjectValueOf[T]{ListValue: basetypes.NewListUnknown(NewObjectTypeOf[T](ctx))}
 }
 
-func NewListNestedObjectValueOfUnknown[T any](ctx context.Context) listNestedObjectValueOf[T] {
-	return listNestedObjectValueOf[T]{ListValue: basetypes.NewListUnknown(NewObjectTypeOf[T](ctx))}
+var (
+	_ basetypes.ObjectTypable  = (*objectTypeOf[struct{}])(nil)
+	_ basetypes.ObjectValuable = (*ObjectValueOf[struct{}])(nil)
+)
+
+type objectTypeOf[T any] struct {
+	basetypes.ObjectType
+}
+
+type ObjectValueOf[T any] struct {
+	basetypes.ObjectValue
 }
 
 func newObjectTypeOf[T any](ctx context.Context) (objectTypeOf[T], diag.Diagnostics) {
@@ -226,8 +275,4 @@ func AttributeTypes[T any](ctx context.Context) (map[string]attr.Type, diag.Diag
 	}
 
 	return attributeTypes, nil
-}
-
-func newListNestedObjectTypeOf[T any](ctx context.Context) listNestedObjectTypeOf[T] {
-	return listNestedObjectTypeOf[T]{basetypes.ListType{ElemType: NewObjectTypeOf[T](ctx)}}
 }
