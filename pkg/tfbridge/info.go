@@ -175,6 +175,15 @@ type OverlayInfo = info.Overlay
 // JavaScriptInfo contains optional overlay information for Python code-generation.
 type JavaScriptInfo = info.JavaScript
 
+const (
+	// Use the default type generation from pulumi/pulumi.
+	PythonInputTypeDefault = info.PythonInputTypeDefault
+	// Generate args classes only.
+	PythonInputTypeClasses = info.PythonInputTypeClasses
+	// Generate TypedDicts side-by-side with args classes.
+	PythonInputTypeClassesAndDicts = info.PythonInputTypeClassesAndDicts
+)
+
 // PythonInfo contains optional overlay information for Python code-generation.
 type PythonInfo = info.Python
 

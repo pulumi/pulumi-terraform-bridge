@@ -474,6 +474,7 @@ func pythonLanguageExtensions(providerInfo *tfbridge.ProviderInfo, readme string
 		ModuleNameOverrides:          p.ModuleNameOverrides,
 		LiftSingleValueMethodReturns: p.LiftSingleValueMethodReturns,
 		RespectSchemaVersion:         p.RespectSchemaVersion,
+		InputTypes:                   string(p.InputTypes),
 	}
 	info.PyProject.Enabled = p.PyProject.Enabled
 	return rawMessage(info)
