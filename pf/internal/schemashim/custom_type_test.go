@@ -145,6 +145,17 @@ func TestCustomSetType(t *testing.T) {
 	assert.Equal(t, shim.TypeString, create.Type())
 }
 
+//func TestTypeSchemaCustomSetType(t *testing.T) {
+//
+//	shimmedType := &typeSchema{
+//		t:      setNestedObjectTypeOf[]{},
+//		nested: nil,
+//	}
+//
+//	shimmed := &typeSchema{"key", pfutils.FromBlockLike(raw)}
+//
+//}
+
 type searchFilterModel struct {
 	FilterString types.String `tfsdk:"filter_string"`
 }

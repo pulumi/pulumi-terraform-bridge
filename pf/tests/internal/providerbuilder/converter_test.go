@@ -2,7 +2,10 @@ package providerbuilder
 
 import (
 	"context"
+	"fmt"
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
@@ -13,6 +16,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/convert"
 	tfbridge0 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"reflect"
 	"testing"
 )
 
@@ -39,7 +43,7 @@ func TestConversion(t *testing.T) {
 						},
 					},
 					"prompt_override_configuration": schema.ListAttribute{ // proto5 Optional+Computed nested block.
-						CustomType: newSetNestedObjectTypeOf[promptOverrideConfigurationModel](context.Background()),
+						CustomType: newListNestedObjectTypeOf[promptOverrideConfigurationModel](context.Background()),
 						Optional:   true,
 						Computed:   true,
 						PlanModifiers: []planmodifier.List{
@@ -48,9 +52,9 @@ func TestConversion(t *testing.T) {
 						Validators: []validator.List{
 							listvalidator.SizeAtMost(1),
 						},
-						//ElementType: types.ObjectType{
-						//	AttrTypes: fwtypes.AttributeTypesMust[promptOverrideConfigurationModel](ctx),
-						//},
+						ElementType: types.ObjectType{
+							AttrTypes: AttributeTypesMust[promptOverrideConfigurationModel](context.Background()),
+						},
 					},
 				},
 			},
@@ -101,14 +105,129 @@ type listNestedObjectValueOf[T any] struct {
 	basetypes.ListValue
 }
 
+// listNestedObjectTypeOf is the attribute type of a ListNestedObjectValueOf.
+type listNestedObjectTypeOf[T any] struct {
+	basetypes.ListType
+}
+
 type setNestedObjectTypeOf[T any] struct {
 	basetypes.SetType
 }
 
-func newSetNestedObjectTypeOf[T any](ctx context.Context) setNestedObjectTypeOf[T] {
-	return setNestedObjectTypeOf[T]{basetypes.SetType{ElemType: types.ObjectType{}[promptConfigurationModel]}}
+type objectTypeOf[T any] struct {
+	basetypes.ObjectType
 }
 
-//func NewListNestedObjectTypeOf[T any](ctx context.Context) listNestedObjectTypeOf[T] {
-//	return listNestedObjectTypeOf[T]{basetypes.ListType{ElemType: NewObjectTypeOf[T](ctx)}}
+//func (s setNestedObjectTypeOf[T]) ValueFromList(ctx context.Context, value basetypes.ListValue) (basetypes.ListValuable, diag.Diagnostics) {
+//	//TODO implement me
+//	panic("implement me")
 //}
+
+func (t listNestedObjectTypeOf[T]) ValueFromList(ctx context.Context, listval basetypes.ListValue) (basetypes.ListValuable, diag.Diagnostics) {
+	var diags diag.Diagnostics
+
+	if listval.IsNull() {
+		return NewListNestedObjectValueOfNull[T](ctx), diags
+	}
+	if listval.IsUnknown() {
+		return NewListNestedObjectValueOfUnknown[T](ctx), diags
+	}
+
+	typ, d := newObjectTypeOf[T](ctx)
+	diags.Append(d...)
+	if diags.HasError() {
+		return NewListNestedObjectValueOfUnknown[T](ctx), diags
+	}
+
+	v, d := basetypes.NewListValue(typ, listval.Elements())
+	diags.Append(d...)
+	if diags.HasError() {
+		return NewListNestedObjectValueOfUnknown[T](ctx), diags
+	}
+
+	return listNestedObjectValueOf[T]{ListValue: v}, diags
+}
+
+func newSetNestedObjectTypeOf[T any](ctx context.Context, elemType attr.Type) setNestedObjectTypeOf[T] {
+	return setNestedObjectTypeOf[T]{basetypes.SetType{ElemType: elemType}}
+}
+
+func NewListNestedObjectValueOfNull[T any](ctx context.Context) listNestedObjectValueOf[T] {
+	return listNestedObjectValueOf[T]{ListValue: basetypes.NewListNull(NewObjectTypeOf[T](ctx))}
+}
+
+func NewListNestedObjectValueOfUnknown[T any](ctx context.Context) listNestedObjectValueOf[T] {
+	return listNestedObjectValueOf[T]{ListValue: basetypes.NewListUnknown(NewObjectTypeOf[T](ctx))}
+}
+
+func newObjectTypeOf[T any](ctx context.Context) (objectTypeOf[T], diag.Diagnostics) {
+	var diags diag.Diagnostics
+
+	m, d := AttributeTypes[T](ctx)
+	diags.Append(d...)
+	if diags.HasError() {
+		return objectTypeOf[T]{}, diags
+	}
+
+	return objectTypeOf[T]{basetypes.ObjectType{AttrTypes: m}}, diags
+}
+
+func NewObjectTypeOf[T any](ctx context.Context) basetypes.ObjectTypable {
+	return objectTypeOf[T]{basetypes.ObjectType{AttrTypes: AttributeTypesMust[T](ctx)}}
+}
+
+func AttributeTypesMust[T any](ctx context.Context) map[string]attr.Type {
+	return must(AttributeTypes[T](ctx))
+}
+
+func must[T any, E any](t T, err E) T {
+	if v := reflect.ValueOf(err); v.IsValid() && !v.IsZero() {
+		panic(err)
+	}
+	return t
+}
+
+// AttributeTypes returns a map of attribute types for the specified type T.
+// T must be a struct and reflection is used to find exported fields of T with the `tfsdk` tag.
+func AttributeTypes[T any](ctx context.Context) (map[string]attr.Type, diag.Diagnostics) {
+	var diags diag.Diagnostics
+	var t T
+	val := reflect.ValueOf(t)
+	typ := val.Type()
+
+	if typ.Kind() == reflect.Ptr && typ.Elem().Kind() == reflect.Struct {
+		val = reflect.New(typ.Elem()).Elem()
+		typ = typ.Elem()
+	}
+
+	if typ.Kind() != reflect.Struct {
+		diags.Append(diag.NewErrorDiagnostic("Invalid type", fmt.Sprintf("%T has unsupported type: %s", t, typ)))
+		return nil, diags
+	}
+
+	attributeTypes := make(map[string]attr.Type)
+	for i := 0; i < typ.NumField(); i++ {
+		field := typ.Field(i)
+		if field.PkgPath != "" {
+			continue // Skip unexported fields.
+		}
+		tag := field.Tag.Get(`tfsdk`)
+		if tag == "-" {
+			continue // Skip explicitly excluded fields.
+		}
+		if tag == "" {
+			diags.Append(diag.NewErrorDiagnostic("Invalid type", fmt.Sprintf(`%T needs a struct tag for "tfsdk" on %s`, t, field.Name)))
+			return nil, diags
+		}
+
+		if v, ok := val.Field(i).Interface().(attr.Value); ok {
+			attributeTypes[tag] = v.Type(ctx)
+		}
+	}
+
+	return attributeTypes, nil
+}
+
+func newListNestedObjectTypeOf[T any](ctx context.Context) listNestedObjectTypeOf[T] {
+	return listNestedObjectTypeOf[T]{basetypes.ListType{ElemType: NewObjectTypeOf[T](ctx)}}
+}
