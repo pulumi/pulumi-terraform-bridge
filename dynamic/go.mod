@@ -19,7 +19,7 @@ require (
 	github.com/hexops/autogold/v2 v2.2.1
 	github.com/opentofu/opentofu/shim v0.0.0-00010101000000-000000000000
 	github.com/pulumi/pulumi-terraform-bridge/pf v0.0.0-00010101000000-000000000000
-	github.com/pulumi/pulumi-terraform-bridge/v3 v3.84.0
+	github.com/pulumi/pulumi-terraform-bridge/v3 v3.85.0
 	github.com/pulumi/pulumi/sdk/v3 v3.121.0
 	github.com/stretchr/testify v1.9.0
 	google.golang.org/protobuf v1.34.0
