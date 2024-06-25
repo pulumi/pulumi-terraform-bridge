@@ -198,8 +198,7 @@ func TestCustomizeDiff(t *testing.T) {
 func diffTest(t *testing.T, tfs map[string]*schema.Schema, info map[string]*SchemaInfo,
 	inputs, state map[string]interface{}, expected map[string]DiffKind,
 	expectedDiffChanges pulumirpc.DiffResponse_DiffChanges,
-	ignoreChanges ...string,
-) {
+	ignoreChanges ...string) {
 	ctx := context.Background()
 
 	inputsMap := resource.NewPropertyMapFromMap(inputs)
@@ -1843,8 +1842,7 @@ func TestCollectionsWithMultipleItems(t *testing.T) {
 	}
 
 	runTestCase := func(t *testing.T, name string, typ schema.ValueType, inputs, state []interface{},
-		expected map[string]DiffKind, expectedChanges pulumirpc.DiffResponse_DiffChanges,
-	) {
+		expected map[string]DiffKind, expectedChanges pulumirpc.DiffResponse_DiffChanges) {
 		t.Run(name, func(t *testing.T) {
 			diffTest(t,
 				map[string]*schema.Schema{
