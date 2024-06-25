@@ -133,7 +133,8 @@ func TestProviderDetailedSchemaDump(t *testing.T) {
 
 	jsonArr := prov.DetailedSchemaDump()
 	var out bytes.Buffer
-	json.Indent(&out, jsonArr, "", "\t")
+	err := json.Indent(&out, jsonArr, "", "\t")
+	require.NoError(t, err)
 
 	autogold.Expect(`{
 "Schema": {
