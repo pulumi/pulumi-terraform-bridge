@@ -445,7 +445,8 @@ func (g *Generator) makePropertyType(typePath paths.TypePath,
 		return nil, errors.New("Error in schema generation: Dynamic types are not implemented")
 	default:
 		contract.Failf(
-			"impossible: sch.Type() should be one of TypeMap, TypeList, TypeSet at this point path: %s, type: %s",
+			"impossible: sch.Type() should be one of TypeMap, TypeList, TypeSet, TypeDynamic at this point path: "+
+				"%s, type: %s",
 			typePath.String(), sch.Type())
 	}
 	t.element = element

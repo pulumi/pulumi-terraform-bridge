@@ -42,8 +42,7 @@ func convertType(typ pfattr.Type) (shim.ValueType, error) {
 	case is(tftypes.String):
 		return shim.TypeString, nil
 	case is(tftypes.DynamicPseudoType):
-		// This means that any type can be used,
-		return shim.TypeInvalid, nil
+		return shim.TypeDynamic, nil
 	default:
 		switch tftype.(type) {
 		case tftypes.List:
