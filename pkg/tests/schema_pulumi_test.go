@@ -684,3 +684,104 @@ outputs:
 		})
 	}
 }
+
+func TestUnknownBlocks(t *testing.T) {
+	resMap := map[string]*schema.Resource{
+		"prov_test": {
+			Schema: map[string]*schema.Schema{
+				"test": {
+					Type:     schema.TypeList,
+					Optional: true,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"test_prop": {
+								Type:     schema.TypeString,
+								Optional: true,
+							},
+						},
+					},
+				},
+			},
+		},
+		"prov_aux": {
+			Schema: map[string]*schema.Schema{
+				"aux": {
+					Type:     schema.TypeList,
+					Computed: true,
+					Optional: true,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"test_prop": {
+								Type:     schema.TypeString,
+								Optional: true,
+							},
+						},
+					},
+				},
+			},
+			CreateContext: func(_ context.Context, d *schema.ResourceData, _ interface{}) diag.Diagnostics {
+				d.SetId("aux")
+				err := d.Set("aux", []map[string]interface{}{{"test_prop": "aux"}})
+				require.NoError(t, err)
+				return nil
+			},
+		},
+	}
+	bridgedProvider := pulcheck.BridgedProvider(t, "prov", resMap)
+
+	t.Run("list of objects", func(t *testing.T) {
+		program := `
+name: test
+runtime: yaml
+resources:
+  auxRes:
+    type: prov:index:Aux
+  mainRes:
+    type: prov:index:Test
+    properties:
+      tests: ${auxRes.auxes}
+outputs:
+  testOut: ${mainRes.tests}
+`
+		pt := pulcheck.PulCheck(t, bridgedProvider, program)
+		res := pt.Preview(optpreview.Diff())
+		t.Logf(res.StdOut)
+		// Test that the test property is unknown at preview time.
+		// Note that the property is output<string> instead of
+		// output<list<obj>> - this is due to an engine limitation.
+		require.Contains(t, res.StdOut, "tests     : output<string>")
+		resUp := pt.Up()
+		// assert that the property gets resolved
+		require.Equal(t,
+			[]interface{}{map[string]interface{}{"testProp": "aux"}},
+			resUp.Outputs["testOut"].Value,
+		)
+	})
+
+	t.Run("unknown object", func(t *testing.T) {
+		program := `
+name: test
+runtime: yaml
+resources:
+    auxRes:
+        type: prov:index:Aux
+    mainRes:
+        type: prov:index:Test
+        properties:
+            tests:
+                - ${auxRes.auxes[0]}
+outputs:
+    testOut: ${mainRes.tests[0]}
+`
+		pt := pulcheck.PulCheck(t, bridgedProvider, program)
+		res := pt.Preview(optpreview.Diff())
+		t.Logf(res.StdOut)
+		// Test that the test property is unknown at preview time.
+		// Note that the property is output<string> instead of
+		// output<obj> - this is due to an engine limitation.
+		require.Contains(t, res.StdOut, "[0]: output<string>")
+		resUp := pt.Up()
+		// assert that the property gets resolved
+		require.Equal(t, map[string]interface{}{"testProp": "aux"}, resUp.Outputs["testOut"].Value)
+	})
+}

@@ -959,49 +959,12 @@ func (ctx *conversionContext) applyDefaults(
 	return nil
 }
 
-// makeTerraformUnknownElement creates an unknown value to be used as an element of a list or set using the given
-// element schema to guide the shape of the value.
-func makeTerraformUnknownElement(elem interface{}) interface{} {
-	// If we have no element schema, just return a simple unknown.
-	if elem == nil {
-		return TerraformUnknownVariableValue
-	}
-
-	switch e := elem.(type) {
-	case shim.Schema:
-		// If the element uses a normal schema, defer to makeTerraformUnknown.
-		return makeTerraformUnknown(e)
-	case shim.Resource:
-		return TerraformUnknownVariableValue
-	default:
-		return TerraformUnknownVariableValue
-	}
-}
-
 // makeTerraformUnknown creates an unknown value with the shape indicated by the given schema.
 //
 // It is important that we use the TF schema (if available) to decide what shape the unknown value should have:
 // e.g. TF does not play nicely with unknown lists, instead expecting a list of unknowns.
-func makeTerraformUnknown(tfs shim.Schema) interface{} {
-	if tfs == nil {
-		return TerraformUnknownVariableValue
-	}
-
-	switch tfs.Type() {
-	case shim.TypeList, shim.TypeSet:
-		// TF does not accept unknown lists or sets. Instead, it accepts lists or sets of unknowns.
-		count := 1
-		if tfs.MinItems() > 0 {
-			count = tfs.MinItems()
-		}
-		arr := make([]interface{}, count)
-		for i := range arr {
-			arr[i] = makeTerraformUnknownElement(tfs.Elem())
-		}
-		return arr
-	default:
-		return TerraformUnknownVariableValue
-	}
+func makeTerraformUnknown(_ shim.Schema) interface{} {
+	return TerraformUnknownVariableValue
 }
 
 // metaKey is the key in a TF bridge result that is used to store a resource's meta-attributes.
