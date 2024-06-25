@@ -307,7 +307,7 @@ func convertTFSchema(s *schema.Schema) *tfSchemaMarshaller {
 		MaxItems:                s.MaxItems,
 		MinItems:                s.MinItems,
 		SetDefined:              s.Set != nil,
-		ComputedWhen:            s.ComputedWhen,
+		ComputedWhen:            s.ComputedWhen, //lint:ignore
 		ConflictsWith:           s.ConflictsWith,
 		ExactlyOneOf:            s.ExactlyOneOf,
 		AtLeastOneOf:            s.AtLeastOneOf,
@@ -323,7 +323,7 @@ func convertTfResource(r *schema.Resource) *tfResourceMarshaller {
 	tfResource := &tfResourceMarshaller{
 		Schema:                            make(map[string]*tfSchemaMarshaller),
 		SchemaVersion:                     r.SchemaVersion,
-		MigrateStateDefined:               r.MigrateState != nil,
+		MigrateStateDefined:               r.MigrateState != nil, //lint:ignore
 		StateUpgradersLen:                 len(r.StateUpgraders),
 		CustomizeDiffDefined:              r.CustomizeDiff != nil,
 		DeprecationMessage:                r.DeprecationMessage,
@@ -345,7 +345,7 @@ func convertTfProv(p *schema.Provider) *tfProvMarshaller {
 		Schema:               make(map[string]*tfSchemaMarshaller),
 		ResourcesMap:         make(map[string]*tfResourceMarshaller),
 		DataSourcesMap:       make(map[string]*tfResourceMarshaller),
-		ConfigureFuncDefined: p.ConfigureFunc != nil,
+		ConfigureFuncDefined: p.ConfigureFunc != nil, //lint:ignore
 		TerraformVersion:     p.TerraformVersion,
 	}
 
