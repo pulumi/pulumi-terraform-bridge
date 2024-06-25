@@ -30,9 +30,9 @@ import (
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 
-	"github.com/gedex/inflector"
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
+	"github.com/pulumi/inflector"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	csgen "github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
 	gogen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
@@ -474,6 +474,7 @@ func pythonLanguageExtensions(providerInfo *tfbridge.ProviderInfo, readme string
 		ModuleNameOverrides:          p.ModuleNameOverrides,
 		LiftSingleValueMethodReturns: p.LiftSingleValueMethodReturns,
 		RespectSchemaVersion:         p.RespectSchemaVersion,
+		InputTypes:                   string(p.InputTypes),
 	}
 	info.PyProject.Enabled = p.PyProject.Enabled
 	return rawMessage(info)

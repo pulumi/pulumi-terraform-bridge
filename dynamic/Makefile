@@ -2,7 +2,7 @@ LDFLAGS := -ldflags "-X google.golang.org/protobuf/reflect/protoregistry.conflic
 
 build: bin
 	go build \
-		-o bin/pulumi-resource-terraform-bridge \
+		-o bin/pulumi-resource-terraform-provider \
 		${LDFLAGS} \
 		github.com/pulumi/pulumi-terraform-bridge/dynamic
 
@@ -19,3 +19,5 @@ test.update:
 
 bin:
 	mkdir bin
+
+.PHONY: test

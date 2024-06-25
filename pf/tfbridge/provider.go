@@ -81,7 +81,7 @@ func NewProvider(ctx context.Context, info tfbridge.ProviderInfo, meta ProviderM
 	if err != nil {
 		return nil, err
 	}
-	return pl.NewProvider(ctx, pwc), nil
+	return pl.NewProvider(pwc), nil
 }
 
 // Wrap a PF Provider in a shim.Provider.
@@ -95,7 +95,7 @@ func ShimProviderWithContext(ctx context.Context, p pfprovider.Provider) shim.Pr
 }
 
 func newProviderWithContext(ctx context.Context, info tfbridge.ProviderInfo,
-	meta ProviderMetadata) (pl.ProviderWithContext, error) {
+	meta ProviderMetadata) (*provider, error) {
 	const infoPErrMSg string = "info.P must be constructed with ShimProvider or ShimProviderWithContext"
 
 	if info.P == nil {
@@ -175,10 +175,9 @@ func NewProviderServer(
 	if err != nil {
 		return nil, err
 	}
-	pp := p.(*provider)
 
-	pp.logSink = logSink
-	configEnc := tfbridge.NewConfigEncoding(pp.schemaOnlyProvider.Schema(), pp.info.Config)
+	p.logSink = logSink
+	configEnc := tfbridge.NewConfigEncoding(p.schemaOnlyProvider.Schema(), p.info.Config)
 	return pl.NewProviderServerWithContext(p, configEnc), nil
 }
 
@@ -188,8 +187,20 @@ func (p *provider) Close() error {
 }
 
 // Pkg fetches this provider's package.
-func (p *provider) PkgWithContext(_ context.Context) tokens.Package {
+func (p *provider) Pkg() tokens.Package {
 	return tokens.Package(p.info.Name)
+}
+
+type xResetProviderKey struct{}
+
+type xParameterizeResetProviderFunc = func(context.Context, tfbridge.ProviderInfo, ProviderMetadata) error
+
+// XParameterizeResetProvider resets the enclosing PF provider with a new info and meta combination.
+//
+// XParameterizeResetProvider is an unstable method and may change in any bridge
+// release. It is intended only for internal use.
+func XParameterizeResetProvider(ctx context.Context, info tfbridge.ProviderInfo, meta ProviderMetadata) error {
+	return ctx.Value(xResetProviderKey{}).(xParameterizeResetProviderFunc)(ctx, info, meta)
 }
 
 func (p *provider) ParameterizeWithContext(
@@ -198,6 +209,17 @@ func (p *provider) ParameterizeWithContext(
 	if p.parameterize == nil {
 		return (&plugin.UnimplementedProvider{}).Parameterize(ctx, req)
 	}
+
+	ctx = context.WithValue(ctx, xResetProviderKey{},
+		func(ctx context.Context, info tfbridge.ProviderInfo, meta ProviderMetadata) error {
+			pp, err := newProviderWithContext(ctx, info, meta)
+			if err != nil {
+				return err
+			}
+			*p = *pp
+			return nil
+		})
+
 	return p.parameterize(ctx, req)
 }
 

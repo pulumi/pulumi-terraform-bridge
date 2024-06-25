@@ -48,9 +48,8 @@ func GatherResources[F func(Schema) shim.SchemaMap](
 		}
 
 		rs[runtypes.TypeName(meta.TypeName)] = entry[func() resource.Resource]{
-			t:           makeResource,
-			schema:      FromResourceSchema(resSchema),
-			diagnostics: diag,
+			t:      makeResource,
+			schema: FromResourceSchema(resSchema),
 		}
 	}
 
