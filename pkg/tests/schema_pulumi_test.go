@@ -7,6 +7,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hexops/autogold/v2"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/internal/pulcheck"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optrefresh"
@@ -749,7 +750,19 @@ outputs:
 		// Test that the test property is unknown at preview time.
 		// Note that the property is output<string> instead of
 		// output<list<obj>> - this is due to an engine limitation.
-		require.Contains(t, res.StdOut, "tests     : output<string>")
+		autogold.Expect(`Previewing update (test):
++ pulumi:pulumi:Stack: (create)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    + prov:index/test:Test: (create)
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+        tests     : output<string>
+    --outputs:--
+    testOut: output<string>
+Resources:
+    + 3 to create
+`).Equal(t, res.StdOut)
 		resUp := pt.Up()
 		// assert that the property gets resolved
 		require.Equal(t,
@@ -779,7 +792,21 @@ outputs:
 		// Test that the test property is unknown at preview time.
 		// Note that the property is output<string> instead of
 		// output<obj> - this is due to an engine limitation.
-		require.Contains(t, res.StdOut, "[0]: output<string>")
+		autogold.Expect(`Previewing update (test):
++ pulumi:pulumi:Stack: (create)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    + prov:index/test:Test: (create)
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+        tests     : [
+            [0]: output<string>
+        ]
+    --outputs:--
+    testOut: output<string>
+Resources:
+    + 3 to create
+`).Equal(t, res.StdOut)
 		resUp := pt.Up()
 		// assert that the property gets resolved
 		require.Equal(t, map[string]interface{}{"testProp": "aux"}, resUp.Outputs["testOut"].Value)
