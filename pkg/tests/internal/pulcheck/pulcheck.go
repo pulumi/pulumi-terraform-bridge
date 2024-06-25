@@ -29,6 +29,21 @@ import (
 	"gotest.tools/assert"
 )
 
+func needsUpdate(res *schema.Resource) bool {
+	for _, prop := range res.Schema {
+		if prop.ForceNew {
+			// ForceNew properties don't need update
+			continue
+		}
+		if prop.Computed && !prop.Optional {
+			// Computed non-optional props don't need update
+			continue
+		}
+		return true
+	}
+	return false
+}
+
 // This is an experimental API.
 func EnsureProviderValid(t T, tfp *schema.Provider) {
 	for _, r := range tfp.ResourcesMap {
@@ -54,10 +69,12 @@ func EnsureProviderValid(t T, tfp *schema.Provider) {
 			}
 		}
 
-		r.UpdateContext = func(
-			ctx context.Context, rd *schema.ResourceData, i interface{},
-		) diag.Diagnostics {
-			return diag.Diagnostics{}
+		if needsUpdate(r) {
+			r.UpdateContext = func(
+				ctx context.Context, rd *schema.ResourceData, i interface{},
+			) diag.Diagnostics {
+				return diag.Diagnostics{}
+			}
 		}
 	}
 	require.NoError(t, tfp.InternalValidate())

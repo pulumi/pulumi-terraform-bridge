@@ -1,0 +1,57 @@
+# 2024/06/17 12:55:00 TestFixedSchema [rapid] draw config1: 
+# t0 := tftypes.Object{AttributeTypes: map[string]tftypes.Type{
+#   "bool_prop": tftypes.Bool,
+#   "id": tftypes.String,
+# }}
+# tftypes.NewValue(t0, map[string]tftypes.Value{
+#   "bool_prop": tftypes.NewValue(tftypes.Bool, true),
+#   "id": tftypes.NewValue(tftypes.String, "newId"),
+# })
+# 2024/06/17 12:55:00 TestFixedSchema Config1:
+# 
+# t0 := tftypes.Object{AttributeTypes: map[string]tftypes.Type{
+#   "bool_prop": tftypes.Bool,
+#   "id": tftypes.String,
+# }}
+# tftypes.NewValue(t0, map[string]tftypes.Value{
+#   "bool_prop": tftypes.NewValue(tftypes.Bool, true),
+#   "id": tftypes.NewValue(tftypes.String, "newId"),
+# })
+# 2024/06/17 12:55:00 TestFixedSchema [rapid] draw config2: 
+# t0 := tftypes.Object{AttributeTypes: map[string]tftypes.Type{
+#   "bool_prop": tftypes.Bool,
+#   "id": tftypes.String,
+# }}
+# tftypes.NewValue(t0, map[string]tftypes.Value{
+#   "bool_prop": tftypes.NewValue(tftypes.Bool, true),
+#   "id": tftypes.NewValue(tftypes.String, "newId"),
+# })
+# 2024/06/17 12:55:00 TestFixedSchema Config2:
+# 
+# t0 := tftypes.Object{AttributeTypes: map[string]tftypes.Type{
+#   "bool_prop": tftypes.Bool,
+#   "id": tftypes.String,
+# }}
+# tftypes.NewValue(t0, map[string]tftypes.Value{
+#   "bool_prop": tftypes.NewValue(tftypes.Bool, true),
+#   "id": tftypes.NewValue(tftypes.String, "newId"),
+# })
+# 2024/06/17 12:55:00 TestFixedSchema 
+# 	Error Trace:	/Users/vvm/code/pulumi-terraform-bridge/pkg/tests/internal/pulcheck/pulcheck.go:80
+# 	            				/Users/vvm/code/pulumi-terraform-bridge/pkg/tests/cross-tests/tf_driver.go:65
+# 	            				/Users/vvm/code/pulumi-terraform-bridge/pkg/tests/cross-tests/diff_check.go:50
+# 	            				/Users/vvm/code/pulumi-terraform-bridge/pkg/tests/cross-tests/rapid_test.go:153
+# 	            				/Users/vvm/go/pkg/mod/pgregory.net/rapid@v0.6.1/engine.go:352
+# 	            				/Users/vvm/go/pkg/mod/pgregory.net/rapid@v0.6.1/engine.go:361
+# 	            				/Users/vvm/go/pkg/mod/pgregory.net/rapid@v0.6.1/engine.go:204
+# 	            				/Users/vvm/go/pkg/mod/pgregory.net/rapid@v0.6.1/engine.go:116
+# 	            				/Users/vvm/code/pulumi-terraform-bridge/pkg/tests/cross-tests/rapid_test.go:139
+# 	Error:      	Received unexpected error:
+# 	            	resource crossprovider_test_res: the "id" attribute must be marked Computed
+# 	Test:       	TestFixedSchema
+# 
+v0.4.8#15039816592591626052
+0x0
+0x0
+0x0
+0x0

@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"q"
 	"sort"
 	"strings"
 	"time"
@@ -1068,9 +1069,11 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 	if err != nil {
 		return nil, errors.Wrapf(err, "diffing %s", urn)
 	}
+	q.Q(diff)
 
 	dd := makeDetailedDiffExtra(ctx, schema, fields, olds, news, diff)
 	detailedDiff, changes := dd.diffs, dd.changes
+	q.Q(detailedDiff, changes)
 
 	// There are some providers/situations which `makeDetailedDiff` distorts the expected changes, leading
 	// to changes being dropped by Pulumi.

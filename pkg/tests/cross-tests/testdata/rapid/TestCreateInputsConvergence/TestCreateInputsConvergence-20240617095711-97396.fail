@@ -1,0 +1,34 @@
+# 2024/06/17 09:57:11 TestCreateInputsConvergence [rapid] draw schemaDepth: 1
+# 2024/06/17 09:57:11 TestCreateInputsConvergence [rapid] draw tv: crosstests.tb{schemaMap:map[string]*schema.Schema{}, typ:tftypes.Object{AttributeTypes:map[string]tftypes.Type{}, OptionalAttributes:map[string]struct {}(nil), _:[]struct {}(nil)}, valueGen:(*rapid.Generator[github.com/hashicorp/terraform-plugin-go/tftypes.Value])(0x14000fbc480)}
+# 2024/06/17 09:57:11 TestCreateInputsConvergence Schema:
+# schema.Schema{Elem: &schema.Resource{
+# 	Schema: map[string]*schema.Schema{},
+# }}
+# 2024/06/17 09:57:11 TestCreateInputsConvergence [rapid] draw config1: 
+# t0 := tftypes.Object{}
+# tftypes.NewValue(t0, map[string]tftypes.Value{
+# })
+# 2024/06/17 09:57:11 TestCreateInputsConvergence 
+# 	Error Trace:	/Users/vvm/code/pulumi-terraform-bridge/pkg/tests/internal/pulcheck/pulcheck.go:63
+# 	            				/Users/vvm/code/pulumi-terraform-bridge/pkg/tests/cross-tests/tf_driver.go:65
+# 	            				/Users/vvm/code/pulumi-terraform-bridge/pkg/tests/cross-tests/input_check.go:53
+# 	            				/Users/vvm/code/pulumi-terraform-bridge/pkg/tests/cross-tests/rapid_test.go:95
+# 	            				/Users/vvm/go/pkg/mod/pgregory.net/rapid@v0.6.1/engine.go:352
+# 	            				/Users/vvm/go/pkg/mod/pgregory.net/rapid@v0.6.1/engine.go:361
+# 	            				/Users/vvm/go/pkg/mod/pgregory.net/rapid@v0.6.1/engine.go:204
+# 	            				/Users/vvm/go/pkg/mod/pgregory.net/rapid@v0.6.1/engine.go:116
+# 	            				/Users/vvm/code/pulumi-terraform-bridge/pkg/tests/cross-tests/rapid_test.go:75
+# 	Error:      	Received unexpected error:
+# 	            	resource crossprovider_test_res: All fields are ForceNew or Computed w/out Optional, Update is superfluous
+# 	Test:       	TestCreateInputsConvergence
+# 
+v0.4.8#9032794167843690456
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
