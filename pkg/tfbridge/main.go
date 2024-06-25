@@ -41,6 +41,7 @@ func Main(pkg string, version string, prov ProviderInfo, pulumiSchema []byte) {
 	flags.SetOutput(io.Discard)
 
 	dumpInfo := flags.Bool("get-provider-info", false, "dump provider info as JSON to stdout")
+	dumpSchema := flags.Bool("get-schema", false, "dump provider schema as JSON to stdout")
 	providerVersion := flags.Bool("version", false, "get built provider version")
 
 	err := flags.Parse(os.Args[1:])
@@ -59,6 +60,11 @@ func Main(pkg string, version string, prov ProviderInfo, pulumiSchema []byte) {
 		if err := json.NewEncoder(os.Stdout).Encode(MarshalProviderInfo(&prov)); err != nil {
 			cmdutil.ExitError(err.Error())
 		}
+		os.Exit(0)
+	}
+
+	if *dumpSchema {
+		fmt.Print(string(prov.P.DetailedSchemaDump()))
 		os.Exit(0)
 	}
 
