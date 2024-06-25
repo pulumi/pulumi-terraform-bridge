@@ -266,6 +266,10 @@ func NewProvider(ctx context.Context, host *provider.HostClient, module, version
 func newProvider(ctx context.Context, host *provider.HostClient,
 	module, version string, tf shim.Provider, info ProviderInfo, pulumiSchema []byte,
 ) *Provider {
+	opts := []providerOption{}
+	if info.EnableZeroDefaultSchemaVersion {
+		opts = append(opts, WithDefaultZeroSchemaVersion())
+	}
 	p := &Provider{
 		host:          host,
 		module:        module,
@@ -275,6 +279,7 @@ func newProvider(ctx context.Context, host *provider.HostClient,
 		config:        tf.Schema(),
 		pulumiSchema:  pulumiSchema,
 		hasTypeErrors: make(map[resource.URN]struct{}),
+		providerOpts:  opts,
 	}
 	ctx = p.loggingContext(ctx, "")
 	p.initResourceMaps()

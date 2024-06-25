@@ -156,6 +156,9 @@ type Provider struct {
 	//
 	// See also pulumi/pulumi-terraform-bridge#1524
 	GenerateRuntimeMetadata bool
+	// EnableZeroDefaultSchemaVersion makes the provider default
+	// to version 0 when no version is specified in the state of a resource.
+	EnableZeroDefaultSchemaVersion bool
 }
 
 // HclExampler represents a supplemental HCL example for a given resource or function.
