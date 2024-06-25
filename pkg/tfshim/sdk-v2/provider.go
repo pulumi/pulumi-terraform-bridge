@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/logging"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
@@ -221,4 +222,10 @@ func (p v2Provider) IsSet(_ context.Context, v interface{}) ([]interface{}, bool
 		return set.List(), true
 	}
 	return nil, false
+}
+
+func (p v2Provider) DetailedSchemaDump() string {
+	spew.Config.DisablePointerAddresses = true
+	spew.Config.DisableCapacities = true
+	return spew.Sdump(p.tf)
 }
