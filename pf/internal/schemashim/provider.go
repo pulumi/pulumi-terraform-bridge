@@ -70,6 +70,10 @@ func (p *SchemaOnlyProvider) Config(ctx context.Context) (tftypes.Object, error)
 	return schema.Type().TerraformType(ctx).(tftypes.Object), nil
 }
 
+func (p *SchemaOnlyProvider) DetailedSchemaDump() []byte {
+	panic("Unsupported")
+}
+
 var _ shim.Provider = (*SchemaOnlyProvider)(nil)
 
 func (p *SchemaOnlyProvider) Schema() shim.SchemaMap {

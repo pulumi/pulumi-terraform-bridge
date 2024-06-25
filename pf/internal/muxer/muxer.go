@@ -253,4 +253,8 @@ func (p *simpleSchemaProvider) DataSourcesMap() shim.ResourceMap {
 	return p.dataSources
 }
 
+func (p *simpleSchemaProvider) DetailedSchemaDump() []byte {
+	panic("Unsupported")
+}
+
 var _ shim.Provider = (*simpleSchemaProvider)(nil)
