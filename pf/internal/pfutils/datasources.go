@@ -48,9 +48,8 @@ func GatherDatasources[F func(Schema) shim.SchemaMap](
 		}
 
 		ds[runtypes.TypeName(meta.TypeName)] = entry[func() datasource.DataSource]{
-			t:           makeDataSource,
-			schema:      FromDataSourceSchema(dataSourceSchema),
-			diagnostics: diag,
+			t:      makeDataSource,
+			schema: FromDataSourceSchema(dataSourceSchema),
 		}
 	}
 

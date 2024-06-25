@@ -11,7 +11,6 @@ require (
 	github.com/hashicorp/terraform-plugin-go v0.23.0
 	github.com/hashicorp/terraform-plugin-mux v0.16.0
 	github.com/hashicorp/terraform-svchost v0.1.1
-	github.com/hexops/autogold/v2 v2.2.1
 	github.com/opentofu/opentofu v1.7.1
 	github.com/opentofu/registry-address v0.0.0-20230920144404-f1e51167f633
 	github.com/pulumi/pulumi-terraform-bridge/v3 v3.84.0
@@ -114,8 +113,6 @@ require (
 	github.com/hashicorp/hcl/v2 v2.20.1 // indirect
 	github.com/hashicorp/terraform-plugin-log v0.9.0 // indirect
 	github.com/hashicorp/yamux v0.1.1 // indirect
-	github.com/hexops/gotextdiff v1.0.3 // indirect
-	github.com/hexops/valast v1.4.4 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
@@ -136,7 +133,6 @@ require (
 	github.com/muesli/reflow v0.3.0 // indirect
 	github.com/muesli/termenv v0.15.2 // indirect
 	github.com/natefinch/atomic v1.0.1 // indirect
-	github.com/nightlyone/lockfile v1.0.0 // indirect
 	github.com/oklog/run v1.1.0 // indirect
 	github.com/openbao/openbao/api v0.0.0-20240326035453-c075f0ef2c7e // indirect
 	github.com/opentracing/basictracer-go v1.1.0 // indirect
@@ -202,5 +198,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gotest.tools/v3 v3.5.1 // indirect
 	lukechampine.com/frand v1.4.2 // indirect
-	mvdan.cc/gofumpt v0.5.0 // indirect
 )

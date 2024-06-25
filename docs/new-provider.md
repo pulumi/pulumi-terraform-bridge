@@ -27,7 +27,8 @@ The main interaction point between the bridged provider authors and the bridge i
 
 ## Token Mapping
 
-Each upstream Terraform resource needs to be given a Pulumi appropriate name, called a token. We call this process token mapping. A simple mapping looks like this:
+Each upstream Terraform resource needs to be given a Pulumi appropriate name, called a token. We call this process token
+mapping. A simple mapping looks like this:
 
 ```go
 			"aws_s3_bucket": {
@@ -36,7 +37,9 @@ Each upstream Terraform resource needs to be given a Pulumi appropriate name, ca
 ```
 ### Automatic Token Mapping
 
-Mapping a couple of resources is fine, but it quickly becomes tiresome to provide a manual mapping for each resource and datasource in a large provider, especially since new updates to the provider introduce new resources and remove old resources. The solution is *automatic token mappings*. 
+Mapping a couple of resources is fine, but it quickly becomes tiresome to provide a manual mapping for each resource and
+datasource in a large provider, especially since new updates to the provider introduce new resources and remove old resources. The
+solution is *automatic token mappings*.
 
 For example:
 
@@ -59,3 +62,26 @@ Terraform provider, see [MuxWith](./muxwith.md).
 For instructions on bridging a Terraform provider built using the [Terraform Plugin
 Framework](https://developer.hashicorp.com/terraform/plugin/framework), please see
 [pf/README.md](../pf/README.md).
+
+## Version Requirements
+
+The `pulumi-terraform-bridge` depends on non-semver internals of [pulumi/pulumi](https://github.com/pulumi/pulumi) and on a fork
+of [terraform-plugin-sdk/v2](https://github.com/hashicorp/terraform-plugin-sdk):
+[github.com/pulumi/terraform-plugin-sdk/v2](https://github.com/pulumi/terraform-plugin-sdk). You will need to match the version of
+both in your provider's `go.mod` file.
+
+### pulumi/pulumi
+
+Keeping pulumi/pulumi at the right version is as simple as not manually upgrading the version of `github.com/pulumi/pulumi/pkg/v3`
+and `github.com/pulumi/pulumi/sdk/v3` required. When you upgrade your dependency on `pulumi-terraform-bridge`, it will pull in the
+version it needs, upgrading as necessary. We try to keep the version that the bridge uses in sync with the latest version of
+[pulumi/pulumi](https://github.com/pulumi/pulumi).
+
+### [github.com/pulumi/terraform-plugin-sdk/v2](https://github.com/pulumi/terraform-plugin-sdk)
+
+You will need to add a `replace` directive to your `provider/go.mod` file that matches the one found in
+https://github.com/pulumi/pulumi-terraform-bridge/blob/master/go.mod.  We don't change the version of
+[github.com/pulumi/terraform-plugin-sdk/v2](https://github.com/pulumi/terraform-plugin-sdk) very often, but when we do the bridge
+generally won't compile on the wrong version. Best practice is to check the SHA of the `replace` in the bridge uses and ensure
+that your `replace` matches. We know that this is annoying and would like to [remove the fork
+requirement](https://github.com/pulumi/pulumi-terraform-bridge/issues/1956).

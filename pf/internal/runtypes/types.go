@@ -17,7 +17,6 @@ package runtypes
 import (
 	"context"
 
-	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
@@ -45,7 +44,6 @@ type collection interface {
 	All() []TypeName
 	Has(TypeName) bool
 	Schema(TypeName) Schema
-	Diagnostics(TypeName) diag.Diagnostics
 }
 
 // Represents all provider's resources pre-indexed by TypeName.

@@ -722,7 +722,19 @@ func DiffConfig(
 		schemaMap:   config,
 		schemaInfos: configInfos,
 	}
-	return differ.DiffConfig
+	return func(
+		urn resource.URN, oldInputs, oldOutputs, newInputs resource.PropertyMap,
+		allowUnknowns bool, ignoreChanges []string,
+	) (plugin.DiffResult, error) {
+		return differ.DiffConfig(context.TODO(), plugin.DiffConfigRequest{
+			URN:           urn,
+			OldInputs:     oldInputs,
+			OldOutputs:    oldOutputs,
+			NewInputs:     newInputs,
+			AllowUnknowns: allowUnknowns,
+			IgnoreChanges: ignoreChanges,
+		})
+	}
 }
 
 type configDiffer struct {
@@ -746,21 +758,20 @@ func (p *configDiffer) forcesProviderReplace(path resource.PropertyPath) bool {
 }
 
 func (p *configDiffer) DiffConfig(
-	urn resource.URN, oldInputs, oldOutputs, newInputs resource.PropertyMap,
-	allowUnknowns bool, ignoreChanges []string,
-) (plugin.DiffResult, error) {
-	contract.Assertf(allowUnknowns, "Expected allowUnknowns to always be true for DiffConfig")
+	ctx context.Context, req plugin.DiffConfigRequest,
+) (plugin.DiffConfigResponse, error) {
+	contract.Assertf(req.AllowUnknowns, "Expected allowUnknowns to always be true for DiffConfig")
 
 	// Seems that DiffIncludeUnknowns only accepts func (PropertyKey) bool to support ignoring
 	// changes which is awkward for recursive changes, would be better if it supported
 	// func(PropertyPath) bool. Instead of doing this, support IgnoreChanges by copying old
 	// values to new values to disable the diff.
-	newInputsIC, err := propertyvalue.ApplyIgnoreChanges(oldInputs, newInputs, ignoreChanges)
+	newInputsIC, err := propertyvalue.ApplyIgnoreChanges(req.OldInputs, req.NewInputs, req.IgnoreChanges)
 	if err != nil {
 		return plugin.DiffResult{}, fmt.Errorf("Error applying ignoreChanges: %v", err)
 	}
 
-	objDiff := oldInputs.DiffIncludeUnknowns(newInputsIC)
+	objDiff := req.OldInputs.DiffIncludeUnknowns(newInputsIC)
 	inputDiff := true
 	detailedDiff := plugin.NewDetailedDiffFromObjectDiff(objDiff, inputDiff)
 
@@ -772,7 +783,7 @@ func (p *configDiffer) DiffConfig(
 			// NOTE: for states provisioned on the older versions of Pulumi CLI oldInputs will have no entry
 			// for the changing property. Causing cascading replacements in this case is undesirable, since
 			// it is not a real change. Err on the side of not replacing (pulumi/pulumi-aws#3826).
-			if _, ok := keyPath.Get(resource.NewObjectProperty(oldInputs)); !ok {
+			if _, ok := keyPath.Get(resource.NewObjectProperty(req.OldInputs)); !ok {
 				continue
 			}
 			detailedDiff[key] = change.ToReplace()
@@ -1079,7 +1090,7 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 	// If there were changes in this diff, check to see if we have a replacement.
 	var replaces []string
 	var replaced map[string]bool
-	var properties []string
+	properties := map[string]struct{}{}
 
 	if changes == pulumirpc.DiffResponse_DIFF_SOME {
 		for k, d := range detailedDiff {
@@ -1087,7 +1098,7 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 			if firstSep := strings.IndexAny(k, ".["); firstSep != -1 {
 				k = k[:firstSep]
 			}
-			properties = append(properties, k)
+			properties[k] = struct{}{}
 
 			switch d.Kind {
 			case pulumirpc.PropertyDiff_ADD_REPLACE,
@@ -1139,17 +1150,25 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 		changes = pulumirpc.DiffResponse_DIFF_SOME
 	}
 
+	toSlice := func(m map[string]struct{}) []string {
+		arr := make([]string, 0, len(m))
+		for k := range m {
+			arr = append(arr, k)
+		}
+		sort.Strings(arr)
+		return arr
+	}
+
 	// Ensure that outputs are deterministic to enable gRPC testing.
 	sort.Strings(replaces)
 	sort.Strings(stables)
-	sort.Strings(properties)
 
 	return &pulumirpc.DiffResponse{
 		Changes:             changes,
 		Replaces:            replaces,
 		Stables:             stables,
 		DeleteBeforeReplace: deleteBeforeReplace,
-		Diffs:               properties,
+		Diffs:               toSlice(properties),
 		DetailedDiff:        detailedDiff,
 		HasDetailedDiff:     true,
 	}, nil

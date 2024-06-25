@@ -46,14 +46,6 @@ func New(ctx context.Context, server tfprotov6.ProviderServer) shim.Provider {
 	}
 }
 
-// Replace the inner provider with a new one.
-func (p *Provider) Replace(newServer tfprotov6.ProviderServer) {
-	n := New(p.ctx, newServer)
-	newProvider := n.(*Provider)
-	p.getSchema = newProvider.getSchema
-	p.server = newProvider.server
-}
-
 // Provider provides a shim from [tfprotov6.ProviderServer] to [shim.Provider].
 //
 // To create a Provider, use [New]. A zero value Provider will panic on most operations.
