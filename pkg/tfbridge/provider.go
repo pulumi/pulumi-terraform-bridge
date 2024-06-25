@@ -57,6 +57,31 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/x/muxer"
 )
 
+type providerOptions struct {
+	defaultZeroSchemaVersion bool
+}
+
+type providerOption func(providerOptions) (providerOptions, error)
+
+func WithDefaultZeroSchemaVersion() providerOption { //nolint:revive
+	return func(opts providerOptions) (providerOptions, error) {
+		opts.defaultZeroSchemaVersion = true
+		return opts, nil
+	}
+}
+
+func getProviderOptions(opts []providerOption) (providerOptions, error) {
+	res := providerOptions{}
+	for _, o := range opts {
+		var err error
+		res, err = o(res)
+		if err != nil {
+			return res, err
+		}
+	}
+	return res, nil
+}
+
 // Provider implements the Pulumi resource provider operations for any Terraform plugin.
 type Provider struct {
 	pulumirpc.UnimplementedResourceProviderServer
@@ -75,6 +100,7 @@ type Provider struct {
 	pulumiSchemaSpec *pschema.PackageSpec
 	memStats         memStatCollector
 	hasTypeErrors    map[resource.URN]struct{}
+	providerOpts     []providerOption
 }
 
 // MuxProvider defines an interface which must be implemented by providers
@@ -1040,7 +1066,12 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 		return nil, err
 	}
 
-	state, err := MakeTerraformState(ctx, res, req.GetId(), olds)
+	opts, err := getProviderOptions(p.providerOpts)
+	if err != nil {
+		return nil, err
+	}
+
+	state, err := makeTerraformStateWithOpts(ctx, res, req.GetId(), olds, makeTerraformStateOptions{defaultZeroSchemaVersion: opts.defaultZeroSchemaVersion})
 	if err != nil {
 		return nil, errors.Wrapf(err, "unmarshaling %s's instance state", urn)
 	}
@@ -1299,7 +1330,12 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 	if err != nil {
 		return nil, err
 	}
-	state, err := UnmarshalTerraformState(ctx, res, id, req.GetProperties(), fmt.Sprintf("%s.state", label))
+
+	opts, err := getProviderOptions(p.providerOpts)
+	if err != nil {
+		return nil, err
+	}
+	state, err := unmarshalTerraformStateWithOpts(ctx, res, id, req.GetProperties(), fmt.Sprintf("%s.state", label), unmarshalTerraformStateOptions{defaultZeroSchemaVersion: opts.defaultZeroSchemaVersion})
 	if err != nil {
 		return nil, errors.Wrapf(err, "unmarshaling %s's instance state", urn)
 	}
@@ -1408,7 +1444,12 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 		return nil, err
 	}
 
-	state, err := MakeTerraformState(ctx, res, req.GetId(), olds)
+	opts, err := getProviderOptions(p.providerOpts)
+	if err != nil {
+		return nil, err
+	}
+
+	state, err := makeTerraformStateWithOpts(ctx, res, req.GetId(), olds, makeTerraformStateOptions{defaultZeroSchemaVersion: opts.defaultZeroSchemaVersion})
 	if err != nil {
 		return nil, errors.Wrapf(err, "unmarshaling %s's instance state", urn)
 	}
@@ -1532,8 +1573,12 @@ func (p *Provider) Delete(ctx context.Context, req *pulumirpc.DeleteRequest) (*p
 	label := fmt.Sprintf("%s.Delete(%s/%s)", p.label(), urn, res.TFName)
 	glog.V(9).Infof("%s executing", label)
 
+	opts, err := getProviderOptions(p.providerOpts)
+	if err != nil {
+		return nil, err
+	}
 	// Fetch the resource attributes since many providers need more than just the ID to perform the delete.
-	state, err := UnmarshalTerraformState(ctx, res, req.GetId(), req.GetProperties(), label)
+	state, err := unmarshalTerraformStateWithOpts(ctx, res, req.GetId(), req.GetProperties(), label, unmarshalTerraformStateOptions{defaultZeroSchemaVersion: opts.defaultZeroSchemaVersion})
 	if err != nil {
 		return nil, err
 	}

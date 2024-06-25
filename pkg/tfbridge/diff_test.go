@@ -87,7 +87,7 @@ func TestCustomizeDiff(t *testing.T) {
 			TF:     shimv2.NewResource(customDiffRes),
 			Schema: &ResourceInfo{Fields: info},
 		}
-		tfState, err := MakeTerraformState(ctx, r, "id", stateMap)
+		tfState, err := makeTerraformStateWithOpts(ctx, r, "id", stateMap, makeTerraformStateOptions{defaultZeroSchemaVersion: true})
 		assert.NoError(t, err)
 
 		config, _, err := MakeTerraformConfig(ctx, &Provider{tf: provider}, inputsMap, sch, info)
@@ -128,7 +128,7 @@ func TestCustomizeDiff(t *testing.T) {
 			TF:     shimv2.NewResource(noCustomDiffRes),
 			Schema: &ResourceInfo{Fields: info},
 		}
-		tfState, err := MakeTerraformState(ctx, r, "id", stateMap)
+		tfState, err := makeTerraformStateWithOpts(ctx, r, "id", stateMap, makeTerraformStateOptions{defaultZeroSchemaVersion: true})
 		assert.NoError(t, err)
 
 		config, _, err := MakeTerraformConfig(ctx, &Provider{tf: provider}, inputsMap, sch, info)
@@ -181,7 +181,7 @@ func TestCustomizeDiff(t *testing.T) {
 					TF:     shimv2.NewResource(customDiffRes),
 					Schema: &ResourceInfo{Fields: info},
 				}
-				tfState, err := MakeTerraformState(ctx, r, "id", stateMap)
+				tfState, err := makeTerraformStateWithOpts(ctx, r, "id", stateMap, makeTerraformStateOptions{defaultZeroSchemaVersion: true})
 				assert.NoError(t, err)
 
 				config, _, err := MakeTerraformConfig(ctx, &Provider{tf: provider}, inputsMap, sch, info)
@@ -198,7 +198,8 @@ func TestCustomizeDiff(t *testing.T) {
 func diffTest(t *testing.T, tfs map[string]*schema.Schema, info map[string]*SchemaInfo,
 	inputs, state map[string]interface{}, expected map[string]DiffKind,
 	expectedDiffChanges pulumirpc.DiffResponse_DiffChanges,
-	ignoreChanges ...string) {
+	ignoreChanges ...string,
+) {
 	ctx := context.Background()
 
 	inputsMap := resource.NewPropertyMapFromMap(inputs)
@@ -224,7 +225,7 @@ func diffTest(t *testing.T, tfs map[string]*schema.Schema, info map[string]*Sche
 		TF:     shimv1.NewResource(res),
 		Schema: &ResourceInfo{Fields: info},
 	}
-	tfState, err := MakeTerraformState(ctx, r, "id", stateMap)
+	tfState, err := makeTerraformStateWithOpts(ctx, r, "id", stateMap, makeTerraformStateOptions{defaultZeroSchemaVersion: true})
 	assert.NoError(t, err)
 
 	config, _, err := MakeTerraformConfig(ctx, &Provider{tf: provider}, inputsMap, sch, info)
@@ -1842,7 +1843,8 @@ func TestCollectionsWithMultipleItems(t *testing.T) {
 	}
 
 	runTestCase := func(t *testing.T, name string, typ schema.ValueType, inputs, state []interface{},
-		expected map[string]DiffKind, expectedChanges pulumirpc.DiffResponse_DiffChanges) {
+		expected map[string]DiffKind, expectedChanges pulumirpc.DiffResponse_DiffChanges,
+	) {
 		t.Run(name, func(t *testing.T) {
 			diffTest(t,
 				map[string]*schema.Schema{
