@@ -1090,7 +1090,7 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 	// If there were changes in this diff, check to see if we have a replacement.
 	var replaces []string
 	var replaced map[string]bool
-	var properties []string
+	properties := map[string]struct{}{}
 
 	if changes == pulumirpc.DiffResponse_DIFF_SOME {
 		for k, d := range detailedDiff {
@@ -1098,7 +1098,7 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 			if firstSep := strings.IndexAny(k, ".["); firstSep != -1 {
 				k = k[:firstSep]
 			}
-			properties = append(properties, k)
+			properties[k] = struct{}{}
 
 			switch d.Kind {
 			case pulumirpc.PropertyDiff_ADD_REPLACE,
@@ -1150,17 +1150,25 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 		changes = pulumirpc.DiffResponse_DIFF_SOME
 	}
 
+	toSlice := func(m map[string]struct{}) []string {
+		arr := make([]string, 0, len(m))
+		for k := range m {
+			arr = append(arr, k)
+		}
+		sort.Strings(arr)
+		return arr
+	}
+
 	// Ensure that outputs are deterministic to enable gRPC testing.
 	sort.Strings(replaces)
 	sort.Strings(stables)
-	sort.Strings(properties)
 
 	return &pulumirpc.DiffResponse{
 		Changes:             changes,
 		Replaces:            replaces,
 		Stables:             stables,
 		DeleteBeforeReplace: deleteBeforeReplace,
-		Diffs:               properties,
+		Diffs:               toSlice(properties),
 		DetailedDiff:        detailedDiff,
 		HasDetailedDiff:     true,
 	}, nil

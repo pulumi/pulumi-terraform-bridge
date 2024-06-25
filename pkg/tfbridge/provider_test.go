@@ -5623,3 +5623,100 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 	}`)
 	})
 }
+
+func TestSetDuplicatedDiffEntries(t *testing.T) {
+	// Duplicated diff entries cause the engine to display the wrong detailed diff.
+	// We have a workaround in place to deduplicate the entries.
+	// [pulumi/pulumi#16466]
+	p := &schemav2.Provider{
+		Schema: map[string]*schemav2.Schema{},
+		ResourcesMap: map[string]*schemav2.Resource{
+			"example_resource": {
+				Schema: map[string]*schemav2.Schema{
+					"privileges": &schema.Schema{
+						Type:     schema.TypeSet,
+						Optional: true,
+						Elem:     &schemav2.Schema{Type: schemav2.TypeString},
+					},
+				},
+			},
+		},
+	}
+	shimProv := shimv2.NewProvider(p)
+	provider := &Provider{
+		tf:     shimProv,
+		config: shimv2.NewSchemaMap(p.Schema),
+		info: ProviderInfo{
+			P:              shimProv,
+			ResourcePrefix: "example",
+			Resources: map[string]*ResourceInfo{
+				"example_resource": {Tok: "ExampleResource"},
+			},
+		},
+	}
+	provider.initResourceMaps()
+
+	testutils.Replay(t, provider, `
+{
+    "method": "/pulumirpc.ResourceProvider/Diff",
+    "request": {
+        "id": "id",
+		"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
+        "olds": {
+            "id": "id",
+            "privileges": [
+                "CREATE EXTERNAL TABLE",
+                "CREATE TABLE",
+                "CREATE VIEW",
+                "CREATE TEMPORARY TABLE",
+                "USAGE"
+            ]
+        },
+        "news": {
+            "__defaults": [],
+            "privileges": [
+                "USAGE"
+            ]
+        },
+        "oldInputs": {
+            "__defaults": [],
+            "privileges": [
+                "CREATE EXTERNAL TABLE",
+                "CREATE TABLE",
+                "CREATE VIEW",
+                "CREATE TEMPORARY TABLE",
+                "USAGE"
+            ]
+        }
+    },
+    "response": {
+        "changes": "DIFF_SOME",
+        "diffs": [
+            "privileges"
+        ],
+        "detailedDiff": {
+            "privileges": {
+                "kind": "UPDATE"
+            },
+            "privileges[0]": {
+                "kind": "DELETE"
+            },
+            "privileges[1]": {
+                "kind": "DELETE"
+            },
+            "privileges[2]": {
+                "kind": "DELETE"
+            },
+            "privileges[3]": {
+                "kind": "DELETE"
+            }
+        },
+        "hasDetailedDiff": true
+    },
+    "metadata": {
+        "kind": "resource",
+        "mode": "client",
+        "name": "snowflake"
+    }
+}`)
+}
