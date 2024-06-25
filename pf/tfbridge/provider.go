@@ -30,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
@@ -52,13 +53,15 @@ type provider struct {
 	info          tfbridge.ProviderInfo
 	resources     runtypes.Resources
 	datasources   runtypes.DataSources
-	pulumiSchema  []byte
+	pulumiSchema  func(context.Context, plugin.GetSchemaRequest) ([]byte, error)
 	encoding      convert.Encoding
 	diagSink      diag.Sink
 	configEncoder convert.Encoder
 	configType    tftypes.Object
 	version       semver.Version
 	logSink       logging.Sink
+
+	parameterize func(context.Context, plugin.ParameterizeRequest) (plugin.ParameterizeResponse, error)
 
 	// Used by CheckConfig to remember the current Provider configuration so that it can be recalled and used for
 	// populating defaults specified via DefaultInfo.Config.
@@ -78,7 +81,7 @@ func NewProvider(ctx context.Context, info tfbridge.ProviderInfo, meta ProviderM
 	if err != nil {
 		return nil, err
 	}
-	return pl.NewProvider(ctx, pwc), nil
+	return pl.NewProvider(pwc), nil
 }
 
 // Wrap a PF Provider in a shim.Provider.
@@ -92,7 +95,7 @@ func ShimProviderWithContext(ctx context.Context, p pfprovider.Provider) shim.Pr
 }
 
 func newProviderWithContext(ctx context.Context, info tfbridge.ProviderInfo,
-	meta ProviderMetadata) (pl.ProviderWithContext, error) {
+	meta ProviderMetadata) (*provider, error) {
 	const infoPErrMSg string = "info.P must be constructed with ShimProvider or ShimProviderWithContext"
 
 	if info.P == nil {
@@ -136,17 +139,28 @@ func newProviderWithContext(ctx context.Context, info tfbridge.ProviderInfo,
 			info.Version)
 	}
 
+	contract.Assertf((meta.PackageSchema == nil) != (meta.XGetSchema == nil),
+		"Exactly one of PackageSchema or XGetSchema should be specified.")
+
+	schema := meta.XGetSchema
+	if meta.XGetSchema == nil {
+		schema = func(context.Context, plugin.GetSchemaRequest) ([]byte, error) {
+			return meta.PackageSchema, nil
+		}
+	}
+
 	return &provider{
 		tfServer:           server6,
 		info:               info,
 		resources:          resources,
 		datasources:        datasources,
-		pulumiSchema:       meta.PackageSchema,
+		pulumiSchema:       schema,
 		encoding:           enc,
 		configEncoder:      configEncoder,
 		configType:         providerConfigType,
 		version:            semverVersion,
 		schemaOnlyProvider: info.P,
+		parameterize:       meta.XParamaterize,
 	}, nil
 }
 
@@ -161,10 +175,9 @@ func NewProviderServer(
 	if err != nil {
 		return nil, err
 	}
-	pp := p.(*provider)
 
-	pp.logSink = logSink
-	configEnc := tfbridge.NewConfigEncoding(pp.schemaOnlyProvider.Schema(), pp.info.Config)
+	p.logSink = logSink
+	configEnc := tfbridge.NewConfigEncoding(p.schemaOnlyProvider.Schema(), p.info.Config)
 	return pl.NewProviderServerWithContext(p, configEnc), nil
 }
 
@@ -174,19 +187,45 @@ func (p *provider) Close() error {
 }
 
 // Pkg fetches this provider's package.
-func (p *provider) PkgWithContext(_ context.Context) tokens.Package {
+func (p *provider) Pkg() tokens.Package {
 	return tokens.Package(p.info.Name)
+}
+
+type xResetProviderKey struct{}
+
+type xParameterizeResetProviderFunc = func(context.Context, tfbridge.ProviderInfo, ProviderMetadata) error
+
+// XParameterizeResetProvider resets the enclosing PF provider with a new info and meta combination.
+//
+// XParameterizeResetProvider is an unstable method and may change in any bridge
+// release. It is intended only for internal use.
+func XParameterizeResetProvider(ctx context.Context, info tfbridge.ProviderInfo, meta ProviderMetadata) error {
+	return ctx.Value(xResetProviderKey{}).(xParameterizeResetProviderFunc)(ctx, info, meta)
 }
 
 func (p *provider) ParameterizeWithContext(
 	ctx context.Context, req plugin.ParameterizeRequest,
 ) (plugin.ParameterizeResponse, error) {
-	return (&plugin.UnimplementedProvider{}).Parameterize(ctx, req)
+	if p.parameterize == nil {
+		return (&plugin.UnimplementedProvider{}).Parameterize(ctx, req)
+	}
+
+	ctx = context.WithValue(ctx, xResetProviderKey{},
+		func(ctx context.Context, info tfbridge.ProviderInfo, meta ProviderMetadata) error {
+			pp, err := newProviderWithContext(ctx, info, meta)
+			if err != nil {
+				return err
+			}
+			*p = *pp
+			return nil
+		})
+
+	return p.parameterize(ctx, req)
 }
 
 // GetSchema returns the schema for the provider.
-func (p *provider) GetSchemaWithContext(context.Context, plugin.GetSchemaRequest) ([]byte, error) {
-	return p.pulumiSchema, nil
+func (p *provider) GetSchemaWithContext(ctx context.Context, req plugin.GetSchemaRequest) ([]byte, error) {
+	return p.pulumiSchema(ctx, req)
 }
 
 // GetPluginInfo returns this plugin's information.

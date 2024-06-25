@@ -523,6 +523,10 @@ func (p *Provider) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest)
 		}
 	}
 
+	if check := p.typeCheckConfig(ctx, urn, news); check != nil {
+		return check, nil
+	}
+
 	checkFailures := validateProviderConfig(ctx, urn, p, config)
 	if len(checkFailures) > 0 {
 		return &pulumirpc.CheckResponse{
@@ -542,6 +546,55 @@ func (p *Provider) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest)
 	return &pulumirpc.CheckResponse{
 		Inputs: newsStruct,
 	}, nil
+}
+
+func (p *Provider) typeCheckConfig(
+	ctx context.Context,
+	urn resource.URN,
+	news resource.PropertyMap,
+) *pulumirpc.CheckResponse {
+	span, _ := opentracing.StartSpanFromContext(ctx, "sdkv2.typeCheckConfig")
+	defer span.Finish()
+
+	logger := GetLogger(ctx)
+	// for now we are just going to log warnings if there are failures.
+	// over time we may want to turn these into actual errors
+	validateShouldError := cmdutil.IsTruthy(os.Getenv("PULUMI_ERROR_CONFIG_TYPE_CHECKER"))
+	schemaMap := p.config
+	schemaInfos := p.info.GetConfig()
+	if p.pulumiSchemaSpec != nil {
+		iv := NewInputValidator(urn, *p.pulumiSchemaSpec, true)
+		typeFailures := iv.ValidateConfig(news)
+		if len(typeFailures) > 0 {
+			logger.Warn("Type checking failed: ")
+			failures := []*pulumirpc.CheckFailure{}
+			for _, e := range typeFailures {
+				if validateShouldError {
+					pp := NewCheckFailurePath(schemaMap, schemaInfos, e.ResourcePath)
+					cf := NewCheckFailure(MiscFailure, e.Reason, &pp, urn, false, p.module, schemaMap, schemaInfos)
+					failures = append(failures, &pulumirpc.CheckFailure{
+						Property: string(cf.Property),
+						Reason:   cf.Reason,
+					})
+				} else {
+					logger.Warn(
+						fmt.Sprintf("Unexpected type at field %q: \n           %s", e.ResourcePath, e.Reason),
+					)
+				}
+			}
+			if len(failures) > 0 {
+				return &pulumirpc.CheckResponse{
+					Failures: failures,
+				}
+			}
+			logger.Warn("Type checking is still experimental. If you believe that a warning is incorrect,\n" +
+				"please let us know by creating an " +
+				"issue at https://github.com/pulumi/pulumi-terraform-bridge/issues.\n" +
+				"This will become a hard error in the future.",
+			)
+		}
+	}
+	return nil
 }
 
 func (p *Provider) preConfigureCallback(
@@ -669,7 +722,19 @@ func DiffConfig(
 		schemaMap:   config,
 		schemaInfos: configInfos,
 	}
-	return differ.DiffConfig
+	return func(
+		urn resource.URN, oldInputs, oldOutputs, newInputs resource.PropertyMap,
+		allowUnknowns bool, ignoreChanges []string,
+	) (plugin.DiffResult, error) {
+		return differ.DiffConfig(context.TODO(), plugin.DiffConfigRequest{
+			URN:           urn,
+			OldInputs:     oldInputs,
+			OldOutputs:    oldOutputs,
+			NewInputs:     newInputs,
+			AllowUnknowns: allowUnknowns,
+			IgnoreChanges: ignoreChanges,
+		})
+	}
 }
 
 type configDiffer struct {
@@ -693,21 +758,20 @@ func (p *configDiffer) forcesProviderReplace(path resource.PropertyPath) bool {
 }
 
 func (p *configDiffer) DiffConfig(
-	urn resource.URN, oldInputs, oldOutputs, newInputs resource.PropertyMap,
-	allowUnknowns bool, ignoreChanges []string,
-) (plugin.DiffResult, error) {
-	contract.Assertf(allowUnknowns, "Expected allowUnknowns to always be true for DiffConfig")
+	ctx context.Context, req plugin.DiffConfigRequest,
+) (plugin.DiffConfigResponse, error) {
+	contract.Assertf(req.AllowUnknowns, "Expected allowUnknowns to always be true for DiffConfig")
 
 	// Seems that DiffIncludeUnknowns only accepts func (PropertyKey) bool to support ignoring
 	// changes which is awkward for recursive changes, would be better if it supported
 	// func(PropertyPath) bool. Instead of doing this, support IgnoreChanges by copying old
 	// values to new values to disable the diff.
-	newInputsIC, err := propertyvalue.ApplyIgnoreChanges(oldInputs, newInputs, ignoreChanges)
+	newInputsIC, err := propertyvalue.ApplyIgnoreChanges(req.OldInputs, req.NewInputs, req.IgnoreChanges)
 	if err != nil {
 		return plugin.DiffResult{}, fmt.Errorf("Error applying ignoreChanges: %v", err)
 	}
 
-	objDiff := oldInputs.DiffIncludeUnknowns(newInputsIC)
+	objDiff := req.OldInputs.DiffIncludeUnknowns(newInputsIC)
 	inputDiff := true
 	detailedDiff := plugin.NewDetailedDiffFromObjectDiff(objDiff, inputDiff)
 
@@ -719,7 +783,7 @@ func (p *configDiffer) DiffConfig(
 			// NOTE: for states provisioned on the older versions of Pulumi CLI oldInputs will have no entry
 			// for the changing property. Causing cascading replacements in this case is undesirable, since
 			// it is not a real change. Err on the side of not replacing (pulumi/pulumi-aws#3826).
-			if _, ok := keyPath.Get(resource.NewObjectProperty(oldInputs)); !ok {
+			if _, ok := keyPath.Get(resource.NewObjectProperty(req.OldInputs)); !ok {
 				continue
 			}
 			detailedDiff[key] = change.ToReplace()
@@ -841,7 +905,7 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 	if p.pulumiSchema != nil {
 		schema := p.pulumiSchemaSpec
 		if schema != nil {
-			iv := NewInputValidator(urn, *schema)
+			iv := NewInputValidator(urn, *schema, false)
 			typeFailures := iv.ValidateInputs(t, news)
 			if len(typeFailures) > 0 {
 				p.hasTypeErrors[urn] = struct{}{}

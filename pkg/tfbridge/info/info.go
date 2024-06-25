@@ -645,6 +645,17 @@ type JavaScript struct {
 	UseTypeOnlyReferences bool
 }
 
+type PythonInputType string
+
+const (
+	// Use the default type generation from pulumi/pulumi.
+	PythonInputTypeDefault = ""
+	// Generate args classes only.
+	PythonInputTypeClasses = "classes"
+	// Generate TypedDicts side-by-side with args classes.
+	PythonInputTypeClassesAndDicts = "classes-and-dicts"
+)
+
 // Python contains optional overlay information for Python code-generation.
 type Python struct {
 	Requires      map[string]string // Pip install_requires information.
@@ -671,6 +682,9 @@ type Python struct {
 	PyProject struct {
 		Enabled bool
 	}
+
+	// Specifies what types are used for inputs.
+	InputTypes PythonInputType
 }
 
 // Golang contains optional overlay information for Golang code-generation.

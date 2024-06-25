@@ -1,0 +1,12 @@
+{
+  "changes": "DIFF_SOME",
+  "diffs": [
+    "attrBoolRequired",
+    "attrIntRequired",
+    "attrNumberComputed",
+    "attrNumberRequired",
+    "attrStringDefault",
+    "attrStringDefaultOverridden",
+    "attrStringRequired"
+  ]
+}

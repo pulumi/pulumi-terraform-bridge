@@ -27,7 +27,7 @@ jobs:
       - name: Install pulumi
         uses: pulumi/actions@v5
         with:
-          pulumi-version: ^3.0.0
+          pulumi-version: dev
       - name: Check out source code
         uses: actions/checkout@master
       - name: Install Go
@@ -44,6 +44,8 @@ jobs:
         run: make test
       - name: Test PF
         run: cd pf && make test
+      - name: Test Dynamic
+        run: cd dynamic && make test
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v4
         env:

@@ -15,7 +15,9 @@
 package itests
 
 import (
+	"github.com/stretchr/testify/require"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/pulumi/providertest/pulumitest"
@@ -23,11 +25,27 @@ import (
 )
 
 func TestAttach(t *testing.T) {
-	t.Skip("TODO[pulumi/pulumi#15526] this will work once pulumi-yaml supports PULUMI_DEBUG_PROVIDERS")
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping on Windows due to a PATH setup issue where the test cannot find pulumi-resource-testbridge.exe")
+	}
 	source := filepath.Join("..", "testdata", "basicprogram")
-	bin := filepath.Join("..", "bin")
+	bin, err := filepath.Abs(filepath.Join("..", "bin"))
+	require.NoError(t, err)
 	pt := pulumitest.NewPulumiTest(t, source,
 		opttest.AttachProviderBinary("testbridge", bin),
+		opttest.SkipInstall())
+	pt.Preview()
+}
+
+func TestAttachMuxed(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipping on Windows due to a PATH setup issue where the test cannot find pulumi-resource-muxedrandom.exe")
+	}
+	source := filepath.Join("..", "testdata", "muxedbasicprogram")
+	bin, err := filepath.Abs(filepath.Join("..", "bin"))
+	require.NoError(t, err)
+	pt := pulumitest.NewPulumiTest(t, source,
+		opttest.AttachProviderBinary("muxedrandom", bin),
 		opttest.SkipInstall())
 	pt.Preview()
 }

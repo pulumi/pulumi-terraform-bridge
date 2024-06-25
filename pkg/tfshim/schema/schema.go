@@ -154,11 +154,3 @@ func (m SchemaMap) Range(each func(key string, value shim.Schema) bool) {
 		}
 	}
 }
-
-func (m SchemaMap) Set(key string, value shim.Schema) {
-	m[key] = value
-}
-
-func (m SchemaMap) Delete(key string) {
-	delete(m, key)
-}

@@ -1,0 +1,13 @@
+name: muxedbasicprogram
+runtime: yaml
+resources:
+  randomNumber:
+    type: muxedrandom:RandomInteger
+    properties:
+      min: 2
+      max: 2
+
+  pseudoRandomNumber:
+    type: muxedrandom:RandomHumanNumber
+    properties:
+      suggestion: ${randomNumber.result}
