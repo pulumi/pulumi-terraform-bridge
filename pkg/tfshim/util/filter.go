@@ -144,6 +144,7 @@ func (p *FilteringProvider) IsSet(ctx context.Context, v interface{}) ([]interfa
 func (p *FilteringProvider) DetailedSchemaDump() []byte {
 	panic("Unsupported")
 }
+
 type filteringMap struct {
 	inner       shim.ResourceMap
 	tokenFilter func(string) bool
