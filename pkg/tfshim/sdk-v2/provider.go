@@ -2,16 +2,17 @@ package sdkv2
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/logging"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	testing "github.com/mitchellh/go-testing-interface"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 var _ = shim.Provider(v2Provider{})
@@ -224,8 +225,148 @@ func (p v2Provider) IsSet(_ context.Context, v interface{}) ([]interface{}, bool
 	return nil, false
 }
 
-func (p v2Provider) DetailedSchemaDump() string {
-	spew.Config.DisablePointerAddresses = true
-	spew.Config.DisableCapacities = true
-	return spew.Sdump(p.tf)
+type tfSchemaMarshaller struct {
+	Type                    schema.ValueType
+	ConfigMode              schema.SchemaConfigMode
+	Required                bool
+	Optional                bool
+	Computed                bool
+	ForceNew                bool
+	DiffSuppressFuncDefined bool
+	DiffSuppressOnRefresh   bool
+	Default                 interface{}
+	DefaultFuncDefined      bool
+	Description             string
+	InputDefault            string
+	StateFuncDefined        bool
+	Elem                    interface{}
+	MaxItems                int
+	MinItems                int
+	SetDefined              bool
+	ComputedWhen            []string
+	ConflictsWith           []string
+	ExactlyOneOf            []string
+	AtLeastOneOf            []string
+	RequiredWith            []string
+	Deprecated              string
+	ValidateFuncDefined     bool
+	ValidateDiagFuncDefined bool
+	Sensitive               bool
+}
+
+type tfResourceMarshaller struct {
+	Schema                            map[string]*tfSchemaMarshaller
+	SchemaVersion                     int
+	MigrateStateDefined               bool
+	StateUpgradersLen                 int
+	CustomizeDiffDefined              bool
+	DeprecationMessage                string
+	Description                       string
+	UseJSONNumber                     bool
+	EnableLegacyTypeSystemApplyErrors bool
+	EnableLegacyTypeSystemPlanErrors  bool
+}
+
+type tfProvMarshaller struct {
+	Schema               map[string]*tfSchemaMarshaller
+	ResourcesMap         map[string]*tfResourceMarshaller
+	DataSourcesMap       map[string]*tfResourceMarshaller
+	ConfigureFuncDefined bool
+	TerraformVersion     string
+}
+
+func convertTFSchemaOrResource(s interface{}) interface{} {
+	if s == nil {
+		return nil
+	}
+	switch s := s.(type) {
+	case *schema.Schema:
+		return convertTFSchema(s)
+	case *schema.Resource:
+		return convertTfResource(s)
+	}
+	panic(fmt.Sprintf("unexpected type %T", s))
+}
+
+func convertTFSchema(s *schema.Schema) *tfSchemaMarshaller {
+	return &tfSchemaMarshaller{
+		Type:                    s.Type,
+		ConfigMode:              s.ConfigMode,
+		Required:                s.Required,
+		Optional:                s.Optional,
+		Computed:                s.Computed,
+		ForceNew:                s.ForceNew,
+		DiffSuppressFuncDefined: s.DiffSuppressFunc != nil,
+		DiffSuppressOnRefresh:   s.DiffSuppressOnRefresh,
+		Default:                 s.Default,
+		DefaultFuncDefined:      s.DefaultFunc != nil,
+		Description:             s.Description,
+		InputDefault:            s.InputDefault,
+		StateFuncDefined:        s.StateFunc != nil,
+		Elem:                    convertTFSchemaOrResource(s.Elem),
+		MaxItems:                s.MaxItems,
+		MinItems:                s.MinItems,
+		SetDefined:              s.Set != nil,
+		ComputedWhen:            s.ComputedWhen,
+		ConflictsWith:           s.ConflictsWith,
+		ExactlyOneOf:            s.ExactlyOneOf,
+		AtLeastOneOf:            s.AtLeastOneOf,
+		RequiredWith:            s.RequiredWith,
+		Deprecated:              s.Deprecated,
+		ValidateFuncDefined:     s.ValidateFunc != nil,
+		ValidateDiagFuncDefined: s.ValidateDiagFunc != nil,
+		Sensitive:               s.Sensitive,
+	}
+}
+
+func convertTfResource(r *schema.Resource) *tfResourceMarshaller {
+	tfResource := &tfResourceMarshaller{
+		Schema:                            make(map[string]*tfSchemaMarshaller),
+		SchemaVersion:                     r.SchemaVersion,
+		MigrateStateDefined:               r.MigrateState != nil,
+		StateUpgradersLen:                 len(r.StateUpgraders),
+		CustomizeDiffDefined:              r.CustomizeDiff != nil,
+		DeprecationMessage:                r.DeprecationMessage,
+		Description:                       r.Description,
+		UseJSONNumber:                     r.UseJSONNumber,
+		EnableLegacyTypeSystemApplyErrors: r.EnableLegacyTypeSystemApplyErrors,
+		EnableLegacyTypeSystemPlanErrors:  r.EnableLegacyTypeSystemPlanErrors,
+	}
+
+	for k, v := range r.Schema {
+		tfResource.Schema[k] = convertTFSchema(v)
+	}
+
+	return tfResource
+}
+
+func convertTfProv(p *schema.Provider) *tfProvMarshaller {
+	tfProv := &tfProvMarshaller{
+		Schema:               make(map[string]*tfSchemaMarshaller),
+		ResourcesMap:         make(map[string]*tfResourceMarshaller),
+		DataSourcesMap:       make(map[string]*tfResourceMarshaller),
+		ConfigureFuncDefined: p.ConfigureFunc != nil,
+		TerraformVersion:     p.TerraformVersion,
+	}
+
+	for k, v := range p.Schema {
+		tfProv.Schema[k] = convertTFSchema(v)
+	}
+
+	for k, v := range p.ResourcesMap {
+		tfProv.ResourcesMap[k] = convertTfResource(v)
+	}
+
+	for k, v := range p.DataSourcesMap {
+		tfProv.DataSourcesMap[k] = convertTfResource(v)
+	}
+
+	return tfProv
+}
+
+func (p v2Provider) DetailedSchemaDump() []byte {
+	prov := convertTfProv(p.tf)
+	sch, err := json.Marshal(prov)
+	contract.AssertNoErrorf(err, "failed to marshal schema")
+	return sch
 }
