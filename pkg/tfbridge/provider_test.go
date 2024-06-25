@@ -5625,6 +5625,9 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 }
 
 func TestSetDuplicatedDiffEntries(t *testing.T) {
+	// Duplicated diff entries cause the engine to display the wrong detailed diff.
+	// We have a workaround in place to deduplicate the entries.
+	// [pulumi/pulumi#16466]
 	p := &schemav2.Provider{
 		Schema: map[string]*schemav2.Schema{},
 		ResourcesMap: map[string]*schemav2.Resource{
