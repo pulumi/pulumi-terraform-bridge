@@ -30,11 +30,9 @@ import (
 //
 // Suppose T1 <= T2 if T1 has the subset of properties of T2 with types that are themselves Tx <= Ty.
 //
-// Suppose props(T) defines the set of property names for an object type.
-//
 // The algo looks for this pattern to detect recursion:
 //
-//	ancestor(T1, T2), ancestor(T2, T3),  T3 <= T2 <= T1, props(T1)==props(T2)
+//	ancestor(T1, T2), ancestor(T2, T3),  T3 <= T2 <= T1
 //
 // This needs to use an approximate and not strict equality because the leaf node of a recursively unrolled type will
 // drop recursive properties and therefore not strictly match the ancestor.
@@ -76,22 +74,12 @@ func (rd *recursionDetector) visit(ancestors []tokens.Type, current tokens.Type)
 					rd.detectedRecursiveTypes = map[tokens.Type]struct{}{}
 				}
 				rd.detectedRecursiveTypes[ai] = struct{}{}
+				return
 			}
 		}
 	}
 }
 
 func (rd *recursionDetector) detect(t1, t2, t3 tokens.Type) bool {
-	return rd.cmp.LessThanOrEqualTypeRefs(t3, t2) &&
-		rd.cmp.LessThanOrEqualTypeRefs(t2, t1) &&
-		rd.hasSameProps(t1, t2)
-}
-
-func (rd *recursionDetector) hasSameProps(t1, t2 tokens.Type) bool {
-	cts1, ok1 := rd.schema.Types[string(t1)]
-	cts2, ok2 := rd.schema.Types[string(t2)]
-	if !ok1 || !ok2 {
-		return false
-	}
-	return len(cts1.Properties) == len(cts2.Properties)
+	return rd.cmp.LessThanOrEqualTypeRefs(t3, t2) && rd.cmp.LessThanOrEqualTypeRefs(t2, t1)
 }
