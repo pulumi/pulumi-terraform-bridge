@@ -704,6 +704,33 @@ func TestUnknownBlocks(t *testing.T) {
 				},
 			},
 		},
+		"prov_nested_test": {
+			Schema: map[string]*schema.Schema{
+				"test": {
+					Type:     schema.TypeList,
+					Optional: true,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"nested_prop": {
+								Type:     schema.TypeList,
+								Optional: true,
+								Elem: &schema.Resource{
+									Schema: map[string]*schema.Schema{
+										"test_prop": {
+											Type:     schema.TypeList,
+											Optional: true,
+											Elem: &schema.Schema{
+												Type: schema.TypeString,
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
 		"prov_aux": {
 			Schema: map[string]*schema.Schema{
 				"aux": {
@@ -719,10 +746,44 @@ func TestUnknownBlocks(t *testing.T) {
 						},
 					},
 				},
+				"nested_aux": {
+					Type:     schema.TypeList,
+					Optional: true,
+					Computed: true,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"nested_prop": {
+								Type:     schema.TypeList,
+								Optional: true,
+								Computed: true,
+								Elem: &schema.Resource{
+									Schema: map[string]*schema.Schema{
+										"test_prop": {
+											Type:     schema.TypeList,
+											Optional: true,
+											Computed: true,
+											Elem: &schema.Schema{
+												Type: schema.TypeString,
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
 			},
 			CreateContext: func(_ context.Context, d *schema.ResourceData, _ interface{}) diag.Diagnostics {
 				d.SetId("aux")
 				err := d.Set("aux", []map[string]interface{}{{"test_prop": "aux"}})
+				require.NoError(t, err)
+				err = d.Set("nested_aux", []map[string]interface{}{
+					{
+						"nested_prop": []map[string]interface{}{
+							{"test_prop": []string{"aux"}},
+						},
+					},
+				})
 				require.NoError(t, err)
 				return nil
 			},
@@ -730,8 +791,14 @@ func TestUnknownBlocks(t *testing.T) {
 	}
 	bridgedProvider := pulcheck.BridgedProvider(t, "prov", resMap)
 
-	t.Run("list of objects", func(t *testing.T) {
-		program := `
+	for _, tc := range []struct {
+		name     string
+		program  string
+		expected autogold.Value
+	}{
+		{
+			"list of objects",
+			`
 name: test
 runtime: yaml
 resources:
@@ -741,16 +808,8 @@ resources:
     type: prov:index:Test
     properties:
       tests: ${auxRes.auxes}
-outputs:
-  testOut: ${mainRes.tests}
-`
-		pt := pulcheck.PulCheck(t, bridgedProvider, program)
-		res := pt.Preview(optpreview.Diff())
-		t.Logf(res.StdOut)
-		// Test that the test property is unknown at preview time.
-		// Note that the property is output<string> instead of
-		// output<list<obj>> - this is due to an engine limitation.
-		autogold.Expect(`Previewing update (test):
+`,
+			autogold.Expect(`Previewing update (test):
 + pulumi:pulumi:Stack: (create)
     [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
     + prov:index/aux:Aux: (create)
@@ -758,21 +817,13 @@ outputs:
     + prov:index/test:Test: (create)
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
         tests     : output<string>
-    --outputs:--
-    testOut: output<string>
 Resources:
     + 3 to create
-`).Equal(t, res.StdOut)
-		resUp := pt.Up()
-		// assert that the property gets resolved
-		require.Equal(t,
-			[]interface{}{map[string]interface{}{"testProp": "aux"}},
-			resUp.Outputs["testOut"].Value,
-		)
-	})
-
-	t.Run("unknown object", func(t *testing.T) {
-		program := `
+`),
+		},
+		{
+			"unknown object",
+			`
 name: test
 runtime: yaml
 resources:
@@ -783,16 +834,8 @@ resources:
         properties:
             tests:
                 - ${auxRes.auxes[0]}
-outputs:
-    testOut: ${mainRes.tests[0]}
-`
-		pt := pulcheck.PulCheck(t, bridgedProvider, program)
-		res := pt.Preview(optpreview.Diff())
-		t.Logf(res.StdOut)
-		// Test that the test property is unknown at preview time.
-		// Note that the property is output<string> instead of
-		// output<obj> - this is due to an engine limitation.
-		autogold.Expect(`Previewing update (test):
+`,
+			autogold.Expect(`Previewing update (test):
 + pulumi:pulumi:Stack: (create)
     [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
     + prov:index/aux:Aux: (create)
@@ -802,18 +845,13 @@ outputs:
         tests     : [
             [0]: output<string>
         ]
-    --outputs:--
-    testOut: output<string>
 Resources:
     + 3 to create
-`).Equal(t, res.StdOut)
-		resUp := pt.Up()
-		// assert that the property gets resolved
-		require.Equal(t, map[string]interface{}{"testProp": "aux"}, resUp.Outputs["testOut"].Value)
-	})
-
-	t.Run("unknown object with others", func(t *testing.T) {
-		program := `
+`),
+		},
+		{
+			"unknown object with others",
+			`
 name: test
 runtime: yaml
 resources:
@@ -825,16 +863,8 @@ resources:
             tests:
                 - ${auxRes.auxes[0]}
                 - {"testProp": "val"}
-outputs:
-    testOut: ${mainRes.tests[0]}
-`
-		pt := pulcheck.PulCheck(t, bridgedProvider, program)
-		res := pt.Preview(optpreview.Diff())
-		t.Logf(res.StdOut)
-		// Test that the test property is unknown at preview time.
-		// Note that the property is output<string> instead of
-		// output<obj> - this is due to an engine limitation.
-		autogold.Expect(`Previewing update (test):
+`,
+			autogold.Expect(`Previewing update (test):
 + pulumi:pulumi:Stack: (create)
     [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
     + prov:index/aux:Aux: (create)
@@ -847,13 +877,207 @@ outputs:
                 testProp  : "val"
             }
         ]
-    --outputs:--
-    testOut: output<string>
 Resources:
     + 3 to create
-`).Equal(t, res.StdOut)
-		resUp := pt.Up()
-		// assert that the property gets resolved
-		require.Equal(t, map[string]interface{}{"testProp": "aux"}, resUp.Outputs["testOut"].Value)
-	})
+`),
+		},
+		{
+			"unknown nested",
+			`
+name: test
+runtime: yaml
+resources:
+    auxRes:
+        type: prov:index:Aux
+    mainRes:
+        type: prov:index:NestedTest
+        properties:
+            tests: ${auxRes.nestedAuxes}
+`,
+			autogold.Expect(`Previewing update (test):
++ pulumi:pulumi:Stack: (create)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    + prov:index/nestedTest:NestedTest: (create)
+        [urn=urn:pulumi:test::test::prov:index/nestedTest:NestedTest::mainRes]
+        tests     : output<string>
+Resources:
+    + 3 to create
+`),
+		},
+		{
+			"unknown nested level 1",
+			`
+name: test
+runtime: yaml
+resources:
+    auxRes:
+        type: prov:index:Aux
+    mainRes:
+        type: prov:index:NestedTest
+        properties:
+            tests:
+                - ${auxRes.nestedAuxes[0]}
+`,
+			autogold.Expect(`Previewing update (test):
++ pulumi:pulumi:Stack: (create)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    + prov:index/nestedTest:NestedTest: (create)
+        [urn=urn:pulumi:test::test::prov:index/nestedTest:NestedTest::mainRes]
+        tests     : [
+            [0]: output<string>
+        ]
+Resources:
+    + 3 to create
+`),
+		},
+		// tests: [{nestedProps: [{testProps: ["val"]}] }]
+		{
+			"unknown nested level 2",
+			`
+name: test
+runtime: yaml
+resources:
+  auxRes:
+    type: prov:index:Aux
+  mainRes:
+    type: prov:index:NestedTest
+    properties:
+      tests:
+        - nestedProps: ${auxRes.nestedAuxes[0].nestedProps}
+`,
+			autogold.Expect(`Previewing update (test):
++ pulumi:pulumi:Stack: (create)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    + prov:index/nestedTest:NestedTest: (create)
+        [urn=urn:pulumi:test::test::prov:index/nestedTest:NestedTest::mainRes]
+        tests     : [
+            [0]: {
+                nestedProps: output<string>
+            }
+        ]
+Resources:
+    + 3 to create
+`),
+		},
+		{
+			"unknown nested level 3",
+			`
+name: test
+runtime: yaml
+resources:
+  auxRes:
+    type: prov:index:Aux
+  mainRes:
+    type: prov:index:NestedTest
+    properties:
+      tests:
+        - nestedProps:
+            - ${auxRes.nestedAuxes[0].nestedProps[0]}
+`,
+			autogold.Expect(`Previewing update (test):
++ pulumi:pulumi:Stack: (create)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    + prov:index/nestedTest:NestedTest: (create)
+        [urn=urn:pulumi:test::test::prov:index/nestedTest:NestedTest::mainRes]
+        tests     : [
+            [0]: {
+                nestedProps: [
+                    [0]: output<string>
+                ]
+            }
+        ]
+Resources:
+    + 3 to create
+`),
+		},
+		{
+			"unknown nested level 4",
+			`
+name: test
+runtime: yaml
+resources:
+  auxRes:
+    type: prov:index:Aux
+  mainRes:
+    type: prov:index:NestedTest
+    properties:
+      tests:
+        - nestedProps:
+            - testProps: ${auxRes.nestedAuxes[0].nestedProps[0].testProps}
+`,
+			autogold.Expect(`Previewing update (test):
++ pulumi:pulumi:Stack: (create)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    + prov:index/nestedTest:NestedTest: (create)
+        [urn=urn:pulumi:test::test::prov:index/nestedTest:NestedTest::mainRes]
+        tests     : [
+            [0]: {
+                nestedProps: [
+                    [0]: {
+                        testProps : output<string>
+                    }
+                ]
+            }
+        ]
+Resources:
+    + 3 to create
+`),
+		},
+		{
+			"unknown nested level 5",
+			`
+name: test
+runtime: yaml
+resources:
+  auxRes:
+    type: prov:index:Aux
+  mainRes:
+    type: prov:index:NestedTest
+    properties:
+      tests:
+        - nestedProps:
+            - testProps:
+                - ${auxRes.nestedAuxes[0].nestedProps[0].testProps[0]}
+`,
+			autogold.Expect(`Previewing update (test):
++ pulumi:pulumi:Stack: (create)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    + prov:index/nestedTest:NestedTest: (create)
+        [urn=urn:pulumi:test::test::prov:index/nestedTest:NestedTest::mainRes]
+        tests     : [
+            [0]: {
+                nestedProps: [
+                    [0]: {
+                        testProps : [
+                            [0]: output<string>
+                        ]
+                    }
+                ]
+            }
+        ]
+Resources:
+    + 3 to create
+`),
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			pt := pulcheck.PulCheck(t, bridgedProvider, tc.program)
+			res := pt.Preview(optpreview.Diff())
+			t.Logf(res.StdOut)
+
+			tc.expected.Equal(t, res.StdOut)
+		})
+	}
 }
