@@ -39,14 +39,14 @@ import (
 type recursionDetector struct {
 	schema                 *pschema.PackageSpec
 	detectedRecursiveTypes map[tokens.Type]struct{}
-	cmp                    comparer
+	cmp                    *comparer
 }
 
 func newRecursionDetector(schema *pschema.PackageSpec) *recursionDetector {
 	return &recursionDetector{
 		schema:                 schema,
 		detectedRecursiveTypes: map[tokens.Type]struct{}{},
-		cmp:                    comparer{schema: schema},
+		cmp:                    &comparer{schema: schema},
 	}
 }
 

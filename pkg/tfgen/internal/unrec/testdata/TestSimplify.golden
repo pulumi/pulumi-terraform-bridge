@@ -46,97 +46,12 @@
     "myprov:index/WebAclStatementAndStatementStatement:WebAclStatementAndStatementStatement": {
       "properties": {
         "andStatement": {
-          "$ref": "#/types/myprov:index/WebAclStatementAndStatementStatementAndStatement:WebAclStatementAndStatementStatementAndStatement"
+          "$ref": "#/types/myprov:index/WebAclStatementAndStatement:WebAclStatementAndStatement"
         },
         "xssMatchStatement": {
           "$ref": "#/types/myprov:index/WebAclStatementAndStatementStatementXssMatchStatement:WebAclStatementAndStatementStatementXssMatchStatement"
         }
       },
-      "type": "object"
-    },
-    "myprov:index/WebAclStatementAndStatementStatementAndStatement:WebAclStatementAndStatementStatementAndStatement": {
-      "properties": {
-        "statements": {
-          "type": "array",
-          "items": {
-            "$ref": "#/types/myprov:index/WebAclStatementAndStatementStatementAndStatementStatement:WebAclStatementAndStatementStatementAndStatementStatement"
-          }
-        }
-      },
-      "type": "object",
-      "required": [
-        "statements"
-      ]
-    },
-    "myprov:index/WebAclStatementAndStatementStatementAndStatementStatement:WebAclStatementAndStatementStatementAndStatementStatement": {
-      "properties": {
-        "andStatement": {
-          "$ref": "#/types/myprov:index/WebAclStatementAndStatementStatementAndStatementStatementAndStatement:WebAclStatementAndStatementStatementAndStatementStatementAndStatement"
-        },
-        "xssMatchStatement": {
-          "$ref": "#/types/myprov:index/WebAclStatementAndStatementStatementXssMatchStatement:WebAclStatementAndStatementStatementXssMatchStatement"
-        }
-      },
-      "type": "object"
-    },
-    "myprov:index/WebAclStatementAndStatementStatementAndStatementStatementAndStatement:WebAclStatementAndStatementStatementAndStatementStatementAndStatement": {
-      "properties": {
-        "statements": {
-          "type": "array",
-          "items": {
-            "$ref": "#/types/myprov:index/WebAclStatementAndStatementStatementAndStatementStatementAndStatementStatement:WebAclStatementAndStatementStatementAndStatementStatementAndStatementStatement"
-          }
-        }
-      },
-      "type": "object",
-      "required": [
-        "statements"
-      ]
-    },
-    "myprov:index/WebAclStatementAndStatementStatementAndStatementStatementAndStatementStatement:WebAclStatementAndStatementStatementAndStatementStatementAndStatementStatement": {
-      "properties": {
-        "xssMatchStatement": {
-          "$ref": "#/types/myprov:index/WebAclStatementAndStatementStatementXssMatchStatement:WebAclStatementAndStatementStatementXssMatchStatement"
-        }
-      },
-      "type": "object"
-    },
-    "myprov:index/WebAclStatementAndStatementStatementAndStatementStatementAndStatementStatementXssMatchStatement:WebAclStatementAndStatementStatementAndStatementStatementAndStatementStatementXssMatchStatement": {
-      "properties": {
-        "fieldToMatch": {
-          "$ref": "#/types/myprov:index/WebAclStatementAndStatementStatementXssMatchStatementFieldToMatch:WebAclStatementAndStatementStatementXssMatchStatementFieldToMatch"
-        }
-      },
-      "type": "object"
-    },
-    "myprov:index/WebAclStatementAndStatementStatementAndStatementStatementAndStatementStatementXssMatchStatementFieldToMatch:WebAclStatementAndStatementStatementAndStatementStatementAndStatementStatementXssMatchStatementFieldToMatch": {
-      "properties": {
-        "method": {
-          "$ref": "#/types/myprov:index/WebAclStatementAndStatementStatementXssMatchStatementFieldToMatchMethod:WebAclStatementAndStatementStatementXssMatchStatementFieldToMatchMethod"
-        }
-      },
-      "type": "object"
-    },
-    "myprov:index/WebAclStatementAndStatementStatementAndStatementStatementAndStatementStatementXssMatchStatementFieldToMatchMethod:WebAclStatementAndStatementStatementAndStatementStatementAndStatementStatementXssMatchStatementFieldToMatchMethod": {
-      "type": "object"
-    },
-    "myprov:index/WebAclStatementAndStatementStatementAndStatementStatementXssMatchStatement:WebAclStatementAndStatementStatementAndStatementStatementXssMatchStatement": {
-      "properties": {
-        "fieldToMatch": {
-          "$ref": "#/types/myprov:index/WebAclStatementAndStatementStatementXssMatchStatementFieldToMatch:WebAclStatementAndStatementStatementXssMatchStatementFieldToMatch"
-        }
-      },
-      "type": "object"
-    },
-    "myprov:index/WebAclStatementAndStatementStatementAndStatementStatementXssMatchStatementFieldToMatch:WebAclStatementAndStatementStatementAndStatementStatementXssMatchStatementFieldToMatch": {
-      "properties": {
-        "method": {
-          "$ref": "#/types/myprov:index/WebAclStatementAndStatementStatementXssMatchStatementFieldToMatchMethod:WebAclStatementAndStatementStatementXssMatchStatementFieldToMatchMethod"
-        }
-      },
-      "type": "object"
-    },
-    "myprov:index/WebAclStatementAndStatementStatementAndStatementStatementXssMatchStatementFieldToMatchMethod:WebAclStatementAndStatementStatementAndStatementStatementXssMatchStatementFieldToMatchMethod": {
       "type": "object"
     },
     "myprov:index/WebAclStatementAndStatementStatementXssMatchStatement:WebAclStatementAndStatementStatementXssMatchStatement": {
@@ -150,12 +65,9 @@
     "myprov:index/WebAclStatementAndStatementStatementXssMatchStatementFieldToMatch:WebAclStatementAndStatementStatementXssMatchStatementFieldToMatch": {
       "properties": {
         "method": {
-          "$ref": "#/types/myprov:index/WebAclStatementAndStatementStatementXssMatchStatementFieldToMatchMethod:WebAclStatementAndStatementStatementXssMatchStatementFieldToMatchMethod"
+          "$ref": "#/types/myprov:index/WebAclStatementAndStatement:WebAclStatementAndStatement"
         }
       },
-      "type": "object"
-    },
-    "myprov:index/WebAclStatementAndStatementStatementXssMatchStatementFieldToMatchMethod:WebAclStatementAndStatementStatementXssMatchStatementFieldToMatchMethod": {
       "type": "object"
     },
     "myprov:index/WebAclStatementRateBasedStatement:WebAclStatementRateBasedStatement": {
@@ -164,124 +76,9 @@
           "type": "string"
         },
         "scopeDownStatement": {
-          "$ref": "#/types/myprov:index/WebAclStatementRateBasedStatementScopeDownStatement:WebAclStatementRateBasedStatementScopeDownStatement"
+          "$ref": "#/types/myprov:index/WebAclStatementAndStatementStatement:WebAclStatementAndStatementStatement"
         }
       },
-      "type": "object"
-    },
-    "myprov:index/WebAclStatementRateBasedStatementScopeDownStatement:WebAclStatementRateBasedStatementScopeDownStatement": {
-      "properties": {
-        "andStatement": {
-          "$ref": "#/types/myprov:index/WebAclStatementAndStatementStatementAndStatement:WebAclStatementAndStatementStatementAndStatement"
-        },
-        "xssMatchStatement": {
-          "$ref": "#/types/myprov:index/WebAclStatementAndStatementStatementXssMatchStatement:WebAclStatementAndStatementStatementXssMatchStatement"
-        }
-      },
-      "type": "object"
-    },
-    "myprov:index/WebAclStatementRateBasedStatementScopeDownStatementAndStatement:WebAclStatementRateBasedStatementScopeDownStatementAndStatement": {
-      "properties": {
-        "statements": {
-          "type": "array",
-          "items": {
-            "$ref": "#/types/myprov:index/WebAclStatementRateBasedStatementScopeDownStatementAndStatementStatement:WebAclStatementRateBasedStatementScopeDownStatementAndStatementStatement"
-          }
-        }
-      },
-      "type": "object",
-      "required": [
-        "statements"
-      ]
-    },
-    "myprov:index/WebAclStatementRateBasedStatementScopeDownStatementAndStatementStatement:WebAclStatementRateBasedStatementScopeDownStatementAndStatementStatement": {
-      "properties": {
-        "andStatement": {
-          "$ref": "#/types/myprov:index/WebAclStatementAndStatementStatementAndStatementStatementAndStatement:WebAclStatementAndStatementStatementAndStatementStatementAndStatement"
-        },
-        "xssMatchStatement": {
-          "$ref": "#/types/myprov:index/WebAclStatementAndStatementStatementXssMatchStatement:WebAclStatementAndStatementStatementXssMatchStatement"
-        }
-      },
-      "type": "object"
-    },
-    "myprov:index/WebAclStatementRateBasedStatementScopeDownStatementAndStatementStatementAndStatement:WebAclStatementRateBasedStatementScopeDownStatementAndStatementStatementAndStatement": {
-      "properties": {
-        "statements": {
-          "type": "array",
-          "items": {
-            "$ref": "#/types/myprov:index/WebAclStatementRateBasedStatementScopeDownStatementAndStatementStatementAndStatementStatement:WebAclStatementRateBasedStatementScopeDownStatementAndStatementStatementAndStatementStatement"
-          }
-        }
-      },
-      "type": "object",
-      "required": [
-        "statements"
-      ]
-    },
-    "myprov:index/WebAclStatementRateBasedStatementScopeDownStatementAndStatementStatementAndStatementStatement:WebAclStatementRateBasedStatementScopeDownStatementAndStatementStatementAndStatementStatement": {
-      "properties": {
-        "xssMatchStatement": {
-          "$ref": "#/types/myprov:index/WebAclStatementAndStatementStatementXssMatchStatement:WebAclStatementAndStatementStatementXssMatchStatement"
-        }
-      },
-      "type": "object"
-    },
-    "myprov:index/WebAclStatementRateBasedStatementScopeDownStatementAndStatementStatementAndStatementStatementXssMatchStatement:WebAclStatementRateBasedStatementScopeDownStatementAndStatementStatementAndStatementStatementXssMatchStatement": {
-      "properties": {
-        "fieldToMatch": {
-          "$ref": "#/types/myprov:index/WebAclStatementAndStatementStatementXssMatchStatementFieldToMatch:WebAclStatementAndStatementStatementXssMatchStatementFieldToMatch"
-        }
-      },
-      "type": "object"
-    },
-    "myprov:index/WebAclStatementRateBasedStatementScopeDownStatementAndStatementStatementAndStatementStatementXssMatchStatementFieldToMatch:WebAclStatementRateBasedStatementScopeDownStatementAndStatementStatementAndStatementStatementXssMatchStatementFieldToMatch": {
-      "properties": {
-        "method": {
-          "$ref": "#/types/myprov:index/WebAclStatementAndStatementStatementXssMatchStatementFieldToMatchMethod:WebAclStatementAndStatementStatementXssMatchStatementFieldToMatchMethod"
-        }
-      },
-      "type": "object"
-    },
-    "myprov:index/WebAclStatementRateBasedStatementScopeDownStatementAndStatementStatementAndStatementStatementXssMatchStatementFieldToMatchMethod:WebAclStatementRateBasedStatementScopeDownStatementAndStatementStatementAndStatementStatementXssMatchStatementFieldToMatchMethod": {
-      "type": "object"
-    },
-    "myprov:index/WebAclStatementRateBasedStatementScopeDownStatementAndStatementStatementXssMatchStatement:WebAclStatementRateBasedStatementScopeDownStatementAndStatementStatementXssMatchStatement": {
-      "properties": {
-        "fieldToMatch": {
-          "$ref": "#/types/myprov:index/WebAclStatementAndStatementStatementXssMatchStatementFieldToMatch:WebAclStatementAndStatementStatementXssMatchStatementFieldToMatch"
-        }
-      },
-      "type": "object"
-    },
-    "myprov:index/WebAclStatementRateBasedStatementScopeDownStatementAndStatementStatementXssMatchStatementFieldToMatch:WebAclStatementRateBasedStatementScopeDownStatementAndStatementStatementXssMatchStatementFieldToMatch": {
-      "properties": {
-        "method": {
-          "$ref": "#/types/myprov:index/WebAclStatementAndStatementStatementXssMatchStatementFieldToMatchMethod:WebAclStatementAndStatementStatementXssMatchStatementFieldToMatchMethod"
-        }
-      },
-      "type": "object"
-    },
-    "myprov:index/WebAclStatementRateBasedStatementScopeDownStatementAndStatementStatementXssMatchStatementFieldToMatchMethod:WebAclStatementRateBasedStatementScopeDownStatementAndStatementStatementXssMatchStatementFieldToMatchMethod": {
-      "type": "object"
-    },
-    "myprov:index/WebAclStatementRateBasedStatementScopeDownStatementXssMatchStatement:WebAclStatementRateBasedStatementScopeDownStatementXssMatchStatement": {
-      "properties": {
-        "fieldToMatch": {
-          "$ref": "#/types/myprov:index/WebAclStatementAndStatementStatementXssMatchStatementFieldToMatch:WebAclStatementAndStatementStatementXssMatchStatementFieldToMatch"
-        }
-      },
-      "type": "object"
-    },
-    "myprov:index/WebAclStatementRateBasedStatementScopeDownStatementXssMatchStatementFieldToMatch:WebAclStatementRateBasedStatementScopeDownStatementXssMatchStatementFieldToMatch": {
-      "properties": {
-        "method": {
-          "$ref": "#/types/myprov:index/WebAclStatementAndStatementStatementXssMatchStatementFieldToMatchMethod:WebAclStatementAndStatementStatementXssMatchStatementFieldToMatchMethod"
-        }
-      },
-      "type": "object"
-    },
-    "myprov:index/WebAclStatementRateBasedStatementScopeDownStatementXssMatchStatementFieldToMatchMethod:WebAclStatementRateBasedStatementScopeDownStatementXssMatchStatementFieldToMatchMethod": {
       "type": "object"
     }
   },

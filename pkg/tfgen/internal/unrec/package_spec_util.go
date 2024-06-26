@@ -172,10 +172,14 @@ func rewriteTypeRefs(rewrites map[tokens.Type]tokens.Type, schema *pschema.Packa
 	}
 
 	var modifiedSchema pschema.PackageSpec
-	if err := json.Unmarshal(
-		modifiedBytes, &modifiedSchema); err != nil {
+	if err := json.Unmarshal(modifiedBytes, &modifiedSchema); err != nil {
 		return err
 	}
+
+	for deletedType, _ := range rewrites {
+		delete(modifiedSchema.Types, string(deletedType))
+	}
+
 	*schema = modifiedSchema
 
 	return nil

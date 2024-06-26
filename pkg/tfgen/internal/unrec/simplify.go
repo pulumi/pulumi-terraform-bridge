@@ -16,7 +16,6 @@ package unrec
 
 import (
 	"context"
-	"fmt"
 
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -53,12 +52,6 @@ func computeAllRewriteRules(schema *pschema.PackageSpec) (map[tokens.Type]tokens
 		if err := computeRewriteRules(cmp, schema, typeRefs, rewriteRules); err != nil {
 			return nil, err
 		}
-	}
-
-	fmt.Println("REWRITE RULES", len(rewriteRules))
-	for k, v := range rewriteRules {
-		fmt.Println("REWRITE", k, v)
-
 	}
 
 	return rewriteRules, nil
