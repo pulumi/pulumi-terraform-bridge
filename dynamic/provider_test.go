@@ -203,37 +203,62 @@ func TestConfigure(t *testing.T) {
 				Args: []string{pfProviderPath(t)},
 			},
 		},
-	}, noParallel))
+	}, noParallel, expect(autogold.Expect(`{
+  "name": "pfprovider",
+  "version": "0.0.0"
+}`))))
 
 	t.Run("check-config", assertGRPCCall(s.CheckConfig, &pulumirpc.CheckRequest{
 		News: marshal(resource.PropertyMap{
 			"endpoint": resource.NewProperty("explicit endpoint"),
 		}),
-	}))
+	}, expect(autogold.Expect(`{
+  "inputs": {
+    "endpoint": "explicit endpoint"
+  }
+}`))))
 
 	// TODO: This should error
 	t.Run("check-config (invalid)", assertGRPCCall(s.CheckConfig, &pulumirpc.CheckRequest{
 		News: marshal(resource.PropertyMap{
 			"endpoint": resource.NewProperty(123.456),
 		}),
-	}))
+	}, expect(autogold.Expect(`{
+  "inputs": {
+    "endpoint": 123.456
+  }
+}`))))
 
 	t.Run("configure (args)", assertGRPCCall(s.Configure, &pulumirpc.ConfigureRequest{
 		Args: marshal(resource.PropertyMap{
 			"endpoint": resource.NewProperty("my-endpoint"),
 		}),
-	}))
+	}, expect(autogold.Expect(`{
+  "acceptResources": true,
+  "supportsPreview": true
+}`))))
 
 	t.Run("validate config", assertGRPCCall(s.Invoke, &pulumirpc.InvokeRequest{
 		Tok: "pfprovider:index/getConfigEndpoint:getConfigEndpoint",
-	}))
+	}, expect(autogold.Expect(`{
+  "return": {
+    "endpoint": "my-endpoint"
+  }
+}`))))
 }
 
 type assertGRPCCallOptions struct {
 	noParallel bool
+	expect     autogold.Value
 }
 
 func noParallel(o *assertGRPCCallOptions) { o.noParallel = true }
+
+func expect(v autogold.Value) assertGRPCCallOption {
+	return func(o *assertGRPCCallOptions) {
+		o.expect = v
+	}
+}
 
 type assertGRPCCallOption func(*assertGRPCCallOptions)
 
@@ -253,12 +278,12 @@ func assertGRPCCall[T any, R proto.Message](
 		}
 		resp, err := method(context.Background(), req)
 		require.NoError(t, err)
-		assertGRPC(t, resp)
+		assertGRPC(t, resp, o.expect)
 	}
 }
 
 // assertGRPC uses autogold to check/save msg.
-func assertGRPC(t *testing.T, msg proto.Message) {
+func assertGRPC(t *testing.T, msg proto.Message, v autogold.Value) {
 	t.Helper()
 	j, err := protojson.MarshalOptions{
 		Multiline: true,
@@ -275,7 +300,11 @@ func assertGRPC(t *testing.T, msg proto.Message) {
 	require.NoError(t, json.Unmarshal(j, &m))
 	j, err = json.MarshalIndent(m, "", "  ")
 	require.NoError(t, err)
-	autogold.ExpectFile(t, autogold.Raw(string(j)))
+	if v == nil {
+		autogold.ExpectFile(t, autogold.Raw(string(j)))
+	} else {
+		v.Equal(t, string(j))
+	}
 }
 
 // pfProviderPath returns the path the the PF provider binary for use in testing.
