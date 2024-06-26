@@ -27,123 +27,45 @@ type comparer struct {
 	schema *pschema.PackageSpec
 }
 
+func (cmp *comparer) EqualTypeRefs(a, b tokens.Type) bool {
+	g := &generalizedComparer{schema: cmp.schema}
+	g.EqualXPropertyMaps = g.strictlyEqualXPropertyMaps
+	return g.EqualTypeRefs(a, b)
+}
+
 func (cmp *comparer) LessThanTypeRefs(a, b tokens.Type) bool {
 	return cmp.LessThanOrEqualTypeRefs(a, b) && !cmp.EqualTypeRefs(a, b)
 }
 
 // A type will be considered "less than" another type if both are locally defined object types and A defines a subset of
 // B's properties. This is useful to deal with property dropout during recursive type expansions.
-func (cmp *comparer) LessThanOrEqualTypeRefs(a, b tokens.Type) bool {
-	if a == b {
-		return true
-	}
-	aT, gotA := cmp.schema.Types[string(a)]
-	bT, gotB := cmp.schema.Types[string(b)]
-	if !gotA || !gotB {
-		return false
-	}
-	if aT.Enum != nil || bT.Enum != nil {
-		return false
-	}
-
-	// Check that everything other than the properties is the same.
-	spec1 := aT.ObjectTypeSpec
-	spec2 := bT.ObjectTypeSpec
-	spec1.Properties = nil
-	spec2.Properties = nil
-	spec1.Plain = nil
-	spec2.Plain = nil
-	spec1.Required = nil
-	spec2.Required = nil
-	if !cmp.EqualObjectTypeSpecs(spec1, spec2) {
-		return false
-	}
-
-	// Finally check that properties satisfy the less-than relation.
-	aProps := newXPropertyMap(aT.ObjectTypeSpec)
-	bProps := newXPropertyMap(bT.ObjectTypeSpec)
-	if !cmp.LessThanOrEqualXPropertyMaps(aProps, bProps) {
-		return false
-	}
-
-	return true
+func (cmp *comparer) LessThanOrEqualTypeRefs(a, b tokens.Type) (eq bool) {
+	g := &generalizedComparer{schema: cmp.schema}
+	g.EqualXPropertyMaps = g.lessThanOrEqualXPropertyMaps
+	return g.EqualTypeRefs(a, b)
 }
 
-func (cmp *comparer) LessThanOrEqualXPropertyMaps(a, b xPropertyMap) bool {
+// Generalizing structural comparisons to specialize for A=B and A<=B separately.
+type generalizedComparer struct {
+	schema             *pschema.PackageSpec
+	EqualXPropertyMaps func(xPropertyMap, xPropertyMap) bool
+}
+
+func (cmp *generalizedComparer) lessThanOrEqualXPropertyMaps(a, b xPropertyMap) bool {
 	for aK, aP := range a {
 		bP, ok := b[aK]
 		// Every key in A should also be a key in B.
 		if !ok {
 			return false
 		}
-		if !cmp.LessThanOrEqualXProperties(aP, bP) {
+		if !cmp.EqualXProperties(aP, bP) {
 			return false
 		}
 	}
 	return true
 }
 
-func (cmp *comparer) LessThanOrEqualXProperties(a, b xProperty) bool {
-	if !cmp.LessThanOrEqualPropertySpecs(a.PropertySpec, b.PropertySpec) {
-		return false
-	}
-	// Everything else should be equal.
-	if a.IsRequired != b.IsRequired {
-		return false
-	}
-	if a.IsPlain != b.IsPlain {
-		return false
-	}
-	return true
-}
-
-func (cmp *comparer) LessThanOrEqualPropertySpecs(a, b pschema.PropertySpec) bool {
-	if !cmp.LessThanOrEqualTypeSpecs(a.TypeSpec, b.TypeSpec) {
-		return false
-	}
-	// Everything else should be equal.
-	a.TypeSpec = pschema.TypeSpec{}
-	b.TypeSpec = pschema.TypeSpec{}
-	return cmp.EqualPropertySpecs(&a, &b)
-}
-
-func (cmp *comparer) LessThanOrEqualTypeSpecs(a, b pschema.TypeSpec) bool {
-	aT, aOk := parseLocalRef(a.Ref)
-	bT, bOk := parseLocalRef(b.Ref)
-	if aOk && bOk && !cmp.LessThanOrEqualTypeRefs(aT, bT) {
-		return false
-	}
-	// Everything else should be equal.
-	a.Ref = ""
-	b.Ref = ""
-	return cmp.EqualTypeSpecs(&a, &b)
-}
-
-func (cmp *comparer) EqualTypeRefs(a, b tokens.Type) bool {
-	if a == b {
-		return true
-	}
-	aT, gotA := cmp.schema.Types[string(a)]
-	bT, gotB := cmp.schema.Types[string(b)]
-	if gotA && gotB {
-		return cmp.EqualComplexTypeSpecs(&aT, &bT)
-	}
-	return false
-}
-
-func (cmp *comparer) EqualRawRefs(a, b string) bool {
-	if a == b {
-		return true
-	}
-	aT, ok1 := parseLocalRef(a)
-	bT, ok2 := parseLocalRef(b)
-	if ok1 && ok2 {
-		return cmp.EqualTypeRefs(aT, bT)
-	}
-	return false
-}
-
-func (cmp *comparer) EqualXPropertyMaps(a, b xPropertyMap) bool {
+func (cmp *generalizedComparer) strictlyEqualXPropertyMaps(a, b xPropertyMap) bool {
 	if a == nil || b == nil {
 		return a == nil && b == nil
 	}
@@ -162,7 +84,31 @@ func (cmp *comparer) EqualXPropertyMaps(a, b xPropertyMap) bool {
 	return true
 }
 
-func (cmp *comparer) EqualXProperties(a, b xProperty) bool {
+func (cmp *generalizedComparer) EqualTypeRefs(a, b tokens.Type) bool {
+	if a == b {
+		return true
+	}
+	aT, gotA := cmp.schema.Types[string(a)]
+	bT, gotB := cmp.schema.Types[string(b)]
+	if gotA && gotB {
+		return cmp.EqualComplexTypeSpecs(&aT, &bT)
+	}
+	return false
+}
+
+func (cmp *generalizedComparer) EqualRawRefs(a, b string) bool {
+	if a == b {
+		return true
+	}
+	aT, ok1 := parseLocalRef(a)
+	bT, ok2 := parseLocalRef(b)
+	if ok1 && ok2 {
+		return cmp.EqualTypeRefs(aT, bT)
+	}
+	return false
+}
+
+func (cmp *generalizedComparer) EqualXProperties(a, b xProperty) bool {
 	if a.IsRequired != b.IsRequired {
 		return false
 	}
@@ -175,7 +121,7 @@ func (cmp *comparer) EqualXProperties(a, b xProperty) bool {
 	return true
 }
 
-func (cmp *comparer) EqualObjectTypeSpecs(a, b pschema.ObjectTypeSpec) bool {
+func (cmp *generalizedComparer) EqualObjectTypeSpecs(a, b pschema.ObjectTypeSpec) bool {
 	if a.Type != b.Type {
 		return false
 	}
@@ -194,7 +140,7 @@ func (cmp *comparer) EqualObjectTypeSpecs(a, b pschema.ObjectTypeSpec) bool {
 	return true
 }
 
-func (cmp *comparer) EqualComplexTypeSpecs(a, b *pschema.ComplexTypeSpec) bool {
+func (cmp *generalizedComparer) EqualComplexTypeSpecs(a, b *pschema.ComplexTypeSpec) bool {
 	// Do not identify enum equality yet.
 	if a.Enum != nil || b.Enum != nil {
 		return false
@@ -205,7 +151,7 @@ func (cmp *comparer) EqualComplexTypeSpecs(a, b *pschema.ComplexTypeSpec) bool {
 	return true
 }
 
-func (cmp *comparer) EqualLanguageMaps(a, b map[string]pschema.RawMessage) bool {
+func (cmp *generalizedComparer) EqualLanguageMaps(a, b map[string]pschema.RawMessage) bool {
 	if a == nil || b == nil {
 		return a == nil && b == nil
 	}
@@ -224,7 +170,7 @@ func (cmp *comparer) EqualLanguageMaps(a, b map[string]pschema.RawMessage) bool 
 	return true
 }
 
-func (cmp *comparer) EqualTypeSpecLists(a, b []pschema.TypeSpec) bool {
+func (cmp *generalizedComparer) EqualTypeSpecLists(a, b []pschema.TypeSpec) bool {
 	if a == nil || b == nil {
 		return a == nil && b == nil
 	}
@@ -239,7 +185,7 @@ func (cmp *comparer) EqualTypeSpecLists(a, b []pschema.TypeSpec) bool {
 	return true
 }
 
-func (cmp *comparer) EqualStringSlices(a, b []string) bool {
+func (cmp *generalizedComparer) EqualStringSlices(a, b []string) bool {
 	if a == nil || b == nil {
 		return a == nil && b == nil
 	}
@@ -254,7 +200,7 @@ func (cmp *comparer) EqualStringSlices(a, b []string) bool {
 	return true
 }
 
-func (cmp *comparer) EqualStringMaps(a, b map[string]string) bool {
+func (cmp *generalizedComparer) EqualStringMaps(a, b map[string]string) bool {
 	if a == nil || b == nil {
 		return a == nil && b == nil
 	}
@@ -273,7 +219,7 @@ func (cmp *comparer) EqualStringMaps(a, b map[string]string) bool {
 	return true
 }
 
-func (cmp *comparer) EqualDiscriminatorSpecs(a, b *pschema.DiscriminatorSpec) bool {
+func (cmp *generalizedComparer) EqualDiscriminatorSpecs(a, b *pschema.DiscriminatorSpec) bool {
 	if a == nil || b == nil {
 		return a == b
 	}
@@ -286,7 +232,7 @@ func (cmp *comparer) EqualDiscriminatorSpecs(a, b *pschema.DiscriminatorSpec) bo
 	return true
 }
 
-func (cmp *comparer) EqualTypeSpecs(a, b *pschema.TypeSpec) bool {
+func (cmp *generalizedComparer) EqualTypeSpecs(a, b *pschema.TypeSpec) bool {
 	if a == nil || b == nil {
 		return a == b
 	}
@@ -314,7 +260,7 @@ func (cmp *comparer) EqualTypeSpecs(a, b *pschema.TypeSpec) bool {
 	return true
 }
 
-func (cmp *comparer) EqualPropertySpecs(a, b *pschema.PropertySpec) bool {
+func (cmp *generalizedComparer) EqualPropertySpecs(a, b *pschema.PropertySpec) bool {
 	if !cmp.EqualTypeSpecs(&a.TypeSpec, &b.TypeSpec) {
 		return false
 	}
@@ -348,7 +294,7 @@ func (cmp *comparer) EqualPropertySpecs(a, b *pschema.PropertySpec) bool {
 	return true
 }
 
-func (cmp *comparer) EqualDefaultSpecs(a, b *pschema.DefaultSpec) bool {
+func (cmp *generalizedComparer) EqualDefaultSpecs(a, b *pschema.DefaultSpec) bool {
 	if a == nil || b == nil {
 		return a == b
 	}

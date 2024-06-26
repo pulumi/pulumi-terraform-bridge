@@ -21,6 +21,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestComparerAndStatement(t *testing.T) {
+	t1 := "myprov:index/WebAclStatementAndStatementStatementAndStatementStatement:WebAclStatementAndStatementStatementAndStatementStatement"
+	t2 := "myprov:index/WebAclStatementAndStatementStatement:WebAclStatementAndStatementStatement"
+	s := exampleSchema(t)
+	cmp := &comparer{s}
+	require.Truef(t, cmp.LessThanTypeRefs(tokens.Type(t1), tokens.Type(t2)), "A<B")
+}
+
 func TestComparer(t *testing.T) {
 	s := exampleSchema(t)
 	cmp := &comparer{s}
