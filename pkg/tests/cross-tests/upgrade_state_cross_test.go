@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
-func TestUpgradeInputsStringBasicSame(t *testing.T) {
+func TestUpgradeInputsStringBasic(t *testing.T) {
 	skipUnlessLinux(t)
 	res := &schema.Resource{
 		Schema: map[string]*schema.Schema{
@@ -52,7 +52,7 @@ func TestUpgradeInputsStringBasicSame(t *testing.T) {
 	}
 }
 
-func TestUpgradeInputsStringBasicNonZeroVersionSame(t *testing.T) {
+func TestUpgradeInputsStringBasicNonZeroVersion(t *testing.T) {
 	skipUnlessLinux(t)
 
 	res := &schema.Resource{
@@ -98,7 +98,7 @@ func TestUpgradeInputsStringBasicNonZeroVersionSame(t *testing.T) {
 	}
 }
 
-func TestUpgradeInputsObjectBasicSame(t *testing.T) {
+func TestUpgradeInputsObjectBasic(t *testing.T) {
 	skipUnlessLinux(t)
 
 	res := &schema.Resource{
