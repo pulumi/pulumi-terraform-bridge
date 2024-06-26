@@ -20,7 +20,7 @@ import (
 	"path"
 	"strings"
 
-	"github.com/opentofu/opentofu/shim"
+	"github.com/opentofu/opentofu/shim/run"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pf/proto"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
@@ -28,7 +28,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 )
 
-func providerInfo(ctx context.Context, p shim.Provider) tfbridge.ProviderInfo {
+func providerInfo(ctx context.Context, p run.Provider) tfbridge.ProviderInfo {
 	prov := tfbridge.ProviderInfo{
 		P:           proto.New(ctx, p),
 		Name:        p.Name(),
