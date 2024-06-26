@@ -1,0 +1,15 @@
+{
+  "id": "output-id",
+  "inputs": {},
+  "properties": {
+    "attrBoolRequired": true,
+    "attrIntComputed": 10000,
+    "attrIntRequired": 64,
+    "attrNumberRequired": 12.3456,
+    "attrStringComputed": "t",
+    "attrStringDefault": "default-value",
+    "attrStringDefaultOverridden": "overridden",
+    "attrStringRequired": "s",
+    "id": "output-id"
+  }
+}

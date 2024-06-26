@@ -2,13 +2,10 @@ package main
 
 import (
 	"context"
-	"fmt"
-	"net/http"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
@@ -20,19 +17,18 @@ func NewExampleDataSource() datasource.DataSource {
 
 // ExampleDataSource defines the data source implementation.
 type ExampleDataSource struct {
-	client *http.Client
+	data string
 }
 
 // ExampleDataSourceModel describes the data source data model.
 type ExampleDataSourceModel struct {
-	ConfigurableAttribute types.String `tfsdk:"configurable_attribute"`
-	ID                    types.String `tfsdk:"id"`
+	Endpoint types.String `tfsdk:"endpoint"`
 }
 
 func (d *ExampleDataSource) Metadata(
 	ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse,
 ) {
-	resp.TypeName = req.ProviderTypeName + "_example"
+	resp.TypeName = req.ProviderTypeName + "_config_endpoint"
 }
 
 func (d *ExampleDataSource) Schema(
@@ -43,12 +39,8 @@ func (d *ExampleDataSource) Schema(
 		MarkdownDescription: "Example data source",
 
 		Attributes: map[string]schema.Attribute{
-			"configurable_attribute": schema.StringAttribute{
+			"endpoint": schema.StringAttribute{
 				MarkdownDescription: "Example configurable attribute",
-				Optional:            true,
-			},
-			"id": schema.StringAttribute{
-				MarkdownDescription: "Example identifier",
 				Computed:            true,
 			},
 		},
@@ -63,19 +55,11 @@ func (d *ExampleDataSource) Configure(
 		return
 	}
 
-	client, ok := req.ProviderData.(*http.Client)
-
+	var ok bool
+	d.data, ok = req.ProviderData.(string)
 	if !ok {
-		details := fmt.Sprintf(
-			"Expected *http.Client, got: %T. Please report this issue to the provider developers.",
-			req.ProviderData,
-		)
-		resp.Diagnostics.AddError("Unexpected Data Source Configure Type", details)
-
-		return
+		resp.Diagnostics.AddError("missing provider configuration", "datasource")
 	}
-
-	d.client = client
 }
 
 func (d *ExampleDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
@@ -88,21 +72,9 @@ func (d *ExampleDataSource) Read(ctx context.Context, req datasource.ReadRequest
 		return
 	}
 
-	// If applicable, this is a great opportunity to initialize any necessary
-	// provider client data and make a call using it.
-	// httpResp, err := d.client.Do(httpReq)
-	// if err != nil {
-	//     resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to read example, got error: %s", err))
-	//     return
-	// }
+	data.Endpoint = types.StringValue(d.data)
 
-	// For the purposes of this example code, hardcoding a response value to
-	// save into the Terraform state.
-	data.ID = types.StringValue("example-id")
-
-	// Write logs using the tflog package
-	// Documentation: https://terraform.io/plugin/log
-	tflog.Trace(ctx, "read a data source")
+	// resp.Diagnostics.Append(req.ProviderMeta.GetAttribute(ctx, path.Root("endpoint"), &data.Endpoint)...)
 
 	// Save data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
