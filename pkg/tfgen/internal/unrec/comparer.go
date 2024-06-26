@@ -70,10 +70,6 @@ func (cmp *comparer) LessThanOrEqualTypeRefs(a, b tokens.Type) bool {
 }
 
 func (cmp *comparer) LessThanOrEqualXPropertyMaps(a, b xPropertyMap) bool {
-	// Do not define the relation for the degenerate case of empty maps.
-	if len(a) == 0 {
-		return false
-	}
 	for aK, aP := range a {
 		bP, ok := b[aK]
 		// Every key in A should also be a key in B.
@@ -113,7 +109,7 @@ func (cmp *comparer) LessThanOrEqualPropertySpecs(a, b pschema.PropertySpec) boo
 
 func (cmp *comparer) LessThanOrEqualTypeSpecs(a, b pschema.TypeSpec) bool {
 	aT, aOk := parseLocalRef(a.Ref)
-	bT, bOk := parseLocalRef(a.Ref)
+	bT, bOk := parseLocalRef(b.Ref)
 	if aOk && bOk && !cmp.LessThanOrEqualTypeRefs(aT, bT) {
 		return false
 	}
