@@ -65,9 +65,12 @@
     "myprov:index/WebAclStatementAndStatementStatementXssMatchStatementFieldToMatch:WebAclStatementAndStatementStatementXssMatchStatementFieldToMatch": {
       "properties": {
         "method": {
-          "$ref": "#/types/myprov:index/WebAclStatementAndStatement:WebAclStatementAndStatement"
+          "$ref": "#/types/myprov:index/WebAclStatementAndStatementStatementXssMatchStatementFieldToMatchMethod:WebAclStatementAndStatementStatementXssMatchStatementFieldToMatchMethod"
         }
       },
+      "type": "object"
+    },
+    "myprov:index/WebAclStatementAndStatementStatementXssMatchStatementFieldToMatchMethod:WebAclStatementAndStatementStatementXssMatchStatementFieldToMatchMethod": {
       "type": "object"
     },
     "myprov:index/WebAclStatementRateBasedStatement:WebAclStatementRateBasedStatement": {

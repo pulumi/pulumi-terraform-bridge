@@ -52,6 +52,10 @@ type generalizedComparer struct {
 }
 
 func (cmp *generalizedComparer) lessThanOrEqualXPropertyMaps(a, b xPropertyMap) bool {
+	// Empty objects are treated specially and are never {}<=X.
+	if len(a) == 0 || len(b) == 0 {
+		return len(a) == len(b)
+	}
 	for aK, aP := range a {
 		bP, ok := b[aK]
 		// Every key in A should also be a key in B.

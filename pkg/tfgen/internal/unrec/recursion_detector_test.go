@@ -17,8 +17,8 @@ package unrec
 import (
 	"testing"
 
+	"github.com/hexops/autogold/v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/stretchr/testify/require"
 )
 
 func TestRecursionDetector(t *testing.T) {
@@ -36,13 +36,9 @@ func TestRecursionDetector(t *testing.T) {
 
 	// This currently over-detects a bit, instead of just detecting roots it detects sub-roots as well. This can be
 	// rectified but does not seem to affect the algorithm at the moment.
-	expect := []tokens.Type{
-		"myprov:index/WebAclStatementAndStatement:WebAclStatementAndStatement",
-		"myprov:index/WebAclStatementAndStatementStatement:WebAclStatementAndStatementStatement",
-		"myprov:index/WebAclStatementAndStatementStatementAndStatement:WebAclStatementAndStatementStatementAndStatement",
-		"myprov:index/WebAclStatementRateBasedStatementScopeDownStatement:WebAclStatementRateBasedStatementScopeDownStatement",
-		"myprov:index/WebAclStatementRateBasedStatementScopeDownStatementAndStatement:WebAclStatementRateBasedStatementScopeDownStatementAndStatement",
-	}
-
-	require.Equal(t, expect, rd.Detect(roots))
+	autogold.Expect([]tokens.Type{
+		tokens.Type("myprov:index/WebAclStatementAndStatement:WebAclStatementAndStatement"),
+		tokens.Type("myprov:index/WebAclStatementAndStatementStatement:WebAclStatementAndStatementStatement"),
+		tokens.Type("myprov:index/WebAclStatementRateBasedStatementScopeDownStatement:WebAclStatementRateBasedStatementScopeDownStatement"),
+	}).Equal(t, rd.Detect(roots))
 }
