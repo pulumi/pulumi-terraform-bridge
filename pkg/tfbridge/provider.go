@@ -1076,7 +1076,9 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 		return nil, err
 	}
 
-	state, err := makeTerraformStateWithOpts(ctx, res, req.GetId(), olds, makeTerraformStateOptions{defaultZeroSchemaVersion: opts.defaultZeroSchemaVersion})
+	state, err := makeTerraformStateWithOpts(ctx, res, req.GetId(), olds,
+		makeTerraformStateOptions{defaultZeroSchemaVersion: opts.defaultZeroSchemaVersion}, //nolint: gosimple
+	)
 	if err != nil {
 		return nil, errors.Wrapf(err, "unmarshaling %s's instance state", urn)
 	}
@@ -1340,7 +1342,8 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 	if err != nil {
 		return nil, err
 	}
-	state, err := unmarshalTerraformStateWithOpts(ctx, res, id, req.GetProperties(), fmt.Sprintf("%s.state", label), unmarshalTerraformStateOptions{defaultZeroSchemaVersion: opts.defaultZeroSchemaVersion})
+	state, err := unmarshalTerraformStateWithOpts(ctx, res, id, req.GetProperties(), fmt.Sprintf("%s.state", label),
+		unmarshalTerraformStateOptions{defaultZeroSchemaVersion: opts.defaultZeroSchemaVersion}) //nolint: gosimple
 	if err != nil {
 		return nil, errors.Wrapf(err, "unmarshaling %s's instance state", urn)
 	}
@@ -1454,7 +1457,8 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 		return nil, err
 	}
 
-	state, err := makeTerraformStateWithOpts(ctx, res, req.GetId(), olds, makeTerraformStateOptions{defaultZeroSchemaVersion: opts.defaultZeroSchemaVersion})
+	state, err := makeTerraformStateWithOpts(ctx, res, req.GetId(), olds,
+		makeTerraformStateOptions{defaultZeroSchemaVersion: opts.defaultZeroSchemaVersion}) //nolint: gosimple
 	if err != nil {
 		return nil, errors.Wrapf(err, "unmarshaling %s's instance state", urn)
 	}
@@ -1583,7 +1587,8 @@ func (p *Provider) Delete(ctx context.Context, req *pulumirpc.DeleteRequest) (*p
 		return nil, err
 	}
 	// Fetch the resource attributes since many providers need more than just the ID to perform the delete.
-	state, err := unmarshalTerraformStateWithOpts(ctx, res, req.GetId(), req.GetProperties(), label, unmarshalTerraformStateOptions{defaultZeroSchemaVersion: opts.defaultZeroSchemaVersion})
+	state, err := unmarshalTerraformStateWithOpts(ctx, res, req.GetId(), req.GetProperties(), label,
+		unmarshalTerraformStateOptions{defaultZeroSchemaVersion: opts.defaultZeroSchemaVersion}) //nolint: gosimple
 	if err != nil {
 		return nil, err
 	}
