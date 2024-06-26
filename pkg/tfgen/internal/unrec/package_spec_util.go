@@ -17,6 +17,7 @@ package unrec
 import (
 	"strings"
 
+	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
@@ -26,4 +27,32 @@ func parseLocalRef(rawRef string) (tokens.Type, bool) {
 	}
 	cleanRef := strings.TrimPrefix(rawRef, "#/types/")
 	return tokens.Type(cleanRef), true
+}
+
+type xProperty struct {
+	pschema.PropertySpec
+	IsRequired bool
+	IsPlain    bool
+}
+
+type xPropertyMap map[string]xProperty
+
+func newXPropertyMap(s pschema.ObjectTypeSpec) xPropertyMap {
+	m := make(xPropertyMap)
+	for _, prop := range s.Plain {
+		p := m[prop]
+		p.IsPlain = true
+		m[prop] = p
+	}
+	for _, prop := range s.Required {
+		p := m[prop]
+		p.IsRequired = true
+		m[prop] = p
+	}
+	for prop, spec := range s.Properties {
+		p := m[prop]
+		p.PropertySpec = spec
+		m[prop] = p
+	}
+	return m
 }
