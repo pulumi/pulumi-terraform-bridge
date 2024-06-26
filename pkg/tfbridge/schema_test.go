@@ -689,8 +689,9 @@ func TestMetaProperties(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, props)
 
-			state, err = MakeTerraformState(
-				ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
+			state, err = makeTerraformStateWithOpts(
+				ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props,
+				makeTerraformStateOptions{defaultZeroSchemaVersion: true})
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 
@@ -704,12 +705,13 @@ func TestMetaProperties(t *testing.T) {
 			// Delete the resource's meta-property and ensure that we re-populate its schema version.
 			delete(props, metaKey)
 
-			state, err = MakeTerraformState(
-				ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
+			state, err = makeTerraformStateWithOpts(
+				ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props,
+				makeTerraformStateOptions{defaultZeroSchemaVersion: true})
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 
-			assert.Equal(t, strconv.Itoa(res.SchemaVersion()), state.Meta()["schema_version"])
+			assert.Equal(t, "0", state.Meta()["schema_version"])
 
 			// Remove the resource's meta-attributes and ensure that we do not include them in the result.
 			ok := clearMeta(read2)
@@ -743,8 +745,9 @@ func TestMetaProperties(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, props)
 
-			state, err = MakeTerraformState(
-				ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
+			state, err = makeTerraformStateWithOpts(
+				ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props,
+				makeTerraformStateOptions{defaultZeroSchemaVersion: true})
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 
@@ -771,8 +774,9 @@ func TestInjectingCustomTimeouts(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, props)
 
-			state, err = MakeTerraformState(
-				ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
+			state, err = makeTerraformStateWithOpts(
+				ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props,
+				makeTerraformStateOptions{defaultZeroSchemaVersion: true})
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 
@@ -786,12 +790,13 @@ func TestInjectingCustomTimeouts(t *testing.T) {
 			// Delete the resource's meta-property and ensure that we re-populate its schema version.
 			delete(props, metaKey)
 
-			state, err = MakeTerraformState(
-				ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
+			state, err = makeTerraformStateWithOpts(
+				ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props,
+				makeTerraformStateOptions{defaultZeroSchemaVersion: true})
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 
-			assert.Equal(t, strconv.Itoa(res.SchemaVersion()), state.Meta()["schema_version"])
+			assert.Equal(t, "0", state.Meta()["schema_version"])
 
 			// Remove the resource's meta-attributes and ensure that we do not include them in the result.
 			ok := clearMeta(read2)
@@ -828,8 +833,9 @@ func TestInjectingCustomTimeouts(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, props)
 
-			state, err = MakeTerraformState(
-				ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
+			state, err = makeTerraformStateWithOpts(
+				ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props,
+				makeTerraformStateOptions{defaultZeroSchemaVersion: true})
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 
@@ -884,8 +890,9 @@ func TestResultAttributesRoundTrip(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, props)
 
-			state, err = MakeTerraformState(
-				ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props)
+			state, err = makeTerraformStateWithOpts(
+				ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props,
+				makeTerraformStateOptions{defaultZeroSchemaVersion: true})
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 

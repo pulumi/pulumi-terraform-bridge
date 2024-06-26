@@ -133,10 +133,11 @@ func BridgedProvider(t T, providerName string, resMap map[string]*schema.Resourc
 	))
 
 	provider := tfbridge.ProviderInfo{
-		P:            shimProvider,
-		Name:         providerName,
-		Version:      "0.0.1",
-		MetadataInfo: &tfbridge.MetadataInfo{},
+		P:                              shimProvider,
+		Name:                           providerName,
+		Version:                        "0.0.1",
+		MetadataInfo:                   &tfbridge.MetadataInfo{},
+		EnableZeroDefaultSchemaVersion: true,
 	}
 	makeToken := func(module, name string) (string, error) {
 		return tokens.MakeStandard(providerName)(module, name)
