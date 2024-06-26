@@ -91,11 +91,25 @@ def main():
             resource_name, res.parse_resource(resource_schema, resource_name)
         )
 
+    for datasource_name, datasource_schema in provider_schema["DataSourcesMap"].items():
+        res.add_resource(
+            datasource_name, res.parse_resource(datasource_schema, datasource_name)
+        )
+
+    for attribute_name, attribute_schema in provider_schema["Schema"].items():
+        res.add_attribute(
+            attribute_name, res.parse_attribute(attribute_schema, attribute_name)
+        )
+
     res_keys = set(res.resources[0].keys())
     res_keys.update([Element.ATTRIBUTE_ELEMENT.value, Element.RESOURCE_ELEMENT.value])
+    res_keys.remove("Name")
+    res_keys = ["Name"] + list(res_keys)
 
     attr_keys = set(res.attributes[0].keys())
     attr_keys.update([Element.ATTRIBUTE_ELEMENT.value, Element.RESOURCE_ELEMENT.value])
+    attr_keys.remove("Name")
+    attr_keys = ["Name"] + list(attr_keys)
 
     with open(f"{provider_name}_resources.csv", "w", encoding="utf-8") as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=res_keys)
