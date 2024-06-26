@@ -61,6 +61,7 @@ const (
 	TypeList
 	TypeMap
 	TypeSet
+	TypeDynamic
 )
 
 func (i ValueType) String() string {
@@ -79,6 +80,8 @@ func (i ValueType) String() string {
 		return "Map"
 	case TypeSet:
 		return "Set"
+	case TypeDynamic:
+		return "Dynamic"
 	default:
 		return ""
 	}

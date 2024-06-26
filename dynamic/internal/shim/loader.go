@@ -203,7 +203,7 @@ func runProvider(ctx context.Context, meta *providercache.CachedProvider) (Provi
 		Logger:           logging.NewProviderLogger(""),
 		AllowedProtocols: []plugin.Protocol{plugin.ProtocolGRPC},
 		Managed:          true,
-		Cmd:              exec.Command(execFile),
+		Cmd:              exec.CommandContext(ctx, execFile),
 		AutoMTLS:         true,
 		VersionedPlugins: tfplugin.VersionedPlugins,
 		SyncStdout:       logging.PluginOutputMonitor(fmt.Sprintf("%s:stdout", meta.Provider)),
