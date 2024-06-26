@@ -811,4 +811,49 @@ Resources:
 		// assert that the property gets resolved
 		require.Equal(t, map[string]interface{}{"testProp": "aux"}, resUp.Outputs["testOut"].Value)
 	})
+
+	t.Run("unknown object with others", func(t *testing.T) {
+		program := `
+name: test
+runtime: yaml
+resources:
+    auxRes:
+        type: prov:index:Aux
+    mainRes:
+        type: prov:index:Test
+        properties:
+            tests:
+                - ${auxRes.auxes[0]}
+                - {"testProp": "val"}
+outputs:
+    testOut: ${mainRes.tests[0]}
+`
+		pt := pulcheck.PulCheck(t, bridgedProvider, program)
+		res := pt.Preview(optpreview.Diff())
+		t.Logf(res.StdOut)
+		// Test that the test property is unknown at preview time.
+		// Note that the property is output<string> instead of
+		// output<obj> - this is due to an engine limitation.
+		autogold.Expect(`Previewing update (test):
++ pulumi:pulumi:Stack: (create)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    + prov:index/test:Test: (create)
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+        tests     : [
+            [0]: output<string>
+            [1]: {
+                testProp  : "val"
+            }
+        ]
+    --outputs:--
+    testOut: output<string>
+Resources:
+    + 3 to create
+`).Equal(t, res.StdOut)
+		resUp := pt.Up()
+		// assert that the property gets resolved
+		require.Equal(t, map[string]interface{}{"testProp": "aux"}, resUp.Outputs["testOut"].Value)
+	})
 }

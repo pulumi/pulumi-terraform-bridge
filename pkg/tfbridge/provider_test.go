@@ -5165,7 +5165,6 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 	})
 
 	t.Run("unknown for set block prop", func(t *testing.T) {
-		// TODO[pulumi/pulumi-terraform-bridge#1885]
 		testutils.Replay(t, provider, `
 	{
 		"method": "/pulumirpc.ResourceProvider/Create",
@@ -5195,7 +5194,6 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 	})
 
 	t.Run("unknown for set block prop collection", func(t *testing.T) {
-		// TODO[pulumi/pulumi-terraform-bridge#1885]
 		testutils.Replay(t, provider, `
 	{
 		"method": "/pulumirpc.ResourceProvider/Create",
@@ -5317,7 +5315,6 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 	})
 
 	t.Run("unknown for list block prop collection", func(t *testing.T) {
-		// TODO[pulumi/pulumi-terraform-bridge#1885]
 		testutils.Replay(t, provider, `
 	{
 		"method": "/pulumirpc.ResourceProvider/Create",
@@ -5442,7 +5439,6 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 	})
 
 	t.Run("unknown for nested list block prop nested collection", func(t *testing.T) {
-		// TODO[pulumi/pulumi-terraform-bridge#1885]
 		testutils.Replay(t, provider, `
 	{
 		"method": "/pulumirpc.ResourceProvider/Create",
@@ -5504,7 +5500,6 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 	})
 
 	t.Run("unknown for nested list block collection", func(t *testing.T) {
-		// TODO[pulumi/pulumi-terraform-bridge#1885]
 		testutils.Replay(t, provider, `
 	{
 		"method": "/pulumirpc.ResourceProvider/Create",
@@ -5716,91 +5711,4 @@ func TestSetDuplicatedDiffEntries(t *testing.T) {
         "name": "snowflake"
     }
 }`)
-}
-
-func TestCheckPlanResourceChangeUnknowns(t *testing.T) {
-	p := &schemav2.Provider{
-		Schema:       map[string]*schemav2.Schema{},
-		ResourcesMap: UnknownsSchema(),
-	}
-	shimProv := shimv2.NewProvider(p, shimv2.WithPlanResourceChange(func(tfResourceType string) bool { return true }))
-	provider := &Provider{
-		tf:     shimProv,
-		config: shimv2.NewSchemaMap(p.Schema),
-		info: ProviderInfo{
-			P:              shimProv,
-			ResourcePrefix: "example",
-			Resources: map[string]*ResourceInfo{
-				"example_resource": {Tok: "ExampleResource"},
-			},
-		},
-	}
-	provider.initResourceMaps()
-
-	// TODO Finish these, maybe add to above tests
-	t.Run("unknown for set block prop", func(t *testing.T) {
-		testutils.Replay(t, provider, `
-	{
-		"method": "/pulumirpc.ResourceProvider/Check",
-		"request": {
-			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
-			"olds": {},
-			"news":{
-				"__defaults":[],
-				"setBlockProps":["04da6b54-80e4-46f7-96ec-b56ff0331ba9"]
-			},
-        	"randomSeed": "ROwbJVHmCcN8pilnAHgl2qU626UEO6pWtcnBFUc63uY="
-		},
-		"response": {
-			"inputs":{
-				"__defaults":[],
-				"setBlockProps":["04da6b54-80e4-46f7-96ec-b56ff0331ba9"]
-			}
-		}
-	}`)
-	})
-
-	t.Run("unknown for set block prop collection", func(t *testing.T) {
-		testutils.Replay(t, provider, `
-	{
-		"method": "/pulumirpc.ResourceProvider/Check",
-		"request": {
-			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
-			"olds": {},
-			"news":{
-				"__defaults":[],
-				"setBlockProps":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
-			},
-        	"randomSeed": "ROwbJVHmCcN8pilnAHgl2qU626UEO6pWtcnBFUc63uY="
-		},
-		"response": {
-			"inputs":{
-				"__defaults":[],
-				"setBlockProps":["04da6b54-80e4-46f7-96ec-b56ff0331ba9"]
-			}
-		}
-	}`)
-	})
-
-	t.Run("unknown for string prop", func(t *testing.T) {
-		testutils.Replay(t, provider, `
-	{
-		"method": "/pulumirpc.ResourceProvider/Check",
-		"request": {
-			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
-			"olds": {},
-			"news":{
-				"__defaults":[],
-				"stringProp":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
-			},
-			"randomSeed": "ROwbJVHmCcN8pilnAHgl2qU626UEO6pWtcnBFUc63uY="
-		},
-		"response": {
-			"inputs":{
-				"__defaults":[],
-				"stringProp":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
-			}
-		}
-	}`)
-	})
 }
