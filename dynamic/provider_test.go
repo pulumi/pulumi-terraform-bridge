@@ -195,6 +195,45 @@ func TestConfigure(t *testing.T) {
 	t.Parallel()
 	skipWindows(t)
 
+	// We test that the provider can be
+	// 1. parameterized
+	// 2. configured
+	// 3. that the configuration is visible to other resources/invokes
+	s := grpcTestServer(context.Background(), t)
+
+	assertGRPCCall(s.Parameterize, &pulumirpc.ParameterizeRequest{
+		Parameters: &pulumirpc.ParameterizeRequest_Args{
+			Args: &pulumirpc.ParameterizeRequest_ParametersArgs{
+				Args: []string{pfProviderPath(t)},
+			},
+		},
+	}, noParallel, expect(autogold.Expect(`{
+  "name": "pfprovider",
+  "version": "0.0.0"
+}`)))(t)
+
+	assertGRPCCall(s.Configure, &pulumirpc.ConfigureRequest{
+		Args: marshal(resource.PropertyMap{
+			"endpoint": resource.NewProperty("my-endpoint"),
+		}),
+	}, noParallel, expect(autogold.Expect(`{
+  "acceptResources": true,
+  "supportsPreview": true
+}`)))(t)
+
+	assertGRPCCall(s.Invoke, &pulumirpc.InvokeRequest{
+		Tok: "pfprovider:index/getConfigEndpoint:getConfigEndpoint",
+	}, noParallel, expect(autogold.Expect(`{
+  "return": {
+    "endpoint": "my-endpoint"
+  }
+}`)))(t)
+}
+
+func TestCheckConfig(t *testing.T) {
+	t.Parallel()
+	skipWindows(t)
+
 	s := grpcTestServer(context.Background(), t)
 
 	t.Run("parameterize", assertGRPCCall(s.Parameterize, &pulumirpc.ParameterizeRequest{
@@ -226,23 +265,6 @@ func TestConfigure(t *testing.T) {
 	}, expect(autogold.Expect(`{
   "inputs": {
     "endpoint": 123.456
-  }
-}`))))
-
-	t.Run("configure (args)", assertGRPCCall(s.Configure, &pulumirpc.ConfigureRequest{
-		Args: marshal(resource.PropertyMap{
-			"endpoint": resource.NewProperty("my-endpoint"),
-		}),
-	}, expect(autogold.Expect(`{
-  "acceptResources": true,
-  "supportsPreview": true
-}`))))
-
-	t.Run("validate config", assertGRPCCall(s.Invoke, &pulumirpc.InvokeRequest{
-		Tok: "pfprovider:index/getConfigEndpoint:getConfigEndpoint",
-	}, expect(autogold.Expect(`{
-  "return": {
-    "endpoint": "my-endpoint"
   }
 }`))))
 }
