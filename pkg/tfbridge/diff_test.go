@@ -254,7 +254,7 @@ func diffTest(t *testing.T, tfs map[string]*schema.Schema, info map[string]*Sche
 				expectedCollectionDiff[k] = &pulumirpc.PropertyDiff{Kind: v}
 				// TODO[pulumi/pulumi-terraform-bridge#2141]: We return diff kind ADD for collections with a diff.
 				// This is covered by integration tests so probably fine but we might still want to fix this.
-				expectedDiff[k] = &pulumirpc.PropertyDiff{Kind: 0}
+				expectedDiff[k] = &pulumirpc.PropertyDiff{Kind: v}
 			} else {
 				expectedDiff[k] = &pulumirpc.PropertyDiff{Kind: v}
 			}
@@ -1355,7 +1355,7 @@ func TestComputedListUpdate(t *testing.T) {
 			"outp": "bar",
 		},
 		map[string]DiffKind{
-			"prop":    U,
+			"prop":    A,
 			"prop[0]": D,
 		},
 		pulumirpc.DiffResponse_DIFF_SOME)
@@ -1435,7 +1435,8 @@ func TestComputedSetUpdate(t *testing.T) {
 			"outp": "bar",
 		},
 		map[string]DiffKind{
-			"prop": U,
+			"prop": A,
+			"prop[0]": D,
 		},
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
@@ -1573,7 +1574,8 @@ func TestComputedSetUpdateReplace(t *testing.T) {
 			"outp": "bar",
 		},
 		map[string]DiffKind{
-			"prop": UR,
+			"prop": AR,
+			"prop[0]": DR,
 		},
 		pulumirpc.DiffResponse_DIFF_SOME)
 }

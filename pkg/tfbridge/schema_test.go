@@ -3085,9 +3085,8 @@ func Test_makeTerraformInputsNoDefaults(t *testing.T) {
 				// The string property inside Computed is irrelevant.
 				"unknownArrayValue": resource.Computed{Element: resource.NewStringProperty("")},
 			}),
-			// NOTE: is this the behavior we would want here? Why is the result [unk] instead of unk?
 			//nolint:lll
-			expect: autogold.Expect(map[string]interface{}{"unknown_array_value": []interface{}{"74D93920-ED26-11E3-AC10-0800200C9A66"}}),
+			expect: autogold.Expect(map[string]interface{}{"unknown_array_value": "74D93920-ED26-11E3-AC10-0800200C9A66"}),
 		},
 		{
 			testCaseName: "unknown_object_value",
