@@ -1328,6 +1328,7 @@ func TestComputedNestedIgnore(t *testing.T) {
 		"prop")
 }
 
+//nolint:lll
 func TestComputedListUpdate(t *testing.T) {
 	diffTest(t,
 		map[string]*schema.Schema{
@@ -1345,9 +1346,11 @@ func TestComputedListUpdate(t *testing.T) {
 		map[string]DiffKind{
 			// TODO[pulumi/pulumi#2141]: This should be an U.
 			// makeDetailedDiff returns an empty diff for collections
-			// TODO: Why is outp not present here?
 			"prop":    A,
 			"prop[0]": D,
+			// Note outp is not here because of
+			// https://developer.hashicorp.com/terraform/plugin/sdkv2/resources/data-consistency-errors#planned-value-for-a-non-computed-attribute
+			// Computed properties keep the state value after being removed from inputs.
 		},
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
