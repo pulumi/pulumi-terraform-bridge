@@ -1,7 +1,7 @@
 <!-- -*- fill-column: 110 -*- -->
 # Dynamic Bridged Provider
 
-A *dynamically bridged provider* is a Pulumi native provider parameterized by the identity of a terraform
+A *dynamically bridged provider* is a Pulumi provider parameterized by the identity of a terraform
 provider. It consists of a binary `pulumi-terraform-bridge`, which is spun up as a provider by `pulumi`. The
 binary is responsible for downloading the terraform provider it is emulating, then translating `pulumi`’s
 [gRPC protocol](https://github.com/pulumi/pulumi/tree/master/proto/pulumi) into [Terraform’s v6
@@ -9,9 +9,7 @@ protocol](https://developer.hashicorp.com/terraform/plugin/terraform-plugin-prot
 
 ## Usage
 
-Dynamic bridged providers are a subset of parameterized providers <!-- TODO: Insert link to docs / blog post
-if/when it exists -->, so they are used via parameterization. If you are using a language besides Pulumi YAML,
-you start by generating an SDK.
+If you are using a language besides Pulumi YAML, you start by generating an SDK.
 
 ### SDK Generation
 
@@ -56,7 +54,6 @@ so you won't need to enter any of this information again as long as you use the 
 
 #### Path based SDK generation
 
-
 To generate an SDK based on a Terraform provider on your local file system, use:
 
 ``` sh
@@ -99,7 +96,6 @@ sequenceDiagram
 Diving deeper into how the repo is laid out, we see:
 
 ``` console
-$ eza -T --classify=always -I 'test*' --git-ignore
 ./
 ├── go.mod
 ├── go.sum
@@ -127,16 +123,16 @@ $ eza -T --classify=always -I 'test*' --git-ignore
    └── version.go
 ```
 
-The dynamic provider layer is by-design as simple and straight-forward as possible. Each package does one
-thing only and there isn't that much code. As of time of writing, the entire `dynamic` folder is only 2288
-lines of go code[^1]. I'll go through each package in turn.
+The dynamic provider layer consists by design of small, specialized packages. 
+As of time of writing, the entire `dynamic` folder is only 2288 lines of go code[^1]. 
+Let's go through each package in turn.
 
 [^1]: `loc --exclude '*._test.go'`
 
 ### `package main`
 
 `package main` is responsible for launching a Pulumi provider and setting up the parameterize call. It does
-this by calling [`pf/tfbridge.Main`](https://pkg.go.dev/github.com/pulumi/pulumi-terraform-bridge/pf@v0.38.0/tfbridge#Main), passing in an empty PF provider (from
+this by calling [`pf/tfbridge.Main`](https://pkg.go.dev/github.com/pulumi/pulumi-terraform-bridge/pf@v0.38.0/tfbridge#Main), passing in an empty Terraform Plugin Framework provider (from
 [`pf/proto.Empty()`](https://pkg.go.dev/github.com/pulumi/pulumi-terraform-bridge/pf@v0.38.0/proto#Empty)). [`pf/tfbridge.ProviderMetadata`](https://pkg.go.dev/github.com/pulumi/pulumi-terraform-bridge/pf@v0.38.0/tfbridge#ProviderMetadata) allows overriding the `Parameterize` and
 `GetSchema` call (and we override both).
 
@@ -146,7 +142,7 @@ functions return a [`tfprotov6.ProviderServer`](https://pkg.go.dev/github.com/ha
 [`pf/tfbridge.XParameterizeResetProvider`](https://pkg.go.dev/github.com/pulumi/pulumi-terraform-bridge/pf@v0.38.0/tfbridge#XParameterizeResetProvider).
 
 When `GetSchema` is called, it generates a schema from the currently equipped provider with
-[`pkg/tfgen.GenerateSchemaWithOptions`](https://pkg.go.dev/github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen#GenerateSchemaWithOptions) and returns is. All type translation, documentation generation, etc
+[`pkg/tfgen.GenerateSchemaWithOptions`](https://pkg.go.dev/github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen#GenerateSchemaWithOptions) and returns it. All type translation, documentation generation, etc
 are done with standard bridge based functionality.
 
 All other gRPC calls (`Create`, `Read`, `Update`, `Delete`, etc.) are handled normally by `pf`'s existing
