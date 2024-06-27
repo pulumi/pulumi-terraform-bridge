@@ -86,11 +86,11 @@ type promptConfigurationModel struct {
 // Set
 
 var (
-	_ basetypes.SetTypable  = (*setNestedObjectTypeOf[struct{}])(nil)
+	_ basetypes.SetTypable  = (*SetNestedObjectTypeOf[struct{}])(nil)
 	_ basetypes.SetValuable = (*SetNestedObjectValueOf[struct{}])(nil)
 )
 
-type setNestedObjectTypeOf[T any] struct {
+type SetNestedObjectTypeOf[T any] struct {
 	basetypes.SetType
 }
 
@@ -98,7 +98,7 @@ type SetNestedObjectValueOf[T any] struct {
 	basetypes.SetValue
 }
 
-func (setNested setNestedObjectTypeOf[T]) ValueFromSet(ctx context.Context, in basetypes.SetValue) (basetypes.SetValuable, diag.Diagnostics) {
+func (setNested SetNestedObjectTypeOf[T]) ValueFromSet(ctx context.Context, in basetypes.SetValue) (basetypes.SetValuable, diag.Diagnostics) {
 	var diags diag.Diagnostics
 
 	if in.IsNull() {
@@ -131,31 +131,31 @@ func NewSetNestedObjectValueOfUnknown[T any](ctx context.Context) SetNestedObjec
 	return SetNestedObjectValueOf[T]{SetValue: basetypes.NewSetUnknown(NewObjectTypeOf[T](ctx))}
 }
 
-func (t setNestedObjectTypeOf[T]) ValueType(ctx context.Context) attr.Value {
+func (setNested SetNestedObjectTypeOf[T]) ValueType(ctx context.Context) attr.Value {
 	return SetNestedObjectValueOf[T]{}
 }
 
-func (v SetNestedObjectValueOf[T]) Equal(o attr.Value) bool {
+func (setNested SetNestedObjectValueOf[T]) Equal(o attr.Value) bool {
 	other, ok := o.(SetNestedObjectValueOf[T])
 
 	if !ok {
 		return false
 	}
 
-	return v.SetValue.Equal(other.SetValue)
+	return setNested.SetValue.Equal(other.SetValue)
 }
 
-func (v SetNestedObjectValueOf[T]) Type(ctx context.Context) attr.Type {
+func (setNested SetNestedObjectValueOf[T]) Type(ctx context.Context) attr.Type {
 	return NewSetNestedObjectTypeOf[T](ctx)
 }
-func NewSetNestedObjectTypeOf[T any](ctx context.Context) setNestedObjectTypeOf[T] {
-	return setNestedObjectTypeOf[T]{basetypes.SetType{ElemType: NewObjectTypeOf[T](ctx)}}
+func NewSetNestedObjectTypeOf[T any](ctx context.Context) SetNestedObjectTypeOf[T] {
+	return SetNestedObjectTypeOf[T]{basetypes.SetType{ElemType: NewObjectTypeOf[T](ctx)}}
 }
 
 /// List
 
 var (
-	_ basetypes.ListTypable  = (*listNestedObjectTypeOf[struct{}])(nil)
+	_ basetypes.ListTypable  = (*ListNestedObjectTypeOf[struct{}])(nil)
 	_ basetypes.ListValuable = (*ListNestedObjectValueOf[struct{}])(nil)
 )
 
@@ -164,16 +164,16 @@ type ListNestedObjectValueOf[T any] struct {
 	basetypes.ListValue
 }
 
-// listNestedObjectTypeOf is the attribute type of a ListNestedObjectValueOf.
-type listNestedObjectTypeOf[T any] struct {
+// ListNestedObjectTypeOf is the attribute type of a ListNestedObjectValueOf.
+type ListNestedObjectTypeOf[T any] struct {
 	basetypes.ListType
 }
 
-func NewListNestedObjectTypeOf[T any](ctx context.Context) listNestedObjectTypeOf[T] {
-	return listNestedObjectTypeOf[T]{basetypes.ListType{ElemType: NewObjectTypeOf[T](ctx)}}
+func NewListNestedObjectTypeOf[T any](ctx context.Context) ListNestedObjectTypeOf[T] {
+	return ListNestedObjectTypeOf[T]{basetypes.ListType{ElemType: NewObjectTypeOf[T](ctx)}}
 }
 
-func (listNested listNestedObjectTypeOf[T]) ValueFromList(ctx context.Context, listval basetypes.ListValue) (basetypes.ListValuable, diag.Diagnostics) {
+func (listNested ListNestedObjectTypeOf[T]) ValueFromList(ctx context.Context, listval basetypes.ListValue) (basetypes.ListValuable, diag.Diagnostics) {
 	var diags diag.Diagnostics
 
 	if listval.IsNull() {
@@ -285,6 +285,5 @@ func AttributeTypes[T any](ctx context.Context) (map[string]attr.Type, diag.Diag
 			attributeTypes[tag] = v.Type(ctx)
 		}
 	}
-
 	return attributeTypes, nil
 }
