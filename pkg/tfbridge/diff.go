@@ -17,6 +17,7 @@ package tfbridge
 import (
 	"context"
 	"fmt"
+	"q"
 	"strconv"
 	"strings"
 
@@ -360,6 +361,7 @@ func makeDetailedDiffExtra(
 	forceDiff := new(bool)
 	diff := map[string]*pulumirpc.PropertyDiff{}
 	collectionDiffs := map[string]*pulumirpc.PropertyDiff{}
+	q.Q("makeDetailedDiffExtra", olds, news)
 	for k, v := range olds {
 		en, etf, eps := getInfoFromPulumiName(k, tfs, ps)
 		makePropertyDiff(ctx, en, string(k), v, tfDiff, diff, collectionDiffs, forceDiff,
@@ -380,6 +382,8 @@ func makeDetailedDiffExtra(
 	if len(diff) > 0 || *forceDiff {
 		changes = pulumirpc.DiffResponse_DIFF_SOME
 	}
+
+	q.Q(changes, diff, collectionDiffs)
 	return detailedDiffExtra{
 		changes:         changes,
 		diffs:           diff,

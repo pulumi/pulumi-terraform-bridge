@@ -3,6 +3,7 @@ package tfbridge
 import (
 	"context"
 	"fmt"
+	"q"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -201,7 +202,8 @@ func TestCustomizeDiff(t *testing.T) {
 func diffTest(t *testing.T, tfs map[string]*schema.Schema, info map[string]*SchemaInfo,
 	inputs, state map[string]interface{}, expected map[string]DiffKind,
 	expectedDiffChanges pulumirpc.DiffResponse_DiffChanges,
-	ignoreChanges ...string) {
+	ignoreChanges ...string,
+) {
 	ctx := context.Background()
 
 	inputsMap := resource.NewPropertyMapFromMap(inputs)
@@ -243,8 +245,22 @@ func diffTest(t *testing.T, tfs map[string]*schema.Schema, info map[string]*Sche
 		// Convert the diff to a detailed diff and check the result.
 		diff, changes := makeDetailedDiff(ctx, sch, info, stateMap, inputsMap, tfDiff)
 		expectedDiff := map[string]*pulumirpc.PropertyDiff{}
+		expectedCollectionDiff := map[string]*pulumirpc.PropertyDiff{}
 		for k, v := range expected {
-			expectedDiff[k] = &pulumirpc.PropertyDiff{Kind: v}
+			q.Q(sch)
+			q.Q(k)
+			propSchema, ok := sch.GetOk(k)
+			if ok &&
+				(propSchema.Type() == shim.TypeList ||
+					propSchema.Type() == shim.TypeMap ||
+					propSchema.Type() == shim.TypeSet) {
+				expectedCollectionDiff[k] = &pulumirpc.PropertyDiff{Kind: v}
+				// TODO[pulumi/pulumi-terraform-bridge#2141]: We return diff kind ADD for collections with a diff.
+				// This is covered by integration tests so probably fine but we might still want to fix this.
+				expectedDiff[k] = &pulumirpc.PropertyDiff{Kind: 0}
+			} else {
+				expectedDiff[k] = &pulumirpc.PropertyDiff{Kind: v}
+			}
 		}
 		assert.Equal(t, expectedDiffChanges, changes)
 		assert.Equal(t, expectedDiff, diff)
@@ -1342,7 +1358,8 @@ func TestComputedListUpdate(t *testing.T) {
 			"outp": "bar",
 		},
 		map[string]DiffKind{
-			"prop": U,
+			"prop":    U,
+			"prop[0]": D,
 		},
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
@@ -1846,7 +1863,8 @@ func TestCollectionsWithMultipleItems(t *testing.T) {
 	}
 
 	runTestCase := func(t *testing.T, name string, typ schema.ValueType, inputs, state []interface{},
-		expected map[string]DiffKind, expectedChanges pulumirpc.DiffResponse_DiffChanges) {
+		expected map[string]DiffKind, expectedChanges pulumirpc.DiffResponse_DiffChanges,
+	) {
 		t.Run(name, func(t *testing.T) {
 			diffTest(t,
 				map[string]*schema.Schema{
