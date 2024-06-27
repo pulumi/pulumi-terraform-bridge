@@ -3085,7 +3085,6 @@ func Test_makeTerraformInputsNoDefaults(t *testing.T) {
 				// The string property inside Computed is irrelevant.
 				"unknownArrayValue": resource.Computed{Element: resource.NewStringProperty("")},
 			}),
-			//nolint:lll
 			expect: autogold.Expect(map[string]interface{}{"unknown_array_value": "74D93920-ED26-11E3-AC10-0800200C9A66"}),
 		},
 		{
