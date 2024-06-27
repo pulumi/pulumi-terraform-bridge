@@ -61,17 +61,15 @@ func (s *typeSchema) Elem() interface{} {
 	case basetypes.ObjectTypable:
 		var pseudoResource shim.Resource = newObjectPseudoResource(tt, s.nested, nil)
 		return pseudoResource
-	case types.ListType:
+	case basetypes.SetTypable, basetypes.ListTypable:
+		typeWithElementType, ok := s.t.(pfattr.TypeWithElementType)
+		contract.Assertf(ok, "List or Set type %T expect to implement TypeWithElementType", s.t)
 		contract.Assertf(s.nested == nil || len(s.nested) == 0,
-			"s.t==ListType should not have any s.nested attrs")
-		return newTypeSchema(tt.ElemType, nil)
+			"s.t==SetTypable should not have any s.nested attrs")
+		return newTypeSchema(typeWithElementType.ElementType(), nil)
 	case types.MapType:
 		contract.Assertf(s.nested == nil || len(s.nested) == 0,
 			"s.t==MapType should not have any s.nested attrs")
-		return newTypeSchema(tt.ElemType, nil)
-	case types.SetType:
-		contract.Assertf(s.nested == nil || len(s.nested) == 0,
-			"s.t==SetType should not have any s.nested attrs")
 		return newTypeSchema(tt.ElemType, nil)
 	case pfattr.TypeWithElementTypes:
 		var pseudoResource shim.Resource = newTuplePseudoResource(tt)
@@ -80,7 +78,6 @@ func (s *typeSchema) Elem() interface{} {
 		return nil
 	}
 }
-
 func (*typeSchema) MaxItems() int      { return 0 }
 func (*typeSchema) MinItems() int      { return 0 }
 func (*typeSchema) Deprecated() string { return "" }
