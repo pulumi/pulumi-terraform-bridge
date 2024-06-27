@@ -21,21 +21,22 @@ import (
 	"os"
 
 	"github.com/blang/semver"
-	"github.com/opentofu/opentofu/shim"
+	"github.com/opentofu/opentofu/shim/run"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+
 	"github.com/pulumi/pulumi-terraform-bridge/pf/proto"
 	pfbridge "github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 
 	"github.com/pulumi/pulumi-terraform-bridge/dynamic/version"
 )
 
 func initialSetup() (tfbridge.ProviderInfo, pfbridge.ProviderMetadata, func() error) {
 
-	var tfServer shim.Provider
+	var tfServer run.Provider
 	info := tfbridge.ProviderInfo{
 		DisplayName:  "Any Terraform Provider",
 		P:            proto.Empty(),
@@ -139,10 +140,10 @@ func main() {
 	pfbridge.Main(ctx, "terraform-bridge", defaultInfo, metadata)
 }
 
-func getProvider(ctx context.Context, args paramaterizeArgs) (shim.Provider, error) {
+func getProvider(ctx context.Context, args paramaterizeArgs) (run.Provider, error) {
 	if args.path != "" {
-		return shim.RunLocalProvider(ctx, args.path)
+		return run.LocalProvider(ctx, args.path)
 	}
 
-	return shim.LoadProvider(ctx, args.name, args.version)
+	return run.NamedProvider(ctx, args.name, args.version)
 }

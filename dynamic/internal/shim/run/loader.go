@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package shim
+package run
 
 import (
 	"context"
@@ -61,13 +61,13 @@ type Provider interface {
 	Version() string
 }
 
-// Load a TF provider with key and version specified.
+// NamedProvider loads a TF provider with key and version specified.
 //
 // If version is "", then whatever version is currently installed will be used. If no
 // version is installed then the latest version can be used.
 //
 // `=`, `<=`, `>=` sigils can be used just like in TF.
-func LoadProvider(ctx context.Context, key, version string) (Provider, error) {
+func NamedProvider(ctx context.Context, key, version string) (Provider, error) {
 
 	p, err := tfaddr.ParseProviderSource(key)
 	if err != nil {
@@ -82,8 +82,8 @@ func LoadProvider(ctx context.Context, key, version string) (Provider, error) {
 	return getProviderServer(ctx, p, v, disco.New())
 }
 
-// RunLocalProvider runs a provider by it's path.
-func RunLocalProvider(ctx context.Context, path string) (Provider, error) {
+// LocalProvider runs a provider by it's path.
+func LocalProvider(ctx context.Context, path string) (Provider, error) {
 	dir, name, ok := cutLast(path, "terraform-provider-")
 	if !ok {
 		return nil, fmt.Errorf("expected path to end with %q", "terraform-provider-${NAME}")
