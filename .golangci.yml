@@ -6,11 +6,14 @@ linters:
   enable:
     - errcheck
     - gofmt
+    - gci
     - gosec
     - govet
     - ineffassign
     - lll
-    - megacheck
+    - gosimple
+    - staticcheck
+    - unused
     - misspell
     - nakedret
     - nolintlint
@@ -25,3 +28,10 @@ issues:
     - pkg/tf2pulumi/internal/addrs
     - pkg/tf2pulumi/internal/config
     - pkg/tf2pulumi/internal/configs
+linters-settings:
+  gci:
+    sections:
+      - standard
+      - default
+      - prefix(github.com/pulumi/pulumi-terraform-bridge)
+    skip-generated: true
