@@ -244,20 +244,8 @@ func diffTest(t *testing.T, tfs map[string]*schema.Schema, info map[string]*Sche
 		// Convert the diff to a detailed diff and check the result.
 		diff, changes := makeDetailedDiff(ctx, sch, info, stateMap, inputsMap, tfDiff)
 		expectedDiff := map[string]*pulumirpc.PropertyDiff{}
-		expectedCollectionDiff := map[string]*pulumirpc.PropertyDiff{}
 		for k, v := range expected {
-			propSchema, ok := sch.GetOk(k)
-			if ok &&
-				(propSchema.Type() == shim.TypeList ||
-					propSchema.Type() == shim.TypeMap ||
-					propSchema.Type() == shim.TypeSet) {
-				expectedCollectionDiff[k] = &pulumirpc.PropertyDiff{Kind: v}
-				// TODO[pulumi/pulumi-terraform-bridge#2141]: We return diff kind ADD for collections with a diff.
-				// This is covered by integration tests so probably fine but we might still want to fix this.
-				expectedDiff[k] = &pulumirpc.PropertyDiff{Kind: v}
-			} else {
-				expectedDiff[k] = &pulumirpc.PropertyDiff{Kind: v}
-			}
+			expectedDiff[k] = &pulumirpc.PropertyDiff{Kind: v}
 		}
 		assert.Equal(t, expectedDiffChanges, changes)
 		assert.Equal(t, expectedDiff, diff)
