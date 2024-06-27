@@ -18,10 +18,9 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/zclconf/go-cty/cty"
-
-	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 )
 
 func TestSetConfigBlockType(t *testing.T) {

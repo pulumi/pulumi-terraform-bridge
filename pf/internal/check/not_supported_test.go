@@ -18,10 +18,9 @@ import (
 	"bytes"
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/stretchr/testify/require"
-
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 )
 
 func TestZeroRecognizer(t *testing.T) {

@@ -22,11 +22,10 @@ import (
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
-
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	diff_reader "github.com/pulumi/terraform-diff-reader/sdk-v2"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
-	diff_reader "github.com/pulumi/terraform-diff-reader/sdk-v2"
 )
 
 var _ = shim.InstanceState(v2InstanceState{})

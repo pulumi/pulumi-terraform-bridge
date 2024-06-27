@@ -30,15 +30,14 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/hcl/v2"
-	bf "github.com/russross/blackfriday/v2"
-	"github.com/spf13/afero"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
-
 	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	bf "github.com/russross/blackfriday/v2"
+	"github.com/spf13/afero"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/convert"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"

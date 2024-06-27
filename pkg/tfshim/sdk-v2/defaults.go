@@ -16,7 +16,6 @@ package sdkv2
 
 import (
 	"github.com/golang/glog"
-
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 

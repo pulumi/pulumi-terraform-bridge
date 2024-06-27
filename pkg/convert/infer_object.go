@@ -16,8 +16,9 @@ package convert
 
 import (
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
 type InferObjectTypeOptions struct{}

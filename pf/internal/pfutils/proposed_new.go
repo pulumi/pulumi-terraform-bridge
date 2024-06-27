@@ -18,10 +18,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/runtypes"
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
-	"github.com/hashicorp/terraform-plugin-go/tftypes"
+	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/runtypes"
 )
 
 // Computes the ProposedNewState from priorState and config.

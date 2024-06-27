@@ -4,16 +4,15 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-	"pgregory.net/rapid"
-
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/stretchr/testify/require"
+	"pgregory.net/rapid"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/internal/testprovider"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2/internal/rapid"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 var awsSSMParameterSchema = &schema.Resource{

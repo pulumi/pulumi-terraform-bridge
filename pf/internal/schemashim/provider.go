@@ -18,15 +18,15 @@ import (
 	"context"
 	"fmt"
 
-	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
-
 	pfprovider "github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
+
 	"github.com/pulumi/pulumi-terraform-bridge/pf"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/pfutils"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/runtypes"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
 var _ = pf.ShimProvider(&SchemaOnlyProvider{})
