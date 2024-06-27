@@ -28,6 +28,8 @@ type inputTestCase struct {
 
 	Config     any
 	ObjectType *tftypes.Object
+
+	DisablePlanResourceChange bool
 }
 
 // Adapted from diff_check.go

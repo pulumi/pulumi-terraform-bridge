@@ -1244,11 +1244,12 @@ func MakeTerraformConfigFromInputs(
 	return p.NewResourceConfig(ctx, raw)
 }
 
-// MakeTerraformState converts a Pulumi property bag into its Terraform equivalent.  This requires
-// flattening everything and serializing individual properties as strings.  This is a little awkward, but it's how
-// Terraform represents resource properties (schemas are simply sugar on top).
-func MakeTerraformState(
-	ctx context.Context, res Resource, id string, m resource.PropertyMap,
+type makeTerraformStateOptions struct {
+	defaultZeroSchemaVersion bool
+}
+
+func makeTerraformStateWithOpts(
+	ctx context.Context, res Resource, id string, m resource.PropertyMap, opts makeTerraformStateOptions,
 ) (shim.InstanceState, error) {
 	// Parse out any metadata from the state.
 	var meta map[string]interface{}
@@ -1260,7 +1261,11 @@ func MakeTerraformState(
 		// If there was no metadata in the inputs and this resource has a non-zero
 		// schema version, return a meta bag with the current schema version. This
 		// helps avoid migration issues.
-		meta = map[string]interface{}{"schema_version": strconv.Itoa(res.TF.SchemaVersion())}
+		defaultSchemaVersion := strconv.Itoa(res.TF.SchemaVersion())
+		if opts.defaultZeroSchemaVersion {
+			defaultSchemaVersion = "0"
+		}
+		meta = map[string]interface{}{"schema_version": defaultSchemaVersion}
 	}
 
 	// Turn the resource properties into a map. For the most part, this is a straight
@@ -1277,9 +1282,23 @@ func MakeTerraformState(
 	return res.TF.InstanceState(id, inputs, meta)
 }
 
-// UnmarshalTerraformState unmarshals a Terraform instance state from an RPC property map.
-func UnmarshalTerraformState(
+// MakeTerraformState converts a Pulumi property bag into its Terraform equivalent.  This requires
+// flattening everything and serializing individual properties as strings.  This is a little awkward, but it's how
+// Terraform represents resource properties (schemas are simply sugar on top).
+// Prefer makeTerraformStateWithOpts for internal use.
+func MakeTerraformState(
+	ctx context.Context, res Resource, id string, m resource.PropertyMap,
+) (shim.InstanceState, error) {
+	return makeTerraformStateWithOpts(ctx, res, id, m, makeTerraformStateOptions{})
+}
+
+type unmarshalTerraformStateOptions struct {
+	defaultZeroSchemaVersion bool
+}
+
+func unmarshalTerraformStateWithOpts(
 	ctx context.Context, r Resource, id string, m *pbstruct.Struct, l string,
+	opts unmarshalTerraformStateOptions,
 ) (shim.InstanceState, error) {
 	props, err := plugin.UnmarshalProperties(m, plugin.MarshalOptions{
 		Label:     fmt.Sprintf("%s.state", l),
@@ -1294,7 +1313,17 @@ func UnmarshalTerraformState(
 		return nil, err
 	}
 
-	return MakeTerraformState(ctx, r, id, props)
+	return makeTerraformStateWithOpts(ctx, r, id, props,
+		makeTerraformStateOptions(opts),
+	)
+}
+
+// UnmarshalTerraformState unmarshals a Terraform instance state from an RPC property map.
+// Prefer unmarshalTerraformStateWithOpts for internal use.
+func UnmarshalTerraformState(
+	ctx context.Context, r Resource, id string, m *pbstruct.Struct, l string,
+) (shim.InstanceState, error) {
+	return unmarshalTerraformStateWithOpts(ctx, r, id, m, l, unmarshalTerraformStateOptions{})
 }
 
 // IsMaxItemsOne returns true if the schema/info pair represents a TypeList or TypeSet which should project
