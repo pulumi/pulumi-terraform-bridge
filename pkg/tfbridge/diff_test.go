@@ -1345,6 +1345,7 @@ func TestComputedListUpdate(t *testing.T) {
 		map[string]DiffKind{
 			// TODO[pulumi/pulumi#2141]: This should be an U.
 			// makeDetailedDiff returns an empty diff for collections
+			// TODO: Why is outp not present here?
 			"prop":    A,
 			"prop[0]": D,
 		},
