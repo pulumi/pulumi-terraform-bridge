@@ -798,7 +798,7 @@ func TestUnknownBlocks(t *testing.T) {
 	}
 	bridgedProvider := pulcheck.BridgedProvider(t, "prov", resMap)
 
-	for i, tc := range []struct {
+	for _, tc := range []struct {
 		name            string
 		program         string
 		expectedInitial autogold.Value
@@ -1160,51 +1160,34 @@ Resources:
 `),
 		},
 	} {
-		if i != 0 {
-			continue
-		}
-
 		t.Run(tc.name, func(t *testing.T) {
 			nonComputedProgram := fmt.Sprintf(tc.program, "auxes: [{testProp: \"val1\"}]", "nestedAuxes: [{nestedProps: [{testProps: [\"val1\"]}]}]")
-			computedProgram := fmt.Sprintf(tc.program, "{}", "")
+			computedProgram := fmt.Sprintf(tc.program, "null", "null")
 
-			// t.Run("initial preview", func(t *testing.T) {
-			// 	pt := pulcheck.PulCheck(t, bridgedProvider, computedProgram)
-			// 	res := pt.Preview(optpreview.Diff())
-			// 	t.Logf(res.StdOut)
+			t.Run("initial preview", func(t *testing.T) {
+				pt := pulcheck.PulCheck(t, bridgedProvider, computedProgram)
+				res := pt.Preview(optpreview.Diff())
+				t.Logf(res.StdOut)
 
-			// 	tc.expectedInitial.Equal(t, res.StdOut)
-			// })
+				tc.expectedInitial.Equal(t, res.StdOut)
+			})
 
 			t.Run("update preview", func(t *testing.T) {
+				t.Skipf("Skipping this test as it this case is not handled by the TF plugin sdk")
+				// The TF plugin SDK does not handle removing an input for a computed value, even if the provider implements it.
+				// The plugin SDK always fills an empty Computed property with the value from the state.
+				// Diff in these cases always returns no diff and the old state value is used.
 				pt := pulcheck.PulCheck(t, bridgedProvider, nonComputedProgram)
 				pt.Up()
 
 				pulumiYamlPath := filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml")
-				content, err := os.ReadFile(pulumiYamlPath)
-				require.NoError(t, err)
-				t.Logf("Pulumi.yaml: %s", string(content))
 
-				err = os.WriteFile(pulumiYamlPath, []byte(computedProgram), 0600)
+				err := os.WriteFile(pulumiYamlPath, []byte(computedProgram), 0600)
 				require.NoError(t, err)
 
-				content, err = os.ReadFile(pulumiYamlPath)
-				require.NoError(t, err)
-				t.Logf("Pulumi.yaml: %s", string(content))
-
-				pt.ClearGrpcLog()
 				res := pt.Preview(optpreview.Diff())
-				for _, e := range pt.GrpcLog().Entries {
-					t.Logf("GRPC: %s", e.Method)
-					if e.Method == "/pulumirpc.ResourceProvider/Diff" ||
-						e.Method == "/pulumirpc.ResourceProvider/Check" {
-						t.Logf("GRPC: %s", e.Request)
-						t.Logf("GRPC: %s", e.Response)
-					}
-				}
 				t.Logf(res.StdOut)
 				tc.expectedUpdate.Equal(t, res.StdOut)
-				panic("here!")
 			})
 		})
 	}
