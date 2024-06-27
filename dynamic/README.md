@@ -180,7 +180,7 @@ type Provider interface {
 - `run.LocalProvider` takes a path to a Terraform provider and runs it.
 
 When `run` launches a Terraform provider, the provider may implement either the
-[`tfplugin5.ProviderClient`](https://pkg.go.dev/github.com/opentofu/opentofu/internal/tfplugin5#ProviderClient) or [`tfplugin6.ProviderClient`](https://pkg.go.dev/github.com/opentofu/opentofu/internal/tfplugin6#ProviderClient) interface. `run` must to return a
+[`tfplugin5.ProviderClient`](https://pkg.go.dev/github.com/opentofu/opentofu/internal/tfplugin5#ProviderClient) or [`tfplugin6.ProviderClient`](https://pkg.go.dev/github.com/opentofu/opentofu/internal/tfplugin6#ProviderClient) interface. `run` must return a
 [`tfprotov6.ProviderServer`](https://pkg.go.dev/github.com/hashicorp/terraform-plugin-go/tfprotov6#ProviderServer). The Terraform ecosystem helps with [translating from v5 to v6](https://pkg.go.dev/github.com/hashicorp/terraform-plugin-mux/tf5to6server#UpgradeServer):
 
 ``` go
