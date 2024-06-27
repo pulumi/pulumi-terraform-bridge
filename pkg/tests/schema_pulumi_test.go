@@ -798,11 +798,35 @@ func TestUnknownBlocks(t *testing.T) {
 	}
 	bridgedProvider := pulcheck.BridgedProvider(t, "prov", resMap)
 
+	provTestKnownProgram := `
+name: test
+runtime: yaml
+resources:
+    mainRes:
+        type: prov:index:Test
+        properties:
+            tests:
+                - testProp: "known_val"
+`
+	nestedProvTestKnownProgram := `
+name: test
+runtime: yaml
+resources:
+    mainRes:
+        type: prov:index:NestedTest
+        properties:
+            tests:
+                - nestedProps:
+                    - testProps:
+                        - "known_val"
+`
+
 	for _, tc := range []struct {
-		name            string
-		program         string
-		expectedInitial autogold.Value
-		expectedUpdate  autogold.Value
+		name                string
+		program             string
+		initialKnownProgram string
+		expectedInitial     autogold.Value
+		expectedUpdate      autogold.Value
 	}{
 		{
 			"list of objects",
@@ -813,13 +837,14 @@ resources:
     auxRes:
         type: prov:index:Aux
         properties:
-            %s
-            %s
+            auxes: %s
+            nestedAuxes: %s
     mainRes:
         type: prov:index:Test
         properties:
             tests: ${auxRes.auxes}
 `,
+			provTestKnownProgram,
 			autogold.Expect(`Previewing update (test):
 + pulumi:pulumi:Stack: (create)
     [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
@@ -834,8 +859,21 @@ Resources:
 			autogold.Expect(`Previewing update (test):
   pulumi:pulumi:Stack: (same)
     [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      - tests: [
+      -     [0]: {
+              - testProp: "known_val"
+            }
+        ]
+      + tests: output<string>
 Resources:
-    3 unchanged
+    + 1 to create
+    ~ 1 to update
+    2 changes. 1 unchanged
 `),
 		},
 		{
@@ -847,14 +885,16 @@ resources:
     auxRes:
         type: prov:index:Aux
         properties:
-            %s
-            %s
+            auxes: %s
+            nestedAuxes: %s
     mainRes:
         type: prov:index:Test
         properties:
             tests:
                 - ${auxRes.auxes[0]}
 `,
+			provTestKnownProgram,
+
 			autogold.Expect(`Previewing update (test):
 + pulumi:pulumi:Stack: (create)
     [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
@@ -871,8 +911,21 @@ Resources:
 			autogold.Expect(`Previewing update (test):
   pulumi:pulumi:Stack: (same)
     [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [0]: {
+                  - testProp: "known_val"
+                }
+          + [0]: output<string>
+        ]
 Resources:
-    3 unchanged
+    + 1 to create
+    ~ 1 to update
+    2 changes. 1 unchanged
 `),
 		},
 		{
@@ -884,8 +937,8 @@ resources:
     auxRes:
         type: prov:index:Aux
         properties:
-            %s
-            %s
+            auxes: %s
+            nestedAuxes: %s
     mainRes:
         type: prov:index:Test
         properties:
@@ -893,6 +946,8 @@ resources:
                 - ${auxRes.auxes[0]}
                 - {"testProp": "val"}
 `,
+			provTestKnownProgram,
+
 			autogold.Expect(`Previewing update (test):
 + pulumi:pulumi:Stack: (create)
     [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
@@ -912,8 +967,24 @@ Resources:
 			autogold.Expect(`Previewing update (test):
   pulumi:pulumi:Stack: (same)
     [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [0]: {
+                  - testProp: "known_val"
+                }
+          + [0]: output<string>
+          + [1]: {
+                  + testProp  : "val"
+                }
+        ]
 Resources:
-    3 unchanged
+    + 1 to create
+    ~ 1 to update
+    2 changes. 1 unchanged
 `),
 		},
 		{
@@ -925,13 +996,14 @@ resources:
     auxRes:
         type: prov:index:Aux
         properties:
-            %s
-            %s
+            auxes: %s
+            nestedAuxes: %s
     mainRes:
         type: prov:index:NestedTest
         properties:
             tests: ${auxRes.nestedAuxes}
 `,
+			nestedProvTestKnownProgram,
 			autogold.Expect(`Previewing update (test):
 + pulumi:pulumi:Stack: (create)
     [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
@@ -946,8 +1018,27 @@ Resources:
 			autogold.Expect(`Previewing update (test):
   pulumi:pulumi:Stack: (same)
     [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    ~ prov:index/nestedTest:NestedTest: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/nestedTest:NestedTest::mainRes]
+      - tests: [
+      -     [0]: {
+              - nestedProps: [
+              -     [0]: {
+                      - testProps: [
+                      -     [0]: "known_val"
+                        ]
+                    }
+                ]
+            }
+        ]
+      + tests: output<string>
 Resources:
-    3 unchanged
+    + 1 to create
+    ~ 1 to update
+    2 changes. 1 unchanged
 `),
 		},
 		{
@@ -959,14 +1050,15 @@ resources:
     auxRes:
         type: prov:index:Aux
         properties:
-            %s
-            %s
+            auxes: %s
+            nestedAuxes: %s
     mainRes:
         type: prov:index:NestedTest
         properties:
             tests:
                 - ${auxRes.nestedAuxes[0]}
 `,
+			nestedProvTestKnownProgram,
 			autogold.Expect(`Previewing update (test):
 + pulumi:pulumi:Stack: (create)
     [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
@@ -983,8 +1075,27 @@ Resources:
 			autogold.Expect(`Previewing update (test):
   pulumi:pulumi:Stack: (same)
     [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    ~ prov:index/nestedTest:NestedTest: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/nestedTest:NestedTest::mainRes]
+      ~ tests: [
+          - [0]: {
+                  - nestedProps: [
+                  -     [0]: {
+                          - testProps: [
+                          -     [0]: "known_val"
+                            ]
+                        }
+                    ]
+                }
+          + [0]: output<string>
+        ]
 Resources:
-    3 unchanged
+    + 1 to create
+    ~ 1 to update
+    2 changes. 1 unchanged
 `),
 		},
 		{
@@ -996,14 +1107,15 @@ resources:
     auxRes:
         type: prov:index:Aux
         properties:
-            %s
-            %s
+            auxes: %s
+            nestedAuxes: %s
     mainRes:
         type: prov:index:NestedTest
         properties:
             tests:
                 - nestedProps: ${auxRes.nestedAuxes[0].nestedProps}
 `,
+			nestedProvTestKnownProgram,
 			autogold.Expect(`Previewing update (test):
 + pulumi:pulumi:Stack: (create)
     [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
@@ -1022,8 +1134,27 @@ Resources:
 			autogold.Expect(`Previewing update (test):
   pulumi:pulumi:Stack: (same)
     [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    ~ prov:index/nestedTest:NestedTest: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/nestedTest:NestedTest::mainRes]
+      ~ tests: [
+          ~ [0]: {
+                  - nestedProps: [
+                  -     [0]: {
+                          - testProps: [
+                          -     [0]: "known_val"
+                            ]
+                        }
+                    ]
+                  + nestedProps: output<string>
+                }
+        ]
 Resources:
-    3 unchanged
+    + 1 to create
+    ~ 1 to update
+    2 changes. 1 unchanged
 `),
 		},
 		{
@@ -1035,8 +1166,8 @@ resources:
     auxRes:
         type: prov:index:Aux
         properties:
-            %s
-            %s
+            auxes: %s
+            nestedAuxes: %s
     mainRes:
         type: prov:index:NestedTest
         properties:
@@ -1044,6 +1175,7 @@ resources:
                 - nestedProps:
                     - ${auxRes.nestedAuxes[0].nestedProps[0]}
 `,
+			nestedProvTestKnownProgram,
 			autogold.Expect(`Previewing update (test):
 + pulumi:pulumi:Stack: (create)
     [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
@@ -1064,8 +1196,27 @@ Resources:
 			autogold.Expect(`Previewing update (test):
   pulumi:pulumi:Stack: (same)
     [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    ~ prov:index/nestedTest:NestedTest: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/nestedTest:NestedTest::mainRes]
+      ~ tests: [
+          ~ [0]: {
+                  ~ nestedProps: [
+                      - [0]: {
+                              - testProps: [
+                              -     [0]: "known_val"
+                                ]
+                            }
+                      + [0]: output<string>
+                    ]
+                }
+        ]
 Resources:
-    3 unchanged
+    + 1 to create
+    ~ 1 to update
+    2 changes. 1 unchanged
 `),
 		},
 		{
@@ -1077,8 +1228,8 @@ resources:
     auxRes:
         type: prov:index:Aux
         properties:
-            %s
-            %s
+            auxes: %s
+            nestedAuxes: %s
     mainRes:
         type: prov:index:NestedTest
         properties:
@@ -1086,6 +1237,7 @@ resources:
                 - nestedProps:
                     - testProps: ${auxRes.nestedAuxes[0].nestedProps[0].testProps}
 `,
+			nestedProvTestKnownProgram,
 			autogold.Expect(`Previewing update (test):
 + pulumi:pulumi:Stack: (create)
     [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
@@ -1108,8 +1260,27 @@ Resources:
 			autogold.Expect(`Previewing update (test):
   pulumi:pulumi:Stack: (same)
     [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    ~ prov:index/nestedTest:NestedTest: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/nestedTest:NestedTest::mainRes]
+      ~ tests: [
+          ~ [0]: {
+                  ~ nestedProps: [
+                      ~ [0]: {
+                              - testProps: [
+                              -     [0]: "known_val"
+                                ]
+                              + testProps: output<string>
+                            }
+                    ]
+                }
+        ]
 Resources:
-    3 unchanged
+    + 1 to create
+    ~ 1 to update
+    2 changes. 1 unchanged
 `),
 		},
 		{
@@ -1121,8 +1292,8 @@ resources:
     auxRes:
         type: prov:index:Aux
         properties:
-            %s
-            %s
+            auxes: %s
+            nestedAuxes: %s
     mainRes:
         type: prov:index:NestedTest
         properties:
@@ -1131,6 +1302,7 @@ resources:
                     - testProps:
                         - ${auxRes.nestedAuxes[0].nestedProps[0].testProps[0]}
 `,
+			nestedProvTestKnownProgram,
 			autogold.Expect(`Previewing update (test):
 + pulumi:pulumi:Stack: (create)
     [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
@@ -1155,13 +1327,30 @@ Resources:
 			autogold.Expect(`Previewing update (test):
   pulumi:pulumi:Stack: (same)
     [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    ~ prov:index/nestedTest:NestedTest: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/nestedTest:NestedTest::mainRes]
+      ~ tests: [
+          ~ [0]: {
+                  ~ nestedProps: [
+                      ~ [0]: {
+                              ~ testProps: [
+                                  ~ [0]: "known_val" => output<string>
+                                ]
+                            }
+                    ]
+                }
+        ]
 Resources:
-    3 unchanged
+    + 1 to create
+    ~ 1 to update
+    2 changes. 1 unchanged
 `),
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			nonComputedProgram := fmt.Sprintf(tc.program, "auxes: [{testProp: \"val1\"}]", "nestedAuxes: [{nestedProps: [{testProps: [\"val1\"]}]}]")
 			computedProgram := fmt.Sprintf(tc.program, "null", "null")
 
 			t.Run("initial preview", func(t *testing.T) {
@@ -1177,12 +1366,27 @@ Resources:
 				// The TF plugin SDK does not handle removing an input for a computed value, even if the provider implements it.
 				// The plugin SDK always fills an empty Computed property with the value from the state.
 				// Diff in these cases always returns no diff and the old state value is used.
+				nonComputedProgram := fmt.Sprintf(tc.program, "[{testProp: \"val1\"}]", "[{nestedProps: [{testProps: [\"val1\"]}]}]")
 				pt := pulcheck.PulCheck(t, bridgedProvider, nonComputedProgram)
 				pt.Up()
 
 				pulumiYamlPath := filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml")
 
-				err := os.WriteFile(pulumiYamlPath, []byte(computedProgram), 0600)
+				err := os.WriteFile(pulumiYamlPath, []byte(computedProgram), 0o600)
+				require.NoError(t, err)
+
+				res := pt.Preview(optpreview.Diff())
+				t.Logf(res.StdOut)
+				tc.expectedUpdate.Equal(t, res.StdOut)
+			})
+
+			t.Run("update preview with computed", func(t *testing.T) {
+				pt := pulcheck.PulCheck(t, bridgedProvider, tc.initialKnownProgram)
+				pt.Up()
+
+				pulumiYamlPath := filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml")
+
+				err := os.WriteFile(pulumiYamlPath, []byte(computedProgram), 0o600)
 				require.NoError(t, err)
 
 				res := pt.Preview(optpreview.Diff())
