@@ -531,7 +531,7 @@ func (ctx *conversionContext) makeTerraformInput(
 		// If any variables are unknown, we need to mark them in the inputs so the config map treats it right.  This
 		// requires the use of the special UnknownVariableValue sentinel in Terraform, which is how it internally stores
 		// interpolated variables whose inputs are currently unknown.
-		return makeTerraformUnknown(tfs), nil
+		return TerraformUnknownVariableValue, nil
 	default:
 		contract.Failf("Unexpected value marshaled: %v", v)
 		return nil, nil
@@ -957,14 +957,6 @@ func (ctx *conversionContext) applyDefaults(
 	result[defaultsKey] = newDefaults
 
 	return nil
-}
-
-// makeTerraformUnknown creates an unknown value with the shape indicated by the given schema.
-//
-// It is important that we use the TF schema (if available) to decide what shape the unknown value should have:
-// e.g. TF does not play nicely with unknown lists, instead expecting a list of unknowns.
-func makeTerraformUnknown(_ shim.Schema) interface{} {
-	return TerraformUnknownVariableValue
 }
 
 // metaKey is the key in a TF bridge result that is used to store a resource's meta-attributes.
