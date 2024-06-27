@@ -852,7 +852,9 @@ resources:
         [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
     + prov:index/test:Test: (create)
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-        tests     : output<string>
+        tests     : [
+            [0]: {}
+        ]
 Resources:
     + 3 to create
 `),
@@ -864,12 +866,11 @@ Resources:
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-      - tests: [
-      -     [0]: {
-              - testProp: "known_val"
-            }
+      ~ tests: [
+          ~ [0]: {
+                  - testProp: "known_val"
+                }
         ]
-      + tests: output<string>
 Resources:
     + 1 to create
     ~ 1 to update
@@ -1011,7 +1012,9 @@ resources:
         [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
     + prov:index/nestedTest:NestedTest: (create)
         [urn=urn:pulumi:test::test::prov:index/nestedTest:NestedTest::mainRes]
-        tests     : output<string>
+        tests     : [
+            [0]: {}
+        ]
 Resources:
     + 3 to create
 `),
@@ -1023,18 +1026,24 @@ Resources:
     ~ prov:index/nestedTest:NestedTest: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/nestedTest:NestedTest::mainRes]
-      - tests: [
-      -     [0]: {
-              - nestedProps: [
-              -     [0]: {
-                      - testProps: [
-                      -     [0]: "known_val"
-                        ]
-                    }
-                ]
-            }
+      ~ tests: [
+          ~ [0]: {
+                  - nestedProps: [
+                  -     [0]: {
+                          - testProps: [
+                          -     [0]: "known_val"
+                            ]
+                        }
+                    ]
+                  - nestedProps: [
+                  -     [0]: {
+                          - testProps: [
+                          -     [0]: "known_val"
+                            ]
+                        }
+                    ]
+                }
         ]
-      + tests: output<string>
 Resources:
     + 1 to create
     ~ 1 to update
@@ -1125,7 +1134,9 @@ resources:
         [urn=urn:pulumi:test::test::prov:index/nestedTest:NestedTest::mainRes]
         tests     : [
             [0]: {
-                nestedProps: output<string>
+                nestedProps: [
+                    [0]: {}
+                ]
             }
         ]
 Resources:
@@ -1141,14 +1152,16 @@ Resources:
         [urn=urn:pulumi:test::test::prov:index/nestedTest:NestedTest::mainRes]
       ~ tests: [
           ~ [0]: {
-                  - nestedProps: [
-                  -     [0]: {
-                          - testProps: [
-                          -     [0]: "known_val"
-                            ]
-                        }
+                  ~ nestedProps: [
+                      ~ [0]: {
+                              - testProps: [
+                              -     [0]: "known_val"
+                                ]
+                              - testProps: [
+                              -     [0]: "known_val"
+                                ]
+                            }
                     ]
-                  + nestedProps: output<string>
                 }
         ]
 Resources:
@@ -1249,7 +1262,9 @@ resources:
             [0]: {
                 nestedProps: [
                     [0]: {
-                        testProps : output<string>
+                        testProps : [
+                            [0]: output<string>
+                        ]
                     }
                 ]
             }
@@ -1269,10 +1284,9 @@ Resources:
           ~ [0]: {
                   ~ nestedProps: [
                       ~ [0]: {
-                              - testProps: [
-                              -     [0]: "known_val"
+                              ~ testProps: [
+                                  ~ [0]: "known_val" => output<string>
                                 ]
-                              + testProps: output<string>
                             }
                     ]
                 }
