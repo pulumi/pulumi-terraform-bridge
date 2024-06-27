@@ -68,7 +68,7 @@ func lintMain(fix bool) {
 	failed := false
 	for _, m := range roots {
 		fmt.Printf("%q: linting ...", m)
-		args := []string{"run"}
+		args := []string{"run", "--path-prefix=" + m}
 		if fix {
 			args = append(args, "--fix")
 		}
