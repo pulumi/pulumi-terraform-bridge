@@ -3,7 +3,6 @@ package tfbridge
 import (
 	"context"
 	"fmt"
-	"q"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -247,8 +246,6 @@ func diffTest(t *testing.T, tfs map[string]*schema.Schema, info map[string]*Sche
 		expectedDiff := map[string]*pulumirpc.PropertyDiff{}
 		expectedCollectionDiff := map[string]*pulumirpc.PropertyDiff{}
 		for k, v := range expected {
-			q.Q(sch)
-			q.Q(k)
 			propSchema, ok := sch.GetOk(k)
 			if ok &&
 				(propSchema.Type() == shim.TypeList ||
