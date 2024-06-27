@@ -103,3 +103,7 @@ func (UnimplementedProvider) NewResourceConfig(
 func (UnimplementedProvider) IsSet(ctx context.Context, v interface{}) ([]interface{}, bool) {
 	panic("unimplemented")
 }
+
+func (UnimplementedProvider) DetailedSchemaDump() []byte {
+	panic("unimplemented")
+}

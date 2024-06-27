@@ -38,6 +38,7 @@ import (
 //
 // info.P must be constructed with ShimProvider or ShimProviderWithContext.
 func Main(ctx context.Context, pkg string, prov tfbridge.ProviderInfo, meta ProviderMetadata) {
+	handleGetSchemaFlag(prov)
 	handleFlags(ctx, prov.Version,
 		func() (*tfbridge.MarshallableProviderInfo, error) {
 			pp, err := newProviderWithContext(ctx, prov, meta)
@@ -51,6 +52,22 @@ func Main(ctx context.Context, pkg string, prov tfbridge.ProviderInfo, meta Prov
 
 	if err := serve(ctx, pkg, prov, meta); err != nil {
 		cmdutil.ExitError(err.Error())
+	}
+}
+
+func handleGetSchemaFlag(prov tfbridge.ProviderInfo) {
+	flags := flag.NewFlagSet("get-schema-flags", flag.ContinueOnError)
+
+	dumpSchema := flags.Bool("get-schema", false, "dump provider schema as JSON to stdout")
+
+	flags.SetOutput(io.Discard)
+
+	err := flags.Parse(os.Args[1:])
+	contract.IgnoreError(err)
+
+	if *dumpSchema {
+		fmt.Print(string(prov.P.DetailedSchemaDump()))
+		os.Exit(0)
 	}
 }
 
@@ -107,6 +124,7 @@ func MainWithMuxer(ctx context.Context, pkg string, info tfbridge.ProviderInfo, 
 	if len(info.MuxWith) > 0 {
 		panic("mixin providers via tfbridge.ProviderInfo.MuxWith is currently not supported")
 	}
+	handleGetSchemaFlag(info)
 	handleFlags(ctx, info.Version, func() (*tfbridge.MarshallableProviderInfo, error) {
 		info := info
 		return tfbridge.MarshalProviderInfo(&info), nil

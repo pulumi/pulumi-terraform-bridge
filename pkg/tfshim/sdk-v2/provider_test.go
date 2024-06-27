@@ -1,12 +1,15 @@
 package sdkv2
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
+	"github.com/hexops/autogold/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -103,4 +106,210 @@ func TestProvider1UpgradeResourceState(t *testing.T) {
 			tt.expect(t, actual, tt)
 		})
 	}
+}
+
+func TestProviderDetailedSchemaDump(t *testing.T) {
+	prov := NewProvider(&schema.Provider{
+		ResourcesMap: map[string]*schema.Resource{
+			"test_resource": {
+				Schema: map[string]*schema.Schema{
+					"foo": {Type: schema.TypeString},
+					"bar": {Type: schema.TypeInt},
+				},
+			},
+		},
+		DataSourcesMap: map[string]*schema.Resource{
+			"test_data_source": {
+				Schema: map[string]*schema.Schema{
+					"foo": {Type: schema.TypeString},
+					"bar": {Type: schema.TypeInt},
+				},
+			},
+		},
+		Schema: map[string]*schema.Schema{
+			"test_schema": {Type: schema.TypeString},
+		},
+	})
+
+	jsonArr := prov.DetailedSchemaDump()
+	var out bytes.Buffer
+	err := json.Indent(&out, jsonArr, "", "    ")
+	require.NoError(t, err)
+
+	autogold.Expect(`{
+    "Schema": {
+        "test_schema": {
+            "Type": 4,
+            "ConfigMode": 0,
+            "Required": false,
+            "Optional": false,
+            "Computed": false,
+            "ForceNew": false,
+            "DiffSuppressFuncDefined": false,
+            "DiffSuppressOnRefresh": false,
+            "Default": null,
+            "DefaultFuncDefined": false,
+            "Description": "",
+            "InputDefault": "",
+            "StateFuncDefined": false,
+            "Elem": null,
+            "MaxItems": 0,
+            "MinItems": 0,
+            "SetDefined": false,
+            "ComputedWhen": null,
+            "ConflictsWith": null,
+            "ExactlyOneOf": null,
+            "AtLeastOneOf": null,
+            "RequiredWith": null,
+            "Deprecated": "",
+            "ValidateFuncDefined": false,
+            "ValidateDiagFuncDefined": false,
+            "Sensitive": false
+        }
+    },
+    "ResourcesMap": {
+        "test_resource": {
+            "Schema": {
+                "bar": {
+                    "Type": 2,
+                    "ConfigMode": 0,
+                    "Required": false,
+                    "Optional": false,
+                    "Computed": false,
+                    "ForceNew": false,
+                    "DiffSuppressFuncDefined": false,
+                    "DiffSuppressOnRefresh": false,
+                    "Default": null,
+                    "DefaultFuncDefined": false,
+                    "Description": "",
+                    "InputDefault": "",
+                    "StateFuncDefined": false,
+                    "Elem": null,
+                    "MaxItems": 0,
+                    "MinItems": 0,
+                    "SetDefined": false,
+                    "ComputedWhen": null,
+                    "ConflictsWith": null,
+                    "ExactlyOneOf": null,
+                    "AtLeastOneOf": null,
+                    "RequiredWith": null,
+                    "Deprecated": "",
+                    "ValidateFuncDefined": false,
+                    "ValidateDiagFuncDefined": false,
+                    "Sensitive": false
+                },
+                "foo": {
+                    "Type": 4,
+                    "ConfigMode": 0,
+                    "Required": false,
+                    "Optional": false,
+                    "Computed": false,
+                    "ForceNew": false,
+                    "DiffSuppressFuncDefined": false,
+                    "DiffSuppressOnRefresh": false,
+                    "Default": null,
+                    "DefaultFuncDefined": false,
+                    "Description": "",
+                    "InputDefault": "",
+                    "StateFuncDefined": false,
+                    "Elem": null,
+                    "MaxItems": 0,
+                    "MinItems": 0,
+                    "SetDefined": false,
+                    "ComputedWhen": null,
+                    "ConflictsWith": null,
+                    "ExactlyOneOf": null,
+                    "AtLeastOneOf": null,
+                    "RequiredWith": null,
+                    "Deprecated": "",
+                    "ValidateFuncDefined": false,
+                    "ValidateDiagFuncDefined": false,
+                    "Sensitive": false
+                }
+            },
+            "SchemaVersion": 0,
+            "MigrateStateDefined": false,
+            "StateUpgradersLen": 0,
+            "CustomizeDiffDefined": false,
+            "DeprecationMessage": "",
+            "Description": "",
+            "UseJSONNumber": false,
+            "EnableLegacyTypeSystemApplyErrors": false,
+            "EnableLegacyTypeSystemPlanErrors": false
+        }
+    },
+    "DataSourcesMap": {
+        "test_data_source": {
+            "Schema": {
+                "bar": {
+                    "Type": 2,
+                    "ConfigMode": 0,
+                    "Required": false,
+                    "Optional": false,
+                    "Computed": false,
+                    "ForceNew": false,
+                    "DiffSuppressFuncDefined": false,
+                    "DiffSuppressOnRefresh": false,
+                    "Default": null,
+                    "DefaultFuncDefined": false,
+                    "Description": "",
+                    "InputDefault": "",
+                    "StateFuncDefined": false,
+                    "Elem": null,
+                    "MaxItems": 0,
+                    "MinItems": 0,
+                    "SetDefined": false,
+                    "ComputedWhen": null,
+                    "ConflictsWith": null,
+                    "ExactlyOneOf": null,
+                    "AtLeastOneOf": null,
+                    "RequiredWith": null,
+                    "Deprecated": "",
+                    "ValidateFuncDefined": false,
+                    "ValidateDiagFuncDefined": false,
+                    "Sensitive": false
+                },
+                "foo": {
+                    "Type": 4,
+                    "ConfigMode": 0,
+                    "Required": false,
+                    "Optional": false,
+                    "Computed": false,
+                    "ForceNew": false,
+                    "DiffSuppressFuncDefined": false,
+                    "DiffSuppressOnRefresh": false,
+                    "Default": null,
+                    "DefaultFuncDefined": false,
+                    "Description": "",
+                    "InputDefault": "",
+                    "StateFuncDefined": false,
+                    "Elem": null,
+                    "MaxItems": 0,
+                    "MinItems": 0,
+                    "SetDefined": false,
+                    "ComputedWhen": null,
+                    "ConflictsWith": null,
+                    "ExactlyOneOf": null,
+                    "AtLeastOneOf": null,
+                    "RequiredWith": null,
+                    "Deprecated": "",
+                    "ValidateFuncDefined": false,
+                    "ValidateDiagFuncDefined": false,
+                    "Sensitive": false
+                }
+            },
+            "SchemaVersion": 0,
+            "MigrateStateDefined": false,
+            "StateUpgradersLen": 0,
+            "CustomizeDiffDefined": false,
+            "DeprecationMessage": "",
+            "Description": "",
+            "UseJSONNumber": false,
+            "EnableLegacyTypeSystemApplyErrors": false,
+            "EnableLegacyTypeSystemPlanErrors": false
+        }
+    },
+    "ConfigureFuncDefined": false,
+    "TerraformVersion": ""
+}`).Equal(t, out.String())
 }

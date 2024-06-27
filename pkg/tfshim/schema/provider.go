@@ -123,3 +123,7 @@ func (ProviderShim) NewResourceConfig(
 func (ProviderShim) IsSet(ctx context.Context, v interface{}) ([]interface{}, bool) {
 	panic("this provider is schema-only and does not support runtime operations")
 }
+
+func (ProviderShim) DetailedSchemaDump() []byte {
+	panic("this provider is schema-only and does not support runtime operations")
+}

@@ -122,3 +122,7 @@ func (p Provider) DataSourcesMap() shim.ResourceMap {
 	}
 	return resourceMap(v.DataSourceSchemas)
 }
+
+func (p Provider) DetailedSchemaDump() []byte {
+	panic("Unsupported")
+}

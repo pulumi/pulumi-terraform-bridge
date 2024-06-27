@@ -594,3 +594,7 @@ func (p *provider) IsSet(ctx context.Context, v interface{}) ([]interface{}, boo
 	}
 	return result, true
 }
+
+func (p *provider) DetailedSchemaDump() []byte {
+	panic("Unsupported")
+}

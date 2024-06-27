@@ -133,6 +133,18 @@ func (m *ProviderShim) extend(provider shim.Provider) ([]string, []string) {
 	return conflictingResources, conflictingDataSources
 }
 
+func (m *ProviderShim) DetailedSchemaDump() []byte {
+	for _, p := range m.MuxedProviders {
+		defer func() {
+			if r := recover(); r != nil {
+				contract.IgnoreError(fmt.Errorf("DetailedSchemaDump failed: %v", r))
+			}
+		}()
+		return p.DetailedSchemaDump()
+	}
+	return nil
+}
+
 func newProviderShim(provider shim.Provider) ProviderShim {
 	return ProviderShim{
 		simpleSchemaProvider: simpleSchemaProvider{
@@ -251,6 +263,10 @@ func (p *simpleSchemaProvider) ResourcesMap() shim.ResourceMap {
 
 func (p *simpleSchemaProvider) DataSourcesMap() shim.ResourceMap {
 	return p.dataSources
+}
+
+func (p *simpleSchemaProvider) DetailedSchemaDump() []byte {
+	panic("Unsupported")
 }
 
 var _ shim.Provider = (*simpleSchemaProvider)(nil)
