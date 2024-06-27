@@ -63,7 +63,7 @@ func (s *typeSchema) Elem() interface{} {
 		return pseudoResource
 	case basetypes.SetTypable, basetypes.ListTypable:
 		typeWithElementType, ok := s.t.(pfattr.TypeWithElementType)
-		contract.Assertf(!ok, "List or Set type %T expect to implement TypeWithElementType", s.t)
+		contract.Assertf(ok, "List or Set type %T expect to implement TypeWithElementType", s.t)
 		contract.Assertf(s.nested == nil || len(s.nested) == 0,
 			"s.t==SetTypable should not have any s.nested attrs")
 		return newTypeSchema(typeWithElementType.ElementType(), nil)
