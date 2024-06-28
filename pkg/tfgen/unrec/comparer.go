@@ -81,22 +81,7 @@ func (cmp *generalizedComparer) lessThanOrEqualXPropertyMaps(a, b xPropertyMap) 
 }
 
 func (cmp *generalizedComparer) strictlyEqualXPropertyMaps(a, b xPropertyMap) bool {
-	if a == nil || b == nil {
-		return a == nil && b == nil
-	}
-	if len(a) != len(b) {
-		return false
-	}
-	for k, av := range a {
-		bv, ok := b[k]
-		if !ok {
-			return false
-		}
-		if !cmp.EqualXProperties(av, bv) {
-			return false
-		}
-	}
-	return true
+	return len(a) == len(b) && cmp.lessThanOrEqualXPropertyMaps(a, b)
 }
 
 func (cmp *generalizedComparer) rewrite(a tokens.Type) tokens.Type {
