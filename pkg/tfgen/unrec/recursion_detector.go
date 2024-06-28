@@ -50,9 +50,9 @@ func newRecursionDetector(schema *pschema.PackageSpec) *recursionDetector {
 	}
 }
 
-func (rd *recursionDetector) Detect(roots []tokens.Type) []tokens.Type {
+func (rd *recursionDetector) Detect(types []tokens.Type) []tokens.Type {
 	vis := &typeVisitor{Schema: rd.schema, Visit: rd.visit}
-	vis.VisitRoots(roots)
+	vis.VisitTypes(types...)
 	result := []tokens.Type{}
 	for t := range rd.detectedRecursiveTypes {
 		result = append(result, t)

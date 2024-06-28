@@ -30,8 +30,8 @@ type typeVisitor struct {
 	seen     map[tokens.Type]struct{} // internal
 }
 
-func (tv *typeVisitor) VisitRoots(roots []tokens.Type) {
-	for _, ty := range roots {
+func (tv *typeVisitor) VisitTypes(types ...tokens.Type) {
+	for _, ty := range types {
 		tv.visitLocalType(ty)
 	}
 }

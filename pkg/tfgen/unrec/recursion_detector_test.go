@@ -25,11 +25,11 @@ func TestRecursionDetector(t *testing.T) {
 	s := exampleSchema(t)
 	rd := newRecursionDetector(s)
 
-	roots := []tokens.Type{}
+	starterTypes := []tokens.Type{}
 	for _, r := range s.Resources {
 		for _, p := range r.Properties {
 			if ref, ok := parseLocalRef(p.TypeSpec.Ref); ok {
-				roots = append(roots, ref)
+				starterTypes = append(starterTypes, ref)
 			}
 		}
 	}
@@ -40,5 +40,5 @@ func TestRecursionDetector(t *testing.T) {
 		tokens.Type("myprov:index/WebAclStatementAndStatement:WebAclStatementAndStatement"),
 		tokens.Type("myprov:index/WebAclStatementAndStatementStatement:WebAclStatementAndStatementStatement"),
 		tokens.Type("myprov:index/WebAclStatementRateBasedStatementScopeDownStatement:WebAclStatementRateBasedStatementScopeDownStatement"),
-	}).Equal(t, rd.Detect(roots))
+	}).Equal(t, rd.Detect(starterTypes))
 }

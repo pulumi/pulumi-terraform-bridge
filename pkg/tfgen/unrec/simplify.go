@@ -57,7 +57,7 @@ func computeAllRewriteRules(schema *pschema.PackageSpec) (map[tokens.Type]tokens
 	return rewriteRules, nil
 }
 
-// Starting from roots, detect recursive type roots. Simplify all types reachable from the recursive type roots.
+// Starting from starterTypes, detect recursive type roots. Simplify all types reachable from the recursive type roots.
 // Simplification rewrites type A with type B if A<=B according to [comparer.LessThanTypeRefs].
 //
 // Although scoped to the progeny of recursive types, this may still end up over-eagerly rewriting logically distinct
@@ -65,11 +65,11 @@ func computeAllRewriteRules(schema *pschema.PackageSpec) (map[tokens.Type]tokens
 func computeRewriteRules(
 	cmp *comparer,
 	schema *pschema.PackageSpec,
-	roots typeRefs,
+	starterTypes typeRefs,
 	rewriteRules map[tokens.Type]tokens.Type,
 ) error {
 	rd := newRecursionDetector(schema)
-	recursionRoots := rd.Detect(roots.Slice())
+	recursionRoots := rd.Detect(starterTypes.Slice())
 
 	allRefs, err := findTypeReferenceTransitiveClosure(schema, newTypeRefs(recursionRoots...))
 	if err != nil {

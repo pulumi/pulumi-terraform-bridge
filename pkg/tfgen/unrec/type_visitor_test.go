@@ -24,11 +24,11 @@ import (
 func TestTypeVisitor(t *testing.T) {
 	s := exampleSchema(t)
 
-	roots := []tokens.Type{}
+	starterTypes := []tokens.Type{}
 	for _, r := range s.Resources {
 		for _, p := range r.Properties {
 			if ref, ok := parseLocalRef(p.TypeSpec.Ref); ok {
-				roots = append(roots, ref)
+				starterTypes = append(starterTypes, ref)
 			}
 		}
 	}
@@ -42,7 +42,7 @@ func TestTypeVisitor(t *testing.T) {
 		count++
 		return true
 	}}
-	vis.VisitRoots(roots)
+	vis.VisitTypes(starterTypes...)
 
 	require.Equal(t, 87, count)
 
