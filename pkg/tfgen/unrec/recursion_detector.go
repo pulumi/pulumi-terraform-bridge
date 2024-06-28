@@ -135,5 +135,22 @@ func (rd *recursionDetector) detectRootsVisitor(ancestors []tokens.Type, current
 }
 
 func (rd *recursionDetector) detect(t1, t2, t3 tokens.Type) bool {
-	return rd.cmp.LessThanTypeRefs(t3, t2) && rd.cmp.LessThanTypeRefs(t2, t1)
+	return rd.cmp.LessThanTypeRefs(t3, t2) && rd.cmp.LessThanTypeRefs(t2, t1) && rd.sameProps(t1, t2)
+}
+
+func (rd *recursionDetector) sameProps(t1, t2 tokens.Type) bool {
+	t1d, ok1 := rd.schema.Types[string(t1)]
+	t2d, ok2 := rd.schema.Types[string(t2)]
+	if !ok1 || !ok2 {
+		return false
+	}
+	if len(t1d.Properties) != len(t2d.Properties) {
+		return false
+	}
+	for k := range t1d.Properties {
+		if _, ok := t2d.Properties[k]; !ok {
+			return false
+		}
+	}
+	return true
 }

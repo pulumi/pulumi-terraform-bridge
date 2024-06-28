@@ -68,6 +68,7 @@ func webACLRootStatementSchema(level int) *schema.Schema {
 				"rate_based_statement":  rateBasedStatementSchema(level),
 				"sqli_match_statement":  sqliMatchStatementSchema(),
 				"regex_match_statement": regexMatchStatementSchema(),
+				"xss_match_statement":   xssMatchStatementSchema(),
 			},
 		},
 	}

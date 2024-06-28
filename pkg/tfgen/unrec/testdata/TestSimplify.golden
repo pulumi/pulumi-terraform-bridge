@@ -31,6 +31,9 @@
         },
         "sqliMatchStatement": {
           "$ref": "#/types/myprov:index/WebAclStatementSqliMatchStatement:WebAclStatementSqliMatchStatement"
+        },
+        "xssMatchStatement": {
+          "$ref": "#/types/myprov:index/WebAclStatementXssMatchStatement:WebAclStatementXssMatchStatement"
         }
       },
       "type": "object"
@@ -238,6 +241,25 @@
         "priority",
         "type"
       ]
+    },
+    "myprov:index/WebAclStatementXssMatchStatement:WebAclStatementXssMatchStatement": {
+      "properties": {
+        "fieldToMatch": {
+          "$ref": "#/types/myprov:index/WebAclStatementXssMatchStatementFieldToMatch:WebAclStatementXssMatchStatementFieldToMatch"
+        }
+      },
+      "type": "object"
+    },
+    "myprov:index/WebAclStatementXssMatchStatementFieldToMatch:WebAclStatementXssMatchStatementFieldToMatch": {
+      "properties": {
+        "method": {
+          "$ref": "#/types/myprov:index/WebAclStatementXssMatchStatementFieldToMatchMethod:WebAclStatementXssMatchStatementFieldToMatchMethod"
+        }
+      },
+      "type": "object"
+    },
+    "myprov:index/WebAclStatementXssMatchStatementFieldToMatchMethod:WebAclStatementXssMatchStatementFieldToMatchMethod": {
+      "type": "object"
     }
   },
   "provider": {
