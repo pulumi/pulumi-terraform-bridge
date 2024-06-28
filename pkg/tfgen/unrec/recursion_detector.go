@@ -15,6 +15,8 @@
 package unrec
 
 import (
+	"sort"
+
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
@@ -59,6 +61,13 @@ func (rd *recursionDetector) Detect(starterTypes []tokens.Type) map[tokens.Type]
 
 	roots := []tokens.Type{}
 
+	sort.Slice(roots, func(i, j int) bool {
+		if len(roots[i]) < len(roots[j]) {
+			return true
+		}
+		return roots[i] < roots[j]
+	})
+
 	seenRoot := func(t tokens.Type) bool {
 		for _, r := range roots {
 			if rd.cmp.EqualTypeRefs(r, t) {
@@ -78,7 +87,7 @@ func (rd *recursionDetector) Detect(starterTypes []tokens.Type) map[tokens.Type]
 	// Second pass: detect instances.
 	vis2 := &typeVisitor{Schema: rd.schema, Visit: func(_ []tokens.Type, current tokens.Type) bool {
 		for _, root := range roots {
-			if rd.cmp.LessThanOrEqualTypeRefs(current, root) && current != root {
+			if rd.cmp.LessThanTypeRefs(current, root) && current != root {
 				detected[root][current] = struct{}{}
 				return true
 			}
@@ -109,5 +118,5 @@ func (rd *recursionDetector) detectRootsVisitor(ancestors []tokens.Type, current
 }
 
 func (rd *recursionDetector) detect(t1, t2, t3 tokens.Type) bool {
-	return rd.cmp.LessThanOrEqualTypeRefs(t3, t2) && rd.cmp.LessThanOrEqualTypeRefs(t2, t1)
+	return rd.cmp.LessThanTypeRefs(t3, t2) && rd.cmp.LessThanTypeRefs(t2, t1)
 }
