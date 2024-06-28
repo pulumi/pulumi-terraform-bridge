@@ -23,6 +23,9 @@ import (
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 )
 
+// Consults a generated test schema (see gen.go), run go generate to rebuild. This indirection allows the package not to
+// build-depend on the tfgen module in case it ever needs to be exported from tfgen to avoid build cycles.
+//
 //go:generate go run gen.go
 func exampleSchema(t *testing.T) *pschema.PackageSpec {
 	b, err := os.ReadFile(filepath.Join("testdata", "test-schema.json"))
