@@ -181,7 +181,7 @@ func rewriteTypeRefs(rewrites map[tokens.Type]tokens.Type, schema *pschema.Packa
 		return err
 	}
 
-	for deletedType, _ := range rewrites {
+	for deletedType := range rewrites {
 		delete(modifiedSchema.Types, string(deletedType))
 	}
 

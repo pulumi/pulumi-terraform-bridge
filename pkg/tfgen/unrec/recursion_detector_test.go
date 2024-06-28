@@ -34,19 +34,5 @@ func TestRecursionDetector(t *testing.T) {
 		}
 	}
 
-	autogold.Expect(map[tokens.Type]map[tokens.Type]struct{}{
-		tokens.Type("myprov:index/WebAclStatementAndStatement:WebAclStatementAndStatement"): {
-			tokens.Type("myprov:index/WebAclStatementAndStatementStatementAndStatement:WebAclStatementAndStatementStatementAndStatement"):                                                                         {},
-			tokens.Type("myprov:index/WebAclStatementAndStatementStatementAndStatementStatementAndStatement:WebAclStatementAndStatementStatementAndStatementStatementAndStatement"):                               {},
-			tokens.Type("myprov:index/WebAclStatementRateBasedStatementScopeDownStatementAndStatement:WebAclStatementRateBasedStatementScopeDownStatementAndStatement"):                                           {},
-			tokens.Type("myprov:index/WebAclStatementRateBasedStatementScopeDownStatementAndStatementStatementAndStatement:WebAclStatementRateBasedStatementScopeDownStatementAndStatementStatementAndStatement"): {},
-		},
-		tokens.Type("myprov:index/WebAclStatementAndStatementStatement:WebAclStatementAndStatementStatement"): {
-			tokens.Type("myprov:index/WebAclStatementAndStatementStatementAndStatementStatement:WebAclStatementAndStatementStatementAndStatementStatement"):                                                                         {},
-			tokens.Type("myprov:index/WebAclStatementAndStatementStatementAndStatementStatementAndStatementStatement:WebAclStatementAndStatementStatementAndStatementStatementAndStatementStatement"):                               {},
-			tokens.Type("myprov:index/WebAclStatementRateBasedStatementScopeDownStatement:WebAclStatementRateBasedStatementScopeDownStatement"):                                                                                     {},
-			tokens.Type("myprov:index/WebAclStatementRateBasedStatementScopeDownStatementAndStatementStatement:WebAclStatementRateBasedStatementScopeDownStatementAndStatementStatement"):                                           {},
-			tokens.Type("myprov:index/WebAclStatementRateBasedStatementScopeDownStatementAndStatementStatementAndStatementStatement:WebAclStatementRateBasedStatementScopeDownStatementAndStatementStatementAndStatementStatement"): {},
-		},
-	}).Equal(t, rd.Detect(starterTypes))
+	autogold.ExpectFile(t, rd.Detect(starterTypes))
 }

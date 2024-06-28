@@ -21,7 +21,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestComparerAndStatement(t *testing.T) {
+func TesComparerAndStatement(t *testing.T) {
+	//nolint:lll
 	t1 := "myprov:index/WebAclStatementAndStatementStatementAndStatementStatement:WebAclStatementAndStatementStatementAndStatementStatement"
 	t2 := "myprov:index/WebAclStatementAndStatementStatement:WebAclStatementAndStatementStatement"
 	s := exampleSchema(t)

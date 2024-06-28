@@ -8,4 +8,3 @@
 //
 // [Pulumi Package Schema]: https://www.pulumi.com/docs/guides/pulumi-packages/schema/
 package unrec
-

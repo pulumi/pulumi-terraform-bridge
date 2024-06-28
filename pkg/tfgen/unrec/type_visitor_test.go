@@ -17,6 +17,7 @@ package unrec
 import (
 	"testing"
 
+	"github.com/hexops/autogold/v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/require"
 )
@@ -46,13 +47,7 @@ func TestTypeVisitor(t *testing.T) {
 
 	require.Equal(t, 90, count)
 
+	//nolint:lll
 	tok := "myprov:index/WebAclStatementRateBasedStatementScopeDownStatementAndStatementStatementAndStatementStatement:WebAclStatementRateBasedStatementScopeDownStatementAndStatementStatementAndStatementStatement"
-	require.Equal(t, []tokens.Type{
-		"myprov:index/WebAclStatement:WebAclStatement",
-		"myprov:index/WebAclStatementRateBasedStatement:WebAclStatementRateBasedStatement",
-		"myprov:index/WebAclStatementRateBasedStatementScopeDownStatement:WebAclStatementRateBasedStatementScopeDownStatement",
-		"myprov:index/WebAclStatementRateBasedStatementScopeDownStatementAndStatement:WebAclStatementRateBasedStatementScopeDownStatementAndStatement",
-		"myprov:index/WebAclStatementRateBasedStatementScopeDownStatementAndStatementStatement:WebAclStatementRateBasedStatementScopeDownStatementAndStatementStatement",
-		"myprov:index/WebAclStatementRateBasedStatementScopeDownStatementAndStatementStatementAndStatement:WebAclStatementRateBasedStatementScopeDownStatementAndStatementStatementAndStatement",
-	}, visited[tokens.Type(tok)])
+	autogold.ExpectFile(t, visited[tokens.Type(tok)])
 }
