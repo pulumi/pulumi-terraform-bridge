@@ -68,45 +68,40 @@ func computeRewriteRules(
 	starterTypes typeRefs,
 	rewriteRules map[tokens.Type]tokens.Type,
 ) error {
+	// Detect recursive type patterns first.
 	rd := newRecursionDetector(schema)
-	recursionRoots := rd.Detect(starterTypes.Slice())
+	recursionGraph := rd.Detect(starterTypes.Slice())
 
-	allRefs, err := findTypeReferenceTransitiveClosure(schema, newTypeRefs(recursionRoots...))
+	// Rewrite every recursive type into its root.
+	for root, instances := range recursionGraph {
+		for instance := range instances {
+			rewriteRules[instance] = root
+		}
+	}
+
+	// Find all types reachable from the recursive type references.
+	recursiveRefs := newTypeRefs()
+	for root, instances := range recursionGraph {
+		recursiveRefs.Add(root)
+		for instance := range instances {
+			recursiveRefs.Add(instance)
+		}
+	}
+	allRefs, err := findTypeReferenceTransitiveClosure(schema, recursiveRefs)
 	if err != nil {
 		return err
 	}
-	eqcs := typeEqualityClasses(cmp, allRefs)
 
-	for i, eqc := range eqcs {
+	// Rewrite identical types into "best" types minimizing token length.
+	for _, eqc := range typeEqualityClasses(cmp.WithRewrites(rewriteRules), allRefs) {
 		best := eqc.Best()
-
-		// Check if there are any other classes that have bigger elements.
-		isDominant := true
-		for j, otherc := range eqcs {
-			if i != j && cmp.LessThanTypeRefs(best, otherc.Best()) {
-				isDominant = false
-				break
-			}
-		}
-
-		// Only consider classes that are not dominated by another class.
-		if isDominant {
-			// Add rewrite rules for all types in the class itself.
-			for _, typ := range eqc.Slice() {
-				if typ != best {
-					rewriteRules[typ] = best
-				}
-			}
-			// Add rewrite rules for all classes it dominates.
-			for j, otherc := range eqcs {
-				if i != j && cmp.LessThanTypeRefs(otherc.Best(), best) {
-					for _, typ := range otherc.Slice() {
-						rewriteRules[typ] = best
-					}
-				}
+		for _, typ := range eqc.Slice() {
+			if typ != best {
+				rewriteRules[typ] = best
 			}
 		}
 	}
+
 	return nil
 }
 

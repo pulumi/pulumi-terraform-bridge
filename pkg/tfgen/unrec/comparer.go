@@ -25,10 +25,20 @@ import (
 type comparer struct {
 	// Local type-ref comparisons are scoped to a package schema.
 	schema *pschema.PackageSpec
+
+	// Set of implicit type rewrites to consider when comparing.
+	rewrites map[tokens.Type]tokens.Type
+}
+
+func (cmp *comparer) WithRewrites(rewrites map[tokens.Type]tokens.Type) *comparer {
+	return &comparer{
+		schema:   cmp.schema,
+		rewrites: rewrites,
+	}
 }
 
 func (cmp *comparer) EqualTypeRefs(a, b tokens.Type) bool {
-	g := &generalizedComparer{schema: cmp.schema}
+	g := &generalizedComparer{schema: cmp.schema, rewrites: cmp.rewrites}
 	g.EqualXPropertyMaps = g.strictlyEqualXPropertyMaps
 	return g.EqualTypeRefs(a, b)
 }
@@ -40,7 +50,7 @@ func (cmp *comparer) LessThanTypeRefs(a, b tokens.Type) bool {
 // A type will be considered "less than" another type if both are locally defined object types and A defines a subset of
 // B's properties. This is useful to deal with property dropout during recursive type expansions.
 func (cmp *comparer) LessThanOrEqualTypeRefs(a, b tokens.Type) (eq bool) {
-	g := &generalizedComparer{schema: cmp.schema}
+	g := &generalizedComparer{schema: cmp.schema, rewrites: cmp.rewrites}
 	g.EqualXPropertyMaps = g.lessThanOrEqualXPropertyMaps
 	return g.EqualTypeRefs(a, b)
 }
@@ -48,6 +58,7 @@ func (cmp *comparer) LessThanOrEqualTypeRefs(a, b tokens.Type) (eq bool) {
 // Generalizing structural comparisons to specialize for A=B and A<=B separately.
 type generalizedComparer struct {
 	schema             *pschema.PackageSpec
+	rewrites           map[tokens.Type]tokens.Type
 	EqualXPropertyMaps func(xPropertyMap, xPropertyMap) bool
 }
 
@@ -88,7 +99,18 @@ func (cmp *generalizedComparer) strictlyEqualXPropertyMaps(a, b xPropertyMap) bo
 	return true
 }
 
+func (cmp *generalizedComparer) rewrite(a tokens.Type) tokens.Type {
+	if cmp.rewrites == nil {
+		return a
+	}
+	if x, ok := cmp.rewrites[a]; ok {
+		return x
+	}
+	return a
+}
+
 func (cmp *generalizedComparer) EqualTypeRefs(a, b tokens.Type) bool {
+	a, b = cmp.rewrite(a), cmp.rewrite(b)
 	if a == b {
 		return true
 	}

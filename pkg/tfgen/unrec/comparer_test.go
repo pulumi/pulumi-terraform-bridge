@@ -25,13 +25,13 @@ func TestComparerAndStatement(t *testing.T) {
 	t1 := "myprov:index/WebAclStatementAndStatementStatementAndStatementStatement:WebAclStatementAndStatementStatementAndStatementStatement"
 	t2 := "myprov:index/WebAclStatementAndStatementStatement:WebAclStatementAndStatementStatement"
 	s := exampleSchema(t)
-	cmp := &comparer{s}
+	cmp := &comparer{s, nil}
 	require.Truef(t, cmp.LessThanTypeRefs(tokens.Type(t1), tokens.Type(t2)), "A<B")
 }
 
 func TestComparer(t *testing.T) {
 	s := exampleSchema(t)
-	cmp := &comparer{s}
+	cmp := &comparer{s, nil}
 
 	allTypes := []tokens.Type{}
 	for t := range s.Types {

@@ -68,6 +68,11 @@ func newTypeRefs(tok ...tokens.Type) typeRefs {
 	return tr
 }
 
+func (refs typeRefs) Contains(t tokens.Type) bool {
+	_, ok := refs[t]
+	return ok
+}
+
 func (refs typeRefs) Add(tok ...tokens.Type) {
 	for _, t := range tok {
 		refs[t] = struct{}{}
