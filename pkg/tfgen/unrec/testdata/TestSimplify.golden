@@ -25,6 +25,12 @@
         },
         "rateBasedStatement": {
           "$ref": "#/types/myprov:index/WebAclStatementRateBasedStatement:WebAclStatementRateBasedStatement"
+        },
+        "regexMatchStatement": {
+          "$ref": "#/types/myprov:index/WebAclStatementRegexMatchStatement:WebAclStatementRegexMatchStatement"
+        },
+        "sqliMatchStatement": {
+          "$ref": "#/types/myprov:index/WebAclStatementSqliMatchStatement:WebAclStatementSqliMatchStatement"
         }
       },
       "type": "object"
@@ -48,19 +54,53 @@
         "andStatement": {
           "$ref": "#/types/myprov:index/WebAclStatementAndStatement:WebAclStatementAndStatement"
         },
+        "regexMatchStatement": {
+          "$ref": "#/types/myprov:index/WebAclStatementAndStatementStatementRegexMatchStatement:WebAclStatementAndStatementStatementRegexMatchStatement"
+        },
+        "sqliMatchStatement": {
+          "$ref": "#/types/myprov:index/WebAclStatementAndStatementStatementRegexMatchStatement:WebAclStatementAndStatementStatementRegexMatchStatement"
+        },
         "xssMatchStatement": {
-          "$ref": "#/types/myprov:index/WebAclStatementAndStatementStatementXssMatchStatement:WebAclStatementAndStatementStatementXssMatchStatement"
+          "$ref": "#/types/myprov:index/WebAclStatementAndStatementStatementRegexMatchStatement:WebAclStatementAndStatementStatementRegexMatchStatement"
         }
       },
       "type": "object"
     },
-    "myprov:index/WebAclStatementAndStatementStatementXssMatchStatement:WebAclStatementAndStatementStatementXssMatchStatement": {
+    "myprov:index/WebAclStatementAndStatementStatementRegexMatchStatement:WebAclStatementAndStatementStatementRegexMatchStatement": {
       "properties": {
         "fieldToMatch": {
           "$ref": "#/types/myprov:index/WebAclStatementAndStatementStatementXssMatchStatementFieldToMatch:WebAclStatementAndStatementStatementXssMatchStatementFieldToMatch"
+        },
+        "regexString": {
+          "type": "string"
+        },
+        "textTransformations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/myprov:index/WebAclStatementAndStatementStatementSqliMatchStatementTextTransformation:WebAclStatementAndStatementStatementSqliMatchStatementTextTransformation"
+          }
         }
       },
-      "type": "object"
+      "type": "object",
+      "required": [
+        "regexString",
+        "textTransformations"
+      ]
+    },
+    "myprov:index/WebAclStatementAndStatementStatementSqliMatchStatementTextTransformation:WebAclStatementAndStatementStatementSqliMatchStatementTextTransformation": {
+      "properties": {
+        "priority": {
+          "type": "integer"
+        },
+        "type": {
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "required": [
+        "priority",
+        "type"
+      ]
     },
     "myprov:index/WebAclStatementAndStatementStatementXssMatchStatementFieldToMatch:WebAclStatementAndStatementStatementXssMatchStatementFieldToMatch": {
       "properties": {
@@ -83,6 +123,96 @@
         }
       },
       "type": "object"
+    },
+    "myprov:index/WebAclStatementRegexMatchStatement:WebAclStatementRegexMatchStatement": {
+      "properties": {
+        "fieldToMatch": {
+          "$ref": "#/types/myprov:index/WebAclStatementRegexMatchStatementFieldToMatch:WebAclStatementRegexMatchStatementFieldToMatch"
+        },
+        "regexString": {
+          "type": "string"
+        },
+        "textTransformations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/myprov:index/WebAclStatementRegexMatchStatementTextTransformation:WebAclStatementRegexMatchStatementTextTransformation"
+          }
+        }
+      },
+      "type": "object",
+      "required": [
+        "regexString",
+        "textTransformations"
+      ]
+    },
+    "myprov:index/WebAclStatementRegexMatchStatementFieldToMatch:WebAclStatementRegexMatchStatementFieldToMatch": {
+      "properties": {
+        "method": {
+          "$ref": "#/types/myprov:index/WebAclStatementRegexMatchStatementFieldToMatchMethod:WebAclStatementRegexMatchStatementFieldToMatchMethod"
+        }
+      },
+      "type": "object"
+    },
+    "myprov:index/WebAclStatementRegexMatchStatementFieldToMatchMethod:WebAclStatementRegexMatchStatementFieldToMatchMethod": {
+      "type": "object"
+    },
+    "myprov:index/WebAclStatementRegexMatchStatementTextTransformation:WebAclStatementRegexMatchStatementTextTransformation": {
+      "properties": {
+        "priority": {
+          "type": "integer"
+        },
+        "type": {
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "required": [
+        "priority",
+        "type"
+      ]
+    },
+    "myprov:index/WebAclStatementSqliMatchStatement:WebAclStatementSqliMatchStatement": {
+      "properties": {
+        "fieldToMatch": {
+          "$ref": "#/types/myprov:index/WebAclStatementSqliMatchStatementFieldToMatch:WebAclStatementSqliMatchStatementFieldToMatch"
+        },
+        "textTransformations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/myprov:index/WebAclStatementSqliMatchStatementTextTransformation:WebAclStatementSqliMatchStatementTextTransformation"
+          }
+        }
+      },
+      "type": "object",
+      "required": [
+        "textTransformations"
+      ]
+    },
+    "myprov:index/WebAclStatementSqliMatchStatementFieldToMatch:WebAclStatementSqliMatchStatementFieldToMatch": {
+      "properties": {
+        "method": {
+          "$ref": "#/types/myprov:index/WebAclStatementSqliMatchStatementFieldToMatchMethod:WebAclStatementSqliMatchStatementFieldToMatchMethod"
+        }
+      },
+      "type": "object"
+    },
+    "myprov:index/WebAclStatementSqliMatchStatementFieldToMatchMethod:WebAclStatementSqliMatchStatementFieldToMatchMethod": {
+      "type": "object"
+    },
+    "myprov:index/WebAclStatementSqliMatchStatementTextTransformation:WebAclStatementSqliMatchStatementTextTransformation": {
+      "properties": {
+        "priority": {
+          "type": "integer"
+        },
+        "type": {
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "required": [
+        "priority",
+        "type"
+      ]
     }
   },
   "provider": {

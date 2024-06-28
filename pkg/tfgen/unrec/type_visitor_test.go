@@ -43,7 +43,7 @@ func TestTypeVisitor(t *testing.T) {
 	}}
 	vis.VisitRoots(roots)
 
-	require.Equal(t, 31, count)
+	require.Equal(t, 87, count)
 
 	tok := "myprov:index/WebAclStatementRateBasedStatementScopeDownStatementAndStatementStatementAndStatementStatement:WebAclStatementRateBasedStatementScopeDownStatementAndStatementStatementAndStatementStatement"
 	require.Equal(t, []tokens.Type{

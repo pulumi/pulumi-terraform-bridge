@@ -64,8 +64,10 @@ func webACLRootStatementSchema(level int) *schema.Schema {
 		MaxItems: 1,
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
-				"and_statement":        statementSchema(level),
-				"rate_based_statement": rateBasedStatementSchema(level),
+				"and_statement":         statementSchema(level),
+				"rate_based_statement":  rateBasedStatementSchema(level),
+				"sqli_match_statement":  sqliMatchStatementSchema(),
+				"regex_match_statement": regexMatchStatementSchema(),
 			},
 		},
 	}
@@ -88,6 +90,24 @@ func rateBasedStatementSchema(level int) *schema.Schema {
 	}
 }
 
+func regexMatchStatementSchema() *schema.Schema {
+	return &schema.Schema{
+		Type:     schema.TypeList,
+		Optional: true,
+		MaxItems: 1,
+		Elem: &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				"regex_string": {
+					Type:     schema.TypeString,
+					Required: true,
+				},
+				"field_to_match":      fieldToMatchSchema(),
+				"text_transformation": textTransformationSchema(),
+			},
+		},
+	}
+}
+
 func scopeDownStatementSchema(level int) *schema.Schema {
 	return &schema.Schema{
 		Type:     schema.TypeList,
@@ -95,8 +115,10 @@ func scopeDownStatementSchema(level int) *schema.Schema {
 		MaxItems: 1,
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
-				"and_statement":       statementSchema(level),
-				"xss_match_statement": xssMatchStatementSchema(),
+				"and_statement":         statementSchema(level),
+				"xss_match_statement":   xssMatchStatementSchema(),
+				"sqli_match_statement":  sqliMatchStatementSchema(),
+				"regex_match_statement": regexMatchStatementSchema(),
 			},
 		},
 	}
@@ -115,8 +137,10 @@ func statementSchema(level int) *schema.Schema {
 						Required: true,
 						Elem: &schema.Resource{
 							Schema: map[string]*schema.Schema{
-								"and_statement":       statementSchema(level - 1),
-								"xss_match_statement": xssMatchStatementSchema(),
+								"and_statement":         statementSchema(level - 1),
+								"xss_match_statement":   xssMatchStatementSchema(),
+								"sqli_match_statement":  sqliMatchStatementSchema(),
+								"regex_match_statement": regexMatchStatementSchema(),
 							},
 						},
 					},
@@ -136,7 +160,9 @@ func statementSchema(level int) *schema.Schema {
 					Required: true,
 					Elem: &schema.Resource{
 						Schema: map[string]*schema.Schema{
-							"xss_match_statement": xssMatchStatementSchema(),
+							"xss_match_statement":   xssMatchStatementSchema(),
+							"sqli_match_statement":  sqliMatchStatementSchema(),
+							"regex_match_statement": regexMatchStatementSchema(),
 						},
 					},
 				},
@@ -164,6 +190,45 @@ func fieldToMatchSchema() *schema.Schema {
 		Optional: true,
 		MaxItems: 1,
 		Elem:     fieldToMatchBaseSchema(),
+	}
+}
+
+func sqliMatchStatementSchema() *schema.Schema {
+	return &schema.Schema{
+		Type:     schema.TypeList,
+		Optional: true,
+		MaxItems: 1,
+		Elem: &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				"field_to_match":      fieldToMatchSchema(),
+				"text_transformation": textTransformationSchema(),
+			},
+		},
+	}
+}
+
+const (
+	namesAttrPriority = "priority"
+	namesAttrType     = "type"
+)
+
+func textTransformationSchema() *schema.Schema {
+	return &schema.Schema{
+		Type:     schema.TypeSet,
+		Required: true,
+		MinItems: 1,
+		Elem: &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				namesAttrPriority: {
+					Type:     schema.TypeInt,
+					Required: true,
+				},
+				namesAttrType: {
+					Type:     schema.TypeString,
+					Required: true,
+				},
+			},
+		},
 	}
 }
 
