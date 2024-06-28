@@ -37,9 +37,10 @@ func TestTypeVisitor(t *testing.T) {
 
 	visited := map[tokens.Type][]tokens.Type{}
 
-	vis := &typeVisitor{Schema: s, Visit: func(ancestors []tokens.Type, current tokens.Type) {
+	vis := &typeVisitor{Schema: s, Visit: func(ancestors []tokens.Type, current tokens.Type) bool {
 		visited[current] = ancestors
 		count++
+		return true
 	}}
 	vis.VisitRoots(roots)
 

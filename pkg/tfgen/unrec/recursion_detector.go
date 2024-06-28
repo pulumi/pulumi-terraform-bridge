@@ -63,7 +63,7 @@ func (rd *recursionDetector) Detect(roots []tokens.Type) []tokens.Type {
 	return result
 }
 
-func (rd *recursionDetector) visit(ancestors []tokens.Type, current tokens.Type) {
+func (rd *recursionDetector) visit(ancestors []tokens.Type, current tokens.Type) bool {
 	for i, ai := range ancestors {
 		if _, visited := rd.detectedRecursiveTypes[ai]; visited {
 			continue
@@ -74,10 +74,11 @@ func (rd *recursionDetector) visit(ancestors []tokens.Type, current tokens.Type)
 					rd.detectedRecursiveTypes = map[tokens.Type]struct{}{}
 				}
 				rd.detectedRecursiveTypes[ai] = struct{}{}
-				return
+				return true
 			}
 		}
 	}
+	return true
 }
 
 func (rd *recursionDetector) detect(t1, t2, t3 tokens.Type) bool {

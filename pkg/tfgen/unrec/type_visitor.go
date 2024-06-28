@@ -23,7 +23,7 @@ import (
 
 type typeVisitor struct {
 	Schema *pschema.PackageSpec
-	Visit  func(ancestors []tokens.Type, current tokens.Type)
+	Visit  func(ancestors []tokens.Type, current tokens.Type) bool
 
 	parent   *typeVisitor             // internal
 	visiting tokens.Type              // internal
@@ -68,8 +68,9 @@ func (tv *typeVisitor) visitLocalType(ty tokens.Type) {
 		return
 	}
 	tv.seen[ty] = struct{}{}
-	tv.Visit(tv.ancestors(), ty)
-	tv.push(ty).visitComplexTypeSpec(cts)
+	if tv.Visit(tv.ancestors(), ty) {
+		tv.push(ty).visitComplexTypeSpec(cts)
+	}
 }
 
 func (tv *typeVisitor) visitComplexTypeSpec(cts pschema.ComplexTypeSpec) {
