@@ -35,8 +35,13 @@ import (
 //
 //	ancestor(T1, T2), ancestor(T2, T3),  T3 <= T2 <= T1
 //
+// Such that:
+//
+//	set(props(T1)) = set(props(T2))
+//
 // This needs to use an approximate and not strict equality because the leaf node of a recursively unrolled type will
-// drop recursive properties and therefore not strictly match the ancestor.
+// drop recursive properties and therefore not strictly match the ancestor. The prop-set condition prevents accidentally
+// identifying non-recursive subset instances as recursive instances.
 type recursionDetector struct {
 	schema                 *pschema.PackageSpec
 	detectedRecursiveTypes map[tokens.Type]struct{}
