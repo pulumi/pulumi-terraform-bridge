@@ -516,6 +516,12 @@ func (g *Generator) makeObjectPropertyType(typePath paths.TypePath,
 			fakeFooterLinks := map[string]string{}
 			doc, _ = reformatText(docsInfoCtx, doc, fakeFooterLinks)
 		}
+		// If we still have no docs for this type, we use our final strategy to look up any docs
+		// that are parsed from entity (markdown) docs and have a unique path leaf.
+		if doc == "" {
+			doc = getUniqueLeafDocsDescriptions(entityDocs.Arguments, objPath.join(key))
+		}
+
 		v, err := g.propertyVariable(typePath, key,
 			propertySchema, propertyInfos, doc, "", out, entityDocs)
 		if err != nil {
@@ -1943,6 +1949,44 @@ func emitFile(fs afero.Fs, relPath string, contents []byte) error {
 	return err
 }
 
+func getUniqueLeafDocsDescriptions(arguments map[docsPath]*argumentDocs, path docsPath) string {
+	leaf := path.leaf()
+
+	uniqueLeaves := getUniqueLeafPaths(arguments)
+	if _, exist := uniqueLeaves[leaf]; exist {
+		for argKey, argDoc := range arguments {
+			if argKey.leaf() == leaf {
+				return argDoc.description
+			}
+		}
+	}
+	return ""
+}
+func getUniqueLeafPaths(arguments map[docsPath]*argumentDocs) map[string]bool {
+	// Read all leaves into a map.
+	//The key is the leaf name, and the value is the number of times that leaf has appeared.
+	leaves := make(map[string]int)
+	for arg := range arguments {
+		_, exist := leaves[arg.leaf()]
+		// if the key already exists, then increase the count
+		if exist {
+			leaves[arg.leaf()] += 1
+			continue
+		}
+		leaves[arg.leaf()] = 1
+	}
+
+	// Only return leaves with a count of exactly 1.
+	// For quick lookup, this is a map where the key is our leaf, and the value a boolean, which we disregard.
+	uniqueLeavesMap := make(map[string]bool)
+	for leaf, count := range leaves {
+		if count == 1 {
+			uniqueLeavesMap[leaf] = true
+		}
+	}
+	return uniqueLeavesMap
+}
+
 // getDescriptionFromParsedDocs extracts the argument description for the given arg, or the
 // attribute description if there is none.
 // If the description is taken from an attribute, the second return value is true.
@@ -1971,52 +2015,6 @@ func getNestedDescriptionFromParsedDocs(entityDocs entityDocs, path docsPath) (s
 		p = p.withOutRoot()
 	}
 
-	//TODO: Compare leaf path descriptions and set those IFF they are unique: https://github.com/pulumi/pulumi-terraform-bridge/issues/1886
-
-	//uniqueLeaves := make([]docsPath, 0, len(entityDocs.Arguments/2)
-	leaf := path.leaf()
-
-	// Get all leaves
-	var allLeaves []string
-	uniqueLeaves := make(map[string]bool)
-	for arg := range entityDocs.Arguments {
-		allLeaves = append(allLeaves, arg.leaf())
-		_, exist := uniqueLeaves[arg.leaf()]
-		if !exist {
-			uniqueLeaves[arg.leaf()] = true
-		}
-	}
-
-	//``
-
-	// Now we have to check if our current leaf is in our unique map.
-	// If yes, then we can grab our description and assign it.
-
-	if _, exist := uniqueLeaves[leaf]; exist {
-		if val, ok := entityDocs.Arguments[path]; ok {
-			return val.description, false
-		}
-	}
-
-	// Determine if they're unique
-
-	// To maintain old behavior, we also check if the last segment of `path` matches
-	// with some other last segment of any other entity.
-	//
-	// For example, this will match `production_branch.status` with
-	// `dev_branch.status`. This provides docs when we mess up parsing, but also leads
-	// to incorrect docs.
-	//keys := make([]docsPath, 0, len(entityDocs.Arguments)/2)
-	//leaf := path.leaf()
-	//for k := range entityDocs.Arguments {
-	//	if k.leaf() == leaf {
-	//		keys = append(keys, k)
-	//	}
-	//}
-	//if len(keys) > 0 {
-	//	docsPathArr(keys).Sort()
-	//	return entityDocs.Arguments[keys[0]].description, false
-	//}
 	for attrPath := path; attrPath != ""; {
 		// We return a description in the upstream attributes if none is found  in the upstream arguments. This condition
 		// may be met for one of the following reasons:
@@ -2042,7 +2040,6 @@ func getNestedDescriptionFromParsedDocs(entityDocs entityDocs, path docsPath) (s
 		}
 		attrPath = attrPath.withOutRoot()
 	}
-
 	return "", false
 }
 
