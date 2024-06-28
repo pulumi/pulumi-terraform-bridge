@@ -51,18 +51,15 @@ func mergeEqualityClasses[T any](eq func(T, T) bool, xs [][]T, ys [][]T) (result
 		}
 		acc = append(acc, xc)
 	}
+outer:
 	for _, yc := range ys {
-		matched := false
 		for i, ac := range acc {
 			if sameEqualityClasses(eq, ac, yc) {
 				acc[i] = append(append([]T{}, ac...), yc...)
-				matched = true
-				break
+				continue outer
 			}
 		}
-		if !matched {
-			acc = append(acc, yc)
-		}
+		acc = append(acc, yc)
 	}
 	return acc
 }
