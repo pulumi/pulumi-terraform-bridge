@@ -376,6 +376,19 @@ func skipWindows(t *testing.T) {
 func TestSchemaGeneration(t *testing.T) {
 	skipWindows(t)
 
+	t.Run("unparameterized", func(t *testing.T) {
+		helper.Integration(t)
+		ctx := context.Background()
+
+		schema, err := grpcTestServer(ctx, t).
+			GetSchema(ctx, &pulumirpc.GetSchemaRequest{})
+
+		require.NoError(t, err)
+		var fmtSchema bytes.Buffer
+		require.NoError(t, json.Indent(&fmtSchema, []byte(schema.Schema), "", "    "))
+		autogold.ExpectFile(t, autogold.Raw(fmtSchema.String()))
+	})
+
 	testSchema := func(name, version string) {
 		t.Run(strings.Join([]string{name, version}, "-"), func(t *testing.T) {
 			helper.Integration(t)

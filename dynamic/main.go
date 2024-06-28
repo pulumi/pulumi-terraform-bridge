@@ -22,6 +22,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/opentofu/opentofu/shim/run"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -44,6 +45,11 @@ func initialSetup() (tfbridge.ProviderInfo, pfbridge.ProviderMetadata, func() er
 		Version:      version.Version(),
 		Description:  "Use any Terraform provider with Pulumi",
 		MetadataInfo: &tfbridge.MetadataInfo{Path: "", Data: tfbridge.ProviderMetadata(nil)},
+		SchemaPostProcessor: func(spec *schema.PackageSpec) {
+			spec.Attribution = ""
+			spec.Provider = schema.ResourceSpec{}
+			spec.Language = nil
+		},
 	}
 
 	var metadata pfbridge.ProviderMetadata
@@ -59,6 +65,11 @@ func initialSetup() (tfbridge.ProviderInfo, pfbridge.ProviderMetadata, func() er
 			if err != nil {
 				return nil, err
 			}
+
+			if info.SchemaPostProcessor != nil {
+				info.SchemaPostProcessor(&packageSchema.PackageSpec)
+			}
+
 			return json.Marshal(packageSchema.PackageSpec)
 		},
 		XParamaterize: func(ctx context.Context, req plugin.ParameterizeRequest) (plugin.ParameterizeResponse, error) {
