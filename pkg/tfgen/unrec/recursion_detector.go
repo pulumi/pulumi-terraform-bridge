@@ -15,6 +15,7 @@
 package unrec
 
 import (
+	"slices"
 	"sort"
 
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -57,37 +58,17 @@ func (rd *recursionDetector) Detect(starterTypes []tokens.Type) map[tokens.Type]
 	vis := &typeVisitor{Schema: rd.schema, Visit: rd.detectRootsVisitor}
 	vis.VisitTypes(starterTypes...)
 
+	roots := rd.roots()
+
 	detected := map[tokens.Type]map[tokens.Type]struct{}{}
-
-	roots := []tokens.Type{}
-
-	sort.Slice(roots, func(i, j int) bool {
-		if len(roots[i]) < len(roots[j]) {
-			return true
-		}
-		return roots[i] < roots[j]
-	})
-
-	seenRoot := func(t tokens.Type) bool {
-		for _, r := range roots {
-			if rd.cmp.EqualTypeRefs(r, t) {
-				return true
-			}
-		}
-		return false
-	}
-
-	for recursionRoot := range rd.detectedRecursiveTypes {
-		if !seenRoot(recursionRoot) {
-			roots = append(roots, recursionRoot)
-			detected[recursionRoot] = map[tokens.Type]struct{}{}
-		}
+	for _, r := range roots {
+		detected[r] = map[tokens.Type]struct{}{}
 	}
 
 	// Second pass: detect instances.
 	vis2 := &typeVisitor{Schema: rd.schema, Visit: func(_ []tokens.Type, current tokens.Type) bool {
 		for _, root := range roots {
-			if rd.cmp.LessThanTypeRefs(current, root) && current != root {
+			if rd.cmp.LessThanOrEqualTypeRefs(current, root) && current != root {
 				detected[root][current] = struct{}{}
 				return true
 			}
@@ -97,6 +78,42 @@ func (rd *recursionDetector) Detect(starterTypes []tokens.Type) map[tokens.Type]
 
 	vis2.VisitTypes(starterTypes...)
 	return detected
+}
+
+func (rd *recursionDetector) sorted(types []tokens.Type) []tokens.Type {
+	tokens := slices.Clone(types)
+	sort.Slice(tokens, func(i, j int) bool {
+		if len(tokens[i]) < len(tokens[j]) {
+			return true
+		}
+		return tokens[i] < tokens[j]
+	})
+	return tokens
+}
+
+func (rd *recursionDetector) unique(types []tokens.Type) []tokens.Type {
+	result := []tokens.Type{}
+	for _, t := range types {
+		seen := false
+		for _, s := range result {
+			if rd.cmp.EqualTypeRefs(s, t) {
+				seen = true
+				break
+			}
+		}
+		if !seen {
+			result = append(result, t)
+		}
+	}
+	return result
+}
+
+func (rd *recursionDetector) roots() []tokens.Type {
+	tt := []tokens.Type{}
+	for t := range rd.detectedRecursiveTypes {
+		tt = append(tt, t)
+	}
+	return rd.unique(rd.sorted(tt))
 }
 
 func (rd *recursionDetector) detectRootsVisitor(ancestors []tokens.Type, current tokens.Type) bool {

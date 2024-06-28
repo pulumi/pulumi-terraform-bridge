@@ -44,6 +44,7 @@ func TestRecursionDetector(t *testing.T) {
 		tokens.Type("myprov:index/WebAclStatementAndStatementStatement:WebAclStatementAndStatementStatement"): {
 			tokens.Type("myprov:index/WebAclStatementAndStatementStatementAndStatementStatement:WebAclStatementAndStatementStatementAndStatementStatement"):                                                                         {},
 			tokens.Type("myprov:index/WebAclStatementAndStatementStatementAndStatementStatementAndStatementStatement:WebAclStatementAndStatementStatementAndStatementStatementAndStatementStatement"):                               {},
+			tokens.Type("myprov:index/WebAclStatementRateBasedStatementScopeDownStatement:WebAclStatementRateBasedStatementScopeDownStatement"):                                                                                     {},
 			tokens.Type("myprov:index/WebAclStatementRateBasedStatementScopeDownStatementAndStatementStatement:WebAclStatementRateBasedStatementScopeDownStatementAndStatementStatement"):                                           {},
 			tokens.Type("myprov:index/WebAclStatementRateBasedStatementScopeDownStatementAndStatementStatementAndStatementStatement:WebAclStatementRateBasedStatementScopeDownStatementAndStatementStatementAndStatementStatement"): {},
 		},
