@@ -1,12 +1,12 @@
 package tfplugin5
 
 import (
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/diagnostics"
 	"testing"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/diagnostics"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/tfplugin5/proto"
 )
 

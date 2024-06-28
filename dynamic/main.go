@@ -27,12 +27,11 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 
+	"github.com/pulumi/pulumi-terraform-bridge/dynamic/version"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/proto"
 	pfbridge "github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
-
-	"github.com/pulumi/pulumi-terraform-bridge/dynamic/version"
 )
 
 func initialSetup() (tfbridge.ProviderInfo, pfbridge.ProviderMetadata, func() error) {

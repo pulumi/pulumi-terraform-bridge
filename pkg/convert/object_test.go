@@ -18,9 +18,8 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
-	"github.com/stretchr/testify/require"
-
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/stretchr/testify/require"
 )
 
 // When PropertyMap is missing an entry, do not assume that the result is null but instead call the

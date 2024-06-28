@@ -21,14 +21,12 @@ import (
 	"strings"
 	"testing"
 
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	jsonpb "google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/known/emptypb"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-
-	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
 // Replay executes a request from a provider operation log against an in-memory resource provider server and asserts

@@ -15,8 +15,9 @@
 package info
 
 import (
-	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 )
 
 // A KV store persisted between `tfgen` and a running provider.

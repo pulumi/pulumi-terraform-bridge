@@ -19,7 +19,9 @@ func main() {
 
 	switch os.Args[1] {
 	case "lint":
-		lintMain()
+		lintMain(false)
+	case "fix-lint":
+		lintMain(true)
 	case "update-pulumi-deps":
 		updatePulumiDeps()
 	case "latest-pulumi-version":
@@ -61,12 +63,16 @@ func fileContains(path string, search string) bool {
 	return bytes.Contains(b, []byte(search))
 }
 
-func lintMain() {
+func lintMain(fix bool) {
 	roots := findGoModuleRoots()
 	failed := false
 	for _, m := range roots {
 		fmt.Printf("%q: linting ...", m)
-		err := execCommand(m, "golangci-lint", "run")
+		args := []string{"run", "--path-prefix=" + m}
+		if fix {
+			args = append(args, "--fix")
+		}
+		err := execCommand(m, "golangci-lint", args...)
 		if err == nil {
 			fmt.Printf(" done\n")
 		} else {

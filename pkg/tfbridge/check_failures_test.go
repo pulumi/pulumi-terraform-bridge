@@ -17,11 +17,11 @@ package tfbridge
 import (
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
 func TestKeySuggestions(t *testing.T) {

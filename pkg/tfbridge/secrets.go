@@ -17,8 +17,9 @@ package tfbridge
 import (
 	"context"
 
-	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
 // Ensures resource.MakeSecret is used to wrap any nested values that correspond to secret properties in the schema. A

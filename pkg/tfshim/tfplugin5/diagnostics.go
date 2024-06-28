@@ -3,8 +3,8 @@ package tfplugin5
 import (
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/go-multierror"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/diagnostics"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/diagnostics"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/tfplugin5/proto"
 )
 

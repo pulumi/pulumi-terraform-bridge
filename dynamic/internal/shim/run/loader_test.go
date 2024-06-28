@@ -20,7 +20,6 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

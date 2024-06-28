@@ -22,6 +22,7 @@ import (
 	"reflect"
 	"testing"
 
+	testutils "github.com/pulumi/providertest/replay"
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	rpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
@@ -29,8 +30,6 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/emptypb"
-
-	testutils "github.com/pulumi/providertest/replay"
 
 	"github.com/pulumi/pulumi-terraform-bridge/x/muxer"
 )

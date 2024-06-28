@@ -16,9 +16,10 @@ package testprovider
 
 import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	cschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
-	cschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 )
 
 func ProviderMiniTalos() tfbridge.ProviderInfo {

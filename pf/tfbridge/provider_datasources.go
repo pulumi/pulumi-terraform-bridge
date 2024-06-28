@@ -18,7 +18,6 @@ import (
 	"context"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
-
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/runtypes"

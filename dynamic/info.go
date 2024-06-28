@@ -21,11 +21,11 @@ import (
 	"strings"
 
 	"github.com/opentofu/opentofu/shim/run"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pf/proto"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 )
 
 func providerInfo(ctx context.Context, p run.Provider) tfbridge.ProviderInfo {

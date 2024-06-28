@@ -16,20 +16,20 @@ package tfgen
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
-	pulumiSchema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-
-	"encoding/json"
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+	pulumiSchema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/stretchr/testify/require"
+
 	pftfbridge "github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
-	"github.com/stretchr/testify/require"
 )
 
 // Regressing an issue with AWS provider not recognizing that assume_role config setting is singular via

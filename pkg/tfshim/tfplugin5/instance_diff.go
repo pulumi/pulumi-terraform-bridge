@@ -8,10 +8,10 @@ import (
 
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/go-cty/cty/convert"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/tfplugin5/proto"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // This corresponds to the TF plugin SDK's timeouts key.

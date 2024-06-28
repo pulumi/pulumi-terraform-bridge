@@ -16,11 +16,9 @@ package tfbridge
 
 import (
 	"sort"
-
 	_ "unsafe" // Needed for linkname
 
 	"github.com/Masterminds/semver"
-
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 

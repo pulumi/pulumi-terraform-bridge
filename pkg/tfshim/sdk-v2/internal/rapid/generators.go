@@ -1,11 +1,9 @@
 package rapidgen
 
 import (
-	"pgregory.net/rapid"
-
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"pgregory.net/rapid"
 )
 
 // schema.Resource docs state this is an abstraction over resources proper, data sources and blocks.
