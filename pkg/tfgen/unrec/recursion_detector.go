@@ -15,8 +15,6 @@
 package unrec
 
 import (
-	"sort"
-
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
@@ -50,20 +48,49 @@ func newRecursionDetector(schema *pschema.PackageSpec) *recursionDetector {
 	}
 }
 
-func (rd *recursionDetector) Detect(types []tokens.Type) []tokens.Type {
-	vis := &typeVisitor{Schema: rd.schema, Visit: rd.visit}
-	vis.VisitTypes(types...)
-	result := []tokens.Type{}
-	for t := range rd.detectedRecursiveTypes {
-		result = append(result, t)
+// Starting from the set of starterTypes, detects recursion and reports it. The keys of the resulting map are the
+// recursion roots, and the values are sets of recursive instances for each root.
+func (rd *recursionDetector) Detect(starterTypes []tokens.Type) map[tokens.Type]map[tokens.Type]struct{} {
+	// First pass: detect recursion roots.
+	vis := &typeVisitor{Schema: rd.schema, Visit: rd.detectRootsVisitor}
+	vis.VisitTypes(starterTypes...)
+
+	detected := map[tokens.Type]map[tokens.Type]struct{}{}
+
+	roots := []tokens.Type{}
+
+	seenRoot := func(t tokens.Type) bool {
+		for _, r := range roots {
+			if rd.cmp.EqualTypeRefs(r, t) {
+				return true
+			}
+		}
+		return false
 	}
-	sort.Slice(result, func(i, j int) bool {
-		return result[i] < result[j]
-	})
-	return result
+
+	for recursionRoot := range rd.detectedRecursiveTypes {
+		if !seenRoot(recursionRoot) {
+			roots = append(roots, recursionRoot)
+			detected[recursionRoot] = map[tokens.Type]struct{}{}
+		}
+	}
+
+	// Second pass: detect instances.
+	vis2 := &typeVisitor{Schema: rd.schema, Visit: func(_ []tokens.Type, current tokens.Type) bool {
+		for _, root := range roots {
+			if rd.cmp.LessThanOrEqualTypeRefs(current, root) && current != root {
+				detected[root][current] = struct{}{}
+				return true
+			}
+		}
+		return true
+	}}
+
+	vis2.VisitTypes(starterTypes...)
+	return detected
 }
 
-func (rd *recursionDetector) visit(ancestors []tokens.Type, current tokens.Type) bool {
+func (rd *recursionDetector) detectRootsVisitor(ancestors []tokens.Type, current tokens.Type) bool {
 	for i, ai := range ancestors {
 		if _, visited := rd.detectedRecursiveTypes[ai]; visited {
 			continue

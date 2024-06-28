@@ -34,11 +34,19 @@ func TestRecursionDetector(t *testing.T) {
 		}
 	}
 
-	// This currently over-detects a bit, instead of just detecting roots it detects sub-roots as well. This can be
-	// rectified but does not seem to affect the algorithm at the moment.
-	autogold.Expect([]tokens.Type{
-		tokens.Type("myprov:index/WebAclStatementAndStatement:WebAclStatementAndStatement"),
-		tokens.Type("myprov:index/WebAclStatementAndStatementStatement:WebAclStatementAndStatementStatement"),
-		tokens.Type("myprov:index/WebAclStatementRateBasedStatementScopeDownStatement:WebAclStatementRateBasedStatementScopeDownStatement"),
+	autogold.Expect(map[tokens.Type]map[tokens.Type]struct{}{
+		tokens.Type("myprov:index/WebAclStatementAndStatement:WebAclStatementAndStatement"): {
+			tokens.Type("myprov:index/WebAclStatementAndStatementStatementAndStatement:WebAclStatementAndStatementStatementAndStatement"):                                                                         {},
+			tokens.Type("myprov:index/WebAclStatementAndStatementStatementAndStatementStatementAndStatement:WebAclStatementAndStatementStatementAndStatementStatementAndStatement"):                               {},
+			tokens.Type("myprov:index/WebAclStatementRateBasedStatementScopeDownStatementAndStatement:WebAclStatementRateBasedStatementScopeDownStatementAndStatement"):                                           {},
+			tokens.Type("myprov:index/WebAclStatementRateBasedStatementScopeDownStatementAndStatementStatementAndStatement:WebAclStatementRateBasedStatementScopeDownStatementAndStatementStatementAndStatement"): {},
+		},
+		tokens.Type("myprov:index/WebAclStatementAndStatementStatement:WebAclStatementAndStatementStatement"): {
+			tokens.Type("myprov:index/WebAclStatementAndStatementStatementAndStatementStatement:WebAclStatementAndStatementStatementAndStatementStatement"):                                                                         {},
+			tokens.Type("myprov:index/WebAclStatementAndStatementStatementAndStatementStatementAndStatementStatement:WebAclStatementAndStatementStatementAndStatementStatementAndStatementStatement"):                               {},
+			tokens.Type("myprov:index/WebAclStatementRateBasedStatementScopeDownStatement:WebAclStatementRateBasedStatementScopeDownStatement"):                                                                                     {},
+			tokens.Type("myprov:index/WebAclStatementRateBasedStatementScopeDownStatementAndStatementStatement:WebAclStatementRateBasedStatementScopeDownStatementAndStatementStatement"):                                           {},
+			tokens.Type("myprov:index/WebAclStatementRateBasedStatementScopeDownStatementAndStatementStatementAndStatementStatement:WebAclStatementRateBasedStatementScopeDownStatementAndStatementStatementAndStatementStatement"): {},
+		},
 	}).Equal(t, rd.Detect(starterTypes))
 }
