@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	v2Schema "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	shimv1 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v1"
@@ -1345,7 +1346,7 @@ func TestComputedListUpdate(t *testing.T) {
 		map[string]DiffKind{
 			// TODO[pulumi/pulumi-terraform-bridge#2141]: This should be an U.
 			// makeDetailedDiff returns an empty diff for collections
-			"prop":    U,
+			"prop":    A,
 			"prop[0]": D,
 			// Note outp is not here because of
 			// https://developer.hashicorp.com/terraform/plugin/sdkv2/resources/data-consistency-errors#planned-value-for-a-non-computed-attribute
