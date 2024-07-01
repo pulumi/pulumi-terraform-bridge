@@ -243,3 +243,32 @@ func ReadResourceRequest(i *tfprotov6.ReadResourceRequest) *tfplugin6.ReadResour
 	}
 }
 ```
+## Releasing & [`pulumi/pulumi-terraform-provider`](https://github.com/pulumi/pulumi-terraform-provider)
+
+The `pulumi-terraform-provider` codebase is located in
+[github.com/pulumi/pulumi-terraform-bridge/dynamic](https://github.com/pulumi/pulumi-terraform-bridge/blob/master/dynamic). However, the provider is released from
+[github.com/pulumi/pulumi-terraform-provider](https://github.com/pulumi/pulumi-terraform-provider). There are 2 reasons for this:
+
+1. Pulumi's plugin discovery mechanism assumes that official plugins are located at
+   `github.com/pulumi/pulumi-${PLUGIN_NAME}`. If we want to use the plugin name `terraform-provider`, then the
+   canonical repository path is [github.com/pulumi/pulumi-terraform-provider/](https://github.com/pulumi/pulumi-terraform-provider/).
+
+2. [The registry](https://www.pulumi.com/registry) [expects](https://github.com/pulumi/registry/blob/39fc0592965e21a314a33c964db0a3e928c52aa4/tools/resourcedocsgen/cmd/pkgversion.go#L70-L91) each provider release to come from a repository with a semver tag:
+   `vX.Y.Z`. The bridge itself releases with those tags already, we would need to teach the registry to handle
+   nested tags.
+
+### Triggering a release
+
+To trigger a new release of `pulumi-terraform-provider`, push a new semver compatible tag to
+`pulumi-terraform-provider.
+
+### Final repository structure
+
+The complexity of maintaining a separate release repository to have a separate release cycle is
+sub-optimal. In the future, we should unify the release and code locations. We could either move the code to
+`pulumi-terraform-provider` or move the release process into `pulumi-terraform-bridge`.
+
+Moving the release process into [github.com/pulumi/pulumi-terraform-bridge](https://github.com/pulumi/pulumi-terraform-bridge/blob/master/dynamic) would require:
+
+- [Provide a centralized lookup for PluginDownloadURL #4851 ](https://github.com/pulumi/registry/issues/4851) (with CLI adoption)
+- [Support nested release labels #4852](https://github.com/pulumi/registry/issues/4852)
