@@ -1344,9 +1344,9 @@ func TestComputedListUpdate(t *testing.T) {
 			"outp": "bar",
 		},
 		map[string]DiffKind{
-			// TODO[pulumi/pulumi#2141]: This should be an U.
+			// TODO[pulumi/pulumi-terraform-bridge#2141]: This should be an U.
 			// makeDetailedDiff returns an empty diff for collections
-			"prop":    A,
+			"prop":    U,
 			"prop[0]": D,
 			// Note outp is not here because of
 			// https://developer.hashicorp.com/terraform/plugin/sdkv2/resources/data-consistency-errors#planned-value-for-a-non-computed-attribute
@@ -1429,7 +1429,7 @@ func TestComputedSetUpdate(t *testing.T) {
 			"outp": "bar",
 		},
 		map[string]DiffKind{
-			// TODO[pulumi/pulumi#2141]: This should be an U.
+			// TODO[pulumi/pulumi-terraform-bridge#2141]: This should be an U.
 			// makeDetailedDiff returns an empty diff for collections
 			"prop":    A,
 			"prop[0]": D,
@@ -1570,7 +1570,7 @@ func TestComputedSetUpdateReplace(t *testing.T) {
 			"outp": "bar",
 		},
 		map[string]DiffKind{
-			// TODO[pulumi/pulumi#2141]: This should be an UR.
+			// TODO[pulumi/pulumi-terraform-bridge#2141]: This should be an UR.
 			// makeDetailedDiff returns an empty diff for collections
 			"prop":    AR,
 			"prop[0]": DR,
