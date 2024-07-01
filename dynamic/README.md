@@ -1,7 +1,7 @@
 <!-- -*- fill-column: 110 -*- -->
 # Dynamic Bridged Provider
 
-A *dynamically bridged provider* is a Pulumi native provider parameterized by the identity of a terraform
+A *dynamically bridged provider* is a Pulumi provider parameterized by the identity of a terraform
 provider. It consists of a binary `pulumi-terraform-bridge`, which is spun up as a provider by `pulumi`. The
 binary is responsible for downloading the terraform provider it is emulating, then translating `pulumi`’s
 [gRPC protocol](https://github.com/pulumi/pulumi/tree/master/proto/pulumi) into [Terraform’s v6
@@ -9,9 +9,7 @@ protocol](https://developer.hashicorp.com/terraform/plugin/terraform-plugin-prot
 
 ## Usage
 
-Dynamic bridged providers are a subset of parameterized providers <!-- TODO: Insert link to docs / blog post
-if/when it exists -->, so they are used via parameterization. If you are using a language besides Pulumi YAML,
-you start by generating an SDK.
+If you are using a language besides Pulumi YAML, you start by generating an SDK.
 
 ### SDK Generation
 
@@ -56,7 +54,6 @@ so you won't need to enter any of this information again as long as you use the 
 
 #### Path based SDK generation
 
-
 To generate an SDK based on a Terraform provider on your local file system, use:
 
 ``` sh
@@ -94,4 +91,158 @@ sequenceDiagram
     T-->>B: Shutdown Complete
     destroy B
     B-->>P: Cancel done
+```
+
+Diving deeper into how the repo is laid out, we see:
+
+``` console
+./
+├── go.mod
+├── go.sum
+├── info.go
+├── internal/
+│  └── shim/
+│     ├── go.mod
+│     ├── go.sum
+│     ├── protov5/
+│     │  ├── provider.go
+│     │  └── translate/
+│     │     └── tfplugin5.go
+│     ├── protov6/
+│     │  ├── provider.go
+│     │  └── translate/
+│     │     └── tfplugin6.go
+│     └── run/
+│        ├── loader.go
+│        └── loader_test.go
+├── main.go
+├── Makefile
+├── provider_test.go
+├── README.md
+└── version/
+   └── version.go
+```
+
+The dynamic provider layer consists by design of small, specialized packages. 
+As of time of writing, the entire `dynamic` folder is only 2288 lines of go code[^1]. 
+Let's go through each package in turn.
+
+[^1]: `loc --exclude '*._test.go'`
+
+### `package main`
+
+`package main` is responsible for launching a Pulumi provider and setting up the parameterize call. It does
+this by calling [`pf/tfbridge.Main`](https://pkg.go.dev/github.com/pulumi/pulumi-terraform-bridge/pf@v0.38.0/tfbridge#Main), passing in an empty Terraform Plugin Framework provider (from
+[`pf/proto.Empty()`](https://pkg.go.dev/github.com/pulumi/pulumi-terraform-bridge/pf@v0.38.0/proto#Empty)). [`pf/tfbridge.ProviderMetadata`](https://pkg.go.dev/github.com/pulumi/pulumi-terraform-bridge/pf@v0.38.0/tfbridge#ProviderMetadata) allows overriding the `Parameterize` and
+`GetSchema` call (and we override both).
+
+When `Parameterize` is called, we launch the underlying Terraform provider via
+`internal/shim/run.LocalProvider` or `internal/shim/run.NamedProvider` (downloading as necessary). Both
+functions return a [`tfprotov6.ProviderServer`](https://pkg.go.dev/github.com/hashicorp/terraform-plugin-go/tfprotov6#ProviderServer) which is used to re-initialize the running provider via
+[`pf/tfbridge.XParameterizeResetProvider`](https://pkg.go.dev/github.com/pulumi/pulumi-terraform-bridge/pf@v0.38.0/tfbridge#XParameterizeResetProvider).
+
+When `GetSchema` is called, it generates a schema from the currently equipped provider with
+[`pkg/tfgen.GenerateSchemaWithOptions`](https://pkg.go.dev/github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen#GenerateSchemaWithOptions) and returns it. All type translation, documentation generation, etc
+are done with standard bridge based functionality.
+
+All other gRPC calls (`Create`, `Read`, `Update`, `Delete`, etc.) are handled normally by `pf`'s existing
+server.
+
+### `package version`
+
+`version.version` is used as a link-time target to bake in the release version to the provider binary. This is
+the same mechanism that Pulumi uses to embed versions in all of our binaries.
+
+### `package run`
+
+`run` defines a running provider for the purposes of `dynamic`.
+
+``` go
+type Provider interface {
+	tfprotov6.ProviderServer
+	io.Closer
+
+	Name() string
+	Version() string
+}
+```
+
+`run` also defines functions to "run" the underlying TF provider:
+
+- `run.NamedProvider` takes a provider definition like `("cloudfront/cloudfront", ">= 3.2.0")` and loads the
+  provider (downloading it if necessary). Named Terraform providers are cached in
+  `PULUMI_DYNAMIC_TF_PLUGIN_CACHE_DIR` (defaulting to `$PULUMI_HOME/dynamic_tf_plugins`).
+
+- `run.LocalProvider` takes a path to a Terraform provider and runs it.
+
+When `run` launches a Terraform provider, the provider may implement either the
+[`tfplugin5.ProviderClient`](https://pkg.go.dev/github.com/opentofu/opentofu/internal/tfplugin5#ProviderClient) or [`tfplugin6.ProviderClient`](https://pkg.go.dev/github.com/opentofu/opentofu/internal/tfplugin6#ProviderClient) interface. `run` must return a
+[`tfprotov6.ProviderServer`](https://pkg.go.dev/github.com/hashicorp/terraform-plugin-go/tfprotov6#ProviderServer). The Terraform ecosystem helps with [translating from v5 to v6](https://pkg.go.dev/github.com/hashicorp/terraform-plugin-mux/tf5to6server#UpgradeServer):
+
+``` go
+func tf5to6server.UpgradeServer(context.Context, func() tfprotov5.ProviderServer) (tfprotov6.ProviderServer, error)
+```
+
+We still need to be able to translate from [`tfplugin5.ProviderClient`](https://pkg.go.dev/github.com/opentofu/opentofu/internal/tfplugin5#ProviderClient) and [`tfplugin6.ProviderClient`](https://pkg.go.dev/github.com/opentofu/opentofu/internal/tfplugin6#ProviderClient)
+to [`tfprotov5.ProviderServer`](https://pkg.go.dev/github.com/hashicorp/terraform-plugin-go/tfprotov5#ProviderServer) and [`tfprotov6.ProviderServer`](https://pkg.go.dev/github.com/hashicorp/terraform-plugin-go/tfprotov6#ProviderServer) respectively. For that, see the next
+section.
+
+### `package protov5` & `package protov6`
+
+`package protov5` and `package protov6` are nearly identical packages that translate between gRPC level client
+types to just above gRPC level server types. Both packages are identical in structure, exposing one end point:
+
+``` go
+func New(tfplugin5.ProviderClient) tfprotov5.ProviderServer
+
+func New(tfplugin6.ProviderClient) tfprotov6.ProviderServer
+```
+
+Both packages delegate type conversions to a `translate` sub-package, restricting themselves to fielding gRPC
+calls.
+
+A representative gRPC handler looks like this:
+
+``` go
+// tfprotov6/provider.go
+import (
+	"github.com/opentofu/opentofu/internal/tfplugin6"
+	"github.com/opentofu/opentofu/shim/protov6/translate"
+)
+
+...
+
+func (p shimProvider) ReadResource(
+	ctx context.Context, req *tfprotov6.ReadResourceRequest,
+) (*tfprotov6.ReadResourceResponse, error) {
+	return translateGRPC(ctx,
+		p.remote.ReadResource,
+		translate.ReadResourceRequest(req),
+		translate.ReadResourceResponse)
+}
+```
+
+The `translate.ReadResourceRequest` call looks like this:
+
+``` go
+// tfprotov6/translate/tfplugin6.go
+import (
+	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
+	"github.com/opentofu/opentofu/internal/tfplugin6"
+)
+
+...
+
+func ReadResourceRequest(i *tfprotov6.ReadResourceRequest) *tfplugin6.ReadResource_Request {
+	if i == nil {
+		return nil
+	}
+
+	return &tfplugin6.ReadResource_Request{
+		TypeName:     i.TypeName,
+		CurrentState: dynamicValueRequest(i.CurrentState),
+		Private:      i.Private,
+		ProviderMeta: dynamicValueRequest(i.ProviderMeta),
+	}
+}
 ```

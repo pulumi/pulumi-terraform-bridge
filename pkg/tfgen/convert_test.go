@@ -21,12 +21,12 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/convert"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 func TestConvert(t *testing.T) {

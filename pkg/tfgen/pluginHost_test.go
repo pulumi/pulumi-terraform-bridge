@@ -19,10 +19,9 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
-	"github.com/stretchr/testify/require"
-
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCachingPluginHost(t *testing.T) {

@@ -14,18 +14,18 @@ import (
 	"testing"
 
 	"github.com/hexops/autogold/v2"
-	helper "github.com/pulumi/pulumi-terraform-bridge/dynamic/internal/testing"
-	pfbridge "github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	helper "github.com/pulumi/pulumi-terraform-bridge/dynamic/internal/testing"
+	pfbridge "github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
 )
 
 // globalTempDir is a temporary directory scoped to the entire test cycle.
@@ -375,6 +375,19 @@ func skipWindows(t *testing.T) {
 
 func TestSchemaGeneration(t *testing.T) {
 	skipWindows(t)
+
+	t.Run("unparameterized", func(t *testing.T) {
+		helper.Integration(t)
+		ctx := context.Background()
+
+		schema, err := grpcTestServer(ctx, t).
+			GetSchema(ctx, &pulumirpc.GetSchemaRequest{})
+
+		require.NoError(t, err)
+		var fmtSchema bytes.Buffer
+		require.NoError(t, json.Indent(&fmtSchema, []byte(schema.Schema), "", "    "))
+		autogold.ExpectFile(t, autogold.Raw(fmtSchema.String()))
+	})
 
 	testSchema := func(name, version string) {
 		t.Run(strings.Join([]string{name, version}, "-"), func(t *testing.T) {

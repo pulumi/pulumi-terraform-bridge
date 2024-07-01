@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package shim
+package run
 
 import (
 	"context"
@@ -20,7 +20,6 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -39,7 +38,7 @@ func TestLoadProvider(t *testing.T) {
 		Integration(t)
 		ctx := context.Background()
 
-		p, err := LoadProvider(ctx, "hashicorp/tls", "<4.0.5,>4.0.3")
+		p, err := NamedProvider(ctx, "hashicorp/tls", "<4.0.5,>4.0.3")
 		require.NoError(t, err)
 
 		require.Equal(t, "4.0.4", p.Version())

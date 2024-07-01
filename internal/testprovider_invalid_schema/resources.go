@@ -15,10 +15,11 @@
 package tpinvschema
 
 import (
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	sdkv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
 func ProviderInfo() tfbridge.ProviderInfo {

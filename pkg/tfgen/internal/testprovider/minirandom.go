@@ -17,11 +17,11 @@ package testprovider
 import (
 	"unicode"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
-	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 
 	testproviderdata "github.com/pulumi/pulumi-terraform-bridge/v3/internal/testprovider"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
 
 func ProviderMiniRandom() tfbridge.ProviderInfo {

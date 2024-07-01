@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"github.com/hexops/autogold/v2"
+	ptokens "github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -29,7 +30,6 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 	md "github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
-	ptokens "github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
 func TestTokensSingleModule(t *testing.T) {

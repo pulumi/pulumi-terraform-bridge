@@ -7,11 +7,12 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/stretchr/testify/assert"
+
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	shimschema "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/logging"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestGetModuleMajorVersion(t *testing.T) {

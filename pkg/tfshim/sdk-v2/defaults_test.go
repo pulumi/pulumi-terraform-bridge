@@ -17,10 +17,10 @@ package sdkv2_test
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
+	"github.com/stretchr/testify/assert"
+
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
 

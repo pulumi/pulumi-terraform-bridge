@@ -17,9 +17,8 @@ package tfbridge
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )

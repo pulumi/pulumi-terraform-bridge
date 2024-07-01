@@ -17,9 +17,8 @@ package propertyvalue
 import (
 	"testing"
 
-	"pgregory.net/rapid"
-
 	rtesting "github.com/pulumi/pulumi/sdk/v3/go/common/resource/testing"
+	"pgregory.net/rapid"
 )
 
 func TestRemoveSecrets(t *testing.T) {

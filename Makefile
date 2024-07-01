@@ -13,8 +13,11 @@ build::
 fmt::
 	@gofmt -w -s .
 
-lint::
+lint:
 	go run scripts/build.go lint
+
+lint_fix:
+	go run scripts/build.go fix-lint
 
 test::
 	@mkdir -p bin

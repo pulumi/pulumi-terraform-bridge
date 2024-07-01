@@ -20,12 +20,10 @@ import (
 	"math/big"
 
 	"github.com/golang/glog"
-
 	"github.com/hashicorp/go-cty/cty"
 	ctyjson "github.com/hashicorp/go-cty/cty/json"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
-
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 

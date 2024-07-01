@@ -1,0 +1,11 @@
+{
+    "name": "terraform-provider",
+    "displayName": "Any Terraform Provider",
+    "version": "v0.0.0-dev",
+    "description": "Use any Terraform provider with Pulumi",
+    "meta": {
+        "moduleFormat": "(.*)(?:/[^/]*)"
+    },
+    "config": {},
+    "provider": {}
+}

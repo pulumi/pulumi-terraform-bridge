@@ -21,6 +21,12 @@ import (
 	"testing"
 	"text/template"
 
+	csgen "github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
+	gogen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
+	tsgen "github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
+	pygen "github.com/pulumi/pulumi/pkg/v3/codegen/python"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -29,12 +35,6 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/internal/testprovider"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 	"github.com/pulumi/pulumi-terraform-bridge/x/muxer"
-	csgen "github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
-	gogen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
-	tsgen "github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
-	pygen "github.com/pulumi/pulumi/pkg/v3/codegen/python"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 )
 
 // TestRegress611 tests against test_data/regress-611-schema.json.

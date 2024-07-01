@@ -22,7 +22,6 @@ package info
 
 import (
 	"strings"
-
 	// Needed to unsafely import ApplyAutoAliases
 	_ "unsafe"
 

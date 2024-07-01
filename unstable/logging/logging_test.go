@@ -21,11 +21,10 @@ import (
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestLogging(t *testing.T) {

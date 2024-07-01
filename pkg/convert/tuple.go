@@ -20,7 +20,6 @@ import (
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
-
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 

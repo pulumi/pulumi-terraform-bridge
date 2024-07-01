@@ -18,13 +18,13 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/stretchr/testify/assert"
 	structpb "google.golang.org/protobuf/types/known/structpb"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	sch "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestConfigEncoding(t *testing.T) {

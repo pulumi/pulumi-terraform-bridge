@@ -9,8 +9,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	testing "github.com/mitchellh/go-testing-interface"
-	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
 var _ = shim.Provider(v2Provider{})

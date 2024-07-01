@@ -21,13 +21,13 @@ import (
 	"unicode"
 
 	"github.com/Masterminds/semver"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/cgstrings"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	b "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	md "github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/cgstrings"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 const (

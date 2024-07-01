@@ -3,12 +3,13 @@ package testprovider
 import (
 	"context"
 
-	testproviderdata "github.com/pulumi/pulumi-terraform-bridge/v3/internal/testprovider"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
-	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+
+	testproviderdata "github.com/pulumi/pulumi-terraform-bridge/v3/internal/testprovider"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
 
 func ProviderMiniMuxedReplace() tfbridge.ProviderInfo {

@@ -21,11 +21,10 @@ import (
 	"unicode"
 
 	"github.com/blang/semver"
-	"golang.org/x/net/context"
-
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"golang.org/x/net/context"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"

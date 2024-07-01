@@ -14,13 +14,13 @@ import (
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/go-hclog"
 	goplugin "github.com/hashicorp/go-plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/diagnostics"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 type testLogger struct {

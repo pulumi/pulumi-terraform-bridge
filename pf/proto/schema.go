@@ -15,8 +15,9 @@
 package proto
 
 import (
-	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
 // pseudoResource represents a type that must pretent to be a [shim.Resource], but does not represent a resource.

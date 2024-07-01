@@ -24,11 +24,12 @@ import (
 	"runtime/trace"
 
 	"github.com/golang/glog"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/spf13/afero"
 	"github.com/spf13/cobra"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 
 // Main executes the TFGen process for the given package pkg and provider prov.

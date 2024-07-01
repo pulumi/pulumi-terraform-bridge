@@ -21,7 +21,6 @@ import (
 	dschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	pschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
-
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 )
 

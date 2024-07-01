@@ -18,6 +18,7 @@ import (
 	"context"
 
 	pfprovider "github.com/hashicorp/terraform-plugin-framework/provider"
+
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/muxer"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/schemashim"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"

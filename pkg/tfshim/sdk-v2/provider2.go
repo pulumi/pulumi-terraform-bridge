@@ -14,9 +14,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 type v2Resource2 struct {

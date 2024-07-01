@@ -20,12 +20,11 @@ import (
 	"strconv"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-
 	dschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	pschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // Block type works around not being able to link to fwschema.Block from
