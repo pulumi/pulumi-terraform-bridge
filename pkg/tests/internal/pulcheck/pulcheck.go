@@ -37,10 +37,8 @@ func resNeedsUpdate(res *schema.Resource) bool {
 		if s.ForceNew {
 			continue
 		}
-
-		return res.UpdateContext == nil
 	}
-	return false
+	return res.UpdateContext == nil
 }
 
 // This is an experimental API.
