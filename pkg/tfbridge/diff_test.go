@@ -1431,7 +1431,7 @@ func TestComputedSetUpdate(t *testing.T) {
 		map[string]DiffKind{
 			// TODO[pulumi/pulumi#2141]: This should be an U.
 			// makeDetailedDiff returns an empty diff for collections
-			"prop": A,
+			"prop":    A,
 			"prop[0]": D,
 		},
 		pulumirpc.DiffResponse_DIFF_SOME)
@@ -1572,7 +1572,7 @@ func TestComputedSetUpdateReplace(t *testing.T) {
 		map[string]DiffKind{
 			// TODO[pulumi/pulumi#2141]: This should be an UR.
 			// makeDetailedDiff returns an empty diff for collections
-			"prop": AR,
+			"prop":    AR,
 			"prop[0]": DR,
 		},
 		pulumirpc.DiffResponse_DIFF_SOME)
