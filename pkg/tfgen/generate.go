@@ -1970,7 +1970,7 @@ func getUniqueLeafPaths(arguments map[docsPath]*argumentDocs) map[string]bool {
 		_, exist := leaves[arg.leaf()]
 		// if the key already exists, then increase the count
 		if exist {
-			leaves[arg.leaf()] += 1
+			leaves[arg.leaf()]++
 			continue
 		}
 		leaves[arg.leaf()] = 1
