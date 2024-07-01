@@ -115,7 +115,9 @@ func (u *notSupportedUtil) resource(path string, res *tfbridge.ResourceInfo) {
 }
 
 func (u *notSupportedUtil) schema(path string, schema *tfbridge.SchemaInfo) {
-	u.assertIsZero(path+".Type", schema.Type)
+	if schema.Type != "string" {
+		u.assertIsZero(path+".Type", schema.Type)
+	}
 	u.assertIsZero(path+".AltTypes", schema.AltTypes)
 	u.assertIsZero(path+".NestedType", schema.NestedType)
 	u.assertIsZero(path+".Transform", schema.Transform)

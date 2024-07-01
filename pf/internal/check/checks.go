@@ -23,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/muxer"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
 // Validate that info is valid as either a PF provider or a PF & SDK based provider.
@@ -57,7 +58,7 @@ func checkIDProperties(sink diag.Sink, info tfbridge.ProviderInfo, isPFResource 
 		if resourceHasComputeID(info, rname) {
 			return true
 		}
-		ok, reason := resourceHasRegularID(resource)
+		ok, reason := resourceHasRegularID(resource, info.Resources[rname])
 		if ok {
 			return true
 		}
@@ -77,12 +78,20 @@ func checkIDProperties(sink diag.Sink, info tfbridge.ProviderInfo, isPFResource 
 	return nil
 }
 
-func resourceHasRegularID(resource shim.Resource) (bool, string) {
+func resourceHasRegularID(resource shim.Resource, resourceInfo *tfbridge.ResourceInfo) (bool, string) {
 	idSchema, gotID := resource.Schema().GetOk("id")
 	if !gotID {
 		return false, `no "id" attribute`
 	}
-	if idSchema.Type() != shim.TypeString {
+	var typeOverride tokens.Type
+	if resourceInfo != nil {
+		if id := resourceInfo.Fields["id"]; id != nil {
+			typeOverride = id.Type
+		}
+	}
+
+	// If the user over-rode the type to be a string, don't reject.
+	if idSchema.Type() != shim.TypeString && typeOverride != "string" {
 		return false, `"id" attribute is not of type String`
 	}
 	if idSchema.Sensitive() {
