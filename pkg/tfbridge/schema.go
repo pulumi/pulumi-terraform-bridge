@@ -530,7 +530,7 @@ func (ctx *conversionContext) makeTerraformInput(
 		// If any variables are unknown, we need to mark them in the inputs so the config map treats it right.  This
 		// requires the use of the special UnknownVariableValue sentinel in Terraform, which is how it internally stores
 		// interpolated variables whose inputs are currently unknown.
-		return makeTerraformUnknown(tfs), nil
+		return TerraformUnknownVariableValue, nil
 	default:
 		contract.Failf("Unexpected value marshaled: %v", v)
 		return nil, nil
@@ -956,59 +956,6 @@ func (ctx *conversionContext) applyDefaults(
 	result[defaultsKey] = newDefaults
 
 	return nil
-}
-
-// makeTerraformUnknownElement creates an unknown value to be used as an element of a list or set using the given
-// element schema to guide the shape of the value.
-func makeTerraformUnknownElement(elem interface{}) interface{} {
-	// If we have no element schema, just return a simple unknown.
-	if elem == nil {
-		return TerraformUnknownVariableValue
-	}
-
-	switch e := elem.(type) {
-	case shim.Schema:
-		// If the element uses a normal schema, defer to makeTerraformUnknown.
-		return makeTerraformUnknown(e)
-	case shim.Resource:
-		// If the element uses a resource schema, fill in unknown values for any required properties.
-		res := make(map[string]interface{})
-		e.Schema().Range(func(k string, v shim.Schema) bool {
-			if v.Required() {
-				res[k] = makeTerraformUnknown(v)
-			}
-			return true
-		})
-		return res
-	default:
-		return TerraformUnknownVariableValue
-	}
-}
-
-// makeTerraformUnknown creates an unknown value with the shape indicated by the given schema.
-//
-// It is important that we use the TF schema (if available) to decide what shape the unknown value should have:
-// e.g. TF does not play nicely with unknown lists, instead expecting a list of unknowns.
-func makeTerraformUnknown(tfs shim.Schema) interface{} {
-	if tfs == nil {
-		return TerraformUnknownVariableValue
-	}
-
-	switch tfs.Type() {
-	case shim.TypeList, shim.TypeSet:
-		// TF does not accept unknown lists or sets. Instead, it accepts lists or sets of unknowns.
-		count := 1
-		if tfs.MinItems() > 0 {
-			count = tfs.MinItems()
-		}
-		arr := make([]interface{}, count)
-		for i := range arr {
-			arr[i] = makeTerraformUnknownElement(tfs.Elem())
-		}
-		return arr
-	default:
-		return TerraformUnknownVariableValue
-	}
 }
 
 // metaKey is the key in a TF bridge result that is used to store a resource's meta-attributes.

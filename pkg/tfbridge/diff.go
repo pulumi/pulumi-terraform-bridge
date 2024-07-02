@@ -380,6 +380,7 @@ func makeDetailedDiffExtra(
 	if len(diff) > 0 || *forceDiff {
 		changes = pulumirpc.DiffResponse_DIFF_SOME
 	}
+
 	return detailedDiffExtra{
 		changes:         changes,
 		diffs:           diff,

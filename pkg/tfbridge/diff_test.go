@@ -200,7 +200,8 @@ func TestCustomizeDiff(t *testing.T) {
 func diffTest(t *testing.T, tfs map[string]*schema.Schema, info map[string]*SchemaInfo,
 	inputs, state map[string]interface{}, expected map[string]DiffKind,
 	expectedDiffChanges pulumirpc.DiffResponse_DiffChanges,
-	ignoreChanges ...string) {
+	ignoreChanges ...string,
+) {
 	ctx := context.Background()
 
 	inputsMap := resource.NewPropertyMapFromMap(inputs)
@@ -1326,6 +1327,7 @@ func TestComputedNestedIgnore(t *testing.T) {
 		"prop")
 }
 
+//nolint:lll
 func TestComputedListUpdate(t *testing.T) {
 	diffTest(t,
 		map[string]*schema.Schema{
@@ -1341,7 +1343,13 @@ func TestComputedListUpdate(t *testing.T) {
 			"outp": "bar",
 		},
 		map[string]DiffKind{
-			"prop": U,
+			// TODO[pulumi/pulumi-terraform-bridge#2141]: This should be an U.
+			// makeDetailedDiff returns an empty diff for collections
+			"prop":    A,
+			"prop[0]": D,
+			// Note outp is not here because of
+			// https://developer.hashicorp.com/terraform/plugin/sdkv2/resources/data-consistency-errors#planned-value-for-a-non-computed-attribute
+			// Computed properties keep the state value after being removed from inputs.
 		},
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
@@ -1420,7 +1428,10 @@ func TestComputedSetUpdate(t *testing.T) {
 			"outp": "bar",
 		},
 		map[string]DiffKind{
-			"prop": U,
+			// TODO[pulumi/pulumi-terraform-bridge#2141]: This should be an U.
+			// makeDetailedDiff returns an empty diff for collections
+			"prop":    A,
+			"prop[0]": D,
 		},
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
@@ -1558,7 +1569,10 @@ func TestComputedSetUpdateReplace(t *testing.T) {
 			"outp": "bar",
 		},
 		map[string]DiffKind{
-			"prop": UR,
+			// TODO[pulumi/pulumi-terraform-bridge#2141]: This should be an UR.
+			// makeDetailedDiff returns an empty diff for collections
+			"prop":    AR,
+			"prop[0]": DR,
 		},
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
@@ -1845,7 +1859,8 @@ func TestCollectionsWithMultipleItems(t *testing.T) {
 	}
 
 	runTestCase := func(t *testing.T, name string, typ schema.ValueType, inputs, state []interface{},
-		expected map[string]DiffKind, expectedChanges pulumirpc.DiffResponse_DiffChanges) {
+		expected map[string]DiffKind, expectedChanges pulumirpc.DiffResponse_DiffChanges,
+	) {
 		t.Run(name, func(t *testing.T) {
 			diffTest(t,
 				map[string]*schema.Schema{
