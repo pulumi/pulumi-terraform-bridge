@@ -516,6 +516,12 @@ func (g *Generator) makeObjectPropertyType(typePath paths.TypePath,
 			fakeFooterLinks := map[string]string{}
 			doc, _ = reformatText(docsInfoCtx, doc, fakeFooterLinks)
 		}
+		// If we still have no docs for this type, we use our final strategy to look up any docs
+		// that are parsed from entity (markdown) docs and have a unique path leaf.
+		if doc == "" {
+			doc = getUniqueLeafDocsDescriptions(entityDocs.Arguments, objPath.join(key))
+		}
+
 		v, err := g.propertyVariable(typePath, key,
 			propertySchema, propertyInfos, doc, "", out, entityDocs)
 		if err != nil {
@@ -1943,6 +1949,31 @@ func emitFile(fs afero.Fs, relPath string, contents []byte) error {
 	return err
 }
 
+// getUniqueDocsDescriptions looks for any leaf path arguments and checks if the leaf key is unique in the argument
+// docs map. If it is a unique leaf path, the function returns that argument doc's Description, else it returns "".
+func getUniqueLeafDocsDescriptions(arguments map[docsPath]*argumentDocs, path docsPath) string {
+	leaf := path.leaf()
+
+	var leafDoc *argumentDocs
+	// Counter for leaf fields with the same key
+	occurrences := 0
+	for argKey, argDoc := range arguments {
+		if argKey.leaf() == leaf {
+			// we found a leaf doc. It may or may not be unique.
+			leafDoc = argDoc
+			occurrences++
+		}
+		if occurrences > 1 {
+			// if we have more than one key match to the leaf name, the key is not unique. Return "".
+			return ""
+		}
+	}
+	if leafDoc == nil {
+		return ""
+	}
+	return leafDoc.description
+}
+
 // getDescriptionFromParsedDocs extracts the argument description for the given arg, or the
 // attribute description if there is none.
 // If the description is taken from an attribute, the second return value is true.
@@ -1971,23 +2002,6 @@ func getNestedDescriptionFromParsedDocs(entityDocs entityDocs, path docsPath) (s
 		p = p.withOutRoot()
 	}
 
-	// To maintain old behavior, we also check if the last segment of `path` matches
-	// with some other last segment of any other entity.
-	//
-	// For example, this will match `production_branch.status` with
-	// `dev_branch.status`. This provides docs when we mess up parsing, but also leads
-	// to incorrect docs.
-	//keys := make([]docsPath, 0, len(entityDocs.Arguments)/2)
-	//leaf := path.leaf()
-	//for k := range entityDocs.Arguments {
-	//	if k.leaf() == leaf {
-	//		keys = append(keys, k)
-	//	}
-	//}
-	//if len(keys) > 0 {
-	//	docsPathArr(keys).Sort()
-	//	return entityDocs.Arguments[keys[0]].description, false
-	//}
 	for attrPath := path; attrPath != ""; {
 		// We return a description in the upstream attributes if none is found  in the upstream arguments. This condition
 		// may be met for one of the following reasons:
@@ -2013,7 +2027,6 @@ func getNestedDescriptionFromParsedDocs(entityDocs entityDocs, path docsPath) (s
 		}
 		attrPath = attrPath.withOutRoot()
 	}
-
 	return "", false
 }
 
