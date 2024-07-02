@@ -203,6 +203,7 @@ func (tvg *tvGen) GenBlockWithDepth(depth int, parentName string) *rapid.Generat
 				return tftypes.NewValue(objType, fields)
 			})
 		} else {
+			_ = rapid.Bool().Draw(t, "consumeBitstream1")
 			objGen = rapid.Just(tftypes.NewValue(objType, map[string]tftypes.Value{}))
 		}
 		err := schema.InternalMap(fieldSchemas).InternalValidate(nil)
@@ -387,10 +388,12 @@ func (tvg *tvGen) WithNullAndUnknown(gen *rapid.Generator[tv]) *rapid.Generator[
 		options := []*rapid.Generator[tftypes.Value]{gen}
 		if tvg.generateUnknowns {
 			unkGen := rapid.Just(tftypes.NewValue(tv0.typ, tftypes.UnknownValue))
+			_ = rapid.Bool().Draw(t, "consumeBitstream2")
 			options = append(options, unkGen)
 		}
 		if !tv0.schema.Required {
 			nullGen := rapid.Just(tftypes.NewValue(tv0.typ, nil))
+			_ = rapid.Bool().Draw(t, "consumeBitstream3")
 			options = append(options, nullGen)
 		}
 		gen = rapid.OneOf(options...)
