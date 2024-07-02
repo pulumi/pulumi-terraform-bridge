@@ -281,6 +281,30 @@
         }
     },
     "resources": {
+        "testbridge:index/intID:IntID": {
+            "properties": {
+                "name": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "name"
+            ],
+            "inputProperties": {
+                "name": {
+                    "type": "string"
+                }
+            },
+            "stateInputs": {
+                "description": "Input properties used for looking up and filtering IntID resources.\n",
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            }
+        },
         "testbridge:index/testnest:Testnest": {
             "properties": {
                 "rules": {

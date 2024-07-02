@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/walk"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
 type schemaMapContext struct {
@@ -109,6 +110,13 @@ func (pc *schemaPropContext) Secret() bool {
 		return pc.schema.Sensitive()
 	}
 	return false
+}
+
+func (pc *schemaPropContext) TypeInfo() tokens.Type {
+	if pc.schemaInfo == nil {
+		return ""
+	}
+	return pc.schemaInfo.Type
 }
 
 func (pc *schemaPropContext) Element() (*schemaPropContext, error) {
