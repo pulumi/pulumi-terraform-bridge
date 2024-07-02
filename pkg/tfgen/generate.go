@@ -1949,42 +1949,29 @@ func emitFile(fs afero.Fs, relPath string, contents []byte) error {
 	return err
 }
 
+// getUniqueDocsDescriptions looks for any leaf path arguments and checks if the leaf key is unique in the argument
+// docs map. If it is a unique leaf path, the function returns that argument doc's Description, else it returns "".
 func getUniqueLeafDocsDescriptions(arguments map[docsPath]*argumentDocs, path docsPath) string {
 	leaf := path.leaf()
 
-	uniqueLeaves := getUniqueLeafPaths(arguments)
-	if _, exist := uniqueLeaves[leaf]; exist {
-		for argKey, argDoc := range arguments {
-			if argKey.leaf() == leaf {
-				return argDoc.description
-			}
+	var leafDoc *argumentDocs
+	// Counter for leaf fields with the same key
+	occurrences := 0
+	for argKey, argDoc := range arguments {
+		if argKey.leaf() == leaf {
+			// we found a leaf doc. It may or may not be unique.
+			leafDoc = argDoc
+			occurrences++
+		}
+		if occurrences > 1 {
+			// if we have more than one key match to the leaf name, the key is not unique. Return "".
+			return ""
 		}
 	}
-	return ""
-}
-func getUniqueLeafPaths(arguments map[docsPath]*argumentDocs) map[string]bool {
-	// Read all leaves into a map.
-	//The key is the leaf name, and the value is the number of times that leaf has appeared.
-	leaves := make(map[string]int)
-	for arg := range arguments {
-		_, exist := leaves[arg.leaf()]
-		// if the key already exists, then increase the count
-		if exist {
-			leaves[arg.leaf()]++
-			continue
-		}
-		leaves[arg.leaf()] = 1
+	if leafDoc == nil {
+		return ""
 	}
-
-	// Only return leaves with a count of exactly 1.
-	// For quick lookup, this is a map where the key is our leaf, and the value a boolean, which we disregard.
-	uniqueLeavesMap := make(map[string]bool)
-	for leaf, count := range leaves {
-		if count == 1 {
-			uniqueLeavesMap[leaf] = true
-		}
-	}
-	return uniqueLeavesMap
+	return leafDoc.description
 }
 
 // getDescriptionFromParsedDocs extracts the argument description for the given arg, or the

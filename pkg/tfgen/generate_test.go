@@ -546,34 +546,3 @@ func TestGetUniqueLeafDocsDescriptions(t *testing.T) {
 		})
 	}
 }
-
-func TestGetUniqueLeafPaths(t *testing.T) {
-	testArguments := map[docsPath]*argumentDocs{
-		"configuration":             {description: "Configuration block for broker configuration."},
-		"configuration.revision":    {description: "Revision of the Configuration."},
-		"configuration.revision.id": {description: "ID of the Revision of the Configuration."},
-		"edition.revision.id":       {description: "ID of the Edition of the Configuration."},
-		"id":                        {description: "I'm literally just an ID. I am not unique."},
-	}
-
-	type testCase struct {
-		name     string
-		expected map[string]bool
-	}
-
-	testCases := []testCase{
-		{
-			name:     "Resulting map contains only leaf keys that are unique",
-			expected: map[string]bool{"configuration": true, "revision": true},
-		},
-	}
-
-	for _, tc := range testCases {
-		tc := tc
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-			actual := getUniqueLeafPaths(testArguments)
-			assert.Equal(t, tc.expected, actual)
-		})
-	}
-}
