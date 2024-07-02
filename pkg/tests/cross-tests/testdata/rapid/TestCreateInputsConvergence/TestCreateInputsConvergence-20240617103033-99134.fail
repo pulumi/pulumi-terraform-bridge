@@ -1,0 +1,256 @@
+# 2024/06/17 10:30:33 TestCreateInputsConvergence [rapid] draw schemaDepth: 3
+# 2024/06/17 10:30:33 TestCreateInputsConvergence [rapid] draw tv: crosstests.tb{schemaMap:map[string]*schema.Schema{"d3f0":(*schema.Schema)(0x14000fc2c60), "d3f1":(*schema.Schema)(0x140006fa2c0)}, typ:tftypes.Object{AttributeTypes:map[string]tftypes.Type{"d3f0":tftypes.List{ElementType:tftypes.Object{AttributeTypes:map[string]tftypes.Type{"d3f0d2f0":tftypes.Set{ElementType:tftypes.Object{AttributeTypes:map[string]tftypes.Type{}, OptionalAttributes:map[string]struct {}(nil), _:[]struct {}(nil)}, _:[]struct {}(nil)}, "d3f0d2f1":tftypes.Set{ElementType:tftypes.Object{AttributeTypes:map[string]tftypes.Type{"d3f0d2f1d1f0":tftypes.primitive{name:"Number", _:[]struct {}(nil)}, "d3f0d2f1d1f1":tftypes.primitive{name:"Bool", _:[]struct {}(nil)}}, OptionalAttributes:map[string]struct {}(nil), _:[]struct {}(nil)}, _:[]struct {}(nil)}}, OptionalAttributes:map[string]struct {}(nil), _:[]struct {}(nil)}, _:[]struct {}(nil)}, "d3f1":tftypes.List{ElementType:tftypes.Object{AttributeTypes:map[string]tftypes.Type{"d3f1d2f0":tftypes.Set{ElementType:tftypes.Object{AttributeTypes:map[string]tftypes.Type{"d3f1d2f0d1f0":tftypes.primitive{name:"Number", _:[]struct {}(nil)}}, OptionalAttributes:map[string]struct {}(nil), _:[]struct {}(nil)}, _:[]struct {}(nil)}, "d3f1d2f1":tftypes.List{ElementType:tftypes.Object{AttributeTypes:map[string]tftypes.Type{"d3f1d2f1d1f0":tftypes.primitive{name:"String", _:[]struct {}(nil)}}, OptionalAttributes:map[string]struct {}(nil), _:[]struct {}(nil)}, _:[]struct {}(nil)}, "d3f1d2f2":tftypes.Set{ElementType:tftypes.Object{AttributeTypes:map[string]tftypes.Type{}, OptionalAttributes:map[string]struct {}(nil), _:[]struct {}(nil)}, _:[]struct {}(nil)}}, OptionalAttributes:map[string]struct {}(nil), _:[]struct {}(nil)}, _:[]struct {}(nil)}}, OptionalAttributes:map[string]struct {}(nil), _:[]struct {}(nil)}, valueGen:(*rapid.Generator[github.com/hashicorp/terraform-plugin-go/tftypes.Value])(0x1400105e1e0)}
+# 2024/06/17 10:30:33 TestCreateInputsConvergence Schema:
+# schema.Schema{Elem: &schema.Resource{
+# 	Schema: map[string]*schema.Schema{
+# 		"d3f0": {
+# 			Type:     schema.ValueType(TypeList),
+# 			Optional: true,
+# 			Elem: &schema.Resource{Schema: map[string]*schema.Schema{
+# 				"d3f0d2f0": {
+# 					Type:     schema.ValueType(TypeSet),
+# 					Optional: true,
+# 					ForceNew: true,
+# 					Elem: &schema.Resource{
+# 						Schema: map[string]*schema.Schema{},
+# 					},
+# 					MaxItems:  1,
+# 					Sensitive: true,
+# 				},
+# 				"d3f0d2f1": {
+# 					Type:     schema.ValueType(TypeSet),
+# 					Optional: true,
+# 					Computed: true,
+# 					ForceNew: true,
+# 					Elem: &schema.Resource{Schema: map[string]*schema.Schema{
+# 						"d3f0d2f1d1f0": {
+# 							Type:     schema.ValueType(TypeInt),
+# 							Optional: true,
+# 							ForceNew: true,
+# 						},
+# 						"d3f0d2f1d1f1": {
+# 							Type:     schema.ValueType(TypeBool),
+# 							Optional: true,
+# 							ForceNew: true,
+# 						},
+# 					}},
+# 					MaxItems:  1,
+# 					Sensitive: true,
+# 				},
+# 			}},
+# 		},
+# 		"d3f1": {
+# 			Type:     schema.ValueType(TypeList),
+# 			Optional: true,
+# 			Elem: &schema.Resource{Schema: map[string]*schema.Schema{
+# 				"d3f1d2f0": {
+# 					Type:     schema.ValueType(TypeSet),
+# 					Optional: true,
+# 					Computed: true,
+# 					ForceNew: true,
+# 					Elem: &schema.Resource{Schema: map[string]*schema.Schema{"d3f1d2f0d1f0": {
+# 						Type:     schema.ValueType(TypeInt),
+# 						Required: true,
+# 						ForceNew: true,
+# 					}}},
+# 					Sensitive: true,
+# 				},
+# 				"d3f1d2f1": {
+# 					Type:     schema.ValueType(TypeList),
+# 					Optional: true,
+# 					Elem: &schema.Resource{Schema: map[string]*schema.Schema{"d3f1d2f1d1f0": {
+# 						Type:      schema.ValueType(TypeString),
+# 						Optional:  true,
+# 						ForceNew:  true,
+# 						Sensitive: true,
+# 					}}},
+# 					MaxItems:  1,
+# 					Sensitive: true,
+# 				},
+# 				"d3f1d2f2": {
+# 					Type:      schema.ValueType(TypeSet),
+# 					Required:  true,
+# 					Elem:      &schema.Resource{Schema: map[string]*schema.Schema{}},
+# 					MaxItems:  1,
+# 					Sensitive: true,
+# 				},
+# 			}},
+# 		},
+# 	},
+# }}
+# 
+v0.4.8#17227480203321132552
+0x7c9e4439c955d
+0x1e711aec08c11d
+0x2
+0x16d55c6d617ce1
+0x76f4f63de47b8
+0x2
+0x1164362dd5efb6
+0x2
+0x18a90d6a252f69
+0x1a390bdeef12fd
+0x2
+0x1fba7e40e87406
+0xffffffffffffffff
+0x1027c246cb3000
+0x777c41d8fc40b
+0x0
+0x1
+0x1121fc43cfd418
+0x183f2fc772d104
+0x1
+0xdaeb435d68116
+0x2
+0x1
+0x1
+0x1
+0x1
+0x713e3c539a79b
+0x3
+0x18b5619c37e058
+0xda666a7965d8e
+0x2
+0x1e1eb986ae05dd
+0x0
+0xec69387579925
+0x2
+0xa33a5c10c0b78
+0x0
+0x1313779ff1a45e
+0x0
+0x0
+0x1
+0x0
+0x0
+0xa3e56f2e1e49b
+0x0
+0x164e18ca0c1c0b
+0x1
+0x1820059b3f8074
+0x0
+0x1689a9bf1e9bfd
+0x0
+0x0
+0x1
+0x0
+0x0
+0x1b221308c270c6
+0x139a7626b2955a
+0x1
+0x1852b3e88ce899
+0x3
+0x1
+0x1
+0x1
+0x1
+0x14e0d34f61f41e
+0xff24873255968
+0x0
+0x4d93f5b30d818
+0x0
+0x0
+0x0
+0x0
+0x1
+0x805a1c57c4beb
+0x2
+0x105a762a2b8032
+0xec889308d97c1
+0x3
+0xf6d09d07f293a
+0x3
+0x1d468cec0bc382
+0x197a003cc8d64c
+0x1
+0x10025b72efe5d4
+0x0
+0x11e90f9ef36855
+0x2
+0x1caa9ff4072f2d
+0x0
+0x3094d81e31354
+0x1
+0x0
+0x1
+0x0
+0x6d4d6189f0711
+0xbeced579b4cfd
+0x0
+0x10877f537c8da2
+0x3
+0x1
+0x1
+0x1
+0x1
+0x18f2f036299219
+0x1
+0x13a566ddb32c8e
+0xb83232865da0c
+0x1
+0x1864fba1cf9d84
+0x0
+0xae943a62e5286
+0x0
+0x13e2963098efbe
+0x0
+0x1234bfd7623f6d
+0x0
+0x1
+0x1
+0x0
+0x1
+0x1b2cd0ff2f5b0e
+0x0
+0x1
+0x0
+0x1
+0x78808a4a47841
+0x3
+0x1537ad6b6494d6
+0x18113ff7f884ed
+0x0
+0x1
+0x1d0ae1d58cab43
+0x1f6960237b3aca
+0xffffffffffffffff
+0x109542174ad1f
+0x1
+0x1
+0x0
+0x0
+0x19f5ccd251d956
+0x61bdc35db373f
+0x0
+0x1facaf6d069f8
+0x0
+0x0
+0x0
+0x1
+0x0
+0x10c6b27611cf9b
+0x0
+0x19d6a24cd6cccc
+0x1b5fe1af26dc6f
+0x1
+0x1138b0107cef25
+0x0
+0xf5958069f5219
+0x0
+0x11bd30aebe9bd
+0x1eaa768814219e
+0x15f312aca7bd15
+0x0
+0x1ce9408be5613e
+0x1e49733d6ec5fd
+0x0
+0x1f7ffb6d08151b
+0xd0057491a562a
+0x1
+0x85824694e346f
+0x0
+0xfcfae80282187
+0x930ec1777c206
+0x1
+0x80556e6fdd4f
+0x0

@@ -112,3 +112,44 @@ func (*rapidTWithCleanup) Deadline() (time.Time, bool) {
 func (rtc *rapidTWithCleanup) Cleanup(work func()) {
 	rtc.outerT.Cleanup(work)
 }
+
+func TestFixedSchema(outerT *testing.T) {
+	_, ok := os.LookupEnv("PULUMI_EXPERIMENTAL")
+	if !ok {
+		outerT.Skip("TODO - we do not currently pass all cases; using this as an exploration tool")
+	}
+	outerT.Parallel()
+
+	log.SetOutput(io.Discard)
+	mainResSchema := map[string]*schema.Schema{
+		"id": {
+			Type:     schema.TypeString,
+			Computed: true,
+		},
+		"bool_prop": {
+			Type:     schema.TypeBool,
+			Optional: true,
+		},
+	}
+	mainRes := schema.Resource{Schema: mainResSchema}
+
+	outerT.Logf("Schema:\n%v\n", (&prettySchemaWrapper{schema.Schema{Elem: mainRes}}).GoString())
+
+	valueGen := rapid.Map(GenValue(mainRes), newPrettyValueWrapper)
+	rapid.Check(outerT, func(t *rapid.T) {
+		outerT.Logf("Iterating..")
+
+		config1 := valueGen.Draw(t, "config1")
+		t.Logf("Config1:\n%v\n", config1.GoString())
+		config2 := valueGen.Draw(t, "config2")
+		t.Logf("Config2:\n%v\n", config2.GoString())
+
+		tc := diffTestCase{
+			Resource: &mainRes,
+			Config1:  config1.Value(),
+			Config2:  config2.Value(),
+		}
+
+		runDiffCheck(&rapidTWithCleanup{t, outerT}, tc)
+	})
+}
