@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/schemaconvert"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/internal/schemaconvert"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	shimv1 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v1"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
@@ -1931,7 +1931,6 @@ func TestListNestedAddReplace(t *testing.T) {
 			},
 			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		// info
 		// inputs
 		map[string]interface{}{
 			"prop": []interface{}{map[string]interface{}{"nest": "foo"}},
@@ -1963,7 +1962,6 @@ func TestListNestedUpdate(t *testing.T) {
 			},
 			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		// info
 		// inputs
 		map[string]interface{}{
 			"prop": []interface{}{map[string]interface{}{"nest": "foo"}},
@@ -1995,7 +1993,6 @@ func TestListNestedDeleteReplace(t *testing.T) {
 			},
 			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		// info
 		// inputs
 		map[string]interface{}{},
 		// state
@@ -2025,7 +2022,6 @@ func TestSetNestedDeleteReplace(t *testing.T) {
 			},
 			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		// info
 		// inputs
 		map[string]interface{}{},
 		// state
@@ -2056,7 +2052,6 @@ func TestListNestedAddMaxItemsOne(t *testing.T) {
 			},
 			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		// info
 		// inputs
 		map[string]interface{}{
 			"prop": map[string]interface{}{"nest": "foo"},
