@@ -105,7 +105,8 @@ func TestCustomizeDiff(t *testing.T) {
 		for k, v := range expected {
 			expectedDiff[k] = &pulumirpc.PropertyDiff{Kind: v}
 		}
-		assert.Equal(t, pulumirpc.DiffResponse_DIFF_SOME, changes)
+		assert.Equal(t,
+			pulumirpc.DiffResponse_DIFF_SOME, changes)
 		assert.Equal(t, expectedDiff, diff)
 	})
 
@@ -267,6 +268,7 @@ type setupFunc func(tfs map[string]*v2Schema.Schema) (
 
 func diffTest(t *testing.T, tfs map[string]*v2Schema.Schema, inputs,
 	state map[string]interface{}, expected map[string]DiffKind,
+	expectedV2Override map[string]DiffKind,
 	expectedDiffChanges pulumirpc.DiffResponse_DiffChanges,
 	ignoreChanges ...string,
 ) {
@@ -275,12 +277,18 @@ func diffTest(t *testing.T, tfs map[string]*v2Schema.Schema, inputs,
 	inputsMap := resource.NewPropertyMapFromMap(inputs)
 	stateMap := resource.NewPropertyMapFromMap(state)
 
+	v2Expected := expected
+	if expectedV2Override != nil {
+		v2Expected = expectedV2Override
+	}
+
 	setup := []struct {
-		name  string
-		setup setupFunc
+		name     string
+		setup    setupFunc
+		expected map[string]DiffKind
 	}{
-		{"v1", v1SetupFromv2Schema},
-		{"v2", v2Setup},
+		{"v1", v1SetupFromv2Schema, expected},
+		{"v2", v2Setup, v2Expected},
 	}
 
 	for _, s := range setup {
@@ -302,7 +310,7 @@ func diffTest(t *testing.T, tfs map[string]*v2Schema.Schema, inputs,
 				// Convert the diff to a detailed diff and check the result.
 				diff, changes := makeDetailedDiff(ctx, sch, info, stateMap, inputsMap, tfDiff)
 				expectedDiff := map[string]*pulumirpc.PropertyDiff{}
-				for k, v := range expected {
+				for k, v := range s.expected {
 					expectedDiff[k] = &pulumirpc.PropertyDiff{Kind: v}
 				}
 				assert.Equal(t, expectedDiffChanges, changes)
@@ -324,7 +332,7 @@ func diffTest(t *testing.T, tfs map[string]*v2Schema.Schema, inputs,
 				config, _, err := MakeTerraformConfig(ctx, &Provider{tf: provider}, inputsMap, sch, info)
 				assert.NoError(t, err)
 
-				for k := range expected {
+				for k := range s.expected {
 					ignoreChanges = append(ignoreChanges, k)
 				}
 				tfDiff, err := provider.Diff(ctx, "resource", tfState, config, shim.DiffOptions{
@@ -354,6 +362,7 @@ func TestCustomDiffProducesReplace(t *testing.T) {
 			"outp": "bar",
 		},
 		map[string]DiffKind{},
+		nil,
 		pulumirpc.DiffResponse_DIFF_NONE)
 }
 
@@ -371,6 +380,7 @@ func TestEmptyDiff(t *testing.T) {
 			"outp": "bar",
 		},
 		map[string]DiffKind{},
+		nil,
 		pulumirpc.DiffResponse_DIFF_NONE)
 }
 
@@ -389,6 +399,7 @@ func TestSimpleAdd(t *testing.T) {
 		map[string]DiffKind{
 			"prop": A,
 		},
+		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
@@ -407,6 +418,7 @@ func TestSimpleAddReplace(t *testing.T) {
 		map[string]DiffKind{
 			"prop": AR,
 		},
+		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
@@ -424,6 +436,7 @@ func TestSimpleDelete(t *testing.T) {
 		map[string]DiffKind{
 			"prop": D,
 		},
+		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
@@ -441,6 +454,7 @@ func TestSimpleDeleteReplace(t *testing.T) {
 		map[string]DiffKind{
 			"prop": DR,
 		},
+		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
@@ -460,6 +474,7 @@ func TestSimpleUpdate(t *testing.T) {
 		map[string]DiffKind{
 			"prop": U,
 		},
+		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
@@ -479,6 +494,7 @@ func TestSimpleUpdateReplace(t *testing.T) {
 		map[string]DiffKind{
 			"prop": UR,
 		},
+		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
@@ -497,6 +513,7 @@ func TestNestedAdd(t *testing.T) {
 		map[string]DiffKind{
 			"prop.nest": A,
 		},
+		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
@@ -515,6 +532,7 @@ func TestNestedAddReplace(t *testing.T) {
 		map[string]DiffKind{
 			"prop.nest": AR,
 		},
+		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
@@ -532,6 +550,7 @@ func TestNestedDelete(t *testing.T) {
 		map[string]DiffKind{
 			"prop.nest": D,
 		},
+		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
@@ -549,6 +568,7 @@ func TestNestedDeleteReplace(t *testing.T) {
 		map[string]DiffKind{
 			"prop.nest": DR,
 		},
+		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
@@ -568,6 +588,7 @@ func TestNestedUpdate(t *testing.T) {
 		map[string]DiffKind{
 			"prop.nest": U,
 		},
+		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
@@ -587,6 +608,7 @@ func TestNestedUpdateReplace(t *testing.T) {
 		map[string]DiffKind{
 			"prop.nest": UR,
 		},
+		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
@@ -604,6 +626,7 @@ func TestNestedIgnore(t *testing.T) {
 			"outp": "bar",
 		},
 		map[string]DiffKind{},
+		nil,
 		pulumirpc.DiffResponse_DIFF_NONE,
 		"prop")
 }
@@ -623,6 +646,7 @@ func TestListAdd(t *testing.T) {
 		map[string]DiffKind{
 			"prop[0]": A,
 		},
+		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
@@ -641,6 +665,7 @@ func TestListAddReplace(t *testing.T) {
 		map[string]DiffKind{
 			"prop[0]": AR,
 		},
+		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
@@ -658,6 +683,7 @@ func TestListDelete(t *testing.T) {
 		map[string]DiffKind{
 			"prop[0]": D,
 		},
+		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
@@ -675,6 +701,7 @@ func TestListDeleteReplace(t *testing.T) {
 		map[string]DiffKind{
 			"prop[0]": DR,
 		},
+		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
@@ -694,6 +721,7 @@ func TestListUpdate(t *testing.T) {
 		map[string]DiffKind{
 			"prop[0]": U,
 		},
+		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
@@ -713,6 +741,7 @@ func TestListUpdateReplace(t *testing.T) {
 		map[string]DiffKind{
 			"prop[0]": UR,
 		},
+		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
@@ -730,6 +759,7 @@ func TestListIgnore(t *testing.T) {
 			"outp": "bar",
 		},
 		map[string]DiffKind{},
+		nil,
 		pulumirpc.DiffResponse_DIFF_NONE,
 		"prop")
 }
@@ -750,6 +780,7 @@ func TestMaxItemsOneListAdd(t *testing.T) {
 		map[string]DiffKind{
 			"prop": A,
 		},
+		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
@@ -769,6 +800,7 @@ func TestMaxItemsOneListAddReplace(t *testing.T) {
 		map[string]DiffKind{
 			"prop": AR,
 		},
+		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
@@ -786,6 +818,7 @@ func TestMaxItemsOneListDelete(t *testing.T) {
 		map[string]DiffKind{
 			"prop": D,
 		},
+		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
@@ -803,6 +836,7 @@ func TestMaxItemsOneListDeleteReplace(t *testing.T) {
 		map[string]DiffKind{
 			"prop": DR,
 		},
+		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
@@ -822,6 +856,7 @@ func TestMaxItemsOneListUpdate(t *testing.T) {
 		map[string]DiffKind{
 			"prop": U,
 		},
+		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
@@ -841,6 +876,7 @@ func TestMaxItemsOneListUpdateReplace(t *testing.T) {
 		map[string]DiffKind{
 			"prop": UR,
 		},
+		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
@@ -858,6 +894,7 @@ func TestMaxItemsOneListIgnore(t *testing.T) {
 			"outp": "bar",
 		},
 		map[string]DiffKind{},
+		nil,
 		pulumirpc.DiffResponse_DIFF_NONE,
 		"prop")
 }
@@ -881,6 +918,7 @@ func TestSetAdd(t *testing.T) {
 		map[string]DiffKind{
 			"prop[0]": A,
 		},
+		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
@@ -904,6 +942,7 @@ func TestSetAddReplace(t *testing.T) {
 		map[string]DiffKind{
 			"prop[0]": AR,
 		},
+		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
@@ -925,6 +964,7 @@ func TestSetDelete(t *testing.T) {
 		map[string]DiffKind{
 			"prop[0]": D,
 		},
+		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
@@ -947,6 +987,7 @@ func TestSetDeleteReplace(t *testing.T) {
 		map[string]DiffKind{
 			"prop[0]": DR,
 		},
+		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
@@ -966,6 +1007,7 @@ func TestSetUpdate(t *testing.T) {
 		map[string]DiffKind{
 			"prop[0]": U,
 		},
+		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
@@ -983,6 +1025,7 @@ func TestSetIgnore(t *testing.T) {
 			"outp": "bar",
 		},
 		map[string]DiffKind{},
+		nil,
 		pulumirpc.DiffResponse_DIFF_NONE,
 		"prop")
 }
@@ -1003,6 +1046,7 @@ func TestSetUpdateReplace(t *testing.T) {
 		map[string]DiffKind{
 			"prop[0]": UR,
 		},
+		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
@@ -1027,6 +1071,7 @@ func TestMaxItemsOneSetAdd(t *testing.T) {
 		map[string]DiffKind{
 			"prop": A,
 		},
+		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
@@ -1052,6 +1097,7 @@ func TestMaxItemsOneSetAddReplace(t *testing.T) {
 		map[string]DiffKind{
 			"prop": AR,
 		},
+		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
@@ -1074,6 +1120,7 @@ func TestMaxItemsOneSetDelete(t *testing.T) {
 		map[string]DiffKind{
 			"prop": D,
 		},
+		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
@@ -1097,6 +1144,7 @@ func TestMaxItemsOneSetDeleteReplace(t *testing.T) {
 		map[string]DiffKind{
 			"prop": DR,
 		},
+		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
@@ -1116,6 +1164,7 @@ func TestMaxItemsOneSetUpdate(t *testing.T) {
 		map[string]DiffKind{
 			"prop": U,
 		},
+		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
@@ -1133,6 +1182,7 @@ func TestMaxItemsOneSetIgnore(t *testing.T) {
 			"outp": "bar",
 		},
 		map[string]DiffKind{},
+		nil,
 		pulumirpc.DiffResponse_DIFF_NONE,
 		"prop")
 }
@@ -1153,6 +1203,7 @@ func TestMaxItemsOneSetUpdateReplace(t *testing.T) {
 		map[string]DiffKind{
 			"prop": UR,
 		},
+		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
@@ -1179,6 +1230,7 @@ func TestSetNestedUpdate(t *testing.T) {
 		map[string]DiffKind{
 			"prop[0].nest": U,
 		},
+		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
@@ -1205,6 +1257,7 @@ func TestSetNestedUpdateReplace(t *testing.T) {
 		map[string]DiffKind{
 			"prop[0].nest": UR,
 		},
+		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
@@ -1230,6 +1283,7 @@ func TestSetNestedIgnore(t *testing.T) {
 				"outp": "bar",
 			},
 			map[string]DiffKind{},
+			nil,
 			pulumirpc.DiffResponse_DIFF_NONE,
 			ignore)
 	}
@@ -1251,6 +1305,7 @@ func TestComputedSimpleUpdate(t *testing.T) {
 		map[string]DiffKind{
 			"prop": U,
 		},
+		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
@@ -1270,6 +1325,7 @@ func TestComputedSimpleUpdateReplace(t *testing.T) {
 		map[string]DiffKind{
 			"prop": UR,
 		},
+		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
@@ -1289,6 +1345,7 @@ func TestComputedMapUpdate(t *testing.T) {
 		map[string]DiffKind{
 			"prop": U,
 		},
+		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
@@ -1308,6 +1365,7 @@ func TestComputedNestedUpdate(t *testing.T) {
 		map[string]DiffKind{
 			"prop": U,
 		},
+		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
@@ -1327,6 +1385,7 @@ func TestComputedNestedUpdateReplace(t *testing.T) {
 		map[string]DiffKind{
 			"prop": UR,
 		},
+		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
@@ -1344,6 +1403,7 @@ func TestComputedNestedIgnore(t *testing.T) {
 			"outp": "bar",
 		},
 		map[string]DiffKind{},
+		nil,
 		pulumirpc.DiffResponse_DIFF_NONE,
 		"prop")
 }
@@ -1364,6 +1424,7 @@ func TestComputedListUpdate(t *testing.T) {
 		map[string]DiffKind{
 			"prop": U,
 		},
+		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
@@ -1383,6 +1444,7 @@ func TestComputedListElementUpdate(t *testing.T) {
 		map[string]DiffKind{
 			"prop": U,
 		},
+		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
@@ -1402,6 +1464,7 @@ func TestComputedListElementUpdateReplace(t *testing.T) {
 		map[string]DiffKind{
 			"prop": UR,
 		},
+		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
@@ -1419,6 +1482,7 @@ func TestComputedListElementIgnore(t *testing.T) {
 			"outp": "bar",
 		},
 		map[string]DiffKind{},
+		nil,
 		pulumirpc.DiffResponse_DIFF_NONE,
 		"prop")
 }
@@ -1439,6 +1503,7 @@ func TestComputedSetUpdate(t *testing.T) {
 		map[string]DiffKind{
 			"prop": U,
 		},
+		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
@@ -1458,6 +1523,7 @@ func TestNestedComputedSetUpdate(t *testing.T) {
 		map[string]DiffKind{
 			"prop": U,
 		},
+		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
@@ -1476,6 +1542,7 @@ func TestNestedComputedSetAdd(t *testing.T) {
 		map[string]DiffKind{
 			"prop": A,
 		},
+		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
@@ -1495,6 +1562,7 @@ func TestNestedComputedSetUpdateReplace(t *testing.T) {
 		map[string]DiffKind{
 			"prop": UR,
 		},
+		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
@@ -1514,6 +1582,7 @@ func TestNestedComputedSetIntUpdate(t *testing.T) {
 		map[string]DiffKind{
 			"prop": U,
 		},
+		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
@@ -1533,6 +1602,7 @@ func TestNestedComputedSetIntUpdateReplace(t *testing.T) {
 		map[string]DiffKind{
 			"prop": UR,
 		},
+		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
@@ -1551,6 +1621,7 @@ func TestNestedComputedSetIntAdd(t *testing.T) {
 		map[string]DiffKind{
 			"prop": A,
 		},
+		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
@@ -1570,6 +1641,7 @@ func TestComputedSetUpdateReplace(t *testing.T) {
 		map[string]DiffKind{
 			"prop": UR,
 		},
+		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
@@ -1596,6 +1668,7 @@ func TestComputedSetNestedUpdate(t *testing.T) {
 		map[string]DiffKind{
 			"prop[0].nest": U,
 		},
+		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
@@ -1622,6 +1695,7 @@ func TestComputedSetNestedUpdateReplace(t *testing.T) {
 		map[string]DiffKind{
 			"prop[0].nest": UR,
 		},
+		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
@@ -1647,6 +1721,7 @@ func TestComputedSetNestedIgnore(t *testing.T) {
 				"outp": "bar",
 			},
 			map[string]DiffKind{},
+			nil,
 			pulumirpc.DiffResponse_DIFF_NONE,
 			ignore)
 	}
@@ -1688,6 +1763,7 @@ func TestRawElementNames(t *testing.T) {
 		map[string]DiffKind{
 			"prop.variables.DYNAMODB_ROUTE_TABLE_NAME": U,
 		},
+		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
@@ -1871,6 +1947,7 @@ func TestCollectionsWithMultipleItems(t *testing.T) {
 					"outp": "bar",
 				},
 				expected,
+				nil,
 				expectedChanges,
 			)
 		})
@@ -1913,6 +1990,7 @@ func TestSetNestedAddReplace(t *testing.T) {
 		map[string]DiffKind{
 			"prop[0].nest": AR,
 		},
+		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
@@ -1944,6 +2022,7 @@ func TestListNestedAddReplace(t *testing.T) {
 		map[string]DiffKind{
 			"prop[0].nest": AR,
 		},
+		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
@@ -1975,6 +2054,7 @@ func TestListNestedUpdate(t *testing.T) {
 		map[string]DiffKind{
 			"prop[0].nest": U,
 		},
+		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
@@ -2004,6 +2084,7 @@ func TestListNestedDeleteReplace(t *testing.T) {
 		map[string]DiffKind{
 			"prop[0].nest": DR,
 		},
+		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
@@ -2033,6 +2114,7 @@ func TestSetNestedDeleteReplace(t *testing.T) {
 		map[string]DiffKind{
 			"prop[0].nest": DR,
 		},
+		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
@@ -2064,6 +2146,7 @@ func TestListNestedAddMaxItemsOne(t *testing.T) {
 		map[string]DiffKind{
 			"prop.nest": AR,
 		},
+		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
