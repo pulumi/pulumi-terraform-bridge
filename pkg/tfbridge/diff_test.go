@@ -1408,7 +1408,6 @@ func TestComputedNestedIgnore(t *testing.T) {
 		"prop")
 }
 
-//nolint:lll
 func TestComputedListUpdate(t *testing.T) {
 	diffTest(t,
 		map[string]*v2Schema.Schema{
@@ -1422,14 +1421,8 @@ func TestComputedListUpdate(t *testing.T) {
 			"prop": []interface{}{"foo"},
 			"outp": "bar",
 		},
-		map[string]DiffKind{
-			// TODO[pulumi/pulumi-terraform-bridge#2141]: This should be an U.
-			// makeDetailedDiff returns an empty diff for collections
-			"prop":    A,
-			"prop[0]": D,
-			// Note outp is not here because of
-			// https://developer.hashicorp.com/terraform/plugin/sdkv2/resources/data-consistency-errors#planned-value-for-a-non-computed-attribute
-			// Computed properties keep the state value after being removed from inputs.
+		map[string]pulumirpc.PropertyDiff_Kind{
+			"prop": U,
 		},
 		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
@@ -1508,10 +1501,7 @@ func TestComputedSetUpdate(t *testing.T) {
 			"outp": "bar",
 		},
 		map[string]DiffKind{
-			// TODO[pulumi/pulumi-terraform-bridge#2141]: This should be an U.
-			// makeDetailedDiff returns an empty diff for collections
-			"prop":    A,
-			"prop[0]": D,
+			"prop":    U,
 		},
 		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
@@ -1649,10 +1639,7 @@ func TestComputedSetUpdateReplace(t *testing.T) {
 			"outp": "bar",
 		},
 		map[string]DiffKind{
-			// TODO[pulumi/pulumi-terraform-bridge#2141]: This should be an UR.
-			// makeDetailedDiff returns an empty diff for collections
 			"prop":    UR,
-			"prop[0]": DR,
 		},
 		nil,
 		pulumirpc.DiffResponse_DIFF_SOME)
