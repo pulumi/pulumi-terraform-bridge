@@ -1410,3 +1410,20 @@ Resources:
 		})
 	}
 }
+
+func TestComputedOverride(t *testing.T) {
+	resMap := map[string]*schema.Resource{
+		"prov_test": {
+			Schema: map[string]*schema.Schema{
+				"version": {
+					Type:     schema.TypeString,
+					Optional: true,
+					Computed: true,
+				},
+			},
+		},
+	}
+	bridgedProvider := pulcheck.BridgedProvider(t, "prov", resMap)
+
+	program := `
+}

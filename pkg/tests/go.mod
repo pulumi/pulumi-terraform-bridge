@@ -13,6 +13,7 @@ require (
 	github.com/hexops/valast v1.4.4
 	github.com/pulumi/providertest v0.0.12
 	github.com/pulumi/pulumi-terraform-bridge/v3 v3.80.0
+	github.com/pulumi/pulumi/sdk v1.14.1
 	github.com/stretchr/testify v1.9.0
 	gotest.tools v2.2.0+incompatible
 	gotest.tools/v3 v3.0.3
