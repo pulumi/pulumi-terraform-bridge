@@ -8,11 +8,10 @@ replace (
 )
 
 require (
-	github.com/hashicorp/terraform-plugin-sdk v1.7.0
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.33.0
 	github.com/hexops/autogold/v2 v2.2.1
 	github.com/hexops/valast v1.4.4
-	github.com/pulumi/providertest v0.0.12
+	github.com/pulumi/providertest v0.0.13
 	github.com/pulumi/pulumi-terraform-bridge/v3 v3.80.0
 	github.com/stretchr/testify v1.9.0
 	gotest.tools v2.2.0+incompatible
@@ -92,7 +91,6 @@ require (
 	github.com/ulikunitz/xz v0.5.10 // indirect
 	github.com/vmihailenco/msgpack/v5 v5.4.1 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
-	github.com/zclconf/go-cty-yaml v1.0.1 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.49.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.49.0 // indirect
 	go.opentelemetry.io/otel v1.24.0 // indirect
