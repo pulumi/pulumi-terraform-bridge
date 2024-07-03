@@ -509,3 +509,40 @@ func TestGetNestedDescriptionFromParsedDocs(t *testing.T) {
 		})
 	}
 }
+
+func TestGetUniqueLeafDocsDescriptions(t *testing.T) {
+	testArguments := map[docsPath]*argumentDocs{
+		"configuration":             {description: "Configuration block for broker configuration."},
+		"configuration.revision":    {description: "Revision of the Configuration."},
+		"configuration.revision.id": {description: "ID of the Revision of the Configuration."},
+		"edition.revision.id":       {description: "ID of the Edition of the Configuration."},
+	}
+
+	type testCase struct {
+		name     string
+		path     docsPath
+		expected string
+	}
+
+	testCases := []testCase{
+		{
+			name:     "Nonunique leaf paths are not returned",
+			path:     docsPath("id"),
+			expected: "",
+		},
+		{
+			name:     "Unique leaf paths return their Description",
+			path:     docsPath("revision"),
+			expected: "Revision of the Configuration.",
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			actual := getUniqueLeafDocsDescriptions(testArguments, tc.path)
+			assert.Equal(t, tc.expected, actual)
+		})
+	}
+}
