@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hexops/autogold/v2"
@@ -1409,4 +1410,54 @@ Resources:
 			})
 		})
 	}
+}
+
+func TestErrors(t *testing.T) {
+	resMap := map[string]*schema.Resource{
+		"prov_test": {
+			Schema: map[string]*schema.Schema{
+				"test": {
+					Type:     schema.TypeString,
+					Optional: true,
+				},
+			},
+			CreateContext: func(ctx context.Context, d *schema.ResourceData, _ interface{}) diag.Diagnostics {
+				d.SetId("id0")
+				tflog.Error(ctx, "[ERROR] Failed to get push rules for group during create", map[string]interface{}{
+					"prop": "val",
+				})
+				return nil
+			},
+			UpdateContext: func(ctx context.Context, d *schema.ResourceData, _ interface{}) diag.Diagnostics {
+				tflog.Error(ctx, "[ERROR] Failed to get push rules for group during update", map[string]interface{}{
+					"prop": "val",
+				})
+				return nil
+			},
+		},
+	}
+
+	bridgedProvider := pulcheck.BridgedProvider(t, "prov", resMap)
+
+	program := `
+name: test
+runtime: yaml
+resources:
+    mainRes:
+        type: prov:index:Test
+        properties: %s
+`
+
+	program1 := fmt.Sprintf(program, `{"test": "val"}`)
+	program2 := fmt.Sprintf(program, `{"test": "val2"}`)
+
+	pt := pulcheck.PulCheck(t, bridgedProvider, program1)
+	pt.Up()
+
+	pulumiYamlPath := filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml")
+
+	err := os.WriteFile(pulumiYamlPath, []byte(program2), 0o600)
+	require.NoError(t, err)
+
+	pt.Up()
 }
