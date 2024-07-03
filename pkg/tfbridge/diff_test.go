@@ -1437,7 +1437,7 @@ func TestComputedSetUpdate(t *testing.T) {
 			"outp": "bar",
 		},
 		map[string]DiffKind{
-			"prop":    U,
+			"prop": U,
 		},
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
@@ -1568,7 +1568,7 @@ func TestComputedSetUpdateReplace(t *testing.T) {
 			"outp": "bar",
 		},
 		map[string]DiffKind{
-			"prop":    UR,
+			"prop": UR,
 		},
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
