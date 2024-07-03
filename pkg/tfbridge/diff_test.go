@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/schemaconvert"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	shimv1 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v1"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
@@ -197,15 +198,9 @@ func TestCustomizeDiff(t *testing.T) {
 	})
 }
 
-func diffTest(t *testing.T, tfs map[string]*schema.Schema, info map[string]*SchemaInfo,
-	inputs, state map[string]interface{}, expected map[string]DiffKind,
-	expectedDiffChanges pulumirpc.DiffResponse_DiffChanges,
-	ignoreChanges ...string) {
-	ctx := context.Background()
-
-	inputsMap := resource.NewPropertyMapFromMap(inputs)
-	stateMap := resource.NewPropertyMapFromMap(state)
-
+func v1Setup(tfs map[string]*schema.Schema) (
+	shim.SchemaMap, Resource, shim.Provider, map[string]*SchemaInfo,
+) {
 	sch := shimv1.NewSchemaMap(tfs)
 
 	// Fake up a TF resource and a TF provider.
@@ -220,59 +215,126 @@ func diffTest(t *testing.T, tfs map[string]*schema.Schema, info map[string]*Sche
 			"resource": res,
 		},
 	})
+	info := map[string]*SchemaInfo{}
 
 	// Convert the inputs and state to TF config and resource attributes.
 	r := Resource{
 		TF:     shimv1.NewResource(res),
 		Schema: &ResourceInfo{Fields: info},
 	}
-	tfState, err := makeTerraformStateWithOpts(ctx, r, "id", stateMap,
-		makeTerraformStateOptions{defaultZeroSchemaVersion: true})
-	assert.NoError(t, err)
 
-	config, _, err := MakeTerraformConfig(ctx, &Provider{tf: provider}, inputsMap, sch, info)
-	assert.NoError(t, err)
+	return sch, r, provider, info
+}
 
-	t.Run("standard", func(t *testing.T) {
-		tfDiff, err := provider.Diff(ctx, "resource", tfState, config, shim.DiffOptions{
-			IgnoreChanges: newIgnoreChanges(ctx, sch, info, stateMap, inputsMap, ignoreChanges),
-		})
-		assert.NoError(t, err)
+func v1SetupFromv2Schema(tfs map[string]*v2Schema.Schema) (
+	shim.SchemaMap, Resource, shim.Provider, map[string]*SchemaInfo,
+) {
+	v1Schema := schemaconvert.Sdkv2ToV1SchemaMap(tfs)
+	return v1Setup(v1Schema)
+}
 
-		// Convert the diff to a detailed diff and check the result.
-		diff, changes := makeDetailedDiff(ctx, sch, info, stateMap, inputsMap, tfDiff)
-		expectedDiff := map[string]*pulumirpc.PropertyDiff{}
-		for k, v := range expected {
-			expectedDiff[k] = &pulumirpc.PropertyDiff{Kind: v}
-		}
-		assert.Equal(t, expectedDiffChanges, changes)
-		assert.Equal(t, expectedDiff, diff)
+func v2Setup(tfs map[string]*v2Schema.Schema) (
+	shim.SchemaMap, Resource, shim.Provider, map[string]*SchemaInfo,
+) {
+	sch := shimv2.NewSchemaMap(tfs)
+
+	// Fake up a TF resource and a TF provider.
+	res := &v2Schema.Resource{
+		Schema: tfs,
+		CustomizeDiff: func(_ context.Context, d *v2Schema.ResourceDiff, _ interface{}) error {
+			return d.SetNewComputed("outp")
+		},
+	}
+	provider := shimv2.NewProvider(&v2Schema.Provider{
+		ResourcesMap: map[string]*v2Schema.Resource{
+			"resource": res,
+		},
 	})
+	info := map[string]*SchemaInfo{}
 
-	// Add an ignoreChanges entry for each path in the expected diff, then re-convert the diff
-	// and check the result.
-	t.Run("withIgnoreAllExpected", func(t *testing.T) {
-		for k := range expected {
-			ignoreChanges = append(ignoreChanges, k)
-		}
-		tfDiff, err := provider.Diff(ctx, "resource", tfState, config, shim.DiffOptions{
-			IgnoreChanges: newIgnoreChanges(ctx, sch, info, stateMap, inputsMap, ignoreChanges),
+	// Convert the inputs and state to TF config and resource attributes.
+	r := Resource{
+		TF:     shimv2.NewResource(res),
+		Schema: &ResourceInfo{Fields: info},
+	}
+
+	return sch, r, provider, info
+}
+
+// type for v2Setup and v1SetupFromv2Schema
+type setupFunc func(tfs map[string]*v2Schema.Schema) (
+	shim.SchemaMap, Resource, shim.Provider, map[string]*SchemaInfo)
+
+func diffTest(t *testing.T, tfs map[string]*v2Schema.Schema, inputs,
+	state map[string]interface{}, expected map[string]DiffKind,
+	expectedDiffChanges pulumirpc.DiffResponse_DiffChanges,
+	ignoreChanges ...string,
+) {
+	ctx := context.Background()
+
+	inputsMap := resource.NewPropertyMapFromMap(inputs)
+	stateMap := resource.NewPropertyMapFromMap(state)
+
+	setup := []struct {
+		name  string
+		setup setupFunc
+	}{
+		{"v1", v1SetupFromv2Schema},
+		{"v2", v2Setup},
+	}
+
+	for _, s := range setup {
+		t.Run(s.name, func(t *testing.T) {
+			sch, r, provider, info := s.setup(tfs)
+
+			tfState, err := makeTerraformStateWithOpts(ctx, r, "id", stateMap,
+				makeTerraformStateOptions{defaultZeroSchemaVersion: true})
+			assert.NoError(t, err)
+
+			config, _, err := MakeTerraformConfig(ctx, &Provider{tf: provider}, inputsMap, sch, info)
+			assert.NoError(t, err)
+
+			t.Run("standard", func(t *testing.T) {
+				tfDiff, err := provider.Diff(ctx, "resource", tfState, config, shim.DiffOptions{
+					IgnoreChanges: newIgnoreChanges(ctx, sch, info, stateMap, inputsMap, ignoreChanges),
+				})
+				assert.NoError(t, err)
+
+				// Convert the diff to a detailed diff and check the result.
+				diff, changes := makeDetailedDiff(ctx, sch, info, stateMap, inputsMap, tfDiff)
+				expectedDiff := map[string]*pulumirpc.PropertyDiff{}
+				for k, v := range expected {
+					expectedDiff[k] = &pulumirpc.PropertyDiff{Kind: v}
+				}
+				assert.Equal(t, expectedDiffChanges, changes)
+				assert.Equal(t, expectedDiff, diff)
+			})
+
+			// Add an ignoreChanges entry for each path in the expected diff, then re-convert the diff
+			// and check the result.
+			t.Run("withIgnoreAllExpected", func(t *testing.T) {
+				for k := range expected {
+					ignoreChanges = append(ignoreChanges, k)
+				}
+				tfDiff, err := provider.Diff(ctx, "resource", tfState, config, shim.DiffOptions{
+					IgnoreChanges: newIgnoreChanges(ctx, sch, info, stateMap, inputsMap, ignoreChanges),
+				})
+				assert.NoError(t, err)
+
+				diff, changes := makeDetailedDiff(ctx, sch, info, stateMap, inputsMap, tfDiff)
+				assert.Equal(t, pulumirpc.DiffResponse_DIFF_NONE, changes)
+				assert.Equal(t, map[string]*pulumirpc.PropertyDiff{}, diff)
+			})
 		})
-		assert.NoError(t, err)
-
-		diff, changes := makeDetailedDiff(ctx, sch, info, stateMap, inputsMap, tfDiff)
-		assert.Equal(t, pulumirpc.DiffResponse_DIFF_NONE, changes)
-		assert.Equal(t, map[string]*pulumirpc.PropertyDiff{}, diff)
-	})
+	}
 }
 
 func TestCustomDiffProducesReplace(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
-			"prop": {Type: schema.TypeString},
-			"outp": {Type: schema.TypeString, Computed: true},
+		map[string]*v2Schema.Schema{
+			"prop": {Type: v2Schema.TypeString},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{
 			"prop": "foo",
 		},
@@ -286,11 +348,10 @@ func TestCustomDiffProducesReplace(t *testing.T) {
 
 func TestEmptyDiff(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
-			"prop": {Type: schema.TypeString},
-			"outp": {Type: schema.TypeString, Computed: true},
+		map[string]*v2Schema.Schema{
+			"prop": {Type: v2Schema.TypeString},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{
 			"prop": "foo",
 		},
@@ -304,11 +365,10 @@ func TestEmptyDiff(t *testing.T) {
 
 func TestSimpleAdd(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
-			"prop": {Type: schema.TypeString, Optional: true},
-			"outp": {Type: schema.TypeString, Computed: true},
+		map[string]*v2Schema.Schema{
+			"prop": {Type: v2Schema.TypeString, Optional: true},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{
 			"prop": "foo",
 		},
@@ -323,11 +383,10 @@ func TestSimpleAdd(t *testing.T) {
 
 func TestSimpleAddReplace(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
-			"prop": {Type: schema.TypeString, Optional: true, ForceNew: true},
-			"outp": {Type: schema.TypeString, Computed: true},
+		map[string]*v2Schema.Schema{
+			"prop": {Type: v2Schema.TypeString, Optional: true, ForceNew: true},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{
 			"prop": "foo",
 		},
@@ -342,11 +401,10 @@ func TestSimpleAddReplace(t *testing.T) {
 
 func TestSimpleDelete(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
-			"prop": {Type: schema.TypeString, Optional: true},
-			"outp": {Type: schema.TypeString, Computed: true},
+		map[string]*v2Schema.Schema{
+			"prop": {Type: v2Schema.TypeString, Optional: true},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{},
 		map[string]interface{}{
 			"prop": "foo",
@@ -360,11 +418,10 @@ func TestSimpleDelete(t *testing.T) {
 
 func TestSimpleDeleteReplace(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
-			"prop": {Type: schema.TypeString, Optional: true, ForceNew: true},
-			"outp": {Type: schema.TypeString, Computed: true},
+		map[string]*v2Schema.Schema{
+			"prop": {Type: v2Schema.TypeString, Optional: true, ForceNew: true},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{},
 		map[string]interface{}{
 			"prop": "foo",
@@ -378,11 +435,10 @@ func TestSimpleDeleteReplace(t *testing.T) {
 
 func TestSimpleUpdate(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
-			"prop": {Type: schema.TypeString},
-			"outp": {Type: schema.TypeString, Computed: true},
+		map[string]*v2Schema.Schema{
+			"prop": {Type: v2Schema.TypeString},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{
 			"prop": "baz",
 		},
@@ -398,11 +454,10 @@ func TestSimpleUpdate(t *testing.T) {
 
 func TestSimpleUpdateReplace(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
-			"prop": {Type: schema.TypeString, ForceNew: true},
-			"outp": {Type: schema.TypeString, Computed: true},
+		map[string]*v2Schema.Schema{
+			"prop": {Type: v2Schema.TypeString, ForceNew: true},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{
 			"prop": "baz",
 		},
@@ -418,11 +473,10 @@ func TestSimpleUpdateReplace(t *testing.T) {
 
 func TestNestedAdd(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
-			"prop": {Type: schema.TypeMap},
-			"outp": {Type: schema.TypeString, Computed: true},
+		map[string]*v2Schema.Schema{
+			"prop": {Type: v2Schema.TypeMap},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{
 			"prop": map[string]interface{}{"nest": "foo"},
 		},
@@ -437,11 +491,10 @@ func TestNestedAdd(t *testing.T) {
 
 func TestNestedAddReplace(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
-			"prop": {Type: schema.TypeMap, ForceNew: true},
-			"outp": {Type: schema.TypeString, Computed: true},
+		map[string]*v2Schema.Schema{
+			"prop": {Type: v2Schema.TypeMap, ForceNew: true},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{
 			"prop": map[string]interface{}{"nest": "foo"},
 		},
@@ -456,11 +509,10 @@ func TestNestedAddReplace(t *testing.T) {
 
 func TestNestedDelete(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
-			"prop": {Type: schema.TypeMap},
-			"outp": {Type: schema.TypeString, Computed: true},
+		map[string]*v2Schema.Schema{
+			"prop": {Type: v2Schema.TypeMap},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{},
 		map[string]interface{}{
 			"prop": map[string]interface{}{"nest": "foo"},
@@ -474,11 +526,10 @@ func TestNestedDelete(t *testing.T) {
 
 func TestNestedDeleteReplace(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
-			"prop": {Type: schema.TypeMap, ForceNew: true},
-			"outp": {Type: schema.TypeString, Computed: true},
+		map[string]*v2Schema.Schema{
+			"prop": {Type: v2Schema.TypeMap, ForceNew: true},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{},
 		map[string]interface{}{
 			"prop": map[string]interface{}{"nest": "foo"},
@@ -492,11 +543,10 @@ func TestNestedDeleteReplace(t *testing.T) {
 
 func TestNestedUpdate(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
-			"prop": {Type: schema.TypeMap},
-			"outp": {Type: schema.TypeString, Computed: true},
+		map[string]*v2Schema.Schema{
+			"prop": {Type: v2Schema.TypeMap},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{
 			"prop": map[string]interface{}{"nest": "baz"},
 		},
@@ -512,11 +562,10 @@ func TestNestedUpdate(t *testing.T) {
 
 func TestNestedUpdateReplace(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
-			"prop": {Type: schema.TypeMap, ForceNew: true},
-			"outp": {Type: schema.TypeString, Computed: true},
+		map[string]*v2Schema.Schema{
+			"prop": {Type: v2Schema.TypeMap, ForceNew: true},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{
 			"prop": map[string]interface{}{"nest": "baz"},
 		},
@@ -532,11 +581,10 @@ func TestNestedUpdateReplace(t *testing.T) {
 
 func TestNestedIgnore(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
-			"prop": {Type: schema.TypeMap, ForceNew: true},
-			"outp": {Type: schema.TypeString, Computed: true},
+		map[string]*v2Schema.Schema{
+			"prop": {Type: v2Schema.TypeMap, ForceNew: true},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{
 			"prop": map[string]interface{}{"nest": "baz"},
 		},
@@ -551,11 +599,10 @@ func TestNestedIgnore(t *testing.T) {
 
 func TestListAdd(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
-			"prop": {Type: schema.TypeList, Elem: &schema.Schema{Type: schema.TypeString}},
-			"outp": {Type: schema.TypeString, Computed: true},
+		map[string]*v2Schema.Schema{
+			"prop": {Type: v2Schema.TypeList, Elem: &v2Schema.Schema{Type: v2Schema.TypeString}},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{
 			"prop": []interface{}{"foo"},
 		},
@@ -570,11 +617,10 @@ func TestListAdd(t *testing.T) {
 
 func TestListAddReplace(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
-			"prop": {Type: schema.TypeList, Elem: &schema.Schema{Type: schema.TypeString}, ForceNew: true},
-			"outp": {Type: schema.TypeString, Computed: true},
+		map[string]*v2Schema.Schema{
+			"prop": {Type: v2Schema.TypeList, Elem: &v2Schema.Schema{Type: v2Schema.TypeString}, ForceNew: true},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{
 			"prop": []interface{}{"foo"},
 		},
@@ -589,11 +635,10 @@ func TestListAddReplace(t *testing.T) {
 
 func TestListDelete(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
-			"prop": {Type: schema.TypeList, Elem: &schema.Schema{Type: schema.TypeString}},
-			"outp": {Type: schema.TypeString, Computed: true},
+		map[string]*v2Schema.Schema{
+			"prop": {Type: v2Schema.TypeList, Elem: &v2Schema.Schema{Type: v2Schema.TypeString}},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{},
 		map[string]interface{}{
 			"prop": []interface{}{"foo"},
@@ -607,11 +652,10 @@ func TestListDelete(t *testing.T) {
 
 func TestListDeleteReplace(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
-			"prop": {Type: schema.TypeList, Elem: &schema.Schema{Type: schema.TypeString}, ForceNew: true},
-			"outp": {Type: schema.TypeString, Computed: true},
+		map[string]*v2Schema.Schema{
+			"prop": {Type: v2Schema.TypeList, Elem: &v2Schema.Schema{Type: v2Schema.TypeString}, ForceNew: true},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{},
 		map[string]interface{}{
 			"prop": []interface{}{"foo"},
@@ -625,11 +669,10 @@ func TestListDeleteReplace(t *testing.T) {
 
 func TestListUpdate(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
-			"prop": {Type: schema.TypeList, Elem: &schema.Schema{Type: schema.TypeString}},
-			"outp": {Type: schema.TypeString, Computed: true},
+		map[string]*v2Schema.Schema{
+			"prop": {Type: v2Schema.TypeList, Elem: &v2Schema.Schema{Type: v2Schema.TypeString}},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{
 			"prop": []interface{}{"baz"},
 		},
@@ -645,11 +688,10 @@ func TestListUpdate(t *testing.T) {
 
 func TestListUpdateReplace(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
-			"prop": {Type: schema.TypeList, Elem: &schema.Schema{Type: schema.TypeString}, ForceNew: true},
-			"outp": {Type: schema.TypeString, Computed: true},
+		map[string]*v2Schema.Schema{
+			"prop": {Type: v2Schema.TypeList, Elem: &v2Schema.Schema{Type: v2Schema.TypeString}, ForceNew: true},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{
 			"prop": []interface{}{"baz"},
 		},
@@ -665,11 +707,10 @@ func TestListUpdateReplace(t *testing.T) {
 
 func TestListIgnore(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
-			"prop": {Type: schema.TypeList, Elem: &schema.Schema{Type: schema.TypeString}},
-			"outp": {Type: schema.TypeString, Computed: true},
+		map[string]*v2Schema.Schema{
+			"prop": {Type: v2Schema.TypeList, Elem: &v2Schema.Schema{Type: v2Schema.TypeString}},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{
 			"prop": []interface{}{"baz"},
 		},
@@ -684,11 +725,10 @@ func TestListIgnore(t *testing.T) {
 
 func TestMaxItemsOneListAdd(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
-			"prop": {Type: schema.TypeList, Elem: &schema.Schema{Type: schema.TypeString}, MaxItems: 1},
-			"outp": {Type: schema.TypeString, Computed: true},
+		map[string]*v2Schema.Schema{
+			"prop": {Type: v2Schema.TypeList, Elem: &v2Schema.Schema{Type: v2Schema.TypeString}, MaxItems: 1},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{
 			"prop": "foo",
 		},
@@ -704,11 +744,10 @@ func TestMaxItemsOneListAdd(t *testing.T) {
 
 func TestMaxItemsOneListAddReplace(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
-			"prop": {Type: schema.TypeList, Elem: &schema.Schema{Type: schema.TypeString}, ForceNew: true, MaxItems: 1},
-			"outp": {Type: schema.TypeString, Computed: true},
+		map[string]*v2Schema.Schema{
+			"prop": {Type: v2Schema.TypeList, Elem: &v2Schema.Schema{Type: v2Schema.TypeString}, ForceNew: true, MaxItems: 1},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{
 			"prop": "foo",
 		},
@@ -724,11 +763,10 @@ func TestMaxItemsOneListAddReplace(t *testing.T) {
 
 func TestMaxItemsOneListDelete(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
-			"prop": {Type: schema.TypeList, Elem: &schema.Schema{Type: schema.TypeString}, MaxItems: 1},
-			"outp": {Type: schema.TypeString, Computed: true},
+		map[string]*v2Schema.Schema{
+			"prop": {Type: v2Schema.TypeList, Elem: &v2Schema.Schema{Type: v2Schema.TypeString}, MaxItems: 1},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{},
 		map[string]interface{}{
 			"prop": "foo",
@@ -742,11 +780,10 @@ func TestMaxItemsOneListDelete(t *testing.T) {
 
 func TestMaxItemsOneListDeleteReplace(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
-			"prop": {Type: schema.TypeList, Elem: &schema.Schema{Type: schema.TypeString}, ForceNew: true, MaxItems: 1},
-			"outp": {Type: schema.TypeString, Computed: true},
+		map[string]*v2Schema.Schema{
+			"prop": {Type: v2Schema.TypeList, Elem: &v2Schema.Schema{Type: v2Schema.TypeString}, ForceNew: true, MaxItems: 1},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{},
 		map[string]interface{}{
 			"prop": "foo",
@@ -760,11 +797,10 @@ func TestMaxItemsOneListDeleteReplace(t *testing.T) {
 
 func TestMaxItemsOneListUpdate(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
-			"prop": {Type: schema.TypeList, Elem: &schema.Schema{Type: schema.TypeString}, MaxItems: 1},
-			"outp": {Type: schema.TypeString, Computed: true},
+		map[string]*v2Schema.Schema{
+			"prop": {Type: v2Schema.TypeList, Elem: &v2Schema.Schema{Type: v2Schema.TypeString}, MaxItems: 1},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{
 			"prop": "baz",
 		},
@@ -780,11 +816,10 @@ func TestMaxItemsOneListUpdate(t *testing.T) {
 
 func TestMaxItemsOneListUpdateReplace(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
-			"prop": {Type: schema.TypeList, Elem: &schema.Schema{Type: schema.TypeString}, ForceNew: true, MaxItems: 1},
-			"outp": {Type: schema.TypeString, Computed: true},
+		map[string]*v2Schema.Schema{
+			"prop": {Type: v2Schema.TypeList, Elem: &v2Schema.Schema{Type: v2Schema.TypeString}, ForceNew: true, MaxItems: 1},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{
 			"prop": "baz",
 		},
@@ -800,11 +835,10 @@ func TestMaxItemsOneListUpdateReplace(t *testing.T) {
 
 func TestMaxItemsOneListIgnore(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
-			"prop": {Type: schema.TypeList, Elem: &schema.Schema{Type: schema.TypeString}, MaxItems: 1},
-			"outp": {Type: schema.TypeString, Computed: true},
+		map[string]*v2Schema.Schema{
+			"prop": {Type: v2Schema.TypeList, Elem: &v2Schema.Schema{Type: v2Schema.TypeString}, MaxItems: 1},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{
 			"prop": "baz",
 		},
@@ -819,15 +853,14 @@ func TestMaxItemsOneListIgnore(t *testing.T) {
 
 func TestSetAdd(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
+		map[string]*v2Schema.Schema{
 			"prop": {
-				Type: schema.TypeSet,
+				Type: v2Schema.TypeSet,
 				Set:  func(_ interface{}) int { return 0 },
-				Elem: &schema.Schema{Type: schema.TypeString},
+				Elem: &v2Schema.Schema{Type: v2Schema.TypeString},
 			},
-			"outp": {Type: schema.TypeString, Computed: true},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{
 			"prop": []interface{}{"foo"},
 		},
@@ -842,16 +875,15 @@ func TestSetAdd(t *testing.T) {
 
 func TestSetAddReplace(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
+		map[string]*v2Schema.Schema{
 			"prop": {
-				Type:     schema.TypeSet,
+				Type:     v2Schema.TypeSet,
 				Set:      func(_ interface{}) int { return 0 },
-				Elem:     &schema.Schema{Type: schema.TypeString},
+				Elem:     &v2Schema.Schema{Type: v2Schema.TypeString},
 				ForceNew: true,
 			},
-			"outp": {Type: schema.TypeString, Computed: true},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{
 			"prop": []interface{}{"foo"},
 		},
@@ -866,15 +898,14 @@ func TestSetAddReplace(t *testing.T) {
 
 func TestSetDelete(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
+		map[string]*v2Schema.Schema{
 			"prop": {
-				Type: schema.TypeSet,
+				Type: v2Schema.TypeSet,
 				Set:  func(_ interface{}) int { return 0 },
-				Elem: &schema.Schema{Type: schema.TypeString},
+				Elem: &v2Schema.Schema{Type: v2Schema.TypeString},
 			},
-			"outp": {Type: schema.TypeString, Computed: true},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{},
 		map[string]interface{}{
 			"prop": []interface{}{"foo"},
@@ -888,16 +919,15 @@ func TestSetDelete(t *testing.T) {
 
 func TestSetDeleteReplace(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
+		map[string]*v2Schema.Schema{
 			"prop": {
-				Type:     schema.TypeSet,
+				Type:     v2Schema.TypeSet,
 				Set:      func(_ interface{}) int { return 0 },
-				Elem:     &schema.Schema{Type: schema.TypeString},
+				Elem:     &v2Schema.Schema{Type: v2Schema.TypeString},
 				ForceNew: true,
 			},
-			"outp": {Type: schema.TypeString, Computed: true},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{},
 		map[string]interface{}{
 			"prop": []interface{}{"foo"},
@@ -911,11 +941,10 @@ func TestSetDeleteReplace(t *testing.T) {
 
 func TestSetUpdate(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
-			"prop": {Type: schema.TypeSet, Elem: &schema.Schema{Type: schema.TypeString}},
-			"outp": {Type: schema.TypeString, Computed: true},
+		map[string]*v2Schema.Schema{
+			"prop": {Type: v2Schema.TypeSet, Elem: &v2Schema.Schema{Type: v2Schema.TypeString}},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{
 			"prop": []interface{}{"baz"},
 		},
@@ -931,11 +960,10 @@ func TestSetUpdate(t *testing.T) {
 
 func TestSetIgnore(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
-			"prop": {Type: schema.TypeSet, Elem: &schema.Schema{Type: schema.TypeString}},
-			"outp": {Type: schema.TypeString, Computed: true},
+		map[string]*v2Schema.Schema{
+			"prop": {Type: v2Schema.TypeSet, Elem: &v2Schema.Schema{Type: v2Schema.TypeString}},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{
 			"prop": []interface{}{"baz"},
 		},
@@ -950,11 +978,10 @@ func TestSetIgnore(t *testing.T) {
 
 func TestSetUpdateReplace(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
-			"prop": {Type: schema.TypeSet, Elem: &schema.Schema{Type: schema.TypeString}, ForceNew: true},
-			"outp": {Type: schema.TypeString, Computed: true},
+		map[string]*v2Schema.Schema{
+			"prop": {Type: v2Schema.TypeSet, Elem: &v2Schema.Schema{Type: v2Schema.TypeString}, ForceNew: true},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{
 			"prop": []interface{}{"baz"},
 		},
@@ -970,16 +997,15 @@ func TestSetUpdateReplace(t *testing.T) {
 
 func TestMaxItemsOneSetAdd(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
+		map[string]*v2Schema.Schema{
 			"prop": {
-				Type:     schema.TypeSet,
+				Type:     v2Schema.TypeSet,
 				Set:      func(_ interface{}) int { return 0 },
-				Elem:     &schema.Schema{Type: schema.TypeString},
+				Elem:     &v2Schema.Schema{Type: v2Schema.TypeString},
 				MaxItems: 1,
 			},
-			"outp": {Type: schema.TypeString, Computed: true},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{
 			"prop": "foo",
 		},
@@ -995,17 +1021,16 @@ func TestMaxItemsOneSetAdd(t *testing.T) {
 
 func TestMaxItemsOneSetAddReplace(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
+		map[string]*v2Schema.Schema{
 			"prop": {
-				Type:     schema.TypeSet,
+				Type:     v2Schema.TypeSet,
 				Set:      func(_ interface{}) int { return 0 },
-				Elem:     &schema.Schema{Type: schema.TypeString},
+				Elem:     &v2Schema.Schema{Type: v2Schema.TypeString},
 				MaxItems: 1,
 				ForceNew: true,
 			},
-			"outp": {Type: schema.TypeString, Computed: true},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{
 			"prop": "foo",
 		},
@@ -1021,16 +1046,15 @@ func TestMaxItemsOneSetAddReplace(t *testing.T) {
 
 func TestMaxItemsOneSetDelete(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
+		map[string]*v2Schema.Schema{
 			"prop": {
-				Type:     schema.TypeSet,
+				Type:     v2Schema.TypeSet,
 				Set:      func(_ interface{}) int { return 0 },
-				Elem:     &schema.Schema{Type: schema.TypeString},
+				Elem:     &v2Schema.Schema{Type: v2Schema.TypeString},
 				MaxItems: 1,
 			},
-			"outp": {Type: schema.TypeString, Computed: true},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{},
 		map[string]interface{}{
 			"prop": "foo",
@@ -1044,17 +1068,16 @@ func TestMaxItemsOneSetDelete(t *testing.T) {
 
 func TestMaxItemsOneSetDeleteReplace(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
+		map[string]*v2Schema.Schema{
 			"prop": {
-				Type:     schema.TypeSet,
+				Type:     v2Schema.TypeSet,
 				Set:      func(_ interface{}) int { return 0 },
-				Elem:     &schema.Schema{Type: schema.TypeString},
+				Elem:     &v2Schema.Schema{Type: v2Schema.TypeString},
 				MaxItems: 1,
 				ForceNew: true,
 			},
-			"outp": {Type: schema.TypeString, Computed: true},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{},
 		map[string]interface{}{
 			"prop": "foo",
@@ -1068,11 +1091,10 @@ func TestMaxItemsOneSetDeleteReplace(t *testing.T) {
 
 func TestMaxItemsOneSetUpdate(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
-			"prop": {Type: schema.TypeSet, Elem: &schema.Schema{Type: schema.TypeString}, MaxItems: 1},
-			"outp": {Type: schema.TypeString, Computed: true},
+		map[string]*v2Schema.Schema{
+			"prop": {Type: v2Schema.TypeSet, Elem: &v2Schema.Schema{Type: v2Schema.TypeString}, MaxItems: 1},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{
 			"prop": "baz",
 		},
@@ -1088,11 +1110,10 @@ func TestMaxItemsOneSetUpdate(t *testing.T) {
 
 func TestMaxItemsOneSetIgnore(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
-			"prop": {Type: schema.TypeSet, Elem: &schema.Schema{Type: schema.TypeString}, MaxItems: 1},
-			"outp": {Type: schema.TypeString, Computed: true},
+		map[string]*v2Schema.Schema{
+			"prop": {Type: v2Schema.TypeSet, Elem: &v2Schema.Schema{Type: v2Schema.TypeString}, MaxItems: 1},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{
 			"prop": "baz",
 		},
@@ -1107,11 +1128,10 @@ func TestMaxItemsOneSetIgnore(t *testing.T) {
 
 func TestMaxItemsOneSetUpdateReplace(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
-			"prop": {Type: schema.TypeSet, Elem: &schema.Schema{Type: schema.TypeString}, ForceNew: true, MaxItems: 1},
-			"outp": {Type: schema.TypeString, Computed: true},
+		map[string]*v2Schema.Schema{
+			"prop": {Type: v2Schema.TypeSet, Elem: &v2Schema.Schema{Type: v2Schema.TypeString}, ForceNew: true, MaxItems: 1},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{
 			"prop": "baz",
 		},
@@ -1127,18 +1147,17 @@ func TestMaxItemsOneSetUpdateReplace(t *testing.T) {
 
 func TestSetNestedUpdate(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
+		map[string]*v2Schema.Schema{
 			"prop": {
-				Type: schema.TypeSet,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"nest": {Type: schema.TypeString, Required: true},
+				Type: v2Schema.TypeSet,
+				Elem: &v2Schema.Resource{
+					Schema: map[string]*v2Schema.Schema{
+						"nest": {Type: v2Schema.TypeString, Required: true},
 					},
 				},
 			},
-			"outp": {Type: schema.TypeString, Computed: true},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{
 			"prop": []interface{}{map[string]interface{}{"nest": "baz"}},
 		},
@@ -1154,18 +1173,17 @@ func TestSetNestedUpdate(t *testing.T) {
 
 func TestSetNestedUpdateReplace(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
+		map[string]*v2Schema.Schema{
 			"prop": {
-				Type: schema.TypeSet,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"nest": {Type: schema.TypeString, Required: true, ForceNew: true},
+				Type: v2Schema.TypeSet,
+				Elem: &v2Schema.Resource{
+					Schema: map[string]*v2Schema.Schema{
+						"nest": {Type: v2Schema.TypeString, Required: true, ForceNew: true},
 					},
 				},
 			},
-			"outp": {Type: schema.TypeString, Computed: true},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{
 			"prop": []interface{}{map[string]interface{}{"nest": "baz"}},
 		},
@@ -1182,18 +1200,17 @@ func TestSetNestedUpdateReplace(t *testing.T) {
 func TestSetNestedIgnore(t *testing.T) {
 	for _, ignore := range []string{"prop[0]", "prop"} {
 		diffTest(t,
-			map[string]*schema.Schema{
+			map[string]*v2Schema.Schema{
 				"prop": {
-					Type: schema.TypeSet,
-					Elem: &schema.Resource{
-						Schema: map[string]*schema.Schema{
-							"nest": {Type: schema.TypeString, Required: true},
+					Type: v2Schema.TypeSet,
+					Elem: &v2Schema.Resource{
+						Schema: map[string]*v2Schema.Schema{
+							"nest": {Type: v2Schema.TypeString, Required: true},
 						},
 					},
 				},
-				"outp": {Type: schema.TypeString, Computed: true},
+				"outp": {Type: v2Schema.TypeString, Computed: true},
 			},
-			map[string]*SchemaInfo{},
 			map[string]interface{}{
 				"prop": []interface{}{map[string]interface{}{"nest": "baz"}},
 			},
@@ -1209,11 +1226,10 @@ func TestSetNestedIgnore(t *testing.T) {
 
 func TestComputedSimpleUpdate(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
-			"prop": {Type: schema.TypeString},
-			"outp": {Type: schema.TypeString, Computed: true},
+		map[string]*v2Schema.Schema{
+			"prop": {Type: v2Schema.TypeString},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{
 			"prop": computedValue,
 		},
@@ -1229,11 +1245,10 @@ func TestComputedSimpleUpdate(t *testing.T) {
 
 func TestComputedSimpleUpdateReplace(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
-			"prop": {Type: schema.TypeString, ForceNew: true},
-			"outp": {Type: schema.TypeString, Computed: true},
+		map[string]*v2Schema.Schema{
+			"prop": {Type: v2Schema.TypeString, ForceNew: true},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{
 			"prop": computedValue,
 		},
@@ -1249,11 +1264,10 @@ func TestComputedSimpleUpdateReplace(t *testing.T) {
 
 func TestComputedMapUpdate(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
-			"prop": {Type: schema.TypeMap},
-			"outp": {Type: schema.TypeString, Computed: true},
+		map[string]*v2Schema.Schema{
+			"prop": {Type: v2Schema.TypeMap},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{
 			"prop": computedValue,
 		},
@@ -1269,11 +1283,10 @@ func TestComputedMapUpdate(t *testing.T) {
 
 func TestComputedNestedUpdate(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
-			"prop": {Type: schema.TypeMap},
-			"outp": {Type: schema.TypeString, Computed: true},
+		map[string]*v2Schema.Schema{
+			"prop": {Type: v2Schema.TypeMap},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{
 			"prop": map[string]interface{}{"nest": computedValue},
 		},
@@ -1289,11 +1302,10 @@ func TestComputedNestedUpdate(t *testing.T) {
 
 func TestComputedNestedUpdateReplace(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
-			"prop": {Type: schema.TypeMap, ForceNew: true},
-			"outp": {Type: schema.TypeString, Computed: true},
+		map[string]*v2Schema.Schema{
+			"prop": {Type: v2Schema.TypeMap, ForceNew: true},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{
 			"prop": map[string]interface{}{"nest": computedValue},
 		},
@@ -1309,11 +1321,10 @@ func TestComputedNestedUpdateReplace(t *testing.T) {
 
 func TestComputedNestedIgnore(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
-			"prop": {Type: schema.TypeMap},
-			"outp": {Type: schema.TypeString, Computed: true},
+		map[string]*v2Schema.Schema{
+			"prop": {Type: v2Schema.TypeMap},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{
 			"prop": map[string]interface{}{"nest": computedValue},
 		},
@@ -1328,11 +1339,10 @@ func TestComputedNestedIgnore(t *testing.T) {
 
 func TestComputedListUpdate(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
-			"prop": {Type: schema.TypeList, Elem: &schema.Schema{Type: schema.TypeString}},
-			"outp": {Type: schema.TypeString, Computed: true},
+		map[string]*v2Schema.Schema{
+			"prop": {Type: v2Schema.TypeList, Elem: &v2Schema.Schema{Type: v2Schema.TypeString}},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{
 			"prop": computedValue,
 		},
@@ -1348,11 +1358,10 @@ func TestComputedListUpdate(t *testing.T) {
 
 func TestComputedListElementUpdate(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
-			"prop": {Type: schema.TypeList, Elem: &schema.Schema{Type: schema.TypeString}},
-			"outp": {Type: schema.TypeString, Computed: true},
+		map[string]*v2Schema.Schema{
+			"prop": {Type: v2Schema.TypeList, Elem: &v2Schema.Schema{Type: v2Schema.TypeString}},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{
 			"prop": []interface{}{computedValue},
 		},
@@ -1368,11 +1377,10 @@ func TestComputedListElementUpdate(t *testing.T) {
 
 func TestComputedListElementUpdateReplace(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
-			"prop": {Type: schema.TypeList, Elem: &schema.Schema{Type: schema.TypeString}, ForceNew: true},
-			"outp": {Type: schema.TypeString, Computed: true},
+		map[string]*v2Schema.Schema{
+			"prop": {Type: v2Schema.TypeList, Elem: &v2Schema.Schema{Type: v2Schema.TypeString}, ForceNew: true},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{
 			"prop": []interface{}{computedValue},
 		},
@@ -1388,11 +1396,10 @@ func TestComputedListElementUpdateReplace(t *testing.T) {
 
 func TestComputedListElementIgnore(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
-			"prop": {Type: schema.TypeList, Elem: &schema.Schema{Type: schema.TypeString}},
-			"outp": {Type: schema.TypeString, Computed: true},
+		map[string]*v2Schema.Schema{
+			"prop": {Type: v2Schema.TypeList, Elem: &v2Schema.Schema{Type: v2Schema.TypeString}},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{
 			"prop": []interface{}{computedValue},
 		},
@@ -1407,11 +1414,10 @@ func TestComputedListElementIgnore(t *testing.T) {
 
 func TestComputedSetUpdate(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
-			"prop": {Type: schema.TypeSet, Elem: &schema.Schema{Type: schema.TypeString}},
-			"outp": {Type: schema.TypeString, Computed: true},
+		map[string]*v2Schema.Schema{
+			"prop": {Type: v2Schema.TypeSet, Elem: &v2Schema.Schema{Type: v2Schema.TypeString}},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{
 			"prop": computedValue,
 		},
@@ -1427,11 +1433,10 @@ func TestComputedSetUpdate(t *testing.T) {
 
 func TestNestedComputedSetUpdate(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
-			"prop": {Type: schema.TypeSet, Elem: &schema.Schema{Type: schema.TypeString}},
-			"outp": {Type: schema.TypeString, Computed: true},
+		map[string]*v2Schema.Schema{
+			"prop": {Type: v2Schema.TypeSet, Elem: &v2Schema.Schema{Type: v2Schema.TypeString}},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{
 			"prop": []interface{}{computedValue},
 		},
@@ -1447,11 +1452,10 @@ func TestNestedComputedSetUpdate(t *testing.T) {
 
 func TestNestedComputedSetAdd(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
-			"prop": {Type: schema.TypeSet, Elem: &schema.Schema{Type: schema.TypeString}},
-			"outp": {Type: schema.TypeString, Computed: true},
+		map[string]*v2Schema.Schema{
+			"prop": {Type: v2Schema.TypeSet, Elem: &v2Schema.Schema{Type: v2Schema.TypeString}},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{
 			"prop": []interface{}{computedValue},
 		},
@@ -1466,11 +1470,10 @@ func TestNestedComputedSetAdd(t *testing.T) {
 
 func TestNestedComputedSetUpdateReplace(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
-			"prop": {Type: schema.TypeSet, Elem: &schema.Schema{Type: schema.TypeString}, ForceNew: true},
-			"outp": {Type: schema.TypeString, Computed: true},
+		map[string]*v2Schema.Schema{
+			"prop": {Type: v2Schema.TypeSet, Elem: &v2Schema.Schema{Type: v2Schema.TypeString}, ForceNew: true},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{
 			"prop": []interface{}{computedValue},
 		},
@@ -1486,11 +1489,10 @@ func TestNestedComputedSetUpdateReplace(t *testing.T) {
 
 func TestNestedComputedSetIntUpdate(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
-			"prop": {Type: schema.TypeSet, Elem: &schema.Schema{Type: schema.TypeInt}},
-			"outp": {Type: schema.TypeString, Computed: true},
+		map[string]*v2Schema.Schema{
+			"prop": {Type: v2Schema.TypeSet, Elem: &v2Schema.Schema{Type: v2Schema.TypeInt}},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{
 			"prop": []interface{}{computedValue},
 		},
@@ -1506,11 +1508,10 @@ func TestNestedComputedSetIntUpdate(t *testing.T) {
 
 func TestNestedComputedSetIntUpdateReplace(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
-			"prop": {Type: schema.TypeSet, Elem: &schema.Schema{Type: schema.TypeInt}, ForceNew: true},
-			"outp": {Type: schema.TypeString, Computed: true},
+		map[string]*v2Schema.Schema{
+			"prop": {Type: v2Schema.TypeSet, Elem: &v2Schema.Schema{Type: v2Schema.TypeInt}, ForceNew: true},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{
 			"prop": []interface{}{computedValue},
 		},
@@ -1526,11 +1527,10 @@ func TestNestedComputedSetIntUpdateReplace(t *testing.T) {
 
 func TestNestedComputedSetIntAdd(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
-			"prop": {Type: schema.TypeSet, Elem: &schema.Schema{Type: schema.TypeInt}},
-			"outp": {Type: schema.TypeString, Computed: true},
+		map[string]*v2Schema.Schema{
+			"prop": {Type: v2Schema.TypeSet, Elem: &v2Schema.Schema{Type: v2Schema.TypeInt}},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{
 			"prop": []interface{}{computedValue},
 		},
@@ -1545,11 +1545,10 @@ func TestNestedComputedSetIntAdd(t *testing.T) {
 
 func TestComputedSetUpdateReplace(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
-			"prop": {Type: schema.TypeSet, Elem: &schema.Schema{Type: schema.TypeString}, ForceNew: true},
-			"outp": {Type: schema.TypeString, Computed: true},
+		map[string]*v2Schema.Schema{
+			"prop": {Type: v2Schema.TypeSet, Elem: &v2Schema.Schema{Type: v2Schema.TypeString}, ForceNew: true},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{
 			"prop": computedValue,
 		},
@@ -1565,18 +1564,17 @@ func TestComputedSetUpdateReplace(t *testing.T) {
 
 func TestComputedSetNestedUpdate(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
+		map[string]*v2Schema.Schema{
 			"prop": {
-				Type: schema.TypeSet,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"nest": {Type: schema.TypeString, Required: true},
+				Type: v2Schema.TypeSet,
+				Elem: &v2Schema.Resource{
+					Schema: map[string]*v2Schema.Schema{
+						"nest": {Type: v2Schema.TypeString, Required: true},
 					},
 				},
 			},
-			"outp": {Type: schema.TypeString, Computed: true},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{
 			"prop": []interface{}{map[string]interface{}{"nest": computedValue}},
 		},
@@ -1592,18 +1590,17 @@ func TestComputedSetNestedUpdate(t *testing.T) {
 
 func TestComputedSetNestedUpdateReplace(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
+		map[string]*v2Schema.Schema{
 			"prop": {
-				Type: schema.TypeSet,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"nest": {Type: schema.TypeString, Required: true, ForceNew: true},
+				Type: v2Schema.TypeSet,
+				Elem: &v2Schema.Resource{
+					Schema: map[string]*v2Schema.Schema{
+						"nest": {Type: v2Schema.TypeString, Required: true, ForceNew: true},
 					},
 				},
 			},
-			"outp": {Type: schema.TypeString, Computed: true},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{
 			"prop": []interface{}{map[string]interface{}{"nest": computedValue}},
 		},
@@ -1620,18 +1617,17 @@ func TestComputedSetNestedUpdateReplace(t *testing.T) {
 func TestComputedSetNestedIgnore(t *testing.T) {
 	for _, ignore := range []string{"prop[0]", "prop"} {
 		diffTest(t,
-			map[string]*schema.Schema{
+			map[string]*v2Schema.Schema{
 				"prop": {
-					Type: schema.TypeSet,
-					Elem: &schema.Resource{
-						Schema: map[string]*schema.Schema{
-							"nest": {Type: schema.TypeString, Required: true},
+					Type: v2Schema.TypeSet,
+					Elem: &v2Schema.Resource{
+						Schema: map[string]*v2Schema.Schema{
+							"nest": {Type: v2Schema.TypeString, Required: true},
 						},
 					},
 				},
-				"outp": {Type: schema.TypeString, Computed: true},
+				"outp": {Type: v2Schema.TypeString, Computed: true},
 			},
-			map[string]*SchemaInfo{},
 			map[string]interface{}{
 				"prop": []interface{}{map[string]interface{}{"nest": computedValue}},
 			},
@@ -1647,24 +1643,23 @@ func TestComputedSetNestedIgnore(t *testing.T) {
 
 func TestRawElementNames(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
+		map[string]*v2Schema.Schema{
 			"prop": {
-				Type:     schema.TypeList,
+				Type:     v2Schema.TypeList,
 				Optional: true,
 				MaxItems: 1,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
+				Elem: &v2Schema.Resource{
+					Schema: map[string]*v2Schema.Schema{
 						"variables": {
-							Type:     schema.TypeMap,
+							Type:     v2Schema.TypeMap,
 							Optional: true,
-							Elem:     &schema.Schema{Type: schema.TypeString},
+							Elem:     &v2Schema.Schema{Type: v2Schema.TypeString},
 						},
 					},
 				},
 			},
-			"outp": {Type: schema.TypeString, Computed: true},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{
 			"prop": map[string]interface{}{
 				"variables": map[string]interface{}{
@@ -1844,19 +1839,19 @@ func TestCollectionsWithMultipleItems(t *testing.T) {
 		},
 	}
 
-	runTestCase := func(t *testing.T, name string, typ schema.ValueType, inputs, state []interface{},
-		expected map[string]DiffKind, expectedChanges pulumirpc.DiffResponse_DiffChanges) {
+	runTestCase := func(t *testing.T, name string, typ v2Schema.ValueType, inputs, state []interface{},
+		expected map[string]DiffKind, expectedChanges pulumirpc.DiffResponse_DiffChanges,
+	) {
 		t.Run(name, func(t *testing.T) {
 			diffTest(t,
-				map[string]*schema.Schema{
+				map[string]*v2Schema.Schema{
 					"prop": {
 						Type:     typ,
-						Elem:     &schema.Schema{Type: schema.TypeString},
+						Elem:     &v2Schema.Schema{Type: v2Schema.TypeString},
 						ForceNew: true,
 					},
-					"outp": {Type: schema.TypeString, Computed: true},
+					"outp": {Type: v2Schema.TypeString, Computed: true},
 				},
-				map[string]*SchemaInfo{},
 				map[string]interface{}{
 					"prop": inputs, // inputs
 				},
@@ -1872,32 +1867,31 @@ func TestCollectionsWithMultipleItems(t *testing.T) {
 
 	t.Run("Set", func(t *testing.T) {
 		for _, tc := range testCases {
-			runTestCase(t, tc.name, schema.TypeSet, tc.input, tc.state, tc.expectedDiffForSet, tc.expectedChangesForSet)
+			runTestCase(t, tc.name, v2Schema.TypeSet, tc.input, tc.state, tc.expectedDiffForSet, tc.expectedChangesForSet)
 		}
 	})
 
 	t.Run("List", func(t *testing.T) {
 		for _, tc := range testCases {
-			runTestCase(t, tc.name, schema.TypeList, tc.input, tc.state, tc.expectedDiffForList, tc.expectedChangesForList)
+			runTestCase(t, tc.name, v2Schema.TypeList, tc.input, tc.state, tc.expectedDiffForList, tc.expectedChangesForList)
 		}
 	})
 }
 
 func TestSetNestedAddReplace(t *testing.T) {
 	diffTest(t,
-		map[string]*schema.Schema{
+		map[string]*v2Schema.Schema{
 			"prop": {
-				Type: schema.TypeSet,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"nest": {Type: schema.TypeString, Required: true},
+				Type: v2Schema.TypeSet,
+				Elem: &v2Schema.Resource{
+					Schema: map[string]*v2Schema.Schema{
+						"nest": {Type: v2Schema.TypeString, Required: true},
 					},
 				},
 				ForceNew: true,
 			},
-			"outp": {Type: schema.TypeString, Computed: true},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
-		map[string]*SchemaInfo{},
 		map[string]interface{}{
 			"prop": []interface{}{map[string]interface{}{"nest": "baz"}},
 		},
@@ -1914,20 +1908,19 @@ func TestSetNestedAddReplace(t *testing.T) {
 func TestListNestedAddReplace(t *testing.T) {
 	diffTest(t,
 		// tfSchema
-		map[string]*schema.Schema{
+		map[string]*v2Schema.Schema{
 			"prop": {
-				Type: schema.TypeList,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"nest": {Type: schema.TypeString, Required: true},
+				Type: v2Schema.TypeList,
+				Elem: &v2Schema.Resource{
+					Schema: map[string]*v2Schema.Schema{
+						"nest": {Type: v2Schema.TypeString, Required: true},
 					},
 				},
 				ForceNew: true,
 			},
-			"outp": {Type: schema.TypeString, Computed: true},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
 		// info
-		map[string]*SchemaInfo{},
 		// inputs
 		map[string]interface{}{
 			"prop": []interface{}{map[string]interface{}{"nest": "foo"}},
@@ -1947,20 +1940,19 @@ func TestListNestedAddReplace(t *testing.T) {
 func TestListNestedUpdate(t *testing.T) {
 	diffTest(t,
 		// tfSchema
-		map[string]*schema.Schema{
+		map[string]*v2Schema.Schema{
 			"prop": {
-				Type: schema.TypeList,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"nest": {Type: schema.TypeString, Required: true},
+				Type: v2Schema.TypeList,
+				Elem: &v2Schema.Resource{
+					Schema: map[string]*v2Schema.Schema{
+						"nest": {Type: v2Schema.TypeString, Required: true},
 					},
 				},
 				ForceNew: true,
 			},
-			"outp": {Type: schema.TypeString, Computed: true},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
 		// info
-		map[string]*SchemaInfo{},
 		// inputs
 		map[string]interface{}{
 			"prop": []interface{}{map[string]interface{}{"nest": "foo"}},
@@ -1980,20 +1972,19 @@ func TestListNestedUpdate(t *testing.T) {
 func TestListNestedDeleteReplace(t *testing.T) {
 	diffTest(t,
 		// tfSchema
-		map[string]*schema.Schema{
+		map[string]*v2Schema.Schema{
 			"prop": {
-				Type: schema.TypeList,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"nest": {Type: schema.TypeString, Required: true},
+				Type: v2Schema.TypeList,
+				Elem: &v2Schema.Resource{
+					Schema: map[string]*v2Schema.Schema{
+						"nest": {Type: v2Schema.TypeString, Required: true},
 					},
 				},
 				ForceNew: true,
 			},
-			"outp": {Type: schema.TypeString, Computed: true},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
 		// info
-		map[string]*SchemaInfo{},
 		// inputs
 		map[string]interface{}{},
 		// state
@@ -2011,20 +2002,19 @@ func TestListNestedDeleteReplace(t *testing.T) {
 func TestSetNestedDeleteReplace(t *testing.T) {
 	diffTest(t,
 		// tfSchema
-		map[string]*schema.Schema{
+		map[string]*v2Schema.Schema{
 			"prop": {
-				Type: schema.TypeSet,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"nest": {Type: schema.TypeString, Required: true},
+				Type: v2Schema.TypeSet,
+				Elem: &v2Schema.Resource{
+					Schema: map[string]*v2Schema.Schema{
+						"nest": {Type: v2Schema.TypeString, Required: true},
 					},
 				},
 				ForceNew: true,
 			},
-			"outp": {Type: schema.TypeString, Computed: true},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
 		// info
-		map[string]*SchemaInfo{},
 		// inputs
 		map[string]interface{}{},
 		// state
@@ -2042,21 +2032,20 @@ func TestSetNestedDeleteReplace(t *testing.T) {
 func TestListNestedAddMaxItemsOne(t *testing.T) {
 	diffTest(t,
 		// tfSchema
-		map[string]*schema.Schema{
+		map[string]*v2Schema.Schema{
 			"prop": {
-				Type: schema.TypeList,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"nest": {Type: schema.TypeString, Required: true},
+				Type: v2Schema.TypeList,
+				Elem: &v2Schema.Resource{
+					Schema: map[string]*v2Schema.Schema{
+						"nest": {Type: v2Schema.TypeString, Required: true},
 					},
 				},
 				MaxItems: 1,
 				ForceNew: true,
 			},
-			"outp": {Type: schema.TypeString, Computed: true},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
 		// info
-		map[string]*SchemaInfo{},
 		// inputs
 		map[string]interface{}{
 			"prop": map[string]interface{}{"nest": "foo"},

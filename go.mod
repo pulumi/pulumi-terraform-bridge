@@ -4,6 +4,8 @@ go 1.21
 
 replace github.com/pulumi/pulumi-terraform-bridge/x/muxer => ./x/muxer
 
+replace github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests => ./pkg/tests
+
 require (
 	github.com/apparentlymart/go-cidr v1.1.0
 	github.com/blang/semver v3.5.1+incompatible
@@ -36,8 +38,9 @@ require (
 	github.com/mitchellh/reflectwalk v1.0.2
 	github.com/pkg/errors v0.9.1
 	github.com/pulumi/inflector v0.1.1
-	github.com/pulumi/providertest v0.0.11
+	github.com/pulumi/providertest v0.0.13
 	github.com/pulumi/pulumi-java/pkg v0.11.0
+	github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests v0.0.0-00010101000000-000000000000
 	github.com/pulumi/pulumi-terraform-bridge/x/muxer v0.0.8
 	github.com/pulumi/pulumi-yaml v1.8.0
 	github.com/pulumi/schema-tools v0.1.2
