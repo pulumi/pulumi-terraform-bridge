@@ -689,7 +689,8 @@ func TestMetaProperties(t *testing.T) {
 
 			state, err = makeTerraformStateWithOpts(
 				ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props,
-				makeTerraformStateOptions{defaultZeroSchemaVersion: true, unknownCollectionsSupported: prov.SupportsUnknownCollections()})
+				makeTerraformStateOptions{
+					defaultZeroSchemaVersion: true, unknownCollectionsSupported: prov.SupportsUnknownCollections()})
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 
@@ -705,7 +706,8 @@ func TestMetaProperties(t *testing.T) {
 
 			state, err = makeTerraformStateWithOpts(
 				ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props,
-				makeTerraformStateOptions{defaultZeroSchemaVersion: true, unknownCollectionsSupported: prov.SupportsUnknownCollections()})
+				makeTerraformStateOptions{
+					defaultZeroSchemaVersion: true, unknownCollectionsSupported: prov.SupportsUnknownCollections()})
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 
@@ -745,7 +747,8 @@ func TestMetaProperties(t *testing.T) {
 
 			state, err = makeTerraformStateWithOpts(
 				ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props,
-				makeTerraformStateOptions{defaultZeroSchemaVersion: true, unknownCollectionsSupported: prov.SupportsUnknownCollections()})
+				makeTerraformStateOptions{
+					defaultZeroSchemaVersion: true, unknownCollectionsSupported: prov.SupportsUnknownCollections()})
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 
@@ -774,7 +777,8 @@ func TestInjectingCustomTimeouts(t *testing.T) {
 
 			state, err = makeTerraformStateWithOpts(
 				ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props,
-				makeTerraformStateOptions{defaultZeroSchemaVersion: true, unknownCollectionsSupported: prov.SupportsUnknownCollections()})
+				makeTerraformStateOptions{
+					defaultZeroSchemaVersion: true, unknownCollectionsSupported: prov.SupportsUnknownCollections()})
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 
@@ -790,7 +794,8 @@ func TestInjectingCustomTimeouts(t *testing.T) {
 
 			state, err = makeTerraformStateWithOpts(
 				ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props,
-				makeTerraformStateOptions{defaultZeroSchemaVersion: true, unknownCollectionsSupported: prov.SupportsUnknownCollections()})
+				makeTerraformStateOptions{
+					defaultZeroSchemaVersion: true, unknownCollectionsSupported: prov.SupportsUnknownCollections()})
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 
@@ -833,7 +838,8 @@ func TestInjectingCustomTimeouts(t *testing.T) {
 
 			state, err = makeTerraformStateWithOpts(
 				ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props,
-				makeTerraformStateOptions{defaultZeroSchemaVersion: true, unknownCollectionsSupported: prov.SupportsUnknownCollections()})
+				makeTerraformStateOptions{
+					defaultZeroSchemaVersion: true, unknownCollectionsSupported: prov.SupportsUnknownCollections()})
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 
@@ -890,7 +896,8 @@ func TestResultAttributesRoundTrip(t *testing.T) {
 
 			state, err = makeTerraformStateWithOpts(
 				ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props,
-				makeTerraformStateOptions{defaultZeroSchemaVersion: true, unknownCollectionsSupported: prov.SupportsUnknownCollections()})
+				makeTerraformStateOptions{
+					defaultZeroSchemaVersion: true, unknownCollectionsSupported: prov.SupportsUnknownCollections()})
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 

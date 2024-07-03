@@ -1017,7 +1017,6 @@ func makeTerraformUnknown(tfs shim.Schema, unknownCollectionsSupported bool) int
 		return TerraformUnknownVariableValue
 	}
 }
-	
 
 // metaKey is the key in a TF bridge result that is used to store a resource's meta-attributes.
 const metaKey = "__meta"
@@ -1347,7 +1346,7 @@ func MakeTerraformState(
 }
 
 type unmarshalTerraformStateOptions struct {
-	defaultZeroSchemaVersion bool
+	defaultZeroSchemaVersion    bool
 	unknownCollectionsSupported bool
 }
 
