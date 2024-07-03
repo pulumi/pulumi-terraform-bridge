@@ -170,3 +170,7 @@ func (p *SchemaOnlyProvider) NewResourceConfig(context.Context, map[string]inter
 func (p *SchemaOnlyProvider) IsSet(context.Context, interface{}) ([]interface{}, bool) {
 	panic("schemaOnlyProvider does not implement runtime operation IsSet")
 }
+
+func (p *SchemaOnlyProvider) SupportsUnknownCollections() bool {
+	return true
+}

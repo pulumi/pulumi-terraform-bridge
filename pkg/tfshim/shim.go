@@ -249,7 +249,7 @@ type Provider interface {
 	IsSet(ctx context.Context, v interface{}) ([]interface{}, bool)
 
 	// SupportsUnknownCollections returns false if the provider needs special handling of unknown collections.
-	// True for the sdkv1 provider.
+	// False for the sdkv1 provider.
 	SupportsUnknownCollections() bool
 }
 
