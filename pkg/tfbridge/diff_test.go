@@ -285,16 +285,15 @@ func diffTest(t *testing.T, tfs map[string]*v2Schema.Schema, inputs,
 
 	for _, s := range setup {
 		t.Run(s.name, func(t *testing.T) {
-			sch, r, provider, info := s.setup(tfs)
-
-			tfState, err := makeTerraformStateWithOpts(ctx, r, "id", stateMap,
-				makeTerraformStateOptions{defaultZeroSchemaVersion: true})
-			assert.NoError(t, err)
-
-			config, _, err := MakeTerraformConfig(ctx, &Provider{tf: provider}, inputsMap, sch, info)
-			assert.NoError(t, err)
-
 			t.Run("standard", func(t *testing.T) {
+				sch, r, provider, info := s.setup(tfs)
+
+				tfState, err := makeTerraformStateWithOpts(ctx, r, "id", stateMap,
+					makeTerraformStateOptions{defaultZeroSchemaVersion: true})
+				assert.NoError(t, err)
+
+				config, _, err := MakeTerraformConfig(ctx, &Provider{tf: provider}, inputsMap, sch, info)
+				assert.NoError(t, err)
 				tfDiff, err := provider.Diff(ctx, "resource", tfState, config, shim.DiffOptions{
 					IgnoreChanges: newIgnoreChanges(ctx, sch, info, stateMap, inputsMap, ignoreChanges),
 				})
@@ -314,17 +313,17 @@ func diffTest(t *testing.T, tfs map[string]*v2Schema.Schema, inputs,
 
 	for _, s := range setup {
 		t.Run(s.name, func(t *testing.T) {
-			sch, r, provider, info := s.setup(tfs)
-
-			tfState, err := makeTerraformStateWithOpts(ctx, r, "id", stateMap,
-				makeTerraformStateOptions{defaultZeroSchemaVersion: true})
-			assert.NoError(t, err)
-
-			config, _, err := MakeTerraformConfig(ctx, &Provider{tf: provider}, inputsMap, sch, info)
-			assert.NoError(t, err)
 			// Add an ignoreChanges entry for each path in the expected diff, then re-convert the diff
 			// and check the result.
 			t.Run("withIgnoreAllExpected", func(t *testing.T) {
+				sch, r, provider, info := s.setup(tfs)
+				tfState, err := makeTerraformStateWithOpts(ctx, r, "id", stateMap,
+					makeTerraformStateOptions{defaultZeroSchemaVersion: true})
+				assert.NoError(t, err)
+
+				config, _, err := MakeTerraformConfig(ctx, &Provider{tf: provider}, inputsMap, sch, info)
+				assert.NoError(t, err)
+
 				for k := range expected {
 					ignoreChanges = append(ignoreChanges, k)
 				}
