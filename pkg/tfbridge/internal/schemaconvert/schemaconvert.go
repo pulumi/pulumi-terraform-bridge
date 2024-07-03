@@ -25,12 +25,14 @@ func Sdkv2ToV1SchemaOrResource(elem interface{}) interface{} {
 }
 
 func Sdkv2ToV1Resource(sch *v2Schema.Resource) *v1Schema.Resource {
+	//nolint:staticcheck
 	if sch.MigrateState != nil {
 		contract.Failf("MigrateState is not supported in conversion")
 	}
 	if sch.StateUpgraders != nil {
 		contract.Failf("StateUpgraders is not supported in conversion")
 	}
+	//nolint:staticcheck
 	if sch.Create != nil || sch.Read != nil || sch.Update != nil || sch.Delete != nil || sch.Exists != nil ||
 		sch.CreateContext != nil || sch.ReadContext != nil || sch.UpdateContext != nil ||
 		sch.DeleteContext != nil || sch.Importer != nil {
@@ -98,20 +100,21 @@ func Sdkv2ToV1Schema(sch *v2Schema.Schema) *v1Schema.Schema {
 	}
 
 	return &v1Schema.Schema{
-		Type:          Sdkv2ToV1Type(sch.Type),
-		Optional:      sch.Optional,
-		Required:      sch.Required,
-		Default:       sch.Default,
-		DefaultFunc:   defaultFunc,
-		Description:   sch.Description,
-		InputDefault:  sch.InputDefault,
-		Computed:      sch.Computed,
-		ForceNew:      sch.ForceNew,
-		StateFunc:     stateFunc,
-		Elem:          Sdkv2ToV1SchemaOrResource(sch.Elem),
-		MaxItems:      sch.MaxItems,
-		MinItems:      sch.MinItems,
-		Set:           set,
+		Type:         Sdkv2ToV1Type(sch.Type),
+		Optional:     sch.Optional,
+		Required:     sch.Required,
+		Default:      sch.Default,
+		DefaultFunc:  defaultFunc,
+		Description:  sch.Description,
+		InputDefault: sch.InputDefault,
+		Computed:     sch.Computed,
+		ForceNew:     sch.ForceNew,
+		StateFunc:    stateFunc,
+		Elem:         Sdkv2ToV1SchemaOrResource(sch.Elem),
+		MaxItems:     sch.MaxItems,
+		MinItems:     sch.MinItems,
+		Set:          set,
+		//nolint:staticcheck
 		ComputedWhen:  sch.ComputedWhen,
 		ConflictsWith: sch.ConflictsWith,
 		ExactlyOneOf:  sch.ExactlyOneOf,
