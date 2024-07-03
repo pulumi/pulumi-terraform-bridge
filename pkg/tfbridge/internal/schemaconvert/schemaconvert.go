@@ -32,7 +32,8 @@ func Sdkv2ToV1Resource(sch *v2Schema.Resource) *v1Schema.Resource {
 		contract.Failf("StateUpgraders is not supported in conversion")
 	}
 	if sch.Create != nil || sch.Read != nil || sch.Update != nil || sch.Delete != nil || sch.Exists != nil ||
-		sch.CreateContext != nil || sch.ReadContext != nil || sch.UpdateContext != nil || sch.DeleteContext != nil || sch.Importer != nil {
+		sch.CreateContext != nil || sch.ReadContext != nil || sch.UpdateContext != nil ||
+		sch.DeleteContext != nil || sch.Importer != nil {
 		contract.Failf("runtime methods not supported in conversion")
 	}
 
