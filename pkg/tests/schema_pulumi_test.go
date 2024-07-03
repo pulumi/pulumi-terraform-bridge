@@ -1421,9 +1421,31 @@ func TestComputedOverride(t *testing.T) {
 					Computed: true,
 				},
 			},
+			CreateContext: func(ctx context.Context, rd *schema.ResourceData, i interface{}) diag.Diagnostics {
+				rd.SetId("id0")
+				err := rd.Set("version", "1.2")
+				require.NoError(t, err)
+				return nil
+			},
 		},
 	}
 	bridgedProvider := pulcheck.BridgedProvider(t, "prov", resMap)
 
 	program := `
+name: test
+runtime: yaml
+resources:
+	mainRes:
+		type: prov:index:Test
+		properties:
+			version: "~1.0"
+outputs:
+	version: ${mainRes.version}
+`
+
+	pt := pulcheck.PulCheck(t, bridgedProvider, program)
+	upRes := pt.Up()
+	require.Equal(t, "1.2", upRes.Outputs["version"].Value)
+
+	pt.Preview(optpreview.ExpectNoChanges())
 }
