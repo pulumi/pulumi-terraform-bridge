@@ -247,6 +247,10 @@ type Provider interface {
 
 	// Checks if a value is representing a Set, and unpacks its elements on success.
 	IsSet(ctx context.Context, v interface{}) ([]interface{}, bool)
+
+	// SupportsUnknownCollections returns false if the provider needs special handling of unknown collections.
+	// True for the sdkv1 provider.
+	SupportsUnknownCollections() bool
 }
 
 type TimeoutOptions struct {

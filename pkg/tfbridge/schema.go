@@ -287,18 +287,20 @@ func elemSchemas(sch shim.Schema, ps *SchemaInfo) (shim.Schema, *SchemaInfo) {
 }
 
 type conversionContext struct {
-	Ctx                      context.Context
-	ComputeDefaultOptions    ComputeDefaultOptions
-	ProviderConfig           resource.PropertyMap
-	ApplyDefaults            bool
-	ApplyTFDefaults          bool
-	ApplyMaxItemsOneDefaults bool
-	Assets                   AssetTable
+	Ctx                         context.Context
+	ComputeDefaultOptions       ComputeDefaultOptions
+	ProviderConfig              resource.PropertyMap
+	ApplyDefaults               bool
+	ApplyTFDefaults             bool
+	ApplyMaxItemsOneDefaults    bool
+	Assets                      AssetTable
+	UnknownCollectionsSupported bool
 }
 
 type makeTerraformInputsOptions struct {
-	DisableDefaults   bool
-	DisableTFDefaults bool
+	DisableDefaults             bool
+	DisableTFDefaults           bool
+	UnknownCollectionsSupported bool
 }
 
 func makeTerraformInputsWithOptions(
@@ -317,12 +319,13 @@ func makeTerraformInputsWithOptions(
 	}
 
 	cctx := &conversionContext{
-		Ctx:                   ctx,
-		ComputeDefaultOptions: cdOptions,
-		ProviderConfig:        config,
-		ApplyDefaults:         !opts.DisableDefaults,
-		ApplyTFDefaults:       !opts.DisableTFDefaults,
-		Assets:                AssetTable{},
+		Ctx:                         ctx,
+		ComputeDefaultOptions:       cdOptions,
+		ProviderConfig:              config,
+		ApplyDefaults:               !opts.DisableDefaults,
+		ApplyTFDefaults:             !opts.DisableTFDefaults,
+		Assets:                      AssetTable{},
+		UnknownCollectionsSupported: opts.UnknownCollectionsSupported,
 	}
 
 	inputs, err := cctx.makeTerraformInputs(olds, news, tfs, ps)
@@ -332,6 +335,7 @@ func makeTerraformInputsWithOptions(
 	return inputs, cctx.Assets, err
 }
 
+// Unused internally, use makeTerraformInputsWithOptions instead.
 func MakeTerraformInputs(
 	ctx context.Context, instance *PulumiResource, config resource.PropertyMap,
 	olds, news resource.PropertyMap, tfs shim.SchemaMap, ps map[string]*SchemaInfo,
@@ -530,7 +534,7 @@ func (ctx *conversionContext) makeTerraformInput(
 		// If any variables are unknown, we need to mark them in the inputs so the config map treats it right.  This
 		// requires the use of the special UnknownVariableValue sentinel in Terraform, which is how it internally stores
 		// interpolated variables whose inputs are currently unknown.
-		return TerraformUnknownVariableValue, nil
+		return makeTerraformUnknown(tfs, ctx.UnknownCollectionsSupported), nil
 	default:
 		contract.Failf("Unexpected value marshaled: %v", v)
 		return nil, nil
@@ -958,6 +962,63 @@ func (ctx *conversionContext) applyDefaults(
 	return nil
 }
 
+// makeTerraformUnknownElement creates an unknown value to be used as an element of a list or set using the given
+// element schema to guide the shape of the value.
+func makeTerraformUnknownElement(elem interface{}) interface{} {
+	// If we have no element schema, just return a simple unknown.
+	if elem == nil {
+		return TerraformUnknownVariableValue
+	}
+
+	switch e := elem.(type) {
+	case shim.Schema:
+		// If the element uses a normal schema, defer to makeTerraformUnknown.
+		return makeTerraformUnknown(e, false)
+	case shim.Resource:
+		// If the element uses a resource schema, fill in unknown values for any required properties.
+		res := make(map[string]interface{})
+		e.Schema().Range(func(k string, v shim.Schema) bool {
+			if v.Required() {
+				res[k] = makeTerraformUnknown(v, false)
+			}
+			return true
+		})
+		return res
+	default:
+		return TerraformUnknownVariableValue
+	}
+}
+
+// makeTerraformUnknown creates an unknown value with the shape indicated by the given schema.
+//
+// It is important that we use the TF schema (if available) to decide what shape the unknown value should have:
+// e.g. TF does not play nicely with unknown lists, instead expecting a list of unknowns.
+func makeTerraformUnknown(tfs shim.Schema, unknownCollectionsSupported bool) interface{} {
+	if unknownCollectionsSupported {
+		return TerraformUnknownVariableValue
+	}
+	if tfs == nil {
+		return TerraformUnknownVariableValue
+	}
+
+	switch tfs.Type() {
+	case shim.TypeList, shim.TypeSet:
+		// TF does not accept unknown lists or sets. Instead, it accepts lists or sets of unknowns.
+		count := 1
+		if tfs.MinItems() > 0 {
+			count = tfs.MinItems()
+		}
+		arr := make([]interface{}, count)
+		for i := range arr {
+			arr[i] = makeTerraformUnknownElement(tfs.Elem())
+		}
+		return arr
+	default:
+		return TerraformUnknownVariableValue
+	}
+}
+	
+
 // metaKey is the key in a TF bridge result that is used to store a resource's meta-attributes.
 const metaKey = "__meta"
 
@@ -1180,7 +1241,8 @@ func MakeTerraformOutput(
 func MakeTerraformConfig(ctx context.Context, p *Provider, m resource.PropertyMap,
 	tfs shim.SchemaMap, ps map[string]*SchemaInfo) (shim.ResourceConfig, AssetTable, error) {
 	inputs, assets, err := makeTerraformInputsWithOptions(ctx, nil, p.configValues, nil, m, tfs, ps,
-		makeTerraformInputsOptions{DisableDefaults: true, DisableTFDefaults: true})
+		makeTerraformInputsOptions{DisableDefaults: true, DisableTFDefaults: true,
+			UnknownCollectionsSupported: p.tf.SupportsUnknownCollections()})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1236,7 +1298,8 @@ func MakeTerraformConfigFromInputs(
 }
 
 type makeTerraformStateOptions struct {
-	defaultZeroSchemaVersion bool
+	defaultZeroSchemaVersion    bool
+	unknownCollectionsSupported bool
 }
 
 func makeTerraformStateWithOpts(
@@ -1264,7 +1327,7 @@ func makeTerraformStateWithOpts(
 	// ints, to represent numbers.
 	inputs, _, err := makeTerraformInputsWithOptions(ctx, nil, nil, nil, m, res.TF.Schema(), res.Schema.Fields,
 		makeTerraformInputsOptions{
-			DisableDefaults: true, DisableTFDefaults: true,
+			DisableDefaults: true, DisableTFDefaults: true, UnknownCollectionsSupported: opts.unknownCollectionsSupported,
 		})
 	if err != nil {
 		return nil, err
@@ -1285,6 +1348,7 @@ func MakeTerraformState(
 
 type unmarshalTerraformStateOptions struct {
 	defaultZeroSchemaVersion bool
+	unknownCollectionsSupported bool
 }
 
 func unmarshalTerraformStateWithOpts(

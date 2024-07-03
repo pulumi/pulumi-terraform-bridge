@@ -88,7 +88,7 @@ func TestCustomizeDiff(t *testing.T) {
 			Schema: &ResourceInfo{Fields: info},
 		}
 		tfState, err := makeTerraformStateWithOpts(ctx, r, "id", stateMap,
-			makeTerraformStateOptions{defaultZeroSchemaVersion: true})
+			makeTerraformStateOptions{defaultZeroSchemaVersion: true, unknownCollectionsSupported: true})
 		assert.NoError(t, err)
 
 		config, _, err := MakeTerraformConfig(ctx, &Provider{tf: provider}, inputsMap, sch, info)
@@ -131,7 +131,7 @@ func TestCustomizeDiff(t *testing.T) {
 			Schema: &ResourceInfo{Fields: info},
 		}
 		tfState, err := makeTerraformStateWithOpts(ctx, r, "id", stateMap,
-			makeTerraformStateOptions{defaultZeroSchemaVersion: true})
+			makeTerraformStateOptions{defaultZeroSchemaVersion: true, unknownCollectionsSupported: true})
 		assert.NoError(t, err)
 
 		config, _, err := MakeTerraformConfig(ctx, &Provider{tf: provider}, inputsMap, sch, info)
@@ -185,7 +185,7 @@ func TestCustomizeDiff(t *testing.T) {
 					Schema: &ResourceInfo{Fields: info},
 				}
 				tfState, err := makeTerraformStateWithOpts(ctx, r, "id", stateMap,
-					makeTerraformStateOptions{defaultZeroSchemaVersion: true})
+					makeTerraformStateOptions{defaultZeroSchemaVersion: true, unknownCollectionsSupported: true})
 				assert.NoError(t, err)
 
 				config, _, err := MakeTerraformConfig(ctx, &Provider{tf: provider}, inputsMap, sch, info)
@@ -297,7 +297,7 @@ func diffTest(t *testing.T, tfs map[string]*v2Schema.Schema, inputs,
 				sch, r, provider, info := s.setup(tfs)
 
 				tfState, err := makeTerraformStateWithOpts(ctx, r, "id", stateMap,
-					makeTerraformStateOptions{defaultZeroSchemaVersion: true})
+					makeTerraformStateOptions{defaultZeroSchemaVersion: true, unknownCollectionsSupported: provider.SupportsUnknownCollections()})
 				assert.NoError(t, err)
 
 				config, _, err := MakeTerraformConfig(ctx, &Provider{tf: provider}, inputsMap, sch, info)
@@ -326,7 +326,7 @@ func diffTest(t *testing.T, tfs map[string]*v2Schema.Schema, inputs,
 			t.Run("withIgnoreAllExpected", func(t *testing.T) {
 				sch, r, provider, info := s.setup(tfs)
 				tfState, err := makeTerraformStateWithOpts(ctx, r, "id", stateMap,
-					makeTerraformStateOptions{defaultZeroSchemaVersion: true})
+					makeTerraformStateOptions{defaultZeroSchemaVersion: true, unknownCollectionsSupported: provider.SupportsUnknownCollections()})
 				assert.NoError(t, err)
 
 				config, _, err := MakeTerraformConfig(ctx, &Provider{tf: provider}, inputsMap, sch, info)
@@ -1651,7 +1651,7 @@ func TestComputedSetUpdateReplace(t *testing.T) {
 		map[string]DiffKind{
 			// TODO[pulumi/pulumi-terraform-bridge#2141]: This should be an UR.
 			// makeDetailedDiff returns an empty diff for collections
-			"prop":    AR,
+			"prop":    UR,
 			"prop[0]": DR,
 		},
 		nil,
