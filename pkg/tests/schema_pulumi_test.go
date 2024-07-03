@@ -1553,18 +1553,8 @@ Resources:
 			autogold.Expect(`Previewing update (test):
   pulumi:pulumi:Stack: (same)
     [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
-    ~ prov:index/test:Test: (update)
-        [id=newid]
-        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-      + listProps: [
-      +     [0]: "val"
-        ]
-      + listProps: [
-      +     [0]: "val"
-        ]
 Resources:
-    ~ 1 to update
-    1 unchanged
+    2 unchanged
 `),
 		},
 		{
@@ -1595,18 +1585,8 @@ Resources:
 			autogold.Expect(`Previewing update (test):
   pulumi:pulumi:Stack: (same)
     [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
-    ~ prov:index/test:Test: (update)
-        [id=newid]
-        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-      - listProps: [
-      -     [0]: "val"
-        ]
-      - listProps: [
-      -     [0]: "val"
-        ]
 Resources:
-    ~ 1 to update
-    1 unchanged
+    2 unchanged
 `),
 		},
 		{
@@ -1786,18 +1766,8 @@ Resources:
 			autogold.Expect(`Previewing update (test):
   pulumi:pulumi:Stack: (same)
     [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
-    ~ prov:index/test:Test: (update)
-        [id=newid]
-        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-      + setProps: [
-      +     [0]: "val"
-        ]
-      + setProps: [
-      +     [0]: "val"
-        ]
 Resources:
-    ~ 1 to update
-    1 unchanged
+    2 unchanged
 `),
 		},
 		{
@@ -1828,18 +1798,8 @@ Resources:
 			autogold.Expect(`Previewing update (test):
   pulumi:pulumi:Stack: (same)
     [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
-    ~ prov:index/test:Test: (update)
-        [id=newid]
-        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-      - setProps: [
-      -     [0]: "val"
-        ]
-      - setProps: [
-      -     [0]: "val"
-        ]
 Resources:
-    ~ 1 to update
-    1 unchanged
+    2 unchanged
 `),
 		},
 		{
@@ -1853,7 +1813,7 @@ Resources:
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ setProps: [
-          ~ [0]: "val2" => "val1"
+          + [0]: "val1"
           ~ [1]: "val3" => "val2"
           + [2]: "val3"
         ]
@@ -2019,18 +1979,8 @@ Resources:
 			autogold.Expect(`Previewing update (test):
   pulumi:pulumi:Stack: (same)
     [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
-    ~ prov:index/test:Test: (update)
-        [id=newid]
-        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-      + mapProp: {
-          + key: "val"
-        }
-      + mapProp: {
-          + key: "val"
-        }
 Resources:
-    ~ 1 to update
-    1 unchanged
+    2 unchanged
 `),
 		},
 		{
@@ -2061,18 +2011,8 @@ Resources:
 			autogold.Expect(`Previewing update (test):
   pulumi:pulumi:Stack: (same)
     [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
-    ~ prov:index/test:Test: (update)
-        [id=newid]
-        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-      - mapProp: {
-          - key: "val"
-        }
-      - mapProp: {
-          - key: "val"
-        }
 Resources:
-    ~ 1 to update
-    1 unchanged
+    2 unchanged
 `),
 		},
 		{
