@@ -46,6 +46,7 @@ func (*vlanNamesRes) schema() rschema.Schema {
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
+			"other": schema.StringAttribute{},
 			// borrowed from https://github.com/cisco-open/terraform-provider-meraki/blob/7b3e63a22f6706c110957609ef608e81956b7166/internal/provider/resource_meraki_networks_vlan_profiles.go#L120
 			"vlan_names": schema.SetNestedAttribute{
 				MarkdownDescription: `An array of named VLANs`,
