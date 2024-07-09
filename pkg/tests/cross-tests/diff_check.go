@@ -70,6 +70,7 @@ func runDiffCheck(t T, tc diffTestCase) {
 	err := os.WriteFile(p, yamlProgram, 0o600)
 	require.NoErrorf(t, err, "writing Pulumi.yaml")
 	x := pt.Up()
+	t.Logf("Pulumi Up: %v", x.StdOut)
 
 	tfAction := tfd.parseChangesFromTFPlan(*tfDiffPlan)
 

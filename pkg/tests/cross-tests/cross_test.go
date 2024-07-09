@@ -671,3 +671,40 @@ func TestComputedSetFieldsNoDiff(t *testing.T) {
 		Config2:  t0,
 	})
 }
+
+func TestTrulyComputedEmptyToNil(t *testing.T) {
+	skipUnlessLinux(t)
+
+	resource := &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"truly_computed_tags_all": {
+				Type:     schema.TypeMap,
+				Computed: true,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
+			},
+			"other": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+		},
+		CreateContext: func(ctx context.Context, rd *schema.ResourceData, i interface{}) diag.Diagnostics {
+			rd.SetId("r1")
+			err := rd.Set("truly_computed_tags_all", map[string]interface{}{})
+			require.NoError(t, err)
+			return diag.Diagnostics{}
+		},
+		UpdateContext: func(ctx context.Context, rd *schema.ResourceData, i interface{}) diag.Diagnostics {
+			err := rd.Set("truly_computed_tags_all", nil)
+			require.NoError(t, err)
+			return diag.Diagnostics{}
+		},
+	}
+
+	runDiffCheck(t, diffTestCase{
+		Resource: resource,
+		Config1:  map[string]any{"other": "A"},
+		Config2:  map[string]any{"other": "B"},
+	})
+}
