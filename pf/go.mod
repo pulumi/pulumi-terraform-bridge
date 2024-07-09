@@ -16,7 +16,6 @@ require (
 	github.com/hashicorp/terraform-plugin-go v0.22.0
 	github.com/hashicorp/terraform-plugin-log v0.9.0
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.33.0
-	github.com/pulumi/providertest v0.0.11
 	github.com/pulumi/pulumi-terraform-bridge/v3 v3.86.0
 	github.com/pulumi/pulumi-terraform-bridge/x/muxer v0.0.8
 	github.com/stretchr/testify v1.9.0
