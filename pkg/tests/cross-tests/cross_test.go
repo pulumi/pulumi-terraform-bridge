@@ -707,4 +707,10 @@ func TestTrulyComputedEmptyToNil(t *testing.T) {
 		Config1:  map[string]any{"other": "A"},
 		Config2:  map[string]any{"other": "B"},
 	})
+
+	runDiffCheck(t, diffTestCase{
+		Resource: resource,
+		Config1:  map[string]any{"other": "A"},
+		Config2:  map[string]any{"other": "A"},
+	})
 }
