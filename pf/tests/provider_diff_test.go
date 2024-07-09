@@ -195,3 +195,56 @@ func TestDiffVersionUpgrade(t *testing.T) {
         }`
 	testutils.Replay(t, server, testCase)
 }
+
+func TestSetNestedObjectAdded(t *testing.T) {
+	server := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
+	testCase := `
+        {
+          "method": "/pulumirpc.ResourceProvider/Diff",
+          "request": {
+            "id": "0",
+            "urn": "urn:pulumi:test-stack::basicprogram::testbridge:index/testres:VlanNamesRes::testres1",
+            "olds": {
+              "id": "0",
+              "requiredInputString": "input1",
+              "requiredInputStringCopy": "input3",
+              "vlanNames": [
+                {
+                    "name": "default",
+                    "vlanId": "1"
+                }
+              ]
+            },
+            "news": {
+              "requiredInputString": "input1",
+              "vlanNames": [
+                {
+                    "name": "default",
+                    "vlanId": "1"
+                },
+                {
+                    "name": "guest",
+                    "vlanId": "2"
+                }
+              ]
+            },
+            "oldInputs": {
+            "requiredInputString": "input1",
+            "vlanNames": [
+                {
+                    "name": "default",
+                    "vlanId": "1"
+                }
+            ]
+            }
+          },
+          "response": {
+            "changes": "DIFF_SOME",
+            "diffs": [
+               "vlanNames"
+            ]
+          }
+        }
+        `
+	testutils.Replay(t, server, testCase)
+}
