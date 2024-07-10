@@ -1448,7 +1448,10 @@ func TestValidateInputType_toplevel(t *testing.T) {
 		{
 			name: "object_type_success",
 			input: resource.NewObjectProperty(
-				resource.NewPropertyMapFromMap(map[string]interface{}{"foo": "bar"}),
+				resource.NewPropertyMapFromMap(map[string]interface{}{
+					"foo":        "bar",
+					"__defaults": []string{"hello"},
+				}),
 			),
 			inputProperties: map[string]pschema.PropertySpec{
 				"object_type_success": {

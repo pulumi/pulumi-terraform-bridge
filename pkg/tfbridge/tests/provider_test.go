@@ -292,6 +292,11 @@ func TestValidateInputsPanic(t *testing.T) {
 			ResourcesMap: map[string]*schema.Resource{
 				"example_resource": {
 					Schema: map[string]*schema.Schema{
+						"tags": {
+							Type:     schema.TypeMap,
+							Elem:     &schema.Schema{Type: schema.TypeString},
+							Optional: true,
+						},
 						"network_configuration": {
 							Type:     schema.TypeList,
 							Optional: true,
@@ -562,6 +567,61 @@ func TestValidateInputsPanic(t *testing.T) {
 	]
 	`, "diffing urn:pulumi:dev::teststack::testprov:index:ExampleResource::exres2: "+
 			`panicked: \"value has no attribute of that name\"`))
+
+	})
+
+	// don't validate properties with "__*" names
+	t.Run("check_with_defaults_no_panic", func(t *testing.T) {
+		t.Setenv("PULUMI_ERROR_TYPE_CHECKER", "true")
+		replay.ReplaySequence(t, p, `
+	[
+		{
+			"method": "/pulumirpc.ResourceProvider/Check",
+			"request": {
+				"urn": "urn:pulumi:dev::teststack::testprov:index:ExampleResource::exres3",
+				"randomSeed": "ZCiVOcvG/CT5jx4XriguWgj2iMpQEb8P3ZLqU/AS2yg=",
+				"olds": {
+					"__defaults": [],
+					"tags": {
+						"LocalTag": "foo",
+						"__defaults": []
+					}
+				},
+				"news": {
+					"tags": {
+						"LocalTag": "foo",
+						"__defaults": []
+					},
+					"networkConfiguration": {
+						"securityGroups": [
+						"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+						],
+						"subnets": ["first","second"]
+					}
+				}
+			},
+			"response": {
+				"inputs": {
+					"tags": {
+						"LocalTag": "foo",
+						"__defaults": []
+					},
+					"__defaults": [],
+					"networkConfiguration": {
+						"__defaults": [
+						"assignPublicIp"
+						],
+						"assignPublicIp": false,
+						"securityGroups": [
+						"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+						],
+						"subnets": ["first","second"]
+					}
+				}
+			}
+		}
+	]
+	`)
 
 	})
 
