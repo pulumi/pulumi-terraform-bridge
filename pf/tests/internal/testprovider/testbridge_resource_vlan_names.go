@@ -21,9 +21,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
@@ -50,50 +48,18 @@ func (*vlanNamesRes) schema() rschema.Schema {
 			// borrowed from https://github.com/cisco-open/terraform-provider-meraki/blob/7b3e63a22f6706c110957609ef608e81956b7166/internal/provider/resource_meraki_networks_vlan_profiles.go#L120
 			"vlan_names": schema.SetNestedAttribute{
 				MarkdownDescription: `An array of named VLANs`,
-				Computed:            true,
 				Optional:            true,
-				PlanModifiers: []planmodifier.Set{
-					setplanmodifier.UseStateForUnknown(),
-				},
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
-						"adaptive_policy_group": schema.SingleNestedAttribute{
-							MarkdownDescription: `Adaptive Policy Group assigned to Vlan ID`,
-							Computed:            true,
-							Optional:            true,
-							PlanModifiers: []planmodifier.Object{
-								objectplanmodifier.UseStateForUnknown(),
-							},
-							Attributes: map[string]schema.Attribute{
-								"id": schema.StringAttribute{
-									MarkdownDescription: `Adaptive Policy Group ID`,
-									Computed:            true,
-									Optional:            true,
-									PlanModifiers: []planmodifier.String{
-										stringplanmodifier.UseStateForUnknown(),
-									},
-								},
-								"name": schema.StringAttribute{
-									MarkdownDescription: `Adaptive Policy Group name`,
-									Computed:            true,
-								},
-							},
-						},
 						"name": schema.StringAttribute{
 							MarkdownDescription: `Name of the VLAN, string length must be from 1 to 32 characters`,
 							Computed:            true,
 							Optional:            true,
-							PlanModifiers: []planmodifier.String{
-								stringplanmodifier.UseStateForUnknown(),
-							},
 						},
 						"vlan_id": schema.StringAttribute{
 							MarkdownDescription: `VLAN ID`,
 							Computed:            true,
 							Optional:            true,
-							PlanModifiers: []planmodifier.String{
-								stringplanmodifier.UseStateForUnknown(),
-							},
 						},
 					},
 				},
