@@ -534,6 +534,10 @@ func (p *provider) ReadDataApply(ctx context.Context, t string, d shim.InstanceD
 		return nil, err
 	}
 
+	if err := unmarshalErrors(resp.Diagnostics); err != nil {
+		return nil, err
+	}
+
 	stateVal, err := msgpack.Unmarshal(resp.State.Msgpack, dataSource.ctyType)
 	if err != nil {
 		return nil, err
