@@ -535,6 +535,10 @@ func reformatExamples(sections [][]string) [][]string {
 	var exampleUsageSection []string
 	var exampleSectionIndices []int
 	for i, s := range sections {
+		if len(s) == 0 {
+			// Skip empty sections.
+			continue
+		}
 		matches := exampleHeaderRegexp.FindStringSubmatch(s[0])
 		if len(matches) == 0 {
 			continue
