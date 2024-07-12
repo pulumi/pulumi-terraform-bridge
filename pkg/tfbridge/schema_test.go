@@ -2172,6 +2172,61 @@ func TestRefreshExtractInputsFromOutputsMaxItemsOne(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestRefreshExtractInputsFromOutputsListOfObjects(t *testing.T) {
+	t.Parallel()
+
+	ruleSetProps := resource.PropertyMap{
+		"attachedDisks": resource.NewArrayProperty([]resource.PropertyValue{
+			resource.NewObjectProperty(resource.PropertyMap{
+				"name": resource.NewStringProperty("name1"),
+				"key256": resource.NewNullProperty(),
+			}),
+		}),
+	}
+
+	ruleSetSchema := func() shim.SchemaMap {
+		blockList := func(elem schema.SchemaMap) shim.Schema {
+			s := schema.Schema{
+				Type: shim.TypeList,
+				Optional: true,
+				Elem: (&schema.Resource{
+					Schema: elem,
+				}).Shim(),
+			}
+			return s.Shim()
+		}
+
+		return schema.SchemaMap{
+			"attachedDisks": blockList(schema.SchemaMap{
+				"name": (&schema.Schema{Type: shim.TypeString, Optional: true}).Shim(),
+				"key256":   (&schema.Schema{Type: shim.TypeString, Computed: true}).Shim(),
+			}),
+		}
+	}
+
+	ruleSetPs := func() map[string]*SchemaInfo {
+		return map[string]*SchemaInfo{
+			"attachedDisks": {
+				Fields: map[string]*SchemaInfo{
+					"name": {},
+					"key256": {},
+				},
+			},
+		}
+	}
+
+	out, err := ExtractInputsFromOutputs(nil, ruleSetProps,
+		ruleSetSchema(), ruleSetPs(), false)
+	assert.NoError(t, err)
+	t.Logf("out: %v", out)
+	assert.True(t, out["attachedDisks"].ArrayValue()[0].ObjectValue().DeepEquals(
+		resource.PropertyMap{
+			"__defaults": resource.NewArrayProperty([]resource.PropertyValue{}),
+			"name": resource.NewStringProperty("name1"),
+		}),
+	)
+}
+
 func TestFailureReasonForMissingRequiredFields(t *testing.T) {
 	// Define two required inputs
 	tfProvider := makeTestTFProviderV1(
