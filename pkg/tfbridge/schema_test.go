@@ -17,7 +17,6 @@ package tfbridge
 import (
 	"context"
 	"os"
-	"q"
 	"sort"
 	"strconv"
 	"strings"
@@ -2220,7 +2219,6 @@ func TestRefreshExtractInputsFromOutputsListOfObjects(t *testing.T) {
 		ruleSetSchema(), ruleSetPs(), false)
 	assert.NoError(t, err)
 	t.Logf("out: %v", out)
-	q.Q(out)
 	attachedDiskVal := out["attachedDisks"].ArrayValue()[0].ObjectValue()
 	_, ok := attachedDiskVal["key256"]
 	assert.False(t, ok)
