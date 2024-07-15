@@ -18,6 +18,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"encoding/json"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/internal/pulcheck"
@@ -70,6 +71,15 @@ func runDiffCheck(t T, tc diffTestCase) {
 	err := os.WriteFile(p, yamlProgram, 0o600)
 	require.NoErrorf(t, err, "writing Pulumi.yaml")
 	x := pt.Up()
+
+	t.Logf("STDOUT: %v", x.StdOut)
+
+	bytes, err := json.MarshalIndent(tfDiffPlan, "", "  ")
+	if err != nil {
+		panic(err)
+	}
+
+	t.Logf("TF DIFF PLAN: %v", string(bytes))
 
 	tfAction := tfd.parseChangesFromTFPlan(*tfDiffPlan)
 
