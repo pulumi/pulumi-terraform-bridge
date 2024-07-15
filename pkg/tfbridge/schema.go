@@ -33,7 +33,6 @@ import (
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
-	shimutil "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/util"
 )
 
 // This file deals with translating between the Pulumi representations of a resource's configuration and state and the
@@ -1722,9 +1721,9 @@ func extractSchemaInputs(
 		return resource.NewArrayProperty(v)
 	case state.IsObject():
 		obj := state.ObjectValue()
-		if tfflds, ok := shimutil.CastToTypeObject(tfs); ok {
+		if tfflds, ok := tfs.Elem().(shim.Resource); ok {
 			return resource.NewProperty(
-				extractSchemaInputsObject(obj, tfflds, ps.Fields),
+				extractSchemaInputsObject(obj, tfflds.Schema(), ps.Fields),
 			)
 		}
 
@@ -1735,9 +1734,6 @@ func extractSchemaInputs(
 		etfs, eps := elemSchemas(tfs, ps)
 		for k, e := range obj {
 			input := extractSchemaInputs(e, etfs, eps)
-			if input.IsNull() && !etfs.Required() {
-				continue
-			}
 			v[k] = input
 		}
 
