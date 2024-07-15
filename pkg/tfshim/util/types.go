@@ -15,7 +15,7 @@
 package util
 
 import (
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
 // IsOfTypeMap detects schemas indicating a map[string,X] type. Due to a quirky encoding of
@@ -25,6 +25,9 @@ func IsOfTypeMap(tfs shim.Schema) bool {
 	if tfs == nil || tfs.Type() != shim.TypeMap {
 		return false
 	}
+
+	// TODO: Can there be a map nested resource?
+	// This might be unused though
 	_, hasResourceElem := tfs.Elem().(shim.Resource)
 	return !hasResourceElem
 }
@@ -38,7 +41,8 @@ func CastToTypeObject(tfs shim.Schema) (shim.SchemaMap, bool) {
 		return nil, false
 	}
 	res, isRes := tfs.Elem().(shim.Resource)
-	if isRes && tfs.Type() == shim.TypeMap {
+	// TODO: Map nested resources are not a thing, AFAIK
+	if isRes {
 		return res.Schema(), true
 	}
 	return nil, false

@@ -39,6 +39,7 @@ func TestValidateNameOverride(t *testing.T) {
 						Type: shim.TypeInt,
 					}).Shim(),
 				}).Shim(),
+				// TODO: This doesn't pass internal validate
 				"object1": (&schema.Schema{
 					Type: shim.TypeMap,
 					Elem: (&schema.Resource{
