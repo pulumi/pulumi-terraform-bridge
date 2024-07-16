@@ -221,8 +221,11 @@ func (p *provider) ParameterizeWithContext(
 }
 
 // GetSchema returns the schema for the provider.
-func (p *provider) GetSchemaWithContext(ctx context.Context, req plugin.GetSchemaRequest) ([]byte, error) {
-	return p.pulumiSchema(ctx, req)
+func (p *provider) GetSchemaWithContext(
+	ctx context.Context, req plugin.GetSchemaRequest,
+) (plugin.GetSchemaResponse, error) {
+	s, err := p.pulumiSchema(ctx, req)
+	return plugin.GetSchemaResponse{Schema: s}, err
 }
 
 // GetPluginInfo returns this plugin's information.

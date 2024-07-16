@@ -19,7 +19,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -146,6 +145,7 @@ type forwardServer struct {
 	plugin.UnimplementedProvider
 
 	parameterize func(context.Context, plugin.ParameterizeRequest) (plugin.ParameterizeResponse, error)
+	getSchema    func(context.Context, plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error)
 }
 
 func (p forwardServer) Parameterize(
@@ -165,23 +165,9 @@ func (p *providerServer) Parameterize(
 func (p *providerServer) GetSchema(ctx context.Context,
 	req *pulumirpc.GetSchemaRequest,
 ) (*pulumirpc.GetSchemaResponse, error) {
-	var subpackageVersion *semver.Version
-	if v := req.GetSubpackageVersion(); v != "" {
-		ver, err := semver.Parse(v)
-		if err != nil {
-			return nil, fmt.Errorf("invalid SubpackageVersion: %w", err)
-		}
-		subpackageVersion = &ver
-	}
-	schema, err := p.provider.GetSchemaWithContext(ctx, plugin.GetSchemaRequest{
-		Version:           int(req.GetVersion()),
-		SubpackageName:    req.SubpackageName,
-		SubpackageVersion: subpackageVersion,
-	})
-	if err != nil {
-		return nil, err
-	}
-	return &pulumirpc.GetSchemaResponse{Schema: string(schema)}, nil
+	return plugin.NewProviderServer(&forwardServer{
+		getSchema: p.provider.GetSchemaWithContext,
+	}).GetSchema(ctx, req)
 }
 
 func (p *providerServer) GetPluginInfo(ctx context.Context, req *pbempty.Empty) (*pulumirpc.PluginInfo, error) {

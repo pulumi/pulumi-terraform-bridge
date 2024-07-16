@@ -31,7 +31,7 @@ type ProviderWithContext interface {
 
 	Pkg() tokens.Package
 
-	GetSchemaWithContext(ctx context.Context, req plugin.GetSchemaRequest) ([]byte, error)
+	GetSchemaWithContext(ctx context.Context, req plugin.GetSchemaRequest) (plugin.GetSchemaResponse, error)
 
 	CheckConfigWithContext(ctx context.Context, urn resource.URN, olds, news resource.PropertyMap,
 		allowUnknowns bool) (resource.PropertyMap, []p.CheckFailure, error)
@@ -110,7 +110,7 @@ func (prov *provider) GetSchema(
 	ctx context.Context, req plugin.GetSchemaRequest,
 ) (plugin.GetSchemaResponse, error) {
 	schema, err := prov.ProviderWithContext.GetSchemaWithContext(ctx, req)
-	return plugin.GetSchemaResponse{Schema: schema}, err
+	return plugin.GetSchemaResponse{Schema: schema.Schema}, err
 }
 
 func (prov *provider) CheckConfig(
