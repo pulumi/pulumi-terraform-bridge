@@ -75,6 +75,9 @@ func newStringOverIntDecoder() Decoder {
 			if !v.Type().Is(tftypes.Number) {
 				return v, nil
 			}
+			if !v.IsKnown() {
+				return tftypes.NewValue(tftypes.String, tftypes.UnknownValue), nil
+			}
 			var f big.Float
 			if err := v.As(&f); err != nil {
 				return tftypes.Value{}, err
