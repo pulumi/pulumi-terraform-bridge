@@ -15,15 +15,28 @@ func TestBasic(t *testing.T) {
 		ProviderSchema: pschema.Schema{},
 		AllResources: []providerbuilder.Resource{
 			{
-				Name:           "test_res",
-				ResourceSchema: rschema.Schema{},
+				Name: "test",
+				ResourceSchema: rschema.Schema{
+					Attributes: map[string]rschema.Attribute{
+						"s": rschema.StringAttribute{Optional: true},
+					},
+				},
 			},
 		},
 	}
 
-	prov := bridgedProvider(t, &provBuilder)
+	prov := bridgedProvider(&provBuilder)
 
-	program := ``
+	program := `
+name: test
+runtime: yaml
+resources:
+    mainRes:
+        type: prov:index:Test
+        properties:
+            s: "hello"`
 
-	pulCheck(t, prov, program)
+	pt := pulCheck(t, prov, program)
+
+	pt.Up()
 }

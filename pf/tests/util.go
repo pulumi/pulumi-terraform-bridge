@@ -19,10 +19,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
-	"strings"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
+	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 
@@ -55,21 +57,31 @@ func newMuxedProviderServer(t *testing.T, info tfbridge0.ProviderInfo) pulumirpc
 	return p
 }
 
-
-func skipUnlessLinux(t *testing.T) {
-	if ci, ok := os.LookupEnv("CI"); ok && ci == "true" && !strings.Contains(strings.ToLower(runtime.GOOS), "linux") {
-		t.Skip("Skipping on non-Linux platforms as our CI does not yet install Terraform CLI required for these tests")
+func ensureProviderValid(prov *providerbuilder.Provider) {
+	for i := range prov.AllResources {
+		r := &prov.AllResources[i]
+		if r.ResourceSchema.Attributes["id"] == nil {
+			r.ResourceSchema.Attributes["id"] = rschema.StringAttribute{Computed: true}
+		}
+		if r.CreateFunc == nil {
+			r.CreateFunc = func(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+				resp.State = tfsdk.State(req.Config)
+				resp.State.SetAttribute(ctx, path.Root("id"), "test-id")
+			}
+		}
 	}
+
 }
 
-func bridgedProvider(t *testing.T, prov *providerbuilder.Provider) info.Provider {
+func bridgedProvider(prov *providerbuilder.Provider) info.Provider {
+	ensureProviderValid(prov)
 	shimProvider := tfbridge.ShimProvider(prov)
 
 	provider := tfbridge0.ProviderInfo{
-		P:                              shimProvider,
-		Name:                           prov.TypeName,
-		Version:                        "0.0.1",
-		MetadataInfo:                   &tfbridge0.MetadataInfo{},
+		P:            shimProvider,
+		Name:         prov.TypeName,
+		Version:      "0.0.1",
+		MetadataInfo: &tfbridge0.MetadataInfo{},
 	}
 
 	makeToken := func(module, name string) (string, error) {
@@ -80,7 +92,7 @@ func bridgedProvider(t *testing.T, prov *providerbuilder.Provider) info.Provider
 	return provider
 }
 
-func startPulumiProvider(t *testing.T, name, version string, providerInfo tfbridge0.ProviderInfo) (*rpcutil.ServeHandle, error) {
+func startPulumiProvider(t *testing.T, providerInfo tfbridge0.ProviderInfo) (*rpcutil.ServeHandle, error) {
 	prov := newProviderServer(t, providerInfo)
 
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
@@ -96,9 +108,7 @@ func startPulumiProvider(t *testing.T, name, version string, providerInfo tfbrid
 	return &handle, nil
 }
 
-// TODO: deduplicate?
 func pulCheck(t *testing.T, bridgedProvider info.Provider, program string) *pulumitest.PulumiTest {
-	skipUnlessLinux(t)
 	puwd := t.TempDir()
 	p := filepath.Join(puwd, "Pulumi.yaml")
 
@@ -112,7 +122,7 @@ func pulCheck(t *testing.T, bridgedProvider info.Provider, program string) *pulu
 		opttest.AttachProvider(
 			bridgedProvider.Name,
 			func(ctx context.Context, pt providers.PulumiTest) (providers.Port, error) {
-				handle, err := startPulumiProvider(t, bridgedProvider.Name, bridgedProvider.Version, bridgedProvider)
+				handle, err := startPulumiProvider(t, bridgedProvider)
 				require.NoError(t, err)
 				return providers.Port(handle.Port), nil
 			},
