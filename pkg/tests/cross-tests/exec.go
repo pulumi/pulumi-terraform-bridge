@@ -35,5 +35,10 @@ func execCmd(t T, wdir string, environ []string, program string, args ...string)
 	err := cmd.Run()
 	require.NoError(t, err, "error from `%s %s`\n\nStdout:\n%s\n\nStderr:\n%s\n\n",
 		program, strings.Join(args, " "), stdout.String(), stderr.String())
+
+	t.Logf("COMMAND DONE: %s %v", program, args)
+	t.Logf("STDOUT: %s", stdout.String())
+	t.Logf("STDERR: %s", stderr.String())
+
 	return cmd
 }

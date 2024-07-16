@@ -54,10 +54,12 @@ func EnsureProviderValid(t T, tfp *schema.Provider) {
 			}
 		}
 
-		r.UpdateContext = func(
-			ctx context.Context, rd *schema.ResourceData, i interface{},
-		) diag.Diagnostics {
-			return diag.Diagnostics{}
+		if r.UpdateContext == nil {
+			r.UpdateContext = func(
+				ctx context.Context, rd *schema.ResourceData, i interface{},
+			) diag.Diagnostics {
+				return diag.Diagnostics{}
+			}
 		}
 	}
 	require.NoError(t, tfp.InternalValidate())

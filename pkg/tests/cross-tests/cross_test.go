@@ -671,3 +671,65 @@ func TestComputedSetFieldsNoDiff(t *testing.T) {
 		Config2:  t0,
 	})
 }
+
+func TestAws4223(t *testing.T) {
+	skipUnlessLinux(t)
+	cfg := map[string]any{}
+
+	resourceSchema := map[string]*schema.Schema{
+		"certificate_settings": {
+			Type:     schema.TypeList,
+			Optional: true,
+			MaxItems: 1,
+			Elem: &schema.Resource{
+				Schema: map[string]*schema.Schema{
+					"certificate_verification_dns_record": {
+						Type:     schema.TypeString,
+						Computed: true,
+					},
+					"type": {
+						Type:     schema.TypeString,
+						Required: true,
+					},
+					"custom_certificate_arn": {
+						Type:     schema.TypeString,
+						Optional: true,
+					},
+				},
+			},
+		},
+	}
+
+	readCertificateSettings := func(rd *schema.ResourceData) {
+		if err := rd.Set("certificate_settings", []interface{}{
+			map[string]interface{}{
+				"type":                                "T",
+				"certificate_verification_dns_record": "cert-verif-dns-record",
+				"custom_certificate_arn":              "custom-arn",
+			},
+		}); err != nil {
+			panic(err)
+		}
+	}
+
+	create := func(ctx context.Context, rd *schema.ResourceData, i interface{}) diag.Diagnostics {
+		rd.SetId("id0")
+		readCertificateSettings(rd)
+		return diag.Diagnostics{}
+	}
+
+	update := func(ctx context.Context, rd *schema.ResourceData, i interface{}) diag.Diagnostics {
+		readCertificateSettings(rd)
+		return diag.Diagnostics{}
+	}
+
+	runDiffCheck(t, diffTestCase{
+		Resource: &schema.Resource{
+			Schema:        resourceSchema,
+			CreateContext: create,
+			UpdateContext: update,
+		},
+		Config1: cfg,
+		Config2: cfg,
+	})
+}
