@@ -19,8 +19,10 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hexops/autogold/v2"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/schemashim"
 	pb "github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/providerbuilder"
@@ -146,6 +148,38 @@ func TestRepresentations(t *testing.T) {
               }
             },
             "type": 6
+          }
+        },
+        "type": 6
+      }
+    }
+  }
+}`),
+		},
+		{
+			"object-attribute",
+			&pb.Provider{
+				AllResources: []pb.Resource{{
+					ResourceSchema: schema.Schema{
+						Attributes: map[string]schema.Attribute{
+							"object_attribute": schema.ObjectAttribute{
+								AttributeTypes: map[string]attr.Type{
+									"a1": types.StringType,
+								},
+							},
+						},
+					},
+				}},
+			},
+			autogold.Expect(`{
+  "resources": {
+    "_": {
+      "object_attribute": {
+        "element": {
+          "resource": {
+            "a1": {
+              "type": 4
+            }
           }
         },
         "type": 6
