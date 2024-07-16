@@ -1733,8 +1733,7 @@ func extractSchemaInputs(
 		v := make(map[resource.PropertyKey]resource.PropertyValue, len(obj))
 		etfs, eps := elemSchemas(tfs, ps)
 		for k, e := range obj {
-			input := extractSchemaInputs(e, etfs, eps)
-			v[k] = input
+			v[k] = extractSchemaInputs(e, etfs, eps)
 		}
 
 		// To match previous behavior, we insert the default key for Map types.
