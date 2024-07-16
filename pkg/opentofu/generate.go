@@ -31,8 +31,12 @@ import (
 
 //go:generate go run generate.go
 
-const terraformRepo = "https://github.com/opentofu/opentofu.git"
-const terraformVer = "v1.7.2"
+const (
+	oldPkg       = "github.com/opentofu/opentofu"
+	newPkg       = "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/opentofu"
+	opentofuRepo = "https://github.com/opentofu/opentofu.git"
+	opentofuVer  = "v1.7.2"
+)
 
 type file struct {
 	src        string
@@ -50,11 +54,11 @@ func main() {
 }
 
 func files() []file {
-	oldPkg := "github.com/opentofu/opentofu"
-	newPkg := "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/opentofu"
 
-	replacePkg := gofmtReplace(fmt.Sprintf(`"%s/internal/configs/configschema" -> "%s/configs/configschema"`,
-		oldPkg, newPkg))
+	replacePkg := gofmtReplace(fmt.Sprintf(
+		`"%s/internal/configs/configschema" -> "%s/configs/configschema"`,
+		oldPkg, newPkg,
+	))
 
 	fixupTFPlugin6Ref := gofmtReplace(fmt.Sprintf(
 		`"%s" -> "%s"`,
@@ -162,7 +166,7 @@ func ensureDirFor(path string) {
 
 func fetchRemote() string {
 	tmp := os.TempDir()
-	dir := filepath.Join(tmp, "terraform-"+terraformVer)
+	dir := filepath.Join(tmp, "opentofu-"+opentofuVer)
 	stat, err := os.Stat(dir)
 	if err != nil && !os.IsNotExist(err) {
 		log.Fatal(err)
@@ -171,7 +175,7 @@ func fetchRemote() string {
 		if err := os.Mkdir(dir, os.ModePerm); err != nil {
 			log.Fatal(err)
 		}
-		cmd := exec.Command("git", "clone", "-b", terraformVer, terraformRepo, dir)
+		cmd := exec.Command("git", "clone", "-b", opentofuVer, opentofuRepo, dir)
 		if err := cmd.Run(); err != nil {
 			log.Fatal(err)
 		}
@@ -200,7 +204,7 @@ func gofmtReplace(spec string) func(string) string {
 }
 
 func doNotEditWarning(code string) string {
-	return "// Code copied from " + terraformRepo + " by go generate; DO NOT EDIT.\n" + code
+	return "// Code copied from " + opentofuRepo + " by go generate; DO NOT EDIT.\n" + code
 }
 
 func fixupCodeTypeError(code string) string {
