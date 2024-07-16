@@ -105,15 +105,16 @@ type Schema interface {
 
 	// s.Elem() may return a nil, a Schema value, or a Resource value.
 	//
-	// The design of Elem() follows Terraform Plugin SDK directly. Case analysis:
-	//
 	// Case 1: s represents a compound type (s.Type() is one of TypeList, TypeSet or TypeMap), and s.Elem()
 	// represents the element of this type as a Schema value. That is, if s ~ List[String] then s.Elem() ~ String.
 	//
 	// Case 2: s represents a single-nested Terraform block. Logically this is like s having an anonymous object
 	// type such as s ~ {"x": Int, "y": String}. In this case s.Type() == TypeMap and s.Elem() is a Resource value.
-	// This value is not a real Resource and only implements the Schema field to enable inspecting s.Elem().Schema()
-	// to find out the names ("x", "y") and types (Int, String) of the block properties.
+	// This s.Elem() value is not a real Resource and only implements the Schema field to enable inspecting
+	// s.Elem().Schema() to find out the names ("x", "y") and types (Int, String) of the block properties. An
+	// additional distinction is that SDKv2 providers cannot represent single-nested blocks at all, so this case is
+	// only used for Plugin Framework providers. What SDKv2 providers typically do instead is declare a List-nested
+	// block with MaxItems=1.
 	//
 	// Case 3: s represents a list or set-nested Terraform block. That is, s ~ List[{"x": Int, "y": String}]. In
 	// this case s.Type() is one of TypeList, TypeSet, and s.Elem() is a Resource that encodes the object type
@@ -123,11 +124,14 @@ type Schema interface {
 	//
 	// Case 5: s.Elem() is nil but s.Type() is one of TypeList, TypeSet, TypeMap. The element type is unknown.
 	//
-	// This encoding cannot support map-nested blocks or object types as it would introduce confusion with Case 2,
-	// because Map[String, {"x": Int}] and {"x": Int} both have s.Type() = TypeMap and s.Elem() being a Resource.
-	// Following the Terraform design, only set and list-nested blocks are supported.
+	// This encoding cannot support map-nested blocks but it does not need to as those are not expressible in TF.
 	//
 	// See also: https://github.com/hashicorp/terraform-plugin-sdk/blob/main/helper/schema/schema.go#L231
+	//
+	// There is the additional complication for SDKv2-based providers, case 2 should not be used but is tolerated
+	// for backwards-compatibility per [2], but is interpreted to mean a string-string map.
+	//
+	// [2]: https://github.com/hashicorp/terraform-plugin-sdk/blob/main/helper/schema/core_schema_test.go#L220
 	Elem() interface{}
 
 	MaxItems() int
