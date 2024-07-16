@@ -20,8 +20,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2/internal/tf/configs/configschema"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2/internal/tf/plans/objchange"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/opentofu/configs/configschema"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/opentofu/plans/objchange"
 )
 
 func proposedNew(res *schema.Resource, prior, config hcty.Value) (hcty.Value, error) {
