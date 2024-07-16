@@ -58,3 +58,29 @@ func TestUpdateWritesSchemaVersion(t *testing.T) {
 	}
         `)
 }
+
+func TestUpdateWithIntID(t *testing.T) {
+	server := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
+	testCase := `
+        {
+          "method": "/pulumirpc.ResourceProvider/Update",
+          "request": {
+            "id": "1234",
+            "olds": {
+              "id": "1234"
+            },
+            "news": {
+              "id": "5678"
+            },
+            "urn": "urn:pulumi:test-stack::basicprogram::testbridge:index/intID:IntID::r1",
+            "preview": false
+          },
+          "response": {
+            "properties": {
+              "id": "90"
+            }
+          }
+        }
+        `
+	testutils.Replay(t, server, testCase)
+}
