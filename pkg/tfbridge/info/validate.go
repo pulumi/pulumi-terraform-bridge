@@ -116,7 +116,6 @@ func (c *infoCheck) checkProperty(path walk.SchemaPath, tfs shim.Schema, ps *Sch
 	// To prevent confusion, users are barred from specifying information on
 	// the associated Elem. All information should be specified directly on
 	// this SchemaInfo.
-	// TODO: Wrong object check, what is the intention here?
 	if obj, ok := util.CastToTypeObject(tfs); ok {
 		if ps.Elem != nil {
 			c.error(path, errElemForObject)

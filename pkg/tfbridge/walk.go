@@ -22,7 +22,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
-	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/util"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/walk"
 	md "github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
@@ -94,7 +94,6 @@ func propertyPathToSchemaPathInner(
 	// Detect single-nested blocks (object types).
 	//
 	// This is the case where (schema & schema.Elem) ~ {x: T}.
-	// TODO: Fix - the object type function is wrong.
 	if res, isRes := util.CastToTypeObject(schema); isRes {
 		return propertyPathToSchemaPath(basePath, propertyPath, res, schemaInfo.Fields)
 	}
@@ -215,7 +214,6 @@ func schemaPathToPropertyPathInner(
 	}
 
 	// Detect single-nested blocks (object types).
-	// TODO: Fix
 	if obj, isObject := util.CastToTypeObject(schema); isObject {
 		return schemaPathToPropertyPath(basePath, schemaPath, obj, schemaInfo.Fields)
 	}
