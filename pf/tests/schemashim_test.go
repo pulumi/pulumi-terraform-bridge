@@ -31,7 +31,7 @@ import (
 )
 
 // Test how various PF-based schemata translate to the shim.Schema layer.
-func TestRepresentations(t *testing.T) {
+func TestSchemaShimRepresentations(t *testing.T) {
 
 	type testCase struct {
 		name     string
