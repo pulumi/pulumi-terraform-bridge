@@ -493,8 +493,6 @@ func (ctx *conversionContext) makeTerraformInput(
 
 		var tfflds shim.SchemaMap
 
-		// We cannot use [shimutil.CastToTypeObject] because we have machinery that constructs invalid
-		// resource objects, such as [elemSchemas].
 		if tfs != nil {
 			if r, ok := tfs.Elem().(shim.Resource); ok {
 				tfflds = r.Schema()
