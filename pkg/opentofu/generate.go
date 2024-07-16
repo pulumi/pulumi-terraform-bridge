@@ -56,10 +56,17 @@ func files() []file {
 	replacePkg := gofmtReplace(fmt.Sprintf(`"%s/internal/configs/configschema" -> "%s/configs/configschema"`,
 		oldPkg, newPkg))
 
+	fixupTFPlugin6Ref := gofmtReplace(fmt.Sprintf(
+		`"%s" -> "%s"`,
+		fmt.Sprintf("%s/internal/tfplugin6", oldPkg),
+		fmt.Sprintf("%s/tfplugin6", newPkg),
+	))
+
 	transforms := []func(string) string{
 		replacePkg,
 		doNotEditWarning,
 		fixupCodeTypeError,
+		fixupTFPlugin6Ref,
 	}
 
 	return []file{
@@ -104,6 +111,27 @@ func files() []file {
 		{
 			src:        "internal/plans/objchange/plan_valid.go",
 			dest:       "plans/objchange/plan_valid.go",
+			transforms: transforms,
+		},
+		{
+			src:  "internal/plugin6/convert/schema.go",
+			dest: "convert/schema.go",
+			transforms: append(transforms, func(s string) string {
+				elided :=
+					`func ProtoToProviderSchema(s *proto.Schema) providers.Schema {
+	return providers.Schema{
+		Version: s.Version,
+		Block:   ProtoToConfigSchema(s.Block),
+	}
+}`
+				s = strings.ReplaceAll(s, elided, "")
+				s = strings.ReplaceAll(s, `"github.com/opentofu/opentofu/internal/providers"`, "")
+				return s
+			}),
+		},
+		{
+			src:        "internal/tfplugin6/tfplugin6.pb.go",
+			dest:       "tfplugin6/tfplugin6.pb.go",
 			transforms: transforms,
 		},
 	}
