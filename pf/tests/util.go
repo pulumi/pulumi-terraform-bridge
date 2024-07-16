@@ -25,7 +25,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
-	"gotest.tools/assert"
 
 	"github.com/pulumi/providertest/providers"
 	"github.com/pulumi/providertest/pulumitest"
@@ -40,7 +39,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/tokens"
 )
 
-func newProviderServer(t T, info tfbridge0.ProviderInfo) pulumirpc.ResourceProviderServer {
+func newProviderServer(t *testing.T, info tfbridge0.ProviderInfo) pulumirpc.ResourceProviderServer {
 	ctx := context.Background()
 	meta := genMetadata(t, info)
 	srv, err := tfbridge.NewProviderServer(ctx, nil, info, meta)
@@ -56,24 +55,14 @@ func newMuxedProviderServer(t *testing.T, info tfbridge0.ProviderInfo) pulumirpc
 	return p
 }
 
-// TODO: deduplicate?
-// This is an experimental API.
-type T interface {
-	Logf(string, ...any)
-	TempDir() string
-	Skip(...any)
-	require.TestingT
-	assert.TestingT
-	pulumitest.PT
-}
 
-func skipUnlessLinux(t T) {
+func skipUnlessLinux(t *testing.T) {
 	if ci, ok := os.LookupEnv("CI"); ok && ci == "true" && !strings.Contains(strings.ToLower(runtime.GOOS), "linux") {
 		t.Skip("Skipping on non-Linux platforms as our CI does not yet install Terraform CLI required for these tests")
 	}
 }
 
-func BridgedProvider(t T, prov *providerbuilder.Provider) info.Provider {
+func bridgedProvider(t *testing.T, prov *providerbuilder.Provider) info.Provider {
 	shimProvider := tfbridge.ShimProvider(prov)
 
 	provider := tfbridge0.ProviderInfo{
@@ -91,8 +80,7 @@ func BridgedProvider(t T, prov *providerbuilder.Provider) info.Provider {
 	return provider
 }
 
-// This is an experimental API.
-func StartPulumiProvider(t T, name, version string, providerInfo tfbridge0.ProviderInfo) (*rpcutil.ServeHandle, error) {
+func startPulumiProvider(t *testing.T, name, version string, providerInfo tfbridge0.ProviderInfo) (*rpcutil.ServeHandle, error) {
 	prov := newProviderServer(t, providerInfo)
 
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
@@ -109,8 +97,7 @@ func StartPulumiProvider(t T, name, version string, providerInfo tfbridge0.Provi
 }
 
 // TODO: deduplicate?
-// This is an experimental API.
-func PulCheck(t T, bridgedProvider info.Provider, program string) *pulumitest.PulumiTest {
+func pulCheck(t *testing.T, bridgedProvider info.Provider, program string) *pulumitest.PulumiTest {
 	skipUnlessLinux(t)
 	puwd := t.TempDir()
 	p := filepath.Join(puwd, "Pulumi.yaml")
@@ -125,7 +112,7 @@ func PulCheck(t T, bridgedProvider info.Provider, program string) *pulumitest.Pu
 		opttest.AttachProvider(
 			bridgedProvider.Name,
 			func(ctx context.Context, pt providers.PulumiTest) (providers.Port, error) {
-				handle, err := StartPulumiProvider(t, bridgedProvider.Name, bridgedProvider.Version, bridgedProvider)
+				handle, err := startPulumiProvider(t, bridgedProvider.Name, bridgedProvider.Version, bridgedProvider)
 				require.NoError(t, err)
 				return providers.Port(handle.Port), nil
 			},

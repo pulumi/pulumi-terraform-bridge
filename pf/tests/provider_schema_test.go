@@ -21,9 +21,9 @@ func TestBasic(t *testing.T) {
 		},
 	}
 
-	prov := BridgedProvider(t, &provBuilder)
+	prov := bridgedProvider(t, &provBuilder)
 
 	program := ``
 
-	PulCheck(t, prov, program)
+	pulCheck(t, prov, program)
 }
