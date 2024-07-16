@@ -2178,7 +2178,7 @@ func TestRefreshExtractInputsFromOutputsListOfObjects(t *testing.T) {
 	ruleSetProps := resource.PropertyMap{
 		"attachedDisks": resource.NewArrayProperty([]resource.PropertyValue{
 			resource.NewObjectProperty(resource.PropertyMap{
-				"name": resource.NewStringProperty("name1"),
+				"name":   resource.NewStringProperty("name1"),
 				"key256": resource.NewNullProperty(),
 			}),
 		}),
@@ -2187,7 +2187,7 @@ func TestRefreshExtractInputsFromOutputsListOfObjects(t *testing.T) {
 	ruleSetSchema := func() shim.SchemaMap {
 		blockList := func(elem schema.SchemaMap) shim.Schema {
 			s := schema.Schema{
-				Type: shim.TypeList,
+				Type:     shim.TypeList,
 				Optional: true,
 				Elem: (&schema.Resource{
 					Schema: elem,
@@ -2198,8 +2198,8 @@ func TestRefreshExtractInputsFromOutputsListOfObjects(t *testing.T) {
 
 		return schema.SchemaMap{
 			"attachedDisks": blockList(schema.SchemaMap{
-				"name": (&schema.Schema{Type: shim.TypeString, Optional: true}).Shim(),
-				"key256":   (&schema.Schema{Type: shim.TypeString, Computed: true}).Shim(),
+				"name":   (&schema.Schema{Type: shim.TypeString, Optional: true}).Shim(),
+				"key256": (&schema.Schema{Type: shim.TypeString, Computed: true}).Shim(),
 			}),
 		}
 	}
@@ -2208,7 +2208,7 @@ func TestRefreshExtractInputsFromOutputsListOfObjects(t *testing.T) {
 		return map[string]*SchemaInfo{
 			"attachedDisks": {
 				Fields: map[string]*SchemaInfo{
-					"name": {},
+					"name":   {},
 					"key256": {},
 				},
 			},
