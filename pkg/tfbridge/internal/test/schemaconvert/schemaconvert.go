@@ -1,3 +1,20 @@
+// Copyright 2016-2024, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//	http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// This is a test utility for converting sdkv2 schemas to sdkv1 to allow testing both without
+// having to specify the schema twice.
+// Only works with a part of the schema, will throw errors on unsupported features.
 package schemaconvert
 
 import (
@@ -6,46 +23,40 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-func Sdkv2ToV1Type(t v2Schema.ValueType) v1Schema.ValueType {
+func sdkv2ToV1Type(t v2Schema.ValueType) v1Schema.ValueType {
 	return v1Schema.ValueType(t)
 }
 
-func Sdkv2ToV1SchemaOrResource(elem interface{}) interface{} {
+func sdkv2ToV1SchemaOrResource(elem interface{}) interface{} {
 	switch elem := elem.(type) {
 	case nil:
 		return nil
 	case *v2Schema.Schema:
 		return Sdkv2ToV1Schema(elem)
 	case *v2Schema.Resource:
-		return Sdkv2ToV1Resource(elem)
+		return sdkv2ToV1Resource(elem)
 	default:
 		contract.Failf("unexpected type %T", elem)
 		return nil
 	}
 }
 
-func Sdkv2ToV1Resource(sch *v2Schema.Resource) *v1Schema.Resource {
-	//nolint:staticcheck
-	if sch.MigrateState != nil {
-		contract.Failf("MigrateState is not supported in conversion")
-	}
-	if sch.StateUpgraders != nil {
-		contract.Failf("StateUpgraders is not supported in conversion")
-	}
-	//nolint:staticcheck
-	if sch.Create != nil || sch.Read != nil || sch.Update != nil || sch.Delete != nil || sch.Exists != nil ||
-		sch.CreateContext != nil || sch.ReadContext != nil || sch.UpdateContext != nil ||
-		sch.DeleteContext != nil || sch.Importer != nil {
-		contract.Failf("runtime methods not supported in conversion")
-	}
+func sdkv2ToV1Resource(sch *v2Schema.Resource) *v1Schema.Resource {
+	//nolint:staticcheck // deprecated
+	contract.Assertf(sch.MigrateState == nil, "MigrateState is not supported in conversion")
+	contract.Assertf(sch.StateUpgraders == nil, "StateUpgraders is not supported in conversion")
 
-	if sch.CustomizeDiff != nil {
-		contract.Failf("CustomizeDiff is not supported in conversion")
-	}
+	//nolint:staticcheck // deprecated
+	contract.Assertf(sch.Create == nil && sch.Read == nil && sch.Update == nil && sch.Delete == nil && sch.Exists == nil &&
+		sch.CreateContext == nil && sch.ReadContext == nil && sch.UpdateContext == nil &&
+		sch.DeleteContext == nil && sch.Importer == nil,
+		"runtime methods not supported in conversion")
 
-	timeouts := v1Schema.ResourceTimeout{}
+	contract.Assertf(sch.CustomizeDiff == nil, "CustomizeDiff is not supported in conversion")
+
+	var timeouts *v1Schema.ResourceTimeout
 	if sch.Timeouts != nil {
-		timeouts = v1Schema.ResourceTimeout{
+		timeouts = &v1Schema.ResourceTimeout{
 			Create:  sch.Timeouts.Create,
 			Read:    sch.Timeouts.Read,
 			Update:  sch.Timeouts.Update,
@@ -53,16 +64,12 @@ func Sdkv2ToV1Resource(sch *v2Schema.Resource) *v1Schema.Resource {
 			Default: sch.Timeouts.Default,
 		}
 	}
-	timoutsPtr := &timeouts
-	if sch.Timeouts == nil {
-		timoutsPtr = nil
-	}
 
 	return &v1Schema.Resource{
 		Schema:             Sdkv2ToV1SchemaMap(sch.Schema),
 		SchemaVersion:      sch.SchemaVersion,
 		DeprecationMessage: sch.DeprecationMessage,
-		Timeouts:           timoutsPtr,
+		Timeouts:           timeouts,
 	}
 }
 
@@ -100,7 +107,7 @@ func Sdkv2ToV1Schema(sch *v2Schema.Schema) *v1Schema.Schema {
 	}
 
 	return &v1Schema.Schema{
-		Type:         Sdkv2ToV1Type(sch.Type),
+		Type:         sdkv2ToV1Type(sch.Type),
 		Optional:     sch.Optional,
 		Required:     sch.Required,
 		Default:      sch.Default,
@@ -110,7 +117,7 @@ func Sdkv2ToV1Schema(sch *v2Schema.Schema) *v1Schema.Schema {
 		Computed:     sch.Computed,
 		ForceNew:     sch.ForceNew,
 		StateFunc:    stateFunc,
-		Elem:         Sdkv2ToV1SchemaOrResource(sch.Elem),
+		Elem:         sdkv2ToV1SchemaOrResource(sch.Elem),
 		MaxItems:     sch.MaxItems,
 		MinItems:     sch.MinItems,
 		Set:          set,
