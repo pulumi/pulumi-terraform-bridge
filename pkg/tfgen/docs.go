@@ -2279,54 +2279,55 @@ func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
 	contentStr = writeFrontMatter(title) + contentStr
 
 	//TODO: See https://github.com/pulumi/pulumi-terraform-bridge/issues/2078
-	// - translate code blocks with code choosers
-	// - apply default edit rules
-	// - reformat TF names
+	// - translate code blocks with code choosers - CHECK
+	// - apply default edit rules - CHECK
+	// - reformat TF names - CHECK*
 	// - Translation for certain headers such as "Arguments Reference" or "Configuration block"
 	// - Ability to omit irrelevant sections
+	// - Actually get the pulumi.yaml file rendered though
 
 	// Translate code blocks to Pulumi
-	contentStr, err := translateCodeBlocks(contentStr, g)
-	if err != nil {
-		return nil, err
-	}
+	//contentStr, err := translateCodeBlocks(contentStr, g)
+	//if err != nil {
+	//	return nil, err
+	//}
 
 	// Implement default edit rules for documentation files
 
-	//// Replace content such as "`terraform plan`" with "`pulumi preview`"
-	//contentBytes, err := boundedReplace("[tT]erraform [pP]lan", "pulumi preview").Edit(docFile.FileName, []byte(contentStr))
-	//if err != nil {
-	//	return nil, err
-	//}
-	//// Replace content such as "Terraform Apply." with " pulumi up."
-	//contentBytes, err = boundedReplace("[tT]erraform [aA]pply", "pulumi up").Edit(docFile.FileName, contentBytes)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//// A markdown link that has terraform in the link component.
-	//contentBytes, err = reReplace(`\[([^\]]*)\]\(.*terraform([^\)]*)\)`, "$1").Edit(docFile.FileName, contentBytes)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//// Replace content such as "jdoe@hashicorp.com" with "jdoe@example.com"
-	//contentBytes, err = reReplace("@hashicorp.com", "@example.com").Edit(docFile.FileName, contentBytes)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//// Replace all "T/terraform" strings to avoid eliding sections in reformatText TODO: use reReplace?
-	//contentStr = strings.ReplaceAll(string(contentBytes), "terraform", "pulumi")
-	//contentStr = strings.ReplaceAll(contentStr, "Terraform", "Pulumi")
-	//
-	//// Replace all "H/hashicorp strings
-	//contentStr = strings.ReplaceAll(contentStr, "hashicorp", "pulumi")
-	//contentStr = strings.ReplaceAll(contentStr, "Hashicorp", "Pulumi")
+	// Replace content such as "`terraform plan`" with "`pulumi preview`"
+	contentBytes, err := boundedReplace("[tT]erraform [pP]lan", "pulumi preview").Edit(docFile.FileName, []byte(contentStr))
+	if err != nil {
+		return nil, err
+	}
+	// Replace content such as "Terraform Apply." with " pulumi up."
+	contentBytes, err = boundedReplace("[tT]erraform [aA]pply", "pulumi up").Edit(docFile.FileName, contentBytes)
+	if err != nil {
+		return nil, err
+	}
+	// A markdown link that has terraform in the link component.
+	contentBytes, err = reReplace(`\[([^\]]*)\]\(.*terraform([^\)]*)\)`, "$1").Edit(docFile.FileName, contentBytes)
+	if err != nil {
+		return nil, err
+	}
+	// Replace content such as "jdoe@hashicorp.com" with "jdoe@example.com"
+	contentBytes, err = reReplace("@hashicorp.com", "@example.com").Edit(docFile.FileName, contentBytes)
+	if err != nil {
+		return nil, err
+	}
+	// Replace all "T/terraform" strings to avoid eliding sections in reformatText TODO: use reReplace?
+	contentStr = strings.ReplaceAll(string(contentBytes), "terraform", "pulumi")
+	contentStr = strings.ReplaceAll(contentStr, "Terraform", "Pulumi")
 
-	////Reformat text - TODO: make a language decision. Do we want a language chooser here?
-	//contentStr, _ = reformatText(infoContext{
-	//	language: "nodejs",
-	//	pkg:      g.pkg,
-	//	info:     g.info,
-	//}, contentStr, nil)
+	// Replace all "H/hashicorp strings
+	contentStr = strings.ReplaceAll(contentStr, "hashicorp", "pulumi")
+	contentStr = strings.ReplaceAll(contentStr, "Hashicorp", "Pulumi")
+
+	//Reformat text - TODO: make a language decision. Do we want a language chooser here?
+	contentStr, _ = reformatText(infoContext{
+		language: "nodejs",
+		pkg:      g.pkg,
+		info:     g.info,
+	}, contentStr, nil)
 
 	//TODO: Light translation for certain headers such as "Arguments Reference"
 	// or "Configuration block"
