@@ -43,7 +43,7 @@ type tfDriver struct {
 	cwd            string
 	providerName   string
 	reattachConfig *plugin.ReattachConfig
-	res            *schema.Resource
+	resMap         map[string]*schema.Resource
 }
 
 type tfPlan struct {
@@ -51,17 +51,13 @@ type tfPlan struct {
 	RawPlan  any
 }
 
-func newTfDriver(t T, dir, providerName, resName string, res *schema.Resource) *tfDriver {
+func newTfDriver(t T, dir, providerName string, resMap map[string]*schema.Resource) *tfDriver {
 	// Did not find a less intrusive way to disable annoying logging:
 	os.Setenv("TF_LOG_PROVIDER", "off")
 	os.Setenv("TF_LOG_SDK", "off")
 	os.Setenv("TF_LOG_SDK_PROTO", "off")
 
-	p := &schema.Provider{
-		ResourcesMap: map[string]*schema.Resource{
-			resName: res,
-		},
-	}
+	p := &schema.Provider{ResourcesMap: resMap}
 	pulcheck.EnsureProviderValid(t, p)
 
 	serverFactory := func() tfprotov5.ProviderServer {
@@ -89,15 +85,15 @@ func newTfDriver(t T, dir, providerName, resName string, res *schema.Resource) *
 		providerName:   providerName,
 		cwd:            dir,
 		reattachConfig: reattachConfig,
-		res:            res,
+		resMap:         resMap,
 	}
 }
 
-func (d *tfDriver) coalesce(t T, x any) *tftypes.Value {
+func coalesce(t T, resSchema map[string]*schema.Schema, x any) *tftypes.Value {
 	if x == nil {
 		return nil
 	}
-	objectType := convert.InferObjectType(sdkv2.NewSchemaMap(d.res.Schema), nil)
+	objectType := convert.InferObjectType(sdkv2.NewSchemaMap(resSchema), nil)
 	for k := range objectType.AttributeTypes {
 		objectType.OptionalAttributes[k] = struct{}{}
 	}
@@ -106,12 +102,20 @@ func (d *tfDriver) coalesce(t T, x any) *tftypes.Value {
 	return &v
 }
 
+type tfRes struct {
+	resourceType string
+	resource schema.Resource
+	rawConfig any
+}
+
 func (d *tfDriver) writePlanApply(
-	t T,
-	resourceSchema map[string]*schema.Schema,
-	resourceType, resourceName string,
-	rawConfig any,
+	t T, resources map[string]tfRes,
 ) *tfPlan {
+	coalescedConfig := make(map[string]*tftypes.Value, len(resources))
+	for name, res := range resources {
+		config := coalesce(t, res.resource.Schema, res.rawConfig)
+		coalescedConfig[name] = config
+	}
 	config := d.coalesce(t, rawConfig)
 	if config != nil {
 		d.write(t, resourceSchema, resourceType, resourceName, *config)
@@ -132,7 +136,7 @@ func (d *tfDriver) write(
 	require.NoError(t, err)
 	t.Logf("HCL: \n%s\n", buf.String())
 	bytes := buf.Bytes()
-	err = os.WriteFile(filepath.Join(d.cwd, "test.tf"), bytes, 0600)
+	err = os.WriteFile(filepath.Join(d.cwd, "test.tf"), bytes, 0o600)
 	require.NoErrorf(t, err, "writing test.tf")
 }
 

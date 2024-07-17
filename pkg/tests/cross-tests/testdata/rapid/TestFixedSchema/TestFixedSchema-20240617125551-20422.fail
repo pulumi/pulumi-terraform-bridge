@@ -1,0 +1,84 @@
+# 2024/06/17 12:55:51 TestFixedSchema [rapid] draw config1: 
+# t0 := tftypes.Object{AttributeTypes: map[string]tftypes.Type{
+#   "bool_prop": tftypes.Bool,
+#   "id": tftypes.String,
+# }}
+# tftypes.NewValue(t0, map[string]tftypes.Value{
+#   "bool_prop": tftypes.NewValue(tftypes.Bool, true),
+#   "id": tftypes.NewValue(tftypes.String, "newId"),
+# })
+# 2024/06/17 12:55:51 TestFixedSchema Config1:
+# 
+# t0 := tftypes.Object{AttributeTypes: map[string]tftypes.Type{
+#   "bool_prop": tftypes.Bool,
+#   "id": tftypes.String,
+# }}
+# tftypes.NewValue(t0, map[string]tftypes.Value{
+#   "bool_prop": tftypes.NewValue(tftypes.Bool, true),
+#   "id": tftypes.NewValue(tftypes.String, "newId"),
+# })
+# 2024/06/17 12:55:51 TestFixedSchema [rapid] draw config2: 
+# t0 := tftypes.Object{AttributeTypes: map[string]tftypes.Type{
+#   "bool_prop": tftypes.Bool,
+#   "id": tftypes.String,
+# }}
+# tftypes.NewValue(t0, map[string]tftypes.Value{
+#   "bool_prop": tftypes.NewValue(tftypes.Bool, true),
+#   "id": tftypes.NewValue(tftypes.String, "newId"),
+# })
+# 2024/06/17 12:55:51 TestFixedSchema Config2:
+# 
+# t0 := tftypes.Object{AttributeTypes: map[string]tftypes.Type{
+#   "bool_prop": tftypes.Bool,
+#   "id": tftypes.String,
+# }}
+# tftypes.NewValue(t0, map[string]tftypes.Value{
+#   "bool_prop": tftypes.NewValue(tftypes.Bool, true),
+#   "id": tftypes.NewValue(tftypes.String, "newId"),
+# })
+# 2024/06/17 12:55:51 TestFixedSchema infer object type: tftypes.Object["bool_prop":tftypes.Bool?, "id":tftypes.String?]
+# 2024/06/17 12:55:51 TestFixedSchema HCL: 
+# resource "crossprovider_test_res" "example" {
+#   bool_prop = true
+#   id        = "newId"
+# }
+# 
+# 2024/06/17 12:55:51 TestFixedSchema terraform plan -refresh=false -out /var/folders/82/nqnqw81s1h56l5nv940f9mq00000gn/T/TestFixedSchema791404135/009/test.tfplan
+# 2024/06/17 12:55:51 TestFixedSchema 
+# 	Error Trace:	/Users/vvm/code/pulumi-terraform-bridge/pkg/tests/cross-tests/exec.go:36
+# 	            				/Users/vvm/code/pulumi-terraform-bridge/pkg/tests/cross-tests/tf_driver.go:142
+# 	            				/Users/vvm/code/pulumi-terraform-bridge/pkg/tests/cross-tests/tf_driver.go:119
+# 	            				/Users/vvm/code/pulumi-terraform-bridge/pkg/tests/cross-tests/diff_check.go:51
+# 	            				/Users/vvm/code/pulumi-terraform-bridge/pkg/tests/cross-tests/rapid_test.go:153
+# 	            				/Users/vvm/go/pkg/mod/pgregory.net/rapid@v0.6.1/engine.go:352
+# 	            				/Users/vvm/go/pkg/mod/pgregory.net/rapid@v0.6.1/engine.go:361
+# 	            				/Users/vvm/go/pkg/mod/pgregory.net/rapid@v0.6.1/engine.go:204
+# 	            				/Users/vvm/go/pkg/mod/pgregory.net/rapid@v0.6.1/engine.go:116
+# 	            				/Users/vvm/code/pulumi-terraform-bridge/pkg/tests/cross-tests/rapid_test.go:139
+# 	Error:      	Received unexpected error:
+# 	            	exit status 1
+# 	Test:       	TestFixedSchema
+# 	Messages:   	error from `terraform plan -refresh=false -out /var/folders/82/nqnqw81s1h56l5nv940f9mq00000gn/T/TestFixedSchema791404135/009/test.tfplan`
+# 	            	
+# 	            	Stdout:
+# 	            	
+# 	            	
+# 	            	Stderr:
+# 	            	[31m╷[0m[0m
+# 	            	[31m│[0m [0m[1m[31mError: [0m[0m[1mValue for unconfigurable attribute[0m
+# 	            	[31m│[0m [0m
+# 	            	[31m│[0m [0m[0m  with crossprovider_test_res.example,
+# 	            	[31m│[0m [0m  on test.tf line 3, in resource "crossprovider_test_res" "example":
+# 	            	[31m│[0m [0m   3:   id        = [4m"newId"[0m[0m
+# 	            	[31m│[0m [0m
+# 	            	[31m│[0m [0mCan't configure a value for "id": its value will be decided automatically
+# 	            	[31m│[0m [0mbased on the result of applying this configuration.
+# 	            	[31m╵[0m[0m
+# 	            	
+# 	            	
+# 
+v0.4.8#3173488006520643257
+0x0
+0x0
+0x0
+0x0
