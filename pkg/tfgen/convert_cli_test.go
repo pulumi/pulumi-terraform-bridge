@@ -89,7 +89,7 @@ func TestConvertViaPulumiCLI(t *testing.T) {
 			}
 		}
 		if !found {
-			t.Logf("pulumi plugin install resource terraform v1.0.18")
+			t.Logf("pulumi plugin install converter terraform v1.0.18")
 			err := exec.Command(pulumi, "plugin", "install", "converter", "terraform", "v1.0.18").Run()
 			require.NoError(t, err)
 		}
