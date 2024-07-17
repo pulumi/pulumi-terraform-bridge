@@ -335,7 +335,7 @@ func makeTerraformInputsWithOptions(
 	return inputs, cctx.Assets, err
 }
 
-// Unused internally, use makeTerraformInputsWithOptions instead.
+// Deprecated: missing some important functionality, use makeTerraformInputsWithOptions instead.
 func MakeTerraformInputs(
 	ctx context.Context, instance *PulumiResource, config resource.PropertyMap,
 	olds, news resource.PropertyMap, tfs shim.SchemaMap, ps map[string]*SchemaInfo,
@@ -1249,7 +1249,7 @@ func MakeTerraformConfig(ctx context.Context, p *Provider, m resource.PropertyMa
 }
 
 // UnmarshalTerraformConfig creates a Terraform config map from a Pulumi RPC property map.
-// Unused internally.
+// Deprecated: use MakeTerraformConfig instead.
 func UnmarshalTerraformConfig(ctx context.Context, p *Provider, m *pbstruct.Struct,
 	tfs shim.SchemaMap, ps map[string]*SchemaInfo,
 	label string) (shim.ResourceConfig, AssetTable, error) {
@@ -1338,7 +1338,7 @@ func makeTerraformStateWithOpts(
 // MakeTerraformState converts a Pulumi property bag into its Terraform equivalent.  This requires
 // flattening everything and serializing individual properties as strings.  This is a little awkward, but it's how
 // Terraform represents resource properties (schemas are simply sugar on top).
-// Prefer makeTerraformStateWithOpts for internal use.
+// Deprecated: Use makeTerraformStateWithOpts instead.
 func MakeTerraformState(
 	ctx context.Context, res Resource, id string, m resource.PropertyMap,
 ) (shim.InstanceState, error) {
@@ -1373,7 +1373,7 @@ func unmarshalTerraformStateWithOpts(
 }
 
 // UnmarshalTerraformState unmarshals a Terraform instance state from an RPC property map.
-// Prefer unmarshalTerraformStateWithOpts for internal use.
+// Deprecated: Use unmarshalTerraformStateWithOpts instead.
 func UnmarshalTerraformState(
 	ctx context.Context, r Resource, id string, m *pbstruct.Struct, l string,
 ) (shim.InstanceState, error) {
