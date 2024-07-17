@@ -60,6 +60,7 @@ func accTestOptions(t *testing.T) *integration.ProgramTestOptions {
 		Env: []string{
 			fmt.Sprintf("PATH=%s:%s", filepath.Join(cwd, "..", "..", "bin"), pathVal),
 			"PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=true",
+			"PULUMI_IGNORE_AMBIENT_PLUGINS=false",
 		},
 	}
 }
