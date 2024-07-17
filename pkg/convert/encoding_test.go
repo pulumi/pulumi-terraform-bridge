@@ -22,6 +22,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/hexops/autogold/v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
@@ -628,6 +629,56 @@ func TestTupleDerivations(t *testing.T) {
 			back, err := DecodePropertyMap(context.Background(), dec, tfv)
 			require.NoError(t, err)
 			require.Equal(t, tc.sample, back)
+		})
+	}
+}
+
+func TestAdapter(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    resource.PropertyValue
+		expected tftypes.Value
+		error    bool
+	}{
+		{
+			name:     "valid",
+			input:    resource.NewProperty("123"),
+			expected: tftypesNewValue(tftypes.Number, 123),
+		},
+		{
+			name:  "invalid",
+			input: resource.NewProperty("abc"),
+			error: true,
+		},
+		{
+			name:     "computed-output",
+			input:    resource.NewOutputProperty(resource.Output{}),
+			expected: tftypes.NewValue(tftypes.Number, tftypes.UnknownValue),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run("", func(t *testing.T) {
+			t.Run("encoder", func(t *testing.T) {
+				v, err := newIntOverrideStringEncoder().fromPropertyValue(tt.input)
+				if !tt.error {
+					assert.NoError(t, err)
+					assert.True(t, v.Equal(tt.expected))
+				} else {
+					assert.Error(t, err)
+				}
+			})
+			t.Run("decoder", func(t *testing.T) {
+				if tt.error {
+					t.Logf("skipping since the encoder should error")
+					return
+				}
+				v, err := newStringOverIntDecoder().toPropertyValue(tt.expected)
+				assert.NoError(t, err)
+				if !assert.True(t, v.DeepEquals(tt.input)) {
+					assert.Equal(t, v, tt.input)
+				}
+			})
 		})
 	}
 }
