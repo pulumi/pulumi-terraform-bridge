@@ -141,6 +141,10 @@ func (p *FilteringProvider) IsSet(ctx context.Context, v interface{}) ([]interfa
 	return p.Provider.IsSet(ctx, v)
 }
 
+func (p *FilteringProvider) SupportsUnknownCollections() bool {
+	return p.Provider.SupportsUnknownCollections()
+}
+
 type filteringMap struct {
 	inner       shim.ResourceMap
 	tokenFilter func(string) bool

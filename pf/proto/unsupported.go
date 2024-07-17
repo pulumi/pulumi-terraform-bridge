@@ -82,3 +82,7 @@ func (Provider) NewResourceConfig(ctx context.Context, object map[string]interfa
 func (Provider) IsSet(ctx context.Context, v interface{}) ([]interface{}, bool) {
 	panic("Unimplemented")
 }
+
+func (Provider) SupportsUnknownCollections() bool {
+	panic("Unimplemented")
+}
