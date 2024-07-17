@@ -844,6 +844,23 @@ content 2`
 	}
 
 	runTest(gcpDoc2, gcpDoc2Expected)
+
+	misformattedDocNoPanic := `## jetstream_kv_entry Resource
+content
+### Example
+content`
+
+	misformattedDocsExpected := [][]string{
+		nil,
+		{
+			"## jetstream_kv_entry Resource",
+			"content",
+			"### Example",
+			"content",
+		},
+	}
+
+	runTest(misformattedDocNoPanic, misformattedDocsExpected)
 }
 
 func TestFormatEntityName(t *testing.T) {
