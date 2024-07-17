@@ -221,9 +221,9 @@ func TestResourceWithoutID(t *testing.T) {
 	bin := filepath.Join(wd, "..", "bin")
 
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Env:       []string{fmt.Sprintf("PATH=%s", bin), "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=true"},
+		Env:       []string{fmt.Sprintf("PATH=%s", bin)},
 		Dir:       filepath.Join("..", "testdata", "resource-without-id"),
-		Overrides: map[string]string{"random": "4.16.3"},
+		Overrides: map[string]string{"random": "v4.16.3"},
 	})
 }
 

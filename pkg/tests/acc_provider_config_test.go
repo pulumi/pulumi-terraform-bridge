@@ -28,8 +28,7 @@ func TestAccProviderConfig(t *testing.T) {
 			assert.Equal(t, stack.Outputs["generatedRandomString"],
 				stack.Outputs["providerRandomString"])
 		},
-		Env:       []string{"PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=true"},
-		Overrides: map[string]string{"random": "4.16.3"},
+		Overrides: map[string]string{"random": "v4.16.3"},
 	})
 	integration.ProgramTest(t, &opts)
 }

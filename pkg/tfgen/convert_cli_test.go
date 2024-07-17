@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -57,43 +56,6 @@ func TestConvertViaPulumiCLI(t *testing.T) {
 		t.Skipf("Skipping on Windows due to a test setup issue")
 	}
 	t.Setenv("PULUMI_CONVERT", "1")
-	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "true")
-
-	t.Run("setup", func(t *testing.T) {
-		// Minimize number of GH API calls by manually installing the plugin.
-		pulumi, err := exec.LookPath("pulumi")
-		require.NoError(t, err)
-
-		t.Logf("pulumi plugin ls --json")
-		cmd := exec.Command(pulumi, "plugin", "ls", "--json")
-		var buf bytes.Buffer
-		cmd.Stdout = &buf
-		err = cmd.Run()
-		require.NoError(t, err)
-
-		type plugin struct {
-			Name    string `json:"name"`
-			Version string `json:"version"`
-		}
-
-		var installedPlugins []plugin
-		err = json.Unmarshal(buf.Bytes(), &installedPlugins)
-		require.NoError(t, err)
-
-		// Ensure the converter plugin is installed pulumi-converter-terraform
-		found := false
-		for _, p := range installedPlugins {
-			if p.Name == "terraform" && p.Version == "1.0.18" {
-				found = true
-				break
-			}
-		}
-		if !found {
-			t.Logf("pulumi plugin install converter terraform 1.0.18")
-			err := exec.Command(pulumi, "plugin", "install", "converter", "terraform", "1.0.18").Run()
-			require.NoError(t, err)
-		}
-	})
 
 	simpleResourceTF := `
 resource "simple_resource" "a_resource" {
