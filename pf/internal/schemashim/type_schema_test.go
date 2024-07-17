@@ -1,11 +1,13 @@
 package schemashim
 
 import (
+	"testing"
+
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
-	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/stretchr/testify/assert"
-	"testing"
+
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
 func TestMapAttribute(t *testing.T) {
