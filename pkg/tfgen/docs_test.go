@@ -1385,8 +1385,8 @@ func TestConvertExamplesInner(t *testing.T) {
 	assert.NoError(t, err)
 
 	type testCase struct {
-		name           string
-		path           examplePath
+		name string
+		path examplePath
 	}
 
 	testCases := []testCase{
