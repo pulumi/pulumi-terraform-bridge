@@ -28,7 +28,6 @@ func TestAccProviderConfig(t *testing.T) {
 			assert.Equal(t, stack.Outputs["generatedRandomString"],
 				stack.Outputs["providerRandomString"])
 		},
-		Overrides: map[string]string{"random": "v4.16.3"},
 	})
 	integration.ProgramTest(t, &opts)
 }
