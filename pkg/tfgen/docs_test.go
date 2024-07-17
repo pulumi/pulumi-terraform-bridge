@@ -1285,6 +1285,7 @@ func TestConvertExamples(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skipf("Skipping on windows to avoid failing on incorrect newline handling")
 	}
+	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "true")
 
 	type testCase struct {
 		name string

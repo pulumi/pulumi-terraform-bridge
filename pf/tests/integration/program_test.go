@@ -215,15 +215,15 @@ func TestTracePropagation(t *testing.T) {
 // Note that random_bytes is an interesting resource that does not specify an ID where Pulumi requires it. Add a test
 // for it to make sure this continues working.
 func TestResourceWithoutID(t *testing.T) {
-	t.Skipf("Flaky due to GH rate limits [pulumi/pulumi-terraform-bridge#2191]")
 	wd, err := os.Getwd()
 	assert.NoError(t, err)
 
 	bin := filepath.Join(wd, "..", "bin")
 
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Env: []string{fmt.Sprintf("PATH=%s", bin)},
-		Dir: filepath.Join("..", "testdata", "resource-without-id"),
+		Env:       []string{fmt.Sprintf("PATH=%s", bin), "PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=true"},
+		Dir:       filepath.Join("..", "testdata", "resource-without-id"),
+		Overrides: map[string]string{"random": "4.16.3"},
 	})
 }
 

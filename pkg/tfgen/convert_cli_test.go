@@ -48,7 +48,6 @@ import (
 )
 
 func TestConvertViaPulumiCLI(t *testing.T) {
-	t.Skipf("Very flaky [pulumi/pulumi#16469]")
 	if runtime.GOOS == "windows" {
 		// Currently there is a test issue in CI/test setup:
 		//
@@ -57,7 +56,7 @@ func TestConvertViaPulumiCLI(t *testing.T) {
 		t.Skipf("Skipping on Windows due to a test setup issue")
 	}
 	t.Setenv("PULUMI_CONVERT", "1")
-	t.Setenv("DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "true")
+	t.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "true")
 
 	simpleResourceTF := `
 resource "simple_resource" "a_resource" {
