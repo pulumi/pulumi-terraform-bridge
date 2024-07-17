@@ -1,7 +1,7 @@
 SHELL            := sh
 PROJECT          := github.com/pulumi/pulumi-terraform-bridge
 TESTPARALLELISM  := 10
-PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION := true
+export PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION := true
 
 PROJECT_DIR := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 

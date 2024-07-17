@@ -1,5 +1,5 @@
 TESTPARALLELISM := 10
-PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION := true
+export PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION := true
 
 install_plugins::
 	pulumi plugin install resource random 4.16.3
