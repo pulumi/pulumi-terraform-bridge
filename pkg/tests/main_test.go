@@ -55,7 +55,7 @@ func accTestOptions(t *testing.T) *integration.ProgramTestOptions {
 
 	return &integration.ProgramTestOptions{
 		Env: []string{
-			fmt.Sprintf("PATH=%s", filepath.Join(cwd, "..", "..", "bin")),
+			fmt.Sprintf("PATH=%s:$PATH", filepath.Join(cwd, "..", "..", "bin")),
 		},
 	}
 }
