@@ -24,11 +24,12 @@ import (
 func TestAccProviderConfig(t *testing.T) {
 	opts := accTestOptions(t).With(integration.ProgramTestOptions{
 		Dir: "provider-config",
-
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			assert.Equal(t, stack.Outputs["generatedRandomString"],
 				stack.Outputs["providerRandomString"])
 		},
+		Env:       []string{"PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=true"},
+		Overrides: map[string]string{"random": "4.16.3"},
 	})
 	integration.ProgramTest(t, &opts)
 }
