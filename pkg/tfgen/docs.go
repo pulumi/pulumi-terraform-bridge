@@ -41,6 +41,7 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/convert"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/ryboe/q"
 )
 
 const (
@@ -2286,11 +2287,11 @@ func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
 	// - Ability to omit irrelevant sections
 	// - Actually get the pulumi.yaml file rendered though
 
-	// Translate code blocks to Pulumi
-	//contentStr, err := translateCodeBlocks(contentStr, g)
-	//if err != nil {
-	//	return nil, err
-	//}
+	//Translate code blocks to Pulumi
+	contentStr, err := translateCodeBlocks(contentStr, g)
+	if err != nil {
+		return nil, err
+	}
 
 	// Implement default edit rules for documentation files
 
@@ -2395,6 +2396,29 @@ func translateCodeBlocks(contentStr string, g *Generator) (string, error) {
 		return contentStr, nil
 	}
 	startIndex := 0
+	outDir, err := os.MkdirTemp("", "installation-examples-output")
+	if err != nil {
+		return "", err
+	}
+	mappingsDir := filepath.Join(outDir, "mappings")
+	mappings := []tfbridge.ProviderInfo{
+		g.cliConverter().info,
+	}
+	// Prepare mappings folder if necessary.
+	if len(mappings) > 0 {
+		if err := os.MkdirAll(mappingsDir, 0755); err != nil {
+			return "", fmt.Errorf("convertViaPulumiCLI: failed to write mappings folder: %w", err)
+		}
+	}
+	var mappingsArgs []string
+	for _, info := range mappings {
+		mappingsArgs = append(mappingsArgs, "--mappings", g.cliConverter().mappingsFile(mappingsDir, info))
+	}
+	defer func() {
+		if err := os.RemoveAll(outDir); err != nil {
+			err = fmt.Errorf("failed to clean up installation-examples-output dir: %w", err)
+		}
+	}()
 	for i, block := range codeBlocks {
 		// Write the content up to the start of the code block
 		returnContent = returnContent + contentStr[startIndex:block.start]
@@ -2409,6 +2433,38 @@ func translateCodeBlocks(contentStr string, g *Generator) (string, error) {
 		// Only convert code blocks that we have reasonable suspicion of actually being Terraform.
 		if fenceLanguage == "```terraform\n" || fenceLanguage == "```hcl\n" ||
 			(fenceLanguage == "```\n" && guessIsHCL(code)) {
+			//pulumiPath, err := exec.LookPath("pulumi")
+			//if err != nil {
+			//	return "", fmt.Errorf("couldn't find pulumi path")
+			//}
+
+			//cmdArgs := []string{
+			//	"convert",
+			//	"--from",
+			//	"terraform",
+			//	"--language",
+			//	"pcl",
+			//	"--out",
+			//	outDir,
+			//}
+			//cmdArgs = append(cmdArgs, mappingsArgs...)
+			//
+			//cmd := exec.Command(pulumiPath, cmdArgs...)
+			//var stdout, stderr bytes.Buffer
+			//cmd.Stdout, cmd.Stderr = &stdout, &stderr
+			//q.Q(cmd.String())
+			//if err := cmd.Run(); err != nil {
+			//	return "", fmt.Errorf("convertViaPulumiCLI: pulumi command failed: %w\n"+
+			//		"Stdout:\n%s\n\n"+
+			//		"Stderr:\n%s\n\n",
+			//		err, stdout.String(), stderr.String())
+			//}
+			//
+			//files, err := os.ReadDir(outDir)
+			//q.Q(files)
+			//panic("at the disco")
+
+			///TODO: continue here
 
 			//  Make an example to record in the cliConverter.
 			fileName := fmt.Sprintf("configuration-installation-%d", i)
@@ -2419,6 +2475,8 @@ func translateCodeBlocks(contentStr string, g *Generator) (string, error) {
 			result, err := g.cliConverter().convertViaPulumiCLI(examples, []tfbridge.ProviderInfo{
 				g.cliConverter().info,
 			})
+
+			q.Q(result[fileName].PCL)
 			if err != nil {
 				return "", err
 			}

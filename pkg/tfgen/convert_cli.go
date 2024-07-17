@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/ryboe/q"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -244,10 +245,16 @@ func (cc *cliConverter) convertViaPulumiCLI(
 	examples map[string]string,
 	mappings []tfbridge.ProviderInfo,
 ) (map[string]translatedExample, error) {
+	q.Q(examples)
 	translated, err := cc.convertViaPulumiCLIStep(examples, mappings)
+	q.Q(translated)
 	if err == nil {
 		return translated, nil
 	}
+
+	//TODO: Also grab the Pulumi.yaml file
+	// For some reason, the translated examples do not include the pulumi.yaml file and I have no idea why that isn't
+	// being emitted but there's something about the --convert-examples flag that makes it go away. Most of the time, we want this. Not this time.
 
 	// Try to bisect examples to a subset that still errors out.
 	for len(examples) >= 2 {
@@ -267,6 +274,10 @@ func (cc *cliConverter) convertViaPulumiCLI(
 	return nil, fmt.Errorf("\n######\n  pulumi convert failed\n  minimal repro: %s\n  full error below\n######\n%w",
 		dir, err)
 }
+
+//func(cc *cliConverter) convertPulumiYamlFileViaCLI(examples map[string]string, mappings []tfbridge.ProviderInfo) string {
+//
+//}
 
 func (*cliConverter) split2(xs map[string]string) (map[string]string, map[string]string) {
 	h1 := map[string]string{}
@@ -330,6 +341,9 @@ func (cc *cliConverter) convertViaPulumiCLICommandArgs(
 ) (string, []string, error) {
 	// Write example to bridge-examples.json.
 	examplesBytes, err := json.Marshal(examples)
+	//q.Q(examples)
+	//panic("At the disco")
+	//TODO: this hase all the examples in it. WTF is happening
 	if err != nil {
 		return "", nil, fmt.Errorf("convertViaPulumiCLI: failed to marshal examples to JSON: %w", err)
 	}
@@ -375,11 +389,13 @@ func (cc *cliConverter) convertViaPulumiCLICommandArgs(
 		"--from", "terraform",
 		"--language", "pcl",
 		"--out", outDir,
-		"--generate-only",
+		"--generate-only", //TODO: this is unnecessary because we're generating pcl
 	}
 
 	cmdArgs = append(cmdArgs, mappingsArgs...)
 	cmdArgs = append(cmdArgs, "--", "--convert-examples", filepath.Base(examplesJSONPath))
+	q.Q(cmdArgs)
+	panic(cmdArgs)
 	return pulumiPath, cmdArgs, nil
 }
 
@@ -395,29 +411,29 @@ func (cc *cliConverter) convertViaPulumiCLIStep(
 		return nil, fmt.Errorf("convertViaPulumiCLI: failed to create a temp dir "+
 			" bridge-examples-output: %w", err)
 	}
-	defer func() {
-		if err := os.RemoveAll(outDir); err != nil {
-			if finalError == nil {
-				finalError = fmt.Errorf("convertViaPulumiCLI: failed to clean up "+
-					"temp bridge-examples-output dir: %w", err)
-			}
-		}
-	}()
+	//defer func() {
+	//	if err := os.RemoveAll(outDir); err != nil {
+	//		if finalError == nil {
+	//			finalError = fmt.Errorf("convertViaPulumiCLI: failed to clean up "+
+	//				"temp bridge-examples-output dir: %w", err)
+	//		}
+	//	}
+	//}()
 
 	examplesJSON, err := os.CreateTemp("", "bridge-examples.json")
 	if err != nil {
 		return nil, fmt.Errorf("convertViaPulumiCLI: failed to create a temp "+
 			" bridge-examples.json file: %w", err)
 	}
-	defer func() {
-		if err := os.Remove(examplesJSON.Name()); err != nil {
-			if finalError == nil {
-				finalError = fmt.Errorf("convertViaPulumiCLI: failed to clean up "+
-					"temp bridge-examples.json file: %w", err)
-			}
-		}
-	}()
-
+	//defer func() {
+	//	if err := os.Remove(examplesJSON.Name()); err != nil {
+	//		if finalError == nil {
+	//			finalError = fmt.Errorf("convertViaPulumiCLI: failed to clean up "+
+	//				"temp bridge-examples.json file: %w", err)
+	//		}
+	//	}
+	//}()
+	q.Q(examplesJSON.Name())
 	pulumiPath, cmdArgs, err := cc.convertViaPulumiCLICommandArgs(examples, mappings, outDir, examplesJSON.Name())
 	if err != nil {
 		return nil, err
@@ -438,8 +454,26 @@ func (cc *cliConverter) convertViaPulumiCLIStep(
 	}
 
 	outputFile := filepath.Join(outDir, filepath.Base(examplesJSON.Name()))
+	pulumiYAMLFile := filepath.Join(outDir, "Pulumi.yaml")
+	////TODO: this file does not exist - it seems that convertViaPulumiCommandArgs is losing us the pulumi.yaml file. Conversion to PCL does, however, generate the PUlumi.yaml file.
+	//// WHERE IS IT GAHHHHHHHHHHHHHH
+	//// ugh. we are not writing pulumi.yaml to the output file. This kinda makes sense but I hate it?
+	//// guess I gotta do something else here UGHHHHH
+	pulumiYAMLFileBytes, err := os.ReadFile(pulumiYAMLFile)
+	if err != nil {
+		panic(err)
+	}
+	q.Q(string(pulumiYAMLFileBytes))
 
+	//q.Q(outDir)
+	//q.Q(filepath.Base(examplesJSON.Name()))
+	//panic("at the disco")
+	// These are a single examples file we're passing around. Ugh?
+	q.Q(examplesJSON.Name())
 	outputFileBytes, err := os.ReadFile(outputFile)
+
+	q.Q(string(outputFileBytes))
+
 	if err != nil {
 		return nil, fmt.Errorf("convertViaPulumiCLI: failed to read output file: %w, "+
 			"check if your Pulumi CLI version is recent enough to include pulumi-converter-terraform v1.0.9",
