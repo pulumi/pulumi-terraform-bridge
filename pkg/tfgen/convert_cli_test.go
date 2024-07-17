@@ -48,6 +48,7 @@ import (
 )
 
 func TestConvertViaPulumiCLI(t *testing.T) {
+	t.Skipf("Very flaky [pulumi/pulumi#16469]")
 	if runtime.GOOS == "windows" {
 		// Currently there is a test issue in CI/test setup:
 		//
