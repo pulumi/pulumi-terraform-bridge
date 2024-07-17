@@ -84,10 +84,7 @@ func bridgedProvider(prov *providerbuilder.Provider) info.Provider {
 		MetadataInfo: &tfbridge0.MetadataInfo{},
 	}
 
-	makeToken := func(module, name string) (string, error) {
-		return tokens.MakeStandard(prov.TypeName)(module, name)
-	}
-	provider.MustComputeTokens(tokens.SingleModule(prov.TypeName, "index", makeToken))
+	provider.MustComputeTokens(tokens.SingleModule(prov.TypeName, "index", tokens.MakeStandard(prov.TypeName)))
 
 	return provider
 }
