@@ -2204,19 +2204,7 @@ func TestRefreshExtractInputsFromOutputsListOfObjects(t *testing.T) {
 		}
 	}
 
-	ruleSetPs := func() map[string]*SchemaInfo {
-		return map[string]*SchemaInfo{
-			"attachedDisks": {
-				Fields: map[string]*SchemaInfo{
-					"name":   {},
-					"key256": {},
-				},
-			},
-		}
-	}
-
-	out, err := ExtractInputsFromOutputs(nil, ruleSetProps,
-		ruleSetSchema(), ruleSetPs(), false)
+	out, err := ExtractInputsFromOutputs(nil, ruleSetProps, ruleSetSchema(), nil, false)
 	assert.NoError(t, err)
 	t.Logf("out: %v", out)
 	attachedDiskVal := out["attachedDisks"].ArrayValue()[0].ObjectValue()
