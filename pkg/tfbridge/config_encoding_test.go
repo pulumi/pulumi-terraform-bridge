@@ -34,7 +34,7 @@ func TestConfigEncoding(t *testing.T) {
 		pv resource.PropertyValue
 	}
 
-	knownKey := "mykey"
+	const knownKey = "mykey"
 
 	makeEnc := func(ty shim.ValueType) *ConfigEncoding {
 		return NewConfigEncoding(
@@ -74,10 +74,14 @@ func TestConfigEncoding(t *testing.T) {
 
 	checkUnmarshal := func(t *testing.T, tc testCase) {
 		enc := makeEnc(tc.ty)
-		pv, err := enc.unmarshalPropertyValue(resource.PropertyKey(knownKey), tc.v)
+		pv, err := enc.UnmarshalProperties(&structpb.Struct{
+			Fields: map[string]*structpb.Value{
+				knownKey: tc.v,
+			},
+		})
 		assert.NoError(t, err)
 		assert.NotNil(t, pv)
-		assert.Equal(t, tc.pv, *pv)
+		assert.Equal(t, tc.pv, pv[knownKey])
 	}
 
 	turnaroundTestCases := []testCase{
