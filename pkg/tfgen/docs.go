@@ -2285,14 +2285,8 @@ func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
 	// Add instructions to top of file
 	contentStr = frontMatter + installationInstructions + contentStr
 	//TODO: See https://github.com/pulumi/pulumi-terraform-bridge/issues/2078
-	// - translate code blocks with code choosers - CHECK
-	// - apply default edit rules - CHECK
-	// - reformat TF names - CHECK*
-	// - Translation for certain headers such as "Arguments Reference" or "Configuration block"
 	// - Ability to omit irrelevant sections
-	// - Actually get the pulumi.yaml file rendered though
-	// Write installation instructions -Check
-	// Include pulumi config set instructions somewhere
+	// - Include pulumi config set instructions somewhere, with example
 
 	//Translate code blocks to Pulumi
 	contentStr, err := translateCodeBlocks(contentStr, g)
@@ -2307,7 +2301,7 @@ func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	// Replace content such as "Terraform Apply." with " pulumi up."
+	// Replace content such as "Terraform Apply" with " pulumi up"
 	contentBytes, err = boundedReplace("[tT]erraform [aA]pply", "pulumi up").Edit(docFile.FileName, contentBytes)
 	if err != nil {
 		return nil, err
@@ -2324,37 +2318,39 @@ func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
 		return nil, err
 	}
 	// Replace all "T/terraform" with "P/pulumi"
-	contentBytes, err = reReplace("terraform", "pulumi").Edit(docFile.FileName, contentBytes)
-	if err != nil {
-		return nil, err
-	}
-	contentBytes, err = reReplace("Terraform", "Pulumi").Edit(docFile.FileName, contentBytes)
+	contentBytes, err = reReplace(`[tT]erraform`, `[pP]ulumi`).Edit(docFile.FileName, contentBytes)
 	if err != nil {
 		return nil, err
 	}
 	// Replace all "H/hashicorp strings
-	contentBytes, err = reReplace("hashicorp", "pulumi").Edit(docFile.FileName, contentBytes)
+	contentBytes, err = reReplace(`[hH]ashicorp`, `[pP]ulumi`).Edit(docFile.FileName, contentBytes)
 	if err != nil {
 		return nil, err
 	}
-	contentBytes, err = reReplace("Hashicorp", "Pulumi").Edit(docFile.FileName, contentBytes)
-	if err != nil {
-		return nil, err
-	}
+	// Reformat certain headers
+	contentBytes, err = reReplace(`The following arguments are supported:`,
+		`The following configuration inputs are supported:`).Edit(docFile.FileName, contentBytes)
 
-	//Reformat text - TODO: make a language decision. Do we want a language chooser here?
+	// Reformat certain headers
+	contentBytes, err = reReplace(`Argument Reference`,
+		`Configuration Reference`).Edit(docFile.FileName, contentBytes)
+	// Reformat certain headers
+	contentBytes, err = reReplace(`block contains the following arguments`,
+		`input has the following nested fields`).Edit(docFile.FileName, contentBytes)
+
+	// TODO: Remove upstream-specific sections
+
+	//Reformat field names. Configuration fields are camelCased like nodejs.
 	contentStr, _ = reformatText(infoContext{
 		language: "nodejs",
 		pkg:      g.pkg,
 		info:     g.info,
 	}, string(contentBytes), nil)
 
-	//TODO: Light translation for certain headers such as "Arguments Reference"
-	// or "Configuration block"
-
 	return []byte(contentStr), nil
 }
 
+// writeFrontMatter prepends the registry's expected Hugo frontmatter to our installation-configuration.md doc.
 func writeFrontMatter(title string) string {
 	return fmt.Sprintf(delimiter+
 		"title: %[1]s Installation & Configuration\n"+
@@ -2365,6 +2361,7 @@ func writeFrontMatter(title string) string {
 		title)
 }
 
+// writeIndexFrontMatter prepends the registry's expected Hugo frontmatter to our _index.md doc.
 func writeIndexFrontMatter(displayName string) string {
 	return fmt.Sprintf(delimiter+
 		"title: %s\n"+
@@ -2374,18 +2371,18 @@ func writeIndexFrontMatter(displayName string) string {
 		displayName, displayName, displayName)
 }
 
+// writeInstallationInstructions renders the following for any provider:
+// ****
+// Installation
+// The Foo provider is available as a package in all Pulumi languages:
+//
+// JavaScript/TypeScript: @pulumi/foo
+// Python: pulumi-foo
+// Go: github.com/pulumi/pulumi-foo/sdk/v3/go/foo
+// .NET: Pulumi.foo
+// Java: com.pulumi/foo
+// ****
 func writeInstallationInstructions(goImportBasePath, providerName string) string {
-	// This should render the following for any provider:
-	// ****
-	// Installation
-	// The Foo provider is available as a package in all Pulumi languages:
-	//
-	// JavaScript/TypeScript: @pulumi/foo
-	// Python: pulumi-foo
-	// Go: github.com/pulumi/pulumi-foo/sdk/v3/go/foo
-	// .NET: Pulumi.foo
-	// Java: com.pulumi/foo
-	// ****
 
 	// Capitalize the package name for C#
 	capitalize := cases.Title(language.English)
