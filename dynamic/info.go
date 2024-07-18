@@ -70,7 +70,7 @@ type paramaterizeArgs struct {
 
 func parseParamaterizeParameters(req plugin.ParameterizeRequest) (paramaterizeArgs, error) {
 	switch req := req.Parameters.(type) {
-	case plugin.ParameterizeArgs:
+	case *plugin.ParameterizeArgs:
 
 		// Check for a leading '.' or '/' to indicate a path
 		if len(req.Args) >= 1 &&
@@ -95,7 +95,7 @@ func parseParamaterizeParameters(req plugin.ParameterizeRequest) (paramaterizeAr
 		default:
 			return ret, fmt.Errorf("expected to be parameterized by 1-2 arguments: <name> [version]")
 		}
-	case plugin.ParameterizeValue:
+	case *plugin.ParameterizeValue:
 		return paramaterizeArgs{}, fmt.Errorf("parameters from Value are not yet implemented")
 	default:
 		return paramaterizeArgs{}, fmt.Errorf("unknown parameter type %T", req)
