@@ -807,5 +807,12 @@
                 "type": "object"
             }
         }
+    },
+    "parameterization": {
+        "baseProvider": {
+            "name": "terraform-provider",
+            "version": "v0.0.0-dev"
+        },
+        "parameter": "eyJyZW1vdGUiOnsidXJsIjoicmVnaXN0cnkub3BlbnRvZnUub3JnL2hhc2hpY29ycC9yYW5kb20iLCJ2ZXJzaW9uIjoiMy4zLjAifX0="
     }
 }
