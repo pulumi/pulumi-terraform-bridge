@@ -1,10 +1,12 @@
 package tfgen
 
 import (
-	"github.com/stretchr/testify/require"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
+//nolint:lll
 func TestPlainDocsParser(t *testing.T) {
 	t.Parallel()
 
@@ -13,7 +15,6 @@ func TestPlainDocsParser(t *testing.T) {
 		name     string
 		docFile  DocFile
 		expected []byte
-		g        *Generator
 	}
 
 	tests := []testCase{
@@ -47,13 +48,13 @@ func TestPlainDocsParser(t *testing.T) {
 	}
 }
 
+//nolint:lll
 func TestWriteInstallationInstructions(t *testing.T) {
 	t.Parallel()
 
 	type testCase struct {
 		// The name of the test case.
 		name             string
-		docFile          DocFile
 		goImportBasePath string
 		packageName      string
 		expected         string
@@ -65,9 +66,9 @@ func TestWriteInstallationInstructions(t *testing.T) {
 		expected: "## Installation\n\n" +
 			"The testcase provider is available as a package in all Pulumi languages:\n\n" +
 			"* JavaScript/TypeScript: [`@pulumi/testcase`](https://www.npmjs.com/package/@pulumi/testcase)\n" +
-			"* Python: [`pulumi-testcase`](https://pypi.org/project/pulumi-testcase/)\n" + //TODO: get the Go mod version somehow :blood_sob:
+			"* Python: [`pulumi-testcase`](https://pypi.org/project/pulumi-testcase/)\n" +
 			"* Go: [`github.com/pulumi/pulumi-testcase/sdk/v3/go/pulumi-testcase`](https://github.com/pulumi/pulumi-testcase)\n" +
-			"* .NET: [`Pulumi.Testcase`](https://www.nuget.org/packages/Pulumi.Testcase)\n" + //TODO: use capitalized
+			"* .NET: [`Pulumi.Testcase`](https://www.nuget.org/packages/Pulumi.Testcase)\n" +
 			"* Java: [`com.pulumi/testcase`](https://central.sonatype.com/artifact/com.pulumi/testcase)\n\n",
 		goImportBasePath: "github.com/pulumi/pulumi-testcase/sdk/v3/go/pulumi-testcase",
 		packageName:      "testcase",
@@ -76,7 +77,7 @@ func TestWriteInstallationInstructions(t *testing.T) {
 	t.Run(tc.name, func(t *testing.T) {
 		t.Parallel()
 		actual := writeInstallationInstructions(tc.goImportBasePath, tc.packageName)
-		require.Equal(t, string(tc.expected), actual)
+		require.Equal(t, tc.expected, actual)
 	})
 }
 
@@ -86,7 +87,6 @@ func TestWriteFrontMatter(t *testing.T) {
 	type testCase struct {
 		// The name of the test case.
 		name     string
-		docFile  DocFile
 		title    string
 		expected string
 	}
@@ -115,7 +115,6 @@ func TestWriteIndexFrontMatter(t *testing.T) {
 	type testCase struct {
 		// The name of the test case.
 		name        string
-		docFile     DocFile
 		displayName string
 		expected    string
 	}
@@ -125,7 +124,8 @@ func TestWriteIndexFrontMatter(t *testing.T) {
 		displayName: "Testcase",
 		expected: delimiter +
 			"title: Testcase\n" +
-			"meta_desc: The Testcase provider for Pulumi can be used to provision any of the cloud resources available in Testcase.\n" +
+			"meta_desc: The Testcase provider for Pulumi " +
+			"can be used to provision any of the cloud resources available in Testcase.\n" +
 			"layout: package\n" +
 			delimiter,
 	}

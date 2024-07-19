@@ -2,9 +2,10 @@ package tfgen
 
 import (
 	"fmt"
+	"strings"
+
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
-	"strings"
 )
 
 func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
@@ -42,7 +43,8 @@ func writeFrontMatter(title string) string {
 func writeIndexFrontMatter(displayName string) string {
 	return fmt.Sprintf(delimiter+
 		"title: %[1]s\n"+
-		"meta_desc: The %[1]s provider for Pulumi can be used to provision any of the cloud resources available in %[1]s.\n"+
+		"meta_desc: The %[1]s provider for Pulumi "+
+		"can be used to provision any of the cloud resources available in %[1]s.\n"+
 		"layout: package\n"+
 		delimiter,
 		displayName)
@@ -80,9 +82,9 @@ func writeInstallationInstructions(goImportBasePath, providerName string) string
 		"## Installation\n\n"+
 			"The %[1]s provider is available as a package in all Pulumi languages:\n\n"+
 			"* JavaScript/TypeScript: [`@pulumi/%[1]s`](https://www.npmjs.com/package/@pulumi/%[1]s)\n"+
-			"* Python: [`pulumi-%[1]s`](https://pypi.org/project/pulumi-%[1]s/)\n"+ //TODO: get the Go mod version somehow :blood_sob:
+			"* Python: [`pulumi-%[1]s`](https://pypi.org/project/pulumi-%[1]s/)\n"+
 			"* Go: [`%[3]s`](https://github.com/pulumi/pulumi-%[1]s)\n"+
-			"* .NET: [`Pulumi.%[2]s`](https://www.nuget.org/packages/Pulumi.%[2]s)\n"+ //TODO: use capitalized
+			"* .NET: [`Pulumi.%[2]s`](https://www.nuget.org/packages/Pulumi.%[2]s)\n"+
 			"* Java: [`com.pulumi/%[1]s`](https://central.sonatype.com/artifact/com.pulumi/%[1]s)\n\n",
 		providerName,
 		cSharpName,
