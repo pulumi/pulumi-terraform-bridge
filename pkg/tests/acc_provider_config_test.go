@@ -19,6 +19,8 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/testutil"
 )
 
 func TestAccProviderConfig(t *testing.T) {
@@ -27,6 +29,9 @@ func TestAccProviderConfig(t *testing.T) {
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			assert.Equal(t, stack.Outputs["generatedRandomString"],
 				stack.Outputs["providerRandomString"])
+		},
+		LocalProviders: []integration.LocalDependency{
+			testutil.RandomProvider(t),
 		},
 	})
 	integration.ProgramTest(t, &opts)
