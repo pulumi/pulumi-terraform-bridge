@@ -26,34 +26,10 @@ func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
 	// - reformat TF names
 	// - Ability to omit irrelevant sections
 
-	// Obtain default edit rules for documentation files
-	edits := defaultEditRules()
-	contentBytes := []byte(contentStr)
-
-	// Additional edit rules for installation files
-	installationFileEdits := editRules{
-		// Replace all "T/terraform" with "P/pulumi"
-		reReplace(`Terraform`, `Pulumi`),
-		reReplace(`terraform`, `pulumi`),
-		// Replace all "H/hashicorp" strings
-		reReplace(`Hashicorp`, `Pulumi`),
-		reReplace(`hashicorp`, `pulumi`),
-		// Reformat certain headers
-		reReplace(`The following arguments are supported:`,
-			`The following configuration inputs are supported:`),
-		reReplace(`Argument Reference`,
-			`Configuration Reference`),
-		reReplace(`block contains the following arguments`,
-			`input has the following nested fields`),
-	}
-
-	edits = append(edits, installationFileEdits...)
-	var err error
-	for _, rule := range edits {
-		contentBytes, err = rule.Edit(docFile.FileName, contentBytes)
-		if err != nil {
-			return nil, err
-		}
+	// Apply edit rules to transform the doc for Pulumi-ready presentation
+	contentBytes, err := applyEditRules([]byte(contentStr), docFile)
+	if err != nil {
+		return nil, err
 	}
 	return contentBytes, nil
 }
@@ -118,4 +94,36 @@ func writeInstallationInstructions(goImportBasePath, providerName string) string
 		cSharpName,
 		goImportBasePath,
 	)
+}
+
+func applyEditRules(contentBytes []byte, docFile *DocFile) ([]byte, error) {
+	// Obtain default edit rules for documentation files
+	edits := defaultEditRules()
+
+	// Additional edit rules for installation files
+	installationFileEdits := editRules{
+		// Replace all "T/terraform" with "P/pulumi"
+		reReplace(`Terraform`, `Pulumi`),
+		reReplace(`terraform`, `pulumi`),
+		// Replace all "H/hashicorp" strings
+		reReplace(`Hashicorp`, `Pulumi`),
+		reReplace(`hashicorp`, `pulumi`),
+		// Reformat certain headers
+		reReplace(`The following arguments are supported`,
+			`The following configuration inputs are supported`),
+		reReplace(`Argument Reference`,
+			`Configuration Reference`),
+		reReplace(`block contains the following arguments`,
+			`input has the following nested fields`),
+	}
+
+	edits = append(edits, installationFileEdits...)
+	var err error
+	for _, rule := range edits {
+		contentBytes, err = rule.Edit(docFile.FileName, contentBytes)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return contentBytes, nil
 }

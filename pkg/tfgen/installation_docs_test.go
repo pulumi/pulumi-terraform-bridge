@@ -136,3 +136,51 @@ func TestWriteIndexFrontMatter(t *testing.T) {
 		require.Equal(t, tc.expected, actual)
 	})
 }
+
+func TestApplyEditRules(t *testing.T) {
+	t.Parallel()
+
+	type testCase struct {
+		// The name of the test case.
+		name     string
+		docFile  DocFile
+		expected []byte
+	}
+
+	tests := []testCase{
+		{
+			name: "Replaces h/Hashicorp With p/Pulumi",
+			docFile: DocFile{
+				Content: []byte("Any mention of Hashicorp or hashicorp will be Pulumi or pulumi"),
+			},
+			expected: []byte("Any mention of Pulumi or pulumi will be Pulumi or pulumi"),
+		},
+		{
+			name: "Replaces t/Terraform With p/Pulumi",
+			docFile: DocFile{
+				Content: []byte("Any mention of Terraform or terraform will be Pulumi or pulumi"),
+			},
+			expected: []byte("Any mention of Pulumi or pulumi will be Pulumi or pulumi"),
+		},
+		{
+			name: "Replaces argument headers with input headers",
+			docFile: DocFile{
+				Content: []byte("# Argument Reference\n" +
+					"The following arguments are supported:\n* `some_argument`\n" +
+					"block contains the following arguments"),
+			},
+			expected: []byte("#Configuration Reference\n" +
+				"The following configuration inputs are supported:\n* `some_argument`\n" +
+				"input has the following nested fields"),
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			actual, err := applyEditRules(tt.docFile.Content, &tt.docFile)
+			require.NoError(t, err)
+			require.Equal(t, string(tt.expected), string(actual))
+		})
+	}
+}
