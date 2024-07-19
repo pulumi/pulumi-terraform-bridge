@@ -101,7 +101,7 @@ func applyEditRules(contentBytes []byte, docFile *DocFile) ([]byte, error) {
 	edits := defaultEditRules()
 
 	// Additional edit rules for installation files
-	installationFileEdits := editRules{
+	edits = append(edits,
 		// Replace all "T/terraform" with "P/pulumi"
 		reReplace(`Terraform`, `Pulumi`),
 		reReplace(`terraform`, `pulumi`),
@@ -114,10 +114,7 @@ func applyEditRules(contentBytes []byte, docFile *DocFile) ([]byte, error) {
 		reReplace(`Argument Reference`,
 			`Configuration Reference`),
 		reReplace(`block contains the following arguments`,
-			`input has the following nested fields`),
-	}
-
-	edits = append(edits, installationFileEdits...)
+			`input has the following nested fields`))
 	var err error
 	for _, rule := range edits {
 		contentBytes, err = rule.Edit(docFile.FileName, contentBytes)
