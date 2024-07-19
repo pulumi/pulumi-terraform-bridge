@@ -169,7 +169,7 @@ func TestApplyEditRules(t *testing.T) {
 					"The following arguments are supported:\n* `some_argument`\n" +
 					"block contains the following arguments"),
 			},
-			expected: []byte("#Configuration Reference\n" +
+			expected: []byte("# Configuration Reference\n" +
 				"The following configuration inputs are supported:\n* `some_argument`\n" +
 				"input has the following nested fields"),
 		},
