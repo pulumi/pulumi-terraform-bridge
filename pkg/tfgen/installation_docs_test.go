@@ -1,8 +1,11 @@
 package tfgen
 
 import (
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	sdkv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/stretchr/testify/require"
 )
 
@@ -183,4 +186,77 @@ func TestApplyEditRules(t *testing.T) {
 			require.Equal(t, string(tt.expected), string(actual))
 		})
 	}
+}
+
+//nolint:lll
+func TestTranslateCodeBlocks(t *testing.T) {
+
+	type testCase struct {
+		// The name of the test case.
+		name       string
+		contentStr string
+		g          *Generator
+		expected   string
+	}
+	p := tfbridge.ProviderInfo{
+		Name: "simple",
+		P: sdkv2.NewProvider(&schema.Provider{
+			ResourcesMap: map[string]*schema.Resource{
+				"simple_resource": {
+					Schema: map[string]*schema.Schema{
+						"input_one": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"input_two": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+					},
+				},
+			},
+			DataSourcesMap: map[string]*schema.Resource{
+				"simple_data_source": {
+					Schema: map[string]*schema.Schema{},
+				},
+			},
+		}),
+		Resources: map[string]*tfbridge.ResourceInfo{
+			"simple_resource": {
+				Tok: "simple:index:resource",
+				Fields: map[string]*tfbridge.SchemaInfo{
+					"input_one": {
+						Name: "renamedInput1",
+					},
+				},
+			},
+		},
+		DataSources: map[string]*tfbridge.DataSourceInfo{
+			"simple_data_source": {
+				Tok: "simple:index:dataSource",
+			},
+		},
+	}
+	pclsMap := make(map[string]translatedExample)
+
+	tc := testCase{
+		name:       "Translates HCL from examples ",
+		contentStr: "Use the navigation to the left to read about the available resources.\n\n## Example Usage\n\n```hcl\nresource \"simple_resource\" \"a_resource\" {\n    input_one = \"hello\"\n    input_two = true\n}\n\noutput \"some_output\" {\n    value = simple_resource.a_resource.result\n}```\n\n## Configuration Reference\n\nThe following configuration inputs are supported:",
+		expected:   "Use the navigation to the left to read about the available resources.\n\n## Example Usage\n\n{{< chooser language \"typescript,python,go,csharp,java,yaml\" >}}\n{{% choosable language typescript %}}\n```yaml\n# Pulumi.yaml provider configuration file\nname: configuration-example\nruntime: nodejs\n\n```\n```typescript\nimport * as pulumi from \"@pulumi/pulumi\";\nimport * as simple from \"@pulumi/simple\";\n\nconst aResource = new simple.index.Resource(\"a_resource\", {\n    renamedInput1: \"hello\",\n    inputTwo: true,\n});\nexport const someOutput = aResource.result;\n```\n{{% /choosable %}}\n{{% choosable language python %}}\n```yaml\n# Pulumi.yaml provider configuration file\nname: configuration-example\nruntime: python\n\n```\n```python\nimport pulumi\nimport pulumi_simple as simple\n\na_resource = simple.index.Resource(\"a_resource\",\n    renamed_input1=hello,\n    input_two=True)\npulumi.export(\"someOutput\", a_resource[\"result\"])\n```\n{{% /choosable %}}\n{{% choosable language csharp %}}\n```yaml\n# Pulumi.yaml provider configuration file\nname: configuration-example\nruntime: dotnet\n\n```\n```csharp\nusing System.Collections.Generic;\nusing System.Linq;\nusing Pulumi;\nusing Simple = Pulumi.Simple;\n\nreturn await Deployment.RunAsync(() => \n{\n    var aResource = new Simple.Index.Resource(\"a_resource\", new()\n    {\n        RenamedInput1 = \"hello\",\n        InputTwo = true,\n    });\n\n    return new Dictionary<string, object?>\n    {\n        [\"someOutput\"] = aResource.Result,\n    };\n});\n```\n{{% /choosable %}}\n{{% choosable language go %}}\n```yaml\n# Pulumi.yaml provider configuration file\nname: configuration-example\nruntime: go\n\n```\n```go\npackage main\n\nimport (\n\t\"github.com/pulumi/pulumi-simple/sdk/go/simple\"\n\t\"github.com/pulumi/pulumi/sdk/v3/go/pulumi\"\n)\n\nfunc main() {\n\tpulumi.Run(func(ctx *pulumi.Context) error {\n\t\taResource, err := simple.NewResource(ctx, \"a_resource\", &simple.ResourceArgs{\n\t\t\tRenamedInput1: \"hello\",\n\t\t\tInputTwo:      true,\n\t\t})\n\t\tif err != nil {\n\t\t\treturn err\n\t\t}\n\t\tctx.Export(\"someOutput\", aResource.Result)\n\t\treturn nil\n\t})\n}\n```\n{{% /choosable %}}\n{{% choosable language yaml %}}\n```yaml\n# Pulumi.yaml provider configuration file\nname: configuration-example\nruntime: yaml\n\n```\n```yaml\nresources:\n  aResource:\n    type: simple:resource\n    name: a_resource\n    properties:\n      renamedInput1: hello\n      inputTwo: true\noutputs:\n  someOutput: ${aResource.result}\n```\n{{% /choosable %}}\n{{% choosable language java %}}\n```yaml\n# Pulumi.yaml provider configuration file\nname: configuration-example\nruntime: java\n\n```\n```java\npackage generated_program;\n\nimport com.pulumi.Context;\nimport com.pulumi.Pulumi;\nimport com.pulumi.core.Output;\nimport com.pulumi.simple.resource;\nimport com.pulumi.simple.ResourceArgs;\nimport java.util.List;\nimport java.util.ArrayList;\nimport java.util.Map;\nimport java.io.File;\nimport java.nio.file.Files;\nimport java.nio.file.Paths;\n\npublic class App {\n    public static void main(String[] args) {\n        Pulumi.run(App::stack);\n    }\n\n    public static void stack(Context ctx) {\n        var aResource = new Resource(\"aResource\", ResourceArgs.builder()\n            .renamedInput1(\"hello\")\n            .inputTwo(true)\n            .build());\n\n        ctx.export(\"someOutput\", aResource.result());\n    }\n}\n```\n{{% /choosable %}}\n{{< /chooser >}}\n\n\n## Configuration Reference\n\nThe following configuration inputs are supported:",
+
+		g: &Generator{
+			sink: mockSink{},
+			cliConverterState: &cliConverter{
+				info: p,
+				pcls: pclsMap,
+			},
+			language: RegistryDocs,
+		},
+	}
+	t.Run(tc.name, func(t *testing.T) {
+		t.Setenv("PULUMI_CONVERT", "1")
+		actual, err := translateCodeBlocks(tc.contentStr, tc.g)
+		require.NoError(t, err)
+		require.Equal(t, tc.expected, actual)
+	})
 }

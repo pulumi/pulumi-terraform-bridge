@@ -176,9 +176,9 @@ func translateCodeBlocks(contentStr string, g *Generator) (string, error) {
 	}
 	// Write out mappings files
 	for _, info := range mappings {
-		info := info // remove aliasing lint
-		mpi := tfbridge.MarshalProviderInfo(&info)
-		bytes, err := json.Marshal(mpi)
+		info := info
+		marshallProviderInfo := tfbridge.MarshalProviderInfo(&info)
+		bytes, err := json.Marshal(marshallProviderInfo)
 		if err != nil {
 			return "", fmt.Errorf("translateCodeBlocks: failed to write mappings folder: %w", err)
 		}
