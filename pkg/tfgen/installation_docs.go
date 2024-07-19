@@ -23,11 +23,39 @@ func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
 
 	//TODO: See https://github.com/pulumi/pulumi-terraform-bridge/issues/2078
 	// - translate code blocks with code choosers
-	// - apply default edit rules
 	// - reformat TF names
-	// - Translation for certain headers such as "Arguments Reference" or "Configuration block"
 	// - Ability to omit irrelevant sections
-	return []byte(contentStr), nil
+
+	// Obtain default edit rules for documentation files
+	edits := defaultEditRules()
+	contentBytes := []byte(contentStr)
+
+	// Additional edit rules for installation files
+	installationFileEdits := editRules{
+		// Replace all "T/terraform" with "P/pulumi"
+		reReplace(`Terraform`, `Pulumi`),
+		reReplace(`terraform`, `pulumi`),
+		// Replace all "H/hashicorp" strings
+		reReplace(`Hashicorp`, `Pulumi`),
+		reReplace(`hashicorp`, `pulumi`),
+		// Reformat certain headers
+		reReplace(`The following arguments are supported:`,
+			`The following configuration inputs are supported:`),
+		reReplace(`Argument Reference`,
+			`Configuration Reference`),
+		reReplace(`block contains the following arguments`,
+			`input has the following nested fields`),
+	}
+
+	edits = append(edits, installationFileEdits...)
+	var err error
+	for _, rule := range edits {
+		contentBytes, err = rule.Edit(docFile.FileName, contentBytes)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return contentBytes, nil
 }
 
 func writeFrontMatter(title string) string {
