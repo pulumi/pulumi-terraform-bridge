@@ -35,8 +35,6 @@ func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
 	}
 
 	//TODO: See https://github.com/pulumi/pulumi-terraform-bridge/issues/2078
-	// - translate code blocks with code choosers
-	// - reformat TF names
 	// - Ability to omit irrelevant sections
 
 	// Apply edit rules to transform the doc for Pulumi-ready presentation
@@ -45,7 +43,14 @@ func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
 		return nil, err
 	}
 
-	return contentBytes, nil
+	//Reformat field names. Configuration fields are camelCased like nodejs.
+	contentStr, _ = reformatText(infoContext{
+		language: "nodejs",
+		pkg:      g.pkg,
+		info:     g.info,
+	}, string(contentBytes), nil)
+
+	return []byte(contentStr), nil
 }
 
 func writeFrontMatter(title string) string {
