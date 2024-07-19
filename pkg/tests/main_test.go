@@ -28,6 +28,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 )
 
+var localTestProviders []integration.LocalDependency
+
 func TestMain(m *testing.M) {
 	if err := setupIntegrationTests(); err != nil {
 		log.Fatal(err)
@@ -53,15 +55,12 @@ func accTestOptions(t *testing.T) *integration.ProgramTestOptions {
 		t.Error("%w", err)
 	}
 
-	pathVal := os.Getenv("PATH")
-	t.Logf("PATH=%s:%s", filepath.Join(cwd, "..", "..", "bin"), pathVal)
-
 	return &integration.ProgramTestOptions{
 		Env: []string{
-			fmt.Sprintf("PATH=%s:%s", filepath.Join(cwd, "..", "..", "bin"), pathVal),
+			fmt.Sprintf("PATH=%s", filepath.Join(cwd, "..", "..", "bin")),
 			"PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION=true",
-			"PULUMI_IGNORE_AMBIENT_PLUGINS=false",
 		},
+		LocalProviders: localTestProviders,
 	}
 }
 
@@ -77,16 +76,21 @@ func ensureCompiledTestProviders(wd string) error {
 
 	internalErrorMsg := "Internal validation of the provider failed"
 
+	internal := func(segments ...string) string {
+		return filepath.Join(append([]string{wd, "..", "..", "internal"}, segments...)...)
+	}
 	testProviders := []testProvider{
 		{
 			"tpsdkv2",
-			filepath.Join(wd, "..", "..", "internal", "testprovider_sdkv2",
-				"cmd", "pulumi-resource-tpsdkv2"),
-			filepath.Join(wd, "..", "..", "internal", "testprovider_sdkv2",
-				"cmd", "pulumi-tfgen-tpsdkv2"), nil,
+			internal("testprovider_sdkv2", "cmd", "pulumi-resource-tpsdkv2"),
+			internal("testprovider_sdkv2", "cmd", "pulumi-tfgen-tpsdkv2"),
+			nil,
 		},
 		{
-			"testprovider_invschema", filepath.Join(wd, "..", "..", "internal", "testprovider_invalid_schema", "cmd", "pulumi-resource-tpinvschema"), filepath.Join(wd, "..", "..", "internal", "testprovider_invalid_schema", "cmd", "pulumi-tfgen-tpinvschema"), &internalErrorMsg,
+			"testprovider_invschema",
+			internal("testprovider_invalid_schema", "cmd", "pulumi-resource-tpinvschema"),
+			internal("testprovider_invalid_schema", "cmd", "pulumi-tfgen-tpinvschema"),
+			&internalErrorMsg,
 		},
 	}
 
@@ -148,6 +152,10 @@ func ensureCompiledTestProviders(wd string) error {
 				fmt.Println(stderr)
 				return fmt.Errorf("provider build failed for %s: %w", p.name, err)
 			}
+			localTestProviders = append(localTestProviders, integration.LocalDependency{
+				Package: p.name,
+				Path:    bin, // The path to the directory that contains the binary, not the binary
+			})
 		}
 	}
 

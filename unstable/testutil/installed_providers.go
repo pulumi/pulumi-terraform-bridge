@@ -31,16 +31,19 @@ import (
 // RandomProvider returns a [integration.LocalDependency] reference to the random provider
 // installed via `make install_plugins`.
 func RandomProvider(t *testing.T) integration.LocalDependency {
-	randomPath, err := workspace.GetPluginPath(
+	return pluginDependency(t, "random", semver.Version{Major: 4, Minor: 16, Patch: 3})
+}
+
+func pluginDependency(t *testing.T, name string, version semver.Version) integration.LocalDependency {
+	path, err := workspace.GetPluginPath(
 		diag.DefaultSink(os.Stdout, os.Stderr, diag.FormatOptions{
 			Color: colors.Never,
 		}),
-		apitype.ResourcePlugin, "random",
-		&semver.Version{Major: 4, Minor: 16, Patch: 3}, nil)
+		apitype.ResourcePlugin, name, &version, nil)
 	require.NoError(t, err,
-		`The random provider at this version should have been installed by "make install_plugins"`)
+		`The %s provider at this version should have been installed by "make install_plugins"`, name)
 	return integration.LocalDependency{
-		Package: "random",
-		Path:    filepath.Dir(randomPath),
+		Package: name,
+		Path:    filepath.Dir(path),
 	}
 }
