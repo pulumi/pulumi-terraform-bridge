@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"path"
+	"strings"
 
 	"github.com/opentofu/opentofu/shim/run"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -35,6 +36,7 @@ func providerInfo(ctx context.Context, p run.Provider, value parameterize.Value)
 		Name:        p.Name(),
 		Version:     p.Version(),
 		Description: "A Pulumi provider dynamically bridged from " + p.Name() + ".",
+		Publisher:   "Pulumi",
 
 		// To avoid bogging down schema generation speed, we skip all examples.
 		SkipExamples: func(tfbridge.SkipExamplesArgs) bool { return true },
@@ -43,6 +45,19 @@ func providerInfo(ctx context.Context, p run.Provider, value parameterize.Value)
 			Path: "", Data: tfbridge.ProviderMetadata(nil),
 		},
 
+		Python: &tfbridge.PythonInfo{
+			PyProject:            struct{ Enabled bool }{true},
+			RespectSchemaVersion: true,
+		},
+		JavaScript: &tfbridge.JavaScriptInfo{
+			LiftSingleValueMethodReturns: true,
+			RespectSchemaVersion:         true,
+		},
+		CSharp: &tfbridge.CSharpInfo{
+			LiftSingleValueMethodReturns: true,
+			RespectSchemaVersion:         true,
+		},
+		Java: &tfbridge.JavaInfo{ /* Java does not have a RespectSchemaVersion flag */ },
 		Golang: &tfbridge.GolangInfo{
 			ImportBasePath: path.Join(
 				fmt.Sprintf("github.com/pulumi/pulumi-%[1]s/sdk/", p.Name()),
@@ -59,7 +74,7 @@ func providerInfo(ctx context.Context, p run.Provider, value parameterize.Value)
 			spec.Parameterization = &schema.ParameterizationSpec{
 				BaseProvider: schema.BaseProviderSpec{
 					Name:    baseProviderName,
-					Version: version.Version(),
+					Version: strings.TrimPrefix(version.Version(), "v"),
 				},
 				Parameter: value.Marshal(),
 			}
