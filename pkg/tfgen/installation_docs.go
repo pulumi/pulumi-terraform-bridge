@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -13,6 +12,8 @@ import (
 
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 
 func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
@@ -196,9 +197,10 @@ func translateCodeBlocks(contentStr string, g *Generator) (string, error) {
 	for _, info := range mappings {
 		mappingsArgs = append(mappingsArgs, "--mappings", g.cliConverter().mappingsFile(mappingsDir, info))
 	}
+	var cleanupErr error
 	defer func() {
 		if err := os.RemoveAll(outDir); err != nil {
-			err = fmt.Errorf("failed to clean up configuration-example dir: %w", err)
+			cleanupErr = fmt.Errorf("failed to clean up configuration-example dir: %w", err)
 		}
 	}()
 	for i, block := range codeBlocks {
@@ -218,7 +220,7 @@ func translateCodeBlocks(contentStr string, g *Generator) (string, error) {
 
 			//Generate the main.tf file for converting the config file, since --convert-examples doesn't support
 			// the Pulumi.yaml config file
-			err := os.WriteFile(filepath.Join(outDir, "main.tf"), []byte(code), 0644)
+			err := os.WriteFile(filepath.Join(outDir, "main.tf"), []byte(code), 0600)
 			if err != nil {
 				return "", fmt.Errorf("convertViaPulumiCLI: failed to write main.tf file: %w", err)
 			}
@@ -243,8 +245,7 @@ func translateCodeBlocks(contentStr string, g *Generator) (string, error) {
 			}
 
 			exPath := examplePath{fullPath: fileName}
-			var conversionResult *Example
-			conversionResult = g.coverageTracker.getOrCreateExample(
+			conversionResult := g.coverageTracker.getOrCreateExample(
 				exPath.String(), code)
 
 			langs := genLanguageToSlice(g.language)
@@ -261,6 +262,9 @@ func translateCodeBlocks(contentStr string, g *Generator) (string, error) {
 
 				// Generate the Pulumi.yaml config file for each language
 				configFile, err := writeConfigYamlViaCLI(outDir, lang, mappingsArgs)
+				if err != nil {
+					return "", err
+				}
 				// Generate example itself
 				convertedLang, err := g.convertHCL(conversionResult, code, exPath.String(), langSlice)
 				if err != nil {
@@ -278,7 +282,7 @@ func translateCodeBlocks(contentStr string, g *Generator) (string, error) {
 	}
 	// Write any remainder.
 	returnContent = returnContent + contentStr[codeBlocks[len(codeBlocks)-1].end+len(codeFence):]
-	return returnContent, nil
+	return returnContent, cleanupErr
 }
 
 // This function obtains the Pulumi.yaml config file for a given language.
