@@ -89,7 +89,16 @@ func initialSetup() (tfbridge.ProviderInfo, pfbridge.ProviderMetadata, func() er
 			case *plugin.ParameterizeValue:
 				value, err := parameterize.ParseValue(params.Value)
 				if err != nil {
-					return plugin.ParameterizeResponse{}, err
+					tfbridge.GetLogger(ctx).Error(fmt.Sprintf(
+						"%[1]s is unable to parse the parameter value "+
+							"embedded in the generated SDK.\nThis is always a bug in "+
+							"%[1]s and should be reported. \n"+
+							"The value passed was %[2]q.",
+						baseProviderName, string(params.Value),
+					))
+					return plugin.ParameterizeResponse{}, fmt.Errorf(
+						"failed to parse parameterized value: %w", err,
+					)
 				}
 				args = value.IntoArgs()
 			case *plugin.ParameterizeArgs:
