@@ -29,6 +29,7 @@ type Resource struct {
 	ReadFunc   func(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse)
 	UpdateFunc func(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse)
 	DeleteFunc func(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse)
+	ImportStateFunc func(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse)
 }
 
 func (r *Resource) Metadata(ctx context.Context, req resource.MetadataRequest, re *resource.MetadataResponse) {
@@ -67,4 +68,11 @@ func (r *Resource) Delete(ctx context.Context, req resource.DeleteRequest, resp 
 	r.DeleteFunc(ctx, req, resp)
 }
 
-var _ resource.Resource = &Resource{}
+func (r *Resource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+	if r.ImportStateFunc == nil {
+		return
+	}
+	r.ImportStateFunc(ctx, req, resp)
+}
+
+var _ resource.ResourceWithImportState = &Resource{}
