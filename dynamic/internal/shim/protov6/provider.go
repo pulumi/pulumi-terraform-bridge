@@ -24,8 +24,8 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/opentofu/opentofu/internal/tfplugin6"
+	"github.com/opentofu/opentofu/shim/grpcutil"
 	"github.com/opentofu/opentofu/shim/protov6/translate"
-	grpc "google.golang.org/grpc"
 )
 
 var _ tfprotov6.ProviderServer = (*shimProvider)(nil)
@@ -39,7 +39,7 @@ type shimProvider struct{ remote tfplugin6.ProviderClient }
 func (p shimProvider) GetMetadata(
 	ctx context.Context, req *tfprotov6.GetMetadataRequest,
 ) (*tfprotov6.GetMetadataResponse, error) {
-	return translateGRPC(ctx,
+	return grpcutil.Translate(ctx,
 		p.remote.GetMetadata,
 		translate.GetMetadataRequest(req),
 		translate.GetMetadataResult)
@@ -48,7 +48,7 @@ func (p shimProvider) GetMetadata(
 func (p shimProvider) GetProviderSchema(
 	ctx context.Context, req *tfprotov6.GetProviderSchemaRequest,
 ) (*tfprotov6.GetProviderSchemaResponse, error) {
-	return translateGRPC(ctx,
+	return grpcutil.Translate(ctx,
 		p.remote.GetProviderSchema,
 		translate.GetProviderSchemaRequest(req),
 		translate.GetProviderSchemaResponse)
@@ -57,11 +57,13 @@ func (p shimProvider) GetProviderSchema(
 func (p shimProvider) ValidateProviderConfig(
 	ctx context.Context, req *tfprotov6.ValidateProviderConfigRequest,
 ) (*tfprotov6.ValidateProviderConfigResponse, error) {
-	v, err := p.remote.ValidateProviderConfig(ctx, translate.ValidateProviderConfigRequest(req))
+	resp, err := grpcutil.Translate(ctx,
+		p.remote.ValidateProviderConfig,
+		translate.ValidateProviderConfigRequest(req),
+		translate.ValidateProviderConfigResponse)
 	if err != nil {
 		return nil, err
 	}
-	resp := translate.ValidateProviderConfigResponse(v)
 
 	// From the docs on PreparedConfig:
 	//
@@ -82,7 +84,7 @@ func (p shimProvider) ValidateProviderConfig(
 func (p shimProvider) ConfigureProvider(
 	ctx context.Context, req *tfprotov6.ConfigureProviderRequest,
 ) (*tfprotov6.ConfigureProviderResponse, error) {
-	return translateGRPC(ctx,
+	return grpcutil.Translate(ctx,
 		p.remote.ConfigureProvider,
 		translate.ConfigureProviderRequest(req),
 		translate.ConfigureProviderResponse)
@@ -91,7 +93,7 @@ func (p shimProvider) ConfigureProvider(
 func (p shimProvider) StopProvider(
 	ctx context.Context, req *tfprotov6.StopProviderRequest,
 ) (*tfprotov6.StopProviderResponse, error) {
-	return translateGRPC(ctx,
+	return grpcutil.Translate(ctx,
 		p.remote.StopProvider,
 		translate.StopProviderRequest(req),
 		translate.StopProviderResponse)
@@ -100,7 +102,7 @@ func (p shimProvider) StopProvider(
 func (p shimProvider) ValidateResourceConfig(
 	ctx context.Context, req *tfprotov6.ValidateResourceConfigRequest,
 ) (*tfprotov6.ValidateResourceConfigResponse, error) {
-	return translateGRPC(ctx,
+	return grpcutil.Translate(ctx,
 		p.remote.ValidateResourceConfig,
 		translate.ValidateResourceConfigRequest(req),
 		translate.ValidateResourceConfigResponse)
@@ -109,7 +111,7 @@ func (p shimProvider) ValidateResourceConfig(
 func (p shimProvider) UpgradeResourceState(
 	ctx context.Context, req *tfprotov6.UpgradeResourceStateRequest,
 ) (*tfprotov6.UpgradeResourceStateResponse, error) {
-	return translateGRPC(ctx,
+	return grpcutil.Translate(ctx,
 		p.remote.UpgradeResourceState,
 		translate.UpgradeResourceStateRequest(req),
 		translate.UpgradeResourceStateResponse)
@@ -118,7 +120,7 @@ func (p shimProvider) UpgradeResourceState(
 func (p shimProvider) ReadResource(
 	ctx context.Context, req *tfprotov6.ReadResourceRequest,
 ) (*tfprotov6.ReadResourceResponse, error) {
-	return translateGRPC(ctx,
+	return grpcutil.Translate(ctx,
 		p.remote.ReadResource,
 		translate.ReadResourceRequest(req),
 		translate.ReadResourceResponse)
@@ -127,7 +129,7 @@ func (p shimProvider) ReadResource(
 func (p shimProvider) PlanResourceChange(
 	ctx context.Context, req *tfprotov6.PlanResourceChangeRequest,
 ) (*tfprotov6.PlanResourceChangeResponse, error) {
-	return translateGRPC(ctx,
+	return grpcutil.Translate(ctx,
 		p.remote.PlanResourceChange,
 		translate.PlanResourceChangeRequest(req),
 		translate.PlanResourceChangeResponse)
@@ -136,7 +138,7 @@ func (p shimProvider) PlanResourceChange(
 func (p shimProvider) ApplyResourceChange(
 	ctx context.Context, req *tfprotov6.ApplyResourceChangeRequest,
 ) (*tfprotov6.ApplyResourceChangeResponse, error) {
-	return translateGRPC(ctx,
+	return grpcutil.Translate(ctx,
 		p.remote.ApplyResourceChange,
 		translate.ApplyResourceChangeRequest(req),
 		translate.ApplyResourceChangeResponse)
@@ -145,7 +147,7 @@ func (p shimProvider) ApplyResourceChange(
 func (p shimProvider) ImportResourceState(
 	ctx context.Context, req *tfprotov6.ImportResourceStateRequest,
 ) (*tfprotov6.ImportResourceStateResponse, error) {
-	return translateGRPC(ctx,
+	return grpcutil.Translate(ctx,
 		p.remote.ImportResourceState,
 		translate.ImportResourceStateRequest(req),
 		translate.ImportResourceStateResponse)
@@ -154,7 +156,7 @@ func (p shimProvider) ImportResourceState(
 func (p shimProvider) ValidateDataResourceConfig(
 	ctx context.Context, req *tfprotov6.ValidateDataResourceConfigRequest,
 ) (*tfprotov6.ValidateDataResourceConfigResponse, error) {
-	return translateGRPC(ctx,
+	return grpcutil.Translate(ctx,
 		p.remote.ValidateDataResourceConfig,
 		translate.ValidateDataResourceConfigRequest(req),
 		translate.ValidateDataResourceConfigResponse)
@@ -163,7 +165,7 @@ func (p shimProvider) ValidateDataResourceConfig(
 func (p shimProvider) MoveResourceState(
 	ctx context.Context, req *tfprotov6.MoveResourceStateRequest,
 ) (*tfprotov6.MoveResourceStateResponse, error) {
-	return translateGRPC(ctx,
+	return grpcutil.Translate(ctx,
 		p.remote.MoveResourceState,
 		translate.MoveResourceStateRequest(req),
 		translate.MoveResourceStateResponse)
@@ -172,7 +174,7 @@ func (p shimProvider) MoveResourceState(
 func (p shimProvider) ReadDataSource(
 	ctx context.Context, req *tfprotov6.ReadDataSourceRequest,
 ) (*tfprotov6.ReadDataSourceResponse, error) {
-	return translateGRPC(ctx,
+	return grpcutil.Translate(ctx,
 		p.remote.ReadDataSource,
 		translate.ReadDataSourceRequest(req),
 		translate.ReadDataSourceResponse)
@@ -181,7 +183,7 @@ func (p shimProvider) ReadDataSource(
 func (p shimProvider) CallFunction(
 	ctx context.Context, req *tfprotov6.CallFunctionRequest,
 ) (*tfprotov6.CallFunctionResponse, error) {
-	return translateGRPC(ctx,
+	return grpcutil.Translate(ctx,
 		p.remote.CallFunction,
 		translate.CallFunctionRequest(req),
 		translate.CallFunctionResponse)
@@ -190,26 +192,8 @@ func (p shimProvider) CallFunction(
 func (p shimProvider) GetFunctions(
 	ctx context.Context, req *tfprotov6.GetFunctionsRequest,
 ) (*tfprotov6.GetFunctionsResponse, error) {
-	return translateGRPC(ctx,
+	return grpcutil.Translate(ctx,
 		p.remote.GetFunctions,
 		translate.GetFunctionsRequest(req),
 		translate.GetFunctionsResponse)
-}
-
-func translateGRPC[
-	In, Out, Final any,
-	Call func(context.Context, In, ...grpc.CallOption) (Out, error),
-	MapResult func(Out) Final,
-](
-	ctx context.Context,
-	call Call,
-	i In,
-	m MapResult,
-) (Final, error) {
-	v, err := call(ctx, i)
-	if err != nil {
-		var tmp Final
-		return tmp, err
-	}
-	return m(v), nil
 }
