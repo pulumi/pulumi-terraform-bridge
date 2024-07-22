@@ -161,10 +161,10 @@ func (p *provider) validateProviderConfig(
 		err = fmt.Errorf("cannot encode provider configuration to call ValidateProviderConfig: %w", err)
 		return nil, err
 	}
-	req := &tfprotov6.ValidateProviderConfigRequest{
+
+	resp, err := p.tfServer.ValidateProviderConfig(ctx, &tfprotov6.ValidateProviderConfigRequest{
 		Config: config,
-	}
-	resp, err := p.tfServer.ValidateProviderConfig(ctx, req)
+	})
 	if err != nil {
 		return nil, fmt.Errorf("error calling ValidateProviderConfig: %w", err)
 	}

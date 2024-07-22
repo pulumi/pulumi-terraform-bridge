@@ -224,9 +224,7 @@ func runProvider(ctx context.Context, meta *providercache.CachedProvider) (Provi
 		return nil, err
 	}
 
-	// store the client so that the plugin can kill the child process
-	protoVer := client.NegotiatedVersion()
-	switch protoVer {
+	switch client.NegotiatedVersion() {
 	case 5:
 		p := raw.(*tfplugin.GRPCProvider)
 		p.PluginClient = client
@@ -240,15 +238,13 @@ func runProvider(ctx context.Context, meta *providercache.CachedProvider) (Provi
 		if err != nil {
 			return nil, err
 		}
-		return provider{
-			v6,
+		return provider{v6,
 			meta.Provider.Type, meta.Version.String(), meta.Provider.String(),
 			rpcClient.Close,
 		}, nil
 	case 6:
 		p := tfplugin6.NewProviderClient(rpcClient.(*plugin.GRPCClient).Conn)
-		return provider{
-			v6shim.New(p),
+		return provider{v6shim.New(p),
 			meta.Provider.Type, meta.Version.String(), meta.Provider.String(),
 			rpcClient.Close,
 		}, nil
