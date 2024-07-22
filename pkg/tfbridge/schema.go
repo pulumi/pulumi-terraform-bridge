@@ -292,7 +292,6 @@ type conversionContext struct {
 	ProviderConfig              resource.PropertyMap
 	ApplyDefaults               bool
 	ApplyTFDefaults             bool
-	ApplyMaxItemsOneDefaults    bool
 	Assets                      AssetTable
 	UnknownCollectionsSupported bool
 }
@@ -646,18 +645,6 @@ func (ctx *conversionContext) makeObjectTerraformInputs(
 	// Now enumerate and propagate defaults if the corresponding values are still missing.
 	if err := ctx.applyDefaults(result, olds, news, tfs, ps); err != nil {
 		return nil, err
-	}
-
-	if tfs != nil && ctx.ApplyMaxItemsOneDefaults {
-		// Iterate over the TF schema and add an empty array for each nil MaxItemsOne property.
-		tfs.Range(func(key string, value shim.Schema) bool {
-			// First do a lookup of the name/info.
-			_, tfi, psi := getInfoFromTerraformName(key, tfs, ps, false)
-			if IsMaxItemsOne(tfi, psi) && result[key] == nil {
-				result[key] = []interface{}{}
-			}
-			return true
-		})
 	}
 
 	if glog.V(5) {
