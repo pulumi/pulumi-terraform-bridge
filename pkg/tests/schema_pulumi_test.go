@@ -1511,6 +1511,7 @@ Resources:
     2 unchanged
 `),
 		},
+		// TODO: duplicated diff
 		{
 			"list added",
 			map[string]interface{}{},
@@ -1532,6 +1533,7 @@ Resources:
     1 unchanged
 `),
 		},
+		// TODO: missing diff
 		{
 			"list added empty",
 			map[string]interface{}{},
@@ -1543,6 +1545,7 @@ Resources:
     2 unchanged
 `),
 		},
+		// TODO: duplicated diff
 		{
 			"list removed",
 			map[string]interface{}{"listProps": []interface{}{"val"}},
@@ -1564,6 +1567,7 @@ Resources:
     1 unchanged
 `),
 		},
+		// TODO: missing diff
 		{
 			"list removed empty",
 			map[string]interface{}{"listProps": []interface{}{}},
@@ -1724,6 +1728,7 @@ Resources:
     2 unchanged
 `),
 		},
+		// TODO: duplicated diff
 		{
 			"set added",
 			map[string]interface{}{},
@@ -1745,6 +1750,7 @@ Resources:
     1 unchanged
 `),
 		},
+		// TODO: missing diff
 		{
 			"set added empty",
 			map[string]interface{}{},
@@ -1756,6 +1762,7 @@ Resources:
     2 unchanged
 `),
 		},
+		// TODO: duplicated diff
 		{
 			"set removed",
 			map[string]interface{}{"setProps": []interface{}{"val"}},
@@ -1777,6 +1784,7 @@ Resources:
     1 unchanged
 `),
 		},
+		// TODO: missing diff
 		{
 			"set removed empty",
 			map[string]interface{}{"setProps": []interface{}{}},
@@ -1799,7 +1807,7 @@ Resources:
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ setProps: [
-          + [0]: "val1"
+          ~ [0]: "val2" => "val1"
           ~ [1]: "val3" => "val2"
           + [2]: "val3"
         ]
@@ -1859,7 +1867,7 @@ Resources:
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ setProps: [
-          ~ [0]: "val1" => "val2"
+          - [0]: "val1"
           ~ [1]: "val2" => "val3"
           - [2]: "val3"
         ]
@@ -1888,6 +1896,7 @@ Resources:
     1 unchanged
 `),
 		},
+		// TODO: This one is pretty wrong.
 		{
 			"set element removed middle",
 			map[string]interface{}{"setProps": []interface{}{"val1", "val2", "val3"}},
@@ -1937,6 +1946,7 @@ Resources:
     2 unchanged
 `),
 		},
+		// TODO: duplicated diff
 		{
 			"map added",
 			map[string]interface{}{},
@@ -1958,6 +1968,7 @@ Resources:
     1 unchanged
 `),
 		},
+		// TODO: missing diff
 		{
 			"map added empty",
 			map[string]interface{}{},
@@ -1969,6 +1980,7 @@ Resources:
     2 unchanged
 `),
 		},
+		// TODO: duplicated diff
 		{
 			"map removed",
 			map[string]interface{}{"mapProp": map[string]interface{}{"key": "val"}},
@@ -1990,6 +2002,7 @@ Resources:
     1 unchanged
 `),
 		},
+		// TODO: missing diff
 		{
 			"map removed empty",
 			map[string]interface{}{"mapProp": map[string]interface{}{}},
@@ -2001,6 +2014,7 @@ Resources:
     2 unchanged
 `),
 		},
+		// TODO: duplicated diff
 		{
 			"map element added",
 			map[string]interface{}{"mapProp": map[string]interface{}{}},
@@ -2078,6 +2092,7 @@ Resources:
 `),
 		},
 	} {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			props1, err := json.Marshal(tc.props1)
