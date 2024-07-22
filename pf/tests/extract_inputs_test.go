@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listdefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/mapdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hexops/autogold/v2"
@@ -101,7 +102,7 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 				}}},
 			}),
 		},
-		// TODO[pulumi/pulumi-terraform-bridge#2218]: This should not yield values for foo in the inputs.
+		// TODO[pulumi/pulumi-terraform-bridge#2218]: This should not yield values for properties with defaults in the inputs.
 		{
 			name: "list attribute with default",
 			props: resource.NewPropertyMapFromMap(map[string]interface{}{
@@ -175,7 +176,7 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 				}}},
 			}),
 		},
-		// TODO[pulumi/pulumi-terraform-bridge#2218]: This should not yield values for foo in the inputs.
+		// TODO[pulumi/pulumi-terraform-bridge#2218]: This should not yield values for properties with defaults in the inputs.
 		{
 			name: "list nested attribute with defaults",
 			props: resource.NewPropertyMapFromMap(map[string]interface{}{
@@ -204,6 +205,40 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 								"bar": types.StringValue("baz"),
 							},
 						)})),
+					},
+				},
+			},
+			expect: autogold.Expect(resource.PropertyMap{
+				resource.PropertyKey("__defaults"): resource.PropertyValue{
+					V: []resource.PropertyValue{},
+				},
+				resource.PropertyKey("foo"): resource.PropertyValue{V: []resource.PropertyValue{{
+					V: resource.PropertyMap{
+						resource.PropertyKey("__defaults"): resource.PropertyValue{
+							V: []resource.PropertyValue{},
+						},
+						resource.PropertyKey("bar"): resource.PropertyValue{V: "baz"},
+					},
+				}}},
+			}),
+		},
+		// TODO[pulumi/pulumi-terraform-bridge#2218]: This should not yield values for properties with defaults in the inputs.
+		{
+			name: "list nested attribute with nested defaults",
+			props: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"foo": []interface{}{
+					map[string]interface{}{"bar": "baz"},
+				},
+			}),
+			resSchema: rschema.Schema{
+				Attributes: map[string]rschema.Attribute{
+					"foo": rschema.ListNestedAttribute{
+						Optional: true,
+						NestedObject: rschema.NestedAttributeObject{
+							Attributes: map[string]rschema.Attribute{
+								"bar": rschema.StringAttribute{Optional: true, Default: stringdefault.StaticString("baz")},
+							},
+						},
 					},
 				},
 			},
@@ -311,7 +346,7 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 			name: "map nested attribute",
 			props: resource.NewPropertyMapFromMap(map[string]interface{}{
 				"foo": map[string]interface{}{
-					"bar": "baz",
+					"key1": map[string]interface{}{"bar": "baz"},
 				},
 			}),
 			resSchema: rschema.Schema{
@@ -334,7 +369,156 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 					resource.PropertyKey("__defaults"): resource.PropertyValue{
 						V: []resource.PropertyValue{},
 					},
-					resource.PropertyKey("bar"): resource.PropertyValue{V: "baz"},
+					resource.PropertyKey("key1"): resource.PropertyValue{V: resource.PropertyMap{
+						resource.PropertyKey("__defaults"): resource.PropertyValue{
+							V: []resource.PropertyValue{},
+						},
+						resource.PropertyKey("bar"): resource.PropertyValue{V: "baz"},
+					}},
+				}},
+			}),
+		},
+		// TODO[pulumi/pulumi-terraform-bridge#2218]: This should not yield values for properties with defaults in the inputs.
+		{
+			name: "map nested attribute with default",
+			props: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"foo": map[string]interface{}{
+					"key1": map[string]interface{}{"bar": "baz"},
+				},
+			}),
+			resSchema: rschema.Schema{
+				Attributes: map[string]rschema.Attribute{
+					"foo": rschema.MapNestedAttribute{
+						Optional: true,
+						NestedObject: rschema.NestedAttributeObject{
+							Attributes: map[string]rschema.Attribute{
+								"bar": rschema.StringAttribute{Optional: true},
+							},
+						},
+						Default: mapdefault.StaticValue(types.MapValueMust(
+							types.ObjectType{
+								AttrTypes: map[string]attr.Type{"bar": types.StringType},
+							}, map[string]attr.Value{
+								"key1": types.ObjectValueMust(
+									map[string]attr.Type{
+										"bar": types.StringType,
+									},
+									map[string]attr.Value{
+										"bar": types.StringValue("baz"),
+									},
+								),
+							},
+						)),
+					},
+				},
+			},
+			expect: autogold.Expect(resource.PropertyMap{
+				resource.PropertyKey("__defaults"): resource.PropertyValue{
+					V: []resource.PropertyValue{},
+				},
+				resource.PropertyKey("foo"): resource.PropertyValue{V: resource.PropertyMap{
+					resource.PropertyKey("__defaults"): resource.PropertyValue{
+						V: []resource.PropertyValue{},
+					},
+					resource.PropertyKey("key1"): resource.PropertyValue{V: resource.PropertyMap{
+						resource.PropertyKey("__defaults"): resource.PropertyValue{
+							V: []resource.PropertyValue{},
+						},
+						resource.PropertyKey("bar"): resource.PropertyValue{V: "baz"},
+					}},
+				}},
+			}),
+		},
+		// TODO[pulumi/pulumi-terraform-bridge#2218]: This should not yield values for properties with defaults in the inputs.
+		{
+			name: "map nested attribute with nested default",
+			props: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"foo": map[string]interface{}{
+					"key1": map[string]interface{}{"bar": "baz"},
+				},
+			}),
+			resSchema: rschema.Schema{
+				Attributes: map[string]rschema.Attribute{
+					"foo": rschema.MapNestedAttribute{
+						Optional: true,
+						NestedObject: rschema.NestedAttributeObject{
+							Attributes: map[string]rschema.Attribute{
+								"bar": rschema.StringAttribute{Optional: true, Default: stringdefault.StaticString("baz")},
+							},
+						},
+					},
+				},
+			},
+			expect: autogold.Expect(resource.PropertyMap{
+				resource.PropertyKey("__defaults"): resource.PropertyValue{
+					V: []resource.PropertyValue{},
+				},
+				resource.PropertyKey("foo"): resource.PropertyValue{V: resource.PropertyMap{
+					resource.PropertyKey("__defaults"): resource.PropertyValue{
+						V: []resource.PropertyValue{},
+					},
+					resource.PropertyKey("key1"): resource.PropertyValue{V: resource.PropertyMap{
+						resource.PropertyKey("__defaults"): resource.PropertyValue{
+							V: []resource.PropertyValue{},
+						},
+						resource.PropertyKey("bar"): resource.PropertyValue{V: "baz"},
+					}},
+				}},
+			}),
+		},
+		{
+			name: "map nested attribute computed",
+			props: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"foo": map[string]interface{}{
+					"key1": map[string]interface{}{"bar": "baz"},
+				},
+			}),
+			resSchema: rschema.Schema{
+				Attributes: map[string]rschema.Attribute{
+					"foo": rschema.MapNestedAttribute{
+						Computed: true,
+						NestedObject: rschema.NestedAttributeObject{
+							Attributes: map[string]rschema.Attribute{
+								"bar": rschema.StringAttribute{Optional: true},
+							},
+						},
+					},
+				},
+			},
+			expect: autogold.Expect(resource.PropertyMap{resource.PropertyKey("__defaults"): resource.PropertyValue{
+				V: []resource.PropertyValue{},
+			}}),
+		},
+		{
+			name: "map nested attribute nested computed",
+			props: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"foo": map[string]interface{}{
+					"key1": map[string]interface{}{"bar": "baz"},
+				},
+			}),
+			resSchema: rschema.Schema{
+				Attributes: map[string]rschema.Attribute{
+					"foo": rschema.MapNestedAttribute{
+						Optional: true,
+						NestedObject: rschema.NestedAttributeObject{
+							Attributes: map[string]rschema.Attribute{
+								"bar": rschema.StringAttribute{Computed: true},
+							},
+						},
+					},
+				},
+			},
+			expect: autogold.Expect(resource.PropertyMap{
+				resource.PropertyKey("__defaults"): resource.PropertyValue{
+					V: []resource.PropertyValue{},
+				},
+				resource.PropertyKey("foo"): resource.PropertyValue{V: resource.PropertyMap{
+					resource.PropertyKey("__defaults"): resource.PropertyValue{
+						V: []resource.PropertyValue{},
+					},
+					resource.PropertyKey("key1"): resource.PropertyValue{V: resource.PropertyMap{resource.PropertyKey("__defaults"): resource.PropertyValue{
+						V: []resource.PropertyValue{},
+					}}},
 				}},
 			}),
 		},
