@@ -206,7 +206,9 @@ func runProvider(ctx context.Context, meta *providercache.CachedProvider) (Provi
 		Logger:           logging.NewProviderLogger(""),
 		AllowedProtocols: []plugin.Protocol{plugin.ProtocolGRPC},
 		Managed:          true,
-		Cmd:              exec.CommandContext(ctx, execFile),
+		// We intentionally use [context.Background] so the lifetime of the
+		// provider can escape the lifetime of the parameterize call.
+		Cmd:              exec.CommandContext(context.Background(), execFile),
 		AutoMTLS:         true,
 		VersionedPlugins: tfplugin.VersionedPlugins,
 		SyncStdout:       logging.PluginOutputMonitor(fmt.Sprintf("%s:stdout", meta.Provider)),
