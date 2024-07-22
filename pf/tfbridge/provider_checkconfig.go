@@ -197,6 +197,16 @@ func (p *provider) validateProviderConfig(
 		if k == "version" || k == "pluginDownloadURL" {
 			continue
 		}
+		// TODO[https://github.com/pulumi/pulumi/issues/16757] While #16757 is
+		// outstanding, we need to filter out the keys for parameterized providers
+		// from the top level namespace.
+		//
+		// We will need to remove this check before we GA dynamic providers.
+		if p.parameterize != nil {
+			if k == "name" || k == "parameterization" {
+				continue
+			}
+		}
 		n := tfbridge.PulumiToTerraformName(string(k), p.schemaOnlyProvider.Schema(), p.info.GetConfig())
 		_, known := p.configType.AttributeTypes[n]
 		if !known {
