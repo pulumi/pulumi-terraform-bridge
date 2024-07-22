@@ -47,14 +47,14 @@ func makeTerraformInputsNoDefaults(olds, news resource.PropertyMap,
 	tfs shim.SchemaMap, ps map[string]*SchemaInfo,
 ) (map[string]interface{}, AssetTable, error) {
 	return makeTerraformInputsWithOptions(context.Background(), nil, nil, olds, news, tfs, ps,
-		makeTerraformInputsOptions{DisableDefaults: true, DisableTFDefaults: true})
+		makeTerraformInputsOptions{DisableDefaults: true, DisableTFDefaults: true, UnknownCollectionsSupported: true})
 }
 
 func makeTerraformInputsForConfig(olds, news resource.PropertyMap,
 	tfs shim.SchemaMap, ps map[string]*SchemaInfo,
 ) (map[string]interface{}, AssetTable, error) {
 	return makeTerraformInputsWithOptions(context.Background(), nil, nil, olds, news, tfs, ps,
-		makeTerraformInputsOptions{})
+		makeTerraformInputsOptions{UnknownCollectionsSupported: true})
 }
 
 func makeTerraformInput(v resource.PropertyValue, tfs shim.Schema, ps *SchemaInfo) (interface{}, error) {
@@ -689,7 +689,8 @@ func TestMetaProperties(t *testing.T) {
 
 			state, err = makeTerraformStateWithOpts(
 				ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props,
-				makeTerraformStateOptions{defaultZeroSchemaVersion: true})
+				makeTerraformStateOptions{
+					defaultZeroSchemaVersion: true, unknownCollectionsSupported: prov.SupportsUnknownCollections()})
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 
@@ -705,7 +706,8 @@ func TestMetaProperties(t *testing.T) {
 
 			state, err = makeTerraformStateWithOpts(
 				ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props,
-				makeTerraformStateOptions{defaultZeroSchemaVersion: true})
+				makeTerraformStateOptions{
+					defaultZeroSchemaVersion: true, unknownCollectionsSupported: prov.SupportsUnknownCollections()})
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 
@@ -745,7 +747,8 @@ func TestMetaProperties(t *testing.T) {
 
 			state, err = makeTerraformStateWithOpts(
 				ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props,
-				makeTerraformStateOptions{defaultZeroSchemaVersion: true})
+				makeTerraformStateOptions{
+					defaultZeroSchemaVersion: true, unknownCollectionsSupported: prov.SupportsUnknownCollections()})
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 
@@ -774,7 +777,8 @@ func TestInjectingCustomTimeouts(t *testing.T) {
 
 			state, err = makeTerraformStateWithOpts(
 				ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props,
-				makeTerraformStateOptions{defaultZeroSchemaVersion: true})
+				makeTerraformStateOptions{
+					defaultZeroSchemaVersion: true, unknownCollectionsSupported: prov.SupportsUnknownCollections()})
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 
@@ -790,7 +794,8 @@ func TestInjectingCustomTimeouts(t *testing.T) {
 
 			state, err = makeTerraformStateWithOpts(
 				ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props,
-				makeTerraformStateOptions{defaultZeroSchemaVersion: true})
+				makeTerraformStateOptions{
+					defaultZeroSchemaVersion: true, unknownCollectionsSupported: prov.SupportsUnknownCollections()})
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 
@@ -833,7 +838,8 @@ func TestInjectingCustomTimeouts(t *testing.T) {
 
 			state, err = makeTerraformStateWithOpts(
 				ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props,
-				makeTerraformStateOptions{defaultZeroSchemaVersion: true})
+				makeTerraformStateOptions{
+					defaultZeroSchemaVersion: true, unknownCollectionsSupported: prov.SupportsUnknownCollections()})
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 
@@ -890,7 +896,8 @@ func TestResultAttributesRoundTrip(t *testing.T) {
 
 			state, err = makeTerraformStateWithOpts(
 				ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props,
-				makeTerraformStateOptions{defaultZeroSchemaVersion: true})
+				makeTerraformStateOptions{
+					defaultZeroSchemaVersion: true, unknownCollectionsSupported: prov.SupportsUnknownCollections()})
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 
@@ -3083,9 +3090,7 @@ func Test_makeTerraformInputsNoDefaults(t *testing.T) {
 				// The string property inside Computed is irrelevant.
 				"unknownArrayValue": resource.Computed{Element: resource.NewStringProperty("")},
 			}),
-			// NOTE: is this the behavior we would want here? Why is the result [unk] instead of unk?
-			//nolint:lll
-			expect: autogold.Expect(map[string]interface{}{"unknown_array_value": []interface{}{"74D93920-ED26-11E3-AC10-0800200C9A66"}}),
+			expect: autogold.Expect(map[string]interface{}{"unknown_array_value": "74D93920-ED26-11E3-AC10-0800200C9A66"}),
 		},
 		{
 			testCaseName: "unknown_object_value",
