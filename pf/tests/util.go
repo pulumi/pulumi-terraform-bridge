@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -116,7 +118,15 @@ func startPulumiProvider(t *testing.T, providerInfo tfbridge0.ProviderInfo) (*rp
 	return &handle, nil
 }
 
+func skipUnlessLinux(t *testing.T) {
+	if ci, ok := os.LookupEnv("CI"); ok && ci == "true" && !strings.Contains(strings.ToLower(runtime.GOOS), "linux") {
+		// TODO[pulumi/pulumi-terraform-bridge#2221]
+		t.Skip("Skipping on non-Linux platforms")
+	}
+}
+
 func pulCheck(t *testing.T, bridgedProvider info.Provider, program string) *pulumitest.PulumiTest {
+	skipUnlessLinux(t)
 	puwd := t.TempDir()
 	p := filepath.Join(puwd, "Pulumi.yaml")
 

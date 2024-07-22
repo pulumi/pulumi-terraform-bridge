@@ -1395,5 +1395,12 @@
                 ]
             }
         }
+    },
+    "parameterization": {
+        "baseProvider": {
+            "name": "terraform-provider",
+            "version": "v0.0.0-dev"
+        },
+        "parameter": "eyJyZW1vdGUiOnsidXJsIjoicmVnaXN0cnkub3BlbnRvZnUub3JnL2JhY2tibGF6ZS9iMiIsInZlcnNpb24iOiIwLjguOSJ9fQ=="
     }
 }

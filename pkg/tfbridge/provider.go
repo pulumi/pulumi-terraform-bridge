@@ -665,7 +665,8 @@ func buildTerraformConfig(ctx context.Context, p *Provider, vars resource.Proper
 		}
 	}
 
-	inputs, _, err := MakeTerraformInputs(ctx, nil, tfVars, nil, tfVars, p.config, p.info.Config)
+	inputs, _, err := makeTerraformInputsWithOptions(ctx, nil, tfVars, nil, tfVars, p.config, p.info.Config,
+		makeTerraformInputsOptions{UnknownCollectionsSupported: p.tf.SupportsUnknownCollections()})
 	if err != nil {
 		return nil, err
 	}
@@ -971,7 +972,7 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 	inputs, _, err := makeTerraformInputsWithOptions(ctx,
 		&PulumiResource{URN: urn, Properties: news, Seed: req.RandomSeed},
 		p.configValues, olds, news, schemaMap, res.Schema.Fields,
-		makeTerraformInputsOptions{DisableTFDefaults: true})
+		makeTerraformInputsOptions{DisableTFDefaults: true, UnknownCollectionsSupported: p.tf.SupportsUnknownCollections()})
 	if err != nil {
 		return nil, err
 	}
@@ -987,9 +988,10 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 	failures = append(failures, p.adaptCheckFailures(ctx, urn, false /*isProvider*/, schemaMap, schemaInfos, errs)...)
 
 	// Now re-generate the inputs WITH the TF defaults
-	inputs, assets, err := MakeTerraformInputs(ctx,
+	inputs, assets, err := makeTerraformInputsWithOptions(ctx,
 		&PulumiResource{URN: urn, Properties: news, Seed: req.RandomSeed},
-		p.configValues, olds, news, schemaMap, res.Schema.Fields)
+		p.configValues, olds, news, schemaMap, res.Schema.Fields,
+		makeTerraformInputsOptions{UnknownCollectionsSupported: p.tf.SupportsUnknownCollections()})
 	if err != nil {
 		return nil, err
 	}
@@ -1073,7 +1075,10 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 	}
 
 	state, err := makeTerraformStateWithOpts(ctx, res, req.GetId(), olds,
-		makeTerraformStateOptions{defaultZeroSchemaVersion: opts.defaultZeroSchemaVersion}, //nolint: gosimple
+		makeTerraformStateOptions{
+			defaultZeroSchemaVersion:    opts.defaultZeroSchemaVersion,
+			unknownCollectionsSupported: p.tf.SupportsUnknownCollections(),
+		},
 	)
 	if err != nil {
 		return nil, errors.Wrapf(err, "unmarshaling %s's instance state", urn)
@@ -1347,7 +1352,10 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 		return nil, err
 	}
 	state, err := unmarshalTerraformStateWithOpts(ctx, res, id, req.GetProperties(), fmt.Sprintf("%s.state", label),
-		unmarshalTerraformStateOptions{defaultZeroSchemaVersion: opts.defaultZeroSchemaVersion}) //nolint: gosimple
+		unmarshalTerraformStateOptions{
+			defaultZeroSchemaVersion:    opts.defaultZeroSchemaVersion,
+			unknownCollectionsSupported: p.tf.SupportsUnknownCollections(),
+		})
 	if err != nil {
 		return nil, errors.Wrapf(err, "unmarshaling %s's instance state", urn)
 	}
@@ -1462,7 +1470,10 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 	}
 
 	state, err := makeTerraformStateWithOpts(ctx, res, req.GetId(), olds,
-		makeTerraformStateOptions{defaultZeroSchemaVersion: opts.defaultZeroSchemaVersion}) //nolint: gosimple
+		makeTerraformStateOptions{
+			defaultZeroSchemaVersion:    opts.defaultZeroSchemaVersion,
+			unknownCollectionsSupported: p.tf.SupportsUnknownCollections(),
+		})
 	if err != nil {
 		return nil, errors.Wrapf(err, "unmarshaling %s's instance state", urn)
 	}
@@ -1592,7 +1603,10 @@ func (p *Provider) Delete(ctx context.Context, req *pulumirpc.DeleteRequest) (*p
 	}
 	// Fetch the resource attributes since many providers need more than just the ID to perform the delete.
 	state, err := unmarshalTerraformStateWithOpts(ctx, res, req.GetId(), req.GetProperties(), label,
-		unmarshalTerraformStateOptions{defaultZeroSchemaVersion: opts.defaultZeroSchemaVersion}) //nolint: gosimple
+		unmarshalTerraformStateOptions{
+			defaultZeroSchemaVersion:    opts.defaultZeroSchemaVersion,
+			unknownCollectionsSupported: p.tf.SupportsUnknownCollections(),
+		})
 	if err != nil {
 		return nil, err
 	}
@@ -1646,13 +1660,14 @@ func (p *Provider) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*p
 
 	// First, create the inputs.
 	tfname := ds.TFName
-	inputs, _, err := MakeTerraformInputs(
+	inputs, _, err := makeTerraformInputsWithOptions(
 		ctx,
 		&PulumiResource{Properties: args},
 		p.configValues,
 		nil, args,
 		ds.TF.Schema(),
-		ds.Schema.Fields)
+		ds.Schema.Fields,
+		makeTerraformInputsOptions{UnknownCollectionsSupported: p.tf.SupportsUnknownCollections()})
 	if err != nil {
 		return nil, errors.Wrapf(err, "couldn't prepare resource %v input state", tfname)
 	}
