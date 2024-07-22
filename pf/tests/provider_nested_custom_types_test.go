@@ -10,7 +10,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
-	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/providerbuilder"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
@@ -41,7 +40,7 @@ func TestNestedCustomTypeEncoding(t *testing.T) {
 						Validators: []validator.List{
 							listvalidator.SizeAtMost(1),
 						},
-						ElementType: types.ObjectType{
+						ElementType: basetypes.ObjectType{
 							AttrTypes: AttributeTypesMust[promptOverrideConfigurationModel](context.Background()),
 						},
 					},
@@ -78,7 +77,7 @@ type promptOverrideConfigurationModel struct {
 }
 
 type promptConfigurationModel struct {
-	BasePromptTemplate types.String `tfsdk:"base_prompt_template"`
+	BasePromptTemplate basetypes.StringType `tfsdk:"base_prompt_template"`
 }
 
 // Implementation for set, list, and object typables.

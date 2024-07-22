@@ -48,6 +48,27 @@ func TestCreateWithComputedOptionals(t *testing.T) {
 	testutils.Replay(t, server, testCase)
 }
 
+func TestCreateWithIntID(t *testing.T) {
+	server := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
+	testCase := `
+        {
+          "method": "/pulumirpc.ResourceProvider/Create",
+          "request": {
+            "urn": "urn:pulumi:test-stack::basicprogram::testbridge:index/intID:IntID::r1",
+            "properties": {},
+            "preview": false
+          },
+          "response": {
+            "id": "1234",
+            "properties": {
+              "id": "1234"
+            }
+          }
+        }
+        `
+	testutils.Replay(t, server, testCase)
+}
+
 func TestCreateWritesSchemaVersion(t *testing.T) {
 	server := newProviderServer(t, testprovider.RandomProvider())
 
