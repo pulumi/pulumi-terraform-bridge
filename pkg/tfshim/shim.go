@@ -128,9 +128,11 @@ type Schema interface {
 	//
 	// A test suite [3] is provided to explore how Plugin Framework constructs map to Schema.
 	//
+	// A test suite [4] is provided to explore how SDKv2 constructs map to Schema.
 	// [1]: https://github.com/hashicorp/terraform-plugin-sdk/blob/main/helper/schema/schema.go#L231
 	// [2]: https://github.com/hashicorp/terraform-plugin-sdk/blob/main/helper/schema/core_schema_test.go#L220
 	// [3]: https://github.com/pulumi/pulumi-terraform-bridge/blob/master/pf/tests/schemashim_test.go#L34
+	// [4]: https://github.com/pulumi/pulumi-terraform-bridge/blob/master/pkg/tfshim/sdk-v2/shim_test.go#L29
 	Elem() interface{}
 
 	MaxItems() int
