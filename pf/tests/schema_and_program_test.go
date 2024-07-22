@@ -86,5 +86,5 @@ outputs:
 
 	require.Equal(t, "Default val", upRes.Outputs["changeReason"].Value)
 
-	pt.Preview(optpreview.Diff())
+	pt.Preview(optpreview.Diff(), optpreview.ExpectNoChanges())
 }
