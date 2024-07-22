@@ -544,6 +544,27 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 			}}),
 		},
 		{
+			name: "object attribute computed",
+			props: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"foo": map[string]interface{}{
+					"bar": "baz",
+				},
+			}),
+			resSchema: rschema.Schema{
+				Attributes: map[string]rschema.Attribute{
+					"foo": rschema.ObjectAttribute{
+						Computed: true,
+						AttributeTypes: map[string]attr.Type{
+							"bar": types.StringType,
+						},
+					},
+				},
+			},
+			expect: autogold.Expect(resource.PropertyMap{resource.PropertyKey("__defaults"): resource.PropertyValue{
+				V: []resource.PropertyValue{},
+			}}),
+		},
+		{
 			name: "single nested attribute",
 			props: resource.NewPropertyMapFromMap(map[string]interface{}{
 				"foo": map[string]interface{}{
@@ -572,6 +593,49 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 				}},
 			}),
 		},
+		{
+			name: "single nested attribute computed",
+			props: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"foo": map[string]interface{}{
+					"bar": "baz",
+				},
+			}),
+			resSchema: rschema.Schema{
+				Attributes: map[string]rschema.Attribute{
+					"foo": rschema.SingleNestedAttribute{
+						Computed: true,
+						Attributes: map[string]rschema.Attribute{
+							"bar": rschema.StringAttribute{Optional: true},
+						},
+					},
+				},
+			},
+			expect: autogold.Expect(resource.PropertyMap{resource.PropertyKey("__defaults"): resource.PropertyValue{
+				V: []resource.PropertyValue{},
+			}}),
+		},
+		{
+			name: "single nested attribute nested computed",
+			props: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"foo": map[string]interface{}{
+					"bar": "baz",
+				},
+			}),
+			resSchema: rschema.Schema{
+				Attributes: map[string]rschema.Attribute{
+					"foo": rschema.SingleNestedAttribute{
+						Optional: true,
+						Attributes: map[string]rschema.Attribute{
+							"bar": rschema.StringAttribute{Computed: true},
+						},
+					},
+				},
+			},
+			expect: autogold.Expect(resource.PropertyMap{resource.PropertyKey("__defaults"): resource.PropertyValue{
+				V: []resource.PropertyValue{},
+			}}),
+		},
+		// TODO[pulumi/pulumi-terraform-bridge#2218]: Add default tests here.
 		// BLOCKS
 		// {
 		// 	name: "list nested block",
