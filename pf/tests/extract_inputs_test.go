@@ -27,8 +27,9 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 	}
 
 	testCases := []testCase{
+		// ATTRIBUTES
 		{
-			name:  "string",
+			name:  "string extracted",
 			props: resource.NewPropertyMapFromMap(map[string]interface{}{"foo": "bar"}),
 			resSchema: rschema.Schema{
 				Attributes: map[string]rschema.Attribute{
@@ -44,7 +45,7 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 		},
 		// TODO[pulumi/pulumi-terraform-bridge#2218]: This should not yield values for foo in the inputs.
 		{
-			name:  "string with default",
+			name:  "string with default not extracted",
 			props: resource.NewPropertyMapFromMap(map[string]interface{}{"foo": "bar"}),
 			resSchema: rschema.Schema{
 				Attributes: map[string]rschema.Attribute{
@@ -55,11 +56,11 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 				resource.PropertyKey("__defaults"): resource.PropertyValue{
 					V: []resource.PropertyValue{},
 				},
-				resource.PropertyKey("foo"): resource.PropertyValue{V: "bar"},
+				resource.PropertyKey("foo"): resource.PropertyValue{V: "bar"}, // wrong
 			}),
 		},
 		{
-			name:  "string with empty value",
+			name:  "string with empty value not extracted",
 			props: resource.NewPropertyMapFromMap(map[string]interface{}{"foo": ""}),
 			resSchema: rschema.Schema{
 				Attributes: map[string]rschema.Attribute{
@@ -71,7 +72,7 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 			}}),
 		},
 		{
-			name:  "string computed",
+			name:  "string computed not extracted",
 			props: resource.NewPropertyMapFromMap(map[string]interface{}{"foo": "bar"}),
 			resSchema: rschema.Schema{
 				Attributes: map[string]rschema.Attribute{
@@ -83,7 +84,7 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 			}}),
 		},
 		{
-			name:  "list attribute",
+			name:  "list attribute extracted",
 			props: resource.NewPropertyMapFromMap(map[string]interface{}{"foo": []interface{}{"bar"}}),
 			resSchema: rschema.Schema{
 				Attributes: map[string]rschema.Attribute{
@@ -104,7 +105,7 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 		},
 		// TODO[pulumi/pulumi-terraform-bridge#2218]: This should not yield values for properties with defaults in the inputs.
 		{
-			name: "list attribute with default",
+			name: "list attribute with default not extracted",
 			props: resource.NewPropertyMapFromMap(map[string]interface{}{
 				"foo": []interface{}{"bar"},
 			}),
@@ -122,12 +123,12 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 					V: []resource.PropertyValue{},
 				},
 				resource.PropertyKey("foo"): resource.PropertyValue{V: []resource.PropertyValue{{
-					V: "bar",
+					V: "bar", // wrong
 				}}},
 			}),
 		},
 		{
-			name: "list attribute computed",
+			name: "list attribute computed not extracted",
 			props: resource.NewPropertyMapFromMap(map[string]interface{}{
 				"foo": []interface{}{"bar"},
 			}),
@@ -144,7 +145,7 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 			}}),
 		},
 		{
-			name: "list nested attribute",
+			name: "list nested attribute extracted",
 			props: resource.NewPropertyMapFromMap(map[string]interface{}{
 				"foo": []interface{}{
 					map[string]interface{}{"bar": "baz"},
@@ -178,7 +179,7 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 		},
 		// TODO[pulumi/pulumi-terraform-bridge#2218]: This should not yield values for properties with defaults in the inputs.
 		{
-			name: "list nested attribute with defaults",
+			name: "list nested attribute with defaults not extracted",
 			props: resource.NewPropertyMapFromMap(map[string]interface{}{
 				"foo": []interface{}{
 					map[string]interface{}{"bar": "baz"},
@@ -217,14 +218,14 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 						resource.PropertyKey("__defaults"): resource.PropertyValue{
 							V: []resource.PropertyValue{},
 						},
-						resource.PropertyKey("bar"): resource.PropertyValue{V: "baz"},
+						resource.PropertyKey("bar"): resource.PropertyValue{V: "baz"}, // wrong
 					},
 				}}},
 			}),
 		},
 		// TODO[pulumi/pulumi-terraform-bridge#2218]: This should not yield values for properties with defaults in the inputs.
 		{
-			name: "list nested attribute with nested defaults",
+			name: "list nested attribute with nested defaults not extracted",
 			props: resource.NewPropertyMapFromMap(map[string]interface{}{
 				"foo": []interface{}{
 					map[string]interface{}{"bar": "baz"},
@@ -251,13 +252,13 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 						resource.PropertyKey("__defaults"): resource.PropertyValue{
 							V: []resource.PropertyValue{},
 						},
-						resource.PropertyKey("bar"): resource.PropertyValue{V: "baz"},
+						resource.PropertyKey("bar"): resource.PropertyValue{V: "baz"}, // wrong
 					},
 				}}},
 			}),
 		},
 		{
-			name: "list nested attribute computed",
+			name: "list nested attribute computed not extracted",
 			props: resource.NewPropertyMapFromMap(map[string]interface{}{
 				"foo": []interface{}{
 					map[string]interface{}{"bar": "baz"},
@@ -280,7 +281,7 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 			}}),
 		},
 		{
-			name: "list nested attribute nested computed",
+			name: "list nested attribute nested computed not extracted",
 			props: resource.NewPropertyMapFromMap(map[string]interface{}{
 				"foo": []interface{}{
 					map[string]interface{}{"bar": "baz"},
@@ -310,7 +311,7 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 			}),
 		},
 		{
-			name: "set nested attribute",
+			name: "set nested attribute extracted",
 			props: resource.NewPropertyMapFromMap(map[string]interface{}{
 				"foo": []interface{}{
 					map[string]interface{}{"bar": "baz"},
@@ -343,7 +344,7 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 			}),
 		},
 		{
-			name: "map nested attribute",
+			name: "map nested attribute extracted",
 			props: resource.NewPropertyMapFromMap(map[string]interface{}{
 				"foo": map[string]interface{}{
 					"key1": map[string]interface{}{"bar": "baz"},
@@ -380,7 +381,7 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 		},
 		// TODO[pulumi/pulumi-terraform-bridge#2218]: This should not yield values for properties with defaults in the inputs.
 		{
-			name: "map nested attribute with default",
+			name: "map nested attribute with default not extracted",
 			props: resource.NewPropertyMapFromMap(map[string]interface{}{
 				"foo": map[string]interface{}{
 					"key1": map[string]interface{}{"bar": "baz"},
@@ -404,7 +405,7 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 										"bar": types.StringType,
 									},
 									map[string]attr.Value{
-										"bar": types.StringValue("baz"),
+										"bar": types.StringValue("baz"), // wrong
 									},
 								),
 							},
@@ -431,7 +432,7 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 		},
 		// TODO[pulumi/pulumi-terraform-bridge#2218]: This should not yield values for properties with defaults in the inputs.
 		{
-			name: "map nested attribute with nested default",
+			name: "map nested attribute with nested default not extracted",
 			props: resource.NewPropertyMapFromMap(map[string]interface{}{
 				"foo": map[string]interface{}{
 					"key1": map[string]interface{}{"bar": "baz"},
@@ -461,13 +462,13 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 						resource.PropertyKey("__defaults"): resource.PropertyValue{
 							V: []resource.PropertyValue{},
 						},
-						resource.PropertyKey("bar"): resource.PropertyValue{V: "baz"},
+						resource.PropertyKey("bar"): resource.PropertyValue{V: "baz"}, // wrong
 					}},
 				}},
 			}),
 		},
 		{
-			name: "map nested attribute computed",
+			name: "map nested attribute computed not extracted",
 			props: resource.NewPropertyMapFromMap(map[string]interface{}{
 				"foo": map[string]interface{}{
 					"key1": map[string]interface{}{"bar": "baz"},
@@ -490,7 +491,7 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 			}}),
 		},
 		{
-			name: "map nested attribute nested computed",
+			name: "map nested attribute nested computed not extracted",
 			props: resource.NewPropertyMapFromMap(map[string]interface{}{
 				"foo": map[string]interface{}{
 					"key1": map[string]interface{}{"bar": "baz"},
@@ -523,7 +524,7 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 			}),
 		},
 		{
-			name: "object attribute",
+			name: "object attribute extracted",
 			props: resource.NewPropertyMapFromMap(map[string]interface{}{
 				"foo": map[string]interface{}{
 					"bar": "baz",
@@ -544,7 +545,7 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 			}}),
 		},
 		{
-			name: "object attribute computed",
+			name: "object attribute computed not extracted",
 			props: resource.NewPropertyMapFromMap(map[string]interface{}{
 				"foo": map[string]interface{}{
 					"bar": "baz",
@@ -565,7 +566,7 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 			}}),
 		},
 		{
-			name: "single nested attribute",
+			name: "single nested attribute extracted",
 			props: resource.NewPropertyMapFromMap(map[string]interface{}{
 				"foo": map[string]interface{}{
 					"bar": "baz",
@@ -594,7 +595,7 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 			}),
 		},
 		{
-			name: "single nested attribute computed",
+			name: "single nested attribute computed not extracted",
 			props: resource.NewPropertyMapFromMap(map[string]interface{}{
 				"foo": map[string]interface{}{
 					"bar": "baz",
@@ -615,7 +616,7 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 			}}),
 		},
 		{
-			name: "single nested attribute nested computed",
+			name: "single nested attribute nested computed not extracted",
 			props: resource.NewPropertyMapFromMap(map[string]interface{}{
 				"foo": map[string]interface{}{
 					"bar": "baz",
@@ -635,17 +636,273 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 				V: []resource.PropertyValue{},
 			}}),
 		},
-		// TODO[pulumi/pulumi-terraform-bridge#2218]: Add default tests here.
+		// TODO[pulumi/pulumi-terraform-bridge#2218]: Add missing defaults tests here once defaults are fixed.
 		// BLOCKS
-		// {
-		// 	name: "list nested block",
-		// },
-		// {
-		// 	name: "set nested block",
-		// },
-		// {
-		// 	name: "single nested block",
-		// },
+		{
+			name: "list nested block not extracted",
+			props: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"block_field": []interface{}{
+					map[string]interface{}{"nested_field": "nested_value"},
+				},
+			}),
+			resSchema: rschema.Schema{
+				Blocks: map[string]rschema.Block{
+					"block_field": rschema.ListNestedBlock{
+						NestedObject: rschema.NestedBlockObject{
+							Attributes: map[string]rschema.Attribute{
+								"nested_field": rschema.StringAttribute{Optional: true},
+							},
+						},
+					},
+				},
+			},
+			expect: autogold.Expect(resource.PropertyMap{
+				resource.PropertyKey("__defaults"): resource.PropertyValue{
+					V: []resource.PropertyValue{},
+				},
+				resource.PropertyKey("block_field"): resource.PropertyValue{V: []resource.PropertyValue{{
+					V: resource.PropertyMap{
+						resource.PropertyKey("__defaults"): resource.PropertyValue{
+							V: []resource.PropertyValue{},
+						},
+						resource.PropertyKey("nested_field"): resource.PropertyValue{V: "nested_value"},
+					},
+				}}},
+			}),
+		},
+		// TODO[pulumi/pulumi-terraform-bridge#2218]: This should not yield values for properties with defaults in the inputs.
+		{
+			name: "list nested block with defaults not extracted",
+			props: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"block_field": []interface{}{
+					map[string]interface{}{"nested_field": "nested_value"},
+				},
+			}),
+			resSchema: rschema.Schema{
+				Blocks: map[string]rschema.Block{
+					"block_field": rschema.ListNestedBlock{
+						NestedObject: rschema.NestedBlockObject{
+							Attributes: map[string]rschema.Attribute{
+								"nested_field": rschema.StringAttribute{Optional: true, Default: stringdefault.StaticString("nested_value")},
+							},
+						},
+					},
+				},
+			},
+			expect: autogold.Expect(resource.PropertyMap{
+				resource.PropertyKey("__defaults"): resource.PropertyValue{
+					V: []resource.PropertyValue{},
+				},
+				resource.PropertyKey("block_field"): resource.PropertyValue{V: []resource.PropertyValue{{
+					V: resource.PropertyMap{
+						resource.PropertyKey("__defaults"): resource.PropertyValue{
+							V: []resource.PropertyValue{},
+						},
+						resource.PropertyKey("nested_field"): resource.PropertyValue{V: "nested_value"},
+					},
+				}}},
+			}),
+		},
+		{
+			name: "list nested block computed not extracted",
+			props: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"block_field": []interface{}{
+					map[string]interface{}{"nested_field": "nested_value"},
+				},
+			}),
+			resSchema: rschema.Schema{
+				Blocks: map[string]rschema.Block{
+					"block_field": rschema.ListNestedBlock{
+						NestedObject: rschema.NestedBlockObject{
+							Attributes: map[string]rschema.Attribute{
+								"nested_field": rschema.StringAttribute{Computed: true},
+							},
+						},
+					},
+				},
+			},
+			expect: autogold.Expect(resource.PropertyMap{
+				resource.PropertyKey("__defaults"): resource.PropertyValue{
+					V: []resource.PropertyValue{},
+				},
+				resource.PropertyKey("block_field"): resource.PropertyValue{V: []resource.PropertyValue{{
+					V: resource.PropertyMap{
+						resource.PropertyKey("__defaults"): resource.PropertyValue{
+							V: []resource.PropertyValue{},
+						},
+						resource.PropertyKey("nested_field"): resource.PropertyValue{V: "nested_value"},
+					},
+				}}},
+			}),
+		},
+		{
+			name: "set nested block extracted",
+			props: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"block_field": []interface{}{
+					map[string]interface{}{"nested_field": "nested_value"},
+				},
+			}),
+			resSchema: rschema.Schema{
+				Blocks: map[string]rschema.Block{
+					"block_field": rschema.SetNestedBlock{
+						NestedObject: rschema.NestedBlockObject{
+							Attributes: map[string]rschema.Attribute{
+								"nested_field": rschema.StringAttribute{Optional: true},
+							},
+						},
+					},
+				},
+			},
+			expect: autogold.Expect(resource.PropertyMap{
+				resource.PropertyKey("__defaults"): resource.PropertyValue{
+					V: []resource.PropertyValue{},
+				},
+				resource.PropertyKey("block_field"): resource.PropertyValue{V: []resource.PropertyValue{{
+					V: resource.PropertyMap{
+						resource.PropertyKey("__defaults"): resource.PropertyValue{
+							V: []resource.PropertyValue{},
+						},
+						resource.PropertyKey("nested_field"): resource.PropertyValue{V: "nested_value"},
+					},
+				}}},
+			}),
+		},
+		// TODO[pulumi/pulumi-terraform-bridge#2218]: This should not yield values for properties with defaults in the inputs.
+		{
+			name: "set nested block with defaults not extracted",
+			props: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"block_field": []interface{}{
+					map[string]interface{}{"nested_field": "nested_value"},
+				},
+			}),
+			resSchema: rschema.Schema{
+				Blocks: map[string]rschema.Block{
+					"block_field": rschema.SetNestedBlock{
+						NestedObject: rschema.NestedBlockObject{
+							Attributes: map[string]rschema.Attribute{
+								"nested_field": rschema.StringAttribute{Optional: true, Default: stringdefault.StaticString("nested_value")},
+							},
+						},
+					},
+				},
+			},
+			expect: autogold.Expect(resource.PropertyMap{
+				resource.PropertyKey("__defaults"): resource.PropertyValue{
+					V: []resource.PropertyValue{},
+				},
+				resource.PropertyKey("block_field"): resource.PropertyValue{V: []resource.PropertyValue{{
+					V: resource.PropertyMap{
+						resource.PropertyKey("__defaults"): resource.PropertyValue{
+							V: []resource.PropertyValue{},
+						},
+						resource.PropertyKey("nested_field"): resource.PropertyValue{V: "nested_value"},
+					},
+				}}},
+			}),
+		},
+		{
+			name: "set nested block computed not extracted",
+			props: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"block_field": []interface{}{
+					map[string]interface{}{"nested_field": "nested_value"},
+				},
+			}),
+			resSchema: rschema.Schema{
+				Blocks: map[string]rschema.Block{
+					"block_field": rschema.SetNestedBlock{
+						NestedObject: rschema.NestedBlockObject{
+							Attributes: map[string]rschema.Attribute{
+								"nested_field": rschema.StringAttribute{Computed: true},
+							},
+						},
+					},
+				},
+			},
+			expect: autogold.Expect(resource.PropertyMap{
+				resource.PropertyKey("__defaults"): resource.PropertyValue{
+					V: []resource.PropertyValue{},
+				},
+				resource.PropertyKey("block_field"): resource.PropertyValue{V: []resource.PropertyValue{{
+					V: resource.PropertyMap{
+						resource.PropertyKey("__defaults"): resource.PropertyValue{
+							V: []resource.PropertyValue{},
+						},
+						resource.PropertyKey("nested_field"): resource.PropertyValue{V: "nested_value"},
+					},
+				}}},
+			}),
+		},
+		{
+			name: "single nested block extracted",
+			props: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"block_field": map[string]interface{}{"nested_field": "nested_value"},
+			}),
+			resSchema: rschema.Schema{
+				Blocks: map[string]rschema.Block{
+					"block_field": rschema.SingleNestedBlock{
+						Attributes: map[string]rschema.Attribute{
+							"nested_field": rschema.StringAttribute{Optional: true},
+						},
+					},
+				},
+			},
+			expect: autogold.Expect(resource.PropertyMap{
+				resource.PropertyKey("__defaults"): resource.PropertyValue{
+					V: []resource.PropertyValue{},
+				},
+				resource.PropertyKey("block_field"): resource.PropertyValue{V: resource.PropertyMap{
+					resource.PropertyKey("__defaults"): resource.PropertyValue{
+						V: []resource.PropertyValue{},
+					},
+					resource.PropertyKey("nested_field"): resource.PropertyValue{V: "nested_value"},
+				}},
+			}),
+		},
+		// TODO[pulumi/pulumi-terraform-bridge#2218]: This should not yield values for properties with defaults in the inputs.
+		{
+			name: "single nested block with default not extracted",
+			props: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"block_field": map[string]interface{}{"nested_field": "nested_value"},
+			}),
+			resSchema: rschema.Schema{
+				Blocks: map[string]rschema.Block{
+					"block_field": rschema.SingleNestedBlock{
+						Attributes: map[string]rschema.Attribute{
+							"nested_field": rschema.StringAttribute{Optional: true, Default: stringdefault.StaticString("nested_value")},
+						},
+					},
+				},
+			},
+			expect: autogold.Expect(resource.PropertyMap{
+				resource.PropertyKey("__defaults"): resource.PropertyValue{
+					V: []resource.PropertyValue{},
+				},
+				resource.PropertyKey("block_field"): resource.PropertyValue{V: resource.PropertyMap{
+					resource.PropertyKey("__defaults"): resource.PropertyValue{
+						V: []resource.PropertyValue{},
+					},
+					resource.PropertyKey("nested_field"): resource.PropertyValue{V: "nested_value"},
+				}},
+			}),
+		},
+		{
+			name: "single nested block computed not extracted",
+			props: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"block_field": map[string]interface{}{"nested_field": "nested_value"},
+			}),
+			resSchema: rschema.Schema{
+				Blocks: map[string]rschema.Block{
+					"block_field": rschema.SingleNestedBlock{
+						Attributes: map[string]rschema.Attribute{
+							"nested_field": rschema.StringAttribute{Computed: true},
+						},
+					},
+				},
+			},
+			expect: autogold.Expect(resource.PropertyMap{resource.PropertyKey("__defaults"): resource.PropertyValue{
+				V: []resource.PropertyValue{},
+			}}),
+		},
 	}
 
 	for _, tc := range testCases {
