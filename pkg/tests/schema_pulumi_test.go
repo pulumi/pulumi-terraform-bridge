@@ -1396,3 +1396,81 @@ Resources:
 		})
 	}
 }
+
+func TestFullyComputedNestedAttribute(t *testing.T) {
+	resMap := map[string]*schema.Resource{
+		"prov_test": {
+			Schema: map[string]*schema.Schema{
+				"attached_disks": {
+					Type:     schema.TypeList,
+					Optional: true,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"name": {
+								Optional: true,
+								Type:     schema.TypeString,
+							},
+							"key256": {
+								Computed: true,
+								Type:     schema.TypeString,
+							},
+						},
+					},
+				},
+				"top_level_computed": {
+					Type:     schema.TypeString,
+					Computed: true,
+				},
+			},
+		},
+	}
+
+	importer := func(val any) func(context.Context, *schema.ResourceData, interface{}) ([]*schema.ResourceData, error) {
+		return func(ctx context.Context, rd *schema.ResourceData, i interface{}) ([]*schema.ResourceData, error) {
+			elMap := map[string]any{
+				"name":   "disk1",
+				"key256": val,
+			}
+			err := rd.Set("attached_disks", []map[string]any{elMap})
+			require.NoError(t, err)
+
+			err = rd.Set("top_level_computed", "computed_val")
+			require.NoError(t, err)
+
+			return []*schema.ResourceData{rd}, nil
+		}
+	}
+	bridgedProvider := pulcheck.BridgedProvider(t, "prov", resMap)
+
+	program := `
+name: test
+runtime: yaml
+`
+	for _, tc := range []struct {
+		name      string
+		importVal any
+	}{
+		{
+			"non-nil",
+			"val1",
+		},
+		{
+			"nil",
+			nil,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			resMap["prov_test"].Importer = &schema.ResourceImporter{
+				StateContext: importer(tc.importVal),
+			}
+
+			pt := pulcheck.PulCheck(t, bridgedProvider, program)
+
+			res := pt.Import("prov:index/test:Test", "res1", "id1", "")
+
+			t.Logf(res.Stdout)
+
+			require.NotContains(t, res.Stdout, "One or more imported inputs failed to validate")
+		})
+	}
+}

@@ -36,7 +36,7 @@ require (
 	github.com/mitchellh/reflectwalk v1.0.2
 	github.com/pkg/errors v0.9.1
 	github.com/pulumi/inflector v0.1.1
-	github.com/pulumi/providertest v0.0.13
+	github.com/pulumi/providertest v0.0.14
 	github.com/pulumi/pulumi-java/pkg v0.11.0
 	github.com/pulumi/pulumi-terraform-bridge/x/muxer v0.0.8
 	github.com/pulumi/pulumi-yaml v1.9.1
