@@ -31,8 +31,6 @@ func IsOfTypeMap(tfs shim.Schema) bool {
 
 // CastToTypeObject performs a checked cast from shim.Schema to a TF object (a collection
 // of fields).
-// Note that this is only valid for PF resources - in the TF SDK objects are not represented as maps
-//
 // See [shim.Schema.Elem()] comment for all the details of the encoding.
 func CastToTypeObject(tfs shim.Schema) (shim.SchemaMap, bool) {
 	if tfs == nil {
