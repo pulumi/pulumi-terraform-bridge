@@ -638,6 +638,7 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 		},
 		// TODO[pulumi/pulumi-terraform-bridge#2218]: Add missing defaults tests here once defaults are fixed.
 		// BLOCKS
+		// TODO[pulumi/pulumi-terraform-bridge#2180]: This should not yield values for computed properties
 		{
 			name: "list nested block not extracted",
 			props: resource.NewPropertyMapFromMap(map[string]interface{}{
@@ -665,7 +666,7 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 						resource.PropertyKey("__defaults"): resource.PropertyValue{
 							V: []resource.PropertyValue{},
 						},
-						resource.PropertyKey("nested_field"): resource.PropertyValue{V: "nested_value"},
+						resource.PropertyKey("nested_field"): resource.PropertyValue{V: "nested_value"}, // wrong
 					},
 				}}},
 			}),
@@ -698,11 +699,12 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 						resource.PropertyKey("__defaults"): resource.PropertyValue{
 							V: []resource.PropertyValue{},
 						},
-						resource.PropertyKey("nested_field"): resource.PropertyValue{V: "nested_value"},
+						resource.PropertyKey("nested_field"): resource.PropertyValue{V: "nested_value"}, // wrong
 					},
 				}}},
 			}),
 		},
+		// TODO[pulumi/pulumi-terraform-bridge#2180]: This should not yield values for computed properties
 		{
 			name: "list nested block computed not extracted",
 			props: resource.NewPropertyMapFromMap(map[string]interface{}{
@@ -730,7 +732,7 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 						resource.PropertyKey("__defaults"): resource.PropertyValue{
 							V: []resource.PropertyValue{},
 						},
-						resource.PropertyKey("nested_field"): resource.PropertyValue{V: "nested_value"},
+						resource.PropertyKey("nested_field"): resource.PropertyValue{V: "nested_value"}, // wrong
 					},
 				}}},
 			}),
@@ -795,7 +797,7 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 						resource.PropertyKey("__defaults"): resource.PropertyValue{
 							V: []resource.PropertyValue{},
 						},
-						resource.PropertyKey("nested_field"): resource.PropertyValue{V: "nested_value"},
+						resource.PropertyKey("nested_field"): resource.PropertyValue{V: "nested_value"}, // wrong
 					},
 				}}},
 			}),
@@ -881,7 +883,7 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 					resource.PropertyKey("__defaults"): resource.PropertyValue{
 						V: []resource.PropertyValue{},
 					},
-					resource.PropertyKey("nested_field"): resource.PropertyValue{V: "nested_value"},
+					resource.PropertyKey("nested_field"): resource.PropertyValue{V: "nested_value"}, // wrong
 				}},
 			}),
 		},
