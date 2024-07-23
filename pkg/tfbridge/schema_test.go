@@ -2775,7 +2775,6 @@ func TestExtractSchemaInputsNestedMaxItemsOne(t *testing.T) {
 				}),
 				"listObjects": resource.NewProperty([]resource.PropertyValue{
 					resource.NewProperty(resource.PropertyMap{
-						"field1":     resource.NewProperty(false),
 						"listScalar": resource.NewProperty(1.0),
 					}),
 				}),
@@ -3678,7 +3677,7 @@ func TestExtractInputsFromOutputsSdkv2(t *testing.T) {
 				},
 			},
 			expected: autogold.Expect(resource.PropertyMap{
-				resource.PropertyKey("foo"): resource.PropertyValue{V: []resource.PropertyValue{{}}},
+				resource.PropertyKey("foo"): resource.PropertyValue{V: []resource.PropertyValue{{V: resource.PropertyMap{}}}},
 			}),
 		},
 		{
