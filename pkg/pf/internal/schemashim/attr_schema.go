@@ -110,7 +110,7 @@ func (s *attrSchema) Elem() interface{} {
 		if r, ok := asObjectType(t.ElementType()); ok {
 			return r
 		} else {
-			panic("TODO")
+			return shim.Schema(newTypeSchema(t.ElementType(), s.attr.Nested()))
 		}
 
 	// t does not support any kind of element type.
