@@ -861,15 +861,12 @@ func testProviderRead(t *testing.T, provider *Provider, typeName tokens.Type, ch
 	assert.Equal(t, resource.NewArrayProperty(
 		[]resource.PropertyValue{resource.NewStringProperty("an array")}), ins["arrayPropertyValues"])
 	assert.Equal(t, resource.NewObjectProperty(resource.PropertyMap{
-		"__defaults": resource.NewArrayProperty([]resource.PropertyValue{}),
 		"property_a": resource.NewStringProperty("a"),
 		"property_b": resource.NewStringProperty("true"),
 		"property.c": resource.NewStringProperty("some.value"),
 	}), ins["objectPropertyValue"])
 	assert.Equal(t, resource.NewObjectProperty(resource.PropertyMap{
-		"__defaults": resource.NewArrayProperty([]resource.PropertyValue{}),
 		"configuration": resource.NewObjectProperty(resource.PropertyMap{
-			"__defaults":         resource.NewArrayProperty([]resource.PropertyValue{}),
 			"configurationValue": resource.NewStringProperty("true"),
 		}),
 	}), ins["nestedResources"])
@@ -3165,7 +3162,6 @@ func testImport(t *testing.T, newProvider func(*schema.Provider) shim.Provider) 
 		  },
 		  "response": {
 		    "inputs": {
-		      "__defaults": [],
 		      "stringPropertyValue": "imported"
 		    },
 		    "properties": {

@@ -1734,10 +1734,6 @@ func extractSchemaInputs(
 			v[k] = extractSchemaInputs(e, etfs, eps)
 		}
 
-		// To match previous behavior, we insert the default key for Map types.
-		//
-		// TODO: We should probably remove the extraneous defaultsKey here.
-		v[defaultsKey] = resource.NewArrayProperty([]resource.PropertyValue{})
 		return resource.NewObjectProperty(v)
 	default:
 		return state
@@ -1774,7 +1770,6 @@ func extractSchemaInputsObject(
 
 		v[k] = ev
 	}
-	v[defaultsKey] = resource.NewArrayProperty([]resource.PropertyValue{})
 
 	return v
 }

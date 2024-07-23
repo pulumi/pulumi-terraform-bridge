@@ -1931,12 +1931,11 @@ func TestExtractInputsFromOutputs(t *testing.T) {
 	ins, err := plugin.UnmarshalProperties(resp.GetInputs(), plugin.MarshalOptions{})
 	assert.NoError(t, err)
 	expected := resource.NewPropertyMapFromMap(map[string]interface{}{
-		defaultsKey: []interface{}{},
-		"inputA":    "input_a_read",
-		"inoutC":    "inout_c_read",
-		"inoutD":    "inout_d_read",
-		"inputI":    "",
-		"inoutK":    "",
+		"inputA": "input_a_read",
+		"inoutC": "inout_c_read",
+		"inoutD": "inout_d_read",
+		"inputI": "",
+		"inoutK": "",
 	})
 	assert.Equal(t, expected, ins)
 
@@ -2550,9 +2549,8 @@ func TestExtractDefaultSecretInputs(t *testing.T) {
 	ins, err := plugin.UnmarshalProperties(resp.GetInputs(), plugin.MarshalOptions{})
 	assert.NoError(t, err)
 	expected := resource.NewPropertyMapFromMap(map[string]interface{}{
-		defaultsKey: []interface{}{},
-		"inputA":    "input_a_read",
-		"inputC":    "input_c_read",
+		"inputA": "input_a_read",
+		"inputC": "input_c_read",
 	})
 	assert.Equal(t, expected, ins)
 }
@@ -2621,9 +2619,7 @@ func TestExtractDefaultIntegerInputs(t *testing.T) {
 
 	ins, err := plugin.UnmarshalProperties(resp.GetInputs(), plugin.MarshalOptions{})
 	assert.NoError(t, err)
-	expected := resource.NewPropertyMapFromMap(map[string]interface{}{
-		defaultsKey: []interface{}{},
-	})
+	expected := resource.NewPropertyMapFromMap(map[string]interface{}{})
 	assert.Equal(t, expected, ins)
 }
 
@@ -2733,15 +2729,12 @@ func TestExtractSchemaInputsNestedMaxItemsOne(t *testing.T) {
 				}),
 			},
 			expectedInputs: resource.PropertyMap{
-				"__defaults": resource.NewProperty([]resource.PropertyValue{}),
 				"listObjectMaxitems": resource.NewProperty(resource.PropertyMap{
-					"__defaults": resource.NewProperty([]resource.PropertyValue{}),
 					"field1":     resource.NewProperty(true),
 					"listScalar": resource.NewProperty(2.0),
 				}),
 				"listObjects": resource.NewProperty([]resource.PropertyValue{
 					resource.NewProperty(resource.PropertyMap{
-						"__defaults": resource.NewProperty([]resource.PropertyValue{}),
 						"field1":     resource.NewProperty(false),
 						"listScalar": resource.NewProperty(1.0),
 					}),
@@ -2784,16 +2777,13 @@ func TestExtractSchemaInputsNestedMaxItemsOne(t *testing.T) {
 				}),
 			},
 			expectedInputs: resource.PropertyMap{
-				"__defaults": resource.NewProperty([]resource.PropertyValue{}),
 				"listObject": resource.NewProperty(resource.PropertyMap{
-					"__defaults": resource.NewProperty([]resource.PropertyValue{}),
 					"listScalars": resource.NewProperty([]resource.PropertyValue{
 						resource.NewProperty(1.0),
 					}),
 				}),
 				"listObjectMaxitems": resource.NewProperty([]resource.PropertyValue{
 					resource.NewProperty(resource.PropertyMap{
-						"__defaults":  resource.NewProperty([]resource.PropertyValue{}),
 						"field1":      resource.NewProperty(true),
 						"overwritten": resource.NewProperty(2.0),
 					}),
@@ -3455,9 +3445,6 @@ func TestExtractInputsFromOutputsSdkv2(t *testing.T) {
 				"foo": {Type: schemav2.TypeString, Optional: true},
 			},
 			expected: autogold.Expect(resource.PropertyMap{
-				resource.PropertyKey("__defaults"): resource.PropertyValue{
-					V: []resource.PropertyValue{},
-				},
 				resource.PropertyKey("foo"): resource.PropertyValue{V: "bar"},
 			}),
 		},
@@ -3467,9 +3454,7 @@ func TestExtractInputsFromOutputsSdkv2(t *testing.T) {
 			schemaMap: map[string]*schemav2.Schema{
 				"foo": {Type: schemav2.TypeString, Optional: true, Default: "baz"},
 			},
-			expected: autogold.Expect(resource.PropertyMap{resource.PropertyKey("__defaults"): resource.PropertyValue{
-				V: []resource.PropertyValue{},
-			}}),
+			expected: autogold.Expect(resource.PropertyMap{}),
 		},
 		{
 			name:  "string attribute with empty value not extracted",
@@ -3477,9 +3462,7 @@ func TestExtractInputsFromOutputsSdkv2(t *testing.T) {
 			schemaMap: map[string]*schemav2.Schema{
 				"foo": {Type: schemav2.TypeString, Optional: true},
 			},
-			expected: autogold.Expect(resource.PropertyMap{resource.PropertyKey("__defaults"): resource.PropertyValue{
-				V: []resource.PropertyValue{},
-			}}),
+			expected: autogold.Expect(resource.PropertyMap{}),
 		},
 		{
 			name: "string attribute with computed not extracted",
@@ -3489,9 +3472,7 @@ func TestExtractInputsFromOutputsSdkv2(t *testing.T) {
 			schemaMap: map[string]*schemav2.Schema{
 				"foo": {Type: schemav2.TypeString, Computed: true},
 			},
-			expected: autogold.Expect(resource.PropertyMap{resource.PropertyKey("__defaults"): resource.PropertyValue{
-				V: []resource.PropertyValue{},
-			}}),
+			expected: autogold.Expect(resource.PropertyMap{}),
 		},
 		{
 			name: "map attribute extracted",
@@ -3510,13 +3491,7 @@ func TestExtractInputsFromOutputsSdkv2(t *testing.T) {
 				},
 			},
 			expected: autogold.Expect(resource.PropertyMap{
-				resource.PropertyKey("__defaults"): resource.PropertyValue{
-					V: []resource.PropertyValue{},
-				},
 				resource.PropertyKey("foo"): resource.PropertyValue{V: resource.PropertyMap{
-					resource.PropertyKey("__defaults"): resource.PropertyValue{
-						V: []resource.PropertyValue{},
-					},
 					resource.PropertyKey("bar"): resource.PropertyValue{V: "baz"},
 				}},
 			}),
@@ -3535,9 +3510,7 @@ func TestExtractInputsFromOutputsSdkv2(t *testing.T) {
 					},
 				},
 			},
-			expected: autogold.Expect(resource.PropertyMap{resource.PropertyKey("__defaults"): resource.PropertyValue{
-				V: []resource.PropertyValue{},
-			}}),
+			expected: autogold.Expect(resource.PropertyMap{}),
 		},
 		{
 			name: "list attribute extracted",
@@ -3554,9 +3527,6 @@ func TestExtractInputsFromOutputsSdkv2(t *testing.T) {
 				},
 			},
 			expected: autogold.Expect(resource.PropertyMap{
-				resource.PropertyKey("__defaults"): resource.PropertyValue{
-					V: []resource.PropertyValue{},
-				},
 				resource.PropertyKey("foo"): resource.PropertyValue{V: []resource.PropertyValue{{
 					V: "bar",
 				}}},
@@ -3579,14 +3549,8 @@ func TestExtractInputsFromOutputsSdkv2(t *testing.T) {
 				},
 			},
 			expected: autogold.Expect(resource.PropertyMap{
-				resource.PropertyKey("__defaults"): resource.PropertyValue{
-					V: []resource.PropertyValue{},
-				},
 				resource.PropertyKey("foo"): resource.PropertyValue{V: []resource.PropertyValue{{
 					V: resource.PropertyMap{
-						resource.PropertyKey("__defaults"): resource.PropertyValue{
-							V: []resource.PropertyValue{},
-						},
 						resource.PropertyKey("bar"): resource.PropertyValue{V: "baz"},
 					},
 				}}},
@@ -3608,9 +3572,7 @@ func TestExtractInputsFromOutputsSdkv2(t *testing.T) {
 					},
 				},
 			},
-			expected: autogold.Expect(resource.PropertyMap{resource.PropertyKey("__defaults"): resource.PropertyValue{
-				V: []resource.PropertyValue{},
-			}}),
+			expected: autogold.Expect(resource.PropertyMap{}),
 		},
 		{
 			name: "list block max items one extracted",
@@ -3632,13 +3594,7 @@ func TestExtractInputsFromOutputsSdkv2(t *testing.T) {
 				},
 			},
 			expected: autogold.Expect(resource.PropertyMap{
-				resource.PropertyKey("__defaults"): resource.PropertyValue{
-					V: []resource.PropertyValue{},
-				},
 				resource.PropertyKey("foo"): resource.PropertyValue{V: resource.PropertyMap{
-					resource.PropertyKey("__defaults"): resource.PropertyValue{
-						V: []resource.PropertyValue{},
-					},
 					resource.PropertyKey("bar"): resource.PropertyValue{V: "baz"},
 				}},
 			}),
@@ -3683,14 +3639,8 @@ func TestExtractInputsFromOutputsSdkv2(t *testing.T) {
 				},
 			},
 			expected: autogold.Expect(resource.PropertyMap{
-				resource.PropertyKey("__defaults"): resource.PropertyValue{
-					V: []resource.PropertyValue{},
-				},
 				resource.PropertyKey("foo"): resource.PropertyValue{V: []resource.PropertyValue{{
 					V: resource.PropertyMap{
-						resource.PropertyKey("__defaults"): resource.PropertyValue{
-							V: []resource.PropertyValue{},
-						},
 						resource.PropertyKey("bar"): resource.PropertyValue{V: "baz"},
 					},
 				}}},
@@ -3715,9 +3665,6 @@ func TestExtractInputsFromOutputsSdkv2(t *testing.T) {
 				},
 			},
 			expected: autogold.Expect(resource.PropertyMap{
-				resource.PropertyKey("__defaults"): resource.PropertyValue{
-					V: []resource.PropertyValue{},
-				},
 				resource.PropertyKey("foo"): resource.PropertyValue{V: []resource.PropertyValue{{
 					V: resource.PropertyMap{resource.PropertyKey("bar"): resource.PropertyValue{
 						V: "baz",
