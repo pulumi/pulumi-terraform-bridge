@@ -2179,6 +2179,46 @@ func TestRefreshExtractInputsFromOutputsMaxItemsOne(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestRefreshExtractInputsFromOutputsListOfObjects(t *testing.T) {
+	t.Parallel()
+
+	ruleSetProps := resource.PropertyMap{
+		"attachedDisks": resource.NewArrayProperty([]resource.PropertyValue{
+			resource.NewObjectProperty(resource.PropertyMap{
+				"name":   resource.NewStringProperty("name1"),
+				"key256": resource.NewNullProperty(),
+			}),
+		}),
+	}
+
+	ruleSetSchema := func() shim.SchemaMap {
+		blockList := func(elem schema.SchemaMap) shim.Schema {
+			s := schema.Schema{
+				Type:     shim.TypeList,
+				Optional: true,
+				Elem: (&schema.Resource{
+					Schema: elem,
+				}).Shim(),
+			}
+			return s.Shim()
+		}
+
+		return schema.SchemaMap{
+			"attachedDisks": blockList(schema.SchemaMap{
+				"name":   (&schema.Schema{Type: shim.TypeString, Optional: true}).Shim(),
+				"key256": (&schema.Schema{Type: shim.TypeString, Computed: true}).Shim(),
+			}),
+		}
+	}
+
+	out, err := ExtractInputsFromOutputs(nil, ruleSetProps, ruleSetSchema(), nil, false)
+	assert.NoError(t, err)
+	t.Logf("out: %v", out)
+	attachedDiskVal := out["attachedDisks"].ArrayValue()[0].ObjectValue()
+	_, ok := attachedDiskVal["key256"]
+	assert.False(t, ok)
+}
+
 func TestFailureReasonForMissingRequiredFields(t *testing.T) {
 	// Define two required inputs
 	tfProvider := makeTestTFProviderV1(
@@ -2742,7 +2782,6 @@ func TestExtractSchemaInputsNestedMaxItemsOne(t *testing.T) {
 				"listObjects": resource.NewProperty([]resource.PropertyValue{
 					resource.NewProperty(resource.PropertyMap{
 						"__defaults": resource.NewProperty([]resource.PropertyValue{}),
-						"field1":     resource.NewProperty(false),
 						"listScalar": resource.NewProperty(1.0),
 					}),
 				}),
@@ -3665,7 +3704,6 @@ func TestExtractInputsFromOutputsSdkv2(t *testing.T) {
 		// 	},
 		// 	expected: autogold.Expect(),
 		// },
-		// TODO[pulumi/pulumi-terraform-bridge#2180]: This is wrong as an input should not be produced for computed values.
 		{
 			name: "list block with computed element not extracted",
 			props: resource.NewPropertyMapFromMap(map[string]interface{}{
@@ -3687,20 +3725,16 @@ func TestExtractInputsFromOutputsSdkv2(t *testing.T) {
 					V: []resource.PropertyValue{},
 				},
 				resource.PropertyKey("foo"): resource.PropertyValue{V: []resource.PropertyValue{{
-					V: resource.PropertyMap{
-						resource.PropertyKey("__defaults"): resource.PropertyValue{
-							V: []resource.PropertyValue{},
-						},
-						resource.PropertyKey("bar"): resource.PropertyValue{V: "baz"},
-					},
+					V: resource.PropertyMap{resource.PropertyKey("__defaults"): resource.PropertyValue{
+						V: []resource.PropertyValue{},
+					}},
 				}}},
 			}),
 		},
-		// TODO[pulumi/pulumi-terraform-bridge#2180]: This is wrong as an input should not be produced for computed values.
 		{
 			name: "list block max items one with computed element not extracted",
 			props: resource.NewPropertyMapFromMap(map[string]interface{}{
-				"foo": []interface{}{map[string]string{"bar": "baz"}},
+				"foo": map[string]string{"bar": "baz"},
 			}),
 			schemaMap: map[string]*schemav2.Schema{
 				"foo": {
@@ -3714,16 +3748,9 @@ func TestExtractInputsFromOutputsSdkv2(t *testing.T) {
 					},
 				},
 			},
-			expected: autogold.Expect(resource.PropertyMap{
-				resource.PropertyKey("__defaults"): resource.PropertyValue{
-					V: []resource.PropertyValue{},
-				},
-				resource.PropertyKey("foo"): resource.PropertyValue{V: []resource.PropertyValue{{
-					V: resource.PropertyMap{resource.PropertyKey("bar"): resource.PropertyValue{
-						V: "baz",
-					}},
-				}}},
-			}),
+			expected: autogold.Expect(resource.PropertyMap{resource.PropertyKey("__defaults"): resource.PropertyValue{
+				V: []resource.PropertyValue{},
+			}}),
 		},
 	}
 

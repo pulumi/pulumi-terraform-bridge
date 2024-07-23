@@ -703,7 +703,6 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 				}}},
 			}),
 		},
-		// TODO[pulumi/pulumi-terraform-bridge#2180]: This should not yield values for computed properties
 		{
 			name: "list nested block computed not extracted",
 			props: resource.NewPropertyMapFromMap(map[string]interface{}{
@@ -727,12 +726,9 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 					V: []resource.PropertyValue{},
 				},
 				resource.PropertyKey("block_field"): resource.PropertyValue{V: []resource.PropertyValue{{
-					V: resource.PropertyMap{
-						resource.PropertyKey("__defaults"): resource.PropertyValue{
-							V: []resource.PropertyValue{},
-						},
-						resource.PropertyKey("nested_field"): resource.PropertyValue{V: "nested_value"}, // wrong
-					},
+					V: resource.PropertyMap{resource.PropertyKey("__defaults"): resource.PropertyValue{
+						V: []resource.PropertyValue{},
+					}},
 				}}},
 			}),
 		},
@@ -801,7 +797,6 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 				}}},
 			}),
 		},
-		// TODO[pulumi/pulumi-terraform-bridge#2180]: This should not yield values for computed properties
 		{
 			name: "set nested block computed not extracted",
 			props: resource.NewPropertyMapFromMap(map[string]interface{}{
@@ -825,12 +820,9 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 					V: []resource.PropertyValue{},
 				},
 				resource.PropertyKey("block_field"): resource.PropertyValue{V: []resource.PropertyValue{{
-					V: resource.PropertyMap{
-						resource.PropertyKey("__defaults"): resource.PropertyValue{
-							V: []resource.PropertyValue{},
-						},
-						resource.PropertyKey("nested_field"): resource.PropertyValue{V: "nested_value"}, //wrong
-					},
+					V: resource.PropertyMap{resource.PropertyKey("__defaults"): resource.PropertyValue{
+						V: []resource.PropertyValue{},
+					}},
 				}}},
 			}),
 		},
