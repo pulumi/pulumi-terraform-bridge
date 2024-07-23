@@ -305,7 +305,7 @@ func TestSchemaShimRepresentations(t *testing.T) {
 						Blocks: map[string]schema.Block{
 							"single_nested_block": schema.SingleNestedBlock{
 								Attributes: map[string]schema.Attribute{
-									"a1": schema.Float64Attribute{
+									"a1": schema.StringAttribute{
 										Optional: true,
 									},
 								},
@@ -322,7 +322,7 @@ func TestSchemaShimRepresentations(t *testing.T) {
           "resource": {
             "a1": {
               "optional": true,
-              "type": 3
+              "type": 4
             }
           }
         },
@@ -342,7 +342,7 @@ func TestSchemaShimRepresentations(t *testing.T) {
 							"list_nested_block": schema.ListNestedBlock{
 								NestedObject: schema.NestedBlockObject{
 									Attributes: map[string]schema.Attribute{
-										"a1": schema.Float64Attribute{
+										"a1": schema.StringAttribute{
 											Optional: true,
 										},
 									},
@@ -352,6 +352,7 @@ func TestSchemaShimRepresentations(t *testing.T) {
 					},
 				}},
 			},
+			// TODO: Why is this different to list-nested-attribute? Should it be?
 			autogold.Expect(`{
   "resources": {
     "_": {
@@ -360,7 +361,7 @@ func TestSchemaShimRepresentations(t *testing.T) {
           "resource": {
             "a1": {
               "optional": true,
-              "type": 3
+              "type": 4
             }
           }
         },
