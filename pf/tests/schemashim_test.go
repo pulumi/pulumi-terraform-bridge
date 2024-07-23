@@ -32,7 +32,6 @@ import (
 
 // Test how various PF-based schemata translate to the shim.Schema layer.
 func TestSchemaShimRepresentations(t *testing.T) {
-
 	type testCase struct {
 		name     string
 		provider provider.Provider
@@ -40,6 +39,264 @@ func TestSchemaShimRepresentations(t *testing.T) {
 	}
 
 	testCases := []testCase{
+		{
+			"simple-attribute",
+			&pb.Provider{
+				AllResources: []pb.Resource{{
+					ResourceSchema: schema.Schema{
+						Attributes: map[string]schema.Attribute{
+							"simple_attribute": schema.StringAttribute{
+								Optional: true,
+							},
+						},
+					},
+				}},
+			},
+			autogold.Expect(`{
+  "resources": {
+    "_": {
+      "simple_attribute": {
+        "optional": true,
+        "type": 4
+      }
+    }
+  }
+}`),
+		},
+		{
+			"object-attribute",
+			&pb.Provider{
+				AllResources: []pb.Resource{{
+					ResourceSchema: schema.Schema{
+						Attributes: map[string]schema.Attribute{
+							"object_attribute": schema.ObjectAttribute{
+								AttributeTypes: map[string]attr.Type{
+									"a1": types.StringType,
+								},
+							},
+						},
+					},
+				}},
+			},
+			autogold.Expect(`{
+  "resources": {
+    "_": {
+      "object_attribute": {
+        "element": {
+          "resource": {
+            "a1": {
+              "type": 4
+            }
+          }
+        },
+        "type": 6
+      }
+    }
+  }
+}`),
+		},
+		{
+			"list-attribute",
+			&pb.Provider{
+				AllResources: []pb.Resource{
+					{
+						ResourceSchema: schema.Schema{
+							Attributes: map[string]schema.Attribute{
+								"list_attribute": schema.ListAttribute{
+									Optional:    true,
+									ElementType: types.StringType,
+								},
+							},
+						},
+					},
+				},
+			},
+			autogold.Expect(`{
+  "resources": {
+    "_": {
+      "list_attribute": {
+        "element": {
+          "schema": {
+            "type": 4
+          }
+        },
+        "optional": true,
+        "type": 5
+      }
+    }
+  }
+}`),
+		},
+		{
+			"list-attribute-object-element",
+			&pb.Provider{
+				AllResources: []pb.Resource{
+					{
+						ResourceSchema: schema.Schema{
+							Attributes: map[string]schema.Attribute{
+								"list_attribute": schema.ListAttribute{
+									Optional: true,
+									ElementType: types.ObjectType{
+										AttrTypes: map[string]attr.Type{
+											"a1": types.StringType,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			autogold.Expect(`{
+  "resources": {
+    "_": {
+      "list_attribute": {
+        "element": {
+          "schema": {
+            "element": {
+              "resource": {
+                "a1": {
+                  "type": 4
+                }
+              }
+            },
+            "type": 6
+          }
+        },
+        "optional": true,
+        "type": 5
+      }
+    }
+  }
+}`),
+		},
+		{
+			"list-nested-attribute",
+			&pb.Provider{
+				AllResources: []pb.Resource{
+					{
+						ResourceSchema: schema.Schema{
+							Attributes: map[string]schema.Attribute{
+								"list_nested_attribute": schema.ListNestedAttribute{
+									Optional: true,
+									NestedObject: schema.NestedAttributeObject{
+										Attributes: map[string]schema.Attribute{
+											"a1": schema.StringAttribute{
+												Optional: true,
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			autogold.Expect(`{
+  "resources": {
+    "_": {
+      "list_nested_attribute": {
+        "element": {
+          "schema": {
+            "element": {
+              "resource": {
+                "a1": {
+                  "optional": true,
+                  "type": 4
+                }
+              }
+            },
+            "type": 6
+          }
+        },
+        "optional": true,
+        "type": 5
+      }
+    }
+  }
+}`),
+		},
+		{
+			"map-nested-attribute",
+			&pb.Provider{
+				AllResources: []pb.Resource{{
+					ResourceSchema: schema.Schema{
+						Attributes: map[string]schema.Attribute{
+							"map_nested_attribute": schema.MapNestedAttribute{
+								NestedObject: schema.NestedAttributeObject{
+									Attributes: map[string]schema.Attribute{
+										"a1": schema.StringAttribute{
+											Optional: true,
+										},
+									},
+								},
+							},
+						},
+					},
+				}},
+			},
+			autogold.Expect(`{
+  "resources": {
+    "_": {
+      "map_nested_attribute": {
+        "element": {
+          "schema": {
+            "element": {
+              "resource": {
+                "a1": {
+                  "optional": true,
+                  "type": 4
+                }
+              }
+            },
+            "type": 6
+          }
+        },
+        "type": 6
+      }
+    }
+  }
+}`),
+		},
+		{
+			"single-nested-attribute",
+			&pb.Provider{
+				AllResources: []pb.Resource{
+					{
+						ResourceSchema: schema.Schema{
+							Attributes: map[string]schema.Attribute{
+								"single_nested_attribute": schema.SingleNestedAttribute{
+									Optional: true,
+									Attributes: map[string]schema.Attribute{
+										"a1": schema.StringAttribute{
+											Optional: true,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			autogold.Expect(`{
+  "resources": {
+    "_": {
+      "single_nested_attribute": {
+        "element": {
+          "resource": {
+            "a1": {
+              "optional": true,
+              "type": 4
+            }
+          }
+        },
+        "optional": true,
+        "type": 6
+      }
+    }
+  }
+}`),
+		},
 		{
 			"single-nested-block",
 			&pb.Provider{
@@ -109,80 +366,6 @@ func TestSchemaShimRepresentations(t *testing.T) {
         },
         "optional": true,
         "type": 5
-      }
-    }
-  }
-}`),
-		},
-		{
-			"map-nested-attribute",
-			&pb.Provider{
-				AllResources: []pb.Resource{{
-					ResourceSchema: schema.Schema{
-						Attributes: map[string]schema.Attribute{
-							"map_nested_attribute": schema.MapNestedAttribute{
-								NestedObject: schema.NestedAttributeObject{
-									Attributes: map[string]schema.Attribute{
-										"a1": schema.StringAttribute{
-											Optional: true,
-										},
-									},
-								},
-							},
-						},
-					},
-				}},
-			},
-			autogold.Expect(`{
-  "resources": {
-    "_": {
-      "map_nested_attribute": {
-        "element": {
-          "schema": {
-            "element": {
-              "resource": {
-                "a1": {
-                  "optional": true,
-                  "type": 4
-                }
-              }
-            },
-            "type": 6
-          }
-        },
-        "type": 6
-      }
-    }
-  }
-}`),
-		},
-		{
-			"object-attribute",
-			&pb.Provider{
-				AllResources: []pb.Resource{{
-					ResourceSchema: schema.Schema{
-						Attributes: map[string]schema.Attribute{
-							"object_attribute": schema.ObjectAttribute{
-								AttributeTypes: map[string]attr.Type{
-									"a1": types.StringType,
-								},
-							},
-						},
-					},
-				}},
-			},
-			autogold.Expect(`{
-  "resources": {
-    "_": {
-      "object_attribute": {
-        "element": {
-          "resource": {
-            "a1": {
-              "type": 4
-            }
-          }
-        },
-        "type": 6
       }
     }
   }
