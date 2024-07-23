@@ -726,12 +726,9 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 					V: []resource.PropertyValue{},
 				},
 				resource.PropertyKey("block_field"): resource.PropertyValue{V: []resource.PropertyValue{{
-					V: resource.PropertyMap{
-						resource.PropertyKey("__defaults"): resource.PropertyValue{
-							V: []resource.PropertyValue{},
-						},
-						resource.PropertyKey("nested_field"): resource.PropertyValue{V: "nested_value"},
-					},
+					V: resource.PropertyMap{resource.PropertyKey("__defaults"): resource.PropertyValue{
+						V: []resource.PropertyValue{},
+					}},
 				}}},
 			}),
 		},
@@ -823,12 +820,9 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 					V: []resource.PropertyValue{},
 				},
 				resource.PropertyKey("block_field"): resource.PropertyValue{V: []resource.PropertyValue{{
-					V: resource.PropertyMap{
-						resource.PropertyKey("__defaults"): resource.PropertyValue{
-							V: []resource.PropertyValue{},
-						},
-						resource.PropertyKey("nested_field"): resource.PropertyValue{V: "nested_value"},
-					},
+					V: resource.PropertyMap{resource.PropertyKey("__defaults"): resource.PropertyValue{
+						V: []resource.PropertyValue{},
+					}},
 				}}},
 			}),
 		},
