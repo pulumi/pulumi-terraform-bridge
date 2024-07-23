@@ -1511,7 +1511,7 @@ Resources:
     2 unchanged
 `),
 		},
-		// TODO: duplicated diff
+		// TODO[pulumi/pulumi-terraform-bridge#2234]: Duplicated diff
 		{
 			"list added",
 			map[string]interface{}{},
@@ -1533,7 +1533,7 @@ Resources:
     1 unchanged
 `),
 		},
-		// TODO: missing diff
+		// TODO[pulumi/pulumi-terraform-bridge#2233]: Missing diff
 		{
 			"list added empty",
 			map[string]interface{}{},
@@ -1545,7 +1545,7 @@ Resources:
     2 unchanged
 `),
 		},
-		// TODO: duplicated diff
+		// TODO[pulumi/pulumi-terraform-bridge#2234]: Duplicated diff
 		{
 			"list removed",
 			map[string]interface{}{"listProps": []interface{}{"val"}},
@@ -1567,7 +1567,7 @@ Resources:
     1 unchanged
 `),
 		},
-		// TODO: missing diff
+		// TODO[pulumi/pulumi-terraform-bridge#2233]: Missing diff
 		{
 			"list removed empty",
 			map[string]interface{}{"listProps": []interface{}{}},
@@ -1728,7 +1728,7 @@ Resources:
     2 unchanged
 `),
 		},
-		// TODO: duplicated diff
+		// TODO[pulumi/pulumi-terraform-bridge#2234]: Duplicated diff
 		{
 			"set added",
 			map[string]interface{}{},
@@ -1750,7 +1750,7 @@ Resources:
     1 unchanged
 `),
 		},
-		// TODO: missing diff
+		// TODO[pulumi/pulumi-terraform-bridge#2233]: Missing diff
 		{
 			"set added empty",
 			map[string]interface{}{},
@@ -1762,7 +1762,7 @@ Resources:
     2 unchanged
 `),
 		},
-		// TODO: duplicated diff
+		// TODO[pulumi/pulumi-terraform-bridge#2234]: Duplicated diff
 		{
 			"set removed",
 			map[string]interface{}{"setProps": []interface{}{"val"}},
@@ -1784,7 +1784,7 @@ Resources:
     1 unchanged
 `),
 		},
-		// TODO: missing diff
+		// TODO[pulumi/pulumi-terraform-bridge#2233]: Missing diff
 		{
 			"set removed empty",
 			map[string]interface{}{"setProps": []interface{}{}},
@@ -1796,7 +1796,7 @@ Resources:
     2 unchanged
 `),
 		},
-		// TODO: wrong
+		// TODO[pulumi/pulumi-terraform-bridge#2235]: Wrong number of additions
 		{
 			"set element added front",
 			map[string]interface{}{"setProps": []interface{}{"val2", "val3"}},
@@ -1897,7 +1897,7 @@ Resources:
     1 unchanged
 `),
 		},
-		// TODO: This one is pretty wrong.
+		// TODO[pulumi/pulumi-terraform-bridge#2235]: Wrong number of removals
 		{
 			"set element removed middle",
 			map[string]interface{}{"setProps": []interface{}{"val1", "val2", "val3"}},
@@ -1947,7 +1947,7 @@ Resources:
     2 unchanged
 `),
 		},
-		// TODO: duplicated diff
+		// TODO[pulumi/pulumi-terraform-bridge#2234]: Duplicated diff
 		{
 			"map added",
 			map[string]interface{}{},
@@ -1969,7 +1969,7 @@ Resources:
     1 unchanged
 `),
 		},
-		// TODO: missing diff
+		// TODO[pulumi/pulumi-terraform-bridge#2233]: Missing diff
 		{
 			"map added empty",
 			map[string]interface{}{},
@@ -1981,7 +1981,7 @@ Resources:
     2 unchanged
 `),
 		},
-		// TODO: duplicated diff
+		// TODO[pulumi/pulumi-terraform-bridge#2234]: Duplicated diff
 		{
 			"map removed",
 			map[string]interface{}{"mapProp": map[string]interface{}{"key": "val"}},
@@ -2003,7 +2003,7 @@ Resources:
     1 unchanged
 `),
 		},
-		// TODO: missing diff
+		// TODO[pulumi/pulumi-terraform-bridge#2233]: Missing diff
 		{
 			"map removed empty",
 			map[string]interface{}{"mapProp": map[string]interface{}{}},
@@ -2015,7 +2015,7 @@ Resources:
     2 unchanged
 `),
 		},
-		// TODO: duplicated diff
+		// TODO[pulumi/pulumi-terraform-bridge#2234]: Duplicated diff
 		{
 			"map element added",
 			map[string]interface{}{"mapProp": map[string]interface{}{}},
