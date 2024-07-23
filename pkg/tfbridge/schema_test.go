@@ -3704,7 +3704,6 @@ func TestExtractInputsFromOutputsSdkv2(t *testing.T) {
 		// 	},
 		// 	expected: autogold.Expect(),
 		// },
-		// TODO[pulumi/pulumi-terraform-bridge#2180]: This is wrong as an input should not be produced for computed values.
 		{
 			name: "list block with computed element not extracted",
 			props: resource.NewPropertyMapFromMap(map[string]interface{}{
@@ -3726,20 +3725,16 @@ func TestExtractInputsFromOutputsSdkv2(t *testing.T) {
 					V: []resource.PropertyValue{},
 				},
 				resource.PropertyKey("foo"): resource.PropertyValue{V: []resource.PropertyValue{{
-					V: resource.PropertyMap{
-						resource.PropertyKey("__defaults"): resource.PropertyValue{
-							V: []resource.PropertyValue{},
-						},
-						resource.PropertyKey("bar"): resource.PropertyValue{V: "baz"},
-					},
+					V: resource.PropertyMap{resource.PropertyKey("__defaults"): resource.PropertyValue{
+						V: []resource.PropertyValue{},
+					}},
 				}}},
 			}),
 		},
-		// TODO[pulumi/pulumi-terraform-bridge#2180]: This is wrong as an input should not be produced for computed values.
 		{
 			name: "list block max items one with computed element not extracted",
 			props: resource.NewPropertyMapFromMap(map[string]interface{}{
-				"foo": []interface{}{map[string]string{"bar": "baz"}},
+				"foo": map[string]string{"bar": "baz"},
 			}),
 			schemaMap: map[string]*schemav2.Schema{
 				"foo": {
@@ -3753,16 +3748,9 @@ func TestExtractInputsFromOutputsSdkv2(t *testing.T) {
 					},
 				},
 			},
-			expected: autogold.Expect(resource.PropertyMap{
-				resource.PropertyKey("__defaults"): resource.PropertyValue{
-					V: []resource.PropertyValue{},
-				},
-				resource.PropertyKey("foo"): resource.PropertyValue{V: []resource.PropertyValue{{
-					V: resource.PropertyMap{resource.PropertyKey("bar"): resource.PropertyValue{
-						V: "baz",
-					}},
-				}}},
-			}),
+			expected: autogold.Expect(resource.PropertyMap{resource.PropertyKey("__defaults"): resource.PropertyValue{
+				V: []resource.PropertyValue{},
+			}}),
 		},
 	}
 
