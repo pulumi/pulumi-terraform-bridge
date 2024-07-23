@@ -152,15 +152,10 @@ func TestSchemaShimRepresentations(t *testing.T) {
     "_": {
       "list_attribute": {
         "element": {
-          "schema": {
-            "element": {
-              "resource": {
-                "a1": {
-                  "type": 4
-                }
-              }
-            },
-            "type": 6
+          "resource": {
+            "a1": {
+              "type": 4
+            }
           }
         },
         "optional": true,
@@ -197,16 +192,11 @@ func TestSchemaShimRepresentations(t *testing.T) {
     "_": {
       "list_nested_attribute": {
         "element": {
-          "schema": {
-            "element": {
-              "resource": {
-                "a1": {
-                  "optional": true,
-                  "type": 4
-                }
-              }
-            },
-            "type": 6
+          "resource": {
+            "a1": {
+              "optional": true,
+              "type": 4
+            }
           }
         },
         "optional": true,
@@ -240,16 +230,11 @@ func TestSchemaShimRepresentations(t *testing.T) {
     "_": {
       "map_nested_attribute": {
         "element": {
-          "schema": {
-            "element": {
-              "resource": {
-                "a1": {
-                  "optional": true,
-                  "type": 4
-                }
-              }
-            },
-            "type": 6
+          "resource": {
+            "a1": {
+              "optional": true,
+              "type": 4
+            }
           }
         },
         "type": 6
