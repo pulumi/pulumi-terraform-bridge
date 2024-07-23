@@ -24,7 +24,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/pfutils"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
 // This example is taken from aws:resourceexplorer/index:Index "timeouts" property.
@@ -109,10 +109,10 @@ func TestCustomListAttribute(t *testing.T) {
 	shimmed := &attrSchema{"key", pfutils.FromAttrLike(raw)}
 	assert.Equal(t, shim.TypeList, shimmed.Type())
 	assert.NotNil(t, shimmed.Elem())
-	_, isPseudoResource := shimmed.Elem().(shim.Schema)
+	_, isPseudoResource := shimmed.Elem().(shim.Resource)
 	assert.Truef(t, isPseudoResource, "expected shim.Elem() to be of type shim.Resource, encoding an object type")
 
-	create := shimmed.Elem().(shim.Schema).Elem().(shim.Resource).Schema().Get("filter_string")
+	create := shimmed.Elem().(shim.Resource).Schema().Get("filter_string")
 	assert.Equal(t, shim.TypeString, create.Type())
 }
 
