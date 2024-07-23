@@ -3449,7 +3449,7 @@ func TestExtractInputsFromOutputsSdkv2(t *testing.T) {
 
 	testCases := []testCase{
 		{
-			name:  "string",
+			name:  "string attribute extracted",
 			props: resource.NewPropertyMapFromMap(map[string]interface{}{"foo": "bar"}),
 			schemaMap: map[string]*schemav2.Schema{
 				"foo": {Type: schemav2.TypeString, Optional: true},
@@ -3462,7 +3462,7 @@ func TestExtractInputsFromOutputsSdkv2(t *testing.T) {
 			}),
 		},
 		{
-			name:  "string with defaults",
+			name:  "string attribute with defaults not extracted",
 			props: resource.NewPropertyMapFromMap(map[string]interface{}{"foo": "baz"}),
 			schemaMap: map[string]*schemav2.Schema{
 				"foo": {Type: schemav2.TypeString, Optional: true, Default: "baz"},
@@ -3472,7 +3472,7 @@ func TestExtractInputsFromOutputsSdkv2(t *testing.T) {
 			}}),
 		},
 		{
-			name:  "string empty val",
+			name:  "string attribute with empty value not extracted",
 			props: resource.NewPropertyMapFromMap(map[string]interface{}{"foo": ""}),
 			schemaMap: map[string]*schemav2.Schema{
 				"foo": {Type: schemav2.TypeString, Optional: true},
@@ -3482,7 +3482,7 @@ func TestExtractInputsFromOutputsSdkv2(t *testing.T) {
 			}}),
 		},
 		{
-			name: "string computed",
+			name: "string attribute with computed not extracted",
 			props: resource.NewPropertyMapFromMap(map[string]interface{}{
 				"foo": resource.Computed{Element: resource.NewStringProperty("bar")},
 			}),
@@ -3494,7 +3494,7 @@ func TestExtractInputsFromOutputsSdkv2(t *testing.T) {
 			}}),
 		},
 		{
-			name: "map",
+			name: "map attribute extracted",
 			props: resource.NewPropertyMapFromMap(map[string]interface{}{
 				"foo": map[string]interface{}{
 					"bar": "baz",
@@ -3522,7 +3522,7 @@ func TestExtractInputsFromOutputsSdkv2(t *testing.T) {
 			}),
 		},
 		{
-			name: "map computed",
+			name: "map attribute with computed not extracted",
 			props: resource.NewPropertyMapFromMap(map[string]interface{}{
 				"foo": resource.Computed{Element: resource.NewStringProperty("bar")},
 			}),
@@ -3540,7 +3540,7 @@ func TestExtractInputsFromOutputsSdkv2(t *testing.T) {
 			}}),
 		},
 		{
-			name: "list attr",
+			name: "list attribute extracted",
 			props: resource.NewPropertyMapFromMap(map[string]interface{}{
 				"foo": []interface{}{"bar"},
 			}),
@@ -3563,7 +3563,7 @@ func TestExtractInputsFromOutputsSdkv2(t *testing.T) {
 			}),
 		},
 		{
-			name: "list block",
+			name: "list block extracted",
 			props: resource.NewPropertyMapFromMap(map[string]interface{}{
 				"foo": []interface{}{map[string]string{"bar": "baz"}},
 			}),
@@ -3593,7 +3593,7 @@ func TestExtractInputsFromOutputsSdkv2(t *testing.T) {
 			}),
 		},
 		{
-			name: "list block computed",
+			name: "list block with computed not extracted",
 			props: resource.NewPropertyMapFromMap(map[string]interface{}{
 				"foo": []interface{}{map[string]string{"bar": "baz"}},
 			}),
@@ -3613,7 +3613,7 @@ func TestExtractInputsFromOutputsSdkv2(t *testing.T) {
 			}}),
 		},
 		{
-			name: "list block max items one",
+			name: "list block max items one extracted",
 			props: resource.NewPropertyMapFromMap(map[string]interface{}{
 				"foo": map[string]interface{}{
 					"bar": "baz",
@@ -3667,7 +3667,7 @@ func TestExtractInputsFromOutputsSdkv2(t *testing.T) {
 		// },
 		// TODO[pulumi/pulumi-terraform-bridge#2180]: This is wrong as an input should not be produced for computed values.
 		{
-			name: "list block element computed",
+			name: "list block with computed element not extracted",
 			props: resource.NewPropertyMapFromMap(map[string]interface{}{
 				"foo": []interface{}{map[string]string{"bar": "baz"}},
 			}),
@@ -3698,7 +3698,7 @@ func TestExtractInputsFromOutputsSdkv2(t *testing.T) {
 		},
 		// TODO[pulumi/pulumi-terraform-bridge#2180]: This is wrong as an input should not be produced for computed values.
 		{
-			name: "list block max items one element computed",
+			name: "list block max items one with computed element not extracted",
 			props: resource.NewPropertyMapFromMap(map[string]interface{}{
 				"foo": []interface{}{map[string]string{"bar": "baz"}},
 			}),
