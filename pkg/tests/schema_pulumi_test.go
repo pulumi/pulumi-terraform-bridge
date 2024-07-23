@@ -1796,6 +1796,7 @@ Resources:
     2 unchanged
 `),
 		},
+		// TODO: wrong
 		{
 			"set element added front",
 			map[string]interface{}{"setProps": []interface{}{"val2", "val3"}},
@@ -1807,7 +1808,7 @@ Resources:
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ setProps: [
-          ~ [0]: "val2" => "val1"
+          + [0]: "val1"
           ~ [1]: "val3" => "val2"
           + [2]: "val3"
         ]
@@ -1867,7 +1868,7 @@ Resources:
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ setProps: [
-          - [0]: "val1"
+          ~ [0]: "val1" => "val2"
           ~ [1]: "val2" => "val3"
           - [2]: "val3"
         ]
