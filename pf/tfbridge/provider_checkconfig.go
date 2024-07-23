@@ -161,10 +161,10 @@ func (p *provider) validateProviderConfig(
 		err = fmt.Errorf("cannot encode provider configuration to call ValidateProviderConfig: %w", err)
 		return nil, err
 	}
-	req := &tfprotov6.ValidateProviderConfigRequest{
+
+	resp, err := p.tfServer.ValidateProviderConfig(ctx, &tfprotov6.ValidateProviderConfigRequest{
 		Config: config,
-	}
-	resp, err := p.tfServer.ValidateProviderConfig(ctx, req)
+	})
 	if err != nil {
 		return nil, fmt.Errorf("error calling ValidateProviderConfig: %w", err)
 	}
@@ -196,6 +196,16 @@ func (p *provider) validateProviderConfig(
 		// Ignoring version key as it seems to be special.
 		if k == "version" || k == "pluginDownloadURL" {
 			continue
+		}
+		// TODO[https://github.com/pulumi/pulumi/issues/16757] While #16757 is
+		// outstanding, we need to filter out the keys for parameterized providers
+		// from the top level namespace.
+		//
+		// We will need to remove this check before we GA dynamic providers.
+		if p.parameterize != nil {
+			if k == "name" || k == "parameterization" {
+				continue
+			}
 		}
 		n := tfbridge.PulumiToTerraformName(string(k), p.schemaOnlyProvider.Schema(), p.info.GetConfig())
 		_, known := p.configType.AttributeTypes[n]

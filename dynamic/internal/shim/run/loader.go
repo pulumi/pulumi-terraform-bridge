@@ -206,7 +206,9 @@ func runProvider(ctx context.Context, meta *providercache.CachedProvider) (Provi
 		Logger:           logging.NewProviderLogger(""),
 		AllowedProtocols: []plugin.Protocol{plugin.ProtocolGRPC},
 		Managed:          true,
-		Cmd:              exec.CommandContext(ctx, execFile),
+		// We intentionally use [context.Background] so the lifetime of the
+		// provider can escape the lifetime of the parameterize call.
+		Cmd:              exec.CommandContext(context.Background(), execFile),
 		AutoMTLS:         true,
 		VersionedPlugins: tfplugin.VersionedPlugins,
 		SyncStdout:       logging.PluginOutputMonitor(fmt.Sprintf("%s:stdout", meta.Provider)),
@@ -224,9 +226,7 @@ func runProvider(ctx context.Context, meta *providercache.CachedProvider) (Provi
 		return nil, err
 	}
 
-	// store the client so that the plugin can kill the child process
-	protoVer := client.NegotiatedVersion()
-	switch protoVer {
+	switch client.NegotiatedVersion() {
 	case 5:
 		p := raw.(*tfplugin.GRPCProvider)
 		p.PluginClient = client
@@ -240,15 +240,13 @@ func runProvider(ctx context.Context, meta *providercache.CachedProvider) (Provi
 		if err != nil {
 			return nil, err
 		}
-		return provider{
-			v6,
+		return provider{v6,
 			meta.Provider.Type, meta.Version.String(), meta.Provider.String(),
 			rpcClient.Close,
 		}, nil
 	case 6:
 		p := tfplugin6.NewProviderClient(rpcClient.(*plugin.GRPCClient).Conn)
-		return provider{
-			v6shim.New(p),
+		return provider{v6shim.New(p),
 			meta.Provider.Type, meta.Version.String(), meta.Provider.String(),
 			rpcClient.Close,
 		}, nil

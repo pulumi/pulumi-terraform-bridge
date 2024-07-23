@@ -3475,3 +3475,309 @@ func Test_makeTerraformInputsNoDefaults(t *testing.T) {
 		})
 	}
 }
+
+func TestExtractInputsFromOutputsSdkv2(t *testing.T) {
+	t.Parallel()
+
+	type testCase struct {
+		name      string
+		props     resource.PropertyMap
+		schemaMap map[string]*schemav2.Schema
+		expected  autogold.Value
+	}
+
+	testCases := []testCase{
+		{
+			name:  "string attribute extracted",
+			props: resource.NewPropertyMapFromMap(map[string]interface{}{"foo": "bar"}),
+			schemaMap: map[string]*schemav2.Schema{
+				"foo": {Type: schemav2.TypeString, Optional: true},
+			},
+			expected: autogold.Expect(resource.PropertyMap{
+				resource.PropertyKey("__defaults"): resource.PropertyValue{
+					V: []resource.PropertyValue{},
+				},
+				resource.PropertyKey("foo"): resource.PropertyValue{V: "bar"},
+			}),
+		},
+		{
+			name:  "string attribute with defaults not extracted",
+			props: resource.NewPropertyMapFromMap(map[string]interface{}{"foo": "baz"}),
+			schemaMap: map[string]*schemav2.Schema{
+				"foo": {Type: schemav2.TypeString, Optional: true, Default: "baz"},
+			},
+			expected: autogold.Expect(resource.PropertyMap{resource.PropertyKey("__defaults"): resource.PropertyValue{
+				V: []resource.PropertyValue{},
+			}}),
+		},
+		{
+			name:  "string attribute with empty value not extracted",
+			props: resource.NewPropertyMapFromMap(map[string]interface{}{"foo": ""}),
+			schemaMap: map[string]*schemav2.Schema{
+				"foo": {Type: schemav2.TypeString, Optional: true},
+			},
+			expected: autogold.Expect(resource.PropertyMap{resource.PropertyKey("__defaults"): resource.PropertyValue{
+				V: []resource.PropertyValue{},
+			}}),
+		},
+		{
+			name: "string attribute with computed not extracted",
+			props: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"foo": resource.Computed{Element: resource.NewStringProperty("bar")},
+			}),
+			schemaMap: map[string]*schemav2.Schema{
+				"foo": {Type: schemav2.TypeString, Computed: true},
+			},
+			expected: autogold.Expect(resource.PropertyMap{resource.PropertyKey("__defaults"): resource.PropertyValue{
+				V: []resource.PropertyValue{},
+			}}),
+		},
+		{
+			name: "map attribute extracted",
+			props: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"foo": map[string]interface{}{
+					"bar": "baz",
+				},
+			}),
+			schemaMap: map[string]*schemav2.Schema{
+				"foo": {
+					Type:     schemav2.TypeMap,
+					Optional: true,
+					Elem: &schemav2.Schema{
+						Type: schemav2.TypeString,
+					},
+				},
+			},
+			expected: autogold.Expect(resource.PropertyMap{
+				resource.PropertyKey("__defaults"): resource.PropertyValue{
+					V: []resource.PropertyValue{},
+				},
+				resource.PropertyKey("foo"): resource.PropertyValue{V: resource.PropertyMap{
+					resource.PropertyKey("__defaults"): resource.PropertyValue{
+						V: []resource.PropertyValue{},
+					},
+					resource.PropertyKey("bar"): resource.PropertyValue{V: "baz"},
+				}},
+			}),
+		},
+		{
+			name: "map attribute with computed not extracted",
+			props: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"foo": resource.Computed{Element: resource.NewStringProperty("bar")},
+			}),
+			schemaMap: map[string]*schemav2.Schema{
+				"foo": {
+					Type:     schemav2.TypeMap,
+					Computed: true,
+					Elem: &schemav2.Schema{
+						Type: schemav2.TypeString,
+					},
+				},
+			},
+			expected: autogold.Expect(resource.PropertyMap{resource.PropertyKey("__defaults"): resource.PropertyValue{
+				V: []resource.PropertyValue{},
+			}}),
+		},
+		{
+			name: "list attribute extracted",
+			props: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"foo": []interface{}{"bar"},
+			}),
+			schemaMap: map[string]*schemav2.Schema{
+				"foo": {
+					Type:     schemav2.TypeList,
+					Optional: true,
+					Elem: &schemav2.Schema{
+						Type: schemav2.TypeString,
+					},
+				},
+			},
+			expected: autogold.Expect(resource.PropertyMap{
+				resource.PropertyKey("__defaults"): resource.PropertyValue{
+					V: []resource.PropertyValue{},
+				},
+				resource.PropertyKey("foo"): resource.PropertyValue{V: []resource.PropertyValue{{
+					V: "bar",
+				}}},
+			}),
+		},
+		{
+			name: "list block extracted",
+			props: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"foo": []interface{}{map[string]string{"bar": "baz"}},
+			}),
+			schemaMap: map[string]*schemav2.Schema{
+				"foo": {
+					Type:     schemav2.TypeList,
+					Optional: true,
+					Elem: &schemav2.Resource{
+						Schema: map[string]*schemav2.Schema{
+							"bar": {Type: schemav2.TypeString, Optional: true},
+						},
+					},
+				},
+			},
+			expected: autogold.Expect(resource.PropertyMap{
+				resource.PropertyKey("__defaults"): resource.PropertyValue{
+					V: []resource.PropertyValue{},
+				},
+				resource.PropertyKey("foo"): resource.PropertyValue{V: []resource.PropertyValue{{
+					V: resource.PropertyMap{
+						resource.PropertyKey("__defaults"): resource.PropertyValue{
+							V: []resource.PropertyValue{},
+						},
+						resource.PropertyKey("bar"): resource.PropertyValue{V: "baz"},
+					},
+				}}},
+			}),
+		},
+		{
+			name: "list block with computed not extracted",
+			props: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"foo": []interface{}{map[string]string{"bar": "baz"}},
+			}),
+			schemaMap: map[string]*schemav2.Schema{
+				"foo": {
+					Type:     schemav2.TypeList,
+					Computed: true,
+					Elem: &schemav2.Resource{
+						Schema: map[string]*schemav2.Schema{
+							"bar": {Type: schemav2.TypeString, Optional: true},
+						},
+					},
+				},
+			},
+			expected: autogold.Expect(resource.PropertyMap{resource.PropertyKey("__defaults"): resource.PropertyValue{
+				V: []resource.PropertyValue{},
+			}}),
+		},
+		{
+			name: "list block max items one extracted",
+			props: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"foo": map[string]interface{}{
+					"bar": "baz",
+				},
+			}),
+			schemaMap: map[string]*schemav2.Schema{
+				"foo": {
+					Type:     schemav2.TypeList,
+					Optional: true,
+					MaxItems: 1,
+					Elem: &schemav2.Resource{
+						Schema: map[string]*schemav2.Schema{
+							"bar": {Type: schemav2.TypeString, Optional: true},
+						},
+					},
+				},
+			},
+			expected: autogold.Expect(resource.PropertyMap{
+				resource.PropertyKey("__defaults"): resource.PropertyValue{
+					V: []resource.PropertyValue{},
+				},
+				resource.PropertyKey("foo"): resource.PropertyValue{V: resource.PropertyMap{
+					resource.PropertyKey("__defaults"): resource.PropertyValue{
+						V: []resource.PropertyValue{},
+					},
+					resource.PropertyKey("bar"): resource.PropertyValue{V: "baz"},
+				}},
+			}),
+		},
+		// This case is invalid since MaxItemsOne only works on settable fields.
+		// {
+		// 	name: "list block max items one computed",
+		// 	props: resource.NewPropertyMapFromMap(map[string]interface{}{
+		// 		"foo": map[string]interface{}{
+		// 			"bar": "baz",
+		// 		},
+		// 	}),
+		// 	schemaMap: map[string]*schemav2.Schema{
+		// 		"foo": {
+		// 			Type:     schemav2.TypeList,
+		// 			Computed: true,
+		// 			MaxItems: 1,
+		// 			Elem: &schemav2.Resource{
+		// 				Schema: map[string]*schemav2.Schema{
+		// 					"bar": {Type: schemav2.TypeString, Optional: true},
+		// 				},
+		// 			},
+		// 		},
+		// 	},
+		// 	expected: autogold.Expect(),
+		// },
+		// TODO[pulumi/pulumi-terraform-bridge#2180]: This is wrong as an input should not be produced for computed values.
+		{
+			name: "list block with computed element not extracted",
+			props: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"foo": []interface{}{map[string]string{"bar": "baz"}},
+			}),
+			schemaMap: map[string]*schemav2.Schema{
+				"foo": {
+					Type:     schemav2.TypeList,
+					Optional: true,
+					Elem: &schemav2.Resource{
+						Schema: map[string]*schemav2.Schema{
+							"bar": {Type: schemav2.TypeString, Computed: true},
+						},
+					},
+				},
+			},
+			expected: autogold.Expect(resource.PropertyMap{
+				resource.PropertyKey("__defaults"): resource.PropertyValue{
+					V: []resource.PropertyValue{},
+				},
+				resource.PropertyKey("foo"): resource.PropertyValue{V: []resource.PropertyValue{{
+					V: resource.PropertyMap{
+						resource.PropertyKey("__defaults"): resource.PropertyValue{
+							V: []resource.PropertyValue{},
+						},
+						resource.PropertyKey("bar"): resource.PropertyValue{V: "baz"},
+					},
+				}}},
+			}),
+		},
+		// TODO[pulumi/pulumi-terraform-bridge#2180]: This is wrong as an input should not be produced for computed values.
+		{
+			name: "list block max items one with computed element not extracted",
+			props: resource.NewPropertyMapFromMap(map[string]interface{}{
+				"foo": []interface{}{map[string]string{"bar": "baz"}},
+			}),
+			schemaMap: map[string]*schemav2.Schema{
+				"foo": {
+					Type:     schemav2.TypeList,
+					MaxItems: 1,
+					Optional: true,
+					Elem: &schemav2.Resource{
+						Schema: map[string]*schemav2.Schema{
+							"bar": {Type: schemav2.TypeString, Computed: true},
+						},
+					},
+				},
+			},
+			expected: autogold.Expect(resource.PropertyMap{
+				resource.PropertyKey("__defaults"): resource.PropertyValue{
+					V: []resource.PropertyValue{},
+				},
+				resource.PropertyKey("foo"): resource.PropertyValue{V: []resource.PropertyValue{{
+					V: resource.PropertyMap{resource.PropertyKey("bar"): resource.PropertyValue{
+						V: "baz",
+					}},
+				}}},
+			}),
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			sm := shimv2.NewSchemaMap(tc.schemaMap)
+			err := sm.Validate()
+			require.NoErrorf(t, err, "Invalid test case schema, please fix the testCase")
+
+			result, err := ExtractInputsFromOutputs(nil, tc.props, sm, nil, false)
+			require.NoError(t, err)
+			tc.expected.Equal(t, result)
+		})
+
+	}
+}
