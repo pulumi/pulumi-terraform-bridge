@@ -37,9 +37,6 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 				},
 			},
 			expect: autogold.Expect(resource.PropertyMap{
-				resource.PropertyKey("__defaults"): resource.PropertyValue{
-					V: []resource.PropertyValue{},
-				},
 				resource.PropertyKey("foo"): resource.PropertyValue{V: "bar"},
 			}),
 		},
@@ -53,9 +50,6 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 				},
 			},
 			expect: autogold.Expect(resource.PropertyMap{
-				resource.PropertyKey("__defaults"): resource.PropertyValue{
-					V: []resource.PropertyValue{},
-				},
 				resource.PropertyKey("foo"): resource.PropertyValue{V: "bar"}, // wrong
 			}),
 		},
@@ -67,9 +61,7 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 					"foo": rschema.StringAttribute{Optional: true},
 				},
 			},
-			expect: autogold.Expect(resource.PropertyMap{resource.PropertyKey("__defaults"): resource.PropertyValue{
-				V: []resource.PropertyValue{},
-			}}),
+			expect: autogold.Expect(resource.PropertyMap{}),
 		},
 		{
 			name:  "string computed not extracted",
@@ -79,9 +71,7 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 					"foo": rschema.StringAttribute{Computed: true},
 				},
 			},
-			expect: autogold.Expect(resource.PropertyMap{resource.PropertyKey("__defaults"): resource.PropertyValue{
-				V: []resource.PropertyValue{},
-			}}),
+			expect: autogold.Expect(resource.PropertyMap{}),
 		},
 		{
 			name:  "list attribute extracted",
@@ -95,9 +85,6 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 				},
 			},
 			expect: autogold.Expect(resource.PropertyMap{
-				resource.PropertyKey("__defaults"): resource.PropertyValue{
-					V: []resource.PropertyValue{},
-				},
 				resource.PropertyKey("foo"): resource.PropertyValue{V: []resource.PropertyValue{{
 					V: "bar",
 				}}},
@@ -119,9 +106,6 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 				},
 			},
 			expect: autogold.Expect(resource.PropertyMap{
-				resource.PropertyKey("__defaults"): resource.PropertyValue{
-					V: []resource.PropertyValue{},
-				},
 				resource.PropertyKey("foo"): resource.PropertyValue{V: []resource.PropertyValue{{
 					V: "bar", // wrong
 				}}},
@@ -140,9 +124,7 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 					},
 				},
 			},
-			expect: autogold.Expect(resource.PropertyMap{resource.PropertyKey("__defaults"): resource.PropertyValue{
-				V: []resource.PropertyValue{},
-			}}),
+			expect: autogold.Expect(resource.PropertyMap{}),
 		},
 		{
 			name: "list nested attribute extracted",
@@ -164,14 +146,8 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 				},
 			},
 			expect: autogold.Expect(resource.PropertyMap{
-				resource.PropertyKey("__defaults"): resource.PropertyValue{
-					V: []resource.PropertyValue{},
-				},
 				resource.PropertyKey("foo"): resource.PropertyValue{V: []resource.PropertyValue{{
 					V: resource.PropertyMap{
-						resource.PropertyKey("__defaults"): resource.PropertyValue{
-							V: []resource.PropertyValue{},
-						},
 						resource.PropertyKey("bar"): resource.PropertyValue{V: "baz"},
 					},
 				}}},
@@ -210,14 +186,8 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 				},
 			},
 			expect: autogold.Expect(resource.PropertyMap{
-				resource.PropertyKey("__defaults"): resource.PropertyValue{
-					V: []resource.PropertyValue{},
-				},
 				resource.PropertyKey("foo"): resource.PropertyValue{V: []resource.PropertyValue{{
 					V: resource.PropertyMap{
-						resource.PropertyKey("__defaults"): resource.PropertyValue{
-							V: []resource.PropertyValue{},
-						},
 						resource.PropertyKey("bar"): resource.PropertyValue{V: "baz"}, // wrong
 					},
 				}}},
@@ -244,14 +214,8 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 				},
 			},
 			expect: autogold.Expect(resource.PropertyMap{
-				resource.PropertyKey("__defaults"): resource.PropertyValue{
-					V: []resource.PropertyValue{},
-				},
 				resource.PropertyKey("foo"): resource.PropertyValue{V: []resource.PropertyValue{{
 					V: resource.PropertyMap{
-						resource.PropertyKey("__defaults"): resource.PropertyValue{
-							V: []resource.PropertyValue{},
-						},
 						resource.PropertyKey("bar"): resource.PropertyValue{V: "baz"}, // wrong
 					},
 				}}},
@@ -276,9 +240,7 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 					},
 				},
 			},
-			expect: autogold.Expect(resource.PropertyMap{resource.PropertyKey("__defaults"): resource.PropertyValue{
-				V: []resource.PropertyValue{},
-			}}),
+			expect: autogold.Expect(resource.PropertyMap{}),
 		},
 		{
 			name: "list nested attribute nested computed not extracted",
@@ -300,14 +262,7 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 				},
 			},
 			expect: autogold.Expect(resource.PropertyMap{
-				resource.PropertyKey("__defaults"): resource.PropertyValue{
-					V: []resource.PropertyValue{},
-				},
-				resource.PropertyKey("foo"): resource.PropertyValue{V: []resource.PropertyValue{{
-					V: resource.PropertyMap{resource.PropertyKey("__defaults"): resource.PropertyValue{
-						V: []resource.PropertyValue{},
-					}},
-				}}},
+				resource.PropertyKey("foo"): resource.PropertyValue{V: []resource.PropertyValue{{V: resource.PropertyMap{}}}},
 			}),
 		},
 		{
@@ -330,14 +285,8 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 				},
 			},
 			expect: autogold.Expect(resource.PropertyMap{
-				resource.PropertyKey("__defaults"): resource.PropertyValue{
-					V: []resource.PropertyValue{},
-				},
 				resource.PropertyKey("foo"): resource.PropertyValue{V: []resource.PropertyValue{{
 					V: resource.PropertyMap{
-						resource.PropertyKey("__defaults"): resource.PropertyValue{
-							V: []resource.PropertyValue{},
-						},
 						resource.PropertyKey("bar"): resource.PropertyValue{V: "baz"},
 					},
 				}}},
@@ -363,17 +312,8 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 				},
 			},
 			expect: autogold.Expect(resource.PropertyMap{
-				resource.PropertyKey("__defaults"): resource.PropertyValue{
-					V: []resource.PropertyValue{},
-				},
 				resource.PropertyKey("foo"): resource.PropertyValue{V: resource.PropertyMap{
-					resource.PropertyKey("__defaults"): resource.PropertyValue{
-						V: []resource.PropertyValue{},
-					},
 					resource.PropertyKey("key1"): resource.PropertyValue{V: resource.PropertyMap{
-						resource.PropertyKey("__defaults"): resource.PropertyValue{
-							V: []resource.PropertyValue{},
-						},
 						resource.PropertyKey("bar"): resource.PropertyValue{V: "baz"},
 					}},
 				}},
@@ -414,17 +354,8 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 				},
 			},
 			expect: autogold.Expect(resource.PropertyMap{
-				resource.PropertyKey("__defaults"): resource.PropertyValue{
-					V: []resource.PropertyValue{},
-				},
 				resource.PropertyKey("foo"): resource.PropertyValue{V: resource.PropertyMap{
-					resource.PropertyKey("__defaults"): resource.PropertyValue{
-						V: []resource.PropertyValue{},
-					},
 					resource.PropertyKey("key1"): resource.PropertyValue{V: resource.PropertyMap{
-						resource.PropertyKey("__defaults"): resource.PropertyValue{
-							V: []resource.PropertyValue{},
-						},
 						resource.PropertyKey("bar"): resource.PropertyValue{V: "baz"},
 					}},
 				}},
@@ -451,17 +382,8 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 				},
 			},
 			expect: autogold.Expect(resource.PropertyMap{
-				resource.PropertyKey("__defaults"): resource.PropertyValue{
-					V: []resource.PropertyValue{},
-				},
 				resource.PropertyKey("foo"): resource.PropertyValue{V: resource.PropertyMap{
-					resource.PropertyKey("__defaults"): resource.PropertyValue{
-						V: []resource.PropertyValue{},
-					},
 					resource.PropertyKey("key1"): resource.PropertyValue{V: resource.PropertyMap{
-						resource.PropertyKey("__defaults"): resource.PropertyValue{
-							V: []resource.PropertyValue{},
-						},
 						resource.PropertyKey("bar"): resource.PropertyValue{V: "baz"}, // wrong
 					}},
 				}},
@@ -486,9 +408,7 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 					},
 				},
 			},
-			expect: autogold.Expect(resource.PropertyMap{resource.PropertyKey("__defaults"): resource.PropertyValue{
-				V: []resource.PropertyValue{},
-			}}),
+			expect: autogold.Expect(resource.PropertyMap{}),
 		},
 		{
 			name: "map nested attribute nested computed not extracted",
@@ -510,16 +430,8 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 				},
 			},
 			expect: autogold.Expect(resource.PropertyMap{
-				resource.PropertyKey("__defaults"): resource.PropertyValue{
-					V: []resource.PropertyValue{},
-				},
 				resource.PropertyKey("foo"): resource.PropertyValue{V: resource.PropertyMap{
-					resource.PropertyKey("__defaults"): resource.PropertyValue{
-						V: []resource.PropertyValue{},
-					},
-					resource.PropertyKey("key1"): resource.PropertyValue{V: resource.PropertyMap{resource.PropertyKey("__defaults"): resource.PropertyValue{
-						V: []resource.PropertyValue{},
-					}}},
+					resource.PropertyKey("key1"): resource.PropertyValue{V: resource.PropertyMap{}},
 				}},
 			}),
 		},
@@ -540,9 +452,7 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 					},
 				},
 			},
-			expect: autogold.Expect(resource.PropertyMap{resource.PropertyKey("__defaults"): resource.PropertyValue{
-				V: []resource.PropertyValue{},
-			}}),
+			expect: autogold.Expect(resource.PropertyMap{}),
 		},
 		{
 			name: "object attribute computed not extracted",
@@ -561,9 +471,7 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 					},
 				},
 			},
-			expect: autogold.Expect(resource.PropertyMap{resource.PropertyKey("__defaults"): resource.PropertyValue{
-				V: []resource.PropertyValue{},
-			}}),
+			expect: autogold.Expect(resource.PropertyMap{}),
 		},
 		{
 			name: "single nested attribute extracted",
@@ -583,13 +491,7 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 				},
 			},
 			expect: autogold.Expect(resource.PropertyMap{
-				resource.PropertyKey("__defaults"): resource.PropertyValue{
-					V: []resource.PropertyValue{},
-				},
 				resource.PropertyKey("foo"): resource.PropertyValue{V: resource.PropertyMap{
-					resource.PropertyKey("__defaults"): resource.PropertyValue{
-						V: []resource.PropertyValue{},
-					},
 					resource.PropertyKey("bar"): resource.PropertyValue{V: "baz"},
 				}},
 			}),
@@ -611,9 +513,7 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 					},
 				},
 			},
-			expect: autogold.Expect(resource.PropertyMap{resource.PropertyKey("__defaults"): resource.PropertyValue{
-				V: []resource.PropertyValue{},
-			}}),
+			expect: autogold.Expect(resource.PropertyMap{}),
 		},
 		{
 			name: "single nested attribute nested computed not extracted",
@@ -632,9 +532,7 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 					},
 				},
 			},
-			expect: autogold.Expect(resource.PropertyMap{resource.PropertyKey("__defaults"): resource.PropertyValue{
-				V: []resource.PropertyValue{},
-			}}),
+			expect: autogold.Expect(resource.PropertyMap{}),
 		},
 		// TODO[pulumi/pulumi-terraform-bridge#2218]: Add missing defaults tests here once defaults are fixed.
 		// BLOCKS
@@ -657,14 +555,8 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 				},
 			},
 			expect: autogold.Expect(resource.PropertyMap{
-				resource.PropertyKey("__defaults"): resource.PropertyValue{
-					V: []resource.PropertyValue{},
-				},
 				resource.PropertyKey("block_field"): resource.PropertyValue{V: []resource.PropertyValue{{
 					V: resource.PropertyMap{
-						resource.PropertyKey("__defaults"): resource.PropertyValue{
-							V: []resource.PropertyValue{},
-						},
 						resource.PropertyKey("nested_field"): resource.PropertyValue{V: "nested_value"},
 					},
 				}}},
@@ -690,14 +582,8 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 				},
 			},
 			expect: autogold.Expect(resource.PropertyMap{
-				resource.PropertyKey("__defaults"): resource.PropertyValue{
-					V: []resource.PropertyValue{},
-				},
 				resource.PropertyKey("block_field"): resource.PropertyValue{V: []resource.PropertyValue{{
 					V: resource.PropertyMap{
-						resource.PropertyKey("__defaults"): resource.PropertyValue{
-							V: []resource.PropertyValue{},
-						},
 						resource.PropertyKey("nested_field"): resource.PropertyValue{V: "nested_value"}, // wrong
 					},
 				}}},
@@ -722,13 +608,8 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 				},
 			},
 			expect: autogold.Expect(resource.PropertyMap{
-				resource.PropertyKey("__defaults"): resource.PropertyValue{
-					V: []resource.PropertyValue{},
-				},
 				resource.PropertyKey("block_field"): resource.PropertyValue{V: []resource.PropertyValue{{
-					V: resource.PropertyMap{resource.PropertyKey("__defaults"): resource.PropertyValue{
-						V: []resource.PropertyValue{},
-					}},
+					V: resource.PropertyMap{},
 				}}},
 			}),
 		},
@@ -751,14 +632,8 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 				},
 			},
 			expect: autogold.Expect(resource.PropertyMap{
-				resource.PropertyKey("__defaults"): resource.PropertyValue{
-					V: []resource.PropertyValue{},
-				},
 				resource.PropertyKey("block_field"): resource.PropertyValue{V: []resource.PropertyValue{{
 					V: resource.PropertyMap{
-						resource.PropertyKey("__defaults"): resource.PropertyValue{
-							V: []resource.PropertyValue{},
-						},
 						resource.PropertyKey("nested_field"): resource.PropertyValue{V: "nested_value"},
 					},
 				}}},
@@ -784,14 +659,8 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 				},
 			},
 			expect: autogold.Expect(resource.PropertyMap{
-				resource.PropertyKey("__defaults"): resource.PropertyValue{
-					V: []resource.PropertyValue{},
-				},
 				resource.PropertyKey("block_field"): resource.PropertyValue{V: []resource.PropertyValue{{
 					V: resource.PropertyMap{
-						resource.PropertyKey("__defaults"): resource.PropertyValue{
-							V: []resource.PropertyValue{},
-						},
 						resource.PropertyKey("nested_field"): resource.PropertyValue{V: "nested_value"}, // wrong
 					},
 				}}},
@@ -816,13 +685,8 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 				},
 			},
 			expect: autogold.Expect(resource.PropertyMap{
-				resource.PropertyKey("__defaults"): resource.PropertyValue{
-					V: []resource.PropertyValue{},
-				},
 				resource.PropertyKey("block_field"): resource.PropertyValue{V: []resource.PropertyValue{{
-					V: resource.PropertyMap{resource.PropertyKey("__defaults"): resource.PropertyValue{
-						V: []resource.PropertyValue{},
-					}},
+					V: resource.PropertyMap{},
 				}}},
 			}),
 		},
@@ -841,13 +705,7 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 				},
 			},
 			expect: autogold.Expect(resource.PropertyMap{
-				resource.PropertyKey("__defaults"): resource.PropertyValue{
-					V: []resource.PropertyValue{},
-				},
 				resource.PropertyKey("block_field"): resource.PropertyValue{V: resource.PropertyMap{
-					resource.PropertyKey("__defaults"): resource.PropertyValue{
-						V: []resource.PropertyValue{},
-					},
 					resource.PropertyKey("nested_field"): resource.PropertyValue{V: "nested_value"},
 				}},
 			}),
@@ -868,13 +726,7 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 				},
 			},
 			expect: autogold.Expect(resource.PropertyMap{
-				resource.PropertyKey("__defaults"): resource.PropertyValue{
-					V: []resource.PropertyValue{},
-				},
 				resource.PropertyKey("block_field"): resource.PropertyValue{V: resource.PropertyMap{
-					resource.PropertyKey("__defaults"): resource.PropertyValue{
-						V: []resource.PropertyValue{},
-					},
 					resource.PropertyKey("nested_field"): resource.PropertyValue{V: "nested_value"}, // wrong
 				}},
 			}),
@@ -893,9 +745,7 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 					},
 				},
 			},
-			expect: autogold.Expect(resource.PropertyMap{resource.PropertyKey("__defaults"): resource.PropertyValue{
-				V: []resource.PropertyValue{},
-			}}),
+			expect: autogold.Expect(resource.PropertyMap{}),
 		},
 	}
 
