@@ -67,9 +67,10 @@ func convertBlock(rawSchema *tfprotov6.Schema) (*configschema.Block, error) {
 }
 
 func convertType(t tftypes.Type) (cty.Type, error) {
-	ctyTypeJson, err := t.MarshalJSON()
+	//nolint:staticcheck
+	ctyTypeJSON, err := t.MarshalJSON()
 	contract.AssertNoErrorf(err, "tftypes.Type.MarshalJSON() failed unexpectedly")
-	return ctyjson.UnmarshalType(ctyTypeJson)
+	return ctyjson.UnmarshalType(ctyTypeJSON)
 }
 
 type conversion struct {

@@ -61,7 +61,7 @@ type singleResourceProvider struct {
 
 var _ provider.Provider = &singleResourceProvider{}
 
-func (_ singleResourceProvider) Metadata(
+func (srp singleResourceProvider) Metadata(
 	ctx context.Context,
 	req provider.MetadataRequest,
 	resp *provider.MetadataResponse,
@@ -69,19 +69,19 @@ func (_ singleResourceProvider) Metadata(
 	resp.TypeName = "p"
 }
 
-func (_ singleResourceProvider) Schema(context.Context, provider.SchemaRequest, *provider.SchemaResponse) {
+func (srp singleResourceProvider) Schema(context.Context, provider.SchemaRequest, *provider.SchemaResponse) {
 }
 
-func (_ singleResourceProvider) Configure(context.Context, provider.ConfigureRequest, *provider.ConfigureResponse) {
+func (srp singleResourceProvider) Configure(context.Context, provider.ConfigureRequest, *provider.ConfigureResponse) {
 }
 
-func (_ singleResourceProvider) DataSources(context.Context) []func() datasource.DataSource {
+func (srp singleResourceProvider) DataSources(context.Context) []func() datasource.DataSource {
 	return nil
 }
 
-func (p singleResourceProvider) Resources(context.Context) []func() resource.Resource {
+func (srp singleResourceProvider) Resources(context.Context) []func() resource.Resource {
 	mk := func() resource.Resource {
-		return &schemaOnlyResource{p.resourceSchema}
+		return &schemaOnlyResource{srp.resourceSchema}
 	}
 	return []func() resource.Resource{mk}
 }
