@@ -22,7 +22,7 @@
           dest=github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tfplugin6
           cat $src/docs/plugin-protocol/tfplugin6.5.proto |
               sed -r "s#$orig#$dest#g" |
-              sed -r "#package tfplugin6;#package tfplugin6_pulumi;#g" >$out/tfplugin6_pulumi.proto
+              sed -r "s#package tfplugin6;#package tfplugin6_pulumi;#g" >$out/tfplugin6_pulumi.proto
         ''];
         src = opentofu_src;
         system = sys;
