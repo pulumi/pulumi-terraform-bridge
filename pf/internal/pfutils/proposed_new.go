@@ -17,14 +17,12 @@ package pfutils
 import (
 	"context"
 
-	proto "github.com/golang/protobuf/proto"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/runtypes"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/opentofu/configs/configschema"
 	opentofuconvert "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/opentofu/convert"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/opentofu/plans/objchange"
-	opentofuproto "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/opentofu/tfplugin6"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/terraform-plugin-go/tfprotov6/toproto"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
@@ -63,19 +61,9 @@ func ProposedNew(ctx context.Context, schema runtypes.Schema, priorState, config
 	return conv.FromCtyValue(proposedNewCty)
 }
 
-// Turnaround through the proto layer to translate identical but nominally distinct representations of object schemata.
 func convertBlock(rawSchema *tfprotov6.Schema) (*configschema.Block, error) {
 	protoSchema := toproto.Schema(rawSchema)
-	rawBytes, err := proto.Marshal(protoSchema.Block)
-	if err != nil {
-		return nil, err
-	}
-	var protoSchema2 *opentofuproto.Schema_Block
-	err = proto.Unmarshal(rawBytes, protoSchema2)
-	if err != nil {
-		return nil, err
-	}
-	return opentofuconvert.ProtoToConfigSchema(protoSchema2), nil
+	return opentofuconvert.ProtoToConfigSchema(protoSchema.GetBlock()), nil
 }
 
 func convertType(t tftypes.Type) (cty.Type, error) {
