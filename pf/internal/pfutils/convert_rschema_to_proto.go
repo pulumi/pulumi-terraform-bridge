@@ -16,6 +16,7 @@ package pfutils
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -37,6 +38,15 @@ func convertResourceSchemaToProto(ctx context.Context, s *rschema.Schema) (*tfpr
 	}
 	resp, err := srv.GetProviderSchema(ctx, &tfprotov6.GetProviderSchemaRequest{})
 	if err != nil {
+		return nil, err
+	}
+	var diagErrors []error
+	for _, d := range resp.Diagnostics {
+		if d.Severity == tfprotov6.DiagnosticSeverityError {
+			diagErrors = append(diagErrors, d.Attribute.NewErrorf("%s\n%s", d.Summary, d.Detail))
+		}
+	}
+	if err := errors.Join(diagErrors...); err != nil {
 		return nil, err
 	}
 	for _, r := range resp.ResourceSchemas {

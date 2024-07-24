@@ -853,7 +853,7 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 								"bar": rschema.ListNestedBlock{
 									NestedObject: rschema.NestedBlockObject{
 										Attributes: map[string]rschema.Attribute{
-											"baz": rschema.StringAttribute{},
+											"baz": rschema.StringAttribute{Optional: true},
 											"qux": rschema.StringAttribute{
 												Computed: true,
 												Optional: true,
@@ -1043,6 +1043,7 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 			runtimeSchemaAdapter{FromResourceSchema(rschema.Schema{
 				Attributes: map[string]rschema.Attribute{
 					"foo": rschema.SetNestedAttribute{
+						Optional: true,
 						NestedObject: rschema.NestedAttributeObject{
 							Attributes: map[string]rschema.Attribute{
 								"bar": rschema.SetNestedAttribute{
@@ -1127,14 +1128,14 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 				Attributes: map[string]rschema.Attribute{
 					"single": rschema.SingleNestedAttribute{
 						Attributes: map[string]rschema.Attribute{
-							"bar": rschema.StringAttribute{},
+							"bar": rschema.StringAttribute{Optional: true},
 						},
 						Optional: true,
 					},
 					"list": rschema.ListNestedAttribute{
 						NestedObject: rschema.NestedAttributeObject{
 							Attributes: map[string]rschema.Attribute{
-								"bar": rschema.StringAttribute{},
+								"bar": rschema.StringAttribute{Optional: true},
 							},
 						},
 						Optional: true,
@@ -1142,7 +1143,7 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 					"set": rschema.SetNestedAttribute{
 						NestedObject: rschema.NestedAttributeObject{
 							Attributes: map[string]rschema.Attribute{
-								"bar": rschema.StringAttribute{},
+								"bar": rschema.StringAttribute{Optional: true},
 							},
 						},
 						Optional: true,
@@ -1150,7 +1151,7 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 					"map": rschema.MapNestedAttribute{
 						NestedObject: rschema.NestedAttributeObject{
 							Attributes: map[string]rschema.Attribute{
-								"bar": rschema.StringAttribute{},
+								"bar": rschema.StringAttribute{Optional: true},
 							},
 						},
 						Optional: true,
@@ -1159,6 +1160,7 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 						NestedObject: rschema.NestedAttributeObject{
 							Attributes: map[string]rschema.Attribute{
 								"inner": rschema.SingleNestedAttribute{
+									Optional:   true,
 									Attributes: testAttributes,
 								},
 							},
@@ -1209,7 +1211,7 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 					"set": rschema.SetNestedAttribute{
 						NestedObject: rschema.NestedAttributeObject{
 							Attributes: map[string]rschema.Attribute{
-								"bar": rschema.StringAttribute{},
+								"bar": rschema.StringAttribute{Optional: true},
 							},
 						},
 						Optional: true,
@@ -1217,7 +1219,7 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 					"map": rschema.MapNestedAttribute{
 						NestedObject: rschema.NestedAttributeObject{
 							Attributes: map[string]rschema.Attribute{
-								"bar": rschema.StringAttribute{},
+								"bar": rschema.StringAttribute{Optional: true},
 							},
 						},
 						Optional: true,
@@ -1285,7 +1287,9 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 							"list": rschema.ListNestedAttribute{
 								NestedObject: rschema.NestedAttributeObject{
 									Attributes: map[string]rschema.Attribute{
-										"foo": rschema.StringAttribute{},
+										"foo": rschema.StringAttribute{
+											Optional: true,
+										},
 									},
 								},
 								Optional: true,
@@ -1299,7 +1303,9 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 								"list": rschema.ListNestedAttribute{
 									NestedObject: rschema.NestedAttributeObject{
 										Attributes: map[string]rschema.Attribute{
-											"foo": rschema.StringAttribute{},
+											"foo": rschema.StringAttribute{
+												Optional: true,
+											},
 										},
 									},
 									Optional: true,
@@ -1375,7 +1381,9 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 								"list": rschema.ListNestedAttribute{
 									NestedObject: rschema.NestedAttributeObject{
 										Attributes: map[string]rschema.Attribute{
-											"foo": rschema.StringAttribute{},
+											"foo": rschema.StringAttribute{
+												Optional: true,
+											},
 										},
 									},
 									Computed: true,
