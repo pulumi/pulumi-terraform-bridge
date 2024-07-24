@@ -3,26 +3,43 @@
     "version": "0.11.1",
     "description": "A Pulumi provider dynamically bridged from alz.",
     "attribution": "This Pulumi package is based on the [`alz` Terraform Provider](https://github.com/terraform-providers/terraform-provider-alz).",
+    "publisher": "Pulumi",
     "meta": {
         "moduleFormat": "(.*)(?:/[^/]*)"
     },
     "language": {
+        "csharp": {
+            "compatibility": "tfbridge20",
+            "liftSingleValueMethodReturns": true,
+            "respectSchemaVersion": true
+        },
         "go": {
             "importBasePath": "github.com/pulumi/pulumi-alz/sdk/go/alz",
             "liftSingleValueMethodReturns": true,
             "generateExtraInputTypes": true,
             "respectSchemaVersion": true
         },
+        "java": {
+            "basePackage": "",
+            "buildFiles": "",
+            "gradleNexusPublishPluginVersion": "",
+            "gradleTest": ""
+        },
         "nodejs": {
             "packageDescription": "A Pulumi provider dynamically bridged from alz.",
             "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-alz)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e first check the [`pulumi-alz` repo](/issues); however, if that doesn't turn up anything,\n\u003e please consult the source [`terraform-provider-alz` repo](https://github.com/terraform-providers/terraform-provider-alz/issues).",
             "compatibility": "tfbridge20",
-            "disableUnionOutputTypes": true
+            "disableUnionOutputTypes": true,
+            "liftSingleValueMethodReturns": true,
+            "respectSchemaVersion": true
         },
         "python": {
             "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-alz)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e first check the [`pulumi-alz` repo](/issues); however, if that doesn't turn up anything,\n\u003e please consult the source [`terraform-provider-alz` repo](https://github.com/terraform-providers/terraform-provider-alz/issues).",
             "compatibility": "tfbridge20",
-            "pyproject": {}
+            "respectSchemaVersion": true,
+            "pyproject": {
+                "enabled": true
+            }
         }
     },
     "config": {
@@ -743,5 +760,12 @@
                 ]
             }
         }
+    },
+    "parameterization": {
+        "baseProvider": {
+            "name": "terraform-provider",
+            "version": "0.0.0-dev"
+        },
+        "parameter": "eyJyZW1vdGUiOnsidXJsIjoicmVnaXN0cnkub3BlbnRvZnUub3JnL2F6dXJlL2FseiIsInZlcnNpb24iOiIwLjExLjEifX0="
     }
 }

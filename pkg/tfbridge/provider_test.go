@@ -4762,8 +4762,7 @@ func TestUnknowns(t *testing.T) {
 		},
 		"response": {
 			"properties":{
-				"id":"",
-				"setBlockProps":[{"prop":""}]
+				"id":""
 			}
 		}
 	}`)
@@ -4845,8 +4844,7 @@ func TestUnknowns(t *testing.T) {
 		},
 		"response": {
 			"properties":{
-				"id":"",
-				"listBlockProps":[null]
+				"id":""
 			}
 		}
 	}`)
@@ -4932,7 +4930,7 @@ func TestUnknowns(t *testing.T) {
 		"response": {
 			"properties":{
 				"id":"",
-				"nestedListBlockProps":[{"nestedProps":[null]}]
+				"nestedListBlockProps":[{"nestedProps":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"}]
 			}
 		}
 	}`)
@@ -4973,8 +4971,7 @@ func TestUnknowns(t *testing.T) {
 		},
 		"response": {
 			"properties":{
-				"id":"",
-				"nestedListBlockProps":[null]
+				"id":""
 			}
 		}
 	}`)
@@ -5167,7 +5164,6 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 	})
 
 	t.Run("unknown for set block prop", func(t *testing.T) {
-		// TODO[pulumi/pulumi-terraform-bridge#1885]
 		testutils.Replay(t, provider, `
 	{
 		"method": "/pulumirpc.ResourceProvider/Create",
@@ -5197,7 +5193,6 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 	})
 
 	t.Run("unknown for set block prop collection", func(t *testing.T) {
-		// TODO[pulumi/pulumi-terraform-bridge#1885]
 		testutils.Replay(t, provider, `
 	{
 		"method": "/pulumirpc.ResourceProvider/Create",
@@ -5217,7 +5212,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 				"listProps":null,
 				"nestedListProps":null,
 				"maxItemsOneProp":null,
-				"setBlockProps":[{"prop":""}],
+				"setBlockProps":"04da6b54-80e4-46f7-96ec-b56ff0331ba9",
 				"listBlockProps":[],
 				"nestedListBlockProps":[],
 				"maxItemsOneBlockProp":null
@@ -5319,7 +5314,6 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 	})
 
 	t.Run("unknown for list block prop collection", func(t *testing.T) {
-		// TODO[pulumi/pulumi-terraform-bridge#1885]
 		testutils.Replay(t, provider, `
 	{
 		"method": "/pulumirpc.ResourceProvider/Create",
@@ -5340,7 +5334,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 				"nestedListProps":null,
 				"maxItemsOneProp":null,
 				"setBlockProps":[],
-				"listBlockProps":[{ "prop": null }],
+				"listBlockProps":"04da6b54-80e4-46f7-96ec-b56ff0331ba9",
 				"nestedListBlockProps":[],
 				"maxItemsOneBlockProp":null
 			}
@@ -5444,7 +5438,6 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 	})
 
 	t.Run("unknown for nested list block prop nested collection", func(t *testing.T) {
-		// TODO[pulumi/pulumi-terraform-bridge#1885]
 		testutils.Replay(t, provider, `
 	{
 		"method": "/pulumirpc.ResourceProvider/Create",
@@ -5467,7 +5460,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 				"setBlockProps":[],
 				"listBlockProps":[],
 				"nestedListBlockProps":[{
-					"nestedProps": [{"prop":null}]
+					"nestedProps": "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
 				  }],
 				"maxItemsOneBlockProp":null
 			}
@@ -5506,7 +5499,6 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 	})
 
 	t.Run("unknown for nested list block collection", func(t *testing.T) {
-		// TODO[pulumi/pulumi-terraform-bridge#1885]
 		testutils.Replay(t, provider, `
 	{
 		"method": "/pulumirpc.ResourceProvider/Create",
@@ -5528,7 +5520,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 				"maxItemsOneProp":null,
 				"setBlockProps":[],
 				"listBlockProps":[],
-				"nestedListBlockProps":[{"nestedProps":[]}],
+				"nestedListBlockProps":"04da6b54-80e4-46f7-96ec-b56ff0331ba9",
 				"maxItemsOneBlockProp":null
 			}
 		}

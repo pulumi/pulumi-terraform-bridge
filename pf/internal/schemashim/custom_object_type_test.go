@@ -22,7 +22,6 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
-	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/stretchr/testify/assert"
@@ -35,12 +34,12 @@ func TestCustomObject(t *testing.T) {
 
 	obj := newObjectPseudoResource(NewObjectTypeOf[SomeType](ctx), nil, nil)
 
-	s := obj.Schema().Get("s")
+	s := obj.Schema().Get("sample_string")
 	assert.Equal(t, shim.TypeString, s.Type())
 }
 
 type SomeType struct {
-	S types.String `tfsdk:"s"`
+	SampleString basetypes.StringValue `tfsdk:"sample_string"`
 }
 
 // --- custom object machinery ---

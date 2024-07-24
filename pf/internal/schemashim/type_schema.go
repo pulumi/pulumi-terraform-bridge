@@ -16,7 +16,6 @@ package schemashim
 
 import (
 	pfattr "github.com/hashicorp/terraform-plugin-framework/attr"
-	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
@@ -62,16 +61,12 @@ func (s *typeSchema) Elem() interface{} {
 	case basetypes.ObjectTypable:
 		var pseudoResource shim.Resource = newObjectPseudoResource(tt, s.nested, nil)
 		return pseudoResource
-	case basetypes.SetTypable, basetypes.ListTypable:
+	case basetypes.SetTypable, basetypes.ListTypable, basetypes.MapTypable:
 		typeWithElementType, ok := s.t.(pfattr.TypeWithElementType)
-		contract.Assertf(ok, "List or Set type %T expect to implement TypeWithElementType", s.t)
+		contract.Assertf(ok, "List, Set or Map type %T expect to implement TypeWithElementType", s.t)
 		contract.Assertf(s.nested == nil || len(s.nested) == 0,
-			"s.t==SetTypable should not have any s.nested attrs")
+			"s.t==%T should not have any s.nested attrs", s.t)
 		return newTypeSchema(typeWithElementType.ElementType(), nil)
-	case types.MapType:
-		contract.Assertf(s.nested == nil || len(s.nested) == 0,
-			"s.t==MapType should not have any s.nested attrs")
-		return newTypeSchema(tt.ElemType, nil)
 	case pfattr.TypeWithElementTypes:
 		var pseudoResource shim.Resource = newTuplePseudoResource(tt)
 		return pseudoResource
