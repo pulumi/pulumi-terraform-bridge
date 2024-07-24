@@ -81,6 +81,42 @@ func TestSchemaShimRepresentations(t *testing.T) {
 }`),
 		},
 		{
+			"list attribute object element",
+			map[string]*schema.Schema{
+				"field_attr": {
+					Type:     schema.TypeList,
+					Optional: true,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"nested_field": {
+								Type:     schema.TypeString,
+								Optional: true,
+							},
+						},
+					},
+					ConfigMode: schema.SchemaConfigModeAttr,
+				},
+			},
+			autogold.Expect(`{
+  "resources": {
+    "res": {
+      "field_attr": {
+        "element": {
+          "resource": {
+            "nested_field": {
+              "optional": true,
+              "type": 4
+            }
+          }
+        },
+        "optional": true,
+        "type": 5
+      }
+    }
+  }
+}`),
+		},
+		{
 			"list block",
 			map[string]*schema.Schema{
 				"block_field": {
