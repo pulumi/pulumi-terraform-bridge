@@ -23,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/propertyvalue"
 )
 
 // Read the current live state associated with a resource. Enough state must be include in the inputs to uniquely
@@ -103,19 +104,20 @@ func deleteDefaultsKey(inputs *resource.PropertyMap) {
 	i := *inputs
 	delete(i, "__defaults")
 	for _, key := range i.StableKeys() {
-		nestedInput := i[key]
-		if nestedInput.IsObject() {
-			nestedValue := nestedInput.ObjectValue()
-			deleteDefaultsKey(&nestedValue)
-		}
-		if nestedInput.IsArray() {
-			for _, value := range nestedInput.ArrayValue() {
-				if value.IsObject() {
-					nestedValue := value.ObjectValue()
-					deleteDefaultsKey(&nestedValue)
+		transformedValue, err := propertyvalue.TransformPropertyValue(
+			resource.PropertyPath{},
+			func(pp resource.PropertyPath, pv resource.PropertyValue) (resource.PropertyValue, error) {
+				if pv.IsObject() {
+					delete(pv.ObjectValue(), "__defaults")
 				}
-			}
+				return pv, nil
+			},
+			i[key],
+		)
+		if err != nil {
+			return
 		}
+		i[key] = transformedValue
 	}
 }
 
