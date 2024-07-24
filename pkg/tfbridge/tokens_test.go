@@ -569,7 +569,6 @@ func testTokenAliasing(t *testing.T) {
 		"pkg_mod1_r2_legacy": {
 			Tok:                "pkg:index/mod1R2:Mod1R2",
 			DeprecationMessage: "pkg.index/mod1r2.Mod1R2 has been deprecated in favor of pkg.mod1/r2.R2",
-			//Docs:               &tfbridge.DocInfo{Source: "kg_mod1_r2.html.markdown"},
 		},
 		"pkg_mod2_r1": {
 			Tok:     "pkg:mod2/r1:R1",
@@ -578,7 +577,6 @@ func testTokenAliasing(t *testing.T) {
 		"pkg_mod2_r1_legacy": {
 			Tok:                "pkg:index/mod2R1:Mod2R1",
 			DeprecationMessage: "pkg.index/mod2r1.Mod2R1 has been deprecated in favor of pkg.mod2/r1.R1",
-			//Docs:               &tfbridge.DocInfo{Source: "kg_mod2_r1.html.markdown"},
 		},
 	}, modules.Resources)
 	assert.Equal(t, map[string]*tfbridge.DataSourceInfo{
@@ -586,7 +584,6 @@ func testTokenAliasing(t *testing.T) {
 		"pkg_mod1_d1_legacy": {
 			Tok:                "pkg:index/getMod1D1:getMod1D1",
 			DeprecationMessage: "pkg.index/getmod1d1.getMod1D1 has been deprecated in favor of pkg.mod1/getd1.getD1",
-			//Docs:               &tfbridge.DocInfo{Source: "kg_mod1_d1.html.markdown"},
 		},
 	},
 		modules.DataSources)
