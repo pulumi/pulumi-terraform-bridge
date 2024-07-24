@@ -2,7 +2,6 @@ package tests
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -14,107 +13,8 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/internal/pulcheck"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optrefresh"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-func TestFailedValidatorOnReadHandling(t *testing.T) {
-
-	toString := func(p *string) (v string) {
-		if p == nil {
-			return v
-		}
-
-		return *p
-	}
-	flatten := func() []interface{} {
-		var tflist []interface{}
-		val := ""
-		tflist = append(tflist, &map[string]interface{}{
-			"value1": "abc",
-			"value2": toString(&val),
-		})
-
-		return tflist
-	}
-	resMap := map[string]*schema.Resource{
-		"prov_test": {
-			Schema: map[string]*schema.Schema{
-				"route": {
-					Type:       schema.TypeSet,
-					Computed:   true,
-					Optional:   true,
-					ConfigMode: schema.SchemaConfigModeAttr,
-					Elem: &schema.Resource{
-						Schema: map[string]*schema.Schema{
-							"value1": {
-								Type:     schema.TypeString,
-								Optional: true,
-							},
-							"value2": {
-								Type:     schema.TypeString,
-								Optional: true,
-								ValidateFunc: func(i interface{}, s string) ([]string, []error) {
-									t.Error("here")
-									return []string{}, []error{errors.New("validation error")}
-								},
-							},
-						},
-					},
-				},
-			},
-			Importer: &schema.ResourceImporter{
-				StateContext: func(ctx context.Context, rd *schema.ResourceData, i interface{}) ([]*schema.ResourceData, error) {
-					err := rd.Set("route", flatten())
-					assert.NoError(t, err)
-					return []*schema.ResourceData{rd}, nil
-				},
-			},
-			ReadContext: func(ctx context.Context, rd *schema.ResourceData, i interface{}) diag.Diagnostics {
-				err := rd.Set("route", flatten())
-				assert.NoError(t, err)
-				return nil
-			},
-		},
-	}
-	bridgedProvider := pulcheck.BridgedProvider(t, "prov", resMap, pulcheck.DisablePlanResourceChange())
-	// 	program := `
-	// name: test
-	// runtime: yaml
-	// resources:
-	//   mainRes:
-	//     type: prov:index:Test
-	//     properties:
-	//       routes:
-	//         - value1: abcd
-	//     options:
-	//       ignoreChanges:
-	//         - routes
-	// outputs:
-	//   testOut: ${mainRes.routes}
-	// `
-	program := `
-name: test
-runtime: yaml
-`
-	pt := pulcheck.PulCheck(t, bridgedProvider, program)
-
-	ip := pt.Import("prov:index/test:Test", "mainRes", "mainRes", "")
-	es := pt.ExportStack()
-	state, err := es.Deployment.MarshalJSON()
-	assert.NoError(t, err)
-	t.Logf("State: %s", string(state))
-	t.Logf("import stdout: %s", ip.Stdout)
-	t.Logf("import stderr: %s", ip.Stderr)
-	// res := pt.Up(optup.Diff())
-	// t.Logf("stdout: %s", res.StdOut)
-	// t.Logf("stderr: %s", res.StdErr)
-	// es = pt.ExportStack()
-	// state, err = es.Deployment.MarshalJSON()
-	// assert.NoError(t, err)
-	// t.Logf("State: %s", string(state))
-	assert.Equal(t, "", 0)
-}
 
 func TestUnknownHandling(t *testing.T) {
 	resMap := map[string]*schema.Resource{
