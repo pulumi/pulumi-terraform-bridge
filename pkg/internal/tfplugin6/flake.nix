@@ -21,7 +21,8 @@
           orig=github.com/opentofu/opentofu/internal/tfplugin6
           dest=github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tfplugin6
           cat $src/docs/plugin-protocol/tfplugin6.5.proto |
-              sed -r "s#$orig#$dest#g" >$out/tfplugin6.proto
+              sed -r "s#$orig#$dest#g" |
+              sed -r "#package tfplugin6;#package tfplugin6_pulumi;#g" >$out/tfplugin6_pulumi.proto
         ''];
         src = opentofu_src;
         system = sys;
@@ -38,9 +39,9 @@
           export PATH=$coreutils/bin:$protoc/bin:$protogo/bin
           mkdir -p $out
           cd $out
-          cp ${tfplugin6-protos}/tfplugin6.proto $out/tfplugin6.proto
-          protoc --proto_path ${tfplugin6-protos} ${tfplugin6-protos}/tfplugin6.proto --go_out=.
-          mv $out/github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tfplugin6/* $out/*
+          cp ${tfplugin6-protos}/tfplugin6_pulumi.proto $out/tfplugin6_pulumi.proto
+          protoc --proto_path ${tfplugin6-protos} ${tfplugin6-protos}/tfplugin6_pulumi.proto --go_out=.
+          mv $out/github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/*/* $out/
           rm -rf $out/github.com
         ''];
         system = sys;
