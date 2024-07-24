@@ -34,6 +34,7 @@ import (
 const (
 	oldPkg       = "github.com/opentofu/opentofu"
 	newPkg       = "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/opentofu"
+	protoPkg     = "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tfplugin6"
 	opentofuRepo = "https://github.com/opentofu/opentofu.git"
 	opentofuVer  = "v1.7.2"
 )
@@ -63,7 +64,7 @@ func files() []file {
 	fixupTFPlugin6Ref := gofmtReplace(fmt.Sprintf(
 		`"%s" -> "%s"`,
 		fmt.Sprintf("%s/internal/tfplugin6", oldPkg),
-		fmt.Sprintf("%s/tfplugin6", newPkg),
+		protoPkg,
 	))
 
 	transforms := []func(string) string{
@@ -132,11 +133,6 @@ func files() []file {
 				s = strings.ReplaceAll(s, `"github.com/opentofu/opentofu/internal/providers"`, "")
 				return s
 			}),
-		},
-		{
-			src:        "internal/tfplugin6/tfplugin6.pb.go",
-			dest:       "tfplugin6/tfplugin6.pb.go",
-			transforms: transforms,
 		},
 	}
 }

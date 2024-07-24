@@ -12,8 +12,8 @@ import (
 	"sort"
 
 	
+	proto "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tfplugin6"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/opentofu/configs/configschema"
-	proto "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/opentofu/tfplugin6"
 	"github.com/zclconf/go-cty/cty"
 )
 
