@@ -17,8 +17,8 @@ package runtypes
 import (
 	"context"
 
+	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
-
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
@@ -34,6 +34,8 @@ type Schema interface {
 
 	Shim() shim.SchemaMap
 	DeprecationMessage() string
+
+	ResourceProtoSchema(ctx context.Context) (*tfprotov6.Schema, error)
 }
 
 // Full resource type, including the provider type prefix and an underscore. For example,

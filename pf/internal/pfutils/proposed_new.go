@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -51,16 +51,16 @@ func ProposedNew(ctx context.Context, schema runtypes.Schema, priorState, config
 	if err != nil {
 		return tftypes.Value{}, err
 	}
-	block, err := convertBlock(extractRawSchema(schema))
+	protoSchema, err := schema.ResourceProtoSchema(ctx)
+	if err != nil {
+		return tftypes.Value{}, err
+	}
+	block, err := convertBlock(protoSchema)
 	if err != nil {
 		return tftypes.Value{}, err
 	}
 	proposedNewCty := objchange.ProposedNew(block, priorStateCty, configCty)
 	return conv.FromCtyValue(proposedNewCty)
-}
-
-func extractRawSchema(schema runtypes.Schema) *tfprotov6.Schema {
-	panic("TODO")
 }
 
 // Turnaround through the proto layer to translate identical but nominally distinct representations of object schemata.
