@@ -90,10 +90,33 @@ func (p *provider) ReadWithContext(
 		}
 
 		// __defaults is not needed for Plugin Framework bridged providers
-		delete(result.Inputs, "__defaults")
+		deleteDefaultsKey(&result.Inputs)
 	}
 
 	return result, ignoredStatus, err
+}
+
+// deleteDefaultsKey removes the `__defaults: []` entry from all objects recursively
+// The `__defaults` key is something used in sdkv2 and is not handled here in pf. Because
+// of some code reuse between sdkv2 & pf the `__defaults` key is getting inserted
+func deleteDefaultsKey(inputs *resource.PropertyMap) {
+	i := *inputs
+	delete(i, "__defaults")
+	for _, key := range i.StableKeys() {
+		nestedInput := i[key]
+		if nestedInput.IsObject() {
+			nestedValue := nestedInput.ObjectValue()
+			deleteDefaultsKey(&nestedValue)
+		}
+		if nestedInput.IsArray() {
+			for _, value := range nestedInput.ArrayValue() {
+				if value.IsObject() {
+					nestedValue := value.ObjectValue()
+					deleteDefaultsKey(&nestedValue)
+				}
+			}
+		}
+	}
 }
 
 // readResource calls the PF's ReadResource method on the given resource.
