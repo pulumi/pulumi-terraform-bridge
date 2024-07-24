@@ -30,10 +30,11 @@ import (
 //go:generate go run generate.go
 
 const (
-	oldPkg  = "github.com/hashicorp/terraform-plugin-go"
-	newPkg  = "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/terraform-plugin-go"
-	tpgRepo = "https://github.com/hashicorp/terraform-plugin-go"
-	tpgVer  = "v0.22.0"
+	oldPkg   = "github.com/hashicorp/terraform-plugin-go"
+	newPkg   = "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/terraform-plugin-go"
+	protoPkg = "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tfplugin6"
+	tpgRepo  = "https://github.com/hashicorp/terraform-plugin-go"
+	tpgVer   = "v0.22.0"
 )
 
 type file struct {
@@ -55,7 +56,7 @@ func files() []file {
 	fixupTFPlugin6Ref := gofmtReplace(fmt.Sprintf(
 		`"%s" -> "%s"`,
 		fmt.Sprintf("%s/tfprotov6/internal/tfplugin6", oldPkg),
-		fmt.Sprintf("%s/tfprotov6/tfplugin6", newPkg),
+		protoPkg,
 	))
 
 	transforms := []func(string) string{
@@ -80,11 +81,6 @@ func files() []file {
 		{
 			src:        "tfprotov6/internal/toproto/dynamic_value.go",
 			dest:       "tfprotov6/toproto/dynamic_value.go",
-			transforms: transforms,
-		},
-		{
-			src:        "tfprotov6/internal/tfplugin6/tfplugin6.pb.go",
-			dest:       "tfprotov6/tfplugin6/tfplugin6.pb.go",
 			transforms: transforms,
 		},
 	}
