@@ -29,7 +29,6 @@ const RenamedEntitySuffix string = "_legacy"
 func (p *Provider) RenameResourceWithAlias(resourceName string, legacyTok tokens.Type, newTok tokens.Type,
 	legacyModule string, newModule string, info *Resource,
 ) {
-	resourcePrefix := p.Name + "_"
 	legacyResourceName := resourceName + RenamedEntitySuffix
 	if info == nil {
 		info = &Resource{}
@@ -49,12 +48,6 @@ func (p *Provider) RenameResourceWithAlias(resourceName string, legacyTok tokens
 		{Type: &legacyType},
 	}
 
-	if legacyInfo.Docs == nil {
-		legacyInfo.Docs = &Doc{
-			Source: resourceName[len(resourcePrefix):] + ".html.markdown",
-		}
-	}
-
 	legacyInfo.DeprecationMessage = fmt.Sprintf("%s has been deprecated in favor of %s",
 		generateResourceName(legacyInfo.Tok.Module().Package(), strings.ToLower(legacyModule),
 			legacyInfo.Tok.Name().String()),
@@ -69,7 +62,6 @@ func (p *Provider) RenameResourceWithAlias(resourceName string, legacyTok tokens
 func (p *Provider) RenameDataSource(resourceName string, legacyTok tokens.ModuleMember, newTok tokens.ModuleMember,
 	legacyModule string, newModule string, info *DataSource,
 ) {
-	resourcePrefix := p.Name + "_"
 	legacyResourceName := resourceName + RenamedEntitySuffix
 	if info == nil {
 		info = &DataSource{}
@@ -84,12 +76,6 @@ func (p *Provider) RenameDataSource(resourceName string, legacyTok tokens.Module
 	}
 
 	currentInfo.Tok = legacyTok
-
-	if legacyInfo.Docs == nil {
-		legacyInfo.Docs = &Doc{
-			Source: resourceName[len(resourcePrefix):] + ".html.markdown",
-		}
-	}
 
 	legacyInfo.DeprecationMessage = fmt.Sprintf("%s has been deprecated in favor of %s",
 		generateResourceName(legacyInfo.Tok.Module().Package(), strings.ToLower(legacyModule),
