@@ -110,7 +110,10 @@ func TestProposedNewBaseCases(t *testing.T) {
 		"nestedUnknown-unknown": {
 			Config: unk(),
 			Prior:  object(map[string]valueBuilder{"foo": unk()}),
-			Want:   object(map[string]valueBuilder{"foo": unk()}),
+			// TODO[pulumi/pulumi-terraform-bridge#2247]: patching objchange.ProposedNew changed behavior
+			//
+			// Want:   object(map[string]valueBuilder{"foo": unk()}),
+			Want: unk(),
 		},
 		"nestedUnknown-nestedNull": {
 			Config: object(map[string]valueBuilder{"foo": prim(nil)}),
@@ -145,7 +148,10 @@ func TestProposedNewBaseCases(t *testing.T) {
 		"nested-unknown": {
 			Config: unk(),
 			Prior:  object(map[string]valueBuilder{"foo": prim("OK")}),
-			Want:   object(map[string]valueBuilder{"foo": prim("OK")}),
+			// TODO[pulumi/pulumi-terraform-bridge#2247]: patching objchange.ProposedNew changed behavior
+			//
+			// Want:   object(map[string]valueBuilder{"foo": prim("OK")}),
+			Want: unk(),
 		},
 		"nested-nested": {
 			Config: object(map[string]valueBuilder{"foo": prim("OK")}),
@@ -155,7 +161,10 @@ func TestProposedNewBaseCases(t *testing.T) {
 		"nestedNull-unknown": {
 			Config: unk(),
 			Prior:  object(map[string]valueBuilder{"foo": prim(nil)}),
-			Want:   object(map[string]valueBuilder{"foo": prim(nil)}),
+			// TODO[pulumi/pulumi-terraform-bridge#2247]: patching objchange.ProposedNew changed behavior
+			//
+			// Want:   object(map[string]valueBuilder{"foo": prim(nil)}),
+			Want: unk(),
 		},
 		"nestedUnknown-null": {
 			Config: prim(nil),
@@ -165,7 +174,10 @@ func TestProposedNewBaseCases(t *testing.T) {
 		"null-unknown": {
 			Config: unk(),
 			Prior:  prim(nil),
-			Want:   object(map[string]valueBuilder{"foo": prim(nil)}),
+			// TODO[pulumi/pulumi-terraform-bridge#2247]: patching objchange.ProposedNew changed behavior
+			//
+			// Want:   object(map[string]valueBuilder{"foo": prim(nil)}),
+			Want: unk(),
 		},
 		"unknown-nestedUnknown": {
 			Config: object(map[string]valueBuilder{"foo": unk()}),
