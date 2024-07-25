@@ -75,7 +75,10 @@ func PlannedDataResourceObject(schema *configschema.Block, config cty.Value) cty
 }
 
 func proposedNew(schema *configschema.Block, prior, config cty.Value) cty.Value {
-	if config.IsNull() || !config.IsKnown() {
+	if !config.IsKnown() {
+		return config
+	}
+	if config.IsNull() {
 		// A block config should never be null at this point. The only nullable
 		// block type is NestingSingle, which will return early before coming
 		// back here. We'll allow the null here anyway to free callers from
