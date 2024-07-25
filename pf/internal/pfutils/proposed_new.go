@@ -25,10 +25,10 @@ import (
 	ctymsgpack "github.com/zclconf/go-cty/cty/msgpack"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/runtypes"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/opentofu/configs/configschema"
-	opentofuconvert "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/opentofu/convert"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/opentofu/plans/objchange"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/terraform-plugin-go/tfprotov6/toproto"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/opentofu/configs/configschema"
+	opentofuconvert "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/opentofu/convert"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/opentofu/plans/objchange"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/terraform-plugin-go/tfprotov6/toproto"
 )
 
 // Computes the ProposedNewState from priorState and config.
