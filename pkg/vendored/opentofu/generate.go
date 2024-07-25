@@ -33,8 +33,8 @@ import (
 
 const (
 	oldPkg       = "github.com/opentofu/opentofu"
-	newPkg       = "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/opentofu"
-	protoPkg     = "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tfplugin6"
+	newPkg       = "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/opentofu"
+	protoPkg     = "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/tfplugin6"
 	opentofuRepo = "https://github.com/opentofu/opentofu.git"
 	opentofuVer  = "v1.7.2"
 )

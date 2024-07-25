@@ -31,8 +31,8 @@ import (
 
 const (
 	oldPkg   = "github.com/hashicorp/terraform-plugin-go"
-	newPkg   = "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/terraform-plugin-go"
-	protoPkg = "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tfplugin6"
+	newPkg   = "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/terraform-plugin-go"
+	protoPkg = "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/tfplugin6"
 	tpgRepo  = "https://github.com/hashicorp/terraform-plugin-go"
 	tpgVer   = "v0.22.0"
 )
