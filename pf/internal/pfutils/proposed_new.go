@@ -19,15 +19,16 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/zclconf/go-cty/cty"
+	ctyjson "github.com/zclconf/go-cty/cty/json"
+	ctymsgpack "github.com/zclconf/go-cty/cty/msgpack"
+
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/runtypes"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/opentofu/configs/configschema"
 	opentofuconvert "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/opentofu/convert"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/opentofu/plans/objchange"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/terraform-plugin-go/tfprotov6/toproto"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/zclconf/go-cty/cty"
-	ctyjson "github.com/zclconf/go-cty/cty/json"
-	ctymsgpack "github.com/zclconf/go-cty/cty/msgpack"
 )
 
 // Computes the ProposedNewState from priorState and config.
