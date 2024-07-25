@@ -28,7 +28,7 @@ issues:
     - pkg/tf2pulumi/internal/addrs
     - pkg/tf2pulumi/internal/config
     - pkg/tf2pulumi/internal/configs
-    - pkg/terraform-plugin-go/tfprotov6
+    - pkg/vendored
 linters-settings:
   gci:
     sections:
