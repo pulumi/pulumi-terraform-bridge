@@ -11,9 +11,8 @@ import (
 	"reflect"
 	"sort"
 
-	
-	proto "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tfplugin6"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/opentofu/configs/configschema"
+	proto "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/tfplugin6"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -98,7 +97,6 @@ func protoSchemaNestedBlock(name string, b *configschema.NestedBlock) *proto.Sch
 }
 
 // ProtoToProviderSchema takes a proto.Schema and converts it to a providers.Schema.
-
 
 // ProtoToConfigSchema takes the GetSchcema_Block from a grpc response and converts it
 // to a tofu *configschema.Block.

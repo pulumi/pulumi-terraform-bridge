@@ -6,7 +6,7 @@ package toproto
 import (
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tfplugin6"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/tfplugin6"
 )
 
 func Schema(in *tfprotov6.Schema) *tfplugin6.Schema {
