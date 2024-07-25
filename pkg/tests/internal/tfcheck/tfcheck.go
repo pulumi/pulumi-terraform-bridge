@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"path"
 	"path/filepath"
 
 	"github.com/hashicorp/go-hclog"
@@ -101,7 +102,20 @@ func (d *TfDriver) Apply(t pulcheck.T, plan *TfPlan) {
 func (d *TfDriver) Show(t pulcheck.T, planFile string) string {
 	tfCmd := getTFCommand()
 	cmd := execCmd(t, d.cwd, []string{d.formatReattachEnvVar()}, tfCmd, "show", "-json", planFile)
-	return cmd.Stdout.(*bytes.Buffer).String()
+	res := cmd.Stdout.(*bytes.Buffer)
+	buf := bytes.NewBuffer(nil)
+	err := json.Indent(buf, res.Bytes(), "", "    ")
+	require.NoError(t, err)
+	return buf.String()
+}
+
+func (d *TfDriver) GetState(t pulcheck.T) string {
+	res, err := os.ReadFile(path.Join(d.cwd, "terraform.tfstate"))
+	require.NoError(t, err)
+	buf := bytes.NewBuffer(nil)
+	err = json.Indent(buf, res, "", "    ")
+	require.NoError(t, err)
+	return buf.String()
 }
 
 func (d *TfDriver) formatReattachEnvVar() string {

@@ -2,8 +2,6 @@ package tfcheck
 
 import (
 	"context"
-	"os"
-	"path"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -42,22 +40,100 @@ resource "test_resource" "test" {
 	)
 
 	plan := driver.Plan(t)
-	t.Logf(plan.PlanFile)
 	t.Logf(driver.Show(t, plan.PlanFile))
 	driver.Apply(t, plan)
 
-	res, err := os.ReadFile(path.Join(driver.cwd, "terraform.tfstate"))
-	assert.NoError(t, err)
-	t.Logf(string(res))
+	t.Logf(driver.GetState(t))
 
 	newPlan := driver.Plan(t)
-	t.Logf(newPlan.PlanFile)
 
 	t.Logf(driver.Show(t, plan.PlanFile))
 
 	driver.Apply(t, newPlan)
 
-	res, err = os.ReadFile(path.Join(driver.cwd, "terraform.tfstate"))
-	assert.NoError(t, err)
-	t.Logf(string(res))
+	t.Logf(driver.GetState(t))
+}
+
+func TestTfUnknownObjects(t *testing.T) {
+	prov := schema.Provider{
+		ResourcesMap: map[string]*schema.Resource{
+			"test_resource": {
+				Schema: map[string]*schema.Schema{
+					"objects": {
+						Type: schema.TypeList,
+						Elem: &schema.Resource{
+							Schema: map[string]*schema.Schema{
+								"prop": {
+									Type:     schema.TypeString,
+									Optional: true,
+								},
+							},
+						},
+						Optional: true,
+					},
+				},
+			},
+			"test_aux_resource": {
+				Schema: map[string]*schema.Schema{
+					"objects": {
+						Type: schema.TypeList,
+						Elem: &schema.Resource{
+							Schema: map[string]*schema.Schema{
+								"prop": {
+									Type:     schema.TypeString,
+									Optional: true,
+								},
+							},
+						},
+						Optional: true,
+						Computed: true,
+					},
+				},
+				CreateContext: func(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+					d.SetId("aux")
+					err := d.Set("objects", []interface{}{
+						map[string]interface{}{
+							"prop": "bar",
+						},
+					})
+					assert.NoError(t, err)
+					return nil
+				},
+			},
+		},
+	}
+
+	driver := NewTfDriver(t, t.TempDir(), "test", &prov)
+
+	knownProgram := `
+resource "test_resource" "test" {
+    objects {
+  	    prop = "foo"
+    }
+}`
+	unknownProgram := `
+resource "test_aux_resource" "aux" {
+}
+
+resource "test_resource" "test" {
+    dynamic "objects" {
+	    for_each = test_aux_resource.aux.objects
+        content {
+            prop = objects.value["prop"]
+        }
+    }
+}`
+	driver.Write(t, knownProgram)
+	plan := driver.Plan(t)
+	t.Logf(driver.Show(t, plan.PlanFile))
+
+	driver.Apply(t, plan)
+	t.Logf(driver.GetState(t))
+
+	driver.Write(t, unknownProgram)
+	plan = driver.Plan(t)
+	t.Logf(driver.Show(t, plan.PlanFile))
+
+	driver.Apply(t, plan)
+	t.Logf(driver.GetState(t))
 }
