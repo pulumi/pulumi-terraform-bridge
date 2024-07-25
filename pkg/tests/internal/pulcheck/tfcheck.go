@@ -30,6 +30,13 @@ type tfPlan struct {
 	RawPlan  any
 }
 
+func getTFCommand() string {
+	if cmd := os.Getenv("TF_COMMAND_OVERRIDE"); cmd != "" {
+		return cmd
+	}
+	return "terraform"
+}
+
 func newTfDriver(t T, dir, providerName string, prov *schema.Provider) *tfDriver {
 	// Did not find a less intrusive way to disable annoying logging:
 	os.Setenv("TF_LOG_PROVIDER", "off")
@@ -75,8 +82,9 @@ func (d *tfDriver) write(t T, program string) {
 func (d *tfDriver) plan(t T) *tfPlan {
 	planFile := filepath.Join(d.cwd, "test.tfplan")
 	env := []string{d.formatReattachEnvVar()}
-	execCmd(t, d.cwd, env, "terraform", "plan", "-refresh=false", "-out", planFile)
-	cmd := execCmd(t, d.cwd, env, "terraform", "show", "-json", planFile)
+	tfCmd := getTFCommand()
+	execCmd(t, d.cwd, env, tfCmd, "plan", "-refresh=false", "-out", planFile)
+	cmd := execCmd(t, d.cwd, env, tfCmd, "show", "-json", planFile)
 	tp := tfPlan{PlanFile: planFile}
 	err := json.Unmarshal(cmd.Stdout.(*bytes.Buffer).Bytes(), &tp.RawPlan)
 	require.NoErrorf(t, err, "failed to unmarshal terraform plan")
@@ -84,12 +92,14 @@ func (d *tfDriver) plan(t T) *tfPlan {
 }
 
 func (d *tfDriver) apply(t T, plan *tfPlan) {
+	tfCmd := getTFCommand()
 	execCmd(t, d.cwd, []string{d.formatReattachEnvVar()},
-		"terraform", "apply", "-auto-approve", "-refresh=false", plan.PlanFile)
+		tfCmd, "apply", "-auto-approve", "-refresh=false", plan.PlanFile)
 }
 
 func (d *tfDriver) show(t T, planFile string) string {
-	cmd := execCmd(t, d.cwd, []string{d.formatReattachEnvVar()}, "terraform", "show", "-json", planFile)
+	tfCmd := getTFCommand()
+	cmd := execCmd(t, d.cwd, []string{d.formatReattachEnvVar()}, tfCmd, "show", "-json", planFile)
 	return cmd.Stdout.(*bytes.Buffer).String()
 }
 
