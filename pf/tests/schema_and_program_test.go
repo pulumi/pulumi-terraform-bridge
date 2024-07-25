@@ -62,6 +62,8 @@ func TestDefaults(t *testing.T) {
 						},
 						"change_reason": rschema.StringAttribute{
 							Optional: true,
+							// I've been unable to find an example of a non-Computed resource with a default value in the wild.
+							// Nothing in the docs or validation prohibits this.
 							Computed: true,
 							Default:  stringdefault.StaticString("Default val"),
 						},
