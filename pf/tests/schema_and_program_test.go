@@ -62,6 +62,7 @@ func TestDefaults(t *testing.T) {
 						},
 						"change_reason": rschema.StringAttribute{
 							Optional: true,
+							Computed: true,
 							Default:  stringdefault.StaticString("Default val"),
 						},
 					},
@@ -123,6 +124,7 @@ func TestPlanModifiers(t *testing.T) {
 						},
 						"change_reason": rschema.StringAttribute{
 							Optional: true,
+							Computed: true,
 							PlanModifiers: []planmodifier.String{
 								changeReasonPlanModifier{},
 							},
