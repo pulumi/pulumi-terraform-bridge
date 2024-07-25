@@ -109,6 +109,11 @@ func files() []file {
 			transforms: transforms,
 		},
 		{
+			src:        "internal/configs/configschema/nestingmode_string.go",
+			dest:       "configs/configschema/nestingmode_string.go",
+			transforms: transforms,
+		},
+		{
 			src:        "internal/plans/objchange/objchange.go",
 			dest:       "plans/objchange/objchange.go",
 			transforms: append(transforms, patchProposedNewForUnknownBlocks),
