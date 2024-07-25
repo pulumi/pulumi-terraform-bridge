@@ -10,6 +10,8 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"runtime"
+	"strings"
 
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
@@ -39,7 +41,14 @@ func getTFCommand() string {
 	return "terraform"
 }
 
+func skipUnlessLinux(t pulcheck.T) {
+	if ci, ok := os.LookupEnv("CI"); ok && ci == "true" && !strings.Contains(strings.ToLower(runtime.GOOS), "linux") {
+		t.Skip("Skipping on non-Linux platforms as our CI does not yet install Terraform CLI required for these tests")
+	}
+}
+
 func NewTfDriver(t pulcheck.T, dir, providerName string, prov *schema.Provider) *TfDriver {
+	skipUnlessLinux(t)
 	// Did not find a less intrusive way to disable annoying logging:
 	os.Setenv("TF_LOG_PROVIDER", "off")
 	os.Setenv("TF_LOG_SDK", "off")
