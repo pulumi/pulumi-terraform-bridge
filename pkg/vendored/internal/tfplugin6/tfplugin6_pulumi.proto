@@ -22,7 +22,7 @@
 // branch or any other development branch.
 //
 syntax = "proto3";
-option go_package = "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tfplugin6";
+option go_package = "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/internal/tfplugin6";
 
 package tfplugin6_pulumi;
 
