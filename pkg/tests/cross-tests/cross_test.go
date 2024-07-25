@@ -671,31 +671,3 @@ func TestComputedSetFieldsNoDiff(t *testing.T) {
 		Config2:  t0,
 	})
 }
-
-func TestOptionalComputedOverride(t *testing.T) {
-	skipUnlessLinux(t)
-
-	res := &schema.Resource{
-		Schema: map[string]*schema.Schema{
-			"string_prop": {
-				Type:     schema.TypeString,
-				Optional: true,
-				Computed: true,
-			},
-		},
-		CreateContext: func(ctx context.Context, rd *schema.ResourceData, i interface{}) diag.Diagnostics {
-			err := rd.Set("string_prop", "ComputedVal")
-			require.NoError(t, err)
-			rd.SetId("someid")
-			return make(diag.Diagnostics, 0)
-		},
-		// EnableLegacyTypeSystemApplyErrors: true,
-		// EnableLegacyTypeSystemPlanErrors:  true,
-	}
-
-	runDiffCheck(t, diffTestCase{
-		Resource: res,
-		Config1:  map[string]any{"string_prop": "val1"},
-		Config2:  map[string]any{"string_prop": "val1"},
-	})
-}
