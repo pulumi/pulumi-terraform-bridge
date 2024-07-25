@@ -29,6 +29,26 @@ import (
 	"gotest.tools/assert"
 )
 
+func propNeedsUpdate(prop *schema.Schema) bool {
+	if prop.Computed && !prop.Optional {
+		return false
+	}
+	if prop.ForceNew {
+		return false
+	}
+	return true
+}
+
+func resourceNeedsUpdate(res *schema.Resource) bool {
+	// If any of the properties need an update, then the resource needs an update.
+	for _, s := range res.Schema {
+		if propNeedsUpdate(s) {
+			return true
+		}
+	}
+	return false
+}
+
 // This is an experimental API.
 func EnsureProviderValid(t T, tfp *schema.Provider) {
 	for _, r := range tfp.ResourcesMap {
@@ -54,10 +74,12 @@ func EnsureProviderValid(t T, tfp *schema.Provider) {
 			}
 		}
 
-		r.UpdateContext = func(
-			ctx context.Context, rd *schema.ResourceData, i interface{},
-		) diag.Diagnostics {
-			return diag.Diagnostics{}
+		if resourceNeedsUpdate(r) && r.UpdateContext == nil {
+			r.UpdateContext = func(
+				ctx context.Context, rd *schema.ResourceData, i interface{},
+			) diag.Diagnostics {
+				return diag.Diagnostics{}
+			}
 		}
 	}
 	require.NoError(t, tfp.InternalValidate())
@@ -164,7 +186,7 @@ func PulCheck(t T, bridgedProvider info.Provider, program string) *pulumitest.Pu
 	require.NoError(t, err)
 
 	opts := []opttest.Option{
-		opttest.Env("DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "true"),
+		opttest.Env("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "true"),
 		opttest.TestInPlace(),
 		opttest.SkipInstall(),
 		opttest.AttachProvider(

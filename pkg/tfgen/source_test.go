@@ -21,6 +21,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 
 func TestGetDocsPath(t *testing.T) {
@@ -88,6 +90,58 @@ func TestGetDocsPath(t *testing.T) {
 
 			actualDataSource, err := getDocsPath(repo, DataSourceDocs)
 			check(tt.expectedDataSource, actualDataSource, err)
+		})
+	}
+}
+
+func TestGetNarkdownNames(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name          string
+		packagePrefix string
+		rawName       string
+		globalInfo    *tfbridge.DocRuleInfo
+		expectedNames []string
+	}{{
+		name:          "Generates collection of possible markdown names",
+		packagePrefix: "mongodbatlas",
+		rawName:       "mongodbatlas_x509_authentication_database_user",
+		globalInfo:    nil,
+		expectedNames: []string{
+			"x509_authentication_database_user.html.markdown",
+			"x509_authentication_database_user.markdown",
+			"x509_authentication_database_user.html.md",
+			"x509_authentication_database_user.md",
+			"mongodbatlas_x509_authentication_database_user.html.markdown",
+			"mongodbatlas_x509_authentication_database_user.markdown",
+			"mongodbatlas_x509_authentication_database_user.html.md",
+			"mongodbatlas_x509_authentication_database_user.md",
+		},
+	},
+		{
+			name:          "Trims tfbridge.RenamedEntitySuffix from possible markdown names",
+			packagePrefix: "mongodbatlas",
+			rawName:       "mongodbatlas_x509_authentication_database_user_legacy",
+			globalInfo:    nil,
+			expectedNames: []string{
+				"x509_authentication_database_user.html.markdown",
+				"x509_authentication_database_user.markdown",
+				"x509_authentication_database_user.html.md",
+				"x509_authentication_database_user.md",
+				"mongodbatlas_x509_authentication_database_user.html.markdown",
+				"mongodbatlas_x509_authentication_database_user.markdown",
+				"mongodbatlas_x509_authentication_database_user.html.md",
+				"mongodbatlas_x509_authentication_database_user.md",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			actualNames := getMarkdownNames(tt.packagePrefix, tt.rawName, tt.globalInfo)
+			assert.Equal(t, tt.expectedNames, actualNames)
 		})
 	}
 }

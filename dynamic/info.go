@@ -21,19 +21,22 @@ import (
 	"strings"
 
 	"github.com/opentofu/opentofu/shim/run"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 
+	"github.com/pulumi/pulumi-terraform-bridge/dynamic/parameterize"
+	"github.com/pulumi/pulumi-terraform-bridge/dynamic/version"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/proto"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/tokens"
 )
 
-func providerInfo(ctx context.Context, p run.Provider) tfbridge.ProviderInfo {
+func providerInfo(ctx context.Context, p run.Provider, value parameterize.Value) tfbridge.ProviderInfo {
 	prov := tfbridge.ProviderInfo{
 		P:           proto.New(ctx, p),
 		Name:        p.Name(),
 		Version:     p.Version(),
 		Description: "A Pulumi provider dynamically bridged from " + p.Name() + ".",
+		Publisher:   "Pulumi",
 
 		// To avoid bogging down schema generation speed, we skip all examples.
 		SkipExamples: func(tfbridge.SkipExamplesArgs) bool { return true },
@@ -42,6 +45,19 @@ func providerInfo(ctx context.Context, p run.Provider) tfbridge.ProviderInfo {
 			Path: "", Data: tfbridge.ProviderMetadata(nil),
 		},
 
+		Python: &tfbridge.PythonInfo{
+			PyProject:            struct{ Enabled bool }{true},
+			RespectSchemaVersion: true,
+		},
+		JavaScript: &tfbridge.JavaScriptInfo{
+			LiftSingleValueMethodReturns: true,
+			RespectSchemaVersion:         true,
+		},
+		CSharp: &tfbridge.CSharpInfo{
+			LiftSingleValueMethodReturns: true,
+			RespectSchemaVersion:         true,
+		},
+		Java: &tfbridge.JavaInfo{ /* Java does not have a RespectSchemaVersion flag */ },
 		Golang: &tfbridge.GolangInfo{
 			ImportBasePath: path.Join(
 				fmt.Sprintf("github.com/pulumi/pulumi-%[1]s/sdk/", p.Name()),
@@ -54,50 +70,19 @@ func providerInfo(ctx context.Context, p run.Provider) tfbridge.ProviderInfo {
 			GenerateExtraInputTypes:      true,
 			RespectSchemaVersion:         true,
 		},
+		SchemaPostProcessor: func(spec *schema.PackageSpec) {
+			spec.Parameterization = &schema.ParameterizationSpec{
+				BaseProvider: schema.BaseProviderSpec{
+					Name:    baseProviderName,
+					Version: strings.TrimPrefix(version.Version(), "v"),
+				},
+				Parameter: value.Marshal(),
+			}
+		},
 	}
 
 	prov.MustComputeTokens(tokens.SingleModule(p.Name()+"_", "index", tokens.MakeStandard(p.Name())))
 	prov.SetAutonaming(255, "-")
 
 	return prov
-}
-
-type paramaterizeArgs struct {
-	name    string
-	version string
-	path    string
-}
-
-func parseParamaterizeParameters(req plugin.ParameterizeRequest) (paramaterizeArgs, error) {
-	switch req := req.Parameters.(type) {
-	case plugin.ParameterizeArgs:
-
-		// Check for a leading '.' or '/' to indicate a path
-		if len(req.Args) >= 1 &&
-			(strings.HasPrefix(req.Args[0], "./") || strings.HasPrefix(req.Args[0], "/")) {
-			if len(req.Args) > 1 {
-				return paramaterizeArgs{}, fmt.Errorf("path based providers are only parameterized by 1 argument: <path>")
-			}
-			return paramaterizeArgs{path: req.Args[0]}, nil
-		}
-
-		// This is a registry based provider
-		var ret paramaterizeArgs
-		switch len(req.Args) {
-		// The second argument, if any is the version
-		case 2:
-			ret.version = req.Args[1]
-			fallthrough
-		// The first argument is the provider name
-		case 1:
-			ret.name = req.Args[0]
-			return ret, nil
-		default:
-			return ret, fmt.Errorf("expected to be parameterized by 1-2 arguments: <name> [version]")
-		}
-	case plugin.ParameterizeValue:
-		return paramaterizeArgs{}, fmt.Errorf("parameters from Value are not yet implemented")
-	default:
-		return paramaterizeArgs{}, fmt.Errorf("unknown parameter type %T", req)
-	}
 }
