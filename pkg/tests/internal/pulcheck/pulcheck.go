@@ -181,6 +181,7 @@ func PulCheck(t T, bridgedProvider info.Provider, program string) *pulumitest.Pu
 	puwd := t.TempDir()
 	p := filepath.Join(puwd, "Pulumi.yaml")
 
+	program = strings.ReplaceAll(program, "\t", "    ")
 	err := os.WriteFile(p, []byte(program), 0o600)
 	require.NoError(t, err)
 
