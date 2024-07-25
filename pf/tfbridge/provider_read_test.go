@@ -99,7 +99,7 @@ func TestDeleteNestedDefaults(t *testing.T) {
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			deleteDefaultsKey(&tc.inputs)
+			deleteDefaultsKey(tc.inputs)
 			assert.Equal(t, tc.expected, tc.inputs)
 		})
 	}

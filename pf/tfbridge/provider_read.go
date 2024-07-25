@@ -91,7 +91,7 @@ func (p *provider) ReadWithContext(
 		}
 
 		// __defaults is not needed for Plugin Framework bridged providers
-		deleteDefaultsKey(&result.Inputs)
+		deleteDefaultsKey(result.Inputs)
 	}
 
 	return result, ignoredStatus, err
@@ -100,11 +100,10 @@ func (p *provider) ReadWithContext(
 // deleteDefaultsKey removes the `__defaults: []` entry from all objects recursively
 // The `__defaults` key is something used in sdkv2 and is not handled here in pf. Because
 // of some code reuse between sdkv2 & pf the `__defaults` key is getting inserted
-func deleteDefaultsKey(inputs *resource.PropertyMap) {
-	i := *inputs
-	delete(i, "__defaults")
-	for _, key := range i.StableKeys() {
-		transformedValue, err := propertyvalue.TransformPropertyValue(
+func deleteDefaultsKey(inputs resource.PropertyMap) {
+	delete(inputs, "__defaults")
+	for key, value := range inputs {
+		newVal, err := propertyvalue.TransformPropertyValue(
 			resource.PropertyPath{},
 			func(pp resource.PropertyPath, pv resource.PropertyValue) (resource.PropertyValue, error) {
 				if pv.IsObject() {
@@ -112,12 +111,11 @@ func deleteDefaultsKey(inputs *resource.PropertyMap) {
 				}
 				return pv, nil
 			},
-			i[key],
+			value,
 		)
-		if err != nil {
-			return
+		if err == nil {
+			inputs[key] = newVal
 		}
-		i[key] = transformedValue
 	}
 }
 
