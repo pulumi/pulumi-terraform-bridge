@@ -194,7 +194,10 @@ outputs:
   #   - { t0: true, t1: "yes"}
 
   setElementAttrRes__actual: ${setElementAttrRes.setOptionals}
-  setElementAttrRes__expect: [ "hi", "bye" ]
+
+  # Set handling reorders the elements to make a different order in the outputs than was given in the inputs. This
+  # should be tolerable though, as set outputs are allowed to be re-ordered.
+  setElementAttrRes__expect: [ "bye",  "hi" ]
 
   setElementRevAttrRes__actual: ${setElementRevAttrRes.setOptionals}
   setElementRevAttrRes__expect: [ "bye", "hi" ]
