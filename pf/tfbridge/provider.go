@@ -16,6 +16,7 @@ package tfbridge
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/blang/semver"
@@ -39,6 +40,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/logging"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/stage"
 )
 
 // Provider implements the Pulumi resource provider operations for any
@@ -146,7 +148,7 @@ func newProviderWithContext(ctx context.Context, info tfbridge.ProviderInfo,
 		}
 	}
 
-	return &provider{
+	p := &provider{
 		tfServer:           server6,
 		info:               info,
 		resources:          resources,
@@ -158,7 +160,40 @@ func newProviderWithContext(ctx context.Context, info tfbridge.ProviderInfo,
 		version:            semverVersion,
 		schemaOnlyProvider: info.P,
 		parameterize:       meta.XParamaterize,
-	}, nil
+	}
+
+	if stage.IsTfgen() {
+		var errs []error
+		for typeToken := range p.info.Resources {
+			objectType := p.resources.Schema(runtypes.TypeName(typeToken)).Type(ctx).(tftypes.Object)
+			_, err := p.encoding.NewResourceEncoder(typeToken, objectType)
+			if err != nil {
+				errs = append(errs, err)
+			}
+			_, err = p.encoding.NewResourceDecoder(typeToken, objectType)
+			if err != nil {
+				errs = append(errs, err)
+			}
+		}
+		for typeToken := range p.info.DataSources {
+			objectType := p.datasources.Schema(runtypes.TypeName(typeToken)).Type(ctx).(tftypes.Object)
+			_, err := p.encoding.NewDataSourceEncoder(typeToken, objectType)
+			if err != nil {
+				errs = append(errs, err)
+			}
+			_, err = p.encoding.NewDataSourceDecoder(typeToken, objectType)
+			if err != nil {
+				errs = append(errs, err)
+			}
+		}
+
+		if len(errs) > 0 {
+			const url = "https://github.com/pulumi/pulumi-terraform-bridge/issues/new?template=bug.yaml"
+			return nil, fmt.Errorf("internal error: %w\nPlease file an issue at %s", errors.Join(errs...), url)
+		}
+	}
+
+	return p, err
 }
 
 // Internal. The signature of this function can change between major releases. Exposed to facilitate testing.
