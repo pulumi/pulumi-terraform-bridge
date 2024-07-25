@@ -6,6 +6,7 @@ package toproto
 import (
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
+
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tfplugin6"
 )
 
@@ -28,7 +29,7 @@ func CtyType(in tftypes.Type) []byte {
 	}
 
 	// MarshalJSON is always error safe.
-	// nolint:staticcheck // Intended first-party usage
+	//nolint:staticcheck // Intended first-party usage
 	resp, _ := in.MarshalJSON()
 
 	return resp
