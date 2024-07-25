@@ -1,4 +1,4 @@
-package pulcheck
+package tfcheck
 
 import (
 	"context"
@@ -32,30 +32,30 @@ func TestTfComputed(t *testing.T) {
 		},
 	}
 
-	driver := newTfDriver(t, t.TempDir(), "test", &prov)
+	driver := NewTfDriver(t, t.TempDir(), "test", &prov)
 
-	driver.write(t, `
+	driver.Write(t, `
 resource "test_resource" "test" {
   computed = "foo"
 }
 `,
 	)
 
-	plan := driver.plan(t)
+	plan := driver.Plan(t)
 	t.Logf(plan.PlanFile)
-	t.Logf(driver.show(t, plan.PlanFile))
-	driver.apply(t, plan)
+	t.Logf(driver.Show(t, plan.PlanFile))
+	driver.Apply(t, plan)
 
 	res, err := os.ReadFile(path.Join(driver.cwd, "terraform.tfstate"))
 	assert.NoError(t, err)
 	t.Logf(string(res))
 
-	newPlan := driver.plan(t)
+	newPlan := driver.Plan(t)
 	t.Logf(newPlan.PlanFile)
 
-	t.Logf(driver.show(t, plan.PlanFile))
+	t.Logf(driver.Show(t, plan.PlanFile))
 
-	driver.apply(t, newPlan)
+	driver.Apply(t, newPlan)
 
 	res, err = os.ReadFile(path.Join(driver.cwd, "terraform.tfstate"))
 	assert.NoError(t, err)

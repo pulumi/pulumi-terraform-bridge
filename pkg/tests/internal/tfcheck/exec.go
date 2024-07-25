@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 
 // Helpers to execute OS commands.
-package pulcheck
+package tfcheck
 
 import (
 	"bytes"
@@ -20,10 +20,11 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/internal/pulcheck"
 	"github.com/stretchr/testify/require"
 )
 
-func execCmd(t T, wdir string, environ []string, program string, args ...string) *exec.Cmd {
+func execCmd(t pulcheck.T, wdir string, environ []string, program string, args ...string) *exec.Cmd {
 	t.Logf("%s %s", program, strings.Join(args, " "))
 	cmd := exec.Command(program, args...)
 	var stdout, stderr bytes.Buffer

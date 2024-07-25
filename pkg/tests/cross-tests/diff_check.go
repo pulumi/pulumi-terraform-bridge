@@ -47,7 +47,7 @@ type diffTestCase struct {
 func runDiffCheck(t T, tc diffTestCase) {
 	tfwd := t.TempDir()
 
-	tfd := newTfDriver(t, tfwd, defProviderShortName, defRtype, tc.Resource)
+	tfd := newTFResDriver(t, tfwd, defProviderShortName, defRtype, tc.Resource)
 	_ = tfd.writePlanApply(t, tc.Resource.Schema, defRtype, "example", tc.Config1)
 	tfDiffPlan := tfd.writePlanApply(t, tc.Resource.Schema, defRtype, "example", tc.Config2)
 
