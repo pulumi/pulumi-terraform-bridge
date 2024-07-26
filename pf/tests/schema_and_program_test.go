@@ -107,7 +107,7 @@ outputs:
 	t.Logf(prevRes.StdOut)
 }
 
-func TestImportDiscrepancy(t *testing.T) {
+func TestImportAndRefreshWithDefault(t *testing.T) {
 	provBuilder := providerbuilder.Provider{
 		TypeName:       "prov",
 		Version:        "0.0.1",
@@ -122,6 +122,7 @@ func TestImportDiscrepancy(t *testing.T) {
 						},
 						"change_reason": rschema.StringAttribute{
 							Optional: true,
+							Computed: true,
 							Default:  stringdefault.StaticString("Default val"),
 						},
 					},
@@ -129,10 +130,12 @@ func TestImportDiscrepancy(t *testing.T) {
 				ReadFunc: func(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 					resp.State.SetAttribute(ctx, path.Root("id"), "test-id")
 					resp.State.SetAttribute(ctx, path.Root("other_prop"), "val")
+					resp.State.SetAttribute(ctx, path.Root("change_reason"), "Default val")
 				},
 				ImportStateFunc: func(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 					resp.State.SetAttribute(ctx, path.Root("id"), "test-id")
 					resp.State.SetAttribute(ctx, path.Root("other_prop"), "val")
+					resp.State.SetAttribute(ctx, path.Root("change_reason"), "Default val")
 				},
 			},
 		},
