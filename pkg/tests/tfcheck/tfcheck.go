@@ -177,6 +177,15 @@ func (d *TfDriver) GetState(t pulcheck.T) string {
 	return buf.String()
 }
 
+func (d *TfDriver) GetOutput(t pulcheck.T, outputName string) string {
+	tfCmd := getTFCommand()
+	cmd := execCmd(t, d.cwd, []string{d.formatReattachEnvVar()}, tfCmd, "output", outputName)
+	res := cmd.Stdout.(*bytes.Buffer).String()
+	res = strings.TrimSuffix(res, "\n")
+	res = strings.Trim(res, "\"")
+	return res
+}
+
 func (d *TfDriver) formatReattachEnvVar() string {
 	name := d.providerName
 	pluginReattachConfig := d.reattachConfig

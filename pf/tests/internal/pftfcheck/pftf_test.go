@@ -7,16 +7,17 @@ import (
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/providerbuilder"
+	"github.com/stretchr/testify/require"
 )
 
 func TestBasic(t *testing.T) {
 	provBuilder := providerbuilder.Provider{
-		TypeName:       "test",
+		TypeName:       "prov",
 		Version:        "0.0.1",
 		ProviderSchema: pschema.Schema{},
 		AllResources: []providerbuilder.Resource{
 			{
-				Name: "test",
+				Name: "res",
 				ResourceSchema: rschema.Schema{
 					Attributes: map[string]rschema.Attribute{
 						"s": rschema.StringAttribute{Optional: true},
@@ -26,28 +27,31 @@ func TestBasic(t *testing.T) {
 		},
 	}
 
-	driver := NewTfDriverPF(t, t.TempDir(), "test", &provBuilder)
+	driver := NewTfDriverPF(t, t.TempDir(), &provBuilder)
 
 	driver.Write(t, `
-resource "test_test" "test" {
+resource "prov_res" "test" {
     s = "hello"
-}`)
+}
+output "s_val" {
+	value = prov_res.test.s
+}
+`)
 
 	plan := driver.Plan(t)
-	t.Logf(driver.Show(t, plan.PlanFile))
 	driver.Apply(t, plan)
 
-	t.Logf(driver.GetState(t))
+	require.Equal(t, "hello", driver.GetOutput(t, "s_val"))
 }
 
 func TestDefaults(t *testing.T) {
 	provBuilder := providerbuilder.Provider{
-		TypeName:       "test",
+		TypeName:       "prov",
 		Version:        "0.0.1",
 		ProviderSchema: pschema.Schema{},
 		AllResources: []providerbuilder.Resource{
 			{
-				Name: "test",
+				Name: "res",
 				ResourceSchema: rschema.Schema{
 					Attributes: map[string]rschema.Attribute{
 						"s": rschema.StringAttribute{
@@ -61,14 +65,17 @@ func TestDefaults(t *testing.T) {
 		},
 	}
 
-	driver := NewTfDriverPF(t, t.TempDir(), "test", &provBuilder)
+	driver := NewTfDriverPF(t, t.TempDir(), &provBuilder)
 
 	driver.Write(t, `
-resource "test_test" "test" {}`)
+resource "prov_res" "test" {}
+output "s_val" {
+	value = prov_res.test.s
+}
+`)
 
 	plan := driver.Plan(t)
-	t.Logf(driver.Show(t, plan.PlanFile))
-
 	driver.Apply(t, plan)
-	t.Logf(driver.GetState(t))
+
+	require.Equal(t, "Default val", driver.GetOutput(t, "s_val"))
 }

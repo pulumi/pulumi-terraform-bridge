@@ -16,8 +16,8 @@ func (s *pfServer) GRPCProvider() tfprotov6.ProviderServer {
 	return providerserver.NewProtocol6(s.prov)()
 }
 
-func NewTfDriverPF(t pulcheck.T, dir, providerName string, prov *providerbuilder.Provider) *tfcheck.TfDriver {
+func NewTfDriverPF(t pulcheck.T, dir string, prov *providerbuilder.Provider) *tfcheck.TfDriver {
 	providerbuilder.EnsureProviderValid(prov)
 	pfServer := &pfServer{prov: prov}
-	return tfcheck.NewTFDriverV6(t, dir, providerName, pfServer)
+	return tfcheck.NewTFDriverV6(t, dir, prov.TypeName, pfServer)
 }

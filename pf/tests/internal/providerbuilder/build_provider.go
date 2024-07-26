@@ -76,7 +76,7 @@ func EnsureProviderValid(prov *Provider) {
 		}
 		if r.CreateFunc == nil {
 			r.CreateFunc = func(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-				resp.State = tfsdk.State(req.Config)
+				resp.State = tfsdk.State(req.Plan)
 				resp.State.SetAttribute(ctx, path.Root("id"), "test-id")
 			}
 		}
