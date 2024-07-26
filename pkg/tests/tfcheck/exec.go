@@ -20,7 +20,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/internal/pulcheck"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/pulcheck"
 	"github.com/stretchr/testify/require"
 )
 
