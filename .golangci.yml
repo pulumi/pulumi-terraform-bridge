@@ -28,6 +28,7 @@ issues:
     - pkg/tf2pulumi/internal/addrs
     - pkg/tf2pulumi/internal/config
     - pkg/tf2pulumi/internal/configs
+    - pkg/vendored
 linters-settings:
   gci:
     sections:
