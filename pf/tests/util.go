@@ -23,12 +23,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-framework/path"
-	"github.com/hashicorp/terraform-plugin-framework/resource"
-	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 
@@ -61,33 +55,9 @@ func newMuxedProviderServer(t *testing.T, info tfbridge0.ProviderInfo) pulumirpc
 	return p
 }
 
-func ensureProviderValid(prov *providerbuilder.Provider) {
-	for i := range prov.AllResources {
-		r := &prov.AllResources[i]
-		if r.ResourceSchema.Attributes["id"] == nil {
-			r.ResourceSchema.Attributes["id"] = rschema.StringAttribute{
-				Computed: true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			}
-		}
-		if r.CreateFunc == nil {
-			r.CreateFunc = func(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-				resp.State = tfsdk.State(req.Config)
-				resp.State.SetAttribute(ctx, path.Root("id"), "test-id")
-			}
-		}
-		if r.UpdateFunc == nil {
-			r.UpdateFunc = func(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-				resp.State = tfsdk.State(req.Config)
-			}
-		}
-	}
-}
 
 func bridgedProvider(prov *providerbuilder.Provider) info.Provider {
-	ensureProviderValid(prov)
+	providerbuilder.EnsureProviderValid(prov)
 	shimProvider := tfbridge.ShimProvider(prov)
 
 	provider := tfbridge0.ProviderInfo{

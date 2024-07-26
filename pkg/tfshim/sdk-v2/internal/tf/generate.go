@@ -25,6 +25,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 //go:generate go run generate.go
@@ -97,7 +99,7 @@ func files() []file {
 		{
 			src:        "internal/plans/objchange/objchange.go",
 			dest:       "plans/objchange/objchange.go",
-			transforms: transforms,
+			transforms: append(transforms, patchProposedNewForUnknownBlocks),
 		},
 		{
 			src:        "internal/plans/objchange/plan_valid.go",
@@ -177,4 +179,28 @@ func fixupCodeTypeError(code string) string {
 	before := `panic(fmt.Sprintf("unsupported block nesting mode %s"`
 	after := `panic(fmt.Sprintf("unsupported block nesting mode %v"`
 	return strings.ReplaceAll(code, before, after)
+}
+
+// This patch introduces a change in behavior for the vendored objchange.ProposedNew algorithm. Before the change,
+// planning a block change where config is entirely unknown used to pick the prior state. After the change it picks the
+// unknown. This is especially interesting when planning set-nested blocks, as when the algorithm fails to find a
+// matching set element in priorState it will send prior=null instead, and proceed to substitute null with an empty
+// value matching the block structure. Without the patch, this empty value will be selected over the unknown and
+// surfaced to Pulumi users, which is confusing.
+//
+// See TestUnknowns test suite and the "unknown for set block prop" test case.
+//
+// TODO[pulumi/pulumi-terraform-bridge#2247] revisit this patch.
+func patchProposedNewForUnknownBlocks(goCode string) string {
+	oldCode := `func proposedNew(schema *configschema.Block, prior, config cty.Value) cty.Value {
+	if config.IsNull() || !config.IsKnown() {`
+
+	newCode := `func proposedNew(schema *configschema.Block, prior, config cty.Value) cty.Value {
+	if !config.IsKnown() {
+		return config
+	}
+	if config.IsNull() {`
+	updatedGoCode := strings.Replace(goCode, oldCode, newCode, 1)
+	contract.Assertf(updatedGoCode != oldCode, "patchProposedNewForUnknownBlocks failed to apply")
+	return updatedGoCode
 }

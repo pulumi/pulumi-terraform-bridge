@@ -9,7 +9,6 @@ import (
 )
 
 func TestUpgradeInputsStringBasic(t *testing.T) {
-	skipUnlessLinux(t)
 	res := &schema.Resource{
 		Schema: map[string]*schema.Schema{
 			"f0": {
@@ -53,8 +52,6 @@ func TestUpgradeInputsStringBasic(t *testing.T) {
 }
 
 func TestUpgradeInputsStringBasicNonZeroVersion(t *testing.T) {
-	skipUnlessLinux(t)
-
 	res := &schema.Resource{
 		Schema: map[string]*schema.Schema{
 			"f0": {
@@ -99,8 +96,6 @@ func TestUpgradeInputsStringBasicNonZeroVersion(t *testing.T) {
 }
 
 func TestUpgradeInputsObjectBasic(t *testing.T) {
-	skipUnlessLinux(t)
-
 	res := &schema.Resource{
 		Schema: map[string]*schema.Schema{
 			"f0": {
