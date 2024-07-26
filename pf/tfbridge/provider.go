@@ -163,37 +163,48 @@ func newProviderWithContext(ctx context.Context, info tfbridge.ProviderInfo,
 	}
 
 	if stage.IsTfgen() {
-		var errs []error
-		for typeToken := range p.info.Resources {
-			objectType := p.resources.Schema(runtypes.TypeName(typeToken)).Type(ctx).(tftypes.Object)
-			_, err := p.encoding.NewResourceEncoder(typeToken, objectType)
-			if err != nil {
-				errs = append(errs, err)
-			}
-			_, err = p.encoding.NewResourceDecoder(typeToken, objectType)
-			if err != nil {
-				errs = append(errs, err)
-			}
-		}
-		for typeToken := range p.info.DataSources {
-			objectType := p.datasources.Schema(runtypes.TypeName(typeToken)).Type(ctx).(tftypes.Object)
-			_, err := p.encoding.NewDataSourceEncoder(typeToken, objectType)
-			if err != nil {
-				errs = append(errs, err)
-			}
-			_, err = p.encoding.NewDataSourceDecoder(typeToken, objectType)
-			if err != nil {
-				errs = append(errs, err)
-			}
-		}
-
-		if len(errs) > 0 {
-			const url = "https://github.com/pulumi/pulumi-terraform-bridge/issues/new?template=bug.yaml"
-			return nil, fmt.Errorf("internal error: %w\nPlease file an issue at %s", errors.Join(errs...), url)
+		// We don't want to run validation during normal runtime because it
+		// requires iterating through all of our resources and datasoruces.
+		if err := validateProviderEncoding(ctx, p); err != nil {
+			return nil, err
 		}
 	}
 
 	return p, err
+}
+
+func validateProviderEncoding(ctx context.Context, p *provider) error {
+	var errs []error
+	p.info.P.ResourcesMap().Range(func(typeToken string, _ shim.Resource) bool {
+		objectType := p.resources.Schema(runtypes.TypeName(typeToken)).Type(ctx).(tftypes.Object)
+		_, err := p.encoding.NewResourceEncoder(typeToken, objectType)
+		if err != nil {
+			errs = append(errs, err)
+		}
+		_, err = p.encoding.NewResourceDecoder(typeToken, objectType)
+		if err != nil {
+			errs = append(errs, err)
+		}
+		return true
+	})
+	p.info.P.DataSourcesMap().Range(func(typeToken string, _ shim.Resource) bool {
+		objectType := p.datasources.Schema(runtypes.TypeName(typeToken)).Type(ctx).(tftypes.Object)
+		_, err := p.encoding.NewDataSourceEncoder(typeToken, objectType)
+		if err != nil {
+			errs = append(errs, err)
+		}
+		_, err = p.encoding.NewDataSourceDecoder(typeToken, objectType)
+		if err != nil {
+			errs = append(errs, err)
+		}
+		return true
+	})
+
+	if len(errs) > 0 {
+		const url = "https://github.com/pulumi/pulumi-terraform-bridge/issues/new?template=bug.yaml"
+		return fmt.Errorf("internal error: %w\nPlease file an issue at %s", errors.Join(errs...), url)
+	}
+	return nil
 }
 
 // Internal. The signature of this function can change between major releases. Exposed to facilitate testing.

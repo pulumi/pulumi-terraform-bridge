@@ -15,13 +15,16 @@
 package tfgen
 
 import (
+	"context"
 	"fmt"
 	"os"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/check"
 	pfmuxer "github.com/pulumi/pulumi-terraform-bridge/pf/internal/muxer"
+	pfbridge "github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
 	sdkBridge "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
@@ -39,6 +42,7 @@ import (
 // [Pulumi Package Schema]: https://www.pulumi.com/docs/guides/pulumi-packages/schema/
 func Main(provider string, info sdkBridge.ProviderInfo) {
 	version := info.Version
+	ctx := context.Background()
 
 	tfgen.MainWithCustomGenerate(provider, version, info, func(opts tfgen.GeneratorOptions) error {
 		if info.MetadataInfo == nil {
@@ -54,8 +58,18 @@ func Main(provider string, info sdkBridge.ProviderInfo) {
 			return err
 		}
 
+		// We create the provider so it can perform runtime validation in advance.
+		if _, err := pfbridge.NewProvider(ctx, info, pfbridge.ProviderMetadata{
+			XGetSchema: func(context.Context, plugin.GetSchemaRequest) ([]byte, error) {
+				return nil, fmt.Errorf("internal: GetSchema was unexpectedly invoked during validation")
+			},
+		}); err != nil {
+			return err
+		}
+
 		return g.Generate()
 	})
+
 }
 
 // Implements main() logic for a multi-provider build-time helper utility. By convention these utilities are
@@ -69,6 +83,8 @@ func Main(provider string, info sdkBridge.ProviderInfo) {
 //
 // [Pulumi Package Schema]: https://www.pulumi.com/docs/guides/pulumi-packages/schema/
 func MainWithMuxer(provider string, info sdkBridge.ProviderInfo) {
+	ctx := context.Background()
+
 	if len(info.MuxWith) > 0 {
 		panic("mixin providers via tfbridge.ProviderInfo.MuxWith is currently not supported")
 	}
@@ -106,6 +122,12 @@ func MainWithMuxer(provider string, info sdkBridge.ProviderInfo) {
 		}
 		err = metadata.Set(info.GetMetadata(), "mux", dispatch)
 		if err != nil {
+			return err
+		}
+
+		// We validate against a fake schema, since we know that
+		// pfbridge.MakeMuxedServer will not examine the schema.
+		if _, err := pfbridge.MakeMuxedServer(ctx, provider, info, []byte(`{}`))(nil); err != nil {
 			return err
 		}
 
