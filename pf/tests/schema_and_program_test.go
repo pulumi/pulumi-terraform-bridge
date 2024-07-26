@@ -8,7 +8,9 @@ import (
 	pschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/providerbuilder"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optrefresh"
@@ -93,18 +95,71 @@ outputs:
 
 	require.Equal(t, "Default val", upRes.Outputs["changeReason"].Value)
 
-	pt.Preview(optpreview.Diff())
+	pt.Preview(optpreview.Diff(), optpreview.ExpectNoChanges())
+}
 
-	refreshRes := pt.Refresh(optrefresh.ExpectNoChanges())
-	t.Logf(refreshRes.StdOut)
+type changeReasonPlanModifier struct {
+	planmodifier.String
+}
 
-	pt.Destroy()
+func (c changeReasonPlanModifier) PlanModifyString(ctx context.Context, req planmodifier.StringRequest, resp *planmodifier.StringResponse) {
+	resp.PlanValue = basetypes.NewStringValue("Modified val")
+}
 
-	res := pt.Import("prov:index/test:Test", "mainRes", "new-id", "")
-	t.Logf(res.Stdout)
+func (c changeReasonPlanModifier) Description(context.Context) string {
+	return "Change reason plan modifier"
+}
 
-	prevRes := pt.Preview(optpreview.Diff(), optpreview.ExpectNoChanges())
-	t.Logf(prevRes.StdOut)
+func (c changeReasonPlanModifier) MarkdownDescription(context.Context) string {
+	return "Change reason plan modifier"
+}
+
+func TestPlanModifiers(t *testing.T) {
+	provBuilder := providerbuilder.Provider{
+		TypeName:       "prov",
+		Version:        "0.0.1",
+		ProviderSchema: pschema.Schema{},
+		AllResources: []providerbuilder.Resource{
+			{
+				Name: "test",
+				ResourceSchema: rschema.Schema{
+					Attributes: map[string]rschema.Attribute{
+						"other_prop": rschema.StringAttribute{
+							Optional: true,
+						},
+						"change_reason": rschema.StringAttribute{
+							Optional: true,
+							Computed: true,
+							PlanModifiers: []planmodifier.String{
+								changeReasonPlanModifier{},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	prov := bridgedProvider(&provBuilder)
+
+	program := `
+name: test
+runtime: yaml
+resources:
+    mainRes:
+        type: prov:index:Test
+        properties:
+            otherProp: "val"
+outputs:
+    changeReason: ${mainRes.changeReason}`
+
+	pt := pulCheck(t, prov, program)
+	upRes := pt.Up()
+	t.Logf(upRes.StdOut)
+
+	require.Equal(t, "Modified val", upRes.Outputs["changeReason"].Value)
+
+	pt.Preview(optpreview.Diff(), optpreview.ExpectNoChanges())
 }
 
 func TestImportAndRefreshWithDefault(t *testing.T) {
@@ -172,4 +227,61 @@ outputs:
 
 	prevRes := pt.Preview(optpreview.Diff(), optpreview.ExpectNoChanges())
 	t.Logf(prevRes.StdOut)
+}
+
+func TestDefaultAndPlanModifier(t *testing.T) {
+	provBuilder := providerbuilder.Provider{
+		TypeName:       "prov",
+		Version:        "0.0.1",
+		ProviderSchema: pschema.Schema{},
+		AllResources: []providerbuilder.Resource{
+			{
+				Name: "test",
+				ResourceSchema: rschema.Schema{
+					Attributes: map[string]rschema.Attribute{
+						"other_prop": rschema.StringAttribute{
+							Optional: true,
+						},
+						"change_reason": rschema.StringAttribute{
+							Optional: true,
+							Computed: true,
+							Default:  stringdefault.StaticString("Default val"),
+							PlanModifiers: []planmodifier.String{
+								changeReasonPlanModifier{},
+							},
+						},
+					},
+				},
+				ReadFunc: func(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+					resp.State.SetAttribute(ctx, path.Root("id"), "test-id")
+					resp.State.SetAttribute(ctx, path.Root("other_prop"), "val")
+					resp.State.SetAttribute(ctx, path.Root("change_reason"), "Default val")
+				},
+				ImportStateFunc: func(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+					resp.State.SetAttribute(ctx, path.Root("id"), "test-id")
+					resp.State.SetAttribute(ctx, path.Root("other_prop"), "val")
+					resp.State.SetAttribute(ctx, path.Root("change_reason"), "Default val")
+				},
+			},
+		},
+	}
+
+	prov := bridgedProvider(&provBuilder)
+
+	program := `
+name: test
+runtime: yaml
+resources:
+    mainRes:
+        type: prov:index:Test
+        properties:
+            otherProp: "val"
+outputs:
+    changeReason: ${mainRes.changeReason}`
+
+	pt := pulCheck(t, prov, program)
+	upRes := pt.Up()
+	t.Logf(upRes.StdOut)
+
+	require.Equal(t, "Modified val", upRes.Outputs["changeReason"].Value)
 }
