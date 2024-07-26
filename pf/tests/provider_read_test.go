@@ -217,6 +217,41 @@ func TestImportingResourcesWithBlocks(t *testing.T) {
 	testutils.Replay(t, server, testCase)
 }
 
+func TestImportingResourcesWithoutDefaults(t *testing.T) {
+	// Importing a resource that has blocks used to add a `__defaults: []` entry to the `response.inputs`
+	// ensure that it no longer does so
+	server := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
+	testCase := `
+	{
+          "method": "/pulumirpc.ResourceProvider/Read",
+          "request": {
+            "id": "zone/929e99f1a4152bfe415bbb3b29d1a227/my-ruleset-id",
+            "urn": "urn:pulumi:testing::testing::testbridge:index/testnest:Testnest::myresource",
+            "properties": {}
+          },
+          "response": {
+            "id": "*",
+            "inputs": {
+              "rules": [
+                {
+                  "protocol": "some-string"
+                }
+              ]
+            },
+            "properties": {
+              "id": "*",
+              "rules": [
+                {
+                  "protocol": "some-string"
+                }
+              ],
+              "services": []
+            }
+          }
+        }`
+	testutils.Replay(t, server, testCase)
+}
+
 // Check that importing a resource that does not exist returns an empty property bag and
 // no ID.
 func TestImportingMissingResources(t *testing.T) {

@@ -48,6 +48,65 @@ resources:
 	pt.Up()
 }
 
+func TestDefaults(t *testing.T) {
+	provBuilder := providerbuilder.Provider{
+		TypeName:       "prov",
+		Version:        "0.0.1",
+		ProviderSchema: pschema.Schema{},
+		AllResources: []providerbuilder.Resource{
+			{
+				Name: "test",
+				ResourceSchema: rschema.Schema{
+					Attributes: map[string]rschema.Attribute{
+						"other_prop": rschema.StringAttribute{
+							Optional: true,
+						},
+						"change_reason": rschema.StringAttribute{
+							Optional: true,
+							// I've been unable to find an example of a non-Computed resource with a default value in the wild.
+							// Nothing in the docs or validation prohibits this.
+							Computed: true,
+							Default:  stringdefault.StaticString("Default val"),
+						},
+					},
+				},
+			},
+		},
+	}
+
+	prov := bridgedProvider(&provBuilder)
+
+	program := `
+name: test
+runtime: yaml
+resources:
+    mainRes:
+        type: prov:index:Test
+        properties:
+            otherProp: "val"
+outputs:
+    changeReason: ${mainRes.changeReason}`
+
+	pt := pulCheck(t, prov, program)
+	upRes := pt.Up()
+	t.Logf(upRes.StdOut)
+
+	require.Equal(t, "Default val", upRes.Outputs["changeReason"].Value)
+
+	pt.Preview(optpreview.Diff())
+
+	refreshRes := pt.Refresh(optrefresh.ExpectNoChanges())
+	t.Logf(refreshRes.StdOut)
+
+	pt.Destroy()
+
+	res := pt.Import("prov:index/test:Test", "mainRes", "new-id", "")
+	t.Logf(res.Stdout)
+
+	prevRes := pt.Preview(optpreview.Diff(), optpreview.ExpectNoChanges())
+	t.Logf(prevRes.StdOut)
+}
+
 func TestImportDiscrepancy(t *testing.T) {
 	provBuilder := providerbuilder.Provider{
 		TypeName:       "prov",

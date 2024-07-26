@@ -20,7 +20,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/internal/pulcheck"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/pulcheck"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/stretchr/testify/assert"
@@ -47,7 +47,7 @@ type diffTestCase struct {
 func runDiffCheck(t T, tc diffTestCase) {
 	tfwd := t.TempDir()
 
-	tfd := newTfDriver(t, tfwd, defProviderShortName, defRtype, tc.Resource)
+	tfd := newTFResDriver(t, tfwd, defProviderShortName, defRtype, tc.Resource)
 	_ = tfd.writePlanApply(t, tc.Resource.Schema, defRtype, "example", tc.Config1)
 	tfDiffPlan := tfd.writePlanApply(t, tc.Resource.Schema, defRtype, "example", tc.Config2)
 

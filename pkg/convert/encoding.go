@@ -167,7 +167,12 @@ func deriveEncoder(pctx *schemaPropContext, t tftypes.Type) (Encoder, error) {
 	case t.Is(tftypes.String):
 		return newStringEncoder(), nil
 	case t.Is(tftypes.Number):
-		return newNumberEncoder(), nil
+		switch pctx.TypeInfo() {
+		case "string":
+			return newIntOverrideStringEncoder(), nil
+		default:
+			return newNumberEncoder(), nil
+		}
 	case t.Is(tftypes.Bool):
 		return newBoolEncoder(), nil
 	}
@@ -239,9 +244,18 @@ func deriveDecoder(pctx *schemaPropContext, t tftypes.Type) (Decoder, error) {
 	case t.Is(tftypes.String):
 		return newStringDecoder(), nil
 	case t.Is(tftypes.Number):
-		return newNumberDecoder(), nil
+		switch pctx.TypeInfo() {
+		case "string":
+			return newStringOverIntDecoder(), nil
+		default:
+			return newNumberDecoder(), nil
+		}
 	case t.Is(tftypes.Bool):
 		return newBoolDecoder(), nil
+	}
+
+	if to := pctx.TypeInfo(); to != "" {
+		return nil, fmt.Errorf("unable to apply type override %s to upstream type %s", to, t)
 	}
 
 	switch tt := t.(type) {

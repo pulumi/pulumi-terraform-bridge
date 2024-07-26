@@ -1,6 +1,10 @@
 TESTPARALLELISM := 10
+export PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION := true
 
-build.tests::
+install_plugins::
+	pulumi plugin install resource random 4.16.3
+
+build.tests:: install_plugins
 	go test -test.run NONE
 	cd tests && go test -test.run NONE
 	cd tests/integration && go test -test.run NONE

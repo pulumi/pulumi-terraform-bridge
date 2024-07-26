@@ -203,6 +203,7 @@ func XParameterizeResetProvider(ctx context.Context, info tfbridge.ProviderInfo,
 func (p *provider) ParameterizeWithContext(
 	ctx context.Context, req plugin.ParameterizeRequest,
 ) (plugin.ParameterizeResponse, error) {
+	ctx = p.initLogging(ctx, p.logSink, "")
 	if p.parameterize == nil {
 		return (&plugin.UnimplementedProvider{}).Parameterize(ctx, req)
 	}
@@ -222,6 +223,7 @@ func (p *provider) ParameterizeWithContext(
 
 // GetSchema returns the schema for the provider.
 func (p *provider) GetSchemaWithContext(ctx context.Context, req plugin.GetSchemaRequest) ([]byte, error) {
+	ctx = p.initLogging(ctx, p.logSink, "")
 	return p.pulumiSchema(ctx, req)
 }
 

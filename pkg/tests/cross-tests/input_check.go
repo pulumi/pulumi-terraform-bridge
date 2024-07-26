@@ -18,7 +18,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/internal/pulcheck"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/pulcheck"
 )
 
 // Adapted from diff_check.go
@@ -52,7 +52,7 @@ func runCreateInputCheck(t T, tc inputTestCase) {
 
 	tfwd := t.TempDir()
 
-	tfd := newTfDriver(t, tfwd, defProviderShortName, defRtype, tc.Resource)
+	tfd := newTFResDriver(t, tfwd, defProviderShortName, defRtype, tc.Resource)
 	tfd.writePlanApply(t, tc.Resource.Schema, defRtype, "example", tc.Config)
 
 	resMap := map[string]*schema.Resource{defRtype: tc.Resource}

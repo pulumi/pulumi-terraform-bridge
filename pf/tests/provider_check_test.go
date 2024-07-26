@@ -28,6 +28,7 @@ import (
 
 	testutils "github.com/pulumi/providertest/replay"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/providerbuilder"
+	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/testprovider"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
 	tfbridge0 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
@@ -351,4 +352,27 @@ func TestCheck(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestCheckWithIntID(t *testing.T) {
+	server := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
+	testCase := `
+        {
+          "method": "/pulumirpc.ResourceProvider/Check",
+          "request": {
+            "urn": "urn:pulumi:test-stack::basicprogram::testbridge:index/intID:IntID::r1",
+            "news": {
+              "name": "name"
+            },
+            "olds": {},
+            "randomSeed": "wqZZaHWVfsS1ozo3bdauTfZmjslvWcZpUjn7BzpS79c="
+          },
+          "response": {
+            "inputs": {
+              "name": "name"
+            }
+          }
+        }
+        `
+	testutils.Replay(t, server, testCase)
 }

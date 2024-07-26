@@ -177,3 +177,7 @@ func (p v1Provider) IsSet(_ context.Context, v interface{}) ([]interface{}, bool
 	}
 	return nil, false
 }
+
+func (p v1Provider) SupportsUnknownCollections() bool {
+	return false
+}

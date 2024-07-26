@@ -10,19 +10,10 @@
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
+// limitations under the License.
 
-// Helpers to disable failing CI runs.
-package crosstests
-
-import (
-	"os"
-	"runtime"
-	"strings"
-	"testing"
-)
-
-func skipUnlessLinux(t *testing.T) {
-	if ci, ok := os.LookupEnv("CI"); ok && ci == "true" && !strings.Contains(strings.ToLower(runtime.GOOS), "linux") {
-		t.Skip("Skipping on non-Linux platforms as our CI does not yet install Terraform CLI required for these tests")
-	}
-}
+// parameterize encapsulates parsing parameterize args as well as marshaling and
+// unmarshaling parameterize values. It only handles transforming from untyped
+// [github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin.ParameterizeRequest] to
+// typed values, and does not validate that described providers exist.
+package parameterize

@@ -11,8 +11,9 @@ require (
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.33.0
 	github.com/hexops/autogold/v2 v2.2.1
 	github.com/hexops/valast v1.4.4
-	github.com/pulumi/providertest v0.0.12
+	github.com/pulumi/providertest v0.0.14
 	github.com/pulumi/pulumi-terraform-bridge/v3 v3.80.0
+	github.com/pulumi/pulumi/sdk v1.14.1
 	github.com/stretchr/testify v1.9.0
 	gotest.tools v2.2.0+incompatible
 	gotest.tools/v3 v3.0.3
@@ -204,8 +205,8 @@ require (
 	github.com/pkg/term v1.1.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/pulumi/pulumi-terraform-bridge/x/muxer v0.0.8 // indirect
-	github.com/pulumi/pulumi/pkg/v3 v3.124.0
-	github.com/pulumi/pulumi/sdk/v3 v3.124.0
+	github.com/pulumi/pulumi/pkg/v3 v3.126.0
+	github.com/pulumi/pulumi/sdk/v3 v3.126.0
 	github.com/pulumi/terraform-diff-reader v0.0.2 // indirect
 	github.com/rivo/uniseg v0.4.4 // indirect
 	github.com/rogpeppe/go-internal v1.12.0 // indirect

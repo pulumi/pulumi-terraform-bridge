@@ -25,6 +25,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/tokens"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
@@ -507,6 +508,13 @@ func testTokenAliasing(t *testing.T) {
 					"pkg_mod1_d1": nil,
 				},
 			}).Shim(),
+			Resources: map[string]*info.Resource{
+				"pkg_mod1_r1": {
+					Docs: &tfbridge.DocInfo{
+						Source: "manually_provided_docs_source.md",
+					},
+				},
+			},
 		}
 	}
 
@@ -521,7 +529,10 @@ func testTokenAliasing(t *testing.T) {
 	autoAliasing(simple, metadata)
 
 	assert.Equal(t, map[string]*tfbridge.ResourceInfo{
-		"pkg_mod1_r1": {Tok: "pkg:index/mod1R1:Mod1R1"},
+		"pkg_mod1_r1": {
+			Tok:  "pkg:index/mod1R1:Mod1R1",
+			Docs: &tfbridge.DocInfo{Source: "manually_provided_docs_source.md"},
+		},
 		"pkg_mod1_r2": {Tok: "pkg:index/mod1R2:Mod1R2"},
 		"pkg_mod2_r1": {Tok: "pkg:index/mod2R1:Mod2R1"},
 	}, simple.Resources)
@@ -544,11 +555,12 @@ func testTokenAliasing(t *testing.T) {
 		"pkg_mod1_r1": {
 			Tok:     "pkg:mod1/r1:R1",
 			Aliases: []tfbridge.AliasInfo{{Type: ref("pkg:index/mod1R1:Mod1R1")}},
+			Docs:    &tfbridge.DocInfo{Source: "manually_provided_docs_source.md"},
 		},
 		"pkg_mod1_r1_legacy": {
 			Tok:                "pkg:index/mod1R1:Mod1R1",
 			DeprecationMessage: "pkg.index/mod1r1.Mod1R1 has been deprecated in favor of pkg.mod1/r1.R1",
-			Docs:               &tfbridge.DocInfo{Source: "kg_mod1_r1.html.markdown"},
+			Docs:               &tfbridge.DocInfo{Source: "manually_provided_docs_source.md"},
 		},
 		"pkg_mod1_r2": {
 			Tok:     "pkg:mod1/r2:R2",
@@ -557,7 +569,6 @@ func testTokenAliasing(t *testing.T) {
 		"pkg_mod1_r2_legacy": {
 			Tok:                "pkg:index/mod1R2:Mod1R2",
 			DeprecationMessage: "pkg.index/mod1r2.Mod1R2 has been deprecated in favor of pkg.mod1/r2.R2",
-			Docs:               &tfbridge.DocInfo{Source: "kg_mod1_r2.html.markdown"},
 		},
 		"pkg_mod2_r1": {
 			Tok:     "pkg:mod2/r1:R1",
@@ -566,7 +577,6 @@ func testTokenAliasing(t *testing.T) {
 		"pkg_mod2_r1_legacy": {
 			Tok:                "pkg:index/mod2R1:Mod2R1",
 			DeprecationMessage: "pkg.index/mod2r1.Mod2R1 has been deprecated in favor of pkg.mod2/r1.R1",
-			Docs:               &tfbridge.DocInfo{Source: "kg_mod2_r1.html.markdown"},
 		},
 	}, modules.Resources)
 	assert.Equal(t, map[string]*tfbridge.DataSourceInfo{
@@ -574,7 +584,6 @@ func testTokenAliasing(t *testing.T) {
 		"pkg_mod1_d1_legacy": {
 			Tok:                "pkg:index/getMod1D1:getMod1D1",
 			DeprecationMessage: "pkg.index/getmod1d1.getMod1D1 has been deprecated in favor of pkg.mod1/getd1.getD1",
-			Docs:               &tfbridge.DocInfo{Source: "kg_mod1_d1.html.markdown"},
 		},
 	},
 		modules.DataSources)
@@ -613,6 +622,7 @@ func testTokenAliasing(t *testing.T) {
 		"pkg_mod1_r1": {
 			Tok:     "pkg:mod1/r1:R1",
 			Aliases: []tfbridge.AliasInfo{{Type: ref("pkg:index/mod1R1:Mod1R1")}},
+			Docs:    &tfbridge.DocInfo{Source: "manually_provided_docs_source.md"},
 		},
 		"pkg_mod1_r2": {
 			Tok:     "pkg:mod1/r2:R2",
