@@ -77,9 +77,8 @@ func TestReproAWS3323(t *testing.T) {
 					state := plan
 					state.ID = basetypes.NewStringValue("id")
 					state.PolicyVersion = basetypes.NewStringValue("MTcyMjI2MzQyMzk0N18x")
-					state.Policy = basetypes.NewStringValue("{\"AWSOwnedKey\":true},\"Rules\":[{\"Resource\":[\"collection/member-search*\"],\"ResourceType\":\"collection\"}]")
+					state.Policy = basetypes.NewStringValue("{\"AWSOwnedKey\":true,\"Rules\":[{\"Resource\":[\"collection/member-search*\"],\"ResourceType\":\"collection\"}]}")
 					resp.Diagnostics.Append(resp.State.Set(ctx, &state)...)
-					return
 				},
 			},
 		},
@@ -110,11 +109,12 @@ resources:
 	for _, v := range diffs {
 		autogold.Expect([]string{"policy", "policyVersion"}).Equal(t, v.Response.Diffs)
 
-		olds := v.Request.Olds.Fields
-		news := v.Request.News.Fields
-		autogold.Expect(`{"AWSOwnedKey":true},"Rules":[{"Resource":["collection/member-search*"],"ResourceType":"collection"}]`).Equal(t, olds["policy"].GetStringValue())
-		autogold.Expect(`{"Rules":[{"Resource":["collection/member-search*"],"ResourceType":"collection"}],"AWSOwnedKey":true}`).Equal(t, news["policy"].GetStringValue())
-		autogold.Expect(nil).Equal(t, olds["policyVersion"])
-		autogold.Expect(nil).Equal(t, news["policyVersion"])
+		// olds := v.Request.Olds.Fields
+		// news := v.Request.News.Fields
+		autogold.Expect(map[string]interface{}{
+			"id": "id", "policy": `{"AWSOwnedKey":true,"Rules":[{"Resource":["collection/member-search*"],"ResourceType":"collection"}]}`,
+			"policyVersion": "MTcyMjI2MzQyMzk0N18x",
+		}).Equal(t, v.Request.Olds.AsMap())
+		autogold.Expect(map[string]interface{}{"policy": `{"Rules":[{"Resource":["collection/member-search*"],"ResourceType":"collection"}],"AWSOwnedKey":true}`}).Equal(t, v.Request.News.AsMap())
 	}
 }
