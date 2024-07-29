@@ -128,6 +128,8 @@ type T interface {
 
 type bridgedProviderOpts struct {
 	DisablePlanResourceChange bool
+	ProviderSchema            map[string]*schema.Schema
+	ConfigureContextFunc      schema.ConfigureContextFunc
 }
 
 // BridgedProviderOpts
@@ -140,6 +142,18 @@ func DisablePlanResourceChange() BridgedProviderOpt {
 	}
 }
 
+func WithProviderSchema(schema map[string]*schema.Schema) BridgedProviderOpt {
+	return func(o *bridgedProviderOpts) {
+		o.ProviderSchema = schema
+	}
+}
+
+func WithProviderConfigureContextFunc(f schema.ConfigureContextFunc) BridgedProviderOpt {
+	return func(o *bridgedProviderOpts) {
+		o.ConfigureContextFunc = f
+	}
+}
+
 // This is an experimental API.
 func BridgedProvider(t T, providerName string, resMap map[string]*schema.Resource, opts ...BridgedProviderOpt) info.Provider {
 	options := &bridgedProviderOpts{}
@@ -148,6 +162,12 @@ func BridgedProvider(t T, providerName string, resMap map[string]*schema.Resourc
 	}
 
 	tfp := &schema.Provider{ResourcesMap: resMap}
+	if options.ProviderSchema != nil {
+		tfp.Schema = options.ProviderSchema
+	}
+	if options.ConfigureContextFunc != nil {
+		tfp.ConfigureContextFunc = options.ConfigureContextFunc
+	}
 	EnsureProviderValid(t, tfp)
 
 	shimProvider := shimv2.NewProvider(tfp, shimv2.WithPlanResourceChange(

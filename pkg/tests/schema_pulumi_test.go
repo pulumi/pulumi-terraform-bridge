@@ -16,6 +16,34 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestBasic(t *testing.T) {
+	resMap := map[string]*schema.Resource{
+		"prov_test": {
+			Schema: map[string]*schema.Schema{
+				"test": {
+					Type:     schema.TypeString,
+					Optional: true,
+				},
+			},
+		},
+	}
+	bridgedProvider := pulcheck.BridgedProvider(t, "prov", resMap)
+	program := `
+name: test
+runtime: yaml
+resources:
+  mainRes:
+    type: prov:index:Test
+	properties:
+	  test: "hello"
+outputs:
+  testOut: ${mainRes.test}
+`
+	pt := pulcheck.PulCheck(t, bridgedProvider, program)
+	res := pt.Up()
+	require.Equal(t, "hello", res.Outputs["testOut"].Value)
+}
+
 func TestUnknownHandling(t *testing.T) {
 	resMap := map[string]*schema.Resource{
 		"prov_test": {
@@ -1473,4 +1501,57 @@ runtime: yaml
 			require.NotContains(t, res.Stdout, "One or more imported inputs failed to validate")
 		})
 	}
+}
+
+func getOkExists(d *schema.ResourceData, key string) (interface{}, bool) {
+	v := d.GetRawConfig().GetAttr(key)
+	if v.IsNull() {
+		return nil, false
+	}
+	return d.Get(key), true
+}
+
+func TestConfigureGetRaw(t *testing.T) {
+	resMap := map[string]*schema.Resource{
+		"prov_test": {
+			Schema: map[string]*schema.Schema{
+				"test": {
+					Type:     schema.TypeString,
+					Optional: true,
+				},
+			},
+		},
+	}
+	bridgedProvider := pulcheck.BridgedProvider(t, "prov", resMap,
+		pulcheck.WithProviderSchema(
+			map[string]*schema.Schema{
+				"config": {
+					Type:     schema.TypeMap,
+					Optional: true,
+					Elem:     &schema.Schema{Type: schema.TypeString},
+				},
+			},
+		),
+		pulcheck.WithProviderConfigureContextFunc(
+			func(ctx context.Context, rd *schema.ResourceData) (interface{}, diag.Diagnostics) {
+				_, ok := getOkExists(rd, "config")
+				require.False(t, ok, "Unexpected config value")
+				return nil, nil
+			},
+		),
+	)
+	program := `
+name: test
+runtime: yaml
+resources:
+  mainRes:
+    type: prov:index:Test
+	properties:
+	  test: "hello"
+outputs:
+  testOut: ${mainRes.test}
+`
+	pt := pulcheck.PulCheck(t, bridgedProvider, program)
+	res := pt.Up()
+	require.Equal(t, "hello", res.Outputs["testOut"].Value)
 }
