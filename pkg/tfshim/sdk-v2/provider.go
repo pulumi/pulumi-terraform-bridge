@@ -211,10 +211,18 @@ func (p v2Provider) NewDestroyDiff(_ context.Context, t string, opts shim.Timeou
 func (p v2Provider) NewResourceConfig(
 	_ context.Context, object map[string]interface{},
 ) shim.ResourceConfig {
-	return v2ResourceConfig{&terraform.ResourceConfig{
-		Raw:    object,
-		Config: object,
-	}}
+	tfConfig := terraform.NewResourceConfigRaw(object)
+	internalMap := schema.InternalMap(p.tf.Schema)
+	coreConfigSchema := internalMap.CoreConfigSchema()
+	// translate to cty
+	ctyVal, err := recoverCtyValueOfObjectType(coreConfigSchema.ImpliedType(), object)
+	if err != nil {
+		// TODO log?
+		return v2ResourceConfig{tfConfig}
+	}
+
+	tfConfig.CtyValue = ctyVal
+	return v2ResourceConfig{tfConfig}
 }
 
 func (p v2Provider) IsSet(_ context.Context, v interface{}) ([]interface{}, bool) {
