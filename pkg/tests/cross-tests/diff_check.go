@@ -52,7 +52,8 @@ func runDiffCheck(t T, tc diffTestCase) {
 	tfDiffPlan := tfd.writePlanApply(t, tc.Resource.Schema, defRtype, "example", tc.Config2)
 
 	resMap := map[string]*schema.Resource{defRtype: tc.Resource}
-	bridgedProvider := pulcheck.BridgedProvider(t, defProviderShortName, resMap)
+	tfp := &schema.Provider{ResourcesMap: resMap}
+	bridgedProvider := pulcheck.BridgedProvider(t, defProviderShortName, tfp)
 
 	pd := &pulumiDriver{
 		name:                defProviderShortName,

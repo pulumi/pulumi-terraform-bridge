@@ -28,7 +28,8 @@ func TestBasic(t *testing.T) {
 			},
 		},
 	}
-	bridgedProvider := pulcheck.BridgedProvider(t, "prov", resMap)
+	tfp := &schema.Provider{ResourcesMap: resMap}
+	bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
 	program := `
 name: test
 runtime: yaml
@@ -71,7 +72,8 @@ func TestUnknownHandling(t *testing.T) {
 			},
 		},
 	}
-	bridgedProvider := pulcheck.BridgedProvider(t, "prov", resMap)
+	tfp := &schema.Provider{ResourcesMap: resMap}
+	bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
 	program := `
 name: test
 runtime: yaml
@@ -617,7 +619,8 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 					},
 				}
 
-				bridgedProvider := pulcheck.BridgedProvider(t, "prov", resMap, opts...)
+				tfp := &schema.Provider{ResourcesMap: resMap}
+				bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp, opts...)
 				program := fmt.Sprintf(`
 name: test
 runtime: yaml
@@ -687,7 +690,8 @@ outputs:
 					},
 				}
 
-				bridgedProvider := pulcheck.BridgedProvider(t, "prov", resMap, opts...)
+				tfp := &schema.Provider{ResourcesMap: resMap}
+				bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp, opts...)
 				program := fmt.Sprintf(`
 name: test
 runtime: yaml
@@ -825,7 +829,8 @@ func TestUnknownBlocks(t *testing.T) {
 			},
 		},
 	}
-	bridgedProvider := pulcheck.BridgedProvider(t, "prov", resMap)
+	tfp := &schema.Provider{ResourcesMap: resMap}
+	bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
 
 	provTestKnownProgram := `
 name: test
@@ -1469,7 +1474,8 @@ func TestFullyComputedNestedAttribute(t *testing.T) {
 			return []*schema.ResourceData{rd}, nil
 		}
 	}
-	bridgedProvider := pulcheck.BridgedProvider(t, "prov", resMap)
+	tfp := &schema.Provider{ResourcesMap: resMap}
+	bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
 
 	program := `
 name: test
@@ -1525,23 +1531,21 @@ func TestConfigureGetRaw(t *testing.T) {
 	}
 
 	runConfigureTest := func(t *testing.T, configPresent bool) {
-		bridgedProvider := pulcheck.BridgedProvider(t, "prov", resMap,
-			pulcheck.WithProviderSchema(
-				map[string]*schema.Schema{
-					"config": {
-						Type:     schema.TypeString,
-						Optional: true,
-					},
+		tfp := &schema.Provider{
+			ResourcesMap: resMap,
+			Schema: map[string]*schema.Schema{
+				"config": {
+					Type:     schema.TypeString,
+					Optional: true,
 				},
-			),
-			pulcheck.WithProviderConfigureContextFunc(
-				func(ctx context.Context, rd *schema.ResourceData) (interface{}, diag.Diagnostics) {
-					_, ok := getOkExists(rd, "config")
-					require.Equal(t, configPresent, ok, "Unexpected config value")
-					return nil, nil
-				},
-			),
-		)
+			},
+			ConfigureContextFunc: func(ctx context.Context, rd *schema.ResourceData) (interface{}, diag.Diagnostics) {
+				_, ok := getOkExists(rd, "config")
+				require.Equal(t, configPresent, ok, "Unexpected config value")
+				return nil, nil
+			},
+		}
+		bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
 		configVal := "val"
 		if !configPresent {
 			configVal = "null"
