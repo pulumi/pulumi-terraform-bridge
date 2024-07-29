@@ -2,6 +2,8 @@ package tfbridgetests
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
@@ -231,7 +233,7 @@ func (id *changeReasonPlanModifier) PlanModifyString(_ context.Context,
 	resp.RequiresReplace = false
 }
 
-func TestImportAndRefreshWithDefault(t *testing.T) {
+func TestImportAndRefreshWithDefaultAndIgnoreChanges(t *testing.T) {
 	provBuilder := providerbuilder.Provider{
 		TypeName:       "prov",
 		Version:        "0.0.1",
@@ -257,12 +259,10 @@ func TestImportAndRefreshWithDefault(t *testing.T) {
 				ReadFunc: func(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 					resp.State.SetAttribute(ctx, path.Root("id"), "test-id")
 					resp.State.SetAttribute(ctx, path.Root("other_prop"), "val")
-					resp.State.SetAttribute(ctx, path.Root("change_reason"), "Default val")
 				},
 				ImportStateFunc: func(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 					resp.State.SetAttribute(ctx, path.Root("id"), "test-id")
 					resp.State.SetAttribute(ctx, path.Root("other_prop"), "val")
-					resp.State.SetAttribute(ctx, path.Root("change_reason"), "Default val")
 				},
 			},
 		},
@@ -296,6 +296,24 @@ outputs:
 
 	res := pt.Import("prov:index/test:Test", "mainRes", "new-id", "")
 	t.Logf(res.Stdout)
+
+	ignoreChangesProgram := `
+name: test
+runtime: yaml
+resources:
+    mainRes:
+        type: prov:index:Test
+        properties:
+            otherProp: "val"
+        options:
+            ignoreChanges: ["changeReason"]
+outputs:
+    changeReason: ${mainRes.changeReason}`
+
+	pulumiYamlPath := filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml")
+
+	err := os.WriteFile(pulumiYamlPath, []byte(ignoreChangesProgram), 0o600)
+	require.NoError(t, err)
 
 	prevRes := pt.Preview(optpreview.Diff(), optpreview.ExpectNoChanges())
 	t.Logf(prevRes.StdOut)
