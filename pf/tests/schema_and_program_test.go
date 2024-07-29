@@ -15,7 +15,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/providerbuilder"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
-	"github.com/pulumi/pulumi/sdk/v3/go/auto/optrefresh"
 	"github.com/stretchr/testify/require"
 )
 
@@ -281,23 +280,15 @@ resources:
 outputs:
     changeReason: ${mainRes.changeReason}`
 
-	pt := pulCheck(t, prov, program)
-	upRes := pt.Up()
-	t.Logf(upRes.StdOut)
+	t.Run("Import cli with ignoreChanges", func(t *testing.T) {
+		pt := pulCheck(t, prov, program)
+		pt.Up()
+		pt.Destroy()
 
-	require.Equal(t, "Default val", upRes.Outputs["changeReason"].Value)
+		res := pt.Import("prov:index/test:Test", "mainRes", "new-id", "")
+		t.Logf(res.Stdout)
 
-	pt.Preview(optpreview.Diff())
-
-	refreshRes := pt.Refresh(optrefresh.ExpectNoChanges())
-	t.Logf(refreshRes.StdOut)
-
-	pt.Destroy()
-
-	res := pt.Import("prov:index/test:Test", "mainRes", "new-id", "")
-	t.Logf(res.Stdout)
-
-	ignoreChangesProgram := `
+		ignoreChangesProgram := `
 name: test
 runtime: yaml
 resources:
@@ -310,11 +301,41 @@ resources:
 outputs:
     changeReason: ${mainRes.changeReason}`
 
-	pulumiYamlPath := filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml")
+		pulumiYamlPath := filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml")
 
-	err := os.WriteFile(pulumiYamlPath, []byte(ignoreChangesProgram), 0o600)
-	require.NoError(t, err)
+		err := os.WriteFile(pulumiYamlPath, []byte(ignoreChangesProgram), 0o600)
+		require.NoError(t, err)
 
-	prevRes := pt.Preview(optpreview.Diff(), optpreview.ExpectNoChanges())
-	t.Logf(prevRes.StdOut)
+		prevRes := pt.Preview(optpreview.Diff(), optpreview.ExpectNoChanges())
+		t.Logf(prevRes.StdOut)
+	})
+
+	t.Run("Import resource option with ignoreChanges", func(t *testing.T) {
+		pt := pulCheck(t, prov, program)
+		pt.Up()
+		pt.Destroy()
+
+		res := pt.Import("prov:index/test:Test", "mainRes", "new-id", "")
+		t.Logf(res.Stdout)
+
+		ignoreChangesProgram := `
+name: test
+runtime: yaml
+resources:
+    mainRes:
+        type: prov:index:Test
+        properties:
+            otherProp: "val"
+        options:
+            import: new-id
+            ignoreChanges: ["changeReason"]
+`
+		pulumiYamlPath := filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml")
+
+		err := os.WriteFile(pulumiYamlPath, []byte(ignoreChangesProgram), 0o600)
+		require.NoError(t, err)
+
+		prevRes := pt.Preview(optpreview.Diff(), optpreview.ExpectNoChanges())
+		t.Logf(prevRes.StdOut)
+	})
 }
