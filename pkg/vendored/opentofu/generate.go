@@ -31,8 +31,13 @@ import (
 
 //go:generate go run generate.go
 
-const terraformRepo = "https://github.com/opentofu/opentofu.git"
-const terraformVer = "v1.7.2"
+const (
+	oldPkg       = "github.com/opentofu/opentofu"
+	newPkg       = "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/opentofu"
+	protoPkg     = "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/tfplugin6"
+	opentofuRepo = "https://github.com/opentofu/opentofu.git"
+	opentofuVer  = "v1.7.2"
+)
 
 type file struct {
 	src        string
@@ -50,16 +55,23 @@ func main() {
 }
 
 func files() []file {
-	oldPkg := "github.com/opentofu/opentofu"
-	newPkg := "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2/internal/tf"
 
-	replacePkg := gofmtReplace(fmt.Sprintf(`"%s/internal/configs/configschema" -> "%s/configs/configschema"`,
-		oldPkg, newPkg))
+	replacePkg := gofmtReplace(fmt.Sprintf(
+		`"%s/internal/configs/configschema" -> "%s/configs/configschema"`,
+		oldPkg, newPkg,
+	))
+
+	fixupTFPlugin6Ref := gofmtReplace(fmt.Sprintf(
+		`"%s" -> "%s"`,
+		fmt.Sprintf("%s/internal/tfplugin6", oldPkg),
+		protoPkg,
+	))
 
 	transforms := []func(string) string{
 		replacePkg,
 		doNotEditWarning,
 		fixupCodeTypeError,
+		fixupTFPlugin6Ref,
 	}
 
 	return []file{
@@ -97,6 +109,11 @@ func files() []file {
 			transforms: transforms,
 		},
 		{
+			src:        "internal/configs/configschema/nestingmode_string.go",
+			dest:       "configs/configschema/nestingmode_string.go",
+			transforms: transforms,
+		},
+		{
 			src:        "internal/plans/objchange/objchange.go",
 			dest:       "plans/objchange/objchange.go",
 			transforms: append(transforms, patchProposedNewForUnknownBlocks),
@@ -105,6 +122,22 @@ func files() []file {
 			src:        "internal/plans/objchange/plan_valid.go",
 			dest:       "plans/objchange/plan_valid.go",
 			transforms: transforms,
+		},
+		{
+			src:  "internal/plugin6/convert/schema.go",
+			dest: "convert/schema.go",
+			transforms: append(transforms, func(s string) string {
+				elided :=
+					`func ProtoToProviderSchema(s *proto.Schema) providers.Schema {
+	return providers.Schema{
+		Version: s.Version,
+		Block:   ProtoToConfigSchema(s.Block),
+	}
+}`
+				s = strings.ReplaceAll(s, elided, "")
+				s = strings.ReplaceAll(s, `"github.com/opentofu/opentofu/internal/providers"`, "")
+				return s
+			}),
 		},
 	}
 }
@@ -134,7 +167,7 @@ func ensureDirFor(path string) {
 
 func fetchRemote() string {
 	tmp := os.TempDir()
-	dir := filepath.Join(tmp, "terraform-"+terraformVer)
+	dir := filepath.Join(tmp, "opentofu-"+opentofuVer)
 	stat, err := os.Stat(dir)
 	if err != nil && !os.IsNotExist(err) {
 		log.Fatal(err)
@@ -143,7 +176,7 @@ func fetchRemote() string {
 		if err := os.Mkdir(dir, os.ModePerm); err != nil {
 			log.Fatal(err)
 		}
-		cmd := exec.Command("git", "clone", "-b", terraformVer, terraformRepo, dir)
+		cmd := exec.Command("git", "clone", "-b", opentofuVer, opentofuRepo, dir)
 		if err := cmd.Run(); err != nil {
 			log.Fatal(err)
 		}
@@ -172,7 +205,7 @@ func gofmtReplace(spec string) func(string) string {
 }
 
 func doNotEditWarning(code string) string {
-	return "// Code copied from " + terraformRepo + " by go generate; DO NOT EDIT.\n" + code
+	return "// Code copied from " + opentofuRepo + " by go generate; DO NOT EDIT.\n" + code
 }
 
 func fixupCodeTypeError(code string) string {

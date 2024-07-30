@@ -60,8 +60,10 @@ func runPulumiUpgrade(t T, res1, res2 *schema.Resource, config1, config2 any, di
 		opts = append(opts, pulcheck.DisablePlanResourceChange())
 	}
 
-	prov1 := pulcheck.BridgedProvider(t, defProviderShortName, map[string]*schema.Resource{defRtype: res1}, opts...)
-	prov2 := pulcheck.BridgedProvider(t, defProviderShortName, map[string]*schema.Resource{defRtype: res2}, opts...)
+	tfp1 := &schema.Provider{ResourcesMap: map[string]*schema.Resource{defRtype: res1}}
+	prov1 := pulcheck.BridgedProvider(t, defProviderShortName, tfp1, opts...)
+	tfp2 := &schema.Provider{ResourcesMap: map[string]*schema.Resource{defRtype: res2}}
+	prov2 := pulcheck.BridgedProvider(t, defProviderShortName, tfp2, opts...)
 
 	pd := &pulumiDriver{
 		name:                defProviderShortName,
