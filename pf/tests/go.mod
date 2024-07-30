@@ -2,6 +2,11 @@ module github.com/pulumi/pulumi-terraform-bridge/pf/tests
 
 go 1.21.12
 
+replace (
+	github.com/pulumi/pulumi-terraform-bridge/v3 => ../..
+	github.com/pulumi/pulumi-terraform-bridge/x/muxer => ../../x/muxer
+)
+
 require (
 	github.com/hashicorp/terraform-plugin-framework v1.6.0
 	github.com/hashicorp/terraform-plugin-go v0.22.0
