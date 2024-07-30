@@ -36,7 +36,7 @@ import (
 
 func TestMissingIDProperty(t *testing.T) {
 	stderr, err := test(t, tfbridge.ProviderInfo{
-		P: pfbridge.ShimProvider(testProvider{}),
+		P: pfbridge.ShimProvider(testProvider{missingID: true}),
 	})
 
 	assert.Equal(t, "error: Resource test_res has a problem: no \"id\" attribute. "+
@@ -45,9 +45,9 @@ func TestMissingIDProperty(t *testing.T) {
 	assert.ErrorContains(t, err, "There were 1 unresolved ID mapping errors")
 }
 
-func TestIDWithOverride(t *testing.T) {
+func TestMissingIDWithOverride(t *testing.T) {
 	stderr, err := test(t, tfbridge.ProviderInfo{
-		P: pfbridge.ShimProvider(testProvider{}),
+		P: pfbridge.ShimProvider(testProvider{missingID: true}),
 		Resources: map[string]*tfbridge.ResourceInfo{
 			"test_res": {ComputeID: func(context.Context, property.PropertyMap) (property.ID, error) {
 				panic("ComputeID")
@@ -59,11 +59,48 @@ func TestIDWithOverride(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestSensitiveID(t *testing.T) {
+	stderr, err := test(t, tfbridge.ProviderInfo{
+		P: pfbridge.ShimProvider(testProvider{sensitiveID: true}),
+	})
+
+	//nolint:lll
+	assert.Equal(t, "error: Resource test_res has a problem: \"id\" attribute is sensitive, but cannot be kept secret. To accept exposing ID, set `ProviderInfo.Resources[\"test_res\"].Fields[\"id\"].Secret = tfbridge.True()`\n", stderr)
+	assert.ErrorContains(t, err, "There were 1 unresolved ID mapping errors")
+}
+
+func TestSensitiveIDWithOverride(t *testing.T) {
+	t.Run("false", func(t *testing.T) {
+		stderr, err := test(t, tfbridge.ProviderInfo{
+			P: pfbridge.ShimProvider(testProvider{sensitiveID: true}),
+			Resources: map[string]*tfbridge.ResourceInfo{
+				"test_res": {Fields: map[string]*tfbridge.SchemaInfo{
+					"id": {Secret: tfbridge.False()},
+				}},
+			},
+		})
+		assert.Empty(t, stderr)
+		assert.NoError(t, err)
+	})
+	t.Run("true (no-op)", func(t *testing.T) {
+		stderr, err := test(t, tfbridge.ProviderInfo{
+			P: pfbridge.ShimProvider(testProvider{sensitiveID: true}),
+			Resources: map[string]*tfbridge.ResourceInfo{
+				"test_res": {Fields: map[string]*tfbridge.SchemaInfo{
+					"id": {Secret: tfbridge.True()},
+				}},
+			},
+		})
+		assert.NotEmpty(t, stderr)
+		assert.Error(t, err)
+	})
+}
+
 func TestMuxedProvider(t *testing.T) {
 	stderr, err := test(t, tfbridge.ProviderInfo{
 		P: pfbridge.MuxShimWithPF(context.Background(),
-			sdkv2.NewProvider(testSDKProvider()),
-			testProvider{}),
+			sdkv2.NewProvider(testSDKv2Provider()),
+			testProvider{missingID: true}),
 		Resources: map[string]*tfbridge.ResourceInfo{
 			"test_res": {ComputeID: func(context.Context, property.PropertyMap) (property.ID, error) {
 				panic("ComputeID")
@@ -90,14 +127,26 @@ func test(t *testing.T, info tfbridge.ProviderInfo) (string, error) {
 }
 
 type (
-	testProvider struct{ provider.Provider }
-	testResource struct{ resource.Resource }
+	testProvider struct {
+		provider.Provider
+
+		missingID, sensitiveID bool
+	}
+	testMissingIDResource   struct{ resource.Resource }
+	testSensitiveIDResource struct{ resource.Resource }
 )
 
-func (testProvider) Resources(context.Context) []func() resource.Resource {
-	return []func() resource.Resource{
-		func() resource.Resource { return testResource{} },
+func returnT[T any](t T) func() T { return func() T { return t } }
+
+func (p testProvider) Resources(context.Context) []func() resource.Resource {
+	var resources []func() resource.Resource
+	if p.missingID {
+		resources = append(resources, returnT[resource.Resource](testMissingIDResource{}))
 	}
+	if p.sensitiveID {
+		resources = append(resources, returnT[resource.Resource](testSensitiveIDResource{}))
+	}
+	return resources
 }
 
 func (testProvider) DataSources(context.Context) []func() datasource.DataSource { return nil }
@@ -106,19 +155,35 @@ func (testProvider) Metadata(_ context.Context, _ provider.MetadataRequest, req 
 	req.TypeName = "test"
 }
 
-func (testResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
+func (testMissingIDResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{}
 }
 
-func (testResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+func (testMissingIDResource) Metadata(
+	_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse,
+) {
 	resp.TypeName = req.ProviderTypeName + "_res"
 }
 
-func testSDKProvider() *sdkschema.Provider {
+func testSDKv2Provider() *sdkschema.Provider {
 	return &sdkschema.Provider{
 		ResourcesMap: map[string]*sdkschema.Resource{
 			"test_sdk": {},
 		},
 		DataSourcesMap: map[string]*sdkschema.Resource{},
 	}
+}
+
+func (testSensitiveIDResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		Attributes: map[string]schema.Attribute{
+			"id": schema.StringAttribute{Computed: true, Sensitive: true},
+		},
+	}
+}
+
+func (testSensitiveIDResource) Metadata(
+	_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse,
+) {
+	resp.TypeName = req.ProviderTypeName + "_res"
 }

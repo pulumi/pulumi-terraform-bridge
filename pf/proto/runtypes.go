@@ -45,6 +45,11 @@ type schema struct{ s *tfprotov6.Schema }
 
 var _ = runtypes.Schema(schema{})
 
+func (s schema) ResourceProtoSchema(ctx context.Context) (*tfprotov6.Schema, error) {
+	// Technically this will return non-nil even when s is not a resource schema, but that is OK currently.
+	return s.s, nil
+}
+
 func (s schema) ApplyTerraform5AttributePathStep(step tftypes.AttributePathStep) (interface{}, error) {
 	return s.s.ValueType().ApplyTerraform5AttributePathStep(step)
 }

@@ -82,7 +82,7 @@ func EnsureProviderValid(prov *Provider) {
 		}
 		if r.UpdateFunc == nil {
 			r.UpdateFunc = func(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-				resp.State = tfsdk.State(req.Config)
+				resp.State = tfsdk.State(req.Plan)
 			}
 		}
 	}
