@@ -21,6 +21,7 @@ import (
 	dschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	pschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 )
 
@@ -44,37 +45,36 @@ type Schema interface {
 	Blocks() map[string]Block
 
 	DeprecationMessage() string
+	ResourceProtoSchema(ctx context.Context) (*tfprotov6.Schema, error)
 }
 
 func FromProviderSchema(x pschema.Schema) Schema {
 	attrs := convertMap(FromProviderAttribute, x.Attributes)
 	blocks := convertMap(FromProviderBlock, x.Blocks)
-	// Provider schemas cannot be versioned, see also x.GetVersion() always returning 0.
-	version := int64(0)
-	return newSchemaAdapter(x, x.Type(), x.DeprecationMessage, attrs, blocks, version)
+	return newSchemaAdapter(x, x.Type(), x.DeprecationMessage, attrs, blocks, nil)
 }
 
 func FromDataSourceSchema(x dschema.Schema) Schema {
 	attrs := convertMap(FromDataSourceAttribute, x.Attributes)
 	blocks := convertMap(FromDataSourceBlock, x.Blocks)
-	// Data source schemas cannot be versioned, see also x.GetVersion() always returning 0.
-	version := int64(0)
-	return newSchemaAdapter(x, x.Type(), x.DeprecationMessage, attrs, blocks, version)
+	return newSchemaAdapter(x, x.Type(), x.DeprecationMessage, attrs, blocks, nil)
 }
 
 func FromResourceSchema(x rschema.Schema) Schema {
 	attrs := convertMap(FromResourceAttribute, x.Attributes)
 	blocks := convertMap(FromResourceBlock, x.Blocks)
-	return newSchemaAdapter(x, x.Type(), x.DeprecationMessage, attrs, blocks, x.Version)
+	return newSchemaAdapter(x, x.Type(), x.DeprecationMessage, attrs, blocks, &x)
 }
 
 type schemaAdapter struct {
 	tftypes.AttributePathStepper
-	attrType              attr.Type
-	deprecationMessage    string
-	attrs                 map[string]Attr
-	blocks                map[string]Block
-	resourceSchemaVersion int64
+	attrType           attr.Type
+	deprecationMessage string
+	attrs              map[string]Attr
+	blocks             map[string]Block
+
+	// Will only be non-nil for resources.
+	resourceSchema *rschema.Schema
 }
 
 var _ Schema = (*schemaAdapter)(nil)
@@ -85,20 +85,30 @@ func newSchemaAdapter(
 	deprecationMessage string,
 	attrs map[string]Attr,
 	blocks map[string]Block,
-	resourceSchemaVersion int64,
+	resourceSchema *rschema.Schema,
 ) *schemaAdapter {
 	return &schemaAdapter{
-		AttributePathStepper:  stepper,
-		attrType:              t,
-		deprecationMessage:    deprecationMessage,
-		attrs:                 attrs,
-		blocks:                blocks,
-		resourceSchemaVersion: resourceSchemaVersion,
+		AttributePathStepper: stepper,
+		attrType:             t,
+		deprecationMessage:   deprecationMessage,
+		attrs:                attrs,
+		blocks:               blocks,
+		resourceSchema:       resourceSchema,
 	}
 }
 
+func (a *schemaAdapter) ResourceProtoSchema(ctx context.Context) (*tfprotov6.Schema, error) {
+	if a.resourceSchema != nil {
+		return convertResourceSchemaToProto(ctx, a.resourceSchema)
+	}
+	return nil, nil
+}
+
 func (a *schemaAdapter) ResourceSchemaVersion() int64 {
-	return a.resourceSchemaVersion
+	if a.resourceSchema != nil {
+		return a.resourceSchema.Version
+	}
+	return 0
 }
 
 func (a *schemaAdapter) DeprecationMessage() string {

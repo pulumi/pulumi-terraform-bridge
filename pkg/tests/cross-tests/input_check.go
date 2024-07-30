@@ -56,7 +56,8 @@ func runCreateInputCheck(t T, tc inputTestCase) {
 	tfd.writePlanApply(t, tc.Resource.Schema, defRtype, "example", tc.Config)
 
 	resMap := map[string]*schema.Resource{defRtype: tc.Resource}
-	bridgedProvider := pulcheck.BridgedProvider(t, defProviderShortName, resMap)
+	tfp := &schema.Provider{ResourcesMap: resMap}
+	bridgedProvider := pulcheck.BridgedProvider(t, defProviderShortName, tfp)
 	pd := &pulumiDriver{
 		name:                defProviderShortName,
 		pulumiResourceToken: defRtoken,
