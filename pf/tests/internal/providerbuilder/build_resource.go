@@ -30,6 +30,7 @@ type Resource struct {
 	UpdateFunc      func(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse)
 	DeleteFunc      func(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse)
 	ImportStateFunc func(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse)
+	ModifyPlanFunc func(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse)
 }
 
 func (r *Resource) Metadata(ctx context.Context, req resource.MetadataRequest, re *resource.MetadataResponse) {
@@ -75,4 +76,12 @@ func (r *Resource) ImportState(ctx context.Context, req resource.ImportStateRequ
 	r.ImportStateFunc(ctx, req, resp)
 }
 
+func (r *Resource) ModifyPlan(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+    if r.ModifyPlanFunc == nil {
+		return
+	}
+	r.ModifyPlanFunc(ctx, req, resp)
+}
+
 var _ resource.ResourceWithImportState = &Resource{}
+var _ resource.ResourceWithModifyPlan = &Resource{}

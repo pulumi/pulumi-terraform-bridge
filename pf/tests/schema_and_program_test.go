@@ -263,6 +263,21 @@ func TestImportAndRefreshWithDefaultAndIgnoreChanges(t *testing.T) {
 					resp.State.SetAttribute(ctx, path.Root("id"), "test-id")
 					resp.State.SetAttribute(ctx, path.Root("other_prop"), "val")
 				},
+				ModifyPlanFunc: func(ctx context.Context, req resource.ModifyPlanRequest, resp *resource.ModifyPlanResponse) {
+					var planReason, stateReason string
+					var planOther, stateOther string
+
+					req.Plan.GetAttribute(ctx, path.Root("change_reason"), &planReason)
+					req.State.GetAttribute(ctx, path.Root("change_reason"), &stateReason)
+
+					req.Plan.GetAttribute(ctx, path.Root("other_prop"), &planOther)
+					req.State.GetAttribute(ctx, path.Root("other_prop"), &stateOther)
+
+					if planReason != stateReason && planOther == stateOther {
+						// change reason is the only diff
+						resp.Plan.SetAttribute(ctx, path.Root("change_reason"), stateReason)
+					}
+				},
 			},
 		},
 	}
@@ -296,8 +311,6 @@ resources:
         type: prov:index:Test
         properties:
             otherProp: "val"
-        options:
-            ignoreChanges: ["changeReason"]
 outputs:
     changeReason: ${mainRes.changeReason}`
 
@@ -328,7 +341,6 @@ resources:
             otherProp: "val"
         options:
             import: new-id
-            ignoreChanges: ["changeReason"]
 `
 		pulumiYamlPath := filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml")
 
