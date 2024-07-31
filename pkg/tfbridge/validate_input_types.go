@@ -230,6 +230,9 @@ func (v *PulumiInputValidator) validatePropertyValue(
 			objectValue := propertyValue.ObjectValue()
 			failures := []TypeFailure{}
 			for _, propertyKey := range objectValue.StableKeys() {
+				if strings.HasPrefix(string(propertyKey), "__") {
+					continue
+				}
 				pb := append(propertyPath, string(propertyKey))
 				failure := v.validatePropertyValue(objectValue[propertyKey], *typeSpec.AdditionalProperties, pb)
 				if failure != nil {

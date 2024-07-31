@@ -18,10 +18,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
-	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hexops/autogold/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -104,7 +104,7 @@ func TestCheckConfig(t *testing.T) {
 				},
 				"scopes": schema.ListAttribute{
 					Optional:    true,
-					ElementType: types.StringType,
+					ElementType: basetypes.StringType{},
 				},
 			},
 		}
@@ -328,7 +328,7 @@ func TestCheckConfig(t *testing.T) {
 			Attributes: map[string]schema.Attribute{
 				"scopes": schema.ListAttribute{
 					Optional:    true,
-					ElementType: types.StringType,
+					ElementType: basetypes.StringType{},
 				},
 			},
 			Blocks: map[string]schema.Block{
@@ -405,7 +405,7 @@ func TestCheckConfig(t *testing.T) {
 			Attributes: map[string]schema.Attribute{
 				"scopes": schema.ListAttribute{
 					Optional:    true,
-					ElementType: types.StringType,
+					ElementType: basetypes.StringType{},
 				},
 			},
 			Blocks: map[string]schema.Block{

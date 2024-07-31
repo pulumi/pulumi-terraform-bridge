@@ -30,6 +30,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/stretchr/testify/require"
 	"sourcegraph.com/sourcegraph/appdash"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/testutil"
 )
 
 func TestBasicProgram(t *testing.T) {
@@ -223,6 +225,9 @@ func TestResourceWithoutID(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Env: []string{fmt.Sprintf("PATH=%s", bin)},
 		Dir: filepath.Join("..", "testdata", "resource-without-id"),
+		LocalProviders: []integration.LocalDependency{
+			testutil.RandomProvider(t),
+		},
 	})
 }
 

@@ -96,9 +96,15 @@ func SyntheticTestBridgeProvider() tfbridge.ProviderInfo {
 				},
 			},
 
-			"testbridge_privst":         {Tok: "testbridge:index/testres:Privst"},
-			"testbridge_autoname_res":   {Tok: "testbridge:index/testres:AutoNameRes"},
+			"testbridge_privst":       {Tok: "testbridge:index/testres:Privst"},
+			"testbridge_autoname_res": {Tok: "testbridge:index/testres:AutoNameRes"},
 			"testbridge_vlan_names_res": {Tok: "testbridge:index/testres:VlanNamesRes"},
+			"testbridge_int_id_res": {
+				Tok: "testbridge:index/intID:IntID",
+				Fields: map[string]*tfbridge.SchemaInfo{
+					"id": {Type: "string"},
+				},
+			},
 		},
 
 		DataSources: map[string]*tfbridge.DataSourceInfo{
@@ -210,5 +216,6 @@ func (p *syntheticProvider) Resources(context.Context) []func() resource.Resourc
 		newPrivst,
 		newAutoNameRes,
 		newVlanNamesRes,
+		newIntIDRes,
 	}
 }

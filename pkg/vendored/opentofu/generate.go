@@ -25,12 +25,19 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 //go:generate go run generate.go
 
-const terraformRepo = "https://github.com/opentofu/opentofu.git"
-const terraformVer = "v1.7.2"
+const (
+	oldPkg       = "github.com/opentofu/opentofu"
+	newPkg       = "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/opentofu"
+	protoPkg     = "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/tfplugin6"
+	opentofuRepo = "https://github.com/opentofu/opentofu.git"
+	opentofuVer  = "v1.7.2"
+)
 
 type file struct {
 	src        string
@@ -48,16 +55,23 @@ func main() {
 }
 
 func files() []file {
-	oldPkg := "github.com/opentofu/opentofu"
-	newPkg := "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2/internal/tf"
 
-	replacePkg := gofmtReplace(fmt.Sprintf(`"%s/internal/configs/configschema" -> "%s/configs/configschema"`,
-		oldPkg, newPkg))
+	replacePkg := gofmtReplace(fmt.Sprintf(
+		`"%s/internal/configs/configschema" -> "%s/configs/configschema"`,
+		oldPkg, newPkg,
+	))
+
+	fixupTFPlugin6Ref := gofmtReplace(fmt.Sprintf(
+		`"%s" -> "%s"`,
+		fmt.Sprintf("%s/internal/tfplugin6", oldPkg),
+		protoPkg,
+	))
 
 	transforms := []func(string) string{
 		replacePkg,
 		doNotEditWarning,
 		fixupCodeTypeError,
+		fixupTFPlugin6Ref,
 	}
 
 	return []file{
@@ -95,14 +109,35 @@ func files() []file {
 			transforms: transforms,
 		},
 		{
+			src:        "internal/configs/configschema/nestingmode_string.go",
+			dest:       "configs/configschema/nestingmode_string.go",
+			transforms: transforms,
+		},
+		{
 			src:        "internal/plans/objchange/objchange.go",
 			dest:       "plans/objchange/objchange.go",
-			transforms: transforms,
+			transforms: append(transforms, patchProposedNewForUnknownBlocks),
 		},
 		{
 			src:        "internal/plans/objchange/plan_valid.go",
 			dest:       "plans/objchange/plan_valid.go",
 			transforms: transforms,
+		},
+		{
+			src:  "internal/plugin6/convert/schema.go",
+			dest: "convert/schema.go",
+			transforms: append(transforms, func(s string) string {
+				elided :=
+					`func ProtoToProviderSchema(s *proto.Schema) providers.Schema {
+	return providers.Schema{
+		Version: s.Version,
+		Block:   ProtoToConfigSchema(s.Block),
+	}
+}`
+				s = strings.ReplaceAll(s, elided, "")
+				s = strings.ReplaceAll(s, `"github.com/opentofu/opentofu/internal/providers"`, "")
+				return s
+			}),
 		},
 	}
 }
@@ -132,7 +167,7 @@ func ensureDirFor(path string) {
 
 func fetchRemote() string {
 	tmp := os.TempDir()
-	dir := filepath.Join(tmp, "terraform-"+terraformVer)
+	dir := filepath.Join(tmp, "opentofu-"+opentofuVer)
 	stat, err := os.Stat(dir)
 	if err != nil && !os.IsNotExist(err) {
 		log.Fatal(err)
@@ -141,7 +176,7 @@ func fetchRemote() string {
 		if err := os.Mkdir(dir, os.ModePerm); err != nil {
 			log.Fatal(err)
 		}
-		cmd := exec.Command("git", "clone", "-b", terraformVer, terraformRepo, dir)
+		cmd := exec.Command("git", "clone", "-b", opentofuVer, opentofuRepo, dir)
 		if err := cmd.Run(); err != nil {
 			log.Fatal(err)
 		}
@@ -170,11 +205,35 @@ func gofmtReplace(spec string) func(string) string {
 }
 
 func doNotEditWarning(code string) string {
-	return "// Code copied from " + terraformRepo + " by go generate; DO NOT EDIT.\n" + code
+	return "// Code copied from " + opentofuRepo + " by go generate; DO NOT EDIT.\n" + code
 }
 
 func fixupCodeTypeError(code string) string {
 	before := `panic(fmt.Sprintf("unsupported block nesting mode %s"`
 	after := `panic(fmt.Sprintf("unsupported block nesting mode %v"`
 	return strings.ReplaceAll(code, before, after)
+}
+
+// This patch introduces a change in behavior for the vendored objchange.ProposedNew algorithm. Before the change,
+// planning a block change where config is entirely unknown used to pick the prior state. After the change it picks the
+// unknown. This is especially interesting when planning set-nested blocks, as when the algorithm fails to find a
+// matching set element in priorState it will send prior=null instead, and proceed to substitute null with an empty
+// value matching the block structure. Without the patch, this empty value will be selected over the unknown and
+// surfaced to Pulumi users, which is confusing.
+//
+// See TestUnknowns test suite and the "unknown for set block prop" test case.
+//
+// TODO[pulumi/pulumi-terraform-bridge#2247] revisit this patch.
+func patchProposedNewForUnknownBlocks(goCode string) string {
+	oldCode := `func proposedNew(schema *configschema.Block, prior, config cty.Value) cty.Value {
+	if config.IsNull() || !config.IsKnown() {`
+
+	newCode := `func proposedNew(schema *configschema.Block, prior, config cty.Value) cty.Value {
+	if !config.IsKnown() {
+		return config
+	}
+	if config.IsNull() {`
+	updatedGoCode := strings.Replace(goCode, oldCode, newCode, 1)
+	contract.Assertf(updatedGoCode != oldCode, "patchProposedNewForUnknownBlocks failed to apply")
+	return updatedGoCode
 }

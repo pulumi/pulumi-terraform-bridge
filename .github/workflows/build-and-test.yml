@@ -5,11 +5,9 @@ on:
     inputs: {}
     secrets:
       CODECOV_TOKEN:
-        required: true
-      PULUMI_BOT_TOKEN:
-        required: true
+        required: false
 env:
-  GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
   test:
@@ -47,6 +45,11 @@ jobs:
       - name: Test Dynamic
         run: cd dynamic && make test
       - name: Upload coverage reports to Codecov
+        # If we have a CODECOV_TOKEN secret, then we upload it to get a coverage report.
+        #
+        # Community contributors do not have access to the CODECOV_TOKEN, so we just skip
+        # this step.
+        if: ${{ env.CODECOV_TOKEN != '' }}
         uses: codecov/codecov-action@v4
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

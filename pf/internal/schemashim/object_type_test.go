@@ -22,7 +22,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -33,7 +33,7 @@ import (
 func TestObjectAttribute(t *testing.T) {
 	objectAttr := schema.ObjectAttribute{
 		AttributeTypes: map[string]attr.Type{
-			"s": types.StringType,
+			"s": basetypes.StringType{},
 		},
 	}
 	shimmed := &attrSchema{"key", pfutils.FromAttrLike(objectAttr)}
@@ -44,7 +44,7 @@ func TestObjectAttribute(t *testing.T) {
 
 func TestTypeSchemaDescriptionIsEmpty(t *testing.T) {
 	shimmedType := &typeSchema{
-		t:      types.StringType,
+		t:      basetypes.StringType{},
 		nested: nil,
 	}
 	assert.Equal(t, shimmedType.Description(), "")

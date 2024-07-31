@@ -15,7 +15,7 @@
 package proto
 
 import (
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	// "github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
@@ -36,8 +36,16 @@ func (pseudoResource) DecodeTimeouts(config shim.ResourceConfig) (*shim.Resource
 func getSchemaMap[T any](m interface {
 	GetOk(string) (T, bool)
 }, key string) T {
-	v, ok := m.GetOk(key)
-	contract.Assertf(ok, "Could not find key %q", key)
+	v, _ := m.GetOk(key)
+	// Some functions (such as terraformToPulumiName; link: [1]) do not correctly use
+	// GetOk, so we can't panic on Get for a missing value, even though that is the
+	// point of Get.
+	//
+	// [^1]: https://github.com/pulumi/pulumi-terraform-bridge/blob/08338be75eedce29c4c2349109d72edc8a38930d/pkg/tfbridge/names.go#L154-L158
+	//
+	// contract.Assertf(ok, "Could not find key %q", key)
+	//
+	//nolint:lll
 	return v
 }
 

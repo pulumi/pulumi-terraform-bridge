@@ -1,8 +1,17 @@
 SHELL            := sh
 PROJECT          := github.com/pulumi/pulumi-terraform-bridge
 TESTPARALLELISM  := 10
+export PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION := true
 
 PROJECT_DIR := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
+
+install_plugins::
+	pulumi plugin install converter terraform 1.0.18
+	pulumi plugin install resource random 4.16.3
+	pulumi plugin install resource aws 6.22.2
+	pulumi plugin install resource archive 0.0.4
+	pulumi plugin install resource wavefront 3.0.0
+	pulumi plugin install resource equinix 0.6.0 --server github://api.github.com/equinix
 
 build::
 	go mod tidy
@@ -19,7 +28,7 @@ lint:
 lint_fix:
 	go run scripts/build.go fix-lint
 
-test::
+test:: install_plugins
 	@mkdir -p bin
 	go build -o bin ./internal/testing/pulumi-terraform-bridge-test-provider
 	PULUMI_TERRAFORM_BRIDGE_TEST_PROVIDER=$(shell pwd)/bin/pulumi-terraform-bridge-test-provider \

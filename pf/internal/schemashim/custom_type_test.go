@@ -20,7 +20,6 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
-	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/stretchr/testify/assert"
 
@@ -31,7 +30,7 @@ import (
 // This example is taken from aws:resourceexplorer/index:Index "timeouts" property.
 func TestCustomTypeEmbeddingObjectType(t *testing.T) {
 	type timeoutsType struct {
-		types.ObjectType
+		basetypes.ObjectType
 	}
 
 	raw := schema.SingleNestedBlock{
@@ -41,11 +40,11 @@ func TestCustomTypeEmbeddingObjectType(t *testing.T) {
 			"update": schema.StringAttribute{},
 		},
 		CustomType: timeoutsType{
-			ObjectType: types.ObjectType{
+			ObjectType: basetypes.ObjectType{
 				AttrTypes: map[string]attr.Type{
-					"create": types.StringType,
-					"read":   types.StringType,
-					"update": types.StringType,
+					"create": basetypes.StringType{},
+					"read":   basetypes.StringType{},
+					"update": basetypes.StringType{},
 				},
 			},
 		},
@@ -65,7 +64,7 @@ func TestCustomListType(t *testing.T) {
 	ctx := context.Background()
 
 	raw := schema.ListNestedBlock{
-		CustomType: newListNestedObjectTypeOf[searchFilterModel](ctx, types.ObjectType{
+		CustomType: newListNestedObjectTypeOf[searchFilterModel](ctx, basetypes.ObjectType{
 			AttrTypes: map[string]attr.Type{
 				"filter_string": basetypes.StringType{},
 			},
@@ -93,7 +92,7 @@ func TestCustomListAttribute(t *testing.T) {
 	ctx := context.Background()
 
 	raw := schema.ListNestedAttribute{
-		CustomType: newListNestedObjectTypeOf[searchFilterModel](ctx, types.ObjectType{
+		CustomType: newListNestedObjectTypeOf[searchFilterModel](ctx, basetypes.ObjectType{
 			AttrTypes: map[string]attr.Type{
 				"filter_string": basetypes.StringType{},
 			},
@@ -121,7 +120,7 @@ func TestCustomSetType(t *testing.T) {
 	ctx := context.Background()
 
 	raw := schema.SetNestedBlock{
-		CustomType: newSetNestedObjectTypeOf[searchFilterModel](ctx, types.ObjectType{
+		CustomType: newSetNestedObjectTypeOf[searchFilterModel](ctx, basetypes.ObjectType{
 			AttrTypes: map[string]attr.Type{
 				"filter_string": basetypes.StringType{},
 			},
@@ -146,7 +145,7 @@ func TestCustomSetType(t *testing.T) {
 }
 
 type searchFilterModel struct {
-	FilterString types.String `tfsdk:"filter_string"`
+	FilterString basetypes.StringType `tfsdk:"filter_string"`
 }
 
 type listNestedObjectTypeOf[T any] struct {

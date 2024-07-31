@@ -57,15 +57,13 @@ func checkIDProperties(sink diag.Sink, info tfbridge.ProviderInfo, isPFResource 
 		if resourceHasComputeID(info, rname) {
 			return true
 		}
-		ok, reason := resourceHasRegularID(resource)
-		if ok {
+		err := resourceHasRegularID(rname, resource, info.Resources[rname])
+		if err == nil {
 			return true
 		}
-		m := fmt.Sprintf("Resource %s has a problem: %s. "+
-			"To map this resource consider specifying ResourceInfo.ComputeID",
-			rname, reason)
+
 		errors++
-		sink.Errorf(&diag.Diag{Message: m})
+		sink.Errorf(&diag.Diag{Message: resourceError{rname, err}.Error()})
 
 		return true
 	})
@@ -77,18 +75,79 @@ func checkIDProperties(sink diag.Sink, info tfbridge.ProviderInfo, isPFResource 
 	return nil
 }
 
-func resourceHasRegularID(resource shim.Resource) (bool, string) {
+type resourceError struct {
+	token string
+	err   error
+}
+
+func (err resourceError) Error() string {
+	msg := fmt.Sprintf("Resource %s has a problem", err.token)
+	if err.err != nil {
+		msg += ": " + err.err.Error()
+	}
+	return msg
+}
+
+type errSensitiveID struct {
+	token string
+}
+
+func (err errSensitiveID) Error() string {
+	msg := `"id" attribute is sensitive, but cannot be kept secret.`
+	if err.token != "" {
+		msg += fmt.Sprintf(
+			" To accept exposing ID, set `ProviderInfo.Resources[%q].Fields[%q].Secret = tfbridge.True()`",
+			err.token, "id")
+	}
+	return msg
+}
+
+type errWrongIDType struct {
+	actualType string
+}
+
+func (err errWrongIDType) Error() string {
+	msg := `"id" attribute is not of type "string"`
+	const postfix = ". To map this resource consider overriding the SchemaInfo.Type" +
+		" field or specifying ResourceInfo.ComputeID"
+	if err.actualType != "" {
+		msg = fmt.Sprintf(
+			`"id" attribute is of type %q, expected type "string"`,
+			err.actualType)
+	}
+	return msg + postfix
+}
+
+type errMissingIDAttribute struct{}
+
+func (errMissingIDAttribute) Error() string {
+	return `no "id" attribute. To map this resource consider specifying ResourceInfo.ComputeID`
+}
+
+func resourceHasRegularID(rname string, resource shim.Resource, resourceInfo *tfbridge.ResourceInfo) error {
 	idSchema, gotID := resource.Schema().GetOk("id")
 	if !gotID {
-		return false, `no "id" attribute`
+		return errMissingIDAttribute{}
 	}
-	if idSchema.Type() != shim.TypeString {
-		return false, `"id" attribute is not of type String`
+	var info tfbridge.SchemaInfo
+	if resourceInfo != nil {
+		if id := resourceInfo.Fields["id"]; id != nil {
+			info = *id
+		}
 	}
-	if idSchema.Sensitive() {
-		return false, `"id" attribute is sensitive`
+
+	// If the user over-rode the type to be a string, don't reject.
+	if idSchema.Type() != shim.TypeString && info.Type != "string" {
+		actual := idSchema.Type().String()
+		if info.Type != "" {
+			actual = string(info.Type)
+		}
+		return errWrongIDType{actualType: actual}
 	}
-	return true, ""
+	if idSchema.Sensitive() && (info.Secret == nil || *info.Secret) {
+		return errSensitiveID{rname}
+	}
+	return nil
 }
 
 func resourceHasComputeID(info tfbridge.ProviderInfo, resname string) bool {

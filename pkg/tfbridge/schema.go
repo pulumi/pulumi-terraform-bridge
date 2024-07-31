@@ -33,7 +33,6 @@ import (
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
-	shimutil "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/util"
 )
 
 // This file deals with translating between the Pulumi representations of a resource's configuration and state and the
@@ -287,18 +286,19 @@ func elemSchemas(sch shim.Schema, ps *SchemaInfo) (shim.Schema, *SchemaInfo) {
 }
 
 type conversionContext struct {
-	Ctx                      context.Context
-	ComputeDefaultOptions    ComputeDefaultOptions
-	ProviderConfig           resource.PropertyMap
-	ApplyDefaults            bool
-	ApplyTFDefaults          bool
-	ApplyMaxItemsOneDefaults bool
-	Assets                   AssetTable
+	Ctx                         context.Context
+	ComputeDefaultOptions       ComputeDefaultOptions
+	ProviderConfig              resource.PropertyMap
+	ApplyDefaults               bool
+	ApplyTFDefaults             bool
+	Assets                      AssetTable
+	UnknownCollectionsSupported bool
 }
 
 type makeTerraformInputsOptions struct {
-	DisableDefaults   bool
-	DisableTFDefaults bool
+	DisableDefaults             bool
+	DisableTFDefaults           bool
+	UnknownCollectionsSupported bool
 }
 
 func makeTerraformInputsWithOptions(
@@ -317,12 +317,13 @@ func makeTerraformInputsWithOptions(
 	}
 
 	cctx := &conversionContext{
-		Ctx:                   ctx,
-		ComputeDefaultOptions: cdOptions,
-		ProviderConfig:        config,
-		ApplyDefaults:         !opts.DisableDefaults,
-		ApplyTFDefaults:       !opts.DisableTFDefaults,
-		Assets:                AssetTable{},
+		Ctx:                         ctx,
+		ComputeDefaultOptions:       cdOptions,
+		ProviderConfig:              config,
+		ApplyDefaults:               !opts.DisableDefaults,
+		ApplyTFDefaults:             !opts.DisableTFDefaults,
+		Assets:                      AssetTable{},
+		UnknownCollectionsSupported: opts.UnknownCollectionsSupported,
 	}
 
 	inputs, err := cctx.makeTerraformInputs(olds, news, tfs, ps)
@@ -332,6 +333,7 @@ func makeTerraformInputsWithOptions(
 	return inputs, cctx.Assets, err
 }
 
+// Deprecated: missing some important functionality, use makeTerraformInputsWithOptions instead.
 func MakeTerraformInputs(
 	ctx context.Context, instance *PulumiResource, config resource.PropertyMap,
 	olds, news resource.PropertyMap, tfs shim.SchemaMap, ps map[string]*SchemaInfo,
@@ -494,8 +496,6 @@ func (ctx *conversionContext) makeTerraformInput(
 
 		var tfflds shim.SchemaMap
 
-		// We cannot use [shimutil.CastToTypeObject] because we have machinery that constructs invalid
-		// resource objects, such as [elemSchemas].
 		if tfs != nil {
 			if r, ok := tfs.Elem().(shim.Resource); ok {
 				tfflds = r.Schema()
@@ -530,7 +530,7 @@ func (ctx *conversionContext) makeTerraformInput(
 		// If any variables are unknown, we need to mark them in the inputs so the config map treats it right.  This
 		// requires the use of the special UnknownVariableValue sentinel in Terraform, which is how it internally stores
 		// interpolated variables whose inputs are currently unknown.
-		return makeTerraformUnknown(tfs), nil
+		return makeTerraformUnknown(tfs, ctx.UnknownCollectionsSupported), nil
 	default:
 		contract.Failf("Unexpected value marshaled: %v", v)
 		return nil, nil
@@ -642,18 +642,6 @@ func (ctx *conversionContext) makeObjectTerraformInputs(
 	// Now enumerate and propagate defaults if the corresponding values are still missing.
 	if err := ctx.applyDefaults(result, olds, news, tfs, ps); err != nil {
 		return nil, err
-	}
-
-	if tfs != nil && ctx.ApplyMaxItemsOneDefaults {
-		// Iterate over the TF schema and add an empty array for each nil MaxItemsOne property.
-		tfs.Range(func(key string, value shim.Schema) bool {
-			// First do a lookup of the name/info.
-			_, tfi, psi := getInfoFromTerraformName(key, tfs, ps, false)
-			if IsMaxItemsOne(tfi, psi) && result[key] == nil {
-				result[key] = []interface{}{}
-			}
-			return true
-		})
 	}
 
 	if glog.V(5) {
@@ -969,13 +957,13 @@ func makeTerraformUnknownElement(elem interface{}) interface{} {
 	switch e := elem.(type) {
 	case shim.Schema:
 		// If the element uses a normal schema, defer to makeTerraformUnknown.
-		return makeTerraformUnknown(e)
+		return makeTerraformUnknown(e, false)
 	case shim.Resource:
 		// If the element uses a resource schema, fill in unknown values for any required properties.
 		res := make(map[string]interface{})
 		e.Schema().Range(func(k string, v shim.Schema) bool {
 			if v.Required() {
-				res[k] = makeTerraformUnknown(v)
+				res[k] = makeTerraformUnknown(v, false)
 			}
 			return true
 		})
@@ -989,7 +977,10 @@ func makeTerraformUnknownElement(elem interface{}) interface{} {
 //
 // It is important that we use the TF schema (if available) to decide what shape the unknown value should have:
 // e.g. TF does not play nicely with unknown lists, instead expecting a list of unknowns.
-func makeTerraformUnknown(tfs shim.Schema) interface{} {
+func makeTerraformUnknown(tfs shim.Schema, unknownCollectionsSupported bool) interface{} {
+	if unknownCollectionsSupported {
+		return TerraformUnknownVariableValue
+	}
 	if tfs == nil {
 		return TerraformUnknownVariableValue
 	}
@@ -1233,7 +1224,8 @@ func MakeTerraformOutput(
 func MakeTerraformConfig(ctx context.Context, p *Provider, m resource.PropertyMap,
 	tfs shim.SchemaMap, ps map[string]*SchemaInfo) (shim.ResourceConfig, AssetTable, error) {
 	inputs, assets, err := makeTerraformInputsWithOptions(ctx, nil, p.configValues, nil, m, tfs, ps,
-		makeTerraformInputsOptions{DisableDefaults: true, DisableTFDefaults: true})
+		makeTerraformInputsOptions{DisableDefaults: true, DisableTFDefaults: true,
+			UnknownCollectionsSupported: p.tf.SupportsUnknownCollections()})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1241,7 +1233,7 @@ func MakeTerraformConfig(ctx context.Context, p *Provider, m resource.PropertyMa
 }
 
 // UnmarshalTerraformConfig creates a Terraform config map from a Pulumi RPC property map.
-// Unused internally.
+// Deprecated: use MakeTerraformConfig instead.
 func UnmarshalTerraformConfig(ctx context.Context, p *Provider, m *pbstruct.Struct,
 	tfs shim.SchemaMap, ps map[string]*SchemaInfo,
 	label string) (shim.ResourceConfig, AssetTable, error) {
@@ -1289,7 +1281,8 @@ func MakeTerraformConfigFromInputs(
 }
 
 type makeTerraformStateOptions struct {
-	defaultZeroSchemaVersion bool
+	defaultZeroSchemaVersion    bool
+	unknownCollectionsSupported bool
 }
 
 func makeTerraformStateWithOpts(
@@ -1317,7 +1310,7 @@ func makeTerraformStateWithOpts(
 	// ints, to represent numbers.
 	inputs, _, err := makeTerraformInputsWithOptions(ctx, nil, nil, nil, m, res.TF.Schema(), res.Schema.Fields,
 		makeTerraformInputsOptions{
-			DisableDefaults: true, DisableTFDefaults: true,
+			DisableDefaults: true, DisableTFDefaults: true, UnknownCollectionsSupported: opts.unknownCollectionsSupported,
 		})
 	if err != nil {
 		return nil, err
@@ -1329,7 +1322,7 @@ func makeTerraformStateWithOpts(
 // MakeTerraformState converts a Pulumi property bag into its Terraform equivalent.  This requires
 // flattening everything and serializing individual properties as strings.  This is a little awkward, but it's how
 // Terraform represents resource properties (schemas are simply sugar on top).
-// Prefer makeTerraformStateWithOpts for internal use.
+// Deprecated: Use makeTerraformStateWithOpts instead.
 func MakeTerraformState(
 	ctx context.Context, res Resource, id string, m resource.PropertyMap,
 ) (shim.InstanceState, error) {
@@ -1337,7 +1330,8 @@ func MakeTerraformState(
 }
 
 type unmarshalTerraformStateOptions struct {
-	defaultZeroSchemaVersion bool
+	defaultZeroSchemaVersion    bool
+	unknownCollectionsSupported bool
 }
 
 func unmarshalTerraformStateWithOpts(
@@ -1363,7 +1357,7 @@ func unmarshalTerraformStateWithOpts(
 }
 
 // UnmarshalTerraformState unmarshals a Terraform instance state from an RPC property map.
-// Prefer unmarshalTerraformStateWithOpts for internal use.
+// Deprecated: Use unmarshalTerraformStateWithOpts instead.
 func UnmarshalTerraformState(
 	ctx context.Context, r Resource, id string, m *pbstruct.Struct, l string,
 ) (shim.InstanceState, error) {
@@ -1722,9 +1716,9 @@ func extractSchemaInputs(
 		return resource.NewArrayProperty(v)
 	case state.IsObject():
 		obj := state.ObjectValue()
-		if tfflds, ok := shimutil.CastToTypeObject(tfs); ok {
+		if tfflds, ok := tfs.Elem().(shim.Resource); ok {
 			return resource.NewProperty(
-				extractSchemaInputsObject(obj, tfflds, ps.Fields),
+				extractSchemaInputsObject(obj, tfflds.Schema(), ps.Fields),
 			)
 		}
 

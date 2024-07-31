@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -844,6 +843,23 @@ content 2`
 	}
 
 	runTest(gcpDoc2, gcpDoc2Expected)
+
+	misformattedDocNoPanic := `## jetstream_kv_entry Resource
+content
+### Example
+content`
+
+	misformattedDocsExpected := [][]string{
+		nil,
+		{
+			"## jetstream_kv_entry Resource",
+			"content",
+			"### Example",
+			"content",
+		},
+	}
+
+	runTest(misformattedDocNoPanic, misformattedDocsExpected)
 }
 
 func TestFormatEntityName(t *testing.T) {
@@ -1273,8 +1289,6 @@ func TestConvertExamples(t *testing.T) {
 		name string
 		path examplePath
 
-		needsProviders map[string]pluginDesc
-
 		language *Language
 	}
 
@@ -1285,18 +1299,12 @@ func TestConvertExamples(t *testing.T) {
 				fullPath: "#/resources/wavefront:index/dashboardJson:DashboardJson",
 				token:    "wavefront:index/dashboardJson:DashboardJson",
 			},
-			needsProviders: map[string]pluginDesc{
-				"wavefront": {version: "3.0.0"},
-			},
 		},
 		{
 			name: "golang_wavefront_dashboard_json",
 			path: examplePath{
 				fullPath: "#/resources/wavefront:index/dashboardJson:DashboardJson",
 				token:    "wavefront:index/dashboardJson:DashboardJson",
-			},
-			needsProviders: map[string]pluginDesc{
-				"wavefront": {version: "3.0.0"},
 			},
 			language: ref(Golang),
 		},
@@ -1306,12 +1314,6 @@ func TestConvertExamples(t *testing.T) {
 				fullPath: "#/resources/equinix:fabric:Connection",
 				token:    "equinix:fabric:Connection",
 			},
-			needsProviders: map[string]pluginDesc{
-				"equinix": {
-					pluginDownloadURL: "github://api.github.com/equinix",
-					version:           "0.6.0",
-				},
-			},
 		},
 		{
 			name: "aws_lambda_function",
@@ -1319,25 +1321,11 @@ func TestConvertExamples(t *testing.T) {
 				fullPath: "#/resources/aws:lambda/function:Function",
 				token:    "aws:lambda/function:Function",
 			},
-			needsProviders: map[string]pluginDesc{
-				"aws": {
-					pluginDownloadURL: "github://api.github.com/pulumi",
-					version:           "6.22.2",
-				},
-				"archive": {
-					pluginDownloadURL: "github://api.github.com/pulumi",
-					version:           "0.0.4",
-				},
-			},
 		},
 	}
 
 	for _, tc := range testCases {
 		tc := tc
-
-		t.Run(fmt.Sprintf("%s/setup", tc.name), func(t *testing.T) {
-			ensureProvidersInstalled(t, tc.needsProviders)
-		})
 
 		t.Run(tc.name, func(t *testing.T) {
 			inmem := afero.NewMemMapFs()
@@ -1396,9 +1384,8 @@ func TestConvertExamplesInner(t *testing.T) {
 	assert.NoError(t, err)
 
 	type testCase struct {
-		name           string
-		path           examplePath
-		needsProviders map[string]pluginDesc
+		name string
+		path examplePath
 	}
 
 	testCases := []testCase{
@@ -1421,10 +1408,6 @@ func TestConvertExamplesInner(t *testing.T) {
 	for _, tc := range testCases {
 		tc := tc
 
-		t.Run(fmt.Sprintf("%s/setup", tc.name), func(t *testing.T) {
-			ensureProvidersInstalled(t, tc.needsProviders)
-		})
-
 		t.Run(tc.name, func(t *testing.T) {
 			docs, err := os.ReadFile(filepath.Join("test_data", "convertExamples",
 				fmt.Sprintf("%s.md", tc.name)))
@@ -1442,11 +1425,6 @@ func TestConvertExamplesInner(t *testing.T) {
 			assert.Equal(t, string(expect), result)
 		})
 	}
-}
-
-type pluginDesc struct {
-	version           string
-	pluginDownloadURL string
 }
 
 func TestFindFencesAndHeaders(t *testing.T) {
@@ -1511,61 +1489,6 @@ func TestFindFencesAndHeaders(t *testing.T) {
 
 	}
 
-}
-
-func ensureProvidersInstalled(t *testing.T, needsProviders map[string]pluginDesc) {
-	pulumi, err := exec.LookPath("pulumi")
-	require.NoError(t, err)
-
-	t.Logf("pulumi plugin ls --json")
-	cmd := exec.Command(pulumi, "plugin", "ls", "--json")
-	var buf bytes.Buffer
-	cmd.Stdout = &buf
-	err = cmd.Run()
-	require.NoError(t, err)
-
-	type plugin struct {
-		Name    string `json:"name"`
-		Version string `json:"version"`
-	}
-
-	var installedPlugins []plugin
-	err = json.Unmarshal(buf.Bytes(), &installedPlugins)
-	require.NoError(t, err)
-
-	for name, desc := range needsProviders {
-		count := 0
-		matched := false
-
-		for _, p := range installedPlugins {
-			if p.Name == name {
-				count++
-			}
-			if p.Name == name && p.Version == desc.version {
-				matched = true
-			}
-		}
-
-		alreadyInstalled := count == 1 && matched
-		if alreadyInstalled {
-			continue
-		}
-
-		if count > 0 {
-			t.Logf("pulumi plugin rm resource %s", name)
-			err = exec.Command(pulumi, "plugin", "rm", "resource", name).Run()
-			require.NoError(t, err)
-		}
-
-		args := []string{"plugin", "install", "resource", name, desc.version}
-		if desc.pluginDownloadURL != "" {
-			args = append(args, "--server", desc.pluginDownloadURL)
-		}
-		cmd := exec.Command(pulumi, args...)
-		t.Logf("Exec: %s", cmd)
-		err = cmd.Run()
-		require.NoError(t, err)
-	}
 }
 
 func TestExampleGeneration(t *testing.T) {
@@ -2008,46 +1931,6 @@ resource "aws_ami" "example" {
 		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
 			actual := guessIsHCL(tc.code)
 			assert.Equal(t, tc.hcl, actual)
-		})
-	}
-}
-
-func TestPlainDocsParser(t *testing.T) {
-	t.Parallel()
-
-	type testCase struct {
-		// The name of the test case.
-		name     string
-		docFile  DocFile
-		expected []byte
-	}
-
-	tests := []testCase{
-		{
-			name: "Replaces Upstream Front Matter With Pulumi Front Matter",
-			docFile: DocFile{
-				Content: []byte("---\nlayout: \"openstack\"\npage_title: \"Provider: OpenStack\"\nsidebar_current: \"docs-openstack-index\"\ndescription: |-\n  The OpenStack provider is used to interact with the many resources supported by OpenStack. The provider needs to be configured with the proper credentials before it can be used.\n---\n\n# OpenStack Provider\n\nThe OpenStack provider is used to interact with the\nmany resources supported by OpenStack. The provider needs to be configured\nwith the proper credentials before it can be used.\n\nUse the navigation to the left to read about the available resources."),
-			},
-			expected: []byte("---\ntitle: OpenStack Provider Installation & Configuration\nmeta_desc: Provides an overview on how to configure the Pulumi OpenStack Provider.\nlayout: package\n---\n\nThe OpenStack provider is used to interact with the\nmany resources supported by OpenStack. The provider needs to be configured\nwith the proper credentials before it can be used.\n\nUse the navigation to the left to read about the available resources."),
-		},
-		{
-			name: "Writes Pulumi Style Front Matter If Not Present",
-			docFile: DocFile{
-				Content: []byte("# Artifactory Provider\n\nThe [Artifactory](https://jfrog.com/artifactory/) provider is used to interact with the resources supported by Artifactory. The provider needs to be configured with the proper credentials before it can be used.\n\nLinks to documentation for specific resources can be found in the table of contents to the left.\n\nThis provider requires access to Artifactory APIs, which are only available in the _licensed_ pro and enterprise editions. You can determine which license you have by accessing the following the URL `${host}/artifactory/api/system/licenses/`.\n\nYou can either access it via API, or web browser - it require admin level credentials."),
-			},
-			expected: []byte("---\ntitle: Artifactory Provider Installation & Configuration\nmeta_desc: Provides an overview on how to configure the Pulumi Artifactory Provider.\nlayout: package\n---\n\nThe [Artifactory](https://jfrog.com/artifactory/) provider is used to interact with the resources supported by Artifactory. The provider needs to be configured with the proper credentials before it can be used.\n\nLinks to documentation for specific resources can be found in the table of contents to the left.\n\nThis provider requires access to Artifactory APIs, which are only available in the _licensed_ pro and enterprise editions. You can determine which license you have by accessing the following the URL `${host}/artifactory/api/system/licenses/`.\n\nYou can either access it via API, or web browser - it require admin level credentials."),
-		},
-	}
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			g := &Generator{
-				sink: mockSink{t},
-			}
-			actual, err := plainDocsParser(&tt.docFile, g)
-			require.NoError(t, err)
-			require.Equal(t, string(tt.expected), string(actual))
 		})
 	}
 }

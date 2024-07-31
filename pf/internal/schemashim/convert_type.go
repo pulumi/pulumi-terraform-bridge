@@ -19,7 +19,7 @@ import (
 	"fmt"
 
 	pfattr "github.com/hashicorp/terraform-plugin-framework/attr"
-	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
@@ -34,7 +34,7 @@ func convertType(typ pfattr.Type) (shim.ValueType, error) {
 	switch {
 	case is(tftypes.Bool):
 		return shim.TypeBool, nil
-	case typ.Equal(types.Int64Type):
+	case typ.Equal(basetypes.Int64Type{}):
 		// We special case int, since it is a stable type but not present on the wire.
 		return shim.TypeInt, nil
 	case is(tftypes.Number):

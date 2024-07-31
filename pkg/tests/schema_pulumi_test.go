@@ -16,6 +16,35 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestBasic(t *testing.T) {
+	resMap := map[string]*schema.Resource{
+		"prov_test": {
+			Schema: map[string]*schema.Schema{
+				"test": {
+					Type:     schema.TypeString,
+					Optional: true,
+				},
+			},
+		},
+	}
+	tfp := &schema.Provider{ResourcesMap: resMap}
+	bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
+	program := `
+name: test
+runtime: yaml
+resources:
+  mainRes:
+    type: prov:index:Test
+	properties:
+	  test: "hello"
+outputs:
+  testOut: ${mainRes.test}
+`
+	pt := pulcheck.PulCheck(t, bridgedProvider, program)
+	res := pt.Up()
+	require.Equal(t, "hello", res.Outputs["testOut"].Value)
+}
+
 func TestUnknownHandling(t *testing.T) {
 	resMap := map[string]*schema.Resource{
 		"prov_test": {
@@ -42,7 +71,8 @@ func TestUnknownHandling(t *testing.T) {
 			},
 		},
 	}
-	bridgedProvider := pulcheck.BridgedProvider(t, "prov", resMap)
+	tfp := &schema.Provider{ResourcesMap: resMap}
+	bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
 	program := `
 name: test
 runtime: yaml
@@ -588,7 +618,8 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 					},
 				}
 
-				bridgedProvider := pulcheck.BridgedProvider(t, "prov", resMap, opts...)
+				tfp := &schema.Provider{ResourcesMap: resMap}
+				bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp, opts...)
 				program := fmt.Sprintf(`
 name: test
 runtime: yaml
@@ -658,7 +689,8 @@ outputs:
 					},
 				}
 
-				bridgedProvider := pulcheck.BridgedProvider(t, "prov", resMap, opts...)
+				tfp := &schema.Provider{ResourcesMap: resMap}
+				bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp, opts...)
 				program := fmt.Sprintf(`
 name: test
 runtime: yaml
@@ -796,7 +828,8 @@ func TestUnknownBlocks(t *testing.T) {
 			},
 		},
 	}
-	bridgedProvider := pulcheck.BridgedProvider(t, "prov", resMap)
+	tfp := &schema.Provider{ResourcesMap: resMap}
+	bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
 
 	provTestKnownProgram := `
 name: test
@@ -852,9 +885,7 @@ resources:
         [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
     + prov:index/test:Test: (create)
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-        tests     : [
-            [0]: {}
-        ]
+        tests     : output<string>
 Resources:
     + 3 to create
 `),
@@ -866,11 +897,12 @@ Resources:
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-      ~ tests: [
-          ~ [0]: {
-                  - testProp: "known_val"
-                }
+      - tests: [
+      -     [0]: {
+              - testProp: "known_val"
+            }
         ]
+      + tests: output<string>
 Resources:
     + 1 to create
     ~ 1 to update
@@ -1012,9 +1044,7 @@ resources:
         [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
     + prov:index/nestedTest:NestedTest: (create)
         [urn=urn:pulumi:test::test::prov:index/nestedTest:NestedTest::mainRes]
-        tests     : [
-            [0]: {}
-        ]
+        tests     : output<string>
 Resources:
     + 3 to create
 `),
@@ -1026,24 +1056,18 @@ Resources:
     ~ prov:index/nestedTest:NestedTest: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/nestedTest:NestedTest::mainRes]
-      ~ tests: [
-          ~ [0]: {
-                  - nestedProps: [
-                  -     [0]: {
-                          - testProps: [
-                          -     [0]: "known_val"
-                            ]
-                        }
-                    ]
-                  - nestedProps: [
-                  -     [0]: {
-                          - testProps: [
-                          -     [0]: "known_val"
-                            ]
-                        }
-                    ]
-                }
+      - tests: [
+      -     [0]: {
+              - nestedProps: [
+              -     [0]: {
+                      - testProps: [
+                      -     [0]: "known_val"
+                        ]
+                    }
+                ]
+            }
         ]
+      + tests: output<string>
 Resources:
     + 1 to create
     ~ 1 to update
@@ -1134,9 +1158,7 @@ resources:
         [urn=urn:pulumi:test::test::prov:index/nestedTest:NestedTest::mainRes]
         tests     : [
             [0]: {
-                nestedProps: [
-                    [0]: {}
-                ]
+                nestedProps: output<string>
             }
         ]
 Resources:
@@ -1152,16 +1174,14 @@ Resources:
         [urn=urn:pulumi:test::test::prov:index/nestedTest:NestedTest::mainRes]
       ~ tests: [
           ~ [0]: {
-                  ~ nestedProps: [
-                      ~ [0]: {
-                              - testProps: [
-                              -     [0]: "known_val"
-                                ]
-                              - testProps: [
-                              -     [0]: "known_val"
-                                ]
-                            }
+                  - nestedProps: [
+                  -     [0]: {
+                          - testProps: [
+                          -     [0]: "known_val"
+                            ]
+                        }
                     ]
+                  + nestedProps: output<string>
                 }
         ]
 Resources:
@@ -1262,9 +1282,7 @@ resources:
             [0]: {
                 nestedProps: [
                     [0]: {
-                        testProps : [
-                            [0]: output<string>
-                        ]
+                        testProps : output<string>
                     }
                 ]
             }
@@ -1284,9 +1302,10 @@ Resources:
           ~ [0]: {
                   ~ nestedProps: [
                       ~ [0]: {
-                              ~ testProps: [
-                                  ~ [0]: "known_val" => output<string>
+                              - testProps: [
+                              -     [0]: "known_val"
                                 ]
+                              + testProps: output<string>
                             }
                     ]
                 }
@@ -1407,6 +1426,85 @@ Resources:
 				t.Logf(res.StdOut)
 				tc.expectedUpdate.Equal(t, res.StdOut)
 			})
+		})
+	}
+}
+
+func TestFullyComputedNestedAttribute(t *testing.T) {
+	resMap := map[string]*schema.Resource{
+		"prov_test": {
+			Schema: map[string]*schema.Schema{
+				"attached_disks": {
+					Type:     schema.TypeList,
+					Optional: true,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"name": {
+								Optional: true,
+								Type:     schema.TypeString,
+							},
+							"key256": {
+								Computed: true,
+								Type:     schema.TypeString,
+							},
+						},
+					},
+				},
+				"top_level_computed": {
+					Type:     schema.TypeString,
+					Computed: true,
+				},
+			},
+		},
+	}
+
+	importer := func(val any) func(context.Context, *schema.ResourceData, interface{}) ([]*schema.ResourceData, error) {
+		return func(ctx context.Context, rd *schema.ResourceData, i interface{}) ([]*schema.ResourceData, error) {
+			elMap := map[string]any{
+				"name":   "disk1",
+				"key256": val,
+			}
+			err := rd.Set("attached_disks", []map[string]any{elMap})
+			require.NoError(t, err)
+
+			err = rd.Set("top_level_computed", "computed_val")
+			require.NoError(t, err)
+
+			return []*schema.ResourceData{rd}, nil
+		}
+	}
+	tfp := &schema.Provider{ResourcesMap: resMap}
+	bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
+
+	program := `
+name: test
+runtime: yaml
+`
+	for _, tc := range []struct {
+		name      string
+		importVal any
+	}{
+		{
+			"non-nil",
+			"val1",
+		},
+		{
+			"nil",
+			nil,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			resMap["prov_test"].Importer = &schema.ResourceImporter{
+				StateContext: importer(tc.importVal),
+			}
+
+			pt := pulcheck.PulCheck(t, bridgedProvider, program)
+
+			res := pt.Import("prov:index/test:Test", "res1", "id1", "")
+
+			t.Logf(res.Stdout)
+
+			require.NotContains(t, res.Stdout, "One or more imported inputs failed to validate")
 		})
 	}
 }

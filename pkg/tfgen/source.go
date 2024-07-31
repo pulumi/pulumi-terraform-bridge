@@ -21,6 +21,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
@@ -182,17 +183,22 @@ func getRepoPath(gitHost string, org string, provider string, version string) (_
 }
 
 func getMarkdownNames(packagePrefix, rawName string, globalInfo *tfbridge.DocRuleInfo) []string {
+
+	// Handle resources/datasources renamed with the tfbridge.RenamedEntitySuffix, `_legacy_`
+	// We want to be finding docs for the rawName _without_ the suffix, so we trim it if present.
+	trimmedName := strings.TrimSuffix(rawName, tfbridge.RenamedEntitySuffix)
+
 	possibleMarkdownNames := []string{
 		// Most frequently, docs leave off the provider prefix
-		withoutPackageName(packagePrefix, rawName) + ".html.markdown",
-		withoutPackageName(packagePrefix, rawName) + ".markdown",
-		withoutPackageName(packagePrefix, rawName) + ".html.md",
-		withoutPackageName(packagePrefix, rawName) + ".md",
+		withoutPackageName(packagePrefix, trimmedName) + ".html.markdown",
+		withoutPackageName(packagePrefix, trimmedName) + ".markdown",
+		withoutPackageName(packagePrefix, trimmedName) + ".html.md",
+		withoutPackageName(packagePrefix, trimmedName) + ".md",
 		// But for some providers, the prefix is included in the name of the doc file
-		rawName + ".html.markdown",
-		rawName + ".markdown",
-		rawName + ".html.md",
-		rawName + ".md",
+		trimmedName + ".html.markdown",
+		trimmedName + ".markdown",
+		trimmedName + ".html.md",
+		trimmedName + ".md",
 	}
 
 	if globalInfo != nil && globalInfo.AlternativeNames != nil {
@@ -201,7 +207,6 @@ func getMarkdownNames(packagePrefix, rawName string, globalInfo *tfbridge.DocRul
 			TfToken: rawName,
 		}), possibleMarkdownNames...)
 	}
-
 	return possibleMarkdownNames
 }
 
