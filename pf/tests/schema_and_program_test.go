@@ -258,10 +258,12 @@ func TestImportAndRefreshWithDefaultAndIgnoreChanges(t *testing.T) {
 				ReadFunc: func(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
 					resp.State.SetAttribute(ctx, path.Root("id"), "test-id")
 					resp.State.SetAttribute(ctx, path.Root("other_prop"), "val")
+					resp.State.SetAttribute(ctx, path.Root("change_reason"), "Default val")
 				},
 				ImportStateFunc: func(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 					resp.State.SetAttribute(ctx, path.Root("id"), "test-id")
 					resp.State.SetAttribute(ctx, path.Root("other_prop"), "val")
+					resp.State.SetAttribute(ctx, path.Root("change_reason"), "Default val")
 				},
 			},
 		},
@@ -296,8 +298,6 @@ resources:
         type: prov:index:Test
         properties:
             otherProp: "val"
-        options:
-            ignoreChanges: ["changeReason"]
 outputs:
     changeReason: ${mainRes.changeReason}`
 
@@ -315,9 +315,6 @@ outputs:
 		pt.Up()
 		pt.Destroy()
 
-		res := pt.Import("prov:index/test:Test", "mainRes", "new-id", "")
-		t.Logf(res.Stdout)
-
 		ignoreChangesProgram := `
 name: test
 runtime: yaml
@@ -328,12 +325,13 @@ resources:
             otherProp: "val"
         options:
             import: new-id
-            ignoreChanges: ["changeReason"]
 `
 		pulumiYamlPath := filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml")
 
 		err := os.WriteFile(pulumiYamlPath, []byte(ignoreChangesProgram), 0o600)
 		require.NoError(t, err)
+
+		pt.Up()
 
 		prevRes := pt.Preview(optpreview.Diff(), optpreview.ExpectNoChanges())
 		t.Logf(prevRes.StdOut)
