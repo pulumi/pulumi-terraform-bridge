@@ -212,7 +212,10 @@ func (p v2Provider) NewDestroyDiff(_ context.Context, t string, opts shim.Timeou
 func (p v2Provider) NewResourceConfig(
 	_ context.Context, object map[string]interface{},
 ) shim.ResourceConfig {
-	return v2ResourceConfig{terraform.NewResourceConfigRaw(object)}
+	return v2ResourceConfig{&terraform.ResourceConfig{
+		Raw:    object,
+		Config: object,
+	}}
 }
 
 func (p v2Provider) NewProviderConfig(
