@@ -221,7 +221,10 @@ func (p v2Provider) NewResourceConfig(
 func (p v2Provider) NewProviderConfig(
 	_ context.Context, object map[string]interface{},
 ) shim.ResourceConfig {
-	tfConfig := terraform.NewResourceConfigRaw(object)
+	tfConfig := &terraform.ResourceConfig{
+		Raw:    object,
+		Config: object,
+	}
 	typ := schema.InternalMap(p.tf.Schema).CoreConfigSchema().ImpliedType()
 	ctyVal, err := recoverCtyValueOfObjectType(typ, object)
 	if err != nil {
