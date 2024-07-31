@@ -47,6 +47,7 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/walk"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/logging"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/propertyvalue"
@@ -1360,9 +1361,11 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 		return nil, errors.Wrapf(err, "unmarshaling %s's instance state", urn)
 	}
 
+	var isImport bool
 	// If we are in a "get" rather than a "refresh", we should call the Terraform importer, if one is defined.
 	isRefresh := len(req.GetProperties().GetFields()) != 0
 	if !isRefresh && res.TF.Importer() != nil {
+		isImport = true
 		glog.V(9).Infof("%s has TF Importer", res.TFName)
 
 		state, err = res.runTerraformImporter(ctx, id, p)
@@ -1416,6 +1419,11 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 			return nil, err
 		}
 
+		// only run/process validation errors if this is an import operation
+		if isImport {
+			p.processImportValidationErrors(ctx, urn, res.TFName, inputs, res.TF.Schema(), res.Schema.GetFields())
+		}
+
 		cleanInputs := deconflict(ctx, res.TF.Schema(), res.Schema.Fields, inputs)
 
 		minputs, err := plugin.MarshalProperties(cleanInputs, plugin.MarshalOptions{
@@ -1431,6 +1439,67 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 
 	// The resource is gone.
 	return &pulumirpc.ReadResponse{}, nil
+}
+
+// processImportValidationErrors runs `Validate` and then processes any resulting validation errors.
+// This only needs to run during an `Import` operation because the values read from the cloud
+// during import will be turned into the inputs in the generated code. Sometimes the cloud returns invalid
+// input values which will cause the next `up` to fail.
+//
+// To try and avoid this failure case, we run the validate functions for the generated inputs and
+// if any fail (and they match our other cases) then we remove those inputs so that the generated
+// program code will not contain the invalid inputs
+//
+// NOTE: we want to (for now at least) scope this as narrowly as possible because we do not want to
+// create a scenario where the resulting inputs create a different error
+// (e.g. removing an invalid required property). In these cases we will just allow the invalid configuration
+// through and the user will have to decide what to do.
+func (p *Provider) processImportValidationErrors(
+	ctx context.Context,
+	urn resource.URN,
+	tfName string,
+	inputs resource.PropertyMap,
+	schema shim.SchemaMap,
+	schemaInfos map[string]*info.Schema,
+) {
+	logger := GetLogger(ctx)
+	tfInputs, _, err := makeTerraformInputsWithOptions(ctx,
+		&PulumiResource{URN: urn, Properties: inputs},
+		p.configValues, inputs, inputs, schema, schemaInfos,
+		makeTerraformInputsOptions{DisableTFDefaults: true, UnknownCollectionsSupported: p.tf.SupportsUnknownCollections()})
+	if err != nil {
+		return
+	}
+
+	rescfg := MakeTerraformConfigFromInputs(ctx, p.tf, tfInputs)
+	_, errs := p.tf.ValidateResource(ctx, tfName, rescfg)
+	for _, e := range errs {
+
+		path, _, _ := parseCheckError(schema, schemaInfos, e)
+
+		// do not process errors on nested types
+		if path == nil || len(path.schemaPath) > 1 {
+			continue
+		}
+
+		schemaAtPath, err := walk.LookupSchemaMapPath(path.schemaPath, schema)
+		if err != nil {
+			continue
+		}
+
+		// only drop optional computed properties since:
+		// - dropping required properties will cause it's own error.
+		// - dropping non-computed properties will cause a diff on the next preview
+		if !schemaAtPath.Optional() || !schemaAtPath.Computed() {
+			continue
+		}
+		pp, err := resource.ParsePropertyPath(path.valuePath)
+		if err != nil {
+			continue
+		}
+		logger.Warn(fmt.Sprintf("property at path %q failed validation and was dropped from generated input", pp.String()))
+		pp.Delete(resource.NewObjectProperty(inputs))
+	}
 }
 
 // Update updates an existing resource with new values.  Only those values in the provided property bag are updated

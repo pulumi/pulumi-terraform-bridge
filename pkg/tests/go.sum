@@ -1977,6 +1977,8 @@ github.com/pulumi/inflector v0.1.1 h1:dvlxlWtXwOJTUUtcYDvwnl6Mpg33prhK+7mzeF+Sob
 github.com/pulumi/inflector v0.1.1/go.mod h1:HUFCjcPTz96YtTuUlwG3i3EZG4WlniBvR9bd+iJxCUY=
 github.com/pulumi/providertest v0.0.14 h1:5QlAPAAs82jkQraHsJvq1xgVfC7xtW8sFJwv2pHgxQ8=
 github.com/pulumi/providertest v0.0.14/go.mod h1:GcsqEGgSngwaNOD+kICJPIUQlnA911fGBU8HDlJvVL0=
+github.com/pulumi/providertest v0.0.15 h1:nvpEHVvcAkiq3NguPUutB+si3sjU2PmFqkV8yw9QFhQ=
+github.com/pulumi/providertest v0.0.15/go.mod h1:GcsqEGgSngwaNOD+kICJPIUQlnA911fGBU8HDlJvVL0=
 github.com/pulumi/pulumi-java/pkg v0.11.0 h1:Jw9gBvyfmfOMq/EkYDm9+zGPxsDAA8jfeMpHmtZ+1oA=
 github.com/pulumi/pulumi-java/pkg v0.11.0/go.mod h1:sXAk25P47AQVQL6ilAbFmRNgZykC7og/+87ihnqzFTc=
 github.com/pulumi/pulumi-yaml v1.9.1 h1:JPeI80M23SPactxgnCFS1casZlSr7ZhAXwSx4H55QQ4=
