@@ -249,6 +249,7 @@ type Provider interface {
 	NewDestroyDiff(ctx context.Context, t string, opts TimeoutOptions) InstanceDiff
 
 	NewResourceConfig(ctx context.Context, object map[string]interface{}) ResourceConfig
+	NewProviderConfig(ctx context.Context, object map[string]interface{}) ResourceConfig
 
 	// Checks if a value is representing a Set, and unpacks its elements on success.
 	IsSet(ctx context.Context, v interface{}) ([]interface{}, bool)

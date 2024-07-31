@@ -1272,12 +1272,25 @@ func makeConfig(v interface{}) interface{} {
 	}
 }
 
+type MakeTerraformInputsOptions struct {
+	ProviderConfig bool
+}
+
+func MakeTerraformConfigFromInputsWithOpts(
+	ctx context.Context, p shim.Provider, inputs map[string]interface{}, opts MakeTerraformInputsOptions,
+) shim.ResourceConfig {
+	raw := makeConfig(inputs).(map[string]interface{})
+	if opts.ProviderConfig {
+		return p.NewProviderConfig(ctx, raw)
+	}
+	return p.NewResourceConfig(ctx, raw)
+}
+
 // MakeTerraformConfigFromInputs creates a new Terraform configuration object from a set of Terraform inputs.
 func MakeTerraformConfigFromInputs(
 	ctx context.Context, p shim.Provider, inputs map[string]interface{},
 ) shim.ResourceConfig {
-	raw := makeConfig(inputs).(map[string]interface{})
-	return p.NewResourceConfig(ctx, raw)
+	return MakeTerraformConfigFromInputsWithOpts(ctx, p, inputs, MakeTerraformInputsOptions{})
 }
 
 type makeTerraformStateOptions struct {

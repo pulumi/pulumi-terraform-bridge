@@ -167,6 +167,9 @@ func (p *SchemaOnlyProvider) NewResourceConfig(context.Context, map[string]inter
 	panic("schemaOnlyProvider does not implement runtime operation ResourceConfig")
 }
 
+func (p *SchemaOnlyProvider) NewProviderConfig(context.Context, map[string]interface{}) shim.ResourceConfig {
+	panic("schemaOnlyProvider does not implement runtime operation ProviderConfig")
+}
 func (p *SchemaOnlyProvider) IsSet(context.Context, interface{}) ([]interface{}, bool) {
 	panic("schemaOnlyProvider does not implement runtime operation IsSet")
 }

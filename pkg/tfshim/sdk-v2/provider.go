@@ -212,6 +212,12 @@ func (p v2Provider) NewDestroyDiff(_ context.Context, t string, opts shim.Timeou
 func (p v2Provider) NewResourceConfig(
 	_ context.Context, object map[string]interface{},
 ) shim.ResourceConfig {
+	return v2ResourceConfig{terraform.NewResourceConfigRaw(object)}
+}
+
+func (p v2Provider) NewProviderConfig(
+	_ context.Context, object map[string]interface{},
+) shim.ResourceConfig {
 	tfConfig := terraform.NewResourceConfigRaw(object)
 	typ := schema.InternalMap(p.tf.Schema).CoreConfigSchema().ImpliedType()
 	ctyVal, err := recoverCtyValueOfObjectType(typ, object)
