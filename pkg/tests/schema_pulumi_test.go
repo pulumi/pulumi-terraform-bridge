@@ -1510,7 +1510,8 @@ runtime: yaml
 	}
 }
 
-func TestConfigureGetRaw(t *testing.T) {
+func TestConfigureGetRawConfigDoesNotPanic(t *testing.T) {
+	// Regression test for [pulumi/pulumi-terraform-bridge#2262]
 	getOkExists := func(d *schema.ResourceData, key string) (interface{}, bool) {
 		v := d.GetRawConfig().GetAttr(key)
 		if v.IsNull() {
