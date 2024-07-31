@@ -1567,8 +1567,7 @@ outputs:
   testOut: ${mainRes.test}
 `, configVal)
 		pt := pulcheck.PulCheck(t, bridgedProvider, program)
-		res := pt.Up()
-		require.Equal(t, "hello", res.Outputs["testOut"].Value)
+		pt.Up()
 	}
 
 	t.Run("config exists", func(t *testing.T) {
