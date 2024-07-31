@@ -128,8 +128,6 @@ type T interface {
 
 type bridgedProviderOpts struct {
 	DisablePlanResourceChange bool
-	ProviderSchema            map[string]*schema.Schema
-	ConfigureContextFunc      schema.ConfigureContextFunc
 }
 
 // BridgedProviderOpts
