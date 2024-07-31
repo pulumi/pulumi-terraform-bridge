@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/golang/glog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/logging"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
@@ -212,12 +213,10 @@ func (p v2Provider) NewResourceConfig(
 	_ context.Context, object map[string]interface{},
 ) shim.ResourceConfig {
 	tfConfig := terraform.NewResourceConfigRaw(object)
-	internalMap := schema.InternalMap(p.tf.Schema)
-	coreConfigSchema := internalMap.CoreConfigSchema()
-	// translate to cty
-	ctyVal, err := recoverCtyValueOfObjectType(coreConfigSchema.ImpliedType(), object)
+	typ := schema.InternalMap(p.tf.Schema).CoreConfigSchema().ImpliedType()
+	ctyVal, err := recoverCtyValueOfObjectType(typ, object)
 	if err != nil {
-		// TODO log?
+		glog.V(9).Infof("Failed to recover cty value of object type: %v, falling back to old behaviour", err)
 		return v2ResourceConfig{tfConfig}
 	}
 
