@@ -572,6 +572,10 @@ func (p *provider) NewResourceConfig(ctx context.Context, object map[string]inte
 	return resourceConfig(object)
 }
 
+func (p *provider) NewProviderConfig(ctx context.Context, object map[string]interface{}) shim.ResourceConfig {
+	return resourceConfig(object)
+}
+
 func (p *provider) IsSet(ctx context.Context, v interface{}) ([]interface{}, bool) {
 	val, ok := v.(cty.Value)
 	if !ok {

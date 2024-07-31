@@ -137,6 +137,12 @@ func (p *FilteringProvider) NewResourceConfig(
 	return p.Provider.NewResourceConfig(ctx, object)
 }
 
+func (p *FilteringProvider) NewProviderConfig(
+	ctx context.Context, object map[string]interface{},
+) shim.ResourceConfig {
+	return p.Provider.NewProviderConfig(ctx, object)
+}
+
 func (p *FilteringProvider) IsSet(ctx context.Context, v interface{}) ([]interface{}, bool) {
 	return p.Provider.IsSet(ctx, v)
 }

@@ -671,7 +671,7 @@ func buildTerraformConfig(ctx context.Context, p *Provider, vars resource.Proper
 		return nil, err
 	}
 
-	return MakeTerraformConfigFromInputs(ctx, p.tf, inputs), nil
+	return MakeTerraformConfigFromInputsWithOpts(ctx, p.tf, inputs, MakeTerraformInputsOptions{ProviderConfig: true}), nil
 }
 
 func validateProviderConfig(
