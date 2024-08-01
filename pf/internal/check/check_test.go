@@ -31,8 +31,66 @@ import (
 
 	pfbridge "github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	sdkv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
+
+type idSchema struct {
+	computed bool
+	required bool
+	optional bool
+}
+type mockSchema struct {
+	shim.Schema
+	idSchema
+}
+
+func (m *mockSchema) Optional() bool {
+	return m.optional
+}
+
+func (m *mockSchema) Required() bool {
+	return m.required
+}
+
+func (m *mockSchema) Computed() bool {
+	return m.computed
+}
+
+func TestIsInputProperty(t *testing.T) {
+	tests := []struct {
+		name    string
+		schema  shim.Schema
+		isInput bool
+	}{
+		{
+			name:    "Optional+Computed",
+			schema:  &mockSchema{idSchema: idSchema{optional: true, computed: true, required: false}},
+			isInput: true,
+		},
+		{
+			name:    "Optional",
+			schema:  &mockSchema{idSchema: idSchema{optional: true, computed: false, required: false}},
+			isInput: true,
+		},
+		{
+			name:    "Required",
+			schema:  &mockSchema{idSchema: idSchema{optional: false, computed: false, required: true}},
+			isInput: true,
+		},
+		{
+			name:    "Computed",
+			schema:  &mockSchema{idSchema: idSchema{optional: false, computed: true, required: false}},
+			isInput: false,
+		},
+	}
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.isInput, isInputProperty(tc.schema))
+		})
+	}
+}
 
 func TestMissingIDProperty(t *testing.T) {
 	stderr, err := test(t, tfbridge.ProviderInfo{
@@ -96,54 +154,78 @@ func TestSensitiveIDWithOverride(t *testing.T) {
 	})
 }
 
-func TestInvalidRequiredID(t *testing.T) {
-	t.Run("true", func(t *testing.T) {
-		stderr, err := test(t, tfbridge.ProviderInfo{
-			P: pfbridge.ShimProvider(testProvider{withID: true}),
+func TestInvalidInputID(t *testing.T) {
+	tests := []struct {
+		name          string
+		idSchema      idSchema
+		expectedError bool
+	}{
+		{name: "Required", idSchema: idSchema{required: true, optional: false, computed: false}, expectedError: true},
+		{name: "Optional", idSchema: idSchema{required: false, optional: true, computed: false}, expectedError: true},
+		{name: "Computed", idSchema: idSchema{required: false, optional: false, computed: true}, expectedError: false},
+		{name: "Optional+Computed", idSchema: idSchema{required: false, optional: true, computed: true}, expectedError: true},
+	}
+
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name+"true", func(t *testing.T) {
+			stderr, err := test(t, tfbridge.ProviderInfo{
+				P: pfbridge.ShimProvider(testProvider{withID: &idSchema{required: true}}),
+			})
+			assert.NotEmpty(t, stderr)
+			assert.Error(t, err)
 		})
-		assert.NotEmpty(t, stderr)
-		assert.Error(t, err)
-	})
-	t.Run("true (missing ComputeID)", func(t *testing.T) {
-		stderr, err := test(t, tfbridge.ProviderInfo{
-			P: pfbridge.ShimProvider(testProvider{withID: true}),
-			Resources: map[string]*tfbridge.ResourceInfo{
-				"test_res": {Fields: map[string]*tfbridge.SchemaInfo{
-					"id": {Name: "otherId"},
-				}},
-			},
+		t.Run(tc.name+"true (missing ComputeID)", func(t *testing.T) {
+			stderr, err := test(t, tfbridge.ProviderInfo{
+				P: pfbridge.ShimProvider(testProvider{withID: &tc.idSchema}),
+				Resources: map[string]*tfbridge.ResourceInfo{
+					"test_res": {Fields: map[string]*tfbridge.SchemaInfo{
+						"id": {Name: "otherId"},
+					}},
+				},
+			})
+			if tc.expectedError {
+				assert.NotEmpty(t, stderr)
+				assert.Error(t, err)
+			} else {
+				assert.Empty(t, stderr)
+				assert.NoError(t, err)
+			}
 		})
-		assert.NotEmpty(t, stderr)
-		assert.Error(t, err)
-	})
-	t.Run("true (missing Name)", func(t *testing.T) {
-		stderr, err := test(t, tfbridge.ProviderInfo{
-			P: pfbridge.ShimProvider(testProvider{withID: true}),
-			Resources: map[string]*tfbridge.ResourceInfo{
-				"test_res": {Fields: map[string]*tfbridge.SchemaInfo{
-					"id": {},
-				}, ComputeID: func(ctx context.Context, state property.PropertyMap) (property.ID, error) {
-					panic("ComputeID")
-				}},
-			},
+		t.Run(tc.name+"true (missing Name)", func(t *testing.T) {
+			stderr, err := test(t, tfbridge.ProviderInfo{
+				P: pfbridge.ShimProvider(testProvider{withID: &tc.idSchema}),
+				Resources: map[string]*tfbridge.ResourceInfo{
+					"test_res": {Fields: map[string]*tfbridge.SchemaInfo{
+						"id": {},
+					}, ComputeID: func(ctx context.Context, state property.PropertyMap) (property.ID, error) {
+						panic("ComputeID")
+					}},
+				},
+			})
+			if tc.expectedError {
+				assert.NotEmpty(t, stderr)
+				assert.Error(t, err)
+			} else {
+				assert.Empty(t, stderr)
+				assert.NoError(t, err)
+			}
 		})
-		assert.NotEmpty(t, stderr)
-		assert.Error(t, err)
-	})
-	t.Run("false (with override)", func(t *testing.T) {
-		stderr, err := test(t, tfbridge.ProviderInfo{
-			P: pfbridge.ShimProvider(testProvider{withID: true}),
-			Resources: map[string]*tfbridge.ResourceInfo{
-				"test_res": {Fields: map[string]*tfbridge.SchemaInfo{
-					"id": {Name: "otherId"},
-				}, ComputeID: func(ctx context.Context, state property.PropertyMap) (property.ID, error) {
-					panic("ComputeID")
-				}},
-			},
+		t.Run(tc.name+"false (with override)", func(t *testing.T) {
+			stderr, err := test(t, tfbridge.ProviderInfo{
+				P: pfbridge.ShimProvider(testProvider{withID: &tc.idSchema}),
+				Resources: map[string]*tfbridge.ResourceInfo{
+					"test_res": {Fields: map[string]*tfbridge.SchemaInfo{
+						"id": {Name: "otherId"},
+					}, ComputeID: func(ctx context.Context, state property.PropertyMap) (property.ID, error) {
+						panic("ComputeID")
+					}},
+				},
+			})
+			assert.Empty(t, stderr)
+			assert.NoError(t, err)
 		})
-		assert.Empty(t, stderr)
-		assert.NoError(t, err)
-	})
+	}
 }
 
 func TestMuxedProvider(t *testing.T) {
@@ -180,11 +262,15 @@ type (
 	testProvider struct {
 		provider.Provider
 
-		missingID, sensitiveID, withID bool
+		missingID, sensitiveID bool
+		withID                 *idSchema
 	}
 	testMissingIDResource   struct{ resource.Resource }
 	testSensitiveIDResource struct{ resource.Resource }
-	testIDResource          struct{ resource.Resource }
+	testIDResource          struct {
+		resource.Resource
+		idSchema
+	}
 )
 
 func returnT[T any](t T) func() T { return func() T { return t } }
@@ -197,8 +283,8 @@ func (p testProvider) Resources(context.Context) []func() resource.Resource {
 	if p.sensitiveID {
 		resources = append(resources, returnT[resource.Resource](testSensitiveIDResource{}))
 	}
-	if p.withID {
-		resources = append(resources, returnT[resource.Resource](testIDResource{}))
+	if p.withID != nil {
+		resources = append(resources, returnT[resource.Resource](testIDResource{idSchema: *p.withID}))
 	}
 	return resources
 }
@@ -242,10 +328,14 @@ func (testSensitiveIDResource) Metadata(
 	resp.TypeName = req.ProviderTypeName + "_res"
 }
 
-func (testIDResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
+func (i testIDResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{Required: true},
+			"id": schema.StringAttribute{
+				Computed: i.idSchema.computed,
+				Required: i.idSchema.required,
+				Optional: i.idSchema.optional,
+			},
 		},
 	}
 }

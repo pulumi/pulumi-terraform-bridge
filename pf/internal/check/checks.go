@@ -131,6 +131,13 @@ func (errInvalidRequiredID) Error() string {
 		"To map this resource specify SchemaInfo.Name and ResourceInfo.ComputeID"
 }
 
+func isInputProperty(schema shim.Schema) bool {
+	if schema.Computed() && !schema.Optional() {
+		return false
+	}
+	return true
+}
+
 func resourceHasRegularID(rname string, resource shim.Resource, resourceInfo *tfbridge.ResourceInfo) error {
 	idSchema, gotID := resource.Schema().GetOk("id")
 	if !gotID {
@@ -143,7 +150,7 @@ func resourceHasRegularID(rname string, resource shim.Resource, resourceInfo *tf
 		}
 	}
 
-	if idSchema.Required() && (info.Name == "" || resourceInfo.ComputeID == nil) {
+	if isInputProperty(idSchema) && (info.Name == "" || resourceInfo.ComputeID == nil) {
 		return errInvalidRequiredID{}
 	}
 
