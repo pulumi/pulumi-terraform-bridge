@@ -96,6 +96,56 @@ func TestSensitiveIDWithOverride(t *testing.T) {
 	})
 }
 
+func TestInvalidRequiredID(t *testing.T) {
+	t.Run("true", func(t *testing.T) {
+		stderr, err := test(t, tfbridge.ProviderInfo{
+			P: pfbridge.ShimProvider(testProvider{withID: true}),
+		})
+		assert.NotEmpty(t, stderr)
+		assert.Error(t, err)
+	})
+	t.Run("true (missing ComputeID)", func(t *testing.T) {
+		stderr, err := test(t, tfbridge.ProviderInfo{
+			P: pfbridge.ShimProvider(testProvider{withID: true}),
+			Resources: map[string]*tfbridge.ResourceInfo{
+				"test_res": {Fields: map[string]*tfbridge.SchemaInfo{
+					"id": {Name: "otherId"},
+				}},
+			},
+		})
+		assert.NotEmpty(t, stderr)
+		assert.Error(t, err)
+	})
+	t.Run("true (missing Name)", func(t *testing.T) {
+		stderr, err := test(t, tfbridge.ProviderInfo{
+			P: pfbridge.ShimProvider(testProvider{withID: true}),
+			Resources: map[string]*tfbridge.ResourceInfo{
+				"test_res": {Fields: map[string]*tfbridge.SchemaInfo{
+					"id": {},
+				}, ComputeID: func(ctx context.Context, state property.PropertyMap) (property.ID, error) {
+					panic("ComputeID")
+				}},
+			},
+		})
+		assert.NotEmpty(t, stderr)
+		assert.Error(t, err)
+	})
+	t.Run("false (with override)", func(t *testing.T) {
+		stderr, err := test(t, tfbridge.ProviderInfo{
+			P: pfbridge.ShimProvider(testProvider{withID: true}),
+			Resources: map[string]*tfbridge.ResourceInfo{
+				"test_res": {Fields: map[string]*tfbridge.SchemaInfo{
+					"id": {Name: "otherId"},
+				}, ComputeID: func(ctx context.Context, state property.PropertyMap) (property.ID, error) {
+					panic("ComputeID")
+				}},
+			},
+		})
+		assert.Empty(t, stderr)
+		assert.NoError(t, err)
+	})
+}
+
 func TestMuxedProvider(t *testing.T) {
 	stderr, err := test(t, tfbridge.ProviderInfo{
 		P: pfbridge.MuxShimWithPF(context.Background(),
@@ -130,10 +180,11 @@ type (
 	testProvider struct {
 		provider.Provider
 
-		missingID, sensitiveID bool
+		missingID, sensitiveID, withID bool
 	}
 	testMissingIDResource   struct{ resource.Resource }
 	testSensitiveIDResource struct{ resource.Resource }
+	testIDResource          struct{ resource.Resource }
 )
 
 func returnT[T any](t T) func() T { return func() T { return t } }
@@ -145,6 +196,9 @@ func (p testProvider) Resources(context.Context) []func() resource.Resource {
 	}
 	if p.sensitiveID {
 		resources = append(resources, returnT[resource.Resource](testSensitiveIDResource{}))
+	}
+	if p.withID {
+		resources = append(resources, returnT[resource.Resource](testIDResource{}))
 	}
 	return resources
 }
@@ -183,6 +237,20 @@ func (testSensitiveIDResource) Schema(_ context.Context, _ resource.SchemaReques
 }
 
 func (testSensitiveIDResource) Metadata(
+	_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse,
+) {
+	resp.TypeName = req.ProviderTypeName + "_res"
+}
+
+func (testIDResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		Attributes: map[string]schema.Attribute{
+			"id": schema.StringAttribute{Required: true},
+		},
+	}
+}
+
+func (testIDResource) Metadata(
 	_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse,
 ) {
 	resp.TypeName = req.ProviderTypeName + "_res"
