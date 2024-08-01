@@ -1484,6 +1484,11 @@ func (p *Provider) processImportValidationErrors(
 
 		schemaAtPath, err := walk.LookupSchemaMapPath(path.schemaPath, schema)
 		if err != nil {
+			logger.Debug(fmt.Sprintf(
+				"could not find schema for validation error at path %s: %s",
+				path.schemaPath.GoString(),
+				err.Error(),
+			))
 			continue
 		}
 
@@ -1495,6 +1500,7 @@ func (p *Provider) processImportValidationErrors(
 		}
 		pp, err := resource.ParsePropertyPath(path.valuePath)
 		if err != nil {
+			logger.Debug(fmt.Sprintf("could not parse property path %q for validation error: %s", path.valuePath, err.Error()))
 			continue
 		}
 		logger.Warn(fmt.Sprintf("property at path %q failed validation and was dropped from generated input", pp.String()))
