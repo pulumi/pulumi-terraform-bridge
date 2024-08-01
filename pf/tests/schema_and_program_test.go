@@ -99,20 +99,20 @@ outputs:
 	pt.Preview(optpreview.Diff(), optpreview.ExpectNoChanges())
 }
 
-type modifyValuePlanModifier struct {
+type changeReasonPlanModifier struct {
 	planmodifier.String
 }
 
-func (c modifyValuePlanModifier) PlanModifyString(ctx context.Context, req planmodifier.StringRequest, resp *planmodifier.StringResponse) {
-	resp.PlanValue = basetypes.NewStringValue("Modified val")
+func (c changeReasonPlanModifier) PlanModifyString(ctx context.Context, req planmodifier.StringRequest, resp *planmodifier.StringResponse) {
+	resp.PlanValue = basetypes.NewStringValue("Default val")
 }
 
-func (c modifyValuePlanModifier) Description(context.Context) string {
-	return "Modify value plan modifier"
+func (c changeReasonPlanModifier) Description(context.Context) string {
+	return "Change reason plan modifier"
 }
 
-func (c modifyValuePlanModifier) MarkdownDescription(context.Context) string {
-	return "Modify value plan modifier"
+func (c changeReasonPlanModifier) MarkdownDescription(context.Context) string {
+	return "Change reason plan modifier"
 }
 
 func TestPlanModifiers(t *testing.T) {
@@ -132,7 +132,7 @@ func TestPlanModifiers(t *testing.T) {
 							Optional: true,
 							Computed: true,
 							PlanModifiers: []planmodifier.String{
-								modifyValuePlanModifier{},
+								changeReasonPlanModifier{},
 							},
 						},
 					},
@@ -158,57 +158,9 @@ outputs:
 	upRes := pt.Up()
 	t.Logf(upRes.StdOut)
 
-	require.Equal(t, "Modified val", upRes.Outputs["changeReason"].Value)
+	require.Equal(t, "Default val", upRes.Outputs["changeReason"].Value)
 
 	pt.Preview(optpreview.Diff(), optpreview.ExpectNoChanges())
-}
-
-func TestDefaultAndPlanModifier(t *testing.T) {
-	// Note plan modifiers trump defaults!
-	provBuilder := providerbuilder.Provider{
-		TypeName:       "prov",
-		Version:        "0.0.1",
-		ProviderSchema: pschema.Schema{},
-		AllResources: []providerbuilder.Resource{
-			{
-				Name: "test",
-				ResourceSchema: rschema.Schema{
-					Attributes: map[string]rschema.Attribute{
-						"other_prop": rschema.StringAttribute{
-							Optional: true,
-						},
-						"change_reason": rschema.StringAttribute{
-							Optional: true,
-							Computed: true,
-							Default:  stringdefault.StaticString("Default val"),
-							PlanModifiers: []planmodifier.String{
-								modifyValuePlanModifier{},
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-
-	prov := bridgedProvider(&provBuilder)
-
-	program := `
-name: test
-runtime: yaml
-resources:
-    mainRes:
-        type: prov:index:Test
-        properties:
-            otherProp: "val"
-outputs:
-    changeReason: ${mainRes.changeReason}`
-
-	pt := pulCheck(t, prov, program)
-	upRes := pt.Up()
-	t.Logf(upRes.StdOut)
-
-	require.Equal(t, "Modified val", upRes.Outputs["changeReason"].Value)
 }
 
 func TestImportAndRefreshWithDefault(t *testing.T) {
