@@ -211,28 +211,7 @@ outputs:
 	require.Equal(t, "Modified val", upRes.Outputs["changeReason"].Value)
 }
 
-func ChangeReasonModifier() planmodifier.String {
-	return &changeReasonPlanModifier{}
-}
-
-type changeReasonPlanModifier struct{}
-
-func (id *changeReasonPlanModifier) Description(_ context.Context) string {
-	return "Update change reason in place"
-}
-
-func (id *changeReasonPlanModifier) MarkdownDescription(ctx context.Context) string {
-	return id.Description(ctx)
-}
-
-func (id *changeReasonPlanModifier) PlanModifyString(_ context.Context,
-	req planmodifier.StringRequest, resp *planmodifier.StringResponse,
-) {
-	resp.PlanValue = req.PlanValue
-	resp.RequiresReplace = false
-}
-
-func TestImportAndRefreshWithDefaultAndIgnoreChanges(t *testing.T) {
+func TestImportAndRefreshWithDefault(t *testing.T) {
 	provBuilder := providerbuilder.Provider{
 		TypeName:       "prov",
 		Version:        "0.0.1",
@@ -249,9 +228,6 @@ func TestImportAndRefreshWithDefaultAndIgnoreChanges(t *testing.T) {
 							Optional: true,
 							Computed: true,
 							Default:  stringdefault.StaticString("Default val"),
-							PlanModifiers: []planmodifier.String{
-								ChangeReasonModifier(),
-							},
 						},
 					},
 				},
@@ -277,7 +253,7 @@ resources:
 outputs:
     changeReason: ${mainRes.changeReason}`
 
-	t.Run("Import cli with ignoreChanges", func(t *testing.T) {
+	t.Run("Import cli", func(t *testing.T) {
 		pt := pulCheck(t, prov, program)
 		pt.Up()
 		pt.Destroy()
@@ -285,7 +261,7 @@ outputs:
 		res := pt.Import("prov:index/test:Test", "mainRes", "new-id", "")
 		t.Logf(res.Stdout)
 
-		ignoreChangesProgram := `
+		program := `
 name: test
 runtime: yaml
 resources:
@@ -298,19 +274,19 @@ outputs:
 
 		pulumiYamlPath := filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml")
 
-		err := os.WriteFile(pulumiYamlPath, []byte(ignoreChangesProgram), 0o600)
+		err := os.WriteFile(pulumiYamlPath, []byte(program), 0o600)
 		require.NoError(t, err)
 
 		prevRes := pt.Preview(optpreview.Diff(), optpreview.ExpectNoChanges())
 		t.Logf(prevRes.StdOut)
 	})
 
-	t.Run("Import resource option with ignoreChanges", func(t *testing.T) {
+	t.Run("Import resource option", func(t *testing.T) {
 		pt := pulCheck(t, prov, program)
 		pt.Up()
 		pt.Destroy()
 
-		ignoreChangesProgram := `
+		program := `
 name: test
 runtime: yaml
 resources:
@@ -323,7 +299,7 @@ resources:
 `
 		pulumiYamlPath := filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml")
 
-		err := os.WriteFile(pulumiYamlPath, []byte(ignoreChangesProgram), 0o600)
+		err := os.WriteFile(pulumiYamlPath, []byte(program), 0o600)
 		require.NoError(t, err)
 
 		pt.Up()
