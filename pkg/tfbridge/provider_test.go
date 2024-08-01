@@ -28,6 +28,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	schemav2 "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hexops/autogold/v2"
+	"github.com/pkg/errors"
 	testutils "github.com/pulumi/providertest/replay"
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
@@ -42,11 +43,332 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/internal/testprovider"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	shimv1 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v1"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/logging"
 )
+
+func TestProcessImportValidationErrors(t *testing.T) {
+	tests := []struct {
+		name          string
+		schema        schemav2.Schema
+		cloudVal      interface{}
+		expectedProps map[string]interface{}
+		expectFailure bool
+	}{
+		{
+			name:     "TypeString no validate",
+			cloudVal: "ABC",
+			schema: schema.Schema{
+				Type:     schema.TypeString,
+				Computed: true,
+				Optional: true,
+			},
+			expectedProps: map[string]interface{}{
+				// input not dropped
+				"collectionProp": "ABC",
+			},
+		},
+		{
+			name:     "TypeString ValidateFunc does not error",
+			cloudVal: "ABC",
+			schema: schema.Schema{
+				Type:     schema.TypeString,
+				Optional: true,
+				Computed: true,
+				ValidateFunc: func(i interface{}, s string) ([]string, []error) {
+					return []string{}, []error{}
+				},
+			},
+			expectedProps: map[string]interface{}{
+				// input not dropped
+				"collectionProp": "ABC",
+			},
+		},
+		{
+			name:     "TypeString ValidateDiagFunc does not error",
+			cloudVal: "ABC",
+			schema: schema.Schema{
+				Type:     schema.TypeString,
+				Optional: true,
+				Computed: true,
+				ValidateDiagFunc: func(i interface{}, p cty.Path) diag.Diagnostics {
+					return nil
+				},
+			},
+			expectedProps: map[string]interface{}{
+				// input not dropped
+				"collectionProp": "ABC",
+			},
+		},
+		{
+			name:     "TypeString ValidateDiagFunc returns error",
+			cloudVal: "ABC",
+			schema: schema.Schema{
+				Type:     schema.TypeString,
+				Optional: true,
+				Computed: true,
+				ValidateDiagFunc: func(i interface{}, p cty.Path) diag.Diagnostics {
+					return diag.Errorf("Error")
+				},
+			},
+			// input dropped
+			expectedProps: map[string]interface{}{},
+		},
+		{
+			name: "TypeMap ValidateDiagFunc returns error",
+			cloudVal: map[string]string{
+				"nestedProp":      "ABC",
+				"nestedOtherProp": "value",
+			},
+			schema: schema.Schema{
+				Type:     schema.TypeMap,
+				Optional: true,
+				Computed: true,
+				ValidateDiagFunc: func(i interface{}, p cty.Path) diag.Diagnostics {
+					return diag.Errorf("Error")
+				},
+				Elem: &schema.Schema{
+					Type:     schema.TypeString,
+					Optional: true,
+				},
+			},
+			// input dropped
+			expectedProps: map[string]interface{}{},
+		},
+		{
+			name: "Non-Computed TypeMap ValidateDiagFunc does not drop",
+			cloudVal: map[string]string{
+				"nestedProp":      "ABC",
+				"nestedOtherProp": "value",
+			},
+			schema: schema.Schema{
+				Type:     schema.TypeMap,
+				Optional: true,
+				Computed: false,
+				ValidateDiagFunc: func(i interface{}, p cty.Path) diag.Diagnostics {
+					return diag.Errorf("Error")
+				},
+				Elem: &schema.Schema{
+					Type:     schema.TypeString,
+					Optional: true,
+				},
+			},
+			// input not dropped
+			expectedProps: map[string]interface{}{
+				"collectionProp": map[string]interface{}{
+					"nestedProp":      "ABC",
+					"nestedOtherProp": "value",
+				},
+			},
+			// we don't drop computed: false attributes, so they will
+			// still fail
+			expectFailure: true,
+		},
+		{
+			name: "Required TypeMap ValidateDiagFunc does not drop",
+			cloudVal: map[string]string{
+				"nestedProp":      "ABC",
+				"nestedOtherProp": "value",
+			},
+			schema: schema.Schema{
+				Type:     schema.TypeMap,
+				Required: true,
+				ValidateDiagFunc: func(i interface{}, p cty.Path) diag.Diagnostics {
+					return diag.Errorf("Error")
+				},
+				Elem: &schema.Schema{
+					Type:     schema.TypeString,
+					Optional: true,
+				},
+			},
+			expectedProps: map[string]interface{}{
+				"collectionProp": map[string]interface{}{
+					"nestedProp":      "ABC",
+					"nestedOtherProp": "value",
+				},
+			},
+			expectFailure: true,
+		},
+		{
+			name:     "TypeString ValidateFunc returns error",
+			cloudVal: "ABC",
+			schema: schema.Schema{
+				Type:     schema.TypeString,
+				Optional: true,
+				Computed: true,
+				ValidateFunc: func(i interface{}, s string) ([]string, []error) {
+					return []string{}, []error{errors.New("Error")}
+				},
+			},
+			// input dropped
+			expectedProps: map[string]interface{}{},
+		},
+		{
+			name:     "TypeString ValidateFunc does not drop required fields",
+			cloudVal: "ABC",
+			schema: schema.Schema{
+				Type:     schema.TypeString,
+				Required: true,
+				ValidateFunc: func(i interface{}, s string) ([]string, []error) {
+					return []string{}, []error{errors.New("Error")}
+				},
+			},
+			expectedProps: map[string]interface{}{
+				// input not dropped
+				"collectionProp": "ABC",
+			},
+			expectFailure: true,
+		},
+		{
+			name: "TypeSet ValidateDiagFunc returns error",
+			cloudVal: []interface{}{
+				"ABC", "value",
+			},
+			schema: schema.Schema{
+				Type:     schema.TypeSet,
+				Optional: true,
+				Computed: true,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+					ValidateDiagFunc: func(i interface{}, p cty.Path) diag.Diagnostics {
+						if val, ok := i.(string); ok && val != "ABC" {
+							return diag.Errorf("Error")
+						}
+						return nil
+					},
+				},
+			},
+			// if one element of the list fails validation
+			// the entire list is removed. Terraform does not return
+			// list indexes as part of the diagnostic attribute path
+			expectedProps: map[string]interface{}{},
+		},
+
+		// ValidateDiagFunc & ValidateFunc are not supported for TypeList &
+		// TypeSet, but they are supported on the nested elements. For now we are
+		// not processing the results of those with `schema.Resource` elements
+		// since it can get complicated. Nothing will get dropped and the
+		// validation error will pass through
+		{
+			name: "TypeList do not validate nested fields",
+			cloudVal: []interface{}{
+				map[string]interface{}{
+					"nestedProp":      "ABC",
+					"nestedOtherProp": "ABC",
+				},
+			},
+			schema: schema.Schema{
+				Type:     schema.TypeList,
+				Required: true,
+				MaxItems: 1,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"nested_prop": {
+							Type:     schema.TypeString,
+							Optional: true,
+							ValidateDiagFunc: func(i interface{}, p cty.Path) diag.Diagnostics {
+								return diag.Errorf("Error")
+							},
+						},
+						"nested_other_prop": {
+							Type:     schema.TypeString,
+							Optional: true,
+							ValidateDiagFunc: func(i interface{}, p cty.Path) diag.Diagnostics {
+								return nil
+							},
+						},
+					},
+				},
+			},
+			expectedProps: map[string]interface{}{
+				"collectionProp": []map[string]interface{}{
+					{
+						"nestedOtherProp": "ABC",
+						"nestedProp":      "ABC",
+					},
+				},
+			},
+			expectFailure: true,
+		},
+		{
+			name: "TypeSet Do not validate nested fields",
+			cloudVal: []interface{}{
+				map[string]interface{}{
+					"nestedProp": "ABC",
+				},
+			},
+			schema: schema.Schema{
+				Type:     schema.TypeSet,
+				Required: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"nested_prop": {
+							Type:     schema.TypeString,
+							Required: true,
+							ValidateFunc: func(i interface{}, s string) ([]string, []error) {
+								return []string{}, []error{errors.New("Error")}
+							},
+						},
+					},
+				},
+			},
+			expectedProps: map[string]interface{}{
+				"collectionProps": []interface{}{
+					map[string]interface{}{
+						"nestedProp": "ABC",
+					},
+				},
+			},
+			expectFailure: true,
+		},
+	}
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			urn, err := resource.ParseURN("urn:pulumi:test::test::prov:index/test:Test::mainRes")
+			assert.NoError(t, err)
+			tfName := "prov_test"
+			sch := map[string]*schemav2.Schema{
+				"collection_prop": &tc.schema,
+				"other_prop": {
+					Type:     schema.TypeString,
+					Optional: true,
+				},
+			}
+			schemaMap := shimv2.NewSchemaMap(sch)
+			tfProvider := shimv2.NewProvider(&schema.Provider{
+				Schema: map[string]*schema.Schema{},
+				ResourcesMap: map[string]*schemav2.Resource{
+					"prov_test": {
+						Schema: sch,
+					},
+				},
+			})
+			inputs := resource.NewPropertyValue(tc.cloudVal)
+			plural := ""
+			if (tc.schema.Type == schema.TypeList || tc.schema.Type == schema.TypeSet) && tc.schema.MaxItems != 1 {
+				plural = "s"
+			}
+			inputsMap := resource.PropertyMap{
+				resource.PropertyKey("collectionProp" + plural): inputs,
+			}
+
+			schemaInfos := map[string]*info.Schema{}
+			p := Provider{
+				configValues: resource.PropertyMap{},
+				tf:           tfProvider,
+			}
+			ctx := context.Background()
+			ctx = p.loggingContext(ctx, urn)
+
+			p.processImportValidationErrors(ctx, urn, tfName, inputsMap, schemaMap, schemaInfos)
+			assert.Equal(t, resource.NewPropertyMapFromMap(tc.expectedProps), inputsMap)
+		})
+	}
+}
 
 func TestConvertStringToPropertyValue(t *testing.T) {
 	type testcase struct {
