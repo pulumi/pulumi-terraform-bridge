@@ -255,11 +255,6 @@ func TestImportAndRefreshWithDefaultAndIgnoreChanges(t *testing.T) {
 						},
 					},
 				},
-				ReadFunc: func(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-					resp.State.SetAttribute(ctx, path.Root("id"), "test-id")
-					resp.State.SetAttribute(ctx, path.Root("other_prop"), "val")
-					resp.State.SetAttribute(ctx, path.Root("change_reason"), "Default val")
-				},
 				ImportStateFunc: func(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 					resp.State.SetAttribute(ctx, path.Root("id"), "test-id")
 					resp.State.SetAttribute(ctx, path.Root("other_prop"), "val")
