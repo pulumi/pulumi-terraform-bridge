@@ -19,6 +19,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/hexops/autogold/v2"
+
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -156,26 +158,34 @@ func TestSensitiveIDWithOverride(t *testing.T) {
 
 func TestInvalidInputID(t *testing.T) {
 	tests := []struct {
-		name          string
-		idSchema      idSchema
-		expectedError bool
+		name            string
+		idSchema        idSchema
+		isInputProperty bool
 	}{
-		{name: "Required", idSchema: idSchema{required: true, optional: false, computed: false}, expectedError: true},
-		{name: "Optional", idSchema: idSchema{required: false, optional: true, computed: false}, expectedError: true},
-		{name: "Computed", idSchema: idSchema{required: false, optional: false, computed: true}, expectedError: false},
-		{name: "Optional+Computed", idSchema: idSchema{required: false, optional: true, computed: true}, expectedError: true},
+		{name: "Required", idSchema: idSchema{required: true, optional: false, computed: false}, isInputProperty: true},
+		{name: "Optional", idSchema: idSchema{required: false, optional: true, computed: false}, isInputProperty: true},
+		{name: "Computed", idSchema: idSchema{required: false, optional: false, computed: true}, isInputProperty: false},
+		{name: "Optional+Computed", idSchema: idSchema{required: false, optional: true, computed: true}, isInputProperty: true},
 	}
 
 	for _, tc := range tests {
 		tc := tc
-		t.Run(tc.name+"true", func(t *testing.T) {
+		t.Run(tc.name+" no overrides", func(t *testing.T) {
 			stderr, err := test(t, tfbridge.ProviderInfo{
-				P: pfbridge.ShimProvider(testProvider{withID: &idSchema{required: true}}),
+				P: pfbridge.ShimProvider(testProvider{withID: &tc.idSchema}),
 			})
-			assert.NotEmpty(t, stderr)
-			assert.Error(t, err)
+			if tc.isInputProperty {
+				assert.Error(t, err)
+				autogold.Expect(`error: Resource test_res has a problem: a required "id" input attribute is not allowed. To map this resource specify SchemaInfo.Name and ResourceInfo.ComputeID
+`).Equal(t, stderr)
+			} else {
+				assert.Empty(t, stderr)
+				assert.NoError(t, err)
+			}
 		})
-		t.Run(tc.name+"true (missing ComputeID)", func(t *testing.T) {
+		// "id" is a required output property so if we remap "id" -> "otherId" now we
+		// don't have an "id" output. We must create one by using `ComputeID`
+		t.Run(tc.name+" overrides with Name and missing ComputeID", func(t *testing.T) {
 			stderr, err := test(t, tfbridge.ProviderInfo{
 				P: pfbridge.ShimProvider(testProvider{withID: &tc.idSchema}),
 				Resources: map[string]*tfbridge.ResourceInfo{
@@ -184,15 +194,18 @@ func TestInvalidInputID(t *testing.T) {
 					}},
 				},
 			})
-			if tc.expectedError {
-				assert.NotEmpty(t, stderr)
+			if tc.isInputProperty {
 				assert.Error(t, err)
+				autogold.Expect(`error: Resource test_res has a problem: a required "id" input attribute is not allowed. To map this resource specify SchemaInfo.Name and ResourceInfo.ComputeID
+`).Equal(t, stderr)
 			} else {
 				assert.Empty(t, stderr)
 				assert.NoError(t, err)
 			}
 		})
-		t.Run(tc.name+"true (missing Name)", func(t *testing.T) {
+		// Providing `ComputeID` handles remapping the output "id" to a different property, but
+		// we still may have an input property "id"
+		t.Run(tc.name+" overrides with ComputeID and missing Name", func(t *testing.T) {
 			stderr, err := test(t, tfbridge.ProviderInfo{
 				P: pfbridge.ShimProvider(testProvider{withID: &tc.idSchema}),
 				Resources: map[string]*tfbridge.ResourceInfo{
@@ -203,15 +216,17 @@ func TestInvalidInputID(t *testing.T) {
 					}},
 				},
 			})
-			if tc.expectedError {
-				assert.NotEmpty(t, stderr)
+			if tc.isInputProperty {
 				assert.Error(t, err)
+				autogold.Expect(`error: Resource test_res has a problem: a required "id" input attribute is not allowed. To map this resource specify SchemaInfo.Name and ResourceInfo.ComputeID
+`).Equal(t, stderr)
 			} else {
 				assert.Empty(t, stderr)
 				assert.NoError(t, err)
 			}
 		})
-		t.Run(tc.name+"false (with override)", func(t *testing.T) {
+		// While remapping "id" may not make sense for an output property, it is still valid
+		t.Run(tc.name+"no error (with override)", func(t *testing.T) {
 			stderr, err := test(t, tfbridge.ProviderInfo{
 				P: pfbridge.ShimProvider(testProvider{withID: &tc.idSchema}),
 				Resources: map[string]*tfbridge.ResourceInfo{

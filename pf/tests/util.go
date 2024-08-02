@@ -86,7 +86,7 @@ func ensureProviderValid(prov *providerbuilder.Provider) {
 	}
 }
 
-func bridgedProvider(prov *providerbuilder.Provider) info.Provider {
+func bridgedProvider(prov *providerbuilder.Provider, resourceOverrides map[string]*info.Resource) info.Provider {
 	ensureProviderValid(prov)
 	shimProvider := tfbridge.ShimProvider(prov)
 
@@ -95,6 +95,7 @@ func bridgedProvider(prov *providerbuilder.Provider) info.Provider {
 		Name:         prov.TypeName,
 		Version:      "0.0.1",
 		MetadataInfo: &tfbridge0.MetadataInfo{},
+		Resources:    resourceOverrides,
 	}
 
 	provider.MustComputeTokens(tokens.SingleModule(prov.TypeName, "index", tokens.MakeStandard(prov.TypeName)))

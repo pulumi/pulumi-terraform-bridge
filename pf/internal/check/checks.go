@@ -127,7 +127,7 @@ func (errMissingIDAttribute) Error() string {
 type errInvalidRequiredID struct{}
 
 func (errInvalidRequiredID) Error() string {
-	return `a required "id" input attribute is not allowed.` +
+	return `a required "id" input attribute is not allowed. ` +
 		"To map this resource specify SchemaInfo.Name and ResourceInfo.ComputeID"
 }
 
