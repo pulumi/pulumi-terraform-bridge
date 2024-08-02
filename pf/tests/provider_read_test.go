@@ -359,6 +359,15 @@ func TestRefreshResourceNotFound(t *testing.T) {
 		Resources: map[string]*info.Resource{
 			"my_resource": {
 				Tok: "my:index/resource:Resource",
+				ComputeID: func(ctx context.Context, state resource.PropertyMap) (resource.ID, error) {
+					state["id"] = resource.NewStringProperty("customID")
+					return resource.ID("customID"), nil
+				},
+				Fields: map[string]*info.Schema{
+					"id": {
+						Name: "customID",
+					},
+				},
 			},
 		},
 	}
