@@ -176,7 +176,7 @@ func TestInvalidInputID(t *testing.T) {
 			})
 			if tc.isInputProperty {
 				assert.Error(t, err)
-				autogold.Expect(`error: Resource test_res has a problem: a required "id" input attribute is not allowed. To map this resource specify SchemaInfo.Name and ResourceInfo.ComputeID
+				autogold.Expect(`error: Resource test_res has a problem: an "id" input attribute is not allowed. To map this resource specify SchemaInfo.Name and ResourceInfo.ComputeID
 `).Equal(t, stderr)
 			} else {
 				assert.Empty(t, stderr)
@@ -196,7 +196,7 @@ func TestInvalidInputID(t *testing.T) {
 			})
 			if tc.isInputProperty {
 				assert.Error(t, err)
-				autogold.Expect(`error: Resource test_res has a problem: a required "id" input attribute is not allowed. To map this resource specify SchemaInfo.Name and ResourceInfo.ComputeID
+				autogold.Expect(`error: Resource test_res has a problem: an "id" input attribute is not allowed. To map this resource specify SchemaInfo.Name and ResourceInfo.ComputeID
 `).Equal(t, stderr)
 			} else {
 				assert.Empty(t, stderr)
@@ -218,7 +218,7 @@ func TestInvalidInputID(t *testing.T) {
 			})
 			if tc.isInputProperty {
 				assert.Error(t, err)
-				autogold.Expect(`error: Resource test_res has a problem: a required "id" input attribute is not allowed. To map this resource specify SchemaInfo.Name and ResourceInfo.ComputeID
+				autogold.Expect(`error: Resource test_res has a problem: an "id" input attribute is not allowed. To map this resource specify SchemaInfo.Name and ResourceInfo.ComputeID
 `).Equal(t, stderr)
 			} else {
 				assert.Empty(t, stderr)
