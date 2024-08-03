@@ -19,6 +19,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/hashicorp/go-multierror"
+	"github.com/hashicorp/hcl/v2"
 	"io"
 	"os"
 	"path/filepath"
@@ -28,8 +30,6 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/hashicorp/go-multierror"
-	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
