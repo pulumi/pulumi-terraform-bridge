@@ -40,7 +40,7 @@ func TestBasic(t *testing.T) {
 		},
 	}
 
-	prov := bridgedProvider(&provBuilder, nil)
+	prov := bridgedProvider(&provBuilder)
 
 	program := `
 name: test
@@ -100,7 +100,7 @@ func TestComputedSetNoDiffWhenElementRemoved(t *testing.T) {
 		},
 	}
 
-	prov := bridgedProvider(&provBuilder, nil)
+	prov := bridgedProvider(&provBuilder)
 
 	program1 := `
 name: test
@@ -182,17 +182,31 @@ func TestIDAttribute(t *testing.T) {
 		},
 		{
 			// ComputeID must point to an existing field
-			name:                "Computed error",
+			// or have StringAttribute.Name provided as well
+			name:                "Invalid - Computed error",
 			attribute:           rschema.StringAttribute{Computed: true},
 			computeIdField:      "otherId",
 			expectErrorContains: "Could not find required property 'otherId' in state",
 		},
 		{
-			name:             "Computed id points to a different field",
+			// ComputeID with no "Name"
+			name:             "Valid - Computed id points to a different field",
 			attribute:        rschema.StringAttribute{Computed: true},
 			computeIdField:   "s",
 			expectedIdOutput: "hello",
 		},
+		// This one fails on checks during tfgen which we don't have a way of catching
+		// including the test here for completeness
+		// {
+		// 	// without the check failure the runtime error would be:
+		// 	// `Resource state did not contain an id property`
+		// 	name:             "Optional Name error",
+		// 	// this would also fail for a Computed only "id" property
+		// 	attribute:        rschema.StringAttribute{Optional: true, Computed: true},
+		// 	// it would also fail if mappped to either an input property or a purely computed property
+		// 	schemaName:       "s",
+		// 	expectedIdOutput: "hello",
+		// },
 		{
 			// delegate to an existing field
 			name:             "Optional id points to a different field",
@@ -216,11 +230,13 @@ func TestIDAttribute(t *testing.T) {
 							Attributes: map[string]rschema.Attribute{
 								"id": tc.attribute,
 								"s":  rschema.StringAttribute{Optional: true},
+								"x":  rschema.StringAttribute{Computed: true},
 							},
 						},
 						CreateFunc: func(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 							resp.State = tfsdk.State(req.Config)
 							resp.State.SetAttribute(ctx, path.Root("id"), "test-id")
+							resp.State.SetAttribute(ctx, path.Root("x"), "x-id")
 						},
 					},
 				},
@@ -234,7 +250,7 @@ func TestIDAttribute(t *testing.T) {
 			if tc.computeIdField != "" {
 				computeIdField = tfbridge.DelegateIDField(presource.PropertyKey(tc.computeIdField), "prov", "")
 			}
-			prov := bridgedProvider(&provBuilder, map[string]*info.Resource{
+			prov := bridgedProvider(&provBuilder, ProviderResources(map[string]*info.Resource{
 				"prov_test": {
 					Tok:       "prov:index/test:Test",
 					ComputeID: computeIdField,
@@ -242,7 +258,7 @@ func TestIDAttribute(t *testing.T) {
 						"id": &idSchema,
 					},
 				},
-			})
+			}))
 
 			program := `
 name: test
@@ -269,9 +285,6 @@ resources:
 			if val, ok := upres.Outputs["id"].Value.(string); ok {
 				assert.Equal(t, tc.expectedIdOutput, val)
 			}
-			t.Logf("stderr: %s", upres.StdErr)
-			t.Logf("stdout: %s", upres.StdOut)
-
 		})
 	}
 }

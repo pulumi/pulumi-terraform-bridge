@@ -185,6 +185,7 @@ func TestInvalidInputID(t *testing.T) {
 		})
 		// "id" is a required output property so if we remap "id" -> "otherId" now we
 		// don't have an "id" output. We must create one by using `ComputeID`
+		// TODO: this should always fail I think
 		t.Run(tc.name+" overrides with Name and missing ComputeID", func(t *testing.T) {
 			stderr, err := test(t, tfbridge.ProviderInfo{
 				P: pfbridge.ShimProvider(testProvider{withID: &tc.idSchema}),
@@ -194,14 +195,9 @@ func TestInvalidInputID(t *testing.T) {
 					}},
 				},
 			})
-			if tc.isInputProperty {
-				assert.Error(t, err)
-				autogold.Expect(`error: Resource test_res has a problem: an "id" input attribute is not allowed. To map this resource specify SchemaInfo.Name and ResourceInfo.ComputeID
+			assert.Error(t, err)
+			autogold.Expect(`error: Resource test_res has a problem: an "id" attribute with SchemaInfo.Name must also specify ResourceInfo.ComputeID
 `).Equal(t, stderr)
-			} else {
-				assert.Empty(t, stderr)
-				assert.NoError(t, err)
-			}
 		})
 		// Providing `ComputeID` handles remapping the output "id" to a different property, but
 		// we still may have an input property "id"

@@ -45,6 +45,26 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/tokens"
 )
 
+type Options struct {
+	resourceOverrides map[string]*info.Resource
+}
+
+type Option interface {
+	Apply(*Options)
+}
+
+type optionFunc func(*Options)
+
+func (o optionFunc) Apply(opts *Options) {
+	o(opts)
+}
+
+func ProviderResources(resources map[string]*info.Resource) Option {
+	return optionFunc(func(o *Options) {
+		o.resourceOverrides = resources
+	})
+}
+
 func newProviderServer(t *testing.T, info tfbridge0.ProviderInfo) pulumirpc.ResourceProviderServer {
 	ctx := context.Background()
 	meta := genMetadata(t, info)
@@ -86,16 +106,21 @@ func ensureProviderValid(prov *providerbuilder.Provider) {
 	}
 }
 
-func bridgedProvider(prov *providerbuilder.Provider, resourceOverrides map[string]*info.Resource) info.Provider {
+func bridgedProvider(prov *providerbuilder.Provider, opts ...Option) info.Provider {
 	ensureProviderValid(prov)
 	shimProvider := tfbridge.ShimProvider(prov)
+
+	var options Options
+	for _, opt := range opts {
+		opt.Apply(&options)
+	}
 
 	provider := tfbridge0.ProviderInfo{
 		P:            shimProvider,
 		Name:         prov.TypeName,
 		Version:      "0.0.1",
 		MetadataInfo: &tfbridge0.MetadataInfo{},
-		Resources:    resourceOverrides,
+		Resources:    options.resourceOverrides,
 	}
 
 	provider.MustComputeTokens(tokens.SingleModule(prov.TypeName, "index", tokens.MakeStandard(prov.TypeName)))

@@ -131,6 +131,12 @@ func (errInvalidRequiredID) Error() string {
 		"To map this resource specify SchemaInfo.Name and ResourceInfo.ComputeID"
 }
 
+type errMissingComputeID struct{}
+
+func (errMissingComputeID) Error() string {
+	return `an "id" attribute with SchemaInfo.Name must also specify ResourceInfo.ComputeID`
+}
+
 func isInputProperty(schema shim.Schema) bool {
 	if schema.Computed() && !schema.Optional() {
 		return false
@@ -149,9 +155,18 @@ func resourceHasRegularID(rname string, resource shim.Resource, resourceInfo *tf
 			info = *id
 		}
 	}
-
-	if isInputProperty(idSchema) && (info.Name == "" || resourceInfo.ComputeID == nil) {
+	isInput := isInputProperty(idSchema)
+	if info.Name != "" && resourceInfo.ComputeID == nil {
+		// if Name is provided then ComputeID must be provided regardless of whether
+		// "id" is an input or a computed property
+		return errMissingComputeID{}
+	}
+	if isInput && (info.Name == "" || resourceInfo.ComputeID == nil) {
 		return errInvalidRequiredID{}
+	}
+
+	if !isInput && info.Name != "" && resourceInfo.ComputeID == nil {
+
 	}
 
 	// If the user over-rode the type to be a string, don't reject.
