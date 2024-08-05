@@ -207,14 +207,18 @@ func TestIDAttribute(t *testing.T) {
 		// 	schemaName:       "s",
 		// 	expectedIdOutput: "hello",
 		// },
-		{
-			// delegate to an existing field
-			name:             "Optional id points to a different field",
-			attribute:        rschema.StringAttribute{Optional: true},
-			computeIDField:   "s",
-			schemaName:       "s",
-			expectedIDOutput: "hello",
-		},
+
+		// While this is technically possible it should probably become an error in the future
+		// Current this can cause a race condition where the output of `s` could either be from `s` or `id`
+		// https://github.com/pulumi/pulumi-terraform-bridge/issues/2283
+		// {
+		// 	// delegate to an existing field
+		// 	name:             "Optional id points to a different field",
+		// 	attribute:        rschema.StringAttribute{Optional: true},
+		// 	computeIDField:   "s",
+		// 	schemaName:       "s",
+		// 	expectedIDOutput: "hello",
+		// },
 	}
 	for _, tc := range tests {
 		tc := tc
