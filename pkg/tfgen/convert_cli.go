@@ -95,6 +95,7 @@ type cliConverter struct {
 // Represents a partially converted example. PCL is the Pulumi dialect of HCL.
 type translatedExample struct {
 	PCL         string          `json:"pcl"`
+	PulumiYAML  string          `json:"pulumiYaml"`
 	Diagnostics hcl.Diagnostics `json:"diagnostics"`
 }
 
