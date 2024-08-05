@@ -165,10 +165,6 @@ func resourceHasRegularID(rname string, resource shim.Resource, resourceInfo *tf
 		return errInvalidRequiredID{}
 	}
 
-	if !isInput && info.Name != "" && resourceInfo.ComputeID == nil {
-
-	}
-
 	// If the user over-rode the type to be a string, don't reject.
 	if idSchema.Type() != shim.TypeString && info.Type != "string" {
 		actual := idSchema.Type().String()
