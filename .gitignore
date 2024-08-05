@@ -4,8 +4,12 @@
 *.iml
 .DS_Store
 bin
+go.work
+go.work.sum
+
+
 coverage.txt
 pkg/tests/coverage.txt
 testing/coverage.txt
-go.work
-go.work.sum
+pf/coverage.out
+pf/tests/coverage.out

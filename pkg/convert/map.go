@@ -53,7 +53,7 @@ func (enc *mapEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.Valu
 	}
 	if !p.IsObject() {
 		return tftypes.NewValue(mapTy, nil),
-			fmt.Errorf("Expected an Object PropertyValue")
+			fmt.Errorf("Expected an Object PropertyValue, found %s (%q)", p.TypeString(), p.String())
 	}
 	values := map[string]tftypes.Value{}
 	for key, pv := range p.ObjectValue() {
