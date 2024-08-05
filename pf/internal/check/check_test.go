@@ -19,13 +19,12 @@ import (
 	"context"
 	"testing"
 
-	"github.com/hexops/autogold/v2"
-
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	sdkschema "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hexops/autogold/v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	property "github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -165,7 +164,11 @@ func TestInvalidInputID(t *testing.T) {
 		{name: "Required", idSchema: idSchema{required: true, optional: false, computed: false}, isInputProperty: true},
 		{name: "Optional", idSchema: idSchema{required: false, optional: true, computed: false}, isInputProperty: true},
 		{name: "Computed", idSchema: idSchema{required: false, optional: false, computed: true}, isInputProperty: false},
-		{name: "Optional+Computed", idSchema: idSchema{required: false, optional: true, computed: true}, isInputProperty: true},
+		{
+			name:            "Optional+Computed",
+			idSchema:        idSchema{required: false, optional: true, computed: true},
+			isInputProperty: true,
+		},
 	}
 
 	for _, tc := range tests {
@@ -176,16 +179,17 @@ func TestInvalidInputID(t *testing.T) {
 			})
 			if tc.isInputProperty {
 				assert.Error(t, err)
-				autogold.Expect(`error: Resource test_res has a problem: an "id" input attribute is not allowed. To map this resource specify SchemaInfo.Name and ResourceInfo.ComputeID
+				autogold.Expect(`error: Resource test_res has a problem: an "id" input attribute is not allowed. `+
+					`To map this resource specify SchemaInfo.Name and ResourceInfo.ComputeID
 `).Equal(t, stderr)
 			} else {
 				assert.Empty(t, stderr)
 				assert.NoError(t, err)
 			}
 		})
+
 		// "id" is a required output property so if we remap "id" -> "otherId" now we
 		// don't have an "id" output. We must create one by using `ComputeID`
-		// TODO: this should always fail I think
 		t.Run(tc.name+" overrides with Name and missing ComputeID", func(t *testing.T) {
 			stderr, err := test(t, tfbridge.ProviderInfo{
 				P: pfbridge.ShimProvider(testProvider{withID: &tc.idSchema}),
@@ -196,9 +200,11 @@ func TestInvalidInputID(t *testing.T) {
 				},
 			})
 			assert.Error(t, err)
-			autogold.Expect(`error: Resource test_res has a problem: an "id" attribute with SchemaInfo.Name must also specify ResourceInfo.ComputeID
+			autogold.Expect(`error: Resource test_res has a problem: an "id" attribute with SchemaInfo.Name `+
+				`must also specify ResourceInfo.ComputeID
 `).Equal(t, stderr)
 		})
+
 		// Providing `ComputeID` handles remapping the output "id" to a different property, but
 		// we still may have an input property "id"
 		t.Run(tc.name+" overrides with ComputeID and missing Name", func(t *testing.T) {
@@ -214,7 +220,8 @@ func TestInvalidInputID(t *testing.T) {
 			})
 			if tc.isInputProperty {
 				assert.Error(t, err)
-				autogold.Expect(`error: Resource test_res has a problem: an "id" input attribute is not allowed. To map this resource specify SchemaInfo.Name and ResourceInfo.ComputeID
+				autogold.Expect(`error: Resource test_res has a problem: an "id" input attribute is not allowed. `+
+					`To map this resource specify SchemaInfo.Name and ResourceInfo.ComputeID
 `).Equal(t, stderr)
 			} else {
 				assert.Empty(t, stderr)

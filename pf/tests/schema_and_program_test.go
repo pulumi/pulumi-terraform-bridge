@@ -149,51 +149,51 @@ func TestIDAttribute(t *testing.T) {
 	tests := []struct {
 		name                string
 		attribute           rschema.Attribute
-		computeIdField      string
+		computeIDField      string
 		schemaName          string
 		expectErrorContains string
-		expectedIdOutput    string
+		expectedIDOutput    string
 	}{
 		{
 			name:             "Valid - Optional + Computed",
 			attribute:        rschema.StringAttribute{Optional: true, Computed: true},
-			computeIdField:   "otherId",
+			computeIDField:   "otherId",
 			schemaName:       "otherId",
-			expectedIdOutput: "test-id",
+			expectedIDOutput: "test-id",
 		},
 		{
 			name:             "Valid - Optional",
 			attribute:        rschema.StringAttribute{Optional: true},
-			computeIdField:   "otherId",
+			computeIDField:   "otherId",
 			schemaName:       "otherId",
-			expectedIdOutput: "test-id",
+			expectedIDOutput: "test-id",
 		},
 		{
 			name:             "Valid - Computed (with computeID & Name)",
 			attribute:        rschema.StringAttribute{Computed: true},
-			computeIdField:   "otherId",
+			computeIDField:   "otherId",
 			schemaName:       "otherId",
-			expectedIdOutput: "test-id",
+			expectedIDOutput: "test-id",
 		},
 		{
 			name:             "Valid - Computed (without computeID & Name)",
 			attribute:        rschema.StringAttribute{Computed: true},
-			expectedIdOutput: "test-id",
+			expectedIDOutput: "test-id",
 		},
 		{
 			// ComputeID must point to an existing field
 			// or have StringAttribute.Name provided as well
 			name:                "Invalid - Computed error",
 			attribute:           rschema.StringAttribute{Computed: true},
-			computeIdField:      "otherId",
+			computeIDField:      "otherId",
 			expectErrorContains: "Could not find required property 'otherId' in state",
 		},
 		{
 			// ComputeID with no "Name"
 			name:             "Valid - Computed id points to a different field",
 			attribute:        rschema.StringAttribute{Computed: true},
-			computeIdField:   "s",
-			expectedIdOutput: "hello",
+			computeIDField:   "s",
+			expectedIDOutput: "hello",
 		},
 		// This one fails on checks during tfgen which we don't have a way of catching
 		// including the test here for completeness
@@ -211,9 +211,9 @@ func TestIDAttribute(t *testing.T) {
 			// delegate to an existing field
 			name:             "Optional id points to a different field",
 			attribute:        rschema.StringAttribute{Optional: true},
-			computeIdField:   "s",
+			computeIDField:   "s",
 			schemaName:       "s",
-			expectedIdOutput: "hello",
+			expectedIDOutput: "hello",
 		},
 	}
 	for _, tc := range tests {
@@ -242,18 +242,18 @@ func TestIDAttribute(t *testing.T) {
 				},
 			}
 
-			var computeIdField tfbridge.ComputeID
+			var computeIDField tfbridge.ComputeID
 			var idSchema info.Schema
 			if tc.schemaName != "" {
 				idSchema = info.Schema{Name: tc.schemaName}
 			}
-			if tc.computeIdField != "" {
-				computeIdField = tfbridge.DelegateIDField(presource.PropertyKey(tc.computeIdField), "prov", "")
+			if tc.computeIDField != "" {
+				computeIDField = tfbridge.DelegateIDField(presource.PropertyKey(tc.computeIDField), "prov", "")
 			}
 			prov := bridgedProvider(&provBuilder, ProviderResources(map[string]*info.Resource{
 				"prov_test": {
 					Tok:       "prov:index/test:Test",
-					ComputeID: computeIdField,
+					ComputeID: computeIDField,
 					Fields: map[string]*info.Schema{
 						"id": &idSchema,
 					},
@@ -283,7 +283,7 @@ resources:
 			}
 
 			if val, ok := upres.Outputs["id"].Value.(string); ok {
-				assert.Equal(t, tc.expectedIdOutput, val)
+				assert.Equal(t, tc.expectedIDOutput, val)
 			}
 		})
 	}
