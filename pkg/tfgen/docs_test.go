@@ -754,37 +754,42 @@ Basic usage:`
 func TestReformatExamples(t *testing.T) {
 	runTest := func(input string, expected [][]string) {
 		inputSections := splitGroupLines(input, "## ")
-		output := reformatExamples(inputSections)
+		actual := reformatExamples(inputSections)
 
-		assert.ElementsMatch(t, expected, output)
+		assert.Equal(t, expected, actual)
 	}
 
 	// This is a simple use case. We expect no changes to the original doc:
-	simpleDoc := `description
+	t.Run("no-op", func(t *testing.T) {
+		input := `description
 
 ## Example Usage
 
 example usage content`
 
-	simpleDocExpected := [][]string{
-		{
-			"description",
-			"",
-		},
-		{
-			"## Example Usage",
-			"",
-			"example usage content",
-		},
-	}
+		expected := [][]string{
+			{
+				"description",
+				"",
+			},
+			{
+				"## Example Usage",
+				"",
+				"example usage content",
+			},
+		}
 
-	runTest(simpleDoc, simpleDocExpected)
+		runTest(input, expected)
+	})
 
-	// This use case demonstrates 2 examples at the same H2 level: a canonical Example Usage and another example
-	// for a specific use case. We expect these to be transformed into a canonical H2 "Example Usage" with an H3 for
-	// the specific use case.
-	// This scenario is common in the pulumi-gcp provider:
-	gcpDoc := `description
+	// This use case demonstrates 2 examples at the same H2 level: a canonical Example
+	// Usage and another example for a specific use case. We expect these to be
+	// transformed into a canonical H2 "Example Usage" with an H3 for the specific use
+	// case.
+	//
+	// This scenario is common in the pulumi-gcp provider.
+	t.Run("multiple-examples-same-level", func(t *testing.T) {
+		input := `description
 
 ## Example Usage
 
@@ -794,28 +799,32 @@ example usage content
 
 specific case content`
 
-	gcpDocExpected := [][]string{
-		{
-			"description",
-			"",
-		},
-		{
-			"## Example Usage",
-			"",
-			"example usage content",
-			"",
-			"### Specific Case",
-			"",
-			"specific case content",
-		},
-	}
+		expected := [][]string{
+			{
+				"description",
+				"",
+			},
+			{
+				"## Example Usage",
+				"",
+				"example usage content",
+				"",
+				"### Specific Case",
+				"",
+				"specific case content",
+			},
+		}
 
-	runTest(gcpDoc, gcpDocExpected)
+		runTest(input, expected)
+	})
 
-	// This use case demonstrates 2 no canonical Example Usage/basic case and 2 specific use cases. We expect the
-	// function to add a canonical Example Usage section with the 2 use cases as H3's beneath the canonical section.
-	// This scenario is common in the pulumi-gcp provider:
-	gcpDoc2 := `description
+	// This use case demonstrates 2 no canonical Example Usage/basic case and 2
+	// specific use cases. We expect the function to add a canonical Example Usage
+	// section with the 2 use cases as H3's beneath the canonical section.
+	//
+	// This scenario is common in the pulumi-gcp provider.
+	t.Run("no-canonical-example-header", func(t *testing.T) {
+		input := `description
 
 ## Example Usage - 1
 
@@ -825,41 +834,44 @@ content 1
 
 content 2`
 
-	gcpDoc2Expected := [][]string{
-		{
-			"description",
-			"",
-		},
-		{
-			"## Example Usage",
-			"### 1",
-			"",
-			"content 1",
-			"",
-			"### 2",
-			"",
-			"content 2",
-		},
-	}
+		expected := [][]string{
+			{
+				"description",
+				"",
+			},
+			{
+				"## Example Usage",
+				"### 1",
+				"",
+				"content 1",
+				"",
+				"### 2",
+				"",
+				"content 2",
+			},
+		}
 
-	runTest(gcpDoc2, gcpDoc2Expected)
+		runTest(input, expected)
+	})
 
-	misformattedDocNoPanic := `## jetstream_kv_entry Resource
+	t.Run("misformatted-docs-dont-panic", func(t *testing.T) {
+		input := `## jetstream_kv_entry Resource
 content
 ### Example
 content`
 
-	misformattedDocsExpected := [][]string{
-		nil,
-		{
-			"## jetstream_kv_entry Resource",
-			"content",
-			"### Example",
-			"content",
-		},
-	}
+		expected := [][]string{
+			nil,
+			{
+				"## jetstream_kv_entry Resource",
+				"content",
+				"### Example",
+				"content",
+			},
+		}
 
-	runTest(misformattedDocNoPanic, misformattedDocsExpected)
+		runTest(input, expected)
+	})
 }
 
 func TestFormatEntityName(t *testing.T) {
