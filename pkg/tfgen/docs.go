@@ -407,21 +407,23 @@ func splitByMdHeaders(text string, level int) [][]string {
 
 	// nodeLiteralIdx returns a pointer to the first .Literal field on a node or its
 	// children.
-	var nodeLiteralIdx func(*bf.Node) *byte
-	nodeLiteralIdx = func(node *bf.Node) *byte {
+	var nodeLiteralIdx func(*bf.Node, *byte) bool
+	nodeLiteralIdx = func(node *bf.Node, target *byte) bool {
 		if node == nil {
-			return nil
+			return false
 		}
 		if len(node.Literal) > 0 {
-			return &node.Literal[0]
+			if target == &node.Literal[0] {
+				return true
+			}
 		}
 
 		for child := node.FirstChild; child != nil; child = child.Next {
-			if idx := nodeLiteralIdx(child); idx != nil {
-				return idx
+			if nodeLiteralIdx(child, target) {
+				return true
 			}
 		}
-		return nil
+		return false
 	}
 
 	// Here is where we actually find the set of headers (of the right level).
@@ -435,12 +437,12 @@ func splitByMdHeaders(text string, level int) [][]string {
 			return bf.GoToNext
 		}
 		var foundHeader bool
-		for targetChar := nodeLiteralIdx(node); idx < len(bytes); idx++ {
+		for ; idx < len(bytes); idx++ {
 			// Here we take advantage of the fact that the .Literal field on
 			// leaf nodes is a view into the same byte array that was passed
 			// into `parseDoc` to recover the index of of .Literal[0] in the
 			// original array.
-			if &bytes[idx] == targetChar {
+			if nodeLiteralIdx(node, &bytes[idx]) {
 				// We have found in `bytes` the location of a header text,
 				// but we want the start of the line. We need to walk
 				// back.
@@ -454,7 +456,14 @@ func splitByMdHeaders(text string, level int) [][]string {
 				break
 			}
 		}
-		contract.Assertf(foundHeader, "Failed to find source location of a header on input %q", text)
+		// Markdown's alternative headers[1] are undiscovered by this method. That's
+		// tollerable, since we didn't parse them correctly before either.
+		//
+		// [^1]: Alternative headers look like this:
+		//
+		//	h2
+		//	---
+		contract.Ignore(foundHeader)
 		return bf.GoToNext
 	})
 
