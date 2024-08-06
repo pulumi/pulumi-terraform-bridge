@@ -48,6 +48,20 @@ func cliConverterEnabled() bool {
 	return cmdutil.IsTruthy(os.Getenv("PULUMI_CONVERT"))
 }
 
+// cliConverter is difficult to use for standalone examples as it is has not been fully factored away from PackageSpec
+// bulk processing of the examples yet. When converting examples piecemeal, consider using this simplified interface.
+type exampleConverterFacade interface {
+	FromHCL(path examplePath, hclCode string) (translatedExample, error)
+	ToLanguage(example translatedExample, targetLanguage string) (string, error)
+}
+
+func newExampleConverterFacade(g *Generator) (exampleConverterFacade, error) {
+	if !cliConverterEnabled() {
+		return nil, fmt.Errorf("CLI based conversion is not yet supported unless PULUMI_CONVERT is set")
+	}
+	return g.newCliConverter(), nil
+}
+
 // Integrates with `pulumi convert` command for converting TF examples.
 //
 // Pulumi CLI now supprts a handy `pulumi convert` command. This file implements integrating with
@@ -104,7 +118,12 @@ func (g *Generator) cliConverter() *cliConverter {
 	if g.cliConverterState != nil {
 		return g.cliConverterState
 	}
-	g.cliConverterState = &cliConverter{
+	g.cliConverterState = g.newCliConverter()
+	return g.cliConverterState
+}
+
+func (g *Generator) newCliConverter() *cliConverter {
+	cc := &cliConverter{
 		generator:    g,
 		hcls:         map[string]struct{}{},
 		info:         g.info,
@@ -116,9 +135,32 @@ func (g *Generator) cliConverter() *cliConverter {
 		l := newLoader(g.pluginHost)
 		// Ensure azurerm resolves to azure for example:
 		l.aliasPackage(g.info.Name, string(g.pkg))
-		g.cliConverterState.loader = l
+		cc.loader = l
 	}
-	return g.cliConverterState
+	return cc
+}
+
+// Simplified interface for one-off conversions, see [exampleConverterFacade].
+func (cc *cliConverter) FromHCL(path examplePath, hclCode string) (translatedExample, error) {
+	key := "e"
+	result, err := cc.convertViaPulumiCLI(map[string]string{key: hclCode}, []tfbridge.ProviderInfo{cc.info})
+	if err != nil {
+		return translatedExample{}, nil
+	}
+	return result[key], nil
+}
+
+// Simplified interface for one-off conversions, see [exampleConverterFacade].
+func (cc *cliConverter) ToLanguage(example translatedExample, lang string) (string, error) {
+	source, diags, err := cc.convertPCL(example.PCL, lang)
+	if err != nil {
+		return "", err
+	}
+	diags = cc.postProcessDiagnostics(diags.Extend(example.Diagnostics))
+	if diags.HasErrors() {
+		return "", fmt.Errorf("Failed to convert an example: %s", diags.Error())
+	}
+	return source, nil
 }
 
 // Instead of converting examples, detect HCL literals involved and record placeholders for later.
@@ -195,7 +237,7 @@ func (cc *cliConverter) Convert(
 	if example.Diagnostics.HasErrors() {
 		return "", example.Diagnostics, nil
 	}
-	source, diags, err := cc.convertPCL(cc.currentPackageSpec, example.PCL, lang)
+	source, diags, err := cc.convertPCL(example.PCL, lang)
 	return source, cc.postProcessDiagnostics(diags.Extend(example.Diagnostics)), err
 }
 
@@ -469,7 +511,6 @@ func (*cliConverter) mappingsFile(mappingsDir string, info tfbridge.ProviderInfo
 // unfortunate because it makes another plugin loader necessary. This should eventually also happen
 // through pulumi convert, but it needs to have bulk interface enabled for every language.
 func (cc *cliConverter) convertPCL(
-	spec *pschema.PackageSpec,
 	source string,
 	languageName string,
 ) (string, hcl.Diagnostics, error) {
