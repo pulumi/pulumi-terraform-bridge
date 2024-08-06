@@ -18,7 +18,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math"
 	"os"
+	"q"
 	"sort"
 	"strings"
 	"time"
@@ -1289,6 +1291,13 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 		}
 	}
 
+	val, _ := newstate.Object(p.info.P.Schema())
+	zoneVal := val["managed_zone_id"]
+	zoneValFloat, ok := zoneVal.(json.Number)
+	if ok {
+		q.Q(zoneValFloat)
+	}
+
 	// Create the ID and property maps and return them.
 	props, err = MakeTerraformResult(ctx, p.tf, newstate, res.TF.Schema(), res.Schema.Fields, assets, p.supportsSecrets)
 	if err != nil {
@@ -1301,6 +1310,13 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 		if err != nil {
 			return nil, err
 		}
+	}
+	q.Q(props)
+	zoneID := props["managedZoneId"]
+	zoneIDFloat, ok := zoneID.V.(float64)
+	if ok {
+		zoneIDInt := int(math.Round(zoneIDFloat))
+		q.Q(zoneIDInt)
 	}
 
 	mprops, err := plugin.MarshalProperties(props, plugin.MarshalOptions{

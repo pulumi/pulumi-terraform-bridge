@@ -67,6 +67,12 @@ func (s v2InstanceState) Object(sch shim.SchemaMap) (map[string]interface{}, err
 	return s.objectV1(sch)
 }
 
+func unmarshalJSON(data []byte, v interface{}) error {
+	dec := json.NewDecoder(bytes.NewReader(data))
+	dec.UseNumber()
+	return dec.Decode(v)
+}
+
 // objectFromCtyValue takes a cty.Value and converts it to JSON object.
 // We do not care about type checking the values, we just want to do our best to recursively convert
 // the cty.Value to the underlying value
@@ -81,7 +87,7 @@ func objectFromCtyValue(v cty.Value) map[string]interface{} {
 	contract.AssertNoErrorf(err, "Failed to marshal cty.Value to a JSON string value")
 
 	var m map[string]interface{}
-	err = json.Unmarshal(buf.Bytes(), &m)
+	err = unmarshalJSON(buf.Bytes(), &m)
 	contract.AssertNoErrorf(err, "failed to unmarshal: %s", buf.String())
 
 	return m
