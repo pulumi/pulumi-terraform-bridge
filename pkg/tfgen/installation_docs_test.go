@@ -258,7 +258,7 @@ func TestTranslateCodeBlocks(t *testing.T) {
 			// Currently there is a test issue in CI/test setup:
 			//
 			// convertViaPulumiCLI: failed to clean up temp bridge-examples.json file: The
-			// process cannot access the file because it is being used by another process..
+			// process cannot access the file because it is being used by another process.
 			t.Skipf("Skipping on Windows due to a test setup issue")
 		}
 		t.Setenv("PULUMI_CONVERT", "1")

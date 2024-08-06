@@ -170,8 +170,7 @@ func translateCodeBlocks(contentStr string, g *Generator) (string, error) {
 		fenceLanguage := contentStr[block.start : block.start+nextNewLine+1]
 		code := contentStr[block.start+nextNewLine+1 : block.end]
 		// Only convert code blocks that we have reasonable suspicion of actually being Terraform.
-		if fenceLanguage == "```terraform\n" || fenceLanguage == "```hcl\n" ||
-			(fenceLanguage == "```\n" && guessIsHCL(code)) {
+		if isHCL(fenceLanguage, code) {
 			exampleContent, err := convertExample(g, code, i)
 			if err != nil {
 				return "", err
