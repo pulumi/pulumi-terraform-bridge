@@ -404,8 +404,28 @@ func trimFrontMatter(text []byte) []byte {
 func splitByMdHeaders(text string, level int) [][]string {
 	bytes := trimFrontMatter([]byte(text))
 	idx := 0
-	headers := []int{}
 
+	// nodeLiteralIdx returns a pointer to the first .Literal field on a node or its
+	// children.
+	var nodeLiteralIdx func(*bf.Node) *byte
+	nodeLiteralIdx = func(node *bf.Node) *byte {
+		if node == nil {
+			return nil
+		}
+		if len(node.Literal) > 0 {
+			return &node.Literal[0]
+		}
+
+		for child := node.FirstChild; child != nil; child = child.Next {
+			if idx := nodeLiteralIdx(child); idx != nil {
+				return idx
+			}
+		}
+		return nil
+	}
+
+	// Here is where we actually find the set of headers (of the right level).
+	headers := []int{}
 	parseDoc(bytes).Walk(func(node *bf.Node, entering bool) bf.WalkStatus {
 		if !entering {
 			return bf.GoToNext
@@ -415,12 +435,12 @@ func splitByMdHeaders(text string, level int) [][]string {
 			return bf.GoToNext
 		}
 		var foundHeader bool
-		for ; idx < len(bytes); idx++ {
+		for targetChar := nodeLiteralIdx(node); idx < len(bytes); idx++ {
 			// Here we take advantage of the fact that the .Literal field on
 			// leaf nodes is a view into the same byte array that was passed
 			// into `parseDoc` to recover the index of of .Literal[0] in the
 			// original array.
-			if &bytes[idx] == &node.FirstChild.Literal[0] {
+			if &bytes[idx] == targetChar {
 				// We have found in `bytes` the location of a header text,
 				// but we want the start of the line. We need to walk
 				// back.
@@ -434,7 +454,7 @@ func splitByMdHeaders(text string, level int) [][]string {
 				break
 			}
 		}
-		contract.Assertf(foundHeader, "Failed to find source location of a header")
+		contract.Assertf(foundHeader, "Failed to find source location of a header on input %q", text)
 		return bf.GoToNext
 	})
 

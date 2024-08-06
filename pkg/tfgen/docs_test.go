@@ -28,6 +28,7 @@ import (
 	"testing"
 	"text/template"
 
+	"github.com/hexops/autogold/v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -670,6 +671,120 @@ func TestReplaceFooterLinks(t *testing.T) {
 	assert.Equal(t, inputText, actual)
 }
 
+func TestSplitByMdHeaders(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		input    string
+		level    int
+		expected autogold.Value
+	}{
+		{
+			input: `Section1
+## H2
+Section2
+## H2
+Section3
+`,
+			level: 2,
+			expected: autogold.Expect([][]string{
+				{
+					"Section1",
+				},
+				{
+					"## H2",
+					"Section2",
+				},
+				{
+					"## H2",
+					"Section3",
+					"",
+				},
+			}),
+		},
+		{
+			input: `# hi
+h1 content
+`,
+			level: 1,
+			expected: autogold.Expect([][]string{{
+				"# hi",
+				"h1 content",
+				"",
+			}}),
+		},
+		{
+			input: `
+only 1 section - no headers
+`,
+			level: 2,
+			expected: autogold.Expect([][]string{{
+				"",
+				"only 1 section - no headers",
+				"",
+			}}),
+		},
+		{
+			input: `
+##
+
+No content for the header
+`,
+			expected: autogold.Expect([][]string{{
+				"",
+				"##",
+				"",
+				"No content for the header",
+				"",
+			}}),
+		},
+		{
+			input: `
+## *emph content*
+foo
+`,
+			level: 2,
+			expected: autogold.Expect([][]string{{
+				"",
+				"## *emph content*",
+				"foo",
+				"",
+			}}),
+		},
+		{
+			input: `## Real header
+` + "```" + `
+## Fake header
+` + "```" + `
+## Another real header
+content
+`,
+			level: 2,
+			expected: autogold.Expect([][]string{
+				{
+					"## Real header",
+					"```",
+					"## Fake header",
+					"```",
+				},
+				{
+					"## Another real header",
+					"content",
+					"",
+				},
+			}),
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run("", func(t *testing.T) {
+			actual := splitByMdHeaders(tt.input, tt.level)
+			tt.expected.Equal(t, actual)
+		})
+	}
+}
+
 func TestFixExamplesHeaders(t *testing.T) {
 	codeFence := "```"
 	t.Run("WithCodeFences", func(t *testing.T) {
@@ -861,7 +976,6 @@ content
 content`
 
 		expected := [][]string{
-			nil,
 			{
 				"## jetstream_kv_entry Resource",
 				"content",
