@@ -443,13 +443,13 @@ func parseTextSeq(firstNode *bf.Node, useStarsForStrongAndEmph bool) (string, er
 	return buffer.String(), err
 }
 
-func parseDoc(text string) *bf.Node {
+func parseDoc(text []byte) *bf.Node {
 	mdProc := bf.New(bf.WithExtensions(bf.FencedCode))
-	return mdProc.Parse([]byte(text))
+	return mdProc.Parse(text)
 }
 
 func parseNode(text string) *bf.Node {
-	return parseDoc(text).FirstChild
+	return parseDoc([]byte(text)).FirstChild
 }
 
 // Used for debugging blackfriday parse trees by visualizing them.
