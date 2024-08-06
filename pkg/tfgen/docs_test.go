@@ -688,7 +688,7 @@ Provides a DigitalOcean CDN Endpoint resource for use with Spaces.
 ## Argument Reference`
 
 		var processedMarkdown string
-		groups := splitByL2Headers(markdown)
+		groups := splitByMdHeaders(markdown, 2)
 		for _, lines := range groups {
 			fixExampleTitles(lines)
 			for _, line := range lines {
@@ -715,7 +715,7 @@ Misleading example title without any actual code fences. We should not modify th
 ## Argument Reference`
 
 		var processedMarkdown string
-		groups := splitByL2Headers(markdown)
+		groups := splitByMdHeaders(markdown, 2)
 		for _, lines := range groups {
 			fixExampleTitles(lines)
 			for _, line := range lines {
@@ -753,7 +753,7 @@ Basic usage:`
 
 func TestReformatExamples(t *testing.T) {
 	runTest := func(input string, expected [][]string) {
-		inputSections := splitByL2Headers(input)
+		inputSections := splitByMdHeaders(input, 2)
 		actual := reformatExamples(inputSections)
 
 		assert.Equal(t, expected, actual)
