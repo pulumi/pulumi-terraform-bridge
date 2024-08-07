@@ -67,6 +67,7 @@ func (s v2InstanceState) Object(sch shim.SchemaMap) (map[string]interface{}, err
 	return s.objectV1(sch)
 }
 
+// This is needed because json.Unmarshal uses float64 for numbers by default which truncates int64 numbers.
 func unmarshalJSON(data []byte, v interface{}) error {
 	dec := json.NewDecoder(bytes.NewReader(data))
 	dec.UseNumber()
