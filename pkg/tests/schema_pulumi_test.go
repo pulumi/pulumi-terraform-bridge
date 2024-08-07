@@ -2172,7 +2172,7 @@ func TestBigIntOverride(t *testing.T) {
 		},
 	}
 
-	runTest := func(PRC bool) {
+	runTest := func(t *testing.T, PRC bool) {
 		tfp := &schema.Provider{ResourcesMap: resMap}
 		opts := []pulcheck.BridgedProviderOpt{}
 		if PRC {
@@ -2221,10 +2221,10 @@ resources:
 	}
 
 	t.Run("PRC disabled", func(t *testing.T) {
-		runTest(false)
+		runTest(t, false)
 	})
 
 	t.Run("PRC enabled", func(t *testing.T) {
-		runTest(true)
+		runTest(t, true)
 	})
 }
