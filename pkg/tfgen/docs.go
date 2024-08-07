@@ -36,6 +36,10 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	bf "github.com/russross/blackfriday/v2"
 	"github.com/spf13/afero"
+	"github.com/yuin/goldmark"
+	gmast "github.com/yuin/goldmark/ast"
+	"github.com/yuin/goldmark/extension"
+	gmtext "github.com/yuin/goldmark/text"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 
@@ -401,70 +405,33 @@ func trimFrontMatter(text []byte) []byte {
 	return body[idx+3:]
 }
 
+func gmWalkNodes(node gmast.Node, f func(gmast.Node)) {
+	f(node)
+	for child := node.FirstChild(); child != nil; child = child.NextSibling() {
+		gmWalkNodes(child, f)
+	}
+}
+
 func splitByMdHeaders(text string, level int) [][]string {
 	bytes := trimFrontMatter([]byte(text))
-	idx := 0
 
-	// nodeLiteralIdx returns a pointer to the first .Literal field on a node or its
-	// children.
-	var nodeLiteralIdx func(*bf.Node, *byte) bool
-	nodeLiteralIdx = func(node *bf.Node, target *byte) bool {
-		if node == nil {
-			return false
-		}
-		if len(node.Literal) > 0 {
-			if target == &node.Literal[0] {
-				return true
-			}
-		}
-
-		for child := node.FirstChild; child != nil; child = child.Next {
-			if nodeLiteralIdx(child, target) {
-				return true
-			}
-		}
-		return false
-	}
-
-	// Here is where we actually find the set of headers (of the right level).
 	headers := []int{}
-	parseDoc(bytes).Walk(func(node *bf.Node, entering bool) bf.WalkStatus {
-		if !entering {
-			return bf.GoToNext
-		}
 
-		if node.Type != bf.Heading || node.HeadingData.Level != level || node.HeadingData.IsTitleblock {
-			return bf.GoToNext
+	gm := goldmark.New(goldmark.WithExtensions(extension.GFM))
+	gmWalkNodes(gm.Parser().Parse(gmtext.NewReader(bytes)), func(node gmast.Node) {
+		heading, ok := node.(*gmast.Heading)
+		if !ok || heading.Level != level {
+			return
 		}
-		var foundHeader bool
-		for ; idx < len(bytes); idx++ {
-			// Here we take advantage of the fact that the .Literal field on
-			// leaf nodes is a view into the same byte array that was passed
-			// into `parseDoc` to recover the index of of .Literal[0] in the
-			// original array.
-			if nodeLiteralIdx(node, &bytes[idx]) {
-				// We have found in `bytes` the location of a header text,
-				// but we want the start of the line. We need to walk
-				// back.
-				for i := idx; i > 0; i-- {
-					if bytes[i] == '\n' {
-						headers = append(headers, i+1)
-						break
-					}
-				}
-				foundHeader = true
-				break
+		if heading.Lines().Len() == 0 {
+			return
+		}
+		for i := heading.Lines().At(0).Start; i > 0; i-- {
+			if bytes[i] == '\n' {
+				headers = append(headers, i+1)
+				return
 			}
 		}
-		// Markdown's alternative headers[1] are undiscovered by this method. That's
-		// tollerable, since we didn't parse them correctly before either.
-		//
-		// [^1]: Alternative headers look like this:
-		//
-		//	h2
-		//	---
-		contract.Ignore(foundHeader)
-		return bf.GoToNext
 	})
 
 	// headers now contains the index into `bytes` that represent the start of each

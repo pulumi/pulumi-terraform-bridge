@@ -15,6 +15,6 @@ An `account_access` block supports the following:
 
 * `default_action` - (Optional) Specifies the default action for the account access. Possible values are `Allow` and `Deny`. Defaults to `Deny`.
 
-* alternative rule
+* alternative rule (we don't parse this correctly now, but we should)
 ---
 
