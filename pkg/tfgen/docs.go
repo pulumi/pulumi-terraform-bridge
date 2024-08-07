@@ -39,7 +39,9 @@ import (
 	"github.com/yuin/goldmark"
 	gmast "github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/extension"
+	gmparser "github.com/yuin/goldmark/parser"
 	gmtext "github.com/yuin/goldmark/text"
+	"github.com/yuin/goldmark/util"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 
@@ -391,12 +393,11 @@ func groupLines(lines []string, sep string) [][]string {
 }
 
 func trimFrontMatter(text []byte) []byte {
-	delineater := []byte("---")
-	body, ok := bytes.CutPrefix(text, delineater)
+	body, ok := bytes.CutPrefix(text, []byte("---"))
 	if !ok {
 		return text
 	}
-	idx := bytes.Index(body, delineater)
+	idx := bytes.Index(body, []byte("\n---"))
 
 	// Unable to find closing, so just return.
 	if idx == -1 {
@@ -412,13 +413,58 @@ func gmWalkNodes(node gmast.Node, f func(gmast.Node)) {
 	}
 }
 
+// addNewLineAfterHTML allows us to work around a difference in how TF's registry parses
+// markdown vs goldmark's CommonMark parser.
+//
+// Goldmark correctly (for CommonMark) parses the following as a single HTML Block:
+//
+//	<div>
+//	 content
+//	</div>
+//	## Header
+//
+// This is a common pattern in GCP, and we need to parse it as a HTML block, then a header
+// block. This AST transformation makes the desired change.
+type addNewLineAfterHTML struct{}
+
+func (addNewLineAfterHTML) Transform(node *gmast.Document, reader gmtext.Reader, pc gmparser.Context) {
+	gmWalkNodes(node, func(node gmast.Node) {
+		if html, ok := node.(*gmast.HTMLBlock); ok {
+			if html.Lines().Len() == 0 {
+				return
+			}
+
+			last := html.Lines().At(html.Lines().Len() - 1)
+			if bytes.HasPrefix(last.Value(reader.Source()), []byte("## ")) {
+				html.Lines().SetSliced(0, html.Lines().Len()-1)
+				heading := gmast.NewHeading(2)
+				heading.Lines().Append(last)
+				node.Parent().InsertAfter(node.Parent(), node, heading)
+			}
+		}
+	})
+}
+
 func splitByMdHeaders(text string, level int) [][]string {
 	bytes := trimFrontMatter([]byte(text))
 
 	headers := []int{}
 
-	gm := goldmark.New(goldmark.WithExtensions(extension.GFM))
+	gm := goldmark.New(
+		goldmark.WithExtensions(extension.GFM),
+		goldmark.WithParserOptions(
+			gmparser.WithASTTransformers(
+				util.Prioritized(addNewLineAfterHTML{}, 2000),
+			),
+		),
+	)
+
 	gmWalkNodes(gm.Parser().Parse(gmtext.NewReader(bytes)), func(node gmast.Node) {
+		if _, ok := node.(*gmast.RawHTML); ok {
+			node.Parent().RemoveChild(node.Parent(), node)
+			return
+		}
+
 		heading, ok := node.(*gmast.Heading)
 		if !ok || heading.Level != level {
 			return
