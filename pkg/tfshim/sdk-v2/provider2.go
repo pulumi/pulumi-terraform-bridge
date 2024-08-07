@@ -1,11 +1,9 @@
 package sdkv2
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"q"
 
 	"github.com/golang/glog"
 	"github.com/hashicorp/go-cty/cty"
@@ -28,14 +26,6 @@ type v2Resource2 struct {
 }
 
 var _ shim.Resource = (*v2Resource2)(nil)
-
-// This is needed because json.Unmarshal uses float64 for numbers by default.
-// This truncates int64 numbers.
-func unmarshalJSONWithNumbers(data []byte, v interface{}) error {
-	dec := json.NewDecoder(bytes.NewReader(data))
-	dec.UseNumber()
-	return dec.Decode(v)
-}
 
 // This method is called to service `pulumi import` requests and maps naturally to the TF
 // ImportResourceState method. When using `pulumi refresh` this is not called, and instead
@@ -483,7 +473,7 @@ func (s *grpcServer) PlanResourceChange(
 
 	var meta map[string]interface{}
 	if resp.PlannedPrivate != nil {
-		if err := unmarshalJSONWithNumbers(resp.PlannedPrivate, &meta); err != nil {
+		if err := json.Unmarshal(resp.PlannedPrivate, &meta); err != nil {
 			return nil, err
 		}
 	}
@@ -506,13 +496,6 @@ func (s *grpcServer) ApplyResourceChange(
 	plannedMeta map[string]interface{},
 	providerMeta *cty.Value,
 ) (*v2InstanceState2, error) {
-	q.Q(config)
-	q.Q(plannedState)
-	zoneID, acc := plannedState.GetAttr("managed_zone_id").AsBigFloat().Int64()
-	q.Q(zoneID, acc)
-	q.Q(priorState)
-	zoneID, acc = priorState.GetAttr("managed_zone_id").AsBigFloat().Int64()
-	q.Q(zoneID, acc)
 	configVal, err := msgpack.Marshal(config, ty)
 	if err != nil {
 		return nil, err
@@ -550,19 +533,15 @@ func (s *grpcServer) ApplyResourceChange(
 		return nil, err
 	}
 	newState, err := msgpack.Unmarshal(resp.NewState.MsgPack, ty)
-	q.Q(newState)
 	if err != nil {
 		return nil, err
 	}
 	var meta map[string]interface{}
 	if resp.Private != nil {
-		if err := unmarshalJSONWithNumbers(resp.Private, &meta); err != nil {
+		if err := json.Unmarshal(resp.Private, &meta); err != nil {
 			return nil, err
 		}
 	}
-
-	zoneID, acc = newState.GetAttr("managed_zone_id").AsBigFloat().Int64()
-	q.Q(zoneID, acc)
 	return &v2InstanceState2{
 		resourceType: typeName,
 		stateValue:   newState,
@@ -610,7 +589,7 @@ func (s *grpcServer) ReadResource(
 	}
 	var meta2 map[string]interface{}
 	if resp.Private != nil {
-		if err := unmarshalJSONWithNumbers(resp.Private, &meta2); err != nil {
+		if err := json.Unmarshal(resp.Private, &meta2); err != nil {
 			return nil, err
 		}
 	}
@@ -645,7 +624,7 @@ func (s *grpcServer) ImportResourceState(
 		}
 		var meta map[string]interface{}
 		if x.Private != nil {
-			if err := unmarshalJSONWithNumbers(x.Private, &meta); err != nil {
+			if err := json.Unmarshal(x.Private, &meta); err != nil {
 				return nil, err
 			}
 		}
