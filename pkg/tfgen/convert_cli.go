@@ -195,7 +195,7 @@ func (cc *cliConverter) Convert(
 	if example.Diagnostics.HasErrors() {
 		return "", example.Diagnostics, nil
 	}
-	source, diags, err := cc.convertPCL(cc.currentPackageSpec, example.PCL, lang)
+	source, diags, err := cc.convertPCL(example.PCL, lang)
 	return source, cc.postProcessDiagnostics(diags.Extend(example.Diagnostics)), err
 }
 
@@ -469,7 +469,6 @@ func (*cliConverter) mappingsFile(mappingsDir string, info tfbridge.ProviderInfo
 // unfortunate because it makes another plugin loader necessary. This should eventually also happen
 // through pulumi convert, but it needs to have bulk interface enabled for every language.
 func (cc *cliConverter) convertPCL(
-	spec *pschema.PackageSpec,
 	source string,
 	languageName string,
 ) (string, hcl.Diagnostics, error) {
@@ -612,4 +611,31 @@ func (*cliConverter) ensureNotSupportedLifecycleHooksIsError(d *hcl.Diagnostic) 
 	if notSupportedLifecycleHookPattern.MatchString(d.Error()) {
 		d.Severity = hcl.DiagError
 	}
+}
+
+// Function for one-off example converson HCL --> PCL using pulumi-converter-terraform
+func (cc *cliConverter) singleExampleFromHCLToPCL(path, hclCode string) (translatedExample, error) {
+	key := path
+	result, err := cc.convertViaPulumiCLI(map[string]string{key: hclCode}, []tfbridge.ProviderInfo{cc.info})
+	if err != nil {
+		return translatedExample{}, nil
+	}
+	return result[key], nil
+}
+
+// Function for one-off example conversions PCL --> supported language (nodejs, yaml, etc)
+func (cc *cliConverter) singleExampleFromPCLToLanguage(example translatedExample, lang string) (string, error) {
+	if example.PCL == "" {
+		return "", nil
+	}
+	source, diags, err := cc.convertPCL(example.PCL, lang)
+	if err != nil {
+		return "", err
+	}
+	diags = cc.postProcessDiagnostics(diags.Extend(example.Diagnostics))
+	if diags.HasErrors() {
+		return "", fmt.Errorf("Failed to convert an example: %s", diags.Error())
+	}
+	source = "```" + lang + "\n" + source + "```"
+	return source, nil
 }

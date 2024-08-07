@@ -100,6 +100,7 @@ return await Deployment.RunAsync(() =>
         ["someOutput"] = aResource.Result,
     };
 });
+
 ```
 {{% /choosable %}}
 {{% choosable language go %}}

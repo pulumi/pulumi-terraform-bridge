@@ -7,8 +7,6 @@ import (
 
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
-
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 
 func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
@@ -217,30 +215,10 @@ func convertExample(g *Generator, code string, exampleNumber int) (string, error
 	// Make an example to record in the cliConverter.
 	converter := g.cliConverter()
 	fileName := fmt.Sprintf("configuration-installation-%d", exampleNumber)
-	examples := make(map[string]string)
-	examples[fileName] = code
-	// Convert to PCL with `convertViaPulumiCLI`, which gives us a map of `translatedExamples`.
-	// Unfortunately, there is currently no way to use `pulumi convert` without an existing pulumi project in a file
-	// system, other than forwarding to the pulumi-converter-terraform's `--convertExamples` flag.
-	// This is the pattern that the rest of the bridge uses, but it was designed for bulk conversion.
-	// Here, we use it somewhat atypically by passing the converter a map of only one example per call.
-	// Another option would be to read the example into a temporary `main.tf` file and run `pulumi convert` with the
-	// `--mappings` flag, but this is not the current pattern for examples conversion.
-	translatedExampleMap, err := converter.convertViaPulumiCLI(examples, []tfbridge.ProviderInfo{
-		converter.info,
-	})
+	pclExample, err := converter.singleExampleFromHCLToPCL(fileName, code)
 	if err != nil {
 		return "", err
 	}
-
-	// Write the result to the pcls map of our cli converter.
-	// This is done to satisfy a verification step later on.
-	converter.pcls[code] = translatedExample{
-		PCL: translatedExampleMap[fileName].PCL,
-	}
-	// Handle conversion stats
-	exPath := examplePath{fullPath: fileName}
-	conversionResult := g.coverageTracker.getOrCreateExample(exPath.String(), code)
 
 	langs := genLanguageToSlice(g.language)
 	const (
@@ -251,15 +229,14 @@ func convertExample(g *Generator, code string, exampleNumber int) (string, error
 	exampleContent := chooserStart
 
 	// Generate each language in turn and mark up the output with the correct Hugo shortcodes.
-	// TODO: we want to use pulumi code choosers in the future, but resourcedocsgen does not support this yet.
 	for _, lang := range langs {
 		choosableStart := fmt.Sprintf("{{%% choosable language %s %%}}\n", lang)
 
 		// Generate the Pulumi.yaml config file for each language
-		configFile := translatedExampleMap[fileName].PulumiYAML
+		configFile := pclExample.PulumiYAML
 		pulumiYAML := processConfigYaml(configFile, lang)
 		// Generate language example
-		convertedLang, err := g.convertHCL(conversionResult, code, exPath.String(), []string{lang})
+		convertedLang, err := converter.singleExampleFromPCLToLanguage(pclExample, lang)
 		if err != nil {
 			return "", err
 		}
