@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -113,8 +113,4 @@ func (p *provider[T]) ConfigureWithContext(ctx context.Context, inputs resource.
 	}
 
 	return p.ProviderWithContextAndConfig.ConfigureWithContext(ctx, inputs)
-}
-
-func (p *provider[T]) Attach(address string) error {
-	return p.ProviderWithContextAndConfig.Attach(address)
 }

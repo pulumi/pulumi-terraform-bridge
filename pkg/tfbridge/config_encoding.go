@@ -21,6 +21,7 @@ import (
 	"github.com/golang/protobuf/ptypes/struct"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/propertyvalue"
@@ -139,11 +140,8 @@ func (enc *ConfigEncoding) UnfoldProperties(m resource.PropertyMap) (resource.Pr
 			continue
 		}
 
-		var isSecret bool
-		if v.IsSecret() {
-			isSecret = true
-			v = v.SecretValue().Element
-		}
+		contract.Assertf(!v.IsSecret() && !(v.IsOutput() && v.OutputValue().Secret),
+			"The bridge does not accept secrets, so we should not encounter them here")
 
 		if v.IsString() {
 			prop, err := enc.convertStringToPropertyValue(v.StringValue(), typ)
@@ -153,12 +151,10 @@ func (enc *ConfigEncoding) UnfoldProperties(m resource.PropertyMap) (resource.Pr
 			v = prop
 		}
 
+		// Computed sentinels are coming in as always having an empty string, but
+		// the encoding coerces them to a zero value of the appropriate type.
 		if v.IsComputed() && v.V.(resource.Computed).Element.V == "" {
 			v = resource.MakeComputed(enc.zeroValue(enc.fieldTypes[pk]))
-		}
-
-		if isSecret {
-			v = resource.MakeSecret(v)
 		}
 
 		result[pk] = v
