@@ -374,24 +374,6 @@ var (
 	listMarkerRegex         = regexp.MustCompile("[-*+]")
 )
 
-// groupLines take a slice of strings, lines, and returns a nested slice of strings. When groupLines encounters a line
-// that in the input that starts with the supplied string sep, it will begin a new entry in the outer slice.
-func groupLines(lines []string, sep string) [][]string {
-	var buffer []string
-	var sections [][]string
-	for _, line := range lines {
-		if strings.Index(line, sep) == 0 {
-			sections = append(sections, buffer)
-			buffer = []string{}
-		}
-		buffer = append(buffer, line)
-	}
-	if len(buffer) > 0 {
-		sections = append(sections, buffer)
-	}
-	return sections
-}
-
 func trimFrontMatter(text []byte) []byte {
 	body, ok := bytes.CutPrefix(text, []byte("---"))
 	if !ok {
@@ -778,7 +760,7 @@ func (p *tfMarkdownParser) parseSection(h2Section []string) error {
 	// Now split the sections by H3 topics. This is done because we'll ignore sub-sections with code
 	// snippets that are unparseable (we don't want to ignore entire H2 sections).
 	var wroteHeader bool
-	for _, h3Section := range groupLines(h2Section[1:], "### ") {
+	for _, h3Section := range splitByMdHeaders(strings.Join(h2Section[1:], "\n"), 3) {
 		if len(h3Section) == 0 {
 			// An unparseable H3 appears (as observed by building a few tier 1 providers) to typically be due to an
 			// empty section resulting from how we parse sections earlier in the docs generation process. Therefore, we
