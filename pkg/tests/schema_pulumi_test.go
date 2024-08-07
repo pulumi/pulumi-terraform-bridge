@@ -2120,7 +2120,7 @@ runtime: yaml
 			} else {
 				assert.NotContains(t, imp.Stdout, "One or more imported inputs failed to validate")
 
-				f, err := os.OpenFile(filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml"), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0o600)
+				f, err := os.OpenFile(filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml"), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 				assert.NoError(t, err)
 				defer f.Close()
 				_, err = f.WriteString(string(contents))
