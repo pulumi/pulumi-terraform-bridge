@@ -2175,7 +2175,7 @@ func TestBigIntOverride(t *testing.T) {
 	runTest := func(t *testing.T, PRC bool) {
 		tfp := &schema.Provider{ResourcesMap: resMap}
 		opts := []pulcheck.BridgedProviderOpt{}
-		if PRC {
+		if !PRC {
 			opts = append(opts, pulcheck.DisablePlanResourceChange())
 		}
 		bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp, opts...)

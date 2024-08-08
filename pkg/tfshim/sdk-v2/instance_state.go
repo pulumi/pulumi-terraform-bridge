@@ -84,6 +84,7 @@ func unmarshalJSON(data []byte, v interface{}) error {
 func objectFromCtyValue(v cty.Value) map[string]interface{} {
 	var path cty.Path
 	buf := &bytes.Buffer{}
+	// The round trip here to JSON is redundant, we could instead convert from cty to map[string]interface{} directly
 	err := marshal(v, v.Type(), path, buf)
 	contract.AssertNoErrorf(err, "Failed to marshal cty.Value to a JSON string value")
 
