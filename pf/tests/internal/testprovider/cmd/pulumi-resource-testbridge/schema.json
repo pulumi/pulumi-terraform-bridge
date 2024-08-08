@@ -26,6 +26,27 @@
             "boolConfigProp": {
                 "type": "boolean"
             },
+            "listNestedProps": {
+                "type": "array",
+                "items": {
+                    "type": "boolean"
+                }
+            },
+            "listNesteds": {
+                "type": "array",
+                "items": {
+                    "$ref": "#/types/testbridge:config/listNesteds:listNesteds"
+                }
+            },
+            "mapNestedProp": {
+                "type": "object",
+                "additionalProperties": {
+                    "type": "integer"
+                }
+            },
+            "singleNested": {
+                "$ref": "#/types/testbridge:config/singleNested:singleNested"
+            },
             "skipMetadataApiCheck": {
                 "type": "boolean",
                 "description": "Example taken from pulumi-aws; used to validate string properties remapped to bool type during briding\n",
@@ -38,10 +59,106 @@
                 "type": "string",
                 "description": "Used for testing DefaultInfo default application support\n",
                 "default": "DEFAULT"
+            },
+            "validateNested": {
+                "type": "boolean",
+                "description": "Validate that nested values are received as expected.\n"
             }
         }
     },
     "types": {
+        "testbridge:config/listNesteds:listNesteds": {
+            "properties": {
+                "boolProp": {
+                    "type": "boolean"
+                },
+                "listNestedProps": {
+                    "type": "array",
+                    "items": {
+                        "type": "boolean"
+                    }
+                },
+                "mapNestedProp": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
+                },
+                "stringProp": {
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "testbridge:config/singleNested:singleNested": {
+            "properties": {
+                "boolProp": {
+                    "type": "boolean"
+                },
+                "listNestedProps": {
+                    "type": "array",
+                    "items": {
+                        "type": "boolean"
+                    }
+                },
+                "mapNestedProp": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
+                },
+                "stringProp": {
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "testbridge:index/ProviderListNested:ProviderListNested": {
+            "properties": {
+                "boolProp": {
+                    "type": "boolean"
+                },
+                "listNestedProps": {
+                    "type": "array",
+                    "items": {
+                        "type": "boolean"
+                    }
+                },
+                "mapNestedProp": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
+                },
+                "stringProp": {
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "testbridge:index/ProviderSingleNested:ProviderSingleNested": {
+            "properties": {
+                "boolProp": {
+                    "type": "boolean"
+                },
+                "listNestedProps": {
+                    "type": "array",
+                    "items": {
+                        "type": "boolean"
+                    }
+                },
+                "mapNestedProp": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
+                },
+                "stringProp": {
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
         "testbridge:index/TestnestRule:TestnestRule": {
             "properties": {
                 "actionParameters": {
@@ -249,6 +366,27 @@
             "boolConfigProp": {
                 "type": "boolean"
             },
+            "listNestedProps": {
+                "type": "array",
+                "items": {
+                    "type": "boolean"
+                }
+            },
+            "listNesteds": {
+                "type": "array",
+                "items": {
+                    "$ref": "#/types/testbridge:index/ProviderListNested:ProviderListNested"
+                }
+            },
+            "mapNestedProp": {
+                "type": "object",
+                "additionalProperties": {
+                    "type": "integer"
+                }
+            },
+            "singleNested": {
+                "$ref": "#/types/testbridge:index/ProviderSingleNested:ProviderSingleNested"
+            },
             "skipMetadataApiCheck": {
                 "type": "boolean",
                 "description": "Example taken from pulumi-aws; used to validate string properties remapped to bool type during briding\n"
@@ -259,11 +397,36 @@
             "stringDefaultinfoConfigProp": {
                 "type": "string",
                 "description": "Used for testing DefaultInfo default application support\n"
+            },
+            "validateNested": {
+                "type": "boolean",
+                "description": "Validate that nested values are received as expected.\n"
             }
         },
         "inputProperties": {
             "boolConfigProp": {
                 "type": "boolean"
+            },
+            "listNestedProps": {
+                "type": "array",
+                "items": {
+                    "type": "boolean"
+                }
+            },
+            "listNesteds": {
+                "type": "array",
+                "items": {
+                    "$ref": "#/types/testbridge:index/ProviderListNested:ProviderListNested"
+                }
+            },
+            "mapNestedProp": {
+                "type": "object",
+                "additionalProperties": {
+                    "type": "integer"
+                }
+            },
+            "singleNested": {
+                "$ref": "#/types/testbridge:index/ProviderSingleNested:ProviderSingleNested"
             },
             "skipMetadataApiCheck": {
                 "type": "boolean",
@@ -277,6 +440,10 @@
                 "type": "string",
                 "description": "Used for testing DefaultInfo default application support\n",
                 "default": "DEFAULT"
+            },
+            "validateNested": {
+                "type": "boolean",
+                "description": "Validate that nested values are received as expected.\n"
             }
         }
     },

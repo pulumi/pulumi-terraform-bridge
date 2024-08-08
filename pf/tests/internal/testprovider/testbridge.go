@@ -17,12 +17,16 @@ package testprovider
 import (
 	"context"
 	_ "embed"
+	"fmt"
+	"reflect"
 
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	pschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 
 	tfpf "github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
@@ -35,14 +39,15 @@ var testBridgeMetadata []byte
 // features of tfbridge and is the core of pulumi-resource-testbridge.
 func SyntheticTestBridgeProvider() tfbridge.ProviderInfo {
 	info := tfbridge.ProviderInfo{
-		Name:        "testbridge",
-		P:           tfpf.ShimProvider(&syntheticProvider{}),
-		Description: "A Pulumi package to test pulumi-terraform-bridge Plugin Framework support.",
-		Keywords:    []string{},
-		License:     "Apache-2.0",
-		Homepage:    "https://pulumi.io",
-		Repository:  "https://github.com/pulumi/pulumi-terraform-bridge",
-		Version:     "0.0.1",
+		Name:             "testbridge",
+		P:                tfpf.ShimProvider(&syntheticProvider{}),
+		Description:      "A Pulumi package to test pulumi-terraform-bridge Plugin Framework support.",
+		Keywords:         []string{},
+		License:          "Apache-2.0",
+		Homepage:         "https://pulumi.io",
+		Repository:       "https://github.com/pulumi/pulumi-terraform-bridge",
+		Version:          "0.0.1",
+		UpstreamRepoPath: ".", // Setting UpstreamRepoPath prevents the "could not find docs" warning.
 
 		Config: map[string]*tfbridge.SchemaInfo{
 			"string_defaultinfo_config_prop": {
@@ -163,8 +168,115 @@ func (p *syntheticProvider) Schema(_ context.Context, _ provider.SchemaRequest, 
 				Description: "Example taken from pulumi-aws; used to validate string properties " +
 					"remapped to bool type during briding",
 			},
+
+			"validate_nested": pschema.BoolAttribute{
+				Optional:    true,
+				Description: "Validate that nested values are received as expected.",
+			},
+
+			"map_nested_prop": pschema.MapAttribute{
+				Optional:    true,
+				ElementType: types.Int64Type,
+			},
+			"list_nested_prop": pschema.ListAttribute{
+				Optional:    true,
+				ElementType: types.BoolType,
+			},
+		},
+		Blocks: map[string]pschema.Block{
+			"single_nested": pschema.SingleNestedBlock{
+				Attributes: map[string]pschema.Attribute{
+					"string_prop": pschema.StringAttribute{
+						Optional: true,
+					},
+					"bool_prop": pschema.BoolAttribute{
+						Optional: true,
+					},
+					"map_nested_prop": pschema.MapAttribute{
+						Optional:    true,
+						ElementType: types.Int64Type,
+					},
+					"list_nested_prop": pschema.ListAttribute{
+						Optional:    true,
+						ElementType: types.BoolType,
+					},
+				},
+			},
+			"list_nested": pschema.ListNestedBlock{
+				NestedObject: pschema.NestedBlockObject{
+					Attributes: map[string]pschema.Attribute{
+						"string_prop": pschema.StringAttribute{
+							Optional: true,
+						},
+						"bool_prop": pschema.BoolAttribute{
+							Optional: true,
+						},
+						"map_nested_prop": pschema.MapAttribute{
+							Optional:    true,
+							ElementType: types.Int64Type,
+						},
+						"list_nested_prop": pschema.ListAttribute{
+							Optional:    true,
+							ElementType: types.BoolType,
+						},
+					},
+				},
+			},
 		},
 	}
+}
+
+func validateNested(
+	ctx context.Context,
+	req provider.ConfigureRequest,
+	resp *provider.ConfigureResponse,
+) {
+
+	check := func(path path.Path, expected, actual any) {
+		if !reflect.DeepEqual(expected, actual) {
+			resp.Diagnostics.AddAttributeError(path, "mismatched expectations",
+				fmt.Sprintf("\nExpected %#v\nFound %#v", expected, actual))
+		}
+	}
+
+	// Validate top level fields are received as expected
+	var mapNestedProp map[string]int64
+	resp.Diagnostics.Append(req.Config.GetAttribute(ctx, path.Root("map_nested_prop"), &mapNestedProp)...)
+	check(path.Root("map_nested_prop"), map[string]int64{"k1": 1, "k2": 2}, mapNestedProp)
+
+	var listNestedProp []bool
+	resp.Diagnostics.Append(req.Config.GetAttribute(ctx, path.Root("list_nested_prop"), &listNestedProp)...)
+	check(path.Root("list_nested_prop"), []bool{true, false}, listNestedProp)
+
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	validate := func(name path.Path) {
+		type nested struct {
+			String types.String `tfsdk:"string_prop"`
+			Bool   types.Bool   `tfsdk:"bool_prop"`
+			Map    types.Map    `tfsdk:"map_nested_prop"`
+			List   types.List   `tfsdk:"list_nested_prop"`
+		}
+
+		var actual nested
+		resp.Diagnostics.Append(req.Config.GetAttribute(ctx, name, &actual)...)
+		check(name, nested{
+			String: types.StringValue("foo"),
+			Bool:   types.BoolValue(true),
+			Map: types.MapValueMust(types.Int64Type, map[string]attr.Value{
+				"v1": types.Int64Value(1234),
+			}),
+			List: types.ListValueMust(types.BoolType, []attr.Value{
+				types.BoolValue(true),
+				types.BoolValue(false),
+			}),
+		}, actual)
+	}
+
+	validate(path.Root("single_nested"))
+	validate(path.Root("list_nested").AtListIndex(0))
 }
 
 func (p *syntheticProvider) Configure(
@@ -192,6 +304,13 @@ func (p *syntheticProvider) Configure(
 			resp.Diagnostics.AddError("cannot parse skip_metadata_api_check", *smac)
 		}
 	}
+
+	var doValidateNested *bool
+	resp.Diagnostics.Append(req.Config.GetAttribute(ctx, path.Root("validate_nested"), &doValidateNested)...)
+	if doValidateNested != nil && *doValidateNested {
+		validateNested(ctx, req, resp)
+	}
+
 	resp.ResourceData = rd
 	resp.DataSourceData = rd
 }
