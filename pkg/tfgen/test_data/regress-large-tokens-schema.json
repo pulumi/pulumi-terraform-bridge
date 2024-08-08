@@ -1,0 +1,681 @@
+{
+  "name": "aws",
+  "description": "A Pulumi package to safely use cloudflare in Pulumi programs.",
+  "keywords": [
+    "pulumi",
+    "random"
+  ],
+  "homepage": "https://pulumi.io",
+  "license": "Apache-2.0",
+  "attribution": "This Pulumi package is based on the [`aws` Terraform Provider](https://github.com/terraform-providers/terraform-provider-aws).",
+  "repository": "https://github.com/pulumi/pulumi-aws",
+  "meta": {
+    "moduleFormat": "(.*)(?:/[^/]*)"
+  },
+  "language": {
+    "nodejs": {
+      "packageDescription": "A Pulumi package to safely use cloudflare in Pulumi programs.",
+      "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-aws)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e first check the [`pulumi-aws` repo](https://github.com/pulumi/pulumi-aws/issues); however, if that doesn't turn up anything,\n\u003e please consult the source [`terraform-provider-aws` repo](https://github.com/terraform-providers/terraform-provider-aws/issues).",
+      "compatibility": "tfbridge20",
+      "disableUnionOutputTypes": true
+    },
+    "python": {
+      "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-aws)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e first check the [`pulumi-aws` repo](https://github.com/pulumi/pulumi-aws/issues); however, if that doesn't turn up anything,\n\u003e please consult the source [`terraform-provider-aws` repo](https://github.com/terraform-providers/terraform-provider-aws/issues).",
+      "compatibility": "tfbridge20",
+      "pyproject": {}
+    }
+  },
+  "config": {},
+  "types": {
+    "aws:quicksight/TemplateDefinition:TemplateDefinition": {
+      "properties": {
+        "analysisDefaults": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionAnalysisDefaults:TemplateDefinitionAnalysisDefaults"
+        },
+        "dataSetConfigurations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/aws:quicksight/TemplateDefinitionDataSetConfiguration:TemplateDefinitionDataSetConfiguration"
+          }
+        },
+        "sheets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/aws:quicksight/TemplateDefinitionSheet:TemplateDefinitionSheet"
+          }
+        }
+      },
+      "type": "object",
+      "required": [
+        "dataSetConfigurations"
+      ]
+    },
+    "aws:quicksight/TemplateDefinitionAnalysisDefaults:TemplateDefinitionAnalysisDefaults": {
+      "properties": {
+        "defaultNewSheetConfiguration": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionAnalysisDefaultsDefaultNewSheetConfiguration:TemplateDefinitionAnalysisDefaultsDefaultNewSheetConfiguration"
+        }
+      },
+      "type": "object",
+      "required": [
+        "defaultNewSheetConfiguration"
+      ]
+    },
+    "aws:quicksight/TemplateDefinitionAnalysisDefaultsDefaultNewSheetConfiguration:TemplateDefinitionAnalysisDefaultsDefaultNewSheetConfiguration": {
+      "properties": {
+        "interactiveLayoutConfiguration": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionAnalysisDefaultsDefaultNewSheetConfigurationInteractiveLayoutConfiguration:TemplateDefinitionAnalysisDefaultsDefaultNewSheetConfigurationInteractiveLayoutConfiguration"
+        },
+        "paginatedLayoutConfiguration": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionAnalysisDefaultsDefaultNewSheetConfigurationPaginatedLayoutConfiguration:TemplateDefinitionAnalysisDefaultsDefaultNewSheetConfigurationPaginatedLayoutConfiguration"
+        }
+      },
+      "type": "object"
+    },
+    "aws:quicksight/TemplateDefinitionAnalysisDefaultsDefaultNewSheetConfigurationInteractiveLayoutConfiguration:TemplateDefinitionAnalysisDefaultsDefaultNewSheetConfigurationInteractiveLayoutConfiguration": {
+      "properties": {
+        "freeForm": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionAnalysisDefaultsDefaultNewSheetConfigurationInteractiveLayoutConfigurationFreeForm:TemplateDefinitionAnalysisDefaultsDefaultNewSheetConfigurationInteractiveLayoutConfigurationFreeForm"
+        }
+      },
+      "type": "object"
+    },
+    "aws:quicksight/TemplateDefinitionAnalysisDefaultsDefaultNewSheetConfigurationInteractiveLayoutConfigurationFreeForm:TemplateDefinitionAnalysisDefaultsDefaultNewSheetConfigurationInteractiveLayoutConfigurationFreeForm": {
+      "properties": {
+        "canvasSizeOptions": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionAnalysisDefaultsDefaultNewSheetConfigurationInteractiveLayoutConfigurationFreeFormCanvasSizeOptions:TemplateDefinitionAnalysisDefaultsDefaultNewSheetConfigurationInteractiveLayoutConfigurationFreeFormCanvasSizeOptions"
+        }
+      },
+      "type": "object",
+      "required": [
+        "canvasSizeOptions"
+      ]
+    },
+    "aws:quicksight/TemplateDefinitionAnalysisDefaultsDefaultNewSheetConfigurationInteractiveLayoutConfigurationFreeFormCanvasSizeOptions:TemplateDefinitionAnalysisDefaultsDefaultNewSheetConfigurationInteractiveLayoutConfigurationFreeFormCanvasSizeOptions": {
+      "properties": {
+        "screenCanvasSizeOptions": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionScreenCanvasSizeOptions:TemplateDefinitionScreenCanvasSizeOptions"
+        }
+      },
+      "type": "object"
+    },
+    "aws:quicksight/TemplateDefinitionAnalysisDefaultsDefaultNewSheetConfigurationPaginatedLayoutConfiguration:TemplateDefinitionAnalysisDefaultsDefaultNewSheetConfigurationPaginatedLayoutConfiguration": {
+      "properties": {
+        "sectionBased": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionAnalysisDefaultsDefaultNewSheetConfigurationPaginatedLayoutConfigurationSectionBased:TemplateDefinitionAnalysisDefaultsDefaultNewSheetConfigurationPaginatedLayoutConfigurationSectionBased"
+        }
+      },
+      "type": "object"
+    },
+    "aws:quicksight/TemplateDefinitionAnalysisDefaultsDefaultNewSheetConfigurationPaginatedLayoutConfigurationSectionBased:TemplateDefinitionAnalysisDefaultsDefaultNewSheetConfigurationPaginatedLayoutConfigurationSectionBased": {
+      "properties": {
+        "canvasSizeOptions": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionAnalysisDefaultsDefaultNewSheetConfigurationPaginatedLayoutConfigurationSectionBasedCanvasSizeOptions:TemplateDefinitionAnalysisDefaultsDefaultNewSheetConfigurationPaginatedLayoutConfigurationSectionBasedCanvasSizeOptions"
+        }
+      },
+      "type": "object",
+      "required": [
+        "canvasSizeOptions"
+      ]
+    },
+    "aws:quicksight/TemplateDefinitionAnalysisDefaultsDefaultNewSheetConfigurationPaginatedLayoutConfigurationSectionBasedCanvasSizeOptions:TemplateDefinitionAnalysisDefaultsDefaultNewSheetConfigurationPaginatedLayoutConfigurationSectionBasedCanvasSizeOptions": {
+      "properties": {
+        "paperCanvasSizeOptions": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionPaperCanvasSizeOptions:TemplateDefinitionPaperCanvasSizeOptions"
+        }
+      },
+      "type": "object"
+    },
+    "aws:quicksight/TemplateDefinitionClusterMarker:TemplateDefinitionClusterMarker": {
+      "properties": {
+        "simpleClusterMarker": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionSimpleClusterMarker:TemplateDefinitionSimpleClusterMarker"
+        }
+      },
+      "type": "object"
+    },
+    "aws:quicksight/TemplateDefinitionCustomValues:TemplateDefinitionCustomValues": {
+      "properties": {
+        "dateTimeValues": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "decimalValues": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        },
+        "integerValues": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        },
+        "stringValues": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "type": "object"
+    },
+    "aws:quicksight/TemplateDefinitionCustomValuesConfiguration:TemplateDefinitionCustomValuesConfiguration": {
+      "properties": {
+        "customValues": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionCustomValues:TemplateDefinitionCustomValues"
+        },
+        "includeNullValue": {
+          "type": "boolean"
+        }
+      },
+      "type": "object",
+      "required": [
+        "customValues"
+      ]
+    },
+    "aws:quicksight/TemplateDefinitionDataSetConfiguration:TemplateDefinitionDataSetConfiguration": {
+      "properties": {
+        "columnGroupSchemaLists": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/aws:quicksight/TemplateDefinitionDataSetConfigurationColumnGroupSchemaList:TemplateDefinitionDataSetConfigurationColumnGroupSchemaList"
+          }
+        }
+      },
+      "type": "object"
+    },
+    "aws:quicksight/TemplateDefinitionDataSetConfigurationColumnGroupSchemaList:TemplateDefinitionDataSetConfigurationColumnGroupSchemaList": {
+      "properties": {
+        "columnGroupColumnSchemaLists": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/aws:quicksight/TemplateDefinitionDataSetConfigurationColumnGroupSchemaListColumnGroupColumnSchemaList:TemplateDefinitionDataSetConfigurationColumnGroupSchemaListColumnGroupColumnSchemaList"
+          }
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "aws:quicksight/TemplateDefinitionDataSetConfigurationColumnGroupSchemaListColumnGroupColumnSchemaList:TemplateDefinitionDataSetConfigurationColumnGroupSchemaListColumnGroupColumnSchemaList": {
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "aws:quicksight/TemplateDefinitionPaperCanvasSizeOptions:TemplateDefinitionPaperCanvasSizeOptions": {
+      "properties": {
+        "paperMargin": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionPaperMargin:TemplateDefinitionPaperMargin"
+        },
+        "paperOrientation": {
+          "type": "string"
+        },
+        "paperSize": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "aws:quicksight/TemplateDefinitionPaperMargin:TemplateDefinitionPaperMargin": {
+      "properties": {
+        "bottom": {
+          "type": "string"
+        },
+        "left": {
+          "type": "string"
+        },
+        "right": {
+          "type": "string"
+        },
+        "top": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "aws:quicksight/TemplateDefinitionSameSheetTargetVisualConfiguration:TemplateDefinitionSameSheetTargetVisualConfiguration": {
+      "properties": {
+        "targetVisualOption": {
+          "type": "string"
+        },
+        "targetVisuals": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "type": "object"
+    },
+    "aws:quicksight/TemplateDefinitionScreenCanvasSizeOptions:TemplateDefinitionScreenCanvasSizeOptions": {
+      "properties": {
+        "optimizedViewPortWidth": {
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "required": [
+        "optimizedViewPortWidth"
+      ]
+    },
+    "aws:quicksight/TemplateDefinitionSheet:TemplateDefinitionSheet": {
+      "properties": {
+        "contentType": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "sheetId": {
+          "type": "string"
+        },
+        "textBoxes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/aws:quicksight/TemplateDefinitionSheetTextBox:TemplateDefinitionSheetTextBox"
+          }
+        },
+        "title": {
+          "type": "string"
+        },
+        "visuals": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/aws:quicksight/TemplateDefinitionSheetVisual:TemplateDefinitionSheetVisual"
+          }
+        }
+      },
+      "type": "object",
+      "required": [
+        "sheetId"
+      ],
+      "language": {
+        "nodejs": {
+          "requiredOutputs": [
+            "contentType",
+            "sheetId"
+          ]
+        }
+      }
+    },
+    "aws:quicksight/TemplateDefinitionSheetTextBox:TemplateDefinitionSheetTextBox": {
+      "properties": {
+        "content": {
+          "type": "string"
+        },
+        "sheetTextBoxId": {
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "required": [
+        "sheetTextBoxId"
+      ]
+    },
+    "aws:quicksight/TemplateDefinitionSheetVisual:TemplateDefinitionSheetVisual": {
+      "properties": {
+        "geospatialMapVisual": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionSheetVisualGeospatialMapVisual:TemplateDefinitionSheetVisualGeospatialMapVisual"
+        }
+      },
+      "type": "object"
+    },
+    "aws:quicksight/TemplateDefinitionSheetVisualGeospatialMapVisual:TemplateDefinitionSheetVisualGeospatialMapVisual": {
+      "properties": {
+        "actions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/aws:quicksight/TemplateDefinitionSheetVisualGeospatialMapVisualAction:TemplateDefinitionSheetVisualGeospatialMapVisualAction"
+          }
+        },
+        "chartConfiguration": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionSheetVisualGeospatialMapVisualChartConfiguration:TemplateDefinitionSheetVisualGeospatialMapVisualChartConfiguration"
+        },
+        "visualId": {
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "required": [
+        "visualId"
+      ]
+    },
+    "aws:quicksight/TemplateDefinitionSheetVisualGeospatialMapVisualAction:TemplateDefinitionSheetVisualGeospatialMapVisualAction": {
+      "properties": {
+        "actionOperations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/aws:quicksight/TemplateDefinitionSheetVisualGeospatialMapVisualActionActionOperation:TemplateDefinitionSheetVisualGeospatialMapVisualActionActionOperation"
+          }
+        },
+        "customActionId": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "trigger": {
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "required": [
+        "actionOperations",
+        "customActionId",
+        "name",
+        "status",
+        "trigger"
+      ]
+    },
+    "aws:quicksight/TemplateDefinitionSheetVisualGeospatialMapVisualActionActionOperation:TemplateDefinitionSheetVisualGeospatialMapVisualActionActionOperation": {
+      "properties": {
+        "filterOperation": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionSheetVisualGeospatialMapVisualActionActionOperationFilterOperation:TemplateDefinitionSheetVisualGeospatialMapVisualActionActionOperationFilterOperation"
+        },
+        "navigationOperation": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionSheetVisualGeospatialMapVisualActionActionOperationNavigationOperation:TemplateDefinitionSheetVisualGeospatialMapVisualActionActionOperationNavigationOperation"
+        },
+        "setParametersOperation": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionSheetVisualGeospatialMapVisualActionActionOperationSetParametersOperation:TemplateDefinitionSheetVisualGeospatialMapVisualActionActionOperationSetParametersOperation"
+        },
+        "urlOperation": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionSheetVisualGeospatialMapVisualActionActionOperationUrlOperation:TemplateDefinitionSheetVisualGeospatialMapVisualActionActionOperationUrlOperation"
+        }
+      },
+      "type": "object"
+    },
+    "aws:quicksight/TemplateDefinitionSheetVisualGeospatialMapVisualActionActionOperationFilterOperation:TemplateDefinitionSheetVisualGeospatialMapVisualActionActionOperationFilterOperation": {
+      "properties": {
+        "selectedFieldsConfiguration": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionSheetVisualGeospatialMapVisualActionActionOperationFilterOperationSelectedFieldsConfiguration:TemplateDefinitionSheetVisualGeospatialMapVisualActionActionOperationFilterOperationSelectedFieldsConfiguration"
+        },
+        "targetVisualsConfiguration": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionSheetVisualGeospatialMapVisualActionActionOperationFilterOperationTargetVisualsConfiguration:TemplateDefinitionSheetVisualGeospatialMapVisualActionActionOperationFilterOperationTargetVisualsConfiguration"
+        }
+      },
+      "type": "object",
+      "required": [
+        "selectedFieldsConfiguration",
+        "targetVisualsConfiguration"
+      ]
+    },
+    "aws:quicksight/TemplateDefinitionSheetVisualGeospatialMapVisualActionActionOperationFilterOperationSelectedFieldsConfiguration:TemplateDefinitionSheetVisualGeospatialMapVisualActionActionOperationFilterOperationSelectedFieldsConfiguration": {
+      "properties": {
+        "selectedFieldOption": {
+          "type": "string"
+        },
+        "selectedFields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "type": "object"
+    },
+    "aws:quicksight/TemplateDefinitionSheetVisualGeospatialMapVisualActionActionOperationFilterOperationTargetVisualsConfiguration:TemplateDefinitionSheetVisualGeospatialMapVisualActionActionOperationFilterOperationTargetVisualsConfiguration": {
+      "properties": {
+        "sameSheetTargetVisualConfiguration": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionSameSheetTargetVisualConfiguration:TemplateDefinitionSameSheetTargetVisualConfiguration"
+        }
+      },
+      "type": "object"
+    },
+    "aws:quicksight/TemplateDefinitionSheetVisualGeospatialMapVisualActionActionOperationNavigationOperation:TemplateDefinitionSheetVisualGeospatialMapVisualActionActionOperationNavigationOperation": {
+      "properties": {
+        "localNavigationConfiguration": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionSheetVisualGeospatialMapVisualActionActionOperationNavigationOperationLocalNavigationConfiguration:TemplateDefinitionSheetVisualGeospatialMapVisualActionActionOperationNavigationOperationLocalNavigationConfiguration"
+        }
+      },
+      "type": "object"
+    },
+    "aws:quicksight/TemplateDefinitionSheetVisualGeospatialMapVisualActionActionOperationNavigationOperationLocalNavigationConfiguration:TemplateDefinitionSheetVisualGeospatialMapVisualActionActionOperationNavigationOperationLocalNavigationConfiguration": {
+      "properties": {
+        "targetSheetId": {
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "required": [
+        "targetSheetId"
+      ]
+    },
+    "aws:quicksight/TemplateDefinitionSheetVisualGeospatialMapVisualActionActionOperationSetParametersOperation:TemplateDefinitionSheetVisualGeospatialMapVisualActionActionOperationSetParametersOperation": {
+      "properties": {
+        "parameterValueConfigurations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/aws:quicksight/TemplateDefinitionSheetVisualGeospatialMapVisualActionActionOperationSetParametersOperationParameterValueConfiguration:TemplateDefinitionSheetVisualGeospatialMapVisualActionActionOperationSetParametersOperationParameterValueConfiguration"
+          }
+        }
+      },
+      "type": "object",
+      "required": [
+        "parameterValueConfigurations"
+      ]
+    },
+    "aws:quicksight/TemplateDefinitionSheetVisualGeospatialMapVisualActionActionOperationSetParametersOperationParameterValueConfiguration:TemplateDefinitionSheetVisualGeospatialMapVisualActionActionOperationSetParametersOperationParameterValueConfiguration": {
+      "properties": {
+        "destinationParameterName": {
+          "type": "string"
+        },
+        "value": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionValue:TemplateDefinitionValue"
+        }
+      },
+      "type": "object",
+      "required": [
+        "destinationParameterName",
+        "value"
+      ]
+    },
+    "aws:quicksight/TemplateDefinitionSheetVisualGeospatialMapVisualActionActionOperationUrlOperation:TemplateDefinitionSheetVisualGeospatialMapVisualActionActionOperationUrlOperation": {
+      "properties": {
+        "urlTarget": {
+          "type": "string"
+        },
+        "urlTemplate": {
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "required": [
+        "urlTarget",
+        "urlTemplate"
+      ]
+    },
+    "aws:quicksight/TemplateDefinitionSheetVisualGeospatialMapVisualChartConfiguration:TemplateDefinitionSheetVisualGeospatialMapVisualChartConfiguration": {
+      "properties": {
+        "fieldWells": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionSheetVisualGeospatialMapVisualChartConfigurationFieldWells:TemplateDefinitionSheetVisualGeospatialMapVisualChartConfigurationFieldWells"
+        },
+        "legend": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionSheetVisualGeospatialMapVisualChartConfigurationLegend:TemplateDefinitionSheetVisualGeospatialMapVisualChartConfigurationLegend"
+        },
+        "mapStyleOptions": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionSheetVisualGeospatialMapVisualChartConfigurationMapStyleOptions:TemplateDefinitionSheetVisualGeospatialMapVisualChartConfigurationMapStyleOptions"
+        },
+        "pointStyleOptions": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionSheetVisualGeospatialMapVisualChartConfigurationPointStyleOptions:TemplateDefinitionSheetVisualGeospatialMapVisualChartConfigurationPointStyleOptions"
+        }
+      },
+      "type": "object"
+    },
+    "aws:quicksight/TemplateDefinitionSheetVisualGeospatialMapVisualChartConfigurationFieldWells:TemplateDefinitionSheetVisualGeospatialMapVisualChartConfigurationFieldWells": {
+      "properties": {
+        "geospatialMapAggregatedFieldWells": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionSheetVisualGeospatialMapVisualChartConfigurationFieldWellsGeospatialMapAggregatedFieldWells:TemplateDefinitionSheetVisualGeospatialMapVisualChartConfigurationFieldWellsGeospatialMapAggregatedFieldWells"
+        }
+      },
+      "type": "object"
+    },
+    "aws:quicksight/TemplateDefinitionSheetVisualGeospatialMapVisualChartConfigurationFieldWellsGeospatialMapAggregatedFieldWells:TemplateDefinitionSheetVisualGeospatialMapVisualChartConfigurationFieldWellsGeospatialMapAggregatedFieldWells": {
+      "type": "object"
+    },
+    "aws:quicksight/TemplateDefinitionSheetVisualGeospatialMapVisualChartConfigurationLegend:TemplateDefinitionSheetVisualGeospatialMapVisualChartConfigurationLegend": {
+      "properties": {
+        "height": {
+          "type": "string"
+        },
+        "position": {
+          "type": "string"
+        },
+        "title": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionSheetVisualGeospatialMapVisualChartConfigurationLegendTitle:TemplateDefinitionSheetVisualGeospatialMapVisualChartConfigurationLegendTitle"
+        },
+        "visibility": {
+          "type": "string"
+        },
+        "width": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "aws:quicksight/TemplateDefinitionSheetVisualGeospatialMapVisualChartConfigurationLegendTitle:TemplateDefinitionSheetVisualGeospatialMapVisualChartConfigurationLegendTitle": {
+      "properties": {
+        "customLabel": {
+          "type": "string"
+        },
+        "fontConfiguration": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionSheetVisualGeospatialMapVisualChartConfigurationLegendTitleFontConfiguration:TemplateDefinitionSheetVisualGeospatialMapVisualChartConfigurationLegendTitleFontConfiguration"
+        },
+        "visibility": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "aws:quicksight/TemplateDefinitionSheetVisualGeospatialMapVisualChartConfigurationLegendTitleFontConfiguration:TemplateDefinitionSheetVisualGeospatialMapVisualChartConfigurationLegendTitleFontConfiguration": {
+      "properties": {
+        "fontColor": {
+          "type": "string"
+        },
+        "fontDecoration": {
+          "type": "string"
+        },
+        "fontSize": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionSheetVisualGeospatialMapVisualChartConfigurationLegendTitleFontConfigurationFontSize:TemplateDefinitionSheetVisualGeospatialMapVisualChartConfigurationLegendTitleFontConfigurationFontSize"
+        },
+        "fontStyle": {
+          "type": "string"
+        },
+        "fontWeight": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionSheetVisualGeospatialMapVisualChartConfigurationLegendTitleFontConfigurationFontWeight:TemplateDefinitionSheetVisualGeospatialMapVisualChartConfigurationLegendTitleFontConfigurationFontWeight"
+        }
+      },
+      "type": "object"
+    },
+    "aws:quicksight/TemplateDefinitionSheetVisualGeospatialMapVisualChartConfigurationLegendTitleFontConfigurationFontSize:TemplateDefinitionSheetVisualGeospatialMapVisualChartConfigurationLegendTitleFontConfigurationFontSize": {
+      "properties": {
+        "relative": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "aws:quicksight/TemplateDefinitionSheetVisualGeospatialMapVisualChartConfigurationLegendTitleFontConfigurationFontWeight:TemplateDefinitionSheetVisualGeospatialMapVisualChartConfigurationLegendTitleFontConfigurationFontWeight": {
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "aws:quicksight/TemplateDefinitionSheetVisualGeospatialMapVisualChartConfigurationMapStyleOptions:TemplateDefinitionSheetVisualGeospatialMapVisualChartConfigurationMapStyleOptions": {
+      "properties": {
+        "baseMapStyle": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "aws:quicksight/TemplateDefinitionSheetVisualGeospatialMapVisualChartConfigurationPointStyleOptions:TemplateDefinitionSheetVisualGeospatialMapVisualChartConfigurationPointStyleOptions": {
+      "properties": {
+        "clusterMarkerConfiguration": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionSheetVisualGeospatialMapVisualChartConfigurationPointStyleOptionsClusterMarkerConfiguration:TemplateDefinitionSheetVisualGeospatialMapVisualChartConfigurationPointStyleOptionsClusterMarkerConfiguration"
+        },
+        "selectedPointStyle": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "aws:quicksight/TemplateDefinitionSheetVisualGeospatialMapVisualChartConfigurationPointStyleOptionsClusterMarkerConfiguration:TemplateDefinitionSheetVisualGeospatialMapVisualChartConfigurationPointStyleOptionsClusterMarkerConfiguration": {
+      "properties": {
+        "clusterMarker": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionClusterMarker:TemplateDefinitionClusterMarker"
+        }
+      },
+      "type": "object"
+    },
+    "aws:quicksight/TemplateDefinitionSimpleClusterMarker:TemplateDefinitionSimpleClusterMarker": {
+      "properties": {
+        "color": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "aws:quicksight/TemplateDefinitionValue:TemplateDefinitionValue": {
+      "properties": {
+        "customValuesConfiguration": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionCustomValuesConfiguration:TemplateDefinitionCustomValuesConfiguration"
+        },
+        "selectAllValueOptions": {
+          "type": "string"
+        },
+        "sourceField": {
+          "type": "string"
+        },
+        "sourceParameterName": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    }
+  },
+  "provider": {
+    "description": "The provider type for the aws package. By default, resources use package-wide configuration\nsettings, however an explicit `Provider` instance may be created and passed during resource\nconstruction to achieve fine-grained programmatic control over provider settings. See the\n[documentation](https://www.pulumi.com/docs/reference/programming-model/#providers) for more information.\n"
+  },
+  "resources": {
+    "aws:quicksight/template:Template": {
+      "properties": {
+        "definition": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinition:TemplateDefinition"
+        }
+      },
+      "required": [
+        "definition"
+      ],
+      "inputProperties": {
+        "definition": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinition:TemplateDefinition"
+        }
+      },
+      "stateInputs": {
+        "description": "Input properties used for looking up and filtering Template resources.\n",
+        "properties": {
+          "definition": {
+            "$ref": "#/types/aws:quicksight/TemplateDefinition:TemplateDefinition"
+          }
+        },
+        "type": "object"
+      }
+    }
+  }
+}

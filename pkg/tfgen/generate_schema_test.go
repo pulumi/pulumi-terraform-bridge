@@ -472,3 +472,20 @@ func TestRegress1626(t *testing.T) {
 	t.Logf("SPEC: %v", s)
 	require.NoError(t, err)
 }
+
+func TestLargeTokens(t *testing.T) {
+	provider := testprovider.ProviderLargeTokens()
+	meta, err := metadata.New(nil)
+	require.NoError(t, err)
+	provider.MetadataInfo = &tfbridge.MetadataInfo{
+		Path: "non-nil",
+		Data: meta,
+	}
+	err = provider.ApplyAutoAliases()
+	require.NoError(t, err)
+	schema, err := GenerateSchema(provider, diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
+		Color: colors.Never,
+	}))
+	assert.NoError(t, err)
+	bridgetesting.AssertEqualsJSONFile(t, "test_data/regress-large-tokens-schema.json", schema)
+}
