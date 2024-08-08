@@ -126,10 +126,75 @@
       },
       "type": "object"
     },
+    "aws:quicksight/TemplateDefinitionCategoricalDimensionField:TemplateDefinitionCategoricalDimensionField": {
+      "properties": {
+        "column": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionColumn:TemplateDefinitionColumn"
+        },
+        "fieldId": {
+          "type": "string"
+        },
+        "formatConfiguration": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionFormatConfiguration:TemplateDefinitionFormatConfiguration"
+        },
+        "hierarchyId": {
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "required": [
+        "column",
+        "fieldId"
+      ]
+    },
     "aws:quicksight/TemplateDefinitionClusterMarker:TemplateDefinitionClusterMarker": {
       "properties": {
         "simpleClusterMarker": {
           "$ref": "#/types/aws:quicksight/TemplateDefinitionSimpleClusterMarker:TemplateDefinitionSimpleClusterMarker"
+        }
+      },
+      "type": "object"
+    },
+    "aws:quicksight/TemplateDefinitionColumn:TemplateDefinitionColumn": {
+      "properties": {
+        "columnName": {
+          "type": "string"
+        },
+        "dataSetIdentifier": {
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "required": [
+        "columnName",
+        "dataSetIdentifier"
+      ]
+    },
+    "aws:quicksight/TemplateDefinitionCurrencyDisplayFormatConfiguration:TemplateDefinitionCurrencyDisplayFormatConfiguration": {
+      "properties": {
+        "decimalPlacesConfiguration": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionDecimalPlacesConfiguration:TemplateDefinitionDecimalPlacesConfiguration"
+        },
+        "negativeValueConfiguration": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionNegativeValueConfiguration:TemplateDefinitionNegativeValueConfiguration"
+        },
+        "nullValueFormatConfiguration": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionNullValueFormatConfiguration:TemplateDefinitionNullValueFormatConfiguration"
+        },
+        "numberScale": {
+          "type": "string"
+        },
+        "prefix": {
+          "type": "string"
+        },
+        "separatorConfiguration": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionSeparatorConfiguration:TemplateDefinitionSeparatorConfiguration"
+        },
+        "suffix": {
+          "type": "string"
+        },
+        "symbol": {
+          "type": "string"
         }
       },
       "type": "object"
@@ -210,6 +275,132 @@
       },
       "type": "object"
     },
+    "aws:quicksight/TemplateDefinitionDateDimensionField:TemplateDefinitionDateDimensionField": {
+      "properties": {
+        "column": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionColumn:TemplateDefinitionColumn"
+        },
+        "dateGranularity": {
+          "type": "string"
+        },
+        "fieldId": {
+          "type": "string"
+        },
+        "formatConfiguration": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionFormatConfiguration:TemplateDefinitionFormatConfiguration"
+        },
+        "hierarchyId": {
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "required": [
+        "column",
+        "fieldId"
+      ]
+    },
+    "aws:quicksight/TemplateDefinitionDecimalPlacesConfiguration:TemplateDefinitionDecimalPlacesConfiguration": {
+      "properties": {
+        "decimalPlaces": {
+          "type": "integer"
+        }
+      },
+      "type": "object",
+      "required": [
+        "decimalPlaces"
+      ]
+    },
+    "aws:quicksight/TemplateDefinitionFormatConfiguration:TemplateDefinitionFormatConfiguration": {
+      "properties": {
+        "numericFormatConfiguration": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionNumericFormatConfiguration:TemplateDefinitionNumericFormatConfiguration"
+        }
+      },
+      "type": "object"
+    },
+    "aws:quicksight/TemplateDefinitionNegativeValueConfiguration:TemplateDefinitionNegativeValueConfiguration": {
+      "properties": {
+        "displayMode": {
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "required": [
+        "displayMode"
+      ]
+    },
+    "aws:quicksight/TemplateDefinitionNullValueFormatConfiguration:TemplateDefinitionNullValueFormatConfiguration": {
+      "properties": {
+        "nullString": {
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "required": [
+        "nullString"
+      ]
+    },
+    "aws:quicksight/TemplateDefinitionNumberDisplayFormatConfiguration:TemplateDefinitionNumberDisplayFormatConfiguration": {
+      "properties": {
+        "decimalPlacesConfiguration": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionDecimalPlacesConfiguration:TemplateDefinitionDecimalPlacesConfiguration"
+        },
+        "negativeValueConfiguration": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionNegativeValueConfiguration:TemplateDefinitionNegativeValueConfiguration"
+        },
+        "nullValueFormatConfiguration": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionNullValueFormatConfiguration:TemplateDefinitionNullValueFormatConfiguration"
+        },
+        "numberScale": {
+          "type": "string"
+        },
+        "prefix": {
+          "type": "string"
+        },
+        "separatorConfiguration": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionSeparatorConfiguration:TemplateDefinitionSeparatorConfiguration"
+        },
+        "suffix": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "aws:quicksight/TemplateDefinitionNumericFormatConfiguration:TemplateDefinitionNumericFormatConfiguration": {
+      "properties": {
+        "currencyDisplayFormatConfiguration": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionCurrencyDisplayFormatConfiguration:TemplateDefinitionCurrencyDisplayFormatConfiguration"
+        },
+        "numberDisplayFormatConfiguration": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionNumberDisplayFormatConfiguration:TemplateDefinitionNumberDisplayFormatConfiguration"
+        },
+        "percentageDisplayFormatConfiguration": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionPercentageDisplayFormatConfiguration:TemplateDefinitionPercentageDisplayFormatConfiguration"
+        }
+      },
+      "type": "object"
+    },
+    "aws:quicksight/TemplateDefinitionNumericalDimensionField:TemplateDefinitionNumericalDimensionField": {
+      "properties": {
+        "column": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionColumn:TemplateDefinitionColumn"
+        },
+        "fieldId": {
+          "type": "string"
+        },
+        "formatConfiguration": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionFormatConfiguration:TemplateDefinitionFormatConfiguration"
+        },
+        "hierarchyId": {
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "required": [
+        "column",
+        "fieldId"
+      ]
+    },
     "aws:quicksight/TemplateDefinitionPaperCanvasSizeOptions:TemplateDefinitionPaperCanvasSizeOptions": {
       "properties": {
         "paperMargin": {
@@ -241,6 +432,29 @@
       },
       "type": "object"
     },
+    "aws:quicksight/TemplateDefinitionPercentageDisplayFormatConfiguration:TemplateDefinitionPercentageDisplayFormatConfiguration": {
+      "properties": {
+        "decimalPlacesConfiguration": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionDecimalPlacesConfiguration:TemplateDefinitionDecimalPlacesConfiguration"
+        },
+        "negativeValueConfiguration": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionNegativeValueConfiguration:TemplateDefinitionNegativeValueConfiguration"
+        },
+        "nullValueFormatConfiguration": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionNullValueFormatConfiguration:TemplateDefinitionNullValueFormatConfiguration"
+        },
+        "prefix": {
+          "type": "string"
+        },
+        "separatorConfiguration": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionSeparatorConfiguration:TemplateDefinitionSeparatorConfiguration"
+        },
+        "suffix": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
     "aws:quicksight/TemplateDefinitionSameSheetTargetVisualConfiguration:TemplateDefinitionSameSheetTargetVisualConfiguration": {
       "properties": {
         "targetVisualOption": {
@@ -265,6 +479,17 @@
       "required": [
         "optimizedViewPortWidth"
       ]
+    },
+    "aws:quicksight/TemplateDefinitionSeparatorConfiguration:TemplateDefinitionSeparatorConfiguration": {
+      "properties": {
+        "decimalSeparator": {
+          "type": "string"
+        },
+        "thousandsSeparator": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionThousandsSeparator:TemplateDefinitionThousandsSeparator"
+        }
+      },
+      "type": "object"
     },
     "aws:quicksight/TemplateDefinitionSheet:TemplateDefinitionSheet": {
       "properties": {
@@ -524,6 +749,48 @@
       "type": "object"
     },
     "aws:quicksight/TemplateDefinitionSheetVisualGeospatialMapVisualChartConfigurationFieldWellsGeospatialMapAggregatedFieldWells:TemplateDefinitionSheetVisualGeospatialMapVisualChartConfigurationFieldWellsGeospatialMapAggregatedFieldWells": {
+      "properties": {
+        "colors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/aws:quicksight/TemplateDefinitionSheetVisualGeospatialMapVisualChartConfigurationFieldWellsGeospatialMapAggregatedFieldWellsColor:TemplateDefinitionSheetVisualGeospatialMapVisualChartConfigurationFieldWellsGeospatialMapAggregatedFieldWellsColor"
+          }
+        },
+        "geospatials": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/aws:quicksight/TemplateDefinitionSheetVisualGeospatialMapVisualChartConfigurationFieldWellsGeospatialMapAggregatedFieldWellsGeospatial:TemplateDefinitionSheetVisualGeospatialMapVisualChartConfigurationFieldWellsGeospatialMapAggregatedFieldWellsGeospatial"
+          }
+        }
+      },
+      "type": "object"
+    },
+    "aws:quicksight/TemplateDefinitionSheetVisualGeospatialMapVisualChartConfigurationFieldWellsGeospatialMapAggregatedFieldWellsColor:TemplateDefinitionSheetVisualGeospatialMapVisualChartConfigurationFieldWellsGeospatialMapAggregatedFieldWellsColor": {
+      "properties": {
+        "categoricalDimensionField": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionCategoricalDimensionField:TemplateDefinitionCategoricalDimensionField"
+        },
+        "dateDimensionField": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionDateDimensionField:TemplateDefinitionDateDimensionField"
+        },
+        "numericalDimensionField": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionNumericalDimensionField:TemplateDefinitionNumericalDimensionField"
+        }
+      },
+      "type": "object"
+    },
+    "aws:quicksight/TemplateDefinitionSheetVisualGeospatialMapVisualChartConfigurationFieldWellsGeospatialMapAggregatedFieldWellsGeospatial:TemplateDefinitionSheetVisualGeospatialMapVisualChartConfigurationFieldWellsGeospatialMapAggregatedFieldWellsGeospatial": {
+      "properties": {
+        "categoricalDimensionField": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionCategoricalDimensionField:TemplateDefinitionCategoricalDimensionField"
+        },
+        "dateDimensionField": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionDateDimensionField:TemplateDefinitionDateDimensionField"
+        },
+        "numericalDimensionField": {
+          "$ref": "#/types/aws:quicksight/TemplateDefinitionNumericalDimensionField:TemplateDefinitionNumericalDimensionField"
+        }
+      },
       "type": "object"
     },
     "aws:quicksight/TemplateDefinitionSheetVisualGeospatialMapVisualChartConfigurationLegend:TemplateDefinitionSheetVisualGeospatialMapVisualChartConfigurationLegend": {
@@ -626,6 +893,17 @@
     "aws:quicksight/TemplateDefinitionSimpleClusterMarker:TemplateDefinitionSimpleClusterMarker": {
       "properties": {
         "color": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "aws:quicksight/TemplateDefinitionThousandsSeparator:TemplateDefinitionThousandsSeparator": {
+      "properties": {
+        "symbol": {
+          "type": "string"
+        },
+        "visibility": {
           "type": "string"
         }
       },

@@ -124,8 +124,8 @@ func resourceQuicksightTemplate() map[string]*schema.Schema {
 																					MaxItems: 1,
 																					Elem: &schema.Resource{
 																						Schema: map[string]*schema.Schema{
-																							// "colors":         dimensionFieldSchema(dimensionsFieldMaxItems200),
-																							// "geospatial":     dimensionFieldSchema(dimensionsFieldMaxItems200),
+																							"colors":     dimensionFieldSchema(200),
+																							"geospatial": dimensionFieldSchema(200),
 																							// names.AttrValues: measureFieldSchema(measureFieldsMaxItems200),
 																						},
 																					},
@@ -163,7 +163,10 @@ func resourceQuicksightTemplate() map[string]*schema.Schema {
 																											MaxItems: 1,
 																											Elem: &schema.Resource{
 																												Schema: map[string]*schema.Schema{
-																													"color": stringSchema(false, validation.StringMatch(regexache.MustCompile(`^#[0-9A-F]{6}$`), "")),
+																													"color": stringSchema(
+																														false,
+																														validation.StringMatch(regexache.MustCompile(`^#[0-9A-F]{6}$`), ""),
+																													),
 																												},
 																											},
 																										},
@@ -173,7 +176,10 @@ func resourceQuicksightTemplate() map[string]*schema.Schema {
 																						},
 																					},
 																				},
-																				"selected_point_style": stringSchema(false, validation.StringInSlice(quicksight.GeospatialSelectedPointStyle_Values(), false)),
+																				"selected_point_style": stringSchema(
+																					false,
+																					validation.StringInSlice(quicksight.GeospatialSelectedPointStyle_Values(), false),
+																				),
 																			},
 																		},
 																	},
@@ -397,7 +403,11 @@ func resourceQuicksightTemplate() map[string]*schema.Schema {
 	}
 }
 
-func stringSchema(required bool, validateFunc schema.SchemaValidateFunc) *schema.Schema {
+func stringSchema(
+	required bool,
+	//nolint:staticcheck
+	validateFunc schema.SchemaValidateFunc,
+) *schema.Schema {
 	return &schema.Schema{
 		Type:         schema.TypeString,
 		Required:     required,
@@ -412,7 +422,10 @@ func idSchema() *schema.Schema {
 		Required: true,
 		ValidateFunc: validation.All(
 			validation.StringLenBetween(1, 512),
-			validation.StringMatch(regexache.MustCompile(`[\w\-]+`), "must contain only alphanumeric, hyphen, and underscore characters"),
+			validation.StringMatch(
+				regexache.MustCompile(`[\w\-]+`),
+				"must contain only alphanumeric, hyphen, and underscore characters",
+			),
 		),
 	}
 }
@@ -446,7 +459,10 @@ func visualCustomActionsSchema(maxItems int) *schema.Schema {
 											Required: true,
 											Elem: &schema.Resource{
 												Schema: map[string]*schema.Schema{
-													"selected_field_option": stringSchema(false, validation.StringInSlice(quicksight.SelectedFieldOptions_Values(), false)),
+													"selected_field_option": stringSchema(
+														false,
+														validation.StringInSlice(quicksight.SelectedFieldOptions_Values(), false),
+													),
 													"selected_fields": {
 														Type:     schema.TypeList,
 														Optional: true,
@@ -474,7 +490,10 @@ func visualCustomActionsSchema(maxItems int) *schema.Schema {
 														Optional: true,
 														Elem: &schema.Resource{
 															Schema: map[string]*schema.Schema{
-																"target_visual_option": stringSchema(false, validation.StringInSlice(quicksight.TargetVisualOptions_Values(), false)),
+																"target_visual_option": stringSchema(
+																	false,
+																	validation.StringInSlice(quicksight.TargetVisualOptions_Values(), false),
+																),
 																"target_visuals": {
 																	Type:     schema.TypeSet,
 																	Optional: true,
@@ -595,8 +614,11 @@ func visualCustomActionsSchema(maxItems int) *schema.Schema {
 																		},
 																	},
 																},
-																"select_all_value_options": stringSchema(false, validation.StringInSlice(quicksight.SelectAllValueOptions_Values(), false)),
-																"source_field":             stringSchema(false, validation.StringLenBetween(1, 2048)),
+																"select_all_value_options": stringSchema(
+																	false,
+																	validation.StringInSlice(quicksight.SelectAllValueOptions_Values(), false),
+																),
+																"source_field": stringSchema(false, validation.StringLenBetween(1, 2048)),
 																"source_parameter_name": {
 																	Type:     schema.TypeString,
 																	Optional: true,
@@ -617,7 +639,10 @@ func visualCustomActionsSchema(maxItems int) *schema.Schema {
 								Optional: true,
 								Elem: &schema.Resource{
 									Schema: map[string]*schema.Schema{
-										"url_target":   stringSchema(true, validation.StringInSlice(quicksight.URLTargetConfiguration_Values(), false)),
+										"url_target": stringSchema(
+											true,
+											validation.StringInSlice(quicksight.URLTargetConfiguration_Values(), false),
+										),
 										"url_template": stringSchema(true, validation.StringLenBetween(1, 2048)),
 									},
 								},
@@ -627,8 +652,11 @@ func visualCustomActionsSchema(maxItems int) *schema.Schema {
 				},
 				"custom_action_id": idSchema(),
 				"name":             stringSchema(true, validation.StringLenBetween(1, 256)),
-				"trigger":          stringSchema(true, validation.StringInSlice(quicksight.VisualCustomActionTrigger_Values(), false)),
-				"status":           stringSchema(true, validation.StringInSlice(quicksight.Status_Values(), false)),
+				"trigger": stringSchema(
+					true,
+					validation.StringInSlice(quicksight.VisualCustomActionTrigger_Values(), false),
+				),
+				"status": stringSchema(true, validation.StringInSlice(quicksight.Status_Values(), false)),
 			},
 		},
 	}
@@ -675,9 +703,12 @@ func dimensionFieldSchema(maxItems int) *schema.Schema {
 					Optional: true,
 					Elem: &schema.Resource{
 						Schema: map[string]*schema.Schema{
-							"column":               columnSchema(true),
-							"field_id":             stringSchema(true, validation.StringLenBetween(1, 512)),
-							"date_granularity":     stringSchema(false, validation.StringInSlice(quicksight.TimeGranularity_Values(), false)),
+							"column":   columnSchema(true),
+							"field_id": stringSchema(true, validation.StringLenBetween(1, 512)),
+							"date_granularity": stringSchema(
+								false,
+								validation.StringInSlice(quicksight.TimeGranularity_Values(), false),
+							),
 							"format_configuration": dateTimeFormatConfigurationSchema(),
 							"hierarchy_id":         stringSchema(false, validation.StringLenBetween(1, 512)),
 						},
@@ -780,11 +811,17 @@ func numericFormatConfigurationSchema() *schema.Schema {
 							"decimal_places_configuration":    decimalPlacesConfigurationSchema(),
 							"negative_value_configuration":    negativeValueConfigurationSchema(),
 							"null_value_format_configuration": nullValueConfigurationSchema(),
-							"number_scale":                    stringSchema(false, validation.StringInSlice(quicksight.NumberScale_Values(), false)),
-							"prefix":                          stringSchema(false, validation.StringLenBetween(1, 128)),
-							"separator_configuration":         separatorConfigurationSchema(),
-							"suffix":                          stringSchema(false, validation.StringLenBetween(1, 128)),
-							"symbol":                          stringSchema(false, validation.StringMatch(regexache.MustCompile(`[A-Z]{3}`), "must be a 3 character currency symbol")),
+							"number_scale": stringSchema(
+								false,
+								validation.StringInSlice(quicksight.NumberScale_Values(), false),
+							),
+							"prefix":                  stringSchema(false, validation.StringLenBetween(1, 128)),
+							"separator_configuration": separatorConfigurationSchema(),
+							"suffix":                  stringSchema(false, validation.StringLenBetween(1, 128)),
+							"symbol": stringSchema(
+								false,
+								validation.StringMatch(regexache.MustCompile(`[A-Z]{3}`), "must be a 3 character currency symbol"),
+							),
 						},
 					},
 				},
@@ -834,7 +871,10 @@ func separatorConfigurationSchema() *schema.Schema {
 		Optional: true,
 		Elem: &schema.Resource{
 			Schema: map[string]*schema.Schema{
-				"decimal_separator": stringSchema(false, validation.StringInSlice(quicksight.NumericSeparatorSymbol_Values(), false)),
+				"decimal_separator": stringSchema(
+					false,
+					validation.StringInSlice(quicksight.NumericSeparatorSymbol_Values(), false),
+				),
 				"thousands_separator": {
 					Type:     schema.TypeList,
 					MinItems: 1,
@@ -863,10 +903,13 @@ func numberDisplayFormatConfigurationSchema() *schema.Schema {
 				"decimal_places_configuration":    decimalPlacesConfigurationSchema(),
 				"negative_value_configuration":    negativeValueConfigurationSchema(),
 				"null_value_format_configuration": nullValueConfigurationSchema(),
-				"number_scale":                    stringSchema(false, validation.StringInSlice(quicksight.NumberScale_Values(), false)),
-				"prefix":                          stringSchema(false, validation.StringLenBetween(1, 128)),
-				"separator_configuration":         separatorConfigurationSchema(),
-				"suffix":                          stringSchema(false, validation.StringLenBetween(1, 128)),
+				"number_scale": stringSchema(
+					false,
+					validation.StringInSlice(quicksight.NumberScale_Values(), false),
+				),
+				"prefix":                  stringSchema(false, validation.StringLenBetween(1, 128)),
+				"separator_configuration": separatorConfigurationSchema(),
+				"suffix":                  stringSchema(false, validation.StringLenBetween(1, 128)),
 			},
 		},
 	}
