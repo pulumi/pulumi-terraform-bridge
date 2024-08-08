@@ -19,7 +19,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
-	testutils "github.com/pulumi/providertest/replay"
+	"github.com/pulumi/providertest/replay"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/testprovider"
 	tfpf "github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
@@ -60,7 +60,7 @@ func TestConfigure(t *testing.T) {
 		    }
 		  }
 		]`
-		testutils.ReplaySequence(t, server, testCase)
+		replay.ReplaySequence(t, server, testCase)
 	})
 
 	t.Run("booleans", func(t *testing.T) {
@@ -80,7 +80,7 @@ func TestConfigure(t *testing.T) {
 		    "acceptResources": true
 		  }
 		}`
-		testutils.Replay(t, server, testCase)
+		replay.Replay(t, server, testCase)
 	})
 }
 
@@ -104,7 +104,7 @@ func TestConfigureErrorReplacement(t *testing.T) {
 
 		server := newProviderServer(t, providerInfo)
 
-		testutils.Replay(t, server, `
+		replay.Replay(t, server, `
 			{
 			  "method": "/pulumirpc.ResourceProvider/Configure",
 			  "request": {"acceptResources": true},
@@ -132,11 +132,31 @@ func TestConfigureErrorReplacement(t *testing.T) {
 
 		server := newProviderServer(t, providerInfo)
 
-		testutils.Replay(t, server, `
+		replay.Replay(t, server, `
 			{
 			  "method": "/pulumirpc.ResourceProvider/Configure",
 			  "request": {"acceptResources": true},
 			  "errors": ["problem with \"configProperty\" and \"CONFIG!\": some error with \"configProperty\" and \"CONFIG!\" but not config"]
 			}`)
 	})
+}
+
+func TestJSONNestedConfigure(t *testing.T) {
+	p := testprovider.SyntheticTestBridgeProvider()
+	replay.Replay(t, newProviderServer(t, p), `{
+		  "method": "/pulumirpc.ResourceProvider/Configure",
+		  "request": {
+		    "args": {
+                      "validateNested": "true",
+                      "mapNestedProp": "{\"k1\":1,\"k2\":2}",
+                      "listNestedProps": "[true,false]",
+                      "singleNested": "{\"stringProp\":\"foo\",\"boolProp\":true,\"mapNestedProp\":{\"v1\":1234},\"listNestedProps\":[true,false]}",
+                      "listNesteds": "[{\"stringProp\":\"foo\",\"boolProp\":true,\"mapNestedProp\":{\"v1\":1234},\"listNestedProps\":[true,false]}]"
+		    }
+		  },
+		  "response": {
+		    "supportsPreview": true,
+		    "acceptResources": true
+		  }
+		}`)
 }
