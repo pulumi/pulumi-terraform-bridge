@@ -32,7 +32,6 @@ import (
 
 // Test how various PF-based schemata translate to the shim.Schema layer.
 func TestSchemaShimRepresentations(t *testing.T) {
-
 	type testCase struct {
 		name     string
 		provider provider.Provider
@@ -41,16 +40,38 @@ func TestSchemaShimRepresentations(t *testing.T) {
 
 	testCases := []testCase{
 		{
-			"single-nested-block",
+			"simple-attribute",
 			&pb.Provider{
 				AllResources: []pb.Resource{{
 					ResourceSchema: schema.Schema{
-						Blocks: map[string]schema.Block{
-							"single_nested_block": schema.SingleNestedBlock{
-								Attributes: map[string]schema.Attribute{
-									"a1": schema.Float64Attribute{
-										Optional: true,
-									},
+						Attributes: map[string]schema.Attribute{
+							"simple_attribute": schema.StringAttribute{
+								Optional: true,
+							},
+						},
+					},
+				}},
+			},
+			autogold.Expect(`{
+  "resources": {
+    "_": {
+      "simple_attribute": {
+        "optional": true,
+        "type": 4
+      }
+    }
+  }
+}`),
+		},
+		{
+			"object-attribute",
+			&pb.Provider{
+				AllResources: []pb.Resource{{
+					ResourceSchema: schema.Schema{
+						Attributes: map[string]schema.Attribute{
+							"object_attribute": schema.ObjectAttribute{
+								AttributeTypes: map[string]attr.Type{
+									"a1": types.StringType,
 								},
 							},
 						},
@@ -60,16 +81,14 @@ func TestSchemaShimRepresentations(t *testing.T) {
 			autogold.Expect(`{
   "resources": {
     "_": {
-      "single_nested_block": {
+      "object_attribute": {
         "element": {
           "resource": {
             "a1": {
-              "optional": true,
-              "type": 3
+              "type": 4
             }
           }
         },
-        "optional": true,
         "type": 6
       }
     }
@@ -77,34 +96,117 @@ func TestSchemaShimRepresentations(t *testing.T) {
 }`),
 		},
 		{
-			"list-nested-block",
+			"list-attribute",
 			&pb.Provider{
-				AllResources: []pb.Resource{{
-					ResourceSchema: schema.Schema{
-						Blocks: map[string]schema.Block{
-							"list_nested_block": schema.ListNestedBlock{
-								NestedObject: schema.NestedBlockObject{
-									Attributes: map[string]schema.Attribute{
-										"a1": schema.Float64Attribute{
-											Optional: true,
+				AllResources: []pb.Resource{
+					{
+						ResourceSchema: schema.Schema{
+							Attributes: map[string]schema.Attribute{
+								"list_attribute": schema.ListAttribute{
+									Optional:    true,
+									ElementType: types.StringType,
+								},
+							},
+						},
+					},
+				},
+			},
+			autogold.Expect(`{
+  "resources": {
+    "_": {
+      "list_attribute": {
+        "element": {
+          "schema": {
+            "type": 4
+          }
+        },
+        "optional": true,
+        "type": 5
+      }
+    }
+  }
+}`),
+		},
+		{
+			"list-attribute-object-element",
+			&pb.Provider{
+				AllResources: []pb.Resource{
+					{
+						ResourceSchema: schema.Schema{
+							Attributes: map[string]schema.Attribute{
+								"list_attribute": schema.ListAttribute{
+									Optional: true,
+									ElementType: types.ObjectType{
+										AttrTypes: map[string]attr.Type{
+											"a1": types.StringType,
 										},
 									},
 								},
 							},
 						},
 					},
-				}},
+				},
 			},
 			autogold.Expect(`{
   "resources": {
     "_": {
-      "list_nested_block": {
+      "list_attribute": {
         "element": {
-          "resource": {
-            "a1": {
-              "optional": true,
-              "type": 3
-            }
+          "schema": {
+            "element": {
+              "resource": {
+                "a1": {
+                  "type": 4
+                }
+              }
+            },
+            "type": 6
+          }
+        },
+        "optional": true,
+        "type": 5
+      }
+    }
+  }
+}`),
+		},
+		{
+			"list-nested-attribute",
+			&pb.Provider{
+				AllResources: []pb.Resource{
+					{
+						ResourceSchema: schema.Schema{
+							Attributes: map[string]schema.Attribute{
+								"list_nested_attribute": schema.ListNestedAttribute{
+									Optional: true,
+									NestedObject: schema.NestedAttributeObject{
+										Attributes: map[string]schema.Attribute{
+											"a1": schema.StringAttribute{
+												Optional: true,
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			autogold.Expect(`{
+  "resources": {
+    "_": {
+      "list_nested_attribute": {
+        "element": {
+          "schema": {
+            "element": {
+              "resource": {
+                "a1": {
+                  "optional": true,
+                  "type": 4
+                }
+              }
+            },
+            "type": 6
           }
         },
         "optional": true,
@@ -157,14 +259,55 @@ func TestSchemaShimRepresentations(t *testing.T) {
 }`),
 		},
 		{
-			"object-attribute",
+			"single-nested-attribute",
+			&pb.Provider{
+				AllResources: []pb.Resource{
+					{
+						ResourceSchema: schema.Schema{
+							Attributes: map[string]schema.Attribute{
+								"single_nested_attribute": schema.SingleNestedAttribute{
+									Optional: true,
+									Attributes: map[string]schema.Attribute{
+										"a1": schema.StringAttribute{
+											Optional: true,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			autogold.Expect(`{
+  "resources": {
+    "_": {
+      "single_nested_attribute": {
+        "element": {
+          "resource": {
+            "a1": {
+              "optional": true,
+              "type": 4
+            }
+          }
+        },
+        "optional": true,
+        "type": 6
+      }
+    }
+  }
+}`),
+		},
+		{
+			"single-nested-block",
 			&pb.Provider{
 				AllResources: []pb.Resource{{
 					ResourceSchema: schema.Schema{
-						Attributes: map[string]schema.Attribute{
-							"object_attribute": schema.ObjectAttribute{
-								AttributeTypes: map[string]attr.Type{
-									"a1": types.StringType,
+						Blocks: map[string]schema.Block{
+							"single_nested_block": schema.SingleNestedBlock{
+								Attributes: map[string]schema.Attribute{
+									"a1": schema.StringAttribute{
+										Optional: true,
+									},
 								},
 							},
 						},
@@ -174,15 +317,56 @@ func TestSchemaShimRepresentations(t *testing.T) {
 			autogold.Expect(`{
   "resources": {
     "_": {
-      "object_attribute": {
+      "single_nested_block": {
         "element": {
           "resource": {
             "a1": {
+              "optional": true,
               "type": 4
             }
           }
         },
+        "optional": true,
         "type": 6
+      }
+    }
+  }
+}`),
+		},
+		{
+			"list-nested-block",
+			&pb.Provider{
+				AllResources: []pb.Resource{{
+					ResourceSchema: schema.Schema{
+						Blocks: map[string]schema.Block{
+							"list_nested_block": schema.ListNestedBlock{
+								NestedObject: schema.NestedBlockObject{
+									Attributes: map[string]schema.Attribute{
+										"a1": schema.StringAttribute{
+											Optional: true,
+										},
+									},
+								},
+							},
+						},
+					},
+				}},
+			},
+			// TODO: Why is this different to list-nested-attribute? Should it be?
+			autogold.Expect(`{
+  "resources": {
+    "_": {
+      "list_nested_block": {
+        "element": {
+          "resource": {
+            "a1": {
+              "optional": true,
+              "type": 4
+            }
+          }
+        },
+        "optional": true,
+        "type": 5
       }
     }
   }
