@@ -67,6 +67,13 @@ func (s v2InstanceState) Object(sch shim.SchemaMap) (map[string]interface{}, err
 	return s.objectV1(sch)
 }
 
+// This is needed because json.Unmarshal uses float64 for numbers by default which truncates int64 numbers.
+func unmarshalJSON(data []byte, v interface{}) error {
+	dec := json.NewDecoder(bytes.NewReader(data))
+	dec.UseNumber()
+	return dec.Decode(v)
+}
+
 // objectFromCtyValue takes a cty.Value and converts it to JSON object.
 // We do not care about type checking the values, we just want to do our best to recursively convert
 // the cty.Value to the underlying value
@@ -77,11 +84,12 @@ func (s v2InstanceState) Object(sch shim.SchemaMap) (map[string]interface{}, err
 func objectFromCtyValue(v cty.Value) map[string]interface{} {
 	var path cty.Path
 	buf := &bytes.Buffer{}
+	// The round trip here to JSON is redundant, we could instead convert from cty to map[string]interface{} directly
 	err := marshal(v, v.Type(), path, buf)
 	contract.AssertNoErrorf(err, "Failed to marshal cty.Value to a JSON string value")
 
 	var m map[string]interface{}
-	err = json.Unmarshal(buf.Bytes(), &m)
+	err = unmarshalJSON(buf.Bytes(), &m)
 	contract.AssertNoErrorf(err, "failed to unmarshal: %s", buf.String())
 
 	return m

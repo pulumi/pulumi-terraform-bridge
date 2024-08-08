@@ -2,6 +2,7 @@ package tests
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -14,6 +15,7 @@ import (
 	"github.com/hexops/autogold/v2"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/internal/pulcheck"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/internal/tfcheck"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optrefresh"
 	"github.com/stretchr/testify/assert"
@@ -2129,4 +2131,100 @@ runtime: yaml
 			}
 		})
 	}
+}
+
+func TestBigIntOverride(t *testing.T) {
+	getZoneFromStack := func(data []byte) string {
+		var stateMap map[string]interface{}
+		err := json.Unmarshal(data, &stateMap)
+		require.NoError(t, err)
+		resourcesList := stateMap["resources"].([]interface{})
+		// stack, provider, resource
+		require.Len(t, resourcesList, 3)
+		testResState := resourcesList[2].(map[string]interface{})
+		resOutputs := testResState["outputs"].(map[string]interface{})
+		return resOutputs["managedZoneId"].(string)
+	}
+	bigInt := 1<<62 + 1
+	resMap := map[string]*schema.Resource{
+		"prov_test": {
+			Schema: map[string]*schema.Schema{
+				"prop": {
+					Type:     schema.TypeString,
+					Optional: true,
+				},
+				"managed_zone_id": {
+					Type:     schema.TypeInt,
+					Computed: true,
+				},
+			},
+			CreateContext: func(ctx context.Context, rd *schema.ResourceData, i interface{}) diag.Diagnostics {
+				rd.SetId("1")
+				err := rd.Set("managed_zone_id", bigInt)
+				require.NoError(t, err)
+				return nil
+			},
+			UpdateContext: func(ctx context.Context, rd *schema.ResourceData, i interface{}) diag.Diagnostics {
+				require.Equal(t, bigInt, rd.Get("managed_zone_id").(int))
+				return nil
+			},
+			UseJSONNumber: true,
+		},
+	}
+
+	runTest := func(t *testing.T, PRC bool) {
+		tfp := &schema.Provider{ResourcesMap: resMap}
+		opts := []pulcheck.BridgedProviderOpt{}
+		if !PRC {
+			opts = append(opts, pulcheck.DisablePlanResourceChange())
+		}
+		bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp, opts...)
+		bridgedProvider.Resources["prov_test"] = &tfbridge.ResourceInfo{
+			Tok: "prov:index:Test",
+			Fields: map[string]*tfbridge.SchemaInfo{
+				"managed_zone_id": {
+					Type: "string",
+				},
+			},
+		}
+
+		program := `
+name: test
+runtime: yaml
+resources:
+    mainRes:
+        type: prov:index:Test
+        properties:
+            prop: %s
+`
+
+		pt := pulcheck.PulCheck(t, bridgedProvider, fmt.Sprintf(program, "val"))
+		pt.Up()
+
+		// Check the state is correct
+		stack := pt.ExportStack()
+		data, err := stack.Deployment.MarshalJSON()
+		require.NoError(t, err)
+		require.Equal(t, fmt.Sprint(bigInt), getZoneFromStack(data))
+
+		program2 := fmt.Sprintf(program, "val2")
+		pulumiYamlPath := filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml")
+		err = os.WriteFile(pulumiYamlPath, []byte(program2), 0o600)
+		require.NoError(t, err)
+
+		pt.Up()
+		// Check the state is correct
+		stack = pt.ExportStack()
+		data, err = stack.Deployment.MarshalJSON()
+		require.NoError(t, err)
+		require.Equal(t, fmt.Sprint(bigInt), getZoneFromStack(data))
+	}
+
+	t.Run("PRC disabled", func(t *testing.T) {
+		runTest(t, false)
+	})
+
+	t.Run("PRC enabled", func(t *testing.T) {
+		runTest(t, true)
+	})
 }
