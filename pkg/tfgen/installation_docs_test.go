@@ -1,9 +1,14 @@
 package tfgen
 
 import (
+	"runtime"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/stretchr/testify/require"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	sdkv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
 
 //nolint:lll
@@ -183,4 +188,83 @@ func TestApplyEditRules(t *testing.T) {
 			require.Equal(t, string(tt.expected), string(actual))
 		})
 	}
+}
+
+func TestTranslateCodeBlocks(t *testing.T) {
+
+	type testCase struct {
+		// The name of the test case.
+		name       string
+		contentStr string
+		g          *Generator
+		expected   string
+	}
+	p := tfbridge.ProviderInfo{
+		Name: "simple",
+		P: sdkv2.NewProvider(&schema.Provider{
+			ResourcesMap: map[string]*schema.Resource{
+				"simple_resource": {
+					Schema: map[string]*schema.Schema{
+						"input_one": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"input_two": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+					},
+				},
+			},
+			DataSourcesMap: map[string]*schema.Resource{
+				"simple_data_source": {
+					Schema: map[string]*schema.Schema{},
+				},
+			},
+		}),
+		Resources: map[string]*tfbridge.ResourceInfo{
+			"simple_resource": {
+				Tok: "simple:index:resource",
+				Fields: map[string]*tfbridge.SchemaInfo{
+					"input_one": {
+						Name: "renamedInput1",
+					},
+				},
+			},
+		},
+		DataSources: map[string]*tfbridge.DataSourceInfo{
+			"simple_data_source": {
+				Tok: "simple:index:dataSource",
+			},
+		},
+	}
+	pclsMap := make(map[string]translatedExample)
+
+	tc := testCase{
+		name:       "Translates HCL from examples ",
+		contentStr: readfile(t, "test_data/installation-docs/configuration.md"),
+		expected:   readfile(t, "test_data/installation-docs/configuration-expected.md"),
+		g: &Generator{
+			sink: mockSink{},
+			cliConverterState: &cliConverter{
+				info: p,
+				pcls: pclsMap,
+			},
+			language: RegistryDocs,
+		},
+	}
+	t.Run(tc.name, func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			// Currently there is a test issue in CI/test setup:
+			//
+			// convertViaPulumiCLI: failed to clean up temp bridge-examples.json file: The
+			// process cannot access the file because it is being used by another process.
+			t.Skipf("Skipping on Windows due to a test setup issue")
+		}
+		t.Setenv("PULUMI_CONVERT", "1")
+		actual, err := translateCodeBlocks(tc.contentStr, tc.g)
+		require.NoError(t, err)
+		writefile(t, "test_data/installation-docs/configuration-expected.md", []byte(actual))
+		//require.Equal(t, tc.expected, actual)
+	})
 }

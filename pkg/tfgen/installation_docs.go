@@ -2,6 +2,7 @@ package tfgen
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 
 	"golang.org/x/text/cases"
@@ -21,9 +22,13 @@ func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
 	// Add instructions to top of file
 	contentStr = frontMatter + installationInstructions + contentStr
 
+	//Translate code blocks to Pulumi
+	contentStr, err := translateCodeBlocks(contentStr, g)
+	if err != nil {
+		return nil, err
+	}
+
 	//TODO: See https://github.com/pulumi/pulumi-terraform-bridge/issues/2078
-	// - translate code blocks with code choosers
-	// - reformat TF names
 	// - Ability to omit irrelevant sections
 
 	// Apply edit rules to transform the doc for Pulumi-ready presentation
@@ -31,7 +36,15 @@ func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return contentBytes, nil
+
+	//Reformat field names. Configuration fields are camelCased like nodejs.
+	contentStr, _ = reformatText(infoContext{
+		language: "nodejs",
+		pkg:      g.pkg,
+		info:     g.info,
+	}, string(contentBytes), nil)
+
+	return []byte(contentStr), nil
 }
 
 func writeFrontMatter(title string) string {
@@ -123,4 +136,112 @@ func applyEditRules(contentBytes []byte, docFile *DocFile) ([]byte, error) {
 		}
 	}
 	return contentBytes, nil
+}
+
+func translateCodeBlocks(contentStr string, g *Generator) (string, error) {
+
+	var returnContent string
+	//configCliConverter := g.cliConverter()
+	// Extract code blocks
+	codeFence := "```"
+	var codeBlocks []codeBlock
+	for i := 0; i < (len(contentStr) - len(codeFence)); i++ {
+		block, found := findCodeBlock(contentStr, i)
+		if found {
+			codeBlocks = append(codeBlocks, block)
+			i = block.end + 1
+		}
+	}
+	if len(codeBlocks) == 0 {
+		return contentStr, nil
+	}
+	startIndex := 0
+	for i, block := range codeBlocks {
+		// Write the content up to the start of the code block
+		returnContent = returnContent + contentStr[startIndex:block.start]
+		nextNewLine := strings.Index(contentStr[block.start:block.end], "\n")
+		if nextNewLine == -1 {
+			//Write the inline block
+			returnContent = returnContent + contentStr[block.start:block.end] + codeFence + "\n"
+			continue
+		}
+		fenceLanguage := contentStr[block.start : block.start+nextNewLine+1]
+		code := contentStr[block.start+nextNewLine+1 : block.end]
+		// Only convert code blocks that we have reasonable suspicion of actually being Terraform.
+		if isHCL(fenceLanguage, code) {
+			exampleContent, err := convertExample(g, code, i)
+			if err != nil {
+				return "", err
+			}
+			returnContent += exampleContent
+			startIndex = block.end + len(codeFence)
+		} else {
+			// Write any code block as-is.
+			returnContent = returnContent + contentStr[block.start:block.end+len(codeFence)]
+			startIndex = block.end + len(codeFence)
+		}
+	}
+	// Write any remainder.
+	returnContent = returnContent + contentStr[codeBlocks[len(codeBlocks)-1].end+len(codeFence):]
+	return returnContent, nil
+}
+
+// This function renders the Pulumi.yaml config file for a given language if configuration is included in the example.
+func processConfigYaml(pulumiYAML, lang string) string {
+	if pulumiYAML == "" {
+		return pulumiYAML
+	}
+	// Replace the project name from the default `/` to a more descriptive name
+	nameRegex := regexp.MustCompile(`name: /*`)
+	pulumiYAMLFile := nameRegex.ReplaceAllString(pulumiYAML, "name: configuration-example")
+	// Replace the runtime with the language specified.
+	//Unfortunately, lang strings don't quite map to runtime strings.
+	if lang == "typescript" {
+		lang = "nodejs"
+	}
+	if lang == "csharp" {
+		lang = "dotnet"
+	}
+	runtimeRegex := regexp.MustCompile(`runtime: terraform`)
+	pulumiYAMLFile = runtimeRegex.ReplaceAllString(pulumiYAMLFile, fmt.Sprintf("runtime: %s", lang))
+	// Add descriptive code comment
+	pulumiYAMLFile = "```yaml\n" +
+		"# Pulumi.yaml provider configuration file\n" +
+		pulumiYAMLFile + "\n```\n"
+	return pulumiYAMLFile
+}
+
+func convertExample(g *Generator, code string, exampleNumber int) (string, error) {
+	// Make an example to record in the cliConverter.
+	converter := g.cliConverter()
+	fileName := fmt.Sprintf("configuration-installation-%d", exampleNumber)
+	pclExample, err := converter.singleExampleFromHCLToPCL(fileName, code)
+	if err != nil {
+		return "", err
+	}
+
+	langs := genLanguageToSlice(g.language)
+	const (
+		chooserStart = `{{< chooser language "typescript,python,go,csharp,java,yaml" >}}` + "\n"
+		chooserEnd   = "{{< /chooser >}}\n"
+		choosableEnd = "\n{{% /choosable %}}\n"
+	)
+	exampleContent := chooserStart
+
+	// Generate each language in turn and mark up the output with the correct Hugo shortcodes.
+	for _, lang := range langs {
+		choosableStart := fmt.Sprintf("{{%% choosable language %s %%}}\n", lang)
+
+		// Generate the Pulumi.yaml config file for each language
+		configFile := pclExample.PulumiYAML
+		pulumiYAML := processConfigYaml(configFile, lang)
+		// Generate language example
+		convertedLang, err := converter.singleExampleFromPCLToLanguage(pclExample, lang)
+		if err != nil {
+			return "", err
+		}
+		exampleContent += choosableStart + pulumiYAML + convertedLang + choosableEnd
+	}
+	exampleContent += chooserEnd
+	return exampleContent, nil
 }
