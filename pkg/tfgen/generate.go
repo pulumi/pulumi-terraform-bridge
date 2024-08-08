@@ -132,7 +132,7 @@ func (l Language) emitSDK(pkg *pschema.Package, info tfbridge.ProviderInfo, root
 			return nil, err
 		}
 
-		m, err := gogen.GeneratePackage(tfgen, pkg)
+		m, err := gogen.GeneratePackage(tfgen, pkg, nil)
 		if err != nil {
 			return nil, err
 		}
