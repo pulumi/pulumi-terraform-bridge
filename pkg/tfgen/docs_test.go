@@ -670,7 +670,7 @@ func TestReplaceFooterLinks(t *testing.T) {
 	assert.Equal(t, inputText, actual)
 }
 
-func TestSplitByMdHeaders(t *testing.T) {
+func TestSplitByMarkdownHeaders(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -1271,7 +1271,7 @@ content
 	for _, tt := range tests {
 		tt := tt
 		t.Run("", func(t *testing.T) {
-			actual := splitByMdHeaders(tt.input, tt.level)
+			actual := splitByMarkdownHeaders(tt.input, tt.level)
 			tt.expected.Equal(t, actual)
 		})
 	}
@@ -1295,7 +1295,7 @@ Provides a DigitalOcean CDN Endpoint resource for use with Spaces.
 ## Argument Reference`
 
 		var processedMarkdown string
-		groups := splitByMdHeaders(markdown, 2)
+		groups := splitByMarkdownHeaders(markdown, 2)
 		for _, lines := range groups {
 			fixExampleTitles(lines)
 			for _, line := range lines {
@@ -1322,7 +1322,7 @@ Misleading example title without any actual code fences. We should not modify th
 ## Argument Reference`
 
 		var processedMarkdown string
-		groups := splitByMdHeaders(markdown, 2)
+		groups := splitByMarkdownHeaders(markdown, 2)
 		for _, lines := range groups {
 			fixExampleTitles(lines)
 			for _, line := range lines {
@@ -1360,7 +1360,7 @@ Basic usage:`
 
 func TestReformatExamples(t *testing.T) {
 	runTest := func(input string, expected [][]string) {
-		inputSections := splitByMdHeaders(input, 2)
+		inputSections := splitByMarkdownHeaders(input, 2)
 		actual := reformatExamples(inputSections)
 
 		assert.Equal(t, expected, actual)

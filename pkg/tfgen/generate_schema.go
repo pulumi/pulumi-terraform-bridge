@@ -1086,7 +1086,7 @@ func appendExample(description, markdownToAppend string) string {
 
 	const exampleUsageHeader = "## Example Usage"
 
-	sections := splitByMdHeaders(description, 2)
+	sections := splitByMarkdownHeaders(description, 2)
 
 	// If there's already an ## Example Usage section, we need to find this section and append
 	if strings.Contains(description, exampleUsageHeader) {
