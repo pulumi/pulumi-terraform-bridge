@@ -85,9 +85,11 @@ type ProviderWithContext interface {
 	GetMappingsWithContext(ctx context.Context, key string) ([]string, error)
 
 	ParameterizeWithContext(context.Context, plugin.ParameterizeRequest) (plugin.ParameterizeResponse, error)
+
+	Attach(address string) error
 }
 
-func NewProvider(p ProviderWithContext) plugin.Provider {
+func NewProvider(p ProviderWithContext) plugin.GrpcProvider {
 	return &provider{ProviderWithContext: p}
 }
 
@@ -231,4 +233,8 @@ func (prov *provider) GetMappings(
 ) (plugin.GetMappingsResponse, error) {
 	k, err := prov.ProviderWithContext.GetMappingsWithContext(ctx, req.Key)
 	return plugin.GetMappingsResponse{Keys: k}, err
+}
+
+func (prov *provider) Attach(address string) error {
+	return prov.ProviderWithContext.Attach(address)
 }
