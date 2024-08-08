@@ -65,7 +65,7 @@ func (enc *objectEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.V
 	}
 	if !p.IsObject() {
 		return tftypes.NewValue(enc.objectType, nil),
-			fmt.Errorf("Expected an Object PropertyValue")
+			fmt.Errorf("Expected an Object PropertyValue, found %s (%q)", p.TypeString(), p.String())
 	}
 	pulumiMap := p.ObjectValue()
 	values := map[string]tftypes.Value{}

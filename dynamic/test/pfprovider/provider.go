@@ -26,6 +26,7 @@ type PFProvider struct {
 // ScaffoldingProviderModel describes the provider data model.
 type ScaffoldingProviderModel struct {
 	Endpoint types.String `tfsdk:"endpoint"`
+	Nested   types.Object `tfsdk:"nested"`
 }
 
 func (p *PFProvider) Metadata(
@@ -43,6 +44,14 @@ func (p *PFProvider) Schema(ctx context.Context, req provider.SchemaRequest, res
 				Optional:            true,
 			},
 		},
+		Blocks: map[string]schema.Block{
+			"nested": schema.SingleNestedBlock{
+				Attributes: map[string]schema.Attribute{
+					"field1": schema.StringAttribute{Optional: true},
+					"field2": schema.BoolAttribute{Optional: true},
+				},
+			},
+		},
 	}
 }
 
@@ -55,6 +64,24 @@ func (p *PFProvider) Configure(
 
 	if resp.Diagnostics.HasError() {
 		return
+	}
+
+	if !data.Nested.IsNull() {
+		var nested struct {
+			F1 types.String `tfsdk:"field1"`
+			F2 types.Bool   `tfsdk:"field2"`
+		}
+		resp.Diagnostics.Append(req.Config.Get(ctx, &nested)...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+
+		if nested.F1.ValueString() != "true" {
+			resp.Diagnostics.AddError("unexpected string", "")
+		}
+		if nested.F2.ValueBool() {
+			resp.Diagnostics.AddError("unexpected bool", "")
+		}
 	}
 
 	resp.DataSourceData = data.Endpoint.ValueString()
