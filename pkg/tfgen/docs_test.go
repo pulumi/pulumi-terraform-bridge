@@ -24,10 +24,10 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"testing"
 	"text/template"
 
+	"github.com/hexops/autogold/v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -670,6 +670,613 @@ func TestReplaceFooterLinks(t *testing.T) {
 	assert.Equal(t, inputText, actual)
 }
 
+func TestSplitByMarkdownHeaders(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		input    string
+		level    int
+		expected autogold.Value
+	}{
+		{
+			input: `Section1
+## H2
+Section2
+## H2
+Section3
+`,
+			level: 2,
+			expected: autogold.Expect([][]string{
+				{
+					"Section1",
+				},
+				{
+					"## H2",
+					"Section2",
+				},
+				{
+					"## H2",
+					"Section3",
+					"",
+				},
+			}),
+		},
+		{
+			input: `# hi
+h1 content
+`,
+			level: 1,
+			expected: autogold.Expect([][]string{{
+				"# hi",
+				"h1 content",
+				"",
+			}}),
+		},
+		{
+			input: `
+only 1 section - no headers
+`,
+			level: 2,
+			expected: autogold.Expect([][]string{{
+				"",
+				"only 1 section - no headers",
+				"",
+			}}),
+		},
+		{
+			input: `
+##
+
+No content for the header
+`,
+			expected: autogold.Expect([][]string{{
+				"",
+				"##",
+				"",
+				"No content for the header",
+				"",
+			}}),
+		},
+		{
+			input: `
+## *emph content*
+foo
+`,
+			level: 2,
+			expected: autogold.Expect([][]string{{
+				"",
+				"## *emph content*",
+				"foo",
+				"",
+			}}),
+		},
+		{
+			input: `## Real header
+` + "```" + `
+## Fake header
+` + "```" + `
+## Another real header
+content
+`,
+			level: 2,
+			expected: autogold.Expect([][]string{
+				{
+					"## Real header",
+					"```",
+					"## Fake header",
+					"```",
+				},
+				{
+					"## Another real header",
+					"content",
+					"",
+				},
+			}),
+		},
+		{
+			input: readTestFile(t, "alternative_header.md"),
+			level: 2,
+			expected: autogold.Expect([][]string{
+				{
+					"---",
+					`subcategory: "Batch"`,
+					`layout: "azurerm"`,
+					`page_title: "Azure Resource Manager: azurerm_batch_account"`,
+					"description: |-",
+					"  Manages an Azure Batch account.",
+					"",
+					"---",
+					"",
+					"# azurerm_batch_account",
+					"",
+				},
+				{
+					"## Argument Reference",
+					"",
+					"An `account_access` block supports the following:",
+					"",
+					"* `default_action` - (Optional) Specifies the default action for the account access. Possible values are `Allow` and `Deny`. Defaults to `Deny`.",
+					"",
+					"* alternative rule (we don't parse this correctly now, but we should)",
+					"---",
+					"",
+					"",
+				},
+			}),
+		},
+		{
+			input: readTestFile(t, "container_app_environment_custom_domain.md"),
+			level: 2,
+			expected: autogold.Expect([][]string{
+				{
+					"---",
+					`subcategory: "Container Apps"`,
+					`layout: "azurerm"`,
+					`page_title: "Azure Resource Manager: azurerm_container_app_environment_custom_domain"`,
+					"description: |-",
+					"  Manages a Container App Environment Custom Domain.",
+					"---",
+					"",
+					"# azurerm_container_app_environment_custom_domain",
+					"",
+					"Manages a Container App Environment Custom Domain Suffix.",
+					"",
+				},
+				{
+					"## Example Usage",
+					"",
+					"```hcl",
+					`resource "azurerm_resource_group" "example" {`,
+					`  name     = "example-resources"`,
+					`  location = "West Europe"`,
+					"}",
+					"",
+					`resource "azurerm_log_analytics_workspace" "example" {`,
+					`  name                = "acctest-01"`,
+					"  location            = azurerm_resource_group.example.location",
+					"  resource_group_name = azurerm_resource_group.example.name",
+					`  sku                 = "PerGB2018"`,
+					"  retention_in_days   = 30",
+					"}",
+					"",
+					`resource "azurerm_container_app_environment" "example" {`,
+					`  name                       = "my-environment"`,
+					"  location                   = azurerm_resource_group.example.location",
+					"  resource_group_name        = azurerm_resource_group.example.name",
+					"  log_analytics_workspace_id = azurerm_log_analytics_workspace.example.id",
+					"}",
+					"",
+					`resource "azurerm_container_app_environment_custom_domain" "example" {`,
+					"  container_app_environment_id = azurerm_container_app_environment.example.id",
+					`  certificate_blob_base64      = filebase64("testacc.pfx")`,
+					`  certificate_password         = "TestAcc"`,
+					`  dns_suffix                   = "acceptancetest.contoso.com"`,
+					"}",
+					"```",
+					"",
+				},
+				{
+					"## Arguments Reference",
+					"",
+					"The following arguments are supported:",
+					"",
+					"* `container_app_environment_id` - (Required) The ID of the Container Apps Managed Environment. Changing this forces a new resource to be created.",
+					"",
+					"* `certificate_blob_base64` - (Required) The bundle of Private Key and Certificate for the Custom DNS Suffix as a base64 encoded PFX or PEM.",
+					"",
+					"* `certificate_password` - (Required) The password for the Certificate bundle.",
+					"",
+					"* `dns_suffix` - (Required) Custom DNS Suffix for the Container App Environment.",
+				},
+				{
+					"## Timeouts",
+					"",
+					"The `timeouts` block allows you to specify [timeouts](https://www.terraform.io/docs/configuration/resources.html#timeouts) for certain actions:",
+					"",
+					"* `create` - (Defaults to 30 minutes) Used when creating the Container App Environment.",
+					"* `update` - (Defaults to 30 minutes) Used when updating the Container App Environment.",
+					"* `read` - (Defaults to 5 minutes) Used when retrieving the Container App Environment.",
+					"* `delete` - (Defaults to 30 minutes) Used when deleting the Container App Environment.",
+					"",
+				},
+				{
+
+					"## Import",
+					"",
+					"A Container App Environment Custom Domain Suffix can be imported using the `resource id` of its parent container ontainer App Environment , e.g.",
+					"",
+					"```shell",
+					`terraform import azurerm_container_app_environment_custom_domain.example "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/resGroup1/providers/Microsoft.App/managedEnvironments/myEnvironment"`,
+					"```",
+					"",
+				},
+			}),
+		},
+		{
+			input: `## Header 1
+content 1
+## 
+content 2
+## header 3
+content 3
+`,
+			level: 2,
+			expected: autogold.Expect([][]string{
+				{
+					"## Header 1",
+					"content 1",
+					"## ",
+					"content 2",
+				},
+				{
+					"## header 3",
+					"content 3",
+					"",
+				},
+			}),
+		},
+		{
+			level: 2,
+			input: `## Header 1
+content
+## Header 2
+`,
+			expected: autogold.Expect([][]string{
+				{
+					"## Header 1",
+					"content",
+				},
+				{
+					"## Header 2",
+					"",
+				},
+			}),
+		},
+		{
+			level: 2,
+			input: readTestFile(t, "service_directory_namespace.md"),
+			expected: autogold.Expect([][]string{
+				{
+					"---",
+					"# ----------------------------------------------------------------------------",
+					"#",
+					"#     ***     AUTO GENERATED CODE    ***    Type: MMv1     ***",
+					"#",
+					"# ----------------------------------------------------------------------------",
+					"#",
+					"#     This file is automatically generated by Magic Modules and manual",
+					"#     changes will be clobbered when the file is regenerated.",
+					"#",
+					"#     Please read more about how to change this file in",
+					"#     .github/CONTRIBUTING.md.",
+					"#",
+					"# ----------------------------------------------------------------------------",
+					`subcategory: "Service Directory"`,
+					"description: |-",
+					"  A container for `services`.",
+					"---",
+					"",
+					"# google_service_directory_namespace",
+					"",
+					"A container for `services`. Namespaces allow administrators to group services",
+					"together and define permissions for a collection of services.",
+					"",
+					"To get more information about Namespace, see:",
+					"",
+					"* [API documentation](https://cloud.google.com/service-directory/docs/reference/rest/v1beta1/projects.locations.namespaces)",
+					"* How-to Guides",
+					"    * [Configuring a namespace](https://cloud.google.com/service-directory/docs/configuring-service-directory#configuring_a_namespace)",
+					"",
+					`<div class = "oics-button" style="float: right; margin: 0 0 -15px">`,
+					`  <a href="https://console.cloud.google.com/cloudshell/open?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2Fterraform-google-modules%2Fdocs-examples.git&cloudshell_image=gcr.io%2Fcloudshell-images%2Fcloudshell%3Alatest&cloudshell_print=.%2Fmotd&cloudshell_tutorial=.%2Ftutorial.md&cloudshell_working_dir=service_directory_namespace_basic&open_in_editor=main.tf" target="_blank">`,
+					`    <img alt="Open in Cloud Shell" src="//gstatic.com/cloudssh/images/open-btn.svg" style="max-height: 44px; margin: 32px auto; max-width: 100%;">`,
+					"  </a>",
+					"</div>",
+				},
+				{
+					"## Example Usage - Service Directory Namespace Basic",
+					"",
+					"",
+					"```hcl",
+					`resource "google_service_directory_namespace" "example" {`,
+					"  provider     = google-beta",
+					`  namespace_id = "example-namespace"`,
+					`  location     = "us-central1"`,
+					"",
+					"  labels = {",
+					`    key = "value"`,
+					`    foo = "bar"`,
+					"  }",
+					"}",
+					"```",
+					"",
+				},
+				{
+					"## Argument Reference",
+					"",
+					"The following arguments are supported:",
+					"",
+					"",
+					"* `location` -",
+					"  (Required)",
+					"  The location for the Namespace.",
+					"  A full list of valid locations can be found by running",
+					"  `gcloud beta service-directory locations list`.",
+					"",
+					"* `namespace_id` -",
+					"  (Required)",
+					"  The Resource ID must be 1-63 characters long, including digits,",
+					"  lowercase letters or the hyphen character.",
+					"",
+					"",
+					"- - -",
+					"",
+					"",
+					"* `labels` -",
+					"  (Optional)",
+					"  Resource labels associated with this Namespace. No more than 64 user",
+					"  labels can be associated with a given resource. Label keys and values can",
+					"  be no longer than 63 characters.",
+					"",
+					"  **Note**: This field is non-authoritative, and will only manage the labels present in your configuration.",
+					"  Please refer to the field `effective_labels` for all of the labels present on the resource.",
+					"",
+					"* `project` - (Optional) The ID of the project in which the resource belongs.",
+					"    If it is not provided, the provider project is used.",
+					"",
+					"",
+				},
+				{
+					"## Attributes Reference",
+					"",
+					"In addition to the arguments listed above, the following computed attributes are exported:",
+					"",
+					"* `id` - an identifier for the resource with format `{{name}}`",
+					"",
+					"* `name` -",
+					"  The resource name for the namespace",
+					"  in the format `projects/*/locations/*/namespaces/*`.",
+					"",
+					"* `terraform_labels` -",
+					"  The combination of labels configured directly on the resource",
+					"   and default labels configured on the provider.",
+					"",
+					"* `effective_labels` -",
+					"  All of labels (key/value pairs) present on the resource in GCP, including the labels configured through Terraform, other clients and services.",
+					"",
+					"",
+				},
+				{
+					"## Timeouts",
+					"",
+					"This resource provides the following",
+					"[Timeouts](https://developer.hashicorp.com/terraform/plugin/sdkv2/resources/retries-and-customizable-timeouts) configuration options:",
+					"",
+					"- `create` - Default is 20 minutes.",
+					"- `update` - Default is 20 minutes.",
+					"- `delete` - Default is 20 minutes.",
+					"",
+				},
+				{
+					"## Import",
+					"",
+					"",
+					"Namespace can be imported using any of these accepted formats:",
+					"",
+					"* `projects/{{project}}/locations/{{location}}/namespaces/{{namespace_id}}`",
+					"* `{{project}}/{{location}}/{{namespace_id}}`",
+					"* `{{location}}/{{namespace_id}}`",
+					"",
+					"",
+					"In Terraform v1.5.0 and later, use an [`import` block](https://developer.hashicorp.com/terraform/language/import) to import Namespace using one of the formats above. For example:",
+					"",
+					"```tf",
+					"import {",
+					`  id = "projects/{{project}}/locations/{{location}}/namespaces/{{namespace_id}}"`,
+					"  to = google_service_directory_namespace.default",
+					"}",
+					"```",
+					"",
+					"When using the [`terraform import` command](https://developer.hashicorp.com/terraform/cli/commands/import), Namespace can be imported using one of the formats above. For example:",
+					"",
+					"```",
+					"$ terraform import google_service_directory_namespace.default projects/{{project}}/locations/{{location}}/namespaces/{{namespace_id}}",
+					"$ terraform import google_service_directory_namespace.default {{project}}/{{location}}/{{namespace_id}}",
+					"$ terraform import google_service_directory_namespace.default {{location}}/{{namespace_id}}",
+					"```",
+					"",
+				},
+			}),
+		},
+		{
+			level: 2,
+			input: readTestFile(t, "dataplex_entry_type_iam.md"),
+			expected: autogold.Expect([][]string{
+				{
+					"---",
+					"# ----------------------------------------------------------------------------",
+					"#",
+					"#     ***     AUTO GENERATED CODE    ***    Type: MMv1     ***",
+					"#",
+					"# ----------------------------------------------------------------------------",
+					"#",
+					"#     This file is automatically generated by Magic Modules and manual",
+					"#     changes will be clobbered when the file is regenerated.",
+					"#",
+					"#     Please read more about how to change this file in",
+					"#     .github/CONTRIBUTING.md.",
+					"#",
+					"# ----------------------------------------------------------------------------",
+					`subcategory: "Dataplex"`,
+					"description: |-",
+					"  Collection of resources to manage IAM policy for Dataplex EntryType",
+					"---",
+					"",
+					"# IAM policy for Dataplex EntryType",
+					"Three different resources help you manage your IAM policy for Dataplex EntryType. Each of these resources serves a different use case:",
+					"",
+					"* `google_dataplex_entry_type_iam_policy`: Authoritative. Sets the IAM policy for the entrytype and replaces any existing policy already attached.",
+					"* `google_dataplex_entry_type_iam_binding`: Authoritative for a given role. Updates the IAM policy to grant a role to a list of members. Other roles within the IAM policy for the entrytype are preserved.",
+					"* `google_dataplex_entry_type_iam_member`: Non-authoritative. Updates the IAM policy to grant a role to a new member. Other members for the role for the entrytype are preserved.",
+					"",
+					"A data source can be used to retrieve policy data in advent you do not need creation",
+					"",
+					"* `google_dataplex_entry_type_iam_policy`: Retrieves the IAM policy for the entrytype",
+					"",
+					"~> **Note:** `google_dataplex_entry_type_iam_policy` **cannot** be used in conjunction with `google_dataplex_entry_type_iam_binding` and `google_dataplex_entry_type_iam_member` or they will fight over what your policy should be.",
+					"",
+					"~> **Note:** `google_dataplex_entry_type_iam_binding` resources **can be** used in conjunction with `google_dataplex_entry_type_iam_member` resources **only if** they do not grant privilege to the same role.",
+					"",
+					"",
+					"",
+				},
+				{
+					"## google_dataplex_entry_type_iam_policy",
+					"",
+					"```hcl",
+					`data "google_iam_policy" "admin" {`,
+					"  binding {",
+					`    role = "roles/viewer"`,
+					"    members = [",
+					`      "user:jane@example.com",`,
+					"    ]",
+					"  }",
+					"}",
+					"",
+					`resource "google_dataplex_entry_type_iam_policy" "policy" {`,
+					"  project = google_dataplex_entry_type.test_entry_type_basic.project",
+					"  location = google_dataplex_entry_type.test_entry_type_basic.location",
+					"  entry_type_id = google_dataplex_entry_type.test_entry_type_basic.entry_type_id",
+					"  policy_data = data.google_iam_policy.admin.policy_data",
+					"}",
+					"```",
+					"",
+				},
+				{
+					"## google_dataplex_entry_type_iam_binding",
+					"",
+					"```hcl",
+					`resource "google_dataplex_entry_type_iam_binding" "binding" {`,
+					"  project = google_dataplex_entry_type.test_entry_type_basic.project",
+					"  location = google_dataplex_entry_type.test_entry_type_basic.location",
+					"  entry_type_id = google_dataplex_entry_type.test_entry_type_basic.entry_type_id",
+					`  role = "roles/viewer"`,
+					"  members = [",
+					`    "user:jane@example.com",`,
+					"  ]",
+					"}",
+					"```",
+					"",
+				},
+				{
+					"## google_dataplex_entry_type_iam_member",
+					"",
+					"```hcl",
+					`resource "google_dataplex_entry_type_iam_member" "member" {`,
+					"  project = google_dataplex_entry_type.test_entry_type_basic.project",
+					"  location = google_dataplex_entry_type.test_entry_type_basic.location",
+					"  entry_type_id = google_dataplex_entry_type.test_entry_type_basic.entry_type_id",
+					`  role = "roles/viewer"`,
+					`  member = "user:jane@example.com"`,
+					"}",
+					"```",
+					"",
+					"",
+				},
+				{
+					"## Argument Reference",
+					"",
+					"The following arguments are supported:",
+					"",
+					"* `location` - (Optional) The location where entry type will be created in.",
+					" Used to find the parent resource to bind the IAM policy to. If not specified,",
+					"  the value will be parsed from the identifier of the parent resource. If no location is provided in the parent identifier and no",
+					"  location is specified, it is taken from the provider configuration.",
+					"",
+					"* `project` - (Optional) The ID of the project in which the resource belongs.",
+					"    If it is not provided, the project will be parsed from the identifier of the parent resource. If no project is provided in the parent identifier and no project is specified, the provider project is used.",
+					"",
+					"* `member/members` - (Required) Identities that will be granted the privilege in `role`.",
+					"  Each entry can have one of the following values:",
+					"  * **allUsers**: A special identifier that represents anyone who is on the internet; with or without a Google account.",
+					"  * **allAuthenticatedUsers**: A special identifier that represents anyone who is authenticated with a Google account or a service account.",
+					"  * **user:{emailid}**: An email address that represents a specific Google account. For example, alice@gmail.com or joe@example.com.",
+					"  * **serviceAccount:{emailid}**: An email address that represents a service account. For example, my-other-app@appspot.gserviceaccount.com.",
+					"  * **group:{emailid}**: An email address that represents a Google group. For example, admins@example.com.",
+					"  * **domain:{domain}**: A G Suite domain (primary, instead of alias) name that represents all the users of that domain. For example, google.com or example.com.",
+					`  * **projectOwner:projectid**: Owners of the given project. For example, "projectOwner:my-example-project"`,
+					`  * **projectEditor:projectid**: Editors of the given project. For example, "projectEditor:my-example-project"`,
+					`  * **projectViewer:projectid**: Viewers of the given project. For example, "projectViewer:my-example-project"`,
+					"",
+					"* `role` - (Required) The role that should be applied. Only one",
+					"    `google_dataplex_entry_type_iam_binding` can be used per role. Note that custom roles must be of the format",
+					"    `[projects|organizations]/{parent-name}/roles/{role-name}`.",
+					"",
+					"* `policy_data` - (Required only by `google_dataplex_entry_type_iam_policy`) The policy data generated by",
+					"  a `google_iam_policy` data source.",
+					"",
+				},
+				{
+					"## Attributes Reference",
+					"",
+					"In addition to the arguments listed above, the following computed attributes are",
+					"exported:",
+					"",
+					"* `etag` - (Computed) The etag of the IAM policy.",
+					"",
+				},
+				{
+					"## Import",
+					"",
+					`For all import syntaxes, the "resource in question" can take any of the following forms:`,
+					"",
+					"* projects/{{project}}/locations/{{location}}/entryTypes/{{entry_type_id}}",
+					"* {{project}}/{{location}}/{{entry_type_id}}",
+					"* {{location}}/{{entry_type_id}}",
+					"* {{entry_type_id}}",
+					"",
+					"Any variables not passed in the import command will be taken from the provider configuration.",
+					"",
+					"Dataplex entrytype IAM resources can be imported using the resource identifiers, role, and member.",
+					"",
+					"IAM member imports use space-delimited identifiers: the resource in question, the role, and the member identity, e.g.",
+					"```",
+					`$ terraform import google_dataplex_entry_type_iam_member.editor "projects/{{project}}/locations/{{location}}/entryTypes/{{entry_type_id}} roles/viewer user:jane@example.com"`,
+					"```",
+					"",
+					"IAM binding imports use space-delimited identifiers: the resource in question and the role, e.g.",
+					"```",
+					`$ terraform import google_dataplex_entry_type_iam_binding.editor "projects/{{project}}/locations/{{location}}/entryTypes/{{entry_type_id}} roles/viewer"`,
+					"```",
+					"",
+					"IAM policy imports use the identifier of the resource in question, e.g.",
+					"```",
+					"$ terraform import google_dataplex_entry_type_iam_policy.editor projects/{{project}}/locations/{{location}}/entryTypes/{{entry_type_id}}",
+					"```",
+					"",
+					"-> **Custom Roles**: If you're importing a IAM resource with a custom role, make sure to use the",
+					" full name of the custom role, e.g. `[projects/my-project|organizations/my-org]/roles/my-custom-role`.",
+					"",
+				},
+				{
+					"## User Project Overrides",
+					"",
+					"This resource supports [User Project Overrides](https://registry.terraform.io/providers/hashicorp/google/latest/docs/guides/provider_reference#user_project_override).",
+					"",
+				},
+			}),
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run("", func(t *testing.T) {
+			actual := splitByMarkdownHeaders(tt.input, tt.level)
+			tt.expected.Equal(t, actual)
+		})
+	}
+}
+
 func TestFixExamplesHeaders(t *testing.T) {
 	codeFence := "```"
 	t.Run("WithCodeFences", func(t *testing.T) {
@@ -688,7 +1295,7 @@ Provides a DigitalOcean CDN Endpoint resource for use with Spaces.
 ## Argument Reference`
 
 		var processedMarkdown string
-		groups := splitGroupLines(markdown, "## ")
+		groups := splitByMarkdownHeaders(markdown, 2)
 		for _, lines := range groups {
 			fixExampleTitles(lines)
 			for _, line := range lines {
@@ -715,7 +1322,7 @@ Misleading example title without any actual code fences. We should not modify th
 ## Argument Reference`
 
 		var processedMarkdown string
-		groups := splitGroupLines(markdown, "## ")
+		groups := splitByMarkdownHeaders(markdown, 2)
 		for _, lines := range groups {
 			fixExampleTitles(lines)
 			for _, line := range lines {
@@ -753,38 +1360,43 @@ Basic usage:`
 
 func TestReformatExamples(t *testing.T) {
 	runTest := func(input string, expected [][]string) {
-		inputSections := splitGroupLines(input, "## ")
-		output := reformatExamples(inputSections)
+		inputSections := splitByMarkdownHeaders(input, 2)
+		actual := reformatExamples(inputSections)
 
-		assert.ElementsMatch(t, expected, output)
+		assert.Equal(t, expected, actual)
 	}
 
 	// This is a simple use case. We expect no changes to the original doc:
-	simpleDoc := `description
+	t.Run("no-op", func(t *testing.T) {
+		input := `description
 
 ## Example Usage
 
 example usage content`
 
-	simpleDocExpected := [][]string{
-		{
-			"description",
-			"",
-		},
-		{
-			"## Example Usage",
-			"",
-			"example usage content",
-		},
-	}
+		expected := [][]string{
+			{
+				"description",
+				"",
+			},
+			{
+				"## Example Usage",
+				"",
+				"example usage content",
+			},
+		}
 
-	runTest(simpleDoc, simpleDocExpected)
+		runTest(input, expected)
+	})
 
-	// This use case demonstrates 2 examples at the same H2 level: a canonical Example Usage and another example
-	// for a specific use case. We expect these to be transformed into a canonical H2 "Example Usage" with an H3 for
-	// the specific use case.
-	// This scenario is common in the pulumi-gcp provider:
-	gcpDoc := `description
+	// This use case demonstrates 2 examples at the same H2 level: a canonical Example
+	// Usage and another example for a specific use case. We expect these to be
+	// transformed into a canonical H2 "Example Usage" with an H3 for the specific use
+	// case.
+	//
+	// This scenario is common in the pulumi-gcp provider.
+	t.Run("multiple-examples-same-level", func(t *testing.T) {
+		input := `description
 
 ## Example Usage
 
@@ -794,28 +1406,32 @@ example usage content
 
 specific case content`
 
-	gcpDocExpected := [][]string{
-		{
-			"description",
-			"",
-		},
-		{
-			"## Example Usage",
-			"",
-			"example usage content",
-			"",
-			"### Specific Case",
-			"",
-			"specific case content",
-		},
-	}
+		expected := [][]string{
+			{
+				"description",
+				"",
+			},
+			{
+				"## Example Usage",
+				"",
+				"example usage content",
+				"",
+				"### Specific Case",
+				"",
+				"specific case content",
+			},
+		}
 
-	runTest(gcpDoc, gcpDocExpected)
+		runTest(input, expected)
+	})
 
-	// This use case demonstrates 2 no canonical Example Usage/basic case and 2 specific use cases. We expect the
-	// function to add a canonical Example Usage section with the 2 use cases as H3's beneath the canonical section.
-	// This scenario is common in the pulumi-gcp provider:
-	gcpDoc2 := `description
+	// This use case demonstrates 2 no canonical Example Usage/basic case and 2
+	// specific use cases. We expect the function to add a canonical Example Usage
+	// section with the 2 use cases as H3's beneath the canonical section.
+	//
+	// This scenario is common in the pulumi-gcp provider.
+	t.Run("no-canonical-example-header", func(t *testing.T) {
+		input := `description
 
 ## Example Usage - 1
 
@@ -825,41 +1441,43 @@ content 1
 
 content 2`
 
-	gcpDoc2Expected := [][]string{
-		{
-			"description",
-			"",
-		},
-		{
-			"## Example Usage",
-			"### 1",
-			"",
-			"content 1",
-			"",
-			"### 2",
-			"",
-			"content 2",
-		},
-	}
+		expected := [][]string{
+			{
+				"description",
+				"",
+			},
+			{
+				"## Example Usage",
+				"### 1",
+				"",
+				"content 1",
+				"",
+				"### 2",
+				"",
+				"content 2",
+			},
+		}
 
-	runTest(gcpDoc2, gcpDoc2Expected)
+		runTest(input, expected)
+	})
 
-	misformattedDocNoPanic := `## jetstream_kv_entry Resource
+	t.Run("misformatted-docs-dont-panic", func(t *testing.T) {
+		input := `## jetstream_kv_entry Resource
 content
 ### Example
 content`
 
-	misformattedDocsExpected := [][]string{
-		nil,
-		{
-			"## jetstream_kv_entry Resource",
-			"content",
-			"### Example",
-			"content",
-		},
-	}
+		expected := [][]string{
+			{
+				"## jetstream_kv_entry Resource",
+				"content",
+				"### Example",
+				"content",
+			},
+		}
 
-	runTest(misformattedDocNoPanic, misformattedDocsExpected)
+		runTest(input, expected)
+	})
 }
 
 func TestFormatEntityName(t *testing.T) {
@@ -914,39 +1532,6 @@ FooFactory fooFactory = new FooFactory();
 	_ = outputTemplate.Execute(&buf, data)
 
 	assert.Equal(t, buf.String(), hclConversionsToString(input))
-}
-
-func TestGroupLines(t *testing.T) {
-	input := `description
-
-## subtitle 1
-
-subtitle 1 content
-
-## subtitle 2
-
-subtitle 2 content
-`
-	expected := [][]string{
-		{
-			"description",
-			"",
-		},
-		{
-			"## subtitle 1",
-			"",
-			"subtitle 1 content",
-			"",
-		},
-		{
-			"## subtitle 2",
-			"",
-			"subtitle 2 content",
-			"",
-		},
-	}
-
-	assert.Equal(t, expected, groupLines(strings.Split(input, "\n"), "## "))
 }
 
 func TestParseArgFromMarkdownLine(t *testing.T) {
@@ -1596,6 +2181,7 @@ func TestParseTFMarkdown(t *testing.T) {
 					[]byte(`CUSTOM_REPLACES`),
 					[]byte(`checking custom replaces`)), nil
 			})),
+		test("codeblock-header"),
 	}
 
 	for _, tt := range tests {
