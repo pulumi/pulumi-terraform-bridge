@@ -1,7 +1,16 @@
 package tfgen
 
 import (
+	"bytes"
 	"fmt"
+	markdown "github.com/teekennedy/goldmark-markdown"
+	"github.com/yuin/goldmark"
+	"github.com/yuin/goldmark/ast"
+	"github.com/yuin/goldmark/extension"
+	"github.com/yuin/goldmark/parser"
+	"github.com/yuin/goldmark/text"
+	"github.com/yuin/goldmark/util"
+	"log"
 	"regexp"
 	"strings"
 
@@ -27,6 +36,17 @@ func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	hardCodedHeadersToSkip := []string{"Logs", "Contributing", "testing"}
+
+	contentBytes, err := skipSectionByHeaderContent(contentStr, func(headerText string) bool {
+		for _, header := range hardCodedHeadersToSkip {
+			if strings.Contains(headerText, header) {
+				return true
+			}
+		}
+		return false
+	})
 
 	//TODO: See https://github.com/pulumi/pulumi-terraform-bridge/issues/2078
 	// - Ability to omit irrelevant sections
@@ -137,7 +157,6 @@ func applyEditRules(contentBytes []byte, docFile *DocFile) ([]byte, error) {
 	}
 	return contentBytes, nil
 }
-
 func translateCodeBlocks(contentStr string, g *Generator) (string, error) {
 
 	var returnContent string
@@ -244,4 +263,79 @@ func convertExample(g *Generator, code string, exampleNumber int) (string, error
 	}
 	exampleContent += chooserEnd
 	return exampleContent, nil
+}
+
+type SectionSkipper struct {
+	shouldSkipHeader shouldSkipHeaderFunc
+}
+
+var _ parser.ASTTransformer = SectionSkipper{}
+
+func (t SectionSkipper) Transform(node *ast.Document, reader text.Reader, pc parser.Context) {
+	source := reader.Source()
+	removingLevel := 0
+	currentChild := node.FirstChild()
+	// All headings are first children of the ast.Document node.
+	// We will walk over them and remove any that match the header content we do not want.
+	// Additionally, we will track the heacer level and remove any content that is nested under the removed header.
+	for currentChild != nil {
+		if removingLevel > 0 {
+			if child, ok := currentChild.(*ast.Heading); ok && child.Level <= removingLevel {
+				removingLevel = 0
+			} else {
+				nextNode := currentChild.NextSibling()
+				currentChild.Parent().RemoveChild(currentChild.Parent(), currentChild)
+				currentChild = nextNode
+				continue
+			}
+		}
+		// In case our level got reset, we check again
+		if removingLevel == 0 {
+			switch child := currentChild.(type) {
+			case *ast.Heading:
+				header := child.Text(source)
+				if t.shouldSkipHeader(string(header)) {
+					removingLevel = child.Level
+					nextNode := child.NextSibling()
+					child.Parent().RemoveChild(child.Parent(), child)
+					currentChild = nextNode
+					continue
+				}
+			}
+		}
+		//Move to next node in any case.
+		currentChild = currentChild.NextSibling()
+	}
+}
+
+type shouldSkipHeaderFunc = func(headerText string) bool
+
+func skipSectionByHeaderContent(content string, shouldSkipHeader shouldSkipHeaderFunc) ([]byte, error) {
+	// We use a few generic patterns for skipping certain headers (e.g. "logs", "testing", "contributing")
+	// so we do a regex check rather than strict string match.
+	//skipRegexp := regexp.MustCompile(headerToSkip)
+
+	// Instantiate our transformer
+	transformer := SectionSkipper{
+		shouldSkipHeader: shouldSkipHeader,
+	}
+	gm := goldmark.New(
+		goldmark.WithExtensions(extension.GFM),
+		goldmark.WithParserOptions(
+			parser.WithASTTransformers(
+				util.Prioritized(recognizeHeaderAfterHTML{}, 2000),
+				util.Prioritized(transformer, 500),
+			),
+		),
+		goldmark.WithRenderer(markdown.NewRenderer()),
+	)
+	// Output buffer
+	buf := bytes.Buffer{}
+
+	// Convert parses the source, applies transformers, and renders output to the given io.Writer
+	err := gm.Convert([]byte(content), &buf)
+	if err != nil {
+		log.Fatalf("Encountered Markdown conversion error: %v", err)
+	}
+	return buf.Bytes(), nil
 }

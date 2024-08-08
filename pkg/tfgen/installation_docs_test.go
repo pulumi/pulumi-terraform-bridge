@@ -264,7 +264,36 @@ func TestTranslateCodeBlocks(t *testing.T) {
 		t.Setenv("PULUMI_CONVERT", "1")
 		actual, err := translateCodeBlocks(tc.contentStr, tc.g)
 		require.NoError(t, err)
-		writefile(t, "test_data/installation-docs/configuration-expected.md", []byte(actual))
-		//require.Equal(t, tc.expected, actual)
+		require.Equal(t, tc.expected, actual)
+	})
+}
+func TestSkipSectionHeaderByContent(t *testing.T) {
+	t.Parallel()
+
+	type testCase struct {
+		// The name of the test case.
+		name         string
+		headerToSkip string
+		input        string
+		expected     string
+	}
+
+	tc := testCase{
+		name:         "Skips Section Containing Forbidden Words",
+		headerToSkip: "Debugging Provider Output Using Logs",
+		input:        readfile(t, "test_data/skip-sections-by-header/input.md"),
+		expected:     readfile(t, "test_data/skip-sections-by-header/actual.md"),
+	}
+
+	t.Run(tc.name, func(t *testing.T) {
+		t.Parallel()
+
+		actual, err := skipSectionByHeaderContent(tc.input, func(headerText string) bool {
+
+			return headerText == tc.headerToSkip
+		})
+		require.NoError(t, err)
+		//writefile(t, "test_data/skip-sections-by-header/actual.md", actual)
+		require.Equal(t, tc.expected, string(actual))
 	})
 }
