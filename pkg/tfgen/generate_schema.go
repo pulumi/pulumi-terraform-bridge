@@ -29,7 +29,6 @@ import (
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
-	"github.com/pulumi/inflector"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	csgen "github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
 	gogen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
@@ -38,8 +37,6 @@ import (
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/internal/paths"
@@ -56,151 +53,6 @@ type schemaGenerator struct {
 	version  string
 	info     tfbridge.ProviderInfo
 	language Language
-}
-
-type schemaNestedType struct {
-	typ             *propertyType
-	declarer        declarer
-	required        codegen.StringSet
-	requiredInputs  codegen.StringSet
-	requiredOutputs codegen.StringSet
-
-	// The same *propertyType may be found at multiple typePaths and reused. Non-empty.
-	typePaths paths.TypePathSet
-}
-
-type schemaNestedTypes struct {
-	nameToType map[string]*schemaNestedType
-}
-
-func gatherSchemaNestedTypesForModule(mod *module) map[string]*schemaNestedType {
-	nt := &schemaNestedTypes{
-		nameToType: make(map[string]*schemaNestedType),
-	}
-	for _, member := range mod.members {
-		nt.gatherFromMember(member)
-	}
-	return nt.nameToType
-}
-
-func gatherSchemaNestedTypesForMember(member moduleMember) map[string]*schemaNestedType {
-	nt := &schemaNestedTypes{
-		nameToType: make(map[string]*schemaNestedType),
-	}
-	nt.gatherFromMember(member)
-	return nt.nameToType
-}
-
-func (nt *schemaNestedTypes) gatherFromMember(member moduleMember) {
-	switch member := member.(type) {
-	case *resourceType:
-		p := member.resourcePath
-		nt.gatherFromProperties(p.Inputs(), member, member.name, member.inprops, true)
-		nt.gatherFromProperties(p.Outputs(), member, member.name, member.outprops, false)
-		if !member.IsProvider() {
-			nt.gatherFromProperties(p.State(), member, member.name, member.statet.properties, true)
-		}
-	case *resourceFunc:
-		p := member.dataSourcePath
-		nt.gatherFromProperties(p.Args(), member, member.name, member.args, true)
-		nt.gatherFromProperties(p.Results(), member, member.name, member.rets, false)
-	case *variable:
-		contract.Assertf(member.config, `member.config`)
-		p := paths.NewProperyPath(paths.NewConfigPath(), member.propertyName)
-		nt.gatherFromPropertyType(p, member, member.name, "", member.typ, false)
-	}
-}
-
-type declarer interface {
-	Name() string
-}
-
-func (nt *schemaNestedTypes) declareType(typePath paths.TypePath, declarer declarer, namePrefix, name string,
-	typ *propertyType, isInput bool) string {
-
-	// Generate a name for this nested type.
-	typeName := namePrefix + cases.Title(language.Und, cases.NoLower).String(name)
-
-	// Override the nested type name, if necessary.
-	if typ.nestedType.Name().String() != "" {
-		typeName = typ.nestedType.Name().String()
-	}
-
-	typ.name = typeName
-
-	required := codegen.StringSet{}
-	for _, p := range typ.properties {
-		if !p.optional() {
-			required.Add(p.name)
-		}
-	}
-
-	var requiredInputs, requiredOutputs codegen.StringSet
-	if isInput {
-		requiredInputs = required
-	} else {
-		requiredOutputs = required
-	}
-
-	// Merging makes sure that structurally identical types are shared and not generated more than once.
-	if existing, ok := nt.nameToType[typeName]; ok {
-		contract.Assertf(existing.declarer == declarer || existing.typ.equals(typ), "duplicate type %v", typeName)
-
-		// Remember that existing type is now also seen at the current typePath.
-		existing.typePaths.Add(typePath)
-
-		// For output type conflicts, record the output type's required properties. These will be attached to a
-		// nodejs-specific blob in the object type's spec s.t. the node code generator can generate code that
-		// matches the code produced by the old tfgen code generator.
-		if isInput {
-			existing.requiredInputs = requiredInputs
-		} else {
-			existing.requiredOutputs = requiredOutputs
-		}
-
-		existing.typ, existing.required = typ, required
-		return typeName
-	}
-
-	nt.nameToType[typeName] = &schemaNestedType{
-		typ:             typ,
-		declarer:        declarer,
-		required:        required,
-		requiredInputs:  requiredInputs,
-		requiredOutputs: requiredOutputs,
-		typePaths:       paths.SingletonTypePathSet(typePath),
-	}
-	return typeName
-}
-
-func (nt *schemaNestedTypes) gatherFromProperties(pathContext paths.TypePath,
-	declarer declarer, namePrefix string, ps []*variable,
-	isInput bool) {
-
-	for _, p := range ps {
-		name := p.name
-		if p.typ.kind == kindList || p.typ.kind == kindSet {
-			name = inflector.Singularize(name)
-		}
-
-		nt.gatherFromPropertyType(paths.NewProperyPath(pathContext, p.propertyName),
-			declarer, namePrefix, name, p.typ, isInput)
-	}
-}
-
-func (nt *schemaNestedTypes) gatherFromPropertyType(typePath paths.TypePath, declarer declarer, namePrefix,
-	name string, typ *propertyType, isInput bool) {
-
-	switch typ.kind {
-	case kindList, kindSet, kindMap:
-		if typ.element != nil {
-			nt.gatherFromPropertyType(paths.NewElementPath(typePath),
-				declarer, namePrefix, name, typ.element, isInput)
-		}
-	case kindObject:
-		baseName := nt.declareType(typePath, declarer, namePrefix, name, typ, isInput)
-		nt.gatherFromProperties(typePath, declarer, baseName, typ.properties, isInput)
-	}
 }
 
 func rawMessage(v interface{}) pschema.RawMessage {
@@ -292,7 +144,7 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 		for _, member := range mod.members {
 			switch t := member.(type) {
 			case *resourceType:
-				spec.Resources[string(t.info.Tok)] = g.genResourceType(mod.name, t)
+				spec.Resources[string(t.info.Tok)] = g.genResourceType(t)
 			case *resourceFunc:
 				spec.Functions[string(t.info.Tok)] = g.genDatasourceFunc(mod.name, t)
 			case *variable:
@@ -307,7 +159,6 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 	}
 
 	if pack.provider != nil {
-		indexModToken := tokens.NewModuleToken(g.pkg, indexMod)
 		for _, t := range gatherSchemaNestedTypesForMember(pack.provider) {
 			tok := g.genObjectTypeToken(t)
 			ts := g.genObjectType(t, false)
@@ -315,7 +166,7 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 				ObjectTypeSpec: ts,
 			}
 		}
-		spec.Provider = g.genResourceType(indexModToken, pack.provider)
+		spec.Provider = g.genResourceType(pack.provider)
 
 		// Ensure that input properties are mirrored as output properties, but without fields set which
 		// are only meaningful for input properties.
@@ -682,7 +533,7 @@ func (g *schemaGenerator) genConfig(variables []*variable) pschema.ConfigSpec {
 	return spec
 }
 
-func (g *schemaGenerator) genResourceType(mod tokens.Module, res *resourceType) pschema.ResourceSpec {
+func (g *schemaGenerator) genResourceType(res *resourceType) pschema.ResourceSpec {
 	var spec pschema.ResourceSpec
 
 	description := ""
