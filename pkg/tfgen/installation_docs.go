@@ -11,7 +11,6 @@ import (
 	"github.com/yuin/goldmark/parser"
 	"github.com/yuin/goldmark/text"
 	"github.com/yuin/goldmark/util"
-	"log"
 	"regexp"
 	"strings"
 
@@ -39,7 +38,7 @@ func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
 	}
 
 	// Apply edit rules to transform the doc for Pulumi-ready presentation
-	contentBytes, err := applyEditRules([]byte(contentStr), docFile, g)
+	contentBytes, err := applyEditRules([]byte(contentStr), docFile.FileName, g)
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +115,7 @@ func writeInstallationInstructions(goImportBasePath, providerName string) string
 	)
 }
 
-func applyEditRules(contentBytes []byte, docFile *DocFile, g *Generator) ([]byte, error) {
+func applyEditRules(contentBytes []byte, docFile string, g *Generator) ([]byte, error) {
 	// Obtain edit rules passed by the provider
 	edits := g.editRules
 	// Additional edit rules for installation files
@@ -138,7 +137,7 @@ func applyEditRules(contentBytes []byte, docFile *DocFile, g *Generator) ([]byte
 	)
 	var err error
 	for _, rule := range edits {
-		contentBytes, err = rule.Edit(docFile.FileName, contentBytes)
+		contentBytes, err = rule.Edit(docFile, contentBytes)
 		if err != nil {
 			return nil, err
 		}
@@ -251,20 +250,19 @@ func convertExample(g *Generator, code string, exampleNumber int) (string, error
 	return exampleContent, nil
 }
 
-type SectionSkipper struct {
+type sectionSkipper struct {
 	shouldSkipHeader shouldSkipHeaderFunc
 }
 
-var _ parser.ASTTransformer = SectionSkipper{}
+var _ parser.ASTTransformer = sectionSkipper{}
 
-func (t SectionSkipper) Transform(node *ast.Document, reader text.Reader, pc parser.Context) {
+func (t sectionSkipper) Transform(node *ast.Document, reader text.Reader, pc parser.Context) {
 	source := reader.Source()
 	removingLevel := 0
-	currentChild := node.FirstChild()
 	// All headings are first children of the ast.Document node.
 	// We will walk over them and remove any that match the header content we do not want.
 	// Additionally, we will track the header level and remove any content that is nested under the removed header.
-	for currentChild != nil {
+	for currentChild := node.FirstChild(); currentChild != nil; {
 		if removingLevel > 0 {
 			if child, ok := currentChild.(*ast.Heading); ok && child.Level <= removingLevel {
 				removingLevel = 0
@@ -296,13 +294,11 @@ func (t SectionSkipper) Transform(node *ast.Document, reader text.Reader, pc par
 
 type shouldSkipHeaderFunc = func(headerText string) bool
 
-// SkipSectionByHeaderContent takes a document's content byte array and a callback function that contains logic on
-// whether a given header should be skipped.
-// It uses "github.com/yuin/goldmark" parser in conjunction with "github.com/teekennedy/goldmark-markdown" renderer
-// to walk the markdown document tree and apply the SectionSkipper's transformer
+// SkipSectionByHeaderContent removes headers where shouldSkipHeader(header) returns true,
+// along with any text under the header.
 func SkipSectionByHeaderContent(content []byte, shouldSkipHeader shouldSkipHeaderFunc) ([]byte, error) {
 	// Instantiate our transformer
-	sectionSkipper := SectionSkipper{
+	sectionSkipper := sectionSkipper{
 		shouldSkipHeader: shouldSkipHeader,
 	}
 	gm := goldmark.New(
@@ -315,20 +311,17 @@ func SkipSectionByHeaderContent(content []byte, shouldSkipHeader shouldSkipHeade
 		),
 		goldmark.WithRenderer(markdown.NewRenderer()),
 	)
-	buf := bytes.Buffer{}
+	var buf bytes.Buffer
 	// Convert parses the source, applies transformers, and renders output to buf
 	err := gm.Convert(content, &buf)
-	if err != nil {
-		log.Fatalf("Encountered Markdown conversion error: %v", err)
-	}
-	return buf.Bytes(), nil
+	return buf.Bytes(), err
 }
 
 // Edit Rule for skipping headers.
-func skipSectionHeadersEdit(docFile *DocFile) tfbridge.DocsEdit {
+func skipSectionHeadersEdit(docFile string) tfbridge.DocsEdit {
 	defaultHeaderSkipRegexps := getDefaultHeadersToSkip()
 	return tfbridge.DocsEdit{
-		Path: docFile.FileName,
+		Path: docFile,
 		Edit: func(_ string, content []byte) ([]byte, error) {
 			return SkipSectionByHeaderContent(content, func(headerText string) bool {
 				for _, header := range defaultHeaderSkipRegexps {
