@@ -21,6 +21,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/testprovider"
 	tfbridge "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/stretchr/testify/require"
 )
 
 func TestPreStateUpgradeHook(t *testing.T) {
@@ -34,7 +35,8 @@ func TestPreStateUpgradeHook(t *testing.T) {
 		return args.PriorStateSchemaVersion, args.PriorState, nil
 	}
 
-	server := newProviderServer(t, info)
+	server, err := newProviderServer(t, info)
+	require.NoError(t, err)
 	testutils.Replay(t, server, `
 	{
 	  "method": "/pulumirpc.ResourceProvider/Update",

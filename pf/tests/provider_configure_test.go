@@ -23,6 +23,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/testprovider"
 	tfpf "github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/stretchr/testify/require"
 )
 
 func TestConfigure(t *testing.T) {
@@ -30,7 +31,8 @@ func TestConfigure(t *testing.T) {
 		// Test interaction of Configure and Create.
 		//
 		// TestConfigRes will read stringConfigProp information the provider receives via Configure.
-		server := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
+		server, err := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
+		require.NoError(t, err)
 		testCase := `
 		[
 		  {
@@ -65,7 +67,8 @@ func TestConfigure(t *testing.T) {
 
 	t.Run("booleans", func(t *testing.T) {
 		// Non-string properties caused trouble at some point, test booleans.
-		server := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
+		server, err := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
+		require.NoError(t, err)
 
 		testCase := `
 		{
@@ -102,7 +105,8 @@ func TestConfigureErrorReplacement(t *testing.T) {
 		providerInfo.Config["config_property"] = &tfbridge.SchemaInfo{Name: "configProperty"}
 		providerInfo.Config["config"] = &tfbridge.SchemaInfo{Name: "CONFIG!"}
 
-		server := newProviderServer(t, providerInfo)
+		server, err := newProviderServer(t, providerInfo)
+		require.NoError(t, err)
 
 		replay.Replay(t, server, `
 			{
@@ -130,7 +134,8 @@ func TestConfigureErrorReplacement(t *testing.T) {
 		providerInfo.Config["config_property"] = &tfbridge.SchemaInfo{Name: "configProperty"}
 		providerInfo.Config["config"] = &tfbridge.SchemaInfo{Name: "CONFIG!"}
 
-		server := newProviderServer(t, providerInfo)
+		server, err := newProviderServer(t, providerInfo)
+		require.NoError(t, err)
 
 		replay.Replay(t, server, `
 			{

@@ -51,7 +51,8 @@ resources:
         properties:
             s: "hello"`
 
-	pt := pulCheck(t, prov, program)
+	pt, err := pulCheck(t, prov, program)
+	require.NoError(t, err)
 
 	pt.Up()
 }
@@ -126,13 +127,14 @@ resources:
                 - name: "vlan1"
                   vlanId: "1"`
 
-	pt := pulCheck(t, prov, program1)
+	pt, err := pulCheck(t, prov, program1)
+	require.NoError(t, err)
 
 	pt.Up()
 
 	pulumiYamlPath := filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml")
 
-	err := os.WriteFile(pulumiYamlPath, []byte(program2), 0o600)
+	err = os.WriteFile(pulumiYamlPath, []byte(program2), 0o600)
 	require.NoError(t, err)
 
 	res := pt.Preview(optpreview.Diff())
@@ -147,12 +149,13 @@ resources:
 
 func TestIDAttribute(t *testing.T) {
 	tests := []struct {
-		name                string
-		attribute           rschema.Attribute
-		computeIDField      string
-		schemaName          string
-		expectErrorContains string
-		expectedIDOutput    string
+		name                     string
+		attribute                rschema.Attribute
+		computeIDField           string
+		schemaName               string
+		expectErrorContains      string
+		expectTFGenErrorContains string
+		expectedIDOutput         string
 	}{
 		{
 			name:             "Valid - Optional + Computed",
@@ -195,18 +198,18 @@ func TestIDAttribute(t *testing.T) {
 			computeIDField:   "s",
 			expectedIDOutput: "hello",
 		},
-		// This one fails on checks during tfgen which we don't have a way of catching
-		// including the test here for completeness
-		// {
-		// 	// without the check failure the runtime error would be:
-		// 	// `Resource state did not contain an id property`
-		// 	name:             "Optional Name error",
-		// 	// this would also fail for a Computed only "id" property
-		// 	attribute:        rschema.StringAttribute{Optional: true, Computed: true},
-		// 	// it would also fail if mappped to either an input property or a purely computed property
-		// 	schemaName:       "s",
-		// 	expectedIdOutput: "hello",
-		// },
+		// This one fails on checks during tfgen
+		{
+			// without the check failure the runtime error would be:
+			// `Resource state did not contain an id property`
+			name: "Optional Name error",
+			// this would also fail for a Computed only "id" property
+			attribute: rschema.StringAttribute{Optional: true, Computed: true},
+			// it would also fail if mapped to either an input property or a purely computed property
+			schemaName:               "s",
+			expectedIDOutput:         "hello",
+			expectTFGenErrorContains: "There were 1 unresolved ID mapping errors",
+		},
 
 		// While this is technically possible it should probably become an error in the future
 		// Current this can cause a race condition where the output of `s` could either be from `s` or `id`
@@ -277,7 +280,14 @@ resources:
             s: "hello"
 `
 
-			pt := pulCheck(t, prov, program)
+			pt, err := pulCheck(t, prov, program, TfGenErrorContains(tc.expectTFGenErrorContains))
+			if tc.expectTFGenErrorContains != "" {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tc.expectTFGenErrorContains)
+				return
+			} else {
+				require.NoError(t, err)
+			}
 
 			upres, err := pt.CurrentStack().Up(pt.Context())
 			if tc.expectErrorContains != "" {

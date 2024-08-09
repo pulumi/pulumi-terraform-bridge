@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/stretchr/testify/require"
 )
 
 func TestReadFromRefresh(t *testing.T) {
@@ -39,7 +40,8 @@ func TestReadFromRefresh(t *testing.T) {
 	// - implicit upgrade from version 1 to version 3 is performed ("numeric": true) appears
 	// - inputs being populated
 
-	server := newProviderServer(t, testprovider.RandomProvider())
+	server, err := newProviderServer(t, testprovider.RandomProvider())
+	require.NoError(t, err)
 
 	testCase := `[
 	{
@@ -148,7 +150,8 @@ func TestReadFromRefresh(t *testing.T) {
 }
 
 func TestImportRandomPassword(t *testing.T) {
-	server := newProviderServer(t, testprovider.RandomProvider())
+	server, err := newProviderServer(t, testprovider.RandomProvider())
+	require.NoError(t, err)
 	testCase := `
 	{
 	  "method": "/pulumirpc.ResourceProvider/Read",
@@ -191,7 +194,8 @@ func TestImportRandomPassword(t *testing.T) {
 func TestImportingResourcesWithBlocks(t *testing.T) {
 	// Importing a resource that has blocks such as Testnest resource used to panic. Ensure that it minimally
 	// succeeds.
-	server := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
+	server, err := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
+	require.NoError(t, err)
 	testCase := `
 	{
           "method": "/pulumirpc.ResourceProvider/Read",
@@ -220,7 +224,8 @@ func TestImportingResourcesWithBlocks(t *testing.T) {
 func TestImportingResourcesWithoutDefaults(t *testing.T) {
 	// Importing a resource that has blocks used to add a `__defaults: []` entry to the `response.inputs`
 	// ensure that it no longer does so
-	server := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
+	server, err := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
+	require.NoError(t, err)
 	testCase := `
 	{
           "method": "/pulumirpc.ResourceProvider/Read",
@@ -255,7 +260,8 @@ func TestImportingResourcesWithoutDefaults(t *testing.T) {
 // Check that importing a resource that does not exist returns an empty property bag and
 // no ID.
 func TestImportingMissingResources(t *testing.T) {
-	server := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
+	server, err := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
+	require.NoError(t, err)
 	testCase := `
 	{
           "method": "/pulumirpc.ResourceProvider/Read",
@@ -275,7 +281,8 @@ func TestImportingMissingResources(t *testing.T) {
 func TestImportingResourcesWithNestedAttributes(t *testing.T) {
 	// Importing a resource that has attribute blocks such as Testnest resource used to panic. Ensure that it minimally
 	// succeeds.
-	server := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
+	server, err := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
+	require.NoError(t, err)
 	testCase := `
 	{
           "method": "/pulumirpc.ResourceProvider/Read",
@@ -299,7 +306,8 @@ func TestImportingResourcesWithNestedAttributes(t *testing.T) {
 // Check that refreshing a resource that does not exist returns an empty property bag and
 // no ID.
 func TestRefreshMissingResources(t *testing.T) {
-	server := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
+	server, err := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
+	require.NoError(t, err)
 	testCase := `
 	{
           "method": "/pulumirpc.ResourceProvider/Read",
@@ -371,7 +379,8 @@ func TestRefreshResourceNotFound(t *testing.T) {
 			},
 		},
 	}
-	server := newProviderServer(t, info)
+	server, err := newProviderServer(t, info)
+	require.NoError(t, err)
 
 	testCase := `
 	{
@@ -393,7 +402,8 @@ func TestRefreshResourceNotFound(t *testing.T) {
 
 func TestRefreshSupportsCustomID(t *testing.T) {
 	p := testprovider.RandomProvider()
-	server := newProviderServer(t, p)
+	server, err := newProviderServer(t, p)
+	require.NoError(t, err)
 
 	p.Resources["random_password"].ComputeID = func(
 		ctx context.Context, state resource.PropertyMap,
@@ -499,7 +509,8 @@ func TestImportSupportsCustomID(t *testing.T) {
 		state["id"] = resource.NewStringProperty("customID")
 		return resource.ID("customID"), nil
 	}
-	server := newProviderServer(t, p)
+	server, err := newProviderServer(t, p)
+	require.NoError(t, err)
 	testCase := `
 	{
 	  "method": "/pulumirpc.ResourceProvider/Read",

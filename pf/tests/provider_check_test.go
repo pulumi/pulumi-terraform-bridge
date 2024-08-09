@@ -25,6 +25,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	testutils "github.com/pulumi/providertest/replay"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/providerbuilder"
@@ -343,7 +344,8 @@ func TestCheck(t *testing.T) {
 					"testprovider_res": &res,
 				},
 			}
-			s := newProviderServer(t, info)
+			s, err := newProviderServer(t, info)
+			require.NoError(t, err)
 			if tc.replay != "" {
 				testutils.Replay(t, s, tc.replay)
 			}
@@ -355,7 +357,8 @@ func TestCheck(t *testing.T) {
 }
 
 func TestCheckWithIntID(t *testing.T) {
-	server := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
+	server, err := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
+	require.NoError(t, err)
 	testCase := `
         {
           "method": "/pulumirpc.ResourceProvider/Check",

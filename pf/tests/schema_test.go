@@ -24,10 +24,11 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 
+	"runtime"
+
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/testprovider"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
-	"runtime"
 )
 
 func TestSchemaGen(t *testing.T) {
@@ -38,7 +39,8 @@ func TestSchemaGen(t *testing.T) {
 		genMetadata(t, testprovider.TLSProvider())
 	})
 	t.Run("testbridge", func(t *testing.T) {
-		data := genMetadata(t, testprovider.SyntheticTestBridgeProvider())
+		data, err := genMetadata(t, testprovider.SyntheticTestBridgeProvider())
+		assert.NoError(t, err)
 		var spec schema.PackageSpec
 		require.NoError(t, json.Unmarshal(data.PackageSchema, &spec))
 		res := spec.Resources["testbridge:index/testnest:Testnest"]
@@ -122,7 +124,8 @@ func TestSchemaGenInSync(t *testing.T) {
 
 			var actualSpec schema.PackageSpec
 			if tc.pf.P != nil {
-				data := genMetadata(t, tc.pf)
+				data, err := genMetadata(t, tc.pf)
+				require.NoError(t, err)
 				require.NoError(t, json.Unmarshal(data.PackageSchema, &actualSpec))
 			} else {
 				var err error

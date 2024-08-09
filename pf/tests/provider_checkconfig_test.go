@@ -18,8 +18,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"testing"
+
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hexops/autogold/v2"
@@ -798,5 +799,8 @@ func makeProviderServer(
 	for _, c := range customize {
 		c(&info)
 	}
-	return newProviderServer(t, info)
+
+	server, err := newProviderServer(t, info)
+	require.NoError(t, err)
+	return server
 }
