@@ -148,7 +148,9 @@ func TestConfigureErrorReplacement(t *testing.T) {
 
 func TestJSONNestedConfigure(t *testing.T) {
 	p := testprovider.SyntheticTestBridgeProvider()
-	replay.Replay(t, newProviderServer(t, p), `{
+	server, err := newProviderServer(t, p)
+	require.NoError(t, err)
+	replay.Replay(t, server, `{
 		  "method": "/pulumirpc.ResourceProvider/Configure",
 		  "request": {
 		    "args": {
