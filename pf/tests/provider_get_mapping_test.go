@@ -39,7 +39,9 @@ func TestGetMapping(t *testing.T) {
 		// This generates the schema on the fly but shells out to go mod download and
 		// generates spurious warnings; for separating into separate sub-test.
 		var err error
-		p, err = tfbridge.NewProvider(ctx, info, genMetadata(t, info))
+		gen, err := genMetadata(t, info)
+		assert.NoError(t, err)
+		p, err = tfbridge.NewProvider(ctx, info, gen)
 		assert.NoError(t, err)
 	})
 

@@ -45,12 +45,36 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/tokens"
 )
 
-func newProviderServer(t *testing.T, info tfbridge0.ProviderInfo) pulumirpc.ResourceProviderServer {
+type ProviderOptions struct {
+	resourceOverrides map[string]*info.Resource
+}
+
+type ProviderOption interface {
+	Apply(*ProviderOptions)
+}
+
+type providerOptionFunc func(*ProviderOptions)
+
+func (o providerOptionFunc) Apply(opts *ProviderOptions) {
+	o(opts)
+}
+
+func ProviderResources(resources map[string]*info.Resource) ProviderOption {
+	return providerOptionFunc(func(o *ProviderOptions) {
+		o.resourceOverrides = resources
+	})
+}
+
+func newProviderServer(t *testing.T, info tfbridge0.ProviderInfo) (pulumirpc.ResourceProviderServer, error) {
+
 	ctx := context.Background()
-	meta := genMetadata(t, info)
+	meta, err := genMetadata(t, info)
+	if err != nil {
+		return nil, err
+	}
 	srv, err := tfbridge.NewProviderServer(ctx, nil, info, meta)
 	require.NoError(t, err)
-	return srv
+	return srv, nil
 }
 
 func newMuxedProviderServer(t *testing.T, info tfbridge0.ProviderInfo) pulumirpc.ResourceProviderServer {
@@ -86,15 +110,21 @@ func ensureProviderValid(prov *providerbuilder.Provider) {
 	}
 }
 
-func bridgedProvider(prov *providerbuilder.Provider) info.Provider {
+func bridgedProvider(prov *providerbuilder.Provider, opts ...ProviderOption) info.Provider {
 	ensureProviderValid(prov)
 	shimProvider := tfbridge.ShimProvider(prov)
+
+	var options ProviderOptions
+	for _, opt := range opts {
+		opt.Apply(&options)
+	}
 
 	provider := tfbridge0.ProviderInfo{
 		P:            shimProvider,
 		Name:         prov.TypeName,
 		Version:      "0.0.1",
 		MetadataInfo: &tfbridge0.MetadataInfo{},
+		Resources:    options.resourceOverrides,
 	}
 
 	provider.MustComputeTokens(tokens.SingleModule(prov.TypeName, "index", tokens.MakeStandard(prov.TypeName)))
@@ -102,8 +132,7 @@ func bridgedProvider(prov *providerbuilder.Provider) info.Provider {
 	return provider
 }
 
-func startPulumiProvider(t *testing.T, providerInfo tfbridge0.ProviderInfo) (*rpcutil.ServeHandle, error) {
-	prov := newProviderServer(t, providerInfo)
+func startPulumiProvider(t *testing.T, providerInfo tfbridge0.ProviderInfo, prov pulumirpc.ResourceProviderServer) (*rpcutil.ServeHandle, error) {
 
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Init: func(srv *grpc.Server) error {
@@ -125,7 +154,7 @@ func skipUnlessLinux(t *testing.T) {
 	}
 }
 
-func pulCheck(t *testing.T, bridgedProvider info.Provider, program string) *pulumitest.PulumiTest {
+func pulCheck(t *testing.T, bridgedProvider info.Provider, program string, opts ...ServerOption) (*pulumitest.PulumiTest, error) {
 	skipUnlessLinux(t)
 	puwd := t.TempDir()
 	p := filepath.Join(puwd, "Pulumi.yaml")
@@ -133,19 +162,43 @@ func pulCheck(t *testing.T, bridgedProvider info.Provider, program string) *pulu
 	err := os.WriteFile(p, []byte(program), 0o600)
 	require.NoError(t, err)
 
-	opts := []opttest.Option{
+	prov, err := newProviderServer(t, bridgedProvider)
+	if err != nil {
+		return nil, err
+	}
+	topts := []opttest.Option{
 		opttest.Env("DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "true"),
 		opttest.TestInPlace(),
 		opttest.SkipInstall(),
 		opttest.AttachProvider(
 			bridgedProvider.Name,
 			func(ctx context.Context, pt providers.PulumiTest) (providers.Port, error) {
-				handle, err := startPulumiProvider(t, bridgedProvider)
+				handle, err := startPulumiProvider(t, bridgedProvider, prov)
 				require.NoError(t, err)
 				return providers.Port(handle.Port), nil
 			},
 		),
 	}
 
-	return pulumitest.NewPulumiTest(t, puwd, opts...)
+	return pulumitest.NewPulumiTest(t, puwd, topts...), nil
+}
+
+type ServerOptions struct {
+	tfGenErrorContains string
+}
+
+type ServerOption interface {
+	Apply(*ServerOptions)
+}
+
+type serverOptionFunc func(*ServerOptions)
+
+func (o serverOptionFunc) Apply(opts *ServerOptions) {
+	o(opts)
+}
+
+func TfGenErrorContains(err string) ServerOption {
+	return serverOptionFunc(func(pco *ServerOptions) {
+		pco.tfGenErrorContains = err
+	})
 }

@@ -41,7 +41,8 @@ func TestTransformOutputs(t *testing.T) {
 		c["ecdsacurve"] = resource.NewStringProperty("TRANSFORMED")
 		return c, nil
 	}
-	provider := newProviderServer(t, p)
+	provider, err := newProviderServer(t, p)
+	require.NoError(t, err)
 
 	t.Run("Create preview", func(t *testing.T) {
 		testutils.Replay(t, provider, `
@@ -180,7 +181,9 @@ func TestTransformFromState(t *testing.T) {
 			},
 		}
 
-		return newProviderServer(t, p)
+		server, err := newProviderServer(t, p)
+		require.NoError(t, err)
+		return server
 	}
 
 	t.Run("Check", func(t *testing.T) {

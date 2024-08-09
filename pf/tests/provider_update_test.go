@@ -19,10 +19,12 @@ import (
 
 	testutils "github.com/pulumi/providertest/replay"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/testprovider"
+	"github.com/stretchr/testify/require"
 )
 
 func TestUpdateWritesSchemaVersion(t *testing.T) {
-	server := newProviderServer(t, testprovider.RandomProvider())
+	server, err := newProviderServer(t, testprovider.RandomProvider())
+	require.NoError(t, err)
 	testutils.Replay(t, server, `
 	{
 	  "method": "/pulumirpc.ResourceProvider/Update",
@@ -60,7 +62,8 @@ func TestUpdateWritesSchemaVersion(t *testing.T) {
 }
 
 func TestUpdateWithIntID(t *testing.T) {
-	server := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
+	server, err := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
+	require.NoError(t, err)
 	testCase := `
         {
           "method": "/pulumirpc.ResourceProvider/Update",
