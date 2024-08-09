@@ -2,12 +2,12 @@ package tfgen
 
 import (
 	"bytes"
-	"github.com/yuin/goldmark"
 	"runtime"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/stretchr/testify/require"
+	"github.com/yuin/goldmark"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	sdkv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
@@ -190,7 +190,8 @@ func TestApplyEditRules(t *testing.T) {
 		{
 			name: "Skips sections about logging by default",
 			docFile: DocFile{
-				Content: []byte("# I am a provider\n\n### Additional Logging\n This section should be skipped"),
+				Content:  []byte("# I am a provider\n\n### Additional Logging\n This section should be skipped"),
+				FileName: "filename",
 			},
 			expected: []byte("# I am a provider\n"),
 		},
@@ -203,9 +204,9 @@ func TestApplyEditRules(t *testing.T) {
 				sink:      mockSink{t},
 				editRules: defaultEditRules(),
 			}
-			actual, err := applyEditRules(tt.docFile.Content, &tt.docFile, g)
+			actual, err := applyEditRules(tt.docFile.Content, "testfile.md", g)
 			require.NoError(t, err)
-			require.Equal(t, string(tt.expected), string(actual))
+			require.True(t, equalHTML(string(tt.expected), string(actual)))
 		})
 	}
 }

@@ -3,7 +3,9 @@ package tfgen
 import (
 	"bytes"
 	"fmt"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"regexp"
+	"strings"
+
 	markdown "github.com/teekennedy/goldmark-markdown"
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/ast"
@@ -11,11 +13,10 @@ import (
 	"github.com/yuin/goldmark/parser"
 	"github.com/yuin/goldmark/text"
 	"github.com/yuin/goldmark/util"
-	"regexp"
-	"strings"
-
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 
 func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
@@ -251,7 +252,7 @@ func convertExample(g *Generator, code string, exampleNumber int) (string, error
 }
 
 type sectionSkipper struct {
-	shouldSkipHeader shouldSkipHeaderFunc
+	shouldSkipHeader func(headerText string) bool
 }
 
 var _ parser.ASTTransformer = sectionSkipper{}
@@ -292,11 +293,22 @@ func (t sectionSkipper) Transform(node *ast.Document, reader text.Reader, pc par
 	}
 }
 
-type shouldSkipHeaderFunc = func(headerText string) bool
-
 // SkipSectionByHeaderContent removes headers where shouldSkipHeader(header) returns true,
 // along with any text under the header.
-func SkipSectionByHeaderContent(content []byte, shouldSkipHeader shouldSkipHeaderFunc) ([]byte, error) {
+// content is assumed to be Github flavored markdown when parsing.
+//
+// shouldSkipHeader is called on the raw header text, like this:
+//
+//	shouldSkipHeader("My Header")
+//
+// *not* like this:
+//
+//	// This is wrong
+//	shouldSkipHeader("## My Header\n")
+func SkipSectionByHeaderContent(
+	content []byte,
+	shouldSkipHeader func(headerText string) bool,
+) ([]byte, error) {
 	// Instantiate our transformer
 	sectionSkipper := sectionSkipper{
 		shouldSkipHeader: shouldSkipHeader,
