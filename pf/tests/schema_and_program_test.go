@@ -285,9 +285,8 @@ resources:
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), tc.expectTFGenErrorContains)
 				return
-			} else {
-				require.NoError(t, err)
 			}
+			require.NoError(t, err)
 
 			upres, err := pt.CurrentStack().Up(pt.Context())
 			if tc.expectErrorContains != "" {

@@ -33,10 +33,12 @@ import (
 
 func TestSchemaGen(t *testing.T) {
 	t.Run("random", func(t *testing.T) {
-		genMetadata(t, testprovider.RandomProvider())
+		_, err := genMetadata(t, testprovider.RandomProvider())
+		require.NoError(t, err)
 	})
 	t.Run("tls", func(t *testing.T) {
-		genMetadata(t, testprovider.TLSProvider())
+		_, err := genMetadata(t, testprovider.TLSProvider())
+		require.NoError(t, err)
 	})
 	t.Run("testbridge", func(t *testing.T) {
 		data, err := genMetadata(t, testprovider.SyntheticTestBridgeProvider())
