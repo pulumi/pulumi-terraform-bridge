@@ -157,27 +157,27 @@ func TestSensitiveIDWithOverride(t *testing.T) {
 
 func TestInvalidInputID(t *testing.T) {
 	tests := []struct {
-		name            string
-		idSchema        idSchema
-		isInputProperty bool
+		name     string
+		idSchema idSchema
 	}{
-		{name: "Required", idSchema: idSchema{required: true, optional: false, computed: false}, isInputProperty: true},
-		{name: "Optional", idSchema: idSchema{required: false, optional: true, computed: false}, isInputProperty: true},
-		{name: "Computed", idSchema: idSchema{required: false, optional: false, computed: true}, isInputProperty: false},
+		{name: "Required", idSchema: idSchema{required: true, optional: false, computed: false}},
+		{name: "Optional", idSchema: idSchema{required: false, optional: true, computed: false}},
+		{name: "Computed", idSchema: idSchema{required: false, optional: false, computed: true}},
 		{
-			name:            "Optional+Computed",
-			idSchema:        idSchema{required: false, optional: true, computed: true},
-			isInputProperty: true,
+			name:     "Optional+Computed",
+			idSchema: idSchema{required: false, optional: true, computed: true},
 		},
 	}
 
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name+" no overrides", func(t *testing.T) {
+			provider := pfbridge.ShimProvider(testProvider{withID: &tc.idSchema})
+			idSchema := provider.ResourcesMap().Get("test_res").Schema().Get("id")
 			stderr, err := test(t, tfbridge.ProviderInfo{
-				P: pfbridge.ShimProvider(testProvider{withID: &tc.idSchema}),
+				P: provider,
 			})
-			if tc.isInputProperty {
+			if isInputProperty(idSchema) {
 				assert.Error(t, err)
 				autogold.Expect(`error: Resource test_res has a problem: an "id" input attribute is not allowed. `+
 					`To map this resource specify SchemaInfo.Name and ResourceInfo.ComputeID
@@ -208,8 +208,10 @@ func TestInvalidInputID(t *testing.T) {
 		// Providing `ComputeID` handles remapping the output "id" to a different property, but
 		// we still may have an input property "id"
 		t.Run(tc.name+" overrides with ComputeID and missing Name", func(t *testing.T) {
+			provider := pfbridge.ShimProvider(testProvider{withID: &tc.idSchema})
+			idSchema := provider.ResourcesMap().Get("test_res").Schema().Get("id")
 			stderr, err := test(t, tfbridge.ProviderInfo{
-				P: pfbridge.ShimProvider(testProvider{withID: &tc.idSchema}),
+				P: provider,
 				Resources: map[string]*tfbridge.ResourceInfo{
 					"test_res": {Fields: map[string]*tfbridge.SchemaInfo{
 						"id": {},
@@ -218,7 +220,7 @@ func TestInvalidInputID(t *testing.T) {
 					}},
 				},
 			})
-			if tc.isInputProperty {
+			if isInputProperty(idSchema) {
 				assert.Error(t, err)
 				autogold.Expect(`error: Resource test_res has a problem: an "id" input attribute is not allowed. `+
 					`To map this resource specify SchemaInfo.Name and ResourceInfo.ComputeID
