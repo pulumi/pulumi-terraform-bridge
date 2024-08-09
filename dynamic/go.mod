@@ -24,7 +24,10 @@ require (
 	google.golang.org/protobuf v1.34.0
 )
 
-require github.com/yuin/goldmark v1.7.4 // indirect
+require (
+	github.com/teekennedy/goldmark-markdown v0.3.0 // indirect
+	github.com/yuin/goldmark v1.7.4 // indirect
+)
 
 require (
 	cloud.google.com/go v0.112.1 // indirect
