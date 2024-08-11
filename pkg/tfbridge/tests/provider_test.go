@@ -70,6 +70,55 @@ func TestWithNewTestProvider(t *testing.T) {
 	`)
 }
 
+// An empty object does not show a diff if it is not provided
+func TestEmptyMapNoDiff(t *testing.T) {
+	ctx := context.Background()
+	p := newTestProvider(ctx, tfbridge.ProviderInfo{
+		P: shimv2.NewProvider(&schema.Provider{
+			Schema: map[string]*schema.Schema{},
+			ResourcesMap: map[string]*schema.Resource{
+				"example_resource": {
+					Schema: map[string]*schema.Schema{
+						"optional_input_string_map": {
+							Type: schema.TypeMap,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+							},
+							Optional: true,
+						},
+					},
+				},
+			},
+		}),
+		Name:           "testprov",
+		ResourcePrefix: "example",
+		Resources: map[string]*tfbridge.ResourceInfo{
+			"example_resource": {Tok: "testprov:index:ExampleResource"},
+		},
+	}, newTestProviderOptions{})
+
+	replay.Replay(t, p, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Diff",
+		"request": {
+			"id": "0",
+			"urn": "urn:pulumi:dev::teststack::testprov:index:ExampleResource::exres",
+			"olds": {
+				"optionalInputStringMap": {}
+			},
+			"news": {
+			},
+			"oldInputs": {
+			}
+		},
+		"response": {
+			"changes": "DIFF_NONE",
+			"hasDetailedDiff": true
+		}
+	}
+	`)
+}
+
 // TestRegress1932 tests that we can have a list with different types (string & unknown)
 func TestRegress1932(t *testing.T) {
 	ctx := context.Background()

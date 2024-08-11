@@ -195,3 +195,39 @@ func TestDiffVersionUpgrade(t *testing.T) {
         }`
 	testutils.Replay(t, server, testCase)
 }
+
+// Test shows that an empty object shows a diff if it is not provided
+func TestEmptyObjectDiff(t *testing.T) {
+	server := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
+	testCase := `
+        {
+          "method": "/pulumirpc.ResourceProvider/Diff",
+          "request": {
+            "id": "0",
+            "urn": "urn:pulumi:test-stack::basicprogram::testbridge:index/testres:Testres::testres1",
+						"olds": {
+							"id": "none",
+							"statedir": "res-461023c",
+							"requiredInputString": "abc",
+							"requiredInputStringCopy": "abc",
+							"optionalInputStringMap": {}
+						},
+						"news": {
+							"statedir": "res-461023c",
+							"requiredInputString": "abc"
+						},
+						"oldInputs": {
+							"statedir": "res-461023c",
+							"requiredInputString": "abc"
+						}
+          },
+					"response": {
+						"changes": "DIFF_SOME",
+						"diffs": [
+						"optionalInputStringMap"
+						]
+					}
+        }
+        `
+	testutils.Replay(t, server, testCase)
+}
