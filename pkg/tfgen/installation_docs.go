@@ -1,12 +1,22 @@
 package tfgen
 
 import (
+	"bytes"
 	"fmt"
 	"regexp"
 	"strings"
 
+	markdown "github.com/teekennedy/goldmark-markdown"
+	"github.com/yuin/goldmark"
+	"github.com/yuin/goldmark/ast"
+	"github.com/yuin/goldmark/extension"
+	"github.com/yuin/goldmark/parser"
+	"github.com/yuin/goldmark/text"
+	"github.com/yuin/goldmark/util"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 
 func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
@@ -28,11 +38,8 @@ func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
 		return nil, err
 	}
 
-	//TODO: See https://github.com/pulumi/pulumi-terraform-bridge/issues/2078
-	// - Ability to omit irrelevant sections
-
 	// Apply edit rules to transform the doc for Pulumi-ready presentation
-	contentBytes, err := applyEditRules([]byte(contentStr), docFile)
+	contentBytes, err := applyEditRules([]byte(contentStr), docFile.FileName, g)
 	if err != nil {
 		return nil, err
 	}
@@ -109,10 +116,9 @@ func writeInstallationInstructions(goImportBasePath, providerName string) string
 	)
 }
 
-func applyEditRules(contentBytes []byte, docFile *DocFile) ([]byte, error) {
-	// Obtain default edit rules for documentation files
-	edits := defaultEditRules()
-
+func applyEditRules(contentBytes []byte, docFile string, g *Generator) ([]byte, error) {
+	// Obtain edit rules passed by the provider
+	edits := g.editRules
 	// Additional edit rules for installation files
 	edits = append(edits,
 		// Replace all "T/terraform" with "P/pulumi"
@@ -127,21 +133,20 @@ func applyEditRules(contentBytes []byte, docFile *DocFile) ([]byte, error) {
 		reReplace(`Argument Reference`,
 			`Configuration Reference`),
 		reReplace(`block contains the following arguments`,
-			`input has the following nested fields`))
+			`input has the following nested fields`),
+		skipSectionHeadersEdit(docFile),
+	)
 	var err error
 	for _, rule := range edits {
-		contentBytes, err = rule.Edit(docFile.FileName, contentBytes)
+		contentBytes, err = rule.Edit(docFile, contentBytes)
 		if err != nil {
 			return nil, err
 		}
 	}
 	return contentBytes, nil
 }
-
 func translateCodeBlocks(contentStr string, g *Generator) (string, error) {
-
 	var returnContent string
-	//configCliConverter := g.cliConverter()
 	// Extract code blocks
 	codeFence := "```"
 	var codeBlocks []codeBlock
@@ -244,4 +249,134 @@ func convertExample(g *Generator, code string, exampleNumber int) (string, error
 	}
 	exampleContent += chooserEnd
 	return exampleContent, nil
+}
+
+type sectionSkipper struct {
+	shouldSkipHeader func(headerText string) bool
+}
+
+var _ parser.ASTTransformer = sectionSkipper{}
+
+func (t sectionSkipper) Transform(node *ast.Document, reader text.Reader, pc parser.Context) {
+	source := reader.Source()
+	removingLevel := 0
+	// All headings are first children of the ast.Document node.
+	// We will walk over them and remove any that match the header content we do not want.
+	// Additionally, we will track the header level and remove any content that is nested under the removed header.
+	for currentChild := node.FirstChild(); currentChild != nil; {
+		if removingLevel > 0 {
+			if child, ok := currentChild.(*ast.Heading); ok && child.Level <= removingLevel {
+				removingLevel = 0
+			} else {
+				nextNode := currentChild.NextSibling()
+				currentChild.Parent().RemoveChild(currentChild.Parent(), currentChild)
+				currentChild = nextNode
+				continue
+			}
+		}
+		// In case our level got reset, we check again
+		if removingLevel == 0 {
+			switch child := currentChild.(type) {
+			case *ast.Heading:
+				header := child.Text(source)
+				if t.shouldSkipHeader(string(header)) {
+					removingLevel = child.Level
+					nextNode := child.NextSibling()
+					child.Parent().RemoveChild(child.Parent(), child)
+					currentChild = nextNode
+					continue
+				}
+			}
+		}
+		// Move to next node in base case.
+		currentChild = currentChild.NextSibling()
+	}
+}
+
+// SkipSectionByHeaderContent removes headers where shouldSkipHeader(header) returns true,
+// along with any text under the header.
+// content is assumed to be Github flavored markdown when parsing.
+//
+// shouldSkipHeader is called on the raw header text, like this:
+//
+//	shouldSkipHeader("My Header")
+//
+// *not* like this:
+//
+//	// This is wrong
+//	shouldSkipHeader("## My Header\n")
+//
+// Example of removing the first header and its context
+//
+//	result := SkipSectionByHeaderContent(byte[](
+//	`
+//	## First Header
+//
+//	First content
+//
+//	## Second Header
+//
+//	Second content
+//	`,
+//	func(headerText string) bool) ([]byte, error) {
+//		return headerText == "First Header"
+//	})
+//
+// The result will only now contain the second result:
+//
+//	## Second Header
+//
+//	Second content
+func SkipSectionByHeaderContent(
+	content []byte,
+	shouldSkipHeader func(headerText string) bool,
+) ([]byte, error) {
+	// Instantiate our transformer
+	sectionSkipper := sectionSkipper{
+		shouldSkipHeader: shouldSkipHeader,
+	}
+	gm := goldmark.New(
+		goldmark.WithExtensions(extension.GFM),
+		goldmark.WithParserOptions(
+			parser.WithASTTransformers(
+				util.Prioritized(recognizeHeaderAfterHTML{}, 2000),
+				util.Prioritized(sectionSkipper, 500),
+			),
+		),
+		goldmark.WithRenderer(markdown.NewRenderer()),
+	)
+	var buf bytes.Buffer
+	// Convert parses the source, applies transformers, and renders output to buf
+	err := gm.Convert(content, &buf)
+	return buf.Bytes(), err
+}
+
+// Edit Rule for skipping headers.
+func skipSectionHeadersEdit(docFile string) tfbridge.DocsEdit {
+	defaultHeaderSkipRegexps := getDefaultHeadersToSkip()
+	return tfbridge.DocsEdit{
+		Path: docFile,
+		Edit: func(_ string, content []byte) ([]byte, error) {
+			return SkipSectionByHeaderContent(content, func(headerText string) bool {
+				for _, header := range defaultHeaderSkipRegexps {
+					if header.Match([]byte(headerText)) {
+						return true
+					}
+				}
+				return false
+			})
+		},
+	}
+
+}
+
+func getDefaultHeadersToSkip() []*regexp.Regexp {
+	defaultHeaderSkipRegexps := []*regexp.Regexp{
+		regexp.MustCompile("[Ll]ogging"),
+		regexp.MustCompile("[Ll]ogs"),
+		regexp.MustCompile("[Tt]esting"),
+		regexp.MustCompile("[Dd]evelopment"),
+		regexp.MustCompile("[Dd]ebugging"),
+	}
+	return defaultHeaderSkipRegexps
 }
