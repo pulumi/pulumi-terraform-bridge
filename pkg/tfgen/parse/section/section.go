@@ -56,27 +56,37 @@ func (s *Section) Dump(source []byte, level int) {
 func (s *Section) Kind() ast.NodeKind { return Kind }
 
 func (s sectionParser) Transform(node *ast.Document, reader text.Reader, pc parser.Context) {
-	for node := node.FirstChild(); node != nil; node = node.NextSibling() {
+	s.transform(node, reader, pc, false)
+}
+
+func (s sectionParser) transform(node ast.Node, reader text.Reader, pc parser.Context, skipFirst bool) {
+	parent := node
+	node = node.FirstChild()
+	if skipFirst {
+		node = node.NextSibling()
+	}
+	for node != nil {
 		heading, ok := node.(*ast.Heading)
 		if !ok {
+			node = node.NextSibling()
 			continue
 		}
+		node = heading.NextSibling()
 
-		parent := heading.Parent()
 		section := &Section{}
-		node = section
-		c := heading.NextSibling()
 		parent.ReplaceChild(parent, heading, section)
 		section.AppendChild(section, heading)
-		for c != nil {
-			if child, ok := c.(*ast.Heading); ok && child.Level >= heading.Level {
+		for node != nil {
+			if child, ok := node.(*ast.Heading); ok && child.Level <= heading.Level {
 				break
 			}
-			child := c
+			child := node
 			// We are going to add c to section
-			c = c.NextSibling()
+			node = node.NextSibling()
 			section.AppendChild(section, child)
 		}
+		s.transform(section, reader, pc, true)
+
 	}
 }
 

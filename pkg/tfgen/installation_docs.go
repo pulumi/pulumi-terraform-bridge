@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	markdown "github.com/teekennedy/goldmark-markdown"
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/ast"
@@ -261,22 +262,20 @@ var _ parser.ASTTransformer = sectionSkipper{}
 func (t sectionSkipper) Transform(node *ast.Document, reader text.Reader, pc parser.Context) {
 	source := reader.Source()
 
-	// All headings are first children of the ast.Document node.  We will walk over
-	// them and remove any that match the header content we do not want, along with
-	// their associated [section.Section].
-	for currentChild := node.FirstChild(); currentChild != nil; {
-		if section, ok := currentChild.(*section.Section); ok {
+	err := ast.Walk(node, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
+		if section, ok := n.(*section.Section); ok && !entering {
 			headerText := section.FirstChild().(*ast.Heading).Text(source)
 			if t.shouldSkipHeader(string(headerText)) {
-				currentChild = section.NextSibling()
 				parent := section.Parent()
+				if parent == nil {
+					panic("PARENT IS NIL")
+				}
 				parent.RemoveChild(parent, section)
-				continue
 			}
 		}
-		// Move to next node in base case.
-		currentChild = currentChild.NextSibling()
-	}
+		return ast.WalkContinue, nil
+	})
+	contract.AssertNoErrorf(err, "impossible")
 }
 
 // SkipSectionByHeaderContent removes headers where shouldSkipHeader(header) returns true,

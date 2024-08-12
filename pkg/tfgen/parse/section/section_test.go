@@ -79,6 +79,31 @@ content (again)
 `),
 		},
 		{
+			input: `
+
+Hi
+
+# 1
+
+content
+
+## 2
+
+nested content
+`,
+			walk: func(src []byte, node ast.Node, entering bool) (ast.WalkStatus, error) {
+				s, ok := node.(*section.Section)
+				if !ok || !entering {
+					return ast.WalkContinue, nil
+				}
+				if string(s.FirstChild().(*ast.Heading).Text(src)) == "1" {
+					s.Parent().RemoveChild(s.Parent(), s)
+				}
+				return ast.WalkContinue, nil
+			},
+			expected: autogold.Expect("Hi\n"),
+		},
+		{
 			input: `# I am a provider
 
 foo

@@ -302,8 +302,8 @@ func TestSkipSectionHeaderByContent(t *testing.T) {
 	tc := testCase{
 		name:         "Skips Section With Unwanted Header",
 		headerToSkip: "Debugging Provider Output Using Logs",
-		input:        readfile(t, "test_data/skip-sections-by-header/input.md"),
-		expected:     readfile(t, "test_data/skip-sections-by-header/actual.md"),
+		input:        readTestFile(t, "skip-sections-by-header/input.md"),
+		expected:     readTestFile(t, "skip-sections-by-header/actual.md"),
 	}
 
 	t.Run(tc.name, func(t *testing.T) {
