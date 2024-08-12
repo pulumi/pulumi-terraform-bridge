@@ -305,6 +305,28 @@ func (t sectionSkipper) Transform(node *ast.Document, reader text.Reader, pc par
 //
 //	// This is wrong
 //	shouldSkipHeader("## My Header\n")
+//
+// Example of removing the first header and its context
+//
+//	result := SkipSectionByHeaderContent(byte[](
+//	`
+//	## First Header
+//
+//	First content
+//
+//	## Second Header
+//
+//	Second content
+//	`,
+//	func(headerText string) bool) ([]byte, error) {
+//		return headerText == "First Header"
+//	})
+//
+// The result will only now contain the second result:
+//
+//	## Second Header
+//
+//	Second content
 func SkipSectionByHeaderContent(
 	content []byte,
 	shouldSkipHeader func(headerText string) bool,
