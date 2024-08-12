@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/yuin/goldmark"
 
@@ -206,7 +207,7 @@ func TestApplyEditRules(t *testing.T) {
 			}
 			actual, err := applyEditRules(tt.docFile.Content, "testfile.md", g)
 			require.NoError(t, err)
-			require.True(t, equalHTML(string(tt.expected), string(actual)))
+			assertEqualHTML(t, string(tt.expected), string(actual))
 		})
 	}
 }
@@ -311,7 +312,7 @@ func TestSkipSectionHeaderByContent(t *testing.T) {
 			return headerText == tc.headerToSkip
 		})
 		require.NoError(t, err)
-		require.True(t, equalHTML(tc.expected, string(actual)))
+		assertEqualHTML(t, tc.expected, string(actual))
 	})
 }
 
@@ -319,7 +320,7 @@ func TestSkipSectionHeaderByContent(t *testing.T) {
 // This helps in cases where the processed Markdown is slightly different from the expected Markdown
 // due to goldmark making some (insignificant to the final HTML) changes when parsing and rendering.
 // We convert the expected Markdown and the actual test Markdown output to HTML and verify if they are equal.
-func equalHTML(expected, actual string) bool {
+func assertEqualHTML(t *testing.T, expected, actual string) bool {
 	mdRenderer := goldmark.New()
 	var expectedBuf bytes.Buffer
 	err := mdRenderer.Convert([]byte(expected), &expectedBuf)
@@ -331,8 +332,5 @@ func equalHTML(expected, actual string) bool {
 	if err != nil {
 		panic(err)
 	}
-	if expectedBuf.String() == outputBuf.String() {
-		return true
-	}
-	return false
+	return assert.Equal(t, expectedBuf.String(), outputBuf.String())
 }
