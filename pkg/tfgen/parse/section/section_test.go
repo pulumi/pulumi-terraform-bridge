@@ -141,10 +141,10 @@ foo
 			}
 			var b bytes.Buffer
 			gm := goldmark.New(
-				goldmark.WithExtensions(section.Extension(499)),
+				goldmark.WithExtensions(section.Extension),
 				goldmark.WithParserOptions(
 					parser.WithASTTransformers(
-						util.Prioritized(walkTransformer(walk), 500),
+						util.Prioritized(walkTransformer(walk), 902),
 					),
 				),
 				goldmark.WithRenderer(markdown.NewRenderer()),

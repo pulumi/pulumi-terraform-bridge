@@ -28,13 +28,17 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/parse/section"
 )
 
+// TFRegistryExtension is the catch-all extension to prepare TF registry markdown to be
+// parsed.
+//
+// It should always be used when parsing TF markdown in the bridge.
 var TFRegistryExtension goldmark.Extender = tfRegistryExtension{}
 
 type tfRegistryExtension struct{}
 
 func (s tfRegistryExtension) Extend(md goldmark.Markdown) {
 	extension.GFM.Extend(md)
-	section.Extension(901).Extend(md)
+	section.Extension.Extend(md)
 	md.Parser().AddOptions(
 		parser.WithASTTransformers(
 			util.Prioritized(recognizeHeaderAfterHTML{}, 902),

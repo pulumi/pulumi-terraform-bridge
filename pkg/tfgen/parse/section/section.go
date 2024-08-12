@@ -12,6 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// package section provides an extension to goldmark: a section.
+//
+// A section is a header and any content it includes (nesting). Sections render to their
+// contents, serving only as markers on [goldmark]'s parse tree.
 package section
 
 import (
@@ -23,23 +27,21 @@ import (
 	"github.com/yuin/goldmark/util"
 )
 
-var _ goldmark.Extender = section{}
+var Extension goldmark.Extender = section{}
 
-func Extension(priority int) goldmark.Extender {
-	return section{priority}
-}
+const priority = 901
 
 var Kind = ast.NewNodeKind("Section")
 
-type section struct{ priority int }
+type section struct{}
 
 func (s section) Extend(md goldmark.Markdown) {
 	md.Parser().AddOptions(parser.WithASTTransformers(
-		util.Prioritized(sectionParser{}, s.priority),
+		util.Prioritized(sectionParser{}, priority),
 	))
 
 	md.Renderer().AddOptions(renderer.WithNodeRenderers(
-		util.Prioritized(sectionRenderer{}, s.priority),
+		util.Prioritized(sectionRenderer{}, priority),
 	))
 }
 
