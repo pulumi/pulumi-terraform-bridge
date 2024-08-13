@@ -825,8 +825,11 @@ func TestTypeCheckingMistypedBooleansWithUnknowns(t *testing.T) {
 		},
 	}, newTestProviderOptions{})
 
+	reason := "expected boolean type, got string type. " +
+		"Examine values at 'my-ecs-service.networkConfiguration.assignPublicIp'."
+
 	// networkConfiguration.assignPublicIp has the wrong type intentionally.
-	replay.ReplaySequence(t, p, `
+	replay.ReplaySequence(t, p, fmt.Sprintf(`
 	[
 	  {
 	    "method": "/pulumirpc.ResourceProvider/Check",
@@ -843,10 +846,10 @@ func TestTypeCheckingMistypedBooleansWithUnknowns(t *testing.T) {
 	    },
 	    "response": {
               "inputs": "*",
-              "failures": [{"reason": "expected boolean type, got string type. Examine values at 'my-ecs-service.networkConfiguration.assignPublicIp'."}]
+              "failures": [{"reason": "%s"}]
 	    }
 	  }
-	]`)
+	]`, reason))
 }
 
 func nilSink() diag.Sink {
