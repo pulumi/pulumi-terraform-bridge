@@ -16,6 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
@@ -775,6 +776,77 @@ func TestValidateConfig(t *testing.T) {
 	]
 	`)
 	})
+}
+
+// Assert that passing strings into fields of boolean type triggers a type-checking error message, even if some of the
+// resource inputs are unknown. See also: https://github.com/pulumi/pulumi-aws/issues/4342
+func TestTypeCheckingMistypedBooleansWithUnknowns(t *testing.T) {
+	t.Setenv("PULUMI_ERROR_TYPE_CHECKER", "true")
+	ctx := context.Background()
+	resourceID := "aws_ecs_service"
+	resourceSchema := map[string]*schema.Schema{
+		"network_configuration": {
+			Type:     schema.TypeList,
+			Optional: true,
+			MaxItems: 1,
+			Elem: &schema.Resource{
+				Schema: map[string]*schema.Schema{
+					"assign_public_ip": {
+						Type:     schema.TypeBool,
+						Optional: true,
+						Default:  false,
+					},
+					"subnets": {
+						Type:     schema.TypeSet,
+						Required: true,
+						Elem:     &schema.Schema{Type: schema.TypeString},
+					},
+				},
+			},
+		},
+	}
+
+	res := &schema.Resource{
+		Schema: resourceSchema,
+	}
+
+	resMap := map[string]*schema.Resource{resourceID: res}
+
+	schemaProvider := &schema.Provider{ResourcesMap: resMap}
+
+	p := newTestProvider(ctx, tfbridge.ProviderInfo{
+		P:              shimv2.NewProvider(schemaProvider),
+		Name:           "aws",
+		ResourcePrefix: "aws",
+		Resources: map[string]*info.Resource{
+			resourceID: {
+				Tok: "aws:ecs/service:Service",
+			},
+		},
+	}, newTestProviderOptions{})
+
+	// networkConfiguration.assignPublicIp has the wrong type intentionally.
+	replay.ReplaySequence(t, p, `
+	[
+	  {
+	    "method": "/pulumirpc.ResourceProvider/Check",
+	    "request": {
+	      "urn": "urn:pulumi:dev::aws-4342::aws:ecs/service:Service::my-ecs-service",
+	      "olds": {},
+	      "news": {
+		"networkConfiguration": {
+		  "assignPublicIp": "DISABLED",
+		  "subnets": "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
+		}
+	      },
+	      "randomSeed": "7WaseITzLnMm7TGBDCYIbSUvAatQKt0rkmDuHUXxR9U="
+	    },
+	    "response": {
+              "inputs": "*",
+              "failures": [{"reason": "expected boolean type, got string type. Examine values at 'my-ecs-service.networkConfiguration.assignPublicIp'."}]
+	    }
+	  }
+	]`)
 }
 
 func nilSink() diag.Sink {
