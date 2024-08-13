@@ -362,7 +362,7 @@ var (
 	)
 
 	descriptionRegexp = regexp.MustCompile(
-		"\\s*`([a-z0-9_]*)`\\s*(\\([a-zA-Z]*\\)\\s*)?\\s*[:–-]?\\s*(\\([^\\)]*\\)[-\\s]*)?(.*)",
+		"^\\s*`([a-z0-9_]*)`\\s*(\\([a-zA-Z]*\\)\\s*)?\\s*[:–-]?\\s*(\\([^)]*\\)[-\\s]*)?((.|\n)*)",
 	)
 
 	bulletPointRegexStr       = "^\\s*[*+-]"          // matches any bullet point-like character
@@ -800,92 +800,6 @@ func (p *tfMarkdownParser) parseSchemaWithNestedSections(subsection []string) {
 	parseTopLevelSchemaIntoDocs(&p.ret, topLevelSchema, p.sink.warn)
 }
 
-type markdownLineInfo struct {
-	name, desc string
-	isFound    bool
-}
-
-type bulletListEntry struct {
-	name  string
-	index int
-}
-
-// trackBulletListIndentation looks at the index of the bullet list marker ( `*`, `-` or `+`) in a docs line and
-// compares it to a collection that tracks the level of list nesting by comparing to the previous list entry's nested
-// level (if any).
-// Note that this function only looks at the placement of the bullet list marker, and assumes same-level list markers
-// to be in the same location in each line. This is not necessarily the case for Markdown, which considers a range of
-// locations within 1-4 whitespace characters, as well as considers the start index of the text following the bullet
-// point. If and when this becomes an issue during docs parsing, we may consider adding some of those rules here.
-// Read more about nested lists in GitHub-flavored Markdown:
-// https://docs.github.com/en/get-started/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax#nested-lists
-//
-//nolint:lll
-func trackBulletListIndentation(line, name string, tracker []bulletListEntry) []bulletListEntry {
-
-	listMarkerLocation := listMarkerRegex.FindStringIndex(line)
-	contract.Assertf(len(listMarkerLocation) == 2,
-		fmt.Sprintf("Expected to find bullet list marker in line %s", line))
-	listMarkerIndex := listMarkerLocation[0]
-
-	// If our tracker is empty, we are at list nested level 0.
-	if len(tracker) == 0 {
-		newEntry := bulletListEntry{
-			name:  name,
-			index: listMarkerIndex,
-		}
-		return append(tracker, newEntry)
-	}
-	// Always compare to last entry in tracker
-	lastListEntry := tracker[len(tracker)-1]
-
-	// if current line's listMarkerIndex is greater than the tracker's last entry's listMarkerIndex,
-	// make a new tracker entry and push it on there with all the info.
-	if listMarkerIndex > lastListEntry.index {
-		name = lastListEntry.name + "." + name
-		newEntry := bulletListEntry{
-			name:  name,
-			index: listMarkerIndex,
-		}
-		return append(tracker, newEntry)
-	}
-	// if current line's listMarkerIndex is the same as the last entry's, we're at the same level.
-	if listMarkerIndex == lastListEntry.index {
-		// Replace the last entry in our tracker
-		replaceEntry := bulletListEntry{
-			index: listMarkerIndex,
-		}
-		if len(tracker) == 1 {
-			replaceEntry.name = name
-		} else {
-			// use the penultimate entry name to build current name
-			replaceName := tracker[(len(tracker)-2)].name + "." + name
-			replaceEntry.name = replaceName
-		}
-		return append(tracker[:len(tracker)-1], replaceEntry)
-	}
-
-	// The current line's listMarkerIndex is smaller that the previous entry's.
-	// Pop off the latest entry, and retry to see if the next previous entry is a match.
-	return trackBulletListIndentation(line, name, tracker[:len(tracker)-1])
-}
-
-// parseArgFromMarkdownLine takes a line of Markdown and attempts to parse it for a Terraform argument and its
-// description. It returns a struct containing the name and description of the arg, and whether an arg was found.
-func parseArgFromMarkdownLine(line string) markdownLineInfo {
-	matches := argumentBulletRegexp.FindStringSubmatch(line)
-	q.Q(matches)
-	var parsed markdownLineInfo
-	if len(matches) > 4 {
-		parsed.name = matches[1]
-		parsed.desc = matches[4]
-		parsed.isFound = true
-	}
-	return parsed
-}
-
-var genericNestedRegexp = regexp.MustCompile("supports? the following:")
-
 var nestedObjectRegexps = []*regexp.Regexp{
 	// For example:
 	// s3_bucket.html.markdown: "The `website` object supports the following:"
@@ -1025,7 +939,6 @@ func getNestedBlockNames(line string) []string {
 	return nestedBlockNames
 }
 
-// TODO: transform subsection into a markdown node -join on newline & parse
 func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 	// Get a "document"
 	documentBefore := strings.Join(subsection, "\n")
@@ -1044,229 +957,161 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 	gm := goldmark.New(goldmark.WithExtensions(parse.TFRegistryExtension))
 
 	astNode := gm.Parser().Parse(gmtext.NewReader(docBytes))
-	var astNesteds []string
-	var docspath string
-	//var isFromHeading bool
+	var paths []string
+	var writeList bool
+
 	gmast.Walk(astNode, func(node gmast.Node, enter bool) (gmast.WalkStatus, error) {
-		// here goes the detection logic
+		// When we find a list item, we check if it is an argument entry.
 		if node.Kind().String() == "ListItem" {
-			// track nestedness
 			if enter {
-				// the list item has a text node, which may have a code span node.
 				// For any list item, we want to check if it opens with a code span.
 				// If so, chances are we have a potential entry for our nested docs map.
 				// It will be list item --> Text --> Code Span, so the grandchild of the list item.
-				// TODO: still must filter for actual TF entries, AKA this can't catch all lists, to avoid regression
-
-				nodeKind := node.FirstChild().FirstChild().Kind().String()
+				// TODO: still must filter for actual TF entries, AKA this shouldn't catch all lists, to avoid regression
+				codeSpanNode := node.FirstChild().FirstChild()
+				nodeKind := codeSpanNode.Kind().String()
 				if nodeKind == "CodeSpan" {
-					codeSpanNode := node.FirstChild().FirstChild()
-					bulletListItem := codeSpanNode.Text(docBytes)
-					// TODO: docspath must be a map because people overload the titles with multiple fields
-					if docspath == "" {
-						//q.Q("HERE")
-						docspath = string(bulletListItem)
-					} else {
-						docspath = docspath + "." + string(bulletListItem)
+					codeSpanItem := codeSpanNode.Text(docBytes)
+					q.Q(string(codeSpanItem))
+
+					// The list item's first child is a text block.
+					// For most of our entries, this is all we need.
+					desc := writeLines(node.FirstChild().Lines(), docBytes)
+
+					// Extract the description from the written lines.
+					// We will use a regex match for now, as we did before.
+					// TODO: maybe replace regex
+					descs := descriptionRegexp.FindStringSubmatch(desc)
+
+					//q.Q(descs)
+					if len(descs) <= 4 {
+						writeList = true
 					}
+					//q.Q(paths)
+					// add to docspaths if writeList is false
+					if !writeList {
+						if len(paths) == 0 {
+							paths = append(paths, string(codeSpanItem))
+						} else {
+							var newPaths []string
+							for _, p := range paths {
+								p = p + "." + string(codeSpanItem)
+								newPaths = append(newPaths, p)
+							}
+							paths = newPaths
+						}
+					}
+
+					// Read results into the return argument docs. When we're reading subfields for multiple fields,
+					// the description is still the same as discovered from the node's lines.
+					for _, path := range paths {
+						if !writeList {
+							ret.Arguments[docsPath(path)] = &argumentDocs{descs[4]}
+						} else {
+							q.Q("hit else; do not append")
+							ret.Arguments[docsPath(path)] = &argumentDocs{"PLEASE SHOW UP"}
+							// we have a non-matching argument. We don't want to do anything with this.
+						}
+					}
+					//q.Q("listitem enter: ", paths)
 				}
-				// TODO: now get the description, somehow. Idon't know which node this is, ugh
-				beschreibung := node.FirstChild().Text(docBytes)
-				q.Q(string(beschreibung))
-
-				lines := node.FirstChild().Lines()
-				q.Q(lines)
-				var desc bytes.Buffer
-				for i := 0; i < lines.Len(); i++ {
-					line := lines.At(i)
-					desc.Write(line.Value(docBytes))
-				}
-				// TODO: this does give me the whole bullet point, which is great. Need to clean it up a bit...
-
-				q.Q(desc.String())
-				// Extract the description from the line item. We will use a regex match here.
-				descs := descriptionRegexp.FindStringSubmatch(desc.String())
-				q.Q(descs[4])
-
-				// Now... with our new info - can we read out the return info?
-				ret.Arguments[docsPath(docspath)] = &argumentDocs{descs[4]}
-
 			} else {
-				// we are hitting this node on our way back. Append to nested docs paths.
-				astNesteds = append(astNesteds, docspath)
-				// Cut off last field in docsPath to remove nestedness
-				docspathIndex := strings.LastIndex(
-					docspath, ".")
-				if docspathIndex > 0 {
-					docspath = docspath[:docspathIndex]
-				} else {
-					docspath = ""
-				}
-				q.Q(astNesteds)
-				q.Q(docspath)
+				// we are hitting this node on our way back.
+				// Cut off last field in docs paths to remove nestedness
+				var newpaths []string
+				for _, p := range paths {
+					pathIndex := strings.LastIndex(
+						p, ".")
+					if pathIndex > 0 {
+						p = p[:pathIndex]
+						newpaths = append(newpaths, p)
+					}
 
+				}
+				paths = newpaths
+				//q.Q("list items leave: ", paths)
+				//q.Q(astNesteds)
 			}
 		}
 		if node.Kind().String() == "Section" {
 			// A section's first child is its heading.
+			// In this part of the upstream document, a heading generally means a subresource name.
 			// TODO: assert that it is of type Heading.
-			// track nestedness
 			if enter {
 				// The text next to an arg reference's section header is assumed to be a resource field.
 				headerItem := node.FirstChild().Text(docBytes)
-				// add to docspath
-				if docspath == "" {
-					docspath = string(headerItem)
+				// add to docs paths
+				if len(paths) == 0 {
+					paths = append(paths, string(headerItem))
 				} else {
-					docspath = docspath + "." + string(headerItem)
+					var newPaths []string
+					for _, p := range paths {
+						p = p + "." + string(headerItem)
+						newPaths = append(newPaths, p)
+					}
+					paths = newPaths
 				}
-				//isFromHeading = true
-
+				//q.Q("headers enter: ", paths)
 			} else {
 				// We are on our way back up the tree.
 				// Because the headers are subsections of already found docs, we never want to actually include the
 				// header item in our astNested list by itself - it should already exist with its own description.
 
 				// Cut off last field in docsPath to remove nestedness
-
-				docspathIndex := strings.LastIndex(
-					docspath, ".")
-				if docspathIndex > 0 {
-					docspath = docspath[:docspathIndex]
-				} else {
-					docspath = ""
+				// TODO: refactor, this is the same logic as above.
+				var newpaths []string
+				for _, p := range paths {
+					pathIndex := strings.LastIndex(
+						p, ".")
+					if pathIndex > 0 {
+						p = p[:pathIndex]
+					}
+					newpaths = append(newpaths, p)
 				}
-
-				q.Q("from heading:", astNesteds)
-				q.Q("from heading:", docspath)
+				paths = newpaths
+				//q.Q("headers leave: ", paths)
+				//q.Q("from heading:", astNesteds)
 			}
 		}
-		//case *gmast.Heading:
-		//	// this is where we want to look at the header title
-		//	headerText := child.Text(docBytes)
-		//	q.Q(string(headerText))
-		//	// TODO: find the resource in the header text
-		//	case section.Section:
-		//
-		//
-		//default:
-		//	//q.Q("defulat")
-		//}
+		// Additionally, there are top-level paragraphs that can contain information about nested docs,
+		// such as "The `foo_bar` object supports the following:".
+		if node.Kind().String() == "Paragraph" && node.Parent().Kind().String() == "Document" {
+			if enter {
+				// We believe that all of the fields mentioned in paragraphs are able to be treated as top-level, i.e.
+				// they're of the format "(The) `foo` [field|resource] supports the following:", or they already
+				// include the nested path as in "(The) `foo.bar` [field|resource] supports the following:".
+				// This means that at any detection of a top-level Paragraph node, we re-set the docsPath to "".
+				paths = []string{}
+				paragraph := writeLines(node.Lines(), docBytes)
+				//q.Q(paragraph.String())
+				// Check if our paragraph matches any of the nested object signifiers. See `nestedObjectRegexps`.
+				nestedBlockNames := getNestedBlockNames(paragraph)
+				//q.Q(nestedBlockNames)
+				if len(nestedBlockNames) > 0 {
+					// write to docspath
+					paths = nestedBlockNames
+					//q.Q("paragraph: ", paths)
+				}
+			} else {
+				// Because descriptions nested under paragraphs are not children, but rather siblings,
+				// we do not manipulate the docspath level at this point. Continue walking.
+				return gmast.WalkContinue, nil
+			}
+		}
 		return gmast.WalkContinue, nil
 	})
+}
 
-	var buf bytes.Buffer
-	// Convert parses the source, applies transformers, and renders output to buf
-	err := gm.Convert(docBytes, &buf)
-	if err != nil {
-		panic(err)
+func writeLines(lines *gmtext.Segments, docBytes []byte) string {
+	var desc bytes.Buffer
+	for i := 0; i < lines.Len(); i++ {
+		//TODO: actually don't write lines that are the name itself and the (Optional) nonsense!
+		line := lines.At(i)
+		desc.Write(line.Value(docBytes))
+		//q.Q(desc.String())
 	}
-	if documentBefore != string(docBytes) {
-
-		q.Q(string(docBytes))
-		panic("Not equal yet")
-	}
-
-	//// Variable to remember the last argument we found.
-	//var lastMatch string
-	//// Collection to hold all arguments that headline a nested description.
-	//var nesteds []docsPath
-	//
-	//addNewHeading := func(name, desc, line string) {
-	//	// found a property bullet, extract the name and description
-	//	if len(nesteds) > 0 {
-	//		for _, nested := range nesteds {
-	//			// We found this line within a nested field. We should record it as such.
-	//			if ret.Arguments[nested] == nil {
-	//				totalArgumentsFromDocs++
-	//			}
-	//			ret.Arguments[nested.join(name)] = &argumentDocs{desc}
-	//		}
-	//
-	//	} else {
-	//		if genericNestedRegexp.MatchString(line) {
-	//			return
-	//		}
-	//		ret.Arguments[docsPath(name)] = &argumentDocs{description: desc}
-	//		totalArgumentsFromDocs++
-	//	}
-	//}
-	//// This function adds the current line as a description to the last matched resource,
-	////in cases where there's no resource match found on this line.
-	////It represents a multi-line description for a field.
-	//extendExistingHeading := func(line string) {
-	//	if len(nesteds) > 0 {
-	//		for _, nested := range nesteds {
-	//			line = "\n" + strings.TrimSpace(line)
-	//			ret.Arguments[nested.join(lastMatch)].description += line
-	//		}
-	//	} else {
-	//		if genericNestedRegexp.MatchString(line) {
-	//			lastMatch = ""
-	//			nesteds = []docsPath{}
-	//			return
-	//		}
-	//		line = "\n" + strings.TrimSpace(line)
-	//		ret.Arguments[docsPath(lastMatch)].description += line
-	//	}
-	//}
-	//
-	//// hadSpace tells us if the previous line was blank.
-	//var hadSpace bool
-	//
-	//// bulletListTracker is a stack-like collection that tracks the level of nesting for a bulleted list with
-	//// nested lists. The name of the topmost entry represents the nested docs path for the current line.
-	//var bulletListTracker []bulletListEntry
-	//
-	//for _, line := range subsection {
-	//	parsedArg := parseArgFromMarkdownLine(line)
-	//	matchFound := parsedArg.isFound
-	//	if matchFound { // We have found a new property bullet point.
-	//		desc := parsedArg.desc
-	//		bulletListTracker = trackBulletListIndentation(line, parsedArg.name, bulletListTracker)
-	//		name := bulletListTracker[len(bulletListTracker)-1].name
-	//		lastMatch = name
-	//		addNewHeading(name, desc, line)
-	//
-	//	} else if strings.TrimSpace(line) == "---" {
-	//		// --- is a markdown section break. This probably indicates the
-	//		// section is over, but we take it to mean that the current
-	//		// heading is over.
-	//		lastMatch = ""
-	//		bulletListTracker = nil
-	//	} else if nestedBlockCurrentLine := getNestedBlockNames(line); hadSpace && len(nestedBlockCurrentLine) > 0 {
-	//		// This tells us if there's a resource that is about to have subfields (nesteds)
-	//		// in subsequent lines.
-	//		//empty nesteds
-	//		nesteds = []docsPath{}
-	//		for _, item := range nestedBlockCurrentLine {
-	//			nesteds = append(nesteds, docsPath(item))
-	//		}
-	//		lastMatch = ""
-	//		bulletListTracker = nil
-	//	} else if !isBlank(line) && lastMatch != "" {
-	//		// This appends the current line to the previous match's description.
-	//		extendExistingHeading(line)
-	//
-	//	} else if nestedBlockCurrentLine := getNestedBlockNames(line); len(nestedBlockCurrentLine) > 0 {
-	//		// This tells us if there's a resource that is about to have subfields (nesteds)
-	//		// in subsequent lines.
-	//		//empty nesteds
-	//		nesteds = []docsPath{}
-	//		for _, item := range nestedBlockCurrentLine {
-	//			nesteds = append(nesteds, docsPath(item))
-	//		}
-	//		lastMatch = ""
-	//		bulletListTracker = nil
-	//	} else if lastMatch != "" {
-	//		extendExistingHeading(line)
-	//	}
-	//	hadSpace = isBlank(line)
-	//}
-	//
-	//for _, v := range ret.Arguments {
-	//	v.description = strings.TrimRightFunc(v.description, unicode.IsSpace)
-	//}
+	q.Q(desc.String())
+	return desc.String()
 }
 
 func parseAttributesReferenceSection(subsection []string, ret *entityDocs) {
