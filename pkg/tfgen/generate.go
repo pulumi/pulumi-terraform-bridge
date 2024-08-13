@@ -164,7 +164,7 @@ func (l Language) emitSDK(pkg *pschema.Package, info tfbridge.ProviderInfo, root
 		if err != nil && !os.IsNotExist(err) {
 			return nil, err
 		}
-		return nodejsgen.GeneratePackage(tfgen, pkg, extraFiles, nil)
+		return nodejsgen.GeneratePackage(tfgen, pkg, extraFiles, nil, false)
 	case Python:
 		if psi := info.Python; psi != nil && psi.Overlay != nil {
 			extraFiles, err = getOverlayFiles(psi.Overlay, ".py", root)
