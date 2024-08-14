@@ -477,7 +477,7 @@ func (g *Generator) makeObjectPropertyType(typePath paths.TypePath,
 		propertyInfos = info.Fields
 	}
 
-	// Look up the parent path and prepend it to the docs path, to allow for precise lookup in the entityDOcs.
+	// Look up the parent path and prepend it to the docs path, to allow for precise lookup in the entityDocs.
 	fullDocsPath := ""
 	currentPath := typePath
 	for {
