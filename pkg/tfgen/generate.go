@@ -397,14 +397,8 @@ func (g *Generator) makePropertyType(typePath paths.TypePath,
 		return g.makeObjectPropertyType(typePath, blockType, elemInfo, out, entityDocs)
 	}
 
-	// IsMaxItemOne lists and sets are flattened, transforming List[T] to T. Detect if this is the case.
-	flatten := false
-	switch sch.Type() {
-	case shim.TypeList, shim.TypeSet:
-		if tfbridge.IsMaxItemsOne(sch, info) {
-			flatten = true
-		}
-	}
+	// IsMaxItemOne lists and sets are flattened, transforming List[T] or Set[T] to T. Detect if this is the case.
+	flatten := tfbridge.IsMaxItemsOne(sch, info)
 
 	// The remaining cases are collections, List[T], Set[T] or Map[T], and recursion needs NewElementPath except for
 	// flattening that stays at the current path.
