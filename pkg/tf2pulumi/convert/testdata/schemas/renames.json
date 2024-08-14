@@ -28,7 +28,7 @@
     },
     "renames:index/resourceTheResource:resourceTheResource": {
       "properties": {
-        "innerString": {
+        "theInnerString": {
           "type": "string"
         }
       },

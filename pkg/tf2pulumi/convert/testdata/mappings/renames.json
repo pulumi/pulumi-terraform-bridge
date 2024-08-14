@@ -82,9 +82,11 @@
                 },
                 "a_resource": {
                     "name": "theResource",
-                    "fields": {
-                        "inner_string": {
-                            "name": "theInnerString"
+                    "element": {
+                        "fields": {
+                            "inner_string": {
+                                "name": "theInnerString"
+                            }
                         }
                     }
                 },

@@ -1,7 +1,7 @@
 resource aResource "renames:index/index:resource" {
     theNumber = 1
     theResource = {
-        theInnerString = "hello"
+        innerString = "hello"
     }
 }
 output someOutputA {
@@ -34,6 +34,6 @@ options {
 }
     theNumber = 1
     theResource = {
-        theInnerString = "hello"
+        innerString = "hello"
     }
 }
