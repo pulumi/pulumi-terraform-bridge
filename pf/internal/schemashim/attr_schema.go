@@ -124,6 +124,18 @@ func (*attrSchema) ExactlyOneOf() []string {
 	panic("ExactlyOneOf() should not be called during schema generation")
 }
 
+func (*attrSchema) AtLeastOneOf() []string {
+	panic("AtLeastOneOf() should not be called during schema generation")
+}
+
+func (*attrSchema) RequiredWith() []string {
+	panic("RequiredWith() should not be called during schema generation")
+}
+
+func (*attrSchema) ConfigMode() shim.ConfigModeType {
+	return 0
+}
+
 func (s *attrSchema) Deprecated() string {
 	return s.attr.GetDeprecationMessage()
 }

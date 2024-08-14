@@ -15,6 +15,7 @@
 package tfbridge
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"flag"
@@ -41,6 +42,8 @@ func Main(pkg string, version string, prov ProviderInfo, pulumiSchema []byte) {
 	flags.SetOutput(io.Discard)
 
 	dumpInfo := flags.Bool("get-provider-info", false, "dump provider info as JSON to stdout")
+	dumpTFSchemaCSVPath := flags.String(
+		"dump-tf-resource-csv-path", "", "dump Terraform resource CSV to the specified path")
 	providerVersion := flags.Bool("version", false, "get built provider version")
 
 	err := flags.Parse(os.Args[1:])
@@ -59,6 +62,32 @@ func Main(pkg string, version string, prov ProviderInfo, pulumiSchema []byte) {
 		if err := json.NewEncoder(os.Stdout).Encode(MarshalProviderInfo(&prov)); err != nil {
 			cmdutil.ExitError(err.Error())
 		}
+		os.Exit(0)
+	}
+
+	if *dumpTFSchemaCSVPath != "" {
+		resBuf := &bytes.Buffer{}
+		schBuf := &bytes.Buffer{}
+		err := prov.GetCSVSchema(prov.Name, prov.Version, schBuf, resBuf)
+		if err != nil {
+			cmdutil.ExitError(err.Error())
+		}
+
+		resPath := fmt.Sprintf("%s/resources.csv", *dumpTFSchemaCSVPath)
+		schPath := fmt.Sprintf("%s/schemas.csv", *dumpTFSchemaCSVPath)
+
+		if err := os.MkdirAll(*dumpTFSchemaCSVPath, 0o700); err != nil {
+			cmdutil.ExitError(err.Error())
+		}
+
+		if err := os.WriteFile(resPath, resBuf.Bytes(), 0o600); err != nil {
+			cmdutil.ExitError(err.Error())
+		}
+
+		if err := os.WriteFile(schPath, schBuf.Bytes(), 0o600); err != nil {
+			cmdutil.ExitError(err.Error())
+		}
+
 		os.Exit(0)
 	}
 

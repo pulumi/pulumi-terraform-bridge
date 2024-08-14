@@ -109,6 +109,18 @@ func (*typeSchema) ExactlyOneOf() []string {
 	panic("ExactlyOneOf() should not be called during schema generation")
 }
 
+func (*typeSchema) AtLeastOneOf() []string {
+	panic("AtLeastOneOf() should not be called during schema generation")
+}
+
+func (*typeSchema) RequiredWith() []string {
+	panic("RequiredWith() should not be called during schema generation")
+}
+
+func (*typeSchema) ConfigMode() shim.ConfigModeType {
+	return 0
+}
+
 func (*typeSchema) Removed() string { panic("Removed() should not be called during schema generation") }
 
 func (*typeSchema) SetElement(config interface{}) (interface{}, error) {

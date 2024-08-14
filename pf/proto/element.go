@@ -22,8 +22,10 @@ import (
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
-var _ = shim.Schema(element{})
-var _ = shim.Resource(elementObject{})
+var (
+	_ = shim.Schema(element{})
+	_ = shim.Resource(elementObject{})
+)
 
 type element struct {
 	typ      tftypes.Type
@@ -56,7 +58,6 @@ func (e element) Type() shim.ValueType {
 		panic(fmt.Sprintf("UNKNOWN TYPE of %#v", t)) // TODO: Remove for release
 		// return shim.TypeInvalid
 	}
-
 }
 
 func (e element) Elem() interface{} {
@@ -90,6 +91,9 @@ func (e element) MaxItems() int                               { return 0 }
 func (e element) MinItems() int                               { return 0 }
 func (e element) ConflictsWith() []string                     { return nil }
 func (e element) ExactlyOneOf() []string                      { return nil }
+func (e element) AtLeastOneOf() []string                      { return nil }
+func (e element) RequiredWith() []string                      { return nil }
+func (e element) ConfigMode() shim.ConfigModeType             { return 0 }
 func (e element) Deprecated() string                          { return "" }
 func (e element) Removed() string                             { return "" }
 func (e element) Sensitive() bool                             { return false }

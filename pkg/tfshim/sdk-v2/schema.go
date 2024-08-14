@@ -108,6 +108,18 @@ func (s v2Schema) ExactlyOneOf() []string {
 	return s.tf.ExactlyOneOf
 }
 
+func (s v2Schema) AtLeastOneOf() []string {
+	return s.tf.AtLeastOneOf
+}
+
+func (s v2Schema) RequiredWith() []string {
+	return s.tf.RequiredWith
+}
+
+func (s v2Schema) ConfigMode() shim.ConfigModeType {
+	return shim.ConfigModeType(s.tf.ConfigMode)
+}
+
 func (s v2Schema) Removed() string {
 	return ""
 }

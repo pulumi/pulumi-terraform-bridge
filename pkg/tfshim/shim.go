@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"time"
+
+	sdkv2schema "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
 type ResourceConfig interface {
@@ -87,6 +89,35 @@ func (i ValueType) String() string {
 	}
 }
 
+func (i ValueType) MarshalText() ([]byte, error) {
+	return []byte(i.String()), nil
+}
+
+type ConfigModeType int
+
+func (c ConfigModeType) String() string {
+	switch c {
+	case ConfigModeType(sdkv2schema.SchemaConfigModeAuto):
+		return "auto"
+	case ConfigModeType(sdkv2schema.SchemaConfigModeAttr):
+		return "attr"
+	case ConfigModeType(sdkv2schema.SchemaConfigModeBlock):
+		return "block"
+	default:
+		return "unknown"
+	}
+}
+
+func (c ConfigModeType) MarshalText() ([]byte, error) {
+	return []byte(c.String()), nil
+}
+
+type SchemaExtraFields struct {
+	ConfigMode   ConfigModeType
+	AtLeastOneOf []string
+	RequiredWith []string
+}
+
 type SchemaDefaultFunc func() (interface{}, error)
 
 type SchemaStateFunc func(interface{}) string
@@ -139,9 +170,12 @@ type Schema interface {
 	MinItems() int
 	ConflictsWith() []string
 	ExactlyOneOf() []string
+	AtLeastOneOf() []string
+	RequiredWith() []string
 	Deprecated() string
 	Removed() string
 	Sensitive() bool
+	ConfigMode() ConfigModeType
 
 	SetElement(config interface{}) (interface{}, error)
 	SetHash(v interface{}) int

@@ -92,6 +92,15 @@ func (s *attributeSchema) AtLeastOneOf() []string {
 	return nil
 }
 
+func (s attributeSchema) RequiredWith() []string {
+	return nil
+}
+
+func (s attributeSchema) ConfigMode() shim.ConfigModeType {
+	return 0
+}
+
+
 func (s *attributeSchema) Removed() string {
 	return ""
 }

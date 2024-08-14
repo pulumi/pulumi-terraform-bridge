@@ -141,6 +141,18 @@ func (s v1Schema) SetHash(v interface{}) int {
 	return code
 }
 
+func (s v1Schema) AtLeastOneOf() []string {
+	return s.tf.AtLeastOneOf
+}
+
+func (s v1Schema) RequiredWith() []string {
+	return nil
+}
+
+func (s v1Schema) ConfigMode() shim.ConfigModeType {
+	return shim.ConfigModeType(s.tf.ConfigMode)
+}
+
 type v1SchemaMap map[string]*schema.Schema
 
 func NewSchemaMap(m map[string]*schema.Schema) shim.SchemaMap {

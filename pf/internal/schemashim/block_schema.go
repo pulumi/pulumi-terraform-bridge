@@ -139,6 +139,18 @@ func (*blockSchema) ExactlyOneOf() []string {
 	panic("ExactlyOneOf() should not be called during schema generation")
 }
 
+func (*blockSchema) AtLeastOneOf() []string {
+	panic("ConflictsWith() should not be called during schema generation")
+}
+
+func (*blockSchema) RequiredWith() []string {
+	panic("RequiredWith() should not be called during schema generation")
+}
+
+func (*blockSchema) ConfigMode() shim.ConfigModeType {
+	return 0
+}
+
 func (*blockSchema) SetElement(config interface{}) (interface{}, error) {
 	panic("SetElement() should not be called during schema generation")
 }

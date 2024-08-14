@@ -107,6 +107,18 @@ func (s SchemaShim) ExactlyOneOf() []string {
 	return s.V.ExactlyOneOf
 }
 
+func (s SchemaShim) AtLeastOneOf() []string {
+	return nil
+}
+
+func (s SchemaShim) RequiredWith() []string {
+	return nil
+}
+
+func (s SchemaShim) ConfigMode() shim.ConfigModeType {
+	return 0
+}
+
 func (s SchemaShim) Removed() string {
 	return s.V.Removed
 }

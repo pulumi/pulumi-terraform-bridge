@@ -82,7 +82,6 @@ func (a attribute) Elem() interface{} {
 		}
 	}
 	return element{a.attr.ValueType(), a.Optional()}.Elem()
-
 }
 
 // Defaults are applied in the provider binary, not here
@@ -94,6 +93,9 @@ func (a attribute) DefaultValue() (interface{}, error)  { return nil, nil }
 func (a attribute) StateFunc() shim.SchemaStateFunc { return nil }
 func (a attribute) ConflictsWith() []string         { return nil }
 func (a attribute) ExactlyOneOf() []string          { return nil }
+func (a attribute) AtLeastOneOf() []string          { return nil }
+func (a attribute) RequiredWith() []string          { return nil }
+func (a attribute) ConfigMode() shim.ConfigModeType { return 0 }
 
 func (a attribute) SetElement(config interface{}) (interface{}, error) {
 	panic("UNIMPLIMENTED")
