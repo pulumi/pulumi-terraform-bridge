@@ -73,8 +73,7 @@ func (r *objectPseudoResource) Schema() shim.SchemaMap {
 }
 
 func (*objectPseudoResource) SchemaVersion() int {
-	panic("This is an Object type encoded as a shim.Resource, and " +
-		"SchemaVersion() should not be called on this entity during schema generation")
+	return 0
 }
 
 func (*objectPseudoResource) DeprecationMessage() string {

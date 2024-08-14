@@ -79,7 +79,7 @@ func (*typeSchema) MinItems() int      { return 0 }
 func (*typeSchema) Deprecated() string { return "" }
 
 func (*typeSchema) Default() interface{} {
-	panic("Default() should not be called during schema generation")
+	return nil
 }
 
 func (*typeSchema) DefaultFunc() shim.SchemaDefaultFunc {
@@ -102,19 +102,19 @@ func (*typeSchema) StateFunc() shim.SchemaStateFunc {
 }
 
 func (*typeSchema) ConflictsWith() []string {
-	panic("ConflictsWith() should not be called during schema generation")
+	return nil
 }
 
 func (*typeSchema) ExactlyOneOf() []string {
-	panic("ExactlyOneOf() should not be called during schema generation")
+	return nil
 }
 
 func (*typeSchema) AtLeastOneOf() []string {
-	panic("AtLeastOneOf() should not be called during schema generation")
+	return nil
 }
 
 func (*typeSchema) RequiredWith() []string {
-	panic("RequiredWith() should not be called during schema generation")
+	return nil
 }
 
 func (*typeSchema) ConfigMode() shim.ConfigModeType {

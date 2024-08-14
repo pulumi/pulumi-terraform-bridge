@@ -25,6 +25,7 @@ import (
 	"context"
 	"encoding/csv"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -881,10 +882,10 @@ func (m *MarshallableSchemaShim) Unmarshal() shim.Schema {
 }
 
 func (m *MarshallableSchemaShim) GetFlattenedSchema(
-	provider, version, path string, schemaRows *[][]string, resourceRows *[][]string,
+	provider, version, path string, tokenMapping map[string]string, schemaRows *[][]string, resourceRows *[][]string,
 ) {
 	if m.Elem != nil {
-		m.Elem.GetFlattenedSchema(provider, version, path+".Elem", schemaRows, resourceRows)
+		m.Elem.GetFlattenedSchema(provider, version, path+".Elem", tokenMapping, schemaRows, resourceRows)
 	}
 
 	row := []string{
@@ -968,11 +969,15 @@ func (r ResourceType) String() string {
 }
 
 func (m *MarshallableResourceShim) GetFlattenedSchema(
-	provider, version, path string, resourceType ResourceType, schemaRows *[][]string, resourceRows *[][]string,
+	provider, version, path string, resourceType ResourceType, tokenMapping map[string]string, schemaRows *[][]string, resourceRows *[][]string,
 ) {
 	for k, v := range m.Schema {
-		v.GetFlattenedSchema(provider, version, path+"."+k, schemaRows, resourceRows)
+		v.GetFlattenedSchema(provider, version, path+"."+k, tokenMapping, schemaRows, resourceRows)
 	}
+
+	// Find the token for the resource
+	resourceName := strings.Split(path, ".")[1]
+	token := tokenMapping[resourceName]
 
 	row := []string{
 		provider,
@@ -980,6 +985,7 @@ func (m *MarshallableResourceShim) GetFlattenedSchema(
 		path,
 		strconv.Itoa(m.SchemaVersion),
 		resourceType.String(),
+		token,
 	}
 
 	*resourceRows = append(*resourceRows, row)
@@ -1020,13 +1026,13 @@ func (m *MarshallableElemShim) Unmarshal() interface{} {
 }
 
 func (m *MarshallableElemShim) GetFlattenedSchema(
-	provider, version, path string, schemaRows *[][]string, resourceRows *[][]string,
+	provider, version, path string, tokenMapping map[string]string, schemaRows *[][]string, resourceRows *[][]string,
 ) {
 	if m.Schema != nil {
-		m.Schema.GetFlattenedSchema(provider, version, path, schemaRows, resourceRows)
+		m.Schema.GetFlattenedSchema(provider, version, path, tokenMapping, schemaRows, resourceRows)
 	}
 	if m.Resource != nil {
-		m.Resource.GetFlattenedSchema(provider, version, path, ResourceTypeNested, schemaRows, resourceRows)
+		m.Resource.GetFlattenedSchema(provider, version, path, ResourceTypeNested, tokenMapping, schemaRows, resourceRows)
 	}
 }
 
@@ -1090,26 +1096,34 @@ func (m *MarshallableProviderShim) Unmarshal() shim.Provider {
 	}).Shim()
 }
 
-func (m *MarshallableProviderShim) GetFlattenedSchema(provider, version string) (
+func (m *MarshallableProviderShim) GetFlattenedSchema(provider, version string, resourceTokenMapping, datasourceTokenMapping map[string]string) (
 	schemaRows [][]string, resourceRows [][]string,
 ) {
 	for k, v := range m.Schema {
-		v.GetFlattenedSchema(provider, version, provider+"."+k, &schemaRows, &resourceRows)
+		v.GetFlattenedSchema(provider, version, provider+"."+k, nil, &schemaRows, &resourceRows)
 	}
 	for k, v := range m.Resources {
-		v.GetFlattenedSchema(provider, version, provider+"."+k, ResourceTypeResource, &schemaRows, &resourceRows)
+		v.GetFlattenedSchema(provider, version, provider+"."+k, ResourceTypeResource, resourceTokenMapping, &schemaRows, &resourceRows)
 	}
 	for k, v := range m.DataSources {
-		v.GetFlattenedSchema(provider, version, provider+"."+k, ResourceTypeDataSource, &schemaRows, &resourceRows)
+		v.GetFlattenedSchema(provider, version, provider+"."+k, ResourceTypeDataSource, datasourceTokenMapping, &schemaRows, &resourceRows)
 	}
 	return
 }
 
 //nolint:errcheck
 func (m *MarshallableProviderShim) GetCSVSchema(
-	provider, version string, tokenMapping map[string]string, schemaOut, resourceOut *bytes.Buffer,
+	provider, version string,
+	resourceTokenMapping, datasourceTokenMapping map[string]string, schemaOut, resourceOut *bytes.Buffer,
 ) error {
-	schemaRows, resourceRows := m.GetFlattenedSchema(provider, version)
+	schemaRows, resourceRows := m.GetFlattenedSchema(provider, version, resourceTokenMapping, datasourceTokenMapping)
+	// Make the order deterministic
+	pathCmp := func(i, j int) bool {
+		return schemaRows[i][2] < schemaRows[j][2]
+	}
+	sort.Slice(schemaRows, pathCmp)
+	sort.Slice(resourceRows, pathCmp)
+
 	schemaWriter := csv.NewWriter(schemaOut)
 	resourceWriter := csv.NewWriter(resourceOut)
 
@@ -1145,11 +1159,6 @@ func (m *MarshallableProviderShim) GetCSVSchema(
 		schemaWriter.Write(row)
 	}
 	for _, row := range resourceRows {
-		// Find the token for the resource
-		path := row[2]
-		resourceName := strings.Split(path, ".")[1]
-		token := tokenMapping[resourceName]
-		row = append(row, token)
 		resourceWriter.Write(row)
 	}
 
@@ -1383,20 +1392,21 @@ func MarshalProvider(p *Provider) *MarshallableProvider {
 	return &info
 }
 
-func (info *Provider) GetCSVSchema(
+func (m *MarshallableProvider) GetCSVSchema(
 	provider, version string, schemaOut, resourceOut *bytes.Buffer,
 ) error {
-	tokenMapping := make(map[string]string)
+	resourceTokenMapping := make(map[string]string)
+	datasourceTokenMapping := make(map[string]string)
 
 	// Create a map of resource names to tokens
-	for k, v := range info.Resources {
-		tokenMapping[k] = v.Tok.String()
+	for k, v := range m.Resources {
+		resourceTokenMapping[k] = v.Tok.String()
 	}
-	for k, v := range info.DataSources {
-		tokenMapping[k] = v.Tok.String()
+	for k, v := range m.DataSources {
+		datasourceTokenMapping[k] = v.Tok.String()
 	}
 
-	return MarshalProviderShim(info.P).GetCSVSchema(provider, version, tokenMapping, schemaOut, resourceOut)
+	return m.Provider.GetCSVSchema(provider, version, resourceTokenMapping, datasourceTokenMapping, schemaOut, resourceOut)
 }
 
 // Unmarshal creates a mostly-=initialized Pulumi ProviderInfo value from the given MarshallableProviderInfo.

@@ -118,11 +118,11 @@ func (s *blockSchema) MaxItems() int      { return int(s.block.GetMaxItems()) }
 func (s *blockSchema) MinItems() int      { return int(s.block.GetMinItems()) }
 
 func (*blockSchema) ConflictsWith() []string {
-	panic("ConflictsWith() should not be called during schema generation")
+	return nil
 }
 
-func (*blockSchema) Default() interface{} {
-	panic("Default() should not be called during schema generation")
+func (s *blockSchema) Default() interface{} {
+	return nil
 }
 
 func (*blockSchema) DefaultFunc() shim.SchemaDefaultFunc {
@@ -136,15 +136,15 @@ func (*blockSchema) DefaultValue() (interface{}, error) {
 }
 
 func (*blockSchema) ExactlyOneOf() []string {
-	panic("ExactlyOneOf() should not be called during schema generation")
+	return nil
 }
 
 func (*blockSchema) AtLeastOneOf() []string {
-	panic("ConflictsWith() should not be called during schema generation")
+	return nil
 }
 
 func (*blockSchema) RequiredWith() []string {
-	panic("RequiredWith() should not be called during schema generation")
+	return nil
 }
 
 func (*blockSchema) ConfigMode() shim.ConfigModeType {

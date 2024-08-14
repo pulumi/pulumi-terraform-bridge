@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -68,13 +69,17 @@ func Main(pkg string, version string, prov ProviderInfo, pulumiSchema []byte) {
 	if *dumpTFSchemaCSVPath != "" {
 		resBuf := &bytes.Buffer{}
 		schBuf := &bytes.Buffer{}
-		err := prov.GetCSVSchema(prov.Name, prov.Version, schBuf, resBuf)
+		err := MarshalProviderInfo(&prov).GetCSVSchema(prov.Name, prov.Version, schBuf, resBuf)
 		if err != nil {
 			cmdutil.ExitError(err.Error())
 		}
 
-		resPath := fmt.Sprintf("%s/resources.csv", *dumpTFSchemaCSVPath)
-		schPath := fmt.Sprintf("%s/schemas.csv", *dumpTFSchemaCSVPath)
+		// get_current date
+		currentTime := time.Now()
+		formattedTime := currentTime.Format("150405")
+
+		resPath := fmt.Sprintf("%s/%s_%s_resources_%s.csv", *dumpTFSchemaCSVPath, prov.Name, prov.Version, formattedTime)
+		schPath := fmt.Sprintf("%s/%s_%s_schemas_%s.csv", *dumpTFSchemaCSVPath, prov.Name, prov.Version, formattedTime)
 
 		if err := os.MkdirAll(*dumpTFSchemaCSVPath, 0o700); err != nil {
 			cmdutil.ExitError(err.Error())

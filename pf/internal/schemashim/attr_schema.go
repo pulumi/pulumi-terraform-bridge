@@ -47,8 +47,8 @@ func (s *attrSchema) Required() bool {
 	return s.attr.IsRequired()
 }
 
-func (*attrSchema) Default() interface{} {
-	panic("Default() should not be called during schema generation")
+func (s *attrSchema) Default() interface{} {
+	return nil
 }
 func (*attrSchema) DefaultFunc() shim.SchemaDefaultFunc {
 	panic("DefaultFunc() should not be called during schema generation")
@@ -117,19 +117,19 @@ func (*attrSchema) MinItems() int {
 }
 
 func (*attrSchema) ConflictsWith() []string {
-	panic("ConflictsWith() should not be called during schema generation")
+	return nil
 
 }
 func (*attrSchema) ExactlyOneOf() []string {
-	panic("ExactlyOneOf() should not be called during schema generation")
+	return nil
 }
 
 func (*attrSchema) AtLeastOneOf() []string {
-	panic("AtLeastOneOf() should not be called during schema generation")
+	return nil
 }
 
 func (*attrSchema) RequiredWith() []string {
-	panic("RequiredWith() should not be called during schema generation")
+	return nil
 }
 
 func (*attrSchema) ConfigMode() shim.ConfigModeType {
