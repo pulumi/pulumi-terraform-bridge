@@ -510,7 +510,7 @@ func (p *tfMarkdownParser) parseSupplementaryExamples() (string, error) {
 	}
 	fileBytes, err := os.ReadFile(absPath)
 	if err != nil {
-		p.sink.error("explicitly marked resource documention for replacement, but found no file at %q", examplesFileName)
+		p.sink.error("explicitly marked resource documentation for replacement, but found no file at %q", examplesFileName)
 		return "", err
 	}
 
