@@ -358,6 +358,27 @@
                 "t0",
                 "t1"
             ]
+        },
+        "testbridge:index/VlanNamesResVlanName:VlanNamesResVlanName": {
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "Name of the VLAN, string length must be from 1 to 32 characters\n"
+                },
+                "vlanId": {
+                    "type": "string",
+                    "description": "VLAN ID\n"
+                }
+            },
+            "type": "object",
+            "language": {
+                "nodejs": {
+                    "requiredOutputs": [
+                        "name",
+                        "vlanId"
+                    ]
+                }
+            }
         }
     },
     "provider": {
@@ -958,6 +979,48 @@
                             "$ref": "#/types/testbridge:index/TestresTuplesOptional:TestresTuplesOptional"
                         },
                         "description": "A list that takes a tuple\n"
+                    }
+                },
+                "type": "object"
+            }
+        },
+        "testbridge:index/testres:VlanNamesRes": {
+            "properties": {
+                "other": {
+                    "type": "string"
+                },
+                "vlanNames": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/types/testbridge:index/VlanNamesResVlanName:VlanNamesResVlanName"
+                    },
+                    "description": "An array of named VLANs\n"
+                }
+            },
+            "inputProperties": {
+                "other": {
+                    "type": "string"
+                },
+                "vlanNames": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/types/testbridge:index/VlanNamesResVlanName:VlanNamesResVlanName"
+                    },
+                    "description": "An array of named VLANs\n"
+                }
+            },
+            "stateInputs": {
+                "description": "Input properties used for looking up and filtering VlanNamesRes resources.\n",
+                "properties": {
+                    "other": {
+                        "type": "string"
+                    },
+                    "vlanNames": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/types/testbridge:index/VlanNamesResVlanName:VlanNamesResVlanName"
+                        },
+                        "description": "An array of named VLANs\n"
                     }
                 },
                 "type": "object"

@@ -109,6 +109,7 @@ func SyntheticTestBridgeProvider() tfbridge.ProviderInfo {
 					"id": {Type: "string"},
 				},
 			},
+			"testbridge_vlan_names_res": {Tok: "testbridge:index/testres:VlanNamesRes"},
 		},
 
 		DataSources: map[string]*tfbridge.DataSourceInfo{
@@ -334,5 +335,6 @@ func (p *syntheticProvider) Resources(context.Context) []func() resource.Resourc
 		newPrivst,
 		newAutoNameRes,
 		newIntIDRes,
+		newVlanNamesRes,
 	}
 }
