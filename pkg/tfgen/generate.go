@@ -759,6 +759,7 @@ type GenerateSchemaResult struct {
 }
 
 func GenerateSchemaWithOptions(opts GenerateSchemaOptions) (*GenerateSchemaResult, error) {
+	ctx := context.Background()
 	info := opts.ProviderInfo
 	sink := opts.DiagnosticsSink
 	g, err := NewGenerator(GeneratorOptions{
@@ -774,20 +775,7 @@ func GenerateSchemaWithOptions(opts GenerateSchemaOptions) (*GenerateSchemaResul
 		return nil, errors.Wrapf(err, "failed to create generator")
 	}
 
-	// NOTE: sequence identical to(*Generator).Generate().
-	pack, err := g.gatherPackage()
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to gather package metadata")
-	}
-
-	s, err := genPulumiSchema(pack, g.pkg, g.version, g.info)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to generate schema")
-	}
-
-	return &GenerateSchemaResult{
-		PackageSpec: s,
-	}, nil
+	return g.generateSchemaResult(ctx)
 }
 
 type GeneratorOptions struct {
@@ -915,21 +903,31 @@ type GenerateOptions struct {
 
 // Generate creates Pulumi packages from the information it was initialized with.
 func (g *Generator) Generate() error {
-	err := g.info.Validate(context.Background())
+	genSchemaResult, err := g.generateSchemaResult(context.Background())
 	if err != nil {
 		return err
+	}
+
+	// Now push the schema through the rest of the generator.
+	return g.UnstableGenerateFromSchema(genSchemaResult)
+}
+
+func (g *Generator) generateSchemaResult(ctx context.Context) (*GenerateSchemaResult, error) {
+	err := g.info.Validate(ctx)
+	if err != nil {
+		return nil, err
 	}
 	// First gather up the entire package contents. This structure is complete and sufficient to hand off to the
 	// language-specific generators to create the full output.
 	pack, err := g.gatherPackage()
 	if err != nil {
-		return errors.Wrapf(err, "failed to gather package metadata")
+		return nil, errors.Wrapf(err, "failed to gather package metadata")
 	}
 
 	// Convert the package to a Pulumi schema.
 	pulumiPackageSpec, err := genPulumiSchema(pack, g.pkg, g.version, g.info)
 	if err != nil {
-		return errors.Wrapf(err, "failed to create Pulumi schema")
+		return nil, errors.Wrapf(err, "failed to create Pulumi schema")
 	}
 
 	// Apply schema post-processing if defined in the provider.
@@ -937,12 +935,7 @@ func (g *Generator) Generate() error {
 		g.info.SchemaPostProcessor(&pulumiPackageSpec)
 	}
 
-	genSchemaResult := &GenerateSchemaResult{
-		PackageSpec: pulumiPackageSpec,
-	}
-
-	// Now push the schema through the rest of the generator.
-	return g.UnstableGenerateFromSchema(genSchemaResult)
+	return &GenerateSchemaResult{PackageSpec: pulumiPackageSpec}, nil
 }
 
 // GenerateFromSchema creates Pulumi packages from a pulumi schema and the information the
