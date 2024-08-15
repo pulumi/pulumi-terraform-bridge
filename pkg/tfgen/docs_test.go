@@ -24,6 +24,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 	"text/template"
 
@@ -2137,6 +2138,8 @@ func TestParseTFMarkdown(t *testing.T) {
 		rawName      string
 
 		fileName string
+
+		readFileFunc func(string) ([]byte, error)
 	}
 
 	// Assert that file contents match the expected description.
@@ -2182,6 +2185,24 @@ func TestParseTFMarkdown(t *testing.T) {
 					[]byte(`checking custom replaces`)), nil
 			})),
 		test("codeblock-header"),
+		test("replace-examples",
+			func(tc *testCase) {
+				tc.readFileFunc = func(name string) ([]byte, error) {
+					switch {
+					// This test works on windows if and only if we use the correct separator.
+					case strings.HasSuffix(name, filepath.Join("docs", "resource", "pkg_mod1_res1.examples.md")):
+						return []byte(`## REPLACEMENT TEXT
+This should be interpolated in.
+`), nil
+					default:
+						return nil, fmt.Errorf("invalid path %q", name)
+					}
+
+				}
+				tc.info = &tfbridge.ResourceInfo{Docs: &tfbridge.DocInfo{
+					ReplaceExamplesSection: true,
+				}}
+			}),
 	}
 
 	for _, tt := range tests {
@@ -2203,7 +2224,8 @@ func TestParseTFMarkdown(t *testing.T) {
 					pkg:      "pkg",
 					info:     tt.providerInfo,
 				},
-				editRules: getEditRules(tt.providerInfo.DocRules),
+				editRules:    getEditRules(tt.providerInfo.DocRules),
+				readFileFunc: tt.readFileFunc,
 			}
 
 			inputBytes, err := os.ReadFile(input)
@@ -2346,7 +2368,7 @@ func (r *mockResource) GetFields() map[string]*tfbridge.SchemaInfo {
 }
 
 func (r *mockResource) ReplaceExamplesSection() bool {
-	return false
+	return r.docs.ReplaceExamplesSection
 }
 
 func (r *mockResource) GetDocs() *tfbridge.DocInfo {
