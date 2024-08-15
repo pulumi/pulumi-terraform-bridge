@@ -19,6 +19,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/hexops/autogold/v2"
@@ -27,6 +28,10 @@ import (
 )
 
 func TestAutoFill(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipped on windows: test issues with newlines")
+	}
+
 	dir := filepath.Join("..", "..", "tools", "pulumi-hcl-lint")
 
 	t.Logf("Ensure a local copy of pulumi-hcl-lint is built")
