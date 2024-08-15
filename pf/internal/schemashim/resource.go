@@ -29,6 +29,14 @@ func (r *schemaOnlyResource) Schema() shim.SchemaMap {
 	return r.tf.Shim()
 }
 
+func (*schemaOnlyResource) Implementation() string {
+	return "pf"
+}
+
+func (*schemaOnlyResource) UseJSONNumber() bool {
+	return false
+}
+
 func (r *schemaOnlyResource) SchemaVersion() int {
 	return int(r.tf.ResourceSchemaVersion())
 }

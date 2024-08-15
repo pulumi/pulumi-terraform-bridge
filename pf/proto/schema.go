@@ -23,19 +23,23 @@ import (
 // pseudoResource represents a type that must pretent to be a [shim.Resource], but does not represent a resource.
 type pseudoResource struct{}
 
+func (pseudoResource) Implementation() string          { return "pf" }
+func (pseudoResource) UseJSONNumber() bool             { return false }
 func (pseudoResource) SchemaVersion() int              { return 0 }
 func (pseudoResource) Importer() shim.ImportFunc       { return nil }
 func (pseudoResource) Timeouts() *shim.ResourceTimeout { return nil }
 func (pseudoResource) InstanceState(id string, object, meta map[string]interface{}) (shim.InstanceState, error) {
 	panic("Cannot invoke InstanceState on a pseudoResource")
 }
+
 func (pseudoResource) DecodeTimeouts(config shim.ResourceConfig) (*shim.ResourceTimeout, error) {
 	panic("Cannot invoke DecodeTimeouts on a pseudoResource")
 }
 
 func getSchemaMap[T any](m interface {
 	GetOk(string) (T, bool)
-}, key string) T {
+}, key string,
+) T {
 	v, _ := m.GetOk(key)
 	// Some functions (such as terraformToPulumiName; link: [1]) do not correctly use
 	// GetOk, so we can't panic on Get for a missing value, even though that is the

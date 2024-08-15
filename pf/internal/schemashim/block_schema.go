@@ -45,6 +45,10 @@ func (s *blockSchema) Type() shim.ValueType {
 	return vt
 }
 
+func (*blockSchema) Implementation() string {
+	return "pf"
+}
+
 func (s *blockSchema) Description() string {
 	if desc := s.block.GetMarkdownDescription(); desc != "" {
 		return desc
@@ -54,7 +58,6 @@ func (s *blockSchema) Description() string {
 
 // Needs to return a shim.Schema, a shim.Resource, or nil. See docstring on shim.Schema.Elem().
 func (s *blockSchema) Elem() interface{} {
-
 	asObjectType := func(typ any) (shim.Resource, bool) {
 		if tt, ok := typ.(basetypes.ObjectTypable); ok {
 			var res shim.Resource = newObjectPseudoResource(tt,

@@ -25,6 +25,8 @@ var _ = shim.Schema(attribute{})
 
 type attribute struct{ attr tfprotov6.SchemaAttribute }
 
+func (a attribute) Implementation() string { return "pf" }
+
 // Simple schema options
 
 func (a attribute) Optional() bool      { return a.attr.Optional }

@@ -79,6 +79,8 @@ func (e element) Optional() bool { return e.optional }
 
 // Methods that are not available to tftypes.Type
 
+func (e element) Implementation() string                      { return "pf" }
+func (e element) UseJSONNumber() bool                         { return false }
 func (e element) Required() bool                              { return false }
 func (e element) Default() interface{}                        { return nil }
 func (e element) DefaultFunc() shim.SchemaDefaultFunc         { return nil }

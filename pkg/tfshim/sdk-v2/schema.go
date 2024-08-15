@@ -24,6 +24,10 @@ func NewSchema(s *schema.Schema) shim.Schema {
 	return v2Schema{s}
 }
 
+func (s v2Schema) Implementation() string {
+	return "sdkv2"
+}
+
 func (s v2Schema) Type() shim.ValueType {
 	switch s.tf.Type {
 	case schema.TypeBool:

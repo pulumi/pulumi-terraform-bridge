@@ -24,12 +24,20 @@ type ResourceShim struct {
 	V *Resource
 }
 
+func (r ResourceShim) Implementation() string {
+	return "tfshim"
+}
+
 func (r ResourceShim) Schema() shim.SchemaMap {
 	return r.V.Schema
 }
 
 func (r ResourceShim) SchemaVersion() int {
 	return r.V.SchemaVersion
+}
+
+func (r ResourceShim) UseJSONNumber() bool {
+	return false
 }
 
 func (r ResourceShim) Importer() shim.ImportFunc {

@@ -123,6 +123,7 @@ type SchemaDefaultFunc func() (interface{}, error)
 type SchemaStateFunc func(interface{}) string
 
 type Schema interface {
+	Implementation() string
 	Type() ValueType
 	Optional() bool
 	Required() bool
@@ -179,6 +180,8 @@ type Schema interface {
 
 	SetElement(config interface{}) (interface{}, error)
 	SetHash(v interface{}) int
+	// TODO
+	// PlanModifierDescriptions() []string
 }
 
 type SchemaMap interface {
@@ -208,7 +211,9 @@ type ResourceTimeout struct {
 
 type Resource interface {
 	Schema() SchemaMap
+	Implementation() string
 	SchemaVersion() int
+	UseJSONNumber() bool
 	Importer() ImportFunc
 	DeprecationMessage() string
 	Timeouts() *ResourceTimeout

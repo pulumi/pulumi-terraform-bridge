@@ -35,6 +35,10 @@ type SchemaShim struct {
 	V *Schema
 }
 
+func (s SchemaShim) Implementation() string {
+	return "tfshim"
+}
+
 func (s SchemaShim) Type() shim.ValueType {
 	return s.V.Type
 }

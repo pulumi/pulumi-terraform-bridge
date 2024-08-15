@@ -44,6 +44,8 @@ type blockResource struct {
 	block *tfprotov6.SchemaBlock
 }
 
+func (b blockResource) Implementation() string     { return "pf" }
+func (b blockResource) UseJSONNumber() bool        { return false }
 func (b blockResource) Schema() shim.SchemaMap     { return blockMap{b.block} }
 func (b blockResource) DeprecationMessage() string { return deprecated(b.block.Deprecated) }
 
@@ -114,6 +116,7 @@ func (m blockSchema) Elem() interface{} {
 	}
 }
 
+func (m blockSchema) Implementation() string              { return "pf" }
 func (m blockSchema) Optional() bool                      { return false }
 func (m blockSchema) Required() bool                      { return false }
 func (m blockSchema) Default() interface{}                { return nil }

@@ -30,6 +30,10 @@ type attrSchema struct {
 
 var _ shim.Schema = (*attrSchema)(nil)
 
+func (s *attrSchema) Implementation() string {
+	return "pf"
+}
+
 func (s *attrSchema) Type() shim.ValueType {
 	ty := s.attr.GetType()
 	vt, err := convertType(ty)

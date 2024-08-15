@@ -40,6 +40,10 @@ func newTypeSchema(t pfattr.Type, nested map[string]pfutils.Attr) *typeSchema {
 	}
 }
 
+func (*typeSchema) Implementation() string {
+	return "pf"
+}
+
 func (s *typeSchema) Type() shim.ValueType {
 	vt, err := convertType(s.t)
 	if err != nil {

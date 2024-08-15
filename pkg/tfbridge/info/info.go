@@ -25,6 +25,8 @@ import (
 	"context"
 	"encoding/csv"
 	"fmt"
+	"reflect"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -814,12 +816,17 @@ type PreConfigureCallbackWithLogger func(
 	config shim.ResourceConfig,
 ) error
 
+func getFunctionName(i interface{}) string {
+	return runtime.FuncForPC(reflect.ValueOf(i).Pointer()).Name()
+}
+
 // The types below are marshallable versions of the schema descriptions associated with a provider. These are used when
 // marshalling a provider info as JSON; Note that these types only represent a subset of the information associated
 // with a ProviderInfo; thus, a ProviderInfo cannot be round-tripped through JSON.
 
 // MarshallableSchemaShim is the JSON-marshallable form of a Terraform schema.
 type MarshallableSchemaShim struct {
+	Implementation     string                `json:"implementation,omitempty"`
 	Type               shim.ValueType        `json:"type"`
 	Optional           bool                  `json:"optional,omitempty"`
 	Required           bool                  `json:"required,omitempty"`
@@ -831,23 +838,21 @@ type MarshallableSchemaShim struct {
 	DeprecationMessage string                `json:"deprecated,omitempty"`
 	Default            interface{}           `json:"default,omitempty"`
 	// SDK specific fields
-	ConfigMode shim.ConfigModeType `json:"configMode,omitempty"`
-	// TODO
-	// DefaultFunc
-	// Set
-	ConflictsWith []string `json:"conflictsWith,omitempty"`
-	ExactlyOneOf  []string `json:"exactlyOneOf,omitempty"`
-	AtLeastOneOf  []string `json:"atLeastOneOf,omitempty"`
-	RequiredWith  []string `json:"requiredWith,omitempty"`
+	ConfigMode    shim.ConfigModeType `json:"configMode,omitempty"`
+	DefaultFunc   string              `json:"defaultFunc,omitempty"`
+	ConflictsWith []string            `json:"conflictsWith,omitempty"`
+	ExactlyOneOf  []string            `json:"exactlyOneOf,omitempty"`
+	AtLeastOneOf  []string            `json:"atLeastOneOf,omitempty"`
+	RequiredWith  []string            `json:"requiredWith,omitempty"`
 
 	// PF specific fields
-	// TODO
-	// PlanModifiers
+	// PlanModifierDescriptions []string `json:"planModifiers,omitempty"`
 }
 
 // MarshalSchemaShim converts a Terraform schema into a MarshallableSchema.
 func MarshalSchemaShim(s shim.Schema) *MarshallableSchemaShim {
 	return &MarshallableSchemaShim{
+		Implementation:     s.Implementation(),
 		Type:               s.Type(),
 		Optional:           s.Optional(),
 		Required:           s.Required(),
@@ -863,6 +868,8 @@ func MarshalSchemaShim(s shim.Schema) *MarshallableSchemaShim {
 		ExactlyOneOf:       s.ExactlyOneOf(),
 		AtLeastOneOf:       s.AtLeastOneOf(),
 		RequiredWith:       s.RequiredWith(),
+		DefaultFunc:        getFunctionName(s.DefaultFunc()),
+		// PlanModifierDescriptions: s.PlanModifierDescriptions(),
 	}
 }
 
@@ -892,6 +899,7 @@ func (m *MarshallableSchemaShim) GetFlattenedSchema(
 		provider,
 		version,
 		path,
+		m.Implementation,
 		fmt.Sprintf("%v", m.Type),
 		strconv.FormatBool(m.Optional),
 		strconv.FormatBool(m.Required),
@@ -906,6 +914,8 @@ func (m *MarshallableSchemaShim) GetFlattenedSchema(
 		strings.Join(m.ExactlyOneOf, ","),
 		strings.Join(m.AtLeastOneOf, ","),
 		strings.Join(m.RequiredWith, ","),
+		m.DefaultFunc,
+		// strings.Join(m.PlanModifierDescriptions, ","),
 	}
 
 	*schemaRows = append(*schemaRows, row)
@@ -913,10 +923,12 @@ func (m *MarshallableSchemaShim) GetFlattenedSchema(
 
 // MarshallableResourceShim is the JSON-marshallable form of a Terraform resource schema.
 type MarshallableResourceShim struct {
-	Schema        map[string]*MarshallableSchemaShim `json:"schema,omitempty"`
-	SchemaVersion int                                `json:"schemaVersion,omitempty"`
-	// StateUpgraders
-	// UseJSONNumber
+	Implementation string                             `json:"implementation,omitempty"`
+	Schema         map[string]*MarshallableSchemaShim `json:"schema,omitempty"`
+	SchemaVersion  int                                `json:"schemaVersion,omitempty"`
+	UseJSONNumber  bool                               `json:"useJSONNumber,omitempty"`
+	// TODO
+	// StateUpgraders types?
 }
 
 // MarshalResourceShim converts a Terraform resource schema into a MarshallableResourceShim.
@@ -930,8 +942,10 @@ func MarshalResourceShim(r shim.Resource) MarshallableResourceShim {
 		return true
 	})
 	return MarshallableResourceShim{
-		Schema:        m,
-		SchemaVersion: r.SchemaVersion(),
+		Schema:         m,
+		Implementation: r.Implementation(),
+		SchemaVersion:  r.SchemaVersion(),
+		UseJSONNumber:  r.UseJSONNumber(),
 	}
 }
 
@@ -983,8 +997,10 @@ func (m *MarshallableResourceShim) GetFlattenedSchema(
 		provider,
 		version,
 		path,
+		m.Implementation,
 		strconv.Itoa(m.SchemaVersion),
 		resourceType.String(),
+		strconv.FormatBool(m.UseJSONNumber),
 		token,
 	}
 
@@ -1096,17 +1112,20 @@ func (m *MarshallableProviderShim) Unmarshal() shim.Provider {
 	}).Shim()
 }
 
-func (m *MarshallableProviderShim) GetFlattenedSchema(provider, version string, resourceTokenMapping, datasourceTokenMapping map[string]string) (
+func (m *MarshallableProviderShim) GetFlattenedSchema(
+	provider, version string, resourceTokenMapping, datasourceTokenMapping map[string]string) (
 	schemaRows [][]string, resourceRows [][]string,
 ) {
 	for k, v := range m.Schema {
 		v.GetFlattenedSchema(provider, version, provider+"."+k, nil, &schemaRows, &resourceRows)
 	}
 	for k, v := range m.Resources {
-		v.GetFlattenedSchema(provider, version, provider+"."+k, ResourceTypeResource, resourceTokenMapping, &schemaRows, &resourceRows)
+		v.GetFlattenedSchema(
+			provider, version, provider+"."+k, ResourceTypeResource, resourceTokenMapping, &schemaRows, &resourceRows)
 	}
 	for k, v := range m.DataSources {
-		v.GetFlattenedSchema(provider, version, provider+"."+k, ResourceTypeDataSource, datasourceTokenMapping, &schemaRows, &resourceRows)
+		v.GetFlattenedSchema(
+			provider, version, provider+"."+k, ResourceTypeDataSource, datasourceTokenMapping, &schemaRows, &resourceRows)
 	}
 	return
 }
@@ -1131,6 +1150,7 @@ func (m *MarshallableProviderShim) GetCSVSchema(
 		"provider",
 		"version",
 		"path",
+		"implementation",
 		"type",
 		"optional",
 		"required",
@@ -1145,13 +1165,18 @@ func (m *MarshallableProviderShim) GetCSVSchema(
 		"exactlyOneOf",
 		"atLeastOneOf",
 		"requiredWith",
+		"defaultFunc",
+		// "planModifiers",
 	})
 
 	resourceWriter.Write([]string{
 		"provider",
 		"version",
 		"path",
+		"implementation",
 		"schemaVersion",
+		"resourceType",
+		"useJSONNumber",
 		"token",
 	})
 

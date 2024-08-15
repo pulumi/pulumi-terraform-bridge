@@ -109,6 +109,10 @@ func TestProvider1UpgradeResourceState(t *testing.T) {
 	}
 }
 
+func barDefaultFunc() (interface{}, error) {
+	return "bar", nil
+}
+
 //nolint:lll
 func TestMarshalProviderShim(t *testing.T) {
 	prov := NewProvider(&schema.Provider{
@@ -181,7 +185,13 @@ func TestMarshalProviderShim(t *testing.T) {
 						AtLeastOneOf:  []string{"nested_prop", "conflicting_prop"},
 						Optional:      true,
 					},
+					"default_func_prop": {
+						Type:        schema.TypeString,
+						Optional:    true,
+						DefaultFunc: barDefaultFunc,
+					},
 				},
+				UseJSONNumber: true,
 			},
 		},
 		DataSourcesMap: map[string]*schema.Resource{
@@ -220,24 +230,30 @@ func TestMarshalProviderShim(t *testing.T) {
 	autogold.Expect(`{
     "schema": {
         "test_schema": {
+            "implementation": "sdkv2",
             "type": "String",
             "optional": true
         }
     },
     "resources": {
         "test_resource": {
+            "implementation": "sdkv2",
             "schema": {
                 "bar": {
+                    "implementation": "sdkv2",
                     "type": "Int",
                     "optional": true
                 },
                 "config_mode_prop": {
+                    "implementation": "sdkv2",
                     "type": "List",
                     "optional": true,
                     "element": {
                         "resource": {
+                            "implementation": "sdkv2",
                             "schema": {
                                 "prop": {
+                                    "implementation": "sdkv2",
                                     "type": "String",
                                     "optional": true
                                 }
@@ -247,6 +263,7 @@ func TestMarshalProviderShim(t *testing.T) {
                     "configMode": "attr"
                 },
                 "conflicting_prop": {
+                    "implementation": "sdkv2",
                     "type": "String",
                     "optional": true,
                     "conflictsWith": [
@@ -264,31 +281,44 @@ func TestMarshalProviderShim(t *testing.T) {
                         "map_prop"
                     ]
                 },
+                "default_func_prop": {
+                    "implementation": "sdkv2",
+                    "type": "String",
+                    "optional": true,
+                    "defaultFunc": "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2.barDefaultFunc"
+                },
                 "default_prop": {
+                    "implementation": "sdkv2",
                     "type": "String",
                     "optional": true,
                     "default": "default"
                 },
                 "foo": {
+                    "implementation": "sdkv2",
                     "type": "String",
                     "optional": true
                 },
                 "map_prop": {
+                    "implementation": "sdkv2",
                     "type": "Map",
                     "optional": true,
                     "element": {
                         "schema": {
+                            "implementation": "sdkv2",
                             "type": "String"
                         }
                     }
                 },
                 "max_item_one_prop": {
+                    "implementation": "sdkv2",
                     "type": "List",
                     "required": true,
                     "element": {
                         "resource": {
+                            "implementation": "sdkv2",
                             "schema": {
                                 "nested_foo": {
+                                    "implementation": "sdkv2",
                                     "type": "String",
                                     "optional": true
                                 }
@@ -298,12 +328,15 @@ func TestMarshalProviderShim(t *testing.T) {
                     "maxItems": 1
                 },
                 "nested_prop": {
+                    "implementation": "sdkv2",
                     "type": "List",
                     "optional": true,
                     "element": {
                         "resource": {
+                            "implementation": "sdkv2",
                             "schema": {
                                 "nested_foo": {
+                                    "implementation": "sdkv2",
                                     "type": "String",
                                     "optional": true
                                 }
@@ -311,17 +344,21 @@ func TestMarshalProviderShim(t *testing.T) {
                         }
                     }
                 }
-            }
+            },
+            "useJSONNumber": true
         }
     },
     "dataSources": {
         "test_data_source": {
+            "implementation": "sdkv2",
             "schema": {
                 "bar": {
+                    "implementation": "sdkv2",
                     "type": "Int",
                     "optional": true
                 },
                 "foo": {
+                    "implementation": "sdkv2",
                     "type": "String",
                     "optional": true
                 }
@@ -343,29 +380,30 @@ func TestMarshalProviderShim(t *testing.T) {
 	err = marshallableProv.GetCSVSchema("myProvider", "0.0.1", resTokenMapping, datasourceTokenMapping, schBuf, resBuf)
 	require.NoError(t, err)
 
-	autogold.Expect(`provider,version,path,type,optional,required,computed,forceNew,maxItems,minItems,deprecated,default,configMode,conflictsWith,exactlyOneOf,atLeastOneOf,requiredWith
-myProvider,0.0.1,myProvider.test_data_source.bar,Int,true,false,false,false,0,0,,<nil>,auto,,,,
-myProvider,0.0.1,myProvider.test_data_source.foo,String,true,false,false,false,0,0,,<nil>,auto,,,,
-myProvider,0.0.1,myProvider.test_resource.bar,Int,true,false,false,false,0,0,,<nil>,auto,,,,
-myProvider,0.0.1,myProvider.test_resource.config_mode_prop,List,true,false,false,false,0,0,,<nil>,attr,,,,
-myProvider,0.0.1,myProvider.test_resource.config_mode_prop.Elem.prop,String,true,false,false,false,0,0,,<nil>,auto,,,,
-myProvider,0.0.1,myProvider.test_resource.conflicting_prop,String,true,false,false,false,0,0,,<nil>,auto,bar,"foo,conflicting_prop","nested_prop,conflicting_prop",map_prop
-myProvider,0.0.1,myProvider.test_resource.default_prop,String,true,false,false,false,0,0,,default,auto,,,,
-myProvider,0.0.1,myProvider.test_resource.foo,String,true,false,false,false,0,0,,<nil>,auto,,,,
-myProvider,0.0.1,myProvider.test_resource.map_prop,Map,true,false,false,false,0,0,,<nil>,auto,,,,
-myProvider,0.0.1,myProvider.test_resource.map_prop.Elem,String,false,false,false,false,0,0,,<nil>,auto,,,,
-myProvider,0.0.1,myProvider.test_resource.max_item_one_prop,List,false,true,false,false,1,0,,<nil>,auto,,,,
-myProvider,0.0.1,myProvider.test_resource.max_item_one_prop.Elem.nested_foo,String,true,false,false,false,0,0,,<nil>,auto,,,,
-myProvider,0.0.1,myProvider.test_resource.nested_prop,List,true,false,false,false,0,0,,<nil>,auto,,,,
-myProvider,0.0.1,myProvider.test_resource.nested_prop.Elem.nested_foo,String,true,false,false,false,0,0,,<nil>,auto,,,,
-myProvider,0.0.1,myProvider.test_schema,String,true,false,false,false,0,0,,<nil>,auto,,,,
+	autogold.Expect(`provider,version,path,implementation,type,optional,required,computed,forceNew,maxItems,minItems,deprecated,default,configMode,conflictsWith,exactlyOneOf,atLeastOneOf,requiredWith,defaultFunc
+myProvider,0.0.1,myProvider.test_data_source.bar,sdkv2,Int,true,false,false,false,0,0,,<nil>,auto,,,,,
+myProvider,0.0.1,myProvider.test_data_source.foo,sdkv2,String,true,false,false,false,0,0,,<nil>,auto,,,,,
+myProvider,0.0.1,myProvider.test_resource.bar,sdkv2,Int,true,false,false,false,0,0,,<nil>,auto,,,,,
+myProvider,0.0.1,myProvider.test_resource.config_mode_prop,sdkv2,List,true,false,false,false,0,0,,<nil>,attr,,,,,
+myProvider,0.0.1,myProvider.test_resource.config_mode_prop.Elem.prop,sdkv2,String,true,false,false,false,0,0,,<nil>,auto,,,,,
+myProvider,0.0.1,myProvider.test_resource.conflicting_prop,sdkv2,String,true,false,false,false,0,0,,<nil>,auto,bar,"foo,conflicting_prop","nested_prop,conflicting_prop",map_prop,
+myProvider,0.0.1,myProvider.test_resource.default_func_prop,sdkv2,String,true,false,false,false,0,0,,<nil>,auto,,,,,github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2.barDefaultFunc
+myProvider,0.0.1,myProvider.test_resource.default_prop,sdkv2,String,true,false,false,false,0,0,,default,auto,,,,,
+myProvider,0.0.1,myProvider.test_resource.foo,sdkv2,String,true,false,false,false,0,0,,<nil>,auto,,,,,
+myProvider,0.0.1,myProvider.test_resource.map_prop,sdkv2,Map,true,false,false,false,0,0,,<nil>,auto,,,,,
+myProvider,0.0.1,myProvider.test_resource.map_prop.Elem,sdkv2,String,false,false,false,false,0,0,,<nil>,auto,,,,,
+myProvider,0.0.1,myProvider.test_resource.max_item_one_prop,sdkv2,List,false,true,false,false,1,0,,<nil>,auto,,,,,
+myProvider,0.0.1,myProvider.test_resource.max_item_one_prop.Elem.nested_foo,sdkv2,String,true,false,false,false,0,0,,<nil>,auto,,,,,
+myProvider,0.0.1,myProvider.test_resource.nested_prop,sdkv2,List,true,false,false,false,0,0,,<nil>,auto,,,,,
+myProvider,0.0.1,myProvider.test_resource.nested_prop.Elem.nested_foo,sdkv2,String,true,false,false,false,0,0,,<nil>,auto,,,,,
+myProvider,0.0.1,myProvider.test_schema,sdkv2,String,true,false,false,false,0,0,,<nil>,auto,,,,,
 `).Equal(t, schBuf.String())
 
-	autogold.Expect(`provider,version,path,schemaVersion,token
-myProvider,0.0.1,myProvider.test_resource.nested_prop.Elem,0,nested,myProvider:index:testResource
-myProvider,0.0.1,myProvider.test_resource.max_item_one_prop.Elem,0,nested,myProvider:index:testResource
-myProvider,0.0.1,myProvider.test_resource.config_mode_prop.Elem,0,nested,myProvider:index:testResource
-myProvider,0.0.1,myProvider.test_resource,0,resource,myProvider:index:testResource
-myProvider,0.0.1,myProvider.test_data_source,0,dataSource,myProvider:index:testDataSource
+	autogold.Expect(`provider,version,path,implementation,schemaVersion,resourceType,useJSONNumber,token
+myProvider,0.0.1,myProvider.test_resource.config_mode_prop.Elem,sdkv2,0,nested,false,myProvider:index:testResource
+myProvider,0.0.1,myProvider.test_resource.max_item_one_prop.Elem,sdkv2,0,nested,false,myProvider:index:testResource
+myProvider,0.0.1,myProvider.test_resource.nested_prop.Elem,sdkv2,0,nested,false,myProvider:index:testResource
+myProvider,0.0.1,myProvider.test_resource,sdkv2,0,resource,true,myProvider:index:testResource
+myProvider,0.0.1,myProvider.test_data_source,sdkv2,0,dataSource,false,myProvider:index:testDataSource
 `).Equal(t, resBuf.String())
 }

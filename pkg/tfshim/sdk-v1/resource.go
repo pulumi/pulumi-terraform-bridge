@@ -9,8 +9,10 @@ import (
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
-var _ = shim.Resource(v1Resource{})
-var _ = shim.ResourceMap(v1ResourceMap{})
+var (
+	_ = shim.Resource(v1Resource{})
+	_ = shim.ResourceMap(v1ResourceMap{})
+)
 
 type v1Resource struct {
 	tf *schema.Resource
@@ -18,6 +20,10 @@ type v1Resource struct {
 
 func NewResource(r *schema.Resource) shim.Resource {
 	return v1Resource{r}
+}
+
+func (s v1Resource) Implementation() string {
+	return "sdkv1"
 }
 
 func (r v1Resource) Schema() shim.SchemaMap {
@@ -114,6 +120,10 @@ func (r v1Resource) DecodeTimeouts(config shim.ResourceConfig) (*shim.ResourceTi
 		Delete:  v1Timeouts.Delete,
 		Default: v1Timeouts.Default,
 	}, nil
+}
+
+func (r v1Resource) UseJSONNumber() bool {
+	return false
 }
 
 type v1ResourceMap map[string]*schema.Resource
