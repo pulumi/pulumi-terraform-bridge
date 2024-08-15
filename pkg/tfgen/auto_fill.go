@@ -116,14 +116,14 @@ func findDanglingReferences(hcl string) (finalRefs []hclResourceRef, finalErr er
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
-		return nil, fmt.Errorf("failed running pulumi-hcl-lint: %v\n%s\n%s\n", err,
+		return nil, fmt.Errorf("failed running pulumi-hcl-lint: %v\n%s\n%s", err,
 			stdout.String(), stderr.String())
 	}
 	data, err := os.ReadFile(o)
 	if err != nil {
 		return nil, err
 	}
-	recs, err := readJsonRecords(bytes.NewReader(data))
+	recs, err := readJSONRecords(bytes.NewReader(data))
 	if err != nil {
 		return nil, err
 	}
@@ -137,7 +137,7 @@ func findDanglingReferences(hcl string) (finalRefs []hclResourceRef, finalErr er
 	return finalRefs, nil
 }
 
-func readJsonRecords(r io.Reader) ([]map[string]any, error) {
+func readJSONRecords(r io.Reader) ([]map[string]any, error) {
 	var records []map[string]any
 	dec := json.NewDecoder(r)
 	for {
@@ -146,9 +146,8 @@ func readJsonRecords(r io.Reader) ([]map[string]any, error) {
 			break
 		} else if err != nil {
 			return nil, err
-		} else {
-			records = append(records, record)
 		}
+		records = append(records, record)
 	}
 	return records, nil
 }

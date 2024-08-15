@@ -75,6 +75,4 @@ func main() {
 		}
 		logger.LogAttrs(ctx, slog.LevelError, i.Detail(), attrs...)
 	}
-
-	return
 }
