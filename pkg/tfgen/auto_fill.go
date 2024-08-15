@@ -22,9 +22,23 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/spf13/afero"
+)
+
+const (
+	// Directory to look for stencil HCL resources to auto-fill undeclared resource references.
+	//
+	// This functionality is activated during HCL->Pulumi example conversion and is aimed at helping provider
+	// maintainers improve Pulumi documentation by making it more likely to contain fully working examples.
+	//
+	// To make things concrete, suppose PULUMI_CONVERT_AUTOFILL_DIR=std_resources and there is an
+	// std_resources/aws_acm_certificate.tf file declaring an aws_acm_certificate called "example". In this case
+	// documentation generation will splice this definition into all HCL programs that are missing an undeclared
+	// resource reference to aws_acm_certificate.
+	autoFillEnvVar = "PULUMI_CONVERT_AUTOFILL_DIR"
 )
 
 var (
@@ -142,7 +156,7 @@ var _ autoFillData = (*folderBasedAutoFiller)(nil)
 func (fba *folderBasedAutoFiller) AutoFill(token, name string) string {
 	bytes, err := afero.ReadFile(fba.dir, fmt.Sprintf("%s.tf", token))
 	contract.IgnoreError(err)
-	return string(bytes)
+	return strings.ReplaceAll(string(bytes), `"example"`, fmt.Sprintf("%q", name))
 }
 
 func (fba *folderBasedAutoFiller) CanAutoFill(token string) bool {

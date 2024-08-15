@@ -229,7 +229,7 @@ func (cc *cliConverter) bulkConvert() error {
 }
 
 func (cc *cliConverter) autoFill(examples map[string]string) map[string]string {
-	d, ok := os.LookupEnv("PULUMI_CONVERT_AUTOFILL_DIR")
+	d, ok := os.LookupEnv(autoFillEnvVar)
 	if !ok {
 		return examples
 	}
