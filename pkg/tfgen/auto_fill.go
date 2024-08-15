@@ -16,16 +16,19 @@ package tfgen
 
 import (
 	"bytes"
-	"errors"
+	"encoding/json"
 	"fmt"
-	"sort"
-	"strings"
+	"io"
+	"os"
+	"os/exec"
+	"path/filepath"
 
-	"github.com/hashicorp/hcl/v2"
-	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/terraform/pkg/configs"
 	"github.com/spf13/afero"
+)
+
+var (
+	hclLintPkg = "github.com/pulumi/pulumi-terraform-bridge/tools/pulumi-hcl-lint"
 )
 
 // Provides data for [AutoFill].
@@ -38,43 +41,96 @@ type autoFillData interface {
 	CanAutoFill(token string) bool
 }
 
+type hclResourceRef struct {
+	token string
+	name  string
+}
+
 // Examines an HCL example code snippet to find dangling references to resources or data source calls. When processing
 // documentation it is frequently the case that resources are implied but not listed in the original code. If such a
 // reference is encountered, this consults autoFiller for a possible canonical definition and augments the program.
 func autoFill(autoFiller autoFillData, hcl string) (string, error) {
 	var buf bytes.Buffer
-	fs := afero.NewMemMapFs()
-
-	// Create a new file with some content.
-	err := afero.WriteFile(fs, "infra.tf", []byte(hcl), 0600)
+	fmt.Fprintf(&buf, "%s\n", hcl)
+	refs, err := findDanglingReferences(hcl)
 	if err != nil {
 		return "", err
 	}
-
-	path := "."
-	p := configs.NewParser(fs)
-	mod, diags := p.LoadConfigDir(path)
-	if diags.Errs() != nil {
-		return "", errors.Join(diags.Errs()...)
-	}
-
-	v := newAutoFillVisitor()
-	for _, mr := range mod.ManagedResources {
-		v.visitManagedResource(mr)
-	}
-
-	fmt.Fprintf(&buf, "%s\n", hcl)
-
-	for _, dr := range v.dangling() {
-		tok := dr.Token()
+	for _, dr := range refs {
+		tok := dr.token
 		if !autoFiller.CanAutoFill(tok) {
 			continue
 		}
-		extra := autoFiller.AutoFill(tok, dr.Name())
+		extra := autoFiller.AutoFill(tok, dr.name)
 		fmt.Fprintf(&buf, "\n%s\n", extra)
 	}
-
 	return buf.String(), nil
+}
+
+func findDanglingReferences(hcl string) (finalRefs []hclResourceRef, finalErr error) {
+	dir, err := os.MkdirTemp("", "example")
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if err := os.RemoveAll(dir); err != nil && finalErr == nil {
+			finalErr = err
+		}
+	}()
+	if err := os.WriteFile(filepath.Join(dir, "infra.tf"), []byte(hcl), 0600); err != nil {
+		return nil, err
+	}
+	o := filepath.Join(dir, "errors.json")
+
+	// The dependencies on HCL parser are isolated in pulumi-hcl-lint binary, requiring a level of indirection here.
+	var cmd *exec.Cmd
+
+	if lint, err := exec.LookPath("pulumi-hcl-lint"); err == nil {
+		cmd = exec.Command(lint, "-json", "-out", o)
+		cmd.Dir = dir
+	} else {
+		fmt.Println("!", hclLintPkg)
+		cmd = exec.Command("go", "run", hclLintPkg, "-json", "-out", o)
+	}
+	var stderr, stdout bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return nil, fmt.Errorf("failed running pulumi-hcl-lint: %v\n%s\n%s\n", err,
+			stdout.String(), stderr.String())
+	}
+	data, err := os.ReadFile(o)
+	if err != nil {
+		return nil, err
+	}
+	recs, err := readJsonRecords(bytes.NewReader(data))
+	if err != nil {
+		return nil, err
+	}
+	for _, r := range recs {
+		if r["code"] == "PHL0001" {
+			token := r["token"].(string)
+			name := r["name"].(string)
+			finalRefs = append(finalRefs, hclResourceRef{token: token, name: name})
+		}
+	}
+	return finalRefs, nil
+}
+
+func readJsonRecords(r io.Reader) ([]map[string]any, error) {
+	var records []map[string]any
+	dec := json.NewDecoder(r)
+	for {
+		var record map[string]any
+		if err := dec.Decode(&record); err == io.EOF {
+			break
+		} else if err != nil {
+			return nil, err
+		} else {
+			records = append(records, record)
+		}
+	}
+	return records, nil
 }
 
 type folderBasedAutoFiller struct {
@@ -96,136 +152,4 @@ func (fba *folderBasedAutoFiller) CanAutoFill(token string) bool {
 
 func newAferoAutoFiller(fs afero.Fs) autoFillData {
 	return &folderBasedAutoFiller{dir: fs}
-}
-
-type autoFillRef string
-
-func (x autoFillRef) Token() string {
-	return strings.Split(string(x), ":::")[0]
-}
-
-func (x autoFillRef) Name() string {
-	return strings.Split(string(x), ":::")[1]
-}
-
-func newAutoFillRef(token, name string) autoFillRef {
-	return autoFillRef(fmt.Sprintf("%s:::%s", token, name))
-}
-
-type autoFillVisitor struct {
-	defined    map[autoFillRef]struct{}
-	referenced map[autoFillRef]struct{}
-}
-
-func newAutoFillVisitor() *autoFillVisitor {
-	return &autoFillVisitor{
-		defined:    map[autoFillRef]struct{}{},
-		referenced: map[autoFillRef]struct{}{},
-	}
-}
-
-func (v *autoFillVisitor) dangling() []autoFillRef {
-	d := []autoFillRef{}
-	for x := range v.referenced {
-		_, isDef := v.defined[x]
-		if !isDef {
-			d = append(d, x)
-		}
-	}
-	sort.Slice(d, func(i, j int) bool {
-		return string(d[i]) < string(d[j])
-	})
-	return d
-}
-
-func (v *autoFillVisitor) visitManagedResource(res *configs.Resource) {
-	v.defined[newAutoFillRef(res.Type, res.Name)] = struct{}{}
-	v.visitBody(res.Config)
-	v.visitExpr(res.Count)
-	v.visitExpr(res.ForEach)
-	v.visitTraversals(res.DependsOn)
-	v.visitExprs(res.TriggersReplacement)
-}
-
-func (v *autoFillVisitor) visitTraversal(t hcl.Traversal) {
-	if len(t) < 2 {
-		return
-	}
-	root, ok := t[0].(hcl.TraverseRoot)
-	if !ok {
-		return
-	}
-	attr, ok := t[1].(hcl.TraverseAttr)
-	if !ok {
-		return
-	}
-	v.referenced[newAutoFillRef(root.Name, attr.Name)] = struct{}{}
-}
-
-func (v *autoFillVisitor) visitTraversals(ts []hcl.Traversal) {
-	for _, t := range ts {
-		v.visitTraversal(t)
-	}
-}
-
-func (v *autoFillVisitor) visitAttribute(a *hcl.Attribute) {
-	v.visitExpr(a.Expr)
-}
-
-func (v *autoFillVisitor) visitExpr(expr hcl.Expression) {
-	if expr == nil {
-		return
-	}
-	for _, t := range expr.Variables() {
-		v.visitTraversal(t)
-	}
-}
-
-func (v *autoFillVisitor) visitExprs(exprs []hcl.Expression) {
-	for _, e := range exprs {
-		v.visitExpr(e)
-	}
-}
-
-func (v *autoFillVisitor) visitBlock(b *hcl.Block) {
-	v.visitBody(b.Body)
-}
-
-func (v *autoFillVisitor) visitBody(b hcl.Body) {
-	bc := bodyContent(b)
-	for _, blk := range bc.Blocks {
-		v.visitBlock(blk)
-	}
-	for _, attr := range bc.Attributes {
-		v.visitAttribute(attr)
-	}
-}
-
-// Borrowed from https://github.com/pulumi/pulumi-converter-terraform/blob/master/pkg/convert/tf.go#L1688
-func bodyContent(body hcl.Body) *hcl.BodyContent {
-	// We want to exclude any hidden blocks and attributes, and the only way to do that with hcl.Body is to
-	// give it a schema. JustAttributes() will return all non-hidden attributes, but will error if there's
-	// any blocks, and there's no equivalent to get non-hidden attributes and blocks.
-	hclSchema := &hcl.BodySchema{}
-	// The `body` passed in here _should_ be a hclsyntax.Body. That's currently the only way to just iterate
-	// all the raw blocks of a hcl.Body.
-	synbody, ok := body.(*hclsyntax.Body)
-	contract.Assertf(ok, "%T was not a hclsyntax.Body", body)
-	for _, block := range synbody.Blocks {
-		if block.Type != "dynamic" {
-			hclSchema.Blocks = append(hclSchema.Blocks, hcl.BlockHeaderSchema{Type: block.Type})
-		} else {
-			// Dynamic blocks have labels on them, we need to tell the schema that's ok.
-			hclSchema.Blocks = append(hclSchema.Blocks, hcl.BlockHeaderSchema{
-				Type:       block.Type,
-				LabelNames: block.Labels,
-			})
-		}
-	}
-	for _, attr := range synbody.Attributes {
-		hclSchema.Attributes = append(hclSchema.Attributes, hcl.AttributeSchema{Name: attr.Name})
-	}
-	content, diagnostics := body.Content(hclSchema)
-	contract.Assertf(len(diagnostics) == 0, "diagnostics was not empty: %s", diagnostics.Error())
-	return content
 }

@@ -15,6 +15,10 @@
 package tfgen
 
 import (
+	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"testing"
 
 	"github.com/hexops/autogold/v2"
@@ -23,6 +27,22 @@ import (
 )
 
 func TestAutoFill(t *testing.T) {
+	dir := filepath.Join("..", "..", "tools", "pulumi-hcl-lint")
+
+	t.Logf("Ensure a local copy of pulumi-hcl-lint is built")
+
+	cmd := exec.Command("go", "build", ".")
+	cmd.Dir = dir
+	if err := cmd.Run(); err != nil {
+		t.Errorf("Failed to build pulumi-hcl-lint: %v", err)
+	}
+
+	dir, err := filepath.Abs(dir)
+	require.NoError(t, err)
+
+	t.Logf("Adding %s to PATH", dir)
+	t.Setenv("PATH", fmt.Sprintf("%s%s%s", os.Getenv("PATH"), string(os.PathListSeparator), dir))
+
 	example := `
 resource "aws_route53_record" "example" {
       for_each = {
@@ -54,7 +74,7 @@ resource "aws_route53_zone" "example" {
 
 	fs := afero.NewMemMapFs()
 
-	err := afero.WriteFile(fs, "aws_acm_certificate.tf", []byte(injectAcmCert), 0600)
+	err = afero.WriteFile(fs, "aws_acm_certificate.tf", []byte(injectAcmCert), 0600)
 	require.NoError(t, err)
 
 	err = afero.WriteFile(fs, "aws_route53_zone.tf", []byte(injectRoute53Zone), 0600)
