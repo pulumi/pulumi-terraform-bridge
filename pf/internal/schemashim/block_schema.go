@@ -129,7 +129,7 @@ func (s *blockSchema) Default() interface{} {
 }
 
 func (*blockSchema) DefaultFunc() shim.SchemaDefaultFunc {
-	panic("DefaultFunc() should not be called during schema generation")
+	return nil
 }
 
 func (*blockSchema) DefaultValue() (interface{}, error) {

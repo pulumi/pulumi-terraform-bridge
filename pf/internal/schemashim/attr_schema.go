@@ -55,7 +55,7 @@ func (s *attrSchema) Default() interface{} {
 	return nil
 }
 func (*attrSchema) DefaultFunc() shim.SchemaDefaultFunc {
-	panic("DefaultFunc() should not be called during schema generation")
+	return nil
 }
 func (*attrSchema) DefaultValue() (interface{}, error) {
 	// DefaultValue() should not be called by tfgen, but it currently may be called by ExtractInputsFromOutputs, so

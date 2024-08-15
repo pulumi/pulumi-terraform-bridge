@@ -87,7 +87,7 @@ func (*typeSchema) Default() interface{} {
 }
 
 func (*typeSchema) DefaultFunc() shim.SchemaDefaultFunc {
-	panic("DefaultFunc() should not be called during schema generation")
+	return nil
 }
 
 func (*typeSchema) DefaultValue() (interface{}, error) {
