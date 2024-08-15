@@ -319,7 +319,7 @@ type moduleMember interface {
 type typeKind int
 
 const (
-	kindInvalid = iota
+	kindInvalid typeKind = iota
 	kindBool
 	kindInt
 	kindFloat
@@ -329,9 +329,6 @@ const (
 	kindSet
 	kindObject
 )
-
-// Avoid an unused warning from varcheck.
-var _ = kindInvalid
 
 // propertyType represents a non-resource, non-datasource type. Property types may be simple
 type propertyType struct {
@@ -431,6 +428,10 @@ func (g *Generator) makePropertyType(typePath paths.TypePath,
 	switch sch.Type() {
 	case shim.TypeMap:
 		t.kind = kindMap
+		// TF treats maps without a specified type as map[string]string, so we do the same.
+		if element == nil || element.kind == kindInvalid {
+			element = &propertyType{kind: kindString}
+		}
 	case shim.TypeList:
 		t.kind = kindList
 	case shim.TypeSet:
