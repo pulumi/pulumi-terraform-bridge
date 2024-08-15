@@ -70,13 +70,19 @@ func autoFill(autoFiller autoFillData, hcl string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	seen := map[string]struct{}{}
 	for _, dr := range refs {
+		key := fmt.Sprintf("%s:::%s", dr.token, dr.name)
+		if _, ok := seen[key]; ok {
+			continue
+		}
 		tok := dr.token
 		if !autoFiller.CanAutoFill(tok) {
 			continue
 		}
 		extra := autoFiller.AutoFill(tok, dr.name)
 		fmt.Fprintf(&buf, "\n%s\n", extra)
+		seen[key] = struct{}{}
 	}
 	return buf.String(), nil
 }
