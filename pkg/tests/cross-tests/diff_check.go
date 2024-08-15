@@ -74,10 +74,10 @@ func runDiffCheck(t T, tc diffTestCase) {
 
 	tfAction := tfd.parseChangesFromTFPlan(*tfDiffPlan)
 
-	tc.verifyBasicDiffAgreement(t, tfAction, x.Summary)
+	verifyBasicDiffAgreement(t, tfAction, x.Summary)
 }
 
-func (tc *diffTestCase) verifyBasicDiffAgreement(t T, tfAction string, us auto.UpdateSummary) {
+func verifyBasicDiffAgreement(t T, tfAction string, us auto.UpdateSummary) {
 	t.Logf("UpdateSummary.ResourceChanges: %#v", us.ResourceChanges)
 	switch tfAction {
 	case "update":
