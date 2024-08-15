@@ -618,21 +618,21 @@ func TestArgumentRegex(t *testing.T) {
 					" `DELETING` The Private Link service is being deleted."},
 			},
 		},
-		//{
-		//	name: "Bullet points in backticks containing any uppercase letters are not parsed as TF properties",
-		//	input: []string{
-		//		"* `status` - Status of the AWS PrivateLink connection.",
-		//		"	Returns one of the following values:",
-		//		"	* `Available` Atlas created the load balancer and the Private Link Service.",
-		//		"	* `Initiating` Atlas is creating the network load balancer and VPC endpoint service.",
-		//	},
-		//	expected: map[docsPath]*argumentDocs{
-		//		"status": {description: "Status of the AWS PrivateLink connection.\n" +
-		//			"Returns one of the following values:\n" +
-		//			"* `Available` Atlas created the load balancer and the Private Link Service.\n" +
-		//			"* `Initiating` Atlas is creating the network load balancer and VPC endpoint service."},
-		//	},
-		//},
+		{
+			name: "Bullet points in backticks containing any uppercase letters are not parsed as TF properties",
+			input: []string{
+				"* `status` - Status of the AWS PrivateLink connection.",
+				"	Returns one of the following values:",
+				"	* `Available` Atlas created the load balancer and the Private Link Service.",
+				"	* `Initiating` Atlas is creating the network load balancer and VPC endpoint service.",
+			},
+			expected: map[docsPath]*argumentDocs{
+				"status": {description: "Status of the AWS PrivateLink connection.\n" +
+					"Returns one of the following values:\n" +
+					"* `Available` Atlas created the load balancer and the Private Link Service.\n" +
+					"* `Initiating` Atlas is creating the network load balancer and VPC endpoint service."},
+			},
+		},
 	}
 
 	for _, tt := range tests {

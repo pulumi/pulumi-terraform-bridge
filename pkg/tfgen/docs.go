@@ -35,7 +35,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	bf "github.com/russross/blackfriday/v2"
-	"github.com/ryboe/q"
 	"github.com/spf13/afero"
 	"github.com/yuin/goldmark"
 	gmast "github.com/yuin/goldmark/ast"
@@ -940,157 +939,92 @@ func getNestedBlockNames(line string) []string {
 }
 
 func parseArgReferenceSection(subsection []string, ret *entityDocs) {
-	// Get a "document"
-	documentBefore := strings.Join(subsection, "\n")
-	// save a copy for comparison
-	docBytes := []byte(documentBefore)
-	q.Q(documentBefore)
 
-	// Algorithm:
-	// - Walk the document tree and gather any text that is after a property bullet.
-	// - Track the level (nestedness?) of said bullet/ indentation/blah and add to current docs path
-	// - Let's start by finding the bullet points.
-	// Actually, start by creating a new transformer. No, I may not need a transformer. Ung, why is this so annoying
-	// Just use Walk?
+	// Treat our subsection as a markdown node. This will later just be a node.
+	docBytes := []byte(strings.Join(subsection, "\n"))
 
 	// Parse the document using Goldmark parser
 	gm := goldmark.New(goldmark.WithExtensions(parse.TFRegistryExtension))
-
 	astNode := gm.Parser().Parse(gmtext.NewReader(docBytes))
-	var paths []string
-	var writeList bool
 
+	var paths []string
+	var writeList bool // tracking whether we need to write a list verbatim
 	gmast.Walk(astNode, func(node gmast.Node, enter bool) (gmast.WalkStatus, error) {
 		// When we find a list item, we check if it is an argument entry.
 		if node.Kind().String() == "ListItem" {
 			if enter {
 				// For any list item, we want to check if it opens with a code span.
-				// If so, chances are we have a potential entry for our nested docs map.
 				// It will be list item --> Text --> Code Span, so the grandchild of the list item.
-				// TODO: still must filter for actual TF entries, AKA this shouldn't catch all lists, to avoid regression
 				codeSpanNode := node.FirstChild().FirstChild()
-				nodeKind := codeSpanNode.Kind().String()
-				if nodeKind == "CodeSpan" {
+				if codeSpanNode.Kind().String() == "CodeSpan" {
 					codeSpanItem := codeSpanNode.Text(docBytes)
-					q.Q(string(codeSpanItem))
 
 					// The list item's first child is a text block.
 					// For most of our entries, this is all we need.
 					desc := writeLines(node.FirstChild().Lines(), docBytes)
 
-					// Extract the description from the written lines.
-					// We will use a regex match for now, as we did before.
-					// TODO: maybe replace regex
+					// To see if we have a TF name, use a regex match.
+					// The submatch looks for patterns such as
+					//
+					// `follow_gae_application` - (Optional) A GAE application whose zone to remain"
 					descs := descriptionRegexp.FindStringSubmatch(desc)
-
-					//q.Q(descs)
 					if len(descs) <= 4 {
 						writeList = true
 					}
-					//q.Q(paths)
+
 					// add to docspaths if writeList is false
 					if !writeList {
-						if len(paths) == 0 {
-							paths = append(paths, string(codeSpanItem))
-						} else {
-							var newPaths []string
-							for _, p := range paths {
-								p = p + "." + string(codeSpanItem)
-								newPaths = append(newPaths, p)
-							}
-							paths = newPaths
-						}
+						paths = addPaths(paths, codeSpanItem)
 					}
-
 					// Read results into the return argument docs. When we're reading subfields for multiple fields,
 					// the description is still the same as discovered from the node's lines.
 					for _, path := range paths {
 						if !writeList {
 							ret.Arguments[docsPath(path)] = &argumentDocs{descs[4]}
 						} else {
-							q.Q("hit else; do not append")
-							ret.Arguments[docsPath(path)] = &argumentDocs{"PLEASE SHOW UP"}
-							// we have a non-matching argument. We don't want to do anything with this.
+							// We need to write the entire list item into the description.
+							// We'll just append each list item as it is visited.
+							currentDesc := ret.Arguments[docsPath(path)].description
+							newDesc := currentDesc + "\n* " + desc
+							ret.Arguments[docsPath(path)] = &argumentDocs{newDesc}
 						}
 					}
-					//q.Q("listitem enter: ", paths)
 				}
 			} else {
-				// we are hitting this node on our way back.
-				// Cut off last field in docs paths to remove nestedness
-				var newpaths []string
-				for _, p := range paths {
-					pathIndex := strings.LastIndex(
-						p, ".")
-					if pathIndex > 0 {
-						p = p[:pathIndex]
-						newpaths = append(newpaths, p)
-					}
-
+				if !writeList {
+					paths = cutPaths(paths)
 				}
-				paths = newpaths
-				//q.Q("list items leave: ", paths)
-				//q.Q(astNesteds)
 			}
 		}
 		if node.Kind().String() == "Section" {
-			// A section's first child is its heading.
+			writeList = false
+			// A Section's first child is its heading.
 			// In this part of the upstream document, a heading generally means a subresource name.
-			// TODO: assert that it is of type Heading.
 			if enter {
 				// The text next to an arg reference's section header is assumed to be a resource field.
 				headerItem := node.FirstChild().Text(docBytes)
 				// add to docs paths
-				if len(paths) == 0 {
-					paths = append(paths, string(headerItem))
-				} else {
-					var newPaths []string
-					for _, p := range paths {
-						p = p + "." + string(headerItem)
-						newPaths = append(newPaths, p)
-					}
-					paths = newPaths
-				}
-				//q.Q("headers enter: ", paths)
+				paths = addPaths(paths, headerItem)
 			} else {
-				// We are on our way back up the tree.
-				// Because the headers are subsections of already found docs, we never want to actually include the
-				// header item in our astNested list by itself - it should already exist with its own description.
-
-				// Cut off last field in docsPath to remove nestedness
-				// TODO: refactor, this is the same logic as above.
-				var newpaths []string
-				for _, p := range paths {
-					pathIndex := strings.LastIndex(
-						p, ".")
-					if pathIndex > 0 {
-						p = p[:pathIndex]
-					}
-					newpaths = append(newpaths, p)
-				}
-				paths = newpaths
-				//q.Q("headers leave: ", paths)
-				//q.Q("from heading:", astNesteds)
+				paths = cutPaths(paths)
 			}
 		}
 		// Additionally, there are top-level paragraphs that can contain information about nested docs,
 		// such as "The `foo_bar` object supports the following:".
 		if node.Kind().String() == "Paragraph" && node.Parent().Kind().String() == "Document" {
+			writeList = false
 			if enter {
-				// We believe that all of the fields mentioned in paragraphs are able to be treated as top-level, i.e.
+				// All of the fields mentioned in paragraphs can be treated as top-level, i.e.
 				// they're of the format "(The) `foo` [field|resource] supports the following:", or they already
 				// include the nested path as in "(The) `foo.bar` [field|resource] supports the following:".
-				// This means that at any detection of a top-level Paragraph node, we re-set the docsPath to "".
+				// This means that at any detection of a top-level Paragraph node, we re-set the docsPath slice to empty.
 				paths = []string{}
 				paragraph := writeLines(node.Lines(), docBytes)
-				//q.Q(paragraph.String())
 				// Check if our paragraph matches any of the nested object signifiers. See `nestedObjectRegexps`.
 				nestedBlockNames := getNestedBlockNames(paragraph)
-				//q.Q(nestedBlockNames)
 				if len(nestedBlockNames) > 0 {
 					// write to docspath
 					paths = nestedBlockNames
-					//q.Q("paragraph: ", paths)
 				}
 			} else {
 				// Because descriptions nested under paragraphs are not children, but rather siblings,
@@ -1105,13 +1039,37 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 func writeLines(lines *gmtext.Segments, docBytes []byte) string {
 	var desc bytes.Buffer
 	for i := 0; i < lines.Len(); i++ {
-		//TODO: actually don't write lines that are the name itself and the (Optional) nonsense!
 		line := lines.At(i)
 		desc.Write(line.Value(docBytes))
-		//q.Q(desc.String())
 	}
-	q.Q(desc.String())
 	return desc.String()
+}
+
+func cutPaths(paths []string) []string {
+	var newpaths []string
+	for _, p := range paths {
+		pathIndex := strings.LastIndex(
+			p, ".")
+		if pathIndex > 0 {
+			p = p[:pathIndex]
+			newpaths = append(newpaths, p)
+		}
+	}
+	return newpaths
+}
+
+func addPaths(paths []string, pathSection []byte) []string {
+	if len(paths) == 0 {
+		paths = append(paths, string(pathSection))
+	} else {
+		var newPaths []string
+		for _, p := range paths {
+			p = p + "." + string(pathSection)
+			newPaths = append(newPaths, p)
+		}
+		paths = newPaths
+	}
+	return paths
 }
 
 func parseAttributesReferenceSection(subsection []string, ret *entityDocs) {
