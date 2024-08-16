@@ -491,6 +491,10 @@ type tfMarkdownParser struct {
 	editRules editRules
 
 	ret entityDocs
+
+	// readFile allows tests to mock out external files. It should not be set outside
+	// of test cases.
+	readFileFunc func(string) ([]byte, error)
 }
 
 const (
@@ -502,13 +506,22 @@ const (
 	sectionImports             = 5
 )
 
-func (p *tfMarkdownParser) parseSupplementaryExamples() (string, error) {
+func (p *tfMarkdownParser) readFile(name string) ([]byte, error) {
+	if p.readFileFunc != nil {
+		// p.readFileFunc is a testing hard-point. Outside of tests,
+		// p.readFileFunc should be nil.
+		return p.readFileFunc(name)
+	}
+	return os.ReadFile(name)
+}
+
+func (p *tfMarkdownParser) readSupplementaryExamples() (string, error) {
 	examplesFileName := fmt.Sprintf("docs/%s/%s.examples.md", p.kind, p.rawname)
 	absPath, err := filepath.Abs(examplesFileName)
 	if err != nil {
 		return "", err
 	}
-	fileBytes, err := os.ReadFile(absPath)
+	fileBytes, err := p.readFile(absPath)
 	if err != nil {
 		p.sink.error("explicitly marked resource documentation for replacement, but found no file at %q", examplesFileName)
 		return "", err
@@ -550,7 +563,7 @@ func (p *tfMarkdownParser) parse(tfMarkdown []byte) (entityDocs, error) {
 		}
 
 		// now we are going to inject the new source of examples
-		newExamples, err := p.parseSupplementaryExamples()
+		newExamples, err := p.readSupplementaryExamples()
 		if err != nil {
 			return entityDocs{}, err
 		}
