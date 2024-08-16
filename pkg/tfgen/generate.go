@@ -1236,7 +1236,7 @@ func (g *Generator) gatherResources() (moduleMap, error) {
 		res, err := g.gatherResource(r, resources.Get(r), info, false)
 		if err != nil {
 			// Keep track of the error, but keep going, so we can expose more at once.
-			reserr = multierror.Append(reserr, err)
+			reserr = multierror.Append(reserr, fmt.Errorf("%s: %w", r, err))
 		} else {
 			// Add any members returned to the specified module.
 			modules.ensureModule(res.mod).addMember(res)
