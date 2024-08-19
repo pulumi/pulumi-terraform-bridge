@@ -28,6 +28,8 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	hcl2java "github.com/pulumi/pulumi-java/pkg/codegen/java"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/internal/autofill"
 	hcl2yaml "github.com/pulumi/pulumi-yaml/pkg/pulumiyaml/codegen"
 	hcl2dotnet "github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
 	hcl2go "github.com/pulumi/pulumi/pkg/v3/codegen/go"
@@ -40,9 +42,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/spf13/afero"
-
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 
 func cliConverterEnabled() bool {
@@ -229,22 +228,20 @@ func (cc *cliConverter) bulkConvert() error {
 }
 
 func (cc *cliConverter) autoFill(examples map[string]string) map[string]string {
-	d, ok := os.LookupEnv(autoFillEnvVar)
-	if !ok {
-		return examples
-	}
-	autoFillData := newAferoAutoFiller(afero.NewBasePathFs(afero.NewOsFs(), d))
-	out := map[string]string{}
-	for fileName, hcl := range examples {
-		hclPlus, err := autoFill(autoFillData, hcl)
-		if err != nil {
-			contract.IgnoreError(err)
-			out[fileName] = hcl
-		} else {
-			out[fileName] = hclPlus
+	if a, ok := autofill.ConfigureAutoFill(); ok {
+		out := map[string]string{}
+		for fileName, hcl := range examples {
+			hclPlus, err := a.FillUndeclaredReferences(hcl)
+			if err != nil {
+				contract.IgnoreError(err)
+				out[fileName] = hcl
+			} else {
+				out[fileName] = hclPlus
+			}
 		}
+		return out
 	}
-	return out
+	return examples
 }
 
 // Calls pulumi convert to bulk-convert examples.

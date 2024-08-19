@@ -12,7 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tfgen
+// Package autofill implements filling undeclared references in examples.
+//
+// See also: docs/autofill.md
+package autofill
 
 import (
 	"bytes"
@@ -33,6 +36,27 @@ const (
 	autoFillEnvVar = "PULUMI_CONVERT_AUTOFILL_DIR"
 	hclLintPkg     = "github.com/pulumi/pulumi-terraform-bridge/tools/pulumi-hcl-lint"
 )
+
+func ConfigureAutoFill() (AutoFill, bool) {
+	d, ok := os.LookupEnv(autoFillEnvVar)
+	if !ok {
+		return nil, false
+	}
+	autoFillData := newAferoAutoFiller(afero.NewBasePathFs(afero.NewOsFs(), d))
+	return &autoFillImpl{autoFillData}, true
+}
+
+type AutoFill interface {
+	FillUndeclaredReferences(hcl string) (string, error)
+}
+
+type autoFillImpl struct {
+	d autoFillData
+}
+
+func (i *autoFillImpl) FillUndeclaredReferences(hcl string) (string, error) {
+	return autoFill(i.d, hcl)
+}
 
 // Provides data for [AutoFill].
 type autoFillData interface {

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package tfgen
+package autofill
 
 import (
 	"fmt"
@@ -32,7 +32,7 @@ func TestAutoFill(t *testing.T) {
 		t.Skip("Skipped on windows: test issues with newlines")
 	}
 
-	dir := filepath.Join("..", "..", "tools", "pulumi-hcl-lint")
+	dir := filepath.Join("..", "..", "..", "..", "tools", "pulumi-hcl-lint")
 
 	t.Logf("Ensure a local copy of pulumi-hcl-lint is built")
 

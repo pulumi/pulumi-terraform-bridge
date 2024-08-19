@@ -1,5 +1,7 @@
 # Example auto-fill
 
+Replace undeclared resource references with reference instances during example generation.
+
 This is an opt-in feature that helps bridged provider maintainers improve the quality of the generated docs.
 
 ## The undeclared resource problem
