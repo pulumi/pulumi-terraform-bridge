@@ -356,10 +356,6 @@ var (
 	// [1]: https://docs.aws.amazon.com/lambda/latest/dg/welcome.html
 	linkFooterRegexp = regexp.MustCompile(`(?m)^(\[\d+\]):\s(.*)`)
 
-	argumentBulletRegexp = regexp.MustCompile(
-		"^\\s*[*+-]\\s*`([a-z0-9_]*)`\\s*(\\([a-zA-Z]*\\)\\s*)?\\s*[:–-]?\\s*(\\([^\\)]*\\)[-\\s]*)?(.*)",
-	)
-
 	descriptionRegexp = regexp.MustCompile(
 		"^\\s*`([a-z0-9_]*)`\\s*(\\([a-zA-Z]*\\)\\s*)?\\s*[:–-]?\\s*(\\([^)]*\\)[-\\s]*)?((.|\n)*)",
 	)
@@ -373,7 +369,6 @@ var (
 	)
 
 	attributionFormatString = "This Pulumi package is based on the [`%[1]s` Terraform Provider](https://%[3]s/%[2]s/terraform-provider-%[1]s)."
-	listMarkerRegex         = regexp.MustCompile("[-*+]")
 )
 
 func trimFrontMatter(text []byte) []byte {
@@ -949,7 +944,7 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 
 	var paths []string
 	var writeList bool // tracking whether we need to write a list verbatim
-	gmast.Walk(astNode, func(node gmast.Node, enter bool) (gmast.WalkStatus, error) {
+	err := gmast.Walk(astNode, func(node gmast.Node, enter bool) (gmast.WalkStatus, error) {
 		// When we find a list item, we check if it is an argument entry.
 		if node.Kind().String() == "ListItem" {
 			if enter {
@@ -1034,6 +1029,7 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 		}
 		return gmast.WalkContinue, nil
 	})
+	contract.AssertNoErrorf(err, "Cannot fail to parse argument reference")
 }
 
 func writeLines(lines *gmtext.Segments, docBytes []byte) string {
