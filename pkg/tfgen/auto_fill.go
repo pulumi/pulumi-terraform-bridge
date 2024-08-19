@@ -30,19 +30,8 @@ import (
 
 const (
 	// Directory to look for stencil HCL resources to auto-fill undeclared resource references.
-	//
-	// This functionality is activated during HCL->Pulumi example conversion and is aimed at helping provider
-	// maintainers improve Pulumi documentation by making it more likely to contain fully working examples.
-	//
-	// To make things concrete, suppose PULUMI_CONVERT_AUTOFILL_DIR=std_resources and there is an
-	// std_resources/aws_acm_certificate.tf file declaring an aws_acm_certificate called "example". In this case
-	// documentation generation will splice this definition into all HCL programs that are missing an undeclared
-	// resource reference to aws_acm_certificate.
 	autoFillEnvVar = "PULUMI_CONVERT_AUTOFILL_DIR"
-)
-
-var (
-	hclLintPkg = "github.com/pulumi/pulumi-terraform-bridge/tools/pulumi-hcl-lint"
+	hclLintPkg     = "github.com/pulumi/pulumi-terraform-bridge/tools/pulumi-hcl-lint"
 )
 
 // Provides data for [AutoFill].

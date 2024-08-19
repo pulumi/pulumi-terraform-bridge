@@ -32,10 +32,7 @@ func lint(ctx context.Context, dir string, sink chan<- issue) error {
 	if err != nil {
 		return err
 	}
-	if err := lintModule(ctx, mod, sink); err != nil {
-		return err
-	}
-	return nil
+	return lintModule(ctx, mod, sink)
 }
 
 func configureFS(dir string) (afero.Fs, error) {

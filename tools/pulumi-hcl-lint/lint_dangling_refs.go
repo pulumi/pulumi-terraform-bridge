@@ -43,8 +43,8 @@ func lintDanglingRefs(ctx context.Context, mod *configs.Module, sink chan<- issu
 }
 
 type danglingRefIssue struct {
-	token string
-	name  string
+	token string // The resource type in TF such as "aws_instance"
+	name  string // The resource instance label in TF such as "example"
 }
 
 func (d *danglingRefIssue) Code() string {
