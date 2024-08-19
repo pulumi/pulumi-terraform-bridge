@@ -87,12 +87,6 @@ func (enc *objectEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.V
 }
 
 func (dec *objectDecoder) toPropertyValue(v tftypes.Value) (resource.PropertyValue, error) {
-	if !v.IsKnown() {
-		return unknownProperty(), nil
-	}
-	if v.IsNull() {
-		return resource.NewPropertyValue(nil), nil
-	}
 	elements := map[string]tftypes.Value{}
 	if err := v.As(&elements); err != nil {
 		return resource.PropertyValue{},
@@ -104,11 +98,11 @@ func (dec *objectDecoder) toPropertyValue(v tftypes.Value) (resource.PropertyVal
 		attrValue, gotAttrValue := elements[attr]
 		if gotAttrValue {
 			t := dec.objectType.AttributeTypes[attr]
-			pv, err := decoder.toPropertyValue(attrValue)
+			pv, err := decode(decoder, attrValue)
 			if err != nil {
 				return resource.PropertyValue{},
-					fmt.Errorf("objectDecoder fails on property %q (value %s): %w",
-						attr, attrValue, err)
+					fmt.Errorf("objectDecoder (%T) fails on property %q (value %s): %w",
+						decoder, attr, attrValue, err)
 			}
 			key := dec.propertyNames.PropertyKey(attr, t)
 			if !pv.IsNull() {

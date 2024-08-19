@@ -68,12 +68,6 @@ func (enc *mapEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.Valu
 }
 
 func (dec *mapDecoder) toPropertyValue(v tftypes.Value) (resource.PropertyValue, error) {
-	if !v.IsKnown() {
-		return unknownProperty(), nil
-	}
-	if v.IsNull() {
-		return resource.NewPropertyValue(nil), nil
-	}
 	elements := map[string]tftypes.Value{}
 	if err := v.As(&elements); err != nil {
 		return resource.PropertyValue{},
@@ -82,7 +76,7 @@ func (dec *mapDecoder) toPropertyValue(v tftypes.Value) (resource.PropertyValue,
 
 	values := make(resource.PropertyMap)
 	for k, e := range elements {
-		ev, err := dec.elementDecoder.toPropertyValue(e)
+		ev, err := decode(dec.elementDecoder, e)
 		if err != nil {
 			return resource.PropertyValue{},
 				fmt.Errorf("decMap fails with %s: %w", e.String(), err)

@@ -74,13 +74,6 @@ func (enc *setEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.Valu
 }
 
 func (dec *setDecoder) toPropertyValue(v tftypes.Value) (resource.PropertyValue, error) {
-	if !v.IsKnown() {
-		return unknownProperty(), nil
-	}
-	if v.IsNull() {
-		return resource.NewPropertyValue(nil), nil
-	}
-
 	retErr := func(msg string, args ...any) error {
 		return fmt.Errorf("set decoder failed: "+msg, args...)
 	}
@@ -92,7 +85,7 @@ func (dec *setDecoder) toPropertyValue(v tftypes.Value) (resource.PropertyValue,
 	}
 	values := []resource.PropertyValue{}
 	for i, e := range elements {
-		ev, err := dec.elementDecoder.toPropertyValue(e)
+		ev, err := decode(dec.elementDecoder, e)
 		if err != nil {
 			return resource.PropertyValue{},
 				retErr("could not decode element %d (%v): %w", i, ev, err)
