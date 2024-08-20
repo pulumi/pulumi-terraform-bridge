@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/golang/glog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/logging"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
@@ -215,6 +216,24 @@ func (p v2Provider) NewResourceConfig(
 		Raw:    object,
 		Config: object,
 	}}
+}
+
+func (p v2Provider) NewProviderConfig(
+	_ context.Context, object map[string]interface{},
+) shim.ResourceConfig {
+	tfConfig := &terraform.ResourceConfig{
+		Raw:    object,
+		Config: object,
+	}
+	typ := schema.InternalMap(p.tf.Schema).CoreConfigSchema().ImpliedType()
+	ctyVal, err := recoverCtyValueOfObjectType(typ, object)
+	if err != nil {
+		glog.V(9).Infof("Failed to recover cty value of object type: %v, falling back to old behaviour", err)
+		return v2ResourceConfig{tfConfig}
+	}
+
+	tfConfig.CtyValue = ctyVal
+	return v2ResourceConfig{tfConfig}
 }
 
 func (p v2Provider) IsSet(_ context.Context, v interface{}) ([]interface{}, bool) {

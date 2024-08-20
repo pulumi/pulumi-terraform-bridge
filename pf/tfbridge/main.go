@@ -44,7 +44,7 @@ func Main(ctx context.Context, pkg string, prov tfbridge.ProviderInfo, meta Prov
 			if err != nil {
 				return nil, err
 			}
-			return pp.marshalProviderInfo(ctx), nil
+			return pp.Unwrap().marshalProviderInfo(ctx), nil
 		})
 	// TODO[pulumi/pulumi-terraform-bridge#820]
 	// prov.P.InitLogging()

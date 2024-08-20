@@ -264,7 +264,21 @@ func TestCheckConfig(t *testing.T) {
 		}),
 	}, expect(autogold.Expect(`{
   "inputs": {
-    "endpoint": 123.456
+    "endpoint": "123.456"
+  }
+}`))))
+
+	// Check that we correctly handle JSON encoded config values sent by Pulumi.
+	//
+	// This will become unnecessary when https://github.com/pulumi/pulumi/pull/15032
+	// merges.
+	t.Run("json-encoded-nested-config", assertGRPCCall(s.CheckConfig, &pulumirpc.CheckRequest{
+		News: marshal(resource.PropertyMap{
+			"nested": resource.NewProperty(`{"field1": "true", "field2": false}`),
+		}),
+	}, expect(autogold.Expect(`{
+  "inputs": {
+    "nested": "{\"field1\":\"true\",\"field2\":false}"
   }
 }`))))
 }

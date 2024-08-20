@@ -113,8 +113,10 @@ func TestValidateNameOverride(t *testing.T) {
 			info: &Resource{
 				Fields: map[string]*Schema{
 					"object1": {
-						Fields: map[string]*Schema{
-							"nest1": {Name: "Foo"},
+						Elem: &Schema{
+							Fields: map[string]*Schema{
+								"nest1": {Name: "Foo"},
+							},
 						},
 					},
 				},
@@ -125,15 +127,13 @@ func TestValidateNameOverride(t *testing.T) {
 			info: &Resource{
 				Fields: map[string]*Schema{
 					"object1": {
-						Elem: &Schema{
-							Fields: map[string]*Schema{
-								"nest1": {Name: "Foo"},
-							},
+						Fields: map[string]*Schema{
+							"nest1": {Name: "Foo"},
 						},
 					},
 				},
 			},
-			expectedErr: errElemForObject,
+			expectedErr: errFieldsShouldBeOnElem,
 		},
 		{
 			name: "invalid fields on list",
@@ -146,7 +146,7 @@ func TestValidateNameOverride(t *testing.T) {
 					},
 				},
 			},
-			expectedErr: errCannotSpecifyFieldsOnListOrSet,
+			expectedErr: errCannotSpecifyFieldsOnCollection,
 		},
 		{
 			name: "valid max items 1",

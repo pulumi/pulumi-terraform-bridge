@@ -1,11 +1,24 @@
 package tfgen
 
 import (
+	"bytes"
 	"fmt"
+	"regexp"
 	"strings"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	markdown "github.com/teekennedy/goldmark-markdown"
+	"github.com/yuin/goldmark"
+	"github.com/yuin/goldmark/ast"
+	"github.com/yuin/goldmark/parser"
+	"github.com/yuin/goldmark/text"
+	"github.com/yuin/goldmark/util"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/parse"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/parse/section"
 )
 
 func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
@@ -21,17 +34,26 @@ func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
 	// Add instructions to top of file
 	contentStr = frontMatter + installationInstructions + contentStr
 
-	//TODO: See https://github.com/pulumi/pulumi-terraform-bridge/issues/2078
-	// - translate code blocks with code choosers
-	// - reformat TF names
-	// - Ability to omit irrelevant sections
-
-	// Apply edit rules to transform the doc for Pulumi-ready presentation
-	contentBytes, err := applyEditRules([]byte(contentStr), docFile)
+	//Translate code blocks to Pulumi
+	contentStr, err := translateCodeBlocks(contentStr, g)
 	if err != nil {
 		return nil, err
 	}
-	return contentBytes, nil
+
+	// Apply edit rules to transform the doc for Pulumi-ready presentation
+	contentBytes, err := applyEditRules([]byte(contentStr), docFile.FileName, g)
+	if err != nil {
+		return nil, err
+	}
+
+	//Reformat field names. Configuration fields are camelCased like nodejs.
+	contentStr, _ = reformatText(infoContext{
+		language: "nodejs",
+		pkg:      g.pkg,
+		info:     g.info,
+	}, string(contentBytes), nil)
+
+	return []byte(contentStr), nil
 }
 
 func writeFrontMatter(title string) string {
@@ -96,10 +118,9 @@ func writeInstallationInstructions(goImportBasePath, providerName string) string
 	)
 }
 
-func applyEditRules(contentBytes []byte, docFile *DocFile) ([]byte, error) {
-	// Obtain default edit rules for documentation files
-	edits := defaultEditRules()
-
+func applyEditRules(contentBytes []byte, docFile string, g *Generator) ([]byte, error) {
+	// Obtain edit rules passed by the provider
+	edits := g.editRules
 	// Additional edit rules for installation files
 	edits = append(edits,
 		// Replace all "T/terraform" with "P/pulumi"
@@ -114,13 +135,228 @@ func applyEditRules(contentBytes []byte, docFile *DocFile) ([]byte, error) {
 		reReplace(`Argument Reference`,
 			`Configuration Reference`),
 		reReplace(`block contains the following arguments`,
-			`input has the following nested fields`))
+			`input has the following nested fields`),
+		skipSectionHeadersEdit(docFile),
+	)
 	var err error
 	for _, rule := range edits {
-		contentBytes, err = rule.Edit(docFile.FileName, contentBytes)
+		contentBytes, err = rule.Edit(docFile, contentBytes)
 		if err != nil {
 			return nil, err
 		}
 	}
 	return contentBytes, nil
+}
+func translateCodeBlocks(contentStr string, g *Generator) (string, error) {
+	var returnContent string
+	// Extract code blocks
+	codeFence := "```"
+	var codeBlocks []codeBlock
+	for i := 0; i < (len(contentStr) - len(codeFence)); i++ {
+		block, found := findCodeBlock(contentStr, i)
+		if found {
+			codeBlocks = append(codeBlocks, block)
+			i = block.end + 1
+		}
+	}
+	if len(codeBlocks) == 0 {
+		return contentStr, nil
+	}
+	startIndex := 0
+	for i, block := range codeBlocks {
+		// Write the content up to the start of the code block
+		returnContent = returnContent + contentStr[startIndex:block.start]
+		nextNewLine := strings.Index(contentStr[block.start:block.end], "\n")
+		if nextNewLine == -1 {
+			//Write the inline block
+			returnContent = returnContent + contentStr[block.start:block.end] + codeFence + "\n"
+			continue
+		}
+		fenceLanguage := contentStr[block.start : block.start+nextNewLine+1]
+		code := contentStr[block.start+nextNewLine+1 : block.end]
+		// Only convert code blocks that we have reasonable suspicion of actually being Terraform.
+		if isHCL(fenceLanguage, code) {
+			exampleContent, err := convertExample(g, code, i)
+			if err != nil {
+				return "", err
+			}
+			returnContent += exampleContent
+			startIndex = block.end + len(codeFence)
+		} else {
+			// Write any code block as-is.
+			returnContent = returnContent + contentStr[block.start:block.end+len(codeFence)]
+			startIndex = block.end + len(codeFence)
+		}
+	}
+	// Write any remainder.
+	returnContent = returnContent + contentStr[codeBlocks[len(codeBlocks)-1].end+len(codeFence):]
+	return returnContent, nil
+}
+
+// This function renders the Pulumi.yaml config file for a given language if configuration is included in the example.
+func processConfigYaml(pulumiYAML, lang string) string {
+	if pulumiYAML == "" {
+		return pulumiYAML
+	}
+	// Replace the project name from the default `/` to a more descriptive name
+	nameRegex := regexp.MustCompile(`name: /*`)
+	pulumiYAMLFile := nameRegex.ReplaceAllString(pulumiYAML, "name: configuration-example")
+	// Replace the runtime with the language specified.
+	//Unfortunately, lang strings don't quite map to runtime strings.
+	if lang == "typescript" {
+		lang = "nodejs"
+	}
+	if lang == "csharp" {
+		lang = "dotnet"
+	}
+	runtimeRegex := regexp.MustCompile(`runtime: terraform`)
+	pulumiYAMLFile = runtimeRegex.ReplaceAllString(pulumiYAMLFile, fmt.Sprintf("runtime: %s", lang))
+	// Add descriptive code comment
+	pulumiYAMLFile = "```yaml\n" +
+		"# Pulumi.yaml provider configuration file\n" +
+		pulumiYAMLFile + "\n```\n"
+	return pulumiYAMLFile
+}
+
+func convertExample(g *Generator, code string, exampleNumber int) (string, error) {
+	// Make an example to record in the cliConverter.
+	converter := g.cliConverter()
+	fileName := fmt.Sprintf("configuration-installation-%d", exampleNumber)
+	pclExample, err := converter.singleExampleFromHCLToPCL(fileName, code)
+	if err != nil {
+		return "", err
+	}
+
+	langs := genLanguageToSlice(g.language)
+	const (
+		chooserStart = `{{< chooser language "typescript,python,go,csharp,java,yaml" >}}` + "\n"
+		chooserEnd   = "{{< /chooser >}}\n"
+		choosableEnd = "\n{{% /choosable %}}\n"
+	)
+	exampleContent := chooserStart
+
+	// Generate each language in turn and mark up the output with the correct Hugo shortcodes.
+	for _, lang := range langs {
+		choosableStart := fmt.Sprintf("{{%% choosable language %s %%}}\n", lang)
+
+		// Generate the Pulumi.yaml config file for each language
+		configFile := pclExample.PulumiYAML
+		pulumiYAML := processConfigYaml(configFile, lang)
+		// Generate language example
+		convertedLang, err := converter.singleExampleFromPCLToLanguage(pclExample, lang)
+		if err != nil {
+			return "", err
+		}
+		exampleContent += choosableStart + pulumiYAML + convertedLang + choosableEnd
+	}
+	exampleContent += chooserEnd
+	return exampleContent, nil
+}
+
+type sectionSkipper struct {
+	shouldSkipHeader func(headerText string) bool
+}
+
+var _ parser.ASTTransformer = sectionSkipper{}
+
+func (t sectionSkipper) Transform(node *ast.Document, reader text.Reader, pc parser.Context) {
+	source := reader.Source()
+
+	err := ast.Walk(node, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
+		if section, ok := n.(*section.Section); ok && !entering {
+			headerText := section.FirstChild().(*ast.Heading).Text(source)
+			if t.shouldSkipHeader(string(headerText)) {
+				parent := section.Parent()
+				if parent == nil {
+					panic("PARENT IS NIL")
+				}
+				parent.RemoveChild(parent, section)
+			}
+		}
+		return ast.WalkContinue, nil
+	})
+	contract.AssertNoErrorf(err, "impossible")
+}
+
+// SkipSectionByHeaderContent removes headers where shouldSkipHeader(header) returns true,
+// along with any text under the header.
+// content is assumed to be Github flavored markdown when parsing.
+//
+// shouldSkipHeader is called on the raw header text, like this:
+//
+//	shouldSkipHeader("My Header")
+//
+// *not* like this:
+//
+//	// This is wrong
+//	shouldSkipHeader("## My Header\n")
+//
+// Example of removing the first header and its context
+//
+//	result := SkipSectionByHeaderContent(byte[](
+//	`
+//	## First Header
+//
+//	First content
+//
+//	## Second Header
+//
+//	Second content
+//	`,
+//	func(headerText string) bool) ([]byte, error) {
+//		return headerText == "First Header"
+//	})
+//
+// The result will only now contain the second result:
+//
+//	## Second Header
+//
+//	Second content
+func SkipSectionByHeaderContent(
+	content []byte,
+	shouldSkipHeader func(headerText string) bool,
+) ([]byte, error) {
+	// Instantiate our transformer
+	sectionSkipper := sectionSkipper{shouldSkipHeader}
+	gm := goldmark.New(
+		goldmark.WithExtensions(parse.TFRegistryExtension),
+		goldmark.WithParserOptions(parser.WithASTTransformers(
+			util.Prioritized(sectionSkipper, 902),
+		)),
+		goldmark.WithRenderer(markdown.NewRenderer()),
+	)
+	var buf bytes.Buffer
+	// Convert parses the source, applies transformers, and renders output to buf
+	err := gm.Convert(content, &buf)
+	return buf.Bytes(), err
+}
+
+// Edit Rule for skipping headers.
+func skipSectionHeadersEdit(docFile string) tfbridge.DocsEdit {
+	defaultHeaderSkipRegexps := getDefaultHeadersToSkip()
+	return tfbridge.DocsEdit{
+		Path: docFile,
+		Edit: func(_ string, content []byte) ([]byte, error) {
+			return SkipSectionByHeaderContent(content, func(headerText string) bool {
+				for _, header := range defaultHeaderSkipRegexps {
+					if header.Match([]byte(headerText)) {
+						return true
+					}
+				}
+				return false
+			})
+		},
+	}
+
+}
+
+func getDefaultHeadersToSkip() []*regexp.Regexp {
+	defaultHeaderSkipRegexps := []*regexp.Regexp{
+		regexp.MustCompile("[Ll]ogging"),
+		regexp.MustCompile("[Ll]ogs"),
+		regexp.MustCompile("[Tt]esting"),
+		regexp.MustCompile("[Dd]evelopment"),
+		regexp.MustCompile("[Dd]ebugging"),
+	}
+	return defaultHeaderSkipRegexps
 }

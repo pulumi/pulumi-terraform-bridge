@@ -673,7 +673,7 @@ func TestAdapter(t *testing.T) {
 					t.Logf("skipping since the encoder should error")
 					return
 				}
-				v, err := newStringOverIntDecoder().toPropertyValue(tt.expected)
+				v, err := decode(newStringOverIntDecoder(), tt.expected)
 				assert.NoError(t, err)
 				if !assert.True(t, v.DeepEquals(tt.input)) {
 					assert.Equal(t, v, tt.input)

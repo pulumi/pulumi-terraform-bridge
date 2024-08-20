@@ -74,7 +74,7 @@ func TestParseTopLevelSchema(t *testing.T) {
 
 	var schema *topLevelSchema
 
-	parseDoc(markdown).Walk(func(node *bf.Node, entering bool) bf.WalkStatus {
+	parseDoc([]byte(markdown)).Walk(func(node *bf.Node, entering bool) bf.WalkStatus {
 		if entering {
 			tls, err := parseTopLevelSchema(node, nil)
 			if err != nil {
@@ -113,7 +113,7 @@ func TestParseTopLevelSchema(t *testing.T) {
 func TestParseNestedSchemaIntoDoc(t *testing.T) {
 	markdown := readTestFile(t, "mini.md")
 	out := &entityDocs{}
-	parseDoc(markdown).Walk(func(node *bf.Node, entering bool) bf.WalkStatus {
+	parseDoc([]byte(markdown)).Walk(func(node *bf.Node, entering bool) bf.WalkStatus {
 		if entering {
 			nested, err := parseNestedSchema(node, nil)
 			if err != nil {

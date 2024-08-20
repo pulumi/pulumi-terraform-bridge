@@ -15,8 +15,6 @@
 package proto
 
 import (
-	"fmt"
-
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
@@ -52,9 +50,10 @@ func (e element) Type() shim.ValueType {
 		return shim.TypeList
 	case t.Is(tftypes.Map{}) || t.Is(tftypes.Object{}):
 		return shim.TypeMap
+	case t.Is(tftypes.DynamicPseudoType):
+		return shim.TypeDynamic
 	default:
-		panic(fmt.Sprintf("UNKNOWN TYPE of %#v", t)) // TODO: Remove for release
-		// return shim.TypeInvalid
+		return shim.TypeInvalid
 	}
 
 }

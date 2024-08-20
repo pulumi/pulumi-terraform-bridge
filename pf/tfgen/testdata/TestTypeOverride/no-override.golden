@@ -1,0 +1,51 @@
+{
+    "name": "testprovider",
+    "attribution": "This Pulumi package is based on the [`testprovider` Terraform Provider](https://github.com/terraform-providers/terraform-provider-testprovider).",
+    "meta": {
+        "moduleFormat": "(.*)(?:/[^/]*)"
+    },
+    "config": {},
+    "types": {
+        "testprovider:index/ResB1:ResB1": {
+            "properties": {
+                "a1": {
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        }
+    },
+    "provider": {},
+    "resources": {
+        "testprovider:index:Res": {
+            "properties": {
+                "a1": {
+                    "type": "string"
+                },
+                "b1": {
+                    "$ref": "#/types/testprovider:index/ResB1:ResB1"
+                }
+            },
+            "inputProperties": {
+                "a1": {
+                    "type": "string"
+                },
+                "b1": {
+                    "$ref": "#/types/testprovider:index/ResB1:ResB1"
+                }
+            },
+            "stateInputs": {
+                "description": "Input properties used for looking up and filtering Res resources.\n",
+                "properties": {
+                    "a1": {
+                        "type": "string"
+                    },
+                    "b1": {
+                        "$ref": "#/types/testprovider:index/ResB1:ResB1"
+                    }
+                },
+                "type": "object"
+            }
+        }
+    }
+}
