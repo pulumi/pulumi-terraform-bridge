@@ -157,9 +157,8 @@ func (v *PulumiInputValidator) validatePropertyValue(
 	}
 
 	switch typeSpec.Type {
-	case "bool":
-		// The bridge permits coalescing strings to booleans, hence skip strings.
-		if !propertyValue.IsBool() && !propertyValue.IsString() {
+	case "boolean":
+		if !propertyValue.IsBool() {
 			return []TypeFailure{{
 				ResourcePath: propertyPath.String(),
 				Reason: fmt.Sprintf(

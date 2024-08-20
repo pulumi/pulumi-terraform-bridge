@@ -189,7 +189,7 @@ func TestNestedDescriptions(t *testing.T) {
 	schema, err := GenerateSchema(provider, diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
 		Color: colors.Never,
 	}))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	bridgetesting.AssertEqualsJSONFile(t, "test_data/nested-descriptions-schema.json", schema)
 }
 

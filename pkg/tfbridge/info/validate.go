@@ -20,7 +20,6 @@ import (
 	"fmt"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/util"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/walk"
 )
 
@@ -83,12 +82,12 @@ func (c *infoCheck) error(path walk.SchemaPath, err error) {
 }
 
 var (
-	errNoCorrespondingField           = fmt.Errorf("overriding non-existent field")
-	errNoElemToOverride               = fmt.Errorf("overriding non-existent elem")
-	errCannotSpecifyFieldsOnListOrSet = fmt.Errorf("cannot specify .Fields on a List[T] or Set[T] type")
-	errCannotSpecifyNameOnElem        = fmt.Errorf("cannot specify .Name on a List[T], Map[T] or Set[T] type")
-	errCannotSetMaxItemsOne           = fmt.Errorf("cannot specify .MaxItemsOne on a scalar type")
-	errElemForObject                  = fmt.Errorf("cannot set .Elem on a singly nested object block")
+	errNoCorrespondingField            = fmt.Errorf("overriding non-existent field")
+	errNoElemToOverride                = fmt.Errorf("overriding non-existent elem")
+	errCannotSpecifyFieldsOnCollection = fmt.Errorf("cannot specify .Fields on a List[T], Set[T] or Map[T] type")
+	errCannotSpecifyNameOnElem         = fmt.Errorf("cannot specify .Name on a List[T], Map[T] or Set[T] type")
+	errCannotSetMaxItemsOne            = fmt.Errorf("can only specify .MaxItemsOne on List[T] or Set[T] type")
+	errFieldsShouldBeOnElem            = fmt.Errorf(".Fields should be .Elem.Fields")
 )
 
 func (c *infoCheck) checkResource(tfToken string, schema shim.SchemaMap, info map[string]*Schema) {
@@ -107,32 +106,8 @@ func (c *infoCheck) checkProperty(path walk.SchemaPath, tfs shim.Schema, ps *Sch
 		return
 	}
 
-	// s.Elem() case 2
-	//
-	// `path` represents a singly-nested Terraform block.
-	//
-	// Conceptually `path` and `path.Elem` represent the same object.
-	//
-	// To prevent confusion, users are barred from specifying information on
-	// the associated Elem. All information should be specified directly on
-	// this SchemaInfo.
-	if obj, ok := util.CastToTypeObject(tfs); ok {
-		if ps.Elem != nil {
-			c.error(path, errElemForObject)
-		}
-
-		if ps.MaxItemsOne != nil {
-			c.error(path.Element(), errCannotSetMaxItemsOne)
-		}
-
-		// Now check sub-fields
-		c.checkFields(path, obj, ps.Fields)
-
-		return
-	}
-
-	if len(ps.Fields) > 0 {
-		c.error(path, errCannotSpecifyFieldsOnListOrSet)
+	if t := tfs.Type(); t != shim.TypeSet && t != shim.TypeList && ps.MaxItemsOne != nil {
+		c.error(path, errCannotSetMaxItemsOne)
 	}
 
 	switch elem := tfs.Elem().(type) {
@@ -141,14 +116,35 @@ func (c *infoCheck) checkProperty(path walk.SchemaPath, tfs shim.Schema, ps *Sch
 	//
 	// There is a simple element type here, so we just recursively validate that.
 	case shim.Schema:
+		if len(ps.Fields) > 0 {
+			c.error(path, errCannotSpecifyFieldsOnCollection)
+		}
+
 		c.checkElem(path.Element(), elem, ps.Elem)
 
 	// Either `path` represents an object nested under a list or set, or `path` is
 	// itself an object, depending on the .Type() property.
 	case shim.Resource:
-		// s.Elem() case 3
+		// s.Elem() case 2 and 3
 		//
-		// `path` represents a List[elem] or Set[elem].
+		// `path` represents a List[elem], Set[elem], Map[elem] or Object.
+		//
+		// The [shim.Schema] representation is unable to distinguish between
+		// Map[elem] and Object.
+
+		if tfs.Type() == shim.TypeMap && len(ps.Fields) > 0 {
+			// To prevent confusion, users are barred from specifying
+			// information on ps directly, they must set .Fields on ps.Elem:
+			// ps.Elem.Fields.
+			//
+			// We need to make this choice (instead of having users set
+			// information on .Fields (and forbidding ps.Elem.Fields) because
+			// the [shim.Schema] representation is not capable of
+			// distinguishing between Map[Object] and Object. SDKv{1,2}
+			// providers are not able to express Map[Object], but Plugin
+			// Framework based providers are.
+			c.error(path, errFieldsShouldBeOnElem)
+		}
 
 		// Check the nested fields
 		if ps.Elem != nil {
@@ -162,7 +158,7 @@ func (c *infoCheck) checkProperty(path walk.SchemaPath, tfs shim.Schema, ps *Sch
 		switch tfs.Type() {
 		// s.Elem() case 5
 		case shim.TypeMap, shim.TypeList, shim.TypeSet:
-			// The type is unknown, but specifying overrides is invalid.
+			// The type is unknown, but specifying overrides is valid.
 			//
 			// We can't check any deeper, so return
 			return

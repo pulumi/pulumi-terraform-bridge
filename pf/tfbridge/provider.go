@@ -32,6 +32,7 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pf"
+	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/configencoding"
 	pl "github.com/pulumi/pulumi-terraform-bridge/pf/internal/plugin"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/runtypes"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/schemashim"
@@ -92,7 +93,7 @@ func ShimProviderWithContext(ctx context.Context, p pfprovider.Provider) shim.Pr
 }
 
 func newProviderWithContext(ctx context.Context, info tfbridge.ProviderInfo,
-	meta ProviderMetadata) (*provider, error) {
+	meta ProviderMetadata) (configencoding.Provider[*provider], error) {
 	const infoPErrMSg string = "info.P must be constructed with ShimProvider or ShimProviderWithContext"
 
 	if info.P == nil {
@@ -146,7 +147,7 @@ func newProviderWithContext(ctx context.Context, info tfbridge.ProviderInfo,
 		}
 	}
 
-	return &provider{
+	p := &provider{
 		tfServer:           server6,
 		info:               info,
 		resources:          resources,
@@ -158,7 +159,13 @@ func newProviderWithContext(ctx context.Context, info tfbridge.ProviderInfo,
 		version:            semverVersion,
 		schemaOnlyProvider: info.P,
 		parameterize:       meta.XParamaterize,
-	}, nil
+	}
+
+	return configencoding.New(p), nil
+}
+
+func (p *provider) GetConfigEncoding(context.Context) *tfbridge.ConfigEncoding {
+	return tfbridge.NewConfigEncoding(p.schemaOnlyProvider.Schema(), p.info.Config)
 }
 
 // Internal. The signature of this function can change between major releases. Exposed to facilitate testing.
@@ -173,9 +180,8 @@ func NewProviderServer(
 		return nil, err
 	}
 
-	p.logSink = logSink
-	configEnc := tfbridge.NewConfigEncoding(p.schemaOnlyProvider.Schema(), p.info.Config)
-	return pl.NewProviderServerWithContext(p, configEnc), nil
+	p.Unwrap().logSink = logSink
+	return pl.NewProviderServerWithContext(p), nil
 }
 
 // Closer closes any underlying OS resources associated with this provider (like processes, RPC channels, etc).
@@ -203,6 +209,7 @@ func XParameterizeResetProvider(ctx context.Context, info tfbridge.ProviderInfo,
 func (p *provider) ParameterizeWithContext(
 	ctx context.Context, req plugin.ParameterizeRequest,
 ) (plugin.ParameterizeResponse, error) {
+	ctx = p.initLogging(ctx, p.logSink, "")
 	if p.parameterize == nil {
 		return (&plugin.UnimplementedProvider{}).Parameterize(ctx, req)
 	}
@@ -213,7 +220,7 @@ func (p *provider) ParameterizeWithContext(
 			if err != nil {
 				return err
 			}
-			*p = *pp
+			*p = *pp.Unwrap()
 			return nil
 		})
 
@@ -222,6 +229,7 @@ func (p *provider) ParameterizeWithContext(
 
 // GetSchema returns the schema for the provider.
 func (p *provider) GetSchemaWithContext(ctx context.Context, req plugin.GetSchemaRequest) ([]byte, error) {
+	ctx = p.initLogging(ctx, p.logSink, "")
 	return p.pulumiSchema(ctx, req)
 }
 

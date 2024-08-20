@@ -171,6 +171,15 @@ func (p v1Provider) NewResourceConfig(
 	}}
 }
 
+func (p v1Provider) NewProviderConfig(
+	ctx context.Context, object map[string]interface{},
+) shim.ResourceConfig {
+	return v1ResourceConfig{&terraform.ResourceConfig{
+		Raw:    object,
+		Config: object,
+	}}
+}
+
 func (p v1Provider) IsSet(_ context.Context, v interface{}) ([]interface{}, bool) {
 	if set, ok := v.(*schema.Set); ok {
 		return set.List(), true

@@ -78,6 +78,10 @@ func (Provider) NewResourceConfig(ctx context.Context, object map[string]interfa
 	panic("Unimplemented")
 }
 
+func (Provider) NewProviderConfig(ctx context.Context, object map[string]interface{}) shim.ResourceConfig {
+	panic("Unimplemented")
+}
+
 // Checks if a value is representing a Set, and unpacks its elements on success.
 func (Provider) IsSet(ctx context.Context, v interface{}) ([]interface{}, bool) {
 	panic("Unimplemented")

@@ -53,14 +53,14 @@ import pulumi
 import pulumi_archive as archive
 import pulumi_aws as aws
 
-assume_role = aws.iam.get_policy_document(statements=[aws.iam.GetPolicyDocumentStatementArgs(
-    effect="Allow",
-    principals=[aws.iam.GetPolicyDocumentStatementPrincipalArgs(
-        type="Service",
-        identifiers=["lambda.amazonaws.com"],
-    )],
-    actions=["sts:AssumeRole"],
-)])
+assume_role = aws.iam.get_policy_document(statements=[{
+    "effect": "Allow",
+    "principals": [{
+        "type": "Service",
+        "identifiers": ["lambda.amazonaws.com"],
+    }],
+    "actions": ["sts:AssumeRole"],
+}])
 iam_for_lambda = aws.iam.Role("iamForLambda", assume_role_policy=assume_role.json)
 lambda_ = archive.get_file(type="zip",
     source_file="lambda.js",
@@ -70,11 +70,11 @@ test_lambda = aws.lambda_.Function("testLambda",
     role=iam_for_lambda.arn,
     handler="index.test",
     runtime=aws.lambda_.Runtime.NODE_JS18D_X,
-    environment=aws.lambda_.FunctionEnvironmentArgs(
-        variables={
+    environment={
+        "variables": {
             "foo": "bar",
         },
-    ))
+    })
 ```
 ```csharp
 using System.Collections.Generic;
@@ -455,23 +455,23 @@ const testLambda = new aws.lambda.Function("testLambda", {
 import pulumi
 import pulumi_aws as aws
 
-assume_role = aws.iam.get_policy_document(statements=[aws.iam.GetPolicyDocumentStatementArgs(
-    effect="Allow",
-    principals=[aws.iam.GetPolicyDocumentStatementPrincipalArgs(
-        type="Service",
-        identifiers=["lambda.amazonaws.com"],
-    )],
-    actions=["sts:AssumeRole"],
-)])
+assume_role = aws.iam.get_policy_document(statements=[{
+    "effect": "Allow",
+    "principals": [{
+        "type": "Service",
+        "identifiers": ["lambda.amazonaws.com"],
+    }],
+    "actions": ["sts:AssumeRole"],
+}])
 iam_for_lambda = aws.iam.Role("iamForLambda", assume_role_policy=assume_role.json)
 test_lambda = aws.lambda_.Function("testLambda",
     code=pulumi.FileArchive("lambda_function_payload.zip"),
     role=iam_for_lambda.arn,
     handler="index.test",
     runtime=aws.lambda_.Runtime.NODE_JS18D_X,
-    ephemeral_storage=aws.lambda_.FunctionEphemeralStorageArgs(
-        size=10240,
-    ))
+    ephemeral_storage={
+        "size": 10240,
+    })
 ```
 ```csharp
 using System.Collections.Generic;
@@ -733,29 +733,29 @@ alpha = aws.efs.MountTarget("alpha",
 # EFS access point used by lambda file system
 access_point_for_lambda = aws.efs.AccessPoint("accessPointForLambda",
     file_system_id=efs_for_lambda.id,
-    root_directory=aws.efs.AccessPointRootDirectoryArgs(
-        path="/lambda",
-        creation_info=aws.efs.AccessPointRootDirectoryCreationInfoArgs(
-            owner_gid=1000,
-            owner_uid=1000,
-            permissions="777",
-        ),
-    ),
-    posix_user=aws.efs.AccessPointPosixUserArgs(
-        gid=1000,
-        uid=1000,
-    ))
+    root_directory={
+        "path": "/lambda",
+        "creation_info": {
+            "owner_gid": 1000,
+            "owner_uid": 1000,
+            "permissions": "777",
+        },
+    },
+    posix_user={
+        "gid": 1000,
+        "uid": 1000,
+    })
 # A lambda function connected to an EFS file system
 # ... other configuration ...
 example = aws.lambda_.Function("example",
-    file_system_config=aws.lambda_.FunctionFileSystemConfigArgs(
-        arn=access_point_for_lambda.arn,
-        local_mount_path="/mnt/efs",
-    ),
-    vpc_config=aws.lambda_.FunctionVpcConfigArgs(
-        subnet_ids=[aws_subnet["subnet_for_lambda"]["id"]],
-        security_group_ids=[aws_security_group["sg_for_lambda"]["id"]],
-    ),
+    file_system_config={
+        "arn": access_point_for_lambda.arn,
+        "local_mount_path": "/mnt/efs",
+    },
+    vpc_config={
+        "subnet_ids": [aws_subnet["subnet_for_lambda"]["id"]],
+        "security_group_ids": [aws_security_group["sg_for_lambda"]["id"]],
+    },
     opts = pulumi.ResourceOptions(depends_on=[alpha]))
 ```
 ```csharp
@@ -1098,15 +1098,15 @@ if lambda_function_name is None:
 # This is to optionally manage the CloudWatch Log Group for the Lambda Function.
 # If skipping this resource configuration, also add "logs:CreateLogGroup" to the IAM policy below.
 example = aws.cloudwatch.LogGroup("example", retention_in_days=14)
-lambda_logging_policy_document = aws.iam.get_policy_document(statements=[aws.iam.GetPolicyDocumentStatementArgs(
-    effect="Allow",
-    actions=[
+lambda_logging_policy_document = aws.iam.get_policy_document(statements=[{
+    "effect": "Allow",
+    "actions": [
         "logs:CreateLogGroup",
         "logs:CreateLogStream",
         "logs:PutLogEvents",
     ],
-    resources=["arn:aws:logs:*:*:*"],
-)])
+    "resources": ["arn:aws:logs:*:*:*"],
+}])
 lambda_logging_policy = aws.iam.Policy("lambdaLoggingPolicy",
     path="/",
     description="IAM policy for logging from a lambda",
@@ -1114,9 +1114,9 @@ lambda_logging_policy = aws.iam.Policy("lambdaLoggingPolicy",
 lambda_logs = aws.iam.RolePolicyAttachment("lambdaLogs",
     role=aws_iam_role["iam_for_lambda"]["name"],
     policy_arn=lambda_logging_policy.arn)
-test_lambda = aws.lambda_.Function("testLambda", logging_config=aws.lambda_.FunctionLoggingConfigArgs(
-    log_format="Text",
-),
+test_lambda = aws.lambda_.Function("testLambda", logging_config={
+    "log_format": "Text",
+},
 opts = pulumi.ResourceOptions(depends_on=[
         lambda_logs,
         example,

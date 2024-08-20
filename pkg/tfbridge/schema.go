@@ -33,7 +33,6 @@ import (
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
-	shimutil "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/util"
 )
 
 // This file deals with translating between the Pulumi representations of a resource's configuration and state and the
@@ -292,7 +291,6 @@ type conversionContext struct {
 	ProviderConfig              resource.PropertyMap
 	ApplyDefaults               bool
 	ApplyTFDefaults             bool
-	ApplyMaxItemsOneDefaults    bool
 	Assets                      AssetTable
 	UnknownCollectionsSupported bool
 }
@@ -498,8 +496,6 @@ func (ctx *conversionContext) makeTerraformInput(
 
 		var tfflds shim.SchemaMap
 
-		// We cannot use [shimutil.CastToTypeObject] because we have machinery that constructs invalid
-		// resource objects, such as [elemSchemas].
 		if tfs != nil {
 			if r, ok := tfs.Elem().(shim.Resource); ok {
 				tfflds = r.Schema()
@@ -646,18 +642,6 @@ func (ctx *conversionContext) makeObjectTerraformInputs(
 	// Now enumerate and propagate defaults if the corresponding values are still missing.
 	if err := ctx.applyDefaults(result, olds, news, tfs, ps); err != nil {
 		return nil, err
-	}
-
-	if tfs != nil && ctx.ApplyMaxItemsOneDefaults {
-		// Iterate over the TF schema and add an empty array for each nil MaxItemsOne property.
-		tfs.Range(func(key string, value shim.Schema) bool {
-			// First do a lookup of the name/info.
-			_, tfi, psi := getInfoFromTerraformName(key, tfs, ps, false)
-			if IsMaxItemsOne(tfi, psi) && result[key] == nil {
-				result[key] = []interface{}{}
-			}
-			return true
-		})
 	}
 
 	if glog.V(5) {
@@ -1288,12 +1272,25 @@ func makeConfig(v interface{}) interface{} {
 	}
 }
 
+type MakeTerraformInputsOptions struct {
+	ProviderConfig bool
+}
+
+func MakeTerraformConfigFromInputsWithOpts(
+	ctx context.Context, p shim.Provider, inputs map[string]interface{}, opts MakeTerraformInputsOptions,
+) shim.ResourceConfig {
+	raw := makeConfig(inputs).(map[string]interface{})
+	if opts.ProviderConfig {
+		return p.NewProviderConfig(ctx, raw)
+	}
+	return p.NewResourceConfig(ctx, raw)
+}
+
 // MakeTerraformConfigFromInputs creates a new Terraform configuration object from a set of Terraform inputs.
 func MakeTerraformConfigFromInputs(
 	ctx context.Context, p shim.Provider, inputs map[string]interface{},
 ) shim.ResourceConfig {
-	raw := makeConfig(inputs).(map[string]interface{})
-	return p.NewResourceConfig(ctx, raw)
+	return MakeTerraformConfigFromInputsWithOpts(ctx, p, inputs, MakeTerraformInputsOptions{})
 }
 
 type makeTerraformStateOptions struct {
@@ -1732,9 +1729,9 @@ func extractSchemaInputs(
 		return resource.NewArrayProperty(v)
 	case state.IsObject():
 		obj := state.ObjectValue()
-		if tfflds, ok := shimutil.CastToTypeObject(tfs); ok {
+		if tfflds, ok := tfs.Elem().(shim.Resource); ok {
 			return resource.NewProperty(
-				extractSchemaInputsObject(obj, tfflds, ps.Fields),
+				extractSchemaInputsObject(obj, tfflds.Schema(), ps.Fields),
 			)
 		}
 

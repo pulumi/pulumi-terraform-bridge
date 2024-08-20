@@ -60,8 +60,10 @@ func runPulumiUpgrade(t T, res1, res2 *schema.Resource, config1, config2 any, di
 		opts = append(opts, pulcheck.DisablePlanResourceChange())
 	}
 
-	prov1 := pulcheck.BridgedProvider(t, defProviderShortName, map[string]*schema.Resource{defRtype: res1}, opts...)
-	prov2 := pulcheck.BridgedProvider(t, defProviderShortName, map[string]*schema.Resource{defRtype: res2}, opts...)
+	tfp1 := &schema.Provider{ResourcesMap: map[string]*schema.Resource{defRtype: res1}}
+	prov1 := pulcheck.BridgedProvider(t, defProviderShortName, tfp1, opts...)
+	tfp2 := &schema.Provider{ResourcesMap: map[string]*schema.Resource{defRtype: res2}}
+	prov2 := pulcheck.BridgedProvider(t, defProviderShortName, tfp2, opts...)
 
 	pd := &pulumiDriver{
 		name:                defProviderShortName,
@@ -131,10 +133,10 @@ func runUpgradeStateInputCheck(t T, tc upgradeStateTestCase) {
 
 	tfwd := t.TempDir()
 
-	tfd := newTfDriver(t, tfwd, defProviderShortName, defRtype, tc.Resource)
+	tfd := newTFResDriver(t, tfwd, defProviderShortName, defRtype, tc.Resource)
 	_ = tfd.writePlanApply(t, tc.Resource.Schema, defRtype, "example", tc.Config1)
 
-	tfd2 := newTfDriver(t, tfwd, defProviderShortName, defRtype, &upgradeRes)
+	tfd2 := newTFResDriver(t, tfwd, defProviderShortName, defRtype, &upgradeRes)
 	_ = tfd2.writePlanApply(t, tc.Resource.Schema, defRtype, "example", tc.Config2)
 
 	schemaVersion1, schemaVersion2 := runPulumiUpgrade(t, tc.Resource, &upgradeRes, tc.Config1, tc.Config2, tc.DisablePlanResourceChange)

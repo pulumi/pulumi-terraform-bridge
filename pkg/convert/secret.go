@@ -32,7 +32,7 @@ func newSecretDecoder(elementDecoder Decoder) (Decoder, error) {
 }
 
 func (dec *secretDecoder) toPropertyValue(v tftypes.Value) (resource.PropertyValue, error) {
-	encoded, err := dec.elementDecoder.toPropertyValue(v)
+	encoded, err := decode(dec.elementDecoder, v)
 	if err != nil {
 		return resource.PropertyValue{}, err
 	}

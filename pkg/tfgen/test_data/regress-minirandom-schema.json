@@ -35,7 +35,7 @@
         "keepers": {
           "type": "object",
           "additionalProperties": {
-            "$ref": "pulumi.json#/Any"
+            "type": "string"
           },
           "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for\nmore information.\n"
         },
@@ -65,7 +65,7 @@
         "keepers": {
           "type": "object",
           "additionalProperties": {
-            "$ref": "pulumi.json#/Any"
+            "type": "string"
           },
           "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for\nmore information.\n",
           "willReplaceOnChanges": true
@@ -96,7 +96,7 @@
           "keepers": {
             "type": "object",
             "additionalProperties": {
-              "$ref": "pulumi.json#/Any"
+              "type": "string"
             },
             "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for\nmore information.\n",
             "willReplaceOnChanges": true

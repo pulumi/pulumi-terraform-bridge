@@ -141,13 +141,12 @@ func DisablePlanResourceChange() BridgedProviderOpt {
 }
 
 // This is an experimental API.
-func BridgedProvider(t T, providerName string, resMap map[string]*schema.Resource, opts ...BridgedProviderOpt) info.Provider {
+func BridgedProvider(t T, providerName string, tfp *schema.Provider, opts ...BridgedProviderOpt) info.Provider {
 	options := &bridgedProviderOpts{}
 	for _, opt := range opts {
 		opt(options)
 	}
 
-	tfp := &schema.Provider{ResourcesMap: resMap}
 	EnsureProviderValid(t, tfp)
 
 	shimProvider := shimv2.NewProvider(tfp, shimv2.WithPlanResourceChange(
@@ -181,6 +180,7 @@ func PulCheck(t T, bridgedProvider info.Provider, program string) *pulumitest.Pu
 	puwd := t.TempDir()
 	p := filepath.Join(puwd, "Pulumi.yaml")
 
+	program = strings.ReplaceAll(program, "\t", "    ")
 	err := os.WriteFile(p, []byte(program), 0o600)
 	require.NoError(t, err)
 

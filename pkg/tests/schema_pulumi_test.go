@@ -12,10 +12,41 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hexops/autogold/v2"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/internal/pulcheck"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/internal/tfcheck"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optrefresh"
 	"github.com/stretchr/testify/require"
 )
+
+func TestBasic(t *testing.T) {
+	resMap := map[string]*schema.Resource{
+		"prov_test": {
+			Schema: map[string]*schema.Schema{
+				"test": {
+					Type:     schema.TypeString,
+					Optional: true,
+				},
+			},
+		},
+	}
+	tfp := &schema.Provider{ResourcesMap: resMap}
+	bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
+	program := `
+name: test
+runtime: yaml
+resources:
+  mainRes:
+    type: prov:index:Test
+	properties:
+	  test: "hello"
+outputs:
+  testOut: ${mainRes.test}
+`
+	pt := pulcheck.PulCheck(t, bridgedProvider, program)
+	res := pt.Up()
+	require.Equal(t, "hello", res.Outputs["testOut"].Value)
+}
 
 func TestUnknownHandling(t *testing.T) {
 	resMap := map[string]*schema.Resource{
@@ -43,7 +74,8 @@ func TestUnknownHandling(t *testing.T) {
 			},
 		},
 	}
-	bridgedProvider := pulcheck.BridgedProvider(t, "prov", resMap)
+	tfp := &schema.Provider{ResourcesMap: resMap}
+	bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
 	program := `
 name: test
 runtime: yaml
@@ -589,7 +621,8 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 					},
 				}
 
-				bridgedProvider := pulcheck.BridgedProvider(t, "prov", resMap, opts...)
+				tfp := &schema.Provider{ResourcesMap: resMap}
+				bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp, opts...)
 				program := fmt.Sprintf(`
 name: test
 runtime: yaml
@@ -659,7 +692,8 @@ outputs:
 					},
 				}
 
-				bridgedProvider := pulcheck.BridgedProvider(t, "prov", resMap, opts...)
+				tfp := &schema.Provider{ResourcesMap: resMap}
+				bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp, opts...)
 				program := fmt.Sprintf(`
 name: test
 runtime: yaml
@@ -797,7 +831,8 @@ func TestUnknownBlocks(t *testing.T) {
 			},
 		},
 	}
-	bridgedProvider := pulcheck.BridgedProvider(t, "prov", resMap)
+	tfp := &schema.Provider{ResourcesMap: resMap}
+	bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
 
 	provTestKnownProgram := `
 name: test
@@ -1398,6 +1433,441 @@ Resources:
 	}
 }
 
+func TestFullyComputedNestedAttribute(t *testing.T) {
+	resMap := map[string]*schema.Resource{
+		"prov_test": {
+			Schema: map[string]*schema.Schema{
+				"attached_disks": {
+					Type:     schema.TypeList,
+					Optional: true,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"name": {
+								Optional: true,
+								Type:     schema.TypeString,
+							},
+							"key256": {
+								Computed: true,
+								Type:     schema.TypeString,
+							},
+						},
+					},
+				},
+				"top_level_computed": {
+					Type:     schema.TypeString,
+					Computed: true,
+				},
+			},
+		},
+	}
+
+	importer := func(val any) func(context.Context, *schema.ResourceData, interface{}) ([]*schema.ResourceData, error) {
+		return func(ctx context.Context, rd *schema.ResourceData, i interface{}) ([]*schema.ResourceData, error) {
+			elMap := map[string]any{
+				"name":   "disk1",
+				"key256": val,
+			}
+			err := rd.Set("attached_disks", []map[string]any{elMap})
+			require.NoError(t, err)
+
+			err = rd.Set("top_level_computed", "computed_val")
+			require.NoError(t, err)
+
+			return []*schema.ResourceData{rd}, nil
+		}
+	}
+	tfp := &schema.Provider{ResourcesMap: resMap}
+	bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
+
+	program := `
+name: test
+runtime: yaml
+`
+	for _, tc := range []struct {
+		name      string
+		importVal any
+	}{
+		{
+			"non-nil",
+			"val1",
+		},
+		{
+			"nil",
+			nil,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			resMap["prov_test"].Importer = &schema.ResourceImporter{
+				StateContext: importer(tc.importVal),
+			}
+
+			pt := pulcheck.PulCheck(t, bridgedProvider, program)
+
+			res := pt.Import("prov:index/test:Test", "res1", "id1", "")
+
+			t.Logf(res.Stdout)
+
+			require.NotContains(t, res.Stdout, "One or more imported inputs failed to validate")
+		})
+	}
+}
+
+func TestConfigureGetRawConfigDoesNotPanic(t *testing.T) {
+	// Regression test for [pulumi/pulumi-terraform-bridge#2262]
+	getOkExists := func(d *schema.ResourceData, key string) (interface{}, bool) {
+		v := d.GetRawConfig().GetAttr(key)
+		if v.IsNull() {
+			return nil, false
+		}
+		return d.Get(key), true
+	}
+	resMap := map[string]*schema.Resource{
+		"prov_test": {
+			Schema: map[string]*schema.Schema{
+				"test": {
+					Type:     schema.TypeString,
+					Optional: true,
+				},
+			},
+		},
+	}
+
+	runConfigureTest := func(t *testing.T, configPresent bool) {
+		tfp := &schema.Provider{
+			ResourcesMap: resMap,
+			Schema: map[string]*schema.Schema{
+				"config": {
+					Type:     schema.TypeString,
+					Optional: true,
+				},
+			},
+			ConfigureContextFunc: func(ctx context.Context, rd *schema.ResourceData) (interface{}, diag.Diagnostics) {
+				_, ok := getOkExists(rd, "config")
+				require.Equal(t, configPresent, ok, "Unexpected config value")
+				return nil, nil
+			},
+		}
+		bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
+		configVal := "val"
+		if !configPresent {
+			configVal = "null"
+		}
+		program := fmt.Sprintf(`
+name: test
+runtime: yaml
+resources:
+  prov:
+    type: pulumi:providers:prov
+	defaultProvider: true
+	properties:
+	  config: %s
+  mainRes:
+    type: prov:index:Test
+	properties:
+	  test: "hello"
+outputs:
+  testOut: ${mainRes.test}
+`, configVal)
+		pt := pulcheck.PulCheck(t, bridgedProvider, program)
+		pt.Up()
+	}
+
+	t.Run("config exists", func(t *testing.T) {
+		runConfigureTest(t, true)
+	})
+
+	t.Run("config does not exist", func(t *testing.T) {
+		runConfigureTest(t, false)
+	})
+}
+
+// TODO[pulumi/pulumi-terraform-bridge#2274]: Move to actual cross-test suite once the plumbing is done
+func TestConfigureCrossTest(t *testing.T) {
+	resMap := map[string]*schema.Resource{
+		"prov_test": {
+			Schema: map[string]*schema.Schema{
+				"test": {
+					Type:     schema.TypeString,
+					Optional: true,
+				},
+			},
+		},
+	}
+
+	runTest := func(t *testing.T, sch map[string]*schema.Schema, pulumiProgram, tfProgram string) {
+		var tfRd *schema.ResourceData
+		var puRd *schema.ResourceData
+		_ = puRd // ignore unused warning
+		tfp := &schema.Provider{
+			ResourcesMap: resMap,
+			Schema:       sch,
+			ConfigureContextFunc: func(ctx context.Context, rd *schema.ResourceData) (interface{}, diag.Diagnostics) {
+				if tfRd == nil {
+					tfRd = rd
+				} else {
+					puRd = rd
+				}
+
+				return nil, nil
+			},
+		}
+
+		tfdriver := tfcheck.NewTfDriver(t, t.TempDir(), "prov", tfp)
+		tfdriver.Write(t, tfProgram)
+		tfdriver.Plan(t)
+		require.NotNil(t, tfRd)
+		require.Nil(t, puRd)
+
+		bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
+
+		pt := pulcheck.PulCheck(t, bridgedProvider, pulumiProgram)
+		pt.Preview()
+		require.NotNil(t, puRd)
+		require.Equal(t, tfRd.GetRawConfig(), puRd.GetRawConfig())
+	}
+
+	t.Run("string attr", func(t *testing.T) {
+		runTest(t,
+			map[string]*schema.Schema{
+				"config": {
+					Type:     schema.TypeString,
+					Optional: true,
+				},
+			},
+			`
+name: test
+runtime: yaml
+resources:
+	prov:
+		type: pulumi:providers:prov
+		defaultProvider: true
+		properties:
+			config: val
+	mainRes:
+		type: prov:index:Test
+		properties:
+			test: "val"
+`,
+			`
+provider "prov" {
+	config = "val"
+}
+
+resource "prov_test" "test" {
+	test = "val"
+}`)
+	})
+
+	t.Run("object block", func(t *testing.T) {
+		runTest(t,
+			map[string]*schema.Schema{
+				"config": {
+					Type:     schema.TypeList,
+					Optional: true,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"prop": {
+								Type:     schema.TypeString,
+								Optional: true,
+							},
+						},
+					},
+					MaxItems: 1,
+				},
+			},
+			`
+name: test
+runtime: yaml
+resources:
+	prov:
+		type: pulumi:providers:prov
+		defaultProvider: true
+		properties:
+			config: {"prop": "val"}
+	mainRes:
+		type: prov:index:Test
+		properties:
+			test: "val"
+`,
+			`
+provider "prov" {
+	config {
+		prop = "val"
+	}
+}
+
+resource "prov_test" "test" {
+	test = "val"
+}`)
+	})
+
+	t.Run("list config", func(t *testing.T) {
+		runTest(t,
+			map[string]*schema.Schema{
+				"config": {
+					Type:     schema.TypeList,
+					Optional: true,
+					Elem: &schema.Schema{
+						Type: schema.TypeString,
+					},
+				},
+			},
+			`
+name: test
+runtime: yaml
+resources:
+	prov:
+		type: pulumi:providers:prov
+		defaultProvider: true
+		properties:
+			configs: ["val"]
+	mainRes:
+		type: prov:index:Test
+		properties:
+			test: "val"
+`,
+			`
+provider "prov" {
+	config = ["val"]
+}
+
+resource "prov_test" "test" {
+	test = "val"
+}`)
+	})
+
+	t.Run("set config", func(t *testing.T) {
+		runTest(t,
+			map[string]*schema.Schema{
+				"config": {
+					Type:     schema.TypeSet,
+					Optional: true,
+					Elem: &schema.Schema{
+						Type: schema.TypeString,
+					},
+				},
+			},
+			`
+name: test
+runtime: yaml
+resources:
+	prov:
+		type: pulumi:providers:prov
+		defaultProvider: true
+		properties:
+			configs: ["val"]
+	mainRes:
+		type: prov:index:Test
+		properties:
+			test: "val"
+`,
+			`
+provider "prov" {
+	config = ["val"]
+}
+
+resource "prov_test" "test" {
+	test = "val"
+}`)
+	})
+}
+
+func TestBigIntOverride(t *testing.T) {
+	getZoneFromStack := func(data []byte) string {
+		var stateMap map[string]interface{}
+		err := json.Unmarshal(data, &stateMap)
+		require.NoError(t, err)
+		resourcesList := stateMap["resources"].([]interface{})
+		// stack, provider, resource
+		require.Len(t, resourcesList, 3)
+		testResState := resourcesList[2].(map[string]interface{})
+		resOutputs := testResState["outputs"].(map[string]interface{})
+		return resOutputs["managedZoneId"].(string)
+	}
+	bigInt := 1<<62 + 1
+	resMap := map[string]*schema.Resource{
+		"prov_test": {
+			Schema: map[string]*schema.Schema{
+				"prop": {
+					Type:     schema.TypeString,
+					Optional: true,
+				},
+				"managed_zone_id": {
+					Type:     schema.TypeInt,
+					Computed: true,
+				},
+			},
+			CreateContext: func(ctx context.Context, rd *schema.ResourceData, i interface{}) diag.Diagnostics {
+				rd.SetId("1")
+				err := rd.Set("managed_zone_id", bigInt)
+				require.NoError(t, err)
+				return nil
+			},
+			UpdateContext: func(ctx context.Context, rd *schema.ResourceData, i interface{}) diag.Diagnostics {
+				require.Equal(t, bigInt, rd.Get("managed_zone_id").(int))
+				return nil
+			},
+			UseJSONNumber: true,
+		},
+	}
+
+	runTest := func(t *testing.T, PRC bool) {
+		tfp := &schema.Provider{ResourcesMap: resMap}
+		opts := []pulcheck.BridgedProviderOpt{}
+		if !PRC {
+			opts = append(opts, pulcheck.DisablePlanResourceChange())
+		}
+		bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp, opts...)
+		bridgedProvider.Resources["prov_test"] = &tfbridge.ResourceInfo{
+			Tok: "prov:index:Test",
+			Fields: map[string]*tfbridge.SchemaInfo{
+				"managed_zone_id": {
+					Type: "string",
+				},
+			},
+		}
+
+		program := `
+name: test
+runtime: yaml
+resources:
+    mainRes:
+        type: prov:index:Test
+        properties:
+            prop: %s
+`
+
+		pt := pulcheck.PulCheck(t, bridgedProvider, fmt.Sprintf(program, "val"))
+		pt.Up()
+
+		// Check the state is correct
+		stack := pt.ExportStack()
+		data, err := stack.Deployment.MarshalJSON()
+		require.NoError(t, err)
+		require.Equal(t, fmt.Sprint(bigInt), getZoneFromStack(data))
+
+		program2 := fmt.Sprintf(program, "val2")
+		pulumiYamlPath := filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml")
+		err = os.WriteFile(pulumiYamlPath, []byte(program2), 0o600)
+		require.NoError(t, err)
+
+		pt.Up()
+		// Check the state is correct
+		stack = pt.ExportStack()
+		data, err = stack.Deployment.MarshalJSON()
+		require.NoError(t, err)
+		require.Equal(t, fmt.Sprint(bigInt), getZoneFromStack(data))
+	}
+
+	t.Run("PRC disabled", func(t *testing.T) {
+		runTest(t, false)
+	})
+
+	t.Run("PRC enabled", func(t *testing.T) {
+		runTest(t, true)
+	})
+}
+
 func TestDetailedDiffPlainTypes(t *testing.T) {
 	resMap := map[string]*schema.Resource{
 		"prov_test": {
@@ -1424,7 +1894,8 @@ func TestDetailedDiffPlainTypes(t *testing.T) {
 			},
 		},
 	}
-	bridgedProvider := pulcheck.BridgedProvider(t, "prov", resMap)
+	tfp := &schema.Provider{ResourcesMap: resMap}
+	bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
 
 	program := `
 name: test

@@ -52,11 +52,12 @@ func runCreateInputCheck(t T, tc inputTestCase) {
 
 	tfwd := t.TempDir()
 
-	tfd := newTfDriver(t, tfwd, defProviderShortName, defRtype, tc.Resource)
+	tfd := newTFResDriver(t, tfwd, defProviderShortName, defRtype, tc.Resource)
 	tfd.writePlanApply(t, tc.Resource.Schema, defRtype, "example", tc.Config)
 
 	resMap := map[string]*schema.Resource{defRtype: tc.Resource}
-	bridgedProvider := pulcheck.BridgedProvider(t, defProviderShortName, resMap)
+	tfp := &schema.Provider{ResourcesMap: resMap}
+	bridgedProvider := pulcheck.BridgedProvider(t, defProviderShortName, tfp)
 	pd := &pulumiDriver{
 		name:                defProviderShortName,
 		pulumiResourceToken: defRtoken,

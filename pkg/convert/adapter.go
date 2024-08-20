@@ -50,7 +50,7 @@ func (d adaptedDecoder[T]) toPropertyValue(v tftypes.Value) (resource.PropertyVa
 	if err != nil {
 		return resource.PropertyValue{}, fmt.Errorf("failed to adapt for %T: %w", d.decoder, err)
 	}
-	return d.decoder.toPropertyValue(adapted)
+	return decode(d.decoder, adapted)
 }
 
 func newIntOverrideStringEncoder() Encoder {

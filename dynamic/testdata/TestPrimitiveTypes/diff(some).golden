@@ -2,6 +2,7 @@
   "changes": "DIFF_SOME",
   "diffs": [
     "attrNumberComputed",
+    "attrNumberRequired",
     "attrStringDefault",
     "attrStringDefaultOverridden",
     "attrStringRequired"
