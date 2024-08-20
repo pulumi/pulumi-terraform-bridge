@@ -65,6 +65,10 @@ func (impl *Provider) Resources(ctx context.Context) []func() resource.Resource 
 	return r
 }
 
+func (impl *Provider) GRPCProvider() tfprotov6.ProviderServer {
+	return providerserver.NewProtocol6(impl)()
+}
+
 type NewProviderArgs struct {
 	TypeName       string
 	Version        string
@@ -112,8 +116,4 @@ func NewProvider(params NewProviderArgs) *Provider {
 	}
 
 	return prov
-}
-
-func (impl *Provider) GRPCProvider() tfprotov6.ProviderServer {
-	return providerserver.NewProtocol6(impl)()
 }

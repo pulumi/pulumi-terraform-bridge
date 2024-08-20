@@ -40,18 +40,18 @@ resource "test_resource" "test" {
 	)
 
 	plan := driver.Plan(t)
-	t.Logf(driver.Show(t, plan.PlanFile))
+	t.Log(driver.Show(t, plan.PlanFile))
 	driver.Apply(t, plan)
 
-	t.Logf(driver.GetState(t))
+	t.Log(driver.GetState(t))
 
 	newPlan := driver.Plan(t)
 
-	t.Logf(driver.Show(t, plan.PlanFile))
+	t.Log(driver.Show(t, plan.PlanFile))
 
 	driver.Apply(t, newPlan)
 
-	t.Logf(driver.GetState(t))
+	t.Log(driver.GetState(t))
 }
 
 // TestTfMapMissingElem shows that maps missing Elem types are equivalent to specifying:
@@ -101,18 +101,18 @@ resource "test_resource" "test" {
 	)
 
 	plan := driver.Plan(t)
-	t.Logf(driver.Show(t, plan.PlanFile))
+	t.Log(driver.Show(t, plan.PlanFile))
 	driver.Apply(t, plan)
 
-	t.Logf(driver.GetState(t))
+	t.Log(driver.GetState(t))
 
 	newPlan := driver.Plan(t)
 
-	t.Logf(driver.Show(t, plan.PlanFile))
+	t.Log(driver.Show(t, plan.PlanFile))
 
 	driver.Apply(t, newPlan)
 
-	t.Logf(driver.GetState(t))
+	t.Log(driver.GetState(t))
 }
 
 func TestTfUnknownObjects(t *testing.T) {
@@ -186,15 +186,15 @@ resource "test_resource" "test" {
 }`
 	driver.Write(t, knownProgram)
 	plan := driver.Plan(t)
-	t.Logf(driver.Show(t, plan.PlanFile))
+	t.Log(driver.Show(t, plan.PlanFile))
 
 	driver.Apply(t, plan)
-	t.Logf(driver.GetState(t))
+	t.Log(driver.GetState(t))
 
 	driver.Write(t, unknownProgram)
 	plan = driver.Plan(t)
-	t.Logf(driver.Show(t, plan.PlanFile))
+	t.Log(driver.Show(t, plan.PlanFile))
 
 	driver.Apply(t, plan)
-	t.Logf(driver.GetState(t))
+	t.Log(driver.GetState(t))
 }
