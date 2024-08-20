@@ -30,7 +30,7 @@ func TestTfComputed(t *testing.T) {
 		},
 	}
 
-	driver := NewTfDriverSDK(t, t.TempDir(), "test", &prov)
+	driver := NewTfDriver(t, t.TempDir(), "test", &prov)
 
 	driver.Write(t, `
 resource "test_resource" "test" {
@@ -103,7 +103,7 @@ func TestTfUnknownObjects(t *testing.T) {
 		},
 	}
 
-	driver := NewTfDriverSDK(t, t.TempDir(), "test", &prov)
+	driver := NewTfDriver(t, t.TempDir(), "test", &prov)
 
 	knownProgram := `
 resource "test_resource" "test" {

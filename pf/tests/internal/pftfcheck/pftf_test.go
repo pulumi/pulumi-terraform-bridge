@@ -3,19 +3,16 @@ package pftfcheck
 import (
 	"testing"
 
-	pschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
-	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/providerbuilder"
+	pb "github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/providerbuilder"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/tfcheck"
 	"github.com/stretchr/testify/require"
 )
 
 func TestBasic(t *testing.T) {
-	provBuilder := providerbuilder.Provider{
-		TypeName:       "prov",
-		Version:        "0.0.1",
-		ProviderSchema: pschema.Schema{},
-		AllResources: []providerbuilder.Resource{
+	prov := pb.NewProvider(pb.NewProviderArgs{
+		AllResources: []pb.Resource{
 			{
 				Name: "res",
 				ResourceSchema: rschema.Schema{
@@ -25,16 +22,16 @@ func TestBasic(t *testing.T) {
 				},
 			},
 		},
-	}
+	})
 
-	driver := NewTfDriverPF(t, t.TempDir(), &provBuilder)
+	driver := tfcheck.NewTfDriver(t, t.TempDir(), prov.TypeName, prov)
 
 	driver.Write(t, `
-resource "prov_res" "test" {
+resource "testprovider_res" "test" {
     s = "hello"
 }
 output "s_val" {
-	value = prov_res.test.s
+	value = testprovider_res.test.s
 }
 `)
 
@@ -45,11 +42,8 @@ output "s_val" {
 }
 
 func TestDefaults(t *testing.T) {
-	provBuilder := providerbuilder.Provider{
-		TypeName:       "prov",
-		Version:        "0.0.1",
-		ProviderSchema: pschema.Schema{},
-		AllResources: []providerbuilder.Resource{
+	prov := pb.NewProvider(pb.NewProviderArgs{
+		AllResources: []pb.Resource{
 			{
 				Name: "res",
 				ResourceSchema: rschema.Schema{
@@ -63,14 +57,14 @@ func TestDefaults(t *testing.T) {
 				},
 			},
 		},
-	}
+	})
 
-	driver := NewTfDriverPF(t, t.TempDir(), &provBuilder)
+	driver := tfcheck.NewTfDriver(t, t.TempDir(), prov.TypeName, prov)
 
 	driver.Write(t, `
-resource "prov_res" "test" {}
+resource "testprovider_res" "test" {}
 output "s_val" {
-	value = prov_res.test.s
+	value = testprovider_res.test.s
 }
 `)
 

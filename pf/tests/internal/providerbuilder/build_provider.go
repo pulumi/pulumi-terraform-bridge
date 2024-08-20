@@ -20,11 +20,13 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
+	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 )
 
 type Provider struct {
@@ -63,7 +65,29 @@ func (impl *Provider) Resources(ctx context.Context) []func() resource.Resource 
 	return r
 }
 
-func EnsureProviderValid(prov *Provider) {
+type NewProviderArgs struct {
+	TypeName       string
+	Version        string
+	ProviderSchema schema.Schema
+	AllResources   []Resource
+}
+
+// NewProvider creates a new provider with the given resources, filling reasonable defaults.
+func NewProvider(params NewProviderArgs) *Provider {
+	prov := &Provider{
+		TypeName:       params.TypeName,
+		Version:        params.Version,
+		ProviderSchema: params.ProviderSchema,
+		AllResources:   params.AllResources,
+	}
+
+	if prov.TypeName == "" {
+		prov.TypeName = "testprovider"
+	}
+	if prov.Version == "" {
+		prov.Version = "0.0.1"
+	}
+
 	for i := range prov.AllResources {
 		r := &prov.AllResources[i]
 		if r.ResourceSchema.Attributes["id"] == nil {
@@ -86,4 +110,10 @@ func EnsureProviderValid(prov *Provider) {
 			}
 		}
 	}
+
+	return prov
+}
+
+func (impl *Provider) GRPCProvider() tfprotov6.ProviderServer {
+	return providerserver.NewProtocol6(impl)()
 }

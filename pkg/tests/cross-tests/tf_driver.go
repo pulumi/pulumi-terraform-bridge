@@ -40,7 +40,7 @@ func newTFResDriver(t T, dir, providerName, resName string, res *schema.Resource
 			resName: res,
 		},
 	}
-	driver := tfcheck.NewTfDriverSDK(t, dir, providerName, p)
+	driver := tfcheck.NewTfDriver(t, dir, providerName, p)
 	return &TfResDriver{
 		driver: driver,
 		res:    res,

@@ -16,9 +16,9 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov5"
-	"github.com/hashicorp/terraform-plugin-go/tfprotov5/tf5server"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6/tf6server"
+	"github.com/hashicorp/terraform-plugin-mux/tf5to6server"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/pulcheck"
 	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
@@ -56,53 +56,32 @@ func disableTFLogging() {
 	os.Setenv("TF_LOG_SDK_PROTO", "off")
 }
 
-type providerv5 interface {
-	GRPCProvider() tfprotov5.ProviderServer
-}
-
 type providerv6 interface {
 	GRPCProvider() tfprotov6.ProviderServer
 }
 
-func NewTfDriverSDK(t pulcheck.T, dir, providerName string, prov *schema.Provider) *TfDriver {
+// This takes a sdkv2 schema.Provider or a providerv6
+func NewTfDriver(t pulcheck.T, dir, providerName string, prov any) *TfDriver {
+	switch p := prov.(type) {
+	case *schema.Provider:
+		return newTfDriverSDK(t, dir, providerName, p)
+	case providerv6:
+		return newTFDriverV6(t, dir, providerName, p.GRPCProvider())
+	default:
+		contract.Failf("unsupported provider type %T", prov)
+		return nil
+	}
+}
+
+func newTfDriverSDK(t pulcheck.T, dir, providerName string, prov *schema.Provider) *TfDriver {
 	pulcheck.EnsureProviderValid(t, prov)
-	return newTFDriverV5(t, dir, providerName, prov)
+	v6server, err := tf5to6server.UpgradeServer(context.Background(),
+		func() tfprotov5.ProviderServer { return prov.GRPCProvider() })
+	require.NoError(t, err)
+	return newTFDriverV6(t, dir, providerName, v6server)
 }
 
-func newTFDriverV5(t pulcheck.T, dir, providerName string, prov providerv5) *TfDriver {
-	skipUnlessLinux(t)
-	disableTFLogging()
-
-	ctx := context.Background()
-
-	reattachConfigCh := make(chan *plugin.ReattachConfig)
-	closeCh := make(chan struct{})
-
-	serverFactory := func() tfprotov5.ProviderServer {
-		return prov.GRPCProvider()
-	}
-
-	serveOpts := []tf5server.ServeOpt{
-		tf5server.WithGoPluginLogger(hclog.FromStandardLogger(log.New(io.Discard, "", 0), hclog.DefaultOptions)),
-		tf5server.WithDebug(ctx, reattachConfigCh, closeCh),
-		tf5server.WithoutLogStderrOverride(),
-	}
-
-	go func() {
-		err := tf5server.Serve(providerName, serverFactory, serveOpts...)
-		require.NoError(t, err)
-	}()
-
-	reattachConfig := <-reattachConfigCh
-	return &TfDriver{
-		providerName:   providerName,
-		cwd:            dir,
-		reattachConfig: reattachConfig,
-	}
-}
-
-// Only exported for use in PF
-func NewTFDriverV6(t pulcheck.T, dir, providerName string, prov providerv6) *TfDriver {
+func newTFDriverV6(t pulcheck.T, dir, providerName string, prov tfprotov6.ProviderServer) *TfDriver {
 	skipUnlessLinux(t)
 	disableTFLogging()
 
@@ -112,7 +91,7 @@ func NewTFDriverV6(t pulcheck.T, dir, providerName string, prov providerv6) *TfD
 	closeCh := make(chan struct{})
 
 	serverFactory := func() tfprotov6.ProviderServer {
-		return prov.GRPCProvider()
+		return prov
 	}
 
 	serverOpts := []tf6server.ServeOpt{
