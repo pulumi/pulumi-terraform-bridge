@@ -137,10 +137,7 @@ resources:
 }
 
 func TestDefaults(t *testing.T) {
-	provBuilder := providerbuilder.Provider{
-		TypeName:       "prov",
-		Version:        "0.0.1",
-		ProviderSchema: pschema.Schema{},
+	provBuilder := pb.NewProvider(pb.NewProviderArgs{
 		AllResources: []providerbuilder.Resource{
 			{
 				Name: "test",
@@ -151,8 +148,6 @@ func TestDefaults(t *testing.T) {
 						},
 						"change_reason": rschema.StringAttribute{
 							Optional: true,
-							// I've been unable to find an example of a non-Computed resource with a default value in the wild.
-							// Nothing in the docs or validation prohibits this.
 							Computed: true,
 							Default:  stringdefault.StaticString("Default val"),
 						},
@@ -160,9 +155,9 @@ func TestDefaults(t *testing.T) {
 				},
 			},
 		},
-	}
+	})
 
-	prov := bridgedProvider(&provBuilder)
+	prov := bridgedProvider(provBuilder)
 
 	program := `
 name: test
@@ -201,10 +196,7 @@ func (c changeReasonPlanModifier) MarkdownDescription(context.Context) string {
 }
 
 func TestPlanModifiers(t *testing.T) {
-	provBuilder := providerbuilder.Provider{
-		TypeName:       "prov",
-		Version:        "0.0.1",
-		ProviderSchema: pschema.Schema{},
+	provBuilder := pb.NewProvider(pb.NewProviderArgs{
 		AllResources: []providerbuilder.Resource{
 			{
 				Name: "test",
@@ -224,9 +216,9 @@ func TestPlanModifiers(t *testing.T) {
 				},
 			},
 		},
-	}
+	})
 
-	prov := bridgedProvider(&provBuilder)
+	prov := bridgedProvider(provBuilder)
 
 	program := `
 name: test
