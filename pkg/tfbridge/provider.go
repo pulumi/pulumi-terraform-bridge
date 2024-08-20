@@ -1111,21 +1111,6 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 	dd := makeDetailedDiffExtra(ctx, schema, fields, olds, news, diff)
 	detailedDiff, changes := dd.diffs, dd.changes
 
-	// There are some providers/situations which `makeDetailedDiff` distorts the expected changes, leading
-	// to changes being dropped by Pulumi.
-	// Until we fix `makeDetailedDiff`, it is safer to refer to the Terraform Diff attribute length for setting
-	// the DiffResponse.
-	// We will still use `detailedDiff` for diff display purposes.
-
-	// See also https://github.com/pulumi/pulumi-terraform-bridge/issues/1501.
-	if !diff.HasNoChanges() {
-		changes = pulumirpc.DiffResponse_DIFF_SOME
-		// Perhaps collectionDiffs can shed some light and locate the changes to the end-user.
-		for path, diff := range dd.collectionDiffs {
-			detailedDiff[path] = diff
-		}
-	}
-
 	// If there were changes in this diff, check to see if we have a replacement.
 	var replaces []string
 	var replaced map[string]bool
