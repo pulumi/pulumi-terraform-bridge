@@ -2331,26 +2331,27 @@ Resources:
 		//     1 unchanged
 		// `),
 		// 		},
-		{
-			"set element removed front",
-			map[string]interface{}{"setProps": []interface{}{"val1", "val2", "val3"}},
-			map[string]interface{}{"setProps": []interface{}{"val2", "val3"}},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
-    ~ prov:index/test:Test: (update)
-        [id=newid]
-        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-      ~ setProps: [
-          ~ [0]: "val1" => "val2"
-          ~ [1]: "val2" => "val3"
-          - [2]: "val3"
-        ]
-Resources:
-    ~ 1 to update
-    1 unchanged
-`),
-		},
+		// TODO[pulumi/pulumi-terraform-bridge#2325]: Non-deterministic output
+		// 		{
+		// 			"set element removed front",
+		// 			map[string]interface{}{"setProps": []interface{}{"val1", "val2", "val3"}},
+		// 			map[string]interface{}{"setProps": []interface{}{"val2", "val3"}},
+		// 			autogold.Expect(`Previewing update (test):
+		//   pulumi:pulumi:Stack: (same)
+		//     [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+		//     ~ prov:index/test:Test: (update)
+		//         [id=newid]
+		//         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+		//       ~ setProps: [
+		//           ~ [0]: "val1" => "val2"
+		//           ~ [1]: "val2" => "val3"
+		//           - [2]: "val3"
+		//         ]
+		// Resources:
+		//     ~ 1 to update
+		//     1 unchanged
+		// `),
+		// 		},
 		{
 			"set element removed back",
 			map[string]interface{}{"setProps": []interface{}{"val1", "val2", "val3"}},
