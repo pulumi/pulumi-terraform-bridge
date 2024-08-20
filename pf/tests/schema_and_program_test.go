@@ -95,7 +95,7 @@ name: test
 runtime: yaml
 resources:
     mainRes:
-        type: prov:index:Test
+        type: testprovider:index:Test
         properties:
             vlanNames:
                 - name: "vlan1"
@@ -108,7 +108,7 @@ name: test
 runtime: yaml
 resources:
     mainRes:
-        type: prov:index:Test
+        type: testprovider:index:Test
         properties:
             vlanNames:
                 - name: "vlan1"
