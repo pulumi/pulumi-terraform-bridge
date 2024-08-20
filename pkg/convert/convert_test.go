@@ -199,7 +199,7 @@ func TestConvertTurnaround(t *testing.T) {
 		t.Run(testcase.name+"/tf2pu", func(t *testing.T) {
 			t.Parallel()
 
-			actual, err := decoder.toPropertyValue(testcase.val)
+			actual, err := decode(decoder, testcase.val)
 			require.NoError(t, err)
 
 			if f := testcase.normProp; f != nil {
