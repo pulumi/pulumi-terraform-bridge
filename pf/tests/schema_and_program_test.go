@@ -5,42 +5,40 @@ import (
 	"path/filepath"
 	"testing"
 
-	pschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/providerbuilder"
+	pb "github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/providerbuilder"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestBasic(t *testing.T) {
-	provBuilder := providerbuilder.Provider{
-		TypeName:       "prov",
-		Version:        "0.0.1",
-		ProviderSchema: pschema.Schema{},
-		AllResources: []providerbuilder.Resource{
-			{
-				Name: "test",
-				ResourceSchema: rschema.Schema{
-					Attributes: map[string]rschema.Attribute{
-						"s": rschema.StringAttribute{Optional: true},
+	provBuilder := providerbuilder.NewProvider(
+		providerbuilder.NewProviderArgs{
+			AllResources: []providerbuilder.Resource{
+				{
+					Name: "test",
+					ResourceSchema: rschema.Schema{
+						Attributes: map[string]rschema.Attribute{
+							"s": rschema.StringAttribute{Optional: true},
+						},
 					},
 				},
 			},
-		},
-	}
+		})
 
-	prov := bridgedProvider(&provBuilder)
+	prov := bridgedProvider(provBuilder)
 
 	program := `
 name: test
 runtime: yaml
 resources:
     mainRes:
-        type: prov:index:Test
+        type: testprovider:index:Test
         properties:
             s: "hello"`
 
@@ -51,10 +49,7 @@ resources:
 
 func TestComputedSetNoDiffWhenElementRemoved(t *testing.T) {
 	// Regression test for [pulumi/pulumi-terraform-bridge#2192]
-	provBuilder := providerbuilder.Provider{
-		TypeName:       "prov",
-		Version:        "0.0.1",
-		ProviderSchema: pschema.Schema{},
+	provBuilder := pb.NewProvider(pb.NewProviderArgs{
 		AllResources: []providerbuilder.Resource{
 			{
 				Name: "test",
@@ -91,16 +86,16 @@ func TestComputedSetNoDiffWhenElementRemoved(t *testing.T) {
 				},
 			},
 		},
-	}
+	})
 
-	prov := bridgedProvider(&provBuilder)
+	prov := bridgedProvider(provBuilder)
 
 	program1 := `
 name: test
 runtime: yaml
 resources:
     mainRes:
-        type: prov:index:Test
+        type: testprovider:index:Test
         properties:
             vlanNames:
                 - name: "vlan1"
@@ -113,7 +108,7 @@ name: test
 runtime: yaml
 resources:
     mainRes:
-        type: prov:index:Test
+        type: testprovider:index:Test
         properties:
             vlanNames:
                 - name: "vlan1"

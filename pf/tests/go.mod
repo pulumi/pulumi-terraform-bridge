@@ -2,15 +2,18 @@ module github.com/pulumi/pulumi-terraform-bridge/pf/tests
 
 go 1.21.12
 
+replace github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests => ../../pkg/tests
+
 require (
 	github.com/hashicorp/terraform-plugin-framework v1.6.0
-	github.com/hashicorp/terraform-plugin-go v0.22.0
+	github.com/hashicorp/terraform-plugin-go v0.23.0
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.33.0
 	github.com/hashicorp/terraform-provider-tls/shim v0.0.0-00010101000000-000000000000
 	github.com/hexops/autogold/v2 v2.2.1
-	github.com/pulumi/providertest v0.0.14
+	github.com/pulumi/providertest v0.0.15
 	github.com/pulumi/pulumi-terraform-bridge/pf v0.0.0
 	github.com/pulumi/pulumi-terraform-bridge/v3 v3.89.1
+	github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests v0.0.0-00010101000000-000000000000
 	github.com/stretchr/testify v1.9.0
 	github.com/terraform-providers/terraform-provider-random/randomshim v0.0.0
 )
@@ -44,6 +47,7 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.2.1 // indirect
 	github.com/google/s2a-go v0.1.7 // indirect
 	github.com/hashicorp/logutils v1.0.0 // indirect
+	github.com/hashicorp/terraform-plugin-mux v0.16.0 // indirect
 	github.com/hexops/gotextdiff v1.0.3 // indirect
 	github.com/hexops/valast v1.4.4 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
@@ -59,6 +63,7 @@ require (
 	github.com/pulumi/appdash v0.0.0-20231130102222-75f619a67231 // indirect
 	github.com/pulumi/esc v0.9.1 // indirect
 	github.com/pulumi/inflector v0.1.1 // indirect
+	github.com/pulumi/pulumi/sdk v1.14.1 // indirect
 	github.com/pulumi/terraform-diff-reader v0.0.2 // indirect
 	github.com/teekennedy/goldmark-markdown v0.3.0 // indirect
 	github.com/vmihailenco/msgpack v4.0.4+incompatible // indirect
@@ -75,6 +80,7 @@ require (
 	google.golang.org/genproto/googleapis/api v0.0.0-20240311173647-c811ad7063a7 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240311173647-c811ad7063a7 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
+	gotest.tools v2.2.0+incompatible // indirect
 	mvdan.cc/gofumpt v0.5.0 // indirect
 )
 
@@ -258,7 +264,7 @@ require (
 	google.golang.org/appengine v1.6.8 // indirect
 	google.golang.org/genproto v0.0.0-20240311173647-c811ad7063a7 // indirect
 	google.golang.org/grpc v1.63.2
-	google.golang.org/protobuf v1.33.0
+	google.golang.org/protobuf v1.34.0
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	lukechampine.com/frand v1.4.2 // indirect

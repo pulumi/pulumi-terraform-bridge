@@ -28,6 +28,7 @@ import (
 
 	testutils "github.com/pulumi/providertest/replay"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/providerbuilder"
+	pb "github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/providerbuilder"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/testprovider"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
 	tfbridge0 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
@@ -308,9 +309,7 @@ func TestCheck(t *testing.T) {
 		tc := tc
 
 		t.Run(tc.name, func(t *testing.T) {
-			testProvider := &providerbuilder.Provider{
-				TypeName: "testprovider",
-				Version:  "0.0.1",
+			testProvider := pb.NewProvider(pb.NewProviderArgs{
 				ProviderSchema: pschema.Schema{
 					Attributes: map[string]pschema.Attribute{
 						"prop": pschema.StringAttribute{
@@ -322,7 +321,7 @@ func TestCheck(t *testing.T) {
 					Name:           "res",
 					ResourceSchema: tc.schema,
 				}},
-			}
+			})
 			res := tfbridge0.ResourceInfo{
 				Tok: "testprovider:index/res:Res",
 				Docs: &tfbridge0.DocInfo{

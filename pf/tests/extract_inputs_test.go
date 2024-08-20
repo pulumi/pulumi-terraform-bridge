@@ -901,17 +901,17 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			prov := &pb.Provider{
+			prov := pb.NewProvider(pb.NewProviderArgs{
 				AllResources: []pb.Resource{
 					{
 						Name:           "test",
 						ResourceSchema: tc.resSchema,
 					},
 				},
-			}
+			})
 
 			shimmedProvider := schemashim.ShimSchemaOnlyProvider(context.Background(), prov)
-			res := shimmedProvider.ResourcesMap().Get("_test")
+			res := shimmedProvider.ResourcesMap().Get("testprovider_test")
 			result, err := tfbridge.ExtractInputsFromOutputs(nil, tc.props, res.Schema(), nil, false)
 			require.NoError(t, err)
 			tc.expect.Equal(t, result)
