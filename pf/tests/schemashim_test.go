@@ -42,8 +42,9 @@ func TestSchemaShimRepresentations(t *testing.T) {
 	testCases := []testCase{
 		{
 			"single-nested-block",
-			&pb.Provider{
+			pb.NewProvider(pb.NewProviderArgs{
 				AllResources: []pb.Resource{{
+					Name: "res",
 					ResourceSchema: schema.Schema{
 						Blocks: map[string]schema.Block{
 							"single_nested_block": schema.SingleNestedBlock{
@@ -56,10 +57,10 @@ func TestSchemaShimRepresentations(t *testing.T) {
 						},
 					},
 				}},
-			},
+			}),
 			autogold.Expect(`{
   "resources": {
-    "_": {
+    "testprovider_res": {
       "single_nested_block": {
         "element": {
           "resource": {
@@ -78,8 +79,9 @@ func TestSchemaShimRepresentations(t *testing.T) {
 		},
 		{
 			"list-nested-block",
-			&pb.Provider{
+			pb.NewProvider(pb.NewProviderArgs{
 				AllResources: []pb.Resource{{
+					Name: "res",
 					ResourceSchema: schema.Schema{
 						Blocks: map[string]schema.Block{
 							"list_nested_block": schema.ListNestedBlock{
@@ -94,10 +96,10 @@ func TestSchemaShimRepresentations(t *testing.T) {
 						},
 					},
 				}},
-			},
+			}),
 			autogold.Expect(`{
   "resources": {
-    "_": {
+    "testprovider_res": {
       "list_nested_block": {
         "element": {
           "resource": {
@@ -116,8 +118,9 @@ func TestSchemaShimRepresentations(t *testing.T) {
 		},
 		{
 			"map-nested-attribute",
-			&pb.Provider{
+			pb.NewProvider(pb.NewProviderArgs{
 				AllResources: []pb.Resource{{
+					Name: "res",
 					ResourceSchema: schema.Schema{
 						Attributes: map[string]schema.Attribute{
 							"map_nested_attribute": schema.MapNestedAttribute{
@@ -132,10 +135,10 @@ func TestSchemaShimRepresentations(t *testing.T) {
 						},
 					},
 				}},
-			},
+			}),
 			autogold.Expect(`{
   "resources": {
-    "_": {
+    "testprovider_res": {
       "map_nested_attribute": {
         "element": {
           "schema": {
@@ -158,8 +161,9 @@ func TestSchemaShimRepresentations(t *testing.T) {
 		},
 		{
 			"object-attribute",
-			&pb.Provider{
+			pb.NewProvider(pb.NewProviderArgs{
 				AllResources: []pb.Resource{{
+					Name: "res",
 					ResourceSchema: schema.Schema{
 						Attributes: map[string]schema.Attribute{
 							"object_attribute": schema.ObjectAttribute{
@@ -170,10 +174,10 @@ func TestSchemaShimRepresentations(t *testing.T) {
 						},
 					},
 				}},
-			},
+			}),
 			autogold.Expect(`{
   "resources": {
-    "_": {
+    "testprovider_res": {
       "object_attribute": {
         "element": {
           "resource": {
