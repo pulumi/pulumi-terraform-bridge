@@ -81,6 +81,25 @@ func NewObjectEncoder(os ObjectSchema) (Encoder, error) {
 }
 
 type Decoder interface {
+	// toPropertyValue applies the conversion of the Decoder.
+	//
+	// toPropertyValue should not be called directly. Instead, it should be called
+	// through [decode].
+	//
+	// You *should* do this:
+	//
+	//	var myDecoder Decoder = ...
+	//	var myValue tftypes.Value = ...
+	//	return decode(myDecoder, value)
+	//
+	// You *should not* do this:
+	//
+	//	var myDecoder Decoder = ...
+	//	var myValue tftypes.Value = ...
+	//	return myDecoder.toPropertyValue(value)
+	//
+	// This is because toPropertyValue is not required to handle [tftypes.Value]
+	// modifiers, like secrets and unknown values.
 	toPropertyValue(tftypes.Value) (resource.PropertyValue, error)
 }
 
@@ -102,8 +121,18 @@ func EncodePropertyMap(enc Encoder, pmap resource.PropertyMap) (tftypes.Value, e
 	return enc.fromPropertyValue(propertyvalue.RemoveSecrets(resource.NewObjectProperty(pmap)))
 }
 
+func decode(dec Decoder, v tftypes.Value) (resource.PropertyValue, error) {
+	if !v.IsKnown() {
+		return unknownProperty(), nil
+	}
+	if v.IsNull() {
+		return resource.NewPropertyValue(nil), nil
+	}
+	return dec.toPropertyValue(v)
+}
+
 func DecodePropertyMap(ctx context.Context, dec Decoder, v tftypes.Value) (resource.PropertyMap, error) {
-	pv, err := dec.toPropertyValue(v)
+	pv, err := decode(dec, v)
 	if err != nil {
 		return nil, err
 	}

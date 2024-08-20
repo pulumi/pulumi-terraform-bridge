@@ -100,6 +100,12 @@ func (UnimplementedProvider) NewResourceConfig(
 	panic("unimplemented")
 }
 
+func (UnimplementedProvider) NewProviderConfig(
+	ctx context.Context, object map[string]interface{},
+) shim.ResourceConfig {
+	panic("unimplemented")
+}
+
 func (UnimplementedProvider) IsSet(ctx context.Context, v interface{}) ([]interface{}, bool) {
 	panic("unimplemented")
 }

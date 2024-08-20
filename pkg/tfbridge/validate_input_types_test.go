@@ -1477,7 +1477,7 @@ func TestValidateInputType_toplevel(t *testing.T) {
 					TypeSpec: pschema.TypeSpec{
 						Type: "object",
 						AdditionalProperties: &pschema.TypeSpec{
-							Type: "bool",
+							Type: "boolean",
 						},
 					},
 				},

@@ -901,14 +901,14 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			prov := &pb.Provider{
+			prov := pb.NewProvider(pb.NewProviderArgs{
 				AllResources: []pb.Resource{
 					{
 						Name:           "test",
 						ResourceSchema: tc.resSchema,
 					},
 				},
-			}
+			})
 
 			shimmedProvider := schemashim.ShimSchemaOnlyProvider(context.Background(), prov)
 			res := shimmedProvider.ResourcesMap().Get("_test")

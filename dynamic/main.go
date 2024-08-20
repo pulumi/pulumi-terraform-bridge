@@ -143,7 +143,7 @@ func initialSetup() (tfbridge.ProviderInfo, pfbridge.ProviderMetadata, func() er
 
 			return plugin.ParameterizeResponse{
 				Name:    p.Name(),
-				Version: &v,
+				Version: v,
 			}, nil
 		},
 	}

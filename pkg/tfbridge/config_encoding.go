@@ -17,11 +17,11 @@ package tfbridge
 import (
 	"encoding/json"
 	"fmt"
-	"sort"
 
 	"github.com/golang/protobuf/ptypes/struct"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/propertyvalue"
@@ -43,11 +43,8 @@ func NewConfigEncoding(config shim.SchemaMap, configInfos map[string]*SchemaInfo
 		pulumiKey := resource.PropertyKey(TerraformToPulumiNameV2(tfKey, config, configInfos))
 		schema := config.Get(tfKey)
 		fieldTypes[pulumiKey] = schema.Type()
-
 	}
-	return &ConfigEncoding{
-		fieldTypes: fieldTypes,
-	}
+	return &ConfigEncoding{fieldTypes}
 }
 
 func (*ConfigEncoding) tryUnwrapSecret(encoded any) (any, bool) {
@@ -87,8 +84,6 @@ func (enc *ConfigEncoding) convertStringToPropertyValue(s string, typ shim.Value
 		return resource.PropertyValue{}, err
 	}
 
-	opts := enc.unmarshalOpts()
-
 	// Instead of using resource.NewPropertyValue, specialize it to detect nested json-encoded secrets.
 	var replv func(encoded any) (resource.PropertyValue, bool)
 	replv = func(encoded any) (resource.PropertyValue, bool) {
@@ -98,9 +93,6 @@ func (enc *ConfigEncoding) convertStringToPropertyValue(s string, typ shim.Value
 		}
 
 		v := resource.NewPropertyValueRepl(encodedSecret, nil, replv)
-		if opts.KeepSecrets {
-			v = resource.MakeSecret(v)
-		}
 
 		return v, true
 	}
@@ -121,126 +113,85 @@ func (*ConfigEncoding) zeroValue(typ shim.ValueType) resource.PropertyValue {
 	}
 }
 
-func (enc *ConfigEncoding) unmarshalOpts() plugin.MarshalOptions {
-	return plugin.MarshalOptions{
+func (enc *ConfigEncoding) UnmarshalProperties(props *structpb.Struct) (resource.PropertyMap, error) {
+	m, err := plugin.UnmarshalProperties(props, plugin.MarshalOptions{
 		Label:        "config",
 		KeepUnknowns: true,
 		SkipNulls:    true,
 		RejectAssets: true,
-	}
-}
-
-// Like plugin.UnmarshalPropertyValue but overrides string parsing with convertStringToPropertyValue.
-func (enc *ConfigEncoding) unmarshalPropertyValue(key resource.PropertyKey,
-	v *structpb.Value) (*resource.PropertyValue, error) {
-
-	opts := enc.unmarshalOpts()
-
-	pv, err := plugin.UnmarshalPropertyValue(key, v, enc.unmarshalOpts())
+	})
 	if err != nil {
-		return nil, fmt.Errorf("error unmarshalling property %q: %w", key, err)
-	}
-	shimType, gotShimType := enc.fieldTypes[key]
-
-	// Only apply JSON-encoded recognition for known fields.
-	if !gotShimType {
-		return pv, nil
+		return nil, fmt.Errorf("failed to unmarshal to provider values: %w", err)
 	}
 
-	var jsonString string
-	var jsonStringDetected, jsonStringSecret bool
-
-	if pv.IsString() {
-		jsonString = pv.StringValue()
-		jsonStringDetected = true
-	}
-
-	if opts.KeepSecrets && pv.IsSecret() && pv.SecretValue().Element.IsString() {
-		jsonString = pv.SecretValue().Element.StringValue()
-		jsonStringDetected = true
-		jsonStringSecret = true
-	}
-
-	if jsonStringDetected {
-		v, err := enc.convertStringToPropertyValue(jsonString, shimType)
-		if err != nil {
-			return nil, fmt.Errorf("error unmarshalling property %q: %w", key, err)
-		}
-		if jsonStringSecret {
-			s := resource.MakeSecret(v)
-			return &s, nil
-		}
-		return &v, nil
-	}
-
-	// Computed sentinels are coming in as always having an empty string, but the encoding coerses them to a zero
-	// value of the appropriate type.
-	if pv.IsComputed() && gotShimType {
-		el := pv.V.(resource.Computed).Element
-		if el.IsString() && el.StringValue() == "" {
-			res := resource.MakeComputed(enc.zeroValue(shimType))
-			return &res, nil
-		}
-	}
-
-	return pv, nil
+	return enc.UnfoldProperties(m)
 }
 
-// Inline from plugin.UnmarshalProperties substituting plugin.UnmarshalPropertyValue.
-func (enc *ConfigEncoding) UnmarshalProperties(props *structpb.Struct) (resource.PropertyMap, error) {
-	opts := enc.unmarshalOpts()
+func (enc *ConfigEncoding) UnfoldProperties(m resource.PropertyMap) (resource.PropertyMap, error) {
+	result := make(resource.PropertyMap, len(m))
+	for _, pk := range m.StableKeys() {
+		v := m[pk]
 
-	result := make(resource.PropertyMap)
-
-	// First sort the keys so we enumerate them in order (in case errors happen, we want determinism).
-	var keys []string
-	if props != nil {
-		for k := range props.Fields {
-			keys = append(keys, k)
+		// If we don't have type information on the field, we don't attempt to do
+		// anything with it.
+		typ, hasType := enc.fieldTypes[pk]
+		if !hasType {
+			result[pk] = v
+			continue
 		}
-		sort.Strings(keys)
-	}
 
-	// And now unmarshal every field it into the map.
-	for _, key := range keys {
-		pk := resource.PropertyKey(key)
-		v, err := enc.unmarshalPropertyValue(pk, props.Fields[key])
-		if err != nil {
-			return nil, err
-		} else if v != nil {
-			if opts.SkipNulls && v.IsNull() {
-				continue
+		contract.Assertf(!v.IsSecret() && !(v.IsOutput() && v.OutputValue().Secret),
+			"The bridge does not accept secrets, so we should not encounter them here")
+
+		if v.IsString() {
+			prop, err := enc.convertStringToPropertyValue(v.StringValue(), typ)
+			if err != nil {
+				return nil, err
 			}
-			if opts.SkipInternalKeys && resource.IsInternalPropertyKey(pk) {
-				continue
-			}
-			result[pk] = *v
+			v = prop
 		}
+
+		// Computed sentinels are coming in as always having an empty string, but
+		// the encoding coerces them to a zero value of the appropriate type.
+		if v.IsComputed() && v.V.(resource.Computed).Element.V == "" {
+			v = resource.MakeComputed(enc.zeroValue(enc.fieldTypes[pk]))
+		}
+
+		result[pk] = v
 	}
 
 	return result, nil
 }
 
+// Inverse of [ConfigEncoding.UnfoldProperties], with additional support for
+// secrets. Since the encoding cannot represent nested secrets, any nested secrets will be
+// approximated by making the entire top-level property secret.
+func (enc *ConfigEncoding) FoldProperties(props resource.PropertyMap) (resource.PropertyMap, error) {
+	dst := make(resource.PropertyMap, len(props))
+	for k, v := range props {
+		var err error
+		dst[k], err = enc.jsonEncodePropertyValue(k, v)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return dst, nil
+}
+
 // Inverse of UnmarshalProperties, with additional support for secrets. Since the encoding cannot represent nested
 // secrets, any nested secrets will be approximated by making the entire top-level property secret.
 func (enc *ConfigEncoding) MarshalProperties(props resource.PropertyMap) (*structpb.Struct, error) {
-	opts := plugin.MarshalOptions{
+	copy, err := enc.FoldProperties(props)
+	if err != nil {
+		return nil, err
+	}
+	return plugin.MarshalProperties(copy, plugin.MarshalOptions{
 		Label:        "config",
 		KeepUnknowns: true,
 		SkipNulls:    true,
 		RejectAssets: true,
 		KeepSecrets:  true,
-	}
-
-	copy := make(resource.PropertyMap)
-	for k, v := range props {
-		var err error
-		copy[k], err = enc.jsonEncodePropertyValue(k, v)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return plugin.MarshalProperties(copy, opts)
+	})
 }
 
 func (enc *ConfigEncoding) jsonEncodePropertyValue(k resource.PropertyKey,

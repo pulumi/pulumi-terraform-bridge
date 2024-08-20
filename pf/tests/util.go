@@ -56,7 +56,6 @@ func newMuxedProviderServer(t *testing.T, info tfbridge0.ProviderInfo) pulumirpc
 }
 
 func bridgedProvider(prov *providerbuilder.Provider) info.Provider {
-	providerbuilder.EnsureProviderValid(prov)
 	shimProvider := tfbridge.ShimProvider(prov)
 
 	provider := tfbridge0.ProviderInfo{

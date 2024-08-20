@@ -1,9 +1,17 @@
 package tfgen
 
 import (
+	"bytes"
+	"runtime"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/yuin/goldmark"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	sdkv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
 
 //nolint:lll
@@ -166,21 +174,163 @@ func TestApplyEditRules(t *testing.T) {
 			name: "Replaces argument headers with input headers",
 			docFile: DocFile{
 				Content: []byte("# Argument Reference\n" +
-					"The following arguments are supported:\n* `some_argument`\n" +
+					"The following arguments are supported:\n* `some_argument`\n\n" +
 					"block contains the following arguments"),
 			},
 			expected: []byte("# Configuration Reference\n" +
-				"The following configuration inputs are supported:\n* `some_argument`\n" +
+				"The following configuration inputs are supported:\n* `some_argument`\n\n" +
 				"input has the following nested fields"),
+		},
+		{
+			name: "Replaces terraform plan with pulumi preview",
+			docFile: DocFile{
+				Content: []byte("terraform plan this program"),
+			},
+			expected: []byte("pulumi preview this program"),
+		},
+		{
+			name: "Skips sections about logging by default",
+			docFile: DocFile{
+				Content:  []byte("# I am a provider\n\n### Additional Logging\n This section should be skipped"),
+				FileName: "filename",
+			},
+			expected: []byte("# I am a provider\n"),
 		},
 	}
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			actual, err := applyEditRules(tt.docFile.Content, &tt.docFile)
+			g := &Generator{
+				sink:      mockSink{t},
+				editRules: defaultEditRules(),
+			}
+			actual, err := applyEditRules(tt.docFile.Content, "testfile.md", g)
 			require.NoError(t, err)
-			require.Equal(t, string(tt.expected), string(actual))
+			assertEqualHTML(t, string(tt.expected), string(actual))
 		})
 	}
+}
+
+func TestTranslateCodeBlocks(t *testing.T) {
+
+	type testCase struct {
+		// The name of the test case.
+		name       string
+		contentStr string
+		g          *Generator
+		expected   string
+	}
+	p := tfbridge.ProviderInfo{
+		Name: "simple",
+		P: sdkv2.NewProvider(&schema.Provider{
+			ResourcesMap: map[string]*schema.Resource{
+				"simple_resource": {
+					Schema: map[string]*schema.Schema{
+						"input_one": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"input_two": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+					},
+				},
+			},
+			DataSourcesMap: map[string]*schema.Resource{
+				"simple_data_source": {
+					Schema: map[string]*schema.Schema{},
+				},
+			},
+		}),
+		Resources: map[string]*tfbridge.ResourceInfo{
+			"simple_resource": {
+				Tok: "simple:index:resource",
+				Fields: map[string]*tfbridge.SchemaInfo{
+					"input_one": {
+						Name: "renamedInput1",
+					},
+				},
+			},
+		},
+		DataSources: map[string]*tfbridge.DataSourceInfo{
+			"simple_data_source": {
+				Tok: "simple:index:dataSource",
+			},
+		},
+	}
+	pclsMap := make(map[string]translatedExample)
+
+	tc := testCase{
+		name:       "Translates HCL from examples ",
+		contentStr: readfile(t, "test_data/installation-docs/configuration.md"),
+		expected:   readfile(t, "test_data/installation-docs/configuration-expected.md"),
+		g: &Generator{
+			sink: mockSink{},
+			cliConverterState: &cliConverter{
+				info: p,
+				pcls: pclsMap,
+			},
+			language: RegistryDocs,
+		},
+	}
+	t.Run(tc.name, func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			// Currently there is a test issue in CI/test setup:
+			//
+			// convertViaPulumiCLI: failed to clean up temp bridge-examples.json file: The
+			// process cannot access the file because it is being used by another process.
+			t.Skipf("Skipping on Windows due to a test setup issue")
+		}
+		t.Setenv("PULUMI_CONVERT", "1")
+		actual, err := translateCodeBlocks(tc.contentStr, tc.g)
+		require.NoError(t, err)
+		require.Equal(t, tc.expected, actual)
+	})
+}
+func TestSkipSectionHeaderByContent(t *testing.T) {
+	t.Parallel()
+	type testCase struct {
+		// The name of the test case.
+		name         string
+		headerToSkip string
+		input        string
+		expected     string
+	}
+
+	tc := testCase{
+		name:         "Skips Section With Unwanted Header",
+		headerToSkip: "Debugging Provider Output Using Logs",
+		input:        readTestFile(t, "skip-sections-by-header/input.md"),
+		expected:     readTestFile(t, "skip-sections-by-header/actual.md"),
+	}
+
+	t.Run(tc.name, func(t *testing.T) {
+		t.Parallel()
+		actual, err := SkipSectionByHeaderContent([]byte(tc.input), func(headerText string) bool {
+			return headerText == tc.headerToSkip
+		})
+		require.NoError(t, err)
+		assertEqualHTML(t, tc.expected, string(actual))
+	})
+}
+
+// Helper func to determine if the HTML rendering is equal.
+// This helps in cases where the processed Markdown is slightly different from the expected Markdown
+// due to goldmark making some (insignificant to the final HTML) changes when parsing and rendering.
+// We convert the expected Markdown and the actual test Markdown output to HTML and verify if they are equal.
+func assertEqualHTML(t *testing.T, expected, actual string) bool {
+	mdRenderer := goldmark.New()
+	var expectedBuf bytes.Buffer
+	err := mdRenderer.Convert([]byte(expected), &expectedBuf)
+	if err != nil {
+		panic(err)
+	}
+	var outputBuf bytes.Buffer
+	err = mdRenderer.Convert([]byte(actual), &outputBuf)
+	if err != nil {
+		panic(err)
+	}
+	return assert.Equal(t, expectedBuf.String(), outputBuf.String())
 }

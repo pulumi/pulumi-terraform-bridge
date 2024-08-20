@@ -21,6 +21,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	structpb "google.golang.org/protobuf/types/known/structpb"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
@@ -34,7 +35,7 @@ func TestConfigEncoding(t *testing.T) {
 		pv resource.PropertyValue
 	}
 
-	knownKey := "mykey"
+	const knownKey = "mykey"
 
 	makeEnc := func(ty shim.ValueType) *ConfigEncoding {
 		return NewConfigEncoding(
@@ -68,16 +69,20 @@ func TestConfigEncoding(t *testing.T) {
 		assert.NoError(t, err)
 		actualJSON, err := x.MarshalJSON()
 		assert.NoError(t, err)
-		t.Logf("%s", actualJSON)
-		assert.Equal(t, string(expectedJSON), string(actualJSON))
+		assert.JSONEq(t, string(expectedJSON), string(actualJSON))
 	}
 
 	checkUnmarshal := func(t *testing.T, tc testCase) {
+		t.Helper()
 		enc := makeEnc(tc.ty)
-		pv, err := enc.unmarshalPropertyValue(resource.PropertyKey(knownKey), tc.v)
+		pv, err := enc.UnmarshalProperties(&structpb.Struct{
+			Fields: map[string]*structpb.Value{
+				knownKey: tc.v,
+			},
+		})
 		assert.NoError(t, err)
 		assert.NotNil(t, pv)
-		assert.Equal(t, tc.pv, *pv)
+		assert.Equal(t, tc.pv, pv[knownKey])
 	}
 
 	turnaroundTestCases := []testCase{
@@ -397,6 +402,23 @@ func TestConfigEncoding(t *testing.T) {
 				checkUnmarshal(t, tc)
 			})
 		}
+	})
+
+	t.Run("create-null", func(t *testing.T) {
+		s, err := NewConfigEncoding(
+			schemaMap(map[string]*sch.Schema{
+				knownKey: {Type: shim.TypeBool},
+			}),
+			map[string]*SchemaInfo{knownKey: {Name: knownKey}},
+		).MarshalProperties(resource.PropertyMap{
+			knownKey: resource.NewNullProperty(),
+		})
+		require.NoError(t, err)
+
+		json, err := s.MarshalJSON()
+		require.NoError(t, err)
+
+		assert.JSONEq(t, `{"mykey": ""}`, string(json))
 	})
 
 	// NOTE about the PropertyValue cases not tested here.
