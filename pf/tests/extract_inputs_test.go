@@ -911,7 +911,7 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 			})
 
 			shimmedProvider := schemashim.ShimSchemaOnlyProvider(context.Background(), prov)
-			res := shimmedProvider.ResourcesMap().Get("_test")
+			res := shimmedProvider.ResourcesMap().Get("testprovider_test")
 			result, err := tfbridge.ExtractInputsFromOutputs(nil, tc.props, res.Schema(), nil, false)
 			require.NoError(t, err)
 			tc.expect.Equal(t, result)
