@@ -29,6 +29,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 )
 
+// Provider is a test provider that can be used in tests.
+// Instantiate it with NewProvider.
 type Provider struct {
 	TypeName       string
 	Version        string

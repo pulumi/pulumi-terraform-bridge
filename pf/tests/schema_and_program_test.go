@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	pschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
@@ -14,6 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/providerbuilder"
+	pb "github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/providerbuilder"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -52,10 +52,7 @@ resources:
 
 func TestComputedSetNoDiffWhenElementRemoved(t *testing.T) {
 	// Regression test for [pulumi/pulumi-terraform-bridge#2192]
-	provBuilder := providerbuilder.Provider{
-		TypeName:       "prov",
-		Version:        "0.0.1",
-		ProviderSchema: pschema.Schema{},
+	provBuilder := pb.NewProvider(pb.NewProviderArgs{
 		AllResources: []providerbuilder.Resource{
 			{
 				Name: "test",
@@ -92,9 +89,9 @@ func TestComputedSetNoDiffWhenElementRemoved(t *testing.T) {
 				},
 			},
 		},
-	}
+	})
 
-	prov := bridgedProvider(&provBuilder)
+	prov := bridgedProvider(provBuilder)
 
 	program1 := `
 name: test

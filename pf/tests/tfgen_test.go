@@ -22,6 +22,7 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/muxer"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/providerbuilder"
+	pb "github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/providerbuilder"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
 	helper "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
@@ -39,12 +40,12 @@ func TestRenameResourceWithAliasInAugmentedProvider(t *testing.T) {
 	fullResourceID := fmt.Sprintf("%s_%s", providerID, resourceID)
 	resModule := "mod"
 	baselineProvider := (&helper.Provider{}).Shim()
-	pfProvider := &providerbuilder.Provider{
+	pfProvider := pb.NewProvider(pb.NewProviderArgs{
 		TypeName: providerID,
 		AllResources: []providerbuilder.Resource{
 			{Name: resourceID},
 		},
-	}
+	})
 	legacyToken := tokens.Type(fmt.Sprintf("my:%s:Resource", resModule))
 	aliasToken := tokens.Type(fmt.Sprintf("my:%s:LegacyResource", resModule))
 	ri := &info.Resource{Tok: legacyToken}
