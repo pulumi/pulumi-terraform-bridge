@@ -94,6 +94,10 @@ func NewProvider(params NewProviderArgs) *Provider {
 
 	for i := range prov.AllResources {
 		r := &prov.AllResources[i]
+		if r.ResourceSchema.Attributes == nil {
+			r.ResourceSchema.Attributes = map[string]rschema.Attribute{}
+		}
+
 		if r.ResourceSchema.Attributes["id"] == nil {
 			r.ResourceSchema.Attributes["id"] = rschema.StringAttribute{
 				Computed: true,
