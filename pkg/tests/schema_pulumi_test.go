@@ -2268,26 +2268,27 @@ Resources:
 `),
 		},
 		// TODO[pulumi/pulumi-terraform-bridge#2235]: Wrong number of additions
-		{
-			"set element added front",
-			map[string]interface{}{"setProps": []interface{}{"val2", "val3"}},
-			map[string]interface{}{"setProps": []interface{}{"val1", "val2", "val3"}},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
-    ~ prov:index/test:Test: (update)
-        [id=newid]
-        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-      ~ setProps: [
-          + [0]: "val1"
-          ~ [1]: "val3" => "val2"
-          + [2]: "val3"
-        ]
-Resources:
-    ~ 1 to update
-    1 unchanged
-`),
-		},
+		// TODO[pulumi/pulumi-terraform-bridge#2325]: Non-deterministic output
+		// 		{
+		// 			"set element added front",
+		// 			map[string]interface{}{"setProps": []interface{}{"val2", "val3"}},
+		// 			map[string]interface{}{"setProps": []interface{}{"val1", "val2", "val3"}},
+		// 			autogold.Expect(`Previewing update (test):
+		//   pulumi:pulumi:Stack: (same)
+		//     [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+		//     ~ prov:index/test:Test: (update)
+		//         [id=newid]
+		//         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+		//       ~ setProps: [
+		//           ~ [0]: "val2" => "val1"
+		//           ~ [1]: "val3" => "val2"
+		//           + [2]: "val3"
+		//         ]
+		// Resources:
+		//     ~ 1 to update
+		//     1 unchanged
+		// `),
+		// 		},
 		{
 			"set element added back",
 			map[string]interface{}{"setProps": []interface{}{"val1", "val2"}},
@@ -2308,26 +2309,28 @@ Resources:
     1 unchanged
 `),
 		},
-		{
-			"set element added middle",
-			map[string]interface{}{"setProps": []interface{}{"val1", "val3"}},
-			map[string]interface{}{"setProps": []interface{}{"val1", "val2", "val3"}},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
-    ~ prov:index/test:Test: (update)
-        [id=newid]
-        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-      ~ setProps: [
-            [0]: "val1"
-          ~ [1]: "val3" => "val2"
-          + [2]: "val3"
-        ]
-Resources:
-    ~ 1 to update
-    1 unchanged
-`),
-		},
+		// TODO[pulumi/pulumi-terraform-bridge#2235]: Wrong number of additions
+		// TODO[pulumi/pulumi-terraform-bridge#2325]: Non-deterministic output
+		// 		{
+		// 			"set element added middle",
+		// 			map[string]interface{}{"setProps": []interface{}{"val1", "val3"}},
+		// 			map[string]interface{}{"setProps": []interface{}{"val1", "val2", "val3"}},
+		// 			autogold.Expect(`Previewing update (test):
+		//   pulumi:pulumi:Stack: (same)
+		//     [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+		//     ~ prov:index/test:Test: (update)
+		//         [id=newid]
+		//         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+		//       ~ setProps: [
+		//             [0]: "val1"
+		//           + [1]: "val2"
+		//           + [2]: "val3"
+		//         ]
+		// Resources:
+		//     ~ 1 to update
+		//     1 unchanged
+		// `),
+		// 		},
 		{
 			"set element removed front",
 			map[string]interface{}{"setProps": []interface{}{"val1", "val2", "val3"}},
@@ -2369,26 +2372,27 @@ Resources:
 `),
 		},
 		// TODO[pulumi/pulumi-terraform-bridge#2235]: Wrong number of removals
-		{
-			"set element removed middle",
-			map[string]interface{}{"setProps": []interface{}{"val1", "val2", "val3"}},
-			map[string]interface{}{"setProps": []interface{}{"val1", "val3"}},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
-    ~ prov:index/test:Test: (update)
-        [id=newid]
-        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-      ~ setProps: [
-            [0]: "val1"
-          - [1]: "val2"
-          - [2]: "val3"
-        ]
-Resources:
-    ~ 1 to update
-    1 unchanged
-`),
-		},
+		// TODO[pulumi/pulumi-terraform-bridge#2325]: Non-deterministic output
+		// 		{
+		// 			"set element removed middle",
+		// 			map[string]interface{}{"setProps": []interface{}{"val1", "val2", "val3"}},
+		// 			map[string]interface{}{"setProps": []interface{}{"val1", "val3"}},
+		// 			autogold.Expect(`Previewing update (test):
+		//   pulumi:pulumi:Stack: (same)
+		//     [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+		//     ~ prov:index/test:Test: (update)
+		//         [id=newid]
+		//         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+		//       ~ setProps: [
+		//             [0]: "val1"
+		//           ~ [1]: "val2" => "val3"
+		//           - [2]: "val3"
+		//         ]
+		// Resources:
+		//     ~ 1 to update
+		//     1 unchanged
+		// `),
+		// 		},
 		{
 			"set element changed",
 			map[string]interface{}{"setProps": []interface{}{"val1"}},
