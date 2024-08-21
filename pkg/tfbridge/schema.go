@@ -351,12 +351,6 @@ func (ctx *conversionContext) makeTerraformInput(
 	tfs shim.Schema,
 	ps *SchemaInfo,
 ) (interface{}, error) {
-
-	if v.IsSecret() {
-		// We shouldn't see secrets, but if we do then we should ignore them
-		return ctx.makeTerraformInput(name, old, v.SecretValue().Element, tfs, ps)
-	}
-
 	// For TypeList or TypeSet with MaxItems==1, we will have projected as a scalar
 	// nested value, and need to wrap it into a single-element array before passing to
 	// Terraform.

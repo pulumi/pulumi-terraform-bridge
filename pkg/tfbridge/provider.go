@@ -1465,10 +1465,12 @@ func (p *Provider) processImportValidationErrors(
 	schema shim.SchemaMap,
 	schemaInfos map[string]*info.Schema,
 ) {
+	inputValueWithoutSecrets := propertyvalue.RemoveSecrets(resource.NewObjectProperty(inputs))
+	inputsWithoutSecrets := inputValueWithoutSecrets.ObjectValue()
 	logger := GetLogger(ctx)
 	tfInputs, _, err := makeTerraformInputsWithOptions(ctx,
 		&PulumiResource{URN: urn, Properties: inputs},
-		p.configValues, inputs, inputs, schema, schemaInfos,
+		p.configValues, inputsWithoutSecrets, inputsWithoutSecrets, schema, schemaInfos,
 		makeTerraformInputsOptions{DisableTFDefaults: true, UnknownCollectionsSupported: p.tf.SupportsUnknownCollections()})
 	if err != nil {
 		return
@@ -1481,6 +1483,7 @@ func (p *Provider) processImportValidationErrors(
 		path, _, _ := parseCheckError(schema, schemaInfos, e)
 
 		// do not process errors on nested types
+		// TODO: https://github.com/pulumi/pulumi-terraform-bridge/issues/2314
 		if path == nil || len(path.schemaPath) > 1 {
 			continue
 		}
@@ -1506,7 +1509,7 @@ func (p *Provider) processImportValidationErrors(
 			logger.Debug(fmt.Sprintf("could not parse property path %q for validation error: %s", path.valuePath, err.Error()))
 			continue
 		}
-		logger.Warn(fmt.Sprintf("property at path %q failed validation and was dropped from generated input", pp.String()))
+		logger.Debug(fmt.Sprintf("property at path %q failed validation and was dropped from generated input", pp.String()))
 		pp.Delete(resource.NewObjectProperty(inputs))
 	}
 }
