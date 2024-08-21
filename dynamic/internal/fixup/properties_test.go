@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	_ "github.com/hexops/autogold/v2" // autogold registers a flag for -update
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -70,4 +71,27 @@ func TestFixURNProperty(t *testing.T) {
 	err := fixup.Default(&p)
 	require.NoError(t, err)
 	assert.Equal(t, &info.Schema{Name: "testUrn"}, p.Resources["test_res"].Fields["urn"])
+}
+
+func TestFixProviderResourceName(t *testing.T) {
+	t.Parallel()
+	p := info.Provider{
+		Name: "test",
+		P: (&schema.Provider{
+			ResourcesMap: schema.ResourceMap{
+				"test_provider": (&schema.Resource{
+					Schema: schema.SchemaMap{
+						"id": (&schema.Schema{
+							Type:     shim.TypeString,
+							Computed: true,
+						}).Shim(),
+					},
+				}).Shim(),
+			},
+		}).Shim(),
+	}
+
+	err := fixup.Default(&p)
+	require.NoError(t, err)
+	assert.Equal(t, tokens.Type("test:index/testProvider:TestProvider"), p.Resources["test_provider"].Tok)
 }
