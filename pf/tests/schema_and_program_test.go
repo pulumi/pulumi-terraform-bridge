@@ -257,7 +257,8 @@ func TestIDAttribute(t *testing.T) {
 			if tc.computeIDField != "" {
 				computeIDField = tfbridge.DelegateIDField(presource.PropertyKey(tc.computeIDField), "prov", "")
 			}
-			prov := bridgedProvider(&provBuilder, ProviderResources(map[string]*info.Resource{
+			prov := bridgedProvider(&provBuilder)
+			prov.Resources = map[string]*info.Resource{
 				"prov_test": {
 					Tok:       "prov:index/test:Test",
 					ComputeID: computeIDField,
@@ -265,7 +266,7 @@ func TestIDAttribute(t *testing.T) {
 						"id": &idSchema,
 					},
 				},
-			}))
+			}
 
 			program := `
 name: test
@@ -280,7 +281,7 @@ resources:
             s: "hello"
 `
 
-			pt, err := pulCheck(t, prov, program, TfGenErrorContains(tc.expectTFGenErrorContains))
+			pt, err := pulCheck(t, prov, program)
 			if tc.expectTFGenErrorContains != "" {
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), tc.expectTFGenErrorContains)
