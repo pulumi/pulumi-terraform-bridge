@@ -203,7 +203,8 @@ func TestDiffVersionUpgrade(t *testing.T) {
 }
 
 func TestSetNestedObjectAdded(t *testing.T) {
-	server := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
+	server, err := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
+	require.NoError(t, err)
 	testCase := `
         {
           "method": "/pulumirpc.ResourceProvider/Diff",
@@ -252,7 +253,8 @@ func TestSetNestedObjectAdded(t *testing.T) {
 }
 
 func TestSetNestedObjectAddedOtherDiff(t *testing.T) {
-	server := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
+	server, err := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
+	require.NoError(t, err)
 	testCase := `
         {
           "method": "/pulumirpc.ResourceProvider/Diff",
