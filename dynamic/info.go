@@ -16,7 +16,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"path"
 	"strings"
 
@@ -60,10 +59,9 @@ func providerInfo(ctx context.Context, p run.Provider, value parameterize.Value)
 		Java: &tfbridge.JavaInfo{ /* Java does not have a RespectSchemaVersion flag */ },
 		Golang: &tfbridge.GolangInfo{
 			ImportBasePath: path.Join(
-				fmt.Sprintf("github.com/pulumi/pulumi-%[1]s/sdk/", p.Name()),
-				tfbridge.GetModuleMajorVersion("0.0.0"),
-				"go",
+				"github.com/pulumi/pulumi-terraform-provider/sdks/go",
 				p.Name(),
+				tfbridge.GetModuleMajorVersion(p.Version()),
 			),
 
 			LiftSingleValueMethodReturns: true,
