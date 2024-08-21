@@ -84,7 +84,11 @@ func providerInfo(ctx context.Context, p run.Provider, value parameterize.Value)
 		return prov, err
 	}
 
-	prov.MustComputeTokens(tokens.SingleModule(p.Name()+"_", "index", tokens.MakeStandard(p.Name())))
+	err := prov.ComputeTokens(tokens.SingleModule(p.Name()+"_", "index", tokens.MakeStandard(p.Name())))
+	if err != nil {
+		return prov, err
+	}
+
 	prov.SetAutonaming(255, "-")
 
 	return prov, nil
