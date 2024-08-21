@@ -166,7 +166,7 @@ func Test_makePropertyType(t *testing.T) {
 	t.Run("String", func(t *testing.T) {
 		p, err := g.makePropertyType(path, "obj", strType, nil, false, entityDocs{})
 		require.NoError(t, err)
-		assert.Equal(t, typeKind(kindString), p.kind)
+		assert.Equal(t, kindString, p.kind)
 	})
 
 	//TODO: change this test to assert typeKind when implementing
@@ -183,8 +183,8 @@ func Test_makePropertyType(t *testing.T) {
 		}).Shim()
 		p, err := g.makePropertyType(path, "obj", strListType, nil, false, entityDocs{})
 		require.NoError(t, err)
-		assert.Equal(t, typeKind(kindList), p.kind)
-		assert.Equal(t, typeKind(kindString), p.element.kind)
+		assert.Equal(t, kindList, p.kind)
+		assert.Equal(t, kindString, p.element.kind)
 	})
 
 	t.Run("MapString", func(t *testing.T) {
@@ -194,8 +194,8 @@ func Test_makePropertyType(t *testing.T) {
 		}).Shim()
 		p, err := g.makePropertyType(path, "obj", strMapType, nil, false, entityDocs{})
 		require.NoError(t, err)
-		assert.Equal(t, typeKind(kindMap), p.kind)
-		assert.Equal(t, typeKind(kindString), p.element.kind)
+		assert.Equal(t, kindMap, p.kind)
+		assert.Equal(t, kindString, p.element.kind)
 	})
 
 	t.Run("MapUnknown", func(t *testing.T) {
@@ -204,8 +204,8 @@ func Test_makePropertyType(t *testing.T) {
 		}).Shim()
 		p, err := g.makePropertyType(path, "obj", unkMapType, nil, false, entityDocs{})
 		require.NoError(t, err)
-		assert.Equal(t, typeKind(kindMap), p.kind)
-		assert.Nil(t, p.element)
+		assert.Equal(t, kindMap, p.kind)
+		assert.Equal(t, kindString, p.element.kind)
 	})
 
 	t.Run("SingleNestedBlock", func(t *testing.T) {
@@ -215,7 +215,7 @@ func Test_makePropertyType(t *testing.T) {
 		}).Shim()
 		p, err := g.makePropertyType(path, "obj", objType, nil, false, entityDocs{})
 		require.NoError(t, err)
-		assert.Equal(t, typeKind(kindObject), p.kind)
+		assert.Equal(t, kindObject, p.kind)
 		assert.Equal(t, "config.prop", p.properties[0].parentPath.String())
 	})
 
@@ -226,8 +226,8 @@ func Test_makePropertyType(t *testing.T) {
 		}).Shim()
 		p, err := g.makePropertyType(path, "obj", objType, nil, false, entityDocs{})
 		require.NoError(t, err)
-		assert.Equal(t, typeKind(kindList), p.kind)
-		assert.Equal(t, typeKind(kindObject), p.element.kind)
+		assert.Equal(t, kindList, p.kind)
+		assert.Equal(t, kindObject, p.element.kind)
 		assert.Equal(t, "config.prop.$", p.element.properties[0].parentPath.String())
 	})
 
@@ -239,7 +239,7 @@ func Test_makePropertyType(t *testing.T) {
 		}).Shim()
 		p, err := g.makePropertyType(path, "obj", objType, nil, false, entityDocs{})
 		require.NoError(t, err)
-		assert.Equal(t, typeKind(kindObject), p.kind)
+		assert.Equal(t, kindObject, p.kind)
 		assert.Equal(t, "config.prop", p.properties[0].parentPath.String())
 	})
 
@@ -250,8 +250,8 @@ func Test_makePropertyType(t *testing.T) {
 		}).Shim()
 		p, err := g.makePropertyType(path, "obj", objType, nil, false, entityDocs{})
 		require.NoError(t, err)
-		assert.Equal(t, typeKind(kindSet), p.kind)
-		assert.Equal(t, typeKind(kindObject), p.element.kind)
+		assert.Equal(t, kindSet, p.kind)
+		assert.Equal(t, kindObject, p.element.kind)
 		assert.Equal(t, "config.prop.$", p.element.properties[0].parentPath.String())
 	})
 
@@ -263,7 +263,7 @@ func Test_makePropertyType(t *testing.T) {
 		}).Shim()
 		p, err := g.makePropertyType(path, "obj", objType, nil, false, entityDocs{})
 		require.NoError(t, err)
-		assert.Equal(t, typeKind(kindObject), p.kind)
+		assert.Equal(t, kindObject, p.kind)
 		assert.Equal(t, "config.prop", p.properties[0].parentPath.String())
 	})
 }

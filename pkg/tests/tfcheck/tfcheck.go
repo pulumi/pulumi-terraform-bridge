@@ -16,9 +16,11 @@ import (
 	"github.com/hashicorp/go-hclog"
 	"github.com/hashicorp/go-plugin"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov5"
-	"github.com/hashicorp/terraform-plugin-go/tfprotov5/tf5server"
+	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
+	"github.com/hashicorp/terraform-plugin-go/tfprotov6/tf6server"
+	"github.com/hashicorp/terraform-plugin-mux/tf5to6server"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/internal/pulcheck"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/pulcheck"
 	"github.com/pulumi/pulumi/sdk/go/common/util/contract"
 	"github.com/stretchr/testify/require"
 )
@@ -47,32 +49,59 @@ func skipUnlessLinux(t pulcheck.T) {
 	}
 }
 
-func NewTfDriver(t pulcheck.T, dir, providerName string, prov *schema.Provider) *TfDriver {
-	skipUnlessLinux(t)
+func disableTFLogging() {
 	// Did not find a less intrusive way to disable annoying logging:
 	os.Setenv("TF_LOG_PROVIDER", "off")
 	os.Setenv("TF_LOG_SDK", "off")
 	os.Setenv("TF_LOG_SDK_PROTO", "off")
+}
 
-	pulcheck.EnsureProviderValid(t, prov)
+type providerv6 interface {
+	GRPCProvider() tfprotov6.ProviderServer
+}
 
-	serverFactory := func() tfprotov5.ProviderServer {
-		return prov.GRPCProvider()
+// This takes a sdkv2 schema.Provider or a providerv6
+func NewTfDriver(t pulcheck.T, dir, providerName string, prov any) *TfDriver {
+	switch p := prov.(type) {
+	case *schema.Provider:
+		return newTfDriverSDK(t, dir, providerName, p)
+	case providerv6:
+		return newTFDriverV6(t, dir, providerName, p.GRPCProvider())
+	default:
+		contract.Failf("unsupported provider type %T", prov)
+		return nil
 	}
+}
+
+func newTfDriverSDK(t pulcheck.T, dir, providerName string, prov *schema.Provider) *TfDriver {
+	pulcheck.EnsureProviderValid(t, prov)
+	v6server, err := tf5to6server.UpgradeServer(context.Background(),
+		func() tfprotov5.ProviderServer { return prov.GRPCProvider() })
+	require.NoError(t, err)
+	return newTFDriverV6(t, dir, providerName, v6server)
+}
+
+func newTFDriverV6(t pulcheck.T, dir, providerName string, prov tfprotov6.ProviderServer) *TfDriver {
+	skipUnlessLinux(t)
+	disableTFLogging()
 
 	ctx := context.Background()
 
 	reattachConfigCh := make(chan *plugin.ReattachConfig)
 	closeCh := make(chan struct{})
 
-	serveOpts := []tf5server.ServeOpt{
-		tf5server.WithGoPluginLogger(hclog.FromStandardLogger(log.New(io.Discard, "", 0), hclog.DefaultOptions)),
-		tf5server.WithDebug(ctx, reattachConfigCh, closeCh),
-		tf5server.WithoutLogStderrOverride(),
+	serverFactory := func() tfprotov6.ProviderServer {
+		return prov
+	}
+
+	serverOpts := []tf6server.ServeOpt{
+		tf6server.WithGoPluginLogger(hclog.FromStandardLogger(log.New(io.Discard, "", 0), hclog.DefaultOptions)),
+		tf6server.WithDebug(ctx, reattachConfigCh, closeCh),
+		tf6server.WithoutLogStderrOverride(),
 	}
 
 	go func() {
-		err := tf5server.Serve(providerName, serverFactory, serveOpts...)
+		err := tf6server.Serve(providerName, serverFactory, serverOpts...)
 		require.NoError(t, err)
 	}()
 
@@ -125,6 +154,15 @@ func (d *TfDriver) GetState(t pulcheck.T) string {
 	err = json.Indent(buf, res, "", "    ")
 	require.NoError(t, err)
 	return buf.String()
+}
+
+func (d *TfDriver) GetOutput(t pulcheck.T, outputName string) string {
+	tfCmd := getTFCommand()
+	cmd := execCmd(t, d.cwd, []string{d.formatReattachEnvVar()}, tfCmd, "output", outputName)
+	res := cmd.Stdout.(*bytes.Buffer).String()
+	res = strings.TrimSuffix(res, "\n")
+	res = strings.Trim(res, "\"")
+	return res
 }
 
 func (d *TfDriver) formatReattachEnvVar() string {

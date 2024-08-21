@@ -258,7 +258,7 @@ type DocsEdit struct {
 type TFProviderLicense string
 
 // GetResourcePrefix returns the resource prefix for the provider: info.ResourcePrefix
-// if that is set, or info.Name if not. This is to avoid unexpected behaviour with providers
+// if that is set, or info.Name if not. This is to avoid unexpected behavior with providers
 // which have no need to set ResourcePrefix following its introduction.
 func (info Provider) GetResourcePrefix() string {
 	if info.ResourcePrefix == "" {

@@ -15,12 +15,22 @@ package providerbuilder
 
 import (
 	"context"
+
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
+	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 )
 
+// Provider is a test provider that can be used in tests.
+// Instantiate it with NewProvider.
 type Provider struct {
 	TypeName       string
 	Version        string
@@ -55,4 +65,61 @@ func (impl *Provider) Resources(ctx context.Context) []func() resource.Resource 
 		}
 	}
 	return r
+}
+
+func (impl *Provider) GRPCProvider() tfprotov6.ProviderServer {
+	return providerserver.NewProtocol6(impl)()
+}
+
+type NewProviderArgs struct {
+	TypeName       string
+	Version        string
+	ProviderSchema schema.Schema
+	AllResources   []Resource
+}
+
+// NewProvider creates a new provider with the given resources, filling reasonable defaults.
+func NewProvider(params NewProviderArgs) *Provider {
+	prov := &Provider{
+		TypeName:       params.TypeName,
+		Version:        params.Version,
+		ProviderSchema: params.ProviderSchema,
+		AllResources:   params.AllResources,
+	}
+
+	if prov.TypeName == "" {
+		prov.TypeName = "testprovider"
+	}
+	if prov.Version == "" {
+		prov.Version = "0.0.1"
+	}
+
+	for i := range prov.AllResources {
+		r := &prov.AllResources[i]
+		if r.ResourceSchema.Attributes == nil {
+			r.ResourceSchema.Attributes = map[string]rschema.Attribute{}
+		}
+
+		if r.ResourceSchema.Attributes["id"] == nil {
+			r.ResourceSchema.Attributes["id"] = rschema.StringAttribute{
+				Computed: true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.UseStateForUnknown(),
+				},
+			}
+		}
+		if r.CreateFunc == nil {
+			r.CreateFunc = func(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+				resp.State = tfsdk.State(req.Plan)
+				resp.State.SetAttribute(ctx, path.Root("id"), "test-id")
+			}
+		}
+		if r.UpdateFunc == nil {
+			r.UpdateFunc = func(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+				resp.State = tfsdk.State(req.Plan)
+			}
+		}
+	}
+
+	return prov
 }

@@ -14,7 +14,7 @@
             "respectSchemaVersion": true
         },
         "go": {
-            "importBasePath": "github.com/pulumi/pulumi-b2/sdk/go/b2",
+            "importBasePath": "github.com/pulumi/pulumi-terraform-provider/sdks/go/b2",
             "liftSingleValueMethodReturns": true,
             "generateExtraInputTypes": true,
             "respectSchemaVersion": true

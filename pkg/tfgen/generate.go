@@ -164,7 +164,7 @@ func (l Language) emitSDK(pkg *pschema.Package, info tfbridge.ProviderInfo, root
 		if err != nil && !os.IsNotExist(err) {
 			return nil, err
 		}
-		return nodejsgen.GeneratePackage(tfgen, pkg, extraFiles, nil)
+		return nodejsgen.GeneratePackage(tfgen, pkg, extraFiles, nil, false)
 	case Python:
 		if psi := info.Python; psi != nil && psi.Overlay != nil {
 			extraFiles, err = getOverlayFiles(psi.Overlay, ".py", root)
@@ -319,7 +319,7 @@ type moduleMember interface {
 type typeKind int
 
 const (
-	kindInvalid = iota
+	kindInvalid typeKind = iota
 	kindBool
 	kindInt
 	kindFloat
@@ -329,9 +329,6 @@ const (
 	kindSet
 	kindObject
 )
-
-// Avoid an unused warning from varcheck.
-var _ = kindInvalid
 
 // propertyType represents a non-resource, non-datasource type. Property types may be simple
 type propertyType struct {
@@ -397,14 +394,8 @@ func (g *Generator) makePropertyType(typePath paths.TypePath,
 		return g.makeObjectPropertyType(typePath, blockType, elemInfo, out, entityDocs)
 	}
 
-	// IsMaxItemOne lists and sets are flattened, transforming List[T] to T. Detect if this is the case.
-	flatten := false
-	switch sch.Type() {
-	case shim.TypeList, shim.TypeSet:
-		if tfbridge.IsMaxItemsOne(sch, info) {
-			flatten = true
-		}
-	}
+	// IsMaxItemOne lists and sets are flattened, transforming List[T] or Set[T] to T. Detect if this is the case.
+	flatten := tfbridge.IsMaxItemsOne(sch, info)
 
 	// The remaining cases are collections, List[T], Set[T] or Map[T], and recursion needs NewElementPath except for
 	// flattening that stays at the current path.
@@ -437,6 +428,10 @@ func (g *Generator) makePropertyType(typePath paths.TypePath,
 	switch sch.Type() {
 	case shim.TypeMap:
 		t.kind = kindMap
+		// TF treats maps without a specified type as map[string]string, so we do the same.
+		if element == nil || element.kind == kindInvalid {
+			element = &propertyType{kind: kindString}
+		}
 	case shim.TypeList:
 		t.kind = kindList
 	case shim.TypeSet:
@@ -477,7 +472,7 @@ func (g *Generator) makeObjectPropertyType(typePath paths.TypePath,
 		propertyInfos = info.Fields
 	}
 
-	// Look up the parent path and prepend it to the docs path, to allow for precise lookup in the entityDOcs.
+	// Look up the parent path and prepend it to the docs path, to allow for precise lookup in the entityDocs.
 	fullDocsPath := ""
 	currentPath := typePath
 	for {
@@ -765,6 +760,7 @@ type GenerateSchemaResult struct {
 }
 
 func GenerateSchemaWithOptions(opts GenerateSchemaOptions) (*GenerateSchemaResult, error) {
+	ctx := context.Background()
 	info := opts.ProviderInfo
 	sink := opts.DiagnosticsSink
 	g, err := NewGenerator(GeneratorOptions{
@@ -780,20 +776,7 @@ func GenerateSchemaWithOptions(opts GenerateSchemaOptions) (*GenerateSchemaResul
 		return nil, errors.Wrapf(err, "failed to create generator")
 	}
 
-	// NOTE: sequence identical to(*Generator).Generate().
-	pack, err := g.gatherPackage()
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to gather package metadata")
-	}
-
-	s, err := genPulumiSchema(pack, g.pkg, g.version, g.info)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to generate schema")
-	}
-
-	return &GenerateSchemaResult{
-		PackageSpec: s,
-	}, nil
+	return g.generateSchemaResult(ctx)
 }
 
 type GeneratorOptions struct {
@@ -921,21 +904,31 @@ type GenerateOptions struct {
 
 // Generate creates Pulumi packages from the information it was initialized with.
 func (g *Generator) Generate() error {
-	err := g.info.Validate(context.Background())
+	genSchemaResult, err := g.generateSchemaResult(context.Background())
 	if err != nil {
 		return err
+	}
+
+	// Now push the schema through the rest of the generator.
+	return g.UnstableGenerateFromSchema(genSchemaResult)
+}
+
+func (g *Generator) generateSchemaResult(ctx context.Context) (*GenerateSchemaResult, error) {
+	err := g.info.Validate(ctx)
+	if err != nil {
+		return nil, err
 	}
 	// First gather up the entire package contents. This structure is complete and sufficient to hand off to the
 	// language-specific generators to create the full output.
 	pack, err := g.gatherPackage()
 	if err != nil {
-		return errors.Wrapf(err, "failed to gather package metadata")
+		return nil, errors.Wrapf(err, "failed to gather package metadata")
 	}
 
 	// Convert the package to a Pulumi schema.
 	pulumiPackageSpec, err := genPulumiSchema(pack, g.pkg, g.version, g.info)
 	if err != nil {
-		return errors.Wrapf(err, "failed to create Pulumi schema")
+		return nil, errors.Wrapf(err, "failed to create Pulumi schema")
 	}
 
 	// Apply schema post-processing if defined in the provider.
@@ -943,12 +936,7 @@ func (g *Generator) Generate() error {
 		g.info.SchemaPostProcessor(&pulumiPackageSpec)
 	}
 
-	genSchemaResult := &GenerateSchemaResult{
-		PackageSpec: pulumiPackageSpec,
-	}
-
-	// Now push the schema through the rest of the generator.
-	return g.UnstableGenerateFromSchema(genSchemaResult)
+	return &GenerateSchemaResult{PackageSpec: pulumiPackageSpec}, nil
 }
 
 // GenerateFromSchema creates Pulumi packages from a pulumi schema and the information the
@@ -1248,7 +1236,7 @@ func (g *Generator) gatherResources() (moduleMap, error) {
 		res, err := g.gatherResource(r, resources.Get(r), info, false)
 		if err != nil {
 			// Keep track of the error, but keep going, so we can expose more at once.
-			reserr = multierror.Append(reserr, err)
+			reserr = multierror.Append(reserr, fmt.Errorf("%s: %w", r, err))
 		} else {
 			// Add any members returned to the specified module.
 			modules.ensureModule(res.mod).addMember(res)

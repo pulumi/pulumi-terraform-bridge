@@ -70,12 +70,6 @@ func (enc *listEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.Val
 }
 
 func (dec *listDecoder) toPropertyValue(v tftypes.Value) (resource.PropertyValue, error) {
-	if !v.IsKnown() {
-		return unknownProperty(), nil
-	}
-	if v.IsNull() {
-		return resource.NewPropertyValue(nil), nil
-	}
 	var elements []tftypes.Value
 	if err := v.As(&elements); err != nil {
 		return resource.PropertyValue{},
@@ -83,7 +77,8 @@ func (dec *listDecoder) toPropertyValue(v tftypes.Value) (resource.PropertyValue
 	}
 	values := []resource.PropertyValue{}
 	for _, e := range elements {
-		ev, err := dec.elementDecoder.toPropertyValue(e)
+
+		ev, err := decode(dec.elementDecoder, e)
 		if err != nil {
 			return resource.PropertyValue{},
 				fmt.Errorf("decList fails with %s: %w", e.String(), err)

@@ -14,7 +14,7 @@
             "respectSchemaVersion": true
         },
         "go": {
-            "importBasePath": "github.com/pulumi/pulumi-random/sdk/go/random",
+            "importBasePath": "github.com/pulumi/pulumi-terraform-provider/sdks/go/random/v3",
             "liftSingleValueMethodReturns": true,
             "generateExtraInputTypes": true,
             "respectSchemaVersion": true

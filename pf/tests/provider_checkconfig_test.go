@@ -36,7 +36,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	testutils "github.com/pulumi/providertest/replay"
-	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/providerbuilder"
+	pb "github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/providerbuilder"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
 	tfbridge0 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
@@ -785,11 +785,9 @@ func makeProviderServer(
 	schema schema.Schema,
 	customize ...func(*tfbridge0.ProviderInfo),
 ) pulumirpc.ResourceProviderServer {
-	testProvider := &providerbuilder.Provider{
-		TypeName:       "testprovider",
-		Version:        "0.0.1",
+	testProvider := pb.NewProvider(pb.NewProviderArgs{
 		ProviderSchema: schema,
-	}
+	})
 	info := tfbridge0.ProviderInfo{
 		Name:         "testprovider",
 		Version:      "0.0.1",

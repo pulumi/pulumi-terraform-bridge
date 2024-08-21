@@ -133,7 +133,10 @@ func initialSetup() (tfbridge.ProviderInfo, pfbridge.ProviderMetadata, func() er
 
 			tfServer = p
 			if tfServer != nil {
-				info = providerInfo(ctx, tfServer, value)
+				info, err = providerInfo(ctx, tfServer, value)
+				if err != nil {
+					return plugin.ParameterizeResponse{}, err
+				}
 			}
 
 			err = pfbridge.XParameterizeResetProvider(ctx, info, metadata)

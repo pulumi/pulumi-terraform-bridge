@@ -3,6 +3,9 @@ package tfbridgetests
 import (
 	"context"
 	"fmt"
+	"reflect"
+	"testing"
+
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -12,19 +15,16 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/providerbuilder"
+	pb "github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/providerbuilder"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/convert"
 	tfbridge0 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/stretchr/testify/assert"
-	"reflect"
-	"testing"
 )
 
 func TestNestedCustomTypeEncoding(t *testing.T) {
 
-	testProvider := &providerbuilder.Provider{
-		TypeName: "testprovider",
-		Version:  "0.0.1",
+	testProvider := pb.NewProvider(pb.NewProviderArgs{
 		// This resource is modified from AWS Bedrockagent.
 		AllResources: []providerbuilder.Resource{{
 			Name: "bedrockagent",
@@ -47,7 +47,7 @@ func TestNestedCustomTypeEncoding(t *testing.T) {
 				},
 			},
 		}},
-	}
+	})
 	res := tfbridge0.ResourceInfo{
 		Tok: "testprovider:index/bedrockagent:Bedrockagent",
 		Docs: &tfbridge0.DocInfo{

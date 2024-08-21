@@ -53,7 +53,7 @@ func (dec *flattenedDecoder) toPropertyValue(v tftypes.Value) (resource.Property
 	case 0:
 		return resource.NewNullProperty(), nil
 	case 1:
-		return dec.elementDecoder.toPropertyValue(list[0])
+		return decode(dec.elementDecoder, list[0])
 	default:
 		msg := "IsMaxItemsOne list or set has too many (%d) values"
 		err := fmt.Errorf(msg, len(list))

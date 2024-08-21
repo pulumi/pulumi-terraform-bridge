@@ -87,6 +87,24 @@ func TestTokensSingleModule(t *testing.T) {
 	}, info.Resources)
 }
 
+func TestTokenWithModuleName(t *testing.T) {
+	info := tfbridge.ProviderInfo{
+		Name: "foo",
+		P: (&schema.Provider{
+			ResourcesMap: schema.ResourceMap{
+				"foo_index": nil,
+			},
+		}).Shim(),
+	}
+
+	strategy := tokens.SingleModule(info.GetResourcePrefix(), "index", tokens.MakeStandard("bar"))
+	require.NoError(t, info.ComputeTokens(strategy))
+
+	assert.Equal(t, map[string]*tfbridge.ResourceInfo{
+		"foo_index": {Tok: "bar:index/index:Index"},
+	}, info.Resources)
+}
+
 func TestTokensKnownModules(t *testing.T) {
 	info := tfbridge.ProviderInfo{
 		P: (&schema.Provider{

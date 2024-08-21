@@ -352,13 +352,12 @@ func TestRefreshResourceNotFound(t *testing.T) {
 		},
 	}
 
-	p := &pb.Provider{
+	p := pb.NewProvider(pb.NewProviderArgs{
 		TypeName: "my",
-		Version:  "0.0.1",
 		AllResources: []pb.Resource{
 			r,
 		},
-	}
+	})
 	info := tfbridge.ProviderInfo{
 		Name:         "my",
 		P:            tfpf.ShimProvider(p),

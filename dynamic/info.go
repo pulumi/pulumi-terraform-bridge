@@ -16,13 +16,13 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"path"
 	"strings"
 
 	"github.com/opentofu/opentofu/shim/run"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 
+	"github.com/pulumi/pulumi-terraform-bridge/dynamic/internal/fixup"
 	"github.com/pulumi/pulumi-terraform-bridge/dynamic/parameterize"
 	"github.com/pulumi/pulumi-terraform-bridge/dynamic/version"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/proto"
@@ -30,7 +30,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/tokens"
 )
 
-func providerInfo(ctx context.Context, p run.Provider, value parameterize.Value) tfbridge.ProviderInfo {
+func providerInfo(ctx context.Context, p run.Provider, value parameterize.Value) (tfbridge.ProviderInfo, error) {
 	prov := tfbridge.ProviderInfo{
 		P:           proto.New(ctx, p),
 		Name:        p.Name(),
@@ -60,10 +60,9 @@ func providerInfo(ctx context.Context, p run.Provider, value parameterize.Value)
 		Java: &tfbridge.JavaInfo{ /* Java does not have a RespectSchemaVersion flag */ },
 		Golang: &tfbridge.GolangInfo{
 			ImportBasePath: path.Join(
-				fmt.Sprintf("github.com/pulumi/pulumi-%[1]s/sdk/", p.Name()),
-				tfbridge.GetModuleMajorVersion("0.0.0"),
-				"go",
+				"github.com/pulumi/pulumi-terraform-provider/sdks/go",
 				p.Name(),
+				tfbridge.GetModuleMajorVersion(p.Version()),
 			),
 
 			LiftSingleValueMethodReturns: true,
@@ -81,8 +80,17 @@ func providerInfo(ctx context.Context, p run.Provider, value parameterize.Value)
 		},
 	}
 
-	prov.MustComputeTokens(tokens.SingleModule(p.Name()+"_", "index", tokens.MakeStandard(p.Name())))
+	if err := fixup.Default(&prov); err != nil {
+		return prov, err
+	}
+
+	err := prov.ComputeTokens(tokens.SingleModule(
+		prov.GetResourcePrefix(), "index", tokens.MakeStandard(p.Name())))
+	if err != nil {
+		return prov, err
+	}
+
 	prov.SetAutonaming(255, "-")
 
-	return prov
+	return prov, nil
 }
