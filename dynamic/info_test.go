@@ -19,11 +19,13 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/opentofu/opentofu/shim/run"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi-terraform-bridge/dynamic/parameterize"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
 func TestInferResourcePrefix(t *testing.T) {
@@ -64,6 +66,7 @@ func TestInferResourcePrefix(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			resourceSchemas := make(map[string]*tfprotov6.Schema, len(tt.tfNames))
 			for _, tf := range tt.tfNames {
 				resourceSchemas[tf] = &tfprotov6.Schema{Block: &tfprotov6.SchemaBlock{}}
@@ -81,6 +84,35 @@ func TestInferResourcePrefix(t *testing.T) {
 			assert.Equal(t, tt.expectedPrefix, info.GetResourcePrefix())
 		})
 	}
+}
+
+func TestFixTokenOverrides(t *testing.T) {
+	t.Parallel()
+
+	p, err := providerInfo(context.Background(), schemaOnlyProvider{
+		name:    "test",
+		version: "1.0.0",
+		schema: &tfprotov6.GetProviderSchemaResponse{
+			ResourceSchemas: map[string]*tfprotov6.Schema{
+				"test_provider": {Block: &tfprotov6.SchemaBlock{
+					Attributes: []*tfprotov6.SchemaAttribute{
+						{Name: "id", Type: tftypes.String, Computed: true},
+					},
+				}},
+				"test_index": {Block: &tfprotov6.SchemaBlock{
+					Attributes: []*tfprotov6.SchemaAttribute{
+						{Name: "id", Type: tftypes.String, Computed: true},
+					},
+				}},
+			},
+		},
+	}, parameterize.Value{})
+	require.NoError(t, err)
+
+	assert.Equal(t, map[string]*info.Resource{
+		"test_index":    {Tok: "test:index/index:Index"},
+		"test_provider": {Tok: "test:index/testProvider:TestProvider"},
+	}, p.Resources)
 }
 
 type schemaOnlyProvider struct {
