@@ -48,6 +48,9 @@ type Make func(module, name string) (string, error)
 //	(pkg, module, name) => pkg:module/lowerFirst(name):name
 func MakeStandard(pkgName string) Make {
 	return func(module, name string) (string, error) {
+		if name == "" {
+			return "", fmt.Errorf("missing name for module %q", module)
+		}
 		lowerName := string(unicode.ToLower(rune(name[0]))) + name[1:]
 		return fmt.Sprintf("%s:%s/%s:%s", pkgName, module, lowerName, name), nil
 	}
@@ -168,7 +171,7 @@ func applyComputedTokens[T info.Resource | info.DataSource](
 		}
 		err := tks(k, v)
 		if err != nil {
-			errs.Errors = append(errs.Errors, err)
+			errs.Errors = append(errs.Errors, fmt.Errorf("%q: %w", k, err))
 			continue
 		}
 
