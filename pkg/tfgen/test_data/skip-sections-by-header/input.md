@@ -22,3 +22,7 @@ Should be skipped
 ## Perfectly allowed header for a helpful section
 
 This section should not be skipped
+
+## Testing and Development
+
+This section should be skipped

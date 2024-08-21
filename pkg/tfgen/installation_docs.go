@@ -261,21 +261,31 @@ var _ parser.ASTTransformer = sectionSkipper{}
 
 func (t sectionSkipper) Transform(node *ast.Document, reader text.Reader, pc parser.Context) {
 	source := reader.Source()
+	var sectionsToSkip []ast.Node
 
+	// Walk to find sections that should be skipped.
+	// Walk() loses information on subsequent nodes when nodes are removed during the walk, so we only gather them here.
 	err := ast.Walk(node, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
-		if section, ok := n.(*section.Section); ok && !entering {
+		if section, ok := n.(*section.Section); ok && entering {
 			headerText := section.FirstChild().(*ast.Heading).Text(source)
 			if t.shouldSkipHeader(string(headerText)) {
 				parent := section.Parent()
 				if parent == nil {
 					panic("PARENT IS NIL")
 				}
-				parent.RemoveChild(parent, section)
+				sectionsToSkip = append(sectionsToSkip, section)
+				return ast.WalkSkipChildren, nil
 			}
 		}
 		return ast.WalkContinue, nil
 	})
-	contract.AssertNoErrorf(err, "impossible")
+	contract.AssertNoErrorf(err, "impossible: ast.Walk should never error")
+
+	// Remove the sections
+	for _, section := range sectionsToSkip {
+		parent := section.Parent()
+		parent.RemoveChild(parent, section)
+	}
 }
 
 // SkipSectionByHeaderContent removes headers where shouldSkipHeader(header) returns true,

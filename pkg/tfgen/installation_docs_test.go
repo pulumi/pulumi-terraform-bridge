@@ -289,27 +289,33 @@ func TestTranslateCodeBlocks(t *testing.T) {
 		require.Equal(t, tc.expected, actual)
 	})
 }
-func TestSkipSectionHeaderByContent(t *testing.T) {
+
+func TestSkipSectionHeadersByContent(t *testing.T) {
 	t.Parallel()
 	type testCase struct {
 		// The name of the test case.
-		name         string
-		headerToSkip string
-		input        string
-		expected     string
+		name          string
+		headersToSkip []string
+		input         string
+		expected      string
 	}
 
 	tc := testCase{
-		name:         "Skips Section With Unwanted Header",
-		headerToSkip: "Debugging Provider Output Using Logs",
-		input:        readTestFile(t, "skip-sections-by-header/input.md"),
-		expected:     readTestFile(t, "skip-sections-by-header/actual.md"),
+		name:          "Skips Sections With Unwanted Headers",
+		headersToSkip: []string{"Debugging Provider Output Using Logs", "Testing and Development"},
+		input:         readTestFile(t, "skip-sections-by-header/input.md"),
+		expected:      readTestFile(t, "skip-sections-by-header/actual.md"),
 	}
 
 	t.Run(tc.name, func(t *testing.T) {
 		t.Parallel()
 		actual, err := SkipSectionByHeaderContent([]byte(tc.input), func(headerText string) bool {
-			return headerText == tc.headerToSkip
+			for _, header := range tc.headersToSkip {
+				if headerText == header {
+					return true
+				}
+			}
+			return false
 		})
 		require.NoError(t, err)
 		assertEqualHTML(t, tc.expected, string(actual))
