@@ -1,6 +1,7 @@
 package tfbridgetests
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -8,7 +9,9 @@ import (
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/providerbuilder"
 	pb "github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/providerbuilder"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
@@ -124,11 +127,115 @@ resources:
 	require.NoError(t, err)
 
 	res := pt.Preview(optpreview.Diff())
-	t.Logf(res.StdOut)
+	t.Log(res.StdOut)
 
 	diffs, err := pt.GrpcLog().Diffs()
 	require.NoError(t, err)
 
 	assert.Len(t, diffs, 1)
 	assert.Equal(t, "DIFF_SOME", diffs[0].Response.Changes.String())
+}
+
+func TestDefaults(t *testing.T) {
+	provBuilder := pb.NewProvider(pb.NewProviderArgs{
+		AllResources: []providerbuilder.Resource{
+			{
+				Name: "test",
+				ResourceSchema: rschema.Schema{
+					Attributes: map[string]rschema.Attribute{
+						"other_prop": rschema.StringAttribute{
+							Optional: true,
+						},
+						"change_reason": rschema.StringAttribute{
+							Optional: true,
+							Computed: true,
+							Default:  stringdefault.StaticString("Default val"),
+						},
+					},
+				},
+			},
+		},
+	})
+
+	prov := bridgedProvider(provBuilder)
+
+	program := `
+name: test
+runtime: yaml
+resources:
+    mainRes:
+        type: testprovider:index:Test
+        properties:
+            otherProp: "val"
+outputs:
+    changeReason: ${mainRes.changeReason}`
+
+	pt := pulCheck(t, prov, program)
+	upRes := pt.Up()
+	t.Log(upRes.StdOut)
+
+	require.Equal(t, "Default val", upRes.Outputs["changeReason"].Value)
+
+	pt.Preview(optpreview.Diff(), optpreview.ExpectNoChanges())
+}
+
+type changeReasonPlanModifier struct {
+	planmodifier.String
+}
+
+func (c changeReasonPlanModifier) PlanModifyString(ctx context.Context, req planmodifier.StringRequest, resp *planmodifier.StringResponse) {
+	resp.PlanValue = basetypes.NewStringValue("Default val")
+}
+
+func (c changeReasonPlanModifier) Description(context.Context) string {
+	return "Change reason plan modifier"
+}
+
+func (c changeReasonPlanModifier) MarkdownDescription(context.Context) string {
+	return "Change reason plan modifier"
+}
+
+func TestPlanModifiers(t *testing.T) {
+	provBuilder := pb.NewProvider(pb.NewProviderArgs{
+		AllResources: []providerbuilder.Resource{
+			{
+				Name: "test",
+				ResourceSchema: rschema.Schema{
+					Attributes: map[string]rschema.Attribute{
+						"other_prop": rschema.StringAttribute{
+							Optional: true,
+						},
+						"change_reason": rschema.StringAttribute{
+							Optional: true,
+							Computed: true,
+							PlanModifiers: []planmodifier.String{
+								changeReasonPlanModifier{},
+							},
+						},
+					},
+				},
+			},
+		},
+	})
+
+	prov := bridgedProvider(provBuilder)
+
+	program := `
+name: test
+runtime: yaml
+resources:
+    mainRes:
+        type: testprovider:index:Test
+        properties:
+            otherProp: "val"
+outputs:
+    changeReason: ${mainRes.changeReason}`
+
+	pt := pulCheck(t, prov, program)
+	upRes := pt.Up()
+	t.Log(upRes.StdOut)
+
+	require.Equal(t, "Default val", upRes.Outputs["changeReason"].Value)
+
+	pt.Preview(optpreview.Diff(), optpreview.ExpectNoChanges())
 }
