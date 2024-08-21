@@ -84,7 +84,8 @@ func providerInfo(ctx context.Context, p run.Provider, value parameterize.Value)
 		return prov, err
 	}
 
-	err := prov.ComputeTokens(tokens.SingleModule(p.Name()+"_", "index", tokens.MakeStandard(p.Name())))
+	err := prov.ComputeTokens(tokens.SingleModule(
+		prov.GetResourcePrefix(), "index", tokens.MakeStandard(p.Name())))
 	if err != nil {
 		return prov, err
 	}
