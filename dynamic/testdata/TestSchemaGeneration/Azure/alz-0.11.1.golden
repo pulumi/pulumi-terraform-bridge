@@ -14,7 +14,7 @@
             "respectSchemaVersion": true
         },
         "go": {
-            "importBasePath": "github.com/pulumi/pulumi-alz/sdk/go/alz",
+            "importBasePath": "github.com/pulumi/pulumi-terraform-provider/sdks/go/alz",
             "liftSingleValueMethodReturns": true,
             "generateExtraInputTypes": true,
             "respectSchemaVersion": true
