@@ -30,6 +30,7 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
+	tftokens "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/tokens"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
@@ -41,7 +42,33 @@ func Default(p *info.Provider) error {
 	return errors.Join(
 		fixPropertyConflict(p),
 		fixMissingIDs(p),
+		fixProviderResource(p),
 	)
+}
+
+// fixProviderResource renames any resource that would otherwise be called `Provider`,
+// since that conflicts with the package's actual `Provider` resource.
+func fixProviderResource(p *info.Provider) error {
+	tfToken := p.GetResourcePrefix() + "_provider"
+	_, ok := p.P.ResourcesMap().GetOk(tfToken)
+	if !ok {
+		// No problematic Provider resource.
+		return nil
+	}
+
+	res := ensureResources(p)[tfToken]
+	if res == nil {
+		res = &info.Resource{}
+		ensureResources(p)[tfToken] = res
+	}
+	if res.Tok != "" {
+		return nil // The token has already been renamed, so we are done.
+	}
+
+	// We need to rename the token.
+	return tftokens.SingleModule(
+		p.GetResourcePrefix(), "index", tftokens.MakeStandard(p.Name),
+	).Resource(p.GetResourcePrefix()+"_"+p.Name+"_provider", res)
 }
 
 func fixMissingIDs(p *info.Provider) error {
@@ -124,12 +151,15 @@ func newName(providerName string) func(shim.Resource) (string, error) {
 	}
 }
 
-func walkResources(p *info.Provider, f func(tfbridge.Resource) error) error {
-	var errs []error
-
+func ensureResources(p *info.Provider) map[string]*info.Resource {
 	if p.Resources == nil {
 		p.Resources = map[string]*info.Resource{}
 	}
+	return p.Resources
+}
+
+func walkResources(p *info.Provider, f func(tfbridge.Resource) error) error {
+	var errs []error
 
 	p.P.ResourcesMap().Range(func(key string, tf shim.Resource) bool {
 		res, isPresent := p.Resources[key]
@@ -152,7 +182,7 @@ func walkResources(p *info.Provider, f func(tfbridge.Resource) error) error {
 		//
 		// If IsZero, then inserting res doesn't have any effect, so we skip it.
 		if !isPresent && !reflect.ValueOf(*res).IsZero() {
-			p.Resources[key] = res
+			ensureResources(p)[key] = res
 		}
 
 		return true

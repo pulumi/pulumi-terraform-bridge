@@ -28,7 +28,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
-	"github.com/pulumi/pulumi-terraform-bridge/dynamic/internal/fixup"
 	"github.com/pulumi/pulumi-terraform-bridge/dynamic/parameterize"
 	"github.com/pulumi/pulumi-terraform-bridge/dynamic/version"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/proto"
@@ -134,11 +133,10 @@ func initialSetup() (tfbridge.ProviderInfo, pfbridge.ProviderMetadata, func() er
 
 			tfServer = p
 			if tfServer != nil {
-				info = providerInfo(ctx, tfServer, value)
-				if err := fixup.Default(&info); err != nil {
+				info, err = providerInfo(ctx, tfServer, value)
+				if err != nil {
 					return plugin.ParameterizeResponse{}, err
 				}
-
 			}
 
 			err = pfbridge.XParameterizeResetProvider(ctx, info, metadata)

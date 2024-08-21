@@ -22,6 +22,7 @@ import (
 	"github.com/opentofu/opentofu/shim/run"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 
+	"github.com/pulumi/pulumi-terraform-bridge/dynamic/internal/fixup"
 	"github.com/pulumi/pulumi-terraform-bridge/dynamic/parameterize"
 	"github.com/pulumi/pulumi-terraform-bridge/dynamic/version"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/proto"
@@ -29,7 +30,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/tokens"
 )
 
-func providerInfo(ctx context.Context, p run.Provider, value parameterize.Value) tfbridge.ProviderInfo {
+func providerInfo(ctx context.Context, p run.Provider, value parameterize.Value) (tfbridge.ProviderInfo, error) {
 	prov := tfbridge.ProviderInfo{
 		P:           proto.New(ctx, p),
 		Name:        p.Name(),
@@ -79,8 +80,12 @@ func providerInfo(ctx context.Context, p run.Provider, value parameterize.Value)
 		},
 	}
 
+	if err := fixup.Default(&prov); err != nil {
+		return prov, err
+	}
+
 	prov.MustComputeTokens(tokens.SingleModule(p.Name()+"_", "index", tokens.MakeStandard(p.Name())))
 	prov.SetAutonaming(255, "-")
 
-	return prov
+	return prov, nil
 }
