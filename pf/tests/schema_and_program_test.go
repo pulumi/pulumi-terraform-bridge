@@ -127,7 +127,7 @@ resources:
 	require.NoError(t, err)
 
 	res := pt.Preview(optpreview.Diff())
-	t.Logf(res.StdOut)
+	t.Log(res.StdOut)
 
 	diffs, err := pt.GrpcLog().Diffs()
 	require.NoError(t, err)
@@ -164,7 +164,7 @@ name: test
 runtime: yaml
 resources:
     mainRes:
-        type: prov:index:Test
+        type: testprovider:index:Test
         properties:
             otherProp: "val"
 outputs:
@@ -172,7 +172,7 @@ outputs:
 
 	pt := pulCheck(t, prov, program)
 	upRes := pt.Up()
-	t.Logf(upRes.StdOut)
+	t.Log(upRes.StdOut)
 
 	require.Equal(t, "Default val", upRes.Outputs["changeReason"].Value)
 
@@ -225,7 +225,7 @@ name: test
 runtime: yaml
 resources:
     mainRes:
-        type: prov:index:Test
+        type: testprovider:index:Test
         properties:
             otherProp: "val"
 outputs:
@@ -233,7 +233,7 @@ outputs:
 
 	pt := pulCheck(t, prov, program)
 	upRes := pt.Up()
-	t.Logf(upRes.StdOut)
+	t.Log(upRes.StdOut)
 
 	require.Equal(t, "Default val", upRes.Outputs["changeReason"].Value)
 
