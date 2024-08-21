@@ -1419,8 +1419,6 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 			return nil, err
 		}
 
-		cleanInputs := deconflict(ctx, res.TF.Schema(), res.Schema.Fields, inputs)
-
 		// TODO: https://github.com/pulumi/pulumi/issues/16886
 		// It is currently not possible to differentiate between an import and a .get request
 		// Ideally we only want to run this during import, but since we will only be modifying input
@@ -1428,6 +1426,8 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 		if isImportOrGet {
 			p.processImportValidationErrors(ctx, urn, res.TFName, inputs, res.TF.Schema(), res.Schema.GetFields())
 		}
+
+		cleanInputs := deconflict(ctx, res.TF.Schema(), res.Schema.Fields, inputs)
 
 		minputs, err := plugin.MarshalProperties(cleanInputs, plugin.MarshalOptions{
 			Label:       label + ".inputs",
