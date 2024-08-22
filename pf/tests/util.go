@@ -107,7 +107,7 @@ func pulCheck(t *testing.T, bridgedProvider info.Provider, program string) (*pul
 	if err != nil {
 		return nil, err
 	}
-	topts := []opttest.Option{
+	opts := []opttest.Option{
 		opttest.Env("DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "true"),
 		opttest.TestInPlace(),
 		opttest.SkipInstall(),
@@ -121,5 +121,5 @@ func pulCheck(t *testing.T, bridgedProvider info.Provider, program string) (*pul
 		),
 	}
 
-	return pulumitest.NewPulumiTest(t, puwd, topts...), nil
+	return pulumitest.NewPulumiTest(t, puwd, opts...), nil
 }
