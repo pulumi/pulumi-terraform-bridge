@@ -5,7 +5,6 @@ go 1.22.4
 require (
 	github.com/hashicorp/hcl/v2 v2.17.0
 	github.com/hexops/autogold/v2 v2.2.1
-	github.com/pulumi/pulumi/sdk/v3 v3.129.0
 	github.com/pulumi/terraform v1.4.0
 	github.com/spf13/afero v1.11.0
 	github.com/stretchr/testify v1.9.0
@@ -61,6 +60,7 @@ require (
 	github.com/mitchellh/go-wordwrap v1.0.1 // indirect
 	github.com/nightlyone/lockfile v1.0.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/pulumi/pulumi/sdk/v3 v3.129.0
 	github.com/ulikunitz/xz v0.5.8 // indirect
 	github.com/zclconf/go-cty v1.13.2 // indirect
 	github.com/zclconf/go-cty-yaml v1.0.3 // indirect
