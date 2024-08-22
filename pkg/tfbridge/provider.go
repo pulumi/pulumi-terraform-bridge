@@ -1473,6 +1473,8 @@ func (p *Provider) processImportValidationErrors(
 		p.configValues, inputsWithoutSecrets, inputsWithoutSecrets, schema, schemaInfos,
 		makeTerraformInputsOptions{DisableTFDefaults: true, UnknownCollectionsSupported: p.tf.SupportsUnknownCollections()})
 	if err != nil {
+		logger.Debug(fmt.Sprintf("Failed to makeTerraformInputsOptions."+
+			" This could lead to validation errors during resource import:\nError: %s", err.Error()))
 		return
 	}
 
