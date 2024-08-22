@@ -2347,6 +2347,6 @@ func guessIsHCL(code string) bool {
 }
 
 func isHCL(fenceLanguage, code string) bool {
-	return fenceLanguage == "```terraform\n" || fenceLanguage == "```hcl\n" ||
+	return fenceLanguage == "```terraform\n" || fenceLanguage == "```hcl\n" || fenceLanguage == "```tf\n" ||
 		(fenceLanguage == "```\n" && guessIsHCL(code))
 }
