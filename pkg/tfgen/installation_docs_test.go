@@ -196,6 +196,13 @@ func TestApplyEditRules(t *testing.T) {
 			},
 			expected: []byte("# I am a provider\n"),
 		},
+		{
+			name: "Strips Hashicorp links correctly",
+			docFile: DocFile{
+				Content: []byte(readfile(t, "test_data/replace-links/input.md")),
+			},
+			expected: []byte(readfile(t, "test_data/replace-links/actual.md")),
+		},
 	}
 	for _, tt := range tests {
 		tt := tt
