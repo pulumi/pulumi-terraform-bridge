@@ -123,6 +123,7 @@ func applyEditRules(contentBytes []byte, docFile string, g *Generator) ([]byte, 
 	edits := g.editRules
 	// Additional edit rules for installation files
 	edits = append(edits,
+		skipSectionHeadersEdit(docFile),
 		// Replace all "T/terraform" with "P/pulumi"
 		reReplace(`Terraform`, `Pulumi`),
 		reReplace(`terraform`, `pulumi`),
@@ -136,7 +137,6 @@ func applyEditRules(contentBytes []byte, docFile string, g *Generator) ([]byte, 
 			`Configuration Reference`),
 		reReplace(`block contains the following arguments`,
 			`input has the following nested fields`),
-		skipSectionHeadersEdit(docFile),
 	)
 	var err error
 	for _, rule := range edits {
@@ -367,6 +367,8 @@ func getDefaultHeadersToSkip() []*regexp.Regexp {
 		regexp.MustCompile("[Tt]esting"),
 		regexp.MustCompile("[Dd]evelopment"),
 		regexp.MustCompile("[Dd]ebugging"),
+		regexp.MustCompile("[Tt]erraform CLI"),
+		regexp.MustCompile("[Tt]erraform Cloud"),
 	}
 	return defaultHeaderSkipRegexps
 }
