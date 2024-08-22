@@ -646,10 +646,10 @@ func (cc *cliConverter) singleExampleFromPCLToLanguage(example translatedExample
 	if example.PCL == "" {
 		return "", nil
 	}
-	source, diags, err := cc.convertPCL(example.PCL, lang)
-	if err != nil {
-		return "", err
-	}
+	source, diags, _ := cc.convertPCL(example.PCL, lang)
+	//if err != nil {
+	//	return "", err
+	//}
 	diags = cc.postProcessDiagnostics(diags.Extend(example.Diagnostics))
 	if diags.HasErrors() {
 		return "", fmt.Errorf("Failed to convert an example: %s", diags.Error())
