@@ -245,7 +245,7 @@ func convertExample(g *Generator, code string, exampleNumber int) (string, error
 		// Generate language example
 		convertedLang, err := converter.singleExampleFromPCLToLanguage(pclExample, lang)
 		if err != nil {
-			return "", err
+			g.warn(err.Error())
 		}
 		exampleContent += choosableStart + pulumiYAML + convertedLang + choosableEnd
 	}

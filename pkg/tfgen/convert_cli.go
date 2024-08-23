@@ -643,17 +643,17 @@ func (cc *cliConverter) singleExampleFromHCLToPCL(path, hclCode string) (transla
 
 // Function for one-off example conversions PCL --> supported language (nodejs, yaml, etc)
 func (cc *cliConverter) singleExampleFromPCLToLanguage(example translatedExample, lang string) (string, error) {
+	var err error
+
 	if example.PCL == "" {
 		return "", nil
 	}
 	source, diags, _ := cc.convertPCL(example.PCL, lang)
-	//if err != nil {
-	//	return "", err
-	//}
 	diags = cc.postProcessDiagnostics(diags.Extend(example.Diagnostics))
 	if diags.HasErrors() {
-		return "", fmt.Errorf("Failed to convert an example: %s", diags.Error())
+		source = "Example unavailable in this language\n"
+		err = fmt.Errorf("failed to convert an example: %s", diags.Error())
 	}
 	source = "```" + lang + "\n" + source + "```"
-	return source, nil
+	return source, err
 }
