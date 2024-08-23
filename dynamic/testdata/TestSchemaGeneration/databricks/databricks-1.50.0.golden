@@ -15,6 +15,7 @@
         },
         "go": {
             "importBasePath": "github.com/pulumi/pulumi-terraform-provider/sdks/go/databricks",
+            "rootPackageName": "databricks",
             "liftSingleValueMethodReturns": true,
             "generateExtraInputTypes": true,
             "respectSchemaVersion": true
