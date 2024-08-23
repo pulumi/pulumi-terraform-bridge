@@ -69,7 +69,7 @@ func providerInfo(ctx context.Context, p run.Provider, value parameterize.Value)
 				p.Name(),
 				tfbridge.GetModuleMajorVersion(p.Version()),
 			),
-
+			RootPackageName:              p.Name(),
 			LiftSingleValueMethodReturns: true,
 			GenerateExtraInputTypes:      true,
 			RespectSchemaVersion:         true,
