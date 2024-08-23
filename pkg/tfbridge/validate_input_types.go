@@ -49,9 +49,9 @@ func (v *PulumiInputValidator) validatePropertyMap(
 	stableKeys := propertyMap.StableKeys()
 	failures := []TypeFailure{}
 
-	// TODO[pulumi/pulumi-terrafor-bridge#1892]: handle required properties. Deferring for now
-	// because properties can be filled in later and we don't want to
-	// fail too aggressively
+	// TODO[pulumi/pulumi-terraform-bridge#1892]: handle required properties. Deferring
+	// for now because properties can be filled in later and we don't want to fail too
+	// aggressively.
 	for _, objectKey := range stableKeys {
 		objectValue := propertyMap[objectKey]
 		objType, knownType := propertyTypes[string(objectKey)]
@@ -130,13 +130,7 @@ func (v *PulumiInputValidator) validatePropertyValue(
 		}
 
 		if !propertyValue.IsObject() {
-			return []TypeFailure{{
-				ResourcePath: propertyPath.String(),
-				Reason: fmt.Sprintf(
-					"expected object type, got %s type",
-					propertyValue.TypeString(),
-				),
-			}}
+			return []TypeFailure{newTypeFailure(propertyPath, "object", propertyValue)}
 		}
 
 		return v.validatePropertyMap(
@@ -147,7 +141,7 @@ func (v *PulumiInputValidator) validatePropertyValue(
 	}
 
 	if typeSpec.OneOf != nil {
-		// TODO[pulumi/pulumi-terrafor-bridge#1891]: handle OneOf types
+		// TODO[pulumi/pulumi-terraform-bridge#1891]: handle OneOf types
 		// bindTypeSpecOneOf provides a good hint of how to interpret these:
 		//
 		// https://github.com/pulumi/pulumi/blob/master/pkg/codegen/schema/bind.go#L842
@@ -159,37 +153,19 @@ func (v *PulumiInputValidator) validatePropertyValue(
 	switch typeSpec.Type {
 	case "boolean":
 		if !propertyValue.IsBool() {
-			return []TypeFailure{{
-				ResourcePath: propertyPath.String(),
-				Reason: fmt.Sprintf(
-					"expected boolean type, got %s type",
-					propertyValue.TypeString(),
-				),
-			}}
+			return []TypeFailure{newTypeFailure(propertyPath, typeSpec.Type, propertyValue)}
 		}
 		return nil
 	case "integer", "number":
 		// The bridge permits coalescing strings to numbers, hence skip strings.
 		if !propertyValue.IsNumber() && !propertyValue.IsString() {
-			return []TypeFailure{{
-				ResourcePath: propertyPath.String(),
-				Reason: fmt.Sprintf(
-					"expected number type, got %s type",
-					propertyValue.TypeString(),
-				),
-			}}
+			return []TypeFailure{newTypeFailure(propertyPath, typeSpec.Type, propertyValue)}
 		}
 		return nil
 	case "string":
 		// The bridge permits coalescing numbers and booleans to strings, hence skip these.
 		if !propertyValue.IsString() && !propertyValue.IsNumber() && !propertyValue.IsBool() {
-			return []TypeFailure{{
-				ResourcePath: propertyPath.String(),
-				Reason: fmt.Sprintf(
-					"expected string type, got %s type",
-					propertyValue.TypeString(),
-				),
-			}}
+			return []TypeFailure{newTypeFailure(propertyPath, typeSpec.Type, propertyValue)}
 		}
 		return nil
 	case "array":
@@ -209,13 +185,7 @@ func (v *PulumiInputValidator) validatePropertyValue(
 			}
 			return failures
 		}
-		return []TypeFailure{{
-			ResourcePath: propertyPath.String(),
-			Reason: fmt.Sprintf(
-				"expected array type, got %s type",
-				propertyValue.TypeString(),
-			),
-		}}
+		return []TypeFailure{newTypeFailure(propertyPath, typeSpec.Type, propertyValue)}
 	case "object":
 		// This is not really an object but a map type with some element type, which is assumed to be string if
 		// unspecified. Check accordingly. This should be very similar to the "array" case.
@@ -240,17 +210,43 @@ func (v *PulumiInputValidator) validatePropertyValue(
 			}
 			return failures
 		}
-		return []TypeFailure{{
-			ResourcePath: propertyPath.String(),
-			Reason: fmt.Sprintf(
-				"expected object type, got %s type",
-				propertyValue.TypeString(),
-			),
-		}}
+		return []TypeFailure{newTypeFailure(propertyPath, typeSpec.Type, propertyValue)}
 	default:
 		// Unrecognized type, assume no errors.
 		return nil
 	}
+}
+
+func newTypeFailure(
+	path resource.PropertyPath,
+	expectedType string, actualValue resource.PropertyValue,
+) TypeFailure {
+	return TypeFailure{
+		ResourcePath: path.String(),
+		Reason: fmt.Sprintf("expected %s type, got %s of type %s",
+			expectedType, previewPropertyValue(actualValue), actualValue.TypeString(),
+		),
+	}
+}
+
+// previewPropertyValue creates a preview of v suitable for use in an error display.
+func previewPropertyValue(v resource.PropertyValue) string {
+	var preview string
+	switch {
+	case v.IsComputed():
+		return "(unknown value)"
+	case v.IsSecret():
+		return "secret(" + previewPropertyValue(v.SecretValue().Element) + ")"
+	case v.IsString():
+		preview = fmt.Sprintf("%q", v.StringValue())
+	default:
+		preview = v.String()
+	}
+	const maxLength = 30
+	if len(preview) > maxLength {
+		return preview[:maxLength-3] + "..."
+	}
+	return preview
 }
 
 // getType gets a type definition from a schema reference. Currently it only supports types from the same schema that
