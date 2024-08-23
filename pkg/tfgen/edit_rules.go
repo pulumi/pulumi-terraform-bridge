@@ -31,7 +31,7 @@ func defaultEditRules() editRules {
 		boundedReplace("[tT]erraform [aA]pply", "pulumi up"),
 		reReplace(`"([mM])ade (by|with) [tT]erraform"`, `"Made $2 Pulumi"`),
 		// A markdown link that has terraform in the link component.
-		reReplace(`\[([^\]]*)\]\(.*terraform([^\)]*)\)`, "$1"),
+		reReplace(`\[([^\]]*)\]\([^\)]*terraform([^\)]*)\)`, "$1"),
 		fixupImports(),
 		// Replace content such as "jdoe@hashicorp.com" with "jdoe@example.com"
 		reReplace("@hashicorp.com", "@example.com"),
