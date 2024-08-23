@@ -328,7 +328,9 @@ const (
 	kindObject
 )
 
-// propertyType represents a non-resource, non-datasource type. Property types may be simple
+// propertyType represents a non-resource, non-datasource type.
+//
+// Using nil for *propertyType implies catch-all any type (aka "pulumi.json#/Any" in Package Schema).
 type propertyType struct {
 	name       string
 	doc        string
