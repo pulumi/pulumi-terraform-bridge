@@ -19,6 +19,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/tokens"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 	pulumidiag "github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -146,13 +147,15 @@ func BridgedProvider(t T, providerName string, tfp *schema.Provider, opts ...Bri
 	for _, opt := range opts {
 		opt(options)
 	}
-
 	EnsureProviderValid(t, tfp)
-
 	shimProvider := shimv2.NewProvider(tfp, shimv2.WithPlanResourceChange(
 		func(tfResourceType string) bool { return !options.DisablePlanResourceChange },
 	))
+	return QuickProvider(t, providerName, shimProvider)
+}
 
+// Help quickly setting up a reasonable info.Provider.
+func QuickProvider(t T, providerName string, shimProvider shim.Provider) info.Provider {
 	provider := tfbridge.ProviderInfo{
 		P:                              shimProvider,
 		Name:                           providerName,
@@ -164,7 +167,6 @@ func BridgedProvider(t T, providerName string, tfp *schema.Provider, opts ...Bri
 		return tokens.MakeStandard(providerName)(module, name)
 	}
 	provider.MustComputeTokens(tokens.SingleModule(providerName, "index", makeToken))
-
 	return provider
 }
 
@@ -174,6 +176,10 @@ func skipUnlessLinux(t T) {
 	}
 }
 
+// Set up an integration test against a given in-process provider stood up from bridgedProvider.
+//
+// Specify verbatim Pulumi.yaml in the program parameter.
+//
 // This is an experimental API.
 func PulCheck(t T, bridgedProvider info.Provider, program string) *pulumitest.PulumiTest {
 	skipUnlessLinux(t)
