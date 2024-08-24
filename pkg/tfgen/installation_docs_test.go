@@ -231,6 +231,13 @@ func TestApplyEditRules(t *testing.T) {
 			},
 			expected: []byte("This is a provider with an example.\nUse this code."),
 		},
+		{
+			name: "Strips mentions of Terraform version pattern 5",
+			docFile: DocFile{
+				Content: []byte("This is a provider with an example. Terraform 1.5 and earlier:\n Use this code."),
+			},
+			expected: []byte("This is a provider with an example.\nUse this code."),
+		},
 	}
 	for _, tt := range tests {
 		tt := tt
