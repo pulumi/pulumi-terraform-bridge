@@ -1,0 +1,49 @@
+{
+  "name": "my",
+  "attribution": "This Pulumi package is based on the [`my` Terraform Provider](https://github.com/terraform-providers/terraform-provider-my).",
+  "meta": {
+    "moduleFormat": "(.*)(?:/[^/]*)"
+  },
+  "language": {
+    "nodejs": {
+      "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-my)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e first check the [`pulumi-my` repo](/issues); however, if that doesn't turn up anything,\n\u003e please consult the source [`terraform-provider-my` repo](https://github.com/terraform-providers/terraform-provider-my/issues).",
+      "compatibility": "tfbridge20",
+      "disableUnionOutputTypes": true
+    },
+    "python": {
+      "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-my)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e first check the [`pulumi-my` repo](/issues); however, if that doesn't turn up anything,\n\u003e please consult the source [`terraform-provider-my` repo](https://github.com/terraform-providers/terraform-provider-my/issues).",
+      "compatibility": "tfbridge20",
+      "pyproject": {}
+    }
+  },
+  "config": {},
+  "provider": {
+    "description": "The provider type for the my package. By default, resources use package-wide configuration\nsettings, however an explicit `Provider` instance may be created and passed during resource\nconstruction to achieve fine-grained programmatic control over provider settings. See the\n[documentation](https://www.pulumi.com/docs/reference/programming-model/#providers) for more information.\n"
+  },
+  "resources": {
+    "my:index/resource:Resource": {
+      "properties": {
+        "myProp": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "myProp"
+      ],
+      "inputProperties": {
+        "myProp": {
+          "type": "string"
+        }
+      },
+      "stateInputs": {
+        "description": "Input properties used for looking up and filtering Resource resources.\n",
+        "properties": {
+          "myProp": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
+    }
+  }
+}
