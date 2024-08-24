@@ -137,7 +137,7 @@ func applyEditRules(contentBytes []byte, docFile string, g *Generator) ([]byte, 
 			`Configuration Reference`),
 		reReplace(`Schema`,
 			`Configuration Reference`),
-
+		reReplace("### Optional\n", ""),
 		reReplace(`block contains the following arguments`,
 			`input has the following nested fields`),
 	)
