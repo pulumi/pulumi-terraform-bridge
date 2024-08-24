@@ -376,7 +376,7 @@ func getDefaultHeadersToSkip() []*regexp.Regexp {
 func getTfVersionsToRemove() []*regexp.Regexp {
 	tfVersionsToRemove := []*regexp.Regexp{
 		regexp.MustCompile(`It requires [tT]erraform [v0-9]+\.?[0-9]?\.?[0-9]? or later.`),
-		regexp.MustCompile(`(?s)For [tT]erraform [v0-9]+\.?[0-9]?\.?[0-9]? and later:`),
+		regexp.MustCompile(`(?s)(For )?[tT]erraform [v0-9]+\.?[0-9]?\.?[0-9]? and later:`),
 	}
 	return tfVersionsToRemove
 }
