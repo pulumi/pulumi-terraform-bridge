@@ -94,17 +94,17 @@ func TestWriteFrontMatter(t *testing.T) {
 
 	type testCase struct {
 		// The name of the test case.
-		name     string
-		title    string
-		expected string
+		name         string
+		providerName string
+		expected     string
 	}
 
 	tc := testCase{
-		name:  "Generates Front Matter for installation-configuration.md",
-		title: "Testcase Provider",
+		name:         "Generates Front Matter for installation-configuration.md",
+		providerName: "Test",
 		expected: delimiter +
-			"title: Testcase Provider Installation & Configuration\n" +
-			"meta_desc: Provides an overview on how to configure the Pulumi Testcase Provider.\n" +
+			"title: Test Provider\n" +
+			"meta_desc: Provides an overview on how to configure the Pulumi Test provider.\n" +
 			"layout: package\n" +
 			delimiter +
 			"\n",
@@ -112,7 +112,7 @@ func TestWriteFrontMatter(t *testing.T) {
 
 	t.Run(tc.name, func(t *testing.T) {
 		t.Parallel()
-		actual := writeFrontMatter(tc.title)
+		actual := writeFrontMatter(tc.providerName)
 		require.Equal(t, tc.expected, actual)
 	})
 }
