@@ -1,8 +1,6 @@
-module github.com/pulumi/pulumi-terraform-bridge/pf/tests
+module github.com/pulumi/pulumi-terraform-bridge/pkg/pf/tests
 
 go 1.21.12
-
-replace github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests => ../../pkg/tests
 
 require (
 	github.com/hashicorp/terraform-plugin-framework v1.6.0
@@ -87,9 +85,9 @@ require (
 replace (
 	github.com/hashicorp/terraform-provider-tls => github.com/hashicorp/terraform-provider-tls v1.2.1-0.20230117062332-afdd54107aba
 	github.com/hashicorp/terraform-provider-tls/shim => ./internal/tlsshim
-	github.com/pulumi/pulumi-terraform-bridge/pf => ../
-	github.com/pulumi/pulumi-terraform-bridge/v3 => ../..
-	github.com/pulumi/pulumi-terraform-bridge/x/muxer => ../../x/muxer
+	github.com/pulumi/pulumi-terraform-bridge/v3 => ../../..
+	github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests => ../../../pkg/tests
+	github.com/pulumi/pulumi-terraform-bridge/x/muxer => ../../../x/muxer
 	github.com/terraform-providers/terraform-provider-random => github.com/terraform-providers/terraform-provider-random v1.3.2-0.20231204135814-c6e90de46687
 	github.com/terraform-providers/terraform-provider-random/randomshim => ./internal/randomshim
 )
