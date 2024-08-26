@@ -180,6 +180,12 @@ func (nt *schemaNestedTypes) gatherFromProperties(pathContext paths.TypePath,
 
 	for _, p := range ps {
 		name := p.name
+
+		// Skip the <any> type as it does not need recursive handling.
+		if p.typ == nil {
+			continue
+		}
+
 		if p.typ.kind == kindList || p.typ.kind == kindSet {
 			name = inflector.Singularize(name)
 		}

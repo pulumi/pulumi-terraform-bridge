@@ -437,7 +437,7 @@ func (g *Generator) makePropertyType(typePath paths.TypePath,
 	case shim.TypeSet:
 		t.kind = kindSet
 	case shim.TypeDynamic:
-		return nil, errors.New("Error in schema generation: Dynamic types are not implemented")
+		return nil, nil // nil of type *propertyType represents the special <any> type
 	default:
 		contract.Failf(
 			"impossible: sch.Type() should be one of TypeMap, TypeList, TypeSet, TypeDynamic at this point path: "+
