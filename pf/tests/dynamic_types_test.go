@@ -94,6 +94,14 @@ func TestCreateResourceWithDynamicAttribute(t *testing.T) {
 			expectedManifestOutput: []any{"a", "b", "c"},
 		},
 		{
+			name:           "heterogeneous-array",
+			manifestToSend: []any{"a", []any{"1", "2"}, map[string]any{"a": "1"}},
+			expectedManifestMatches: func(t *testing.T, v basetypes.DynamicValue) {
+				t.Logf("Received: %v", v)
+			},
+			expectedManifestOutput: []any{"a", []any{"1", "2"}, map[string]any{"a": "1"}},
+		},
+		{
 			name:           "empty-array",
 			manifestToSend: []any{},
 			expectedManifestReceived: basetypes.NewDynamicValue(basetypes.NewListValueMust(
@@ -134,6 +142,28 @@ func TestCreateResourceWithDynamicAttribute(t *testing.T) {
 				assert.Equal(t, 0, len(parts))
 			},
 			expectedManifestOutput: map[string]any{},
+		},
+		{
+			name: "heterogeneous-map",
+			manifestToSend: map[string]any{
+				"a": "1",
+				"b": []any{"x", "y"},
+				"c": map[string]any{
+					"aa": "1",
+					"bb": "2",
+				},
+			},
+			expectedManifestMatches: func(t *testing.T, v basetypes.DynamicValue) {
+				t.Logf("Received: %v", v)
+			},
+			expectedManifestOutput: map[string]any{
+				"a": "1",
+				"b": []any{"x", "y"},
+				"c": map[string]any{
+					"aa": "1",
+					"bb": "2",
+				},
+			},
 		},
 	}
 

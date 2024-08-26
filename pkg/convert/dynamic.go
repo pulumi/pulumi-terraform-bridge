@@ -30,6 +30,8 @@ func newDynamicEncoder() Encoder {
 
 type dynamicEncoder struct{}
 
+// Convert a PropertyValue to a tftypes.Value. If the optional ty parameter is specified, ensure that the resulting
+// tftypes.Value is constructed with the given type.
 func (enc *dynamicEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.Value, error) {
 	switch {
 	case propertyValueIsUnknown(p):
@@ -51,8 +53,17 @@ func (enc *dynamicEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.
 			}
 			result = append(result, te)
 		}
-		// TODO will this work or elements need to be wrapped in DynamicPseudoType for this to work?
-		return tftypes.NewValue(tftypes.List{ElementType: tftypes.DynamicPseudoType}, result), nil
+		// tftypes.NewValue is pretty strict in that array elements must have the same type.
+		// Try to encode this as an array and fallback on a tuple if the types do not match.
+		if commonTy, err := tftypes.TypeFromElements(result); err == nil {
+			return tftypes.NewValue(tftypes.List{ElementType: commonTy}, result), nil
+		} else {
+			types := []tftypes.Type{}
+			for _, r := range result {
+				types = append(types, r.Type())
+			}
+			return tftypes.NewValue(tftypes.Tuple{ElementTypes: types}, result), nil
+		}
 	case p.IsAsset():
 		return tftypes.Value{}, fmt.Errorf("Assets inside dynamically typed blocks are not yet supported")
 	case p.IsArchive():
@@ -65,17 +76,17 @@ func (enc *dynamicEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.
 	case p.IsObject():
 		// Maps and objects are confused in this Pulumi representation, we cannot reliably tell them apart.
 		// Assume this is an object, but do not inflect property names in any way.
+		objT := tftypes.Object{AttributeTypes: map[string]tftypes.Type{}}
 		result := map[string]tftypes.Value{}
-		ty := tftypes.Object{AttributeTypes: map[string]tftypes.Type{}}
 		for k, v := range p.ObjectValue() {
 			te, err := enc.fromPropertyValue(v)
 			if err != nil {
 				return tftypes.Value{}, err
 			}
 			result[string(k)] = te
-			ty.AttributeTypes[string(k)] = te.Type()
+			objT.AttributeTypes[string(k)] = te.Type()
 		}
-		return tftypes.NewValue(ty, result), nil
+		return tftypes.NewValue(objT, result), nil
 	case p.IsResourceReference():
 		return tftypes.Value{}, fmt.Errorf("Resource references inside dynamically typed blocks are not yet supported")
 	default:
@@ -149,7 +160,22 @@ func (dec *dynamicDecoder) toPropertyValue(v tftypes.Value) (resource.PropertyVa
 		}
 		return resource.NewObjectProperty(translated), nil
 	case v.Type().Is(tftypes.Tuple{}):
-		return resource.PropertyValue{}, fmt.Errorf("Tuple types inside dynamically typed blocks are not yet supported")
+		// Unlike the normal encoding for tuples, assume here that this is an array where dynamic encoding
+		// failed to compute a uniform type for every value, and therefore decode it back to an array.
+		var elements []tftypes.Value
+		err := v.As(&elements)
+		if err != nil {
+			return resource.PropertyValue{}, err
+		}
+		var result []resource.PropertyValue
+		for _, e := range elements {
+			te, err := dec.toPropertyValue(e)
+			if err != nil {
+				return resource.PropertyValue{}, err
+			}
+			result = append(result, te)
+		}
+		return resource.NewArrayProperty(result), nil
 	default:
 		contract.Failf("Unexpected tftypes.Value case: %v", v.String())
 		panic("Unreachable")
