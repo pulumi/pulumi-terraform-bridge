@@ -25,7 +25,7 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 
 	helper "github.com/pulumi/pulumi-terraform-bridge/dynamic/internal/testing"
-	pfbridge "github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
+	pfbridge "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
 )
 
 // globalTempDir is a temporary directory scoped to the entire test cycle.

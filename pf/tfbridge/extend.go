@@ -15,36 +15,14 @@
 package tfbridge
 
 import (
-	"context"
-
-	pfprovider "github.com/hashicorp/terraform-plugin-framework/provider"
-
-	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/muxer"
-	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/schemashim"
-	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	pkgpf "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
 )
 
-// Wrap a PF Provider in a shim.Provider.
-//
-// Deprecated: This function has been renamed ShimProviderWithContext.
-func SchemaOnlyPluginFrameworkProvider(ctx context.Context, p pfprovider.Provider) shim.Provider {
-	return schemashim.ShimSchemaOnlyProvider(ctx, p)
-}
+// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge.ShimProviderWithContext instead.
+var SchemaOnlyPluginFrameworkProvider = pkgpf.SchemaOnlyPluginFrameworkProvider
 
-// MuxShimWithPF initializes a shim.Provider that will server resources from both shim and p.
-//
-// If shim and p both define the same token, then the value from shim will be used.
-//
-// To create a muxed provider, ProviderInfo.P must be the result of this function.
-func MuxShimWithPF(ctx context.Context, shim shim.Provider, p pfprovider.Provider) shim.Provider {
-	return muxer.AugmentShimWithPF(ctx, shim, p)
-}
+// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge.MuxShimWithPF instead.
+var MuxShimWithPF = pkgpf.MuxShimWithPF
 
-// MuxShimWithDisjointgPF initializes a shim.Provider that will server resources from both shim and p.
-//
-// This function will panic if shim and p both define the same token.
-//
-// To create a muxed provider, ProviderInfo.P must be the result of this function.
-func MuxShimWithDisjointgPF(ctx context.Context, shim shim.Provider, p pfprovider.Provider) shim.Provider {
-	return muxer.AugmentShimWithDisjointPF(ctx, shim, p)
-}
+// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge.MuxShimWithDisjointgPF instead.
+var MuxShimWithDisjointgPF = pkgpf.MuxShimWithDisjointgPF

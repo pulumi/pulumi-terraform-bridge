@@ -15,24 +15,8 @@
 package pf
 
 import (
-	"context"
-
-	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
-	"github.com/hashicorp/terraform-plugin-go/tftypes"
-
-	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/runtypes"
-	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	pkgpf "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf"
 )
 
-// ShimProvider is a shim.Provider that is capable of serving the
-// [github.com/pulumi/pulumi-terraform-bridge/pf] aspect of the bridge.
-//
-// The interface for ShimProvider is considered unstable, and may change at any time.
-type ShimProvider interface {
-	shim.Provider
-
-	Server(context.Context) (tfprotov6.ProviderServer, error)
-	Resources(context.Context) (runtypes.Resources, error)
-	DataSources(context.Context) (runtypes.DataSources, error)
-	Config(context.Context) (tftypes.Object, error)
-}
+// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf.ShimProvider instead.
+type ShimProvider = pkgpf.ShimProvider

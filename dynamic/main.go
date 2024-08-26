@@ -30,8 +30,8 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/dynamic/parameterize"
 	"github.com/pulumi/pulumi-terraform-bridge/dynamic/version"
-	"github.com/pulumi/pulumi-terraform-bridge/pf/proto"
-	pfbridge "github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/proto"
+	pfbridge "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
 )
