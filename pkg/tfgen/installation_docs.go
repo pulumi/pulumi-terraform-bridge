@@ -57,9 +57,10 @@ func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
 }
 
 func writeFrontMatter(providerName string) string {
-	// Capitalize the provider name for the title
+	// Capitalize the package name
 	capitalize := cases.Title(language.English)
 	title := capitalize.String(providerName)
+
 	return fmt.Sprintf(delimiter+
 		"title: %[1]s Provider\n"+
 		"meta_desc: Provides an overview on how to configure the Pulumi %[1]s provider.\n"+

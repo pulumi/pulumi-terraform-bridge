@@ -133,7 +133,7 @@ func TestWriteFrontMatter(t *testing.T) {
 
 	tc := testCase{
 		name:         "Generates Front Matter for installation-configuration.md",
-		providerName: "Test",
+		providerName: "test",
 		expected: delimiter +
 			"title: Test Provider\n" +
 			"meta_desc: Provides an overview on how to configure the Pulumi Test provider.\n" +
