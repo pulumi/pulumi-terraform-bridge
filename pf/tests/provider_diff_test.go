@@ -19,11 +19,13 @@ import (
 
 	testutils "github.com/pulumi/providertest/replay"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/testprovider"
+	"github.com/stretchr/testify/require"
 )
 
 // Test that preview diff in presence of computed attributes results in an empty diff.
 func TestEmptyTestresDiff(t *testing.T) {
-	server := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
+	server, err := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
+	require.NoError(t, err)
 	testCase := `
         {
           "method": "/pulumirpc.ResourceProvider/Diff",
@@ -51,7 +53,8 @@ func TestEmptyTestresDiff(t *testing.T) {
 
 // Test removing an optional input.
 func TestOptionRemovalTestresDiff(t *testing.T) {
-	server := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
+	server, err := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
+	require.NoError(t, err)
 	testCase := `
         {
           "method": "/pulumirpc.ResourceProvider/Diff",
@@ -83,7 +86,8 @@ func TestOptionRemovalTestresDiff(t *testing.T) {
 
 // Make sure optionalInputBoolCopy does not cause non-empty diff when not actually changing.
 func TestEmptyTestresDiffWithOptionalComputed(t *testing.T) {
-	server := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
+	server, err := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
+	require.NoError(t, err)
 	testCase := `
         {
           "method": "/pulumirpc.ResourceProvider/Diff",
@@ -112,7 +116,8 @@ func TestEmptyTestresDiffWithOptionalComputed(t *testing.T) {
 }
 
 func TestDiffWithSecrets(t *testing.T) {
-	server := newProviderServer(t, testprovider.RandomProvider())
+	server, err := newProviderServer(t, testprovider.RandomProvider())
+	require.NoError(t, err)
 
 	testCase := `
         {
@@ -154,7 +159,8 @@ func TestDiffWithSecrets(t *testing.T) {
 
 // See https://github.com/pulumi/pulumi-random/issues/258
 func TestDiffVersionUpgrade(t *testing.T) {
-	server := newProviderServer(t, testprovider.RandomProvider())
+	server, err := newProviderServer(t, testprovider.RandomProvider())
+	require.NoError(t, err)
 	testCase := `
         {
           "method": "/pulumirpc.ResourceProvider/Diff",
@@ -197,7 +203,8 @@ func TestDiffVersionUpgrade(t *testing.T) {
 }
 
 func TestSetNestedObjectAdded(t *testing.T) {
-	server := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
+	server, err := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
+	require.NoError(t, err)
 	testCase := `
         {
           "method": "/pulumirpc.ResourceProvider/Diff",
@@ -246,7 +253,8 @@ func TestSetNestedObjectAdded(t *testing.T) {
 }
 
 func TestSetNestedObjectAddedOtherDiff(t *testing.T) {
-	server := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
+	server, err := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
+	require.NoError(t, err)
 	testCase := `
         {
           "method": "/pulumirpc.ResourceProvider/Diff",

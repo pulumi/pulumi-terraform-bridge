@@ -437,7 +437,7 @@ func TestTypeOverride(t *testing.T) {
 			tt.info.Tok = "testprovider:index:Res"
 			tt.info.Docs = &tfbridge.DocInfo{Markdown: []byte{' '}}
 			if _, ok := tt.schema.Attributes["id"]; !ok {
-				tt.schema.Attributes["id"] = rschema.StringAttribute{Optional: true}
+				tt.schema.Attributes["id"] = rschema.StringAttribute{Computed: true}
 			}
 			res, err := GenerateSchema(ctx, GenerateSchemaOptions{
 				ProviderInfo: tfbridge.ProviderInfo{

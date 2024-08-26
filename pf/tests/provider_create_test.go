@@ -22,10 +22,12 @@ import (
 	testutils "github.com/pulumi/providertest/replay"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/testprovider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCreateWithComputedOptionals(t *testing.T) {
-	server := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
+	server, err := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
+	require.NoError(t, err)
 	testCase := `
         {
           "method": "/pulumirpc.ResourceProvider/Create",
@@ -49,7 +51,8 @@ func TestCreateWithComputedOptionals(t *testing.T) {
 }
 
 func TestCreateWithIntID(t *testing.T) {
-	server := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
+	server, err := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
+	require.NoError(t, err)
 	testCase := `
         {
           "method": "/pulumirpc.ResourceProvider/Create",
@@ -70,7 +73,8 @@ func TestCreateWithIntID(t *testing.T) {
 }
 
 func TestCreateWritesSchemaVersion(t *testing.T) {
-	server := newProviderServer(t, testprovider.RandomProvider())
+	server, err := newProviderServer(t, testprovider.RandomProvider())
+	require.NoError(t, err)
 
 	testutils.Replay(t, server, `
 	{
@@ -104,7 +108,8 @@ func TestCreateWritesSchemaVersion(t *testing.T) {
 }
 
 func TestPreviewCreate(t *testing.T) {
-	server := newProviderServer(t, testprovider.RandomProvider())
+	server, err := newProviderServer(t, testprovider.RandomProvider())
+	require.NoError(t, err)
 
 	testCase := `
 	{
@@ -174,7 +179,8 @@ func TestMuxedAliasCreate(t *testing.T) {
 }
 
 func TestCreateWithFirstClassSecrets(t *testing.T) {
-	server := newProviderServer(t, testprovider.RandomProvider())
+	server, err := newProviderServer(t, testprovider.RandomProvider())
+	require.NoError(t, err)
 	testCase := `
 	{
 	  "method": "/pulumirpc.ResourceProvider/Create",
@@ -203,7 +209,8 @@ func TestCreateWithSchemaBasedSecrets(t *testing.T) {
 	// Ensure that resources that mark output properties as secret in the schema return them as secrets.
 	// RandomPassword is a good example. Surprisingly this test requires a Configure call first, otherwise the
 	// plubming is confused about secrets bits and retursn the wrong result. The test represents production use.
-	server := newProviderServer(t, testprovider.RandomProvider())
+	server, err := newProviderServer(t, testprovider.RandomProvider())
+	require.NoError(t, err)
 	testCase := `
 	[
 	  {
@@ -262,7 +269,8 @@ func TestCreateSupportsCustomID(t *testing.T) {
 		state["id"] = resource.NewStringProperty(newID)
 		return resource.ID(newID), nil
 	}
-	server := newProviderServer(t, p)
+	server, err := newProviderServer(t, p)
+	require.NoError(t, err)
 	testCase := `
 	{
 	  "method": "/pulumirpc.ResourceProvider/Create",

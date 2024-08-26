@@ -39,12 +39,15 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/tokens"
 )
 
-func newProviderServer(t *testing.T, info tfbridge0.ProviderInfo) pulumirpc.ResourceProviderServer {
+func newProviderServer(t *testing.T, info tfbridge0.ProviderInfo) (pulumirpc.ResourceProviderServer, error) {
 	ctx := context.Background()
-	meta := genMetadata(t, info)
+	meta, err := genMetadata(t, info)
+	if err != nil {
+		return nil, err
+	}
 	srv, err := tfbridge.NewProviderServer(ctx, nil, info, meta)
 	require.NoError(t, err)
-	return srv
+	return srv, nil
 }
 
 func newMuxedProviderServer(t *testing.T, info tfbridge0.ProviderInfo) pulumirpc.ResourceProviderServer {
@@ -70,8 +73,7 @@ func bridgedProvider(prov *providerbuilder.Provider) info.Provider {
 	return provider
 }
 
-func startPulumiProvider(t *testing.T, providerInfo tfbridge0.ProviderInfo) (*rpcutil.ServeHandle, error) {
-	prov := newProviderServer(t, providerInfo)
+func startPulumiProvider(t *testing.T, providerInfo tfbridge0.ProviderInfo, prov pulumirpc.ResourceProviderServer) (*rpcutil.ServeHandle, error) {
 
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Init: func(srv *grpc.Server) error {
@@ -93,7 +95,7 @@ func skipUnlessLinux(t *testing.T) {
 	}
 }
 
-func pulCheck(t *testing.T, bridgedProvider info.Provider, program string) *pulumitest.PulumiTest {
+func pulCheck(t *testing.T, bridgedProvider info.Provider, program string) (*pulumitest.PulumiTest, error) {
 	skipUnlessLinux(t)
 	puwd := t.TempDir()
 	p := filepath.Join(puwd, "Pulumi.yaml")
@@ -101,6 +103,10 @@ func pulCheck(t *testing.T, bridgedProvider info.Provider, program string) *pulu
 	err := os.WriteFile(p, []byte(program), 0o600)
 	require.NoError(t, err)
 
+	prov, err := newProviderServer(t, bridgedProvider)
+	if err != nil {
+		return nil, err
+	}
 	opts := []opttest.Option{
 		opttest.Env("DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "true"),
 		opttest.TestInPlace(),
@@ -108,12 +114,12 @@ func pulCheck(t *testing.T, bridgedProvider info.Provider, program string) *pulu
 		opttest.AttachProvider(
 			bridgedProvider.Name,
 			func(ctx context.Context, pt providers.PulumiTest) (providers.Port, error) {
-				handle, err := startPulumiProvider(t, bridgedProvider)
+				handle, err := startPulumiProvider(t, bridgedProvider, prov)
 				require.NoError(t, err)
 				return providers.Port(handle.Port), nil
 			},
 		),
 	}
 
-	return pulumitest.NewPulumiTest(t, puwd, opts...)
+	return pulumitest.NewPulumiTest(t, puwd, opts...), nil
 }

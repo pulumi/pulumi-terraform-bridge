@@ -19,10 +19,12 @@ import (
 
 	testutils "github.com/pulumi/providertest/replay"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/testprovider"
+	"github.com/stretchr/testify/require"
 )
 
 func TestBasicInvoke(t *testing.T) {
-	server := newProviderServer(t, testprovider.TLSProvider())
+	server, err := newProviderServer(t, testprovider.TLSProvider())
+	require.NoError(t, err)
 
 	testCase := `
         {
@@ -62,7 +64,8 @@ func TestBasicInvoke(t *testing.T) {
 
 func TestInvokeWithInvalidData(t *testing.T) {
 	p := testprovider.TLSProvider()
-	server := newProviderServer(t, p)
+	server, err := newProviderServer(t, p)
+	require.NoError(t, err)
 
 	testCase := `
         {

@@ -797,5 +797,8 @@ func makeProviderServer(
 	for _, c := range customize {
 		c(&info)
 	}
-	return newProviderServer(t, info)
+
+	server, err := newProviderServer(t, info)
+	require.NoError(t, err)
+	return server
 }

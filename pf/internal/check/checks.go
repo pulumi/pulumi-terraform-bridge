@@ -22,7 +22,7 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/muxer"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
 // Validate that info is valid as either a PF provider or a PF & SDK based provider.
@@ -124,6 +124,26 @@ func (errMissingIDAttribute) Error() string {
 	return `no "id" attribute. To map this resource consider specifying ResourceInfo.ComputeID`
 }
 
+type errInvalidRequiredID struct{}
+
+func (errInvalidRequiredID) Error() string {
+	return `an "id" input attribute is not allowed. ` +
+		"To map this resource specify SchemaInfo.Name and ResourceInfo.ComputeID"
+}
+
+type errMissingComputeID struct{}
+
+func (errMissingComputeID) Error() string {
+	return `an "id" attribute with SchemaInfo.Name must also specify ResourceInfo.ComputeID`
+}
+
+func isInputProperty(schema shim.Schema) bool {
+	if schema.Computed() && !schema.Optional() {
+		return false
+	}
+	return true
+}
+
 func resourceHasRegularID(rname string, resource shim.Resource, resourceInfo *tfbridge.ResourceInfo) error {
 	idSchema, gotID := resource.Schema().GetOk("id")
 	if !gotID {
@@ -134,6 +154,15 @@ func resourceHasRegularID(rname string, resource shim.Resource, resourceInfo *tf
 		if id := resourceInfo.Fields["id"]; id != nil {
 			info = *id
 		}
+	}
+	isInput := isInputProperty(idSchema)
+	if info.Name != "" && resourceInfo.ComputeID == nil {
+		// if Name is provided then ComputeID must be provided regardless of whether
+		// "id" is an input or a computed property
+		return errMissingComputeID{}
+	}
+	if isInput && (info.Name == "" || resourceInfo.ComputeID == nil) {
+		return errInvalidRequiredID{}
 	}
 
 	// If the user over-rode the type to be a string, don't reject.
@@ -150,12 +179,17 @@ func resourceHasRegularID(rname string, resource shim.Resource, resourceInfo *tf
 	return nil
 }
 
+// resourceHasComputeID returns true if the resource does not have an "id" field, but
+// does have a "ComputeID" func
 func resourceHasComputeID(info tfbridge.ProviderInfo, resname string) bool {
 	if info.Resources == nil {
 		return false
 	}
+
 	if info, ok := info.Resources[resname]; ok {
-		return info.ComputeID != nil
+		if _, ok := info.Fields["id"]; !ok && info.ComputeID != nil {
+			return true
+		}
 	}
 	return false
 }

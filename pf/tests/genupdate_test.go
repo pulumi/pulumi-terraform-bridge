@@ -19,6 +19,7 @@ import (
 
 	testutils "github.com/pulumi/providertest/replay"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/testprovider"
+	"github.com/stretchr/testify/require"
 )
 
 // These tests replay Update gRPC logs to get some unit test coverage for Update.
@@ -31,6 +32,7 @@ import (
 func TestGenUpdates(t *testing.T) {
 	trace := "testdata/updateprogram.json"
 
-	server := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
+	server, err := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
+	require.NoError(t, err)
 	testutils.ReplayFile(t, server, trace)
 }
