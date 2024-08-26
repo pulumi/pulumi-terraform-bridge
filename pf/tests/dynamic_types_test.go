@@ -16,13 +16,17 @@ package tfbridgetests
 
 import (
 	"context"
+	"math/big"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	pb "github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/providerbuilder"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 )
@@ -32,7 +36,8 @@ func TestCreateResourceWithDynamicAttribute(t *testing.T) {
 		name                     string                 // test case name
 		manifestToSend           any                    // assumes a Pulumi YAML expression
 		expectedManifestReceived basetypes.DynamicValue // how PF sees the decoded manifest
-		expectedManifestOutput   any                    // value received back through the output machinery
+		expectedManifestMatches  func(t *testing.T, v basetypes.DynamicValue)
+		expectedManifestOutput   any // value received back through the output machinery
 	}
 
 	testCases := []testCase{
@@ -41,6 +46,66 @@ func TestCreateResourceWithDynamicAttribute(t *testing.T) {
 			manifestToSend:           "FOO",
 			expectedManifestReceived: basetypes.NewDynamicValue(basetypes.NewStringValue("FOO")),
 			expectedManifestOutput:   "FOO",
+		},
+		{
+			name:                     "true",
+			manifestToSend:           true,
+			expectedManifestReceived: basetypes.NewDynamicValue(basetypes.NewBoolValue(true)),
+			expectedManifestOutput:   true,
+		},
+		{
+			name:                     "false",
+			manifestToSend:           false,
+			expectedManifestReceived: basetypes.NewDynamicValue(basetypes.NewBoolValue(false)),
+			expectedManifestOutput:   false,
+		},
+		{
+			name:           "number",
+			manifestToSend: float64(42.0),
+			expectedManifestMatches: func(t *testing.T, v basetypes.DynamicValue) {
+				t.Logf("Received %v", v)
+				var r big.Float
+				vv, err := v.UnderlyingValue().ToTerraformValue(context.Background())
+				require.NoError(t, err)
+				err = vv.As(&r)
+				require.NoError(t, err)
+				f, _ := r.Float64()
+				require.Equal(t, 42.0, f)
+			},
+			expectedManifestOutput: float64(42.0),
+		},
+		{
+			name:           "uniform-array",
+			manifestToSend: []any{"a", "b", "c"},
+			expectedManifestReceived: basetypes.NewDynamicValue(basetypes.NewListValueMust(
+				types.StringType,
+				[]attr.Value{
+					basetypes.NewStringValue("a"),
+					basetypes.NewStringValue("b"),
+					basetypes.NewStringValue("c"),
+				},
+			)),
+			expectedManifestOutput: []any{"a", "b", "c"},
+		},
+		{
+			name: "uniform-map",
+			manifestToSend: map[string]any{
+				"a": "1",
+				"b": "2",
+			},
+			expectedManifestMatches: func(t *testing.T, v basetypes.DynamicValue) {
+				vv, err := v.ToTerraformValue(context.Background())
+				require.NoError(t, err)
+				var parts map[string]tftypes.Value
+				err = vv.As(&parts)
+				require.NoError(t, err)
+				assert.Equal(t, `tftypes.String<"1">`, parts["a"].String())
+				assert.Equal(t, `tftypes.String<"2">`, parts["b"].String())
+			},
+			expectedManifestOutput: map[string]any{
+				"a": "1",
+				"b": "2",
+			},
 		},
 	}
 
@@ -66,7 +131,11 @@ func TestCreateResourceWithDynamicAttribute(t *testing.T) {
 						}
 						panic("req.Config.Get failed")
 					}
-					require.Equal(t, tc.expectedManifestReceived, model.Manifest)
+					if tc.expectedManifestMatches != nil {
+						tc.expectedManifestMatches(t, model.Manifest)
+					} else {
+						require.Equal(t, tc.expectedManifestReceived, model.Manifest)
+					}
 
 					t.Logf("Create called with manifest as: %+v", model.Manifest)
 
