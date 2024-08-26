@@ -48,6 +48,12 @@ func TestCreateResourceWithDynamicAttribute(t *testing.T) {
 			expectedManifestOutput:   "FOO",
 		},
 		{
+			name:                     "empty-string",
+			manifestToSend:           "",
+			expectedManifestReceived: basetypes.NewDynamicValue(basetypes.NewStringValue("")),
+			expectedManifestOutput:   "",
+		},
+		{
 			name:                     "true",
 			manifestToSend:           true,
 			expectedManifestReceived: basetypes.NewDynamicValue(basetypes.NewBoolValue(true)),
@@ -88,6 +94,15 @@ func TestCreateResourceWithDynamicAttribute(t *testing.T) {
 			expectedManifestOutput: []any{"a", "b", "c"},
 		},
 		{
+			name:           "empty-array",
+			manifestToSend: []any{},
+			expectedManifestReceived: basetypes.NewDynamicValue(basetypes.NewListValueMust(
+				types.DynamicType,
+				[]attr.Value{},
+			)),
+			expectedManifestOutput: []any{},
+		},
+		{
 			name: "uniform-map",
 			manifestToSend: map[string]any{
 				"a": "1",
@@ -106,6 +121,19 @@ func TestCreateResourceWithDynamicAttribute(t *testing.T) {
 				"a": "1",
 				"b": "2",
 			},
+		},
+		{
+			name:           "empty-map",
+			manifestToSend: map[string]any{},
+			expectedManifestMatches: func(t *testing.T, v basetypes.DynamicValue) {
+				vv, err := v.ToTerraformValue(context.Background())
+				require.NoError(t, err)
+				var parts map[string]tftypes.Value
+				err = vv.As(&parts)
+				require.NoError(t, err)
+				assert.Equal(t, 0, len(parts))
+			},
+			expectedManifestOutput: map[string]any{},
 		},
 	}
 
