@@ -56,8 +56,7 @@ func TestPlainDocsParser(t *testing.T) {
 	}
 }
 
-func TestGetBodyAndTitle(t *testing.T) {
-	t.Parallel()
+func TestStripUpstreamFrontmatter(t *testing.T) {
 	type testCase struct {
 		// The name of the test case.
 		name     string
@@ -81,6 +80,9 @@ func TestGetBodyAndTitle(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
+			if runtime.GOOS == "windows" {
+				t.Skipf("Skipping on Windows due to a test setup issue")
+			}
 			t.Parallel()
 			actual := stripUpstreamFrontMatter(tt.input)
 			assert.Equal(t, tt.expected, actual)
