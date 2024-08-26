@@ -19,13 +19,14 @@ import (
 	"encoding/json"
 	"io"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	rprovider "github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
 )
 
 // Adapts a provider to be usable as a mix-in, see [info.Provider.MuxWith].
