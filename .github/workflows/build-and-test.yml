@@ -70,6 +70,6 @@ jobs:
             skip-cache: true
             skip-pkg-cache: true
             skip-build-cache: true
-            version: v1.57
+            version: v1.60
       - name: Lint
         run: make lint
