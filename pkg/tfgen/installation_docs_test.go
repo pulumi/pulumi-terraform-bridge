@@ -67,13 +67,13 @@ func TestStripUpstreamFrontmatter(t *testing.T) {
 	tests := []testCase{
 		{
 			name:     "Strips Upstream Frontmatter",
-			input:    readfile(t, "test_data/split-front-matter/openstack-input.md"),
-			expected: readfile(t, "test_data/split-front-matter/openstack-expected.md"),
+			input:    readfile(t, "test_data/strip-front-matter/openstack-input.md"),
+			expected: readfile(t, "test_data/strip-front-matter/openstack-expected.md"),
 		},
 		{
 			name:     "Returns Body If No Frontmatter",
-			input:    readfile(t, "test_data/split-front-matter/artifactory-input.md"),
-			expected: readfile(t, "test_data/split-front-matter/artifactory-expected.md"),
+			input:    readfile(t, "test_data/strip-front-matter/artifactory-input.md"),
+			expected: readfile(t, "test_data/strip-front-matter/artifactory-expected.md"),
 		},
 	}
 

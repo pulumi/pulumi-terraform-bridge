@@ -78,7 +78,12 @@ func stripUpstreamFrontMatter(content string) string {
 		// Clean up any resulting newlines
 		content = strings.TrimSpace(content)
 	}
-	return content
+	// Now remove the title, as before
+	titleIndex := strings.Index(content, "# ")
+	// Get the location of the next newline
+	nextNewLine := strings.Index(content[titleIndex:], "\n") + titleIndex
+	// strip the title header
+	return content[nextNewLine+1:]
 }
 
 // writeInstallationInstructions renders the following for any provider:

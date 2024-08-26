@@ -1,4 +1,3 @@
-# OpenStack Provider
 
 The OpenStack provider is used to interact with the
 many resources supported by OpenStack. The provider needs to be configured
