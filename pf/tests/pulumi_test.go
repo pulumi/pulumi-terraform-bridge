@@ -38,7 +38,7 @@ func newPulumiTest(t *testing.T, p provider.Provider, testProgramYAML string) *p
 	// using a dummy empty provider for [info.Provider.P].
 	dummyProvider := &sdkv2schema.Provider{}
 
-	var providerName string = "testprovider"
+	providerName := "testprovider"
 
 	muxProviderInfo := info.Provider{
 		Name:         providerName,
