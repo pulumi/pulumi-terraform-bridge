@@ -835,7 +835,7 @@ func trackBulletListIndentation(line, name string, tracker []bulletListEntry) []
 
 	listMarkerLocation := listMarkerRegex.FindStringIndex(line)
 	contract.Assertf(len(listMarkerLocation) == 2,
-		fmt.Sprintf("Expected to find bullet list marker in line %s", line))
+		"Expected to find bullet list marker in line %s", line)
 	listMarkerIndex := listMarkerLocation[0]
 
 	// If our tracker is empty, we are at list nested level 0.

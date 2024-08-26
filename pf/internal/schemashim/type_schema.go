@@ -64,7 +64,7 @@ func (s *typeSchema) Elem() interface{} {
 	case basetypes.SetTypable, basetypes.ListTypable, basetypes.MapTypable:
 		typeWithElementType, ok := s.t.(pfattr.TypeWithElementType)
 		contract.Assertf(ok, "List, Set or Map type %T expect to implement TypeWithElementType", s.t)
-		contract.Assertf(s.nested == nil || len(s.nested) == 0,
+		contract.Assertf(len(s.nested) == 0,
 			"s.t==%T should not have any s.nested attrs", s.t)
 		return newTypeSchema(typeWithElementType.ElementType(), nil)
 	case pfattr.TypeWithElementTypes:

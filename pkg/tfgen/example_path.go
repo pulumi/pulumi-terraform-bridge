@@ -65,14 +65,14 @@ func (path examplePath) Outputs() examplePath {
 func newExamplePathForResource(pulumiResourceToken string) examplePath {
 	return examplePath{
 		token:    pulumiResourceToken,
-		fullPath: fmt.Sprintf("#/resources/" + pulumiResourceToken),
+		fullPath: "#/resources/" + pulumiResourceToken,
 	}
 }
 
 func newExamplePathForFunction(pulumiFuncToken string) examplePath {
 	return examplePath{
 		token:    pulumiFuncToken,
-		fullPath: fmt.Sprintf("#/functions/" + pulumiFuncToken),
+		fullPath: "#/functions/%s" + pulumiFuncToken,
 	}
 }
 

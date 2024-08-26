@@ -38,7 +38,7 @@ func (e ValidationError) Error() string {
 				if i > 0 {
 					fmt.Fprintf(&buf, ".")
 				}
-				fmt.Fprintf(&buf, p.Name)
+				fmt.Fprintf(&buf, "%s", p.Name)
 			}
 		}
 		fmt.Fprintf(&buf, "] ")
@@ -46,7 +46,7 @@ func (e ValidationError) Error() string {
 	if e.Detail != "" {
 		fmt.Fprintf(&buf, "%s: %s", e.Summary, e.Detail)
 	} else {
-		fmt.Fprintf(&buf, e.Summary)
+		fmt.Fprintf(&buf, "%s", e.Summary)
 	}
 	return buf.String()
 }
