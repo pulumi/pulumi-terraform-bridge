@@ -40,6 +40,7 @@ func TestTokensSingleModule(t *testing.T) {
 				"foo_fizz_buzz":       nil,
 				"foo_bar_hello_world": nil,
 				"foo_bar":             nil,
+				"foo_hyphen-ated":     nil,
 			},
 			DataSourcesMap: schema.ResourceMap{
 				"foo_source1":             nil,
@@ -62,6 +63,7 @@ func TestTokensSingleModule(t *testing.T) {
 		"foo_fizz_buzz":       {Tok: "foo:index:FizzBuzz"},
 		"foo_bar_hello_world": {Tok: "foo:index:BarHelloWorld"},
 		"foo_bar":             {Tok: "foo:index:Bar", Docs: &tfbridge.DocInfo{}},
+		"foo_hyphen-ated":     {Tok: "foo:index:HyphenAted"},
 	}
 	expectedDatasources := map[string]*tfbridge.DataSourceInfo{
 		"foo_source1":             {Tok: "foo:index:getSource1"},
@@ -84,6 +86,7 @@ func TestTokensSingleModule(t *testing.T) {
 		"foo_fizz_buzz":       {Tok: "foo:index:FizzBuzz"},
 		"foo_bar_hello_world": {Tok: "foo:index:BarHelloPulumi"},
 		"foo_bar":             {Tok: "foo:index:Bar"},
+		"foo_hyphen-ated":     {Tok: "foo:index:HyphenAted"},
 	}, info.Resources)
 }
 

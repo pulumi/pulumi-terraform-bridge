@@ -115,6 +115,35 @@ func TestFixTokenOverrides(t *testing.T) {
 	}, p.Resources)
 }
 
+func TestFixHyphenToken(t *testing.T) {
+	t.Parallel()
+
+	p, err := providerInfo(context.Background(), schemaOnlyProvider{
+		name:    "test",
+		version: "1.0.0",
+		schema: &tfprotov6.GetProviderSchemaResponse{
+			ResourceSchemas: map[string]*tfprotov6.Schema{
+				"test_my-token": {Block: &tfprotov6.SchemaBlock{
+					Attributes: []*tfprotov6.SchemaAttribute{
+						{Name: "id", Type: tftypes.String, Computed: true},
+					},
+				}},
+				"test_many-hyphenated-blocks": {Block: &tfprotov6.SchemaBlock{
+					Attributes: []*tfprotov6.SchemaAttribute{
+						{Name: "id", Type: tftypes.String, Computed: true},
+					},
+				}},
+			},
+		},
+	}, parameterize.Value{})
+	require.NoError(t, err)
+
+	assert.Equal(t, map[string]*info.Resource{
+		"test_my-token":               {Tok: "test:index/myToken:MyToken"},
+		"test_many-hyphenated-blocks": {Tok: "test:index/manyHyphenatedBlocks:ManyHyphenatedBlocks"},
+	}, p.Resources)
+}
+
 type schemaOnlyProvider struct {
 	run.Provider
 	name, url, version string

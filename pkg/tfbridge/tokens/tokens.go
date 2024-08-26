@@ -56,10 +56,16 @@ func MakeStandard(pkgName string) Make {
 	}
 }
 
+// upperCamelCase converts a TF token to a valid Pulumi token segment in CamelCase format.
 func upperCamelCase(s string) string { return cgstrings.UppercaseFirst(camelCase(s)) }
 
+// camelCase converts a TF token a valid Pulumi token segment in camelCase format.
 func camelCase(s string) string {
-	return cgstrings.ModifyStringAroundDelimeter(s, "_", cgstrings.UppercaseFirst)
+	s = cgstrings.ModifyStringAroundDelimeter(s, "_", cgstrings.UppercaseFirst)
+
+	// Terraform allows both `-` and `_` in it's tokens, but Pulumi allows
+	// neither.
+	return cgstrings.ModifyStringAroundDelimeter(s, "-", cgstrings.UppercaseFirst)
 }
 
 func checkedApply[T comparable](dst *T, src T) {
