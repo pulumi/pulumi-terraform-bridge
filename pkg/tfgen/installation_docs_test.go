@@ -203,6 +203,41 @@ func TestApplyEditRules(t *testing.T) {
 			},
 			expected: []byte(readfile(t, "test_data/replace-links/actual.md")),
 		},
+		{
+			name: "Strips mentions of Terraform version pattern 1",
+			docFile: DocFile{
+				Content: []byte("This is a provider. It requires terraform 0.12 or later."),
+			},
+			expected: []byte("This is a provider."),
+		},
+		{
+			name: "Strips mentions of Terraform version pattern 2",
+			docFile: DocFile{
+				Content: []byte("This is a provider. It requires terraform v0.12 or later."),
+			},
+			expected: []byte("This is a provider."),
+		},
+		{
+			name: "Strips mentions of Terraform version pattern 3",
+			docFile: DocFile{
+				Content: []byte("This is a provider with an example. For Terraform v1.5 and later:\n Use this code."),
+			},
+			expected: []byte("This is a provider with an example.\nUse this code."),
+		},
+		{
+			name: "Strips mentions of Terraform version pattern 4",
+			docFile: DocFile{
+				Content: []byte("This is a provider with an example. Terraform 1.5 and later:\n Use this code."),
+			},
+			expected: []byte("This is a provider with an example.\nUse this code."),
+		},
+		{
+			name: "Strips mentions of Terraform version pattern 5",
+			docFile: DocFile{
+				Content: []byte("This is a provider with an example. Terraform 1.5 and earlier:\n Use this code."),
+			},
+			expected: []byte("This is a provider with an example.\nUse this code."),
+		},
 	}
 	for _, tt := range tests {
 		tt := tt

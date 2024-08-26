@@ -124,6 +124,7 @@ func applyEditRules(contentBytes []byte, docFile string, g *Generator) ([]byte, 
 	// Additional edit rules for installation files
 	edits = append(edits,
 		skipSectionHeadersEdit(docFile),
+		removeTfVersionMentions(docFile),
 		// Replace all "T/terraform" with "P/pulumi"
 		reReplace(`Terraform`, `Pulumi`),
 		reReplace(`terraform`, `pulumi`),
@@ -360,7 +361,6 @@ func skipSectionHeadersEdit(docFile string) tfbridge.DocsEdit {
 			})
 		},
 	}
-
 }
 
 func getDefaultHeadersToSkip() []*regexp.Regexp {
@@ -374,4 +374,26 @@ func getDefaultHeadersToSkip() []*regexp.Regexp {
 		regexp.MustCompile("[Tt]erraform Cloud"),
 	}
 	return defaultHeaderSkipRegexps
+}
+
+func getTfVersionsToRemove() []*regexp.Regexp {
+	tfVersionsToRemove := []*regexp.Regexp{
+		regexp.MustCompile(`It requires [tT]erraform [v0-9]+\.?[0-9]?\.?[0-9]? or later.`),
+		regexp.MustCompile(`(?s)(For )?[tT]erraform [v0-9]+\.?[0-9]?\.?[0-9]? and (later|earlier):`),
+	}
+	return tfVersionsToRemove
+}
+
+func removeTfVersionMentions(docFile string) tfbridge.DocsEdit {
+	tfVersionsToRemove := getTfVersionsToRemove()
+	return tfbridge.DocsEdit{
+		Path: docFile,
+		Edit: func(_ string, content []byte) ([]byte, error) {
+			for _, tfVersion := range tfVersionsToRemove {
+				content = tfVersion.ReplaceAll(content, nil)
+			}
+			return content, nil
+		},
+	}
+
 }
