@@ -382,10 +382,11 @@ func getTfVersionsToRemove() []*regexp.Regexp {
 }
 
 func removeTfVersionMentions(docFile string) tfbridge.DocsEdit {
+	tfVersionsToRemove := getTfVersionsToRemove()
 	return tfbridge.DocsEdit{
 		Path: docFile,
 		Edit: func(_ string, content []byte) ([]byte, error) {
-			for _, tfVersion := range getTfVersionsToRemove() {
+			for _, tfVersion := range tfVersionsToRemove {
 				content = tfVersion.ReplaceAll(content, nil)
 			}
 			return content, nil
