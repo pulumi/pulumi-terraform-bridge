@@ -1,4 +1,4 @@
-// Copyright 2016-2022, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,10 +17,13 @@ package tfgen
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"testing"
 	"text/template"
 
+	"github.com/hashicorp/hcl/v2"
+	"github.com/hexops/autogold/v2"
 	csgen "github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
 	gogen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
 	tsgen "github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
@@ -471,4 +474,155 @@ func TestRegress1626(t *testing.T) {
 	s, err := GenerateSchema(info, sink)
 	t.Logf("SPEC: %v", s)
 	require.NoError(t, err)
+}
+
+func TestSinkHclDiagnostics(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		input    hcl.Diagnostics
+		expected autogold.Value
+	}{
+		{
+			name:     "No diagnostics",
+			input:    hcl.Diagnostics{},
+			expected: autogold.Expect(captureDiagSink{}),
+		},
+		{
+			name: "Only errors, fewer than the threshold",
+			input: hcl.Diagnostics{
+				{Severity: hcl.DiagError, Summary: "Error 1", Detail: "Detail 1"},
+				{Severity: hcl.DiagError, Summary: "Error 2", Detail: "Detail 2"},
+			},
+			expected: autogold.Expect(captureDiagSink{
+				{Diag: &diag.Diag{Message: "Error 1: Detail 1"}, Sev: diag.Error},
+				{Diag: &diag.Diag{Message: "Error 2: Detail 2"}, Sev: diag.Error},
+			}),
+		},
+		{
+			name: "Only errors, more than the threshold",
+			input: hcl.Diagnostics{
+				{Severity: hcl.DiagError, Summary: "Error 1", Detail: "Detail 1"},
+				{Severity: hcl.DiagError, Summary: "Error 2", Detail: "Detail 2"},
+				{Severity: hcl.DiagError, Summary: "Error 3", Detail: "Detail 3"},
+				{Severity: hcl.DiagError, Summary: "Error 4", Detail: "Detail 4"},
+				{Severity: hcl.DiagError, Summary: "Error 5", Detail: "Detail 5"},
+				{Severity: hcl.DiagError, Summary: "Error 6", Detail: "Detail 6"},
+				{Severity: hcl.DiagError, Summary: "Error 7", Detail: "Detail 7"},
+			},
+			expected: autogold.Expect(captureDiagSink{
+				{Diag: &diag.Diag{Message: "Error 1: Detail 1"}, Sev: diag.Error},
+				{Diag: &diag.Diag{Message: "Error 2: Detail 2"}, Sev: diag.Error},
+				{Diag: &diag.Diag{Message: "Error 3: Detail 3"}, Sev: diag.Error},
+				{Diag: &diag.Diag{Message: "Error 4: Detail 4"}, Sev: diag.Error},
+				{Diag: &diag.Diag{Message: "Error 5: Detail 5"}, Sev: diag.Error},
+				{Diag: &diag.Diag{Message: "Error 6: Detail 6"}, Sev: diag.Error},
+				{Diag: &diag.Diag{Message: "1 additional errors"}, Sev: diag.Error},
+			}),
+		},
+		{
+			name: "Only warnings, fewer than the threshold",
+			input: hcl.Diagnostics{
+				{Severity: hcl.DiagWarning, Summary: "Warning 1", Detail: "Detail 1"},
+				{Severity: hcl.DiagWarning, Summary: "Warning 2", Detail: "Detail 2"},
+			},
+			expected: autogold.Expect(captureDiagSink{
+				{Diag: &diag.Diag{Message: "Warning 1: Detail 1"}, Sev: diag.Warning},
+				{Diag: &diag.Diag{Message: "Warning 2: Detail 2"}, Sev: diag.Warning},
+			}),
+		},
+		{
+			name: "Only warnings, more than the threshold",
+			input: hcl.Diagnostics{
+				{Severity: hcl.DiagWarning, Summary: "Warning 1", Detail: "Detail 1"},
+				{Severity: hcl.DiagWarning, Summary: "Warning 2", Detail: "Detail 2"},
+				{Severity: hcl.DiagWarning, Summary: "Warning 3", Detail: "Detail 3"},
+				{Severity: hcl.DiagWarning, Summary: "Warning 4", Detail: "Detail 4"},
+				{Severity: hcl.DiagWarning, Summary: "Warning 5", Detail: "Detail 5"},
+				{Severity: hcl.DiagWarning, Summary: "Warning 6", Detail: "Detail 6"},
+				{Severity: hcl.DiagWarning, Summary: "Warning 7", Detail: "Detail 7"},
+			},
+			expected: autogold.Expect(captureDiagSink{
+				{Diag: &diag.Diag{Message: "Warning 1: Detail 1"}, Sev: diag.Warning},
+				{Diag: &diag.Diag{Message: "Warning 2: Detail 2"}, Sev: diag.Warning},
+				{Diag: &diag.Diag{Message: "Warning 3: Detail 3"}, Sev: diag.Warning},
+				{Diag: &diag.Diag{Message: "Warning 4: Detail 4"}, Sev: diag.Warning},
+				{Diag: &diag.Diag{Message: "Warning 5: Detail 5"}, Sev: diag.Warning},
+				{Diag: &diag.Diag{Message: "Warning 6: Detail 6"}, Sev: diag.Warning},
+				{Diag: &diag.Diag{Message: "1 additional warnings"}, Sev: diag.Warning},
+			}),
+		},
+		{
+			name: "Mix of errors and warnings, fewer than the threshold",
+			input: hcl.Diagnostics{
+				{Severity: hcl.DiagError, Summary: "Error 1", Detail: "Detail 1"},
+				{Severity: hcl.DiagError, Summary: "Error 2", Detail: "Detail 2"},
+				{Severity: hcl.DiagWarning, Summary: "Warning 1", Detail: "Detail 1"},
+				{Severity: hcl.DiagWarning, Summary: "Warning 2", Detail: "Detail 2"},
+			},
+			expected: autogold.Expect(captureDiagSink{
+				{Diag: &diag.Diag{Message: "Error 1: Detail 1"}, Sev: diag.Error},
+				{Diag: &diag.Diag{Message: "Error 2: Detail 2"}, Sev: diag.Error},
+				{Diag: &diag.Diag{Message: "Warning 1: Detail 1"}, Sev: diag.Warning},
+				{Diag: &diag.Diag{Message: "Warning 2: Detail 2"}, Sev: diag.Warning},
+			}),
+		},
+		{
+			name: "Mix of errors and warnings, exceeding the threshold",
+			input: hcl.Diagnostics{
+				{Severity: hcl.DiagError, Summary: "Error 1", Detail: "Detail 1"},
+				{Severity: hcl.DiagError, Summary: "Error 2", Detail: "Detail 2"},
+				{Severity: hcl.DiagError, Summary: "Error 3", Detail: "Detail 3"},
+				{Severity: hcl.DiagError, Summary: "Error 4", Detail: "Detail 4"},
+				{Severity: hcl.DiagWarning, Summary: "Warning 1", Detail: "Detail 1"},
+				{Severity: hcl.DiagWarning, Summary: "Warning 2", Detail: "Detail 2"},
+				{Severity: hcl.DiagWarning, Summary: "Warning 3", Detail: "Detail 3"},
+				{Severity: hcl.DiagWarning, Summary: "Warning 4", Detail: "Detail 4"},
+			},
+			expected: autogold.Expect(captureDiagSink{
+				{Diag: &diag.Diag{Message: "Error 1: Detail 1"}, Sev: diag.Error},
+				{Diag: &diag.Diag{Message: "Error 2: Detail 2"}, Sev: diag.Error},
+				{Diag: &diag.Diag{Message: "Error 3: Detail 3"}, Sev: diag.Error},
+				{Diag: &diag.Diag{Message: "Error 4: Detail 4"}, Sev: diag.Error},
+				{Diag: &diag.Diag{Message: "Warning 1: Detail 1"}, Sev: diag.Warning},
+				{Diag: &diag.Diag{Message: "Warning 2: Detail 2"}, Sev: diag.Warning},
+				{Diag: &diag.Diag{Message: "2 additional warnings"}, Sev: diag.Warning},
+			}),
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			var actual captureDiagSink
+			sinkHclDiagnostics(&actual, tt.input)
+			tt.expected.Equal(t, actual)
+		})
+	}
+}
+
+type captureDiagSink []capturedDiag
+
+type capturedDiag struct {
+	*diag.Diag
+	Sev diag.Severity
+}
+
+var _ diag.Sink = &captureDiagSink{}
+
+func (c *captureDiagSink) Debugf(d *diag.Diag, a ...any)   { c.Logf(diag.Debug, d, a...) }
+func (c *captureDiagSink) Errorf(d *diag.Diag, a ...any)   { c.Logf(diag.Error, d, a...) }
+func (c *captureDiagSink) Infoerrf(d *diag.Diag, a ...any) { c.Logf(diag.Infoerr, d, a...) }
+func (c *captureDiagSink) Infof(d *diag.Diag, a ...any)    { c.Logf(diag.Info, d, a...) }
+func (c *captureDiagSink) Warningf(d *diag.Diag, a ...any) { c.Logf(diag.Warning, d, a...) }
+
+func (c *captureDiagSink) Logf(s diag.Severity, d *diag.Diag, a ...any) {
+	d.Message = fmt.Sprintf(d.Message, a...)
+	*c = append(*c, capturedDiag{d, s})
+}
+
+func (c *captureDiagSink) Stringify(diag.Severity, *diag.Diag, ...any) (string, string) {
+	panic("unimplemented")
 }

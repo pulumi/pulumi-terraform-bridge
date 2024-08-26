@@ -926,7 +926,7 @@ func (g *Generator) generateSchemaResult(ctx context.Context) (*GenerateSchemaRe
 	}
 
 	// Convert the package to a Pulumi schema.
-	pulumiPackageSpec, err := genPulumiSchema(pack, g.pkg, g.version, g.info)
+	pulumiPackageSpec, err := genPulumiSchema(pack, g.pkg, g.version, g.info, g.sink)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to create Pulumi schema")
 	}
