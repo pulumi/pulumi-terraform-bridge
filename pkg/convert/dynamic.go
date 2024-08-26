@@ -47,5 +47,19 @@ func newDynamicDecoder() Decoder {
 }
 
 func (*dynamicDecoder) toPropertyValue(v tftypes.Value) (resource.PropertyValue, error) {
-	panic("TOOD implement dynamic decoder")
+	if !v.IsKnown() {
+		return unknownProperty(), nil
+	}
+	if v.IsNull() {
+		return resource.NewPropertyValue(nil), nil
+	}
+	if v.Type().Is(tftypes.String) {
+		var s string
+		err := v.As(&s)
+		if err != nil {
+			return resource.PropertyValue{}, err
+		}
+		return resource.NewStringProperty(s), nil
+	}
+	panic("TODO More types needed!")
 }

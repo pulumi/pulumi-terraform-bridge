@@ -18,7 +18,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -33,6 +32,7 @@ func TestCreateResourceWithDynamicAttribute(t *testing.T) {
 		name                     string                 // test case name
 		manifestToSend           any                    // assumes a Pulumi YAML expression
 		expectedManifestReceived basetypes.DynamicValue // how PF sees the decoded manifest
+		expectedManifestOutput   any                    // value received back through the output machinery
 	}
 
 	testCases := []testCase{
@@ -40,6 +40,7 @@ func TestCreateResourceWithDynamicAttribute(t *testing.T) {
 			name:                     "string",
 			manifestToSend:           "FOO",
 			expectedManifestReceived: basetypes.NewDynamicValue(basetypes.NewStringValue("FOO")),
+			expectedManifestOutput:   "FOO",
 		},
 	}
 
@@ -57,7 +58,6 @@ func TestCreateResourceWithDynamicAttribute(t *testing.T) {
 					req resource.CreateRequest,
 					resp *resource.CreateResponse,
 				) {
-
 					var model ResourceModel
 					diags := req.Config.Get(ctx, &model)
 					if diags.HasError() {
@@ -66,13 +66,14 @@ func TestCreateResourceWithDynamicAttribute(t *testing.T) {
 						}
 						panic("req.Config.Get failed")
 					}
+					require.Equal(t, tc.expectedManifestReceived, model.Manifest)
 
 					t.Logf("Create called with manifest as: %+v", model.Manifest)
 
-					diags = resp.State.SetAttribute(ctx, path.Root("id"), "id0")
-					resp.Diagnostics = append(resp.Diagnostics, diags...)
+					model.Id = basetypes.NewStringValue("id0")
 
-					require.Equal(t, tc.expectedManifestReceived, model.Manifest)
+					diags = resp.State.Set(ctx, &model)
+					resp.Diagnostics = append(resp.Diagnostics, diags...)
 				},
 				ResourceSchema: schema.Schema{
 					Attributes: map[string]schema.Attribute{
@@ -91,19 +92,26 @@ func TestCreateResourceWithDynamicAttribute(t *testing.T) {
 				"name":    "test-program",
 				"runtime": "yaml",
 				"resources": map[string]any{
-					"my-res": map[string]any{
+					"r1": map[string]any{
 						"type": "testprovider:index:R",
 						"properties": map[string]any{
 							"manifest": tc.manifestToSend,
 						},
 					},
 				},
+				"outputs": map[string]any{
+					"manifest": "${r1.manifest}",
+				},
 			}
 
 			bytes, err := yaml.Marshal(program)
 			require.NoError(t, err)
 			pt := newPulumiTest(t, p, string(bytes))
-			pt.Up()
+			res := pt.Up()
+
+			m := res.Outputs["manifest"]
+
+			require.Equalf(t, m.Value, tc.expectedManifestOutput, "expected manifest to turnaround")
 		})
 	}
 }
