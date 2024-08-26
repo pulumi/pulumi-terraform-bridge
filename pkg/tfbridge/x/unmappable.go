@@ -15,6 +15,7 @@
 package x
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 )
@@ -52,7 +53,7 @@ func (ts Strategy[T]) Unmappable(substring, reason string) Strategy[T] {
 		if strings.Contains(tfToken, substring) {
 			return nil, UnmappableError{
 				TfToken: tfToken,
-				Reason:  fmt.Errorf(msg),
+				Reason:  errors.New(msg),
 			}
 		}
 		return ts(tfToken)

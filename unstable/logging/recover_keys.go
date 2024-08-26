@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 	"reflect"
-	"unsafe"
 
 	"github.com/hashicorp/terraform-plugin-log/tfsdklog"
 )
@@ -49,7 +48,7 @@ type valueCtx struct {
 
 func field(v reflect.Value, fieldIndex int) interface{} {
 	f := v.Field(fieldIndex)
-	f = reflect.NewAt(f.Type(), unsafe.Pointer(f.UnsafeAddr())).Elem()
+	f = reflect.NewAt(f.Type(), f.Addr().UnsafePointer()).Elem()
 	return f.Interface()
 }
 

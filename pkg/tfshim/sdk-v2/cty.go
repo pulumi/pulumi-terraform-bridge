@@ -17,6 +17,7 @@ package sdkv2
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"math/big"
 
 	"github.com/golang/glog"
@@ -156,6 +157,10 @@ func recoverScalarCtyValue(dT cty.Type, value interface{}) (cty.Value, error) {
 	case int:
 		return cty.NumberIntVal(int64(value)), nil
 	case uint:
+		if value > math.MaxInt64 {
+			return cty.NilVal, fmt.Errorf("cannot convert %d (uint) to a int64: overflow", value)
+		}
+		//nolint:gosec
 		return cty.NumberIntVal(int64(value)), nil
 	case int64:
 		return cty.NumberIntVal(value), nil
