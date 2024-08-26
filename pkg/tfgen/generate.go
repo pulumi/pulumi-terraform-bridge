@@ -42,8 +42,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	schemaTools "github.com/pulumi/schema-tools/pkg"
 	"github.com/spf13/afero"
-	"golang.org/x/text/cases"
-	"golang.org/x/text/language"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/il"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
@@ -987,16 +985,7 @@ func (g *Generator) UnstableGenerateFromSchema(genSchemaResult *GenerateSchemaRe
 		if err != nil {
 			return errors.Wrapf(err, "failed to parse installation docs")
 		}
-		files["installation-configuration.md"] = content
-		// Populate minimal _index.md file
-		displayName := g.info.DisplayName
-		if displayName == "" {
-			// Capitalize the package name
-			capitalize := cases.Title(language.English)
-			displayName = capitalize.String(g.info.Name)
-		}
-		indexContent := writeIndexFrontMatter(displayName)
-		files["_index.md"] = []byte(indexContent)
+		files["_index.md"] = content
 	case Schema:
 		// Omit the version so that the spec is stable if the version is e.g. derived from the current Git commit hash.
 		pulumiPackageSpec.Version = ""

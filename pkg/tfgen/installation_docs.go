@@ -56,24 +56,18 @@ func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
 	return []byte(contentStr), nil
 }
 
-func writeFrontMatter(title string) string {
+func writeFrontMatter(providerName string) string {
+	// Capitalize the provider name for the title
+
+	capitalize := cases.Title(language.English)
+	title := capitalize.String(providerName)
 	return fmt.Sprintf(delimiter+
-		"title: %[1]s Installation & Configuration\n"+
-		"meta_desc: Provides an overview on how to configure the Pulumi %[1]s.\n"+
+		"title: %[1]s Provider\n"+
+		"meta_desc: Provides an overview on how to configure the Pulumi %[1]s provider.\n"+
 		"layout: package\n"+
 		delimiter+
 		"\n",
 		title)
-}
-
-func writeIndexFrontMatter(displayName string) string {
-	return fmt.Sprintf(delimiter+
-		"title: %[1]s\n"+
-		"meta_desc: The %[1]s provider for Pulumi "+
-		"can be used to provision any of the cloud resources available in %[1]s.\n"+
-		"layout: package\n"+
-		delimiter,
-		displayName)
 }
 
 func getBodyAndTitle(content string) (string, string) {
