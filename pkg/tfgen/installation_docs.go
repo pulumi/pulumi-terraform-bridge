@@ -66,16 +66,6 @@ func writeFrontMatter(title string) string {
 		title)
 }
 
-func writeIndexFrontMatter(displayName string) string {
-	return fmt.Sprintf(delimiter+
-		"title: %[1]s\n"+
-		"meta_desc: The %[1]s provider for Pulumi "+
-		"can be used to provision any of the cloud resources available in %[1]s.\n"+
-		"layout: package\n"+
-		delimiter,
-		displayName)
-}
-
 func getBodyAndTitle(content string) (string, string) {
 	// The first header in `index.md` is the package name, of the format `# Foo Provider`.
 	titleIndex := strings.Index(content, "# ")

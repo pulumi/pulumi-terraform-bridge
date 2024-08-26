@@ -117,34 +117,6 @@ func TestWriteFrontMatter(t *testing.T) {
 	})
 }
 
-func TestWriteIndexFrontMatter(t *testing.T) {
-	t.Parallel()
-
-	type testCase struct {
-		// The name of the test case.
-		name        string
-		displayName string
-		expected    string
-	}
-
-	tc := testCase{
-		name:        "Generates Front Matter for _index.md",
-		displayName: "Testcase",
-		expected: delimiter +
-			"title: Testcase\n" +
-			"meta_desc: The Testcase provider for Pulumi " +
-			"can be used to provision any of the cloud resources available in Testcase.\n" +
-			"layout: package\n" +
-			delimiter,
-	}
-
-	t.Run(tc.name, func(t *testing.T) {
-		t.Parallel()
-		actual := writeIndexFrontMatter(tc.displayName)
-		require.Equal(t, tc.expected, actual)
-	})
-}
-
 func TestApplyEditRules(t *testing.T) {
 	t.Parallel()
 
