@@ -651,7 +651,7 @@ func (cc *cliConverter) singleExampleFromPCLToLanguage(example translatedExample
 	source, diags, _ := cc.convertPCL(example.PCL, lang)
 	diags = cc.postProcessDiagnostics(diags.Extend(example.Diagnostics))
 	if diags.HasErrors() {
-		source = "Example unavailable in this language\n"
+		source = "Example currently unavailable in this language\n"
 		err = fmt.Errorf("failed to convert an example: %s", diags.Error())
 	}
 	source = "```" + lang + "\n" + source + "```"
