@@ -94,6 +94,9 @@ func (d *TfResDriver) write(
 	ctyConfig := fromValue(config).ToCty()
 	if lifecycle.CreateBeforeDestroy {
 		ctyMap := ctyConfig.AsValueMap()
+		if ctyMap == nil {
+			ctyMap = make(map[string]cty.Value)
+		}
 		ctyMap["lifecycle"] = cty.ObjectVal(
 			map[string]cty.Value{
 				"create_before_destroy": cty.True,
