@@ -15,6 +15,7 @@
 package crosstests
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -81,10 +82,17 @@ func runDiffCheck(t T, tc diffTestCase) {
 
 	tfAction := tfd.parseChangesFromTFPlan(*tfDiffPlan)
 
-	tc.verifyBasicDiffAgreement(t, tfAction, x.Summary)
+	var diffResponse map[string]interface{}
+	for _, entry := range pt.GrpcLog().Entries {
+		if entry.Method == "/pulumirpc.ResourceProvider/Diff" {
+			err := json.Unmarshal(entry.Response, &diffResponse)
+			require.NoError(t, err)
+		}
+	}
+	tc.verifyBasicDiffAgreement(t, tfAction, x.Summary, diffResponse)
 }
 
-func (tc *diffTestCase) verifyBasicDiffAgreement(t T, tfActions []string, us auto.UpdateSummary) {
+func (tc *diffTestCase) verifyBasicDiffAgreement(t T, tfActions []string, us auto.UpdateSummary, diffResponse map[string]interface{}) {
 	t.Logf("UpdateSummary.ResourceChanges: %#v", us.ResourceChanges)
 	// Action list from https://github.com/opentofu/opentofu/blob/main/internal/plans/action.go#L11
 	if len(tfActions) == 0 {
@@ -124,14 +132,14 @@ func (tc *diffTestCase) verifyBasicDiffAgreement(t T, tfActions []string, us aut
 			rc := *us.ResourceChanges
 			assert.Equalf(t, 1, rc[string(apitype.OpSame)], "expected the stack to stay the same")
 			assert.Equalf(t, 1, rc[string(apitype.OpReplace)], "expected the test resource to get a replace plan")
-			// TODO: verify order matches
+			assert.Equalf(t, diffResponse["deleteBeforeReplace"], nil, "expected deleteBeforeReplace to be true")
 		} else if tfActions[0] == "delete" && tfActions[1] == "create" {
 			require.NotNilf(t, us.ResourceChanges, "UpdateSummary.ResourceChanges should not be nil")
 			rc := *us.ResourceChanges
 			t.Logf("UpdateSummary.ResourceChanges: %#v", rc)
 			assert.Equalf(t, 1, rc[string(apitype.OpSame)], "expected the stack to stay the same")
 			assert.Equalf(t, 1, rc[string(apitype.OpReplace)], "expected the test resource to get a replace plan")
-			// TODO: verify order matches
+			assert.Equalf(t, diffResponse["deleteBeforeReplace"], true, "expected deleteBeforeReplace to be true")
 		} else {
 			panic("TODO: do not understand this TF action yet: " + fmt.Sprint(tfActions))
 		}

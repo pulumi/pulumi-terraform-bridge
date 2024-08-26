@@ -111,7 +111,7 @@ func TestSimple(t *testing.T) {
 		res.Schema["name"].ForceNew = true
 		runDiffCheck(t, diffTestCase{
 			Resource:            res,
-			Config1:             nil,
+			Config1:             config1,
 			Config2:             config2,
 			DeleteBeforeReplace: true,
 		})
