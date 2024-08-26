@@ -46,7 +46,7 @@ func newSetDecoder(elementDecoder Decoder) (Decoder, error) {
 func (enc *setEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.Value, error) {
 	setTy := tftypes.Set{ElementType: enc.elementType}
 
-	if propertyValueIsUnkonwn(p) {
+	if propertyValueIsUnknown(p) {
 		return tftypes.NewValue(setTy, tftypes.UnknownValue), nil
 	}
 	if p.IsNull() {

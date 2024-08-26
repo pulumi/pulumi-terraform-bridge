@@ -57,7 +57,7 @@ func newObjectDecoder(objectType tftypes.Object,
 }
 
 func (enc *objectEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.Value, error) {
-	if propertyValueIsUnkonwn(p) {
+	if propertyValueIsUnknown(p) {
 		return tftypes.NewValue(enc.objectType, tftypes.UnknownValue), nil
 	}
 	if p.IsNull() {
