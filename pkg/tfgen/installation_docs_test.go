@@ -56,6 +56,38 @@ func TestPlainDocsParser(t *testing.T) {
 	}
 }
 
+func TestGetBodyAndTitle(t *testing.T) {
+	t.Parallel()
+	type testCase struct {
+		// The name of the test case.
+		name     string
+		input    string
+		expected string
+	}
+
+	tests := []testCase{
+		{
+			name:     "Strips Upstream Frontmatter",
+			input:    readfile(t, "test_data/split-front-matter/openstack-input.md"),
+			expected: readfile(t, "test_data/split-front-matter/openstack-expected.md"),
+		},
+		{
+			name:     "Returns Body If No Frontmatter",
+			input:    readfile(t, "test_data/split-front-matter/artifactory-input.md"),
+			expected: readfile(t, "test_data/split-front-matter/artifactory-expected.md"),
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			actual := stripUpstreamFrontMatter(tt.input)
+			assert.Equal(t, tt.expected, actual)
+		})
+	}
+}
+
 //nolint:lll
 func TestWriteInstallationInstructions(t *testing.T) {
 	t.Parallel()

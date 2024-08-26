@@ -23,10 +23,10 @@ import (
 
 func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
 	// Get file content without front matter, and split title
-	contentStr, title := getBodyAndTitle(string(docFile.Content))
+	contentStr := stripUpstreamFrontMatter(string(docFile.Content))
 	// Add pulumi-specific front matter
 	// Generate pulumi-specific front matter
-	frontMatter := writeFrontMatter(title)
+	frontMatter := writeFrontMatter(g.info.Name)
 
 	// Generate pulumi-specific installation instructions
 	installationInstructions := writeInstallationInstructions(g.info.Golang.ImportBasePath, g.info.Name)
@@ -58,7 +58,6 @@ func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
 
 func writeFrontMatter(providerName string) string {
 	// Capitalize the provider name for the title
-
 	capitalize := cases.Title(language.English)
 	title := capitalize.String(providerName)
 	return fmt.Sprintf(delimiter+
@@ -70,15 +69,15 @@ func writeFrontMatter(providerName string) string {
 		title)
 }
 
-func getBodyAndTitle(content string) (string, string) {
-	// The first header in `index.md` is the package name, of the format `# Foo Provider`.
-	titleIndex := strings.Index(content, "# ")
-	// Get the location fo the next newline
-	nextNewLine := strings.Index(content[titleIndex:], "\n") + titleIndex
-	// Get the title line, without the h1 anchor
-	title := content[titleIndex+2 : nextNewLine]
-	// strip the title and any front matter
-	return content[nextNewLine+1:], title
+func stripUpstreamFrontMatter(content string) string {
+	// Remove upstream front matter if any exists.
+	splitByDelimiter := strings.Split(content, delimiter)
+	if len(splitByDelimiter) > 1 {
+		content = strings.Join(splitByDelimiter[2:], "")
+		// Clean up any resulting newlines
+		content = strings.TrimSpace(content)
+	}
+	return content
 }
 
 // writeInstallationInstructions renders the following for any provider:
