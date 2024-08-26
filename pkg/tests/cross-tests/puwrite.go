@@ -8,11 +8,22 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/convert"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/logging"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/propertyvalue"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
 func generateYaml(schema shim.SchemaMap, resourceToken string, objectType *tftypes.Object, tfConfig any) (map[string]any, error) {
+	data := map[string]any{
+		"name":    "project",
+		"runtime": "yaml",
+		"backend": map[string]any{
+			"url": "file://./data",
+		},
+	}
+	if tfConfig == nil {
+		return data, nil
+	}
 	pConfig, err := convertConfigToPulumi(schema, nil, objectType, tfConfig)
 	if err != nil {
 		return nil, err
@@ -25,17 +36,10 @@ func generateYaml(schema shim.SchemaMap, resourceToken string, objectType *tftyp
 	// YAML. This probably needs refinement.
 	yamlProperties := pConfig.Mappable()
 
-	data := map[string]any{
-		"name":    "project",
-		"runtime": "yaml",
-		"resources": map[string]any{
-			"example": map[string]any{
-				"type":       resourceToken,
-				"properties": yamlProperties,
-			},
-		},
-		"backend": map[string]any{
-			"url": "file://./data",
+	data["resources"] = map[string]any{
+		"example": map[string]any{
+			"type":       resourceToken,
+			"properties": yamlProperties,
 		},
 	}
 	return data, nil
@@ -91,8 +95,9 @@ func convertConfigToPulumi(
 		return nil, err
 	}
 
+	ctx := logging.InitLogging(context.Background(), logging.LogOptions{})
 	// There is not yet a way to opt out of marking schema secrets, so the resulting map might have secrets marked.
-	pm, err := convert.DecodePropertyMap(context.Background(), decoder, *v)
+	pm, err := convert.DecodePropertyMap(ctx, decoder, *v)
 	if err != nil {
 		return nil, err
 	}

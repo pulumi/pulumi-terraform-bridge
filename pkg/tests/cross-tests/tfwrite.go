@@ -84,6 +84,18 @@ func writeBlock(body *hclwrite.Body, schemas map[string]*schema.Schema, values m
 		}
 	}
 
+	// lifecycle block
+	if _, ok := values["lifecycle"]; ok {
+		newBlock := body.AppendNewBlock("lifecycle", nil)
+		lifecycleSchema := map[string]*schema.Schema{
+			"create_before_destroy": {
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
+		}
+		writeBlock(newBlock.Body(), lifecycleSchema, values["lifecycle"].AsValueMap())
+	}
+
 	attrKeys := make([]string, 0, len(coreConfigSchema.Attributes))
 	for key := range coreConfigSchema.Attributes {
 		attrKeys = append(attrKeys, key)

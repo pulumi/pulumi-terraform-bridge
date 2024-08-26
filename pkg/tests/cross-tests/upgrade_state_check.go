@@ -134,10 +134,10 @@ func runUpgradeStateInputCheck(t T, tc upgradeStateTestCase) {
 	tfwd := t.TempDir()
 
 	tfd := newTFResDriver(t, tfwd, defProviderShortName, defRtype, tc.Resource)
-	_ = tfd.writePlanApply(t, tc.Resource.Schema, defRtype, "example", tc.Config1)
+	_ = tfd.writePlanApply(t, tc.Resource.Schema, defRtype, "example", tc.Config1, lifecycleArgs{})
 
 	tfd2 := newTFResDriver(t, tfwd, defProviderShortName, defRtype, &upgradeRes)
-	_ = tfd2.writePlanApply(t, tc.Resource.Schema, defRtype, "example", tc.Config2)
+	_ = tfd2.writePlanApply(t, tc.Resource.Schema, defRtype, "example", tc.Config2, lifecycleArgs{})
 
 	schemaVersion1, schemaVersion2 := runPulumiUpgrade(t, tc.Resource, &upgradeRes, tc.Config1, tc.Config2, tc.DisablePlanResourceChange)
 

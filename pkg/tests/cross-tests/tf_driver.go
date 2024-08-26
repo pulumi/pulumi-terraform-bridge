@@ -18,7 +18,6 @@ package crosstests
 import (
 	"bytes"
 	"encoding/json"
-	"strings"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -27,6 +26,7 @@ import (
 	sdkv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/stretchr/testify/require"
+	"github.com/zclconf/go-cty/cty"
 )
 
 type TfResDriver struct {
@@ -60,15 +60,23 @@ func (d *TfResDriver) coalesce(t T, x any) *tftypes.Value {
 	return &v
 }
 
+type lifecycleArgs struct {
+	CreateBeforeDestroy bool
+}
+
 func (d *TfResDriver) writePlanApply(
 	t T,
 	resourceSchema map[string]*schema.Schema,
 	resourceType, resourceName string,
 	rawConfig any,
+	lifecycle lifecycleArgs,
 ) *tfcheck.TfPlan {
 	config := d.coalesce(t, rawConfig)
 	if config != nil {
-		d.write(t, resourceSchema, resourceType, resourceName, *config)
+		d.write(t, resourceSchema, resourceType, resourceName, *config, lifecycle)
+	} else {
+		t.Logf("empty config file")
+		d.driver.Write(t, "")
 	}
 	plan := d.driver.Plan(t)
 	d.driver.Apply(t, plan)
@@ -80,9 +88,20 @@ func (d *TfResDriver) write(
 	resourceSchema map[string]*schema.Schema,
 	resourceType, resourceName string,
 	config tftypes.Value,
+	lifecycle lifecycleArgs,
 ) {
 	var buf bytes.Buffer
-	err := WriteHCL(&buf, resourceSchema, resourceType, resourceName, fromValue(config).ToCty())
+	ctyConfig := fromValue(config).ToCty()
+	if lifecycle.CreateBeforeDestroy {
+		ctyMap := ctyConfig.AsValueMap()
+		ctyMap["lifecycle"] = cty.ObjectVal(
+			map[string]cty.Value{
+				"create_before_destroy": cty.True,
+			},
+		)
+		ctyConfig = cty.ObjectVal(ctyMap)
+	}
+	err := WriteHCL(&buf, resourceSchema, resourceType, resourceName, ctyConfig)
 	require.NoError(t, err)
 	t.Logf("HCL: \n%s\n", buf.String())
 	d.driver.Write(t, buf.String())
@@ -93,7 +112,7 @@ func (d *TfResDriver) write(
 // detailed paths of properties causing the change, though that is more difficult to cross-compare with Pulumi.
 //
 // For now this is code is similar to `jq .resource_changes[0].change.actions[0] plan.json`.
-func (*TfResDriver) parseChangesFromTFPlan(plan tfcheck.TfPlan) string {
+func (*TfResDriver) parseChangesFromTFPlan(plan tfcheck.TfPlan) []string {
 	type p struct {
 		ResourceChanges []struct {
 			Change struct {
@@ -108,6 +127,5 @@ func (*TfResDriver) parseChangesFromTFPlan(plan tfcheck.TfPlan) string {
 	contract.AssertNoErrorf(err, "failed to unmarshal terraform plan")
 	contract.Assertf(len(pp.ResourceChanges) == 1, "expected exactly one resource change")
 	actions := pp.ResourceChanges[0].Change.Actions
-	contract.Assertf(len(actions) == 1, "expected exactly one action, got %v", strings.Join(actions, ", "))
-	return actions[0]
+	return actions
 }

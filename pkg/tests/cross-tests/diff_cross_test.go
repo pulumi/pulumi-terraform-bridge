@@ -51,38 +51,70 @@ func TestUnchangedBasicObject(t *testing.T) {
 	})
 }
 
-func TestSimpleStringNoChange(t *testing.T) {
-	config := map[string]any{"name": "A"}
-	runDiffCheck(t, diffTestCase{
-		Resource: &schema.Resource{
-			Schema: map[string]*schema.Schema{
-				"name": {
-					Type:     schema.TypeString,
-					Optional: true,
-				},
+func TestSimple(t *testing.T) {
+	config1 := map[string]any{"name": "A"}
+	config2 := map[string]any{"name": "B"}
+	res := &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"name": {
+				Type:     schema.TypeString,
+				Optional: true,
 			},
 		},
-		Config1: config,
-		Config2: config,
-	})
-}
+	}
 
-func TestSimpleStringRename(t *testing.T) {
-	runDiffCheck(t, diffTestCase{
-		Resource: &schema.Resource{
-			Schema: map[string]*schema.Schema{
-				"name": {
-					Type:     schema.TypeString,
-					Optional: true,
-				},
-			},
-		},
-		Config1: map[string]any{
-			"name": "A",
-		},
-		Config2: map[string]any{
-			"name": "B",
-		},
+	t.Run("no diff", func(t *testing.T) {
+		runDiffCheck(t, diffTestCase{
+			Resource: res,
+			Config1:  config1,
+			Config2:  config1,
+		})
+	})
+
+	t.Run("diff", func(t *testing.T) {
+		runDiffCheck(t, diffTestCase{
+			Resource: res,
+			Config1:  config1,
+			Config2:  config2,
+		})
+	})
+
+	t.Run("create", func(t *testing.T) {
+		runDiffCheck(t, diffTestCase{
+			Resource: res,
+			Config1:  nil,
+			Config2:  config1,
+		})
+	})
+
+	t.Run("delete", func(t *testing.T) {
+		runDiffCheck(t, diffTestCase{
+			Resource: res,
+			Config1:  config1,
+			Config2:  nil,
+		})
+	})
+
+	t.Run("replace", func(t *testing.T) {
+		res := res
+		res.UpdateContext = nil
+		res.Schema["name"].ForceNew = true
+		runDiffCheck(t, diffTestCase{
+			Resource: res,
+			Config1:  config1,
+			Config2:  config2,
+		})
+	})
+
+	t.Run("replace delete first", func(t *testing.T) {
+		res := res
+		res.Schema["name"].ForceNew = true
+		runDiffCheck(t, diffTestCase{
+			Resource:            res,
+			Config1:             nil,
+			Config2:             config2,
+			DeleteBeforeReplace: true,
+		})
 	})
 }
 
@@ -593,7 +625,6 @@ func TestOptionalComputedBlockCollection(t *testing.T) {
 }
 
 func TestComputedSetFieldsNoDiff(t *testing.T) {
-
 	elemSchema := schema.Resource{
 		Schema: map[string]*schema.Schema{
 			"metro_code": {
