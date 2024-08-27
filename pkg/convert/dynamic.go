@@ -51,8 +51,10 @@ func (enc *dynamicEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.
 			}
 			result = append(result, te)
 		}
-		// tftypes.NewValue is pretty strict in that array elements must have the same type.
-		// Try to encode this as an array and fallback on a tuple if the types do not match.
+		// tftypes.NewValue is pretty strict in that array elements must have the same type. Try to encode this
+		// as an array and fallback on a tuple if the types do not match. Attempts to encode either the list or
+		// its element as DynamicPseudoType themselves to make the element type uniform trigger end-to-end
+		// errors, this approach seems to be the best workaround for now.
 		if commonTy, err := tftypes.TypeFromElements(result); err == nil {
 			return tftypes.NewValue(tftypes.List{ElementType: commonTy}, result), nil
 		} else {
