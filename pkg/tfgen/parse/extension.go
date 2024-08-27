@@ -18,13 +18,16 @@ import (
 	"bytes"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	markdown "github.com/teekennedy/goldmark-markdown"
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/extension"
 	"github.com/yuin/goldmark/parser"
+	"github.com/yuin/goldmark/renderer"
 	"github.com/yuin/goldmark/text"
 	"github.com/yuin/goldmark/util"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/parse/meta"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/parse/section"
 )
 
@@ -37,13 +40,12 @@ var TFRegistryExtension goldmark.Extender = tfRegistryExtension{}
 type tfRegistryExtension struct{}
 
 func (s tfRegistryExtension) Extend(md goldmark.Markdown) {
-	extension.GFM.Extend(md)
-	section.Extension.Extend(md)
-	md.Parser().AddOptions(
-		parser.WithASTTransformers(
-			util.Prioritized(recognizeHeaderAfterHTML{}, 902),
-		))
-
+	extension.GFM.Extend(md)     // GitHub Flavored Markdown
+	section.Extension.Extend(md) // AST defined sections
+	meta.Extension.Extend(md)    // Support for YAML metadata blocks
+	md.Parser().AddOptions(parser.WithASTTransformers(
+		util.Prioritized(recognizeHeaderAfterHTML{}, 902),
+	))
 }
 
 // recognizeHeaderAfterHTML allows us to work around a difference in how TF's registry parses
@@ -86,3 +88,22 @@ func WalkNode[T ast.Node](node ast.Node, f func(T)) {
 	})
 	contract.AssertNoErrorf(err, "impossible: ast.Walk never returns an error")
 }
+
+func RenderMarkdown() renderer.Renderer {
+	// [markdown.NewRenderer] does not produce a renderer that can render [ast.String],
+	// so we augment the [renderer.Renderer] with that type.
+	r := renderMarkdown{markdown.NewRenderer()}
+	writeString := func(
+		writer util.BufWriter, _ []byte, n ast.Node, entering bool,
+	) (ast.WalkStatus, error) {
+		if !entering {
+			return ast.WalkContinue, nil
+		}
+		_, err := writer.Write(n.(*ast.String).Value)
+		return ast.WalkContinue, err
+	}
+	r.Register(ast.KindString, writeString)
+	return r
+}
+
+type renderMarkdown struct{ *markdown.Renderer }

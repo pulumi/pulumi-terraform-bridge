@@ -93,21 +93,21 @@ func TestTrimFrontmatter(t *testing.T) {
 func TestRemoveTitle(t *testing.T) {
 	type testCase struct {
 		// The name of the test case.
-		name     string
-		input    string
-		expected string
+		name     string // The name of the test
+		input    string // The input to the test
+		expected string // The *path* to the expected output file
 	}
 
 	tests := []testCase{
 		{
 			name:     "Strips Title Placed Anywhere",
 			input:    readfile(t, "test_data/remove-title/openstack-input.md"),
-			expected: readfile(t, "test_data/remove-title/openstack-expected.md"),
+			expected: "test_data/remove-title/openstack-expected.md",
 		},
 		{
 			name:     "Strips Title On Top",
 			input:    readfile(t, "test_data/remove-title/artifactory-input.md"),
-			expected: readfile(t, "test_data/remove-title/artifactory-expected.md"),
+			expected: "test_data/remove-title/artifactory-expected.md",
 		},
 	}
 	for _, tt := range tests {
@@ -119,7 +119,12 @@ func TestRemoveTitle(t *testing.T) {
 			t.Parallel()
 			actual, err := removeTitle([]byte(tt.input))
 			assert.NoError(t, err)
-			assertEqualHTML(t, tt.expected, string(actual))
+			if accept {
+				writefile(t, tt.expected, actual)
+			} else {
+				expected := readfile(t, tt.expected)
+				assertEqualHTML(t, expected, string(actual))
+			}
 		})
 	}
 }
@@ -409,6 +414,7 @@ func TestSkipSectionHeadersByContent(t *testing.T) {
 // due to goldmark making some (insignificant to the final HTML) changes when parsing and rendering.
 // We convert the expected Markdown and the actual test Markdown output to HTML and verify if they are equal.
 func assertEqualHTML(t *testing.T, expected, actual string) bool {
+	t.Helper()
 	mdRenderer := goldmark.New()
 	var expectedBuf bytes.Buffer
 	err := mdRenderer.Convert([]byte(expected), &expectedBuf)

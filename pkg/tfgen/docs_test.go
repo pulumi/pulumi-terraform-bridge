@@ -36,9 +36,13 @@ import (
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/yuin/goldmark"
+	"github.com/yuin/goldmark/parser"
+	"github.com/yuin/goldmark/util"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/internal/testprovider"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/parse"
 )
 
 var (
@@ -1278,63 +1282,6 @@ content
 	}
 }
 
-func TestFixExamplesHeaders(t *testing.T) {
-	codeFence := "```"
-	t.Run("WithCodeFences", func(t *testing.T) {
-		markdown := `
-# digitalocean\_cdn
-
-Provides a DigitalOcean CDN Endpoint resource for use with Spaces.
-
-## Example Usage
-
-#### Basic Example
-
-` + codeFence + `typescript
-// Some code.
-` + codeFence + `
-## Argument Reference`
-
-		var processedMarkdown string
-		groups := splitByMarkdownHeaders(markdown, 2)
-		for _, lines := range groups {
-			fixExampleTitles(lines)
-			for _, line := range lines {
-				processedMarkdown += line
-			}
-		}
-
-		assert.NotContains(t, processedMarkdown, "#### Basic Example")
-		assert.Contains(t, processedMarkdown, "### Basic Example")
-	})
-
-	t.Run("WithoutCodeFences", func(t *testing.T) {
-		markdown := `
-# digitalocean\_cdn
-
-Provides a DigitalOcean CDN Endpoint resource for use with Spaces.
-
-## Example Usage
-
-#### Basic Example
-
-Misleading example title without any actual code fences. We should not modify the title.
-
-## Argument Reference`
-
-		var processedMarkdown string
-		groups := splitByMarkdownHeaders(markdown, 2)
-		for _, lines := range groups {
-			fixExampleTitles(lines)
-			for _, line := range lines {
-				processedMarkdown += line
-			}
-		}
-
-		assert.Contains(t, processedMarkdown, "#### Basic Example")
-	})
-}
-
 func TestExtractExamples(t *testing.T) {
 	basic := `Previews a CIDR from an IPAM address pool. Only works for private IPv4.
 
@@ -1360,11 +1307,24 @@ Basic usage:`
 }
 
 func TestReformatExamples(t *testing.T) {
-	runTest := func(input string, expected [][]string) {
-		inputSections := splitByMarkdownHeaders(input, 2)
-		actual := reformatExamples(inputSections)
+	runTest := func(t *testing.T, input string, expected [][]string) {
+		t.Helper()
+		var out bytes.Buffer
+		err := goldmark.New(
+			goldmark.WithExtensions(parse.TFRegistryExtension),
+			goldmark.WithParserOptions(parser.WithASTTransformers(
+				util.Prioritized(exampleTransformer{}, 2000),
+			)),
+			goldmark.WithRenderer(parse.RenderMarkdown()),
+		).Convert([]byte(input), &out)
+		require.NoError(t, err)
 
-		assert.Equal(t, expected, actual)
+		exp := make([]string, len(expected))
+		for i, e := range expected {
+			exp[i] = strings.Join(e, "\n")
+		}
+
+		assertEqualHTML(t, strings.Join(exp, "\n"), out.String())
 	}
 
 	// This is a simple use case. We expect no changes to the original doc:
@@ -1387,7 +1347,7 @@ example usage content`
 			},
 		}
 
-		runTest(input, expected)
+		runTest(t, input, expected)
 	})
 
 	// This use case demonstrates 2 examples at the same H2 level: a canonical Example
@@ -1423,7 +1383,7 @@ specific case content`
 			},
 		}
 
-		runTest(input, expected)
+		runTest(t, input, expected)
 	})
 
 	// This use case demonstrates 2 no canonical Example Usage/basic case and 2
@@ -1459,7 +1419,7 @@ content 2`
 			},
 		}
 
-		runTest(input, expected)
+		runTest(t, input, expected)
 	})
 
 	t.Run("misformatted-docs-dont-panic", func(t *testing.T) {
@@ -1477,7 +1437,7 @@ content`
 			},
 		}
 
-		runTest(input, expected)
+		runTest(t, input, expected)
 	})
 }
 

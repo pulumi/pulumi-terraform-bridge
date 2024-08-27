@@ -1,5 +1,5 @@
 {
-  "Description": "main body\n\n## Some other section\n\nother body\n\n## REPLACEMENT TEXT\n\nThis should be interpolated in.",
+  "Description": "main body\n\n## Some other section\n\nother body\n## REPLACEMENT TEXT\n\nThis should be interpolated in.",
   "Arguments": {},
   "Attributes": {},
   "Import": ""
