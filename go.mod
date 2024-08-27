@@ -48,6 +48,7 @@ require (
 	github.com/stretchr/testify v1.9.0
 	github.com/teekennedy/goldmark-markdown v0.3.0
 	github.com/yuin/goldmark v1.7.4
+	github.com/yuin/goldmark-meta v1.1.0
 	github.com/zclconf/go-cty v1.14.2
 	golang.org/x/crypto v0.25.0
 	golang.org/x/mod v0.18.0
@@ -55,6 +56,7 @@ require (
 	golang.org/x/text v0.16.0
 	google.golang.org/grpc v1.63.2
 	google.golang.org/protobuf v1.33.0
+	gopkg.in/yaml.v2 v2.4.0
 	gotest.tools/v3 v3.0.3
 	pgregory.net/rapid v0.6.1
 )
