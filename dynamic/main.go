@@ -53,6 +53,7 @@ func initialSetup() (info.Provider, pfbridge.ProviderMetadata, func() error) {
 		LogoURL:      "https://raw.githubusercontent.com/pulumi/pulumi-terraform-provider/main/assets/logo.png",
 		Version:      version.Version(),
 		Description:  "Use any Terraform provider with Pulumi",
+		License:      "Apache-2.0",
 		MetadataInfo: &info.Metadata{Path: "", Data: tfbridge.ProviderMetadata(nil)},
 		SchemaPostProcessor: func(spec *schema.PackageSpec) {
 			spec.Attribution = ""
