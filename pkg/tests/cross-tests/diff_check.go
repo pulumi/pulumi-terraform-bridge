@@ -47,7 +47,7 @@ type diffTestCase struct {
 	DeleteBeforeReplace bool
 }
 
-func runDiffCheck(t T, tc diffTestCase) {
+func runDiffCheck(t T, tc diffTestCase) []string {
 	tfwd := t.TempDir()
 
 	lifecycleArgs := lifecycleArgs{CreateBeforeDestroy: !tc.DeleteBeforeReplace}
@@ -90,6 +90,8 @@ func runDiffCheck(t T, tc diffTestCase) {
 		}
 	}
 	tc.verifyBasicDiffAgreement(t, tfAction, x.Summary, diffResponse)
+
+	return tfAction
 }
 
 func (tc *diffTestCase) verifyBasicDiffAgreement(t T, tfActions []string, us auto.UpdateSummary, diffResponse map[string]interface{}) {

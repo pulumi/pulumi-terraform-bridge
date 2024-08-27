@@ -63,7 +63,7 @@ func TestDiffBasicTypes(t *testing.T) {
 
 	typeCases := []struct {
 		name             string
-		config1, config2 map[string]any
+		config1, config2 any
 		prop             *schema.Schema
 	}{
 		{
@@ -177,62 +177,81 @@ func TestDiffBasicTypes(t *testing.T) {
 	}
 
 	for _, tc := range typeCases {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
 			res := res
+			tc := tc
 			res.Schema["prop"] = tc.prop
 
 			t.Run("no diff", func(t *testing.T) {
-				runDiffCheck(t, diffTestCase{
+				tfAction := runDiffCheck(t, diffTestCase{
 					Resource: res,
 					Config1:  tc.config1,
 					Config2:  tc.config1,
 				})
+
+				require.Equal(t, []string{"no-op"}, tfAction)
 			})
 
 			t.Run("diff", func(t *testing.T) {
-				runDiffCheck(t, diffTestCase{
+				tfAction := runDiffCheck(t, diffTestCase{
 					Resource: res,
 					Config1:  tc.config1,
 					Config2:  tc.config2,
 				})
+
+				require.Equal(t, []string{"update"}, tfAction)
 			})
 
 			t.Run("create", func(t *testing.T) {
-				runDiffCheck(t, diffTestCase{
+				tfAction := runDiffCheck(t, diffTestCase{
 					Resource: res,
 					Config1:  nil,
 					Config2:  tc.config1,
 				})
+
+				require.Equal(t, []string{"create"}, tfAction)
 			})
 
 			t.Run("delete", func(t *testing.T) {
-				runDiffCheck(t, diffTestCase{
+				tfAction := runDiffCheck(t, diffTestCase{
 					Resource: res,
 					Config1:  tc.config1,
 					Config2:  nil,
 				})
+
+				require.Equal(t, []string{"delete"}, tfAction)
 			})
 
 			t.Run("replace", func(t *testing.T) {
 				res := res
 				res.Schema["prop"].ForceNew = true
-				runDiffCheck(t, diffTestCase{
+				if nestedRes, ok := res.Schema["prop"].Elem.(*schema.Resource); ok {
+					nestedRes.Schema["x"].ForceNew = true
+				}
+				tfAction := runDiffCheck(t, diffTestCase{
 					Resource: res,
 					Config1:  tc.config1,
 					Config2:  tc.config2,
 				})
+
+				require.Equal(t, []string{"create", "delete"}, tfAction)
 			})
 
 			t.Run("replace delete first", func(t *testing.T) {
 				res := res
 				res.Schema["prop"].ForceNew = true
-				runDiffCheck(t, diffTestCase{
+				if nestedRes, ok := res.Schema["prop"].Elem.(*schema.Resource); ok {
+					nestedRes.Schema["x"].ForceNew = true
+				}
+				tfAction := runDiffCheck(t, diffTestCase{
 					Resource:            res,
 					Config1:             tc.config1,
 					Config2:             tc.config2,
 					DeleteBeforeReplace: true,
 				})
+
+				require.Equal(t, []string{"delete", "create"}, tfAction)
 			})
 		})
 	}
