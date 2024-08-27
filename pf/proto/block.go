@@ -114,8 +114,14 @@ func (m blockSchema) Elem() interface{} {
 	}
 }
 
-func (m blockSchema) Optional() bool                      { return false }
-func (m blockSchema) Required() bool                      { return false }
+func (s blockSchema) Optional() bool {
+	return !s.Required()
+}
+
+func (s blockSchema) Required() bool {
+	return s.MinItems() > 0
+}
+
 func (m blockSchema) Default() interface{}                { return nil }
 func (m blockSchema) DefaultFunc() shim.SchemaDefaultFunc { return nil }
 func (m blockSchema) DefaultValue() (interface{}, error)  { return nil, nil }
