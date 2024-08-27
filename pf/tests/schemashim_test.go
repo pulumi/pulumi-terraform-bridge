@@ -384,14 +384,14 @@ func TestSchemaShimRepresentations(t *testing.T) {
 
 			tc.expect.Equal(t, string(prettyBytes))
 
-			token := "testprov:index:R1"
+			rtok := "testprov:index:R1"
 
 			info := info.Provider{
 				Name: "testprov",
 				P:    shimmedProvider,
 				Resources: map[string]*info.Resource{
 					"testprov_r1": {
-						Tok: tokens.Type(token),
+						Tok: tokens.Type(rtok),
 					},
 				},
 			}
@@ -406,7 +406,7 @@ func TestSchemaShimRepresentations(t *testing.T) {
 			}
 
 			ms := miniSpec{
-				Resource: pSpec.Resources[token],
+				Resource: pSpec.Resources[rtok],
 				Types:    pSpec.Types,
 			}
 

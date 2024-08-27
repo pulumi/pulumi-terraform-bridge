@@ -114,12 +114,12 @@ func (m blockSchema) Elem() interface{} {
 	}
 }
 
-func (s blockSchema) Optional() bool {
-	return !s.Required()
+func (m blockSchema) Optional() bool {
+	return !m.Required()
 }
 
-func (s blockSchema) Required() bool {
-	return s.MinItems() > 0
+func (m blockSchema) Required() bool {
+	return m.MinItems() > 0
 }
 
 func (m blockSchema) Default() interface{}                { return nil }

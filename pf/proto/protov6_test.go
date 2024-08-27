@@ -25,14 +25,15 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/hexops/autogold/v2"
-	"github.com/pulumi/pulumi-terraform-bridge/pf/proto"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
-	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/pulumi/pulumi-terraform-bridge/pf/proto"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
 func marshalProviderShim(t *testing.T, p shim.Provider) []byte {
@@ -109,6 +110,7 @@ func TestBlockSchemaGeneration(t *testing.T) {
 	spec, err := tfgen.GenerateSchema(providerInfo, nilSink)
 	require.NoError(t, err)
 	specBytes, err := json.MarshalIndent(spec.Resources, "", "  ")
+	require.NoError(t, err)
 	autogold.Expect(`{
   "testprov:index:MyRes": {
     "properties": {
