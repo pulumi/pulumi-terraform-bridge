@@ -42,6 +42,15 @@ func TestCreateResourceWithDynamicAttribute(t *testing.T) {
 
 	testCases := []testCase{
 		{
+			name:           "null",
+			manifestToSend: nil,
+			expectedManifestMatches: func(t *testing.T, v basetypes.DynamicValue) {
+				// Somehow v.IsNull()==false, but v.IsUnderlyingValueNull()==true, probably OK.
+				require.True(t, v.IsUnderlyingValueNull())
+			},
+			expectedManifestOutput: nil,
+		},
+		{
 			name:                     "string",
 			manifestToSend:           "FOO",
 			expectedManifestReceived: basetypes.NewDynamicValue(basetypes.NewStringValue("FOO")),
