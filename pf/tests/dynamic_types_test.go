@@ -19,6 +19,7 @@ import (
 	"math/big"
 	"testing"
 
+	"encoding/json"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -26,6 +27,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	pb "github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/providerbuilder"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
@@ -38,6 +40,7 @@ func TestCreateResourceWithDynamicAttribute(t *testing.T) {
 		expectedManifestReceived basetypes.DynamicValue // how PF sees the decoded manifest
 		expectedManifestMatches  func(t *testing.T, v basetypes.DynamicValue)
 		expectedManifestOutput   any // value received back through the output machinery
+		expectedStateMatches     func(t *testing.T, state apitype.UntypedDeployment)
 	}
 
 	testCases := []testCase{
@@ -57,6 +60,35 @@ func TestCreateResourceWithDynamicAttribute(t *testing.T) {
 				t.Logf("Received %v", v)
 			},
 			expectedManifestOutput: "U",
+		},
+		{
+			name: "secret",
+			manifestToSend: map[string]any{
+				"fn::secret": "SECRET",
+			},
+			expectedManifestReceived: basetypes.NewDynamicValue(basetypes.NewStringValue("SECRET")),
+			// First-class secrets are currently handled by the engine transparently without having to be
+			// handled for dynamic types specifically; but as this might change it is important to have an
+			// end-to-end test that makes sure they do not leak in the state.
+			expectedStateMatches: func(t *testing.T, state apitype.UntypedDeployment) {
+				bytes, err := json.MarshalIndent(state, "", "  ")
+				require.NoError(t, err)
+				var d3 apitype.DeploymentV3
+				err = json.Unmarshal(bytes, &d3)
+				require.NoError(t, err)
+
+				for _, r := range d3.Resources {
+					if r.Type != "pulumi:pulumi:Stack" {
+						continue
+					}
+					manifest := r.Outputs["manifest"].(map[string]any)
+					require.Equal(t, map[string]any{
+						"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+						"plaintext":                        "\"SECRET\"",
+					}, manifest)
+				}
+			},
+			expectedManifestOutput: "SECRET",
 		},
 		{
 			name:                     "string",
@@ -297,6 +329,12 @@ func TestCreateResourceWithDynamicAttribute(t *testing.T) {
 			res := pt.Up()
 
 			m := res.Outputs["manifest"]
+
+			if tc.expectedStateMatches != nil {
+				// NOTE: ExportStack calls the CLI with --show-secrets.
+				state := pt.ExportStack()
+				tc.expectedStateMatches(t, state)
+			}
 
 			require.Equalf(t, m.Value, tc.expectedManifestOutput, "expected manifest to turnaround")
 		})
