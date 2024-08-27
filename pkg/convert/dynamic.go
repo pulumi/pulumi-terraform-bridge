@@ -33,9 +33,9 @@ type dynamicEncoder struct{}
 func (enc *dynamicEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.Value, error) {
 	switch {
 	case propertyValueIsUnknown(p):
-		return tftypes.NewValue(tftypes.Object{}, tftypes.UnknownValue), nil
+		return tftypes.NewValue(tftypes.Object{} /* arbitrary type */, tftypes.UnknownValue), nil
 	case p.IsNull():
-		return tftypes.NewValue(tftypes.Object{}, nil), nil
+		return tftypes.NewValue(tftypes.Object{} /* arbitrary type */, nil), nil
 	case p.IsBool():
 		return tftypes.NewValue(tftypes.Bool, p.BoolValue()), nil
 	case p.IsNumber():
