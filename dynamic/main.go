@@ -33,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/pf/proto"
 	pfbridge "github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
 )
 
@@ -41,16 +42,18 @@ const (
 	baseProviderName = "terraform-provider"
 )
 
-func initialSetup() (tfbridge.ProviderInfo, pfbridge.ProviderMetadata, func() error) {
+func initialSetup() (info.Provider, pfbridge.ProviderMetadata, func() error) {
 
 	var tfServer run.Provider
-	info := tfbridge.ProviderInfo{
+	info := info.Provider{
 		DisplayName:  "Any Terraform Provider",
 		P:            proto.Empty(),
 		Name:         baseProviderName,
+		Keywords:     []string{"category/utility"},
+		LogoURL:      "https://raw.githubusercontent.com/pulumi/pulumi-terraform-provider/main/assets/logo.png",
 		Version:      version.Version(),
 		Description:  "Use any Terraform provider with Pulumi",
-		MetadataInfo: &tfbridge.MetadataInfo{Path: "", Data: tfbridge.ProviderMetadata(nil)},
+		MetadataInfo: &info.Metadata{Path: "", Data: tfbridge.ProviderMetadata(nil)},
 		SchemaPostProcessor: func(spec *schema.PackageSpec) {
 			spec.Attribution = ""
 			spec.Provider = schema.ResourceSpec{}
