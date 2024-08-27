@@ -51,6 +51,14 @@ func TestCreateResourceWithDynamicAttribute(t *testing.T) {
 			expectedManifestOutput: nil,
 		},
 		{
+			name:           "unknown",
+			manifestToSend: "${r0.u}",
+			expectedManifestMatches: func(t *testing.T, v basetypes.DynamicValue) {
+				t.Logf("Received %v", v)
+			},
+			expectedManifestOutput: "U",
+		},
+		{
 			name:                     "string",
 			manifestToSend:           "FOO",
 			expectedManifestReceived: basetypes.NewDynamicValue(basetypes.NewStringValue("FOO")),
@@ -181,6 +189,11 @@ func TestCreateResourceWithDynamicAttribute(t *testing.T) {
 		Manifest types.Dynamic `tfsdk:"manifest"`
 	}
 
+	type ResourceModelR0 struct {
+		Id types.String `tfsdk:"id"`
+		U  types.String `tfsdk:"u"`
+	}
+
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			r := pb.Resource{
@@ -220,14 +233,49 @@ func TestCreateResourceWithDynamicAttribute(t *testing.T) {
 				},
 			}
 
+			// Define an aux resource to produce unknown values for testing.
+			r0 := pb.Resource{
+				Name: "r0",
+				CreateFunc: func(
+					ctx context.Context,
+					req resource.CreateRequest,
+					resp *resource.CreateResponse,
+				) {
+					var model ResourceModelR0
+					diags := req.Config.Get(ctx, &model)
+					if diags.HasError() {
+						for _, d := range diags {
+							t.Logf("%s: %s", d.Summary(), d.Detail())
+						}
+						panic("req.Config.Get failed")
+					}
+
+					model.Id = basetypes.NewStringValue("r00")
+					model.U = basetypes.NewStringValue("U")
+
+					diags = resp.State.Set(ctx, &model)
+					resp.Diagnostics = append(resp.Diagnostics, diags...)
+				},
+				ResourceSchema: schema.Schema{
+					Attributes: map[string]schema.Attribute{
+						"u": schema.StringAttribute{
+							Computed: true,
+						},
+					},
+				},
+			}
+
 			p := pb.NewProvider(pb.NewProviderArgs{
-				AllResources: []pb.Resource{r},
+				AllResources: []pb.Resource{r, r0},
 			})
 
 			program := map[string]any{
 				"name":    "test-program",
 				"runtime": "yaml",
 				"resources": map[string]any{
+					"r0": map[string]any{
+						"type": "testprovider:index:R0",
+					},
 					"r1": map[string]any{
 						"type": "testprovider:index:R",
 						"properties": map[string]any{
@@ -243,6 +291,9 @@ func TestCreateResourceWithDynamicAttribute(t *testing.T) {
 			bytes, err := yaml.Marshal(program)
 			require.NoError(t, err)
 			pt := newPulumiTest(t, p, string(bytes))
+
+			pt.Preview()
+
 			res := pt.Up()
 
 			m := res.Outputs["manifest"]
