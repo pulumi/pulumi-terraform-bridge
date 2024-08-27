@@ -30,8 +30,6 @@ func newDynamicEncoder() Encoder {
 
 type dynamicEncoder struct{}
 
-// Convert a PropertyValue to a tftypes.Value. If the optional ty parameter is specified, ensure that the resulting
-// tftypes.Value is constructed with the given type.
 func (enc *dynamicEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.Value, error) {
 	switch {
 	case propertyValueIsUnknown(p):
@@ -73,7 +71,7 @@ func (enc *dynamicEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.
 	case p.IsOutput():
 		o := p.OutputValue()
 		contract.Assertf(o.Known && !o.Secret,
-		  "Cannot be unknown at this point, or secret.")
+			"Cannot be unknown at this point, or secret.")
 		return enc.fromPropertyValue(p.OutputValue().Element)
 	case p.IsObject():
 		// Maps and objects are confused in this Pulumi representation, we cannot reliably tell them apart.
