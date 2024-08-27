@@ -217,12 +217,12 @@ func TestCreateResourceWithDynamicAttribute(t *testing.T) {
 	}
 
 	type ResourceModel struct {
-		Id       types.String  `tfsdk:"id"`
+		ID       types.String  `tfsdk:"id"`
 		Manifest types.Dynamic `tfsdk:"manifest"`
 	}
 
 	type ResourceModelR0 struct {
-		Id types.String `tfsdk:"id"`
+		ID types.String `tfsdk:"id"`
 		U  types.String `tfsdk:"u"`
 	}
 
@@ -251,7 +251,7 @@ func TestCreateResourceWithDynamicAttribute(t *testing.T) {
 
 					t.Logf("Create called with manifest as: %+v", model.Manifest)
 
-					model.Id = basetypes.NewStringValue("id0")
+					model.ID = basetypes.NewStringValue("id0")
 
 					diags = resp.State.Set(ctx, &model)
 					resp.Diagnostics = append(resp.Diagnostics, diags...)
@@ -282,7 +282,7 @@ func TestCreateResourceWithDynamicAttribute(t *testing.T) {
 						panic("req.Config.Get failed")
 					}
 
-					model.Id = basetypes.NewStringValue("r00")
+					model.ID = basetypes.NewStringValue("r00")
 					model.U = basetypes.NewStringValue("U")
 
 					diags = resp.State.Set(ctx, &model)
