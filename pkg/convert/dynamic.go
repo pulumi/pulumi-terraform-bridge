@@ -71,7 +71,9 @@ func (enc *dynamicEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.
 	case p.IsSecret() || p.IsOutput() && p.OutputValue().Secret:
 		return tftypes.Value{}, fmt.Errorf("Secrets inside dynamically typed blocks are not yet supported")
 	case p.IsOutput():
-		// Cannot be unknown at this point, or secret. Strip dependencies and send the value.
+		o := p.OutputValue()
+		contract.Assertf(o.Known && !o.Secret,
+		  "Cannot be unknown at this point, or secret.")
 		return enc.fromPropertyValue(p.OutputValue().Element)
 	case p.IsObject():
 		// Maps and objects are confused in this Pulumi representation, we cannot reliably tell them apart.
