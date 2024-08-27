@@ -91,15 +91,36 @@ type SchemaDefaultFunc func() (interface{}, error)
 
 type SchemaStateFunc func(interface{}) string
 
+// Schema instances can represent static information about various elements of a TF schema, including attributes,
+// blocks, and types such as the element type of a list attribute.
 type Schema interface {
 	Type() ValueType
-	Optional() bool
-	Required() bool
 	Default() interface{}
 	DefaultFunc() SchemaDefaultFunc
 	DefaultValue() (interface{}, error)
 	Description() string
+
+	// Optional, Required and Computed are coupled attributes that influence schema generation.
+	//
+	// If the Schema instance represents an attribute, it must be one of Required, Optional, Computed, or Computed
+	// and Optional. Computed attributes will not generate inputs in Pulumi Package Schema and will be output-only,
+	// to reflect the fact that they can only be set by the provider, not the user.
+	//
+	// If the Schema instance represents a block, this distinction is no longer present in TF, but the bridge
+	// historically treats blocks as Optional or Required to enable Pulumi Package Schema generating inputs for
+	// these.
+	Optional() bool
+
+	// An element must be provided in the configuration. See [Optional] for details.
+	//
+	// See also: https://developer.hashicorp.com/terraform/plugin/sdkv2/schemas/schema-behaviors#required
+	Required() bool
+
+	// Indicates an element that the provider may modify. See [Optional] for details.
+	//
+	// See also: https://developer.hashicorp.com/terraform/plugin/sdkv2/schemas/schema-behaviors#computed
 	Computed() bool
+
 	ForceNew() bool
 	StateFunc() SchemaStateFunc
 
