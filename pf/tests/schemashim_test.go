@@ -17,6 +17,7 @@ package tfbridgetests
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -27,23 +28,33 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/schemashim"
 	pb "github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/providerbuilder"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/require"
 )
 
-// Test how various PF-based schemata translate to the shim.Schema layer.
+// Test how various PF-based schemata translate to the shim.Schema layer. Excerpts of the resulting Pulumi Package
+// Schema are included for reasoning convenience.
 func TestSchemaShimRepresentations(t *testing.T) {
 
 	type testCase struct {
-		name     string
-		provider provider.Provider
-		expect   autogold.Value
+		name         string
+		provider     provider.Provider
+		expect       autogold.Value // expected prettified shim.Schema representation
+		expectSchema autogold.Value // expected corresponding Pulumi Package Schema extract
 	}
 
 	testCases := []testCase{
+		//------------------------------------------------------------------------------------------------------
 		{
 			"single-nested-block",
 			&pb.Provider{
+				TypeName: "testprov",
 				AllResources: []pb.Resource{{
+					Name: "r1",
 					ResourceSchema: schema.Schema{
 						Blocks: map[string]schema.Block{
 							"single_nested_block": schema.SingleNestedBlock{
@@ -59,7 +70,7 @@ func TestSchemaShimRepresentations(t *testing.T) {
 			},
 			autogold.Expect(`{
   "resources": {
-    "_": {
+    "testprov_r1": {
       "single_nested_block": {
         "element": {
           "resource": {
@@ -75,11 +86,47 @@ func TestSchemaShimRepresentations(t *testing.T) {
     }
   }
 }`),
+			autogold.Expect(`{
+  "resource": {
+    "properties": {
+      "singleNestedBlock": {
+        "$ref": "#/types/testprov:index/R1SingleNestedBlock:R1SingleNestedBlock"
+      }
+    },
+    "inputProperties": {
+      "singleNestedBlock": {
+        "$ref": "#/types/testprov:index/R1SingleNestedBlock:R1SingleNestedBlock"
+      }
+    },
+    "stateInputs": {
+      "description": "Input properties used for looking up and filtering R1 resources.\n",
+      "properties": {
+        "singleNestedBlock": {
+          "$ref": "#/types/testprov:index/R1SingleNestedBlock:R1SingleNestedBlock"
+        }
+      },
+      "type": "object"
+    }
+  },
+  "types": {
+    "testprov:index/R1SingleNestedBlock:R1SingleNestedBlock": {
+      "properties": {
+        "a1": {
+          "type": "number"
+        }
+      },
+      "type": "object"
+    }
+  }
+}`),
 		},
+		//------------------------------------------------------------------------------------------------------
 		{
 			"list-nested-block",
 			&pb.Provider{
+				TypeName: "testprov",
 				AllResources: []pb.Resource{{
+					Name: "r1",
 					ResourceSchema: schema.Schema{
 						Blocks: map[string]schema.Block{
 							"list_nested_block": schema.ListNestedBlock{
@@ -97,7 +144,7 @@ func TestSchemaShimRepresentations(t *testing.T) {
 			},
 			autogold.Expect(`{
   "resources": {
-    "_": {
+    "testprov_r1": {
       "list_nested_block": {
         "element": {
           "resource": {
@@ -113,14 +160,60 @@ func TestSchemaShimRepresentations(t *testing.T) {
     }
   }
 }`),
+			autogold.Expect(`{
+  "resource": {
+    "properties": {
+      "listNestedBlocks": {
+        "type": "array",
+        "items": {
+          "$ref": "#/types/testprov:index/R1ListNestedBlock:R1ListNestedBlock"
+        }
+      }
+    },
+    "inputProperties": {
+      "listNestedBlocks": {
+        "type": "array",
+        "items": {
+          "$ref": "#/types/testprov:index/R1ListNestedBlock:R1ListNestedBlock"
+        }
+      }
+    },
+    "stateInputs": {
+      "description": "Input properties used for looking up and filtering R1 resources.\n",
+      "properties": {
+        "listNestedBlocks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/testprov:index/R1ListNestedBlock:R1ListNestedBlock"
+          }
+        }
+      },
+      "type": "object"
+    }
+  },
+  "types": {
+    "testprov:index/R1ListNestedBlock:R1ListNestedBlock": {
+      "properties": {
+        "a1": {
+          "type": "number"
+        }
+      },
+      "type": "object"
+    }
+  }
+}`),
 		},
+		//------------------------------------------------------------------------------------------------------
 		{
 			"map-nested-attribute",
 			&pb.Provider{
+				TypeName: "testprov",
 				AllResources: []pb.Resource{{
+					Name: "r1",
 					ResourceSchema: schema.Schema{
 						Attributes: map[string]schema.Attribute{
 							"map_nested_attribute": schema.MapNestedAttribute{
+								Optional: true,
 								NestedObject: schema.NestedAttributeObject{
 									Attributes: map[string]schema.Attribute{
 										"a1": schema.StringAttribute{
@@ -135,7 +228,7 @@ func TestSchemaShimRepresentations(t *testing.T) {
 			},
 			autogold.Expect(`{
   "resources": {
-    "_": {
+    "testprov_r1": {
       "map_nested_attribute": {
         "element": {
           "schema": {
@@ -150,19 +243,66 @@ func TestSchemaShimRepresentations(t *testing.T) {
             "type": 6
           }
         },
+        "optional": true,
         "type": 6
       }
     }
   }
 }`),
+			autogold.Expect(`{
+  "resource": {
+    "properties": {
+      "mapNestedAttribute": {
+        "type": "object",
+        "additionalProperties": {
+          "$ref": "#/types/testprov:index/R1MapNestedAttribute:R1MapNestedAttribute"
+        }
+      }
+    },
+    "inputProperties": {
+      "mapNestedAttribute": {
+        "type": "object",
+        "additionalProperties": {
+          "$ref": "#/types/testprov:index/R1MapNestedAttribute:R1MapNestedAttribute"
+        }
+      }
+    },
+    "stateInputs": {
+      "description": "Input properties used for looking up and filtering R1 resources.\n",
+      "properties": {
+        "mapNestedAttribute": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/types/testprov:index/R1MapNestedAttribute:R1MapNestedAttribute"
+          }
+        }
+      },
+      "type": "object"
+    }
+  },
+  "types": {
+    "testprov:index/R1MapNestedAttribute:R1MapNestedAttribute": {
+      "properties": {
+        "a1": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    }
+  }
+}`),
 		},
+		//------------------------------------------------------------------------------------------------------
 		{
 			"object-attribute",
 			&pb.Provider{
+				TypeName: "testprov",
 				AllResources: []pb.Resource{{
+					Name: "r1",
 					ResourceSchema: schema.Schema{
 						Attributes: map[string]schema.Attribute{
 							"object_attribute": schema.ObjectAttribute{
+								Optional: true,
 								AttributeTypes: map[string]attr.Type{
 									"a1": types.StringType,
 								},
@@ -173,7 +313,7 @@ func TestSchemaShimRepresentations(t *testing.T) {
 			},
 			autogold.Expect(`{
   "resources": {
-    "_": {
+    "testprov_r1": {
       "object_attribute": {
         "element": {
           "resource": {
@@ -182,8 +322,45 @@ func TestSchemaShimRepresentations(t *testing.T) {
             }
           }
         },
+        "optional": true,
         "type": 6
       }
+    }
+  }
+}`),
+			autogold.Expect(`{
+  "resource": {
+    "properties": {
+      "objectAttribute": {
+        "$ref": "#/types/testprov:index/R1ObjectAttribute:R1ObjectAttribute"
+      }
+    },
+    "inputProperties": {
+      "objectAttribute": {
+        "$ref": "#/types/testprov:index/R1ObjectAttribute:R1ObjectAttribute"
+      }
+    },
+    "stateInputs": {
+      "description": "Input properties used for looking up and filtering R1 resources.\n",
+      "properties": {
+        "objectAttribute": {
+          "$ref": "#/types/testprov:index/R1ObjectAttribute:R1ObjectAttribute"
+        }
+      },
+      "type": "object"
+    }
+  },
+  "types": {
+    "testprov:index/R1ObjectAttribute:R1ObjectAttribute": {
+      "properties": {
+        "a1": {
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "required": [
+        "a1"
+      ]
     }
   }
 }`),
@@ -206,6 +383,37 @@ func TestSchemaShimRepresentations(t *testing.T) {
 			require.NoError(t, err)
 
 			tc.expect.Equal(t, string(prettyBytes))
+
+			rtok := "testprov:index:R1"
+
+			info := info.Provider{
+				Name: "testprov",
+				P:    shimmedProvider,
+				Resources: map[string]*info.Resource{
+					"testprov_r1": {
+						Tok: tokens.Type(rtok),
+					},
+				},
+			}
+
+			nilSink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
+			pSpec, err := tfgen.GenerateSchema(info, nilSink)
+			require.NoError(t, err)
+
+			type miniSpec struct {
+				Resource any `json:"resource"`
+				Types    any `json:"types"`
+			}
+
+			ms := miniSpec{
+				Resource: pSpec.Resources[rtok],
+				Types:    pSpec.Types,
+			}
+
+			prettySpec, err := json.MarshalIndent(ms, "", "  ")
+			require.NoError(t, err)
+
+			tc.expectSchema.Equal(t, string(prettySpec))
 		})
 	}
 }
