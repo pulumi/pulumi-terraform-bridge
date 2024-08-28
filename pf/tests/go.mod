@@ -1,6 +1,6 @@
 module github.com/pulumi/pulumi-terraform-bridge/pf/tests
 
-go 1.21.12
+go 1.22
 
 replace github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests => ../../pkg/tests
 
