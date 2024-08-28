@@ -7,8 +7,10 @@ import (
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
-var _ = shim.Schema(v1Schema{})
-var _ = shim.SchemaMap(v1SchemaMap{})
+var (
+	_ = shim.Schema(v1Schema{})
+	_ = shim.SchemaMap(v1SchemaMap{})
+)
 
 // UnknownVariableValue is the sentinal defined in github.com/hashicorp/terraform/configs/hcl2shim,
 // representing a variable whose value is not known at some particular time. The value is duplicated here in
@@ -22,6 +24,10 @@ type v1Schema struct {
 
 func NewSchema(s *schema.Schema) shim.Schema {
 	return v1Schema{s}
+}
+
+func (s v1Schema) Implementation() string {
+	return "sdkv1"
 }
 
 func (s v1Schema) Type() shim.ValueType {
@@ -139,6 +145,18 @@ func (s v1Schema) SetHash(v interface{}) int {
 		return -code
 	}
 	return code
+}
+
+func (s v1Schema) AtLeastOneOf() []string {
+	return s.tf.AtLeastOneOf
+}
+
+func (s v1Schema) RequiredWith() []string {
+	return nil
+}
+
+func (s v1Schema) ConfigMode() shim.ConfigModeType {
+	return shim.ConfigModeType(s.tf.ConfigMode)
 }
 
 type v1SchemaMap map[string]*schema.Schema

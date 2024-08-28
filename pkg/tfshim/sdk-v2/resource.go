@@ -10,8 +10,10 @@ import (
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
-var _ = shim.Resource(v2Resource{})
-var _ = shim.ResourceMap(v2ResourceMap{})
+var (
+	_ = shim.Resource(v2Resource{})
+	_ = shim.ResourceMap(v2ResourceMap{})
+)
 
 type v2Resource struct {
 	tf *schema.Resource
@@ -21,12 +23,20 @@ func NewResource(r *schema.Resource) shim.Resource {
 	return v2Resource{r}
 }
 
+func (r v2Resource) Implementation() string {
+	return "sdkv2"
+}
+
 func (r v2Resource) Schema() shim.SchemaMap {
 	return v2SchemaMap(r.tf.SchemaMap())
 }
 
 func (r v2Resource) SchemaVersion() int {
 	return r.tf.SchemaVersion
+}
+
+func (r v2Resource) UseJSONNumber() bool {
+	return r.tf.UseJSONNumber
 }
 
 //nolint:staticcheck
@@ -109,7 +119,8 @@ func (r v2Resource) InstanceState(id string, object, meta map[string]interface{}
 			ID:         id,
 			Attributes: attributes,
 			Meta:       meta,
-		}, nil}, nil
+		}, nil,
+	}, nil
 }
 
 func (r v2Resource) DecodeTimeouts(config shim.ResourceConfig) (*shim.ResourceTimeout, error) {

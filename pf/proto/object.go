@@ -31,6 +31,9 @@ type object struct {
 	obj tfprotov6.SchemaObject
 }
 
+func (o object) Implementation() string { return "pf" }
+func (o object) UseJSONNumber() bool    { return false }
+
 func (o object) Schema() shim.SchemaMap {
 	contract.Assertf(o.obj.Nesting != tfprotov6.SchemaObjectNestingModeMap,
 		"%T cannot be a map, since that would require `o` to represent a Map<Object> type", o)

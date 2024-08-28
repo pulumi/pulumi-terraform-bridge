@@ -10,8 +10,10 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 )
 
-var _ = shim.Resource((*resource)(nil))
-var _ = shim.ResourceMap(resourceMap{})
+var (
+	_ = shim.Resource((*resource)(nil))
+	_ = shim.ResourceMap(resourceMap{})
+)
 
 type resource struct {
 	provider *provider
@@ -22,12 +24,20 @@ type resource struct {
 	schemaVersion int
 }
 
+func (r *resource) Implementation() string {
+	return "tfplugin5"
+}
+
 func (r *resource) Schema() shim.SchemaMap {
 	return r.schema
 }
 
 func (r *resource) SchemaVersion() int {
 	return r.schemaVersion
+}
+
+func (r *resource) UseJSONNumber() bool {
+	return false
 }
 
 func (r *resource) Importer() shim.ImportFunc {

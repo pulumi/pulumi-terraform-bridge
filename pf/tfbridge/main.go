@@ -15,12 +15,14 @@
 package tfbridge
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
 	"os"
+	"time"
 
 	rprovider "github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -70,6 +72,8 @@ func handleFlags(
 
 	dumpInfo := flags.Bool("get-provider-info", false, "dump provider info as JSON to stdout")
 	providerVersion := flags.Bool("version", false, "get built provider version")
+	dumpTFSchemaCSVPath := flags.String(
+		"dump-tf-resource-csv-path", "", "dump Terraform resource CSV to the specified path")
 
 	err := flags.Parse(os.Args[1:])
 	contract.IgnoreError(err)
@@ -91,6 +95,40 @@ func handleFlags(
 		if err := json.NewEncoder(os.Stdout).Encode(info); err != nil {
 			cmdutil.ExitError(err.Error())
 		}
+		os.Exit(0)
+	}
+
+	if *dumpTFSchemaCSVPath != "" {
+		prov, err := getProviderInfo()
+		if err != nil {
+			cmdutil.ExitError(err.Error())
+		}
+		resBuf := &bytes.Buffer{}
+		schBuf := &bytes.Buffer{}
+		err = prov.GetCSVSchema(prov.Name, prov.Version, schBuf, resBuf)
+		if err != nil {
+			cmdutil.ExitError(err.Error())
+		}
+
+		// get_current date
+		currentTime := time.Now()
+		formattedTime := currentTime.Format("150405")
+
+		resPath := fmt.Sprintf("%s/%s_%s_resources_%s.csv", *dumpTFSchemaCSVPath, prov.Name, prov.Version, formattedTime)
+		schPath := fmt.Sprintf("%s/%s_%s_schemas_%s.csv", *dumpTFSchemaCSVPath, prov.Name, prov.Version, formattedTime)
+
+		if err := os.MkdirAll(*dumpTFSchemaCSVPath, 0o700); err != nil {
+			cmdutil.ExitError(err.Error())
+		}
+
+		if err := os.WriteFile(resPath, resBuf.Bytes(), 0o600); err != nil {
+			cmdutil.ExitError(err.Error())
+		}
+
+		if err := os.WriteFile(schPath, schBuf.Bytes(), 0o600); err != nil {
+			cmdutil.ExitError(err.Error())
+		}
+
 		os.Exit(0)
 	}
 

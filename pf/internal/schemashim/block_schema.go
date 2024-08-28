@@ -45,6 +45,10 @@ func (s *blockSchema) Type() shim.ValueType {
 	return vt
 }
 
+func (*blockSchema) Implementation() string {
+	return "pf"
+}
+
 func (s *blockSchema) Description() string {
 	if desc := s.block.GetMarkdownDescription(); desc != "" {
 		return desc
@@ -54,7 +58,6 @@ func (s *blockSchema) Description() string {
 
 // Needs to return a shim.Schema, a shim.Resource, or nil. See docstring on shim.Schema.Elem().
 func (s *blockSchema) Elem() interface{} {
-
 	asObjectType := func(typ any) (shim.Resource, bool) {
 		if tt, ok := typ.(basetypes.ObjectTypable); ok {
 			var res shim.Resource = newObjectPseudoResource(tt,
@@ -118,15 +121,15 @@ func (s *blockSchema) MaxItems() int      { return int(s.block.GetMaxItems()) }
 func (s *blockSchema) MinItems() int      { return int(s.block.GetMinItems()) }
 
 func (*blockSchema) ConflictsWith() []string {
-	panic("ConflictsWith() should not be called during schema generation")
+	return nil
 }
 
-func (*blockSchema) Default() interface{} {
-	panic("Default() should not be called during schema generation")
+func (s *blockSchema) Default() interface{} {
+	return nil
 }
 
 func (*blockSchema) DefaultFunc() shim.SchemaDefaultFunc {
-	panic("DefaultFunc() should not be called during schema generation")
+	return nil
 }
 
 func (*blockSchema) DefaultValue() (interface{}, error) {
@@ -136,7 +139,19 @@ func (*blockSchema) DefaultValue() (interface{}, error) {
 }
 
 func (*blockSchema) ExactlyOneOf() []string {
-	panic("ExactlyOneOf() should not be called during schema generation")
+	return nil
+}
+
+func (*blockSchema) AtLeastOneOf() []string {
+	return nil
+}
+
+func (*blockSchema) RequiredWith() []string {
+	return nil
+}
+
+func (*blockSchema) ConfigMode() shim.ConfigModeType {
+	return 0
 }
 
 func (*blockSchema) SetElement(config interface{}) (interface{}, error) {

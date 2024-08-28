@@ -29,8 +29,16 @@ func (r *schemaOnlyDataSource) Schema() shim.SchemaMap {
 	return r.tf.Shim()
 }
 
-func (*schemaOnlyDataSource) SchemaVersion() int {
-	panic("DataSource SchemaVersion() should not be called during schema generation")
+func (*schemaOnlyDataSource) Implementation() string {
+	return "pf"
+}
+
+func (*schemaOnlyDataSource) UseJSONNumber() bool {
+	return false
+}
+
+func (r *schemaOnlyDataSource) SchemaVersion() int {
+	return int(r.tf.ResourceSchemaVersion())
 }
 
 func (r *schemaOnlyDataSource) DeprecationMessage() string {

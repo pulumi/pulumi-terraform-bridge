@@ -20,8 +20,10 @@ import (
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
-var _ = shim.Schema(element{})
-var _ = shim.Resource(elementObject{})
+var (
+	_ = shim.Schema(element{})
+	_ = shim.Resource(elementObject{})
+)
 
 type element struct {
 	typ      tftypes.Type
@@ -55,7 +57,6 @@ func (e element) Type() shim.ValueType {
 	default:
 		return shim.TypeInvalid
 	}
-
 }
 
 func (e element) Elem() interface{} {
@@ -77,6 +78,8 @@ func (e element) Optional() bool { return e.optional }
 
 // Methods that are not available to tftypes.Type
 
+func (e element) Implementation() string                      { return "pf" }
+func (e element) UseJSONNumber() bool                         { return false }
 func (e element) Required() bool                              { return false }
 func (e element) Default() interface{}                        { return nil }
 func (e element) DefaultFunc() shim.SchemaDefaultFunc         { return nil }
@@ -89,6 +92,9 @@ func (e element) MaxItems() int                               { return 0 }
 func (e element) MinItems() int                               { return 0 }
 func (e element) ConflictsWith() []string                     { return nil }
 func (e element) ExactlyOneOf() []string                      { return nil }
+func (e element) AtLeastOneOf() []string                      { return nil }
+func (e element) RequiredWith() []string                      { return nil }
+func (e element) ConfigMode() shim.ConfigModeType             { return 0 }
 func (e element) Deprecated() string                          { return "" }
 func (e element) Removed() string                             { return "" }
 func (e element) Sensitive() bool                             { return false }

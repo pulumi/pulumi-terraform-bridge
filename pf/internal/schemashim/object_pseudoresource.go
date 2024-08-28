@@ -42,7 +42,8 @@ type objectPseudoResource struct {
 
 func newObjectPseudoResource(t basetypes.ObjectTypable,
 	nestedAttrs map[string]pfutils.Attr,
-	nestedBlocks map[string]pfutils.Block) *objectPseudoResource {
+	nestedBlocks map[string]pfutils.Block,
+) *objectPseudoResource {
 	lowerType := t.TerraformType(context.Background())
 	objType, ok := lowerType.(tftypes.Object)
 	contract.Assertf(ok, "t basetypes.ObjectTypable should produce a tftypes.Object "+
@@ -61,11 +62,17 @@ func newObjectPseudoResource(t basetypes.ObjectTypable,
 	}
 }
 
-var _ shim.Resource = (*objectPseudoResource)(nil)
-var _ shim.SchemaMap = (*objectPseudoResource)(nil)
+var (
+	_ shim.Resource  = (*objectPseudoResource)(nil)
+	_ shim.SchemaMap = (*objectPseudoResource)(nil)
+)
 
 func (r *objectPseudoResource) Validate() error {
 	return nil
+}
+
+func (r *objectPseudoResource) Implementation() string {
+	return "pf"
 }
 
 func (r *objectPseudoResource) Schema() shim.SchemaMap {
@@ -73,8 +80,11 @@ func (r *objectPseudoResource) Schema() shim.SchemaMap {
 }
 
 func (*objectPseudoResource) SchemaVersion() int {
-	panic("This is an Object type encoded as a shim.Resource, and " +
-		"SchemaVersion() should not be called on this entity during schema generation")
+	return 0
+}
+
+func (*objectPseudoResource) UseJSONNumber() bool {
+	return false
 }
 
 func (*objectPseudoResource) DeprecationMessage() string {
@@ -92,13 +102,15 @@ func (*objectPseudoResource) Timeouts() *shim.ResourceTimeout {
 }
 
 func (*objectPseudoResource) InstanceState(id string, object,
-	meta map[string]interface{}) (shim.InstanceState, error) {
+	meta map[string]interface{},
+) (shim.InstanceState, error) {
 	panic("This is an Object type encoded as a shim.Resource, and " +
 		"InstanceState() should not be called on this entity during schema generation")
 }
 
 func (*objectPseudoResource) DecodeTimeouts(
-	config shim.ResourceConfig) (*shim.ResourceTimeout, error) {
+	config shim.ResourceConfig,
+) (*shim.ResourceTimeout, error) {
 	panic("This is an Object type encoded as a shim.Resource, and " +
 		"DecodeTimeouts() should not be called on this entity during schema generation")
 }
@@ -187,7 +199,8 @@ func newTuplePseudoResource(t attr.TypeWithElementTypes) shim.Resource {
 	return &tuplePseudoResource{
 		schemaOnly: schemaOnly{"tuplePseudoResource"},
 		attrs:      attrs,
-		tuple:      t}
+		tuple:      t,
+	}
 }
 
 func (*tuplePseudoResource) SchemaVersion() int         { panic("TODO") }
@@ -195,6 +208,14 @@ func (*tuplePseudoResource) DeprecationMessage() string { panic("TODO") }
 
 func (r *tuplePseudoResource) Validate() error {
 	return nil
+}
+
+func (*tuplePseudoResource) Implementation() string {
+	return "pf"
+}
+
+func (*tuplePseudoResource) UseJSONNumber() bool {
+	return false
 }
 
 func (r *tuplePseudoResource) Schema() shim.SchemaMap {
@@ -251,7 +272,8 @@ func (s *schemaOnly) Timeouts() *shim.ResourceTimeout {
 }
 
 func (s *schemaOnly) InstanceState(id string, object,
-	meta map[string]interface{}) (shim.InstanceState, error) {
+	meta map[string]interface{},
+) (shim.InstanceState, error) {
 	m := "type"
 	if s != nil || s.typ != "" {
 		m = s.typ
@@ -260,7 +282,8 @@ func (s *schemaOnly) InstanceState(id string, object,
 }
 
 func (s *schemaOnly) DecodeTimeouts(
-	config shim.ResourceConfig) (*shim.ResourceTimeout, error) {
+	config shim.ResourceConfig,
+) (*shim.ResourceTimeout, error) {
 	m := "type"
 	if s != nil || s.typ != "" {
 		m = s.typ

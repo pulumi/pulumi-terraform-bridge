@@ -24,6 +24,10 @@ func NewSchema(s *schema.Schema) shim.Schema {
 	return v2Schema{s}
 }
 
+func (s v2Schema) Implementation() string {
+	return "sdkv2"
+}
+
 func (s v2Schema) Type() shim.ValueType {
 	switch s.tf.Type {
 	case schema.TypeBool:
@@ -106,6 +110,18 @@ func (s v2Schema) ConflictsWith() []string {
 
 func (s v2Schema) ExactlyOneOf() []string {
 	return s.tf.ExactlyOneOf
+}
+
+func (s v2Schema) AtLeastOneOf() []string {
+	return s.tf.AtLeastOneOf
+}
+
+func (s v2Schema) RequiredWith() []string {
+	return s.tf.RequiredWith
+}
+
+func (s v2Schema) ConfigMode() shim.ConfigModeType {
+	return shim.ConfigModeType(s.tf.ConfigMode)
 }
 
 func (s v2Schema) Removed() string {

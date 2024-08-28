@@ -62,6 +62,14 @@ func (m resourceMap) Set(key string, value shim.Resource) {
 
 type resource struct{ r *tfprotov6.Schema }
 
+func (r resource) Implementation() string {
+	return "pf"
+}
+
+func (r resource) UseJSONNumber() bool {
+	return false
+}
+
 func (r resource) Schema() shim.SchemaMap {
 	return blockMap{r.r.Block}
 }
@@ -81,6 +89,7 @@ func (r resource) Timeouts() *shim.ResourceTimeout {
 func (r resource) InstanceState(id string, object, meta map[string]interface{}) (shim.InstanceState, error) {
 	panic("Cannot call InstanceState for a schema only resource")
 }
+
 func (r resource) DecodeTimeouts(config shim.ResourceConfig) (*shim.ResourceTimeout, error) {
 	panic("Cannot call DecodeTimeouts for a schema only resource")
 }

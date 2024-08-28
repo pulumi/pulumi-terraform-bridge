@@ -13,6 +13,8 @@ import (
 // rather a lot of things.
 const UnknownVariableValue = "74D93920-ED26-11E3-AC10-0800200C9A66"
 
+var _ = shim.Schema((*attributeSchema)(nil))
+
 type attributeSchema struct {
 	ctyType     cty.Type
 	valueType   shim.ValueType
@@ -26,6 +28,10 @@ type attributeSchema struct {
 	minItems    int
 	deprecated  string
 	sensitive   bool
+}
+
+func (s *attributeSchema) Implementation() string {
+	return "tfplugin5"
 }
 
 func (s *attributeSchema) Type() shim.ValueType {
@@ -90,6 +96,14 @@ func (s *attributeSchema) ExactlyOneOf() []string {
 
 func (s *attributeSchema) AtLeastOneOf() []string {
 	return nil
+}
+
+func (s attributeSchema) RequiredWith() []string {
+	return nil
+}
+
+func (s attributeSchema) ConfigMode() shim.ConfigModeType {
+	return 0
 }
 
 func (s *attributeSchema) Removed() string {

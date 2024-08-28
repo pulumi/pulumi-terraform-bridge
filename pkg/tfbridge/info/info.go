@@ -21,7 +21,15 @@
 package info
 
 import (
+	"bytes"
 	"context"
+	"encoding/csv"
+	"fmt"
+	"reflect"
+	"runtime"
+	"sort"
+	"strconv"
+	"strings"
 
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
@@ -808,12 +816,17 @@ type PreConfigureCallbackWithLogger func(
 	config shim.ResourceConfig,
 ) error
 
+func getFunctionName(i interface{}) string {
+	return runtime.FuncForPC(reflect.ValueOf(i).Pointer()).Name()
+}
+
 // The types below are marshallable versions of the schema descriptions associated with a provider. These are used when
 // marshalling a provider info as JSON; Note that these types only represent a subset of the information associated
 // with a ProviderInfo; thus, a ProviderInfo cannot be round-tripped through JSON.
 
 // MarshallableSchemaShim is the JSON-marshallable form of a Terraform schema.
 type MarshallableSchemaShim struct {
+	Implementation     string                `json:"implementation,omitempty"`
 	Type               shim.ValueType        `json:"type"`
 	Optional           bool                  `json:"optional,omitempty"`
 	Required           bool                  `json:"required,omitempty"`
@@ -823,11 +836,23 @@ type MarshallableSchemaShim struct {
 	MaxItems           int                   `json:"maxItems,omitempty"`
 	MinItems           int                   `json:"minItems,omitempty"`
 	DeprecationMessage string                `json:"deprecated,omitempty"`
+	Default            interface{}           `json:"default,omitempty"`
+	// SDK specific fields
+	ConfigMode    shim.ConfigModeType `json:"configMode,omitempty"`
+	DefaultFunc   string              `json:"defaultFunc,omitempty"`
+	ConflictsWith []string            `json:"conflictsWith,omitempty"`
+	ExactlyOneOf  []string            `json:"exactlyOneOf,omitempty"`
+	AtLeastOneOf  []string            `json:"atLeastOneOf,omitempty"`
+	RequiredWith  []string            `json:"requiredWith,omitempty"`
+
+	// PF specific fields
+	// PlanModifierDescriptions []string `json:"planModifiers,omitempty"`
 }
 
 // MarshalSchemaShim converts a Terraform schema into a MarshallableSchema.
 func MarshalSchemaShim(s shim.Schema) *MarshallableSchemaShim {
 	return &MarshallableSchemaShim{
+		Implementation:     s.Implementation(),
 		Type:               s.Type(),
 		Optional:           s.Optional(),
 		Required:           s.Required(),
@@ -837,6 +862,14 @@ func MarshalSchemaShim(s shim.Schema) *MarshallableSchemaShim {
 		MaxItems:           s.MaxItems(),
 		MinItems:           s.MinItems(),
 		DeprecationMessage: s.Deprecated(),
+		Default:            s.Default(),
+		ConfigMode:         s.ConfigMode(),
+		ConflictsWith:      s.ConflictsWith(),
+		ExactlyOneOf:       s.ExactlyOneOf(),
+		AtLeastOneOf:       s.AtLeastOneOf(),
+		RequiredWith:       s.RequiredWith(),
+		DefaultFunc:        getFunctionName(s.DefaultFunc()),
+		// PlanModifierDescriptions: s.PlanModifierDescriptions(),
 	}
 }
 
@@ -855,35 +888,129 @@ func (m *MarshallableSchemaShim) Unmarshal() shim.Schema {
 	}).Shim()
 }
 
+func (m *MarshallableSchemaShim) GetFlattenedSchema(
+	provider, version, path string, tokenMapping map[string]string, schemaRows *[][]string, resourceRows *[][]string,
+) {
+	if m.Elem != nil {
+		m.Elem.GetFlattenedSchema(provider, version, path+".Elem", tokenMapping, schemaRows, resourceRows)
+	}
+
+	row := []string{
+		provider,
+		version,
+		path,
+		m.Implementation,
+		fmt.Sprintf("%v", m.Type),
+		strconv.FormatBool(m.Optional),
+		strconv.FormatBool(m.Required),
+		strconv.FormatBool(m.Computed),
+		strconv.FormatBool(m.ForceNew),
+		strconv.Itoa(m.MaxItems),
+		strconv.Itoa(m.MinItems),
+		m.DeprecationMessage,
+		fmt.Sprintf("%v", m.Default),
+		fmt.Sprintf("%v", m.ConfigMode),
+		strings.Join(m.ConflictsWith, ","),
+		strings.Join(m.ExactlyOneOf, ","),
+		strings.Join(m.AtLeastOneOf, ","),
+		strings.Join(m.RequiredWith, ","),
+		m.DefaultFunc,
+		// strings.Join(m.PlanModifierDescriptions, ","),
+	}
+
+	*schemaRows = append(*schemaRows, row)
+}
+
 // MarshallableResourceShim is the JSON-marshallable form of a Terraform resource schema.
-type MarshallableResourceShim map[string]*MarshallableSchemaShim
+type MarshallableResourceShim struct {
+	Implementation string                             `json:"implementation,omitempty"`
+	Schema         map[string]*MarshallableSchemaShim `json:"schema,omitempty"`
+	SchemaVersion  int                                `json:"schemaVersion,omitempty"`
+	UseJSONNumber  bool                               `json:"useJSONNumber,omitempty"`
+	// TODO
+	// StateUpgraders types?
+}
 
 // MarshalResourceShim converts a Terraform resource schema into a MarshallableResourceShim.
 func MarshalResourceShim(r shim.Resource) MarshallableResourceShim {
-	m := make(MarshallableResourceShim)
+	m := make(map[string]*MarshallableSchemaShim)
 	if r.Schema() == nil {
-		return m
+		return MarshallableResourceShim{Schema: m}
 	}
 	r.Schema().Range(func(k string, v shim.Schema) bool {
 		m[k] = MarshalSchemaShim(v)
 		return true
 	})
-	return m
+	return MarshallableResourceShim{
+		Schema:         m,
+		Implementation: r.Implementation(),
+		SchemaVersion:  r.SchemaVersion(),
+		UseJSONNumber:  r.UseJSONNumber(),
+	}
 }
 
 // Unmarshal creates a mostly-initialized Terraform resource schema from the given MarshallableResourceShim.
 func (m MarshallableResourceShim) Unmarshal() shim.Resource {
 	s := schema.SchemaMap{}
-	for k, v := range m {
+	for k, v := range m.Schema {
 		s[k] = v.Unmarshal()
 	}
-	return (&schema.Resource{Schema: s}).Shim()
+	return (&schema.Resource{
+		Schema:        s,
+		SchemaVersion: m.SchemaVersion,
+	}).Shim()
+}
+
+type ResourceType int
+
+const (
+	ResourceTypeResource ResourceType = iota
+	ResourceTypeDataSource
+	ResourceTypeNested
+)
+
+func (r ResourceType) String() string {
+	switch r {
+	case ResourceTypeResource:
+		return "resource"
+	case ResourceTypeDataSource:
+		return "dataSource"
+	case ResourceTypeNested:
+		return "nested"
+	default:
+		return "unknown"
+	}
+}
+
+func (m *MarshallableResourceShim) GetFlattenedSchema(
+	provider, version, path string, resourceType ResourceType, tokenMapping map[string]string, schemaRows *[][]string, resourceRows *[][]string,
+) {
+	for k, v := range m.Schema {
+		v.GetFlattenedSchema(provider, version, path+"."+k, tokenMapping, schemaRows, resourceRows)
+	}
+
+	// Find the token for the resource
+	resourceName := strings.Split(path, ".")[1]
+	token := tokenMapping[resourceName]
+
+	row := []string{
+		provider,
+		version,
+		path,
+		m.Implementation,
+		strconv.Itoa(m.SchemaVersion),
+		resourceType.String(),
+		strconv.FormatBool(m.UseJSONNumber),
+		token,
+	}
+
+	*resourceRows = append(*resourceRows, row)
 }
 
 // MarshallableElemShim is the JSON-marshallable form of a Terraform schema's element field.
 type MarshallableElemShim struct {
-	Schema   *MarshallableSchemaShim  `json:"schema,omitempty"`
-	Resource MarshallableResourceShim `json:"resource,omitempty"`
+	Schema   *MarshallableSchemaShim   `json:"schema,omitempty"`
+	Resource *MarshallableResourceShim `json:"resource,omitempty"`
 }
 
 // MarshalElemShim converts a Terraform schema's element field into a MarshallableElemShim.
@@ -892,7 +1019,8 @@ func MarshalElemShim(e interface{}) *MarshallableElemShim {
 	case shim.Schema:
 		return &MarshallableElemShim{Schema: MarshalSchemaShim(v)}
 	case shim.Resource:
-		return &MarshallableElemShim{Resource: MarshalResourceShim(v)}
+		res := MarshalResourceShim(v)
+		return &MarshallableElemShim{Resource: &res}
 	default:
 		contract.Assertf(e == nil, "unexpected schema element of type %T", e)
 		return nil
@@ -910,6 +1038,17 @@ func (m *MarshallableElemShim) Unmarshal() interface{} {
 		// m.Resource might be nil in which case it was empty when marshalled. But Unmarshal can be called on
 		// nil and returns something sensible.
 		return m.Resource.Unmarshal()
+	}
+}
+
+func (m *MarshallableElemShim) GetFlattenedSchema(
+	provider, version, path string, tokenMapping map[string]string, schemaRows *[][]string, resourceRows *[][]string,
+) {
+	if m.Schema != nil {
+		m.Schema.GetFlattenedSchema(provider, version, path, tokenMapping, schemaRows, resourceRows)
+	}
+	if m.Resource != nil {
+		m.Resource.GetFlattenedSchema(provider, version, path, ResourceTypeNested, tokenMapping, schemaRows, resourceRows)
 	}
 }
 
@@ -971,6 +1110,93 @@ func (m *MarshallableProviderShim) Unmarshal() shim.Provider {
 		ResourcesMap:   resources,
 		DataSourcesMap: dataSources,
 	}).Shim()
+}
+
+func (m *MarshallableProviderShim) GetFlattenedSchema(
+	provider, version string, resourceTokenMapping, datasourceTokenMapping map[string]string) (
+	schemaRows [][]string, resourceRows [][]string,
+) {
+	for k, v := range m.Schema {
+		v.GetFlattenedSchema(provider, version, provider+"."+k, nil, &schemaRows, &resourceRows)
+	}
+	for k, v := range m.Resources {
+		v.GetFlattenedSchema(
+			provider, version, provider+"."+k, ResourceTypeResource, resourceTokenMapping, &schemaRows, &resourceRows)
+	}
+	for k, v := range m.DataSources {
+		v.GetFlattenedSchema(
+			provider, version, provider+"."+k, ResourceTypeDataSource, datasourceTokenMapping, &schemaRows, &resourceRows)
+	}
+	return
+}
+
+//nolint:errcheck
+func (m *MarshallableProviderShim) GetCSVSchema(
+	provider, version string,
+	resourceTokenMapping, datasourceTokenMapping map[string]string, schemaOut, resourceOut *bytes.Buffer,
+) error {
+	schemaRows, resourceRows := m.GetFlattenedSchema(provider, version, resourceTokenMapping, datasourceTokenMapping)
+	// Make the order deterministic
+	pathCmp := func(i, j int) bool {
+		return schemaRows[i][2] < schemaRows[j][2]
+	}
+	sort.Slice(schemaRows, pathCmp)
+	sort.Slice(resourceRows, pathCmp)
+
+	schemaWriter := csv.NewWriter(schemaOut)
+	resourceWriter := csv.NewWriter(resourceOut)
+
+	schemaWriter.Write([]string{
+		"provider",
+		"version",
+		"path",
+		"implementation",
+		"type",
+		"optional",
+		"required",
+		"computed",
+		"forceNew",
+		"maxItems",
+		"minItems",
+		"deprecated",
+		"default",
+		"configMode",
+		"conflictsWith",
+		"exactlyOneOf",
+		"atLeastOneOf",
+		"requiredWith",
+		"defaultFunc",
+		// "planModifiers",
+	})
+
+	resourceWriter.Write([]string{
+		"provider",
+		"version",
+		"path",
+		"implementation",
+		"schemaVersion",
+		"resourceType",
+		"useJSONNumber",
+		"token",
+	})
+
+	for _, row := range schemaRows {
+		schemaWriter.Write(row)
+	}
+	for _, row := range resourceRows {
+		resourceWriter.Write(row)
+	}
+
+	schemaWriter.Flush()
+	resourceWriter.Flush()
+
+	if err := schemaWriter.Error(); err != nil {
+		return fmt.Errorf("error writing schema CSV: %w", err)
+	}
+	if err := resourceWriter.Error(); err != nil {
+		return fmt.Errorf("error writing resource CSV: %w", err)
+	}
+	return nil
 }
 
 // MarshallableSchema is the JSON-marshallable form of a Pulumi SchemaInfo value.
@@ -1189,6 +1415,23 @@ func MarshalProvider(p *Provider) *MarshallableProvider {
 	}
 
 	return &info
+}
+
+func (m *MarshallableProvider) GetCSVSchema(
+	provider, version string, schemaOut, resourceOut *bytes.Buffer,
+) error {
+	resourceTokenMapping := make(map[string]string)
+	datasourceTokenMapping := make(map[string]string)
+
+	// Create a map of resource names to tokens
+	for k, v := range m.Resources {
+		resourceTokenMapping[k] = v.Tok.String()
+	}
+	for k, v := range m.DataSources {
+		datasourceTokenMapping[k] = v.Tok.String()
+	}
+
+	return m.Provider.GetCSVSchema(provider, version, resourceTokenMapping, datasourceTokenMapping, schemaOut, resourceOut)
 }
 
 // Unmarshal creates a mostly-=initialized Pulumi ProviderInfo value from the given MarshallableProviderInfo.

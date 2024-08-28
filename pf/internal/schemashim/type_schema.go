@@ -40,6 +40,10 @@ func newTypeSchema(t pfattr.Type, nested map[string]pfutils.Attr) *typeSchema {
 	}
 }
 
+func (*typeSchema) Implementation() string {
+	return "pf"
+}
+
 func (s *typeSchema) Type() shim.ValueType {
 	vt, err := convertType(s.t)
 	if err != nil {
@@ -79,11 +83,11 @@ func (*typeSchema) MinItems() int      { return 0 }
 func (*typeSchema) Deprecated() string { return "" }
 
 func (*typeSchema) Default() interface{} {
-	panic("Default() should not be called during schema generation")
+	return nil
 }
 
 func (*typeSchema) DefaultFunc() shim.SchemaDefaultFunc {
-	panic("DefaultFunc() should not be called during schema generation")
+	return nil
 }
 
 func (*typeSchema) DefaultValue() (interface{}, error) {
@@ -102,11 +106,23 @@ func (*typeSchema) StateFunc() shim.SchemaStateFunc {
 }
 
 func (*typeSchema) ConflictsWith() []string {
-	panic("ConflictsWith() should not be called during schema generation")
+	return nil
 }
 
 func (*typeSchema) ExactlyOneOf() []string {
-	panic("ExactlyOneOf() should not be called during schema generation")
+	return nil
+}
+
+func (*typeSchema) AtLeastOneOf() []string {
+	return nil
+}
+
+func (*typeSchema) RequiredWith() []string {
+	return nil
+}
+
+func (*typeSchema) ConfigMode() shim.ConfigModeType {
+	return 0
 }
 
 func (*typeSchema) Removed() string { panic("Removed() should not be called during schema generation") }

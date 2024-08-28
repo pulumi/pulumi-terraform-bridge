@@ -30,6 +30,10 @@ type attrSchema struct {
 
 var _ shim.Schema = (*attrSchema)(nil)
 
+func (s *attrSchema) Implementation() string {
+	return "pf"
+}
+
 func (s *attrSchema) Type() shim.ValueType {
 	ty := s.attr.GetType()
 	vt, err := convertType(ty)
@@ -47,11 +51,11 @@ func (s *attrSchema) Required() bool {
 	return s.attr.IsRequired()
 }
 
-func (*attrSchema) Default() interface{} {
-	panic("Default() should not be called during schema generation")
+func (s *attrSchema) Default() interface{} {
+	return nil
 }
 func (*attrSchema) DefaultFunc() shim.SchemaDefaultFunc {
-	panic("DefaultFunc() should not be called during schema generation")
+	return nil
 }
 func (*attrSchema) DefaultValue() (interface{}, error) {
 	// DefaultValue() should not be called by tfgen, but it currently may be called by ExtractInputsFromOutputs, so
@@ -117,11 +121,23 @@ func (*attrSchema) MinItems() int {
 }
 
 func (*attrSchema) ConflictsWith() []string {
-	panic("ConflictsWith() should not be called during schema generation")
+	return nil
 
 }
 func (*attrSchema) ExactlyOneOf() []string {
-	panic("ExactlyOneOf() should not be called during schema generation")
+	return nil
+}
+
+func (*attrSchema) AtLeastOneOf() []string {
+	return nil
+}
+
+func (*attrSchema) RequiredWith() []string {
+	return nil
+}
+
+func (*attrSchema) ConfigMode() shim.ConfigModeType {
+	return 0
 }
 
 func (s *attrSchema) Deprecated() string {

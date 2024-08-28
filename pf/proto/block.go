@@ -44,6 +44,8 @@ type blockResource struct {
 	block *tfprotov6.SchemaBlock
 }
 
+func (b blockResource) Implementation() string     { return "pf" }
+func (b blockResource) UseJSONNumber() bool        { return false }
 func (b blockResource) Schema() shim.SchemaMap     { return blockMap{b.block} }
 func (b blockResource) DeprecationMessage() string { return deprecated(b.block.Deprecated) }
 
@@ -114,6 +116,7 @@ func (m blockSchema) Elem() interface{} {
 	}
 }
 
+func (m blockSchema) Implementation() string              { return "pf" }
 func (m blockSchema) Optional() bool                      { return false }
 func (m blockSchema) Required() bool                      { return false }
 func (m blockSchema) Default() interface{}                { return nil }
@@ -127,6 +130,9 @@ func (m blockSchema) MaxItems() int                       { return int(m.block.M
 func (m blockSchema) MinItems() int                       { return int(m.block.MinItems) }
 func (m blockSchema) ConflictsWith() []string             { return nil }
 func (m blockSchema) ExactlyOneOf() []string              { return nil }
+func (a blockSchema) AtLeastOneOf() []string              { return nil }
+func (a blockSchema) RequiredWith() []string              { return nil }
+func (a blockSchema) ConfigMode() shim.ConfigModeType     { return 0 }
 func (m blockSchema) Removed() string                     { return "" }
 func (m blockSchema) Sensitive() bool                     { return false }
 func (m blockSchema) Deprecated() string                  { return deprecated(m.block.Block.Deprecated) }
