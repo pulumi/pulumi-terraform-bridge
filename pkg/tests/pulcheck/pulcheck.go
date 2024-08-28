@@ -52,7 +52,7 @@ func resourceNeedsUpdate(res *schema.Resource) bool {
 // This is an experimental API.
 func EnsureProviderValid(t T, tfp *schema.Provider) {
 	for _, r := range tfp.ResourcesMap {
-		if r.ReadContext == nil {
+		if r.ReadContext == nil && r.ReadWithoutTimeout == nil && r.Read == nil {
 			r.ReadContext = func(_ context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 				return nil
 			}
