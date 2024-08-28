@@ -45,7 +45,7 @@ func newMapDecoder(elementDecoder Decoder) (Decoder, error) {
 
 func (enc *mapEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.Value, error) {
 	mapTy := tftypes.Map{ElementType: enc.elementType}
-	if propertyValueIsUnkonwn(p) {
+	if propertyValueIsUnknown(p) {
 		return tftypes.NewValue(mapTy, tftypes.UnknownValue), nil
 	}
 	if p.IsNull() {

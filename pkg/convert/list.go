@@ -46,7 +46,7 @@ func newListDecoder(elementDecoder Decoder) (Decoder, error) {
 func (enc *listEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.Value, error) {
 	listTy := tftypes.List{ElementType: enc.elementType}
 
-	if propertyValueIsUnkonwn(p) {
+	if propertyValueIsUnknown(p) {
 		return tftypes.NewValue(listTy, tftypes.UnknownValue), nil
 	}
 	if p.IsNull() {

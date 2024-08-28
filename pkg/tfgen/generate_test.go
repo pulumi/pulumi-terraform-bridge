@@ -169,11 +169,10 @@ func Test_makePropertyType(t *testing.T) {
 		assert.Equal(t, kindString, p.kind)
 	})
 
-	//TODO: change this test to assert typeKind when implementing
-	// https://github.com/pulumi/pulumi-terraform-bridge/issues/2127
 	t.Run("Dynamic Unimplemented", func(t *testing.T) {
-		_, err := g.makePropertyType(path, "obj", dynamicType, nil, false, entityDocs{})
-		assert.Error(t, err, "Error in schema generation: Dynamic types are not implemented")
+		pt, err := g.makePropertyType(path, "obj", dynamicType, nil, false, entityDocs{})
+		assert.NoError(t, err)
+		assert.Nilf(t, pt, "Expected nil *propertyType as that models the <any> type")
 	})
 
 	t.Run("ListString", func(t *testing.T) {

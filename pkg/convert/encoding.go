@@ -175,6 +175,8 @@ func deriveEncoder(pctx *schemaPropContext, t tftypes.Type) (Encoder, error) {
 		}
 	case t.Is(tftypes.Bool):
 		return newBoolEncoder(), nil
+	case t.Is(tftypes.DynamicPseudoType):
+		return newDynamicEncoder(), nil
 	}
 
 	switch tt := t.(type) {
@@ -252,6 +254,8 @@ func deriveDecoder(pctx *schemaPropContext, t tftypes.Type) (Decoder, error) {
 		}
 	case t.Is(tftypes.Bool):
 		return newBoolDecoder(), nil
+	case t.Is(tftypes.DynamicPseudoType):
+		return newDynamicDecoder(), nil
 	}
 
 	if to := pctx.TypeInfo(); to != "" {
