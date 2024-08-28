@@ -2953,3 +2953,50 @@ runtime: yaml
 		})
 	}
 }
+
+func TestImportOptionWorksWithDefaults(t *testing.T) {
+	bucket := &schema.Resource{
+		Importer: &schema.ResourceImporter{
+			StateContext: schema.ImportStatePassthroughContext,
+		},
+		ReadContext: func(
+			ctx context.Context,
+			rd *schema.ResourceData,
+			i interface{},
+		) diag.Diagnostics {
+			rd.SetId("b1")
+			return diag.Diagnostics{}
+		},
+		Schema: map[string]*schema.Schema{
+			"acl": {
+				Type:     schema.TypeString,
+				Default:  "private",
+				Optional: true,
+			},
+			"force_destroy": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  false,
+			},
+		},
+	}
+	resMap := map[string]*schema.Resource{"prov_legacy_bucket": bucket}
+	tfp := &schema.Provider{ResourcesMap: resMap}
+	bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
+	program := `
+name: test
+runtime: yaml
+resources:
+  mainRes:
+    type: prov:index:LegacyBucket
+    options:
+      import: "b1"
+outputs:
+  acl: ${mainRes.acl}
+  forceDestroy: ${mainRes.forceDestroy}
+`
+	pt := pulcheck.PulCheck(t, bridgedProvider, program)
+	res := pt.Up()
+	require.Nil(t, res.Outputs["forceDestroy"].Value)
+	require.Nil(t, res.Outputs["acl"].Value)
+}
