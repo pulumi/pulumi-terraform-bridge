@@ -90,6 +90,7 @@ func (p *PFProvider) Configure(
 func (p *PFProvider) Resources(ctx context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		NewExampleResource,
+		NewPanicResource,
 	}
 }
 

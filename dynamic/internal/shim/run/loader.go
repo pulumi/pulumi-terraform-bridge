@@ -40,6 +40,9 @@ import (
 	tfaddr "github.com/opentofu/registry-address"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
@@ -192,6 +195,25 @@ func getProviderServer(
 	return runProvider(ctx, p)
 }
 
+func includePanic(
+	ctx context.Context, method string,
+	req, reply any,
+	cc *grpc.ClientConn, invoker grpc.UnaryInvoker,
+	opts ...grpc.CallOption,
+) error {
+	err := invoker(ctx, method, req, reply, cc, opts...)
+	if status.Code(err) != codes.Unavailable {
+		return nil
+	}
+
+	panics := logging.PluginPanics()
+	if len(panics) == 0 {
+		return err
+	}
+
+	return fmt.Errorf("%w:\n%s", err, strings.Join(panics, "\n"))
+}
+
 // runProvider produces a provider factory that runs up the executable
 // file in the given cache package and uses go-plugin to implement
 // providers.Interface against it.
@@ -213,6 +235,9 @@ func runProvider(ctx context.Context, meta *providercache.CachedProvider) (Provi
 		VersionedPlugins: tfplugin.VersionedPlugins,
 		SyncStdout:       logging.PluginOutputMonitor(fmt.Sprintf("%s:stdout", meta.Provider)),
 		SyncStderr:       logging.PluginOutputMonitor(fmt.Sprintf("%s:stderr", meta.Provider)),
+		GRPCDialOptions: []grpc.DialOption{
+			grpc.WithUnaryInterceptor(includePanic),
+		},
 	}
 
 	client := plugin.NewClient(config)
