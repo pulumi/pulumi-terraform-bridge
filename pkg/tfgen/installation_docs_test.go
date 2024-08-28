@@ -85,7 +85,7 @@ func TestStripUpstreamFrontmatter(t *testing.T) {
 			}
 			t.Parallel()
 			actual := stripUpstreamFrontMatter(tt.input)
-			assert.Equal(t, tt.expected, actual)
+			assertEqualHTML(t, tt.expected, actual)
 		})
 	}
 }

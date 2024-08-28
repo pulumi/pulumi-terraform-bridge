@@ -71,19 +71,21 @@ func writeFrontMatter(providerName string) string {
 }
 
 func stripUpstreamFrontMatter(content string) string {
-	// Remove upstream front matter if any exists.
-	splitByDelimiter := strings.Split(content, delimiter)
-	if len(splitByDelimiter) > 1 {
-		content = strings.Join(splitByDelimiter[2:], "")
-		// Clean up any resulting newlines
-		content = strings.TrimSpace(content)
+	//// Remove upstream front matter if any exists.
+	//splitByDelimiter := strings.Split(content, delimiter)
+	//if len(splitByDelimiter) > 1 {
+	//	content = strings.Join(splitByDelimiter[2:], "")
+	//	// Clean up any resulting newlines
+	//	content = strings.TrimSpace(content)
+	//}
+
+	contentBytes := trimFrontMatter([]byte(content))
+
+	contentBytes, err := removeTitle(contentBytes)
+	if err != nil {
+		contract.AssertNoErrorf(err, "Title Removal encountered an error")
 	}
-	// Now remove the title, as before
-	titleIndex := strings.Index(content, "# ")
-	// Get the location of the next newline
-	nextNewLine := strings.Index(content[titleIndex:], "\n") + titleIndex
-	// strip the title header
-	return content[nextNewLine+1:]
+	return string(contentBytes)
 }
 
 // writeInstallationInstructions renders the following for any provider:
@@ -254,6 +256,49 @@ func convertExample(g *Generator, code string, exampleNumber int) (string, error
 	}
 	exampleContent += chooserEnd
 	return exampleContent, nil
+}
+
+type titleRemover struct {
+}
+
+var _ parser.ASTTransformer = titleRemover{}
+
+func (tr titleRemover) Transform(node *ast.Document, reader text.Reader, pc parser.Context) {
+	source := reader.Source()
+	var headerText string
+	// Walk to find sections that should be skipped.
+	// Walk() loses information on subsequent nodes when nodes are removed during the walk, so we only gather them here.
+	err := ast.Walk(node, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
+		if header, ok := n.(*ast.Heading); ok && entering {
+			if header.Level == 1 {
+				headerText = string(header.Text(source))
+				// TODO: delete this header
+				parent := n.Parent()
+				n.Parent().RemoveChild(parent, header)
+				return ast.WalkStop, nil
+			}
+		}
+		return ast.WalkContinue, nil
+	})
+	contract.AssertNoErrorf(err, "impossible: ast.Walk should never error")
+}
+
+func removeTitle(
+	content []byte,
+) ([]byte, error) {
+	// Instantiate our transformer
+	titleRemover := titleRemover{}
+	gm := goldmark.New(
+		goldmark.WithExtensions(parse.TFRegistryExtension),
+		goldmark.WithParserOptions(parser.WithASTTransformers(
+			util.Prioritized(titleRemover, 1000),
+		)),
+		goldmark.WithRenderer(markdown.NewRenderer()),
+	)
+	var buf bytes.Buffer
+	// Convert parses the source, applies transformers, and renders output to buf
+	err := gm.Convert(content, &buf)
+	return buf.Bytes(), err
 }
 
 type sectionSkipper struct {
