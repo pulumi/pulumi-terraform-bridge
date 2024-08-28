@@ -53,7 +53,7 @@ func runCreateInputCheck(t T, tc inputTestCase) {
 	tfwd := t.TempDir()
 
 	tfd := newTFResDriver(t, tfwd, defProviderShortName, defRtype, tc.Resource)
-	tfd.writePlanApply(t, tc.Resource.Schema, defRtype, "example", tc.Config)
+	tfd.writePlanApply(t, tc.Resource.Schema, defRtype, "example", tc.Config, lifecycleArgs{})
 
 	resMap := map[string]*schema.Resource{defRtype: tc.Resource}
 	tfp := &schema.Provider{ResourcesMap: resMap}

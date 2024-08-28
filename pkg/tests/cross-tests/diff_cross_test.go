@@ -51,39 +51,210 @@ func TestUnchangedBasicObject(t *testing.T) {
 	})
 }
 
-func TestSimpleStringNoChange(t *testing.T) {
-	config := map[string]any{"name": "A"}
-	runDiffCheck(t, diffTestCase{
-		Resource: &schema.Resource{
-			Schema: map[string]*schema.Schema{
-				"name": {
-					Type:     schema.TypeString,
-					Optional: true,
-				},
+func TestDiffBasicTypes(t *testing.T) {
+	res := &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"other_prop": {
+				Type:     schema.TypeString,
+				Optional: true,
 			},
 		},
-		Config1: config,
-		Config2: config,
-	})
-}
+	}
 
-func TestSimpleStringRename(t *testing.T) {
-	runDiffCheck(t, diffTestCase{
-		Resource: &schema.Resource{
-			Schema: map[string]*schema.Schema{
-				"name": {
-					Type:     schema.TypeString,
-					Optional: true,
+	typeCases := []struct {
+		name             string
+		config1, config2 any
+		prop             *schema.Schema
+	}{
+		{
+			name:    "string",
+			config1: map[string]any{"prop": "A"},
+			config2: map[string]any{"prop": "B"},
+			prop: &schema.Schema{
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+		},
+		{
+			name:    "int",
+			config1: map[string]any{"prop": 1},
+			config2: map[string]any{"prop": 2},
+			prop: &schema.Schema{
+				Type:     schema.TypeInt,
+				Optional: true,
+			},
+		},
+		{
+			name:    "float",
+			config1: map[string]any{"prop": 1.1},
+			config2: map[string]any{"prop": 2.2},
+			prop: &schema.Schema{
+				Type:     schema.TypeFloat,
+				Optional: true,
+			},
+		},
+		{
+			name:    "bool",
+			config1: map[string]any{"prop": true},
+			config2: map[string]any{"prop": false},
+			prop: &schema.Schema{
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
+		},
+		{
+			name:    "list attr",
+			config1: map[string]any{"prop": []any{"A", "B"}},
+			config2: map[string]any{"prop": []any{"A", "C"}},
+			prop: &schema.Schema{
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
 				},
 			},
 		},
-		Config1: map[string]any{
-			"name": "A",
+		{
+			name:    "set attr",
+			config1: map[string]any{"prop": []any{"A", "B"}},
+			config2: map[string]any{"prop": []any{"A", "C"}},
+			prop: &schema.Schema{
+				Type:     schema.TypeSet,
+				Optional: true,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
+			},
 		},
-		Config2: map[string]any{
-			"name": "B",
+		{
+			name:    "map attr",
+			config1: map[string]any{"prop": map[string]any{"A": "B"}},
+			config2: map[string]any{"prop": map[string]any{"A": "C"}},
+			prop: &schema.Schema{
+				Type:     schema.TypeMap,
+				Optional: true,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
+			},
 		},
-	})
+		{
+			name: "list block",
+			config1: map[string]any{
+				"prop": []any{map[string]any{"x": "A"}, map[string]any{"x": "B"}},
+			},
+			config2: map[string]any{
+				"prop": []any{map[string]any{"x": "A"}, map[string]any{"x": "C"}},
+			},
+			prop: &schema.Schema{
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"x": {Optional: true, Type: schema.TypeString},
+					},
+				},
+			},
+		},
+		{
+			name: "set block",
+			config1: map[string]any{
+				"prop": []any{map[string]any{"x": "A"}, map[string]any{"x": "B"}},
+			},
+			config2: map[string]any{
+				"prop": []any{map[string]any{"x": "A"}, map[string]any{"x": "C"}},
+			},
+			prop: &schema.Schema{
+				Type:     schema.TypeSet,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"x": {Optional: true, Type: schema.TypeString},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tc := range typeCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			res := res
+			tc := tc
+			res.Schema["prop"] = tc.prop
+
+			t.Run("no diff", func(t *testing.T) {
+				tfAction := runDiffCheck(t, diffTestCase{
+					Resource: res,
+					Config1:  tc.config1,
+					Config2:  tc.config1,
+				})
+
+				require.Equal(t, []string{"no-op"}, tfAction)
+			})
+
+			t.Run("diff", func(t *testing.T) {
+				tfAction := runDiffCheck(t, diffTestCase{
+					Resource: res,
+					Config1:  tc.config1,
+					Config2:  tc.config2,
+				})
+
+				require.Equal(t, []string{"update"}, tfAction)
+			})
+
+			t.Run("create", func(t *testing.T) {
+				tfAction := runDiffCheck(t, diffTestCase{
+					Resource: res,
+					Config1:  nil,
+					Config2:  tc.config1,
+				})
+
+				require.Equal(t, []string{"create"}, tfAction)
+			})
+
+			t.Run("delete", func(t *testing.T) {
+				tfAction := runDiffCheck(t, diffTestCase{
+					Resource: res,
+					Config1:  tc.config1,
+					Config2:  nil,
+				})
+
+				require.Equal(t, []string{"delete"}, tfAction)
+			})
+
+			t.Run("replace", func(t *testing.T) {
+				res := res
+				res.Schema["prop"].ForceNew = true
+				if nestedRes, ok := res.Schema["prop"].Elem.(*schema.Resource); ok {
+					nestedRes.Schema["x"].ForceNew = true
+				}
+				tfAction := runDiffCheck(t, diffTestCase{
+					Resource: res,
+					Config1:  tc.config1,
+					Config2:  tc.config2,
+				})
+
+				require.Equal(t, []string{"create", "delete"}, tfAction)
+			})
+
+			t.Run("replace delete first", func(t *testing.T) {
+				res := res
+				res.Schema["prop"].ForceNew = true
+				if nestedRes, ok := res.Schema["prop"].Elem.(*schema.Resource); ok {
+					nestedRes.Schema["x"].ForceNew = true
+				}
+				tfAction := runDiffCheck(t, diffTestCase{
+					Resource:            res,
+					Config1:             tc.config1,
+					Config2:             tc.config2,
+					DeleteBeforeReplace: true,
+				})
+
+				require.Equal(t, []string{"delete", "create"}, tfAction)
+			})
+		})
+	}
 }
 
 func TestSetReordering(t *testing.T) {
@@ -593,7 +764,6 @@ func TestOptionalComputedBlockCollection(t *testing.T) {
 }
 
 func TestComputedSetFieldsNoDiff(t *testing.T) {
-
 	elemSchema := schema.Resource{
 		Schema: map[string]*schema.Schema{
 			"metro_code": {
