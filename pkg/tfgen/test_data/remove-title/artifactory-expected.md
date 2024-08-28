@@ -1,5 +1,3 @@
-# Artifactory Provider
-
 The [Artifactory](https://jfrog.com/artifactory/) provider is used to interact with the resources supported by Artifactory. The provider needs to be configured with the proper credentials before it can be used.
 
 Links to documentation for specific resources can be found in the table of contents to the left.

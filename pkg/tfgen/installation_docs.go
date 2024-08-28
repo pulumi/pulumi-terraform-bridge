@@ -22,8 +22,8 @@ import (
 )
 
 func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
-	// Get file content without front matter, and split title
-	contentStr := stripUpstreamFrontMatter(string(docFile.Content))
+	// Get file content without front matter
+	content := trimFrontMatter(docFile.Content)
 	// Add pulumi-specific front matter
 	// Generate pulumi-specific front matter
 	frontMatter := writeFrontMatter(g.info.Name)
@@ -32,7 +32,7 @@ func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
 	installationInstructions := writeInstallationInstructions(g.info.Golang.ImportBasePath, g.info.Name)
 
 	// Add instructions to top of file
-	contentStr = frontMatter + installationInstructions + contentStr
+	contentStr := frontMatter + installationInstructions + string(content)
 
 	//Translate code blocks to Pulumi
 	contentStr, err := translateCodeBlocks(contentStr, g)
@@ -42,6 +42,12 @@ func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
 
 	// Apply edit rules to transform the doc for Pulumi-ready presentation
 	contentBytes, err := applyEditRules([]byte(contentStr), docFile.FileName, g)
+	if err != nil {
+		return nil, err
+	}
+
+	// Remove the title. A title gets populated from Hugo frontmatter; we do not want two.
+	contentBytes, err = removeTitle(contentBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -68,24 +74,6 @@ func writeFrontMatter(providerName string) string {
 		delimiter+
 		"\n",
 		title)
-}
-
-func stripUpstreamFrontMatter(content string) string {
-	//// Remove upstream front matter if any exists.
-	//splitByDelimiter := strings.Split(content, delimiter)
-	//if len(splitByDelimiter) > 1 {
-	//	content = strings.Join(splitByDelimiter[2:], "")
-	//	// Clean up any resulting newlines
-	//	content = strings.TrimSpace(content)
-	//}
-
-	contentBytes := trimFrontMatter([]byte(content))
-
-	contentBytes, err := removeTitle(contentBytes)
-	if err != nil {
-		contract.AssertNoErrorf(err, "Title Removal encountered an error")
-	}
-	return string(contentBytes)
 }
 
 // writeInstallationInstructions renders the following for any provider:
@@ -264,16 +252,17 @@ type titleRemover struct {
 var _ parser.ASTTransformer = titleRemover{}
 
 func (tr titleRemover) Transform(node *ast.Document, reader text.Reader, pc parser.Context) {
-	source := reader.Source()
-	var headerText string
 	// Walk to find sections that should be skipped.
 	// Walk() loses information on subsequent nodes when nodes are removed during the walk, so we only gather them here.
 	err := ast.Walk(node, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
+		// The first header we encounter should be the document title.
 		if header, ok := n.(*ast.Heading); ok && entering {
 			if header.Level == 1 {
-				headerText = string(header.Text(source))
-				// TODO: delete this header
 				parent := n.Parent()
+				if parent == nil {
+					panic("PARENT IS NIL")
+				}
+				// Removal here is safe, as we want to remove only the first header anyway.
 				n.Parent().RemoveChild(parent, header)
 				return ast.WalkStop, nil
 			}
