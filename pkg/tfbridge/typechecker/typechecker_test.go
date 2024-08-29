@@ -279,7 +279,7 @@ func TestValidateInputType_objects(t *testing.T) {
 					"prop": []string{"foo"},
 				})),
 			}),
-			failures: autogold.Expect([]TypeFailure{{
+			failures: autogold.Expect([]Failure{{
 				Reason:       "expected object type, got {[{map[prop:{[{foo}]}]}]} of type []",
 				ResourcePath: "top_level_type_failure",
 			}}),
@@ -334,7 +334,7 @@ func TestValidateInputType_objects(t *testing.T) {
 			input: resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
 				"objectStringProp": map[string]string{"foo": "bar"},
 			})),
-			failures: autogold.Expect([]TypeFailure{{
+			failures: autogold.Expect([]Failure{{
 				Reason:       "expected string type, got {map[foo:{bar}]} of type object",
 				ResourcePath: "object_string_type_failure.objectStringProp",
 			}}),
@@ -390,7 +390,7 @@ func TestValidateInputType_objects(t *testing.T) {
 					{"foo": "bar"},
 				},
 			})),
-			failures: autogold.Expect([]TypeFailure{{
+			failures: autogold.Expect([]Failure{{
 				Reason:       "expected object type, got {[{map[foo:{bar}]}]} of type []",
 				ResourcePath: "object_nested_object_type_failure.prop",
 			}}),
@@ -468,7 +468,7 @@ func TestValidateInputType_objects(t *testing.T) {
 					"objectStringProp": "foo",
 				},
 			})),
-			failures: autogold.Expect([]TypeFailure{{
+			failures: autogold.Expect([]Failure{{
 				Reason:       `expected object type, got "foo" of type string`,
 				ResourcePath: "object_double_nested_object_type_failure.prop.objectStringProp",
 			}}),
@@ -541,7 +541,7 @@ func TestValidateInputType_objects(t *testing.T) {
 			input: resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
 				"prop": map[string]string{"foo": "bar"},
 			})),
-			failures: autogold.Expect([]TypeFailure{{
+			failures: autogold.Expect([]Failure{{
 				Reason:       "expected array type, got {map[foo:{bar}]} of type object",
 				ResourcePath: "object_nested_array_type_failure.prop",
 			}}),
@@ -615,7 +615,7 @@ func TestValidateInputType_objects(t *testing.T) {
 					{"objectStringProp": []string{"foo"}},
 				},
 			})),
-			failures: autogold.Expect([]TypeFailure{{
+			failures: autogold.Expect([]Failure{{
 				Reason:       "expected string type, got {[{foo}]} of type []",
 				ResourcePath: "object_nested_array_object_type_failure.prop[0].objectStringProp",
 			}}),
@@ -803,7 +803,7 @@ func TestValidateInputType_objects(t *testing.T) {
 				"project",
 			)
 
-			v := &PulumiInputValidator{
+			v := &TypeChecker{
 				urn:    urn,
 				schema: pspec,
 			}
@@ -965,7 +965,7 @@ func TestValidateInputType_arrays(t *testing.T) {
 				})),
 				resource.NewStringProperty("foo"),
 			}),
-			failures: autogold.Expect([]TypeFailure{
+			failures: autogold.Expect([]Failure{
 				{
 					Reason:       "expected string type, got {[{1}]} of type []",
 					ResourcePath: "object_string_type_failure[1].objectStringProp",
@@ -1036,7 +1036,7 @@ func TestValidateInputType_arrays(t *testing.T) {
 					},
 				})),
 			}),
-			failures: autogold.Expect([]TypeFailure{{
+			failures: autogold.Expect([]Failure{{
 				Reason:       "expected string type, got {[{1}]} of type []",
 				ResourcePath: "object_nested_object_type_failure[1].prop.foo",
 			}}),
@@ -1134,7 +1134,7 @@ func TestValidateInputType_arrays(t *testing.T) {
 					},
 				})),
 			}),
-			failures: autogold.Expect([]TypeFailure{
+			failures: autogold.Expect([]Failure{
 				{
 					Reason:       "expected string type, got {map[foo:{bar}]} of type object",
 					ResourcePath: "object_nested_array_type_failure[0].prop[1]",
@@ -1226,7 +1226,7 @@ func TestValidateInputType_arrays(t *testing.T) {
 					},
 				})),
 			}),
-			failures: autogold.Expect([]TypeFailure{{
+			failures: autogold.Expect([]Failure{{
 				Reason:       "expected string type, got {[{foo}]} of type []",
 				ResourcePath: "object_nested_array_object_type_failure[0].prop[1].objectStringProp",
 			}}),
@@ -1294,7 +1294,7 @@ func TestValidateInputType_arrays(t *testing.T) {
 				"project",
 			)
 
-			v := &PulumiInputValidator{
+			v := &TypeChecker{
 				urn:    urn,
 				schema: pspec,
 			}
@@ -1376,7 +1376,7 @@ func TestValidateInputType_toplevel(t *testing.T) {
 		{
 			name:  "string_type_failure",
 			input: resource.NewArrayProperty([]resource.PropertyValue{resource.NewNumberProperty(1)}),
-			failures: autogold.Expect([]TypeFailure{{
+			failures: autogold.Expect([]Failure{{
 				Reason:       "expected string type, got {[{1}]} of type []",
 				ResourcePath: "string_type_failure",
 			}}),
@@ -1462,7 +1462,7 @@ func TestValidateInputType_toplevel(t *testing.T) {
 			input: resource.NewObjectProperty(
 				resource.NewPropertyMapFromMap(map[string]interface{}{"foo": []string{"bar"}}),
 			),
-			failures: autogold.Expect([]TypeFailure{{
+			failures: autogold.Expect([]Failure{{
 				Reason:       "expected boolean type, got {[{bar}]} of type []",
 				ResourcePath: "object_type_failure.foo",
 			}}),
@@ -1616,7 +1616,7 @@ func TestValidateInputType_toplevel(t *testing.T) {
 				"project",
 			)
 
-			v := &PulumiInputValidator{
+			v := &TypeChecker{
 				urn:    urn,
 				schema: pspec,
 			}
@@ -1642,7 +1642,7 @@ func TestValidateConfigType(t *testing.T) {
 		{
 			name:      "unexpected_argument",
 			inputName: "endpoints",
-			failures: autogold.Expect([]TypeFailure{{
+			failures: autogold.Expect([]Failure{{
 				Reason:       "an unexpected argument \"wxyz\" was provided",
 				ResourcePath: "endpoints[0]",
 			}}),
@@ -1702,7 +1702,7 @@ func TestValidateConfigType(t *testing.T) {
 				"project",
 			)
 
-			v := &PulumiInputValidator{
+			v := &TypeChecker{
 				urn:                  urn,
 				schema:               pspec,
 				validateUnknownTypes: true,

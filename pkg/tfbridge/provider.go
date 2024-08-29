@@ -597,7 +597,7 @@ func (p *Provider) typeCheckConfig(
 		return nil
 	}
 
-	iv := typechecker.NewInputValidator(urn, *p.pulumiSchemaSpec, true)
+	iv := typechecker.New(urn, *p.pulumiSchemaSpec, true)
 	typeFailures := iv.ValidateConfig(news)
 	if validateShouldError {
 		return p.convertTypeFailures(urn, typeFailures)
@@ -640,7 +640,7 @@ func (p *Provider) typeCheckConfig(
 }
 
 func (p *Provider) convertTypeFailures(
-	urn resource.URN, typeFailures []typechecker.TypeFailure,
+	urn resource.URN, typeFailures []typechecker.Failure,
 ) *pulumirpc.CheckResponse {
 	if len(typeFailures) == 0 {
 		return nil
@@ -970,7 +970,7 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 	if p.pulumiSchema != nil {
 		schema := p.pulumiSchemaSpec
 		if schema != nil {
-			iv := typechecker.NewInputValidator(urn, *schema, false)
+			iv := typechecker.New(urn, *schema, false)
 			typeFailures := iv.ValidateInputs(t, news)
 			if len(typeFailures) > 0 {
 				p.hasTypeErrors[urn] = struct{}{}
