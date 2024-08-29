@@ -30,11 +30,21 @@ func knownModules[T info.Resource | info.DataSource](
 	moduleTransform func(string) string,
 ) info.ElementStrategy[T] {
 	return func(tfToken string, elem *T) error {
-		tk := strings.TrimPrefix(tfToken, prefix)
-		if len(tk) == len(tfToken) {
+
+		var tk string
+		if t, foundPrefix := strings.CutPrefix(tfToken, prefix); foundPrefix {
+			if t == "" {
+				// If the entire tfToken is the prefix, then we don't strip the prefix. It
+				// will act as both prefix, module and name.
+				tk = tfToken
+			} else {
+				tk = t
+			}
+		} else {
 			return apply("", upperCamelCase(tk), elem,
 				fmt.Errorf("token '%s' missing package prefix '%s'", tfToken, prefix))
 		}
+
 		mod := defaultModule
 		for _, m := range modules {
 			if strings.HasPrefix(tk, m) {
