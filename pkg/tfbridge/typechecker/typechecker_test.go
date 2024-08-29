@@ -795,18 +795,8 @@ func TestValidateInputType_objects(t *testing.T) {
 					},
 				},
 			}
-			urn := resource.CreateURN(
-				"testResource",
-				"pkg:mod:ResA",
-				"",
-				"stack",
-				"project",
-			)
 
-			v := &TypeChecker{
-				urn:    urn,
-				schema: pspec,
-			}
+			v := &TypeChecker{schema: pspec}
 			failures := v.ValidateInputs(tokens.Type("pkg:mod:ResA"), resource.PropertyMap{
 				resource.PropertyKey(tc.name): tc.input,
 			})
@@ -1286,18 +1276,8 @@ func TestValidateInputType_arrays(t *testing.T) {
 					},
 				},
 			}
-			urn := resource.CreateURN(
-				"testResource",
-				"pkg:mod:ResA",
-				"",
-				"stack",
-				"project",
-			)
 
-			v := &TypeChecker{
-				urn:    urn,
-				schema: pspec,
-			}
+			v := &TypeChecker{schema: pspec}
 			failures := v.ValidateInputs(tokens.Type("pkg:mod:ResA"), resource.PropertyMap{
 				resource.PropertyKey(tc.name): tc.input,
 			})
@@ -1608,18 +1588,8 @@ func TestValidateInputType_toplevel(t *testing.T) {
 					},
 				},
 			}
-			urn := resource.CreateURN(
-				"testResource",
-				"pkg:mod:ResA",
-				"",
-				"stack",
-				"project",
-			)
 
-			v := &TypeChecker{
-				urn:    urn,
-				schema: pspec,
-			}
+			v := &TypeChecker{schema: pspec}
 			failures := v.ValidateInputs(tokens.Type("pkg:mod:ResA"), resource.PropertyMap{
 				resource.PropertyKey(tc.name): tc.input,
 			})
@@ -1694,16 +1664,8 @@ func TestValidateConfigType(t *testing.T) {
 					},
 				},
 			}
-			urn := resource.CreateURN(
-				"testResource",
-				"pkg:mod:ResA",
-				"",
-				"stack",
-				"project",
-			)
 
 			v := &TypeChecker{
-				urn:                  urn,
 				schema:               pspec,
 				validateUnknownTypes: true,
 			}
