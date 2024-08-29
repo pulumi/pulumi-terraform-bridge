@@ -24,9 +24,6 @@ import (
 )
 
 type TypeChecker struct {
-	// The resource URN that we are validating
-	urn resource.URN
-
 	// The pulumi schema of the package
 	schema pschema.PackageSpec
 
@@ -44,9 +41,8 @@ type Failure struct {
 }
 
 // New creates a new type checker for a given resource and package schema
-func New(urn resource.URN, schema pschema.PackageSpec, validateUnknownTypes bool) *TypeChecker {
+func New(schema pschema.PackageSpec, validateUnknownTypes bool) *TypeChecker {
 	return &TypeChecker{
-		urn:                  urn,
 		schema:               schema,
 		validateUnknownTypes: validateUnknownTypes,
 	}
