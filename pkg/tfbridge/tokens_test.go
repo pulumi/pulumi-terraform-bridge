@@ -90,22 +90,61 @@ func TestTokensSingleModule(t *testing.T) {
 	}, info.Resources)
 }
 
-func TestTokenWithModuleName(t *testing.T) {
-	info := tfbridge.ProviderInfo{
-		Name: "foo",
-		P: (&schema.Provider{
-			ResourcesMap: schema.ResourceMap{
-				"foo_index": nil,
-			},
-		}).Shim(),
+func TestTokensCornerCases(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name          string
+		tfToken       string
+		expectedToken autogold.Value
+	}{
+		{
+			name:          "token has module name",
+			tfToken:       "tfpkg_index",
+			expectedToken: autogold.Expect("pupkg:index/index:Index"),
+		},
+		{
+			// Repro for https://github.com/pulumi/pulumi-terraform-provider/issues/27
+			name:          "no suffix",
+			tfToken:       "tfpkg",
+			expectedToken: autogold.Expect("pupkg:index/tfpkg:Tfpkg"),
+		},
+		{
+			// Repro for https://github.com/pulumi/pulumi-terraform-provider/issues/28
+			name:          "token starts with a number",
+			tfToken:       "tfpkg_1f_token",
+			expectedToken: autogold.Expect("pupkg:index/oneFToken:OneFToken"),
+		},
+		{
+			name:          "token starts with numbers",
+			tfToken:       "tfpkg_1234f",
+			expectedToken: autogold.Expect("pupkg:index/one234f:One234f"),
+		},
+		{
+			name:          "token starts with just a number",
+			tfToken:       "tfpkg_1",
+			expectedToken: autogold.Expect("pupkg:index/one:One"),
+		},
 	}
 
-	strategy := tokens.SingleModule(info.GetResourcePrefix(), "index", tokens.MakeStandard("bar"))
-	require.NoError(t, info.ComputeTokens(strategy))
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			info := tfbridge.ProviderInfo{
+				Name: "tfpkg",
+				P: (&schema.Provider{
+					ResourcesMap: schema.ResourceMap{
+						tt.tfToken: nil,
+					},
+				}).Shim(),
+			}
 
-	assert.Equal(t, map[string]*tfbridge.ResourceInfo{
-		"foo_index": {Tok: "bar:index/index:Index"},
-	}, info.Resources)
+			strategy := tokens.SingleModule(info.GetResourcePrefix(), "index", tokens.MakeStandard("pupkg"))
+			require.NoError(t, info.ComputeTokens(strategy))
+
+			tt.expectedToken.Equal(t, string(info.Resources[tt.tfToken].Tok))
+		})
+	}
 }
 
 func TestTokensKnownModules(t *testing.T) {
