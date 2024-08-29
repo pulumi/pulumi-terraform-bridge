@@ -106,8 +106,8 @@ func TestRemoveTitle(t *testing.T) {
 		},
 		{
 			name:     "Strips Title On Top",
-			input:    readfile(t, "test_data/strip-front-matter/artifactory-input.md"),
-			expected: readfile(t, "test_data/strip-front-matter/artifactory-expected.md"),
+			input:    readfile(t, "test_data/remove-title/artifactory-input.md"),
+			expected: readfile(t, "test_data/remove-title/artifactory-expected.md"),
 		},
 	}
 	for _, tt := range tests {
