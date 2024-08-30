@@ -33,8 +33,6 @@ const (
 var computedValue = resource.Computed{Element: resource.NewStringProperty("")}
 
 func TestCustomizeDiff(t *testing.T) {
-	// TODO: Fix
-	t.Skipf("relies on diff internals")
 	inputsMap := resource.NewPropertyMapFromMap(map[string]interface{}{
 		"prop": "foo",
 	})
