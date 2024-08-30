@@ -286,8 +286,6 @@ func TestReproMinimalDiffCycle(t *testing.T) {
 }
 
 func TestValidateInputsPanic(t *testing.T) {
-	// TODO: Fix
-	t.Skip("Skip as the error no longer causes a panic")
 	ctx := context.Background()
 	p := newTestProvider(ctx, tfbridge.ProviderInfo{
 		P: shimv2.NewProvider(&schema.Provider{
