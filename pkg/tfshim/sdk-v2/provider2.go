@@ -204,8 +204,8 @@ func (p *planResourceChangeImpl) Diff(
 		v2InstanceDiff: v2InstanceDiff{
 			tf: plan.PlannedDiff,
 		},
-		config:               cfg,
-		plannedState:         plan.PlannedState,
+		config:                    cfg,
+		plannedState:              plan.PlannedState,
 		diffEqualDecisionOverride: &eq,
 	}, nil
 }
