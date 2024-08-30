@@ -257,7 +257,7 @@ func v2Setup(tfs map[string]*v2Schema.Schema) (
 
 	// Convert the inputs and state to TF config and resource attributes.
 	r := Resource{
-		TF:     shimv2.NewResource(v2Provider.ResourcesMap["resource"]),
+		TF:     provider.ResourcesMap().Get("resource"),
 		Schema: &ResourceInfo{Fields: info},
 	}
 
