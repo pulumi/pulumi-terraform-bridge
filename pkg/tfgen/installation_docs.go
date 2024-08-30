@@ -252,22 +252,18 @@ type titleRemover struct {
 var _ parser.ASTTransformer = titleRemover{}
 
 func (tr titleRemover) Transform(node *ast.Document, reader text.Reader, pc parser.Context) {
-	// Walk to find sections that should be skipped.
-	// Walk() loses information on subsequent nodes when nodes are removed during the walk, so we only gather them here.
 	err := ast.Walk(node, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
 		// The first header we encounter should be the document title.
-		if header, ok := n.(*ast.Heading); ok && entering {
-			if header.Level == 1 {
-				parent := n.Parent()
-				if parent == nil {
-					panic("PARENT IS NIL")
-				}
-				// Removal here is safe, as we want to remove only the first header anyway.
-				n.Parent().RemoveChild(parent, header)
-				return ast.WalkStop, nil
-			}
+		header, found := n.(*ast.Heading)
+		if !found || header.Level != 1 || !entering {
+			return ast.WalkContinue, nil
 		}
-		return ast.WalkContinue, nil
+
+		parent := n.Parent()
+		contract.Assertf(parent != nil, "parent cannot be nil")
+		// Removal here is safe, as we want to remove only the first header anyway.
+		n.Parent().RemoveChild(parent, header)
+		return ast.WalkStop, nil
 	})
 	contract.AssertNoErrorf(err, "impossible: ast.Walk should never error")
 }
