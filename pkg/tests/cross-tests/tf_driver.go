@@ -18,7 +18,6 @@ package crosstests
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -130,12 +129,9 @@ func (*TfResDriver) parseChangesFromTFPlan(plan tfcheck.TfPlan) tfChange {
 	}
 	jb, err := json.Marshal(plan.RawPlan)
 	contract.AssertNoErrorf(err, "failed to marshal terraform plan")
-	fmt.Printf("plan: %s\n", jb)
 	var pp p
 	err = json.Unmarshal(jb, &pp)
 	contract.AssertNoErrorf(err, "failed to unmarshal terraform plan")
-	fmt.Printf("pp: %v\n", pp.ResourceChanges[0].Change.Before)
-	fmt.Printf("pp: %v\n", pp.ResourceChanges[0].Change.After)
 	contract.Assertf(len(pp.ResourceChanges) == 1, "expected exactly one resource change")
 	return pp.ResourceChanges[0].Change
 }

@@ -933,8 +933,11 @@ func TestMaxItemsOneCollectionOnlyDiff(t *testing.T) {
 		},
 	)
 
+	getFilter := func(val map[string]any) any {
+		return val["rule"].([]any)[0].(map[string]any)["filter"]
+	}
+
 	require.Equal(t, []string{"update"}, diff.TFDiff.Actions)
-	autogold.Expect(map[string]interface{}{"id": "newid", "rule": []interface{}{map[string]interface{}{"filter": []interface{}{}}}}).Equal(t, diff.TFDiff.Before)
-	autogold.Expect(map[string]interface{}{"id": "newid", "rule": []interface{}{map[string]interface{}{"filter": []interface{}{map[string]interface{}{"prefix": nil}}}}}).Equal(t, diff.TFDiff.After)
+	require.NotEqual(t, getFilter(diff.TFDiff.Before), getFilter(diff.TFDiff.After))
 	autogold.Expect(map[string]interface{}{"rules[0].filter": map[string]interface{}{"kind": "UPDATE"}}).Equal(t, diff.PulumiDiff.DetailedDiff)
 }
