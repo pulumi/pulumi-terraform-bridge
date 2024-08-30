@@ -3,12 +3,14 @@ package sdkv2
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/golang/glog"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/logging"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	testing "github.com/mitchellh/go-testing-interface"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
@@ -62,8 +64,13 @@ func NewProvider(p *schema.Provider, opts ...providerOption) shim.Provider {
 		tf:   p,
 		opts: opts,
 	}
-	// TODO: revert
-	return newProviderWithPlanResourceChange(p, prov, func(s string) bool { return true })
+	if cmdutil.IsTruthy(os.Getenv("PULUMI_ENABLE_PLAN_RESOURCE_CHANGE")) {
+		return newProviderWithPlanResourceChange(p, prov, func(s string) bool { return true })
+	}
+	if opts, err := getProviderOptions(opts); err == nil && opts.planResourceChangeFilter != nil {
+		return newProviderWithPlanResourceChange(p, prov, opts.planResourceChangeFilter)
+	}
+	return prov
 }
 
 func (p v2Provider) Schema() shim.SchemaMap {
