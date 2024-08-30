@@ -673,7 +673,7 @@ func TestProviderPreviewV2(t *testing.T) {
 	}
 	provider.resources = map[tokens.Type]Resource{
 		"ExampleResource": {
-			TF:     shimv2.NewResource(testTFProviderV2.ResourcesMap["example_resource"]),
+			TF:     provider.tf.ResourcesMap().Get("example_resource"),
 			TFName: "example_resource",
 			Schema: &ResourceInfo{Tok: "ExampleResource"},
 		},
