@@ -26,6 +26,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hexops/autogold/v2"
 	"github.com/stretchr/testify/require"
 )
 
@@ -190,7 +191,7 @@ func TestDiffBasicTypes(t *testing.T) {
 					Config2:  tc.config1,
 				})
 
-				require.Equal(t, []string{"no-op"}, tfAction)
+				require.Equal(t, []string{"no-op"}, tfAction.TFDiff.Actions)
 			})
 
 			t.Run("diff", func(t *testing.T) {
@@ -200,7 +201,7 @@ func TestDiffBasicTypes(t *testing.T) {
 					Config2:  tc.config2,
 				})
 
-				require.Equal(t, []string{"update"}, tfAction)
+				require.Equal(t, []string{"update"}, tfAction.TFDiff.Actions)
 			})
 
 			t.Run("create", func(t *testing.T) {
@@ -210,7 +211,7 @@ func TestDiffBasicTypes(t *testing.T) {
 					Config2:  tc.config1,
 				})
 
-				require.Equal(t, []string{"create"}, tfAction)
+				require.Equal(t, []string{"create"}, tfAction.TFDiff.Actions)
 			})
 
 			t.Run("delete", func(t *testing.T) {
@@ -220,7 +221,7 @@ func TestDiffBasicTypes(t *testing.T) {
 					Config2:  nil,
 				})
 
-				require.Equal(t, []string{"delete"}, tfAction)
+				require.Equal(t, []string{"delete"}, tfAction.TFDiff.Actions)
 			})
 
 			t.Run("replace", func(t *testing.T) {
@@ -235,7 +236,7 @@ func TestDiffBasicTypes(t *testing.T) {
 					Config2:  tc.config2,
 				})
 
-				require.Equal(t, []string{"create", "delete"}, tfAction)
+				require.Equal(t, []string{"create", "delete"}, tfAction.TFDiff.Actions)
 			})
 
 			t.Run("replace delete first", func(t *testing.T) {
@@ -251,7 +252,7 @@ func TestDiffBasicTypes(t *testing.T) {
 					DeleteBeforeReplace: true,
 				})
 
-				require.Equal(t, []string{"delete", "create"}, tfAction)
+				require.Equal(t, []string{"delete", "create"}, tfAction.TFDiff.Actions)
 			})
 		})
 	}
@@ -830,4 +831,113 @@ func TestComputedSetFieldsNoDiff(t *testing.T) {
 		Config1:  t0,
 		Config2:  t0,
 	})
+}
+
+func TestMaxItemsOneCollectionOnlyDiff(t *testing.T) {
+	sch := map[string]*schema.Schema{
+		"rule": {
+			Type:     schema.TypeList,
+			Required: true,
+			MaxItems: 1000,
+			Elem: &schema.Resource{
+				Schema: map[string]*schema.Schema{
+					"filter": {
+						Type:     schema.TypeList,
+						Optional: true,
+						MaxItems: 1,
+						Elem: &schema.Resource{
+							Schema: map[string]*schema.Schema{
+								"prefix": {
+									Type:     schema.TypeString,
+									Optional: true,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	t1 := tftypes.Object{
+		AttributeTypes: map[string]tftypes.Type{
+			"prefix": tftypes.String,
+		},
+	}
+
+	t2 := tftypes.Object{
+		AttributeTypes: map[string]tftypes.Type{
+			"filter": tftypes.List{ElementType: t1},
+		},
+	}
+
+	t3 := tftypes.Object{
+		AttributeTypes: map[string]tftypes.Type{
+			"rule": tftypes.List{ElementType: t2},
+		},
+	}
+
+	v1 := tftypes.NewValue(
+		t3,
+		map[string]tftypes.Value{
+			"rule": tftypes.NewValue(
+				tftypes.List{ElementType: t2},
+				[]tftypes.Value{
+					tftypes.NewValue(
+						t2,
+						map[string]tftypes.Value{
+							"filter": tftypes.NewValue(
+								tftypes.List{ElementType: t1},
+								[]tftypes.Value{},
+							),
+						},
+					),
+				},
+			),
+		},
+	)
+
+	v2 := tftypes.NewValue(
+		t3,
+		map[string]tftypes.Value{
+			"rule": tftypes.NewValue(
+				tftypes.List{ElementType: t2},
+				[]tftypes.Value{
+					tftypes.NewValue(
+						t2,
+						map[string]tftypes.Value{
+							"filter": tftypes.NewValue(
+								tftypes.List{ElementType: t1},
+								[]tftypes.Value{
+									tftypes.NewValue(
+										t1,
+										map[string]tftypes.Value{
+											"prefix": tftypes.NewValue(tftypes.String, nil),
+										},
+									),
+								},
+							),
+						},
+					),
+				},
+			),
+		},
+	)
+
+	diff := runDiffCheck(
+		t,
+		diffTestCase{
+			Resource: &schema.Resource{Schema: sch},
+			Config1:  v1,
+			Config2:  v2,
+		},
+	)
+
+	getFilter := func(val map[string]any) any {
+		return val["rule"].([]any)[0].(map[string]any)["filter"]
+	}
+
+	require.Equal(t, []string{"update"}, diff.TFDiff.Actions)
+	require.NotEqual(t, getFilter(diff.TFDiff.Before), getFilter(diff.TFDiff.After))
+	autogold.Expect(map[string]interface{}{"rules[0].filter": map[string]interface{}{"kind": "UPDATE"}}).Equal(t, diff.PulumiDiff.DetailedDiff)
 }
