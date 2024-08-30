@@ -28,18 +28,6 @@ func WithDiffStrategy(s DiffStrategy) providerOption { //nolint:revive
 	}
 }
 
-func getProviderOptions(opts []providerOption) (providerOptions, error) {
-	res := providerOptions{}
-	for _, o := range opts {
-		var err error
-		res, err = o(res)
-		if err != nil {
-			return res, err
-		}
-	}
-	return res, nil
-}
-
 // Selectively opt-in resources that pass the filter to using PlanResourceChange. Resources are
 // identified by their TF type name such as aws_ssm_document.
 func WithPlanResourceChange(filter func(tfResourceType string) bool) providerOption { //nolint:revive

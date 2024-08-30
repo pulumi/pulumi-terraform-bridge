@@ -1202,7 +1202,7 @@ func TestCheckWarnings(t *testing.T) {
 		},
 	}
 
-	// we need the schema for type checking
+	// we need the pschema for type checking
 	pulumiSchemaSpec := &pschema.PackageSpec{
 		Resources: map[string]pschema.ResourceSpec{
 			"ExampleResource": {
@@ -1298,7 +1298,7 @@ func TestCheckWarnings(t *testing.T) {
 	// run 'go test  -run=TestCheckWarnings -v ./pkg/tfbridge/ -update' to update
 	autogold.Expect(`warning: Type checking failed:
 warning: Unexpected type at field "networkConfiguration":
-           expected object type, got {[{map[securityGroups:{[out... of type []
+           expected object type, got [] type
 warning: Type checking is still experimental. If you believe that a warning is incorrect,
 please let us know by creating an issue at https://github.com/pulumi/pulumi-terraform-bridge/issues.
 This will become a hard error in the future.
