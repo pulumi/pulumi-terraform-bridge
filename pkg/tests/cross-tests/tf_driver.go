@@ -122,7 +122,7 @@ type tfChange struct {
 // detailed paths of properties causing the change, though that is more difficult to cross-compare with Pulumi.
 //
 // For now this is code is similar to `jq .resource_changes[0].change.actions[0] plan.json`.
-func (*TfResDriver) parseChangesFromTFPlan(plan tfcheck.TfPlan) tfChange{
+func (*TfResDriver) parseChangesFromTFPlan(plan tfcheck.TfPlan) tfChange {
 	type p struct {
 		ResourceChanges []struct {
 			Change tfChange `json:"change"`
