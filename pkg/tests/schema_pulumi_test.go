@@ -644,10 +644,10 @@ outputs:
 				require.Equal(t, tc.expectedOutputTopLevel, upRes.Outputs["collectionOutput"].Value)
 				res, err := pt.CurrentStack().Refresh(pt.Context(), optrefresh.ExpectNoChanges())
 				require.NoError(t, err)
-				t.Logf(res.StdOut)
+				t.Log(res.StdOut)
 				prevRes, err := pt.CurrentStack().Preview(pt.Context(), optpreview.ExpectNoChanges(), optpreview.Diff())
 				require.NoError(t, err)
-				t.Logf(prevRes.StdOut)
+				t.Log(prevRes.StdOut)
 			})
 
 			t.Run("nested", func(t *testing.T) {
@@ -718,10 +718,10 @@ outputs:
 
 				res, err := pt.CurrentStack().Refresh(pt.Context(), optrefresh.ExpectNoChanges())
 				require.NoError(t, err)
-				t.Logf(res.StdOut)
+				t.Log(res.StdOut)
 				prevRes, err := pt.CurrentStack().Preview(pt.Context(), optpreview.ExpectNoChanges(), optpreview.Diff())
 				require.NoError(t, err)
-				t.Logf(prevRes.StdOut)
+				t.Log(prevRes.StdOut)
 			})
 		})
 	}
@@ -1396,7 +1396,7 @@ Resources:
 			t.Run("initial preview", func(t *testing.T) {
 				pt := pulcheck.PulCheck(t, bridgedProvider, computedProgram)
 				res := pt.Preview(optpreview.Diff())
-				t.Logf(res.StdOut)
+				t.Log(res.StdOut)
 
 				tc.expectedInitial.Equal(t, res.StdOut)
 			})
@@ -1416,7 +1416,7 @@ Resources:
 				require.NoError(t, err)
 
 				res := pt.Preview(optpreview.Diff())
-				t.Logf(res.StdOut)
+				t.Log(res.StdOut)
 				tc.expectedUpdate.Equal(t, res.StdOut)
 			})
 
@@ -1430,7 +1430,7 @@ Resources:
 				require.NoError(t, err)
 
 				res := pt.Preview(optpreview.Diff())
-				t.Logf(res.StdOut)
+				t.Log(res.StdOut)
 				tc.expectedUpdate.Equal(t, res.StdOut)
 			})
 		})
@@ -1509,7 +1509,7 @@ runtime: yaml
 
 			res := pt.Import("prov:index/test:Test", "res1", "id1", "")
 
-			t.Logf(res.Stdout)
+			t.Log(res.Stdout)
 
 			require.NotContains(t, res.Stdout, "One or more imported inputs failed to validate")
 		})
@@ -2591,7 +2591,7 @@ Resources:
 			require.NoError(t, err)
 
 			res := pt.Preview(optpreview.Diff())
-			t.Logf(res.StdOut)
+			t.Log(res.StdOut)
 			tc.expected.Equal(t, res.StdOut)
 		})
 	}

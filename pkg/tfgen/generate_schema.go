@@ -28,7 +28,7 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-multierror"
-	"github.com/pkg/errors"
+	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/inflector"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	csgen "github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
@@ -36,6 +36,7 @@ import (
 	tsgen "github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
 	pygen "github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"golang.org/x/text/cases"
@@ -179,6 +180,12 @@ func (nt *schemaNestedTypes) gatherFromProperties(pathContext paths.TypePath,
 
 	for _, p := range ps {
 		name := p.name
+
+		// Skip the <any> type as it does not need recursive handling.
+		if p.typ == nil {
+			continue
+		}
+
 		if p.typ.kind == kindList || p.typ.kind == kindSet {
 			name = inflector.Singularize(name)
 		}
@@ -211,6 +218,7 @@ func rawMessage(v interface{}) pschema.RawMessage {
 
 func genPulumiSchema(
 	pack *pkg, name tokens.Package, version string, info tfbridge.ProviderInfo,
+	logSink diag.Sink,
 ) (pschema.PackageSpec, error) {
 
 	g := &schemaGenerator{
@@ -219,7 +227,7 @@ func genPulumiSchema(
 		info:     info,
 		language: pack.language,
 	}
-	pulumiPackageSpec, err := g.genPackageSpec(pack)
+	pulumiPackageSpec, err := g.genPackageSpec(pack, logSink)
 	if err != nil {
 		return pschema.PackageSpec{}, err
 	}
@@ -238,7 +246,7 @@ func genPulumiSchema(
 		}
 		dispatchTable, muxSpec, err := muxer.MergeSchemasAndComputeDispatchTable(muxSchemas)
 		if err != nil {
-			return pschema.PackageSpec{}, errors.Wrapf(err, "failed to create muxer schema")
+			return pschema.PackageSpec{}, fmt.Errorf("failed to create muxer schema: %w", err)
 		}
 		err = metadata.Set(md, "mux", dispatchTable)
 		if err != nil {
@@ -249,7 +257,7 @@ func genPulumiSchema(
 	return pulumiPackageSpec, nil
 }
 
-func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error) {
+func (g *schemaGenerator) genPackageSpec(pack *pkg, sink diag.Sink) (pschema.PackageSpec, error) {
 	spec := pschema.PackageSpec{
 		Name:              g.pkg.String(),
 		Version:           g.version,
@@ -382,11 +390,76 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg) (pschema.PackageSpec, error)
 	if err != nil {
 		return pschema.PackageSpec{}, err
 	}
+
+	sinkHclDiagnostics(sink, diags)
+
 	if diags.HasErrors() {
 		return pschema.PackageSpec{}, diags
 	}
 
 	return spec, nil
+}
+
+// sinkHclDiagnostics takes a diagnostic sink and writes the diagnostics to it.
+//
+// sinkHclDiagnostics should be called at the end of the diagnostic generation process,
+// with the full list of diagnostics to display. It handles throttling the number of
+// diagnostics displayed to the user so they are not overwhelmed by giant page of
+// diagnostics.
+func sinkHclDiagnostics(sink diag.Sink, diags hcl.Diagnostics) {
+	var diagsToDisplay = 6      // The total number of diagnostics to show.
+	var undisplayedErrors int   // The number of errors that were elided.
+	var undisplayedWarnings int // The number of warnings that were elided.
+
+	// log is used to actually write the diagnostic to the sink, or elided it if the
+	// sink has overflown.
+	log := func(sev diag.Severity, d *hcl.Diagnostic) {
+		msg := d.Summary
+		if d.Detail != "" {
+			msg += ": " + d.Detail
+		}
+
+		if diagsToDisplay <= 0 {
+			switch sev {
+			case diag.Error:
+				undisplayedErrors++
+			case diag.Warning:
+				undisplayedWarnings++
+			default:
+				panic("impossible")
+			}
+			return
+		}
+
+		diagsToDisplay--
+		sink.Logf(sev, &diag.Diag{Message: msg})
+	}
+
+	// Iterate the diagnostics and write them. We prioritize errors over warnings.
+
+	for _, d := range diags {
+		if d.Severity == hcl.DiagError {
+			log(diag.Error, d)
+		}
+	}
+
+	for _, d := range diags {
+		if d.Severity == hcl.DiagWarning {
+			log(diag.Warning, d)
+		}
+	}
+
+	// If we have failed to display any number of messages, write a message of the
+	// appropriate type indicating that there is more to display.
+
+	if undisplayedErrors > 0 {
+		sink.Errorf(&diag.Diag{Message: "%d additional errors"}, undisplayedErrors)
+	}
+
+	if undisplayedWarnings > 0 {
+		sink.Warningf(&diag.Diag{Message: "%d additional warnings"}, undisplayedWarnings)
+	}
+
 }
 
 func javaLanguageExtensions(providerInfo *tfbridge.ProviderInfo) pschema.RawMessage {

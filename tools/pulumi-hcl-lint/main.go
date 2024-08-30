@@ -55,7 +55,7 @@ func main() {
 
 	go func() {
 		if err := lint(ctx, ".", issues); err != nil {
-			logger.Error("Unexpected failure: %s", err)
+			logger.Error(fmt.Sprintf("Unexpected failure: %s", err.Error()))
 			os.Exit(1)
 		}
 		close(issues)

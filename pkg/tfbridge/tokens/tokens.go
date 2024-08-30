@@ -17,6 +17,7 @@ package tokens
 import (
 	"fmt"
 	"reflect"
+	"regexp"
 	"sort"
 	"unicode"
 
@@ -51,15 +52,53 @@ func MakeStandard(pkgName string) Make {
 		if name == "" {
 			return "", fmt.Errorf("missing name for module %q", module)
 		}
+
+		name = makeSafeTokenPart(name)
+
 		lowerName := string(unicode.ToLower(rune(name[0]))) + name[1:]
 		return fmt.Sprintf("%s:%s/%s:%s", pkgName, module, lowerName, name), nil
 	}
 }
 
+// makeSafeTokenPart makes part safe to use as a token segment.
+//
+// makeSafeTokenPart fixes:
+// - parts that start with numbers, since these are not valid in Pulumi schema.
+func makeSafeTokenPart(part string) string {
+	return startsWithNumeric.ReplaceAllStringFunc(part, func(s string) string {
+		w, ok := digitToWord[s[0:1]]
+		if !ok {
+			return s
+		}
+		return w + upperCamelCase(s[1:])
+	})
+}
+
+var digitToWord = map[string]string{
+	"0": "Zero",
+	"1": "One",
+	"2": "Two",
+	"3": "Three",
+	"4": "Four",
+	"5": "Five",
+	"6": "Six",
+	"7": "Seven",
+	"8": "Eight",
+	"9": "Nine",
+}
+
+var startsWithNumeric = regexp.MustCompile("^[0-9].?")
+
+// upperCamelCase converts a TF token to a valid Pulumi token segment in CamelCase format.
 func upperCamelCase(s string) string { return cgstrings.UppercaseFirst(camelCase(s)) }
 
+// camelCase converts a TF token a valid Pulumi token segment in camelCase format.
 func camelCase(s string) string {
-	return cgstrings.ModifyStringAroundDelimeter(s, "_", cgstrings.UppercaseFirst)
+	s = cgstrings.ModifyStringAroundDelimeter(s, "_", cgstrings.UppercaseFirst)
+
+	// Terraform allows both `-` and `_` in it's tokens, but Pulumi allows
+	// neither.
+	return cgstrings.ModifyStringAroundDelimeter(s, "-", cgstrings.UppercaseFirst)
 }
 
 func checkedApply[T comparable](dst *T, src T) {

@@ -69,7 +69,7 @@ func RandomProvider() tfbridge.ProviderInfo {
 			"https://github.com/pulumi/pulumi-random."
 		b, ok := state["base64"]
 		if !ok {
-			return "", fmt.Errorf("No base64 property in state" + c)
+			return "", fmt.Errorf("No base64 property in state%s", c)
 		}
 		// Although base64 is marked as sensitive in the TF schema and is wrapped in secrets in
 		// Pulumi which cannot yet support secret markers on resource IDs.
@@ -77,7 +77,7 @@ func RandomProvider() tfbridge.ProviderInfo {
 			b = b.SecretValue().Element
 		}
 		if !b.IsString() {
-			return "", fmt.Errorf("Expected base64 property to be a string" + c)
+			return "", fmt.Errorf("Expected base64 property to be a string%s", c)
 		}
 		return resource.ID(b.StringValue()), nil
 	}

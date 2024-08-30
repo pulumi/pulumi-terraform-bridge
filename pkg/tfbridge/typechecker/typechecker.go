@@ -1,4 +1,18 @@
-package tfbridge
+// Copyright 2016-2024, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package typechecker
 
 import (
 	"fmt"
@@ -9,10 +23,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
-type PulumiInputValidator struct {
-	// The resource URN that we are validating
-	urn resource.URN
-
+type TypeChecker struct {
 	// The pulumi schema of the package
 	schema pschema.PackageSpec
 
@@ -21,7 +32,7 @@ type PulumiInputValidator struct {
 	validateUnknownTypes bool
 }
 
-type TypeFailure struct {
+type Failure struct {
 	// The Reason for the type failure
 	Reason string
 
@@ -29,11 +40,9 @@ type TypeFailure struct {
 	ResourcePath string
 }
 
-// NewInputValidator creates a new input validator for a given resource and
-// package schema
-func NewInputValidator(urn resource.URN, schema pschema.PackageSpec, validateUnknownTypes bool) *PulumiInputValidator {
-	return &PulumiInputValidator{
-		urn:                  urn,
+// New creates a new type checker for a given resource and package schema
+func New(schema pschema.PackageSpec, validateUnknownTypes bool) *TypeChecker {
+	return &TypeChecker{
 		schema:               schema,
 		validateUnknownTypes: validateUnknownTypes,
 	}
@@ -41,23 +50,23 @@ func NewInputValidator(urn resource.URN, schema pschema.PackageSpec, validateUnk
 
 // validatePropertyValue is the main function for validating a PropertyMap against the Pulumi Schema. It is a
 // recursive function that will validate nested types and arrays. Returns a list of type failures if any are found.
-func (v *PulumiInputValidator) validatePropertyMap(
+func (v *TypeChecker) validatePropertyMap(
 	propertyMap resource.PropertyMap,
 	propertyTypes map[string]pschema.PropertySpec,
 	propertyPath resource.PropertyPath,
-) []TypeFailure {
+) []Failure {
 	stableKeys := propertyMap.StableKeys()
-	failures := []TypeFailure{}
+	failures := []Failure{}
 
-	// TODO[pulumi/pulumi-terrafor-bridge#1892]: handle required properties. Deferring for now
-	// because properties can be filled in later and we don't want to
-	// fail too aggressively
+	// TODO[pulumi/pulumi-terraform-bridge#1892]: handle required properties. Deferring
+	// for now because properties can be filled in later and we don't want to fail too
+	// aggressively.
 	for _, objectKey := range stableKeys {
 		objectValue := propertyMap[objectKey]
 		objType, knownType := propertyTypes[string(objectKey)]
 		if !knownType {
 			if v.validateUnknownTypes {
-				failures = append(failures, TypeFailure{
+				failures = append(failures, Failure{
 					Reason:       fmt.Sprintf("an unexpected argument %q was provided", string(objectKey)),
 					ResourcePath: propertyPath.String(),
 				})
@@ -76,11 +85,11 @@ func (v *PulumiInputValidator) validatePropertyMap(
 
 // validatePropertyValue is the main function for validating a PropertyValue against the Pulumi Schema. It is a
 // recursive function that will validate nested types and arrays. Returns a list of type failures if any are found.
-func (v *PulumiInputValidator) validatePropertyValue(
+func (v *TypeChecker) validatePropertyValue(
 	propertyValue resource.PropertyValue,
 	typeSpec pschema.TypeSpec,
 	propertyPath resource.PropertyPath,
-) []TypeFailure {
+) []Failure {
 	// don't type check
 	// - resource references (not yet)
 	// - assets (not yet)
@@ -130,13 +139,7 @@ func (v *PulumiInputValidator) validatePropertyValue(
 		}
 
 		if !propertyValue.IsObject() {
-			return []TypeFailure{{
-				ResourcePath: propertyPath.String(),
-				Reason: fmt.Sprintf(
-					"expected object type, got %s type",
-					propertyValue.TypeString(),
-				),
-			}}
+			return []Failure{newTypeFailure(propertyPath, "object", propertyValue)}
 		}
 
 		return v.validatePropertyMap(
@@ -147,7 +150,7 @@ func (v *PulumiInputValidator) validatePropertyValue(
 	}
 
 	if typeSpec.OneOf != nil {
-		// TODO[pulumi/pulumi-terrafor-bridge#1891]: handle OneOf types
+		// TODO[pulumi/pulumi-terraform-bridge#1891]: handle OneOf types
 		// bindTypeSpecOneOf provides a good hint of how to interpret these:
 		//
 		// https://github.com/pulumi/pulumi/blob/master/pkg/codegen/schema/bind.go#L842
@@ -159,37 +162,19 @@ func (v *PulumiInputValidator) validatePropertyValue(
 	switch typeSpec.Type {
 	case "boolean":
 		if !propertyValue.IsBool() {
-			return []TypeFailure{{
-				ResourcePath: propertyPath.String(),
-				Reason: fmt.Sprintf(
-					"expected boolean type, got %s type",
-					propertyValue.TypeString(),
-				),
-			}}
+			return []Failure{newTypeFailure(propertyPath, typeSpec.Type, propertyValue)}
 		}
 		return nil
 	case "integer", "number":
 		// The bridge permits coalescing strings to numbers, hence skip strings.
 		if !propertyValue.IsNumber() && !propertyValue.IsString() {
-			return []TypeFailure{{
-				ResourcePath: propertyPath.String(),
-				Reason: fmt.Sprintf(
-					"expected number type, got %s type",
-					propertyValue.TypeString(),
-				),
-			}}
+			return []Failure{newTypeFailure(propertyPath, typeSpec.Type, propertyValue)}
 		}
 		return nil
 	case "string":
 		// The bridge permits coalescing numbers and booleans to strings, hence skip these.
 		if !propertyValue.IsString() && !propertyValue.IsNumber() && !propertyValue.IsBool() {
-			return []TypeFailure{{
-				ResourcePath: propertyPath.String(),
-				Reason: fmt.Sprintf(
-					"expected string type, got %s type",
-					propertyValue.TypeString(),
-				),
-			}}
+			return []Failure{newTypeFailure(propertyPath, typeSpec.Type, propertyValue)}
 		}
 		return nil
 	case "array":
@@ -199,7 +184,7 @@ func (v *PulumiInputValidator) validatePropertyValue(
 				return nil
 			}
 			// Check every item against the array element type.
-			failures := []TypeFailure{}
+			failures := []Failure{}
 			for idx, arrayValue := range propertyValue.ArrayValue() {
 				pb := append(propertyPath, idx)
 				failure := v.validatePropertyValue(arrayValue, *typeSpec.Items, pb)
@@ -209,13 +194,7 @@ func (v *PulumiInputValidator) validatePropertyValue(
 			}
 			return failures
 		}
-		return []TypeFailure{{
-			ResourcePath: propertyPath.String(),
-			Reason: fmt.Sprintf(
-				"expected array type, got %s type",
-				propertyValue.TypeString(),
-			),
-		}}
+		return []Failure{newTypeFailure(propertyPath, typeSpec.Type, propertyValue)}
 	case "object":
 		// This is not really an object but a map type with some element type, which is assumed to be string if
 		// unspecified. Check accordingly. This should be very similar to the "array" case.
@@ -227,7 +206,7 @@ func (v *PulumiInputValidator) validatePropertyValue(
 				return nil
 			}
 			objectValue := propertyValue.ObjectValue()
-			failures := []TypeFailure{}
+			failures := []Failure{}
 			for _, propertyKey := range objectValue.StableKeys() {
 				if strings.HasPrefix(string(propertyKey), "__") {
 					continue
@@ -240,23 +219,49 @@ func (v *PulumiInputValidator) validatePropertyValue(
 			}
 			return failures
 		}
-		return []TypeFailure{{
-			ResourcePath: propertyPath.String(),
-			Reason: fmt.Sprintf(
-				"expected object type, got %s type",
-				propertyValue.TypeString(),
-			),
-		}}
+		return []Failure{newTypeFailure(propertyPath, typeSpec.Type, propertyValue)}
 	default:
 		// Unrecognized type, assume no errors.
 		return nil
 	}
 }
 
+func newTypeFailure(
+	path resource.PropertyPath,
+	expectedType string, actualValue resource.PropertyValue,
+) Failure {
+	return Failure{
+		ResourcePath: path.String(),
+		Reason: fmt.Sprintf("expected %s type, got %s of type %s",
+			expectedType, previewPropertyValue(actualValue), actualValue.TypeString(),
+		),
+	}
+}
+
+// previewPropertyValue creates a preview of v suitable for use in an error display.
+func previewPropertyValue(v resource.PropertyValue) string {
+	var preview string
+	switch {
+	case v.IsComputed():
+		return "(unknown value)"
+	case v.IsSecret():
+		return "secret(" + previewPropertyValue(v.SecretValue().Element) + ")"
+	case v.IsString():
+		preview = fmt.Sprintf("%q", v.StringValue())
+	default:
+		preview = v.String()
+	}
+	const maxLength = 30
+	if len(preview) > maxLength {
+		return preview[:maxLength-3] + "..."
+	}
+	return preview
+}
+
 // getType gets a type definition from a schema reference. Currently it only supports types from the same schema that
 // are object types. It does not support enum types, foreign type references, special references such as
 // "pulumi.json#/Archive", references to resources or providers or anything else.
-func (v *PulumiInputValidator) getType(typeRef string) *pschema.ObjectTypeSpec {
+func (v *TypeChecker) getType(typeRef string) *pschema.ObjectTypeSpec {
 	if strings.HasPrefix(typeRef, "#/types/") {
 		ref := strings.TrimPrefix(typeRef, "#/types/")
 		if typeSpec, ok := v.schema.Types[ref]; ok {
@@ -271,7 +276,7 @@ func (v *PulumiInputValidator) getType(typeRef string) *pschema.ObjectTypeSpec {
 
 // ValidateInputs will validate a set of inputs against the pulumi schema. It will
 // return a list of type failures if any are found
-func (v *PulumiInputValidator) ValidateInputs(resourceToken tokens.Type, inputs resource.PropertyMap) []TypeFailure {
+func (v *TypeChecker) ValidateInputs(resourceToken tokens.Type, inputs resource.PropertyMap) []Failure {
 	resourceSpec, knownResourceSpec := v.schema.Resources[string(resourceToken)]
 	if !knownResourceSpec {
 		return nil
@@ -285,7 +290,7 @@ func (v *PulumiInputValidator) ValidateInputs(resourceToken tokens.Type, inputs 
 
 // ValidateConfig will validate the provider config against the pulumi schema. It will
 // return a list of type failures if any are found
-func (v *PulumiInputValidator) ValidateConfig(inputs resource.PropertyMap) []TypeFailure {
+func (v *TypeChecker) ValidateConfig(inputs resource.PropertyMap) []Failure {
 	// The inputs that are provided to `CheckConfig` also include pulumi options
 	// so make sure we are only checking against properties in the config
 	inputsToValidate := resource.PropertyMap{}

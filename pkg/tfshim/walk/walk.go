@@ -86,7 +86,7 @@ func (p SchemaPath) EncodeSchemaPath() (string, error) {
 			if step.Name == "$" {
 				return "", fmt.Errorf("Cannot encode SchemaPath %q", step.Name)
 			}
-			fmt.Fprintf(&buf, step.Name)
+			fmt.Fprintf(&buf, "%s", step.Name)
 		default:
 			contract.Failf("impossible")
 		}

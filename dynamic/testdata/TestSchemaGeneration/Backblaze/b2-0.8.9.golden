@@ -133,10 +133,7 @@
                     "description": "If present, the boolean value specifies whether bucket is File Lock-enabled. Defaults to `false`.\n"
                 }
             },
-            "type": "object",
-            "required": [
-                "defaultRetention"
-            ]
+            "type": "object"
         },
         "b2:index/BucketFileLockConfigurationDefaultRetention:BucketFileLockConfigurationDefaultRetention": {
             "properties": {
@@ -151,8 +148,7 @@
             },
             "type": "object",
             "required": [
-                "mode",
-                "period"
+                "mode"
             ]
         },
         "b2:index/BucketFileLockConfigurationDefaultRetentionPeriod:BucketFileLockConfigurationDefaultRetentionPeriod": {
@@ -187,10 +183,7 @@
                     "description": "Server-side encryption mode.\n"
                 }
             },
-            "type": "object",
-            "required": [
-                "key"
-            ]
+            "type": "object"
         },
         "b2:index/BucketFileVersionServerSideEncryptionKey:BucketFileVersionServerSideEncryptionKey": {
             "properties": {
@@ -795,10 +788,6 @@
                 "bucketId",
                 "bucketName",
                 "bucketType",
-                "corsRules",
-                "defaultServerSideEncryption",
-                "fileLockConfigurations",
-                "lifecycleRules",
                 "options",
                 "revision"
             ],
@@ -817,6 +806,31 @@
                 "bucketType": {
                     "type": "string",
                     "description": "The bucket type. Either 'allPublic', meaning that files in this bucket can be downloaded by anybody, or 'allPrivate'.\n"
+                },
+                "corsRules": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/types/b2:index/BucketCorsRule:BucketCorsRule"
+                    },
+                    "description": "The initial list of CORS rules for this bucket.\n"
+                },
+                "defaultServerSideEncryption": {
+                    "$ref": "#/types/b2:index/BucketDefaultServerSideEncryption:BucketDefaultServerSideEncryption",
+                    "description": "The default server-side encryption settings for this bucket.\n"
+                },
+                "fileLockConfigurations": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/types/b2:index/BucketFileLockConfiguration:BucketFileLockConfiguration"
+                    },
+                    "description": "File lock enabled flag, and default retention settings.\n"
+                },
+                "lifecycleRules": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/types/b2:index/BucketLifecycleRule:BucketLifecycleRule"
+                    },
+                    "description": "The initial list of lifecycle rules for this bucket.\n"
                 }
             },
             "requiredInputs": [
@@ -951,7 +965,6 @@
                 "fileId",
                 "fileInfo",
                 "fileName",
-                "serverSideEncryption",
                 "size",
                 "source",
                 "uploadTimestamp"
@@ -975,6 +988,10 @@
                 "fileName": {
                     "type": "string",
                     "description": "The name of the B2 file.\n"
+                },
+                "serverSideEncryption": {
+                    "$ref": "#/types/b2:index/BucketFileVersionServerSideEncryption:BucketFileVersionServerSideEncryption",
+                    "description": "Server-side encryption settings.\n"
                 },
                 "source": {
                     "type": "string",

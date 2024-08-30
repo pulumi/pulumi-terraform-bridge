@@ -46,6 +46,21 @@ func TestMain(m *testing.M) {
 	os.Exit(exitVal)
 }
 
+func TestStacktraceDisplayed(t *testing.T) {
+	t.Parallel()
+	skipWindows(t)
+
+	ctx := context.Background()
+	grpc := pfProviderTestServer(ctx, t)
+
+	_, err := grpc.Create(ctx, &pulumirpc.CreateRequest{
+		Urn: string(resource.NewURN(
+			"test", "test", "", "pfprovider:index/panic:Panic", "panic",
+		)),
+	})
+	assert.ErrorContains(t, err, "PANIC MESSAGE HERE")
+}
+
 func TestPrimitiveTypes(t *testing.T) {
 	t.Parallel()
 	skipWindows(t)
@@ -371,12 +386,27 @@ var pfProviderPath = func() func(t *testing.T) string {
 	}
 }()
 
+// grpcTestServer returns an unparameterized in-memory gRPC server.
 func grpcTestServer(ctx context.Context, t *testing.T) pulumirpc.ResourceProviderServer {
 	defaultInfo, metadata, close := initialSetup()
 	t.Cleanup(func() { assert.NoError(t, close()) })
 	s, err := pfbridge.NewProviderServer(ctx, nil, defaultInfo, metadata)
 	require.NoError(t, err)
 	return s
+}
+
+// pfProviderTestServer returns an in-memory gRPC server already parameterized by the
+// pfprovider test Terraform provider.
+func pfProviderTestServer(ctx context.Context, t *testing.T) pulumirpc.ResourceProviderServer {
+	grpc := grpcTestServer(ctx, t)
+	t.Run("parameterize", assertGRPCCall(grpc.Parameterize, &pulumirpc.ParameterizeRequest{
+		Parameters: &pulumirpc.ParameterizeRequest_Args{
+			Args: &pulumirpc.ParameterizeRequest_ParametersArgs{
+				Args: []string{pfProviderPath(t)},
+			},
+		},
+	}, noParallel))
+	return grpc
 }
 
 func skipWindows(t *testing.T) {

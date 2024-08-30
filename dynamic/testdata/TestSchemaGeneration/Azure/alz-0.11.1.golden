@@ -620,6 +620,9 @@
                         "additionalProperties": {
                             "$ref": "#/types/alz:index/getArchetypePolicyAssignmentsToModify:getArchetypePolicyAssignmentsToModify"
                         }
+                    },
+                    "timeouts": {
+                        "$ref": "#/types/alz:index/getArchetypeTimeouts:getArchetypeTimeouts"
                     }
                 },
                 "type": "object",
@@ -698,8 +701,7 @@
                     "baseArchetype",
                     "defaults",
                     "id",
-                    "parentId",
-                    "timeouts"
+                    "parentId"
                 ]
             }
         },

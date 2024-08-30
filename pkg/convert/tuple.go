@@ -51,7 +51,7 @@ func tuplePropertyName(i int) string {
 
 func (enc *tupleEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.Value, error) {
 	typ := tftypes.Tuple{ElementTypes: enc.types}
-	if propertyValueIsUnkonwn(p) {
+	if propertyValueIsUnknown(p) {
 		return tftypes.NewValue(typ, tftypes.UnknownValue), nil
 	}
 	if p.IsNull() {

@@ -19,15 +19,20 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/hexops/autogold/v2"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi-terraform-bridge/pf/proto"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
@@ -68,6 +73,78 @@ func TestDynamicType(t *testing.T) {
     }
 }
 `).Equal(t, string(b))
+}
+
+func TestBlockSchemaGeneration(t *testing.T) {
+	p := proto.New(context.Background(), providerServer{
+		SchemaResponse: &tfprotov6.GetProviderSchemaResponse{
+			ResourceSchemas: map[string]*tfprotov6.Schema{
+				"testprov_my_res": {Block: &tfprotov6.SchemaBlock{
+					BlockTypes: []*tfprotov6.SchemaNestedBlock{
+						{
+							TypeName: "blk",
+							Nesting:  tfprotov6.SchemaNestedBlockNestingModeList,
+							Block: &tfprotov6.SchemaBlock{
+								Attributes: []*tfprotov6.SchemaAttribute{{
+									Name:     "bah",
+									Type:     tftypes.Bool,
+									Optional: true,
+								}},
+							},
+						},
+					},
+				}},
+			},
+		},
+	})
+	providerInfo := info.Provider{
+		P:    p,
+		Name: "testprov",
+		Resources: map[string]*info.Resource{
+			"testprov_my_res": {
+				Tok: "testprov:index:MyRes",
+			},
+		},
+	}
+	nilSink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
+	spec, err := tfgen.GenerateSchema(providerInfo, nilSink)
+	require.NoError(t, err)
+	specBytes, err := json.MarshalIndent(spec.Resources, "", "  ")
+	require.NoError(t, err)
+	autogold.Expect(`{
+  "testprov:index:MyRes": {
+    "properties": {
+      "blks": {
+        "type": "array",
+        "items": {
+          "$ref": "#/types/testprov:index/MyResBlk:MyResBlk"
+        }
+      }
+    },
+    "inputProperties": {
+      "blks": {
+        "type": "array",
+        "items": {
+          "$ref": "#/types/testprov:index/MyResBlk:MyResBlk"
+        }
+      }
+    },
+    "stateInputs": {
+      "description": "Input properties used for looking up and filtering MyRes resources.\n",
+      "properties": {
+        "blks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/testprov:index/MyResBlk:MyResBlk"
+          }
+        }
+      },
+      "type": "object"
+    }
+  }
+}`).Equal(t, string(specBytes))
+	assert.Containsf(t, spec.Resources["testprov:index:MyRes"].InputProperties, "blks",
+		"Blocks should map to input properties")
 }
 
 type providerServer struct {

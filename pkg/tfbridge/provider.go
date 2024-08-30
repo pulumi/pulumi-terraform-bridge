@@ -46,6 +46,7 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/typechecker"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/walk"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/logging"
@@ -596,8 +597,7 @@ func (p *Provider) typeCheckConfig(
 		return nil
 	}
 
-	iv := NewInputValidator(urn, *p.pulumiSchemaSpec, true)
-	typeFailures := iv.ValidateConfig(news)
+	typeFailures := typechecker.New(*p.pulumiSchemaSpec, true).ValidateConfig(news)
 	if validateShouldError {
 		return p.convertTypeFailures(urn, typeFailures)
 	}
@@ -638,7 +638,9 @@ func (p *Provider) typeCheckConfig(
 	return nil
 }
 
-func (p *Provider) convertTypeFailures(urn resource.URN, typeFailures []TypeFailure) *pulumirpc.CheckResponse {
+func (p *Provider) convertTypeFailures(
+	urn resource.URN, typeFailures []typechecker.Failure,
+) *pulumirpc.CheckResponse {
 	if len(typeFailures) == 0 {
 		return nil
 	}
@@ -967,8 +969,7 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 	if p.pulumiSchema != nil {
 		schema := p.pulumiSchemaSpec
 		if schema != nil {
-			iv := NewInputValidator(urn, *schema, false)
-			typeFailures := iv.ValidateInputs(t, news)
+			typeFailures := typechecker.New(*schema, false).ValidateInputs(t, news)
 			if len(typeFailures) > 0 {
 				p.hasTypeErrors[urn] = struct{}{}
 				logger.Warn("Type checking failed: ")

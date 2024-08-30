@@ -56,24 +56,18 @@ func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
 	return []byte(contentStr), nil
 }
 
-func writeFrontMatter(title string) string {
+func writeFrontMatter(providerName string) string {
+	// Capitalize the provider name for the title
+
+	capitalize := cases.Title(language.English)
+	title := capitalize.String(providerName)
 	return fmt.Sprintf(delimiter+
-		"title: %[1]s Installation & Configuration\n"+
-		"meta_desc: Provides an overview on how to configure the Pulumi %[1]s.\n"+
+		"title: %[1]s Provider\n"+
+		"meta_desc: Provides an overview on how to configure the Pulumi %[1]s provider.\n"+
 		"layout: package\n"+
 		delimiter+
 		"\n",
 		title)
-}
-
-func writeIndexFrontMatter(displayName string) string {
-	return fmt.Sprintf(delimiter+
-		"title: %[1]s\n"+
-		"meta_desc: The %[1]s provider for Pulumi "+
-		"can be used to provision any of the cloud resources available in %[1]s.\n"+
-		"layout: package\n"+
-		delimiter,
-		displayName)
 }
 
 func getBodyAndTitle(content string) (string, string) {
@@ -124,6 +118,7 @@ func applyEditRules(contentBytes []byte, docFile string, g *Generator) ([]byte, 
 	// Additional edit rules for installation files
 	edits = append(edits,
 		skipSectionHeadersEdit(docFile),
+		removeTfVersionMentions(docFile),
 		// Replace all "T/terraform" with "P/pulumi"
 		reReplace(`Terraform`, `Pulumi`),
 		reReplace(`terraform`, `pulumi`),
@@ -135,6 +130,9 @@ func applyEditRules(contentBytes []byte, docFile string, g *Generator) ([]byte, 
 			`The following configuration inputs are supported`),
 		reReplace(`Argument Reference`,
 			`Configuration Reference`),
+		reReplace(`Schema`,
+			`Configuration Reference`),
+		reReplace("### Optional\n", ""),
 		reReplace(`block contains the following arguments`,
 			`input has the following nested fields`),
 	)
@@ -245,7 +243,7 @@ func convertExample(g *Generator, code string, exampleNumber int) (string, error
 		// Generate language example
 		convertedLang, err := converter.singleExampleFromPCLToLanguage(pclExample, lang)
 		if err != nil {
-			return "", err
+			g.warn(err.Error())
 		}
 		exampleContent += choosableStart + pulumiYAML + convertedLang + choosableEnd
 	}
@@ -357,7 +355,6 @@ func skipSectionHeadersEdit(docFile string) tfbridge.DocsEdit {
 			})
 		},
 	}
-
 }
 
 func getDefaultHeadersToSkip() []*regexp.Regexp {
@@ -371,4 +368,26 @@ func getDefaultHeadersToSkip() []*regexp.Regexp {
 		regexp.MustCompile("[Tt]erraform Cloud"),
 	}
 	return defaultHeaderSkipRegexps
+}
+
+func getTfVersionsToRemove() []*regexp.Regexp {
+	tfVersionsToRemove := []*regexp.Regexp{
+		regexp.MustCompile(`It requires [tT]erraform [v0-9]+\.?[0-9]?\.?[0-9]? or later.`),
+		regexp.MustCompile(`(?s)(For )?[tT]erraform [v0-9]+\.?[0-9]?\.?[0-9]? and (later|earlier):`),
+	}
+	return tfVersionsToRemove
+}
+
+func removeTfVersionMentions(docFile string) tfbridge.DocsEdit {
+	tfVersionsToRemove := getTfVersionsToRemove()
+	return tfbridge.DocsEdit{
+		Path: docFile,
+		Edit: func(_ string, content []byte) ([]byte, error) {
+			for _, tfVersion := range tfVersionsToRemove {
+				content = tfVersion.ReplaceAll(content, nil)
+			}
+			return content, nil
+		},
+	}
+
 }

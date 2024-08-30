@@ -3,6 +3,11 @@
     "displayName": "Any Terraform Provider",
     "version": "v0.0.0-dev",
     "description": "Use any Terraform provider with Pulumi",
+    "keywords": [
+        "category/utility"
+    ],
+    "license": "Apache-2.0",
+    "logoUrl": "https://raw.githubusercontent.com/pulumi/pulumi-terraform-provider/main/assets/logo.png",
     "meta": {
         "moduleFormat": "(.*)(?:/[^/]*)"
     },

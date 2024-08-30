@@ -825,7 +825,7 @@ func TestTypeCheckingMistypedBooleansWithUnknowns(t *testing.T) {
 		},
 	}, newTestProviderOptions{})
 
-	reason := "expected boolean type, got string type. " +
+	reason := `expected boolean type, got \"DISABLED\" of type string. ` +
 		"Examine values at 'my-ecs-service.networkConfiguration.assignPublicIp'."
 
 	// networkConfiguration.assignPublicIp has the wrong type intentionally.

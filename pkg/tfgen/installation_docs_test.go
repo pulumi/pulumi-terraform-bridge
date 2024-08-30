@@ -94,17 +94,17 @@ func TestWriteFrontMatter(t *testing.T) {
 
 	type testCase struct {
 		// The name of the test case.
-		name     string
-		title    string
-		expected string
+		name         string
+		providerName string
+		expected     string
 	}
 
 	tc := testCase{
-		name:  "Generates Front Matter for installation-configuration.md",
-		title: "Testcase Provider",
+		name:         "Generates Front Matter for installation-configuration.md",
+		providerName: "Test",
 		expected: delimiter +
-			"title: Testcase Provider Installation & Configuration\n" +
-			"meta_desc: Provides an overview on how to configure the Pulumi Testcase Provider.\n" +
+			"title: Test Provider\n" +
+			"meta_desc: Provides an overview on how to configure the Pulumi Test provider.\n" +
 			"layout: package\n" +
 			delimiter +
 			"\n",
@@ -112,35 +112,7 @@ func TestWriteFrontMatter(t *testing.T) {
 
 	t.Run(tc.name, func(t *testing.T) {
 		t.Parallel()
-		actual := writeFrontMatter(tc.title)
-		require.Equal(t, tc.expected, actual)
-	})
-}
-
-func TestWriteIndexFrontMatter(t *testing.T) {
-	t.Parallel()
-
-	type testCase struct {
-		// The name of the test case.
-		name        string
-		displayName string
-		expected    string
-	}
-
-	tc := testCase{
-		name:        "Generates Front Matter for _index.md",
-		displayName: "Testcase",
-		expected: delimiter +
-			"title: Testcase\n" +
-			"meta_desc: The Testcase provider for Pulumi " +
-			"can be used to provision any of the cloud resources available in Testcase.\n" +
-			"layout: package\n" +
-			delimiter,
-	}
-
-	t.Run(tc.name, func(t *testing.T) {
-		t.Parallel()
-		actual := writeIndexFrontMatter(tc.displayName)
+		actual := writeFrontMatter(tc.providerName)
 		require.Equal(t, tc.expected, actual)
 	})
 }
@@ -202,6 +174,41 @@ func TestApplyEditRules(t *testing.T) {
 				Content: []byte(readfile(t, "test_data/replace-links/input.md")),
 			},
 			expected: []byte(readfile(t, "test_data/replace-links/actual.md")),
+		},
+		{
+			name: "Strips mentions of Terraform version pattern 1",
+			docFile: DocFile{
+				Content: []byte("This is a provider. It requires terraform 0.12 or later."),
+			},
+			expected: []byte("This is a provider."),
+		},
+		{
+			name: "Strips mentions of Terraform version pattern 2",
+			docFile: DocFile{
+				Content: []byte("This is a provider. It requires terraform v0.12 or later."),
+			},
+			expected: []byte("This is a provider."),
+		},
+		{
+			name: "Strips mentions of Terraform version pattern 3",
+			docFile: DocFile{
+				Content: []byte("This is a provider with an example. For Terraform v1.5 and later:\n Use this code."),
+			},
+			expected: []byte("This is a provider with an example.\nUse this code."),
+		},
+		{
+			name: "Strips mentions of Terraform version pattern 4",
+			docFile: DocFile{
+				Content: []byte("This is a provider with an example. Terraform 1.5 and later:\n Use this code."),
+			},
+			expected: []byte("This is a provider with an example.\nUse this code."),
+		},
+		{
+			name: "Strips mentions of Terraform version pattern 5",
+			docFile: DocFile{
+				Content: []byte("This is a provider with an example. Terraform 1.5 and earlier:\n Use this code."),
+			},
+			expected: []byte("This is a provider with an example.\nUse this code."),
 		},
 	}
 	for _, tt := range tests {

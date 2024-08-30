@@ -23,6 +23,6 @@ func unknownProperty() resource.PropertyValue {
 }
 
 // This is how p.ContainsUnknowns checks if the value itself is unknown before recursing.
-func propertyValueIsUnkonwn(p resource.PropertyValue) bool {
+func propertyValueIsUnknown(p resource.PropertyValue) bool {
 	return p.IsComputed() || (p.IsOutput() && !p.OutputValue().Known)
 }
