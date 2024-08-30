@@ -1215,6 +1215,7 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 	// recorded any replaces, that means that `makeDetailedDiff` failed to translate a
 	// property. This is known to happen for computed input properties:
 	//
+	// TODO: scope this workaround to !diffOverride
 	// https://github.com/pulumi/pulumi-aws/issues/2971
 	if (diff.RequiresNew() || diff.Destroy()) &&
 		// In theory, we should be safe to set __meta as replaces whenever
@@ -1226,6 +1227,7 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 		changes = pulumirpc.DiffResponse_DIFF_SOME
 	}
 
+	// TODO: Check if this is needed for PRC, likely still needed
 	if changes == pulumirpc.DiffResponse_DIFF_NONE &&
 		markWronglyTypedMaxItemsOneStateDiff(schema, fields, olds) {
 
