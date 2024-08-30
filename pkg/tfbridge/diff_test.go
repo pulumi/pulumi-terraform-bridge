@@ -76,15 +76,16 @@ func TestCustomizeDiff(t *testing.T) {
 				return err
 			},
 		}
-		provider := shimv2.NewProvider(&v2Schema.Provider{
+		v2Provider := v2Schema.Provider{
 			ResourcesMap: map[string]*v2Schema.Resource{
 				"resource": customDiffRes,
 			},
-		})
+		}
+		provider := shimv2.NewProvider(&v2Provider)
 
 		// Convert the inputs and state to TF config and resource attributes.
 		r := Resource{
-			TF:     shimv2.NewResource(customDiffRes),
+			TF:     shimv2.NewResource(v2Provider.ResourcesMap["resource"]),
 			Schema: &ResourceInfo{Fields: info},
 		}
 		tfState, err := makeTerraformStateWithOpts(ctx, r, "id", stateMap,
@@ -118,15 +119,16 @@ func TestCustomizeDiff(t *testing.T) {
 		noCustomDiffRes := &v2Schema.Resource{
 			Schema: tfs,
 		}
-		provider := shimv2.NewProvider(&v2Schema.Provider{
+		v2Provider := v2Schema.Provider{
 			ResourcesMap: map[string]*v2Schema.Resource{
 				"resource": noCustomDiffRes,
 			},
-		})
+		}
+		provider := shimv2.NewProvider(&v2Provider)
 
 		// Convert the inputs and state to TF config and resource attributes.
 		r := Resource{
-			TF:     shimv2.NewResource(noCustomDiffRes),
+			TF:     shimv2.NewResource(v2Provider.ResourcesMap["resource"]),
 			Schema: &ResourceInfo{Fields: info},
 		}
 		tfState, err := makeTerraformStateWithOpts(ctx, r, "id", stateMap,
@@ -180,7 +182,7 @@ func TestCustomizeDiff(t *testing.T) {
 
 				// Convert the inputs and state to TF config and resource attributes.
 				r := Resource{
-					TF:     shimv2.NewResource(customDiffRes),
+					TF:     shimv2.NewResource(v2Provider.ResourcesMap["resource"]),
 					Schema: &ResourceInfo{Fields: info},
 				}
 				tfState, err := makeTerraformStateWithOpts(ctx, r, "id", stateMap,
@@ -245,16 +247,17 @@ func v2Setup(tfs map[string]*v2Schema.Schema) (
 			return d.SetNewComputed("outp")
 		},
 	}
-	provider := shimv2.NewProvider(&v2Schema.Provider{
+	v2Provider := v2Schema.Provider{
 		ResourcesMap: map[string]*v2Schema.Resource{
 			"resource": res,
 		},
-	})
+	}
+	provider := shimv2.NewProvider(&v2Provider)
 	info := map[string]*SchemaInfo{}
 
 	// Convert the inputs and state to TF config and resource attributes.
 	r := Resource{
-		TF:     shimv2.NewResource(res),
+		TF:     shimv2.NewResource(v2Provider.ResourcesMap["resource"]),
 		Schema: &ResourceInfo{Fields: info},
 	}
 
