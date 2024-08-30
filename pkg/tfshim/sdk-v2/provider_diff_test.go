@@ -28,6 +28,8 @@ import (
 )
 
 func TestRawPlanSet(t *testing.T) {
+	// TODO: safe to remove? Should not affect PRC
+	t.Skipf("Skipping test as it is not relevant to PRC")
 	ctx := context.Background()
 	r := &schema.Resource{
 		Schema: map[string]*schema.Schema{

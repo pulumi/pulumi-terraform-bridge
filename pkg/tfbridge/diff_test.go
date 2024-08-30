@@ -85,7 +85,7 @@ func TestCustomizeDiff(t *testing.T) {
 
 		// Convert the inputs and state to TF config and resource attributes.
 		r := Resource{
-			TF:     shimv2.NewResource(v2Provider.ResourcesMap["resource"]),
+			TF:     provider.ResourcesMap().Get("resource"),
 			Schema: &ResourceInfo{Fields: info},
 		}
 		tfState, err := makeTerraformStateWithOpts(ctx, r, "id", stateMap,
@@ -128,7 +128,7 @@ func TestCustomizeDiff(t *testing.T) {
 
 		// Convert the inputs and state to TF config and resource attributes.
 		r := Resource{
-			TF:     shimv2.NewResource(v2Provider.ResourcesMap["resource"]),
+			TF:     provider.ResourcesMap().Get("resource"),
 			Schema: &ResourceInfo{Fields: info},
 		}
 		tfState, err := makeTerraformStateWithOpts(ctx, r, "id", stateMap,
@@ -182,7 +182,7 @@ func TestCustomizeDiff(t *testing.T) {
 
 				// Convert the inputs and state to TF config and resource attributes.
 				r := Resource{
-					TF:     shimv2.NewResource(v2Provider.ResourcesMap["resource"]),
+					TF:     provider.ResourcesMap().Get("resource"),
 					Schema: &ResourceInfo{Fields: info},
 				}
 				tfState, err := makeTerraformStateWithOpts(ctx, r, "id", stateMap,
