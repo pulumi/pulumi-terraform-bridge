@@ -198,11 +198,12 @@ output "someOutput" {
 
 		autogold.Expect(`
 Provider:     simple
-Success rate: 100.00% (6/6)
+Success rate: 100.00% (7/7)
 
 Converted 100.00% of csharp examples (1/1)
 Converted 100.00% of go examples (1/1)
 Converted 100.00% of java examples (1/1)
+Converted 100.00% of protobuf examples (1/1)
 Converted 100.00% of python examples (1/1)
 Converted 100.00% of typescript examples (1/1)
 Converted 100.00% of yaml examples (1/1)
@@ -343,7 +344,7 @@ This is some intentionally broken HCL that should not convert.
 		autogold.Expect("").Equal(t, stdout.String())
 		//nolint:lll
 		autogold.Expect(`warning: unable to convert HCL example for Pulumi entity '#/resources/azure:webpubsub/customCertificate:CustomCertificate'. The example will be dropped from any generated docs or SDKs: 1 error occurred:
-* [csharp, go, java, python, typescript, yaml] <nil>: unexpected HCL snippet in Convert "\nThis is some intentionally broken HCL that should not convert.\n{}";
+* [csharp, go, java, protobuf, python, typescript, yaml] <nil>: unexpected HCL snippet in Convert "\nThis is some intentionally broken HCL that should not convert.\n{}";
 
 
 `).Equal(t, stderr.String())

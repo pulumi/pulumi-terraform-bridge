@@ -2028,7 +2028,17 @@ func genLanguageToSlice(input Language) []string {
 		return []string{convert.LanguageGo}
 	case PCL:
 		return []string{convert.LanguagePulumi}
-	case Schema, RegistryDocs:
+	case Schema:
+		return []string{
+			convert.LanguageTypescript,
+			convert.LanguagePython,
+			convert.LanguageCSharp,
+			convert.LanguageGo,
+			convert.LanguageYaml,
+			convert.LanguageJava,
+			convert.LanguageProtobuf,
+		}
+	case RegistryDocs:
 		return []string{
 			convert.LanguageTypescript,
 			convert.LanguagePython,

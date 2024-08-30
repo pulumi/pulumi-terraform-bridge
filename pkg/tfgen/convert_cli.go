@@ -34,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	hcl2nodejs "github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
+	hcl2protobuf "github.com/pulumi/pulumi/pkg/v3/codegen/protobuf"
 	hcl2python "github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -550,6 +551,9 @@ func (cc *cliConverter) convertPCL(
 		diagnostics = append(diagnostics, genDiags...)
 	case "java":
 		generatedFiles, genDiags, err = hcl2java.GenerateProgram(program)
+		diagnostics = append(diagnostics, genDiags...)
+	case "protobuf":
+		generatedFiles, genDiags, err = hcl2protobuf.GenerateProgram(program)
 		diagnostics = append(diagnostics, genDiags...)
 	default:
 		err = fmt.Errorf("Unsupported language: %q", languageName)

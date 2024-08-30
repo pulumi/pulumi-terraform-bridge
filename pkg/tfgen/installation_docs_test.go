@@ -2,6 +2,7 @@ package tfgen
 
 import (
 	"bytes"
+	"os"
 	"runtime"
 	"testing"
 
@@ -299,6 +300,10 @@ func TestTranslateCodeBlocks(t *testing.T) {
 		}
 		t.Setenv("PULUMI_CONVERT", "1")
 		actual, err := translateCodeBlocks(tc.contentStr, tc.g)
+		if pulumiAccept {
+			err := os.WriteFile("test_data/installation-docs/configuration-expected.md", []byte(actual), 0600)
+			assert.NoError(t, err)
+		}
 		require.NoError(t, err)
 		require.Equal(t, tc.expected, actual)
 	})

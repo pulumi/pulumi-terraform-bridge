@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	hcl2nodejs "github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
+	hcl2protobuf "github.com/pulumi/pulumi/pkg/v3/codegen/protobuf"
 	hcl2python "github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -43,11 +44,12 @@ const (
 	LanguageGo         string = "go"
 	LanguageJava       string = "java"
 	LanguageYaml       string = "yaml"
+	LanguageProtobuf   string = "protobuf"
 )
 
 var (
 	ValidLanguages = []string{LanguageTypescript, LanguagePulumi, LanguagePython, LanguageCSharp,
-		LanguageGo, LanguageJava, LanguageYaml}
+		LanguageGo, LanguageJava, LanguageYaml, LanguageProtobuf}
 )
 
 type Diagnostics struct {
@@ -127,7 +129,11 @@ func Convert(opts Options) (map[string][]byte, Diagnostics, error) {
 	case LanguageJava:
 		generatedFiles, genDiags, err = hcl2java.GenerateProgram(program)
 		diagnostics = append(diagnostics, genDiags...)
+	case LanguageProtobuf:
+		generatedFiles, genDiags, err = hcl2protobuf.GenerateProgram(program)
+		diagnostics = append(diagnostics, genDiags...)
 	}
+
 	if err != nil {
 		return nil, Diagnostics{All: diagnostics, files: tfFiles}, err
 	}
