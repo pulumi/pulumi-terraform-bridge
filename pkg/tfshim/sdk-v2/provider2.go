@@ -109,6 +109,8 @@ type v2InstanceDiff2 struct {
 
 	config       cty.Value
 	plannedState cty.Value
+
+	diffEqualDecisionOverride *bool
 }
 
 func (d *v2InstanceDiff2) String() string {
@@ -137,6 +139,10 @@ func (d *v2InstanceDiff2) ProposedState(
 		stateValue: d.plannedState,
 		meta:       d.v2InstanceDiff.tf.Meta,
 	}, nil
+}
+
+func (d *v2InstanceDiff2) DiffEqualDecisionOverride() *bool {
+	return d.diffEqualDecisionOverride
 }
 
 // Provides PlanResourceChange handling for select resources.
@@ -186,12 +192,21 @@ func (p *planResourceChangeImpl) Diff(
 	if err != nil {
 		return nil, err
 	}
+
+	//nolint:lll
+	// https://github.com/opentofu/opentofu/blob/864aa9d1d629090cfc4ddf9fdd344d34dee9793e/internal/tofu/node_resource_abstract_instance.go#L1024
+	unmarkedPrior, _ := st.UnmarkDeep()
+	unmarkedPlan, _ := plan.PlannedState.UnmarkDeep()
+	eqV := unmarkedPrior.Equals(unmarkedPlan)
+	eq := eqV.IsKnown() && eqV.True()
+
 	return &v2InstanceDiff2{
 		v2InstanceDiff: v2InstanceDiff{
 			tf: plan.PlannedDiff,
 		},
-		config:       cfg,
-		plannedState: plan.PlannedState,
+		config:               cfg,
+		plannedState:         plan.PlannedState,
+		diffEqualDecisionOverride: &eq,
 	}, nil
 }
 
@@ -407,7 +422,8 @@ func (s *grpcServer) PlanResourceChange(
 	PlannedState cty.Value
 	PlannedMeta  map[string]interface{}
 	PlannedDiff  *terraform.InstanceDiff
-}, error) {
+}, error,
+) {
 	configVal, err := msgpack.Marshal(config, ty)
 	if err != nil {
 		return nil, err

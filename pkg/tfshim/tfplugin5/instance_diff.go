@@ -28,6 +28,10 @@ type instanceDiff struct {
 	attributes  map[string]shim.ResourceAttrDiff
 }
 
+func (d instanceDiff) DiffEqualDecisionOverride() *bool {
+	return nil
+}
+
 func (d instanceDiff) applyTimeoutOptions(opts shim.TimeoutOptions) {
 	if opts.ResourceTimeout != nil {
 		err := d.encodeTimeouts(opts.ResourceTimeout)

@@ -48,6 +48,7 @@ type InstanceDiff interface {
 	ProposedState(res Resource, priorState InstanceState) (InstanceState, error)
 	Destroy() bool
 	RequiresNew() bool
+	DiffEqualDecisionOverride() *bool
 }
 
 type ValueType int
