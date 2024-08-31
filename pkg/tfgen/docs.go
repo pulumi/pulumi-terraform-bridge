@@ -2036,7 +2036,7 @@ func genLanguageToSlice(input Language) []string {
 			convert.LanguageGo,
 			convert.LanguageYaml,
 			convert.LanguageJava,
-			convert.LanguageProtobuf,
+			convert.LanguagePclProtobuf,
 		}
 	case RegistryDocs:
 		return []string{

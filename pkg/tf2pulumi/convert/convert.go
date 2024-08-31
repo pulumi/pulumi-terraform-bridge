@@ -27,7 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	hcl2nodejs "github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
-	hcl2protobuf "github.com/pulumi/pulumi/pkg/v3/codegen/protobuf"
+	hcl2pcl "github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	hcl2python "github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -37,19 +37,19 @@ import (
 )
 
 const (
-	LanguageTypescript string = "typescript"
-	LanguagePulumi     string = "pulumi"
-	LanguagePython     string = "python"
-	LanguageCSharp     string = "csharp"
-	LanguageGo         string = "go"
-	LanguageJava       string = "java"
-	LanguageYaml       string = "yaml"
-	LanguageProtobuf   string = "protobuf"
+	LanguageTypescript  string = "typescript"
+	LanguagePulumi      string = "pulumi"
+	LanguagePython      string = "python"
+	LanguageCSharp      string = "csharp"
+	LanguageGo          string = "go"
+	LanguageJava        string = "java"
+	LanguageYaml        string = "yaml"
+	LanguagePclProtobuf string = "pcl_protobuf"
 )
 
 var (
 	ValidLanguages = []string{LanguageTypescript, LanguagePulumi, LanguagePython, LanguageCSharp,
-		LanguageGo, LanguageJava, LanguageYaml, LanguageProtobuf}
+		LanguageGo, LanguageJava, LanguageYaml, LanguagePclProtobuf}
 )
 
 type Diagnostics struct {
@@ -129,8 +129,8 @@ func Convert(opts Options) (map[string][]byte, Diagnostics, error) {
 	case LanguageJava:
 		generatedFiles, genDiags, err = hcl2java.GenerateProgram(program)
 		diagnostics = append(diagnostics, genDiags...)
-	case LanguageProtobuf:
-		generatedFiles, genDiags, err = hcl2protobuf.GenerateProgram(program)
+	case LanguagePclProtobuf:
+		generatedFiles, genDiags, err = hcl2pcl.GenerateSerializedProtobufProgram(program)
 		diagnostics = append(diagnostics, genDiags...)
 	}
 

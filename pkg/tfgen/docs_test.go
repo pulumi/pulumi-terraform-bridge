@@ -1488,15 +1488,16 @@ func TestFormatEntityName(t *testing.T) {
 
 func TestHclConversionsToString(t *testing.T) {
 	input := map[string]string{
-		"typescript": "var foo = bar;",
-		"java":       "FooFactory fooFactory = new FooFactory();",
-		"go":         "foo := bar",
-		"python":     "foo = bar",
-		"yaml":       "# Good enough YAML example",
-		"csharp":     "var fooFactory = barProvider.Baz();",
-		"pcl":        "# Good enough PCL example",
-		"protobuf":   "base64",
-		"haskell":    "", // i.e., a language we could not convert, which should not appear in the output
+		"typescript":   "var foo = bar;",
+		"java":         "FooFactory fooFactory = new FooFactory();",
+		"go":           "foo := bar",
+		"python":       "foo = bar",
+		"yaml":         "# Good enough YAML example",
+		"csharp":       "var fooFactory = barProvider.Baz();",
+		"pcl":          "# Good enough PCL example",
+		"pcl_protobuf": "base64",
+		"pcl_json":     "{}",
+		"haskell":      "", // i.e., a language we could not convert, which should not appear in the output
 	}
 
 	// We use a template because we cannot escape backticks within a herestring, and concatenating this output would be
@@ -1519,7 +1520,10 @@ FooFactory fooFactory = new FooFactory();
 {{ .CodeFences }}pcl
 # Good enough PCL example
 {{ .CodeFences }}
-{{ .CodeFences }}protobuf
+{{ .CodeFences }}pcl_json
+{}
+{{ .CodeFences }}
+{{ .CodeFences }}pcl_protobuf
 base64
 {{ .CodeFences }}
 {{ .CodeFences }}yaml
