@@ -1166,6 +1166,42 @@ func flattenListAttributeKey(attribute string) string {
 	return strings.ReplaceAll(attribute, ".0", "")
 }
 
+func parseImportShellLine(section, token string) string {
+	if strings.Contains(section, "terraform import") {
+		// First, remove the `$`
+		section := strings.Replace(section, "$ ", "", -1)
+		// Next, remove `terraform import` from the codeblock
+		section = strings.Replace(section, "terraform import ", "", -1)
+		importString := ""
+		parts := strings.Split(section, " ")
+		for i, p := range parts {
+			switch i {
+			case 0:
+				if !isBlank(p) {
+					// split the string on . and take the last item
+					// this gets the identifier broken from the tf resource
+					ids := strings.Split(p, ".")
+					name := ids[len(ids)-1]
+					importString = fmt.Sprintf("%s %s", importString, name)
+				}
+			default:
+				if !isBlank(p) {
+					importString = fmt.Sprintf("%s %s", importString, p)
+				}
+			}
+		}
+		var tok string
+		if token != "" {
+			tok = token
+		} else {
+			tok = "MISSING_TOK"
+		}
+		importCommand := fmt.Sprintf("$ pulumi import %s%s", tok, importString)
+		return importCommand
+	}
+	return section
+}
+
 func (p *tfMarkdownParser) parseImports(subsection []string) {
 	var token string
 	if p.info != nil && p.info.GetTok() != "" {
@@ -1206,65 +1242,68 @@ func (p *tfMarkdownParser) parseImports(subsection []string) {
 	}
 
 	var importDocString string
-	for _, section := range subsection {
+	var i = 0
+
+	for i < len(subsection) {
+		section := subsection[i]
+		trimmedSection := strings.TrimSpace(section)
 		if strings.Contains(section, "**NOTE:") || strings.Contains(section, "**Please Note:") ||
 			strings.Contains(section, "**Note:**") {
 			// This is a Terraform import specific comment that we don't need to parse or include in our docs
+			i++
 			continue
 		}
 
 		// Skip another redundant comment
 		if strings.Contains(section, "Import is supported using the following syntax") {
+			i++
 			continue
 		}
 
-		// Remove the shell comment characters to avoid writing this line as a Markdown H1:
-		section = strings.TrimPrefix(section, "# ")
-
-		// There are multiple variations of codeblocks for import syntax
-		section = strings.Replace(section, "```shell", "", -1)
-		section = strings.Replace(section, "```sh", "", -1)
-		section = strings.Replace(section, "```", "", -1)
-
-		if strings.Contains(section, "terraform import") {
-			// First, remove the `$`
-			section := strings.Replace(section, "$ ", "", -1)
-			// Next, remove `terraform import` from the codeblock
-			section = strings.Replace(section, "terraform import ", "", -1)
-			importString := ""
-			parts := strings.Split(section, " ")
-			for i, p := range parts {
-				switch i {
-				case 0:
-					if !isBlank(p) {
-						// split the string on . and take the last item
-						// this gets the identifier broken from the tf resource
-						ids := strings.Split(p, ".")
-						name := ids[len(ids)-1]
-						importString = fmt.Sprintf("%s %s", importString, name)
-					}
-				default:
-					if !isBlank(p) {
-						importString = fmt.Sprintf("%s %s", importString, p)
-					}
+		// Handle terraform blocks - pass them whole without changes
+		if trimmedSection == "```terraform" || trimmedSection == "```hcl" {
+			for {
+				section = subsection[i]
+				trimmedSection := strings.TrimSpace(section)
+				importDocString = importDocString + section + "\n"
+				i++
+				if trimmedSection == "```" {
+					break
 				}
 			}
-			var tok string
-			if token != "" {
-				tok = token
-			} else {
-				tok = "MISSING_TOK"
-			}
-			importCommand := fmt.Sprintf("$ pulumi import %s%s\n", tok, importString)
-			importDetails := "```sh\n" + importCommand + "```\n\n"
-			importDocString = importDocString + importDetails
-		} else {
-			if !isBlank(section) {
-				// Ensure every section receives a line break.
-				section = section + "\n\n"
-				importDocString = importDocString + section
-			}
+			importDocString = importDocString + "\n"
+			continue
 		}
+
+		// Handle script blocks - replace terraform import with pulumi import
+		if trimmedSection == "```" || trimmedSection == "```sh" || trimmedSection == "```shell" {
+			initial := true
+			for {
+				section = subsection[i]
+				trimmedSection := strings.TrimSpace(section)
+				if initial {
+					// ``` and ```shell are removed when converting to programming language comment
+					importDocString = importDocString + "```sh" + "\n"
+				} else {
+					importDocString = importDocString + parseImportShellLine(section, token) + "\n"
+				}
+				i++
+				if trimmedSection == "```" && !initial {
+					break
+				}
+				initial = false
+			}
+			importDocString = importDocString + "\n"
+			continue
+		}
+
+		if !isBlank(section) {
+			// Ensure every section receives a line break.
+			section = section + "\n\n"
+			importDocString = importDocString + section
+		}
+
+		i++
 	}
 
 	if len(importDocString) > 0 {

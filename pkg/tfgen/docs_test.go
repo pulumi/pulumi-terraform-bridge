@@ -1785,7 +1785,7 @@ func TestParseImports_NoOverrides(t *testing.T) {
 				"",
 			},
 			token:    "snowflake:index/accountGrant:AccountGrant",
-			expected: "## Import\n\nformat is account name | | | privilege | true/false for with_grant_option\n\n```sh\n$ pulumi import snowflake:index/accountGrant:AccountGrant example 'accountName|||USAGE|true'\n```\n\n",
+			expected: "## Import\n\n```sh\n# format is account name | | | privilege | true/false for with_grant_option\n$ pulumi import snowflake:index/accountGrant:AccountGrant example 'accountName|||USAGE|true'\n```\n\n",
 		},
 		{
 			input: []string{
@@ -1829,6 +1829,11 @@ func TestParseImports_NoOverrides(t *testing.T) {
 			input:        readlines(t, "test_data/parse-imports/lambdalayer.md"),
 			token:        "aws:lambda/layerVersion:LayerVersion",
 			expectedFile: "test_data/parse-imports/lambdalayer-expected.md",
+		},
+		{
+			input:        readlines(t, "test_data/parse-imports/docker_container.md"),
+			token:        "docker:index/container:Container",
+			expectedFile: "test_data/parse-imports/docker_container-expected.md",
 		},
 	}
 
