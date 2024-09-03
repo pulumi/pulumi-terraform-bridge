@@ -674,7 +674,6 @@ func (p *tfMarkdownParser) parse(tfMarkdown []byte) (entityDocs, error) {
 		goldmark.WithParserOptions(parser.WithASTTransformers(
 			util.Prioritized(exampleTransformer, 2000),
 		)),
-		goldmark.WithRenderer(parse.RenderMarkdown()),
 	).Convert(tfMarkdown, &out)
 	if err != nil {
 		return entityDocs{}, err

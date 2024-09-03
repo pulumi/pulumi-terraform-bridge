@@ -1315,7 +1315,6 @@ func TestReformatExamples(t *testing.T) {
 			goldmark.WithParserOptions(parser.WithASTTransformers(
 				util.Prioritized(exampleTransformer{}, 2000),
 			)),
-			goldmark.WithRenderer(parse.RenderMarkdown()),
 		).Convert([]byte(input), &out)
 		require.NoError(t, err)
 
