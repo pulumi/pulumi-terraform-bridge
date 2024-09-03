@@ -1228,6 +1228,7 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 	}
 
 	// TODO: Check if this is needed for PRC, likely still needed
+	// TODO: Should this also add an entry at least in diff? Detailed diff too?
 	if changes == pulumirpc.DiffResponse_DIFF_NONE &&
 		markWronglyTypedMaxItemsOneStateDiff(schema, fields, olds) {
 
