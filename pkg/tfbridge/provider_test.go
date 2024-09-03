@@ -990,11 +990,9 @@ func testProviderRead(t *testing.T, provider *Provider, typeName tokens.Type, ch
 			"configurationValue": resource.NewStringProperty("true"),
 		}),
 	}), ins["nestedResources"])
-	assert.Equal(t, resource.NewArrayProperty(
-		[]resource.PropertyValue{
-			resource.NewStringProperty("set member 1"),
-			resource.NewStringProperty("set member 2"),
-		}), ins["setPropertyValues"])
+	assert.Len(t, ins["setPropertyValues"].ArrayValue(), 2)
+	assert.Contains(t, ins["setPropertyValues"].ArrayValue(), resource.NewStringProperty("set member 1"))
+	assert.Contains(t, ins["setPropertyValues"].ArrayValue(), resource.NewStringProperty("set member 2"))
 	assert.Equal(t, resource.NewStringProperty("some ${interpolated:value} with syntax errors"),
 		ins["stringWithBadInterpolation"])
 
