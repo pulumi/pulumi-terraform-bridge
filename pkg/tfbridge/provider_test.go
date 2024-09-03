@@ -1134,13 +1134,14 @@ func TestProviderReadNestedSecretV1(t *testing.T) {
 }
 
 func TestProviderReadNestedSecretV2(t *testing.T) {
+	shimProvider := shimv2.NewProvider(testTFProviderV2)
 	provider := &Provider{
-		tf:     shimv2.NewProvider(testTFProviderV2),
+		tf:     shimProvider,
 		config: shimv2.NewSchemaMap(testTFProviderV2.Schema),
 	}
 	provider.resources = map[tokens.Type]Resource{
 		"NestedSecretResource": {
-			TF:     shimv2.NewResource(testTFProviderV2.ResourcesMap["nested_secret_resource"]),
+			TF:     shimProvider.ResourcesMap().Get("nested_secret_resource"),
 			TFName: "nested_secret_resource",
 			Schema: &ResourceInfo{Tok: "NestedSecretResource"},
 		},
@@ -1151,8 +1152,9 @@ func TestProviderReadNestedSecretV2(t *testing.T) {
 
 func TestCheck(t *testing.T) {
 	t.Run("Default application can consult prior state in Check", func(t *testing.T) {
+		shimProvider := shimv2.NewProvider(testTFProviderV2)
 		provider := &Provider{
-			tf:     shimv2.NewProvider(testTFProviderV2),
+			tf:     shimProvider,
 			config: shimv2.NewSchemaMap(testTFProviderV2.Schema),
 		}
 		computeStringDefault := func(ctx context.Context, opts ComputeDefaultOptions) (interface{}, error) {
@@ -1167,7 +1169,7 @@ func TestCheck(t *testing.T) {
 		}
 		provider.resources = map[tokens.Type]Resource{
 			"ExampleResource": {
-				TF:     shimv2.NewResource(testTFProviderV2.ResourcesMap["example_resource"]),
+				TF:     shimProvider.ResourcesMap().Get("example_resource"),
 				TFName: "example_resource",
 				Schema: &ResourceInfo{
 					Tok: "ExampleResource",
@@ -1232,14 +1234,15 @@ func TestCheck(t *testing.T) {
 		p2 := testprovider.ProviderV2()
 		p2.ResourcesMap["example_resource"].Schema["string_property_value"].Sensitive = true
 
+		shimProvider := shimv2.NewProvider(p2)
 		provider := &Provider{
-			tf:     shimv2.NewProvider(p2),
+			tf:     shimProvider,
 			config: shimv2.NewSchemaMap(p2.Schema),
 		}
 
 		provider.resources = map[tokens.Type]Resource{
 			"ExampleResource": {
-				TF:     shimv2.NewResource(p2.ResourcesMap["example_resource"]),
+				TF:     shimProvider.ResourcesMap().Get("example_resource"),
 				TFName: "example_resource",
 				Schema: &ResourceInfo{
 					Tok: "ExampleResource",
@@ -1372,9 +1375,10 @@ func TestCheckWarnings(t *testing.T) {
 			},
 		},
 	}
+	shimProvider := shimv2.NewProvider(p)
 
 	provider := &Provider{
-		tf:               shimv2.NewProvider(p, shimv2.WithDiffStrategy(shimv2.PlanState)),
+		tf:               shimProvider,
 		module:           "testprov",
 		config:           shimv2.NewSchemaMap(p.Schema),
 		pulumiSchema:     []byte("hello"), // we only check whether this is nil in type checking
@@ -1382,7 +1386,7 @@ func TestCheckWarnings(t *testing.T) {
 		hasTypeErrors:    make(map[resource.URN]struct{}),
 		resources: map[tokens.Type]Resource{
 			"ExampleResource": {
-				TF:     shimv2.NewResource(p.ResourcesMap["example_resource"]),
+				TF:     shimProvider.ResourcesMap().Get("example_resource"),
 				TFName: "example_resource",
 				Schema: &ResourceInfo{
 					Tok: "ExampleResource",
@@ -2219,13 +2223,14 @@ func TestInvoke(t *testing.T) {
 		prop.Computed = true
 		prop.Optional = true
 
+		shimProvider := shimv2.NewProvider(p)
 		provider := &Provider{
-			tf:     shimv2.NewProvider(testTFProviderV2),
+			tf:     shimProvider,
 			config: shimv2.NewSchemaMap(testTFProviderV2.Schema),
 
 			dataSources: map[tokens.ModuleMember]DataSource{
 				"tprov:index/ExampleFn:ExampleFn": {
-					TF:     shimv2.NewResource(ds),
+					TF:     shimProvider.DataSourcesMap().Get(dsName),
 					TFName: dsName,
 					Schema: &DataSourceInfo{
 						Tok: "tprov:index/ExampleFn:ExampleFn",
@@ -2268,12 +2273,13 @@ func TestInvoke(t *testing.T) {
 }
 
 func TestTransformOutputs(t *testing.T) {
+	shimProvider := shimv2.NewProvider(testTFProviderV2)
 	provider := &Provider{
-		tf:     shimv2.NewProvider(testTFProviderV2),
+		tf:     shimProvider,
 		config: shimv2.NewSchemaMap(testTFProviderV2.Schema),
 		resources: map[tokens.Type]Resource{
 			"ExampleResource": {
-				TF:     shimv2.NewResource(testTFProviderV2.ResourcesMap["example_resource"]),
+				TF:     shimProvider.ResourcesMap().Get("example_resource"),
 				TFName: "example_resource",
 				Schema: &ResourceInfo{
 					Tok: "ExampleResource",
@@ -2435,17 +2441,18 @@ func TestTransformOutputs(t *testing.T) {
 func TestSkipDetailedDiff(t *testing.T) {
 	provider := func(t *testing.T, skipDetailedDiffForChanges bool) *Provider {
 		p := testprovider.CustomizedDiffProvider(func(data *schema.ResourceData) {})
+		shimProvider := shimv2.NewProvider(p)
 		return &Provider{
-			tf:     shimv2.NewProvider(p),
+			tf:     shimProvider,
 			config: shimv2.NewSchemaMap(p.Schema),
 			resources: map[tokens.Type]Resource{
 				"Resource": {
-					TF:     shimv2.NewResource(p.ResourcesMap["test_resource"]),
+					TF:     shimProvider.ResourcesMap().Get("test_resource"),
 					TFName: "test_resource",
 					Schema: &ResourceInfo{Tok: "Resource"},
 				},
 				"Replace": {
-					TF:     shimv2.NewResource(p.ResourcesMap["test_replace"]),
+					TF:     shimProvider.ResourcesMap().Get("test_replace"),
 					TFName: "test_replace",
 					Schema: &ResourceInfo{Tok: "Replace"},
 				},
@@ -2539,12 +2546,13 @@ func TestTransformFromState(t *testing.T) {
 		})
 		var called bool
 		t.Cleanup(func() { assert.True(t, called, "Transform was not called") })
+		shimProvider := shimv2.NewProvider(p)
 		return &Provider{
-			tf:     shimv2.NewProvider(p),
+			tf:     shimProvider,
 			config: shimv2.NewSchemaMap(p.Schema),
 			resources: map[tokens.Type]Resource{
 				"Echo": {
-					TF:     shimv2.NewResource(p.ResourcesMap["echo"]),
+					TF:     shimProvider.ResourcesMap().Get("echo"),
 					TFName: "echo",
 					Schema: &ResourceInfo{
 						Tok: "Echo",
@@ -2701,12 +2709,13 @@ func TestTransformFromState(t *testing.T) {
 // https://github.com/pulumi/pulumi-aws/issues/3092
 func TestMaxItemOneWrongStateDiff(t *testing.T) {
 	p := testprovider.MaxItemsOneProvider()
+	shimProvider := shimv2.NewProvider(p)
 	provider := &Provider{
-		tf:     shimv2.NewProvider(p),
+		tf:     shimProvider,
 		config: shimv2.NewSchemaMap(p.Schema),
 		resources: map[tokens.Type]Resource{
 			"NestedStrRes": {
-				TF:     shimv2.NewResource(p.ResourcesMap["nested_str_res"]),
+				TF:     shimProvider.ResourcesMap().Get("nested_str_res"),
 				TFName: "nested_str_res",
 				Schema: &ResourceInfo{
 					Tok:    "NestedStrRes",
@@ -2830,12 +2839,13 @@ func TestMaxItemOneWrongStateDiff(t *testing.T) {
 // https://github.com/pulumi/pulumi-terraform-bridge/issues/1546
 func TestDefaultsAndConflictsWithValidationInteraction(t *testing.T) {
 	p := testprovider.ConflictsWithValidationProvider()
+	shimProvider := shimv2.NewProvider(p)
 	provider := &Provider{
-		tf:     shimv2.NewProvider(p),
+		tf:     shimProvider,
 		config: shimv2.NewSchemaMap(p.Schema),
 		resources: map[tokens.Type]Resource{
 			"DefaultValueRes": {
-				TF:     shimv2.NewResource(p.ResourcesMap["default_value_res"]),
+				TF:     shimProvider.ResourcesMap().Get("default_value_res"),
 				TFName: "default_value_res",
 				Schema: &ResourceInfo{},
 			},
@@ -2890,12 +2900,13 @@ func TestDefaultsAndConflictsWithValidationInteraction(t *testing.T) {
 // https://github.com/pulumi/pulumi-terraform-bridge/issues/1546
 func TestDefaultsAndExactlyOneOfValidationInteraction(t *testing.T) {
 	p := testprovider.ExactlyOneOfValidationProvider()
+	shimProvider := shimv2.NewProvider(p)
 	provider := &Provider{
-		tf:     shimv2.NewProvider(p),
+		tf:     shimProvider,
 		config: shimv2.NewSchemaMap(p.Schema),
 		resources: map[tokens.Type]Resource{
 			"DefaultValueRes": {
-				TF:     shimv2.NewResource(p.ResourcesMap["default_value_res"]),
+				TF:     shimProvider.ResourcesMap().Get("default_value_res"),
 				TFName: "default_value_res",
 				Schema: &ResourceInfo{},
 			},
@@ -2954,12 +2965,13 @@ func TestDefaultsAndExactlyOneOfValidationInteraction(t *testing.T) {
 // https://github.com/pulumi/pulumi-terraform-bridge/issues/1546
 func TestDefaultsAndRequiredWithValidationInteraction(t *testing.T) {
 	p := testprovider.RequiredWithValidationProvider()
+	shimProvider := shimv2.NewProvider(p)
 	provider := &Provider{
-		tf:     shimv2.NewProvider(p),
+		tf:     shimProvider,
 		config: shimv2.NewSchemaMap(p.Schema),
 		resources: map[tokens.Type]Resource{
 			"DefaultValueRes": {
-				TF:     shimv2.NewResource(p.ResourcesMap["default_value_res"]),
+				TF:     shimProvider.ResourcesMap().Get("default_value_res"),
 				TFName: "default_value_res",
 				Schema: &ResourceInfo{},
 			},
@@ -3612,7 +3624,7 @@ func TestMaxItemsOneConflictsWith(t *testing.T) {
 		},
 		resources: map[tokens.Type]Resource{
 			"Res": {
-				TF:     shimv2.NewResource(p.ResourcesMap["res"]),
+				TF:     shimProv.ResourcesMap().Get("res"),
 				TFName: "res",
 				Schema: &ResourceInfo{},
 			},
@@ -3710,7 +3722,7 @@ func TestMinMaxItemsOneOptional(t *testing.T) {
 		},
 		resources: map[tokens.Type]Resource{
 			"Res": {
-				TF:     shimv2.NewResource(p.ResourcesMap["res"]),
+				TF:     shimProv.ResourcesMap().Get("res"),
 				TFName: "res",
 				Schema: &ResourceInfo{},
 			},
@@ -3814,7 +3826,7 @@ func TestComputedMaxItemsOneNotSpecified(t *testing.T) {
 		},
 		resources: map[tokens.Type]Resource{
 			"Res": {
-				TF:     shimv2.NewResource(p.ResourcesMap["res"]),
+				TF:     shimProv.ResourcesMap().Get("res"),
 				TFName: "res",
 				Schema: &ResourceInfo{},
 			},
@@ -3969,7 +3981,7 @@ func TestMaxItemsOnePropCheckResponseNoNulls(t *testing.T) {
 		info:   ProviderInfo{P: shimProv},
 		resources: map[tokens.Type]Resource{
 			"Res": {
-				TF:     shimv2.NewResource(p.ResourcesMap["res"]),
+				TF:     shimProv.ResourcesMap().Get("res"),
 				TFName: "res",
 				Schema: &ResourceInfo{},
 			},
@@ -4360,7 +4372,7 @@ func TestStringValForOtherProperty(t *testing.T) {
 		info:   ProviderInfo{P: shimProv},
 		resources: map[tokens.Type]Resource{
 			"Res": {
-				TF:     shimv2.NewResource(p.ResourcesMap["res"]),
+				TF:     shimProv.ResourcesMap().Get("res"),
 				TFName: "res",
 				Schema: &ResourceInfo{},
 			},
