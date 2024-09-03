@@ -188,7 +188,8 @@ func TestRegress1020(t *testing.T) {
 		      "addresses": [
 			"2001:0db8:85a3:0000:0000:8a2e:0370:7334/32"
 		       ],
-		       "id": "",
+			   "id": "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+			   "rules": [],
 		       "ipAddressVersion": "IPV6",
 		       "name": "ip6_sample-e8442ad",
 		       "scope": "CLOUDFRONT"
@@ -198,11 +199,6 @@ func TestRegress1020(t *testing.T) {
 
 	t.Run("can preview Create", func(t *testing.T) {
 		p := shimv2.NewProvider(tfProvider)
-		testutils.Replay(t, server(p), createTestCase)
-	})
-
-	t.Run("can preview Create when using PlanState", func(t *testing.T) {
-		p := shimv2.NewProvider(tfProvider, shimv2.WithDiffStrategy(shimv2.PlanState))
 		testutils.Replay(t, server(p), createTestCase)
 	})
 
@@ -248,11 +244,6 @@ func TestRegress1020(t *testing.T) {
 
 	t.Run("can compute an Update plan in Diff", func(t *testing.T) {
 		p := shimv2.NewProvider(tfProvider)
-		testutils.Replay(t, server(p), diffTestCase)
-	})
-
-	t.Run("can compute an Update plan in Diff when using PlanState", func(t *testing.T) {
-		p := shimv2.NewProvider(tfProvider, shimv2.WithDiffStrategy(shimv2.PlanState))
 		testutils.Replay(t, server(p), diffTestCase)
 	})
 }

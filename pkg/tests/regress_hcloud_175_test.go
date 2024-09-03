@@ -115,7 +115,10 @@ func TestRegressHCloud175(t *testing.T) {
 	      "id": "*",
 	      "ipRange": "10.0.1.0/24",
 	      "networkZone": "eu-central",
-	      "type": "cloud"
+	      "type": "cloud",
+		  "gateway": "*",
+		  "vswitchId": "*",
+		  "networkId": "*"
             }
 	  }
 	}`
