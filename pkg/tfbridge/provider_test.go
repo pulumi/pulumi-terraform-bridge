@@ -707,6 +707,7 @@ func TestProviderPreviewV2(t *testing.T) {
 
 	outs, err := plugin.UnmarshalProperties(createResp.GetProperties(), plugin.MarshalOptions{KeepUnknowns: true})
 	assert.NoError(t, err)
+	//nolint:lll
 	autogold.Expect(resource.PropertyMap{
 		resource.PropertyKey("__meta"): resource.PropertyValue{
 			V: `{"_new_extra_shim":{},"e2bfb730-ecaa-11e6-8f88-34363bc7c4c0":{"create":120000000000}}`,
