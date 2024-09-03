@@ -5813,9 +5813,6 @@ func TestSetDuplicatedDiffEntries(t *testing.T) {
             "privileges"
         ],
         "detailedDiff": {
-            "privileges": {
-                "kind": "UPDATE"
-            },
             "privileges[0]": {
                 "kind": "DELETE"
             },
