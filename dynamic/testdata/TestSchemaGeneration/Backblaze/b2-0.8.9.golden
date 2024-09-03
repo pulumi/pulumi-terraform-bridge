@@ -620,6 +620,9 @@
                     "type": "string",
                     "description": "The ID of the newly created key.\n"
                 },
+                "b2Id": {
+                    "type": "string"
+                },
                 "bucketId": {
                     "type": "string",
                     "description": "When present, restricts access to one bucket.\n"
@@ -651,10 +654,14 @@
                 "applicationKey",
                 "applicationKeyId",
                 "capabilities",
+                "b2Id",
                 "keyName",
                 "options"
             ],
             "inputProperties": {
+                "b2Id": {
+                    "type": "string"
+                },
                 "bucketId": {
                     "type": "string",
                     "description": "When present, restricts access to one bucket.\n"
@@ -691,6 +698,9 @@
                         "type": "string",
                         "description": "The ID of the newly created key.\n"
                     },
+                    "b2Id": {
+                        "type": "string"
+                    },
                     "bucketId": {
                         "type": "string",
                         "description": "When present, restricts access to one bucket.\n"
@@ -726,6 +736,9 @@
                 "accountId": {
                     "type": "string",
                     "description": "Account ID that the bucket belongs to.\n"
+                },
+                "b2Id": {
+                    "type": "string"
                 },
                 "bucketId": {
                     "type": "string",
@@ -788,10 +801,14 @@
                 "bucketId",
                 "bucketName",
                 "bucketType",
+                "b2Id",
                 "options",
                 "revision"
             ],
             "inputProperties": {
+                "b2Id": {
+                    "type": "string"
+                },
                 "bucketInfo": {
                     "type": "object",
                     "additionalProperties": {
@@ -843,6 +860,9 @@
                     "accountId": {
                         "type": "string",
                         "description": "Account ID that the bucket belongs to.\n"
+                    },
+                    "b2Id": {
+                        "type": "string"
                     },
                     "bucketId": {
                         "type": "string",
@@ -909,6 +929,9 @@
                     "type": "string",
                     "description": "One of 'start', 'upload', 'hide', 'folder', or other values added in the future.\n"
                 },
+                "b2Id": {
+                    "type": "string"
+                },
                 "bucketId": {
                     "type": "string",
                     "description": "The ID of the bucket.\n"
@@ -965,11 +988,15 @@
                 "fileId",
                 "fileInfo",
                 "fileName",
+                "b2Id",
                 "size",
                 "source",
                 "uploadTimestamp"
             ],
             "inputProperties": {
+                "b2Id": {
+                    "type": "string"
+                },
                 "bucketId": {
                     "type": "string",
                     "description": "The ID of the bucket.\n"
@@ -1009,6 +1036,9 @@
                     "action": {
                         "type": "string",
                         "description": "One of 'start', 'upload', 'hide', 'folder', or other values added in the future.\n"
+                    },
+                    "b2Id": {
+                        "type": "string"
                     },
                     "bucketId": {
                         "type": "string",
