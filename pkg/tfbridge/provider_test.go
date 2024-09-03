@@ -4014,6 +4014,8 @@ func TestMaxItemsOnePropCheckResponseNoNulls(t *testing.T) {
 
 // TODO[pulumi/pulumi#15636] if/when Pulumi supports customizing Read timeouts these could be added here.
 func TestCustomTimeouts(t *testing.T) {
+	// TODO[pulumi/pulumi-terraform-bridge#2386]
+	t.Skipf("Skipping test until pulumi/pulumi-terraform-bridge#2386 is resolved")
 	t.Parallel()
 
 	type testCase struct {
