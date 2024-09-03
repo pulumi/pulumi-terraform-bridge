@@ -542,7 +542,18 @@ func testIgnoreChangesV2(t *testing.T, prov shim.Provider) {
 	testIgnoreChanges(t, provider)
 }
 
-func testProviderPreview(t *testing.T, provider *Provider) {
+func TestProviderPreview(t *testing.T) {
+	provider := &Provider{
+		tf:     shimv1.NewProvider(testTFProvider),
+		config: shimv1.NewSchemaMap(testTFProvider.Schema),
+	}
+	provider.resources = map[tokens.Type]Resource{
+		"ExampleResource": {
+			TF:     shimv1.NewResource(testTFProvider.ResourcesMap["example_resource"]),
+			TFName: "example_resource",
+			Schema: &ResourceInfo{Tok: "ExampleResource"},
+		},
+	}
 	urn := resource.NewURN("stack", "project", "", "ExampleResource", "name")
 
 	unknown := resource.MakeComputed(resource.NewStringProperty(""))
@@ -575,7 +586,127 @@ func testProviderPreview(t *testing.T, provider *Provider) {
 
 	outs, err := plugin.UnmarshalProperties(createResp.GetProperties(), plugin.MarshalOptions{KeepUnknowns: true})
 	assert.NoError(t, err)
-	//nolint:lll
+	assert.True(t, resource.PropertyMap{
+		"id":                  resource.NewStringProperty(""),
+		"stringPropertyValue": resource.NewStringProperty("foo"),
+		"setPropertyValues":   resource.NewArrayProperty([]resource.PropertyValue{resource.NewStringProperty("foo")}),
+		"nestedResources": resource.NewObjectProperty(resource.PropertyMap{
+			"kind": unknown,
+			"configuration": resource.NewObjectProperty(resource.PropertyMap{
+				"name": resource.NewStringProperty("foo"),
+			}),
+			"optBool": resource.NewBoolProperty(false),
+		}),
+	}.DeepEquals(outs))
+
+	// Step 2b: actually create the resource.
+	pulumiIns, err = plugin.MarshalProperties(resource.NewPropertyMapFromMap(map[string]interface{}{
+		"stringPropertyValue": "foo",
+		"setPropertyValues":   []interface{}{"foo"},
+		"nestedResources": map[string]interface{}{
+			"kind": "foo",
+			"configuration": map[string]interface{}{
+				"name": "foo",
+			},
+		},
+	}), plugin.MarshalOptions{})
+	assert.NoError(t, err)
+	checkResp, err = provider.Check(context.Background(), &pulumirpc.CheckRequest{
+		Urn:  string(urn),
+		News: pulumiIns,
+	})
+	assert.NoError(t, err)
+	createResp, err = provider.Create(context.Background(), &pulumirpc.CreateRequest{
+		Urn:        string(urn),
+		Properties: checkResp.GetInputs(),
+	})
+	assert.NoError(t, err)
+
+	// Step 3: preview an update to the resource we just created.
+	pulumiIns, err = plugin.MarshalProperties(resource.PropertyMap{
+		"stringPropertyValue": resource.NewStringProperty("bar"),
+		"setPropertyValues":   resource.NewArrayProperty([]resource.PropertyValue{resource.NewStringProperty("foo")}),
+		"nestedResources": resource.NewObjectProperty(resource.PropertyMap{
+			"kind": unknown,
+			"configuration": resource.NewObjectProperty(resource.PropertyMap{
+				"name": resource.NewStringProperty("foo"),
+			}),
+		}),
+	}, plugin.MarshalOptions{KeepUnknowns: true})
+	assert.NoError(t, err)
+	checkResp, err = provider.Check(context.Background(), &pulumirpc.CheckRequest{
+		Urn:  string(urn),
+		News: pulumiIns,
+		Olds: createResp.GetProperties(),
+	})
+	assert.NoError(t, err)
+
+	updateResp, err := provider.Update(context.Background(), &pulumirpc.UpdateRequest{
+		Id:      "MyID",
+		Urn:     string(urn),
+		Olds:    createResp.GetProperties(),
+		News:    checkResp.GetInputs(),
+		Preview: true,
+	})
+	assert.NoError(t, err)
+
+	outs, err = plugin.UnmarshalProperties(updateResp.GetProperties(), plugin.MarshalOptions{KeepUnknowns: true})
+	assert.NoError(t, err)
+	assert.Equal(t, resource.NewStringProperty("bar"), outs["stringPropertyValue"])
+	assert.True(t, resource.NewObjectProperty(resource.PropertyMap{
+		"kind": unknown,
+		"configuration": resource.NewObjectProperty(resource.PropertyMap{
+			"name": resource.NewStringProperty("foo"),
+		}),
+		"optBool": resource.NewBoolProperty(false),
+	}).DeepEquals(outs["nestedResources"]))
+}
+
+func TestProviderPreviewV2(t *testing.T) {
+	shimProvider := shimv2.NewProvider(testTFProviderV2)
+	provider := &Provider{
+		tf:     shimProvider,
+		config: shimv2.NewSchemaMap(testTFProviderV2.Schema),
+	}
+	provider.resources = map[tokens.Type]Resource{
+		"ExampleResource": {
+			TF:     shimProvider.ResourcesMap().Get("example_resource"),
+			TFName: "example_resource",
+			Schema: &ResourceInfo{Tok: "ExampleResource"},
+		},
+	}
+	urn := resource.NewURN("stack", "project", "", "ExampleResource", "name")
+
+	unknown := resource.MakeComputed(resource.NewStringProperty(""))
+
+	// Step 1: create and check an input bag.
+	pulumiIns, err := plugin.MarshalProperties(resource.PropertyMap{
+		"stringPropertyValue": resource.NewStringProperty("foo"),
+		"setPropertyValues":   resource.NewArrayProperty([]resource.PropertyValue{resource.NewStringProperty("foo")}),
+		"nestedResources": resource.NewObjectProperty(resource.PropertyMap{
+			"kind": unknown,
+			"configuration": resource.NewObjectProperty(resource.PropertyMap{
+				"name": resource.NewStringProperty("foo"),
+			}),
+		}),
+	}, plugin.MarshalOptions{KeepUnknowns: true})
+	assert.NoError(t, err)
+	checkResp, err := provider.Check(context.Background(), &pulumirpc.CheckRequest{
+		Urn:  string(urn),
+		News: pulumiIns,
+	})
+	assert.NoError(t, err)
+
+	// Step 2a: preview the creation of a resource using the checked input bag.
+	createResp, err := provider.Create(context.Background(), &pulumirpc.CreateRequest{
+		Urn:        string(urn),
+		Properties: checkResp.GetInputs(),
+		Preview:    true,
+	})
+	assert.NoError(t, err)
+
+	outs, err := plugin.UnmarshalProperties(createResp.GetProperties(), plugin.MarshalOptions{KeepUnknowns: true})
+	assert.NoError(t, err)
 	autogold.Expect(resource.PropertyMap{
 		resource.PropertyKey("__meta"): resource.PropertyValue{
 			V: `{"_new_extra_shim":{},"e2bfb730-ecaa-11e6-8f88-34363bc7c4c0":{"create":120000000000}}`,
@@ -662,39 +793,6 @@ func testProviderPreview(t *testing.T, provider *Provider) {
 		}),
 		"optBool": resource.NewBoolProperty(false),
 	}).DeepEquals(outs["nestedResources"]))
-}
-
-func TestProviderPreview(t *testing.T) {
-	provider := &Provider{
-		tf:     shimv1.NewProvider(testTFProvider),
-		config: shimv1.NewSchemaMap(testTFProvider.Schema),
-	}
-	provider.resources = map[tokens.Type]Resource{
-		"ExampleResource": {
-			TF:     shimv1.NewResource(testTFProvider.ResourcesMap["example_resource"]),
-			TFName: "example_resource",
-			Schema: &ResourceInfo{Tok: "ExampleResource"},
-		},
-	}
-	testProviderPreview(t, provider)
-}
-
-func TestProviderPreviewV2(t *testing.T) {
-	// TODO: fix
-	// t.Skipf("Skip for now")
-	shimProvider := shimv2.NewProvider(testTFProviderV2)
-	provider := &Provider{
-		tf:     shimProvider,
-		config: shimv2.NewSchemaMap(testTFProviderV2.Schema),
-	}
-	provider.resources = map[tokens.Type]Resource{
-		"ExampleResource": {
-			TF:     shimProvider.ResourcesMap().Get("example_resource"),
-			TFName: "example_resource",
-			Schema: &ResourceInfo{Tok: "ExampleResource"},
-		},
-	}
-	testProviderPreview(t, provider)
 }
 
 func testCheckFailures(t *testing.T, provider *Provider, typeName tokens.Type) []*pulumirpc.CheckFailure {
