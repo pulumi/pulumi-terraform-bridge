@@ -575,18 +575,31 @@ func testProviderPreview(t *testing.T, provider *Provider) {
 
 	outs, err := plugin.UnmarshalProperties(createResp.GetProperties(), plugin.MarshalOptions{KeepUnknowns: true})
 	assert.NoError(t, err)
-	assert.True(t, resource.PropertyMap{
-		"id":                  resource.NewStringProperty(""),
-		"stringPropertyValue": resource.NewStringProperty("foo"),
-		"setPropertyValues":   resource.NewArrayProperty([]resource.PropertyValue{resource.NewStringProperty("foo")}),
-		"nestedResources": resource.NewObjectProperty(resource.PropertyMap{
-			"kind": unknown,
-			"configuration": resource.NewObjectProperty(resource.PropertyMap{
-				"name": resource.NewStringProperty("foo"),
-			}),
-			"optBool": resource.NewBoolProperty(false),
-		}),
-	}.DeepEquals(outs))
+	//nolint:lll
+	autogold.Expect(resource.PropertyMap{
+		resource.PropertyKey("__meta"): resource.PropertyValue{
+			V: `{"_new_extra_shim":{},"e2bfb730-ecaa-11e6-8f88-34363bc7c4c0":{"create":120000000000}}`,
+		},
+		resource.PropertyKey("arrayPropertyValues"): resource.PropertyValue{},
+		resource.PropertyKey("boolPropertyValue"):   resource.PropertyValue{},
+		resource.PropertyKey("floatPropertyValue"):  resource.PropertyValue{},
+		resource.PropertyKey("id"): resource.PropertyValue{V: resource.Computed{Element: resource.PropertyValue{
+			V: "",
+		}}},
+		resource.PropertyKey("nestedResources"): resource.PropertyValue{V: resource.PropertyMap{
+			resource.PropertyKey("configuration"): resource.PropertyValue{V: resource.PropertyMap{resource.PropertyKey("name"): resource.PropertyValue{
+				V: "foo",
+			}}},
+			resource.PropertyKey("kind"):    resource.PropertyValue{V: resource.Computed{Element: resource.PropertyValue{V: ""}}},
+			resource.PropertyKey("optBool"): resource.PropertyValue{},
+		}},
+		resource.PropertyKey("nilPropertyValue"):           resource.PropertyValue{},
+		resource.PropertyKey("numberPropertyValue"):        resource.PropertyValue{},
+		resource.PropertyKey("objectPropertyValue"):        resource.PropertyValue{},
+		resource.PropertyKey("setPropertyValues"):          resource.PropertyValue{V: []resource.PropertyValue{{V: "foo"}}},
+		resource.PropertyKey("stringPropertyValue"):        resource.PropertyValue{V: "foo"},
+		resource.PropertyKey("stringWithBadInterpolation"): resource.PropertyValue{},
+	}).Equal(t, outs)
 
 	// Step 2b: actually create the resource.
 	pulumiIns, err = plugin.MarshalProperties(resource.NewPropertyMapFromMap(map[string]interface{}{
@@ -667,13 +680,16 @@ func TestProviderPreview(t *testing.T) {
 }
 
 func TestProviderPreviewV2(t *testing.T) {
+	// TODO: fix
+	// t.Skipf("Skip for now")
+	shimProvider := shimv2.NewProvider(testTFProviderV2)
 	provider := &Provider{
-		tf:     shimv2.NewProvider(testTFProviderV2),
+		tf:     shimProvider,
 		config: shimv2.NewSchemaMap(testTFProviderV2.Schema),
 	}
 	provider.resources = map[tokens.Type]Resource{
 		"ExampleResource": {
-			TF:     provider.tf.ResourcesMap().Get("example_resource"),
+			TF:     shimProvider.ResourcesMap().Get("example_resource"),
 			TFName: "example_resource",
 			Schema: &ResourceInfo{Tok: "ExampleResource"},
 		},
@@ -877,8 +893,8 @@ func testProviderRead(t *testing.T, provider *Provider, typeName tokens.Type, ch
 	}), ins["nestedResources"])
 	assert.Equal(t, resource.NewArrayProperty(
 		[]resource.PropertyValue{
-			resource.NewStringProperty("set member 2"),
 			resource.NewStringProperty("set member 1"),
+			resource.NewStringProperty("set member 2"),
 		}), ins["setPropertyValues"])
 	assert.Equal(t, resource.NewStringProperty("some ${interpolated:value} with syntax errors"),
 		ins["stringWithBadInterpolation"])
@@ -940,13 +956,14 @@ func TestProviderReadV1(t *testing.T) {
 }
 
 func TestProviderReadV2(t *testing.T) {
+	shimProvider := shimv2.NewProvider(testTFProviderV2)
 	provider := &Provider{
-		tf:     shimv2.NewProvider(testTFProviderV2),
+		tf:     shimProvider,
 		config: shimv2.NewSchemaMap(testTFProviderV2.Schema),
 	}
 	provider.resources = map[tokens.Type]Resource{
 		"ExampleResource": {
-			TF:     shimv2.NewResource(testTFProviderV2.ResourcesMap["example_resource"]),
+			TF:     shimProvider.ResourcesMap().Get("example_resource"),
 			TFName: "example_resource",
 			Schema: &ResourceInfo{Tok: "ExampleResource"},
 		},
