@@ -62,7 +62,10 @@ func NewProvider(p *schema.Provider, opts ...providerOption) shim.Provider {
 		tf:   p,
 		opts: opts,
 	}
-	// TODO: add escape option?
+
+	if opts, err := getProviderOptions(opts); err == nil && opts.planResourceChangeFilter != nil {
+		return newProviderWithPlanResourceChange(p, prov, opts.planResourceChangeFilter)
+	}
 	return newProviderWithPlanResourceChange(p, prov, func(s string) bool { return true })
 }
 
