@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"q"
 	"testing"
 	"time"
 
@@ -3016,8 +3015,6 @@ resources:
 			customTimeouts:
 				create: %s
 `, pulumiTimeout)
-
-		q.Q(program)
 
 		pt := pulcheck.PulCheck(t, bridgedProvider, program)
 		pt.Up()
