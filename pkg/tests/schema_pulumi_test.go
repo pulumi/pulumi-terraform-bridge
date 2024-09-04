@@ -1986,7 +1986,6 @@ Resources:
     2 unchanged
 `),
 		},
-		// TODO[pulumi/pulumi-terraform-bridge#2234]: Duplicated diff
 		{
 			"list added",
 			map[string]interface{}{},
@@ -1997,9 +1996,6 @@ Resources:
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-      + listProps: [
-      +     [0]: "val"
-        ]
       + listProps: [
       +     [0]: "val"
         ]
@@ -2020,7 +2016,6 @@ Resources:
     2 unchanged
 `),
 		},
-		// TODO[pulumi/pulumi-terraform-bridge#2234]: Duplicated diff
 		{
 			"list removed",
 			map[string]interface{}{"listProps": []interface{}{"val"}},
@@ -2031,9 +2026,6 @@ Resources:
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-      - listProps: [
-      -     [0]: "val"
-        ]
       - listProps: [
       -     [0]: "val"
         ]
@@ -2085,8 +2077,6 @@ Resources:
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ listProps: [
-            [0]: "val1"
-            [1]: "val2"
           + [2]: "val3"
         ]
 Resources:
@@ -2105,7 +2095,6 @@ Resources:
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ listProps: [
-            [0]: "val1"
           ~ [1]: "val3" => "val2"
           + [2]: "val3"
         ]
@@ -2145,8 +2134,6 @@ Resources:
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ listProps: [
-            [0]: "val1"
-            [1]: "val2"
           - [2]: "val3"
         ]
 Resources:
@@ -2165,7 +2152,6 @@ Resources:
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ listProps: [
-            [0]: "val1"
           ~ [1]: "val2" => "val3"
           - [2]: "val3"
         ]
@@ -2203,7 +2189,6 @@ Resources:
     2 unchanged
 `),
 		},
-		// TODO[pulumi/pulumi-terraform-bridge#2234]: Duplicated diff
 		{
 			"set added",
 			map[string]interface{}{},
@@ -2214,9 +2199,6 @@ Resources:
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-      + setProps: [
-      +     [0]: "val"
-        ]
       + setProps: [
       +     [0]: "val"
         ]
@@ -2237,7 +2219,6 @@ Resources:
     2 unchanged
 `),
 		},
-		// TODO[pulumi/pulumi-terraform-bridge#2234]: Duplicated diff
 		{
 			"set removed",
 			map[string]interface{}{"setProps": []interface{}{"val"}},
@@ -2248,9 +2229,6 @@ Resources:
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-      - setProps: [
-      -     [0]: "val"
-        ]
       - setProps: [
       -     [0]: "val"
         ]
@@ -2304,8 +2282,6 @@ Resources:
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ setProps: [
-            [0]: "val1"
-            [1]: "val2"
           + [2]: "val3"
         ]
 Resources:
@@ -2367,8 +2343,6 @@ Resources:
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ setProps: [
-            [0]: "val1"
-            [1]: "val2"
           - [2]: "val3"
         ]
 Resources:
@@ -2427,7 +2401,6 @@ Resources:
     2 unchanged
 `),
 		},
-		// TODO[pulumi/pulumi-terraform-bridge#2234]: Duplicated diff
 		{
 			"map added",
 			map[string]interface{}{},
@@ -2438,9 +2411,6 @@ Resources:
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-      + mapProp: {
-          + key: "val"
-        }
       + mapProp: {
           + key: "val"
         }
@@ -2461,7 +2431,6 @@ Resources:
     2 unchanged
 `),
 		},
-		// TODO[pulumi/pulumi-terraform-bridge#2234]: Duplicated diff
 		{
 			"map removed",
 			map[string]interface{}{"mapProp": map[string]interface{}{"key": "val"}},
@@ -2472,9 +2441,6 @@ Resources:
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-      - mapProp: {
-          - key: "val"
-        }
       - mapProp: {
           - key: "val"
         }
@@ -2495,7 +2461,6 @@ Resources:
     2 unchanged
 `),
 		},
-		// TODO[pulumi/pulumi-terraform-bridge#2234]: Duplicated diff
 		{
 			"map element added",
 			map[string]interface{}{"mapProp": map[string]interface{}{}},
@@ -2506,9 +2471,6 @@ Resources:
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-      + mapProp: {
-          + key: "val"
-        }
       + mapProp: {
           + key: "val"
         }
