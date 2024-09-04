@@ -158,10 +158,11 @@ var _ planResourceChangeProvider = (*planResourceChangeImpl)(nil)
 // the corresponding slot. Warn the user if the custom timeout is a no-op.
 func (p *planResourceChangeImpl) configWithTimeouts(
 	ctx context.Context,
-	configWithoutTimeouts map[string]any,
+	c shim.ResourceConfig,
 	topts shim.TimeoutOptions,
 	impliedType cty.Type,
 ) map[string]any {
+	configWithoutTimeouts := configFromShim(c).Config
 	config := map[string]any{}
 	for k, v := range configWithoutTimeouts {
 		if k == schema.TimeoutsConfigKey {
@@ -225,7 +226,6 @@ func (p *planResourceChangeImpl) Diff(
 	c shim.ResourceConfig,
 	opts shim.DiffOptions,
 ) (shim.InstanceDiff, error) {
-	config := configFromShim(c)
 	s, err := p.upgradeState(ctx, t, s)
 	if err != nil {
 		return nil, err
@@ -241,7 +241,7 @@ func (p *planResourceChangeImpl) Diff(
 	}
 
 	cfg, err := recoverAndCoerceCtyValueWithSchema(res.CoreConfigSchema(),
-		p.configWithTimeouts(ctx, config.Config, opts.TimeoutOptions, ty))
+		p.configWithTimeouts(ctx, c, opts.TimeoutOptions, ty))
 	if err != nil {
 		return nil, fmt.Errorf("Resource %q: %w", t, err)
 	}

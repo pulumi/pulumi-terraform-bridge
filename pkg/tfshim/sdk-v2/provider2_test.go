@@ -9,6 +9,7 @@ import (
 
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	"github.com/hexops/autogold/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -594,7 +595,15 @@ func TestConfigWithTimeouts(t *testing.T) {
 			ctx := context.WithValue(context.Background(), logging.CtxKey, logger)
 			i := &planResourceChangeImpl{}
 			ty := tc.rschema.CoreConfigSchema().ImpliedType()
-			actual := i.configWithTimeouts(ctx, tc.configWithoutTimeouts, tc.topts, ty)
+			// Quick short-cut here, taking advantage of the fact that configWithTimeouts only reads
+			// cfg.tf.Config, set only that. If this needs to be revised, can construct ResourceConfig in
+			// the usual way instead.
+			cfg := v2ResourceConfig{
+				tf: &terraform.ResourceConfig{
+					Config: tc.configWithoutTimeouts,
+				},
+			}
+			actual := i.configWithTimeouts(ctx, cfg, tc.topts, ty)
 			if tc.expected != nil {
 				assert.Equal(t, tc.expected, actual)
 			} else {
