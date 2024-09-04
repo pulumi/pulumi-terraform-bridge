@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sort"
 
 	"github.com/golang/glog"
 	"github.com/hashicorp/go-cty/cty"
@@ -16,7 +17,11 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
+	"strings"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"time"
 )
 
 type v2Resource2 struct {
@@ -148,11 +153,12 @@ type planResourceChangeImpl struct {
 var _ planResourceChangeProvider = (*planResourceChangeImpl)(nil)
 
 // If the user specifies custom timeout overrides for the resource, encode them in the magic `timeouts` key under config
-// and plannedState. This seems to be how TF communicates this information on the gRPC protocol. The schema default
-// timeouts need not be specially encoded because the gRPC implementation already respects them. A slight complication
-// here is that some resources do not seem to allow customizing timeouts for certain operations, and their impliedType
-// will not have the corresponding slot. The code avoids populating these to bypass invalid cty.Value conversion errors.
-func (*planResourceChangeImpl) configWithTimeouts(
+// and plannedState. This is how TF communicates this information on the gRPC protocol. The schema default timeouts need
+// not be specially encoded because the gRPC implementation already respects them. A slight complication here is that
+// some resources do not seem to allow customizing timeouts for certain operations, and their impliedType will not have
+// the corresponding slot. Warn the user if the custom timeout is a no-op.
+func (p *planResourceChangeImpl) configWithTimeouts(
+	ctx context.Context,
 	configWithoutTimeouts map[string]any,
 	topts shim.TimeoutOptions,
 	impliedType cty.Type,
@@ -160,26 +166,21 @@ func (*planResourceChangeImpl) configWithTimeouts(
 	config := map[string]any{}
 	for k, v := range configWithoutTimeouts {
 		if k == schema.TimeoutsConfigKey {
-			// TODO is this right: abort customizing timeouts as they are already set, perhaps the schema
-			// had a `timeouts` field that is used in a resource-specific way.
+			p.warnIgnoredCustomTimeouts(ctx, topts.TimeoutOverrides)
 			return configWithoutTimeouts
 		} else {
 			config[k] = v
 		}
 	}
-
 	impliedAttrs := impliedType.AttributeTypes()
 	timeoutsObj, supportCustomTimeouts := impliedAttrs[schema.TimeoutsConfigKey]
 	if !supportCustomTimeouts || !timeoutsObj.IsObjectType() {
-		// TODO schema does not accept custom timeouts. Should we warn the user here if timeout overrides are
-		// specified but are no-op? What does TF do?
+		p.warnIgnoredCustomTimeouts(ctx, topts.TimeoutOverrides)
 		return configWithoutTimeouts
 	}
 	timeoutAttrs := timeoutsObj.AttributeTypes()
-
 	tn := 0
 	tt := map[string]any{}
-
 	for k := range timeoutAttrs {
 		if override, ok := topts.TimeoutOverrides[shim.TimeoutKey(k)]; ok {
 			tt[k] = override.String()
@@ -188,13 +189,35 @@ func (*planResourceChangeImpl) configWithTimeouts(
 			tt[k] = nil
 		}
 	}
-	// TODO should we warn the user if timeout overrides are specified in topts.TimeoutOverrides but are not
-	// settable because the schema did not allow customizing a particular timeouts key?
 	if tn > 0 {
 		config[schema.TimeoutsConfigKey] = tt
 	}
-
+	unusedOverrides := map[shim.TimeoutKey]time.Duration{}
+	for k, d := range topts.TimeoutOverrides {
+		_, used := tt[string(k)]
+		if !used {
+			unusedOverrides[k] = d
+		}
+	}
+	p.warnIgnoredCustomTimeouts(ctx, unusedOverrides)
 	return config
+}
+
+func (*planResourceChangeImpl) warnIgnoredCustomTimeouts(
+	ctx context.Context,
+	timeoutOverrides map[shim.TimeoutKey]time.Duration,
+) {
+	if len(timeoutOverrides) == 0 {
+		return
+	}
+	var parts []string
+	for k, v := range timeoutOverrides {
+		parts = append(parts, fmt.Sprintf("%s=%s", k, v.String()))
+	}
+	sort.Strings(parts)
+	keys := strings.Join(parts, ", ")
+	msg := fmt.Sprintf("Resource does not support customTimeouts, ignoring: %s", keys)
+	tfbridge.GetLogger(ctx).Warn(msg)
 }
 
 func (p *planResourceChangeImpl) Diff(
@@ -220,7 +243,7 @@ func (p *planResourceChangeImpl) Diff(
 	}
 
 	cfg, err := recoverAndCoerceCtyValueWithSchema(res.CoreConfigSchema(),
-		p.configWithTimeouts(config.Config, opts.TimeoutOptions, ty))
+		p.configWithTimeouts(ctx, config.Config, opts.TimeoutOptions, ty))
 	if err != nil {
 		return nil, fmt.Errorf("Resource %q: %w", t, err)
 	}
