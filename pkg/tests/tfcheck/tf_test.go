@@ -43,7 +43,8 @@ resource "test_resource" "test" {
 	plan, err := driver.Plan(t)
 	require.NoError(t, err)
 	t.Log(driver.Show(t, plan.PlanFile))
-	driver.Apply(t, plan)
+	err = driver.Apply(t, plan)
+	require.NoError(t, err)
 
 	t.Log(driver.GetState(t))
 
@@ -52,7 +53,8 @@ resource "test_resource" "test" {
 
 	t.Log(driver.Show(t, plan.PlanFile))
 
-	driver.Apply(t, newPlan)
+	err = driver.Apply(t, newPlan)
+	require.NoError(t, err)
 
 	t.Log(driver.GetState(t))
 }
@@ -107,7 +109,8 @@ resource "test_resource" "test" {
 	require.NoError(t, err)
 
 	t.Log(driver.Show(t, plan.PlanFile))
-	driver.Apply(t, plan)
+	err = driver.Apply(t, plan)
+	require.NoError(t, err)
 
 	t.Log(driver.GetState(t))
 
@@ -116,7 +119,8 @@ resource "test_resource" "test" {
 
 	t.Log(driver.Show(t, plan.PlanFile))
 
-	driver.Apply(t, newPlan)
+	err = driver.Apply(t, newPlan)
+	require.NoError(t, err)
 
 	t.Log(driver.GetState(t))
 }
@@ -196,7 +200,8 @@ resource "test_resource" "test" {
 
 	t.Log(driver.Show(t, plan.PlanFile))
 
-	driver.Apply(t, plan)
+	err = driver.Apply(t, plan)
+	require.NoError(t, err)
 	t.Log(driver.GetState(t))
 
 	driver.Write(t, unknownProgram)
@@ -205,6 +210,7 @@ resource "test_resource" "test" {
 
 	t.Log(driver.Show(t, plan.PlanFile))
 
-	driver.Apply(t, plan)
+	err = driver.Apply(t, plan)
+	require.NoError(t, err)
 	t.Log(driver.GetState(t))
 }
