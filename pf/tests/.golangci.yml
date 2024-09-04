@@ -9,7 +9,9 @@ linters:
     - gosec
     - govet
     - ineffassign
-    - megacheck
+    - gosimple
+    - staticcheck
+    - unused
     - misspell
     - nakedret
     - nolintlint
