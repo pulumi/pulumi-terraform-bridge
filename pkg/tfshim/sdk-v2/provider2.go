@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sort"
+	"strings"
+	"time"
 
 	"github.com/golang/glog"
 	"github.com/hashicorp/go-cty/cty"
@@ -16,6 +19,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/log"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
@@ -147,6 +151,74 @@ type planResourceChangeImpl struct {
 
 var _ planResourceChangeProvider = (*planResourceChangeImpl)(nil)
 
+// If the user specifies custom timeout overrides for the resource, encode them in the magic `timeouts` key under config
+// and plannedState. This is how TF communicates this information on the gRPC protocol. The schema default timeouts need
+// not be specially encoded because the gRPC implementation already respects them. A slight complication here is that
+// some resources do not seem to allow customizing timeouts for certain operations, and their impliedType will not have
+// the corresponding slot. Warn the user if the custom timeout is a no-op.
+func (p *planResourceChangeImpl) configWithTimeouts(
+	ctx context.Context,
+	c shim.ResourceConfig,
+	topts shim.TimeoutOptions,
+	impliedType cty.Type,
+) map[string]any {
+	configWithoutTimeouts := configFromShim(c).Config
+	config := map[string]any{}
+	for k, v := range configWithoutTimeouts {
+		if k == schema.TimeoutsConfigKey {
+			p.warnIgnoredCustomTimeouts(ctx, topts.TimeoutOverrides)
+			return configWithoutTimeouts
+		}
+		config[k] = v
+	}
+	impliedAttrs := impliedType.AttributeTypes()
+	timeoutsObj, supportCustomTimeouts := impliedAttrs[schema.TimeoutsConfigKey]
+	if !supportCustomTimeouts || !timeoutsObj.IsObjectType() {
+		p.warnIgnoredCustomTimeouts(ctx, topts.TimeoutOverrides)
+		return configWithoutTimeouts
+	}
+	timeoutAttrs := timeoutsObj.AttributeTypes()
+	tn := 0
+	tt := map[string]any{}
+	for k := range timeoutAttrs {
+		if override, ok := topts.TimeoutOverrides[shim.TimeoutKey(k)]; ok {
+			tt[k] = override.String()
+			tn++
+		} else {
+			tt[k] = nil
+		}
+	}
+	if tn > 0 {
+		config[schema.TimeoutsConfigKey] = tt
+	}
+	unusedOverrides := map[shim.TimeoutKey]time.Duration{}
+	for k, d := range topts.TimeoutOverrides {
+		_, used := tt[string(k)]
+		if !used {
+			unusedOverrides[k] = d
+		}
+	}
+	p.warnIgnoredCustomTimeouts(ctx, unusedOverrides)
+	return config
+}
+
+func (*planResourceChangeImpl) warnIgnoredCustomTimeouts(
+	ctx context.Context,
+	timeoutOverrides map[shim.TimeoutKey]time.Duration,
+) {
+	if len(timeoutOverrides) == 0 {
+		return
+	}
+	var parts []string
+	for k, v := range timeoutOverrides {
+		parts = append(parts, fmt.Sprintf("%s=%s", k, v.String()))
+	}
+	sort.Strings(parts)
+	keys := strings.Join(parts, ", ")
+	msg := fmt.Sprintf("Resource does not support customTimeouts, ignoring: %s", keys)
+	log.GetLogger(ctx).Warn(msg)
+}
+
 func (p *planResourceChangeImpl) Diff(
 	ctx context.Context,
 	t string,
@@ -154,7 +226,6 @@ func (p *planResourceChangeImpl) Diff(
 	c shim.ResourceConfig,
 	opts shim.DiffOptions,
 ) (shim.InstanceDiff, error) {
-	config := configFromShim(c)
 	s, err := p.upgradeState(ctx, t, s)
 	if err != nil {
 		return nil, err
@@ -168,7 +239,9 @@ func (p *planResourceChangeImpl) Diff(
 	if err != nil {
 		return nil, err
 	}
-	cfg, err := recoverAndCoerceCtyValueWithSchema(res.CoreConfigSchema(), config.Config)
+
+	cfg, err := recoverAndCoerceCtyValueWithSchema(res.CoreConfigSchema(),
+		p.configWithTimeouts(ctx, c, opts.TimeoutOptions, ty))
 	if err != nil {
 		return nil, fmt.Errorf("Resource %q: %w", t, err)
 	}
@@ -181,8 +254,7 @@ func (p *planResourceChangeImpl) Diff(
 	st := state.stateValue
 	ic := opts.IgnoreChanges
 	priv := state.meta
-	to := opts.TimeoutOptions
-	plan, err := p.server.PlanResourceChange(ctx, t, ty, cfg, st, prop, priv, meta, ic, to)
+	plan, err := p.server.PlanResourceChange(ctx, t, ty, cfg, st, prop, priv, meta, ic)
 	if err != nil {
 		return nil, err
 	}
@@ -402,7 +474,6 @@ func (s *grpcServer) PlanResourceChange(
 	priorMeta map[string]interface{},
 	providerMeta *cty.Value,
 	ignores shim.IgnoreChanges,
-	timeoutOpts shim.TimeoutOptions,
 ) (*struct {
 	PlannedState cty.Value
 	PlannedMeta  map[string]interface{}
@@ -432,7 +503,6 @@ func (s *grpcServer) PlanResourceChange(
 			if ignores != nil {
 				dd.processIgnoreChanges(ignores)
 			}
-			dd.applyTimeoutOptions(timeoutOpts)
 			return dd.tf
 		},
 	}

@@ -35,8 +35,10 @@ output "s_val" {
 }
 `)
 
-	plan := driver.Plan(t)
-	driver.Apply(t, plan)
+	plan, err := driver.Plan(t)
+	require.NoError(t, err)
+	err = driver.Apply(t, plan)
+	require.NoError(t, err)
 
 	require.Equal(t, "hello", driver.GetOutput(t, "s_val"))
 }
@@ -68,8 +70,10 @@ output "s_val" {
 }
 `)
 
-	plan := driver.Plan(t)
-	driver.Apply(t, plan)
+	plan, err := driver.Plan(t)
+	require.NoError(t, err)
+	err = driver.Apply(t, plan)
+	require.NoError(t, err)
 
 	require.Equal(t, "Default val", driver.GetOutput(t, "s_val"))
 }

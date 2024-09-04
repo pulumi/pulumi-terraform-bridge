@@ -27,8 +27,8 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/log"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/logging"
 )
 
 type urnCtxKeyType struct{}
@@ -65,29 +65,12 @@ const (
 // but can also contain specific name translations.
 type ProviderInfo = info.Provider
 
-// Send logs or status logs to the user.
-//
-// Logged messages are pre-associated with the resource they are called from.
-type Logger interface {
-	Log
-
-	// Convert to sending ephemeral status logs to the user.
-	Status() Log
-}
-
-// The set of logs available to show to the user
-type Log interface {
-	Debug(msg string)
-	Info(msg string)
-	Warn(msg string)
-	Error(msg string)
-}
+type Logger = log.Logger
+type Log = log.Log
 
 // Get access to the [Logger] associated with this context.
 func GetLogger(ctx context.Context) Logger {
-	logger := ctx.Value(logging.CtxKey)
-	contract.Assertf(logger != nil, "Cannot call GetLogger on a context that is not equipped with a Logger")
-	return newLoggerAdapter(logger)
+	return log.GetLogger(ctx)
 }
 
 // The function used to produce the set of edit rules for a provider.
