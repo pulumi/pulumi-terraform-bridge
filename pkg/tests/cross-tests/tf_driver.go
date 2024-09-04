@@ -78,7 +78,8 @@ func (d *TfResDriver) writePlanApply(
 		t.Logf("empty config file")
 		d.driver.Write(t, "")
 	}
-	plan := d.driver.Plan(t)
+	plan, err := d.driver.Plan(t)
+	require.NoError(t, err)
 	d.driver.Apply(t, plan)
 	return plan
 }
