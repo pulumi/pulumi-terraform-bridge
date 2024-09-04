@@ -147,6 +147,56 @@ type planResourceChangeImpl struct {
 
 var _ planResourceChangeProvider = (*planResourceChangeImpl)(nil)
 
+// If the user specifies custom timeout overrides for the resource, encode them in the magic `timeouts` key under config
+// and plannedState. This seems to be how TF communicates this information on the gRPC protocol. The schema default
+// timeouts need not be specially encoded because the gRPC implementation already respects them. A slight complication
+// here is that some resources do not seem to allow customizing timeouts for certain operations, and their impliedType
+// will not have the corresponding slot. The code avoids populating these to bypass invalid cty.Value conversion errors.
+func (*planResourceChangeImpl) configWithTimeouts(
+	configWithoutTimeouts map[string]any,
+	topts shim.TimeoutOptions,
+	impliedType cty.Type,
+) map[string]any {
+	config := map[string]any{}
+	for k, v := range configWithoutTimeouts {
+		if k == schema.TimeoutsConfigKey {
+			// TODO is this right: abort customizing timeouts as they are already set, perhaps the schema
+			// had a `timeouts` field that is used in a resource-specific way.
+			return configWithoutTimeouts
+		} else {
+			config[k] = v
+		}
+	}
+
+	impliedAttrs := impliedType.AttributeTypes()
+	timeoutsObj, supportCustomTimeouts := impliedAttrs[schema.TimeoutsConfigKey]
+	if !supportCustomTimeouts || !timeoutsObj.IsObjectType() {
+		// TODO schema does not accept custom timeouts. Should we warn the user here if timeout overrides are
+		// specified but are no-op? What does TF do?
+		return configWithoutTimeouts
+	}
+	timeoutAttrs := timeoutsObj.AttributeTypes()
+
+	tn := 0
+	tt := map[string]any{}
+
+	for k := range timeoutAttrs {
+		if override, ok := topts.TimeoutOverrides[shim.TimeoutKey(k)]; ok {
+			tt[k] = override.String()
+			tn++
+		} else {
+			tt[k] = nil
+		}
+	}
+	// TODO should we warn the user if timeout overrides are specified in topts.TimeoutOverrides but are not
+	// settable because the schema did not allow customizing a particular timeouts key?
+	if tn > 0 {
+		config[schema.TimeoutsConfigKey] = tt
+	}
+
+	return config
+}
+
 func (p *planResourceChangeImpl) Diff(
 	ctx context.Context,
 	t string,
@@ -168,7 +218,9 @@ func (p *planResourceChangeImpl) Diff(
 	if err != nil {
 		return nil, err
 	}
-	cfg, err := recoverAndCoerceCtyValueWithSchema(res.CoreConfigSchema(), config.Config)
+
+	cfg, err := recoverAndCoerceCtyValueWithSchema(res.CoreConfigSchema(),
+		p.configWithTimeouts(config.Config, opts.TimeoutOptions, ty))
 	if err != nil {
 		return nil, fmt.Errorf("Resource %q: %w", t, err)
 	}
@@ -181,8 +233,7 @@ func (p *planResourceChangeImpl) Diff(
 	st := state.stateValue
 	ic := opts.IgnoreChanges
 	priv := state.meta
-	to := opts.TimeoutOptions
-	plan, err := p.server.PlanResourceChange(ctx, t, ty, cfg, st, prop, priv, meta, ic, to)
+	plan, err := p.server.PlanResourceChange(ctx, t, ty, cfg, st, prop, priv, meta, ic)
 	if err != nil {
 		return nil, err
 	}
@@ -402,7 +453,6 @@ func (s *grpcServer) PlanResourceChange(
 	priorMeta map[string]interface{},
 	providerMeta *cty.Value,
 	ignores shim.IgnoreChanges,
-	timeoutOpts shim.TimeoutOptions,
 ) (*struct {
 	PlannedState cty.Value
 	PlannedMeta  map[string]interface{}
@@ -432,7 +482,6 @@ func (s *grpcServer) PlanResourceChange(
 			if ignores != nil {
 				dd.processIgnoreChanges(ignores)
 			}
-			dd.applyTimeoutOptions(timeoutOpts)
 			return dd.tf
 		},
 	}
