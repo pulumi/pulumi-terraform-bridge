@@ -1162,10 +1162,13 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 		// See also https://github.com/pulumi/pulumi-terraform-bridge/issues/1501.
 		if !diff.HasNoChanges() {
 			changes = pulumirpc.DiffResponse_DIFF_SOME
-			// Perhaps collectionDiffs can shed some light and locate the changes to the end-user.
-			for path, diff := range dd.collectionDiffs {
-				detailedDiff[path] = diff
-			}
+		}
+	}
+
+	if changes == pulumirpc.DiffResponse_DIFF_SOME {
+		// Perhaps collectionDiffs can shed some light and locate the changes to the end-user.
+		for path, diff := range dd.collectionDiffs {
+			detailedDiff[path] = diff
 		}
 	}
 

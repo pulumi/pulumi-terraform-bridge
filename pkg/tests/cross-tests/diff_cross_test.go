@@ -938,6 +938,6 @@ func TestMaxItemsOneCollectionOnlyDiff(t *testing.T) {
 
 	require.Equal(t, []string{"update"}, diff.TFDiff.Actions)
 	require.NotEqual(t, getFilter(diff.TFDiff.Before), getFilter(diff.TFDiff.After))
-	// TODO: fix detailed diff here
+	// TODO[pulumi/pulumi-terraform-bridge#2294] fix detailed diff here
 	// autogold.Expect(map[string]interface{}{"rules[0].filter": map[string]interface{}{"kind": "UPDATE"}}).Equal(t, diff.PulumiDiff.DetailedDiff)
 }
