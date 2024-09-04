@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strings"
+	"time"
 
 	"github.com/golang/glog"
 	"github.com/hashicorp/go-cty/cty"
@@ -17,11 +19,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
-	"strings"
-
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/log"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
-	"time"
 )
 
 type v2Resource2 struct {
@@ -168,9 +167,8 @@ func (p *planResourceChangeImpl) configWithTimeouts(
 		if k == schema.TimeoutsConfigKey {
 			p.warnIgnoredCustomTimeouts(ctx, topts.TimeoutOverrides)
 			return configWithoutTimeouts
-		} else {
-			config[k] = v
 		}
+		config[k] = v
 	}
 	impliedAttrs := impliedType.AttributeTypes()
 	timeoutsObj, supportCustomTimeouts := impliedAttrs[schema.TimeoutsConfigKey]
@@ -217,7 +215,7 @@ func (*planResourceChangeImpl) warnIgnoredCustomTimeouts(
 	sort.Strings(parts)
 	keys := strings.Join(parts, ", ")
 	msg := fmt.Sprintf("Resource does not support customTimeouts, ignoring: %s", keys)
-	tfbridge.GetLogger(ctx).Warn(msg)
+	log.GetLogger(ctx).Warn(msg)
 }
 
 func (p *planResourceChangeImpl) Diff(

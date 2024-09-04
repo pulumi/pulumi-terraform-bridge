@@ -2,19 +2,19 @@ package sdkv2
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"testing"
 	"time"
 
-	"fmt"
-
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hexops/autogold/v2"
-	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/logging"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/logging"
 )
 
 func TestProvider2UpgradeResourceState(t *testing.T) {
@@ -560,7 +560,8 @@ func TestConfigWithTimeouts(t *testing.T) {
 				shim.TimeoutDelete: 2 * time.Second,
 			}},
 			configWithoutTimeouts: map[string]any{"x": 1},
-			expectedWarnings:      autogold.Expect([]string{"WARN: Resource does not support customTimeouts, ignoring: create=1s, delete=2s"}),
+			//nolint:lll
+			expectedWarnings: autogold.Expect([]string{"WARN: Resource does not support customTimeouts, ignoring: create=1s, delete=2s"}),
 		},
 		{
 			name: "warn when customizing create timeouts against a custom timeout schema",
@@ -582,7 +583,8 @@ func TestConfigWithTimeouts(t *testing.T) {
 				shim.TimeoutCreate: 1 * time.Second,
 			}},
 			configWithoutTimeouts: map[string]any{"x": 1},
-			expectedWarnings:      autogold.Expect([]string{"WARN: Resource does not support customTimeouts, ignoring: create=1s"}),
+
+			expectedWarnings: autogold.Expect([]string{"WARN: Resource does not support customTimeouts, ignoring: create=1s"}),
 		},
 	}
 
