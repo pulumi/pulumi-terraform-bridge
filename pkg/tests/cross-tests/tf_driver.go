@@ -80,7 +80,8 @@ func (d *TfResDriver) writePlanApply(
 	}
 	plan, err := d.driver.Plan(t)
 	require.NoError(t, err)
-	d.driver.Apply(t, plan)
+	err = d.driver.Apply(t, plan)
+	require.NoError(t, err)
 	return plan
 }
 
