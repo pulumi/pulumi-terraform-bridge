@@ -15903,9 +15903,6 @@
     "resources": {
         "databricks:index/accessControlRuleSet:AccessControlRuleSet": {
             "properties": {
-                "databricksId": {
-                    "type": "string"
-                },
                 "etag": {
                     "type": "string"
                 },
@@ -15917,17 +15914,17 @@
                 },
                 "name": {
                     "type": "string"
+                },
+                "resourceId": {
+                    "type": "string"
                 }
             },
             "required": [
                 "etag",
-                "databricksId",
+                "resourceId",
                 "name"
             ],
             "inputProperties": {
-                "databricksId": {
-                    "type": "string"
-                },
                 "grantRules": {
                     "type": "array",
                     "items": {
@@ -15936,14 +15933,14 @@
                 },
                 "name": {
                     "type": "string"
+                },
+                "resourceId": {
+                    "type": "string"
                 }
             },
             "stateInputs": {
                 "description": "Input properties used for looking up and filtering AccessControlRuleSet resources.\n",
                 "properties": {
-                    "databricksId": {
-                        "type": "string"
-                    },
                     "etag": {
                         "type": "string"
                     },
@@ -15954,6 +15951,9 @@
                         }
                     },
                     "name": {
+                        "type": "string"
+                    },
+                    "resourceId": {
                         "type": "string"
                     }
                 },
@@ -15977,10 +15977,10 @@
                 "createdBy": {
                     "type": "string"
                 },
-                "databricksId": {
+                "metastoreId": {
                     "type": "string"
                 },
-                "metastoreId": {
+                "resourceId": {
                     "type": "string"
                 }
             },
@@ -15989,7 +15989,7 @@
                 "artifactType",
                 "createdAt",
                 "createdBy",
-                "databricksId",
+                "resourceId",
                 "metastoreId"
             ],
             "inputProperties": {
@@ -16008,10 +16008,10 @@
                 "createdBy": {
                     "type": "string"
                 },
-                "databricksId": {
+                "metastoreId": {
                     "type": "string"
                 },
-                "metastoreId": {
+                "resourceId": {
                     "type": "string"
                 }
             },
@@ -16037,10 +16037,10 @@
                     "createdBy": {
                         "type": "string"
                     },
-                    "databricksId": {
+                    "metastoreId": {
                         "type": "string"
                     },
-                    "metastoreId": {
+                    "resourceId": {
                         "type": "string"
                     }
                 },
@@ -16052,10 +16052,10 @@
                 "automaticClusterUpdateWorkspace": {
                     "$ref": "#/types/databricks:index/AutomaticClusterUpdateWorkspaceSettingAutomaticClusterUpdateWorkspace:AutomaticClusterUpdateWorkspaceSettingAutomaticClusterUpdateWorkspace"
                 },
-                "databricksId": {
+                "etag": {
                     "type": "string"
                 },
-                "etag": {
+                "resourceId": {
                     "type": "string"
                 },
                 "settingName": {
@@ -16065,17 +16065,17 @@
             "required": [
                 "automaticClusterUpdateWorkspace",
                 "etag",
-                "databricksId",
+                "resourceId",
                 "settingName"
             ],
             "inputProperties": {
                 "automaticClusterUpdateWorkspace": {
                     "$ref": "#/types/databricks:index/AutomaticClusterUpdateWorkspaceSettingAutomaticClusterUpdateWorkspace:AutomaticClusterUpdateWorkspaceSettingAutomaticClusterUpdateWorkspace"
                 },
-                "databricksId": {
+                "etag": {
                     "type": "string"
                 },
-                "etag": {
+                "resourceId": {
                     "type": "string"
                 },
                 "settingName": {
@@ -16091,10 +16091,10 @@
                     "automaticClusterUpdateWorkspace": {
                         "$ref": "#/types/databricks:index/AutomaticClusterUpdateWorkspaceSettingAutomaticClusterUpdateWorkspace:AutomaticClusterUpdateWorkspaceSettingAutomaticClusterUpdateWorkspace"
                     },
-                    "databricksId": {
+                    "etag": {
                         "type": "string"
                     },
-                    "etag": {
+                    "resourceId": {
                         "type": "string"
                     },
                     "settingName": {
@@ -16109,13 +16109,13 @@
                 "clusterId": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "instanceProfile": {
                     "type": "string"
                 },
                 "mountName": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "s3BucketName": {
@@ -16127,7 +16127,7 @@
             },
             "required": [
                 "clusterId",
-                "databricksId",
+                "resourceId",
                 "mountName",
                 "s3BucketName",
                 "source"
@@ -16136,13 +16136,13 @@
                 "clusterId": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "instanceProfile": {
                     "type": "string"
                 },
                 "mountName": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "s3BucketName": {
@@ -16159,13 +16159,13 @@
                     "clusterId": {
                         "type": "string"
                     },
-                    "databricksId": {
-                        "type": "string"
-                    },
                     "instanceProfile": {
                         "type": "string"
                     },
                     "mountName": {
+                        "type": "string"
+                    },
+                    "resourceId": {
                         "type": "string"
                     },
                     "s3BucketName": {
@@ -16192,13 +16192,13 @@
                 "clusterId": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "directory": {
                     "type": "string"
                 },
                 "mountName": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "source": {
@@ -16219,7 +16219,7 @@
                 "clientSecretKey",
                 "clientSecretScope",
                 "directory",
-                "databricksId",
+                "resourceId",
                 "mountName",
                 "source",
                 "storageResourceName",
@@ -16238,13 +16238,13 @@
                 "clusterId": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "directory": {
                     "type": "string"
                 },
                 "mountName": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "sparkConfPrefix": {
@@ -16280,13 +16280,13 @@
                     "clusterId": {
                         "type": "string"
                     },
-                    "databricksId": {
-                        "type": "string"
-                    },
                     "directory": {
                         "type": "string"
                     },
                     "mountName": {
+                        "type": "string"
+                    },
+                    "resourceId": {
                         "type": "string"
                     },
                     "source": {
@@ -16322,9 +16322,6 @@
                 "containerName": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "directory": {
                     "type": "string"
                 },
@@ -16332,6 +16329,9 @@
                     "type": "boolean"
                 },
                 "mountName": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "source": {
@@ -16350,7 +16350,7 @@
                 "clientSecretScope",
                 "containerName",
                 "directory",
-                "databricksId",
+                "resourceId",
                 "initializeFileSystem",
                 "mountName",
                 "source",
@@ -16373,9 +16373,6 @@
                 "containerName": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "directory": {
                     "type": "string"
                 },
@@ -16383,6 +16380,9 @@
                     "type": "boolean"
                 },
                 "mountName": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "storageAccountName": {
@@ -16420,9 +16420,6 @@
                     "containerName": {
                         "type": "string"
                     },
-                    "databricksId": {
-                        "type": "string"
-                    },
                     "directory": {
                         "type": "string"
                     },
@@ -16430,6 +16427,9 @@
                         "type": "boolean"
                     },
                     "mountName": {
+                        "type": "string"
+                    },
+                    "resourceId": {
                         "type": "string"
                     },
                     "source": {
@@ -16456,13 +16456,13 @@
                 "containerName": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "directory": {
                     "type": "string"
                 },
                 "mountName": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "source": {
@@ -16482,7 +16482,7 @@
             "required": [
                 "authType",
                 "containerName",
-                "databricksId",
+                "resourceId",
                 "mountName",
                 "source",
                 "storageAccountName",
@@ -16499,13 +16499,13 @@
                 "containerName": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "directory": {
                     "type": "string"
                 },
                 "mountName": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "storageAccountName": {
@@ -16539,13 +16539,13 @@
                     "containerName": {
                         "type": "string"
                     },
-                    "databricksId": {
-                        "type": "string"
-                    },
                     "directory": {
                         "type": "string"
                     },
                     "mountName": {
+                        "type": "string"
+                    },
+                    "resourceId": {
                         "type": "string"
                     },
                     "source": {
@@ -16573,9 +16573,6 @@
                 "connectionName": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "enablePredictiveOptimization": {
                     "type": "string"
                 },
@@ -16609,6 +16606,9 @@
                 "providerName": {
                     "type": "string"
                 },
+                "resourceId": {
+                    "type": "string"
+                },
                 "shareName": {
                     "type": "string"
                 },
@@ -16618,7 +16618,7 @@
             },
             "required": [
                 "enablePredictiveOptimization",
-                "databricksId",
+                "resourceId",
                 "isolationMode",
                 "metastoreId",
                 "name",
@@ -16631,9 +16631,6 @@
                 "connectionName": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "enablePredictiveOptimization": {
                     "type": "string"
                 },
@@ -16665,6 +16662,9 @@
                     }
                 },
                 "providerName": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "shareName": {
@@ -16681,9 +16681,6 @@
                         "type": "string"
                     },
                     "connectionName": {
-                        "type": "string"
-                    },
-                    "databricksId": {
                         "type": "string"
                     },
                     "enablePredictiveOptimization": {
@@ -16719,6 +16716,9 @@
                     "providerName": {
                         "type": "string"
                     },
+                    "resourceId": {
+                        "type": "string"
+                    },
                     "shareName": {
                         "type": "string"
                     },
@@ -16738,7 +16738,7 @@
                     "type": "string",
                     "deprecationMessage": "Deprecated"
                 },
-                "databricksId": {
+                "resourceId": {
                     "type": "string"
                 },
                 "securableName": {
@@ -16752,7 +16752,7 @@
                 }
             },
             "required": [
-                "databricksId",
+                "resourceId",
                 "securableName"
             ],
             "inputProperties": {
@@ -16763,7 +16763,7 @@
                     "type": "string",
                     "deprecationMessage": "Deprecated"
                 },
-                "databricksId": {
+                "resourceId": {
                     "type": "string"
                 },
                 "securableName": {
@@ -16786,7 +16786,7 @@
                         "type": "string",
                         "deprecationMessage": "Deprecated"
                     },
-                    "databricksId": {
+                    "resourceId": {
                         "type": "string"
                     },
                     "securableName": {
@@ -16843,9 +16843,6 @@
                 "dataSecurityMode": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "defaultTags": {
                     "type": "object",
                     "additionalProperties": {
@@ -16900,6 +16897,9 @@
                 "policyId": {
                     "type": "string"
                 },
+                "resourceId": {
+                    "type": "string"
+                },
                 "runtimeEngine": {
                     "type": "string"
                 },
@@ -16947,7 +16947,7 @@
                 "driverNodeTypeId",
                 "enableElasticDisk",
                 "enableLocalDiskEncryption",
-                "databricksId",
+                "resourceId",
                 "nodeTypeId",
                 "sparkVersion",
                 "state",
@@ -16988,9 +16988,6 @@
                     }
                 },
                 "dataSecurityMode": {
-                    "type": "string"
-                },
-                "databricksId": {
                     "type": "string"
                 },
                 "dockerImage": {
@@ -17039,6 +17036,9 @@
                     "type": "number"
                 },
                 "policyId": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "runtimeEngine": {
@@ -17120,9 +17120,6 @@
                     "dataSecurityMode": {
                         "type": "string"
                     },
-                    "databricksId": {
-                        "type": "string"
-                    },
                     "defaultTags": {
                         "type": "object",
                         "additionalProperties": {
@@ -17177,6 +17174,9 @@
                     "policyId": {
                         "type": "string"
                     },
+                    "resourceId": {
+                        "type": "string"
+                    },
                     "runtimeEngine": {
                         "type": "string"
                     },
@@ -17222,9 +17222,6 @@
         },
         "databricks:index/clusterPolicy:ClusterPolicy": {
             "properties": {
-                "databricksId": {
-                    "type": "string"
-                },
                 "definition": {
                     "type": "string"
                 },
@@ -17251,18 +17248,18 @@
                 },
                 "policyId": {
                     "type": "string"
+                },
+                "resourceId": {
+                    "type": "string"
                 }
             },
             "required": [
                 "definition",
-                "databricksId",
+                "resourceId",
                 "name",
                 "policyId"
             ],
             "inputProperties": {
-                "databricksId": {
-                    "type": "string"
-                },
                 "definition": {
                     "type": "string"
                 },
@@ -17286,14 +17283,14 @@
                 },
                 "policyFamilyId": {
                     "type": "string"
+                },
+                "resourceId": {
+                    "type": "string"
                 }
             },
             "stateInputs": {
                 "description": "Input properties used for looking up and filtering ClusterPolicy resources.\n",
                 "properties": {
-                    "databricksId": {
-                        "type": "string"
-                    },
                     "definition": {
                         "type": "string"
                     },
@@ -17320,6 +17317,9 @@
                     },
                     "policyId": {
                         "type": "string"
+                    },
+                    "resourceId": {
+                        "type": "string"
                     }
                 },
                 "type": "object"
@@ -17330,10 +17330,10 @@
                 "complianceSecurityProfileWorkspace": {
                     "$ref": "#/types/databricks:index/ComplianceSecurityProfileWorkspaceSettingComplianceSecurityProfileWorkspace:ComplianceSecurityProfileWorkspaceSettingComplianceSecurityProfileWorkspace"
                 },
-                "databricksId": {
+                "etag": {
                     "type": "string"
                 },
-                "etag": {
+                "resourceId": {
                     "type": "string"
                 },
                 "settingName": {
@@ -17343,17 +17343,17 @@
             "required": [
                 "complianceSecurityProfileWorkspace",
                 "etag",
-                "databricksId",
+                "resourceId",
                 "settingName"
             ],
             "inputProperties": {
                 "complianceSecurityProfileWorkspace": {
                     "$ref": "#/types/databricks:index/ComplianceSecurityProfileWorkspaceSettingComplianceSecurityProfileWorkspace:ComplianceSecurityProfileWorkspaceSettingComplianceSecurityProfileWorkspace"
                 },
-                "databricksId": {
+                "etag": {
                     "type": "string"
                 },
-                "etag": {
+                "resourceId": {
                     "type": "string"
                 },
                 "settingName": {
@@ -17369,10 +17369,10 @@
                     "complianceSecurityProfileWorkspace": {
                         "$ref": "#/types/databricks:index/ComplianceSecurityProfileWorkspaceSettingComplianceSecurityProfileWorkspace:ComplianceSecurityProfileWorkspaceSettingComplianceSecurityProfileWorkspace"
                     },
-                    "databricksId": {
+                    "etag": {
                         "type": "string"
                     },
-                    "etag": {
+                    "resourceId": {
                         "type": "string"
                     },
                     "settingName": {
@@ -17390,9 +17390,6 @@
                 "connectionType": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "metastoreId": {
                     "type": "string"
                 },
@@ -17417,11 +17414,14 @@
                 },
                 "readOnly": {
                     "type": "boolean"
+                },
+                "resourceId": {
+                    "type": "string"
                 }
             },
             "required": [
                 "connectionType",
-                "databricksId",
+                "resourceId",
                 "metastoreId",
                 "name",
                 "options",
@@ -17435,9 +17435,6 @@
                 "connectionType": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "metastoreId": {
                     "type": "string"
                 },
@@ -17462,6 +17459,9 @@
                 },
                 "readOnly": {
                     "type": "boolean"
+                },
+                "resourceId": {
+                    "type": "string"
                 }
             },
             "requiredInputs": [
@@ -17475,9 +17475,6 @@
                         "type": "string"
                     },
                     "connectionType": {
-                        "type": "string"
-                    },
-                    "databricksId": {
                         "type": "string"
                     },
                     "metastoreId": {
@@ -17504,6 +17501,9 @@
                     },
                     "readOnly": {
                         "type": "boolean"
+                    },
+                    "resourceId": {
+                        "type": "string"
                     }
                 },
                 "type": "object"
@@ -17518,9 +17518,6 @@
                     "type": "boolean"
                 },
                 "dashboardId": {
-                    "type": "string"
-                },
-                "databricksId": {
                     "type": "string"
                 },
                 "displayName": {
@@ -17545,6 +17542,9 @@
                     "type": "string"
                 },
                 "path": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "serializedDashboard": {
@@ -17562,7 +17562,7 @@
                 "dashboardId",
                 "displayName",
                 "etag",
-                "databricksId",
+                "resourceId",
                 "lifecycleState",
                 "md5",
                 "parentPath",
@@ -17578,9 +17578,6 @@
                     "type": "boolean"
                 },
                 "dashboardId": {
-                    "type": "string"
-                },
-                "databricksId": {
                     "type": "string"
                 },
                 "displayName": {
@@ -17605,6 +17602,9 @@
                     "type": "string"
                 },
                 "path": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "serializedDashboard": {
@@ -17634,9 +17634,6 @@
                     "dashboardId": {
                         "type": "string"
                     },
-                    "databricksId": {
-                        "type": "string"
-                    },
                     "displayName": {
                         "type": "string"
                     },
@@ -17661,6 +17658,9 @@
                     "path": {
                         "type": "string"
                     },
+                    "resourceId": {
+                        "type": "string"
+                    },
                     "serializedDashboard": {
                         "type": "string"
                     },
@@ -17682,20 +17682,20 @@
                 "comment": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "name": {
                     "type": "string"
                 },
                 "recipientProfileStr": {
                     "type": "string",
                     "secret": true
+                },
+                "resourceId": {
+                    "type": "string"
                 }
             },
             "required": [
                 "authenticationType",
-                "databricksId",
+                "resourceId",
                 "name",
                 "recipientProfileStr"
             ],
@@ -17706,15 +17706,15 @@
                 "comment": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "name": {
                     "type": "string"
                 },
                 "recipientProfileStr": {
                     "type": "string",
                     "secret": true
+                },
+                "resourceId": {
+                    "type": "string"
                 }
             },
             "requiredInputs": [
@@ -17730,15 +17730,15 @@
                     "comment": {
                         "type": "string"
                     },
-                    "databricksId": {
-                        "type": "string"
-                    },
                     "name": {
                         "type": "string"
                     },
                     "recipientProfileStr": {
                         "type": "string",
                         "secret": true
+                    },
+                    "resourceId": {
+                        "type": "string"
                     }
                 },
                 "type": "object"
@@ -17747,9 +17747,6 @@
         "databricks:index/dbfsFile:DbfsFile": {
             "properties": {
                 "contentBase64": {
-                    "type": "string"
-                },
-                "databricksId": {
                     "type": "string"
                 },
                 "dbfsPath": {
@@ -17764,6 +17761,9 @@
                 "path": {
                     "type": "string"
                 },
+                "resourceId": {
+                    "type": "string"
+                },
                 "source": {
                     "type": "string"
                 }
@@ -17771,20 +17771,20 @@
             "required": [
                 "dbfsPath",
                 "fileSize",
-                "databricksId",
+                "resourceId",
                 "path"
             ],
             "inputProperties": {
                 "contentBase64": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "md5": {
                     "type": "string"
                 },
                 "path": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "source": {
@@ -17800,9 +17800,6 @@
                     "contentBase64": {
                         "type": "string"
                     },
-                    "databricksId": {
-                        "type": "string"
-                    },
                     "dbfsPath": {
                         "type": "string"
                     },
@@ -17815,6 +17812,9 @@
                     "path": {
                         "type": "string"
                     },
+                    "resourceId": {
+                        "type": "string"
+                    },
                     "source": {
                         "type": "string"
                     }
@@ -17824,14 +17824,14 @@
         },
         "databricks:index/defaultNamespaceSetting:DefaultNamespaceSetting": {
             "properties": {
-                "databricksId": {
-                    "type": "string"
-                },
                 "etag": {
                     "type": "string"
                 },
                 "namespace": {
                     "$ref": "#/types/databricks:index/DefaultNamespaceSettingNamespace:DefaultNamespaceSettingNamespace"
+                },
+                "resourceId": {
+                    "type": "string"
                 },
                 "settingName": {
                     "type": "string"
@@ -17839,19 +17839,19 @@
             },
             "required": [
                 "etag",
-                "databricksId",
+                "resourceId",
                 "namespace",
                 "settingName"
             ],
             "inputProperties": {
-                "databricksId": {
-                    "type": "string"
-                },
                 "etag": {
                     "type": "string"
                 },
                 "namespace": {
                     "$ref": "#/types/databricks:index/DefaultNamespaceSettingNamespace:DefaultNamespaceSettingNamespace"
+                },
+                "resourceId": {
+                    "type": "string"
                 },
                 "settingName": {
                     "type": "string"
@@ -17863,14 +17863,14 @@
             "stateInputs": {
                 "description": "Input properties used for looking up and filtering DefaultNamespaceSetting resources.\n",
                 "properties": {
-                    "databricksId": {
-                        "type": "string"
-                    },
                     "etag": {
                         "type": "string"
                     },
                     "namespace": {
                         "$ref": "#/types/databricks:index/DefaultNamespaceSettingNamespace:DefaultNamespaceSettingNamespace"
+                    },
+                    "resourceId": {
+                        "type": "string"
                     },
                     "settingName": {
                         "type": "string"
@@ -17881,9 +17881,6 @@
         },
         "databricks:index/directory:Directory": {
             "properties": {
-                "databricksId": {
-                    "type": "string"
-                },
                 "deleteRecursive": {
                     "type": "boolean"
                 },
@@ -17891,6 +17888,9 @@
                     "type": "number"
                 },
                 "path": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "workspacePath": {
@@ -17898,15 +17898,12 @@
                 }
             },
             "required": [
-                "databricksId",
+                "resourceId",
                 "objectId",
                 "path",
                 "workspacePath"
             ],
             "inputProperties": {
-                "databricksId": {
-                    "type": "string"
-                },
                 "deleteRecursive": {
                     "type": "boolean"
                 },
@@ -17914,6 +17911,9 @@
                     "type": "number"
                 },
                 "path": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 }
             },
@@ -17923,9 +17923,6 @@
             "stateInputs": {
                 "description": "Input properties used for looking up and filtering Directory resources.\n",
                 "properties": {
-                    "databricksId": {
-                        "type": "string"
-                    },
                     "deleteRecursive": {
                         "type": "boolean"
                     },
@@ -17933,6 +17930,9 @@
                         "type": "number"
                     },
                     "path": {
+                        "type": "string"
+                    },
+                    "resourceId": {
                         "type": "string"
                     },
                     "workspacePath": {
@@ -17944,13 +17944,13 @@
         },
         "databricks:index/enhancedSecurityMonitoringWorkspaceSetting:EnhancedSecurityMonitoringWorkspaceSetting": {
             "properties": {
-                "databricksId": {
-                    "type": "string"
-                },
                 "enhancedSecurityMonitoringWorkspace": {
                     "$ref": "#/types/databricks:index/EnhancedSecurityMonitoringWorkspaceSettingEnhancedSecurityMonitoringWorkspace:EnhancedSecurityMonitoringWorkspaceSettingEnhancedSecurityMonitoringWorkspace"
                 },
                 "etag": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "settingName": {
@@ -17960,17 +17960,17 @@
             "required": [
                 "enhancedSecurityMonitoringWorkspace",
                 "etag",
-                "databricksId",
+                "resourceId",
                 "settingName"
             ],
             "inputProperties": {
-                "databricksId": {
-                    "type": "string"
-                },
                 "enhancedSecurityMonitoringWorkspace": {
                     "$ref": "#/types/databricks:index/EnhancedSecurityMonitoringWorkspaceSettingEnhancedSecurityMonitoringWorkspace:EnhancedSecurityMonitoringWorkspaceSettingEnhancedSecurityMonitoringWorkspace"
                 },
                 "etag": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "settingName": {
@@ -17983,13 +17983,13 @@
             "stateInputs": {
                 "description": "Input properties used for looking up and filtering EnhancedSecurityMonitoringWorkspaceSetting resources.\n",
                 "properties": {
-                    "databricksId": {
-                        "type": "string"
-                    },
                     "enhancedSecurityMonitoringWorkspace": {
                         "$ref": "#/types/databricks:index/EnhancedSecurityMonitoringWorkspaceSettingEnhancedSecurityMonitoringWorkspace:EnhancedSecurityMonitoringWorkspaceSettingEnhancedSecurityMonitoringWorkspace"
                     },
                     "etag": {
+                        "type": "string"
+                    },
+                    "resourceId": {
                         "type": "string"
                     },
                     "settingName": {
@@ -18007,13 +18007,13 @@
                 "allowInstancePoolCreate": {
                     "type": "boolean"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "databricksSqlAccess": {
                     "type": "boolean"
                 },
                 "groupId": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "servicePrincipalId": {
@@ -18027,7 +18027,7 @@
                 }
             },
             "required": [
-                "databricksId"
+                "resourceId"
             ],
             "inputProperties": {
                 "allowClusterCreate": {
@@ -18036,13 +18036,13 @@
                 "allowInstancePoolCreate": {
                     "type": "boolean"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "databricksSqlAccess": {
                     "type": "boolean"
                 },
                 "groupId": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "servicePrincipalId": {
@@ -18064,13 +18064,13 @@
                     "allowInstancePoolCreate": {
                         "type": "boolean"
                     },
-                    "databricksId": {
-                        "type": "string"
-                    },
                     "databricksSqlAccess": {
                         "type": "boolean"
                     },
                     "groupId": {
+                        "type": "string"
+                    },
+                    "resourceId": {
                         "type": "string"
                     },
                     "servicePrincipalId": {
@@ -18097,9 +18097,6 @@
                 "credentialName": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "encryptionDetails": {
                     "$ref": "#/types/databricks:index/ExternalLocationEncryptionDetails:ExternalLocationEncryptionDetails"
                 },
@@ -18124,6 +18121,9 @@
                 "readOnly": {
                     "type": "boolean"
                 },
+                "resourceId": {
+                    "type": "string"
+                },
                 "skipValidation": {
                     "type": "boolean"
                 },
@@ -18133,7 +18133,7 @@
             },
             "required": [
                 "credentialName",
-                "databricksId",
+                "resourceId",
                 "isolationMode",
                 "metastoreId",
                 "name",
@@ -18150,9 +18150,6 @@
                 "credentialName": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "encryptionDetails": {
                     "$ref": "#/types/databricks:index/ExternalLocationEncryptionDetails:ExternalLocationEncryptionDetails"
                 },
@@ -18176,6 +18173,9 @@
                 },
                 "readOnly": {
                     "type": "boolean"
+                },
+                "resourceId": {
+                    "type": "string"
                 },
                 "skipValidation": {
                     "type": "boolean"
@@ -18198,9 +18198,6 @@
                         "type": "string"
                     },
                     "credentialName": {
-                        "type": "string"
-                    },
-                    "databricksId": {
                         "type": "string"
                     },
                     "encryptionDetails": {
@@ -18227,6 +18224,9 @@
                     "readOnly": {
                         "type": "boolean"
                     },
+                    "resourceId": {
+                        "type": "string"
+                    },
                     "skipValidation": {
                         "type": "boolean"
                     },
@@ -18240,9 +18240,6 @@
         "databricks:index/file:File": {
             "properties": {
                 "contentBase64": {
-                    "type": "string"
-                },
-                "databricksId": {
                     "type": "string"
                 },
                 "fileSize": {
@@ -18260,21 +18257,21 @@
                 "remoteFileModified": {
                     "type": "boolean"
                 },
+                "resourceId": {
+                    "type": "string"
+                },
                 "source": {
                     "type": "string"
                 }
             },
             "required": [
                 "fileSize",
-                "databricksId",
+                "resourceId",
                 "modificationTime",
                 "path"
             ],
             "inputProperties": {
                 "contentBase64": {
-                    "type": "string"
-                },
-                "databricksId": {
                     "type": "string"
                 },
                 "md5": {
@@ -18285,6 +18282,9 @@
                 },
                 "remoteFileModified": {
                     "type": "boolean"
+                },
+                "resourceId": {
+                    "type": "string"
                 },
                 "source": {
                     "type": "string"
@@ -18297,9 +18297,6 @@
                 "description": "Input properties used for looking up and filtering File resources.\n",
                 "properties": {
                     "contentBase64": {
-                        "type": "string"
-                    },
-                    "databricksId": {
                         "type": "string"
                     },
                     "fileSize": {
@@ -18317,6 +18314,9 @@
                     "remoteFileModified": {
                         "type": "boolean"
                     },
+                    "resourceId": {
+                        "type": "string"
+                    },
                     "source": {
                         "type": "string"
                     }
@@ -18326,9 +18326,6 @@
         },
         "databricks:index/gitCredential:GitCredential": {
             "properties": {
-                "databricksId": {
-                    "type": "string"
-                },
                 "force": {
                     "type": "boolean"
                 },
@@ -18339,17 +18336,17 @@
                     "type": "string"
                 },
                 "personalAccessToken": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 }
             },
             "required": [
                 "gitProvider",
-                "databricksId"
+                "resourceId"
             ],
             "inputProperties": {
-                "databricksId": {
-                    "type": "string"
-                },
                 "force": {
                     "type": "boolean"
                 },
@@ -18360,6 +18357,9 @@
                     "type": "string"
                 },
                 "personalAccessToken": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 }
             },
@@ -18369,9 +18369,6 @@
             "stateInputs": {
                 "description": "Input properties used for looking up and filtering GitCredential resources.\n",
                 "properties": {
-                    "databricksId": {
-                        "type": "string"
-                    },
                     "force": {
                         "type": "boolean"
                     },
@@ -18383,6 +18380,9 @@
                     },
                     "personalAccessToken": {
                         "type": "string"
+                    },
+                    "resourceId": {
+                        "type": "string"
                     }
                 },
                 "type": "object"
@@ -18393,9 +18393,6 @@
                 "contentBase64": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "enabled": {
                     "type": "boolean"
                 },
@@ -18407,6 +18404,9 @@
                 },
                 "position": {
                     "type": "number"
+                },
+                "resourceId": {
+                    "type": "string"
                 },
                 "source": {
                     "type": "string"
@@ -18416,15 +18416,12 @@
                 }
             },
             "required": [
-                "databricksId",
+                "resourceId",
                 "name",
                 "position"
             ],
             "inputProperties": {
                 "contentBase64": {
-                    "type": "string"
-                },
-                "databricksId": {
                     "type": "string"
                 },
                 "enabled": {
@@ -18438,6 +18435,9 @@
                 },
                 "position": {
                     "type": "number"
+                },
+                "resourceId": {
+                    "type": "string"
                 },
                 "source": {
                     "type": "string"
@@ -18452,9 +18452,6 @@
                     "contentBase64": {
                         "type": "string"
                     },
-                    "databricksId": {
-                        "type": "string"
-                    },
                     "enabled": {
                         "type": "boolean"
                     },
@@ -18466,6 +18463,9 @@
                     },
                     "position": {
                         "type": "number"
+                    },
+                    "resourceId": {
+                        "type": "string"
                     },
                     "source": {
                         "type": "string"
@@ -18480,9 +18480,6 @@
         "databricks:index/grant:Grant": {
             "properties": {
                 "catalog": {
-                    "type": "string"
-                },
-                "databricksId": {
                     "type": "string"
                 },
                 "externalLocation": {
@@ -18513,6 +18510,9 @@
                     }
                 },
                 "recipient": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "schema": {
@@ -18532,15 +18532,12 @@
                 }
             },
             "required": [
-                "databricksId",
+                "resourceId",
                 "principal",
                 "privileges"
             ],
             "inputProperties": {
                 "catalog": {
-                    "type": "string"
-                },
-                "databricksId": {
                     "type": "string"
                 },
                 "externalLocation": {
@@ -18571,6 +18568,9 @@
                     }
                 },
                 "recipient": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "schema": {
@@ -18597,9 +18597,6 @@
                 "description": "Input properties used for looking up and filtering Grant resources.\n",
                 "properties": {
                     "catalog": {
-                        "type": "string"
-                    },
-                    "databricksId": {
                         "type": "string"
                     },
                     "externalLocation": {
@@ -18632,6 +18629,9 @@
                     "recipient": {
                         "type": "string"
                     },
+                    "resourceId": {
+                        "type": "string"
+                    },
                     "schema": {
                         "type": "string"
                     },
@@ -18656,9 +18656,6 @@
                 "catalog": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "externalLocation": {
                     "type": "string"
                 },
@@ -18684,6 +18681,9 @@
                     "type": "string"
                 },
                 "recipient": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "schema": {
@@ -18704,13 +18704,10 @@
             },
             "required": [
                 "grants",
-                "databricksId"
+                "resourceId"
             ],
             "inputProperties": {
                 "catalog": {
-                    "type": "string"
-                },
-                "databricksId": {
                     "type": "string"
                 },
                 "externalLocation": {
@@ -18738,6 +18735,9 @@
                     "type": "string"
                 },
                 "recipient": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "schema": {
@@ -18765,9 +18765,6 @@
                     "catalog": {
                         "type": "string"
                     },
-                    "databricksId": {
-                        "type": "string"
-                    },
                     "externalLocation": {
                         "type": "string"
                     },
@@ -18793,6 +18790,9 @@
                         "type": "string"
                     },
                     "recipient": {
+                        "type": "string"
+                    },
+                    "resourceId": {
                         "type": "string"
                     },
                     "schema": {
@@ -18825,9 +18825,6 @@
                 "allowInstancePoolCreate": {
                     "type": "boolean"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "databricksSqlAccess": {
                     "type": "boolean"
                 },
@@ -18840,6 +18837,9 @@
                 "force": {
                     "type": "boolean"
                 },
+                "resourceId": {
+                    "type": "string"
+                },
                 "url": {
                     "type": "string"
                 },
@@ -18850,7 +18850,7 @@
             "required": [
                 "aclPrincipalId",
                 "displayName",
-                "databricksId",
+                "resourceId",
                 "url"
             ],
             "inputProperties": {
@@ -18863,9 +18863,6 @@
                 "allowInstancePoolCreate": {
                     "type": "boolean"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "databricksSqlAccess": {
                     "type": "boolean"
                 },
@@ -18877,6 +18874,9 @@
                 },
                 "force": {
                     "type": "boolean"
+                },
+                "resourceId": {
+                    "type": "string"
                 },
                 "url": {
                     "type": "string"
@@ -18900,9 +18900,6 @@
                     "allowInstancePoolCreate": {
                         "type": "boolean"
                     },
-                    "databricksId": {
-                        "type": "string"
-                    },
                     "databricksSqlAccess": {
                         "type": "boolean"
                     },
@@ -18914,6 +18911,9 @@
                     },
                     "force": {
                         "type": "boolean"
+                    },
+                    "resourceId": {
+                        "type": "string"
                     },
                     "url": {
                         "type": "string"
@@ -18927,29 +18927,29 @@
         },
         "databricks:index/groupInstanceProfile:GroupInstanceProfile": {
             "properties": {
-                "databricksId": {
-                    "type": "string"
-                },
                 "groupId": {
                     "type": "string"
                 },
                 "instanceProfileId": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 }
             },
             "required": [
                 "groupId",
-                "databricksId",
+                "resourceId",
                 "instanceProfileId"
             ],
             "inputProperties": {
-                "databricksId": {
-                    "type": "string"
-                },
                 "groupId": {
                     "type": "string"
                 },
                 "instanceProfileId": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 }
             },
@@ -18960,13 +18960,13 @@
             "stateInputs": {
                 "description": "Input properties used for looking up and filtering GroupInstanceProfile resources.\n",
                 "properties": {
-                    "databricksId": {
-                        "type": "string"
-                    },
                     "groupId": {
                         "type": "string"
                     },
                     "instanceProfileId": {
+                        "type": "string"
+                    },
+                    "resourceId": {
                         "type": "string"
                     }
                 },
@@ -18975,29 +18975,29 @@
         },
         "databricks:index/groupMember:GroupMember": {
             "properties": {
-                "databricksId": {
-                    "type": "string"
-                },
                 "groupId": {
                     "type": "string"
                 },
                 "memberId": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 }
             },
             "required": [
                 "groupId",
-                "databricksId",
+                "resourceId",
                 "memberId"
             ],
             "inputProperties": {
-                "databricksId": {
-                    "type": "string"
-                },
                 "groupId": {
                     "type": "string"
                 },
                 "memberId": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 }
             },
@@ -19008,13 +19008,13 @@
             "stateInputs": {
                 "description": "Input properties used for looking up and filtering GroupMember resources.\n",
                 "properties": {
-                    "databricksId": {
-                        "type": "string"
-                    },
                     "groupId": {
                         "type": "string"
                     },
                     "memberId": {
+                        "type": "string"
+                    },
+                    "resourceId": {
                         "type": "string"
                     }
                 },
@@ -19023,10 +19023,10 @@
         },
         "databricks:index/groupRole:GroupRole": {
             "properties": {
-                "databricksId": {
+                "groupId": {
                     "type": "string"
                 },
-                "groupId": {
+                "resourceId": {
                     "type": "string"
                 },
                 "role": {
@@ -19035,14 +19035,14 @@
             },
             "required": [
                 "groupId",
-                "databricksId",
+                "resourceId",
                 "role"
             ],
             "inputProperties": {
-                "databricksId": {
+                "groupId": {
                     "type": "string"
                 },
-                "groupId": {
+                "resourceId": {
                     "type": "string"
                 },
                 "role": {
@@ -19056,10 +19056,10 @@
             "stateInputs": {
                 "description": "Input properties used for looking up and filtering GroupRole resources.\n",
                 "properties": {
-                    "databricksId": {
+                    "groupId": {
                         "type": "string"
                     },
-                    "groupId": {
+                    "resourceId": {
                         "type": "string"
                     },
                     "role": {
@@ -19083,9 +19083,6 @@
                         "type": "string"
                     }
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "diskSpec": {
                     "$ref": "#/types/databricks:index/InstancePoolDiskSpec:InstancePoolDiskSpec"
                 },
@@ -19127,10 +19124,13 @@
                     "items": {
                         "type": "string"
                     }
+                },
+                "resourceId": {
+                    "type": "string"
                 }
             },
             "required": [
-                "databricksId",
+                "resourceId",
                 "idleInstanceAutoterminationMinutes",
                 "instancePoolId",
                 "instancePoolName"
@@ -19148,9 +19148,6 @@
                         "type": "string"
                     }
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "diskSpec": {
                     "$ref": "#/types/databricks:index/InstancePoolDiskSpec:InstancePoolDiskSpec"
                 },
@@ -19192,6 +19189,9 @@
                     "items": {
                         "type": "string"
                     }
+                },
+                "resourceId": {
+                    "type": "string"
                 }
             },
             "requiredInputs": [
@@ -19212,9 +19212,6 @@
                         "additionalProperties": {
                             "type": "string"
                         }
-                    },
-                    "databricksId": {
-                        "type": "string"
                     },
                     "diskSpec": {
                         "$ref": "#/types/databricks:index/InstancePoolDiskSpec:InstancePoolDiskSpec"
@@ -19257,6 +19254,9 @@
                         "items": {
                             "type": "string"
                         }
+                    },
+                    "resourceId": {
+                        "type": "string"
                     }
                 },
                 "type": "object"
@@ -19264,9 +19264,6 @@
         },
         "databricks:index/instanceProfile:InstanceProfile": {
             "properties": {
-                "databricksId": {
-                    "type": "string"
-                },
                 "iamRoleArn": {
                     "type": "string"
                 },
@@ -19275,20 +19272,20 @@
                 },
                 "isMetaInstanceProfile": {
                     "type": "boolean"
+                },
+                "resourceId": {
+                    "type": "string"
                 },
                 "skipValidation": {
                     "type": "boolean"
                 }
             },
             "required": [
-                "databricksId",
+                "resourceId",
                 "instanceProfileArn",
                 "skipValidation"
             ],
             "inputProperties": {
-                "databricksId": {
-                    "type": "string"
-                },
                 "iamRoleArn": {
                     "type": "string"
                 },
@@ -19297,6 +19294,9 @@
                 },
                 "isMetaInstanceProfile": {
                     "type": "boolean"
+                },
+                "resourceId": {
+                    "type": "string"
                 },
                 "skipValidation": {
                     "type": "boolean"
@@ -19308,9 +19308,6 @@
             "stateInputs": {
                 "description": "Input properties used for looking up and filtering InstanceProfile resources.\n",
                 "properties": {
-                    "databricksId": {
-                        "type": "string"
-                    },
                     "iamRoleArn": {
                         "type": "string"
                     },
@@ -19319,6 +19316,9 @@
                     },
                     "isMetaInstanceProfile": {
                         "type": "boolean"
+                    },
+                    "resourceId": {
+                        "type": "string"
                     },
                     "skipValidation": {
                         "type": "boolean"
@@ -19329,9 +19329,6 @@
         },
         "databricks:index/ipAccessList:IpAccessList": {
             "properties": {
-                "databricksId": {
-                    "type": "string"
-                },
                 "enabled": {
                     "type": "boolean"
                 },
@@ -19346,18 +19343,18 @@
                 },
                 "listType": {
                     "type": "string"
+                },
+                "resourceId": {
+                    "type": "string"
                 }
             },
             "required": [
-                "databricksId",
+                "resourceId",
                 "ipAddresses",
                 "label",
                 "listType"
             ],
             "inputProperties": {
-                "databricksId": {
-                    "type": "string"
-                },
                 "enabled": {
                     "type": "boolean"
                 },
@@ -19371,6 +19368,9 @@
                     "type": "string"
                 },
                 "listType": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 }
             },
@@ -19382,9 +19382,6 @@
             "stateInputs": {
                 "description": "Input properties used for looking up and filtering IpAccessList resources.\n",
                 "properties": {
-                    "databricksId": {
-                        "type": "string"
-                    },
                     "enabled": {
                         "type": "boolean"
                     },
@@ -19398,6 +19395,9 @@
                         "type": "string"
                     },
                     "listType": {
+                        "type": "string"
+                    },
+                    "resourceId": {
                         "type": "string"
                     }
                 },
@@ -19415,9 +19415,6 @@
                 },
                 "controlRunState": {
                     "type": "boolean"
-                },
-                "databricksId": {
-                    "type": "string"
                 },
                 "dbtTask": {
                     "$ref": "#/types/databricks:index/JobDbtTask:JobDbtTask",
@@ -19505,6 +19502,9 @@
                 },
                 "queue": {
                     "$ref": "#/types/databricks:index/JobQueue:JobQueue"
+                },
+                "resourceId": {
+                    "type": "string"
                 },
                 "retryOnTimeout": {
                     "type": "boolean",
@@ -19562,7 +19562,7 @@
             },
             "required": [
                 "format",
-                "databricksId",
+                "resourceId",
                 "name",
                 "url"
             ],
@@ -19576,9 +19576,6 @@
                 },
                 "controlRunState": {
                     "type": "boolean"
-                },
-                "databricksId": {
-                    "type": "string"
                 },
                 "dbtTask": {
                     "$ref": "#/types/databricks:index/JobDbtTask:JobDbtTask",
@@ -19666,6 +19663,9 @@
                 },
                 "queue": {
                     "$ref": "#/types/databricks:index/JobQueue:JobQueue"
+                },
+                "resourceId": {
+                    "type": "string"
                 },
                 "retryOnTimeout": {
                     "type": "boolean",
@@ -19730,9 +19730,6 @@
                     },
                     "controlRunState": {
                         "type": "boolean"
-                    },
-                    "databricksId": {
-                        "type": "string"
                     },
                     "dbtTask": {
                         "$ref": "#/types/databricks:index/JobDbtTask:JobDbtTask",
@@ -19821,6 +19818,9 @@
                     "queue": {
                         "$ref": "#/types/databricks:index/JobQueue:JobQueue"
                     },
+                    "resourceId": {
+                        "type": "string"
+                    },
                     "retryOnTimeout": {
                         "type": "boolean",
                         "deprecationMessage": "Deprecated"
@@ -19898,9 +19898,6 @@
                 "dataClassificationConfig": {
                     "$ref": "#/types/databricks:index/LakehouseMonitorDataClassificationConfig:LakehouseMonitorDataClassificationConfig"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "driftMetricsTableName": {
                     "type": "string"
                 },
@@ -19920,6 +19917,9 @@
                     "type": "string"
                 },
                 "profileMetricsTableName": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "schedule": {
@@ -19957,7 +19957,7 @@
                 "assetsDir",
                 "dashboardId",
                 "driftMetricsTableName",
-                "databricksId",
+                "resourceId",
                 "monitorVersion",
                 "outputSchemaName",
                 "profileMetricsTableName",
@@ -19980,9 +19980,6 @@
                 "dataClassificationConfig": {
                     "$ref": "#/types/databricks:index/LakehouseMonitorDataClassificationConfig:LakehouseMonitorDataClassificationConfig"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "inferenceLog": {
                     "$ref": "#/types/databricks:index/LakehouseMonitorInferenceLog:LakehouseMonitorInferenceLog"
                 },
@@ -19993,6 +19990,9 @@
                     "$ref": "#/types/databricks:index/LakehouseMonitorNotifications:LakehouseMonitorNotifications"
                 },
                 "outputSchemaName": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "schedule": {
@@ -20049,9 +20049,6 @@
                     "dataClassificationConfig": {
                         "$ref": "#/types/databricks:index/LakehouseMonitorDataClassificationConfig:LakehouseMonitorDataClassificationConfig"
                     },
-                    "databricksId": {
-                        "type": "string"
-                    },
                     "driftMetricsTableName": {
                         "type": "string"
                     },
@@ -20071,6 +20068,9 @@
                         "type": "string"
                     },
                     "profileMetricsTableName": {
+                        "type": "string"
+                    },
+                    "resourceId": {
                         "type": "string"
                     },
                     "schedule": {
@@ -20115,9 +20115,6 @@
                 "cran": {
                     "$ref": "#/types/databricks:index/LibraryCran:LibraryCran"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "egg": {
                     "type": "string"
                 },
@@ -20131,6 +20128,9 @@
                     "$ref": "#/types/databricks:index/LibraryPypi:LibraryPypi"
                 },
                 "requirements": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "whl": {
@@ -20139,7 +20139,7 @@
             },
             "required": [
                 "clusterId",
-                "databricksId"
+                "resourceId"
             ],
             "inputProperties": {
                 "clusterId": {
@@ -20147,9 +20147,6 @@
                 },
                 "cran": {
                     "$ref": "#/types/databricks:index/LibraryCran:LibraryCran"
-                },
-                "databricksId": {
-                    "type": "string"
                 },
                 "egg": {
                     "type": "string"
@@ -20164,6 +20161,9 @@
                     "$ref": "#/types/databricks:index/LibraryPypi:LibraryPypi"
                 },
                 "requirements": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "whl": {
@@ -20182,9 +20182,6 @@
                     "cran": {
                         "$ref": "#/types/databricks:index/LibraryCran:LibraryCran"
                     },
-                    "databricksId": {
-                        "type": "string"
-                    },
                     "egg": {
                         "type": "string"
                     },
@@ -20198,6 +20195,9 @@
                         "$ref": "#/types/databricks:index/LibraryPypi:LibraryPypi"
                     },
                     "requirements": {
+                        "type": "string"
+                    },
+                    "resourceId": {
                         "type": "string"
                     },
                     "whl": {
@@ -20218,9 +20218,6 @@
                 "createdBy": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "defaultDataAccessConfigId": {
                     "type": "string"
                 },
@@ -20249,6 +20246,9 @@
                     "type": "string"
                 },
                 "region": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "storageRoot": {
@@ -20269,7 +20269,7 @@
                 "createdAt",
                 "createdBy",
                 "globalMetastoreId",
-                "databricksId",
+                "resourceId",
                 "metastoreId",
                 "name",
                 "owner",
@@ -20285,9 +20285,6 @@
                     "type": "number"
                 },
                 "createdBy": {
-                    "type": "string"
-                },
-                "databricksId": {
                     "type": "string"
                 },
                 "defaultDataAccessConfigId": {
@@ -20318,6 +20315,9 @@
                     "type": "string"
                 },
                 "region": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "storageRoot": {
@@ -20343,9 +20343,6 @@
                         "type": "number"
                     },
                     "createdBy": {
-                        "type": "string"
-                    },
-                    "databricksId": {
                         "type": "string"
                     },
                     "defaultDataAccessConfigId": {
@@ -20378,6 +20375,9 @@
                     "region": {
                         "type": "string"
                     },
+                    "resourceId": {
+                        "type": "string"
+                    },
                     "storageRoot": {
                         "type": "string"
                     },
@@ -20396,13 +20396,13 @@
         },
         "databricks:index/metastoreAssignment:MetastoreAssignment": {
             "properties": {
-                "databricksId": {
-                    "type": "string"
-                },
                 "defaultCatalogName": {
                     "type": "string"
                 },
                 "metastoreId": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "workspaceId": {
@@ -20410,18 +20410,18 @@
                 }
             },
             "required": [
-                "databricksId",
+                "resourceId",
                 "metastoreId",
                 "workspaceId"
             ],
             "inputProperties": {
-                "databricksId": {
-                    "type": "string"
-                },
                 "defaultCatalogName": {
                     "type": "string"
                 },
                 "metastoreId": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "workspaceId": {
@@ -20435,13 +20435,13 @@
             "stateInputs": {
                 "description": "Input properties used for looking up and filtering MetastoreAssignment resources.\n",
                 "properties": {
-                    "databricksId": {
-                        "type": "string"
-                    },
                     "defaultCatalogName": {
                         "type": "string"
                     },
                     "metastoreId": {
+                        "type": "string"
+                    },
+                    "resourceId": {
                         "type": "string"
                     },
                     "workspaceId": {
@@ -20471,9 +20471,6 @@
                 "databricksGcpServiceAccount": {
                     "$ref": "#/types/databricks:index/MetastoreDataAccessDatabricksGcpServiceAccount:MetastoreDataAccessDatabricksGcpServiceAccount"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "forceDestroy": {
                     "type": "boolean"
                 },
@@ -20501,12 +20498,15 @@
                 "readOnly": {
                     "type": "boolean"
                 },
+                "resourceId": {
+                    "type": "string"
+                },
                 "skipValidation": {
                     "type": "boolean"
                 }
             },
             "required": [
-                "databricksId",
+                "resourceId",
                 "isolationMode",
                 "metastoreId",
                 "name",
@@ -20531,9 +20531,6 @@
                 "databricksGcpServiceAccount": {
                     "$ref": "#/types/databricks:index/MetastoreDataAccessDatabricksGcpServiceAccount:MetastoreDataAccessDatabricksGcpServiceAccount"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "forceDestroy": {
                     "type": "boolean"
                 },
@@ -20560,6 +20557,9 @@
                 },
                 "readOnly": {
                     "type": "boolean"
+                },
+                "resourceId": {
+                    "type": "string"
                 },
                 "skipValidation": {
                     "type": "boolean"
@@ -20585,9 +20585,6 @@
                     },
                     "databricksGcpServiceAccount": {
                         "$ref": "#/types/databricks:index/MetastoreDataAccessDatabricksGcpServiceAccount:MetastoreDataAccessDatabricksGcpServiceAccount"
-                    },
-                    "databricksId": {
-                        "type": "string"
                     },
                     "forceDestroy": {
                         "type": "boolean"
@@ -20616,6 +20613,9 @@
                     "readOnly": {
                         "type": "boolean"
                     },
+                    "resourceId": {
+                        "type": "string"
+                    },
                     "skipValidation": {
                         "type": "boolean"
                     }
@@ -20631,9 +20631,6 @@
                 "creationTime": {
                     "type": "number"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "description": {
                     "type": "string"
                 },
@@ -20649,6 +20646,9 @@
                 "name": {
                     "type": "string"
                 },
+                "resourceId": {
+                    "type": "string"
+                },
                 "timeouts": {
                     "$ref": "#/types/databricks:index/MlflowExperimentTimeouts:MlflowExperimentTimeouts"
                 }
@@ -20656,7 +20656,7 @@
             "required": [
                 "creationTime",
                 "experimentId",
-                "databricksId",
+                "resourceId",
                 "lastUpdateTime",
                 "lifecycleStage",
                 "name"
@@ -20668,9 +20668,6 @@
                 "creationTime": {
                     "type": "number"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "description": {
                     "type": "string"
                 },
@@ -20684,6 +20681,9 @@
                     "type": "string"
                 },
                 "name": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "timeouts": {
@@ -20698,9 +20698,6 @@
                     },
                     "creationTime": {
                         "type": "number"
-                    },
-                    "databricksId": {
-                        "type": "string"
                     },
                     "description": {
                         "type": "string"
@@ -20717,6 +20714,9 @@
                     "name": {
                         "type": "string"
                     },
+                    "resourceId": {
+                        "type": "string"
+                    },
                     "timeouts": {
                         "$ref": "#/types/databricks:index/MlflowExperimentTimeouts:MlflowExperimentTimeouts"
                     }
@@ -20726,9 +20726,6 @@
         },
         "databricks:index/mlflowModel:MlflowModel": {
             "properties": {
-                "databricksId": {
-                    "type": "string"
-                },
                 "description": {
                     "type": "string"
                 },
@@ -20736,6 +20733,9 @@
                     "type": "string"
                 },
                 "registeredModelId": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "tags": {
@@ -20746,18 +20746,18 @@
                 }
             },
             "required": [
-                "databricksId",
+                "resourceId",
                 "name",
                 "registeredModelId"
             ],
             "inputProperties": {
-                "databricksId": {
-                    "type": "string"
-                },
                 "description": {
                     "type": "string"
                 },
                 "name": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "tags": {
@@ -20770,9 +20770,6 @@
             "stateInputs": {
                 "description": "Input properties used for looking up and filtering MlflowModel resources.\n",
                 "properties": {
-                    "databricksId": {
-                        "type": "string"
-                    },
                     "description": {
                         "type": "string"
                     },
@@ -20780,6 +20777,9 @@
                         "type": "string"
                     },
                     "registeredModelId": {
+                        "type": "string"
+                    },
+                    "resourceId": {
                         "type": "string"
                     },
                     "tags": {
@@ -20794,9 +20794,6 @@
         },
         "databricks:index/mlflowWebhook:MlflowWebhook": {
             "properties": {
-                "databricksId": {
-                    "type": "string"
-                },
                 "description": {
                     "type": "string"
                 },
@@ -20813,6 +20810,9 @@
                     "$ref": "#/types/databricks:index/MlflowWebhookJobSpec:MlflowWebhookJobSpec"
                 },
                 "modelName": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "status": {
@@ -20821,12 +20821,9 @@
             },
             "required": [
                 "events",
-                "databricksId"
+                "resourceId"
             ],
             "inputProperties": {
-                "databricksId": {
-                    "type": "string"
-                },
                 "description": {
                     "type": "string"
                 },
@@ -20843,6 +20840,9 @@
                     "$ref": "#/types/databricks:index/MlflowWebhookJobSpec:MlflowWebhookJobSpec"
                 },
                 "modelName": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "status": {
@@ -20855,9 +20855,6 @@
             "stateInputs": {
                 "description": "Input properties used for looking up and filtering MlflowWebhook resources.\n",
                 "properties": {
-                    "databricksId": {
-                        "type": "string"
-                    },
                     "description": {
                         "type": "string"
                     },
@@ -20876,6 +20873,9 @@
                     "modelName": {
                         "type": "string"
                     },
+                    "resourceId": {
+                        "type": "string"
+                    },
                     "status": {
                         "type": "string"
                     }
@@ -20888,9 +20888,6 @@
                 "config": {
                     "$ref": "#/types/databricks:index/ModelServingConfig:ModelServingConfig"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "name": {
                     "type": "string"
                 },
@@ -20899,6 +20896,9 @@
                     "items": {
                         "$ref": "#/types/databricks:index/ModelServingRateLimit:ModelServingRateLimit"
                     }
+                },
+                "resourceId": {
+                    "type": "string"
                 },
                 "routeOptimized": {
                     "type": "boolean"
@@ -20918,16 +20918,13 @@
             },
             "required": [
                 "config",
-                "databricksId",
+                "resourceId",
                 "name",
                 "servingEndpointId"
             ],
             "inputProperties": {
                 "config": {
                     "$ref": "#/types/databricks:index/ModelServingConfig:ModelServingConfig"
-                },
-                "databricksId": {
-                    "type": "string"
                 },
                 "name": {
                     "type": "string"
@@ -20937,6 +20934,9 @@
                     "items": {
                         "$ref": "#/types/databricks:index/ModelServingRateLimit:ModelServingRateLimit"
                     }
+                },
+                "resourceId": {
+                    "type": "string"
                 },
                 "routeOptimized": {
                     "type": "boolean"
@@ -20960,9 +20960,6 @@
                     "config": {
                         "$ref": "#/types/databricks:index/ModelServingConfig:ModelServingConfig"
                     },
-                    "databricksId": {
-                        "type": "string"
-                    },
                     "name": {
                         "type": "string"
                     },
@@ -20971,6 +20968,9 @@
                         "items": {
                             "$ref": "#/types/databricks:index/ModelServingRateLimit:ModelServingRateLimit"
                         }
+                    },
+                    "resourceId": {
+                        "type": "string"
                     },
                     "routeOptimized": {
                         "type": "boolean"
@@ -21002,9 +21002,6 @@
                 "clusterId": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "encryptionType": {
                     "type": "string"
                 },
@@ -21016,6 +21013,9 @@
                 },
                 "gs": {
                     "$ref": "#/types/databricks:index/MountGs:MountGs"
+                },
+                "mountId": {
+                    "type": "string"
                 },
                 "name": {
                     "type": "string"
@@ -21041,7 +21041,7 @@
             },
             "required": [
                 "clusterId",
-                "databricksId",
+                "mountId",
                 "name",
                 "source"
             ],
@@ -21055,9 +21055,6 @@
                 "clusterId": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "encryptionType": {
                     "type": "string"
                 },
@@ -21069,6 +21066,9 @@
                 },
                 "gs": {
                     "$ref": "#/types/databricks:index/MountGs:MountGs"
+                },
+                "mountId": {
+                    "type": "string"
                 },
                 "name": {
                     "type": "string"
@@ -21101,9 +21101,6 @@
                     "clusterId": {
                         "type": "string"
                     },
-                    "databricksId": {
-                        "type": "string"
-                    },
                     "encryptionType": {
                         "type": "string"
                     },
@@ -21115,6 +21112,9 @@
                     },
                     "gs": {
                         "$ref": "#/types/databricks:index/MountGs:MountGs"
+                    },
+                    "mountId": {
+                        "type": "string"
                     },
                     "name": {
                         "type": "string"
@@ -21156,10 +21156,10 @@
                 "credentialsName": {
                     "type": "string"
                 },
-                "databricksId": {
+                "externalId": {
                     "type": "string"
                 },
-                "externalId": {
+                "resourceId": {
                     "type": "string"
                 },
                 "roleArn": {
@@ -21171,7 +21171,7 @@
                 "credentialsId",
                 "credentialsName",
                 "externalId",
-                "databricksId",
+                "resourceId",
                 "roleArn"
             ],
             "inputProperties": {
@@ -21188,10 +21188,10 @@
                 "credentialsName": {
                     "type": "string"
                 },
-                "databricksId": {
+                "externalId": {
                     "type": "string"
                 },
-                "externalId": {
+                "resourceId": {
                     "type": "string"
                 },
                 "roleArn": {
@@ -21218,10 +21218,10 @@
                     "credentialsName": {
                         "type": "string"
                     },
-                    "databricksId": {
+                    "externalId": {
                         "type": "string"
                     },
-                    "externalId": {
+                    "resourceId": {
                         "type": "string"
                     },
                     "roleArn": {
@@ -21245,11 +21245,11 @@
                 "customerManagedKeyId": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "gcpKeyInfo": {
                     "$ref": "#/types/databricks:index/MwsCustomerManagedKeysGcpKeyInfo:MwsCustomerManagedKeysGcpKeyInfo"
+                },
+                "resourceId": {
+                    "type": "string"
                 },
                 "useCases": {
                     "type": "array",
@@ -21262,7 +21262,7 @@
                 "accountId",
                 "creationTime",
                 "customerManagedKeyId",
-                "databricksId",
+                "resourceId",
                 "useCases"
             ],
             "inputProperties": {
@@ -21278,11 +21278,11 @@
                 "customerManagedKeyId": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "gcpKeyInfo": {
                     "$ref": "#/types/databricks:index/MwsCustomerManagedKeysGcpKeyInfo:MwsCustomerManagedKeysGcpKeyInfo"
+                },
+                "resourceId": {
+                    "type": "string"
                 },
                 "useCases": {
                     "type": "array",
@@ -21310,11 +21310,11 @@
                     "customerManagedKeyId": {
                         "type": "string"
                     },
-                    "databricksId": {
-                        "type": "string"
-                    },
                     "gcpKeyInfo": {
                         "$ref": "#/types/databricks:index/MwsCustomerManagedKeysGcpKeyInfo:MwsCustomerManagedKeysGcpKeyInfo"
+                    },
+                    "resourceId": {
+                        "type": "string"
                     },
                     "useCases": {
                         "type": "array",
@@ -21340,9 +21340,6 @@
                 "credentialsId": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "deliveryPathPrefix": {
                     "type": "string"
                 },
@@ -21353,6 +21350,9 @@
                     "type": "string"
                 },
                 "outputFormat": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "status": {
@@ -21373,7 +21373,7 @@
                 "configId",
                 "credentialsId",
                 "deliveryStartTime",
-                "databricksId",
+                "resourceId",
                 "logType",
                 "outputFormat",
                 "status",
@@ -21392,9 +21392,6 @@
                 "credentialsId": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "deliveryPathPrefix": {
                     "type": "string"
                 },
@@ -21405,6 +21402,9 @@
                     "type": "string"
                 },
                 "outputFormat": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "status": {
@@ -21442,9 +21442,6 @@
                     "credentialsId": {
                         "type": "string"
                     },
-                    "databricksId": {
-                        "type": "string"
-                    },
                     "deliveryPathPrefix": {
                         "type": "string"
                     },
@@ -21455,6 +21452,9 @@
                         "type": "string"
                     },
                     "outputFormat": {
+                        "type": "string"
+                    },
+                    "resourceId": {
                         "type": "string"
                     },
                     "status": {
@@ -21475,10 +21475,10 @@
         },
         "databricks:index/mwsNccBinding:MwsNccBinding": {
             "properties": {
-                "databricksId": {
+                "networkConnectivityConfigId": {
                     "type": "string"
                 },
-                "networkConnectivityConfigId": {
+                "resourceId": {
                     "type": "string"
                 },
                 "workspaceId": {
@@ -21486,15 +21486,15 @@
                 }
             },
             "required": [
-                "databricksId",
+                "resourceId",
                 "networkConnectivityConfigId",
                 "workspaceId"
             ],
             "inputProperties": {
-                "databricksId": {
+                "networkConnectivityConfigId": {
                     "type": "string"
                 },
-                "networkConnectivityConfigId": {
+                "resourceId": {
                     "type": "string"
                 },
                 "workspaceId": {
@@ -21508,10 +21508,10 @@
             "stateInputs": {
                 "description": "Input properties used for looking up and filtering MwsNccBinding resources.\n",
                 "properties": {
-                    "databricksId": {
+                    "networkConnectivityConfigId": {
                         "type": "string"
                     },
-                    "networkConnectivityConfigId": {
+                    "resourceId": {
                         "type": "string"
                     },
                     "workspaceId": {
@@ -21529,9 +21529,6 @@
                 "creationTime": {
                     "type": "number"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "deactivated": {
                     "type": "boolean"
                 },
@@ -21542,6 +21539,9 @@
                     "type": "string"
                 },
                 "groupId": {
+                    "type": "string"
+                },
+                "mwsNccPrivateEndpointRuleId": {
                     "type": "string"
                 },
                 "networkConnectivityConfigId": {
@@ -21562,7 +21562,7 @@
                 "creationTime",
                 "endpointName",
                 "groupId",
-                "databricksId",
+                "mwsNccPrivateEndpointRuleId",
                 "networkConnectivityConfigId",
                 "resourceId",
                 "ruleId",
@@ -21575,9 +21575,6 @@
                 "creationTime": {
                     "type": "number"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "deactivated": {
                     "type": "boolean"
                 },
@@ -21588,6 +21585,9 @@
                     "type": "string"
                 },
                 "groupId": {
+                    "type": "string"
+                },
+                "mwsNccPrivateEndpointRuleId": {
                     "type": "string"
                 },
                 "networkConnectivityConfigId": {
@@ -21617,9 +21617,6 @@
                     "creationTime": {
                         "type": "number"
                     },
-                    "databricksId": {
-                        "type": "string"
-                    },
                     "deactivated": {
                         "type": "boolean"
                     },
@@ -21630,6 +21627,9 @@
                         "type": "string"
                     },
                     "groupId": {
+                        "type": "string"
+                    },
+                    "mwsNccPrivateEndpointRuleId": {
                         "type": "string"
                     },
                     "networkConnectivityConfigId": {
@@ -21656,9 +21656,6 @@
                 "creationTime": {
                     "type": "number"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "egressConfig": {
                     "$ref": "#/types/databricks:index/MwsNetworkConnectivityConfigEgressConfig:MwsNetworkConnectivityConfigEgressConfig"
                 },
@@ -21671,6 +21668,9 @@
                 "region": {
                     "type": "string"
                 },
+                "resourceId": {
+                    "type": "string"
+                },
                 "updatedTime": {
                     "type": "number"
                 }
@@ -21678,7 +21678,7 @@
             "required": [
                 "accountId",
                 "creationTime",
-                "databricksId",
+                "resourceId",
                 "name",
                 "networkConnectivityConfigId",
                 "region",
@@ -21691,9 +21691,6 @@
                 "creationTime": {
                     "type": "number"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "egressConfig": {
                     "$ref": "#/types/databricks:index/MwsNetworkConnectivityConfigEgressConfig:MwsNetworkConnectivityConfigEgressConfig"
                 },
@@ -21704,6 +21701,9 @@
                     "type": "string"
                 },
                 "region": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "updatedTime": {
@@ -21722,9 +21722,6 @@
                     "creationTime": {
                         "type": "number"
                     },
-                    "databricksId": {
-                        "type": "string"
-                    },
                     "egressConfig": {
                         "$ref": "#/types/databricks:index/MwsNetworkConnectivityConfigEgressConfig:MwsNetworkConnectivityConfigEgressConfig"
                     },
@@ -21735,6 +21732,9 @@
                         "type": "string"
                     },
                     "region": {
+                        "type": "string"
+                    },
+                    "resourceId": {
                         "type": "string"
                     },
                     "updatedTime": {
@@ -21753,9 +21753,6 @@
                 "creationTime": {
                     "type": "number"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "errorMessages": {
                     "type": "array",
                     "items": {
@@ -21769,6 +21766,9 @@
                     "type": "string"
                 },
                 "networkName": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "securityGroupIds": {
@@ -21799,7 +21799,7 @@
             "required": [
                 "accountId",
                 "creationTime",
-                "databricksId",
+                "resourceId",
                 "networkId",
                 "networkName",
                 "vpcStatus",
@@ -21812,9 +21812,6 @@
                 },
                 "creationTime": {
                     "type": "number"
-                },
-                "databricksId": {
-                    "type": "string"
                 },
                 "errorMessages": {
                     "type": "array",
@@ -21829,6 +21826,9 @@
                     "type": "string"
                 },
                 "networkName": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "securityGroupIds": {
@@ -21870,9 +21870,6 @@
                     "creationTime": {
                         "type": "number"
                     },
-                    "databricksId": {
-                        "type": "string"
-                    },
                     "errorMessages": {
                         "type": "array",
                         "items": {
@@ -21886,6 +21883,9 @@
                         "type": "string"
                     },
                     "networkName": {
+                        "type": "string"
+                    },
+                    "resourceId": {
                         "type": "string"
                     },
                     "securityGroupIds": {
@@ -21918,9 +21918,6 @@
         },
         "databricks:index/mwsPermissionAssignment:MwsPermissionAssignment": {
             "properties": {
-                "databricksId": {
-                    "type": "string"
-                },
                 "permissions": {
                     "type": "array",
                     "items": {
@@ -21929,21 +21926,21 @@
                 },
                 "principalId": {
                     "type": "number"
+                },
+                "resourceId": {
+                    "type": "string"
                 },
                 "workspaceId": {
                     "type": "number"
                 }
             },
             "required": [
-                "databricksId",
+                "resourceId",
                 "permissions",
                 "principalId",
                 "workspaceId"
             ],
             "inputProperties": {
-                "databricksId": {
-                    "type": "string"
-                },
                 "permissions": {
                     "type": "array",
                     "items": {
@@ -21952,6 +21949,9 @@
                 },
                 "principalId": {
                     "type": "number"
+                },
+                "resourceId": {
+                    "type": "string"
                 },
                 "workspaceId": {
                     "type": "number"
@@ -21965,9 +21965,6 @@
             "stateInputs": {
                 "description": "Input properties used for looking up and filtering MwsPermissionAssignment resources.\n",
                 "properties": {
-                    "databricksId": {
-                        "type": "string"
-                    },
                     "permissions": {
                         "type": "array",
                         "items": {
@@ -21976,6 +21973,9 @@
                     },
                     "principalId": {
                         "type": "number"
+                    },
+                    "resourceId": {
+                        "type": "string"
                     },
                     "workspaceId": {
                         "type": "number"
@@ -21996,9 +21996,6 @@
                         "type": "string"
                     }
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "privateAccessLevel": {
                     "type": "string"
                 },
@@ -22013,11 +22010,14 @@
                 },
                 "region": {
                     "type": "string"
+                },
+                "resourceId": {
+                    "type": "string"
                 }
             },
             "required": [
                 "accountId",
-                "databricksId",
+                "resourceId",
                 "privateAccessSettingsId",
                 "privateAccessSettingsName",
                 "region"
@@ -22033,9 +22033,6 @@
                         "type": "string"
                     }
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "privateAccessLevel": {
                     "type": "string"
                 },
@@ -22049,6 +22046,9 @@
                     "type": "boolean"
                 },
                 "region": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 }
             },
@@ -22069,9 +22069,6 @@
                             "type": "string"
                         }
                     },
-                    "databricksId": {
-                        "type": "string"
-                    },
                     "privateAccessLevel": {
                         "type": "string"
                     },
@@ -22085,6 +22082,9 @@
                         "type": "boolean"
                     },
                     "region": {
+                        "type": "string"
+                    },
+                    "resourceId": {
                         "type": "string"
                     }
                 },
@@ -22103,7 +22103,7 @@
                 "creationTime": {
                     "type": "number"
                 },
-                "databricksId": {
+                "resourceId": {
                     "type": "string"
                 },
                 "storageConfigurationId": {
@@ -22117,7 +22117,7 @@
                 "accountId",
                 "bucketName",
                 "creationTime",
-                "databricksId",
+                "resourceId",
                 "storageConfigurationId",
                 "storageConfigurationName"
             ],
@@ -22129,7 +22129,7 @@
                 "bucketName": {
                     "type": "string"
                 },
-                "databricksId": {
+                "resourceId": {
                     "type": "string"
                 },
                 "storageConfigurationName": {
@@ -22154,7 +22154,7 @@
                     "creationTime": {
                         "type": "number"
                     },
-                    "databricksId": {
+                    "resourceId": {
                         "type": "string"
                     },
                     "storageConfigurationId": {
@@ -22181,13 +22181,13 @@
                 "awsVpcEndpointId": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "gcpVpcEndpointInfo": {
                     "$ref": "#/types/databricks:index/MwsVpcEndpointGcpVpcEndpointInfo:MwsVpcEndpointGcpVpcEndpointInfo"
                 },
                 "region": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "state": {
@@ -22206,7 +22206,7 @@
             "required": [
                 "awsAccountId",
                 "awsEndpointServiceId",
-                "databricksId",
+                "resourceId",
                 "state",
                 "useCase",
                 "vpcEndpointId",
@@ -22225,13 +22225,13 @@
                 "awsVpcEndpointId": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "gcpVpcEndpointInfo": {
                     "$ref": "#/types/databricks:index/MwsVpcEndpointGcpVpcEndpointInfo:MwsVpcEndpointGcpVpcEndpointInfo"
                 },
                 "region": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "state": {
@@ -22265,13 +22265,13 @@
                     "awsVpcEndpointId": {
                         "type": "string"
                     },
-                    "databricksId": {
-                        "type": "string"
-                    },
                     "gcpVpcEndpointInfo": {
                         "$ref": "#/types/databricks:index/MwsVpcEndpointGcpVpcEndpointInfo:MwsVpcEndpointGcpVpcEndpointInfo"
                     },
                     "region": {
+                        "type": "string"
+                    },
+                    "resourceId": {
                         "type": "string"
                     },
                     "state": {
@@ -22321,9 +22321,6 @@
                     "type": "string",
                     "deprecationMessage": "Deprecated"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "deploymentName": {
                     "type": "string"
                 },
@@ -22355,6 +22352,9 @@
                     "type": "string"
                 },
                 "privateAccessSettingsId": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "storageConfigurationId": {
@@ -22390,7 +22390,7 @@
                 "cloud",
                 "creationTime",
                 "gcpWorkspaceSa",
-                "databricksId",
+                "resourceId",
                 "pricingTier",
                 "workspaceId",
                 "workspaceName",
@@ -22428,9 +22428,6 @@
                     "type": "string",
                     "deprecationMessage": "Deprecated"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "deploymentName": {
                     "type": "string"
                 },
@@ -22459,6 +22456,9 @@
                     "type": "string"
                 },
                 "privateAccessSettingsId": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "storageConfigurationId": {
@@ -22525,9 +22525,6 @@
                         "type": "string",
                         "deprecationMessage": "Deprecated"
                     },
-                    "databricksId": {
-                        "type": "string"
-                    },
                     "deploymentName": {
                         "type": "string"
                     },
@@ -22559,6 +22556,9 @@
                         "type": "string"
                     },
                     "privateAccessSettingsId": {
+                        "type": "string"
+                    },
+                    "resourceId": {
                         "type": "string"
                     },
                     "storageConfigurationId": {
@@ -22597,9 +22597,6 @@
                 "contentBase64": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "format": {
                     "type": "string"
                 },
@@ -22617,6 +22614,9 @@
                     "deprecationMessage": "Deprecated"
                 },
                 "path": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "source": {
@@ -22630,7 +22630,7 @@
                 }
             },
             "required": [
-                "databricksId",
+                "resourceId",
                 "objectId",
                 "objectType",
                 "path",
@@ -22639,9 +22639,6 @@
             ],
             "inputProperties": {
                 "contentBase64": {
-                    "type": "string"
-                },
-                "databricksId": {
                     "type": "string"
                 },
                 "format": {
@@ -22663,6 +22660,9 @@
                 "path": {
                     "type": "string"
                 },
+                "resourceId": {
+                    "type": "string"
+                },
                 "source": {
                     "type": "string"
                 }
@@ -22674,9 +22674,6 @@
                 "description": "Input properties used for looking up and filtering Notebook resources.\n",
                 "properties": {
                     "contentBase64": {
-                        "type": "string"
-                    },
-                    "databricksId": {
                         "type": "string"
                     },
                     "format": {
@@ -22698,6 +22695,9 @@
                     "path": {
                         "type": "string"
                     },
+                    "resourceId": {
+                        "type": "string"
+                    },
                     "source": {
                         "type": "string"
                     },
@@ -22716,32 +22716,32 @@
                 "config": {
                     "$ref": "#/types/databricks:index/NotificationDestinationConfig:NotificationDestinationConfig"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "destinationType": {
                     "type": "string"
                 },
                 "displayName": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 }
             },
             "required": [
                 "destinationType",
                 "displayName",
-                "databricksId"
+                "resourceId"
             ],
             "inputProperties": {
                 "config": {
                     "$ref": "#/types/databricks:index/NotificationDestinationConfig:NotificationDestinationConfig"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "destinationType": {
                     "type": "string"
                 },
                 "displayName": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 }
             },
@@ -22754,13 +22754,13 @@
                     "config": {
                         "$ref": "#/types/databricks:index/NotificationDestinationConfig:NotificationDestinationConfig"
                     },
-                    "databricksId": {
-                        "type": "string"
-                    },
                     "destinationType": {
                         "type": "string"
                     },
                     "displayName": {
+                        "type": "string"
+                    },
+                    "resourceId": {
                         "type": "string"
                     }
                 },
@@ -22775,11 +22775,11 @@
                 "comment": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "lifetimeSeconds": {
                     "type": "number"
+                },
+                "resourceId": {
+                    "type": "string"
                 },
                 "tokenValue": {
                     "type": "string",
@@ -22788,7 +22788,7 @@
             },
             "required": [
                 "applicationId",
-                "databricksId",
+                "resourceId",
                 "tokenValue"
             ],
             "inputProperties": {
@@ -22798,11 +22798,11 @@
                 "comment": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "lifetimeSeconds": {
                     "type": "number"
+                },
+                "resourceId": {
+                    "type": "string"
                 }
             },
             "requiredInputs": [
@@ -22817,11 +22817,11 @@
                     "comment": {
                         "type": "string"
                     },
-                    "databricksId": {
-                        "type": "string"
-                    },
                     "lifetimeSeconds": {
                         "type": "number"
+                    },
+                    "resourceId": {
+                        "type": "string"
                     },
                     "tokenValue": {
                         "type": "string",
@@ -22833,10 +22833,10 @@
         },
         "databricks:index/onlineTable:OnlineTable": {
             "properties": {
-                "databricksId": {
+                "name": {
                     "type": "string"
                 },
-                "name": {
+                "resourceId": {
                     "type": "string"
                 },
                 "spec": {
@@ -22856,15 +22856,15 @@
                 }
             },
             "required": [
-                "databricksId",
+                "resourceId",
                 "name",
                 "statuses"
             ],
             "inputProperties": {
-                "databricksId": {
+                "name": {
                     "type": "string"
                 },
-                "name": {
+                "resourceId": {
                     "type": "string"
                 },
                 "spec": {
@@ -22880,10 +22880,10 @@
             "stateInputs": {
                 "description": "Input properties used for looking up and filtering OnlineTable resources.\n",
                 "properties": {
-                    "databricksId": {
+                    "name": {
                         "type": "string"
                     },
-                    "name": {
+                    "resourceId": {
                         "type": "string"
                     },
                     "spec": {
@@ -22907,9 +22907,6 @@
         },
         "databricks:index/permissionAssignment:PermissionAssignment": {
             "properties": {
-                "databricksId": {
-                    "type": "string"
-                },
                 "permissions": {
                     "type": "array",
                     "items": {
@@ -22918,17 +22915,17 @@
                 },
                 "principalId": {
                     "type": "number"
+                },
+                "resourceId": {
+                    "type": "string"
                 }
             },
             "required": [
-                "databricksId",
+                "resourceId",
                 "permissions",
                 "principalId"
             ],
             "inputProperties": {
-                "databricksId": {
-                    "type": "string"
-                },
                 "permissions": {
                     "type": "array",
                     "items": {
@@ -22937,6 +22934,9 @@
                 },
                 "principalId": {
                     "type": "number"
+                },
+                "resourceId": {
+                    "type": "string"
                 }
             },
             "requiredInputs": [
@@ -22946,9 +22946,6 @@
             "stateInputs": {
                 "description": "Input properties used for looking up and filtering PermissionAssignment resources.\n",
                 "properties": {
-                    "databricksId": {
-                        "type": "string"
-                    },
                     "permissions": {
                         "type": "array",
                         "items": {
@@ -22957,6 +22954,9 @@
                     },
                     "principalId": {
                         "type": "number"
+                    },
+                    "resourceId": {
+                        "type": "string"
                     }
                 },
                 "type": "object"
@@ -22980,9 +22980,6 @@
                     "type": "string"
                 },
                 "dashboardId": {
-                    "type": "string"
-                },
-                "databricksId": {
                     "type": "string"
                 },
                 "directoryId": {
@@ -23019,6 +23016,9 @@
                     "type": "string"
                 },
                 "repoPath": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "servingEndpointId": {
@@ -23045,7 +23045,7 @@
             },
             "required": [
                 "accessControls",
-                "databricksId",
+                "resourceId",
                 "objectType"
             ],
             "inputProperties": {
@@ -23065,9 +23065,6 @@
                     "type": "string"
                 },
                 "dashboardId": {
-                    "type": "string"
-                },
-                "databricksId": {
                     "type": "string"
                 },
                 "directoryId": {
@@ -23104,6 +23101,9 @@
                     "type": "string"
                 },
                 "repoPath": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "servingEndpointId": {
@@ -23152,9 +23152,6 @@
                     "dashboardId": {
                         "type": "string"
                     },
-                    "databricksId": {
-                        "type": "string"
-                    },
                     "directoryId": {
                         "type": "string"
                     },
@@ -23189,6 +23186,9 @@
                         "type": "string"
                     },
                     "repoPath": {
+                        "type": "string"
+                    },
+                    "resourceId": {
                         "type": "string"
                     },
                     "servingEndpointId": {
@@ -23251,9 +23251,6 @@
                 "creatorUserName": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "deployment": {
                     "$ref": "#/types/databricks:index/PipelineDeployment:PipelineDeployment"
                 },
@@ -23305,6 +23302,9 @@
                 "photon": {
                     "type": "boolean"
                 },
+                "resourceId": {
+                    "type": "string"
+                },
                 "runAsUserName": {
                     "type": "string"
                 },
@@ -23335,7 +23335,7 @@
                 "clusterId",
                 "creatorUserName",
                 "health",
-                "databricksId",
+                "resourceId",
                 "lastModified",
                 "name",
                 "runAsUserName",
@@ -23376,9 +23376,6 @@
                 "creatorUserName": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "deployment": {
                     "$ref": "#/types/databricks:index/PipelineDeployment:PipelineDeployment"
                 },
@@ -23429,6 +23426,9 @@
                 },
                 "photon": {
                     "type": "boolean"
+                },
+                "resourceId": {
+                    "type": "string"
                 },
                 "runAsUserName": {
                     "type": "string"
@@ -23491,9 +23491,6 @@
                     "creatorUserName": {
                         "type": "string"
                     },
-                    "databricksId": {
-                        "type": "string"
-                    },
                     "deployment": {
                         "$ref": "#/types/databricks:index/PipelineDeployment:PipelineDeployment"
                     },
@@ -23545,6 +23542,9 @@
                     "photon": {
                         "type": "boolean"
                     },
+                    "resourceId": {
+                        "type": "string"
+                    },
                     "runAsUserName": {
                         "type": "string"
                     },
@@ -23593,9 +23593,6 @@
                 "dataClassificationConfig": {
                     "$ref": "#/types/databricks:index/QualityMonitorDataClassificationConfig:QualityMonitorDataClassificationConfig"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "driftMetricsTableName": {
                     "type": "string"
                 },
@@ -23615,6 +23612,9 @@
                     "type": "string"
                 },
                 "profileMetricsTableName": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "schedule": {
@@ -23652,7 +23652,7 @@
                 "assetsDir",
                 "dashboardId",
                 "driftMetricsTableName",
-                "databricksId",
+                "resourceId",
                 "monitorVersion",
                 "outputSchemaName",
                 "profileMetricsTableName",
@@ -23675,9 +23675,6 @@
                 "dataClassificationConfig": {
                     "$ref": "#/types/databricks:index/QualityMonitorDataClassificationConfig:QualityMonitorDataClassificationConfig"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "inferenceLog": {
                     "$ref": "#/types/databricks:index/QualityMonitorInferenceLog:QualityMonitorInferenceLog"
                 },
@@ -23688,6 +23685,9 @@
                     "$ref": "#/types/databricks:index/QualityMonitorNotifications:QualityMonitorNotifications"
                 },
                 "outputSchemaName": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "schedule": {
@@ -23744,9 +23744,6 @@
                     "dataClassificationConfig": {
                         "$ref": "#/types/databricks:index/QualityMonitorDataClassificationConfig:QualityMonitorDataClassificationConfig"
                     },
-                    "databricksId": {
-                        "type": "string"
-                    },
                     "driftMetricsTableName": {
                         "type": "string"
                     },
@@ -23766,6 +23763,9 @@
                         "type": "string"
                     },
                     "profileMetricsTableName": {
+                        "type": "string"
+                    },
+                    "resourceId": {
                         "type": "string"
                     },
                     "schedule": {
@@ -23828,9 +23828,6 @@
                 "dataRecipientGlobalMetastoreId": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "ipAccessList": {
                     "$ref": "#/types/databricks:index/RecipientIpAccessList:RecipientIpAccessList"
                 },
@@ -23847,6 +23844,9 @@
                     "$ref": "#/types/databricks:index/RecipientPropertiesKvpairs:RecipientPropertiesKvpairs"
                 },
                 "region": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "sharingCode": {
@@ -23873,7 +23873,7 @@
                 "cloud",
                 "createdAt",
                 "createdBy",
-                "databricksId",
+                "resourceId",
                 "metastoreId",
                 "name",
                 "region",
@@ -23890,9 +23890,6 @@
                 "dataRecipientGlobalMetastoreId": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "ipAccessList": {
                     "$ref": "#/types/databricks:index/RecipientIpAccessList:RecipientIpAccessList"
                 },
@@ -23904,6 +23901,9 @@
                 },
                 "propertiesKvpairs": {
                     "$ref": "#/types/databricks:index/RecipientPropertiesKvpairs:RecipientPropertiesKvpairs"
+                },
+                "resourceId": {
+                    "type": "string"
                 },
                 "sharingCode": {
                     "type": "string",
@@ -23946,9 +23946,6 @@
                     "dataRecipientGlobalMetastoreId": {
                         "type": "string"
                     },
-                    "databricksId": {
-                        "type": "string"
-                    },
                     "ipAccessList": {
                         "$ref": "#/types/databricks:index/RecipientIpAccessList:RecipientIpAccessList"
                     },
@@ -23965,6 +23962,9 @@
                         "$ref": "#/types/databricks:index/RecipientPropertiesKvpairs:RecipientPropertiesKvpairs"
                     },
                     "region": {
+                        "type": "string"
+                    },
+                    "resourceId": {
                         "type": "string"
                     },
                     "sharingCode": {
@@ -23995,13 +23995,13 @@
                 "comment": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "name": {
                     "type": "string"
                 },
                 "owner": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "schemaName": {
@@ -24013,7 +24013,7 @@
             },
             "required": [
                 "catalogName",
-                "databricksId",
+                "resourceId",
                 "name",
                 "owner",
                 "schemaName",
@@ -24026,13 +24026,13 @@
                 "comment": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "name": {
                     "type": "string"
                 },
                 "owner": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "schemaName": {
@@ -24055,13 +24055,13 @@
                     "comment": {
                         "type": "string"
                     },
-                    "databricksId": {
-                        "type": "string"
-                    },
                     "name": {
                         "type": "string"
                     },
                     "owner": {
+                        "type": "string"
+                    },
+                    "resourceId": {
                         "type": "string"
                     },
                     "schemaName": {
@@ -24082,13 +24082,13 @@
                 "commitHash": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "gitProvider": {
                     "type": "string"
                 },
                 "path": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "sparseCheckout": {
@@ -24108,7 +24108,7 @@
                 "branch",
                 "commitHash",
                 "gitProvider",
-                "databricksId",
+                "resourceId",
                 "path",
                 "url",
                 "workspacePath"
@@ -24120,13 +24120,13 @@
                 "commitHash": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "gitProvider": {
                     "type": "string"
                 },
                 "path": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "sparseCheckout": {
@@ -24151,13 +24151,13 @@
                     "commitHash": {
                         "type": "string"
                     },
-                    "databricksId": {
-                        "type": "string"
-                    },
                     "gitProvider": {
                         "type": "string"
                     },
                     "path": {
+                        "type": "string"
+                    },
+                    "resourceId": {
                         "type": "string"
                     },
                     "sparseCheckout": {
@@ -24178,10 +24178,10 @@
         },
         "databricks:index/restrictWorkspaceAdminsSetting:RestrictWorkspaceAdminsSetting": {
             "properties": {
-                "databricksId": {
+                "etag": {
                     "type": "string"
                 },
-                "etag": {
+                "resourceId": {
                     "type": "string"
                 },
                 "restrictWorkspaceAdmins": {
@@ -24193,15 +24193,15 @@
             },
             "required": [
                 "etag",
-                "databricksId",
+                "resourceId",
                 "restrictWorkspaceAdmins",
                 "settingName"
             ],
             "inputProperties": {
-                "databricksId": {
+                "etag": {
                     "type": "string"
                 },
-                "etag": {
+                "resourceId": {
                     "type": "string"
                 },
                 "restrictWorkspaceAdmins": {
@@ -24217,10 +24217,10 @@
             "stateInputs": {
                 "description": "Input properties used for looking up and filtering RestrictWorkspaceAdminsSetting resources.\n",
                 "properties": {
-                    "databricksId": {
+                    "etag": {
                         "type": "string"
                     },
-                    "etag": {
+                    "resourceId": {
                         "type": "string"
                     },
                     "restrictWorkspaceAdmins": {
@@ -24241,9 +24241,6 @@
                 "comment": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "enablePredictiveOptimization": {
                     "type": "string"
                 },
@@ -24265,6 +24262,9 @@
                         "type": "string"
                     }
                 },
+                "resourceId": {
+                    "type": "string"
+                },
                 "storageRoot": {
                     "type": "string"
                 }
@@ -24272,7 +24272,7 @@
             "required": [
                 "catalogName",
                 "enablePredictiveOptimization",
-                "databricksId",
+                "resourceId",
                 "metastoreId",
                 "name",
                 "owner"
@@ -24284,9 +24284,6 @@
                 "comment": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "enablePredictiveOptimization": {
                     "type": "string"
                 },
@@ -24307,6 +24304,9 @@
                     "additionalProperties": {
                         "type": "string"
                     }
+                },
+                "resourceId": {
+                    "type": "string"
                 },
                 "storageRoot": {
                     "type": "string"
@@ -24322,9 +24322,6 @@
                         "type": "string"
                     },
                     "comment": {
-                        "type": "string"
-                    },
-                    "databricksId": {
                         "type": "string"
                     },
                     "enablePredictiveOptimization": {
@@ -24348,6 +24345,9 @@
                             "type": "string"
                         }
                     },
+                    "resourceId": {
+                        "type": "string"
+                    },
                     "storageRoot": {
                         "type": "string"
                     }
@@ -24360,14 +24360,14 @@
                 "configReference": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "key": {
                     "type": "string"
                 },
                 "lastUpdatedTimestamp": {
                     "type": "number"
+                },
+                "resourceId": {
+                    "type": "string"
                 },
                 "scope": {
                     "type": "string"
@@ -24379,17 +24379,17 @@
             },
             "required": [
                 "configReference",
-                "databricksId",
+                "resourceId",
                 "key",
                 "lastUpdatedTimestamp",
                 "scope",
                 "stringValue"
             ],
             "inputProperties": {
-                "databricksId": {
+                "key": {
                     "type": "string"
                 },
-                "key": {
+                "resourceId": {
                     "type": "string"
                 },
                 "scope": {
@@ -24411,14 +24411,14 @@
                     "configReference": {
                         "type": "string"
                     },
-                    "databricksId": {
-                        "type": "string"
-                    },
                     "key": {
                         "type": "string"
                     },
                     "lastUpdatedTimestamp": {
                         "type": "number"
+                    },
+                    "resourceId": {
+                        "type": "string"
                     },
                     "scope": {
                         "type": "string"
@@ -24433,13 +24433,13 @@
         },
         "databricks:index/secretAcl:SecretAcl": {
             "properties": {
-                "databricksId": {
-                    "type": "string"
-                },
                 "permission": {
                     "type": "string"
                 },
                 "principal": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "scope": {
@@ -24447,19 +24447,19 @@
                 }
             },
             "required": [
-                "databricksId",
+                "resourceId",
                 "permission",
                 "principal",
                 "scope"
             ],
             "inputProperties": {
-                "databricksId": {
-                    "type": "string"
-                },
                 "permission": {
                     "type": "string"
                 },
                 "principal": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "scope": {
@@ -24474,13 +24474,13 @@
             "stateInputs": {
                 "description": "Input properties used for looking up and filtering SecretAcl resources.\n",
                 "properties": {
-                    "databricksId": {
-                        "type": "string"
-                    },
                     "permission": {
                         "type": "string"
                     },
                     "principal": {
+                        "type": "string"
+                    },
+                    "resourceId": {
                         "type": "string"
                     },
                     "scope": {
@@ -24495,9 +24495,6 @@
                 "backendType": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "initialManagePrincipal": {
                     "type": "string"
                 },
@@ -24506,20 +24503,20 @@
                 },
                 "name": {
                     "type": "string"
+                },
+                "resourceId": {
+                    "type": "string"
                 }
             },
             "required": [
                 "backendType",
-                "databricksId",
+                "resourceId",
                 "name"
             ],
             "inputProperties": {
                 "backendType": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "initialManagePrincipal": {
                     "type": "string"
                 },
@@ -24527,6 +24524,9 @@
                     "$ref": "#/types/databricks:index/SecretScopeKeyvaultMetadata:SecretScopeKeyvaultMetadata"
                 },
                 "name": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 }
             },
@@ -24536,9 +24536,6 @@
                     "backendType": {
                         "type": "string"
                     },
-                    "databricksId": {
-                        "type": "string"
-                    },
                     "initialManagePrincipal": {
                         "type": "string"
                     },
@@ -24546,6 +24543,9 @@
                         "$ref": "#/types/databricks:index/SecretScopeKeyvaultMetadata:SecretScopeKeyvaultMetadata"
                     },
                     "name": {
+                        "type": "string"
+                    },
+                    "resourceId": {
                         "type": "string"
                     }
                 },
@@ -24569,9 +24569,6 @@
                 "applicationId": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "databricksSqlAccess": {
                     "type": "boolean"
                 },
@@ -24599,6 +24596,9 @@
                 "repos": {
                     "type": "string"
                 },
+                "resourceId": {
+                    "type": "string"
+                },
                 "workspaceAccess": {
                     "type": "boolean"
                 }
@@ -24608,7 +24608,7 @@
                 "applicationId",
                 "displayName",
                 "home",
-                "databricksId",
+                "resourceId",
                 "repos"
             ],
             "inputProperties": {
@@ -24627,9 +24627,6 @@
                 "applicationId": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "databricksSqlAccess": {
                     "type": "boolean"
                 },
@@ -24655,6 +24652,9 @@
                     "type": "string"
                 },
                 "repos": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "workspaceAccess": {
@@ -24677,9 +24677,6 @@
                         "type": "boolean"
                     },
                     "applicationId": {
-                        "type": "string"
-                    },
-                    "databricksId": {
                         "type": "string"
                     },
                     "databricksSqlAccess": {
@@ -24709,6 +24706,9 @@
                     "repos": {
                         "type": "string"
                     },
+                    "resourceId": {
+                        "type": "string"
+                    },
                     "workspaceAccess": {
                         "type": "boolean"
                     }
@@ -24718,7 +24718,7 @@
         },
         "databricks:index/servicePrincipalRole:ServicePrincipalRole": {
             "properties": {
-                "databricksId": {
+                "resourceId": {
                     "type": "string"
                 },
                 "role": {
@@ -24729,12 +24729,12 @@
                 }
             },
             "required": [
-                "databricksId",
+                "resourceId",
                 "role",
                 "servicePrincipalId"
             ],
             "inputProperties": {
-                "databricksId": {
+                "resourceId": {
                     "type": "string"
                 },
                 "role": {
@@ -24751,7 +24751,7 @@
             "stateInputs": {
                 "description": "Input properties used for looking up and filtering ServicePrincipalRole resources.\n",
                 "properties": {
-                    "databricksId": {
+                    "resourceId": {
                         "type": "string"
                     },
                     "role": {
@@ -24766,7 +24766,7 @@
         },
         "databricks:index/servicePrincipalSecret:ServicePrincipalSecret": {
             "properties": {
-                "databricksId": {
+                "resourceId": {
                     "type": "string"
                 },
                 "secret": {
@@ -24781,13 +24781,13 @@
                 }
             },
             "required": [
-                "databricksId",
+                "resourceId",
                 "secret",
                 "servicePrincipalId",
                 "status"
             ],
             "inputProperties": {
-                "databricksId": {
+                "resourceId": {
                     "type": "string"
                 },
                 "secret": {
@@ -24807,7 +24807,7 @@
             "stateInputs": {
                 "description": "Input properties used for looking up and filtering ServicePrincipalSecret resources.\n",
                 "properties": {
-                    "databricksId": {
+                    "resourceId": {
                         "type": "string"
                     },
                     "secret": {
@@ -24832,9 +24832,6 @@
                 "createdBy": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "name": {
                     "type": "string"
                 },
@@ -24846,12 +24843,15 @@
                 },
                 "owner": {
                     "type": "string"
+                },
+                "resourceId": {
+                    "type": "string"
                 }
             },
             "required": [
                 "createdAt",
                 "createdBy",
-                "databricksId",
+                "resourceId",
                 "name"
             ],
             "inputProperties": {
@@ -24861,9 +24861,6 @@
                 "createdBy": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "name": {
                     "type": "string"
                 },
@@ -24874,6 +24871,9 @@
                     }
                 },
                 "owner": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 }
             },
@@ -24884,9 +24884,6 @@
                         "type": "number"
                     },
                     "createdBy": {
-                        "type": "string"
-                    },
-                    "databricksId": {
                         "type": "string"
                     },
                     "name": {
@@ -24900,6 +24897,9 @@
                     },
                     "owner": {
                         "type": "string"
+                    },
+                    "resourceId": {
+                        "type": "string"
                     }
                 },
                 "type": "object"
@@ -24910,9 +24910,6 @@
                 "createdAt": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "name": {
                     "type": "string"
                 },
@@ -24928,13 +24925,16 @@
                 "rearm": {
                     "type": "number"
                 },
+                "resourceId": {
+                    "type": "string"
+                },
                 "updatedAt": {
                     "type": "string"
                 }
             },
             "required": [
                 "createdAt",
-                "databricksId",
+                "resourceId",
                 "name",
                 "options",
                 "queryId",
@@ -24944,9 +24944,6 @@
                 "createdAt": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "name": {
                     "type": "string"
                 },
@@ -24961,6 +24958,9 @@
                 },
                 "rearm": {
                     "type": "number"
+                },
+                "resourceId": {
+                    "type": "string"
                 },
                 "updatedAt": {
                     "type": "string"
@@ -24974,9 +24974,6 @@
                 "description": "Input properties used for looking up and filtering SqlAlert resources.\n",
                 "properties": {
                     "createdAt": {
-                        "type": "string"
-                    },
-                    "databricksId": {
                         "type": "string"
                     },
                     "name": {
@@ -24994,6 +24991,9 @@
                     "rearm": {
                         "type": "number"
                     },
+                    "resourceId": {
+                        "type": "string"
+                    },
                     "updatedAt": {
                         "type": "string"
                     }
@@ -25009,13 +25009,13 @@
                 "dashboardFiltersEnabled": {
                     "type": "boolean"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "name": {
                     "type": "string"
                 },
                 "parent": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "runAsRole": {
@@ -25033,7 +25033,7 @@
             },
             "required": [
                 "createdAt",
-                "databricksId",
+                "resourceId",
                 "name",
                 "updatedAt"
             ],
@@ -25044,13 +25044,13 @@
                 "dashboardFiltersEnabled": {
                     "type": "boolean"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "name": {
                     "type": "string"
                 },
                 "parent": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "runAsRole": {
@@ -25075,13 +25075,13 @@
                     "dashboardFiltersEnabled": {
                         "type": "boolean"
                     },
-                    "databricksId": {
-                        "type": "string"
-                    },
                     "name": {
                         "type": "string"
                     },
                     "parent": {
+                        "type": "string"
+                    },
+                    "resourceId": {
                         "type": "string"
                     },
                     "runAsRole": {
@@ -25115,9 +25115,6 @@
                     "type": "string"
                 },
                 "dataSourceId": {
-                    "type": "string"
-                },
-                "databricksId": {
                     "type": "string"
                 },
                 "enablePhoton": {
@@ -25159,6 +25156,9 @@
                         "$ref": "#/types/databricks:index/SqlEndpointOdbcParam:SqlEndpointOdbcParam"
                     }
                 },
+                "resourceId": {
+                    "type": "string"
+                },
                 "spotInstancePolicy": {
                     "type": "string"
                 },
@@ -25181,7 +25181,7 @@
                 "dataSourceId",
                 "enableServerlessCompute",
                 "healths",
-                "databricksId",
+                "resourceId",
                 "jdbcUrl",
                 "name",
                 "numActiveSessions",
@@ -25202,9 +25202,6 @@
                 "dataSourceId": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "enablePhoton": {
                     "type": "boolean"
                 },
@@ -25221,6 +25218,9 @@
                     "type": "number"
                 },
                 "name": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "spotInstancePolicy": {
@@ -25255,9 +25255,6 @@
                         "type": "string"
                     },
                     "dataSourceId": {
-                        "type": "string"
-                    },
-                    "databricksId": {
                         "type": "string"
                     },
                     "enablePhoton": {
@@ -25299,6 +25296,9 @@
                             "$ref": "#/types/databricks:index/SqlEndpointOdbcParam:SqlEndpointOdbcParam"
                         }
                     },
+                    "resourceId": {
+                        "type": "string"
+                    },
                     "spotInstancePolicy": {
                         "type": "string"
                     },
@@ -25326,9 +25326,6 @@
                         "type": "string"
                     }
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "enableServerlessCompute": {
                     "type": "boolean",
                     "deprecationMessage": "Deprecated"
@@ -25337,6 +25334,9 @@
                     "type": "string"
                 },
                 "instanceProfileArn": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "securityPolicy": {
@@ -25351,7 +25351,7 @@
             },
             "required": [
                 "enableServerlessCompute",
-                "databricksId"
+                "resourceId"
             ],
             "inputProperties": {
                 "dataAccessConfig": {
@@ -25359,9 +25359,6 @@
                     "additionalProperties": {
                         "type": "string"
                     }
-                },
-                "databricksId": {
-                    "type": "string"
                 },
                 "enableServerlessCompute": {
                     "type": "boolean",
@@ -25371,6 +25368,9 @@
                     "type": "string"
                 },
                 "instanceProfileArn": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "securityPolicy": {
@@ -25392,9 +25392,6 @@
                             "type": "string"
                         }
                     },
-                    "databricksId": {
-                        "type": "string"
-                    },
                     "enableServerlessCompute": {
                         "type": "boolean",
                         "deprecationMessage": "Deprecated"
@@ -25403,6 +25400,9 @@
                         "type": "string"
                     },
                     "instanceProfileArn": {
+                        "type": "string"
+                    },
+                    "resourceId": {
                         "type": "string"
                     },
                     "securityPolicy": {
@@ -25435,14 +25435,14 @@
                 "database": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "privilegeAssignments": {
                     "type": "array",
                     "items": {
                         "$ref": "#/types/databricks:index/SqlPermissionsPrivilegeAssignment:SqlPermissionsPrivilegeAssignment"
                     }
+                },
+                "resourceId": {
+                    "type": "string"
                 },
                 "table": {
                     "type": "string"
@@ -25453,7 +25453,7 @@
             },
             "required": [
                 "clusterId",
-                "databricksId"
+                "resourceId"
             ],
             "inputProperties": {
                 "anonymousFunction": {
@@ -25471,14 +25471,14 @@
                 "database": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "privilegeAssignments": {
                     "type": "array",
                     "items": {
                         "$ref": "#/types/databricks:index/SqlPermissionsPrivilegeAssignment:SqlPermissionsPrivilegeAssignment"
                     }
+                },
+                "resourceId": {
+                    "type": "string"
                 },
                 "table": {
                     "type": "string"
@@ -25505,14 +25505,14 @@
                     "database": {
                         "type": "string"
                     },
-                    "databricksId": {
-                        "type": "string"
-                    },
                     "privilegeAssignments": {
                         "type": "array",
                         "items": {
                             "$ref": "#/types/databricks:index/SqlPermissionsPrivilegeAssignment:SqlPermissionsPrivilegeAssignment"
                         }
+                    },
+                    "resourceId": {
+                        "type": "string"
                     },
                     "table": {
                         "type": "string"
@@ -25532,9 +25532,6 @@
                 "dataSourceId": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "description": {
                     "type": "string"
                 },
@@ -25551,6 +25548,9 @@
                     "type": "string"
                 },
                 "query": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "runAsRole": {
@@ -25573,7 +25573,7 @@
             "required": [
                 "createdAt",
                 "dataSourceId",
-                "databricksId",
+                "resourceId",
                 "name",
                 "query",
                 "updatedAt"
@@ -25583,9 +25583,6 @@
                     "type": "string"
                 },
                 "dataSourceId": {
-                    "type": "string"
-                },
-                "databricksId": {
                     "type": "string"
                 },
                 "description": {
@@ -25604,6 +25601,9 @@
                     "type": "string"
                 },
                 "query": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "runAsRole": {
@@ -25636,9 +25636,6 @@
                     "dataSourceId": {
                         "type": "string"
                     },
-                    "databricksId": {
-                        "type": "string"
-                    },
                     "description": {
                         "type": "string"
                     },
@@ -25655,6 +25652,9 @@
                         "type": "string"
                     },
                     "query": {
+                        "type": "string"
+                    },
+                    "resourceId": {
                         "type": "string"
                     },
                     "runAsRole": {
@@ -25703,9 +25703,6 @@
                 "dataSourceFormat": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "name": {
                     "type": "string"
                 },
@@ -25730,6 +25727,9 @@
                         "type": "string"
                     }
                 },
+                "resourceId": {
+                    "type": "string"
+                },
                 "schemaName": {
                     "type": "string"
                 },
@@ -25752,7 +25752,7 @@
             "required": [
                 "catalogName",
                 "clusterId",
-                "databricksId",
+                "resourceId",
                 "name",
                 "owner",
                 "properties",
@@ -25784,9 +25784,6 @@
                 "dataSourceFormat": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "name": {
                     "type": "string"
                 },
@@ -25810,6 +25807,9 @@
                     "additionalProperties": {
                         "type": "string"
                     }
+                },
+                "resourceId": {
+                    "type": "string"
                 },
                 "schemaName": {
                     "type": "string"
@@ -25862,9 +25862,6 @@
                     "dataSourceFormat": {
                         "type": "string"
                     },
-                    "databricksId": {
-                        "type": "string"
-                    },
                     "name": {
                         "type": "string"
                     },
@@ -25888,6 +25885,9 @@
                         "additionalProperties": {
                             "type": "string"
                         }
+                    },
+                    "resourceId": {
+                        "type": "string"
                     },
                     "schemaName": {
                         "type": "string"
@@ -25913,9 +25913,6 @@
         },
         "databricks:index/sqlVisualization:SqlVisualization": {
             "properties": {
-                "databricksId": {
-                    "type": "string"
-                },
                 "description": {
                     "type": "string"
                 },
@@ -25929,6 +25926,9 @@
                     "type": "string"
                 },
                 "queryPlan": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "type": {
@@ -25939,7 +25939,7 @@
                 }
             },
             "required": [
-                "databricksId",
+                "resourceId",
                 "name",
                 "options",
                 "queryId",
@@ -25947,9 +25947,6 @@
                 "visualizationId"
             ],
             "inputProperties": {
-                "databricksId": {
-                    "type": "string"
-                },
                 "description": {
                     "type": "string"
                 },
@@ -25963,6 +25960,9 @@
                     "type": "string"
                 },
                 "queryPlan": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "type": {
@@ -25980,9 +25980,6 @@
             "stateInputs": {
                 "description": "Input properties used for looking up and filtering SqlVisualization resources.\n",
                 "properties": {
-                    "databricksId": {
-                        "type": "string"
-                    },
                     "description": {
                         "type": "string"
                     },
@@ -25996,6 +25993,9 @@
                         "type": "string"
                     },
                     "queryPlan": {
+                        "type": "string"
+                    },
+                    "resourceId": {
                         "type": "string"
                     },
                     "type": {
@@ -26013,9 +26013,6 @@
                 "dashboardId": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "description": {
                     "type": "string"
                 },
@@ -26027,6 +26024,9 @@
                 },
                 "position": {
                     "$ref": "#/types/databricks:index/SqlWidgetPosition:SqlWidgetPosition"
+                },
+                "resourceId": {
+                    "type": "string"
                 },
                 "text": {
                     "type": "string"
@@ -26043,14 +26043,11 @@
             },
             "required": [
                 "dashboardId",
-                "databricksId",
+                "resourceId",
                 "widgetId"
             ],
             "inputProperties": {
                 "dashboardId": {
-                    "type": "string"
-                },
-                "databricksId": {
                     "type": "string"
                 },
                 "description": {
@@ -26064,6 +26061,9 @@
                 },
                 "position": {
                     "$ref": "#/types/databricks:index/SqlWidgetPosition:SqlWidgetPosition"
+                },
+                "resourceId": {
+                    "type": "string"
                 },
                 "text": {
                     "type": "string"
@@ -26087,9 +26087,6 @@
                     "dashboardId": {
                         "type": "string"
                     },
-                    "databricksId": {
-                        "type": "string"
-                    },
                     "description": {
                         "type": "string"
                     },
@@ -26101,6 +26098,9 @@
                     },
                     "position": {
                         "$ref": "#/types/databricks:index/SqlWidgetPosition:SqlWidgetPosition"
+                    },
+                    "resourceId": {
+                        "type": "string"
                     },
                     "text": {
                         "type": "string"
@@ -26138,9 +26138,6 @@
                 "databricksGcpServiceAccount": {
                     "$ref": "#/types/databricks:index/StorageCredentialDatabricksGcpServiceAccount:StorageCredentialDatabricksGcpServiceAccount"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "forceDestroy": {
                     "type": "boolean"
                 },
@@ -26165,6 +26162,9 @@
                 "readOnly": {
                     "type": "boolean"
                 },
+                "resourceId": {
+                    "type": "string"
+                },
                 "skipValidation": {
                     "type": "boolean"
                 },
@@ -26173,7 +26173,7 @@
                 }
             },
             "required": [
-                "databricksId",
+                "resourceId",
                 "isolationMode",
                 "metastoreId",
                 "name",
@@ -26199,9 +26199,6 @@
                 "databricksGcpServiceAccount": {
                     "$ref": "#/types/databricks:index/StorageCredentialDatabricksGcpServiceAccount:StorageCredentialDatabricksGcpServiceAccount"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "forceDestroy": {
                     "type": "boolean"
                 },
@@ -26225,6 +26222,9 @@
                 },
                 "readOnly": {
                     "type": "boolean"
+                },
+                "resourceId": {
+                    "type": "string"
                 },
                 "skipValidation": {
                     "type": "boolean"
@@ -26251,9 +26251,6 @@
                     "databricksGcpServiceAccount": {
                         "$ref": "#/types/databricks:index/StorageCredentialDatabricksGcpServiceAccount:StorageCredentialDatabricksGcpServiceAccount"
                     },
-                    "databricksId": {
-                        "type": "string"
-                    },
                     "forceDestroy": {
                         "type": "boolean"
                     },
@@ -26278,6 +26275,9 @@
                     "readOnly": {
                         "type": "boolean"
                     },
+                    "resourceId": {
+                        "type": "string"
+                    },
                     "skipValidation": {
                         "type": "boolean"
                     },
@@ -26290,13 +26290,13 @@
         },
         "databricks:index/systemSchema:SystemSchema": {
             "properties": {
-                "databricksId": {
-                    "type": "string"
-                },
                 "fullName": {
                     "type": "string"
                 },
                 "metastoreId": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "schema": {
@@ -26308,12 +26308,12 @@
             },
             "required": [
                 "fullName",
-                "databricksId",
+                "resourceId",
                 "metastoreId",
                 "state"
             ],
             "inputProperties": {
-                "databricksId": {
+                "resourceId": {
                     "type": "string"
                 },
                 "schema": {
@@ -26326,13 +26326,13 @@
             "stateInputs": {
                 "description": "Input properties used for looking up and filtering SystemSchema resources.\n",
                 "properties": {
-                    "databricksId": {
-                        "type": "string"
-                    },
                     "fullName": {
                         "type": "string"
                     },
                     "metastoreId": {
+                        "type": "string"
+                    },
+                    "resourceId": {
                         "type": "string"
                     },
                     "schema": {
@@ -26362,9 +26362,6 @@
                 "dataSourceFormat": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "name": {
                     "type": "string"
                 },
@@ -26376,6 +26373,9 @@
                     "additionalProperties": {
                         "type": "string"
                     }
+                },
+                "resourceId": {
+                    "type": "string"
                 },
                 "schemaName": {
                     "type": "string"
@@ -26397,7 +26397,7 @@
                 "catalogName",
                 "columns",
                 "dataSourceFormat",
-                "databricksId",
+                "resourceId",
                 "name",
                 "owner",
                 "schemaName",
@@ -26419,9 +26419,6 @@
                 "dataSourceFormat": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "name": {
                     "type": "string"
                 },
@@ -26433,6 +26430,9 @@
                     "additionalProperties": {
                         "type": "string"
                     }
+                },
+                "resourceId": {
+                    "type": "string"
                 },
                 "schemaName": {
                     "type": "string"
@@ -26475,9 +26475,6 @@
                     "dataSourceFormat": {
                         "type": "string"
                     },
-                    "databricksId": {
-                        "type": "string"
-                    },
                     "name": {
                         "type": "string"
                     },
@@ -26489,6 +26486,9 @@
                         "additionalProperties": {
                             "type": "string"
                         }
+                    },
+                    "resourceId": {
+                        "type": "string"
                     },
                     "schemaName": {
                         "type": "string"
@@ -26517,14 +26517,14 @@
                 "creationTime": {
                     "type": "number"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "expiryTime": {
                     "type": "number"
                 },
                 "lifetimeSeconds": {
                     "type": "number"
+                },
+                "resourceId": {
+                    "type": "string"
                 },
                 "tokenId": {
                     "type": "string"
@@ -26537,7 +26537,7 @@
             "required": [
                 "creationTime",
                 "expiryTime",
-                "databricksId",
+                "resourceId",
                 "tokenId",
                 "tokenValue"
             ],
@@ -26548,14 +26548,14 @@
                 "creationTime": {
                     "type": "number"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "expiryTime": {
                     "type": "number"
                 },
                 "lifetimeSeconds": {
                     "type": "number"
+                },
+                "resourceId": {
+                    "type": "string"
                 },
                 "tokenId": {
                     "type": "string"
@@ -26570,14 +26570,14 @@
                     "creationTime": {
                         "type": "number"
                     },
-                    "databricksId": {
-                        "type": "string"
-                    },
                     "expiryTime": {
                         "type": "number"
                     },
                     "lifetimeSeconds": {
                         "type": "number"
+                    },
+                    "resourceId": {
+                        "type": "string"
                     },
                     "tokenId": {
                         "type": "string"
@@ -26604,9 +26604,6 @@
                 "allowInstancePoolCreate": {
                     "type": "boolean"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "databricksSqlAccess": {
                     "type": "boolean"
                 },
@@ -26634,6 +26631,9 @@
                 "repos": {
                     "type": "string"
                 },
+                "resourceId": {
+                    "type": "string"
+                },
                 "userName": {
                     "type": "string"
                 },
@@ -26646,7 +26646,7 @@
                 "disableAsUserDeletion",
                 "displayName",
                 "home",
-                "databricksId",
+                "resourceId",
                 "repos",
                 "userName"
             ],
@@ -26663,9 +26663,6 @@
                 "allowInstancePoolCreate": {
                     "type": "boolean"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "databricksSqlAccess": {
                     "type": "boolean"
                 },
@@ -26691,6 +26688,9 @@
                     "type": "string"
                 },
                 "repos": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "userName": {
@@ -26717,9 +26717,6 @@
                     },
                     "allowInstancePoolCreate": {
                         "type": "boolean"
-                    },
-                    "databricksId": {
-                        "type": "string"
                     },
                     "databricksSqlAccess": {
                         "type": "boolean"
@@ -26748,6 +26745,9 @@
                     "repos": {
                         "type": "string"
                     },
+                    "resourceId": {
+                        "type": "string"
+                    },
                     "userName": {
                         "type": "string"
                     },
@@ -26760,10 +26760,10 @@
         },
         "databricks:index/userInstanceProfile:UserInstanceProfile": {
             "properties": {
-                "databricksId": {
+                "instanceProfileId": {
                     "type": "string"
                 },
-                "instanceProfileId": {
+                "resourceId": {
                     "type": "string"
                 },
                 "userId": {
@@ -26771,15 +26771,15 @@
                 }
             },
             "required": [
-                "databricksId",
+                "resourceId",
                 "instanceProfileId",
                 "userId"
             ],
             "inputProperties": {
-                "databricksId": {
+                "instanceProfileId": {
                     "type": "string"
                 },
-                "instanceProfileId": {
+                "resourceId": {
                     "type": "string"
                 },
                 "userId": {
@@ -26793,10 +26793,10 @@
             "stateInputs": {
                 "description": "Input properties used for looking up and filtering UserInstanceProfile resources.\n",
                 "properties": {
-                    "databricksId": {
+                    "instanceProfileId": {
                         "type": "string"
                     },
-                    "instanceProfileId": {
+                    "resourceId": {
                         "type": "string"
                     },
                     "userId": {
@@ -26808,7 +26808,7 @@
         },
         "databricks:index/userRole:UserRole": {
             "properties": {
-                "databricksId": {
+                "resourceId": {
                     "type": "string"
                 },
                 "role": {
@@ -26819,12 +26819,12 @@
                 }
             },
             "required": [
-                "databricksId",
+                "resourceId",
                 "role",
                 "userId"
             ],
             "inputProperties": {
-                "databricksId": {
+                "resourceId": {
                     "type": "string"
                 },
                 "role": {
@@ -26841,7 +26841,7 @@
             "stateInputs": {
                 "description": "Input properties used for looking up and filtering UserRole resources.\n",
                 "properties": {
-                    "databricksId": {
+                    "resourceId": {
                         "type": "string"
                     },
                     "role": {
@@ -26860,9 +26860,6 @@
                     "type": "number"
                 },
                 "creator": {
-                    "type": "string"
-                },
-                "databricksId": {
                     "type": "string"
                 },
                 "endpointId": {
@@ -26889,6 +26886,9 @@
                 "numIndexes": {
                     "type": "number"
                 },
+                "resourceId": {
+                    "type": "string"
+                },
                 "timeouts": {
                     "$ref": "#/types/databricks:index/VectorSearchEndpointTimeouts:VectorSearchEndpointTimeouts"
                 }
@@ -26899,20 +26899,20 @@
                 "endpointId",
                 "endpointStatuses",
                 "endpointType",
-                "databricksId",
+                "resourceId",
                 "lastUpdatedTimestamp",
                 "lastUpdatedUser",
                 "name",
                 "numIndexes"
             ],
             "inputProperties": {
-                "databricksId": {
-                    "type": "string"
-                },
                 "endpointType": {
                     "type": "string"
                 },
                 "name": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "timeouts": {
@@ -26929,9 +26929,6 @@
                         "type": "number"
                     },
                     "creator": {
-                        "type": "string"
-                    },
-                    "databricksId": {
                         "type": "string"
                     },
                     "endpointId": {
@@ -26958,6 +26955,9 @@
                     "numIndexes": {
                         "type": "number"
                     },
+                    "resourceId": {
+                        "type": "string"
+                    },
                     "timeouts": {
                         "$ref": "#/types/databricks:index/VectorSearchEndpointTimeouts:VectorSearchEndpointTimeouts"
                     }
@@ -26968,9 +26968,6 @@
         "databricks:index/vectorSearchIndex:VectorSearchIndex": {
             "properties": {
                 "creator": {
-                    "type": "string"
-                },
-                "databricksId": {
                     "type": "string"
                 },
                 "deltaSyncIndexSpec": {
@@ -26989,6 +26986,9 @@
                     "type": "string"
                 },
                 "primaryKey": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "statuses": {
@@ -27004,16 +27004,13 @@
             "required": [
                 "creator",
                 "endpointName",
-                "databricksId",
+                "resourceId",
                 "indexType",
                 "name",
                 "primaryKey",
                 "statuses"
             ],
             "inputProperties": {
-                "databricksId": {
-                    "type": "string"
-                },
                 "deltaSyncIndexSpec": {
                     "$ref": "#/types/databricks:index/VectorSearchIndexDeltaSyncIndexSpec:VectorSearchIndexDeltaSyncIndexSpec"
                 },
@@ -27032,6 +27029,9 @@
                 "primaryKey": {
                     "type": "string"
                 },
+                "resourceId": {
+                    "type": "string"
+                },
                 "timeouts": {
                     "$ref": "#/types/databricks:index/VectorSearchIndexTimeouts:VectorSearchIndexTimeouts"
                 }
@@ -27045,9 +27045,6 @@
                 "description": "Input properties used for looking up and filtering VectorSearchIndex resources.\n",
                 "properties": {
                     "creator": {
-                        "type": "string"
-                    },
-                    "databricksId": {
                         "type": "string"
                     },
                     "deltaSyncIndexSpec": {
@@ -27066,6 +27063,9 @@
                         "type": "string"
                     },
                     "primaryKey": {
+                        "type": "string"
+                    },
+                    "resourceId": {
                         "type": "string"
                     },
                     "statuses": {
@@ -27089,13 +27089,13 @@
                 "comment": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "name": {
                     "type": "string"
                 },
                 "owner": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "schemaName": {
@@ -27113,7 +27113,7 @@
             },
             "required": [
                 "catalogName",
-                "databricksId",
+                "resourceId",
                 "name",
                 "owner",
                 "schemaName",
@@ -27127,13 +27127,13 @@
                 "comment": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "name": {
                     "type": "string"
                 },
                 "owner": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "schemaName": {
@@ -27160,13 +27160,13 @@
                     "comment": {
                         "type": "string"
                     },
-                    "databricksId": {
-                        "type": "string"
-                    },
                     "name": {
                         "type": "string"
                     },
                     "owner": {
+                        "type": "string"
+                    },
+                    "resourceId": {
                         "type": "string"
                     },
                     "schemaName": {
@@ -27194,7 +27194,7 @@
                     "type": "string",
                     "deprecationMessage": "Deprecated"
                 },
-                "databricksId": {
+                "resourceId": {
                     "type": "string"
                 },
                 "securableName": {
@@ -27208,7 +27208,7 @@
                 }
             },
             "required": [
-                "databricksId",
+                "resourceId",
                 "securableName"
             ],
             "inputProperties": {
@@ -27219,7 +27219,7 @@
                     "type": "string",
                     "deprecationMessage": "Deprecated"
                 },
-                "databricksId": {
+                "resourceId": {
                     "type": "string"
                 },
                 "securableName": {
@@ -27242,7 +27242,7 @@
                         "type": "string",
                         "deprecationMessage": "Deprecated"
                     },
-                    "databricksId": {
+                    "resourceId": {
                         "type": "string"
                     },
                     "securableName": {
@@ -27266,12 +27266,12 @@
                         "type": "string"
                     }
                 },
-                "databricksId": {
+                "resourceId": {
                     "type": "string"
                 }
             },
             "required": [
-                "databricksId"
+                "resourceId"
             ],
             "inputProperties": {
                 "customConfig": {
@@ -27280,7 +27280,7 @@
                         "type": "string"
                     }
                 },
-                "databricksId": {
+                "resourceId": {
                     "type": "string"
                 }
             },
@@ -27293,7 +27293,7 @@
                             "type": "string"
                         }
                     },
-                    "databricksId": {
+                    "resourceId": {
                         "type": "string"
                     }
                 },
@@ -27305,9 +27305,6 @@
                 "contentBase64": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "md5": {
                     "type": "string"
                 },
@@ -27315,6 +27312,9 @@
                     "type": "number"
                 },
                 "path": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "source": {
@@ -27328,7 +27328,7 @@
                 }
             },
             "required": [
-                "databricksId",
+                "resourceId",
                 "objectId",
                 "path",
                 "url",
@@ -27338,9 +27338,6 @@
                 "contentBase64": {
                     "type": "string"
                 },
-                "databricksId": {
-                    "type": "string"
-                },
                 "md5": {
                     "type": "string"
                 },
@@ -27348,6 +27345,9 @@
                     "type": "number"
                 },
                 "path": {
+                    "type": "string"
+                },
+                "resourceId": {
                     "type": "string"
                 },
                 "source": {
@@ -27363,9 +27363,6 @@
                     "contentBase64": {
                         "type": "string"
                     },
-                    "databricksId": {
-                        "type": "string"
-                    },
                     "md5": {
                         "type": "string"
                     },
@@ -27373,6 +27370,9 @@
                         "type": "number"
                     },
                     "path": {
+                        "type": "string"
+                    },
+                    "resourceId": {
                         "type": "string"
                     },
                     "source": {

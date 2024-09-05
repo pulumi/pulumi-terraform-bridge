@@ -104,7 +104,7 @@ func fixPropertyConflict(p *info.Provider) error {
 	return walkResources(p, func(r tfbridge.Resource) error {
 		var retError []error
 		r.TF.Schema().Range(func(key string, value shim.Schema) bool {
-			if fix := badPropertyName(p.Name, key); fix != nil {
+			if fix := badPropertyName(p.Name, p.GetResourcePrefix(), key); fix != nil {
 				err := fix(r)
 				if err != nil {
 					retError = append(retError, fmt.Errorf("%s: %w", key, err))
@@ -132,41 +132,59 @@ func getField(i *map[string]*info.Schema, name string) *info.Schema {
 
 type fixupProperty = func(tfbridge.Resource) error
 
-func badPropertyName(providerName, key string) fixupProperty {
+func badPropertyName(providerName, tokenPrefix, key string) fixupProperty {
 	switch key {
 	case "urn":
 		return fixURN(providerName)
 	case "id":
-		return fixID(providerName)
+		return fixID(providerName, tokenPrefix)
 	default:
 		return nil
 	}
 }
 
-func fixID(providerName string) fixupProperty {
+func fixID(providerName string, tokenPrefix string) fixupProperty {
+	getResourceName := func(tk string) string {
+		name := strings.TrimPrefix(tk, tokenPrefix)
+		if name == "" {
+			name = tk
+		}
+		return strings.TrimLeft(name, "_")
+	}
 	return func(r tfbridge.Resource) error {
 		tfSchema := r.TF.Schema()
-		proposedIDFieldName := strings.ReplaceAll(providerName, "-", "_") + "_id"
 		tfIDProperty, ok := tfSchema.GetOk("id")
 		if !ok {
 			// could not find an ID
 			return nil
 		}
 
-		if _, ok := tfSchema.GetOk(proposedIDFieldName); ok {
-			return fmt.Errorf("no available new name, tried %q", proposedIDFieldName)
-		}
-
-		// If either id.Optional or id.Required are set, then the provider allows
-		// (or requires) the user to set "id" as an input. Pulumi does not allow
-		// that, so we alias "id".
-		if !tfIDProperty.Optional() && !tfIDProperty.Required() {
+		// If the user has over-written the field, don't change that.
+		if f := r.Schema.Fields["id"]; f != nil && f.Name != "" {
 			return nil
 		}
 
-		if f := getField(&r.Schema.Fields, "id"); f.Name == "" {
+		// We have an ordered list of names to attempt when we alias ID.
+		candidateNames := []string{
+			"resource_id",                                      // "resource_id"
+			getResourceName(r.TFName) + "_id",                  // "<resource_name>_id"
+			strings.ReplaceAll(providerName, "-", "_") + "_id", // "<provider_name>_id"
+		}
+
+		for _, proposedIDFieldName := range candidateNames {
+			if _, ok := tfSchema.GetOk(proposedIDFieldName); ok {
+				continue
+			}
+
+			// If either id.Optional or id.Required are set, then the provider allows
+			// (or requires) the user to set "id" as an input. Pulumi does not allow
+			// that, so we alias "id".
+			if !tfIDProperty.Optional() && !tfIDProperty.Required() {
+				return nil
+			}
+
 			newIDField := tfbridge.TerraformToPulumiNameV2(proposedIDFieldName, tfSchema, r.Schema.Fields)
-			f.Name = newIDField
+			getField(&r.Schema.Fields, "id").Name = newIDField
 
 			// We are altering the original ID because it is valid for the
 			// user to set it. As long as it will be present as an output, we
@@ -180,9 +198,11 @@ func fixID(providerName string) fixupProperty {
 				r.Schema.ComputeID = tfbridge.DelegateIDField(resource.PropertyKey(newIDField), providerName,
 					"https://github.com/pulumi/pulumi-terraform-provider")
 			}
+
+			return nil
 		}
 
-		return nil
+		return fmt.Errorf("no available new name, tried %#v", candidateNames)
 	}
 }
 
