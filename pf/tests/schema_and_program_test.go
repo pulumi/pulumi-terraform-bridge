@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	pschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
@@ -405,4 +406,61 @@ outputs:
 	require.Equal(t, "Default val", upRes.Outputs["changeReason"].Value)
 
 	pt.Preview(optpreview.Diff(), optpreview.ExpectNoChanges())
+}
+
+func TestImportSingleNested(t *testing.T) {
+	// https://github.com/pulumi/pulumi-terraform-bridge/issues/2219
+	provBuilder := pb.NewProvider(pb.NewProviderArgs{
+		AllResources: []providerbuilder.Resource{
+			{
+				Name: "blueprint",
+				ResourceSchema: rschema.Schema{
+					Attributes: map[string]rschema.Attribute{
+						"id": rschema.StringAttribute{
+							Computed: true,
+						},
+						"properties": rschema.SingleNestedAttribute{
+							Optional: true,
+							Attributes: map[string]rschema.Attribute{
+								"string_props": rschema.MapNestedAttribute{
+									MarkdownDescription: "The string property of the blueprint",
+									Optional:            true,
+									NestedObject: rschema.NestedAttributeObject{
+										Attributes: map[string]rschema.Attribute{
+											"description": schema.StringAttribute{
+												MarkdownDescription: "The description of the property",
+												Optional:            true,
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				ImportStateFunc: func(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+					resp.State.SetAttribute(ctx, path.Root("id"), req.ID)
+					resp.State.SetAttribute(ctx,
+						path.Root("properties").AtName("string_props"),
+						map[string]interface{}{},
+					)
+				},
+			},
+		},
+	})
+
+	prov := bridgedProvider(provBuilder)
+
+	program := `
+name: test
+runtime: yaml`
+
+	pt, err := pulCheck(t, prov, program)
+	require.NoError(t, err)
+
+	out := pt.Import("testprovider:index/blueprint:Blueprint", "testres", "test-id", "")
+	t.Log(out.Stdout)
+	t.Log(out.Stderr)
+
+	require.Equal(t, 0, out.ReturnCode)
 }
