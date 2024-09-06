@@ -386,27 +386,3 @@ func makeDetailedDiffExtra(
 		collectionDiffs: collectionDiffs,
 	}
 }
-
-// func makePulumiDetailedDiffV2(
-// 	ctx context.Context,
-// 	tfs shim.SchemaMap,
-// 	ps map[string]*SchemaInfo,
-// 	oldState, plannedState resource.PropertyMap,
-// ) (map[string]*pulumirpc.PropertyDiff) {
-// 	keys := make(map[resource.PropertyKey]struct{})
-// 	for k := range oldState {
-// 		keys[k] = struct{}{}
-// 	}
-// 	for k := range plannedState {
-// 		keys[k] = struct{}{}
-// 	}
-
-// 	diff := make(map[string]*pulumirpc.PropertyDiff)
-// 	for k := range keys {
-// 		old, _ := oldState[k]
-// 		new, _ := plannedState[k]
-// 		en, etf, eps := getInfoFromPulumiName(k, tfs, ps)
-
-
-// 	}
-// }
