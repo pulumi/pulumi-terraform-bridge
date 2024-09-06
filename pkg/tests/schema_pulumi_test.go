@@ -1954,6 +1954,7 @@ resources:
 		props1   interface{}
 		props2   interface{}
 		expected autogold.Value
+		skip     bool
 	}{
 		{
 			"string unchanged",
@@ -1965,6 +1966,7 @@ resources:
 Resources:
     2 unchanged
 `),
+			false,
 		},
 		{
 			"string added",
@@ -1981,6 +1983,7 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		{
 			"string removed",
@@ -1997,6 +2000,7 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		{
 			"string changed",
@@ -2013,6 +2017,7 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		{
 			"list unchanged",
@@ -2024,6 +2029,7 @@ Resources:
 Resources:
     2 unchanged
 `),
+			false,
 		},
 		// TODO[pulumi/pulumi-terraform-bridge#2234]: Duplicated diff
 		{
@@ -2046,6 +2052,7 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		// TODO[pulumi/pulumi-terraform-bridge#2233]: Missing diff
 		{
@@ -2058,6 +2065,7 @@ Resources:
 Resources:
     2 unchanged
 `),
+			false,
 		},
 		// TODO[pulumi/pulumi-terraform-bridge#2234]: Duplicated diff
 		{
@@ -2080,6 +2088,7 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		// TODO[pulumi/pulumi-terraform-bridge#2233]: Missing diff
 		{
@@ -2092,6 +2101,7 @@ Resources:
 Resources:
     2 unchanged
 `),
+			false,
 		},
 		{
 			"list element added front",
@@ -2112,6 +2122,7 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		{
 			"list element added back",
@@ -2132,6 +2143,7 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		{
 			"list element added middle",
@@ -2152,6 +2164,7 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		{
 			"list element removed front",
@@ -2172,6 +2185,7 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		{
 			"list element removed back",
@@ -2192,6 +2206,7 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		{
 			"list element removed middle",
@@ -2212,6 +2227,7 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		{
 			"list element changed",
@@ -2230,6 +2246,7 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		{
 			"set unchanged",
@@ -2241,6 +2258,7 @@ Resources:
 Resources:
     2 unchanged
 `),
+			false,
 		},
 		// TODO[pulumi/pulumi-terraform-bridge#2234]: Duplicated diff
 		{
@@ -2263,6 +2281,7 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		// TODO[pulumi/pulumi-terraform-bridge#2233]: Missing diff
 		{
@@ -2275,6 +2294,7 @@ Resources:
 Resources:
     2 unchanged
 `),
+			false,
 		},
 		// TODO[pulumi/pulumi-terraform-bridge#2234]: Duplicated diff
 		{
@@ -2297,6 +2317,7 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		// TODO[pulumi/pulumi-terraform-bridge#2233]: Missing diff
 		{
@@ -2309,29 +2330,31 @@ Resources:
 Resources:
     2 unchanged
 `),
+			false,
 		},
 		// TODO[pulumi/pulumi-terraform-bridge#2235]: Wrong number of additions
-		// TODO[pulumi/pulumi-terraform-bridge#2325]: Non-deterministic output
-		// 		{
-		// 			"set element added front",
-		// 			map[string]interface{}{"setProps": []interface{}{"val2", "val3"}},
-		// 			map[string]interface{}{"setProps": []interface{}{"val1", "val2", "val3"}},
-		// 			autogold.Expect(`Previewing update (test):
-		//   pulumi:pulumi:Stack: (same)
-		//     [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
-		//     ~ prov:index/test:Test: (update)
-		//         [id=newid]
-		//         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-		//       ~ setProps: [
-		//           ~ [0]: "val2" => "val1"
-		//           ~ [1]: "val3" => "val2"
-		//           + [2]: "val3"
-		//         ]
-		// Resources:
-		//     ~ 1 to update
-		//     1 unchanged
-		// `),
-		// 		},
+		{
+			"set element added front",
+			map[string]interface{}{"setProps": []interface{}{"val2", "val3"}},
+			map[string]interface{}{"setProps": []interface{}{"val1", "val2", "val3"}},
+			autogold.Expect(`Previewing update (test):
+		  pulumi:pulumi:Stack: (same)
+		    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+		    ~ prov:index/test:Test: (update)
+		        [id=newid]
+		        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+		      ~ setProps: [
+		          ~ [0]: "val2" => "val1"
+		          ~ [1]: "val3" => "val2"
+		          + [2]: "val3"
+		        ]
+		Resources:
+		    ~ 1 to update
+		    1 unchanged
+		`),
+			// TODO[pulumi/pulumi-terraform-bridge#2325]: Non-deterministic output
+			true,
+		},
 		{
 			"set element added back",
 			map[string]interface{}{"setProps": []interface{}{"val1", "val2"}},
@@ -2351,50 +2374,54 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		// TODO[pulumi/pulumi-terraform-bridge#2235]: Wrong number of additions
-		// TODO[pulumi/pulumi-terraform-bridge#2325]: Non-deterministic output
-		// 		{
-		// 			"set element added middle",
-		// 			map[string]interface{}{"setProps": []interface{}{"val1", "val3"}},
-		// 			map[string]interface{}{"setProps": []interface{}{"val1", "val2", "val3"}},
-		// 			autogold.Expect(`Previewing update (test):
-		//   pulumi:pulumi:Stack: (same)
-		//     [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
-		//     ~ prov:index/test:Test: (update)
-		//         [id=newid]
-		//         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-		//       ~ setProps: [
-		//             [0]: "val1"
-		//           + [1]: "val2"
-		//           + [2]: "val3"
-		//         ]
-		// Resources:
-		//     ~ 1 to update
-		//     1 unchanged
-		// `),
-		// 		},
-		// TODO[pulumi/pulumi-terraform-bridge#2325]: Non-deterministic output
-		// 		{
-		// 			"set element removed front",
-		// 			map[string]interface{}{"setProps": []interface{}{"val1", "val2", "val3"}},
-		// 			map[string]interface{}{"setProps": []interface{}{"val2", "val3"}},
-		// 			autogold.Expect(`Previewing update (test):
-		//   pulumi:pulumi:Stack: (same)
-		//     [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
-		//     ~ prov:index/test:Test: (update)
-		//         [id=newid]
-		//         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-		//       ~ setProps: [
-		//           ~ [0]: "val1" => "val2"
-		//           ~ [1]: "val2" => "val3"
-		//           - [2]: "val3"
-		//         ]
-		// Resources:
-		//     ~ 1 to update
-		//     1 unchanged
-		// `),
-		// 		},
+		{
+			"set element added middle",
+			map[string]interface{}{"setProps": []interface{}{"val1", "val3"}},
+			map[string]interface{}{"setProps": []interface{}{"val1", "val2", "val3"}},
+			autogold.Expect(`Previewing update (test):
+		  pulumi:pulumi:Stack: (same)
+		    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+		    ~ prov:index/test:Test: (update)
+		        [id=newid]
+		        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+		      ~ setProps: [
+		            [0]: "val1"
+		          + [1]: "val2"
+		          + [2]: "val3"
+		        ]
+		Resources:
+		    ~ 1 to update
+		    1 unchanged
+
+		`),
+			// TODO[pulumi/pulumi-terraform-bridge#2325]: Non-deterministic output
+			true,
+		},
+		{
+			"set element removed front",
+			map[string]interface{}{"setProps": []interface{}{"val1", "val2", "val3"}},
+			map[string]interface{}{"setProps": []interface{}{"val2", "val3"}},
+			autogold.Expect(`Previewing update (test):
+		  pulumi:pulumi:Stack: (same)
+		    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+		    ~ prov:index/test:Test: (update)
+		        [id=newid]
+		        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+		      ~ setProps: [
+		          ~ [0]: "val1" => "val2"
+		          ~ [1]: "val2" => "val3"
+		          - [2]: "val3"
+		        ]
+		Resources:
+		    ~ 1 to update
+		    1 unchanged
+`),
+			// TODO[pulumi/pulumi-terraform-bridge#2325]: Non-deterministic output
+			true,
+		},
 		{
 			"set element removed back",
 			map[string]interface{}{"setProps": []interface{}{"val1", "val2", "val3"}},
@@ -2414,29 +2441,31 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		// TODO[pulumi/pulumi-terraform-bridge#2235]: Wrong number of removals
-		// TODO[pulumi/pulumi-terraform-bridge#2325]: Non-deterministic output
-		// 		{
-		// 			"set element removed middle",
-		// 			map[string]interface{}{"setProps": []interface{}{"val1", "val2", "val3"}},
-		// 			map[string]interface{}{"setProps": []interface{}{"val1", "val3"}},
-		// 			autogold.Expect(`Previewing update (test):
-		//   pulumi:pulumi:Stack: (same)
-		//     [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
-		//     ~ prov:index/test:Test: (update)
-		//         [id=newid]
-		//         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-		//       ~ setProps: [
-		//             [0]: "val1"
-		//           ~ [1]: "val2" => "val3"
-		//           - [2]: "val3"
-		//         ]
-		// Resources:
-		//     ~ 1 to update
-		//     1 unchanged
-		// `),
-		// 		},
+		{
+			"set element removed middle",
+			map[string]interface{}{"setProps": []interface{}{"val1", "val2", "val3"}},
+			map[string]interface{}{"setProps": []interface{}{"val1", "val3"}},
+			autogold.Expect(`Previewing update (test):
+		  pulumi:pulumi:Stack: (same)
+		    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+		    ~ prov:index/test:Test: (update)
+		        [id=newid]
+		        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+		      ~ setProps: [
+		            [0]: "val1"
+		          ~ [1]: "val2" => "val3"
+		          - [2]: "val3"
+		        ]
+		Resources:
+		    ~ 1 to update
+		    1 unchanged
+		`),
+			// TODO[pulumi/pulumi-terraform-bridge#2325]: Non-deterministic output
+			true,
+		},
 		{
 			"set element changed",
 			map[string]interface{}{"setProps": []interface{}{"val1"}},
@@ -2454,6 +2483,7 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		{
 			"map unchanged",
@@ -2465,6 +2495,7 @@ Resources:
 Resources:
     2 unchanged
 `),
+			false,
 		},
 		// TODO[pulumi/pulumi-terraform-bridge#2234]: Duplicated diff
 		{
@@ -2487,6 +2518,7 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		// TODO[pulumi/pulumi-terraform-bridge#2233]: Missing diff
 		{
@@ -2499,6 +2531,7 @@ Resources:
 Resources:
     2 unchanged
 `),
+			false,
 		},
 		// TODO[pulumi/pulumi-terraform-bridge#2234]: Duplicated diff
 		{
@@ -2521,6 +2554,7 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		// TODO[pulumi/pulumi-terraform-bridge#2233]: Missing diff
 		{
@@ -2533,6 +2567,7 @@ Resources:
 Resources:
     2 unchanged
 `),
+			false,
 		},
 		// TODO[pulumi/pulumi-terraform-bridge#2234]: Duplicated diff
 		{
@@ -2555,6 +2590,7 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		{
 			"map element removed",
@@ -2573,6 +2609,7 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		{
 			"map value changed",
@@ -2591,6 +2628,7 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		{
 			"map key changed",
@@ -2610,6 +2648,7 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		{
 			"list block unchanged",
@@ -2621,6 +2660,7 @@ Resources:
 Resources:
     2 unchanged
 `),
+			false,
 		},
 		{
 			"list block added",
@@ -2641,6 +2681,7 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		// This is expected to be a no-op because blocks can not be nil in TF
 		{
@@ -2653,6 +2694,7 @@ Resources:
 Resources:
     2 unchanged
 `),
+			false,
 		},
 		{
 			"list block added empty object",
@@ -2672,6 +2714,7 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		// TODO[pulumi/pulumi-terraform-bridge#2234]: Duplicated diff
 		{
@@ -2698,6 +2741,7 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		// This is expected to be a no-op because blocks can not be nil in TF
 		{
@@ -2710,6 +2754,7 @@ Resources:
 Resources:
     2 unchanged
 `),
+			false,
 		},
 		// TODO: where is the nested prop diff coming from
 		{
@@ -2731,6 +2776,7 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		// TODO: Why are __defaults appearing in the diff?
 		{
@@ -2767,6 +2813,7 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		// TODO: Why are __defaults appearing in the diff?
 		{
@@ -2803,6 +2850,7 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		// TODO: Why are __defaults appearing in the diff?
 		{
@@ -2839,6 +2887,7 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		// TODO: Why are __defaults appearing in the diff?
 		{
@@ -2875,6 +2924,7 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		// TODO: Why are __defaults appearing in the diff?
 		{
@@ -2911,6 +2961,7 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		// TODO: Why are __defaults appearing in the diff?
 		{
@@ -2947,6 +2998,7 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		{
 			"list block element changed",
@@ -2971,6 +3023,7 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		{
 			"set block unchanged",
@@ -2982,6 +3035,7 @@ Resources:
 Resources:
     2 unchanged
 `),
+			false,
 		},
 		{
 			"set block added",
@@ -3002,6 +3056,7 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		// This is expected to be a no-op because blocks can not be nil in TF
 		{
@@ -3014,6 +3069,7 @@ Resources:
 Resources:
     2 unchanged
 `),
+			false,
 		},
 		{
 			"set block added empty object",
@@ -3033,6 +3089,7 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		// TODO[pulumi/pulumi-terraform-bridge#2234]: Duplicated diff
 		{
@@ -3059,6 +3116,7 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		// This is expected to be a no-op because blocks can not be nil in TF
 		{
@@ -3071,6 +3129,7 @@ Resources:
 Resources:
     2 unchanged
 `),
+			false,
 		},
 		// TODO: where is the nested prop diff coming from
 		{
@@ -3092,6 +3151,7 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		// TODO: Why are __defaults appearing in the diff?
 		{
@@ -3128,6 +3188,8 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			// TODO[pulumi/pulumi-terraform-bridge#2325]: Non-deterministic output
+			true,
 		},
 		// TODO: Why are __defaults appearing in the diff?
 		{
@@ -3164,6 +3226,8 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			// TODO[pulumi/pulumi-terraform-bridge#2325]: Non-deterministic output
+			true,
 		},
 		// TODO: Why are __defaults appearing in the diff?
 		{
@@ -3200,6 +3264,7 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		// TODO: Why are __defaults appearing in the diff?
 		// TODO[pulumi/pulumi-terraform-bridge#2234]: Duplicated diff
@@ -3237,6 +3302,8 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			// TODO[pulumi/pulumi-terraform-bridge#2325]: Non-deterministic output
+			true,
 		},
 		// TODO: Why are __defaults appearing in the diff?
 		{
@@ -3273,6 +3340,8 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			// TODO[pulumi/pulumi-terraform-bridge#2325]: Non-deterministic output
+			true,
 		},
 		// TODO: Why are __defaults appearing in the diff?
 		{
@@ -3309,6 +3378,8 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			// TODO[pulumi/pulumi-terraform-bridge#2325]: Non-deterministic output
+			true,
 		},
 		{
 			"set block element changed",
@@ -3333,6 +3404,7 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		{
 			"maxItemsOne block unchanged",
@@ -3344,6 +3416,7 @@ Resources:
 Resources:
     2 unchanged
 `),
+			false,
 		},
 		// TODO[pulumi/pulumi-terraform-bridge#2234]: Duplicated diff
 		{
@@ -3366,6 +3439,7 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		{
 			"maxItemsOne block added empty",
@@ -3383,6 +3457,7 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		// TODO[pulumi/pulumi-terraform-bridge#2234]: Duplicated diff
 		{
@@ -3405,6 +3480,7 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		// TODO: where is the nested prop diff coming from
 		{
@@ -3424,6 +3500,7 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		{
 			"maxItemsOne block changed",
@@ -3442,6 +3519,7 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 	} {
 		tc := tc
