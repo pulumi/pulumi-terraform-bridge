@@ -51,26 +51,169 @@ func TestFixMissingID(t *testing.T) {
 	assert.NotNil(t, p.Resources["test_res"].ComputeID)
 }
 
-func TestFixURNProperty(t *testing.T) {
+func TestFixPropertyConflicts(t *testing.T) {
 	t.Parallel()
+
+	simpleID := (&schema.Schema{
+		Type:     shim.TypeString,
+		Computed: true,
+	}).Shim()
+
+	tests := []struct {
+		name string
+
+		schema schema.SchemaMap
+		info   map[string]*info.Schema
+
+		expected           map[string]*info.Schema
+		expectComputeIDSet bool
+	}{
+		{
+			name: "fix urn property name",
+			schema: schema.SchemaMap{
+				"urn": (&schema.Schema{
+					Type: shim.TypeString,
+				}).Shim(),
+				"id": simpleID,
+			},
+			expected: map[string]*info.Schema{
+				"urn": {Name: "testUrn"},
+			},
+		},
+		{
+			name: "ignore overridden urn property name",
+			schema: schema.SchemaMap{
+				"urn": (&schema.Schema{
+					Type: shim.TypeString,
+				}).Shim(),
+				"id": simpleID,
+			},
+			info: map[string]*info.Schema{
+				"urn": {Name: "overridden"},
+			},
+			expected: map[string]*info.Schema{
+				"urn": {Name: "overridden"},
+			},
+		},
+		{
+			name: "fix ID property name (computed + optional)",
+			schema: schema.SchemaMap{
+				"id": (&schema.Schema{
+					Type:     shim.TypeString,
+					Optional: true,
+					Computed: true,
+				}).Shim(),
+			},
+			expected: map[string]*info.Schema{
+				"id": {Name: "testId"},
+			},
+			expectComputeIDSet: true,
+		},
+		{
+			name: "fix ID property name (required)",
+			schema: schema.SchemaMap{
+				"id": (&schema.Schema{
+					Type:     shim.TypeString,
+					Required: true,
+				}).Shim(),
+			},
+			expected: map[string]*info.Schema{
+				"id": {Name: "testId"},
+			},
+			expectComputeIDSet: true,
+		},
+
+		{
+			name: "ignore output ID property name (computed)",
+			schema: schema.SchemaMap{
+				"id": (&schema.Schema{
+					Type:     shim.TypeString,
+					Computed: true,
+				}).Shim(),
+			},
+			expected: nil,
+		},
+		{
+			name: "ignore overridden ID property name",
+			schema: schema.SchemaMap{
+				"id": (&schema.Schema{
+					Type:     shim.TypeString,
+					Computed: true,
+					Optional: true,
+				}).Shim(),
+			},
+			info: map[string]*info.Schema{
+				"id": {Name: "overridden"},
+			},
+			expected: map[string]*info.Schema{
+				"id": {Name: "overridden"},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			p := info.Provider{
+				Name: "test",
+				P: (&schema.Provider{
+					ResourcesMap: schema.ResourceMap{
+						"test_res": (&schema.Resource{
+							Schema: tt.schema,
+						}).Shim(),
+					},
+				}).Shim(),
+				Resources: map[string]*info.Resource{
+					"test_res": {
+						Fields: tt.info,
+					},
+				},
+			}
+			err := fixup.Default(&p)
+			require.NoError(t, err)
+
+			r := p.Resources["test_res"]
+			assert.Equal(t, tt.expected, r.Fields)
+
+			if tt.expectComputeIDSet {
+				assert.NotNil(t, r.ComputeID, "expected .ComputeID to be set")
+			} else {
+				assert.Nil(t, r.ComputeID, "expected .ComputeID to not be set")
+			}
+		})
+	}
+}
+
+// TestFixIDKebabCaseProvider validates that providers with kebab-case names that have ID
+// fields that need fixups still result in good (camelCase) property names for Pulumi
+// schemas.
+func TestFixIDKebabCaseProvider(t *testing.T) {
+	t.Parallel()
+
 	p := info.Provider{
-		Name: "test",
+		Name: "test-provider",
 		P: (&schema.Provider{
 			ResourcesMap: schema.ResourceMap{
-				"test_res": (&schema.Resource{
+				"test-provider_res": (&schema.Resource{
 					Schema: schema.SchemaMap{
-						"urn": (&schema.Schema{
-							Type: shim.TypeString,
+						"id": (&schema.Schema{
+							Type:     shim.TypeString,
+							Required: true,
 						}).Shim(),
 					},
 				}).Shim(),
 			},
 		}).Shim(),
 	}
-
 	err := fixup.Default(&p)
 	require.NoError(t, err)
-	assert.Equal(t, &info.Schema{Name: "testUrn"}, p.Resources["test_res"].Fields["urn"])
+
+	r := p.Resources["test-provider_res"]
+	assert.Equal(t, map[string]*info.Schema{
+		"id": {Name: "testProviderId"},
+	}, r.Fields)
+	assert.NotNil(t, r.ComputeID)
 }
 
 func TestFixProviderResourceName(t *testing.T) {

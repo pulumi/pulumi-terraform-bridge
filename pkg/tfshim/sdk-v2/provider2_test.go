@@ -2,13 +2,20 @@ package sdkv2
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
+	"github.com/hexops/autogold/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/logging"
 )
 
 func TestProvider2UpgradeResourceState(t *testing.T) {
@@ -476,4 +483,156 @@ func TestNormalizeBlockCollections(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestConfigWithTimeouts(t *testing.T) {
+	type testCase struct {
+		name                  string
+		topts                 shim.TimeoutOptions
+		configWithoutTimeouts map[string]any
+		expected              map[string]any
+		expectedWarnings      autogold.Value
+		rschema               schema.Resource
+	}
+
+	sec20 := 20 * time.Second
+
+	testCases := []testCase{
+		{
+			name: "customize create timeout",
+			rschema: schema.Resource{
+				Timeouts: &schema.ResourceTimeout{Create: &sec20},
+				Schema: map[string]*schema.Schema{
+					"x": {Type: schema.TypeInt, Optional: true},
+				},
+			},
+			topts: shim.TimeoutOptions{TimeoutOverrides: map[shim.TimeoutKey]time.Duration{
+				shim.TimeoutCreate: 1 * time.Second,
+			}},
+			configWithoutTimeouts: map[string]any{"x": 1},
+			expected:              map[string]any{"x": 1, "timeouts": map[string]any{"create": "1s"}},
+		}, {
+			name: "customize update timeout",
+			rschema: schema.Resource{
+				Timeouts: &schema.ResourceTimeout{Update: &sec20},
+				Schema: map[string]*schema.Schema{
+					"x": {Type: schema.TypeInt, Optional: true},
+				},
+			},
+			topts: shim.TimeoutOptions{TimeoutOverrides: map[shim.TimeoutKey]time.Duration{
+				shim.TimeoutUpdate: 1 * time.Second,
+			}},
+			configWithoutTimeouts: map[string]any{"x": 1},
+			expected:              map[string]any{"x": 1, "timeouts": map[string]any{"update": "1s"}},
+		}, {
+			name: "customize delete timeout",
+			rschema: schema.Resource{
+				Timeouts: &schema.ResourceTimeout{Delete: &sec20},
+				Schema: map[string]*schema.Schema{
+					"x": {Type: schema.TypeInt, Optional: true},
+				},
+			},
+			topts: shim.TimeoutOptions{TimeoutOverrides: map[shim.TimeoutKey]time.Duration{
+				shim.TimeoutDelete: 1 * time.Second,
+			}},
+			configWithoutTimeouts: map[string]any{"x": 1},
+			expected:              map[string]any{"x": 1, "timeouts": map[string]any{"delete": "1s"}},
+		},
+		{
+			name: "pass through when no overrides specified",
+			rschema: schema.Resource{
+				Schema: map[string]*schema.Schema{
+					"x": {Type: schema.TypeInt, Optional: true},
+				},
+			},
+			topts:                 shim.TimeoutOptions{},
+			configWithoutTimeouts: map[string]any{"x": 1},
+			expected:              map[string]any{"x": 1},
+		},
+		{
+			name: "warn when customizing create timeouts is not supported",
+			rschema: schema.Resource{
+				Schema: map[string]*schema.Schema{
+					"x": {Type: schema.TypeInt, Optional: true},
+				},
+			},
+			topts: shim.TimeoutOptions{TimeoutOverrides: map[shim.TimeoutKey]time.Duration{
+				shim.TimeoutCreate: 1 * time.Second,
+				shim.TimeoutDelete: 2 * time.Second,
+			}},
+			configWithoutTimeouts: map[string]any{"x": 1},
+			//nolint:lll
+			expectedWarnings: autogold.Expect([]string{"WARN: Resource does not support customTimeouts, ignoring: create=1s, delete=2s"}),
+		},
+		{
+			name: "warn when customizing create timeouts against a custom timeout schema",
+			rschema: schema.Resource{
+				Schema: map[string]*schema.Schema{
+					"x": {Type: schema.TypeInt, Optional: true},
+					"timeouts": {
+						Type: schema.TypeList,
+						Elem: &schema.Resource{
+							Schema: map[string]*schema.Schema{
+								"appTimeout": {Type: schema.TypeInt, Optional: true},
+							},
+						},
+						MaxItems: 1,
+					},
+				},
+			},
+			topts: shim.TimeoutOptions{TimeoutOverrides: map[shim.TimeoutKey]time.Duration{
+				shim.TimeoutCreate: 1 * time.Second,
+			}},
+			configWithoutTimeouts: map[string]any{"x": 1},
+
+			expectedWarnings: autogold.Expect([]string{"WARN: Resource does not support customTimeouts, ignoring: create=1s"}),
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			logger := &testLogger{}
+			ctx := context.WithValue(context.Background(), logging.CtxKey, logger)
+			i := &planResourceChangeImpl{}
+			ty := tc.rschema.CoreConfigSchema().ImpliedType()
+			// Quick short-cut here, taking advantage of the fact that configWithTimeouts only reads
+			// cfg.tf.Config, set only that. If this needs to be revised, can construct ResourceConfig in
+			// the usual way instead.
+			cfg := v2ResourceConfig{
+				tf: &terraform.ResourceConfig{
+					Config: tc.configWithoutTimeouts,
+				},
+			}
+			actual := i.configWithTimeouts(ctx, cfg, tc.topts, ty)
+			if tc.expected != nil {
+				assert.Equal(t, tc.expected, actual)
+			} else {
+				tc.expectedWarnings.Equal(t, logger.messages)
+			}
+		})
+	}
+}
+
+type testLogger struct {
+	messages []string
+}
+
+func (l *testLogger) Debug(msg string) {
+	l.messages = append(l.messages, fmt.Sprintf("DEBUG: %s", msg))
+}
+
+func (l *testLogger) Info(msg string) {
+	l.messages = append(l.messages, fmt.Sprintf("INFO: %s", msg))
+}
+
+func (l *testLogger) Warn(msg string) {
+	l.messages = append(l.messages, fmt.Sprintf("WARN: %s", msg))
+}
+
+func (l *testLogger) Error(msg string) {
+	l.messages = append(l.messages, fmt.Sprintf("ERROR: %s", msg))
+}
+
+func (*testLogger) StatusUntyped() any {
+	return "?"
 }

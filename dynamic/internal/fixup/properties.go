@@ -24,9 +24,11 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
@@ -100,54 +102,102 @@ func fixPropertyConflict(p *info.Provider) error {
 		return fmt.Errorf("must set p.Name")
 	}
 	return walkResources(p, func(r tfbridge.Resource) error {
-		var retError error
+		var retError []error
 		r.TF.Schema().Range(func(key string, value shim.Schema) bool {
 			if fix := badPropertyName(p.Name, key); fix != nil {
-				if r.Schema.Fields == nil {
-					r.Schema.Fields = map[string]*info.Schema{}
-				}
-
-				s, ok := r.Schema.Fields[key]
-				if !ok {
-					s = &info.Schema{}
-				}
-
-				if s.Name == "" {
-					var err error
-					s.Name, err = fix(r.TF)
-					if err != nil {
-						retError = fmt.Errorf("%q: %w", key, err)
-					}
-				}
-
-				if !ok {
-					r.Schema.Fields[key] = s
+				err := fix(r)
+				if err != nil {
+					retError = append(retError, fmt.Errorf("%s: %w", key, err))
 				}
 			}
 
 			return true
 		})
-		return retError
+		return errors.Join(retError...)
 	})
 }
 
-func badPropertyName(providerName, key string) func(shim.Resource) (string, error) {
+func getField(i *map[string]*info.Schema, name string) *info.Schema {
+	contract.Assertf(i != nil, "i cannot be nil")
+	if *i == nil {
+		*i = map[string]*info.Schema{}
+	}
+	v, ok := (*i)[name]
+	if !ok {
+		v = new(info.Schema)
+		(*i)[name] = v
+	}
+	return v
+}
+
+type fixupProperty = func(tfbridge.Resource) error
+
+func badPropertyName(providerName, key string) fixupProperty {
 	switch key {
 	case "urn":
-		return newName(providerName)
+		return fixURN(providerName)
+	case "id":
+		return fixID(providerName)
 	default:
 		return nil
 	}
 }
 
-func newName(providerName string) func(shim.Resource) (string, error) {
-	return func(r shim.Resource) (string, error) {
-		s := r.Schema()
-		v := providerName + "_urn"
-		if _, ok := s.GetOk(v); !ok {
-			return tfbridge.TerraformToPulumiNameV2(v, s, nil), nil
+func fixID(providerName string) fixupProperty {
+	return func(r tfbridge.Resource) error {
+		tfSchema := r.TF.Schema()
+		proposedIDFieldName := strings.ReplaceAll(providerName, "-", "_") + "_id"
+		tfIDProperty, ok := tfSchema.GetOk("id")
+		if !ok {
+			// could not find an ID
+			return nil
 		}
-		return "", fmt.Errorf("no available new name, tried %q", v)
+
+		if _, ok := tfSchema.GetOk(proposedIDFieldName); ok {
+			return fmt.Errorf("no available new name, tried %q", proposedIDFieldName)
+		}
+
+		// If either id.Optional or id.Required are set, then the provider allows
+		// (or requires) the user to set "id" as an input. Pulumi does not allow
+		// that, so we alias "id".
+		if !tfIDProperty.Optional() && !tfIDProperty.Required() {
+			return nil
+		}
+
+		if f := getField(&r.Schema.Fields, "id"); f.Name == "" {
+			newIDField := tfbridge.TerraformToPulumiNameV2(proposedIDFieldName, tfSchema, r.Schema.Fields)
+			f.Name = newIDField
+
+			// We are altering the original ID because it is valid for the
+			// user to set it. As long as it will be present as an output, we
+			// should still be able to use it as the actual ID.
+			//
+			// We expect newIDField to be present in the output space when:
+			//
+			// 1. The user *must* set it.
+			// 2. The user *may* set it, but if they don't then the provider will.
+			if tfIDProperty.Required() || (tfIDProperty.Optional() && tfIDProperty.Computed()) {
+				r.Schema.ComputeID = tfbridge.DelegateIDField(resource.PropertyKey(newIDField), providerName,
+					"https://github.com/pulumi/pulumi-terraform-provider")
+			}
+		}
+
+		return nil
+	}
+}
+
+func fixURN(providerName string) fixupProperty {
+	return func(r tfbridge.Resource) error {
+		s := r.TF.Schema()
+		v := providerName + "_urn"
+		if _, ok := s.GetOk(v); ok {
+			return fmt.Errorf("no available new name, tried %q", v)
+		}
+		if f := getField(&r.Schema.Fields, "urn"); f.Name == "" {
+			f.Name = tfbridge.TerraformToPulumiNameV2(v, s, r.Schema.Fields)
+		}
+		return nil
+
 	}
 }
 

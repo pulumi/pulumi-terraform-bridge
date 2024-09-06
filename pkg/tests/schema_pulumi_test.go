@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -1618,7 +1619,8 @@ func TestConfigureCrossTest(t *testing.T) {
 
 		tfdriver := tfcheck.NewTfDriver(t, t.TempDir(), "prov", tfp)
 		tfdriver.Write(t, tfProgram)
-		tfdriver.Plan(t)
+		_, err := tfdriver.Plan(t)
+		require.NoError(t, err)
 		require.NotNil(t, tfRd)
 		require.Nil(t, puRd)
 
@@ -1894,6 +1896,43 @@ func TestDetailedDiffPlainTypes(t *testing.T) {
 					Type:     schema.TypeMap,
 					Optional: true,
 					Elem:     &schema.Schema{Type: schema.TypeString},
+				},
+				"list_block": {
+					Type:     schema.TypeList,
+					Optional: true,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"prop": {
+								Type:     schema.TypeString,
+								Optional: true,
+							},
+						},
+					},
+				},
+				"set_block": {
+					Type:     schema.TypeSet,
+					Optional: true,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"prop": {
+								Type:     schema.TypeString,
+								Optional: true,
+							},
+						},
+					},
+				},
+				"max_items_one_block": {
+					Type:     schema.TypeList,
+					Optional: true,
+					MaxItems: 1,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"prop": {
+								Type:     schema.TypeString,
+								Optional: true,
+							},
+						},
+					},
 				},
 			},
 		},
@@ -2572,6 +2611,838 @@ Resources:
     1 unchanged
 `),
 		},
+		{
+			"list block unchanged",
+			map[string]interface{}{"listBlocks": []interface{}{map[string]interface{}{"prop": "val"}}},
+			map[string]interface{}{"listBlocks": []interface{}{map[string]interface{}{"prop": "val"}}},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+Resources:
+    2 unchanged
+`),
+		},
+		{
+			"list block added",
+			map[string]interface{}{},
+			map[string]interface{}{"listBlocks": []interface{}{map[string]interface{}{"prop": "val"}}},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ listBlocks: [
+          + [0]: {
+                  + prop      : "val"
+                }
+        ]
+Resources:
+    ~ 1 to update
+    1 unchanged
+`),
+		},
+		// This is expected to be a no-op because blocks can not be nil in TF
+		{
+			"list block added empty",
+			map[string]interface{}{},
+			map[string]interface{}{"listBlocks": []interface{}{}},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+Resources:
+    2 unchanged
+`),
+		},
+		{
+			"list block added empty object",
+			map[string]interface{}{},
+			map[string]interface{}{"listBlocks": []interface{}{map[string]interface{}{}}},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ listBlocks: [
+          + [0]: {
+                }
+        ]
+Resources:
+    ~ 1 to update
+    1 unchanged
+`),
+		},
+		// TODO[pulumi/pulumi-terraform-bridge#2234]: Duplicated diff
+		{
+			"list block removed",
+			map[string]interface{}{"listBlocks": []interface{}{map[string]interface{}{"prop": "val"}}},
+			map[string]interface{}{},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      - listBlocks: [
+      -     [0]: {
+              - prop: "val"
+            }
+        ]
+      - listBlocks: [
+      -     [0]: {
+              - prop: "val"
+            }
+        ]
+Resources:
+    ~ 1 to update
+    1 unchanged
+`),
+		},
+		// This is expected to be a no-op because blocks can not be nil in TF
+		{
+			"list block removed empty",
+			map[string]interface{}{"listBlocks": []interface{}{}},
+			map[string]interface{}{},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+Resources:
+    2 unchanged
+`),
+		},
+		// TODO: where is the nested prop diff coming from
+		{
+			"list block removed empty object",
+			map[string]interface{}{"listBlocks": []interface{}{map[string]interface{}{}}},
+			map[string]interface{}{},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      - listBlocks: [
+      -     [0]: {
+              - prop: <null>
+            }
+        ]
+Resources:
+    ~ 1 to update
+    1 unchanged
+`),
+		},
+		// TODO: Why are __defaults appearing in the diff?
+		{
+			"list block element added front",
+			map[string]interface{}{"listBlocks": []interface{}{
+				map[string]interface{}{"prop": "val2"},
+				map[string]interface{}{"prop": "val3"},
+			}},
+			map[string]interface{}{"listBlocks": []interface{}{
+				map[string]interface{}{"prop": "val1"},
+				map[string]interface{}{"prop": "val2"},
+				map[string]interface{}{"prop": "val3"},
+			}},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ listBlocks: [
+          ~ [0]: {
+                  + __defaults: []
+                  ~ prop      : "val2" => "val1"
+                }
+          ~ [1]: {
+                  + __defaults: []
+                  ~ prop      : "val3" => "val2"
+                }
+          + [2]: {
+                  + prop      : "val3"
+                }
+        ]
+Resources:
+    ~ 1 to update
+    1 unchanged
+`),
+		},
+		// TODO: Why are __defaults appearing in the diff?
+		{
+			"list block element added back",
+			map[string]interface{}{"listBlocks": []interface{}{
+				map[string]interface{}{"prop": "val1"},
+				map[string]interface{}{"prop": "val2"},
+			}},
+			map[string]interface{}{"listBlocks": []interface{}{
+				map[string]interface{}{"prop": "val1"},
+				map[string]interface{}{"prop": "val2"},
+				map[string]interface{}{"prop": "val3"},
+			}},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ listBlocks: [
+          ~ [0]: {
+                  + __defaults: []
+                    prop      : "val1"
+                }
+          ~ [1]: {
+                  + __defaults: []
+                    prop      : "val2"
+                }
+          + [2]: {
+                  + prop      : "val3"
+                }
+        ]
+Resources:
+    ~ 1 to update
+    1 unchanged
+`),
+		},
+		// TODO: Why are __defaults appearing in the diff?
+		{
+			"list block element added middle",
+			map[string]interface{}{"listBlocks": []interface{}{
+				map[string]interface{}{"prop": "val1"},
+				map[string]interface{}{"prop": "val3"},
+			}},
+			map[string]interface{}{"listBlocks": []interface{}{
+				map[string]interface{}{"prop": "val1"},
+				map[string]interface{}{"prop": "val2"},
+				map[string]interface{}{"prop": "val3"},
+			}},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ listBlocks: [
+          ~ [0]: {
+                  + __defaults: []
+                    prop      : "val1"
+                }
+          ~ [1]: {
+                  + __defaults: []
+                  ~ prop      : "val3" => "val2"
+                }
+          + [2]: {
+                  + prop      : "val3"
+                }
+        ]
+Resources:
+    ~ 1 to update
+    1 unchanged
+`),
+		},
+		// TODO: Why are __defaults appearing in the diff?
+		{
+			"list block element removed front",
+			map[string]interface{}{"listBlocks": []interface{}{
+				map[string]interface{}{"prop": "val1"},
+				map[string]interface{}{"prop": "val2"},
+				map[string]interface{}{"prop": "val3"},
+			}},
+			map[string]interface{}{"listBlocks": []interface{}{
+				map[string]interface{}{"prop": "val2"},
+				map[string]interface{}{"prop": "val3"},
+			}},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ listBlocks: [
+          ~ [0]: {
+                  + __defaults: []
+                  ~ prop      : "val1" => "val2"
+                }
+          ~ [1]: {
+                  + __defaults: []
+                  ~ prop      : "val2" => "val3"
+                }
+          - [2]: {
+                  - prop: "val3"
+                }
+        ]
+Resources:
+    ~ 1 to update
+    1 unchanged
+`),
+		},
+		// TODO: Why are __defaults appearing in the diff?
+		{
+			"list block element removed back",
+			map[string]interface{}{"listBlocks": []interface{}{
+				map[string]interface{}{"prop": "val1"},
+				map[string]interface{}{"prop": "val2"},
+				map[string]interface{}{"prop": "val3"},
+			}},
+			map[string]interface{}{"listBlocks": []interface{}{
+				map[string]interface{}{"prop": "val1"},
+				map[string]interface{}{"prop": "val2"},
+			}},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ listBlocks: [
+          ~ [0]: {
+                  + __defaults: []
+                    prop      : "val1"
+                }
+          ~ [1]: {
+                  + __defaults: []
+                    prop      : "val2"
+                }
+          - [2]: {
+                  - prop: "val3"
+                }
+        ]
+Resources:
+    ~ 1 to update
+    1 unchanged
+`),
+		},
+		// TODO: Why are __defaults appearing in the diff?
+		{
+			"list block element removed middle",
+			map[string]interface{}{"listBlocks": []interface{}{
+				map[string]interface{}{"prop": "val1"},
+				map[string]interface{}{"prop": "val2"},
+				map[string]interface{}{"prop": "val3"},
+			}},
+			map[string]interface{}{"listBlocks": []interface{}{
+				map[string]interface{}{"prop": "val1"},
+				map[string]interface{}{"prop": "val3"},
+			}},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ listBlocks: [
+          ~ [0]: {
+                  + __defaults: []
+                    prop      : "val1"
+                }
+          ~ [1]: {
+                  + __defaults: []
+                  ~ prop      : "val2" => "val3"
+                }
+          - [2]: {
+                  - prop: "val3"
+                }
+        ]
+Resources:
+    ~ 1 to update
+    1 unchanged
+`),
+		},
+		{
+			"list block element changed",
+			map[string]interface{}{"listBlocks": []interface{}{
+				map[string]interface{}{"prop": "val1"},
+			}},
+			map[string]interface{}{"listBlocks": []interface{}{
+				map[string]interface{}{"prop": "val2"},
+			}},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ listBlocks: [
+          ~ [0]: {
+                  ~ prop: "val1" => "val2"
+                }
+        ]
+Resources:
+    ~ 1 to update
+    1 unchanged
+`),
+		},
+		{
+			"set block unchanged",
+			map[string]interface{}{"setBlocks": []interface{}{map[string]interface{}{"prop": "val"}}},
+			map[string]interface{}{"setBlocks": []interface{}{map[string]interface{}{"prop": "val"}}},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+Resources:
+    2 unchanged
+`),
+		},
+		{
+			"set block added",
+			map[string]interface{}{},
+			map[string]interface{}{"setBlocks": []interface{}{map[string]interface{}{"prop": "val"}}},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ setBlocks: [
+          + [0]: {
+                  + prop      : "val"
+                }
+        ]
+Resources:
+    ~ 1 to update
+    1 unchanged
+`),
+		},
+		// This is expected to be a no-op because blocks can not be nil in TF
+		{
+			"set block added empty",
+			map[string]interface{}{},
+			map[string]interface{}{"setBlocks": []interface{}{}},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+Resources:
+    2 unchanged
+`),
+		},
+		{
+			"set block added empty object",
+			map[string]interface{}{},
+			map[string]interface{}{"setBlocks": []interface{}{map[string]interface{}{}}},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ setBlocks: [
+          + [0]: {
+                }
+        ]
+Resources:
+    ~ 1 to update
+    1 unchanged
+`),
+		},
+		// TODO[pulumi/pulumi-terraform-bridge#2234]: Duplicated diff
+		{
+			"set block removed",
+			map[string]interface{}{"setBlocks": []interface{}{map[string]interface{}{"prop": "val"}}},
+			map[string]interface{}{},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      - setBlocks: [
+      -     [0]: {
+              - prop: "val"
+            }
+        ]
+      - setBlocks: [
+      -     [0]: {
+              - prop: "val"
+            }
+        ]
+Resources:
+    ~ 1 to update
+    1 unchanged
+`),
+		},
+		// This is expected to be a no-op because blocks can not be nil in TF
+		{
+			"set block removed empty",
+			map[string]interface{}{"setBlocks": []interface{}{}},
+			map[string]interface{}{},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+Resources:
+    2 unchanged
+`),
+		},
+		// TODO: where is the nested prop diff coming from
+		{
+			"set block removed empty object",
+			map[string]interface{}{"setBlocks": []interface{}{map[string]interface{}{}}},
+			map[string]interface{}{},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      - setBlocks: [
+      -     [0]: {
+              - prop: ""
+            }
+        ]
+Resources:
+    ~ 1 to update
+    1 unchanged
+`),
+		},
+		// TODO: Why are __defaults appearing in the diff?
+		{
+			"set block element added front",
+			map[string]interface{}{"setBlocks": []interface{}{
+				map[string]interface{}{"prop": "val2"},
+				map[string]interface{}{"prop": "val3"},
+			}},
+			map[string]interface{}{"setBlocks": []interface{}{
+				map[string]interface{}{"prop": "val1"},
+				map[string]interface{}{"prop": "val2"},
+				map[string]interface{}{"prop": "val3"},
+			}},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ setBlocks: [
+          ~ [0]: {
+                  + __defaults: []
+                  ~ prop      : "val2" => "val1"
+                }
+          ~ [1]: {
+                  + __defaults: []
+                  ~ prop      : "val3" => "val2"
+                }
+          + [2]: {
+                  + prop      : "val3"
+                }
+        ]
+Resources:
+    ~ 1 to update
+    1 unchanged
+`),
+		},
+		// TODO: Why are __defaults appearing in the diff?
+		{
+			"set block element added back",
+			map[string]interface{}{"setBlocks": []interface{}{
+				map[string]interface{}{"prop": "val1"},
+				map[string]interface{}{"prop": "val2"},
+			}},
+			map[string]interface{}{"setBlocks": []interface{}{
+				map[string]interface{}{"prop": "val1"},
+				map[string]interface{}{"prop": "val2"},
+				map[string]interface{}{"prop": "val3"},
+			}},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ setBlocks: [
+          ~ [0]: {
+                  + __defaults: []
+                    prop      : "val1"
+                }
+          ~ [1]: {
+                  + __defaults: []
+                    prop      : "val2"
+                }
+          + [2]: {
+                  + prop      : "val3"
+                }
+        ]
+Resources:
+    ~ 1 to update
+    1 unchanged
+`),
+		},
+		// TODO: Why are __defaults appearing in the diff?
+		{
+			"set block element added middle",
+			map[string]interface{}{"setBlocks": []interface{}{
+				map[string]interface{}{"prop": "val1"},
+				map[string]interface{}{"prop": "val3"},
+			}},
+			map[string]interface{}{"setBlocks": []interface{}{
+				map[string]interface{}{"prop": "val1"},
+				map[string]interface{}{"prop": "val2"},
+				map[string]interface{}{"prop": "val3"},
+			}},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ setBlocks: [
+          ~ [0]: {
+                  + __defaults: []
+                    prop      : "val1"
+                }
+          ~ [1]: {
+                  + __defaults: []
+                  ~ prop      : "val3" => "val2"
+                }
+          + [2]: {
+                  + prop      : "val3"
+                }
+        ]
+Resources:
+    ~ 1 to update
+    1 unchanged
+`),
+		},
+		// TODO: Why are __defaults appearing in the diff?
+		// TODO[pulumi/pulumi-terraform-bridge#2234]: Duplicated diff
+		{
+			"set block element removed front",
+			map[string]interface{}{"setBlocks": []interface{}{
+				map[string]interface{}{"prop": "val1"},
+				map[string]interface{}{"prop": "val2"},
+				map[string]interface{}{"prop": "val3"},
+			}},
+			map[string]interface{}{"setBlocks": []interface{}{
+				map[string]interface{}{"prop": "val2"},
+				map[string]interface{}{"prop": "val3"},
+			}},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ setBlocks: [
+          ~ [0]: {
+                  + __defaults: []
+                  ~ prop      : "val1" => "val2"
+                }
+          ~ [1]: {
+                  + __defaults: []
+                  ~ prop      : "val2" => "val3"
+                }
+          - [2]: {
+                  - prop: "val3"
+                }
+        ]
+Resources:
+    ~ 1 to update
+    1 unchanged
+`),
+		},
+		// TODO: Why are __defaults appearing in the diff?
+		{
+			"set block element removed back",
+			map[string]interface{}{"setBlocks": []interface{}{
+				map[string]interface{}{"prop": "val1"},
+				map[string]interface{}{"prop": "val2"},
+				map[string]interface{}{"prop": "val3"},
+			}},
+			map[string]interface{}{"setBlocks": []interface{}{
+				map[string]interface{}{"prop": "val1"},
+				map[string]interface{}{"prop": "val2"},
+			}},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ setBlocks: [
+          ~ [0]: {
+                  + __defaults: []
+                    prop      : "val1"
+                }
+          ~ [1]: {
+                  + __defaults: []
+                    prop      : "val2"
+                }
+          - [2]: {
+                  - prop: "val3"
+                }
+        ]
+Resources:
+    ~ 1 to update
+    1 unchanged
+`),
+		},
+		// TODO: Why are __defaults appearing in the diff?
+		{
+			"set block element removed middle",
+			map[string]interface{}{"setBlocks": []interface{}{
+				map[string]interface{}{"prop": "val1"},
+				map[string]interface{}{"prop": "val2"},
+				map[string]interface{}{"prop": "val3"},
+			}},
+			map[string]interface{}{"setBlocks": []interface{}{
+				map[string]interface{}{"prop": "val1"},
+				map[string]interface{}{"prop": "val3"},
+			}},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ setBlocks: [
+          ~ [0]: {
+                  + __defaults: []
+                    prop      : "val1"
+                }
+          ~ [1]: {
+                  + __defaults: []
+                  ~ prop      : "val2" => "val3"
+                }
+          - [2]: {
+                  - prop: "val3"
+                }
+        ]
+Resources:
+    ~ 1 to update
+    1 unchanged
+`),
+		},
+		{
+			"set block element changed",
+			map[string]interface{}{"setBlocks": []interface{}{
+				map[string]interface{}{"prop": "val1"},
+			}},
+			map[string]interface{}{"setBlocks": []interface{}{
+				map[string]interface{}{"prop": "val2"},
+			}},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ setBlocks: [
+          ~ [0]: {
+                  ~ prop: "val1" => "val2"
+                }
+        ]
+Resources:
+    ~ 1 to update
+    1 unchanged
+`),
+		},
+		{
+			"maxItemsOne block unchanged",
+			map[string]interface{}{"maxItemsOneBlock": map[string]interface{}{"prop": "val"}},
+			map[string]interface{}{"maxItemsOneBlock": map[string]interface{}{"prop": "val"}},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+Resources:
+    2 unchanged
+`),
+		},
+		// TODO[pulumi/pulumi-terraform-bridge#2234]: Duplicated diff
+		{
+			"maxItemsOne block added",
+			map[string]interface{}{},
+			map[string]interface{}{"maxItemsOneBlock": map[string]interface{}{"prop": "val"}},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      + maxItemsOneBlock: {
+          + prop      : "val"
+        }
+      + maxItemsOneBlock: {
+          + prop      : "val"
+        }
+Resources:
+    ~ 1 to update
+    1 unchanged
+`),
+		},
+		{
+			"maxItemsOne block added empty",
+			map[string]interface{}{},
+			map[string]interface{}{"maxItemsOneBlock": map[string]interface{}{}},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      + maxItemsOneBlock: {
+        }
+Resources:
+    ~ 1 to update
+    1 unchanged
+`),
+		},
+		// TODO[pulumi/pulumi-terraform-bridge#2234]: Duplicated diff
+		{
+			"maxItemsOne block removed",
+			map[string]interface{}{"maxItemsOneBlock": map[string]interface{}{"prop": "val"}},
+			map[string]interface{}{},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      - maxItemsOneBlock: {
+          - prop: "val"
+        }
+      - maxItemsOneBlock: {
+          - prop: "val"
+        }
+Resources:
+    ~ 1 to update
+    1 unchanged
+`),
+		},
+		// TODO: where is the nested prop diff coming from
+		{
+			"maxItemsOne block removed empty",
+			map[string]interface{}{"maxItemsOneBlock": map[string]interface{}{}},
+			map[string]interface{}{},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      - maxItemsOneBlock: {
+          - prop: <null>
+        }
+Resources:
+    ~ 1 to update
+    1 unchanged
+`),
+		},
+		{
+			"maxItemsOne block changed",
+			map[string]interface{}{"maxItemsOneBlock": map[string]interface{}{"prop": "val1"}},
+			map[string]interface{}{"maxItemsOneBlock": map[string]interface{}{"prop": "val2"}},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ maxItemsOneBlock: {
+          ~ prop: "val1" => "val2"
+        }
+Resources:
+    ~ 1 to update
+    1 unchanged
+`),
+		},
 	} {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
@@ -2941,7 +3812,7 @@ runtime: yaml
 			} else {
 				assert.NotContains(t, imp.Stdout, "One or more imported inputs failed to validate")
 
-				f, err := os.OpenFile(filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml"), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+				f, err := os.OpenFile(filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml"), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0o600)
 				assert.NoError(t, err)
 				defer f.Close()
 				_, err = f.WriteString(string(contents))
@@ -2950,6 +3821,141 @@ runtime: yaml
 				// run preview using the generated file
 				pt.Preview(optpreview.Diff(), optpreview.ExpectNoChanges())
 			}
+		})
+	}
+}
+
+func TestCreateCustomTimeoutsCrossTest(t *testing.T) {
+	test := func(
+		t *testing.T,
+		schemaCreateTimeout *time.Duration,
+		programTimeout *string,
+		expected time.Duration,
+		ExpectFail bool,
+	) {
+		var pulumiCapturedTimeout *time.Duration
+		var tfCapturedTimeout *time.Duration
+		prov := &schema.Provider{
+			ResourcesMap: map[string]*schema.Resource{
+				"prov_test": {
+					Schema: map[string]*schema.Schema{
+						"prop": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+					},
+					CreateContext: func(ctx context.Context, rd *schema.ResourceData, i interface{}) diag.Diagnostics {
+						t := rd.Timeout(schema.TimeoutCreate)
+						if pulumiCapturedTimeout == nil {
+							pulumiCapturedTimeout = &t
+						} else {
+							tfCapturedTimeout = &t
+						}
+						rd.SetId("id")
+						return diag.Diagnostics{}
+					},
+					Timeouts: &schema.ResourceTimeout{
+						Create: schemaCreateTimeout,
+					},
+				},
+			},
+		}
+
+		bridgedProvider := pulcheck.BridgedProvider(t, "prov", prov)
+		pulumiTimeout := `""`
+		if programTimeout != nil {
+			pulumiTimeout = fmt.Sprintf(`"%s"`, *programTimeout)
+		}
+
+		tfTimeout := "null"
+		if programTimeout != nil {
+			tfTimeout = fmt.Sprintf(`"%s"`, *programTimeout)
+		}
+
+		program := fmt.Sprintf(`
+name: test
+runtime: yaml
+resources:
+	mainRes:
+		type: prov:Test
+		properties:
+			prop: "val"
+		options:
+			customTimeouts:
+				create: %s
+`, pulumiTimeout)
+
+		pt := pulcheck.PulCheck(t, bridgedProvider, program)
+		pt.Up()
+		// We pass custom timeouts in the program if the resource does not support them.
+
+		require.NotNil(t, pulumiCapturedTimeout)
+		require.Nil(t, tfCapturedTimeout)
+
+		tfProgram := fmt.Sprintf(`
+resource "prov_test" "mainRes" {
+	prop = "val"
+	timeouts {
+		create = %s
+	}
+}`, tfTimeout)
+
+		tfdriver := tfcheck.NewTfDriver(t, t.TempDir(), "prov", prov)
+		tfdriver.Write(t, tfProgram)
+
+		plan, err := tfdriver.Plan(t)
+		if ExpectFail {
+			require.Error(t, err)
+			return
+		}
+		require.NoError(t, err)
+		err = tfdriver.Apply(t, plan)
+		require.NoError(t, err)
+		require.NotNil(t, tfCapturedTimeout)
+
+		assert.Equal(t, *pulumiCapturedTimeout, *tfCapturedTimeout)
+		assert.Equal(t, *pulumiCapturedTimeout, expected)
+	}
+
+	oneSecString := "1s"
+	oneSec := 1 * time.Second
+	// twoSecString := "2s"
+	twoSec := 2 * time.Second
+
+	tests := []struct {
+		name                string
+		schemaCreateTimeout *time.Duration
+		programTimeout      *string
+		expected            time.Duration
+		expectFail          bool
+	}{
+		{
+			"schema specified timeout",
+			&oneSec,
+			nil,
+			oneSec,
+			false,
+		},
+		{
+			"program specified timeout",
+			&twoSec,
+			&oneSecString,
+			oneSec,
+			false,
+		},
+		{
+			"program specified without schema timeout",
+			nil,
+			&oneSecString,
+			oneSec,
+			true,
+		},
+	}
+
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			test(t, tc.schemaCreateTimeout, tc.programTimeout, tc.expected, tc.expectFail)
 		})
 	}
 }

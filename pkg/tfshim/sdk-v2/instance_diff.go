@@ -38,6 +38,7 @@ func (d v2InstanceDiff) DiffEqualDecisionOverride() *bool {
 }
 
 func (d v2InstanceDiff) applyTimeoutOptions(opts shim.TimeoutOptions) {
+	// This method is no longer used with PlanResourceChange; we handle timeouts more directly.
 	if opts.ResourceTimeout != nil {
 		err := d.encodeTimeouts(opts.ResourceTimeout)
 		contract.AssertNoErrorf(err, "encodeTimeouts should never fail")

@@ -56,6 +56,74 @@ func TestPlainDocsParser(t *testing.T) {
 	}
 }
 
+func TestTrimFrontmatter(t *testing.T) {
+	type testCase struct {
+		// The name of the test case.
+		name     string
+		input    string
+		expected string
+	}
+
+	tests := []testCase{
+		{
+			name:     "Strips Upstream Frontmatter",
+			input:    readfile(t, "test_data/strip-front-matter/openstack-input.md"),
+			expected: readfile(t, "test_data/strip-front-matter/openstack-expected.md"),
+		},
+		{
+			name:     "Returns Body If No Frontmatter",
+			input:    readfile(t, "test_data/strip-front-matter/artifactory-input.md"),
+			expected: readfile(t, "test_data/strip-front-matter/artifactory-expected.md"),
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			if runtime.GOOS == "windows" {
+				t.Skipf("Skipping on Windows due to a test setup issue")
+			}
+			t.Parallel()
+			actual := trimFrontMatter([]byte(tt.input))
+			assertEqualHTML(t, tt.expected, string(actual))
+		})
+	}
+}
+
+func TestRemoveTitle(t *testing.T) {
+	type testCase struct {
+		// The name of the test case.
+		name     string
+		input    string
+		expected string
+	}
+
+	tests := []testCase{
+		{
+			name:     "Strips Title Placed Anywhere",
+			input:    readfile(t, "test_data/remove-title/openstack-input.md"),
+			expected: readfile(t, "test_data/remove-title/openstack-expected.md"),
+		},
+		{
+			name:     "Strips Title On Top",
+			input:    readfile(t, "test_data/remove-title/artifactory-input.md"),
+			expected: readfile(t, "test_data/remove-title/artifactory-expected.md"),
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			if runtime.GOOS == "windows" {
+				t.Skipf("Skipping on Windows due to a test setup issue")
+			}
+			t.Parallel()
+			actual, err := removeTitle([]byte(tt.input))
+			assert.NoError(t, err)
+			assertEqualHTML(t, tt.expected, string(actual))
+		})
+	}
+}
+
 //nolint:lll
 func TestWriteInstallationInstructions(t *testing.T) {
 	t.Parallel()
@@ -101,7 +169,7 @@ func TestWriteFrontMatter(t *testing.T) {
 
 	tc := testCase{
 		name:         "Generates Front Matter for installation-configuration.md",
-		providerName: "Test",
+		providerName: "test",
 		expected: delimiter +
 			"title: Test Provider\n" +
 			"meta_desc: Provides an overview on how to configure the Pulumi Test provider.\n" +
