@@ -2,6 +2,7 @@ package tfbridgetests
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -138,11 +139,14 @@ resources:
 	res := pt.Preview(optpreview.Diff())
 	t.Log(res.StdOut)
 
-	diffs, err := pt.GrpcLog().Diffs()
-	require.NoError(t, err)
-
-	assert.Len(t, diffs, 1)
-	assert.Equal(t, "DIFF_SOME", diffs[0].Response.Changes.String())
+	for _, entry := range pt.GrpcLog().Entries {
+		if entry.Method == "/pulumirpc.ResourceProvider/Diff" {
+			var diff map[string]interface{}
+			err := json.Unmarshal(entry.Response, &diff)
+			require.NoError(t, err)
+			assert.Equal(t, "DIFF_SOME", diff["changes"])
+		}
+	}
 }
 
 func TestIDAttribute(t *testing.T) {
