@@ -3100,7 +3100,7 @@ func TestStateFunc(t *testing.T) {
 				v, ok := d.GetOk("test")
 				assert.True(t, ok, "test property not set")
 
-				err := d.Set("test", v.(string) + " world")
+				err := d.Set("test", v.(string)+" world")
 				require.NoError(t, err)
 				return diags
 			},
