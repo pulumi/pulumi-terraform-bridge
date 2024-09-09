@@ -105,7 +105,7 @@ func TestFixPropertyConflicts(t *testing.T) {
 				}).Shim(),
 			},
 			expected: map[string]*info.Schema{
-				"id": {Name: "resourceId"},
+				"id": {Name: "resId"},
 			},
 			expectComputeIDSet: true,
 		},
@@ -118,7 +118,7 @@ func TestFixPropertyConflicts(t *testing.T) {
 				}).Shim(),
 			},
 			expected: map[string]*info.Schema{
-				"id": {Name: "resourceId"},
+				"id": {Name: "resId"},
 			},
 			expectComputeIDSet: true,
 		},
@@ -149,19 +149,41 @@ func TestFixPropertyConflicts(t *testing.T) {
 				"id": {Name: "overridden"},
 			},
 		},
+
+		// Test ID fallbacks
+
 		{
-			name: "fallback to resource ID for property name",
+			name: "fallback to resource and provider ID for property name",
 			schema: schema.SchemaMap{
 				"id": (&schema.Schema{
 					Type:     shim.TypeString,
 					Required: true,
 				}).Shim(),
-				"resource_id": (&schema.Schema{
+				"res_id": (&schema.Schema{
 					Type: shim.TypeString,
 				}).Shim(),
 			},
 			expected: map[string]*info.Schema{
-				"id": {Name: "resId"},
+				"id": {Name: "testResId"},
+			},
+			expectComputeIDSet: true,
+		},
+		{
+			name: "fallback to literal ID for property name",
+			schema: schema.SchemaMap{
+				"id": (&schema.Schema{
+					Type:     shim.TypeString,
+					Required: true,
+				}).Shim(),
+				"res_id": (&schema.Schema{
+					Type: shim.TypeString,
+				}).Shim(),
+				"test_res_id": (&schema.Schema{
+					Type: shim.TypeString,
+				}).Shim(),
+			},
+			expected: map[string]*info.Schema{
+				"id": {Name: "resourceId"},
 			},
 			expectComputeIDSet: true,
 		},
@@ -173,6 +195,9 @@ func TestFixPropertyConflicts(t *testing.T) {
 					Required: true,
 				}).Shim(),
 				"res_id": (&schema.Schema{
+					Type: shim.TypeString,
+				}).Shim(),
+				"test_res_id": (&schema.Schema{
 					Type: shim.TypeString,
 				}).Shim(),
 				"resource_id": (&schema.Schema{
@@ -243,9 +268,6 @@ func TestFixIDKebabCaseProvider(t *testing.T) {
 						// ("<resource_name>_id"), so these fields
 						// must be present to test the provider
 						// behavior.
-						"resource_id": (&schema.Schema{
-							Type: shim.TypeString,
-						}).Shim(),
 						"res_id": (&schema.Schema{
 							Type: shim.TypeString,
 						}).Shim(),
@@ -259,7 +281,7 @@ func TestFixIDKebabCaseProvider(t *testing.T) {
 
 	r := p.Resources["test-provider_res"]
 	assert.Equal(t, map[string]*info.Schema{
-		"id": {Name: "testProviderId"},
+		"id": {Name: "testProviderResId"},
 	}, r.Fields)
 	assert.NotNil(t, r.ComputeID)
 }

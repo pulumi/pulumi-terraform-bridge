@@ -165,10 +165,16 @@ func fixID(providerName string, tokenPrefix string) fixupProperty {
 		}
 
 		// We have an ordered list of names to attempt when we alias ID.
+		//
+		// 1. "<resource_name>_id"
+		// 2. "<provider_name>_<resource_name>_id"
+		// 4. "resource_id"
+		// 3. "<provider_name>_id"
 		candidateNames := []string{
-			"resource_id",                                      // "resource_id"
-			getResourceName(r.TFName) + "_id",                  // "<resource_name>_id"
-			strings.ReplaceAll(providerName, "-", "_") + "_id", // "<provider_name>_id"
+			getResourceName(r.TFName) + "_id",
+			strings.ReplaceAll(providerName, "-", "_") + "_" + getResourceName(r.TFName) + "_id",
+			"resource_id",
+			strings.ReplaceAll(providerName, "-", "_") + "_id",
 		}
 
 		for _, proposedIDFieldName := range candidateNames {
