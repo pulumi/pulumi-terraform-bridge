@@ -47,6 +47,8 @@ func TestMain(m *testing.M) {
 }
 
 func TestStacktraceDisplayed(t *testing.T) {
+	// TODO[pulumi/pulumi-terraform-bridge#2388]
+	t.Skip("flaky test")
 	t.Parallel()
 	skipWindows(t)
 
