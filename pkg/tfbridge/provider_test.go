@@ -5113,8 +5113,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 				"setBlockProps":[],
 				"listBlockProps":[],
 				"nestedListBlockProps":[],
-				"maxItemsOneBlockProp":null,
-				"__meta":"{\"_new_extra_shim\":{}}"
+				"maxItemsOneBlockProp":null
 			}
 		}
 	}`)
@@ -5145,8 +5144,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 				"setBlockProps":[],
 				"listBlockProps":[],
 				"nestedListBlockProps":[],
-				"maxItemsOneBlockProp":null,
-				"__meta":"{\"_new_extra_shim\":{}}"
+				"maxItemsOneBlockProp":null
 			}
 		}
 	}`)
@@ -5177,8 +5175,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 				}],
 				"listBlockProps":[],
 				"nestedListBlockProps":[],
-				"maxItemsOneBlockProp":null,
-				"__meta":"{\"_new_extra_shim\":{}}"
+				"maxItemsOneBlockProp":null
 			}
 		}
 	}`)
@@ -5207,8 +5204,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 				"setBlockProps":"04da6b54-80e4-46f7-96ec-b56ff0331ba9",
 				"listBlockProps":[],
 				"nestedListBlockProps":[],
-				"maxItemsOneBlockProp":null,
-				"__meta":"{\"_new_extra_shim\":{}}"
+				"maxItemsOneBlockProp":null
 			}
 		}
 	}`)
@@ -5237,8 +5233,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 				"setBlockProps":"04da6b54-80e4-46f7-96ec-b56ff0331ba9",
 				"listBlockProps":[],
 				"nestedListBlockProps":[],
-				"maxItemsOneBlockProp":null,
-				"__meta":"{\"_new_extra_shim\":{}}"
+				"maxItemsOneBlockProp":null
 			}
 		}
 	}`)
@@ -5269,8 +5264,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 				"setBlockProps":[],
 				"listBlockProps":[],
 				"nestedListBlockProps":[],
-				"maxItemsOneBlockProp":null,
-				"__meta":"{\"_new_extra_shim\":{}}"
+				"maxItemsOneBlockProp":null
 			}
 		}
 	}`)
@@ -5301,8 +5295,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 					"prop": "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
 				  }],
 				"nestedListBlockProps":[],
-				"maxItemsOneBlockProp":null,
-				"__meta":"{\"_new_extra_shim\":{}}"
+				"maxItemsOneBlockProp":null
 			}
 		}
 	}`)
@@ -5332,8 +5325,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 				"setBlockProps":[],
 				"listBlockProps":"04da6b54-80e4-46f7-96ec-b56ff0331ba9",
 				"nestedListBlockProps":[],
-				"maxItemsOneBlockProp":null,
-				"__meta":"{\"_new_extra_shim\":{}}"
+				"maxItemsOneBlockProp":null
 			}
 		}
 	}`)
@@ -5362,8 +5354,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 				"setBlockProps":[],
 				"listBlockProps":"04da6b54-80e4-46f7-96ec-b56ff0331ba9",
 				"nestedListBlockProps":[],
-				"maxItemsOneBlockProp":null,
-				"__meta":"{\"_new_extra_shim\":{}}"
+				"maxItemsOneBlockProp":null
 			}
 		}
 	}`)
@@ -5394,8 +5385,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 				"setBlockProps":[],
 				"listBlockProps":[],
 				"nestedListBlockProps":[],
-				"maxItemsOneBlockProp":null,
-				"__meta":"{\"_new_extra_shim\":{}}"
+				"maxItemsOneBlockProp":null
 			}
 		}
 	}`)
@@ -5428,8 +5418,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 						{"prop":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"}
 					]
 				  }],
-				"maxItemsOneBlockProp":null,
-				"__meta":"{\"_new_extra_shim\":{}}"
+				"maxItemsOneBlockProp":null
 			}
 		}
 	}`)
@@ -5460,8 +5449,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 				"nestedListBlockProps":[{
 					"nestedProps": "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
 				  }],
-				"maxItemsOneBlockProp":null,
-				"__meta":"{\"_new_extra_shim\":{}}"
+				"maxItemsOneBlockProp":null
 			}
 		}
 	}`)
@@ -5492,8 +5480,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 				"nestedListBlockProps":[{
 					"nestedProps": "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
 				  }],
-				"maxItemsOneBlockProp":null,
-				"__meta":"{\"_new_extra_shim\":{}}"
+				"maxItemsOneBlockProp":null
 			}
 		}
 	}`)
@@ -5523,8 +5510,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 				"setBlockProps":[],
 				"listBlockProps":[],
 				"nestedListBlockProps":"04da6b54-80e4-46f7-96ec-b56ff0331ba9",
-				"maxItemsOneBlockProp":null,
-				"__meta":"{\"_new_extra_shim\":{}}"
+				"maxItemsOneBlockProp":null
 			}
 		}
 	}`)
@@ -5553,8 +5539,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 				"setBlockProps":[],
 				"listBlockProps":[],
 				"nestedListBlockProps":"04da6b54-80e4-46f7-96ec-b56ff0331ba9",
-				"maxItemsOneBlockProp":null,
-				"__meta":"{\"_new_extra_shim\":{}}"
+				"maxItemsOneBlockProp":null
 			}
 		}
 	}`)
@@ -5583,8 +5568,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 				"setBlockProps":[],
 				"listBlockProps":[],
 				"nestedListBlockProps":[],
-				"maxItemsOneBlockProp":null,
-				"__meta":"{\"_new_extra_shim\":{}}"
+				"maxItemsOneBlockProp":null
 			}
 		}
 	}`)
@@ -5613,8 +5597,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 				"setBlockProps":[],
 				"listBlockProps":[],
 				"nestedListBlockProps":[],
-				"maxItemsOneBlockProp":{"prop":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"},
-				"__meta":"{\"_new_extra_shim\":{}}"
+				"maxItemsOneBlockProp":{"prop":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"}
 			}
 		}
 	}`)
@@ -5643,8 +5626,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 				"setBlockProps":[],
 				"listBlockProps":[],
 				"nestedListBlockProps":[],
-				"maxItemsOneBlockProp":"04da6b54-80e4-46f7-96ec-b56ff0331ba9",
-				"__meta":"{\"_new_extra_shim\":{}}"
+				"maxItemsOneBlockProp":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
 			}
 		}
 	}`)
