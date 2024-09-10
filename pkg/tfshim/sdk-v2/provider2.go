@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"maps"
 	"sort"
 	"strings"
 	"time"
@@ -114,6 +113,7 @@ type v2InstanceDiff2 struct {
 
 	config       cty.Value
 	plannedState cty.Value
+	plannedMeta  map[string]interface{}
 }
 
 func (d *v2InstanceDiff2) String() string {
@@ -130,7 +130,8 @@ func (d *v2InstanceDiff2) GoString() string {
     },
     config:         %#v,
     plannedState:   %#v,
-}`, d.v2InstanceDiff.tf, d.config, d.plannedState)
+	plannedMeta:    %#v,
+}`, d.v2InstanceDiff.tf, d.config, d.plannedState, d.plannedMeta)
 }
 
 var _ shim.InstanceDiff = (*v2InstanceDiff2)(nil)
@@ -260,18 +261,13 @@ func (p *planResourceChangeImpl) Diff(
 		return nil, err
 	}
 
-	if plan.PlannedDiff.Meta == nil && plan.PlannedMeta != nil {
-		plan.PlannedDiff.Meta = plan.PlannedMeta
-	} else if plan.PlannedDiff.Meta != nil && plan.PlannedMeta != nil {
-		maps.Copy(plan.PlannedDiff.Meta, plan.PlannedMeta)
-	}
-
 	return &v2InstanceDiff2{
 		v2InstanceDiff: v2InstanceDiff{
 			tf: plan.PlannedDiff,
 		},
 		config:       cfg,
 		plannedState: plan.PlannedState,
+		plannedMeta:  plan.PlannedMeta,
 	}, nil
 }
 
@@ -291,7 +287,7 @@ func (p *planResourceChangeImpl) Apply(
 	}
 	diff := p.unpackDiff(ty, d)
 	cfg, st, pl := diff.config, state.stateValue, diff.plannedState
-	priv := diff.v2InstanceDiff.tf.Meta
+	priv := diff.plannedMeta
 	resp, err := p.server.ApplyResourceChange(ctx, t, ty, cfg, st, pl, priv, meta)
 	if err != nil {
 		return nil, err
