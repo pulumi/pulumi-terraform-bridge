@@ -133,7 +133,6 @@ func TestRegress1932(t *testing.T) {
 	"response": {
 		"properties": {
 		"id": "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
-		"__meta": "{\"_new_extra_shim\":{}}",
 		"tagSpecifications": [
 			{
 			"tags": "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
