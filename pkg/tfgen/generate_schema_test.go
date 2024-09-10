@@ -24,6 +24,7 @@ import (
 	"text/template"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hexops/autogold/v2"
 	csgen "github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
 	gogen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
@@ -34,7 +35,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	bridgetesting "github.com/pulumi/pulumi-terraform-bridge/v3/internal/testing"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
@@ -257,7 +257,7 @@ func TestTypeSharing(t *testing.T) {
 
 	keys := []string{}
 	for k := range schema.Types {
-		keys = append(keys, string(k))
+		keys = append(keys, k)
 	}
 	sort.Strings(keys)
 

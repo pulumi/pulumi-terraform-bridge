@@ -569,7 +569,8 @@ func (t *propertyType) equals(other *propertyType) bool {
 		return false
 	case t.typePrefixOverride == nil && other.typePrefixOverride != nil:
 		return false
-	case t.typePrefixOverride != nil && other.typePrefixOverride != nil && *t.typePrefixOverride != *other.typePrefixOverride:
+	case t.typePrefixOverride != nil && other.typePrefixOverride != nil &&
+		*t.typePrefixOverride != *other.typePrefixOverride:
 		return false
 	}
 	for i, p := range t.properties {
