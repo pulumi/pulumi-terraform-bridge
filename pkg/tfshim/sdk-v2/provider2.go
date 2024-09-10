@@ -130,7 +130,7 @@ func (d *v2InstanceDiff2) GoString() string {
     },
     config:         %#v,
     plannedState:   %#v,
-	plannedMeta:    %#v,
+    plannedMeta:    %#v,
 }`, d.v2InstanceDiff.tf, d.config, d.plannedState, d.plannedMeta)
 }
 
