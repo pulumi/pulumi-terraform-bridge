@@ -119,6 +119,10 @@ type declarer interface {
 func (nt *schemaNestedTypes) declareType(typePath paths.TypePath, declarer declarer, namePrefix, name string,
 	typ *propertyType, isInput bool) string {
 
+	if typ.typePrefixOverride != nil {
+		namePrefix = *typ.typePrefixOverride
+	}
+
 	// Generate a name for this nested type.
 	typeName := namePrefix + cases.Title(language.Und, cases.NoLower).String(name)
 

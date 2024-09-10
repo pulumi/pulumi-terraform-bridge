@@ -441,8 +441,14 @@ type Schema struct {
 	// a name to override the default when targeting C#; "" uses the default.
 	CSharpName string
 
-	// a type to override the default; "" uses the default.
+	// An optional Pulumi type token to use for the Pulumi type projection of the current property. When unset, the
+	// default behavior is to generate fresh named Pulumi types as needed to represent the schema. To force the use
+	// of a known type and avoid generating unnecessary types, use both [Type] and [OmitType].
 	Type tokens.Type
+
+	// Used together with [Type] to omit generating any Pulumi types whatsoever for the current property, and
+	// instead use the object type identified by the token setup in [Type].
+	OmitType bool
 
 	// alternative types that can be used instead of the override.
 	AltTypes []tokens.Type
@@ -502,6 +508,12 @@ type Schema struct {
 
 	// whether or not to treat this property as secret
 	Secret *bool
+
+	// If specified, resets the type name prefix for any types that Pulumi needs to generate to represent the schema
+	// of the current property. Normally the names for helper object types are built from concatenating fragments
+	// representing the path to the type in the schema. The default strategy can lead to unacceptably long type
+	// names, reducing the SDK usability. Using TypePrefixOverride allows the maintainer to get shorter type names.
+	TypePrefixOverride *string
 }
 
 // Config represents a synthetic configuration variable that is Pulumi-only, and not passed to Terraform.

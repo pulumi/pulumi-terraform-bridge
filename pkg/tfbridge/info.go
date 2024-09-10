@@ -323,6 +323,11 @@ func BoolRef(b bool) *bool {
 	return &b
 }
 
+// String returns a reference to the string argument.
+func StringRef(s string) *string {
+	return &s
+}
+
 // StringValue gets a string value from a property map if present, else ""
 func StringValue(vars resource.PropertyMap, prop resource.PropertyKey) string {
 	val, ok := vars[prop]

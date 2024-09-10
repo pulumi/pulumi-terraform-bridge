@@ -19,6 +19,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"os"
+	"sort"
 	"testing"
 	"text/template"
 
@@ -33,9 +35,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	bridgetesting "github.com/pulumi/pulumi-terraform-bridge/v3/internal/testing"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/internal/testprovider"
+	sdkv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 	"github.com/pulumi/pulumi-terraform-bridge/x/muxer"
 )
@@ -114,6 +119,159 @@ func TestCSharpMiniRandom(t *testing.T) {
 	}))
 	assert.NoError(t, err)
 	bridgetesting.AssertEqualsJSONFile(t, "test_data/minirandom-schema-csharp.json", schema)
+}
+
+// Test the ability to force type sharing. Some of the upstream providers generate very large concrete schemata by in
+// Go, with TF not being materially affected. The example is inspired by QuickSight types in AWS. In Pulumi the default
+// projection is going to generate named types for every instance of the shared schema. This may lead to SDK bloat. Test
+// the ability of the provider author to curb the bloat and force an explit sharing.
+func TestTypeSharing(t *testing.T) {
+	tmpdir := t.TempDir()
+	barCharVisualSchema := func() *schema.Schema {
+		return &schema.Schema{
+			Type:     schema.TypeList,
+			Optional: true,
+			MinItems: 1,
+			MaxItems: 1,
+			Elem: &schema.Resource{
+				Schema: map[string]*schema.Schema{
+					"nest": {
+						Type:     schema.TypeList,
+						MaxItems: 1,
+						Optional: true,
+						Elem: &schema.Resource{
+							Schema: map[string]*schema.Schema{
+								"nested_prop": {
+									Type:     schema.TypeBool,
+									Optional: true,
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+	}
+	visualsSchema := func() *schema.Schema {
+		return &schema.Schema{
+			Type:     schema.TypeList,
+			MinItems: 1,
+			MaxItems: 50,
+			Optional: true,
+			Elem: &schema.Resource{
+				Schema: map[string]*schema.Schema{
+					"bar_chart_visual": barCharVisualSchema(),
+					"box_plot_visual":  barCharVisualSchema(),
+				},
+			},
+		}
+	}
+	provider := info.Provider{
+		Name: "testprov",
+		P: sdkv2.NewProvider(&schema.Provider{
+			ResourcesMap: map[string]*schema.Resource{
+				"testprov_r1": {
+					Schema: map[string]*schema.Schema{
+						"sheets": {
+							Type:     schema.TypeList,
+							MinItems: 1,
+							MaxItems: 20,
+							Optional: true,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									"visuals": visualsSchema(),
+								},
+							},
+						},
+					},
+				},
+				"testprov_r2": {
+					Schema: map[string]*schema.Schema{
+						"x": {
+							Type:     schema.TypeInt,
+							Optional: true,
+						},
+						"sheets": {
+							Type:     schema.TypeList,
+							MinItems: 1,
+							MaxItems: 20,
+							Optional: true,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									"y": {
+										Type:     schema.TypeBool,
+										Optional: true,
+									},
+									"visuals": visualsSchema(),
+								},
+							},
+						},
+					},
+				},
+			},
+		}),
+		UpstreamRepoPath: tmpdir,
+		Resources: map[string]*info.Resource{
+			"testprov_r1": {
+				Tok: "testprov:index:R1",
+				Fields: map[string]*info.Schema{
+					"sheets": {
+						Elem: &info.Schema{
+							Fields: map[string]*info.Schema{
+								"visuals": {
+									Elem: &info.Schema{
+										TypePrefixOverride: tfbridge.StringRef(""),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			"testprov_r2": {
+				Tok: "testprov:index:R2",
+				Fields: map[string]*info.Schema{
+					"sheets": {
+						Elem: &info.Schema{
+							Fields: map[string]*info.Schema{
+								"visuals": {
+									Elem: &info.Schema{
+										Type:     "testprov:index/Visual:Visual",
+										OmitType: true,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	schema, err := GenerateSchema(provider, diag.DefaultSink(os.Stdout, os.Stdout, diag.FormatOptions{
+		Color: colors.Never,
+	}))
+	require.NoError(t, err)
+
+	keys := []string{}
+	for k := range schema.Types {
+		keys = append(keys, string(k))
+	}
+	sort.Strings(keys)
+
+	// Note that there is only one set of helper types, and they are not prefixed by any of the resource names.
+	autogold.Expect([]string{
+		"testprov:index/R1Sheet:R1Sheet", "testprov:index/R2Sheet:R2Sheet",
+		"testprov:index/Visual:Visual",
+		"testprov:index/VisualBarChartVisual:VisualBarChartVisual",
+		"testprov:index/VisualBarChartVisualNest:VisualBarChartVisualNest",
+		"testprov:index/VisualBoxPlotVisual:VisualBoxPlotVisual",
+		"testprov:index/VisualBoxPlotVisualNest:VisualBoxPlotVisualNest",
+	}).Equal(t, keys)
+
+	bytes, err := json.MarshalIndent(schema, "", "  ")
+	require.NoError(t, err)
+
+	autogold.ExpectFile(t, autogold.Raw(string(bytes)))
 }
 
 // TestPropertyDocumentationEdits tests that documentation edits are applied to
