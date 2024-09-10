@@ -97,8 +97,9 @@ func TestRegressAws1423(t *testing.T) {
 	  },
 	  "response": {
 	    "properties": {
-              "tags": null,
-              "tagsAll": "*",
+	      "__meta":"{\"_new_extra_shim\":{}}",
+	      "tags": null,
+	      "tagsAll": "*",
 	      "arn": "*",
 	      "capacity": "*",
 	      "captchaConfig": "*",
@@ -187,8 +188,9 @@ func TestRegressAws1423(t *testing.T) {
 	  },
 	  "response": {
 	    "properties": {
-              "tokenDomains": null,
-              "description": null, "tags": null, "tagsAll": "*",
+	      "__meta":"{\"_new_extra_shim\":{}}",
+	      "tokenDomains": null,
+	      "description": null, "tags": null, "tagsAll": "*",
 	      "arn": "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
 	      "capacity": "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
 	      "captchaConfig": null,
