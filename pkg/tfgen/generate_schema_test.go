@@ -19,7 +19,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"os"
 	"sort"
 	"testing"
 	"text/template"
@@ -247,10 +246,14 @@ func TestTypeSharing(t *testing.T) {
 			},
 		},
 	}
-	schema, err := GenerateSchema(provider, diag.DefaultSink(os.Stdout, os.Stdout, diag.FormatOptions{
+
+	var buf bytes.Buffer
+	schema, err := GenerateSchema(provider, diag.DefaultSink(&buf, &buf, diag.FormatOptions{
 		Color: colors.Never,
 	}))
 	require.NoError(t, err)
+
+	t.Logf("%s", buf.String())
 
 	keys := []string{}
 	for k := range schema.Types {
