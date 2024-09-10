@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"runtime"
 	"sort"
 	"testing"
 	"text/template"
@@ -125,6 +126,10 @@ func TestCSharpMiniRandom(t *testing.T) {
 // projection is going to generate named types for every instance of the shared schema. This may lead to SDK bloat. Test
 // the ability of the provider author to curb the bloat and force an explit sharing.
 func TestTypeSharing(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skipf("Skipping on Windows due to a test setup issue")
+	}
+
 	tmpdir := t.TempDir()
 	barCharVisualSchema := func() *schema.Schema {
 		return &schema.Schema{
