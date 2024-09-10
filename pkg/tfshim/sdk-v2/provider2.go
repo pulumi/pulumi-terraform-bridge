@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"sort"
 	"strings"
 	"time"
@@ -258,6 +259,13 @@ func (p *planResourceChangeImpl) Diff(
 	if err != nil {
 		return nil, err
 	}
+
+	if plan.PlannedDiff.Meta == nil && plan.PlannedMeta != nil {
+		plan.PlannedDiff.Meta = plan.PlannedMeta
+	} else if plan.PlannedDiff.Meta != nil && plan.PlannedMeta != nil {
+		maps.Copy(plan.PlannedDiff.Meta, plan.PlannedMeta)
+	}
+
 	return &v2InstanceDiff2{
 		v2InstanceDiff: v2InstanceDiff{
 			tf: plan.PlannedDiff,
