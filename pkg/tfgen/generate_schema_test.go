@@ -224,7 +224,7 @@ func TestTypeSharing(t *testing.T) {
 							Fields: map[string]*info.Schema{
 								"visuals": {
 									Elem: &info.Schema{
-										TypeName: tfbridge.StringRef("Visual"),
+										TypeName: tfbridge.Ref("Visual"),
 									},
 								},
 							},
