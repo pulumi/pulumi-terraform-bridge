@@ -448,6 +448,8 @@ type Schema struct {
 
 	// Used together with [Type] to omit generating any Pulumi types whatsoever for the current property, and
 	// instead use the object type identified by the token setup in [Type].
+	//
+	// It is an error to set [OmitType] to true without specifying [Type].
 	OmitType bool
 
 	// alternative types that can be used instead of the override.
