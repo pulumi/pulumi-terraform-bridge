@@ -121,8 +121,8 @@ func TestCSharpMiniRandom(t *testing.T) {
 	bridgetesting.AssertEqualsJSONFile(t, "test_data/minirandom-schema-csharp.json", schema)
 }
 
-// Test the ability to force type sharing. Some of the upstream providers generate very large concrete schemata by in
-// Go, with TF not being materially affected. The example is inspired by QuickSight types in AWS. In Pulumi the default
+// Test the ability to force type sharing. Some of the upstream providers generate very large concrete schemata in Go,
+// with TF not being materially affected. The example is inspired by QuickSight types in AWS. In Pulumi the default
 // projection is going to generate named types for every instance of the shared schema. This may lead to SDK bloat. Test
 // the ability of the provider author to curb the bloat and force an explicit sharing.
 func TestTypeSharing(t *testing.T) {
