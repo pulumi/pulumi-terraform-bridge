@@ -464,7 +464,7 @@ func (g *Generator) makeObjectPropertyType(typePath paths.TypePath,
 
 	// If the user supplied an explicit Type token override, omit generating types and short-circuit.
 	if info != nil && info.OmitType {
-		if info.Type != "" {
+		if info.Type == "" {
 			return nil, fmt.Errorf("Cannot set info.OmitType without also setting info.Type")
 		}
 		return &propertyType{typ: info.Type}, nil
