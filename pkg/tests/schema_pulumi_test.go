@@ -3134,3 +3134,87 @@ outputs:
 	require.Equal(t, "hello world", res.Outputs["testOut"].Value)
 	pt.Preview(optpreview.ExpectNoChanges())
 }
+
+func TestLabels(t *testing.T) {
+	setLabelsDiff := func(_ context.Context, d *schema.ResourceDiff, _ interface{}) error {
+		raw := d.Get("labels")
+		if raw == nil {
+			return nil
+		}
+
+		if d.Get("terraform_labels") == nil {
+			return fmt.Errorf("`terraform_labels` field is not present in the resource schema.")
+		}
+
+		// If "labels" field is computed, set "terraform_labels" and "effective_labels" to computed.
+		// https://github.com/hashicorp/terraform-provider-google/issues/16217
+		if !d.GetRawPlan().GetAttr("labels").IsWhollyKnown() {
+			if err := d.SetNewComputed("terraform_labels"); err != nil {
+				return fmt.Errorf("error setting terraform_labels to computed: %w", err)
+			}
+
+			return nil
+		}
+
+		// Merge provider default labels with the user defined labels in the resource to get terraform managed labels
+		terraformLabels := make(map[string]string)
+
+		labels := raw.(map[string]interface{})
+		for k, v := range labels {
+			terraformLabels[k] = v.(string)
+		}
+
+		if err := d.SetNew("terraform_labels", terraformLabels); err != nil {
+			return fmt.Errorf("error setting new terraform_labels diff: %w", err)
+		}
+
+		return nil
+	}
+
+	res := &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"labels": {
+				Type:     schema.TypeMap,
+				Optional: true,
+				Elem:     &schema.Schema{Type: schema.TypeString},
+			},
+			"terraform_labels": {
+				Type:     schema.TypeMap,
+				Computed: true,
+				Elem:     &schema.Schema{Type: schema.TypeString},
+			},
+		},
+		CustomizeDiff: setLabelsDiff,
+	}
+
+	runTest := func(t *testing.T, PRC bool) {
+		tfp := &schema.Provider{ResourcesMap: map[string]*schema.Resource{"prov_test": res}}
+		opts := []pulcheck.BridgedProviderOpt{}
+		if !PRC {
+			opts = append(opts, pulcheck.DisablePlanResourceChange())
+		}
+		bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp, opts...)
+		program := `
+	name: test
+	runtime: yaml
+	resources:
+	  mainRes:
+		type: prov:index:Test
+		properties:
+		  labels: { "key": "val", "empty": "" }
+	outputs:
+	  testOut: ${mainRes.terraformLabels}
+	`
+		pt := pulcheck.PulCheck(t, bridgedProvider, program)
+		out := pt.Up()
+		require.Equal(t, map[string]interface{}{"key": "val", "empty": ""}, out.Outputs["testOut"].Value)
+	}
+
+	t.Run("PRC enabled", func(t *testing.T) {
+		runTest(t, true)
+	})
+
+	t.Run("PRC disabled", func(t *testing.T) {
+		runTest(t, false)
+	})
+}
