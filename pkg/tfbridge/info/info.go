@@ -509,11 +509,13 @@ type Schema struct {
 	// whether or not to treat this property as secret
 	Secret *bool
 
-	// If specified, resets the type name prefix for any types that Pulumi needs to generate to represent the schema
-	// of the current property. Normally the names for helper object types are built from concatenating fragments
-	// representing the path to the type in the schema. The default strategy can lead to unacceptably long type
-	// names, reducing the SDK usability. Using TypePrefixOverride allows the maintainer to get shorter type names.
-	TypePrefixOverride *string
+	// Specifies the exact name to use for the generated type.
+	//
+	// When generating types for properties, by default Pulumi picks reasonable names based on the property path
+	// prefix and the name of the property. Use [TypeName] to override this decision when the default names for
+	// nested properties are too long or otherwise undesirable. The choice will further affect the automatically
+	// generated names for any properties nested under the current one.
+	TypeName *string
 }
 
 // Config represents a synthetic configuration variable that is Pulumi-only, and not passed to Terraform.

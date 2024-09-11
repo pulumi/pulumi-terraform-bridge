@@ -119,12 +119,16 @@ type declarer interface {
 func (nt *schemaNestedTypes) declareType(typePath paths.TypePath, declarer declarer, namePrefix, name string,
 	typ *propertyType, isInput bool) string {
 
-	if typ.typePrefixOverride != nil {
-		namePrefix = *typ.typePrefixOverride
-	}
-
 	// Generate a name for this nested type.
-	typeName := namePrefix + cases.Title(language.Und, cases.NoLower).String(name)
+	var typeName string
+
+	if typ.typeName != nil {
+		// Use an explicit name if provided.
+		typeName = *typ.typeName
+	} else {
+		// Otherwise build one based on the current property name and prefix.
+		typeName = namePrefix + cases.Title(language.Und, cases.NoLower).String(name)
+	}
 
 	// Override the nested type name, if necessary.
 	if typ.nestedType.Name().String() != "" {

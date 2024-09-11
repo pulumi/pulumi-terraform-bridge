@@ -124,7 +124,7 @@ func TestCSharpMiniRandom(t *testing.T) {
 // Test the ability to force type sharing. Some of the upstream providers generate very large concrete schemata by in
 // Go, with TF not being materially affected. The example is inspired by QuickSight types in AWS. In Pulumi the default
 // projection is going to generate named types for every instance of the shared schema. This may lead to SDK bloat. Test
-// the ability of the provider author to curb the bloat and force an explit sharing.
+// the ability of the provider author to curb the bloat and force an explicit sharing.
 func TestTypeSharing(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skipf("Skipping on Windows due to a test setup issue")
@@ -224,7 +224,7 @@ func TestTypeSharing(t *testing.T) {
 							Fields: map[string]*info.Schema{
 								"visuals": {
 									Elem: &info.Schema{
-										TypePrefixOverride: tfbridge.StringRef(""),
+										TypeName: tfbridge.StringRef("Visual"),
 									},
 								},
 							},

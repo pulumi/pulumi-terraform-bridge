@@ -343,7 +343,7 @@ type propertyType struct {
 	altTypes   []tokens.Type
 	asset      *tfbridge.AssetTranslation
 
-	typePrefixOverride *string
+	typeName *string
 }
 
 func (g *Generator) Sink() diag.Sink {
@@ -356,7 +356,7 @@ func (g *Generator) makePropertyType(typePath paths.TypePath,
 
 	t := &propertyType{}
 	if info != nil {
-		t.typePrefixOverride = info.TypePrefixOverride
+		t.typeName = info.TypeName
 	}
 
 	var elemInfo *tfbridge.SchemaInfo
@@ -472,7 +472,7 @@ func (g *Generator) makeObjectPropertyType(typePath paths.TypePath,
 	}
 
 	if info != nil {
-		t.typePrefixOverride = info.TypePrefixOverride
+		t.typeName = info.TypeName
 	}
 
 	if info != nil {
@@ -565,12 +565,12 @@ func (t *propertyType) equals(other *propertyType) bool {
 		return false
 	}
 	switch {
-	case t.typePrefixOverride != nil && other.typePrefixOverride == nil:
+	case t.typeName != nil && other.typeName == nil:
 		return false
-	case t.typePrefixOverride == nil && other.typePrefixOverride != nil:
+	case t.typeName == nil && other.typeName != nil:
 		return false
-	case t.typePrefixOverride != nil && other.typePrefixOverride != nil &&
-		*t.typePrefixOverride != *other.typePrefixOverride:
+	case t.typeName != nil && other.typeName != nil &&
+		*t.typeName != *other.typeName:
 		return false
 	}
 	for i, p := range t.properties {
