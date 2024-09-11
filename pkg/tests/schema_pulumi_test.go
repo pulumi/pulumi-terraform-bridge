@@ -3143,20 +3143,34 @@ func TestLabels(t *testing.T) {
 		CustomizeDiff: setLabelsDiff,
 	}
 
-	tfp := &schema.Provider{ResourcesMap: map[string]*schema.Resource{"prov_test": res}}
-	bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
-	program := `
-name: test
-runtime: yaml
-resources:
-  mainRes:
-    type: prov:index:Test
-	properties:
-	  labels: { "key": "val", "empty": "" }
-outputs:
-  testOut: ${mainRes.terraformLabels}
-`
-	pt := pulcheck.PulCheck(t, bridgedProvider, program)
-	out := pt.Up()
-	require.Equal(t, map[string]interface{}{"key": "val", "empty": ""}, out.Outputs["testOut"].Value)
+	runTest := func(t *testing.T, PRC bool) {
+		tfp := &schema.Provider{ResourcesMap: map[string]*schema.Resource{"prov_test": res}}
+		opts := []pulcheck.BridgedProviderOpt{}
+		if !PRC {
+			opts = append(opts, pulcheck.DisablePlanResourceChange())
+		}
+		bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp, opts...)
+		program := `
+	name: test
+	runtime: yaml
+	resources:
+	  mainRes:
+		type: prov:index:Test
+		properties:
+		  labels: { "key": "val", "empty": "" }
+	outputs:
+	  testOut: ${mainRes.terraformLabels}
+	`
+		pt := pulcheck.PulCheck(t, bridgedProvider, program)
+		out := pt.Up()
+		require.Equal(t, map[string]interface{}{"key": "val", "empty": ""}, out.Outputs["testOut"].Value)
+	}
+
+	t.Run("PRC enabled", func(t *testing.T) {
+		runTest(t, true)
+	})
+
+	t.Run("PRC disabled", func(t *testing.T) {
+		runTest(t, false)
+	})
 }
