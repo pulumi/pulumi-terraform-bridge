@@ -450,6 +450,8 @@ type Schema struct {
 	// instead use the object type identified by the token setup in [Type].
 	//
 	// It is an error to set [OmitType] to true without specifying [Type].
+	//
+	// Experimental.
 	OmitType bool
 
 	// alternative types that can be used instead of the override.
@@ -517,6 +519,8 @@ type Schema struct {
 	// prefix and the name of the property. Use [TypeName] to override this decision when the default names for
 	// nested properties are too long or otherwise undesirable. The choice will further affect the automatically
 	// generated names for any properties nested under the current one.
+	//
+	// Experimental.
 	TypeName *string
 }
 
