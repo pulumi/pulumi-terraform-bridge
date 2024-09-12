@@ -441,8 +441,18 @@ type Schema struct {
 	// a name to override the default when targeting C#; "" uses the default.
 	CSharpName string
 
-	// a type to override the default; "" uses the default.
+	// An optional Pulumi type token to use for the Pulumi type projection of the current property. When unset, the
+	// default behavior is to generate fresh named Pulumi types as needed to represent the schema. To force the use
+	// of a known type and avoid generating unnecessary types, use both [Type] and [OmitType].
 	Type tokens.Type
+
+	// Used together with [Type] to omit generating any Pulumi types whatsoever for the current property, and
+	// instead use the object type identified by the token setup in [Type].
+	//
+	// It is an error to set [OmitType] to true without specifying [Type].
+	//
+	// Experimental.
+	OmitType bool
 
 	// alternative types that can be used instead of the override.
 	AltTypes []tokens.Type
@@ -502,6 +512,24 @@ type Schema struct {
 
 	// whether or not to treat this property as secret
 	Secret *bool
+
+	// Specifies the exact name to use for the generated type.
+	//
+	// When generating types for properties, by default Pulumi picks reasonable names based on the property path
+	// prefix and the name of the property. Use [TypeName] to override this decision when the default names for
+	// nested properties are too long or otherwise undesirable. The choice will further affect the automatically
+	// generated names for any properties nested under the current one.
+	//
+	// Example use:
+	//
+	//     TypeName: tfbridge.Ref("Visual")
+	//
+	// Note that the type name, and not the full token like "aws:quicksight/Visual:Visual" is specified. The token
+	// will be picked based on the current module ("quicksight" in the above example) where the parent resource or
+	// data source is found.
+	//
+	// Experimental.
+	TypeName *string
 }
 
 // Config represents a synthetic configuration variable that is Pulumi-only, and not passed to Terraform.
