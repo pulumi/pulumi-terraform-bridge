@@ -3203,11 +3203,16 @@ func TestLabels(t *testing.T) {
 		properties:
 		  labels: { "key": "val", "empty": "" }
 	outputs:
-	  testOut: ${mainRes.terraformLabels}
+	  keyValue: BEGIN_${mainRes.terraformLabels["key"]}_END
+	  emptyValue: BEGIN_${mainRes.terraformLabels["empty"]}_END
 	`
 		pt := pulcheck.PulCheck(t, bridgedProvider, program)
 		out := pt.Up()
-		require.Equal(t, map[string]interface{}{"key": "val", "empty": ""}, out.Outputs["testOut"].Value)
+
+		// BEGIN_ and _END
+
+		assert.Equal(t, "BEGIN_val_END", out.Outputs["keyValue"].Value)
+		assert.Equal(t, "BEGIN__END", out.Outputs["emptyValue"].Value)
 	}
 
 	t.Run("PRC enabled", func(t *testing.T) {
