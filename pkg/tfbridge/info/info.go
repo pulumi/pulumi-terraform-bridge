@@ -520,6 +520,14 @@ type Schema struct {
 	// nested properties are too long or otherwise undesirable. The choice will further affect the automatically
 	// generated names for any properties nested under the current one.
 	//
+	// Example use:
+	//
+	//     TypeName: tfbridge.Ref("Visual")
+	//
+	// Note that the type name, and not the full token like "aws:quicksight/Visual:Visual" is specified. The token
+	// will be picked based on the current module ("quicksight" in the above example) where the parent resource or
+	// data source is found.
+	//
 	// Experimental.
 	TypeName *string
 }
