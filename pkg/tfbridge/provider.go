@@ -1235,14 +1235,22 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 		return arr
 	}
 
-	// Ensure that outputs are deterministic to enable gRPC testing.
-	sort.Strings(replaces)
-	sort.Strings(stables)
+	sorted := func(arr []string) []string {
+		sort.Strings(arr)
+		return arr
+	}
+
+	if a, ok := diff.(interface {
+		Attributes() map[string]shim.ResourceAttrDiff
+	}); ok && len(detailedDiff) == 0 && changes != pulumirpc.DiffResponse_DIFF_NONE {
+		// We have indicated a diff, and the [shim.InstanceDiff] is able to report TF fields
+		reportRawTFDiff(ctx, a.Attributes())
+	}
 
 	return &pulumirpc.DiffResponse{
 		Changes:             changes,
-		Replaces:            replaces,
-		Stables:             stables,
+		Replaces:            sorted(replaces),
+		Stables:             sorted(stables),
 		DeleteBeforeReplace: deleteBeforeReplace,
 		Diffs:               toSlice(properties),
 		DetailedDiff:        detailedDiff,

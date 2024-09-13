@@ -386,3 +386,47 @@ func makeDetailedDiffExtra(
 		collectionDiffs: collectionDiffs,
 	}
 }
+
+func reportRawTFDiff(ctx context.Context, attrs map[string]shim.ResourceAttrDiff) {
+
+	// If attrs is empty, then TF cannot explain the diff either, so we give up.
+	if len(attrs) == 0 {
+		return
+	}
+
+	var builder strings.Builder
+
+	builder.WriteString("pulumi-terraform-bridge was unable to translate" +
+		" the underlying Terraform provider's diff into Pulumi.\n")
+	builder.WriteString("\n")
+	builder.WriteString("\n")
+	builder.WriteString("Here is the raw Terraform diff:")
+
+	for k, v := range attrs {
+		builder.WriteString(fmt.Sprintf("* %q: %s\n", k, formatRawDiff(v)))
+	}
+
+	builder.WriteString("\n")
+	builder.WriteString("\n")
+	builder.WriteString("This is a bug in pulumi-terraform-bridge. Please open" +
+		" issue in the Pulumi provider's repo or at" +
+		" https://github.com/pulumi/pulumi-terraform-bridge/issues.")
+
+	GetLogger(ctx).Info(builder.String())
+}
+
+func formatRawDiff(d shim.ResourceAttrDiff) string {
+	switch {
+	case d.NewComputed:
+		return fmt.Sprintf("%q -> [computed]", d.Old)
+	case d.NewRemoved:
+		return "removed"
+	case d.Old != d.New:
+		if d.Sensitive {
+			return "[secret] -> [secret]"
+		}
+		return fmt.Sprintf("%q -> %q", d.Old, d.New)
+	default:
+		return "unknown diff"
+	}
+}
