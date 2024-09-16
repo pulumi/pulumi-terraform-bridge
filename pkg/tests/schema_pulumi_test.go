@@ -3264,7 +3264,8 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
-			false,
+			// TODO[pulumi/pulumi-terraform-bridge#2325]: Non-deterministic output
+			true,
 		},
 		// TODO[pulumi/pulumi-terraform-bridge#2400] __defaults appearing in the diff
 		// TODO[pulumi/pulumi-terraform-bridge#2234]: Duplicated diff
