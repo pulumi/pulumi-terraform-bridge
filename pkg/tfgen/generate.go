@@ -342,6 +342,8 @@ type propertyType struct {
 	nestedType tokens.Type
 	altTypes   []tokens.Type
 	asset      *tfbridge.AssetTranslation
+
+	typeName *string
 }
 
 func (g *Generator) Sink() diag.Sink {
@@ -353,6 +355,9 @@ func (g *Generator) makePropertyType(typePath paths.TypePath,
 	entityDocs entityDocs) (*propertyType, error) {
 
 	t := &propertyType{}
+	if info != nil {
+		t.typeName = info.TypeName
+	}
 
 	var elemInfo *tfbridge.SchemaInfo
 	if info != nil {
@@ -456,8 +461,21 @@ func getDocsFromSchemaMap(key string, schemaMap shim.SchemaMap) string {
 func (g *Generator) makeObjectPropertyType(typePath paths.TypePath,
 	res shim.Resource, info *tfbridge.SchemaInfo,
 	out bool, entityDocs entityDocs) (*propertyType, error) {
+
+	// If the user supplied an explicit Type token override, omit generating types and short-circuit.
+	if info != nil && info.OmitType {
+		if info.Type == "" {
+			return nil, fmt.Errorf("Cannot set info.OmitType without also setting info.Type")
+		}
+		return &propertyType{typ: info.Type}, nil
+	}
+
 	t := &propertyType{
 		kind: kindObject,
+	}
+
+	if info != nil {
+		t.typeName = info.TypeName
 	}
 
 	if info != nil {
@@ -547,6 +565,15 @@ func (t *propertyType) equals(other *propertyType) bool {
 		return false
 	}
 	if len(t.properties) != len(other.properties) {
+		return false
+	}
+	switch {
+	case t.typeName != nil && other.typeName == nil:
+		return false
+	case t.typeName == nil && other.typeName != nil:
+		return false
+	case t.typeName != nil && other.typeName != nil &&
+		*t.typeName != *other.typeName:
 		return false
 	}
 	for i, p := range t.properties {

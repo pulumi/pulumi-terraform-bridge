@@ -4037,3 +4037,47 @@ resource "prov_test" "mainRes" {
 		})
 	}
 }
+
+func TestStateFunc(t *testing.T) {
+	resMap := map[string]*schema.Resource{
+		"prov_test": {
+			CreateContext: func(ctx context.Context, d *schema.ResourceData, i interface{}) diag.Diagnostics {
+				d.SetId("id")
+				var diags diag.Diagnostics
+				v, ok := d.GetOk("test")
+				assert.True(t, ok, "test property not set")
+
+				err := d.Set("test", v.(string)+" world")
+				require.NoError(t, err)
+				return diags
+			},
+			Schema: map[string]*schema.Schema{
+				"test": {
+					Type:     schema.TypeString,
+					Optional: true,
+					ForceNew: true,
+					StateFunc: func(v interface{}) string {
+						return v.(string) + " world"
+					},
+				},
+			},
+		},
+	}
+	tfp := &schema.Provider{ResourcesMap: resMap}
+	bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
+	program := `
+name: test
+runtime: yaml
+resources:
+  mainRes:
+    type: prov:index:Test
+	properties:
+	  test: "hello"
+outputs:
+  testOut: ${mainRes.test}
+`
+	pt := pulcheck.PulCheck(t, bridgedProvider, program)
+	res := pt.Up()
+	require.Equal(t, "hello world", res.Outputs["testOut"].Value)
+	pt.Preview(optpreview.ExpectNoChanges())
+}
