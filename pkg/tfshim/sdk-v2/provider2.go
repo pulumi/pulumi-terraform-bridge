@@ -112,9 +112,9 @@ func (s *v2InstanceState2) Meta() map[string]interface{} {
 type v2InstanceDiff2 struct {
 	v2InstanceDiff
 
-	config       cty.Value
-	plannedState cty.Value
-	plannedPrivate map[string]interface{}
+	config                    cty.Value
+	plannedState              cty.Value
+	plannedPrivate            map[string]interface{}
 	diffEqualDecisionOverride *bool
 }
 
@@ -505,7 +505,8 @@ func (s *grpcServer) PlanResourceChange(
 	PlannedState   cty.Value
 	PlannedPrivate map[string]interface{}
 	PlannedDiff    *terraform.InstanceDiff
-}, error) {
+}, error,
+) {
 	configVal, err := msgpack.Marshal(config, ty)
 	if err != nil {
 		return nil, err
