@@ -22,17 +22,17 @@ import (
 )
 
 func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
-	// Get file content without front matter, and split title
-	contentStr, title := getBodyAndTitle(string(docFile.Content))
+	// Get file content without front matter
+	content := trimFrontMatter(docFile.Content)
 	// Add pulumi-specific front matter
 	// Generate pulumi-specific front matter
-	frontMatter := writeFrontMatter(title)
+	frontMatter := writeFrontMatter(g.info.Name)
 
 	// Generate pulumi-specific installation instructions
 	installationInstructions := writeInstallationInstructions(g.info.Golang.ImportBasePath, g.info.Name)
 
 	// Add instructions to top of file
-	contentStr = frontMatter + installationInstructions + contentStr
+	contentStr := frontMatter + installationInstructions + string(content)
 
 	//Translate code blocks to Pulumi
 	contentStr, err := translateCodeBlocks(contentStr, g)
@@ -42,6 +42,12 @@ func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
 
 	// Apply edit rules to transform the doc for Pulumi-ready presentation
 	contentBytes, err := applyEditRules([]byte(contentStr), docFile.FileName, g)
+	if err != nil {
+		return nil, err
+	}
+
+	// Remove the title. A title gets populated from Hugo frontmatter; we do not want two.
+	contentBytes, err = removeTitle(contentBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -57,10 +63,10 @@ func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
 }
 
 func writeFrontMatter(providerName string) string {
-	// Capitalize the provider name for the title
-
+	// Capitalize the package name
 	capitalize := cases.Title(language.English)
 	title := capitalize.String(providerName)
+
 	return fmt.Sprintf(delimiter+
 		"title: %[1]s Provider\n"+
 		"meta_desc: Provides an overview on how to configure the Pulumi %[1]s provider.\n"+
@@ -68,17 +74,6 @@ func writeFrontMatter(providerName string) string {
 		delimiter+
 		"\n",
 		title)
-}
-
-func getBodyAndTitle(content string) (string, string) {
-	// The first header in `index.md` is the package name, of the format `# Foo Provider`.
-	titleIndex := strings.Index(content, "# ")
-	// Get the location fo the next newline
-	nextNewLine := strings.Index(content[titleIndex:], "\n") + titleIndex
-	// Get the title line, without the h1 anchor
-	title := content[titleIndex+2 : nextNewLine]
-	// strip the title and any front matter
-	return content[nextNewLine+1:], title
 }
 
 // writeInstallationInstructions renders the following for any provider:
@@ -249,6 +244,46 @@ func convertExample(g *Generator, code string, exampleNumber int) (string, error
 	}
 	exampleContent += chooserEnd
 	return exampleContent, nil
+}
+
+type titleRemover struct {
+}
+
+var _ parser.ASTTransformer = titleRemover{}
+
+func (tr titleRemover) Transform(node *ast.Document, reader text.Reader, pc parser.Context) {
+	err := ast.Walk(node, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
+		// The first header we encounter should be the document title.
+		header, found := n.(*ast.Heading)
+		if !found || header.Level != 1 || !entering {
+			return ast.WalkContinue, nil
+		}
+
+		parent := n.Parent()
+		contract.Assertf(parent != nil, "parent cannot be nil")
+		// Removal here is safe, as we want to remove only the first header anyway.
+		n.Parent().RemoveChild(parent, header)
+		return ast.WalkStop, nil
+	})
+	contract.AssertNoErrorf(err, "impossible: ast.Walk should never error")
+}
+
+func removeTitle(
+	content []byte,
+) ([]byte, error) {
+	// Instantiate our transformer
+	titleRemover := titleRemover{}
+	gm := goldmark.New(
+		goldmark.WithExtensions(parse.TFRegistryExtension),
+		goldmark.WithParserOptions(parser.WithASTTransformers(
+			util.Prioritized(titleRemover, 1000),
+		)),
+		goldmark.WithRenderer(markdown.NewRenderer()),
+	)
+	var buf bytes.Buffer
+	// Convert parses the source, applies transformers, and renders output to buf
+	err := gm.Convert(content, &buf)
+	return buf.Bytes(), err
 }
 
 type sectionSkipper struct {

@@ -119,30 +119,36 @@ func (d *TfDriver) Write(t pulcheck.T, program string) {
 	require.NoErrorf(t, err, "writing test.tf")
 }
 
-func (d *TfDriver) Plan(t pulcheck.T) *TfPlan {
+func (d *TfDriver) Plan(t pulcheck.T) (*TfPlan, error) {
 	planFile := filepath.Join(d.cwd, "test.tfplan")
 	env := []string{d.formatReattachEnvVar()}
 	tfCmd := getTFCommand()
-	execCmd(t, d.cwd, env, tfCmd, "plan", "-refresh=false", "-out", planFile)
-	cmd := execCmd(t, d.cwd, env, tfCmd, "show", "-json", planFile)
+	_, err := execCmd(t, d.cwd, env, tfCmd, "plan", "-refresh=false", "-out", planFile)
+	if err != nil {
+		return nil, err
+	}
+	cmd, err := execCmd(t, d.cwd, env, tfCmd, "show", "-json", planFile)
+	require.NoError(t, err)
 	tp := TfPlan{PlanFile: planFile}
-	err := json.Unmarshal(cmd.Stdout.(*bytes.Buffer).Bytes(), &tp.RawPlan)
+	err = json.Unmarshal(cmd.Stdout.(*bytes.Buffer).Bytes(), &tp.RawPlan)
 	require.NoErrorf(t, err, "failed to unmarshal terraform plan")
-	return &tp
+	return &tp, nil
 }
 
-func (d *TfDriver) Apply(t pulcheck.T, plan *TfPlan) {
+func (d *TfDriver) Apply(t pulcheck.T, plan *TfPlan) error {
 	tfCmd := getTFCommand()
-	execCmd(t, d.cwd, []string{d.formatReattachEnvVar()},
+	_, err := execCmd(t, d.cwd, []string{d.formatReattachEnvVar()},
 		tfCmd, "apply", "-auto-approve", "-refresh=false", plan.PlanFile)
+	return err
 }
 
 func (d *TfDriver) Show(t pulcheck.T, planFile string) string {
 	tfCmd := getTFCommand()
-	cmd := execCmd(t, d.cwd, []string{d.formatReattachEnvVar()}, tfCmd, "show", "-json", planFile)
+	cmd, err := execCmd(t, d.cwd, []string{d.formatReattachEnvVar()}, tfCmd, "show", "-json", planFile)
+	require.NoError(t, err)
 	res := cmd.Stdout.(*bytes.Buffer)
 	buf := bytes.NewBuffer(nil)
-	err := json.Indent(buf, res.Bytes(), "", "    ")
+	err = json.Indent(buf, res.Bytes(), "", "    ")
 	require.NoError(t, err)
 	return buf.String()
 }
@@ -158,7 +164,8 @@ func (d *TfDriver) GetState(t pulcheck.T) string {
 
 func (d *TfDriver) GetOutput(t pulcheck.T, outputName string) string {
 	tfCmd := getTFCommand()
-	cmd := execCmd(t, d.cwd, []string{d.formatReattachEnvVar()}, tfCmd, "output", outputName)
+	cmd, err := execCmd(t, d.cwd, []string{d.formatReattachEnvVar()}, tfCmd, "output", outputName)
+	require.NoError(t, err)
 	res := cmd.Stdout.(*bytes.Buffer).String()
 	res = strings.TrimSuffix(res, "\n")
 	res = strings.Trim(res, "\"")

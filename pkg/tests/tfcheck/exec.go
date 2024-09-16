@@ -21,10 +21,9 @@ import (
 	"strings"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/pulcheck"
-	"github.com/stretchr/testify/require"
 )
 
-func execCmd(t pulcheck.T, wdir string, environ []string, program string, args ...string) *exec.Cmd {
+func execCmd(t pulcheck.T, wdir string, environ []string, program string, args ...string) (*exec.Cmd, error) {
 	t.Logf("%s %s", program, strings.Join(args, " "))
 	cmd := exec.Command(program, args...)
 	var stdout, stderr bytes.Buffer
@@ -34,7 +33,7 @@ func execCmd(t pulcheck.T, wdir string, environ []string, program string, args .
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	err := cmd.Run()
-	require.NoError(t, err, "error from `%s %s`\n\nStdout:\n%s\n\nStderr:\n%s\n\n",
+	t.Logf("error from `%s %s`\n\nStdout:\n%s\n\nStderr:\n%s\n\n",
 		program, strings.Join(args, " "), stdout.String(), stderr.String())
-	return cmd
+	return cmd, err
 }

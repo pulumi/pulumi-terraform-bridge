@@ -565,10 +565,15 @@
                     "additionalProperties": {
                         "$ref": "#/types/alz:index/PolicyRoleAssignmentsAssignments:PolicyRoleAssignmentsAssignments"
                     }
+                },
+                "resourceId": {
+                    "type": "string",
+                    "description": "The id of the management group, forming the last part of the resource ID.\n"
                 }
             },
             "required": [
-                "assignments"
+                "assignments",
+                "resourceId"
             ],
             "inputProperties": {
                 "assignments": {
@@ -576,10 +581,15 @@
                     "additionalProperties": {
                         "$ref": "#/types/alz:index/PolicyRoleAssignmentsAssignments:PolicyRoleAssignmentsAssignments"
                     }
+                },
+                "resourceId": {
+                    "type": "string",
+                    "description": "The id of the management group, forming the last part of the resource ID.\n"
                 }
             },
             "requiredInputs": [
-                "assignments"
+                "assignments",
+                "resourceId"
             ],
             "stateInputs": {
                 "description": "Input properties used for looking up and filtering PolicyRoleAssignments resources.\n",
@@ -589,6 +599,10 @@
                         "additionalProperties": {
                             "$ref": "#/types/alz:index/PolicyRoleAssignmentsAssignments:PolicyRoleAssignmentsAssignments"
                         }
+                    },
+                    "resourceId": {
+                        "type": "string",
+                        "description": "The id of the management group, forming the last part of the resource ID.\n"
                     }
                 },
                 "type": "object"

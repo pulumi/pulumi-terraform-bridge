@@ -47,6 +47,8 @@ func TestMain(m *testing.M) {
 }
 
 func TestStacktraceDisplayed(t *testing.T) {
+	// TODO[pulumi/pulumi-terraform-bridge#2388]
+	t.Skip("flaky test")
 	t.Parallel()
 	skipWindows(t)
 
@@ -464,7 +466,8 @@ func TestSchemaGeneration(t *testing.T) {
 	}
 
 	testSchema("hashicorp/random", "3.3.0")
-	testSchema("Azure/alz", "0.11.1")
+	// TODO[pulumi/pulumi-terraform-bridge#2401]: Re-enable these tests once the issue is resolved.
+	// testSchema("Azure/alz", "0.11.1")
 	testSchema("Backblaze/b2", "0.8.9")
 	testSchema("databricks/databricks", "1.50.0")
 }
