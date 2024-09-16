@@ -1137,6 +1137,7 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 	diff, err := callWithRecover(urn, p.recoverOnTypeError, func() (shim.InstanceDiff, error) {
 		return p.tf.Diff(ctx, res.TFName, state, config, shim.DiffOptions{
 			IgnoreChanges: ic,
+			NewInputs:     news,
 		})
 	})
 	if err != nil {
@@ -1289,6 +1290,7 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 
 	diff, err := callWithRecover(urn, p.recoverOnTypeError, func() (shim.InstanceDiff, error) {
 		return p.tf.Diff(ctx, res.TFName, nil, config, shim.DiffOptions{
+			NewInputs: props,
 			TimeoutOptions: shim.TimeoutOptions{
 				ResourceTimeout:  timeouts,
 				TimeoutOverrides: newTimeoutOverrides(shim.TimeoutCreate, req.Timeout),
@@ -1618,6 +1620,7 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 	diff, err := callWithRecover(urn, p.recoverOnTypeError, func() (shim.InstanceDiff, error) {
 		return p.tf.Diff(ctx, res.TFName, state, config, shim.DiffOptions{
 			IgnoreChanges: ic,
+			NewInputs:     news,
 			TimeoutOptions: shim.TimeoutOptions{
 				TimeoutOverrides: newTimeoutOverrides(shim.TimeoutUpdate, req.Timeout),
 				ResourceTimeout:  timeouts,
