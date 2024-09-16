@@ -2756,7 +2756,7 @@ Resources:
 `),
 			false,
 		},
-		// TODO: where is the nested prop diff coming from
+		// TODO[pulumi/pulumi-terraform-bridge#2399] nested prop diff
 		{
 			"list block removed empty object",
 			map[string]interface{}{"listBlocks": []interface{}{map[string]interface{}{}}},
@@ -2778,7 +2778,7 @@ Resources:
 `),
 			false,
 		},
-		// TODO: Why are __defaults appearing in the diff?
+		// TODO[pulumi/pulumi-terraform-bridge#2400] __defaults appearing in the diff
 		{
 			"list block element added front",
 			map[string]interface{}{"listBlocks": []interface{}{
@@ -2815,7 +2815,7 @@ Resources:
 `),
 			false,
 		},
-		// TODO: Why are __defaults appearing in the diff?
+		// TODO[pulumi/pulumi-terraform-bridge#2400] __defaults appearing in the diff
 		{
 			"list block element added back",
 			map[string]interface{}{"listBlocks": []interface{}{
@@ -2852,7 +2852,7 @@ Resources:
 `),
 			false,
 		},
-		// TODO: Why are __defaults appearing in the diff?
+		// TODO[pulumi/pulumi-terraform-bridge#2400] __defaults appearing in the diff
 		{
 			"list block element added middle",
 			map[string]interface{}{"listBlocks": []interface{}{
@@ -2889,7 +2889,7 @@ Resources:
 `),
 			false,
 		},
-		// TODO: Why are __defaults appearing in the diff?
+		// TODO[pulumi/pulumi-terraform-bridge#2400] __defaults appearing in the diff
 		{
 			"list block element removed front",
 			map[string]interface{}{"listBlocks": []interface{}{
@@ -2926,7 +2926,7 @@ Resources:
 `),
 			false,
 		},
-		// TODO: Why are __defaults appearing in the diff?
+		// TODO[pulumi/pulumi-terraform-bridge#2400] __defaults appearing in the diff
 		{
 			"list block element removed back",
 			map[string]interface{}{"listBlocks": []interface{}{
@@ -2963,7 +2963,7 @@ Resources:
 `),
 			false,
 		},
-		// TODO: Why are __defaults appearing in the diff?
+		// TODO[pulumi/pulumi-terraform-bridge#2400] __defaults appearing in the diff
 		{
 			"list block element removed middle",
 			map[string]interface{}{"listBlocks": []interface{}{
@@ -3131,7 +3131,7 @@ Resources:
 `),
 			false,
 		},
-		// TODO: where is the nested prop diff coming from
+		// TODO[pulumi/pulumi-terraform-bridge#2399] nested prop diff
 		{
 			"set block removed empty object",
 			map[string]interface{}{"setBlocks": []interface{}{map[string]interface{}{}}},
@@ -3153,7 +3153,7 @@ Resources:
 `),
 			false,
 		},
-		// TODO: Why are __defaults appearing in the diff?
+		// TODO[pulumi/pulumi-terraform-bridge#2400] __defaults appearing in the diff
 		{
 			"set block element added front",
 			map[string]interface{}{"setBlocks": []interface{}{
@@ -3191,7 +3191,7 @@ Resources:
 			// TODO[pulumi/pulumi-terraform-bridge#2325]: Non-deterministic output
 			true,
 		},
-		// TODO: Why are __defaults appearing in the diff?
+		// TODO[pulumi/pulumi-terraform-bridge#2400] __defaults appearing in the diff
 		{
 			"set block element added back",
 			map[string]interface{}{"setBlocks": []interface{}{
@@ -3229,7 +3229,7 @@ Resources:
 			// TODO[pulumi/pulumi-terraform-bridge#2325]: Non-deterministic output
 			true,
 		},
-		// TODO: Why are __defaults appearing in the diff?
+		// TODO[pulumi/pulumi-terraform-bridge#2400] __defaults appearing in the diff
 		{
 			"set block element added middle",
 			map[string]interface{}{"setBlocks": []interface{}{
@@ -3266,7 +3266,7 @@ Resources:
 `),
 			false,
 		},
-		// TODO: Why are __defaults appearing in the diff?
+		// TODO[pulumi/pulumi-terraform-bridge#2400] __defaults appearing in the diff
 		// TODO[pulumi/pulumi-terraform-bridge#2234]: Duplicated diff
 		{
 			"set block element removed front",
@@ -3305,7 +3305,7 @@ Resources:
 			// TODO[pulumi/pulumi-terraform-bridge#2325]: Non-deterministic output
 			true,
 		},
-		// TODO: Why are __defaults appearing in the diff?
+		// TODO[pulumi/pulumi-terraform-bridge#2400] __defaults appearing in the diff
 		{
 			"set block element removed back",
 			map[string]interface{}{"setBlocks": []interface{}{
@@ -3343,7 +3343,7 @@ Resources:
 			// TODO[pulumi/pulumi-terraform-bridge#2325]: Non-deterministic output
 			true,
 		},
-		// TODO: Why are __defaults appearing in the diff?
+		// TODO[pulumi/pulumi-terraform-bridge#2400] __defaults appearing in the diff
 		{
 			"set block element removed middle",
 			map[string]interface{}{"setBlocks": []interface{}{
@@ -3482,7 +3482,7 @@ Resources:
 `),
 			false,
 		},
-		// TODO: where is the nested prop diff coming from
+		// TODO[pulumi/pulumi-terraform-bridge#2399] nested prop diff
 		{
 			"maxItemsOne block removed empty",
 			map[string]interface{}{"maxItemsOneBlock": map[string]interface{}{}},
