@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestTfComputed(t *testing.T) {
@@ -39,17 +40,21 @@ resource "test_resource" "test" {
 `,
 	)
 
-	plan := driver.Plan(t)
+	plan, err := driver.Plan(t)
+	require.NoError(t, err)
 	t.Log(driver.Show(t, plan.PlanFile))
-	driver.Apply(t, plan)
+	err = driver.Apply(t, plan)
+	require.NoError(t, err)
 
 	t.Log(driver.GetState(t))
 
-	newPlan := driver.Plan(t)
+	newPlan, err := driver.Plan(t)
+	require.NoError(t, err)
 
 	t.Log(driver.Show(t, plan.PlanFile))
 
-	driver.Apply(t, newPlan)
+	err = driver.Apply(t, newPlan)
+	require.NoError(t, err)
 
 	t.Log(driver.GetState(t))
 }
@@ -100,17 +105,22 @@ resource "test_resource" "test" {
 `,
 	)
 
-	plan := driver.Plan(t)
+	plan, err := driver.Plan(t)
+	require.NoError(t, err)
+
 	t.Log(driver.Show(t, plan.PlanFile))
-	driver.Apply(t, plan)
+	err = driver.Apply(t, plan)
+	require.NoError(t, err)
 
 	t.Log(driver.GetState(t))
 
-	newPlan := driver.Plan(t)
+	newPlan, err := driver.Plan(t)
+	require.NoError(t, err)
 
 	t.Log(driver.Show(t, plan.PlanFile))
 
-	driver.Apply(t, newPlan)
+	err = driver.Apply(t, newPlan)
+	require.NoError(t, err)
 
 	t.Log(driver.GetState(t))
 }
@@ -185,16 +195,22 @@ resource "test_resource" "test" {
     }
 }`
 	driver.Write(t, knownProgram)
-	plan := driver.Plan(t)
+	plan, err := driver.Plan(t)
+	require.NoError(t, err)
+
 	t.Log(driver.Show(t, plan.PlanFile))
 
-	driver.Apply(t, plan)
+	err = driver.Apply(t, plan)
+	require.NoError(t, err)
 	t.Log(driver.GetState(t))
 
 	driver.Write(t, unknownProgram)
-	plan = driver.Plan(t)
+	plan, err = driver.Plan(t)
+	require.NoError(t, err)
+
 	t.Log(driver.Show(t, plan.PlanFile))
 
-	driver.Apply(t, plan)
+	err = driver.Apply(t, plan)
+	require.NoError(t, err)
 	t.Log(driver.GetState(t))
 }

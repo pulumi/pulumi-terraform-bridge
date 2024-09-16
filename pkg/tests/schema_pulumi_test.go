@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -1618,7 +1619,8 @@ func TestConfigureCrossTest(t *testing.T) {
 
 		tfdriver := tfcheck.NewTfDriver(t, t.TempDir(), "prov", tfp)
 		tfdriver.Write(t, tfProgram)
-		tfdriver.Plan(t)
+		_, err := tfdriver.Plan(t)
+		require.NoError(t, err)
 		require.NotNil(t, tfRd)
 		require.Nil(t, puRd)
 
@@ -2941,7 +2943,7 @@ runtime: yaml
 			} else {
 				assert.NotContains(t, imp.Stdout, "One or more imported inputs failed to validate")
 
-				f, err := os.OpenFile(filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml"), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+				f, err := os.OpenFile(filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml"), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0o600)
 				assert.NoError(t, err)
 				defer f.Close()
 				_, err = f.WriteString(string(contents))
@@ -2952,4 +2954,183 @@ runtime: yaml
 			}
 		})
 	}
+}
+
+func TestCreateCustomTimeoutsCrossTest(t *testing.T) {
+	test := func(
+		t *testing.T,
+		schemaCreateTimeout *time.Duration,
+		programTimeout *string,
+		expected time.Duration,
+		ExpectFail bool,
+	) {
+		var pulumiCapturedTimeout *time.Duration
+		var tfCapturedTimeout *time.Duration
+		prov := &schema.Provider{
+			ResourcesMap: map[string]*schema.Resource{
+				"prov_test": {
+					Schema: map[string]*schema.Schema{
+						"prop": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+					},
+					CreateContext: func(ctx context.Context, rd *schema.ResourceData, i interface{}) diag.Diagnostics {
+						t := rd.Timeout(schema.TimeoutCreate)
+						if pulumiCapturedTimeout == nil {
+							pulumiCapturedTimeout = &t
+						} else {
+							tfCapturedTimeout = &t
+						}
+						rd.SetId("id")
+						return diag.Diagnostics{}
+					},
+					Timeouts: &schema.ResourceTimeout{
+						Create: schemaCreateTimeout,
+					},
+				},
+			},
+		}
+
+		bridgedProvider := pulcheck.BridgedProvider(t, "prov", prov)
+		pulumiTimeout := `""`
+		if programTimeout != nil {
+			pulumiTimeout = fmt.Sprintf(`"%s"`, *programTimeout)
+		}
+
+		tfTimeout := "null"
+		if programTimeout != nil {
+			tfTimeout = fmt.Sprintf(`"%s"`, *programTimeout)
+		}
+
+		program := fmt.Sprintf(`
+name: test
+runtime: yaml
+resources:
+	mainRes:
+		type: prov:Test
+		properties:
+			prop: "val"
+		options:
+			customTimeouts:
+				create: %s
+`, pulumiTimeout)
+
+		pt := pulcheck.PulCheck(t, bridgedProvider, program)
+		pt.Up()
+		// We pass custom timeouts in the program if the resource does not support them.
+
+		require.NotNil(t, pulumiCapturedTimeout)
+		require.Nil(t, tfCapturedTimeout)
+
+		tfProgram := fmt.Sprintf(`
+resource "prov_test" "mainRes" {
+	prop = "val"
+	timeouts {
+		create = %s
+	}
+}`, tfTimeout)
+
+		tfdriver := tfcheck.NewTfDriver(t, t.TempDir(), "prov", prov)
+		tfdriver.Write(t, tfProgram)
+
+		plan, err := tfdriver.Plan(t)
+		if ExpectFail {
+			require.Error(t, err)
+			return
+		}
+		require.NoError(t, err)
+		err = tfdriver.Apply(t, plan)
+		require.NoError(t, err)
+		require.NotNil(t, tfCapturedTimeout)
+
+		assert.Equal(t, *pulumiCapturedTimeout, *tfCapturedTimeout)
+		assert.Equal(t, *pulumiCapturedTimeout, expected)
+	}
+
+	oneSecString := "1s"
+	oneSec := 1 * time.Second
+	// twoSecString := "2s"
+	twoSec := 2 * time.Second
+
+	tests := []struct {
+		name                string
+		schemaCreateTimeout *time.Duration
+		programTimeout      *string
+		expected            time.Duration
+		expectFail          bool
+	}{
+		{
+			"schema specified timeout",
+			&oneSec,
+			nil,
+			oneSec,
+			false,
+		},
+		{
+			"program specified timeout",
+			&twoSec,
+			&oneSecString,
+			oneSec,
+			false,
+		},
+		{
+			"program specified without schema timeout",
+			nil,
+			&oneSecString,
+			oneSec,
+			true,
+		},
+	}
+
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			test(t, tc.schemaCreateTimeout, tc.programTimeout, tc.expected, tc.expectFail)
+		})
+	}
+}
+
+func TestStateFunc(t *testing.T) {
+	resMap := map[string]*schema.Resource{
+		"prov_test": {
+			CreateContext: func(ctx context.Context, d *schema.ResourceData, i interface{}) diag.Diagnostics {
+				d.SetId("id")
+				var diags diag.Diagnostics
+				v, ok := d.GetOk("test")
+				assert.True(t, ok, "test property not set")
+
+				err := d.Set("test", v.(string)+" world")
+				require.NoError(t, err)
+				return diags
+			},
+			Schema: map[string]*schema.Schema{
+				"test": {
+					Type:     schema.TypeString,
+					Optional: true,
+					ForceNew: true,
+					StateFunc: func(v interface{}) string {
+						return v.(string) + " world"
+					},
+				},
+			},
+		},
+	}
+	tfp := &schema.Provider{ResourcesMap: resMap}
+	bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
+	program := `
+name: test
+runtime: yaml
+resources:
+  mainRes:
+    type: prov:index:Test
+	properties:
+	  test: "hello"
+outputs:
+  testOut: ${mainRes.test}
+`
+	pt := pulcheck.PulCheck(t, bridgedProvider, program)
+	res := pt.Up()
+	require.Equal(t, "hello world", res.Outputs["testOut"].Value)
+	pt.Preview(optpreview.ExpectNoChanges())
 }

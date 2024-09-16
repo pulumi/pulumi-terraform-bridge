@@ -383,7 +383,7 @@ func trimFrontMatter(text []byte) []byte {
 	if idx == -1 {
 		return text
 	}
-	return body[idx+3:]
+	return body[idx+4:]
 }
 
 func splitByMarkdownHeaders(text string, level int) [][]string {
