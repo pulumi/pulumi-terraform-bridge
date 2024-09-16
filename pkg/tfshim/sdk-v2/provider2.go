@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"sort"
 	"strings"
 	"time"
@@ -113,7 +114,7 @@ type v2InstanceDiff2 struct {
 
 	config       cty.Value
 	plannedState cty.Value
-
+	plannedPrivate map[string]interface{}
 	diffEqualDecisionOverride *bool
 }
 
@@ -131,7 +132,8 @@ func (d *v2InstanceDiff2) GoString() string {
     },
     config:         %#v,
     plannedState:   %#v,
-}`, d.v2InstanceDiff.tf, d.config, d.plannedState)
+    plannedPrivate:    %#v,
+}`, d.v2InstanceDiff.tf, d.config, d.plannedState, d.plannedPrivate)
 }
 
 var _ shim.InstanceDiff = (*v2InstanceDiff2)(nil)
@@ -298,7 +300,17 @@ func (p *planResourceChangeImpl) Apply(
 	}
 	diff := p.unpackDiff(ty, d)
 	cfg, st, pl := diff.config, state.stateValue, diff.plannedState
-	priv := diff.v2InstanceDiff.tf.Meta
+
+	// Merge plannedPrivate and v2InstanceDiff.tf.Meta into a single map. This is necessary because
+	// timeouts are stored in the Meta and not in plannedPrivate.
+	priv := make(map[string]interface{})
+	if len(diff.plannedPrivate) > 0 {
+		maps.Copy(priv, diff.plannedPrivate)
+	}
+	if len(diff.v2InstanceDiff.tf.Meta) > 0 {
+		maps.Copy(priv, diff.v2InstanceDiff.tf.Meta)
+	}
+
 	resp, err := p.server.ApplyResourceChange(ctx, t, ty, cfg, st, pl, priv, meta)
 	if err != nil {
 		return nil, err
@@ -490,11 +502,10 @@ func (s *grpcServer) PlanResourceChange(
 	providerMeta *cty.Value,
 	ignores shim.IgnoreChanges,
 ) (*struct {
-	PlannedState cty.Value
-	PlannedMeta  map[string]interface{}
-	PlannedDiff  *terraform.InstanceDiff
-}, error,
-) {
+	PlannedState   cty.Value
+	PlannedPrivate map[string]interface{}
+	PlannedDiff    *terraform.InstanceDiff
+}, error) {
 	configVal, err := msgpack.Marshal(config, ty)
 	if err != nil {
 		return nil, err
@@ -564,13 +575,13 @@ func (s *grpcServer) PlanResourceChange(
 		}
 	}
 	return &struct {
-		PlannedState cty.Value
-		PlannedMeta  map[string]interface{}
-		PlannedDiff  *terraform.InstanceDiff
+		PlannedState   cty.Value
+		PlannedPrivate map[string]interface{}
+		PlannedDiff    *terraform.InstanceDiff
 	}{
-		PlannedState: plannedState,
-		PlannedMeta:  meta,
-		PlannedDiff:  resp.InstanceDiff,
+		PlannedState:   plannedState,
+		PlannedPrivate: meta,
+		PlannedDiff:    resp.InstanceDiff,
 	}, nil
 }
 
