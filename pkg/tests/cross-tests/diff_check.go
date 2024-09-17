@@ -47,7 +47,17 @@ type diffTestCase struct {
 	DeleteBeforeReplace bool
 }
 
-func runDiffCheck(t T, tc diffTestCase) []string {
+type pulumiDiffResp struct {
+	DetailedDiff        map[string]interface{} `json:"detailedDiff"`
+	DeleteBeforeReplace bool                   `json:"deleteBeforeReplace"`
+}
+
+type diffResult struct {
+	TFDiff     tfChange
+	PulumiDiff pulumiDiffResp
+}
+
+func runDiffCheck(t T, tc diffTestCase) diffResult {
 	tfwd := t.TempDir()
 
 	lifecycleArgs := lifecycleArgs{CreateBeforeDestroy: !tc.DeleteBeforeReplace}
@@ -80,21 +90,24 @@ func runDiffCheck(t T, tc diffTestCase) []string {
 	require.NoErrorf(t, err, "writing Pulumi.yaml")
 	x := pt.Up()
 
-	tfAction := tfd.parseChangesFromTFPlan(*tfDiffPlan)
+	changes := tfd.parseChangesFromTFPlan(*tfDiffPlan)
 
-	var diffResponse map[string]interface{}
+	diffResponse := pulumiDiffResp{}
 	for _, entry := range pt.GrpcLog().Entries {
 		if entry.Method == "/pulumirpc.ResourceProvider/Diff" {
 			err := json.Unmarshal(entry.Response, &diffResponse)
 			require.NoError(t, err)
 		}
 	}
-	tc.verifyBasicDiffAgreement(t, tfAction, x.Summary, diffResponse)
+	tc.verifyBasicDiffAgreement(t, changes.Actions, x.Summary, diffResponse)
 
-	return tfAction
+	return diffResult{
+		TFDiff:     changes,
+		PulumiDiff: diffResponse,
+	}
 }
 
-func (tc *diffTestCase) verifyBasicDiffAgreement(t T, tfActions []string, us auto.UpdateSummary, diffResponse map[string]interface{}) {
+func (tc *diffTestCase) verifyBasicDiffAgreement(t T, tfActions []string, us auto.UpdateSummary, diffResponse pulumiDiffResp) {
 	t.Logf("UpdateSummary.ResourceChanges: %#v", us.ResourceChanges)
 	// Action list from https://github.com/opentofu/opentofu/blob/main/internal/plans/action.go#L11
 	if len(tfActions) == 0 {
@@ -134,14 +147,14 @@ func (tc *diffTestCase) verifyBasicDiffAgreement(t T, tfActions []string, us aut
 			rc := *us.ResourceChanges
 			assert.Equalf(t, 1, rc[string(apitype.OpSame)], "expected the stack to stay the same")
 			assert.Equalf(t, 1, rc[string(apitype.OpReplace)], "expected the test resource to get a replace plan")
-			assert.Equalf(t, diffResponse["deleteBeforeReplace"], nil, "expected deleteBeforeReplace to be true")
+			assert.Equalf(t, diffResponse.DeleteBeforeReplace, false, "expected deleteBeforeReplace to be true")
 		} else if tfActions[0] == "delete" && tfActions[1] == "create" {
 			require.NotNilf(t, us.ResourceChanges, "UpdateSummary.ResourceChanges should not be nil")
 			rc := *us.ResourceChanges
 			t.Logf("UpdateSummary.ResourceChanges: %#v", rc)
 			assert.Equalf(t, 1, rc[string(apitype.OpSame)], "expected the stack to stay the same")
 			assert.Equalf(t, 1, rc[string(apitype.OpReplace)], "expected the test resource to get a replace plan")
-			assert.Equalf(t, diffResponse["deleteBeforeReplace"], true, "expected deleteBeforeReplace to be true")
+			assert.Equalf(t, diffResponse.DeleteBeforeReplace, true, "expected deleteBeforeReplace to be true")
 		} else {
 			panic("TODO: do not understand this TF action yet: " + fmt.Sprint(tfActions))
 		}

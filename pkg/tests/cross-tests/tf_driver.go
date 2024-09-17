@@ -112,17 +112,21 @@ func (d *TfResDriver) write(
 	d.driver.Write(t, buf.String())
 }
 
+type tfChange struct {
+	Actions []string       `json:"actions"`
+	Before  map[string]any `json:"before"`
+	After   map[string]any `json:"after"`
+}
+
 // Still discovering the structure of JSON-serialized TF plans. The information required from these is, primarily, is
 // whether the resource is staying unchanged, being updated or replaced. Secondarily, would be also great to know
 // detailed paths of properties causing the change, though that is more difficult to cross-compare with Pulumi.
 //
 // For now this is code is similar to `jq .resource_changes[0].change.actions[0] plan.json`.
-func (*TfResDriver) parseChangesFromTFPlan(plan tfcheck.TfPlan) []string {
+func (*TfResDriver) parseChangesFromTFPlan(plan tfcheck.TfPlan) tfChange {
 	type p struct {
 		ResourceChanges []struct {
-			Change struct {
-				Actions []string `json:"actions"`
-			} `json:"change"`
+			Change tfChange `json:"change"`
 		} `json:"resource_changes"`
 	}
 	jb, err := json.Marshal(plan.RawPlan)
@@ -131,6 +135,5 @@ func (*TfResDriver) parseChangesFromTFPlan(plan tfcheck.TfPlan) []string {
 	err = json.Unmarshal(jb, &pp)
 	contract.AssertNoErrorf(err, "failed to unmarshal terraform plan")
 	contract.Assertf(len(pp.ResourceChanges) == 1, "expected exactly one resource change")
-	actions := pp.ResourceChanges[0].Change.Actions
-	return actions
+	return pp.ResourceChanges[0].Change
 }
