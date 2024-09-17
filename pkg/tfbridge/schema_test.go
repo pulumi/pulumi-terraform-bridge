@@ -644,34 +644,8 @@ func TestTerraformOutputsWithSecretsUnsupported(t *testing.T) {
 	}
 }
 
-func clearMeta(state shim.InstanceState) bool {
-	if tf, ok := shimv1.IsInstanceState(state); ok {
-		tf.Meta = map[string]interface{}{}
-		return true
-	}
-	if tf, ok := shimv2.IsInstanceState(state); ok {
-		tf.Meta = map[string]interface{}{}
-		return true
-	}
-	return false
-}
-
-func clearID(state shim.InstanceState) bool {
-	if tf, ok := shimv1.IsInstanceState(state); ok {
-		tf.ID = ""
-		return true
-	}
-	if tf, ok := shimv2.IsInstanceState(state); ok {
-		tf.ID = ""
-		return true
-	}
-	return false
-}
-
 // Test that meta-properties are correctly produced.
 func TestMetaProperties(t *testing.T) {
-	// TODO: fix
-	t.Skipf("Instance State internals")
 	for _, f := range factories {
 		t.Run(f.SDKVersion(), func(t *testing.T) {
 			prov := f.NewTestProvider()
@@ -718,17 +692,7 @@ func TestMetaProperties(t *testing.T) {
 
 			assert.Equal(t, "0", state.Meta()["schema_version"])
 
-			// Remove the resource's meta-attributes and ensure that we do not include them in the result.
-			ok := clearMeta(read2)
-			assert.True(t, ok)
-			props, err = MakeTerraformResult(ctx, prov, read2, res.Schema(), nil, nil, true)
-			assert.NoError(t, err)
-			assert.NotNil(t, props)
-			assert.NotContains(t, props, metaKey)
-
 			// Ensure that timeouts are populated and preserved.
-			ok = clearID(state)
-			assert.True(t, ok)
 			cfg := prov.NewResourceConfig(ctx, map[string]interface{}{})
 
 			// To populate default timeouts, we take the timeouts from the resource schema and insert them into the diff
@@ -764,8 +728,6 @@ func TestMetaProperties(t *testing.T) {
 }
 
 func TestInjectingCustomTimeouts(t *testing.T) {
-	// TODO: fix
-	t.Skipf("Instance State internals")
 	for _, f := range factories {
 		t.Run(f.SDKVersion(), func(t *testing.T) {
 			prov := f.NewTestProvider()
@@ -812,17 +774,7 @@ func TestInjectingCustomTimeouts(t *testing.T) {
 
 			assert.Equal(t, "0", state.Meta()["schema_version"])
 
-			// Remove the resource's meta-attributes and ensure that we do not include them in the result.
-			ok := clearMeta(read2)
-			assert.True(t, ok)
-			props, err = MakeTerraformResult(ctx, prov, read2, res.Schema(), nil, nil, true)
-			assert.NoError(t, err)
-			assert.NotNil(t, props)
-			assert.NotContains(t, props, metaKey)
-
 			// Ensure that timeouts are populated and preserved.
-			ok = clearID(state)
-			assert.True(t, ok)
 			cfg := prov.NewResourceConfig(ctx, map[string]interface{}{})
 
 			// To populate default timeouts, we take the timeouts from the resource schema and insert them into the diff
@@ -877,63 +829,82 @@ func TestInjectingCustomTimeouts(t *testing.T) {
 	}
 }
 
-func getStateAttributes(state shim.InstanceState) (map[string]string, bool) {
-	if tf, ok := shimv1.IsInstanceState(state); ok {
-		return tf.Attributes, true
-	}
-	if tf, ok := shimv2.IsInstanceState(state); ok {
-		return tf.Attributes, true
-	}
-	return nil, false
-}
-
 // Test that MakeTerraformResult reads property values appropriately.
 func TestResultAttributesRoundTrip(t *testing.T) {
-	// TODO: fix
-	t.Skipf("Instance State internals")
-	for _, f := range factories {
-		t.Run(f.SDKVersion(), func(t *testing.T) {
-			prov := f.NewTestProvider()
-			ctx := context.Background()
+	setup := func(f shimFactory) (shim.Resource, shim.InstanceState, shim.InstanceState) {
+		prov := f.NewTestProvider()
+		ctx := context.Background()
 
-			const resName = "example_resource"
-			res := prov.ResourcesMap().Get("example_resource")
+		const resName = "example_resource"
+		res := prov.ResourcesMap().Get("example_resource")
 
-			state, err := res.InstanceState("0", map[string]interface{}{}, map[string]interface{}{})
-			assert.NoError(t, err)
-			read, err := prov.Refresh(ctx, resName, state, nil)
-			assert.NoError(t, err)
-			assert.NotNil(t, read)
+		state, err := res.InstanceState("0", map[string]interface{}{}, map[string]interface{}{})
+		assert.NoError(t, err)
+		read, err := prov.Refresh(ctx, resName, state, nil)
+		assert.NoError(t, err)
+		assert.NotNil(t, read)
 
-			props, err := MakeTerraformResult(ctx, prov, read, res.Schema(), nil, nil, true)
-			assert.NoError(t, err)
-			assert.NotNil(t, props)
+		props, err := MakeTerraformResult(ctx, prov, read, res.Schema(), nil, nil, true)
+		assert.NoError(t, err)
+		assert.NotNil(t, props)
 
-			state, err = makeTerraformStateWithOpts(
-				ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props,
-				makeTerraformStateOptions{
-					defaultZeroSchemaVersion: true, unknownCollectionsSupported: prov.SupportsUnknownCollections(),
-				})
-			assert.NoError(t, err)
-			assert.NotNil(t, state)
+		state, err = makeTerraformStateWithOpts(
+			ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props,
+			makeTerraformStateOptions{
+				defaultZeroSchemaVersion: true, unknownCollectionsSupported: prov.SupportsUnknownCollections(),
+			})
+		assert.NoError(t, err)
+		assert.NotNil(t, state)
 
-			readAttributes, ok := getStateAttributes(read)
-			assert.True(t, ok)
-			stateAttributes, ok := getStateAttributes(state)
-			assert.True(t, ok)
-
-			// We may add extra "%" fields to represent map counts. These diffs are innocuous. If we only see them in the
-			// attributes produced by MakeTerraformResult, ignore them.
-			for k, v := range stateAttributes {
-				expected, ok := readAttributes[k]
-				if !ok {
-					assert.True(t, strings.HasSuffix(k, ".%"))
-				} else {
-					assert.Equal(t, expected, v)
-				}
-			}
-		})
+		return res, read, state
 	}
+	t.Run("v1", func(t *testing.T) {
+		_, read, state := setup(factories[0])
+
+		getStateAttributes := func(state shim.InstanceState) (map[string]string, bool) {
+			if tf, ok := shimv1.IsInstanceState(state); ok {
+				return tf.Attributes, true
+			}
+			return nil, false
+		}
+
+		readAttributes, ok := getStateAttributes(read)
+		assert.True(t, ok)
+
+		stateAttributes, ok := getStateAttributes(state)
+		assert.True(t, ok)
+
+		// We may add extra "%" fields to represent map counts. These diffs are innocuous. If we only see them in the
+		// attributes produced by MakeTerraformResult, ignore them.
+		for k, v := range stateAttributes {
+			expected, ok := readAttributes[k]
+			if !ok {
+				assert.True(t, strings.HasSuffix(k, ".%"))
+			} else {
+				assert.Equal(t, expected, v)
+			}
+		}
+	})
+
+	t.Run("v2", func(t *testing.T) {
+		res, read, state := setup(factories[1])
+		readAttributes, err := read.Object(res.Schema())
+		assert.NoError(t, err)
+
+		stateAttributes, err := state.Object(res.Schema())
+		assert.NoError(t, err)
+
+		// We may add extra "%" fields to represent map counts. These diffs are innocuous. If we only see them in the
+		// attributes produced by MakeTerraformResult, ignore them.
+		for k, v := range stateAttributes {
+			expected, ok := readAttributes[k]
+			if !ok {
+				assert.True(t, strings.HasSuffix(k, ".%"))
+			} else {
+				assert.Equal(t, expected, v)
+			}
+		}
+	})
 }
 
 func sortDefaultsList(m resource.PropertyMap) {
