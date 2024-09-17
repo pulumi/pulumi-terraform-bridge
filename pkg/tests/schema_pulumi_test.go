@@ -4169,7 +4169,7 @@ func TestPlanStateEdit(t *testing.T) {
 	}
 
 	tfp := &schema.Provider{
-		Schema: map[string]*schema.Schema{"config_value": &schema.Schema{
+		Schema: map[string]*schema.Schema{"config_value": {
 			Type:     schema.TypeString,
 			Optional: true,
 		}},
