@@ -100,7 +100,8 @@ func writeInstallationInstructions(goImportBasePath, providerName string) string
 			"* Python: [`pulumi-%[1]s`](https://pypi.org/project/pulumi-%[1]s/)\n"+
 			"* Go: [`%[3]s`](https://github.com/pulumi/pulumi-%[1]s)\n"+
 			"* .NET: [`Pulumi.%[2]s`](https://www.nuget.org/packages/Pulumi.%[2]s)\n"+
-			"* Java: [`com.pulumi/%[1]s`](https://central.sonatype.com/artifact/com.pulumi/%[1]s)\n\n",
+			"* Java: [`com.pulumi/%[1]s`](https://central.sonatype.com/artifact/com.pulumi/%[1]s)\n\n"+
+			"## Overview\n\n",
 		providerName,
 		cSharpName,
 		goImportBasePath,

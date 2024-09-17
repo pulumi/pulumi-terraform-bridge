@@ -145,7 +145,8 @@ func TestWriteInstallationInstructions(t *testing.T) {
 			"* Python: [`pulumi-testcase`](https://pypi.org/project/pulumi-testcase/)\n" +
 			"* Go: [`github.com/pulumi/pulumi-testcase/sdk/v3/go/pulumi-testcase`](https://github.com/pulumi/pulumi-testcase)\n" +
 			"* .NET: [`Pulumi.Testcase`](https://www.nuget.org/packages/Pulumi.Testcase)\n" +
-			"* Java: [`com.pulumi/testcase`](https://central.sonatype.com/artifact/com.pulumi/testcase)\n\n",
+			"* Java: [`com.pulumi/testcase`](https://central.sonatype.com/artifact/com.pulumi/testcase)\n\n" +
+			"## Overview\n\n",
 		goImportBasePath: "github.com/pulumi/pulumi-testcase/sdk/v3/go/pulumi-testcase",
 		packageName:      "testcase",
 	}
