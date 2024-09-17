@@ -1152,17 +1152,6 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 		} else {
 			changes = pulumirpc.DiffResponse_DIFF_SOME
 		}
-	} else {
-		// There are some providers/situations which `makeDetailedDiff` distorts the expected changes, leading
-		// to changes being dropped by Pulumi.
-		// Until we fix `makeDetailedDiff`, it is safer to refer to the Terraform Diff attribute length for setting
-		// the DiffResponse.
-		// We will still use `detailedDiff` for diff display purposes.
-
-		// See also https://github.com/pulumi/pulumi-terraform-bridge/issues/1501.
-		if !diff.HasNoChanges() {
-			changes = pulumirpc.DiffResponse_DIFF_SOME
-		}
 	}
 
 	if changes == pulumirpc.DiffResponse_DIFF_SOME {
@@ -1218,7 +1207,6 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 	// recorded any replaces, that means that `makeDetailedDiff` failed to translate a
 	// property. This is known to happen for computed input properties:
 	//
-	// TODO: scope this workaround to !diffOverride
 	// https://github.com/pulumi/pulumi-aws/issues/2971
 	if (diff.RequiresNew() || diff.Destroy()) &&
 		// In theory, we should be safe to set __meta as replaces whenever
@@ -1230,11 +1218,8 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 		changes = pulumirpc.DiffResponse_DIFF_SOME
 	}
 
-	// TODO: Check if this is needed for PRC, likely still needed
-	// TODO: Should this also add an entry at least in diff? Detailed diff too?
 	if changes == pulumirpc.DiffResponse_DIFF_NONE &&
 		markWronglyTypedMaxItemsOneStateDiff(schema, fields, olds) {
-
 		changes = pulumirpc.DiffResponse_DIFF_SOME
 	}
 
