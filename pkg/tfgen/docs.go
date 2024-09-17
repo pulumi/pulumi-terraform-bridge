@@ -373,7 +373,9 @@ var (
 )
 
 func trimFrontMatter(text []byte) []byte {
-	body, ok := bytes.CutPrefix(text, []byte("---"))
+	// trim any leading or trailing whitespace
+	body := bytes.TrimSpace(text)
+	body, ok := bytes.CutPrefix(body, []byte("---"))
 	if !ok {
 		return text
 	}

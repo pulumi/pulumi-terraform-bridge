@@ -75,6 +75,11 @@ func TestTrimFrontmatter(t *testing.T) {
 			input:    readfile(t, "test_data/strip-front-matter/artifactory-input.md"),
 			expected: readfile(t, "test_data/strip-front-matter/artifactory-expected.md"),
 		},
+		{
+			name:     "Strips Upstream Frontmatter Wit Leading Whitespace",
+			input:    readfile(t, "test_data/strip-front-matter/ise-input.md"),
+			expected: readfile(t, "test_data/strip-front-matter/ise-expected.md"),
+		},
 	}
 
 	for _, tt := range tests {
