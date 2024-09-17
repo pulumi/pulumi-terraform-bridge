@@ -1220,6 +1220,7 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 
 	if changes == pulumirpc.DiffResponse_DIFF_NONE &&
 		markWronglyTypedMaxItemsOneStateDiff(schema, fields, olds) {
+
 		changes = pulumirpc.DiffResponse_DIFF_SOME
 	}
 
