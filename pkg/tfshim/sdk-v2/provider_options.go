@@ -32,9 +32,10 @@ type providerOption func(providerOptions) (providerOptions, error)
 //
 // For use, see [WithPlanStateEdit].
 type PlanStateEditRequest struct {
-	TfToken   string               // The TF token
-	PlanState cty.Value            // The plan state calculated by TF.
-	NewInputs resource.PropertyMap // The post-check inputs given by Pulumi.
+	TfToken        string               // The TF token
+	PlanState      cty.Value            // The plan state calculated by TF.
+	NewInputs      resource.PropertyMap // The post-check inputs given by Pulumi.
+	ProviderConfig resource.PropertyMap // The config of the provider
 }
 
 // PlanStateEditFunc describes a user supplied function to edit TF's plan state.

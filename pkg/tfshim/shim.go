@@ -295,6 +295,11 @@ type DiffOptions struct {
 	//
 	// NewInputs is always populated.
 	NewInputs resource.PropertyMap
+
+	// The config values used to configure the provider.
+	//
+	// DO NOT EDIT ProviderConfig.
+	ProviderConfig resource.PropertyMap
 }
 
 // Supports the ignoreChanges Pulumi option.

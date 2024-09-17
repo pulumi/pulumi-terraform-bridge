@@ -264,9 +264,10 @@ func (p *planResourceChangeImpl) Diff(
 	}
 
 	plannedState, err := p.planEdit(ctx, PlanStateEditRequest{
-		NewInputs: opts.NewInputs,
-		TfToken:   t,
-		PlanState: plan.PlannedState,
+		NewInputs:      opts.NewInputs,
+		ProviderConfig: opts.ProviderConfig,
+		TfToken:        t,
+		PlanState:      plan.PlannedState,
 	})
 	return &v2InstanceDiff2{
 		v2InstanceDiff: v2InstanceDiff{

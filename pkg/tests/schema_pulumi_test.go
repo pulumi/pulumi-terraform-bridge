@@ -4141,6 +4141,9 @@ func TestPlanStateEdit(t *testing.T) {
 				"key":   resource.NewProperty("val"),
 			}),
 		}, req.NewInputs)
+		assert.Equal(t, resource.PropertyMap{
+			"configValue": resource.NewProperty("configured"),
+		}, req.ProviderConfig)
 
 		m := req.PlanState.AsValueMap()
 		effectiveLabels := m[tfLabelsKey].AsValueMap()
@@ -4165,20 +4168,31 @@ func TestPlanStateEdit(t *testing.T) {
 		CustomizeDiff: setLabelsDiff,
 	}
 
-	tfp := &schema.Provider{ResourcesMap: map[string]*schema.Resource{"prov_test": res}}
-	bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp, pulcheck.WithStateEdit(fixEmptyLabels))
+	tfp := &schema.Provider{
+		Schema: map[string]*schema.Schema{"config_value": &schema.Schema{
+			Type:     schema.TypeString,
+			Optional: true,
+		}},
+		ResourcesMap: map[string]*schema.Resource{"prov_test": res},
+	}
+	bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp,
+		pulcheck.WithStateEdit(fixEmptyLabels))
 	program := `
-	name: test
-	runtime: yaml
-	resources:
-	  mainRes:
-		type: prov:index:Test
-		properties:
-		  labels: { "key": "val", "empty": "" }
-	outputs:
-	  keyValue: ${mainRes.terraformLabels["key"]}
-	  emptyValue: ${mainRes.terraformLabels["empty"]}
-	`
+name: test
+runtime: yaml
+resources:
+  _:
+    type: pulumi:providers:prov
+    properties:
+        configValue: "configured"
+    defaultProvider: true
+  mainRes:
+    type: prov:index:Test
+    properties:
+      labels: { "key": "val", "empty": "" }
+outputs:
+  keyValue: ${mainRes.terraformLabels["key"]}
+  emptyValue: ${mainRes.terraformLabels["empty"]}`
 	pt := pulcheck.PulCheck(t, bridgedProvider, program)
 	out := pt.Up()
 
