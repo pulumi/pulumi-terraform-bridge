@@ -4085,3 +4085,122 @@ outputs:
 	require.Equal(t, "hello world", res.Outputs["testOut"].Value)
 	pt.Preview(optpreview.ExpectNoChanges())
 }
+
+func TestUnknownSetElementDiff(t *testing.T) {
+	resMap := map[string]*schema.Resource{
+		"prov_test": {
+			Schema: map[string]*schema.Schema{
+				"test": {
+					Type:     schema.TypeSet,
+					Optional: true,
+					Elem: &schema.Schema{
+						Type: schema.TypeString,
+					},
+				},
+			},
+		},
+		"prov_aux": {
+			Schema: map[string]*schema.Schema{
+				"aux": {
+					Type:     schema.TypeString,
+					Computed: true,
+					Optional: true,
+				},
+			},
+			CreateContext: func(_ context.Context, d *schema.ResourceData, _ interface{}) diag.Diagnostics {
+				d.SetId("aux")
+				err := d.Set("aux", "aux")
+				require.NoError(t, err)
+				return nil
+			},
+		},
+	}
+	tfp := &schema.Provider{ResourcesMap: resMap}
+
+	runTest := func(PRC bool, expectedOutput autogold.Value) {
+		opts := []pulcheck.BridgedProviderOpt{}
+		if PRC {
+			opts = append(opts, pulcheck.DisablePlanResourceChange())
+		}
+		bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp, opts...)
+		originalProgram := `
+name: test
+runtime: yaml
+resources:
+  mainRes:
+    type: prov:index:Test
+outputs:
+  testOut: ${mainRes.tests}
+	`
+
+		programWithUnknown := `
+name: test
+runtime: yaml
+resources:
+  auxRes:
+    type: prov:index:Aux
+  mainRes:
+    type: prov:index:Test
+    properties:
+      tests:
+        - ${auxRes.aux}
+outputs:
+  testOut: ${mainRes.tests}
+`
+		pt := pulcheck.PulCheck(t, bridgedProvider, originalProgram)
+		pt.Up()
+		pulumiYamlPath := filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml")
+
+		err := os.WriteFile(pulumiYamlPath, []byte(programWithUnknown), 0o600)
+		require.NoError(t, err)
+
+		res := pt.Preview(optpreview.Diff())
+		// Test that the test property is unknown at preview time
+		expectedOutput.Equal(t, res.StdOut)
+		resUp := pt.Up()
+		// assert that the property gets resolved
+		require.Equal(t,
+			[]interface{}{"aux"},
+			resUp.Outputs["testOut"].Value,
+		)
+	}
+
+	t.Run("PRC enabled", func(t *testing.T) {
+		runTest(true, autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      + tests: [
+      +     [0]: output<string>
+        ]
+    --outputs:--
+  + testOut: output<string>
+Resources:
+    + 1 to create
+    ~ 1 to update
+    2 changes. 1 unchanged
+`))
+	})
+
+	t.Run("PRC disabled", func(t *testing.T) {
+		runTest(false, autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+    --outputs:--
+  + testOut: output<string>
+Resources:
+    + 1 to create
+    ~ 1 to update
+    2 changes. 1 unchanged
+`))
+	})
+}
