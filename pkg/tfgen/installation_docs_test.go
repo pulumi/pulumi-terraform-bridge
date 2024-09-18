@@ -306,11 +306,37 @@ func TestApplyEditRules(t *testing.T) {
 			},
 			expected: []byte(readfile(t, "test_data/replace-terraform-version/expected.md")),
 		},
+		{
+			// Found in linode
+			name: "Rewrites providers.tf to Pulumi.yaml",
+			docFile: DocFile{
+				Content: []byte(readfile(t, "test_data/rewrite-providers-tf-to-pulumi-yaml/input.md")),
+			},
+			expected: []byte(readfile(t, "test_data/rewrite-providers-tf-to-pulumi-yaml/expected.md")),
+		},
+		{
+			name: "Rewrites terraform init to pulumi up",
+			docFile: DocFile{
+				Content: []byte(readfile(t, "test_data/rewrite-tf-init-to-pulumi-up/input.md")),
+			},
+			expected: []byte(readfile(t, "test_data/rewrite-tf-init-to-pulumi-up/expected.md")),
+		},
+		{
+			// Found in linode
+			name: "Replaces provider block with provider configuration",
+			docFile: DocFile{
+				Content: []byte(readfile(t, "test_data/replace-provider-block/input.md")),
+			},
+			expected: []byte(readfile(t, "test_data/replace-provider-block/expected.md")),
+		},
 	}
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
+			if runtime.GOOS == "windows" {
+				t.Skipf("Skipping on Windows due to a newline handling issue")
+			}
 			g := &Generator{
 				sink:      mockSink{t},
 				editRules: defaultEditRules(),
