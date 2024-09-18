@@ -4119,7 +4119,7 @@ func TestUnknownSetElementDiff(t *testing.T) {
 
 	runTest := func(PRC bool, expectedOutput autogold.Value) {
 		opts := []pulcheck.BridgedProviderOpt{}
-		if PRC {
+		if !PRC {
 			opts = append(opts, pulcheck.DisablePlanResourceChange())
 		}
 		bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp, opts...)
@@ -4174,9 +4174,6 @@ outputs:
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-      + tests: [
-      +     [0]: output<string>
-        ]
     --outputs:--
   + testOut: output<string>
 Resources:
@@ -4195,6 +4192,9 @@ Resources:
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      + tests: [
+      +     [0]: output<string>
+        ]
     --outputs:--
   + testOut: output<string>
 Resources:
