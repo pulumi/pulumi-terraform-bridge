@@ -145,8 +145,7 @@ func TestWriteInstallationInstructions(t *testing.T) {
 			"* Python: [`pulumi-testcase`](https://pypi.org/project/pulumi-testcase/)\n" +
 			"* Go: [`github.com/pulumi/pulumi-testcase/sdk/v3/go/pulumi-testcase`](https://github.com/pulumi/pulumi-testcase)\n" +
 			"* .NET: [`Pulumi.Testcase`](https://www.nuget.org/packages/Pulumi.Testcase)\n" +
-			"* Java: [`com.pulumi/testcase`](https://central.sonatype.com/artifact/com.pulumi/testcase)\n\n" +
-			"## Overview\n\n",
+			"* Java: [`com.pulumi/testcase`](https://central.sonatype.com/artifact/com.pulumi/testcase)\n\n",
 		goImportBasePath: "github.com/pulumi/pulumi-testcase/sdk/v3/go/pulumi-testcase",
 		packageName:      "testcase",
 	}
@@ -156,6 +155,42 @@ func TestWriteInstallationInstructions(t *testing.T) {
 		actual := writeInstallationInstructions(tc.goImportBasePath, tc.packageName)
 		require.Equal(t, tc.expected, actual)
 	})
+}
+
+func TestWriteOverviewHeader(t *testing.T) {
+	t.Parallel()
+	type testCase struct {
+		// The name of the test case.
+		name     string
+		input    string
+		expected string
+	}
+
+	testCases := []testCase{
+		{
+			name:     "Writes Overview Header When Content Exists",
+			input:    readTestFile(t, "write-overview-header/with-overview-text.md"),
+			expected: "## Overview\n\n",
+		},
+		{
+			name:     "Does Not Write Overview Header For Empty Overview",
+			input:    readTestFile(t, "write-overview-header/empty-overview.md"),
+			expected: "",
+		},
+		{
+			name:     "Does Not Write Overview Header For Empty Content",
+			input:    "",
+			expected: "",
+		},
+	}
+	for _, tt := range testCases {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			actual := writeOverviewHeader([]byte(tt.input))
+			assert.Equal(t, tt.expected, actual)
+		})
+	}
 }
 
 func TestWriteFrontMatter(t *testing.T) {
