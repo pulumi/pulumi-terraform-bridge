@@ -49,6 +49,11 @@ func checkIDProperties(sink diag.Sink, info tfbridge.ProviderInfo, isPFResource 
 	errors := 0
 
 	info.P.ResourcesMap().Range(func(rname string, resource shim.Resource) bool {
+		// Unmapped resources are not available, so they don't need to be correct.
+		if v, ok := info.Resources[rname]; !ok || v.Tok == "" {
+			return true
+		}
+
 		// If a resource is sdk based, it always has an ID, regardless of the
 		// schema it describes.
 		if !isPFResource(rname) {
