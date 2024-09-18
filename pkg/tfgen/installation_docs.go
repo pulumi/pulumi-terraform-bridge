@@ -131,12 +131,9 @@ func applyEditRules(contentBytes []byte, docFile string, g *Generator) ([]byte, 
 		reReplace(`block contains the following arguments`,
 			`input has the following nested fields`),
 	)
-	var err error
-	for _, rule := range edits {
-		contentBytes, err = rule.Edit(docFile, contentBytes)
-		if err != nil {
-			return nil, err
-		}
+	contentBytes, err := edits.apply(docFile, contentBytes)
+	if err != nil {
+		return nil, err
 	}
 	return contentBytes, nil
 }
