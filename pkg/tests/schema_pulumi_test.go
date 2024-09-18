@@ -4117,7 +4117,7 @@ func TestUnknownSetElementDiff(t *testing.T) {
 	}
 	tfp := &schema.Provider{ResourcesMap: resMap}
 
-	runTest := func(PRC bool, expectedOutput autogold.Value) {
+	runTest := func(t *testing.T, PRC bool, expectedOutput autogold.Value) {
 		opts := []pulcheck.BridgedProviderOpt{}
 		if !PRC {
 			opts = append(opts, pulcheck.DisablePlanResourceChange())
@@ -4166,7 +4166,7 @@ outputs:
 	}
 
 	t.Run("PRC enabled", func(t *testing.T) {
-		runTest(true, autogold.Expect(`Previewing update (test):
+		runTest(t, true, autogold.Expect(`Previewing update (test):
   pulumi:pulumi:Stack: (same)
     [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
     + prov:index/aux:Aux: (create)
@@ -4174,6 +4174,9 @@ outputs:
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      + tests: [
+      +     [0]: output<string>
+        ]
     --outputs:--
   + testOut: output<string>
 Resources:
@@ -4184,7 +4187,7 @@ Resources:
 	})
 
 	t.Run("PRC disabled", func(t *testing.T) {
-		runTest(false, autogold.Expect(`Previewing update (test):
+		runTest(t, false, autogold.Expect(`Previewing update (test):
   pulumi:pulumi:Stack: (same)
     [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
     + prov:index/aux:Aux: (create)
