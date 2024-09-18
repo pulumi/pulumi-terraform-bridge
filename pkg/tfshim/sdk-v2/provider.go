@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	testing "github.com/mitchellh/go-testing-interface"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
@@ -64,11 +65,15 @@ func NewProvider(p *schema.Provider, opts ...providerOption) shim.Provider {
 		tf:   p,
 		opts: opts,
 	}
+
+	o, err := getProviderOptions(opts)
+	contract.AssertNoErrorf(err, "provider options failed to apply")
+
 	if cmdutil.IsTruthy(os.Getenv("PULUMI_ENABLE_PLAN_RESOURCE_CHANGE")) {
-		return newProviderWithPlanResourceChange(p, prov, func(s string) bool { return true })
+		return newProviderWithPlanResourceChange(p, prov, func(s string) bool { return true }, o.planStateEdit)
 	}
-	if opts, err := getProviderOptions(opts); err == nil && opts.planResourceChangeFilter != nil {
-		return newProviderWithPlanResourceChange(p, prov, opts.planResourceChangeFilter)
+	if o.planResourceChangeFilter != nil {
+		return newProviderWithPlanResourceChange(p, prov, o.planResourceChangeFilter, o.planStateEdit)
 	}
 	return prov
 }
