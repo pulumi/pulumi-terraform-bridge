@@ -15,6 +15,8 @@
 package tfgen
 
 import (
+	"context"
+
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -47,6 +49,21 @@ func (l *loader) LoadPackage(name string, ver *semver.Version) (*schema.Package,
 		}, nil
 	}
 	return l.innerLoader.LoadPackage(name, ver)
+}
+
+func (l *loader) LoadPackageV2(ctx context.Context, desc *schema.PackageDescriptor) (*schema.Package, error) {
+	name := desc.Name
+	if renamed, ok := l.aliasedPackages[name]; ok {
+		name = renamed
+	}
+
+	if l.emptyPackages[name] {
+		return &schema.Package{
+			Name:    name,
+			Version: desc.Version,
+		}, nil
+	}
+	return l.innerLoader.LoadPackageV2(ctx, desc)
 }
 
 // Overrides `schema.NewPluginLoader` to load an empty

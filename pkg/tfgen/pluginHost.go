@@ -118,11 +118,11 @@ type inmemoryProviderHost struct {
 	provider *inmemoryProvider
 }
 
-func (host *inmemoryProviderHost) Provider(pkg tokens.Package, version *semver.Version) (plugin.Provider, error) {
-	if pkg == host.provider.Pkg() {
+func (host *inmemoryProviderHost) Provider(pkg workspace.PackageDescriptor) (plugin.Provider, error) {
+	if tokens.Package(pkg.Name) == host.provider.Pkg() {
 		return host.provider, nil
 	}
-	return host.Host.Provider(pkg, version)
+	return host.Host.Provider(pkg)
 }
 
 // ResolvePlugin resolves a plugin kind, name, and optional semver to a candidate plugin
@@ -172,11 +172,8 @@ func (host *cachingProviderHost) getProvider(key string) (plugin.Provider, bool)
 	return provider, ok
 }
 
-func (host *cachingProviderHost) Provider(pkg tokens.Package, version *semver.Version) (plugin.Provider, error) {
-	key := pkg.String() + "@"
-	if version != nil {
-		key += version.String()
-	}
+func (host *cachingProviderHost) Provider(pkg workspace.PackageDescriptor) (plugin.Provider, error) {
+	key := pkg.String()
 	if provider, ok := host.getProvider(key); ok {
 		return provider, nil
 	}
@@ -184,7 +181,7 @@ func (host *cachingProviderHost) Provider(pkg tokens.Package, version *semver.Ve
 	host.m.Lock()
 	defer host.m.Unlock()
 
-	provider, err := host.Host.Provider(pkg, version)
+	provider, err := host.Host.Provider(pkg)
 	if err != nil {
 		return nil, err
 	}
