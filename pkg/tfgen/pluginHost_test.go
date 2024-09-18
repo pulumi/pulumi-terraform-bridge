@@ -21,6 +21,7 @@ import (
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/require"
 )
 
@@ -34,10 +35,14 @@ func TestCachingPluginHost(t *testing.T) {
 	for _, pkg := range []tokens.Package{"a", "b"} {
 		for _, version := range []*semver.Version{nil, &v1, &v2} {
 
-			p1, err := h.Provider(pkg, version)
+			p1, err := h.Provider(workspace.PackageDescriptor{
+				PluginSpec: workspace.PluginSpec{Name: string(pkg), Version: version},
+			})
 			require.NoError(t, err)
 
-			p2, err := c.Provider(pkg, version)
+			p2, err := c.Provider(workspace.PackageDescriptor{
+				PluginSpec: workspace.PluginSpec{Name: string(pkg), Version: version},
+			})
 			require.NoError(t, err)
 
 			require.Equal(t, p1.(*testProvider).pkg, p2.(*testProvider).pkg)
@@ -45,7 +50,9 @@ func TestCachingPluginHost(t *testing.T) {
 		}
 	}
 
-	_, err := newCachingProviderHost(&testHost{nil, true}).Provider("a", &v1)
+	_, err := newCachingProviderHost(&testHost{nil, true}).Provider(workspace.PackageDescriptor{
+		PluginSpec: workspace.PluginSpec{Name: "a", Version: &v1},
+	})
 	require.Error(t, err)
 }
 
@@ -60,9 +67,9 @@ type testHost struct {
 	fail bool
 }
 
-func (th *testHost) Provider(pkg tokens.Package, version *semver.Version) (plugin.Provider, error) {
+func (th *testHost) Provider(pkg workspace.PackageDescriptor) (plugin.Provider, error) {
 	if th.fail {
 		return nil, fmt.Errorf("failed")
 	}
-	return &testProvider{nil, pkg, version}, nil
+	return &testProvider{nil, tokens.Package(pkg.Name), pkg.Version}, nil
 }
