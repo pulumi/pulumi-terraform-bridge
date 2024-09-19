@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	schemav2 "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	v2Schema "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -2077,7 +2078,7 @@ func TestListNestedAddMaxItemsOne(t *testing.T) {
 }
 
 type diffTestCase struct {
-	resourceSchema      map[string]*schema.Schema
+	resourceSchema      map[string]*schemav2.Schema
 	resourceFields      map[string]*SchemaInfo
 	state               resource.PropertyMap
 	inputs              resource.PropertyMap
@@ -2088,11 +2089,11 @@ type diffTestCase struct {
 
 func diffTest2(t *testing.T, tc diffTestCase) {
 	ctx := context.Background()
-	res := &schema.Resource{
+	res := &schemav2.Resource{
 		Schema: tc.resourceSchema,
 	}
-	provider := shimv1.NewProvider(&schema.Provider{
-		ResourcesMap: map[string]*schema.Resource{
+	provider := shimv2.NewProvider(&schemav2.Provider{
+		ResourcesMap: map[string]*schemav2.Resource{
 			"p_resource": res,
 		},
 	})
@@ -2130,21 +2131,21 @@ func diffTest2(t *testing.T, tc diffTestCase) {
 }
 
 func TestChangingMaxItems1FilterProperty(t *testing.T) {
-	schema := map[string]*schema.Schema{
+	schema := map[string]*schemav2.Schema{
 		"rule": {
-			Type:     schema.TypeList,
+			Type:     schemav2.TypeList,
 			Required: true,
 			MaxItems: 1000,
-			Elem: &schema.Resource{
-				Schema: map[string]*schema.Schema{
+			Elem: &schemav2.Resource{
+				Schema: map[string]*schemav2.Schema{
 					"filter": {
-						Type:     schema.TypeList,
+						Type:     schemav2.TypeList,
 						Optional: true,
 						MaxItems: 1,
-						Elem: &schema.Resource{
-							Schema: map[string]*schema.Schema{
+						Elem: &schemav2.Resource{
+							Schema: map[string]*schemav2.Schema{
 								"prefix": {
-									Type:     schema.TypeString,
+									Type:     schemav2.TypeString,
 									Optional: true,
 								},
 							},
