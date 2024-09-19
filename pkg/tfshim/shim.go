@@ -50,6 +50,8 @@ type InstanceDiff interface {
 	ProposedState(res Resource, priorState InstanceState) (InstanceState, error)
 	Destroy() bool
 	RequiresNew() bool
+
+	// DiffEqualDecisionOverride can return a non-null value to override the default decision of if the diff is equal.
 	DiffEqualDecisionOverride() *bool
 }
 
