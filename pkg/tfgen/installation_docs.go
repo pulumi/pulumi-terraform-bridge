@@ -45,14 +45,18 @@ func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
 	// Add instructions to top of file
 	contentStr := frontMatter + installationInstructions + overviewHeader + string(content)
 
+	// Apply provider-supplied edit rules.
+	// Some of these may want to affect the code blocks themselves, so they should happen before code conversion.
+	contentBytes, err := applyProviderEditRules([]byte(contentStr), docFile.FileName, g)
+
 	//Translate code blocks to Pulumi
-	contentStr, err = translateCodeBlocks(contentStr, g)
+	contentStr, err = translateCodeBlocks(string(contentBytes), g)
 	if err != nil {
 		return nil, err
 	}
 
-	// Apply edit rules to transform the doc for Pulumi-ready presentation
-	contentBytes, err := applyEditRules([]byte(contentStr), docFile.FileName, g)
+	// Apply installation-specific edit rules to transform the doc for Pulumi-ready presentation
+	contentBytes, err = applyEditRules([]byte(contentStr), docFile.FileName)
 	if err != nil {
 		return nil, err
 	}
@@ -128,9 +132,17 @@ func stripSchemaGeneratedByTFPluginDocs(content []byte) []byte {
 	return content
 }
 
-func applyEditRules(contentBytes []byte, docFile string, g *Generator) ([]byte, error) {
+func applyProviderEditRules(contentBytes []byte, docFile string, g *Generator) ([]byte, error) {
 	// Obtain edit rules passed by the provider
 	edits := g.editRules
+	contentBytes, err := edits.apply(docFile, contentBytes)
+	if err != nil {
+		return nil, err
+	}
+	return contentBytes, nil
+}
+func applyEditRules(contentBytes []byte, docFile string) ([]byte, error) {
+	var edits editRules
 	// Additional edit rules for installation files
 	edits = append(edits,
 		skipSectionHeadersEdit(docFile),
@@ -138,7 +150,7 @@ func applyEditRules(contentBytes []byte, docFile string, g *Generator) ([]byte, 
 		//Replace "providers.tf" with "Pulumi.yaml"
 		reReplace(`providers.tf`, `Pulumi.yaml`),
 		reReplace(`terraform init`, `pulumi up`),
-		// Replace all "T/terraform" with "P/pulumi"
+		// Replace all " T/terraform" with " P/pulumi"
 		reReplace(`Terraform`, `Pulumi`),
 		reReplace(`terraform`, `pulumi`),
 		// Replace all "H/hashicorp" strings

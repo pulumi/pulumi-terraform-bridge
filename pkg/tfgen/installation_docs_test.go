@@ -23,35 +23,106 @@ func TestPlainDocsParser(t *testing.T) {
 		name     string
 		docFile  DocFile
 		expected []byte
+		edits    editRules
 	}
+	// Mock provider for test conversion
+	p := tfbridge.ProviderInfo{
+		Name: "simple",
+		P: sdkv2.NewProvider(&schema.Provider{
+			ResourcesMap: map[string]*schema.Resource{
+				"simple_resource": {
+					Schema: map[string]*schema.Schema{
+						"input_one": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"input_two": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+					},
+				},
+			},
+		}),
+	}
+	pclsMap := make(map[string]translatedExample)
+
+	//var fixUpInstallationFileExample = targetedReplace(
+	//	"index.html.markdown",
+	//	[]byte(`resource "libvirt_domain" "test1" {
+	//...`),
+	//	[]byte(`resource "libvirt_domain" "test1" {
+	//#...`),
+	//)
+	//
+	//var fixupBadHclTag = targetedReplace(
+	//	"index.html.markdown",
+	//	[]byte("shell environment variable.\n\n```hcl"),
+	//	[]byte("shell environment variable.\n\n```"),
+	//)
+	//
+	//func targetedReplace(filePath string, from, to []byte) tfbridge.DocsEdit {
+	//	return tfbridge.DocsEdit{
+	//	Path: filePath,
+	//	Edit: func(_ string, content []byte) ([]byte, error) {
+	//	return bytes.ReplaceAll(content, from, to), nil
+	//},
+	//}
+	//}
 
 	tests := []testCase{
 		{
-			name: "Replaces Upstream Front Matter With Pulumi Front Matter",
+			name: "Converts index.md file into Pulumi installation file",
 			docFile: DocFile{
-				Content: []byte("---\nlayout: \"openstack\"\npage_title: \"Provider: OpenStack\"\nsidebar_current: \"docs-openstack-index\"\ndescription: |-\n  The OpenStack provider is used to interact with the many resources supported by OpenStack. The provider needs to be configured with the proper credentials before it can be used.\n---\n\n# OpenStack Provider\n\nThe OpenStack provider is used to interact with the\nmany resources supported by OpenStack. The provider needs to be configured\nwith the proper credentials before it can be used.\n\nUse the navigation to the left to read about the available resources."),
+				Content: []byte(readfile(t, "test_data/convert-index-file/input.md")),
 			},
-			expected: []byte("---\ntitle: OpenStack Provider Installation & Configuration\nmeta_desc: Provides an overview on how to configure the Pulumi OpenStack Provider.\nlayout: package\n---\n\nThe OpenStack provider is used to interact with the\nmany resources supported by OpenStack. The provider needs to be configured\nwith the proper credentials before it can be used.\n\nUse the navigation to the left to read about the available resources."),
+			expected: []byte(readfile(t, "test_data/convert-index-file/expected.md")),
+			edits:    defaultEditRules(),
 		},
 		{
-			name: "Writes Pulumi Style Front Matter If Not Present",
+			// Discovered while generating docs for Libvirt - the test case has an incorrect ```hcl
+			// on what should be a shell script. The provider's edit rule removes this.
+			name: "Applies provider supplied edit rules",
 			docFile: DocFile{
-				Content: []byte("# Artifactory Provider\n\nThe [Artifactory](https://jfrog.com/artifactory/) provider is used to interact with the resources supported by Artifactory. The provider needs to be configured with the proper credentials before it can be used.\n\nLinks to documentation for specific resources can be found in the table of contents to the left.\n\nThis provider requires access to Artifactory APIs, which are only available in the _licensed_ pro and enterprise editions. You can determine which license you have by accessing the following the URL `${host}/artifactory/api/system/licenses/`.\n\nYou can either access it via API, or web browser - it require admin level credentials."),
+				Content: []byte(readfile(t, "test_data/convert-index-file-edit-rules/input.md")),
 			},
-			expected: []byte("---\ntitle: Artifactory Provider Installation & Configuration\nmeta_desc: Provides an overview on how to configure the Pulumi Artifactory Provider.\nlayout: package\n---\n\nThe [Artifactory](https://jfrog.com/artifactory/) provider is used to interact with the resources supported by Artifactory. The provider needs to be configured with the proper credentials before it can be used.\n\nLinks to documentation for specific resources can be found in the table of contents to the left.\n\nThis provider requires access to Artifactory APIs, which are only available in the _licensed_ pro and enterprise editions. You can determine which license you have by accessing the following the URL `${host}/artifactory/api/system/licenses/`.\n\nYou can either access it via API, or web browser - it require admin level credentials."),
+			expected: []byte(readfile(t, "test_data/convert-index-file-edit-rules/expected.md")),
+			edits: append(
+				defaultEditRules(),
+				tfbridge.DocsEdit{
+					Edit: func(_ string, content []byte) ([]byte, error) {
+						return bytes.ReplaceAll(
+							content,
+							[]byte("shell environment variable.\n\n```hcl"),
+							[]byte("shell environment variable.\n\n```"),
+						), nil
+					},
+				},
+			),
 		},
 	}
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			t.Skipf("this function is under development and will receive tests once all parts are completed")
 			t.Parallel()
 			g := &Generator{
 				sink: mockSink{t},
+				info: tfbridge.ProviderInfo{
+					Golang: &tfbridge.GolangInfo{
+						ImportBasePath: "github.com/pulumi/pulumi-libvirt/sdk/go/libvirt",
+					},
+					Name: "libvirt",
+				},
+				cliConverterState: &cliConverter{
+					info: p,
+					pcls: pclsMap,
+				},
+				editRules: tt.edits,
+				language:  RegistryDocs,
 			}
 			actual, err := plainDocsParser(&tt.docFile, g)
 			require.NoError(t, err)
-			require.Equal(t, string(tt.expected), string(actual))
+			assertEqualHTML(t, string(tt.expected), string(actual))
 		})
 	}
 }
@@ -392,7 +463,7 @@ func TestApplyEditRules(t *testing.T) {
 				sink:      mockSink{t},
 				editRules: defaultEditRules(),
 			}
-			actual, err := applyEditRules(tt.docFile.Content, "testfile.md", g)
+			actual, err := applyEditRules(tt.docFile.Content, "testfile.md")
 			require.NoError(t, err)
 			assertEqualHTML(t, string(tt.expected), string(actual))
 		})
