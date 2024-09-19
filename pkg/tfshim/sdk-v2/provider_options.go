@@ -14,11 +14,50 @@
 
 package sdkv2
 
+import (
+	"context"
+
+	"github.com/hashicorp/go-cty/cty"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+)
+
 type providerOptions struct {
 	planResourceChangeFilter func(string) bool
+	planStateEdit            PlanStateEditFunc
 }
 
 type providerOption func(providerOptions) (providerOptions, error)
+
+// PlanStateEditRequest
+//
+// For use, see [WithPlanStateEdit].
+type PlanStateEditRequest struct {
+	TfToken        string               // The TF token
+	PlanState      cty.Value            // The plan state calculated by TF.
+	NewInputs      resource.PropertyMap // The post-check inputs given by Pulumi.
+	ProviderConfig resource.PropertyMap // The config of the provider
+}
+
+// PlanStateEditFunc describes a user supplied function to edit TF's plan state.
+//
+// For use, see [WithPlanStateEdit].
+type PlanStateEditFunc = func(context.Context, PlanStateEditRequest) (cty.Value, error)
+
+// WithPlanStateEdit adds the PlanStateEditFunc hook to be called on the planned state
+// after each resource is updated.
+//
+// WithPlanStateEdit only applies to resources where Plan Resource Change[^1] is enabled.
+//
+// WithPlanStateEdit is experimental. The API may be removed or experience backwards
+// incompatible changes at any time.
+//
+// [^1]: See [WithPlanResourceChange] for more details.
+func WithPlanStateEdit(f PlanStateEditFunc) providerOption { //nolint:revive
+	return func(opts providerOptions) (providerOptions, error) {
+		opts.planStateEdit = f
+		return opts, nil
+	}
+}
 
 // Deprecated.
 // TODO[pulumi/pulumi-terraform-bridge#2062] clean up deprecation.
