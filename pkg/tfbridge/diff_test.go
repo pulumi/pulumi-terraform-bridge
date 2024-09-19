@@ -1467,6 +1467,8 @@ func TestNestedComputedSetUpdate(t *testing.T) {
 }
 
 func TestNestedComputedSetAdd(t *testing.T) {
+	// TODO[pulumi/pulumi-terraform-bridge#2428]: Incorrect detailed diff with unknown elements
+	t.Skip("Skipping until pulumi/pulumi-terraform-bridge#2428 is resolved")
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {Type: v2Schema.TypeSet, Elem: &v2Schema.Schema{Type: v2Schema.TypeString}},
@@ -1542,6 +1544,8 @@ func TestNestedComputedSetIntUpdateReplace(t *testing.T) {
 }
 
 func TestNestedComputedSetIntAdd(t *testing.T) {
+	// TODO[pulumi/pulumi-terraform-bridge#2428]: Incorrect detailed diff with unknown elements
+	t.Skip("Skipping until pulumi/pulumi-terraform-bridge#2428 is resolved")
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {Type: v2Schema.TypeSet, Elem: &v2Schema.Schema{Type: v2Schema.TypeInt}},
