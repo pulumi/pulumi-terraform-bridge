@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
-	schemav2 "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	v2Schema "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -2078,7 +2077,7 @@ func TestListNestedAddMaxItemsOne(t *testing.T) {
 }
 
 type diffTestCase struct {
-	resourceSchema      map[string]*schemav2.Schema
+	resourceSchema      map[string]*v2Schema.Schema
 	resourceFields      map[string]*SchemaInfo
 	state               resource.PropertyMap
 	inputs              resource.PropertyMap
@@ -2089,11 +2088,11 @@ type diffTestCase struct {
 
 func diffTest2(t *testing.T, tc diffTestCase) {
 	ctx := context.Background()
-	res := &schemav2.Resource{
+	res := &v2Schema.Resource{
 		Schema: tc.resourceSchema,
 	}
-	provider := shimv2.NewProvider(&schemav2.Provider{
-		ResourcesMap: map[string]*schemav2.Resource{
+	provider := shimv2.NewProvider(&v2Schema.Provider{
+		ResourcesMap: map[string]*v2Schema.Resource{
 			"p_resource": res,
 		},
 	})
@@ -2131,21 +2130,21 @@ func diffTest2(t *testing.T, tc diffTestCase) {
 }
 
 func TestChangingMaxItems1FilterProperty(t *testing.T) {
-	schema := map[string]*schemav2.Schema{
+	schema := map[string]*v2Schema.Schema{
 		"rule": {
-			Type:     schemav2.TypeList,
+			Type:     v2Schema.TypeList,
 			Required: true,
 			MaxItems: 1000,
-			Elem: &schemav2.Resource{
-				Schema: map[string]*schemav2.Schema{
+			Elem: &v2Schema.Resource{
+				Schema: map[string]*v2Schema.Schema{
 					"filter": {
-						Type:     schemav2.TypeList,
+						Type:     v2Schema.TypeList,
 						Optional: true,
 						MaxItems: 1,
-						Elem: &schemav2.Resource{
-							Schema: map[string]*schemav2.Schema{
+						Elem: &v2Schema.Resource{
+							Schema: map[string]*v2Schema.Schema{
 								"prefix": {
-									Type:     schemav2.TypeString,
+									Type:     v2Schema.TypeString,
 									Optional: true,
 								},
 							},
