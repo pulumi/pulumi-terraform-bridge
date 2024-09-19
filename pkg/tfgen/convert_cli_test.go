@@ -495,7 +495,11 @@ func (*testPluginHost) PolicyAnalyzer(
 
 func (*testPluginHost) ListAnalyzers() []plugin.Analyzer { panic("Unexpected call") }
 
-func (*testPluginHost) Provider(tokens.Package, *semver.Version) (plugin.Provider, error) {
+func (*testPluginHost) Provider(pkg workspace.PackageDescriptor) (plugin.Provider, error) {
+	return &plugin.MockProvider{}, nil
+}
+
+func (*testPluginHost) StartDebugging(plugin.DebuggingInfo) error {
 	panic("Unexpected call")
 }
 
@@ -510,9 +514,13 @@ func (*testPluginHost) EnsurePlugins([]workspace.PluginSpec, plugin.Flags) error
 }
 
 func (*testPluginHost) ResolvePlugin(
-	apitype.PluginKind, string, *semver.Version,
+	k apitype.PluginKind, name string, version *semver.Version,
 ) (*workspace.PluginInfo, error) {
-	panic("Unexpected call")
+	return &workspace.PluginInfo{
+		Name:    name,
+		Kind:    k,
+		Version: version,
+	}, nil
 }
 
 func (*testPluginHost) GetProjectPlugins() []workspace.ProjectPlugin { panic("Unexpected call") }

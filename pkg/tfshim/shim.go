@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"time"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
 type ResourceConfig interface {
@@ -289,6 +291,16 @@ type TimeoutOptions struct {
 type DiffOptions struct {
 	IgnoreChanges  IgnoreChanges
 	TimeoutOptions TimeoutOptions
+
+	// The original new (post-check) inputs given to the request.
+	//
+	// NewInputs is always populated.
+	NewInputs resource.PropertyMap
+
+	// The config values used to configure the provider.
+	//
+	// DO NOT EDIT ProviderConfig.
+	ProviderConfig resource.PropertyMap
 }
 
 // Supports the ignoreChanges Pulumi option.

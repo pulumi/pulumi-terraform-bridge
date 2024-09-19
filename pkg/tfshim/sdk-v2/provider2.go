@@ -153,8 +153,9 @@ func (d *v2InstanceDiff2) DiffEqualDecisionOverride() *bool {
 
 // Provides PlanResourceChange handling for select resources.
 type planResourceChangeImpl struct {
-	tf     *schema.Provider
-	server *grpcServer
+	tf           *schema.Provider
+	server       *grpcServer
+	planEditFunc PlanStateEditFunc
 }
 
 var _ planResourceChangeProvider = (*planResourceChangeImpl)(nil)
@@ -267,10 +268,17 @@ func (p *planResourceChangeImpl) Diff(
 		return nil, err
 	}
 
+	plannedState, err := p.planEdit(ctx, PlanStateEditRequest{
+		NewInputs:      opts.NewInputs,
+		ProviderConfig: opts.ProviderConfig,
+		TfToken:        t,
+		PlanState:      plan.PlannedState,
+	})
+
 	//nolint:lll
 	// https://github.com/opentofu/opentofu/blob/864aa9d1d629090cfc4ddf9fdd344d34dee9793e/internal/tofu/node_resource_abstract_instance.go#L1024
 	unmarkedPrior, _ := st.UnmarkDeep()
-	unmarkedPlan, _ := plan.PlannedState.UnmarkDeep()
+	unmarkedPlan, _ := plannedState.UnmarkDeep()
 	eqV := unmarkedPrior.Equals(unmarkedPlan)
 	eq := eqV.IsKnown() && eqV.True()
 
@@ -279,9 +287,17 @@ func (p *planResourceChangeImpl) Diff(
 			tf: plan.PlannedDiff,
 		},
 		config:                    cfg,
-		plannedState:              plan.PlannedState,
+		plannedState:              plannedState,
 		diffEqualDecisionOverride: &eq,
-	}, nil
+		plannedPrivate:            plan.PlannedPrivate,
+	}, err
+}
+
+func (p *planResourceChangeImpl) planEdit(ctx context.Context, e PlanStateEditRequest) (cty.Value, error) {
+	if p.planEditFunc == nil {
+		return e.PlanState, nil
+	}
+	return p.planEditFunc(ctx, e)
 }
 
 func (p *planResourceChangeImpl) Apply(
@@ -505,7 +521,8 @@ func (s *grpcServer) PlanResourceChange(
 	PlannedState   cty.Value
 	PlannedPrivate map[string]interface{}
 	PlannedDiff    *terraform.InstanceDiff
-}, error) {
+}, error,
+) {
 	configVal, err := msgpack.Marshal(config, ty)
 	if err != nil {
 		return nil, err
@@ -879,12 +896,14 @@ func newProviderWithPlanResourceChange(
 	p *schema.Provider,
 	prov shim.Provider,
 	filter func(string) bool,
+	planEditFunc PlanStateEditFunc,
 ) shim.Provider {
 	return &providerWithPlanResourceChangeDispatch{
 		Provider:  prov,
 		resources: p.ResourcesMap,
 		planResourceChangeProvider: &planResourceChangeImpl{
-			tf: p,
+			planEditFunc: planEditFunc,
+			tf:           p,
 			server: &grpcServer{
 				gserver: p.GRPCProvider().(*schema.GRPCProviderServer),
 			},

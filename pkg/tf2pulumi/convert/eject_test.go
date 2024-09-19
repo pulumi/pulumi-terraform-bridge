@@ -16,6 +16,7 @@ package convert
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -68,12 +69,22 @@ func (l *testLoader) LoadPackage(pkg string, version *semver.Version) (*schema.P
 	return schemaPackage, nil
 }
 
+func (l *testLoader) LoadPackageV2(ctx context.Context, pkg *schema.PackageDescriptor) (*schema.Package, error) {
+	return l.LoadPackage(pkg.Name, pkg.Version)
+}
+
 func (l *testLoader) LoadPackageReference(pkg string, version *semver.Version) (schema.PackageReference, error) {
 	schemaPackage, err := l.LoadPackage(pkg, version)
 	if err != nil {
 		return nil, err
 	}
 	return schemaPackage.Reference(), nil
+}
+
+func (l *testLoader) LoadPackageReferenceV2(
+	_ context.Context, pkg *schema.PackageDescriptor,
+) (schema.PackageReference, error) {
+	return l.LoadPackageReference(pkg.Name, pkg.Version)
 }
 
 // applyPragmas parses the text from `src` and writes the resulting text to `dst`. It can exclude blocks of
