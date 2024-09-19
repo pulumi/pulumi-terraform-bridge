@@ -171,29 +171,3 @@ func (lr *LogRedirector) Write(p []byte) (n int, err error) {
 
 	return written, nil
 }
-
-type loggerAdapter struct {
-	Log
-	untyped untypedLogger
-}
-
-func (a *loggerAdapter) Status() Log {
-	return a.untyped.StatusUntyped().(Log)
-}
-
-var _ Logger = (*loggerAdapter)(nil)
-
-type untypedLogger interface {
-	Log
-	StatusUntyped() any
-}
-
-func newLoggerAdapter(logger any) Logger {
-	uLogger, ok := logger.(untypedLogger)
-	contract.Assertf(ok, "Context carries a logger that does not implement UntypedLogger")
-
-	return &loggerAdapter{
-		Log:     uLogger,
-		untyped: uLogger,
-	}
-}

@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -16,8 +17,10 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/pulcheck"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/tfcheck"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optrefresh"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
@@ -1618,7 +1621,8 @@ func TestConfigureCrossTest(t *testing.T) {
 
 		tfdriver := tfcheck.NewTfDriver(t, t.TempDir(), "prov", tfp)
 		tfdriver.Write(t, tfProgram)
-		tfdriver.Plan(t)
+		_, err := tfdriver.Plan(t)
+		require.NoError(t, err)
 		require.NotNil(t, tfRd)
 		require.Nil(t, puRd)
 
@@ -1895,6 +1899,43 @@ func TestDetailedDiffPlainTypes(t *testing.T) {
 					Optional: true,
 					Elem:     &schema.Schema{Type: schema.TypeString},
 				},
+				"list_block": {
+					Type:     schema.TypeList,
+					Optional: true,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"prop": {
+								Type:     schema.TypeString,
+								Optional: true,
+							},
+						},
+					},
+				},
+				"set_block": {
+					Type:     schema.TypeSet,
+					Optional: true,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"prop": {
+								Type:     schema.TypeString,
+								Optional: true,
+							},
+						},
+					},
+				},
+				"max_items_one_block": {
+					Type:     schema.TypeList,
+					Optional: true,
+					MaxItems: 1,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"prop": {
+								Type:     schema.TypeString,
+								Optional: true,
+							},
+						},
+					},
+				},
 			},
 		},
 	}
@@ -1915,6 +1956,7 @@ resources:
 		props1   interface{}
 		props2   interface{}
 		expected autogold.Value
+		skip     bool
 	}{
 		{
 			"string unchanged",
@@ -1926,6 +1968,7 @@ resources:
 Resources:
     2 unchanged
 `),
+			false,
 		},
 		{
 			"string added",
@@ -1942,6 +1985,7 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		{
 			"string removed",
@@ -1958,6 +2002,7 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		{
 			"string changed",
@@ -1974,6 +2019,7 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		{
 			"list unchanged",
@@ -1985,6 +2031,7 @@ Resources:
 Resources:
     2 unchanged
 `),
+			false,
 		},
 		// TODO[pulumi/pulumi-terraform-bridge#2234]: Duplicated diff
 		{
@@ -2007,6 +2054,7 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		// TODO[pulumi/pulumi-terraform-bridge#2233]: Missing diff
 		{
@@ -2019,6 +2067,7 @@ Resources:
 Resources:
     2 unchanged
 `),
+			false,
 		},
 		// TODO[pulumi/pulumi-terraform-bridge#2234]: Duplicated diff
 		{
@@ -2041,6 +2090,7 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		// TODO[pulumi/pulumi-terraform-bridge#2233]: Missing diff
 		{
@@ -2053,6 +2103,7 @@ Resources:
 Resources:
     2 unchanged
 `),
+			false,
 		},
 		{
 			"list element added front",
@@ -2073,6 +2124,7 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		{
 			"list element added back",
@@ -2093,6 +2145,7 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		{
 			"list element added middle",
@@ -2113,6 +2166,7 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		{
 			"list element removed front",
@@ -2133,6 +2187,7 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		{
 			"list element removed back",
@@ -2153,6 +2208,7 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		{
 			"list element removed middle",
@@ -2173,6 +2229,7 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		{
 			"list element changed",
@@ -2191,6 +2248,7 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		{
 			"set unchanged",
@@ -2202,6 +2260,7 @@ Resources:
 Resources:
     2 unchanged
 `),
+			false,
 		},
 		// TODO[pulumi/pulumi-terraform-bridge#2234]: Duplicated diff
 		{
@@ -2224,6 +2283,7 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		// TODO[pulumi/pulumi-terraform-bridge#2233]: Missing diff
 		{
@@ -2236,6 +2296,7 @@ Resources:
 Resources:
     2 unchanged
 `),
+			false,
 		},
 		// TODO[pulumi/pulumi-terraform-bridge#2234]: Duplicated diff
 		{
@@ -2258,6 +2319,7 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		// TODO[pulumi/pulumi-terraform-bridge#2233]: Missing diff
 		{
@@ -2270,29 +2332,31 @@ Resources:
 Resources:
     2 unchanged
 `),
+			false,
 		},
 		// TODO[pulumi/pulumi-terraform-bridge#2235]: Wrong number of additions
-		// TODO[pulumi/pulumi-terraform-bridge#2325]: Non-deterministic output
-		// 		{
-		// 			"set element added front",
-		// 			map[string]interface{}{"setProps": []interface{}{"val2", "val3"}},
-		// 			map[string]interface{}{"setProps": []interface{}{"val1", "val2", "val3"}},
-		// 			autogold.Expect(`Previewing update (test):
-		//   pulumi:pulumi:Stack: (same)
-		//     [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
-		//     ~ prov:index/test:Test: (update)
-		//         [id=newid]
-		//         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-		//       ~ setProps: [
-		//           ~ [0]: "val2" => "val1"
-		//           ~ [1]: "val3" => "val2"
-		//           + [2]: "val3"
-		//         ]
-		// Resources:
-		//     ~ 1 to update
-		//     1 unchanged
-		// `),
-		// 		},
+		{
+			"set element added front",
+			map[string]interface{}{"setProps": []interface{}{"val2", "val3"}},
+			map[string]interface{}{"setProps": []interface{}{"val1", "val2", "val3"}},
+			autogold.Expect(`Previewing update (test):
+		  pulumi:pulumi:Stack: (same)
+		    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+		    ~ prov:index/test:Test: (update)
+		        [id=newid]
+		        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+		      ~ setProps: [
+		          ~ [0]: "val2" => "val1"
+		          ~ [1]: "val3" => "val2"
+		          + [2]: "val3"
+		        ]
+		Resources:
+		    ~ 1 to update
+		    1 unchanged
+		`),
+			// TODO[pulumi/pulumi-terraform-bridge#2325]: Non-deterministic output
+			true,
+		},
 		{
 			"set element added back",
 			map[string]interface{}{"setProps": []interface{}{"val1", "val2"}},
@@ -2312,50 +2376,54 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		// TODO[pulumi/pulumi-terraform-bridge#2235]: Wrong number of additions
-		// TODO[pulumi/pulumi-terraform-bridge#2325]: Non-deterministic output
-		// 		{
-		// 			"set element added middle",
-		// 			map[string]interface{}{"setProps": []interface{}{"val1", "val3"}},
-		// 			map[string]interface{}{"setProps": []interface{}{"val1", "val2", "val3"}},
-		// 			autogold.Expect(`Previewing update (test):
-		//   pulumi:pulumi:Stack: (same)
-		//     [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
-		//     ~ prov:index/test:Test: (update)
-		//         [id=newid]
-		//         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-		//       ~ setProps: [
-		//             [0]: "val1"
-		//           + [1]: "val2"
-		//           + [2]: "val3"
-		//         ]
-		// Resources:
-		//     ~ 1 to update
-		//     1 unchanged
-		// `),
-		// 		},
-		// TODO[pulumi/pulumi-terraform-bridge#2325]: Non-deterministic output
-		// 		{
-		// 			"set element removed front",
-		// 			map[string]interface{}{"setProps": []interface{}{"val1", "val2", "val3"}},
-		// 			map[string]interface{}{"setProps": []interface{}{"val2", "val3"}},
-		// 			autogold.Expect(`Previewing update (test):
-		//   pulumi:pulumi:Stack: (same)
-		//     [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
-		//     ~ prov:index/test:Test: (update)
-		//         [id=newid]
-		//         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-		//       ~ setProps: [
-		//           ~ [0]: "val1" => "val2"
-		//           ~ [1]: "val2" => "val3"
-		//           - [2]: "val3"
-		//         ]
-		// Resources:
-		//     ~ 1 to update
-		//     1 unchanged
-		// `),
-		// 		},
+		{
+			"set element added middle",
+			map[string]interface{}{"setProps": []interface{}{"val1", "val3"}},
+			map[string]interface{}{"setProps": []interface{}{"val1", "val2", "val3"}},
+			autogold.Expect(`Previewing update (test):
+		  pulumi:pulumi:Stack: (same)
+		    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+		    ~ prov:index/test:Test: (update)
+		        [id=newid]
+		        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+		      ~ setProps: [
+		            [0]: "val1"
+		          + [1]: "val2"
+		          + [2]: "val3"
+		        ]
+		Resources:
+		    ~ 1 to update
+		    1 unchanged
+
+		`),
+			// TODO[pulumi/pulumi-terraform-bridge#2325]: Non-deterministic output
+			true,
+		},
+		{
+			"set element removed front",
+			map[string]interface{}{"setProps": []interface{}{"val1", "val2", "val3"}},
+			map[string]interface{}{"setProps": []interface{}{"val2", "val3"}},
+			autogold.Expect(`Previewing update (test):
+		  pulumi:pulumi:Stack: (same)
+		    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+		    ~ prov:index/test:Test: (update)
+		        [id=newid]
+		        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+		      ~ setProps: [
+		          ~ [0]: "val1" => "val2"
+		          ~ [1]: "val2" => "val3"
+		          - [2]: "val3"
+		        ]
+		Resources:
+		    ~ 1 to update
+		    1 unchanged
+`),
+			// TODO[pulumi/pulumi-terraform-bridge#2325]: Non-deterministic output
+			true,
+		},
 		{
 			"set element removed back",
 			map[string]interface{}{"setProps": []interface{}{"val1", "val2", "val3"}},
@@ -2375,29 +2443,31 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		// TODO[pulumi/pulumi-terraform-bridge#2235]: Wrong number of removals
-		// TODO[pulumi/pulumi-terraform-bridge#2325]: Non-deterministic output
-		// 		{
-		// 			"set element removed middle",
-		// 			map[string]interface{}{"setProps": []interface{}{"val1", "val2", "val3"}},
-		// 			map[string]interface{}{"setProps": []interface{}{"val1", "val3"}},
-		// 			autogold.Expect(`Previewing update (test):
-		//   pulumi:pulumi:Stack: (same)
-		//     [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
-		//     ~ prov:index/test:Test: (update)
-		//         [id=newid]
-		//         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-		//       ~ setProps: [
-		//             [0]: "val1"
-		//           ~ [1]: "val2" => "val3"
-		//           - [2]: "val3"
-		//         ]
-		// Resources:
-		//     ~ 1 to update
-		//     1 unchanged
-		// `),
-		// 		},
+		{
+			"set element removed middle",
+			map[string]interface{}{"setProps": []interface{}{"val1", "val2", "val3"}},
+			map[string]interface{}{"setProps": []interface{}{"val1", "val3"}},
+			autogold.Expect(`Previewing update (test):
+		  pulumi:pulumi:Stack: (same)
+		    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+		    ~ prov:index/test:Test: (update)
+		        [id=newid]
+		        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+		      ~ setProps: [
+		            [0]: "val1"
+		          ~ [1]: "val2" => "val3"
+		          - [2]: "val3"
+		        ]
+		Resources:
+		    ~ 1 to update
+		    1 unchanged
+		`),
+			// TODO[pulumi/pulumi-terraform-bridge#2325]: Non-deterministic output
+			true,
+		},
 		{
 			"set element changed",
 			map[string]interface{}{"setProps": []interface{}{"val1"}},
@@ -2415,6 +2485,7 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		{
 			"map unchanged",
@@ -2426,6 +2497,7 @@ Resources:
 Resources:
     2 unchanged
 `),
+			false,
 		},
 		// TODO[pulumi/pulumi-terraform-bridge#2234]: Duplicated diff
 		{
@@ -2448,6 +2520,7 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		// TODO[pulumi/pulumi-terraform-bridge#2233]: Missing diff
 		{
@@ -2460,6 +2533,7 @@ Resources:
 Resources:
     2 unchanged
 `),
+			false,
 		},
 		// TODO[pulumi/pulumi-terraform-bridge#2234]: Duplicated diff
 		{
@@ -2482,6 +2556,7 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		// TODO[pulumi/pulumi-terraform-bridge#2233]: Missing diff
 		{
@@ -2494,6 +2569,7 @@ Resources:
 Resources:
     2 unchanged
 `),
+			false,
 		},
 		// TODO[pulumi/pulumi-terraform-bridge#2234]: Duplicated diff
 		{
@@ -2516,6 +2592,7 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		{
 			"map element removed",
@@ -2534,6 +2611,7 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		{
 			"map value changed",
@@ -2552,6 +2630,7 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
 		},
 		{
 			"map key changed",
@@ -2571,10 +2650,886 @@ Resources:
     ~ 1 to update
     1 unchanged
 `),
+			false,
+		},
+		{
+			"list block unchanged",
+			map[string]interface{}{"listBlocks": []interface{}{map[string]interface{}{"prop": "val"}}},
+			map[string]interface{}{"listBlocks": []interface{}{map[string]interface{}{"prop": "val"}}},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+Resources:
+    2 unchanged
+`),
+			false,
+		},
+		{
+			"list block added",
+			map[string]interface{}{},
+			map[string]interface{}{"listBlocks": []interface{}{map[string]interface{}{"prop": "val"}}},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ listBlocks: [
+          + [0]: {
+                  + prop      : "val"
+                }
+        ]
+Resources:
+    ~ 1 to update
+    1 unchanged
+`),
+			false,
+		},
+		// This is expected to be a no-op because blocks can not be nil in TF
+		{
+			"list block added empty",
+			map[string]interface{}{},
+			map[string]interface{}{"listBlocks": []interface{}{}},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+Resources:
+    2 unchanged
+`),
+			false,
+		},
+		{
+			"list block added empty object",
+			map[string]interface{}{},
+			map[string]interface{}{"listBlocks": []interface{}{map[string]interface{}{}}},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ listBlocks: [
+          + [0]: {
+                }
+        ]
+Resources:
+    ~ 1 to update
+    1 unchanged
+`),
+			false,
+		},
+		// TODO[pulumi/pulumi-terraform-bridge#2234]: Duplicated diff
+		{
+			"list block removed",
+			map[string]interface{}{"listBlocks": []interface{}{map[string]interface{}{"prop": "val"}}},
+			map[string]interface{}{},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      - listBlocks: [
+      -     [0]: {
+              - prop: "val"
+            }
+        ]
+      - listBlocks: [
+      -     [0]: {
+              - prop: "val"
+            }
+        ]
+Resources:
+    ~ 1 to update
+    1 unchanged
+`),
+			false,
+		},
+		// This is expected to be a no-op because blocks can not be nil in TF
+		{
+			"list block removed empty",
+			map[string]interface{}{"listBlocks": []interface{}{}},
+			map[string]interface{}{},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+Resources:
+    2 unchanged
+`),
+			false,
+		},
+		// TODO[pulumi/pulumi-terraform-bridge#2399] nested prop diff
+		{
+			"list block removed empty object",
+			map[string]interface{}{"listBlocks": []interface{}{map[string]interface{}{}}},
+			map[string]interface{}{},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      - listBlocks: [
+      -     [0]: {
+              - prop: <null>
+            }
+        ]
+Resources:
+    ~ 1 to update
+    1 unchanged
+`),
+			false,
+		},
+		// TODO[pulumi/pulumi-terraform-bridge#2400] __defaults appearing in the diff
+		{
+			"list block element added front",
+			map[string]interface{}{"listBlocks": []interface{}{
+				map[string]interface{}{"prop": "val2"},
+				map[string]interface{}{"prop": "val3"},
+			}},
+			map[string]interface{}{"listBlocks": []interface{}{
+				map[string]interface{}{"prop": "val1"},
+				map[string]interface{}{"prop": "val2"},
+				map[string]interface{}{"prop": "val3"},
+			}},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ listBlocks: [
+          ~ [0]: {
+                  + __defaults: []
+                  ~ prop      : "val2" => "val1"
+                }
+          ~ [1]: {
+                  + __defaults: []
+                  ~ prop      : "val3" => "val2"
+                }
+          + [2]: {
+                  + prop      : "val3"
+                }
+        ]
+Resources:
+    ~ 1 to update
+    1 unchanged
+`),
+			false,
+		},
+		// TODO[pulumi/pulumi-terraform-bridge#2400] __defaults appearing in the diff
+		{
+			"list block element added back",
+			map[string]interface{}{"listBlocks": []interface{}{
+				map[string]interface{}{"prop": "val1"},
+				map[string]interface{}{"prop": "val2"},
+			}},
+			map[string]interface{}{"listBlocks": []interface{}{
+				map[string]interface{}{"prop": "val1"},
+				map[string]interface{}{"prop": "val2"},
+				map[string]interface{}{"prop": "val3"},
+			}},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ listBlocks: [
+          ~ [0]: {
+                  + __defaults: []
+                    prop      : "val1"
+                }
+          ~ [1]: {
+                  + __defaults: []
+                    prop      : "val2"
+                }
+          + [2]: {
+                  + prop      : "val3"
+                }
+        ]
+Resources:
+    ~ 1 to update
+    1 unchanged
+`),
+			false,
+		},
+		// TODO[pulumi/pulumi-terraform-bridge#2400] __defaults appearing in the diff
+		{
+			"list block element added middle",
+			map[string]interface{}{"listBlocks": []interface{}{
+				map[string]interface{}{"prop": "val1"},
+				map[string]interface{}{"prop": "val3"},
+			}},
+			map[string]interface{}{"listBlocks": []interface{}{
+				map[string]interface{}{"prop": "val1"},
+				map[string]interface{}{"prop": "val2"},
+				map[string]interface{}{"prop": "val3"},
+			}},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ listBlocks: [
+          ~ [0]: {
+                  + __defaults: []
+                    prop      : "val1"
+                }
+          ~ [1]: {
+                  + __defaults: []
+                  ~ prop      : "val3" => "val2"
+                }
+          + [2]: {
+                  + prop      : "val3"
+                }
+        ]
+Resources:
+    ~ 1 to update
+    1 unchanged
+`),
+			false,
+		},
+		// TODO[pulumi/pulumi-terraform-bridge#2400] __defaults appearing in the diff
+		{
+			"list block element removed front",
+			map[string]interface{}{"listBlocks": []interface{}{
+				map[string]interface{}{"prop": "val1"},
+				map[string]interface{}{"prop": "val2"},
+				map[string]interface{}{"prop": "val3"},
+			}},
+			map[string]interface{}{"listBlocks": []interface{}{
+				map[string]interface{}{"prop": "val2"},
+				map[string]interface{}{"prop": "val3"},
+			}},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ listBlocks: [
+          ~ [0]: {
+                  + __defaults: []
+                  ~ prop      : "val1" => "val2"
+                }
+          ~ [1]: {
+                  + __defaults: []
+                  ~ prop      : "val2" => "val3"
+                }
+          - [2]: {
+                  - prop: "val3"
+                }
+        ]
+Resources:
+    ~ 1 to update
+    1 unchanged
+`),
+			false,
+		},
+		// TODO[pulumi/pulumi-terraform-bridge#2400] __defaults appearing in the diff
+		{
+			"list block element removed back",
+			map[string]interface{}{"listBlocks": []interface{}{
+				map[string]interface{}{"prop": "val1"},
+				map[string]interface{}{"prop": "val2"},
+				map[string]interface{}{"prop": "val3"},
+			}},
+			map[string]interface{}{"listBlocks": []interface{}{
+				map[string]interface{}{"prop": "val1"},
+				map[string]interface{}{"prop": "val2"},
+			}},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ listBlocks: [
+          ~ [0]: {
+                  + __defaults: []
+                    prop      : "val1"
+                }
+          ~ [1]: {
+                  + __defaults: []
+                    prop      : "val2"
+                }
+          - [2]: {
+                  - prop: "val3"
+                }
+        ]
+Resources:
+    ~ 1 to update
+    1 unchanged
+`),
+			false,
+		},
+		// TODO[pulumi/pulumi-terraform-bridge#2400] __defaults appearing in the diff
+		{
+			"list block element removed middle",
+			map[string]interface{}{"listBlocks": []interface{}{
+				map[string]interface{}{"prop": "val1"},
+				map[string]interface{}{"prop": "val2"},
+				map[string]interface{}{"prop": "val3"},
+			}},
+			map[string]interface{}{"listBlocks": []interface{}{
+				map[string]interface{}{"prop": "val1"},
+				map[string]interface{}{"prop": "val3"},
+			}},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ listBlocks: [
+          ~ [0]: {
+                  + __defaults: []
+                    prop      : "val1"
+                }
+          ~ [1]: {
+                  + __defaults: []
+                  ~ prop      : "val2" => "val3"
+                }
+          - [2]: {
+                  - prop: "val3"
+                }
+        ]
+Resources:
+    ~ 1 to update
+    1 unchanged
+`),
+			false,
+		},
+		{
+			"list block element changed",
+			map[string]interface{}{"listBlocks": []interface{}{
+				map[string]interface{}{"prop": "val1"},
+			}},
+			map[string]interface{}{"listBlocks": []interface{}{
+				map[string]interface{}{"prop": "val2"},
+			}},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ listBlocks: [
+          ~ [0]: {
+                  ~ prop: "val1" => "val2"
+                }
+        ]
+Resources:
+    ~ 1 to update
+    1 unchanged
+`),
+			false,
+		},
+		{
+			"set block unchanged",
+			map[string]interface{}{"setBlocks": []interface{}{map[string]interface{}{"prop": "val"}}},
+			map[string]interface{}{"setBlocks": []interface{}{map[string]interface{}{"prop": "val"}}},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+Resources:
+    2 unchanged
+`),
+			false,
+		},
+		{
+			"set block added",
+			map[string]interface{}{},
+			map[string]interface{}{"setBlocks": []interface{}{map[string]interface{}{"prop": "val"}}},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ setBlocks: [
+          + [0]: {
+                  + prop      : "val"
+                }
+        ]
+Resources:
+    ~ 1 to update
+    1 unchanged
+`),
+			false,
+		},
+		// This is expected to be a no-op because blocks can not be nil in TF
+		{
+			"set block added empty",
+			map[string]interface{}{},
+			map[string]interface{}{"setBlocks": []interface{}{}},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+Resources:
+    2 unchanged
+`),
+			false,
+		},
+		{
+			"set block added empty object",
+			map[string]interface{}{},
+			map[string]interface{}{"setBlocks": []interface{}{map[string]interface{}{}}},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ setBlocks: [
+          + [0]: {
+                }
+        ]
+Resources:
+    ~ 1 to update
+    1 unchanged
+`),
+			false,
+		},
+		// TODO[pulumi/pulumi-terraform-bridge#2234]: Duplicated diff
+		{
+			"set block removed",
+			map[string]interface{}{"setBlocks": []interface{}{map[string]interface{}{"prop": "val"}}},
+			map[string]interface{}{},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      - setBlocks: [
+      -     [0]: {
+              - prop: "val"
+            }
+        ]
+      - setBlocks: [
+      -     [0]: {
+              - prop: "val"
+            }
+        ]
+Resources:
+    ~ 1 to update
+    1 unchanged
+`),
+			false,
+		},
+		// This is expected to be a no-op because blocks can not be nil in TF
+		{
+			"set block removed empty",
+			map[string]interface{}{"setBlocks": []interface{}{}},
+			map[string]interface{}{},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+Resources:
+    2 unchanged
+`),
+			false,
+		},
+		// TODO[pulumi/pulumi-terraform-bridge#2399] nested prop diff
+		{
+			"set block removed empty object",
+			map[string]interface{}{"setBlocks": []interface{}{map[string]interface{}{}}},
+			map[string]interface{}{},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      - setBlocks: [
+      -     [0]: {
+              - prop: ""
+            }
+        ]
+Resources:
+    ~ 1 to update
+    1 unchanged
+`),
+			false,
+		},
+		// TODO[pulumi/pulumi-terraform-bridge#2400] __defaults appearing in the diff
+		{
+			"set block element added front",
+			map[string]interface{}{"setBlocks": []interface{}{
+				map[string]interface{}{"prop": "val2"},
+				map[string]interface{}{"prop": "val3"},
+			}},
+			map[string]interface{}{"setBlocks": []interface{}{
+				map[string]interface{}{"prop": "val1"},
+				map[string]interface{}{"prop": "val2"},
+				map[string]interface{}{"prop": "val3"},
+			}},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ setBlocks: [
+          ~ [0]: {
+                  + __defaults: []
+                  ~ prop      : "val2" => "val1"
+                }
+          ~ [1]: {
+                  + __defaults: []
+                  ~ prop      : "val3" => "val2"
+                }
+          + [2]: {
+                  + prop      : "val3"
+                }
+        ]
+Resources:
+    ~ 1 to update
+    1 unchanged
+`),
+			// TODO[pulumi/pulumi-terraform-bridge#2325]: Non-deterministic output
+			true,
+		},
+		// TODO[pulumi/pulumi-terraform-bridge#2400] __defaults appearing in the diff
+		{
+			"set block element added back",
+			map[string]interface{}{"setBlocks": []interface{}{
+				map[string]interface{}{"prop": "val1"},
+				map[string]interface{}{"prop": "val2"},
+			}},
+			map[string]interface{}{"setBlocks": []interface{}{
+				map[string]interface{}{"prop": "val1"},
+				map[string]interface{}{"prop": "val2"},
+				map[string]interface{}{"prop": "val3"},
+			}},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ setBlocks: [
+          ~ [0]: {
+                  + __defaults: []
+                    prop      : "val1"
+                }
+          ~ [1]: {
+                  + __defaults: []
+                    prop      : "val2"
+                }
+          + [2]: {
+                  + prop      : "val3"
+                }
+        ]
+Resources:
+    ~ 1 to update
+    1 unchanged
+`),
+			// TODO[pulumi/pulumi-terraform-bridge#2325]: Non-deterministic output
+			true,
+		},
+		// TODO[pulumi/pulumi-terraform-bridge#2400] __defaults appearing in the diff
+		{
+			"set block element added middle",
+			map[string]interface{}{"setBlocks": []interface{}{
+				map[string]interface{}{"prop": "val1"},
+				map[string]interface{}{"prop": "val3"},
+			}},
+			map[string]interface{}{"setBlocks": []interface{}{
+				map[string]interface{}{"prop": "val1"},
+				map[string]interface{}{"prop": "val2"},
+				map[string]interface{}{"prop": "val3"},
+			}},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ setBlocks: [
+          ~ [0]: {
+                  + __defaults: []
+                    prop      : "val1"
+                }
+          ~ [1]: {
+                  + __defaults: []
+                  ~ prop      : "val3" => "val2"
+                }
+          + [2]: {
+                  + prop      : "val3"
+                }
+        ]
+Resources:
+    ~ 1 to update
+    1 unchanged
+`),
+			// TODO[pulumi/pulumi-terraform-bridge#2325]: Non-deterministic output
+			true,
+		},
+		// TODO[pulumi/pulumi-terraform-bridge#2400] __defaults appearing in the diff
+		// TODO[pulumi/pulumi-terraform-bridge#2234]: Duplicated diff
+		{
+			"set block element removed front",
+			map[string]interface{}{"setBlocks": []interface{}{
+				map[string]interface{}{"prop": "val1"},
+				map[string]interface{}{"prop": "val2"},
+				map[string]interface{}{"prop": "val3"},
+			}},
+			map[string]interface{}{"setBlocks": []interface{}{
+				map[string]interface{}{"prop": "val2"},
+				map[string]interface{}{"prop": "val3"},
+			}},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ setBlocks: [
+          ~ [0]: {
+                  + __defaults: []
+                  ~ prop      : "val1" => "val2"
+                }
+          ~ [1]: {
+                  + __defaults: []
+                  ~ prop      : "val2" => "val3"
+                }
+          - [2]: {
+                  - prop: "val3"
+                }
+        ]
+Resources:
+    ~ 1 to update
+    1 unchanged
+`),
+			// TODO[pulumi/pulumi-terraform-bridge#2325]: Non-deterministic output
+			true,
+		},
+		// TODO[pulumi/pulumi-terraform-bridge#2400] __defaults appearing in the diff
+		{
+			"set block element removed back",
+			map[string]interface{}{"setBlocks": []interface{}{
+				map[string]interface{}{"prop": "val1"},
+				map[string]interface{}{"prop": "val2"},
+				map[string]interface{}{"prop": "val3"},
+			}},
+			map[string]interface{}{"setBlocks": []interface{}{
+				map[string]interface{}{"prop": "val1"},
+				map[string]interface{}{"prop": "val2"},
+			}},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ setBlocks: [
+          ~ [0]: {
+                  + __defaults: []
+                    prop      : "val1"
+                }
+          ~ [1]: {
+                  + __defaults: []
+                    prop      : "val2"
+                }
+          - [2]: {
+                  - prop: "val3"
+                }
+        ]
+Resources:
+    ~ 1 to update
+    1 unchanged
+`),
+			// TODO[pulumi/pulumi-terraform-bridge#2325]: Non-deterministic output
+			true,
+		},
+		// TODO[pulumi/pulumi-terraform-bridge#2400] __defaults appearing in the diff
+		{
+			"set block element removed middle",
+			map[string]interface{}{"setBlocks": []interface{}{
+				map[string]interface{}{"prop": "val1"},
+				map[string]interface{}{"prop": "val2"},
+				map[string]interface{}{"prop": "val3"},
+			}},
+			map[string]interface{}{"setBlocks": []interface{}{
+				map[string]interface{}{"prop": "val1"},
+				map[string]interface{}{"prop": "val3"},
+			}},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ setBlocks: [
+          ~ [0]: {
+                  + __defaults: []
+                    prop      : "val1"
+                }
+          ~ [1]: {
+                  + __defaults: []
+                  ~ prop      : "val2" => "val3"
+                }
+          - [2]: {
+                  - prop: "val3"
+                }
+        ]
+Resources:
+    ~ 1 to update
+    1 unchanged
+`),
+			// TODO[pulumi/pulumi-terraform-bridge#2325]: Non-deterministic output
+			true,
+		},
+		{
+			"set block element changed",
+			map[string]interface{}{"setBlocks": []interface{}{
+				map[string]interface{}{"prop": "val1"},
+			}},
+			map[string]interface{}{"setBlocks": []interface{}{
+				map[string]interface{}{"prop": "val2"},
+			}},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ setBlocks: [
+          ~ [0]: {
+                  ~ prop: "val1" => "val2"
+                }
+        ]
+Resources:
+    ~ 1 to update
+    1 unchanged
+`),
+			false,
+		},
+		{
+			"maxItemsOne block unchanged",
+			map[string]interface{}{"maxItemsOneBlock": map[string]interface{}{"prop": "val"}},
+			map[string]interface{}{"maxItemsOneBlock": map[string]interface{}{"prop": "val"}},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+Resources:
+    2 unchanged
+`),
+			false,
+		},
+		// TODO[pulumi/pulumi-terraform-bridge#2234]: Duplicated diff
+		{
+			"maxItemsOne block added",
+			map[string]interface{}{},
+			map[string]interface{}{"maxItemsOneBlock": map[string]interface{}{"prop": "val"}},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      + maxItemsOneBlock: {
+          + prop      : "val"
+        }
+      + maxItemsOneBlock: {
+          + prop      : "val"
+        }
+Resources:
+    ~ 1 to update
+    1 unchanged
+`),
+			false,
+		},
+		{
+			"maxItemsOne block added empty",
+			map[string]interface{}{},
+			map[string]interface{}{"maxItemsOneBlock": map[string]interface{}{}},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      + maxItemsOneBlock: {
+        }
+Resources:
+    ~ 1 to update
+    1 unchanged
+`),
+			false,
+		},
+		// TODO[pulumi/pulumi-terraform-bridge#2234]: Duplicated diff
+		{
+			"maxItemsOne block removed",
+			map[string]interface{}{"maxItemsOneBlock": map[string]interface{}{"prop": "val"}},
+			map[string]interface{}{},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      - maxItemsOneBlock: {
+          - prop: "val"
+        }
+      - maxItemsOneBlock: {
+          - prop: "val"
+        }
+Resources:
+    ~ 1 to update
+    1 unchanged
+`),
+			false,
+		},
+		// TODO[pulumi/pulumi-terraform-bridge#2399] nested prop diff
+		{
+			"maxItemsOne block removed empty",
+			map[string]interface{}{"maxItemsOneBlock": map[string]interface{}{}},
+			map[string]interface{}{},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      - maxItemsOneBlock: {
+          - prop: <null>
+        }
+Resources:
+    ~ 1 to update
+    1 unchanged
+`),
+			false,
+		},
+		{
+			"maxItemsOne block changed",
+			map[string]interface{}{"maxItemsOneBlock": map[string]interface{}{"prop": "val1"}},
+			map[string]interface{}{"maxItemsOneBlock": map[string]interface{}{"prop": "val2"}},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ maxItemsOneBlock: {
+          ~ prop: "val1" => "val2"
+        }
+Resources:
+    ~ 1 to update
+    1 unchanged
+`),
+			false,
 		},
 	} {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
+			if tc.skip {
+				t.Skip("skipping known failing test")
+			}
 			t.Parallel()
 			props1, err := json.Marshal(tc.props1)
 			require.NoError(t, err)
@@ -2941,7 +3896,7 @@ runtime: yaml
 			} else {
 				assert.NotContains(t, imp.Stdout, "One or more imported inputs failed to validate")
 
-				f, err := os.OpenFile(filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml"), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+				f, err := os.OpenFile(filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml"), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0o600)
 				assert.NoError(t, err)
 				defer f.Close()
 				_, err = f.WriteString(string(contents))
@@ -2952,4 +3907,295 @@ runtime: yaml
 			}
 		})
 	}
+}
+
+func TestCreateCustomTimeoutsCrossTest(t *testing.T) {
+	test := func(
+		t *testing.T,
+		schemaCreateTimeout *time.Duration,
+		programTimeout *string,
+		expected time.Duration,
+		ExpectFail bool,
+	) {
+		var pulumiCapturedTimeout *time.Duration
+		var tfCapturedTimeout *time.Duration
+		prov := &schema.Provider{
+			ResourcesMap: map[string]*schema.Resource{
+				"prov_test": {
+					Schema: map[string]*schema.Schema{
+						"prop": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+					},
+					CreateContext: func(ctx context.Context, rd *schema.ResourceData, i interface{}) diag.Diagnostics {
+						t := rd.Timeout(schema.TimeoutCreate)
+						if pulumiCapturedTimeout == nil {
+							pulumiCapturedTimeout = &t
+						} else {
+							tfCapturedTimeout = &t
+						}
+						rd.SetId("id")
+						return diag.Diagnostics{}
+					},
+					Timeouts: &schema.ResourceTimeout{
+						Create: schemaCreateTimeout,
+					},
+				},
+			},
+		}
+
+		bridgedProvider := pulcheck.BridgedProvider(t, "prov", prov)
+		pulumiTimeout := `""`
+		if programTimeout != nil {
+			pulumiTimeout = fmt.Sprintf(`"%s"`, *programTimeout)
+		}
+
+		tfTimeout := "null"
+		if programTimeout != nil {
+			tfTimeout = fmt.Sprintf(`"%s"`, *programTimeout)
+		}
+
+		program := fmt.Sprintf(`
+name: test
+runtime: yaml
+resources:
+	mainRes:
+		type: prov:Test
+		properties:
+			prop: "val"
+		options:
+			customTimeouts:
+				create: %s
+`, pulumiTimeout)
+
+		pt := pulcheck.PulCheck(t, bridgedProvider, program)
+		pt.Up()
+		// We pass custom timeouts in the program if the resource does not support them.
+
+		require.NotNil(t, pulumiCapturedTimeout)
+		require.Nil(t, tfCapturedTimeout)
+
+		tfProgram := fmt.Sprintf(`
+resource "prov_test" "mainRes" {
+	prop = "val"
+	timeouts {
+		create = %s
+	}
+}`, tfTimeout)
+
+		tfdriver := tfcheck.NewTfDriver(t, t.TempDir(), "prov", prov)
+		tfdriver.Write(t, tfProgram)
+
+		plan, err := tfdriver.Plan(t)
+		if ExpectFail {
+			require.Error(t, err)
+			return
+		}
+		require.NoError(t, err)
+		err = tfdriver.Apply(t, plan)
+		require.NoError(t, err)
+		require.NotNil(t, tfCapturedTimeout)
+
+		assert.Equal(t, *pulumiCapturedTimeout, *tfCapturedTimeout)
+		assert.Equal(t, *pulumiCapturedTimeout, expected)
+	}
+
+	oneSecString := "1s"
+	oneSec := 1 * time.Second
+	// twoSecString := "2s"
+	twoSec := 2 * time.Second
+
+	tests := []struct {
+		name                string
+		schemaCreateTimeout *time.Duration
+		programTimeout      *string
+		expected            time.Duration
+		expectFail          bool
+	}{
+		{
+			"schema specified timeout",
+			&oneSec,
+			nil,
+			oneSec,
+			false,
+		},
+		{
+			"program specified timeout",
+			&twoSec,
+			&oneSecString,
+			oneSec,
+			false,
+		},
+		{
+			"program specified without schema timeout",
+			nil,
+			&oneSecString,
+			oneSec,
+			true,
+		},
+	}
+
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			test(t, tc.schemaCreateTimeout, tc.programTimeout, tc.expected, tc.expectFail)
+		})
+	}
+}
+
+func TestStateFunc(t *testing.T) {
+	resMap := map[string]*schema.Resource{
+		"prov_test": {
+			CreateContext: func(ctx context.Context, d *schema.ResourceData, i interface{}) diag.Diagnostics {
+				d.SetId("id")
+				var diags diag.Diagnostics
+				v, ok := d.GetOk("test")
+				assert.True(t, ok, "test property not set")
+
+				err := d.Set("test", v.(string)+" world")
+				require.NoError(t, err)
+				return diags
+			},
+			Schema: map[string]*schema.Schema{
+				"test": {
+					Type:     schema.TypeString,
+					Optional: true,
+					ForceNew: true,
+					StateFunc: func(v interface{}) string {
+						return v.(string) + " world"
+					},
+				},
+			},
+		},
+	}
+	tfp := &schema.Provider{ResourcesMap: resMap}
+	bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
+	program := `
+name: test
+runtime: yaml
+resources:
+  mainRes:
+    type: prov:index:Test
+	properties:
+	  test: "hello"
+outputs:
+  testOut: ${mainRes.test}
+`
+	pt := pulcheck.PulCheck(t, bridgedProvider, program)
+	res := pt.Up()
+	require.Equal(t, "hello world", res.Outputs["testOut"].Value)
+	pt.Preview(optpreview.ExpectNoChanges())
+}
+
+// TestPlanStateEdit tests that [shimv2.WithPlanStateEdit] can be used to effectively edit
+// planed state.
+//
+// The test is set up to reproduce https://github.com/pulumi/pulumi-gcp/issues/2372.
+func TestPlanStateEdit(t *testing.T) {
+	setLabelsDiff := func(_ context.Context, d *schema.ResourceDiff, _ interface{}) error {
+		raw := d.Get("labels")
+		if raw == nil {
+			return nil
+		}
+
+		if d.Get("terraform_labels") == nil {
+			return fmt.Errorf("`terraform_labels` field is not present in the resource schema")
+		}
+
+		// If "labels" field is computed, set "terraform_labels" and "effective_labels" to computed.
+		// https://github.com/hashicorp/terraform-provider-google/issues/16217
+		if !d.GetRawPlan().GetAttr("labels").IsWhollyKnown() {
+			if err := d.SetNewComputed("terraform_labels"); err != nil {
+				return fmt.Errorf("error setting terraform_labels to computed: %w", err)
+			}
+
+			return nil
+		}
+
+		// Merge provider default labels with the user defined labels in the resource to get terraform managed labels
+		terraformLabels := make(map[string]string)
+
+		labels := raw.(map[string]interface{})
+		for k, v := range labels {
+			terraformLabels[k] = v.(string)
+		}
+
+		if err := d.SetNew("terraform_labels", terraformLabels); err != nil {
+			return fmt.Errorf("error setting new terraform_labels diff: %w", err)
+		}
+
+		return nil
+	}
+
+	const tfLabelsKey = "terraform_labels"
+
+	fixEmptyLabels := func(ctx context.Context, req shimv2.PlanStateEditRequest) (cty.Value, error) {
+		tfbridge.GetLogger(ctx).Debug("Invoked") // ctx is correctly passed and the logger is available
+
+		assert.Equal(t, "prov_test", req.TfToken)
+		assert.Equal(t, resource.PropertyMap{
+			"__defaults": resource.NewProperty([]resource.PropertyValue{}),
+			"labels": resource.NewProperty(resource.PropertyMap{
+				"empty": resource.NewProperty(""),
+				"key":   resource.NewProperty("val"),
+			}),
+		}, req.NewInputs)
+		assert.Equal(t, resource.PropertyMap{
+			"configValue": resource.NewProperty("configured"),
+		}, req.ProviderConfig)
+
+		m := req.PlanState.AsValueMap()
+		effectiveLabels := m[tfLabelsKey].AsValueMap()
+		effectiveLabels["empty"] = cty.StringVal("")
+		m[tfLabelsKey] = cty.MapVal(effectiveLabels)
+		return cty.ObjectVal(m), nil
+	}
+
+	res := &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"labels": {
+				Type:     schema.TypeMap,
+				Optional: true,
+				Elem:     &schema.Schema{Type: schema.TypeString},
+			},
+			tfLabelsKey: {
+				Type:     schema.TypeMap,
+				Computed: true,
+				Elem:     &schema.Schema{Type: schema.TypeString},
+			},
+		},
+		CustomizeDiff: setLabelsDiff,
+	}
+
+	tfp := &schema.Provider{
+		Schema: map[string]*schema.Schema{"config_value": {
+			Type:     schema.TypeString,
+			Optional: true,
+		}},
+		ResourcesMap: map[string]*schema.Resource{"prov_test": res},
+	}
+	bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp,
+		pulcheck.WithStateEdit(fixEmptyLabels))
+	program := `
+name: test
+runtime: yaml
+resources:
+  _:
+    type: pulumi:providers:prov
+    properties:
+        configValue: "configured"
+    defaultProvider: true
+  mainRes:
+    type: prov:index:Test
+    properties:
+      labels: { "key": "val", "empty": "" }
+outputs:
+  keyValue: ${mainRes.terraformLabels["key"]}
+  emptyValue: ${mainRes.terraformLabels["empty"]}`
+	pt := pulcheck.PulCheck(t, bridgedProvider, program)
+	out := pt.Up()
+
+	assert.Equal(t, "val", out.Outputs["keyValue"].Value)
+	assert.Equal(t, "", out.Outputs["emptyValue"].Value)
 }

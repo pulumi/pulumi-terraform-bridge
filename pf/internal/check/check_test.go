@@ -32,6 +32,7 @@ import (
 
 	pfbridge "github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/tokens"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	sdkv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
@@ -112,6 +113,16 @@ func TestMissingIDWithOverride(t *testing.T) {
 				panic("ComputeID")
 			}},
 		},
+	})
+
+	assert.Empty(t, stderr)
+	assert.NoError(t, err)
+}
+
+func TestMissingIDUnmapped(t *testing.T) {
+	stderr, err := test(t, tfbridge.ProviderInfo{
+		P:              pfbridge.ShimProvider(testProvider{missingID: true}),
+		IgnoreMappings: []string{"test_res"},
 	})
 
 	assert.Empty(t, stderr)
@@ -269,6 +280,9 @@ func test(t *testing.T, info tfbridge.ProviderInfo) (string, error) {
 	sink := diag.DefaultSink(&stdout, &stderr, diag.FormatOptions{
 		Color: colors.Never,
 	})
+
+	info.MustComputeTokens(tokens.SingleModule(info.GetResourcePrefix(),
+		"index", tokens.MakeStandard(info.GetResourcePrefix())))
 
 	err := Provider(sink, info)
 
