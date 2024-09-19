@@ -4300,7 +4300,6 @@ Resources:
     ~ 1 to update
     2 changes. 1 unchanged
 `))
-		t.FailNow()
 	})
 
 	t.Run("PRC disabled", func(t *testing.T) {
@@ -4322,6 +4321,5 @@ Resources:
     ~ 1 to update
     2 changes. 1 unchanged
 `))
-		t.FailNow()
 	})
 }
