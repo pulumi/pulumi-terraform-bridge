@@ -168,17 +168,17 @@ func TestWriteOverviewHeader(t *testing.T) {
 
 	testCases := []testCase{
 		{
-			name:     "Writes Overview Header When Content Exists",
+			name:     "Writes When Content Exists",
 			input:    readTestFile(t, "write-overview-header/with-overview-text.md"),
 			expected: "## Overview\n\n",
 		},
 		{
-			name:     "Does Not Write Overview Header For Empty Overview",
+			name:     "Does Not Write For Empty Overview",
 			input:    readTestFile(t, "write-overview-header/empty-overview.md"),
 			expected: "",
 		},
 		{
-			name:     "Does Not Write Overview Header For Empty Content",
+			name:     "Does Not Write For Empty Content",
 			input:    "",
 			expected: "",
 		},
@@ -191,6 +191,21 @@ func TestWriteOverviewHeader(t *testing.T) {
 			assert.Equal(t, tt.expected, actual)
 		})
 	}
+
+	// The following mirrors the way that the result of `writeOverviewHeader` gets applied to our installation doc.
+	contextTest := testCase{
+		name:     "Does Not Write For Empty Overview With Context",
+		input:    readTestFile(t, "write-overview-header/empty-overview-with-context-input.md"),
+		expected: readTestFile(t, "write-overview-header/empty-overview-with-context-expected.md"),
+	}
+	t.Run(contextTest.name, func(t *testing.T) {
+		t.Parallel()
+		text, err := removeTitle([]byte(contextTest.input))
+		require.NoError(t, err)
+		header := writeOverviewHeader(text)
+		actual := header + string(text)
+		assertEqualHTML(t, contextTest.expected, actual)
+	})
 }
 
 func TestWriteFrontMatter(t *testing.T) {
