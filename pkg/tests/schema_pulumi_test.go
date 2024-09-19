@@ -4280,8 +4280,8 @@ outputs:
 	}
 
 	t.Run("PRC enabled", func(t *testing.T) {
-		// TODO[pulumi/pulumi-terraform-bridge#2428]: Incorrect detailed diff with unknown elements
-		t.Skip("Skipping until pulumi/pulumi-terraform-bridge#2428 is resolved")
+		// TODO[pulumi/pulumi-terraform-bridge#2427]: Incorrect detailed diff with unknown elements
+		t.Skip("Skipping until pulumi/pulumi-terraform-bridge#2427 is resolved")
 		runTest(t, true, autogold.Expect(`Previewing update (test):
   pulumi:pulumi:Stack: (same)
     [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
