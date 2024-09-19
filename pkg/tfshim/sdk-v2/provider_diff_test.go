@@ -57,15 +57,15 @@ func TestRawPlanSet(t *testing.T) {
 	instanceState.Meta = map[string]interface{}{} // ignore schema versions for this test
 	resourceConfig := terraform.NewResourceConfigShimmed(config, r.CoreConfigSchema())
 
-	ss := v2InstanceState{
-		resource: r,
-		tf:       instanceState,
+	ss := v2InstanceState2{
+		resourceType: "myres",
+		stateValue:   state,
 	}
 
-	id, err := wp.Diff(ctx, "myres", ss, v2ResourceConfig{
+	id, err := wp.Diff(ctx, "myres", &ss, v2ResourceConfig{
 		tf: resourceConfig,
 	}, shim.DiffOptions{})
 	require.NoError(t, err)
 
-	assert.False(t, id.(v2InstanceDiff).tf.RawPlan.IsNull(), "RawPlan should not be Null")
+	assert.False(t, id.(*v2InstanceDiff2).tf.RawPlan.IsNull(), "RawPlan should not be Null")
 }
