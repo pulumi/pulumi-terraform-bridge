@@ -299,6 +299,13 @@ func TestApplyEditRules(t *testing.T) {
 			},
 			expected: []byte(""),
 		},
+		{
+			name: "Strips mentions of Terraform version With Surrounding Text",
+			docFile: DocFile{
+				Content: []byte(readfile(t, "test_data/replace-terraform-version/input.md")),
+			},
+			expected: []byte(readfile(t, "test_data/replace-terraform-version/expected.md")),
+		},
 	}
 	for _, tt := range tests {
 		tt := tt
