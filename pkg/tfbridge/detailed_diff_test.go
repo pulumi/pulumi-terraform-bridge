@@ -286,7 +286,6 @@ func TestBasicDetailedDiff(t *testing.T) {
 			value1:     []interface{}{map[string]interface{}{"foo": "bar"}},
 			value2:     []interface{}{map[string]interface{}{"foo": "baz"}},
 		},
-		// TODO: list tests
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			sdkv2Schema := map[string]*schema.Schema{
