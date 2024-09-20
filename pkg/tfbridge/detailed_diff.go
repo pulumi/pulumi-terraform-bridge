@@ -10,13 +10,12 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
-func isBlock(s shim.Schema) bool {
-	// TODO: handle maps with resource elems?
-	if s.Elem() == nil {
+func isFlattened(s shim.Schema) bool {
+	if s.Type() != shim.TypeList && s.Type() != shim.TypeSet {
 		return false
 	}
-	_, ok := s.Elem().(shim.Resource)
-	return ok
+
+	return s.MaxItems() == 1
 }
 
 func makeTopPropDiff(
@@ -55,7 +54,16 @@ func makePropDiff(
 	res := make(map[string]*pulumirpc.PropertyDiff)
 	res[string(key)] = topDiff
 
-	if etf.Type() == shim.TypeList {
+	if isFlattened(etf) {
+		pelem := &info.Schema{}
+		if eps != nil {
+			pelem = eps.Elem
+		}
+		diff := makeElemDiff(ctx, key, etf.Elem(), pelem, old, new, oldOk, newOk)
+		for subKey, subDiff := range diff {
+			res[subKey] = subDiff
+		}
+	} else if etf.Type() == shim.TypeList {
 		diff := makeListDiff(ctx, key, etf, eps, old, new, oldOk, newOk)
 		for subKey, subDiff := range diff {
 			res[subKey] = subDiff
@@ -123,11 +131,15 @@ func makeElemDiff(
 	}
 
 	if _, ok := etf.(shim.Resource); ok {
+		fields := map[string]*SchemaInfo{}
+		if eps != nil {
+			fields = eps.Fields
+		}
 		d := makeObjectDiff(
 			ctx,
 			key,
 			etf.(shim.Resource).Schema(),
-			eps.Fields,
+			fields,
 			old,
 			new,
 		)
@@ -139,7 +151,7 @@ func makeElemDiff(
 			ctx,
 			key,
 			etf.(shim.Schema),
-			eps.Elem,
+			eps,
 			old,
 			new,
 			true,
