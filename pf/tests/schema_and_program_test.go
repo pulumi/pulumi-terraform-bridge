@@ -17,6 +17,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/providerbuilder"
 	pb "github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/providerbuilder"
@@ -414,6 +415,21 @@ outputs:
 
 func TestImportSingleNested(t *testing.T) {
 	// https://github.com/pulumi/pulumi-terraform-bridge/issues/2219
+
+	type StringPropModel struct {
+		Title       types.String `tfsdk:"title"`
+		Description types.String `tfsdk:"description"`
+	}
+
+	type PropertiesModel struct {
+		StringProps map[string]StringPropModel `tfsdk:"string_props"`
+	}
+
+	type BlueprintModel struct {
+		ID         string           `tfsdk:"id"`
+		Properties *PropertiesModel `tfsdk:"properties"`
+	}
+
 	provBuilder := pb.NewProvider(pb.NewProviderArgs{
 		AllResources: []providerbuilder.Resource{
 			{
@@ -435,6 +451,10 @@ func TestImportSingleNested(t *testing.T) {
 												MarkdownDescription: "The description of the property",
 												Optional:            true,
 											},
+											"title": schema.StringAttribute{
+												MarkdownDescription: "The title of the property",
+												Optional:            true,
+											},
 										},
 									},
 								},
@@ -443,11 +463,19 @@ func TestImportSingleNested(t *testing.T) {
 					},
 				},
 				ImportStateFunc: func(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-					resp.State.SetAttribute(ctx, path.Root("id"), req.ID)
-					resp.State.SetAttribute(ctx,
-						path.Root("properties").AtName("string_props"),
-						map[string]interface{}{},
-					)
+					resp.State.SetAttribute(ctx, path.Root("id"), types.StringValue("test-id"))
+				},
+				ReadFunc: func(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+					resp.State.Set(ctx, BlueprintModel{
+						ID: "test-id",
+						Properties: &PropertiesModel{
+							StringProps: map[string]StringPropModel{
+								"description": {
+									Title: types.StringValue("Description"),
+								},
+							},
+						},
+					})
 				},
 			},
 		},
@@ -467,4 +495,6 @@ runtime: yaml`
 	t.Log(out.Stderr)
 
 	require.Equal(t, 0, out.ReturnCode)
+
+	t.FailNow()
 }
