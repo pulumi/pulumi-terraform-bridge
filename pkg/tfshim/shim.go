@@ -44,6 +44,14 @@ type ResourceAttrDiff struct {
 	Type        DiffAttrType
 }
 
+type DiffOverride string
+
+const (
+	DiffNoOverride       DiffOverride = "no-override"
+	DiffOverrideNoUpdate DiffOverride = "no-update"
+	DiffOverrideUpdate   DiffOverride = "update"
+)
+
 type InstanceDiff interface {
 	Attribute(key string) *ResourceAttrDiff
 	HasNoChanges() bool
@@ -52,7 +60,9 @@ type InstanceDiff interface {
 	RequiresNew() bool
 
 	// DiffEqualDecisionOverride can return a non-null value to override the default decision of if the diff is equal.
-	DiffEqualDecisionOverride() *bool
+	//
+	// DiffEqualDecisionOverride is only respected when EnableAccurateBridgePreview is set.
+	DiffEqualDecisionOverride() DiffOverride
 }
 
 type ValueType int

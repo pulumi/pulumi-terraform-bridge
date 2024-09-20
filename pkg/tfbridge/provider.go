@@ -1162,8 +1162,8 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 	detailedDiff, changes := dd.diffs, dd.changes
 
 	if opts.enableAccurateBridgePreview {
-		if decision := diff.DiffEqualDecisionOverride(); decision != nil {
-			if *decision {
+		if decision := diff.DiffEqualDecisionOverride(); decision != shim.DiffNoOverride {
+			if decision == shim.DiffOverrideNoUpdate {
 				changes = pulumirpc.DiffResponse_DIFF_NONE
 			} else {
 				changes = pulumirpc.DiffResponse_DIFF_SOME
