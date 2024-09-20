@@ -187,7 +187,7 @@ func TestWriteOverviewHeader(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			actual := writeOverviewHeader([]byte(tt.input))
+			actual := getOverviewHeader([]byte(tt.input))
 			assert.Equal(t, tt.expected, actual)
 		})
 	}
@@ -202,7 +202,7 @@ func TestWriteOverviewHeader(t *testing.T) {
 		t.Parallel()
 		text, err := removeTitle([]byte(contextTest.input))
 		require.NoError(t, err)
-		header := writeOverviewHeader(text)
+		header := getOverviewHeader(text)
 		actual := header + string(text)
 		assertEqualHTML(t, contextTest.expected, actual)
 	})
