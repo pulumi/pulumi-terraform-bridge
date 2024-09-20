@@ -104,6 +104,60 @@ func makeObjectDiff(
 	return diff
 }
 
+func makeElemDiff(
+	ctx context.Context,
+	key resource.PropertyKey,
+	etf interface{},
+	eps *SchemaInfo,
+	old, new resource.PropertyValue,
+	oldOk, newOk bool,
+) map[string]*pulumirpc.PropertyDiff {
+	diff := make(map[string]*pulumirpc.PropertyDiff)
+	if !oldOk {
+		diff[string(key)] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_ADD}
+		return diff
+	}
+	if !newOk {
+		diff[string(key)] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_DELETE}
+		return diff
+	}
+
+	if _, ok := etf.(shim.Resource); ok {
+		d := makeObjectDiff(
+			ctx,
+			key,
+			etf.(shim.Resource).Schema(),
+			eps.Fields,
+			old,
+			new,
+		)
+		for subKey, subDiff := range d {
+			diff[subKey] = subDiff
+		}
+	} else if _, ok := etf.(shim.Schema); ok {
+		d := makePropDiff(
+			ctx,
+			key,
+			etf.(shim.Schema),
+			eps.Elem,
+			old,
+			new,
+			true,
+			true,
+		)
+		for subKey, subDiff := range d {
+			diff[subKey] = subDiff
+		}
+	} else {
+		d := makePropDiff(ctx, key, nil, eps.Elem, old, new, true, true)
+		for subKey, subDiff := range d {
+			diff[subKey] = subDiff
+		}
+	}
+
+	return diff
+}
+
 func makeListDiff(
 	ctx context.Context,
 	key resource.PropertyKey,
@@ -128,37 +182,9 @@ func makeListDiff(
 	shorterLen := min(len(oldList), len(newList))
 	for i := 0; i < shorterLen; i++ {
 		elemKey := string(key) + "[" + fmt.Sprintf("%d", i) + "]"
-		if _, ok := etf.Elem().(shim.Resource); ok {
-			d := makeObjectDiff(
-				ctx,
-				resource.PropertyKey(elemKey),
-				etf.Elem().(shim.Resource).Schema(),
-				eps.Fields,
-				oldList[i],
-				newList[i],
-			)
-			for subKey, subDiff := range d {
-				diff[subKey] = subDiff
-			}
-		} else if _, ok := etf.Elem().(shim.Schema); ok {
-			d := makePropDiff(
-				ctx,
-				resource.PropertyKey(elemKey),
-				etf.Elem().(shim.Schema),
-				eps.Elem,
-				oldList[i],
-				newList[i],
-				true,
-				true,
-			)
-			for subKey, subDiff := range d {
-				diff[subKey] = subDiff
-			}
-		} else {
-			d := makePropDiff(ctx, resource.PropertyKey(elemKey), nil, eps.Elem, oldList[i], newList[i], true, true)
-			for subKey, subDiff := range d {
-				diff[subKey] = subDiff
-			}
+		d := makeElemDiff(ctx, resource.PropertyKey(elemKey), etf.Elem(), eps, oldList[i], newList[i], true, true)
+		for subKey, subDiff := range d {
+			diff[subKey] = subDiff
 		}
 	}
 
