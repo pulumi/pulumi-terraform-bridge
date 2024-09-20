@@ -12,7 +12,7 @@ require (
 	github.com/hexops/autogold/v2 v2.2.1
 	github.com/pulumi/providertest v0.0.15
 	github.com/pulumi/pulumi-terraform-bridge/pf v0.0.0
-	github.com/pulumi/pulumi-terraform-bridge/v3 v3.90.0
+	github.com/pulumi/pulumi-terraform-bridge/v3 v3.91.0
 	github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests v0.0.0-00010101000000-000000000000
 	github.com/stretchr/testify v1.9.0
 	github.com/terraform-providers/terraform-provider-random/randomshim v0.0.0
