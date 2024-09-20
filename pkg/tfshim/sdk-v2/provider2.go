@@ -277,6 +277,8 @@ func (p *planResourceChangeImpl) Diff(
 
 	//nolint:lll
 	// Taken from https://github.com/opentofu/opentofu/blob/864aa9d1d629090cfc4ddf9fdd344d34dee9793e/internal/tofu/node_resource_abstract_instance.go#L1024
+	// We need to unmark the values to make sure Equals works.
+	// Equals will return unknown if either value is unknown.
 	// START
 	unmarkedPrior, _ := st.UnmarkDeep()
 	unmarkedPlan, _ := plannedState.UnmarkDeep()
