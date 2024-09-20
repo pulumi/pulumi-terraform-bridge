@@ -33,8 +33,8 @@ type v2InstanceDiff struct {
 	tf *terraform.InstanceDiff
 }
 
-func (d v2InstanceDiff) DiffEqualDecisionOverride() *bool {
-	return nil
+func (d v2InstanceDiff) DiffEqualDecisionOverride() shim.DiffOverride {
+	return shim.DiffNoOverride
 }
 
 func (d v2InstanceDiff) applyTimeoutOptions(opts shim.TimeoutOptions) {

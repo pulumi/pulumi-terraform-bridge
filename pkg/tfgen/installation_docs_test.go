@@ -157,6 +157,57 @@ func TestWriteInstallationInstructions(t *testing.T) {
 	})
 }
 
+func TestWriteOverviewHeader(t *testing.T) {
+	t.Parallel()
+	type testCase struct {
+		// The name of the test case.
+		name     string
+		input    string
+		expected string
+	}
+
+	testCases := []testCase{
+		{
+			name:     "Writes When Content Exists",
+			input:    readTestFile(t, "write-overview-header/with-overview-text.md"),
+			expected: "## Overview\n\n",
+		},
+		{
+			name:     "Does Not Write For Empty Overview",
+			input:    readTestFile(t, "write-overview-header/empty-overview.md"),
+			expected: "",
+		},
+		{
+			name:     "Does Not Write For Empty Content",
+			input:    "",
+			expected: "",
+		},
+	}
+	for _, tt := range testCases {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			actual := getOverviewHeader([]byte(tt.input))
+			assert.Equal(t, tt.expected, actual)
+		})
+	}
+
+	// The following mirrors the way that the result of `writeOverviewHeader` gets applied to our installation doc.
+	contextTest := testCase{
+		name:     "Does Not Write For Empty Overview With Context",
+		input:    readTestFile(t, "write-overview-header/empty-overview-with-context-input.md"),
+		expected: readTestFile(t, "write-overview-header/empty-overview-with-context-expected.md"),
+	}
+	t.Run(contextTest.name, func(t *testing.T) {
+		t.Parallel()
+		text, err := removeTitle([]byte(contextTest.input))
+		require.NoError(t, err)
+		header := getOverviewHeader(text)
+		actual := header + string(text)
+		assertEqualHTML(t, contextTest.expected, actual)
+	})
+}
+
 func TestWriteFrontMatter(t *testing.T) {
 	t.Parallel()
 
@@ -306,11 +357,37 @@ func TestApplyEditRules(t *testing.T) {
 			},
 			expected: []byte(readfile(t, "test_data/replace-terraform-version/expected.md")),
 		},
+		{
+			// Found in linode
+			name: "Rewrites providers.tf to Pulumi.yaml",
+			docFile: DocFile{
+				Content: []byte(readfile(t, "test_data/rewrite-providers-tf-to-pulumi-yaml/input.md")),
+			},
+			expected: []byte(readfile(t, "test_data/rewrite-providers-tf-to-pulumi-yaml/expected.md")),
+		},
+		{
+			name: "Rewrites terraform init to pulumi up",
+			docFile: DocFile{
+				Content: []byte(readfile(t, "test_data/rewrite-tf-init-to-pulumi-up/input.md")),
+			},
+			expected: []byte(readfile(t, "test_data/rewrite-tf-init-to-pulumi-up/expected.md")),
+		},
+		{
+			// Found in linode
+			name: "Replaces provider block with provider configuration",
+			docFile: DocFile{
+				Content: []byte(readfile(t, "test_data/replace-provider-block/input.md")),
+			},
+			expected: []byte(readfile(t, "test_data/replace-provider-block/expected.md")),
+		},
 	}
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
+			if runtime.GOOS == "windows" {
+				t.Skipf("Skipping on Windows due to a newline handling issue")
+			}
 			g := &Generator{
 				sink:      mockSink{t},
 				editRules: defaultEditRules(),

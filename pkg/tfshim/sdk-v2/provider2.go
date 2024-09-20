@@ -115,7 +115,7 @@ type v2InstanceDiff2 struct {
 	config                    cty.Value
 	plannedState              cty.Value
 	plannedPrivate            map[string]interface{}
-	diffEqualDecisionOverride *bool
+	diffEqualDecisionOverride shim.DiffOverride
 }
 
 func (d *v2InstanceDiff2) String() string {
@@ -147,7 +147,7 @@ func (d *v2InstanceDiff2) ProposedState(
 	}, nil
 }
 
-func (d *v2InstanceDiff2) DiffEqualDecisionOverride() *bool {
+func (d *v2InstanceDiff2) DiffEqualDecisionOverride() shim.DiffOverride {
 	return d.diffEqualDecisionOverride
 }
 
@@ -276,11 +276,20 @@ func (p *planResourceChangeImpl) Diff(
 	})
 
 	//nolint:lll
-	// https://github.com/opentofu/opentofu/blob/864aa9d1d629090cfc4ddf9fdd344d34dee9793e/internal/tofu/node_resource_abstract_instance.go#L1024
+	// Taken from https://github.com/opentofu/opentofu/blob/864aa9d1d629090cfc4ddf9fdd344d34dee9793e/internal/tofu/node_resource_abstract_instance.go#L1024
+	// We need to unmark the values to make sure Equals works.
+	// Equals will return unknown if either value is unknown.
+	// START
 	unmarkedPrior, _ := st.UnmarkDeep()
 	unmarkedPlan, _ := plannedState.UnmarkDeep()
 	eqV := unmarkedPrior.Equals(unmarkedPlan)
 	eq := eqV.IsKnown() && eqV.True()
+	// END
+
+	diffOverride := shim.DiffOverrideUpdate
+	if eq {
+		diffOverride = shim.DiffOverrideNoUpdate
+	}
 
 	return &v2InstanceDiff2{
 		v2InstanceDiff: v2InstanceDiff{
@@ -288,7 +297,7 @@ func (p *planResourceChangeImpl) Diff(
 		},
 		config:                    cfg,
 		plannedState:              plannedState,
-		diffEqualDecisionOverride: &eq,
+		diffEqualDecisionOverride: diffOverride,
 		plannedPrivate:            plan.PlannedPrivate,
 	}, err
 }
