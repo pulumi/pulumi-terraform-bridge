@@ -56,7 +56,7 @@ func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
 	}
 
 	// Apply installation-specific edit rules to transform the doc for Pulumi-ready presentation
-	contentBytes, err = applyEditRules([]byte(contentStr), docFile.FileName)
+	contentBytes, err = applyInstallationEditRules([]byte(contentStr), docFile.FileName)
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +141,7 @@ func applyProviderEditRules(contentBytes []byte, docFile string, g *Generator) (
 	}
 	return contentBytes, nil
 }
-func applyEditRules(contentBytes []byte, docFile string) ([]byte, error) {
+func applyInstallationEditRules(contentBytes []byte, docFile string) ([]byte, error) {
 	var edits editRules
 	// Additional edit rules for installation files
 	edits = append(edits,

@@ -47,29 +47,6 @@ func TestPlainDocsParser(t *testing.T) {
 	}
 	pclsMap := make(map[string]translatedExample)
 
-	//var fixUpInstallationFileExample = targetedReplace(
-	//	"index.html.markdown",
-	//	[]byte(`resource "libvirt_domain" "test1" {
-	//...`),
-	//	[]byte(`resource "libvirt_domain" "test1" {
-	//#...`),
-	//)
-	//
-	//var fixupBadHclTag = targetedReplace(
-	//	"index.html.markdown",
-	//	[]byte("shell environment variable.\n\n```hcl"),
-	//	[]byte("shell environment variable.\n\n```"),
-	//)
-	//
-	//func targetedReplace(filePath string, from, to []byte) tfbridge.DocsEdit {
-	//	return tfbridge.DocsEdit{
-	//	Path: filePath,
-	//	Edit: func(_ string, content []byte) ([]byte, error) {
-	//	return bytes.ReplaceAll(content, from, to), nil
-	//},
-	//}
-	//}
-
 	tests := []testCase{
 		{
 			name: "Converts index.md file into Pulumi installation file",
@@ -307,7 +284,83 @@ func TestWriteFrontMatter(t *testing.T) {
 	})
 }
 
-func TestApplyEditRules(t *testing.T) {
+func TestApplyProviderEditRules(t *testing.T) {
+	t.Parallel()
+
+	type testCase struct {
+		// The name of the test case.
+		name     string
+		docFile  DocFile
+		expected []byte
+		edits    editRules
+	}
+
+	tests := []testCase{
+		{
+			name: "Replaces terraform plan with pulumi preview",
+			docFile: DocFile{
+				Content: []byte("terraform plan this program"),
+			},
+			expected: []byte("pulumi preview this program"),
+			edits:    defaultEditRules(),
+		},
+		{
+			name: "Strips Hashicorp links correctly",
+			docFile: DocFile{
+				Content: []byte(readfile(t, "test_data/replace-links/input.md")),
+			},
+			expected: []byte(readfile(t, "test_data/replace-links/expected.md")),
+			edits:    defaultEditRules(),
+		},
+		{
+			name: "Strips Terraform links correctly",
+			docFile: DocFile{
+				Content: []byte("This provider requires at least [Terraform 1.0](https://www.terraform.io/downloads.html)."),
+			},
+			expected: []byte("This provider requires at least Terraform 1.0."),
+			edits:    defaultEditRules(),
+		},
+		{
+			name: "Applies Custom Edit Rules",
+			docFile: DocFile{
+				Content: []byte("This provider has a hroffic unreadable typo"),
+			},
+			expected: []byte("This provider has a horrific unreadable typo, which is now fixed"),
+			edits: append(
+				defaultEditRules(),
+				tfbridge.DocsEdit{
+					Path: "testfile.md",
+					Edit: func(_ string, content []byte) ([]byte, error) {
+						return bytes.ReplaceAll(
+							content,
+							[]byte("hroffic unreadable typo"),
+							[]byte("horrific unreadable typo, which is now fixed"),
+						), nil
+					},
+				},
+			),
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			if runtime.GOOS == "windows" {
+				t.Skipf("Skipping on Windows due to a newline handling issue")
+			}
+			g := &Generator{
+				sink:      mockSink{t},
+				editRules: tt.edits,
+			}
+			actual, err := applyProviderEditRules(tt.docFile.Content, "testfile.md", g)
+			require.NoError(t, err)
+			assertEqualHTML(t, string(tt.expected), string(actual))
+		})
+	}
+
+}
+
+func TestApplyInstallationEditRules(t *testing.T) {
 	t.Parallel()
 
 	type testCase struct {
@@ -344,26 +397,12 @@ func TestApplyEditRules(t *testing.T) {
 				"input has the following nested fields"),
 		},
 		{
-			name: "Replaces terraform plan with pulumi preview",
-			docFile: DocFile{
-				Content: []byte("terraform plan this program"),
-			},
-			expected: []byte("pulumi preview this program"),
-		},
-		{
 			name: "Skips sections about logging by default",
 			docFile: DocFile{
 				Content:  []byte("# I am a provider\n\n### Additional Logging\n This section should be skipped"),
 				FileName: "filename",
 			},
 			expected: []byte("# I am a provider\n"),
-		},
-		{
-			name: "Strips Hashicorp links correctly",
-			docFile: DocFile{
-				Content: []byte(readfile(t, "test_data/replace-links/input.md")),
-			},
-			expected: []byte(readfile(t, "test_data/replace-links/actual.md")),
 		},
 		{
 			name: "Strips mentions of Terraform version pattern 1",
@@ -459,11 +498,7 @@ func TestApplyEditRules(t *testing.T) {
 			if runtime.GOOS == "windows" {
 				t.Skipf("Skipping on Windows due to a newline handling issue")
 			}
-			g := &Generator{
-				sink:      mockSink{t},
-				editRules: defaultEditRules(),
-			}
-			actual, err := applyEditRules(tt.docFile.Content, "testfile.md")
+			actual, err := applyInstallationEditRules(tt.docFile.Content, "testfile.md")
 			require.NoError(t, err)
 			assertEqualHTML(t, string(tt.expected), string(actual))
 		})
@@ -562,7 +597,7 @@ func TestSkipSectionHeadersByContent(t *testing.T) {
 		name:          "Skips Sections With Unwanted Headers",
 		headersToSkip: []string{"Debugging Provider Output Using Logs", "Testing and Development"},
 		input:         readTestFile(t, "skip-sections-by-header/input.md"),
-		expected:      readTestFile(t, "skip-sections-by-header/actual.md"),
+		expected:      readTestFile(t, "skip-sections-by-header/expected.md"),
 	}
 
 	t.Run(tc.name, func(t *testing.T) {
