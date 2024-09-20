@@ -114,6 +114,9 @@ func applyEditRules(contentBytes []byte, docFile string, g *Generator) ([]byte, 
 	edits = append(edits,
 		skipSectionHeadersEdit(docFile),
 		removeTfVersionMentions(docFile),
+		//Replace "providers.tf" with "Pulumi.yaml"
+		reReplace(`providers.tf`, `Pulumi.yaml`),
+		reReplace(`terraform init`, `pulumi up`),
 		// Replace all "T/terraform" with "P/pulumi"
 		reReplace(`Terraform`, `Pulumi`),
 		reReplace(`terraform`, `pulumi`),
@@ -130,6 +133,7 @@ func applyEditRules(contentBytes []byte, docFile string, g *Generator) ([]byte, 
 		reReplace("### Optional\n", ""),
 		reReplace(`block contains the following arguments`,
 			`input has the following nested fields`),
+		reReplace(`provider block`, `provider configuration`),
 	)
 	contentBytes, err := edits.apply(docFile, contentBytes)
 	if err != nil {
