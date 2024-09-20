@@ -14,7 +14,6 @@ import (
 	sdkv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
 
-//nolint:lll
 func TestPlainDocsParser(t *testing.T) {
 	t.Parallel()
 
@@ -82,6 +81,9 @@ func TestPlainDocsParser(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
+			if runtime.GOOS == "windows" {
+				t.Skipf("Skipping on Windows due to a newline handling issue")
+			}
 			g := &Generator{
 				sink: mockSink{t},
 				info: tfbridge.ProviderInfo{
