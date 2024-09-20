@@ -161,6 +161,20 @@ func makeListDiff(
 			}
 		}
 	}
+
+	// if the lists are different lengths, add the remaining elements as adds or deletes
+	if len(oldList) > len(newList) {
+		for i := len(newList); i < len(oldList); i++ {
+			elemKey := string(key) + "[" + fmt.Sprintf("%d", i) + "]"
+			diff[elemKey] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_DELETE}
+		}
+	} else if len(newList) > len(oldList) {
+		for i := len(oldList); i < len(newList); i++ {
+			elemKey := string(key) + "[" + fmt.Sprintf("%d", i) + "]"
+			diff[elemKey] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_ADD}
+		}
+	}
+
 	return diff
 }
 
