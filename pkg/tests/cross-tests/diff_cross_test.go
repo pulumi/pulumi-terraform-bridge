@@ -26,6 +26,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hexops/autogold/v2"
 	"github.com/stretchr/testify/require"
 )
 
@@ -938,6 +939,5 @@ func TestMaxItemsOneCollectionOnlyDiff(t *testing.T) {
 
 	require.Equal(t, []string{"update"}, diff.TFDiff.Actions)
 	require.NotEqual(t, getFilter(diff.TFDiff.Before), getFilter(diff.TFDiff.After))
-	// TODO[pulumi/pulumi-terraform-bridge#2294] fix detailed diff here
-	// autogold.Expect(map[string]interface{}{"rules[0].filter": map[string]interface{}{"kind": "UPDATE"}}).Equal(t, diff.PulumiDiff.DetailedDiff)
+	autogold.Expect(map[string]interface{}{"rules[0].filter": map[string]interface{}{"kind": "UPDATE"}}).Equal(t, diff.PulumiDiff.DetailedDiff)
 }

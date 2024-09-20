@@ -128,6 +128,7 @@ type T interface {
 
 type bridgedProviderOpts struct {
 	DisablePlanResourceChange bool
+	StateEdit                 shimv2.PlanStateEditFunc
 }
 
 // BridgedProviderOpts
@@ -140,6 +141,12 @@ func DisablePlanResourceChange() BridgedProviderOpt {
 	}
 }
 
+func WithStateEdit(f shimv2.PlanStateEditFunc) BridgedProviderOpt {
+	return func(o *bridgedProviderOpts) {
+		o.StateEdit = f
+	}
+}
+
 // This is an experimental API.
 func BridgedProvider(t T, providerName string, tfp *schema.Provider, opts ...BridgedProviderOpt) info.Provider {
 	options := &bridgedProviderOpts{}
@@ -149,9 +156,12 @@ func BridgedProvider(t T, providerName string, tfp *schema.Provider, opts ...Bri
 
 	EnsureProviderValid(t, tfp)
 
-	shimProvider := shimv2.NewProvider(tfp, shimv2.WithPlanResourceChange(
-		func(tfResourceType string) bool { return !options.DisablePlanResourceChange },
-	))
+	shimProvider := shimv2.NewProvider(tfp,
+		shimv2.WithPlanResourceChange(
+			func(tfResourceType string) bool { return !options.DisablePlanResourceChange },
+		),
+		shimv2.WithPlanStateEdit(options.StateEdit),
+	)
 
 	provider := tfbridge.ProviderInfo{
 		P:                              shimProvider,

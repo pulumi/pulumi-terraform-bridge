@@ -601,3 +601,28 @@ func TestCreateDoesNotPanicWithStateUpgraders(t *testing.T) {
 		},
 	})
 }
+
+// TestStateFunc ensures that resources with a StateFunc set on their schema are correctly handled. This includes
+// ensuring that the PlannedPrivate blob is passed from PlanResourceChange to ApplyResourceChange. If this is passed
+// correctly, the provider will see the original value of the field, rather than the value that was produced by the StateFunc.
+func TestStateFunc(t *testing.T) {
+	input := "hello"
+
+	runCreateInputCheck(t, inputTestCase{
+		Resource: &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				"test": {
+					Type:     schema.TypeString,
+					Optional: true,
+					ForceNew: true,
+					StateFunc: func(v interface{}) string {
+						return v.(string) + " world"
+					},
+				},
+			},
+		},
+		Config: map[string]any{
+			"test": input,
+		},
+	})
+}

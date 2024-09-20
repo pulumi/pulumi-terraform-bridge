@@ -318,9 +318,16 @@ func MakeResource(pkg string, mod string, res string) tokens.Type {
 	return tokens.NewTypeToken(modT, tokens.TypeName(res))
 }
 
-// BoolRef returns a reference to the bool argument.
+// BoolRef returns a reference to the bool argument. Retained for backwards compatibility. Prefer [Ref] for new usage
+// and other types like strings.
 func BoolRef(b bool) *bool {
 	return &b
+}
+
+// Fluently construct a reference to the argument. This utility function is needed to ease configuring the bridge where
+// references are expected instead of plain boolean or string literals.
+func Ref[T any](x T) *T {
+	return &x
 }
 
 // StringValue gets a string value from a property map if present, else ""

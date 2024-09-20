@@ -2273,8 +2273,6 @@ func TestInvoke(t *testing.T) {
 }
 
 func TestTransformOutputs(t *testing.T) {
-	// TODO: fix
-	t.Skipf("skip for now")
 	shimProvider := shimv2.NewProvider(testTFProviderV2)
 	provider := &Provider{
 		tf:     shimProvider,
@@ -2312,8 +2310,18 @@ func TestTransformOutputs(t *testing.T) {
 		  },
 		  "response": {
 		    "properties": {
-		      "id": "",
-		      "stringPropertyValue": "TRANSFORMED"
+		      "id": "04da6b54-80e4-46f7-96ec-b56ff0331ba9",
+		      "stringPropertyValue": "TRANSFORMED",
+			  "__meta": "*",
+			  "arrayPropertyValues": "*",
+			  "boolPropertyValue": "*",
+			  "floatPropertyValue": "*",
+			  "nestedResources": "*",
+			  "nilPropertyValue": "*",
+			  "numberPropertyValue": "*",
+			  "objectPropertyValue": "*",
+			  "setPropertyValues": "*",
+			  "stringWithBadInterpolation": "*"
 		    }
 		  }
 		}`)
@@ -2344,7 +2352,10 @@ func TestTransformOutputs(t *testing.T) {
 		      "nestedResources": "*",
 		      "numberPropertyValue": "*",
 		      "setPropertyValues": "*",
-		      "stringWithBadInterpolation": "*"
+		      "stringWithBadInterpolation": "*",
+			  "nilPropertyValue": "*",
+			  "boolPropertyValue": "*",
+			  "floatPropertyValue": "*"
 		    }
 		  }
 		}`)
@@ -2370,9 +2381,17 @@ func TestTransformOutputs(t *testing.T) {
 		      "id": "*",
                       "stringPropertyValue": "TRANSFORMED",
 		      "__meta": "*",
+		      "objectPropertyValue": "*",
+		      "floatPropertyValue": "*",
+		      "stringPropertyValue": "*",
 		      "arrayPropertyValues": "*",
 		      "nestedResources": "*",
-		      "setPropertyValues": "*"
+		      "numberPropertyValue": "*",
+		      "setPropertyValues": "*",
+		      "stringWithBadInterpolation": "*",
+			  "nilPropertyValue": "*",
+			  "boolPropertyValue": "*",
+			  "floatPropertyValue": "*"
 		    }
 		  }
 		}`)
@@ -2404,7 +2423,8 @@ func TestTransformOutputs(t *testing.T) {
 		      "nestedResources": "*",
 		      "numberPropertyValue": "*",
 		      "setPropertyValues": "*",
-		      "stringWithBadInterpolation": "*"
+		      "stringWithBadInterpolation": "*",
+			  "nilPropertyValue": "*"
 		    }
 		  }
 		}`)
@@ -2433,7 +2453,8 @@ func TestTransformOutputs(t *testing.T) {
 			"nestedResources": "*",
 			"numberPropertyValue": "*",
 			"setPropertyValues": "*",
-			"stringWithBadInterpolation": "*"
+			"stringWithBadInterpolation": "*",
+			  "nilPropertyValue": "*"
 		    }
 		  }
 		}`)

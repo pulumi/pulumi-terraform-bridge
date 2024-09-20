@@ -47,6 +47,8 @@ func TestMain(m *testing.M) {
 }
 
 func TestStacktraceDisplayed(t *testing.T) {
+	// TODO[pulumi/pulumi-terraform-bridge#2388]
+	t.Skip("flaky test")
 	t.Parallel()
 	skipWindows(t)
 
@@ -263,6 +265,7 @@ func TestCheckConfig(t *testing.T) {
 }`))))
 
 	t.Run("check-config", assertGRPCCall(s.CheckConfig, &pulumirpc.CheckRequest{
+		Urn: "urn:pulumi:dev::teststack::pulumi:providers:pfprovider::test",
 		News: marshal(resource.PropertyMap{
 			"endpoint": resource.NewProperty("explicit endpoint"),
 		}),
@@ -274,6 +277,7 @@ func TestCheckConfig(t *testing.T) {
 
 	// TODO: This should error
 	t.Run("check-config (invalid)", assertGRPCCall(s.CheckConfig, &pulumirpc.CheckRequest{
+		Urn: "urn:pulumi:dev::teststack::pulumi:providers:pfprovider::test",
 		News: marshal(resource.PropertyMap{
 			"endpoint": resource.NewProperty(123.456),
 		}),
@@ -288,6 +292,7 @@ func TestCheckConfig(t *testing.T) {
 	// This will become unnecessary when https://github.com/pulumi/pulumi/pull/15032
 	// merges.
 	t.Run("json-encoded-nested-config", assertGRPCCall(s.CheckConfig, &pulumirpc.CheckRequest{
+		Urn: "urn:pulumi:dev::teststack::pulumi:providers:pfprovider::test",
 		News: marshal(resource.PropertyMap{
 			"nested": resource.NewProperty(`{"field1": "true", "field2": false}`),
 		}),

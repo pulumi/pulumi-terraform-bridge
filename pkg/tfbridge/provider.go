@@ -56,7 +56,8 @@ import (
 )
 
 type providerOptions struct {
-	defaultZeroSchemaVersion bool
+	defaultZeroSchemaVersion    bool
+	enableAccurateBridgePreview bool
 }
 
 type providerOption func(providerOptions) (providerOptions, error)
@@ -64,6 +65,13 @@ type providerOption func(providerOptions) (providerOptions, error)
 func WithDefaultZeroSchemaVersion() providerOption { //nolint:revive
 	return func(opts providerOptions) (providerOptions, error) {
 		opts.defaultZeroSchemaVersion = true
+		return opts, nil
+	}
+}
+
+func withAccurateBridgePreview() providerOption {
+	return func(opts providerOptions) (providerOptions, error) {
+		opts.enableAccurateBridgePreview = true
 		return opts, nil
 	}
 }
@@ -268,6 +276,11 @@ func newProvider(ctx context.Context, host *provider.HostClient,
 	if info.EnableZeroDefaultSchemaVersion {
 		opts = append(opts, WithDefaultZeroSchemaVersion())
 	}
+
+	if info.EnableAccurateBridgePreview || cmdutil.IsTruthy(os.Getenv("PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW")) {
+		opts = append(opts, withAccurateBridgePreview())
+	}
+
 	p := &Provider{
 		host:          host,
 		module:        module,
@@ -1136,7 +1149,9 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 
 	diff, err := callWithRecover(urn, p.recoverOnTypeError, func() (shim.InstanceDiff, error) {
 		return p.tf.Diff(ctx, res.TFName, state, config, shim.DiffOptions{
-			IgnoreChanges: ic,
+			IgnoreChanges:  ic,
+			NewInputs:      news,
+			ProviderConfig: p.configValues,
 		})
 	})
 	if err != nil {
@@ -1146,11 +1161,13 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 	dd := makeDetailedDiffExtra(ctx, schema, fields, olds, news, diff)
 	detailedDiff, changes := dd.diffs, dd.changes
 
-	if decision := diff.DiffEqualDecisionOverride(); decision != nil {
-		if *decision {
-			changes = pulumirpc.DiffResponse_DIFF_NONE
-		} else {
-			changes = pulumirpc.DiffResponse_DIFF_SOME
+	if opts.enableAccurateBridgePreview {
+		if decision := diff.DiffEqualDecisionOverride(); decision != nil {
+			if *decision {
+				changes = pulumirpc.DiffResponse_DIFF_NONE
+			} else {
+				changes = pulumirpc.DiffResponse_DIFF_SOME
+			}
 		}
 	} else {
 		// There are some providers/situations which `makeDetailedDiff` distorts the expected changes, leading
@@ -1218,7 +1235,6 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 	// recorded any replaces, that means that `makeDetailedDiff` failed to translate a
 	// property. This is known to happen for computed input properties:
 	//
-	// TODO: scope this workaround to !diffOverride
 	// https://github.com/pulumi/pulumi-aws/issues/2971
 	if (diff.RequiresNew() || diff.Destroy()) &&
 		// In theory, we should be safe to set __meta as replaces whenever
@@ -1230,8 +1246,6 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 		changes = pulumirpc.DiffResponse_DIFF_SOME
 	}
 
-	// TODO: Check if this is needed for PRC, likely still needed
-	// TODO: Should this also add an entry at least in diff? Detailed diff too?
 	if changes == pulumirpc.DiffResponse_DIFF_NONE &&
 		markWronglyTypedMaxItemsOneStateDiff(schema, fields, olds) {
 
@@ -1303,6 +1317,8 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 
 	diff, err := callWithRecover(urn, p.recoverOnTypeError, func() (shim.InstanceDiff, error) {
 		return p.tf.Diff(ctx, res.TFName, nil, config, shim.DiffOptions{
+			NewInputs:      props,
+			ProviderConfig: p.configValues,
 			TimeoutOptions: shim.TimeoutOptions{
 				ResourceTimeout:  timeouts,
 				TimeoutOverrides: newTimeoutOverrides(shim.TimeoutCreate, req.Timeout),
@@ -1631,7 +1647,9 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 
 	diff, err := callWithRecover(urn, p.recoverOnTypeError, func() (shim.InstanceDiff, error) {
 		return p.tf.Diff(ctx, res.TFName, state, config, shim.DiffOptions{
-			IgnoreChanges: ic,
+			IgnoreChanges:  ic,
+			NewInputs:      news,
+			ProviderConfig: p.configValues,
 			TimeoutOptions: shim.TimeoutOptions{
 				TimeoutOverrides: newTimeoutOverrides(shim.TimeoutUpdate, req.Timeout),
 				ResourceTimeout:  timeouts,
