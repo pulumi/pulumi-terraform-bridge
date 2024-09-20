@@ -43,6 +43,10 @@ type v1InstanceDiff struct {
 	tf *terraform.InstanceDiff
 }
 
+func (d v1InstanceDiff) DiffEqualDecisionOverride() shim.DiffOverride {
+	return shim.DiffNoOverride
+}
+
 func (d v1InstanceDiff) applyTimeoutOptions(opts shim.TimeoutOptions) {
 	if opts.ResourceTimeout != nil {
 		err := d.encodeTimeouts(opts.ResourceTimeout)

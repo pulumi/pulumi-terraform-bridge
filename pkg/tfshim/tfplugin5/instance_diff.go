@@ -28,6 +28,10 @@ type instanceDiff struct {
 	attributes  map[string]shim.ResourceAttrDiff
 }
 
+func (d instanceDiff) DiffEqualDecisionOverride() shim.DiffOverride {
+	return shim.DiffNoOverride
+}
+
 func (d instanceDiff) applyTimeoutOptions(opts shim.TimeoutOptions) {
 	if opts.ResourceTimeout != nil {
 		err := d.encodeTimeouts(opts.ResourceTimeout)
@@ -39,8 +43,8 @@ func (d instanceDiff) applyTimeoutOptions(opts shim.TimeoutOptions) {
 }
 
 func newInstanceDiff(config, prior, planned cty.Value, meta map[string]interface{},
-	requiresReplace []*proto.AttributePath) *instanceDiff {
-
+	requiresReplace []*proto.AttributePath,
+) *instanceDiff {
 	attributes, requiresNew := computeDiff(prior, planned, requiresReplace)
 	return &instanceDiff{
 		config:      config,
@@ -216,8 +220,8 @@ func rangeValue(val cty.Value, each func(k, v cty.Value)) {
 }
 
 func computeDiff(prior, planned cty.Value,
-	requiresReplace []*proto.AttributePath) (map[string]shim.ResourceAttrDiff, bool) {
-
+	requiresReplace []*proto.AttributePath,
+) (map[string]shim.ResourceAttrDiff, bool) {
 	requiresNew := stringSet{}
 	for _, path := range requiresReplace {
 		requiresNew.add(pathString(path))

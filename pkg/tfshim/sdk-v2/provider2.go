@@ -112,9 +112,10 @@ func (s *v2InstanceState2) Meta() map[string]interface{} {
 type v2InstanceDiff2 struct {
 	v2InstanceDiff
 
-	config         cty.Value
-	plannedState   cty.Value
-	plannedPrivate map[string]interface{}
+	config                    cty.Value
+	plannedState              cty.Value
+	plannedPrivate            map[string]interface{}
+	diffEqualDecisionOverride shim.DiffOverride
 }
 
 func (d *v2InstanceDiff2) String() string {
@@ -144,6 +145,10 @@ func (d *v2InstanceDiff2) ProposedState(
 		stateValue: d.plannedState,
 		meta:       d.v2InstanceDiff.tf.Meta,
 	}, nil
+}
+
+func (d *v2InstanceDiff2) DiffEqualDecisionOverride() shim.DiffOverride {
+	return d.diffEqualDecisionOverride
 }
 
 // Provides PlanResourceChange handling for select resources.
@@ -269,13 +274,31 @@ func (p *planResourceChangeImpl) Diff(
 		TfToken:        t,
 		PlanState:      plan.PlannedState,
 	})
+
+	//nolint:lll
+	// Taken from https://github.com/opentofu/opentofu/blob/864aa9d1d629090cfc4ddf9fdd344d34dee9793e/internal/tofu/node_resource_abstract_instance.go#L1024
+	// We need to unmark the values to make sure Equals works.
+	// Equals will return unknown if either value is unknown.
+	// START
+	unmarkedPrior, _ := st.UnmarkDeep()
+	unmarkedPlan, _ := plannedState.UnmarkDeep()
+	eqV := unmarkedPrior.Equals(unmarkedPlan)
+	eq := eqV.IsKnown() && eqV.True()
+	// END
+
+	diffOverride := shim.DiffOverrideUpdate
+	if eq {
+		diffOverride = shim.DiffOverrideNoUpdate
+	}
+
 	return &v2InstanceDiff2{
 		v2InstanceDiff: v2InstanceDiff{
 			tf: plan.PlannedDiff,
 		},
-		config:         cfg,
-		plannedState:   plannedState,
-		plannedPrivate: plan.PlannedPrivate,
+		config:                    cfg,
+		plannedState:              plannedState,
+		diffEqualDecisionOverride: diffOverride,
+		plannedPrivate:            plan.PlannedPrivate,
 	}, err
 }
 
@@ -507,7 +530,8 @@ func (s *grpcServer) PlanResourceChange(
 	PlannedState   cty.Value
 	PlannedPrivate map[string]interface{}
 	PlannedDiff    *terraform.InstanceDiff
-}, error) {
+}, error,
+) {
 	configVal, err := msgpack.Marshal(config, ty)
 	if err != nil {
 		return nil, err

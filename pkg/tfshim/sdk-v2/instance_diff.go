@@ -33,6 +33,10 @@ type v2InstanceDiff struct {
 	tf *terraform.InstanceDiff
 }
 
+func (d v2InstanceDiff) DiffEqualDecisionOverride() shim.DiffOverride {
+	return shim.DiffNoOverride
+}
+
 func (d v2InstanceDiff) applyTimeoutOptions(opts shim.TimeoutOptions) {
 	// This method is no longer used with PlanResourceChange; we handle timeouts more directly.
 	if opts.ResourceTimeout != nil {

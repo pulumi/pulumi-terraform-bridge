@@ -56,7 +56,8 @@ import (
 )
 
 type providerOptions struct {
-	defaultZeroSchemaVersion bool
+	defaultZeroSchemaVersion    bool
+	enableAccurateBridgePreview bool
 }
 
 type providerOption func(providerOptions) (providerOptions, error)
@@ -64,6 +65,13 @@ type providerOption func(providerOptions) (providerOptions, error)
 func WithDefaultZeroSchemaVersion() providerOption { //nolint:revive
 	return func(opts providerOptions) (providerOptions, error) {
 		opts.defaultZeroSchemaVersion = true
+		return opts, nil
+	}
+}
+
+func withAccurateBridgePreview() providerOption {
+	return func(opts providerOptions) (providerOptions, error) {
+		opts.enableAccurateBridgePreview = true
 		return opts, nil
 	}
 }
@@ -268,6 +276,11 @@ func newProvider(ctx context.Context, host *provider.HostClient,
 	if info.EnableZeroDefaultSchemaVersion {
 		opts = append(opts, WithDefaultZeroSchemaVersion())
 	}
+
+	if info.EnableAccurateBridgePreview || cmdutil.IsTruthy(os.Getenv("PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW")) {
+		opts = append(opts, withAccurateBridgePreview())
+	}
+
 	p := &Provider{
 		host:          host,
 		module:        module,
@@ -1148,15 +1161,28 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 	dd := makeDetailedDiffExtra(ctx, schema, fields, olds, news, diff)
 	detailedDiff, changes := dd.diffs, dd.changes
 
-	// There are some providers/situations which `makeDetailedDiff` distorts the expected changes, leading
-	// to changes being dropped by Pulumi.
-	// Until we fix `makeDetailedDiff`, it is safer to refer to the Terraform Diff attribute length for setting
-	// the DiffResponse.
-	// We will still use `detailedDiff` for diff display purposes.
+	if opts.enableAccurateBridgePreview {
+		if decision := diff.DiffEqualDecisionOverride(); decision != shim.DiffNoOverride {
+			if decision == shim.DiffOverrideNoUpdate {
+				changes = pulumirpc.DiffResponse_DIFF_NONE
+			} else {
+				changes = pulumirpc.DiffResponse_DIFF_SOME
+			}
+		}
+	} else {
+		// There are some providers/situations which `makeDetailedDiff` distorts the expected changes, leading
+		// to changes being dropped by Pulumi.
+		// Until we fix `makeDetailedDiff`, it is safer to refer to the Terraform Diff attribute length for setting
+		// the DiffResponse.
+		// We will still use `detailedDiff` for diff display purposes.
 
-	// See also https://github.com/pulumi/pulumi-terraform-bridge/issues/1501.
-	if !diff.HasNoChanges() {
-		changes = pulumirpc.DiffResponse_DIFF_SOME
+		// See also https://github.com/pulumi/pulumi-terraform-bridge/issues/1501.
+		if !diff.HasNoChanges() {
+			changes = pulumirpc.DiffResponse_DIFF_SOME
+		}
+	}
+
+	if changes == pulumirpc.DiffResponse_DIFF_SOME {
 		// Perhaps collectionDiffs can shed some light and locate the changes to the end-user.
 		for path, diff := range dd.collectionDiffs {
 			detailedDiff[path] = diff

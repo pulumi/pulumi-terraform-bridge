@@ -159,6 +159,9 @@ type Provider struct {
 	// EnableZeroDefaultSchemaVersion makes the provider default
 	// to version 0 when no version is specified in the state of a resource.
 	EnableZeroDefaultSchemaVersion bool
+	// EnableAccurateBridgePreview makes the bridge use an experimental feature
+	// to generate more accurate diffs and previews for resources
+	EnableAccurateBridgePreview bool
 }
 
 // HclExampler represents a supplemental HCL example for a given resource or function.

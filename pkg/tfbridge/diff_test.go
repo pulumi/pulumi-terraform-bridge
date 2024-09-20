@@ -2077,7 +2077,7 @@ func TestListNestedAddMaxItemsOne(t *testing.T) {
 }
 
 type diffTestCase struct {
-	resourceSchema      map[string]*schema.Schema
+	resourceSchema      map[string]*v2Schema.Schema
 	resourceFields      map[string]*SchemaInfo
 	state               resource.PropertyMap
 	inputs              resource.PropertyMap
@@ -2088,11 +2088,11 @@ type diffTestCase struct {
 
 func diffTest2(t *testing.T, tc diffTestCase) {
 	ctx := context.Background()
-	res := &schema.Resource{
+	res := &v2Schema.Resource{
 		Schema: tc.resourceSchema,
 	}
-	provider := shimv1.NewProvider(&schema.Provider{
-		ResourcesMap: map[string]*schema.Resource{
+	provider := shimv2.NewProvider(&v2Schema.Provider{
+		ResourcesMap: map[string]*v2Schema.Resource{
 			"p_resource": res,
 		},
 	})
@@ -2130,21 +2130,21 @@ func diffTest2(t *testing.T, tc diffTestCase) {
 }
 
 func TestChangingMaxItems1FilterProperty(t *testing.T) {
-	schema := map[string]*schema.Schema{
+	schema := map[string]*v2Schema.Schema{
 		"rule": {
-			Type:     schema.TypeList,
+			Type:     v2Schema.TypeList,
 			Required: true,
 			MaxItems: 1000,
-			Elem: &schema.Resource{
-				Schema: map[string]*schema.Schema{
+			Elem: &v2Schema.Resource{
+				Schema: map[string]*v2Schema.Schema{
 					"filter": {
-						Type:     schema.TypeList,
+						Type:     v2Schema.TypeList,
 						Optional: true,
 						MaxItems: 1,
-						Elem: &schema.Resource{
-							Schema: map[string]*schema.Schema{
+						Elem: &v2Schema.Resource{
+							Schema: map[string]*v2Schema.Schema{
 								"prefix": {
-									Type:     schema.TypeString,
+									Type:     v2Schema.TypeString,
 									Optional: true,
 								},
 							},
