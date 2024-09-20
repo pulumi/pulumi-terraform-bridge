@@ -22,14 +22,23 @@ import (
 )
 
 func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
+
+	// Apply provider-supplied edit rules.
+	// Some of these may want to affect the code blocks themselves, so they should happen before code conversion.
+	contentBytes, err := applyProviderEditRules(docFile.Content, docFile.FileName, g)
+	if err != nil {
+		return nil, err
+	}
+
 	// Get file content without front matter
-	content := trimFrontMatter(docFile.Content)
+	content := trimFrontMatter(contentBytes)
+
 	// Add pulumi-specific front matter
 	// Generate pulumi-specific front matter
 	frontMatter := writeFrontMatter(g.info.Name)
 
 	// Remove the title. A title gets populated from Hugo frontmatter; we do not want two.
-	content, err := removeTitle(content)
+	content, err = removeTitle(content)
 	if err != nil {
 		return nil, err
 	}
@@ -40,17 +49,14 @@ func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
 	// Generate pulumi-specific installation instructions
 	installationInstructions := writeInstallationInstructions(g.info.Golang.ImportBasePath, g.info.Name)
 
+	// Determine if we should write an overview header.
 	overviewHeader := getOverviewHeader(content)
 
 	// Add instructions to top of file
 	contentStr := frontMatter + installationInstructions + overviewHeader + string(content)
 
-	// Apply provider-supplied edit rules.
-	// Some of these may want to affect the code blocks themselves, so they should happen before code conversion.
-	contentBytes, err := applyProviderEditRules([]byte(contentStr), docFile.FileName, g)
-
 	//Translate code blocks to Pulumi
-	contentStr, err = translateCodeBlocks(string(contentBytes), g)
+	contentStr, err = translateCodeBlocks(contentStr, g)
 	if err != nil {
 		return nil, err
 	}
