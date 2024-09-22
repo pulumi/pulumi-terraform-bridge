@@ -1276,7 +1276,7 @@ func (p *tfMarkdownParser) parseImports(subsection []string) {
 		}
 
 		// Handle script blocks - replace terraform import with pulumi import
-		if trimmedSection == "```" || trimmedSection == "```sh" || trimmedSection == "```shell" {
+		if strings.HasPrefix(trimmedSection, "```") {
 			initial := true
 			for {
 				section = subsection[i]
