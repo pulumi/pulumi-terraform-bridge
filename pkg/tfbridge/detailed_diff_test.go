@@ -588,3 +588,90 @@ func TestDetailedDiffMap(t *testing.T) {
 		})
 	})
 }
+
+func TestDetailedDiffSet(t *testing.T) {
+	sdkv2Schema := map[string]*schema.Schema{
+		"foo": {
+			Type: schema.TypeSet,
+			Elem: &schema.Schema{Type: schema.TypeString},
+		},
+	}
+	ps, tfs := computeSchemas(sdkv2Schema)
+
+	propertyMapEmpty := resource.NewPropertyMapFromMap(
+		map[string]interface{}{
+			"foo": []interface{}{},
+		},
+	)
+	propertyMapVal1 := resource.NewPropertyMapFromMap(
+		map[string]interface{}{
+			"foo": []interface{}{"val1"},
+		},
+	)
+	propertyMapVal2 := resource.NewPropertyMapFromMap(
+		map[string]interface{}{
+			"foo": []interface{}{"val2"},
+		},
+	)
+	propertyMapBoth := resource.NewPropertyMapFromMap(
+		map[string]interface{}{
+			"foo": []interface{}{"val1", "val2"},
+		},
+	)
+
+	t.Run("unchanged", func(t *testing.T) {
+		runDetailedDiffTest(t, propertyMapVal1, propertyMapVal1, tfs, ps, nil)
+	})
+
+	t.Run("changed non-empty", func(t *testing.T) {
+		runDetailedDiffTest(t, propertyMapVal1, propertyMapVal2, tfs, ps, map[string]*pulumirpc.PropertyDiff{
+			"foo":    {Kind: pulumirpc.PropertyDiff_UPDATE},
+			"foo[0]": {Kind: pulumirpc.PropertyDiff_UPDATE},
+		})
+	})
+
+	t.Run("changed from empty", func(t *testing.T) {
+		runDetailedDiffTest(t, propertyMapEmpty, propertyMapVal1, tfs, ps, map[string]*pulumirpc.PropertyDiff{
+			"foo":    {Kind: pulumirpc.PropertyDiff_UPDATE},
+			"foo[0]": {Kind: pulumirpc.PropertyDiff_ADD},
+		})
+	})
+
+	t.Run("changed from empty to both", func(t *testing.T) {
+		runDetailedDiffTest(t, propertyMapEmpty, propertyMapBoth, tfs, ps, map[string]*pulumirpc.PropertyDiff{
+			"foo":    {Kind: pulumirpc.PropertyDiff_UPDATE},
+			"foo[0]": {Kind: pulumirpc.PropertyDiff_ADD},
+			"foo[1]": {Kind: pulumirpc.PropertyDiff_ADD},
+		})
+	})
+
+	t.Run("removed", func(t *testing.T) {
+		runDetailedDiffTest(t, propertyMapBoth, propertyMapVal1, tfs, ps, map[string]*pulumirpc.PropertyDiff{
+			"foo":    {Kind: pulumirpc.PropertyDiff_UPDATE},
+			"foo[1]": {Kind: pulumirpc.PropertyDiff_DELETE},
+		})
+	})
+
+	t.Run("removed both", func(t *testing.T) {
+		runDetailedDiffTest(t, propertyMapBoth, propertyMapEmpty, tfs, ps, map[string]*pulumirpc.PropertyDiff{
+			"foo":    {Kind: pulumirpc.PropertyDiff_UPDATE},
+			"foo[0]": {Kind: pulumirpc.PropertyDiff_DELETE},
+			"foo[1]": {Kind: pulumirpc.PropertyDiff_DELETE},
+		})
+	})
+
+	t.Run("added", func(t *testing.T) {
+		runDetailedDiffTest(t, propertyMapVal1, propertyMapBoth, tfs, ps, map[string]*pulumirpc.PropertyDiff{
+			"foo":    {Kind: pulumirpc.PropertyDiff_UPDATE},
+			"foo[1]": {Kind: pulumirpc.PropertyDiff_ADD},
+		})
+	})
+
+	t.Run("added both", func(t *testing.T) {
+		runDetailedDiffTest(t, propertyMapEmpty, propertyMapBoth, tfs, ps, map[string]*pulumirpc.PropertyDiff{
+			"foo":    {Kind: pulumirpc.PropertyDiff_UPDATE},
+			"foo[0]": {Kind: pulumirpc.PropertyDiff_ADD},
+			"foo[1]": {Kind: pulumirpc.PropertyDiff_ADD},
+		})
+	})
+}

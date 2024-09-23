@@ -95,8 +95,14 @@ func makePropDiff(
 		for subKey, subDiff := range diff {
 			res[subKey] = subDiff
 		}
+	} else if etf.Type() == shim.TypeSet {
+		// TODO: Implement set diffing
+		diff := makeListDiff(ctx, key, etf, eps, old, new, oldOk, newOk)
+		for subKey, subDiff := range diff {
+			res[subKey] = subDiff
+		}
 	}
-	// TODO: Other types
+
 	return res
 }
 
@@ -219,6 +225,7 @@ func makeListDiff(
 	newList := new.ArrayValue()
 
 	// naive diffing of lists
+	// TODO: implement a more sophisticated diffing algorithm
 	shorterLen := min(len(oldList), len(newList))
 	for i := 0; i < shorterLen; i++ {
 		elemKey := string(key) + "[" + fmt.Sprintf("%d", i) + "]"
@@ -271,7 +278,7 @@ func makeMapDiff(
 		key := string(key) + "." + string(k)
 		oldVal, oldOk := oldMap[k]
 		newVal, newOk := newMap[k]
-		
+
 		pelem := &info.Schema{}
 		if eps != nil {
 			pelem = eps.Elem
