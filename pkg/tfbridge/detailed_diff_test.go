@@ -172,6 +172,8 @@ func TestBasicDetailedDiff(t *testing.T) {
 		value1     interface{}
 		value2     interface{}
 		tfs        schema.Schema
+		listLike   bool
+		objectLike bool
 	}{
 		{
 			name:       "string",
@@ -210,6 +212,7 @@ func TestBasicDetailedDiff(t *testing.T) {
 			emptyValue: []interface{}{},
 			value1:     []interface{}{"foo"},
 			value2:     []interface{}{"bar"},
+			listLike: true,
 		},
 		{
 			name: "map",
@@ -220,16 +223,19 @@ func TestBasicDetailedDiff(t *testing.T) {
 			emptyValue: map[string]interface{}{},
 			value1:     map[string]interface{}{"foo": "bar"},
 			value2:     map[string]interface{}{"foo": "baz"},
+			objectLike: true,
 		},
 		{
 			name: "set",
 			tfs: schema.Schema{
-				Type: schema.TypeSet,
-				Elem: &schema.Schema{Type: schema.TypeString},
+				Type:     schema.TypeSet,
+				Elem:     &schema.Schema{Type: schema.TypeString},
+				Optional: true,
 			},
 			emptyValue: []interface{}{},
 			value1:     []interface{}{"foo"},
 			value2:     []interface{}{"bar"},
+			listLike:   true,
 		},
 		{
 			name: "list block",
@@ -237,13 +243,18 @@ func TestBasicDetailedDiff(t *testing.T) {
 				Type: schema.TypeList,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"foo": {Type: schema.TypeString},
+						"foo": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
 					},
 				},
 			},
 			emptyValue: []interface{}{},
 			value1:     []interface{}{map[string]interface{}{"foo": "bar"}},
 			value2:     []interface{}{map[string]interface{}{"foo": "baz"}},
+			listLike:   true,
+			objectLike: true,
 		},
 		{
 			name: "max items one list block",
@@ -251,7 +262,10 @@ func TestBasicDetailedDiff(t *testing.T) {
 				Type: schema.TypeList,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"foo": {Type: schema.TypeString},
+						"foo": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
 					},
 				},
 				MaxItems: 1,
@@ -259,6 +273,7 @@ func TestBasicDetailedDiff(t *testing.T) {
 			emptyValue: []interface{}{},
 			value1:     []interface{}{map[string]interface{}{"foo": "bar"}},
 			value2:     []interface{}{map[string]interface{}{"foo": "baz"}},
+			listLike:   true,
 		},
 		{
 			name: "set block",
@@ -266,13 +281,18 @@ func TestBasicDetailedDiff(t *testing.T) {
 				Type: schema.TypeSet,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"foo": {Type: schema.TypeString},
+						"foo": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
 					},
 				},
 			},
 			emptyValue: []interface{}{},
 			value1:     []interface{}{map[string]interface{}{"foo": "bar"}},
 			value2:     []interface{}{map[string]interface{}{"foo": "baz"}},
+			listLike:   true,
+			objectLike: true,
 		},
 		{
 			name: "max items one set block",
@@ -280,7 +300,10 @@ func TestBasicDetailedDiff(t *testing.T) {
 				Type: schema.TypeSet,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"foo": {Type: schema.TypeString},
+						"foo": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
 					},
 				},
 				MaxItems: 1,
@@ -288,67 +311,110 @@ func TestBasicDetailedDiff(t *testing.T) {
 			emptyValue: []interface{}{},
 			value1:     []interface{}{map[string]interface{}{"foo": "bar"}},
 			value2:     []interface{}{map[string]interface{}{"foo": "baz"}},
+			objectLike: true,
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			sdkv2Schema := map[string]*schema.Schema{
-				"foo": &tt.tfs,
-			}
-			ps, tfs := computeSchemas(sdkv2Schema)
-			propertyMapNil := resource.NewPropertyMapFromMap(
-				map[string]interface{}{},
-			)
-			propertyMapEmpty := resource.NewPropertyMapFromMap(
-				map[string]interface{}{
-					"foo": tt.emptyValue,
-				},
-			)
-			propertyMapValue1 := resource.NewPropertyMapFromMap(
-				map[string]interface{}{
-					"foo": tt.value1,
-				},
-			)
-			propertyMapValue2 := resource.NewPropertyMapFromMap(
-				map[string]interface{}{
-					"foo": tt.value2,
-				},
-			)
+			for _, optional := range []string{"Optional", "Required", "Computed", "Optional + Computed"} {
+				t.Run(optional, func(t *testing.T) {
+					optionalValue := optional == "Optional" || optional == "Optional + Computed"
+					requiredValue := optional == "Required"
+					computedValue := optional == "Computed" || optional == "Optional + Computed"
 
-			t.Run("unchanged", func(t *testing.T) {
-				runDetailedDiffTest(t, propertyMapValue1, propertyMapValue1, tfs, ps, nil)
-			})
+					sdkv2Schema := map[string]*schema.Schema{
+						"foo": &tt.tfs,
+					}
+					if optionalValue {
+						sdkv2Schema["foo"].Optional = true
+					}
+					if requiredValue {
+						sdkv2Schema["foo"].Required = true
+					}
+					if computedValue {
+						sdkv2Schema["foo"].Computed = true
+					}
 
-			t.Run("changed non-empty", func(t *testing.T) {
-				runDetailedDiffTest(t, propertyMapValue1, propertyMapValue2, tfs, ps, Updated)
-			})
+					ps, tfs := computeSchemas(sdkv2Schema)
+					propertyMapNil := resource.NewPropertyMapFromMap(
+						map[string]interface{}{},
+					)
+					propertyMapEmpty := resource.NewPropertyMapFromMap(
+						map[string]interface{}{
+							"foo": tt.emptyValue,
+						},
+					)
+					propertyMapValue1 := resource.NewPropertyMapFromMap(
+						map[string]interface{}{
+							"foo": tt.value1,
+						},
+					)
+					propertyMapValue2 := resource.NewPropertyMapFromMap(
+						map[string]interface{}{
+							"foo": tt.value2,
+						},
+					)
 
-			t.Run("added", func(t *testing.T) {
-				runDetailedDiffTest(t, propertyMapNil, propertyMapValue1, tfs, ps, Added)
-			})
+					t.Run("unchanged", func(t *testing.T) {
+						runDetailedDiffTest(t, propertyMapValue1, propertyMapValue1, tfs, ps, nil)
+					})
 
-			t.Run("deleted", func(t *testing.T) {
-				runDetailedDiffTest(t, propertyMapValue1, propertyMapNil, tfs, ps, Deleted)
-			})
+					t.Run("changed non-empty", func(t *testing.T) {
+						expected := make(map[string]*pulumirpc.PropertyDiff)
+						expected["foo"] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE}
+						if tt.listLike && tt.objectLike {
+							expected["foo[0]"] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE}
+							expected["foo[0].foo"] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE}
+						} else if tt.listLike {
+							expected["foo[0]"] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE}
+						} else if tt.objectLike {
+							expected["foo.foo"] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE}
+						}
+						runDetailedDiffTest(t, propertyMapValue1, propertyMapValue2, tfs, ps, expected)
+					})
 
-			if tt.emptyValue != nil {
-				t.Run("changed from empty", func(t *testing.T) {
-					runDetailedDiffTest(t, propertyMapEmpty, propertyMapValue1, tfs, ps, Updated)
-				})
+					t.Run("added", func(t *testing.T) {
+						runDetailedDiffTest(t, propertyMapNil, propertyMapValue1, tfs, ps, Added)
+					})
 
-				t.Run("changed to empty", func(t *testing.T) {
-					runDetailedDiffTest(t, propertyMapValue1, propertyMapEmpty, tfs, ps, Updated)
-				})
+					t.Run("deleted", func(t *testing.T) {
+						runDetailedDiffTest(t, propertyMapValue1, propertyMapNil, tfs, ps, Deleted)
+					})
 
-				t.Run("unchanged empty", func(t *testing.T) {
-					runDetailedDiffTest(t, propertyMapEmpty, propertyMapEmpty, tfs, ps, nil)
-				})
+					if tt.emptyValue != nil {
+						t.Run("changed from empty", func(t *testing.T) {
+							expected := make(map[string]*pulumirpc.PropertyDiff)
+							expected["foo"] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE}
+							if tt.listLike {
+								expected["foo[0]"] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_ADD}
+							} else if tt.objectLike {
+								expected["foo.foo"] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_ADD}
+							}
+							runDetailedDiffTest(t, propertyMapEmpty, propertyMapValue1, tfs, ps, expected)
+						})
 
-				t.Run("deleted empty", func(t *testing.T) {
-					runDetailedDiffTest(t, propertyMapEmpty, propertyMapNil, tfs, ps, Deleted)
-				})
+						t.Run("changed to empty", func(t *testing.T) {
+							expected := make(map[string]*pulumirpc.PropertyDiff)
+							expected["foo"] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE}
+							if tt.listLike {
+								expected["foo[0]"] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_DELETE}
+							} else if tt.objectLike {
+								expected["foo.foo"] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_DELETE}
+							}
+							runDetailedDiffTest(t, propertyMapValue1, propertyMapEmpty, tfs, ps, expected)
+						})
 
-				t.Run("added empty", func(t *testing.T) {
-					runDetailedDiffTest(t, propertyMapNil, propertyMapEmpty, tfs, ps, Added)
+						t.Run("unchanged empty", func(t *testing.T) {
+							runDetailedDiffTest(t, propertyMapEmpty, propertyMapEmpty, tfs, ps, nil)
+						})
+
+						t.Run("deleted empty", func(t *testing.T) {
+							runDetailedDiffTest(t, propertyMapEmpty, propertyMapNil, tfs, ps, Deleted)
+						})
+
+						t.Run("added empty", func(t *testing.T) {
+							runDetailedDiffTest(t, propertyMapNil, propertyMapEmpty, tfs, ps, Added)
+						})
+					}
 				})
 			}
 		})

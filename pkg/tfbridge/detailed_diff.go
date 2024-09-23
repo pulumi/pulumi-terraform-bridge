@@ -180,6 +180,9 @@ func makeElemDiff(
 		for subKey, subDiff := range d {
 			diff[subKey] = subDiff
 		}
+		if len(diff) > 0 {
+			diff[string(key)] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE}
+		}
 	} else if _, ok := etf.(shim.Schema); ok {
 		d := makePropDiff(
 			ctx,
@@ -193,6 +196,9 @@ func makeElemDiff(
 		)
 		for subKey, subDiff := range d {
 			diff[subKey] = subDiff
+		}
+		if len(diff) > 0 {
+			diff[string(key)] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE}
 		}
 	} else {
 		d := makePropDiff(ctx, key, nil, eps.Elem, old, new, true, true)
