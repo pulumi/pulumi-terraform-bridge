@@ -91,7 +91,7 @@ func makePropDiff(
 			res[subKey] = subDiff
 		}
 	} else if etf.Type() == shim.TypeMap {
-		diff := makeMapDiff(ctx, key, etf, eps, old, new)
+		diff := makeMapDiff(ctx, key, etf, eps, old, new, oldOk, newOk)
 		for subKey, subDiff := range diff {
 			res[subKey] = subDiff
 		}
@@ -263,8 +263,30 @@ func makeMapDiff(
 	etf shim.Schema,
 	eps *SchemaInfo,
 	old, new resource.PropertyValue,
+	oldOk, newOk bool,
 ) map[string]*pulumirpc.PropertyDiff {
 	diff := make(map[string]*pulumirpc.PropertyDiff)
+	if !oldOk {
+		if !newOk {
+			return diff
+		}
+		if new == resource.NewNullProperty() {
+			return diff
+		}
+
+		diff[string(key)] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_ADD}
+		return diff
+	}
+
+	if !newOk {
+		if old == resource.NewNullProperty() {
+			return diff
+		}
+
+		diff[string(key)] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_DELETE}
+		return diff
+	}
+
 	if !old.IsObject() || !new.IsObject() {
 		diff[string(key)] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE}
 		return diff

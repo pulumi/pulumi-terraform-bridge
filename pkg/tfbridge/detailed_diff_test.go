@@ -157,9 +157,13 @@ func runDetailedDiffTest(
 	for k, v := range got {
 		wantV, ok := want[k]
 		if !ok {
+			t.Logf("got: %v", got)
+			t.Logf("want: %v", want)
 			t.Fatalf("unexpected diff %s", k)
 		}
 		if v.Kind != wantV.Kind {
+			t.Logf("got: %v", got)
+			t.Logf("want: %v", want)
 			t.Errorf("got diff %s = %v, want %v", k, v.Kind, wantV.Kind)
 		}
 	}
