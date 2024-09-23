@@ -278,7 +278,6 @@ func TestBasicDetailedDiff(t *testing.T) {
 			emptyValue: []interface{}{},
 			value1:     []interface{}{map[string]interface{}{"foo": "bar"}},
 			value2:     []interface{}{map[string]interface{}{"foo": "baz"}},
-			listLike:   true,
 		},
 		{
 			name: "set block",
@@ -316,7 +315,6 @@ func TestBasicDetailedDiff(t *testing.T) {
 			emptyValue: []interface{}{},
 			value1:     []interface{}{map[string]interface{}{"foo": "bar"}},
 			value2:     []interface{}{map[string]interface{}{"foo": "baz"}},
-			objectLike: true,
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
