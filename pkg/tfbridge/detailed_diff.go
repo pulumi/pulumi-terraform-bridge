@@ -18,6 +18,10 @@ func isFlattened(s shim.Schema) bool {
 	return s.MaxItems() == 1
 }
 
+func isDunder(k resource.PropertyKey) bool {
+	return len(k) > 1 && k[0] == '_' && k[1] == '_'
+}
+
 func makeTopPropDiff(
 	old, new resource.PropertyValue,
 	oldOk, newOk bool,
@@ -26,10 +30,19 @@ func makeTopPropDiff(
 		if !newOk {
 			return nil
 		}
+		if new == resource.NewNullProperty() {
+			// TODO: Should we handle this here or make sure the inputs are meaningfully present?
+			return nil
+		}
 
 		return &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_ADD}
 	}
 	if !newOk {
+		if old == resource.NewNullProperty() {
+			// TODO: Should we handle this here or make sure the inputs are meaningfully present?
+			return nil
+		}
+
 		return &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_DELETE}
 	}
 	if !old.DeepEquals(new) {
@@ -46,6 +59,10 @@ func makePropDiff(
 	old, new resource.PropertyValue,
 	oldOk, newOk bool,
 ) map[string]*pulumirpc.PropertyDiff {
+	// ignore dunder properties - these are internal to Pulumi and should not be surfaced in the diff
+	if isDunder(key) {
+		return nil
+	}
 	topDiff := makeTopPropDiff(old, new, oldOk, newOk)
 	if topDiff == nil {
 		return nil
@@ -53,6 +70,11 @@ func makePropDiff(
 
 	res := make(map[string]*pulumirpc.PropertyDiff)
 	res[string(key)] = topDiff
+
+	if etf == nil {
+		// If the schema is nil, we just return the top-level diff
+		return res
+	}
 
 	if isFlattened(etf) {
 		pelem := &info.Schema{}
@@ -65,6 +87,11 @@ func makePropDiff(
 		}
 	} else if etf.Type() == shim.TypeList {
 		diff := makeListDiff(ctx, key, etf, eps, old, new, oldOk, newOk)
+		for subKey, subDiff := range diff {
+			res[subKey] = subDiff
+		}
+	} else if etf.Type() == shim.TypeMap {
+		diff := makeMapDiff(ctx, key, etf, eps, old, new)
 		for subKey, subDiff := range diff {
 			res[subKey] = subDiff
 		}
@@ -97,6 +124,7 @@ func makeObjectDiff(
 	}
 
 	for k := range keys {
+		// TODO: is escaping needed here?
 		key := string(key) + "." + string(k)
 		oldVal, oldOk := oldObj[k]
 		newVal, newOk := newObj[k]
@@ -210,6 +238,48 @@ func makeListDiff(
 		for i := len(oldList); i < len(newList); i++ {
 			elemKey := string(key) + "[" + fmt.Sprintf("%d", i) + "]"
 			diff[elemKey] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_ADD}
+		}
+	}
+
+	return diff
+}
+
+func makeMapDiff(
+	ctx context.Context,
+	key resource.PropertyKey,
+	etf shim.Schema,
+	eps *SchemaInfo,
+	old, new resource.PropertyValue,
+) map[string]*pulumirpc.PropertyDiff {
+	diff := make(map[string]*pulumirpc.PropertyDiff)
+	if !old.IsObject() || !new.IsObject() {
+		diff[string(key)] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE}
+		return diff
+	}
+
+	oldMap := old.ObjectValue()
+	newMap := new.ObjectValue()
+	keys := make(map[resource.PropertyKey]struct{})
+	for k := range oldMap {
+		keys[k] = struct{}{}
+	}
+	for k := range newMap {
+		keys[k] = struct{}{}
+	}
+
+	for k := range keys {
+		key := string(key) + "." + string(k)
+		oldVal, oldOk := oldMap[k]
+		newVal, newOk := newMap[k]
+		
+		pelem := &info.Schema{}
+		if eps != nil {
+			pelem = eps.Elem
+		}
+		elemDiff := makeElemDiff(ctx, resource.PropertyKey(key), etf.Elem(), pelem, oldVal, newVal, oldOk, newOk)
+
+		for subKey, subDiff := range elemDiff {
+			diff[subKey] = subDiff
 		}
 	}
 

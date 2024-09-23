@@ -1877,6 +1877,8 @@ resources:
 }
 
 func TestDetailedDiffPlainTypes(t *testing.T) {
+	// TODO remove once feature flag CI is set up
+	t.Setenv("PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW", "true")
 	resMap := map[string]*schema.Resource{
 		"prov_test": {
 			Schema: map[string]*schema.Schema{

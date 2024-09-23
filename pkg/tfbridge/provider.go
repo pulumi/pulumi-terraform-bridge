@@ -1140,7 +1140,7 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 
 	schema, fields := res.TF.Schema(), res.Schema.Fields
 
-	config, _, err := MakeTerraformConfig(ctx, p, news, schema, fields)
+	config, assets, err := MakeTerraformConfig(ctx, p, news, schema, fields)
 	if err != nil {
 		return nil, errors.Wrapf(err, "preparing %s's new property state", urn)
 	}
@@ -1158,18 +1158,34 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 		return nil, errors.Wrapf(err, "diffing %s", urn)
 	}
 
-	dd := makeDetailedDiffExtra(ctx, schema, fields, olds, news, diff)
-	detailedDiff, changes := dd.diffs, dd.changes
+	var detailedDiff map[string]*pulumirpc.PropertyDiff
+	changes := pulumirpc.DiffResponse_DIFF_NONE
 
 	if opts.enableAccurateBridgePreview {
 		if decision := diff.DiffEqualDecisionOverride(); decision != shim.DiffNoOverride {
+			// TODO non-sdkv2 decision
 			if decision == shim.DiffOverrideNoUpdate {
 				changes = pulumirpc.DiffResponse_DIFF_NONE
 			} else {
 				changes = pulumirpc.DiffResponse_DIFF_SOME
 			}
 		}
+		proposedState, err := diff.ProposedState(res.TF, state)
+		if err != nil {
+			return nil, err
+		}
+		// Create the ID and property maps and return them.
+		props, err := MakeTerraformResult(
+			ctx, p.tf, proposedState, res.TF.Schema(), res.Schema.Fields, assets, p.supportsSecrets)
+		if err != nil {
+			return nil, err
+		}
+
+		detailedDiff = makePulumiDetailedDiffV2(ctx, schema, fields, olds, props)
+
 	} else {
+		dd := makeDetailedDiffExtra(ctx, schema, fields, olds, news, diff)
+		detailedDiff, changes = dd.diffs, dd.changes
 		// There are some providers/situations which `makeDetailedDiff` distorts the expected changes, leading
 		// to changes being dropped by Pulumi.
 		// Until we fix `makeDetailedDiff`, it is safer to refer to the Terraform Diff attribute length for setting
@@ -1180,12 +1196,12 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 		if !diff.HasNoChanges() {
 			changes = pulumirpc.DiffResponse_DIFF_SOME
 		}
-	}
 
-	if changes == pulumirpc.DiffResponse_DIFF_SOME {
-		// Perhaps collectionDiffs can shed some light and locate the changes to the end-user.
-		for path, diff := range dd.collectionDiffs {
-			detailedDiff[path] = diff
+		if changes == pulumirpc.DiffResponse_DIFF_SOME {
+			// Perhaps collectionDiffs can shed some light and locate the changes to the end-user.
+			for path, diff := range dd.collectionDiffs {
+				detailedDiff[path] = diff
+			}
 		}
 	}
 
