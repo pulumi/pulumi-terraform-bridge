@@ -4,10 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
-	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
 func isFlattened(s shim.Schema) bool {

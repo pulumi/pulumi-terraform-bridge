@@ -5,12 +5,13 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/tokens"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
 func computeSchemas(sch map[string]*schema.Schema) (map[string]*info.Schema, shim.SchemaMap) {
@@ -216,7 +217,7 @@ func TestBasicDetailedDiff(t *testing.T) {
 			emptyValue: []interface{}{},
 			value1:     []interface{}{"foo"},
 			value2:     []interface{}{"bar"},
-			listLike: true,
+			listLike:   true,
 		},
 		{
 			name: "map",
