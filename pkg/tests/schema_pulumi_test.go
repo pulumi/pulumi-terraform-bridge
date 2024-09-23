@@ -2029,7 +2029,6 @@ Resources:
     2 unchanged
 `),
 		},
-		// TODO[pulumi/pulumi-terraform-bridge#2234]: Duplicated diff
 		{
 			"list added",
 			map[string]interface{}{},
@@ -2040,9 +2039,6 @@ Resources:
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-      + listProps: [
-      +     [0]: "val"
-        ]
       + listProps: [
       +     [0]: "val"
         ]
@@ -2246,7 +2242,6 @@ Resources:
     2 unchanged
 `),
 		},
-		// TODO[pulumi/pulumi-terraform-bridge#2234]: Duplicated diff
 		{
 			"set added",
 			map[string]interface{}{},
@@ -2257,9 +2252,6 @@ Resources:
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-      + setProps: [
-      +     [0]: "val"
-        ]
       + setProps: [
       +     [0]: "val"
         ]
@@ -2314,26 +2306,25 @@ Resources:
     2 unchanged
 `),
 		},
-		// TODO[pulumi/pulumi-terraform-bridge#2235]: Wrong number of additions
 		{
 			"set element added front",
 			map[string]interface{}{"setProps": []interface{}{"val2", "val3"}},
 			map[string]interface{}{"setProps": []interface{}{"val1", "val2", "val3"}},
 			autogold.Expect(`Previewing update (test):
-		  pulumi:pulumi:Stack: (same)
-		    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
-		    ~ prov:index/test:Test: (update)
-		        [id=newid]
-		        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-		      ~ setProps: [
-		          ~ [0]: "val2" => "val1"
-		          ~ [1]: "val3" => "val2"
-		          + [2]: "val3"
-		        ]
-		Resources:
-		    ~ 1 to update
-		    1 unchanged
-		`),
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ setProps: [
+          ~ [0]: "val2" => "val1"
+          ~ [1]: "val3" => "val2"
+          + [2]: "val3"
+        ]
+Resources:
+    ~ 1 to update
+    1 unchanged
+`),
 		},
 		{
 			"set element added back",
@@ -2355,46 +2346,44 @@ Resources:
     1 unchanged
 `),
 		},
-		// TODO[pulumi/pulumi-terraform-bridge#2235]: Wrong number of additions
 		{
 			"set element added middle",
 			map[string]interface{}{"setProps": []interface{}{"val1", "val3"}},
 			map[string]interface{}{"setProps": []interface{}{"val1", "val2", "val3"}},
 			autogold.Expect(`Previewing update (test):
-		  pulumi:pulumi:Stack: (same)
-		    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
-		    ~ prov:index/test:Test: (update)
-		        [id=newid]
-		        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-		      ~ setProps: [
-		            [0]: "val1"
-		          + [1]: "val2"
-		          + [2]: "val3"
-		        ]
-		Resources:
-		    ~ 1 to update
-		    1 unchanged
-
-		`),
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ setProps: [
+            [0]: "val1"
+          ~ [1]: "val3" => "val2"
+          + [2]: "val3"
+        ]
+Resources:
+    ~ 1 to update
+    1 unchanged
+`),
 		},
 		{
 			"set element removed front",
 			map[string]interface{}{"setProps": []interface{}{"val1", "val2", "val3"}},
 			map[string]interface{}{"setProps": []interface{}{"val2", "val3"}},
 			autogold.Expect(`Previewing update (test):
-		  pulumi:pulumi:Stack: (same)
-		    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
-		    ~ prov:index/test:Test: (update)
-		        [id=newid]
-		        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-		      ~ setProps: [
-		          ~ [0]: "val1" => "val2"
-		          ~ [1]: "val2" => "val3"
-		          - [2]: "val3"
-		        ]
-		Resources:
-		    ~ 1 to update
-		    1 unchanged
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ setProps: [
+          ~ [0]: "val1" => "val2"
+          ~ [1]: "val2" => "val3"
+          - [2]: "val3"
+        ]
+Resources:
+    ~ 1 to update
+    1 unchanged
 `),
 		},
 		{
@@ -2417,26 +2406,25 @@ Resources:
     1 unchanged
 `),
 		},
-		// TODO[pulumi/pulumi-terraform-bridge#2235]: Wrong number of removals
 		{
 			"set element removed middle",
 			map[string]interface{}{"setProps": []interface{}{"val1", "val2", "val3"}},
 			map[string]interface{}{"setProps": []interface{}{"val1", "val3"}},
 			autogold.Expect(`Previewing update (test):
-		  pulumi:pulumi:Stack: (same)
-		    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
-		    ~ prov:index/test:Test: (update)
-		        [id=newid]
-		        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-		      ~ setProps: [
-		            [0]: "val1"
-		          ~ [1]: "val2" => "val3"
-		          - [2]: "val3"
-		        ]
-		Resources:
-		    ~ 1 to update
-		    1 unchanged
-		`),
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ setProps: [
+            [0]: "val1"
+          ~ [1]: "val2" => "val3"
+          - [2]: "val3"
+        ]
+Resources:
+    ~ 1 to update
+    1 unchanged
+`),
 		},
 		{
 			"set element changed",
@@ -2467,7 +2455,6 @@ Resources:
     2 unchanged
 `),
 		},
-		// TODO[pulumi/pulumi-terraform-bridge#2234]: Duplicated diff
 		{
 			"map added",
 			map[string]interface{}{},
@@ -2478,9 +2465,6 @@ Resources:
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-      + mapProp: {
-          + key: "val"
-        }
       + mapProp: {
           + key: "val"
         }
@@ -2535,7 +2519,6 @@ Resources:
     2 unchanged
 `),
 		},
-		// TODO[pulumi/pulumi-terraform-bridge#2234]: Duplicated diff
 		{
 			"map element added",
 			map[string]interface{}{"mapProp": map[string]interface{}{}},
@@ -2546,9 +2529,6 @@ Resources:
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-      + mapProp: {
-          + key: "val"
-        }
       + mapProp: {
           + key: "val"
         }
@@ -2712,6 +2692,7 @@ Resources:
     2 unchanged
 `),
 		},
+		// TODO[pulumi/pulumi-terraform-bridge#2234]: Duplicated diff
 		// TODO[pulumi/pulumi-terraform-bridge#2399] nested prop diff
 		{
 			"list block removed empty object",
@@ -2723,6 +2704,11 @@ Resources:
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      - listBlocks: [
+      -     [0]: {
+              - prop: <null>
+            }
+        ]
       - listBlocks: [
       -     [0]: {
               - prop: <null>
@@ -2949,6 +2935,7 @@ Resources:
     1 unchanged
 `),
 		},
+		// TODO[pulumi/pulumi-terraform-bridge#2400] __defaults appearing in the diff
 		{
 			"list block element changed",
 			map[string]interface{}{"listBlocks": []interface{}{
@@ -2965,7 +2952,8 @@ Resources:
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ listBlocks: [
           ~ [0]: {
-                  ~ prop: "val1" => "val2"
+                  + __defaults: []
+                  ~ prop      : "val1" => "val2"
                 }
         ]
 Resources:
@@ -3073,6 +3061,7 @@ Resources:
     2 unchanged
 `),
 		},
+		// TODO[pulumi/pulumi-terraform-bridge#2234]: Duplicated diff
 		// TODO[pulumi/pulumi-terraform-bridge#2399] nested prop diff
 		{
 			"set block removed empty object",
@@ -3084,6 +3073,11 @@ Resources:
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      - setBlocks: [
+      -     [0]: {
+              - prop: ""
+            }
+        ]
       - setBlocks: [
       -     [0]: {
               - prop: ""
@@ -3311,6 +3305,7 @@ Resources:
     1 unchanged
 `),
 		},
+		// TODO[pulumi/pulumi-terraform-bridge#2400] __defaults appearing in the diff
 		{
 			"set block element changed",
 			map[string]interface{}{"setBlocks": []interface{}{
@@ -3327,7 +3322,8 @@ Resources:
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ setBlocks: [
           ~ [0]: {
-                  ~ prop: "val1" => "val2"
+                  + __defaults: []
+                  ~ prop      : "val1" => "val2"
                 }
         ]
 Resources:
@@ -3346,7 +3342,6 @@ Resources:
     2 unchanged
 `),
 		},
-		// TODO[pulumi/pulumi-terraform-bridge#2234]: Duplicated diff
 		{
 			"maxItemsOne block added",
 			map[string]interface{}{},
@@ -3357,9 +3352,6 @@ Resources:
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-      + maxItemsOneBlock: {
-          + prop      : "val"
-        }
       + maxItemsOneBlock: {
           + prop      : "val"
         }
@@ -3385,7 +3377,6 @@ Resources:
     1 unchanged
 `),
 		},
-		// TODO[pulumi/pulumi-terraform-bridge#2234]: Duplicated diff
 		{
 			"maxItemsOne block removed",
 			map[string]interface{}{"maxItemsOneBlock": map[string]interface{}{"prop": "val"}},
@@ -3396,9 +3387,6 @@ Resources:
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-      - maxItemsOneBlock: {
-          - prop: "val"
-        }
       - maxItemsOneBlock: {
           - prop: "val"
         }
@@ -3426,6 +3414,7 @@ Resources:
     1 unchanged
 `),
 		},
+		// TODO[pulumi/pulumi-terraform-bridge#2400] __defaults appearing in the diff
 		{
 			"maxItemsOne block changed",
 			map[string]interface{}{"maxItemsOneBlock": map[string]interface{}{"prop": "val1"}},
@@ -3437,7 +3426,8 @@ Resources:
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ maxItemsOneBlock: {
-          ~ prop: "val1" => "val2"
+          + __defaults: []
+          ~ prop      : "val1" => "val2"
         }
 Resources:
     ~ 1 to update
