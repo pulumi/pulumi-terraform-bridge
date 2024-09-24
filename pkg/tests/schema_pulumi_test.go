@@ -2120,8 +2120,6 @@ Resources:
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ listProps: [
-            [0]: "val1"
-            [1]: "val2"
           + [2]: "val3"
         ]
 Resources:
@@ -2140,7 +2138,6 @@ Resources:
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ listProps: [
-            [0]: "val1"
           ~ [1]: "val3" => "val2"
           + [2]: "val3"
         ]
@@ -2180,8 +2177,6 @@ Resources:
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ listProps: [
-            [0]: "val1"
-            [1]: "val2"
           - [2]: "val3"
         ]
 Resources:
@@ -2200,7 +2195,6 @@ Resources:
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ listProps: [
-            [0]: "val1"
           ~ [1]: "val2" => "val3"
           - [2]: "val3"
         ]
@@ -2329,8 +2323,6 @@ Resources:
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ setProps: [
-            [0]: "val1"
-            [1]: "val2"
           + [2]: "val3"
         ]
 Resources:
@@ -2349,7 +2341,6 @@ Resources:
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ setProps: [
-            [0]: "val1"
           ~ [1]: "val3" => "val2"
           + [2]: "val3"
         ]
@@ -2389,8 +2380,6 @@ Resources:
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ setProps: [
-            [0]: "val1"
-            [1]: "val2"
           - [2]: "val3"
         ]
 Resources:
@@ -2409,7 +2398,6 @@ Resources:
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ setProps: [
-            [0]: "val1"
           ~ [1]: "val2" => "val3"
           - [2]: "val3"
         ]
@@ -2477,7 +2465,6 @@ Resources:
     2 unchanged
 `),
 		},
-		// TODO[pulumi/pulumi-terraform-bridge#2234]: Duplicated diff
 		{
 			"map removed",
 			map[string]interface{}{"mapProp": map[string]interface{}{"key": "val"}},
@@ -2488,9 +2475,6 @@ Resources:
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-      - mapProp: {
-          - key: "val"
-        }
       - mapProp: {
           - key: "val"
         }
@@ -2699,7 +2683,6 @@ Resources:
     1 unchanged
 `),
 		},
-		// TODO[pulumi/pulumi-terraform-bridge#2400] __defaults appearing in the diff
 		{
 			"list block element added front",
 			map[string]interface{}{"listBlocks": []interface{}{
@@ -2719,12 +2702,10 @@ Resources:
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ listBlocks: [
           ~ [0]: {
-                  + __defaults: []
-                  ~ prop      : "val2" => "val1"
+                  ~ prop: "val2" => "val1"
                 }
           ~ [1]: {
-                  + __defaults: []
-                  ~ prop      : "val3" => "val2"
+                  ~ prop: "val3" => "val2"
                 }
           + [2]: {
                   + prop      : "val3"
@@ -2735,7 +2716,6 @@ Resources:
     1 unchanged
 `),
 		},
-		// TODO[pulumi/pulumi-terraform-bridge#2400] __defaults appearing in the diff
 		{
 			"list block element added back",
 			map[string]interface{}{"listBlocks": []interface{}{
@@ -2754,14 +2734,6 @@ Resources:
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ listBlocks: [
-          ~ [0]: {
-                  + __defaults: []
-                    prop      : "val1"
-                }
-          ~ [1]: {
-                  + __defaults: []
-                    prop      : "val2"
-                }
           + [2]: {
                   + prop      : "val3"
                 }
@@ -2771,7 +2743,6 @@ Resources:
     1 unchanged
 `),
 		},
-		// TODO[pulumi/pulumi-terraform-bridge#2400] __defaults appearing in the diff
 		{
 			"list block element added middle",
 			map[string]interface{}{"listBlocks": []interface{}{
@@ -2790,13 +2761,8 @@ Resources:
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ listBlocks: [
-          ~ [0]: {
-                  + __defaults: []
-                    prop      : "val1"
-                }
           ~ [1]: {
-                  + __defaults: []
-                  ~ prop      : "val3" => "val2"
+                  ~ prop: "val3" => "val2"
                 }
           + [2]: {
                   + prop      : "val3"
@@ -2807,7 +2773,6 @@ Resources:
     1 unchanged
 `),
 		},
-		// TODO[pulumi/pulumi-terraform-bridge#2400] __defaults appearing in the diff
 		{
 			"list block element removed front",
 			map[string]interface{}{"listBlocks": []interface{}{
@@ -2827,12 +2792,10 @@ Resources:
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ listBlocks: [
           ~ [0]: {
-                  + __defaults: []
-                  ~ prop      : "val1" => "val2"
+                  ~ prop: "val1" => "val2"
                 }
           ~ [1]: {
-                  + __defaults: []
-                  ~ prop      : "val2" => "val3"
+                  ~ prop: "val2" => "val3"
                 }
           - [2]: {
                   - prop: "val3"
@@ -2843,7 +2806,6 @@ Resources:
     1 unchanged
 `),
 		},
-		// TODO[pulumi/pulumi-terraform-bridge#2400] __defaults appearing in the diff
 		{
 			"list block element removed back",
 			map[string]interface{}{"listBlocks": []interface{}{
@@ -2862,14 +2824,6 @@ Resources:
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ listBlocks: [
-          ~ [0]: {
-                  + __defaults: []
-                    prop      : "val1"
-                }
-          ~ [1]: {
-                  + __defaults: []
-                    prop      : "val2"
-                }
           - [2]: {
                   - prop: "val3"
                 }
@@ -2879,7 +2833,6 @@ Resources:
     1 unchanged
 `),
 		},
-		// TODO[pulumi/pulumi-terraform-bridge#2400] __defaults appearing in the diff
 		{
 			"list block element removed middle",
 			map[string]interface{}{"listBlocks": []interface{}{
@@ -2898,13 +2851,8 @@ Resources:
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ listBlocks: [
-          ~ [0]: {
-                  + __defaults: []
-                    prop      : "val1"
-                }
           ~ [1]: {
-                  + __defaults: []
-                  ~ prop      : "val2" => "val3"
+                  ~ prop: "val2" => "val3"
                 }
           - [2]: {
                   - prop: "val3"
@@ -2915,7 +2863,6 @@ Resources:
     1 unchanged
 `),
 		},
-		// TODO[pulumi/pulumi-terraform-bridge#2400] __defaults appearing in the diff
 		{
 			"list block element changed",
 			map[string]interface{}{"listBlocks": []interface{}{
@@ -2932,8 +2879,7 @@ Resources:
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ listBlocks: [
           ~ [0]: {
-                  + __defaults: []
-                  ~ prop      : "val1" => "val2"
+                  ~ prop: "val1" => "val2"
                 }
         ]
 Resources:
@@ -3056,7 +3002,6 @@ Resources:
     1 unchanged
 `),
 		},
-		// TODO[pulumi/pulumi-terraform-bridge#2400] __defaults appearing in the diff
 		{
 			"set block element added front",
 			map[string]interface{}{"setBlocks": []interface{}{
@@ -3076,12 +3021,10 @@ Resources:
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ setBlocks: [
           ~ [0]: {
-                  + __defaults: []
-                  ~ prop      : "val2" => "val1"
+                  ~ prop: "val2" => "val1"
                 }
           ~ [1]: {
-                  + __defaults: []
-                  ~ prop      : "val3" => "val2"
+                  ~ prop: "val3" => "val2"
                 }
           + [2]: {
                   + prop      : "val3"
@@ -3092,7 +3035,6 @@ Resources:
     1 unchanged
 `),
 		},
-		// TODO[pulumi/pulumi-terraform-bridge#2400] __defaults appearing in the diff
 		{
 			"set block element added back",
 			map[string]interface{}{"setBlocks": []interface{}{
@@ -3111,14 +3053,6 @@ Resources:
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ setBlocks: [
-          ~ [0]: {
-                  + __defaults: []
-                    prop      : "val1"
-                }
-          ~ [1]: {
-                  + __defaults: []
-                    prop      : "val2"
-                }
           + [2]: {
                   + prop      : "val3"
                 }
@@ -3128,7 +3062,6 @@ Resources:
     1 unchanged
 `),
 		},
-		// TODO[pulumi/pulumi-terraform-bridge#2400] __defaults appearing in the diff
 		{
 			"set block element added middle",
 			map[string]interface{}{"setBlocks": []interface{}{
@@ -3147,13 +3080,8 @@ Resources:
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ setBlocks: [
-          ~ [0]: {
-                  + __defaults: []
-                    prop      : "val1"
-                }
           ~ [1]: {
-                  + __defaults: []
-                  ~ prop      : "val3" => "val2"
+                  ~ prop: "val3" => "val2"
                 }
           + [2]: {
                   + prop      : "val3"
@@ -3164,7 +3092,6 @@ Resources:
     1 unchanged
 `),
 		},
-		// TODO[pulumi/pulumi-terraform-bridge#2400] __defaults appearing in the diff
 		{
 			"set block element removed front",
 			map[string]interface{}{"setBlocks": []interface{}{
@@ -3184,12 +3111,10 @@ Resources:
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ setBlocks: [
           ~ [0]: {
-                  + __defaults: []
-                  ~ prop      : "val1" => "val2"
+                  ~ prop: "val1" => "val2"
                 }
           ~ [1]: {
-                  + __defaults: []
-                  ~ prop      : "val2" => "val3"
+                  ~ prop: "val2" => "val3"
                 }
           - [2]: {
                   - prop: "val3"
@@ -3200,7 +3125,6 @@ Resources:
     1 unchanged
 `),
 		},
-		// TODO[pulumi/pulumi-terraform-bridge#2400] __defaults appearing in the diff
 		{
 			"set block element removed back",
 			map[string]interface{}{"setBlocks": []interface{}{
@@ -3219,14 +3143,6 @@ Resources:
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ setBlocks: [
-          ~ [0]: {
-                  + __defaults: []
-                    prop      : "val1"
-                }
-          ~ [1]: {
-                  + __defaults: []
-                    prop      : "val2"
-                }
           - [2]: {
                   - prop: "val3"
                 }
@@ -3236,7 +3152,6 @@ Resources:
     1 unchanged
 `),
 		},
-		// TODO[pulumi/pulumi-terraform-bridge#2400] __defaults appearing in the diff
 		{
 			"set block element removed middle",
 			map[string]interface{}{"setBlocks": []interface{}{
@@ -3255,13 +3170,8 @@ Resources:
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ setBlocks: [
-          ~ [0]: {
-                  + __defaults: []
-                    prop      : "val1"
-                }
           ~ [1]: {
-                  + __defaults: []
-                  ~ prop      : "val2" => "val3"
+                  ~ prop: "val2" => "val3"
                 }
           - [2]: {
                   - prop: "val3"
@@ -3272,7 +3182,6 @@ Resources:
     1 unchanged
 `),
 		},
-		// TODO[pulumi/pulumi-terraform-bridge#2400] __defaults appearing in the diff
 		{
 			"set block element changed",
 			map[string]interface{}{"setBlocks": []interface{}{
@@ -3289,8 +3198,7 @@ Resources:
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ setBlocks: [
           ~ [0]: {
-                  + __defaults: []
-                  ~ prop      : "val1" => "val2"
+                  ~ prop: "val1" => "val2"
                 }
         ]
 Resources:
@@ -3381,7 +3289,6 @@ Resources:
     1 unchanged
 `),
 		},
-		// TODO[pulumi/pulumi-terraform-bridge#2400] __defaults appearing in the diff
 		{
 			"maxItemsOne block changed",
 			map[string]interface{}{"maxItemsOneBlock": map[string]interface{}{"prop": "val1"}},
@@ -3393,8 +3300,7 @@ Resources:
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ maxItemsOneBlock: {
-          + __defaults: []
-          ~ prop      : "val1" => "val2"
+          ~ prop: "val1" => "val2"
         }
 Resources:
     ~ 1 to update

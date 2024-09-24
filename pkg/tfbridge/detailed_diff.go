@@ -100,7 +100,6 @@ func makePropDiff(
 	}
 
 	res := make(map[string]*pulumirpc.PropertyDiff)
-	res[string(key)] = topDiff
 
 	if etf == nil {
 		// If the schema is nil, we just return the top-level diff
@@ -132,6 +131,8 @@ func makePropDiff(
 		for subKey, subDiff := range diff {
 			res[subKey] = subDiff
 		}
+	} else {
+		res[string(key)] = topDiff
 	}
 
 	return res
@@ -207,9 +208,6 @@ func makeElemDiff(
 		)
 		for subKey, subDiff := range d {
 			diff[subKey] = subDiff
-		}
-		if len(diff) > 0 {
-			diff[string(key)] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE}
 		}
 	} else if _, ok := etf.(shim.Schema); ok {
 		d := makePropDiff(
