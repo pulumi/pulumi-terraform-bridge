@@ -32,9 +32,16 @@ const (
 	Undecided baseDiff = "Undecided"
 )
 
+func isPresent(val resource.PropertyValue, valOk bool) bool {
+	return valOk &&
+		!val.IsNull() &&
+		!(val.IsArray() && val.ArrayValue() == nil) &&
+		!(val.IsObject() && val.ObjectValue() == nil)
+}
+
 func makeBaseDiff(old, new resource.PropertyValue, oldOk, newOk bool) baseDiff {
-	oldPresent := oldOk && !old.IsNull() && !(old.IsArray() && old.ArrayValue() == nil)
-	newPresent := newOk && !new.IsNull() && !(new.IsArray() && new.ArrayValue() == nil)
+	oldPresent := isPresent(old, oldOk)
+	newPresent := isPresent(new, newOk)
 	if !oldPresent {
 		if !newPresent {
 			return NoDiff
