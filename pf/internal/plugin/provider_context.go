@@ -85,11 +85,9 @@ type ProviderWithContext interface {
 	GetMappingsWithContext(ctx context.Context, key string) ([]string, error)
 
 	ParameterizeWithContext(context.Context, plugin.ParameterizeRequest) (plugin.ParameterizeResponse, error)
-
-	Attach(address string) error
 }
 
-func NewProvider(p ProviderWithContext) plugin.GrpcProvider {
+func NewProvider(p ProviderWithContext) plugin.Provider {
 	return &provider{ProviderWithContext: p}
 }
 
@@ -99,10 +97,6 @@ type provider struct {
 }
 
 var _ plugin.Provider = (*provider)(nil)
-
-func (prov *provider) Attach(address string) error {
-	return prov.ProviderWithContext.Attach(address)
-}
 
 func (prov *provider) Pkg() tokens.Package { return prov.ProviderWithContext.Pkg() }
 
