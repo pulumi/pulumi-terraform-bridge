@@ -168,7 +168,7 @@ func (p *providerServer) GetSchema(ctx context.Context,
 		subpackageVersion = &ver
 	}
 	schema, err := p.provider.GetSchemaWithContext(ctx, plugin.GetSchemaRequest{
-		Version:           int(req.GetVersion()),
+		Version:           req.GetVersion(),
 		SubpackageName:    req.SubpackageName,
 		SubpackageVersion: subpackageVersion,
 	})
@@ -518,7 +518,7 @@ func (p *providerServer) Construct(ctx context.Context,
 		Config:           cfg,
 		ConfigSecretKeys: cfgSecretKeys,
 		DryRun:           req.GetDryRun(),
-		Parallel:         int(req.GetParallel()),
+		Parallel:         req.GetParallel(),
 		MonitorAddress:   req.GetMonitorEndpoint(),
 	}
 
@@ -650,7 +650,7 @@ func (p *providerServer) Call(ctx context.Context, req *pulumirpc.CallRequest) (
 		Stack:          req.GetStack(),
 		Config:         cfg,
 		DryRun:         req.GetDryRun(),
-		Parallel:       int(req.GetParallel()),
+		Parallel:       req.GetParallel(),
 		MonitorAddress: req.GetMonitorEndpoint(),
 	}
 	argDependencies := map[resource.PropertyKey][]resource.URN{}
