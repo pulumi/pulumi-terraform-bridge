@@ -974,3 +974,36 @@ func TestNilVsEmptyListProperty(t *testing.T) {
 		})
 	})
 }
+
+func TestNilVsEmptyMapProperty(t *testing.T) {
+	cfgEmpty := map[string]any{"f0": map[string]any{}}
+	cfgNil := map[string]any{}
+
+	res := &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"f0": {
+				Type:     schema.TypeMap,
+				Optional: true,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
+			},
+		},
+	}
+
+	t.Run("nil to empty", func(t *testing.T) {
+		runDiffCheck(t, diffTestCase{
+			Resource: res,
+			Config1:  cfgNil,
+			Config2:  cfgEmpty,
+		})
+	})
+
+	t.Run("empty to nil", func(t *testing.T) {
+		runDiffCheck(t, diffTestCase{
+			Resource: res,
+			Config1:  cfgEmpty,
+			Config2:  cfgNil,
+		})
+	})
+}
