@@ -941,3 +941,36 @@ func TestMaxItemsOneCollectionOnlyDiff(t *testing.T) {
 	require.NotEqual(t, getFilter(diff.TFDiff.Before), getFilter(diff.TFDiff.After))
 	autogold.Expect(map[string]interface{}{"rules[0].filter": map[string]interface{}{"kind": "UPDATE"}}).Equal(t, diff.PulumiDiff.DetailedDiff)
 }
+
+func TestNilVsEmptyListProperty(t *testing.T) {
+	cfgEmpty := map[string]any{"f0": []any{}}
+	cfgNil := map[string]any{}
+
+	res := &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"f0": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
+			},
+		},
+	}
+
+	t.Run("nil to empty", func(t *testing.T) {
+		runDiffCheck(t, diffTestCase{
+			Resource: res,
+			Config1:  cfgNil,
+			Config2:  cfgEmpty,
+		})
+	})
+
+	t.Run("empty to nil", func(t *testing.T) {
+		runDiffCheck(t, diffTestCase{
+			Resource: res,
+			Config1:  cfgEmpty,
+			Config2:  cfgNil,
+		})
+	})
+}
