@@ -17,6 +17,7 @@ package plugin
 import (
 	"context"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -80,5 +81,41 @@ func (p providerThunk) Configure(
 	if ctx.Value(setupConfigureKey) != nil {
 		return plugin.ConfigureResponse{}, nil
 	}
+	req.Inputs = removeSecrets(req.Inputs)
+	contract.Assertf(!req.Inputs.ContainsSecrets(),
+		"Inputs to configure should not contain secrets")
 	return p.GrpcProvider.Configure(ctx, req)
+}
+
+func removeSecrets(pMap resource.PropertyMap) resource.PropertyMap {
+	var remove func(resource.PropertyValue) resource.PropertyValue
+	remove = func(v resource.PropertyValue) resource.PropertyValue {
+		switch {
+		case v.IsArray():
+			arr := make([]resource.PropertyValue, 0, len(v.ArrayValue()))
+			for _, v := range v.ArrayValue() {
+				arr = append(arr, remove(v))
+			}
+			return resource.NewProperty(arr)
+		case v.IsObject():
+			obj := make(resource.PropertyMap, len(v.ObjectValue()))
+			for k, v := range v.ObjectValue() {
+				obj[k] = remove(v)
+			}
+			return resource.NewProperty(obj)
+		case v.IsComputed():
+			return resource.MakeComputed(remove(v.Input().Element))
+		case v.IsOutput():
+			o := v.OutputValue()
+			o.Secret = false
+			o.Element = remove(o.Element)
+			return resource.NewProperty(o)
+		case v.IsSecret():
+			return remove(v.SecretValue().Element)
+		default:
+			return v
+		}
+	}
+
+	return remove(resource.NewProperty(pMap)).ObjectValue()
 }
