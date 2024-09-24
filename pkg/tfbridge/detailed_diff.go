@@ -312,6 +312,7 @@ func makeMapDiff(
 	}
 
 	for k := range keys {
+		// TODO: is escaping needed here?
 		key := string(key) + "." + string(k)
 		oldVal, oldOk := oldMap[k]
 		newVal, newOk := newMap[k]
