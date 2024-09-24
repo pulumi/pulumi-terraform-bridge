@@ -2047,7 +2047,7 @@ Resources:
     1 unchanged
 `),
 		},
-		// TODO[pulumi/pulumi-terraform-bridge#2233]: Missing diff
+		// pulumi/pulumi-terraform-bridge#2233: This is the intended behavior
 		{
 			"list added empty",
 			map[string]interface{}{},
@@ -2081,7 +2081,7 @@ Resources:
     1 unchanged
 `),
 		},
-		// TODO[pulumi/pulumi-terraform-bridge#2233]: Missing diff
+		// pulumi/pulumi-terraform-bridge#2233: This is the intended behavior
 		{
 			"list removed empty",
 			map[string]interface{}{"listProps": []interface{}{}},
@@ -2260,7 +2260,7 @@ Resources:
     1 unchanged
 `),
 		},
-		// TODO[pulumi/pulumi-terraform-bridge#2233]: Missing diff
+		// pulumi/pulumi-terraform-bridge#2233: This is the intended behavior
 		{
 			"set added empty",
 			map[string]interface{}{},
@@ -2294,7 +2294,7 @@ Resources:
     1 unchanged
 `),
 		},
-		// TODO[pulumi/pulumi-terraform-bridge#2233]: Missing diff
+		// pulumi/pulumi-terraform-bridge#2233: This is the intended behavior
 		{
 			"set removed empty",
 			map[string]interface{}{"setProps": []interface{}{}},
@@ -2473,7 +2473,7 @@ Resources:
     1 unchanged
 `),
 		},
-		// TODO[pulumi/pulumi-terraform-bridge#2233]: Missing diff
+		// pulumi/pulumi-terraform-bridge#2233: This is the intended behavior
 		{
 			"map added empty",
 			map[string]interface{}{},
@@ -2507,7 +2507,7 @@ Resources:
     1 unchanged
 `),
 		},
-		// TODO[pulumi/pulumi-terraform-bridge#2233]: Missing diff
+		// pulumi/pulumi-terraform-bridge#2233: This is the intended behavior
 		{
 			"map removed empty",
 			map[string]interface{}{"mapProp": map[string]interface{}{}},
