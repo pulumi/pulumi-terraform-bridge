@@ -1170,11 +1170,13 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 				changes = pulumirpc.DiffResponse_DIFF_SOME
 			}
 		}
+
+		// We need to compare the new and olds after all transformations have been applied.
+		// ex. state upgrades, implementation-specific normalizations etc.
 		proposedState, err := diff.ProposedState(res.TF, state)
 		if err != nil {
 			return nil, err
 		}
-		// Create the ID and property maps and return them.
 		props, err := MakeTerraformResult(
 			ctx, p.tf, proposedState, res.TF.Schema(), res.Schema.Fields, assets, p.supportsSecrets)
 		if err != nil {

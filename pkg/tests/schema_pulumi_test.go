@@ -2059,7 +2059,6 @@ Resources:
     2 unchanged
 `),
 		},
-		// TODO[pulumi/pulumi-terraform-bridge#2234]: Duplicated diff
 		{
 			"list removed",
 			map[string]interface{}{"listProps": []interface{}{"val"}},
@@ -2070,9 +2069,6 @@ Resources:
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-      - listProps: [
-      -     [0]: "val"
-        ]
       - listProps: [
       -     [0]: "val"
         ]
@@ -2272,7 +2268,6 @@ Resources:
     2 unchanged
 `),
 		},
-		// TODO[pulumi/pulumi-terraform-bridge#2234]: Duplicated diff
 		{
 			"set removed",
 			map[string]interface{}{"setProps": []interface{}{"val"}},
@@ -2283,9 +2278,6 @@ Resources:
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-      - setProps: [
-      -     [0]: "val"
-        ]
       - setProps: [
       -     [0]: "val"
         ]
@@ -2613,10 +2605,10 @@ Resources:
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-      ~ listBlocks: [
-          + [0]: {
-                  + prop      : "val"
-                }
+      + listBlocks: [
+      +     [0]: {
+              + prop      : "val"
+            }
         ]
 Resources:
     ~ 1 to update
@@ -2645,16 +2637,15 @@ Resources:
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-      ~ listBlocks: [
-          + [0]: {
-                }
+      + listBlocks: [
+      +     [0]: {
+            }
         ]
 Resources:
     ~ 1 to update
     1 unchanged
 `),
 		},
-		// TODO[pulumi/pulumi-terraform-bridge#2234]: Duplicated diff
 		{
 			"list block removed",
 			map[string]interface{}{"listBlocks": []interface{}{map[string]interface{}{"prop": "val"}}},
@@ -2665,11 +2656,6 @@ Resources:
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-      - listBlocks: [
-      -     [0]: {
-              - prop: "val"
-            }
-        ]
       - listBlocks: [
       -     [0]: {
               - prop: "val"
@@ -2692,7 +2678,6 @@ Resources:
     2 unchanged
 `),
 		},
-		// TODO[pulumi/pulumi-terraform-bridge#2234]: Duplicated diff
 		// TODO[pulumi/pulumi-terraform-bridge#2399] nested prop diff
 		{
 			"list block removed empty object",
@@ -2704,11 +2689,6 @@ Resources:
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-      - listBlocks: [
-      -     [0]: {
-              - prop: <null>
-            }
-        ]
       - listBlocks: [
       -     [0]: {
               - prop: <null>
@@ -2982,10 +2962,10 @@ Resources:
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-      ~ setBlocks: [
-          + [0]: {
-                  + prop      : "val"
-                }
+      + setBlocks: [
+      +     [0]: {
+              + prop      : "val"
+            }
         ]
 Resources:
     ~ 1 to update
@@ -3014,16 +2994,15 @@ Resources:
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-      ~ setBlocks: [
-          + [0]: {
-                }
+      + setBlocks: [
+      +     [0]: {
+            }
         ]
 Resources:
     ~ 1 to update
     1 unchanged
 `),
 		},
-		// TODO[pulumi/pulumi-terraform-bridge#2234]: Duplicated diff
 		{
 			"set block removed",
 			map[string]interface{}{"setBlocks": []interface{}{map[string]interface{}{"prop": "val"}}},
@@ -3034,11 +3013,6 @@ Resources:
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-      - setBlocks: [
-      -     [0]: {
-              - prop: "val"
-            }
-        ]
       - setBlocks: [
       -     [0]: {
               - prop: "val"
@@ -3061,7 +3035,6 @@ Resources:
     2 unchanged
 `),
 		},
-		// TODO[pulumi/pulumi-terraform-bridge#2234]: Duplicated diff
 		// TODO[pulumi/pulumi-terraform-bridge#2399] nested prop diff
 		{
 			"set block removed empty object",
@@ -3073,11 +3046,6 @@ Resources:
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-      - setBlocks: [
-      -     [0]: {
-              - prop: ""
-            }
-        ]
       - setBlocks: [
       -     [0]: {
               - prop: ""
@@ -3197,7 +3165,6 @@ Resources:
 `),
 		},
 		// TODO[pulumi/pulumi-terraform-bridge#2400] __defaults appearing in the diff
-		// TODO[pulumi/pulumi-terraform-bridge#2234]: Duplicated diff
 		{
 			"set block element removed front",
 			map[string]interface{}{"setBlocks": []interface{}{
