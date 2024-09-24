@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016-2024, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -68,19 +68,33 @@ func (*ConfigEncoding) tryUnwrapSecret(encoded any) (any, bool) {
 }
 
 func (enc *ConfigEncoding) convertStringToPropertyValue(s string, typ shim.ValueType) (resource.PropertyValue, error) {
-	// If the schema expects a string, we can just return this as-is.
-	if typ == shim.TypeString {
-		return resource.NewStringProperty(s), nil
-	}
-
-	// Otherwise, we will attempt to deserialize the input string as JSON and convert the result into a Pulumi
+	// We attempt to deserialize the input string as JSON and convert the result into a Pulumi
 	// property. If the input string is empty, we will return an appropriate zero value.
+	//
+	// We need to attempt JSON de-serialization for all incoming strings, even if the target type is also
+	// a string. This allows us to correctly handle secret or computed string values. For example, the
+	// provider might be sent an input like this:
+	//
+	//	resource.PropertyMap{
+	//		"k": resource.NewProperty(`{"4dabf18193072939515e22adb298388d":"1b47061264138c4ac30d75fd1eb44270","value":"secret-value"}`),
+	//	}
+	//
+	// Even if `k` is a property of type string and it's value is a string, it should be decoded as:
+	//
+	//	resource.PropertyMap{
+	//		"k": resource.MakeSecret(resource.NewProperty("secret-value")),
+	//	}
+	//
+	//nolint:lll
 	if s == "" {
 		return enc.zeroValue(typ), nil
 	}
 
 	var jsonValue interface{}
 	if err := json.Unmarshal([]byte(s), &jsonValue); err != nil {
+		if typ == shim.TypeString {
+			return resource.NewProperty(s), nil
+		}
 		return resource.PropertyValue{}, err
 	}
 
@@ -102,10 +116,12 @@ func (enc *ConfigEncoding) convertStringToPropertyValue(s string, typ shim.Value
 
 func (*ConfigEncoding) zeroValue(typ shim.ValueType) resource.PropertyValue {
 	switch typ {
+	case shim.TypeString:
+		return resource.NewProperty("")
 	case shim.TypeBool:
-		return resource.NewPropertyValue(false)
+		return resource.NewProperty(false)
 	case shim.TypeInt, shim.TypeFloat:
-		return resource.NewPropertyValue(0)
+		return resource.NewProperty[float64](0)
 	case shim.TypeList, shim.TypeSet:
 		return resource.NewPropertyValue([]interface{}{})
 	default:

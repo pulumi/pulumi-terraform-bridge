@@ -19,6 +19,7 @@ require (
 	github.com/pulumi/pulumi-terraform-bridge/v3 v3.91.0
 	github.com/pulumi/pulumi-terraform-bridge/x/muxer v0.0.8
 	github.com/stretchr/testify v1.9.0
+	pgregory.net/rapid v0.6.1
 )
 
 require (
