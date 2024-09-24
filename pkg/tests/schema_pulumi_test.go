@@ -4240,7 +4240,7 @@ func TestMakeTerraformResultNilVsEmptyMap(t *testing.T) {
 		props, err := tfbridge.MakeTerraformResult(ctx, shimProv, state, res.Schema(), nil, nil, true)
 		assert.NoError(t, err)
 		assert.NotNil(t, props)
-		assert.True(t, props["test"].DeepEquals(nilMap))
+		assert.True(t, props["test"].V == nil)
 	})
 
 	t.Run("EmptyMap", func(t *testing.T) {
