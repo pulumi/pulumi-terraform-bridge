@@ -379,6 +379,12 @@ func TestBasicDetailedDiff(t *testing.T) {
 						runDetailedDiffTest(t, propertyMapNil, propertyMapValue1, tfs, ps, Added)
 					})
 
+					if tt.emptyValue != nil {
+						t.Run("added empty", func(t *testing.T) {
+							runDetailedDiffTest(t, propertyMapNil, propertyMapEmpty, tfs, ps, Added)
+						})
+					}
+
 					t.Run("deleted", func(t *testing.T) {
 						runDetailedDiffTest(t, propertyMapValue1, propertyMapNil, tfs, ps, Deleted)
 					})
