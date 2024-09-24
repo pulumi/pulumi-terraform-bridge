@@ -1181,8 +1181,24 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 			return nil, err
 		}
 
-		detailedDiff = makePulumiDetailedDiffV2(ctx, schema, fields, olds, props)
+		// TODO: move to shim interface.
+		if diffWithPrior, ok := diff.(interface {
+			PriorState() (shim.InstanceState, error)
+		}); ok {
+			prior, err := diffWithPrior.PriorState()
+			if err != nil {
+				return nil, err
+			}
+			priorProps, err := MakeTerraformResult(
+				ctx, p.tf, prior, res.TF.Schema(), res.Schema.Fields, assets, p.supportsSecrets)
+			if err != nil {
+				return nil, err
+			}
 
+			detailedDiff = makePulumiDetailedDiffV2(ctx, schema, fields, priorProps, props)
+		} else {
+			return nil, errors.New("diff does not implement PriorState")
+		}
 	} else {
 		dd := makeDetailedDiffExtra(ctx, schema, fields, olds, news, diff)
 		detailedDiff, changes = dd.diffs, dd.changes

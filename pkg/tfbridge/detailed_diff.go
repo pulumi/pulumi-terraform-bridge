@@ -23,29 +23,52 @@ func isDunder(k resource.PropertyKey) bool {
 	return len(k) > 1 && k[0] == '_' && k[1] == '_'
 }
 
+type baseDiff string
+
+const (
+	NoDiff    baseDiff = "NoDiff"
+	Add       baseDiff = "Add"
+	Delete    baseDiff = "Delete"
+	Undecided baseDiff = "Undecided"
+)
+
+func makeBaseDiff(old, new resource.PropertyValue, oldOk, newOk bool) baseDiff {
+	oldPresent := oldOk && !old.IsNull() && !(old.IsArray() && old.ArrayValue() == nil)
+	newPresent := newOk && !new.IsNull() && !(new.IsArray() && new.ArrayValue() == nil)
+	if !oldPresent {
+		if !newPresent {
+			return NoDiff
+		}
+
+		return Add
+	}
+	if !newPresent {
+		return Delete
+	}
+
+	return Undecided
+}
+
+func baseDiffToPropertyDiff(diff baseDiff) *pulumirpc.PropertyDiff {
+	switch diff {
+	case Add:
+		return &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_ADD}
+	case Delete:
+		return &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_DELETE}
+	default:
+		return nil
+	}
+}
+
 func makeTopPropDiff(
 	old, new resource.PropertyValue,
 	oldOk, newOk bool,
 ) *pulumirpc.PropertyDiff {
-	if !oldOk {
-		if !newOk {
-			return nil
-		}
-		if new == resource.NewNullProperty() {
-			// TODO: Should we handle this here or make sure the inputs are meaningfully present?
-			return nil
-		}
-
-		return &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_ADD}
+	baseDiff := makeBaseDiff(old, new, oldOk, newOk)
+	if baseDiff != Undecided {
+		return baseDiffToPropertyDiff(baseDiff)
 	}
-	if !newOk {
-		if old == resource.NewNullProperty() {
-			// TODO: Should we handle this here or make sure the inputs are meaningfully present?
-			return nil
-		}
 
-		return &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_DELETE}
-	}
 	if !old.DeepEquals(new) {
 		return &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE}
 	}
@@ -156,12 +179,9 @@ func makeElemDiff(
 	oldOk, newOk bool,
 ) map[string]*pulumirpc.PropertyDiff {
 	diff := make(map[string]*pulumirpc.PropertyDiff)
-	if !oldOk {
-		diff[string(key)] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_ADD}
-		return diff
-	}
-	if !newOk {
-		diff[string(key)] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_DELETE}
+	baseDiff := makeBaseDiff(old, new, oldOk, newOk)
+	if baseDiff != Undecided {
+		diff[string(key)] = baseDiffToPropertyDiff(baseDiff)
 		return diff
 	}
 
@@ -220,14 +240,12 @@ func makeListDiff(
 	oldOk, newOk bool,
 ) map[string]*pulumirpc.PropertyDiff {
 	diff := make(map[string]*pulumirpc.PropertyDiff)
-	if !oldOk {
-		diff[string(key)] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_ADD}
+	baseDiff := makeBaseDiff(old, new, oldOk, newOk)
+	if baseDiff != Undecided {
+		diff[string(key)] = baseDiffToPropertyDiff(baseDiff)
 		return diff
 	}
-	if !newOk {
-		diff[string(key)] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_DELETE}
-		return diff
-	}
+
 	oldList := old.ArrayValue()
 	newList := new.ArrayValue()
 
@@ -267,24 +285,9 @@ func makeMapDiff(
 	oldOk, newOk bool,
 ) map[string]*pulumirpc.PropertyDiff {
 	diff := make(map[string]*pulumirpc.PropertyDiff)
-	if !oldOk {
-		if !newOk {
-			return diff
-		}
-		if new == resource.NewNullProperty() {
-			return diff
-		}
-
-		diff[string(key)] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_ADD}
-		return diff
-	}
-
-	if !newOk {
-		if old == resource.NewNullProperty() {
-			return diff
-		}
-
-		diff[string(key)] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_DELETE}
+	baseDiff := makeBaseDiff(old, new, oldOk, newOk)
+	if baseDiff != Undecided {
+		diff[string(key)] = baseDiffToPropertyDiff(baseDiff)
 		return diff
 	}
 
