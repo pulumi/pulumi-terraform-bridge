@@ -2662,7 +2662,6 @@ Resources:
     2 unchanged
 `),
 		},
-		// TODO[pulumi/pulumi-terraform-bridge#2399] nested prop diff
 		{
 			"list block removed empty object",
 			map[string]interface{}{"listBlocks": []interface{}{map[string]interface{}{}}},
@@ -4060,8 +4059,8 @@ outputs:
 	}
 
 	t.Run("PRC enabled", func(t *testing.T) {
-		// TODO[pulumi/pulumi-terraform-bridge#2427]: Incorrect detailed diff with unknown elements
-		t.Skip("Skipping until pulumi/pulumi-terraform-bridge#2427 is resolved")
+		// TODO remove once feature flag CI is set up
+		t.Setenv("PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW", "true")
 		runTest(t, true, autogold.Expect(`Previewing update (test):
   pulumi:pulumi:Stack: (same)
     [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
