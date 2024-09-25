@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
@@ -67,28 +68,54 @@ func makeBaseDiff(old, new resource.PropertyValue, oldOk, newOk bool) baseDiff {
 	return Undecided
 }
 
-func baseDiffToPropertyDiff(diff baseDiff) *pulumirpc.PropertyDiff {
+func baseDiffToPropertyDiff(diff baseDiff, etf shim.Schema, eps *SchemaInfo) *pulumirpc.PropertyDiff {
+	contract.Assertf(diff != Undecided, "diff should not be undecided")
 	switch diff {
 	case Add:
-		return &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_ADD}
+		res := &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_ADD}
+		return propertyDiffResult(etf, eps, res)
 	case Delete:
-		return &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_DELETE}
+		res := &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_DELETE}
+		return propertyDiffResult(etf, eps, res)
 	default:
 		return nil
 	}
 }
 
+func promoteToReplace(diff *pulumirpc.PropertyDiff) *pulumirpc.PropertyDiff {
+	kind := diff.GetKind()
+	switch kind {
+	case pulumirpc.PropertyDiff_ADD:
+		return &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_ADD_REPLACE}
+	case pulumirpc.PropertyDiff_DELETE:
+		return &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_DELETE_REPLACE}
+	case pulumirpc.PropertyDiff_UPDATE:
+		return &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE_REPLACE}
+	default:
+		return diff
+	}
+}
+
+func propertyDiffResult(etf shim.Schema, eps *SchemaInfo, diff *pulumirpc.PropertyDiff) *pulumirpc.PropertyDiff {
+	if (etf != nil && etf.ForceNew()) || (eps != nil && eps.ForceNew != nil && *eps.ForceNew) {
+		return promoteToReplace(diff)
+	}
+	return diff
+}
+
 func makeTopPropDiff(
 	old, new resource.PropertyValue,
 	oldOk, newOk bool,
+	etf shim.Schema,
+	eps *SchemaInfo,
 ) *pulumirpc.PropertyDiff {
 	baseDiff := makeBaseDiff(old, new, oldOk, newOk)
 	if baseDiff != Undecided {
-		return baseDiffToPropertyDiff(baseDiff)
+		return baseDiffToPropertyDiff(baseDiff, etf, eps)
 	}
 
 	if !old.DeepEquals(new) {
-		return &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE}
+		return propertyDiffResult(etf, eps, &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE})
 	}
 	return nil
 }
@@ -105,7 +132,7 @@ func makePropDiff(
 	if isDunder(key) {
 		return nil
 	}
-	topDiff := makeTopPropDiff(old, new, oldOk, newOk)
+	topDiff := makeTopPropDiff(old, new, oldOk, newOk, etf, eps)
 	if topDiff == nil {
 		return nil
 	}
@@ -114,6 +141,7 @@ func makePropDiff(
 
 	if etf == nil {
 		// If the schema is nil, we just return the top-level diff
+		res[string(key)] = topDiff
 		return res
 	}
 
@@ -158,6 +186,7 @@ func makeObjectDiff(
 ) map[string]*pulumirpc.PropertyDiff {
 	diff := make(map[string]*pulumirpc.PropertyDiff)
 	if !old.IsObject() || !new.IsObject() {
+		// TODO: this could be a replace
 		diff[string(key)] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE}
 		return diff
 	}
@@ -199,7 +228,11 @@ func makeElemDiff(
 	diff := make(map[string]*pulumirpc.PropertyDiff)
 	baseDiff := makeBaseDiff(old, new, oldOk, newOk)
 	if baseDiff != Undecided {
-		diff[string(key)] = baseDiffToPropertyDiff(baseDiff)
+		etf, ok := etf.(shim.Schema)
+		if !ok {
+			etf = nil
+		}
+		diff[string(key)] = baseDiffToPropertyDiff(baseDiff, etf, eps)
 		return diff
 	}
 
@@ -233,9 +266,6 @@ func makeElemDiff(
 		for subKey, subDiff := range d {
 			diff[subKey] = subDiff
 		}
-		if len(diff) > 0 {
-			diff[string(key)] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE}
-		}
 	} else {
 		d := makePropDiff(ctx, key, nil, eps.Elem, old, new, true, true)
 		for subKey, subDiff := range d {
@@ -257,7 +287,7 @@ func makeListDiff(
 	diff := make(map[string]*pulumirpc.PropertyDiff)
 	baseDiff := makeBaseDiff(old, new, oldOk, newOk)
 	if baseDiff != Undecided {
-		diff[string(key)] = baseDiffToPropertyDiff(baseDiff)
+		diff[string(key)] = baseDiffToPropertyDiff(baseDiff, etf, eps)
 		return diff
 	}
 
@@ -279,12 +309,12 @@ func makeListDiff(
 	if len(oldList) > len(newList) {
 		for i := len(newList); i < len(oldList); i++ {
 			elemKey := string(key) + "[" + fmt.Sprintf("%d", i) + "]"
-			diff[elemKey] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_DELETE}
+			diff[elemKey] = propertyDiffResult(etf, eps, &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_DELETE})
 		}
 	} else if len(newList) > len(oldList) {
 		for i := len(oldList); i < len(newList); i++ {
 			elemKey := string(key) + "[" + fmt.Sprintf("%d", i) + "]"
-			diff[elemKey] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_ADD}
+			diff[elemKey] = propertyDiffResult(etf, eps, &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_ADD})
 		}
 	}
 
@@ -302,11 +332,12 @@ func makeMapDiff(
 	diff := make(map[string]*pulumirpc.PropertyDiff)
 	baseDiff := makeBaseDiff(old, new, oldOk, newOk)
 	if baseDiff != Undecided {
-		diff[string(key)] = baseDiffToPropertyDiff(baseDiff)
+		diff[string(key)] = baseDiffToPropertyDiff(baseDiff, etf, eps)
 		return diff
 	}
 
 	if !old.IsObject() || !new.IsObject() {
+		// TODO: this could be a replace
 		diff[string(key)] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE}
 		return diff
 	}
