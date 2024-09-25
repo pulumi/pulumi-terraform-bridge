@@ -246,6 +246,7 @@ func runDetailedDiffTest(
 	ps map[string]*SchemaInfo,
 	want map[string]*pulumirpc.PropertyDiff,
 ) {
+	t.Helper()
 	got := makePulumiDetailedDiffV2(context.Background(), tfs, ps, old, new)
 
 	if len(got) != len(want) {
@@ -877,8 +878,7 @@ func TestDetailedDiffTFForceNewPlain(t *testing.T) {
 	})
 }
 
-func TestDetailedDiffTFForceNewCollection(t *testing.T) {
-	// TODO: Investigate force new in TF with lists and objects
+func TestDetailedDiffTFForceNewAttributeCollection(t *testing.T) {
 	sdkv2Schema := map[string]*schema.Schema{
 		"list_prop": {
 			Type:     schema.TypeList,
@@ -922,6 +922,61 @@ func TestDetailedDiffTFForceNewCollection(t *testing.T) {
 	t.Run("changed to empty", func(t *testing.T) {
 		runDetailedDiffTest(t, propertyMapListVal1, propertyMapEmpty, tfs, ps, map[string]*pulumirpc.PropertyDiff{
 			"list_prop[0]": {Kind: pulumirpc.PropertyDiff_DELETE_REPLACE},
+		})
+	})
+}
+
+func TestDetailedDiffTFForceNewBlockCollection(t *testing.T) {
+	sdkv2Schema := map[string]*schema.Schema{
+		"list_prop": {
+			Type: schema.TypeList,
+			Elem: &schema.Resource{
+				Schema: map[string]*schema.Schema{"key": {
+					Type:     schema.TypeString,
+					Optional: true,
+					ForceNew: true,
+				}},
+			},
+			Optional: true,
+		},
+	}
+	ps, tfs := computeSchemas(sdkv2Schema)
+
+	propertyMapEmpty := resource.NewPropertyMapFromMap(
+		map[string]interface{}{},
+	)
+
+	propertyMapListVal1 := resource.NewPropertyMapFromMap(
+		map[string]interface{}{
+			"list_prop": []interface{}{map[string]interface{}{"key": "val1"}},
+		},
+	)
+
+	propertyMapListVal2 := resource.NewPropertyMapFromMap(
+		map[string]interface{}{
+			"list_prop": []interface{}{map[string]interface{}{"key": "val2"}},
+		},
+	)
+
+	t.Run("unchanged", func(t *testing.T) {
+		runDetailedDiffTest(t, propertyMapListVal1, propertyMapListVal1, tfs, ps, nil)
+	})
+
+	t.Run("changed non-empty", func(t *testing.T) {
+		runDetailedDiffTest(t, propertyMapListVal1, propertyMapListVal2, tfs, ps, map[string]*pulumirpc.PropertyDiff{
+			"list_prop[0].key": {Kind: pulumirpc.PropertyDiff_UPDATE},
+		})
+	})
+
+	t.Run("changed from empty", func(t *testing.T) {
+		runDetailedDiffTest(t, propertyMapEmpty, propertyMapListVal1, tfs, ps, map[string]*pulumirpc.PropertyDiff{
+			"list_prop[0].key": {Kind: pulumirpc.PropertyDiff_ADD_REPLACE},
+		})
+	})
+
+	t.Run("changed to empty", func(t *testing.T) {
+		runDetailedDiffTest(t, propertyMapListVal1, propertyMapEmpty, tfs, ps, map[string]*pulumirpc.PropertyDiff{
+			"list_prop[0].key": {Kind: pulumirpc.PropertyDiff_DELETE_REPLACE},
 		})
 	})
 }

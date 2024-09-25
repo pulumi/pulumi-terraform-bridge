@@ -97,6 +97,9 @@ func promoteToReplace(diff *pulumirpc.PropertyDiff) *pulumirpc.PropertyDiff {
 }
 
 func propertyDiffResult(etf shim.Schema, eps *SchemaInfo, diff *pulumirpc.PropertyDiff) *pulumirpc.PropertyDiff {
+	// See pkg/cross-tests/diff_cross_test.go
+	// TestAttributeCollectionForceNew, TestBlockCollectionForceNew, TestBlockCollectionElementForceNew
+	// for a full case study of replacements in TF
 	if (etf != nil && etf.ForceNew()) || (eps != nil && eps.ForceNew != nil && *eps.ForceNew) {
 		return promoteToReplace(diff)
 	}
