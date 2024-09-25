@@ -376,9 +376,10 @@ func TestBasicDetailedDiff(t *testing.T) {
 				},
 				MaxItems: 1,
 			},
-			emptyValue: []interface{}{},
-			value1:     []interface{}{map[string]interface{}{"foo": "bar"}},
-			value2:     []interface{}{map[string]interface{}{"foo": "baz"}},
+			emptyValue: map[string]interface{}{},
+			value1:     map[string]interface{}{"foo": "bar"},
+			value2:     map[string]interface{}{"foo": "baz"},
+			objectLike: true,
 		},
 		{
 			name: "set block",
@@ -413,9 +414,10 @@ func TestBasicDetailedDiff(t *testing.T) {
 				},
 				MaxItems: 1,
 			},
-			emptyValue: []interface{}{},
-			value1:     []interface{}{map[string]interface{}{"foo": "bar"}},
-			value2:     []interface{}{map[string]interface{}{"foo": "baz"}},
+			emptyValue: map[string]interface{}{},
+			value1:     map[string]interface{}{"foo": "bar"},
+			value2:     map[string]interface{}{"foo": "baz"},
+			objectLike: true,
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
@@ -915,18 +917,73 @@ func TestDetailedDiffTFForceNewAttributeCollection(t *testing.T) {
 
 	t.Run("changed from empty", func(t *testing.T) {
 		runDetailedDiffTest(t, propertyMapEmpty, propertyMapListVal1, tfs, ps, map[string]*pulumirpc.PropertyDiff{
-			"list_prop[0]": {Kind: pulumirpc.PropertyDiff_ADD_REPLACE},
+			"list_prop": {Kind: pulumirpc.PropertyDiff_ADD_REPLACE},
 		})
 	})
 
 	t.Run("changed to empty", func(t *testing.T) {
 		runDetailedDiffTest(t, propertyMapListVal1, propertyMapEmpty, tfs, ps, map[string]*pulumirpc.PropertyDiff{
-			"list_prop[0]": {Kind: pulumirpc.PropertyDiff_DELETE_REPLACE},
+			"list_prop": {Kind: pulumirpc.PropertyDiff_DELETE_REPLACE},
 		})
 	})
 }
 
 func TestDetailedDiffTFForceNewBlockCollection(t *testing.T) {
+	sdkv2Schema := map[string]*schema.Schema{
+		"list_prop": {
+			ForceNew: true,
+			Type:     schema.TypeList,
+			Elem: &schema.Resource{
+				Schema: map[string]*schema.Schema{"key": {
+					Type:     schema.TypeString,
+					Optional: true,
+				}},
+			},
+			Optional: true,
+		},
+	}
+	ps, tfs := computeSchemas(sdkv2Schema)
+
+	propertyMapEmpty := resource.NewPropertyMapFromMap(
+		map[string]interface{}{},
+	)
+
+	propertyMapListVal1 := resource.NewPropertyMapFromMap(
+		map[string]interface{}{
+			"list_prop": []interface{}{map[string]interface{}{"key": "val1"}},
+		},
+	)
+
+	propertyMapListVal2 := resource.NewPropertyMapFromMap(
+		map[string]interface{}{
+			"list_prop": []interface{}{map[string]interface{}{"key": "val2"}},
+		},
+	)
+
+	t.Run("unchanged", func(t *testing.T) {
+		runDetailedDiffTest(t, propertyMapListVal1, propertyMapListVal1, tfs, ps, nil)
+	})
+
+	t.Run("changed non-empty", func(t *testing.T) {
+		runDetailedDiffTest(t, propertyMapListVal1, propertyMapListVal2, tfs, ps, map[string]*pulumirpc.PropertyDiff{
+			"list_prop[0].key": {Kind: pulumirpc.PropertyDiff_UPDATE},
+		})
+	})
+
+	t.Run("changed from empty", func(t *testing.T) {
+		runDetailedDiffTest(t, propertyMapEmpty, propertyMapListVal1, tfs, ps, map[string]*pulumirpc.PropertyDiff{
+			"list_prop": {Kind: pulumirpc.PropertyDiff_ADD_REPLACE},
+		})
+	})
+
+	t.Run("changed to empty", func(t *testing.T) {
+		runDetailedDiffTest(t, propertyMapListVal1, propertyMapEmpty, tfs, ps, map[string]*pulumirpc.PropertyDiff{
+			"list_prop": {Kind: pulumirpc.PropertyDiff_DELETE_REPLACE},
+		})
+	})
+}
+
+func TestDetailedDiffTFForceNewElemBlockCollection(t *testing.T) {
 	sdkv2Schema := map[string]*schema.Schema{
 		"list_prop": {
 			Type: schema.TypeList,
@@ -964,24 +1021,25 @@ func TestDetailedDiffTFForceNewBlockCollection(t *testing.T) {
 
 	t.Run("changed non-empty", func(t *testing.T) {
 		runDetailedDiffTest(t, propertyMapListVal1, propertyMapListVal2, tfs, ps, map[string]*pulumirpc.PropertyDiff{
-			"list_prop[0].key": {Kind: pulumirpc.PropertyDiff_UPDATE},
+			"list_prop[0].key": {Kind: pulumirpc.PropertyDiff_UPDATE_REPLACE},
 		})
 	})
 
 	t.Run("changed from empty", func(t *testing.T) {
 		runDetailedDiffTest(t, propertyMapEmpty, propertyMapListVal1, tfs, ps, map[string]*pulumirpc.PropertyDiff{
-			"list_prop[0].key": {Kind: pulumirpc.PropertyDiff_ADD_REPLACE},
+			"list_prop": {Kind: pulumirpc.PropertyDiff_ADD_REPLACE},
 		})
 	})
 
 	t.Run("changed to empty", func(t *testing.T) {
 		runDetailedDiffTest(t, propertyMapListVal1, propertyMapEmpty, tfs, ps, map[string]*pulumirpc.PropertyDiff{
-			"list_prop[0].key": {Kind: pulumirpc.PropertyDiff_DELETE_REPLACE},
+			"list_prop": {Kind: pulumirpc.PropertyDiff_DELETE_REPLACE},
 		})
 	})
 }
 
 func TestDetailedDiffTFForceNewObject(t *testing.T) {
+	// Note that maxItemsOne flattening means that the PropertyMap values contain no lists
 	sdkv2Schema := map[string]*schema.Schema{
 		"object_prop": {
 			Type: schema.TypeList,
@@ -1005,12 +1063,12 @@ func TestDetailedDiffTFForceNewObject(t *testing.T) {
 	)
 	propertyMapObjectVal1 := resource.NewPropertyMapFromMap(
 		map[string]interface{}{
-			"object_prop": []interface{}{map[string]interface{}{"key": "val1"}},
+			"object_prop": map[string]interface{}{"key": "val1"},
 		},
 	)
 	propertyMapObjectVal2 := resource.NewPropertyMapFromMap(
 		map[string]interface{}{
-			"object_prop": []interface{}{map[string]interface{}{"key": "val2"}},
+			"object_prop": map[string]interface{}{"key": "val2"},
 		},
 	)
 
@@ -1020,19 +1078,19 @@ func TestDetailedDiffTFForceNewObject(t *testing.T) {
 
 	t.Run("changed non-empty", func(t *testing.T) {
 		runDetailedDiffTest(t, propertyMapObjectVal1, propertyMapObjectVal2, tfs, ps, map[string]*pulumirpc.PropertyDiff{
-			"object_prop[0].key": {Kind: pulumirpc.PropertyDiff_UPDATE_REPLACE},
+			"object_prop.key": {Kind: pulumirpc.PropertyDiff_UPDATE_REPLACE},
 		})
 	})
 
 	t.Run("changed from empty", func(t *testing.T) {
 		runDetailedDiffTest(t, propertyMapEmpty, propertyMapObjectVal1, tfs, ps, map[string]*pulumirpc.PropertyDiff{
-			"object_prop[0].key": {Kind: pulumirpc.PropertyDiff_ADD_REPLACE},
+			"object_prop": {Kind: pulumirpc.PropertyDiff_ADD_REPLACE},
 		})
 	})
 
 	t.Run("changed to empty", func(t *testing.T) {
 		runDetailedDiffTest(t, propertyMapObjectVal1, propertyMapEmpty, tfs, ps, map[string]*pulumirpc.PropertyDiff{
-			"object_prop[0].key": {Kind: pulumirpc.PropertyDiff_DELETE_REPLACE},
+			"object_prop": {Kind: pulumirpc.PropertyDiff_DELETE_REPLACE},
 		})
 	})
 }

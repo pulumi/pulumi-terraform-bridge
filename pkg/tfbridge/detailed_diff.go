@@ -2,6 +2,7 @@ package tfbridge
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -96,11 +97,54 @@ func promoteToReplace(diff *pulumirpc.PropertyDiff) *pulumirpc.PropertyDiff {
 	}
 }
 
+func isForceNew(etf shim.Schema, eps *SchemaInfo) bool {
+	if etf != nil && etf.ForceNew() {
+		return true
+	}
+	if eps != nil && eps.ForceNew != nil && *eps.ForceNew {
+		return true
+	}
+	return false
+}
+
+func mapHasReplacements(m map[string]*pulumirpc.PropertyDiff) bool {
+	for _, diff := range m {
+		if diff.GetKind() == pulumirpc.PropertyDiff_ADD_REPLACE ||
+			diff.GetKind() == pulumirpc.PropertyDiff_DELETE_REPLACE ||
+			diff.GetKind() == pulumirpc.PropertyDiff_UPDATE_REPLACE {
+			return true
+		}
+	}
+	return false
+}
+
+func simplifyDiff(
+	diff map[string]*pulumirpc.PropertyDiff, key resource.PropertyKey, old, new resource.PropertyValue,
+	oldOk, newOk bool, etf interface{}, eps *SchemaInfo,
+) (map[string]*pulumirpc.PropertyDiff, error) {
+	baseDiff := makeBaseDiff(old, new, oldOk, newOk)
+	if baseDiff != Undecided {
+		etf, ok := etf.(shim.Schema)
+		if !ok {
+			etf = nil
+		}
+		propDiff := baseDiffToPropertyDiff(baseDiff, etf, eps)
+		if propDiff == nil {
+			return nil, nil
+		}
+		if mapHasReplacements(diff) {
+			propDiff = promoteToReplace(propDiff)
+		}
+		return map[string]*pulumirpc.PropertyDiff{string(key): propDiff}, nil
+	}
+	return nil, errors.New("diff is not simplified")
+}
+
 func propertyDiffResult(etf shim.Schema, eps *SchemaInfo, diff *pulumirpc.PropertyDiff) *pulumirpc.PropertyDiff {
 	// See pkg/cross-tests/diff_cross_test.go
 	// TestAttributeCollectionForceNew, TestBlockCollectionForceNew, TestBlockCollectionElementForceNew
 	// for a full case study of replacements in TF
-	if (etf != nil && etf.ForceNew()) || (eps != nil && eps.ForceNew != nil && *eps.ForceNew) {
+	if isForceNew(etf, eps) {
 		return promoteToReplace(diff)
 	}
 	return diff
@@ -135,15 +179,14 @@ func makePropDiff(
 	if isDunder(key) {
 		return nil
 	}
-	topDiff := makeTopPropDiff(old, new, oldOk, newOk, etf, eps)
-	if topDiff == nil {
-		return nil
-	}
-
 	res := make(map[string]*pulumirpc.PropertyDiff)
 
 	if etf == nil {
 		// If the schema is nil, we just return the top-level diff
+		topDiff := makeTopPropDiff(old, new, oldOk, newOk, etf, eps)
+		if topDiff == nil {
+			return nil
+		}
 		res[string(key)] = topDiff
 		return res
 	}
@@ -153,7 +196,8 @@ func makePropDiff(
 		if eps != nil {
 			pelem = eps.Elem
 		}
-		diff := makeElemDiff(ctx, key, etf.Elem(), pelem, old, new, oldOk, newOk)
+		collectionForceNew := isForceNew(etf, eps)
+		diff := makeElemDiff(ctx, key, etf.Elem(), pelem, collectionForceNew, old, new, oldOk, newOk)
 		for subKey, subDiff := range diff {
 			res[subKey] = subDiff
 		}
@@ -174,6 +218,10 @@ func makePropDiff(
 			res[subKey] = subDiff
 		}
 	} else {
+		topDiff := makeTopPropDiff(old, new, oldOk, newOk, etf, eps)
+		if topDiff == nil {
+			return nil
+		}
 		res[string(key)] = topDiff
 	}
 
@@ -186,16 +234,18 @@ func makeObjectDiff(
 	etf shim.SchemaMap,
 	eps map[string]*SchemaInfo,
 	old, new resource.PropertyValue,
+	oldOk, newOk bool,
 ) map[string]*pulumirpc.PropertyDiff {
 	diff := make(map[string]*pulumirpc.PropertyDiff)
-	if !old.IsObject() || !new.IsObject() {
-		// TODO: this could be a replace
-		diff[string(key)] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE}
-		return diff
+	oldObj := resource.PropertyMap{}
+	newObj := resource.PropertyMap{}
+	if isPresent(old, oldOk) && old.IsObject() {
+		oldObj = old.ObjectValue()
+	}
+	if isPresent(new, newOk) && new.IsObject() {
+		newObj = new.ObjectValue()
 	}
 
-	oldObj := old.ObjectValue()
-	newObj := new.ObjectValue()
 	keys := make(map[resource.PropertyKey]struct{})
 	for k := range oldObj {
 		keys[k] = struct{}{}
@@ -217,6 +267,11 @@ func makeObjectDiff(
 		}
 	}
 
+	simplerDiff, err := simplifyDiff(diff, key, old, new, oldOk, newOk, etf, nil)
+	if err == nil {
+		return simplerDiff
+	}
+
 	return diff
 }
 
@@ -225,32 +280,26 @@ func makeElemDiff(
 	key resource.PropertyKey,
 	etf interface{},
 	eps *SchemaInfo,
+	parentForceNew bool,
 	old, new resource.PropertyValue,
 	oldOk, newOk bool,
 ) map[string]*pulumirpc.PropertyDiff {
 	diff := make(map[string]*pulumirpc.PropertyDiff)
-	baseDiff := makeBaseDiff(old, new, oldOk, newOk)
-	if baseDiff != Undecided {
-		etf, ok := etf.(shim.Schema)
-		if !ok {
-			etf = nil
-		}
-		diff[string(key)] = baseDiffToPropertyDiff(baseDiff, etf, eps)
-		return diff
-	}
-
 	if _, ok := etf.(shim.Resource); ok {
 		fields := map[string]*SchemaInfo{}
 		if eps != nil {
 			fields = eps.Fields
 		}
+		etfSch := etf.(shim.Resource).Schema()
 		d := makeObjectDiff(
 			ctx,
 			key,
-			etf.(shim.Resource).Schema(),
+			etfSch,
 			fields,
 			old,
 			new,
+			oldOk,
+			newOk,
 		)
 		for subKey, subDiff := range d {
 			diff[subKey] = subDiff
@@ -263,17 +312,28 @@ func makeElemDiff(
 			eps,
 			old,
 			new,
-			true,
-			true,
+			oldOk,
+			newOk,
 		)
 		for subKey, subDiff := range d {
+			if parentForceNew {
+				subDiff = promoteToReplace(subDiff)
+			}
 			diff[subKey] = subDiff
 		}
 	} else {
-		d := makePropDiff(ctx, key, nil, eps.Elem, old, new, true, true)
+		d := makePropDiff(ctx, key, nil, eps.Elem, old, new, oldOk, newOk)
 		for subKey, subDiff := range d {
+			if parentForceNew {
+				subDiff = promoteToReplace(subDiff)
+			}
 			diff[subKey] = subDiff
 		}
+	}
+
+	simplerDiff, err := simplifyDiff(diff, key, old, new, oldOk, newOk, etf, eps)
+	if err == nil {
+		return simplerDiff
 	}
 
 	return diff
@@ -288,37 +348,43 @@ func makeListDiff(
 	oldOk, newOk bool,
 ) map[string]*pulumirpc.PropertyDiff {
 	diff := make(map[string]*pulumirpc.PropertyDiff)
-	baseDiff := makeBaseDiff(old, new, oldOk, newOk)
-	if baseDiff != Undecided {
-		diff[string(key)] = baseDiffToPropertyDiff(baseDiff, etf, eps)
-		return diff
+	oldList := []resource.PropertyValue{}
+	newList := []resource.PropertyValue{}
+	if isPresent(old, oldOk) {
+		oldList = old.ArrayValue()
 	}
-
-	oldList := old.ArrayValue()
-	newList := new.ArrayValue()
+	if isPresent(new, newOk) {
+		newList = new.ArrayValue()
+	}
 
 	// naive diffing of lists
 	// TODO: implement a more sophisticated diffing algorithm
-	shorterLen := min(len(oldList), len(newList))
-	for i := 0; i < shorterLen; i++ {
+	// TODO: investigate how this interacts with force new - is identity preserved or just order
+	collectionForceNew := isForceNew(etf, eps)
+	longerLen := max(len(oldList), len(newList))
+	for i := 0; i < longerLen; i++ {
 		elemKey := string(key) + "[" + fmt.Sprintf("%d", i) + "]"
-		d := makeElemDiff(ctx, resource.PropertyKey(elemKey), etf.Elem(), eps, oldList[i], newList[i], true, true)
+		oldOk := i < len(oldList)
+		oldVal := resource.NewNullProperty()
+		if oldOk {
+			oldVal = oldList[i]
+		}
+		newOk := i < len(newList)
+		newVal := resource.NewNullProperty()
+		if newOk {
+			newVal = newList[i]
+		}
+
+		d := makeElemDiff(
+			ctx, resource.PropertyKey(elemKey), etf.Elem(), eps, collectionForceNew, oldVal, newVal, oldOk, newOk)
 		for subKey, subDiff := range d {
 			diff[subKey] = subDiff
 		}
 	}
 
-	// if the lists are different lengths, add the remaining elements as adds or deletes
-	if len(oldList) > len(newList) {
-		for i := len(newList); i < len(oldList); i++ {
-			elemKey := string(key) + "[" + fmt.Sprintf("%d", i) + "]"
-			diff[elemKey] = propertyDiffResult(etf, eps, &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_DELETE})
-		}
-	} else if len(newList) > len(oldList) {
-		for i := len(oldList); i < len(newList); i++ {
-			elemKey := string(key) + "[" + fmt.Sprintf("%d", i) + "]"
-			diff[elemKey] = propertyDiffResult(etf, eps, &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_ADD})
-		}
+	simplerDiff, err := simplifyDiff(diff, key, old, new, oldOk, newOk, etf, eps)
+	if err == nil {
+		return simplerDiff
 	}
 
 	return diff
@@ -333,20 +399,15 @@ func makeMapDiff(
 	oldOk, newOk bool,
 ) map[string]*pulumirpc.PropertyDiff {
 	diff := make(map[string]*pulumirpc.PropertyDiff)
-	baseDiff := makeBaseDiff(old, new, oldOk, newOk)
-	if baseDiff != Undecided {
-		diff[string(key)] = baseDiffToPropertyDiff(baseDiff, etf, eps)
-		return diff
+	oldMap := resource.PropertyMap{}
+	newMap := resource.PropertyMap{}
+	if isPresent(old, oldOk) && old.IsObject() {
+		oldMap = old.ObjectValue()
+	}
+	if isPresent(new, newOk) && new.IsObject() {
+		newMap = new.ObjectValue()
 	}
 
-	if !old.IsObject() || !new.IsObject() {
-		// TODO: this could be a replace
-		diff[string(key)] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE}
-		return diff
-	}
-
-	oldMap := old.ObjectValue()
-	newMap := new.ObjectValue()
 	keys := make(map[resource.PropertyKey]struct{})
 	for k := range oldMap {
 		keys[k] = struct{}{}
@@ -355,6 +416,7 @@ func makeMapDiff(
 		keys[k] = struct{}{}
 	}
 
+	collectionForceNew := isForceNew(etf, eps)
 	for k := range keys {
 		key := getSubPath(key, k)
 		oldVal, oldOk := oldMap[k]
@@ -364,11 +426,16 @@ func makeMapDiff(
 		if eps != nil {
 			pelem = eps.Elem
 		}
-		elemDiff := makeElemDiff(ctx, key, etf.Elem(), pelem, oldVal, newVal, oldOk, newOk)
+		elemDiff := makeElemDiff(ctx, key, etf.Elem(), pelem, collectionForceNew, oldVal, newVal, oldOk, newOk)
 
 		for subKey, subDiff := range elemDiff {
 			diff[subKey] = subDiff
 		}
+	}
+
+	simplerDiff, err := simplifyDiff(diff, key, old, new, oldOk, newOk, etf, eps)
+	if err == nil {
+		return simplerDiff
 	}
 
 	return diff
