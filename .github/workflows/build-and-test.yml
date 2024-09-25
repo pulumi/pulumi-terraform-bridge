@@ -40,6 +40,7 @@ jobs:
         run: exit 0
       - name: export feature flags
         run: export ${{ matrix.feature-flags }}=true >> $GITHUB_ENV
+        if: ${{ matrix.feature-flags != 'DEFAULT' }}
       - name: Build
         run: make build
       - name: Build PF
