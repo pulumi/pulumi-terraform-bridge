@@ -1007,3 +1007,188 @@ func TestNilVsEmptyMapProperty(t *testing.T) {
 		})
 	})
 }
+
+func TestAttributeCollectionForceNew(t *testing.T) {
+	res := &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"list": {
+				Type:     schema.TypeList,
+				Optional: true,
+				ForceNew: true,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
+			},
+			"set": {
+				Type:     schema.TypeSet,
+				Optional: true,
+				ForceNew: true,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
+			},
+			"map": {
+				Type:     schema.TypeMap,
+				Optional: true,
+				ForceNew: true,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
+			},
+		},
+	}
+
+	t.Run("list", func(t *testing.T) {
+		res := runDiffCheck(t, diffTestCase{
+			Resource: res,
+			Config1:  map[string]any{"list": []any{"A"}},
+			Config2:  map[string]any{"list": []any{"B"}},
+		})
+
+		require.Equal(t, []string{"create", "delete"}, res.TFDiff.Actions)
+		autogold.Expect(map[string]interface{}{"lists[0]": map[string]interface{}{"kind": "UPDATE_REPLACE"}}).Equal(
+			t, res.PulumiDiff.DetailedDiff)
+	})
+
+	t.Run("set", func(t *testing.T) {
+		res := runDiffCheck(t, diffTestCase{
+			Resource: res,
+			Config1:  map[string]any{"set": []any{"A"}},
+			Config2:  map[string]any{"set": []any{"B"}},
+		})
+
+		require.Equal(t, []string{"create", "delete"}, res.TFDiff.Actions)
+		autogold.Expect(map[string]interface{}{"sets[0]": map[string]interface{}{"kind": "UPDATE_REPLACE"}}).Equal(
+			t, res.PulumiDiff.DetailedDiff)
+	})
+
+	t.Run("map", func(t *testing.T) {
+		res := runDiffCheck(t, diffTestCase{
+			Resource: res,
+			Config1:  map[string]any{"map": map[string]any{"A": "A"}},
+			Config2:  map[string]any{"map": map[string]any{"A": "B"}},
+		})
+
+		require.Equal(t, []string{"create", "delete"}, res.TFDiff.Actions)
+		autogold.Expect(map[string]interface{}{"map.A": map[string]interface{}{"kind": "UPDATE_REPLACE"}}).Equal(
+			t, res.PulumiDiff.DetailedDiff)
+	})
+}
+
+func TestBlockCollectionForceNew(t *testing.T) {
+	res := &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"list": {
+				Type:     schema.TypeList,
+				Optional: true,
+				ForceNew: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"x": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+					},
+				},
+			},
+			"set": {
+				Type:     schema.TypeSet,
+				Optional: true,
+				ForceNew: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"x": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+					},
+				},
+			},
+			"other": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+		},
+	}
+
+	t.Run("list", func(t *testing.T) {
+		res := runDiffCheck(t, diffTestCase{
+			Resource: res,
+			Config1:  map[string]any{"list": []any{map[string]any{"x": "A"}}},
+			Config2:  map[string]any{"list": []any{map[string]any{"x": "B"}}},
+		})
+
+		require.Equal(t, []string{"update"}, res.TFDiff.Actions)
+		autogold.Expect(map[string]interface{}{"lists[0].x": map[string]interface{}{"kind": "UPDATE"}}).Equal(
+			t, res.PulumiDiff.DetailedDiff)
+	})
+
+	t.Run("set", func(t *testing.T) {
+		res := runDiffCheck(t, diffTestCase{
+			Resource: res,
+			Config1:  map[string]any{"set": []any{map[string]any{"x": "A"}}},
+			Config2:  map[string]any{"set": []any{map[string]any{"x": "B"}}},
+		})
+
+		require.Equal(t, []string{"update"}, res.TFDiff.Actions)
+		autogold.Expect(map[string]interface{}{"sets[0].x": map[string]interface{}{"kind": "UPDATE"}}).Equal(
+			t, res.PulumiDiff.DetailedDiff)
+	})
+}
+
+func TestBlockCollectionElementForceNew(t *testing.T) {
+	res := &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"list": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"x": {
+							Type:     schema.TypeString,
+							Optional: true,
+							ForceNew: true,
+						},
+					},
+				},
+			},
+			"set": {
+				Type:     schema.TypeSet,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"x": {
+							Type:     schema.TypeString,
+							Optional: true,
+							ForceNew: true,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	t.Run("list", func(t *testing.T) {
+		res := runDiffCheck(t, diffTestCase{
+			Resource: res,
+			Config1:  map[string]any{"list": []any{map[string]any{"x": "A"}}},
+			Config2:  map[string]any{"list": []any{map[string]any{"x": "B"}}},
+		})
+
+		require.Equal(t, []string{"create", "delete"}, res.TFDiff.Actions)
+		autogold.Expect(map[string]interface{}{"lists[0].x": map[string]interface{}{"kind": "UPDATE_REPLACE"}}).Equal(
+			t, res.PulumiDiff.DetailedDiff)
+	})
+
+	t.Run("set", func(t *testing.T) {
+		res := runDiffCheck(t, diffTestCase{
+			Resource: res,
+			Config1:  map[string]any{"set": []any{map[string]any{"x": "A"}}},
+			Config2:  map[string]any{"set": []any{map[string]any{"x": "B"}}},
+		})
+
+		require.Equal(t, []string{"create", "delete"}, res.TFDiff.Actions)
+		autogold.Expect(map[string]interface{}{"sets[0].x": map[string]interface{}{"kind": "UPDATE_REPLACE"}}).Equal(
+			t, res.PulumiDiff.DetailedDiff)
+	})
+}
