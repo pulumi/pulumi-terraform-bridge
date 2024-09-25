@@ -20,6 +20,7 @@ jobs:
         # go version in our go.mod files.
         go-version: [1.22.x, 1.23.x]
         platform: [ubuntu-latest, macos-latest, windows-latest]
+        feature-flags: ["DEFAULT", "PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW"]
     runs-on: ${{ matrix.platform }}
     steps:
       - name: Install pulumi
@@ -34,6 +35,12 @@ jobs:
           go-version: ${{ matrix.go-version }}
           cache-dependency-path: |
             **/go.sum
+      - name: export feature flags
+        run: echo ${{ matrix.feature-flags }}=true >> $GITHUB_ENV
+        if: ${{ matrix.platform != 'windows-latest' && matrix.feature-flags != 'DEFAULT' }}
+      - name: export feature flags
+        run: echo ${{ matrix.feature-flags }}=true >> $env:GITHUB_ENV
+        if: ${{ matrix.platform == 'windows-latest' && matrix.feature-flags != 'DEFAULT' }}
       - name: Build
         run: make build
       - name: Build PF
