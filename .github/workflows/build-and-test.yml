@@ -20,7 +20,7 @@ jobs:
         # go version in our go.mod files.
         go-version: [1.22.x, 1.23.x]
         platform: [ubuntu-latest, macos-latest, windows-latest]
-        feature-flags: ["DUMMY", "PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW"]
+        feature-flags: ["DEFAULT", "PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW"]
     runs-on: ${{ matrix.platform }}
     steps:
       - name: Install pulumi
