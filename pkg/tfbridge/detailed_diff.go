@@ -3,6 +3,7 @@ package tfbridge
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -37,6 +38,16 @@ func isPresent(val resource.PropertyValue, valOk bool) bool {
 		!val.IsNull() &&
 		!(val.IsArray() && val.ArrayValue() == nil) &&
 		!(val.IsObject() && val.ObjectValue() == nil)
+}
+
+func getSubPath(key, subkey resource.PropertyKey) resource.PropertyKey {
+	if key == "" {
+		return subkey
+	}
+	if strings.ContainsAny(string(subkey), `."[]`) {
+		return resource.PropertyKey(fmt.Sprintf(`%s["%s"]`, key, strings.ReplaceAll(string(subkey), `"`, `\"`)))
+	}
+	return resource.PropertyKey(string(key) + "." + string(subkey))
 }
 
 func makeBaseDiff(old, new resource.PropertyValue, oldOk, newOk bool) baseDiff {
@@ -162,13 +173,12 @@ func makeObjectDiff(
 	}
 
 	for k := range keys {
-		// TODO: is escaping needed here?
-		key := string(key) + "." + string(k)
+		key := getSubPath(key, k)
 		oldVal, oldOk := oldObj[k]
 		newVal, newOk := newObj[k]
 		_, etf, eps := getInfoFromPulumiName(k, etf, eps)
 
-		propDiff := makePropDiff(ctx, resource.PropertyKey(key), etf, eps, oldVal, newVal, oldOk, newOk)
+		propDiff := makePropDiff(ctx, key, etf, eps, oldVal, newVal, oldOk, newOk)
 
 		for subKey, subDiff := range propDiff {
 			diff[subKey] = subDiff
@@ -312,8 +322,7 @@ func makeMapDiff(
 	}
 
 	for k := range keys {
-		// TODO: is escaping needed here?
-		key := string(key) + "." + string(k)
+		key := getSubPath(key, k)
 		oldVal, oldOk := oldMap[k]
 		newVal, newOk := newMap[k]
 
@@ -321,7 +330,7 @@ func makeMapDiff(
 		if eps != nil {
 			pelem = eps.Elem
 		}
-		elemDiff := makeElemDiff(ctx, resource.PropertyKey(key), etf.Elem(), pelem, oldVal, newVal, oldOk, newOk)
+		elemDiff := makeElemDiff(ctx, key, etf.Elem(), pelem, oldVal, newVal, oldOk, newOk)
 
 		for subKey, subDiff := range elemDiff {
 			diff[subKey] = subDiff

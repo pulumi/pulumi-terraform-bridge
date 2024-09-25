@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/tokens"
@@ -33,6 +34,29 @@ func computeSchemas(sch map[string]*schema.Schema) (map[string]*info.Schema, shi
 	provider.MustComputeTokens(tokens.SingleModule("prov", "index", makeToken))
 
 	return provider.Resources["prov_res"].Fields, provider.P.ResourcesMap().Get("prov_res").Schema()
+}
+
+func TestSubPath(t *testing.T) {
+	require.Equal(t, getSubPath("foo", "bar"), resource.PropertyKey("foo.bar"))
+	require.Equal(t, getSubPath("foo.bar", "baz"), resource.PropertyKey("foo.bar.baz"))
+	require.Equal(t, getSubPath("foo", "bar.baz"), resource.PropertyKey(`foo["bar.baz"]`))
+}
+
+func TestMakeBaseDiff(t *testing.T) {
+	nilVal := resource.NewNullProperty()
+	nilArr := resource.NewArrayProperty(nil)
+	nilMap := resource.NewObjectProperty(nil)
+	nonNilVal := resource.NewStringProperty("foo")
+	nonNilVal2 := resource.NewStringProperty("bar")
+
+	require.Equal(t, makeBaseDiff(nilVal, nilVal, true, true), NoDiff)
+	require.Equal(t, makeBaseDiff(nilVal, nilVal, false, false), NoDiff)
+	require.Equal(t, makeBaseDiff(nilVal, nonNilVal, true, true), Add)
+	require.Equal(t, makeBaseDiff(nilVal, nonNilVal, false, true), Add)
+	require.Equal(t, makeBaseDiff(nonNilVal, nilVal, true, false), Delete)
+	require.Equal(t, makeBaseDiff(nonNilVal, nilArr, true, true), Delete)
+	require.Equal(t, makeBaseDiff(nonNilVal, nilMap, true, true), Delete)
+	require.Equal(t, makeBaseDiff(nonNilVal, nonNilVal2, true, true), Undecided)
 }
 
 func TestMakePropDiff(t *testing.T) {
