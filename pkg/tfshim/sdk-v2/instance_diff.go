@@ -1,6 +1,7 @@
 package sdkv2
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
@@ -82,6 +83,10 @@ func (d v2InstanceDiff) ProposedState(res shim.Resource, priorState shim.Instanc
 		tf:       prior,
 		diff:     d.tf,
 	}, nil
+}
+
+func (d v2InstanceDiff) PriorState() (shim.InstanceState, error) {
+	return nil, fmt.Errorf("prior state is not available")
 }
 
 func (d v2InstanceDiff) Destroy() bool {

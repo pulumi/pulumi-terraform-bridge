@@ -63,6 +63,8 @@ type InstanceDiff interface {
 	//
 	// DiffEqualDecisionOverride is only respected when EnableAccurateBridgePreview is set.
 	DiffEqualDecisionOverride() DiffOverride
+	// Required if DiffEqualDecisionOverride is enabled.
+	PriorState() (InstanceState, error)
 }
 
 type ValueType int

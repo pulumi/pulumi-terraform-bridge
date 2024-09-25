@@ -90,6 +90,10 @@ func (d *instanceDiff) ProposedState(res shim.Resource, priorState shim.Instance
 	}, nil
 }
 
+func (d *instanceDiff) PriorState() (shim.InstanceState, error) {
+	return nil, fmt.Errorf("prior state is not available")
+}
+
 func (d *instanceDiff) Destroy() bool {
 	return d.destroy
 }
