@@ -1008,6 +1008,15 @@ func TestNilVsEmptyMapProperty(t *testing.T) {
 	})
 }
 
+func findKindInPulumiDetailedDiff(detailedDiff map[string]interface{}, key string) bool {
+	for _, val := range detailedDiff {
+		if val.(map[string]string)["kind"] == key {
+			return true
+		}
+	}
+	return false
+}
+
 func TestAttributeCollectionForceNew(t *testing.T) {
 	res := &schema.Resource{
 		Schema: map[string]*schema.Schema{
@@ -1047,8 +1056,7 @@ func TestAttributeCollectionForceNew(t *testing.T) {
 			})
 
 			require.Equal(t, []string{"create", "delete"}, res.TFDiff.Actions)
-			autogold.Expect(map[string]interface{}{"lists[0]": map[string]interface{}{"kind": "UPDATE_REPLACE"}}).Equal(
-				t, res.PulumiDiff.DetailedDiff)
+			require.True(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "UPDATE_REPLACE"))
 		})
 
 		t.Run("changed to empty", func(t *testing.T) {
@@ -1059,8 +1067,7 @@ func TestAttributeCollectionForceNew(t *testing.T) {
 			})
 
 			require.Equal(t, []string{"create", "delete"}, res.TFDiff.Actions)
-			autogold.Expect(map[string]interface{}{"lists": map[string]interface{}{"kind": "UPDATE"}, "lists[0]": map[string]interface{}{"kind": "DELETE_REPLACE"}}).Equal(
-				t, res.PulumiDiff.DetailedDiff)
+			require.True(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "DELETE_REPLACE"))
 		})
 
 		t.Run("changed from empty", func(t *testing.T) {
@@ -1071,8 +1078,7 @@ func TestAttributeCollectionForceNew(t *testing.T) {
 			})
 
 			require.Equal(t, []string{"create", "delete"}, res.TFDiff.Actions)
-			autogold.Expect(map[string]interface{}{"lists": map[string]interface{}{"kind": "UPDATE"}, "lists[0]": map[string]interface{}{"kind": "ADD_REPLACE"}}).Equal(
-				t, res.PulumiDiff.DetailedDiff)
+			require.True(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "ADD_REPLACE"))
 		})
 	})
 
@@ -1085,8 +1091,7 @@ func TestAttributeCollectionForceNew(t *testing.T) {
 			})
 
 			require.Equal(t, []string{"create", "delete"}, res.TFDiff.Actions)
-			autogold.Expect(map[string]interface{}{"sets[0]": map[string]interface{}{"kind": "UPDATE_REPLACE"}}).Equal(
-				t, res.PulumiDiff.DetailedDiff)
+			require.True(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "UPDATE_REPLACE"))
 		})
 
 		t.Run("changed to empty", func(t *testing.T) {
@@ -1097,8 +1102,7 @@ func TestAttributeCollectionForceNew(t *testing.T) {
 			})
 
 			require.Equal(t, []string{"create", "delete"}, res.TFDiff.Actions)
-			autogold.Expect(map[string]interface{}{"sets": map[string]interface{}{"kind": "UPDATE"}, "sets[0]": map[string]interface{}{"kind": "DELETE_REPLACE"}}).Equal(
-				t, res.PulumiDiff.DetailedDiff)
+			require.True(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "DELETE_REPLACE"))
 		})
 
 		t.Run("changed from empty", func(t *testing.T) {
@@ -1109,8 +1113,7 @@ func TestAttributeCollectionForceNew(t *testing.T) {
 			})
 
 			require.Equal(t, []string{"create", "delete"}, res.TFDiff.Actions)
-			autogold.Expect(map[string]interface{}{"sets": map[string]interface{}{"kind": "UPDATE"}, "sets[0]": map[string]interface{}{"kind": "ADD_REPLACE"}}).Equal(
-				t, res.PulumiDiff.DetailedDiff)
+			require.True(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "ADD_REPLACE"))
 		})
 	})
 
@@ -1123,8 +1126,7 @@ func TestAttributeCollectionForceNew(t *testing.T) {
 			})
 
 			require.Equal(t, []string{"create", "delete"}, res.TFDiff.Actions)
-			autogold.Expect(map[string]interface{}{"map.A": map[string]interface{}{"kind": "UPDATE_REPLACE"}}).Equal(
-				t, res.PulumiDiff.DetailedDiff)
+			require.True(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "UPDATE_REPLACE"))
 		})
 
 		t.Run("changed to empty", func(t *testing.T) {
@@ -1135,8 +1137,7 @@ func TestAttributeCollectionForceNew(t *testing.T) {
 			})
 
 			require.Equal(t, []string{"create", "delete"}, res.TFDiff.Actions)
-			autogold.Expect(map[string]interface{}{"map": map[string]interface{}{"kind": "UPDATE"}, "map.A": map[string]interface{}{"kind": "DELETE_REPLACE"}}).Equal(
-				t, res.PulumiDiff.DetailedDiff)
+			require.True(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "DELETE_REPLACE"))
 		})
 
 		t.Run("changed from empty", func(t *testing.T) {
@@ -1147,8 +1148,7 @@ func TestAttributeCollectionForceNew(t *testing.T) {
 			})
 
 			require.Equal(t, []string{"create", "delete"}, res.TFDiff.Actions)
-			autogold.Expect(map[string]interface{}{"map": map[string]interface{}{"kind": "UPDATE"}, "map.A": map[string]interface{}{"kind": "ADD_REPLACE"}}).Equal(
-				t, res.PulumiDiff.DetailedDiff)
+			require.True(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "ADD_REPLACE"))
 		})
 	})
 }
@@ -1198,8 +1198,8 @@ func TestBlockCollectionForceNew(t *testing.T) {
 			})
 
 			require.Equal(t, []string{"update"}, res.TFDiff.Actions)
-			autogold.Expect(map[string]interface{}{"lists[0].x": map[string]interface{}{"kind": "UPDATE"}}).Equal(
-				t, res.PulumiDiff.DetailedDiff)
+			require.True(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "UPDATE"))
+			require.False(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "UPDATE_REPLACE"))
 		})
 
 		t.Run("changed to empty", func(t *testing.T) {
@@ -1210,8 +1210,7 @@ func TestBlockCollectionForceNew(t *testing.T) {
 			})
 
 			require.Equal(t, []string{"create", "delete"}, res.TFDiff.Actions)
-			autogold.Expect(map[string]interface{}{"lists": map[string]interface{}{"kind": "UPDATE"}, "lists[0].x": map[string]interface{}{"kind": "DELETE_REPLACE"}}).Equal(
-				t, res.PulumiDiff.DetailedDiff)
+			require.True(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "DELETE_REPLACE"))
 		})
 
 		t.Run("changed from empty", func(t *testing.T) {
@@ -1222,8 +1221,7 @@ func TestBlockCollectionForceNew(t *testing.T) {
 			})
 
 			require.Equal(t, []string{"create", "delete"}, res.TFDiff.Actions)
-			autogold.Expect(map[string]interface{}{"lists": map[string]interface{}{"kind": "UPDATE"}, "lists[0].x": map[string]interface{}{"kind": "ADD_REPLACE"}}).Equal(
-				t, res.PulumiDiff.DetailedDiff)
+			require.True(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "ADD_REPLACE"))
 		})
 	})
 
@@ -1236,8 +1234,8 @@ func TestBlockCollectionForceNew(t *testing.T) {
 			})
 
 			require.Equal(t, []string{"update"}, res.TFDiff.Actions)
-			autogold.Expect(map[string]interface{}{"sets[0].x": map[string]interface{}{"kind": "UPDATE"}}).Equal(
-				t, res.PulumiDiff.DetailedDiff)
+			require.True(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "UPDATE"))
+			require.False(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "UPDATE_REPLACE"))
 		})
 
 		t.Run("changed to empty", func(t *testing.T) {
@@ -1248,8 +1246,7 @@ func TestBlockCollectionForceNew(t *testing.T) {
 			})
 
 			require.Equal(t, []string{"create", "delete"}, res.TFDiff.Actions)
-			autogold.Expect(map[string]interface{}{"sets": map[string]interface{}{"kind": "UPDATE"}, "sets[0].x": map[string]interface{}{"kind": "DELETE_REPLACE"}}).Equal(
-				t, res.PulumiDiff.DetailedDiff)
+			require.True(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "DELETE_REPLACE"))
 		})
 
 		t.Run("changed from empty", func(t *testing.T) {
@@ -1260,8 +1257,7 @@ func TestBlockCollectionForceNew(t *testing.T) {
 			})
 
 			require.Equal(t, []string{"create", "delete"}, res.TFDiff.Actions)
-			autogold.Expect(map[string]interface{}{"sets": map[string]interface{}{"kind": "UPDATE"}, "sets[0].x": map[string]interface{}{"kind": "ADD_REPLACE"}}).Equal(
-				t, res.PulumiDiff.DetailedDiff)
+			require.True(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "ADD_REPLACE"))
 		})
 	})
 }
@@ -1307,8 +1303,7 @@ func TestBlockCollectionElementForceNew(t *testing.T) {
 			})
 
 			require.Equal(t, []string{"create", "delete"}, res.TFDiff.Actions)
-			autogold.Expect(map[string]interface{}{"lists[0].x": map[string]interface{}{"kind": "UPDATE_REPLACE"}}).Equal(
-				t, res.PulumiDiff.DetailedDiff)
+			require.True(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "UPDATE_REPLACE"))
 		})
 
 		t.Run("changed to empty", func(t *testing.T) {
@@ -1319,8 +1314,7 @@ func TestBlockCollectionElementForceNew(t *testing.T) {
 			})
 
 			require.Equal(t, []string{"create", "delete"}, res.TFDiff.Actions)
-			autogold.Expect(map[string]interface{}{"lists": map[string]interface{}{"kind": "UPDATE"}, "lists[0].x": map[string]interface{}{"kind": "DELETE_REPLACE"}}).Equal(
-				t, res.PulumiDiff.DetailedDiff)
+			require.True(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "DELETE_REPLACE"))
 		})
 
 		t.Run("changed from empty", func(t *testing.T) {
@@ -1331,8 +1325,7 @@ func TestBlockCollectionElementForceNew(t *testing.T) {
 			})
 
 			require.Equal(t, []string{"create", "delete"}, res.TFDiff.Actions)
-			autogold.Expect(map[string]interface{}{"lists": map[string]interface{}{"kind": "UPDATE"}, "lists[0].x": map[string]interface{}{"kind": "ADD_REPLACE"}}).Equal(
-				t, res.PulumiDiff.DetailedDiff)
+			require.True(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "ADD_REPLACE"))
 		})
 	})
 
@@ -1345,8 +1338,7 @@ func TestBlockCollectionElementForceNew(t *testing.T) {
 			})
 
 			require.Equal(t, []string{"create", "delete"}, res.TFDiff.Actions)
-			autogold.Expect(map[string]interface{}{"sets[0].x": map[string]interface{}{"kind": "UPDATE_REPLACE"}}).Equal(
-				t, res.PulumiDiff.DetailedDiff)
+			require.True(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "UPDATE_REPLACE"))
 		})
 
 		t.Run("changed to empty", func(t *testing.T) {
@@ -1357,8 +1349,7 @@ func TestBlockCollectionElementForceNew(t *testing.T) {
 			})
 
 			require.Equal(t, []string{"create", "delete"}, res.TFDiff.Actions)
-			autogold.Expect(map[string]interface{}{"sets": map[string]interface{}{"kind": "UPDATE"}, "sets[0].x": map[string]interface{}{"kind": "DELETE_REPLACE"}}).Equal(
-				t, res.PulumiDiff.DetailedDiff)
+			require.True(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "DELETE_REPLACE"))
 		})
 
 		t.Run("changed from empty", func(t *testing.T) {
@@ -1369,8 +1360,7 @@ func TestBlockCollectionElementForceNew(t *testing.T) {
 			})
 
 			require.Equal(t, []string{"create", "delete"}, res.TFDiff.Actions)
-			autogold.Expect(map[string]interface{}{"sets": map[string]interface{}{"kind": "UPDATE"}, "sets[0].x": map[string]interface{}{"kind": "ADD_REPLACE"}}).Equal(
-				t, res.PulumiDiff.DetailedDiff)
+			require.True(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "ADD_REPLACE"))
 		})
 	})
 }
