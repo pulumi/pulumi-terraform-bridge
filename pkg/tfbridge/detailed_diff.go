@@ -14,9 +14,13 @@ import (
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
-func isFlattened(s shim.Schema) bool {
+func isFlattened(s shim.Schema, ps *SchemaInfo) bool {
 	if s.Type() != shim.TypeList && s.Type() != shim.TypeSet {
 		return false
+	}
+
+	if ps != nil && ps.MaxItemsOne != nil {
+		return *ps.MaxItemsOne
 	}
 
 	return s.MaxItems() == 1
@@ -191,7 +195,7 @@ func makePropDiff(
 		return res
 	}
 
-	if isFlattened(etf) {
+	if isFlattened(etf, eps) {
 		pelem := &info.Schema{}
 		if eps != nil {
 			pelem = eps.Elem
