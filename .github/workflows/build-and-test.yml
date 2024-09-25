@@ -35,7 +35,6 @@ jobs:
           go-version: ${{ matrix.go-version }}
           cache-dependency-path: |
             **/go.sum
-      # export the feautre flags to the environment if they are set
       - name: export feature flags
         run: export ${{ matrix.feature-flags }}=true >> $GITHUB_ENV
       - name: Build
