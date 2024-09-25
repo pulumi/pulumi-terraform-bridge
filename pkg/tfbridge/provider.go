@@ -1159,16 +1159,14 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 	}
 
 	var detailedDiff map[string]*pulumirpc.PropertyDiff
-	changes := pulumirpc.DiffResponse_DIFF_NONE
+	var changes pulumirpc.DiffResponse_DiffChanges
 
-	if opts.enableAccurateBridgePreview {
-		if decision := diff.DiffEqualDecisionOverride(); decision != shim.DiffNoOverride {
-			// TODO non-sdkv2 decision
-			if decision == shim.DiffOverrideNoUpdate {
-				changes = pulumirpc.DiffResponse_DIFF_NONE
-			} else {
-				changes = pulumirpc.DiffResponse_DIFF_SOME
-			}
+	decisionOverride := diff.DiffEqualDecisionOverride()
+	if opts.enableAccurateBridgePreview && decisionOverride != shim.DiffNoOverride {
+		if decisionOverride == shim.DiffOverrideNoUpdate {
+			changes = pulumirpc.DiffResponse_DIFF_NONE
+		} else {
+			changes = pulumirpc.DiffResponse_DIFF_SOME
 		}
 
 		// We need to compare the new and olds after all transformations have been applied.
