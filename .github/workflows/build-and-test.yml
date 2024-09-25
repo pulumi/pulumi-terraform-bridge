@@ -35,6 +35,9 @@ jobs:
           go-version: ${{ matrix.go-version }}
           cache-dependency-path: |
             **/go.sum
+      - name: skip on non-linux for non-default feature flags
+        if: ${{ matrix.platform != 'ubuntu-latest' && matrix.feature-flags != 'DEFAULT' }}
+        run: exit 0
       - name: export feature flags
         run: export ${{ matrix.feature-flags }}=true >> $GITHUB_ENV
       - name: Build
