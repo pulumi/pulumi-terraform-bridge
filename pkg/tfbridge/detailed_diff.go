@@ -224,7 +224,7 @@ func makePropDiff(
 			res[subKey] = subDiff
 		}
 	} else if etf.Type() == shim.TypeSet {
-		// TODO: Implement set diffing
+		// TODO[pulumi/pulumi-terraform-bridge#2200]: Implement set diffing
 		diff := makeListDiff(ctx, key, etf, eps, old, new, oldOk, newOk)
 		for subKey, subDiff := range diff {
 			res[subKey] = subDiff
@@ -370,8 +370,8 @@ func makeListDiff(
 	}
 
 	// naive diffing of lists
-	// TODO: implement a more sophisticated diffing algorithm
-	// TODO: investigate how this interacts with force new - is identity preserved or just order
+	// TODO[pulumi/pulumi-terraform-bridge#2295]: implement a more sophisticated diffing algorithm
+	// investigate how this interacts with force new - is identity preserved or just order
 	collectionForceNew := isForceNew(etf, eps)
 	longerLen := max(len(oldList), len(newList))
 	for i := 0; i < longerLen; i++ {
