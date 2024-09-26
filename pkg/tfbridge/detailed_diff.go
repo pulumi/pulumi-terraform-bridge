@@ -36,6 +36,7 @@ const (
 	NoDiff    baseDiff = "NoDiff"
 	Add       baseDiff = "Add"
 	Delete    baseDiff = "Delete"
+	Update    baseDiff = "Update"
 	Undecided baseDiff = "Undecided"
 )
 
@@ -70,6 +71,10 @@ func makeBaseDiff(old, new resource.PropertyValue, oldOk, newOk bool) baseDiff {
 		return Delete
 	}
 
+	if new.IsComputed() {
+		return Update
+	}
+
 	return Undecided
 }
 
@@ -81,6 +86,9 @@ func baseDiffToPropertyDiff(diff baseDiff, etf shim.Schema, eps *SchemaInfo) *pu
 		return propertyDiffResult(etf, eps, res)
 	case Delete:
 		res := &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_DELETE}
+		return propertyDiffResult(etf, eps, res)
+	case Update:
+		res := &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE}
 		return propertyDiffResult(etf, eps, res)
 	default:
 		return nil
@@ -354,10 +362,10 @@ func makeListDiff(
 	diff := make(map[string]*pulumirpc.PropertyDiff)
 	oldList := []resource.PropertyValue{}
 	newList := []resource.PropertyValue{}
-	if isPresent(old, oldOk) {
+	if isPresent(old, oldOk) && old.IsArray() {
 		oldList = old.ArrayValue()
 	}
-	if isPresent(new, newOk) {
+	if isPresent(new, newOk) && new.IsArray() {
 		newList = new.ArrayValue()
 	}
 
