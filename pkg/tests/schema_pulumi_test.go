@@ -1877,6 +1877,8 @@ resources:
 }
 
 func TestDetailedDiffPlainTypes(t *testing.T) {
+	// TODO: Remove this once accurate bridge previews are rolled out
+	t.Setenv("PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW", "true")
 	resMap := map[string]*schema.Resource{
 		"prov_test": {
 			Schema: map[string]*schema.Schema{
@@ -4057,6 +4059,8 @@ outputs:
 	}
 
 	t.Run("PRC enabled", func(t *testing.T) {
+		// TODO: Remove this once accurate bridge previews are rolled out
+		t.Setenv("PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW", "true")
 		runTest(t, true, autogold.Expect(`Previewing update (test):
   pulumi:pulumi:Stack: (same)
     [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
