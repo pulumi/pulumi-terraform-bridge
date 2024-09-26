@@ -4159,3 +4159,5 @@ func TestMakeTerraformResultNilVsEmptyMap(t *testing.T) {
 		assert.True(t, props["test"].DeepEquals(emptyMap))
 	})
 }
+
+// TODO: set detailed diff tests

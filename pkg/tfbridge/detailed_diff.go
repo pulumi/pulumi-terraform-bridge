@@ -224,8 +224,7 @@ func makePropDiff(
 			res[subKey] = subDiff
 		}
 	} else if etf.Type() == shim.TypeSet {
-		// TODO[pulumi/pulumi-terraform-bridge#2200]: Implement set diffing
-		diff := makeListDiff(ctx, key, etf, eps, old, new, oldOk, newOk)
+		diff := makeSetDiff(ctx, key, etf, eps, old, new, oldOk, newOk)
 		for subKey, subDiff := range diff {
 			res[subKey] = subDiff
 		}
@@ -391,6 +390,76 @@ func makeListDiff(
 			ctx, resource.PropertyKey(elemKey), etf.Elem(), eps, collectionForceNew, oldVal, newVal, oldOk, newOk)
 		for subKey, subDiff := range d {
 			diff[subKey] = subDiff
+		}
+	}
+
+	simplerDiff, err := simplifyDiff(diff, key, old, new, oldOk, newOk, etf, eps)
+	if err == nil {
+		return simplerDiff
+	}
+
+	return diff
+}
+
+func makeSetDiff(
+	ctx context.Context,
+	key resource.PropertyKey,
+	etf shim.Schema,
+	eps *info.Schema,
+	old, new resource.PropertyValue,
+	oldOk, newOk bool,
+) map[string]*pulumirpc.PropertyDiff {
+	diff := make(map[string]*pulumirpc.PropertyDiff)
+	oldList := []resource.PropertyValue{}
+	newList := []resource.PropertyValue{}
+	if isPresent(old, oldOk) && old.IsArray() {
+		oldList = old.ArrayValue()
+	}
+	if isPresent(new, newOk) && new.IsArray() {
+		newList = new.ArrayValue()
+	}
+
+	// Calculate the identity of each element
+	oldIdentities := make(map[int]int)
+	newIdentities := make(map[int]int)
+	for i, oldElem := range oldList {
+		mappable := oldElem.Mappable()
+		hash := etf.SetHash(mappable)
+		oldIdentities[hash] = i
+	}
+	for i, newElem := range newList {
+		mappable := newElem.Mappable()
+		hash := etf.SetHash(mappable)
+		newIdentities[hash] = i
+	}
+
+	for hash, oldIndex := range oldIdentities {
+		_, newOk := newIdentities[hash]
+		if !newOk {
+			// Element was deleted
+			d := makeElemDiff(
+				ctx, key, etf.Elem(), eps, false, oldList[oldIndex], resource.NewNullProperty(), true, false)
+
+			propDiff := &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_DELETE}
+			if mapHasReplacements(d) {
+				propDiff = promoteToReplace(propDiff)
+			}
+			diff[string(key)+"["+fmt.Sprintf("%d", oldIndex)+"]"] = propDiff
+		}
+	}
+
+	for hash, newIndex := range newIdentities {
+		_, oldOk := oldIdentities[hash]
+		if !oldOk {
+			// Element was added
+			d := makeElemDiff(
+				ctx, key, etf.Elem(), eps, false, resource.NewNullProperty(), newList[newIndex], false, true)
+
+			propDiff := &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_ADD}
+			if mapHasReplacements(d) {
+				propDiff = promoteToReplace(propDiff)
+			}
+			diff[string(key)+"["+fmt.Sprintf("%d", newIndex)+"]"] = propDiff
 		}
 	}
 
