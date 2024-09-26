@@ -10,32 +10,10 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/tokens"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	shimschema "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
-
-func computeSchemas(sch map[string]*schema.Schema) (map[string]*info.Schema, shim.SchemaMap) {
-	tfp := &schema.Provider{ResourcesMap: map[string]*schema.Resource{
-		"prov_res": {Schema: sch},
-	}}
-	shimProvider := shimv2.NewProvider(tfp)
-
-	provider := ProviderInfo{
-		P:                              shimProvider,
-		Name:                           "prov",
-		Version:                        "0.0.1",
-		MetadataInfo:                   &MetadataInfo{},
-		EnableZeroDefaultSchemaVersion: true,
-	}
-	makeToken := func(module, name string) (string, error) {
-		return tokens.MakeStandard("prov")(module, name)
-	}
-	provider.MustComputeTokens(tokens.SingleModule("prov", "index", makeToken))
-
-	return provider.Resources["prov_res"].Fields, provider.P.ResourcesMap().Get("prov_res").Schema()
-}
 
 func TestSubPath(t *testing.T) {
 	require.Equal(t, getSubPath("foo", "bar"), resource.PropertyKey("foo.bar"))
@@ -440,7 +418,7 @@ func TestBasicDetailedDiff(t *testing.T) {
 						sdkv2Schema["foo"].Computed = true
 					}
 
-					ps, tfs := computeSchemas(sdkv2Schema)
+					ps, tfs := map[string]*info.Schema{}, shimv2.NewSchemaMap(sdkv2Schema)
 					propertyMapNil := resource.NewPropertyMapFromMap(
 						map[string]interface{}{},
 					)
@@ -548,7 +526,7 @@ func TestDetailedDiffObject(t *testing.T) {
 			MaxItems: 1,
 		},
 	}
-	ps, tfs := computeSchemas(sdkv2Schema)
+	ps, tfs := map[string]*info.Schema{}, shimv2.NewSchemaMap(sdkv2Schema)
 
 	propertyMapEmpty := resource.NewPropertyMapFromMap(
 		map[string]interface{}{
@@ -626,7 +604,7 @@ func TestDetailedDiffList(t *testing.T) {
 			Elem: &schema.Schema{Type: schema.TypeString},
 		},
 	}
-	ps, tfs := computeSchemas(sdkv2Schema)
+	ps, tfs := map[string]*info.Schema{}, shimv2.NewSchemaMap(sdkv2Schema)
 
 	propertyMapEmpty := resource.NewPropertyMapFromMap(
 		map[string]interface{}{
@@ -693,7 +671,7 @@ func TestDetailedDiffMap(t *testing.T) {
 			Elem: &schema.Schema{Type: schema.TypeString},
 		},
 	}
-	ps, tfs := computeSchemas(sdkv2Schema)
+	ps, tfs := map[string]*info.Schema{}, shimv2.NewSchemaMap(sdkv2Schema)
 
 	propertyMapEmpty := resource.NewPropertyMapFromMap(
 		map[string]interface{}{
@@ -760,7 +738,7 @@ func TestDetailedDiffSet(t *testing.T) {
 			Elem: &schema.Schema{Type: schema.TypeString},
 		},
 	}
-	ps, tfs := computeSchemas(sdkv2Schema)
+	ps, tfs := map[string]*info.Schema{}, shimv2.NewSchemaMap(sdkv2Schema)
 
 	propertyMapEmpty := resource.NewPropertyMapFromMap(
 		map[string]interface{}{
@@ -841,7 +819,7 @@ func TestDetailedDiffTFForceNewPlain(t *testing.T) {
 			ForceNew: true,
 		},
 	}
-	ps, tfs := computeSchemas(sdkv2Schema)
+	ps, tfs := map[string]*info.Schema{}, shimv2.NewSchemaMap(sdkv2Schema)
 
 	propertyMapEmpty := resource.NewPropertyMapFromMap(
 		map[string]interface{}{},
@@ -889,7 +867,7 @@ func TestDetailedDiffTFForceNewAttributeCollection(t *testing.T) {
 			ForceNew: true,
 		},
 	}
-	ps, tfs := computeSchemas(sdkv2Schema)
+	ps, tfs := map[string]*info.Schema{}, shimv2.NewSchemaMap(sdkv2Schema)
 
 	propertyMapEmpty := resource.NewPropertyMapFromMap(
 		map[string]interface{}{},
@@ -942,7 +920,7 @@ func TestDetailedDiffTFForceNewBlockCollection(t *testing.T) {
 			Optional: true,
 		},
 	}
-	ps, tfs := computeSchemas(sdkv2Schema)
+	ps, tfs := map[string]*info.Schema{}, shimv2.NewSchemaMap(sdkv2Schema)
 
 	propertyMapEmpty := resource.NewPropertyMapFromMap(
 		map[string]interface{}{},
@@ -997,7 +975,7 @@ func TestDetailedDiffTFForceNewElemBlockCollection(t *testing.T) {
 			Optional: true,
 		},
 	}
-	ps, tfs := computeSchemas(sdkv2Schema)
+	ps, tfs := map[string]*info.Schema{}, shimv2.NewSchemaMap(sdkv2Schema)
 
 	propertyMapEmpty := resource.NewPropertyMapFromMap(
 		map[string]interface{}{},
@@ -1056,7 +1034,7 @@ func TestDetailedDiffTFForceNewObject(t *testing.T) {
 			MaxItems: 1,
 		},
 	}
-	ps, tfs := computeSchemas(sdkv2Schema)
+	ps, tfs := map[string]*info.Schema{}, shimv2.NewSchemaMap(sdkv2Schema)
 
 	propertyMapEmpty := resource.NewPropertyMapFromMap(
 		map[string]interface{}{},
@@ -1103,7 +1081,7 @@ func TestDetailedDiffPulumiSchemaOverride(t *testing.T) {
 		},
 	}
 	t.Run("renamed property", func(t *testing.T) {
-		_, tfs := computeSchemas(sdkv2Schema)
+		tfs := shimv2.NewSchemaMap(sdkv2Schema)
 		ps := map[string]*SchemaInfo{
 			"foo": {
 				Name: "bar",
@@ -1148,7 +1126,7 @@ func TestDetailedDiffPulumiSchemaOverride(t *testing.T) {
 	})
 
 	t.Run("force new override property", func(t *testing.T) {
-		_, tfs := computeSchemas(sdkv2Schema)
+		tfs := shimv2.NewSchemaMap(sdkv2Schema)
 		ps := map[string]*SchemaInfo{
 			"foo": {
 				ForceNew: True(),
@@ -1193,7 +1171,7 @@ func TestDetailedDiffPulumiSchemaOverride(t *testing.T) {
 	})
 
 	t.Run("Type override property", func(t *testing.T) {
-		_, tfs := computeSchemas(sdkv2Schema)
+		tfs := shimv2.NewSchemaMap(sdkv2Schema)
 		ps := map[string]*SchemaInfo{
 			"foo": {
 				Type: "number",
@@ -1252,7 +1230,7 @@ func TestDetailedDiffPulumiSchemaOverride(t *testing.T) {
 				},
 			},
 		}
-		_, tfs := computeSchemas(sdkv2Schema)
+		tfs := shimv2.NewSchemaMap(sdkv2Schema)
 		ps := map[string]*SchemaInfo{
 			"foo": {
 				MaxItemsOne: True(),
@@ -1312,7 +1290,7 @@ func TestDetailedDiffPulumiSchemaOverride(t *testing.T) {
 				},
 			},
 		}
-		_, tfs := computeSchemas(sdkv2Schema)
+		tfs := shimv2.NewSchemaMap(sdkv2Schema)
 		ps := map[string]*SchemaInfo{
 			"foo": {
 				MaxItemsOne: False(),
