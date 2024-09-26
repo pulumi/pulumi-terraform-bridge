@@ -58,6 +58,7 @@ type diffResult struct {
 }
 
 func runDiffCheck(t T, tc diffTestCase) diffResult {
+	t.Helper()
 	tfwd := t.TempDir()
 
 	lifecycleArgs := lifecycleArgs{CreateBeforeDestroy: !tc.DeleteBeforeReplace}
@@ -108,6 +109,7 @@ func runDiffCheck(t T, tc diffTestCase) diffResult {
 }
 
 func (tc *diffTestCase) verifyBasicDiffAgreement(t T, tfActions []string, us auto.UpdateSummary, diffResponse pulumiDiffResp) {
+	t.Helper()
 	t.Logf("UpdateSummary.ResourceChanges: %#v", us.ResourceChanges)
 	// Action list from https://github.com/opentofu/opentofu/blob/main/internal/plans/action.go#L11
 	if len(tfActions) == 0 {

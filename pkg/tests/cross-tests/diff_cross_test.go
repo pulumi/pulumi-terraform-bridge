@@ -1010,7 +1010,7 @@ func TestNilVsEmptyMapProperty(t *testing.T) {
 
 func findKindInPulumiDetailedDiff(detailedDiff map[string]interface{}, key string) bool {
 	for _, val := range detailedDiff {
-		if val.(map[string]string)["kind"] == key {
+		if val.(map[string]interface{})["kind"] == key {
 			return true
 		}
 	}
