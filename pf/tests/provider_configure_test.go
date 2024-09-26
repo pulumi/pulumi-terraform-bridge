@@ -167,3 +167,93 @@ func TestJSONNestedConfigure(t *testing.T) {
 		  }
 		}`)
 }
+
+func TestJSONNestedConfigureWithSecrets(t *testing.T) {
+	server, err := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
+	require.NoError(t, err)
+	replay.ReplaySequence(t, server, `
+[
+  {
+    "method": "/pulumirpc.ResourceProvider/Configure",
+    "request": {
+      "args": {
+        "stringConfigProp": {
+          "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+          "value": "secret-example"
+        },
+        "mapNestedProp": "{\"k1\":{\"4dabf18193072939515e22adb298388d\":\"1b47061264138c4ac30d75fd1eb44270\",\"value\":1},\"k2\":2}",
+        "listNestedProps": "[{\"4dabf18193072939515e22adb298388d\":\"1b47061264138c4ac30d75fd1eb44270\",\"value\":true},false]"
+      }
+    },
+    "response": {
+      "supportsPreview": true,
+      "acceptResources": true
+    }
+  },
+  {
+    "method": "/pulumirpc.ResourceProvider/Create",
+    "request": {
+      "urn": "urn:pulumi:test-stack::basicprogram::testbridge:index/testres:TestConfigRes::r1",
+      "preview": false
+    },
+    "response": {
+      "id": "id-1",
+      "properties": {
+        "configCopy": "secret-example",
+        "id": "id-1"
+      }
+    }
+  }
+]`)
+}
+
+func TestConfigureWithSecrets(t *testing.T) {
+	server, err := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
+	require.NoError(t, err)
+	replay.ReplaySequence(t, server, `
+[
+  {
+    "method": "/pulumirpc.ResourceProvider/Configure",
+    "request": {
+      "args": {
+        "stringConfigProp": {
+          "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+          "value": "secret-example"
+        },
+        "mapNestedProp": {
+          "k1": {
+            "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+            "value": 1
+          },
+          "k2": 2
+        },
+        "listNestedProps": [
+          {
+            "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
+            "value": true
+          },
+          false
+        ]
+      }
+    },
+    "response": {
+      "supportsPreview": true,
+      "acceptResources": true
+    }
+  },
+  {
+    "method": "/pulumirpc.ResourceProvider/Create",
+    "request": {
+      "urn": "urn:pulumi:test-stack::basicprogram::testbridge:index/testres:TestConfigRes::r1",
+      "preview": false
+    },
+    "response": {
+      "id": "id-1",
+      "properties": {
+        "configCopy": "secret-example",
+        "id": "id-1"
+      }
+    }
+  }
+]`)
+}
