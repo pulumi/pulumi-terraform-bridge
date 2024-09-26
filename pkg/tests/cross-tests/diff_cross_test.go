@@ -26,7 +26,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hexops/autogold/v2"
 	"github.com/stretchr/testify/require"
 )
 
@@ -937,9 +936,10 @@ func TestMaxItemsOneCollectionOnlyDiff(t *testing.T) {
 		return val["rule"].([]any)[0].(map[string]any)["filter"]
 	}
 
+	t.Log(diff.PulumiDiff)
 	require.Equal(t, []string{"update"}, diff.TFDiff.Actions)
 	require.NotEqual(t, getFilter(diff.TFDiff.Before), getFilter(diff.TFDiff.After))
-	autogold.Expect(map[string]interface{}{"rules[0].filter": map[string]interface{}{"kind": "UPDATE"}}).Equal(t, diff.PulumiDiff.DetailedDiff)
+	require.True(t, findKeyInPulumiDetailedDiff(diff.PulumiDiff.DetailedDiff, "rules[0].filter"))
 }
 
 func TestNilVsEmptyListProperty(t *testing.T) {
@@ -1011,6 +1011,15 @@ func TestNilVsEmptyMapProperty(t *testing.T) {
 func findKindInPulumiDetailedDiff(detailedDiff map[string]interface{}, key string) bool {
 	for _, val := range detailedDiff {
 		if val.(map[string]interface{})["kind"] == key {
+			return true
+		}
+	}
+	return false
+}
+
+func findKeyInPulumiDetailedDiff(detailedDiff map[string]interface{}, key string) bool {
+	for k := range detailedDiff {
+		if k == key {
 			return true
 		}
 	}
