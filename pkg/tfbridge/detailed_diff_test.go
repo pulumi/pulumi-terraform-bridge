@@ -1904,6 +1904,8 @@ func TestDetailedDiffSetBlock(t *testing.T) {
 					},
 				)
 			})
+
+			// TODO: test computed
 		})
 	}
 }

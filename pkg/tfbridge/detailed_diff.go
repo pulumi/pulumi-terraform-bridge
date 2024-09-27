@@ -422,12 +422,18 @@ func makeSetDiff(
 	// Calculate the identity of each element
 	oldIdentities := make(map[int]int)
 	newIdentities := make(map[int]int)
+	computedIndices := make(map[int]struct{})
 	for i, oldElem := range oldList {
 		mappable := oldElem.Mappable()
 		hash := etf.SetHash(mappable)
 		oldIdentities[hash] = i
 	}
 	for i, newElem := range newList {
+		// TODO: we should not hash the element if it contains any computed values as we might produce an incorrect hash
+		if newElem.IsComputed() {
+			computedIndices[i] = struct{}{}
+			continue
+		}
 		mappable := newElem.Mappable()
 		hash := etf.SetHash(mappable)
 		newIdentities[hash] = i
@@ -448,18 +454,25 @@ func makeSetDiff(
 		}
 	}
 
-	for hash, newIndex := range newIdentities {
+	for newIndex := range len(newList) {
+		hash := newIdentities[newIndex]
 		_, oldOk := oldIdentities[hash]
-		if !oldOk {
-			// Element was added
+		_, computed := computedIndices[newIndex]
+		if !oldOk || computed {
+			// Element was added/updated
 			d := makeElemDiff(
 				ctx, key, etf.Elem(), eps, false, resource.NewNullProperty(), newList[newIndex], false, true)
 
+			key := string(key) + "[" + fmt.Sprintf("%d", newIndex) + "]"
 			propDiff := &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_ADD}
+			if _, ok := diff[key]; ok {
+				propDiff = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE}
+			}
+
 			if mapHasReplacements(d) {
 				propDiff = promoteToReplace(propDiff)
 			}
-			diff[string(key)+"["+fmt.Sprintf("%d", newIndex)+"]"] = propDiff
+			diff[key] = propDiff
 		}
 	}
 

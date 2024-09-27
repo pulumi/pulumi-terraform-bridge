@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -3979,130 +3980,6 @@ outputs:
 	assert.Equal(t, "", out.Outputs["emptyValue"].Value)
 }
 
-func TestUnknownSetElementDiff(t *testing.T) {
-	resMap := map[string]*schema.Resource{
-		"prov_test": {
-			Schema: map[string]*schema.Schema{
-				"test": {
-					Type:     schema.TypeSet,
-					Optional: true,
-					Elem: &schema.Schema{
-						Type: schema.TypeString,
-					},
-				},
-			},
-		},
-		"prov_aux": {
-			Schema: map[string]*schema.Schema{
-				"aux": {
-					Type:     schema.TypeString,
-					Computed: true,
-					Optional: true,
-				},
-			},
-			CreateContext: func(_ context.Context, d *schema.ResourceData, _ interface{}) diag.Diagnostics {
-				d.SetId("aux")
-				err := d.Set("aux", "aux")
-				require.NoError(t, err)
-				return nil
-			},
-		},
-	}
-	tfp := &schema.Provider{ResourcesMap: resMap}
-
-	runTest := func(t *testing.T, PRC bool, expectedOutput autogold.Value) {
-		opts := []pulcheck.BridgedProviderOpt{}
-		if !PRC {
-			opts = append(opts, pulcheck.DisablePlanResourceChange())
-		}
-		bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp, opts...)
-		originalProgram := `
-name: test
-runtime: yaml
-resources:
-  mainRes:
-    type: prov:index:Test
-outputs:
-  testOut: ${mainRes.tests}
-	`
-
-		programWithUnknown := `
-name: test
-runtime: yaml
-resources:
-  auxRes:
-    type: prov:index:Aux
-  mainRes:
-    type: prov:index:Test
-    properties:
-      tests:
-        - ${auxRes.aux}
-outputs:
-  testOut: ${mainRes.tests}
-`
-		pt := pulcheck.PulCheck(t, bridgedProvider, originalProgram)
-		pt.Up()
-		pulumiYamlPath := filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml")
-
-		err := os.WriteFile(pulumiYamlPath, []byte(programWithUnknown), 0o600)
-		require.NoError(t, err)
-
-		res := pt.Preview(optpreview.Diff())
-		// Test that the test property is unknown at preview time
-		expectedOutput.Equal(t, res.StdOut)
-		resUp := pt.Up()
-		// assert that the property gets resolved
-		require.Equal(t,
-			[]interface{}{"aux"},
-			resUp.Outputs["testOut"].Value,
-		)
-	}
-
-	t.Run("PRC enabled", func(t *testing.T) {
-		// TODO: Remove this once accurate bridge previews are rolled out
-		t.Setenv("PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW", "true")
-		runTest(t, true, autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
-    + prov:index/aux:Aux: (create)
-        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
-    ~ prov:index/test:Test: (update)
-        [id=newid]
-        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-      + tests: [
-      +     [0]: output<string>
-        ]
-    --outputs:--
-  + testOut: output<string>
-Resources:
-    + 1 to create
-    ~ 1 to update
-    2 changes. 1 unchanged
-`))
-	})
-
-	t.Run("PRC disabled", func(t *testing.T) {
-		runTest(t, false, autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
-    + prov:index/aux:Aux: (create)
-        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
-    ~ prov:index/test:Test: (update)
-        [id=newid]
-        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-      + tests: [
-      +     [0]: output<string>
-        ]
-    --outputs:--
-  + testOut: output<string>
-Resources:
-    + 1 to create
-    ~ 1 to update
-    2 changes. 1 unchanged
-`))
-	})
-}
-
 func TestMakeTerraformResultNilVsEmptyMap(t *testing.T) {
 	// Nil and empty maps are not equal
 	nilMap := resource.NewObjectProperty(nil)
@@ -4160,7 +4037,37 @@ func TestMakeTerraformResultNilVsEmptyMap(t *testing.T) {
 	})
 }
 
-func TestDetailedDiffSetAttribute(t *testing.T) {
+func runDetailedDiffTest(
+	t *testing.T, resMap map[string]*schema.Resource, program1, program2 string,
+) (string, map[string]interface{}) {
+	tfp := &schema.Provider{ResourcesMap: resMap}
+	bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
+	pt := pulcheck.PulCheck(t, bridgedProvider, program1)
+	pt.Up()
+	pulumiYamlPath := filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml")
+
+	err := os.WriteFile(pulumiYamlPath, []byte(program2), 0o600)
+	require.NoError(t, err)
+
+	pt.ClearGrpcLog()
+	res := pt.Preview(optpreview.Diff())
+	t.Log(res.StdOut)
+
+	diffResponse := struct {
+		DetailedDiff map[string]interface{} `json:"detailedDiff"`
+	}{}
+
+	for _, entry := range pt.GrpcLog().Entries {
+		if entry.Method == "/pulumirpc.ResourceProvider/Diff" {
+			err := json.Unmarshal(entry.Response, &diffResponse)
+			require.NoError(t, err)
+		}
+	}
+
+	return res.StdOut, diffResponse.DetailedDiff
+}
+
+func TestDetailedDiffSet(t *testing.T) {
 	// TODO: Remove this once accurate bridge previews are rolled out
 	t.Setenv("PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW", "true")
 	runTest := func(t *testing.T, resMap map[string]*schema.Resource, props1, props2 interface{},
@@ -4175,39 +4082,16 @@ resources:
     properties:
       tests: %s
 `
-		tfp := &schema.Provider{ResourcesMap: resMap}
-		bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
 		props1JSON, err := json.Marshal(props1)
 		require.NoError(t, err)
 		program1 := fmt.Sprintf(program, string(props1JSON))
 		props2JSON, err := json.Marshal(props2)
 		require.NoError(t, err)
 		program2 := fmt.Sprintf(program, string(props2JSON))
-		pt := pulcheck.PulCheck(t, bridgedProvider, program1)
-		pt.Up()
+		out, detailedDiff := runDetailedDiffTest(t, resMap, program1, program2)
 
-		pulumiYamlPath := filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml")
-
-		err = os.WriteFile(pulumiYamlPath, []byte(program2), 0o600)
-		require.NoError(t, err)
-
-		pt.ClearGrpcLog()
-		res := pt.Preview(optpreview.Diff())
-		t.Log(res.StdOut)
-		expected.Equal(t, res.StdOut)
-
-		diffResponse := struct {
-			DetailedDiff map[string]interface{} `json:"detailedDiff"`
-		}{}
-
-		for _, entry := range pt.GrpcLog().Entries {
-			if entry.Method == "/pulumirpc.ResourceProvider/Diff" {
-				err := json.Unmarshal(entry.Response, &diffResponse)
-				require.NoError(t, err)
-			}
-		}
-
-		expectedDetailedDiff.Equal(t, diffResponse.DetailedDiff)
+		expected.Equal(t, out)
+		expectedDetailedDiff.Equal(t, detailedDiff)
 	}
 
 	for _, tc := range []struct {
@@ -5444,4 +5328,392 @@ Resources:
 			}
 		})
 	}
+}
+
+// "UNKNOWN" for unknown values
+func testDetailedDiffWithUnknowns(t *testing.T, resMap map[string]*schema.Resource, unknownString string, props1, props2 interface{}, expected, expectedDetailedDiff autogold.Value) {
+	originalProgram := `
+name: test
+runtime: yaml
+resources:
+  mainRes:
+    type: prov:index:Test
+	properties:
+		tests: %s
+outputs:
+  testOut: ${mainRes.tests}
+	`
+	props1JSON, err := json.Marshal(props1)
+	require.NoError(t, err)
+	program1 := fmt.Sprintf(originalProgram, string(props1JSON))
+
+	programWithUnknown := `
+name: test
+runtime: yaml
+resources:
+  auxRes:
+    type: prov:index:Aux
+  mainRes:
+    type: prov:index:Test
+    properties:
+      tests: %s
+outputs:
+  testOut: ${mainRes.tests}
+`
+	props2JSON, err := json.Marshal(props2)
+	require.NoError(t, err)
+	program2 := fmt.Sprintf(programWithUnknown, string(props2JSON))
+	program2 = strings.ReplaceAll(program2, "UNKNOWN", unknownString)
+
+	out, detailedDiff := runDetailedDiffTest(t, resMap, program1, program2)
+	expected.Equal(t, out)
+	expectedDetailedDiff.Equal(t, detailedDiff)
+}
+
+func TestUnknownSetAttributeElementDiff(t *testing.T) {
+	// TODO: Remove this once accurate bridge previews are rolled out
+	t.Setenv("PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW", "true")
+	resMap := map[string]*schema.Resource{
+		"prov_test": {
+			Schema: map[string]*schema.Schema{
+				"test": {
+					Type:     schema.TypeSet,
+					Optional: true,
+					Elem: &schema.Schema{
+						Type: schema.TypeString,
+					},
+				},
+			},
+		},
+		"prov_aux": {
+			Schema: map[string]*schema.Schema{
+				"aux": {
+					Type:     schema.TypeString,
+					Computed: true,
+					Optional: true,
+				},
+			},
+			CreateContext: func(_ context.Context, d *schema.ResourceData, _ interface{}) diag.Diagnostics {
+				d.SetId("aux")
+				err := d.Set("aux", "aux")
+				require.NoError(t, err)
+				return nil
+			},
+		},
+	}
+
+	t.Run("empty to unknown element", func(t *testing.T) {
+		testDetailedDiffWithUnknowns(t, resMap, "${auxRes.aux}",
+			[]interface{}{},
+			[]interface{}{"UNKNOWN"},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      + tests: [
+      +     [0]: output<string>
+        ]
+    --outputs:--
+  + testOut: output<string>
+Resources:
+    + 1 to create
+    ~ 1 to update
+    2 changes. 1 unchanged
+`),
+			autogold.Expect(map[string]interface{}{"tests": map[string]interface{}{}}))
+	})
+
+	t.Run("non-empty to unknown element", func(t *testing.T) {
+		testDetailedDiffWithUnknowns(t, resMap, "${auxRes.aux}",
+			[]interface{}{"val1"},
+			[]interface{}{"UNKNOWN"},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          ~ [0]: "val1" => output<string>
+        ]
+Resources:
+    + 1 to create
+    ~ 1 to update
+    2 changes. 1 unchanged
+`),
+			autogold.Expect(map[string]interface{}{"tests": map[string]interface{}{"kind": "UPDATE"}}))
+	})
+
+	t.Run("unknown element added front", func(t *testing.T) {
+		testDetailedDiffWithUnknowns(t, resMap, "${auxRes.aux}",
+			[]interface{}{"val2", "val3"},
+			[]interface{}{"UNKNOWN", "val2", "val3"},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          ~ [0]: "val2" => output<string>
+          ~ [1]: "val3" => "val2"
+          + [2]: "val3"
+        ]
+Resources:
+    + 1 to create
+    ~ 1 to update
+    2 changes. 1 unchanged
+`),
+			autogold.Expect(map[string]interface{}{"tests": map[string]interface{}{"kind": "UPDATE"}}),
+		)
+	})
+
+	t.Run("unknown element added middle", func(t *testing.T) {
+		testDetailedDiffWithUnknowns(t, resMap, "${auxRes.aux}",
+			[]interface{}{"val1", "val3"},
+			[]interface{}{"val1", "UNKNOWN", "val3"},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+            [0]: "val1"
+          ~ [1]: "val3" => output<string>
+          + [2]: "val3"
+        ]
+Resources:
+    + 1 to create
+    ~ 1 to update
+    2 changes. 1 unchanged
+`),
+			autogold.Expect(map[string]interface{}{"tests": map[string]interface{}{"kind": "UPDATE"}}),
+		)
+	})
+
+	t.Run("unknown element added end", func(t *testing.T) {
+		testDetailedDiffWithUnknowns(t, resMap, "${auxRes.aux}",
+			[]interface{}{"val1", "val2"},
+			[]interface{}{"val1", "val2", "UNKNOWN"},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+            [0]: "val1"
+            [1]: "val2"
+          + [2]: output<string>
+        ]
+Resources:
+    + 1 to create
+    ~ 1 to update
+    2 changes. 1 unchanged
+`),
+			autogold.Expect(map[string]interface{}{"tests": map[string]interface{}{"kind": "UPDATE"}}),
+		)
+	})
+
+	t.Run("element updated to unknown", func(t *testing.T) {
+		testDetailedDiffWithUnknowns(t, resMap, "${auxRes.aux}",
+			[]interface{}{"val1", "val2", "val3"},
+			[]interface{}{"val1", "UNKNOWN", "val3"},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+            [0]: "val1"
+          ~ [1]: "val2" => output<string>
+            [2]: "val3"
+        ]
+Resources:
+    + 1 to create
+    ~ 1 to update
+    2 changes. 1 unchanged
+`),
+			autogold.Expect(map[string]interface{}{"tests": map[string]interface{}{"kind": "UPDATE"}}),
+		)
+	})
+
+	t.Run("shuffled unknown added front", func(t *testing.T) {
+		testDetailedDiffWithUnknowns(t, resMap, "${auxRes.aux}",
+			[]interface{}{"val2", "val3"},
+			[]interface{}{"UNKNOWN", "val3", "val2"},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          ~ [0]: "val2" => output<string>
+            [1]: "val3"
+          + [2]: "val2"
+        ]
+Resources:
+    + 1 to create
+    ~ 1 to update
+    2 changes. 1 unchanged
+`),
+			autogold.Expect(map[string]interface{}{"tests": map[string]interface{}{"kind": "UPDATE"}}),
+		)
+	})
+
+	t.Run("shuffled unknown added middle", func(t *testing.T) {
+		testDetailedDiffWithUnknowns(t, resMap, "${auxRes.aux}",
+			[]interface{}{"val1", "val3"},
+			[]interface{}{"val3", "UNKNOWN", "val1"},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          ~ [0]: "val1" => "val3"
+          ~ [1]: "val3" => output<string>
+          + [2]: "val1"
+        ]
+Resources:
+    + 1 to create
+    ~ 1 to update
+    2 changes. 1 unchanged
+`),
+			autogold.Expect(map[string]interface{}{"tests": map[string]interface{}{"kind": "UPDATE"}}),
+		)
+	})
+
+	t.Run("shuffled unknown added end", func(t *testing.T) {
+		testDetailedDiffWithUnknowns(t, resMap, "${auxRes.aux}",
+			[]interface{}{"val1", "val2"},
+			[]interface{}{"val2", "val1", "UNKNOWN"},
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          ~ [0]: "val1" => "val2"
+          ~ [1]: "val2" => "val1"
+          + [2]: output<string>
+        ]
+Resources:
+    + 1 to create
+    ~ 1 to update
+    2 changes. 1 unchanged
+`),
+			autogold.Expect(map[string]interface{}{"tests": map[string]interface{}{"kind": "UPDATE"}}),
+		)
+	})
+}
+
+func TestUnknownSetAttributeDiff(t *testing.T) {
+	// TODO: Remove this once accurate bridge previews are rolled out
+	t.Setenv("PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW", "true")
+	resMap := map[string]*schema.Resource{
+		"prov_test": {
+			Schema: map[string]*schema.Schema{
+				"test": {
+					Type:     schema.TypeSet,
+					Optional: true,
+					Elem: &schema.Schema{
+						Type: schema.TypeString,
+					},
+				},
+			},
+		},
+		"prov_aux": {
+			Schema: map[string]*schema.Schema{
+				"aux": {
+					Type:     schema.TypeSet,
+					Computed: true,
+					Optional: true,
+					Elem: &schema.Schema{
+						Type: schema.TypeString,
+					},
+				},
+			},
+			CreateContext: func(_ context.Context, d *schema.ResourceData, _ interface{}) diag.Diagnostics {
+				d.SetId("aux")
+				err := d.Set("aux", []interface{}{"aux"})
+				require.NoError(t, err)
+				return nil
+			},
+		},
+	}
+
+	t.Run("empty to unknown set", func(t *testing.T) {
+		testDetailedDiffWithUnknowns(t, resMap, "${auxRes.auxes}",
+			[]interface{}{},
+			"UNKNOWN",
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      + tests: output<string>
+    --outputs:--
+  + testOut: output<string>
+Resources:
+    + 1 to create
+    ~ 1 to update
+    2 changes. 1 unchanged
+`),
+			autogold.Expect(map[string]interface{}{"tests": map[string]interface{}{}}),
+		)
+	})
+
+	t.Run("non-empty to unknown set", func(t *testing.T) {
+		testDetailedDiffWithUnknowns(t, resMap, "${auxRes.auxes}",
+			[]interface{}{"val"},
+			"UNKNOWN",
+			autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      - tests: [
+      -     [0]: "val"
+        ]
+      + tests: output<string>
+Resources:
+    + 1 to create
+    ~ 1 to update
+    2 changes. 1 unchanged
+`),
+			autogold.Expect(map[string]interface{}{"tests": map[string]interface{}{"kind": "UPDATE"}}),
+		)
+	})
 }
