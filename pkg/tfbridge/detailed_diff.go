@@ -81,6 +81,11 @@ func (k detailedDiffPair) Index(i int) detailedDiffPair {
 	return k.append(i)
 }
 
+func (k detailedDiffPair) IsReservedKey() bool {
+	leaf := k.path[len(k.path)-1]
+	return leaf == "__meta" || leaf == "__defaults"
+}
+
 type baseDiff string
 
 const (
@@ -90,10 +95,6 @@ const (
 	Update    baseDiff = "Update"
 	Undecided baseDiff = "Undecided"
 )
-
-func isInternalKey(k string) bool {
-	return k == "__meta" || k == "__defaults"
-}
 
 func isPresent(val resource.PropertyValue) bool {
 	return !val.IsNull() &&
@@ -256,7 +257,7 @@ func (differ detailedDiffer) makeTopPropDiff(
 func (differ detailedDiffer) makePropDiff(
 	ddIndex detailedDiffPair, old, new resource.PropertyValue,
 ) map[detailedDiffKey]*pulumirpc.PropertyDiff {
-	if isInternalKey(string(key)) {
+	if ddIndex.IsReservedKey() {
 		return nil
 	}
 

@@ -14,11 +14,16 @@ import (
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
 
-func TestSubPath(t *testing.T) {
+func TestDiffPair(t *testing.T) {
 	require.Equal(t, (newDetailedDiffPair("foo").SubKey("bar")).key, detailedDiffKey("foo.bar"))
 	require.Equal(t, newDetailedDiffPair("foo").SubKey("bar").SubKey("baz").key, detailedDiffKey("foo.bar.baz"))
 	require.Equal(t, newDetailedDiffPair("foo").SubKey("bar.baz").key, detailedDiffKey(`foo["bar.baz"]`))
 	require.Equal(t, newDetailedDiffPair("foo").Index(2).key, detailedDiffKey("foo[2]"))
+
+	require.Equal(t, newDetailedDiffPair("foo").SubKey("__meta").IsReservedKey(), true)
+	require.Equal(t, newDetailedDiffPair("foo").SubKey("__defaults").IsReservedKey(), true)
+	require.Equal(t, newDetailedDiffPair("__defaults").IsReservedKey(), true)
+	require.Equal(t, newDetailedDiffPair("foo").SubKey("bar").IsReservedKey(), false)
 }
 
 func TestSchemaLookupMaxItemsOne(t *testing.T) {
