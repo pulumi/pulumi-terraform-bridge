@@ -1,7 +1,6 @@
 package tfbridge
 
 import (
-	"context"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -232,7 +231,7 @@ func runDetailedDiffTest(
 ) {
 	t.Helper()
 	differ := detailedDiffer{tfs: tfs, ps: ps}
-	got := differ.makeDetailedDiffPropertyMap(context.Background(), old, new)
+	got := differ.makeDetailedDiffPropertyMap(old, new)
 
 	if len(got) != len(want) {
 		t.Logf("got %d diffs, want %d", len(got), len(want))
