@@ -73,16 +73,15 @@ const (
 	Undecided baseDiff = "Undecided"
 )
 
-func isPresent(val resource.PropertyValue, valOk bool) bool {
-	return valOk &&
-		!val.IsNull() &&
+func isPresent(val resource.PropertyValue) bool {
+	return !val.IsNull() &&
 		!(val.IsArray() && val.ArrayValue() == nil) &&
 		!(val.IsObject() && val.ObjectValue() == nil)
 }
 
-func makeBaseDiff(old, new resource.PropertyValue, oldOk, newOk bool) baseDiff {
-	oldPresent := isPresent(old, oldOk)
-	newPresent := isPresent(new, newOk)
+func makeBaseDiff(old, new resource.PropertyValue) baseDiff {
+	oldPresent := isPresent(old)
+	newPresent := isPresent(new)
 	if !oldPresent {
 		if !newPresent {
 			return NoDiff
@@ -160,9 +159,9 @@ func mapHasReplacements(m map[detailedDiffKey]*pulumirpc.PropertyDiff) bool {
 // See [pulumi/pulumi-terraform-bridge#2405] for more details.
 func simplifyDiff(
 	diff map[detailedDiffKey]*pulumirpc.PropertyDiff, key detailedDiffKey, old, new resource.PropertyValue,
-	oldOk, newOk bool, tfs interface{}, ps *SchemaInfo,
+	tfs interface{}, ps *SchemaInfo,
 ) (map[detailedDiffKey]*pulumirpc.PropertyDiff, error) {
-	baseDiff := makeBaseDiff(old, new, oldOk, newOk)
+	baseDiff := makeBaseDiff(old, new)
 	if baseDiff != Undecided {
 		tfs, ok := tfs.(shim.Schema)
 		if !ok {
@@ -192,11 +191,10 @@ func propertyDiffResult(tfs shim.Schema, ps *SchemaInfo, diff *pulumirpc.Propert
 
 func makeTopPropDiff(
 	old, new resource.PropertyValue,
-	oldOk, newOk bool,
 	tfs shim.Schema,
 	ps *SchemaInfo,
 ) *pulumirpc.PropertyDiff {
-	baseDiff := makeBaseDiff(old, new, oldOk, newOk)
+	baseDiff := makeBaseDiff(old, new)
 	if baseDiff != Undecided {
 		return baseDiffToPropertyDiff(baseDiff, tfs, ps)
 	}
@@ -213,13 +211,12 @@ func makePropDiff(
 	tfs shim.Schema,
 	ps *SchemaInfo,
 	old, new resource.PropertyValue,
-	oldOk, newOk bool,
 ) map[detailedDiffKey]*pulumirpc.PropertyDiff {
 	res := make(map[detailedDiffKey]*pulumirpc.PropertyDiff)
 
 	if tfs == nil {
 		// If the schema is nil, we just return the top-level diff
-		topDiff := makeTopPropDiff(old, new, oldOk, newOk, tfs, ps)
+		topDiff := makeTopPropDiff(old, new, tfs, ps)
 		if topDiff == nil {
 			return nil
 		}
@@ -233,28 +230,28 @@ func makePropDiff(
 			pelem = ps.Elem
 		}
 		collectionForceNew := isForceNew(tfs, ps)
-		diff := makeElemDiff(ctx, key, tfs.Elem(), pelem, collectionForceNew, old, new, oldOk, newOk)
+		diff := makeElemDiff(ctx, key, tfs.Elem(), pelem, collectionForceNew, old, new)
 		for subKey, subDiff := range diff {
 			res[subKey] = subDiff
 		}
 	} else if tfs.Type() == shim.TypeList {
-		diff := makeListDiff(ctx, key, tfs, ps, old, new, oldOk, newOk)
+		diff := makeListDiff(ctx, key, tfs, ps, old, new)
 		for subKey, subDiff := range diff {
 			res[subKey] = subDiff
 		}
 	} else if tfs.Type() == shim.TypeMap {
-		diff := makeMapDiff(ctx, key, tfs, ps, old, new, oldOk, newOk)
+		diff := makeMapDiff(ctx, key, tfs, ps, old, new)
 		for subKey, subDiff := range diff {
 			res[subKey] = subDiff
 		}
 	} else if tfs.Type() == shim.TypeSet {
 		// TODO[pulumi/pulumi-terraform-bridge#2200]: Implement set diffing
-		diff := makeListDiff(ctx, key, tfs, ps, old, new, oldOk, newOk)
+		diff := makeListDiff(ctx, key, tfs, ps, old, new)
 		for subKey, subDiff := range diff {
 			res[subKey] = subDiff
 		}
 	} else {
-		topDiff := makeTopPropDiff(old, new, oldOk, newOk, tfs, ps)
+		topDiff := makeTopPropDiff(old, new, tfs, ps)
 		if topDiff == nil {
 			return nil
 		}
@@ -270,32 +267,31 @@ func makeObjectDiff(
 	tfs shim.SchemaMap,
 	ps map[string]*SchemaInfo,
 	old, new resource.PropertyValue,
-	oldOk, newOk bool,
 ) map[detailedDiffKey]*pulumirpc.PropertyDiff {
 	diff := make(map[detailedDiffKey]*pulumirpc.PropertyDiff)
 	oldObj := resource.PropertyMap{}
 	newObj := resource.PropertyMap{}
-	if isPresent(old, oldOk) && old.IsObject() {
+	if isPresent(old) && old.IsObject() {
 		oldObj = old.ObjectValue()
 	}
-	if isPresent(new, newOk) && new.IsObject() {
+	if isPresent(new) && new.IsObject() {
 		newObj = new.ObjectValue()
 	}
 
 	for _, k := range sortedMergedKeys(oldObj, newObj) {
 		subkey := key.SubKey(string(k))
-		oldVal, oldOk := oldObj[k]
-		newVal, newOk := newObj[k]
+		oldVal := oldObj[k]
+		newVal := newObj[k]
 		_, etfs, eps := getInfoFromPulumiName(k, tfs, ps)
 
-		propDiff := makePropDiff(ctx, subkey, etfs, eps, oldVal, newVal, oldOk, newOk)
+		propDiff := makePropDiff(ctx, subkey, etfs, eps, oldVal, newVal)
 
 		for subKey, subDiff := range propDiff {
 			diff[subKey] = subDiff
 		}
 	}
 
-	simplerDiff, err := simplifyDiff(diff, key, old, new, oldOk, newOk, tfs, nil)
+	simplerDiff, err := simplifyDiff(diff, key, old, new, tfs, nil)
 	if err == nil {
 		return simplerDiff
 	}
@@ -310,7 +306,6 @@ func makeElemDiff(
 	ps *SchemaInfo,
 	parentForceNew bool,
 	old, new resource.PropertyValue,
-	oldOk, newOk bool,
 ) map[detailedDiffKey]*pulumirpc.PropertyDiff {
 	diff := make(map[detailedDiffKey]*pulumirpc.PropertyDiff)
 	if _, ok := tfs.(shim.Resource); ok {
@@ -319,30 +314,12 @@ func makeElemDiff(
 			eps = ps.Fields
 		}
 		etfs := tfs.(shim.Resource).Schema()
-		d := makeObjectDiff(
-			ctx,
-			key,
-			etfs,
-			eps,
-			old,
-			new,
-			oldOk,
-			newOk,
-		)
+		d := makeObjectDiff(ctx, key, etfs, eps, old, new)
 		for subKey, subDiff := range d {
 			diff[subKey] = subDiff
 		}
 	} else if _, ok := tfs.(shim.Schema); ok {
-		d := makePropDiff(
-			ctx,
-			key,
-			tfs.(shim.Schema),
-			ps,
-			old,
-			new,
-			oldOk,
-			newOk,
-		)
+		d := makePropDiff(ctx, key, tfs.(shim.Schema), ps, old, new)
 		for subKey, subDiff := range d {
 			if parentForceNew {
 				subDiff = promoteToReplace(subDiff)
@@ -350,7 +327,7 @@ func makeElemDiff(
 			diff[subKey] = subDiff
 		}
 	} else {
-		d := makePropDiff(ctx, key, nil, ps.Elem, old, new, oldOk, newOk)
+		d := makePropDiff(ctx, key, nil, ps.Elem, old, new)
 		for subKey, subDiff := range d {
 			if parentForceNew {
 				subDiff = promoteToReplace(subDiff)
@@ -359,7 +336,7 @@ func makeElemDiff(
 		}
 	}
 
-	simplerDiff, err := simplifyDiff(diff, key, old, new, oldOk, newOk, tfs, ps)
+	simplerDiff, err := simplifyDiff(diff, key, old, new, tfs, ps)
 	if err == nil {
 		return simplerDiff
 	}
@@ -373,15 +350,14 @@ func makeListDiff(
 	tfs shim.Schema,
 	ps *info.Schema,
 	old, new resource.PropertyValue,
-	oldOk, newOk bool,
 ) map[detailedDiffKey]*pulumirpc.PropertyDiff {
 	diff := make(map[detailedDiffKey]*pulumirpc.PropertyDiff)
 	oldList := []resource.PropertyValue{}
 	newList := []resource.PropertyValue{}
-	if isPresent(old, oldOk) && old.IsArray() {
+	if isPresent(old) && old.IsArray() {
 		oldList = old.ArrayValue()
 	}
-	if isPresent(new, newOk) && new.IsArray() {
+	if isPresent(new) && new.IsArray() {
 		newList = new.ArrayValue()
 	}
 
@@ -404,13 +380,13 @@ func makeListDiff(
 		}
 
 		d := makeElemDiff(
-			ctx, elemKey, tfs.Elem(), ps, collectionForceNew, oldVal, newVal, oldOk, newOk)
+			ctx, elemKey, tfs.Elem(), ps, collectionForceNew, oldVal, newVal)
 		for subKey, subDiff := range d {
 			diff[subKey] = subDiff
 		}
 	}
 
-	simplerDiff, err := simplifyDiff(diff, key, old, new, oldOk, newOk, tfs, ps)
+	simplerDiff, err := simplifyDiff(diff, key, old, new, tfs, ps)
 	if err == nil {
 		return simplerDiff
 	}
@@ -424,36 +400,35 @@ func makeMapDiff(
 	tfs shim.Schema,
 	ps *SchemaInfo,
 	old, new resource.PropertyValue,
-	oldOk, newOk bool,
 ) map[detailedDiffKey]*pulumirpc.PropertyDiff {
 	diff := make(map[detailedDiffKey]*pulumirpc.PropertyDiff)
 	oldMap := resource.PropertyMap{}
 	newMap := resource.PropertyMap{}
-	if isPresent(old, oldOk) && old.IsObject() {
+	if isPresent(old) && old.IsObject() {
 		oldMap = old.ObjectValue()
 	}
-	if isPresent(new, newOk) && new.IsObject() {
+	if isPresent(new) && new.IsObject() {
 		newMap = new.ObjectValue()
 	}
 
 	collectionForceNew := isForceNew(tfs, ps)
 	for _, k := range sortedMergedKeys(oldMap, newMap) {
 		subkey := key.SubKey(string(k))
-		oldVal, oldOk := oldMap[k]
-		newVal, newOk := newMap[k]
+		oldVal := oldMap[k]
+		newVal := newMap[k]
 
 		pelem := &info.Schema{}
 		if ps != nil {
 			pelem = ps.Elem
 		}
-		elemDiff := makeElemDiff(ctx, subkey, tfs.Elem(), pelem, collectionForceNew, oldVal, newVal, oldOk, newOk)
+		elemDiff := makeElemDiff(ctx, subkey, tfs.Elem(), pelem, collectionForceNew, oldVal, newVal)
 
 		for subKey, subDiff := range elemDiff {
 			diff[subKey] = subDiff
 		}
 	}
 
-	simplerDiff, err := simplifyDiff(diff, key, old, new, oldOk, newOk, tfs, ps)
+	simplerDiff, err := simplifyDiff(diff, key, old, new, tfs, ps)
 	if err == nil {
 		return simplerDiff
 	}
@@ -469,12 +444,12 @@ func makePulumiDetailedDiffV2(
 ) map[string]*pulumirpc.PropertyDiff {
 	diff := make(map[detailedDiffKey]*pulumirpc.PropertyDiff)
 	for _, k := range sortedMergedKeys(oldState, plannedState) {
-		old, oldOk := oldState[k]
-		new, newOk := plannedState[k]
+		old := oldState[k]
+		new := plannedState[k]
 		_, etfs, eps := getInfoFromPulumiName(k, tfs, ps)
 
 		key := detailedDiffKey(k)
-		propDiff := makePropDiff(ctx, key, etfs, eps, old, new, oldOk, newOk)
+		propDiff := makePropDiff(ctx, key, etfs, eps, old, new)
 
 		for subKey, subDiff := range propDiff {
 			diff[subKey] = subDiff
