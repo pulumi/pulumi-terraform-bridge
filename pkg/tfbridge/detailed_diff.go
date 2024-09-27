@@ -78,6 +78,13 @@ func (k detailedDiffPair) Index(i int) detailedDiffPair {
 	return k.append(i)
 }
 
+func(k detailedDiffPair) Elem() detailedDiffPair {
+	return detailedDiffPair{
+		key:  k.key,
+		path: append(k.path, 0),
+	}
+}
+
 type baseDiff string
 
 const (
@@ -262,13 +269,23 @@ func (differ detailedDiffer) makePropDiff(
 		return result
 	}
 
-	if tfs.Type() == shim.TypeList {
-		diff := differ.makeListDiff(ctx, ddIndex, tfs, ps, old, new)
+	if isFlattened(tfs, ps) {
+		tfs := tfs.Elem()
+		fields := make(map[string]*SchemaInfo)
+		if ps != nil {
+			fields = ps.Fields
+		}
+		diff := differ.makeObjectDiff(ctx, ddIndex, tfs, fields, old, new)
 		for subKey, subDiff := range diff {
 			result[subKey] = subDiff
 		}
 	} else if tfs.Type() == shim.TypeMap {
 		diff := differ.makeMapDiff(ctx, ddIndex, tfs, ps, old, new)
+		for subKey, subDiff := range diff {
+			result[subKey] = subDiff
+		}
+	} else if tfs.Type() == shim.TypeList {
+		diff := differ.makeListDiff(ctx, ddIndex, tfs, ps, old, new)
 		for subKey, subDiff := range diff {
 			result[subKey] = subDiff
 		}
@@ -294,13 +311,14 @@ func (differ detailedDiffer) makePropDiff(
 func (differ detailedDiffer) makeObjectDiff(
 	ctx context.Context,
 	ddIndex detailedDiffPair,
-	tfs shim.SchemaMap,
+	tfs interface{},
 	ps map[string]*SchemaInfo,
 	old, new resource.PropertyValue,
 ) map[detailedDiffKey]*pulumirpc.PropertyDiff {
 	diff := make(map[detailedDiffKey]*pulumirpc.PropertyDiff)
 	oldObj := resource.PropertyMap{}
 	newObj := resource.PropertyMap{}
+
 	if isPresent(old) && old.IsObject() {
 		oldObj = old.ObjectValue()
 	}
@@ -320,51 +338,6 @@ func (differ detailedDiffer) makeObjectDiff(
 	}
 
 	simplerDiff, err := simplifyDiff(diff, ddIndex, old, new, tfs, nil)
-	if err == nil {
-		return simplerDiff
-	}
-
-	return diff
-}
-
-func (differ detailedDiffer) makeElemDiff(
-	ctx context.Context,
-	ddIndex detailedDiffPair,
-	tfs interface{},
-	ps *SchemaInfo,
-	parentForceNew bool,
-	old, new resource.PropertyValue,
-) map[detailedDiffKey]*pulumirpc.PropertyDiff {
-	diff := make(map[detailedDiffKey]*pulumirpc.PropertyDiff)
-	if _, ok := tfs.(shim.Resource); ok {
-		eps := map[string]*SchemaInfo{}
-		if ps != nil {
-			eps = ps.Fields
-		}
-		etfs := tfs.(shim.Resource).Schema()
-		d := differ.makeObjectDiff(ctx, ddIndex, etfs, eps, old, new)
-		for subKey, subDiff := range d {
-			diff[subKey] = subDiff
-		}
-	} else if _, ok := tfs.(shim.Schema); ok {
-		d := differ.makePropDiff(ctx, ddIndex, old, new)
-		for subKey, subDiff := range d {
-			if parentForceNew {
-				subDiff = promoteToReplace(subDiff)
-			}
-			diff[subKey] = subDiff
-		}
-	} else {
-		d := differ.makePropDiff(ctx, ddIndex, old, new)
-		for subKey, subDiff := range d {
-			if parentForceNew {
-				subDiff = promoteToReplace(subDiff)
-			}
-			diff[subKey] = subDiff
-		}
-	}
-
-	simplerDiff, err := simplifyDiff(diff, ddIndex, old, new, tfs, ps)
 	if err == nil {
 		return simplerDiff
 	}

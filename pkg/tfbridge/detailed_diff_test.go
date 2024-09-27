@@ -23,10 +23,6 @@ func TestSubPath(t *testing.T) {
 }
 
 func TestSchemaLookupMaxItemsOne(t *testing.T) {
-	lookup := func(path resource.PropertyPath, sch shim.SchemaMap) (shim.Schema, *SchemaInfo, error) {
-		schemaPath := PropertyPathToSchemaPath(path, sch, nil)
-		return LookupSchemas(schemaPath, sch, nil)
-	}
 	res := schema.Resource{
 		Schema: map[string]*schema.Schema{
 			"foo": {
@@ -45,18 +41,16 @@ func TestSchemaLookupMaxItemsOne(t *testing.T) {
 		},
 	}
 
-	// differ := detailedDiffer{
-	// 	tfs: shimv2.NewSchemaMap(res.Schema),
-	// }
+	differ := detailedDiffer{
+		tfs: shimv2.NewSchemaMap(res.Schema),
+	}
 
-	// sch, _, err := differ.lookupSchemas(resource.PropertyPath{"foo"})
-	sch, _, err := lookup(resource.PropertyPath{"foo"}, shimv2.NewSchemaMap(res.Schema))
+	sch, _, err := differ.lookupSchemas(resource.PropertyPath{"foo"})
 	require.NoError(t, err)
 	require.NotNil(t, sch)
-	require.Equal(t, sch.Type(), shim.TypeMap)
+	require.Equal(t, sch.Type(), shim.TypeList)
 
-	// sch, _, err = differ.lookupSchemas(resource.PropertyPath{"foo", "bar"})
-	sch, _, err = lookup(resource.PropertyPath{"foo", "bar"}, shimv2.NewSchemaMap(res.Schema))
+	sch, _, err = differ.lookupSchemas(resource.PropertyPath{"foo", "bar"})
 	require.NoError(t, err)
 	require.NotNil(t, sch)
 	require.Equal(t, sch.Type(), shim.TypeString)
