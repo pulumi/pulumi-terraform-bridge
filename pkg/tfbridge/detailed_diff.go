@@ -3,7 +3,6 @@ package tfbridge
 import (
 	"context"
 	"errors"
-	"q"
 	"slices"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -14,7 +13,7 @@ import (
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
-func isFlattened(s shim.Schema, ps *SchemaInfo) bool {
+func isObject(s shim.Schema, ps *SchemaInfo) bool {
 	if s.Type() != shim.TypeList && s.Type() != shim.TypeSet {
 		return false
 	}
@@ -76,13 +75,6 @@ func (k detailedDiffPair) SubKey(subkey string) detailedDiffPair {
 
 func (k detailedDiffPair) Index(i int) detailedDiffPair {
 	return k.append(i)
-}
-
-func(k detailedDiffPair) Elem() detailedDiffPair {
-	return detailedDiffPair{
-		key:  k.key,
-		path: append(k.path, 0),
-	}
 }
 
 type baseDiff string
@@ -179,16 +171,15 @@ func mapHasReplacements(m map[detailedDiffKey]*pulumirpc.PropertyDiff) bool {
 // always walk the full tree even when comparing against a nil property. We then later do a simplification step for
 // the detailed diff in simplifyDiff in order to reduce the diff to what the user expects to see.
 // See [pulumi/pulumi-terraform-bridge#2405] for more details.
-func simplifyDiff(
+func (differ detailedDiffer) simplifyDiff(
 	diff map[detailedDiffKey]*pulumirpc.PropertyDiff, ddIndex detailedDiffPair, old, new resource.PropertyValue,
-	tfs interface{}, ps *SchemaInfo,
 ) (map[detailedDiffKey]*pulumirpc.PropertyDiff, error) {
+	tfs, ps, err := differ.lookupSchemas(ddIndex.path)
+	if err != nil {
+		return nil, err
+	}
 	baseDiff := makeBaseDiff(old, new)
 	if baseDiff != Undecided {
-		tfs, ok := tfs.(shim.Schema)
-		if !ok {
-			tfs = nil
-		}
 		propDiff := baseDiffToPropertyDiff(baseDiff, tfs, ps)
 		if propDiff == nil {
 			return nil, nil
@@ -237,12 +228,12 @@ func (differ detailedDiffer) lookupSchemas(path resource.PropertyPath) (shim.Sch
 	return LookupSchemas(schemaPath, differ.tfs, differ.ps)
 }
 
-func (differ detailedDiffer) isForceNew(path resource.PropertyPath) (bool, error) {
-	tfs, ps, err := differ.lookupSchemas(path)
+func (differ detailedDiffer) isForceNew(pair detailedDiffPair) bool {
+	tfs, ps, err := differ.lookupSchemas(pair.path)
 	if err != nil {
-		return false, err
+		return false
 	}
-	return isForceNew(tfs, ps), nil
+	return isForceNew(tfs, ps)
 }
 
 func (differ detailedDiffer) makePropDiff(
@@ -251,14 +242,7 @@ func (differ detailedDiffer) makePropDiff(
 	old, new resource.PropertyValue,
 ) map[detailedDiffKey]*pulumirpc.PropertyDiff {
 	result := make(map[detailedDiffKey]*pulumirpc.PropertyDiff)
-
-	q.Q(ddIndex.key)
 	tfs, ps, err := differ.lookupSchemas(ddIndex.path)
-
-	q.Q(ddIndex.key, old, new)
-
-	q.Q(tfs.Type())
-
 	if err != nil || tfs == nil {
 		// If the schema is nil, we just return the top-level diff
 		topDiff := makeTopPropDiff(old, new, tfs, ps)
@@ -269,29 +253,24 @@ func (differ detailedDiffer) makePropDiff(
 		return result
 	}
 
-	if isFlattened(tfs, ps) {
-		tfs := tfs.Elem()
-		fields := make(map[string]*SchemaInfo)
-		if ps != nil {
-			fields = ps.Fields
-		}
-		diff := differ.makeObjectDiff(ctx, ddIndex, tfs, fields, old, new)
+	if isObject(tfs, ps) {
+		diff := differ.makeObjectDiff(ctx, ddIndex, old, new)
 		for subKey, subDiff := range diff {
 			result[subKey] = subDiff
 		}
 	} else if tfs.Type() == shim.TypeMap {
-		diff := differ.makeMapDiff(ctx, ddIndex, tfs, ps, old, new)
+		diff := differ.makeMapDiff(ctx, ddIndex, old, new)
 		for subKey, subDiff := range diff {
 			result[subKey] = subDiff
 		}
 	} else if tfs.Type() == shim.TypeList {
-		diff := differ.makeListDiff(ctx, ddIndex, tfs, ps, old, new)
+		diff := differ.makeListDiff(ctx, ddIndex, old, new)
 		for subKey, subDiff := range diff {
 			result[subKey] = subDiff
 		}
 	} else if tfs.Type() == shim.TypeSet {
 		// TODO[pulumi/pulumi-terraform-bridge#2200]: Implement set diffing
-		diff := differ.makeListDiff(ctx, ddIndex, tfs, ps, old, new)
+		diff := differ.makeListDiff(ctx, ddIndex, old, new)
 		for subKey, subDiff := range diff {
 			result[subKey] = subDiff
 		}
@@ -303,16 +282,12 @@ func (differ detailedDiffer) makePropDiff(
 		result[ddIndex.key] = topDiff
 	}
 
-	q.Q(result)
-
 	return result
 }
 
 func (differ detailedDiffer) makeObjectDiff(
 	ctx context.Context,
 	ddIndex detailedDiffPair,
-	tfs interface{},
-	ps map[string]*SchemaInfo,
 	old, new resource.PropertyValue,
 ) map[detailedDiffKey]*pulumirpc.PropertyDiff {
 	diff := make(map[detailedDiffKey]*pulumirpc.PropertyDiff)
@@ -337,7 +312,7 @@ func (differ detailedDiffer) makeObjectDiff(
 		}
 	}
 
-	simplerDiff, err := simplifyDiff(diff, ddIndex, old, new, tfs, nil)
+	simplerDiff, err := differ.simplifyDiff(diff, ddIndex, old, new)
 	if err == nil {
 		return simplerDiff
 	}
@@ -348,8 +323,6 @@ func (differ detailedDiffer) makeObjectDiff(
 func (differ detailedDiffer) makeListDiff(
 	ctx context.Context,
 	ddIndex detailedDiffPair,
-	tfs shim.Schema,
-	ps *info.Schema,
 	old, new resource.PropertyValue,
 ) map[detailedDiffKey]*pulumirpc.PropertyDiff {
 	diff := make(map[detailedDiffKey]*pulumirpc.PropertyDiff)
@@ -365,7 +338,6 @@ func (differ detailedDiffer) makeListDiff(
 	// naive diffing of lists
 	// TODO[pulumi/pulumi-terraform-bridge#2295]: implement a more sophisticated diffing algorithm
 	// investigate how this interacts with force new - is identity preserved or just order
-	collectionForceNew := isForceNew(tfs, ps)
 	longerLen := max(len(oldList), len(newList))
 	for i := 0; i < longerLen; i++ {
 		elemKey := ddIndex.Index(i)
@@ -383,14 +355,15 @@ func (differ detailedDiffer) makeListDiff(
 		d := differ.makePropDiff(
 			ctx, elemKey, oldVal, newVal)
 		for subKey, subDiff := range d {
-			if collectionForceNew {
+			if differ.isForceNew(ddIndex) {
+				// TODO: Wrong - we should only be promoting direct children of the collection
 				subDiff = promoteToReplace(subDiff)
 			}
 			diff[subKey] = subDiff
 		}
 	}
 
-	simplerDiff, err := simplifyDiff(diff, ddIndex, old, new, tfs, ps)
+	simplerDiff, err := differ.simplifyDiff(diff, ddIndex, old, new)
 	if err == nil {
 		return simplerDiff
 	}
@@ -401,8 +374,6 @@ func (differ detailedDiffer) makeListDiff(
 func (differ detailedDiffer) makeMapDiff(
 	ctx context.Context,
 	ddIndex detailedDiffPair,
-	tfs shim.Schema,
-	ps *SchemaInfo,
 	old, new resource.PropertyValue,
 ) map[detailedDiffKey]*pulumirpc.PropertyDiff {
 	diff := make(map[detailedDiffKey]*pulumirpc.PropertyDiff)
@@ -423,14 +394,14 @@ func (differ detailedDiffer) makeMapDiff(
 		elemDiff := differ.makePropDiff(ctx, subindex, oldVal, newVal)
 
 		for subKey, subDiff := range elemDiff {
-			if isForceNew(tfs, ps) {
+			if differ.isForceNew(ddIndex) {
 				subDiff = promoteToReplace(subDiff)
 			}
 			diff[subKey] = subDiff
 		}
 	}
 
-	simplerDiff, err := simplifyDiff(diff, ddIndex, old, new, tfs, ps)
+	simplerDiff, err := differ.simplifyDiff(diff, ddIndex, old, new)
 	if err == nil {
 		return simplerDiff
 	}
