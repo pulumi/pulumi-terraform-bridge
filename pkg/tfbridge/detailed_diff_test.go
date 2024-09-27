@@ -1,7 +1,6 @@
 package tfbridge
 
 import (
-	"context"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -16,10 +15,44 @@ import (
 )
 
 func TestSubPath(t *testing.T) {
-	require.Equal(t, detailedDiffKey("foo").SubKey("bar"), detailedDiffKey("foo.bar"))
-	require.Equal(t, detailedDiffKey("foo").SubKey("bar").SubKey("baz"), detailedDiffKey("foo.bar.baz"))
-	require.Equal(t, detailedDiffKey("foo").SubKey("bar.baz"), detailedDiffKey(`foo["bar.baz"]`))
-	require.Equal(t, detailedDiffKey("foo").Index(2), detailedDiffKey("foo[2]"))
+	require.Equal(t, (newDetailedDiffPair("foo").SubKey("bar")).key, detailedDiffKey("foo.bar"))
+	require.Equal(t, newDetailedDiffPair("foo").SubKey("bar").SubKey("baz").key, detailedDiffKey("foo.bar.baz"))
+	require.Equal(t, newDetailedDiffPair("foo").SubKey("bar.baz").key, detailedDiffKey(`foo["bar.baz"]`))
+	require.Equal(t, newDetailedDiffPair("foo").Index(2).key, detailedDiffKey("foo[2]"))
+}
+
+func TestSchemaLookupMaxItemsOne(t *testing.T) {
+	res := schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"foo": {
+				Type:     schema.TypeList,
+				MaxItems: 1,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"bar": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	differ := detailedDiffer{
+		tfs: shimv2.NewSchemaMap(res.Schema),
+	}
+
+	sch, _, err := differ.lookupSchemas(resource.PropertyPath{"foo"})
+	require.NoError(t, err)
+	require.NotNil(t, sch)
+	require.Equal(t, sch.Type(), shim.TypeList)
+
+	sch, _, err = differ.lookupSchemas(resource.PropertyPath{"foo", "bar"})
+	require.NoError(t, err)
+	require.NotNil(t, sch)
+	require.Equal(t, sch.Type(), shim.TypeString)
 }
 
 func TestMakeBaseDiff(t *testing.T) {
@@ -45,7 +78,7 @@ func TestMakePropDiff(t *testing.T) {
 		name string
 		old  resource.PropertyValue
 		new  resource.PropertyValue
-		etf  shim.Schema
+		etf  shimschema.Schema
 		eps  *SchemaInfo
 		want *pulumirpc.PropertyDiff
 	}{
@@ -101,28 +134,28 @@ func TestMakePropDiff(t *testing.T) {
 			name: "tf force new unchanged",
 			old:  resource.NewStringProperty("old"),
 			new:  resource.NewStringProperty("old"),
-			etf:  (&shimschema.Schema{ForceNew: true}).Shim(),
+			etf:  shimschema.Schema{ForceNew: true},
 			want: nil,
 		},
 		{
 			name: "tf force new changed non-nil",
 			old:  resource.NewStringProperty("old"),
 			new:  resource.NewStringProperty("new"),
-			etf:  (&shimschema.Schema{ForceNew: true}).Shim(),
+			etf:  shimschema.Schema{ForceNew: true},
 			want: &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE_REPLACE},
 		},
 		{
 			name: "tf force new changed from nil",
 			old:  resource.NewNullProperty(),
 			new:  resource.NewStringProperty("new"),
-			etf:  (&shimschema.Schema{ForceNew: true}).Shim(),
+			etf:  shimschema.Schema{ForceNew: true},
 			want: &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_ADD_REPLACE},
 		},
 		{
 			name: "tf force new changed to nil",
 			old:  resource.NewStringProperty("old"),
 			new:  resource.NewNullProperty(),
-			etf:  (&shimschema.Schema{ForceNew: true}).Shim(),
+			etf:  shimschema.Schema{ForceNew: true},
 			want: &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_DELETE_REPLACE},
 		},
 		{
@@ -157,7 +190,10 @@ func TestMakePropDiff(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := makeTopPropDiff(tt.old, tt.new, tt.etf, tt.eps)
+			got := detailedDiffer{
+				tfs: shimschema.SchemaMap{"foo": tt.etf.Shim()},
+				ps:  map[string]*SchemaInfo{"foo": tt.eps},
+			}.makeTopPropDiff(tt.old, tt.new, newDetailedDiffPair("foo"))
 			if got == nil && tt.want == nil {
 				return
 			}
@@ -194,7 +230,8 @@ func runDetailedDiffTest(
 	want map[string]*pulumirpc.PropertyDiff,
 ) {
 	t.Helper()
-	got := makeDetailedDiffPropertyMap(context.Background(), tfs, ps, old, new)
+	differ := detailedDiffer{tfs: tfs, ps: ps}
+	got := differ.makeDetailedDiffPropertyMap(old, new)
 
 	if len(got) != len(want) {
 		t.Logf("got %d diffs, want %d", len(got), len(want))
@@ -1010,7 +1047,7 @@ func TestDetailedDiffTFForceNewBlockCollection(t *testing.T) {
 	t.Run("changed to computed elem", func(t *testing.T) {
 		runDetailedDiffTest(t, propertyMapListVal1, propertyMapComputedElem, tfs, ps,
 			map[string]*pulumirpc.PropertyDiff{
-				"list_prop[0]": {Kind: pulumirpc.PropertyDiff_UPDATE},
+				"list_prop[0]": {Kind: pulumirpc.PropertyDiff_UPDATE_REPLACE},
 			})
 	})
 
