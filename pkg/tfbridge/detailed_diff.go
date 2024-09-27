@@ -212,7 +212,7 @@ func makePropDiff(
 	ps *SchemaInfo,
 	old, new resource.PropertyValue,
 ) map[detailedDiffKey]*pulumirpc.PropertyDiff {
-	res := make(map[detailedDiffKey]*pulumirpc.PropertyDiff)
+	result := make(map[detailedDiffKey]*pulumirpc.PropertyDiff)
 
 	if tfs == nil {
 		// If the schema is nil, we just return the top-level diff
@@ -220,8 +220,8 @@ func makePropDiff(
 		if topDiff == nil {
 			return nil
 		}
-		res[key] = topDiff
-		return res
+		result[key] = topDiff
+		return result
 	}
 
 	if isFlattened(tfs, ps) {
@@ -232,33 +232,33 @@ func makePropDiff(
 		collectionForceNew := isForceNew(tfs, ps)
 		diff := makeElemDiff(ctx, key, tfs.Elem(), pelem, collectionForceNew, old, new)
 		for subKey, subDiff := range diff {
-			res[subKey] = subDiff
+			result[subKey] = subDiff
 		}
 	} else if tfs.Type() == shim.TypeList {
 		diff := makeListDiff(ctx, key, tfs, ps, old, new)
 		for subKey, subDiff := range diff {
-			res[subKey] = subDiff
+			result[subKey] = subDiff
 		}
 	} else if tfs.Type() == shim.TypeMap {
 		diff := makeMapDiff(ctx, key, tfs, ps, old, new)
 		for subKey, subDiff := range diff {
-			res[subKey] = subDiff
+			result[subKey] = subDiff
 		}
 	} else if tfs.Type() == shim.TypeSet {
 		// TODO[pulumi/pulumi-terraform-bridge#2200]: Implement set diffing
 		diff := makeListDiff(ctx, key, tfs, ps, old, new)
 		for subKey, subDiff := range diff {
-			res[subKey] = subDiff
+			result[subKey] = subDiff
 		}
 	} else {
 		topDiff := makeTopPropDiff(old, new, tfs, ps)
 		if topDiff == nil {
 			return nil
 		}
-		res[key] = topDiff
+		result[key] = topDiff
 	}
 
-	return res
+	return result
 }
 
 func makeObjectDiff(
