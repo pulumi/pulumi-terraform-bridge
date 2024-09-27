@@ -13,6 +13,22 @@ import (
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
+func isPresent(val resource.PropertyValue) bool {
+	return !val.IsNull() &&
+		!(val.IsArray() && val.ArrayValue() == nil) &&
+		!(val.IsObject() && val.ObjectValue() == nil)
+}
+
+func isForceNew(tfs shim.Schema, ps *SchemaInfo) bool {
+	if tfs != nil && tfs.ForceNew() {
+		return true
+	}
+	if ps != nil && ps.ForceNew != nil && *ps.ForceNew {
+		return true
+	}
+	return false
+}
+
 func isObject(tfs shim.Schema, ps *SchemaInfo) bool {
 	if tfs.Type() == shim.TypeMap {
 		return true
@@ -43,6 +59,65 @@ func sortedMergedKeys(a resource.PropertyMap, b resource.PropertyMap) []resource
 	}
 	slices.Sort(keysSlice)
 	return keysSlice
+}
+
+func promoteToReplace(diff *pulumirpc.PropertyDiff) *pulumirpc.PropertyDiff {
+	kind := diff.GetKind()
+	switch kind {
+	case pulumirpc.PropertyDiff_ADD:
+		return &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_ADD_REPLACE}
+	case pulumirpc.PropertyDiff_DELETE:
+		return &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_DELETE_REPLACE}
+	case pulumirpc.PropertyDiff_UPDATE:
+		return &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE_REPLACE}
+	default:
+		return diff
+	}
+}
+
+type baseDiff string
+
+const (
+	NoDiff    baseDiff = "NoDiff"
+	Add       baseDiff = "Add"
+	Delete    baseDiff = "Delete"
+	Update    baseDiff = "Update"
+	Undecided baseDiff = "Undecided"
+)
+
+func (b baseDiff) ToPropertyDiff() *pulumirpc.PropertyDiff {
+	contract.Assertf(b != Undecided, "diff should not be undecided")
+	switch b {
+	case Add:
+		return &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_ADD}
+	case Delete:
+		return &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_DELETE}
+	case Update:
+		return &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE}
+	default:
+		return nil
+	}
+}
+
+func makeBaseDiff(old, new resource.PropertyValue) baseDiff {
+	oldPresent := isPresent(old)
+	newPresent := isPresent(new)
+	if !oldPresent {
+		if !newPresent {
+			return NoDiff
+		}
+
+		return Add
+	}
+	if !newPresent {
+		return Delete
+	}
+
+	if new.IsComputed() {
+		return Update
+	}
+
+	return Undecided
 }
 
 type (
@@ -84,81 +159,6 @@ func (k detailedDiffPair) Index(i int) detailedDiffPair {
 func (k detailedDiffPair) IsReservedKey() bool {
 	leaf := k.path[len(k.path)-1]
 	return leaf == "__meta" || leaf == "__defaults"
-}
-
-type baseDiff string
-
-const (
-	NoDiff    baseDiff = "NoDiff"
-	Add       baseDiff = "Add"
-	Delete    baseDiff = "Delete"
-	Update    baseDiff = "Update"
-	Undecided baseDiff = "Undecided"
-)
-
-func isPresent(val resource.PropertyValue) bool {
-	return !val.IsNull() &&
-		!(val.IsArray() && val.ArrayValue() == nil) &&
-		!(val.IsObject() && val.ObjectValue() == nil)
-}
-
-func isForceNew(tfs shim.Schema, ps *SchemaInfo) bool {
-	if tfs != nil && tfs.ForceNew() {
-		return true
-	}
-	if ps != nil && ps.ForceNew != nil && *ps.ForceNew {
-		return true
-	}
-	return false
-}
-
-func makeBaseDiff(old, new resource.PropertyValue) baseDiff {
-	oldPresent := isPresent(old)
-	newPresent := isPresent(new)
-	if !oldPresent {
-		if !newPresent {
-			return NoDiff
-		}
-
-		return Add
-	}
-	if !newPresent {
-		return Delete
-	}
-
-	if new.IsComputed() {
-		return Update
-	}
-
-	return Undecided
-}
-
-func baseDiffToPropertyDiff(diff baseDiff) *pulumirpc.PropertyDiff {
-	contract.Assertf(diff != Undecided, "diff should not be undecided")
-	switch diff {
-	case Add:
-		return &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_ADD}
-	case Delete:
-		return &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_DELETE}
-	case Update:
-		return &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE}
-	default:
-		return nil
-	}
-}
-
-func promoteToReplace(diff *pulumirpc.PropertyDiff) *pulumirpc.PropertyDiff {
-	kind := diff.GetKind()
-	switch kind {
-	case pulumirpc.PropertyDiff_ADD:
-		return &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_ADD_REPLACE}
-	case pulumirpc.PropertyDiff_DELETE:
-		return &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_DELETE_REPLACE}
-	case pulumirpc.PropertyDiff_UPDATE:
-		return &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE_REPLACE}
-	default:
-		return diff
-	}
 }
 
 func mapHasReplacements(m map[detailedDiffKey]*pulumirpc.PropertyDiff) bool {
@@ -219,7 +219,7 @@ func (differ detailedDiffer) simplifyDiff(
 ) (map[detailedDiffKey]*pulumirpc.PropertyDiff, error) {
 	baseDiff := makeBaseDiff(old, new)
 	if baseDiff != Undecided {
-		propDiff := baseDiffToPropertyDiff(baseDiff)
+		propDiff := baseDiff.ToPropertyDiff()
 		if propDiff == nil {
 			return nil, nil
 		}
@@ -237,7 +237,7 @@ func (differ detailedDiffer) makeTopPropDiff(
 	baseDiff := makeBaseDiff(old, new)
 	isForceNew := differ.isForceNew(ddIndex)
 	if baseDiff != Undecided {
-		propDiff := baseDiffToPropertyDiff(baseDiff)
+		propDiff := baseDiff.ToPropertyDiff()
 		if isForceNew {
 			propDiff = promoteToReplace(propDiff)
 		}
