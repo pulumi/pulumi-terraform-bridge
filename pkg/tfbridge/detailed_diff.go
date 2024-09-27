@@ -13,8 +13,8 @@ import (
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
-func isObject(s shim.Schema, ps *SchemaInfo) bool {
-	if s.Type() != shim.TypeList && s.Type() != shim.TypeSet {
+func isObject(tfs shim.Schema, ps *SchemaInfo) bool {
+	if tfs.Type() != shim.TypeList && tfs.Type() != shim.TypeSet {
 		return false
 	}
 
@@ -22,7 +22,7 @@ func isObject(s shim.Schema, ps *SchemaInfo) bool {
 		return *ps.MaxItemsOne
 	}
 
-	return s.MaxItems() == 1
+	return tfs.MaxItems() == 1
 }
 
 func sortedMergedKeys(a resource.PropertyMap, b resource.PropertyMap) []resource.PropertyKey {
@@ -114,18 +114,15 @@ func makeBaseDiff(old, new resource.PropertyValue) baseDiff {
 	return Undecided
 }
 
-func baseDiffToPropertyDiff(diff baseDiff, tfs shim.Schema, ps *SchemaInfo) *pulumirpc.PropertyDiff {
+func baseDiffToPropertyDiff(diff baseDiff) *pulumirpc.PropertyDiff {
 	contract.Assertf(diff != Undecided, "diff should not be undecided")
 	switch diff {
 	case Add:
-		result := &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_ADD}
-		return propertyDiffResult(tfs, ps, result)
+		return &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_ADD}
 	case Delete:
-		result := &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_DELETE}
-		return propertyDiffResult(tfs, ps, result)
+		return &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_DELETE}
 	case Update:
-		result := &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE}
-		return propertyDiffResult(tfs, ps, result)
+		return &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE}
 	default:
 		return nil
 	}
@@ -166,59 +163,31 @@ func mapHasReplacements(m map[detailedDiffKey]*pulumirpc.PropertyDiff) bool {
 	return false
 }
 
-// We do not short-circuit detailed diffs when comparing non-nil properties against nil ones. The reason for that is
-// that a replace might be triggered by a ForceNew inside a nested property of a non-ForceNew property. We instead
-// always walk the full tree even when comparing against a nil property. We then later do a simplification step for
-// the detailed diff in simplifyDiff in order to reduce the diff to what the user expects to see.
-// See [pulumi/pulumi-terraform-bridge#2405] for more details.
-func (differ detailedDiffer) simplifyDiff(
-	diff map[detailedDiffKey]*pulumirpc.PropertyDiff, ddIndex detailedDiffPair, old, new resource.PropertyValue,
-) (map[detailedDiffKey]*pulumirpc.PropertyDiff, error) {
-	tfs, ps, err := differ.lookupSchemas(ddIndex.path)
-	if err != nil {
-		return nil, err
-	}
-	baseDiff := makeBaseDiff(old, new)
-	if baseDiff != Undecided {
-		propDiff := baseDiffToPropertyDiff(baseDiff, tfs, ps)
-		if propDiff == nil {
-			return nil, nil
-		}
-		if mapHasReplacements(diff) {
-			propDiff = promoteToReplace(propDiff)
-		}
-		return map[detailedDiffKey]*pulumirpc.PropertyDiff{ddIndex.key: propDiff}, nil
-	}
-	return nil, errors.New("diff is not simplified")
-}
-
-func propertyDiffResult(tfs shim.Schema, ps *SchemaInfo, diff *pulumirpc.PropertyDiff) *pulumirpc.PropertyDiff {
-	// See pkg/cross-tests/diff_cross_test.go
-	// TestAttributeCollectionForceNew, TestBlockCollectionForceNew, TestBlockCollectionElementForceNew
-	// for a full case study of replacements in TF
-	if isForceNew(tfs, ps) {
-		return promoteToReplace(diff)
-	}
-	return diff
-}
-
 type detailedDiffer struct {
 	tfs shim.SchemaMap
 	ps  map[string]*SchemaInfo
 }
 
-func makeTopPropDiff(
+func (differ detailedDiffer) makeTopPropDiff(
 	old, new resource.PropertyValue,
-	tfs shim.Schema,
-	ps *SchemaInfo,
+	ddIndex detailedDiffPair,
 ) *pulumirpc.PropertyDiff {
 	baseDiff := makeBaseDiff(old, new)
+	isForceNew := differ.isForceNew(ddIndex)
 	if baseDiff != Undecided {
-		return baseDiffToPropertyDiff(baseDiff, tfs, ps)
+		propDiff := baseDiffToPropertyDiff(baseDiff)
+		if isForceNew {
+			propDiff = promoteToReplace(propDiff)
+		}
+		return propDiff
 	}
 
 	if !old.DeepEquals(new) {
-		return propertyDiffResult(tfs, ps, &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE})
+		diff := &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE}
+		if isForceNew {
+			return promoteToReplace(diff)
+		}
+		return diff
 	}
 	return nil
 }
@@ -229,11 +198,52 @@ func (differ detailedDiffer) lookupSchemas(path resource.PropertyPath) (shim.Sch
 }
 
 func (differ detailedDiffer) isForceNew(pair detailedDiffPair) bool {
+	// See pkg/cross-tests/diff_cross_test.go
+	// TestAttributeCollectionForceNew, TestBlockCollectionForceNew, TestBlockCollectionElementForceNew
+	// for a full case study of replacements in TF
 	tfs, ps, err := differ.lookupSchemas(pair.path)
 	if err != nil {
 		return false
 	}
+	if isForceNew(tfs, ps) {
+		return true
+	}
+
+	if len(pair.path) == 1 {
+		return false
+	}
+
+	parent := pair.path[:len(pair.path)-1]
+	tfs, ps, err = differ.lookupSchemas(parent)
+	if err != nil {
+		return false
+	}
+	if tfs.Type() != shim.TypeList && tfs.Type() != shim.TypeSet {
+		return false
+	}
 	return isForceNew(tfs, ps)
+}
+
+// We do not short-circuit detailed diffs when comparing non-nil properties against nil ones. The reason for that is
+// that a replace might be triggered by a ForceNew inside a nested property of a non-ForceNew property. We instead
+// always walk the full tree even when comparing against a nil property. We then later do a simplification step for
+// the detailed diff in simplifyDiff in order to reduce the diff to what the user expects to see.
+// See [pulumi/pulumi-terraform-bridge#2405] for more details.
+func (differ detailedDiffer) simplifyDiff(
+	diff map[detailedDiffKey]*pulumirpc.PropertyDiff, ddIndex detailedDiffPair, old, new resource.PropertyValue,
+) (map[detailedDiffKey]*pulumirpc.PropertyDiff, error) {
+	baseDiff := makeBaseDiff(old, new)
+	if baseDiff != Undecided {
+		propDiff := baseDiffToPropertyDiff(baseDiff)
+		if propDiff == nil {
+			return nil, nil
+		}
+		if differ.isForceNew(ddIndex) || mapHasReplacements(diff) {
+			propDiff = promoteToReplace(propDiff)
+		}
+		return map[detailedDiffKey]*pulumirpc.PropertyDiff{ddIndex.key: propDiff}, nil
+	}
+	return nil, errors.New("diff is not simplified")
 }
 
 func (differ detailedDiffer) makePropDiff(
@@ -245,7 +255,7 @@ func (differ detailedDiffer) makePropDiff(
 	tfs, ps, err := differ.lookupSchemas(ddIndex.path)
 	if err != nil || tfs == nil {
 		// If the schema is nil, we just return the top-level diff
-		topDiff := makeTopPropDiff(old, new, tfs, ps)
+		topDiff := differ.makeTopPropDiff(old, new, ddIndex)
 		if topDiff == nil {
 			return nil
 		}
@@ -275,7 +285,7 @@ func (differ detailedDiffer) makePropDiff(
 			result[subKey] = subDiff
 		}
 	} else {
-		topDiff := makeTopPropDiff(old, new, tfs, ps)
+		topDiff := differ.makeTopPropDiff(old, new, ddIndex)
 		if topDiff == nil {
 			return nil
 		}
@@ -355,10 +365,6 @@ func (differ detailedDiffer) makeListDiff(
 		d := differ.makePropDiff(
 			ctx, elemKey, oldVal, newVal)
 		for subKey, subDiff := range d {
-			if differ.isForceNew(ddIndex) {
-				// TODO: Wrong - we should only be promoting direct children of the collection
-				subDiff = promoteToReplace(subDiff)
-			}
 			diff[subKey] = subDiff
 		}
 	}
@@ -394,9 +400,6 @@ func (differ detailedDiffer) makeMapDiff(
 		elemDiff := differ.makePropDiff(ctx, subindex, oldVal, newVal)
 
 		for subKey, subDiff := range elemDiff {
-			if differ.isForceNew(ddIndex) {
-				subDiff = promoteToReplace(subDiff)
-			}
 			diff[subKey] = subDiff
 		}
 	}
