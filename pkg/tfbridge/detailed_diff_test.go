@@ -194,7 +194,7 @@ func runDetailedDiffTest(
 	want map[string]*pulumirpc.PropertyDiff,
 ) {
 	t.Helper()
-	got := makePulumiDetailedDiffV2(context.Background(), tfs, ps, old, new)
+	got := makeDetailedDiffPropertyMap(context.Background(), tfs, ps, old, new)
 
 	if len(got) != len(want) {
 		t.Logf("got %d diffs, want %d", len(got), len(want))

@@ -436,7 +436,7 @@ func makeMapDiff(
 	return diff
 }
 
-func makePulumiDetailedDiffV2(
+func makeDetailedDiffPropertyMap(
 	ctx context.Context,
 	tfs shim.SchemaMap,
 	ps map[string]*SchemaInfo,
@@ -462,4 +462,40 @@ func makePulumiDetailedDiffV2(
 	}
 
 	return result
+}
+
+func makeDetailedDiffV2(
+	ctx context.Context,
+	tfs shim.SchemaMap,
+	ps map[string]*SchemaInfo,
+	res shim.Resource,
+	prov shim.Provider,
+	state shim.InstanceState,
+	diff shim.InstanceDiff,
+	assets AssetTable,
+	supportsSecrets bool,
+) (map[string]*pulumirpc.PropertyDiff, error) {
+	// We need to compare the new and olds after all transformations have been applied.
+	// ex. state upgrades, implementation-specific normalizations etc.
+	proposedState, err := diff.ProposedState(res, state)
+	if err != nil {
+		return nil, err
+	}
+	props, err := MakeTerraformResult(
+		ctx, prov, proposedState, tfs, ps, assets, supportsSecrets)
+	if err != nil {
+		return nil, err
+	}
+
+	prior, err := diff.PriorState()
+	if err != nil {
+		return nil, err
+	}
+	priorProps, err := MakeTerraformResult(
+		ctx, prov, prior, tfs, ps, assets, supportsSecrets)
+	if err != nil {
+		return nil, err
+	}
+
+	return makeDetailedDiffPropertyMap(ctx, tfs, ps, priorProps, props), nil
 }
