@@ -73,6 +73,10 @@ const (
 	Undecided baseDiff = "Undecided"
 )
 
+func isInternalKey(k string) bool {
+	return k == "__meta" || k == "__defaults"
+}
+
 func isPresent(val resource.PropertyValue) bool {
 	return !val.IsNull() &&
 		!(val.IsArray() && val.ArrayValue() == nil) &&
@@ -212,6 +216,10 @@ func makePropDiff(
 	ps *SchemaInfo,
 	old, new resource.PropertyValue,
 ) map[detailedDiffKey]*pulumirpc.PropertyDiff {
+	if isInternalKey(string(key)) {
+		return nil
+	}
+
 	result := make(map[detailedDiffKey]*pulumirpc.PropertyDiff)
 
 	if tfs == nil {
