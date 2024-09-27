@@ -16,9 +16,10 @@ import (
 )
 
 func TestSubPath(t *testing.T) {
-	require.Equal(t, getSubPath("foo", "bar"), resource.PropertyKey("foo.bar"))
-	require.Equal(t, getSubPath("foo.bar", "baz"), resource.PropertyKey("foo.bar.baz"))
-	require.Equal(t, getSubPath("foo", "bar.baz"), resource.PropertyKey(`foo["bar.baz"]`))
+	require.Equal(t, detailedDiffKey("foo").SubKey("bar"), detailedDiffKey("foo.bar"))
+	require.Equal(t, detailedDiffKey("foo").SubKey("bar").SubKey("baz"), detailedDiffKey("foo.bar.baz"))
+	require.Equal(t, detailedDiffKey("foo").SubKey("bar.baz"), detailedDiffKey(`foo["bar.baz"]`))
+	require.Equal(t, detailedDiffKey("foo").Index(2), detailedDiffKey("foo[2]"))
 }
 
 func TestMakeBaseDiff(t *testing.T) {
