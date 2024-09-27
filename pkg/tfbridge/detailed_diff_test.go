@@ -16,10 +16,50 @@ import (
 )
 
 func TestSubPath(t *testing.T) {
-	require.Equal(t, detailedDiffKey("foo").SubKey("bar"), detailedDiffKey("foo.bar"))
-	require.Equal(t, detailedDiffKey("foo").SubKey("bar").SubKey("baz"), detailedDiffKey("foo.bar.baz"))
-	require.Equal(t, detailedDiffKey("foo").SubKey("bar.baz"), detailedDiffKey(`foo["bar.baz"]`))
-	require.Equal(t, detailedDiffKey("foo").Index(2), detailedDiffKey("foo[2]"))
+	require.Equal(t, (newDetailedDiffPair("foo").SubKey("bar")).key, detailedDiffKey("foo.bar"))
+	require.Equal(t, newDetailedDiffPair("foo").SubKey("bar").SubKey("baz").key, detailedDiffKey("foo.bar.baz"))
+	require.Equal(t, newDetailedDiffPair("foo").SubKey("bar.baz").key, detailedDiffKey(`foo["bar.baz"]`))
+	require.Equal(t, newDetailedDiffPair("foo").Index(2).key, detailedDiffKey("foo[2]"))
+}
+
+func TestSchemaLookupMaxItemsOne(t *testing.T) {
+	lookup := func(path resource.PropertyPath, sch shim.SchemaMap) (shim.Schema, *SchemaInfo, error) {
+		schemaPath := PropertyPathToSchemaPath(path, sch, nil)
+		return LookupSchemas(schemaPath, sch, nil)
+	}
+	res := schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"foo": {
+				Type:     schema.TypeList,
+				MaxItems: 1,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"bar": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// differ := detailedDiffer{
+	// 	tfs: shimv2.NewSchemaMap(res.Schema),
+	// }
+
+	// sch, _, err := differ.lookupSchemas(resource.PropertyPath{"foo"})
+	sch, _, err := lookup(resource.PropertyPath{"foo"}, shimv2.NewSchemaMap(res.Schema))
+	require.NoError(t, err)
+	require.NotNil(t, sch)
+	require.Equal(t, sch.Type(), shim.TypeMap)
+
+	// sch, _, err = differ.lookupSchemas(resource.PropertyPath{"foo", "bar"})
+	sch, _, err = lookup(resource.PropertyPath{"foo", "bar"}, shimv2.NewSchemaMap(res.Schema))
+	require.NoError(t, err)
+	require.NotNil(t, sch)
+	require.Equal(t, sch.Type(), shim.TypeString)
 }
 
 func TestMakeBaseDiff(t *testing.T) {
@@ -194,7 +234,8 @@ func runDetailedDiffTest(
 	want map[string]*pulumirpc.PropertyDiff,
 ) {
 	t.Helper()
-	got := makeDetailedDiffPropertyMap(context.Background(), tfs, ps, old, new)
+	differ := detailedDiffer{tfs: tfs, ps: ps}
+	got := differ.makeDetailedDiffPropertyMap(context.Background(), old, new)
 
 	if len(got) != len(want) {
 		t.Logf("got %d diffs, want %d", len(got), len(want))
