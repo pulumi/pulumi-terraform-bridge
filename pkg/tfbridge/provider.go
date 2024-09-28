@@ -1169,29 +1169,10 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 			changes = pulumirpc.DiffResponse_DIFF_SOME
 		}
 
-		// We need to compare the new and olds after all transformations have been applied.
-		// ex. state upgrades, implementation-specific normalizations etc.
-		proposedState, err := diff.ProposedState(res.TF, state)
+		detailedDiff, err = makeDetailedDiffV2(ctx, schema, fields, res.TF, p.tf, state, diff, assets, p.supportsSecrets)
 		if err != nil {
 			return nil, err
 		}
-		props, err := MakeTerraformResult(
-			ctx, p.tf, proposedState, res.TF.Schema(), res.Schema.Fields, assets, p.supportsSecrets)
-		if err != nil {
-			return nil, err
-		}
-
-		prior, err := diff.PriorState()
-		if err != nil {
-			return nil, err
-		}
-		priorProps, err := MakeTerraformResult(
-			ctx, p.tf, prior, res.TF.Schema(), res.Schema.Fields, assets, p.supportsSecrets)
-		if err != nil {
-			return nil, err
-		}
-
-		detailedDiff = makePulumiDetailedDiffV2(ctx, schema, fields, priorProps, props)
 	} else {
 		dd := makeDetailedDiffExtra(ctx, schema, fields, olds, news, diff)
 		detailedDiff, changes = dd.diffs, dd.changes
