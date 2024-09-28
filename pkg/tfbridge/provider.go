@@ -1234,23 +1234,25 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 		return true
 	})
 
+	if !opts.enableAccurateBridgePreview || decisionOverride == shim.DiffNoOverride {
+		// If the upstream diff object indicates a replace is necessary and we have not
+		// recorded any replaces, that means that `makeDetailedDiff` failed to translate a
+		// property. This is known to happen for computed input properties:
+		//
+		// https://github.com/pulumi/pulumi-aws/issues/2971
+		if (diff.RequiresNew() || diff.Destroy()) &&
+			// In theory, we should be safe to set __meta as replaces whenever
+			// `diff.RequiresNew() || diff.Destroy()` but by checking replaces we
+			// limit the blast radius of this change to diffs that we know will panic
+			// later on.
+			len(replaces) == 0 {
+			replaces = append(replaces, "__meta")
+			changes = pulumirpc.DiffResponse_DIFF_SOME
+		}
+	}
+
 	deleteBeforeReplace := len(replaces) > 0 &&
 		(res.Schema.DeleteBeforeReplace || nameRequiresDeleteBeforeReplace(news, olds, schema, res.Schema))
-
-	// If the upstream diff object indicates a replace is necessary and we have not
-	// recorded any replaces, that means that `makeDetailedDiff` failed to translate a
-	// property. This is known to happen for computed input properties:
-	//
-	// https://github.com/pulumi/pulumi-aws/issues/2971
-	if (diff.RequiresNew() || diff.Destroy()) &&
-		// In theory, we should be safe to set __meta as replaces whenever
-		// `diff.RequiresNew() || diff.Destroy()` but by checking replaces we
-		// limit the blast radius of this change to diffs that we know will panic
-		// later on.
-		len(replaces) == 0 {
-		replaces = append(replaces, "__meta")
-		changes = pulumirpc.DiffResponse_DIFF_SOME
-	}
 
 	if changes == pulumirpc.DiffResponse_DIFF_NONE &&
 		markWronglyTypedMaxItemsOneStateDiff(schema, fields, olds) {

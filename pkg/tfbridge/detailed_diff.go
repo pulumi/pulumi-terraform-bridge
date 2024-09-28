@@ -203,7 +203,7 @@ func (differ detailedDiffer) isForceNew(pair detailedDiffPair) bool {
 	if err != nil {
 		return false
 	}
-	if tfs.Type() != shim.TypeList && tfs.Type() != shim.TypeSet {
+	if tfs.Type() != shim.TypeList && tfs.Type() != shim.TypeSet && tfs.Type() != shim.TypeMap {
 		return false
 	}
 	return isForceNew(tfs, ps)
