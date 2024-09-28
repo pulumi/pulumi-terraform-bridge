@@ -121,43 +121,32 @@ func makeBaseDiff(old, new resource.PropertyValue) baseDiff {
 }
 
 type (
-	detailedDiffKey  string
-	detailedDiffPair struct {
-		key  detailedDiffKey
-		path resource.PropertyPath
-	}
+	detailedDiffKey string
+	propertyPath    resource.PropertyPath
 )
 
-func newDetailedDiffPair(root resource.PropertyKey) detailedDiffPair {
-	rootString := string(root)
-	return detailedDiffPair{
-		key:  detailedDiffKey(rootString),
-		path: resource.PropertyPath{rootString},
-	}
+func (k propertyPath) String() string {
+	return resource.PropertyPath(k).String()
 }
 
-func (k detailedDiffPair) String() string {
-	return string(k.key)
+func (k propertyPath) Key() detailedDiffKey {
+	return detailedDiffKey(k.String())
 }
 
-func (k detailedDiffPair) append(subkey interface{}) detailedDiffPair {
-	subpath := append(k.path, subkey)
-	return detailedDiffPair{
-		key:  detailedDiffKey(subpath.String()),
-		path: subpath,
-	}
+func (k propertyPath) append(subkey interface{}) propertyPath {
+	return append(k, subkey)
 }
 
-func (k detailedDiffPair) SubKey(subkey string) detailedDiffPair {
+func (k propertyPath) SubKey(subkey string) propertyPath {
 	return k.append(subkey)
 }
 
-func (k detailedDiffPair) Index(i int) detailedDiffPair {
+func (k propertyPath) Index(i int) propertyPath {
 	return k.append(i)
 }
 
-func (k detailedDiffPair) IsReservedKey() bool {
-	leaf := k.path[len(k.path)-1]
+func (k propertyPath) IsReservedKey() bool {
+	leaf := k[len(k)-1]
 	return leaf == "__meta" || leaf == "__defaults"
 }
 
@@ -177,16 +166,16 @@ type detailedDiffer struct {
 	ps  map[string]*SchemaInfo
 }
 
-func (differ detailedDiffer) lookupSchemas(path resource.PropertyPath) (shim.Schema, *info.Schema, error) {
-	schemaPath := PropertyPathToSchemaPath(path, differ.tfs, differ.ps)
+func (differ detailedDiffer) lookupSchemas(path propertyPath) (shim.Schema, *info.Schema, error) {
+	schemaPath := PropertyPathToSchemaPath(resource.PropertyPath{path}, differ.tfs, differ.ps)
 	return LookupSchemas(schemaPath, differ.tfs, differ.ps)
 }
 
-func (differ detailedDiffer) isForceNew(pair detailedDiffPair) bool {
+func (differ detailedDiffer) isForceNew(pair propertyPath) bool {
 	// See pkg/cross-tests/diff_cross_test.go
 	// TestAttributeCollectionForceNew, TestBlockCollectionForceNew, TestBlockCollectionElementForceNew
 	// for a full case study of replacements in TF
-	tfs, ps, err := differ.lookupSchemas(pair.path)
+	tfs, ps, err := differ.lookupSchemas(pair)
 	if err != nil {
 		return false
 	}
@@ -194,11 +183,11 @@ func (differ detailedDiffer) isForceNew(pair detailedDiffPair) bool {
 		return true
 	}
 
-	if len(pair.path) == 1 {
+	if len(pair) == 1 {
 		return false
 	}
 
-	parent := pair.path[:len(pair.path)-1]
+	parent := pair[:len(pair)-1]
 	tfs, ps, err = differ.lookupSchemas(parent)
 	if err != nil {
 		return false
@@ -215,7 +204,7 @@ func (differ detailedDiffer) isForceNew(pair detailedDiffPair) bool {
 // the detailed diff in simplifyDiff in order to reduce the diff to what the user expects to see.
 // See [pulumi/pulumi-terraform-bridge#2405] for more details.
 func (differ detailedDiffer) simplifyDiff(
-	diff map[detailedDiffKey]*pulumirpc.PropertyDiff, ddIndex detailedDiffPair, old, new resource.PropertyValue,
+	diff map[detailedDiffKey]*pulumirpc.PropertyDiff, ddIndex propertyPath, old, new resource.PropertyValue,
 ) (map[detailedDiffKey]*pulumirpc.PropertyDiff, error) {
 	baseDiff := makeBaseDiff(old, new)
 	if baseDiff != Undecided {
@@ -226,13 +215,13 @@ func (differ detailedDiffer) simplifyDiff(
 		if differ.isForceNew(ddIndex) || mapHasReplacements(diff) {
 			propDiff = promoteToReplace(propDiff)
 		}
-		return map[detailedDiffKey]*pulumirpc.PropertyDiff{ddIndex.key: propDiff}, nil
+		return map[detailedDiffKey]*pulumirpc.PropertyDiff{ddIndex.Key(): propDiff}, nil
 	}
 	return nil, errors.New("diff is not simplified")
 }
 
 func (differ detailedDiffer) makeTopPropDiff(
-	old, new resource.PropertyValue, ddIndex detailedDiffPair,
+	old, new resource.PropertyValue, ddIndex propertyPath,
 ) *pulumirpc.PropertyDiff {
 	baseDiff := makeBaseDiff(old, new)
 	isForceNew := differ.isForceNew(ddIndex)
@@ -255,21 +244,21 @@ func (differ detailedDiffer) makeTopPropDiff(
 }
 
 func (differ detailedDiffer) makePropDiff(
-	ddIndex detailedDiffPair, old, new resource.PropertyValue,
+	ddIndex propertyPath, old, new resource.PropertyValue,
 ) map[detailedDiffKey]*pulumirpc.PropertyDiff {
 	if ddIndex.IsReservedKey() {
 		return nil
 	}
 
 	result := make(map[detailedDiffKey]*pulumirpc.PropertyDiff)
-	tfs, ps, err := differ.lookupSchemas(ddIndex.path)
+	tfs, ps, err := differ.lookupSchemas(ddIndex)
 	if err != nil || tfs == nil {
 		// If the schema is nil, we just return the top-level diff
 		topDiff := differ.makeTopPropDiff(old, new, ddIndex)
 		if topDiff == nil {
 			return nil
 		}
-		result[ddIndex.key] = topDiff
+		result[ddIndex.Key()] = topDiff
 		return result
 	}
 
@@ -294,14 +283,14 @@ func (differ detailedDiffer) makePropDiff(
 		if topDiff == nil {
 			return nil
 		}
-		result[ddIndex.key] = topDiff
+		result[ddIndex.Key()] = topDiff
 	}
 
 	return result
 }
 
 func (differ detailedDiffer) makeListDiff(
-	ddIndex detailedDiffPair, old, new resource.PropertyValue,
+	ddIndex propertyPath, old, new resource.PropertyValue,
 ) map[detailedDiffKey]*pulumirpc.PropertyDiff {
 	diff := make(map[detailedDiffKey]*pulumirpc.PropertyDiff)
 	oldList := []resource.PropertyValue{}
@@ -345,7 +334,7 @@ func (differ detailedDiffer) makeListDiff(
 }
 
 func (differ detailedDiffer) makeObjectDiff(
-	ddIndex detailedDiffPair, old, new resource.PropertyValue,
+	ddIndex propertyPath, old, new resource.PropertyValue,
 ) map[detailedDiffKey]*pulumirpc.PropertyDiff {
 	diff := make(map[detailedDiffKey]*pulumirpc.PropertyDiff)
 	oldMap := resource.PropertyMap{}
@@ -385,7 +374,7 @@ func (differ detailedDiffer) makeDetailedDiffPropertyMap(
 		old := oldState[k]
 		new := plannedState[k]
 
-		ddIndex := newDetailedDiffPair(k)
+		ddIndex := propertyPath{k}
 		propDiff := differ.makePropDiff(ddIndex, old, new)
 
 		for subKey, subDiff := range propDiff {
