@@ -16,15 +16,15 @@ import (
 )
 
 func TestDiffPair(t *testing.T) {
-	require.Equal(t, (newDetailedDiffPair("foo").SubKey("bar")).key, detailedDiffKey("foo.bar"))
-	require.Equal(t, newDetailedDiffPair("foo").SubKey("bar").SubKey("baz").key, detailedDiffKey("foo.bar.baz"))
-	require.Equal(t, newDetailedDiffPair("foo").SubKey("bar.baz").key, detailedDiffKey(`foo["bar.baz"]`))
-	require.Equal(t, newDetailedDiffPair("foo").Index(2).key, detailedDiffKey("foo[2]"))
+	require.Equal(t, (propertyPath{"foo"}.SubKey("bar")).Key(), detailedDiffKey("foo.bar"))
+	require.Equal(t, propertyPath{"foo"}.SubKey("bar").SubKey("baz").Key(), detailedDiffKey("foo.bar.baz"))
+	require.Equal(t, propertyPath{"foo"}.SubKey("bar.baz").Key(), detailedDiffKey(`foo["bar.baz"]`))
+	require.Equal(t, propertyPath{"foo"}.Index(2).Key(), detailedDiffKey("foo[2]"))
 
-	require.Equal(t, newDetailedDiffPair("foo").SubKey("__meta").IsReservedKey(), true)
-	require.Equal(t, newDetailedDiffPair("foo").SubKey("__defaults").IsReservedKey(), true)
-	require.Equal(t, newDetailedDiffPair("__defaults").IsReservedKey(), true)
-	require.Equal(t, newDetailedDiffPair("foo").SubKey("bar").IsReservedKey(), false)
+	require.Equal(t, propertyPath{"foo"}.SubKey("__meta").IsReservedKey(), true)
+	require.Equal(t, propertyPath{"foo"}.SubKey("__defaults").IsReservedKey(), true)
+	require.Equal(t, propertyPath{"__defaults"}.IsReservedKey(), true)
+	require.Equal(t, propertyPath{"foo"}.SubKey("bar").IsReservedKey(), false)
 }
 
 func TestSchemaLookupMaxItemsOne(t *testing.T) {
@@ -50,12 +50,12 @@ func TestSchemaLookupMaxItemsOne(t *testing.T) {
 		tfs: shimv2.NewSchemaMap(res.Schema),
 	}
 
-	sch, _, err := differ.lookupSchemas(resource.PropertyPath{"foo"})
+	sch, _, err := differ.lookupSchemas(propertyPath{"foo"})
 	require.NoError(t, err)
 	require.NotNil(t, sch)
 	require.Equal(t, sch.Type(), shim.TypeList)
 
-	sch, _, err = differ.lookupSchemas(resource.PropertyPath{"foo", "bar"})
+	sch, _, err = differ.lookupSchemas(propertyPath{"foo", "bar"})
 	require.NoError(t, err)
 	require.NotNil(t, sch)
 	require.Equal(t, sch.Type(), shim.TypeString)
@@ -199,7 +199,7 @@ func TestMakePropDiff(t *testing.T) {
 			got := detailedDiffer{
 				tfs: shimschema.SchemaMap{"foo": tt.etf.Shim()},
 				ps:  map[string]*SchemaInfo{"foo": tt.eps},
-			}.makeTopPropDiff(tt.old, tt.new, newDetailedDiffPair("foo"))
+			}.makeTopPropDiff(tt.old, tt.new, propertyPath{"foo"})
 			if got == nil && tt.want == nil {
 				return
 			}
@@ -892,86 +892,137 @@ func TestDetailedDiffTFForceNewPlain(t *testing.T) {
 }
 
 func TestDetailedDiffTFForceNewAttributeCollection(t *testing.T) {
-	sdkv2Schema := map[string]*schema.Schema{
-		"list_prop": {
-			Type:     schema.TypeList,
-			Elem:     &schema.Schema{Type: schema.TypeString},
-			Optional: true,
-			ForceNew: true,
+	for _, tt := range []struct {
+		name               string
+		schema             *schema.Schema
+		elementIndex       string
+		emptyValue         interface{}
+		value1             interface{}
+		value2             interface{}
+		computedCollection interface{}
+		computedElem       interface{}
+	}{
+		{
+			name: "list",
+			schema: &schema.Schema{
+				Type:     schema.TypeList,
+				Elem:     &schema.Schema{Type: schema.TypeString},
+				Optional: true,
+				ForceNew: true,
+			},
+			elementIndex:       "prop[0]",
+			value1:             []interface{}{"val1"},
+			value2:             []interface{}{"val2"},
+			computedCollection: ComputedVal,
+			computedElem:       []interface{}{ComputedVal},
 		},
-	}
-	ps, tfs := map[string]*info.Schema{}, shimv2.NewSchemaMap(sdkv2Schema)
-
-	propertyMapEmpty := resource.NewPropertyMapFromMap(
-		map[string]interface{}{},
-	)
-	propertyMapListVal1 := resource.NewPropertyMapFromMap(
-		map[string]interface{}{
-			"list_prop": []interface{}{"val1"},
+		{
+			name: "set",
+			schema: &schema.Schema{
+				Type:     schema.TypeSet,
+				Elem:     &schema.Schema{Type: schema.TypeString},
+				Optional: true,
+				ForceNew: true,
+			},
+			elementIndex:       "prop[0]",
+			value1:             []interface{}{"val1"},
+			value2:             []interface{}{"val2"},
+			computedCollection: ComputedVal,
+			computedElem:       []interface{}{ComputedVal},
 		},
-	)
-	propertyMapListVal2 := resource.NewPropertyMapFromMap(
-		map[string]interface{}{
-			"list_prop": []interface{}{"val2"},
+		{
+			name: "map",
+			schema: &schema.Schema{
+				Type:     schema.TypeMap,
+				Elem:     &schema.Schema{Type: schema.TypeString},
+				Optional: true,
+				ForceNew: true,
+			},
+			elementIndex:       "prop.key",
+			value1:             map[string]interface{}{"key": "val1"},
+			value2:             map[string]interface{}{"key": "val2"},
+			computedCollection: ComputedVal,
+			computedElem:       map[string]interface{}{"key": ComputedVal},
 		},
-	)
-	propertyMapComputedCollection := resource.NewPropertyMapFromMap(
-		map[string]interface{}{
-			"list_prop": ComputedVal,
-		},
-	)
-	propertyMapComputedElem := resource.NewPropertyMapFromMap(
-		map[string]interface{}{
-			"list_prop": []interface{}{ComputedVal},
-		},
-	)
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			sdkv2Schema := map[string]*schema.Schema{
+				"prop": tt.schema,
+			}
+			ps, tfs := map[string]*info.Schema{}, shimv2.NewSchemaMap(sdkv2Schema)
 
-	t.Run("unchanged", func(t *testing.T) {
-		runDetailedDiffTest(t, propertyMapListVal1, propertyMapListVal1, tfs, ps, nil)
-	})
+			propertyMapEmpty := resource.NewPropertyMapFromMap(
+				map[string]interface{}{},
+			)
+			propertyMapListVal1 := resource.NewPropertyMapFromMap(
+				map[string]interface{}{
+					"prop": tt.value1,
+				},
+			)
+			propertyMapListVal2 := resource.NewPropertyMapFromMap(
+				map[string]interface{}{
+					"prop": tt.value2,
+				},
+			)
+			propertyMapComputedCollection := resource.NewPropertyMapFromMap(
+				map[string]interface{}{
+					"prop": tt.computedCollection,
+				},
+			)
+			propertyMapComputedElem := resource.NewPropertyMapFromMap(
+				map[string]interface{}{
+					"prop": tt.computedElem,
+				},
+			)
 
-	t.Run("changed non-empty", func(t *testing.T) {
-		runDetailedDiffTest(t, propertyMapListVal1, propertyMapListVal2, tfs, ps, map[string]*pulumirpc.PropertyDiff{
-			"list_prop[0]": {Kind: pulumirpc.PropertyDiff_UPDATE_REPLACE},
-		})
-	})
-
-	t.Run("changed from empty", func(t *testing.T) {
-		runDetailedDiffTest(t, propertyMapEmpty, propertyMapListVal1, tfs, ps, map[string]*pulumirpc.PropertyDiff{
-			"list_prop": {Kind: pulumirpc.PropertyDiff_ADD_REPLACE},
-		})
-	})
-
-	t.Run("changed to empty", func(t *testing.T) {
-		runDetailedDiffTest(t, propertyMapListVal1, propertyMapEmpty, tfs, ps, map[string]*pulumirpc.PropertyDiff{
-			"list_prop": {Kind: pulumirpc.PropertyDiff_DELETE_REPLACE},
-		})
-	})
-
-	t.Run("changed to computed collection", func(t *testing.T) {
-		runDetailedDiffTest(t, propertyMapListVal1, propertyMapComputedCollection, tfs, ps,
-			map[string]*pulumirpc.PropertyDiff{
-				"list_prop": {Kind: pulumirpc.PropertyDiff_UPDATE_REPLACE},
+			t.Run("unchanged", func(t *testing.T) {
+				runDetailedDiffTest(t, propertyMapListVal1, propertyMapListVal1, tfs, ps, nil)
 			})
-	})
 
-	t.Run("changed to computed elem", func(t *testing.T) {
-		runDetailedDiffTest(t, propertyMapListVal1, propertyMapComputedElem, tfs, ps, map[string]*pulumirpc.PropertyDiff{
-			"list_prop[0]": {Kind: pulumirpc.PropertyDiff_UPDATE_REPLACE},
-		})
-	})
+			t.Run("changed non-empty", func(t *testing.T) {
+				runDetailedDiffTest(t, propertyMapListVal1, propertyMapListVal2, tfs, ps, map[string]*pulumirpc.PropertyDiff{
+					tt.elementIndex: {Kind: pulumirpc.PropertyDiff_UPDATE_REPLACE},
+				})
+			})
 
-	t.Run("changed from empty to computed collection", func(t *testing.T) {
-		runDetailedDiffTest(t, propertyMapEmpty, propertyMapComputedCollection, tfs, ps, map[string]*pulumirpc.PropertyDiff{
-			"list_prop": {Kind: pulumirpc.PropertyDiff_ADD_REPLACE},
-		})
-	})
+			t.Run("changed from empty", func(t *testing.T) {
+				runDetailedDiffTest(t, propertyMapEmpty, propertyMapListVal1, tfs, ps, map[string]*pulumirpc.PropertyDiff{
+					"prop": {Kind: pulumirpc.PropertyDiff_ADD_REPLACE},
+				})
+			})
 
-	t.Run("changed from empty to computed elem", func(t *testing.T) {
-		runDetailedDiffTest(t, propertyMapEmpty, propertyMapComputedElem, tfs, ps, map[string]*pulumirpc.PropertyDiff{
-			"list_prop": {Kind: pulumirpc.PropertyDiff_ADD_REPLACE},
+			t.Run("changed to empty", func(t *testing.T) {
+				runDetailedDiffTest(t, propertyMapListVal1, propertyMapEmpty, tfs, ps, map[string]*pulumirpc.PropertyDiff{
+					"prop": {Kind: pulumirpc.PropertyDiff_DELETE_REPLACE},
+				})
+			})
+
+			t.Run("changed to computed collection", func(t *testing.T) {
+				runDetailedDiffTest(t, propertyMapListVal1, propertyMapComputedCollection, tfs, ps,
+					map[string]*pulumirpc.PropertyDiff{
+						"prop": {Kind: pulumirpc.PropertyDiff_UPDATE_REPLACE},
+					})
+			})
+
+			t.Run("changed to computed elem", func(t *testing.T) {
+				runDetailedDiffTest(t, propertyMapListVal1, propertyMapComputedElem, tfs, ps, map[string]*pulumirpc.PropertyDiff{
+					tt.elementIndex: {Kind: pulumirpc.PropertyDiff_UPDATE_REPLACE},
+				})
+			})
+
+			t.Run("changed from empty to computed collection", func(t *testing.T) {
+				runDetailedDiffTest(t, propertyMapEmpty, propertyMapComputedCollection, tfs, ps, map[string]*pulumirpc.PropertyDiff{
+					"prop": {Kind: pulumirpc.PropertyDiff_ADD_REPLACE},
+				})
+			})
+
+			t.Run("changed from empty to computed elem", func(t *testing.T) {
+				runDetailedDiffTest(t, propertyMapEmpty, propertyMapComputedElem, tfs, ps, map[string]*pulumirpc.PropertyDiff{
+					"prop": {Kind: pulumirpc.PropertyDiff_ADD_REPLACE},
+				})
+			})
 		})
-	})
+	}
 }
 
 func TestDetailedDiffTFForceNewBlockCollection(t *testing.T) {
