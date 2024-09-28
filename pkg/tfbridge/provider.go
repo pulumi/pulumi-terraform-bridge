@@ -1237,7 +1237,7 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 	deleteBeforeReplace := len(replaces) > 0 &&
 		(res.Schema.DeleteBeforeReplace || nameRequiresDeleteBeforeReplace(news, olds, schema, res.Schema))
 
-	if !opts.enableAccurateBridgePreview || decisionOverride == shim.DiffNoOverride {
+	if !opts.enableAccurateBridgePreview {
 		// If the upstream diff object indicates a replace is necessary and we have not
 		// recorded any replaces, that means that `makeDetailedDiff` failed to translate a
 		// property. This is known to happen for computed input properties:
