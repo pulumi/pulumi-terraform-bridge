@@ -1234,6 +1234,9 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 		return true
 	})
 
+	deleteBeforeReplace := len(replaces) > 0 &&
+		(res.Schema.DeleteBeforeReplace || nameRequiresDeleteBeforeReplace(news, olds, schema, res.Schema))
+
 	if !opts.enableAccurateBridgePreview || decisionOverride == shim.DiffNoOverride {
 		// If the upstream diff object indicates a replace is necessary and we have not
 		// recorded any replaces, that means that `makeDetailedDiff` failed to translate a
@@ -1250,9 +1253,6 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 			changes = pulumirpc.DiffResponse_DIFF_SOME
 		}
 	}
-
-	deleteBeforeReplace := len(replaces) > 0 &&
-		(res.Schema.DeleteBeforeReplace || nameRequiresDeleteBeforeReplace(news, olds, schema, res.Schema))
 
 	if changes == pulumirpc.DiffResponse_DIFF_NONE &&
 		markWronglyTypedMaxItemsOneStateDiff(schema, fields, olds) {
