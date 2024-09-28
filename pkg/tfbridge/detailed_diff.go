@@ -333,7 +333,7 @@ func (differ detailedDiffer) makeListDiff(
 }
 
 func (differ detailedDiffer) makeSetDiff(
-	ddIndex detailedDiffPair, old, new resource.PropertyValue,
+	ddIndex propertyPath, old, new resource.PropertyValue,
 ) map[detailedDiffKey]*pulumirpc.PropertyDiff {
 	diff := make(map[detailedDiffKey]*pulumirpc.PropertyDiff)
 	oldList := []resource.PropertyValue{}
@@ -345,7 +345,7 @@ func (differ detailedDiffer) makeSetDiff(
 		newList = new.ArrayValue()
 	}
 
-	tfs, _, err := differ.lookupSchemas(ddIndex.path)
+	tfs, _, err := differ.lookupSchemas(ddIndex)
 	if err != nil {
 		return nil
 	}
