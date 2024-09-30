@@ -125,6 +125,10 @@ type (
 	propertyPath    resource.PropertyPath
 )
 
+func newPropertyPath(root resource.PropertyKey) propertyPath {
+	return propertyPath{string(root)}
+}
+
 func (k propertyPath) String() string {
 	return resource.PropertyPath(k).String()
 }
@@ -374,7 +378,7 @@ func (differ detailedDiffer) makeDetailedDiffPropertyMap(
 		old := oldState[k]
 		new := plannedState[k]
 
-		path := propertyPath{k}
+		path := newPropertyPath(k)
 		propDiff := differ.makePropDiff(path, old, new)
 
 		for subKey, subDiff := range propDiff {
