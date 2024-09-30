@@ -11,7 +11,6 @@ import (
 	"github.com/yuin/goldmark"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	sdkv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
 
@@ -74,7 +73,6 @@ func TestPlainDocsParser(t *testing.T) {
 							[]byte("shell environment variable.\n\n```"),
 						), nil
 					},
-					Phase: info.PostCodeTranslation,
 				},
 			),
 		},
