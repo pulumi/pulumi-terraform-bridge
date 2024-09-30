@@ -125,6 +125,10 @@ type (
 	propertyPath    resource.PropertyPath
 )
 
+func newPropertyPath(root resource.PropertyKey) propertyPath {
+	return propertyPath{string(root)}
+}
+
 func (k propertyPath) String() string {
 	return resource.PropertyPath(k).String()
 }
@@ -137,7 +141,7 @@ func (k propertyPath) append(subkey interface{}) propertyPath {
 	return append(k, subkey)
 }
 
-func (k propertyPath) SubKey(subkey string) propertyPath {
+func (k propertyPath) Subpath(subkey string) propertyPath {
 	return k.append(subkey)
 }
 
@@ -167,7 +171,7 @@ type detailedDiffer struct {
 }
 
 func (differ detailedDiffer) lookupSchemas(path propertyPath) (shim.Schema, *info.Schema, error) {
-	schemaPath := PropertyPathToSchemaPath(resource.PropertyPath{path}, differ.tfs, differ.ps)
+	schemaPath := PropertyPathToSchemaPath(resource.PropertyPath(path), differ.tfs, differ.ps)
 	return LookupSchemas(schemaPath, differ.tfs, differ.ps)
 }
 
@@ -420,7 +424,7 @@ func (differ detailedDiffer) makeObjectDiff(
 	}
 
 	for _, k := range sortedMergedKeys(oldMap, newMap) {
-		subindex := path.SubKey(string(k))
+		subindex := path.Subpath(string(k))
 		oldVal := oldMap[k]
 		newVal := newMap[k]
 
@@ -447,7 +451,7 @@ func (differ detailedDiffer) makeDetailedDiffPropertyMap(
 		old := oldState[k]
 		new := plannedState[k]
 
-		path := propertyPath{k}
+		path := newPropertyPath(k)
 		propDiff := differ.makePropDiff(path, old, new)
 
 		for subKey, subDiff := range propDiff {

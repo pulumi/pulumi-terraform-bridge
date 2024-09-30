@@ -16,15 +16,15 @@ import (
 )
 
 func TestDiffPair(t *testing.T) {
-	require.Equal(t, (propertyPath{"foo"}.SubKey("bar")).Key(), detailedDiffKey("foo.bar"))
-	require.Equal(t, propertyPath{"foo"}.SubKey("bar").SubKey("baz").Key(), detailedDiffKey("foo.bar.baz"))
-	require.Equal(t, propertyPath{"foo"}.SubKey("bar.baz").Key(), detailedDiffKey(`foo["bar.baz"]`))
-	require.Equal(t, propertyPath{"foo"}.Index(2).Key(), detailedDiffKey("foo[2]"))
+	require.Equal(t, (newPropertyPath("foo").Subpath("bar")).Key(), detailedDiffKey("foo.bar"))
+	require.Equal(t, newPropertyPath("foo").Subpath("bar").Subpath("baz").Key(), detailedDiffKey("foo.bar.baz"))
+	require.Equal(t, newPropertyPath("foo").Subpath("bar.baz").Key(), detailedDiffKey(`foo["bar.baz"]`))
+	require.Equal(t, newPropertyPath("foo").Index(2).Key(), detailedDiffKey("foo[2]"))
 
-	require.Equal(t, propertyPath{"foo"}.SubKey("__meta").IsReservedKey(), true)
-	require.Equal(t, propertyPath{"foo"}.SubKey("__defaults").IsReservedKey(), true)
-	require.Equal(t, propertyPath{"__defaults"}.IsReservedKey(), true)
-	require.Equal(t, propertyPath{"foo"}.SubKey("bar").IsReservedKey(), false)
+	require.Equal(t, newPropertyPath("foo").Subpath("__meta").IsReservedKey(), true)
+	require.Equal(t, newPropertyPath("foo").Subpath("__defaults").IsReservedKey(), true)
+	require.Equal(t, newPropertyPath("__defaults").IsReservedKey(), true)
+	require.Equal(t, newPropertyPath("foo").Subpath("bar").IsReservedKey(), false)
 }
 
 func TestSchemaLookupMaxItemsOne(t *testing.T) {
@@ -50,10 +50,39 @@ func TestSchemaLookupMaxItemsOne(t *testing.T) {
 		tfs: shimv2.NewSchemaMap(res.Schema),
 	}
 
-	sch, _, err := differ.lookupSchemas(propertyPath{"foo"})
+	sch, _, err := differ.lookupSchemas(newPropertyPath("foo"))
 	require.NoError(t, err)
 	require.NotNil(t, sch)
 	require.Equal(t, sch.Type(), shim.TypeList)
+
+	sch, _, err = differ.lookupSchemas(newPropertyPath("foo").Subpath("bar"))
+	require.NoError(t, err)
+	require.NotNil(t, sch)
+	require.Equal(t, sch.Type(), shim.TypeString)
+}
+
+func TestSchemaLookupMap(t *testing.T) {
+	res := schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"foo": {
+				Type:     schema.TypeMap,
+				Optional: true,
+				Elem: &schema.Schema{
+					Type:     schema.TypeString,
+					Optional: true,
+				},
+			},
+		},
+	}
+
+	differ := detailedDiffer{
+		tfs: shimv2.NewSchemaMap(res.Schema),
+	}
+
+	sch, _, err := differ.lookupSchemas(newPropertyPath("foo"))
+	require.NoError(t, err)
+	require.NotNil(t, sch)
+	require.Equal(t, sch.Type(), shim.TypeMap)
 
 	sch, _, err = differ.lookupSchemas(propertyPath{"foo", "bar"})
 	require.NoError(t, err)
@@ -199,7 +228,7 @@ func TestMakePropDiff(t *testing.T) {
 			got := detailedDiffer{
 				tfs: shimschema.SchemaMap{"foo": tt.etf.Shim()},
 				ps:  map[string]*SchemaInfo{"foo": tt.eps},
-			}.makeTopPropDiff(tt.old, tt.new, propertyPath{"foo"})
+			}.makeTopPropDiff(tt.old, tt.new, newPropertyPath("foo"))
 			if got == nil && tt.want == nil {
 				return
 			}
