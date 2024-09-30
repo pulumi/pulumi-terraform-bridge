@@ -135,137 +135,136 @@ func TestMakeBaseDiff(t *testing.T) {
 
 func TestMakePropDiff(t *testing.T) {
 	tests := []struct {
-		name string
-		old  resource.PropertyValue
-		new  resource.PropertyValue
-		etf  shimschema.Schema
-		eps  *SchemaInfo
-		want *pulumirpc.PropertyDiff
+		name     string
+		old      resource.PropertyValue
+		new      resource.PropertyValue
+		etf      shimschema.Schema
+		eps      *SchemaInfo
+		expected *pulumirpc.PropertyDiff
 	}{
 		{
-			name: "unchanged non-nil",
-			old:  resource.NewStringProperty("same"),
-			new:  resource.NewStringProperty("same"),
-			want: nil,
+			name:     "unchanged non-nil",
+			old:      resource.NewStringProperty("same"),
+			new:      resource.NewStringProperty("same"),
+			expected: nil,
 		},
 		{
-			name: "unchanged nil",
-			old:  resource.NewNullProperty(),
-			new:  resource.NewNullProperty(),
-			want: nil,
+			name:     "unchanged nil",
+			old:      resource.NewNullProperty(),
+			new:      resource.NewNullProperty(),
+			expected: nil,
 		},
 		{
-			name: "unchanged not present",
-			old:  resource.NewNullProperty(),
-			new:  resource.NewNullProperty(),
-			want: nil,
+			name:     "unchanged not present",
+			old:      resource.NewNullProperty(),
+			new:      resource.NewNullProperty(),
+			expected: nil,
 		},
 		{
-			name: "added()",
-			old:  resource.NewNullProperty(),
-			new:  resource.NewStringProperty("new"),
-			want: &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_ADD},
+			name:     "added()",
+			old:      resource.NewNullProperty(),
+			new:      resource.NewStringProperty("new"),
+			expected: &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_ADD},
 		},
 		{
-			name: "deleted()",
-			old:  resource.NewStringProperty("old"),
-			new:  resource.NewNullProperty(),
-			want: &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_DELETE},
+			name:     "deleted()",
+			old:      resource.NewStringProperty("old"),
+			new:      resource.NewNullProperty(),
+			expected: &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_DELETE},
 		},
 		{
-			name: "changed non-nil",
-			old:  resource.NewStringProperty("old"),
-			new:  resource.NewStringProperty("new"),
-			want: &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE},
+			name:     "changed non-nil",
+			old:      resource.NewStringProperty("old"),
+			new:      resource.NewStringProperty("new"),
+			expected: &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE},
 		},
 		{
-			name: "changed from nil",
-			old:  resource.NewNullProperty(),
-			new:  resource.NewStringProperty("new"),
-			want: &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_ADD},
+			name:     "changed from nil",
+			old:      resource.NewNullProperty(),
+			new:      resource.NewStringProperty("new"),
+			expected: &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_ADD},
 		},
 		{
-			name: "changed to nil",
-			old:  resource.NewStringProperty("old"),
-			new:  resource.NewNullProperty(),
-			want: &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_DELETE},
+			name:     "changed to nil",
+			old:      resource.NewStringProperty("old"),
+			new:      resource.NewNullProperty(),
+			expected: &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_DELETE},
 		},
 		{
-			name: "tf force new unchanged",
-			old:  resource.NewStringProperty("old"),
-			new:  resource.NewStringProperty("old"),
-			etf:  shimschema.Schema{ForceNew: true},
-			want: nil,
+			name:     "tf force new unchanged",
+			old:      resource.NewStringProperty("old"),
+			new:      resource.NewStringProperty("old"),
+			etf:      shimschema.Schema{ForceNew: true},
+			expected: nil,
 		},
 		{
-			name: "tf force new changed non-nil",
-			old:  resource.NewStringProperty("old"),
-			new:  resource.NewStringProperty("new"),
-			etf:  shimschema.Schema{ForceNew: true},
-			want: &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE_REPLACE},
+			name:     "tf force new changed non-nil",
+			old:      resource.NewStringProperty("old"),
+			new:      resource.NewStringProperty("new"),
+			etf:      shimschema.Schema{ForceNew: true},
+			expected: &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE_REPLACE},
 		},
 		{
-			name: "tf force new changed from nil",
-			old:  resource.NewNullProperty(),
-			new:  resource.NewStringProperty("new"),
-			etf:  shimschema.Schema{ForceNew: true},
-			want: &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_ADD_REPLACE},
+			name:     "tf force new changed from nil",
+			old:      resource.NewNullProperty(),
+			new:      resource.NewStringProperty("new"),
+			etf:      shimschema.Schema{ForceNew: true},
+			expected: &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_ADD_REPLACE},
 		},
 		{
-			name: "tf force new changed to nil",
-			old:  resource.NewStringProperty("old"),
-			new:  resource.NewNullProperty(),
-			etf:  shimschema.Schema{ForceNew: true},
-			want: &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_DELETE_REPLACE},
+			name:     "tf force new changed to nil",
+			old:      resource.NewStringProperty("old"),
+			new:      resource.NewNullProperty(),
+			etf:      shimschema.Schema{ForceNew: true},
+			expected: &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_DELETE_REPLACE},
 		},
 		{
-			name: "ps force new unchanged",
-			old:  resource.NewStringProperty("old"),
-			new:  resource.NewStringProperty("old"),
-			eps:  &SchemaInfo{ForceNew: True()},
-			want: nil,
+			name:     "ps force new unchanged",
+			old:      resource.NewStringProperty("old"),
+			new:      resource.NewStringProperty("old"),
+			eps:      &SchemaInfo{ForceNew: True()},
+			expected: nil,
 		},
 		{
-			name: "ps force new changed non-nil",
-			old:  resource.NewStringProperty("old"),
-			new:  resource.NewStringProperty("new"),
-			eps:  &SchemaInfo{ForceNew: True()},
-			want: &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE_REPLACE},
+			name:     "ps force new changed non-nil",
+			old:      resource.NewStringProperty("old"),
+			new:      resource.NewStringProperty("new"),
+			eps:      &SchemaInfo{ForceNew: True()},
+			expected: &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE_REPLACE},
 		},
 		{
-			name: "ps force new changed from nil",
-			old:  resource.NewNullProperty(),
-			new:  resource.NewStringProperty("new"),
-			eps:  &SchemaInfo{ForceNew: True()},
-			want: &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_ADD_REPLACE},
+			name:     "ps force new changed from nil",
+			old:      resource.NewNullProperty(),
+			new:      resource.NewStringProperty("new"),
+			eps:      &SchemaInfo{ForceNew: True()},
+			expected: &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_ADD_REPLACE},
 		},
 		{
-			name: "ps force new changed to nil",
-			old:  resource.NewStringProperty("old"),
-			new:  resource.NewNullProperty(),
-			eps:  &SchemaInfo{ForceNew: True()},
-			want: &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_DELETE_REPLACE},
+			name:     "ps force new changed to nil",
+			old:      resource.NewStringProperty("old"),
+			new:      resource.NewNullProperty(),
+			eps:      &SchemaInfo{ForceNew: True()},
+			expected: &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_DELETE_REPLACE},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := detailedDiffer{
+			actual := detailedDiffer{
 				tfs: shimschema.SchemaMap{"foo": tt.etf.Shim()},
 				ps:  map[string]*SchemaInfo{"foo": tt.eps},
 			}.makeTopPropDiff(newPropertyPath("foo"), tt.old, tt.new)
 
-			require.Equal(t, got, tt.want)
+			expected := map[string]*pulumirpc.PropertyDiff{}
+			if tt.expected != nil {
+				expected["foo"] = tt.expected
+			}
 
-			if got == nil && tt.want == nil {
-				return
-			}
-			if got == nil || tt.want == nil {
-				t.Errorf("makeTopPropDiff() = %v, want %v", got, tt.want)
-				return
-			}
-			if got["foo"].Kind != tt.want.Kind {
-				t.Errorf("makeTopPropDiff() = %v, want %v", got["foo"].String(), tt.want.String())
+			require.Equal(t, len(expected), len(actual))
+
+			for k, v := range actual {
+				actualV := expected[string(k)]
+				require.Equal(t, v, actualV)
 			}
 		})
 	}
@@ -305,8 +304,8 @@ func runDetailedDiffTest(
 	require.Equal(t, len(expected), len(actual))
 
 	for k, v := range actual {
-		wantV := expected[k]
-		require.Equal(t, v, wantV)
+		actualV := expected[k]
+		require.Equal(t, v, actualV)
 	}
 }
 
