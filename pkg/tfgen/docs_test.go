@@ -631,7 +631,7 @@ func TestArgumentRegexAuto(t *testing.T) {
 		expected autogold.Value
 	}{
 		{
-			name: "scaleway bucket_panic",
+			name: "newline after bullet",
 			input: []string{
 				"",
 				"The following arguments are supported:", "",
