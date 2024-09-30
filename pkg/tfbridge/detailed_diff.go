@@ -11,6 +11,7 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/walk"
 )
 
 func isPresent(val resource.PropertyValue) bool {
@@ -20,29 +21,8 @@ func isPresent(val resource.PropertyValue) bool {
 }
 
 func isForceNew(tfs shim.Schema, ps *SchemaInfo) bool {
-	if tfs != nil && tfs.ForceNew() {
-		return true
-	}
-	if ps != nil && ps.ForceNew != nil && *ps.ForceNew {
-		return true
-	}
-	return false
-}
-
-func isObject(tfs shim.Schema, ps *SchemaInfo) bool {
-	if tfs.Type() == shim.TypeMap {
-		return true
-	}
-
-	if tfs.Type() != shim.TypeList && tfs.Type() != shim.TypeSet {
-		return false
-	}
-
-	if ps != nil && ps.MaxItemsOne != nil {
-		return *ps.MaxItemsOne
-	}
-
-	return tfs.MaxItems() == 1
+	return (tfs != nil && tfs.ForceNew()) ||
+		(ps != nil && ps.ForceNew != nil && *ps.ForceNew)
 }
 
 func sortedMergedKeys(a resource.PropertyMap, b resource.PropertyMap) []resource.PropertyKey {
@@ -62,6 +42,10 @@ func sortedMergedKeys(a resource.PropertyMap, b resource.PropertyMap) []resource
 }
 
 func promoteToReplace(diff *pulumirpc.PropertyDiff) *pulumirpc.PropertyDiff {
+	if diff == nil {
+		return nil
+	}
+
 	kind := diff.GetKind()
 	switch kind {
 	case pulumirpc.PropertyDiff_ADD:
@@ -170,6 +154,24 @@ type detailedDiffer struct {
 	ps  map[string]*SchemaInfo
 }
 
+func (differ detailedDiffer) propertyPathToSchemaPath(path propertyPath) walk.SchemaPath {
+	return PropertyPathToSchemaPath(resource.PropertyPath(path), differ.tfs, differ.ps)
+}
+
+func (differ detailedDiffer) getEffectiveType(path walk.SchemaPath) shim.ValueType {
+	tfs, ps, err := LookupSchemas(path, differ.tfs, differ.ps)
+
+	if err != nil || tfs == nil {
+		return shim.TypeInvalid
+	}
+
+	if IsMaxItemsOne(tfs, ps) {
+		return differ.getEffectiveType(path.Element())
+	}
+
+	return tfs.Type()
+}
+
 func (differ detailedDiffer) lookupSchemas(path propertyPath) (shim.Schema, *info.Schema, error) {
 	schemaPath := PropertyPathToSchemaPath(resource.PropertyPath(path), differ.tfs, differ.ps)
 	return LookupSchemas(schemaPath, differ.tfs, differ.ps)
@@ -225,24 +227,23 @@ func (differ detailedDiffer) simplifyDiff(
 }
 
 func (differ detailedDiffer) makeTopPropDiff(
-	old, new resource.PropertyValue, path propertyPath,
-) *pulumirpc.PropertyDiff {
+	path propertyPath, old, new resource.PropertyValue,
+) map[detailedDiffKey]*pulumirpc.PropertyDiff {
 	baseDiff := makeBaseDiff(old, new)
 	isForceNew := differ.isForceNew(path)
+	var propDiff *pulumirpc.PropertyDiff
 	if baseDiff != Undecided {
-		propDiff := baseDiff.ToPropertyDiff()
-		if isForceNew {
-			propDiff = promoteToReplace(propDiff)
-		}
-		return propDiff
+		propDiff = baseDiff.ToPropertyDiff()
+	} else if !old.DeepEquals(new) {
+		propDiff = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE}
 	}
 
-	if !old.DeepEquals(new) {
-		diff := &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE}
-		if isForceNew {
-			return promoteToReplace(diff)
-		}
-		return diff
+	if isForceNew {
+		propDiff = promoteToReplace(propDiff)
+	}
+
+	if propDiff != nil {
+		return map[detailedDiffKey]*pulumirpc.PropertyDiff{path.Key(): propDiff}
 	}
 	return nil
 }
@@ -253,44 +254,19 @@ func (differ detailedDiffer) makePropDiff(
 	if path.IsReservedKey() {
 		return nil
 	}
+	propType := differ.getEffectiveType(differ.propertyPathToSchemaPath(path))
 
-	result := make(map[detailedDiffKey]*pulumirpc.PropertyDiff)
-	tfs, ps, err := differ.lookupSchemas(path)
-	if err != nil || tfs == nil {
-		// If the schema is nil, we just return the top-level diff
-		topDiff := differ.makeTopPropDiff(old, new, path)
-		if topDiff == nil {
-			return nil
-		}
-		result[path.Key()] = topDiff
-		return result
-	}
-
-	if isObject(tfs, ps) {
-		diff := differ.makeObjectDiff(path, old, new)
-		for subKey, subDiff := range diff {
-			result[subKey] = subDiff
-		}
-	} else if tfs.Type() == shim.TypeList {
-		diff := differ.makeListDiff(path, old, new)
-		for subKey, subDiff := range diff {
-			result[subKey] = subDiff
-		}
-	} else if tfs.Type() == shim.TypeSet {
+	switch propType {
+	case shim.TypeList:
+		return differ.makeListDiff(path, old, new)
+	case shim.TypeSet:
 		// TODO[pulumi/pulumi-terraform-bridge#2200]: Implement set diffing
-		diff := differ.makeListDiff(path, old, new)
-		for subKey, subDiff := range diff {
-			result[subKey] = subDiff
-		}
-	} else {
-		topDiff := differ.makeTopPropDiff(old, new, path)
-		if topDiff == nil {
-			return nil
-		}
-		result[path.Key()] = topDiff
+		return differ.makeListDiff(path, old, new)
+	case shim.TypeMap:
+		return differ.makeObjectDiff(path, old, new)
+	default:
+		return differ.makeTopPropDiff(path, old, new)
 	}
-
-	return result
 }
 
 func (differ detailedDiffer) makeListDiff(
