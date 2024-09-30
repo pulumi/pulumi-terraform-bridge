@@ -1640,7 +1640,7 @@ func TestDetailedDiffSetAttribute(t *testing.T) {
 	}
 	ps, tfs := map[string]*info.Schema{}, shimv2.NewSchemaMap(sdkv2Schema)
 
-	propertyMapElems := func(elems ...string) resource.PropertyMap {
+	propertyMapElems := func(elems ...interface{}) resource.PropertyMap {
 		return resource.NewPropertyMapFromMap(
 			map[string]interface{}{
 				"foo": elems,
@@ -1791,6 +1791,53 @@ func TestDetailedDiffSetAttribute(t *testing.T) {
 			propertyMapElems("val2", "val1"), tfs, ps, map[string]*pulumirpc.PropertyDiff{
 				"foo[2]": {Kind: pulumirpc.PropertyDiff_DELETE},
 			})
+	})
+
+	t.Run("computed", func(t *testing.T) {
+		runDetailedDiffTest(t,
+			propertyMapElems("val1"),
+			resource.NewPropertyMapFromMap(
+				map[string]interface{}{
+					"foo": computedValue,
+				},
+			),
+			tfs, ps,
+			map[string]*pulumirpc.PropertyDiff{
+				"foo": {Kind: pulumirpc.PropertyDiff_UPDATE},
+			},
+		)
+	})
+
+	t.Run("nil to computed", func(t *testing.T) {
+		runDetailedDiffTest(t,
+			resource.NewPropertyMapFromMap(
+				map[string]interface{}{},
+			),
+			resource.NewPropertyMapFromMap(
+				map[string]interface{}{
+					"foo": computedValue,
+				},
+			),
+			tfs, ps,
+			map[string]*pulumirpc.PropertyDiff{
+				"foo": {Kind: pulumirpc.PropertyDiff_ADD},
+			},
+		)
+	})
+
+	t.Run("empty to computed", func(t *testing.T) {
+		runDetailedDiffTest(t,
+			propertyMapElems(),
+			resource.NewPropertyMapFromMap(
+				map[string]interface{}{
+					"foo": computedValue,
+				},
+			),
+			tfs, ps,
+			map[string]*pulumirpc.PropertyDiff{
+				"foo": {Kind: pulumirpc.PropertyDiff_UPDATE},
+			},
+		)
 	})
 }
 
@@ -1994,7 +2041,52 @@ func TestDetailedDiffSetBlock(t *testing.T) {
 				)
 			})
 
-			// TODO: test computed
+			t.Run("computed", func(t *testing.T) {
+				runDetailedDiffTest(t,
+					propertyMapElems("val1"),
+					resource.NewPropertyMapFromMap(
+						map[string]interface{}{
+							"foo": computedValue,
+						},
+					),
+					tfs, ps,
+					map[string]*pulumirpc.PropertyDiff{
+						"foo": {Kind: update},
+					},
+				)
+			})
+
+			t.Run("nil to computed", func(t *testing.T) {
+				runDetailedDiffTest(t,
+					resource.NewPropertyMapFromMap(
+						map[string]interface{}{},
+					),
+					resource.NewPropertyMapFromMap(
+						map[string]interface{}{
+							"foo": computedValue,
+						},
+					),
+					tfs, ps,
+					map[string]*pulumirpc.PropertyDiff{
+						"foo": {Kind: pulumirpc.PropertyDiff_ADD},
+					},
+				)
+			})
+
+			t.Run("empty to computed", func(t *testing.T) {
+				runDetailedDiffTest(t,
+					propertyMapElems(),
+					resource.NewPropertyMapFromMap(
+						map[string]interface{}{
+							"foo": computedValue,
+						},
+					),
+					tfs, ps,
+					map[string]*pulumirpc.PropertyDiff{
+						"foo": {Kind: pulumirpc.PropertyDiff_UPDATE},
+					},
+				)
+			})
 		})
 	}
 }
