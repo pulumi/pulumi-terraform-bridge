@@ -20,7 +20,6 @@ func TestApplyEditRules(t *testing.T) {
 		docFile  DocFile
 		expected []byte
 		phase    info.EditPhase
-		edits    editRules
 	}
 
 	tests := []testCase{
