@@ -634,9 +634,12 @@ func TestArgumentRegexAuto(t *testing.T) {
 			name: "newline after bullet",
 			input: []string{
 				"",
-				"The following arguments are supported:", "",
-				"* `versioning` - (Optional) A state of [versioning](https://www.scaleway.com/en/docs/storage/object/how-to/use-bucket-versioning/). The `versioning` object supports the following:", "",
-				"    * `enabled` - (Optional) Enable versioning. Once you version-enable a bucket, it can never return to an unversioned state. You can, however, suspend versioning on that bucket.", "",
+				"The following arguments are supported:",
+				"",
+				"* `versioning` - (Optional) A state of [versioning](https://www.scaleway.com/en/docs/storage/object/how-to/use-bucket-versioning/). The `versioning` object supports the following:",
+				"",
+				"    * `enabled` - (Optional) Enable versioning. Once you version-enable a bucket, it can never return to an unversioned state. You can, however, suspend versioning on that bucket.",
+				"",
 			},
 			expected: autogold.Expect(map[docsPath]*argumentDocs{docsPath("versioning.enabled"): {
 				description: "Enable versioning. Once you version-enable a bucket, it can never return to an unversioned state. You can, however, suspend versioning on that bucket.",
