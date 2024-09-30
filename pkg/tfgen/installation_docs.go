@@ -139,16 +139,6 @@ func stripSchemaGeneratedByTFPluginDocs(content []byte) []byte {
 	content = tfplugindocsComment.ReplaceAll(content, nil)
 	return content
 }
-
-func applyEditRules(contentBytes []byte, docFile string, phase info.EditPhase, g *Generator) ([]byte, error) {
-	// Obtain edit rules passed by the provider
-	edits := g.editRules
-	contentBytes, err := edits.apply(docFile, contentBytes, phase)
-	if err != nil {
-		return nil, err
-	}
-	return contentBytes, nil
-}
 func translateCodeBlocks(contentStr string, g *Generator) (string, error) {
 	var returnContent string
 	// Extract code blocks
