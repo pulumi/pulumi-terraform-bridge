@@ -160,7 +160,7 @@ func recoverScalarCtyValue(dT cty.Type, value interface{}) (cty.Value, error) {
 		if value > math.MaxInt64 {
 			return cty.NilVal, fmt.Errorf("cannot convert %d (uint) to a int64: overflow", value)
 		}
-		
+
 		return cty.NumberIntVal(int64(value)), nil
 	case int64:
 		return cty.NumberIntVal(value), nil
