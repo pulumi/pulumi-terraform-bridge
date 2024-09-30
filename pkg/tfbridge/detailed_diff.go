@@ -141,7 +141,7 @@ func (k propertyPath) append(subkey interface{}) propertyPath {
 	return append(k, subkey)
 }
 
-func (k propertyPath) SubKey(subkey string) propertyPath {
+func (k propertyPath) Subpath(subkey string) propertyPath {
 	return k.append(subkey)
 }
 
@@ -351,7 +351,7 @@ func (differ detailedDiffer) makeObjectDiff(
 	}
 
 	for _, k := range sortedMergedKeys(oldMap, newMap) {
-		subindex := path.SubKey(string(k))
+		subindex := path.Subpath(string(k))
 		oldVal := oldMap[k]
 		newVal := newMap[k]
 

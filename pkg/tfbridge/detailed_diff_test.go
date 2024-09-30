@@ -15,15 +15,15 @@ import (
 )
 
 func TestDiffPair(t *testing.T) {
-	require.Equal(t, (newPropertyPath("foo").SubKey("bar")).Key(), detailedDiffKey("foo.bar"))
-	require.Equal(t, newPropertyPath("foo").SubKey("bar").SubKey("baz").Key(), detailedDiffKey("foo.bar.baz"))
-	require.Equal(t, newPropertyPath("foo").SubKey("bar.baz").Key(), detailedDiffKey(`foo["bar.baz"]`))
+	require.Equal(t, (newPropertyPath("foo").Subpath("bar")).Key(), detailedDiffKey("foo.bar"))
+	require.Equal(t, newPropertyPath("foo").Subpath("bar").Subpath("baz").Key(), detailedDiffKey("foo.bar.baz"))
+	require.Equal(t, newPropertyPath("foo").Subpath("bar.baz").Key(), detailedDiffKey(`foo["bar.baz"]`))
 	require.Equal(t, newPropertyPath("foo").Index(2).Key(), detailedDiffKey("foo[2]"))
 
-	require.Equal(t, newPropertyPath("foo").SubKey("__meta").IsReservedKey(), true)
-	require.Equal(t, newPropertyPath("foo").SubKey("__defaults").IsReservedKey(), true)
+	require.Equal(t, newPropertyPath("foo").Subpath("__meta").IsReservedKey(), true)
+	require.Equal(t, newPropertyPath("foo").Subpath("__defaults").IsReservedKey(), true)
 	require.Equal(t, newPropertyPath("__defaults").IsReservedKey(), true)
-	require.Equal(t, newPropertyPath("foo").SubKey("bar").IsReservedKey(), false)
+	require.Equal(t, newPropertyPath("foo").Subpath("bar").IsReservedKey(), false)
 }
 
 func TestSchemaLookupMaxItemsOne(t *testing.T) {
@@ -54,7 +54,7 @@ func TestSchemaLookupMaxItemsOne(t *testing.T) {
 	require.NotNil(t, sch)
 	require.Equal(t, sch.Type(), shim.TypeList)
 
-	sch, _, err = differ.lookupSchemas(newPropertyPath("foo").SubKey("bar"))
+	sch, _, err = differ.lookupSchemas(newPropertyPath("foo").Subpath("bar"))
 	require.NoError(t, err)
 	require.NotNil(t, sch)
 	require.Equal(t, sch.Type(), shim.TypeString)
