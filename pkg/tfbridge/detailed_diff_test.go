@@ -60,6 +60,35 @@ func TestSchemaLookupMaxItemsOne(t *testing.T) {
 	require.Equal(t, sch.Type(), shim.TypeString)
 }
 
+func TestSchemaLookupMap(t *testing.T) {
+	res := schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"foo": {
+				Type:     schema.TypeMap,
+				Optional: true,
+				Elem: &schema.Schema{
+					Type:     schema.TypeString,
+					Optional: true,
+				},
+			},
+		},
+	}
+
+	differ := detailedDiffer{
+		tfs: shimv2.NewSchemaMap(res.Schema),
+	}
+
+	sch, _, err := differ.lookupSchemas(propertyPath{"foo"})
+	require.NoError(t, err)
+	require.NotNil(t, sch)
+	require.Equal(t, sch.Type(), shim.TypeMap)
+
+	sch, _, err = differ.lookupSchemas(propertyPath{"foo", "bar"})
+	require.NoError(t, err)
+	require.NotNil(t, sch)
+	require.Equal(t, sch.Type(), shim.TypeString)
+}
+
 func TestMakeBaseDiff(t *testing.T) {
 	nilVal := resource.NewNullProperty()
 	nilArr := resource.NewArrayProperty(nil)
