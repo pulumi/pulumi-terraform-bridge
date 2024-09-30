@@ -624,6 +624,38 @@ func TestArgumentRegex(t *testing.T) {
 	}
 }
 
+func TestArgumentRegexAuto(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    []string
+		expected autogold.Value
+	}{
+		{
+			name: "scaleway bucket_panic",
+			input: []string{
+				"",
+				"The following arguments are supported:", "",
+				"* `versioning` - (Optional) A state of [versioning](https://www.scaleway.com/en/docs/storage/object/how-to/use-bucket-versioning/). The `versioning` object supports the following:", "",
+				"    * `enabled` - (Optional) Enable versioning. Once you version-enable a bucket, it can never return to an unversioned state. You can, however, suspend versioning on that bucket.", "",
+			},
+			expected: autogold.Expect(map[docsPath]*argumentDocs{docsPath("versioning.enabled"): {
+				description: "Enable versioning. Once you version-enable a bucket, it can never return to an unversioned state. You can, however, suspend versioning on that bucket.",
+			}}),
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			ret := entityDocs{
+				Arguments: make(map[docsPath]*argumentDocs),
+			}
+			parseArgReferenceSection(tt.input, &ret)
+			tt.expected.Equal(t, ret.Arguments)
+		})
+	}
+}
+
 func TestGetFooterLinks(t *testing.T) {
 	input := `## Attributes Reference
 

@@ -1075,7 +1075,10 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 				return
 			}
 			line = "\n" + strings.TrimSpace(line)
-			ret.Arguments[docsPath(lastMatch)].description += line
+			arg := ret.Arguments[docsPath(lastMatch)]
+			if arg != nil {
+				arg.description += line
+			}
 		}
 	}
 
