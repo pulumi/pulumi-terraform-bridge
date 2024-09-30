@@ -17,11 +17,11 @@ package tfgen
 import (
 	"bytes"
 	"fmt"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"path/filepath"
 	"regexp"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
 func defaultEditRules() editRules {
@@ -36,6 +36,34 @@ func defaultEditRules() editRules {
 		fixupImports(),
 		// Replace content such as "jdoe@hashicorp.com" with "jdoe@example.com"
 		reReplace("@hashicorp.com", "@example.com", info.PreCodeTranslation),
+
+		// The following edit rules may be applied after translating the code sections in a document.
+		// Its primary use case is for the docs translation approach spearheaded in installation_docs.go.
+		// These edit rules allow us to safely transform certain strings that we would otherwise need in the
+		// code translation or nested type discovery process.
+		// These rules are currently only called when generating installation docs.
+		skipSectionHeadersEdit(),
+		removeTfVersionMentions(),
+		//Replace "providers.tf" with "Pulumi.yaml"
+		reReplace(`providers.tf`, `Pulumi.yaml`, info.PostCodeTranslation),
+		reReplace(`terraform init`, `pulumi up`, info.PostCodeTranslation),
+		// Replace all " T/terraform" with " P/pulumi"
+		reReplace(`Terraform`, `Pulumi`, info.PostCodeTranslation),
+		reReplace(`terraform`, `pulumi`, info.PostCodeTranslation),
+		// Replace all "H/hashicorp" strings
+		reReplace(`Hashicorp`, `Pulumi`, info.PostCodeTranslation),
+		reReplace(`hashicorp`, `pulumi`, info.PostCodeTranslation),
+		// Reformat certain headers
+		reReplace(`The following arguments are supported`,
+			`The following configuration inputs are supported`, info.PostCodeTranslation),
+		reReplace(`Argument Reference`,
+			`Configuration Reference`, info.PostCodeTranslation),
+		reReplace(`Schema`,
+			`Configuration Reference`, info.PostCodeTranslation),
+		reReplace("### Optional\n", "", info.PostCodeTranslation),
+		reReplace(`block contains the following arguments`,
+			`input has the following nested fields`, info.PostCodeTranslation),
+		reReplace(`provider block`, `provider configuration`, info.PostCodeTranslation),
 	}
 }
 

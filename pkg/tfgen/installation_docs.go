@@ -3,7 +3,6 @@ package tfgen
 import (
 	"bytes"
 	"fmt"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"regexp"
 	"strings"
 
@@ -18,15 +17,16 @@ import (
 	"golang.org/x/text/language"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/parse"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/parse/section"
 )
 
 func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
 
-	// Apply provider-supplied edit rules.
-	// Some of these may want to affect the code blocks themselves, so they should happen before code conversion.
-	contentBytes, err := applyProviderEditRules(docFile.Content, docFile.FileName, g)
+	// Apply pre-code translation edit rules. This applies all default edit rules and provider-supplied edit rules in
+	// the default pre-code translation phase.
+	contentBytes, err := g.editRules.apply(docFile.FileName, docFile.Content, info.PreCodeTranslation)
 	if err != nil {
 		return nil, err
 	}
@@ -62,8 +62,9 @@ func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
 		return nil, err
 	}
 
-	// Apply installation-specific edit rules to transform the doc for Pulumi-ready presentation
-	contentBytes, err = applyInstallationEditRules([]byte(contentStr), docFile.FileName)
+	// Apply post-code translation edit rules. This applies all default edit rules and provider-supplied edit rules in
+	// the post-code translation phase.
+	contentBytes, err = g.editRules.apply(docFile.FileName, []byte(contentStr), info.PostCodeTranslation)
 	if err != nil {
 		return nil, err
 	}
@@ -139,43 +140,10 @@ func stripSchemaGeneratedByTFPluginDocs(content []byte) []byte {
 	return content
 }
 
-func applyProviderEditRules(contentBytes []byte, docFile string, g *Generator) ([]byte, error) {
+func applyEditRules(contentBytes []byte, docFile string, phase info.EditPhase, g *Generator) ([]byte, error) {
 	// Obtain edit rules passed by the provider
 	edits := g.editRules
-	contentBytes, err := edits.apply(docFile, contentBytes, info.PreCodeTranslation)
-	if err != nil {
-		return nil, err
-	}
-	return contentBytes, nil
-}
-func applyInstallationEditRules(contentBytes []byte, docFile string) ([]byte, error) {
-	var edits editRules
-	// Additional edit rules for installation files
-	edits = append(edits,
-		skipSectionHeadersEdit(docFile),
-		removeTfVersionMentions(docFile),
-		//Replace "providers.tf" with "Pulumi.yaml"
-		reReplace(`providers.tf`, `Pulumi.yaml`, info.PostCodeTranslation),
-		reReplace(`terraform init`, `pulumi up`, info.PostCodeTranslation),
-		// Replace all " T/terraform" with " P/pulumi"
-		reReplace(`Terraform`, `Pulumi`, info.PostCodeTranslation),
-		reReplace(`terraform`, `pulumi`, info.PostCodeTranslation),
-		// Replace all "H/hashicorp" strings
-		reReplace(`Hashicorp`, `Pulumi`, info.PostCodeTranslation),
-		reReplace(`hashicorp`, `pulumi`, info.PostCodeTranslation),
-		// Reformat certain headers
-		reReplace(`The following arguments are supported`,
-			`The following configuration inputs are supported`, info.PostCodeTranslation),
-		reReplace(`Argument Reference`,
-			`Configuration Reference`, info.PostCodeTranslation),
-		reReplace(`Schema`,
-			`Configuration Reference`, info.PostCodeTranslation),
-		reReplace("### Optional\n", "", info.PostCodeTranslation),
-		reReplace(`block contains the following arguments`,
-			`input has the following nested fields`, info.PostCodeTranslation),
-		reReplace(`provider block`, `provider configuration`, info.PostCodeTranslation),
-	)
-	contentBytes, err := edits.apply(docFile, contentBytes, info.PostCodeTranslation)
+	contentBytes, err := edits.apply(docFile, contentBytes, phase)
 	if err != nil {
 		return nil, err
 	}
@@ -416,10 +384,10 @@ func SkipSectionByHeaderContent(
 }
 
 // Edit Rule for skipping headers.
-func skipSectionHeadersEdit(docFile string) tfbridge.DocsEdit {
+func skipSectionHeadersEdit() tfbridge.DocsEdit {
 	defaultHeaderSkipRegexps := getDefaultHeadersToSkip()
 	return tfbridge.DocsEdit{
-		Path: docFile,
+		Path: "*",
 		Edit: func(_ string, content []byte) ([]byte, error) {
 			return SkipSectionByHeaderContent(content, func(headerText string) bool {
 				for _, header := range defaultHeaderSkipRegexps {
@@ -457,10 +425,10 @@ func getTfVersionsToRemove() []*regexp.Regexp {
 	return tfVersionsToRemove
 }
 
-func removeTfVersionMentions(docFile string) tfbridge.DocsEdit {
+func removeTfVersionMentions() tfbridge.DocsEdit {
 	tfVersionsToRemove := getTfVersionsToRemove()
 	return tfbridge.DocsEdit{
-		Path: docFile,
+		Path: "*",
 		Edit: func(_ string, content []byte) ([]byte, error) {
 			for _, tfVersion := range tfVersionsToRemove {
 				content = tfVersion.ReplaceAll(content, nil)
