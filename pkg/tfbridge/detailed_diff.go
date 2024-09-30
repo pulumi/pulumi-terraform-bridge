@@ -3,6 +3,7 @@ package tfbridge
 import (
 	"context"
 	"errors"
+	"q"
 	"slices"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -30,6 +31,7 @@ func isForceNew(tfs shim.Schema, ps *SchemaInfo) bool {
 }
 
 func isObject(tfs shim.Schema, ps *SchemaInfo) bool {
+	q.Q(tfs, ps)
 	if tfs.Type() == shim.TypeMap {
 		return true
 	}
@@ -167,7 +169,7 @@ type detailedDiffer struct {
 }
 
 func (differ detailedDiffer) lookupSchemas(path propertyPath) (shim.Schema, *info.Schema, error) {
-	schemaPath := PropertyPathToSchemaPath(resource.PropertyPath{path}, differ.tfs, differ.ps)
+	schemaPath := PropertyPathToSchemaPath(resource.PropertyPath(path), differ.tfs, differ.ps)
 	return LookupSchemas(schemaPath, differ.tfs, differ.ps)
 }
 
