@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"io"
 	"os"
 	"path/filepath"
@@ -536,7 +537,7 @@ func (p *tfMarkdownParser) parse(tfMarkdown []byte) (entityDocs, error) {
 		Attributes: make(map[string]string),
 	}
 	var err error
-	tfMarkdown, err = p.editRules.apply(p.markdownFileName, tfMarkdown)
+	tfMarkdown, err = p.editRules.apply(p.markdownFileName, tfMarkdown, info.PreCodeTranslation)
 	if err != nil {
 		return entityDocs{}, fmt.Errorf("file %s: %w", p.markdownFileName, err)
 	}

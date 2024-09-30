@@ -233,6 +233,13 @@ type DocsPath struct {
 	TfToken string
 }
 
+type EditPhase int
+
+const (
+	PreCodeTranslation EditPhase = iota
+	PostCodeTranslation
+)
+
 type DocsEdit struct {
 	// The file name at which this rule applies. File names are matched via filepath.Match.
 	//
@@ -251,7 +258,8 @@ type DocsEdit struct {
 	// The function that performs the edit on the file bytes.
 	//
 	// Must not be nil.
-	Edit func(path string, content []byte) ([]byte, error)
+	Edit  func(path string, content []byte) ([]byte, error)
+	Phase EditPhase
 }
 
 // TFProviderLicense is a way to be able to pass a license type for the upstream Terraform provider.

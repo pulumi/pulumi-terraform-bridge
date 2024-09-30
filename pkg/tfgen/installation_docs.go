@@ -3,6 +3,7 @@ package tfgen
 import (
 	"bytes"
 	"fmt"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"regexp"
 	"strings"
 
@@ -141,7 +142,7 @@ func stripSchemaGeneratedByTFPluginDocs(content []byte) []byte {
 func applyProviderEditRules(contentBytes []byte, docFile string, g *Generator) ([]byte, error) {
 	// Obtain edit rules passed by the provider
 	edits := g.editRules
-	contentBytes, err := edits.apply(docFile, contentBytes)
+	contentBytes, err := edits.apply(docFile, contentBytes, info.PreCodeTranslation)
 	if err != nil {
 		return nil, err
 	}
@@ -154,27 +155,27 @@ func applyInstallationEditRules(contentBytes []byte, docFile string) ([]byte, er
 		skipSectionHeadersEdit(docFile),
 		removeTfVersionMentions(docFile),
 		//Replace "providers.tf" with "Pulumi.yaml"
-		reReplace(`providers.tf`, `Pulumi.yaml`),
-		reReplace(`terraform init`, `pulumi up`),
+		reReplace(`providers.tf`, `Pulumi.yaml`, info.PostCodeTranslation),
+		reReplace(`terraform init`, `pulumi up`, info.PostCodeTranslation),
 		// Replace all " T/terraform" with " P/pulumi"
-		reReplace(`Terraform`, `Pulumi`),
-		reReplace(`terraform`, `pulumi`),
+		reReplace(`Terraform`, `Pulumi`, info.PostCodeTranslation),
+		reReplace(`terraform`, `pulumi`, info.PostCodeTranslation),
 		// Replace all "H/hashicorp" strings
-		reReplace(`Hashicorp`, `Pulumi`),
-		reReplace(`hashicorp`, `pulumi`),
+		reReplace(`Hashicorp`, `Pulumi`, info.PostCodeTranslation),
+		reReplace(`hashicorp`, `pulumi`, info.PostCodeTranslation),
 		// Reformat certain headers
 		reReplace(`The following arguments are supported`,
-			`The following configuration inputs are supported`),
+			`The following configuration inputs are supported`, info.PostCodeTranslation),
 		reReplace(`Argument Reference`,
-			`Configuration Reference`),
+			`Configuration Reference`, info.PostCodeTranslation),
 		reReplace(`Schema`,
-			`Configuration Reference`),
-		reReplace("### Optional\n", ""),
+			`Configuration Reference`, info.PostCodeTranslation),
+		reReplace("### Optional\n", "", info.PostCodeTranslation),
 		reReplace(`block contains the following arguments`,
-			`input has the following nested fields`),
-		reReplace(`provider block`, `provider configuration`),
+			`input has the following nested fields`, info.PostCodeTranslation),
+		reReplace(`provider block`, `provider configuration`, info.PostCodeTranslation),
 	)
-	contentBytes, err := edits.apply(docFile, contentBytes)
+	contentBytes, err := edits.apply(docFile, contentBytes, info.PostCodeTranslation)
 	if err != nil {
 		return nil, err
 	}
@@ -429,6 +430,7 @@ func skipSectionHeadersEdit(docFile string) tfbridge.DocsEdit {
 				return false
 			})
 		},
+		Phase: info.PostCodeTranslation,
 	}
 }
 
@@ -465,6 +467,7 @@ func removeTfVersionMentions(docFile string) tfbridge.DocsEdit {
 			}
 			return content, nil
 		},
+		Phase: info.PostCodeTranslation,
 	}
 
 }

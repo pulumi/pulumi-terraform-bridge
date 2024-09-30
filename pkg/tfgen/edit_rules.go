@@ -17,6 +17,7 @@ package tfgen
 import (
 	"bytes"
 	"fmt"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"path/filepath"
 	"regexp"
 
@@ -29,24 +30,24 @@ func defaultEditRules() editRules {
 		boundedReplace("[tT]erraform [pP]lan", "pulumi preview"),
 		// Replace content such as " Terraform Apply." with " pulumi up."
 		boundedReplace("[tT]erraform [aA]pply", "pulumi up"),
-		reReplace(`"([mM])ade (by|with) [tT]erraform"`, `"Made $2 Pulumi"`),
+		reReplace(`"([mM])ade (by|with) [tT]erraform"`, `"Made $2 Pulumi"`, info.PreCodeTranslation),
 		// A markdown link that has terraform in the link component.
-		reReplace(`\[([^\]]*)\]\([^\)]*terraform([^\)]*)\)`, "$1"),
+		reReplace(`\[([^\]]*)\]\([^\)]*terraform([^\)]*)\)`, "$1", info.PreCodeTranslation),
 		fixupImports(),
 		// Replace content such as "jdoe@hashicorp.com" with "jdoe@example.com"
-		reReplace("@hashicorp.com", "@example.com"),
+		reReplace("@hashicorp.com", "@example.com", info.PreCodeTranslation),
 	}
 }
 
 type editRules []tfbridge.DocsEdit
 
-func (rr editRules) apply(fileName string, contents []byte) ([]byte, error) {
+func (rr editRules) apply(fileName string, contents []byte, phase info.EditPhase) ([]byte, error) {
 	for _, rule := range rr {
 		match, err := filepath.Match(rule.Path, fileName)
 		if err != nil {
 			return nil, fmt.Errorf("invalid glob: %q: %w", rule.Path, err)
 		}
-		if !match {
+		if !match || (rule.Phase != phase) {
 			continue
 		}
 		contents, err = rule.Edit(fileName, contents)
@@ -84,7 +85,7 @@ func boundedReplace(from, to string) tfbridge.DocsEdit {
 }
 
 // reReplace creates a regex based replace.
-func reReplace(from, to string) tfbridge.DocsEdit {
+func reReplace(from, to string, phase info.EditPhase) tfbridge.DocsEdit {
 	r := regexp.MustCompile(from)
 	bTo := []byte(to)
 	return tfbridge.DocsEdit{
@@ -92,6 +93,7 @@ func reReplace(from, to string) tfbridge.DocsEdit {
 		Edit: func(_ string, content []byte) ([]byte, error) {
 			return r.ReplaceAll(content, bTo), nil
 		},
+		Phase: phase,
 	}
 }
 
