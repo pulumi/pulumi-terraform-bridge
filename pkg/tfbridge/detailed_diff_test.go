@@ -255,17 +255,13 @@ func TestMakePropDiff(t *testing.T) {
 				ps:  map[string]*SchemaInfo{"foo": tt.eps},
 			}.makeTopPropDiff(newPropertyPath("foo"), tt.old, tt.new)
 
-			expected := map[string]*pulumirpc.PropertyDiff{}
+			var expected map[detailedDiffKey]*pulumirpc.PropertyDiff
 			if tt.expected != nil {
+				expected = make(map[detailedDiffKey]*pulumirpc.PropertyDiff)
 				expected["foo"] = tt.expected
 			}
 
-			require.Equal(t, len(expected), len(actual))
-
-			for k, v := range actual {
-				actualV := expected[string(k)]
-				require.Equal(t, v, actualV)
-			}
+			require.Equal(t, expected, actual)
 		})
 	}
 }
@@ -301,12 +297,7 @@ func runDetailedDiffTest(
 	differ := detailedDiffer{tfs: tfs, ps: ps}
 	actual := differ.makeDetailedDiffPropertyMap(old, new)
 
-	require.Equal(t, len(expected), len(actual))
-
-	for k, v := range actual {
-		actualV := expected[k]
-		require.Equal(t, v, actualV)
-	}
+	require.Equal(t, expected, actual)
 }
 
 func TestBasicDetailedDiff(t *testing.T) {
@@ -489,7 +480,7 @@ func TestBasicDetailedDiff(t *testing.T) {
 			)
 
 			t.Run("unchanged", func(t *testing.T) {
-				runDetailedDiffTest(t, propertyMapValue1, propertyMapValue1, tfs, ps, nil)
+				runDetailedDiffTest(t, propertyMapValue1, propertyMapValue1, tfs, ps, map[string]*pulumirpc.PropertyDiff{})
 			})
 
 			t.Run("changed non-empty", func(t *testing.T) {
@@ -558,7 +549,7 @@ func TestBasicDetailedDiff(t *testing.T) {
 				})
 
 				t.Run("unchanged empty", func(t *testing.T) {
-					runDetailedDiffTest(t, propertyMapEmpty, propertyMapEmpty, tfs, ps, nil)
+					runDetailedDiffTest(t, propertyMapEmpty, propertyMapEmpty, tfs, ps, map[string]*pulumirpc.PropertyDiff{})
 				})
 
 				t.Run("deleted() empty", func(t *testing.T) {
@@ -615,7 +606,7 @@ func TestDetailedDiffObject(t *testing.T) {
 	)
 
 	t.Run("unchanged", func(t *testing.T) {
-		runDetailedDiffTest(t, propertyMapProp1Val1, propertyMapProp1Val1, tfs, ps, nil)
+		runDetailedDiffTest(t, propertyMapProp1Val1, propertyMapProp1Val1, tfs, ps, map[string]*pulumirpc.PropertyDiff{})
 	})
 
 	t.Run("changed non-empty", func(t *testing.T) {
@@ -688,7 +679,7 @@ func TestDetailedDiffList(t *testing.T) {
 	)
 
 	t.Run("unchanged", func(t *testing.T) {
-		runDetailedDiffTest(t, propertyMapVal1, propertyMapVal1, tfs, ps, nil)
+		runDetailedDiffTest(t, propertyMapVal1, propertyMapVal1, tfs, ps, map[string]*pulumirpc.PropertyDiff{})
 	})
 
 	t.Run("changed non-empty", func(t *testing.T) {
@@ -755,7 +746,7 @@ func TestDetailedDiffMap(t *testing.T) {
 	)
 
 	t.Run("unchanged", func(t *testing.T) {
-		runDetailedDiffTest(t, propertyMapVal1, propertyMapVal1, tfs, ps, nil)
+		runDetailedDiffTest(t, propertyMapVal1, propertyMapVal1, tfs, ps, map[string]*pulumirpc.PropertyDiff{})
 	})
 
 	t.Run("changed non-empty", func(t *testing.T) {
@@ -822,7 +813,7 @@ func TestDetailedDiffSet(t *testing.T) {
 	)
 
 	t.Run("unchanged", func(t *testing.T) {
-		runDetailedDiffTest(t, propertyMapVal1, propertyMapVal1, tfs, ps, nil)
+		runDetailedDiffTest(t, propertyMapVal1, propertyMapVal1, tfs, ps, map[string]*pulumirpc.PropertyDiff{})
 	})
 
 	t.Run("changed non-empty", func(t *testing.T) {
@@ -901,7 +892,7 @@ func TestDetailedDiffTFForceNewPlain(t *testing.T) {
 	)
 
 	t.Run("unchanged", func(t *testing.T) {
-		runDetailedDiffTest(t, propertyMapVal1, propertyMapVal1, tfs, ps, nil)
+		runDetailedDiffTest(t, propertyMapVal1, propertyMapVal1, tfs, ps, map[string]*pulumirpc.PropertyDiff{})
 	})
 
 	t.Run("changed non-empty", func(t *testing.T) {
@@ -1020,7 +1011,7 @@ func TestDetailedDiffTFForceNewAttributeCollection(t *testing.T) {
 			)
 
 			t.Run("unchanged", func(t *testing.T) {
-				runDetailedDiffTest(t, propertyMapListVal1, propertyMapListVal1, tfs, ps, nil)
+				runDetailedDiffTest(t, propertyMapListVal1, propertyMapListVal1, tfs, ps, map[string]*pulumirpc.PropertyDiff{})
 			})
 
 			t.Run("changed non-empty", func(t *testing.T) {
@@ -1117,7 +1108,7 @@ func TestDetailedDiffTFForceNewBlockCollection(t *testing.T) {
 	)
 
 	t.Run("unchanged", func(t *testing.T) {
-		runDetailedDiffTest(t, propertyMapListVal1, propertyMapListVal1, tfs, ps, nil)
+		runDetailedDiffTest(t, propertyMapListVal1, propertyMapListVal1, tfs, ps, map[string]*pulumirpc.PropertyDiff{})
 	})
 
 	t.Run("changed non-empty", func(t *testing.T) {
@@ -1228,7 +1219,7 @@ func TestDetailedDiffTFForceNewElemBlockCollection(t *testing.T) {
 	)
 
 	t.Run("unchanged", func(t *testing.T) {
-		runDetailedDiffTest(t, propertyMapListVal1, propertyMapListVal1, tfs, ps, nil)
+		runDetailedDiffTest(t, propertyMapListVal1, propertyMapListVal1, tfs, ps, map[string]*pulumirpc.PropertyDiff{})
 	})
 
 	t.Run("changed non-empty", func(t *testing.T) {
@@ -1319,7 +1310,7 @@ func TestDetailedDiffMaxItemsOnePlainType(t *testing.T) {
 	)
 
 	t.Run("unchanged", func(t *testing.T) {
-		runDetailedDiffTest(t, propertyMapVal1, propertyMapVal1, tfs, ps, nil)
+		runDetailedDiffTest(t, propertyMapVal1, propertyMapVal1, tfs, ps, map[string]*pulumirpc.PropertyDiff{})
 	})
 
 	t.Run("changed non-empty", func(t *testing.T) {
@@ -1383,7 +1374,7 @@ func TestDetailedDiffNestedMaxItemsOnePlainType(t *testing.T) {
 	)
 
 	t.Run("unchanged", func(t *testing.T) {
-		runDetailedDiffTest(t, propertyMapVal1, propertyMapVal1, tfs, ps, nil)
+		runDetailedDiffTest(t, propertyMapVal1, propertyMapVal1, tfs, ps, map[string]*pulumirpc.PropertyDiff{})
 	})
 
 	t.Run("changed non-empty", func(t *testing.T) {
@@ -1460,7 +1451,7 @@ func TestDetailedDiffTFForceNewObject(t *testing.T) {
 	)
 
 	t.Run("unchanged", func(t *testing.T) {
-		runDetailedDiffTest(t, propertyMapObjectVal1, propertyMapObjectVal1, tfs, ps, nil)
+		runDetailedDiffTest(t, propertyMapObjectVal1, propertyMapObjectVal1, tfs, ps, map[string]*pulumirpc.PropertyDiff{})
 	})
 
 	t.Run("changed non-empty", func(t *testing.T) {
@@ -1538,7 +1529,7 @@ func TestDetailedDiffPulumiSchemaOverride(t *testing.T) {
 		)
 
 		t.Run("unchanged", func(t *testing.T) {
-			runDetailedDiffTest(t, propertyMapVal1, propertyMapVal1, tfs, ps, nil)
+			runDetailedDiffTest(t, propertyMapVal1, propertyMapVal1, tfs, ps, map[string]*pulumirpc.PropertyDiff{})
 		})
 
 		t.Run("changed non-empty", func(t *testing.T) {
@@ -1583,7 +1574,7 @@ func TestDetailedDiffPulumiSchemaOverride(t *testing.T) {
 		)
 
 		t.Run("unchanged", func(t *testing.T) {
-			runDetailedDiffTest(t, propertyMapVal1, propertyMapVal1, tfs, ps, nil)
+			runDetailedDiffTest(t, propertyMapVal1, propertyMapVal1, tfs, ps, map[string]*pulumirpc.PropertyDiff{})
 		})
 
 		t.Run("changed non-empty", func(t *testing.T) {
@@ -1628,7 +1619,7 @@ func TestDetailedDiffPulumiSchemaOverride(t *testing.T) {
 		)
 
 		t.Run("unchanged", func(t *testing.T) {
-			runDetailedDiffTest(t, propertyMapVal1, propertyMapVal1, tfs, ps, nil)
+			runDetailedDiffTest(t, propertyMapVal1, propertyMapVal1, tfs, ps, map[string]*pulumirpc.PropertyDiff{})
 		})
 
 		t.Run("changed non-empty", func(t *testing.T) {
@@ -1681,7 +1672,7 @@ func TestDetailedDiffPulumiSchemaOverride(t *testing.T) {
 		)
 
 		t.Run("unchanged", func(t *testing.T) {
-			runDetailedDiffTest(t, propertyMapVal1, propertyMapVal1, tfs, ps, nil)
+			runDetailedDiffTest(t, propertyMapVal1, propertyMapVal1, tfs, ps, map[string]*pulumirpc.PropertyDiff{})
 		})
 
 		t.Run("changed non-empty", func(t *testing.T) {
@@ -1740,7 +1731,7 @@ func TestDetailedDiffPulumiSchemaOverride(t *testing.T) {
 			},
 		)
 		t.Run("unchanged", func(t *testing.T) {
-			runDetailedDiffTest(t, propertyMapVal1, propertyMapVal1, tfs, ps, nil)
+			runDetailedDiffTest(t, propertyMapVal1, propertyMapVal1, tfs, ps, map[string]*pulumirpc.PropertyDiff{})
 		})
 
 		t.Run("changed non-empty", func(t *testing.T) {

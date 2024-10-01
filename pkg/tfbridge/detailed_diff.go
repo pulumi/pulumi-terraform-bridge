@@ -1,6 +1,7 @@
 package tfbridge
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"slices"
@@ -25,15 +26,15 @@ func isForceNew(tfs shim.Schema, ps *SchemaInfo) bool {
 		(ps != nil && ps.ForceNew != nil && *ps.ForceNew)
 }
 
-func sortedMergedKeys(a resource.PropertyMap, b resource.PropertyMap) []resource.PropertyKey {
-	keys := make(map[resource.PropertyKey]struct{})
+func sortedMergedKeys[K cmp.Ordered, V any, M ~map[K]V](a, b M) []K {
+	keys := make(map[K]struct{})
 	for k := range a {
 		keys[k] = struct{}{}
 	}
 	for k := range b {
 		keys[k] = struct{}{}
 	}
-	keysSlice := make([]resource.PropertyKey, 0, len(keys))
+	keysSlice := make([]K, 0, len(keys))
 	for k := range keys {
 		keysSlice = append(keysSlice, k)
 	}
