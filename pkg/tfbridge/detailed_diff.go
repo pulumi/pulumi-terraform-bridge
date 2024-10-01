@@ -277,7 +277,7 @@ func (differ detailedDiffer) makePropDiff(
 		// TODO[pulumi/pulumi-terraform-bridge#2200]: Implement set diffing
 		return differ.makeListDiff(path, old, new)
 	case shim.TypeMap:
-		// Note that TF objects are represented as maps in the shim layer.
+		// Note that TF objects are represented as maps when returned by LookupSchemas
 		return differ.makeMapDiff(path, old, new)
 	default:
 		return differ.makePlainPropDiff(path, old, new)
