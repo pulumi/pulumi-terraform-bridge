@@ -233,7 +233,9 @@ func (differ detailedDiffer) simplifyDiff(
 	return map[detailedDiffKey]*pulumirpc.PropertyDiff{path.Key(): propDiff}, true
 }
 
-func (differ detailedDiffer) makeTopPropDiff(
+// makePlainPropDiff is used for plain properties and ones with an unknown schema.
+// It does not access the TF schema, so it does not know about the type of the property.
+func (differ detailedDiffer) makePlainPropDiff(
 	path propertyPath, old, new resource.PropertyValue,
 ) map[detailedDiffKey]*pulumirpc.PropertyDiff {
 	baseDiff := makeBaseDiff(old, new)
@@ -273,7 +275,7 @@ func (differ detailedDiffer) makePropDiff(
 		// Note that TF objects are represented as maps in the shim layer.
 		return differ.makeMapDiff(path, old, new)
 	default:
-		return differ.makeTopPropDiff(path, old, new)
+		return differ.makePlainPropDiff(path, old, new)
 	}
 }
 

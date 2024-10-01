@@ -253,7 +253,7 @@ func TestMakePropDiff(t *testing.T) {
 			actual := detailedDiffer{
 				tfs: shimschema.SchemaMap{"foo": tt.etf.Shim()},
 				ps:  map[string]*SchemaInfo{"foo": tt.eps},
-			}.makeTopPropDiff(newPropertyPath("foo"), tt.old, tt.new)
+			}.makePlainPropDiff(newPropertyPath("foo"), tt.old, tt.new)
 
 			var expected map[detailedDiffKey]*pulumirpc.PropertyDiff
 			if tt.expected != nil {
