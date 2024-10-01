@@ -236,7 +236,12 @@ type DocsPath struct {
 type EditPhase int
 
 const (
+	// PreCodeTranslation directs an info.DocsEdit to occur before resource example code is translated.
 	PreCodeTranslation EditPhase = iota
+	// PostCodeTranslation directs an info.DocsEdit to occur after resource example code is translated.
+	// It should be used when a docs edit would otherwise affect the code conversion mechanics.
+	//TODO[https://github.com/pulumi/pulumi-terraform-bridge/issues/2459]: Right now, PostCodeTranslation is only
+	// called on installation docs.
 	PostCodeTranslation
 )
 
@@ -258,7 +263,10 @@ type DocsEdit struct {
 	// The function that performs the edit on the file bytes.
 	//
 	// Must not be nil.
-	Edit  func(path string, content []byte) ([]byte, error)
+	Edit func(path string, content []byte) ([]byte, error)
+	// Phase determines when the edit rule will run.
+	//
+	// The default phase is [PreCodeTranslation].
 	Phase EditPhase
 }
 

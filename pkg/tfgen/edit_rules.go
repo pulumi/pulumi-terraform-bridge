@@ -38,10 +38,12 @@ func defaultEditRules() editRules {
 		reReplace("@hashicorp.com", "@example.com", info.PreCodeTranslation),
 
 		// The following edit rules may be applied after translating the code sections in a document.
-		// Its primary use case is for the docs translation approach spearheaded in installation_docs.go.
+		// Their primary use case is for the docs translation approach spearheaded in installation_docs.go.
 		// These edit rules allow us to safely transform certain strings that we would otherwise need in the
 		// code translation or nested type discovery process.
 		// These rules are currently only called when generating installation docs.
+		//TODO[https://github.com/pulumi/pulumi-terraform-bridge/issues/2459] Call info.PostCodeTranslation rules
+		// on all docs.
 		skipSectionHeadersEdit(),
 		removeTfVersionMentions(),
 		//Replace "providers.tf" with "Pulumi.yaml"
