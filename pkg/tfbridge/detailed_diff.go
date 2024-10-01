@@ -348,6 +348,8 @@ func (differ detailedDiffer) makeSetDiff(
 	newIdentities := make(map[int]int)
 	for i, newElem := range newList {
 		contract.Assertf(!newElem.IsComputed(), "the plan should not contain unknown elements")
+		// TODO: This does not work for values which have been
+		// deformed by maxItemsOne flattening.
 		mappable := newElem.Mappable()
 		hash := tfs.SetHash(mappable)
 		newIdentities[hash] = i
