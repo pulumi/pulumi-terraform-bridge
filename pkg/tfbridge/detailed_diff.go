@@ -71,6 +71,8 @@ const (
 
 func (b baseDiff) ToPropertyDiff() *pulumirpc.PropertyDiff {
 	switch b {
+	case noDiff:
+		return nil
 	case addDiff:
 		return &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_ADD}
 	case deleteDiff:
