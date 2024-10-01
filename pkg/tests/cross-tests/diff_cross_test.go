@@ -1026,6 +1026,189 @@ func findKeyInPulumiDetailedDiff(detailedDiff map[string]interface{}, key string
 	return false
 }
 
+func TestNilVsEmptyNestedCollections(t *testing.T) {
+	for _, MaxItems := range []int{0, 1} {
+		t.Run(fmt.Sprintf("MaxItems=%d", MaxItems), func(t *testing.T) {
+			res := &schema.Resource{
+				Schema: map[string]*schema.Schema{
+					"list": {
+						Type:     schema.TypeList,
+						Optional: true,
+						MaxItems: MaxItems,
+						Elem: &schema.Resource{
+							Schema: map[string]*schema.Schema{
+								"x": {
+									Type:     schema.TypeList,
+									Optional: true,
+									Elem: &schema.Schema{
+										Type: schema.TypeString,
+									},
+								},
+							},
+						},
+					},
+					"set": {
+						Type:     schema.TypeSet,
+						Optional: true,
+						MaxItems: MaxItems,
+						Elem: &schema.Resource{
+							Schema: map[string]*schema.Schema{
+								"x": {
+									Type:     schema.TypeList,
+									Optional: true,
+									Elem: &schema.Schema{
+										Type: schema.TypeString,
+									},
+								},
+							},
+						},
+					},
+				},
+			}
+
+			t.Run("nil to empty", func(t *testing.T) {
+				runDiffCheck(t, diffTestCase{
+					Resource: res,
+					Config1:  nil,
+					Config2:  map[string]any{},
+				})
+			})
+
+			t.Run("empty to nil", func(t *testing.T) {
+				runDiffCheck(t, diffTestCase{
+					Resource: res,
+					Config1:  map[string]any{},
+					Config2:  nil,
+				})
+			})
+
+			t.Run("nil to empty list", func(t *testing.T) {
+				runDiffCheck(t, diffTestCase{
+					Resource: res,
+					Config1:  nil,
+					Config2:  map[string]any{"list": []any{}},
+				})
+			})
+
+			t.Run("nil to empty set", func(t *testing.T) {
+				runDiffCheck(t, diffTestCase{
+					Resource: res,
+					Config1:  nil,
+					Config2:  map[string]any{"set": []any{}},
+				})
+			})
+
+			t.Run("empty to nil list", func(t *testing.T) {
+				runDiffCheck(t, diffTestCase{
+					Resource: res,
+					Config1:  map[string]any{"list": []any{}},
+					Config2:  nil,
+				})
+			})
+
+			t.Run("empty to nil set", func(t *testing.T) {
+				runDiffCheck(t, diffTestCase{
+					Resource: res,
+					Config1:  map[string]any{"set": []any{}},
+					Config2:  nil,
+				})
+			})
+
+			listOfStrType := tftypes.List{ElementType: tftypes.String}
+
+			objType := tftypes.Object{
+				AttributeTypes: map[string]tftypes.Type{
+					"x": listOfStrType,
+				},
+			}
+
+			listType := tftypes.List{ElementType: objType}
+
+			listVal := tftypes.NewValue(
+				listType,
+				[]tftypes.Value{
+					tftypes.NewValue(
+						objType,
+						map[string]tftypes.Value{
+							"x": tftypes.NewValue(listOfStrType,
+								[]tftypes.Value{}),
+						},
+					),
+				},
+			)
+
+			listConfig := tftypes.NewValue(
+				tftypes.Object{
+					AttributeTypes: map[string]tftypes.Type{
+						"list": listType,
+					},
+				},
+				map[string]tftypes.Value{
+					"list": listVal,
+				},
+			)
+
+			t.Run("nil to empty list in list", func(t *testing.T) {
+				runDiffCheck(t, diffTestCase{
+					Resource: res,
+					Config1:  nil,
+					Config2:  listConfig,
+				})
+			})
+
+			t.Run("empty list in list to nil", func(t *testing.T) {
+				runDiffCheck(t, diffTestCase{
+					Resource: res,
+					Config1:  listConfig,
+					Config2:  nil,
+				})
+			})
+
+			setType := tftypes.Set{ElementType: objType}
+
+			setVal := tftypes.NewValue(
+				setType,
+				[]tftypes.Value{
+					tftypes.NewValue(
+						objType,
+						map[string]tftypes.Value{
+							"x": tftypes.NewValue(listOfStrType,
+								[]tftypes.Value{}),
+						},
+					),
+				},
+			)
+
+			setConfig := tftypes.NewValue(
+				tftypes.Object{
+					AttributeTypes: map[string]tftypes.Type{
+						"set": setType,
+					},
+				},
+				map[string]tftypes.Value{
+					"set": setVal,
+				},
+			)
+
+			t.Run("nil to empty list in set", func(t *testing.T) {
+				runDiffCheck(t, diffTestCase{
+					Resource: res,
+					Config1:  nil,
+					Config2:  setConfig,
+				})
+			})
+
+			t.Run("empty list in set to nil", func(t *testing.T) {
+				runDiffCheck(t, diffTestCase{
+					Resource: res,
+					Config1:  setConfig,
+					Config2:  nil,
+				})
+			})
+		})
+	}
+}
+
 func TestAttributeCollectionForceNew(t *testing.T) {
 	res := &schema.Resource{
 		Schema: map[string]*schema.Schema{
