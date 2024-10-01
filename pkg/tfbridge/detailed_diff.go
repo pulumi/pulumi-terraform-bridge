@@ -161,6 +161,11 @@ func (differ detailedDiffer) propertyPathToSchemaPath(path propertyPath) walk.Sc
 	return PropertyPathToSchemaPath(resource.PropertyPath(path), differ.tfs, differ.ps)
 }
 
+// getEffectiveType returns the pulumi-visible type of the property at the given path.
+// It takes into account any MaxItemsOne flattening which might have occurred.
+// Specifically:
+// - If the property is a list/set with MaxItemsOne, it returns the type of the element.
+// - Otherwise it returns the type of the property.
 func (differ detailedDiffer) getEffectiveType(path walk.SchemaPath) shim.ValueType {
 	tfs, ps, err := LookupSchemas(path, differ.tfs, differ.ps)
 
