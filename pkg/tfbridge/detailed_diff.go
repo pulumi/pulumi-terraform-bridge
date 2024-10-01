@@ -3,7 +3,6 @@ package tfbridge
 import (
 	"cmp"
 	"context"
-	"errors"
 	"slices"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -63,25 +62,28 @@ func promoteToReplace(diff *pulumirpc.PropertyDiff) *pulumirpc.PropertyDiff {
 type baseDiff string
 
 const (
-	NoDiff    baseDiff = "NoDiff"
-	Add       baseDiff = "Add"
-	Delete    baseDiff = "Delete"
-	Update    baseDiff = "Update"
-	Undecided baseDiff = "Undecided"
+	undecidedDiff baseDiff = ""
+	noDiff        baseDiff = "NoDiff"
+	addDiff       baseDiff = "Add"
+	deleteDiff    baseDiff = "Delete"
+	updateDiff    baseDiff = "Update"
 )
 
 func (b baseDiff) ToPropertyDiff() *pulumirpc.PropertyDiff {
-	contract.Assertf(b != Undecided, "diff should not be undecided")
 	switch b {
-	case Add:
+	case addDiff:
 		return &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_ADD}
-	case Delete:
+	case deleteDiff:
 		return &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_DELETE}
-	case Update:
+	case updateDiff:
 		return &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE}
+	case undecidedDiff:
+		contract.Failf("diff should not be undecided")
 	default:
-		return nil
+		contract.Failf("unexpected base diff %s", b)
 	}
+	contract.Failf("unreachable")
+	return nil
 }
 
 func makeBaseDiff(old, new resource.PropertyValue) baseDiff {
@@ -89,20 +91,20 @@ func makeBaseDiff(old, new resource.PropertyValue) baseDiff {
 	newPresent := isPresent(new)
 	if !oldPresent {
 		if !newPresent {
-			return NoDiff
+			return noDiff
 		}
 
-		return Add
+		return addDiff
 	}
 	if !newPresent {
-		return Delete
+		return deleteDiff
 	}
 
 	if new.IsComputed() {
-		return Update
+		return updateDiff
 	}
 
-	return Undecided
+	return undecidedDiff
 }
 
 type (
@@ -179,6 +181,9 @@ func (differ detailedDiffer) lookupSchemas(path propertyPath) (shim.Schema, *inf
 }
 
 func (differ detailedDiffer) isForceNew(pair propertyPath) bool {
+	// A change on a property might trigger a replacement if:
+	// - The property itself is marked as ForceNew
+	// - The direct parent property is a collection (list, set, map) and is marked as ForceNew
 	// See pkg/cross-tests/diff_cross_test.go
 	// TestAttributeCollectionForceNew, TestBlockCollectionForceNew, TestBlockCollectionElementForceNew
 	// for a full case study of replacements in TF
@@ -199,6 +204,7 @@ func (differ detailedDiffer) isForceNew(pair propertyPath) bool {
 	if err != nil {
 		return false
 	}
+	// Note this is mimicking the TF behaviour, so the effective type is not considered here.
 	if tfs.Type() != shim.TypeList && tfs.Type() != shim.TypeSet && tfs.Type() != shim.TypeMap {
 		return false
 	}
@@ -212,19 +218,19 @@ func (differ detailedDiffer) isForceNew(pair propertyPath) bool {
 // See [pulumi/pulumi-terraform-bridge#2405] for more details.
 func (differ detailedDiffer) simplifyDiff(
 	diff map[detailedDiffKey]*pulumirpc.PropertyDiff, path propertyPath, old, new resource.PropertyValue,
-) (map[detailedDiffKey]*pulumirpc.PropertyDiff, error) {
+) (map[detailedDiffKey]*pulumirpc.PropertyDiff, bool) {
 	baseDiff := makeBaseDiff(old, new)
-	if baseDiff != Undecided {
-		propDiff := baseDiff.ToPropertyDiff()
-		if propDiff == nil {
-			return nil, nil
-		}
-		if differ.isForceNew(path) || mapHasReplacements(diff) {
-			propDiff = promoteToReplace(propDiff)
-		}
-		return map[detailedDiffKey]*pulumirpc.PropertyDiff{path.Key(): propDiff}, nil
+	if baseDiff == undecidedDiff {
+		return nil, false
 	}
-	return nil, errors.New("diff is not simplified")
+	propDiff := baseDiff.ToPropertyDiff()
+	if propDiff == nil {
+		return nil, true
+	}
+	if differ.isForceNew(path) || mapHasReplacements(diff) {
+		propDiff = promoteToReplace(propDiff)
+	}
+	return map[detailedDiffKey]*pulumirpc.PropertyDiff{path.Key(): propDiff}, true
 }
 
 func (differ detailedDiffer) makeTopPropDiff(
@@ -233,7 +239,7 @@ func (differ detailedDiffer) makeTopPropDiff(
 	baseDiff := makeBaseDiff(old, new)
 	isForceNew := differ.isForceNew(path)
 	var propDiff *pulumirpc.PropertyDiff
-	if baseDiff != Undecided {
+	if baseDiff != undecidedDiff {
 		propDiff = baseDiff.ToPropertyDiff()
 	} else if !old.DeepEquals(new) {
 		propDiff = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE}
@@ -264,7 +270,8 @@ func (differ detailedDiffer) makePropDiff(
 		// TODO[pulumi/pulumi-terraform-bridge#2200]: Implement set diffing
 		return differ.makeListDiff(path, old, new)
 	case shim.TypeMap:
-		return differ.makeObjectDiff(path, old, new)
+		// Note that TF objects are represented as maps in the shim layer.
+		return differ.makeMapDiff(path, old, new)
 	default:
 		return differ.makeTopPropDiff(path, old, new)
 	}
@@ -288,33 +295,29 @@ func (differ detailedDiffer) makeListDiff(
 	// investigate how this interacts with force new - is identity preserved or just order
 	longerLen := max(len(oldList), len(newList))
 	for i := 0; i < longerLen; i++ {
+		elem := func(l []resource.PropertyValue) resource.PropertyValue {
+			if i < len(l) {
+				return l[i]
+			}
+			return resource.NewNullProperty()
+		}
 		elemKey := path.Index(i)
-		oldOk := i < len(oldList)
-		oldVal := resource.NewNullProperty()
-		if oldOk {
-			oldVal = oldList[i]
-		}
-		newOk := i < len(newList)
-		newVal := resource.NewNullProperty()
-		if newOk {
-			newVal = newList[i]
-		}
 
-		d := differ.makePropDiff(elemKey, oldVal, newVal)
+		d := differ.makePropDiff(elemKey, elem(oldList), elem(newList))
 		for subKey, subDiff := range d {
 			diff[subKey] = subDiff
 		}
 	}
 
-	simplerDiff, err := differ.simplifyDiff(diff, path, old, new)
-	if err == nil {
+	simplerDiff, isSimplified := differ.simplifyDiff(diff, path, old, new)
+	if isSimplified {
 		return simplerDiff
 	}
 
 	return diff
 }
 
-func (differ detailedDiffer) makeObjectDiff(
+func (differ detailedDiffer) makeMapDiff(
 	path propertyPath, old, new resource.PropertyValue,
 ) map[detailedDiffKey]*pulumirpc.PropertyDiff {
 	diff := make(map[detailedDiffKey]*pulumirpc.PropertyDiff)
@@ -339,8 +342,8 @@ func (differ detailedDiffer) makeObjectDiff(
 		}
 	}
 
-	simplerDiff, err := differ.simplifyDiff(diff, path, old, new)
-	if err == nil {
+	simplerDiff, isSimplified := differ.simplifyDiff(diff, path, old, new)
+	if isSimplified {
 		return simplerDiff
 	}
 

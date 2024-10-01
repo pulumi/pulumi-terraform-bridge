@@ -122,15 +122,15 @@ func TestMakeBaseDiff(t *testing.T) {
 	nonNilVal := resource.NewStringProperty("foo")
 	nonNilVal2 := resource.NewStringProperty("bar")
 
-	assert.Equal(t, makeBaseDiff(nilVal, nilVal), NoDiff)
-	assert.Equal(t, makeBaseDiff(nilVal, nilVal), NoDiff)
-	assert.Equal(t, makeBaseDiff(nilVal, nonNilVal), Add)
-	assert.Equal(t, makeBaseDiff(nilVal, nonNilVal), Add)
-	assert.Equal(t, makeBaseDiff(nonNilVal, nilVal), Delete)
-	assert.Equal(t, makeBaseDiff(nonNilVal, nilVal), Delete)
-	assert.Equal(t, makeBaseDiff(nonNilVal, nilArr), Delete)
-	assert.Equal(t, makeBaseDiff(nonNilVal, nilMap), Delete)
-	assert.Equal(t, makeBaseDiff(nonNilVal, nonNilVal2), Undecided)
+	assert.Equal(t, makeBaseDiff(nilVal, nilVal), noDiff)
+	assert.Equal(t, makeBaseDiff(nilVal, nilVal), noDiff)
+	assert.Equal(t, makeBaseDiff(nilVal, nonNilVal), addDiff)
+	assert.Equal(t, makeBaseDiff(nilVal, nonNilVal), addDiff)
+	assert.Equal(t, makeBaseDiff(nonNilVal, nilVal), deleteDiff)
+	assert.Equal(t, makeBaseDiff(nonNilVal, nilVal), deleteDiff)
+	assert.Equal(t, makeBaseDiff(nonNilVal, nilArr), deleteDiff)
+	assert.Equal(t, makeBaseDiff(nonNilVal, nilMap), deleteDiff)
+	assert.Equal(t, makeBaseDiff(nonNilVal, nonNilVal2), undecidedDiff)
 }
 
 func TestMakePropDiff(t *testing.T) {
