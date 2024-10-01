@@ -959,19 +959,23 @@ func TestNilVsEmptyListProperty(t *testing.T) {
 	}
 
 	t.Run("nil to empty", func(t *testing.T) {
-		runDiffCheck(t, diffTestCase{
+		diff := runDiffCheck(t, diffTestCase{
 			Resource: res,
 			Config1:  cfgNil,
 			Config2:  cfgEmpty,
 		})
+
+		require.Equal(t, []string{"no-op"}, diff.TFDiff.Actions)
 	})
 
 	t.Run("empty to nil", func(t *testing.T) {
-		runDiffCheck(t, diffTestCase{
+		diff := runDiffCheck(t, diffTestCase{
 			Resource: res,
 			Config1:  cfgEmpty,
 			Config2:  cfgNil,
 		})
+
+		require.Equal(t, []string{"no-op"}, diff.TFDiff.Actions)
 	})
 }
 
@@ -992,19 +996,23 @@ func TestNilVsEmptyMapProperty(t *testing.T) {
 	}
 
 	t.Run("nil to empty", func(t *testing.T) {
-		runDiffCheck(t, diffTestCase{
+		diff := runDiffCheck(t, diffTestCase{
 			Resource: res,
 			Config1:  cfgNil,
 			Config2:  cfgEmpty,
 		})
+
+		require.Equal(t, []string{"no-op"}, diff.TFDiff.Actions)
 	})
 
 	t.Run("empty to nil", func(t *testing.T) {
-		runDiffCheck(t, diffTestCase{
+		diff := runDiffCheck(t, diffTestCase{
 			Resource: res,
 			Config1:  cfgEmpty,
 			Config2:  cfgNil,
 		})
+
+		require.Equal(t, []string{"no-op"}, diff.TFDiff.Actions)
 	})
 }
 
@@ -1066,52 +1074,41 @@ func TestNilVsEmptyNestedCollections(t *testing.T) {
 				},
 			}
 
-			t.Run("nil to empty", func(t *testing.T) {
-				runDiffCheck(t, diffTestCase{
-					Resource: res,
-					Config1:  nil,
-					Config2:  map[string]any{},
-				})
-			})
-
-			t.Run("empty to nil", func(t *testing.T) {
-				runDiffCheck(t, diffTestCase{
+			t.Run("nil to empty list", func(t *testing.T) {
+				diff := runDiffCheck(t, diffTestCase{
 					Resource: res,
 					Config1:  map[string]any{},
-					Config2:  nil,
-				})
-			})
-
-			t.Run("nil to empty list", func(t *testing.T) {
-				runDiffCheck(t, diffTestCase{
-					Resource: res,
-					Config1:  nil,
 					Config2:  map[string]any{"list": []any{}},
 				})
+
+				require.Equal(t, []string{"no-op"}, diff.TFDiff.Actions)
 			})
 
 			t.Run("nil to empty set", func(t *testing.T) {
-				runDiffCheck(t, diffTestCase{
+				diff := runDiffCheck(t, diffTestCase{
 					Resource: res,
-					Config1:  nil,
+					Config1:  map[string]any{},
 					Config2:  map[string]any{"set": []any{}},
 				})
+				require.Equal(t, []string{"no-op"}, diff.TFDiff.Actions)
 			})
 
 			t.Run("empty to nil list", func(t *testing.T) {
-				runDiffCheck(t, diffTestCase{
+				diff := runDiffCheck(t, diffTestCase{
 					Resource: res,
 					Config1:  map[string]any{"list": []any{}},
-					Config2:  nil,
+					Config2:  map[string]any{},
 				})
+				require.Equal(t, []string{"no-op"}, diff.TFDiff.Actions)
 			})
 
 			t.Run("empty to nil set", func(t *testing.T) {
-				runDiffCheck(t, diffTestCase{
+				diff := runDiffCheck(t, diffTestCase{
 					Resource: res,
 					Config1:  map[string]any{"set": []any{}},
-					Config2:  nil,
+					Config2:  map[string]any{},
 				})
+				require.Equal(t, []string{"no-op"}, diff.TFDiff.Actions)
 			})
 
 			listOfStrType := tftypes.List{ElementType: tftypes.String}
@@ -1149,19 +1146,27 @@ func TestNilVsEmptyNestedCollections(t *testing.T) {
 			)
 
 			t.Run("nil to empty list in list", func(t *testing.T) {
-				runDiffCheck(t, diffTestCase{
+				diff := runDiffCheck(t, diffTestCase{
 					Resource: res,
-					Config1:  nil,
+					Config1:  map[string]any{},
 					Config2:  listConfig,
 				})
+
+				require.Equal(t, []string{"update"}, diff.TFDiff.Actions)
+				require.NotEqual(t, diff.TFDiff.Before, diff.TFDiff.After)
+				require.True(t, findKindInPulumiDetailedDiff(diff.PulumiDiff.DetailedDiff, "ADD"))
 			})
 
 			t.Run("empty list in list to nil", func(t *testing.T) {
-				runDiffCheck(t, diffTestCase{
+				diff := runDiffCheck(t, diffTestCase{
 					Resource: res,
 					Config1:  listConfig,
-					Config2:  nil,
+					Config2:  map[string]any{},
 				})
+
+				require.Equal(t, []string{"update"}, diff.TFDiff.Actions)
+				require.NotEqual(t, diff.TFDiff.Before, diff.TFDiff.After)
+				require.True(t, findKindInPulumiDetailedDiff(diff.PulumiDiff.DetailedDiff, "DELETE"))
 			})
 
 			setType := tftypes.Set{ElementType: objType}
@@ -1191,19 +1196,28 @@ func TestNilVsEmptyNestedCollections(t *testing.T) {
 			)
 
 			t.Run("nil to empty list in set", func(t *testing.T) {
-				runDiffCheck(t, diffTestCase{
+				diff := runDiffCheck(t, diffTestCase{
 					Resource: res,
-					Config1:  nil,
+					Config1:  map[string]any{},
 					Config2:  setConfig,
 				})
+
+				require.Equal(t, []string{"update"}, diff.TFDiff.Actions)
+				require.NotEqual(t, diff.TFDiff.Before, diff.TFDiff.After)
+				t.Log(diff.PulumiDiff.DetailedDiff)
+				require.True(t, findKindInPulumiDetailedDiff(diff.PulumiDiff.DetailedDiff, "ADD"))
 			})
 
 			t.Run("empty list in set to nil", func(t *testing.T) {
-				runDiffCheck(t, diffTestCase{
+				diff := runDiffCheck(t, diffTestCase{
 					Resource: res,
 					Config1:  setConfig,
-					Config2:  nil,
+					Config2:  map[string]any{},
 				})
+
+				require.Equal(t, []string{"update"}, diff.TFDiff.Actions)
+				require.NotEqual(t, diff.TFDiff.Before, diff.TFDiff.After)
+				require.True(t, findKindInPulumiDetailedDiff(diff.PulumiDiff.DetailedDiff, "DELETE"))
 			})
 		})
 	}
