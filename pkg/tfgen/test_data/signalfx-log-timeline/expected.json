@@ -14,7 +14,7 @@
       "description": "Name of the log timeline."
     },
     "program_text": {
-      "description": "Signalflow program text for the log timeline. More info at https://dev.splunk.com/observability/docs/."
+      "description": "Signalflow program text for the log timeline. More info at \u003chttps://dev.splunk.com/observability/docs/\u003e."
     },
     "start_time": {
       "description": "Seconds since epoch. Used for visualization. Conflicts with `time_range`."

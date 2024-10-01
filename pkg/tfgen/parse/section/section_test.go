@@ -73,6 +73,7 @@ content (again)
 				return ast.WalkContinue, nil
 			},
 			expected: autogold.Expect(`Hi
+
 ## 2
 
 content (again)

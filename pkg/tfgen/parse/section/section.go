@@ -35,7 +35,7 @@ var Kind = ast.NewNodeKind("Section")
 
 type section struct{}
 
-func (s section) Extend(md goldmark.Markdown) {
+func (section) Extend(md goldmark.Markdown) {
 	md.Parser().AddOptions(parser.WithASTTransformers(
 		util.Prioritized(sectionParser{}, priority),
 	))
@@ -43,6 +43,12 @@ func (s section) Extend(md goldmark.Markdown) {
 	md.Renderer().AddOptions(renderer.WithNodeRenderers(
 		util.Prioritized(sectionRenderer{}, priority),
 	))
+}
+
+func New(heading *ast.Heading) *Section {
+	s := new(Section)
+	s.AppendChild(s, heading)
+	return s
 }
 
 type Section struct{ ast.BaseBlock }
@@ -76,6 +82,9 @@ func (s sectionParser) transform(node ast.Node, reader text.Reader, pc parser.Co
 		node = heading.NextSibling()
 
 		section := &Section{}
+		section.SetBlankPreviousLines(heading.HasBlankPreviousLines())
+		heading.SetBlankPreviousLines(false)
+
 		parent.ReplaceChild(parent, heading, section)
 		section.AppendChild(section, heading)
 		for node != nil {
@@ -97,7 +106,13 @@ type sectionParser struct{}
 type sectionRenderer struct{}
 
 func (sectionRenderer) RegisterFuncs(r renderer.NodeRendererFuncRegisterer) {
-	f := func(util.BufWriter, []byte, ast.Node, bool) (ast.WalkStatus, error) {
+	f := func(b util.BufWriter, _ []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
+		if entering && n.PreviousSibling() != nil {
+			_, err := b.WriteRune('\n')
+			if err != nil {
+				return ast.WalkContinue, err
+			}
+		}
 		return ast.WalkContinue, nil
 	}
 	r.Register(Kind, f)

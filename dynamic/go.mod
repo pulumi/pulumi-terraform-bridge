@@ -25,8 +25,11 @@ require (
 )
 
 require (
+	github.com/olekukonko/tablewriter v0.0.5 // indirect
 	github.com/teekennedy/goldmark-markdown v0.3.0 // indirect
 	github.com/yuin/goldmark v1.7.4 // indirect
+	github.com/yuin/goldmark-meta v1.1.0 // indirect
+	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
 
 require (

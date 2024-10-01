@@ -2,7 +2,7 @@ The [Artifactory](https://jfrog.com/artifactory/) provider is used to interact w
 
 Links to documentation for specific resources can be found in the table of contents to the left.
 
-This provider requires access to Artifactory APIs, which are only available in the _licensed_ pro and enterprise editions. You can determine which license you have by accessing the following the URL `${host}/artifactory/api/system/licenses/`.
+This provider requires access to Artifactory APIs, which are only available in the *licensed* pro and enterprise editions. You can determine which license you have by accessing the following the URL `${host}/artifactory/api/system/licenses/`.
 
 You can either access it via API, or web browser - it require admin level credentials.
 
