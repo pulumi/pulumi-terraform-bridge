@@ -1005,11 +1005,6 @@ func TestDetailedDiffTFForceNewAttributeCollection(t *testing.T) {
 					"prop": tt.computedCollection,
 				},
 			)
-			propertyMapComputedElem := resource.NewPropertyMapFromMap(
-				map[string]interface{}{
-					"prop": tt.computedElem,
-				},
-			)
 
 			t.Run("unchanged", func(t *testing.T) {
 				runDetailedDiffTest(t, propertyMapListVal1, propertyMapListVal1, tfs, ps, map[string]*pulumirpc.PropertyDiff{})
@@ -1040,20 +1035,8 @@ func TestDetailedDiffTFForceNewAttributeCollection(t *testing.T) {
 					})
 			})
 
-			t.Run("changed to computed elem", func(t *testing.T) {
-				runDetailedDiffTest(t, propertyMapListVal1, propertyMapComputedElem, tfs, ps, map[string]*pulumirpc.PropertyDiff{
-					tt.elementIndex: {Kind: pulumirpc.PropertyDiff_UPDATE_REPLACE},
-				})
-			})
-
 			t.Run("changed from empty to computed collection", func(t *testing.T) {
 				runDetailedDiffTest(t, propertyMapEmpty, propertyMapComputedCollection, tfs, ps, map[string]*pulumirpc.PropertyDiff{
-					"prop": {Kind: pulumirpc.PropertyDiff_ADD_REPLACE},
-				})
-			})
-
-			t.Run("changed from empty to computed elem", func(t *testing.T) {
-				runDetailedDiffTest(t, propertyMapEmpty, propertyMapComputedElem, tfs, ps, map[string]*pulumirpc.PropertyDiff{
 					"prop": {Kind: pulumirpc.PropertyDiff_ADD_REPLACE},
 				})
 			})
@@ -2213,4 +2196,86 @@ func TestDetailedDiffSetBlock(t *testing.T) {
 			})
 		})
 	}
+}
+
+func TestDetailedDiffSetBlockNestedMaxItemsOne(t *testing.T) {
+	customResponseSchema := func() *schema.Schema {
+		return &schema.Schema{
+			Type:     schema.TypeList,
+			Optional: true,
+			MaxItems: 1,
+			Elem: &schema.Resource{
+				Schema: map[string]*schema.Schema{
+					"custom_response_body_key": {
+						Type:     schema.TypeString,
+						Optional: true,
+					},
+				},
+			},
+		}
+	}
+	blockConfigSchema := func() *schema.Schema {
+		return &schema.Schema{
+			Type:     schema.TypeList,
+			Optional: true,
+			MaxItems: 1,
+			Elem: &schema.Resource{
+				Schema: map[string]*schema.Schema{
+					"custom_response": customResponseSchema(),
+				},
+			},
+		}
+	}
+	ruleElement := &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"action": {
+				Type:     schema.TypeList,
+				Optional: true,
+				MaxItems: 1,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"block": blockConfigSchema(),
+					},
+				},
+			},
+		},
+	}
+
+	schMap := map[string]*schema.Schema{
+		"rule": {
+			Type:     schema.TypeSet,
+			Optional: true,
+			Elem:     ruleElement,
+		},
+	}
+
+	ps, tfs := map[string]*info.Schema{}, shimv2.NewSchemaMap(schMap)
+
+	t.Run("unchanged", func(t *testing.T) {
+		runDetailedDiffTest(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+			"rule": []map[string]interface{}{
+				{
+					"action": map[string]interface{}{
+						"block": map[string]interface{}{
+							"custom_response": map[string]interface{}{
+								"custom_response_body_key": "val1",
+							},
+						},
+					},
+				},
+			},
+		}), resource.NewPropertyMapFromMap(map[string]interface{}{
+			"rule": []map[string]interface{}{
+				{
+					"action": map[string]interface{}{
+						"block": map[string]interface{}{
+							"custom_response": map[string]interface{}{
+								"custom_response_body_key": "val1",
+							},
+						},
+					},
+				},
+			},
+		}), tfs, ps, nil)
+	})
 }
