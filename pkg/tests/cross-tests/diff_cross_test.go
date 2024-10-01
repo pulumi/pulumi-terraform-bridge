@@ -1018,6 +1018,13 @@ func TestNilVsEmptyMapProperty(t *testing.T) {
 
 func findKindInPulumiDetailedDiff(detailedDiff map[string]interface{}, key string) bool {
 	for _, val := range detailedDiff {
+		// ADD is a valid kind but is the default value for kind
+		// This means that it is missed out from the representation
+		if key == "ADD" {
+			if len(val.(map[string]interface{})) == 0 {
+				return true
+			}
+		}
 		if val.(map[string]interface{})["kind"] == key {
 			return true
 		}
@@ -1035,6 +1042,8 @@ func findKeyInPulumiDetailedDiff(detailedDiff map[string]interface{}, key string
 }
 
 func TestNilVsEmptyNestedCollections(t *testing.T) {
+	// TODO: remove once accurate bridge previews are rolled out
+	t.Setenv("PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW", "true")
 	for _, MaxItems := range []int{0, 1} {
 		t.Run(fmt.Sprintf("MaxItems=%d", MaxItems), func(t *testing.T) {
 			res := &schema.Resource{
@@ -1215,9 +1224,7 @@ func TestNilVsEmptyNestedCollections(t *testing.T) {
 					Config2:  map[string]any{},
 				})
 
-				require.Equal(t, []string{"update"}, diff.TFDiff.Actions)
-				require.NotEqual(t, diff.TFDiff.Before, diff.TFDiff.After)
-				require.True(t, findKindInPulumiDetailedDiff(diff.PulumiDiff.DetailedDiff, "DELETE"))
+				require.Equal(t, []string{"no-op"}, diff.TFDiff.Actions)
 			})
 		})
 	}
