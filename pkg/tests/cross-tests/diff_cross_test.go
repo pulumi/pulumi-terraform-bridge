@@ -26,7 +26,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hexops/autogold/v2"
 	"github.com/stretchr/testify/require"
 )
 
@@ -937,7 +936,644 @@ func TestMaxItemsOneCollectionOnlyDiff(t *testing.T) {
 		return val["rule"].([]any)[0].(map[string]any)["filter"]
 	}
 
+	t.Log(diff.PulumiDiff)
 	require.Equal(t, []string{"update"}, diff.TFDiff.Actions)
 	require.NotEqual(t, getFilter(diff.TFDiff.Before), getFilter(diff.TFDiff.After))
-	autogold.Expect(map[string]interface{}{"rules[0].filter": map[string]interface{}{"kind": "UPDATE"}}).Equal(t, diff.PulumiDiff.DetailedDiff)
+	require.True(t, findKeyInPulumiDetailedDiff(diff.PulumiDiff.DetailedDiff, "rules[0].filter"))
+}
+
+func TestNilVsEmptyListProperty(t *testing.T) {
+	cfgEmpty := map[string]any{"f0": []any{}}
+	cfgNil := map[string]any{}
+
+	res := &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"f0": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
+			},
+		},
+	}
+
+	t.Run("nil to empty", func(t *testing.T) {
+		diff := runDiffCheck(t, diffTestCase{
+			Resource: res,
+			Config1:  cfgNil,
+			Config2:  cfgEmpty,
+		})
+
+		require.Equal(t, []string{"no-op"}, diff.TFDiff.Actions)
+	})
+
+	t.Run("empty to nil", func(t *testing.T) {
+		diff := runDiffCheck(t, diffTestCase{
+			Resource: res,
+			Config1:  cfgEmpty,
+			Config2:  cfgNil,
+		})
+
+		require.Equal(t, []string{"no-op"}, diff.TFDiff.Actions)
+	})
+}
+
+func TestNilVsEmptyMapProperty(t *testing.T) {
+	cfgEmpty := map[string]any{"f0": map[string]any{}}
+	cfgNil := map[string]any{}
+
+	res := &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"f0": {
+				Type:     schema.TypeMap,
+				Optional: true,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
+			},
+		},
+	}
+
+	t.Run("nil to empty", func(t *testing.T) {
+		diff := runDiffCheck(t, diffTestCase{
+			Resource: res,
+			Config1:  cfgNil,
+			Config2:  cfgEmpty,
+		})
+
+		require.Equal(t, []string{"no-op"}, diff.TFDiff.Actions)
+	})
+
+	t.Run("empty to nil", func(t *testing.T) {
+		diff := runDiffCheck(t, diffTestCase{
+			Resource: res,
+			Config1:  cfgEmpty,
+			Config2:  cfgNil,
+		})
+
+		require.Equal(t, []string{"no-op"}, diff.TFDiff.Actions)
+	})
+}
+
+func findKindInPulumiDetailedDiff(detailedDiff map[string]interface{}, key string) bool {
+	for _, val := range detailedDiff {
+		// ADD is a valid kind but is the default value for kind
+		// This means that it is missed out from the representation
+		if key == "ADD" {
+			if len(val.(map[string]interface{})) == 0 {
+				return true
+			}
+		}
+		if val.(map[string]interface{})["kind"] == key {
+			return true
+		}
+	}
+	return false
+}
+
+func findKeyInPulumiDetailedDiff(detailedDiff map[string]interface{}, key string) bool {
+	for k := range detailedDiff {
+		if k == key {
+			return true
+		}
+	}
+	return false
+}
+
+func TestNilVsEmptyNestedCollections(t *testing.T) {
+	// TODO: remove once accurate bridge previews are rolled out
+	t.Setenv("PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW", "true")
+	for _, MaxItems := range []int{0, 1} {
+		t.Run(fmt.Sprintf("MaxItems=%d", MaxItems), func(t *testing.T) {
+			res := &schema.Resource{
+				Schema: map[string]*schema.Schema{
+					"list": {
+						Type:     schema.TypeList,
+						Optional: true,
+						MaxItems: MaxItems,
+						Elem: &schema.Resource{
+							Schema: map[string]*schema.Schema{
+								"x": {
+									Type:     schema.TypeList,
+									Optional: true,
+									Elem: &schema.Schema{
+										Type: schema.TypeString,
+									},
+								},
+							},
+						},
+					},
+					"set": {
+						Type:     schema.TypeSet,
+						Optional: true,
+						MaxItems: MaxItems,
+						Elem: &schema.Resource{
+							Schema: map[string]*schema.Schema{
+								"x": {
+									Type:     schema.TypeList,
+									Optional: true,
+									Elem: &schema.Schema{
+										Type: schema.TypeString,
+									},
+								},
+							},
+						},
+					},
+				},
+			}
+
+			t.Run("nil to empty list", func(t *testing.T) {
+				diff := runDiffCheck(t, diffTestCase{
+					Resource: res,
+					Config1:  map[string]any{},
+					Config2:  map[string]any{"list": []any{}},
+				})
+
+				require.Equal(t, []string{"no-op"}, diff.TFDiff.Actions)
+			})
+
+			t.Run("nil to empty set", func(t *testing.T) {
+				diff := runDiffCheck(t, diffTestCase{
+					Resource: res,
+					Config1:  map[string]any{},
+					Config2:  map[string]any{"set": []any{}},
+				})
+				require.Equal(t, []string{"no-op"}, diff.TFDiff.Actions)
+			})
+
+			t.Run("empty to nil list", func(t *testing.T) {
+				diff := runDiffCheck(t, diffTestCase{
+					Resource: res,
+					Config1:  map[string]any{"list": []any{}},
+					Config2:  map[string]any{},
+				})
+				require.Equal(t, []string{"no-op"}, diff.TFDiff.Actions)
+			})
+
+			t.Run("empty to nil set", func(t *testing.T) {
+				diff := runDiffCheck(t, diffTestCase{
+					Resource: res,
+					Config1:  map[string]any{"set": []any{}},
+					Config2:  map[string]any{},
+				})
+				require.Equal(t, []string{"no-op"}, diff.TFDiff.Actions)
+			})
+
+			listOfStrType := tftypes.List{ElementType: tftypes.String}
+
+			objType := tftypes.Object{
+				AttributeTypes: map[string]tftypes.Type{
+					"x": listOfStrType,
+				},
+			}
+
+			listType := tftypes.List{ElementType: objType}
+
+			listVal := tftypes.NewValue(
+				listType,
+				[]tftypes.Value{
+					tftypes.NewValue(
+						objType,
+						map[string]tftypes.Value{
+							"x": tftypes.NewValue(listOfStrType,
+								[]tftypes.Value{}),
+						},
+					),
+				},
+			)
+
+			listConfig := tftypes.NewValue(
+				tftypes.Object{
+					AttributeTypes: map[string]tftypes.Type{
+						"list": listType,
+					},
+				},
+				map[string]tftypes.Value{
+					"list": listVal,
+				},
+			)
+
+			t.Run("nil to empty list in list", func(t *testing.T) {
+				diff := runDiffCheck(t, diffTestCase{
+					Resource: res,
+					Config1:  map[string]any{},
+					Config2:  listConfig,
+				})
+
+				require.Equal(t, []string{"update"}, diff.TFDiff.Actions)
+				require.NotEqual(t, diff.TFDiff.Before, diff.TFDiff.After)
+				require.True(t, findKindInPulumiDetailedDiff(diff.PulumiDiff.DetailedDiff, "ADD"))
+			})
+
+			t.Run("empty list in list to nil", func(t *testing.T) {
+				diff := runDiffCheck(t, diffTestCase{
+					Resource: res,
+					Config1:  listConfig,
+					Config2:  map[string]any{},
+				})
+
+				require.Equal(t, []string{"update"}, diff.TFDiff.Actions)
+				require.NotEqual(t, diff.TFDiff.Before, diff.TFDiff.After)
+				require.True(t, findKindInPulumiDetailedDiff(diff.PulumiDiff.DetailedDiff, "DELETE"))
+			})
+
+			setType := tftypes.Set{ElementType: objType}
+
+			setVal := tftypes.NewValue(
+				setType,
+				[]tftypes.Value{
+					tftypes.NewValue(
+						objType,
+						map[string]tftypes.Value{
+							"x": tftypes.NewValue(listOfStrType,
+								[]tftypes.Value{}),
+						},
+					),
+				},
+			)
+
+			setConfig := tftypes.NewValue(
+				tftypes.Object{
+					AttributeTypes: map[string]tftypes.Type{
+						"set": setType,
+					},
+				},
+				map[string]tftypes.Value{
+					"set": setVal,
+				},
+			)
+
+			t.Run("nil to empty list in set", func(t *testing.T) {
+				diff := runDiffCheck(t, diffTestCase{
+					Resource: res,
+					Config1:  map[string]any{},
+					Config2:  setConfig,
+				})
+
+				require.Equal(t, []string{"update"}, diff.TFDiff.Actions)
+				require.NotEqual(t, diff.TFDiff.Before, diff.TFDiff.After)
+				t.Log(diff.PulumiDiff.DetailedDiff)
+				require.True(t, findKindInPulumiDetailedDiff(diff.PulumiDiff.DetailedDiff, "ADD"))
+			})
+
+			t.Run("empty list in set to nil", func(t *testing.T) {
+				diff := runDiffCheck(t, diffTestCase{
+					Resource: res,
+					Config1:  setConfig,
+					Config2:  map[string]any{},
+				})
+
+				require.Equal(t, []string{"no-op"}, diff.TFDiff.Actions)
+			})
+		})
+	}
+}
+
+func TestAttributeCollectionForceNew(t *testing.T) {
+	res := &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"list": {
+				Type:     schema.TypeList,
+				Optional: true,
+				ForceNew: true,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
+			},
+			"set": {
+				Type:     schema.TypeSet,
+				Optional: true,
+				ForceNew: true,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
+			},
+			"map": {
+				Type:     schema.TypeMap,
+				Optional: true,
+				ForceNew: true,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
+			},
+		},
+	}
+
+	t.Run("list", func(t *testing.T) {
+		t.Run("changed non-empty", func(t *testing.T) {
+			res := runDiffCheck(t, diffTestCase{
+				Resource: res,
+				Config1:  map[string]any{"list": []any{"A"}},
+				Config2:  map[string]any{"list": []any{"B"}},
+			})
+
+			require.Equal(t, []string{"create", "delete"}, res.TFDiff.Actions)
+			require.True(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "UPDATE_REPLACE"))
+		})
+
+		t.Run("changed to empty", func(t *testing.T) {
+			res := runDiffCheck(t, diffTestCase{
+				Resource: res,
+				Config1:  map[string]any{"list": []any{"A"}},
+				Config2:  map[string]any{"list": []any{}},
+			})
+
+			require.Equal(t, []string{"create", "delete"}, res.TFDiff.Actions)
+			require.True(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "DELETE_REPLACE"))
+		})
+
+		t.Run("changed from empty", func(t *testing.T) {
+			res := runDiffCheck(t, diffTestCase{
+				Resource: res,
+				Config1:  map[string]any{"list": []any{}},
+				Config2:  map[string]any{"list": []any{"A"}},
+			})
+
+			require.Equal(t, []string{"create", "delete"}, res.TFDiff.Actions)
+			require.True(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "ADD_REPLACE"))
+		})
+	})
+
+	t.Run("set", func(t *testing.T) {
+		t.Run("changed non-empty", func(t *testing.T) {
+			res := runDiffCheck(t, diffTestCase{
+				Resource: res,
+				Config1:  map[string]any{"set": []any{"A"}},
+				Config2:  map[string]any{"set": []any{"B"}},
+			})
+
+			require.Equal(t, []string{"create", "delete"}, res.TFDiff.Actions)
+			require.True(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "UPDATE_REPLACE"))
+		})
+
+		t.Run("changed to empty", func(t *testing.T) {
+			res := runDiffCheck(t, diffTestCase{
+				Resource: res,
+				Config1:  map[string]any{"set": []any{"A"}},
+				Config2:  map[string]any{"set": []any{}},
+			})
+
+			require.Equal(t, []string{"create", "delete"}, res.TFDiff.Actions)
+			require.True(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "DELETE_REPLACE"))
+		})
+
+		t.Run("changed from empty", func(t *testing.T) {
+			res := runDiffCheck(t, diffTestCase{
+				Resource: res,
+				Config1:  map[string]any{"set": []any{}},
+				Config2:  map[string]any{"set": []any{"A"}},
+			})
+
+			require.Equal(t, []string{"create", "delete"}, res.TFDiff.Actions)
+			require.True(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "ADD_REPLACE"))
+		})
+	})
+
+	t.Run("map", func(t *testing.T) {
+		t.Run("changed non-empty", func(t *testing.T) {
+			res := runDiffCheck(t, diffTestCase{
+				Resource: res,
+				Config1:  map[string]any{"map": map[string]any{"A": "A"}},
+				Config2:  map[string]any{"map": map[string]any{"A": "B"}},
+			})
+
+			require.Equal(t, []string{"create", "delete"}, res.TFDiff.Actions)
+			require.True(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "UPDATE_REPLACE"))
+		})
+
+		t.Run("changed to empty", func(t *testing.T) {
+			res := runDiffCheck(t, diffTestCase{
+				Resource: res,
+				Config1:  map[string]any{"map": map[string]any{"A": "A"}},
+				Config2:  map[string]any{"map": map[string]any{}},
+			})
+
+			require.Equal(t, []string{"create", "delete"}, res.TFDiff.Actions)
+			require.True(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "DELETE_REPLACE"))
+		})
+
+		t.Run("changed from empty", func(t *testing.T) {
+			res := runDiffCheck(t, diffTestCase{
+				Resource: res,
+				Config1:  map[string]any{"map": map[string]any{}},
+				Config2:  map[string]any{"map": map[string]any{"A": "A"}},
+			})
+
+			require.Equal(t, []string{"create", "delete"}, res.TFDiff.Actions)
+			require.True(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "ADD_REPLACE"))
+		})
+	})
+}
+
+func TestBlockCollectionForceNew(t *testing.T) {
+	res := &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"list": {
+				Type:     schema.TypeList,
+				Optional: true,
+				ForceNew: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"x": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+					},
+				},
+			},
+			"set": {
+				Type:     schema.TypeSet,
+				Optional: true,
+				ForceNew: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"x": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+					},
+				},
+			},
+			"other": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+		},
+	}
+
+	t.Run("list", func(t *testing.T) {
+		t.Run("changed non-empty", func(t *testing.T) {
+			res := runDiffCheck(t, diffTestCase{
+				Resource: res,
+				Config1:  map[string]any{"list": []any{map[string]any{"x": "A"}}},
+				Config2:  map[string]any{"list": []any{map[string]any{"x": "B"}}},
+			})
+
+			require.Equal(t, []string{"update"}, res.TFDiff.Actions)
+			require.True(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "UPDATE"))
+			require.False(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "UPDATE_REPLACE"))
+		})
+
+		t.Run("changed to empty", func(t *testing.T) {
+			res := runDiffCheck(t, diffTestCase{
+				Resource: res,
+				Config1:  map[string]any{"list": []any{map[string]any{"x": "A"}}},
+				Config2:  map[string]any{"list": []any{}},
+			})
+
+			require.Equal(t, []string{"create", "delete"}, res.TFDiff.Actions)
+			require.True(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "DELETE_REPLACE"))
+		})
+
+		t.Run("changed from empty", func(t *testing.T) {
+			res := runDiffCheck(t, diffTestCase{
+				Resource: res,
+				Config1:  map[string]any{"list": []any{}},
+				Config2:  map[string]any{"list": []any{map[string]any{"x": "A"}}},
+			})
+
+			require.Equal(t, []string{"create", "delete"}, res.TFDiff.Actions)
+			require.True(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "ADD_REPLACE"))
+		})
+	})
+
+	t.Run("set", func(t *testing.T) {
+		t.Run("changed non-empty", func(t *testing.T) {
+			res := runDiffCheck(t, diffTestCase{
+				Resource: res,
+				Config1:  map[string]any{"set": []any{map[string]any{"x": "A"}}},
+				Config2:  map[string]any{"set": []any{map[string]any{"x": "B"}}},
+			})
+
+			require.Equal(t, []string{"update"}, res.TFDiff.Actions)
+			require.True(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "UPDATE"))
+			require.False(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "UPDATE_REPLACE"))
+		})
+
+		t.Run("changed to empty", func(t *testing.T) {
+			res := runDiffCheck(t, diffTestCase{
+				Resource: res,
+				Config1:  map[string]any{"set": []any{map[string]any{"x": "A"}}},
+				Config2:  map[string]any{"set": []any{}},
+			})
+
+			require.Equal(t, []string{"create", "delete"}, res.TFDiff.Actions)
+			require.True(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "DELETE_REPLACE"))
+		})
+
+		t.Run("changed from empty", func(t *testing.T) {
+			res := runDiffCheck(t, diffTestCase{
+				Resource: res,
+				Config1:  map[string]any{"set": []any{}},
+				Config2:  map[string]any{"set": []any{map[string]any{"x": "A"}}},
+			})
+
+			require.Equal(t, []string{"create", "delete"}, res.TFDiff.Actions)
+			require.True(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "ADD_REPLACE"))
+		})
+	})
+}
+
+func TestBlockCollectionElementForceNew(t *testing.T) {
+	res := &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"list": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"x": {
+							Type:     schema.TypeString,
+							Optional: true,
+							ForceNew: true,
+						},
+					},
+				},
+			},
+			"set": {
+				Type:     schema.TypeSet,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"x": {
+							Type:     schema.TypeString,
+							Optional: true,
+							ForceNew: true,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	t.Run("list", func(t *testing.T) {
+		t.Run("changed non-empty", func(t *testing.T) {
+			res := runDiffCheck(t, diffTestCase{
+				Resource: res,
+				Config1:  map[string]any{"list": []any{map[string]any{"x": "A"}}},
+				Config2:  map[string]any{"list": []any{map[string]any{"x": "B"}}},
+			})
+
+			require.Equal(t, []string{"create", "delete"}, res.TFDiff.Actions)
+			require.True(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "UPDATE_REPLACE"))
+		})
+
+		t.Run("changed to empty", func(t *testing.T) {
+			res := runDiffCheck(t, diffTestCase{
+				Resource: res,
+				Config1:  map[string]any{"list": []any{map[string]any{"x": "A"}}},
+				Config2:  map[string]any{"list": []any{}},
+			})
+
+			require.Equal(t, []string{"create", "delete"}, res.TFDiff.Actions)
+			require.True(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "DELETE_REPLACE"))
+		})
+
+		t.Run("changed from empty", func(t *testing.T) {
+			res := runDiffCheck(t, diffTestCase{
+				Resource: res,
+				Config1:  map[string]any{"list": []any{}},
+				Config2:  map[string]any{"list": []any{map[string]any{"x": "A"}}},
+			})
+
+			require.Equal(t, []string{"create", "delete"}, res.TFDiff.Actions)
+			require.True(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "ADD_REPLACE"))
+		})
+	})
+
+	t.Run("set", func(t *testing.T) {
+		t.Run("changed non-empty", func(t *testing.T) {
+			res := runDiffCheck(t, diffTestCase{
+				Resource: res,
+				Config1:  map[string]any{"set": []any{map[string]any{"x": "A"}}},
+				Config2:  map[string]any{"set": []any{map[string]any{"x": "B"}}},
+			})
+
+			require.Equal(t, []string{"create", "delete"}, res.TFDiff.Actions)
+			require.True(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "UPDATE_REPLACE"))
+		})
+
+		t.Run("changed to empty", func(t *testing.T) {
+			res := runDiffCheck(t, diffTestCase{
+				Resource: res,
+				Config1:  map[string]any{"set": []any{map[string]any{"x": "A"}}},
+				Config2:  map[string]any{"set": []any{}},
+			})
+
+			require.Equal(t, []string{"create", "delete"}, res.TFDiff.Actions)
+			require.True(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "DELETE_REPLACE"))
+		})
+
+		t.Run("changed from empty", func(t *testing.T) {
+			res := runDiffCheck(t, diffTestCase{
+				Resource: res,
+				Config1:  map[string]any{"set": []any{}},
+				Config2:  map[string]any{"set": []any{map[string]any{"x": "A"}}},
+			})
+
+			require.Equal(t, []string{"create", "delete"}, res.TFDiff.Actions)
+			require.True(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "ADD_REPLACE"))
+		})
+	})
 }

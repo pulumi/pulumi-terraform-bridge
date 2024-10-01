@@ -1140,7 +1140,7 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 
 	schema, fields := res.TF.Schema(), res.Schema.Fields
 
-	config, _, err := MakeTerraformConfig(ctx, p, news, schema, fields)
+	config, assets, err := MakeTerraformConfig(ctx, p, news, schema, fields)
 	if err != nil {
 		return nil, errors.Wrapf(err, "preparing %s's new property state", urn)
 	}
@@ -1158,18 +1158,24 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 		return nil, errors.Wrapf(err, "diffing %s", urn)
 	}
 
-	dd := makeDetailedDiffExtra(ctx, schema, fields, olds, news, diff)
-	detailedDiff, changes := dd.diffs, dd.changes
+	var detailedDiff map[string]*pulumirpc.PropertyDiff
+	var changes pulumirpc.DiffResponse_DiffChanges
 
-	if opts.enableAccurateBridgePreview {
-		if decision := diff.DiffEqualDecisionOverride(); decision != shim.DiffNoOverride {
-			if decision == shim.DiffOverrideNoUpdate {
-				changes = pulumirpc.DiffResponse_DIFF_NONE
-			} else {
-				changes = pulumirpc.DiffResponse_DIFF_SOME
-			}
+	decisionOverride := diff.DiffEqualDecisionOverride()
+	if opts.enableAccurateBridgePreview && decisionOverride != shim.DiffNoOverride {
+		if decisionOverride == shim.DiffOverrideNoUpdate {
+			changes = pulumirpc.DiffResponse_DIFF_NONE
+		} else {
+			changes = pulumirpc.DiffResponse_DIFF_SOME
+		}
+
+		detailedDiff, err = makeDetailedDiffV2(ctx, schema, fields, res.TF, p.tf, state, diff, assets, p.supportsSecrets)
+		if err != nil {
+			return nil, err
 		}
 	} else {
+		dd := makeDetailedDiffExtra(ctx, schema, fields, olds, news, diff)
+		detailedDiff, changes = dd.diffs, dd.changes
 		// There are some providers/situations which `makeDetailedDiff` distorts the expected changes, leading
 		// to changes being dropped by Pulumi.
 		// Until we fix `makeDetailedDiff`, it is safer to refer to the Terraform Diff attribute length for setting
@@ -1180,12 +1186,12 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 		if !diff.HasNoChanges() {
 			changes = pulumirpc.DiffResponse_DIFF_SOME
 		}
-	}
 
-	if changes == pulumirpc.DiffResponse_DIFF_SOME {
-		// Perhaps collectionDiffs can shed some light and locate the changes to the end-user.
-		for path, diff := range dd.collectionDiffs {
-			detailedDiff[path] = diff
+		if changes == pulumirpc.DiffResponse_DIFF_SOME {
+			// Perhaps collectionDiffs can shed some light and locate the changes to the end-user.
+			for path, diff := range dd.collectionDiffs {
+				detailedDiff[path] = diff
+			}
 		}
 	}
 
@@ -1231,19 +1237,21 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 	deleteBeforeReplace := len(replaces) > 0 &&
 		(res.Schema.DeleteBeforeReplace || nameRequiresDeleteBeforeReplace(news, olds, schema, res.Schema))
 
-	// If the upstream diff object indicates a replace is necessary and we have not
-	// recorded any replaces, that means that `makeDetailedDiff` failed to translate a
-	// property. This is known to happen for computed input properties:
-	//
-	// https://github.com/pulumi/pulumi-aws/issues/2971
-	if (diff.RequiresNew() || diff.Destroy()) &&
-		// In theory, we should be safe to set __meta as replaces whenever
-		// `diff.RequiresNew() || diff.Destroy()` but by checking replaces we
-		// limit the blast radius of this change to diffs that we know will panic
-		// later on.
-		len(replaces) == 0 {
-		replaces = append(replaces, "__meta")
-		changes = pulumirpc.DiffResponse_DIFF_SOME
+	if !opts.enableAccurateBridgePreview {
+		// If the upstream diff object indicates a replace is necessary and we have not
+		// recorded any replaces, that means that `makeDetailedDiff` failed to translate a
+		// property. This is known to happen for computed input properties:
+		//
+		// https://github.com/pulumi/pulumi-aws/issues/2971
+		if (diff.RequiresNew() || diff.Destroy()) &&
+			// In theory, we should be safe to set __meta as replaces whenever
+			// `diff.RequiresNew() || diff.Destroy()` but by checking replaces we
+			// limit the blast radius of this change to diffs that we know will panic
+			// later on.
+			len(replaces) == 0 {
+			replaces = append(replaces, "__meta")
+			changes = pulumirpc.DiffResponse_DIFF_SOME
+		}
 	}
 
 	if changes == pulumirpc.DiffResponse_DIFF_NONE &&

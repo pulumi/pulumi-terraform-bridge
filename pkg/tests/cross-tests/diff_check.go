@@ -58,6 +58,7 @@ type diffResult struct {
 }
 
 func runDiffCheck(t T, tc diffTestCase) diffResult {
+	t.Helper()
 	tfwd := t.TempDir()
 
 	lifecycleArgs := lifecycleArgs{CreateBeforeDestroy: !tc.DeleteBeforeReplace}
@@ -108,6 +109,7 @@ func runDiffCheck(t T, tc diffTestCase) diffResult {
 }
 
 func (tc *diffTestCase) verifyBasicDiffAgreement(t T, tfActions []string, us auto.UpdateSummary, diffResponse pulumiDiffResp) {
+	t.Helper()
 	t.Logf("UpdateSummary.ResourceChanges: %#v", us.ResourceChanges)
 	// Action list from https://github.com/opentofu/opentofu/blob/main/internal/plans/action.go#L11
 	if len(tfActions) == 0 {
@@ -147,14 +149,14 @@ func (tc *diffTestCase) verifyBasicDiffAgreement(t T, tfActions []string, us aut
 			rc := *us.ResourceChanges
 			assert.Equalf(t, 1, rc[string(apitype.OpSame)], "expected the stack to stay the same")
 			assert.Equalf(t, 1, rc[string(apitype.OpReplace)], "expected the test resource to get a replace plan")
-			assert.Equalf(t, diffResponse.DeleteBeforeReplace, false, "expected deleteBeforeReplace to be true")
+			assert.Equalf(t, false, diffResponse.DeleteBeforeReplace, "expected deleteBeforeReplace to be true")
 		} else if tfActions[0] == "delete" && tfActions[1] == "create" {
 			require.NotNilf(t, us.ResourceChanges, "UpdateSummary.ResourceChanges should not be nil")
 			rc := *us.ResourceChanges
 			t.Logf("UpdateSummary.ResourceChanges: %#v", rc)
 			assert.Equalf(t, 1, rc[string(apitype.OpSame)], "expected the stack to stay the same")
 			assert.Equalf(t, 1, rc[string(apitype.OpReplace)], "expected the test resource to get a replace plan")
-			assert.Equalf(t, diffResponse.DeleteBeforeReplace, true, "expected deleteBeforeReplace to be true")
+			assert.Equalf(t, true, diffResponse.DeleteBeforeReplace, "expected deleteBeforeReplace to be true")
 		} else {
 			panic("TODO: do not understand this TF action yet: " + fmt.Sprint(tfActions))
 		}

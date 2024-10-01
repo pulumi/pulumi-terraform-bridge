@@ -116,6 +116,8 @@ type v2InstanceDiff2 struct {
 	plannedState              cty.Value
 	plannedPrivate            map[string]interface{}
 	diffEqualDecisionOverride shim.DiffOverride
+	prior                     cty.Value
+	priorMeta                 map[string]interface{}
 }
 
 func (d *v2InstanceDiff2) String() string {
@@ -144,6 +146,13 @@ func (d *v2InstanceDiff2) ProposedState(
 	return &v2InstanceState2{
 		stateValue: d.plannedState,
 		meta:       d.v2InstanceDiff.tf.Meta,
+	}, nil
+}
+
+func (d *v2InstanceDiff2) PriorState() (shim.InstanceState, error) {
+	return &v2InstanceState2{
+		stateValue: d.prior,
+		meta:       d.priorMeta,
 	}, nil
 }
 
@@ -299,6 +308,8 @@ func (p *planResourceChangeImpl) Diff(
 		plannedState:              plannedState,
 		diffEqualDecisionOverride: diffOverride,
 		plannedPrivate:            plan.PlannedPrivate,
+		prior:                     st,
+		priorMeta:                 priv,
 	}, err
 }
 
