@@ -16,13 +16,19 @@ package sdkv2
 
 import (
 	"encoding/json"
+	"io"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hexops/autogold/v2"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
 )
 
 // Test how various SDKv2-based schemata translate to the shim.Schema layer.
@@ -30,7 +36,8 @@ func TestSchemaShimRepresentations(t *testing.T) {
 	type testCase struct {
 		name           string
 		resourceSchema map[string]*schema.Schema
-		expect         autogold.Value
+		expect         autogold.Value // expected prettified shim.Schema representation
+		expectSchema   autogold.Value // expected corresponding Pulumi Package Schema extract
 	}
 
 	testCases := []testCase{
@@ -51,6 +58,30 @@ func TestSchemaShimRepresentations(t *testing.T) {
       }
     }
   }
+}`),
+			autogold.Expect(`{
+  "resource": {
+    "properties": {
+      "fieldAttr": {
+        "type": "string"
+      }
+    },
+    "inputProperties": {
+      "fieldAttr": {
+        "type": "string"
+      }
+    },
+    "stateInputs": {
+      "description": "Input properties used for looking up and filtering Res resources.\n",
+      "properties": {
+        "fieldAttr": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    }
+  },
+  "types": {}
 }`),
 		},
 		{
@@ -78,6 +109,39 @@ func TestSchemaShimRepresentations(t *testing.T) {
       }
     }
   }
+}`),
+			autogold.Expect(`{
+  "resource": {
+    "properties": {
+      "fieldAttrs": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "inputProperties": {
+      "fieldAttrs": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "stateInputs": {
+      "description": "Input properties used for looking up and filtering Res resources.\n",
+      "properties": {
+        "fieldAttrs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "type": "object"
+    }
+  },
+  "types": {}
 }`),
 		},
 		{
@@ -114,9 +178,51 @@ func TestSchemaShimRepresentations(t *testing.T) {
     }
   }
 }`),
+			autogold.Expect(`{
+  "resource": {
+    "properties": {
+      "blockFields": {
+        "type": "array",
+        "items": {
+          "$ref": "#/types/testprov:index/ResBlockField:ResBlockField"
+        }
+      }
+    },
+    "inputProperties": {
+      "blockFields": {
+        "type": "array",
+        "items": {
+          "$ref": "#/types/testprov:index/ResBlockField:ResBlockField"
+        }
+      }
+    },
+    "stateInputs": {
+      "description": "Input properties used for looking up and filtering Res resources.\n",
+      "properties": {
+        "blockFields": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/testprov:index/ResBlockField:ResBlockField"
+          }
+        }
+      },
+      "type": "object"
+    }
+  },
+  "types": {
+    "testprov:index/ResBlockField:ResBlockField": {
+      "properties": {
+        "fieldAttr": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    }
+  }
+}`),
 		},
 		{
-			"list nested block",
+			"list block nested",
 			map[string]*schema.Schema{
 				"block_field": {
 					Type:     schema.TypeList,
@@ -165,9 +271,62 @@ func TestSchemaShimRepresentations(t *testing.T) {
     }
   }
 }`),
+			autogold.Expect(`{
+  "resource": {
+    "properties": {
+      "blockFields": {
+        "type": "array",
+        "items": {
+          "$ref": "#/types/testprov:index/ResBlockField:ResBlockField"
+        }
+      }
+    },
+    "inputProperties": {
+      "blockFields": {
+        "type": "array",
+        "items": {
+          "$ref": "#/types/testprov:index/ResBlockField:ResBlockField"
+        }
+      }
+    },
+    "stateInputs": {
+      "description": "Input properties used for looking up and filtering Res resources.\n",
+      "properties": {
+        "blockFields": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/testprov:index/ResBlockField:ResBlockField"
+          }
+        }
+      },
+      "type": "object"
+    }
+  },
+  "types": {
+    "testprov:index/ResBlockField:ResBlockField": {
+      "properties": {
+        "nestedFields": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/testprov:index/ResBlockFieldNestedField:ResBlockFieldNestedField"
+          }
+        }
+      },
+      "type": "object"
+    },
+    "testprov:index/ResBlockFieldNestedField:ResBlockFieldNestedField": {
+      "properties": {
+        "fieldAttr": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    }
+  }
+}`),
 		},
 		{
-			"list attribute max items one",
+			"list attribute flattened",
 			map[string]*schema.Schema{
 				"field_attr": {
 					Type:     schema.TypeList,
@@ -194,9 +353,33 @@ func TestSchemaShimRepresentations(t *testing.T) {
     }
   }
 }`),
+			autogold.Expect(`{
+  "resource": {
+    "properties": {
+      "fieldAttr": {
+        "type": "string"
+      }
+    },
+    "inputProperties": {
+      "fieldAttr": {
+        "type": "string"
+      }
+    },
+    "stateInputs": {
+      "description": "Input properties used for looking up and filtering Res resources.\n",
+      "properties": {
+        "fieldAttr": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    }
+  },
+  "types": {}
+}`),
 		},
 		{
-			"list block",
+			"list block flattened",
 			map[string]*schema.Schema{
 				"block_field": {
 					Type:     schema.TypeList,
@@ -231,6 +414,39 @@ func TestSchemaShimRepresentations(t *testing.T) {
     }
   }
 }`),
+			autogold.Expect(`{
+  "resource": {
+    "properties": {
+      "blockField": {
+        "$ref": "#/types/testprov:index/ResBlockField:ResBlockField"
+      }
+    },
+    "inputProperties": {
+      "blockField": {
+        "$ref": "#/types/testprov:index/ResBlockField:ResBlockField"
+      }
+    },
+    "stateInputs": {
+      "description": "Input properties used for looking up and filtering Res resources.\n",
+      "properties": {
+        "blockField": {
+          "$ref": "#/types/testprov:index/ResBlockField:ResBlockField"
+        }
+      },
+      "type": "object"
+    }
+  },
+  "types": {
+    "testprov:index/ResBlockField:ResBlockField": {
+      "properties": {
+        "fieldAttr": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    }
+  }
+}`),
 		},
 	}
 
@@ -258,6 +474,37 @@ func TestSchemaShimRepresentations(t *testing.T) {
 			require.NoError(t, err)
 
 			tc.expect.Equal(t, string(prettyBytes))
+
+			rtok := "testprov:index:Res"
+
+			info := info.Provider{
+				Name: "testprov",
+				P:    shimmedProvider,
+				Resources: map[string]*info.Resource{
+					"res": {
+						Tok: tokens.Type(rtok),
+					},
+				},
+			}
+
+			nilSink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
+			pSpec, err := tfgen.GenerateSchema(info, nilSink)
+			require.NoError(t, err)
+
+			type miniSpec struct {
+				Resource any `json:"resource"`
+				Types    any `json:"types"`
+			}
+
+			ms := miniSpec{
+				Resource: pSpec.Resources[rtok],
+				Types:    pSpec.Types,
+			}
+
+			prettySpec, err := json.MarshalIndent(ms, "", "  ")
+			require.NoError(t, err)
+
+			tc.expectSchema.Equal(t, string(prettySpec))
 		})
 	}
 }
