@@ -66,6 +66,11 @@ func defaultEditRules() editRules {
 		reReplace(`block contains the following arguments`,
 			`input has the following nested fields`, info.PostCodeTranslation),
 		reReplace(`provider block`, `provider configuration`, info.PostCodeTranslation),
+		reReplace("`provider` block", "provider configuration", info.PostCodeTranslation),
+		reReplace("Data Source", "Function", info.PostCodeTranslation),
+		reReplace("data source", "function", info.PostCodeTranslation),
+		//reReplace("Data Source", "Function", info.PostCodeTranslation),
+		//reReplace("data source", "function", info.PostCodeTranslation),
 	}
 }
 

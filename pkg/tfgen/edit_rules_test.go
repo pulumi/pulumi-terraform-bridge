@@ -179,6 +179,24 @@ func TestApplyEditRules(t *testing.T) {
 			expected: []byte(readfile(t, "test_data/replace-provider-block/expected.md")),
 			phase:    info.PostCodeTranslation,
 		},
+		{
+			// Found in scm
+			name: "Replaces `provider` block with provider configuration",
+			docFile: DocFile{
+				Content: []byte(readfile(t, "test_data/replace-provider-block/input-backtick.md")),
+			},
+			expected: []byte(readfile(t, "test_data/replace-provider-block/expected-backtick.md")),
+			phase:    info.PostCodeTranslation,
+		},
+		{
+			// Found in scm
+			name: "Replaces 'D/data source(s)' with 'F/function(s)",
+			docFile: DocFile{
+				Content: []byte(readfile(t, "test_data/replace-data-source/input.md")),
+			},
+			expected: []byte(readfile(t, "test_data/replace-data-source/expected.md")),
+			phase:    info.PostCodeTranslation,
+		},
 	}
 	edits := defaultEditRules()
 
