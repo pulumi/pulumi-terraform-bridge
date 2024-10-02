@@ -21,6 +21,7 @@ import (
 	"regexp"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
 func defaultEditRules() editRules {
@@ -29,24 +30,54 @@ func defaultEditRules() editRules {
 		boundedReplace("[tT]erraform [pP]lan", "pulumi preview"),
 		// Replace content such as " Terraform Apply." with " pulumi up."
 		boundedReplace("[tT]erraform [aA]pply", "pulumi up"),
-		reReplace(`"([mM])ade (by|with) [tT]erraform"`, `"Made $2 Pulumi"`),
+		reReplace(`"([mM])ade (by|with) [tT]erraform"`, `"Made $2 Pulumi"`, info.PreCodeTranslation),
 		// A markdown link that has terraform in the link component.
-		reReplace(`\[([^\]]*)\]\([^\)]*terraform([^\)]*)\)`, "$1"),
+		reReplace(`\[([^\]]*)\]\([^\)]*terraform([^\)]*)\)`, "$1", info.PreCodeTranslation),
 		fixupImports(),
 		// Replace content such as "jdoe@hashicorp.com" with "jdoe@example.com"
-		reReplace("@hashicorp.com", "@example.com"),
+		reReplace("@hashicorp.com", "@example.com", info.PreCodeTranslation),
+
+		// The following edit rules may be applied after translating the code sections in a document.
+		// Their primary use case is for the docs translation approach spearheaded in installation_docs.go.
+		// These edit rules allow us to safely transform certain strings that we would otherwise need in the
+		// code translation or nested type discovery process.
+		// These rules are currently only called when generating installation docs.
+		//TODO[https://github.com/pulumi/pulumi-terraform-bridge/issues/2459] Call info.PostCodeTranslation rules
+		// on all docs.
+		skipSectionHeadersEdit(),
+		removeTfVersionMentions(),
+		//Replace "providers.tf" with "Pulumi.yaml"
+		reReplace(`providers.tf`, `Pulumi.yaml`, info.PostCodeTranslation),
+		reReplace(`terraform init`, `pulumi up`, info.PostCodeTranslation),
+		// Replace all " T/terraform" with " P/pulumi"
+		reReplace(`Terraform`, `Pulumi`, info.PostCodeTranslation),
+		reReplace(`terraform`, `pulumi`, info.PostCodeTranslation),
+		// Replace all "H/hashicorp" strings
+		reReplace(`Hashicorp`, `Pulumi`, info.PostCodeTranslation),
+		reReplace(`hashicorp`, `pulumi`, info.PostCodeTranslation),
+		// Reformat certain headers
+		reReplace(`The following arguments are supported`,
+			`The following configuration inputs are supported`, info.PostCodeTranslation),
+		reReplace(`Argument Reference`,
+			`Configuration Reference`, info.PostCodeTranslation),
+		reReplace(`Schema`,
+			`Configuration Reference`, info.PostCodeTranslation),
+		reReplace("### Optional\n", "", info.PostCodeTranslation),
+		reReplace(`block contains the following arguments`,
+			`input has the following nested fields`, info.PostCodeTranslation),
+		reReplace(`provider block`, `provider configuration`, info.PostCodeTranslation),
 	}
 }
 
 type editRules []tfbridge.DocsEdit
 
-func (rr editRules) apply(fileName string, contents []byte) ([]byte, error) {
+func (rr editRules) apply(fileName string, contents []byte, phase info.EditPhase) ([]byte, error) {
 	for _, rule := range rr {
 		match, err := filepath.Match(rule.Path, fileName)
 		if err != nil {
 			return nil, fmt.Errorf("invalid glob: %q: %w", rule.Path, err)
 		}
-		if !match {
+		if !match || (rule.Phase != phase) {
 			continue
 		}
 		contents, err = rule.Edit(fileName, contents)
@@ -84,7 +115,7 @@ func boundedReplace(from, to string) tfbridge.DocsEdit {
 }
 
 // reReplace creates a regex based replace.
-func reReplace(from, to string) tfbridge.DocsEdit {
+func reReplace(from, to string, phase info.EditPhase) tfbridge.DocsEdit {
 	r := regexp.MustCompile(from)
 	bTo := []byte(to)
 	return tfbridge.DocsEdit{
@@ -92,6 +123,7 @@ func reReplace(from, to string) tfbridge.DocsEdit {
 		Edit: func(_ string, content []byte) ([]byte, error) {
 			return r.ReplaceAll(content, bTo), nil
 		},
+		Phase: phase,
 	}
 }
 
