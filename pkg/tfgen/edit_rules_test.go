@@ -61,7 +61,7 @@ func TestApplyEditRules(t *testing.T) {
 			phase:    info.PostCodeTranslation,
 		},
 		{
-			name: "Replaces argument headers with input headers",
+			name: "Replaces argument headers with input headers pattern 1",
 			docFile: DocFile{
 				Content: []byte("# Argument Reference\n" +
 					"The following arguments are supported:\n* `some_argument`\n\n" +
@@ -70,6 +70,16 @@ func TestApplyEditRules(t *testing.T) {
 			expected: []byte("# Configuration Reference\n" +
 				"The following configuration inputs are supported:\n* `some_argument`\n\n" +
 				"input has the following nested fields"),
+			phase: info.PostCodeTranslation,
+		},
+		{
+			name: "Replaces argument headers with input headers pattern 2",
+			docFile: DocFile{
+				Content: []byte("## Arguments\n" +
+					"The provider supports the following arguments:"),
+			},
+			expected: []byte("## Configuration Reference\n" +
+				"The following configuration inputs are supported:"),
 			phase: info.PostCodeTranslation,
 		},
 		{

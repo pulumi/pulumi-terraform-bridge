@@ -58,8 +58,12 @@ func defaultEditRules() editRules {
 		// Reformat certain headers
 		reReplace(`The following arguments are supported`,
 			`The following configuration inputs are supported`, info.PostCodeTranslation),
+		reReplace(`The provider supports the following arguments`,
+			`The following configuration inputs are supported`, info.PostCodeTranslation),
 		reReplace(`Argument Reference`,
 			`Configuration Reference`, info.PostCodeTranslation),
+		reReplace(`# Arguments`,
+			`# Configuration Reference`, info.PostCodeTranslation),
 		reReplace(`Schema`,
 			`Configuration Reference`, info.PostCodeTranslation),
 		reReplace("### Optional\n", "", info.PostCodeTranslation),
