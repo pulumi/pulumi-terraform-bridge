@@ -49,7 +49,7 @@ func TestConvert(t *testing.T) {
 	loader.emptyPackages["aws"] = true
 
 	checkErr := func(hcl string) (map[string][]byte, convert.Diagnostics, error) {
-		return convert.Convert(convert.Options{
+		return convert.Convert(t, convert.Options{
 			Root:                     hclToInput(t, hcl, "path"),
 			TargetLanguage:           "typescript",
 			AllowMissingProperties:   true,
@@ -58,6 +58,7 @@ func TestConvert(t *testing.T) {
 			Loader:                   loader,
 			SkipResourceTypechecking: true,
 		})
+
 	}
 
 	check := func(hcl string) (map[string][]byte, convert.Diagnostics) {
