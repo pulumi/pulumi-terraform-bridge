@@ -4160,7 +4160,6 @@ func TestMakeTerraformResultNilVsEmptyMap(t *testing.T) {
 	})
 }
 
-
 func TestTypeChecker(t *testing.T) {
 	t.Setenv("PULUMI_DEBUG_YAML_DISABLE_TYPE_CHECKING", "true")
 	resMap := map[string]*schema.Resource{
