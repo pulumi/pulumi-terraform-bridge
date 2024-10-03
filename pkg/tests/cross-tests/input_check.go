@@ -68,7 +68,7 @@ func runCreateInputCheck(t T, tc inputTestCase) {
 
 	pt := pulcheck.PulCheck(t, bridgedProvider, string(yamlProgram))
 
-	pt.Up()
+	pt.Up(t)
 
 	for k := range tc.Resource.Schema {
 		// TODO: make this recursive

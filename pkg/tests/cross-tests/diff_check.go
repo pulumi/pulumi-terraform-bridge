@@ -83,18 +83,18 @@ func runDiffCheck(t T, tc diffTestCase) diffResult {
 	yamlProgram := pd.generateYAML(t, bridgedProvider.P.ResourcesMap(), tc.Config1)
 	pt := pulcheck.PulCheck(t, bridgedProvider, string(yamlProgram))
 
-	pt.Up()
+	pt.Up(t)
 
 	yamlProgram = pd.generateYAML(t, bridgedProvider.P.ResourcesMap(), tc.Config2)
 	p := filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml")
 	err := os.WriteFile(p, yamlProgram, 0o600)
 	require.NoErrorf(t, err, "writing Pulumi.yaml")
-	x := pt.Up()
+	x := pt.Up(t)
 
 	changes := tfd.parseChangesFromTFPlan(*tfDiffPlan)
 
 	diffResponse := pulumiDiffResp{}
-	for _, entry := range pt.GrpcLog().Entries {
+	for _, entry := range pt.GrpcLog(t).Entries {
 		if entry.Method == "/pulumirpc.ResourceProvider/Diff" {
 			err := json.Unmarshal(entry.Response, &diffResponse)
 			require.NoError(t, err)

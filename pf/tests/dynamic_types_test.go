@@ -324,15 +324,15 @@ func TestCreateResourceWithDynamicAttribute(t *testing.T) {
 			require.NoError(t, err)
 			pt := newPulumiTest(t, p, string(bytes))
 
-			pt.Preview()
+			pt.Preview(t)
 
-			res := pt.Up()
+			res := pt.Up(t)
 
 			m := res.Outputs["manifest"]
 
 			if tc.expectedStateMatches != nil {
 				// NOTE: ExportStack calls the CLI with --show-secrets.
-				state := pt.ExportStack()
+				state := pt.ExportStack(t)
 				tc.expectedStateMatches(t, state)
 			}
 

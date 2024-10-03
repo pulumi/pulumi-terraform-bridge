@@ -56,7 +56,7 @@ resources:
 	pt, err := pulCheck(t, prov, program)
 	require.NoError(t, err)
 
-	pt.Up()
+	pt.Up(t)
 }
 
 func TestComputedSetNoDiffWhenElementRemoved(t *testing.T) {
@@ -129,17 +129,17 @@ resources:
 	pt, err := pulCheck(t, prov, program1)
 	require.NoError(t, err)
 
-	pt.Up()
+	pt.Up(t)
 
 	pulumiYamlPath := filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml")
 
 	err = os.WriteFile(pulumiYamlPath, []byte(program2), 0o600)
 	require.NoError(t, err)
 
-	res := pt.Preview(optpreview.Diff())
+	res := pt.Preview(t, optpreview.Diff())
 	t.Log(res.StdOut)
 
-	for _, entry := range pt.GrpcLog().Entries {
+	for _, entry := range pt.GrpcLog(t).Entries {
 		if entry.Method == "/pulumirpc.ResourceProvider/Diff" {
 			var diff map[string]interface{}
 			err := json.Unmarshal(entry.Response, &diff)
@@ -341,12 +341,12 @@ outputs:
 
 	pt, err := pulCheck(t, prov, program)
 	require.NoError(t, err)
-	upRes := pt.Up()
+	upRes := pt.Up(t)
 	t.Log(upRes.StdOut)
 
 	require.Equal(t, "Default val", upRes.Outputs["changeReason"].Value)
 
-	pt.Preview(optpreview.Diff(), optpreview.ExpectNoChanges())
+	pt.Preview(t, optpreview.Diff(), optpreview.ExpectNoChanges())
 }
 
 type changeReasonPlanModifier struct {
@@ -403,10 +403,10 @@ outputs:
 
 	pt, err := pulCheck(t, prov, program)
 	require.NoError(t, err)
-	upRes := pt.Up()
+	upRes := pt.Up(t)
 	t.Log(upRes.StdOut)
 
 	require.Equal(t, "Default val", upRes.Outputs["changeReason"].Value)
 
-	pt.Preview(optpreview.Diff(), optpreview.ExpectNoChanges())
+	pt.Preview(t, optpreview.Diff(), optpreview.ExpectNoChanges())
 }
