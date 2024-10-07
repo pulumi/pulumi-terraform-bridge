@@ -3766,7 +3766,7 @@ func TestMakeSingleTerraformInput(t *testing.T) {
 	type testCase struct {
 		name     string
 		prop     resource.PropertyValue
-		schema   *schema.Schema
+		schema   *schemav2.Schema
 		expected interface{}
 	}
 
@@ -3774,8 +3774,8 @@ func TestMakeSingleTerraformInput(t *testing.T) {
 		{
 			name: "bool",
 			prop: resource.NewBoolProperty(true),
-			schema: &schema.Schema{
-				Type:     shim.TypeBool,
+			schema: &schemav2.Schema{
+				Type:     schemav2.TypeBool,
 				Optional: true,
 			},
 			expected: true,
@@ -3783,8 +3783,8 @@ func TestMakeSingleTerraformInput(t *testing.T) {
 		{
 			name: "number",
 			prop: resource.NewNumberProperty(42),
-			schema: &schema.Schema{
-				Type:     shim.TypeInt,
+			schema: &schemav2.Schema{
+				Type:     schemav2.TypeInt,
 				Optional: true,
 			},
 			expected: 42,
@@ -3792,8 +3792,8 @@ func TestMakeSingleTerraformInput(t *testing.T) {
 		{
 			name: "string",
 			prop: resource.NewStringProperty("foo"),
-			schema: &schema.Schema{
-				Type:     shim.TypeString,
+			schema: &schemav2.Schema{
+				Type:     schemav2.TypeString,
 				Optional: true,
 			},
 			expected: "foo",
@@ -3803,8 +3803,8 @@ func TestMakeSingleTerraformInput(t *testing.T) {
 			prop: resource.NewArrayProperty([]resource.PropertyValue{
 				resource.NewStringProperty("foo"),
 			}),
-			schema: &schema.Schema{
-				Type:     shim.TypeList,
+			schema: &schemav2.Schema{
+				Type:     schemav2.TypeList,
 				Optional: true,
 				Elem:     &schema.Schema{Type: shim.TypeString},
 			},
@@ -3815,8 +3815,8 @@ func TestMakeSingleTerraformInput(t *testing.T) {
 			prop: resource.NewObjectProperty(resource.PropertyMap{
 				"foo": resource.NewStringProperty("bar"),
 			}),
-			schema: &schema.Schema{
-				Type:     shim.TypeMap,
+			schema: &schemav2.Schema{
+				Type:     schemav2.TypeMap,
 				Optional: true,
 				Elem:     &schema.Schema{Type: shim.TypeString},
 			},
@@ -3827,8 +3827,8 @@ func TestMakeSingleTerraformInput(t *testing.T) {
 			prop: resource.NewObjectProperty(resource.PropertyMap{
 				"foo": resource.NewStringProperty("bar"),
 			}),
-			schema: &schema.Schema{
-				Type:     shim.TypeList,
+			schema: &schemav2.Schema{
+				Type:     schemav2.TypeList,
 				Optional: true,
 				MaxItems: 1,
 				Elem: &schema.Resource{
@@ -3846,26 +3846,30 @@ func TestMakeSingleTerraformInput(t *testing.T) {
 					"bar": resource.NewStringProperty("baz"),
 				}),
 			}),
-			schema: &schema.Schema{
-				Type:     shim.TypeList,
+			schema: &schemav2.Schema{
+				Type:     schemav2.TypeList,
 				Optional: true,
 				MaxItems: 1,
-				Elem: &schema.Resource{
-					Schema: schema.SchemaMap{
-						"foo": (&schema.Schema{
-							Type:     shim.TypeList,
+				Elem: &schemav2.Resource{
+					Schema: map[string]*schemav2.Schema{
+						"foo": {
+							Type:     schemav2.TypeList,
 							Optional: true,
 							MaxItems: 1,
-							Elem: &schema.Resource{
-								Schema: schema.SchemaMap{
-									"bar": (&schema.Schema{Type: shim.TypeString, Optional: true}).Shim(),
+							Elem: &schemav2.Resource{
+								Schema: map[string]*schemav2.Schema{
+									"bar": {Type: schemav2.TypeString, Optional: true},
 								},
 							},
-						}).Shim(),
+						},
 					},
 				},
 			},
-			expected: []interface{}{map[string]interface{}{"foo": []interface{}{map[string]interface{}{"bar": "baz"}}}},
+			expected: []interface{}{map[string]interface{}{
+				"foo": []interface{}{map[string]interface{}{
+					"bar": "baz",
+				}},
+			}},
 		},
 	}
 
@@ -3873,7 +3877,7 @@ func TestMakeSingleTerraformInput(t *testing.T) {
 		tc := tc
 
 		t.Run(tc.name, func(t *testing.T) {
-			result, err := makeSingleTerraformInput(context.Background(), "name", tc.prop, tc.schema.Shim(), nil)
+			result, err := makeSingleTerraformInput(context.Background(), "name", tc.prop, shimv2.NewSchema(tc.schema), nil)
 			require.NoError(t, err)
 			assert.Equal(t, tc.expected, result)
 		})
