@@ -1777,7 +1777,8 @@ func TestDetailedDiffSetAttribute(t *testing.T) {
 	}
 
 	t.Run("unchanged", func(t *testing.T) {
-		runDetailedDiffTest(t, propertyMapElems("val1"), propertyMapElems("val1"), tfs, ps, map[string]*pulumirpc.PropertyDiff{})
+		runDetailedDiffTest(t, propertyMapElems("val1"), propertyMapElems("val1"), tfs, ps,
+			map[string]*pulumirpc.PropertyDiff{})
 	})
 
 	t.Run("changed non-empty", func(t *testing.T) {
@@ -2009,7 +2010,8 @@ func TestDetailedDiffSetBlock(t *testing.T) {
 			}
 
 			t.Run("unchanged", func(t *testing.T) {
-				runDetailedDiffTest(t, propertyMapElems("val1"), propertyMapElems("val1"), tfs, ps, map[string]*pulumirpc.PropertyDiff{})
+				runDetailedDiffTest(t, propertyMapElems("val1"), propertyMapElems("val1"), tfs, ps,
+					map[string]*pulumirpc.PropertyDiff{})
 			})
 
 			t.Run("changed non-empty", func(t *testing.T) {
