@@ -3760,7 +3760,6 @@ func TestExtractInputsFromOutputsSdkv2(t *testing.T) {
 	}
 }
 
-
 func TestMakeSingleTerraformInput(t *testing.T) {
 	t.Parallel()
 
@@ -3866,9 +3865,7 @@ func TestMakeSingleTerraformInput(t *testing.T) {
 					},
 				},
 			},
-			expected: []interface{}{map[string]interface{}{"foo": 
-				[]interface{}{map[string]interface{}{"bar": "baz"}},
-			}},
+			expected: []interface{}{map[string]interface{}{"foo": []interface{}{map[string]interface{}{"bar": "baz"}}}},
 		},
 	}
 
@@ -3881,5 +3878,4 @@ func TestMakeSingleTerraformInput(t *testing.T) {
 			assert.Equal(t, tc.expected, result)
 		})
 	}
-
 }
