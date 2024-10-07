@@ -964,7 +964,7 @@ func TestDetailedDiffTFForceNewAttributeCollection(t *testing.T) {
 			value1:             []interface{}{"val1"},
 			value2:             []interface{}{"val2"},
 			computedCollection: ComputedVal,
-			computedElem:       []interface{}{ComputedVal},
+			computedElem:       nil,
 		},
 		{
 			name: "map",
@@ -1006,6 +1006,12 @@ func TestDetailedDiffTFForceNewAttributeCollection(t *testing.T) {
 				},
 			)
 
+			propertyMapComputedElem := resource.NewPropertyMapFromMap(
+				map[string]interface{}{
+					"prop": tt.computedElem,
+				},
+			)
+
 			t.Run("unchanged", func(t *testing.T) {
 				runDetailedDiffTest(t, propertyMapListVal1, propertyMapListVal1, tfs, ps, map[string]*pulumirpc.PropertyDiff{})
 			})
@@ -1040,6 +1046,21 @@ func TestDetailedDiffTFForceNewAttributeCollection(t *testing.T) {
 					"prop": {Kind: pulumirpc.PropertyDiff_ADD_REPLACE},
 				})
 			})
+
+			if tt.computedElem != nil {
+
+				t.Run("changed to computed elem", func(t *testing.T) {
+					runDetailedDiffTest(t, propertyMapListVal1, propertyMapComputedElem, tfs, ps, map[string]*pulumirpc.PropertyDiff{
+						tt.elementIndex: {Kind: pulumirpc.PropertyDiff_UPDATE_REPLACE},
+					})
+				})
+
+				t.Run("changed from empty to computed elem", func(t *testing.T) {
+					runDetailedDiffTest(t, propertyMapEmpty, propertyMapComputedElem, tfs, ps, map[string]*pulumirpc.PropertyDiff{
+						"prop": {Kind: pulumirpc.PropertyDiff_ADD_REPLACE},
+					})
+				})
+			}
 		})
 	}
 }

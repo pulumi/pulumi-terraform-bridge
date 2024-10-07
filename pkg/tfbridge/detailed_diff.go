@@ -364,11 +364,9 @@ func (differ detailedDiffer) makeSetDiff(
 	if isPresent(old) && old.IsArray() {
 		oldList = old.ArrayValue()
 	}
-	if isPresent(new) && new.IsArray() {
+	if isPresent(new) && new.IsArray() && !new.ContainsUnknowns() {
 		newList = new.ArrayValue()
 	}
-
-	contract.Assertf(!old.ContainsUnknowns() && !new.ContainsUnknowns(), "olds and news should not contain unknowns")
 
 	oldIdentities := differ.calculateSetHashes(path, resource.NewArrayProperty(oldList))
 	newIdentities := differ.calculateSetHashes(path, resource.NewArrayProperty(newList))
