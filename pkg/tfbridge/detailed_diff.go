@@ -218,6 +218,36 @@ func (differ detailedDiffer) isForceNew(pair propertyPath) bool {
 	return isForceNew(tfs, ps)
 }
 
+func (differ detailedDiffer) calculateSetHashes(path propertyPath, listVal resource.PropertyValue) map[int]int {
+	identities := make(map[int]int)
+
+	tfs, ps, err := differ.lookupSchemas(path)
+	if err != nil {
+		return nil
+	}
+
+	convertedVal, err := makeSingleTerraformInput(context.Background(), path.String(), listVal, tfs, ps)
+	if err != nil {
+		return nil
+	}
+
+	if convertedVal == nil {
+		return nil
+	}
+
+	convertedListVal, ok := convertedVal.([]interface{})
+	if !ok {
+		return nil
+	}
+
+	// Calculate the identity of each element
+	for i, newElem := range convertedListVal {
+		hash := tfs.SetHash(newElem)
+		identities[hash] = i
+	}
+	return identities
+}
+
 // We do not short-circuit detailed diffs when comparing non-nil properties against nil ones. The reason for that is
 // that a replace might be triggered by a ForceNew inside a nested property of a non-ForceNew property. We instead
 // always walk the full tree even when comparing against a nil property. We then later do a simplification step for
@@ -338,29 +368,8 @@ func (differ detailedDiffer) makeSetDiff(
 		newList = new.ArrayValue()
 	}
 
-	tfs, _, err := differ.lookupSchemas(path)
-	if err != nil {
-		return nil
-	}
-
-	// Calculate the identity of each element
-	oldIdentities := make(map[int]int)
-	newIdentities := make(map[int]int)
-	for i, newElem := range newList {
-		contract.Assertf(!newElem.IsComputed(), "the plan should not contain unknown elements")
-		// TODO: This does not work for values which have been
-		// deformed by maxItemsOne flattening.
-		mappable := newElem.Mappable()
-		hash := tfs.SetHash(mappable)
-		newIdentities[hash] = i
-	}
-
-	for i, oldElem := range oldList {
-		contract.Assertf(!oldElem.IsComputed(), "the plan should not contain unknown elements")
-		mappable := oldElem.Mappable()
-		hash := tfs.SetHash(mappable)
-		oldIdentities[hash] = i
-	}
+	oldIdentities := differ.calculateSetHashes(path, resource.NewPropertyValue(oldList))
+	newIdentities := differ.calculateSetHashes(path, resource.NewPropertyValue(newList))
 
 	changedIndices := make(map[int]struct{})
 	oldChangedIndices := make(map[int]struct{})

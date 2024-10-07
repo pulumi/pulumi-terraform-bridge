@@ -1756,7 +1756,7 @@ func TestDetailedDiffSetAttribute(t *testing.T) {
 	}
 
 	t.Run("unchanged", func(t *testing.T) {
-		runDetailedDiffTest(t, propertyMapElems("val1"), propertyMapElems("val1"), tfs, ps, nil)
+		runDetailedDiffTest(t, propertyMapElems("val1"), propertyMapElems("val1"), tfs, ps, map[string]*pulumirpc.PropertyDiff{})
 	})
 
 	t.Run("changed non-empty", func(t *testing.T) {
@@ -1843,13 +1843,13 @@ func TestDetailedDiffSetAttribute(t *testing.T) {
 	t.Run("shuffled", func(t *testing.T) {
 		runDetailedDiffTest(t,
 			propertyMapElems("val1", "val2", "val3"),
-			propertyMapElems("val3", "val2", "val1"), tfs, ps, nil)
+			propertyMapElems("val3", "val2", "val1"), tfs, ps, map[string]*pulumirpc.PropertyDiff{})
 	})
 
 	t.Run("shuffled with duplicates", func(t *testing.T) {
 		runDetailedDiffTest(t,
 			propertyMapElems("val1", "val2", "val3"),
-			propertyMapElems("val3", "val2", "val1", "val1"), tfs, ps, nil)
+			propertyMapElems("val3", "val2", "val1", "val1"), tfs, ps, map[string]*pulumirpc.PropertyDiff{})
 	})
 
 	t.Run("shuffled added front", func(t *testing.T) {
@@ -1988,7 +1988,7 @@ func TestDetailedDiffSetBlock(t *testing.T) {
 			}
 
 			t.Run("unchanged", func(t *testing.T) {
-				runDetailedDiffTest(t, propertyMapElems("val1"), propertyMapElems("val1"), tfs, ps, nil)
+				runDetailedDiffTest(t, propertyMapElems("val1"), propertyMapElems("val1"), tfs, ps, map[string]*pulumirpc.PropertyDiff{})
 			})
 
 			t.Run("changed non-empty", func(t *testing.T) {
@@ -2085,13 +2085,13 @@ func TestDetailedDiffSetBlock(t *testing.T) {
 			t.Run("shuffled", func(t *testing.T) {
 				runDetailedDiffTest(t,
 					propertyMapElems("val1", "val2", "val3"),
-					propertyMapElems("val3", "val2", "val1"), tfs, ps, nil)
+					propertyMapElems("val3", "val2", "val1"), tfs, ps, map[string]*pulumirpc.PropertyDiff{})
 			})
 
 			t.Run("shuffled with duplicates", func(t *testing.T) {
 				runDetailedDiffTest(t,
 					propertyMapElems("val1", "val2", "val3"),
-					propertyMapElems("val3", "val2", "val1", "val1"), tfs, ps, nil)
+					propertyMapElems("val3", "val2", "val1", "val1"), tfs, ps, map[string]*pulumirpc.PropertyDiff{})
 			})
 
 			t.Run("shuffled added front", func(t *testing.T) {
@@ -2276,6 +2276,6 @@ func TestDetailedDiffSetBlockNestedMaxItemsOne(t *testing.T) {
 					},
 				},
 			},
-		}), tfs, ps, nil)
+		}), tfs, ps, map[string]*pulumirpc.PropertyDiff{})
 	})
 }
