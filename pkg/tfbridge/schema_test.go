@@ -3759,3 +3759,127 @@ func TestExtractInputsFromOutputsSdkv2(t *testing.T) {
 
 	}
 }
+
+
+func TestMakeSingleTerraformInput(t *testing.T) {
+	t.Parallel()
+
+	type testCase struct {
+		name     string
+		prop     resource.PropertyValue
+		schema   *schema.Schema
+		expected interface{}
+	}
+
+	testCases := []testCase{
+		{
+			name: "bool",
+			prop: resource.NewBoolProperty(true),
+			schema: &schema.Schema{
+				Type:     shim.TypeBool,
+				Optional: true,
+			},
+			expected: true,
+		},
+		{
+			name: "number",
+			prop: resource.NewNumberProperty(42),
+			schema: &schema.Schema{
+				Type:     shim.TypeInt,
+				Optional: true,
+			},
+			expected: 42,
+		},
+		{
+			name: "string",
+			prop: resource.NewStringProperty("foo"),
+			schema: &schema.Schema{
+				Type:     shim.TypeString,
+				Optional: true,
+			},
+			expected: "foo",
+		},
+		{
+			name: "array",
+			prop: resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewStringProperty("foo"),
+			}),
+			schema: &schema.Schema{
+				Type:     shim.TypeList,
+				Optional: true,
+				Elem:     &schema.Schema{Type: shim.TypeString},
+			},
+			expected: []interface{}{"foo"},
+		},
+		{
+			name: "map",
+			prop: resource.NewObjectProperty(resource.PropertyMap{
+				"foo": resource.NewStringProperty("bar"),
+			}),
+			schema: &schema.Schema{
+				Type:     shim.TypeMap,
+				Optional: true,
+				Elem:     &schema.Schema{Type: shim.TypeString},
+			},
+			expected: map[string]interface{}{"foo": "bar"},
+		},
+		{
+			name: "object",
+			prop: resource.NewObjectProperty(resource.PropertyMap{
+				"foo": resource.NewStringProperty("bar"),
+			}),
+			schema: &schema.Schema{
+				Type:     shim.TypeList,
+				Optional: true,
+				MaxItems: 1,
+				Elem: &schema.Resource{
+					Schema: schema.SchemaMap{
+						"foo": (&schema.Schema{Type: shim.TypeString, Optional: true}).Shim(),
+					},
+				},
+			},
+			expected: []interface{}{map[string]interface{}{"foo": "bar"}},
+		},
+		{
+			name: "nested object",
+			prop: resource.NewObjectProperty(resource.PropertyMap{
+				"foo": resource.NewObjectProperty(resource.PropertyMap{
+					"bar": resource.NewStringProperty("baz"),
+				}),
+			}),
+			schema: &schema.Schema{
+				Type:     shim.TypeList,
+				Optional: true,
+				MaxItems: 1,
+				Elem: &schema.Resource{
+					Schema: schema.SchemaMap{
+						"foo": (&schema.Schema{
+							Type:     shim.TypeList,
+							Optional: true,
+							MaxItems: 1,
+							Elem: &schema.Resource{
+								Schema: schema.SchemaMap{
+									"bar": (&schema.Schema{Type: shim.TypeString, Optional: true}).Shim(),
+								},
+							},
+						}).Shim(),
+					},
+				},
+			},
+			expected: []interface{}{map[string]interface{}{"foo": 
+				[]interface{}{map[string]interface{}{"bar": "baz"}},
+			}},
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := makeSingleTerraformInput(context.Background(), "name", tc.prop, tc.schema.Shim(), nil)
+			require.NoError(t, err)
+			assert.Equal(t, tc.expected, result)
+		})
+	}
+
+}

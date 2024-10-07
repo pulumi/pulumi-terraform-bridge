@@ -368,8 +368,10 @@ func (differ detailedDiffer) makeSetDiff(
 		newList = new.ArrayValue()
 	}
 
-	oldIdentities := differ.calculateSetHashes(path, resource.NewPropertyValue(oldList))
-	newIdentities := differ.calculateSetHashes(path, resource.NewPropertyValue(newList))
+	contract.Assertf(!old.ContainsUnknowns() && !new.ContainsUnknowns(), "olds and news should not contain unknowns")
+
+	oldIdentities := differ.calculateSetHashes(path, resource.NewArrayProperty(oldList))
+	newIdentities := differ.calculateSetHashes(path, resource.NewArrayProperty(newList))
 
 	changedIndices := make(map[int]struct{})
 	oldChangedIndices := make(map[int]struct{})

@@ -342,6 +342,8 @@ func MakeTerraformInputs(
 }
 
 
+// Converts a single Pulumi property value into a plain go value suitable for use by Terraform.
+// This does not apply any defaults or other transformations.
 func makeSingleTerraformInput(
 	ctx context.Context, name string, val resource.PropertyValue, tfs shim.Schema, ps *SchemaInfo,
 ) (interface{}, error) {

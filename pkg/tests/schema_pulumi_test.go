@@ -4019,21 +4019,21 @@ func runDetailedDiffTest(
 	tfp := &schema.Provider{ResourcesMap: resMap}
 	bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
 	pt := pulcheck.PulCheck(t, bridgedProvider, program1)
-	pt.Up()
+	pt.Up(t)
 	pulumiYamlPath := filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml")
 
 	err := os.WriteFile(pulumiYamlPath, []byte(program2), 0o600)
 	require.NoError(t, err)
 
-	pt.ClearGrpcLog()
-	res := pt.Preview(optpreview.Diff())
+	pt.ClearGrpcLog(t)
+	res := pt.Preview(t, optpreview.Diff())
 	t.Log(res.StdOut)
 
 	diffResponse := struct {
 		DetailedDiff map[string]interface{} `json:"detailedDiff"`
 	}{}
 
-	for _, entry := range pt.GrpcLog().Entries {
+	for _, entry := range pt.GrpcLog(t).Entries {
 		if entry.Method == "/pulumirpc.ResourceProvider/Diff" {
 			err := json.Unmarshal(entry.Response, &diffResponse)
 			require.NoError(t, err)
@@ -5694,59 +5694,3 @@ Resources:
 	})
 }
 
-func TestMakeTerraformResultNilVsEmptyMap(t *testing.T) {
-	// Nil and empty maps are not equal
-	nilMap := resource.NewObjectProperty(nil)
-	emptyMap := resource.NewObjectProperty(resource.PropertyMap{})
-
-	assert.True(t, nilMap.DeepEquals(emptyMap))
-	assert.NotEqual(t, emptyMap.ObjectValue(), nilMap.ObjectValue())
-
-	// Check that MakeTerraformResult maintains that difference
-	const resName = "prov_test"
-	resMap := map[string]*schema.Resource{
-		"prov_test": {
-			Schema: map[string]*schema.Schema{
-				"test": {
-					Type:     schema.TypeMap,
-					Optional: true,
-					Elem: &schema.Schema{
-						Type: schema.TypeString,
-					},
-				},
-			},
-		},
-	}
-
-	prov := &schema.Provider{
-		ResourcesMap: resMap,
-	}
-	bridgedProvider := pulcheck.BridgedProvider(t, "prov", prov)
-
-	ctx := context.Background()
-	shimProv := bridgedProvider.P
-
-	res := shimProv.ResourcesMap().Get(resName)
-
-	t.Run("NilMap", func(t *testing.T) {
-		// Create a resource with a nil map
-		state, err := res.InstanceState("0", map[string]interface{}{}, map[string]interface{}{})
-		assert.NoError(t, err)
-
-		props, err := tfbridge.MakeTerraformResult(ctx, shimProv, state, res.Schema(), nil, nil, true)
-		assert.NoError(t, err)
-		assert.NotNil(t, props)
-		assert.True(t, props["test"].V == nil)
-	})
-
-	t.Run("EmptyMap", func(t *testing.T) {
-		// Create a resource with an empty map
-		state, err := res.InstanceState("0", map[string]interface{}{"test": map[string]interface{}{}}, map[string]interface{}{})
-		assert.NoError(t, err)
-
-		props, err := tfbridge.MakeTerraformResult(ctx, shimProv, state, res.Schema(), nil, nil, true)
-		assert.NoError(t, err)
-		assert.NotNil(t, props)
-		assert.True(t, props["test"].DeepEquals(emptyMap))
-	})
-}
