@@ -52,7 +52,7 @@ outputs:
   testOut: ${mainRes.test}
 `
 	pt := pulcheck.PulCheck(t, bridgedProvider, program)
-	res := pt.Up()
+	res := pt.Up(t)
 	require.Equal(t, "hello", res.Outputs["testOut"].Value)
 }
 
@@ -98,10 +98,10 @@ outputs:
   testOut: ${mainRes.test}
 `
 	pt := pulcheck.PulCheck(t, bridgedProvider, program)
-	res := pt.Preview(optpreview.Diff())
+	res := pt.Preview(t, optpreview.Diff())
 	// Test that the test property is unknown at preview time
 	require.Contains(t, res.StdOut, "test      : output<string>")
-	resUp := pt.Up()
+	resUp := pt.Up(t)
 	// assert that the property gets resolved
 	require.Equal(t, "aux", resUp.Outputs["testOut"].Value)
 }
@@ -644,7 +644,7 @@ outputs:
   collectionOutput: ${mainRes.collectionProp%s}
 `, collectionPropPlural, tc.programVal, collectionPropPlural)
 				pt := pulcheck.PulCheck(t, bridgedProvider, program)
-				upRes := pt.Up()
+				upRes := pt.Up(t)
 				require.Equal(t, tc.expectedOutputTopLevel, upRes.Outputs["collectionOutput"].Value)
 				res, err := pt.CurrentStack().Refresh(pt.Context(), optrefresh.ExpectNoChanges())
 				require.NoError(t, err)
@@ -717,7 +717,7 @@ outputs:
   collectionOutput: ${mainRes.props[0].collectionProp%s}
 `, collectionPropPlural, tc.programVal, collectionPropPlural)
 				pt := pulcheck.PulCheck(t, bridgedProvider, program)
-				upRes := pt.Up()
+				upRes := pt.Up(t)
 				require.Equal(t, tc.expectedOutputNested, upRes.Outputs["collectionOutput"].Value)
 
 				res, err := pt.CurrentStack().Refresh(pt.Context(), optrefresh.ExpectNoChanges())
@@ -1399,7 +1399,7 @@ Resources:
 
 			t.Run("initial preview", func(t *testing.T) {
 				pt := pulcheck.PulCheck(t, bridgedProvider, computedProgram)
-				res := pt.Preview(optpreview.Diff())
+				res := pt.Preview(t, optpreview.Diff())
 				t.Log(res.StdOut)
 
 				tc.expectedInitial.Equal(t, res.StdOut)
@@ -1412,28 +1412,28 @@ Resources:
 				// Diff in these cases always returns no diff and the old state value is used.
 				nonComputedProgram := fmt.Sprintf(tc.program, "[{testProp: \"val1\"}]", "[{nestedProps: [{testProps: [\"val1\"]}]}]")
 				pt := pulcheck.PulCheck(t, bridgedProvider, nonComputedProgram)
-				pt.Up()
+				pt.Up(t)
 
 				pulumiYamlPath := filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml")
 
 				err := os.WriteFile(pulumiYamlPath, []byte(computedProgram), 0o600)
 				require.NoError(t, err)
 
-				res := pt.Preview(optpreview.Diff())
+				res := pt.Preview(t, optpreview.Diff())
 				t.Log(res.StdOut)
 				tc.expectedUpdate.Equal(t, res.StdOut)
 			})
 
 			t.Run("update preview with computed", func(t *testing.T) {
 				pt := pulcheck.PulCheck(t, bridgedProvider, tc.initialKnownProgram)
-				pt.Up()
+				pt.Up(t)
 
 				pulumiYamlPath := filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml")
 
 				err := os.WriteFile(pulumiYamlPath, []byte(computedProgram), 0o600)
 				require.NoError(t, err)
 
-				res := pt.Preview(optpreview.Diff())
+				res := pt.Preview(t, optpreview.Diff())
 				t.Log(res.StdOut)
 				tc.expectedUpdate.Equal(t, res.StdOut)
 			})
@@ -1511,7 +1511,7 @@ runtime: yaml
 
 			pt := pulcheck.PulCheck(t, bridgedProvider, program)
 
-			res := pt.Import("prov:index/test:Test", "res1", "id1", "")
+			res := pt.Import(t, "prov:index/test:Test", "res1", "id1", "")
 
 			t.Log(res.Stdout)
 
@@ -1577,7 +1577,7 @@ outputs:
   testOut: ${mainRes.test}
 `, configVal)
 		pt := pulcheck.PulCheck(t, bridgedProvider, program)
-		pt.Up()
+		pt.Up(t)
 	}
 
 	t.Run("config exists", func(t *testing.T) {
@@ -1630,7 +1630,7 @@ func TestConfigureCrossTest(t *testing.T) {
 		bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
 
 		pt := pulcheck.PulCheck(t, bridgedProvider, pulumiProgram)
-		pt.Preview()
+		pt.Preview(t)
 		require.NotNil(t, puRd)
 		require.Equal(t, tfRd.GetRawConfig(), puRd.GetRawConfig())
 	}
@@ -1847,10 +1847,10 @@ resources:
 `
 
 		pt := pulcheck.PulCheck(t, bridgedProvider, fmt.Sprintf(program, "val"))
-		pt.Up()
+		pt.Up(t)
 
 		// Check the state is correct
-		stack := pt.ExportStack()
+		stack := pt.ExportStack(t)
 		data, err := stack.Deployment.MarshalJSON()
 		require.NoError(t, err)
 		require.Equal(t, fmt.Sprint(bigInt), getZoneFromStack(data))
@@ -1860,9 +1860,9 @@ resources:
 		err = os.WriteFile(pulumiYamlPath, []byte(program2), 0o600)
 		require.NoError(t, err)
 
-		pt.Up()
+		pt.Up(t)
 		// Check the state is correct
-		stack = pt.ExportStack()
+		stack = pt.ExportStack(t)
 		data, err = stack.Deployment.MarshalJSON()
 		require.NoError(t, err)
 		require.Equal(t, fmt.Sprint(bigInt), getZoneFromStack(data))
@@ -3294,14 +3294,14 @@ Resources:
 			require.NoError(t, err)
 			program2 := fmt.Sprintf(program, string(props2))
 			pt := pulcheck.PulCheck(t, bridgedProvider, program1)
-			pt.Up()
+			pt.Up(t)
 
 			pulumiYamlPath := filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml")
 
 			err = os.WriteFile(pulumiYamlPath, []byte(program2), 0o600)
 			require.NoError(t, err)
 
-			res := pt.Preview(optpreview.Diff())
+			res := pt.Preview(t, optpreview.Diff())
 			t.Log(res.StdOut)
 			tc.expected.Equal(t, res.StdOut)
 		})
@@ -3629,7 +3629,7 @@ runtime: yaml
 			pt := pulcheck.PulCheck(t, bridgedProvider, program)
 			outPath := filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "out.yaml")
 
-			imp := pt.Import("prov:index/test:Test", "mainRes", "mainRes", "", "--out", outPath)
+			imp := pt.Import(t, "prov:index/test:Test", "mainRes", "mainRes", "", "--out", outPath)
 			tc.expectedProps["otherProp"] = "test"
 
 			contents, err := os.ReadFile(outPath)
@@ -3659,7 +3659,7 @@ runtime: yaml
 				assert.NoError(t, err)
 
 				// run preview using the generated file
-				pt.Preview(optpreview.Diff(), optpreview.ExpectNoChanges())
+				pt.Preview(t, optpreview.Diff(), optpreview.ExpectNoChanges())
 			}
 		})
 	}
@@ -3726,7 +3726,7 @@ resources:
 `, pulumiTimeout)
 
 		pt := pulcheck.PulCheck(t, bridgedProvider, program)
-		pt.Up()
+		pt.Up(t)
 		// We pass custom timeouts in the program if the resource does not support them.
 
 		require.NotNil(t, pulumiCapturedTimeout)
@@ -3839,9 +3839,9 @@ outputs:
   testOut: ${mainRes.test}
 `
 	pt := pulcheck.PulCheck(t, bridgedProvider, program)
-	res := pt.Up()
+	res := pt.Up(t)
 	require.Equal(t, "hello world", res.Outputs["testOut"].Value)
-	pt.Preview(optpreview.ExpectNoChanges())
+	pt.Preview(t, optpreview.ExpectNoChanges())
 }
 
 // TestPlanStateEdit tests that [shimv2.WithPlanStateEdit] can be used to effectively edit
@@ -3950,7 +3950,7 @@ outputs:
   keyValue: ${mainRes.terraformLabels["key"]}
   emptyValue: ${mainRes.terraformLabels["empty"]}`
 	pt := pulcheck.PulCheck(t, bridgedProvider, program)
-	out := pt.Up()
+	out := pt.Up(t)
 
 	assert.Equal(t, "val", out.Outputs["keyValue"].Value)
 	assert.Equal(t, "", out.Outputs["emptyValue"].Value)
@@ -5691,5 +5691,62 @@ Resources:
 `),
 			autogold.Expect(map[string]interface{}{"tests": map[string]interface{}{"kind": "UPDATE"}}),
 		)
+	})
+}
+
+func TestMakeTerraformResultNilVsEmptyMap(t *testing.T) {
+	// Nil and empty maps are not equal
+	nilMap := resource.NewObjectProperty(nil)
+	emptyMap := resource.NewObjectProperty(resource.PropertyMap{})
+
+	assert.True(t, nilMap.DeepEquals(emptyMap))
+	assert.NotEqual(t, emptyMap.ObjectValue(), nilMap.ObjectValue())
+
+	// Check that MakeTerraformResult maintains that difference
+	const resName = "prov_test"
+	resMap := map[string]*schema.Resource{
+		"prov_test": {
+			Schema: map[string]*schema.Schema{
+				"test": {
+					Type:     schema.TypeMap,
+					Optional: true,
+					Elem: &schema.Schema{
+						Type: schema.TypeString,
+					},
+				},
+			},
+		},
+	}
+
+	prov := &schema.Provider{
+		ResourcesMap: resMap,
+	}
+	bridgedProvider := pulcheck.BridgedProvider(t, "prov", prov)
+
+	ctx := context.Background()
+	shimProv := bridgedProvider.P
+
+	res := shimProv.ResourcesMap().Get(resName)
+
+	t.Run("NilMap", func(t *testing.T) {
+		// Create a resource with a nil map
+		state, err := res.InstanceState("0", map[string]interface{}{}, map[string]interface{}{})
+		assert.NoError(t, err)
+
+		props, err := tfbridge.MakeTerraformResult(ctx, shimProv, state, res.Schema(), nil, nil, true)
+		assert.NoError(t, err)
+		assert.NotNil(t, props)
+		assert.True(t, props["test"].V == nil)
+	})
+
+	t.Run("EmptyMap", func(t *testing.T) {
+		// Create a resource with an empty map
+		state, err := res.InstanceState("0", map[string]interface{}{"test": map[string]interface{}{}}, map[string]interface{}{})
+		assert.NoError(t, err)
+
+		props, err := tfbridge.MakeTerraformResult(ctx, shimProv, state, res.Schema(), nil, nil, true)
+		assert.NoError(t, err)
+		assert.NotNil(t, props)
+		assert.True(t, props["test"].DeepEquals(emptyMap))
 	})
 }

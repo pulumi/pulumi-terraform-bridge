@@ -44,6 +44,7 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/convert"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/parse"
 )
 
@@ -536,7 +537,7 @@ func (p *tfMarkdownParser) parse(tfMarkdown []byte) (entityDocs, error) {
 		Attributes: make(map[string]string),
 	}
 	var err error
-	tfMarkdown, err = p.editRules.apply(p.markdownFileName, tfMarkdown)
+	tfMarkdown, err = p.editRules.apply(p.markdownFileName, tfMarkdown, info.PreCodeTranslation)
 	if err != nil {
 		return entityDocs{}, fmt.Errorf("file %s: %w", p.markdownFileName, err)
 	}
@@ -1075,7 +1076,10 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 				return
 			}
 			line = "\n" + strings.TrimSpace(line)
-			ret.Arguments[docsPath(lastMatch)].description += line
+			arg := ret.Arguments[docsPath(lastMatch)]
+			if arg != nil {
+				arg.description += line
+			}
 		}
 	}
 

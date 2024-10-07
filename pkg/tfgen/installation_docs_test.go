@@ -14,7 +14,6 @@ import (
 	sdkv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
 
-//nolint:lll
 func TestPlainDocsParser(t *testing.T) {
 	t.Parallel()
 
@@ -23,35 +22,86 @@ func TestPlainDocsParser(t *testing.T) {
 		name     string
 		docFile  DocFile
 		expected []byte
+		edits    editRules
 	}
+	// Mock provider for test conversion
+	p := tfbridge.ProviderInfo{
+		Name: "simple",
+		P: sdkv2.NewProvider(&schema.Provider{
+			ResourcesMap: map[string]*schema.Resource{
+				"simple_resource": {
+					Schema: map[string]*schema.Schema{
+						"input_one": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"input_two": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+					},
+				},
+			},
+		}),
+	}
+	pclsMap := make(map[string]translatedExample)
 
 	tests := []testCase{
 		{
-			name: "Replaces Upstream Front Matter With Pulumi Front Matter",
+			name: "Converts index.md file into Pulumi installation file",
 			docFile: DocFile{
-				Content: []byte("---\nlayout: \"openstack\"\npage_title: \"Provider: OpenStack\"\nsidebar_current: \"docs-openstack-index\"\ndescription: |-\n  The OpenStack provider is used to interact with the many resources supported by OpenStack. The provider needs to be configured with the proper credentials before it can be used.\n---\n\n# OpenStack Provider\n\nThe OpenStack provider is used to interact with the\nmany resources supported by OpenStack. The provider needs to be configured\nwith the proper credentials before it can be used.\n\nUse the navigation to the left to read about the available resources."),
+				Content: []byte(readfile(t, "test_data/convert-index-file/input.md")),
 			},
-			expected: []byte("---\ntitle: OpenStack Provider Installation & Configuration\nmeta_desc: Provides an overview on how to configure the Pulumi OpenStack Provider.\nlayout: package\n---\n\nThe OpenStack provider is used to interact with the\nmany resources supported by OpenStack. The provider needs to be configured\nwith the proper credentials before it can be used.\n\nUse the navigation to the left to read about the available resources."),
+			expected: []byte(readfile(t, "test_data/convert-index-file/expected.md")),
+			edits:    defaultEditRules(),
 		},
 		{
-			name: "Writes Pulumi Style Front Matter If Not Present",
+			// Discovered while generating docs for Libvirt - the test case has an incorrect ```hcl
+			// on what should be a shell script. The provider's edit rule removes this.
+			name: "Applies provider supplied edit rules",
 			docFile: DocFile{
-				Content: []byte("# Artifactory Provider\n\nThe [Artifactory](https://jfrog.com/artifactory/) provider is used to interact with the resources supported by Artifactory. The provider needs to be configured with the proper credentials before it can be used.\n\nLinks to documentation for specific resources can be found in the table of contents to the left.\n\nThis provider requires access to Artifactory APIs, which are only available in the _licensed_ pro and enterprise editions. You can determine which license you have by accessing the following the URL `${host}/artifactory/api/system/licenses/`.\n\nYou can either access it via API, or web browser - it require admin level credentials."),
+				Content: []byte(readfile(t, "test_data/convert-index-file-edit-rules/input.md")),
 			},
-			expected: []byte("---\ntitle: Artifactory Provider Installation & Configuration\nmeta_desc: Provides an overview on how to configure the Pulumi Artifactory Provider.\nlayout: package\n---\n\nThe [Artifactory](https://jfrog.com/artifactory/) provider is used to interact with the resources supported by Artifactory. The provider needs to be configured with the proper credentials before it can be used.\n\nLinks to documentation for specific resources can be found in the table of contents to the left.\n\nThis provider requires access to Artifactory APIs, which are only available in the _licensed_ pro and enterprise editions. You can determine which license you have by accessing the following the URL `${host}/artifactory/api/system/licenses/`.\n\nYou can either access it via API, or web browser - it require admin level credentials."),
+			expected: []byte(readfile(t, "test_data/convert-index-file-edit-rules/expected.md")),
+			edits: append(
+				defaultEditRules(),
+				tfbridge.DocsEdit{
+					Edit: func(_ string, content []byte) ([]byte, error) {
+						return bytes.ReplaceAll(
+							content,
+							[]byte("shell environment variable.\n\n```hcl"),
+							[]byte("shell environment variable.\n\n```"),
+						), nil
+					},
+				},
+			),
 		},
 	}
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			t.Skipf("this function is under development and will receive tests once all parts are completed")
 			t.Parallel()
+			if runtime.GOOS == "windows" {
+				t.Skipf("Skipping on Windows due to a newline handling issue")
+			}
 			g := &Generator{
 				sink: mockSink{t},
+				info: tfbridge.ProviderInfo{
+					Golang: &tfbridge.GolangInfo{
+						ImportBasePath: "github.com/pulumi/pulumi-libvirt/sdk/go/libvirt",
+					},
+					Name: "libvirt",
+				},
+				cliConverterState: &cliConverter{
+					info: p,
+					pcls: pclsMap,
+				},
+				editRules: tt.edits,
+				language:  RegistryDocs,
 			}
 			actual, err := plainDocsParser(&tt.docFile, g)
 			require.NoError(t, err)
-			require.Equal(t, string(tt.expected), string(actual))
+			assertEqualHTML(t, string(tt.expected), string(actual))
 		})
 	}
 }
@@ -236,169 +286,6 @@ func TestWriteFrontMatter(t *testing.T) {
 	})
 }
 
-func TestApplyEditRules(t *testing.T) {
-	t.Parallel()
-
-	type testCase struct {
-		// The name of the test case.
-		name     string
-		docFile  DocFile
-		expected []byte
-	}
-
-	tests := []testCase{
-		{
-			name: "Replaces h/Hashicorp With p/Pulumi",
-			docFile: DocFile{
-				Content: []byte("Any mention of Hashicorp or hashicorp will be Pulumi or pulumi"),
-			},
-			expected: []byte("Any mention of Pulumi or pulumi will be Pulumi or pulumi"),
-		},
-		{
-			name: "Replaces t/Terraform With p/Pulumi",
-			docFile: DocFile{
-				Content: []byte("Any mention of Terraform or terraform will be Pulumi or pulumi"),
-			},
-			expected: []byte("Any mention of Pulumi or pulumi will be Pulumi or pulumi"),
-		},
-		{
-			name: "Replaces argument headers with input headers",
-			docFile: DocFile{
-				Content: []byte("# Argument Reference\n" +
-					"The following arguments are supported:\n* `some_argument`\n\n" +
-					"block contains the following arguments"),
-			},
-			expected: []byte("# Configuration Reference\n" +
-				"The following configuration inputs are supported:\n* `some_argument`\n\n" +
-				"input has the following nested fields"),
-		},
-		{
-			name: "Replaces terraform plan with pulumi preview",
-			docFile: DocFile{
-				Content: []byte("terraform plan this program"),
-			},
-			expected: []byte("pulumi preview this program"),
-		},
-		{
-			name: "Skips sections about logging by default",
-			docFile: DocFile{
-				Content:  []byte("# I am a provider\n\n### Additional Logging\n This section should be skipped"),
-				FileName: "filename",
-			},
-			expected: []byte("# I am a provider\n"),
-		},
-		{
-			name: "Strips Hashicorp links correctly",
-			docFile: DocFile{
-				Content: []byte(readfile(t, "test_data/replace-links/input.md")),
-			},
-			expected: []byte(readfile(t, "test_data/replace-links/actual.md")),
-		},
-		{
-			name: "Strips mentions of Terraform version pattern 1",
-			docFile: DocFile{
-				Content: []byte("This is a provider. It requires terraform 0.12 or later."),
-			},
-			expected: []byte("This is a provider."),
-		},
-		{
-			name: "Strips mentions of Terraform version pattern 2",
-			docFile: DocFile{
-				Content: []byte("This is a provider. It requires terraform v0.12 or later."),
-			},
-			expected: []byte("This is a provider."),
-		},
-		{
-			name: "Strips mentions of Terraform version pattern 3",
-			docFile: DocFile{
-				Content: []byte("This is a provider with an example. For Terraform v1.5 and later:\n Use this code."),
-			},
-			expected: []byte("This is a provider with an example.\nUse this code."),
-		},
-		{
-			name: "Strips mentions of Terraform version pattern 4",
-			docFile: DocFile{
-				Content: []byte("This is a provider with an example. Terraform 1.5 and later:\n Use this code."),
-			},
-			expected: []byte("This is a provider with an example.\nUse this code."),
-		},
-		{
-			name: "Strips mentions of Terraform version pattern 5",
-			docFile: DocFile{
-				Content: []byte("This is a provider with an example. Terraform 1.5 and earlier:\n Use this code."),
-			},
-			expected: []byte("This is a provider with an example.\nUse this code."),
-		},
-		{
-			name: "Strips mentions of Terraform version pattern 6",
-			docFile: DocFile{
-				Content: []byte("This provider requires at least Terraform 1.0."),
-			},
-			expected: []byte(""),
-		},
-		{
-			name: "Strips mentions of Terraform version pattern 7",
-			docFile: DocFile{
-				Content: []byte("This provider requires Terraform 1.0."),
-			},
-			expected: []byte(""),
-		},
-		{
-			name: "Strips mentions of Terraform version pattern 8",
-			docFile: DocFile{
-				Content: []byte("A minimum of Terraform 1.4.0 is recommended."),
-			},
-			expected: []byte(""),
-		},
-		{
-			name: "Strips mentions of Terraform version With Surrounding Text",
-			docFile: DocFile{
-				Content: []byte(readfile(t, "test_data/replace-terraform-version/input.md")),
-			},
-			expected: []byte(readfile(t, "test_data/replace-terraform-version/expected.md")),
-		},
-		{
-			// Found in linode
-			name: "Rewrites providers.tf to Pulumi.yaml",
-			docFile: DocFile{
-				Content: []byte(readfile(t, "test_data/rewrite-providers-tf-to-pulumi-yaml/input.md")),
-			},
-			expected: []byte(readfile(t, "test_data/rewrite-providers-tf-to-pulumi-yaml/expected.md")),
-		},
-		{
-			name: "Rewrites terraform init to pulumi up",
-			docFile: DocFile{
-				Content: []byte(readfile(t, "test_data/rewrite-tf-init-to-pulumi-up/input.md")),
-			},
-			expected: []byte(readfile(t, "test_data/rewrite-tf-init-to-pulumi-up/expected.md")),
-		},
-		{
-			// Found in linode
-			name: "Replaces provider block with provider configuration",
-			docFile: DocFile{
-				Content: []byte(readfile(t, "test_data/replace-provider-block/input.md")),
-			},
-			expected: []byte(readfile(t, "test_data/replace-provider-block/expected.md")),
-		},
-	}
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			if runtime.GOOS == "windows" {
-				t.Skipf("Skipping on Windows due to a newline handling issue")
-			}
-			g := &Generator{
-				sink:      mockSink{t},
-				editRules: defaultEditRules(),
-			}
-			actual, err := applyEditRules(tt.docFile.Content, "testfile.md", g)
-			require.NoError(t, err)
-			assertEqualHTML(t, string(tt.expected), string(actual))
-		})
-	}
-}
-
 func TestTranslateCodeBlocks(t *testing.T) {
 
 	type testCase struct {
@@ -491,7 +378,7 @@ func TestSkipSectionHeadersByContent(t *testing.T) {
 		name:          "Skips Sections With Unwanted Headers",
 		headersToSkip: []string{"Debugging Provider Output Using Logs", "Testing and Development"},
 		input:         readTestFile(t, "skip-sections-by-header/input.md"),
-		expected:      readTestFile(t, "skip-sections-by-header/actual.md"),
+		expected:      readTestFile(t, "skip-sections-by-header/expected.md"),
 	}
 
 	t.Run(tc.name, func(t *testing.T) {

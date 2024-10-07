@@ -34,7 +34,7 @@ func TestAttach(t *testing.T) {
 	pt := pulumitest.NewPulumiTest(t, source,
 		opttest.AttachProviderBinary("testbridge", bin),
 		opttest.SkipInstall())
-	pt.Preview()
+	pt.Preview(t)
 }
 
 func TestAttachMuxed(t *testing.T) {
@@ -47,5 +47,5 @@ func TestAttachMuxed(t *testing.T) {
 	pt := pulumitest.NewPulumiTest(t, source,
 		opttest.AttachProviderBinary("muxedrandom", bin),
 		opttest.SkipInstall())
-	pt.Preview()
+	pt.Preview(t)
 }

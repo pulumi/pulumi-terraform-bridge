@@ -10,7 +10,7 @@ require (
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.33.0
 	github.com/hashicorp/terraform-provider-tls/shim v0.0.0-00010101000000-000000000000
 	github.com/hexops/autogold/v2 v2.2.1
-	github.com/pulumi/providertest v0.0.15
+	github.com/pulumi/providertest v0.1.2
 	github.com/pulumi/pulumi-terraform-bridge/pf v0.0.0
 	github.com/pulumi/pulumi-terraform-bridge/v3 v3.91.1
 	github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests v0.0.0-00010101000000-000000000000
@@ -216,9 +216,9 @@ require (
 	github.com/posener/complete v1.2.3 // indirect
 	github.com/pulumi/pulumi-java/pkg v0.16.1 // indirect
 	github.com/pulumi/pulumi-terraform-bridge/x/muxer v0.0.8 // indirect
-	github.com/pulumi/pulumi-yaml v1.10.0 // indirect
-	github.com/pulumi/pulumi/pkg/v3 v3.133.0
-	github.com/pulumi/pulumi/sdk/v3 v3.133.0
+	github.com/pulumi/pulumi-yaml v1.10.3 // indirect
+	github.com/pulumi/pulumi/pkg/v3 v3.135.0
+	github.com/pulumi/pulumi/sdk/v3 v3.135.0
 	github.com/pulumi/schema-tools v0.1.2 // indirect
 	github.com/rivo/uniseg v0.4.4 // indirect
 	github.com/rogpeppe/go-internal v1.12.0 // indirect

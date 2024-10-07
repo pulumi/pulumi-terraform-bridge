@@ -74,8 +74,8 @@ func runPulumiUpgrade(t T, res1, res2 *schema.Resource, config1, config2 any, di
 
 	yamlProgram := pd.generateYAML(t, prov1.P.ResourcesMap(), config1)
 	pt := pulcheck.PulCheck(t, prov1, string(yamlProgram))
-	pt.Up()
-	stack := pt.ExportStack()
+	pt.Up(t)
+	stack := pt.ExportStack(t)
 	schemaVersion1 := getVersionInState(t, stack)
 
 	yamlProgram = pd.generateYAML(t, prov2.P.ResourcesMap(), config2)
@@ -86,9 +86,9 @@ func runPulumiUpgrade(t T, res1, res2 *schema.Resource, config1, config2 any, di
 	handle, err := pulcheck.StartPulumiProvider(context.Background(), defProviderShortName, defProviderVer, prov2)
 	require.NoError(t, err)
 	pt.CurrentStack().Workspace().SetEnvVar("PULUMI_DEBUG_PROVIDERS", fmt.Sprintf("%s:%d", defProviderShortName, handle.Port))
-	pt.Up()
+	pt.Up(t)
 
-	stack = pt.ExportStack()
+	stack = pt.ExportStack(t)
 	schemaVersion2 := getVersionInState(t, stack)
 
 	return schemaVersion1, schemaVersion2

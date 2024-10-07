@@ -61,7 +61,7 @@ func TestNewMuxProvider(t *testing.T) {
 		      p: "FOO"
 		`)
 
-	pt.Up()
+	pt.Up(t)
 
 	require.Equal(t, 1, createCallCount)
 }
