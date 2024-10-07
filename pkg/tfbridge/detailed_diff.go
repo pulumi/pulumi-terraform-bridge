@@ -387,6 +387,10 @@ func (differ detailedDiffer) makeSetDiff(
 		}
 	}
 
+	// TODO: Some calculation here to determine if we should return an update for the whole thing
+	// if the list is too shuffled to return a meaningful element-by-element diff
+	// if len(changedIndices) + abs(len(oldList) - len(newList)) > 
+
 	for index := range changedIndices {
 		oldEl := resource.NewNullProperty()
 		if _, oldChanged := oldChangedIndices[index]; oldChanged {

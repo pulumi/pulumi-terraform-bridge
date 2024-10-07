@@ -1968,6 +1968,30 @@ func TestDetailedDiffSetAttribute(t *testing.T) {
 			},
 		)
 	})
+
+	t.Run("two added, two removed", func(t *testing.T) {
+		runDetailedDiffTest(t,
+			propertyMapElems("val1", "val2"),
+			propertyMapElems("val3", "val4"),
+			tfs, ps,
+			map[string]*pulumirpc.PropertyDiff{
+				"foo[0]": {Kind: pulumirpc.PropertyDiff_UPDATE},
+				"foo[1]": {Kind: pulumirpc.PropertyDiff_UPDATE},
+			},
+		)
+	})
+
+	t.Run("two added, two removed, shuffled", func(t *testing.T) {
+		runDetailedDiffTest(t,
+			propertyMapElems("stable1", "stable2", "val1", "val2"),
+			propertyMapElems("val4", "val3", "stable1", "stable2"),
+			tfs, ps,
+			map[string]*pulumirpc.PropertyDiff{
+				"foo[0]": {Kind: pulumirpc.PropertyDiff_UPDATE},
+				"foo[1]": {Kind: pulumirpc.PropertyDiff_UPDATE},
+			},
+		)
+	})
 }
 
 func TestDetailedDiffSetBlock(t *testing.T) {
