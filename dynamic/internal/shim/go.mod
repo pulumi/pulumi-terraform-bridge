@@ -146,8 +146,8 @@ require (
 	github.com/pulumi/esc v0.10.0 // indirect
 	github.com/pulumi/inflector v0.1.1 // indirect
 	github.com/pulumi/pulumi-terraform-bridge/x/muxer v0.0.8 // indirect
-	github.com/pulumi/pulumi/pkg/v3 v3.135.0 // indirect
-	github.com/pulumi/pulumi/sdk/v3 v3.135.0
+	github.com/pulumi/pulumi/pkg/v3 v3.133.0 // indirect
+	github.com/pulumi/pulumi/sdk/v3 v3.133.0
 	github.com/rivo/uniseg v0.4.4 // indirect
 	github.com/rogpeppe/go-internal v1.12.0 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
