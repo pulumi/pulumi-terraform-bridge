@@ -17,22 +17,30 @@ package crosstests
 import (
 	"context"
 	"os"
-	"runtime"
 	"strings"
-	"testing"
+	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/require"
 )
 
-func propageteSkip(parent, child *testing.T) {
-	if child.Skipped() {
-		parent.Skipf("skipping due to skipped child test")
-	}
+// TestingT describers what crosstests needs to run a test with.
+//
+// TestingT should be compatible with [pgregory.net/rapid.T].
+type TestingT interface {
+	Skip(args ...any)
+	Failed() bool
+	Errorf(format string, args ...any)
+	Name() string
+	Log(...any)
+	Logf(string, ...any)
+	Fail()
+	FailNow()
+	Helper()
 }
 
-type testLogSink struct{ t *testing.T }
+type testLogSink struct{ t TestingT }
 
 func (s testLogSink) Log(_ context.Context, sev diag.Severity, urn resource.URN, msg string) error {
 	return s.log("LOG", sev, urn, msg)
@@ -50,7 +58,7 @@ func (s testLogSink) log(kind string, sev diag.Severity, urn resource.URN, msg s
 	return nil
 }
 
-func convertResourceValue(t *testing.T, properties resource.PropertyMap) map[string]any {
+func convertResourceValue(t TestingT, properties resource.PropertyMap) map[string]any {
 	var convertValue func(resource.PropertyValue) (any, bool)
 	convertValue = func(v resource.PropertyValue) (any, bool) {
 		if v.IsComputed() {
@@ -81,8 +89,67 @@ func convertResourceValue(t *testing.T, properties resource.PropertyMap) map[str
 	return properties.MapRepl(nil, convertValue)
 }
 
-func skipUnlessLinux(t *testing.T) {
-	if ci, ok := os.LookupEnv("CI"); ok && ci == "true" && !strings.Contains(strings.ToLower(runtime.GOOS), "linux") {
-		t.Skip("Skipping on non-Linux platforms as our CI does not yet install Terraform CLI required for these tests")
+func withAugmentedT(t TestingT, f func(t *augmentedT)) {
+	c := augmentedT{TestingT: t}
+	defer c.cleanup()
+	f(&c)
+}
+
+// augmentedT augments
+type augmentedT struct {
+	TestingT
+	tasks []func()
+}
+
+// TempDir returns a temporary directory for the test to use.
+// The directory is automatically removed when the test and
+// all its subtests complete.
+// Each subsequent call to t.TempDir returns a unique directory;
+// if the directory creation fails, TempDir terminates the test by calling Fatal.
+func (t *augmentedT) TempDir() string {
+	// If the underlying TestingT actually implements TempDir, then just call that.
+	if t, ok := t.TestingT.(interface{ TempDir() string }); ok {
+		return t.TempDir()
+	}
+
+	// Re-implement TempDir:
+
+	name := t.Name()
+	name = strings.ReplaceAll(name, "#", "")
+	name = strings.ReplaceAll(name, string(os.PathSeparator), "")
+	dir, err := os.MkdirTemp("", name)
+	require.NoError(t, err)
+	return dir
+}
+
+func (t *augmentedT) Cleanup(f func()) {
+	// If the underlying TestingT actually implements Cleanup, then just call that.
+	if t, ok := t.TestingT.(interface{ Cleanup(f func()) }); ok {
+		t.Cleanup(f)
+		return
+	}
+
+	// Add f to the set of tasks to be cleaned up later. Cleanup is only valid when
+	// called in a context where t.cleanup() will be called, such as [withAugmentedT].
+	t.tasks = append(t.tasks, f)
+}
+
+func (t *augmentedT) Deadline() (time.Time, bool) {
+	// If the underlying TestingT actually implements Deadline, then just call that.
+	if t, ok := t.TestingT.(interface{ Deadline() (time.Time, bool) }); ok {
+		return t.Deadline()
+	}
+
+	// Otherwise the test has no deadline.
+
+	return time.Time{}, false
+}
+
+func (t *augmentedT) cleanup() {
+	for i := len(t.tasks) - 1; i >= 0; i-- {
+		v := t.tasks[i]
+		if v != nil {
+			v()
+		}
 	}
 }

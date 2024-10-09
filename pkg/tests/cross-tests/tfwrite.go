@@ -82,6 +82,9 @@ func writePfProvider(body *hclwrite.Body, schemas pfproviderschema.Schema, value
 // This is why writePfBlock is called with parentBody, instead of with the block body
 // already created (as with [writeBlock]).
 func writePfBlock(key string, parentBody *hclwrite.Body, schemas pfproviderschema.Block, value cty.Value) {
+	if value.IsNull() {
+		return
+	}
 	switch schemas := schemas.(type) {
 	case pfproviderschema.ListNestedBlock:
 		for _, v := range value.AsValueSlice() {
