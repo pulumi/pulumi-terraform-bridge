@@ -36,6 +36,8 @@ type Provider struct {
 	Version        string
 	ProviderSchema schema.Schema
 	AllResources   []Resource
+
+	configureFunc func(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse)
 }
 
 var _ provider.Provider = (*Provider)(nil)
@@ -49,10 +51,13 @@ func (impl *Provider) Schema(ctx context.Context, req provider.SchemaRequest, re
 	resp.Schema = impl.ProviderSchema
 }
 
-func (*Provider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
+func (impl *Provider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
+	if impl.configureFunc != nil {
+		impl.configureFunc(ctx, req, resp)
+	}
 }
 
-func (*Provider) DataSources(ctx context.Context) []func() datasource.DataSource {
+func (impl *Provider) DataSources(ctx context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{}
 }
 
@@ -76,6 +81,8 @@ type NewProviderArgs struct {
 	Version        string
 	ProviderSchema schema.Schema
 	AllResources   []Resource
+
+	ConfigureFunc func(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse)
 }
 
 // NewProvider creates a new provider with the given resources, filling reasonable defaults.
@@ -85,6 +92,8 @@ func NewProvider(params NewProviderArgs) *Provider {
 		Version:        params.Version,
 		ProviderSchema: params.ProviderSchema,
 		AllResources:   params.AllResources,
+
+		configureFunc: params.ConfigureFunc,
 	}
 
 	if prov.TypeName == "" {
