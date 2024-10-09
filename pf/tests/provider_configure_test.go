@@ -30,6 +30,8 @@ import (
 )
 
 func TestConfigure(t *testing.T) {
+	t.Parallel()
+
 	t.Run("string", crosstests.MakeConfigure(
 		schema.Schema{Attributes: map[string]schema.Attribute{
 			"k": schema.StringAttribute{Optional: true},
