@@ -4771,7 +4771,7 @@ Resources:
 		{
 			"added front unordered",
 			[]string{"val3", "val1"},
-			[]string{"val2", "val2", "val1"},
+			[]string{"val2", "val3", "val1"},
 			map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "UPDATE"}},
 			autogold.Expect(`Previewing update (test):
   pulumi:pulumi:Stack: (same)
@@ -4780,7 +4780,7 @@ Resources:
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ tests: [
-          ~ [1]: "val3" => "val2"
+          + [1]: "val3"
         ]
 Resources:
     ~ 1 to update
@@ -4794,7 +4794,7 @@ Resources:
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ tests: [
-          ~ [1]: "val3" => "val2"
+          + [1]: "val3"
         ]
 Resources:
     +-1 to replace
@@ -4808,8 +4808,8 @@ Resources:
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ tests: [
-          ~ [1]: {
-                  ~ nested: "val3" => "val2"
+          + [1]: {
+                  + nested    : "val3"
                 }
         ]
 Resources:
@@ -4824,8 +4824,8 @@ Resources:
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ tests: [
-          ~ [1]: {
-                  ~ nested: "val3" => "val2"
+          + [1]: {
+                  + nested    : "val3"
                 }
         ]
 Resources:
