@@ -25,6 +25,7 @@ issues:
     - "unused-parameter: parameter"
     - "redefines-builtin-id:"
   exclude-dirs:
+    - pkg/tests/internal/webaclschema
     - pkg/tf2pulumi/internal/addrs
     - pkg/tf2pulumi/internal/config
     - pkg/tf2pulumi/internal/configs
@@ -34,5 +35,5 @@ linters-settings:
     sections:
       - standard
       - default
-      - prefix(github.com/pulumi/pulumi-terraform-bridge)
+      - prefix(github.com/pulumi/pulumi-terraform-bridge/v3)
     skip-generated: true
