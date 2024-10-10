@@ -28,7 +28,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
-	tfpf "github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
+	tfpf "github.com/pulumi/pulumi-terraform-bridge/v3/pf/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 

@@ -20,9 +20,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/muxer"
-	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/providerbuilder"
-	pb "github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/providerbuilder"
+	pb "github.com/pulumi/pulumi-terraform-bridge/v3/pf/tests/internal/providerbuilder"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pf/internal/muxer"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pf/tests/internal/providerbuilder"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
 	helper "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"

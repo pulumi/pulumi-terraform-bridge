@@ -25,7 +25,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/dynamic/internal/fixup"
 	"github.com/pulumi/pulumi-terraform-bridge/dynamic/parameterize"
 	"github.com/pulumi/pulumi-terraform-bridge/dynamic/version"
-	"github.com/pulumi/pulumi-terraform-bridge/pf/proto"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pf/proto"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/tokens"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"

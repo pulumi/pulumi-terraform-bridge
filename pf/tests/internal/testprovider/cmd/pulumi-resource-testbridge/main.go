@@ -18,8 +18,8 @@ package main
 import (
 	"context"
 	_ "embed"
-	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/testprovider"
-	"github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pf/tests/internal/testprovider"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pf/tfbridge"
 )
 
 //go:embed schema.json

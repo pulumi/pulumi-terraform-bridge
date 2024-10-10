@@ -21,7 +21,7 @@ import (
 )
 
 // Defines bridged provider metadata that is pre-computed at build time with tfgen (tfgen
-// ("github.com/pulumi/pulumi-terraform-bridge/pf/tfgen") and typically made available to the provider
+// ("github.com/pulumi/pulumi-terraform-bridge/v3/pf/tfgen") and typically made available to the provider
 // binary at runtime with [embed].
 //
 // [embed]: https://pkg.go.dev/embed

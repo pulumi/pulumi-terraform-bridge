@@ -17,8 +17,8 @@
 package main
 
 import (
-	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/testprovider"
-	"github.com/pulumi/pulumi-terraform-bridge/pf/tfgen"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pf/tests/internal/testprovider"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pf/tfgen"
 )
 
 func main() {
