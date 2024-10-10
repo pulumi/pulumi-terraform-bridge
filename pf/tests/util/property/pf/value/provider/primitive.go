@@ -94,6 +94,29 @@ func convertObject(m map[string]value) value {
 	}
 }
 
+func makeConvertSet(elem cty.Type) func([]value) value {
+	return func(a []value) value { return convertSet(a, elem) }
+}
+
+func convertSet(a []value, elem cty.Type) value {
+	tfArr, puArr := make([]cty.Value, len(a)), make([]resource.PropertyValue, len(a))
+	for i, v := range a {
+		tfArr[i] = v.Tf
+		puArr[i] = v.Pu
+	}
+
+	ctyList := cty.SetValEmpty(elem)
+	if len(tfArr) > 0 {
+		ctyList = cty.SetVal(tfArr)
+	}
+
+	return value{
+		hasValue: true,
+		Tf:       ctyList,
+		Pu:       resource.NewProperty(puArr),
+	}
+}
+
 func makeConvertList(elem cty.Type) func([]value) value {
 	return func(a []value) value { return convertList(a, elem) }
 }
