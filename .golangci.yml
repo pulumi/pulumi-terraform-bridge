@@ -39,5 +39,5 @@ linters-settings:
     sections:
       - standard
       - default
-      - prefix(github.com/pulumi/pulumi-terraform-bridge/v3)
+      - prefix(github.com/pulumi/pulumi-terraform-bridge)
     skip-generated: true
