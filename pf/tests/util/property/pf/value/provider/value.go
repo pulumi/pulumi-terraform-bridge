@@ -28,6 +28,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
+const maxIterableSize = 4
+
 // Value represents a single conceptual value, represented in both a [cty.Value] and in a
 // [resource.PropertyValue].
 type Value struct {
@@ -170,13 +172,13 @@ func (g generator) withAttr(attr schema.Attribute) *rapid.Generator[value] {
 		case schema.ListAttribute:
 			elemType := attr.ElementType.TerraformType(ctx)
 			return rapid.Map(
-				rapid.SliceOf(baseAttr(elemType)),
+				rapid.SliceOfN(baseAttr(elemType), 0, maxIterableSize),
 				makeConvertList(ctyType(elemType)),
 			)
 		case schema.SetAttribute:
 			elemType := attr.ElementType.TerraformType(ctx)
 			return rapid.Map(
-				rapid.SliceOfDistinct(baseAttr(elemType), valueID),
+				rapid.SliceOfNDistinct(baseAttr(elemType), 0, maxIterableSize, valueID),
 				makeConvertSet(ctyType(elemType)),
 			)
 
@@ -207,17 +209,17 @@ func (g generator) withAttr(attr schema.Attribute) *rapid.Generator[value] {
 			})
 		case schema.MapNestedAttribute:
 			return rapid.Map(
-				rapid.MapOf(rapid.String(), g.nestedObject(attr.NestedObject)),
+				rapid.MapOfN(rapid.String(), g.nestedObject(attr.NestedObject), 0, maxIterableSize),
 				makeConvertMap(ctyType(attr.NestedObject.Type().TerraformType(ctx))),
 			)
 		case schema.ListNestedAttribute:
 			return rapid.Map(
-				rapid.SliceOf(g.nestedObject(attr.NestedObject)),
+				rapid.SliceOfN(g.nestedObject(attr.NestedObject), 0, maxIterableSize),
 				makeConvertList(ctyType(attr.NestedObject.Type().TerraformType(ctx))),
 			)
 		case schema.SetNestedAttribute:
 			return rapid.Map(
-				rapid.SliceOfDistinct(g.nestedObject(attr.NestedObject), valueID),
+				rapid.SliceOfNDistinct(g.nestedObject(attr.NestedObject), 0, maxIterableSize, valueID),
 				makeConvertSet(ctyType(attr.NestedObject.Type().TerraformType(ctx))),
 			)
 		default:
@@ -258,19 +260,19 @@ func baseAttr(typ tftypes.Type) *rapid.Generator[value] {
 	case typ.Is(tftypes.Map{}):
 		elemType := typ.(tftypes.Map).ElementType
 		return rapid.Map(
-			rapid.MapOf(rapid.String(), baseAttr(elemType)),
+			rapid.MapOfN(rapid.String(), baseAttr(elemType), 0, maxIterableSize),
 			makeConvertMap(ctyType(elemType)),
 		)
 	case typ.Is(tftypes.List{}):
 		elemType := typ.(tftypes.List).ElementType
 		return rapid.Map(
-			rapid.SliceOf(baseAttr(elemType)),
+			rapid.SliceOfN(baseAttr(elemType), 0, maxIterableSize),
 			makeConvertList(ctyType(elemType)),
 		)
 	case typ.Is(tftypes.Set{}):
 		elemType := typ.(tftypes.Set).ElementType
 		return rapid.Map(
-			rapid.SliceOfDistinct(baseAttr(elemType), valueID),
+			rapid.SliceOfNDistinct(baseAttr(elemType), 0, maxIterableSize, valueID),
 			makeConvertSet(ctyType(elemType)),
 		)
 	default:

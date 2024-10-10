@@ -21,20 +21,26 @@ import (
 	"pgregory.net/rapid"
 )
 
-const tfIdentifierRegexp = "[-a-z_][-a-z_0-9]*"
-const defaultDepth = 5
+const tfIdentifierRegexp = "[a-z_][a-z_0-9]*"
+const defaultDepth = 3
 
 func Schema() *rapid.Generator[schema.Schema] {
 	return rapid.Custom(func(t *rapid.T) schema.Schema {
 		// We need to generate a set of attributes and blocks, all with non-overlapping names.
 		names := attrAndBlockNames().Draw(t, "names")
-		return schema.Schema{
+		s := schema.Schema{
 			Attributes:          attributes(names.attr, defaultDepth).Draw(t, "attributes"),
 			Blocks:              blocks(names.block, defaultDepth).Draw(t, "blocks"),
 			Description:         rapid.String().Draw(t, "description"),
 			MarkdownDescription: rapid.String().Draw(t, "markdown description"),
 			DeprecationMessage:  rapid.String().Draw(t, "deprecation message"),
 		}
+
+		if diags := s.Validate(); diags.HasError() {
+			t.Fatalf("Invalid schema generated: %#v", diags)
+		}
+
+		return s
 	})
 }
 
@@ -86,12 +92,8 @@ func castToAttribute[T schema.Attribute](v T) schema.Attribute { return v }
 func boolAttr() *rapid.Generator[schema.BoolAttribute] {
 	return rapid.Custom(func(t *rapid.T) schema.BoolAttribute {
 
-		var optional bool
 		required := rapid.Bool().Draw(t, "required")
-		if !required {
-			optional = rapid.Bool().Draw(t, "optional")
-		}
-
+		optional := !required
 		return schema.BoolAttribute{
 			Required:            required,
 			Optional:            optional,
@@ -108,12 +110,8 @@ func boolAttr() *rapid.Generator[schema.BoolAttribute] {
 func float64Attr() *rapid.Generator[schema.Float64Attribute] {
 	return rapid.Custom(func(t *rapid.T) schema.Float64Attribute {
 
-		var optional bool
 		required := rapid.Bool().Draw(t, "required")
-		if !required {
-			optional = rapid.Bool().Draw(t, "optional")
-		}
-
+		optional := !required
 		return schema.Float64Attribute{
 			Required:            required,
 			Optional:            optional,
@@ -130,12 +128,8 @@ func float64Attr() *rapid.Generator[schema.Float64Attribute] {
 func int64Attr() *rapid.Generator[schema.Int64Attribute] {
 	return rapid.Custom(func(t *rapid.T) schema.Int64Attribute {
 
-		var optional bool
 		required := rapid.Bool().Draw(t, "required")
-		if !required {
-			optional = rapid.Bool().Draw(t, "optional")
-		}
-
+		optional := !required
 		return schema.Int64Attribute{
 			Required:            required,
 			Optional:            optional,
@@ -152,12 +146,8 @@ func int64Attr() *rapid.Generator[schema.Int64Attribute] {
 func numberAttr() *rapid.Generator[schema.NumberAttribute] {
 	return rapid.Custom(func(t *rapid.T) schema.NumberAttribute {
 
-		var optional bool
 		required := rapid.Bool().Draw(t, "required")
-		if !required {
-			optional = rapid.Bool().Draw(t, "optional")
-		}
-
+		optional := !required
 		return schema.NumberAttribute{
 			Required:            required,
 			Optional:            optional,
@@ -174,12 +164,8 @@ func numberAttr() *rapid.Generator[schema.NumberAttribute] {
 func stringAttr() *rapid.Generator[schema.StringAttribute] {
 	return rapid.Custom(func(t *rapid.T) schema.StringAttribute {
 
-		var optional bool
 		required := rapid.Bool().Draw(t, "required")
-		if !required {
-			optional = rapid.Bool().Draw(t, "optional")
-		}
-
+		optional := !required
 		return schema.StringAttribute{
 			Required:            required,
 			Optional:            optional,
@@ -209,12 +195,8 @@ func complexAttributes(depth int) []*rapid.Generator[schema.Attribute] {
 func listAttr(depth int) *rapid.Generator[schema.ListAttribute] {
 	return rapid.Custom(func(t *rapid.T) schema.ListAttribute {
 
-		var optional bool
 		required := rapid.Bool().Draw(t, "required")
-		if !required {
-			optional = rapid.Bool().Draw(t, "optional")
-		}
-
+		optional := !required
 		return schema.ListAttribute{
 			ElementType:         attrType(depth-1).Draw(t, "ElementType"),
 			Required:            required,
@@ -232,12 +214,8 @@ func listAttr(depth int) *rapid.Generator[schema.ListAttribute] {
 func listNestedAttr(depth int) *rapid.Generator[schema.ListNestedAttribute] {
 	return rapid.Custom(func(t *rapid.T) schema.ListNestedAttribute {
 
-		var optional bool
 		required := rapid.Bool().Draw(t, "required")
-		if !required {
-			optional = rapid.Bool().Draw(t, "optional")
-		}
-
+		optional := !required
 		return schema.ListNestedAttribute{
 			NestedObject:        nestedAttributeObject(depth-1).Draw(t, "NestedObject"),
 			Required:            required,
@@ -255,12 +233,8 @@ func listNestedAttr(depth int) *rapid.Generator[schema.ListNestedAttribute] {
 func mapAttr(depth int) *rapid.Generator[schema.MapAttribute] {
 	return rapid.Custom(func(t *rapid.T) schema.MapAttribute {
 
-		var optional bool
 		required := rapid.Bool().Draw(t, "required")
-		if !required {
-			optional = rapid.Bool().Draw(t, "optional")
-		}
-
+		optional := !required
 		return schema.MapAttribute{
 			ElementType:         attrType(depth-1).Draw(t, "ElementType"),
 			Required:            required,
@@ -278,12 +252,8 @@ func mapAttr(depth int) *rapid.Generator[schema.MapAttribute] {
 func mapNestedAttr(depth int) *rapid.Generator[schema.MapNestedAttribute] {
 	return rapid.Custom(func(t *rapid.T) schema.MapNestedAttribute {
 
-		var optional bool
 		required := rapid.Bool().Draw(t, "required")
-		if !required {
-			optional = rapid.Bool().Draw(t, "optional")
-		}
-
+		optional := !required
 		return schema.MapNestedAttribute{
 			NestedObject:        nestedAttributeObject(depth-1).Draw(t, "NestedObject"),
 			Required:            required,
@@ -301,12 +271,8 @@ func mapNestedAttr(depth int) *rapid.Generator[schema.MapNestedAttribute] {
 func setAttr(depth int) *rapid.Generator[schema.SetAttribute] {
 	return rapid.Custom(func(t *rapid.T) schema.SetAttribute {
 
-		var optional bool
 		required := rapid.Bool().Draw(t, "required")
-		if !required {
-			optional = rapid.Bool().Draw(t, "optional")
-		}
-
+		optional := !required
 		return schema.SetAttribute{
 			ElementType:         attrType(depth-1).Draw(t, "ElementType"),
 			Required:            required,
@@ -324,12 +290,8 @@ func setAttr(depth int) *rapid.Generator[schema.SetAttribute] {
 func setNestedAttr(depth int) *rapid.Generator[schema.SetNestedAttribute] {
 	return rapid.Custom(func(t *rapid.T) schema.SetNestedAttribute {
 
-		var optional bool
 		required := rapid.Bool().Draw(t, "required")
-		if !required {
-			optional = rapid.Bool().Draw(t, "optional")
-		}
-
+		optional := !required
 		return schema.SetNestedAttribute{
 			NestedObject:        nestedAttributeObject(depth-1).Draw(t, "NestedObject"),
 			Required:            required,
@@ -347,12 +309,8 @@ func setNestedAttr(depth int) *rapid.Generator[schema.SetNestedAttribute] {
 func objectAttr(depth int) *rapid.Generator[schema.ObjectAttribute] {
 	return rapid.Custom(func(t *rapid.T) schema.ObjectAttribute {
 
-		var optional bool
 		required := rapid.Bool().Draw(t, "required")
-		if !required {
-			optional = rapid.Bool().Draw(t, "optional")
-		}
-
+		optional := !required
 		return schema.ObjectAttribute{
 			AttributeTypes:      attrObjectType(depth-1).Draw(t, "AttributeTypes").AttrTypes,
 			Required:            required,
@@ -370,12 +328,8 @@ func objectAttr(depth int) *rapid.Generator[schema.ObjectAttribute] {
 func singleNestedAttr(depth int) *rapid.Generator[schema.SingleNestedAttribute] {
 	return rapid.Custom(func(t *rapid.T) schema.SingleNestedAttribute {
 
-		var optional bool
 		required := rapid.Bool().Draw(t, "required")
-		if !required {
-			optional = rapid.Bool().Draw(t, "optional")
-		}
-
+		optional := !required
 		return schema.SingleNestedAttribute{
 			Attributes:          nestedAttributeObject(depth-1).Draw(t, "Attributes").Attributes,
 			CustomType:          nil, // We are omitting custom types for now.
@@ -431,10 +385,10 @@ func listNestedBlock(depth int) *rapid.Generator[schema.ListNestedBlock] {
 	return rapid.Custom(func(t *rapid.T) schema.ListNestedBlock {
 		return schema.ListNestedBlock{
 			NestedObject:        nestedBlockObject(depth-1).Draw(t, "NestedObject"),
-			CustomType:          nil, // We are omitting custom types for now.
 			Description:         rapid.String().Draw(t, "description"),
 			MarkdownDescription: rapid.String().Draw(t, "markdown description"),
 			DeprecationMessage:  rapid.String().Draw(t, "deprecation message"),
+			CustomType:          nil, // We are omitting custom types for now.
 			Validators:          nil, // We are omitting validators here
 		}
 	})
@@ -444,10 +398,10 @@ func setNestedBlock(depth int) *rapid.Generator[schema.SetNestedBlock] {
 	return rapid.Custom(func(t *rapid.T) schema.SetNestedBlock {
 		return schema.SetNestedBlock{
 			NestedObject:        nestedBlockObject(depth-1).Draw(t, "NestedObject"),
-			CustomType:          nil, // We are omitting custom types for now.
 			Description:         rapid.String().Draw(t, "description"),
 			MarkdownDescription: rapid.String().Draw(t, "markdown description"),
 			DeprecationMessage:  rapid.String().Draw(t, "deprecation message"),
+			CustomType:          nil, // We are omitting custom types for now.
 			Validators:          nil, // We are omitting validators here
 		}
 	})
