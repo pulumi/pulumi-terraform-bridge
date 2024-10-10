@@ -22,11 +22,14 @@ import (
 	"github.com/pulumi/providertest/replay"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/cross-tests"
 	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/testprovider"
+	propProviderSchema "github.com/pulumi/pulumi-terraform-bridge/pf/tests/util/property/pf/schema/provider"
+	propProviderValue "github.com/pulumi/pulumi-terraform-bridge/pf/tests/util/property/pf/value/provider"
 	tfpf "github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/require"
 	"github.com/zclconf/go-cty/cty"
+	"pgregory.net/rapid"
 )
 
 func TestConfigure(t *testing.T) {
@@ -69,6 +72,16 @@ func TestConfigureInvalidTypes(t *testing.T) {
 		map[string]cty.Value{"b": cty.BoolVal(false)},
 		resource.PropertyMap{"b": resource.NewProperty("false")},
 	))
+}
+
+func TestConfigureProperties(t *testing.T) {
+	t.Parallel()
+
+	rapid.Check(t, func(r *rapid.T) {
+		schema := propProviderSchema.Schema().Draw(r, "schema")
+		propProviderValue.WithValue(schema).Draw(r, "value")
+		// crosstests.Configure(t, schema, value.Tf.AsValueMap(), value.Pu)
+	})
 }
 
 // Test interaction of Configure and Create.

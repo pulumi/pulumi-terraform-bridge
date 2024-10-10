@@ -48,6 +48,9 @@ func attrAndBlockNames() *rapid.Generator[struct{ attr, block []string }] {
 }
 
 func attributes(names []string, depth int) *rapid.Generator[map[string]schema.Attribute] {
+	if len(names) == 0 {
+		return rapid.Just[map[string]schema.Attribute](nil)
+	}
 	return rapid.Custom(func(t *rapid.T) map[string]schema.Attribute {
 		m := make(map[string]schema.Attribute, len(names))
 		for _, v := range names {
@@ -90,13 +93,13 @@ func boolAttr() *rapid.Generator[schema.BoolAttribute] {
 		}
 
 		return schema.BoolAttribute{
-			CustomType:          nil, // We are omitting custom types for now.
 			Required:            required,
 			Optional:            optional,
 			Sensitive:           rapid.Bool().Draw(t, "sensitive"),
 			Description:         rapid.String().Draw(t, "description"),
 			MarkdownDescription: rapid.String().Draw(t, "markdown description"),
 			DeprecationMessage:  rapid.String().Draw(t, "deprecation message"),
+			CustomType:          nil, // We are omitting custom types for now.
 			Validators:          nil, // We are omitting validators here
 		}
 	})
@@ -112,13 +115,13 @@ func float64Attr() *rapid.Generator[schema.Float64Attribute] {
 		}
 
 		return schema.Float64Attribute{
-			CustomType:          nil, // We are omitting custom types for now.
 			Required:            required,
 			Optional:            optional,
 			Sensitive:           rapid.Bool().Draw(t, "sensitive"),
 			Description:         rapid.String().Draw(t, "description"),
 			MarkdownDescription: rapid.String().Draw(t, "markdown description"),
 			DeprecationMessage:  rapid.String().Draw(t, "deprecation message"),
+			CustomType:          nil, // We are omitting custom types for now.
 			Validators:          nil, // We are omitting validators here
 		}
 	})
@@ -134,13 +137,13 @@ func int64Attr() *rapid.Generator[schema.Int64Attribute] {
 		}
 
 		return schema.Int64Attribute{
-			CustomType:          nil, // We are omitting custom types for now.
 			Required:            required,
 			Optional:            optional,
 			Sensitive:           rapid.Bool().Draw(t, "sensitive"),
 			Description:         rapid.String().Draw(t, "description"),
 			MarkdownDescription: rapid.String().Draw(t, "markdown description"),
 			DeprecationMessage:  rapid.String().Draw(t, "deprecation message"),
+			CustomType:          nil, // We are omitting custom types for now.
 			Validators:          nil, // We are omitting validators here
 		}
 	})
@@ -156,13 +159,13 @@ func numberAttr() *rapid.Generator[schema.NumberAttribute] {
 		}
 
 		return schema.NumberAttribute{
-			CustomType:          nil, // We are omitting custom types for now.
 			Required:            required,
 			Optional:            optional,
 			Sensitive:           rapid.Bool().Draw(t, "sensitive"),
 			Description:         rapid.String().Draw(t, "description"),
 			MarkdownDescription: rapid.String().Draw(t, "markdown description"),
 			DeprecationMessage:  rapid.String().Draw(t, "deprecation message"),
+			CustomType:          nil, // We are omitting custom types for now.
 			Validators:          nil, // We are omitting validators here
 		}
 	})
@@ -178,13 +181,13 @@ func stringAttr() *rapid.Generator[schema.StringAttribute] {
 		}
 
 		return schema.StringAttribute{
-			CustomType:          nil, // We are omitting custom types for now.
 			Required:            required,
 			Optional:            optional,
 			Sensitive:           rapid.Bool().Draw(t, "sensitive"),
 			Description:         rapid.String().Draw(t, "description"),
 			MarkdownDescription: rapid.String().Draw(t, "markdown description"),
 			DeprecationMessage:  rapid.String().Draw(t, "deprecation message"),
+			CustomType:          nil, // We are omitting custom types for now.
 			Validators:          nil, // We are omitting validators here
 		}
 	})
@@ -214,13 +217,13 @@ func listAttr(depth int) *rapid.Generator[schema.ListAttribute] {
 
 		return schema.ListAttribute{
 			ElementType:         attrType(depth-1).Draw(t, "ElementType"),
-			CustomType:          nil, // We are omitting custom types for now.
 			Required:            required,
 			Optional:            optional,
 			Sensitive:           rapid.Bool().Draw(t, "sensitive"),
 			Description:         rapid.String().Draw(t, "description"),
 			MarkdownDescription: rapid.String().Draw(t, "markdown description"),
 			DeprecationMessage:  rapid.String().Draw(t, "deprecation message"),
+			CustomType:          nil, // We are omitting custom types for now.
 			Validators:          nil, // We are omitting validators here
 		}
 	})
@@ -237,13 +240,13 @@ func listNestedAttr(depth int) *rapid.Generator[schema.ListNestedAttribute] {
 
 		return schema.ListNestedAttribute{
 			NestedObject:        nestedAttributeObject(depth-1).Draw(t, "NestedObject"),
-			CustomType:          nil, // We are omitting custom types for now.
 			Required:            required,
 			Optional:            optional,
 			Sensitive:           rapid.Bool().Draw(t, "sensitive"),
 			Description:         rapid.String().Draw(t, "description"),
 			MarkdownDescription: rapid.String().Draw(t, "markdown description"),
 			DeprecationMessage:  rapid.String().Draw(t, "deprecation message"),
+			CustomType:          nil, // We are omitting custom types for now.
 			Validators:          nil, // We are omitting validators here
 		}
 	})
@@ -260,13 +263,13 @@ func mapAttr(depth int) *rapid.Generator[schema.MapAttribute] {
 
 		return schema.MapAttribute{
 			ElementType:         attrType(depth-1).Draw(t, "ElementType"),
-			CustomType:          nil, // We are omitting custom types for now.
 			Required:            required,
 			Optional:            optional,
 			Sensitive:           rapid.Bool().Draw(t, "sensitive"),
 			Description:         rapid.String().Draw(t, "description"),
 			MarkdownDescription: rapid.String().Draw(t, "markdown description"),
 			DeprecationMessage:  rapid.String().Draw(t, "deprecation message"),
+			CustomType:          nil, // We are omitting custom types for now.
 			Validators:          nil, // We are omitting validators here
 		}
 	})
@@ -283,13 +286,13 @@ func mapNestedAttr(depth int) *rapid.Generator[schema.MapNestedAttribute] {
 
 		return schema.MapNestedAttribute{
 			NestedObject:        nestedAttributeObject(depth-1).Draw(t, "NestedObject"),
-			CustomType:          nil, // We are omitting custom types for now.
 			Required:            required,
 			Optional:            optional,
 			Sensitive:           rapid.Bool().Draw(t, "sensitive"),
 			Description:         rapid.String().Draw(t, "description"),
 			MarkdownDescription: rapid.String().Draw(t, "markdown description"),
 			DeprecationMessage:  rapid.String().Draw(t, "deprecation message"),
+			CustomType:          nil, // We are omitting custom types for now.
 			Validators:          nil, // We are omitting validators here
 		}
 	})
@@ -306,13 +309,13 @@ func setAttr(depth int) *rapid.Generator[schema.SetAttribute] {
 
 		return schema.SetAttribute{
 			ElementType:         attrType(depth-1).Draw(t, "ElementType"),
-			CustomType:          nil, // We are omitting custom types for now.
 			Required:            required,
 			Optional:            optional,
 			Sensitive:           rapid.Bool().Draw(t, "sensitive"),
 			Description:         rapid.String().Draw(t, "description"),
 			MarkdownDescription: rapid.String().Draw(t, "markdown description"),
 			DeprecationMessage:  rapid.String().Draw(t, "deprecation message"),
+			CustomType:          nil, // We are omitting custom types for now.
 			Validators:          nil, // We are omitting validators here
 		}
 	})
@@ -402,10 +405,10 @@ func nestedAttributeObject(depth int) *rapid.Generator[schema.NestedAttributeObj
 }
 
 func blocks(names []string, depth int) *rapid.Generator[map[string]schema.Block] {
+	if len(names) == 0 || depth < 1 {
+		return rapid.Just[map[string]schema.Block](nil)
+	}
 	return rapid.Custom(func(t *rapid.T) map[string]schema.Block {
-		if depth < 1 {
-			return nil
-		}
 		m := make(map[string]schema.Block, len(names))
 		for _, k := range names {
 			m[k] = block(depth).Draw(t, k)
