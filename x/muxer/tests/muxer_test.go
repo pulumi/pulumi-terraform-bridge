@@ -31,7 +31,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/emptypb"
 
-	"github.com/pulumi/pulumi-terraform-bridge/x/muxer"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/x/muxer"
 )
 
 func TestSimpleDispatch(t *testing.T) {

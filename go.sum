@@ -1936,8 +1936,6 @@ github.com/pulumi/providertest v0.1.2 h1:9pJS9MeNkMyGwyNeHmvh8QqLgJy39Nk2/ym5u7r
 github.com/pulumi/providertest v0.1.2/go.mod h1:GcsqEGgSngwaNOD+kICJPIUQlnA911fGBU8HDlJvVL0=
 github.com/pulumi/pulumi-java/pkg v0.16.1 h1:orHnDWFbpOERwaBLry9f+6nqPX7x0MsrIkaa5QDGAns=
 github.com/pulumi/pulumi-java/pkg v0.16.1/go.mod h1:QH0DihZkWYle9XFc+LJ76m4hUo+fA3RdyaM90pqOaSM=
-github.com/pulumi/pulumi-terraform-bridge/x/muxer v0.0.8 h1:mav2tSitA9BPJPLLahKgepHyYsMzwaTm4cvp0dcTMYw=
-github.com/pulumi/pulumi-terraform-bridge/x/muxer v0.0.8/go.mod h1:qUYk2c9i/yqMGNj9/bQyXpS39BxNDSXYjVN1njnq0zY=
 github.com/pulumi/pulumi-yaml v1.10.3 h1:j5cjPiE32ILmjrWnC1cfZ0MWdqCZ8fg9wlaWk7HOtM4=
 github.com/pulumi/pulumi-yaml v1.10.3/go.mod h1:MFMQXkaUP5YQUKVJ6Z/aagZDl2f8hdU9oGaJfTcMf1Y=
 github.com/pulumi/pulumi/pkg/v3 v3.136.1 h1:zA8aJZ7qI0QgZkBKjjQaYHEcigK6pZfrbfG38imXzWo=
