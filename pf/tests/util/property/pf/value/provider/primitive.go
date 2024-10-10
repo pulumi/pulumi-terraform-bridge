@@ -20,7 +20,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
 	"pgregory.net/rapid"
 )
@@ -61,9 +60,10 @@ func makeConvertMap(elem cty.Type) func(map[string]value) value {
 func convertMap(m map[string]value, elem cty.Type) value {
 	tfMap, puMap := make(map[string]cty.Value, len(m)), make(resource.PropertyMap, len(m))
 	for k, v := range m {
-		contract.Assertf(v.hasValue, "attr values in maps must have values")
 		tfMap[k] = v.Tf
-		puMap[resource.PropertyKey(k)] = v.Pu
+		if v.hasValue {
+			puMap[resource.PropertyKey(k)] = v.Pu
+		}
 	}
 
 	ctyMap := cty.MapValEmpty(elem)
@@ -81,9 +81,11 @@ func convertMap(m map[string]value, elem cty.Type) value {
 func convertObject(m map[string]value) value {
 	tfMap, puMap := make(map[string]cty.Value, len(m)), make(resource.PropertyMap, len(m))
 	for k, v := range m {
-		contract.Assertf(v.hasValue, "attr values in maps must have values")
 		tfMap[k] = v.Tf
-		puMap[resource.PropertyKey(tfbridge.TerraformToPulumiNameV2(k, nil, nil))] = v.Pu // TODO: Correctly handle name conversion
+		if v.hasValue {
+			// TODO: Correctly handle name conversion
+			puMap[resource.PropertyKey(tfbridge.TerraformToPulumiNameV2(k, nil, nil))] = v.Pu
+		}
 	}
 	return value{
 		hasValue: true,
@@ -99,7 +101,6 @@ func makeConvertList(elem cty.Type) func([]value) value {
 func convertList(a []value, elem cty.Type) value {
 	tfArr, puArr := make([]cty.Value, len(a)), make([]resource.PropertyValue, len(a))
 	for i, v := range a {
-		contract.Assertf(v.hasValue, "attr values in slices must have values")
 		tfArr[i] = v.Tf
 		puArr[i] = v.Pu
 	}

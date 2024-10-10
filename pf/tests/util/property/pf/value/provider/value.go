@@ -61,15 +61,17 @@ func WithValue(schema schema.Schema) *rapid.Generator[Value] {
 		ctyM, puM := map[string]cty.Value{}, resource.PropertyMap{}
 
 		for k, s := range schema.Attributes {
-			if v := g.withAttr(s).Draw(t, k); v.hasValue {
-				ctyM[k] = v.Tf
+			v := g.withAttr(s).Draw(t, k)
+			ctyM[k] = v.Tf
+			if v.hasValue {
 				puM[resource.PropertyKey(k)] = v.Pu
 			}
 		}
 
 		for k, b := range schema.Blocks {
-			if v := g.withBlock(b).Draw(t, k); v.hasValue {
-				ctyM[k] = v.Tf
+			v := g.withBlock(b).Draw(t, k)
+			ctyM[k] = v.Tf
+			if v.hasValue {
 				puM[resource.PropertyKey(k)] = v.Pu
 			}
 		}
@@ -91,53 +93,70 @@ func (g generator) withAttr(attr schema.Attribute) *rapid.Generator[value] {
 		return rapid.Just(value{hasValue: false})
 	}
 
-	return rapid.Custom(func(t *rapid.T) value {
-		// optional => we may set the value
-		if attr.IsOptional() && rapid.Bool().Draw(t, "drop optional") {
-			return value{hasValue: false}
+	makeOptional := func(v *rapid.Generator[value]) *rapid.Generator[value] {
+		if attr.IsRequired() {
+			return v
 		}
 
-		// At this point, we have decided to return a value for attr.
+		return rapid.Custom(func(t *rapid.T) value {
+			// optional => we may set the value
+			v := v.Draw(t, "v")
+			if attr.IsOptional() && rapid.Bool().Draw(t, "drop optional") {
+				return value{hasValue: false, Tf: cty.NullVal(v.Tf.Type())}
+			}
+
+			return v
+		})
+	}
+
+	getValue := func() *rapid.Generator[value] {
 		switch attr := attr.(type) {
 
 		// Primitive attributes
 
 		case schema.StringAttribute:
-			return stringVal(t)
-		case schema.Int32Attribute:
-			i := rapid.Int32().Draw(t, "v")
-			return value{
-				hasValue: true,
-				Tf:       cty.NumberIntVal(int64(i)),
-				Pu:       resource.NewProperty(float64(i)),
-			}
-		case schema.Int64Attribute:
-			i := rapid.Int64().Draw(t, "v")
-			return value{
-				hasValue: true,
-				Tf:       cty.NumberIntVal(i),
-				Pu:       resource.NewProperty(float64(i)),
-			}
-		case schema.Float32Attribute:
-			f := rapid.Float32().Draw(t, "v")
-			return value{
-				hasValue: true,
-				Tf:       cty.NumberFloatVal(float64(f)),
-				Pu:       resource.NewProperty(float64(f)),
-			}
-		case schema.Float64Attribute:
-			f := rapid.Float64().Draw(t, "v")
-			return value{
-				hasValue: true,
-				Tf:       cty.NumberFloatVal(f),
-				Pu:       resource.NewProperty(f),
-			}
-
+			return rapid.Custom(stringVal)
 		case schema.NumberAttribute:
-			return numberVal(t)
-
+			return rapid.Custom(numberVal)
 		case schema.BoolAttribute:
-			return boolVal(t)
+			return rapid.Custom(boolVal)
+
+		case schema.Int32Attribute:
+			return rapid.Custom(func(t *rapid.T) value {
+				i := rapid.Int32().Draw(t, "v")
+				return value{
+					hasValue: true,
+					Tf:       cty.NumberIntVal(int64(i)),
+					Pu:       resource.NewProperty(float64(i)),
+				}
+			})
+		case schema.Int64Attribute:
+			return rapid.Custom(func(t *rapid.T) value {
+				i := rapid.Int64().Draw(t, "v")
+				return value{
+					hasValue: true,
+					Tf:       cty.NumberIntVal(i),
+					Pu:       resource.NewProperty(float64(i)),
+				}
+			})
+		case schema.Float32Attribute:
+			return rapid.Custom(func(t *rapid.T) value {
+				f := rapid.Float32().Draw(t, "v")
+				return value{
+					hasValue: true,
+					Tf:       cty.NumberFloatVal(float64(f)),
+					Pu:       resource.NewProperty(float64(f)),
+				}
+			})
+		case schema.Float64Attribute:
+			return rapid.Custom(func(t *rapid.T) value {
+				f := rapid.Float64().Draw(t, "v")
+				return value{
+					hasValue: true,
+					Tf:       cty.NumberFloatVal(f),
+					Pu:       resource.NewProperty(f),
+				}
+			})
 
 		// Complex attributes
 
@@ -146,104 +165,117 @@ func (g generator) withAttr(attr schema.Attribute) *rapid.Generator[value] {
 			return rapid.Map(
 				rapid.MapOf(rapid.String(), baseAttr(elemType)),
 				makeConvertMap(ctyType(elemType)),
-			).Draw(t, "v")
+			)
 
 		case schema.ListAttribute:
 			elemType := attr.ElementType.TerraformType(ctx)
 			return rapid.Map(
 				rapid.SliceOf(baseAttr(elemType)),
 				makeConvertList(ctyType(elemType)),
-			).Draw(t, "v")
+			)
 		case schema.SetAttribute:
 			elemType := attr.ElementType.TerraformType(ctx)
 			return rapid.Map(
 				rapid.SliceOfDistinct(baseAttr(elemType), valueID),
 				makeConvertList(ctyType(elemType)),
-			).Draw(t, "v")
+			)
+
 		case schema.ObjectAttribute:
 			m := make(map[string]value, len(attr.AttributeTypes))
-			for k, a := range attr.AttributeTypes {
-				m[k] = baseAttr(a.TerraformType(ctx)).Draw(t, k)
+			if len(attr.AttributeTypes) == 0 {
+				return rapid.Just(convertObject(m))
 			}
-			return convertObject(m)
+			return rapid.Custom(func(t *rapid.T) value {
+				for k, a := range attr.AttributeTypes {
+					m[k] = baseAttr(a.TerraformType(ctx)).Draw(t, k)
+				}
+				return convertObject(m)
+			})
 
 		// Nested attributes
-
+		case schema.SingleNestedAttribute:
+			m := make(map[string]value, len(attr.Attributes))
+			if len(attr.Attributes) == 0 {
+				return rapid.Just(convertObject(m))
+			}
+			return rapid.Custom(func(t *rapid.T) value {
+				for k, a := range attr.Attributes {
+					m[k] = g.withAttr(a).Draw(t, k)
+				}
+				return convertObject(m)
+			})
 		case schema.MapNestedAttribute:
 			return rapid.Map(
 				rapid.MapOf(rapid.String(), g.nestedObject(attr.NestedObject)),
 				makeConvertMap(ctyType(attr.NestedObject.Type().TerraformType(ctx))),
-			).Draw(t, "v")
+			)
 		case schema.ListNestedAttribute:
 			return rapid.Map(
 				rapid.SliceOf(g.nestedObject(attr.NestedObject)),
 				makeConvertList(ctyType(attr.NestedObject.Type().TerraformType(ctx))),
-			).Draw(t, "v")
+			)
 		case schema.SetNestedAttribute:
 			return rapid.Map(
 				rapid.SliceOfDistinct(g.nestedObject(attr.NestedObject), valueID),
 				makeConvertList(ctyType(attr.NestedObject.Type().TerraformType(ctx))),
-			).Draw(t, "v")
+			)
 		default:
 			panic(fmt.Sprintf("Unknown schema.Attribute type %T", attr))
 		}
-	})
+	}
+
+	return makeOptional(getValue())
 }
 
 func baseAttr(typ tftypes.Type) *rapid.Generator[value] {
-
-	// Objects might be empty, which would draw no entropy.
-	//
-	// We need to handle this outside of the rapid.Custom so all calls to rapid.Custom
-	// draw entropy.
-	if typ.Is(tftypes.Object{}) {
+	switch {
+	case typ.Is(tftypes.Object{}):
 		o := typ.(tftypes.Object)
-		m := make(map[string]value, len(o.AttributeTypes))
-		if len(m) > 0 {
-			return rapid.Just(convertObject(m))
+		if len(o.AttributeTypes) == 0 {
+			return rapid.Just(value{
+				Tf:       cty.EmptyObjectVal,
+				hasValue: false,
+			})
 		}
 		return rapid.Custom(func(t *rapid.T) value {
+			m := make(map[string]value, len(o.AttributeTypes))
 			for k, a := range o.AttributeTypes {
 				if _, isOptional := o.OptionalAttributes[k]; isOptional &&
 					rapid.Bool().Draw(t, "ignore") {
-					continue
+					m[k] = value{Tf: cty.NullVal(ctyType(a))}
+				} else {
+					m[k] = baseAttr(a).Draw(t, k)
 				}
-				m[k] = baseAttr(a).Draw(t, k)
 			}
 			return convertObject(m)
 		})
+	case typ.Is(tftypes.Bool):
+		return rapid.Custom(boolVal)
+	case typ.Is(tftypes.Number):
+		return rapid.Custom(numberVal)
+	case typ.Is(tftypes.String):
+		return rapid.Custom(stringVal)
+	case typ.Is(tftypes.Map{}):
+		elemType := typ.(tftypes.Map).ElementType
+		return rapid.Map(
+			rapid.MapOf(rapid.String(), baseAttr(elemType)),
+			makeConvertMap(ctyType(elemType)),
+		)
+	case typ.Is(tftypes.List{}):
+		elemType := typ.(tftypes.List).ElementType
+		return rapid.Map(
+			rapid.SliceOf(baseAttr(elemType)),
+			makeConvertList(ctyType(elemType)),
+		)
+	case typ.Is(tftypes.Set{}):
+		elemType := typ.(tftypes.Set).ElementType
+		return rapid.Map(
+			rapid.SliceOfDistinct(baseAttr(elemType), valueID),
+			makeConvertList(ctyType(elemType)),
+		)
+	default:
+		panic(fmt.Sprintf("Unknown tftypes.Type: %v", typ))
 	}
-
-	return rapid.Custom(func(t *rapid.T) value {
-		switch {
-		case typ.Is(tftypes.Bool):
-			return boolVal(t)
-		case typ.Is(tftypes.Number):
-			return numberVal(t)
-		case typ.Is(tftypes.String):
-			return stringVal(t)
-		case typ.Is(tftypes.Map{}):
-			elemType := typ.(tftypes.Map).ElementType
-			return rapid.Map(
-				rapid.MapOf(rapid.String(), baseAttr(elemType)),
-				makeConvertMap(ctyType(elemType)),
-			).Draw(t, "v")
-		case typ.Is(tftypes.List{}):
-			elemType := typ.(tftypes.List).ElementType
-			return rapid.Map(
-				rapid.SliceOf(baseAttr(elemType)),
-				makeConvertList(ctyType(elemType)),
-			).Draw(t, "v")
-		case typ.Is(tftypes.Set{}):
-			elemType := typ.(tftypes.Set).ElementType
-			return rapid.Map(
-				rapid.SliceOfDistinct(baseAttr(elemType), valueID),
-				makeConvertList(ctyType(elemType)),
-			).Draw(t, "v")
-		default:
-			panic(fmt.Sprintf("Unknown tftypes.Type: %v", typ))
-		}
-	})
 }
 
 func (g generator) nestedObject(obj schema.NestedAttributeObject) *rapid.Generator[value] {

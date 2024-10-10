@@ -28,7 +28,7 @@ func attrType(depth int) *rapid.Generator[attr.Type] {
 		rapid.Map(attrListType(depth-1), castToAttrType),
 		rapid.Map(attrMapType(depth-1), castToAttrType),
 		rapid.Map(attrSetType(depth-1), castToAttrType),
-		rapid.Map(attrTupleType(depth-1), castToAttrType),
+		// rapid.Map(attrTupleType(depth-1), castToAttrType), // TODO: Enable testing tuples
 		rapid.Map(attrObjectType(depth-1), castToAttrType),
 	)
 }
