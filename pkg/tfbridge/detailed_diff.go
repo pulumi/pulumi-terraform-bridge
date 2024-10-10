@@ -218,6 +218,36 @@ func (differ detailedDiffer) isForceNew(pair propertyPath) bool {
 	return isForceNew(tfs, ps)
 }
 
+func (differ detailedDiffer) calculateSetHashes(path propertyPath, listVal resource.PropertyValue) map[int]int {
+	identities := make(map[int]int)
+
+	tfs, ps, err := differ.lookupSchemas(path)
+	if err != nil {
+		return nil
+	}
+
+	convertedVal, err := makeSingleTerraformInput(context.Background(), path.String(), listVal, tfs, ps)
+	if err != nil {
+		return nil
+	}
+
+	if convertedVal == nil {
+		return nil
+	}
+
+	convertedListVal, ok := convertedVal.([]interface{})
+	if !ok {
+		return nil
+	}
+
+	// Calculate the identity of each element
+	for i, newElem := range convertedListVal {
+		hash := tfs.SetHash(newElem)
+		identities[hash] = i
+	}
+	return identities
+}
+
 // We do not short-circuit detailed diffs when comparing non-nil properties against nil ones. The reason for that is
 // that a replace might be triggered by a ForceNew inside a nested property of a non-ForceNew property. We instead
 // always walk the full tree even when comparing against a nil property. We then later do a simplification step for
@@ -276,8 +306,7 @@ func (differ detailedDiffer) makePropDiff(
 	case shim.TypeList:
 		return differ.makeListDiff(path, old, new)
 	case shim.TypeSet:
-		// TODO[pulumi/pulumi-terraform-bridge#2200]: Implement set diffing
-		return differ.makeListDiff(path, old, new)
+		return differ.makeSetDiff(path, old, new)
 	case shim.TypeMap:
 		// Note that TF objects are represented as maps when returned by LookupSchemas
 		return differ.makeMapDiff(path, old, new)
@@ -313,6 +342,65 @@ func (differ detailedDiffer) makeListDiff(
 		elemKey := path.Index(i)
 
 		d := differ.makePropDiff(elemKey, elem(oldList), elem(newList))
+		for subKey, subDiff := range d {
+			diff[subKey] = subDiff
+		}
+	}
+
+	simplerDiff, isSimplified := differ.simplifyDiff(diff, path, old, new)
+	if isSimplified {
+		return simplerDiff
+	}
+
+	return diff
+}
+
+func (differ detailedDiffer) makeSetDiff(
+	path propertyPath, old, new resource.PropertyValue,
+) map[detailedDiffKey]*pulumirpc.PropertyDiff {
+	diff := make(map[detailedDiffKey]*pulumirpc.PropertyDiff)
+	oldList := []resource.PropertyValue{}
+	newList := []resource.PropertyValue{}
+	if isPresent(old) && old.IsArray() {
+		oldList = old.ArrayValue()
+	}
+	if isPresent(new) && new.IsArray() && !new.ContainsUnknowns() {
+		newList = new.ArrayValue()
+	}
+
+	oldIdentities := differ.calculateSetHashes(path, resource.NewArrayProperty(oldList))
+	newIdentities := differ.calculateSetHashes(path, resource.NewArrayProperty(newList))
+
+	changedIndices := make(map[int]struct{})
+	oldChangedIndices := make(map[int]struct{})
+	newChangedIndices := make(map[int]struct{})
+	for hash, oldIndex := range oldIdentities {
+		if _, newOk := newIdentities[hash]; !newOk {
+			changedIndices[oldIndex] = struct{}{}
+			oldChangedIndices[oldIndex] = struct{}{}
+		}
+	}
+	for hash, newIndex := range newIdentities {
+		if _, oldOk := oldIdentities[hash]; !oldOk {
+			changedIndices[newIndex] = struct{}{}
+			newChangedIndices[newIndex] = struct{}{}
+		}
+	}
+
+	// TODO: Some calculation here to determine if we should return an update for the whole thing
+	// if the list is too shuffled to return a meaningful element-by-element diff
+	// if len(changedIndices) + abs(len(oldList) - len(newList)) > 
+
+	for index := range changedIndices {
+		oldEl := resource.NewNullProperty()
+		if _, oldChanged := oldChangedIndices[index]; oldChanged {
+			oldEl = oldList[index]
+		}
+		newEl := resource.NewNullProperty()
+		if _, newChanged := newChangedIndices[index]; newChanged {
+			newEl = newList[index]
+		}
+		d := differ.makePropDiff(path.Index(index), oldEl, newEl)
 		for subKey, subDiff := range d {
 			diff[subKey] = subDiff
 		}
