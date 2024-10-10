@@ -22,9 +22,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi-terraform-bridge/pf"
-	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/runtypes"
-	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/testprovider"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pf"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pf/internal/runtypes"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pf/tests/internal/testprovider"
 )
 
 func TestNestedType(t *testing.T) {

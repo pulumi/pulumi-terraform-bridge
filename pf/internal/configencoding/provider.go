@@ -20,7 +20,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 
-	pl "github.com/pulumi/pulumi-terraform-bridge/pf/internal/plugin"
+	pl "github.com/pulumi/pulumi-terraform-bridge/v3/pf/internal/plugin"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 

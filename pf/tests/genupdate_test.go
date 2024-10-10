@@ -18,7 +18,7 @@ import (
 	"testing"
 
 	testutils "github.com/pulumi/providertest/replay"
-	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/testprovider"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pf/tests/internal/testprovider"
 	"github.com/stretchr/testify/require"
 )
 

@@ -14,7 +14,7 @@ Framework](https://github.com/hashicorp/terraform-plugin-sdk?tab=readme-ov-file)
 
 1. Find the tfgen binary `main` that calls `tfgen.Main` from
    `github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen` and update it to call
-   `tfgen.MainWithMuxer` from `github.com/pulumi/pulumi-terraform-bridge/pf/tfgen`.
+   `tfgen.MainWithMuxer` from `github.com/pulumi/pulumi-terraform-bridge/v3/pf/tfgen`.
 
    Note that the extra version parameter is removed from `tfgen.Main`, so this code:
 
@@ -29,7 +29,7 @@ Framework](https://github.com/hashicorp/terraform-plugin-sdk?tab=readme-ov-file)
    Becomes:
 
    ``` go
-   import "github.com/pulumi/pulumi-terraform-bridge/pf/tfgen"
+   import "github.com/pulumi/pulumi-terraform-bridge/v3/pf/tfgen"
 
    ...
 
@@ -39,7 +39,7 @@ Framework](https://github.com/hashicorp/terraform-plugin-sdk?tab=readme-ov-file)
 1. Find the provider binary `main` that calls
    [`"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge".Main`](https://pkg.go.dev/github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge#Main)
    and update it to
-   [`"github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge".MainWithMuxer`](https://pkg.go.dev/github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge#MainWithMuxer).
+   [`"github.com/pulumi/pulumi-terraform-bridge/v3/pf/tfbridge".MainWithMuxer`](https://pkg.go.dev/github.com/pulumi/pulumi-terraform-bridge/v3/pf/tfbridge#MainWithMuxer).
 
    Note the signature changes: version parameter is removed, and `Context` is now required, so this
    code:
@@ -55,7 +55,7 @@ Framework](https://github.com/hashicorp/terraform-plugin-sdk?tab=readme-ov-file)
      Becomes:
 
     ```go
-    import "github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
+    import "github.com/pulumi/pulumi-terraform-bridge/v3/pf/tfbridge"
 
     ...
 
@@ -67,7 +67,7 @@ Framework](https://github.com/hashicorp/terraform-plugin-sdk?tab=readme-ov-file)
    (typically in `provider/resources.go`), changing the embedded
    `"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge".ProviderInfo.P` to the
    result of calling
-   [`"github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge".MuxShimWithPF`](https://pkg.go.dev/github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge#MuxShimWithPF).
+   [`"github.com/pulumi/pulumi-terraform-bridge/v3/pf/tfbridge".MuxShimWithPF`](https://pkg.go.dev/github.com/pulumi/pulumi-terraform-bridge/v3/pf/tfbridge#MuxShimWithPF).
 
    This function combines the original SDK based provider with the new PF based provider, so this code:
 
@@ -106,7 +106,7 @@ Framework](https://github.com/hashicorp/terraform-plugin-sdk?tab=readme-ov-file)
     ```go
     import (
     	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
-       	pfbridge "github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
+       	pfbridge "github.com/pulumi/pulumi-terraform-bridge/v3/pf/tfbridge"
        	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 
         "github.com/${PROVIDER_ORG}/terraform-provider-${PROVIDER_NAME}"

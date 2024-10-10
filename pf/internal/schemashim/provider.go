@@ -23,9 +23,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"github.com/pulumi/pulumi-terraform-bridge/pf"
-	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/pfutils"
-	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/runtypes"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pf"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pf/internal/pfutils"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pf/internal/runtypes"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 

@@ -24,11 +24,11 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
-	"github.com/pulumi/pulumi-terraform-bridge/pf"
-	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/schemashim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pf"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pf/internal/schemashim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
-	"github.com/pulumi/pulumi-terraform-bridge/x/muxer"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/x/muxer"
 )
 
 func SchemaOnlyPluginFrameworkProvider(ctx context.Context, provider provider.Provider) shim.Provider {

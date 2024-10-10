@@ -21,7 +21,7 @@ import (
 	"unicode"
 
 	tlsshim "github.com/hashicorp/terraform-provider-tls/shim"
-	tfpf "github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
+	tfpf "github.com/pulumi/pulumi-terraform-bridge/v3/pf/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )

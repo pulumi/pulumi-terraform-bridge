@@ -24,10 +24,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-
 	"github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"sourcegraph.com/sourcegraph/appdash"
 
@@ -35,6 +34,9 @@ import (
 )
 
 func TestBasicProgram(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping on Windows due to a PATH setup issue where the test cannot find pulumi-resource-testbridge.exe")
 	}
@@ -54,6 +56,9 @@ func TestBasicProgram(t *testing.T) {
 }
 
 func TestUpdateProgram(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping on Windows due to a PATH setup issue where the test cannot find pulumi-resource-testbridge.exe")
 	}
@@ -93,6 +98,9 @@ func TestUpdateProgram(t *testing.T) {
 }
 
 func TestDefaultInfo(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping on Windows due to a PATH setup issue where the test cannot find pulumi-resource-testbridge.exe")
 	}
@@ -112,6 +120,9 @@ func TestDefaultInfo(t *testing.T) {
 }
 
 func TestPrivateState(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping on Windows due to a PATH setup issue where the test cannot find pulumi-resource-testbridge.exe")
 	}
@@ -137,6 +148,9 @@ func TestPrivateState(t *testing.T) {
 }
 
 func TestAutoName(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping on Windows due to a PATH setup issue where the test cannot find pulumi-resource-testbridge.exe")
 	}
@@ -154,6 +168,9 @@ func TestAutoName(t *testing.T) {
 
 // Test skip_metadata_api_check example from pulumi-aws that is unusual in remapping a string prop to boolean.
 func TestRegressSMAC(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping on Windows due to a PATH setup issue where the test cannot find pulumi-resource-testbridge.exe")
 	}
@@ -170,6 +187,9 @@ func TestRegressSMAC(t *testing.T) {
 }
 
 func TestTracePropagation(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping on Windows due to a PATH setup issue where the test cannot find pulumi-resource-testbridge.exe")
 	}
@@ -217,6 +237,9 @@ func TestTracePropagation(t *testing.T) {
 // Note that random_bytes is an interesting resource that does not specify an ID where Pulumi requires it. Add a test
 // for it to make sure this continues working.
 func TestResourceWithoutID(t *testing.T) {
+	if testing.Short() {
+		t.Skip()
+	}
 	wd, err := os.Getwd()
 	assert.NoError(t, err)
 

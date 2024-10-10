@@ -27,11 +27,11 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
-	"github.com/pulumi/pulumi-terraform-bridge/pf"
-	pfmuxer "github.com/pulumi/pulumi-terraform-bridge/pf/internal/muxer"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pf"
+	pfmuxer "github.com/pulumi/pulumi-terraform-bridge/v3/pf/internal/muxer"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
-	"github.com/pulumi/pulumi-terraform-bridge/x/muxer"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/x/muxer"
 )
 
 // Implements main() or a bridged Pulumi plugin, complete with argument parsing.

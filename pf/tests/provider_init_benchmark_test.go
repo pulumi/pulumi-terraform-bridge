@@ -2,8 +2,8 @@ package tfbridgetests
 
 import (
 	"fmt"
-	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/testprovider"
-	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/testprovider/sdkv2randomprovider"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pf/tests/internal/testprovider"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pf/tests/internal/testprovider/sdkv2randomprovider"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"testing"
 )

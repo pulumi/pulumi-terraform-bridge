@@ -22,7 +22,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 
-	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/runtypes"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pf/internal/runtypes"
 )
 
 func queryProviderMetadata(ctx context.Context, prov provider.Provider) *provider.MetadataResponse {
