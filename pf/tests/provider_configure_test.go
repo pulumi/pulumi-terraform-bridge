@@ -79,8 +79,8 @@ func TestConfigureProperties(t *testing.T) {
 
 	rapid.Check(t, func(r *rapid.T) {
 		schema := propProviderSchema.Schema().Draw(r, "schema")
-		propProviderValue.WithValue(schema).Draw(r, "value")
-		// crosstests.Configure(t, schema, value.Tf.AsValueMap(), value.Pu)
+		value := propProviderValue.WithValue(schema).Draw(r, "value")
+		crosstests.Configure(t, schema, value.Tf.AsValueMap(), value.Pu)
 	})
 }
 
