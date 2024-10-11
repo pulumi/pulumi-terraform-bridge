@@ -1169,14 +1169,8 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 			changes = pulumirpc.DiffResponse_DIFF_SOME
 		}
 
-		oldInputs, err := plugin.UnmarshalProperties(req.GetOldInputs(),
-			plugin.MarshalOptions{Label: fmt.Sprintf("%s.oldInputs", label), SkipNulls: true})
-		if err != nil {
-			return nil, err
-		}
-
 		detailedDiff, err = makeDetailedDiffV2(
-			ctx, schema, fields, res.TF, p.tf, state, diff, assets, p.supportsSecrets, oldInputs, news,
+			ctx, schema, fields, res.TF, p.tf, state, diff, assets, p.supportsSecrets, olds, news,
 		)
 
 		if err != nil {
