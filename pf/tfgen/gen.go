@@ -18,12 +18,11 @@ import (
 	pkgpf "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfgen"
 )
 
-// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfgen.GenerateSchemaOptions instead.
+// TODO(Deprecated): Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfgen.GenerateSchemaOptions instead.
 type GenerateSchemaOptions = pkgpf.GenerateSchemaOptions
 
-// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfgen.GenerateSchemaResult instead.
+// TODO(Deprecated): Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfgen.GenerateSchemaResult instead.
 type GenerateSchemaResult = pkgpf.GenerateSchemaResult
 
-// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfgen.GenerateSchema instead.
+// TODO(Deprecated): Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfgen.GenerateSchema instead.
 var GenerateSchema = pkgpf.GenerateSchema
-

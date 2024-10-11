@@ -18,8 +18,8 @@ import (
 	pkgx "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/x/muxer"
 )
 
-// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/x/muxer.Main instead.
+// TODO(Deprecated): Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/x/muxer.Main instead.
 type Main = pkgx.Main
 
-// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/x/muxer.Endpoint instead.
+// TODO(Deprecated): Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/x/muxer.Endpoint instead.
 type Endpoint = pkgx.Endpoint

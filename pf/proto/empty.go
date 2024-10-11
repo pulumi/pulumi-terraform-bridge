@@ -18,5 +18,5 @@ import (
 	pkgpf "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/proto"
 )
 
-// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/proto.Empty instead.
+// TODO(Deprecated): Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/proto.Empty instead.
 var Empty = pkgpf.Empty

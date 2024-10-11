@@ -18,8 +18,8 @@ import (
 	pkgpf "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfgen"
 )
 
-// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfgen.Main instead.
+// TODO(Deprecated): Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfgen.Main instead.
 var Main = pkgpf.Main
 
-// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfgen.MainWithMuxer instead.
+// TODO(Deprecated): Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfgen.MainWithMuxer instead.
 var MainWithMuxer = pkgpf.MainWithMuxer

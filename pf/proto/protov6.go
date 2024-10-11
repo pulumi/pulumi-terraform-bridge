@@ -24,8 +24,8 @@ import (
 	pkgpf "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/proto"
 )
 
-// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/proto.New instead.
+// TODO(Deprecated): Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/proto.New instead.
 var New = pkgpf.New
 
-// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/proto.Provider instead.
+// TODO(Deprecated): Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/proto.Provider instead.
 type Provider = pkgpf.Provider

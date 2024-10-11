@@ -16,11 +16,11 @@ package testing
 
 import pkgtesting "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/x/testing"
 
-// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/x/testing.Replay instead.
+// TODO(Deprecated): Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/x/testing.Replay instead.
 var Replay = pkgtesting.Replay
 
-// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/x/testing.ReplaySequence instead.
+// TODO(Deprecated): Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/x/testing.ReplaySequence instead.
 var ReplaySequence = pkgtesting.ReplaySequence
 
-// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/x/testing.ReplayFile instead.
+// TODO(Deprecated): Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/x/testing.ReplayFile instead.
 var ReplayFile = pkgtesting.ReplayFile

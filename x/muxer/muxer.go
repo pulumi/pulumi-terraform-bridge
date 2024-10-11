@@ -16,14 +16,14 @@ package muxer
 
 import pkgx "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/x/muxer"
 
-// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/x/muxer.SchemaVersion instead.
+// TODO(Deprecated): Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/x/muxer.SchemaVersion instead.
 const SchemaVersion = pkgx.SchemaVersion
 
-// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/x/muxer.GetMappingArgs instead.
+// TODO(Deprecated): Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/x/muxer.GetMappingArgs instead.
 type GetMappingArgs = pkgx.GetMappingArgs
 
-// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/x/muxer.GetMappingResponse instead.
+// TODO(Deprecated): Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/x/muxer.GetMappingResponse instead.
 type GetMappingResponse = pkgx.GetMappingResponse
 
-// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/x/muxer.MultiMappingHandler instead.
+// TODO(Deprecated): Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/x/muxer.MultiMappingHandler instead.
 type MultiMappingHandler = pkgx.MultiMappingHandler
