@@ -4265,4 +4265,6 @@ func TestSetElementOrderInState(t *testing.T) {
 	})
 }
 
-//TODO: Test unknown sets, unknowns elements in sets and nested unknowns in set elements.
+// TODO: Test unknown sets, unknowns elements in sets and nested unknowns in set elements.
+// TODO: Test sets with defaults and nested defaults
+// TODO: Test computed sets, computed elements and nested computed elements
