@@ -400,7 +400,9 @@ func makeDetailedDiffV2(
 	if err != nil {
 		return nil, err
 	}
-	props, err := MakeTerraformResult(ctx, prov, proposedState, tfs, ps, assets, supportsSecrets)
+	props, err := makeTerraformResultWithOpts(
+		ctx, prov, proposedState, tfs, ps, assets, supportsSecrets,
+		makeTerraformResultOpts{originalInputs: newInputs})
 	if err != nil {
 		return nil, err
 	}
@@ -409,7 +411,9 @@ func makeDetailedDiffV2(
 	if err != nil {
 		return nil, err
 	}
-	priorProps, err := MakeTerraformResult(ctx, prov, prior, tfs, ps, assets, supportsSecrets)
+	priorProps, err := makeTerraformResultWithOpts(
+		ctx, prov, prior, tfs, ps, assets, supportsSecrets,
+		makeTerraformResultOpts{originalInputs: oldInputs})
 	if err != nil {
 		return nil, err
 	}

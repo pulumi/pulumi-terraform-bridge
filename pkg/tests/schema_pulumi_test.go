@@ -17,7 +17,9 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/pulcheck"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/tfcheck"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optrefresh"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -4159,3 +4161,108 @@ func TestMakeTerraformResultNilVsEmptyMap(t *testing.T) {
 		assert.True(t, props["test"].DeepEquals(emptyMap))
 	})
 }
+
+func TestSetElementOrderInState(t *testing.T) {
+	sch := map[string]*schema.Schema{
+		"test": {
+			Type:     schema.TypeSet,
+			Optional: true,
+			Elem: &schema.Schema{
+				Type: schema.TypeString,
+			},
+		},
+	}
+
+	resMap := map[string]*schema.Resource{
+		"prov_test": {
+			Schema: sch,
+		},
+	}
+
+	tfp := &schema.Provider{ResourcesMap: resMap}
+	prov := pulcheck.BridgedProvider(t, "prov", tfp)
+
+	getStringOutputsFromResult := func(res auto.UpResult) []string {
+		outputs := res.Outputs["testOut"].Value.([]interface{})
+		stringOutputs := make([]string, len(outputs))
+		for i, v := range outputs {
+			stringOutputs[i] = v.(string)
+		}
+		return stringOutputs
+	}
+
+	// Test that the order of elements in the state is preserved when created and updated.
+	runTest := func(t *testing.T, prov info.Provider, props1, props2 []string) {
+		props1JSON, err := json.Marshal(props1)
+		require.NoError(t, err)
+		program := `
+        name: test
+        runtime: yaml
+        resources:
+          mainRes:
+            type: prov:index:Test
+            properties:
+                tests: %s
+        outputs:
+          testOut: ${mainRes.tests}`
+
+		program1 := fmt.Sprintf(program, props1JSON)
+
+		props2JSON, err := json.Marshal(props2)
+		require.NoError(t, err)
+		program2 := fmt.Sprintf(program, props2JSON)
+
+		pt := pulcheck.PulCheck(t, prov, program1)
+		res := pt.Up(t)
+
+		require.Equal(t, props1, getStringOutputsFromResult(res))
+
+		pt.WritePulumiYaml(t, program2)
+		res = pt.Up(t)
+		require.Equal(t, props2, getStringOutputsFromResult(res))
+	}
+
+	t.Run("ordered unchanged", func(t *testing.T) {
+		runTest(t, prov,
+			[]string{"val1", "val2", "val3"},
+			[]string{"val1", "val2", "val3"},
+		)
+	})
+
+	t.Run("unordered unchanged", func(t *testing.T) {
+		runTest(t, prov,
+			[]string{"val2", "val3", "val1"},
+			[]string{"val2", "val3", "val1"},
+		)
+	})
+
+	t.Run("ordered added", func(t *testing.T) {
+		runTest(t, prov,
+			[]string{"val1", "val2"},
+			[]string{"val1", "val2", "val3"},
+		)
+	})
+
+	t.Run("unordered added", func(t *testing.T) {
+		runTest(t, prov,
+			[]string{"val2", "val1"},
+			[]string{"val2", "val1", "val3"},
+		)
+	})
+
+	t.Run("ordered removed", func(t *testing.T) {
+		runTest(t, prov,
+			[]string{"val1", "val2", "val3"},
+			[]string{"val1", "val2"},
+		)
+	})
+
+	t.Run("unordered removed", func(t *testing.T) {
+		runTest(t, prov,
+			[]string{"val2", "val3", "val1"},
+			[]string{"val2", "val1"},
+		)
+	})
+}
+
+//TODO: Test unknown sets, unknowns elements in sets and nested unknowns in set elements.

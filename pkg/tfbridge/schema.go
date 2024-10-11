@@ -1002,12 +1002,12 @@ func makeTerraformUnknown(tfs shim.Schema, unknownCollectionsSupported bool) int
 	}
 }
 
-// metaKey is the key in a TF bridge result that is used to store a resource's meta-attributes.
-const metaKey = "__meta"
+type makeTerraformResultOpts struct {
+	// If specified these will be used to recover the original order of elements in arrays representing TF sets.
+	originalInputs resource.PropertyMap
+}
 
-// MakeTerraformResult expands a Terraform state into an expanded Pulumi resource property map.  This respects
-// the property maps so that results end up with their correct Pulumi names when shipping back to the engine.
-func MakeTerraformResult(
+func makeTerraformResultWithOpts(
 	ctx context.Context,
 	p shim.Provider,
 	state shim.InstanceState,
@@ -1015,8 +1015,8 @@ func MakeTerraformResult(
 	ps map[string]*SchemaInfo,
 	assets AssetTable,
 	supportsSecrets bool,
+	opts makeTerraformResultOpts,
 ) (resource.PropertyMap, error) {
-
 	var outs map[string]interface{}
 	if state != nil {
 		obj, err := state.Object(tfs)
@@ -1035,7 +1035,29 @@ func MakeTerraformResult(
 		outMap[metaKey] = resource.NewStringProperty(string(metaJSON))
 	}
 
+	if opts.originalInputs != nil {
+		recoverSetOrder(outMap, opts.originalInputs, tfs, ps)
+	}
+
 	return outMap, nil
+}
+
+// metaKey is the key in a TF bridge result that is used to store a resource's meta-attributes.
+const metaKey = "__meta"
+
+// MakeTerraformResult expands a Terraform state into an expanded Pulumi resource property map.  This respects
+// the property maps so that results end up with their correct Pulumi names when shipping back to the engine.
+// Deprecated: Use makeTerraformResultWithOpts instead.
+func MakeTerraformResult(
+	ctx context.Context,
+	p shim.Provider,
+	state shim.InstanceState,
+	tfs shim.SchemaMap,
+	ps map[string]*SchemaInfo,
+	assets AssetTable,
+	supportsSecrets bool,
+) (resource.PropertyMap, error) {
+	return makeTerraformResultWithOpts(ctx, p, state, tfs, ps, assets, supportsSecrets, makeTerraformResultOpts{})
 }
 
 // MakeTerraformOutputs takes an expanded Terraform property map and returns a Pulumi equivalent.  This respects
