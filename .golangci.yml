@@ -35,7 +35,7 @@ issues:
     - pkg/x/testing
     - pkg/x/muxer/tests
     - pf
-    - x/muxer/tests
+    - x/muxer
     - testing
 linters-settings:
   gci:
