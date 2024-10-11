@@ -263,6 +263,6 @@ replace github.com/hashicorp/terraform-plugin-sdk/v2 => github.com/pulumi/terraf
 
 replace github.com/hashicorp/terraform-provider-tls => github.com/hashicorp/terraform-provider-tls v1.2.1-0.20230117062332-afdd54107aba
 
-replace github.com/hashicorp/terraform-provider-tls/shim => ./pf/tests/internal/tlsshim
+replace github.com/hashicorp/terraform-provider-tls/shim => ./pkg/pf/tests/internal/tlsshim
 
-replace github.com/terraform-providers/terraform-provider-random/randomshim => ./pf/tests/internal/randomshim
+replace github.com/terraform-providers/terraform-provider-random/randomshim => ./pkg/pf/tests/internal/randomshim
