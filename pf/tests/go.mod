@@ -12,7 +12,7 @@ require (
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.33.0
 	github.com/hashicorp/terraform-provider-tls/shim v0.0.0-00010101000000-000000000000
 	github.com/hexops/autogold/v2 v2.2.1
-	github.com/pulumi/providertest v0.1.2
+	github.com/pulumi/providertest v0.1.3
 	github.com/pulumi/pulumi-terraform-bridge/pf v0.0.0
 	github.com/pulumi/pulumi-terraform-bridge/v3 v3.92.0
 	github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests v0.0.0-00010101000000-000000000000
