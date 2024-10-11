@@ -18,5 +18,5 @@ import (
 	pkgpf "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf"
 )
 
-// TODO(Deprecated): Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf.ShimProvider instead.
+// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf.ShimProvider instead.
 type ShimProvider = pkgpf.ShimProvider

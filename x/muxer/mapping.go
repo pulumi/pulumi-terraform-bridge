@@ -18,8 +18,8 @@ import (
 	pkgx "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/x/muxer"
 )
 
-// TODO(Deprecated): Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/x/muxer.DispatchTable instead.
+// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/x/muxer.DispatchTable instead.
 type DispatchTable = pkgx.DispatchTable
 
-// TODO(Deprecated): Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/x/muxer instead.
+// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/x/muxer instead.
 var MergeSchemasAndComputeDispatchTable = pkgx.MergeSchemasAndComputeDispatchTable
