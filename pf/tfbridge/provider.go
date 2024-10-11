@@ -18,18 +18,18 @@ import (
 	pkgpf "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
 )
 
-// TODO(Deprecated): Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge.NewProvider instead.
+// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge.NewProvider instead.
 var NewProvider = pkgpf.NewProvider
 
-// TODO(Deprecated): Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge.ShimProvider instead.
+// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge.ShimProvider instead.
 var ShimProvider = pkgpf.ShimProvider
 
-// TODO(Deprecated): Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge.ShimProviderWithContext instead.
+// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge.ShimProviderWithContext instead.
 var ShimProviderWithContext = pkgpf.ShimProviderWithContext
 
 
-// TODO(Deprecated): Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge.NewProviderServer instead.
+// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge.NewProviderServer instead.
 var NewProviderServer = pkgpf.NewProviderServer
 
-// TODO(Deprecated): Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge.XParameterizeResetProvider instead.
+// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge.XParameterizeResetProvider instead.
 var XParameterizeResetProvider = pkgpf.XParameterizeResetProvider
