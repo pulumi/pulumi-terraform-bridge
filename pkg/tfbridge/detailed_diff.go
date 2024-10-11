@@ -393,6 +393,7 @@ func makeDetailedDiffV2(
 	diff shim.InstanceDiff,
 	assets AssetTable,
 	supportsSecrets bool,
+	oldInputs, newInputs resource.PropertyMap,
 ) (map[string]*pulumirpc.PropertyDiff, error) {
 	// We need to compare the new and olds after all transformations have been applied.
 	// ex. state upgrades, implementation-specific normalizations etc.
