@@ -183,7 +183,7 @@ func (ec *examplesCache) inferSoftwareVersions() map[string]string {
 	used := []string{
 		"github.com/pulumi/pulumi/pkg/v3",
 		"github.com/pulumi/pulumi-terraform-bridge/v3",
-		"github.com/pulumi/pulumi-terraform-bridge/pf",
+		"github.com/pulumi/pulumi-terraform-bridge/v3/pf",
 	}
 	p := map[string]string{}
 	for _, u := range used {

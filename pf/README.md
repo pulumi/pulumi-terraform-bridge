@@ -36,7 +36,7 @@ Follow these steps to bridge a Terraform Provider to Pulumi.
     import (
         _ "embed"
         "github.com/hashicorp/terraform-plugin-framework/provider"
-        pf "github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
+        pf "github.com/pulumi/pulumi-terraform-bridge/v3/pf/tfbridge"
         "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
     )
 
@@ -63,7 +63,7 @@ Follow these steps to bridge a Terraform Provider to Pulumi.
     package main
 
     import (
-        "github.com/pulumi/pulumi-terraform-bridge/pf/tfgen"
+        "github.com/pulumi/pulumi-terraform-bridge/v3/pf/tfgen"
         // import myprovider
     )
 
@@ -91,7 +91,7 @@ Follow these steps to bridge a Terraform Provider to Pulumi.
         "context"
         _ "embed"
 
-        "github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
+        "github.com/pulumi/pulumi-terraform-bridge/v3/pf/tfbridge"
         // import myprovider
     )
 
@@ -170,7 +170,7 @@ to the Plugin Framework.
      ```
 
 2. Find tfgen binary `main` that calls `tfgen.Main` from `github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen`
-   and update it to call `tfgen.Main` from `github.com/pulumi/pulumi-terraform-bridge/pf/tfgen`.
+   and update it to call `tfgen.Main` from `github.com/pulumi/pulumi-terraform-bridge/v3/pf/tfgen`.
 
    Note that the extra verson parameter is removed from `tfgen.Main`, so this code:
 
@@ -186,7 +186,7 @@ to the Plugin Framework.
 
 3. Find the provider binary `main` that calls `tfbridge.Main` from
    `github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge` and update it to `Main` from
-   `github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge`. Note the signature changes: version parameter is removed,
+   `github.com/pulumi/pulumi-terraform-bridge/v3/pf/tfbridge`. Note the signature changes: version parameter is removed,
    `Context` is now required, and there is a new `bridge-metadata.json` blob that needs to be embedded:
 
      ```go

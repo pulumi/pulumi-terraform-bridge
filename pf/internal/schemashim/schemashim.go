@@ -19,7 +19,7 @@ import (
 
 	pfprovider "github.com/hashicorp/terraform-plugin-framework/provider"
 
-	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/pfutils"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pf/internal/pfutils"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 

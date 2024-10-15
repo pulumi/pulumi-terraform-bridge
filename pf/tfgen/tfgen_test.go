@@ -34,7 +34,7 @@ import (
 	pulumischema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/stretchr/testify/require"
 
-	pftfbridge "github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
+	pftfbridge "github.com/pulumi/pulumi-terraform-bridge/v3/pf/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 

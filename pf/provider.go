@@ -20,12 +20,12 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
-	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/runtypes"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pf/internal/runtypes"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
 // ShimProvider is a shim.Provider that is capable of serving the
-// [github.com/pulumi/pulumi-terraform-bridge/pf] aspect of the bridge.
+// [github.com/pulumi/pulumi-terraform-bridge/v3/pf] aspect of the bridge.
 //
 // The interface for ShimProvider is considered unstable, and may change at any time.
 type ShimProvider interface {

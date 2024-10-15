@@ -23,7 +23,7 @@
 // providers by Pulumi.
 //
 // Note that providers built with the Plugin Framework do not currently conform to the backend
-// interface and are handled separately, see github.com/pulumi/pulumi-terraform-bridge/pf
+// interface and are handled separately, see github.com/pulumi/pulumi-terraform-bridge/v3/pf
 //
 // This package is internal. While we avoid unnecessary breaking changes, this package may accept
 // technically breaking changes between major version releases of the bridge.

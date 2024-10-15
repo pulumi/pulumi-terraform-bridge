@@ -18,6 +18,8 @@ require (
 	google.golang.org/grpc v1.63.2
 )
 
+require github.com/pulumi/pulumi-terraform-bridge/x/muxer v0.0.8 // indirect
+
 require (
 	cloud.google.com/go v0.112.1 // indirect
 	cloud.google.com/go/compute v1.25.0 // indirect
@@ -145,7 +147,6 @@ require (
 	github.com/pulumi/appdash v0.0.0-20231130102222-75f619a67231 // indirect
 	github.com/pulumi/esc v0.10.0 // indirect
 	github.com/pulumi/inflector v0.1.1 // indirect
-	github.com/pulumi/pulumi-terraform-bridge/x/muxer v0.0.8 // indirect
 	github.com/pulumi/pulumi/pkg/v3 v3.136.1 // indirect
 	github.com/pulumi/pulumi/sdk/v3 v3.136.1
 	github.com/rivo/uniseg v0.4.4 // indirect

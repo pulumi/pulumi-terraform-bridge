@@ -25,12 +25,12 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 
-	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/testprovider/sdkv2randomprovider"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pf/tests/internal/testprovider/sdkv2randomprovider"
 	"github.com/terraform-providers/terraform-provider-random/randomshim"
 
 	sdk2schema "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
-	tfpf "github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
+	tfpf "github.com/pulumi/pulumi-terraform-bridge/v3/pf/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	sdkv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )

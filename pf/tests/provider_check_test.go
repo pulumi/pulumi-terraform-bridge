@@ -28,10 +28,10 @@ import (
 	"github.com/stretchr/testify/require"
 
 	testutils "github.com/pulumi/providertest/replay"
-	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/providerbuilder"
-	pb "github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/providerbuilder"
-	"github.com/pulumi/pulumi-terraform-bridge/pf/tests/internal/testprovider"
-	"github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pf/tests/internal/providerbuilder"
+	pb "github.com/pulumi/pulumi-terraform-bridge/v3/pf/tests/internal/providerbuilder"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pf/tests/internal/testprovider"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pf/tfbridge"
 	tfbridge0 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 
