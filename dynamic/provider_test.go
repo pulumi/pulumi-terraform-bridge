@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -13,6 +14,8 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/hexops/autogold/v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -24,8 +27,12 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
 
+	"github.com/opentofu/opentofu/shim/grpcutil"
+	v6shim "github.com/opentofu/opentofu/shim/protov6"
 	helper "github.com/pulumi/pulumi-terraform-bridge/dynamic/internal/testing"
+	"github.com/pulumi/pulumi-terraform-bridge/dynamic/parameterize"
 	pfbridge "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/pulcheck"
 )
 
 // globalTempDir is a temporary directory scoped to the entire test cycle.
@@ -545,4 +552,82 @@ func must[T any](v T, err error) T {
 
 func marshal(m resource.PropertyMap) *structpb.Struct {
 	return must(plugin.MarshalProperties(m, plugin.MarshalOptions{}))
+}
+
+func TestLogReplayProvider(t *testing.T) {
+	grpcLogs, err := os.ReadFile("./testdata/TestLogReplayProvider/grpc_log_random.json")
+	if err != nil {
+		t.Fatalf("failed to read grpc log: %v", err)
+	}
+
+	provPlugin := grpcutil.NewLogReplayProvider("random", "0.0.1", "url", string(grpcLogs))
+	prov := v6shim.New(provPlugin)
+	require.NoError(t, err)
+
+	resp, err := prov.GetProviderSchema(context.Background(), &tfprotov6.GetProviderSchemaRequest{})
+	require.NoError(t, err)
+	require.Contains(t, resp.ResourceSchemas, "random_bytes")
+	require.Contains(t, resp.ResourceSchemas, "random_pet")
+	require.Contains(t, resp.ResourceSchemas, "random_string")
+
+	configVal, err := tfprotov6.NewDynamicValue(
+		tftypes.Object{},
+		tftypes.NewValue(tftypes.Object{}, map[string]tftypes.Value{}),
+	)
+	require.NoError(t, err)
+	configResp, err := prov.ValidateProviderConfig(context.Background(), &tfprotov6.ValidateProviderConfigRequest{
+		Config: &configVal,
+	})
+
+	require.NoError(t, err)
+	require.Equal(t, "\x80", string(configResp.PreparedConfig.MsgPack))
+}
+
+type provider struct {
+	tfprotov6.ProviderServer
+	io.Closer
+
+	name    string
+	version string
+	url     string
+}
+
+func (p provider) Name() string    { return p.name }
+func (p provider) Version() string { return p.version }
+func (p provider) URL() string     { return p.url }
+
+func TestLogReplayProviderWithProgram(t *testing.T) {
+	t.Skipf("program tests once YAML is supported")
+	grpcLogs, err := os.ReadFile("./testdata/TestLogReplayProvider/grpc_log_random.json")
+	if err != nil {
+		t.Fatalf("failed to read grpc log: %v", err)
+	}
+
+	provPlugin := grpcutil.NewLogReplayProvider("random", "0.0.1", "url", string(grpcLogs))
+	prov := v6shim.New(provPlugin)
+	runProv := provider{
+		ProviderServer: prov,
+		name:           "random",
+		version:        "0.0.1",
+		url:            "url",
+	}
+	info, err := providerInfo(context.Background(), runProv, parameterize.Value{
+		Remote: &parameterize.RemoteValue{URL: "example.com", Version: "0.0.1"},
+	})
+	require.NoError(t, err)
+
+	program := `
+name: proj
+runtime: yaml
+resources:
+  randomPet:
+    type: random:index:Pet
+    properties:
+      length: 3
+outputs:
+  petName: ${randomPet.id}`
+
+	pt := pulcheck.PulCheck(t, info, program)
+	res := pt.Up(t)
+	require.Equal(t, "painfully-stirred-snail", res.Outputs["petName"].Value)
 }
