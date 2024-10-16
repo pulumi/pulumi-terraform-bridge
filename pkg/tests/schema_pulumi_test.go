@@ -4213,9 +4213,8 @@ resources:
 		pt := pulcheck.PulCheck(t, bridgedProvider, program)
 		_, err = pt.CurrentStack().Up(pt.Context())
 
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "Unexpected type at field")
-		require.Contains(t, err.Error(), expectedError)
+		require.ErrorContains(t, err, "Unexpected type at field")
+		require.ErrorContains(t, err, expectedError)
 	}
 
 	t.Run("flat type instead of array", func(t *testing.T) {
