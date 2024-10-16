@@ -4253,13 +4253,6 @@ Terraform will perform the following actions:
 
 Plan: 0 to add, 1 to change, 0 to destroy.
 
-─────────────────────────────────────────────────────────────────────────────
-
-Saved the plan to:
-/var/folders/82/nqnqw81s1h56l5nv940f9mq00000gn/T/TestSetDuplicatesDetailedDiffterraform355338867/001/test.tfplan
-
-To perform exactly these actions, run the following command to apply:
-    terraform apply "/var/folders/82/nqnqw81s1h56l5nv940f9mq00000gn/T/TestSetDuplicatesDetailedDiffterraform355338867/001/test.tfplan"
 `).Equal(t, plan.StdOut)
 	})
 }
@@ -4438,13 +4431,6 @@ Terraform will perform the following actions:
 
 Plan: 0 to add, 1 to change, 0 to destroy.
 
-─────────────────────────────────────────────────────────────────────────────
-
-Saved the plan to:
-/var/folders/82/nqnqw81s1h56l5nv940f9mq00000gn/T/TestSetDetailedDiffNestedAttributeUpdatedterraform1641769182/001/test.tfplan
-
-To perform exactly these actions, run the following command to apply:
-    terraform apply "/var/folders/82/nqnqw81s1h56l5nv940f9mq00000gn/T/TestSetDetailedDiffNestedAttributeUpdatedterraform1641769182/001/test.tfplan"
 `).Equal(t, plan.StdOut)
 	})
 }
@@ -4614,13 +4600,6 @@ Terraform will perform the following actions:
 
 Plan: 0 to add, 1 to change, 0 to destroy.
 
-─────────────────────────────────────────────────────────────────────────────
-
-Saved the plan to:
-/var/folders/82/nqnqw81s1h56l5nv940f9mq00000gn/T/TestSetDetailedDiffComputedNestedAttributeterraform1984840785/001/test.tfplan
-
-To perform exactly these actions, run the following command to apply:
-    terraform apply "/var/folders/82/nqnqw81s1h56l5nv940f9mq00000gn/T/TestSetDetailedDiffComputedNestedAttributeterraform1984840785/001/test.tfplan"
 `).Equal(t, plan.StdOut)
 	})
 }
