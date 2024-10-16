@@ -182,15 +182,6 @@ func mapHasReplacements(m map[detailedDiffKey]*pulumirpc.PropertyDiff) bool {
 	return false
 }
 
-func findIndexOfElement(element resource.PropertyValue, list []resource.PropertyValue) int {
-	for i, el := range list {
-		if el.DeepEquals(element) {
-			return i
-		}
-	}
-	return -1
-}
-
 type detailedDiffer struct {
 	tfs shim.SchemaMap
 	ps  map[string]*SchemaInfo
@@ -257,31 +248,26 @@ func (differ detailedDiffer) isForceNew(pair propertyPath) bool {
 	return isForceNew(tfs, ps)
 }
 
-func (differ detailedDiffer) calculateSetHashes(path propertyPath, listVal resource.PropertyValue) map[int]int {
-	identities := make(map[int]int)
+type hashIndexMap map[int]int
 
-	tfs, ps, err := differ.lookupSchemas(path)
-	if err != nil {
-		return nil
-	}
+func (differ detailedDiffer) calculateSetHashIndexMap(path propertyPath, listVal resource.PropertyValue) hashIndexMap {
+	identities := make(hashIndexMap, 0)
 
-	convertedVal, err := makeSingleTerraformInput(context.Background(), path.String(), listVal, tfs, ps)
-	if err != nil {
-		return nil
-	}
+	setTfs, _, err := differ.lookupSchemas(path)
+	contract.AssertNoErrorf(err, "could not find schema for set")
 
-	if convertedVal == nil {
-		return nil
-	}
+	schemaPath := PropertyPathToSchemaPath(resource.PropertyPath(path), differ.tfs, differ.ps)
+	etfs, eps, err := LookupSchemas(schemaPath.Element(), differ.tfs, differ.ps)
+	contract.AssertNoErrorf(err, "could not find schema for set element")
 
-	convertedListVal, ok := convertedVal.([]interface{})
-	if !ok {
-		return nil
-	}
+	contract.Assertf(!listVal.IsNull(), "list value should not be null")
+	contract.Assertf(listVal.IsArray(), "list value should be an array")
 
-	// Calculate the identity of each element
-	for i, newElem := range convertedListVal {
-		hash := tfs.SetHash(newElem)
+	for i, elem := range listVal.ArrayValue() {
+		convertedVal, err := makeSingleTerraformInput(context.Background(), path.Index(0).String(), elem, etfs, eps)
+		contract.AssertNoErrorf(err, "could not convert element to TF input")
+
+		hash := setTfs.SetHash(convertedVal)
 		identities[hash] = i
 	}
 	return identities
@@ -407,23 +393,24 @@ func (differ detailedDiffer) makeSetDiff(
 	diff := make(map[detailedDiffKey]*pulumirpc.PropertyDiff)
 	oldList := []resource.PropertyValue{}
 	newList := []resource.PropertyValue{}
+	newInputsList := []resource.PropertyValue{}
 	if isPresent(old) && old.IsArray() {
 		oldList = old.ArrayValue()
 	}
 	if isPresent(new) && new.IsArray() && !new.ContainsUnknowns() {
 		newList = new.ArrayValue()
 	}
-
-	oldIdentities := differ.calculateSetHashes(path, resource.NewArrayProperty(oldList))
-	newIdentities := differ.calculateSetHashes(path, resource.NewArrayProperty(newList))
-
 	newInputs, newInputsOk := path.GetFromMap(differ.newInputs)
-	if !newInputsOk || !newInputs.IsArray() {
-		newInputs = new
+	if newInputsOk && isPresent(newInputs) && newInputs.IsArray() {
+		newInputsList = newInputs.ArrayValue()
 	}
-	newInputsList := newInputs.ArrayValue()
+
+	oldIdentities := differ.calculateSetHashIndexMap(path, resource.NewArrayProperty(oldList))
+	newIdentities := differ.calculateSetHashIndexMap(path, resource.NewArrayProperty(newList))
+	inputIdentities := differ.calculateSetHashIndexMap(path, resource.NewArrayProperty(newInputsList))
+
 	// The old indices and new inputs are the indices the engine can reference
-	// The new state indices need to be translated to new input indices.
+	// The new state indices need to be translated to new input indices when presenting the diff
 	setIndices := make(map[int]setChangeIndex)
 	for hash, oldIndex := range oldIdentities {
 		if _, newOk := newIdentities[hash]; !newOk {
@@ -432,13 +419,13 @@ func (differ detailedDiffer) makeSetDiff(
 	}
 	for hash, newIndex := range newIdentities {
 		if _, oldOk := oldIdentities[hash]; !oldOk {
-			inputIndex := findIndexOfElement(newList[newIndex], newInputsList)
+			inputIndex := inputIdentities[hash]
 			// TODO: make this a warning instead
 			contract.Assertf(inputIndex != -1, "could not find index of element in new inputs")
 			_, oldChanged := setIndices[inputIndex]
 			setIndices[inputIndex] = setChangeIndex{
-				engineIndex: inputIndex, oldChanged: oldChanged, newStateIndex: newIndex, newChanged: true}
-
+				engineIndex: inputIndex, oldChanged: oldChanged, newStateIndex: newIndex, newChanged: true,
+			}
 		}
 	}
 
