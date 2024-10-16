@@ -41,6 +41,30 @@ func sortedMergedKeys[K cmp.Ordered, V any, M ~map[K]V](a, b M) []K {
 	return keysSlice
 }
 
+// a variant of PropertyPath.Get which works on PropertyMaps
+func getPathFromPropertyMap(
+	path resource.PropertyPath, propertyMap resource.PropertyMap,
+) (resource.PropertyValue, bool) {
+	if len(path) == 0 {
+		return resource.NewNullProperty(), false
+	}
+
+	rootKeyStr, ok := path[0].(string)
+	contract.Assertf(ok && rootKeyStr != "", "root key must be a non-empty string")
+	rootKey := resource.PropertyKey(rootKeyStr)
+	restPath := path[1:]
+
+	if len(restPath) == 0 {
+		return propertyMap[rootKey], true
+	}
+
+	if !propertyMap.HasValue(rootKey) {
+		return resource.NewNullProperty(), false
+	}
+
+	return restPath.Get(propertyMap[rootKey])
+}
+
 func promoteToReplace(diff *pulumirpc.PropertyDiff) *pulumirpc.PropertyDiff {
 	if diff == nil {
 		return nil
@@ -143,6 +167,10 @@ func (k propertyPath) IsReservedKey() bool {
 	return leaf == "__meta" || leaf == "__defaults"
 }
 
+func (k propertyPath) GetFromMap(v resource.PropertyMap) (resource.PropertyValue, bool) {
+	return getPathFromPropertyMap(resource.PropertyPath(k), v)
+}
+
 func mapHasReplacements(m map[detailedDiffKey]*pulumirpc.PropertyDiff) bool {
 	for _, diff := range m {
 		if diff.GetKind() == pulumirpc.PropertyDiff_ADD_REPLACE ||
@@ -154,9 +182,20 @@ func mapHasReplacements(m map[detailedDiffKey]*pulumirpc.PropertyDiff) bool {
 	return false
 }
 
+func findIndexOfElement(element resource.PropertyValue, list []resource.PropertyValue) int {
+	for i, el := range list {
+		if el.DeepEquals(element) {
+			return i
+		}
+	}
+	return -1
+}
+
 type detailedDiffer struct {
 	tfs shim.SchemaMap
 	ps  map[string]*SchemaInfo
+	// These are used to convert set indices back to something the engine can reference.
+	newInputs resource.PropertyMap
 }
 
 func (differ detailedDiffer) propertyPathToSchemaPath(path propertyPath) walk.SchemaPath {
@@ -355,6 +394,13 @@ func (differ detailedDiffer) makeListDiff(
 	return diff
 }
 
+type setChangeIndex struct {
+	engineIndex   int
+	newStateIndex int
+	oldChanged    bool
+	newChanged    bool
+}
+
 func (differ detailedDiffer) makeSetDiff(
 	path propertyPath, old, new resource.PropertyValue,
 ) map[detailedDiffKey]*pulumirpc.PropertyDiff {
@@ -371,34 +417,40 @@ func (differ detailedDiffer) makeSetDiff(
 	oldIdentities := differ.calculateSetHashes(path, resource.NewArrayProperty(oldList))
 	newIdentities := differ.calculateSetHashes(path, resource.NewArrayProperty(newList))
 
-	changedIndices := make(map[int]struct{})
-	oldChangedIndices := make(map[int]struct{})
-	newChangedIndices := make(map[int]struct{})
+	newInputs, newInputsOk := path.GetFromMap(differ.newInputs)
+	if !newInputsOk || !newInputs.IsArray() {
+		newInputs = new
+	}
+	newInputsList := newInputs.ArrayValue()
+	// The old indices and new inputs are the indices the engine can reference
+	// The new state indices need to be translated to new input indices.
+	setIndices := make(map[int]setChangeIndex)
 	for hash, oldIndex := range oldIdentities {
 		if _, newOk := newIdentities[hash]; !newOk {
-			changedIndices[oldIndex] = struct{}{}
-			oldChangedIndices[oldIndex] = struct{}{}
+			setIndices[oldIndex] = setChangeIndex{engineIndex: oldIndex, oldChanged: true, newStateIndex: -1, newChanged: false}
 		}
 	}
 	for hash, newIndex := range newIdentities {
 		if _, oldOk := oldIdentities[hash]; !oldOk {
-			changedIndices[newIndex] = struct{}{}
-			newChangedIndices[newIndex] = struct{}{}
+			inputIndex := findIndexOfElement(newList[newIndex], newInputsList)
+			// TODO: make this a warning instead
+			contract.Assertf(inputIndex != -1, "could not find index of element in new inputs")
+			_, oldChanged := setIndices[inputIndex]
+			setIndices[inputIndex] = setChangeIndex{
+				engineIndex: inputIndex, oldChanged: oldChanged, newStateIndex: newIndex, newChanged: true}
+
 		}
 	}
 
-	// TODO: Some calculation here to determine if we should return an update for the whole thing
-	// if the list is too shuffled to return a meaningful element-by-element diff
-	// if len(changedIndices) + abs(len(oldList) - len(newList)) > 
-
-	for index := range changedIndices {
+	for index, setChange := range setIndices {
 		oldEl := resource.NewNullProperty()
-		if _, oldChanged := oldChangedIndices[index]; oldChanged {
-			oldEl = oldList[index]
+		if setChange.oldChanged {
+			oldEl = oldList[setChange.engineIndex]
 		}
 		newEl := resource.NewNullProperty()
-		if _, newChanged := newChangedIndices[index]; newChanged {
-			newEl = newList[index]
+		if setChange.newChanged {
+			contract.Assertf(setChange.newStateIndex != -1, "new state index should be set")
+			newEl = newList[setChange.newStateIndex]
 		}
 		d := differ.makePropDiff(path.Index(index), oldEl, newEl)
 		for subKey, subDiff := range d {
@@ -481,6 +533,7 @@ func makeDetailedDiffV2(
 	diff shim.InstanceDiff,
 	assets AssetTable,
 	supportsSecrets bool,
+	newInputs resource.PropertyMap,
 ) (map[string]*pulumirpc.PropertyDiff, error) {
 	// We need to compare the new and olds after all transformations have been applied.
 	// ex. state upgrades, implementation-specific normalizations etc.
@@ -502,6 +555,6 @@ func makeDetailedDiffV2(
 		return nil, err
 	}
 
-	differ := detailedDiffer{tfs: tfs, ps: ps}
+	differ := detailedDiffer{tfs: tfs, ps: ps, newInputs: newInputs}
 	return differ.makeDetailedDiffPropertyMap(priorProps, props), nil
 }
