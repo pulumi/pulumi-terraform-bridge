@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"q"
 	"testing"
 	"time"
 
@@ -4157,5 +4158,469 @@ func TestMakeTerraformResultNilVsEmptyMap(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, props)
 		assert.True(t, props["test"].DeepEquals(emptyMap))
+	})
+}
+
+func TestSetDuplicatesDetailedDiff(t *testing.T) {
+	// TODO: Remove this once accurate bridge previews are rolled out
+	t.Setenv("PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW", "true")
+	resMap := map[string]*schema.Resource{
+		"prov_test": {
+			Schema: map[string]*schema.Schema{
+				"test": {
+					Type:     schema.TypeSet,
+					Optional: true,
+					Elem: &schema.Schema{
+						Type: schema.TypeString,
+					},
+				},
+			},
+		},
+	}
+	tfp := &schema.Provider{ResourcesMap: resMap}
+	bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
+
+	program := `
+name: test
+runtime: yaml
+resources:
+  mainRes:
+    type: prov:index:Test
+    properties:
+      tests: %s`
+
+	t.Run("pulumi", func(t *testing.T) {
+		// TODO:[pulumi/pulumi-terraform-bridge#2200] The diff here is wrong
+		pt := pulcheck.PulCheck(t, bridgedProvider, fmt.Sprintf(program, `["a", "a"]`))
+		pt.Up(t)
+
+		pt.WritePulumiYaml(t, fmt.Sprintf(program, `["b", "b", "a", "a", "c"]`))
+
+		res := pt.Preview(t, optpreview.Diff())
+
+		autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [1]: "b"
+          + [2]: "a"
+        ]
+Resources:
+    ~ 1 to update
+    1 unchanged
+`).Equal(t, res.StdOut)
+	})
+
+	t.Run("terraform", func(t *testing.T) {
+		tfdriver := tfcheck.NewTfDriver(t, t.TempDir(), "prov", tfp)
+		tfdriver.Write(t, `
+resource "prov_test" "mainRes" {
+  test = ["a", "a"]
+}`)
+
+		plan, err := tfdriver.Plan(t)
+		require.NoError(t, err)
+		err = tfdriver.Apply(t, plan)
+		require.NoError(t, err)
+
+		tfdriver.Write(t, `
+resource "prov_test" "mainRes" {
+  test = ["b", "b", "a", "a", "c"]
+}`)
+
+		plan, err = tfdriver.Plan(t)
+		require.NoError(t, err)
+
+		autogold.Expect(`
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  ~ update in-place
+
+Terraform will perform the following actions:
+
+  # prov_test.mainRes will be updated in-place
+  ~ resource "prov_test" "mainRes" {
+        id   = "newid"
+      ~ test = [
+          + "b",
+          + "c",
+            # (1 unchanged element hidden)
+        ]
+    }
+
+Plan: 0 to add, 1 to change, 0 to destroy.
+
+─────────────────────────────────────────────────────────────────────────────
+
+Saved the plan to:
+/var/folders/82/nqnqw81s1h56l5nv940f9mq00000gn/T/TestSetDuplicatesDetailedDiffterraform355338867/001/test.tfplan
+
+To perform exactly these actions, run the following command to apply:
+    terraform apply "/var/folders/82/nqnqw81s1h56l5nv940f9mq00000gn/T/TestSetDuplicatesDetailedDiffterraform355338867/001/test.tfplan"
+`).Equal(t, plan.StdOut)
+	})
+}
+
+func TestSetDetailedDiffNestedAttributeUpdated(t *testing.T) {
+	// TODO: Remove this once accurate bridge previews are rolled out
+	t.Setenv("PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW", "true")
+
+	resMap := map[string]*schema.Resource{
+		"prov_test": {
+			Schema: map[string]*schema.Schema{
+				"test": {
+					Type:     schema.TypeSet,
+					Optional: true,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"nested": {
+								Type:     schema.TypeString,
+								Optional: true,
+							},
+							"nested2": {
+								Type:     schema.TypeString,
+								Optional: true,
+							},
+							"nested3": {
+								Type:     schema.TypeString,
+								Optional: true,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	tfp := &schema.Provider{ResourcesMap: resMap}
+
+	bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
+
+	program := `
+name: test
+runtime: yaml
+resources:
+  mainRes:
+    type: prov:index:Test
+    properties:
+      tests: %s`
+
+	t.Run("pulumi", func(t *testing.T) {
+		props1 := []map[string]string{
+			{"nested": "b", "nested2": "b", "nested3": "b"},
+			{"nested": "a", "nested2": "a", "nested3": "a"},
+			{"nested": "c", "nested2": "c", "nested3": "c"},
+		}
+		props2 := []map[string]string{
+			{"nested": "b", "nested2": "b", "nested3": "b"},
+			{"nested": "d", "nested2": "a", "nested3": "a"},
+			{"nested": "c", "nested2": "c", "nested3": "c"},
+		}
+
+		props1JSON, err := json.Marshal(props1)
+		require.NoError(t, err)
+
+		pt := pulcheck.PulCheck(t, bridgedProvider, fmt.Sprintf(program, string(props1JSON)))
+		pt.Up(t)
+
+		props2JSON, err := json.Marshal(props2)
+		require.NoError(t, err)
+
+		pt.WritePulumiYaml(t, fmt.Sprintf(program, string(props2JSON)))
+
+		res := pt.Preview(t, optpreview.Diff())
+
+		// TODO:[pulumi/pulumi-terraform-bridge#2200] The diff here is wrong
+		autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          ~ [0]: {
+                  ~ nested : "a" => "b"
+                  ~ nested2: "a" => "b"
+                  ~ nested3: "a" => "b"
+                }
+          ~ [1]: {
+                  ~ nested : "b" => "d"
+                  ~ nested2: "b" => "a"
+                  ~ nested3: "b" => "a"
+                }
+          ~ [2]: {
+                  ~ nested : "c" => "c"
+                  ~ nested2: "c" => "c"
+                  ~ nested3: "c" => "c"
+                }
+        ]
+Resources:
+    ~ 1 to update
+    1 unchanged
+`).Equal(t, res.StdOut)
+	})
+
+	t.Run("terraform", func(t *testing.T) {
+		tfdriver := tfcheck.NewTfDriver(t, t.TempDir(), "prov", tfp)
+		tfdriver.Write(t, `
+resource "prov_test" "mainRes" {
+  test {
+	  nested = "b"
+	  nested2 = "b"
+	  nested3 = "b"
+	}
+ test {
+	  nested = "a"	
+	  nested2 = "a"
+	  nested3 = "a"
+	}
+ test {
+	  nested = "c"
+	  nested2 = "c"
+	  nested3 = "c"
+	}
+}`)
+
+		plan, err := tfdriver.Plan(t)
+		require.NoError(t, err)
+		err = tfdriver.Apply(t, plan)
+		require.NoError(t, err)
+
+		tfdriver.Write(t, `
+resource "prov_test" "mainRes" {
+  test {
+	  nested = "b"
+	  nested2 = "b"
+	  nested3 = "b"
+	}
+ test {
+	  nested = "d"	
+	  nested2 = "a"
+	  nested3 = "a"
+	}
+ test {
+	  nested = "c"
+	  nested2 = "c"
+	  nested3 = "c"
+	}
+}`)
+
+		plan, err = tfdriver.Plan(t)
+		require.NoError(t, err)
+
+		autogold.Expect(`
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  ~ update in-place
+
+Terraform will perform the following actions:
+
+  # prov_test.mainRes will be updated in-place
+  ~ resource "prov_test" "mainRes" {
+        id = "newid"
+
+      - test {
+          - nested  = "a" -> null
+          - nested2 = "a" -> null
+          - nested3 = "a" -> null
+        }
+      + test {
+          + nested  = "d"
+          + nested2 = "a"
+          + nested3 = "a"
+        }
+
+        # (2 unchanged blocks hidden)
+    }
+
+Plan: 0 to add, 1 to change, 0 to destroy.
+
+─────────────────────────────────────────────────────────────────────────────
+
+Saved the plan to:
+/var/folders/82/nqnqw81s1h56l5nv940f9mq00000gn/T/TestSetDetailedDiffNestedAttributeUpdatedterraform1641769182/001/test.tfplan
+
+To perform exactly these actions, run the following command to apply:
+    terraform apply "/var/folders/82/nqnqw81s1h56l5nv940f9mq00000gn/T/TestSetDetailedDiffNestedAttributeUpdatedterraform1641769182/001/test.tfplan"
+`).Equal(t, plan.StdOut)
+	})
+}
+
+func TestSetDetailedDiffComputedNestedAttribute(t *testing.T) {
+	// TODO: Remove this once accurate bridge previews are rolled out
+	t.Setenv("PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW", "true")
+
+	resCount := 0
+	setComputedProp := func(t *testing.T, d *schema.ResourceData, _ interface{}) diag.Diagnostics {
+		testSet := d.Get("test").(*schema.Set)
+		testVals := testSet.List()
+		q.Q(testVals)
+		newTestVals := make([]interface{}, len(testVals))
+		for i, v := range testVals {
+			val := v.(map[string]interface{})
+			q.Q(val)
+			if val["computed"] == nil || val["computed"] == "" {
+				val["computed"] = fmt.Sprint(resCount)
+				resCount++
+			}
+			q.Q(val)
+			newTestVals[i] = val
+		}
+
+		err := d.Set("test", schema.NewSet(testSet.F, newTestVals))
+		require.NoError(t, err)
+		q.Q(newTestVals)
+		return nil
+	}
+
+	resMap := map[string]*schema.Resource{
+		"prov_test": {
+			Schema: map[string]*schema.Schema{
+				"test": {
+					Type:     schema.TypeSet,
+					Optional: true,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"nested": {
+								Type:     schema.TypeString,
+								Optional: true,
+							},
+							"computed": {
+								Type:     schema.TypeString,
+								Optional: true,
+								Computed: true,
+							},
+						},
+					},
+				},
+			},
+			CreateContext: func(ctx context.Context, d *schema.ResourceData, i interface{}) diag.Diagnostics {
+				d.SetId("id")
+				return setComputedProp(t, d, i)
+			},
+			UpdateContext: func(ctx context.Context, d *schema.ResourceData, i interface{}) diag.Diagnostics {
+				return setComputedProp(t, d, i)
+			},
+		},
+	}
+
+	tfp := &schema.Provider{ResourcesMap: resMap}
+	bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
+
+	program := `
+name: test
+runtime: yaml
+resources:
+  mainRes:
+    type: prov:index:Test
+    properties:
+      tests: %s`
+
+	t.Run("pulumi", func(t *testing.T) {
+		props1 := []map[string]string{
+			{"nested": "a", "computed": "b"},
+		}
+		props1JSON, err := json.Marshal(props1)
+		require.NoError(t, err)
+
+		pt := pulcheck.PulCheck(t, bridgedProvider, fmt.Sprintf(program, string(props1JSON)))
+		pt.Up(t)
+
+		props2 := []map[string]string{
+			{"nested": "a"},
+			{"nested": "a", "computed": "b"},
+			{"nested": "a"},
+		}
+		props2JSON, err := json.Marshal(props2)
+		require.NoError(t, err)
+
+		pt.WritePulumiYaml(t, fmt.Sprintf(program, string(props2JSON)))
+		res := pt.Preview(t, optpreview.Diff())
+
+		// TODO:[pulumi/pulumi-terraform-bridge#2200] The diff here is wrong
+		autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=id]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [1]: {
+                  + computed  : "b"
+                  + nested    : "a"
+                }
+        ]
+Resources:
+    ~ 1 to update
+    1 unchanged
+`).Equal(t, res.StdOut)
+	})
+
+	t.Run("terraform", func(t *testing.T) {
+		resCount = 0
+		tfdriver := tfcheck.NewTfDriver(t, t.TempDir(), "prov", tfp)
+		tfdriver.Write(t, `
+resource "prov_test" "mainRes" {
+  test {
+	  nested = "a"
+	  computed = "b"
+	}
+}`)
+
+		plan, err := tfdriver.Plan(t)
+		require.NoError(t, err)
+		err = tfdriver.Apply(t, plan)
+		require.NoError(t, err)
+
+		tfdriver.Write(t, `
+resource "prov_test" "mainRes" {
+  test {
+	  nested = "a"
+	  computed = "b"
+	}
+
+  test {
+	  nested = "a"
+	}
+
+  test {
+	  nested = "a"
+	}
+}`)
+		plan, err = tfdriver.Plan(t)
+		require.NoError(t, err)
+
+		autogold.Expect(`
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  ~ update in-place
+
+Terraform will perform the following actions:
+
+  # prov_test.mainRes will be updated in-place
+  ~ resource "prov_test" "mainRes" {
+        id = "id"
+
+      + test {
+          + computed = (known after apply)
+          + nested   = "a"
+        }
+
+        # (1 unchanged block hidden)
+    }
+
+Plan: 0 to add, 1 to change, 0 to destroy.
+
+─────────────────────────────────────────────────────────────────────────────
+
+Saved the plan to:
+/var/folders/82/nqnqw81s1h56l5nv940f9mq00000gn/T/TestSetDetailedDiffComputedNestedAttributeterraform1984840785/001/test.tfplan
+
+To perform exactly these actions, run the following command to apply:
+    terraform apply "/var/folders/82/nqnqw81s1h56l5nv940f9mq00000gn/T/TestSetDetailedDiffComputedNestedAttributeterraform1984840785/001/test.tfplan"
+`).Equal(t, plan.StdOut)
 	})
 }
