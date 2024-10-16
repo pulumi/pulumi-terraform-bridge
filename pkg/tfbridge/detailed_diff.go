@@ -397,8 +397,13 @@ func (differ detailedDiffer) makeSetDiff(
 	if isPresent(old) && old.IsArray() {
 		oldList = old.ArrayValue()
 	}
-	if isPresent(new) && new.IsArray() && !new.ContainsUnknowns() {
+	if isPresent(new) && new.IsArray() {
 		newList = new.ArrayValue()
+	}
+
+	if new.ContainsUnknowns() {
+		diff[path.Key()] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE}
+		return diff
 	}
 	newInputs, newInputsOk := path.GetFromMap(differ.newInputs)
 	if newInputsOk && isPresent(newInputs) && newInputs.IsArray() {
