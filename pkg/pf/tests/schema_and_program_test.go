@@ -3,6 +3,7 @@ package tfbridgetests
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -17,8 +18,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
+	"github.com/hexops/autogold/v2"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/providerbuilder"
 	pb "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/providerbuilder"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/tfcheck"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
@@ -409,4 +412,131 @@ outputs:
 	require.Equal(t, "Default val", upRes.Outputs["changeReason"].Value)
 
 	pt.Preview(t, optpreview.Diff(), optpreview.ExpectNoChanges())
+}
+
+type unconditionalElementAddModifier struct{}
+
+func (e unconditionalElementAddModifier) Description(context.Context) string {
+	return "Element change plan modifier"
+}
+
+func (e unconditionalElementAddModifier) MarkdownDescription(context.Context) string {
+	return "Element change plan modifier"
+}
+
+func (e unconditionalElementAddModifier) PlanModifySet(ctx context.Context, req planmodifier.SetRequest, resp *planmodifier.SetResponse) {
+	planElements := req.PlanValue.Elements()
+	planElements = append(planElements, basetypes.NewStringValue("ADDED_UNCONDITIONAL"))
+	resp.PlanValue = basetypes.NewSetValueMust(basetypes.StringType{}, planElements)
+}
+
+type conditionalElementAddModifier struct{}
+
+func (e conditionalElementAddModifier) Description(context.Context) string {
+	return "Element change plan modifier"
+}
+
+func (e conditionalElementAddModifier) MarkdownDescription(context.Context) string {
+	return "Element change plan modifier"
+}
+
+func (e conditionalElementAddModifier) PlanModifySet(ctx context.Context, req planmodifier.SetRequest, resp *planmodifier.SetResponse) {
+	planElements := req.PlanValue.Elements()
+	if len(planElements) == 3 {
+		planElements = append(planElements, basetypes.NewStringValue("ADDED_CONDITIONAL"))
+	}
+	resp.PlanValue = basetypes.NewSetValueMust(basetypes.StringType{}, planElements)
+}
+
+func TestDetailedDiffSetPlanModifiers(t *testing.T) {
+	provBuilder := pb.NewProvider(pb.NewProviderArgs{
+		TypeName: "prov",
+		AllResources: []providerbuilder.Resource{
+			{
+				Name: "test",
+				ResourceSchema: rschema.Schema{
+					Attributes: map[string]rschema.Attribute{
+						"other_prop": rschema.StringAttribute{
+							Optional: true,
+						},
+						"set": rschema.SetAttribute{
+							Optional: true,
+							PlanModifiers: []planmodifier.Set{
+								unconditionalElementAddModifier{},
+								conditionalElementAddModifier{},
+							},
+							ElementType: basetypes.StringType{},
+						},
+					},
+				},
+			},
+		},
+	})
+
+	t.Run("pulumi", func(t *testing.T) {
+		prov := bridgedProvider(provBuilder)
+
+		program := `
+name: test
+runtime: yaml
+resources:
+    mainRes:
+        type: prov:index:Test
+        properties:
+            sets: %s
+outputs:
+    changeReason: ${mainRes.sets}`
+
+		program1 := fmt.Sprintf(program, `["val1"]`)
+
+		pt, err := pulCheck(t, prov, program1)
+		require.NoError(t, err)
+		firstUp := pt.Up(t)
+
+		require.Equal(t, []interface{}{"val1", "ADDED_UNCONDITIONAL"}, firstUp.Outputs["changeReason"].Value)
+
+		program2 := fmt.Sprintf(program, `["val1", "val2"]`)
+		pt.WritePulumiYaml(t, program2)
+		res := pt.Preview(t, optpreview.Diff())
+
+		autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=test-id]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ sets: [
+            [0]: "val1"
+          + [1]: "val2"
+        ]
+Resources:
+    ~ 1 to update
+    1 unchanged
+`).Equal(t, res.StdOut)
+
+		upRes := pt.Up(t)
+
+		require.Equal(t, []interface{}{"val1", "val2", "ADDED_UNCONDITIONAL", "ADDED_CONDITIONAL"}, upRes.Outputs["changeReason"].Value)
+	})
+
+	t.Run("terraform", func(t *testing.T) {
+		// Note this is invalid under TF.
+		tfDriver := tfcheck.NewTfDriver(t, t.TempDir(), provBuilder.TypeName, provBuilder)
+
+		tfDriver.Write(t, `
+resource "prov_test" "main" {
+  set = ["val1"]
+}`)
+		plan, err := tfDriver.Plan(t)
+		require.NoError(t, err)
+		err = tfDriver.Apply(t, plan)
+		require.NoError(t, err)
+
+		tfDriver.Write(t, `
+resource "prov_test" "main" {
+  set = ["val1", "val2"]
+  }`)
+		plan, err = tfDriver.Plan(t)
+		require.NoError(t, err)
+	})
 }
