@@ -49,10 +49,10 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/typechecker"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/walk"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/x/muxer"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/logging"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/propertyvalue"
-	"github.com/pulumi/pulumi-terraform-bridge/x/muxer"
 )
 
 type providerOptions struct {

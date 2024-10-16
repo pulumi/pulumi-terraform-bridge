@@ -15,63 +15,14 @@
 package tfgen
 
 import (
-	"context"
-	"encoding/json"
-	"fmt"
-	"os"
-
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
-
-	"github.com/pulumi/pulumi-terraform-bridge/pf/internal/check"
-	"github.com/pulumi/pulumi-terraform-bridge/pf/tfbridge"
-	sdkbridge "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
-	realtfgen "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
+	pkgpf "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfgen"
 )
 
-type GenerateSchemaOptions struct {
-	ProviderInfo    sdkbridge.ProviderInfo
-	DiagnosticsSink diag.Sink
-}
+// TODO(Deprecated): Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfgen.GenerateSchemaOptions instead.
+type GenerateSchemaOptions = pkgpf.GenerateSchemaOptions
 
-type GenerateSchemaResult struct {
-	ProviderMetadata tfbridge.ProviderMetadata
-}
+// TODO(Deprecated): Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfgen.GenerateSchemaResult instead.
+type GenerateSchemaResult = pkgpf.GenerateSchemaResult
 
-// Generates the Pulumi Package Schema and bridge-specific metadata. Most users do not need to call this directly but
-// instead use Main to build a build-time helper CLI tool.
-func GenerateSchema(_ context.Context, opts GenerateSchemaOptions) (*GenerateSchemaResult, error) {
-	if opts.ProviderInfo.Name == "" {
-		return nil, fmt.Errorf("opts.ProviderInfo.Name cannot be empty")
-	}
-	sink := opts.DiagnosticsSink
-	if sink == nil {
-		sink = diag.DefaultSink(os.Stdout, os.Stderr, diag.FormatOptions{
-			Color: colors.Never,
-		})
-	}
-
-	if err := check.Provider(sink, opts.ProviderInfo); err != nil {
-		return nil, err
-	}
-
-	generated, err := realtfgen.GenerateSchemaWithOptions(realtfgen.GenerateSchemaOptions{
-		ProviderInfo:    opts.ProviderInfo,
-		DiagnosticsSink: sink,
-	})
-
-	if err != nil {
-		return nil, err
-	}
-
-	schema, err := json.Marshal(generated.PackageSpec)
-	if err != nil {
-		return nil, err
-	}
-
-	return &GenerateSchemaResult{
-		ProviderMetadata: tfbridge.ProviderMetadata{
-			PackageSchema: schema,
-		},
-	}, nil
-}
+// TODO(Deprecated): Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfgen.GenerateSchema instead.
+var GenerateSchema = pkgpf.GenerateSchema

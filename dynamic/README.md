@@ -129,14 +129,14 @@ Let's go through each package in turn.
 ### `package main`
 
 `package main` is responsible for launching a Pulumi provider and setting up the parameterize call. It does
-this by calling [`pf/tfbridge.Main`](https://pkg.go.dev/github.com/pulumi/pulumi-terraform-bridge/pf@v0.38.0/tfbridge#Main), passing in an empty Terraform Plugin Framework provider (from
-[`pf/proto.Empty()`](https://pkg.go.dev/github.com/pulumi/pulumi-terraform-bridge/pf@v0.38.0/proto#Empty)). [`pf/tfbridge.ProviderMetadata`](https://pkg.go.dev/github.com/pulumi/pulumi-terraform-bridge/pf@v0.38.0/tfbridge#ProviderMetadata) allows overriding the `Parameterize` and
+this by calling [`pf/tfbridge.Main`](https://pkg.go.dev/github.com/pulumi/pulumi-terraform-bridge/v3/pf@v0.38.0/tfbridge#Main), passing in an empty Terraform Plugin Framework provider (from
+[`pf/proto.Empty()`](https://pkg.go.dev/github.com/pulumi/pulumi-terraform-bridge/v3/pf@v0.38.0/proto#Empty)). [`pf/tfbridge.ProviderMetadata`](https://pkg.go.dev/github.com/pulumi/pulumi-terraform-bridge/v3/pf@v0.38.0/tfbridge#ProviderMetadata) allows overriding the `Parameterize` and
 `GetSchema` call (and we override both).
 
 When `Parameterize` is called, we launch the underlying Terraform provider via
 `internal/shim/run.LocalProvider` or `internal/shim/run.NamedProvider` (downloading as necessary). Both
 functions return a [`tfprotov6.ProviderServer`](https://pkg.go.dev/github.com/hashicorp/terraform-plugin-go/tfprotov6#ProviderServer) which is used to re-initialize the running provider via
-[`pf/tfbridge.XParameterizeResetProvider`](https://pkg.go.dev/github.com/pulumi/pulumi-terraform-bridge/pf@v0.38.0/tfbridge#XParameterizeResetProvider).
+[`pf/tfbridge.XParameterizeResetProvider`](https://pkg.go.dev/github.com/pulumi/pulumi-terraform-bridge/v3/pf@v0.38.0/tfbridge#XParameterizeResetProvider).
 
 When `GetSchema` is called, it generates a schema from the currently equipped provider with
 [`pkg/tfgen.GenerateSchemaWithOptions`](https://pkg.go.dev/github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen#GenerateSchemaWithOptions) and returns it. All type translation, documentation generation, etc

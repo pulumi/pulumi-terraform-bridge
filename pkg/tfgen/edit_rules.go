@@ -58,14 +58,21 @@ func defaultEditRules() editRules {
 		// Reformat certain headers
 		reReplace(`The following arguments are supported`,
 			`The following configuration inputs are supported`, info.PostCodeTranslation),
+		reReplace(`The provider supports the following arguments`,
+			`The following configuration inputs are supported`, info.PostCodeTranslation),
 		reReplace(`Argument Reference`,
 			`Configuration Reference`, info.PostCodeTranslation),
+		reReplace(`# Arguments`,
+			`# Configuration Reference`, info.PostCodeTranslation),
 		reReplace(`Schema`,
 			`Configuration Reference`, info.PostCodeTranslation),
 		reReplace("### Optional\n", "", info.PostCodeTranslation),
 		reReplace(`block contains the following arguments`,
 			`input has the following nested fields`, info.PostCodeTranslation),
 		reReplace(`provider block`, `provider configuration`, info.PostCodeTranslation),
+		reReplace("`provider` block", "provider configuration", info.PostCodeTranslation),
+		reReplace("Data Source", "Function", info.PostCodeTranslation),
+		reReplace("data source", "function", info.PostCodeTranslation),
 	}
 }
 

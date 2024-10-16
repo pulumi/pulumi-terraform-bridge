@@ -29,6 +29,14 @@ issues:
     - pkg/tf2pulumi/internal/config
     - pkg/tf2pulumi/internal/configs
     - pkg/vendored
+    # TODO(https://github.com/pulumi/pulumi-terraform-bridge/issues/2474)
+    - pkg/pf/tests
+    - pkg/tests
+    - pkg/x/testing
+    - pkg/x/muxer/tests
+    - pf
+    - x/muxer
+    - testing
 linters-settings:
   gci:
     sections:
