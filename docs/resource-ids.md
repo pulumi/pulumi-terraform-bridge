@@ -60,7 +60,21 @@ If the type of the `"id"` attribute is not coercible to a string, you must set `
 error: Resource test_res has a problem: no "id" attribute. To map this resource consider specifying ResourceInfo.ComputeID
 ```
 
-If the resource simply doesn't have an `"id"` attribute, you will need to set `ResourceInfo.ComputeID`. If you want to delegate the ID field in Pulumi to another attribute, you should use `tfbridge.DelegateIDField` to produce a `ResourceInfo.ComputeID` compatible function. Otherwise you can pass in any function that complies with:
+If the resource simply doesn't have an `"id"` attribute, you will need to set `ResourceInfo.ComputeID`. 
+
+```go
+"test_res": {ComputeID: computeIDField("id")}
+```
+
+Note that the computeIDField needs to be a valid property, i.e. if the mapped resource does not have a field called "id",
+you may need to map this field to something else:
+
+```go
+"test_res": {ComputeID: computeIDField("valid_key")}
+```
+
+If you want to delegate the ID field in Pulumi to another attribute, you should use `tfbridge.DelegateIDField` to produce a `ResourceInfo.ComputeID` compatible function. 
+Otherwise you can pass in any function that complies with:
 
 ```go
 func(ctx context.Context, state resource.PropertyMap) (resource.ID, error)
