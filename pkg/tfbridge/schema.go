@@ -293,6 +293,7 @@ type conversionContext struct {
 	ApplyTFDefaults             bool
 	Assets                      AssetTable
 	UnknownCollectionsSupported bool
+	DisableMapArrayWorkaround   bool
 }
 
 type makeTerraformInputsOptions struct {
@@ -354,6 +355,7 @@ func makeSingleTerraformInput(
 		ApplyTFDefaults:             false,
 		Assets:                      AssetTable{},
 		UnknownCollectionsSupported: false,
+		DisableMapArrayWorkaround:   true,
 	}
 
 	return cctx.makeTerraformInput(name, resource.NewNullProperty(), val, tfs, ps)
@@ -530,7 +532,7 @@ func (ctx *conversionContext) makeTerraformInput(
 				return nil, err
 			}
 
-			if tfs.Type() == shim.TypeMap {
+			if !ctx.DisableMapArrayWorkaround && tfs.Type() == shim.TypeMap {
 				// If we have schema information that indicates that this value is being
 				// presented to a map-typed field whose Elem is a shim.Resource, wrap the
 				// value in an array in order to work around a bug in Terraform.
