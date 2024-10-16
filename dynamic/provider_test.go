@@ -17,6 +17,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/hexops/autogold/v2"
+	"github.com/opentofu/opentofu/shim/grpcutil"
+	v6shim "github.com/opentofu/opentofu/shim/protov6"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -27,8 +29,6 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
 
-	"github.com/opentofu/opentofu/shim/grpcutil"
-	v6shim "github.com/opentofu/opentofu/shim/protov6"
 	helper "github.com/pulumi/pulumi-terraform-bridge/dynamic/internal/testing"
 	"github.com/pulumi/pulumi-terraform-bridge/dynamic/parameterize"
 	pfbridge "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
