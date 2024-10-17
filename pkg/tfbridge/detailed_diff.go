@@ -9,7 +9,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/walk"
 )
@@ -18,11 +17,6 @@ func isPresent(val resource.PropertyValue) bool {
 	return !val.IsNull() &&
 		!(val.IsArray() && val.ArrayValue() == nil) &&
 		!(val.IsObject() && val.ObjectValue() == nil)
-}
-
-func isForceNew(tfs shim.Schema, ps *SchemaInfo) bool {
-	return (tfs != nil && tfs.ForceNew()) ||
-		(ps != nil && ps.ForceNew != nil && *ps.ForceNew)
 }
 
 func sortedMergedKeys[K cmp.Ordered, V any, M ~map[K]V](a, b M) []K {
@@ -39,30 +33,6 @@ func sortedMergedKeys[K cmp.Ordered, V any, M ~map[K]V](a, b M) []K {
 	}
 	slices.Sort(keysSlice)
 	return keysSlice
-}
-
-// a variant of PropertyPath.Get which works on PropertyMaps
-func getPathFromPropertyMap(
-	path resource.PropertyPath, propertyMap resource.PropertyMap,
-) (resource.PropertyValue, bool) {
-	if len(path) == 0 {
-		return resource.NewNullProperty(), false
-	}
-
-	rootKeyStr, ok := path[0].(string)
-	contract.Assertf(ok && rootKeyStr != "", "root key must be a non-empty string")
-	rootKey := resource.PropertyKey(rootKeyStr)
-	restPath := path[1:]
-
-	if len(restPath) == 0 {
-		return propertyMap[rootKey], true
-	}
-
-	if !propertyMap.HasValue(rootKey) {
-		return resource.NewNullProperty(), false
-	}
-
-	return restPath.Get(propertyMap[rootKey])
 }
 
 func promoteToReplace(diff *pulumirpc.PropertyDiff) *pulumirpc.PropertyDiff {
@@ -133,54 +103,7 @@ func makeBaseDiff(old, new resource.PropertyValue) baseDiff {
 	return undecidedDiff
 }
 
-type (
-	detailedDiffKey string
-	propertyPath    resource.PropertyPath
-)
-
-func newPropertyPath(root resource.PropertyKey) propertyPath {
-	return propertyPath{string(root)}
-}
-
-func (k propertyPath) String() string {
-	return resource.PropertyPath(k).String()
-}
-
-func (k propertyPath) Key() detailedDiffKey {
-	return detailedDiffKey(k.String())
-}
-
-func (k propertyPath) append(subkey interface{}) propertyPath {
-	return append(k, subkey)
-}
-
-func (k propertyPath) Subpath(subkey string) propertyPath {
-	return k.append(subkey)
-}
-
-func (k propertyPath) Index(i int) propertyPath {
-	return k.append(i)
-}
-
-func (k propertyPath) IsReservedKey() bool {
-	leaf := k[len(k)-1]
-	return leaf == "__meta" || leaf == "__defaults"
-}
-
-func (k propertyPath) GetFromMap(v resource.PropertyMap) (resource.PropertyValue, bool) {
-	return getPathFromPropertyMap(resource.PropertyPath(k), v)
-}
-
-func mapHasReplacements(m map[detailedDiffKey]*pulumirpc.PropertyDiff) bool {
-	for _, diff := range m {
-		if diff.GetKind() == pulumirpc.PropertyDiff_ADD_REPLACE ||
-			diff.GetKind() == pulumirpc.PropertyDiff_DELETE_REPLACE ||
-			diff.GetKind() == pulumirpc.PropertyDiff_UPDATE_REPLACE {
-			return true
-		}
-	}
-	return false
-}
+type detailedDiffKey string
 
 type detailedDiffer struct {
 	tfs shim.SchemaMap
@@ -212,48 +135,12 @@ func (differ detailedDiffer) getEffectiveType(path walk.SchemaPath) shim.ValueTy
 	return tfs.Type()
 }
 
-func (differ detailedDiffer) lookupSchemas(path propertyPath) (shim.Schema, *info.Schema, error) {
-	schemaPath := PropertyPathToSchemaPath(resource.PropertyPath(path), differ.tfs, differ.ps)
-	return LookupSchemas(schemaPath, differ.tfs, differ.ps)
-}
-
-func (differ detailedDiffer) isForceNew(path propertyPath) bool {
-	// A change on a property might trigger a replacement if:
-	// - The property itself is marked as ForceNew
-	// - The direct parent property is a collection (list, set, map) and is marked as ForceNew
-	// See pkg/cross-tests/diff_cross_test.go
-	// TestAttributeCollectionForceNew, TestBlockCollectionForceNew, TestBlockCollectionElementForceNew
-	// for a full case study of replacements in TF
-	tfs, ps, err := differ.lookupSchemas(path)
-	if err != nil {
-		return false
-	}
-	if isForceNew(tfs, ps) {
-		return true
-	}
-
-	if len(path) == 1 {
-		return false
-	}
-
-	parent := path[:len(path)-1]
-	tfs, ps, err = differ.lookupSchemas(parent)
-	if err != nil {
-		return false
-	}
-	// Note this is mimicking the TF behaviour, so the effective type is not considered here.
-	if tfs.Type() != shim.TypeList && tfs.Type() != shim.TypeSet && tfs.Type() != shim.TypeMap {
-		return false
-	}
-	return isForceNew(tfs, ps)
-}
-
 type hashIndexMap map[int]int
 
 func (differ detailedDiffer) calculateSetHashIndexMap(path propertyPath, listVal resource.PropertyValue) hashIndexMap {
 	identities := make(hashIndexMap)
 
-	tfs, ps, err := differ.lookupSchemas(path)
+	tfs, ps, err := lookupSchemas(path, differ.tfs, differ.ps)
 	if err != nil {
 		return nil
 	}
@@ -278,35 +165,13 @@ func (differ detailedDiffer) calculateSetHashIndexMap(path propertyPath, listVal
 	return identities
 }
 
-// We do not short-circuit detailed diffs when comparing non-nil properties against nil ones. The reason for that is
-// that a replace might be triggered by a ForceNew inside a nested property of a non-ForceNew property. We instead
-// always walk the full tree even when comparing against a nil property. We then later do a simplification step for
-// the detailed diff in simplifyDiff in order to reduce the diff to what the user expects to see.
-// See [pulumi/pulumi-terraform-bridge#2405] for more details.
-func (differ detailedDiffer) simplifyDiff(
-	diff map[detailedDiffKey]*pulumirpc.PropertyDiff, path propertyPath, old, new resource.PropertyValue,
-) (map[detailedDiffKey]*pulumirpc.PropertyDiff, bool) {
-	baseDiff := makeBaseDiff(old, new)
-	if baseDiff == undecidedDiff {
-		return nil, false
-	}
-	propDiff := baseDiff.ToPropertyDiff()
-	if propDiff == nil {
-		return nil, true
-	}
-	if differ.isForceNew(path) || mapHasReplacements(diff) {
-		propDiff = promoteToReplace(propDiff)
-	}
-	return map[detailedDiffKey]*pulumirpc.PropertyDiff{path.Key(): propDiff}, true
-}
-
 // makePlainPropDiff is used for plain properties and ones with an unknown schema.
 // It does not access the TF schema, so it does not know about the type of the property.
 func (differ detailedDiffer) makePlainPropDiff(
 	path propertyPath, old, new resource.PropertyValue,
 ) map[detailedDiffKey]*pulumirpc.PropertyDiff {
 	baseDiff := makeBaseDiff(old, new)
-	isForceNew := differ.isForceNew(path)
+	isReplacement := willTriggerReplacement(path, differ.tfs, differ.ps)
 	var propDiff *pulumirpc.PropertyDiff
 	if baseDiff != undecidedDiff {
 		propDiff = baseDiff.ToPropertyDiff()
@@ -314,7 +179,7 @@ func (differ detailedDiffer) makePlainPropDiff(
 		propDiff = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE}
 	}
 
-	if isForceNew {
+	if isReplacement {
 		propDiff = promoteToReplace(propDiff)
 	}
 
@@ -322,6 +187,32 @@ func (differ detailedDiffer) makePlainPropDiff(
 		return map[detailedDiffKey]*pulumirpc.PropertyDiff{path.Key(): propDiff}
 	}
 	return nil
+}
+
+// makeShortCircuitDiff is used for properties that are nil or computed in either the old or new state.
+// It makes sure to check recursively if the property will trigger a replacement.
+func (differ detailedDiffer) makeShortCircuitDiff(
+	path propertyPath, old, new resource.PropertyValue,
+) map[detailedDiffKey]*pulumirpc.PropertyDiff {
+	contract.Assertf(old.IsNull() || new.IsNull() || new.IsComputed(),
+		"short-circuit diff should only be used for nil properties")
+	if old.IsNull() && new.IsNull() {
+		return nil
+	}
+
+	baseDiff := makeBaseDiff(old, new)
+	contract.Assertf(baseDiff != undecidedDiff, "short-circuit diff could not determine diff kind")
+
+	propDiff := baseDiff.ToPropertyDiff()
+	if new.IsComputed() && willTriggerReplacement(path, differ.tfs, differ.ps) {
+		propDiff = promoteToReplace(propDiff)
+	} else if !new.IsNull() && !new.IsComputed() && willTriggerReplacementRecursive(path, new, differ.tfs, differ.ps) {
+		propDiff = promoteToReplace(propDiff)
+	} else if !old.IsNull() && willTriggerReplacementRecursive(path, old, differ.tfs, differ.ps) {
+		propDiff = promoteToReplace(propDiff)
+	}
+
+	return map[detailedDiffKey]*pulumirpc.PropertyDiff{path.Key(): propDiff}
 }
 
 func (differ detailedDiffer) makePropDiff(
@@ -348,15 +239,19 @@ func (differ detailedDiffer) makePropDiff(
 func (differ detailedDiffer) makeListDiff(
 	path propertyPath, old, new resource.PropertyValue,
 ) map[detailedDiffKey]*pulumirpc.PropertyDiff {
+	if !isPresent(old) || !old.IsArray() {
+		old = resource.NewNullProperty()
+	}
+	if (!isPresent(new) || !new.IsArray()) && !new.IsComputed() {
+		new = resource.NewNullProperty()
+	}
+	if old.IsNull() || new.IsNull() || new.IsComputed() {
+		return differ.makeShortCircuitDiff(path, old, new)
+	}
+
 	diff := make(map[detailedDiffKey]*pulumirpc.PropertyDiff)
-	oldList := []resource.PropertyValue{}
-	newList := []resource.PropertyValue{}
-	if isPresent(old) && old.IsArray() {
-		oldList = old.ArrayValue()
-	}
-	if isPresent(new) && new.IsArray() {
-		newList = new.ArrayValue()
-	}
+	oldList := old.ArrayValue()
+	newList := new.ArrayValue()
 
 	// naive diffing of lists
 	// TODO[pulumi/pulumi-terraform-bridge#2295]: implement a more sophisticated diffing algorithm
@@ -377,11 +272,6 @@ func (differ detailedDiffer) makeListDiff(
 		}
 	}
 
-	simplerDiff, isSimplified := differ.simplifyDiff(diff, path, old, new)
-	if isSimplified {
-		return simplerDiff
-	}
-
 	return diff
 }
 
@@ -395,16 +285,20 @@ type setChangeIndex struct {
 func (differ detailedDiffer) makeSetDiff(
 	path propertyPath, old, new resource.PropertyValue,
 ) map[detailedDiffKey]*pulumirpc.PropertyDiff {
+	if !isPresent(old) || !old.IsArray() {
+		old = resource.NewNullProperty()
+	}
+	if (!isPresent(new) || !new.IsArray()) && !new.IsComputed() {
+		new = resource.NewNullProperty()
+	}
+	if old.IsNull() || new.IsNull() || new.IsComputed() {
+		return differ.makeShortCircuitDiff(path, old, new)
+	}
+
 	diff := make(map[detailedDiffKey]*pulumirpc.PropertyDiff)
-	oldList := []resource.PropertyValue{}
-	newList := []resource.PropertyValue{}
+	oldList := old.ArrayValue()
+	newList := new.ArrayValue()
 	newInputsList := []resource.PropertyValue{}
-	if isPresent(old) && old.IsArray() {
-		oldList = old.ArrayValue()
-	}
-	if isPresent(new) && new.IsArray() {
-		newList = new.ArrayValue()
-	}
 
 	newInputs, newInputsOk := path.GetFromMap(differ.newInputs)
 	if newInputsOk && isPresent(newInputs) && newInputs.IsArray() {
@@ -453,27 +347,25 @@ func (differ detailedDiffer) makeSetDiff(
 		}
 	}
 
-	simplerDiff, isSimplified := differ.simplifyDiff(diff, path, old, new)
-	if isSimplified {
-		return simplerDiff
-	}
-
 	return diff
 }
 
 func (differ detailedDiffer) makeMapDiff(
 	path propertyPath, old, new resource.PropertyValue,
 ) map[detailedDiffKey]*pulumirpc.PropertyDiff {
-	diff := make(map[detailedDiffKey]*pulumirpc.PropertyDiff)
-	oldMap := resource.PropertyMap{}
-	newMap := resource.PropertyMap{}
-	if isPresent(old) && old.IsObject() {
-		oldMap = old.ObjectValue()
+	if !isPresent(old) || !old.IsObject() {
+		old = resource.NewNullProperty()
 	}
-	if isPresent(new) && new.IsObject() {
-		newMap = new.ObjectValue()
+	if !isPresent(new) || !new.IsObject() && !new.IsComputed() {
+		new = resource.NewNullProperty()
+	}
+	if old.IsNull() || new.IsNull() || new.IsComputed() {
+		return differ.makeShortCircuitDiff(path, old, new)
 	}
 
+	oldMap := old.ObjectValue()
+	newMap := new.ObjectValue()
+	diff := make(map[detailedDiffKey]*pulumirpc.PropertyDiff)
 	for _, k := range sortedMergedKeys(oldMap, newMap) {
 		subindex := path.Subpath(string(k))
 		oldVal := oldMap[k]
@@ -484,11 +376,6 @@ func (differ detailedDiffer) makeMapDiff(
 		for subKey, subDiff := range elemDiff {
 			diff[subKey] = subDiff
 		}
-	}
-
-	simplerDiff, isSimplified := differ.simplifyDiff(diff, path, old, new)
-	if isSimplified {
-		return simplerDiff
 	}
 
 	return diff

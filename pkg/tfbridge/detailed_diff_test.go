@@ -43,11 +43,9 @@ func TestSchemaLookupMaxItemsOnePlain(t *testing.T) {
 		},
 	}
 
-	differ := detailedDiffer{
-		tfs: shimv2.NewSchemaMap(sdkv2Schema),
-	}
+	tfs := shimv2.NewSchemaMap(sdkv2Schema)
 
-	sch, _, err := differ.lookupSchemas(newPropertyPath("string_prop"))
+	sch, _, err := lookupSchemas(newPropertyPath("string_prop"), tfs, nil)
 	require.NoError(t, err)
 	require.NotNil(t, sch)
 	require.Equal(t, sch.Type(), shim.TypeList)
@@ -72,16 +70,14 @@ func TestSchemaLookupMaxItemsOne(t *testing.T) {
 		},
 	}
 
-	differ := detailedDiffer{
-		tfs: shimv2.NewSchemaMap(res.Schema),
-	}
+	tfs := shimv2.NewSchemaMap(res.Schema)
 
-	sch, _, err := differ.lookupSchemas(newPropertyPath("foo"))
+	sch, _, err := lookupSchemas(newPropertyPath("foo"), tfs, nil)
 	require.NoError(t, err)
 	require.NotNil(t, sch)
 	require.Equal(t, sch.Type(), shim.TypeList)
 
-	sch, _, err = differ.lookupSchemas(newPropertyPath("foo").Subpath("bar"))
+	sch, _, err = lookupSchemas(newPropertyPath("foo").Subpath("bar"), tfs, nil)
 	require.NoError(t, err)
 	require.NotNil(t, sch)
 	require.Equal(t, sch.Type(), shim.TypeString)
@@ -101,16 +97,14 @@ func TestSchemaLookupMap(t *testing.T) {
 		},
 	}
 
-	differ := detailedDiffer{
-		tfs: shimv2.NewSchemaMap(res.Schema),
-	}
+	tfs := shimv2.NewSchemaMap(res.Schema)
 
-	sch, _, err := differ.lookupSchemas(newPropertyPath("foo"))
+	sch, _, err := lookupSchemas(newPropertyPath("foo"), tfs, nil)
 	require.NoError(t, err)
 	require.NotNil(t, sch)
 	require.Equal(t, sch.Type(), shim.TypeMap)
 
-	sch, _, err = differ.lookupSchemas(propertyPath{"foo", "bar"})
+	sch, _, err = lookupSchemas(newPropertyPath("foo").Subpath("bar"), tfs, nil)
 	require.NoError(t, err)
 	require.NotNil(t, sch)
 	require.Equal(t, sch.Type(), shim.TypeString)
