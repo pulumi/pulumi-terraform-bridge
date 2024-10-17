@@ -15,21 +15,33 @@
 package tfbridgetests
 
 import (
+	"context"
+	"math"
+	"math/big"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/pulumi/providertest/replay"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/cross-tests"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/testprovider"
+	propProviderSchema "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/util/property/pf/schema/provider"
+	propProviderValue "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/util/property/pf/value/provider"
 	tfpf "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/assume"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/zclconf/go-cty/cty"
+	"pgregory.net/rapid"
 )
 
 func TestConfigure(t *testing.T) {
+	t.Parallel()
+
 	t.Run("string", crosstests.MakeConfigure(
 		schema.Schema{Attributes: map[string]schema.Attribute{
 			"k": schema.StringAttribute{Optional: true},
@@ -67,6 +79,113 @@ func TestConfigureInvalidTypes(t *testing.T) {
 		map[string]cty.Value{"b": cty.BoolVal(false)},
 		resource.PropertyMap{"b": resource.NewProperty("false")},
 	))
+}
+
+func TestConfigureProperties(t *testing.T) {
+	t.Parallel()
+
+	assume.TerraformCLI(t)
+
+	equals := func(t crosstests.TestingT, tfOutput, puOutput tfsdk.Config) {
+		assert.Equal(t, tfOutput.Schema, puOutput.Schema, "schema doesn't match")
+
+		// Configure does not work as it should in the general case.
+		//
+		// If it did, then we would not need a custom equals function, instead just asserting tfOutput
+		// is equal to puOutput.
+		//
+		// Each clause in the normalize function thus represents a bug in the bridge.
+		var relax func(tftypes.Value) tftypes.Value
+		relax = func(v tftypes.Value) tftypes.Value {
+			if !v.IsKnown() {
+				return v
+			}
+
+			if typ := v.Type(); typ.Is(tftypes.Map{}) || typ.Is(tftypes.Object{}) {
+				asMapOrObject := map[string]tftypes.Value{}
+				require.NoError(t, v.As(&asMapOrObject))
+
+				for k, e := range asMapOrObject {
+					e = relax(e)
+					if e.IsNull() && typ.Is(tftypes.Map{}) {
+						delete(asMapOrObject, k)
+					} else {
+						asMapOrObject[k] = e
+					}
+				}
+
+				// TODO: Empty objects are represented as {} in PF but null in bridged PF.
+				//
+				// This normalizes all empty objects to be represented as null so the test passes.
+				if len(asMapOrObject) == 0 {
+					// Normalize empty maps to nil
+					return tftypes.NewValue(v.Type(), nil)
+				}
+
+				return tftypes.NewValue(v.Type(), asMapOrObject)
+			}
+
+			if v.Type().Is(tftypes.List{}) {
+				asSliceOrSet := []tftypes.Value{}
+				require.NoError(t, v.As(&asSliceOrSet))
+				newSliceOrSet := make([]tftypes.Value, 0, len(asSliceOrSet))
+
+				// TODO: Lists of empty objects appear in Bridged PF as also empty. In standard PF
+				// they appear as lists of empty objects.
+				//
+				// This normalizes all slices of empty objects to be represented as null.
+
+				for _, e := range asSliceOrSet {
+					if e := relax(e); !e.IsNull() {
+						newSliceOrSet = append(newSliceOrSet, e)
+					}
+				}
+
+				if len(newSliceOrSet) == 0 {
+					return tftypes.NewValue(v.Type(), nil)
+				}
+
+				return tftypes.NewValue(v.Type(), newSliceOrSet)
+			}
+
+			// TODO: We don't set the same precision as PF does for numbers.
+			if v.Type().Is(tftypes.Number) {
+				n := new(big.Float)
+				require.NoError(t, v.As(&n))
+
+				if n != nil {
+					f, _ := n.Float32()
+					n = big.NewFloat(math.Round(float64(f)*1000) / 1000)
+
+					return tftypes.NewValue(v.Type(), n)
+				}
+			}
+
+			// Nested set diffs are not correct, so we don't report them here.
+			if v.Type().Is(tftypes.Set{}) {
+				// Sets are not handled correctly here.
+				return tftypes.NewValue(v.Type(), nil)
+			}
+
+			return v
+		}
+
+		if tf, pu := relax(tfOutput.Raw), relax(puOutput.Raw); !tf.Equal(pu) {
+			diff, err := tf.Diff(pu)
+			require.NoError(t, err)
+			for i, d := range diff {
+				t.Errorf("%d: %s", i, d.String())
+			}
+		}
+	}
+
+	rapid.Check(t, func(t *rapid.T) {
+		ctx := context.Background()
+		schema := propProviderSchema.Schema(ctx).Draw(t, "schema")
+		value := propProviderValue.WithValue(ctx, schema).Draw(t, "value")
+		crosstests.Configure(t, schema, value.Tf.AsValueMap(), value.Pu,
+			crosstests.WithConfigureEqual(equals))
+	})
 }
 
 // Test interaction of Configure and Create.

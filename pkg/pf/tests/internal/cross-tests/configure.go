@@ -30,6 +30,7 @@ import (
 	pb "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/providerbuilder"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfgen"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/assume"
 	crosstests "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/cross-tests"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/tfcheck"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
@@ -50,10 +51,13 @@ import (
 //	}
 //
 // For details on the test itself, see [Configure].
-func MakeConfigure(schema schema.Schema, tfConfig map[string]cty.Value, puConfig resource.PropertyMap) func(t *testing.T) {
+func MakeConfigure(
+	schema schema.Schema, tfConfig map[string]cty.Value, puConfig resource.PropertyMap,
+	options ...ConfigureOption,
+) func(t *testing.T) {
 	return func(t *testing.T) {
 		t.Parallel()
-		Configure(t, schema, tfConfig, puConfig)
+		Configure(t, schema, tfConfig, puConfig, options...)
 	}
 }
 
@@ -81,12 +85,17 @@ func MakeConfigure(schema schema.Schema, tfConfig map[string]cty.Value, puConfig
 //	+--------------------+                      +---------------------+
 //
 // Configure should be safe to run in parallel.
-func Configure(t *testing.T, schema schema.Schema, tfConfig map[string]cty.Value, puConfig resource.PropertyMap) {
-	skipUnlessLinux(t)
+func Configure(
+	t TestingT, schema schema.Schema, tfConfig map[string]cty.Value, puConfig resource.PropertyMap,
+	options ...ConfigureOption,
+) {
+	assume.TerraformCLI(t)
 
-	// By default, logs only show when they are on a failed test. By logging to
-	// topLevelT, we can log items to be shown if downstream tests fail.
-	topLevelT := t
+	var opts configureOptions
+	for _, o := range options {
+		o(&opts)
+	}
+
 	const providerName = "test"
 
 	prov := func(config *tfsdk.Config) *pb.Provider {
@@ -103,8 +112,11 @@ func Configure(t *testing.T, schema schema.Schema, tfConfig map[string]cty.Value
 	}
 
 	var tfOutput, puOutput tfsdk.Config
-	t.Run("tf", func(t *testing.T) {
-		defer propageteSkip(topLevelT, t)
+	var runOnFail []func(t TestingT)
+
+	logf := func(msg string, a ...any) { runOnFail = append(runOnFail, func(t TestingT) { t.Logf(msg, a...) }) }
+
+	withAugmentedT(t, func(t *augmentedT) { // --- Run Terraform Provider ---
 		var hcl bytes.Buffer
 		err := crosstests.WritePF(&hcl).Provider(schema, providerName, tfConfig)
 		require.NoError(t, err)
@@ -120,13 +132,12 @@ resource "` + providerName + `_res" "res" {}
 
 		driver.Write(t, hcl.String())
 		plan, err := driver.Plan(t)
-		require.NoError(t, err)
+		require.NoError(t, err, "failed to generate TF plan")
 		err = driver.Apply(t, plan)
 		require.NoError(t, err)
 	})
 
-	t.Run("bridged", func(t *testing.T) {
-		defer propageteSkip(topLevelT, t)
+	withAugmentedT(t, func(t *augmentedT) { // --- Run Pulumi Provider ---
 		dir := t.TempDir()
 
 		pulumiYaml := map[string]any{
@@ -145,7 +156,7 @@ resource "` + providerName + `_res" "res" {}
 
 		bytes, err := yaml.Marshal(pulumiYaml)
 		require.NoError(t, err)
-		topLevelT.Logf("Pulumi.yaml:\n%s", string(bytes))
+		logf("Pulumi.yaml:\n%s", string(bytes))
 		err = os.WriteFile(filepath.Join(dir, "Pulumi.yaml"), bytes, 0600)
 		require.NoError(t, err)
 
@@ -187,11 +198,49 @@ resource "` + providerName + `_res" "res" {}
 		contract.Ignore(test.Up(t))      // Assert that the update succeeded, but not the result.
 	})
 
-	skipCompare := t.Failed() || t.Skipped()
-	t.Run("compare", func(t *testing.T) {
-		if skipCompare {
-			t.Skipf("skipping since earlier steps did not complete")
-		}
+	// --- Compare results -----------------------------
+	if opts.testEqual != nil {
+		opts.testEqual(t, tfOutput, puOutput)
+	} else {
 		assert.Equal(t, tfOutput, puOutput)
-	})
+	}
+
+	if t.Failed() {
+		for _, f := range runOnFail {
+			f(t)
+		}
+	}
+}
+
+// An option for configuring [Configure] or [MakeConfigure].
+//
+// Existing options are:
+// - [WithConfigureEquals]
+type ConfigureOption func(*configureOptions)
+
+type configureOptions struct {
+	testEqual func(t TestingT, tfOutput, puOutput tfsdk.Config)
+}
+
+// WithConfigureEqual defines a comparison function for the cross-test.
+//
+// This function is called after both the Terraform and Pulumi portions have run, and is
+// responsible for asserting that the results match.
+//
+// Here are 2 examples:
+//
+//	// Assert that both Terraform and Pulumi ran, but do not assert anything about their behavior.
+//	WithConfigureEqual(func(t TestingT, tfOutput, puOutput tfsdk.Config) {})
+//
+//	// Assert that the underlying provider witnessed saw could not distinguish between
+//	// the direct and bridged call (the default behavior).
+//	WithConfigureEqual(func(t TestingT, tfOutput, puOutput tfsdk.Config) {
+//		assert.Equal(t, tfOutput, puOutput)
+//	})
+//
+// WithConfigureEqual should be used only when the direct and bridged providers don't
+// agree, to limit the scope of the test so it can be checked in. In general, usage should
+// be accompanied by a bridge issue to track the discrepancy.
+func WithConfigureEqual(equal func(t TestingT, tfOutput, puOutput tfsdk.Config)) ConfigureOption {
+	return func(opts *configureOptions) { opts.testEqual = equal }
 }
