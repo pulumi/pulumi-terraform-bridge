@@ -5,6 +5,7 @@ import (
 	"context"
 	"slices"
 
+	"github.com/golang/glog"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -159,6 +160,7 @@ func (differ detailedDiffer) calculateSetHashIndexMap(path propertyPath, listVal
 
 	// Calculate the identity of each element
 	for i, newElem := range convertedListVal {
+
 		hash := tfs.SetHash(newElem)
 		identities[hash] = i
 	}
@@ -307,9 +309,12 @@ func (differ detailedDiffer) makeSetDiff(
 
 	oldIdentities := differ.calculateSetHashIndexMap(path, resource.NewArrayProperty(oldList))
 	newIdentities := differ.calculateSetHashIndexMap(path, resource.NewArrayProperty(newList))
+	inputIdentities := hashIndexMap{}
 
-	// TODO: We can not hash the inputs as they might not have the correct shape!
-	inputIdentities := differ.calculateSetHashIndexMap(path, resource.NewArrayProperty(newInputsList))
+	if !schemaContainsComputed(path, differ.tfs, differ.ps) {
+		// The inputs are only safe to hash if the schema has no computed properties
+		inputIdentities = differ.calculateSetHashIndexMap(path, resource.NewArrayProperty(newInputsList))
+	}
 
 	// The old indices and new inputs are the indices the engine can reference
 	// The new state indices need to be translated to new input indices when presenting the diff
@@ -322,8 +327,12 @@ func (differ detailedDiffer) makeSetDiff(
 	for hash, newIndex := range newIdentities {
 		if _, oldOk := oldIdentities[hash]; !oldOk {
 			inputIndex := inputIdentities[hash]
-			// TODO: make this a warning instead
-			contract.Assertf(inputIndex != -1, "could not find index of element in new inputs")
+			if inputIndex == -1 {
+				glog.Warningln(
+					"Element at path %s in new state not found in inputs, the displayed diff might be inaccurate",
+					path.String())
+				inputIndex = newIndex
+			}
 			_, oldChanged := setIndices[inputIndex]
 			setIndices[inputIndex] = setChangeIndex{
 				engineIndex: inputIndex, oldChanged: oldChanged, newStateIndex: newIndex, newChanged: true,

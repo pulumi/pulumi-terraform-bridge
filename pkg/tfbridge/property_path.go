@@ -6,6 +6,7 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/walk"
 )
 
 // a variant of PropertyPath.Get which works on PropertyMaps
@@ -153,4 +154,24 @@ func willTriggerReplacementRecursive(
 	walkPropertyValue(value, path, visitor)
 
 	return replacement
+}
+
+func schemaContainsComputed(
+	path propertyPath, rootTFSchema shim.SchemaMap, rootPulumiSchema map[string]*info.Schema,
+) bool {
+	computed := false
+	visitor := func(path walk.SchemaPath, tfs shim.Schema) {
+		if tfs.Computed() {
+			computed = true
+		}
+	}
+
+	tfs, _, err := lookupSchemas(path, rootTFSchema, rootPulumiSchema)
+	if err != nil {
+		return false
+	}
+
+	walk.VisitSchema(tfs, visitor)
+
+	return computed
 }
