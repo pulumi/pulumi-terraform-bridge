@@ -217,14 +217,14 @@ func (differ detailedDiffer) lookupSchemas(path propertyPath) (shim.Schema, *inf
 	return LookupSchemas(schemaPath, differ.tfs, differ.ps)
 }
 
-func (differ detailedDiffer) isForceNew(pair propertyPath) bool {
+func (differ detailedDiffer) isForceNew(path propertyPath) bool {
 	// A change on a property might trigger a replacement if:
 	// - The property itself is marked as ForceNew
 	// - The direct parent property is a collection (list, set, map) and is marked as ForceNew
 	// See pkg/cross-tests/diff_cross_test.go
 	// TestAttributeCollectionForceNew, TestBlockCollectionForceNew, TestBlockCollectionElementForceNew
 	// for a full case study of replacements in TF
-	tfs, ps, err := differ.lookupSchemas(pair)
+	tfs, ps, err := differ.lookupSchemas(path)
 	if err != nil {
 		return false
 	}
@@ -232,11 +232,11 @@ func (differ detailedDiffer) isForceNew(pair propertyPath) bool {
 		return true
 	}
 
-	if len(pair) == 1 {
+	if len(path) == 1 {
 		return false
 	}
 
-	parent := pair[:len(pair)-1]
+	parent := path[:len(path)-1]
 	tfs, ps, err = differ.lookupSchemas(parent)
 	if err != nil {
 		return false
@@ -251,23 +251,28 @@ func (differ detailedDiffer) isForceNew(pair propertyPath) bool {
 type hashIndexMap map[int]int
 
 func (differ detailedDiffer) calculateSetHashIndexMap(path propertyPath, listVal resource.PropertyValue) hashIndexMap {
-	identities := make(hashIndexMap, 0)
+	identities := make(hashIndexMap)
 
-	setTfs, _, err := differ.lookupSchemas(path)
-	contract.AssertNoErrorf(err, "could not find schema for set")
+	tfs, ps, err := differ.lookupSchemas(path)
+	if err != nil {
+		return nil
+	}
 
-	schemaPath := PropertyPathToSchemaPath(resource.PropertyPath(path), differ.tfs, differ.ps)
-	etfs, eps, err := LookupSchemas(schemaPath.Element(), differ.tfs, differ.ps)
-	contract.AssertNoErrorf(err, "could not find schema for set element")
+	convertedVal, err := makeSingleTerraformInput(context.Background(), path.String(), listVal, tfs, ps)
+	if err != nil {
+		return nil
+	}
 
-	contract.Assertf(!listVal.IsNull(), "list value should not be null")
-	contract.Assertf(listVal.IsArray(), "list value should be an array")
+	if convertedVal == nil {
+		return nil
+	}
 
-	for i, elem := range listVal.ArrayValue() {
-		convertedVal, err := makeSingleTerraformInput(context.Background(), path.Index(0).String(), elem, etfs, eps)
-		contract.AssertNoErrorf(err, "could not convert element to TF input")
+	convertedListVal, ok := convertedVal.([]interface{})
+	contract.Assertf(ok, "converted value should be a list")
 
-		hash := setTfs.SetHash(convertedVal)
+	// Calculate the identity of each element
+	for i, newElem := range convertedListVal {
+		hash := tfs.SetHash(newElem)
 		identities[hash] = i
 	}
 	return identities
@@ -401,10 +406,6 @@ func (differ detailedDiffer) makeSetDiff(
 		newList = new.ArrayValue()
 	}
 
-	if new.ContainsUnknowns() {
-		diff[path.Key()] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE}
-		return diff
-	}
 	newInputs, newInputsOk := path.GetFromMap(differ.newInputs)
 	if newInputsOk && isPresent(newInputs) && newInputs.IsArray() {
 		newInputsList = newInputs.ArrayValue()
@@ -412,6 +413,8 @@ func (differ detailedDiffer) makeSetDiff(
 
 	oldIdentities := differ.calculateSetHashIndexMap(path, resource.NewArrayProperty(oldList))
 	newIdentities := differ.calculateSetHashIndexMap(path, resource.NewArrayProperty(newList))
+
+	// TODO: We can not hash the inputs as they might not have the correct shape!
 	inputIdentities := differ.calculateSetHashIndexMap(path, resource.NewArrayProperty(newInputsList))
 
 	// The old indices and new inputs are the indices the engine can reference

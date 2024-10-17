@@ -295,7 +295,7 @@ func runDetailedDiffTest(
 	expected map[string]*pulumirpc.PropertyDiff,
 ) {
 	t.Helper()
-	differ := detailedDiffer{tfs: tfs, ps: ps}
+	differ := detailedDiffer{tfs: tfs, ps: ps, newInputs: new}
 	actual := differ.makeDetailedDiffPropertyMap(old, new)
 
 	require.Equal(t, expected, actual)
@@ -1987,8 +1987,10 @@ func TestDetailedDiffSetAttribute(t *testing.T) {
 			propertyMapElems("val4", "val3", "stable1", "stable2"),
 			tfs, ps,
 			map[string]*pulumirpc.PropertyDiff{
-				"foo[0]": {Kind: pulumirpc.PropertyDiff_UPDATE},
-				"foo[1]": {Kind: pulumirpc.PropertyDiff_UPDATE},
+				"foo[0]": {Kind: pulumirpc.PropertyDiff_ADD},
+				"foo[1]": {Kind: pulumirpc.PropertyDiff_ADD},
+				"foo[2]": {Kind: pulumirpc.PropertyDiff_DELETE},
+				"foo[3]": {Kind: pulumirpc.PropertyDiff_DELETE},
 			},
 		)
 	})
