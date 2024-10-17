@@ -7244,13 +7244,7 @@ resources:
         [id=id]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ tests: [
-          ~ [0]: {
-                  + __defaults: []
-                  - computed  : "b"
-                    nested    : "a"
-                }
-          + [1]: {
-                  + computed  : "b"
+          + [0]: {
                   + nested    : "a"
                 }
         ]
