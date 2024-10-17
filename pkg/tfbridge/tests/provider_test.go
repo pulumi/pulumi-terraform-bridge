@@ -5,8 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
+	"strconv"
 	"testing"
 
+	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pulumi/providertest/replay"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -14,11 +17,32 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/cross-tests"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
+
+func TestIntToStringOverride(t *testing.T) {
+	t.Parallel()
+
+	crosstests.Create(t,
+		map[string]*schema.Schema{
+			"f0": {Required: true, Type: schema.TypeInt},
+		},
+		map[string]cty.Value{
+			"f0": cty.NumberIntVal(math.MaxInt64 - 1),
+		},
+		resource.PropertyMap{
+			"f0": resource.NewProperty(strconv.FormatInt(math.MaxInt64-1, 10)),
+		},
+		crosstests.CreateResourceInfo(info.Resource{Fields: map[string]*info.Schema{
+			"f0": {Type: "string"},
+		}}),
+	)
+}
 
 // Demonstrating the use of the newTestProvider helper.
 func TestWithNewTestProvider(t *testing.T) {
