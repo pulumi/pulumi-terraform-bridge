@@ -2,10 +2,36 @@ package tfbridge
 
 import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/walk"
 )
+
+// a variant of PropertyPath.Get which works on PropertyMaps
+func getPathFromPropertyMap(
+	path resource.PropertyPath, propertyMap resource.PropertyMap,
+) (resource.PropertyValue, bool) {
+	if len(path) == 0 {
+		return resource.NewNullProperty(), false
+	}
+
+	rootKeyStr, ok := path[0].(string)
+	contract.Assertf(ok && rootKeyStr != "", "root key must be a non-empty string")
+	rootKey := resource.PropertyKey(rootKeyStr)
+	restPath := path[1:]
+
+	if len(restPath) == 0 {
+		return propertyMap[rootKey], true
+	}
+
+	if !propertyMap.HasValue(rootKey) {
+		return resource.NewNullProperty(), false
+	}
+
+	return restPath.Get(propertyMap[rootKey])
+}
 
 type propertyPath resource.PropertyPath
 
@@ -41,6 +67,10 @@ func (k propertyPath) Index(i int) propertyPath {
 func (k propertyPath) IsReservedKey() bool {
 	leaf := k[len(k)-1]
 	return leaf == "__meta" || leaf == "__defaults"
+}
+
+func (k propertyPath) GetFromMap(v resource.PropertyMap) (resource.PropertyValue, bool) {
+	return getPathFromPropertyMap(resource.PropertyPath(k), v)
 }
 
 func lookupSchemas(
@@ -124,4 +154,24 @@ func willTriggerReplacementRecursive(
 	walkPropertyValue(value, path, visitor)
 
 	return replacement
+}
+
+func schemaContainsComputed(
+	path propertyPath, rootTFSchema shim.SchemaMap, rootPulumiSchema map[string]*info.Schema,
+) bool {
+	computed := false
+	visitor := func(path walk.SchemaPath, tfs shim.Schema) {
+		if tfs.Computed() {
+			computed = true
+		}
+	}
+
+	tfs, _, err := lookupSchemas(path, rootTFSchema, rootPulumiSchema)
+	if err != nil {
+		return false
+	}
+
+	walk.VisitSchema(tfs, visitor)
+
+	return computed
 }
