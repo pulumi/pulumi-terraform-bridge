@@ -18,11 +18,11 @@ import (
 	pkgpf "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
 )
 
-// TODO(Deprecated): Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge.Main instead.
+// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge.Main instead.
 var Main = pkgpf.Main
 
-// TODO(Deprecated): Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge.MainWithMuxer instead.
+// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge.MainWithMuxer instead.
 var MainWithMuxer = pkgpf.MainWithMuxer
 
-// TODO(Deprecated): Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge.MakeMuxedServer instead.
+// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge.MakeMuxedServer instead.
 var MakeMuxedServer = pkgpf.MakeMuxedServer

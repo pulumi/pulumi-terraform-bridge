@@ -18,11 +18,11 @@ import (
 	pkgpf "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
 )
 
-// TODO(Deprecated): Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge.ShimProviderWithContext instead.
+// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge.ShimProviderWithContext instead.
 var SchemaOnlyPluginFrameworkProvider = pkgpf.SchemaOnlyPluginFrameworkProvider
 
-// TODO(Deprecated): Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge.MuxShimWithPF instead.
+// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge.MuxShimWithPF instead.
 var MuxShimWithPF = pkgpf.MuxShimWithPF
 
-// TODO(Deprecated): Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge.MuxShimWithDisjointgPF instead.
+// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge.MuxShimWithDisjointgPF instead.
 var MuxShimWithDisjointgPF = pkgpf.MuxShimWithDisjointgPF
