@@ -4,6 +4,11 @@ go 1.22
 
 replace github.com/pulumi/pulumi-terraform-bridge/x/muxer => ./x/muxer
 
+// DO NOT COMMIT
+replace github.com/pulumi/pulumi/pkg/v3 => ../pulumi/pkg
+
+replace github.com/pulumi/pulumi/sdk/v3 => ../pulumi/sdk
+
 require (
 	github.com/apparentlymart/go-cidr v1.1.0
 	github.com/blang/semver v3.5.1+incompatible
@@ -39,7 +44,7 @@ require (
 	github.com/pulumi/providertest v0.1.2
 	github.com/pulumi/pulumi-java/pkg v0.16.1
 	github.com/pulumi/pulumi-terraform-bridge/x/muxer v0.0.8
-	github.com/pulumi/pulumi-yaml v1.10.3
+	github.com/pulumi/pulumi-yaml v1.11.1
 	github.com/pulumi/schema-tools v0.1.2
 	github.com/pulumi/terraform-diff-reader v0.0.2
 	github.com/russross/blackfriday/v2 v2.1.0

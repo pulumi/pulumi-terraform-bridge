@@ -36,6 +36,8 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 
+// TODO copy to terraform conv and fix tests.
+
 // ProviderInfoSource abstracts the ability to fetch tfbridge information for a Terraform provider. This is abstracted
 // primarily for testing purposes.
 type ProviderInfoSource interface {
@@ -46,19 +48,48 @@ type ProviderInfoSource interface {
 // mapperProviderInfoSource wraps a convert.Mapper to return tfbridge.ProviderInfo
 type mapperProviderInfoSource struct {
 	mapper convert.Mapper
+	terraformProviderDependencies map[string]string
 }
 
 func NewMapperProviderInfoSource(mapper convert.Mapper) ProviderInfoSource {
-	return &mapperProviderInfoSource{mapper: mapper}
+	return &mapperProviderInfoSource{mapper: mapper, terraformProviderDependencies: map[string]string{}}
+}
+
+func NewMapperProviderInfoSourceWithDependencies(
+	mapper convert.Mapper, terraformProviderDependencies map[string]string,
+) ProviderInfoSource {
+	return &mapperProviderInfoSource{mapper: mapper, terraformProviderDependencies: terraformProviderDependencies}
 }
 
 func (mapper *mapperProviderInfoSource) GetProviderInfo(
 	registryName, namespace, name, version string) (*tfbridge.ProviderInfo, error) {
 
-	data, err := mapper.mapper.GetMapping(context.TODO(), name, GetPulumiProviderName(name))
+	isTerraformProvider := !HasPulumiProviderName(name)
+
+	var data []byte
+	var err error
+	if isTerraformProvider {
+		provider, ok := mapper.terraformProviderDependencies[name]
+		if !ok {
+			return nil, fmt.Errorf("no dependency with name %s", name)
+		}
+
+		// TODO: Mapper has been made context aware, but ProviderInfoSource isn't.
+		data, err = mapper.mapper.GetTerraformMapping(context.TODO(), name, provider)
+	} else {
+		provider := GetPulumiProviderName(name)
+		// TODO: Mapper has been made context aware, but ProviderInfoSource isn't.
+		data, err = mapper.mapper.GetMapping(context.TODO(), name, provider)
+	}
 	if err != nil {
 		return nil, err
 	}
+
+	// TODO return nil? no action needed (or do what is needed for each sdk to add to project).
+	// if isTerraformProvider {
+	// 	return nil, nil
+	// }
+
 	// Might be nil or []
 	if len(data) == 0 {
 		message := fmt.Sprintf("could not find mapping information for provider %s", name)
