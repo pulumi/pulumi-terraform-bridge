@@ -53,8 +53,12 @@ func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
 	// Determine if we should write an overview header.
 	overviewHeader := getOverviewHeader(content)
 
+	autoGenMessage := fmt.Sprint(
+		"<!-- *** WARNING: This file was auto-generated. " +
+			"Do not edit by hand unless you're certain you know what you are doing! *** -->\n")
+
 	// Add instructions to top of file
-	contentStr := frontMatter + installationInstructions + overviewHeader + string(content)
+	contentStr := frontMatter + autoGenMessage + installationInstructions + overviewHeader + string(content)
 
 	//Translate code blocks to Pulumi
 	contentStr, err = translateCodeBlocks(contentStr, g)
