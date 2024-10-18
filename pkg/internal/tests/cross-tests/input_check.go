@@ -13,13 +13,10 @@
 package crosstests
 
 import (
-	"context"
-
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/pulcheck"
+	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
 
 // Adapted from diff_check.go
@@ -34,59 +31,18 @@ type inputTestCase struct {
 }
 
 // Adapted from diff_check.go
+//
+// Deprecated: [Create] should be used for new tests.
 func runCreateInputCheck(t T, tc inputTestCase) {
 	if tc.Resource.CreateContext != nil {
 		t.Errorf("Create methods should not be set for these tests!")
 	}
 
-	var tfResData, pulResData *schema.ResourceData
-	tc.Resource.CreateContext = func(_ context.Context, rd *schema.ResourceData, meta interface{}) diag.Diagnostics {
-		if tfResData == nil {
-			tfResData = rd
-		} else {
-			pulResData = rd
-		}
-
-		rd.SetId("someid") // CreateContext must pick an ID
-		return make(diag.Diagnostics, 0)
-	}
-
-	tfwd := t.TempDir()
-
-	tfd := newTFResDriver(t, tfwd, defProviderShortName, defRtype, tc.Resource)
-	tfd.writePlanApply(t, tc.Resource.Schema, defRtype, "example",
-		coalesceInputs(t, tc.Resource.Schema, tc.Config), lifecycleArgs{})
-
-	resMap := map[string]*schema.Resource{defRtype: tc.Resource}
-	tfp := &schema.Provider{ResourcesMap: resMap}
-	bridgedProvider := pulcheck.BridgedProvider(t, defProviderShortName, tfp)
-	pd := &pulumiDriver{
-		name:                defProviderShortName,
-		pulumiResourceToken: defRtoken,
-		tfResourceName:      defRtype,
-	}
-
-	yamlProgram := pd.generateYAML(t, convertConfigValueForYamlProperties(t,
-		bridgedProvider.P.ResourcesMap().Get(pd.tfResourceName).Schema(), tc.ObjectType, tc.Config))
-
-	pt := pulcheck.PulCheck(t, bridgedProvider, string(yamlProgram))
-
-	pt.Up(t)
-
-	for k := range tc.Resource.Schema {
-		// TODO: make this recursive
-		tfVal := tfResData.Get(k)
-		pulVal := pulResData.Get(k)
-
-		tfChangeValOld, tfChangeValNew := tfResData.GetChange(k)
-		pulChangeValOld, pulChangeValNew := pulResData.GetChange(k)
-
-		assertValEqual(t, k, tfVal, pulVal)
-		assertValEqual(t, k+" Change Old", tfChangeValOld, pulChangeValOld)
-		assertValEqual(t, k+" Change New", tfChangeValNew, pulChangeValNew)
-	}
-
-	assertCtyValEqual(t, "RawConfig", tfResData.GetRawConfig(), pulResData.GetRawConfig())
-	assertCtyValEqual(t, "RawPlan", tfResData.GetRawPlan(), pulResData.GetRawPlan())
-	assertCtyValEqual(t, "RawState", tfResData.GetRawState(), pulResData.GetRawState())
+	Create(t,
+		tc.Resource.Schema,
+		coalesceInputs(t, tc.Resource.Schema, tc.Config),
+		convertConfigValueForYamlProperties(t, shimv2.NewResource(tc.Resource).Schema(), tc.ObjectType, tc.Config),
+		CreateStateUpgrader(tc.Resource.SchemaVersion, tc.Resource.StateUpgraders),
+		CreateTimeout(tc.Resource.Timeouts),
+	)
 }

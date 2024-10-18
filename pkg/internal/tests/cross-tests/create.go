@@ -55,7 +55,10 @@ func Create(
 
 	makeResource := func(writeTo *result) *schema.Resource {
 		return &schema.Resource{
-			Schema: resource,
+			Schema:         resource,
+			SchemaVersion:  opts.stateUpgrader.schemaVersion,
+			StateUpgraders: opts.stateUpgrader.stateUpgraders,
+			Timeouts:       opts.timeouts,
 			CreateContext: func(_ context.Context, rd *schema.ResourceData, meta any) diag.Diagnostics {
 				*writeTo = result{rd, meta, true}
 				rd.SetId("someid") // CreateContext must pick an ID
@@ -103,17 +106,49 @@ func Create(
 	assertCtyValEqual(t, "RawConfig", tfResult.data.GetRawConfig(), puResult.data.GetRawConfig())
 	assertCtyValEqual(t, "RawPlan", tfResult.data.GetRawPlan(), puResult.data.GetRawPlan())
 	assertCtyValEqual(t, "RawState", tfResult.data.GetRawState(), puResult.data.GetRawState())
+
+	for k := range resource {
+		// TODO: make this recursive
+		tfVal := tfResult.data.Get(k)
+		pulVal := puResult.data.Get(k)
+
+		tfChangeValOld, tfChangeValNew := tfResult.data.GetChange(k)
+		pulChangeValOld, pulChangeValNew := puResult.data.GetChange(k)
+
+		assertValEqual(t, k, tfVal, pulVal)
+		assertValEqual(t, k+" Change Old", tfChangeValOld, pulChangeValOld)
+		assertValEqual(t, k+" Change New", tfChangeValNew, pulChangeValNew)
+	}
 }
 
 type createOpts struct {
-	resourceInfo *info.Resource
+	resourceInfo  *info.Resource
+	stateUpgrader createOptsUpgraders
+	timeouts      *schema.ResourceTimeout
+}
+
+type createOptsUpgraders struct {
+	schemaVersion  int
+	stateUpgraders []schema.StateUpgrader
 }
 
 // An option that can be used to customize [Create].
 type CreateOption func(*createOpts)
 
-// Specify an [info.Resource] to apply to the resource under test.
+// CreateResourceInfo specifies an [info.Resource] to apply to the resource under test.
 func CreateResourceInfo(info info.Resource) CreateOption {
 	contract.Assertf(info.Tok == "", "cannot set info.Tok, it will not be respected")
 	return func(o *createOpts) { o.resourceInfo = &info }
+}
+
+// CreateStateUpgrader specifies a schema version and list of state upgrader for [Create].
+func CreateStateUpgrader(schemaVersion int, upgraders []schema.StateUpgrader) CreateOption {
+	return func(o *createOpts) {
+		o.stateUpgrader = createOptsUpgraders{schemaVersion, upgraders}
+	}
+}
+
+// CreateTimeout specifies a timeout option for [Create].
+func CreateTimeout(timeouts *schema.ResourceTimeout) CreateOption {
+	return func(o *createOpts) { o.timeouts = timeouts }
 }
