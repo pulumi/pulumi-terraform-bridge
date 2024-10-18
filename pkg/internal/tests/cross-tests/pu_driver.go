@@ -16,9 +16,10 @@ package crosstests
 
 import (
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
-	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
+
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
 type pulumiDriver struct {

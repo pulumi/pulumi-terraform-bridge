@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 
 // Compares the effect of transitioning between two randomly sampled resource configurations.
+//
+//nolint:lll
 package crosstests
 
 import (
@@ -22,11 +24,12 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/pulcheck"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/pulcheck"
 )
 
 type diffTestCase struct {

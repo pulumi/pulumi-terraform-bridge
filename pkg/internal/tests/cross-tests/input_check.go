@@ -18,6 +18,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/pulcheck"
 )
 
