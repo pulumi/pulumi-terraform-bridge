@@ -36,6 +36,22 @@ func sortedMergedKeys[K cmp.Ordered, V any, M ~map[K]V](a, b M) []K {
 	return keysSlice
 }
 
+func isTypeShapeMismatched(val resource.PropertyValue, propType shim.ValueType) bool {
+	if !isPresent(val) {
+		return false
+	}
+	switch propType {
+	case shim.TypeList:
+		return !val.IsArray()
+	case shim.TypeSet:
+		return !val.IsArray()
+	case shim.TypeMap:
+		return !val.IsObject()
+	default:
+		return false
+	}
+}
+
 func promoteToReplace(diff *pulumirpc.PropertyDiff) *pulumirpc.PropertyDiff {
 	if diff == nil {
 		return nil
@@ -224,6 +240,15 @@ func (differ detailedDiffer) makePropDiff(
 		return nil
 	}
 	propType := differ.getEffectiveType(differ.propertyPathToSchemaPath(path))
+	if !isPresent(old) || isTypeShapeMismatched(old, propType) {
+		old = resource.NewNullProperty()
+	}
+	if !isPresent(new) || isTypeShapeMismatched(new, propType) && !new.IsComputed() {
+		new = resource.NewNullProperty()
+	}
+	if old.IsNull() || new.IsNull() || new.IsComputed() {
+		return differ.makeShortCircuitDiff(path, old, new)
+	}
 
 	switch propType {
 	case shim.TypeList:
@@ -241,16 +266,6 @@ func (differ detailedDiffer) makePropDiff(
 func (differ detailedDiffer) makeListDiff(
 	path propertyPath, old, new resource.PropertyValue,
 ) map[detailedDiffKey]*pulumirpc.PropertyDiff {
-	if !isPresent(old) || !old.IsArray() {
-		old = resource.NewNullProperty()
-	}
-	if (!isPresent(new) || !new.IsArray()) && !new.IsComputed() {
-		new = resource.NewNullProperty()
-	}
-	if old.IsNull() || new.IsNull() || new.IsComputed() {
-		return differ.makeShortCircuitDiff(path, old, new)
-	}
-
 	diff := make(map[detailedDiffKey]*pulumirpc.PropertyDiff)
 	oldList := old.ArrayValue()
 	newList := new.ArrayValue()
@@ -362,16 +377,6 @@ func (differ detailedDiffer) makeSetDiff(
 func (differ detailedDiffer) makeMapDiff(
 	path propertyPath, old, new resource.PropertyValue,
 ) map[detailedDiffKey]*pulumirpc.PropertyDiff {
-	if !isPresent(old) || !old.IsObject() {
-		old = resource.NewNullProperty()
-	}
-	if !isPresent(new) || !new.IsObject() && !new.IsComputed() {
-		new = resource.NewNullProperty()
-	}
-	if old.IsNull() || new.IsNull() || new.IsComputed() {
-		return differ.makeShortCircuitDiff(path, old, new)
-	}
-
 	oldMap := old.ObjectValue()
 	newMap := new.ObjectValue()
 	diff := make(map[detailedDiffKey]*pulumirpc.PropertyDiff)
