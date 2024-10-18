@@ -54,7 +54,8 @@ func runCreateInputCheck(t T, tc inputTestCase) {
 	tfwd := t.TempDir()
 
 	tfd := newTFResDriver(t, tfwd, defProviderShortName, defRtype, tc.Resource)
-	tfd.writePlanApply(t, tc.Resource.Schema, defRtype, "example", tc.Config, lifecycleArgs{})
+	tfd.writePlanApply(t, tc.Resource.Schema, defRtype, "example",
+		coalesceInputs(t, tc.Resource.Schema, tc.Config), lifecycleArgs{})
 
 	resMap := map[string]*schema.Resource{defRtype: tc.Resource}
 	tfp := &schema.Provider{ResourcesMap: resMap}
@@ -63,9 +64,10 @@ func runCreateInputCheck(t T, tc inputTestCase) {
 		name:                defProviderShortName,
 		pulumiResourceToken: defRtoken,
 		tfResourceName:      defRtype,
-		objectType:          tc.ObjectType,
 	}
-	yamlProgram := pd.generateYAML(t, bridgedProvider.P.ResourcesMap(), tc.Config)
+
+	yamlProgram := pd.generateYAML(t, convertConfigValueForYamlProperties(t,
+		bridgedProvider.P.ResourcesMap().Get(pd.tfResourceName).Schema(), tc.ObjectType, tc.Config))
 
 	pt := pulcheck.PulCheck(t, bridgedProvider, string(yamlProgram))
 
