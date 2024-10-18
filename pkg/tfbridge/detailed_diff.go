@@ -41,6 +41,22 @@ func sortedMergedKeys[K cmp.Ordered, V any, M ~map[K]V](a, b M) []K {
 	return keysSlice
 }
 
+func isTypeShapeMismatched(val resource.PropertyValue, propType shim.ValueType) bool {
+	if !isPresent(val) {
+		return false
+	}
+	switch propType {
+	case shim.TypeList:
+		return !val.IsArray()
+	case shim.TypeSet:
+		return !val.IsArray()
+	case shim.TypeMap:
+		return !val.IsObject()
+	default:
+		return false
+	}
+}
+
 func lookupSchemas(
 	path propertyPath, tfs shim.SchemaMap, ps map[string]*info.Schema,
 ) (shim.Schema, *info.Schema, error) {
@@ -304,22 +320,6 @@ func (differ detailedDiffer) makeShortCircuitDiff(
 	return map[detailedDiffKey]*pulumirpc.PropertyDiff{path.Key(): propDiff}
 }
 
-func isTypeMismatched(val resource.PropertyValue, propType shim.ValueType) bool {
-	if !isPresent(val) {
-		return false
-	}
-	switch propType {
-	case shim.TypeList:
-		return !val.IsArray()
-	case shim.TypeSet:
-		return !val.IsArray()
-	case shim.TypeMap:
-		return !val.IsObject()
-	default:
-		return false
-	}
-}
-
 func (differ detailedDiffer) makePropDiff(
 	path propertyPath, old, new resource.PropertyValue,
 ) map[detailedDiffKey]*pulumirpc.PropertyDiff {
@@ -327,10 +327,10 @@ func (differ detailedDiffer) makePropDiff(
 		return nil
 	}
 	propType := differ.getEffectiveType(differ.propertyPathToSchemaPath(path))
-	if !isPresent(old) || isTypeMismatched(old, propType) {
+	if !isPresent(old) || isTypeShapeMismatched(old, propType) {
 		old = resource.NewNullProperty()
 	}
-	if !isPresent(new) || isTypeMismatched(new, propType) && !new.IsComputed() {
+	if !isPresent(new) || isTypeShapeMismatched(new, propType) && !new.IsComputed() {
 		new = resource.NewNullProperty()
 	}
 	if old.IsNull() || new.IsNull() || new.IsComputed() {
