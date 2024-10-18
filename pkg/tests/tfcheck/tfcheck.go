@@ -32,6 +32,7 @@ type TfDriver struct {
 }
 
 type TfPlan struct {
+	StdOut   string
 	PlanFile string
 	RawPlan  any
 }
@@ -123,13 +124,15 @@ func (d *TfDriver) Plan(t pulcheck.T) (*TfPlan, error) {
 	planFile := filepath.Join(d.cwd, "test.tfplan")
 	env := []string{d.formatReattachEnvVar()}
 	tfCmd := getTFCommand()
-	_, err := execCmd(t, d.cwd, env, tfCmd, "plan", "-refresh=false", "-out", planFile)
+	cm, err := execCmd(t, d.cwd, env, tfCmd, "plan", "-refresh=false", "-out", planFile, "-no-color")
 	if err != nil {
 		return nil, err
 	}
+	planStdout := cm.Stdout.(*bytes.Buffer).String()
+	planStdout = strings.Split(planStdout, "───")[0] // trim unstable output about the plan file
 	cmd, err := execCmd(t, d.cwd, env, tfCmd, "show", "-json", planFile)
 	require.NoError(t, err)
-	tp := TfPlan{PlanFile: planFile}
+	tp := TfPlan{PlanFile: planFile, StdOut: planStdout}
 	err = json.Unmarshal(cmd.Stdout.(*bytes.Buffer).Bytes(), &tp.RawPlan)
 	require.NoErrorf(t, err, "failed to unmarshal terraform plan")
 	return &tp, nil
