@@ -5,20 +5,46 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
+	"strconv"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pulumi/providertest/replay"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	"github.com/zclconf/go-cty/cty"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
+
+func TestIntToStringOverride(t *testing.T) {
+	t.Parallel()
+
+	const largeInt = math.MaxInt64 / 2
+
+	crosstests.Create(t,
+		map[string]*schema.Schema{
+			"f0": {Required: true, Type: schema.TypeInt},
+		},
+		cty.ObjectVal(map[string]cty.Value{
+			"f0": cty.NumberIntVal(largeInt),
+		}),
+		resource.PropertyMap{
+			"f0": resource.NewProperty(strconv.FormatInt(largeInt, 10)),
+		},
+		crosstests.CreateResourceInfo(info.Resource{Fields: map[string]*info.Schema{
+			"f0": {Type: "string"},
+		}}),
+	)
+}
 
 // Demonstrating the use of the newTestProvider helper.
 func TestWithNewTestProvider(t *testing.T) {
