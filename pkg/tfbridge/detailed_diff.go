@@ -302,16 +302,6 @@ type setChangeIndex struct {
 func (differ detailedDiffer) makeSetDiff(
 	path propertyPath, old, new resource.PropertyValue,
 ) map[detailedDiffKey]*pulumirpc.PropertyDiff {
-	if !isPresent(old) || !old.IsArray() {
-		old = resource.NewNullProperty()
-	}
-	if (!isPresent(new) || !new.IsArray()) && !new.IsComputed() {
-		new = resource.NewNullProperty()
-	}
-	if old.IsNull() || new.IsNull() || new.IsComputed() {
-		return differ.makeShortCircuitDiff(path, old, new)
-	}
-
 	diff := make(map[detailedDiffKey]*pulumirpc.PropertyDiff)
 	oldList := old.ArrayValue()
 	newList := new.ArrayValue()
