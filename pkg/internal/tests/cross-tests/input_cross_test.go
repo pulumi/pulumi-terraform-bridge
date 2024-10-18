@@ -602,9 +602,11 @@ func TestCreateDoesNotPanicWithStateUpgraders(t *testing.T) {
 	})
 }
 
-// TestStateFunc ensures that resources with a StateFunc set on their schema are correctly handled. This includes
-// ensuring that the PlannedPrivate blob is passed from PlanResourceChange to ApplyResourceChange. If this is passed
-// correctly, the provider will see the original value of the field, rather than the value that was produced by the StateFunc.
+// TestStateFunc ensures that resources with a StateFunc set on their schema are correctly
+// handled. This includes ensuring that the PlannedPrivate blob is passed from
+// PlanResourceChange to ApplyResourceChange. If this is passed correctly, the provider
+// will see the original value of the field, rather than the value that was produced by
+// the StateFunc.
 func TestStateFunc(t *testing.T) {
 	input := "hello"
 
