@@ -66,9 +66,11 @@ func runDiffCheck(t T, tc diffTestCase) diffResult {
 
 	lifecycleArgs := lifecycleArgs{CreateBeforeDestroy: !tc.DeleteBeforeReplace}
 
+	tfConfig1 := coalesceInputs(t, tc.Resource.Schema, tc.Config1)
+	tfConfig2 := coalesceInputs(t, tc.Resource.Schema, tc.Config2)
 	tfd := newTFResDriver(t, tfwd, defProviderShortName, defRtype, tc.Resource)
-	_ = tfd.writePlanApply(t, tc.Resource.Schema, defRtype, "example", tc.Config1, lifecycleArgs)
-	tfDiffPlan := tfd.writePlanApply(t, tc.Resource.Schema, defRtype, "example", tc.Config2, lifecycleArgs)
+	_ = tfd.writePlanApply(t, tc.Resource.Schema, defRtype, "example", tfConfig1, lifecycleArgs)
+	tfDiffPlan := tfd.writePlanApply(t, tc.Resource.Schema, defRtype, "example", tfConfig2, lifecycleArgs)
 
 	resMap := map[string]*schema.Resource{defRtype: tc.Resource}
 	tfp := &schema.Provider{ResourcesMap: resMap}
@@ -81,16 +83,16 @@ func runDiffCheck(t T, tc diffTestCase) diffResult {
 		name:                defProviderShortName,
 		pulumiResourceToken: defRtoken,
 		tfResourceName:      defRtype,
-		objectType:          nil,
 	}
-	yamlProgram := pd.generateYAML(t, bridgedProvider.P.ResourcesMap(), tc.Config1)
-	pt := pulcheck.PulCheck(t, bridgedProvider, string(yamlProgram))
 
+	yamlProgram := pd.generateYAML(t, convertConfigValueForYamlProperties(t,
+		bridgedProvider.P.ResourcesMap().Get(defRtype).Schema(), tc.ObjectType, tc.Config1))
+	pt := pulcheck.PulCheck(t, bridgedProvider, string(yamlProgram))
 	pt.Up(t)
 
-	yamlProgram = pd.generateYAML(t, bridgedProvider.P.ResourcesMap(), tc.Config2)
-	p := filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml")
-	err := os.WriteFile(p, yamlProgram, 0o600)
+	yamlProgram = pd.generateYAML(t, convertConfigValueForYamlProperties(t,
+		bridgedProvider.P.ResourcesMap().Get(defRtype).Schema(), tc.ObjectType, tc.Config2))
+	err := os.WriteFile(filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml"), yamlProgram, 0o600)
 	require.NoErrorf(t, err, "writing Pulumi.yaml")
 	x := pt.Up(t)
 

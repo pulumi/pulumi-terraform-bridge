@@ -20,15 +20,26 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/convert"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/logging"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/propertyvalue"
 )
 
-func generateYaml(schema shim.SchemaMap, resourceToken string, objectType *tftypes.Object, tfConfig any) (map[string]any, error) {
+func convertConfigValueForYamlProperties(t T, schema shim.SchemaMap, objectType *tftypes.Object, tfConfig any) resource.PropertyMap {
+	if tfConfig == nil {
+		return nil
+	}
+	pConfig, err := convertConfigToPulumi(schema, objectType, tfConfig)
+	require.NoError(t, err)
+
+	// TODO[pulumi/pulumi-terraform-bridge#1864]: schema secrets may be set by convertConfigToPulumi.
+	return propertyvalue.RemoveSecrets(resource.NewObjectProperty(pConfig)).ObjectValue()
+}
+
+func generateYaml(resourceToken string, puConfig resource.PropertyMap) (map[string]any, error) {
 	data := map[string]any{
 		"name":    "project",
 		"runtime": "yaml",
@@ -36,25 +47,16 @@ func generateYaml(schema shim.SchemaMap, resourceToken string, objectType *tftyp
 			"url": "file://./data",
 		},
 	}
-	if tfConfig == nil {
+	if puConfig == nil {
 		return data, nil
 	}
-	pConfig, err := convertConfigToPulumi(schema, nil, objectType, tfConfig)
-	if err != nil {
-		return nil, err
-	}
-
-	// TODO[pulumi/pulumi-terraform-bridge#1864]: schema secrets may be set by convertConfigToPulumi.
-	pConfig = propertyvalue.RemoveSecrets(resource.NewObjectProperty(pConfig)).ObjectValue()
-
-	// This is a bit of a leap of faith that serializing PropertyMap to YAML in this way will yield valid Pulumi
-	// YAML. This probably needs refinement.
-	yamlProperties := pConfig.Mappable()
 
 	data["resources"] = map[string]any{
 		"example": map[string]any{
-			"type":       resourceToken,
-			"properties": yamlProperties,
+			"type": resourceToken,
+			// This is a bit of a leap of faith that serializing PropertyMap to YAML in this way will yield valid Pulumi
+			// YAML. This probably needs refinement.
+			"properties": puConfig.Mappable(),
 		},
 	}
 	return data, nil
@@ -62,7 +64,6 @@ func generateYaml(schema shim.SchemaMap, resourceToken string, objectType *tftyp
 
 func convertConfigToPulumi(
 	schemaMap shim.SchemaMap,
-	schemaInfos map[string]*tfbridge.SchemaInfo,
 	objectType *tftypes.Object,
 	tfConfig any,
 ) (resource.PropertyMap, error) {
@@ -102,9 +103,8 @@ func convertConfigToPulumi(
 	}
 
 	decoder, err := convert.NewObjectDecoder(convert.ObjectSchema{
-		SchemaMap:   schemaMap,
-		SchemaInfos: schemaInfos,
-		Object:      objectType,
+		SchemaMap: schemaMap,
+		Object:    objectType,
 	})
 	if err != nil {
 		return nil, err

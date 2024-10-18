@@ -84,16 +84,17 @@ func runPulumiUpgrade(t T, res1, res2 *schema.Resource, config1, config2 any, di
 		name:                defProviderShortName,
 		pulumiResourceToken: defRtoken,
 		tfResourceName:      defRtype,
-		objectType:          nil,
 	}
 
-	yamlProgram := pd.generateYAML(t, prov1.P.ResourcesMap(), config1)
+	yamlProgram := pd.generateYAML(t, convertConfigValueForYamlProperties(t,
+		prov1.P.ResourcesMap().Get(pd.tfResourceName).Schema(), nil, config1))
 	pt := pulcheck.PulCheck(t, prov1, string(yamlProgram))
 	pt.Up(t)
 	stack := pt.ExportStack(t)
 	schemaVersion1 := getVersionInState(t, stack)
 
-	yamlProgram = pd.generateYAML(t, prov2.P.ResourcesMap(), config2)
+	yamlProgram = pd.generateYAML(t, convertConfigValueForYamlProperties(t,
+		prov1.P.ResourcesMap().Get(pd.tfResourceName).Schema(), nil, config2))
 	p := filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml")
 	err := os.WriteFile(p, yamlProgram, 0o600)
 	require.NoErrorf(t, err, "writing Pulumi.yaml")
@@ -149,10 +150,10 @@ func runUpgradeStateInputCheck(t T, tc upgradeStateTestCase) {
 	tfwd := t.TempDir()
 
 	tfd := newTFResDriver(t, tfwd, defProviderShortName, defRtype, tc.Resource)
-	_ = tfd.writePlanApply(t, tc.Resource.Schema, defRtype, "example", tc.Config1, lifecycleArgs{})
+	_ = tfd.writePlanApply(t, tc.Resource.Schema, defRtype, "example", coalesceInputs(t, tc.Resource.Schema, tc.Config1), lifecycleArgs{})
 
 	tfd2 := newTFResDriver(t, tfwd, defProviderShortName, defRtype, &upgradeRes)
-	_ = tfd2.writePlanApply(t, tc.Resource.Schema, defRtype, "example", tc.Config2, lifecycleArgs{})
+	_ = tfd2.writePlanApply(t, tc.Resource.Schema, defRtype, "example", coalesceInputs(t, tc.Resource.Schema, tc.Config2), lifecycleArgs{})
 
 	schemaVersion1, schemaVersion2 := runPulumiUpgrade(t, tc.Resource, &upgradeRes, tc.Config1, tc.Config2, tc.DisablePlanResourceChange)
 

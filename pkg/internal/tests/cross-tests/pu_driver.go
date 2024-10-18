@@ -15,25 +15,19 @@
 package crosstests
 
 import (
-	"github.com/hashicorp/terraform-plugin-go/tftypes"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
-
-	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
 type pulumiDriver struct {
 	name                string
 	pulumiResourceToken string
 	tfResourceName      string
-	objectType          *tftypes.Object
 }
 
-func (pd *pulumiDriver) generateYAML(t T, resMap shim.ResourceMap, tfConfig any) []byte {
-	res := resMap.Get(pd.tfResourceName)
-	schema := res.Schema()
-
-	data, err := generateYaml(schema, pd.pulumiResourceToken, pd.objectType, tfConfig)
+func (pd *pulumiDriver) generateYAML(t T, puConfig resource.PropertyMap) []byte {
+	data, err := generateYaml(pd.pulumiResourceToken, puConfig)
 	require.NoErrorf(t, err, "generateYaml")
 
 	b, err := yaml.Marshal(data)
