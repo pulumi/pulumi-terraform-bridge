@@ -10,6 +10,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
+// TestInputsEqualStringBasic validates that [runCreateInputCheck] works across both input
+// types.
 func TestInputsEqualStringBasic(t *testing.T) {
 	// Test both config representations.
 	for _, tc := range []struct {
