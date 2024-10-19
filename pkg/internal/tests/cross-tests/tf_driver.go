@@ -48,6 +48,11 @@ func newTFResDriver(t T, dir, providerName, resName string, res *schema.Resource
 	}
 }
 
+// coalesceInputs is a helper function to translate from previous property based testing
+// input types (map[string]any, [tftypes.Value]) to the current representation:
+// [cty.Value].
+//
+// As soon as we have completed the migration, we can remove this function.
 func coalesceInputs(t T, schema map[string]*schema.Schema, config any) cty.Value {
 	switch config := config.(type) {
 	case nil:

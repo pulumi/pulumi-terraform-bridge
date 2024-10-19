@@ -51,6 +51,9 @@ func shouldInferredPulumiValue(m resource.PropertyMap) bool {
 }
 
 func inferPulumiValue(t T, schema shim.SchemaMap, infos map[string]*info.Schema, v cty.Value) resource.PropertyMap {
+	if v.IsNull() {
+		return nil
+	}
 	decoder, err := convert.NewObjectDecoder(convert.ObjectSchema{
 		SchemaMap:   schema,
 		SchemaInfos: infos,
