@@ -15,8 +15,6 @@ package crosstests
 import (
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-
-	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
 
 // Adapted from diff_check.go
@@ -41,7 +39,7 @@ func runCreateInputCheck(t T, tc inputTestCase) {
 	Create(t,
 		tc.Resource.Schema,
 		coalesceInputs(t, tc.Resource.Schema, tc.Config),
-		convertConfigValueForYamlProperties(t, shimv2.NewResource(tc.Resource).Schema(), tc.ObjectType, tc.Config),
+		InferPulumiValue(),
 		CreateStateUpgrader(tc.Resource.SchemaVersion, tc.Resource.StateUpgraders),
 		CreateTimeout(tc.Resource.Timeouts),
 	)
