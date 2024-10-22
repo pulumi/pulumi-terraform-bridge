@@ -122,7 +122,7 @@ runtime: yaml
 				func(tfResourceType string) bool { return true },
 			))
 			schema := shimProvider.ResourcesMap().Get(rtype).Schema()
-			out, err := generateYaml(rtoken,
+			out, err := generateYaml(t, rtoken,
 				inferPulumiValue(t, schema, nil, coalesceInputs(t, tc.schema, tc.tfConfig)))
 			require.NoError(t, err)
 			b, err := yaml.Marshal(out)

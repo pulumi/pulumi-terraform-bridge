@@ -27,7 +27,7 @@ type pulumiDriver struct {
 }
 
 func (pd *pulumiDriver) generateYAML(t T, puConfig resource.PropertyMap) []byte {
-	data, err := generateYaml(pd.pulumiResourceToken, puConfig)
+	data, err := generateYaml(t, pd.pulumiResourceToken, puConfig)
 	require.NoErrorf(t, err, "generateYaml")
 
 	b, err := yaml.Marshal(data)

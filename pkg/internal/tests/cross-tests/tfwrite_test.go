@@ -266,7 +266,7 @@ resource "res" "ex" {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			var out bytes.Buffer
-			err := WriteHCL(&out, tc.schema, "res", "ex", tc.value)
+			err := WriteSDKv2(&out).Resource(tc.schema, "res", "ex", tc.value)
 			require.NoError(t, err)
 			tc.expect.Equal(t, "\n"+out.String())
 		})
