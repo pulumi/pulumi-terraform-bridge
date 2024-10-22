@@ -45,11 +45,15 @@ const inferPulumiValueKey = "inferPulumiValue"
 
 var inferPulumiValueSecret = resource.Secret{}
 
-func shouldInferredPulumiValue(m resource.PropertyMap) bool {
+func isInferPulumiMarker(m resource.PropertyMap) bool {
 	v, ok := m[inferPulumiValueKey]
 	return ok && v.IsSecret() && v.SecretValue() == &inferPulumiValueSecret
 }
 
+// inferPulumiValue generates a Pulumi value that is semantically equivalent to v.
+//
+// inferPulumiValue takes into account schema information. [InferPulumiValue] is the
+// marker value that instructs [crosstests] to invoke [inferPulumiValue].
 func inferPulumiValue(t T, schema shim.SchemaMap, infos map[string]*info.Schema, v cty.Value) resource.PropertyMap {
 	if v.IsNull() {
 		return nil

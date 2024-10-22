@@ -48,7 +48,7 @@ func Create(
 		f(&opts)
 	}
 
-	if shouldInferredPulumiValue(puConfig) {
+	if isInferPulumiMarker(puConfig) {
 		puConfig = inferPulumiValue(t,
 			shimv2.NewSchemaMap(resource),
 			opts.resourceInfo.GetFields(),

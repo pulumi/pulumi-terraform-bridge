@@ -48,7 +48,7 @@ func newTFResDriver(t T, dir, providerName, resName string, res *schema.Resource
 	}
 }
 
-// coalesceInputs is a helper function to translate from previous property based testing
+// coalesceInputs is a helper function to translate from previous cross-test
 // input types (map[string]any, [tftypes.Value]) to the current representation:
 // [cty.Value].
 //
