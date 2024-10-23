@@ -138,7 +138,7 @@ resource "` + providerName + `_res" "res" {}
 			"resources": map[string]any{
 				"p": map[string]any{
 					"type":       "pulumi:providers:" + providerName,
-					"properties": convertResourceValue(t, puConfig),
+					"properties": crosstests.ConvertResourceValue(t, puConfig),
 				},
 			},
 		}

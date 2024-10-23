@@ -107,28 +107,7 @@ func Create(
 	assert.Equal(t, tfResult.meta, puResult.meta,
 		"assert that both providers were configured with the same provider metadata")
 
-	// We are unable to assert that both providers were configured with the exact same
-	// data. Type information doesn't line up in the simple case. This just doesn't work:
-	//
-	//	assert.Equal(t, tfResult.data, puResult.data)
-	//
-	// We make due by comparing raw data.
-	assertCtyValEqual(t, "RawConfig", tfResult.data.GetRawConfig(), puResult.data.GetRawConfig())
-	assertCtyValEqual(t, "RawPlan", tfResult.data.GetRawPlan(), puResult.data.GetRawPlan())
-	assertCtyValEqual(t, "RawState", tfResult.data.GetRawState(), puResult.data.GetRawState())
-
-	for k := range resource {
-		// TODO: make this recursive
-		tfVal := tfResult.data.Get(k)
-		pulVal := puResult.data.Get(k)
-
-		tfChangeValOld, tfChangeValNew := tfResult.data.GetChange(k)
-		pulChangeValOld, pulChangeValNew := puResult.data.GetChange(k)
-
-		assertValEqual(t, k, tfVal, pulVal)
-		assertValEqual(t, k+" Change Old", tfChangeValOld, pulChangeValOld)
-		assertValEqual(t, k+" Change New", tfChangeValNew, pulChangeValNew)
-	}
+	assertResourceDataEqual(t, resource, tfResult.data, puResult.data)
 }
 
 type createOpts struct {

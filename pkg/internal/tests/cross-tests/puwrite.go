@@ -13,9 +13,12 @@
 
 package crosstests
 
-import "github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+import (
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/stretchr/testify/require"
+)
 
-func generateYaml(resourceToken string, puConfig resource.PropertyMap) (map[string]any, error) {
+func generateYaml(t T, resourceToken string, puConfig resource.PropertyMap) (map[string]any, error) {
 	data := map[string]any{
 		"name":    "project",
 		"runtime": "yaml",
@@ -33,8 +36,39 @@ func generateYaml(resourceToken string, puConfig resource.PropertyMap) (map[stri
 			// This is a bit of a leap of faith that serializing PropertyMap
 			// to YAML in this way will yield valid Pulumi YAML. This probably
 			// needs refinement.
-			"properties": puConfig.Mappable(),
+			"properties": ConvertResourceValue(t, puConfig),
 		},
 	}
 	return data, nil
+}
+
+func ConvertResourceValue(t require.TestingT, properties resource.PropertyMap) map[string]any {
+	var convertValue func(resource.PropertyValue) (any, bool)
+	convertValue = func(v resource.PropertyValue) (any, bool) {
+		if v.IsComputed() {
+			require.Fail(t, "cannot convert computed value to YAML")
+		}
+		var isSecret bool
+		if v.IsOutput() {
+			o := v.OutputValue()
+			if !o.Known {
+				require.Fail(t, "cannot convert unknown output value to YAML")
+			}
+			v = o.Element
+			isSecret = o.Secret
+		}
+		if v.IsSecret() {
+			isSecret = true
+			v = v.SecretValue().Element
+		}
+
+		if isSecret {
+			return map[string]any{
+				"fn::secret": v.MapRepl(nil, convertValue),
+			}, true
+		}
+		return nil, false
+
+	}
+	return properties.MapRepl(nil, convertValue)
 }

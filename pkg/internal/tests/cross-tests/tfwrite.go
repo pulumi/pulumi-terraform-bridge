@@ -27,21 +27,41 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-// Writes a resource delaration. Note that unknowns are not yet supported in cty.Value, it will error out if found.
-func WriteHCL(out io.Writer, sch map[string]*schema.Schema, resourceType, resourceName string, config cty.Value) error {
+func WriteSDKv2(out io.Writer) SDKv2Writer { return SDKv2Writer{out} }
+
+type SDKv2Writer struct{ out io.Writer }
+
+// Provider writes a provider declaration to SDKv2Writer.
+//
+// Note that unknowns are not yet supported in cty.Value, it will error out if found.
+func (w SDKv2Writer) Provider(sch map[string]*schema.Schema, typ string, config cty.Value) error {
+	if !config.IsWhollyKnown() {
+		return fmt.Errorf("WriteHCL cannot yet write unknowns")
+	}
+	f := hclwrite.NewEmptyFile()
+	block := f.Body().AppendNewBlock("provider", []string{typ})
+	writeBlock(block.Body(), sch, config.AsValueMap())
+	_, err := f.WriteTo(w.out)
+	return err
+}
+
+// Resource writes a resource declaration to SDKv2Writer.
+//
+// Note that unknowns are not yet supported in cty.Value, it will error out if found.
+func (w SDKv2Writer) Resource(
+	sch map[string]*schema.Schema, resourceType, resourceName string, config cty.Value,
+) error {
 	if !config.IsWhollyKnown() {
 		return fmt.Errorf("WriteHCL cannot yet write unknowns")
 	}
 	f := hclwrite.NewEmptyFile()
 	block := f.Body().AppendNewBlock("resource", []string{resourceType, resourceName})
 	writeBlock(block.Body(), sch, config.AsValueMap())
-	_, err := f.WriteTo(out)
+	_, err := f.WriteTo(w.out)
 	return err
 }
 
-type PFWriter struct {
-	out io.Writer
-}
+type PFWriter struct{ out io.Writer }
 
 func WritePF(out io.Writer) PFWriter { return PFWriter{out} }
 

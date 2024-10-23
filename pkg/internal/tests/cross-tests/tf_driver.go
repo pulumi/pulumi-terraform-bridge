@@ -117,7 +117,7 @@ func (d *TfResDriver) write(
 		})
 		config = cty.ObjectVal(ctyMap)
 	}
-	err := WriteHCL(&buf, resourceSchema, resourceType, resourceName, config)
+	err := WriteSDKv2(&buf).Resource(resourceSchema, resourceType, resourceName, config)
 	require.NoError(t, err)
 	t.Logf("HCL: \n%s\n", buf.String())
 	d.driver.Write(t, buf.String())
@@ -147,4 +147,19 @@ func (*TfResDriver) parseChangesFromTFPlan(plan tfcheck.TfPlan) tfChange {
 	contract.AssertNoErrorf(err, "failed to unmarshal terraform plan")
 	contract.Assertf(len(pp.ResourceChanges) == 1, "expected exactly one resource change")
 	return pp.ResourceChanges[0].Change
+}
+
+func providerHCLProgram(t T, typ string, provider *schema.Provider, config cty.Value) string {
+	var out bytes.Buffer
+	w := WriteSDKv2(&out)
+	require.NoError(t, w.Provider(provider.Schema, typ, config))
+
+	res := provider.Resources()
+	if l := len(res); l != 1 {
+		require.FailNow(t, "Expected provider to have 1 resource (found %d), ambiguous resource choice", l)
+	}
+
+	require.NoError(t, w.Resource(map[string]*schema.Schema{}, res[0].Name, "res", cty.EmptyObjectVal))
+
+	return out.String()
 }
