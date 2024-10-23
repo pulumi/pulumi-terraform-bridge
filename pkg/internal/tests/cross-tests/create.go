@@ -26,6 +26,7 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/pulcheck"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
+	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
 
 // Create validates that a Terraform provider witnesses the same input when:
@@ -41,9 +42,18 @@ func Create(
 	t T, resource map[string]*schema.Schema, tfConfig cty.Value, puConfig resource.PropertyMap,
 	options ...CreateOption,
 ) {
+
 	var opts createOpts
 	for _, f := range options {
 		f(&opts)
+	}
+
+	if isInferPulumiMarker(puConfig) {
+		puConfig = inferPulumiValue(t,
+			shimv2.NewSchemaMap(resource),
+			opts.resourceInfo.GetFields(),
+			tfConfig,
+		)
 	}
 
 	type result struct {

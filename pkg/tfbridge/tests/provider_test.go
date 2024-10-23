@@ -46,6 +46,76 @@ func TestIntToStringOverride(t *testing.T) {
 	)
 }
 
+// Regression test for [pulumi/pulumi-terraform-bridge#1762]
+func TestInputsConfigModeEqual(t *testing.T) {
+	t.Parallel()
+
+	emptyConfig := cty.ObjectVal(map[string]cty.Value{})
+
+	emptyListConfig := cty.ObjectVal(map[string]cty.Value{
+		"f0": cty.ListValEmpty(cty.Object(map[string]cty.Type{
+			"x": cty.String,
+		})),
+	})
+
+	nonEmptyConfig := cty.ObjectVal(map[string]cty.Value{
+		"f0": cty.ListVal([]cty.Value{
+			cty.ObjectVal(map[string]cty.Value{
+				"x": cty.StringVal("val"),
+			}),
+		}),
+	})
+
+	for _, tc := range []struct {
+		name       string
+		config     cty.Value
+		maxItems   int
+		configMode schema.SchemaConfigMode
+	}{
+		{"MaxItems: 0, ConfigMode: Auto, Empty", emptyConfig, 0, schema.SchemaConfigModeAuto},
+		{"MaxItems: 0, ConfigMode: Auto, EmptyList", emptyListConfig, 0, schema.SchemaConfigModeAuto},
+		{"MaxItems: 0, ConfigMode: Auto, NonEmpty", nonEmptyConfig, 0, schema.SchemaConfigModeAuto},
+		{"MaxItems: 0, ConfigMode: Block, Empty", emptyConfig, 0, schema.SchemaConfigModeBlock},
+		{"MaxItems: 0, ConfigMode: Block, EmptyList", emptyListConfig, 0, schema.SchemaConfigModeBlock},
+		{"MaxItems: 0, ConfigMode: Block, NonEmpty", nonEmptyConfig, 0, schema.SchemaConfigModeBlock},
+		{"MaxItems: 0, ConfigMode: Attr, Empty", emptyConfig, 0, schema.SchemaConfigModeAttr},
+		{"MaxItems: 0, ConfigMode: Attr, EmptyList", emptyListConfig, 0, schema.SchemaConfigModeAttr},
+		{"MaxItems: 0, ConfigMode: Attr, NonEmpty", nonEmptyConfig, 0, schema.SchemaConfigModeAttr},
+		{"MaxItems: 1, ConfigMode: Auto, Empty", emptyConfig, 1, schema.SchemaConfigModeAuto},
+		{"MaxItems: 1, ConfigMode: Auto, EmptyList", emptyListConfig, 1, schema.SchemaConfigModeAuto},
+		{"MaxItems: 1, ConfigMode: Auto, NonEmpty", nonEmptyConfig, 1, schema.SchemaConfigModeAuto},
+		{"MaxItems: 1, ConfigMode: Block, Empty", emptyConfig, 1, schema.SchemaConfigModeBlock},
+		{"MaxItems: 1, ConfigMode: Block, EmptyList", emptyListConfig, 1, schema.SchemaConfigModeBlock},
+		{"MaxItems: 1, ConfigMode: Block, NonEmpty", nonEmptyConfig, 1, schema.SchemaConfigModeBlock},
+		{"MaxItems: 1, ConfigMode: Attr, Empty", emptyConfig, 1, schema.SchemaConfigModeAttr},
+		// TODO[pulumi/pulumi-terraform-bridge#2025]
+		// This is not expressible in pulumi after the ConfigModeOne flattening.
+		// {"MaxItems: 1, ConfigMode: Attr, EmptyList", emptyListConfig, 1, schema.SchemaConfigModeAttr},
+		{"MaxItems: 1, ConfigMode: Attr, NonEmpty", nonEmptyConfig, 1, schema.SchemaConfigModeAttr},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			crosstests.Create(t,
+				map[string]*schema.Schema{
+					"f0": {
+						Optional:   true,
+						Type:       schema.TypeList,
+						MaxItems:   tc.maxItems,
+						ConfigMode: tc.configMode,
+						Elem: &schema.Resource{
+							Schema: map[string]*schema.Schema{
+								"x": {Optional: true, Type: schema.TypeString},
+							},
+						},
+					},
+				},
+				tc.config,
+				crosstests.InferPulumiValue(),
+			)
+		})
+	}
+}
+
 // Demonstrating the use of the newTestProvider helper.
 func TestWithNewTestProvider(t *testing.T) {
 	ctx := context.Background()

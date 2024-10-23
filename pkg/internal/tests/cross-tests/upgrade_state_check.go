@@ -26,6 +26,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/stretchr/testify/require"
+	"github.com/zclconf/go-cty/cty"
 	"gotest.tools/v3/assert"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/pulcheck"
@@ -69,7 +70,7 @@ func getVersionInState(t T, stack apitype.UntypedDeployment) int {
 	return int(schemaVersion)
 }
 
-func runPulumiUpgrade(t T, res1, res2 *schema.Resource, config1, config2 any, disablePlanResourceChange bool) (int, int) {
+func runPulumiUpgrade(t T, res1, res2 *schema.Resource, config1, config2 cty.Value, disablePlanResourceChange bool) (int, int) {
 	opts := []pulcheck.BridgedProviderOpt{}
 	if disablePlanResourceChange {
 		opts = append(opts, pulcheck.DisablePlanResourceChange())
@@ -86,14 +87,14 @@ func runPulumiUpgrade(t T, res1, res2 *schema.Resource, config1, config2 any, di
 		tfResourceName:      defRtype,
 	}
 
-	yamlProgram := pd.generateYAML(t, convertConfigValueForYamlProperties(t,
+	yamlProgram := pd.generateYAML(t, inferPulumiValue(t,
 		prov1.P.ResourcesMap().Get(pd.tfResourceName).Schema(), nil, config1))
 	pt := pulcheck.PulCheck(t, prov1, string(yamlProgram))
 	pt.Up(t)
 	stack := pt.ExportStack(t)
 	schemaVersion1 := getVersionInState(t, stack)
 
-	yamlProgram = pd.generateYAML(t, convertConfigValueForYamlProperties(t,
+	yamlProgram = pd.generateYAML(t, inferPulumiValue(t,
 		prov1.P.ResourcesMap().Get(pd.tfResourceName).Schema(), nil, config2))
 	p := filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml")
 	err := os.WriteFile(p, yamlProgram, 0o600)
@@ -149,13 +150,16 @@ func runUpgradeStateInputCheck(t T, tc upgradeStateTestCase) {
 
 	tfwd := t.TempDir()
 
+	config1 := coalesceInputs(t, tc.Resource.Schema, tc.Config1)
+	config2 := coalesceInputs(t, tc.Resource.Schema, tc.Config2)
+
 	tfd := newTFResDriver(t, tfwd, defProviderShortName, defRtype, tc.Resource)
-	_ = tfd.writePlanApply(t, tc.Resource.Schema, defRtype, "example", coalesceInputs(t, tc.Resource.Schema, tc.Config1), lifecycleArgs{})
+	_ = tfd.writePlanApply(t, tc.Resource.Schema, defRtype, "example", config1, lifecycleArgs{})
 
 	tfd2 := newTFResDriver(t, tfwd, defProviderShortName, defRtype, &upgradeRes)
-	_ = tfd2.writePlanApply(t, tc.Resource.Schema, defRtype, "example", coalesceInputs(t, tc.Resource.Schema, tc.Config2), lifecycleArgs{})
+	_ = tfd2.writePlanApply(t, tc.Resource.Schema, defRtype, "example", config2, lifecycleArgs{})
 
-	schemaVersion1, schemaVersion2 := runPulumiUpgrade(t, tc.Resource, &upgradeRes, tc.Config1, tc.Config2, tc.DisablePlanResourceChange)
+	schemaVersion1, schemaVersion2 := runPulumiUpgrade(t, tc.Resource, &upgradeRes, config1, config2, tc.DisablePlanResourceChange)
 
 	if tc.ExpectEqual {
 		assert.Equal(t, schemaVersion1, tc.Resource.SchemaVersion)
