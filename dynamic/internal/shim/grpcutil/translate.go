@@ -125,7 +125,7 @@ func getMethodFromFullName(fullName string) string {
 	return splitName[len(splitName)-1]
 }
 
-func NewLogReplayProvider(name, version, url, logs string) LogReplayProvider {
+func NewLogReplayProvider(name, version, logs string) LogReplayProvider {
 	grpcLogs := make([]grpcLog, 0)
 	err := json.Unmarshal([]byte(logs), &grpcLogs)
 	contract.AssertNoErrorf(err, "failed to unmarshal logs")

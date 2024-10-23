@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -19,6 +18,9 @@ import (
 	"github.com/hexops/autogold/v2"
 	"github.com/opentofu/opentofu/shim/grpcutil"
 	v6shim "github.com/opentofu/opentofu/shim/protov6"
+	pfproto "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/proto"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -30,7 +32,6 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 
 	helper "github.com/pulumi/pulumi-terraform-bridge/dynamic/internal/testing"
-	"github.com/pulumi/pulumi-terraform-bridge/dynamic/parameterize"
 	pfbridge "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/pulcheck"
 )
@@ -560,7 +561,7 @@ func TestLogReplayProvider(t *testing.T) {
 		t.Fatalf("failed to read grpc log: %v", err)
 	}
 
-	provPlugin := grpcutil.NewLogReplayProvider("random", "0.0.1", "url", string(grpcLogs))
+	provPlugin := grpcutil.NewLogReplayProvider("random", "0.0.1", string(grpcLogs))
 	prov := v6shim.New(provPlugin)
 	require.NoError(t, err)
 
@@ -583,50 +584,39 @@ func TestLogReplayProvider(t *testing.T) {
 	require.Equal(t, "\x80", string(configResp.PreparedConfig.MsgPack))
 }
 
-type provider struct {
-	tfprotov6.ProviderServer
-	io.Closer
-
-	name    string
-	version string
-	url     string
-}
-
-func (p provider) Name() string    { return p.name }
-func (p provider) Version() string { return p.version }
-func (p provider) URL() string     { return p.url }
-
 func TestLogReplayProviderWithProgram(t *testing.T) {
-	t.Skipf("program tests once YAML is supported")
 	grpcLogs, err := os.ReadFile("./testdata/TestLogReplayProvider/grpc_log_random.json")
 	if err != nil {
 		t.Fatalf("failed to read grpc log: %v", err)
 	}
 
-	provPlugin := grpcutil.NewLogReplayProvider("random", "0.0.1", "url", string(grpcLogs))
+	providerName := "random"
+	providerVersion := "0.0.1"
+
+	provPlugin := grpcutil.NewLogReplayProvider(providerName, providerVersion, string(grpcLogs))
 	prov := v6shim.New(provPlugin)
-	runProv := provider{
-		ProviderServer: prov,
-		name:           "random",
-		version:        "0.0.1",
-		url:            "url",
+	provider := pfproto.New(context.Background(), prov)
+
+	info := tfbridge.ProviderInfo{
+		P:       provider,
+		Name:    providerName,
+		Version: providerVersion,
 	}
-	info, err := providerInfo(context.Background(), runProv, parameterize.Value{
-		Remote: &parameterize.RemoteValue{URL: "example.com", Version: "0.0.1"},
-	})
-	require.NoError(t, err)
+	makeToken := func(module, name string) (string, error) {
+		return tokens.MakeStandard(providerName)(module, name)
+	}
+	info.MustComputeTokens(tokens.SingleModule(providerName, "index", makeToken))
 
 	program := `
 name: proj
 runtime: yaml
 resources:
   randomPet:
-    type: random:index:Pet
-    properties:
-      length: 3
+    type: random:Pet
 outputs:
   petName: ${randomPet.id}`
 
+	// TODO: this is wrong - it should use the PF pulcheck implementation instead.
 	pt := pulcheck.PulCheck(t, info, program)
 	res := pt.Up(t)
 	require.Equal(t, "painfully-stirred-snail", res.Outputs["petName"].Value)
