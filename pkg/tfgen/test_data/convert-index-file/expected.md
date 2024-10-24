@@ -1,4 +1,5 @@
 ---
+# *** WARNING: This file was auto-generated. Do not edit by hand unless you're certain you know what you are doing! ***
 title: Libvirt Provider
 meta_desc: Provides an overview on how to configure the Pulumi Libvirt provider.
 layout: package

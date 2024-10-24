@@ -272,6 +272,8 @@ func TestWriteFrontMatter(t *testing.T) {
 		name:         "Generates Front Matter for installation-configuration.md",
 		providerName: "test",
 		expected: delimiter +
+			"# *** WARNING: This file was auto-generated. " +
+			"Do not edit by hand unless you're certain you know what you are doing! ***\n" +
 			"title: Test Provider\n" +
 			"meta_desc: Provides an overview on how to configure the Pulumi Test provider.\n" +
 			"layout: package\n" +
