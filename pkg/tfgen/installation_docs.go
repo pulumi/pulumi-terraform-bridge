@@ -53,12 +53,8 @@ func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
 	// Determine if we should write an overview header.
 	overviewHeader := getOverviewHeader(content)
 
-	autoGenMessage := fmt.Sprint(
-		"<!-- *** WARNING: This file was auto-generated. " +
-			"Do not edit by hand unless you're certain you know what you are doing! *** -->\n")
-
 	// Add instructions to top of file
-	contentStr := frontMatter + autoGenMessage + installationInstructions + overviewHeader + string(content)
+	contentStr := frontMatter + installationInstructions + overviewHeader + string(content)
 
 	//Translate code blocks to Pulumi
 	contentStr, err = translateCodeBlocks(contentStr, g)
@@ -86,8 +82,9 @@ func writeFrontMatter(providerName string) string {
 	// Capitalize the package name
 	capitalize := cases.Title(language.English)
 	title := capitalize.String(providerName)
-
 	return fmt.Sprintf(delimiter+
+		"# *** WARNING: This file was auto-generated. "+
+		"Do not edit by hand unless you're certain you know what you are doing! ***\n"+
 		"title: %[1]s Provider\n"+
 		"meta_desc: Provides an overview on how to configure the Pulumi %[1]s provider.\n"+
 		"layout: package\n"+
