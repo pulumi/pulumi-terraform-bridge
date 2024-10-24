@@ -1,0 +1,118 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      versionNumber:
+        description: 'Release version number (v#.#.#)'
+        type: string
+        required: true
+
+permissions:
+  contents: read # Changelog commit operations use service account PAT
+
+jobs:
+  changelog-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.changelog-version.outputs.version }}
+    steps:
+      - id: changelog-version
+        run: echo "version=$(echo "${{ inputs.versionNumber }}" | cut -c 2-)" >> "$GITHUB_OUTPUT"
+
+  changelog:
+    needs: changelog-version
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        with:
+          fetch-depth: 0
+          # Avoid persisting GITHUB_TOKEN credentials as they take priority over our service account PAT for `git push` operations
+          # More details: https://github.com/actions/checkout/blob/b4626ce19ce1106186ddf9bb20e706842f11a7c3/adrs/0153-checkout-v2.md#persist-credentials
+          persist-credentials: false
+
+      - name: Batch changes
+        uses: miniscruff/changie-action@6dcc2533cac0495148ed4046c438487e4dceaa23 # v2.0.0
+        with:
+          version: latest
+          args: batch ${{ needs.changelog-version.outputs.version }}
+
+      - name: Merge changes
+        uses: miniscruff/changie-action@6dcc2533cac0495148ed4046c438487e4dceaa23 # v2.0.0
+        with:
+          version: latest
+          args: merge
+
+      - name: Git push changelog
+        run: |
+          git config --global user.name "${{ vars.TF_DEVEX_CI_COMMIT_AUTHOR }}"
+          git config --global user.email "${{ vars.TF_DEVEX_CI_COMMIT_EMAIL }}"
+          git add .
+          git commit -a -m "Update changelog"
+          git push "https://${{ vars.TF_DEVEX_CI_COMMIT_AUTHOR }}:${{ secrets.TF_DEVEX_COMMIT_GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
+
+  release-tag:
+    needs: changelog
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        with:
+          fetch-depth: 0
+          # Default input is the SHA that initially triggered the workflow. As we created a new commit in the previous job,
+          # to ensure we get the latest commit we use the ref for checkout: 'refs/heads/<branch_name>'
+          ref: ${{ github.ref }}
+          # Avoid persisting GITHUB_TOKEN credentials as they take priority over our service account PAT for `git push` operations
+          # More details: https://github.com/actions/checkout/blob/b4626ce19ce1106186ddf9bb20e706842f11a7c3/adrs/0153-checkout-v2.md#persist-credentials
+          persist-credentials: false
+
+      - name: Git push release tag
+        run: |
+          git config --global user.name "${{ vars.TF_DEVEX_CI_COMMIT_AUTHOR }}"
+          git config --global user.email "${{ vars.TF_DEVEX_CI_COMMIT_EMAIL }}"
+          
+          git tag "${{ inputs.versionNumber }}"
+          git push "https://${{ vars.TF_DEVEX_CI_COMMIT_AUTHOR }}:${{ secrets.TF_DEVEX_COMMIT_GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" "${{ inputs.versionNumber }}"
+
+  release-notes:
+    needs: [ changelog-version, changelog, release-tag ]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        with:
+          ref: ${{ inputs.versionNumber }}
+          fetch-depth: 0
+
+      - name: Generate Release Notes
+        run: |
+          cd .changes
+          sed -e "1{/# /d;}" -e "2{/^$/d;}" ${{ needs.changelog-version.outputs.version }}.md > release-notes.txt
+
+      - uses: actions/upload-artifact@a8a3f3ad30e3422c9c7b888a15615d19a852ae32 # v3.1.3
+        with:
+          name: release-notes
+          path: ./.changes/release-notes.txt
+          retention-days: 1
+
+  terraform-provider-release:
+    name: 'Terraform Provider Release'
+    needs: [ release-notes ]
+    permissions:
+      contents: write # Needed for goreleaser to create GitHub release
+    uses: hashicorp/ghaction-terraform-provider-release/.github/workflows/hashicorp.yml@01981baad5d35ce2342924e60ae91cf69fe31fd0 # v2.3.0
+    secrets:
+      hc-releases-key-prod: '${{ secrets.HC_RELEASES_KEY_PROD }}'
+      hc-releases-key-staging: '${{ secrets.HC_RELEASES_KEY_STAGING }}'
+      hc-releases-github-token: '${{ secrets.HASHI_RELEASES_GITHUB_TOKEN }}'
+      hc-releases-terraform-registry-sync-token: '${{ secrets.TF_PROVIDER_RELEASE_TERRAFORM_REGISTRY_SYNC_TOKEN }}'
+      setup-signore-github-token: '${{ secrets.HASHI_SIGNORE_GITHUB_TOKEN }}'
+      signore-client-id: '${{ secrets.SIGNORE_CLIENT_ID }}'
+      signore-client-secret: '${{ secrets.SIGNORE_CLIENT_SECRET }}'
+      hc-releases-host-staging: '${{ secrets.HC_RELEASES_HOST_STAGING }}'
+      hc-releases-host-prod: '${{ secrets.HC_RELEASES_HOST_PROD }}'
+    with:
+      release-notes: true
+      setup-go-version-file: 'go.mod'
+      # Product Version (e.g. v1.2.3)
+      product-version: '${{ inputs.versionNumber }}'

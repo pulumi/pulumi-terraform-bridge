@@ -15,15 +15,10 @@
 package randomshim
 
 import (
-	_ "unsafe" // For go:linkname.
-
-	"github.com/hashicorp/terraform-plugin-framework/provider"
 	tfpf "github.com/hashicorp/terraform-plugin-framework/provider"
+	"github.com/terraform-providers/terraform-provider-random/provider"
 )
 
-//go:linkname New github.com/terraform-providers/terraform-provider-random/internal/provider.New
-var New func() provider.Provider
-
 func NewProvider() tfpf.Provider {
-	return New()
+	return provider.New()
 }
