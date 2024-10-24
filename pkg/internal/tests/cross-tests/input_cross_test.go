@@ -1,8 +1,6 @@
 package crosstests
 
 import (
-	"context"
-	"fmt"
 	"testing"
 	"time"
 
@@ -125,87 +123,6 @@ func TestInputsEmptyString(t *testing.T) {
 			},
 		),
 	})
-}
-
-func TestInputsUnspecifiedMaxItemsOne(t *testing.T) {
-	// Regression test for [pulumi/pulumi-terraform-bridge#1767]
-	runCreateInputCheck(t, inputTestCase{
-		Resource: &schema.Resource{
-			Schema: map[string]*schema.Schema{
-				"f0": {
-					Type:     schema.TypeList,
-					MaxItems: 1,
-					Optional: true,
-					Elem: &schema.Resource{
-						Schema: map[string]*schema.Schema{
-							"x": {Optional: true, Type: schema.TypeString},
-						},
-					},
-				},
-			},
-		},
-		Config: tftypes.NewValue(
-			tftypes.Object{},
-			map[string]tftypes.Value{},
-		),
-	})
-}
-
-func TestOptionalSetNotSpecified(t *testing.T) {
-	// Regression test for [pulumi/pulumi-terraform-bridge#1970] and [pulumi/pulumi-terraform-bridge#1964]
-	runCreateInputCheck(t, inputTestCase{
-		Resource: &schema.Resource{
-			Schema: map[string]*schema.Schema{
-				"f0": {
-					Optional: true,
-					Type:     schema.TypeSet,
-					Elem: &schema.Resource{
-						Schema: map[string]*schema.Schema{
-							"x": {Optional: true, Type: schema.TypeString},
-						},
-					},
-				},
-			},
-		},
-		Config: tftypes.NewValue(tftypes.Object{}, map[string]tftypes.Value{}),
-	})
-}
-
-func TestInputsEqualEmptyList(t *testing.T) {
-	// Regression test for [pulumi/pulumi-terraform-bridge#1915]
-	for _, maxItems := range []int{0, 1} {
-		name := fmt.Sprintf("MaxItems: %v", maxItems)
-		t.Run(name, func(t *testing.T) {
-			t1 := tftypes.List{ElementType: tftypes.String}
-			t0 := tftypes.Object{
-				AttributeTypes: map[string]tftypes.Type{
-					"f0": t1,
-				},
-			}
-			runCreateInputCheck(t, inputTestCase{
-				Resource: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"f0": {
-							Optional: true,
-							Type:     schema.TypeList,
-							MaxItems: maxItems,
-							Elem: &schema.Resource{
-								Schema: map[string]*schema.Schema{
-									"x": {Optional: true, Type: schema.TypeString},
-								},
-							},
-						},
-					},
-				},
-				Config: tftypes.NewValue(
-					t0,
-					map[string]tftypes.Value{
-						"f0": tftypes.NewValue(t1, []tftypes.Value{}),
-					},
-				),
-			})
-		})
-	}
 }
 
 func TestExplicitNilList(t *testing.T) {
@@ -463,83 +380,5 @@ func TestTimeouts(t *testing.T) {
 			},
 		},
 		Config: emptyConfig,
-	})
-}
-
-// TestAccCloudWatch failed with PlanResourceChange to do a simple Create preview because the state upgrade was
-// unexpectedly called with nil state. Emulate this here to test it does not fail.
-func TestCreateDoesNotPanicWithStateUpgraders(t *testing.T) {
-
-	resourceRuleV0 := func() *schema.Resource {
-		return &schema.Resource{
-			Schema: map[string]*schema.Schema{
-				"event_bus_name": {
-					Type:     schema.TypeString,
-					Optional: true,
-				},
-				"is_enabled": {
-					Type:     schema.TypeBool,
-					Optional: true,
-				},
-			},
-		}
-	}
-
-	resourceRuleUpgradeV0 := func(ctx context.Context, rawState map[string]any, meta any) (map[string]any, error) {
-		if rawState == nil {
-			rawState = map[string]any{}
-		}
-
-		if rawState["is_enabled"].(bool) { // used to panic here
-			t.Logf("enabled")
-		} else {
-			t.Logf("disabled")
-		}
-
-		return rawState, nil
-	}
-
-	runCreateInputCheck(t, inputTestCase{
-		Resource: &schema.Resource{
-			SchemaVersion: 1,
-			StateUpgraders: []schema.StateUpgrader{
-				{
-					Type:    resourceRuleV0().CoreConfigSchema().ImpliedType(),
-					Upgrade: resourceRuleUpgradeV0,
-					Version: 0,
-				},
-			},
-			Schema: resourceRuleV0().Schema,
-		},
-		Config: map[string]any{
-			"event_bus_name": "default",
-		},
-	})
-}
-
-// TestStateFunc ensures that resources with a StateFunc set on their schema are correctly
-// handled. This includes ensuring that the PlannedPrivate blob is passed from
-// PlanResourceChange to ApplyResourceChange. If this is passed correctly, the provider
-// will see the original value of the field, rather than the value that was produced by
-// the StateFunc.
-func TestStateFunc(t *testing.T) {
-	input := "hello"
-
-	runCreateInputCheck(t, inputTestCase{
-		Resource: &schema.Resource{
-			Schema: map[string]*schema.Schema{
-				"test": {
-					Type:     schema.TypeString,
-					Optional: true,
-					ForceNew: true,
-					StateFunc: func(v interface{}) string {
-						return v.(string) + " world"
-					},
-				},
-			},
-		},
-		Config: map[string]any{
-			"test": input,
-		},
 	})
 }

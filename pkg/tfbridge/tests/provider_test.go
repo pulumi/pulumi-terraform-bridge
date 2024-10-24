@@ -129,6 +129,148 @@ func TestInputsConfigModeEqual(t *testing.T) {
 	}
 }
 
+// TestStateFunc ensures that resources with a StateFunc set on their schema are correctly
+// handled. This includes ensuring that the PlannedPrivate blob is passed from
+// PlanResourceChange to ApplyResourceChange. If this is passed correctly, the provider
+// will see the original value of the field, rather than the value that was produced by
+// the StateFunc.
+func TestStateFunc(t *testing.T) {
+	t.Parallel()
+	crosstests.Create(t,
+		map[string]*schema.Schema{
+			"test": {
+				Type:     schema.TypeString,
+				Optional: true,
+				ForceNew: true,
+				StateFunc: func(v interface{}) string {
+					return v.(string) + " world"
+				},
+			},
+		},
+		cty.ObjectVal(map[string]cty.Value{
+			"test": cty.StringVal("hello"),
+		}),
+		crosstests.InferPulumiValue(),
+	)
+}
+
+// Regression test for [pulumi/pulumi-terraform-bridge#1767]
+func TestInputsUnspecifiedMaxItemsOne(t *testing.T) {
+	t.Parallel()
+	crosstests.Create(t,
+		map[string]*schema.Schema{
+			"f0": {
+				Type:     schema.TypeList,
+				MaxItems: 1,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"x": {Optional: true, Type: schema.TypeString},
+					},
+				},
+			},
+		},
+		cty.ObjectVal(map[string]cty.Value{}),
+		crosstests.InferPulumiValue(),
+	)
+}
+
+// Regression test for [pulumi/pulumi-terraform-bridge#1970] and [pulumi/pulumi-terraform-bridge#1964]
+func TestOptionalSetNotSpecified(t *testing.T) {
+	t.Parallel()
+	crosstests.Create(t,
+		map[string]*schema.Schema{
+			"f0": {
+				Optional: true,
+				Type:     schema.TypeSet,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"x": {Optional: true, Type: schema.TypeString},
+					},
+				},
+			},
+		},
+		cty.ObjectVal(map[string]cty.Value{}),
+		crosstests.InferPulumiValue(),
+	)
+}
+
+// Regression test for [pulumi/pulumi-terraform-bridge#1915]
+func TestInputsEqualEmptyList(t *testing.T) {
+	t.Parallel()
+	for _, maxItems := range []int{0, 1} {
+		t.Run(fmt.Sprintf("MaxItems: %v", maxItems), func(t *testing.T) {
+			crosstests.Create(t,
+				map[string]*schema.Schema{
+					"f0": {
+						Optional: true,
+						Type:     schema.TypeList,
+						MaxItems: maxItems,
+						Elem: &schema.Resource{
+							Schema: map[string]*schema.Schema{
+								"x": {Optional: true, Type: schema.TypeString},
+							},
+						},
+					},
+				},
+				cty.ObjectVal(map[string]cty.Value{
+					"f0": cty.ListValEmpty(cty.String),
+				}),
+				crosstests.InferPulumiValue(),
+			)
+		})
+	}
+}
+
+// TestAccCloudWatch failed with PlanResourceChange to do a simple Create preview because the state upgrade was
+// unexpectedly called with nil state. Emulate this here to test it does not fail.
+func TestCreateDoesNotPanicWithStateUpgraders(t *testing.T) {
+	t.Parallel()
+	resourceRuleV0 := func() *schema.Resource {
+		return &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				"event_bus_name": {
+					Type:     schema.TypeString,
+					Optional: true,
+				},
+				"is_enabled": {
+					Type:     schema.TypeBool,
+					Optional: true,
+				},
+			},
+		}
+	}
+
+	resourceRuleUpgradeV0 := func(ctx context.Context, rawState map[string]any, meta any) (map[string]any, error) {
+		if rawState == nil {
+			rawState = map[string]any{}
+		}
+
+		if rawState["is_enabled"].(bool) { // used to panic here
+			t.Logf("enabled")
+		} else {
+			t.Logf("disabled")
+		}
+
+		return rawState, nil
+	}
+
+	crosstests.Create(t,
+		resourceRuleV0().Schema,
+		cty.ObjectVal(map[string]cty.Value{
+			"event_bus_name": cty.StringVal("default"),
+		}),
+		crosstests.InferPulumiValue(),
+		crosstests.CreateStateUpgrader(1, []schema.StateUpgrader{
+			{
+				Type:    resourceRuleV0().CoreConfigSchema().ImpliedType(),
+				Upgrade: resourceRuleUpgradeV0,
+				Version: 0,
+			},
+		}),
+	)
+}
+
 // Demonstrating the use of the newTestProvider helper.
 func TestWithNewTestProvider(t *testing.T) {
 	ctx := context.Background()
