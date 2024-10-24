@@ -27,7 +27,6 @@ require (
 	github.com/hashicorp/terraform-plugin-mux v0.16.0
 	github.com/hashicorp/terraform-plugin-sdk v1.7.0
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.33.0
-	github.com/hashicorp/terraform-provider-tls v1.2.1-0.20230117062332-afdd54107aba
 	github.com/hashicorp/terraform-svchost v0.1.1
 	github.com/hexops/autogold/v2 v2.2.1
 	github.com/hexops/valast v1.4.4
@@ -51,7 +50,6 @@ require (
 	github.com/spf13/cobra v1.8.0
 	github.com/stretchr/testify v1.9.0
 	github.com/teekennedy/goldmark-markdown v0.3.0
-	github.com/terraform-providers/terraform-provider-random v1.3.2-0.20231204135814-c6e90de46687
 	github.com/yuin/goldmark v1.7.4
 	github.com/zclconf/go-cty v1.14.2
 	golang.org/x/crypto v0.25.0
@@ -88,7 +86,6 @@ require (
 	github.com/containerd/console v1.0.4-0.20230313162750-1ae8d489ac81 // indirect
 	github.com/cyphar/filepath-securejoin v0.2.4 // indirect
 	github.com/deckarep/golang-set/v2 v2.5.0 // indirect
-	github.com/dustinkirkland/golang-petname v0.0.0-20191129215211-8e5a1ed0cff0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/go-jose/go-jose/v3 v3.0.3 // indirect
