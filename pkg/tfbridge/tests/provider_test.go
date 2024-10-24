@@ -352,6 +352,59 @@ func TestInputsEmptyString(t *testing.T) {
 	)
 }
 
+func TestInputsNesqtedBlocksEmpty(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		name   string
+		typ1   schema.ValueType
+		typ2   schema.ValueType
+		config cty.Value
+	}{
+		{"empty list list block", schema.TypeList, schema.TypeList, cty.EmptyObjectVal},
+		{"empty set set block", schema.TypeSet, schema.TypeSet, cty.EmptyObjectVal},
+		{"empty list set block", schema.TypeList, schema.TypeSet, cty.EmptyObjectVal},
+		{"non empty list list block", schema.TypeList, schema.TypeList, cty.ObjectVal(map[string]cty.Value{
+			"f0": cty.ListValEmpty(cty.List(cty.Object(map[string]cty.Type{"f2": cty.String}))),
+		})},
+		{"nested non empty list list block", schema.TypeList, schema.TypeList, cty.ObjectVal(map[string]cty.Value{
+			"f0": cty.ListVal([]cty.Value{cty.ObjectVal(map[string]cty.Value{"f2": cty.StringVal("val")})}),
+		})},
+		{"nested non empty set set block", schema.TypeSet, schema.TypeSet, cty.ObjectVal(map[string]cty.Value{
+			"f0": cty.SetVal([]cty.Value{cty.ObjectVal(map[string]cty.Value{"f2": cty.StringVal("val")})}),
+		})},
+	} {
+		t.Run(tc.name, crosstests.MakeCreate(
+			map[string]*schema.Schema{
+				"f0": {
+					Type:     tc.typ1,
+					Optional: true,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"f1": {
+								Type:     tc.typ2,
+								Optional: true,
+								Elem: &schema.Resource{
+									Schema: map[string]*schema.Schema{
+										"x": {Optional: true, Type: schema.TypeString},
+									},
+								},
+							},
+							// This allows us to specify non-empty f0s with an empty f1
+							"f2": {
+								Type:     schema.TypeString,
+								Optional: true,
+							},
+						},
+					},
+				},
+			},
+			tc.config,
+			crosstests.InferPulumiValue(),
+		))
+	}
+}
+
 // Demonstrating the use of the newTestProvider helper.
 func TestWithNewTestProvider(t *testing.T) {
 	ctx := context.Background()
