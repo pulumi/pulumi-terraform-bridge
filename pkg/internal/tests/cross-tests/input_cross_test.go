@@ -2,7 +2,6 @@ package crosstests
 
 import (
 	"testing"
-	"time"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -99,30 +98,6 @@ func TestInputsEqualObjectBasic(t *testing.T) {
 			})
 		})
 	}
-}
-
-// Isolated from rapid-generated tests
-func TestInputsEmptyString(t *testing.T) {
-	runCreateInputCheck(t, inputTestCase{
-		Resource: &schema.Resource{
-			Schema: map[string]*schema.Schema{
-				"f0": {
-					Type:     schema.TypeString,
-					Required: true,
-				},
-			},
-		},
-		Config: tftypes.NewValue(
-			tftypes.Object{
-				AttributeTypes: map[string]tftypes.Type{
-					"f0": tftypes.String,
-				},
-			},
-			map[string]tftypes.Value{
-				"f0": tftypes.NewValue(tftypes.String, ""),
-			},
-		),
-	})
 }
 
 func TestExplicitNilList(t *testing.T) {
@@ -306,79 +281,4 @@ func TestInputsNestedBlocksEmpty(t *testing.T) {
 			})
 		})
 	}
-}
-
-func TestEmptySetOfEmptyObjects(t *testing.T) {
-	t1 := tftypes.Object{}
-	t0 := tftypes.Object{AttributeTypes: map[string]tftypes.Type{
-		"d3f0": tftypes.Set{ElementType: t1},
-	}}
-	config := tftypes.NewValue(t0, map[string]tftypes.Value{
-		"d3f0": tftypes.NewValue(tftypes.Set{ElementType: t1}, []tftypes.Value{}),
-	})
-
-	runCreateInputCheck(t, inputTestCase{
-		Resource: &schema.Resource{
-			Schema: map[string]*schema.Schema{
-				"d3f0": {
-					Type:     schema.TypeSet,
-					Optional: true,
-					Elem:     &schema.Resource{Schema: map[string]*schema.Schema{}},
-				},
-			},
-		},
-		Config: config,
-	})
-}
-
-func TestMap(t *testing.T) {
-	t0 := tftypes.Map{ElementType: tftypes.String}
-	t1 := tftypes.Object{AttributeTypes: map[string]tftypes.Type{
-		"tags": t0,
-	}}
-	mapVal := tftypes.NewValue(t0, map[string]tftypes.Value{
-		"key":  tftypes.NewValue(tftypes.String, "val"),
-		"key2": tftypes.NewValue(tftypes.String, "val2"),
-	})
-	config := tftypes.NewValue(t1, map[string]tftypes.Value{
-		"tags": mapVal,
-	})
-
-	runCreateInputCheck(t, inputTestCase{
-		Resource: &schema.Resource{
-			Schema: map[string]*schema.Schema{
-				"tags": {
-					Type:     schema.TypeMap,
-					Optional: true,
-					Elem: &schema.Schema{
-						Optional: true,
-						Type:     schema.TypeString,
-					},
-				},
-			},
-		},
-		Config: config,
-	})
-}
-
-func TestTimeouts(t *testing.T) {
-	emptyConfig := tftypes.NewValue(tftypes.Object{}, map[string]tftypes.Value{})
-	runCreateInputCheck(t, inputTestCase{
-		Resource: &schema.Resource{
-			Schema: map[string]*schema.Schema{
-				"tags": {
-					Type:     schema.TypeMap,
-					Optional: true,
-					Elem: &schema.Schema{
-						Optional: true,
-						Type:     schema.TypeString,
-					},
-				},
-			},
-			Timeouts: &schema.ResourceTimeout{
-				Create: schema.DefaultTimeout(time.Duration(120)),
-			},
-		},
-		Config: emptyConfig,
-	})
 }

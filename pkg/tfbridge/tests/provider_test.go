@@ -21,6 +21,7 @@ import (
 	"math"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pulumi/providertest/replay"
@@ -268,6 +269,86 @@ func TestCreateDoesNotPanicWithStateUpgraders(t *testing.T) {
 				Version: 0,
 			},
 		}),
+	)
+}
+
+func TestTimeouts(t *testing.T) {
+	t.Parallel()
+	crosstests.Create(t,
+		map[string]*schema.Schema{
+			"tags": {
+				Type:     schema.TypeMap,
+				Optional: true,
+				Elem: &schema.Schema{
+					Optional: true,
+					Type:     schema.TypeString,
+				},
+			},
+		},
+		cty.EmptyObjectVal,
+		crosstests.InferPulumiValue(),
+		crosstests.CreateTimeout(&schema.ResourceTimeout{
+			Create: schema.DefaultTimeout(time.Duration(120)),
+		}),
+	)
+}
+
+func TestMap(t *testing.T) {
+	t.Parallel()
+
+	crosstests.Create(t,
+		map[string]*schema.Schema{
+			"tags": {
+				Type:     schema.TypeMap,
+				Optional: true,
+				Elem: &schema.Schema{
+					Optional: true,
+					Type:     schema.TypeString,
+				},
+			},
+		},
+		cty.ObjectVal(map[string]cty.Value{
+			"tags": cty.MapVal(map[string]cty.Value{
+				"key":  cty.StringVal("val"),
+				"key2": cty.StringVal("val2"),
+			}),
+		}),
+		crosstests.InferPulumiValue(),
+	)
+}
+
+func TestEmptySetOfEmptyObjects(t *testing.T) {
+	t.Parallel()
+
+	crosstests.Create(t,
+		map[string]*schema.Schema{
+			"d3f0": {
+				Type:     schema.TypeSet,
+				Optional: true,
+				Elem:     &schema.Resource{Schema: map[string]*schema.Schema{}},
+			},
+		},
+		cty.ObjectVal(map[string]cty.Value{
+			"d3f0": cty.SetValEmpty(cty.EmptyObject),
+		}),
+		crosstests.InferPulumiValue(),
+	)
+}
+
+func TestInputsEmptyString(t *testing.T) {
+	t.Parallel()
+
+	crosstests.Create(t,
+		map[string]*schema.Schema{
+			"f0": {
+				Type:     schema.TypeString,
+				Required: true,
+			},
+		},
+		cty.ObjectVal(map[string]cty.Value{
+			"f0": cty.StringVal(""),
+		}),
+		crosstests.InferPulumiValue(),
 	)
 }
 
