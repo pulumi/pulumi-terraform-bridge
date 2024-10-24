@@ -1,0 +1,36 @@
+---
+page_title: "{{.Name}} {{.Type}} - {{.ProviderName}}"
+subcategory: ""
+description: |-
+{{ .Description | plainmarkdown | trimspace | prefixlines "  " }}
+---
+
+# {{.Name}} ({{.Type}})
+
+{{ .Description | trimspace }}
+
+-> **Note** Locally-signed certificates are generally only trusted by client software when
+setup to use the provided CA. They are normally used in development environments
+or when deployed internally to an organization.
+
+## Example Usage
+
+{{ tffile "examples/resources/tls_locally_signed_cert/resource.tf" }}
+
+{{ .SchemaMarkdown | trimspace }}
+
+## Automatic Renewal
+
+This resource considers its instances to have been deleted after either their validity
+periods ends (i.e. beyond the `validity_period_hours`)
+or the early renewal period is reached (i.e. within the `early_renewal_hours`):
+when this happens, the `ready_for_renewal` attribute will be `true`.
+At this time, applying the Terraform configuration will cause a new certificate to be
+generated for the instance.
+
+Therefore in a development environment with frequent deployments it may be convenient
+to set a relatively-short expiration time and use early renewal to automatically provision
+a new certificate when the current one is about to expire.
+
+The creation of a new certificate may of course cause dependent resources to be updated
+or replaced, depending on the lifecycle rules applying to those resources.

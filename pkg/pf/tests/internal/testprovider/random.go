@@ -25,8 +25,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/randomshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/testprovider/sdkv2randomprovider"
-	"github.com/terraform-providers/terraform-provider-random/randomshim"
 
 	sdk2schema "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 

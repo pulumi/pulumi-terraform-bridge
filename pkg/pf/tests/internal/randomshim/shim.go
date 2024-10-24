@@ -16,7 +16,7 @@ package randomshim
 
 import (
 	tfpf "github.com/hashicorp/terraform-plugin-framework/provider"
-	"github.com/terraform-providers/terraform-provider-random/internal/provider"
+	"github.com/terraform-providers/terraform-provider-random/provider"
 )
 
 func NewProvider() tfpf.Provider {

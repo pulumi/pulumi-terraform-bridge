@@ -143,23 +143,15 @@ func execCommandOrLogFatal(cwd, name string, arg ...string) {
 
 // Finds directories containing go.mod files in the repository.
 func findGoModuleRoots() (result []string) {
-	var buf bytes.Buffer
-	cmd := exec.Command("git", "ls-files", "-z", "**go.mod")
-	cmd.Dir = "."
-	cmd.Stderr = os.Stderr
-	cmd.Stdout = &buf
-	if err := cmd.Run(); err != nil {
-		log.Fatal(err)
+	// Please **don't** add additional modules here.
+	return []string{
+		".",
+		"tools",
+		"dynamic",
+		"dynamic/test/pfprovider",
+		"dynamic/internal/shim",
+		"pkg/pf/tests/testdatagen/genrandom",
 	}
-	ms := strings.Split(buf.String(), string(rune(0)))
-	for _, m := range ms {
-		if m == "" {
-			continue
-		}
-		d := filepath.Dir(m)
-		result = append(result, d)
-	}
-	return result
 }
 
 func latestPulumiVersion() string {
