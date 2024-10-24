@@ -405,6 +405,88 @@ func TestInputsNesqtedBlocksEmpty(t *testing.T) {
 	}
 }
 
+func TestExplicitNilList(t *testing.T) {
+	t.Parallel()
+
+	// This is an explicit null on the tf side:
+	// resource "crossprovider_testres" "example" {
+	//     f0 = null
+	// }
+	crosstests.Create(t,
+		map[string]*schema.Schema{
+			"f0": {
+				Optional: true,
+				Type:     schema.TypeList,
+				Elem: &schema.Schema{
+					Type: schema.TypeMap,
+					Elem: &schema.Schema{
+						Type: schema.TypeInt,
+					},
+				},
+			},
+		},
+		cty.ObjectVal(map[string]cty.Value{"f0": cty.NullVal(cty.List(cty.Map(cty.Number)))}),
+		crosstests.InferPulumiValue(),
+	)
+}
+
+func TestInputsEmptyCollections(t *testing.T) {
+	t.Parallel()
+
+	// signifies a block
+	resourceElem := &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"x": {Optional: true, Type: schema.TypeString},
+		},
+	}
+
+	// signifies an attribute
+	schemaElem := &schema.Schema{
+		Type: schema.TypeMap,
+		Elem: &schema.Schema{Type: schema.TypeString},
+	}
+
+	for _, tc := range []struct {
+		name       string
+		maxItems   int
+		typ        schema.ValueType
+		elem       any
+		configMode schema.SchemaConfigMode
+	}{
+		{"list block", 0, schema.TypeList, resourceElem, schema.SchemaConfigModeAuto},
+		{"set block", 0, schema.TypeSet, resourceElem, schema.SchemaConfigModeAuto},
+		// TypeMap with Elem *Resource not supported
+		// {"map block", 0, schema.TypeMap, resourceElem, schema.SchemaConfigModeAuto},
+		{"list max items one block", 1, schema.TypeList, resourceElem, schema.SchemaConfigModeAuto},
+		{"set max items one block", 1, schema.TypeSet, resourceElem, schema.SchemaConfigModeAuto},
+		// MaxItems is only valid on lists and sets
+		// {"map max items one block", 1, schema.TypeMap, resourceElem, schema.SchemaConfigModeAuto},
+		{"list attr", 0, schema.TypeList, schemaElem, schema.SchemaConfigModeAuto},
+		{"set attr", 0, schema.TypeSet, schemaElem, schema.SchemaConfigModeAuto},
+		{"map attr", 0, schema.TypeMap, schemaElem, schema.SchemaConfigModeAuto},
+		{"list max items one attr", 1, schema.TypeList, schemaElem, schema.SchemaConfigModeAuto},
+		{"set max items one attr", 1, schema.TypeSet, schemaElem, schema.SchemaConfigModeAuto},
+		// MaxItems is only valid on lists and sets
+		// {"map max items one attr", 1, schema.TypeMap, schemaElem, schema.SchemaConfigModeAuto},
+		{"list config mode attr", 0, schema.TypeList, resourceElem, schema.SchemaConfigModeAttr},
+		{"set config mode attr", 0, schema.TypeSet, resourceElem, schema.SchemaConfigModeAttr},
+	} {
+		t.Run(tc.name, crosstests.MakeCreate(
+			map[string]*schema.Schema{
+				"f0": {
+					Type:       tc.typ,
+					MaxItems:   tc.maxItems,
+					Elem:       tc.elem,
+					ConfigMode: tc.configMode,
+					Optional:   true,
+				},
+			},
+			cty.EmptyObjectVal,
+			crosstests.InferPulumiValue(),
+		))
+	}
+}
+
 // Demonstrating the use of the newTestProvider helper.
 func TestWithNewTestProvider(t *testing.T) {
 	ctx := context.Background()
