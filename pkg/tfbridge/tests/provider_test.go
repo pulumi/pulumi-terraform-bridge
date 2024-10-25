@@ -223,49 +223,33 @@ func TestInputsEqualEmptyList(t *testing.T) {
 	}
 }
 
-// TestAccCloudWatch failed with PlanResourceChange to do a simple Create preview because the state upgrade was
-// unexpectedly called with nil state. Emulate this here to test it does not fail.
-func TestCreateDoesNotPanicWithStateUpgraders(t *testing.T) {
+// TestCreateDoesNotInvokeStateUpgraders ensures that state upgrade machinery is not
+// invoked during Create operations.
+func TestCreateDoesNotInvokeStateUpgraders(t *testing.T) {
 	t.Parallel()
-	resourceRuleV0 := func() *schema.Resource {
-		return &schema.Resource{
-			Schema: map[string]*schema.Schema{
-				"event_bus_name": {
-					Type:     schema.TypeString,
-					Optional: true,
-				},
-				"is_enabled": {
-					Type:     schema.TypeBool,
-					Optional: true,
-				},
+	resource := func() *schema.Resource {
+		return &schema.Resource{Schema: map[string]*schema.Schema{
+			"f0": {
+				Type:     schema.TypeString,
+				Optional: true,
 			},
-		}
+		}}
 	}
 
-	resourceRuleUpgradeV0 := func(ctx context.Context, rawState map[string]any, meta any) (map[string]any, error) {
-		if rawState == nil {
-			rawState = map[string]any{}
-		}
-
-		if rawState["is_enabled"].(bool) { // used to panic here
-			t.Logf("enabled")
-		} else {
-			t.Logf("disabled")
-		}
-
-		return rawState, nil
+	upgradeFunc := func(ctx context.Context, rawState map[string]any, meta any) (map[string]any, error) {
+		panic("State upgraders should not be called during create")
 	}
 
 	crosstests.Create(t,
-		resourceRuleV0().Schema,
+		resource().Schema,
 		cty.ObjectVal(map[string]cty.Value{
-			"event_bus_name": cty.StringVal("default"),
+			"f0": cty.StringVal("default"),
 		}),
 		crosstests.InferPulumiValue(),
 		crosstests.CreateStateUpgrader(1, []schema.StateUpgrader{
 			{
-				Type:    resourceRuleV0().CoreConfigSchema().ImpliedType(),
-				Upgrade: resourceRuleUpgradeV0,
+				Type:    resource().CoreConfigSchema().ImpliedType(),
+				Upgrade: upgradeFunc,
 				Version: 0,
 			},
 		}),
@@ -352,7 +336,7 @@ func TestInputsEmptyString(t *testing.T) {
 	)
 }
 
-func TestInputsNesqtedBlocksEmpty(t *testing.T) {
+func TestInputsNestedBlocksEmpty(t *testing.T) {
 	t.Parallel()
 
 	for _, tc := range []struct {
