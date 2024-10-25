@@ -38,6 +38,10 @@ func assertResourceDataEqual(t T, resourceSchema map[string]*schema.Schema, tfRe
 	//	assert.Equal(t, tfResult, puResult)
 	//
 	// We make do by comparing raw data.
+
+	t.Logf("tfResult: %+v", tfResult)
+	t.Logf("puResult: %+v", puResult)
+
 	assertCtyValEqual(t, "RawConfig", tfResult.GetRawConfig(), puResult.GetRawConfig())
 	assertCtyValEqual(t, "RawPlan", tfResult.GetRawPlan(), puResult.GetRawPlan())
 	assertCtyValEqual(t, "RawState", tfResult.GetRawState(), puResult.GetRawState())

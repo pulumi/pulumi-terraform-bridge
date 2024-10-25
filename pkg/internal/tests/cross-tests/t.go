@@ -21,6 +21,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// Why do we need this?
+
 type T interface {
 	Logf(string, ...any)
 	TempDir() string

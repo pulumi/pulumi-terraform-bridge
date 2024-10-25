@@ -49,7 +49,7 @@ func MakeConfigure(
 // on Plugin Framework based resources, see
 // github.com/pulumi/pulumi-terraform-bridge/pkg/pf/tests/internal/cross-tests.
 func Configure(
-	t T, provider map[string]*schema.Schema, tfConfig cty.Value, puConfig resource.PropertyMap,
+	t *testing.T, provider map[string]*schema.Schema, tfConfig cty.Value, puConfig resource.PropertyMap,
 	options ...ConfigureOption,
 ) {
 
