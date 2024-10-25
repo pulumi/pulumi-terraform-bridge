@@ -401,8 +401,9 @@ func getDefaultHeadersToSkip() []*regexp.Regexp {
 		regexp.MustCompile("[Dd]evelopment"),
 		regexp.MustCompile("[Dd]ebugging"),
 		regexp.MustCompile("[Tt]erraform CLI"),
-		regexp.MustCompile("[Tt]erraform Cloud"),
+		regexp.MustCompile("[Tt]erraform [Cc]loud"),
 		regexp.MustCompile("Delete Protection"),
+		regexp.MustCompile("[Cc]ontributing"),
 	}
 	return defaultHeaderSkipRegexps
 }
