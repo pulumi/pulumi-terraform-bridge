@@ -12,6 +12,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/walk"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/propertyvalue"
 )
 
 func isPresent(val resource.PropertyValue) bool {
@@ -64,32 +65,6 @@ func lookupSchemas(
 	return LookupSchemas(schemaPath, tfs, ps)
 }
 
-// walkPropertyValue walks a property value and calls the visitor function for each path in the property value.
-func walkPropertyValue(
-	val resource.PropertyValue, path propertyPath, visitor func(propertyPath, resource.PropertyValue) bool,
-) bool {
-	if !visitor(path, val) {
-		return false
-	}
-
-	switch {
-	case val.IsArray():
-		for i, elVal := range val.ArrayValue() {
-			if !walkPropertyValue(elVal, path.Index(i), visitor) {
-				return false
-			}
-		}
-
-	case val.IsObject():
-		for k, elVal := range val.ObjectValue() {
-			if !walkPropertyValue(elVal, path.Subpath(string(k)), visitor) {
-				return false
-			}
-		}
-	}
-	return true
-}
-
 func willTriggerReplacement(
 	path propertyPath, rootTFSchema shim.SchemaMap, rootPulumiSchema map[string]*info.Schema,
 ) bool {
@@ -127,15 +102,19 @@ func willTriggerReplacementRecursive(
 	path propertyPath, value resource.PropertyValue, tfs shim.SchemaMap, ps map[string]*info.Schema,
 ) bool {
 	replacement := false
-	visitor := func(subpath propertyPath, val resource.PropertyValue) bool {
-		if willTriggerReplacement(subpath, tfs, ps) {
+	visitor := func(subpath resource.PropertyPath, val resource.PropertyValue) (resource.PropertyValue, error) {
+		if willTriggerReplacement(propertyPath(subpath), tfs, ps) {
 			replacement = true
-			return false
 		}
-		return true
+		return val, nil
 	}
 
-	walkPropertyValue(value, path, visitor)
+	_, err := propertyvalue.TransformPropertyValue(
+		resource.PropertyPath(path),
+		visitor,
+		value,
+	)
+	contract.AssertNoErrorf(err, "TransformPropertyValue should not return an error")
 
 	return replacement
 }
