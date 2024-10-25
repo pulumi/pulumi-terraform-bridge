@@ -32,12 +32,12 @@ import (
 )
 
 func MakeConfigure(
-	provider map[string]*schema.Schema, tfConfig cty.Value, puConfig resource.PropertyMap,
+	provider map[string]*schema.Schema, tfConfig cty.Value,
 	options ...ConfigureOption,
 ) func(*testing.T) {
 	return func(t *testing.T) {
 		t.Parallel()
-		Configure(t, provider, tfConfig, puConfig, options...)
+		Configure(t, provider, tfConfig, options...)
 	}
 }
 
@@ -49,7 +49,7 @@ func MakeConfigure(
 // on Plugin Framework based resources, see
 // github.com/pulumi/pulumi-terraform-bridge/pkg/pf/tests/internal/cross-tests.
 func Configure(
-	t *testing.T, provider map[string]*schema.Schema, tfConfig cty.Value, puConfig resource.PropertyMap,
+	t *testing.T, provider map[string]*schema.Schema, tfConfig cty.Value,
 	options ...ConfigureOption,
 ) {
 
@@ -58,7 +58,10 @@ func Configure(
 		f(&opts)
 	}
 
-	if isInferPulumiMarker(puConfig) {
+	var puConfig resource.PropertyMap
+	if opts.puConfig != nil {
+		puConfig = *opts.puConfig
+	} else {
 		puConfig = inferPulumiValue(t,
 			shimv2.NewSchemaMap(provider),
 			opts.resourceInfo.GetFields(),
@@ -146,13 +149,19 @@ func Configure(
 
 type configureOpts struct {
 	resourceInfo *info.Resource
+	puConfig     *resource.PropertyMap
 }
 
-// An option that can be used to customize [Create].
+// An option that can be used to customize [Configure].
 type ConfigureOption func(*configureOpts)
 
 // CreateResourceInfo specifies an [info.Resource] to apply to the resource under test.
 func ConfigureProviderInfo(info info.Resource) ConfigureOption {
 	contract.Assertf(info.Tok == "", "cannot set info.Tok, it will not be respected")
 	return func(o *configureOpts) { o.resourceInfo = &info }
+}
+
+// ConfigurePulumiConfig specifies an explicit pulumi value for the configure call.
+func ConfigurePulumiConfig(config resource.PropertyMap) ConfigureOption {
+	return func(o *configureOpts) { o.puConfig = &config }
 }

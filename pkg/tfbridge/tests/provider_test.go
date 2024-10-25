@@ -51,9 +51,9 @@ func TestIntToStringOverride(t *testing.T) {
 		cty.ObjectVal(map[string]cty.Value{
 			"f0": cty.NumberIntVal(largeInt),
 		}),
-		resource.PropertyMap{
+		crosstests.CreatePulumiConfig(resource.PropertyMap{
 			"f0": resource.NewProperty(strconv.FormatInt(largeInt, 10)),
-		},
+		}),
 		crosstests.CreateResourceInfo(info.Resource{Fields: map[string]*info.Schema{
 			"f0": {Type: "string"},
 		}}),
@@ -124,7 +124,6 @@ func TestInputsConfigModeEqual(t *testing.T) {
 					},
 				},
 				tc.config,
-				crosstests.InferPulumiValue(),
 			)
 		})
 	}
@@ -151,7 +150,6 @@ func TestStateFunc(t *testing.T) {
 		cty.ObjectVal(map[string]cty.Value{
 			"test": cty.StringVal("hello"),
 		}),
-		crosstests.InferPulumiValue(),
 	)
 }
 
@@ -172,7 +170,6 @@ func TestInputsUnspecifiedMaxItemsOne(t *testing.T) {
 			},
 		},
 		cty.ObjectVal(map[string]cty.Value{}),
-		crosstests.InferPulumiValue(),
 	)
 }
 
@@ -192,7 +189,6 @@ func TestOptionalSetNotSpecified(t *testing.T) {
 			},
 		},
 		cty.ObjectVal(map[string]cty.Value{}),
-		crosstests.InferPulumiValue(),
 	)
 }
 
@@ -217,7 +213,6 @@ func TestInputsEqualEmptyList(t *testing.T) {
 				cty.ObjectVal(map[string]cty.Value{
 					"f0": cty.ListValEmpty(cty.String),
 				}),
-				crosstests.InferPulumiValue(),
 			)
 		})
 	}
@@ -245,7 +240,6 @@ func TestCreateDoesNotInvokeStateUpgraders(t *testing.T) {
 		cty.ObjectVal(map[string]cty.Value{
 			"f0": cty.StringVal("default"),
 		}),
-		crosstests.InferPulumiValue(),
 		crosstests.CreateStateUpgrader(1, []schema.StateUpgrader{
 			{
 				Type:    resource().CoreConfigSchema().ImpliedType(),
@@ -270,7 +264,6 @@ func TestTimeouts(t *testing.T) {
 			},
 		},
 		cty.EmptyObjectVal,
-		crosstests.InferPulumiValue(),
 		crosstests.CreateTimeout(&schema.ResourceTimeout{
 			Create: schema.DefaultTimeout(time.Duration(120)),
 		}),
@@ -297,7 +290,6 @@ func TestMap(t *testing.T) {
 				"key2": cty.StringVal("val2"),
 			}),
 		}),
-		crosstests.InferPulumiValue(),
 	)
 }
 
@@ -315,7 +307,6 @@ func TestEmptySetOfEmptyObjects(t *testing.T) {
 		cty.ObjectVal(map[string]cty.Value{
 			"d3f0": cty.SetValEmpty(cty.EmptyObject),
 		}),
-		crosstests.InferPulumiValue(),
 	)
 }
 
@@ -332,7 +323,6 @@ func TestInputsEmptyString(t *testing.T) {
 		cty.ObjectVal(map[string]cty.Value{
 			"f0": cty.StringVal(""),
 		}),
-		crosstests.InferPulumiValue(),
 	)
 }
 
@@ -384,7 +374,6 @@ func TestInputsNestedBlocksEmpty(t *testing.T) {
 				},
 			},
 			tc.config,
-			crosstests.InferPulumiValue(),
 		))
 	}
 }
@@ -410,7 +399,6 @@ func TestExplicitNilList(t *testing.T) {
 			},
 		},
 		cty.ObjectVal(map[string]cty.Value{"f0": cty.NullVal(cty.List(cty.Map(cty.Number)))}),
-		crosstests.InferPulumiValue(),
 	)
 }
 
@@ -466,7 +454,6 @@ func TestInputsEmptyCollections(t *testing.T) {
 				},
 			},
 			cty.EmptyObjectVal,
-			crosstests.InferPulumiValue(),
 		))
 	}
 }

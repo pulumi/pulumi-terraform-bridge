@@ -87,7 +87,6 @@ func TestCreateInputsConvergence(outerT *testing.T) {
 		Create(rT,
 			tv.schemaMap,
 			coalesceInputs(rT, tv.schemaMap, config),
-			InferPulumiValue(),
 		)
 	})
 }

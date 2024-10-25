@@ -49,7 +49,7 @@ Currently, SDKv2 cross-testing supports:
 - [Configure](./configure.go)
 
 Cross-tests can be written **either by** specify both the Terraform value *and* the Pulumi value **or** by
-specifying *only* the Terraform value and specifying `crosstests.InferPulumiValue()` for the Pulumi value.
+specifying *only* the Terraform value and letting the framework infer an equivalent Pulumi value.
 
 ``` go
 // A cross-test that infers the Pulumi value.
@@ -60,7 +60,6 @@ crosstests.Create(t,
 	cty.ObjectVal(map[string]cty.Value{
        	"f0": cty.BoolVal(true),
     }),
-	crosstests.InferPulumiValue(),
 )
 ```
 
@@ -73,9 +72,9 @@ crosstests.Create(t,
 	cty.ObjectVal(map[string]cty.Value{
        	"f0": cty.BoolVal(true),
     }),
-	resource.PropertyMap{
+	crosstests.CreatePulumiConfig(resource.PropertyMap{
        	"f0": resource.NewProperty(true),
-    },
+    }),
 )
 ```
 

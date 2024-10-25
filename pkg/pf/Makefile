@@ -80,8 +80,7 @@ gen.testdata::
 tidy::
 	go mod tidy
 	cd tests && go mod tidy
-	cd tests/internal/randomshim && go mod tidy
-	cd tests/internal/tlsshim && go mod tidy
+	cd dynamic && go mod tidy
 	cd tests/testdatagen/genrandom && go mod tidy
 
 .PHONY: todos
