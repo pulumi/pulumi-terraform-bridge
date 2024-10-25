@@ -3,6 +3,7 @@ package crosstests
 import (
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -30,7 +31,7 @@ func assertValEqual(t T, name string, tfVal, pulVal any) {
 	}
 }
 
-func assertResourceDataEqual(t T, schema map[string]*schema.Schema, tfResult, puResult *schema.ResourceData) {
+func assertResourceDataEqual(t T, resourceSchema map[string]*schema.Schema, tfResult, puResult *schema.ResourceData) {
 	// We are unable to assert that both providers were configured with the exact same
 	// data. Type information doesn't line up in the simple case. This just doesn't work:
 	//
@@ -41,7 +42,17 @@ func assertResourceDataEqual(t T, schema map[string]*schema.Schema, tfResult, pu
 	assertCtyValEqual(t, "RawPlan", tfResult.GetRawPlan(), puResult.GetRawPlan())
 	assertCtyValEqual(t, "RawState", tfResult.GetRawState(), puResult.GetRawState())
 
-	for k := range schema {
+	for _, timeout := range []string{
+		schema.TimeoutCreate,
+		schema.TimeoutRead,
+		schema.TimeoutUpdate,
+		schema.TimeoutDelete,
+		schema.TimeoutDefault,
+	} {
+		assert.Equal(t, tfResult.Timeout(timeout), puResult.Timeout(timeout), "timeout %s", timeout)
+	}
+
+	for k := range resourceSchema {
 		// TODO: make this recursive
 		tfVal := tfResult.Get(k)
 		pulVal := puResult.Get(k)

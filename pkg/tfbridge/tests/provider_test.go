@@ -21,6 +21,7 @@ import (
 	"math"
 	"strconv"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pulumi/providertest/replay"
@@ -126,6 +127,347 @@ func TestInputsConfigModeEqual(t *testing.T) {
 				crosstests.InferPulumiValue(),
 			)
 		})
+	}
+}
+
+// TestStateFunc ensures that resources with a StateFunc set on their schema are correctly
+// handled. This includes ensuring that the PlannedPrivate blob is passed from
+// PlanResourceChange to ApplyResourceChange. If this is passed correctly, the provider
+// will see the original value of the field, rather than the value that was produced by
+// the StateFunc.
+func TestStateFunc(t *testing.T) {
+	t.Parallel()
+	crosstests.Create(t,
+		map[string]*schema.Schema{
+			"test": {
+				Type:     schema.TypeString,
+				Optional: true,
+				ForceNew: true,
+				StateFunc: func(v interface{}) string {
+					return v.(string) + " world"
+				},
+			},
+		},
+		cty.ObjectVal(map[string]cty.Value{
+			"test": cty.StringVal("hello"),
+		}),
+		crosstests.InferPulumiValue(),
+	)
+}
+
+// Regression test for [pulumi/pulumi-terraform-bridge#1767]
+func TestInputsUnspecifiedMaxItemsOne(t *testing.T) {
+	t.Parallel()
+	crosstests.Create(t,
+		map[string]*schema.Schema{
+			"f0": {
+				Type:     schema.TypeList,
+				MaxItems: 1,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"x": {Optional: true, Type: schema.TypeString},
+					},
+				},
+			},
+		},
+		cty.ObjectVal(map[string]cty.Value{}),
+		crosstests.InferPulumiValue(),
+	)
+}
+
+// Regression test for [pulumi/pulumi-terraform-bridge#1970] and [pulumi/pulumi-terraform-bridge#1964]
+func TestOptionalSetNotSpecified(t *testing.T) {
+	t.Parallel()
+	crosstests.Create(t,
+		map[string]*schema.Schema{
+			"f0": {
+				Optional: true,
+				Type:     schema.TypeSet,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"x": {Optional: true, Type: schema.TypeString},
+					},
+				},
+			},
+		},
+		cty.ObjectVal(map[string]cty.Value{}),
+		crosstests.InferPulumiValue(),
+	)
+}
+
+// Regression test for [pulumi/pulumi-terraform-bridge#1915]
+func TestInputsEqualEmptyList(t *testing.T) {
+	t.Parallel()
+	for _, maxItems := range []int{0, 1} {
+		t.Run(fmt.Sprintf("MaxItems: %v", maxItems), func(t *testing.T) {
+			crosstests.Create(t,
+				map[string]*schema.Schema{
+					"f0": {
+						Optional: true,
+						Type:     schema.TypeList,
+						MaxItems: maxItems,
+						Elem: &schema.Resource{
+							Schema: map[string]*schema.Schema{
+								"x": {Optional: true, Type: schema.TypeString},
+							},
+						},
+					},
+				},
+				cty.ObjectVal(map[string]cty.Value{
+					"f0": cty.ListValEmpty(cty.String),
+				}),
+				crosstests.InferPulumiValue(),
+			)
+		})
+	}
+}
+
+// TestCreateDoesNotInvokeStateUpgraders ensures that state upgrade machinery is not
+// invoked during Create operations.
+func TestCreateDoesNotInvokeStateUpgraders(t *testing.T) {
+	t.Parallel()
+	resource := func() *schema.Resource {
+		return &schema.Resource{Schema: map[string]*schema.Schema{
+			"f0": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+		}}
+	}
+
+	upgradeFunc := func(ctx context.Context, rawState map[string]any, meta any) (map[string]any, error) {
+		panic("State upgraders should not be called during create")
+	}
+
+	crosstests.Create(t,
+		resource().Schema,
+		cty.ObjectVal(map[string]cty.Value{
+			"f0": cty.StringVal("default"),
+		}),
+		crosstests.InferPulumiValue(),
+		crosstests.CreateStateUpgrader(1, []schema.StateUpgrader{
+			{
+				Type:    resource().CoreConfigSchema().ImpliedType(),
+				Upgrade: upgradeFunc,
+				Version: 0,
+			},
+		}),
+	)
+}
+
+func TestTimeouts(t *testing.T) {
+	t.Parallel()
+	crosstests.Create(t,
+		map[string]*schema.Schema{
+			"tags": {
+				Type:     schema.TypeMap,
+				Optional: true,
+				Elem: &schema.Schema{
+					Optional: true,
+					Type:     schema.TypeString,
+				},
+			},
+		},
+		cty.EmptyObjectVal,
+		crosstests.InferPulumiValue(),
+		crosstests.CreateTimeout(&schema.ResourceTimeout{
+			Create: schema.DefaultTimeout(time.Duration(120)),
+		}),
+	)
+}
+
+func TestMap(t *testing.T) {
+	t.Parallel()
+
+	crosstests.Create(t,
+		map[string]*schema.Schema{
+			"tags": {
+				Type:     schema.TypeMap,
+				Optional: true,
+				Elem: &schema.Schema{
+					Optional: true,
+					Type:     schema.TypeString,
+				},
+			},
+		},
+		cty.ObjectVal(map[string]cty.Value{
+			"tags": cty.MapVal(map[string]cty.Value{
+				"key":  cty.StringVal("val"),
+				"key2": cty.StringVal("val2"),
+			}),
+		}),
+		crosstests.InferPulumiValue(),
+	)
+}
+
+func TestEmptySetOfEmptyObjects(t *testing.T) {
+	t.Parallel()
+
+	crosstests.Create(t,
+		map[string]*schema.Schema{
+			"d3f0": {
+				Type:     schema.TypeSet,
+				Optional: true,
+				Elem:     &schema.Resource{Schema: map[string]*schema.Schema{}},
+			},
+		},
+		cty.ObjectVal(map[string]cty.Value{
+			"d3f0": cty.SetValEmpty(cty.EmptyObject),
+		}),
+		crosstests.InferPulumiValue(),
+	)
+}
+
+func TestInputsEmptyString(t *testing.T) {
+	t.Parallel()
+
+	crosstests.Create(t,
+		map[string]*schema.Schema{
+			"f0": {
+				Type:     schema.TypeString,
+				Required: true,
+			},
+		},
+		cty.ObjectVal(map[string]cty.Value{
+			"f0": cty.StringVal(""),
+		}),
+		crosstests.InferPulumiValue(),
+	)
+}
+
+func TestInputsNestedBlocksEmpty(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		name   string
+		typ1   schema.ValueType
+		typ2   schema.ValueType
+		config cty.Value
+	}{
+		{"empty list list block", schema.TypeList, schema.TypeList, cty.EmptyObjectVal},
+		{"empty set set block", schema.TypeSet, schema.TypeSet, cty.EmptyObjectVal},
+		{"empty list set block", schema.TypeList, schema.TypeSet, cty.EmptyObjectVal},
+		{"non empty list list block", schema.TypeList, schema.TypeList, cty.ObjectVal(map[string]cty.Value{
+			"f0": cty.ListValEmpty(cty.List(cty.Object(map[string]cty.Type{"f2": cty.String}))),
+		})},
+		{"nested non empty list list block", schema.TypeList, schema.TypeList, cty.ObjectVal(map[string]cty.Value{
+			"f0": cty.ListVal([]cty.Value{cty.ObjectVal(map[string]cty.Value{"f2": cty.StringVal("val")})}),
+		})},
+		{"nested non empty set set block", schema.TypeSet, schema.TypeSet, cty.ObjectVal(map[string]cty.Value{
+			"f0": cty.SetVal([]cty.Value{cty.ObjectVal(map[string]cty.Value{"f2": cty.StringVal("val")})}),
+		})},
+	} {
+		t.Run(tc.name, crosstests.MakeCreate(
+			map[string]*schema.Schema{
+				"f0": {
+					Type:     tc.typ1,
+					Optional: true,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"f1": {
+								Type:     tc.typ2,
+								Optional: true,
+								Elem: &schema.Resource{
+									Schema: map[string]*schema.Schema{
+										"x": {Optional: true, Type: schema.TypeString},
+									},
+								},
+							},
+							// This allows us to specify non-empty f0s with an empty f1
+							"f2": {
+								Type:     schema.TypeString,
+								Optional: true,
+							},
+						},
+					},
+				},
+			},
+			tc.config,
+			crosstests.InferPulumiValue(),
+		))
+	}
+}
+
+func TestExplicitNilList(t *testing.T) {
+	t.Parallel()
+
+	// This is an explicit null on the tf side:
+	// resource "crossprovider_testres" "example" {
+	//     f0 = null
+	// }
+	crosstests.Create(t,
+		map[string]*schema.Schema{
+			"f0": {
+				Optional: true,
+				Type:     schema.TypeList,
+				Elem: &schema.Schema{
+					Type: schema.TypeMap,
+					Elem: &schema.Schema{
+						Type: schema.TypeInt,
+					},
+				},
+			},
+		},
+		cty.ObjectVal(map[string]cty.Value{"f0": cty.NullVal(cty.List(cty.Map(cty.Number)))}),
+		crosstests.InferPulumiValue(),
+	)
+}
+
+func TestInputsEmptyCollections(t *testing.T) {
+	t.Parallel()
+
+	// signifies a block
+	resourceElem := &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"x": {Optional: true, Type: schema.TypeString},
+		},
+	}
+
+	// signifies an attribute
+	schemaElem := &schema.Schema{
+		Type: schema.TypeMap,
+		Elem: &schema.Schema{Type: schema.TypeString},
+	}
+
+	for _, tc := range []struct {
+		name       string
+		maxItems   int
+		typ        schema.ValueType
+		elem       any
+		configMode schema.SchemaConfigMode
+	}{
+		{"list block", 0, schema.TypeList, resourceElem, schema.SchemaConfigModeAuto},
+		{"set block", 0, schema.TypeSet, resourceElem, schema.SchemaConfigModeAuto},
+		// TypeMap with Elem *Resource not supported
+		// {"map block", 0, schema.TypeMap, resourceElem, schema.SchemaConfigModeAuto},
+		{"list max items one block", 1, schema.TypeList, resourceElem, schema.SchemaConfigModeAuto},
+		{"set max items one block", 1, schema.TypeSet, resourceElem, schema.SchemaConfigModeAuto},
+		// MaxItems is only valid on lists and sets
+		// {"map max items one block", 1, schema.TypeMap, resourceElem, schema.SchemaConfigModeAuto},
+		{"list attr", 0, schema.TypeList, schemaElem, schema.SchemaConfigModeAuto},
+		{"set attr", 0, schema.TypeSet, schemaElem, schema.SchemaConfigModeAuto},
+		{"map attr", 0, schema.TypeMap, schemaElem, schema.SchemaConfigModeAuto},
+		{"list max items one attr", 1, schema.TypeList, schemaElem, schema.SchemaConfigModeAuto},
+		{"set max items one attr", 1, schema.TypeSet, schemaElem, schema.SchemaConfigModeAuto},
+		// MaxItems is only valid on lists and sets
+		// {"map max items one attr", 1, schema.TypeMap, schemaElem, schema.SchemaConfigModeAuto},
+		{"list config mode attr", 0, schema.TypeList, resourceElem, schema.SchemaConfigModeAttr},
+		{"set config mode attr", 0, schema.TypeSet, resourceElem, schema.SchemaConfigModeAttr},
+	} {
+		t.Run(tc.name, crosstests.MakeCreate(
+			map[string]*schema.Schema{
+				"f0": {
+					Type:       tc.typ,
+					MaxItems:   tc.maxItems,
+					Elem:       tc.elem,
+					ConfigMode: tc.configMode,
+					Optional:   true,
+				},
+			},
+			cty.EmptyObjectVal,
+			crosstests.InferPulumiValue(),
+		))
 	}
 }
 
