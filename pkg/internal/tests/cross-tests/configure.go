@@ -35,7 +35,10 @@ func MakeConfigure(
 	provider map[string]*schema.Schema, tfConfig cty.Value, puConfig resource.PropertyMap,
 	options ...ConfigureOption,
 ) func(*testing.T) {
-	return func(t *testing.T) { Configure(t, provider, tfConfig, puConfig, options...) }
+	return func(t *testing.T) {
+		t.Parallel()
+		Configure(t, provider, tfConfig, puConfig, options...)
+	}
 }
 
 // Configure validates that a Terraform provider witnesses the same input when:
