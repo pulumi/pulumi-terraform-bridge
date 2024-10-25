@@ -32,12 +32,12 @@ import (
 
 // MakeCreate is a helper function for calling [Create] in [testing.T.Run] subcases.
 func MakeCreate(
-	resource map[string]*schema.Schema, tfConfig cty.Value, puConfig resource.PropertyMap,
+	resource map[string]*schema.Schema, tfConfig cty.Value,
 	options ...CreateOption,
 ) func(t *testing.T) {
 	return func(t *testing.T) {
 		t.Parallel()
-		Create(t, resource, tfConfig, puConfig, options...)
+		Create(t, resource, tfConfig, options...)
 	}
 }
 
@@ -51,7 +51,7 @@ func MakeCreate(
 //
 // Create *does not* verify the outputs of the resource, only that the provider witnessed the same inputs.
 func Create(
-	t T, resource map[string]*schema.Schema, tfConfig cty.Value, puConfig resource.PropertyMap,
+	t T, resourceSchema map[string]*schema.Schema, tfConfig cty.Value,
 	options ...CreateOption,
 ) {
 
@@ -60,9 +60,12 @@ func Create(
 		f(&opts)
 	}
 
-	if isInferPulumiMarker(puConfig) {
+	var puConfig resource.PropertyMap
+	if opts.puConfig != nil {
+		puConfig = *opts.puConfig
+	} else {
 		puConfig = inferPulumiValue(t,
-			shimv2.NewSchemaMap(resource),
+			shimv2.NewSchemaMap(resourceSchema),
 			opts.resourceInfo.GetFields(),
 			tfConfig,
 		)
@@ -77,7 +80,7 @@ func Create(
 
 	makeResource := func(writeTo *result) *schema.Resource {
 		return &schema.Resource{
-			Schema:         resource,
+			Schema:         resourceSchema,
 			SchemaVersion:  opts.stateUpgrader.schemaVersion,
 			StateUpgraders: opts.stateUpgrader.stateUpgraders,
 			Timeouts:       opts.timeouts,
@@ -91,7 +94,7 @@ func Create(
 
 	tfwd := t.TempDir()
 	tfd := newTFResDriver(t, tfwd, defProviderShortName, defRtype, makeResource(&tfResult))
-	tfd.writePlanApply(t, resource, defRtype, "example", tfConfig, lifecycleArgs{})
+	tfd.writePlanApply(t, resourceSchema, defRtype, "example", tfConfig, lifecycleArgs{})
 
 	require.True(t, tfResult.wasSet, "terraform test result was not set")
 
@@ -119,13 +122,14 @@ func Create(
 	assert.Equal(t, tfResult.meta, puResult.meta,
 		"assert that both providers were configured with the same provider metadata")
 
-	assertResourceDataEqual(t, resource, tfResult.data, puResult.data)
+	assertResourceDataEqual(t, resourceSchema, tfResult.data, puResult.data)
 }
 
 type createOpts struct {
 	resourceInfo  *info.Resource
 	stateUpgrader createOptsUpgraders
 	timeouts      *schema.ResourceTimeout
+	puConfig      *resource.PropertyMap
 }
 
 type createOptsUpgraders struct {
@@ -152,4 +156,9 @@ func CreateStateUpgrader(schemaVersion int, upgraders []schema.StateUpgrader) Cr
 // CreateTimeout specifies a timeout option for [Create].
 func CreateTimeout(timeouts *schema.ResourceTimeout) CreateOption {
 	return func(o *createOpts) { o.timeouts = timeouts }
+}
+
+// CreatePulumiConfig specifies an explicit config value in Pulumi's value space.
+func CreatePulumiConfig(config resource.PropertyMap) CreateOption {
+	return func(o *createOpts) { o.puConfig = &config }
 }
