@@ -18,9 +18,8 @@ import (
 	"github.com/hexops/autogold/v2"
 	"github.com/opentofu/opentofu/shim/grpcutil"
 	v6shim "github.com/opentofu/opentofu/shim/protov6"
-	pfproto "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/proto"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/tokens"
+	"github.com/pulumi/providertest/pulumitest/optnewstack"
+	"github.com/pulumi/providertest/pulumitest/opttest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -32,8 +31,10 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 
 	helper "github.com/pulumi/pulumi-terraform-bridge/dynamic/internal/testing"
+	"github.com/pulumi/pulumi-terraform-bridge/dynamic/parameterize"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/pulcheck"
 	pfbridge "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/pulcheck"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
 // globalTempDir is a temporary directory scoped to the entire test cycle.
@@ -584,40 +585,56 @@ func TestLogReplayProvider(t *testing.T) {
 	require.Equal(t, "\x80", string(configResp.PreparedConfig.MsgPack))
 }
 
+type runProvider struct {
+	tfprotov6.ProviderServer
+	name, version string
+}
+
+func (p runProvider) Name() string    { return p.name }
+func (p runProvider) Version() string { return p.version }
+func (p runProvider) URL() string     { return "url" }
+func (p runProvider) Close() error    { return nil }
+
+func makeLogReplayProvider(t *testing.T, name, version string, grpcLogs []byte) info.Provider {
+	provPlugin := grpcutil.NewLogReplayProvider(name, version, string(grpcLogs))
+	prov := v6shim.New(provPlugin)
+	provider := runProvider{
+		ProviderServer: prov,
+		name:           name,
+		version:        version,
+	}
+
+	info, err := providerInfo(context.Background(), provider, parameterize.Value{
+		Local: &parameterize.LocalValue{Path: "path"},
+	})
+	require.NoError(t, err)
+
+	return info
+}
+
 func TestLogReplayProviderWithProgram(t *testing.T) {
-	grpcLogs, err := os.ReadFile("./testdata/TestLogReplayProvider/grpc_log_random.json")
+	grpcLogs, err := os.ReadFile(
+		"./testdata/TestLogReplayProvider/grpc_log_random.json")
 	if err != nil {
 		t.Fatalf("failed to read grpc log: %v", err)
 	}
 
-	providerName := "random"
-	providerVersion := "0.0.1"
-
-	provPlugin := grpcutil.NewLogReplayProvider(providerName, providerVersion, string(grpcLogs))
-	prov := v6shim.New(provPlugin)
-	provider := pfproto.New(context.Background(), prov)
-
-	info := tfbridge.ProviderInfo{
-		P:       provider,
-		Name:    providerName,
-		Version: providerVersion,
-	}
-	makeToken := func(module, name string) (string, error) {
-		return tokens.MakeStandard(providerName)(module, name)
-	}
-	info.MustComputeTokens(tokens.SingleModule(providerName, "index", makeToken))
-
+	info := makeLogReplayProvider(t, "random", "0.0.1", grpcLogs)
 	program := `
 name: proj
 runtime: yaml
 resources:
   randomPet:
     type: random:Pet
+    properties:
+        length: 3
 outputs:
   petName: ${randomPet.id}`
 
-	// TODO: this is wrong - it should use the PF pulcheck implementation instead.
-	pt := pulcheck.PulCheck(t, info, program)
+	pt, err := pulcheck.PulCheck(t, info, program,
+		opttest.NewStackOptions(optnewstack.DisableAutoDestroy()),
+	)
+	require.NoError(t, err)
 	res := pt.Up(t)
-	require.Equal(t, "painfully-stirred-snail", res.Outputs["petName"].Value)
+	require.Equal(t, "heartily-sharing-monkey", res.Outputs["petName"].Value)
 }

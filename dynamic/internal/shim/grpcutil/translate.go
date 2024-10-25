@@ -141,7 +141,7 @@ func NewLogReplayProvider(name, version, logs string) LogReplayProvider {
 
 func (p LogReplayProvider) mustPopLog(method string) grpcLog {
 	logs, ok := p.methodLogs[method]
-	contract.Assertf(ok, "no logs for method %s, logs: %s", method, p.methodLogs)
+	contract.Assertf(ok && len(logs) > 0, "no logs for method %s, logs: %s", method, p.methodLogs)
 	log := logs[0]
 	logs = logs[1:]
 	p.methodLogs[method] = logs
