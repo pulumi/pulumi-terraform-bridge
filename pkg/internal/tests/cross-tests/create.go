@@ -15,6 +15,7 @@ package crosstests
 
 import (
 	"context"
+	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -28,6 +29,17 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
+
+// MakeCreate is a helper function for calling [Create] in [testing.T.Run] subcases.
+func MakeCreate(
+	resource map[string]*schema.Schema, tfConfig cty.Value, puConfig resource.PropertyMap,
+	options ...CreateOption,
+) func(t *testing.T) {
+	return func(t *testing.T) {
+		t.Parallel()
+		Create(t, resource, tfConfig, puConfig, options...)
+	}
+}
 
 // Create validates that a Terraform provider witnesses the same input when:
 // - invoked directly with HCL on tfConfig
