@@ -28,7 +28,7 @@ func TestConfigureSimpleValues(t *testing.T) {
 		"f0": {Type: schema.TypeString, Required: true},
 	}, cty.ObjectVal(map[string]cty.Value{
 		"f0": cty.StringVal("v0"),
-	}), crosstests.InferPulumiValue()))
+	})))
 
 	t.Run("bool", crosstests.MakeConfigure(map[string]*schema.Schema{
 		"f0": {Type: schema.TypeBool, Required: true},
@@ -36,13 +36,13 @@ func TestConfigureSimpleValues(t *testing.T) {
 	}, cty.ObjectVal(map[string]cty.Value{
 		"f0": cty.BoolVal(false),
 		"f1": cty.BoolVal(true),
-	}), crosstests.InferPulumiValue()))
+	})))
 
 	t.Run("int", crosstests.MakeConfigure(map[string]*schema.Schema{
 		"f0": {Type: schema.TypeInt, Required: true},
 	}, cty.ObjectVal(map[string]cty.Value{
 		"f0": cty.NumberIntVal(123456),
-	}), crosstests.InferPulumiValue()))
+	})))
 
 	t.Run("float64", func(t *testing.T) {
 		t.Skip("TODO: Float64 does not pass cross-tests")
@@ -50,7 +50,7 @@ func TestConfigureSimpleValues(t *testing.T) {
 			"f0": {Type: schema.TypeFloat, Required: true},
 		}, cty.ObjectVal(map[string]cty.Value{
 			"f0": cty.NumberFloatVal(123.456),
-		}), crosstests.InferPulumiValue())
+		}))
 	})
 }
 
@@ -59,7 +59,7 @@ func TestConfigureSimpleSecretValues(t *testing.T) {
 		"f0": {Type: schema.TypeString, Required: true},
 	}, cty.ObjectVal(map[string]cty.Value{
 		"f0": cty.StringVal("v0"),
-	}), resource.PropertyMap{
+	}), crosstests.ConfigurePulumiConfig(resource.PropertyMap{
 		"f0": resource.MakeSecret(resource.NewProperty("v0")),
-	}))
+	})))
 }
