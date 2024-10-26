@@ -380,7 +380,10 @@ func grpcTestServer(ctx context.Context, t *testing.T) pulumirpc.ResourceProvide
 	return s
 }
 
-func parameterizedTestServer(ctx context.Context, t *testing.T, pathHelper func(t *testing.T) string) pulumirpc.ResourceProviderServer {
+func parameterizedTestServer(
+	ctx context.Context, t *testing.T,
+	pathHelper func(t *testing.T) string,
+) pulumirpc.ResourceProviderServer {
 	grpc := grpcTestServer(ctx, t)
 	t.Run("parameterize", assertGRPCCall(grpc.Parameterize, &pulumirpc.ParameterizeRequest{
 		Parameters: &pulumirpc.ParameterizeRequest_Args{
@@ -516,6 +519,9 @@ func TestRandomCreate(t *testing.T) {
 
 func TestSDKv1Provider(t *testing.T) {
 	t.Parallel()
+	helper.Integration(t)
+	skipWindows(t)
+
 	ctx := context.Background()
 
 	server := parameterizedTestServer(ctx, t, sdkv1ProviderPath)
