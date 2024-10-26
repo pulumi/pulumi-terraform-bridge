@@ -6,11 +6,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
-	"sync"
 	"testing"
 
 	"github.com/hexops/autogold/v2"
@@ -53,7 +51,7 @@ func TestStacktraceDisplayed(t *testing.T) {
 	skipWindows(t)
 
 	ctx := context.Background()
-	grpc := pfProviderTestServer(ctx, t)
+	grpc := parameterizedTestServer(ctx, t, pfProviderPath)
 
 	_, err := grpc.Create(ctx, &pulumirpc.CreateRequest{
 		Urn: string(resource.NewURN(
@@ -366,30 +364,12 @@ func assertGRPC(t *testing.T, msg proto.Message, v autogold.Value) {
 // pfProviderPath returns the path the the PF provider binary for use in testing.
 //
 // It builds the binary running "go build" once per session.
-var pfProviderPath = func() func(t *testing.T) string {
-	mkBin := sync.OnceValues(func() (string, error) {
-		wd, err := os.Getwd()
-		if err != nil {
-			return "", err
-		}
-
-		out := filepath.Join(globalTempDir, "terraform-provider-pfprovider")
-		cmd := exec.Command("go", "build", "-o", out, "github.com/pulumi/pulumi-terraform-bridge/dynamic/tests/pfprovider")
-		cmd.Dir = filepath.Join(wd, "test", "pfprovider")
-		stdoutput, err := cmd.CombinedOutput()
-		if err != nil {
-			return "", fmt.Errorf("failed to build provider: %w:\n%s", err, string(stdoutput))
-		}
-		return out, nil
-	})
-
-	return func(t *testing.T) string {
-		t.Helper()
-		path, err := mkBin()
-		require.NoErrorf(t, err, "failed find provider path")
-		return path
-	}
-}()
+var (
+	pfProviderPath = helper.BuildOnce(&globalTempDir,
+		"test/pfprovider", "terraform-provider-pfprovider")
+	sdkv1ProviderPath = helper.BuildOnce(&globalTempDir,
+		"test/sdkv1provider", "terraform-provider-sdkv1")
+)
 
 // grpcTestServer returns an unparameterized in-memory gRPC server.
 func grpcTestServer(ctx context.Context, t *testing.T) pulumirpc.ResourceProviderServer {
@@ -400,14 +380,12 @@ func grpcTestServer(ctx context.Context, t *testing.T) pulumirpc.ResourceProvide
 	return s
 }
 
-// pfProviderTestServer returns an in-memory gRPC server already parameterized by the
-// pfprovider test Terraform provider.
-func pfProviderTestServer(ctx context.Context, t *testing.T) pulumirpc.ResourceProviderServer {
+func parameterizedTestServer(ctx context.Context, t *testing.T, pathHelper func(t *testing.T) string) pulumirpc.ResourceProviderServer {
 	grpc := grpcTestServer(ctx, t)
 	t.Run("parameterize", assertGRPCCall(grpc.Parameterize, &pulumirpc.ParameterizeRequest{
 		Parameters: &pulumirpc.ParameterizeRequest_Args{
 			Args: &pulumirpc.ParameterizeRequest_ParametersArgs{
-				Args: []string{pfProviderPath(t)},
+				Args: []string{pathHelper(t)},
 			},
 		},
 	}, noParallel))
@@ -534,6 +512,27 @@ func TestRandomCreate(t *testing.T) {
 			})
 		}
 	})
+}
+
+func TestSDKv1Provider(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+
+	server := parameterizedTestServer(ctx, t, sdkv1ProviderPath)
+
+	const typ = "sdkv1:index/res:Res"
+	urn := string(resource.NewURN(
+		"test", "test", "", typ, "res",
+	))
+
+	t.Run("delete", assertGRPCCall(server.Delete, &pulumirpc.DeleteRequest{
+		Id:  "example-id-delete",
+		Urn: urn,
+		Properties: marshal(resource.PropertyMap{
+			"f0": resource.NewProperty("123"),
+			"f1": resource.NewProperty(123.0),
+		}),
+	}))
 }
 
 func must[T any](v T, err error) T {
