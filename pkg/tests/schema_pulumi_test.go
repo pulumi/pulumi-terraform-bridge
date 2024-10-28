@@ -17,6 +17,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/pulcheck"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/tfcheck"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optrefresh"
@@ -4157,5 +4158,431 @@ func TestMakeTerraformResultNilVsEmptyMap(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, props)
 		assert.True(t, props["test"].DeepEquals(emptyMap))
+	})
+}
+
+func TestUnknownCollectionForceNewDetailedDiff(t *testing.T) {
+	// TODO: Remove this once accurate bridge previews are rolled out
+	t.Setenv("PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW", "true")
+
+	collectionForceNewResource := func(typ schema.ValueType) *schema.Resource {
+		return &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				"test": {
+					Type:     typ,
+					Optional: true,
+					ForceNew: true,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"prop": {
+								Type:     schema.TypeString,
+								Optional: true,
+							},
+						},
+					},
+				},
+			},
+		}
+	}
+
+	propertyForceNewResource := func(typ schema.ValueType) *schema.Resource {
+		return &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				"test": {
+					Type:     typ,
+					Optional: true,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"prop": {
+								Type:     schema.TypeString,
+								Optional: true,
+								ForceNew: true,
+							},
+						},
+					},
+				},
+			},
+		}
+	}
+
+	auxResource := func(typ schema.ValueType) *schema.Resource {
+		return &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				"aux": {
+					Type:     typ,
+					Computed: true,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"prop": {
+								Type:     schema.TypeString,
+								Computed: true,
+							},
+						},
+					},
+				},
+			},
+			CreateContext: func(_ context.Context, d *schema.ResourceData, _ interface{}) diag.Diagnostics {
+				d.SetId("aux")
+				err := d.Set("aux", []map[string]interface{}{{"prop": "aux"}})
+				require.NoError(t, err)
+				return nil
+			},
+		}
+	}
+
+	initialProgram := `
+    name: test
+    runtime: yaml
+    resources:
+      mainRes:
+        type: prov:index:Test
+        properties:
+          tests: [{prop: 'value'}]
+`
+
+	program := `
+    name: test
+    runtime: yaml
+    resources:
+      auxRes:
+        type: prov:index:Aux
+      mainRes:
+        type: prov:index:Test
+        properties:
+          tests: %s
+`
+
+	runTest := func(t *testing.T, program2 string, bridgedProvider info.Provider, expectedOutput autogold.Value) {
+		pt := pulcheck.PulCheck(t, bridgedProvider, initialProgram)
+		pt.Up(t)
+		pt.WritePulumiYaml(t, program2)
+
+		res := pt.Preview(t, optpreview.Diff())
+
+		expectedOutput.Equal(t, res.StdOut)
+	}
+
+	t.Run("list force new", func(t *testing.T) {
+		resMap := map[string]*schema.Resource{
+			"prov_test": collectionForceNewResource(schema.TypeList),
+			"prov_aux":  auxResource(schema.TypeList),
+		}
+
+		tfp := &schema.Provider{ResourcesMap: resMap}
+		bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
+		runTest := func(t *testing.T, program2 string, expectedOutput autogold.Value) {
+			runTest(t, program2, bridgedProvider, expectedOutput)
+		}
+
+		t.Run("unknown plain property", func(t *testing.T) {
+			program2 := fmt.Sprintf(program, "[{prop: \"${auxRes.auxes[0].prop}\"}]")
+			runTest(t, program2, autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          ~ [0]: {
+                  ~ prop: "value" => output<string>
+                }
+        ]
+Resources:
+    + 1 to create
+    ~ 1 to update
+    2 changes. 1 unchanged
+`))
+		})
+
+		t.Run("unknown object", func(t *testing.T) {
+			program2 := fmt.Sprintf(program, "[\"${auxRes.auxes[0]}\"]")
+			runTest(t, program2, autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [0]: {
+                  - prop: "value"
+                }
+          + [0]: output<string>
+        ]
+Resources:
+    + 1 to create
+    +-1 to replace
+    2 changes. 1 unchanged
+`))
+		})
+
+		t.Run("unknown collection", func(t *testing.T) {
+			program2 := fmt.Sprintf(program, "\"${auxRes.auxes}\"")
+			runTest(t, program2, autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      - tests: [
+      -     [0]: {
+              - prop: "value"
+            }
+        ]
+      + tests: output<string>
+Resources:
+    + 1 to create
+    +-1 to replace
+    2 changes. 1 unchanged
+`))
+		})
+	})
+
+	t.Run("list property force new", func(t *testing.T) {
+		resMap := map[string]*schema.Resource{
+			"prov_test": propertyForceNewResource(schema.TypeList),
+			"prov_aux":  auxResource(schema.TypeList),
+		}
+
+		tfp := &schema.Provider{ResourcesMap: resMap}
+		bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
+		runTest := func(t *testing.T, program2 string, expectedOutput autogold.Value) {
+			runTest(t, program2, bridgedProvider, expectedOutput)
+		}
+
+		t.Run("unknown plain property", func(t *testing.T) {
+			program2 := fmt.Sprintf(program, "[{prop: \"${auxRes.auxes[0].prop}\"}]")
+			runTest(t, program2, autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          ~ [0]: {
+                  ~ prop: "value" => output<string>
+                }
+        ]
+Resources:
+    + 1 to create
+    +-1 to replace
+    2 changes. 1 unchanged
+`))
+		})
+
+		t.Run("unknown object", func(t *testing.T) {
+			program2 := fmt.Sprintf(program, "[\"${auxRes.auxes[0]}\"]")
+			runTest(t, program2, autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [0]: {
+                  - prop: "value"
+                }
+          + [0]: output<string>
+        ]
+Resources:
+    + 1 to create
+    +-1 to replace
+    2 changes. 1 unchanged
+`))
+		})
+
+		t.Run("unknown collection", func(t *testing.T) {
+			program2 := fmt.Sprintf(program, "\"${auxRes.auxes}\"")
+			runTest(t, program2, autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      - tests: [
+      -     [0]: {
+              - prop: "value"
+            }
+        ]
+      + tests: output<string>
+Resources:
+    + 1 to create
+    +-1 to replace
+    2 changes. 1 unchanged
+`))
+		})
+	})
+
+	t.Run("set force new", func(t *testing.T) {
+		resMap := map[string]*schema.Resource{
+			"prov_test": collectionForceNewResource(schema.TypeSet),
+			"prov_aux":  auxResource(schema.TypeSet),
+		}
+
+		tfp := &schema.Provider{ResourcesMap: resMap}
+		bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
+		runTest := func(t *testing.T, program2 string, expectedOutput autogold.Value) {
+			runTest(t, program2, bridgedProvider, expectedOutput)
+		}
+
+		t.Run("unknown plain property", func(t *testing.T) {
+			program2 := fmt.Sprintf(program, "[{prop: \"${auxRes.auxes[0].prop}\"}]")
+			runTest(t, program2, autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          ~ [0]: {
+                  ~ prop: "value" => output<string>
+                }
+        ]
+Resources:
+    + 1 to create
+    ~ 1 to update
+    2 changes. 1 unchanged
+`))
+		})
+
+		t.Run("unknown object", func(t *testing.T) {
+			program2 := fmt.Sprintf(program, "[\"${auxRes.auxes[0]}\"]")
+			runTest(t, program2, autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [0]: {
+                  - prop: "value"
+                }
+          + [0]: output<string>
+        ]
+Resources:
+    + 1 to create
+    +-1 to replace
+    2 changes. 1 unchanged
+`))
+		})
+
+		t.Run("unknown collection", func(t *testing.T) {
+			program2 := fmt.Sprintf(program, "\"${auxRes.auxes}\"")
+			runTest(t, program2, autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      - tests: [
+      -     [0]: {
+              - prop: "value"
+            }
+        ]
+      + tests: output<string>
+Resources:
+    + 1 to create
+    +-1 to replace
+    2 changes. 1 unchanged
+`))
+		})
+	})
+
+	t.Run("set property force new", func(t *testing.T) {
+		resMap := map[string]*schema.Resource{
+			"prov_test": propertyForceNewResource(schema.TypeSet),
+			"prov_aux":  auxResource(schema.TypeSet),
+		}
+
+		tfp := &schema.Provider{ResourcesMap: resMap}
+		bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
+		runTest := func(t *testing.T, program2 string, expectedOutput autogold.Value) {
+			runTest(t, program2, bridgedProvider, expectedOutput)
+		}
+
+		t.Run("unknown plain property", func(t *testing.T) {
+			program2 := fmt.Sprintf(program, "[{prop: \"${auxRes.auxes[0].prop}\"}]")
+			runTest(t, program2, autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          ~ [0]: {
+                  ~ prop: "value" => output<string>
+                }
+        ]
+Resources:
+    + 1 to create
+    +-1 to replace
+    2 changes. 1 unchanged
+`))
+		})
+
+		t.Run("unknown object", func(t *testing.T) {
+			program2 := fmt.Sprintf(program, "[\"${auxRes.auxes[0]}\"]")
+			runTest(t, program2, autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [0]: {
+                  - prop: "value"
+                }
+          + [0]: output<string>
+        ]
+Resources:
+    + 1 to create
+    +-1 to replace
+    2 changes. 1 unchanged
+`))
+		})
+
+		t.Run("unknown collection", func(t *testing.T) {
+			program2 := fmt.Sprintf(program, "\"${auxRes.auxes}\"")
+			runTest(t, program2, autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      - tests: [
+      -     [0]: {
+              - prop: "value"
+            }
+        ]
+      + tests: output<string>
+Resources:
+    + 1 to create
+    +-1 to replace
+    2 changes. 1 unchanged
+`))
+		})
 	})
 }

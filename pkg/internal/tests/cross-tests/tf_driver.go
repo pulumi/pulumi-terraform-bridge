@@ -21,12 +21,13 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/convert"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/tfcheck"
-	sdkv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/stretchr/testify/require"
 	"github.com/zclconf/go-cty/cty"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/convert"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/tfcheck"
+	sdkv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
 
 type TfResDriver struct {
@@ -47,17 +48,30 @@ func newTFResDriver(t T, dir, providerName, resName string, res *schema.Resource
 	}
 }
 
-func (d *TfResDriver) coalesce(t T, x any) *tftypes.Value {
-	if x == nil {
-		return nil
+// coalesceInputs is a helper function to translate from previous cross-test
+// input types (map[string]any, [tftypes.Value]) to the current representation:
+// [cty.Value].
+//
+// As soon as we have completed the migration, we can remove this function.
+func coalesceInputs(t T, schema map[string]*schema.Schema, config any) cty.Value {
+	switch config := config.(type) {
+	case nil:
+		return cty.NullVal(cty.DynamicPseudoType)
+	case cty.Value:
+		return config
+	case map[string]any:
+		objectType := convert.InferObjectType(sdkv2.NewSchemaMap(schema), nil)
+		for k := range objectType.AttributeTypes {
+			objectType.OptionalAttributes[k] = struct{}{}
+		}
+		v := fromType(objectType).NewValue(config)
+		return fromValue(v).ToCty()
+	case tftypes.Value:
+		return fromValue(config).ToCty()
+	default:
+		require.Failf(t, "unknown type", "unable to convert config type %T to %T", config, cty.Value{})
+		return cty.Value{}
 	}
-	objectType := convert.InferObjectType(sdkv2.NewSchemaMap(d.res.Schema), nil)
-	for k := range objectType.AttributeTypes {
-		objectType.OptionalAttributes[k] = struct{}{}
-	}
-	t.Logf("infer object type: %v", objectType)
-	v := fromType(objectType).NewValue(x)
-	return &v
 }
 
 type lifecycleArgs struct {
@@ -68,16 +82,16 @@ func (d *TfResDriver) writePlanApply(
 	t T,
 	resourceSchema map[string]*schema.Schema,
 	resourceType, resourceName string,
-	rawConfig any,
+	config cty.Value,
 	lifecycle lifecycleArgs,
 ) *tfcheck.TfPlan {
-	config := d.coalesce(t, rawConfig)
-	if config != nil {
-		d.write(t, resourceSchema, resourceType, resourceName, *config, lifecycle)
+	if !config.IsNull() {
+		d.write(t, resourceSchema, resourceType, resourceName, config, lifecycle)
 	} else {
 		t.Logf("empty config file")
 		d.driver.Write(t, "")
 	}
+
 	plan, err := d.driver.Plan(t)
 	require.NoError(t, err)
 	err = d.driver.Apply(t, plan)
@@ -89,24 +103,21 @@ func (d *TfResDriver) write(
 	t T,
 	resourceSchema map[string]*schema.Schema,
 	resourceType, resourceName string,
-	config tftypes.Value,
+	config cty.Value,
 	lifecycle lifecycleArgs,
 ) {
 	var buf bytes.Buffer
-	ctyConfig := fromValue(config).ToCty()
 	if lifecycle.CreateBeforeDestroy {
-		ctyMap := ctyConfig.AsValueMap()
+		ctyMap := config.AsValueMap()
 		if ctyMap == nil {
-			ctyMap = make(map[string]cty.Value)
+			ctyMap = map[string]cty.Value{}
 		}
-		ctyMap["lifecycle"] = cty.ObjectVal(
-			map[string]cty.Value{
-				"create_before_destroy": cty.True,
-			},
-		)
-		ctyConfig = cty.ObjectVal(ctyMap)
+		ctyMap["lifecycle"] = cty.ObjectVal(map[string]cty.Value{
+			"create_before_destroy": cty.True,
+		})
+		config = cty.ObjectVal(ctyMap)
 	}
-	err := WriteHCL(&buf, resourceSchema, resourceType, resourceName, ctyConfig)
+	err := WriteSDKv2(&buf).Resource(resourceSchema, resourceType, resourceName, config)
 	require.NoError(t, err)
 	t.Logf("HCL: \n%s\n", buf.String())
 	d.driver.Write(t, buf.String())
@@ -136,4 +147,19 @@ func (*TfResDriver) parseChangesFromTFPlan(plan tfcheck.TfPlan) tfChange {
 	contract.AssertNoErrorf(err, "failed to unmarshal terraform plan")
 	contract.Assertf(len(pp.ResourceChanges) == 1, "expected exactly one resource change")
 	return pp.ResourceChanges[0].Change
+}
+
+func providerHCLProgram(t T, typ string, provider *schema.Provider, config cty.Value) string {
+	var out bytes.Buffer
+	w := WriteSDKv2(&out)
+	require.NoError(t, w.Provider(provider.Schema, typ, config))
+
+	res := provider.Resources()
+	if l := len(res); l != 1 {
+		require.FailNow(t, "Expected provider to have 1 resource (found %d), ambiguous resource choice", l)
+	}
+
+	require.NoError(t, w.Resource(map[string]*schema.Schema{}, res[0].Name, "res", cty.EmptyObjectVal))
+
+	return out.String()
 }
