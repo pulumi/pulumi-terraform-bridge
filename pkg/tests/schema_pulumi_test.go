@@ -3615,7 +3615,7 @@ func TestDetailedDiffSet(t *testing.T) {
 	// TODO[pulumi/pulumi-terraform-bridge#2517]: Remove this once accurate bridge previews are rolled out
 	t.Setenv("PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW", "true")
 	runTest := func(t *testing.T, resMap map[string]*schema.Resource, props1, props2 interface{},
-		expected autogold.Value, expectedDetailedDiff map[string]any,
+		expected, expectedDetailedDiff autogold.Value,
 	) {
 		program := `
 name: test
@@ -3635,20 +3635,20 @@ resources:
 		out, detailedDiff := runDetailedDiffTest(t, resMap, program1, program2)
 
 		expected.Equal(t, trimDiff(t, out))
-		require.Equal(t, expectedDetailedDiff, detailedDiff)
+		expectedDetailedDiff.Equal(t, detailedDiff)
 	}
 
 	type setDetailedDiffTestCase struct {
 		name                              string
 		props1                            []string
 		props2                            []string
-		expectedAttrDetailedDiff          map[string]any
+		expectedAttrDetailedDiff          autogold.Value
 		expectedAttr                      autogold.Value
-		expectedAttrForceNewDetailedDiff  map[string]any
+		expectedAttrForceNewDetailedDiff  autogold.Value
 		expectedAttrForceNew              autogold.Value
-		expectedBlockDetailedDiff         map[string]any
+		expectedBlockDetailedDiff         autogold.Value
 		expectedBlock                     autogold.Value
-		expectedBlockForceNewDetailedDiff map[string]any
+		expectedBlockForceNewDetailedDiff autogold.Value
 		expectedBlockForceNew             autogold.Value
 	}
 
@@ -3657,20 +3657,20 @@ resources:
 			name:                              "unchanged",
 			props1:                            []string{"val1"},
 			props2:                            []string{"val1"},
-			expectedAttrDetailedDiff:          nil,
+			expectedAttrDetailedDiff:          autogold.Expect(map[string]interface{}{}),
 			expectedAttr:                      autogold.Expect("\n"),
-			expectedAttrForceNewDetailedDiff:  nil,
+			expectedAttrForceNewDetailedDiff:  autogold.Expect(map[string]interface{}{}),
 			expectedAttrForceNew:              autogold.Expect("\n"),
-			expectedBlockDetailedDiff:         nil,
+			expectedBlockDetailedDiff:         autogold.Expect(map[string]interface{}{}),
 			expectedBlock:                     autogold.Expect("\n"),
-			expectedBlockForceNewDetailedDiff: nil,
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{}),
 			expectedBlockForceNew:             autogold.Expect("\n"),
 		},
 		{
 			name:                     "changed non-empty",
 			props1:                   []string{"val1"},
 			props2:                   []string{"val2"},
-			expectedAttrDetailedDiff: map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "UPDATE"}},
+			expectedAttrDetailedDiff: autogold.Expect(map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "UPDATE"}}),
 			expectedAttr: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
@@ -3679,7 +3679,7 @@ resources:
           ~ [0]: "val1" => "val2"
         ]
 `),
-			expectedAttrForceNewDetailedDiff: map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "UPDATE_REPLACE"}},
+			expectedAttrForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "UPDATE_REPLACE"}}),
 			expectedAttrForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
@@ -3688,7 +3688,7 @@ resources:
           ~ [0]: "val1" => "val2"
         ]
 `),
-			expectedBlockDetailedDiff: map[string]interface{}{"tests[0].nested": map[string]interface{}{"kind": "UPDATE"}},
+			expectedBlockDetailedDiff: autogold.Expect(map[string]interface{}{"tests[0].nested": map[string]interface{}{"kind": "UPDATE"}}),
 			expectedBlock: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
@@ -3699,7 +3699,7 @@ resources:
                 }
         ]
 `),
-			expectedBlockForceNewDetailedDiff: map[string]interface{}{"tests[0].nested": map[string]interface{}{"kind": "UPDATE_REPLACE"}},
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[0].nested": map[string]interface{}{"kind": "UPDATE_REPLACE"}}),
 			expectedBlockForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
@@ -3715,7 +3715,7 @@ resources:
 			name:                     "changed from empty",
 			props1:                   []string{},
 			props2:                   []string{"val1"},
-			expectedAttrDetailedDiff: map[string]interface{}{"tests": map[string]interface{}{}},
+			expectedAttrDetailedDiff: autogold.Expect(map[string]interface{}{"tests": map[string]interface{}{}}),
 			expectedAttr: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
@@ -3724,7 +3724,7 @@ resources:
       +     [0]: "val1"
         ]
 `),
-			expectedAttrForceNewDetailedDiff: map[string]interface{}{"tests": map[string]interface{}{"kind": "ADD_REPLACE"}},
+			expectedAttrForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests": map[string]interface{}{"kind": "ADD_REPLACE"}}),
 			expectedAttrForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
@@ -3733,7 +3733,7 @@ resources:
       +     [0]: "val1"
         ]
 `),
-			expectedBlockDetailedDiff: map[string]interface{}{"tests": map[string]interface{}{}},
+			expectedBlockDetailedDiff: autogold.Expect(map[string]interface{}{"tests": map[string]interface{}{}}),
 			expectedBlock: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
@@ -3744,7 +3744,7 @@ resources:
             }
         ]
 `),
-			expectedBlockForceNewDetailedDiff: map[string]interface{}{"tests": map[string]interface{}{"kind": "ADD_REPLACE"}},
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests": map[string]interface{}{"kind": "ADD_REPLACE"}}),
 			expectedBlockForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
@@ -3760,7 +3760,7 @@ resources:
 			name:                     "changed to empty",
 			props1:                   []string{"val1"},
 			props2:                   []string{},
-			expectedAttrDetailedDiff: map[string]interface{}{"tests": map[string]interface{}{"kind": "DELETE"}},
+			expectedAttrDetailedDiff: autogold.Expect(map[string]interface{}{"tests": map[string]interface{}{"kind": "DELETE"}}),
 			expectedAttr: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
@@ -3769,7 +3769,7 @@ resources:
       -     [0]: "val1"
         ]
 `),
-			expectedAttrForceNewDetailedDiff: map[string]interface{}{"tests": map[string]interface{}{"kind": "DELETE_REPLACE"}},
+			expectedAttrForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests": map[string]interface{}{"kind": "DELETE_REPLACE"}}),
 			expectedAttrForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
@@ -3778,7 +3778,7 @@ resources:
       -     [0]: "val1"
         ]
 `),
-			expectedBlockDetailedDiff: map[string]interface{}{"tests": map[string]interface{}{"kind": "DELETE"}},
+			expectedBlockDetailedDiff: autogold.Expect(map[string]interface{}{"tests": map[string]interface{}{"kind": "DELETE"}}),
 			expectedBlock: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
@@ -3789,7 +3789,7 @@ resources:
             }
         ]
 `),
-			expectedBlockForceNewDetailedDiff: map[string]interface{}{"tests": map[string]interface{}{"kind": "DELETE_REPLACE"}},
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests": map[string]interface{}{"kind": "DELETE_REPLACE"}}),
 			expectedBlockForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
@@ -3805,7 +3805,7 @@ resources:
 			name:                     "removed front",
 			props1:                   []string{"val1", "val2", "val3"},
 			props2:                   []string{"val2", "val3"},
-			expectedAttrDetailedDiff: map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "DELETE"}},
+			expectedAttrDetailedDiff: autogold.Expect(map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "DELETE"}}),
 			expectedAttr: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
@@ -3814,7 +3814,7 @@ resources:
           - [0]: "val1"
         ]
 `),
-			expectedAttrForceNewDetailedDiff: map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "DELETE_REPLACE"}},
+			expectedAttrForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "DELETE_REPLACE"}}),
 			expectedAttrForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
@@ -3823,7 +3823,7 @@ resources:
           - [0]: "val1"
         ]
 `),
-			expectedBlockDetailedDiff: map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "DELETE"}},
+			expectedBlockDetailedDiff: autogold.Expect(map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "DELETE"}}),
 			expectedBlock: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
@@ -3834,7 +3834,7 @@ resources:
                 }
         ]
 `),
-			expectedBlockForceNewDetailedDiff: map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "DELETE_REPLACE"}},
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "DELETE_REPLACE"}}),
 			expectedBlockForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
@@ -3850,7 +3850,7 @@ resources:
 			name:                     "removed front unordered",
 			props1:                   []string{"val2", "val1", "val3"},
 			props2:                   []string{"val1", "val3"},
-			expectedAttrDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "DELETE"}},
+			expectedAttrDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "DELETE"}}),
 			expectedAttr: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
@@ -3859,7 +3859,7 @@ resources:
           - [1]: "val2"
         ]
 `),
-			expectedAttrForceNewDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "DELETE_REPLACE"}},
+			expectedAttrForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "DELETE_REPLACE"}}),
 			expectedAttrForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
@@ -3868,7 +3868,7 @@ resources:
           - [1]: "val2"
         ]
 `),
-			expectedBlockDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "DELETE"}},
+			expectedBlockDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "DELETE"}}),
 			expectedBlock: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
@@ -3879,7 +3879,7 @@ resources:
                 }
         ]
 `),
-			expectedBlockForceNewDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "DELETE_REPLACE"}},
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "DELETE_REPLACE"}}),
 			expectedBlockForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
@@ -3895,7 +3895,7 @@ resources:
 			name:                     "removed middle",
 			props1:                   []string{"val1", "val2", "val3"},
 			props2:                   []string{"val1", "val3"},
-			expectedAttrDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "DELETE"}},
+			expectedAttrDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "DELETE"}}),
 			expectedAttr: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
@@ -3904,7 +3904,7 @@ resources:
           - [1]: "val2"
         ]
 `),
-			expectedAttrForceNewDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "DELETE_REPLACE"}},
+			expectedAttrForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "DELETE_REPLACE"}}),
 			expectedAttrForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
@@ -3913,7 +3913,7 @@ resources:
           - [1]: "val2"
         ]
 `),
-			expectedBlockDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "DELETE"}},
+			expectedBlockDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "DELETE"}}),
 			expectedBlock: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
@@ -3924,7 +3924,7 @@ resources:
                 }
         ]
 `),
-			expectedBlockForceNewDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "DELETE_REPLACE"}},
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "DELETE_REPLACE"}}),
 			expectedBlockForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
@@ -3940,7 +3940,7 @@ resources:
 			name:                     "removed middle unordered",
 			props1:                   []string{"val2", "val3", "val1"},
 			props2:                   []string{"val2", "val1"},
-			expectedAttrDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE"}},
+			expectedAttrDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE"}}),
 			expectedAttr: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
@@ -3949,7 +3949,7 @@ resources:
           - [2]: "val3"
         ]
 `),
-			expectedAttrForceNewDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE_REPLACE"}},
+			expectedAttrForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE_REPLACE"}}),
 			expectedAttrForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
@@ -3958,7 +3958,7 @@ resources:
           - [2]: "val3"
         ]
 `),
-			expectedBlockDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE"}},
+			expectedBlockDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE"}}),
 			expectedBlock: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
@@ -3969,7 +3969,7 @@ resources:
                 }
         ]
 `),
-			expectedBlockForceNewDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE_REPLACE"}},
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE_REPLACE"}}),
 			expectedBlockForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
@@ -3985,7 +3985,7 @@ resources:
 			name:                     "removed end",
 			props1:                   []string{"val1", "val2", "val3"},
 			props2:                   []string{"val1", "val2"},
-			expectedAttrDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE"}},
+			expectedAttrDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE"}}),
 			expectedAttr: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
@@ -3994,7 +3994,7 @@ resources:
           - [2]: "val3"
         ]
 `),
-			expectedAttrForceNewDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE_REPLACE"}},
+			expectedAttrForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE_REPLACE"}}),
 			expectedAttrForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
@@ -4003,7 +4003,7 @@ resources:
           - [2]: "val3"
         ]
 `),
-			expectedBlockDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE"}},
+			expectedBlockDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE"}}),
 			expectedBlock: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
@@ -4014,7 +4014,7 @@ resources:
                 }
         ]
 `),
-			expectedBlockForceNewDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE_REPLACE"}},
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE_REPLACE"}}),
 			expectedBlockForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
@@ -4030,7 +4030,7 @@ resources:
 			name:                     "removed end unordered",
 			props1:                   []string{"val2", "val3", "val1"},
 			props2:                   []string{"val2", "val3"},
-			expectedAttrDetailedDiff: map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "DELETE"}},
+			expectedAttrDetailedDiff: autogold.Expect(map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "DELETE"}}),
 			expectedAttr: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
@@ -4039,7 +4039,7 @@ resources:
           - [0]: "val1"
         ]
 `),
-			expectedAttrForceNewDetailedDiff: map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "DELETE_REPLACE"}},
+			expectedAttrForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "DELETE_REPLACE"}}),
 			expectedAttrForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
@@ -4048,7 +4048,7 @@ resources:
           - [0]: "val1"
         ]
 `),
-			expectedBlockDetailedDiff: map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "DELETE"}},
+			expectedBlockDetailedDiff: autogold.Expect(map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "DELETE"}}),
 			expectedBlock: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
@@ -4059,7 +4059,7 @@ resources:
                 }
         ]
 `),
-			expectedBlockForceNewDetailedDiff: map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "DELETE_REPLACE"}},
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "DELETE_REPLACE"}}),
 			expectedBlockForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
@@ -4075,7 +4075,7 @@ resources:
 			name:                     "added front",
 			props1:                   []string{"val2", "val3"},
 			props2:                   []string{"val1", "val2", "val3"},
-			expectedAttrDetailedDiff: map[string]interface{}{"tests[0]": map[string]interface{}{}},
+			expectedAttrDetailedDiff: autogold.Expect(map[string]interface{}{"tests[0]": map[string]interface{}{}}),
 			expectedAttr: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
@@ -4084,7 +4084,7 @@ resources:
           + [0]: "val1"
         ]
 `),
-			expectedAttrForceNewDetailedDiff: map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "ADD_REPLACE"}},
+			expectedAttrForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "ADD_REPLACE"}}),
 			expectedAttrForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
@@ -4093,7 +4093,7 @@ resources:
           + [0]: "val1"
         ]
 `),
-			expectedBlockDetailedDiff: map[string]interface{}{"tests[0]": map[string]interface{}{}},
+			expectedBlockDetailedDiff: autogold.Expect(map[string]interface{}{"tests[0]": map[string]interface{}{}}),
 			expectedBlock: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
@@ -4104,7 +4104,7 @@ resources:
                 }
         ]
 `),
-			expectedBlockForceNewDetailedDiff: map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "ADD_REPLACE"}},
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "ADD_REPLACE"}}),
 			expectedBlockForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
@@ -4120,7 +4120,7 @@ resources:
 			name:                     "added front unordered",
 			props1:                   []string{"val3", "val1"},
 			props2:                   []string{"val2", "val2", "val1"},
-			expectedAttrDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "UPDATE"}},
+			expectedAttrDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "UPDATE"}}),
 			expectedAttr: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
@@ -4129,7 +4129,7 @@ resources:
           ~ [1]: "val3" => "val2"
         ]
 `),
-			expectedAttrForceNewDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "UPDATE_REPLACE"}},
+			expectedAttrForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "UPDATE_REPLACE"}}),
 			expectedAttrForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
@@ -4138,7 +4138,7 @@ resources:
           ~ [1]: "val3" => "val2"
         ]
 `),
-			expectedBlockDetailedDiff: map[string]interface{}{"tests[1].nested": map[string]interface{}{"kind": "UPDATE"}},
+			expectedBlockDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1].nested": map[string]interface{}{"kind": "UPDATE"}}),
 			expectedBlock: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
@@ -4149,7 +4149,7 @@ resources:
                 }
         ]
 `),
-			expectedBlockForceNewDetailedDiff: map[string]interface{}{"tests[1].nested": map[string]interface{}{"kind": "UPDATE_REPLACE"}},
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1].nested": map[string]interface{}{"kind": "UPDATE_REPLACE"}}),
 			expectedBlockForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
@@ -4165,7 +4165,7 @@ resources:
 			name:                     "added middle",
 			props1:                   []string{"val1", "val3"},
 			props2:                   []string{"val1", "val2", "val3"},
-			expectedAttrDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{}},
+			expectedAttrDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{}}),
 			expectedAttr: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
@@ -4174,7 +4174,7 @@ resources:
           + [1]: "val2"
         ]
 `),
-			expectedAttrForceNewDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "ADD_REPLACE"}},
+			expectedAttrForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "ADD_REPLACE"}}),
 			expectedAttrForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
@@ -4183,7 +4183,7 @@ resources:
           + [1]: "val2"
         ]
 `),
-			expectedBlockDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{}},
+			expectedBlockDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{}}),
 			expectedBlock: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
@@ -4194,7 +4194,7 @@ resources:
                 }
         ]
 `),
-			expectedBlockForceNewDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "ADD_REPLACE"}},
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "ADD_REPLACE"}}),
 			expectedBlockForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
@@ -4210,7 +4210,7 @@ resources:
 			name:                     "added middle unordered",
 			props1:                   []string{"val2", "val1"},
 			props2:                   []string{"val2", "val3", "val1"},
-			expectedAttrDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{}},
+			expectedAttrDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{}}),
 			expectedAttr: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
@@ -4219,7 +4219,7 @@ resources:
           + [1]: "val3"
         ]
 `),
-			expectedAttrForceNewDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "ADD_REPLACE"}},
+			expectedAttrForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "ADD_REPLACE"}}),
 			expectedAttrForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
@@ -4228,7 +4228,7 @@ resources:
           + [1]: "val3"
         ]
 `),
-			expectedBlockDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{}},
+			expectedBlockDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{}}),
 			expectedBlock: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
@@ -4239,7 +4239,7 @@ resources:
                 }
         ]
 `),
-			expectedBlockForceNewDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "ADD_REPLACE"}},
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "ADD_REPLACE"}}),
 			expectedBlockForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
@@ -4255,7 +4255,7 @@ resources:
 			name:                     "added end",
 			props1:                   []string{"val1", "val2"},
 			props2:                   []string{"val1", "val2", "val3"},
-			expectedAttrDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{}},
+			expectedAttrDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{}}),
 			expectedAttr: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
@@ -4264,7 +4264,7 @@ resources:
           + [2]: "val3"
         ]
 `),
-			expectedAttrForceNewDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "ADD_REPLACE"}},
+			expectedAttrForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "ADD_REPLACE"}}),
 			expectedAttrForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
@@ -4273,7 +4273,7 @@ resources:
           + [2]: "val3"
         ]
 `),
-			expectedBlockDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{}},
+			expectedBlockDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{}}),
 			expectedBlock: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
@@ -4284,7 +4284,7 @@ resources:
                 }
         ]
 `),
-			expectedBlockForceNewDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "ADD_REPLACE"}},
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "ADD_REPLACE"}}),
 			expectedBlockForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
@@ -4300,7 +4300,7 @@ resources:
 			name:                     "added end unordered",
 			props1:                   []string{"val2", "val3"},
 			props2:                   []string{"val2", "val3", "val1"},
-			expectedAttrDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{}},
+			expectedAttrDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{}}),
 			expectedAttr: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
@@ -4309,7 +4309,7 @@ resources:
           + [2]: "val1"
         ]
 `),
-			expectedAttrForceNewDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "ADD_REPLACE"}},
+			expectedAttrForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "ADD_REPLACE"}}),
 			expectedAttrForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
@@ -4318,7 +4318,7 @@ resources:
           + [2]: "val1"
         ]
 `),
-			expectedBlockDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{}},
+			expectedBlockDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{}}),
 			expectedBlock: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
@@ -4329,7 +4329,7 @@ resources:
                 }
         ]
 `),
-			expectedBlockForceNewDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "ADD_REPLACE"}},
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "ADD_REPLACE"}}),
 			expectedBlockForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
@@ -4345,7 +4345,7 @@ resources:
 			name:                     "same element updated",
 			props1:                   []string{"val1", "val2", "val3"},
 			props2:                   []string{"val1", "val4", "val3"},
-			expectedAttrDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "UPDATE"}},
+			expectedAttrDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "UPDATE"}}),
 			expectedAttr: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
@@ -4354,7 +4354,7 @@ resources:
           ~ [1]: "val2" => "val4"
         ]
 `),
-			expectedAttrForceNewDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "UPDATE_REPLACE"}},
+			expectedAttrForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "UPDATE_REPLACE"}}),
 			expectedAttrForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
@@ -4363,7 +4363,7 @@ resources:
           ~ [1]: "val2" => "val4"
         ]
 `),
-			expectedBlockDetailedDiff: map[string]interface{}{"tests[1].nested": map[string]interface{}{"kind": "UPDATE"}},
+			expectedBlockDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1].nested": map[string]interface{}{"kind": "UPDATE"}}),
 			expectedBlock: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
@@ -4374,7 +4374,7 @@ resources:
                 }
         ]
 `),
-			expectedBlockForceNewDetailedDiff: map[string]interface{}{"tests[1].nested": map[string]interface{}{"kind": "UPDATE_REPLACE"}},
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1].nested": map[string]interface{}{"kind": "UPDATE_REPLACE"}}),
 			expectedBlockForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
@@ -4390,10 +4390,10 @@ resources:
 			name:   "same element updated unordered",
 			props1: []string{"val2", "val3", "val1"},
 			props2: []string{"val2", "val4", "val1"},
-			expectedAttrDetailedDiff: map[string]interface{}{
+			expectedAttrDetailedDiff: autogold.Expect(map[string]interface{}{
 				"tests[1]": map[string]interface{}{},
 				"tests[2]": map[string]interface{}{"kind": "DELETE"},
-			},
+			}),
 			expectedAttr: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
@@ -4403,10 +4403,10 @@ resources:
           - [2]: "val3"
         ]
 `),
-			expectedAttrForceNewDetailedDiff: map[string]interface{}{
+			expectedAttrForceNewDetailedDiff: autogold.Expect(map[string]interface{}{
 				"tests[1]": map[string]interface{}{"kind": "ADD_REPLACE"},
 				"tests[2]": map[string]interface{}{"kind": "DELETE_REPLACE"},
-			},
+			}),
 			expectedAttrForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
@@ -4416,10 +4416,10 @@ resources:
           - [2]: "val3"
         ]
 `),
-			expectedBlockDetailedDiff: map[string]interface{}{
+			expectedBlockDetailedDiff: autogold.Expect(map[string]interface{}{
 				"tests[1]": map[string]interface{}{},
 				"tests[2]": map[string]interface{}{"kind": "DELETE"},
-			},
+			}),
 			expectedBlock: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
@@ -4433,10 +4433,10 @@ resources:
                 }
         ]
 `),
-			expectedBlockForceNewDetailedDiff: map[string]interface{}{
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{
 				"tests[1]": map[string]interface{}{"kind": "ADD_REPLACE"},
 				"tests[2]": map[string]interface{}{"kind": "DELETE_REPLACE"},
-			},
+			}),
 			expectedBlockForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
@@ -4455,59 +4455,59 @@ resources:
 			name:                              "shuffled",
 			props1:                            []string{"val1", "val2", "val3"},
 			props2:                            []string{"val3", "val1", "val2"},
-			expectedAttrDetailedDiff:          nil,
+			expectedAttrDetailedDiff:          autogold.Expect(map[string]interface{}{}),
 			expectedAttr:                      autogold.Expect("\n"),
-			expectedAttrForceNewDetailedDiff:  nil,
+			expectedAttrForceNewDetailedDiff:  autogold.Expect(map[string]interface{}{}),
 			expectedAttrForceNew:              autogold.Expect("\n"),
-			expectedBlockDetailedDiff:         nil,
+			expectedBlockDetailedDiff:         autogold.Expect(map[string]interface{}{}),
 			expectedBlock:                     autogold.Expect("\n"),
-			expectedBlockForceNewDetailedDiff: nil,
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{}),
 			expectedBlockForceNew:             autogold.Expect("\n"),
 		},
 		{
 			name:                              "shuffled unordered",
 			props1:                            []string{"val2", "val3", "val1"},
 			props2:                            []string{"val3", "val1", "val2"},
-			expectedAttrDetailedDiff:          nil,
+			expectedAttrDetailedDiff:          autogold.Expect(map[string]interface{}{}),
 			expectedAttr:                      autogold.Expect("\n"),
-			expectedAttrForceNewDetailedDiff:  nil,
+			expectedAttrForceNewDetailedDiff:  autogold.Expect(map[string]interface{}{}),
 			expectedAttrForceNew:              autogold.Expect("\n"),
-			expectedBlockDetailedDiff:         nil,
+			expectedBlockDetailedDiff:         autogold.Expect(map[string]interface{}{}),
 			expectedBlock:                     autogold.Expect("\n"),
-			expectedBlockForceNewDetailedDiff: nil,
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{}),
 			expectedBlockForceNew:             autogold.Expect("\n"),
 		},
 		{
 			name:                              "shuffled with duplicates",
 			props1:                            []string{"val1", "val2", "val3"},
 			props2:                            []string{"val3", "val1", "val2", "val3"},
-			expectedAttrDetailedDiff:          nil,
+			expectedAttrDetailedDiff:          autogold.Expect(map[string]interface{}{}),
 			expectedAttr:                      autogold.Expect("\n"),
-			expectedAttrForceNewDetailedDiff:  nil,
+			expectedAttrForceNewDetailedDiff:  autogold.Expect(map[string]interface{}{}),
 			expectedAttrForceNew:              autogold.Expect("\n"),
-			expectedBlockDetailedDiff:         nil,
+			expectedBlockDetailedDiff:         autogold.Expect(map[string]interface{}{}),
 			expectedBlock:                     autogold.Expect("\n"),
-			expectedBlockForceNewDetailedDiff: nil,
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{}),
 			expectedBlockForceNew:             autogold.Expect("\n"),
 		},
 		{
 			name:                              "shuffled with duplicates unordered",
 			props1:                            []string{"val2", "val3", "val1"},
 			props2:                            []string{"val3", "val1", "val2", "val3"},
-			expectedAttrDetailedDiff:          nil,
+			expectedAttrDetailedDiff:          autogold.Expect(map[string]interface{}{}),
 			expectedAttr:                      autogold.Expect("\n"),
-			expectedAttrForceNewDetailedDiff:  nil,
+			expectedAttrForceNewDetailedDiff:  autogold.Expect(map[string]interface{}{}),
 			expectedAttrForceNew:              autogold.Expect("\n"),
-			expectedBlockDetailedDiff:         nil,
+			expectedBlockDetailedDiff:         autogold.Expect(map[string]interface{}{}),
 			expectedBlock:                     autogold.Expect("\n"),
-			expectedBlockForceNewDetailedDiff: nil,
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{}),
 			expectedBlockForceNew:             autogold.Expect("\n"),
 		},
 		{
 			name:                     "shuffled added front",
 			props1:                   []string{"val2", "val3"},
 			props2:                   []string{"val1", "val3", "val2"},
-			expectedAttrDetailedDiff: map[string]interface{}{"tests[0]": map[string]interface{}{}},
+			expectedAttrDetailedDiff: autogold.Expect(map[string]interface{}{"tests[0]": map[string]interface{}{}}),
 			expectedAttr: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
@@ -4516,7 +4516,7 @@ resources:
           + [0]: "val1"
         ]
 `),
-			expectedAttrForceNewDetailedDiff: map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "ADD_REPLACE"}},
+			expectedAttrForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "ADD_REPLACE"}}),
 			expectedAttrForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
@@ -4525,7 +4525,7 @@ resources:
           + [0]: "val1"
         ]
 `),
-			expectedBlockDetailedDiff: map[string]interface{}{"tests[0]": map[string]interface{}{}},
+			expectedBlockDetailedDiff: autogold.Expect(map[string]interface{}{"tests[0]": map[string]interface{}{}}),
 			expectedBlock: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
@@ -4536,7 +4536,7 @@ resources:
                 }
         ]
 `),
-			expectedBlockForceNewDetailedDiff: map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "ADD_REPLACE"}},
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "ADD_REPLACE"}}),
 			expectedBlockForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
@@ -4552,7 +4552,7 @@ resources:
 			name:                     "shuffled added front unordered",
 			props1:                   []string{"val3", "val1"},
 			props2:                   []string{"val2", "val1", "val3"},
-			expectedAttrDetailedDiff: map[string]interface{}{"tests[0]": map[string]interface{}{}},
+			expectedAttrDetailedDiff: autogold.Expect(map[string]interface{}{"tests[0]": map[string]interface{}{}}),
 			expectedAttr: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
@@ -4561,7 +4561,7 @@ resources:
           + [0]: "val2"
         ]
 `),
-			expectedAttrForceNewDetailedDiff: map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "ADD_REPLACE"}},
+			expectedAttrForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "ADD_REPLACE"}}),
 			expectedAttrForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
@@ -4570,7 +4570,7 @@ resources:
           + [0]: "val2"
         ]
 `),
-			expectedBlockDetailedDiff: map[string]interface{}{"tests[0]": map[string]interface{}{}},
+			expectedBlockDetailedDiff: autogold.Expect(map[string]interface{}{"tests[0]": map[string]interface{}{}}),
 			expectedBlock: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
@@ -4581,7 +4581,7 @@ resources:
                 }
         ]
 `),
-			expectedBlockForceNewDetailedDiff: map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "ADD_REPLACE"}},
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "ADD_REPLACE"}}),
 			expectedBlockForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
@@ -4597,7 +4597,7 @@ resources:
 			name:                     "shuffled added middle",
 			props1:                   []string{"val1", "val3"},
 			props2:                   []string{"val3", "val2", "val1"},
-			expectedAttrDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{}},
+			expectedAttrDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{}}),
 			expectedAttr: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
@@ -4606,7 +4606,7 @@ resources:
           + [1]: "val2"
         ]
 `),
-			expectedAttrForceNewDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "ADD_REPLACE"}},
+			expectedAttrForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "ADD_REPLACE"}}),
 			expectedAttrForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
@@ -4615,7 +4615,7 @@ resources:
           + [1]: "val2"
         ]
 `),
-			expectedBlockDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{}},
+			expectedBlockDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{}}),
 			expectedBlock: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
@@ -4626,7 +4626,7 @@ resources:
                 }
         ]
 `),
-			expectedBlockForceNewDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "ADD_REPLACE"}},
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "ADD_REPLACE"}}),
 			expectedBlockForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
@@ -4642,7 +4642,7 @@ resources:
 			name:                     "shuffled added middle unordered",
 			props1:                   []string{"val2", "val1"},
 			props2:                   []string{"val1", "val3", "val2"},
-			expectedAttrDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{}},
+			expectedAttrDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{}}),
 			expectedAttr: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
@@ -4651,7 +4651,7 @@ resources:
           + [1]: "val3"
         ]
 `),
-			expectedAttrForceNewDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "ADD_REPLACE"}},
+			expectedAttrForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "ADD_REPLACE"}}),
 			expectedAttrForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
@@ -4660,7 +4660,7 @@ resources:
           + [1]: "val3"
         ]
 `),
-			expectedBlockDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{}},
+			expectedBlockDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{}}),
 			expectedBlock: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
@@ -4671,7 +4671,7 @@ resources:
                 }
         ]
 `),
-			expectedBlockForceNewDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "ADD_REPLACE"}},
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "ADD_REPLACE"}}),
 			expectedBlockForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
@@ -4687,7 +4687,7 @@ resources:
 			name:                     "shuffled added end",
 			props1:                   []string{"val1", "val2"},
 			props2:                   []string{"val2", "val1", "val3"},
-			expectedAttrDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{}},
+			expectedAttrDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{}}),
 			expectedAttr: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
@@ -4696,7 +4696,7 @@ resources:
           + [2]: "val3"
         ]
 `),
-			expectedAttrForceNewDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "ADD_REPLACE"}},
+			expectedAttrForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "ADD_REPLACE"}}),
 			expectedAttrForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
@@ -4705,7 +4705,7 @@ resources:
           + [2]: "val3"
         ]
 `),
-			expectedBlockDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{}},
+			expectedBlockDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{}}),
 			expectedBlock: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
@@ -4716,7 +4716,7 @@ resources:
                 }
         ]
 `),
-			expectedBlockForceNewDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "ADD_REPLACE"}},
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "ADD_REPLACE"}}),
 			expectedBlockForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
@@ -4732,7 +4732,7 @@ resources:
 			name:                     "shuffled removed front",
 			props1:                   []string{"val1", "val2", "val3"},
 			props2:                   []string{"val3", "val2"},
-			expectedAttrDetailedDiff: map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "DELETE"}},
+			expectedAttrDetailedDiff: autogold.Expect(map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "DELETE"}}),
 			expectedAttr: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
@@ -4741,7 +4741,7 @@ resources:
           - [0]: "val1"
         ]
 `),
-			expectedAttrForceNewDetailedDiff: map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "DELETE_REPLACE"}},
+			expectedAttrForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "DELETE_REPLACE"}}),
 			expectedAttrForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
@@ -4750,7 +4750,7 @@ resources:
           - [0]: "val1"
         ]
 `),
-			expectedBlockDetailedDiff: map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "DELETE"}},
+			expectedBlockDetailedDiff: autogold.Expect(map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "DELETE"}}),
 			expectedBlock: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
@@ -4761,7 +4761,7 @@ resources:
                 }
         ]
 `),
-			expectedBlockForceNewDetailedDiff: map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "DELETE_REPLACE"}},
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "DELETE_REPLACE"}}),
 			expectedBlockForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
@@ -4777,7 +4777,7 @@ resources:
 			name:                     "shuffled removed middle",
 			props1:                   []string{"val1", "val2", "val3"},
 			props2:                   []string{"val3", "val1"},
-			expectedAttrDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "DELETE"}},
+			expectedAttrDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "DELETE"}}),
 			expectedAttr: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
@@ -4786,7 +4786,7 @@ resources:
           - [1]: "val2"
         ]
 `),
-			expectedAttrForceNewDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "DELETE_REPLACE"}},
+			expectedAttrForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "DELETE_REPLACE"}}),
 			expectedAttrForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
@@ -4795,7 +4795,7 @@ resources:
           - [1]: "val2"
         ]
 `),
-			expectedBlockDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "DELETE"}},
+			expectedBlockDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "DELETE"}}),
 			expectedBlock: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
@@ -4806,7 +4806,7 @@ resources:
                 }
         ]
 `),
-			expectedBlockForceNewDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "DELETE_REPLACE"}},
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "DELETE_REPLACE"}}),
 			expectedBlockForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
@@ -4822,7 +4822,7 @@ resources:
 			name:                     "shuffled removed end",
 			props1:                   []string{"val1", "val2", "val3"},
 			props2:                   []string{"val2", "val1"},
-			expectedAttrDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE"}},
+			expectedAttrDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE"}}),
 			expectedAttr: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
@@ -4831,7 +4831,7 @@ resources:
           - [2]: "val3"
         ]
 `),
-			expectedAttrForceNewDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE_REPLACE"}},
+			expectedAttrForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE_REPLACE"}}),
 			expectedAttrForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
@@ -4840,7 +4840,7 @@ resources:
           - [2]: "val3"
         ]
 `),
-			expectedBlockDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE"}},
+			expectedBlockDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE"}}),
 			expectedBlock: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
@@ -4851,7 +4851,7 @@ resources:
                 }
         ]
 `),
-			expectedBlockForceNewDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE_REPLACE"}},
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE_REPLACE"}}),
 			expectedBlockForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
@@ -4867,7 +4867,7 @@ resources:
 			name:                     "two added",
 			props1:                   []string{"val1", "val2"},
 			props2:                   []string{"val1", "val2", "val3", "val4"},
-			expectedAttrDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{}, "tests[3]": map[string]interface{}{}},
+			expectedAttrDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{}, "tests[3]": map[string]interface{}{}}),
 			expectedAttr: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
@@ -4877,7 +4877,7 @@ resources:
           + [3]: "val4"
         ]
 `),
-			expectedAttrForceNewDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "ADD_REPLACE"}, "tests[3]": map[string]interface{}{"kind": "ADD_REPLACE"}},
+			expectedAttrForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "ADD_REPLACE"}, "tests[3]": map[string]interface{}{"kind": "ADD_REPLACE"}}),
 			expectedAttrForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
@@ -4887,7 +4887,7 @@ resources:
           + [3]: "val4"
         ]
 `),
-			expectedBlockDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{}, "tests[3]": map[string]interface{}{}},
+			expectedBlockDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{}, "tests[3]": map[string]interface{}{}}),
 			expectedBlock: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
@@ -4901,7 +4901,7 @@ resources:
                 }
         ]
 `),
-			expectedBlockForceNewDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "ADD_REPLACE"}, "tests[3]": map[string]interface{}{"kind": "ADD_REPLACE"}},
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "ADD_REPLACE"}, "tests[3]": map[string]interface{}{"kind": "ADD_REPLACE"}}),
 			expectedBlockForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
@@ -4920,7 +4920,7 @@ resources:
 			name:                     "two removed",
 			props1:                   []string{"val1", "val2", "val3", "val4"},
 			props2:                   []string{"val1", "val2"},
-			expectedAttrDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE"}, "tests[3]": map[string]interface{}{"kind": "DELETE"}},
+			expectedAttrDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE"}, "tests[3]": map[string]interface{}{"kind": "DELETE"}}),
 			expectedAttr: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
@@ -4930,7 +4930,7 @@ resources:
           - [3]: "val4"
         ]
 `),
-			expectedAttrForceNewDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE_REPLACE"}, "tests[3]": map[string]interface{}{"kind": "DELETE_REPLACE"}},
+			expectedAttrForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE_REPLACE"}, "tests[3]": map[string]interface{}{"kind": "DELETE_REPLACE"}}),
 			expectedAttrForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
@@ -4940,7 +4940,7 @@ resources:
           - [3]: "val4"
         ]
 `),
-			expectedBlockDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE"}, "tests[3]": map[string]interface{}{"kind": "DELETE"}},
+			expectedBlockDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE"}, "tests[3]": map[string]interface{}{"kind": "DELETE"}}),
 			expectedBlock: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
@@ -4954,7 +4954,7 @@ resources:
                 }
         ]
 `),
-			expectedBlockForceNewDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE_REPLACE"}, "tests[3]": map[string]interface{}{"kind": "DELETE_REPLACE"}},
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE_REPLACE"}, "tests[3]": map[string]interface{}{"kind": "DELETE_REPLACE"}}),
 			expectedBlockForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
@@ -4973,7 +4973,7 @@ resources:
 			name:                     "two added and two removed",
 			props1:                   []string{"val1", "val2", "val3", "val4"},
 			props2:                   []string{"val1", "val2", "val5", "val6"},
-			expectedAttrDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "UPDATE"}, "tests[3]": map[string]interface{}{"kind": "UPDATE"}},
+			expectedAttrDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "UPDATE"}, "tests[3]": map[string]interface{}{"kind": "UPDATE"}}),
 			expectedAttr: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
@@ -4983,7 +4983,7 @@ resources:
           ~ [3]: "val4" => "val6"
         ]
 `),
-			expectedAttrForceNewDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "UPDATE_REPLACE"}, "tests[3]": map[string]interface{}{"kind": "UPDATE_REPLACE"}},
+			expectedAttrForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "UPDATE_REPLACE"}, "tests[3]": map[string]interface{}{"kind": "UPDATE_REPLACE"}}),
 			expectedAttrForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
@@ -4993,7 +4993,7 @@ resources:
           ~ [3]: "val4" => "val6"
         ]
 `),
-			expectedBlockDetailedDiff: map[string]interface{}{"tests[2].nested": map[string]interface{}{"kind": "UPDATE"}, "tests[3].nested": map[string]interface{}{"kind": "UPDATE"}},
+			expectedBlockDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2].nested": map[string]interface{}{"kind": "UPDATE"}, "tests[3].nested": map[string]interface{}{"kind": "UPDATE"}}),
 			expectedBlock: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
@@ -5007,7 +5007,7 @@ resources:
                 }
         ]
 `),
-			expectedBlockForceNewDetailedDiff: map[string]interface{}{"tests[2].nested": map[string]interface{}{"kind": "UPDATE_REPLACE"}, "tests[3].nested": map[string]interface{}{"kind": "UPDATE_REPLACE"}},
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2].nested": map[string]interface{}{"kind": "UPDATE_REPLACE"}, "tests[3].nested": map[string]interface{}{"kind": "UPDATE_REPLACE"}}),
 			expectedBlockForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
@@ -5026,11 +5026,11 @@ resources:
 			name:   "two added and two removed shuffled, one overlaps",
 			props1: []string{"val1", "val2", "val3", "val4"},
 			props2: []string{"val1", "val5", "val6", "val2"},
-			expectedAttrDetailedDiff: map[string]interface{}{
+			expectedAttrDetailedDiff: autogold.Expect(map[string]interface{}{
 				"tests[1]": map[string]interface{}{},
 				"tests[2]": map[string]interface{}{"kind": "UPDATE"},
 				"tests[3]": map[string]interface{}{"kind": "DELETE"},
-			},
+			}),
 			expectedAttr: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
@@ -5041,11 +5041,11 @@ resources:
           - [3]: "val4"
         ]
 `),
-			expectedAttrForceNewDetailedDiff: map[string]interface{}{
+			expectedAttrForceNewDetailedDiff: autogold.Expect(map[string]interface{}{
 				"tests[1]": map[string]interface{}{"kind": "ADD_REPLACE"},
 				"tests[2]": map[string]interface{}{"kind": "UPDATE_REPLACE"},
 				"tests[3]": map[string]interface{}{"kind": "DELETE_REPLACE"},
-			},
+			}),
 			expectedAttrForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
@@ -5056,11 +5056,11 @@ resources:
           - [3]: "val4"
         ]
 `),
-			expectedBlockDetailedDiff: map[string]interface{}{
+			expectedBlockDetailedDiff: autogold.Expect(map[string]interface{}{
 				"tests[1]":        map[string]interface{}{},
 				"tests[2].nested": map[string]interface{}{"kind": "UPDATE"},
 				"tests[3]":        map[string]interface{}{"kind": "DELETE"},
-			},
+			}),
 			expectedBlock: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
@@ -5077,11 +5077,11 @@ resources:
                 }
         ]
 `),
-			expectedBlockForceNewDetailedDiff: map[string]interface{}{
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{
 				"tests[1]":        map[string]interface{}{"kind": "ADD_REPLACE"},
 				"tests[2].nested": map[string]interface{}{"kind": "UPDATE_REPLACE"},
 				"tests[3]":        map[string]interface{}{"kind": "DELETE_REPLACE"},
-			},
+			}),
 			expectedBlockForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
@@ -5103,12 +5103,12 @@ resources:
 			name:   "two added and two removed shuffled, no overlaps",
 			props1: []string{"val1", "val2", "val3", "val4"},
 			props2: []string{"val5", "val6", "val1", "val2"},
-			expectedAttrDetailedDiff: map[string]interface{}{
+			expectedAttrDetailedDiff: autogold.Expect(map[string]interface{}{
 				"tests[0]": map[string]interface{}{},
 				"tests[1]": map[string]interface{}{},
 				"tests[2]": map[string]interface{}{"kind": "DELETE"},
 				"tests[3]": map[string]interface{}{"kind": "DELETE"},
-			},
+			}),
 			expectedAttr: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
@@ -5120,12 +5120,12 @@ resources:
           - [3]: "val4"
         ]
 `),
-			expectedAttrForceNewDetailedDiff: map[string]interface{}{
+			expectedAttrForceNewDetailedDiff: autogold.Expect(map[string]interface{}{
 				"tests[0]": map[string]interface{}{"kind": "ADD_REPLACE"},
 				"tests[1]": map[string]interface{}{"kind": "ADD_REPLACE"},
 				"tests[2]": map[string]interface{}{"kind": "DELETE_REPLACE"},
 				"tests[3]": map[string]interface{}{"kind": "DELETE_REPLACE"},
-			},
+			}),
 			expectedAttrForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
@@ -5137,12 +5137,12 @@ resources:
           - [3]: "val4"
         ]
 `),
-			expectedBlockDetailedDiff: map[string]interface{}{
+			expectedBlockDetailedDiff: autogold.Expect(map[string]interface{}{
 				"tests[0]": map[string]interface{}{},
 				"tests[1]": map[string]interface{}{},
 				"tests[2]": map[string]interface{}{"kind": "DELETE"},
 				"tests[3]": map[string]interface{}{"kind": "DELETE"},
-			},
+			}),
 			expectedBlock: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
@@ -5162,12 +5162,12 @@ resources:
                 }
         ]
 `),
-			expectedBlockForceNewDetailedDiff: map[string]interface{}{
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{
 				"tests[0]": map[string]interface{}{"kind": "ADD_REPLACE"},
 				"tests[1]": map[string]interface{}{"kind": "ADD_REPLACE"},
 				"tests[2]": map[string]interface{}{"kind": "DELETE_REPLACE"},
 				"tests[3]": map[string]interface{}{"kind": "DELETE_REPLACE"},
-			},
+			}),
 			expectedBlockForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
@@ -5192,11 +5192,11 @@ resources:
 			name:   "two added and two removed shuffled, with duplicates",
 			props1: []string{"val1", "val2", "val3", "val4"},
 			props2: []string{"val1", "val5", "val6", "val2", "val1", "val2"},
-			expectedAttrDetailedDiff: map[string]interface{}{
+			expectedAttrDetailedDiff: autogold.Expect(map[string]interface{}{
 				"tests[1]": map[string]interface{}{},
 				"tests[2]": map[string]interface{}{"kind": "UPDATE"},
 				"tests[3]": map[string]interface{}{"kind": "DELETE"},
-			},
+			}),
 			expectedAttr: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
@@ -5207,11 +5207,11 @@ resources:
           - [3]: "val4"
         ]
 `),
-			expectedAttrForceNewDetailedDiff: map[string]interface{}{
+			expectedAttrForceNewDetailedDiff: autogold.Expect(map[string]interface{}{
 				"tests[1]": map[string]interface{}{"kind": "ADD_REPLACE"},
 				"tests[2]": map[string]interface{}{"kind": "UPDATE_REPLACE"},
 				"tests[3]": map[string]interface{}{"kind": "DELETE_REPLACE"},
-			},
+			}),
 			expectedAttrForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
@@ -5222,11 +5222,11 @@ resources:
           - [3]: "val4"
         ]
 `),
-			expectedBlockDetailedDiff: map[string]interface{}{
+			expectedBlockDetailedDiff: autogold.Expect(map[string]interface{}{
 				"tests[1]":        map[string]interface{}{},
 				"tests[2].nested": map[string]interface{}{"kind": "UPDATE"},
 				"tests[3]":        map[string]interface{}{"kind": "DELETE"},
-			},
+			}),
 			expectedBlock: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
@@ -5243,11 +5243,11 @@ resources:
                 }
         ]
 `),
-			expectedBlockForceNewDetailedDiff: map[string]interface{}{
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{
 				"tests[1]":        map[string]interface{}{"kind": "ADD_REPLACE"},
 				"tests[2].nested": map[string]interface{}{"kind": "UPDATE_REPLACE"},
 				"tests[3]":        map[string]interface{}{"kind": "DELETE_REPLACE"},
-			},
+			}),
 			expectedBlockForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
