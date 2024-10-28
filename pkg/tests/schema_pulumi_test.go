@@ -3654,24 +3654,24 @@ resources:
 
 	testCases := []setDetailedDiffTestCase{
 		{
-			"unchanged",
-			[]string{"val1"},
-			[]string{"val1"},
-			nil,
-			autogold.Expect("\n"),
-			nil,
-			autogold.Expect("\n"),
-			nil,
-			autogold.Expect("\n"),
-			nil,
-			autogold.Expect("\n"),
+			name:                              "unchanged",
+			props1:                            []string{"val1"},
+			props2:                            []string{"val1"},
+			expectedAttrDetailedDiff:          nil,
+			expectedAttr:                      autogold.Expect("\n"),
+			expectedAttrForceNewDetailedDiff:  nil,
+			expectedAttrForceNew:              autogold.Expect("\n"),
+			expectedBlockDetailedDiff:         nil,
+			expectedBlock:                     autogold.Expect("\n"),
+			expectedBlockForceNewDetailedDiff: nil,
+			expectedBlockForceNew:             autogold.Expect("\n"),
 		},
 		{
-			"changed non-empty",
-			[]string{"val1"},
-			[]string{"val2"},
-			map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "UPDATE"}},
-			autogold.Expect(`
+			name:                     "changed non-empty",
+			props1:                   []string{"val1"},
+			props2:                   []string{"val2"},
+			expectedAttrDetailedDiff: map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "UPDATE"}},
+			expectedAttr: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -3679,8 +3679,8 @@ resources:
           ~ [0]: "val1" => "val2"
         ]
 `),
-			map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "UPDATE_REPLACE"}},
-			autogold.Expect(`
+			expectedAttrForceNewDetailedDiff: map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "UPDATE_REPLACE"}},
+			expectedAttrForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -3688,8 +3688,8 @@ resources:
           ~ [0]: "val1" => "val2"
         ]
 `),
-			map[string]interface{}{"tests[0].nested": map[string]interface{}{"kind": "UPDATE"}},
-			autogold.Expect(`
+			expectedBlockDetailedDiff: map[string]interface{}{"tests[0].nested": map[string]interface{}{"kind": "UPDATE"}},
+			expectedBlock: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -3699,8 +3699,8 @@ resources:
                 }
         ]
 `),
-			map[string]interface{}{"tests[0].nested": map[string]interface{}{"kind": "UPDATE_REPLACE"}},
-			autogold.Expect(`
+			expectedBlockForceNewDetailedDiff: map[string]interface{}{"tests[0].nested": map[string]interface{}{"kind": "UPDATE_REPLACE"}},
+			expectedBlockForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -3712,11 +3712,11 @@ resources:
 `),
 		},
 		{
-			"changed from empty",
-			[]string{},
-			[]string{"val1"},
-			map[string]interface{}{"tests": map[string]interface{}{}},
-			autogold.Expect(`
+			name:                     "changed from empty",
+			props1:                   []string{},
+			props2:                   []string{"val1"},
+			expectedAttrDetailedDiff: map[string]interface{}{"tests": map[string]interface{}{}},
+			expectedAttr: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -3724,8 +3724,8 @@ resources:
       +     [0]: "val1"
         ]
 `),
-			map[string]interface{}{"tests": map[string]interface{}{"kind": "ADD_REPLACE"}},
-			autogold.Expect(`
+			expectedAttrForceNewDetailedDiff: map[string]interface{}{"tests": map[string]interface{}{"kind": "ADD_REPLACE"}},
+			expectedAttrForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -3733,8 +3733,8 @@ resources:
       +     [0]: "val1"
         ]
 `),
-			map[string]interface{}{"tests": map[string]interface{}{}},
-			autogold.Expect(`
+			expectedBlockDetailedDiff: map[string]interface{}{"tests": map[string]interface{}{}},
+			expectedBlock: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -3744,8 +3744,8 @@ resources:
             }
         ]
 `),
-			map[string]interface{}{"tests": map[string]interface{}{"kind": "ADD_REPLACE"}},
-			autogold.Expect(`
+			expectedBlockForceNewDetailedDiff: map[string]interface{}{"tests": map[string]interface{}{"kind": "ADD_REPLACE"}},
+			expectedBlockForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -3757,11 +3757,11 @@ resources:
 `),
 		},
 		{
-			"changed to empty",
-			[]string{"val1"},
-			[]string{},
-			map[string]interface{}{"tests": map[string]interface{}{"kind": "DELETE"}},
-			autogold.Expect(`
+			name:                     "changed to empty",
+			props1:                   []string{"val1"},
+			props2:                   []string{},
+			expectedAttrDetailedDiff: map[string]interface{}{"tests": map[string]interface{}{"kind": "DELETE"}},
+			expectedAttr: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -3769,8 +3769,8 @@ resources:
       -     [0]: "val1"
         ]
 `),
-			map[string]interface{}{"tests": map[string]interface{}{"kind": "DELETE_REPLACE"}},
-			autogold.Expect(`
+			expectedAttrForceNewDetailedDiff: map[string]interface{}{"tests": map[string]interface{}{"kind": "DELETE_REPLACE"}},
+			expectedAttrForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -3778,8 +3778,8 @@ resources:
       -     [0]: "val1"
         ]
 `),
-			map[string]interface{}{"tests": map[string]interface{}{"kind": "DELETE"}},
-			autogold.Expect(`
+			expectedBlockDetailedDiff: map[string]interface{}{"tests": map[string]interface{}{"kind": "DELETE"}},
+			expectedBlock: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -3789,8 +3789,8 @@ resources:
             }
         ]
 `),
-			map[string]interface{}{"tests": map[string]interface{}{"kind": "DELETE_REPLACE"}},
-			autogold.Expect(`
+			expectedBlockForceNewDetailedDiff: map[string]interface{}{"tests": map[string]interface{}{"kind": "DELETE_REPLACE"}},
+			expectedBlockForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -3802,11 +3802,11 @@ resources:
 `),
 		},
 		{
-			"removed front",
-			[]string{"val1", "val2", "val3"},
-			[]string{"val2", "val3"},
-			map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "DELETE"}},
-			autogold.Expect(`
+			name:                     "removed front",
+			props1:                   []string{"val1", "val2", "val3"},
+			props2:                   []string{"val2", "val3"},
+			expectedAttrDetailedDiff: map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "DELETE"}},
+			expectedAttr: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -3814,8 +3814,8 @@ resources:
           - [0]: "val1"
         ]
 `),
-			map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "DELETE_REPLACE"}},
-			autogold.Expect(`
+			expectedAttrForceNewDetailedDiff: map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "DELETE_REPLACE"}},
+			expectedAttrForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -3823,8 +3823,8 @@ resources:
           - [0]: "val1"
         ]
 `),
-			map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "DELETE"}},
-			autogold.Expect(`
+			expectedBlockDetailedDiff: map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "DELETE"}},
+			expectedBlock: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -3834,233 +3834,8 @@ resources:
                 }
         ]
 `),
-			map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "DELETE_REPLACE"}},
-			autogold.Expect(`
-    +-prov:index/test:Test: (replace)
-        [id=newid]
-        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-      ~ tests: [
-          - [0]: {
-                  - nested: "val1"
-                }
-        ]
-`),
-		},
-		{
-			"removed front unordered",
-			[]string{"val2", "val1", "val3"},
-			[]string{"val1", "val3"},
-			map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "DELETE"}},
-			autogold.Expect(`
-    ~ prov:index/test:Test: (update)
-        [id=newid]
-        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-      ~ tests: [
-          - [1]: "val2"
-        ]
-`),
-			map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "DELETE_REPLACE"}},
-			autogold.Expect(`
-    +-prov:index/test:Test: (replace)
-        [id=newid]
-        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-      ~ tests: [
-          - [1]: "val2"
-        ]
-`),
-			map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "DELETE"}},
-			autogold.Expect(`
-    ~ prov:index/test:Test: (update)
-        [id=newid]
-        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-      ~ tests: [
-          - [1]: {
-                  - nested: "val2"
-                }
-        ]
-`),
-			map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "DELETE_REPLACE"}},
-			autogold.Expect(`
-    +-prov:index/test:Test: (replace)
-        [id=newid]
-        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-      ~ tests: [
-          - [1]: {
-                  - nested: "val2"
-                }
-        ]
-`),
-		},
-		{
-			"removed middle",
-			[]string{"val1", "val2", "val3"},
-			[]string{"val1", "val3"},
-			map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "DELETE"}},
-			autogold.Expect(`
-    ~ prov:index/test:Test: (update)
-        [id=newid]
-        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-      ~ tests: [
-          - [1]: "val2"
-        ]
-`),
-			map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "DELETE_REPLACE"}},
-			autogold.Expect(`
-    +-prov:index/test:Test: (replace)
-        [id=newid]
-        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-      ~ tests: [
-          - [1]: "val2"
-        ]
-`),
-			map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "DELETE"}},
-			autogold.Expect(`
-    ~ prov:index/test:Test: (update)
-        [id=newid]
-        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-      ~ tests: [
-          - [1]: {
-                  - nested: "val2"
-                }
-        ]
-`),
-			map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "DELETE_REPLACE"}},
-			autogold.Expect(`
-    +-prov:index/test:Test: (replace)
-        [id=newid]
-        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-      ~ tests: [
-          - [1]: {
-                  - nested: "val2"
-                }
-        ]
-`),
-		},
-		{
-			"removed middle unordered",
-			[]string{"val2", "val3", "val1"},
-			[]string{"val2", "val1"},
-			map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE"}},
-			autogold.Expect(`
-    ~ prov:index/test:Test: (update)
-        [id=newid]
-        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-      ~ tests: [
-          - [2]: "val3"
-        ]
-`),
-			map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE_REPLACE"}},
-			autogold.Expect(`
-    +-prov:index/test:Test: (replace)
-        [id=newid]
-        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-      ~ tests: [
-          - [2]: "val3"
-        ]
-`),
-			map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE"}},
-			autogold.Expect(`
-    ~ prov:index/test:Test: (update)
-        [id=newid]
-        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-      ~ tests: [
-          - [2]: {
-                  - nested: "val3"
-                }
-        ]
-`),
-			map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE_REPLACE"}},
-			autogold.Expect(`
-    +-prov:index/test:Test: (replace)
-        [id=newid]
-        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-      ~ tests: [
-          - [2]: {
-                  - nested: "val3"
-                }
-        ]
-`),
-		},
-		{
-			"removed end",
-			[]string{"val1", "val2", "val3"},
-			[]string{"val1", "val2"},
-			map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE"}},
-			autogold.Expect(`
-    ~ prov:index/test:Test: (update)
-        [id=newid]
-        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-      ~ tests: [
-          - [2]: "val3"
-        ]
-`),
-			map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE_REPLACE"}},
-			autogold.Expect(`
-    +-prov:index/test:Test: (replace)
-        [id=newid]
-        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-      ~ tests: [
-          - [2]: "val3"
-        ]
-`),
-			map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE"}},
-			autogold.Expect(`
-    ~ prov:index/test:Test: (update)
-        [id=newid]
-        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-      ~ tests: [
-          - [2]: {
-                  - nested: "val3"
-                }
-        ]
-`),
-			map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE_REPLACE"}},
-			autogold.Expect(`
-    +-prov:index/test:Test: (replace)
-        [id=newid]
-        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-      ~ tests: [
-          - [2]: {
-                  - nested: "val3"
-                }
-        ]
-`),
-		},
-		{
-			"removed end unordered",
-			[]string{"val2", "val3", "val1"},
-			[]string{"val2", "val3"},
-			map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "DELETE"}},
-			autogold.Expect(`
-    ~ prov:index/test:Test: (update)
-        [id=newid]
-        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-      ~ tests: [
-          - [0]: "val1"
-        ]
-`),
-			map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "DELETE_REPLACE"}},
-			autogold.Expect(`
-    +-prov:index/test:Test: (replace)
-        [id=newid]
-        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-      ~ tests: [
-          - [0]: "val1"
-        ]
-`),
-			map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "DELETE"}},
-			autogold.Expect(`
-    ~ prov:index/test:Test: (update)
-        [id=newid]
-        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-      ~ tests: [
-          - [0]: {
-                  - nested: "val1"
-                }
-        ]
-`),
-			map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "DELETE_REPLACE"}},
-			autogold.Expect(`
+			expectedBlockForceNewDetailedDiff: map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "DELETE_REPLACE"}},
+			expectedBlockForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4072,11 +3847,236 @@ resources:
 `),
 		},
 		{
-			"added front",
-			[]string{"val2", "val3"},
-			[]string{"val1", "val2", "val3"},
-			map[string]interface{}{"tests[0]": map[string]interface{}{}},
-			autogold.Expect(`
+			name:                     "removed front unordered",
+			props1:                   []string{"val2", "val1", "val3"},
+			props2:                   []string{"val1", "val3"},
+			expectedAttrDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "DELETE"}},
+			expectedAttr: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [1]: "val2"
+        ]
+`),
+			expectedAttrForceNewDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "DELETE_REPLACE"}},
+			expectedAttrForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [1]: "val2"
+        ]
+`),
+			expectedBlockDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "DELETE"}},
+			expectedBlock: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [1]: {
+                  - nested: "val2"
+                }
+        ]
+`),
+			expectedBlockForceNewDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "DELETE_REPLACE"}},
+			expectedBlockForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [1]: {
+                  - nested: "val2"
+                }
+        ]
+`),
+		},
+		{
+			name:                     "removed middle",
+			props1:                   []string{"val1", "val2", "val3"},
+			props2:                   []string{"val1", "val3"},
+			expectedAttrDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "DELETE"}},
+			expectedAttr: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [1]: "val2"
+        ]
+`),
+			expectedAttrForceNewDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "DELETE_REPLACE"}},
+			expectedAttrForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [1]: "val2"
+        ]
+`),
+			expectedBlockDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "DELETE"}},
+			expectedBlock: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [1]: {
+                  - nested: "val2"
+                }
+        ]
+`),
+			expectedBlockForceNewDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "DELETE_REPLACE"}},
+			expectedBlockForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [1]: {
+                  - nested: "val2"
+                }
+        ]
+`),
+		},
+		{
+			name:                     "removed middle unordered",
+			props1:                   []string{"val2", "val3", "val1"},
+			props2:                   []string{"val2", "val1"},
+			expectedAttrDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE"}},
+			expectedAttr: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [2]: "val3"
+        ]
+`),
+			expectedAttrForceNewDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE_REPLACE"}},
+			expectedAttrForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [2]: "val3"
+        ]
+`),
+			expectedBlockDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE"}},
+			expectedBlock: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [2]: {
+                  - nested: "val3"
+                }
+        ]
+`),
+			expectedBlockForceNewDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE_REPLACE"}},
+			expectedBlockForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [2]: {
+                  - nested: "val3"
+                }
+        ]
+`),
+		},
+		{
+			name:                     "removed end",
+			props1:                   []string{"val1", "val2", "val3"},
+			props2:                   []string{"val1", "val2"},
+			expectedAttrDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE"}},
+			expectedAttr: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [2]: "val3"
+        ]
+`),
+			expectedAttrForceNewDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE_REPLACE"}},
+			expectedAttrForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [2]: "val3"
+        ]
+`),
+			expectedBlockDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE"}},
+			expectedBlock: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [2]: {
+                  - nested: "val3"
+                }
+        ]
+`),
+			expectedBlockForceNewDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE_REPLACE"}},
+			expectedBlockForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [2]: {
+                  - nested: "val3"
+                }
+        ]
+`),
+		},
+		{
+			name:                     "removed end unordered",
+			props1:                   []string{"val2", "val3", "val1"},
+			props2:                   []string{"val2", "val3"},
+			expectedAttrDetailedDiff: map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "DELETE"}},
+			expectedAttr: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [0]: "val1"
+        ]
+`),
+			expectedAttrForceNewDetailedDiff: map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "DELETE_REPLACE"}},
+			expectedAttrForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [0]: "val1"
+        ]
+`),
+			expectedBlockDetailedDiff: map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "DELETE"}},
+			expectedBlock: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [0]: {
+                  - nested: "val1"
+                }
+        ]
+`),
+			expectedBlockForceNewDetailedDiff: map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "DELETE_REPLACE"}},
+			expectedBlockForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [0]: {
+                  - nested: "val1"
+                }
+        ]
+`),
+		},
+		{
+			name:                     "added front",
+			props1:                   []string{"val2", "val3"},
+			props2:                   []string{"val1", "val2", "val3"},
+			expectedAttrDetailedDiff: map[string]interface{}{"tests[0]": map[string]interface{}{}},
+			expectedAttr: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4084,8 +4084,8 @@ resources:
           + [0]: "val1"
         ]
 `),
-			map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "ADD_REPLACE"}},
-			autogold.Expect(`
+			expectedAttrForceNewDetailedDiff: map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "ADD_REPLACE"}},
+			expectedAttrForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4093,8 +4093,8 @@ resources:
           + [0]: "val1"
         ]
 `),
-			map[string]interface{}{"tests[0]": map[string]interface{}{}},
-			autogold.Expect(`
+			expectedBlockDetailedDiff: map[string]interface{}{"tests[0]": map[string]interface{}{}},
+			expectedBlock: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4104,8 +4104,8 @@ resources:
                 }
         ]
 `),
-			map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "ADD_REPLACE"}},
-			autogold.Expect(`
+			expectedBlockForceNewDetailedDiff: map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "ADD_REPLACE"}},
+			expectedBlockForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4117,11 +4117,11 @@ resources:
 `),
 		},
 		{
-			"added front unordered",
-			[]string{"val3", "val1"},
-			[]string{"val2", "val2", "val1"},
-			map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "UPDATE"}},
-			autogold.Expect(`
+			name:                     "added front unordered",
+			props1:                   []string{"val3", "val1"},
+			props2:                   []string{"val2", "val2", "val1"},
+			expectedAttrDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "UPDATE"}},
+			expectedAttr: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4129,8 +4129,8 @@ resources:
           ~ [1]: "val3" => "val2"
         ]
 `),
-			map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "UPDATE_REPLACE"}},
-			autogold.Expect(`
+			expectedAttrForceNewDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "UPDATE_REPLACE"}},
+			expectedAttrForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4138,8 +4138,8 @@ resources:
           ~ [1]: "val3" => "val2"
         ]
 `),
-			map[string]interface{}{"tests[1].nested": map[string]interface{}{"kind": "UPDATE"}},
-			autogold.Expect(`
+			expectedBlockDetailedDiff: map[string]interface{}{"tests[1].nested": map[string]interface{}{"kind": "UPDATE"}},
+			expectedBlock: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4149,8 +4149,8 @@ resources:
                 }
         ]
 `),
-			map[string]interface{}{"tests[1].nested": map[string]interface{}{"kind": "UPDATE_REPLACE"}},
-			autogold.Expect(`
+			expectedBlockForceNewDetailedDiff: map[string]interface{}{"tests[1].nested": map[string]interface{}{"kind": "UPDATE_REPLACE"}},
+			expectedBlockForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4162,11 +4162,11 @@ resources:
 `),
 		},
 		{
-			"added middle",
-			[]string{"val1", "val3"},
-			[]string{"val1", "val2", "val3"},
-			map[string]interface{}{"tests[1]": map[string]interface{}{}},
-			autogold.Expect(`
+			name:                     "added middle",
+			props1:                   []string{"val1", "val3"},
+			props2:                   []string{"val1", "val2", "val3"},
+			expectedAttrDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{}},
+			expectedAttr: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4174,8 +4174,8 @@ resources:
           + [1]: "val2"
         ]
 `),
-			map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "ADD_REPLACE"}},
-			autogold.Expect(`
+			expectedAttrForceNewDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "ADD_REPLACE"}},
+			expectedAttrForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4183,8 +4183,8 @@ resources:
           + [1]: "val2"
         ]
 `),
-			map[string]interface{}{"tests[1]": map[string]interface{}{}},
-			autogold.Expect(`
+			expectedBlockDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{}},
+			expectedBlock: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4194,8 +4194,8 @@ resources:
                 }
         ]
 `),
-			map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "ADD_REPLACE"}},
-			autogold.Expect(`
+			expectedBlockForceNewDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "ADD_REPLACE"}},
+			expectedBlockForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4207,11 +4207,11 @@ resources:
 `),
 		},
 		{
-			"added middle unordered",
-			[]string{"val2", "val1"},
-			[]string{"val2", "val3", "val1"},
-			map[string]interface{}{"tests[1]": map[string]interface{}{}},
-			autogold.Expect(`
+			name:                     "added middle unordered",
+			props1:                   []string{"val2", "val1"},
+			props2:                   []string{"val2", "val3", "val1"},
+			expectedAttrDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{}},
+			expectedAttr: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4219,8 +4219,8 @@ resources:
           + [1]: "val3"
         ]
 `),
-			map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "ADD_REPLACE"}},
-			autogold.Expect(`
+			expectedAttrForceNewDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "ADD_REPLACE"}},
+			expectedAttrForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4228,8 +4228,8 @@ resources:
           + [1]: "val3"
         ]
 `),
-			map[string]interface{}{"tests[1]": map[string]interface{}{}},
-			autogold.Expect(`
+			expectedBlockDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{}},
+			expectedBlock: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4239,8 +4239,8 @@ resources:
                 }
         ]
 `),
-			map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "ADD_REPLACE"}},
-			autogold.Expect(`
+			expectedBlockForceNewDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "ADD_REPLACE"}},
+			expectedBlockForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4252,11 +4252,11 @@ resources:
 `),
 		},
 		{
-			"added end",
-			[]string{"val1", "val2"},
-			[]string{"val1", "val2", "val3"},
-			map[string]interface{}{"tests[2]": map[string]interface{}{}},
-			autogold.Expect(`
+			name:                     "added end",
+			props1:                   []string{"val1", "val2"},
+			props2:                   []string{"val1", "val2", "val3"},
+			expectedAttrDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{}},
+			expectedAttr: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4264,8 +4264,8 @@ resources:
           + [2]: "val3"
         ]
 `),
-			map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "ADD_REPLACE"}},
-			autogold.Expect(`
+			expectedAttrForceNewDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "ADD_REPLACE"}},
+			expectedAttrForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4273,8 +4273,8 @@ resources:
           + [2]: "val3"
         ]
 `),
-			map[string]interface{}{"tests[2]": map[string]interface{}{}},
-			autogold.Expect(`
+			expectedBlockDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{}},
+			expectedBlock: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4284,8 +4284,8 @@ resources:
                 }
         ]
 `),
-			map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "ADD_REPLACE"}},
-			autogold.Expect(`
+			expectedBlockForceNewDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "ADD_REPLACE"}},
+			expectedBlockForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4297,11 +4297,11 @@ resources:
 `),
 		},
 		{
-			"added end unordered",
-			[]string{"val2", "val3"},
-			[]string{"val2", "val3", "val1"},
-			map[string]interface{}{"tests[2]": map[string]interface{}{}},
-			autogold.Expect(`
+			name:                     "added end unordered",
+			props1:                   []string{"val2", "val3"},
+			props2:                   []string{"val2", "val3", "val1"},
+			expectedAttrDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{}},
+			expectedAttr: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4309,8 +4309,8 @@ resources:
           + [2]: "val1"
         ]
 `),
-			map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "ADD_REPLACE"}},
-			autogold.Expect(`
+			expectedAttrForceNewDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "ADD_REPLACE"}},
+			expectedAttrForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4318,8 +4318,8 @@ resources:
           + [2]: "val1"
         ]
 `),
-			map[string]interface{}{"tests[2]": map[string]interface{}{}},
-			autogold.Expect(`
+			expectedBlockDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{}},
+			expectedBlock: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4329,8 +4329,8 @@ resources:
                 }
         ]
 `),
-			map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "ADD_REPLACE"}},
-			autogold.Expect(`
+			expectedBlockForceNewDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "ADD_REPLACE"}},
+			expectedBlockForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4342,11 +4342,11 @@ resources:
 `),
 		},
 		{
-			"same element updated",
-			[]string{"val1", "val2", "val3"},
-			[]string{"val1", "val4", "val3"},
-			map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "UPDATE"}},
-			autogold.Expect(`
+			name:                     "same element updated",
+			props1:                   []string{"val1", "val2", "val3"},
+			props2:                   []string{"val1", "val4", "val3"},
+			expectedAttrDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "UPDATE"}},
+			expectedAttr: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4354,8 +4354,8 @@ resources:
           ~ [1]: "val2" => "val4"
         ]
 `),
-			map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "UPDATE_REPLACE"}},
-			autogold.Expect(`
+			expectedAttrForceNewDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "UPDATE_REPLACE"}},
+			expectedAttrForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4363,8 +4363,8 @@ resources:
           ~ [1]: "val2" => "val4"
         ]
 `),
-			map[string]interface{}{"tests[1].nested": map[string]interface{}{"kind": "UPDATE"}},
-			autogold.Expect(`
+			expectedBlockDetailedDiff: map[string]interface{}{"tests[1].nested": map[string]interface{}{"kind": "UPDATE"}},
+			expectedBlock: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4374,8 +4374,8 @@ resources:
                 }
         ]
 `),
-			map[string]interface{}{"tests[1].nested": map[string]interface{}{"kind": "UPDATE_REPLACE"}},
-			autogold.Expect(`
+			expectedBlockForceNewDetailedDiff: map[string]interface{}{"tests[1].nested": map[string]interface{}{"kind": "UPDATE_REPLACE"}},
+			expectedBlockForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4387,14 +4387,14 @@ resources:
 `),
 		},
 		{
-			"same element updated unordered",
-			[]string{"val2", "val3", "val1"},
-			[]string{"val2", "val4", "val1"},
-			map[string]interface{}{
+			name:   "same element updated unordered",
+			props1: []string{"val2", "val3", "val1"},
+			props2: []string{"val2", "val4", "val1"},
+			expectedAttrDetailedDiff: map[string]interface{}{
 				"tests[1]": map[string]interface{}{},
 				"tests[2]": map[string]interface{}{"kind": "DELETE"},
 			},
-			autogold.Expect(`
+			expectedAttr: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4403,11 +4403,11 @@ resources:
           - [2]: "val3"
         ]
 `),
-			map[string]interface{}{
+			expectedAttrForceNewDetailedDiff: map[string]interface{}{
 				"tests[1]": map[string]interface{}{"kind": "ADD_REPLACE"},
 				"tests[2]": map[string]interface{}{"kind": "DELETE_REPLACE"},
 			},
-			autogold.Expect(`
+			expectedAttrForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4416,11 +4416,11 @@ resources:
           - [2]: "val3"
         ]
 `),
-			map[string]interface{}{
+			expectedBlockDetailedDiff: map[string]interface{}{
 				"tests[1]": map[string]interface{}{},
 				"tests[2]": map[string]interface{}{"kind": "DELETE"},
 			},
-			autogold.Expect(`
+			expectedBlock: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4433,11 +4433,11 @@ resources:
                 }
         ]
 `),
-			map[string]interface{}{
+			expectedBlockForceNewDetailedDiff: map[string]interface{}{
 				"tests[1]": map[string]interface{}{"kind": "ADD_REPLACE"},
 				"tests[2]": map[string]interface{}{"kind": "DELETE_REPLACE"},
 			},
-			autogold.Expect(`
+			expectedBlockForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4452,63 +4452,63 @@ resources:
 `),
 		},
 		{
-			"shuffled",
-			[]string{"val1", "val2", "val3"},
-			[]string{"val3", "val1", "val2"},
-			nil,
-			autogold.Expect("\n"),
-			nil,
-			autogold.Expect("\n"),
-			nil,
-			autogold.Expect("\n"),
-			nil,
-			autogold.Expect("\n"),
+			name:                              "shuffled",
+			props1:                            []string{"val1", "val2", "val3"},
+			props2:                            []string{"val3", "val1", "val2"},
+			expectedAttrDetailedDiff:          nil,
+			expectedAttr:                      autogold.Expect("\n"),
+			expectedAttrForceNewDetailedDiff:  nil,
+			expectedAttrForceNew:              autogold.Expect("\n"),
+			expectedBlockDetailedDiff:         nil,
+			expectedBlock:                     autogold.Expect("\n"),
+			expectedBlockForceNewDetailedDiff: nil,
+			expectedBlockForceNew:             autogold.Expect("\n"),
 		},
 		{
-			"shuffled unordered",
-			[]string{"val2", "val3", "val1"},
-			[]string{"val3", "val1", "val2"},
-			nil,
-			autogold.Expect("\n"),
-			nil,
-			autogold.Expect("\n"),
-			nil,
-			autogold.Expect("\n"),
-			nil,
-			autogold.Expect("\n"),
+			name:                              "shuffled unordered",
+			props1:                            []string{"val2", "val3", "val1"},
+			props2:                            []string{"val3", "val1", "val2"},
+			expectedAttrDetailedDiff:          nil,
+			expectedAttr:                      autogold.Expect("\n"),
+			expectedAttrForceNewDetailedDiff:  nil,
+			expectedAttrForceNew:              autogold.Expect("\n"),
+			expectedBlockDetailedDiff:         nil,
+			expectedBlock:                     autogold.Expect("\n"),
+			expectedBlockForceNewDetailedDiff: nil,
+			expectedBlockForceNew:             autogold.Expect("\n"),
 		},
 		{
-			"shuffled with duplicates",
-			[]string{"val1", "val2", "val3"},
-			[]string{"val3", "val1", "val2", "val3"},
-			nil,
-			autogold.Expect("\n"),
-			nil,
-			autogold.Expect("\n"),
-			nil,
-			autogold.Expect("\n"),
-			nil,
-			autogold.Expect("\n"),
+			name:                              "shuffled with duplicates",
+			props1:                            []string{"val1", "val2", "val3"},
+			props2:                            []string{"val3", "val1", "val2", "val3"},
+			expectedAttrDetailedDiff:          nil,
+			expectedAttr:                      autogold.Expect("\n"),
+			expectedAttrForceNewDetailedDiff:  nil,
+			expectedAttrForceNew:              autogold.Expect("\n"),
+			expectedBlockDetailedDiff:         nil,
+			expectedBlock:                     autogold.Expect("\n"),
+			expectedBlockForceNewDetailedDiff: nil,
+			expectedBlockForceNew:             autogold.Expect("\n"),
 		},
 		{
-			"shuffled with duplicates unordered",
-			[]string{"val2", "val3", "val1"},
-			[]string{"val3", "val1", "val2", "val3"},
-			nil,
-			autogold.Expect("\n"),
-			nil,
-			autogold.Expect("\n"),
-			nil,
-			autogold.Expect("\n"),
-			nil,
-			autogold.Expect("\n"),
+			name:                              "shuffled with duplicates unordered",
+			props1:                            []string{"val2", "val3", "val1"},
+			props2:                            []string{"val3", "val1", "val2", "val3"},
+			expectedAttrDetailedDiff:          nil,
+			expectedAttr:                      autogold.Expect("\n"),
+			expectedAttrForceNewDetailedDiff:  nil,
+			expectedAttrForceNew:              autogold.Expect("\n"),
+			expectedBlockDetailedDiff:         nil,
+			expectedBlock:                     autogold.Expect("\n"),
+			expectedBlockForceNewDetailedDiff: nil,
+			expectedBlockForceNew:             autogold.Expect("\n"),
 		},
 		{
-			"shuffled added front",
-			[]string{"val2", "val3"},
-			[]string{"val1", "val3", "val2"},
-			map[string]interface{}{"tests[0]": map[string]interface{}{}},
-			autogold.Expect(`
+			name:                     "shuffled added front",
+			props1:                   []string{"val2", "val3"},
+			props2:                   []string{"val1", "val3", "val2"},
+			expectedAttrDetailedDiff: map[string]interface{}{"tests[0]": map[string]interface{}{}},
+			expectedAttr: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4516,8 +4516,8 @@ resources:
           + [0]: "val1"
         ]
 `),
-			map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "ADD_REPLACE"}},
-			autogold.Expect(`
+			expectedAttrForceNewDetailedDiff: map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "ADD_REPLACE"}},
+			expectedAttrForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4525,8 +4525,8 @@ resources:
           + [0]: "val1"
         ]
 `),
-			map[string]interface{}{"tests[0]": map[string]interface{}{}},
-			autogold.Expect(`
+			expectedBlockDetailedDiff: map[string]interface{}{"tests[0]": map[string]interface{}{}},
+			expectedBlock: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4536,8 +4536,8 @@ resources:
                 }
         ]
 `),
-			map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "ADD_REPLACE"}},
-			autogold.Expect(`
+			expectedBlockForceNewDetailedDiff: map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "ADD_REPLACE"}},
+			expectedBlockForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4549,11 +4549,11 @@ resources:
 `),
 		},
 		{
-			"shuffled added front unordered",
-			[]string{"val3", "val1"},
-			[]string{"val2", "val1", "val3"},
-			map[string]interface{}{"tests[0]": map[string]interface{}{}},
-			autogold.Expect(`
+			name:                     "shuffled added front unordered",
+			props1:                   []string{"val3", "val1"},
+			props2:                   []string{"val2", "val1", "val3"},
+			expectedAttrDetailedDiff: map[string]interface{}{"tests[0]": map[string]interface{}{}},
+			expectedAttr: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4561,8 +4561,8 @@ resources:
           + [0]: "val2"
         ]
 `),
-			map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "ADD_REPLACE"}},
-			autogold.Expect(`
+			expectedAttrForceNewDetailedDiff: map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "ADD_REPLACE"}},
+			expectedAttrForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4570,8 +4570,8 @@ resources:
           + [0]: "val2"
         ]
 `),
-			map[string]interface{}{"tests[0]": map[string]interface{}{}},
-			autogold.Expect(`
+			expectedBlockDetailedDiff: map[string]interface{}{"tests[0]": map[string]interface{}{}},
+			expectedBlock: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4581,8 +4581,8 @@ resources:
                 }
         ]
 `),
-			map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "ADD_REPLACE"}},
-			autogold.Expect(`
+			expectedBlockForceNewDetailedDiff: map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "ADD_REPLACE"}},
+			expectedBlockForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4594,11 +4594,11 @@ resources:
 `),
 		},
 		{
-			"shuffled added middle",
-			[]string{"val1", "val3"},
-			[]string{"val3", "val2", "val1"},
-			map[string]interface{}{"tests[1]": map[string]interface{}{}},
-			autogold.Expect(`
+			name:                     "shuffled added middle",
+			props1:                   []string{"val1", "val3"},
+			props2:                   []string{"val3", "val2", "val1"},
+			expectedAttrDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{}},
+			expectedAttr: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4606,8 +4606,8 @@ resources:
           + [1]: "val2"
         ]
 `),
-			map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "ADD_REPLACE"}},
-			autogold.Expect(`
+			expectedAttrForceNewDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "ADD_REPLACE"}},
+			expectedAttrForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4615,8 +4615,8 @@ resources:
           + [1]: "val2"
         ]
 `),
-			map[string]interface{}{"tests[1]": map[string]interface{}{}},
-			autogold.Expect(`
+			expectedBlockDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{}},
+			expectedBlock: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4626,8 +4626,8 @@ resources:
                 }
         ]
 `),
-			map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "ADD_REPLACE"}},
-			autogold.Expect(`
+			expectedBlockForceNewDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "ADD_REPLACE"}},
+			expectedBlockForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4639,11 +4639,11 @@ resources:
 `),
 		},
 		{
-			"shuffled added middle unordered",
-			[]string{"val2", "val1"},
-			[]string{"val1", "val3", "val2"},
-			map[string]interface{}{"tests[1]": map[string]interface{}{}},
-			autogold.Expect(`
+			name:                     "shuffled added middle unordered",
+			props1:                   []string{"val2", "val1"},
+			props2:                   []string{"val1", "val3", "val2"},
+			expectedAttrDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{}},
+			expectedAttr: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4651,8 +4651,8 @@ resources:
           + [1]: "val3"
         ]
 `),
-			map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "ADD_REPLACE"}},
-			autogold.Expect(`
+			expectedAttrForceNewDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "ADD_REPLACE"}},
+			expectedAttrForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4660,8 +4660,8 @@ resources:
           + [1]: "val3"
         ]
 `),
-			map[string]interface{}{"tests[1]": map[string]interface{}{}},
-			autogold.Expect(`
+			expectedBlockDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{}},
+			expectedBlock: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4671,8 +4671,8 @@ resources:
                 }
         ]
 `),
-			map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "ADD_REPLACE"}},
-			autogold.Expect(`
+			expectedBlockForceNewDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "ADD_REPLACE"}},
+			expectedBlockForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4684,11 +4684,11 @@ resources:
 `),
 		},
 		{
-			"shuffled added end",
-			[]string{"val1", "val2"},
-			[]string{"val2", "val1", "val3"},
-			map[string]interface{}{"tests[2]": map[string]interface{}{}},
-			autogold.Expect(`
+			name:                     "shuffled added end",
+			props1:                   []string{"val1", "val2"},
+			props2:                   []string{"val2", "val1", "val3"},
+			expectedAttrDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{}},
+			expectedAttr: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4696,8 +4696,8 @@ resources:
           + [2]: "val3"
         ]
 `),
-			map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "ADD_REPLACE"}},
-			autogold.Expect(`
+			expectedAttrForceNewDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "ADD_REPLACE"}},
+			expectedAttrForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4705,8 +4705,8 @@ resources:
           + [2]: "val3"
         ]
 `),
-			map[string]interface{}{"tests[2]": map[string]interface{}{}},
-			autogold.Expect(`
+			expectedBlockDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{}},
+			expectedBlock: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4716,8 +4716,8 @@ resources:
                 }
         ]
 `),
-			map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "ADD_REPLACE"}},
-			autogold.Expect(`
+			expectedBlockForceNewDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "ADD_REPLACE"}},
+			expectedBlockForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4729,11 +4729,11 @@ resources:
 `),
 		},
 		{
-			"shuffled removed front",
-			[]string{"val1", "val2", "val3"},
-			[]string{"val3", "val2"},
-			map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "DELETE"}},
-			autogold.Expect(`
+			name:                     "shuffled removed front",
+			props1:                   []string{"val1", "val2", "val3"},
+			props2:                   []string{"val3", "val2"},
+			expectedAttrDetailedDiff: map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "DELETE"}},
+			expectedAttr: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4741,8 +4741,8 @@ resources:
           - [0]: "val1"
         ]
 `),
-			map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "DELETE_REPLACE"}},
-			autogold.Expect(`
+			expectedAttrForceNewDetailedDiff: map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "DELETE_REPLACE"}},
+			expectedAttrForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4750,8 +4750,8 @@ resources:
           - [0]: "val1"
         ]
 `),
-			map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "DELETE"}},
-			autogold.Expect(`
+			expectedBlockDetailedDiff: map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "DELETE"}},
+			expectedBlock: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4761,8 +4761,8 @@ resources:
                 }
         ]
 `),
-			map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "DELETE_REPLACE"}},
-			autogold.Expect(`
+			expectedBlockForceNewDetailedDiff: map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "DELETE_REPLACE"}},
+			expectedBlockForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4774,11 +4774,11 @@ resources:
 `),
 		},
 		{
-			"shuffled removed middle",
-			[]string{"val1", "val2", "val3"},
-			[]string{"val3", "val1"},
-			map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "DELETE"}},
-			autogold.Expect(`
+			name:                     "shuffled removed middle",
+			props1:                   []string{"val1", "val2", "val3"},
+			props2:                   []string{"val3", "val1"},
+			expectedAttrDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "DELETE"}},
+			expectedAttr: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4786,8 +4786,8 @@ resources:
           - [1]: "val2"
         ]
 `),
-			map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "DELETE_REPLACE"}},
-			autogold.Expect(`
+			expectedAttrForceNewDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "DELETE_REPLACE"}},
+			expectedAttrForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4795,8 +4795,8 @@ resources:
           - [1]: "val2"
         ]
 `),
-			map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "DELETE"}},
-			autogold.Expect(`
+			expectedBlockDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "DELETE"}},
+			expectedBlock: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4806,8 +4806,8 @@ resources:
                 }
         ]
 `),
-			map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "DELETE_REPLACE"}},
-			autogold.Expect(`
+			expectedBlockForceNewDetailedDiff: map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "DELETE_REPLACE"}},
+			expectedBlockForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4819,11 +4819,11 @@ resources:
 `),
 		},
 		{
-			"shuffled removed end",
-			[]string{"val1", "val2", "val3"},
-			[]string{"val2", "val1"},
-			map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE"}},
-			autogold.Expect(`
+			name:                     "shuffled removed end",
+			props1:                   []string{"val1", "val2", "val3"},
+			props2:                   []string{"val2", "val1"},
+			expectedAttrDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE"}},
+			expectedAttr: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4831,8 +4831,8 @@ resources:
           - [2]: "val3"
         ]
 `),
-			map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE_REPLACE"}},
-			autogold.Expect(`
+			expectedAttrForceNewDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE_REPLACE"}},
+			expectedAttrForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4840,8 +4840,8 @@ resources:
           - [2]: "val3"
         ]
 `),
-			map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE"}},
-			autogold.Expect(`
+			expectedBlockDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE"}},
+			expectedBlock: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4851,8 +4851,8 @@ resources:
                 }
         ]
 `),
-			map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE_REPLACE"}},
-			autogold.Expect(`
+			expectedBlockForceNewDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE_REPLACE"}},
+			expectedBlockForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4864,11 +4864,11 @@ resources:
 `),
 		},
 		{
-			"two added",
-			[]string{"val1", "val2"},
-			[]string{"val1", "val2", "val3", "val4"},
-			map[string]interface{}{"tests[2]": map[string]interface{}{}, "tests[3]": map[string]interface{}{}},
-			autogold.Expect(`
+			name:                     "two added",
+			props1:                   []string{"val1", "val2"},
+			props2:                   []string{"val1", "val2", "val3", "val4"},
+			expectedAttrDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{}, "tests[3]": map[string]interface{}{}},
+			expectedAttr: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4877,8 +4877,8 @@ resources:
           + [3]: "val4"
         ]
 `),
-			map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "ADD_REPLACE"}, "tests[3]": map[string]interface{}{"kind": "ADD_REPLACE"}},
-			autogold.Expect(`
+			expectedAttrForceNewDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "ADD_REPLACE"}, "tests[3]": map[string]interface{}{"kind": "ADD_REPLACE"}},
+			expectedAttrForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4887,8 +4887,8 @@ resources:
           + [3]: "val4"
         ]
 `),
-			map[string]interface{}{"tests[2]": map[string]interface{}{}, "tests[3]": map[string]interface{}{}},
-			autogold.Expect(`
+			expectedBlockDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{}, "tests[3]": map[string]interface{}{}},
+			expectedBlock: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4901,8 +4901,8 @@ resources:
                 }
         ]
 `),
-			map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "ADD_REPLACE"}, "tests[3]": map[string]interface{}{"kind": "ADD_REPLACE"}},
-			autogold.Expect(`
+			expectedBlockForceNewDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "ADD_REPLACE"}, "tests[3]": map[string]interface{}{"kind": "ADD_REPLACE"}},
+			expectedBlockForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4917,11 +4917,11 @@ resources:
 `),
 		},
 		{
-			"two removed",
-			[]string{"val1", "val2", "val3", "val4"},
-			[]string{"val1", "val2"},
-			map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE"}, "tests[3]": map[string]interface{}{"kind": "DELETE"}},
-			autogold.Expect(`
+			name:                     "two removed",
+			props1:                   []string{"val1", "val2", "val3", "val4"},
+			props2:                   []string{"val1", "val2"},
+			expectedAttrDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE"}, "tests[3]": map[string]interface{}{"kind": "DELETE"}},
+			expectedAttr: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4930,8 +4930,8 @@ resources:
           - [3]: "val4"
         ]
 `),
-			map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE_REPLACE"}, "tests[3]": map[string]interface{}{"kind": "DELETE_REPLACE"}},
-			autogold.Expect(`
+			expectedAttrForceNewDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE_REPLACE"}, "tests[3]": map[string]interface{}{"kind": "DELETE_REPLACE"}},
+			expectedAttrForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4940,8 +4940,8 @@ resources:
           - [3]: "val4"
         ]
 `),
-			map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE"}, "tests[3]": map[string]interface{}{"kind": "DELETE"}},
-			autogold.Expect(`
+			expectedBlockDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE"}, "tests[3]": map[string]interface{}{"kind": "DELETE"}},
+			expectedBlock: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4954,8 +4954,8 @@ resources:
                 }
         ]
 `),
-			map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE_REPLACE"}, "tests[3]": map[string]interface{}{"kind": "DELETE_REPLACE"}},
-			autogold.Expect(`
+			expectedBlockForceNewDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE_REPLACE"}, "tests[3]": map[string]interface{}{"kind": "DELETE_REPLACE"}},
+			expectedBlockForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4970,11 +4970,11 @@ resources:
 `),
 		},
 		{
-			"two added and two removed",
-			[]string{"val1", "val2", "val3", "val4"},
-			[]string{"val1", "val2", "val5", "val6"},
-			map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "UPDATE"}, "tests[3]": map[string]interface{}{"kind": "UPDATE"}},
-			autogold.Expect(`
+			name:                     "two added and two removed",
+			props1:                   []string{"val1", "val2", "val3", "val4"},
+			props2:                   []string{"val1", "val2", "val5", "val6"},
+			expectedAttrDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "UPDATE"}, "tests[3]": map[string]interface{}{"kind": "UPDATE"}},
+			expectedAttr: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4983,8 +4983,8 @@ resources:
           ~ [3]: "val4" => "val6"
         ]
 `),
-			map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "UPDATE_REPLACE"}, "tests[3]": map[string]interface{}{"kind": "UPDATE_REPLACE"}},
-			autogold.Expect(`
+			expectedAttrForceNewDetailedDiff: map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "UPDATE_REPLACE"}, "tests[3]": map[string]interface{}{"kind": "UPDATE_REPLACE"}},
+			expectedAttrForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -4993,8 +4993,8 @@ resources:
           ~ [3]: "val4" => "val6"
         ]
 `),
-			map[string]interface{}{"tests[2].nested": map[string]interface{}{"kind": "UPDATE"}, "tests[3].nested": map[string]interface{}{"kind": "UPDATE"}},
-			autogold.Expect(`
+			expectedBlockDetailedDiff: map[string]interface{}{"tests[2].nested": map[string]interface{}{"kind": "UPDATE"}, "tests[3].nested": map[string]interface{}{"kind": "UPDATE"}},
+			expectedBlock: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -5007,8 +5007,8 @@ resources:
                 }
         ]
 `),
-			map[string]interface{}{"tests[2].nested": map[string]interface{}{"kind": "UPDATE_REPLACE"}, "tests[3].nested": map[string]interface{}{"kind": "UPDATE_REPLACE"}},
-			autogold.Expect(`
+			expectedBlockForceNewDetailedDiff: map[string]interface{}{"tests[2].nested": map[string]interface{}{"kind": "UPDATE_REPLACE"}, "tests[3].nested": map[string]interface{}{"kind": "UPDATE_REPLACE"}},
+			expectedBlockForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -5023,15 +5023,15 @@ resources:
 `),
 		},
 		{
-			"two added and two removed shuffled, one overlaps",
-			[]string{"val1", "val2", "val3", "val4"},
-			[]string{"val1", "val5", "val6", "val2"},
-			map[string]interface{}{
+			name:   "two added and two removed shuffled, one overlaps",
+			props1: []string{"val1", "val2", "val3", "val4"},
+			props2: []string{"val1", "val5", "val6", "val2"},
+			expectedAttrDetailedDiff: map[string]interface{}{
 				"tests[1]": map[string]interface{}{},
 				"tests[2]": map[string]interface{}{"kind": "UPDATE"},
 				"tests[3]": map[string]interface{}{"kind": "DELETE"},
 			},
-			autogold.Expect(`
+			expectedAttr: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -5041,12 +5041,12 @@ resources:
           - [3]: "val4"
         ]
 `),
-			map[string]interface{}{
+			expectedAttrForceNewDetailedDiff: map[string]interface{}{
 				"tests[1]": map[string]interface{}{"kind": "ADD_REPLACE"},
 				"tests[2]": map[string]interface{}{"kind": "UPDATE_REPLACE"},
 				"tests[3]": map[string]interface{}{"kind": "DELETE_REPLACE"},
 			},
-			autogold.Expect(`
+			expectedAttrForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -5056,12 +5056,12 @@ resources:
           - [3]: "val4"
         ]
 `),
-			map[string]interface{}{
+			expectedBlockDetailedDiff: map[string]interface{}{
 				"tests[1]":        map[string]interface{}{},
 				"tests[2].nested": map[string]interface{}{"kind": "UPDATE"},
 				"tests[3]":        map[string]interface{}{"kind": "DELETE"},
 			},
-			autogold.Expect(`
+			expectedBlock: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -5077,12 +5077,12 @@ resources:
                 }
         ]
 `),
-			map[string]interface{}{
+			expectedBlockForceNewDetailedDiff: map[string]interface{}{
 				"tests[1]":        map[string]interface{}{"kind": "ADD_REPLACE"},
 				"tests[2].nested": map[string]interface{}{"kind": "UPDATE_REPLACE"},
 				"tests[3]":        map[string]interface{}{"kind": "DELETE_REPLACE"},
 			},
-			autogold.Expect(`
+			expectedBlockForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -5100,16 +5100,16 @@ resources:
 `),
 		},
 		{
-			"two added and two removed shuffled, no overlaps",
-			[]string{"val1", "val2", "val3", "val4"},
-			[]string{"val5", "val6", "val1", "val2"},
-			map[string]interface{}{
+			name:   "two added and two removed shuffled, no overlaps",
+			props1: []string{"val1", "val2", "val3", "val4"},
+			props2: []string{"val5", "val6", "val1", "val2"},
+			expectedAttrDetailedDiff: map[string]interface{}{
 				"tests[0]": map[string]interface{}{},
 				"tests[1]": map[string]interface{}{},
 				"tests[2]": map[string]interface{}{"kind": "DELETE"},
 				"tests[3]": map[string]interface{}{"kind": "DELETE"},
 			},
-			autogold.Expect(`
+			expectedAttr: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -5120,13 +5120,13 @@ resources:
           - [3]: "val4"
         ]
 `),
-			map[string]interface{}{
+			expectedAttrForceNewDetailedDiff: map[string]interface{}{
 				"tests[0]": map[string]interface{}{"kind": "ADD_REPLACE"},
 				"tests[1]": map[string]interface{}{"kind": "ADD_REPLACE"},
 				"tests[2]": map[string]interface{}{"kind": "DELETE_REPLACE"},
 				"tests[3]": map[string]interface{}{"kind": "DELETE_REPLACE"},
 			},
-			autogold.Expect(`
+			expectedAttrForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -5137,13 +5137,13 @@ resources:
           - [3]: "val4"
         ]
 `),
-			map[string]interface{}{
+			expectedBlockDetailedDiff: map[string]interface{}{
 				"tests[0]": map[string]interface{}{},
 				"tests[1]": map[string]interface{}{},
 				"tests[2]": map[string]interface{}{"kind": "DELETE"},
 				"tests[3]": map[string]interface{}{"kind": "DELETE"},
 			},
-			autogold.Expect(`
+			expectedBlock: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -5162,13 +5162,13 @@ resources:
                 }
         ]
 `),
-			map[string]interface{}{
+			expectedBlockForceNewDetailedDiff: map[string]interface{}{
 				"tests[0]": map[string]interface{}{"kind": "ADD_REPLACE"},
 				"tests[1]": map[string]interface{}{"kind": "ADD_REPLACE"},
 				"tests[2]": map[string]interface{}{"kind": "DELETE_REPLACE"},
 				"tests[3]": map[string]interface{}{"kind": "DELETE_REPLACE"},
 			},
-			autogold.Expect(`
+			expectedBlockForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -5189,15 +5189,15 @@ resources:
 `),
 		},
 		{
-			"two added and two removed shuffled, with duplicates",
-			[]string{"val1", "val2", "val3", "val4"},
-			[]string{"val1", "val5", "val6", "val2", "val1", "val2"},
-			map[string]interface{}{
+			name:   "two added and two removed shuffled, with duplicates",
+			props1: []string{"val1", "val2", "val3", "val4"},
+			props2: []string{"val1", "val5", "val6", "val2", "val1", "val2"},
+			expectedAttrDetailedDiff: map[string]interface{}{
 				"tests[1]": map[string]interface{}{},
 				"tests[2]": map[string]interface{}{"kind": "UPDATE"},
 				"tests[3]": map[string]interface{}{"kind": "DELETE"},
 			},
-			autogold.Expect(`
+			expectedAttr: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -5207,12 +5207,12 @@ resources:
           - [3]: "val4"
         ]
 `),
-			map[string]interface{}{
+			expectedAttrForceNewDetailedDiff: map[string]interface{}{
 				"tests[1]": map[string]interface{}{"kind": "ADD_REPLACE"},
 				"tests[2]": map[string]interface{}{"kind": "UPDATE_REPLACE"},
 				"tests[3]": map[string]interface{}{"kind": "DELETE_REPLACE"},
 			},
-			autogold.Expect(`
+			expectedAttrForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -5222,12 +5222,12 @@ resources:
           - [3]: "val4"
         ]
 `),
-			map[string]interface{}{
+			expectedBlockDetailedDiff: map[string]interface{}{
 				"tests[1]":        map[string]interface{}{},
 				"tests[2].nested": map[string]interface{}{"kind": "UPDATE"},
 				"tests[3]":        map[string]interface{}{"kind": "DELETE"},
 			},
-			autogold.Expect(`
+			expectedBlock: autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -5243,12 +5243,12 @@ resources:
                 }
         ]
 `),
-			map[string]interface{}{
+			expectedBlockForceNewDetailedDiff: map[string]interface{}{
 				"tests[1]":        map[string]interface{}{"kind": "ADD_REPLACE"},
 				"tests[2].nested": map[string]interface{}{"kind": "UPDATE_REPLACE"},
 				"tests[3]":        map[string]interface{}{"kind": "DELETE_REPLACE"},
 			},
-			autogold.Expect(`
+			expectedBlockForceNew: autogold.Expect(`
     +-prov:index/test:Test: (replace)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
