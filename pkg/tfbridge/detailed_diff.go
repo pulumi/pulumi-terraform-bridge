@@ -37,6 +37,7 @@ func sortedMergedKeys[K cmp.Ordered, V any, M ~map[K]V](a, b M) []K {
 }
 
 func isTypeShapeMismatched(val resource.PropertyValue, propType shim.ValueType) bool {
+	contract.Assertf(!val.IsComputed() && !val.IsSecret(), "val should not be computed or secret")
 	if !isPresent(val) {
 		return false
 	}
@@ -189,7 +190,7 @@ func (differ detailedDiffer) makePlainPropDiff(
 	path propertyPath, old, new resource.PropertyValue,
 ) map[detailedDiffKey]*pulumirpc.PropertyDiff {
 	baseDiff := makeBaseDiff(old, new)
-	isReplacement := willTriggerReplacement(path, differ.tfs, differ.ps)
+	isReplacement := propertyPathTriggersReplacement(path, differ.tfs, differ.ps)
 	var propDiff *pulumirpc.PropertyDiff
 	if baseDiff != undecidedDiff {
 		propDiff = baseDiff.ToPropertyDiff()
@@ -222,11 +223,11 @@ func (differ detailedDiffer) makeShortCircuitDiff(
 	contract.Assertf(baseDiff != undecidedDiff, "short-circuit diff could not determine diff kind")
 
 	propDiff := baseDiff.ToPropertyDiff()
-	if new.IsComputed() && willTriggerReplacement(path, differ.tfs, differ.ps) {
+	if new.IsComputed() && propertyPathTriggersReplacement(path, differ.tfs, differ.ps) {
 		propDiff = promoteToReplace(propDiff)
-	} else if !new.IsNull() && !new.IsComputed() && willTriggerReplacementRecursive(path, new, differ.tfs, differ.ps) {
+	} else if !new.IsNull() && !new.IsComputed() && propertyValueTriggersReplacement(path, new, differ.tfs, differ.ps) {
 		propDiff = promoteToReplace(propDiff)
-	} else if !old.IsNull() && willTriggerReplacementRecursive(path, old, differ.tfs, differ.ps) {
+	} else if !old.IsNull() && propertyValueTriggersReplacement(path, old, differ.tfs, differ.ps) {
 		propDiff = promoteToReplace(propDiff)
 	}
 
@@ -243,7 +244,7 @@ func (differ detailedDiffer) makePropDiff(
 	if !isPresent(old) || isTypeShapeMismatched(old, propType) {
 		old = resource.NewNullProperty()
 	}
-	if !isPresent(new) || isTypeShapeMismatched(new, propType) && !new.IsComputed() {
+	if !new.IsComputed() && (!isPresent(new) || isTypeShapeMismatched(new, propType)) {
 		new = resource.NewNullProperty()
 	}
 	if old.IsNull() || new.IsNull() || new.IsComputed() {

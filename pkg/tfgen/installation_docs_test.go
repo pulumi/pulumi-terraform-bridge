@@ -2,6 +2,7 @@ package tfgen
 
 import (
 	"bytes"
+	"regexp"
 	"runtime"
 	"testing"
 
@@ -272,6 +273,8 @@ func TestWriteFrontMatter(t *testing.T) {
 		name:         "Generates Front Matter for installation-configuration.md",
 		providerName: "test",
 		expected: delimiter +
+			"# *** WARNING: This file was auto-generated. " +
+			"Do not edit by hand unless you're certain you know what you are doing! ***\n" +
 			"title: Test Provider\n" +
 			"meta_desc: Provides an overview on how to configure the Pulumi Test provider.\n" +
 			"layout: package\n" +
@@ -394,6 +397,94 @@ func TestSkipSectionHeadersByContent(t *testing.T) {
 		require.NoError(t, err)
 		assertEqualHTML(t, tc.expected, string(actual))
 	})
+}
+
+func TestSkipDefaultSectionHeaders(t *testing.T) {
+	t.Parallel()
+	type testCase struct {
+		// The name of the test case.
+		name          string
+		headersToSkip []*regexp.Regexp
+		input         string
+		expected      string
+	}
+
+	testCases := []testCase{
+		{
+			name:          "Skips Sections Mentioning Logging",
+			headersToSkip: getDefaultHeadersToSkip(),
+			input:         "## Logging",
+			expected:      "",
+		},
+		{
+			name:          "Skips Sections Mentioning Logs",
+			headersToSkip: getDefaultHeadersToSkip(),
+			input:         "## This section talks about logs",
+			expected:      "",
+		},
+		{
+			name:          "Skips Sections About Testing",
+			headersToSkip: getDefaultHeadersToSkip(),
+			input:         "## Testing",
+			expected:      "",
+		},
+		{
+			name:          "Skips Sections About Development",
+			headersToSkip: getDefaultHeadersToSkip(),
+			input:         "## Development",
+			expected:      "",
+		},
+		{
+			name:          "Skips Sections About Debugging",
+			headersToSkip: getDefaultHeadersToSkip(),
+			input:         "## Debugging",
+			expected:      "",
+		},
+		{
+			name:          "Skips Sections Talking About Terraform CLI",
+			headersToSkip: getDefaultHeadersToSkip(),
+			input:         "## Terraform CLI",
+			expected:      "",
+		},
+		{
+			name:          "Skips Sections Talking About terraform cloud",
+			headersToSkip: getDefaultHeadersToSkip(),
+			input:         "### terraform cloud",
+			expected:      "",
+		},
+		{
+			name:          "Skips Sections About Delete Protection",
+			headersToSkip: getDefaultHeadersToSkip(),
+			input:         "### Delete Protection",
+			expected:      "",
+		}, {
+			name:          "Skips Sections About Contributing",
+			headersToSkip: getDefaultHeadersToSkip(),
+			input:         "## Contributing",
+			expected:      "",
+		}, {
+			name:          "Does Not Skip Sections About Unicorns",
+			headersToSkip: getDefaultHeadersToSkip(),
+			input:         "## Unicorns",
+			expected:      "## Unicorns",
+		},
+	}
+	for _, tt := range testCases {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			actual, err := SkipSectionByHeaderContent([]byte(tt.input), func(headerText string) bool {
+				for _, header := range tt.headersToSkip {
+					if header.Match([]byte(headerText)) {
+						return true
+					}
+				}
+				return false
+			})
+			require.NoError(t, err)
+			assertEqualHTML(t, tt.expected, string(actual))
+		})
+	}
 }
 
 // Helper func to determine if the HTML rendering is equal.
