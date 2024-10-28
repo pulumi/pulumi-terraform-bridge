@@ -17,12 +17,119 @@
 package crosstests
 
 import (
+	"context"
+	"fmt"
 	"math/big"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/stretchr/testify/require"
 	"github.com/zclconf/go-cty/cty"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/convert"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/logging"
 )
+
+// inferPulumiValue generates a Pulumi value that is semantically equivalent to v.
+//
+// inferPulumiValue takes into account schema information.
+func inferPulumiValue(t T, schema shim.SchemaMap, infos map[string]*info.Schema, v cty.Value) resource.PropertyMap {
+	if v.IsNull() {
+		return nil
+	}
+	decoder, err := convert.NewObjectDecoder(convert.ObjectSchema{
+		SchemaMap:   schema,
+		SchemaInfos: infos,
+	})
+	require.NoError(t, err)
+
+	ctx := logging.InitLogging(context.Background(), logging.LogOptions{})
+	// There is not yet a way to opt out of marking schema secrets, so the resulting map might have secrets marked.
+	pm, err := convert.DecodePropertyMap(ctx, decoder, ctyToTftypes(v))
+	require.NoError(t, err)
+	return pm
+}
+
+func ctyToTftypes(v cty.Value) tftypes.Value {
+	typ := v.Type()
+	if !v.IsKnown() {
+		return tftypes.NewValue(ctyTypeToTfType(typ), tftypes.UnknownValue)
+	}
+	if v.IsNull() {
+		return tftypes.NewValue(ctyTypeToTfType(typ), nil)
+	}
+	switch {
+	case typ.Equals(cty.String):
+		return tftypes.NewValue(ctyTypeToTfType(typ), v.AsString())
+	case typ.Equals(cty.Bool):
+		return tftypes.NewValue(ctyTypeToTfType(typ), v.True())
+	case typ.Equals(cty.Number):
+		return tftypes.NewValue(ctyTypeToTfType(typ), v.AsBigFloat())
+
+	case typ.IsListType():
+		src := v.AsValueSlice()
+		dst := make([]tftypes.Value, len(src))
+		for i, v := range src {
+			dst[i] = ctyToTftypes(v)
+		}
+		return tftypes.NewValue(ctyTypeToTfType(typ), dst)
+	case typ.IsSetType():
+		src := v.AsValueSet().Values()
+		dst := make([]tftypes.Value, len(src))
+		for i, v := range src {
+			dst[i] = ctyToTftypes(v)
+		}
+		return tftypes.NewValue(ctyTypeToTfType(typ), dst)
+	case typ.IsMapType():
+		src := v.AsValueMap()
+		dst := make(map[string]tftypes.Value, len(src))
+		for k, v := range src {
+			dst[k] = ctyToTftypes(v)
+		}
+		return tftypes.NewValue(ctyTypeToTfType(typ), dst)
+	case typ.IsObjectType():
+		src := v.AsValueMap()
+		dst := make(map[string]tftypes.Value, len(src))
+		for k, v := range src {
+			dst[k] = ctyToTftypes(v)
+		}
+		return tftypes.NewValue(ctyTypeToTfType(typ), dst)
+	default:
+		panic(fmt.Sprintf("unknown type %s", typ.GoString()))
+	}
+}
+
+func ctyTypeToTfType(typ cty.Type) tftypes.Type {
+	switch {
+	case typ.Equals(cty.String):
+		return tftypes.String
+	case typ.Equals(cty.Bool):
+		return tftypes.Bool
+	case typ.Equals(cty.Number):
+		return tftypes.Number
+	case typ == cty.DynamicPseudoType:
+		return tftypes.DynamicPseudoType
+
+	case typ.IsListType():
+		return tftypes.List{ElementType: ctyTypeToTfType(typ.ElementType())}
+	case typ.IsSetType():
+		return tftypes.Set{ElementType: ctyTypeToTfType(typ.ElementType())}
+	case typ.IsMapType():
+		return tftypes.Map{ElementType: ctyTypeToTfType(typ.ElementType())}
+	case typ.IsObjectType():
+		src := typ.AttributeTypes()
+		dst := make(map[string]tftypes.Type, len(src))
+		for k, v := range src {
+			dst[k] = ctyTypeToTfType(v)
+		}
+		return tftypes.Object{AttributeTypes: dst}
+	default:
+		panic(fmt.Sprintf("unknown type %s", typ.GoString()))
+	}
+}
 
 type typeAdapter struct {
 	typ tftypes.Type

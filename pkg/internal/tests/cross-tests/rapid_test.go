@@ -82,17 +82,12 @@ func TestCreateInputsConvergence(outerT *testing.T) {
 		}}}).GoString())
 
 		config := rapid.Map(tv.valueGen, newPrettyValueWrapper).Draw(t, "config1").Value()
-		ty := tv.typ
 
-		tc := inputTestCase{
-			Resource: &schema.Resource{
-				Schema: tv.schemaMap,
-			},
-			Config:     config,
-			ObjectType: &ty,
-		}
-
-		runCreateInputCheck(&rapidTWithCleanup{t, outerT}, tc)
+		rT := &rapidTWithCleanup{t, outerT}
+		Create(rT,
+			tv.schemaMap,
+			coalesceInputs(rT, tv.schemaMap, config),
+		)
 	})
 }
 

@@ -1,0 +1,1125 @@
+{
+    "name": "testbridge",
+    "description": "A Pulumi package to test pulumi-terraform-bridge Plugin Framework support.",
+    "homepage": "https://pulumi.io",
+    "license": "Apache-2.0",
+    "attribution": "This Pulumi package is based on the [`testbridge` Terraform Provider](https://github.com/terraform-providers/terraform-provider-testbridge).",
+    "repository": "https://github.com/pulumi/pulumi-terraform-bridge",
+    "meta": {
+        "moduleFormat": "(.*)(?:/[^/]*)"
+    },
+    "language": {
+        "nodejs": {
+            "packageDescription": "A Pulumi package to test pulumi-terraform-bridge Plugin Framework support.",
+            "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-testbridge)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e first check the [`pulumi-testbridge` repo](https://github.com/pulumi/pulumi-terraform-bridge/issues); however, if that doesn't turn up anything,\n\u003e please consult the source [`terraform-provider-testbridge` repo](https://github.com/terraform-providers/terraform-provider-testbridge/issues).",
+            "compatibility": "tfbridge20",
+            "disableUnionOutputTypes": true
+        },
+        "python": {
+            "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-testbridge)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e first check the [`pulumi-testbridge` repo](https://github.com/pulumi/pulumi-terraform-bridge/issues); however, if that doesn't turn up anything,\n\u003e please consult the source [`terraform-provider-testbridge` repo](https://github.com/terraform-providers/terraform-provider-testbridge/issues).",
+            "compatibility": "tfbridge20",
+            "pyproject": {}
+        }
+    },
+    "config": {
+        "variables": {
+            "boolConfigProp": {
+                "type": "boolean"
+            },
+            "listNestedProps": {
+                "type": "array",
+                "items": {
+                    "type": "boolean"
+                }
+            },
+            "listNesteds": {
+                "type": "array",
+                "items": {
+                    "$ref": "#/types/testbridge:config/listNesteds:listNesteds"
+                }
+            },
+            "mapNestedProp": {
+                "type": "object",
+                "additionalProperties": {
+                    "type": "integer"
+                }
+            },
+            "singleNested": {
+                "$ref": "#/types/testbridge:config/singleNested:singleNested"
+            },
+            "skipMetadataApiCheck": {
+                "type": "boolean",
+                "description": "Example taken from pulumi-aws; used to validate string properties remapped to bool type during briding\n",
+                "default": true
+            },
+            "stringConfigProp": {
+                "type": "string"
+            },
+            "stringDefaultinfoConfigProp": {
+                "type": "string",
+                "description": "Used for testing DefaultInfo default application support\n",
+                "default": "DEFAULT"
+            },
+            "validateNested": {
+                "type": "boolean",
+                "description": "Validate that nested values are received as expected.\n"
+            }
+        }
+    },
+    "types": {
+        "testbridge:config/listNesteds:listNesteds": {
+            "properties": {
+                "boolProp": {
+                    "type": "boolean"
+                },
+                "listNestedProps": {
+                    "type": "array",
+                    "items": {
+                        "type": "boolean"
+                    }
+                },
+                "mapNestedProp": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
+                },
+                "stringProp": {
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "testbridge:config/singleNested:singleNested": {
+            "properties": {
+                "boolProp": {
+                    "type": "boolean"
+                },
+                "listNestedProps": {
+                    "type": "array",
+                    "items": {
+                        "type": "boolean"
+                    }
+                },
+                "mapNestedProp": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
+                },
+                "stringProp": {
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "testbridge:index/ProviderListNested:ProviderListNested": {
+            "properties": {
+                "boolProp": {
+                    "type": "boolean"
+                },
+                "listNestedProps": {
+                    "type": "array",
+                    "items": {
+                        "type": "boolean"
+                    }
+                },
+                "mapNestedProp": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
+                },
+                "stringProp": {
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "testbridge:index/ProviderSingleNested:ProviderSingleNested": {
+            "properties": {
+                "boolProp": {
+                    "type": "boolean"
+                },
+                "listNestedProps": {
+                    "type": "array",
+                    "items": {
+                        "type": "boolean"
+                    }
+                },
+                "mapNestedProp": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
+                },
+                "stringProp": {
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "testbridge:index/TestnestRule:TestnestRule": {
+            "properties": {
+                "actionParameters": {
+                    "$ref": "#/types/testbridge:index/TestnestRuleActionParameters:TestnestRuleActionParameters",
+                    "description": "List of parameters that configure the behavior of the ruleset rule action.\n"
+                },
+                "protocol": {
+                    "type": "string",
+                    "description": "network protocol\n"
+                }
+            },
+            "type": "object"
+        },
+        "testbridge:index/TestnestRuleActionParameters:TestnestRuleActionParameters": {
+            "properties": {
+                "automaticHttpsRewrites": {
+                    "type": "boolean",
+                    "description": "Turn on or off Cloudflare Automatic HTTPS rewrites.\n"
+                },
+                "bic": {
+                    "type": "boolean",
+                    "description": "Inspect the visitor's browser for headers commonly associated with spammers and certain bots.\n"
+                },
+                "phases": {
+                    "$ref": "#/types/testbridge:index/TestnestRuleActionParametersPhases:TestnestRuleActionParametersPhases"
+                }
+            },
+            "type": "object"
+        },
+        "testbridge:index/TestnestRuleActionParametersPhases:TestnestRuleActionParametersPhases": {
+            "properties": {
+                "p1": {
+                    "type": "boolean",
+                    "description": "The first phase.\n"
+                },
+                "p2": {
+                    "type": "boolean",
+                    "description": "The second phase.\n"
+                }
+            },
+            "type": "object"
+        },
+        "testbridge:index/TestnestService:TestnestService": {
+            "properties": {
+                "intport": {
+                    "type": "integer",
+                    "description": "Port application listens on internally\n"
+                },
+                "ports": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/types/testbridge:index/TestnestServicePort:TestnestServicePort"
+                    },
+                    "description": "External ports and handlers\n"
+                },
+                "protocol": {
+                    "type": "string",
+                    "description": "network protocol\n"
+                }
+            },
+            "type": "object",
+            "required": [
+                "intport",
+                "ports",
+                "protocol"
+            ]
+        },
+        "testbridge:index/TestnestServicePort:TestnestServicePort": {
+            "properties": {
+                "handlers": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "How the edge should process requests\n"
+                },
+                "port": {
+                    "type": "integer",
+                    "description": "External port\n"
+                }
+            },
+            "type": "object",
+            "required": [
+                "port"
+            ]
+        },
+        "testbridge:index/TestnestattrService:TestnestattrService": {
+            "properties": {
+                "intport": {
+                    "type": "integer",
+                    "description": "Port application listens on internally\n"
+                },
+                "ports": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/types/testbridge:index/TestnestattrServicePort:TestnestattrServicePort"
+                    },
+                    "description": "External ports and handlers\n"
+                },
+                "protocol": {
+                    "type": "string",
+                    "description": "network protocol\n"
+                }
+            },
+            "type": "object",
+            "required": [
+                "intport",
+                "ports",
+                "protocol"
+            ]
+        },
+        "testbridge:index/TestnestattrServicePort:TestnestattrServicePort": {
+            "properties": {
+                "handlers": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "How the edge should process requests\n"
+                },
+                "port": {
+                    "type": "integer",
+                    "description": "External port\n"
+                }
+            },
+            "type": "object",
+            "required": [
+                "port"
+            ]
+        },
+        "testbridge:index/TestresService:TestresService": {
+            "properties": {
+                "intport": {
+                    "type": "integer",
+                    "description": "Port application listens on internally\n"
+                },
+                "ports": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/types/testbridge:index/TestresServicePort:TestresServicePort"
+                    },
+                    "description": "External ports and handlers\n"
+                },
+                "protocol": {
+                    "type": "string",
+                    "description": "network protocol\n"
+                }
+            },
+            "type": "object",
+            "required": [
+                "intport",
+                "ports",
+                "protocol"
+            ]
+        },
+        "testbridge:index/TestresServicePort:TestresServicePort": {
+            "properties": {
+                "handlers": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "How the edge should process requests\n"
+                },
+                "port": {
+                    "type": "integer",
+                    "description": "External port\n"
+                }
+            },
+            "type": "object",
+            "required": [
+                "port"
+            ]
+        },
+        "testbridge:index/TestresSingleNestedAttr:TestresSingleNestedAttr": {
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "quantity": {
+                    "type": "number"
+                }
+            },
+            "type": "object"
+        },
+        "testbridge:index/TestresTuplesOptional:TestresTuplesOptional": {
+            "properties": {
+                "t0": {
+                    "type": "boolean"
+                },
+                "t1": {
+                    "type": "string"
+                }
+            },
+            "type": "object",
+            "required": [
+                "t0",
+                "t1"
+            ]
+        },
+        "testbridge:index/VlanNamesResVlanName:VlanNamesResVlanName": {
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "Name of the VLAN, string length must be from 1 to 32 characters\n"
+                },
+                "vlanId": {
+                    "type": "string",
+                    "description": "VLAN ID\n"
+                }
+            },
+            "type": "object",
+            "language": {
+                "nodejs": {
+                    "requiredOutputs": [
+                        "name",
+                        "vlanId"
+                    ]
+                }
+            }
+        }
+    },
+    "provider": {
+        "description": "The provider type for the testbridge package. By default, resources use package-wide configuration\nsettings, however an explicit `Provider` instance may be created and passed during resource\nconstruction to achieve fine-grained programmatic control over provider settings. See the\n[documentation](https://www.pulumi.com/docs/reference/programming-model/#providers) for more information.\n",
+        "properties": {
+            "boolConfigProp": {
+                "type": "boolean"
+            },
+            "listNestedProps": {
+                "type": "array",
+                "items": {
+                    "type": "boolean"
+                }
+            },
+            "listNesteds": {
+                "type": "array",
+                "items": {
+                    "$ref": "#/types/testbridge:index/ProviderListNested:ProviderListNested"
+                }
+            },
+            "mapNestedProp": {
+                "type": "object",
+                "additionalProperties": {
+                    "type": "integer"
+                }
+            },
+            "singleNested": {
+                "$ref": "#/types/testbridge:index/ProviderSingleNested:ProviderSingleNested"
+            },
+            "skipMetadataApiCheck": {
+                "type": "boolean",
+                "description": "Example taken from pulumi-aws; used to validate string properties remapped to bool type during briding\n"
+            },
+            "stringConfigProp": {
+                "type": "string"
+            },
+            "stringDefaultinfoConfigProp": {
+                "type": "string",
+                "description": "Used for testing DefaultInfo default application support\n"
+            },
+            "validateNested": {
+                "type": "boolean",
+                "description": "Validate that nested values are received as expected.\n"
+            }
+        },
+        "inputProperties": {
+            "boolConfigProp": {
+                "type": "boolean"
+            },
+            "listNestedProps": {
+                "type": "array",
+                "items": {
+                    "type": "boolean"
+                }
+            },
+            "listNesteds": {
+                "type": "array",
+                "items": {
+                    "$ref": "#/types/testbridge:index/ProviderListNested:ProviderListNested"
+                }
+            },
+            "mapNestedProp": {
+                "type": "object",
+                "additionalProperties": {
+                    "type": "integer"
+                }
+            },
+            "singleNested": {
+                "$ref": "#/types/testbridge:index/ProviderSingleNested:ProviderSingleNested"
+            },
+            "skipMetadataApiCheck": {
+                "type": "boolean",
+                "description": "Example taken from pulumi-aws; used to validate string properties remapped to bool type during briding\n",
+                "default": true
+            },
+            "stringConfigProp": {
+                "type": "string"
+            },
+            "stringDefaultinfoConfigProp": {
+                "type": "string",
+                "description": "Used for testing DefaultInfo default application support\n",
+                "default": "DEFAULT"
+            },
+            "validateNested": {
+                "type": "boolean",
+                "description": "Validate that nested values are received as expected.\n"
+            }
+        }
+    },
+    "resources": {
+        "testbridge:index/intID:IntID": {
+            "properties": {
+                "name": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "name"
+            ],
+            "inputProperties": {
+                "name": {
+                    "type": "string"
+                }
+            },
+            "stateInputs": {
+                "description": "Input properties used for looking up and filtering IntID resources.\n",
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            }
+        },
+        "testbridge:index/testnest:Testnest": {
+            "properties": {
+                "rules": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/types/testbridge:index/TestnestRule:TestnestRule"
+                    },
+                    "description": "List of rules to apply to the ruleset.\n"
+                },
+                "services": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/types/testbridge:index/TestnestService:TestnestService"
+                    },
+                    "description": "services: tests ListNestedAttributes support\n"
+                }
+            },
+            "inputProperties": {
+                "rules": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/types/testbridge:index/TestnestRule:TestnestRule"
+                    },
+                    "description": "List of rules to apply to the ruleset.\n"
+                },
+                "services": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/types/testbridge:index/TestnestService:TestnestService"
+                    },
+                    "description": "services: tests ListNestedAttributes support\n"
+                }
+            },
+            "stateInputs": {
+                "description": "Input properties used for looking up and filtering Testnest resources.\n",
+                "properties": {
+                    "rules": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/types/testbridge:index/TestnestRule:TestnestRule"
+                        },
+                        "description": "List of rules to apply to the ruleset.\n"
+                    },
+                    "services": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/types/testbridge:index/TestnestService:TestnestService"
+                        },
+                        "description": "services: tests ListNestedAttributes support\n"
+                    }
+                },
+                "type": "object"
+            }
+        },
+        "testbridge:index/testnestattr:Testnestattr": {
+            "properties": {
+                "services": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/types/testbridge:index/TestnestattrService:TestnestattrService"
+                    },
+                    "description": "services: tests ListNestedAttributes support\n"
+                }
+            },
+            "inputProperties": {
+                "services": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/types/testbridge:index/TestnestattrService:TestnestattrService"
+                    },
+                    "description": "services: tests ListNestedAttributes support\n"
+                }
+            },
+            "stateInputs": {
+                "description": "Input properties used for looking up and filtering Testnestattr resources.\n",
+                "properties": {
+                    "services": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/types/testbridge:index/TestnestattrService:TestnestattrService"
+                        },
+                        "description": "services: tests ListNestedAttributes support\n"
+                    }
+                },
+                "type": "object"
+            }
+        },
+        "testbridge:index/testres:AutoNameRes": {
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "Test AutoNaming; Pulumi makes this property optional\n"
+                }
+            },
+            "required": [
+                "name"
+            ],
+            "inputProperties": {
+                "name": {
+                    "type": "string",
+                    "description": "Test AutoNaming; Pulumi makes this property optional\n"
+                }
+            },
+            "stateInputs": {
+                "description": "Input properties used for looking up and filtering AutoNameRes resources.\n",
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "Test AutoNaming; Pulumi makes this property optional\n"
+                    }
+                },
+                "type": "object"
+            }
+        },
+        "testbridge:index/testres:Privst": {
+            "properties": {
+                "observedPrivateStateAfter": {
+                    "type": "string",
+                    "description": "Exports current PrivateState after the update to help test it\n"
+                },
+                "observedPrivateStateBefore": {
+                    "type": "string",
+                    "description": "Exports current PrivateState before the update to help test it\n"
+                },
+                "targetPrivateState": {
+                    "type": "string",
+                    "description": "The value of this attribute is stored in PrivateState\n"
+                }
+            },
+            "required": [
+                "observedPrivateStateAfter",
+                "observedPrivateStateBefore"
+            ],
+            "inputProperties": {
+                "targetPrivateState": {
+                    "type": "string",
+                    "description": "The value of this attribute is stored in PrivateState\n"
+                }
+            },
+            "stateInputs": {
+                "description": "Input properties used for looking up and filtering Privst resources.\n",
+                "properties": {
+                    "observedPrivateStateAfter": {
+                        "type": "string",
+                        "description": "Exports current PrivateState after the update to help test it\n"
+                    },
+                    "observedPrivateStateBefore": {
+                        "type": "string",
+                        "description": "Exports current PrivateState before the update to help test it\n"
+                    },
+                    "targetPrivateState": {
+                        "type": "string",
+                        "description": "The value of this attribute is stored in PrivateState\n"
+                    }
+                },
+                "type": "object"
+            }
+        },
+        "testbridge:index/testres:TestConfigRes": {
+            "properties": {
+                "configCopy": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "configCopy"
+            ],
+            "stateInputs": {
+                "description": "Input properties used for looking up and filtering TestConfigRes resources.\n",
+                "properties": {
+                    "configCopy": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            }
+        },
+        "testbridge:index/testres:TestDefaultInfoRes": {
+            "properties": {
+                "str": {
+                    "type": "string",
+                    "default": "DEFAULT"
+                }
+            },
+            "required": [
+                "str"
+            ],
+            "inputProperties": {
+                "str": {
+                    "type": "string",
+                    "default": "DEFAULT"
+                }
+            },
+            "stateInputs": {
+                "description": "Input properties used for looking up and filtering TestDefaultInfoRes resources.\n",
+                "properties": {
+                    "str": {
+                        "type": "string",
+                        "default": "DEFAULT"
+                    }
+                },
+                "type": "object"
+            }
+        },
+        "testbridge:index/testres:Testcompres": {
+            "properties": {
+                "ecdsacurve": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "ecdsacurve"
+            ],
+            "inputProperties": {
+                "ecdsacurve": {
+                    "type": "string"
+                }
+            },
+            "stateInputs": {
+                "description": "Input properties used for looking up and filtering Testcompres resources.\n",
+                "properties": {
+                    "ecdsacurve": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            }
+        },
+        "testbridge:index/testres:Testres": {
+            "properties": {
+                "optionalInputBool": {
+                    "type": "boolean"
+                },
+                "optionalInputBoolCopy": {
+                    "type": "boolean",
+                    "description": "Computed as a copy of optional_input_bool\n"
+                },
+                "optionalInputNumber": {
+                    "type": "number"
+                },
+                "optionalInputNumberCopy": {
+                    "type": "number",
+                    "description": "Computed as a copy of optional_input_number\n"
+                },
+                "optionalInputString": {
+                    "type": "string"
+                },
+                "optionalInputStringCopy": {
+                    "type": "string",
+                    "description": "Computed as a copy of optional_input_string\n"
+                },
+                "optionalInputStringListCopies": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Computed as a copy of optional_input_string_list\n"
+                },
+                "optionalInputStringLists": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "optionalInputStringMap": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "optionalInputStringMapCopy": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    },
+                    "description": "Computed as a copy of optional_input_string_map\n"
+                },
+                "requiredInputString": {
+                    "type": "string"
+                },
+                "requiredInputStringCopy": {
+                    "type": "string",
+                    "description": "Computed as a copy of required_input_string\n"
+                },
+                "services": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/types/testbridge:index/TestresService:TestresService"
+                    },
+                    "description": "services: tests ListNestedAttributes support\n"
+                },
+                "servicesJsonCopy": {
+                    "type": "string",
+                    "description": "Computed as a JSON-ified copy of services input\n"
+                },
+                "setOptionals": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "A set\n"
+                },
+                "singleNestedAttr": {
+                    "$ref": "#/types/testbridge:index/TestresSingleNestedAttr:TestresSingleNestedAttr",
+                    "description": "single_nested_attr: tests SingleNestedAttribute support\n"
+                },
+                "singleNestedAttrJsonCopy": {
+                    "type": "string",
+                    "description": "Computed as a JSON-ified copy of single_nested_attr input\n"
+                },
+                "statedir": {
+                    "type": "string",
+                    "description": "Dir to store pseudo-cloud state in.\n"
+                },
+                "tuplesOptionals": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/types/testbridge:index/TestresTuplesOptional:TestresTuplesOptional"
+                    },
+                    "description": "A list that takes a tuple\n"
+                }
+            },
+            "required": [
+                "optionalInputBoolCopy",
+                "optionalInputNumberCopy",
+                "optionalInputStringCopy",
+                "optionalInputStringListCopies",
+                "optionalInputStringMapCopy",
+                "requiredInputString",
+                "requiredInputStringCopy",
+                "servicesJsonCopy",
+                "singleNestedAttrJsonCopy",
+                "statedir"
+            ],
+            "inputProperties": {
+                "optionalInputBool": {
+                    "type": "boolean"
+                },
+                "optionalInputNumber": {
+                    "type": "number"
+                },
+                "optionalInputString": {
+                    "type": "string"
+                },
+                "optionalInputStringLists": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "optionalInputStringMap": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "requiredInputString": {
+                    "type": "string"
+                },
+                "services": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/types/testbridge:index/TestresService:TestresService"
+                    },
+                    "description": "services: tests ListNestedAttributes support\n"
+                },
+                "setOptionals": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "A set\n"
+                },
+                "singleNestedAttr": {
+                    "$ref": "#/types/testbridge:index/TestresSingleNestedAttr:TestresSingleNestedAttr",
+                    "description": "single_nested_attr: tests SingleNestedAttribute support\n"
+                },
+                "statedir": {
+                    "type": "string",
+                    "description": "Dir to store pseudo-cloud state in.\n"
+                },
+                "tuplesOptionals": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/types/testbridge:index/TestresTuplesOptional:TestresTuplesOptional"
+                    },
+                    "description": "A list that takes a tuple\n"
+                }
+            },
+            "requiredInputs": [
+                "requiredInputString",
+                "statedir"
+            ],
+            "stateInputs": {
+                "description": "Input properties used for looking up and filtering Testres resources.\n",
+                "properties": {
+                    "optionalInputBool": {
+                        "type": "boolean"
+                    },
+                    "optionalInputBoolCopy": {
+                        "type": "boolean",
+                        "description": "Computed as a copy of optional_input_bool\n"
+                    },
+                    "optionalInputNumber": {
+                        "type": "number"
+                    },
+                    "optionalInputNumberCopy": {
+                        "type": "number",
+                        "description": "Computed as a copy of optional_input_number\n"
+                    },
+                    "optionalInputString": {
+                        "type": "string"
+                    },
+                    "optionalInputStringCopy": {
+                        "type": "string",
+                        "description": "Computed as a copy of optional_input_string\n"
+                    },
+                    "optionalInputStringListCopies": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Computed as a copy of optional_input_string_list\n"
+                    },
+                    "optionalInputStringLists": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "optionalInputStringMap": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        }
+                    },
+                    "optionalInputStringMapCopy": {
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "string"
+                        },
+                        "description": "Computed as a copy of optional_input_string_map\n"
+                    },
+                    "requiredInputString": {
+                        "type": "string"
+                    },
+                    "requiredInputStringCopy": {
+                        "type": "string",
+                        "description": "Computed as a copy of required_input_string\n"
+                    },
+                    "services": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/types/testbridge:index/TestresService:TestresService"
+                        },
+                        "description": "services: tests ListNestedAttributes support\n"
+                    },
+                    "servicesJsonCopy": {
+                        "type": "string",
+                        "description": "Computed as a JSON-ified copy of services input\n"
+                    },
+                    "setOptionals": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "A set\n"
+                    },
+                    "singleNestedAttr": {
+                        "$ref": "#/types/testbridge:index/TestresSingleNestedAttr:TestresSingleNestedAttr",
+                        "description": "single_nested_attr: tests SingleNestedAttribute support\n"
+                    },
+                    "singleNestedAttrJsonCopy": {
+                        "type": "string",
+                        "description": "Computed as a JSON-ified copy of single_nested_attr input\n"
+                    },
+                    "statedir": {
+                        "type": "string",
+                        "description": "Dir to store pseudo-cloud state in.\n"
+                    },
+                    "tuplesOptionals": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/types/testbridge:index/TestresTuplesOptional:TestresTuplesOptional"
+                        },
+                        "description": "A list that takes a tuple\n"
+                    }
+                },
+                "type": "object"
+            }
+        },
+        "testbridge:index/testres:VlanNamesRes": {
+            "properties": {
+                "other": {
+                    "type": "string"
+                },
+                "vlanNames": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/types/testbridge:index/VlanNamesResVlanName:VlanNamesResVlanName"
+                    },
+                    "description": "An array of named VLANs\n"
+                }
+            },
+            "inputProperties": {
+                "other": {
+                    "type": "string"
+                },
+                "vlanNames": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/types/testbridge:index/VlanNamesResVlanName:VlanNamesResVlanName"
+                    },
+                    "description": "An array of named VLANs\n"
+                }
+            },
+            "stateInputs": {
+                "description": "Input properties used for looking up and filtering VlanNamesRes resources.\n",
+                "properties": {
+                    "other": {
+                        "type": "string"
+                    },
+                    "vlanNames": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/types/testbridge:index/VlanNamesResVlanName:VlanNamesResVlanName"
+                        },
+                        "description": "An array of named VLANs\n"
+                    }
+                },
+                "type": "object"
+            }
+        }
+    },
+    "functions": {
+        "testbridge:index/echo:Echo": {
+            "inputs": {
+                "description": "A collection of arguments for invoking Echo.\n",
+                "properties": {
+                    "input": {
+                        "type": "string"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "input"
+                ]
+            },
+            "outputs": {
+                "description": "A collection of values returned by Echo.\n",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "The provider-assigned unique ID for this managed resource.\n"
+                    },
+                    "input": {
+                        "type": "string"
+                    },
+                    "output": {
+                        "type": "string"
+                    },
+                    "sensitive": {
+                        "type": "string",
+                        "secret": true
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "input",
+                    "output",
+                    "sensitive",
+                    "id"
+                ]
+            }
+        },
+        "testbridge:index/smac:SMAC": {
+            "outputs": {
+                "description": "A collection of values returned by SMAC.\n",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "The provider-assigned unique ID for this managed resource.\n"
+                    },
+                    "skipMetadataApiCheck": {
+                        "type": "string"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "skipMetadataApiCheck",
+                    "id"
+                ]
+            }
+        },
+        "testbridge:index/testres:TestDefaultInfoDataSource": {
+            "inputs": {
+                "description": "A collection of arguments for invoking TestDefaultInfoDataSource.\n",
+                "properties": {
+                    "input": {
+                        "type": "string",
+                        "default": "DEFAULT"
+                    }
+                },
+                "type": "object"
+            },
+            "outputs": {
+                "description": "A collection of values returned by TestDefaultInfoDataSource.\n",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "description": "The provider-assigned unique ID for this managed resource.\n"
+                    },
+                    "input": {
+                        "type": "string",
+                        "default": "DEFAULT"
+                    },
+                    "output": {
+                        "type": "string"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "input",
+                    "output",
+                    "id"
+                ]
+            }
+        }
+    }
+}

@@ -27,10 +27,10 @@ import (
 	"github.com/pulumi/providertest/providers"
 	"github.com/pulumi/providertest/pulumitest"
 	"github.com/pulumi/providertest/pulumitest/opttest"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests"
 	pb "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/providerbuilder"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfgen"
-	crosstests "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/cross-tests"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/tfcheck"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/tokens"
@@ -138,7 +138,7 @@ resource "` + providerName + `_res" "res" {}
 			"resources": map[string]any{
 				"p": map[string]any{
 					"type":       "pulumi:providers:" + providerName,
-					"properties": convertResourceValue(t, puConfig),
+					"properties": crosstests.ConvertResourceValue(t, puConfig),
 				},
 			},
 		}
