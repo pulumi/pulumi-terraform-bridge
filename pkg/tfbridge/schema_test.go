@@ -3877,6 +3877,7 @@ func TestMakeSingleTerraformInput(t *testing.T) {
 		tc := tc
 
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			result, err := makeSingleTerraformInput(context.Background(), "name", tc.prop, shimv2.NewSchema(tc.schema), nil)
 			require.NoError(t, err)
 			assert.Equal(t, tc.expected, result)

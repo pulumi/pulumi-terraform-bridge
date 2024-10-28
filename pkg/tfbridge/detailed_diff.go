@@ -3,9 +3,9 @@ package tfbridge
 import (
 	"cmp"
 	"context"
+	"fmt"
 	"slices"
 
-	"github.com/golang/glog"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -124,6 +124,7 @@ func makeBaseDiff(old, new resource.PropertyValue) baseDiff {
 type detailedDiffKey string
 
 type detailedDiffer struct {
+	ctx context.Context
 	tfs shim.SchemaMap
 	ps  map[string]*SchemaInfo
 	// These are used to convert set indices back to something the engine can reference.
@@ -155,7 +156,9 @@ func (differ detailedDiffer) getEffectiveType(path walk.SchemaPath) shim.ValueTy
 
 type hashIndexMap map[int]int
 
-func (differ detailedDiffer) calculateSetHashIndexMap(path propertyPath, listVal resource.PropertyValue) hashIndexMap {
+func (differ detailedDiffer) calculateSetHashIndexMap(
+	path propertyPath, listVal []resource.PropertyValue,
+) hashIndexMap {
 	identities := make(hashIndexMap)
 
 	tfs, ps, err := lookupSchemas(path, differ.tfs, differ.ps)
@@ -163,7 +166,8 @@ func (differ detailedDiffer) calculateSetHashIndexMap(path propertyPath, listVal
 		return nil
 	}
 
-	convertedVal, err := makeSingleTerraformInput(context.Background(), path.String(), listVal, tfs, ps)
+	convertedVal, err := makeSingleTerraformInput(
+		differ.ctx, path.String(), resource.NewArrayProperty(listVal), tfs, ps)
 	if err != nil {
 		return nil
 	}
@@ -293,16 +297,16 @@ func (differ detailedDiffer) makeListDiff(
 	return diff
 }
 
-type setChangeIndex struct {
-	engineIndex   int
-	newStateIndex int
-	oldChanged    bool
-	newChanged    bool
-}
-
 func (differ detailedDiffer) makeSetDiff(
 	path propertyPath, old, new resource.PropertyValue,
 ) map[detailedDiffKey]*pulumirpc.PropertyDiff {
+	type setChangeIndex struct {
+		engineIndex   int
+		newStateIndex int
+		oldChanged    bool
+		newChanged    bool
+	}
+
 	diff := make(map[detailedDiffKey]*pulumirpc.PropertyDiff)
 	oldList := old.ArrayValue()
 	newList := new.ArrayValue()
@@ -313,13 +317,13 @@ func (differ detailedDiffer) makeSetDiff(
 		newInputsList = newInputs.ArrayValue()
 	}
 
-	oldIdentities := differ.calculateSetHashIndexMap(path, resource.NewArrayProperty(oldList))
-	newIdentities := differ.calculateSetHashIndexMap(path, resource.NewArrayProperty(newList))
+	oldIdentities := differ.calculateSetHashIndexMap(path, oldList)
+	newIdentities := differ.calculateSetHashIndexMap(path, newList)
 	inputIdentities := hashIndexMap{}
 
-	if !schemaContainsComputed(path, differ.tfs, differ.ps) {
+	if !pathContainsComputed(path, differ.tfs, differ.ps) {
 		// The inputs are only safe to hash if the schema has no computed properties
-		inputIdentities = differ.calculateSetHashIndexMap(path, resource.NewArrayProperty(newInputsList))
+		inputIdentities = differ.calculateSetHashIndexMap(path, newInputsList)
 	}
 
 	// The old indices and new inputs are the indices the engine can reference
@@ -334,9 +338,9 @@ func (differ detailedDiffer) makeSetDiff(
 		if _, oldOk := oldIdentities[hash]; !oldOk {
 			inputIndex := inputIdentities[hash]
 			if inputIndex == -1 {
-				glog.Warningln(
+				GetLogger(differ.ctx).Warn(fmt.Sprintf(
 					"Element at path %s in new state not found in inputs, the displayed diff might be inaccurate",
-					path.String())
+					path.String()))
 				inputIndex = newIndex
 			}
 			_, oldChanged := setIndices[inputIndex]
@@ -442,6 +446,6 @@ func makeDetailedDiffV2(
 		return nil, err
 	}
 
-	differ := detailedDiffer{tfs: tfs, ps: ps, newInputs: newInputs}
+	differ := detailedDiffer{ctx: ctx, tfs: tfs, ps: ps, newInputs: newInputs}
 	return differ.makeDetailedDiffPropertyMap(priorProps, props), nil
 }

@@ -10,30 +10,6 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/propertyvalue"
 )
 
-// a variant of PropertyPath.Get which works on PropertyMaps
-func getPathFromPropertyMap(
-	path resource.PropertyPath, propertyMap resource.PropertyMap,
-) (resource.PropertyValue, bool) {
-	if len(path) == 0 {
-		return resource.NewNullProperty(), false
-	}
-
-	rootKeyStr, ok := path[0].(string)
-	contract.Assertf(ok && rootKeyStr != "", "root key must be a non-empty string")
-	rootKey := resource.PropertyKey(rootKeyStr)
-	restPath := path[1:]
-
-	if len(restPath) == 0 {
-		return propertyMap[rootKey], true
-	}
-
-	if !propertyMap.HasValue(rootKey) {
-		return resource.NewNullProperty(), false
-	}
-
-	return restPath.Get(propertyMap[rootKey])
-}
-
 type propertyPath resource.PropertyPath
 
 func isForceNew(tfs shim.Schema, ps *SchemaInfo) bool {
@@ -71,7 +47,8 @@ func (k propertyPath) IsReservedKey() bool {
 }
 
 func (k propertyPath) GetFromMap(v resource.PropertyMap) (resource.PropertyValue, bool) {
-	return getPathFromPropertyMap(resource.PropertyPath(k), v)
+	path := resource.PropertyPath(k)
+	return path.Get(resource.NewProperty(v))
 }
 
 func lookupSchemas(
@@ -135,21 +112,21 @@ func propertyValueTriggersReplacement(
 	return replacement
 }
 
-func schemaContainsComputed(
+// pathContainsComputed returns true if the schema contains a Computed property at a path prefixed by path.
+func pathContainsComputed(
 	path propertyPath, rootTFSchema shim.SchemaMap, rootPulumiSchema map[string]*info.Schema,
 ) bool {
+	tfs, _, err := lookupSchemas(path, rootTFSchema, rootPulumiSchema)
+	if err != nil {
+		return false
+	}
+
 	computed := false
 	visitor := func(path walk.SchemaPath, tfs shim.Schema) {
 		if tfs.Computed() {
 			computed = true
 		}
 	}
-
-	tfs, _, err := lookupSchemas(path, rootTFSchema, rootPulumiSchema)
-	if err != nil {
-		return false
-	}
-
 	walk.VisitSchema(tfs, visitor)
 
 	return computed

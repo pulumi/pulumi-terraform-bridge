@@ -1879,7 +1879,7 @@ resources:
 }
 
 func TestDetailedDiffPlainTypes(t *testing.T) {
-	// TODO: Remove this once accurate bridge previews are rolled out
+	// TODO[pulumi/pulumi-terraform-bridge#2517]: Remove this once accurate bridge previews are rolled out
 	t.Setenv("PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW", "true")
 	resMap := map[string]*schema.Resource{
 		"prov_test": {
@@ -4045,7 +4045,7 @@ func runDetailedDiffTest(
 }
 
 func TestDetailedDiffSet(t *testing.T) {
-	// TODO: Remove this once accurate bridge previews are rolled out
+	// TODO[pulumi/pulumi-terraform-bridge#2517]: Remove this once accurate bridge previews are rolled out
 	t.Setenv("PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW", "true")
 	runTest := func(t *testing.T, resMap map[string]*schema.Resource, props1, props2 interface{},
 		expected autogold.Value, expectedDetailedDiff map[string]any,
@@ -6537,7 +6537,7 @@ outputs:
 }
 
 func TestDetailedDiffUnknownSetAttributeElement(t *testing.T) {
-	// TODO: Remove this once accurate bridge previews are rolled out
+	// TODO[pulumi/pulumi-terraform-bridge#2517]: Remove this once accurate bridge previews are rolled out
 	t.Setenv("PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW", "true")
 	resMap := map[string]*schema.Resource{
 		"prov_test": {
@@ -6800,7 +6800,7 @@ Resources:
 }
 
 func TestUnknownSetAttributeDiff(t *testing.T) {
-	// TODO: Remove this once accurate bridge previews are rolled out
+	// TODO[pulumi/pulumi-terraform-bridge#2517]: Remove this once accurate bridge previews are rolled out
 	t.Setenv("PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW", "true")
 	resMap := map[string]*schema.Resource{
 		"prov_test": {
@@ -6885,7 +6885,7 @@ Resources:
 }
 
 func TestDetailedDiffSetDuplicates(t *testing.T) {
-	// TODO: Remove this once accurate bridge previews are rolled out
+	// TODO[pulumi/pulumi-terraform-bridge#2517]: Remove this once accurate bridge previews are rolled out
 	t.Setenv("PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW", "true")
 	resMap := map[string]*schema.Resource{
 		"prov_test": {
@@ -6980,7 +6980,7 @@ Plan: 0 to add, 1 to change, 0 to destroy.
 }
 
 func TestDetailedDiffSetNestedAttributeUpdated(t *testing.T) {
-	// TODO: Remove this once accurate bridge previews are rolled out
+	// TODO[pulumi/pulumi-terraform-bridge#2517]: Remove this once accurate bridge previews are rolled out
 	t.Setenv("PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW", "true")
 
 	resMap := map[string]*schema.Resource{
@@ -7152,7 +7152,7 @@ Plan: 0 to add, 1 to change, 0 to destroy.
 }
 
 func TestDetailedDiffSetComputedNestedAttribute(t *testing.T) {
-	// TODO: Remove this once accurate bridge previews are rolled out
+	// TODO[pulumi/pulumi-terraform-bridge#2517]: Remove this once accurate bridge previews are rolled out
 	t.Setenv("PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW", "true")
 
 	resCount := 0
@@ -7310,7 +7310,7 @@ Plan: 0 to add, 1 to change, 0 to destroy.
 }
 
 func TestUnknownCollectionForceNewDetailedDiff(t *testing.T) {
-	// TODO: Remove this once accurate bridge previews are rolled out
+	// TODO[pulumi/pulumi-terraform-bridge#2517]: Remove this once accurate bridge previews are rolled out
 	t.Setenv("PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW", "true")
 
 	collectionForceNewResource := func(typ schema.ValueType) *schema.Resource {
