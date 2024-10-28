@@ -4162,6 +4162,9 @@ func TestMakeTerraformResultNilVsEmptyMap(t *testing.T) {
 }
 
 func TestUnknownCollectionForceNewDetailedDiff(t *testing.T) {
+	// TODO: Remove this once accurate bridge previews are rolled out
+	t.Setenv("PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW", "true")
+
 	collectionForceNewResource := func(typ schema.ValueType) *schema.Resource {
 		return &schema.Resource{
 			Schema: map[string]*schema.Schema{
@@ -4381,7 +4384,7 @@ Resources:
     [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
     + prov:index/aux:Aux: (create)
         [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
-    ~ prov:index/test:Test: (update)
+    +-prov:index/test:Test: (replace)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ tests: [
@@ -4392,7 +4395,7 @@ Resources:
         ]
 Resources:
     + 1 to create
-    ~ 1 to update
+    +-1 to replace
     2 changes. 1 unchanged
 `))
 		})
@@ -4404,7 +4407,7 @@ Resources:
     [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
     + prov:index/aux:Aux: (create)
         [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
-    ~ prov:index/test:Test: (update)
+    +-prov:index/test:Test: (replace)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       - tests: [
@@ -4415,7 +4418,7 @@ Resources:
       + tests: output<string>
 Resources:
     + 1 to create
-    ~ 1 to update
+    +-1 to replace
     2 changes. 1 unchanged
 `))
 		})
@@ -4543,7 +4546,7 @@ Resources:
     [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
     + prov:index/aux:Aux: (create)
         [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
-    ~ prov:index/test:Test: (update)
+    +-prov:index/test:Test: (replace)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ tests: [
@@ -4554,7 +4557,7 @@ Resources:
         ]
 Resources:
     + 1 to create
-    ~ 1 to update
+    +-1 to replace
     2 changes. 1 unchanged
 `))
 		})
@@ -4566,7 +4569,7 @@ Resources:
     [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
     + prov:index/aux:Aux: (create)
         [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
-    ~ prov:index/test:Test: (update)
+    +-prov:index/test:Test: (replace)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       - tests: [
@@ -4577,7 +4580,7 @@ Resources:
       + tests: output<string>
 Resources:
     + 1 to create
-    ~ 1 to update
+    +-1 to replace
     2 changes. 1 unchanged
 `))
 		})
