@@ -7,7 +7,7 @@ toolchain go1.23.1
 replace github.com/pulumi/pulumi-terraform-bridge/v3 => ../../
 
 require (
-	github.com/pulumi/providertest v0.1.2
+	github.com/pulumi/providertest v0.1.3
 	github.com/pulumi/pulumi-terraform-bridge/v3 v3.0.0-00010101000000-000000000000
 	github.com/stretchr/testify v1.9.0
 	google.golang.org/protobuf v1.34.2
