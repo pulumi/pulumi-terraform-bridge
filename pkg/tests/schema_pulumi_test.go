@@ -4162,6 +4162,8 @@ func TestMakeTerraformResultNilVsEmptyMap(t *testing.T) {
 }
 
 func TestUnknownCollectionForceNewDetailedDiff(t *testing.T) {
+	// TODO: Remove this once accurate bridge previews are rolled out
+	t.Setenv("PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW", "false")
 	collectionForceNewResource := func(typ schema.ValueType) *schema.Resource {
 		return &schema.Resource{
 			Schema: map[string]*schema.Schema{
