@@ -161,7 +161,8 @@ func (v *TypeChecker) validatePropertyValue(
 
 	switch typeSpec.Type {
 	case "boolean":
-		if !propertyValue.IsBool() {
+		// The bridge permits the strings "true" and "false" to read as boolean, so allow strings.
+		if !propertyValue.IsBool() && !propertyValue.IsString() {
 			return []Failure{newTypeFailure(propertyPath, typeSpec.Type, propertyValue)}
 		}
 		return nil

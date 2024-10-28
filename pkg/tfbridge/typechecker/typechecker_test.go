@@ -1631,6 +1631,11 @@ func TestValidateConfigType(t *testing.T) {
 				})),
 			}),
 		},
+		{
+			name:      "allows_bool_strings",
+			inputName: "skipMetadataApiCheck",
+			input:     resource.PropertyValue{V: "true"},
+		},
 	}
 	for _, tc := range testCases {
 		tc := tc
@@ -1659,6 +1664,11 @@ func TestValidateConfigType(t *testing.T) {
 								Items: &pschema.TypeSpec{
 									Ref: "#/types/aws:config/endpoints:endpoints",
 								},
+							},
+						},
+						"skipMetadataApiCheck": {
+							TypeSpec: pschema.TypeSpec{
+								Type: "boolean",
 							},
 						},
 					},
