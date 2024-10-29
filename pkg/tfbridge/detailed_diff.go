@@ -396,6 +396,9 @@ func (differ detailedDiffer) makeSetDiff(
 
 	removed, added := computeSetHashChanges(oldIdentities, newIdentities)
 
+	// We need to match the new indices to the inputs to ensure that the identity of the
+	// elements is preserved - this is necessary since the planning process can reorder
+	// the elements.
 	addedInputs := differ.matchNewIndicesToInputs(path, added)
 
 	changes := buildChangesIndexMap(addedInputs, removed)
