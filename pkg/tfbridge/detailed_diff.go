@@ -43,8 +43,8 @@ func sortedMergedKeys[K cmp.Ordered, V any, M ~map[K]V](a, b M) []K {
 }
 
 func isTypeShapeMismatched(val resource.PropertyValue, propType shim.ValueType) bool {
-	contract.Assertf(!val.IsSecret(), "val should not be secret")
-	if val.IsComputed() || val.IsOutput() {
+	contract.Assertf(!val.IsSecret()|| val.IsOutput(), "secrets and outputs are not handled")
+	if val.IsComputed() {
 		return false
 	}
 	if !isPresent(val) {
@@ -184,7 +184,7 @@ func makeBaseDiff(old, new resource.PropertyValue) baseDiff {
 		return deleteDiff
 	}
 
-	if new.IsComputed() || new.IsOutput() {
+	if new.IsComputed() {
 		return updateDiff
 	}
 
@@ -282,8 +282,8 @@ func (differ detailedDiffer) makePlainPropDiff(
 func (differ detailedDiffer) makeShortCircuitDiff(
 	path propertyPath, old, new resource.PropertyValue,
 ) map[detailedDiffKey]*pulumirpc.PropertyDiff {
-	contract.Assertf(old.IsNull() || new.IsNull() || new.IsComputed() || new.IsOutput(),
-		"short-circuit diff should only be used for nil, computed, or output properties")
+	contract.Assertf(old.IsNull() || new.IsNull() || new.IsComputed(),
+		"short-circuit diff should only be used for nil properties")
 	if old.IsNull() && new.IsNull() {
 		return nil
 	}
@@ -292,9 +292,9 @@ func (differ detailedDiffer) makeShortCircuitDiff(
 	contract.Assertf(baseDiff != undecidedDiff, "short-circuit diff could not determine diff kind")
 
 	propDiff := baseDiff.ToPropertyDiff()
-	if (new.IsComputed() || new.IsOutput()) && propertyPathTriggersReplacement(path, differ.tfs, differ.ps) {
+	if new.IsComputed() && propertyPathTriggersReplacement(path, differ.tfs, differ.ps) {
 		propDiff = promoteToReplace(propDiff)
-	} else if !new.IsNull() && !new.IsComputed() && !new.IsOutput() && propertyValueTriggersReplacement(path, new, differ.tfs, differ.ps) {
+	} else if !new.IsNull() && !new.IsComputed() && propertyValueTriggersReplacement(path, new, differ.tfs, differ.ps) {
 		propDiff = promoteToReplace(propDiff)
 	} else if !old.IsNull() && propertyValueTriggersReplacement(path, old, differ.tfs, differ.ps) {
 		propDiff = promoteToReplace(propDiff)
@@ -318,10 +318,10 @@ func (differ detailedDiffer) makePropDiff(
 	if !isPresent(old) {
 		old = resource.NewNullProperty()
 	}
-	if !new.IsComputed() && !new.IsOutput() && !isPresent(new) {
+	if !new.IsComputed() && !isPresent(new) {
 		new = resource.NewNullProperty()
 	}
-	if old.IsNull() || new.IsNull() || new.IsComputed() || new.IsOutput() {
+	if old.IsNull() || new.IsNull() || new.IsComputed() {
 		return differ.makeShortCircuitDiff(path, old, new)
 	}
 
