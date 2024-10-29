@@ -43,7 +43,7 @@ func sortedMergedKeys[K cmp.Ordered, V any, M ~map[K]V](a, b M) []K {
 }
 
 func isTypeShapeMismatched(val resource.PropertyValue, propType shim.ValueType) bool {
-	contract.Assertf(!val.IsSecret()|| val.IsOutput(), "secrets and outputs are not handled")
+	contract.Assertf(!val.IsSecret() || val.IsOutput(), "secrets and outputs are not handled")
 	if val.IsComputed() {
 		return false
 	}
