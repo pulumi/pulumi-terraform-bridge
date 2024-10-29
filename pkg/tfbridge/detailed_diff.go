@@ -210,16 +210,6 @@ func (differ detailedDiffer) makePropDiff(
 		return nil
 	}
 	propType := differ.getEffectiveType(differ.propertyPathToSchemaPath(path))
-	if !isPresent(old) || isTypeShapeMismatched(old, propType) {
-		old = resource.NewNullProperty()
-	}
-	if !new.IsComputed() && (!isPresent(new) || isTypeShapeMismatched(new, propType)) {
-		new = resource.NewNullProperty()
-	}
-	if old.IsNull() || new.IsNull() || new.IsComputed() {
-		return differ.makeShortCircuitDiff(path, old, new)
-	}
-
 	if isTypeShapeMismatched(old, propType) || isTypeShapeMismatched(new, propType) {
 		return differ.makePlainPropDiff(path, old, new)
 	}
