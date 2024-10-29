@@ -44,7 +44,7 @@ func TestLogReplayProvider(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	require.Equal(t, "\x80", string(configResp.PreparedConfig.MsgPack))
+	require.Equal(t, "\x80", string(configResp.PreparedConfig.MsgPack), "the config is is msgpack encoded, so we compare the bytes")
 }
 
 type runProvider struct {
@@ -69,11 +69,12 @@ func makeLogReplayProvider(t *testing.T, name, version string, grpcLogs []byte) 
 	info, err := providerInfo(context.Background(), provider, parameterize.Value{
 		Local: &parameterize.LocalValue{Path: "path"},
 	})
-	require.NoError(t, err)
+	require.NoError(t, err, "failed to read grpc log")
 
 	return info
 }
 
+// Asserts that the replayed provider can answer all the engine calls and return the correct output.
 func TestLogReplayProviderWithProgram(t *testing.T) {
 	grpcLogs, err := os.ReadFile(
 		"./testdata/TestLogReplayProvider/grpc_log_random.json")

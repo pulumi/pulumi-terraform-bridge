@@ -114,6 +114,7 @@ func Translate[
 	return m(v), nil
 }
 
+// LogReplayProvider is a provider that replays logs from a previous run.
 type LogReplayProvider struct {
 	methodLogs map[string][]grpcLog
 }
@@ -126,7 +127,7 @@ func getMethodFromFullName(fullName string) string {
 }
 
 func NewLogReplayProvider(name, version, logs string) LogReplayProvider {
-	grpcLogs := make([]grpcLog, 0)
+	var grpcLogs []grpcLog
 	err := json.Unmarshal([]byte(logs), &grpcLogs)
 	contract.AssertNoErrorf(err, "failed to unmarshal logs")
 	methodLogs := make(map[string][]grpcLog)
@@ -148,162 +149,131 @@ func (p LogReplayProvider) mustPopLog(method string) grpcLog {
 	return log
 }
 
-func mustUnmarshalLog[T fmt.Stringer, Q any](log grpcLog, methodName string, req *T, resp *Q) {
+func mustUnmarshalLog[Q any, T fmt.Stringer](log grpcLog, methodName string, req T) *Q {
 	contract.Assertf(
 		getMethodFromFullName(log.Name) == methodName,
 		"log name %s does not match method name %s", log.Name, methodName)
 
-	contract.Assertf(req != nil, "request is nil")
-	reqString := (*req).String()
+	reqString := (req).String()
 	contract.Assertf(
 		reqString == log.Request, "request %s does not match log request %s", reqString, log.Request)
 
+	var resp Q
 	err := json.Unmarshal([]byte(log.Response), resp)
 	contract.AssertNoErrorf(err, "failed to unmarshal log response %s", log.Response)
+	return &resp
 }
 
 func (p LogReplayProvider) GetMetadata(
 	ctx context.Context, req *tfplugin6.GetMetadata_Request, opts ...grpc.CallOption,
 ) (*tfplugin6.GetMetadata_Response, error) {
 	methodName := "GetMetadata"
-	var resp tfplugin6.GetMetadata_Response
-	mustUnmarshalLog(p.mustPopLog(methodName), methodName, &req, &resp)
-	return &resp, nil
+	return mustUnmarshalLog[tfplugin6.GetMetadata_Response](p.mustPopLog(methodName), methodName, req), nil
 }
 
 func (p LogReplayProvider) GetProviderSchema(
 	ctx context.Context, req *tfplugin6.GetProviderSchema_Request, opts ...grpc.CallOption,
 ) (*tfplugin6.GetProviderSchema_Response, error) {
 	methodName := "GetProviderSchema"
-	var resp tfplugin6.GetProviderSchema_Response
-	mustUnmarshalLog(p.mustPopLog(methodName), methodName, &req, &resp)
-	return &resp, nil
+	return mustUnmarshalLog[tfplugin6.GetProviderSchema_Response](p.mustPopLog(methodName), methodName, req), nil
 }
 
 func (p LogReplayProvider) ValidateProviderConfig(
 	ctx context.Context, req *tfplugin6.ValidateProviderConfig_Request, opts ...grpc.CallOption,
 ) (*tfplugin6.ValidateProviderConfig_Response, error) {
 	methodName := "ValidateProviderConfig"
-	var resp tfplugin6.ValidateProviderConfig_Response
-	mustUnmarshalLog(p.mustPopLog(methodName), methodName, &req, &resp)
-	return &resp, nil
+	return mustUnmarshalLog[tfplugin6.ValidateProviderConfig_Response](p.mustPopLog(methodName), methodName, req), nil
 }
 
 func (p LogReplayProvider) ConfigureProvider(
 	ctx context.Context, req *tfplugin6.ConfigureProvider_Request, opts ...grpc.CallOption,
 ) (*tfplugin6.ConfigureProvider_Response, error) {
 	methodName := "ConfigureProvider"
-	var resp tfplugin6.ConfigureProvider_Response
-	mustUnmarshalLog(p.mustPopLog(methodName), methodName, &req, &resp)
-	return &resp, nil
+	return mustUnmarshalLog[tfplugin6.ConfigureProvider_Response](p.mustPopLog(methodName), methodName, req), nil
 }
 
 func (p LogReplayProvider) StopProvider(
 	ctx context.Context, req *tfplugin6.StopProvider_Request, opts ...grpc.CallOption,
 ) (*tfplugin6.StopProvider_Response, error) {
 	methodName := "StopProvider"
-	var resp tfplugin6.StopProvider_Response
-	mustUnmarshalLog(p.mustPopLog(methodName), methodName, &req, &resp)
-	return &resp, nil
+	return mustUnmarshalLog[tfplugin6.StopProvider_Response](p.mustPopLog(methodName), methodName, req), nil
 }
 
 func (p LogReplayProvider) ValidateResourceConfig(
 	ctx context.Context, req *tfplugin6.ValidateResourceConfig_Request, opts ...grpc.CallOption,
 ) (*tfplugin6.ValidateResourceConfig_Response, error) {
 	methodName := "ValidateResourceConfig"
-	var resp tfplugin6.ValidateResourceConfig_Response
-	mustUnmarshalLog(p.mustPopLog(methodName), methodName, &req, &resp)
-	return &resp, nil
+	return mustUnmarshalLog[tfplugin6.ValidateResourceConfig_Response](p.mustPopLog(methodName), methodName, req), nil
 }
 
 func (p LogReplayProvider) UpgradeResourceState(
 	ctx context.Context, req *tfplugin6.UpgradeResourceState_Request, opts ...grpc.CallOption,
 ) (*tfplugin6.UpgradeResourceState_Response, error) {
 	methodName := "UpgradeResourceState"
-	var resp tfplugin6.UpgradeResourceState_Response
-	mustUnmarshalLog(p.mustPopLog(methodName), methodName, &req, &resp)
-	return &resp, nil
+	return mustUnmarshalLog[tfplugin6.UpgradeResourceState_Response](p.mustPopLog(methodName), methodName, req), nil
 }
 
 func (p LogReplayProvider) ReadResource(
 	ctx context.Context, req *tfplugin6.ReadResource_Request, opts ...grpc.CallOption,
 ) (*tfplugin6.ReadResource_Response, error) {
 	methodName := "ReadResource"
-	var resp tfplugin6.ReadResource_Response
-	mustUnmarshalLog(p.mustPopLog(methodName), methodName, &req, &resp)
-	return &resp, nil
+	return mustUnmarshalLog[tfplugin6.ReadResource_Response](p.mustPopLog(methodName), methodName, req), nil
 }
 
 func (p LogReplayProvider) PlanResourceChange(
 	ctx context.Context, req *tfplugin6.PlanResourceChange_Request, opts ...grpc.CallOption,
 ) (*tfplugin6.PlanResourceChange_Response, error) {
 	methodName := "PlanResourceChange"
-	var resp tfplugin6.PlanResourceChange_Response
-	mustUnmarshalLog(p.mustPopLog(methodName), methodName, &req, &resp)
-	return &resp, nil
+	return mustUnmarshalLog[tfplugin6.PlanResourceChange_Response](p.mustPopLog(methodName), methodName, req), nil
 }
 
 func (p LogReplayProvider) ApplyResourceChange(
 	ctx context.Context, req *tfplugin6.ApplyResourceChange_Request, opts ...grpc.CallOption,
 ) (*tfplugin6.ApplyResourceChange_Response, error) {
 	methodName := "ApplyResourceChange"
-	var resp tfplugin6.ApplyResourceChange_Response
-	mustUnmarshalLog(p.mustPopLog(methodName), methodName, &req, &resp)
-	return &resp, nil
+	return mustUnmarshalLog[tfplugin6.ApplyResourceChange_Response](p.mustPopLog(methodName), methodName, req), nil
 }
 
 func (p LogReplayProvider) ImportResourceState(
 	ctx context.Context, req *tfplugin6.ImportResourceState_Request, opts ...grpc.CallOption,
 ) (*tfplugin6.ImportResourceState_Response, error) {
 	methodName := "ImportResourceState"
-	var resp tfplugin6.ImportResourceState_Response
-	mustUnmarshalLog(p.mustPopLog(methodName), methodName, &req, &resp)
-	return &resp, nil
+	return mustUnmarshalLog[tfplugin6.ImportResourceState_Response](p.mustPopLog(methodName), methodName, req), nil
 }
 
 func (p LogReplayProvider) ValidateDataResourceConfig(
 	ctx context.Context, req *tfplugin6.ValidateDataResourceConfig_Request, opts ...grpc.CallOption,
 ) (*tfplugin6.ValidateDataResourceConfig_Response, error) {
 	methodName := "ValidateDataResourceConfig"
-	var resp tfplugin6.ValidateDataResourceConfig_Response
-	mustUnmarshalLog(p.mustPopLog(methodName), methodName, &req, &resp)
-	return &resp, nil
+	return mustUnmarshalLog[tfplugin6.ValidateDataResourceConfig_Response](p.mustPopLog(methodName), methodName, req), nil
 }
 
 func (p LogReplayProvider) MoveResourceState(
 	ctx context.Context, req *tfplugin6.MoveResourceState_Request, opts ...grpc.CallOption,
 ) (*tfplugin6.MoveResourceState_Response, error) {
 	methodName := "MoveResourceState"
-	var resp tfplugin6.MoveResourceState_Response
-	mustUnmarshalLog(p.mustPopLog(methodName), methodName, &req, &resp)
-	return &resp, nil
+	return mustUnmarshalLog[tfplugin6.MoveResourceState_Response](p.mustPopLog(methodName), methodName, req), nil
 }
 
 func (p LogReplayProvider) ReadDataSource(
 	ctx context.Context, req *tfplugin6.ReadDataSource_Request, opts ...grpc.CallOption,
 ) (*tfplugin6.ReadDataSource_Response, error) {
 	methodName := "ReadDataSource"
-	var resp tfplugin6.ReadDataSource_Response
-	mustUnmarshalLog(p.mustPopLog(methodName), methodName, &req, &resp)
-	return &resp, nil
+	return mustUnmarshalLog[tfplugin6.ReadDataSource_Response](p.mustPopLog(methodName), methodName, req), nil
 }
 
 func (p LogReplayProvider) CallFunction(
 	ctx context.Context, req *tfplugin6.CallFunction_Request, opts ...grpc.CallOption,
 ) (*tfplugin6.CallFunction_Response, error) {
 	methodName := "CallFunction"
-	var resp tfplugin6.CallFunction_Response
-	mustUnmarshalLog(p.mustPopLog(methodName), methodName, &req, &resp)
-	return &resp, nil
+	return mustUnmarshalLog[tfplugin6.CallFunction_Response](p.mustPopLog(methodName), methodName, req), nil
 }
 
 func (p LogReplayProvider) GetFunctions(
 	ctx context.Context, req *tfplugin6.GetFunctions_Request, opts ...grpc.CallOption,
 ) (*tfplugin6.GetFunctions_Response, error) {
 	methodName := "GetFunctions"
-	var resp tfplugin6.GetFunctions_Response
-	mustUnmarshalLog(p.mustPopLog(methodName), methodName, &req, &resp)
-	return &resp, nil
+	return mustUnmarshalLog[tfplugin6.GetFunctions_Response](p.mustPopLog(methodName), methodName, req), nil
 }
 
 func (p LogReplayProvider) Close() error {
