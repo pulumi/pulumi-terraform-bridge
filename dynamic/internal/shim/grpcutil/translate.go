@@ -126,9 +126,11 @@ func getMethodFromFullName(fullName string) string {
 	return splitName[len(splitName)-1]
 }
 
-func NewLogReplayProvider(name, version, logs string) LogReplayProvider {
+// NewLogReplayProvider creates a new LogReplayProvider from the given logs.
+// It uses the logs to replay the recorded calls to the provider.
+func NewLogReplayProvider(name, version string, logs []byte) LogReplayProvider {
 	var grpcLogs []grpcLog
-	err := json.Unmarshal([]byte(logs), &grpcLogs)
+	err := json.Unmarshal(logs, &grpcLogs)
 	contract.AssertNoErrorf(err, "failed to unmarshal logs")
 	methodLogs := make(map[string][]grpcLog)
 	for _, log := range grpcLogs {

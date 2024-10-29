@@ -24,7 +24,7 @@ func TestLogReplayProvider(t *testing.T) {
 		t.Fatalf("failed to read grpc log: %v", err)
 	}
 
-	provPlugin := grpcutil.NewLogReplayProvider("random", "0.0.1", string(grpcLogs))
+	provPlugin := grpcutil.NewLogReplayProvider("random", "0.0.1", grpcLogs)
 	prov := v6shim.New(provPlugin)
 	require.NoError(t, err)
 
@@ -59,7 +59,7 @@ func (p runProvider) URL() string     { return "url" }
 func (p runProvider) Close() error    { return nil }
 
 func makeLogReplayProvider(t *testing.T, name, version string, grpcLogs []byte) info.Provider {
-	provPlugin := grpcutil.NewLogReplayProvider(name, version, string(grpcLogs))
+	provPlugin := grpcutil.NewLogReplayProvider(name, version, grpcLogs)
 	prov := v6shim.New(provPlugin)
 	provider := runProvider{
 		ProviderServer: prov,
