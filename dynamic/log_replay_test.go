@@ -44,7 +44,8 @@ func TestLogReplayProvider(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	require.Equal(t, "\x80", string(configResp.PreparedConfig.MsgPack), "the config is is msgpack encoded, so we compare the bytes")
+	require.Equal(t, "\x80", string(configResp.PreparedConfig.MsgPack),
+		"the config is is msgpack encoded, so we compare the bytes")
 }
 
 type runProvider struct {
