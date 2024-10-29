@@ -42,11 +42,9 @@ func TestSchemaLookupMaxItemsOnePlain(t *testing.T) {
 		},
 	}
 
-	differ := detailedDiffer{
-		tfs: shimv2.NewSchemaMap(sdkv2Schema),
-	}
+	tfs := shimv2.NewSchemaMap(sdkv2Schema)
 
-	sch, _, err := differ.lookupSchemas(newPropertyPath("string_prop"))
+	sch, _, err := lookupSchemas(newPropertyPath("string_prop"), tfs, nil)
 	require.NoError(t, err)
 	require.NotNil(t, sch)
 	require.Equal(t, sch.Type(), shim.TypeList)
@@ -71,16 +69,14 @@ func TestSchemaLookupMaxItemsOne(t *testing.T) {
 		},
 	}
 
-	differ := detailedDiffer{
-		tfs: shimv2.NewSchemaMap(res.Schema),
-	}
+	tfs := shimv2.NewSchemaMap(res.Schema)
 
-	sch, _, err := differ.lookupSchemas(newPropertyPath("foo"))
+	sch, _, err := lookupSchemas(newPropertyPath("foo"), tfs, nil)
 	require.NoError(t, err)
 	require.NotNil(t, sch)
 	require.Equal(t, sch.Type(), shim.TypeList)
 
-	sch, _, err = differ.lookupSchemas(newPropertyPath("foo").Subpath("bar"))
+	sch, _, err = lookupSchemas(newPropertyPath("foo").Subpath("bar"), tfs, nil)
 	require.NoError(t, err)
 	require.NotNil(t, sch)
 	require.Equal(t, sch.Type(), shim.TypeString)
@@ -100,16 +96,14 @@ func TestSchemaLookupMap(t *testing.T) {
 		},
 	}
 
-	differ := detailedDiffer{
-		tfs: shimv2.NewSchemaMap(res.Schema),
-	}
+	tfs := shimv2.NewSchemaMap(res.Schema)
 
-	sch, _, err := differ.lookupSchemas(newPropertyPath("foo"))
+	sch, _, err := lookupSchemas(newPropertyPath("foo"), tfs, nil)
 	require.NoError(t, err)
 	require.NotNil(t, sch)
 	require.Equal(t, sch.Type(), shim.TypeMap)
 
-	sch, _, err = differ.lookupSchemas(propertyPath{"foo", "bar"})
+	sch, _, err = lookupSchemas(newPropertyPath("foo").Subpath("bar"), tfs, nil)
 	require.NoError(t, err)
 	require.NotNil(t, sch)
 	require.Equal(t, sch.Type(), shim.TypeString)
@@ -1750,6 +1744,119 @@ func TestDetailedDiffPulumiSchemaOverride(t *testing.T) {
 			runDetailedDiffTest(t, propertyMapVal1, propertyMapEmpty, tfs, ps, map[string]*pulumirpc.PropertyDiff{
 				"foo": {Kind: pulumirpc.PropertyDiff_DELETE},
 			})
+		})
+	})
+}
+
+func TestDetailedDiffMismatchedSchemas(t *testing.T) {
+	stringSchema := map[string]*schema.Schema{
+		"foo": {
+			Type:     schema.TypeString,
+			Optional: true,
+		},
+	}
+
+	listSchema := map[string]*schema.Schema{
+		"foo": {
+			Type:     schema.TypeList,
+			Optional: true,
+			Elem: &schema.Schema{
+				Type: schema.TypeString,
+			},
+		},
+	}
+
+	setSchema := map[string]*schema.Schema{
+		"foo": {
+			Type:     schema.TypeSet,
+			Optional: true,
+			Elem: &schema.Schema{
+				Type: schema.TypeString,
+			},
+		},
+	}
+
+	mapSchema := map[string]*schema.Schema{
+		"foo": {
+			Type:     schema.TypeMap,
+			Optional: true,
+			Elem: &schema.Schema{
+				Type: schema.TypeString,
+			},
+		},
+	}
+
+	stringValue := resource.NewPropertyMapFromMap(
+		map[string]interface{}{
+			"foo": "string-value",
+		},
+	)
+
+	listValue := resource.NewPropertyMapFromMap(
+		map[string]interface{}{
+			"foo": []interface{}{"list-value"},
+		},
+	)
+
+	mapValue := resource.NewPropertyMapFromMap(
+		map[string]interface{}{
+			"foo": map[string]interface{}{"bar": "map-value"},
+		},
+	)
+
+	t.Run("list schema with string value", func(t *testing.T) {
+		tfs := shimv2.NewSchemaMap(listSchema)
+		runDetailedDiffTest(t, stringValue, listValue, tfs, nil, map[string]*pulumirpc.PropertyDiff{
+			"foo": {Kind: pulumirpc.PropertyDiff_UPDATE},
+		})
+	})
+
+	t.Run("list schema with map value", func(t *testing.T) {
+		tfs := shimv2.NewSchemaMap(listSchema)
+		runDetailedDiffTest(t, mapValue, listValue, tfs, nil, map[string]*pulumirpc.PropertyDiff{
+			"foo": {Kind: pulumirpc.PropertyDiff_UPDATE},
+		})
+	})
+
+	t.Run("set schema with string value", func(t *testing.T) {
+		tfs := shimv2.NewSchemaMap(setSchema)
+		runDetailedDiffTest(t, stringValue, listValue, tfs, nil, map[string]*pulumirpc.PropertyDiff{
+			"foo": {Kind: pulumirpc.PropertyDiff_UPDATE},
+		})
+	})
+
+	t.Run("set schema with map value", func(t *testing.T) {
+		tfs := shimv2.NewSchemaMap(setSchema)
+		runDetailedDiffTest(t, mapValue, listValue, tfs, nil, map[string]*pulumirpc.PropertyDiff{
+			"foo": {Kind: pulumirpc.PropertyDiff_UPDATE},
+		})
+	})
+
+	t.Run("string schema with list value", func(t *testing.T) {
+		tfs := shimv2.NewSchemaMap(stringSchema)
+		runDetailedDiffTest(t, listValue, stringValue, tfs, nil, map[string]*pulumirpc.PropertyDiff{
+			"foo": {Kind: pulumirpc.PropertyDiff_UPDATE},
+		})
+	})
+
+	t.Run("string schema with map value", func(t *testing.T) {
+		tfs := shimv2.NewSchemaMap(stringSchema)
+		runDetailedDiffTest(t, mapValue, stringValue, tfs, nil, map[string]*pulumirpc.PropertyDiff{
+			"foo": {Kind: pulumirpc.PropertyDiff_UPDATE},
+		})
+	})
+
+	t.Run("map schema with string value", func(t *testing.T) {
+		tfs := shimv2.NewSchemaMap(mapSchema)
+		runDetailedDiffTest(t, stringValue, mapValue, tfs, nil, map[string]*pulumirpc.PropertyDiff{
+			"foo": {Kind: pulumirpc.PropertyDiff_UPDATE},
+		})
+	})
+
+	t.Run("map schema with list value", func(t *testing.T) {
+		tfs := shimv2.NewSchemaMap(mapSchema)
+		runDetailedDiffTest(t, listValue, mapValue, tfs, nil, map[string]*pulumirpc.PropertyDiff{
+			"foo": {Kind: pulumirpc.PropertyDiff_UPDATE},
 		})
 	})
 }
