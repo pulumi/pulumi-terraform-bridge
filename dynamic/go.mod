@@ -18,6 +18,7 @@ require (
 	github.com/hashicorp/terraform-plugin-sdk v1.7.0
 	github.com/hexops/autogold/v2 v2.2.1
 	github.com/opentofu/opentofu/shim v0.0.0-00010101000000-000000000000
+	github.com/pulumi/providertest v0.1.3
 	github.com/pulumi/pulumi-terraform-bridge/v3 v3.92.0
 	github.com/stretchr/testify v1.9.0
 	google.golang.org/protobuf v1.34.2
@@ -25,17 +26,10 @@ require (
 
 require (
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
-	github.com/hashicorp/logutils v1.0.0 // indirect
-	github.com/hashicorp/terraform-plugin-sdk/v2 v2.33.0 // indirect
 	github.com/nxadm/tail v1.4.11 // indirect
-	github.com/pulumi/providertest v0.1.2 // indirect
-	github.com/pulumi/terraform-diff-reader v0.0.2 // indirect
 	github.com/teekennedy/goldmark-markdown v0.3.0 // indirect
-	github.com/vmihailenco/msgpack v4.0.4+incompatible // indirect
 	github.com/yuin/goldmark v1.7.4 // indirect
-	google.golang.org/appengine v1.6.8 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
-	gotest.tools v2.2.0+incompatible // indirect
 )
 
 require (
