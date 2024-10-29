@@ -307,10 +307,15 @@ func (differ detailedDiffer) makePropDiff(
 		return nil
 	}
 	propType := differ.getEffectiveType(differ.propertyPathToSchemaPath(path))
-	if !isPresent(old) || isTypeShapeMismatched(old, propType) {
+
+	if isTypeShapeMismatched(old, propType) || isTypeShapeMismatched(new, propType) {
+		return differ.makePlainPropDiff(path, old, new)
+	}
+
+	if !isPresent(old) {
 		old = resource.NewNullProperty()
 	}
-	if !new.IsComputed() && (!isPresent(new) || isTypeShapeMismatched(new, propType)) {
+	if !new.IsComputed() && !isPresent(new) {
 		new = resource.NewNullProperty()
 	}
 	if old.IsNull() || new.IsNull() || new.IsComputed() {
