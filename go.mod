@@ -27,7 +27,7 @@ require (
 	github.com/hashicorp/terraform-plugin-mux v0.16.0
 	github.com/hashicorp/terraform-plugin-sdk v1.7.0
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.33.0
-	github.com/hashicorp/terraform-provider-tls/shim v0.0.0-00010101000000-000000000000
+	github.com/hashicorp/terraform-provider-tls v1.2.1-0.20230117062332-afdd54107aba
 	github.com/hashicorp/terraform-svchost v0.1.1
 	github.com/hexops/autogold/v2 v2.2.1
 	github.com/hexops/valast v1.4.4
@@ -41,9 +41,9 @@ require (
 	github.com/mitchellh/reflectwalk v1.0.2
 	github.com/pkg/errors v0.9.1
 	github.com/pulumi/inflector v0.1.1
-	github.com/pulumi/providertest v0.1.2
+	github.com/pulumi/providertest v0.1.3
 	github.com/pulumi/pulumi-java/pkg v0.16.1
-	github.com/pulumi/pulumi-yaml v1.10.3
+	github.com/pulumi/pulumi-yaml v1.11.1
 	github.com/pulumi/schema-tools v0.1.2
 	github.com/pulumi/terraform-diff-reader v0.0.2
 	github.com/russross/blackfriday/v2 v2.1.0
@@ -51,7 +51,7 @@ require (
 	github.com/spf13/cobra v1.8.0
 	github.com/stretchr/testify v1.9.0
 	github.com/teekennedy/goldmark-markdown v0.3.0
-	github.com/terraform-providers/terraform-provider-random/randomshim v0.0.0-00010101000000-000000000000
+	github.com/terraform-providers/terraform-provider-random v1.3.2-0.20231204135814-c6e90de46687
 	github.com/yuin/goldmark v1.7.4
 	github.com/zclconf/go-cty v1.14.2
 	golang.org/x/crypto v0.25.0
@@ -96,7 +96,6 @@ require (
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/golang-jwt/jwt/v5 v5.2.1 // indirect
 	github.com/google/s2a-go v0.1.7 // indirect
-	github.com/hashicorp/terraform-provider-tls v0.0.0 // indirect
 	github.com/hexops/gotextdiff v1.0.3 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
@@ -111,7 +110,6 @@ require (
 	github.com/pulumi/appdash v0.0.0-20231130102222-75f619a67231 // indirect
 	github.com/pulumi/esc v0.10.0 // indirect
 	github.com/shopspring/decimal v1.3.1 // indirect
-	github.com/terraform-providers/terraform-provider-random v1.3.2-0.20231204135814-c6e90de46687 // indirect
 	github.com/vmihailenco/msgpack/v5 v5.4.1 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.49.0 // indirect
@@ -218,8 +216,8 @@ require (
 	github.com/pkg/term v1.1.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/posener/complete v1.2.3 // indirect
-	github.com/pulumi/pulumi/pkg/v3 v3.136.1
-	github.com/pulumi/pulumi/sdk/v3 v3.136.1
+	github.com/pulumi/pulumi/pkg/v3 v3.137.0
+	github.com/pulumi/pulumi/sdk/v3 v3.137.0
 	github.com/rivo/uniseg v0.4.4 // indirect
 	github.com/rogpeppe/go-internal v1.12.0 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
@@ -261,8 +259,6 @@ require (
 
 replace github.com/hashicorp/terraform-plugin-sdk/v2 => github.com/pulumi/terraform-plugin-sdk/v2 v2.0.0-20240520223432-0c0bf0d65f10
 
-replace github.com/hashicorp/terraform-provider-tls => github.com/hashicorp/terraform-provider-tls v1.2.1-0.20230117062332-afdd54107aba
+replace github.com/hashicorp/terraform-provider-tls => ./pkg/pf/tests/internal/tlsshim/vendor/github.com/hashicorp/terraform-provider-tls
 
-replace github.com/hashicorp/terraform-provider-tls/shim => ./pkg/pf/tests/internal/tlsshim
-
-replace github.com/terraform-providers/terraform-provider-random/randomshim => ./pkg/pf/tests/internal/randomshim
+replace github.com/terraform-providers/terraform-provider-random => ./pkg/pf/tests/internal/randomshim/vendor/github.com/hashicorp/terraform-provider-random

@@ -129,6 +129,7 @@ type T interface {
 type bridgedProviderOpts struct {
 	DisablePlanResourceChange bool
 	StateEdit                 shimv2.PlanStateEditFunc
+	resourceInfo              map[string]*info.Resource
 }
 
 // BridgedProviderOpts
@@ -147,11 +148,19 @@ func WithStateEdit(f shimv2.PlanStateEditFunc) BridgedProviderOpt {
 	}
 }
 
+// WithResourceInfo allows the user to set the info.Provider.Resources field within a
+// [BridgedProvider].
+//
+// This is an experimental API.
+func WithResourceInfo(info map[string]*info.Resource) BridgedProviderOpt {
+	return func(o *bridgedProviderOpts) { o.resourceInfo = info }
+}
+
 // This is an experimental API.
 func BridgedProvider(t T, providerName string, tfp *schema.Provider, opts ...BridgedProviderOpt) info.Provider {
-	options := &bridgedProviderOpts{}
+	var options bridgedProviderOpts
 	for _, opt := range opts {
-		opt(options)
+		opt(&options)
 	}
 
 	EnsureProviderValid(t, tfp)
@@ -169,6 +178,7 @@ func BridgedProvider(t T, providerName string, tfp *schema.Provider, opts ...Bri
 		Version:                        "0.0.1",
 		MetadataInfo:                   &tfbridge.MetadataInfo{},
 		EnableZeroDefaultSchemaVersion: true,
+		Resources:                      options.resourceInfo,
 	}
 	makeToken := func(module, name string) (string, error) {
 		return tokens.MakeStandard(providerName)(module, name)
