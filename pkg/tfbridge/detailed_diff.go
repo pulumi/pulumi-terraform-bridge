@@ -157,7 +157,12 @@ func (differ detailedDiffer) getEffectiveType(path walk.SchemaPath) shim.ValueTy
 	return tfs.Type()
 }
 
-type hashIndexMap map[int]int
+type (
+	setHash    int
+	arrayIndex int
+)
+
+type hashIndexMap map[setHash]arrayIndex
 
 func (differ detailedDiffer) calculateSetHashIndexMap(
 	path propertyPath, listVal []resource.PropertyValue,
@@ -185,8 +190,8 @@ func (differ detailedDiffer) calculateSetHashIndexMap(
 	// Calculate the identity of each element
 	for i, newElem := range convertedListVal {
 
-		hash := tfs.SetHash(newElem)
-		identities[hash] = i
+		elementHash := tfs.SetHash(newElem)
+		identities[setHash(elementHash)] = arrayIndex(i)
 	}
 	return identities
 }
@@ -304,19 +309,32 @@ func (differ detailedDiffer) makeListDiff(
 	return diff
 }
 
-func (differ detailedDiffer) makeSetDiff(
-	path propertyPath, old, new resource.PropertyValue,
-) map[detailedDiffKey]*pulumirpc.PropertyDiff {
-	type setChangeIndex struct {
-		engineIndex   int
-		newStateIndex int
-		oldChanged    bool
-		newChanged    bool
+func computeSetHashChanges(
+	oldIdentities, newIdentities hashIndexMap,
+) (removed, added hashIndexMap) {
+	removed = hashIndexMap{}
+	added = hashIndexMap{}
+
+	for elementHash := range oldIdentities {
+		if _, ok := newIdentities[elementHash]; !ok {
+			removed[elementHash] = oldIdentities[elementHash]
+		}
 	}
 
-	diff := make(map[detailedDiffKey]*pulumirpc.PropertyDiff)
-	oldList := old.ArrayValue()
-	newList := new.ArrayValue()
+	for elementHash := range newIdentities {
+		if _, ok := oldIdentities[elementHash]; !ok {
+			added[elementHash] = newIdentities[elementHash]
+		}
+	}
+
+	return
+}
+
+func (differ detailedDiffer) matchNewIndicesToInputs(
+	path propertyPath, changedIdentities hashIndexMap,
+) hashIndexMap {
+	matched := hashIndexMap{}
+
 	newInputsList := []resource.PropertyValue{}
 
 	newInputs, newInputsOk := path.GetFromMap(differ.newInputs)
@@ -324,8 +342,6 @@ func (differ detailedDiffer) makeSetDiff(
 		newInputsList = newInputs.ArrayValue()
 	}
 
-	oldIdentities := differ.calculateSetHashIndexMap(path, oldList)
-	newIdentities := differ.calculateSetHashIndexMap(path, newList)
 	inputIdentities := hashIndexMap{}
 
 	if !pathContainsComputed(path, differ.tfs, differ.ps) {
@@ -333,46 +349,72 @@ func (differ detailedDiffer) makeSetDiff(
 		inputIdentities = differ.calculateSetHashIndexMap(path, newInputsList)
 	}
 
-	// The old indices and new inputs are the indices the engine can reference
-	// The new state indices need to be translated to new input indices when presenting the diff
-	setIndices := make(map[int]setChangeIndex)
-	for hash, oldIndex := range oldIdentities {
-		if _, newOk := newIdentities[hash]; !newOk {
-			setIndices[oldIndex] = setChangeIndex{engineIndex: oldIndex, oldChanged: true, newStateIndex: -1, newChanged: false}
-		}
-	}
-	for hash, newIndex := range newIdentities {
-		if _, oldOk := oldIdentities[hash]; !oldOk {
-			inputIndex := inputIdentities[hash]
-			if inputIndex == -1 {
-				GetLogger(differ.ctx).Warn(fmt.Sprintf(
-					"Additional changes detected in %s, the displayed diff might be inaccurate",
-					path.String()))
-				inputIndex = newIndex
-			}
-			_, oldChanged := setIndices[inputIndex]
-			setIndices[inputIndex] = setChangeIndex{
-				engineIndex: inputIndex, oldChanged: oldChanged, newStateIndex: newIndex, newChanged: true,
-			}
+	for elementHash, newStateIndex := range changedIdentities {
+		if inputIndex, ok := inputIdentities[elementHash]; ok {
+			matched[elementHash] = inputIndex
+		} else {
+			GetLogger(differ.ctx).Warn(fmt.Sprintf(
+				"Additional changes detected in %s, the displayed diff might be inaccurate",
+				path.String()))
+			matched[elementHash] = newStateIndex
 		}
 	}
 
-	for index, setChange := range setIndices {
-		oldEl := resource.NewNullProperty()
-		if setChange.oldChanged {
-			oldEl = oldList[setChange.engineIndex]
+	return matched
+}
+
+type hashPair struct {
+	oldHash setHash
+	newHash setHash
+}
+
+func buildChangesIndexMap(added, removed hashIndexMap) map[arrayIndex]hashPair {
+	changes := map[arrayIndex]hashPair{}
+	for hash, index := range added {
+		changes[index] = hashPair{oldHash: -1, newHash: hash}
+	}
+	for hash, index := range removed {
+		if el, ok := changes[index]; !ok {
+			changes[index] = hashPair{oldHash: hash, newHash: -1}
+		} else {
+			el.oldHash = hash
+			changes[index] = el
 		}
-		newEl := resource.NewNullProperty()
-		if setChange.newChanged {
-			contract.Assertf(setChange.newStateIndex != -1, "new state index should be set")
-			newEl = newList[setChange.newStateIndex]
+	}
+	return changes
+}
+
+func (differ detailedDiffer) makeSetDiff(
+	path propertyPath, old, new resource.PropertyValue,
+) map[detailedDiffKey]*pulumirpc.PropertyDiff {
+	diff := make(map[detailedDiffKey]*pulumirpc.PropertyDiff)
+	oldList := old.ArrayValue()
+	newList := new.ArrayValue()
+
+	oldIdentities := differ.calculateSetHashIndexMap(path, oldList)
+	newIdentities := differ.calculateSetHashIndexMap(path, newList)
+
+	removed, added := computeSetHashChanges(oldIdentities, newIdentities)
+
+	addedInputs := differ.matchNewIndicesToInputs(path, added)
+
+	changes := buildChangesIndexMap(addedInputs, removed)
+
+	for index, hashes := range changes {
+		oldVal := resource.NewNullProperty()
+		if removedIndex, ok := removed[hashes.oldHash]; ok {
+			oldVal = oldList[removedIndex]
 		}
-		d := differ.makePropDiff(path.Index(index), oldEl, newEl)
-		for subKey, subDiff := range d {
+		newVal := resource.NewNullProperty()
+		if addedIndex, ok := added[hashes.newHash]; ok {
+			newVal = newList[addedIndex]
+		}
+
+		elemDiff := differ.makePropDiff(path.Index(int(index)), oldVal, newVal)
+		for subKey, subDiff := range elemDiff {
 			diff[subKey] = subDiff
 		}
 	}
-
 	return diff
 }
 

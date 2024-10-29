@@ -1,6 +1,8 @@
 package tfbridge
 
 import (
+	"bytes"
+	"context"
 	"fmt"
 	"testing"
 
@@ -14,6 +16,7 @@ import (
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	shimschema "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/logging"
 )
 
 func TestDiffPair(t *testing.T) {
@@ -2432,6 +2435,145 @@ func TestDetailedDiffMismatchedSchemas(t *testing.T) {
 		tfs := shimv2.NewSchemaMap(mapSchema)
 		runDetailedDiffTest(t, listValue, mapValue, tfs, nil, map[string]*pulumirpc.PropertyDiff{
 			"foo": {Kind: pulumirpc.PropertyDiff_UPDATE},
+		})
+	})
+}
+
+func TestDetailedDiffSetHashChanges(t *testing.T) {
+	runTest := func(old, new hashIndexMap, expectedRemoved, expectedAdded hashIndexMap) {
+		t.Helper()
+		removed, added := computeSetHashChanges(old, new)
+
+		require.Equal(t, removed, expectedRemoved)
+		require.Equal(t, added, expectedAdded)
+	}
+
+	runTest(hashIndexMap{}, hashIndexMap{}, hashIndexMap{}, hashIndexMap{})
+	runTest(hashIndexMap{1: 1}, hashIndexMap{1: 1}, hashIndexMap{}, hashIndexMap{})
+	runTest(hashIndexMap{1: 1}, hashIndexMap{}, hashIndexMap{1: 1}, hashIndexMap{})
+	runTest(hashIndexMap{1: 1}, hashIndexMap{2: 2}, hashIndexMap{1: 1}, hashIndexMap{2: 2})
+}
+
+func TestDetailedDiffMatchNewIndicesToInputs(t *testing.T) {
+	tfs := shimv2.NewSchemaMap(map[string]*schema.Schema{
+		"foo": {
+			Type: schema.TypeSet,
+			Elem: &schema.Schema{
+				Type: schema.TypeString,
+			},
+		},
+	})
+
+	getHash := func(element string) setHash {
+		return setHash(tfs.Get("foo").SetHash(element))
+	}
+
+	runTest := func(
+		newInputs []resource.PropertyValue, changes hashIndexMap, expected hashIndexMap, logBuf *bytes.Buffer,
+	) {
+		t.Helper()
+		ctx := logging.InitLogging(context.Background(), logging.LogOptions{
+			LogSink: &testLogSink{buf: logBuf},
+		})
+		inputs := resource.NewPropertyMapFromMap(map[string]interface{}{
+			"foo": newInputs,
+		})
+		differ := detailedDiffer{
+			ctx:       ctx,
+			tfs:       tfs,
+			ps:        nil,
+			newInputs: inputs,
+		}
+		matched := differ.matchNewIndicesToInputs(newPropertyPath("foo"), changes)
+		require.Equal(t, matched, expected)
+	}
+
+	t.Run("single element", func(t *testing.T) {
+		logBuf := &bytes.Buffer{}
+		runTest(
+			[]resource.PropertyValue{resource.NewStringProperty("val1")},
+			hashIndexMap{getHash("val1"): 0},
+			hashIndexMap{getHash("val1"): 0},
+			logBuf,
+		)
+		require.Empty(t, logBuf.String())
+	})
+
+	t.Run("single element, doesn't match", func(t *testing.T) {
+		logBuf := &bytes.Buffer{}
+		runTest(
+			[]resource.PropertyValue{resource.NewStringProperty("val1")},
+			hashIndexMap{getHash("val2"): 0},
+			hashIndexMap{getHash("val2"): 0},
+			logBuf,
+		)
+		require.Contains(t, logBuf.String(), "Additional changes detected in foo")
+	})
+
+	t.Run("two elements, one changed", func(t *testing.T) {
+		logBuf := &bytes.Buffer{}
+		runTest(
+			[]resource.PropertyValue{resource.NewStringProperty("val1"), resource.NewStringProperty("val2")},
+			hashIndexMap{getHash("val2"): 1},
+			hashIndexMap{getHash("val2"): 1},
+			logBuf,
+		)
+		require.Empty(t, logBuf.String())
+	})
+
+	t.Run("two elements, both changed", func(t *testing.T) {
+		logBuf := &bytes.Buffer{}
+		runTest(
+			[]resource.PropertyValue{resource.NewStringProperty("val1"), resource.NewStringProperty("val2")},
+			hashIndexMap{getHash("val1"): 0, getHash("val2"): 1},
+			hashIndexMap{getHash("val1"): 0, getHash("val2"): 1},
+			logBuf,
+		)
+		require.Empty(t, logBuf.String())
+	})
+
+	t.Run("two elements, one changed, one doesn't match", func(t *testing.T) {
+		logBuf := &bytes.Buffer{}
+		runTest(
+			[]resource.PropertyValue{resource.NewStringProperty("val1"), resource.NewStringProperty("val2")},
+			hashIndexMap{getHash("val1"): 0, getHash("val3"): 1},
+			hashIndexMap{getHash("val1"): 0, getHash("val3"): 1},
+			logBuf,
+		)
+		require.Contains(t, logBuf.String(), "Additional changes detected in foo")
+	})
+}
+
+func TestDetailedDiffBuildChangesIndexMap(t *testing.T) {
+	runTest := func(added, removed hashIndexMap, expected map[arrayIndex]hashPair) {
+		t.Helper()
+		changes := buildChangesIndexMap(added, removed)
+		require.Equal(t, expected, changes)
+	}
+
+	t.Run("empty", func(t *testing.T) {
+		runTest(hashIndexMap{}, hashIndexMap{}, map[arrayIndex]hashPair{})
+	})
+	t.Run("one added", func(t *testing.T) {
+		runTest(hashIndexMap{1: 0}, hashIndexMap{}, map[arrayIndex]hashPair{
+			0: {oldHash: -1, newHash: 1},
+		})
+	})
+	t.Run("one removed", func(t *testing.T) {
+		runTest(hashIndexMap{}, hashIndexMap{1: 0}, map[arrayIndex]hashPair{
+			0: {oldHash: 1, newHash: -1},
+		})
+	})
+	t.Run("one added, one removed, different indices", func(t *testing.T) {
+		runTest(hashIndexMap{1: 0}, hashIndexMap{2: 1}, map[arrayIndex]hashPair{
+			0: {oldHash: -1, newHash: 1},
+			1: {oldHash: 2, newHash: -1},
+		})
+	})
+
+	t.Run("one added, one removed, same indices", func(t *testing.T) {
+		runTest(hashIndexMap{1: 0}, hashIndexMap{2: 0}, map[arrayIndex]hashPair{
+			0: {oldHash: 2, newHash: 1},
 		})
 	})
 }
