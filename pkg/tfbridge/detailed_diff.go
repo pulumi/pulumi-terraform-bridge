@@ -36,7 +36,10 @@ func sortedMergedKeys[K cmp.Ordered, V any, M ~map[K]V](a, b M) []K {
 }
 
 func isTypeShapeMismatched(val resource.PropertyValue, propType shim.ValueType) bool {
-	contract.Assertf(!val.IsComputed() && !val.IsSecret(), "val should not be computed or secret")
+	contract.Assertf(!val.IsSecret() || val.IsOutput(), "secrets and outputs are not handled")
+	if val.IsComputed() {
+		return false
+	}
 	if !isPresent(val) {
 		return false
 	}
@@ -211,6 +214,20 @@ func (differ detailedDiffer) makePropDiff(
 		old = resource.NewNullProperty()
 	}
 	if !new.IsComputed() && (!isPresent(new) || isTypeShapeMismatched(new, propType)) {
+		new = resource.NewNullProperty()
+	}
+	if old.IsNull() || new.IsNull() || new.IsComputed() {
+		return differ.makeShortCircuitDiff(path, old, new)
+	}
+
+	if isTypeShapeMismatched(old, propType) || isTypeShapeMismatched(new, propType) {
+		return differ.makePlainPropDiff(path, old, new)
+	}
+
+	if !isPresent(old) {
+		old = resource.NewNullProperty()
+	}
+	if !new.IsComputed() && !isPresent(new) {
 		new = resource.NewNullProperty()
 	}
 	if old.IsNull() || new.IsNull() || new.IsComputed() {

@@ -20,6 +20,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/convert"
 )
@@ -52,13 +53,17 @@ func (p *provider) DeleteWithContext(
 		return resource.StatusOK, err
 	}
 
+	plannedState, err := tfprotov6.NewDynamicValue(tfType, tftypes.NewValue(tfType, nil))
+	contract.AssertNoErrorf(err, "nil is always a valid value to marshal to a dynamic state")
+
 	// terraform-plugin-framework recognizes PlannedState=nil ApplyResourceChangeRequest request as DELETE.
 	//
 	//nolint:lll // See
 	// https://github.com/hashicorp/terraform-plugin-framework/blob/ce2519cf40d45d28eebd81776019e68d1bddca6f/internal/fwserver/server_applyresourcechange.go#L63
 	req := tfprotov6.ApplyResourceChangeRequest{
-		TypeName:   rh.terraformResourceName,
-		PriorState: priorState,
+		TypeName:     rh.terraformResourceName,
+		PriorState:   priorState,
+		PlannedState: &plannedState,
 	}
 
 	resp, err := p.tfServer.ApplyResourceChange(ctx, &req)

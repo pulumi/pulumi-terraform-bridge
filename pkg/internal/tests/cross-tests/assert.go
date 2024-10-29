@@ -32,12 +32,13 @@ func assertValEqual(t T, name string, tfVal, pulVal any) {
 }
 
 func assertResourceDataEqual(t T, resourceSchema map[string]*schema.Schema, tfResult, puResult *schema.ResourceData) {
-	// We are unable to assert that both providers were configured with the exact same
-	// data. Type information doesn't line up in the simple case. This just doesn't work:
+	// TODO[pulumi/pulumi-terraform-bridge#2521]: We are unable to assert that both
+	// providers were configured with the exact same data. Type information doesn't
+	// line up in the simple case. This just doesn't work:
 	//
 	//	assert.Equal(t, tfResult, puResult)
 	//
-	// We make do by comparing raw data.
+	// We make do by comparing slices tfResult and puResult.
 	assertCtyValEqual(t, "RawConfig", tfResult.GetRawConfig(), puResult.GetRawConfig())
 	assertCtyValEqual(t, "RawPlan", tfResult.GetRawPlan(), puResult.GetRawPlan())
 	assertCtyValEqual(t, "RawState", tfResult.GetRawState(), puResult.GetRawState())
