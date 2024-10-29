@@ -1632,6 +1632,9 @@ func TestValidateConfigType(t *testing.T) {
 			}),
 		},
 		{
+			//TODO: Remove this test when https://github.com/pulumi/pulumi-terraform-bridge/issues/2520 is resolved.
+			// This tests a workaround path to keep the type checker from tripping on missing functionality in the
+			// config encoding and will fail once that is fixed.
 			name:      "allows_bool_strings",
 			inputName: "skipMetadataApiCheck",
 			input:     resource.PropertyValue{V: "true"},

@@ -162,7 +162,8 @@ func (v *TypeChecker) validatePropertyValue(
 	switch typeSpec.Type {
 	case "boolean":
 		// Check for strings that are values "true" or "false".
-		// These are handled as booleans in the bridge, so they should be skipped by the type checker.
+		//TODO: Remove the boolString condition when https://github.com/pulumi/pulumi-terraform-bridge/issues/2520
+		// is resolved. This is a workaround for the config encoding not honoring type overrides.
 		var boolString bool
 		if propertyValue.IsString() {
 			if propertyValue.StringValue() == "true" || propertyValue.StringValue() == "false" {
