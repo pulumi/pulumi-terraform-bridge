@@ -272,3 +272,15 @@ Moving the release process into [github.com/pulumi/pulumi-terraform-bridge](http
 
 - [Provide a centralized lookup for PluginDownloadURL #4851 ](https://github.com/pulumi/registry/issues/4851) (with CLI adoption)
 - [Support nested release labels #4852](https://github.com/pulumi/registry/issues/4852)
+
+
+## Debugging dynamically bridged providers
+
+Dynamically bridged providers allow the Terraform provider interactions to be recorded in order to allow maintainers who do not have access to the Terraform provider to debug them. To do that:
+
+1. Users should run their `pulumi-terraform-provider` repro locally with `PULUMI_DEBUG_GRPC_LOGS=pulumi-logs.json PULUMI_TF_DEBUG_GRPC=tf-logs.json` set.
+1. They should attach both logs to the issue they filed, as well as the program they used.
+1. To reproduce the behaviour, maintainers should use the `tf-logs.json` like in `dynamic/log_replay_provider.go:TestLogReplayProviderWithProgram`:
+   1. Dump the sanitized log file under `testadata`.
+   1. Use `NewLogReplayProvider` to create a provider which will replay the calls encountered by the user.
+   2. Use the `pulcheck` utility to mimic the user actions which triggered the behaviour, like `Preview` and `Up`
