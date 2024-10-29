@@ -346,7 +346,7 @@ func (differ detailedDiffer) makeSetDiff(
 			inputIndex := inputIdentities[hash]
 			if inputIndex == -1 {
 				GetLogger(differ.ctx).Warn(fmt.Sprintf(
-					"Element at path %s in new state not found in inputs, the displayed diff might be inaccurate",
+					"Additional changes detected in %s, the displayed diff might be inaccurate",
 					path.String()))
 				inputIndex = newIndex
 			}

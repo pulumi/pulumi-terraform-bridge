@@ -3638,6 +3638,13 @@ resources:
 		expectedDetailedDiff.Equal(t, detailedDiff)
 	}
 
+	// The following test cases use the same inputs (props1 and props2) to test a few variations:
+	// - The diff when the schema is a set of strings
+	// - The diff when the schema is a set of strings with ForceNew
+	// - The diff when the schema is a set of structs with a nested string
+	// - The diff when the schema is a set of structs with a nested string and ForceNew
+	// For each of these variations, we record both the detailed diff output sent to the engine
+	// and the output that we expect to see in the Pulumi console.
 	type setDetailedDiffTestCase struct {
 		name                              string
 		props1                            []string
@@ -6008,7 +6015,6 @@ resources:
 		pt.WritePulumiYaml(t, fmt.Sprintf(program, string(props2JSON)))
 		res := pt.Preview(t, optpreview.Diff())
 
-		// TODO:[pulumi/pulumi-terraform-bridge#2200] The diff here is wrong
 		autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=id]
