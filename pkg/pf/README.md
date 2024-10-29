@@ -25,7 +25,7 @@ Follow these steps to bridge a Terraform Provider to Pulumi.
    [exposes](https://github.com/hashicorp/terraform-provider-random/blob/main/internal/provider/provider.go#L13) a `func
    New() provider.Provider` call. Since this definition lives in an `internal` package it cannot easily be referenced in
    an external Go project, but it is still possible to reference it using Go linker tricks. See
-   `tests/internal/randomshim/shim.go` for a full example.
+   [pulumi-random](https://github.com/pulumi/pulumi-random/tree/48c0b3014aeaa0cb95fd6419d631cb2555ce89ac/provider/shim) for a full example.
 
 2. Populate a `ProviderInfo` struct, mapping Terraform resource names to Pulumi tokens. Replace `myprovider` with your
    provider name.
@@ -137,7 +137,7 @@ to the Plugin Framework.
 
     import (
         "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-        "github.com/terraform-providers/terraform-provider-tls/internal/provider"
+        "github.com/hashicorp/terraform-provider-tls/internal/provider"
     )
 
     func NewProvider() *schema.Provider {

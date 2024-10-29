@@ -15,6 +15,7 @@ replace (
 
 require (
 	github.com/blang/semver v3.5.1+incompatible
+	github.com/hashicorp/terraform-plugin-sdk v1.7.0
 	github.com/hexops/autogold/v2 v2.2.1
 	github.com/opentofu/opentofu/shim v0.0.0-00010101000000-000000000000
 	github.com/pulumi/pulumi-terraform-bridge/v3 v3.92.0
