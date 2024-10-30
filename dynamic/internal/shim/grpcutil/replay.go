@@ -17,12 +17,13 @@ package grpcutil
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"strings"
 
 	"github.com/opentofu/opentofu/internal/tfplugin6"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/encoding/prototext"
+	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
 // LogReplayProvider is a provider that replays logs from a previous run.
@@ -62,17 +63,41 @@ func (p LogReplayProvider) mustPopLog(method string) grpcLog {
 	return log
 }
 
-func mustUnmarshalLog[Q any, T fmt.Stringer](log grpcLog, methodName string, req T) *Q {
+type protoMessage[T any] interface {
+	ProtoReflect() protoreflect.Message
+	// We need to use a type parameter for the underlying type in order to be able to create it.
+	*T
+}
+
+func mustUnmarshalLog[Q any, R any, T protoMessage[R]](log grpcLog, methodName string, req T) *Q {
 	contract.Assertf(
 		getMethodFromFullName(log.Name) == methodName,
 		"log name %s does not match method name %s", log.Name, methodName)
 
-	reqString := (req).String()
-	contract.Assertf(
-		reqString == log.Request, "request %s does not match log request %s", reqString, log.Request)
+	// We need to unmarshal the request to compare the fields because stringifying them is unreliable.
+	var loggedReq R
+	var loggedReqMsg T = &loggedReq
+	err := prototext.Unmarshal([]byte(log.Request), loggedReqMsg)
+	contract.AssertNoErrorf(err, "failed to unmarshal log request %s", log.Request)
+
+	loggedReqMsg.ProtoReflect().Range(func(fd protoreflect.FieldDescriptor, v protoreflect.Value) bool {
+		contract.Assertf(
+			v.Equal(req.ProtoReflect().Get(fd)),
+			"field %s does not match log field %s", fd.Name(), v.String(),
+		)
+		return true
+	})
+
+	req.ProtoReflect().Range(func(fd protoreflect.FieldDescriptor, v protoreflect.Value) bool {
+		contract.Assertf(
+			v.Equal(loggedReqMsg.ProtoReflect().Get(fd)),
+			"field %s does not match log field %s", fd.Name(), v.String(),
+		)
+		return true
+	})
 
 	var resp Q
-	err := json.Unmarshal([]byte(log.Response), &resp)
+	err = json.Unmarshal([]byte(log.Response), &resp)
 	contract.AssertNoErrorf(err, "failed to unmarshal log response %s", log.Response)
 	return &resp
 }
@@ -101,6 +126,7 @@ func (p LogReplayProvider) ValidateProviderConfig(
 func (p LogReplayProvider) ConfigureProvider(
 	ctx context.Context, req *tfplugin6.ConfigureProvider_Request, opts ...grpc.CallOption,
 ) (*tfplugin6.ConfigureProvider_Response, error) {
+	req.ProtoMessage()
 	methodName := "ConfigureProvider"
 	return mustUnmarshalLog[tfplugin6.ConfigureProvider_Response](p.mustPopLog(methodName), methodName, req), nil
 }
