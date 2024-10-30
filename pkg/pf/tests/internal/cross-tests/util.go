@@ -23,7 +23,6 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/stretchr/testify/require"
 )
 
 func propageteSkip(parent, child *testing.T) {
@@ -48,37 +47,6 @@ func (s testLogSink) log(kind string, sev diag.Severity, urn resource.URN, msg s
 	}
 	s.t.Logf("Provider[%s]: %s%s: %s", kind, sev, urnMsg, msg)
 	return nil
-}
-
-func convertResourceValue(t *testing.T, properties resource.PropertyMap) map[string]any {
-	var convertValue func(resource.PropertyValue) (any, bool)
-	convertValue = func(v resource.PropertyValue) (any, bool) {
-		if v.IsComputed() {
-			require.Fail(t, "cannot convert computed value to YAML")
-		}
-		var isSecret bool
-		if v.IsOutput() {
-			o := v.OutputValue()
-			if !o.Known {
-				require.Fail(t, "cannot convert unknown output value to YAML")
-			}
-			v = o.Element
-			isSecret = o.Secret
-		}
-		if v.IsSecret() {
-			isSecret = true
-			v = v.SecretValue().Element
-		}
-
-		if isSecret {
-			return map[string]any{
-				"fn::secret": v.MapRepl(nil, convertValue),
-			}, true
-		}
-		return nil, false
-
-	}
-	return properties.MapRepl(nil, convertValue)
 }
 
 func skipUnlessLinux(t *testing.T) {

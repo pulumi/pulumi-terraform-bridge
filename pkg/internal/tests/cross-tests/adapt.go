@@ -33,10 +33,10 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/logging"
 )
 
-// inferPulumiValue generates a Pulumi value that is semantically equivalent to v.
+// InferPulumiValue generates a Pulumi value that is semantically equivalent to v.
 //
-// inferPulumiValue takes into account schema information.
-func inferPulumiValue(t T, schema shim.SchemaMap, infos map[string]*info.Schema, v cty.Value) resource.PropertyMap {
+// InferPulumiValue takes into account schema information.
+func InferPulumiValue(t T, schema shim.SchemaMap, infos map[string]*info.Schema, v cty.Value) resource.PropertyMap {
 	if v.IsNull() {
 		return nil
 	}

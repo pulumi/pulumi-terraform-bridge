@@ -61,7 +61,7 @@ func Configure(
 	if opts.puConfig != nil {
 		puConfig = *opts.puConfig
 	} else {
-		puConfig = inferPulumiValue(t,
+		puConfig = InferPulumiValue(t,
 			shimv2.NewSchemaMap(provider),
 			opts.resourceInfo.GetFields(),
 			tfConfig,

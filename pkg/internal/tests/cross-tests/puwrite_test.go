@@ -124,7 +124,7 @@ runtime: yaml
 			))
 			schema := shimProvider.ResourcesMap().Get(rtype).Schema()
 			out, err := generateYaml(t, rtoken,
-				inferPulumiValue(t, schema, nil, coalesceInputs(t, tc.schema, tc.tfConfig)))
+				InferPulumiValue(t, schema, nil, coalesceInputs(t, tc.schema, tc.tfConfig)))
 			require.NoError(t, err)
 			b, err := yaml.Marshal(out)
 			require.NoError(t, err)
