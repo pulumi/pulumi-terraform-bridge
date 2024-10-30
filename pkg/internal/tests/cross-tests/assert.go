@@ -39,6 +39,8 @@ func assertResourceDataEqual(t T, resourceSchema map[string]*schema.Schema, tfRe
 	//	assert.Equal(t, tfResult, puResult)
 	//
 	// We make do by comparing slices tfResult and puResult.
+	require.NotNil(t, tfResult)
+	require.NotNil(t, puResult)
 	assertCtyValEqual(t, "RawConfig", tfResult.GetRawConfig(), puResult.GetRawConfig())
 	assertCtyValEqual(t, "RawPlan", tfResult.GetRawPlan(), puResult.GetRawPlan())
 	assertCtyValEqual(t, "RawState", tfResult.GetRawState(), puResult.GetRawState())
