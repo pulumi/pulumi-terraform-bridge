@@ -404,6 +404,7 @@ func skipWindows(t *testing.T) {
 }
 
 func TestSchemaGeneration(t *testing.T) {
+	t.Parallel()
 	skipWindows(t)
 
 	t.Run("unparameterized", func(t *testing.T) {
@@ -457,6 +458,7 @@ func TestSchemaGeneration(t *testing.T) {
 }
 
 func TestRandomCreate(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	server := grpcTestServer(ctx, t)
 	parameterizeResp, err := server.Parameterize(ctx, &pulumirpc.ParameterizeRequest{

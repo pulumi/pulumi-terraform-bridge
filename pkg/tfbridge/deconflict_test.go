@@ -27,6 +27,7 @@ import (
 )
 
 func TestDeconflict(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	ctx = logging.InitLogging(ctx, logging.LogOptions{})
@@ -217,6 +218,7 @@ func TestDeconflict(t *testing.T) {
 }
 
 func TestParseConflictsWith(t *testing.T) {
+	t.Parallel()
 	cw := "capacity_reservation_specification.0.capacity_reservation_target.0.capacity_reservation_id"
 	actual := parseConflictsWith(cw)
 	expect := "capacity_reservation_specification.$.capacity_reservation_target.$.capacity_reservation_id"

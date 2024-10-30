@@ -28,6 +28,7 @@ import (
 )
 
 func TestLogging(t *testing.T) {
+	t.Parallel()
 	urn := resource.URN("urn:pulumi:prod::web::custom:resources:Resource$random:index/password:Password::my-pw")
 
 	warn := map[string]string{"TF_LOG": "WARN"}
@@ -208,6 +209,7 @@ func TestParseLevelFromRawString(t *testing.T) {
 }
 
 func TestParseUrnFromRawString(t *testing.T) {
+	t.Parallel()
 	t.Run("quoted", func(t *testing.T) {
 		msg := "2023-03-15T10:52:48.612-0500 [ERROR] provider/resource_integer.go:113: " +
 			"provider: Oops: urn=\"some-urn\" value=2"

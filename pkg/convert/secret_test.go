@@ -29,6 +29,7 @@ import (
 )
 
 func TestSecretDecoderInjectsSchemaSecrets(t *testing.T) {
+	t.Parallel()
 	type testCase struct {
 		name        string
 		schemaMap   schema.SchemaMap
@@ -147,6 +148,7 @@ func TestSecretDecoderInjectsSchemaSecrets(t *testing.T) {
 // Due to https://github.com/pulumi/pulumi/issues/11971 provider may receive secret values that are not explicitly
 // wrapped, and should tolerate it.
 func TestRelaxedSecretHandling(t *testing.T) {
+	t.Parallel()
 	ty := tftypes.Object{
 		AttributeTypes: map[string]tftypes.Type{
 			"x": tftypes.String,

@@ -20,6 +20,7 @@ import (
 )
 
 func TestDiffPair(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, (newPropertyPath("foo").Subpath("bar")).Key(), detailedDiffKey("foo.bar"))
 	assert.Equal(t, newPropertyPath("foo").Subpath("bar").Subpath("baz").Key(), detailedDiffKey("foo.bar.baz"))
 	assert.Equal(t, newPropertyPath("foo").Subpath("bar.baz").Key(), detailedDiffKey(`foo["bar.baz"]`))
@@ -27,6 +28,7 @@ func TestDiffPair(t *testing.T) {
 }
 
 func TestReservedKey(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, newPropertyPath("foo").Subpath("__meta").IsReservedKey(), true)
 	assert.Equal(t, newPropertyPath("foo").Subpath("__defaults").IsReservedKey(), true)
 	assert.Equal(t, newPropertyPath("__defaults").IsReservedKey(), true)
@@ -34,6 +36,7 @@ func TestReservedKey(t *testing.T) {
 }
 
 func TestSchemaLookupMaxItemsOnePlain(t *testing.T) {
+	t.Parallel()
 	sdkv2Schema := map[string]*schema.Schema{
 		"string_prop": {
 			Type:     schema.TypeList,
@@ -55,6 +58,7 @@ func TestSchemaLookupMaxItemsOnePlain(t *testing.T) {
 }
 
 func TestSchemaLookupMaxItemsOne(t *testing.T) {
+	t.Parallel()
 	res := schema.Resource{
 		Schema: map[string]*schema.Schema{
 			"foo": {
@@ -87,6 +91,7 @@ func TestSchemaLookupMaxItemsOne(t *testing.T) {
 }
 
 func TestSchemaLookupMap(t *testing.T) {
+	t.Parallel()
 	res := schema.Resource{
 		Schema: map[string]*schema.Schema{
 			"foo": {
@@ -114,6 +119,7 @@ func TestSchemaLookupMap(t *testing.T) {
 }
 
 func TestMakeBaseDiff(t *testing.T) {
+	t.Parallel()
 	nilVal := resource.NewNullProperty()
 	nilArr := resource.NewArrayProperty(nil)
 	nilMap := resource.NewObjectProperty(nil)
@@ -132,6 +138,7 @@ func TestMakeBaseDiff(t *testing.T) {
 }
 
 func TestMakePropDiff(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		old      resource.PropertyValue
@@ -299,6 +306,7 @@ func runDetailedDiffTest(
 }
 
 func TestBasicDetailedDiff(t *testing.T) {
+	t.Parallel()
 	for _, tt := range []struct {
 		name       string
 		emptyValue interface{}
@@ -563,6 +571,7 @@ func TestBasicDetailedDiff(t *testing.T) {
 }
 
 func TestDetailedDiffObject(t *testing.T) {
+	t.Parallel()
 	sdkv2Schema := map[string]*schema.Schema{
 		"foo": {
 			Type: schema.TypeList,
@@ -647,6 +656,7 @@ func TestDetailedDiffObject(t *testing.T) {
 }
 
 func TestDetailedDiffList(t *testing.T) {
+	t.Parallel()
 	sdkv2Schema := map[string]*schema.Schema{
 		"foo": {
 			Type: schema.TypeList,
@@ -714,6 +724,7 @@ func TestDetailedDiffList(t *testing.T) {
 }
 
 func TestDetailedDiffMap(t *testing.T) {
+	t.Parallel()
 	sdkv2Schema := map[string]*schema.Schema{
 		"foo": {
 			Type: schema.TypeMap,
@@ -781,6 +792,7 @@ func TestDetailedDiffMap(t *testing.T) {
 }
 
 func TestDetailedDiffSet(t *testing.T) {
+	t.Parallel()
 	sdkv2Schema := map[string]*schema.Schema{
 		"foo": {
 			Type: schema.TypeSet,
@@ -861,6 +873,7 @@ func TestDetailedDiffSet(t *testing.T) {
 }
 
 func TestDetailedDiffTFForceNewPlain(t *testing.T) {
+	t.Parallel()
 	sdkv2Schema := map[string]*schema.Schema{
 		"string_prop": {
 			Type:     schema.TypeString,
@@ -925,6 +938,7 @@ func TestDetailedDiffTFForceNewPlain(t *testing.T) {
 }
 
 func TestDetailedDiffTFForceNewAttributeCollection(t *testing.T) {
+	t.Parallel()
 	for _, tt := range []struct {
 		name               string
 		schema             *schema.Schema
@@ -1063,6 +1077,7 @@ func TestDetailedDiffTFForceNewAttributeCollection(t *testing.T) {
 }
 
 func TestDetailedDiffTFForceNewBlockCollection(t *testing.T) {
+	t.Parallel()
 	sdkv2Schema := map[string]*schema.Schema{
 		"list_prop": {
 			ForceNew: true,
@@ -1171,6 +1186,7 @@ func TestDetailedDiffTFForceNewBlockCollection(t *testing.T) {
 }
 
 func TestDetailedDiffTFForceNewElemBlockCollection(t *testing.T) {
+	t.Parallel()
 	sdkv2Schema := map[string]*schema.Schema{
 		"list_prop": {
 			Type: schema.TypeList,
@@ -1284,6 +1300,7 @@ func TestDetailedDiffTFForceNewElemBlockCollection(t *testing.T) {
 }
 
 func TestDetailedDiffMaxItemsOnePlainType(t *testing.T) {
+	t.Parallel()
 	sdkv2Schema := map[string]*schema.Schema{
 		"string_prop": {
 			Type:     schema.TypeList,
@@ -1343,6 +1360,7 @@ func TestDetailedDiffMaxItemsOnePlainType(t *testing.T) {
 }
 
 func TestDetailedDiffNestedMaxItemsOnePlainType(t *testing.T) {
+	t.Parallel()
 	sdkv2Schema := map[string]*schema.Schema{
 		"string_prop": {
 			Type:     schema.TypeList,
@@ -1407,6 +1425,7 @@ func TestDetailedDiffNestedMaxItemsOnePlainType(t *testing.T) {
 }
 
 func TestDetailedDiffTFForceNewObject(t *testing.T) {
+	t.Parallel()
 	// Note that maxItemsOne flattening means that the PropertyMap values contain no lists
 	sdkv2Schema := map[string]*schema.Schema{
 		"object_prop": {
@@ -1502,6 +1521,7 @@ func TestDetailedDiffTFForceNewObject(t *testing.T) {
 }
 
 func TestDetailedDiffPulumiSchemaOverride(t *testing.T) {
+	t.Parallel()
 	sdkv2Schema := map[string]*schema.Schema{
 		"foo": {
 			Type:     schema.TypeString,
@@ -1757,6 +1777,7 @@ func TestDetailedDiffPulumiSchemaOverride(t *testing.T) {
 }
 
 func TestDetailedDiffSetAttribute(t *testing.T) {
+	t.Parallel()
 	sdkv2Schema := map[string]*schema.Schema{
 		"foo": {
 			Type: schema.TypeSet,
@@ -1994,6 +2015,7 @@ func TestDetailedDiffSetAttribute(t *testing.T) {
 }
 
 func TestDetailedDiffSetBlock(t *testing.T) {
+	t.Parallel()
 	propertyMapElems := func(elems ...string) resource.PropertyMap {
 		var elemMaps []map[string]interface{}
 		for _, elem := range elems {
@@ -2245,6 +2267,7 @@ func TestDetailedDiffSetBlock(t *testing.T) {
 }
 
 func TestDetailedDiffSetBlockNestedMaxItemsOne(t *testing.T) {
+	t.Parallel()
 	customResponseSchema := func() *schema.Schema {
 		return &schema.Schema{
 			Type:     schema.TypeList,
@@ -2327,6 +2350,7 @@ func TestDetailedDiffSetBlockNestedMaxItemsOne(t *testing.T) {
 }
 
 func TestDetailedDiffMismatchedSchemas(t *testing.T) {
+	t.Parallel()
 	stringSchema := map[string]*schema.Schema{
 		"foo": {
 			Type:     schema.TypeString,
@@ -2440,6 +2464,7 @@ func TestDetailedDiffMismatchedSchemas(t *testing.T) {
 }
 
 func TestDetailedDiffSetHashChanges(t *testing.T) {
+	t.Parallel()
 	runTest := func(old, new hashIndexMap, expectedRemoved, expectedAdded hashIndexMap) {
 		t.Helper()
 		removed, added := computeSetHashChanges(old, new)
@@ -2455,6 +2480,7 @@ func TestDetailedDiffSetHashChanges(t *testing.T) {
 }
 
 func TestDetailedDiffMatchNewIndicesToInputs(t *testing.T) {
+	t.Parallel()
 	tfs := shimv2.NewSchemaMap(map[string]*schema.Schema{
 		"foo": {
 			Type: schema.TypeSet,
@@ -2545,6 +2571,7 @@ func TestDetailedDiffMatchNewIndicesToInputs(t *testing.T) {
 }
 
 func TestDetailedDiffBuildChangesIndexMap(t *testing.T) {
+	t.Parallel()
 	runTest := func(added, removed hashIndexMap, expected map[arrayIndex]hashPair) {
 		t.Helper()
 		changes := buildChangesIndexMap(added, removed)
@@ -2579,6 +2606,7 @@ func TestDetailedDiffBuildChangesIndexMap(t *testing.T) {
 }
 
 func TestDetailedDiffSetHashPanicCaught(t *testing.T) {
+	t.Parallel()
 	tfs := shimv2.NewSchemaMap(map[string]*schema.Schema{
 		"foo": {
 			Type: schema.TypeSet,

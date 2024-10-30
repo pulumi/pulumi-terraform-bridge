@@ -23,6 +23,7 @@ import (
 )
 
 func TestIgnoreChanges(t *testing.T) {
+	t.Parallel()
 	old := func() resource.PropertyMap {
 		return resource.PropertyMap{
 			"topProp": resource.NewStringProperty("hi"),
@@ -147,6 +148,7 @@ func TestIgnoreChanges(t *testing.T) {
 }
 
 func TestIgnoreChangesCopiesEntries(t *testing.T) {
+	t.Parallel()
 	olds := resource.PropertyMap{"k": resource.NewObjectProperty(resource.PropertyMap{
 		"a": resource.NewStringProperty("A"),
 		"b": resource.NewStringProperty("B"),
@@ -160,6 +162,7 @@ func TestIgnoreChangesCopiesEntries(t *testing.T) {
 }
 
 func TestIgnoreChangesRemovesEntries(t *testing.T) {
+	t.Parallel()
 	olds := resource.PropertyMap{"k": resource.NewObjectProperty(resource.PropertyMap{})}
 	news := resource.PropertyMap{"k": resource.NewObjectProperty(resource.PropertyMap{
 		"a": resource.NewStringProperty("A"),
@@ -170,6 +173,7 @@ func TestIgnoreChangesRemovesEntries(t *testing.T) {
 }
 
 func TestIgnoreChangesNestedGlob(t *testing.T) {
+	t.Parallel()
 	olds := resource.PropertyMap{
 		"k1": resource.NewObjectProperty(resource.PropertyMap{
 			"*": resource.NewArrayProperty([]resource.PropertyValue{

@@ -26,6 +26,7 @@ import (
 )
 
 func TestCachingPluginHost(t *testing.T) {
+	t.Parallel()
 	h := &testHost{nil, false}
 	c := newCachingProviderHost(h)
 

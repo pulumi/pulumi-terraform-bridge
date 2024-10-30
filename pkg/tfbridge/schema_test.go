@@ -1393,6 +1393,7 @@ func TestOverridingTFSchema(t *testing.T) {
 }
 
 func TestArchiveAsAsset(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	tfs := shimv1.NewSchemaMap(map[string]*schemav1.Schema{
 		"zzz": {Type: schemav1.TypeString},
@@ -1422,6 +1423,7 @@ func boolPointer(b bool) *bool {
 }
 
 func TestCustomTransforms(t *testing.T) {
+	t.Parallel()
 	doc := map[string]interface{}{
 		"a": 99,
 		"b": false,
@@ -1556,6 +1558,7 @@ func TestImporterWithNewID(t *testing.T) {
 }
 
 func TestImporterWithMultipleResourceTypes(t *testing.T) {
+	t.Parallel()
 	tfProvider := makeTestTFProviderV1(
 		map[string]*schemav1.Schema{
 			"required_for_import": {

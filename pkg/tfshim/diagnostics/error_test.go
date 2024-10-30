@@ -9,6 +9,7 @@ import (
 )
 
 func TestValidationError(t *testing.T) {
+	t.Parallel()
 	type testCase struct {
 		e   ValidationError
 		exp string

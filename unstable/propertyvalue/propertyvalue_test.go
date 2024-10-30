@@ -22,6 +22,7 @@ import (
 )
 
 func TestRemoveSecrets(t *testing.T) {
+	t.Parallel()
 	rapid.Check(t, func(t *rapid.T) {
 		randomPV := rtesting.PropertyValueGenerator(5 /* maxDepth */).Draw(t, "pv")
 		if RemoveSecrets(randomPV).ContainsSecrets() {

@@ -26,6 +26,7 @@ import (
 )
 
 func TestDetectingDanglingRefs(t *testing.T) {
+	t.Parallel()
 	msgs, err := check("testdata/dangling")
 	require.NoError(t, err)
 

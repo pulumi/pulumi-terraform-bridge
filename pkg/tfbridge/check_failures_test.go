@@ -20,11 +20,12 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 )
 
 func TestKeySuggestions(t *testing.T) {
+	t.Parallel()
 	schemaMap := &schema.SchemaMap{
 		"my_prop": (&schema.Schema{
 			Type:     shim.TypeString,

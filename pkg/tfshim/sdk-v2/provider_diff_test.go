@@ -28,6 +28,7 @@ import (
 )
 
 func TestRawPlanSet(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	r := &schema.Resource{
 		Schema: map[string]*schema.Schema{

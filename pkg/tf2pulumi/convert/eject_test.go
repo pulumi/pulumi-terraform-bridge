@@ -171,6 +171,7 @@ func applyPragmas(src io.Reader, dst io.Writer, isExperimental bool) error {
 // These tests can also be run with PULUMI_EXPERIMENTAL=1, in which case the resulting pcl is checked against
 // a folder "experimental_pcl".
 func TestEject(t *testing.T) {
+	t.Parallel()
 	// Test framework for eject
 	// Each folder in testdata has a pcl folder, we check that if we convert the hcl we get the expected pcl
 	// You can regenerate the test data by running "PULUMI_ACCEPT=1 go test" in this folder (pkg/tf2pulumi/convert).

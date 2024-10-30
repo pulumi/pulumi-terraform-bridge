@@ -24,6 +24,7 @@ import (
 )
 
 func TestParseCheckErrorMiscFailure(t *testing.T) {
+	t.Parallel()
 	schemaMap := &schema.SchemaMap{}
 	schemaInfos := map[string]*SchemaInfo{}
 	err := errors.New("random unexpected error")

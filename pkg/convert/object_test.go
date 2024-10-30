@@ -25,6 +25,7 @@ import (
 // When PropertyMap is missing an entry, do not assume that the result is null but instead call the
 // matching encoder. Some encoders like flattened would prefer to return empty lists.
 func TestObjectEncoderRecursesWhenMissing(t *testing.T) {
+	t.Parallel()
 	pn := &trivialLocalPropertyNames{}
 	innerType := tftypes.Object{
 		AttributeTypes: map[string]tftypes.Type{

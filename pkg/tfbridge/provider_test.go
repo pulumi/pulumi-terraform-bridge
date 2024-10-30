@@ -51,6 +51,7 @@ import (
 )
 
 func TestConvertStringToPropertyValue(t *testing.T) {
+	t.Parallel()
 	type testcase struct {
 		str      string
 		typ      shim.ValueType
@@ -164,6 +165,7 @@ func TestConvertStringToPropertyValue(t *testing.T) {
 }
 
 func TestCamelPascalPulumiName(t *testing.T) {
+	t.Parallel()
 	p := Provider{
 		info: ProviderInfo{
 			Name:           "name",
@@ -186,6 +188,7 @@ func TestCamelPascalPulumiName(t *testing.T) {
 }
 
 func TestDiffConfig(t *testing.T) {
+	t.Parallel()
 	yes := true
 	tfProvider := shimv2.NewProvider(&schema.Provider{
 		Schema: map[string]*schema.Schema{
@@ -397,6 +400,7 @@ func TestDiffConfig(t *testing.T) {
 }
 
 func TestBuildConfig(t *testing.T) {
+	t.Parallel()
 	provider := &Provider{
 		tf:     shimv1.NewProvider(testTFProvider),
 		config: shimv1.NewSchemaMap(testTFProvider.Schema),
@@ -502,6 +506,7 @@ func testIgnoreChanges(t *testing.T, provider *Provider) {
 }
 
 func TestIgnoreChanges(t *testing.T) {
+	t.Parallel()
 	provider := &Provider{
 		tf:     shimv1.NewProvider(testTFProvider),
 		config: shimv1.NewSchemaMap(testTFProvider.Schema),
@@ -517,10 +522,12 @@ func TestIgnoreChanges(t *testing.T) {
 }
 
 func TestIgnoreChangesV2(t *testing.T) {
+	t.Parallel()
 	testIgnoreChangesV2(t, shimv2.NewProvider(testTFProviderV2))
 }
 
 func TestIgnoreChangesV2WithPlanResourceChange(t *testing.T) {
+	t.Parallel()
 	opt := shimv2.WithPlanResourceChange(func(string) bool { return true })
 	testIgnoreChangesV2(t, shimv2.NewProvider(testTFProviderV2, opt))
 }
@@ -543,6 +550,7 @@ func testIgnoreChangesV2(t *testing.T, prov shim.Provider) {
 }
 
 func TestProviderPreview(t *testing.T) {
+	t.Parallel()
 	provider := &Provider{
 		tf:     shimv1.NewProvider(testTFProvider),
 		config: shimv1.NewSchemaMap(testTFProvider.Schema),
@@ -663,6 +671,7 @@ func TestProviderPreview(t *testing.T) {
 }
 
 func TestProviderPreviewV2(t *testing.T) {
+	t.Parallel()
 	shimProvider := shimv2.NewProvider(testTFProviderV2)
 	provider := &Provider{
 		tf:     shimProvider,
@@ -845,6 +854,7 @@ func testCheckFailuresV2(t *testing.T, failures []*pulumirpc.CheckFailure) {
 }
 
 func TestProviderCheck(t *testing.T) {
+	t.Parallel()
 	testFailures := map[string]func(*testing.T, []*pulumirpc.CheckFailure){
 		"v1": testCheckFailuresV1,
 		"v2": testCheckFailuresV2,
@@ -1036,6 +1046,7 @@ func testProviderRead(t *testing.T, provider *Provider, typeName tokens.Type, ch
 }
 
 func TestProviderReadV1(t *testing.T) {
+	t.Parallel()
 	provider := &Provider{
 		tf:     shimv1.NewProvider(testTFProvider),
 		config: shimv1.NewSchemaMap(testTFProvider.Schema),
@@ -1053,6 +1064,7 @@ func TestProviderReadV1(t *testing.T) {
 }
 
 func TestProviderReadV2(t *testing.T) {
+	t.Parallel()
 	shimProvider := shimv2.NewProvider(testTFProviderV2)
 	provider := &Provider{
 		tf:     shimProvider,
@@ -1117,6 +1129,7 @@ func testProviderReadNestedSecret(t *testing.T, provider *Provider, typeName tok
 }
 
 func TestProviderReadNestedSecretV1(t *testing.T) {
+	t.Parallel()
 	provider := &Provider{
 		tf:     shimv1.NewProvider(testTFProvider),
 		config: shimv1.NewSchemaMap(testTFProvider.Schema),
@@ -1134,6 +1147,7 @@ func TestProviderReadNestedSecretV1(t *testing.T) {
 }
 
 func TestProviderReadNestedSecretV2(t *testing.T) {
+	t.Parallel()
 	shimProvider := shimv2.NewProvider(testTFProviderV2)
 	provider := &Provider{
 		tf:     shimProvider,
@@ -1151,6 +1165,7 @@ func TestProviderReadNestedSecretV2(t *testing.T) {
 }
 
 func TestCheck(t *testing.T) {
+	t.Parallel()
 	t.Run("Default application can consult prior state in Check", func(t *testing.T) {
 		shimProvider := shimv2.NewProvider(testTFProviderV2)
 		provider := &Provider{
@@ -1280,6 +1295,7 @@ func TestCheck(t *testing.T) {
 }
 
 func TestCheckWarnings(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	var logs bytes.Buffer
 	ctx = logging.InitLogging(ctx, logging.LogOptions{
@@ -1424,6 +1440,7 @@ This will become a hard error in the future.
 }
 
 func TestCheckConfig(t *testing.T) {
+	t.Parallel()
 	t.Run("minimal", func(t *testing.T) {
 		// Ensure the method is minimally implemented. Pulumi will be passing a provider version. Make sure it
 		// is mirrored back.
@@ -1927,6 +1944,7 @@ func TestConfigure(t *testing.T) {
 }
 
 func TestConfigureErrorReplacement(t *testing.T) {
+	t.Parallel()
 	t.Run("replace_config_properties", func(t *testing.T) {
 		p := testprovider.ProviderV2()
 		p.ConfigureContextFunc = func(_ context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
@@ -1965,6 +1983,7 @@ func TestConfigureErrorReplacement(t *testing.T) {
 //
 // This test tries to make sure such providers work when bridged.
 func TestConfigureContextCapture(t *testing.T) {
+	t.Parallel()
 	var clientContext context.Context
 
 	configure := func(ctx context.Context, rd *schema.ResourceData) (interface{}, diag.Diagnostics) {
@@ -2023,6 +2042,7 @@ func TestConfigureContextCapture(t *testing.T) {
 }
 
 func TestPreConfigureCallback(t *testing.T) {
+	t.Parallel()
 	t.Run("PreConfigureCallback called by CheckConfig", func(t *testing.T) {
 		callCounter := 0
 		provider := &Provider{
@@ -2207,6 +2227,7 @@ func TestPreConfigureCallback(t *testing.T) {
 }
 
 func TestInvoke(t *testing.T) {
+	t.Parallel()
 	t.Run("preserve_program_secrets", func(t *testing.T) {
 		// Currently the provider is unable to preserve secret-ness of values marked as secrets. Returning
 		// secrets makes SDKs unable to consume the provider. Therefore currently the secrets are stripped.
@@ -2273,6 +2294,7 @@ func TestInvoke(t *testing.T) {
 }
 
 func TestTransformOutputs(t *testing.T) {
+	t.Parallel()
 	shimProvider := shimv2.NewProvider(testTFProviderV2)
 	provider := &Provider{
 		tf:     shimProvider,
@@ -2462,6 +2484,7 @@ func TestTransformOutputs(t *testing.T) {
 }
 
 func TestSkipDetailedDiff(t *testing.T) {
+	t.Parallel()
 	provider := func(t *testing.T, skipDetailedDiffForChanges bool) *Provider {
 		p := testprovider.CustomizedDiffProvider(func(data *schema.ResourceData) {})
 		shimProvider := shimv2.NewProvider(p)
@@ -2559,6 +2582,7 @@ func TestSkipDetailedDiff(t *testing.T) {
 }
 
 func TestTransformFromState(t *testing.T) {
+	t.Parallel()
 	provider := func(t *testing.T) *Provider {
 		p := testprovider.AssertProvider(func(data *schema.ResourceData) {
 			// GetRawState is not available during deletes.
@@ -2731,6 +2755,7 @@ func TestTransformFromState(t *testing.T) {
 // into a state with maxItemsOne, which would flatten the type.
 // https://github.com/pulumi/pulumi-aws/issues/3092
 func TestMaxItemOneWrongStateDiff(t *testing.T) {
+	t.Parallel()
 	p := testprovider.MaxItemsOneProvider()
 	shimProvider := shimv2.NewProvider(p)
 	provider := &Provider{
@@ -2861,6 +2886,7 @@ func TestMaxItemOneWrongStateDiff(t *testing.T) {
 // since this is what TF does.
 // https://github.com/pulumi/pulumi-terraform-bridge/issues/1546
 func TestDefaultsAndConflictsWithValidationInteraction(t *testing.T) {
+	t.Parallel()
 	p := testprovider.ConflictsWithValidationProvider()
 	shimProvider := shimv2.NewProvider(p)
 	provider := &Provider{
@@ -2922,6 +2948,7 @@ func TestDefaultsAndConflictsWithValidationInteraction(t *testing.T) {
 
 // https://github.com/pulumi/pulumi-terraform-bridge/issues/1546
 func TestDefaultsAndExactlyOneOfValidationInteraction(t *testing.T) {
+	t.Parallel()
 	p := testprovider.ExactlyOneOfValidationProvider()
 	shimProvider := shimv2.NewProvider(p)
 	provider := &Provider{
@@ -2987,6 +3014,7 @@ func TestDefaultsAndExactlyOneOfValidationInteraction(t *testing.T) {
 
 // https://github.com/pulumi/pulumi-terraform-bridge/issues/1546
 func TestDefaultsAndRequiredWithValidationInteraction(t *testing.T) {
+	t.Parallel()
 	p := testprovider.RequiredWithValidationProvider()
 	shimProvider := shimv2.NewProvider(p)
 	provider := &Provider{
@@ -3110,6 +3138,7 @@ func TestDefaultsAndRequiredWithValidationInteraction(t *testing.T) {
 }
 
 func TestSetAutoNaming(t *testing.T) {
+	t.Parallel()
 	tok := func(name string) tokens.Type { return MakeResource("auto", "index", name) }
 	prov := &ProviderInfo{
 		Name: "auto",
@@ -3127,6 +3156,7 @@ func TestSetAutoNaming(t *testing.T) {
 }
 
 func TestPreConfigureCallbackEmitsFailures(t *testing.T) {
+	t.Parallel()
 	t.Run("can_emit_failure", func(t *testing.T) {
 		p := testprovider.ProviderV2()
 		shimProv := shimv2.NewProvider(p)
@@ -3254,6 +3284,7 @@ func TestPreConfigureCallbackEmitsFailures(t *testing.T) {
 }
 
 func TestImport(t *testing.T) {
+	t.Parallel()
 	t.Run("sdkv2", func(t *testing.T) {
 		testImport(t, func(p *schema.Provider) shim.Provider {
 			return shimv2.NewProvider(p)
@@ -3350,6 +3381,7 @@ func testImport(t *testing.T, newProvider func(*schema.Provider) shim.Provider) 
 }
 
 func TestRefresh(t *testing.T) {
+	t.Parallel()
 	t.Run("sdkv2", func(t *testing.T) {
 		testRefresh(t, func(p *schema.Provider) shim.Provider {
 			return shimv2.NewProvider(p)
@@ -3497,6 +3529,7 @@ func testRefresh(t *testing.T, newProvider func(*schema.Provider) shim.Provider)
 }
 
 func TestDestroy(t *testing.T) {
+	t.Parallel()
 	t.Run("sdkv2", func(t *testing.T) {
 		testDestroy(t, func(p *schema.Provider) shim.Provider {
 			return shimv2.NewProvider(p)
@@ -3720,6 +3753,7 @@ func TestMaxItemsOneConflictsWith(t *testing.T) {
 }
 
 func TestMinMaxItemsOneOptional(t *testing.T) {
+	t.Parallel()
 	p := &schemav2.Provider{
 		Schema: map[string]*schemav2.Schema{},
 		ResourcesMap: map[string]*schemav2.Resource{
@@ -3818,6 +3852,7 @@ func TestMinMaxItemsOneOptional(t *testing.T) {
 }
 
 func TestComputedMaxItemsOneNotSpecified(t *testing.T) {
+	t.Parallel()
 	p := &schemav2.Provider{
 		Schema: map[string]*schemav2.Schema{},
 		ResourcesMap: map[string]*schemav2.Resource{
@@ -3925,6 +3960,7 @@ func TestProviderConfigMinMaxItemsOne(t *testing.T) {
 }
 
 func TestProviderCheckConfigRequiredDefaultEnvConfig(t *testing.T) {
+	t.Parallel()
 	t.Setenv("REQUIRED_CONFIG", "required")
 	// Note that this config should be invalid.
 	//
@@ -3974,6 +4010,7 @@ func TestProviderCheckConfigRequiredDefaultEnvConfig(t *testing.T) {
 }
 
 func TestMaxItemsOnePropCheckResponseNoNulls(t *testing.T) {
+	t.Parallel()
 	p := &schemav2.Provider{
 		Schema: map[string]*schemav2.Schema{},
 		ResourcesMap: map[string]*schemav2.Resource{
@@ -4302,6 +4339,7 @@ func TestIgnoreMappings(t *testing.T) {
 // ProviderMeta is an old experimental TF feature which does not seem to be used.
 // We want to make sure it doesn't break anything.
 func TestProviderMetaPlanResourceChangeNoError(t *testing.T) {
+	t.Parallel()
 	type otherMetaType struct {
 		val string
 	}
@@ -4362,6 +4400,7 @@ func TestProviderMetaPlanResourceChangeNoError(t *testing.T) {
 }
 
 func TestStringValForOtherProperty(t *testing.T) {
+	t.Parallel()
 	const largeNumber int64 = 1<<62 + 1
 
 	p := &schemav2.Provider{
@@ -4645,6 +4684,7 @@ func (s *testWarnLogSink) LogStatus(context context.Context, sev pdiag.Severity,
 }
 
 func TestPlanResourceChangeStateUpgrade(t *testing.T) {
+	t.Parallel()
 	p := &schemav2.Provider{
 		Schema: map[string]*schemav2.Schema{},
 		ResourcesMap: map[string]*schemav2.Resource{
@@ -4804,6 +4844,7 @@ func UnknownsSchema() map[string]*schemav2.Resource {
 }
 
 func TestUnknowns(t *testing.T) {
+	t.Parallel()
 	// Related to [pulumi/pulumi-terraform-bridge#1885]
 	// This test is to ensure that we can handle unknowns in the schema.
 	// Note that the behaviour here might not match TF and can NOT match TF completely
@@ -5209,6 +5250,7 @@ func TestUnknowns(t *testing.T) {
 }
 
 func TestPlanResourceChangeUnknowns(t *testing.T) {
+	t.Parallel()
 	// Related to [pulumi/pulumi-terraform-bridge#1885]
 	// This test is to ensure that we can handle unknowns in the schema.
 	// Note that the behaviour here might not match TF and can NOT match TF completely
@@ -5785,6 +5827,7 @@ func TestPlanResourceChangeUnknowns(t *testing.T) {
 }
 
 func TestSetDuplicatedDiffEntries(t *testing.T) {
+	t.Parallel()
 	// Duplicated diff entries cause the engine to display the wrong detailed diff.
 	// We have a workaround in place to deduplicate the entries.
 	// [pulumi/pulumi#16466]
@@ -5882,6 +5925,7 @@ func TestSetDuplicatedDiffEntries(t *testing.T) {
 }
 
 func TestProcessImportValidationErrors(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name          string
 		schema        schemav2.Schema

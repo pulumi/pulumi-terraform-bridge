@@ -23,6 +23,7 @@ import (
 )
 
 func TestPrettyPrint(t *testing.T) {
+	t.Parallel()
 	type testCase struct {
 		v tftypes.Value
 		e autogold.Value

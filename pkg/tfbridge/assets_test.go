@@ -28,6 +28,7 @@ import (
 )
 
 func TestBasic(t *testing.T) {
+	t.Parallel()
 	t1 := &AssetTranslation{Kind: FileAsset}
 	assert.True(t, t1.IsAsset())
 	assert.False(t, t1.IsArchive())
@@ -43,6 +44,7 @@ func TestBasic(t *testing.T) {
 }
 
 func TestFileAssets(t *testing.T) {
+	t.Parallel()
 	text := "this is a test asset"
 	asset, err := resource.NewTextAsset(text)
 	assert.Nil(t, err)
@@ -81,6 +83,7 @@ func TestFileAssets(t *testing.T) {
 }
 
 func TestFileArchives(t *testing.T) {
+	t.Parallel()
 	text := "this is a test asset"
 	asset, err := resource.NewTextAsset(text)
 	assert.Nil(t, err)
@@ -128,6 +131,7 @@ func TestFileArchives(t *testing.T) {
 
 // See https://github.com/pulumi/pulumi-aws/issues/3622
 func TestHashOnlyArchiveDoesNotClobber(t *testing.T) {
+	t.Parallel()
 	//nolint:gosec
 	asset, err := resource.NewTextAsset(fmt.Sprintf("%d", rand.Intn(1024*1024)))
 	require.NoError(t, err)

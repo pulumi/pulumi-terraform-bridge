@@ -29,6 +29,7 @@ import (
 )
 
 func TestTokensSingleModule(t *testing.T) {
+	t.Parallel()
 	info := tfbridge.ProviderInfo{
 		P: (&schema.Provider{
 			ResourcesMap: schema.ResourceMap{
@@ -80,6 +81,7 @@ func TestTokensSingleModule(t *testing.T) {
 }
 
 func TestTokensKnownModules(t *testing.T) {
+	t.Parallel()
 	info := tfbridge.ProviderInfo{
 		P: (&schema.Provider{
 			ResourcesMap: schema.ResourceMap{
@@ -113,6 +115,7 @@ func TestTokensKnownModules(t *testing.T) {
 }
 
 func TestTokensMappedModules(t *testing.T) {
+	t.Parallel()
 	info := tfbridge.ProviderInfo{
 		P: (&schema.Provider{
 			ResourcesMap: schema.ResourceMap{
@@ -146,6 +149,7 @@ func TestTokensMappedModules(t *testing.T) {
 }
 
 func TestUnmappable(t *testing.T) {
+	t.Parallel()
 	info := tfbridge.ProviderInfo{
 		P: (&schema.Provider{
 			ResourcesMap: schema.ResourceMap{
@@ -187,6 +191,7 @@ func TestUnmappable(t *testing.T) {
 }
 
 func TestIgnored(t *testing.T) {
+	t.Parallel()
 	info := tfbridge.ProviderInfo{
 		P: (&schema.Provider{
 			ResourcesMap: schema.ResourceMap{
@@ -206,6 +211,7 @@ func TestIgnored(t *testing.T) {
 }
 
 func TestTokensInferredModules(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name            string
 		resourceMapping map[string]string
@@ -383,6 +389,7 @@ func TestTokensInferredModules(t *testing.T) {
 }
 
 func TestTokenAliasing(t *testing.T) {
+	t.Parallel()
 	provider := func() *tfbridge.ProviderInfo {
 		return &tfbridge.ProviderInfo{
 			P: (&schema.Provider{
@@ -504,6 +511,7 @@ func TestTokenAliasing(t *testing.T) {
 }
 
 func TestMaxItemsOneAliasing(t *testing.T) {
+	t.Parallel()
 	provider := func(f1, f2 bool) *tfbridge.ProviderInfo {
 		prov := &tfbridge.ProviderInfo{
 			P: (&schema.Provider{
@@ -597,6 +605,7 @@ func TestMaxItemsOneAliasing(t *testing.T) {
 }
 
 func TestMaxItemsOneAliasingExpiring(t *testing.T) {
+	t.Parallel()
 	provider := func(f1, f2 bool) *tfbridge.ProviderInfo {
 		prov := &tfbridge.ProviderInfo{
 			P: (&schema.Provider{
@@ -671,6 +680,7 @@ func TestMaxItemsOneAliasingExpiring(t *testing.T) {
 }
 
 func TestMaxItemsOneAliasingNested(t *testing.T) {
+	t.Parallel()
 	provider := func(f1, f2 bool) *tfbridge.ProviderInfo {
 		prov := &tfbridge.ProviderInfo{
 			P: (&schema.Provider{
@@ -744,6 +754,7 @@ func TestMaxItemsOneAliasingNested(t *testing.T) {
 // as `MaxItemsOne: nonNil` for some non-nil value, we don't leave that field entry behind
 // since that will disable SetAutonaming.
 func TestMaxItemsOneAliasingWithAutoNaming(t *testing.T) {
+	t.Parallel()
 	provider := func() *tfbridge.ProviderInfo {
 		prov := &tfbridge.ProviderInfo{
 			P: (&schema.Provider{
@@ -826,6 +837,7 @@ func TestMaxItemsOneAliasingWithAutoNaming(t *testing.T) {
 }
 
 func TestMaxItemsOneDataSourceAliasing(t *testing.T) {
+	t.Parallel()
 	provider := func() *tfbridge.ProviderInfo {
 		prov := &tfbridge.ProviderInfo{
 			P: (&schema.Provider{
