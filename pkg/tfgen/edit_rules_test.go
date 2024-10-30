@@ -61,7 +61,7 @@ func TestApplyEditRules(t *testing.T) {
 			phase:    info.PostCodeTranslation,
 		},
 		{
-			name: "Replaces argument headers with input headers",
+			name: "Replaces argument headers with input headers pattern 1",
 			docFile: DocFile{
 				Content: []byte("# Argument Reference\n" +
 					"The following arguments are supported:\n* `some_argument`\n\n" +
@@ -70,6 +70,16 @@ func TestApplyEditRules(t *testing.T) {
 			expected: []byte("# Configuration Reference\n" +
 				"The following configuration inputs are supported:\n* `some_argument`\n\n" +
 				"input has the following nested fields"),
+			phase: info.PostCodeTranslation,
+		},
+		{
+			name: "Replaces argument headers with input headers pattern 2",
+			docFile: DocFile{
+				Content: []byte("## Arguments\n" +
+					"The provider supports the following arguments:"),
+			},
+			expected: []byte("## Configuration Reference\n" +
+				"The following configuration inputs are supported:"),
 			phase: info.PostCodeTranslation,
 		},
 		{
@@ -177,6 +187,24 @@ func TestApplyEditRules(t *testing.T) {
 				Content: []byte(readfile(t, "test_data/replace-provider-block/input.md")),
 			},
 			expected: []byte(readfile(t, "test_data/replace-provider-block/expected.md")),
+			phase:    info.PostCodeTranslation,
+		},
+		{
+			// Found in scm
+			name: "Replaces `provider` block with provider configuration",
+			docFile: DocFile{
+				Content: []byte(readfile(t, "test_data/replace-provider-block/input-backtick.md")),
+			},
+			expected: []byte(readfile(t, "test_data/replace-provider-block/expected-backtick.md")),
+			phase:    info.PostCodeTranslation,
+		},
+		{
+			// Found in scm
+			name: "Replaces 'D/data source(s)' with 'F/function(s)",
+			docFile: DocFile{
+				Content: []byte(readfile(t, "test_data/replace-data-source/input.md")),
+			},
+			expected: []byte(readfile(t, "test_data/replace-data-source/expected.md")),
 			phase:    info.PostCodeTranslation,
 		},
 	}

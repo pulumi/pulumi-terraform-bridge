@@ -82,8 +82,9 @@ func writeFrontMatter(providerName string) string {
 	// Capitalize the package name
 	capitalize := cases.Title(language.English)
 	title := capitalize.String(providerName)
-
 	return fmt.Sprintf(delimiter+
+		"# *** WARNING: This file was auto-generated. "+
+		"Do not edit by hand unless you're certain you know what you are doing! ***\n"+
 		"title: %[1]s Provider\n"+
 		"meta_desc: Provides an overview on how to configure the Pulumi %[1]s provider.\n"+
 		"layout: package\n"+
@@ -400,8 +401,9 @@ func getDefaultHeadersToSkip() []*regexp.Regexp {
 		regexp.MustCompile("[Dd]evelopment"),
 		regexp.MustCompile("[Dd]ebugging"),
 		regexp.MustCompile("[Tt]erraform CLI"),
-		regexp.MustCompile("[Tt]erraform Cloud"),
+		regexp.MustCompile("[Tt]erraform [Cc]loud"),
 		regexp.MustCompile("Delete Protection"),
+		regexp.MustCompile("[Cc]ontributing"),
 	}
 	return defaultHeaderSkipRegexps
 }

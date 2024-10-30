@@ -1,0 +1,38 @@
+---
+page_title: "{{.Name}} {{.Type}} - {{.ProviderName}}"
+subcategory: ""
+description: |-
+{{ .Description | plainmarkdown | trimspace | prefixlines "  " }}
+---
+
+# {{.Name}} ({{.Type}})
+
+{{ .Description | trimspace }}
+
+~> **Warning** Self-signed certificates are usually used only in development environments
+or applications deployed internally to an organization.
+Certificates of this type are generally not trusted by client software such
+as web browsers. Therefore clients are likely to generate trust warnings when
+connecting to a server that has a self-signed certificate. 
+
+## Example Usage
+
+{{ tffile "examples/resources/tls_self_signed_cert/resource.tf" }}
+
+{{ .SchemaMarkdown | trimspace }}
+
+## Automatic Renewal
+
+This resource considers its instances to have been deleted after either their validity
+periods ends (i.e. beyond the `validity_period_hours`)
+or the early renewal period is reached (i.e. within the `early_renewal_hours`):
+when this happens, the `ready_for_renewal` attribute will be `true`.
+At this time, applying the Terraform configuration will cause a new certificate to be
+generated for the instance.
+
+Therefore in a development environment with frequent deployments it may be convenient
+to set a relatively-short expiration time and use early renewal to automatically provision
+a new certificate when the current one is about to expire.
+
+The creation of a new certificate may of course cause dependent resources to be updated
+or replaced, depending on the lifecycle rules applying to those resources.

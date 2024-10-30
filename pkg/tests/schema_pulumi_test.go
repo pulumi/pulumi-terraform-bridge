@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -17,6 +18,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/pulcheck"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/tfcheck"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optrefresh"
@@ -51,7 +53,7 @@ outputs:
   testOut: ${mainRes.test}
 `
 	pt := pulcheck.PulCheck(t, bridgedProvider, program)
-	res := pt.Up()
+	res := pt.Up(t)
 	require.Equal(t, "hello", res.Outputs["testOut"].Value)
 }
 
@@ -97,10 +99,10 @@ outputs:
   testOut: ${mainRes.test}
 `
 	pt := pulcheck.PulCheck(t, bridgedProvider, program)
-	res := pt.Preview(optpreview.Diff())
+	res := pt.Preview(t, optpreview.Diff())
 	// Test that the test property is unknown at preview time
 	require.Contains(t, res.StdOut, "test      : output<string>")
-	resUp := pt.Up()
+	resUp := pt.Up(t)
 	// assert that the property gets resolved
 	require.Equal(t, "aux", resUp.Outputs["testOut"].Value)
 }
@@ -643,7 +645,7 @@ outputs:
   collectionOutput: ${mainRes.collectionProp%s}
 `, collectionPropPlural, tc.programVal, collectionPropPlural)
 				pt := pulcheck.PulCheck(t, bridgedProvider, program)
-				upRes := pt.Up()
+				upRes := pt.Up(t)
 				require.Equal(t, tc.expectedOutputTopLevel, upRes.Outputs["collectionOutput"].Value)
 				res, err := pt.CurrentStack().Refresh(pt.Context(), optrefresh.ExpectNoChanges())
 				require.NoError(t, err)
@@ -716,7 +718,7 @@ outputs:
   collectionOutput: ${mainRes.props[0].collectionProp%s}
 `, collectionPropPlural, tc.programVal, collectionPropPlural)
 				pt := pulcheck.PulCheck(t, bridgedProvider, program)
-				upRes := pt.Up()
+				upRes := pt.Up(t)
 				require.Equal(t, tc.expectedOutputNested, upRes.Outputs["collectionOutput"].Value)
 
 				res, err := pt.CurrentStack().Refresh(pt.Context(), optrefresh.ExpectNoChanges())
@@ -728,6 +730,18 @@ outputs:
 			})
 		})
 	}
+}
+
+func trimDiff(t *testing.T, diff string) string {
+	urnLine := "    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]"
+	resourcesSummaryLine := "Resources:\n"
+	require.Contains(t, diff, urnLine)
+	require.Contains(t, diff, resourcesSummaryLine)
+
+	// trim the diff to only include the contents after the URN line and before the summary
+	urnIndex := strings.Index(diff, urnLine)
+	resourcesSummaryIndex := strings.Index(diff, resourcesSummaryLine)
+	return diff[urnIndex+len(urnLine) : resourcesSummaryIndex]
 }
 
 func TestUnknownBlocks(t *testing.T) {
@@ -888,20 +902,14 @@ resources:
             tests: ${auxRes.auxes}
 `,
 			provTestKnownProgram,
-			autogold.Expect(`Previewing update (test):
-+ pulumi:pulumi:Stack: (create)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     + prov:index/aux:Aux: (create)
         [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
     + prov:index/test:Test: (create)
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
         tests     : output<string>
-Resources:
-    + 3 to create
 `),
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     + prov:index/aux:Aux: (create)
         [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
     ~ prov:index/test:Test: (update)
@@ -913,10 +921,6 @@ Resources:
             }
         ]
       + tests: output<string>
-Resources:
-    + 1 to create
-    ~ 1 to update
-    2 changes. 1 unchanged
 `),
 		},
 		{
@@ -938,9 +942,7 @@ resources:
 `,
 			provTestKnownProgram,
 
-			autogold.Expect(`Previewing update (test):
-+ pulumi:pulumi:Stack: (create)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     + prov:index/aux:Aux: (create)
         [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
     + prov:index/test:Test: (create)
@@ -948,12 +950,8 @@ resources:
         tests     : [
             [0]: output<string>
         ]
-Resources:
-    + 3 to create
 `),
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     + prov:index/aux:Aux: (create)
         [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
     ~ prov:index/test:Test: (update)
@@ -965,10 +963,6 @@ Resources:
                 }
           + [0]: output<string>
         ]
-Resources:
-    + 1 to create
-    ~ 1 to update
-    2 changes. 1 unchanged
 `),
 		},
 		{
@@ -991,9 +985,7 @@ resources:
 `,
 			provTestKnownProgram,
 
-			autogold.Expect(`Previewing update (test):
-+ pulumi:pulumi:Stack: (create)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     + prov:index/aux:Aux: (create)
         [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
     + prov:index/test:Test: (create)
@@ -1004,12 +996,8 @@ resources:
                 testProp  : "val"
             }
         ]
-Resources:
-    + 3 to create
 `),
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     + prov:index/aux:Aux: (create)
         [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
     ~ prov:index/test:Test: (update)
@@ -1024,10 +1012,6 @@ Resources:
                   + testProp  : "val"
                 }
         ]
-Resources:
-    + 1 to create
-    ~ 1 to update
-    2 changes. 1 unchanged
 `),
 		},
 		{
@@ -1047,20 +1031,14 @@ resources:
             tests: ${auxRes.nestedAuxes}
 `,
 			nestedProvTestKnownProgram,
-			autogold.Expect(`Previewing update (test):
-+ pulumi:pulumi:Stack: (create)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     + prov:index/aux:Aux: (create)
         [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
     + prov:index/nestedTest:NestedTest: (create)
         [urn=urn:pulumi:test::test::prov:index/nestedTest:NestedTest::mainRes]
         tests     : output<string>
-Resources:
-    + 3 to create
 `),
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     + prov:index/aux:Aux: (create)
         [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
     ~ prov:index/nestedTest:NestedTest: (update)
@@ -1078,10 +1056,6 @@ Resources:
             }
         ]
       + tests: output<string>
-Resources:
-    + 1 to create
-    ~ 1 to update
-    2 changes. 1 unchanged
 `),
 		},
 		{
@@ -1102,9 +1076,7 @@ resources:
                 - ${auxRes.nestedAuxes[0]}
 `,
 			nestedProvTestKnownProgram,
-			autogold.Expect(`Previewing update (test):
-+ pulumi:pulumi:Stack: (create)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     + prov:index/aux:Aux: (create)
         [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
     + prov:index/nestedTest:NestedTest: (create)
@@ -1112,12 +1084,8 @@ resources:
         tests     : [
             [0]: output<string>
         ]
-Resources:
-    + 3 to create
 `),
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     + prov:index/aux:Aux: (create)
         [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
     ~ prov:index/nestedTest:NestedTest: (update)
@@ -1135,10 +1103,6 @@ Resources:
                 }
           + [0]: output<string>
         ]
-Resources:
-    + 1 to create
-    ~ 1 to update
-    2 changes. 1 unchanged
 `),
 		},
 		{
@@ -1159,9 +1123,7 @@ resources:
                 - nestedProps: ${auxRes.nestedAuxes[0].nestedProps}
 `,
 			nestedProvTestKnownProgram,
-			autogold.Expect(`Previewing update (test):
-+ pulumi:pulumi:Stack: (create)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     + prov:index/aux:Aux: (create)
         [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
     + prov:index/nestedTest:NestedTest: (create)
@@ -1171,12 +1133,8 @@ resources:
                 nestedProps: output<string>
             }
         ]
-Resources:
-    + 3 to create
 `),
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     + prov:index/aux:Aux: (create)
         [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
     ~ prov:index/nestedTest:NestedTest: (update)
@@ -1194,10 +1152,6 @@ Resources:
                   + nestedProps: output<string>
                 }
         ]
-Resources:
-    + 1 to create
-    ~ 1 to update
-    2 changes. 1 unchanged
 `),
 		},
 		{
@@ -1219,9 +1173,7 @@ resources:
                     - ${auxRes.nestedAuxes[0].nestedProps[0]}
 `,
 			nestedProvTestKnownProgram,
-			autogold.Expect(`Previewing update (test):
-+ pulumi:pulumi:Stack: (create)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     + prov:index/aux:Aux: (create)
         [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
     + prov:index/nestedTest:NestedTest: (create)
@@ -1233,12 +1185,8 @@ resources:
                 ]
             }
         ]
-Resources:
-    + 3 to create
 `),
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     + prov:index/aux:Aux: (create)
         [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
     ~ prov:index/nestedTest:NestedTest: (update)
@@ -1256,10 +1204,6 @@ Resources:
                     ]
                 }
         ]
-Resources:
-    + 1 to create
-    ~ 1 to update
-    2 changes. 1 unchanged
 `),
 		},
 		{
@@ -1281,9 +1225,7 @@ resources:
                     - testProps: ${auxRes.nestedAuxes[0].nestedProps[0].testProps}
 `,
 			nestedProvTestKnownProgram,
-			autogold.Expect(`Previewing update (test):
-+ pulumi:pulumi:Stack: (create)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     + prov:index/aux:Aux: (create)
         [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
     + prov:index/nestedTest:NestedTest: (create)
@@ -1297,12 +1239,8 @@ resources:
                 ]
             }
         ]
-Resources:
-    + 3 to create
 `),
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     + prov:index/aux:Aux: (create)
         [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
     ~ prov:index/nestedTest:NestedTest: (update)
@@ -1320,10 +1258,6 @@ Resources:
                     ]
                 }
         ]
-Resources:
-    + 1 to create
-    ~ 1 to update
-    2 changes. 1 unchanged
 `),
 		},
 		{
@@ -1346,9 +1280,7 @@ resources:
                         - ${auxRes.nestedAuxes[0].nestedProps[0].testProps[0]}
 `,
 			nestedProvTestKnownProgram,
-			autogold.Expect(`Previewing update (test):
-+ pulumi:pulumi:Stack: (create)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     + prov:index/aux:Aux: (create)
         [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
     + prov:index/nestedTest:NestedTest: (create)
@@ -1364,12 +1296,8 @@ resources:
                 ]
             }
         ]
-Resources:
-    + 3 to create
 `),
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     + prov:index/aux:Aux: (create)
         [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
     ~ prov:index/nestedTest:NestedTest: (update)
@@ -1386,10 +1314,6 @@ Resources:
                     ]
                 }
         ]
-Resources:
-    + 1 to create
-    ~ 1 to update
-    2 changes. 1 unchanged
 `),
 		},
 	} {
@@ -1398,10 +1322,10 @@ Resources:
 
 			t.Run("initial preview", func(t *testing.T) {
 				pt := pulcheck.PulCheck(t, bridgedProvider, computedProgram)
-				res := pt.Preview(optpreview.Diff())
+				res := pt.Preview(t, optpreview.Diff())
 				t.Log(res.StdOut)
 
-				tc.expectedInitial.Equal(t, res.StdOut)
+				tc.expectedInitial.Equal(t, trimDiff(t, res.StdOut))
 			})
 
 			t.Run("update preview", func(t *testing.T) {
@@ -1411,30 +1335,30 @@ Resources:
 				// Diff in these cases always returns no diff and the old state value is used.
 				nonComputedProgram := fmt.Sprintf(tc.program, "[{testProp: \"val1\"}]", "[{nestedProps: [{testProps: [\"val1\"]}]}]")
 				pt := pulcheck.PulCheck(t, bridgedProvider, nonComputedProgram)
-				pt.Up()
+				pt.Up(t)
 
 				pulumiYamlPath := filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml")
 
 				err := os.WriteFile(pulumiYamlPath, []byte(computedProgram), 0o600)
 				require.NoError(t, err)
 
-				res := pt.Preview(optpreview.Diff())
+				res := pt.Preview(t, optpreview.Diff())
 				t.Log(res.StdOut)
-				tc.expectedUpdate.Equal(t, res.StdOut)
+				tc.expectedUpdate.Equal(t, trimDiff(t, res.StdOut))
 			})
 
 			t.Run("update preview with computed", func(t *testing.T) {
 				pt := pulcheck.PulCheck(t, bridgedProvider, tc.initialKnownProgram)
-				pt.Up()
+				pt.Up(t)
 
 				pulumiYamlPath := filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml")
 
 				err := os.WriteFile(pulumiYamlPath, []byte(computedProgram), 0o600)
 				require.NoError(t, err)
 
-				res := pt.Preview(optpreview.Diff())
+				res := pt.Preview(t, optpreview.Diff())
 				t.Log(res.StdOut)
-				tc.expectedUpdate.Equal(t, res.StdOut)
+				tc.expectedUpdate.Equal(t, trimDiff(t, res.StdOut))
 			})
 		})
 	}
@@ -1510,7 +1434,7 @@ runtime: yaml
 
 			pt := pulcheck.PulCheck(t, bridgedProvider, program)
 
-			res := pt.Import("prov:index/test:Test", "res1", "id1", "")
+			res := pt.Import(t, "prov:index/test:Test", "res1", "id1", "")
 
 			t.Log(res.Stdout)
 
@@ -1576,7 +1500,7 @@ outputs:
   testOut: ${mainRes.test}
 `, configVal)
 		pt := pulcheck.PulCheck(t, bridgedProvider, program)
-		pt.Up()
+		pt.Up(t)
 	}
 
 	t.Run("config exists", func(t *testing.T) {
@@ -1629,7 +1553,7 @@ func TestConfigureCrossTest(t *testing.T) {
 		bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
 
 		pt := pulcheck.PulCheck(t, bridgedProvider, pulumiProgram)
-		pt.Preview()
+		pt.Preview(t)
 		require.NotNil(t, puRd)
 		require.Equal(t, tfRd.GetRawConfig(), puRd.GetRawConfig())
 	}
@@ -1846,10 +1770,10 @@ resources:
 `
 
 		pt := pulcheck.PulCheck(t, bridgedProvider, fmt.Sprintf(program, "val"))
-		pt.Up()
+		pt.Up(t)
 
 		// Check the state is correct
-		stack := pt.ExportStack()
+		stack := pt.ExportStack(t)
 		data, err := stack.Deployment.MarshalJSON()
 		require.NoError(t, err)
 		require.Equal(t, fmt.Sprint(bigInt), getZoneFromStack(data))
@@ -1859,9 +1783,9 @@ resources:
 		err = os.WriteFile(pulumiYamlPath, []byte(program2), 0o600)
 		require.NoError(t, err)
 
-		pt.Up()
+		pt.Up(t)
 		// Check the state is correct
-		stack = pt.ExportStack()
+		stack = pt.ExportStack(t)
 		data, err = stack.Deployment.MarshalJSON()
 		require.NoError(t, err)
 		require.Equal(t, fmt.Sprint(bigInt), getZoneFromStack(data))
@@ -1877,7 +1801,7 @@ resources:
 }
 
 func TestDetailedDiffPlainTypes(t *testing.T) {
-	// TODO: Remove this once accurate bridge previews are rolled out
+	// TODO[pulumi/pulumi-terraform-bridge#2517]: Remove this once accurate bridge previews are rolled out
 	t.Setenv("PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW", "true")
 	resMap := map[string]*schema.Resource{
 		"prov_test": {
@@ -1963,88 +1887,58 @@ resources:
 			"string unchanged",
 			map[string]interface{}{"stringProp": "val"},
 			map[string]interface{}{"stringProp": "val"},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
-Resources:
-    2 unchanged
-`),
+			autogold.Expect("\n"),
 		},
 		{
 			"string added",
 			map[string]interface{}{},
 			map[string]interface{}{"stringProp": "val"},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       + stringProp: "val"
-Resources:
-    ~ 1 to update
-    1 unchanged
 `),
 		},
 		{
 			"string removed",
 			map[string]interface{}{"stringProp": "val1"},
 			map[string]interface{}{},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       - stringProp: "val1"
-Resources:
-    ~ 1 to update
-    1 unchanged
 `),
 		},
 		{
 			"string changed",
 			map[string]interface{}{"stringProp": "val1"},
 			map[string]interface{}{"stringProp": "val2"},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ stringProp: "val1" => "val2"
-Resources:
-    ~ 1 to update
-    1 unchanged
 `),
 		},
 		{
 			"list unchanged",
 			map[string]interface{}{"listProps": []interface{}{"val"}},
 			map[string]interface{}{"listProps": []interface{}{"val"}},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
-Resources:
-    2 unchanged
-`),
+			autogold.Expect("\n"),
 		},
 		{
 			"list added",
 			map[string]interface{}{},
 			map[string]interface{}{"listProps": []interface{}{"val"}},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       + listProps: [
       +     [0]: "val"
         ]
-Resources:
-    ~ 1 to update
-    1 unchanged
 `),
 		},
 		// pulumi/pulumi-terraform-bridge#2233: This is the intended behavior
@@ -2052,29 +1946,19 @@ Resources:
 			"list added empty",
 			map[string]interface{}{},
 			map[string]interface{}{"listProps": []interface{}{}},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
-Resources:
-    2 unchanged
-`),
+			autogold.Expect("\n"),
 		},
 		{
 			"list removed",
 			map[string]interface{}{"listProps": []interface{}{"val"}},
 			map[string]interface{}{},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       - listProps: [
       -     [0]: "val"
         ]
-Resources:
-    ~ 1 to update
-    1 unchanged
 `),
 		},
 		// pulumi/pulumi-terraform-bridge#2233: This is the intended behavior
@@ -2082,20 +1966,13 @@ Resources:
 			"list removed empty",
 			map[string]interface{}{"listProps": []interface{}{}},
 			map[string]interface{}{},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
-Resources:
-    2 unchanged
-`),
+			autogold.Expect("\n"),
 		},
 		{
 			"list element added front",
 			map[string]interface{}{"listProps": []interface{}{"val2", "val3"}},
 			map[string]interface{}{"listProps": []interface{}{"val1", "val2", "val3"}},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -2104,36 +1981,26 @@ Resources:
           ~ [1]: "val3" => "val2"
           + [2]: "val3"
         ]
-Resources:
-    ~ 1 to update
-    1 unchanged
 `),
 		},
 		{
 			"list element added back",
 			map[string]interface{}{"listProps": []interface{}{"val1", "val2"}},
 			map[string]interface{}{"listProps": []interface{}{"val1", "val2", "val3"}},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ listProps: [
           + [2]: "val3"
         ]
-Resources:
-    ~ 1 to update
-    1 unchanged
 `),
 		},
 		{
 			"list element added middle",
 			map[string]interface{}{"listProps": []interface{}{"val1", "val3"}},
 			map[string]interface{}{"listProps": []interface{}{"val1", "val2", "val3"}},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -2141,18 +2008,13 @@ Resources:
           ~ [1]: "val3" => "val2"
           + [2]: "val3"
         ]
-Resources:
-    ~ 1 to update
-    1 unchanged
 `),
 		},
 		{
 			"list element removed front",
 			map[string]interface{}{"listProps": []interface{}{"val1", "val2", "val3"}},
 			map[string]interface{}{"listProps": []interface{}{"val2", "val3"}},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -2161,36 +2023,26 @@ Resources:
           ~ [1]: "val2" => "val3"
           - [2]: "val3"
         ]
-Resources:
-    ~ 1 to update
-    1 unchanged
 `),
 		},
 		{
 			"list element removed back",
 			map[string]interface{}{"listProps": []interface{}{"val1", "val2", "val3"}},
 			map[string]interface{}{"listProps": []interface{}{"val1", "val2"}},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ listProps: [
           - [2]: "val3"
         ]
-Resources:
-    ~ 1 to update
-    1 unchanged
 `),
 		},
 		{
 			"list element removed middle",
 			map[string]interface{}{"listProps": []interface{}{"val1", "val2", "val3"}},
 			map[string]interface{}{"listProps": []interface{}{"val1", "val3"}},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -2198,56 +2050,38 @@ Resources:
           ~ [1]: "val2" => "val3"
           - [2]: "val3"
         ]
-Resources:
-    ~ 1 to update
-    1 unchanged
 `),
 		},
 		{
 			"list element changed",
 			map[string]interface{}{"listProps": []interface{}{"val1"}},
 			map[string]interface{}{"listProps": []interface{}{"val2"}},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ listProps: [
           ~ [0]: "val1" => "val2"
         ]
-Resources:
-    ~ 1 to update
-    1 unchanged
 `),
 		},
 		{
 			"set unchanged",
 			map[string]interface{}{"setProps": []interface{}{"val"}},
 			map[string]interface{}{"setProps": []interface{}{"val"}},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
-Resources:
-    2 unchanged
-`),
+			autogold.Expect("\n"),
 		},
 		{
 			"set added",
 			map[string]interface{}{},
 			map[string]interface{}{"setProps": []interface{}{"val"}},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       + setProps: [
       +     [0]: "val"
         ]
-Resources:
-    ~ 1 to update
-    1 unchanged
 `),
 		},
 		// pulumi/pulumi-terraform-bridge#2233: This is the intended behavior
@@ -2255,29 +2089,19 @@ Resources:
 			"set added empty",
 			map[string]interface{}{},
 			map[string]interface{}{"setProps": []interface{}{}},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
-Resources:
-    2 unchanged
-`),
+			autogold.Expect("\n"),
 		},
 		{
 			"set removed",
 			map[string]interface{}{"setProps": []interface{}{"val"}},
 			map[string]interface{}{},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       - setProps: [
       -     [0]: "val"
         ]
-Resources:
-    ~ 1 to update
-    1 unchanged
 `),
 		},
 		// pulumi/pulumi-terraform-bridge#2233: This is the intended behavior
@@ -2285,172 +2109,116 @@ Resources:
 			"set removed empty",
 			map[string]interface{}{"setProps": []interface{}{}},
 			map[string]interface{}{},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
-Resources:
-    2 unchanged
-`),
+			autogold.Expect("\n"),
 		},
 		{
 			"set element added front",
 			map[string]interface{}{"setProps": []interface{}{"val2", "val3"}},
 			map[string]interface{}{"setProps": []interface{}{"val1", "val2", "val3"}},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ setProps: [
-          ~ [0]: "val2" => "val1"
-          ~ [1]: "val3" => "val2"
-          + [2]: "val3"
+          + [0]: "val1"
         ]
-Resources:
-    ~ 1 to update
-    1 unchanged
 `),
 		},
 		{
 			"set element added back",
 			map[string]interface{}{"setProps": []interface{}{"val1", "val2"}},
 			map[string]interface{}{"setProps": []interface{}{"val1", "val2", "val3"}},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ setProps: [
           + [2]: "val3"
         ]
-Resources:
-    ~ 1 to update
-    1 unchanged
 `),
 		},
 		{
 			"set element added middle",
 			map[string]interface{}{"setProps": []interface{}{"val1", "val3"}},
 			map[string]interface{}{"setProps": []interface{}{"val1", "val2", "val3"}},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ setProps: [
-          ~ [1]: "val3" => "val2"
-          + [2]: "val3"
+          + [1]: "val2"
         ]
-Resources:
-    ~ 1 to update
-    1 unchanged
 `),
 		},
 		{
 			"set element removed front",
 			map[string]interface{}{"setProps": []interface{}{"val1", "val2", "val3"}},
 			map[string]interface{}{"setProps": []interface{}{"val2", "val3"}},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ setProps: [
-          ~ [0]: "val1" => "val2"
-          ~ [1]: "val2" => "val3"
-          - [2]: "val3"
+          - [0]: "val1"
         ]
-Resources:
-    ~ 1 to update
-    1 unchanged
 `),
 		},
 		{
 			"set element removed back",
 			map[string]interface{}{"setProps": []interface{}{"val1", "val2", "val3"}},
 			map[string]interface{}{"setProps": []interface{}{"val1", "val2"}},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ setProps: [
           - [2]: "val3"
         ]
-Resources:
-    ~ 1 to update
-    1 unchanged
 `),
 		},
 		{
 			"set element removed middle",
 			map[string]interface{}{"setProps": []interface{}{"val1", "val2", "val3"}},
 			map[string]interface{}{"setProps": []interface{}{"val1", "val3"}},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ setProps: [
-          ~ [1]: "val2" => "val3"
-          - [2]: "val3"
+          - [1]: "val2"
         ]
-Resources:
-    ~ 1 to update
-    1 unchanged
 `),
 		},
 		{
 			"set element changed",
 			map[string]interface{}{"setProps": []interface{}{"val1"}},
 			map[string]interface{}{"setProps": []interface{}{"val2"}},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ setProps: [
           ~ [0]: "val1" => "val2"
         ]
-Resources:
-    ~ 1 to update
-    1 unchanged
 `),
 		},
 		{
 			"map unchanged",
 			map[string]interface{}{"mapProp": map[string]interface{}{"key": "val"}},
 			map[string]interface{}{"mapProp": map[string]interface{}{"key": "val"}},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
-Resources:
-    2 unchanged
-`),
+			autogold.Expect("\n"),
 		},
 		{
 			"map added",
 			map[string]interface{}{},
 			map[string]interface{}{"mapProp": map[string]interface{}{"key": "val"}},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       + mapProp: {
           + key: "val"
         }
-Resources:
-    ~ 1 to update
-    1 unchanged
 `),
 		},
 		// pulumi/pulumi-terraform-bridge#2233: This is the intended behavior
@@ -2458,29 +2226,19 @@ Resources:
 			"map added empty",
 			map[string]interface{}{},
 			map[string]interface{}{"mapProp": map[string]interface{}{}},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
-Resources:
-    2 unchanged
-`),
+			autogold.Expect("\n"),
 		},
 		{
 			"map removed",
 			map[string]interface{}{"mapProp": map[string]interface{}{"key": "val"}},
 			map[string]interface{}{},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       - mapProp: {
           - key: "val"
         }
-Resources:
-    ~ 1 to update
-    1 unchanged
 `),
 		},
 		// pulumi/pulumi-terraform-bridge#2233: This is the intended behavior
@@ -2488,74 +2246,52 @@ Resources:
 			"map removed empty",
 			map[string]interface{}{"mapProp": map[string]interface{}{}},
 			map[string]interface{}{},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
-Resources:
-    2 unchanged
-`),
+			autogold.Expect("\n"),
 		},
 		{
 			"map element added",
 			map[string]interface{}{"mapProp": map[string]interface{}{}},
 			map[string]interface{}{"mapProp": map[string]interface{}{"key": "val"}},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       + mapProp: {
           + key: "val"
         }
-Resources:
-    ~ 1 to update
-    1 unchanged
 `),
 		},
 		{
 			"map element removed",
 			map[string]interface{}{"mapProp": map[string]interface{}{"key": "val"}},
 			map[string]interface{}{"mapProp": map[string]interface{}{}},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ mapProp: {
           - key: "val"
         }
-Resources:
-    ~ 1 to update
-    1 unchanged
 `),
 		},
 		{
 			"map value changed",
 			map[string]interface{}{"mapProp": map[string]interface{}{"key": "val1"}},
 			map[string]interface{}{"mapProp": map[string]interface{}{"key": "val2"}},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ mapProp: {
           ~ key: "val1" => "val2"
         }
-Resources:
-    ~ 1 to update
-    1 unchanged
 `),
 		},
 		{
 			"map key changed",
 			map[string]interface{}{"mapProp": map[string]interface{}{"key1": "val"}},
 			map[string]interface{}{"mapProp": map[string]interface{}{"key2": "val"}},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -2563,29 +2299,19 @@ Resources:
           - key1: "val"
           + key2: "val"
         }
-Resources:
-    ~ 1 to update
-    1 unchanged
 `),
 		},
 		{
 			"list block unchanged",
 			map[string]interface{}{"listBlocks": []interface{}{map[string]interface{}{"prop": "val"}}},
 			map[string]interface{}{"listBlocks": []interface{}{map[string]interface{}{"prop": "val"}}},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
-Resources:
-    2 unchanged
-`),
+			autogold.Expect("\n"),
 		},
 		{
 			"list block added",
 			map[string]interface{}{},
 			map[string]interface{}{"listBlocks": []interface{}{map[string]interface{}{"prop": "val"}}},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -2594,9 +2320,6 @@ Resources:
               + prop      : "val"
             }
         ]
-Resources:
-    ~ 1 to update
-    1 unchanged
 `),
 		},
 		// This is expected to be a no-op because blocks can not be nil in TF
@@ -2604,20 +2327,13 @@ Resources:
 			"list block added empty",
 			map[string]interface{}{},
 			map[string]interface{}{"listBlocks": []interface{}{}},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
-Resources:
-    2 unchanged
-`),
+			autogold.Expect("\n"),
 		},
 		{
 			"list block added empty object",
 			map[string]interface{}{},
 			map[string]interface{}{"listBlocks": []interface{}{map[string]interface{}{}}},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -2625,18 +2341,13 @@ Resources:
       +     [0]: {
             }
         ]
-Resources:
-    ~ 1 to update
-    1 unchanged
 `),
 		},
 		{
 			"list block removed",
 			map[string]interface{}{"listBlocks": []interface{}{map[string]interface{}{"prop": "val"}}},
 			map[string]interface{}{},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -2645,9 +2356,6 @@ Resources:
               - prop: "val"
             }
         ]
-Resources:
-    ~ 1 to update
-    1 unchanged
 `),
 		},
 		// This is expected to be a no-op because blocks can not be nil in TF
@@ -2655,20 +2363,13 @@ Resources:
 			"list block removed empty",
 			map[string]interface{}{"listBlocks": []interface{}{}},
 			map[string]interface{}{},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
-Resources:
-    2 unchanged
-`),
+			autogold.Expect("\n"),
 		},
 		{
 			"list block removed empty object",
 			map[string]interface{}{"listBlocks": []interface{}{map[string]interface{}{}}},
 			map[string]interface{}{},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -2677,9 +2378,6 @@ Resources:
               - prop: <null>
             }
         ]
-Resources:
-    ~ 1 to update
-    1 unchanged
 `),
 		},
 		{
@@ -2693,9 +2391,7 @@ Resources:
 				map[string]interface{}{"prop": "val2"},
 				map[string]interface{}{"prop": "val3"},
 			}},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -2710,9 +2406,6 @@ Resources:
                   + prop      : "val3"
                 }
         ]
-Resources:
-    ~ 1 to update
-    1 unchanged
 `),
 		},
 		{
@@ -2726,9 +2419,7 @@ Resources:
 				map[string]interface{}{"prop": "val2"},
 				map[string]interface{}{"prop": "val3"},
 			}},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -2737,9 +2428,6 @@ Resources:
                   + prop      : "val3"
                 }
         ]
-Resources:
-    ~ 1 to update
-    1 unchanged
 `),
 		},
 		{
@@ -2753,9 +2441,7 @@ Resources:
 				map[string]interface{}{"prop": "val2"},
 				map[string]interface{}{"prop": "val3"},
 			}},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -2767,9 +2453,6 @@ Resources:
                   + prop      : "val3"
                 }
         ]
-Resources:
-    ~ 1 to update
-    1 unchanged
 `),
 		},
 		{
@@ -2783,9 +2466,7 @@ Resources:
 				map[string]interface{}{"prop": "val2"},
 				map[string]interface{}{"prop": "val3"},
 			}},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -2800,9 +2481,6 @@ Resources:
                   - prop: "val3"
                 }
         ]
-Resources:
-    ~ 1 to update
-    1 unchanged
 `),
 		},
 		{
@@ -2816,9 +2494,7 @@ Resources:
 				map[string]interface{}{"prop": "val1"},
 				map[string]interface{}{"prop": "val2"},
 			}},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -2827,9 +2503,6 @@ Resources:
                   - prop: "val3"
                 }
         ]
-Resources:
-    ~ 1 to update
-    1 unchanged
 `),
 		},
 		{
@@ -2843,9 +2516,7 @@ Resources:
 				map[string]interface{}{"prop": "val1"},
 				map[string]interface{}{"prop": "val3"},
 			}},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -2857,9 +2528,6 @@ Resources:
                   - prop: "val3"
                 }
         ]
-Resources:
-    ~ 1 to update
-    1 unchanged
 `),
 		},
 		{
@@ -2870,9 +2538,7 @@ Resources:
 			map[string]interface{}{"listBlocks": []interface{}{
 				map[string]interface{}{"prop": "val2"},
 			}},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -2881,29 +2547,19 @@ Resources:
                   ~ prop: "val1" => "val2"
                 }
         ]
-Resources:
-    ~ 1 to update
-    1 unchanged
 `),
 		},
 		{
 			"set block unchanged",
 			map[string]interface{}{"setBlocks": []interface{}{map[string]interface{}{"prop": "val"}}},
 			map[string]interface{}{"setBlocks": []interface{}{map[string]interface{}{"prop": "val"}}},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
-Resources:
-    2 unchanged
-`),
+			autogold.Expect("\n"),
 		},
 		{
 			"set block added",
 			map[string]interface{}{},
 			map[string]interface{}{"setBlocks": []interface{}{map[string]interface{}{"prop": "val"}}},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -2912,9 +2568,6 @@ Resources:
               + prop      : "val"
             }
         ]
-Resources:
-    ~ 1 to update
-    1 unchanged
 `),
 		},
 		// This is expected to be a no-op because blocks can not be nil in TF
@@ -2922,20 +2575,13 @@ Resources:
 			"set block added empty",
 			map[string]interface{}{},
 			map[string]interface{}{"setBlocks": []interface{}{}},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
-Resources:
-    2 unchanged
-`),
+			autogold.Expect("\n"),
 		},
 		{
 			"set block added empty object",
 			map[string]interface{}{},
 			map[string]interface{}{"setBlocks": []interface{}{map[string]interface{}{}}},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -2943,18 +2589,13 @@ Resources:
       +     [0]: {
             }
         ]
-Resources:
-    ~ 1 to update
-    1 unchanged
 `),
 		},
 		{
 			"set block removed",
 			map[string]interface{}{"setBlocks": []interface{}{map[string]interface{}{"prop": "val"}}},
 			map[string]interface{}{},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -2963,9 +2604,6 @@ Resources:
               - prop: "val"
             }
         ]
-Resources:
-    ~ 1 to update
-    1 unchanged
 `),
 		},
 		// This is expected to be a no-op because blocks can not be nil in TF
@@ -2973,21 +2611,14 @@ Resources:
 			"set block removed empty",
 			map[string]interface{}{"setBlocks": []interface{}{}},
 			map[string]interface{}{},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
-Resources:
-    2 unchanged
-`),
+			autogold.Expect("\n"),
 		},
 		// TODO[pulumi/pulumi-terraform-bridge#2399] nested prop diff
 		{
 			"set block removed empty object",
 			map[string]interface{}{"setBlocks": []interface{}{map[string]interface{}{}}},
 			map[string]interface{}{},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -2996,9 +2627,6 @@ Resources:
               - prop: ""
             }
         ]
-Resources:
-    ~ 1 to update
-    1 unchanged
 `),
 		},
 		{
@@ -3012,26 +2640,15 @@ Resources:
 				map[string]interface{}{"prop": "val2"},
 				map[string]interface{}{"prop": "val3"},
 			}},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ setBlocks: [
-          ~ [0]: {
-                  ~ prop: "val2" => "val1"
-                }
-          ~ [1]: {
-                  ~ prop: "val3" => "val2"
-                }
-          + [2]: {
-                  + prop      : "val3"
+          + [0]: {
+                  + prop      : "val1"
                 }
         ]
-Resources:
-    ~ 1 to update
-    1 unchanged
 `),
 		},
 		{
@@ -3045,9 +2662,7 @@ Resources:
 				map[string]interface{}{"prop": "val2"},
 				map[string]interface{}{"prop": "val3"},
 			}},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -3056,9 +2671,6 @@ Resources:
                   + prop      : "val3"
                 }
         ]
-Resources:
-    ~ 1 to update
-    1 unchanged
 `),
 		},
 		{
@@ -3072,23 +2684,15 @@ Resources:
 				map[string]interface{}{"prop": "val2"},
 				map[string]interface{}{"prop": "val3"},
 			}},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ setBlocks: [
-          ~ [1]: {
-                  ~ prop: "val3" => "val2"
-                }
-          + [2]: {
-                  + prop      : "val3"
+          + [1]: {
+                  + prop      : "val2"
                 }
         ]
-Resources:
-    ~ 1 to update
-    1 unchanged
 `),
 		},
 		{
@@ -3102,26 +2706,15 @@ Resources:
 				map[string]interface{}{"prop": "val2"},
 				map[string]interface{}{"prop": "val3"},
 			}},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ setBlocks: [
-          ~ [0]: {
-                  ~ prop: "val1" => "val2"
-                }
-          ~ [1]: {
-                  ~ prop: "val2" => "val3"
-                }
-          - [2]: {
-                  - prop: "val3"
+          - [0]: {
+                  - prop: "val1"
                 }
         ]
-Resources:
-    ~ 1 to update
-    1 unchanged
 `),
 		},
 		{
@@ -3135,9 +2728,7 @@ Resources:
 				map[string]interface{}{"prop": "val1"},
 				map[string]interface{}{"prop": "val2"},
 			}},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -3146,9 +2737,6 @@ Resources:
                   - prop: "val3"
                 }
         ]
-Resources:
-    ~ 1 to update
-    1 unchanged
 `),
 		},
 		{
@@ -3162,23 +2750,15 @@ Resources:
 				map[string]interface{}{"prop": "val1"},
 				map[string]interface{}{"prop": "val3"},
 			}},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ setBlocks: [
-          ~ [1]: {
-                  ~ prop: "val2" => "val3"
-                }
-          - [2]: {
-                  - prop: "val3"
+          - [1]: {
+                  - prop: "val2"
                 }
         ]
-Resources:
-    ~ 1 to update
-    1 unchanged
 `),
 		},
 		{
@@ -3189,9 +2769,7 @@ Resources:
 			map[string]interface{}{"setBlocks": []interface{}{
 				map[string]interface{}{"prop": "val2"},
 			}},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
@@ -3200,73 +2778,50 @@ Resources:
                   ~ prop: "val1" => "val2"
                 }
         ]
-Resources:
-    ~ 1 to update
-    1 unchanged
 `),
 		},
 		{
 			"maxItemsOne block unchanged",
 			map[string]interface{}{"maxItemsOneBlock": map[string]interface{}{"prop": "val"}},
 			map[string]interface{}{"maxItemsOneBlock": map[string]interface{}{"prop": "val"}},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
-Resources:
-    2 unchanged
-`),
+			autogold.Expect("\n"),
 		},
 		{
 			"maxItemsOne block added",
 			map[string]interface{}{},
 			map[string]interface{}{"maxItemsOneBlock": map[string]interface{}{"prop": "val"}},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       + maxItemsOneBlock: {
           + prop      : "val"
         }
-Resources:
-    ~ 1 to update
-    1 unchanged
 `),
 		},
 		{
 			"maxItemsOne block added empty",
 			map[string]interface{}{},
 			map[string]interface{}{"maxItemsOneBlock": map[string]interface{}{}},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       + maxItemsOneBlock: {
         }
-Resources:
-    ~ 1 to update
-    1 unchanged
 `),
 		},
 		{
 			"maxItemsOne block removed",
 			map[string]interface{}{"maxItemsOneBlock": map[string]interface{}{"prop": "val"}},
 			map[string]interface{}{},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       - maxItemsOneBlock: {
           - prop: "val"
         }
-Resources:
-    ~ 1 to update
-    1 unchanged
 `),
 		},
 		// TODO[pulumi/pulumi-terraform-bridge#2399] nested prop diff
@@ -3274,36 +2829,26 @@ Resources:
 			"maxItemsOne block removed empty",
 			map[string]interface{}{"maxItemsOneBlock": map[string]interface{}{}},
 			map[string]interface{}{},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       - maxItemsOneBlock: {
           - prop: <null>
         }
-Resources:
-    ~ 1 to update
-    1 unchanged
 `),
 		},
 		{
 			"maxItemsOne block changed",
 			map[string]interface{}{"maxItemsOneBlock": map[string]interface{}{"prop": "val1"}},
 			map[string]interface{}{"maxItemsOneBlock": map[string]interface{}{"prop": "val2"}},
-			autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+			autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ maxItemsOneBlock: {
           ~ prop: "val1" => "val2"
         }
-Resources:
-    ~ 1 to update
-    1 unchanged
 `),
 		},
 	} {
@@ -3317,16 +2862,16 @@ Resources:
 			require.NoError(t, err)
 			program2 := fmt.Sprintf(program, string(props2))
 			pt := pulcheck.PulCheck(t, bridgedProvider, program1)
-			pt.Up()
+			pt.Up(t)
 
 			pulumiYamlPath := filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml")
 
 			err = os.WriteFile(pulumiYamlPath, []byte(program2), 0o600)
 			require.NoError(t, err)
 
-			res := pt.Preview(optpreview.Diff())
+			res := pt.Preview(t, optpreview.Diff())
 			t.Log(res.StdOut)
-			tc.expected.Equal(t, res.StdOut)
+			tc.expected.Equal(t, trimDiff(t, res.StdOut))
 		})
 	}
 }
@@ -3652,7 +3197,7 @@ runtime: yaml
 			pt := pulcheck.PulCheck(t, bridgedProvider, program)
 			outPath := filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "out.yaml")
 
-			imp := pt.Import("prov:index/test:Test", "mainRes", "mainRes", "", "--out", outPath)
+			imp := pt.Import(t, "prov:index/test:Test", "mainRes", "mainRes", "", "--out", outPath)
 			tc.expectedProps["otherProp"] = "test"
 
 			contents, err := os.ReadFile(outPath)
@@ -3682,7 +3227,7 @@ runtime: yaml
 				assert.NoError(t, err)
 
 				// run preview using the generated file
-				pt.Preview(optpreview.Diff(), optpreview.ExpectNoChanges())
+				pt.Preview(t, optpreview.Diff(), optpreview.ExpectNoChanges())
 			}
 		})
 	}
@@ -3749,7 +3294,7 @@ resources:
 `, pulumiTimeout)
 
 		pt := pulcheck.PulCheck(t, bridgedProvider, program)
-		pt.Up()
+		pt.Up(t)
 		// We pass custom timeouts in the program if the resource does not support them.
 
 		require.NotNil(t, pulumiCapturedTimeout)
@@ -3862,9 +3407,9 @@ outputs:
   testOut: ${mainRes.test}
 `
 	pt := pulcheck.PulCheck(t, bridgedProvider, program)
-	res := pt.Up()
+	res := pt.Up(t)
 	require.Equal(t, "hello world", res.Outputs["testOut"].Value)
-	pt.Preview(optpreview.ExpectNoChanges())
+	pt.Preview(t, optpreview.ExpectNoChanges())
 }
 
 // TestPlanStateEdit tests that [shimv2.WithPlanStateEdit] can be used to effectively edit
@@ -3973,134 +3518,10 @@ outputs:
   keyValue: ${mainRes.terraformLabels["key"]}
   emptyValue: ${mainRes.terraformLabels["empty"]}`
 	pt := pulcheck.PulCheck(t, bridgedProvider, program)
-	out := pt.Up()
+	out := pt.Up(t)
 
 	assert.Equal(t, "val", out.Outputs["keyValue"].Value)
 	assert.Equal(t, "", out.Outputs["emptyValue"].Value)
-}
-
-func TestUnknownSetElementDiff(t *testing.T) {
-	resMap := map[string]*schema.Resource{
-		"prov_test": {
-			Schema: map[string]*schema.Schema{
-				"test": {
-					Type:     schema.TypeSet,
-					Optional: true,
-					Elem: &schema.Schema{
-						Type: schema.TypeString,
-					},
-				},
-			},
-		},
-		"prov_aux": {
-			Schema: map[string]*schema.Schema{
-				"aux": {
-					Type:     schema.TypeString,
-					Computed: true,
-					Optional: true,
-				},
-			},
-			CreateContext: func(_ context.Context, d *schema.ResourceData, _ interface{}) diag.Diagnostics {
-				d.SetId("aux")
-				err := d.Set("aux", "aux")
-				require.NoError(t, err)
-				return nil
-			},
-		},
-	}
-	tfp := &schema.Provider{ResourcesMap: resMap}
-
-	runTest := func(t *testing.T, PRC bool, expectedOutput autogold.Value) {
-		opts := []pulcheck.BridgedProviderOpt{}
-		if !PRC {
-			opts = append(opts, pulcheck.DisablePlanResourceChange())
-		}
-		bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp, opts...)
-		originalProgram := `
-name: test
-runtime: yaml
-resources:
-  mainRes:
-    type: prov:index:Test
-outputs:
-  testOut: ${mainRes.tests}
-	`
-
-		programWithUnknown := `
-name: test
-runtime: yaml
-resources:
-  auxRes:
-    type: prov:index:Aux
-  mainRes:
-    type: prov:index:Test
-    properties:
-      tests:
-        - ${auxRes.aux}
-outputs:
-  testOut: ${mainRes.tests}
-`
-		pt := pulcheck.PulCheck(t, bridgedProvider, originalProgram)
-		pt.Up()
-		pulumiYamlPath := filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml")
-
-		err := os.WriteFile(pulumiYamlPath, []byte(programWithUnknown), 0o600)
-		require.NoError(t, err)
-
-		res := pt.Preview(optpreview.Diff())
-		// Test that the test property is unknown at preview time
-		expectedOutput.Equal(t, res.StdOut)
-		resUp := pt.Up()
-		// assert that the property gets resolved
-		require.Equal(t,
-			[]interface{}{"aux"},
-			resUp.Outputs["testOut"].Value,
-		)
-	}
-
-	t.Run("PRC enabled", func(t *testing.T) {
-		// TODO: Remove this once accurate bridge previews are rolled out
-		t.Setenv("PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW", "true")
-		runTest(t, true, autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
-    + prov:index/aux:Aux: (create)
-        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
-    ~ prov:index/test:Test: (update)
-        [id=newid]
-        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-      + tests: [
-      +     [0]: output<string>
-        ]
-    --outputs:--
-  + testOut: output<string>
-Resources:
-    + 1 to create
-    ~ 1 to update
-    2 changes. 1 unchanged
-`))
-	})
-
-	t.Run("PRC disabled", func(t *testing.T) {
-		runTest(t, false, autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
-    + prov:index/aux:Aux: (create)
-        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
-    ~ prov:index/test:Test: (update)
-        [id=newid]
-        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-      + tests: [
-      +     [0]: output<string>
-        ]
-    --outputs:--
-  + testOut: output<string>
-Resources:
-    + 1 to create
-    ~ 1 to update
-    2 changes. 1 unchanged
-`))
-	})
 }
 
 func TestMakeTerraformResultNilVsEmptyMap(t *testing.T) {
@@ -4157,6 +3578,2862 @@ func TestMakeTerraformResultNilVsEmptyMap(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, props)
 		assert.True(t, props["test"].DeepEquals(emptyMap))
+	})
+}
+
+func runDetailedDiffTest(
+	t *testing.T, resMap map[string]*schema.Resource, program1, program2 string,
+) (string, map[string]interface{}) {
+	tfp := &schema.Provider{ResourcesMap: resMap}
+	bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
+	pt := pulcheck.PulCheck(t, bridgedProvider, program1)
+	pt.Up(t)
+	pulumiYamlPath := filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml")
+
+	err := os.WriteFile(pulumiYamlPath, []byte(program2), 0o600)
+	require.NoError(t, err)
+
+	pt.ClearGrpcLog(t)
+	res := pt.Preview(t, optpreview.Diff())
+	t.Log(res.StdOut)
+
+	diffResponse := struct {
+		DetailedDiff map[string]interface{} `json:"detailedDiff"`
+	}{}
+
+	for _, entry := range pt.GrpcLog(t).Entries {
+		if entry.Method == "/pulumirpc.ResourceProvider/Diff" {
+			err := json.Unmarshal(entry.Response, &diffResponse)
+			require.NoError(t, err)
+		}
+	}
+
+	return res.StdOut, diffResponse.DetailedDiff
+}
+
+func TestDetailedDiffSet(t *testing.T) {
+	// TODO[pulumi/pulumi-terraform-bridge#2517]: Remove this once accurate bridge previews are rolled out
+	t.Setenv("PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW", "true")
+	runTest := func(t *testing.T, resMap map[string]*schema.Resource, props1, props2 interface{},
+		expected, expectedDetailedDiff autogold.Value,
+	) {
+		program := `
+name: test
+runtime: yaml
+resources:
+  mainRes:
+    type: prov:index:Test
+    properties:
+      tests: %s
+`
+		props1JSON, err := json.Marshal(props1)
+		require.NoError(t, err)
+		program1 := fmt.Sprintf(program, string(props1JSON))
+		props2JSON, err := json.Marshal(props2)
+		require.NoError(t, err)
+		program2 := fmt.Sprintf(program, string(props2JSON))
+		out, detailedDiff := runDetailedDiffTest(t, resMap, program1, program2)
+
+		expected.Equal(t, trimDiff(t, out))
+		expectedDetailedDiff.Equal(t, detailedDiff)
+	}
+
+	// The following test cases use the same inputs (props1 and props2) to test a few variations:
+	// - The diff when the schema is a set of strings
+	// - The diff when the schema is a set of strings with ForceNew
+	// - The diff when the schema is a set of structs with a nested string
+	// - The diff when the schema is a set of structs with a nested string and ForceNew
+	// For each of these variations, we record both the detailed diff output sent to the engine
+	// and the output that we expect to see in the Pulumi console.
+	type setDetailedDiffTestCase struct {
+		name                              string
+		props1                            []string
+		props2                            []string
+		expectedAttrDetailedDiff          autogold.Value
+		expectedAttr                      autogold.Value
+		expectedAttrForceNewDetailedDiff  autogold.Value
+		expectedAttrForceNew              autogold.Value
+		expectedBlockDetailedDiff         autogold.Value
+		expectedBlock                     autogold.Value
+		expectedBlockForceNewDetailedDiff autogold.Value
+		expectedBlockForceNew             autogold.Value
+	}
+
+	testCases := []setDetailedDiffTestCase{
+		{
+			name:                              "unchanged",
+			props1:                            []string{"val1"},
+			props2:                            []string{"val1"},
+			expectedAttrDetailedDiff:          autogold.Expect(map[string]interface{}{}),
+			expectedAttr:                      autogold.Expect("\n"),
+			expectedAttrForceNewDetailedDiff:  autogold.Expect(map[string]interface{}{}),
+			expectedAttrForceNew:              autogold.Expect("\n"),
+			expectedBlockDetailedDiff:         autogold.Expect(map[string]interface{}{}),
+			expectedBlock:                     autogold.Expect("\n"),
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{}),
+			expectedBlockForceNew:             autogold.Expect("\n"),
+		},
+		{
+			name:                     "changed non-empty",
+			props1:                   []string{"val1"},
+			props2:                   []string{"val2"},
+			expectedAttrDetailedDiff: autogold.Expect(map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "UPDATE"}}),
+			expectedAttr: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          ~ [0]: "val1" => "val2"
+        ]
+`),
+			expectedAttrForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "UPDATE_REPLACE"}}),
+			expectedAttrForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          ~ [0]: "val1" => "val2"
+        ]
+`),
+			expectedBlockDetailedDiff: autogold.Expect(map[string]interface{}{"tests[0].nested": map[string]interface{}{"kind": "UPDATE"}}),
+			expectedBlock: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          ~ [0]: {
+                  ~ nested: "val1" => "val2"
+                }
+        ]
+`),
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[0].nested": map[string]interface{}{"kind": "UPDATE_REPLACE"}}),
+			expectedBlockForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          ~ [0]: {
+                  ~ nested: "val1" => "val2"
+                }
+        ]
+`),
+		},
+		{
+			name:                     "changed from empty",
+			props1:                   []string{},
+			props2:                   []string{"val1"},
+			expectedAttrDetailedDiff: autogold.Expect(map[string]interface{}{"tests": map[string]interface{}{}}),
+			expectedAttr: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      + tests: [
+      +     [0]: "val1"
+        ]
+`),
+			expectedAttrForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests": map[string]interface{}{"kind": "ADD_REPLACE"}}),
+			expectedAttrForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      + tests: [
+      +     [0]: "val1"
+        ]
+`),
+			expectedBlockDetailedDiff: autogold.Expect(map[string]interface{}{"tests": map[string]interface{}{}}),
+			expectedBlock: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      + tests: [
+      +     [0]: {
+              + nested    : "val1"
+            }
+        ]
+`),
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests": map[string]interface{}{"kind": "ADD_REPLACE"}}),
+			expectedBlockForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      + tests: [
+      +     [0]: {
+              + nested    : "val1"
+            }
+        ]
+`),
+		},
+		{
+			name:                     "changed to empty",
+			props1:                   []string{"val1"},
+			props2:                   []string{},
+			expectedAttrDetailedDiff: autogold.Expect(map[string]interface{}{"tests": map[string]interface{}{"kind": "DELETE"}}),
+			expectedAttr: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      - tests: [
+      -     [0]: "val1"
+        ]
+`),
+			expectedAttrForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests": map[string]interface{}{"kind": "DELETE_REPLACE"}}),
+			expectedAttrForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      - tests: [
+      -     [0]: "val1"
+        ]
+`),
+			expectedBlockDetailedDiff: autogold.Expect(map[string]interface{}{"tests": map[string]interface{}{"kind": "DELETE"}}),
+			expectedBlock: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      - tests: [
+      -     [0]: {
+              - nested: "val1"
+            }
+        ]
+`),
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests": map[string]interface{}{"kind": "DELETE_REPLACE"}}),
+			expectedBlockForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      - tests: [
+      -     [0]: {
+              - nested: "val1"
+            }
+        ]
+`),
+		},
+		{
+			name:                     "removed front",
+			props1:                   []string{"val1", "val2", "val3"},
+			props2:                   []string{"val2", "val3"},
+			expectedAttrDetailedDiff: autogold.Expect(map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "DELETE"}}),
+			expectedAttr: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [0]: "val1"
+        ]
+`),
+			expectedAttrForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "DELETE_REPLACE"}}),
+			expectedAttrForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [0]: "val1"
+        ]
+`),
+			expectedBlockDetailedDiff: autogold.Expect(map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "DELETE"}}),
+			expectedBlock: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [0]: {
+                  - nested: "val1"
+                }
+        ]
+`),
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "DELETE_REPLACE"}}),
+			expectedBlockForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [0]: {
+                  - nested: "val1"
+                }
+        ]
+`),
+		},
+		{
+			name:                     "removed front unordered",
+			props1:                   []string{"val2", "val1", "val3"},
+			props2:                   []string{"val1", "val3"},
+			expectedAttrDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "DELETE"}}),
+			expectedAttr: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [1]: "val2"
+        ]
+`),
+			expectedAttrForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "DELETE_REPLACE"}}),
+			expectedAttrForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [1]: "val2"
+        ]
+`),
+			expectedBlockDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "DELETE"}}),
+			expectedBlock: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [1]: {
+                  - nested: "val2"
+                }
+        ]
+`),
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "DELETE_REPLACE"}}),
+			expectedBlockForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [1]: {
+                  - nested: "val2"
+                }
+        ]
+`),
+		},
+		{
+			name:                     "removed middle",
+			props1:                   []string{"val1", "val2", "val3"},
+			props2:                   []string{"val1", "val3"},
+			expectedAttrDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "DELETE"}}),
+			expectedAttr: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [1]: "val2"
+        ]
+`),
+			expectedAttrForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "DELETE_REPLACE"}}),
+			expectedAttrForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [1]: "val2"
+        ]
+`),
+			expectedBlockDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "DELETE"}}),
+			expectedBlock: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [1]: {
+                  - nested: "val2"
+                }
+        ]
+`),
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "DELETE_REPLACE"}}),
+			expectedBlockForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [1]: {
+                  - nested: "val2"
+                }
+        ]
+`),
+		},
+		{
+			name:                     "removed middle unordered",
+			props1:                   []string{"val2", "val3", "val1"},
+			props2:                   []string{"val2", "val1"},
+			expectedAttrDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE"}}),
+			expectedAttr: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [2]: "val3"
+        ]
+`),
+			expectedAttrForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE_REPLACE"}}),
+			expectedAttrForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [2]: "val3"
+        ]
+`),
+			expectedBlockDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE"}}),
+			expectedBlock: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [2]: {
+                  - nested: "val3"
+                }
+        ]
+`),
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE_REPLACE"}}),
+			expectedBlockForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [2]: {
+                  - nested: "val3"
+                }
+        ]
+`),
+		},
+		{
+			name:                     "removed end",
+			props1:                   []string{"val1", "val2", "val3"},
+			props2:                   []string{"val1", "val2"},
+			expectedAttrDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE"}}),
+			expectedAttr: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [2]: "val3"
+        ]
+`),
+			expectedAttrForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE_REPLACE"}}),
+			expectedAttrForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [2]: "val3"
+        ]
+`),
+			expectedBlockDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE"}}),
+			expectedBlock: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [2]: {
+                  - nested: "val3"
+                }
+        ]
+`),
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE_REPLACE"}}),
+			expectedBlockForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [2]: {
+                  - nested: "val3"
+                }
+        ]
+`),
+		},
+		{
+			name:                     "removed end unordered",
+			props1:                   []string{"val2", "val3", "val1"},
+			props2:                   []string{"val2", "val3"},
+			expectedAttrDetailedDiff: autogold.Expect(map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "DELETE"}}),
+			expectedAttr: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [0]: "val1"
+        ]
+`),
+			expectedAttrForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "DELETE_REPLACE"}}),
+			expectedAttrForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [0]: "val1"
+        ]
+`),
+			expectedBlockDetailedDiff: autogold.Expect(map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "DELETE"}}),
+			expectedBlock: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [0]: {
+                  - nested: "val1"
+                }
+        ]
+`),
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "DELETE_REPLACE"}}),
+			expectedBlockForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [0]: {
+                  - nested: "val1"
+                }
+        ]
+`),
+		},
+		{
+			name:                     "added front",
+			props1:                   []string{"val2", "val3"},
+			props2:                   []string{"val1", "val2", "val3"},
+			expectedAttrDetailedDiff: autogold.Expect(map[string]interface{}{"tests[0]": map[string]interface{}{}}),
+			expectedAttr: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [0]: "val1"
+        ]
+`),
+			expectedAttrForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "ADD_REPLACE"}}),
+			expectedAttrForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [0]: "val1"
+        ]
+`),
+			expectedBlockDetailedDiff: autogold.Expect(map[string]interface{}{"tests[0]": map[string]interface{}{}}),
+			expectedBlock: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [0]: {
+                  + nested    : "val1"
+                }
+        ]
+`),
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "ADD_REPLACE"}}),
+			expectedBlockForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [0]: {
+                  + nested    : "val1"
+                }
+        ]
+`),
+		},
+		{
+			name:                     "added front unordered",
+			props1:                   []string{"val3", "val1"},
+			props2:                   []string{"val2", "val2", "val1"},
+			expectedAttrDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "UPDATE"}}),
+			expectedAttr: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          ~ [1]: "val3" => "val2"
+        ]
+`),
+			expectedAttrForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "UPDATE_REPLACE"}}),
+			expectedAttrForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          ~ [1]: "val3" => "val2"
+        ]
+`),
+			expectedBlockDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1].nested": map[string]interface{}{"kind": "UPDATE"}}),
+			expectedBlock: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          ~ [1]: {
+                  ~ nested: "val3" => "val2"
+                }
+        ]
+`),
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1].nested": map[string]interface{}{"kind": "UPDATE_REPLACE"}}),
+			expectedBlockForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          ~ [1]: {
+                  ~ nested: "val3" => "val2"
+                }
+        ]
+`),
+		},
+		{
+			name:                     "added middle",
+			props1:                   []string{"val1", "val3"},
+			props2:                   []string{"val1", "val2", "val3"},
+			expectedAttrDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{}}),
+			expectedAttr: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [1]: "val2"
+        ]
+`),
+			expectedAttrForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "ADD_REPLACE"}}),
+			expectedAttrForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [1]: "val2"
+        ]
+`),
+			expectedBlockDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{}}),
+			expectedBlock: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [1]: {
+                  + nested    : "val2"
+                }
+        ]
+`),
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "ADD_REPLACE"}}),
+			expectedBlockForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [1]: {
+                  + nested    : "val2"
+                }
+        ]
+`),
+		},
+		{
+			name:                     "added middle unordered",
+			props1:                   []string{"val2", "val1"},
+			props2:                   []string{"val2", "val3", "val1"},
+			expectedAttrDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{}}),
+			expectedAttr: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [1]: "val3"
+        ]
+`),
+			expectedAttrForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "ADD_REPLACE"}}),
+			expectedAttrForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [1]: "val3"
+        ]
+`),
+			expectedBlockDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{}}),
+			expectedBlock: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [1]: {
+                  + nested    : "val3"
+                }
+        ]
+`),
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "ADD_REPLACE"}}),
+			expectedBlockForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [1]: {
+                  + nested    : "val3"
+                }
+        ]
+`),
+		},
+		{
+			name:                     "added end",
+			props1:                   []string{"val1", "val2"},
+			props2:                   []string{"val1", "val2", "val3"},
+			expectedAttrDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{}}),
+			expectedAttr: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [2]: "val3"
+        ]
+`),
+			expectedAttrForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "ADD_REPLACE"}}),
+			expectedAttrForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [2]: "val3"
+        ]
+`),
+			expectedBlockDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{}}),
+			expectedBlock: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [2]: {
+                  + nested    : "val3"
+                }
+        ]
+`),
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "ADD_REPLACE"}}),
+			expectedBlockForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [2]: {
+                  + nested    : "val3"
+                }
+        ]
+`),
+		},
+		{
+			name:                     "added end unordered",
+			props1:                   []string{"val2", "val3"},
+			props2:                   []string{"val2", "val3", "val1"},
+			expectedAttrDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{}}),
+			expectedAttr: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [2]: "val1"
+        ]
+`),
+			expectedAttrForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "ADD_REPLACE"}}),
+			expectedAttrForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [2]: "val1"
+        ]
+`),
+			expectedBlockDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{}}),
+			expectedBlock: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [2]: {
+                  + nested    : "val1"
+                }
+        ]
+`),
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "ADD_REPLACE"}}),
+			expectedBlockForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [2]: {
+                  + nested    : "val1"
+                }
+        ]
+`),
+		},
+		{
+			name:                     "same element updated",
+			props1:                   []string{"val1", "val2", "val3"},
+			props2:                   []string{"val1", "val4", "val3"},
+			expectedAttrDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "UPDATE"}}),
+			expectedAttr: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          ~ [1]: "val2" => "val4"
+        ]
+`),
+			expectedAttrForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "UPDATE_REPLACE"}}),
+			expectedAttrForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          ~ [1]: "val2" => "val4"
+        ]
+`),
+			expectedBlockDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1].nested": map[string]interface{}{"kind": "UPDATE"}}),
+			expectedBlock: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          ~ [1]: {
+                  ~ nested: "val2" => "val4"
+                }
+        ]
+`),
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1].nested": map[string]interface{}{"kind": "UPDATE_REPLACE"}}),
+			expectedBlockForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          ~ [1]: {
+                  ~ nested: "val2" => "val4"
+                }
+        ]
+`),
+		},
+		{
+			name:   "same element updated unordered",
+			props1: []string{"val2", "val3", "val1"},
+			props2: []string{"val2", "val4", "val1"},
+			expectedAttrDetailedDiff: autogold.Expect(map[string]interface{}{
+				"tests[1]": map[string]interface{}{},
+				"tests[2]": map[string]interface{}{"kind": "DELETE"},
+			}),
+			expectedAttr: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [1]: "val4"
+          - [2]: "val3"
+        ]
+`),
+			expectedAttrForceNewDetailedDiff: autogold.Expect(map[string]interface{}{
+				"tests[1]": map[string]interface{}{"kind": "ADD_REPLACE"},
+				"tests[2]": map[string]interface{}{"kind": "DELETE_REPLACE"},
+			}),
+			expectedAttrForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [1]: "val4"
+          - [2]: "val3"
+        ]
+`),
+			expectedBlockDetailedDiff: autogold.Expect(map[string]interface{}{
+				"tests[1]": map[string]interface{}{},
+				"tests[2]": map[string]interface{}{"kind": "DELETE"},
+			}),
+			expectedBlock: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [1]: {
+                  + nested    : "val4"
+                }
+          - [2]: {
+                  - nested: "val3"
+                }
+        ]
+`),
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{
+				"tests[1]": map[string]interface{}{"kind": "ADD_REPLACE"},
+				"tests[2]": map[string]interface{}{"kind": "DELETE_REPLACE"},
+			}),
+			expectedBlockForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [1]: {
+                  + nested    : "val4"
+                }
+          - [2]: {
+                  - nested: "val3"
+                }
+        ]
+`),
+		},
+		{
+			name:                              "shuffled",
+			props1:                            []string{"val1", "val2", "val3"},
+			props2:                            []string{"val3", "val1", "val2"},
+			expectedAttrDetailedDiff:          autogold.Expect(map[string]interface{}{}),
+			expectedAttr:                      autogold.Expect("\n"),
+			expectedAttrForceNewDetailedDiff:  autogold.Expect(map[string]interface{}{}),
+			expectedAttrForceNew:              autogold.Expect("\n"),
+			expectedBlockDetailedDiff:         autogold.Expect(map[string]interface{}{}),
+			expectedBlock:                     autogold.Expect("\n"),
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{}),
+			expectedBlockForceNew:             autogold.Expect("\n"),
+		},
+		{
+			name:                              "shuffled unordered",
+			props1:                            []string{"val2", "val3", "val1"},
+			props2:                            []string{"val3", "val1", "val2"},
+			expectedAttrDetailedDiff:          autogold.Expect(map[string]interface{}{}),
+			expectedAttr:                      autogold.Expect("\n"),
+			expectedAttrForceNewDetailedDiff:  autogold.Expect(map[string]interface{}{}),
+			expectedAttrForceNew:              autogold.Expect("\n"),
+			expectedBlockDetailedDiff:         autogold.Expect(map[string]interface{}{}),
+			expectedBlock:                     autogold.Expect("\n"),
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{}),
+			expectedBlockForceNew:             autogold.Expect("\n"),
+		},
+		{
+			name:                              "shuffled with duplicates",
+			props1:                            []string{"val1", "val2", "val3"},
+			props2:                            []string{"val3", "val1", "val2", "val3"},
+			expectedAttrDetailedDiff:          autogold.Expect(map[string]interface{}{}),
+			expectedAttr:                      autogold.Expect("\n"),
+			expectedAttrForceNewDetailedDiff:  autogold.Expect(map[string]interface{}{}),
+			expectedAttrForceNew:              autogold.Expect("\n"),
+			expectedBlockDetailedDiff:         autogold.Expect(map[string]interface{}{}),
+			expectedBlock:                     autogold.Expect("\n"),
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{}),
+			expectedBlockForceNew:             autogold.Expect("\n"),
+		},
+		{
+			name:                              "shuffled with duplicates unordered",
+			props1:                            []string{"val2", "val3", "val1"},
+			props2:                            []string{"val3", "val1", "val2", "val3"},
+			expectedAttrDetailedDiff:          autogold.Expect(map[string]interface{}{}),
+			expectedAttr:                      autogold.Expect("\n"),
+			expectedAttrForceNewDetailedDiff:  autogold.Expect(map[string]interface{}{}),
+			expectedAttrForceNew:              autogold.Expect("\n"),
+			expectedBlockDetailedDiff:         autogold.Expect(map[string]interface{}{}),
+			expectedBlock:                     autogold.Expect("\n"),
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{}),
+			expectedBlockForceNew:             autogold.Expect("\n"),
+		},
+		{
+			name:                     "shuffled added front",
+			props1:                   []string{"val2", "val3"},
+			props2:                   []string{"val1", "val3", "val2"},
+			expectedAttrDetailedDiff: autogold.Expect(map[string]interface{}{"tests[0]": map[string]interface{}{}}),
+			expectedAttr: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [0]: "val1"
+        ]
+`),
+			expectedAttrForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "ADD_REPLACE"}}),
+			expectedAttrForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [0]: "val1"
+        ]
+`),
+			expectedBlockDetailedDiff: autogold.Expect(map[string]interface{}{"tests[0]": map[string]interface{}{}}),
+			expectedBlock: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [0]: {
+                  + nested    : "val1"
+                }
+        ]
+`),
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "ADD_REPLACE"}}),
+			expectedBlockForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [0]: {
+                  + nested    : "val1"
+                }
+        ]
+`),
+		},
+		{
+			name:                     "shuffled added front unordered",
+			props1:                   []string{"val3", "val1"},
+			props2:                   []string{"val2", "val1", "val3"},
+			expectedAttrDetailedDiff: autogold.Expect(map[string]interface{}{"tests[0]": map[string]interface{}{}}),
+			expectedAttr: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [0]: "val2"
+        ]
+`),
+			expectedAttrForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "ADD_REPLACE"}}),
+			expectedAttrForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [0]: "val2"
+        ]
+`),
+			expectedBlockDetailedDiff: autogold.Expect(map[string]interface{}{"tests[0]": map[string]interface{}{}}),
+			expectedBlock: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [0]: {
+                  + nested    : "val2"
+                }
+        ]
+`),
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "ADD_REPLACE"}}),
+			expectedBlockForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [0]: {
+                  + nested    : "val2"
+                }
+        ]
+`),
+		},
+		{
+			name:                     "shuffled added middle",
+			props1:                   []string{"val1", "val3"},
+			props2:                   []string{"val3", "val2", "val1"},
+			expectedAttrDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{}}),
+			expectedAttr: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [1]: "val2"
+        ]
+`),
+			expectedAttrForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "ADD_REPLACE"}}),
+			expectedAttrForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [1]: "val2"
+        ]
+`),
+			expectedBlockDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{}}),
+			expectedBlock: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [1]: {
+                  + nested    : "val2"
+                }
+        ]
+`),
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "ADD_REPLACE"}}),
+			expectedBlockForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [1]: {
+                  + nested    : "val2"
+                }
+        ]
+`),
+		},
+		{
+			name:                     "shuffled added middle unordered",
+			props1:                   []string{"val2", "val1"},
+			props2:                   []string{"val1", "val3", "val2"},
+			expectedAttrDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{}}),
+			expectedAttr: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [1]: "val3"
+        ]
+`),
+			expectedAttrForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "ADD_REPLACE"}}),
+			expectedAttrForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [1]: "val3"
+        ]
+`),
+			expectedBlockDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{}}),
+			expectedBlock: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [1]: {
+                  + nested    : "val3"
+                }
+        ]
+`),
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "ADD_REPLACE"}}),
+			expectedBlockForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [1]: {
+                  + nested    : "val3"
+                }
+        ]
+`),
+		},
+		{
+			name:                     "shuffled added end",
+			props1:                   []string{"val1", "val2"},
+			props2:                   []string{"val2", "val1", "val3"},
+			expectedAttrDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{}}),
+			expectedAttr: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [2]: "val3"
+        ]
+`),
+			expectedAttrForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "ADD_REPLACE"}}),
+			expectedAttrForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [2]: "val3"
+        ]
+`),
+			expectedBlockDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{}}),
+			expectedBlock: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [2]: {
+                  + nested    : "val3"
+                }
+        ]
+`),
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "ADD_REPLACE"}}),
+			expectedBlockForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [2]: {
+                  + nested    : "val3"
+                }
+        ]
+`),
+		},
+		{
+			name:                     "shuffled removed front",
+			props1:                   []string{"val1", "val2", "val3"},
+			props2:                   []string{"val3", "val2"},
+			expectedAttrDetailedDiff: autogold.Expect(map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "DELETE"}}),
+			expectedAttr: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [0]: "val1"
+        ]
+`),
+			expectedAttrForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "DELETE_REPLACE"}}),
+			expectedAttrForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [0]: "val1"
+        ]
+`),
+			expectedBlockDetailedDiff: autogold.Expect(map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "DELETE"}}),
+			expectedBlock: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [0]: {
+                  - nested: "val1"
+                }
+        ]
+`),
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "DELETE_REPLACE"}}),
+			expectedBlockForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [0]: {
+                  - nested: "val1"
+                }
+        ]
+`),
+		},
+		{
+			name:                     "shuffled removed middle",
+			props1:                   []string{"val1", "val2", "val3"},
+			props2:                   []string{"val3", "val1"},
+			expectedAttrDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "DELETE"}}),
+			expectedAttr: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [1]: "val2"
+        ]
+`),
+			expectedAttrForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "DELETE_REPLACE"}}),
+			expectedAttrForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [1]: "val2"
+        ]
+`),
+			expectedBlockDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "DELETE"}}),
+			expectedBlock: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [1]: {
+                  - nested: "val2"
+                }
+        ]
+`),
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[1]": map[string]interface{}{"kind": "DELETE_REPLACE"}}),
+			expectedBlockForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [1]: {
+                  - nested: "val2"
+                }
+        ]
+`),
+		},
+		{
+			name:                     "shuffled removed end",
+			props1:                   []string{"val1", "val2", "val3"},
+			props2:                   []string{"val2", "val1"},
+			expectedAttrDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE"}}),
+			expectedAttr: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [2]: "val3"
+        ]
+`),
+			expectedAttrForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE_REPLACE"}}),
+			expectedAttrForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [2]: "val3"
+        ]
+`),
+			expectedBlockDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE"}}),
+			expectedBlock: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [2]: {
+                  - nested: "val3"
+                }
+        ]
+`),
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE_REPLACE"}}),
+			expectedBlockForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [2]: {
+                  - nested: "val3"
+                }
+        ]
+`),
+		},
+		{
+			name:                     "two added",
+			props1:                   []string{"val1", "val2"},
+			props2:                   []string{"val1", "val2", "val3", "val4"},
+			expectedAttrDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{}, "tests[3]": map[string]interface{}{}}),
+			expectedAttr: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [2]: "val3"
+          + [3]: "val4"
+        ]
+`),
+			expectedAttrForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "ADD_REPLACE"}, "tests[3]": map[string]interface{}{"kind": "ADD_REPLACE"}}),
+			expectedAttrForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [2]: "val3"
+          + [3]: "val4"
+        ]
+`),
+			expectedBlockDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{}, "tests[3]": map[string]interface{}{}}),
+			expectedBlock: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [2]: {
+                  + nested    : "val3"
+                }
+          + [3]: {
+                  + nested    : "val4"
+                }
+        ]
+`),
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "ADD_REPLACE"}, "tests[3]": map[string]interface{}{"kind": "ADD_REPLACE"}}),
+			expectedBlockForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [2]: {
+                  + nested    : "val3"
+                }
+          + [3]: {
+                  + nested    : "val4"
+                }
+        ]
+`),
+		},
+		{
+			name:                     "two removed",
+			props1:                   []string{"val1", "val2", "val3", "val4"},
+			props2:                   []string{"val1", "val2"},
+			expectedAttrDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE"}, "tests[3]": map[string]interface{}{"kind": "DELETE"}}),
+			expectedAttr: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [2]: "val3"
+          - [3]: "val4"
+        ]
+`),
+			expectedAttrForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE_REPLACE"}, "tests[3]": map[string]interface{}{"kind": "DELETE_REPLACE"}}),
+			expectedAttrForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [2]: "val3"
+          - [3]: "val4"
+        ]
+`),
+			expectedBlockDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE"}, "tests[3]": map[string]interface{}{"kind": "DELETE"}}),
+			expectedBlock: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [2]: {
+                  - nested: "val3"
+                }
+          - [3]: {
+                  - nested: "val4"
+                }
+        ]
+`),
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "DELETE_REPLACE"}, "tests[3]": map[string]interface{}{"kind": "DELETE_REPLACE"}}),
+			expectedBlockForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [2]: {
+                  - nested: "val3"
+                }
+          - [3]: {
+                  - nested: "val4"
+                }
+        ]
+`),
+		},
+		{
+			name:                     "two added and two removed",
+			props1:                   []string{"val1", "val2", "val3", "val4"},
+			props2:                   []string{"val1", "val2", "val5", "val6"},
+			expectedAttrDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "UPDATE"}, "tests[3]": map[string]interface{}{"kind": "UPDATE"}}),
+			expectedAttr: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          ~ [2]: "val3" => "val5"
+          ~ [3]: "val4" => "val6"
+        ]
+`),
+			expectedAttrForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2]": map[string]interface{}{"kind": "UPDATE_REPLACE"}, "tests[3]": map[string]interface{}{"kind": "UPDATE_REPLACE"}}),
+			expectedAttrForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          ~ [2]: "val3" => "val5"
+          ~ [3]: "val4" => "val6"
+        ]
+`),
+			expectedBlockDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2].nested": map[string]interface{}{"kind": "UPDATE"}, "tests[3].nested": map[string]interface{}{"kind": "UPDATE"}}),
+			expectedBlock: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          ~ [2]: {
+                  ~ nested: "val3" => "val5"
+                }
+          ~ [3]: {
+                  ~ nested: "val4" => "val6"
+                }
+        ]
+`),
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{"tests[2].nested": map[string]interface{}{"kind": "UPDATE_REPLACE"}, "tests[3].nested": map[string]interface{}{"kind": "UPDATE_REPLACE"}}),
+			expectedBlockForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          ~ [2]: {
+                  ~ nested: "val3" => "val5"
+                }
+          ~ [3]: {
+                  ~ nested: "val4" => "val6"
+                }
+        ]
+`),
+		},
+		{
+			name:   "two added and two removed shuffled, one overlaps",
+			props1: []string{"val1", "val2", "val3", "val4"},
+			props2: []string{"val1", "val5", "val6", "val2"},
+			expectedAttrDetailedDiff: autogold.Expect(map[string]interface{}{
+				"tests[1]": map[string]interface{}{},
+				"tests[2]": map[string]interface{}{"kind": "UPDATE"},
+				"tests[3]": map[string]interface{}{"kind": "DELETE"},
+			}),
+			expectedAttr: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [1]: "val5"
+          ~ [2]: "val3" => "val6"
+          - [3]: "val4"
+        ]
+`),
+			expectedAttrForceNewDetailedDiff: autogold.Expect(map[string]interface{}{
+				"tests[1]": map[string]interface{}{"kind": "ADD_REPLACE"},
+				"tests[2]": map[string]interface{}{"kind": "UPDATE_REPLACE"},
+				"tests[3]": map[string]interface{}{"kind": "DELETE_REPLACE"},
+			}),
+			expectedAttrForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [1]: "val5"
+          ~ [2]: "val3" => "val6"
+          - [3]: "val4"
+        ]
+`),
+			expectedBlockDetailedDiff: autogold.Expect(map[string]interface{}{
+				"tests[1]":        map[string]interface{}{},
+				"tests[2].nested": map[string]interface{}{"kind": "UPDATE"},
+				"tests[3]":        map[string]interface{}{"kind": "DELETE"},
+			}),
+			expectedBlock: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [1]: {
+                  + nested    : "val5"
+                }
+          ~ [2]: {
+                  ~ nested: "val3" => "val6"
+                }
+          - [3]: {
+                  - nested: "val4"
+                }
+        ]
+`),
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{
+				"tests[1]":        map[string]interface{}{"kind": "ADD_REPLACE"},
+				"tests[2].nested": map[string]interface{}{"kind": "UPDATE_REPLACE"},
+				"tests[3]":        map[string]interface{}{"kind": "DELETE_REPLACE"},
+			}),
+			expectedBlockForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [1]: {
+                  + nested    : "val5"
+                }
+          ~ [2]: {
+                  ~ nested: "val3" => "val6"
+                }
+          - [3]: {
+                  - nested: "val4"
+                }
+        ]
+`),
+		},
+		{
+			name:   "two added and two removed shuffled, no overlaps",
+			props1: []string{"val1", "val2", "val3", "val4"},
+			props2: []string{"val5", "val6", "val1", "val2"},
+			expectedAttrDetailedDiff: autogold.Expect(map[string]interface{}{
+				"tests[0]": map[string]interface{}{},
+				"tests[1]": map[string]interface{}{},
+				"tests[2]": map[string]interface{}{"kind": "DELETE"},
+				"tests[3]": map[string]interface{}{"kind": "DELETE"},
+			}),
+			expectedAttr: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [0]: "val5"
+          + [1]: "val6"
+          - [2]: "val3"
+          - [3]: "val4"
+        ]
+`),
+			expectedAttrForceNewDetailedDiff: autogold.Expect(map[string]interface{}{
+				"tests[0]": map[string]interface{}{"kind": "ADD_REPLACE"},
+				"tests[1]": map[string]interface{}{"kind": "ADD_REPLACE"},
+				"tests[2]": map[string]interface{}{"kind": "DELETE_REPLACE"},
+				"tests[3]": map[string]interface{}{"kind": "DELETE_REPLACE"},
+			}),
+			expectedAttrForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [0]: "val5"
+          + [1]: "val6"
+          - [2]: "val3"
+          - [3]: "val4"
+        ]
+`),
+			expectedBlockDetailedDiff: autogold.Expect(map[string]interface{}{
+				"tests[0]": map[string]interface{}{},
+				"tests[1]": map[string]interface{}{},
+				"tests[2]": map[string]interface{}{"kind": "DELETE"},
+				"tests[3]": map[string]interface{}{"kind": "DELETE"},
+			}),
+			expectedBlock: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [0]: {
+                  + nested    : "val5"
+                }
+          + [1]: {
+                  + nested    : "val6"
+                }
+          - [2]: {
+                  - nested: "val3"
+                }
+          - [3]: {
+                  - nested: "val4"
+                }
+        ]
+`),
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{
+				"tests[0]": map[string]interface{}{"kind": "ADD_REPLACE"},
+				"tests[1]": map[string]interface{}{"kind": "ADD_REPLACE"},
+				"tests[2]": map[string]interface{}{"kind": "DELETE_REPLACE"},
+				"tests[3]": map[string]interface{}{"kind": "DELETE_REPLACE"},
+			}),
+			expectedBlockForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [0]: {
+                  + nested    : "val5"
+                }
+          + [1]: {
+                  + nested    : "val6"
+                }
+          - [2]: {
+                  - nested: "val3"
+                }
+          - [3]: {
+                  - nested: "val4"
+                }
+        ]
+`),
+		},
+		{
+			name:   "two added and two removed shuffled, with duplicates",
+			props1: []string{"val1", "val2", "val3", "val4"},
+			props2: []string{"val1", "val5", "val6", "val2", "val1", "val2"},
+			expectedAttrDetailedDiff: autogold.Expect(map[string]interface{}{
+				"tests[1]": map[string]interface{}{},
+				"tests[2]": map[string]interface{}{"kind": "UPDATE"},
+				"tests[3]": map[string]interface{}{"kind": "DELETE"},
+			}),
+			expectedAttr: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [1]: "val5"
+          ~ [2]: "val3" => "val6"
+          - [3]: "val4"
+        ]
+`),
+			expectedAttrForceNewDetailedDiff: autogold.Expect(map[string]interface{}{
+				"tests[1]": map[string]interface{}{"kind": "ADD_REPLACE"},
+				"tests[2]": map[string]interface{}{"kind": "UPDATE_REPLACE"},
+				"tests[3]": map[string]interface{}{"kind": "DELETE_REPLACE"},
+			}),
+			expectedAttrForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [1]: "val5"
+          ~ [2]: "val3" => "val6"
+          - [3]: "val4"
+        ]
+`),
+			expectedBlockDetailedDiff: autogold.Expect(map[string]interface{}{
+				"tests[1]":        map[string]interface{}{},
+				"tests[2].nested": map[string]interface{}{"kind": "UPDATE"},
+				"tests[3]":        map[string]interface{}{"kind": "DELETE"},
+			}),
+			expectedBlock: autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [1]: {
+                  + nested    : "val5"
+                }
+          ~ [2]: {
+                  ~ nested: "val3" => "val6"
+                }
+          - [3]: {
+                  - nested: "val4"
+                }
+        ]
+`),
+			expectedBlockForceNewDetailedDiff: autogold.Expect(map[string]interface{}{
+				"tests[1]":        map[string]interface{}{"kind": "ADD_REPLACE"},
+				"tests[2].nested": map[string]interface{}{"kind": "UPDATE_REPLACE"},
+				"tests[3]":        map[string]interface{}{"kind": "DELETE_REPLACE"},
+			}),
+			expectedBlockForceNew: autogold.Expect(`
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [1]: {
+                  + nested    : "val5"
+                }
+          ~ [2]: {
+                  ~ nested: "val3" => "val6"
+                }
+          - [3]: {
+                  - nested: "val4"
+                }
+        ]
+`),
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			for _, forceNew := range []bool{false, true} {
+				t.Run(fmt.Sprintf("ForceNew=%v", forceNew), func(t *testing.T) {
+					expected := tc.expectedAttr
+					if forceNew {
+						expected = tc.expectedAttrForceNew
+					}
+
+					expectedDetailedDiff := tc.expectedAttrDetailedDiff
+					if forceNew {
+						expectedDetailedDiff = tc.expectedAttrForceNewDetailedDiff
+					}
+					t.Run("Attribute", func(t *testing.T) {
+						res := &schema.Resource{
+							Schema: map[string]*schema.Schema{
+								"test": {
+									Type:     schema.TypeSet,
+									Optional: true,
+									Elem: &schema.Schema{
+										Type: schema.TypeString,
+									},
+									ForceNew: forceNew,
+								},
+							},
+						}
+						runTest(t, map[string]*schema.Resource{"prov_test": res}, tc.props1, tc.props2, expected, expectedDetailedDiff)
+					})
+
+					expected = tc.expectedBlock
+					if forceNew {
+						expected = tc.expectedBlockForceNew
+					}
+					expectedDetailedDiff = tc.expectedBlockDetailedDiff
+					if forceNew {
+						expectedDetailedDiff = tc.expectedBlockForceNewDetailedDiff
+					}
+
+					t.Run("Block", func(t *testing.T) {
+						res := &schema.Resource{
+							Schema: map[string]*schema.Schema{
+								"test": {
+									Type:     schema.TypeSet,
+									Optional: true,
+									Elem: &schema.Resource{
+										Schema: map[string]*schema.Schema{
+											"nested": {
+												Type:     schema.TypeString,
+												Optional: true,
+												ForceNew: forceNew,
+											},
+										},
+									},
+								},
+							},
+						}
+
+						props1 := make([]interface{}, len(tc.props1))
+						for i, v := range tc.props1 {
+							props1[i] = map[string]interface{}{"nested": v}
+						}
+
+						props2 := make([]interface{}, len(tc.props2))
+						for i, v := range tc.props2 {
+							props2[i] = map[string]interface{}{"nested": v}
+						}
+
+						runTest(t, map[string]*schema.Resource{"prov_test": res}, props1, props2, expected, expectedDetailedDiff)
+					})
+				})
+			}
+		})
+	}
+}
+
+// "UNKNOWN" for unknown values
+func testDetailedDiffWithUnknowns(t *testing.T, resMap map[string]*schema.Resource, unknownString string, props1, props2 interface{}, expected, expectedDetailedDiff autogold.Value) {
+	originalProgram := `
+name: test
+runtime: yaml
+resources:
+  mainRes:
+    type: prov:index:Test
+	properties:
+		tests: %s
+outputs:
+  testOut: ${mainRes.tests}
+	`
+	props1JSON, err := json.Marshal(props1)
+	require.NoError(t, err)
+	program1 := fmt.Sprintf(originalProgram, string(props1JSON))
+
+	programWithUnknown := `
+name: test
+runtime: yaml
+resources:
+  auxRes:
+    type: prov:index:Aux
+  mainRes:
+    type: prov:index:Test
+    properties:
+      tests: %s
+outputs:
+  testOut: ${mainRes.tests}
+`
+	props2JSON, err := json.Marshal(props2)
+	require.NoError(t, err)
+	program2 := fmt.Sprintf(programWithUnknown, string(props2JSON))
+	program2 = strings.ReplaceAll(program2, "UNKNOWN", unknownString)
+
+	out, detailedDiff := runDetailedDiffTest(t, resMap, program1, program2)
+	expected.Equal(t, trimDiff(t, out))
+	expectedDetailedDiff.Equal(t, detailedDiff)
+}
+
+func TestDetailedDiffUnknownSetAttributeElement(t *testing.T) {
+	// TODO[pulumi/pulumi-terraform-bridge#2517]: Remove this once accurate bridge previews are rolled out
+	t.Setenv("PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW", "true")
+	resMap := map[string]*schema.Resource{
+		"prov_test": {
+			Schema: map[string]*schema.Schema{
+				"test": {
+					Type:     schema.TypeSet,
+					Optional: true,
+					Elem: &schema.Schema{
+						Type: schema.TypeString,
+					},
+				},
+			},
+		},
+		"prov_aux": {
+			Schema: map[string]*schema.Schema{
+				"aux": {
+					Type:     schema.TypeString,
+					Computed: true,
+					Optional: true,
+				},
+			},
+			CreateContext: func(_ context.Context, d *schema.ResourceData, _ interface{}) diag.Diagnostics {
+				d.SetId("aux")
+				err := d.Set("aux", "aux")
+				require.NoError(t, err)
+				return nil
+			},
+		},
+	}
+
+	t.Run("empty to unknown element", func(t *testing.T) {
+		testDetailedDiffWithUnknowns(t, resMap, "${auxRes.aux}",
+			[]interface{}{},
+			[]interface{}{"UNKNOWN"},
+			autogold.Expect(`
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      + tests: [
+      +     [0]: output<string>
+        ]
+    --outputs:--
+  + testOut: output<string>
+`),
+			autogold.Expect(map[string]interface{}{"tests": map[string]interface{}{}}))
+	})
+
+	t.Run("non-empty to unknown element", func(t *testing.T) {
+		testDetailedDiffWithUnknowns(t, resMap, "${auxRes.aux}",
+			[]interface{}{"val1"},
+			[]interface{}{"UNKNOWN"},
+			autogold.Expect(`
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          ~ [0]: "val1" => output<string>
+        ]
+`),
+			autogold.Expect(map[string]interface{}{"tests": map[string]interface{}{"kind": "UPDATE"}}))
+	})
+
+	t.Run("unknown element added front", func(t *testing.T) {
+		testDetailedDiffWithUnknowns(t, resMap, "${auxRes.aux}",
+			[]interface{}{"val2", "val3"},
+			[]interface{}{"UNKNOWN", "val2", "val3"},
+			autogold.Expect(`
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          ~ [0]: "val2" => output<string>
+          ~ [1]: "val3" => "val2"
+          + [2]: "val3"
+        ]
+`),
+			autogold.Expect(map[string]interface{}{"tests": map[string]interface{}{"kind": "UPDATE"}}),
+		)
+	})
+
+	t.Run("unknown element added middle", func(t *testing.T) {
+		testDetailedDiffWithUnknowns(t, resMap, "${auxRes.aux}",
+			[]interface{}{"val1", "val3"},
+			[]interface{}{"val1", "UNKNOWN", "val3"},
+			autogold.Expect(`
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+            [0]: "val1"
+          ~ [1]: "val3" => output<string>
+          + [2]: "val3"
+        ]
+`),
+			autogold.Expect(map[string]interface{}{"tests": map[string]interface{}{"kind": "UPDATE"}}),
+		)
+	})
+
+	t.Run("unknown element added end", func(t *testing.T) {
+		testDetailedDiffWithUnknowns(t, resMap, "${auxRes.aux}",
+			[]interface{}{"val1", "val2"},
+			[]interface{}{"val1", "val2", "UNKNOWN"},
+			autogold.Expect(`
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+            [0]: "val1"
+            [1]: "val2"
+          + [2]: output<string>
+        ]
+`),
+			autogold.Expect(map[string]interface{}{"tests": map[string]interface{}{"kind": "UPDATE"}}),
+		)
+	})
+
+	t.Run("element updated to unknown", func(t *testing.T) {
+		testDetailedDiffWithUnknowns(t, resMap, "${auxRes.aux}",
+			[]interface{}{"val1", "val2", "val3"},
+			[]interface{}{"val1", "UNKNOWN", "val3"},
+			autogold.Expect(`
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+            [0]: "val1"
+          ~ [1]: "val2" => output<string>
+            [2]: "val3"
+        ]
+`),
+			autogold.Expect(map[string]interface{}{"tests": map[string]interface{}{"kind": "UPDATE"}}),
+		)
+	})
+
+	t.Run("shuffled unknown added front", func(t *testing.T) {
+		testDetailedDiffWithUnknowns(t, resMap, "${auxRes.aux}",
+			[]interface{}{"val2", "val3"},
+			[]interface{}{"UNKNOWN", "val3", "val2"},
+			autogold.Expect(`
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          ~ [0]: "val2" => output<string>
+            [1]: "val3"
+          + [2]: "val2"
+        ]
+`),
+			autogold.Expect(map[string]interface{}{"tests": map[string]interface{}{"kind": "UPDATE"}}),
+		)
+	})
+
+	t.Run("shuffled unknown added middle", func(t *testing.T) {
+		testDetailedDiffWithUnknowns(t, resMap, "${auxRes.aux}",
+			[]interface{}{"val1", "val3"},
+			[]interface{}{"val3", "UNKNOWN", "val1"},
+			autogold.Expect(`
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          ~ [0]: "val1" => "val3"
+          ~ [1]: "val3" => output<string>
+          + [2]: "val1"
+        ]
+`),
+			autogold.Expect(map[string]interface{}{"tests": map[string]interface{}{"kind": "UPDATE"}}),
+		)
+	})
+
+	t.Run("shuffled unknown added end", func(t *testing.T) {
+		testDetailedDiffWithUnknowns(t, resMap, "${auxRes.aux}",
+			[]interface{}{"val1", "val2"},
+			[]interface{}{"val2", "val1", "UNKNOWN"},
+			autogold.Expect(`
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          ~ [0]: "val1" => "val2"
+          ~ [1]: "val2" => "val1"
+          + [2]: output<string>
+        ]
+`),
+			autogold.Expect(map[string]interface{}{"tests": map[string]interface{}{"kind": "UPDATE"}}),
+		)
+	})
+}
+
+func TestUnknownSetAttributeDiff(t *testing.T) {
+	// TODO[pulumi/pulumi-terraform-bridge#2517]: Remove this once accurate bridge previews are rolled out
+	t.Setenv("PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW", "true")
+	resMap := map[string]*schema.Resource{
+		"prov_test": {
+			Schema: map[string]*schema.Schema{
+				"test": {
+					Type:     schema.TypeSet,
+					Optional: true,
+					Elem: &schema.Schema{
+						Type: schema.TypeString,
+					},
+				},
+			},
+		},
+		"prov_aux": {
+			Schema: map[string]*schema.Schema{
+				"aux": {
+					Type:     schema.TypeSet,
+					Computed: true,
+					Optional: true,
+					Elem: &schema.Schema{
+						Type: schema.TypeString,
+					},
+				},
+			},
+			CreateContext: func(_ context.Context, d *schema.ResourceData, _ interface{}) diag.Diagnostics {
+				d.SetId("aux")
+				err := d.Set("aux", []interface{}{"aux"})
+				require.NoError(t, err)
+				return nil
+			},
+		},
+	}
+
+	t.Run("empty to unknown set", func(t *testing.T) {
+		testDetailedDiffWithUnknowns(t, resMap, "${auxRes.auxes}",
+			[]interface{}{},
+			"UNKNOWN",
+			autogold.Expect(`
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      + tests: output<string>
+    --outputs:--
+  + testOut: output<string>
+`),
+			autogold.Expect(map[string]interface{}{"tests": map[string]interface{}{}}),
+		)
+	})
+
+	t.Run("non-empty to unknown set", func(t *testing.T) {
+		testDetailedDiffWithUnknowns(t, resMap, "${auxRes.auxes}",
+			[]interface{}{"val"},
+			"UNKNOWN",
+			autogold.Expect(`
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      - tests: [
+      -     [0]: "val"
+        ]
+      + tests: output<string>
+`),
+			autogold.Expect(map[string]interface{}{"tests": map[string]interface{}{"kind": "UPDATE"}}),
+		)
+	})
+}
+
+func TestDetailedDiffSetDuplicates(t *testing.T) {
+	// TODO[pulumi/pulumi-terraform-bridge#2517]: Remove this once accurate bridge previews are rolled out
+	t.Setenv("PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW", "true")
+	resMap := map[string]*schema.Resource{
+		"prov_test": {
+			Schema: map[string]*schema.Schema{
+				"test": {
+					Type:     schema.TypeSet,
+					Optional: true,
+					Elem: &schema.Schema{
+						Type: schema.TypeString,
+					},
+				},
+			},
+		},
+	}
+	tfp := &schema.Provider{ResourcesMap: resMap}
+	bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
+
+	program := `
+name: test
+runtime: yaml
+resources:
+  mainRes:
+    type: prov:index:Test
+    properties:
+      tests: %s`
+
+	t.Run("pulumi", func(t *testing.T) {
+		pt := pulcheck.PulCheck(t, bridgedProvider, fmt.Sprintf(program, `["a", "a"]`))
+		pt.Up(t)
+
+		pt.WritePulumiYaml(t, fmt.Sprintf(program, `["b", "b", "a", "a", "c"]`))
+
+		res := pt.Preview(t, optpreview.Diff())
+
+		autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [1]: "b"
+          + [4]: "c"
+        ]
+`).Equal(t, trimDiff(t, res.StdOut))
+	})
+
+	t.Run("terraform", func(t *testing.T) {
+		tfdriver := tfcheck.NewTfDriver(t, t.TempDir(), "prov", tfp)
+		tfdriver.Write(t, `
+resource "prov_test" "mainRes" {
+  test = ["a", "a"]
+}`)
+
+		plan, err := tfdriver.Plan(t)
+		require.NoError(t, err)
+		err = tfdriver.Apply(t, plan)
+		require.NoError(t, err)
+
+		tfdriver.Write(t, `
+resource "prov_test" "mainRes" {
+  test = ["b", "b", "a", "a", "c"]
+}`)
+
+		plan, err = tfdriver.Plan(t)
+		require.NoError(t, err)
+
+		autogold.Expect(`
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  ~ update in-place
+
+Terraform will perform the following actions:
+
+  # prov_test.mainRes will be updated in-place
+  ~ resource "prov_test" "mainRes" {
+        id   = "newid"
+      ~ test = [
+          + "b",
+          + "c",
+            # (1 unchanged element hidden)
+        ]
+    }
+
+Plan: 0 to add, 1 to change, 0 to destroy.
+
+`).Equal(t, plan.StdOut)
+	})
+}
+
+func TestDetailedDiffSetNestedAttributeUpdated(t *testing.T) {
+	// TODO[pulumi/pulumi-terraform-bridge#2517]: Remove this once accurate bridge previews are rolled out
+	t.Setenv("PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW", "true")
+
+	resMap := map[string]*schema.Resource{
+		"prov_test": {
+			Schema: map[string]*schema.Schema{
+				"test": {
+					Type:     schema.TypeSet,
+					Optional: true,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"nested": {
+								Type:     schema.TypeString,
+								Optional: true,
+							},
+							"nested2": {
+								Type:     schema.TypeString,
+								Optional: true,
+							},
+							"nested3": {
+								Type:     schema.TypeString,
+								Optional: true,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	tfp := &schema.Provider{ResourcesMap: resMap}
+
+	bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
+
+	program := `
+name: test
+runtime: yaml
+resources:
+  mainRes:
+    type: prov:index:Test
+    properties:
+      tests: %s`
+
+	t.Run("pulumi", func(t *testing.T) {
+		props1 := []map[string]string{
+			{"nested": "b", "nested2": "b", "nested3": "b"},
+			{"nested": "a", "nested2": "a", "nested3": "a"},
+			{"nested": "c", "nested2": "c", "nested3": "c"},
+		}
+		props2 := []map[string]string{
+			{"nested": "b", "nested2": "b", "nested3": "b"},
+			{"nested": "d", "nested2": "a", "nested3": "a"},
+			{"nested": "c", "nested2": "c", "nested3": "c"},
+		}
+
+		props1JSON, err := json.Marshal(props1)
+		require.NoError(t, err)
+
+		pt := pulcheck.PulCheck(t, bridgedProvider, fmt.Sprintf(program, string(props1JSON)))
+		pt.Up(t)
+
+		props2JSON, err := json.Marshal(props2)
+		require.NoError(t, err)
+
+		pt.WritePulumiYaml(t, fmt.Sprintf(program, string(props2JSON)))
+
+		res := pt.Preview(t, optpreview.Diff())
+
+		autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [0]: {
+                  - nested : "a"
+                  - nested2: "a"
+                  - nested3: "a"
+                }
+          + [1]: {
+                  + nested    : "d"
+                  + nested2   : "a"
+                  + nested3   : "a"
+                }
+        ]
+`).Equal(t, trimDiff(t, res.StdOut))
+	})
+
+	t.Run("terraform", func(t *testing.T) {
+		tfdriver := tfcheck.NewTfDriver(t, t.TempDir(), "prov", tfp)
+		tfdriver.Write(t, `
+resource "prov_test" "mainRes" {
+  test {
+	  nested = "b"
+	  nested2 = "b"
+	  nested3 = "b"
+	}
+ test {
+	  nested = "a"	
+	  nested2 = "a"
+	  nested3 = "a"
+	}
+ test {
+	  nested = "c"
+	  nested2 = "c"
+	  nested3 = "c"
+	}
+}`)
+
+		plan, err := tfdriver.Plan(t)
+		require.NoError(t, err)
+		err = tfdriver.Apply(t, plan)
+		require.NoError(t, err)
+
+		tfdriver.Write(t, `
+resource "prov_test" "mainRes" {
+  test {
+	  nested = "b"
+	  nested2 = "b"
+	  nested3 = "b"
+	}
+ test {
+	  nested = "d"	
+	  nested2 = "a"
+	  nested3 = "a"
+	}
+ test {
+	  nested = "c"
+	  nested2 = "c"
+	  nested3 = "c"
+	}
+}`)
+
+		plan, err = tfdriver.Plan(t)
+		require.NoError(t, err)
+
+		autogold.Expect(`
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  ~ update in-place
+
+Terraform will perform the following actions:
+
+  # prov_test.mainRes will be updated in-place
+  ~ resource "prov_test" "mainRes" {
+        id = "newid"
+
+      - test {
+          - nested  = "a" -> null
+          - nested2 = "a" -> null
+          - nested3 = "a" -> null
+        }
+      + test {
+          + nested  = "d"
+          + nested2 = "a"
+          + nested3 = "a"
+        }
+
+        # (2 unchanged blocks hidden)
+    }
+
+Plan: 0 to add, 1 to change, 0 to destroy.
+
+`).Equal(t, plan.StdOut)
+	})
+}
+
+func TestDetailedDiffSetComputedNestedAttribute(t *testing.T) {
+	// TODO[pulumi/pulumi-terraform-bridge#2517]: Remove this once accurate bridge previews are rolled out
+	t.Setenv("PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW", "true")
+
+	resCount := 0
+	setComputedProp := func(t *testing.T, d *schema.ResourceData, _ interface{}) diag.Diagnostics {
+		testSet := d.Get("test").(*schema.Set)
+		testVals := testSet.List()
+		newTestVals := make([]interface{}, len(testVals))
+		for i, v := range testVals {
+			val := v.(map[string]interface{})
+			if val["computed"] == nil || val["computed"] == "" {
+				val["computed"] = fmt.Sprint(resCount)
+				resCount++
+			}
+			newTestVals[i] = val
+		}
+
+		err := d.Set("test", schema.NewSet(testSet.F, newTestVals))
+		require.NoError(t, err)
+		return nil
+	}
+
+	resMap := map[string]*schema.Resource{
+		"prov_test": {
+			Schema: map[string]*schema.Schema{
+				"test": {
+					Type:     schema.TypeSet,
+					Optional: true,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"nested": {
+								Type:     schema.TypeString,
+								Optional: true,
+							},
+							"computed": {
+								Type:     schema.TypeString,
+								Optional: true,
+								Computed: true,
+							},
+						},
+					},
+				},
+			},
+			CreateContext: func(ctx context.Context, d *schema.ResourceData, i interface{}) diag.Diagnostics {
+				d.SetId("id")
+				return setComputedProp(t, d, i)
+			},
+			UpdateContext: func(ctx context.Context, d *schema.ResourceData, i interface{}) diag.Diagnostics {
+				return setComputedProp(t, d, i)
+			},
+		},
+	}
+
+	tfp := &schema.Provider{ResourcesMap: resMap}
+	bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
+
+	program := `
+name: test
+runtime: yaml
+resources:
+  mainRes:
+    type: prov:index:Test
+    properties:
+      tests: %s`
+
+	t.Run("pulumi", func(t *testing.T) {
+		props1 := []map[string]string{
+			{"nested": "a", "computed": "b"},
+		}
+		props1JSON, err := json.Marshal(props1)
+		require.NoError(t, err)
+
+		pt := pulcheck.PulCheck(t, bridgedProvider, fmt.Sprintf(program, string(props1JSON)))
+		pt.Up(t)
+
+		props2 := []map[string]string{
+			{"nested": "a"},
+			{"nested": "a", "computed": "b"},
+		}
+		props2JSON, err := json.Marshal(props2)
+		require.NoError(t, err)
+
+		pt.WritePulumiYaml(t, fmt.Sprintf(program, string(props2JSON)))
+		res := pt.Preview(t, optpreview.Diff())
+
+		// TODO[pulumi/pulumi-terraform-bridge#2528]: The preview is wrong here because of the computed property
+		autogold.Expect(`
+    ~ prov:index/test:Test: (update)
+        [id=id]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          + [1]: {
+                  + computed  : "b"
+                  + nested    : "a"
+                }
+        ]
+`).Equal(t, trimDiff(t, res.StdOut))
+	})
+
+	t.Run("terraform", func(t *testing.T) {
+		resCount = 0
+		tfdriver := tfcheck.NewTfDriver(t, t.TempDir(), "prov", tfp)
+		tfdriver.Write(t, `
+resource "prov_test" "mainRes" {
+  test {
+	  nested = "a"
+	  computed = "b"
+	}
+}`)
+
+		plan, err := tfdriver.Plan(t)
+		require.NoError(t, err)
+		err = tfdriver.Apply(t, plan)
+		require.NoError(t, err)
+
+		tfdriver.Write(t, `
+resource "prov_test" "mainRes" {
+  test {
+	  nested = "a"
+	  computed = "b"
+	}
+  test {
+	  nested = "a"
+	}
+}`)
+		plan, err = tfdriver.Plan(t)
+		require.NoError(t, err)
+
+		autogold.Expect(`
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  ~ update in-place
+
+Terraform will perform the following actions:
+
+  # prov_test.mainRes will be updated in-place
+  ~ resource "prov_test" "mainRes" {
+        id = "id"
+
+      + test {
+          + computed = (known after apply)
+          + nested   = "a"
+        }
+
+        # (1 unchanged block hidden)
+    }
+
+Plan: 0 to add, 1 to change, 0 to destroy.
+
+`).Equal(t, plan.StdOut)
+	})
+}
+
+func TestUnknownCollectionForceNewDetailedDiff(t *testing.T) {
+	// TODO[pulumi/pulumi-terraform-bridge#2517]: Remove this once accurate bridge previews are rolled out
+	t.Setenv("PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW", "true")
+
+	collectionForceNewResource := func(typ schema.ValueType) *schema.Resource {
+		return &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				"test": {
+					Type:     typ,
+					Optional: true,
+					ForceNew: true,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"prop": {
+								Type:     schema.TypeString,
+								Optional: true,
+							},
+						},
+					},
+				},
+			},
+		}
+	}
+
+	propertyForceNewResource := func(typ schema.ValueType) *schema.Resource {
+		return &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				"test": {
+					Type:     typ,
+					Optional: true,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"prop": {
+								Type:     schema.TypeString,
+								Optional: true,
+								ForceNew: true,
+							},
+						},
+					},
+				},
+			},
+		}
+	}
+
+	auxResource := func(typ schema.ValueType) *schema.Resource {
+		return &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				"aux": {
+					Type:     typ,
+					Computed: true,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"prop": {
+								Type:     schema.TypeString,
+								Computed: true,
+							},
+						},
+					},
+				},
+			},
+			CreateContext: func(_ context.Context, d *schema.ResourceData, _ interface{}) diag.Diagnostics {
+				d.SetId("aux")
+				err := d.Set("aux", []map[string]interface{}{{"prop": "aux"}})
+				require.NoError(t, err)
+				return nil
+			},
+		}
+	}
+
+	initialProgram := `
+    name: test
+    runtime: yaml
+    resources:
+      mainRes:
+        type: prov:index:Test
+        properties:
+          tests: [{prop: 'value'}]
+`
+
+	program := `
+    name: test
+    runtime: yaml
+    resources:
+      auxRes:
+        type: prov:index:Aux
+      mainRes:
+        type: prov:index:Test
+        properties:
+          tests: %s
+`
+
+	runTest := func(t *testing.T, program2 string, bridgedProvider info.Provider, expectedOutput autogold.Value) {
+		pt := pulcheck.PulCheck(t, bridgedProvider, initialProgram)
+		pt.Up(t)
+		pt.WritePulumiYaml(t, program2)
+
+		res := pt.Preview(t, optpreview.Diff())
+
+		expectedOutput.Equal(t, trimDiff(t, res.StdOut))
+	}
+
+	t.Run("list force new", func(t *testing.T) {
+		resMap := map[string]*schema.Resource{
+			"prov_test": collectionForceNewResource(schema.TypeList),
+			"prov_aux":  auxResource(schema.TypeList),
+		}
+
+		tfp := &schema.Provider{ResourcesMap: resMap}
+		bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
+		runTest := func(t *testing.T, program2 string, expectedOutput autogold.Value) {
+			runTest(t, program2, bridgedProvider, expectedOutput)
+		}
+
+		t.Run("unknown plain property", func(t *testing.T) {
+			program2 := fmt.Sprintf(program, "[{prop: \"${auxRes.auxes[0].prop}\"}]")
+			runTest(t, program2, autogold.Expect(`
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          ~ [0]: {
+                  ~ prop: "value" => output<string>
+                }
+        ]
+`))
+		})
+
+		t.Run("unknown object", func(t *testing.T) {
+			program2 := fmt.Sprintf(program, "[\"${auxRes.auxes[0]}\"]")
+			runTest(t, program2, autogold.Expect(`
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [0]: {
+                  - prop: "value"
+                }
+          + [0]: output<string>
+        ]
+`))
+		})
+
+		t.Run("unknown collection", func(t *testing.T) {
+			program2 := fmt.Sprintf(program, "\"${auxRes.auxes}\"")
+			runTest(t, program2, autogold.Expect(`
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      - tests: [
+      -     [0]: {
+              - prop: "value"
+            }
+        ]
+      + tests: output<string>
+`))
+		})
+	})
+
+	t.Run("list property force new", func(t *testing.T) {
+		resMap := map[string]*schema.Resource{
+			"prov_test": propertyForceNewResource(schema.TypeList),
+			"prov_aux":  auxResource(schema.TypeList),
+		}
+
+		tfp := &schema.Provider{ResourcesMap: resMap}
+		bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
+		runTest := func(t *testing.T, program2 string, expectedOutput autogold.Value) {
+			runTest(t, program2, bridgedProvider, expectedOutput)
+		}
+
+		t.Run("unknown plain property", func(t *testing.T) {
+			program2 := fmt.Sprintf(program, "[{prop: \"${auxRes.auxes[0].prop}\"}]")
+			runTest(t, program2, autogold.Expect(`
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          ~ [0]: {
+                  ~ prop: "value" => output<string>
+                }
+        ]
+`))
+		})
+
+		t.Run("unknown object", func(t *testing.T) {
+			program2 := fmt.Sprintf(program, "[\"${auxRes.auxes[0]}\"]")
+			runTest(t, program2, autogold.Expect(`
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [0]: {
+                  - prop: "value"
+                }
+          + [0]: output<string>
+        ]
+`))
+		})
+
+		t.Run("unknown collection", func(t *testing.T) {
+			program2 := fmt.Sprintf(program, "\"${auxRes.auxes}\"")
+			runTest(t, program2, autogold.Expect(`
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      - tests: [
+      -     [0]: {
+              - prop: "value"
+            }
+        ]
+      + tests: output<string>
+`))
+		})
+	})
+
+	t.Run("set force new", func(t *testing.T) {
+		resMap := map[string]*schema.Resource{
+			"prov_test": collectionForceNewResource(schema.TypeSet),
+			"prov_aux":  auxResource(schema.TypeSet),
+		}
+
+		tfp := &schema.Provider{ResourcesMap: resMap}
+		bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
+		runTest := func(t *testing.T, program2 string, expectedOutput autogold.Value) {
+			runTest(t, program2, bridgedProvider, expectedOutput)
+		}
+
+		t.Run("unknown plain property", func(t *testing.T) {
+			program2 := fmt.Sprintf(program, "[{prop: \"${auxRes.auxes[0].prop}\"}]")
+			runTest(t, program2, autogold.Expect(`
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          ~ [0]: {
+                  ~ prop: "value" => output<string>
+                }
+        ]
+`))
+		})
+
+		t.Run("unknown object", func(t *testing.T) {
+			program2 := fmt.Sprintf(program, "[\"${auxRes.auxes[0]}\"]")
+			runTest(t, program2, autogold.Expect(`
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [0]: {
+                  - prop: "value"
+                }
+          + [0]: output<string>
+        ]
+`))
+		})
+
+		t.Run("unknown collection", func(t *testing.T) {
+			program2 := fmt.Sprintf(program, "\"${auxRes.auxes}\"")
+			runTest(t, program2, autogold.Expect(`
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      - tests: [
+      -     [0]: {
+              - prop: "value"
+            }
+        ]
+      + tests: output<string>
+`))
+		})
+	})
+
+	t.Run("set property force new", func(t *testing.T) {
+		resMap := map[string]*schema.Resource{
+			"prov_test": propertyForceNewResource(schema.TypeSet),
+			"prov_aux":  auxResource(schema.TypeSet),
+		}
+
+		tfp := &schema.Provider{ResourcesMap: resMap}
+		bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
+		runTest := func(t *testing.T, program2 string, expectedOutput autogold.Value) {
+			runTest(t, program2, bridgedProvider, expectedOutput)
+		}
+
+		t.Run("unknown plain property", func(t *testing.T) {
+			program2 := fmt.Sprintf(program, "[{prop: \"${auxRes.auxes[0].prop}\"}]")
+			runTest(t, program2, autogold.Expect(`
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          ~ [0]: {
+                  ~ prop: "value" => output<string>
+                }
+        ]
+`))
+		})
+
+		t.Run("unknown object", func(t *testing.T) {
+			program2 := fmt.Sprintf(program, "[\"${auxRes.auxes[0]}\"]")
+			runTest(t, program2, autogold.Expect(`
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      ~ tests: [
+          - [0]: {
+                  - prop: "value"
+                }
+          + [0]: output<string>
+        ]
+`))
+		})
+
+		t.Run("unknown collection", func(t *testing.T) {
+			program2 := fmt.Sprintf(program, "\"${auxRes.auxes}\"")
+			runTest(t, program2, autogold.Expect(`
+    + prov:index/aux:Aux: (create)
+        [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
+    +-prov:index/test:Test: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+      - tests: [
+      -     [0]: {
+              - prop: "value"
+            }
+        ]
+      + tests: output<string>
+`))
+		})
 	})
 }
 

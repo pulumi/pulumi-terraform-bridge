@@ -3,13 +3,13 @@ package tfbridge
 import (
 	"cmp"
 	"context"
+	"fmt"
 	"slices"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/walk"
 )
@@ -18,11 +18,6 @@ func isPresent(val resource.PropertyValue) bool {
 	return !val.IsNull() &&
 		!(val.IsArray() && val.ArrayValue() == nil) &&
 		!(val.IsObject() && val.ObjectValue() == nil)
-}
-
-func isForceNew(tfs shim.Schema, ps *SchemaInfo) bool {
-	return (tfs != nil && tfs.ForceNew()) ||
-		(ps != nil && ps.ForceNew != nil && *ps.ForceNew)
 }
 
 func sortedMergedKeys[K cmp.Ordered, V any, M ~map[K]V](a, b M) []K {
@@ -39,6 +34,26 @@ func sortedMergedKeys[K cmp.Ordered, V any, M ~map[K]V](a, b M) []K {
 	}
 	slices.Sort(keysSlice)
 	return keysSlice
+}
+
+func isTypeShapeMismatched(val resource.PropertyValue, propType shim.ValueType) bool {
+	contract.Assertf(!val.IsSecret() || val.IsOutput(), "secrets and outputs are not handled")
+	if val.IsComputed() {
+		return false
+	}
+	if !isPresent(val) {
+		return false
+	}
+	switch propType {
+	case shim.TypeList:
+		return !val.IsArray()
+	case shim.TypeSet:
+		return !val.IsArray()
+	case shim.TypeMap:
+		return !val.IsObject()
+	default:
+		return false
+	}
 }
 
 func promoteToReplace(diff *pulumirpc.PropertyDiff) *pulumirpc.PropertyDiff {
@@ -109,54 +124,14 @@ func makeBaseDiff(old, new resource.PropertyValue) baseDiff {
 	return undecidedDiff
 }
 
-type (
-	detailedDiffKey string
-	propertyPath    resource.PropertyPath
-)
-
-func newPropertyPath(root resource.PropertyKey) propertyPath {
-	return propertyPath{string(root)}
-}
-
-func (k propertyPath) String() string {
-	return resource.PropertyPath(k).String()
-}
-
-func (k propertyPath) Key() detailedDiffKey {
-	return detailedDiffKey(k.String())
-}
-
-func (k propertyPath) append(subkey interface{}) propertyPath {
-	return append(k, subkey)
-}
-
-func (k propertyPath) Subpath(subkey string) propertyPath {
-	return k.append(subkey)
-}
-
-func (k propertyPath) Index(i int) propertyPath {
-	return k.append(i)
-}
-
-func (k propertyPath) IsReservedKey() bool {
-	leaf := k[len(k)-1]
-	return leaf == "__meta" || leaf == "__defaults"
-}
-
-func mapHasReplacements(m map[detailedDiffKey]*pulumirpc.PropertyDiff) bool {
-	for _, diff := range m {
-		if diff.GetKind() == pulumirpc.PropertyDiff_ADD_REPLACE ||
-			diff.GetKind() == pulumirpc.PropertyDiff_DELETE_REPLACE ||
-			diff.GetKind() == pulumirpc.PropertyDiff_UPDATE_REPLACE {
-			return true
-		}
-	}
-	return false
-}
+type detailedDiffKey string
 
 type detailedDiffer struct {
+	ctx context.Context
 	tfs shim.SchemaMap
 	ps  map[string]*SchemaInfo
+	// These are used to convert set indices back to something the engine can reference.
+	newInputs resource.PropertyMap
 }
 
 func (differ detailedDiffer) propertyPathToSchemaPath(path propertyPath) walk.SchemaPath {
@@ -182,62 +157,52 @@ func (differ detailedDiffer) getEffectiveType(path walk.SchemaPath) shim.ValueTy
 	return tfs.Type()
 }
 
-func (differ detailedDiffer) lookupSchemas(path propertyPath) (shim.Schema, *info.Schema, error) {
-	schemaPath := PropertyPathToSchemaPath(resource.PropertyPath(path), differ.tfs, differ.ps)
-	return LookupSchemas(schemaPath, differ.tfs, differ.ps)
-}
+type (
+	setHash    int
+	arrayIndex int
+)
 
-func (differ detailedDiffer) isForceNew(pair propertyPath) bool {
-	// A change on a property might trigger a replacement if:
-	// - The property itself is marked as ForceNew
-	// - The direct parent property is a collection (list, set, map) and is marked as ForceNew
-	// See pkg/cross-tests/diff_cross_test.go
-	// TestAttributeCollectionForceNew, TestBlockCollectionForceNew, TestBlockCollectionElementForceNew
-	// for a full case study of replacements in TF
-	tfs, ps, err := differ.lookupSchemas(pair)
+type hashIndexMap map[setHash]arrayIndex
+
+func (differ detailedDiffer) calculateSetHashIndexMap(
+	path propertyPath, listVal []resource.PropertyValue,
+) hashIndexMap {
+	identities := make(hashIndexMap)
+
+	tfs, ps, err := lookupSchemas(path, differ.tfs, differ.ps)
 	if err != nil {
-		return false
-	}
-	if isForceNew(tfs, ps) {
-		return true
+		return nil
 	}
 
-	if len(pair) == 1 {
-		return false
-	}
-
-	parent := pair[:len(pair)-1]
-	tfs, ps, err = differ.lookupSchemas(parent)
+	convertedVal, err := makeSingleTerraformInput(
+		differ.ctx, path.String(), resource.NewArrayProperty(listVal), tfs, ps)
 	if err != nil {
-		return false
+		return nil
 	}
-	// Note this is mimicking the TF behaviour, so the effective type is not considered here.
-	if tfs.Type() != shim.TypeList && tfs.Type() != shim.TypeSet && tfs.Type() != shim.TypeMap {
-		return false
-	}
-	return isForceNew(tfs, ps)
-}
 
-// We do not short-circuit detailed diffs when comparing non-nil properties against nil ones. The reason for that is
-// that a replace might be triggered by a ForceNew inside a nested property of a non-ForceNew property. We instead
-// always walk the full tree even when comparing against a nil property. We then later do a simplification step for
-// the detailed diff in simplifyDiff in order to reduce the diff to what the user expects to see.
-// See [pulumi/pulumi-terraform-bridge#2405] for more details.
-func (differ detailedDiffer) simplifyDiff(
-	diff map[detailedDiffKey]*pulumirpc.PropertyDiff, path propertyPath, old, new resource.PropertyValue,
-) (map[detailedDiffKey]*pulumirpc.PropertyDiff, bool) {
-	baseDiff := makeBaseDiff(old, new)
-	if baseDiff == undecidedDiff {
-		return nil, false
+	if convertedVal == nil {
+		return nil
 	}
-	propDiff := baseDiff.ToPropertyDiff()
-	if propDiff == nil {
-		return nil, true
+
+	convertedListVal, ok := convertedVal.([]interface{})
+	contract.Assertf(ok, "converted value should be a list")
+
+	// Calculate the identity of each element. Note that the SetHash function can panic
+	// in the case of custom SetHash functions which get unexpected inputs.
+	for i, newElem := range convertedListVal {
+		elementHash := func() int {
+			defer func() {
+				if r := recover(); r != nil {
+					GetLogger(differ.ctx).Warn(fmt.Sprintf(
+						"Failed to calculate preview for element in %s: %v",
+						path.String(), r))
+				}
+			}()
+			return tfs.SetHash(newElem)
+		}()
+		identities[setHash(elementHash)] = arrayIndex(i)
 	}
-	if differ.isForceNew(path) || mapHasReplacements(diff) {
-		propDiff = promoteToReplace(propDiff)
-	}
-	return map[detailedDiffKey]*pulumirpc.PropertyDiff{path.Key(): propDiff}, true
+	return identities
 }
 
 // makePlainPropDiff is used for plain properties and ones with an unknown schema.
@@ -246,7 +211,7 @@ func (differ detailedDiffer) makePlainPropDiff(
 	path propertyPath, old, new resource.PropertyValue,
 ) map[detailedDiffKey]*pulumirpc.PropertyDiff {
 	baseDiff := makeBaseDiff(old, new)
-	isForceNew := differ.isForceNew(path)
+	isReplacement := propertyPathTriggersReplacement(path, differ.tfs, differ.ps)
 	var propDiff *pulumirpc.PropertyDiff
 	if baseDiff != undecidedDiff {
 		propDiff = baseDiff.ToPropertyDiff()
@@ -254,7 +219,7 @@ func (differ detailedDiffer) makePlainPropDiff(
 		propDiff = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE}
 	}
 
-	if isForceNew {
+	if isReplacement {
 		propDiff = promoteToReplace(propDiff)
 	}
 
@@ -264,6 +229,32 @@ func (differ detailedDiffer) makePlainPropDiff(
 	return nil
 }
 
+// makeShortCircuitDiff is used for properties that are nil or computed in either the old or new state.
+// It makes sure to check recursively if the property will trigger a replacement.
+func (differ detailedDiffer) makeShortCircuitDiff(
+	path propertyPath, old, new resource.PropertyValue,
+) map[detailedDiffKey]*pulumirpc.PropertyDiff {
+	contract.Assertf(old.IsNull() || new.IsNull() || new.IsComputed(),
+		"short-circuit diff should only be used for nil properties")
+	if old.IsNull() && new.IsNull() {
+		return nil
+	}
+
+	baseDiff := makeBaseDiff(old, new)
+	contract.Assertf(baseDiff != undecidedDiff, "short-circuit diff could not determine diff kind")
+
+	propDiff := baseDiff.ToPropertyDiff()
+	if new.IsComputed() && propertyPathTriggersReplacement(path, differ.tfs, differ.ps) {
+		propDiff = promoteToReplace(propDiff)
+	} else if !new.IsNull() && !new.IsComputed() && propertyValueTriggersReplacement(path, new, differ.tfs, differ.ps) {
+		propDiff = promoteToReplace(propDiff)
+	} else if !old.IsNull() && propertyValueTriggersReplacement(path, old, differ.tfs, differ.ps) {
+		propDiff = promoteToReplace(propDiff)
+	}
+
+	return map[detailedDiffKey]*pulumirpc.PropertyDiff{path.Key(): propDiff}
+}
+
 func (differ detailedDiffer) makePropDiff(
 	path propertyPath, old, new resource.PropertyValue,
 ) map[detailedDiffKey]*pulumirpc.PropertyDiff {
@@ -271,13 +262,25 @@ func (differ detailedDiffer) makePropDiff(
 		return nil
 	}
 	propType := differ.getEffectiveType(differ.propertyPathToSchemaPath(path))
+	if isTypeShapeMismatched(old, propType) || isTypeShapeMismatched(new, propType) {
+		return differ.makePlainPropDiff(path, old, new)
+	}
+
+	if !isPresent(old) {
+		old = resource.NewNullProperty()
+	}
+	if !new.IsComputed() && !isPresent(new) {
+		new = resource.NewNullProperty()
+	}
+	if old.IsNull() || new.IsNull() || new.IsComputed() {
+		return differ.makeShortCircuitDiff(path, old, new)
+	}
 
 	switch propType {
 	case shim.TypeList:
 		return differ.makeListDiff(path, old, new)
 	case shim.TypeSet:
-		// TODO[pulumi/pulumi-terraform-bridge#2200]: Implement set diffing
-		return differ.makeListDiff(path, old, new)
+		return differ.makeSetDiff(path, old, new)
 	case shim.TypeMap:
 		// Note that TF objects are represented as maps when returned by LookupSchemas
 		return differ.makeMapDiff(path, old, new)
@@ -290,14 +293,8 @@ func (differ detailedDiffer) makeListDiff(
 	path propertyPath, old, new resource.PropertyValue,
 ) map[detailedDiffKey]*pulumirpc.PropertyDiff {
 	diff := make(map[detailedDiffKey]*pulumirpc.PropertyDiff)
-	oldList := []resource.PropertyValue{}
-	newList := []resource.PropertyValue{}
-	if isPresent(old) && old.IsArray() {
-		oldList = old.ArrayValue()
-	}
-	if isPresent(new) && new.IsArray() {
-		newList = new.ArrayValue()
-	}
+	oldList := old.ArrayValue()
+	newList := new.ArrayValue()
 
 	// naive diffing of lists
 	// TODO[pulumi/pulumi-terraform-bridge#2295]: implement a more sophisticated diffing algorithm
@@ -318,27 +315,126 @@ func (differ detailedDiffer) makeListDiff(
 		}
 	}
 
-	simplerDiff, isSimplified := differ.simplifyDiff(diff, path, old, new)
-	if isSimplified {
-		return simplerDiff
+	return diff
+}
+
+func computeSetHashChanges(
+	oldIdentities, newIdentities hashIndexMap,
+) (removed, added hashIndexMap) {
+	removed = hashIndexMap{}
+	added = hashIndexMap{}
+
+	for elementHash := range oldIdentities {
+		if _, ok := newIdentities[elementHash]; !ok {
+			removed[elementHash] = oldIdentities[elementHash]
+		}
 	}
 
+	for elementHash := range newIdentities {
+		if _, ok := oldIdentities[elementHash]; !ok {
+			added[elementHash] = newIdentities[elementHash]
+		}
+	}
+
+	return
+}
+
+func (differ detailedDiffer) matchNewIndicesToInputs(
+	path propertyPath, changedIdentities hashIndexMap,
+) hashIndexMap {
+	matched := hashIndexMap{}
+
+	newInputsList := []resource.PropertyValue{}
+
+	newInputs, newInputsOk := path.GetFromMap(differ.newInputs)
+	if newInputsOk && isPresent(newInputs) && newInputs.IsArray() {
+		newInputsList = newInputs.ArrayValue()
+	}
+
+	inputIdentities := hashIndexMap{}
+
+	if !pathContainsComputed(path, differ.tfs, differ.ps) {
+		// The inputs are only safe to hash if the schema has no computed properties
+		inputIdentities = differ.calculateSetHashIndexMap(path, newInputsList)
+	}
+
+	for elementHash, newStateIndex := range changedIdentities {
+		if inputIndex, ok := inputIdentities[elementHash]; ok {
+			matched[elementHash] = inputIndex
+		} else {
+			GetLogger(differ.ctx).Warn(fmt.Sprintf(
+				"Additional changes detected in %s, the displayed diff might be inaccurate",
+				path.String()))
+			matched[elementHash] = newStateIndex
+		}
+	}
+
+	return matched
+}
+
+type hashPair struct {
+	oldHash setHash
+	newHash setHash
+}
+
+func buildChangesIndexMap(added, removed hashIndexMap) map[arrayIndex]hashPair {
+	changes := map[arrayIndex]hashPair{}
+	for hash, index := range added {
+		changes[index] = hashPair{oldHash: -1, newHash: hash}
+	}
+	for hash, index := range removed {
+		if el, ok := changes[index]; !ok {
+			changes[index] = hashPair{oldHash: hash, newHash: -1}
+		} else {
+			el.oldHash = hash
+			changes[index] = el
+		}
+	}
+	return changes
+}
+
+func (differ detailedDiffer) makeSetDiff(
+	path propertyPath, old, new resource.PropertyValue,
+) map[detailedDiffKey]*pulumirpc.PropertyDiff {
+	diff := make(map[detailedDiffKey]*pulumirpc.PropertyDiff)
+	oldList := old.ArrayValue()
+	newList := new.ArrayValue()
+
+	oldIdentities := differ.calculateSetHashIndexMap(path, oldList)
+	newIdentities := differ.calculateSetHashIndexMap(path, newList)
+
+	removed, added := computeSetHashChanges(oldIdentities, newIdentities)
+
+	// We need to match the new indices to the inputs to ensure that the identity of the
+	// elements is preserved - this is necessary since the planning process can reorder
+	// the elements.
+	addedInputs := differ.matchNewIndicesToInputs(path, added)
+
+	changes := buildChangesIndexMap(addedInputs, removed)
+	for index, hashes := range changes {
+		oldVal := resource.NewNullProperty()
+		if removedIndex, ok := removed[hashes.oldHash]; ok {
+			oldVal = oldList[removedIndex]
+		}
+		newVal := resource.NewNullProperty()
+		if addedIndex, ok := added[hashes.newHash]; ok {
+			newVal = newList[addedIndex]
+		}
+
+		elemDiff := differ.makePropDiff(path.Index(int(index)), oldVal, newVal)
+		for subKey, subDiff := range elemDiff {
+			diff[subKey] = subDiff
+		}
+	}
 	return diff
 }
 
 func (differ detailedDiffer) makeMapDiff(
 	path propertyPath, old, new resource.PropertyValue,
 ) map[detailedDiffKey]*pulumirpc.PropertyDiff {
+	oldMap := old.ObjectValue()
+	newMap := new.ObjectValue()
 	diff := make(map[detailedDiffKey]*pulumirpc.PropertyDiff)
-	oldMap := resource.PropertyMap{}
-	newMap := resource.PropertyMap{}
-	if isPresent(old) && old.IsObject() {
-		oldMap = old.ObjectValue()
-	}
-	if isPresent(new) && new.IsObject() {
-		newMap = new.ObjectValue()
-	}
-
 	for _, k := range sortedMergedKeys(oldMap, newMap) {
 		subindex := path.Subpath(string(k))
 		oldVal := oldMap[k]
@@ -349,11 +445,6 @@ func (differ detailedDiffer) makeMapDiff(
 		for subKey, subDiff := range elemDiff {
 			diff[subKey] = subDiff
 		}
-	}
-
-	simplerDiff, isSimplified := differ.simplifyDiff(diff, path, old, new)
-	if isSimplified {
-		return simplerDiff
 	}
 
 	return diff
@@ -393,6 +484,7 @@ func makeDetailedDiffV2(
 	diff shim.InstanceDiff,
 	assets AssetTable,
 	supportsSecrets bool,
+	newInputs resource.PropertyMap,
 ) (map[string]*pulumirpc.PropertyDiff, error) {
 	// We need to compare the new and olds after all transformations have been applied.
 	// ex. state upgrades, implementation-specific normalizations etc.
@@ -414,6 +506,6 @@ func makeDetailedDiffV2(
 		return nil, err
 	}
 
-	differ := detailedDiffer{tfs: tfs, ps: ps}
+	differ := detailedDiffer{ctx: ctx, tfs: tfs, ps: ps, newInputs: newInputs}
 	return differ.makeDetailedDiffPropertyMap(priorProps, props), nil
 }
