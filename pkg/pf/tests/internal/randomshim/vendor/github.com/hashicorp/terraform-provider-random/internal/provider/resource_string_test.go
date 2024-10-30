@@ -17,7 +17,6 @@ import (
 )
 
 func TestAccResourceString_Import(t *testing.T) {
-    t.Parallel()
 	resource.UnitTest(t, resource.TestCase{
 		ProtoV5ProviderFactories: protoV5ProviderFactories(),
 		Steps: []resource.TestStep{
@@ -39,7 +38,6 @@ func TestAccResourceString_Import(t *testing.T) {
 }
 
 func TestAccResourceString_Keepers_Keep_EmptyMap(t *testing.T) {
-    t.Parallel()
 	var id1, id2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -72,7 +70,6 @@ func TestAccResourceString_Keepers_Keep_EmptyMap(t *testing.T) {
 }
 
 func TestAccResourceString_Keepers_Keep_EmptyMapToNullValue(t *testing.T) {
-    t.Parallel()
 	var id1, id2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -107,7 +104,6 @@ func TestAccResourceString_Keepers_Keep_EmptyMapToNullValue(t *testing.T) {
 }
 
 func TestAccResourceString_Keepers_Keep_NullMap(t *testing.T) {
-    t.Parallel()
 	var id1, id2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -138,7 +134,6 @@ func TestAccResourceString_Keepers_Keep_NullMap(t *testing.T) {
 }
 
 func TestAccResourceString_Keepers_Keep_NullMapToNullValue(t *testing.T) {
-    t.Parallel()
 	var id1, id2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -172,7 +167,6 @@ func TestAccResourceString_Keepers_Keep_NullMapToNullValue(t *testing.T) {
 }
 
 func TestAccResourceString_Keepers_Keep_NullValue(t *testing.T) {
-    t.Parallel()
 	var id1, id2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -209,7 +203,6 @@ func TestAccResourceString_Keepers_Keep_NullValue(t *testing.T) {
 }
 
 func TestAccResourceString_Keepers_Keep_NullValues(t *testing.T) {
-    t.Parallel()
 	var id1, id2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -248,7 +241,6 @@ func TestAccResourceString_Keepers_Keep_NullValues(t *testing.T) {
 }
 
 func TestAccResourceString_Keepers_Keep_Value(t *testing.T) {
-    t.Parallel()
 	var id1, id2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -285,7 +277,6 @@ func TestAccResourceString_Keepers_Keep_Value(t *testing.T) {
 }
 
 func TestAccResourceString_Keepers_Keep_Values(t *testing.T) {
-    t.Parallel()
 	var id1, id2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -324,7 +315,6 @@ func TestAccResourceString_Keepers_Keep_Values(t *testing.T) {
 }
 
 func TestAccResourceString_Keepers_Replace_EmptyMapToValue(t *testing.T) {
-    t.Parallel()
 	var id1, id2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -359,7 +349,6 @@ func TestAccResourceString_Keepers_Replace_EmptyMapToValue(t *testing.T) {
 }
 
 func TestAccResourceString_Keepers_Replace_NullMapToValue(t *testing.T) {
-    t.Parallel()
 	var id1, id2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -393,7 +382,6 @@ func TestAccResourceString_Keepers_Replace_NullMapToValue(t *testing.T) {
 }
 
 func TestAccResourceString_Keepers_Replace_NullValueToValue(t *testing.T) {
-    t.Parallel()
 	var id1, id2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -430,7 +418,6 @@ func TestAccResourceString_Keepers_Replace_NullValueToValue(t *testing.T) {
 }
 
 func TestAccResourceString_Keepers_Replace_ValueToEmptyMap(t *testing.T) {
-    t.Parallel()
 	var id1, id2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -465,7 +452,6 @@ func TestAccResourceString_Keepers_Replace_ValueToEmptyMap(t *testing.T) {
 }
 
 func TestAccResourceString_Keepers_Replace_ValueToNullMap(t *testing.T) {
-    t.Parallel()
 	var id1, id2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -499,7 +485,6 @@ func TestAccResourceString_Keepers_Replace_ValueToNullMap(t *testing.T) {
 }
 
 func TestAccResourceString_Keepers_Replace_ValueToNullValue(t *testing.T) {
-    t.Parallel()
 	var id1, id2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -536,7 +521,6 @@ func TestAccResourceString_Keepers_Replace_ValueToNullValue(t *testing.T) {
 }
 
 func TestAccResourceString_Keepers_Replace_ValueToNewValue(t *testing.T) {
-    t.Parallel()
 	var id1, id2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -573,7 +557,6 @@ func TestAccResourceString_Keepers_Replace_ValueToNewValue(t *testing.T) {
 }
 
 func TestAccResourceString_Keepers_FrameworkMigration_NullMapToNullValue(t *testing.T) {
-    t.Parallel()
 	var id1, id2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -610,7 +593,6 @@ func TestAccResourceString_Keepers_FrameworkMigration_NullMapToNullValue(t *test
 }
 
 func TestAccResourceString_Keepers_FrameworkMigration_NullMapToValue(t *testing.T) {
-    t.Parallel()
 	var id1, id2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -647,7 +629,6 @@ func TestAccResourceString_Keepers_FrameworkMigration_NullMapToValue(t *testing.
 }
 
 func TestAccResourceString_Keepers_FrameworkMigration_NullMapToMultipleNullValue(t *testing.T) {
-    t.Parallel()
 	var id1, id2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -686,7 +667,6 @@ func TestAccResourceString_Keepers_FrameworkMigration_NullMapToMultipleNullValue
 }
 
 func TestAccResourceString_Keepers_FrameworkMigration_NullMapToMultipleValue(t *testing.T) {
-    t.Parallel()
 	var id1, id2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -725,7 +705,6 @@ func TestAccResourceString_Keepers_FrameworkMigration_NullMapToMultipleValue(t *
 }
 
 func TestAccResourceString_Keepers_FrameworkMigration_NullMapValue(t *testing.T) {
-    t.Parallel()
 	var id1, id2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -764,7 +743,6 @@ func TestAccResourceString_Keepers_FrameworkMigration_NullMapValue(t *testing.T)
 }
 
 func TestAccResourceString_Keepers_FrameworkMigration_NullMapValueToValue(t *testing.T) {
-    t.Parallel()
 	var id1, id2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -803,7 +781,6 @@ func TestAccResourceString_Keepers_FrameworkMigration_NullMapValueToValue(t *tes
 }
 
 func TestAccResourceString_Override(t *testing.T) {
-    t.Parallel()
 	resource.UnitTest(t, resource.TestCase{
 		ProtoV5ProviderFactories: protoV5ProviderFactories(),
 		Steps: []resource.TestStep{
@@ -829,7 +806,6 @@ func TestAccResourceString_Override(t *testing.T) {
 // override_special value to null and should not result in a plan difference.
 // Reference: https://github.com/hashicorp/terraform-provider-random/issues/306
 func TestAccResourceString_OverrideSpecial_FromVersion3_3_2(t *testing.T) {
-    t.Parallel()
 	var result1, result2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -864,7 +840,6 @@ func TestAccResourceString_OverrideSpecial_FromVersion3_3_2(t *testing.T) {
 // override_special value to "", while other versions do not.
 // Reference: https://github.com/hashicorp/terraform-provider-random/issues/306
 func TestAccResourceString_OverrideSpecial_FromVersion3_4_2(t *testing.T) {
-    t.Parallel()
 	var result1, result2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -895,7 +870,6 @@ func TestAccResourceString_OverrideSpecial_FromVersion3_4_2(t *testing.T) {
 }
 
 func TestAccResourceString_Min(t *testing.T) {
-    t.Parallel()
 	resource.UnitTest(t, resource.TestCase{
 		ProtoV5ProviderFactories: protoV5ProviderFactories(),
 		Steps: []resource.TestStep{
@@ -1125,7 +1099,6 @@ func TestAccResourceString_StateUpgradeV1toV2(t *testing.T) {
 }
 
 func TestAccResourceString_LengthErrors(t *testing.T) {
-    t.Parallel()
 	resource.UnitTest(t, resource.TestCase{
 		ProtoV5ProviderFactories: protoV5ProviderFactories(),
 		Steps: []resource.TestStep{
@@ -1148,7 +1121,6 @@ func TestAccResourceString_LengthErrors(t *testing.T) {
 
 // TestAccResourceString_UpgradeFromVersion3_2_0 verifies behaviour when upgrading state from schema V1 to V2.
 func TestAccResourceString_UpgradeFromVersion3_2_0(t *testing.T) {
-    t.Parallel()
 	resource.Test(t, resource.TestCase{
 		Steps: []resource.TestStep{
 			{
@@ -1222,7 +1194,6 @@ func TestAccResourceString_UpgradeFromVersion3_2_0(t *testing.T) {
 
 // TestAccResourceString_UpgradeFromVersion3_3_2 verifies behaviour when upgrading from SDKv2 to the Framework.
 func TestAccResourceString_UpgradeFromVersion3_3_2(t *testing.T) {
-    t.Parallel()
 	resource.Test(t, resource.TestCase{
 		Steps: []resource.TestStep{
 			{
@@ -1675,7 +1646,6 @@ func TestUpgradeStringStateV2toV3_NullValues(t *testing.T) {
 // null for length, lower, number, special, upper, min_lower, min_numeric, min_special, min_upper attributes in state.
 // v3.1.3 was selected as this is the last provider version using schema version 1.
 func TestAccResourceString_Import_FromVersion3_1_3(t *testing.T) {
-    t.Parallel()
 	var result1, result2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -1737,7 +1707,6 @@ func TestAccResourceString_Import_FromVersion3_1_3(t *testing.T) {
 // empty map {} for keepers and empty string for override_special in state.
 // v3.4.2 was selected as this is the last provider version using schema version 2.
 func TestAccResourceString_Import_FromVersion3_4_2(t *testing.T) {
-    t.Parallel()
 	var result1, result2 string
 
 	resource.ParallelTest(t, resource.TestCase{

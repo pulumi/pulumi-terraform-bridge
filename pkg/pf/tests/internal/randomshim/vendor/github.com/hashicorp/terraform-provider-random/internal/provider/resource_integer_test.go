@@ -144,7 +144,6 @@ func TestAccResourceInteger_Big(t *testing.T) {
 }
 
 func TestAccResourceInteger_UpgradeFromVersion3_3_2(t *testing.T) {
-    t.Parallel()
 	resource.Test(t, resource.TestCase{
 		Steps: []resource.TestStep{
 			{
@@ -183,7 +182,6 @@ func TestAccResourceInteger_UpgradeFromVersion3_3_2(t *testing.T) {
 }
 
 func TestAccResourceInteger_Keepers_Keep_EmptyMap(t *testing.T) {
-    t.Parallel()
 	var id1, id2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -218,7 +216,6 @@ func TestAccResourceInteger_Keepers_Keep_EmptyMap(t *testing.T) {
 }
 
 func TestAccResourceInteger_Keepers_Keep_EmptyMapToNullValue(t *testing.T) {
-    t.Parallel()
 	var id1, id2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -255,7 +252,6 @@ func TestAccResourceInteger_Keepers_Keep_EmptyMapToNullValue(t *testing.T) {
 }
 
 func TestAccResourceInteger_Keepers_Keep_NullMap(t *testing.T) {
-    t.Parallel()
 	var id1, id2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -288,7 +284,6 @@ func TestAccResourceInteger_Keepers_Keep_NullMap(t *testing.T) {
 }
 
 func TestAccResourceInteger_Keepers_Keep_NullMapToNullValue(t *testing.T) {
-    t.Parallel()
 	var id1, id2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -324,7 +319,6 @@ func TestAccResourceInteger_Keepers_Keep_NullMapToNullValue(t *testing.T) {
 }
 
 func TestAccResourceInteger_Keepers_Keep_NullValue(t *testing.T) {
-    t.Parallel()
 	var id1, id2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -363,7 +357,6 @@ func TestAccResourceInteger_Keepers_Keep_NullValue(t *testing.T) {
 }
 
 func TestAccResourceInteger_Keepers_Keep_NullValues(t *testing.T) {
-    t.Parallel()
 	var id1, id2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -404,7 +397,6 @@ func TestAccResourceInteger_Keepers_Keep_NullValues(t *testing.T) {
 }
 
 func TestAccResourceInteger_Keepers_Keep_Value(t *testing.T) {
-    t.Parallel()
 	var id1, id2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -443,7 +435,6 @@ func TestAccResourceInteger_Keepers_Keep_Value(t *testing.T) {
 }
 
 func TestAccResourceInteger_Keepers_Keep_Values(t *testing.T) {
-    t.Parallel()
 	var id1, id2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -484,7 +475,6 @@ func TestAccResourceInteger_Keepers_Keep_Values(t *testing.T) {
 }
 
 func TestAccResourceInteger_Keepers_Replace_EmptyMapToValue(t *testing.T) {
-    t.Parallel()
 	var id1, id2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -521,7 +511,6 @@ func TestAccResourceInteger_Keepers_Replace_EmptyMapToValue(t *testing.T) {
 }
 
 func TestAccResourceInteger_Keepers_Replace_NullMapToValue(t *testing.T) {
-    t.Parallel()
 	var id1, id2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -557,7 +546,6 @@ func TestAccResourceInteger_Keepers_Replace_NullMapToValue(t *testing.T) {
 }
 
 func TestAccResourceInteger_Keepers_Replace_NullValueToValue(t *testing.T) {
-    t.Parallel()
 	var id1, id2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -596,7 +584,6 @@ func TestAccResourceInteger_Keepers_Replace_NullValueToValue(t *testing.T) {
 }
 
 func TestAccResourceInteger_Keepers_Replace_ValueToEmptyMap(t *testing.T) {
-    t.Parallel()
 	var id1, id2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -633,7 +620,6 @@ func TestAccResourceInteger_Keepers_Replace_ValueToEmptyMap(t *testing.T) {
 }
 
 func TestAccResourceInteger_Keepers_Replace_ValueToNullMap(t *testing.T) {
-    t.Parallel()
 	var id1, id2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -669,7 +655,6 @@ func TestAccResourceInteger_Keepers_Replace_ValueToNullMap(t *testing.T) {
 }
 
 func TestAccResourceInteger_Keepers_Replace_ValueToNullValue(t *testing.T) {
-    t.Parallel()
 	var id1, id2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -708,7 +693,6 @@ func TestAccResourceInteger_Keepers_Replace_ValueToNullValue(t *testing.T) {
 }
 
 func TestAccResourceInteger_Keepers_Replace_ValueToNewValue(t *testing.T) {
-    t.Parallel()
 	var id1, id2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -747,7 +731,6 @@ func TestAccResourceInteger_Keepers_Replace_ValueToNewValue(t *testing.T) {
 }
 
 func TestAccResourceInteger_Keepers_FrameworkMigration_NullMapToNullValue(t *testing.T) {
-    t.Parallel()
 	var id1, id2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -786,7 +769,6 @@ func TestAccResourceInteger_Keepers_FrameworkMigration_NullMapToNullValue(t *tes
 }
 
 func TestAccResourceInteger_Keepers_FrameworkMigration_NullMapToValue(t *testing.T) {
-    t.Parallel()
 	var id1, id2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -825,7 +807,6 @@ func TestAccResourceInteger_Keepers_FrameworkMigration_NullMapToValue(t *testing
 }
 
 func TestAccResourceInteger_Keepers_FrameworkMigration_NullMapToMultipleNullValue(t *testing.T) {
-    t.Parallel()
 	var id1, id2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -866,7 +847,6 @@ func TestAccResourceInteger_Keepers_FrameworkMigration_NullMapToMultipleNullValu
 }
 
 func TestAccResourceInteger_Keepers_FrameworkMigration_NullMapToMultipleValue(t *testing.T) {
-    t.Parallel()
 	var id1, id2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -907,7 +887,6 @@ func TestAccResourceInteger_Keepers_FrameworkMigration_NullMapToMultipleValue(t 
 }
 
 func TestAccResourceInteger_Keepers_FrameworkMigration_NullMapValue(t *testing.T) {
-    t.Parallel()
 	var id1, id2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -948,7 +927,6 @@ func TestAccResourceInteger_Keepers_FrameworkMigration_NullMapValue(t *testing.T
 }
 
 func TestAccResourceInteger_Keepers_FrameworkMigration_NullMapValueToValue(t *testing.T) {
-    t.Parallel()
 	var id1, id2 string
 
 	resource.ParallelTest(t, resource.TestCase{

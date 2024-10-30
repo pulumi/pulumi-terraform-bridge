@@ -14,7 +14,6 @@ import (
 )
 
 func TestAccResourceBytes(t *testing.T) {
-    t.Parallel()
 	resource.UnitTest(t, resource.TestCase{
 		ProtoV5ProviderFactories: protoV5ProviderFactories(),
 		Steps: []resource.TestStep{
@@ -53,7 +52,6 @@ func TestAccResourceBytes(t *testing.T) {
 }
 
 func TestAccResourceBytes_ImportWithoutKeepersThenUpdateShouldNotTriggerChange(t *testing.T) {
-    t.Parallel()
 	resource.UnitTest(t, resource.TestCase{
 		ProtoV5ProviderFactories: protoV5ProviderFactories(),
 		Steps: []resource.TestStep{
@@ -82,7 +80,6 @@ func TestAccResourceBytes_ImportWithoutKeepersThenUpdateShouldNotTriggerChange(t
 }
 
 func TestAccResourceBytes_LengthErrors(t *testing.T) {
-    t.Parallel()
 	resource.UnitTest(t, resource.TestCase{
 		ProtoV5ProviderFactories: protoV5ProviderFactories(),
 		Steps: []resource.TestStep{
@@ -97,7 +94,6 @@ func TestAccResourceBytes_LengthErrors(t *testing.T) {
 }
 
 func TestAccResourceBytes_Length_ForceReplacement(t *testing.T) {
-    t.Parallel()
 	var bytes1, bytes2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -130,7 +126,6 @@ func TestAccResourceBytes_Length_ForceReplacement(t *testing.T) {
 }
 
 func TestAccResourceBytes_Keepers_Keep_EmptyMap(t *testing.T) {
-    t.Parallel()
 	var result1, result2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -163,7 +158,6 @@ func TestAccResourceBytes_Keepers_Keep_EmptyMap(t *testing.T) {
 }
 
 func TestAccResourceBytes_Keepers_Keep_NullMap(t *testing.T) {
-    t.Parallel()
 	var result1, result2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -194,7 +188,6 @@ func TestAccResourceBytes_Keepers_Keep_NullMap(t *testing.T) {
 }
 
 func TestAccResourceBytes_Keepers_Keep_NullValue(t *testing.T) {
-    t.Parallel()
 	var result1, result2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -231,7 +224,6 @@ func TestAccResourceBytes_Keepers_Keep_NullValue(t *testing.T) {
 }
 
 func TestAccResourceBytes_Keepers_Keep_NullValues(t *testing.T) {
-    t.Parallel()
 	var result1, result2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -270,7 +262,6 @@ func TestAccResourceBytes_Keepers_Keep_NullValues(t *testing.T) {
 }
 
 func TestAccResourceBytes_Keepers_Keep_Value(t *testing.T) {
-    t.Parallel()
 	var result1, result2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -307,7 +298,6 @@ func TestAccResourceBytes_Keepers_Keep_Value(t *testing.T) {
 }
 
 func TestAccResourceBytes_Keepers_Keep_Values(t *testing.T) {
-    t.Parallel()
 	var result1, result2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -346,7 +336,6 @@ func TestAccResourceBytes_Keepers_Keep_Values(t *testing.T) {
 }
 
 func TestAccResourceBytes_Keepers_Replace_EmptyMapToValue(t *testing.T) {
-    t.Parallel()
 	var result1, result2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -381,7 +370,6 @@ func TestAccResourceBytes_Keepers_Replace_EmptyMapToValue(t *testing.T) {
 }
 
 func TestAccResourceBytes_Keepers_Replace_NullMapToValue(t *testing.T) {
-    t.Parallel()
 	var result1, result2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -415,7 +403,6 @@ func TestAccResourceBytes_Keepers_Replace_NullMapToValue(t *testing.T) {
 }
 
 func TestAccResourceBytes_Keepers_Replace_NullValueToValue(t *testing.T) {
-    t.Parallel()
 	var result1, result2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -452,7 +439,6 @@ func TestAccResourceBytes_Keepers_Replace_NullValueToValue(t *testing.T) {
 }
 
 func TestAccResourceBytes_Keepers_Replace_ValueToEmptyMap(t *testing.T) {
-    t.Parallel()
 	var result1, result2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -487,7 +473,6 @@ func TestAccResourceBytes_Keepers_Replace_ValueToEmptyMap(t *testing.T) {
 }
 
 func TestAccResourceBytes_Keepers_Replace_ValueToNullMap(t *testing.T) {
-    t.Parallel()
 	var result1, result2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -521,7 +506,6 @@ func TestAccResourceBytes_Keepers_Replace_ValueToNullMap(t *testing.T) {
 }
 
 func TestAccResourceBytes_Keepers_Replace_ValueToNullValue(t *testing.T) {
-    t.Parallel()
 	var result1, result2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -558,7 +542,6 @@ func TestAccResourceBytes_Keepers_Replace_ValueToNullValue(t *testing.T) {
 }
 
 func TestAccResourceBytes_Keepers_Replace_ValueToNewValue(t *testing.T) {
-    t.Parallel()
 	var result1, result2 string
 
 	resource.ParallelTest(t, resource.TestCase{

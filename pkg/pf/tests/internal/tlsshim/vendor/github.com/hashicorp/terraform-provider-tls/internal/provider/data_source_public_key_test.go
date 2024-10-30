@@ -28,7 +28,6 @@ data "tls_public_key" "test" {
 )
 
 func TestPublicKey_dataSource_PEM(t *testing.T) {
-    t.Parallel()
 	r.UnitTest(t, r.TestCase{
 		ProtoV5ProviderFactories: protoV5ProviderFactories(),
 		Steps: []r.TestStep{
@@ -83,7 +82,6 @@ func TestPublicKey_dataSource_PEM(t *testing.T) {
 }
 
 func TestPublicKey_dataSource_PEM_UpgradeFromVersion3_4_0(t *testing.T) {
-    t.Parallel()
 	r.UnitTest(t, r.TestCase{
 		Steps: []r.TestStep{
 			{
@@ -118,7 +116,6 @@ func TestPublicKey_dataSource_PEM_UpgradeFromVersion3_4_0(t *testing.T) {
 }
 
 func TestPublicKey_dataSource_OpenSSHPEM(t *testing.T) {
-    t.Parallel()
 	r.UnitTest(t, r.TestCase{
 		ProtoV5ProviderFactories: protoV5ProviderFactories(),
 		Steps: []r.TestStep{
@@ -172,7 +169,6 @@ func TestPublicKey_dataSource_OpenSSHPEM(t *testing.T) {
 }
 
 func TestAccPublicKey_dataSource_OpenSSHPEM_UpgradeFromVersion3_4_0(t *testing.T) {
-    t.Parallel()
 	r.Test(t, r.TestCase{
 		Steps: []r.TestStep{
 			{
@@ -202,7 +198,6 @@ func TestAccPublicKey_dataSource_OpenSSHPEM_UpgradeFromVersion3_4_0(t *testing.T
 }
 
 func TestPublicKey_dataSource_PKCS8PEM(t *testing.T) {
-    t.Parallel()
 	r.UnitTest(t, r.TestCase{
 		ProtoV5ProviderFactories: protoV5ProviderFactories(),
 		Steps: []r.TestStep{
@@ -242,7 +237,6 @@ func TestPublicKey_dataSource_PKCS8PEM(t *testing.T) {
 }
 
 func TestPublicKey_dataSource_errorCases(t *testing.T) {
-    t.Parallel()
 	r.UnitTest(t, r.TestCase{
 		ProtoV5ProviderFactories: protoV5ProviderFactories(),
 		Steps: []r.TestStep{

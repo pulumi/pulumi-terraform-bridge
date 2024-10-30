@@ -13,7 +13,6 @@ import (
 )
 
 func TestDataSourceCertificate_CertificateContent(t *testing.T) {
-    t.Parallel()
 	r.UnitTest(t, r.TestCase{
 		ProtoV5ProviderFactories: protoV5ProviderFactories(),
 
@@ -46,7 +45,6 @@ func TestDataSourceCertificate_CertificateContent(t *testing.T) {
 }
 
 func TestAccDataSourceCertificate_UpgradeFromVersion3_4_0(t *testing.T) {
-    t.Parallel()
 	r.Test(t, r.TestCase{
 		Steps: []r.TestStep{
 			{
@@ -114,7 +112,6 @@ func TestAccDataSourceCertificate_UpgradeFromVersion3_4_0(t *testing.T) {
 // It can potentially break over time, and we will need to keep the
 // data we check against up to date, when that happens.
 func TestAccDataSourceCertificate_TerraformIO(t *testing.T) {
-    t.Parallel()
 	r.Test(t, r.TestCase{
 		ProtoV5ProviderFactories: protoV5ProviderFactories(),
 
@@ -164,7 +161,6 @@ func TestAccDataSourceCertificate_TerraformIO(t *testing.T) {
 // It can potentially break over time, and we will need to keep the
 // data we check against up to date, when that happens.
 func TestAccDataSourceCertificate_BadSSL(t *testing.T) {
-    t.Parallel()
 	r.Test(t, r.TestCase{
 		ProtoV5ProviderFactories: protoV5ProviderFactories(),
 
@@ -210,7 +206,6 @@ func TestAccDataSourceCertificate_BadSSL(t *testing.T) {
 }
 
 func TestDataSourceCertificate_CertificateContentNegativeTests(t *testing.T) {
-    t.Parallel()
 	r.UnitTest(t, r.TestCase{
 		ProtoV5ProviderFactories: protoV5ProviderFactories(),
 		Steps: []r.TestStep{
@@ -250,7 +245,6 @@ func TestDataSourceCertificate_CertificateContentNegativeTests(t *testing.T) {
 }
 
 func TestDataSourceCertificate_HTTPSScheme(t *testing.T) {
-    t.Parallel()
 	server, err := tu.NewHTTPServer()
 	if err != nil {
 		t.Fatal(err)
@@ -277,7 +271,6 @@ func TestDataSourceCertificate_HTTPSScheme(t *testing.T) {
 }
 
 func TestDataSourceCertificate_TLSScheme(t *testing.T) {
-    t.Parallel()
 	server, err := tu.NewHTTPServer()
 	if err != nil {
 		t.Fatal(err)
@@ -304,7 +297,6 @@ func TestDataSourceCertificate_TLSScheme(t *testing.T) {
 }
 
 func TestDataSourceCertificate_HTTPSSchemeViaProxy(t *testing.T) {
-    t.Parallel()
 	server, err := tu.NewHTTPServer()
 	if err != nil {
 		t.Fatal(err)
@@ -343,7 +335,6 @@ func TestDataSourceCertificate_HTTPSSchemeViaProxy(t *testing.T) {
 }
 
 func TestDataSourceCertificate_HTTPSSchemeViaProxyWithUsernameAuth(t *testing.T) {
-    t.Parallel()
 	server, err := tu.NewHTTPServer()
 	if err != nil {
 		t.Fatal(err)
@@ -403,7 +394,6 @@ func TestDataSourceCertificate_HTTPSSchemeViaProxyWithUsernameAuth(t *testing.T)
 }
 
 func TestDataSourceCertificate_HTTPSSchemeViaProxyWithUsernameAndPasswordAuth(t *testing.T) {
-    t.Parallel()
 	server, err := tu.NewHTTPServer()
 	if err != nil {
 		t.Fatal(err)
@@ -519,7 +509,6 @@ func TestDataSourceCertificate_HTTPSSchemeViaProxyFromEnv(t *testing.T) {
 }
 
 func TestDataSourceCertificate_HTTPSSchemeViaProxyButNoProxyAvailable(t *testing.T) {
-    t.Parallel()
 	server, err := tu.NewHTTPServer()
 	if err != nil {
 		t.Fatal(err)
@@ -584,7 +573,6 @@ func localTestCertificateChainCheckFunc() r.TestCheckFunc {
 }
 
 func TestDataSourceCertificate_MalformedURL(t *testing.T) {
-    t.Parallel()
 	r.UnitTest(t, r.TestCase{
 		ProtoV5ProviderFactories: protoV5ProviderFactories(),
 
@@ -654,7 +642,6 @@ func TestDataSourceCertificate_MalformedURL(t *testing.T) {
 }
 
 func TestDataSourceCertificate_UnknownComputedCertificatesUntilApplied(t *testing.T) {
-    t.Parallel()
 	r.Test(t, r.TestCase{
 		ProtoV5ProviderFactories: protoV5ProviderFactories(),
 

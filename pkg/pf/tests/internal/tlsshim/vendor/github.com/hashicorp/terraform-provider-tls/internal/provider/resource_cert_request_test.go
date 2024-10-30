@@ -15,7 +15,6 @@ import (
 )
 
 func TestResourceCertRequest(t *testing.T) {
-    t.Parallel()
 	r.UnitTest(t, r.TestCase{
 		ProtoV5ProviderFactories: protoV5ProviderFactories(),
 		Steps: []r.TestStep{
@@ -113,7 +112,6 @@ func TestResourceCertRequest(t *testing.T) {
 }
 
 func TestAccResourceCertRequest_UpgradeFromVersion3_4_0(t *testing.T) {
-    t.Parallel()
 	config := `
 		resource "tls_private_key" "test1" {
 			algorithm = "ED25519"
@@ -234,7 +232,6 @@ func TestAccResourceCertRequest_UpgradeFromVersion3_4_0(t *testing.T) {
 }
 
 func TestResourceCertRequest_NoSubject(t *testing.T) {
-    t.Parallel()
 	r.UnitTest(t, r.TestCase{
 		ProtoV5ProviderFactories: protoV5ProviderFactories(),
 		Steps: []r.TestStep{
@@ -316,7 +313,6 @@ func TestResourceCertRequest_NoSubject(t *testing.T) {
 }
 
 func TestResourceCertRequest_InvalidConfigs(t *testing.T) {
-    t.Parallel()
 	r.UnitTest(t, r.TestCase{
 		ProtoV5ProviderFactories: protoV5ProviderFactories(),
 		Steps: []r.TestStep{
@@ -347,7 +343,6 @@ func TestResourceCertRequest_InvalidConfigs(t *testing.T) {
 }
 
 func TestResourceCertRequest_PKCS8(t *testing.T) {
-    t.Parallel()
 	r.UnitTest(t, r.TestCase{
 		ProtoV5ProviderFactories: protoV5ProviderFactories(),
 		Steps: []r.TestStep{
@@ -423,7 +418,6 @@ func TestResourceCertRequest_PKCS8(t *testing.T) {
 }
 
 func TestResourceCertRequest_PrivateKeyPEM(t *testing.T) {
-    t.Parallel()
 	var pkp1, pkp2 string
 	resourceName := "tls_cert_request.client_csr"
 

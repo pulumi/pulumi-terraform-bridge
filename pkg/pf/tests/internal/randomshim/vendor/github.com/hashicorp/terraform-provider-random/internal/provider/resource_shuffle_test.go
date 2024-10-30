@@ -23,7 +23,6 @@ import (
 // resource specifically warn that results are not
 // guaranteed consistent across Terraform releases.
 func TestAccResourceShuffle(t *testing.T) {
-    t.Parallel()
 	resource.UnitTest(t, resource.TestCase{
 		ProtoV5ProviderFactories: protoV5ProviderFactories(),
 		Steps: []resource.TestStep{
@@ -46,7 +45,6 @@ func TestAccResourceShuffle(t *testing.T) {
 }
 
 func TestAccResourceShuffle_Keepers_Keep_EmptyMap(t *testing.T) {
-    t.Parallel()
 	var result1, result2 []string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -79,7 +77,6 @@ func TestAccResourceShuffle_Keepers_Keep_EmptyMap(t *testing.T) {
 }
 
 func TestAccResourceShuffle_Keepers_Keep_EmptyMapToNullValue(t *testing.T) {
-    t.Parallel()
 	var result1, result2 []string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -114,7 +111,6 @@ func TestAccResourceShuffle_Keepers_Keep_EmptyMapToNullValue(t *testing.T) {
 }
 
 func TestAccResourceShuffle_Keepers_Keep_NullMap(t *testing.T) {
-    t.Parallel()
 	var result1, result2 []string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -145,7 +141,6 @@ func TestAccResourceShuffle_Keepers_Keep_NullMap(t *testing.T) {
 }
 
 func TestAccResourceShuffle_Keepers_Keep_NullMapToNullValue(t *testing.T) {
-    t.Parallel()
 	var result1, result2 []string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -179,7 +174,6 @@ func TestAccResourceShuffle_Keepers_Keep_NullMapToNullValue(t *testing.T) {
 }
 
 func TestAccResourceShuffle_Keepers_Keep_NullValue(t *testing.T) {
-    t.Parallel()
 	var result1, result2 []string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -216,7 +210,6 @@ func TestAccResourceShuffle_Keepers_Keep_NullValue(t *testing.T) {
 }
 
 func TestAccResourceShuffle_Keepers_Keep_NullValues(t *testing.T) {
-    t.Parallel()
 	var result1, result2 []string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -255,7 +248,6 @@ func TestAccResourceShuffle_Keepers_Keep_NullValues(t *testing.T) {
 }
 
 func TestAccResourceShuffle_Keepers_Keep_Value(t *testing.T) {
-    t.Parallel()
 	var result1, result2 []string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -292,7 +284,6 @@ func TestAccResourceShuffle_Keepers_Keep_Value(t *testing.T) {
 }
 
 func TestAccResourceShuffle_Keepers_Keep_Values(t *testing.T) {
-    t.Parallel()
 	var result1, result2 []string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -331,7 +322,6 @@ func TestAccResourceShuffle_Keepers_Keep_Values(t *testing.T) {
 }
 
 func TestAccResourceShuffle_Keepers_Replace_EmptyMapToValue(t *testing.T) {
-    t.Parallel()
 	var result1, result2 []string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -366,7 +356,6 @@ func TestAccResourceShuffle_Keepers_Replace_EmptyMapToValue(t *testing.T) {
 }
 
 func TestAccResourceShuffle_Keepers_Replace_NullMapToValue(t *testing.T) {
-    t.Parallel()
 	var result1, result2 []string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -400,7 +389,6 @@ func TestAccResourceShuffle_Keepers_Replace_NullMapToValue(t *testing.T) {
 }
 
 func TestAccResourceShuffle_Keepers_Replace_NullValueToValue(t *testing.T) {
-    t.Parallel()
 	var result1, result2 []string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -437,7 +425,6 @@ func TestAccResourceShuffle_Keepers_Replace_NullValueToValue(t *testing.T) {
 }
 
 func TestAccResourceShuffle_Keepers_Replace_ValueToEmptyMap(t *testing.T) {
-    t.Parallel()
 	var result1, result2 []string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -472,7 +459,6 @@ func TestAccResourceShuffle_Keepers_Replace_ValueToEmptyMap(t *testing.T) {
 }
 
 func TestAccResourceShuffle_Keepers_Replace_ValueToNullMap(t *testing.T) {
-    t.Parallel()
 	var result1, result2 []string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -506,7 +492,6 @@ func TestAccResourceShuffle_Keepers_Replace_ValueToNullMap(t *testing.T) {
 }
 
 func TestAccResourceShuffle_Keepers_Replace_ValueToNullValue(t *testing.T) {
-    t.Parallel()
 	var result1, result2 []string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -543,7 +528,6 @@ func TestAccResourceShuffle_Keepers_Replace_ValueToNullValue(t *testing.T) {
 }
 
 func TestAccResourceShuffle_Keepers_Replace_ValueToNewValue(t *testing.T) {
-    t.Parallel()
 	var result1, result2 []string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -580,7 +564,6 @@ func TestAccResourceShuffle_Keepers_Replace_ValueToNewValue(t *testing.T) {
 }
 
 func TestAccResourceShuffle_Keepers_FrameworkMigration_NullMapToNullValue(t *testing.T) {
-    t.Parallel()
 	var result1, result2 []string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -617,7 +600,6 @@ func TestAccResourceShuffle_Keepers_FrameworkMigration_NullMapToNullValue(t *tes
 }
 
 func TestAccResourceShuffle_Keepers_FrameworkMigration_NullMapToValue(t *testing.T) {
-    t.Parallel()
 	var result1, result2 []string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -654,7 +636,6 @@ func TestAccResourceShuffle_Keepers_FrameworkMigration_NullMapToValue(t *testing
 }
 
 func TestAccResourceShuffle_Keepers_FrameworkMigration_NullMapToMultipleNullValue(t *testing.T) {
-    t.Parallel()
 	var result1, result2 []string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -693,7 +674,6 @@ func TestAccResourceShuffle_Keepers_FrameworkMigration_NullMapToMultipleNullValu
 }
 
 func TestAccResourceShuffle_Keepers_FrameworkMigration_NullMapToMultipleValue(t *testing.T) {
-    t.Parallel()
 	var result1, result2 []string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -732,7 +712,6 @@ func TestAccResourceShuffle_Keepers_FrameworkMigration_NullMapToMultipleValue(t 
 }
 
 func TestAccResourceShuffle_Keepers_FrameworkMigration_NullMapValue(t *testing.T) {
-    t.Parallel()
 	var result1, result2 []string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -771,7 +750,6 @@ func TestAccResourceShuffle_Keepers_FrameworkMigration_NullMapValue(t *testing.T
 }
 
 func TestAccResourceShuffle_Keepers_FrameworkMigration_NullMapValueToValue(t *testing.T) {
-    t.Parallel()
 	var result1, result2 []string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -810,7 +788,6 @@ func TestAccResourceShuffle_Keepers_FrameworkMigration_NullMapValueToValue(t *te
 }
 
 func TestAccResourceShuffle_Shorter(t *testing.T) {
-    t.Parallel()
 	resource.UnitTest(t, resource.TestCase{
 		ProtoV5ProviderFactories: protoV5ProviderFactories(),
 		Steps: []resource.TestStep{
@@ -832,7 +809,6 @@ func TestAccResourceShuffle_Shorter(t *testing.T) {
 }
 
 func TestAccResourceShuffle_Longer(t *testing.T) {
-    t.Parallel()
 	resource.UnitTest(t, resource.TestCase{
 		ProtoV5ProviderFactories: protoV5ProviderFactories(),
 		Steps: []resource.TestStep{
@@ -863,7 +839,6 @@ func TestAccResourceShuffle_Longer(t *testing.T) {
 }
 
 func TestAccResourceShuffle_Empty(t *testing.T) {
-    t.Parallel()
 	resource.UnitTest(t, resource.TestCase{
 		ProtoV5ProviderFactories: protoV5ProviderFactories(),
 		Steps: []resource.TestStep{
@@ -882,7 +857,6 @@ func TestAccResourceShuffle_Empty(t *testing.T) {
 }
 
 func TestAccResourceShuffle_One(t *testing.T) {
-    t.Parallel()
 	resource.UnitTest(t, resource.TestCase{
 		ProtoV5ProviderFactories: protoV5ProviderFactories(),
 		Steps: []resource.TestStep{
@@ -902,7 +876,6 @@ func TestAccResourceShuffle_One(t *testing.T) {
 }
 
 func TestAccResourceShuffle_UpgradeFromVersion3_3_2(t *testing.T) {
-    t.Parallel()
 	resource.Test(t, resource.TestCase{
 		Steps: []resource.TestStep{
 			{

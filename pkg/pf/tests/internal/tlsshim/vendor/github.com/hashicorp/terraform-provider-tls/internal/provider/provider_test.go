@@ -44,7 +44,6 @@ func providerVersion310() map[string]resource.ExternalProvider {
 }
 
 func TestProvider_InvalidProxyConfig(t *testing.T) {
-    t.Parallel()
 	resource.UnitTest(t, resource.TestCase{
 		ProtoV5ProviderFactories: protoV5ProviderFactories(),
 
