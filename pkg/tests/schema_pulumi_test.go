@@ -6503,6 +6503,7 @@ resources:
 					Schema: map[string]*schema.Schema{
 						"subnets": {
 							Type: schema.TypeSet,
+							Optional: true,
 							Elem: &schema.Schema{Type: schema.TypeString},
 						},
 					},
@@ -6569,6 +6570,7 @@ resources:
 					Schema: map[string]*schema.Schema{
 						"subnets": {
 							Type: schema.TypeSet,
+							Optional: true,
 							Elem: &schema.Schema{Type: schema.TypeString},
 						},
 					},
