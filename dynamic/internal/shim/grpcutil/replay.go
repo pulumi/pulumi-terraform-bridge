@@ -72,7 +72,7 @@ func mustUnmarshalLog[Q any, T fmt.Stringer](log grpcLog, methodName string, req
 		reqString == log.Request, "request %s does not match log request %s", reqString, log.Request)
 
 	var resp Q
-	err := json.Unmarshal([]byte(log.Response), resp)
+	err := json.Unmarshal([]byte(log.Response), &resp)
 	contract.AssertNoErrorf(err, "failed to unmarshal log response %s", log.Response)
 	return &resp
 }
