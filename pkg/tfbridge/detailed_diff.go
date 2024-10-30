@@ -187,10 +187,19 @@ func (differ detailedDiffer) calculateSetHashIndexMap(
 	convertedListVal, ok := convertedVal.([]interface{})
 	contract.Assertf(ok, "converted value should be a list")
 
-	// Calculate the identity of each element
+	// Calculate the identity of each element. Note that the SetHash function can panic
+	// in the case of custom SetHash functions which get unexpected inputs.
 	for i, newElem := range convertedListVal {
-
-		elementHash := tfs.SetHash(newElem)
+		elementHash := func() int {
+			defer func() {
+				if r := recover(); r != nil {
+					GetLogger(differ.ctx).Warn(fmt.Sprintf(
+						"Failed to calculate preview for element in %s: %v",
+						path.String(), r))
+				}
+			}()
+			return tfs.SetHash(newElem)
+		}()
 		identities[setHash(elementHash)] = arrayIndex(i)
 	}
 	return identities
@@ -402,7 +411,6 @@ func (differ detailedDiffer) makeSetDiff(
 	addedInputs := differ.matchNewIndicesToInputs(path, added)
 
 	changes := buildChangesIndexMap(addedInputs, removed)
-
 	for index, hashes := range changes {
 		oldVal := resource.NewNullProperty()
 		if removedIndex, ok := removed[hashes.oldHash]; ok {

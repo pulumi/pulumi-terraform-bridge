@@ -2577,3 +2577,35 @@ func TestDetailedDiffBuildChangesIndexMap(t *testing.T) {
 		})
 	})
 }
+
+func TestDetailedDiffSetHashPanicCaught(t *testing.T) {
+	tfs := shimv2.NewSchemaMap(map[string]*schema.Schema{
+		"foo": {
+			Type: schema.TypeSet,
+			Elem: &schema.Schema{
+				Type: schema.TypeString,
+			},
+			Set: func(v interface{}) int {
+				panic("test")
+			},
+		},
+	})
+
+	buf := &bytes.Buffer{}
+	ctx := logging.InitLogging(context.Background(), logging.LogOptions{
+		LogSink: &testLogSink{buf: buf},
+	})
+
+	differ := detailedDiffer{
+		ctx: ctx,
+		tfs: tfs,
+		ps:  nil,
+	}
+
+	differ.calculateSetHashIndexMap(
+		newPropertyPath("foo"),
+		[]resource.PropertyValue{resource.NewStringProperty("val1")},
+	)
+
+	require.Contains(t, buf.String(), "Failed to calculate preview for element in foo")
+}

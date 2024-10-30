@@ -6015,12 +6015,14 @@ resources:
 		pt.WritePulumiYaml(t, fmt.Sprintf(program, string(props2JSON)))
 		res := pt.Preview(t, optpreview.Diff())
 
+		// TODO[pulumi/pulumi-terraform-bridge#2528]: The preview is wrong here because of the computed property
 		autogold.Expect(`
     ~ prov:index/test:Test: (update)
         [id=id]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ tests: [
-          + [0]: {
+          + [1]: {
+                  + computed  : "b"
                   + nested    : "a"
                 }
         ]
