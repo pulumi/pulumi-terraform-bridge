@@ -222,6 +222,21 @@ func TestApplyEditRules(t *testing.T) {
 				Content: []byte("Manage a single Schema Registry cluster in the same Terraform workspace"),
 			},
 			expected: []byte("Manage a single Schema Registry cluster in the same Pulumi Stack"),
+		},
+		{
+			name: "Replaces '# Schema' with '# Configuration Reference'",
+			docFile: DocFile{
+				Content: []byte("# Schema \n\n This provider's schema reference is as follows"),
+			},
+			expected: []byte("# Configuration Reference \n\n This provider's schema reference is as follows"),
+			phase:    info.PostCodeTranslation,
+		},
+		{
+			name: "Leaves regular 'Schema'strings as-is",
+			docFile: DocFile{
+				Content: []byte("Manage a single Schema Registry cluster"),
+			},
+			expected: []byte("Manage a single Schema Registry cluster"),
 			phase:    info.PostCodeTranslation,
 		},
 	}
