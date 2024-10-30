@@ -6446,6 +6446,7 @@ func TestTypeChecker(t *testing.T) {
 	}
 
 	runTest := func(t *testing.T, resMap map[string]*schema.Resource, props interface{}, expectedError string) {
+		t.Helper()
 		propsJSON, err := json.Marshal(props)
 		require.NoError(t, err)
 		program := fmt.Sprintf(`
@@ -6469,11 +6470,13 @@ resources:
 			"network_configuration": {
 				Type:     schema.TypeList,
 				Optional: true,
+				MaxItems: 1,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"subnets": {
-							Type: schema.TypeSet,
-							Elem: &schema.Schema{Type: schema.TypeString},
+							Type:     schema.TypeSet,
+							Optional: true,
+							Elem:     &schema.Schema{Type: schema.TypeString},
 						},
 					},
 				},
@@ -6499,12 +6502,13 @@ resources:
 			"network_configuration": {
 				Type:     schema.TypeList,
 				Optional: true,
+				MaxItems: 1,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"subnets": {
-							Type: schema.TypeSet,
+							Type:     schema.TypeSet,
 							Optional: true,
-							Elem: &schema.Schema{Type: schema.TypeString},
+							Elem:     &schema.Schema{Type: schema.TypeString},
 						},
 					},
 				},
@@ -6519,6 +6523,7 @@ resources:
 			"network_configuration": {
 				Type:     schema.TypeList,
 				Optional: true,
+				MaxItems: 1,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"subnets": {
@@ -6549,10 +6554,12 @@ resources:
 			"network_configuration": {
 				Type:     schema.TypeList,
 				Optional: true,
+				MaxItems: 1,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"assign_public_ip": {
-							Type: schema.TypeBool,
+							Type:     schema.TypeBool,
+							Optional: true,
 						},
 					},
 				},
@@ -6566,12 +6573,13 @@ resources:
 			"network_configuration": {
 				Type:     schema.TypeList,
 				Optional: true,
+				MaxItems: 1,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"subnets": {
-							Type: schema.TypeSet,
+							Type:     schema.TypeSet,
 							Optional: true,
-							Elem: &schema.Schema{Type: schema.TypeString},
+							Elem:     &schema.Schema{Type: schema.TypeString},
 						},
 					},
 				},
@@ -6588,6 +6596,7 @@ resources:
 			"network_configuration": {
 				Type:     schema.TypeList,
 				Optional: true,
+				MaxItems: 1,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"assign_public_ip": {
