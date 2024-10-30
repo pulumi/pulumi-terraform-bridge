@@ -83,7 +83,7 @@ func skipUnlessLinux(t *testing.T) {
 	}
 }
 
-// TODO: docs
+// PulCheck creates a new Pulumi test from a bridged provider and a program.
 func PulCheck(t *testing.T, bridgedProvider info.Provider, program string, opts ...opttest.Option) (*pulumitest.PulumiTest, error) {
 	skipUnlessLinux(t)
 	puwd := t.TempDir()
