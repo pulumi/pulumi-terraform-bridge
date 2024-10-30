@@ -565,7 +565,6 @@ func TestTokenAliasing1(t *testing.T) {
 }
 
 func testTokenAliasing(t *testing.T) {
-	t.Parallel()
 	provider := func() *tfbridge.ProviderInfo {
 		return &tfbridge.ProviderInfo{
 			P: (&schema.Provider{
