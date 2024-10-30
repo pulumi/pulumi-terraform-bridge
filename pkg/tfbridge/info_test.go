@@ -80,7 +80,6 @@ func TestStringValue(t *testing.T) {
 }
 
 func TestConfigStringValue(t *testing.T) {
-	t.Parallel()
 	testConf := map[resource.PropertyKey]resource.PropertyValue{
 		"strawberries": {V: "cream"},
 	}
@@ -98,7 +97,6 @@ func TestConfigStringValue(t *testing.T) {
 }
 
 func TestConfigBoolValue(t *testing.T) {
-	t.Parallel()
 	testConf := map[resource.PropertyKey]resource.PropertyValue{
 		"apples": {V: true},
 	}
@@ -116,7 +114,6 @@ func TestConfigBoolValue(t *testing.T) {
 }
 
 func TestConfigArrayValue(t *testing.T) {
-	t.Parallel()
 	testConf := map[resource.PropertyKey]resource.PropertyValue{
 		"fruit_salad": {
 			V: []resource.PropertyValue{

@@ -1054,7 +1054,6 @@ func findKeyInPulumiDetailedDiff(detailedDiff map[string]interface{}, key string
 }
 
 func TestNilVsEmptyNestedCollections(t *testing.T) {
-	t.Parallel()
 	// TODO[pulumi/pulumi-terraform-bridge#2517]: remove once accurate bridge previews are rolled out
 	t.Setenv("PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW", "true")
 	for _, MaxItems := range []int{0, 1} {

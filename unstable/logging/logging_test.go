@@ -28,7 +28,6 @@ import (
 )
 
 func TestLogging(t *testing.T) {
-	t.Parallel()
 	urn := resource.URN("urn:pulumi:prod::web::custom:resources:Resource$random:index/password:Password::my-pw")
 
 	warn := map[string]string{"TF_LOG": "WARN"}

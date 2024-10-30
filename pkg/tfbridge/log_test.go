@@ -218,7 +218,6 @@ func TestLogRedirector(t *testing.T) {
 
 // Check if framework logs emitted by SDKv2 based resources actually are captured by Pulumi.
 func TestLogCapture(t *testing.T) {
-	t.Parallel()
 	t.Setenv("TF_LOG", "WARN")
 	ctx := context.Background()
 	var logs bytes.Buffer

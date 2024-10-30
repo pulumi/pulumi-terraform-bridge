@@ -2304,7 +2304,6 @@ This should be interpolated in.
 }
 
 func TestErrorMissingDocs(t *testing.T) {
-	t.Parallel()
 	tests := []struct {
 		docs                 tfbridge.DocInfo
 		forbidMissingDocsEnv string
@@ -2364,7 +2363,6 @@ func TestErrorMissingDocs(t *testing.T) {
 	}
 }
 func TestErrorNilDocs(t *testing.T) {
-	t.Parallel()
 	t.Run("", func(t *testing.T) {
 		g := &Generator{
 			sink: mockSink{t},

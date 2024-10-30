@@ -3964,7 +3964,6 @@ func TestProviderConfigMinMaxItemsOne(t *testing.T) {
 }
 
 func TestProviderCheckConfigRequiredDefaultEnvConfig(t *testing.T) {
-	t.Parallel()
 	t.Setenv("REQUIRED_CONFIG", "required")
 	// Note that this config should be invalid.
 	//

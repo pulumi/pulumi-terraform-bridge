@@ -292,7 +292,6 @@ func TestWriteFrontMatter(t *testing.T) {
 }
 
 func TestTranslateCodeBlocks(t *testing.T) {
-	t.Parallel()
 	type testCase struct {
 		// The name of the test case.
 		name       string

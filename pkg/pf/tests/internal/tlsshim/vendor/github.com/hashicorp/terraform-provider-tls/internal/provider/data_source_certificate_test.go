@@ -466,7 +466,6 @@ func TestDataSourceCertificate_HTTPSSchemeViaProxyWithUsernameAndPasswordAuth(t 
 }
 
 func TestDataSourceCertificate_HTTPSSchemeViaProxyFromEnv(t *testing.T) {
-    t.Parallel()
 	server, err := tu.NewHTTPServer()
 	if err != nil {
 		t.Fatal(err)
