@@ -13,6 +13,7 @@ import (
 )
 
 func TestOpenSSHFormat_MarshalAndUnmarshal_RSA(t *testing.T) {
+    t.Parallel()
 	// Given an RSA private key
 	rsaOrig, err := rsa.GenerateKey(rand.Reader, 4096)
 	if err != nil {
@@ -45,6 +46,7 @@ func TestOpenSSHFormat_MarshalAndUnmarshal_RSA(t *testing.T) {
 }
 
 func TestOpenSSHFormat_MarshalAndUnmarshal_ECDSA(t *testing.T) {
+    t.Parallel()
 	// Given an ECDSA private key
 	ecdsaOrig, err := ecdsa.GenerateKey(elliptic.P521(), rand.Reader)
 	if err != nil {
@@ -72,6 +74,7 @@ func TestOpenSSHFormat_MarshalAndUnmarshal_ECDSA(t *testing.T) {
 }
 
 func TestOpenSSHFormat_MarshalAndUnmarshal_ED25519(t *testing.T) {
+    t.Parallel()
 	// Given an ED25519 private key
 	_, ed25519Orig, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {

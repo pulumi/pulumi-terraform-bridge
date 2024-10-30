@@ -29,6 +29,7 @@ import (
 )
 
 func TestPropertyPathToSchemaPath(t *testing.T) {
+	t.Parallel()
 	yes := true
 	strSchema := (&schema.Schema{Type: shim.TypeString, Optional: true}).Shim()
 
@@ -211,6 +212,7 @@ func TestPropertyPathToSchemaPath(t *testing.T) {
 }
 
 func TestLookupSchemaInfoMapPath(t *testing.T) {
+	t.Parallel()
 	yes := true
 
 	schemaInfos := map[string]*SchemaInfo{
@@ -281,6 +283,7 @@ func TestLookupSchemaInfoMapPath(t *testing.T) {
 }
 
 func TestTraverseProperties(t *testing.T) {
+	t.Parallel()
 	prov := &ProviderInfo{
 		P:              shimv2.NewProvider(testTFProviderV2),
 		IgnoreMappings: []string{"nested_secret_resource"},
@@ -394,6 +397,7 @@ func TestTraverseProperties(t *testing.T) {
 }
 
 func TestTraversePropertiesSchemaInfo(t *testing.T) {
+	t.Parallel()
 	md := NewProviderMetadata(nil)
 	prov := &ProviderInfo{
 		P:            shimv2.NewProvider(testTFProviderV2),

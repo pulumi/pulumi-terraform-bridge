@@ -204,6 +204,7 @@ func TestMakeTerraformInputMixedMaxItemsOne(t *testing.T) {
 // missing MaxItems=1 properties should present to TF as empty collections when creating
 // a resource (makeTerraformInputsNoDefaultsWithMaxItemsOneDefaults)
 func TestMakeTerraformInputsWithMaxItemsOne(t *testing.T) {
+	t.Parallel()
 	typeString := (&schema.Schema{
 		Type: shim.TypeString,
 	}).Shim()
@@ -617,6 +618,7 @@ func TestTerraformOutputsWithSecretsSupported(t *testing.T) {
 // TestTerraformOutputsWithSecretsUnsupported verifies that we translate Terraform outputs into Pulumi outputs without
 // treating sensitive outputs as secrets
 func TestTerraformOutputsWithSecretsUnsupported(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	for _, f := range factories {
 		t.Run(f.SDKVersion(), func(t *testing.T) {
@@ -646,6 +648,7 @@ func TestTerraformOutputsWithSecretsUnsupported(t *testing.T) {
 
 // Test that meta-properties are correctly produced.
 func TestMetaProperties(t *testing.T) {
+	t.Parallel()
 	for _, f := range factories {
 		t.Run(f.SDKVersion(), func(t *testing.T) {
 			prov := f.NewTestProvider()
@@ -728,6 +731,7 @@ func TestMetaProperties(t *testing.T) {
 }
 
 func TestInjectingCustomTimeouts(t *testing.T) {
+	t.Parallel()
 	for _, f := range factories {
 		t.Run(f.SDKVersion(), func(t *testing.T) {
 			prov := f.NewTestProvider()
@@ -831,6 +835,7 @@ func TestInjectingCustomTimeouts(t *testing.T) {
 
 // Test that MakeTerraformResult reads property values appropriately.
 func TestResultAttributesRoundTrip(t *testing.T) {
+	t.Parallel()
 	setup := func(f shimFactory) (shim.Resource, shim.InstanceState, shim.InstanceState) {
 		prov := f.NewTestProvider()
 		ctx := context.Background()
@@ -918,6 +923,7 @@ func fixedDefault(value interface{}) func() (interface{}, error) {
 }
 
 func TestDefaults(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	for _, f := range factories {
 		t.Run(f.SDKVersion(), func(t *testing.T) {
@@ -1108,6 +1114,7 @@ func TestDefaults(t *testing.T) {
 }
 
 func TestDefaultsConflictsWith(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	for _, f := range factories {
 		t.Run(f.SDKVersion(), func(t *testing.T) {
@@ -1178,6 +1185,7 @@ func TestDefaultsConflictsWith(t *testing.T) {
 }
 
 func TestComputedAsset(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	tfs := shimv1.NewSchemaMap(map[string]*schemav1.Schema{
 		"zzz": {Type: schemav1.TypeString},
@@ -1198,6 +1206,7 @@ func TestComputedAsset(t *testing.T) {
 }
 
 func TestInvalidAsset(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	tfs := shimv1.NewSchemaMap(map[string]*schemav1.Schema{
 		"zzz": {Type: schemav1.TypeString},
@@ -1465,6 +1474,7 @@ func TestCustomTransforms(t *testing.T) {
 }
 
 func TestImporterOnRead(t *testing.T) {
+	t.Parallel()
 	tfProvider := makeTestTFProviderV1(
 		map[string]*schemav1.Schema{
 			"required_for_import": {
@@ -1521,6 +1531,7 @@ func TestImporterOnRead(t *testing.T) {
 }
 
 func TestImporterWithNewID(t *testing.T) {
+	t.Parallel()
 	tfProvider := makeTestTFProviderV1(
 		map[string]*schemav1.Schema{
 			"required_for_import": {
@@ -1601,6 +1612,7 @@ func TestImporterWithMultipleResourceTypes(t *testing.T) {
 }
 
 func TestImporterWithMultipleResources(t *testing.T) {
+	t.Parallel()
 	tfProvider := makeTestTFProviderV1(
 		map[string]*schemav1.Schema{
 			"required_for_import": {
@@ -1643,6 +1655,7 @@ func TestImporterWithMultipleResources(t *testing.T) {
 }
 
 func TestImporterWithMultipleNewIDs(t *testing.T) {
+	t.Parallel()
 	tfProvider := makeTestTFProviderV1(
 		map[string]*schemav1.Schema{
 			"required_for_import": {
@@ -1684,6 +1697,7 @@ func TestImporterWithMultipleNewIDs(t *testing.T) {
 }
 
 func TestImporterWithNoResource(t *testing.T) {
+	t.Parallel()
 	tfProvider := makeTestTFProviderV1(map[string]*schemav1.Schema{},
 		func(d *schemav1.ResourceData, meta interface{}) ([]*schemav1.ResourceData, error) {
 			// Return nothing
@@ -1763,6 +1777,7 @@ func makeTestTFProviderV2(
 }
 
 func TestStringOutputsWithSchema(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	result := MakeTerraformOutputs(
 		ctx,
@@ -1801,6 +1816,7 @@ func TestStringOutputsWithSchema(t *testing.T) {
 }
 
 func TestExtractInputsFromOutputs(t *testing.T) {
+	t.Parallel()
 	tfProvider := makeTestTFProviderV1(
 		map[string]*schemav1.Schema{
 			"input_a": {Type: schemav1.TypeString, Required: true},
@@ -2210,6 +2226,7 @@ func TestRefreshExtractInputsFromOutputsListOfObjects(t *testing.T) {
 }
 
 func TestFailureReasonForMissingRequiredFields(t *testing.T) {
+	t.Parallel()
 	// Define two required inputs
 	tfProvider := makeTestTFProviderV1(
 		map[string]*schemav1.Schema{
@@ -2272,6 +2289,7 @@ func TestFailureReasonForMissingRequiredFields(t *testing.T) {
 }
 
 func TestAssetRoundtrip(t *testing.T) {
+	t.Parallel()
 	tfProvider := makeTestTFProviderV1(
 		map[string]*schemav1.Schema{
 			"input_a": {Type: schemav1.TypeString, Required: true},
@@ -2369,6 +2387,7 @@ func TestAssetRoundtrip(t *testing.T) {
 }
 
 func TestDeleteBeforeReplaceAutoname(t *testing.T) {
+	t.Parallel()
 	tfProvider := makeTestTFProviderV1(
 		map[string]*schemav1.Schema{
 			"input_a": {Type: schemav1.TypeString, Required: true},
@@ -2520,6 +2539,7 @@ func TestDeleteBeforeReplaceAutoname(t *testing.T) {
 }
 
 func TestExtractDefaultSecretInputs(t *testing.T) {
+	t.Parallel()
 	tfProvider := makeTestTFProviderV1(
 		map[string]*schemav1.Schema{
 			"input_a": {Type: schemav1.TypeString, Sensitive: true, Required: true},
@@ -2588,6 +2608,7 @@ func TestExtractDefaultSecretInputs(t *testing.T) {
 }
 
 func TestExtractDefaultIntegerInputs(t *testing.T) {
+	t.Parallel()
 	// Terrafrom differentiates between Int and Float. Pulumi doesn't so we need to handle both cases for
 	// default values.
 	tfProvider := makeTestTFProviderV1(
@@ -2658,6 +2679,7 @@ func TestExtractDefaultIntegerInputs(t *testing.T) {
 }
 
 func TestExtractSchemaInputsNestedMaxItemsOne(t *testing.T) {
+	t.Parallel()
 	provider := func(info *ResourceInfo) *Provider {
 		if info == nil {
 			info = &ResourceInfo{}
@@ -2860,6 +2882,7 @@ func TestExtractSchemaInputsNestedMaxItemsOne(t *testing.T) {
 }
 
 func TestOutputNumberTypes(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	tfs := shimv1.NewSchemaMap(map[string]*schemav1.Schema{
 		"aaa": {Type: schemav1.TypeInt},
@@ -2900,6 +2923,7 @@ func TestOutputNumberTypes(t *testing.T) {
 }
 
 func TestMakeTerraformInputsOnMapNestedObjects(t *testing.T) {
+	t.Parallel()
 	r := &schemav2.Resource{
 		Schema: map[string]*schemav2.Schema{
 			"map_prop": {
@@ -3004,6 +3028,7 @@ func TestMakeTerraformInputsOnMapNestedObjects(t *testing.T) {
 }
 
 func TestRegress940(t *testing.T) {
+	t.Parallel()
 	r := &schemav2.Resource{
 		Schema: map[string]*schemav2.Schema{
 			"build": {
@@ -3054,6 +3079,7 @@ func TestRegress940(t *testing.T) {
 
 // TestTerraformInputs verifies that we translate Pulumi inputs into Terraform inputs.
 func Test_makeTerraformInputsNoDefaults(t *testing.T) {
+	t.Parallel()
 	type testCase struct {
 		testCaseName string
 		schemaMap    map[string]*schema.Schema

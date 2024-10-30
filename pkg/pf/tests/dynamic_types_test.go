@@ -34,6 +34,7 @@ import (
 )
 
 func TestCreateResourceWithDynamicAttribute(t *testing.T) {
+    t.Parallel()
 	type testCase struct {
 		name                     string                 // test case name
 		manifestToSend           any                    // assumes a Pulumi YAML expression

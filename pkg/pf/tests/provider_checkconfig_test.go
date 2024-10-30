@@ -43,6 +43,7 @@ import (
 )
 
 func TestCheckConfig(t *testing.T) {
+    t.Parallel()
 	t.Run("minimal", func(t *testing.T) {
 		schema := schema.Schema{}
 		testutils.Replay(t, makeProviderServer(t, schema), `
@@ -468,6 +469,7 @@ func TestCheckConfig(t *testing.T) {
 }
 
 func TestPreConfigureCallback(t *testing.T) {
+    t.Parallel()
 	t.Run("PreConfigureCallback called by CheckConfig", func(t *testing.T) {
 		schema := schema.Schema{
 			Attributes: map[string]schema.Attribute{

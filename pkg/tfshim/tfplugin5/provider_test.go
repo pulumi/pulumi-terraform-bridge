@@ -202,6 +202,7 @@ func startTestProvider(t *testing.T) *provider {
 }
 
 func TestProviderSchema(t *testing.T) {
+	t.Parallel()
 	p := startTestProvider(t)
 
 	properties := map[string]*attributeSchema{}
@@ -219,6 +220,7 @@ func TestProviderSchema(t *testing.T) {
 }
 
 func TestProviderResourcesMap(t *testing.T) {
+	t.Parallel()
 	p := startTestProvider(t)
 
 	expected := map[string]*resource{
@@ -616,6 +618,7 @@ func TestProviderResourcesMap(t *testing.T) {
 }
 
 func TestProviderDataSourcesMap(t *testing.T) {
+	t.Parallel()
 	p := startTestProvider(t)
 
 	expected := map[string]*resource{
@@ -766,6 +769,7 @@ func TestProviderDataSourcesMap(t *testing.T) {
 }
 
 func TestValidate(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	p := startTestProvider(t)
 
@@ -777,6 +781,7 @@ func TestValidate(t *testing.T) {
 }
 
 func TestValidateResource(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	p := startTestProvider(t)
 
@@ -827,6 +832,7 @@ func TestValidateResource(t *testing.T) {
 }
 
 func TestValidateDataSource(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	p := startTestProvider(t)
 
@@ -861,6 +867,7 @@ func TestValidateDataSource(t *testing.T) {
 }
 
 func TestConfigure(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	p := startTestProvider(t)
 
@@ -871,6 +878,7 @@ func TestConfigure(t *testing.T) {
 }
 
 func TestDiff(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	p := startTestProvider(t)
 
@@ -1043,6 +1051,7 @@ func TestDiff(t *testing.T) {
 }
 
 func TestApply(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	p := startTestProvider(t)
 
@@ -1222,6 +1231,7 @@ func TestApply(t *testing.T) {
 }
 
 func TestRefresh(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	p := startTestProvider(t)
 
@@ -1288,6 +1298,7 @@ func TestRefresh(t *testing.T) {
 }
 
 func TestReadDataDiff(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	p := startTestProvider(t)
 
@@ -1319,6 +1330,7 @@ func TestReadDataDiff(t *testing.T) {
 }
 
 func TestReadDataApply(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	p := startTestProvider(t)
 
@@ -1368,6 +1380,7 @@ func TestReadDataApply(t *testing.T) {
 }
 
 func TestImportResourceState(t *testing.T) {
+	t.Parallel()
 	p := startTestProvider(t)
 
 	resource, ok := p.ResourcesMap().GetOk("example_resource")

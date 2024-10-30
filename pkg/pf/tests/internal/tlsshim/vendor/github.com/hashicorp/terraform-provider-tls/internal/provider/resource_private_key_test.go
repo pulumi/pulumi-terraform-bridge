@@ -10,6 +10,7 @@ import (
 )
 
 func TestPrivateKeyRSA(t *testing.T) {
+    t.Parallel()
 	r.UnitTest(t, r.TestCase{
 		ProtoV5ProviderFactories: protoV5ProviderFactories(),
 		Steps: []r.TestStep{
@@ -57,6 +58,7 @@ func TestPrivateKeyRSA(t *testing.T) {
 }
 
 func TestAccPrivateKeyRSA_UpgradeFromVersion3_4_0(t *testing.T) {
+    t.Parallel()
 	r.Test(t, r.TestCase{
 		Steps: []r.TestStep{
 			{
@@ -119,6 +121,7 @@ func TestAccPrivateKeyRSA_UpgradeFromVersion3_4_0(t *testing.T) {
 }
 
 func TestAccPrivateKeyRSA_UpgradeFromVersion3_1_0(t *testing.T) {
+    t.Parallel()
 	r.Test(t, r.TestCase{
 		Steps: []r.TestStep{
 			{
@@ -181,6 +184,7 @@ func TestAccPrivateKeyRSA_UpgradeFromVersion3_1_0(t *testing.T) {
 }
 
 func TestPrivateKeyECDSA(t *testing.T) {
+    t.Parallel()
 	r.UnitTest(t, r.TestCase{
 		ProtoV5ProviderFactories: protoV5ProviderFactories(),
 		Steps: []r.TestStep{
@@ -222,6 +226,7 @@ func TestPrivateKeyECDSA(t *testing.T) {
 }
 
 func TestAccPrivateKeyECDSA_UpgradeFromVersion3_4_0(t *testing.T) {
+    t.Parallel()
 	r.Test(t, r.TestCase{
 		Steps: []r.TestStep{
 			{
@@ -272,6 +277,7 @@ func TestAccPrivateKeyECDSA_UpgradeFromVersion3_4_0(t *testing.T) {
 }
 
 func TestAccPrivateKeyECDSA_UpgradeFromVersion3_1_0(t *testing.T) {
+    t.Parallel()
 	r.Test(t, r.TestCase{
 		Steps: []r.TestStep{
 			{
@@ -325,6 +331,7 @@ func TestAccPrivateKeyECDSA_UpgradeFromVersion3_1_0(t *testing.T) {
 }
 
 func TestPrivateKeyED25519(t *testing.T) {
+    t.Parallel()
 	r.UnitTest(t, r.TestCase{
 		ProtoV5ProviderFactories: protoV5ProviderFactories(),
 		Steps: []r.TestStep{
@@ -349,6 +356,7 @@ func TestPrivateKeyED25519(t *testing.T) {
 }
 
 func TestAccPrivateKeyED25519_UpgradeFromVersion3_4_0(t *testing.T) {
+    t.Parallel()
 	r.Test(t, r.TestCase{
 		Steps: []r.TestStep{
 			{

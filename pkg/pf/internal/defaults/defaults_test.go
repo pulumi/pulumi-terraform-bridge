@@ -28,6 +28,7 @@ import (
 )
 
 func TestApplyDefaultInfoValues(t *testing.T) {
+    t.Parallel()
 
 	var schemaMap shim.SchemaMap = schema.SchemaMap{
 		"string_prop": (&schema.Schema{Type: shim.TypeString, Optional: true}).Shim(),

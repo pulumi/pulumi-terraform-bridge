@@ -21,6 +21,7 @@ import (
 )
 
 func TestIntrinsicApply(t *testing.T) {
+	t.Parallel()
 	args := []*BoundVariableAccess{
 		{},
 		{},
@@ -39,6 +40,7 @@ func TestIntrinsicApply(t *testing.T) {
 }
 
 func TestIntrinsicApplyArg(t *testing.T) {
+	t.Parallel()
 	idx, typ := 3, TypeString
 
 	c := NewApplyArgCall(idx, typ)
@@ -50,6 +52,7 @@ func TestIntrinsicApplyArg(t *testing.T) {
 }
 
 func TestIntrinsicArchive(t *testing.T) {
+	t.Parallel()
 	arg := &BoundLiteral{}
 
 	c := NewArchiveCall(arg)
@@ -61,6 +64,7 @@ func TestIntrinsicArchive(t *testing.T) {
 }
 
 func TestIntrinsicAsset(t *testing.T) {
+	t.Parallel()
 	arg := &BoundLiteral{}
 
 	c := NewAssetCall(arg)
@@ -72,6 +76,7 @@ func TestIntrinsicAsset(t *testing.T) {
 }
 
 func TestIntrinsicCoerce(t *testing.T) {
+	t.Parallel()
 	value, toType := &BoundLiteral{}, TypeNumber
 
 	c := NewCoerceCall(value, toType)
@@ -85,6 +90,7 @@ func TestIntrinsicCoerce(t *testing.T) {
 }
 
 func TestIntrinsicGetStack(t *testing.T) {
+	t.Parallel()
 	c := NewGetStackCall()
 	assert.Equal(t, IntrinsicGetStack, c.Func)
 	assert.Equal(t, TypeString, c.Type())

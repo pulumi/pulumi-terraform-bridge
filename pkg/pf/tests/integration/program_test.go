@@ -34,6 +34,7 @@ import (
 )
 
 func TestBasicProgram(t *testing.T) {
+    t.Parallel()
 	if testing.Short() {
 		t.Skip()
 	}
@@ -56,6 +57,7 @@ func TestBasicProgram(t *testing.T) {
 }
 
 func TestUpdateProgram(t *testing.T) {
+    t.Parallel()
 	if testing.Short() {
 		t.Skip()
 	}
@@ -98,6 +100,7 @@ func TestUpdateProgram(t *testing.T) {
 }
 
 func TestDefaultInfo(t *testing.T) {
+    t.Parallel()
 	if testing.Short() {
 		t.Skip()
 	}
@@ -120,6 +123,7 @@ func TestDefaultInfo(t *testing.T) {
 }
 
 func TestPrivateState(t *testing.T) {
+    t.Parallel()
 	if testing.Short() {
 		t.Skip()
 	}
@@ -148,6 +152,7 @@ func TestPrivateState(t *testing.T) {
 }
 
 func TestAutoName(t *testing.T) {
+    t.Parallel()
 	if testing.Short() {
 		t.Skip()
 	}
@@ -168,6 +173,7 @@ func TestAutoName(t *testing.T) {
 
 // Test skip_metadata_api_check example from pulumi-aws that is unusual in remapping a string prop to boolean.
 func TestRegressSMAC(t *testing.T) {
+    t.Parallel()
 	if testing.Short() {
 		t.Skip()
 	}
@@ -187,6 +193,7 @@ func TestRegressSMAC(t *testing.T) {
 }
 
 func TestTracePropagation(t *testing.T) {
+    t.Parallel()
 	if testing.Short() {
 		t.Skip()
 	}
@@ -237,6 +244,7 @@ func TestTracePropagation(t *testing.T) {
 // Note that random_bytes is an interesting resource that does not specify an ID where Pulumi requires it. Add a test
 // for it to make sure this continues working.
 func TestResourceWithoutID(t *testing.T) {
+    t.Parallel()
 	if testing.Short() {
 		t.Skip()
 	}

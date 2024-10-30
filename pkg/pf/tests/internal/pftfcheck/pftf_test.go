@@ -11,6 +11,7 @@ import (
 )
 
 func TestBasic(t *testing.T) {
+    t.Parallel()
 	prov := pb.NewProvider(pb.NewProviderArgs{
 		AllResources: []pb.Resource{
 			{
@@ -44,6 +45,7 @@ output "s_val" {
 }
 
 func TestDefaults(t *testing.T) {
+    t.Parallel()
 	prov := pb.NewProvider(pb.NewProviderArgs{
 		AllResources: []pb.Resource{
 			{

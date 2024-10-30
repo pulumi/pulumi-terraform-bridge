@@ -13,6 +13,7 @@ import (
 )
 
 func TestMarkPromptDataSources(t *testing.T) {
+	t.Parallel()
 	runTest := func(source string, expected map[string]bool) {
 		dir, err := os.MkdirTemp("", "")
 		if err != nil {

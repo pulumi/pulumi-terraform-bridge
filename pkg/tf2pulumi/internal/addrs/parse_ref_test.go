@@ -10,6 +10,7 @@ import (
 )
 
 func TestParseRef(t *testing.T) {
+    t.Parallel()
 	tests := []struct {
 		Input   string
 		Want    *Reference

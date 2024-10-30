@@ -25,7 +25,6 @@ issues:
   exclude:
     - "unused-parameter: parameter"
     - "redefines-builtin-id:"
-    - "paralleltest"
   exclude-dirs:
     - pkg/tf2pulumi/internal/addrs
     - pkg/tf2pulumi/internal/config
@@ -39,7 +38,6 @@ issues:
     - pf
     - x/muxer
     - testing
-    - pkg/tfshim/tfplugin5
 linters-settings:
   gci:
     sections:

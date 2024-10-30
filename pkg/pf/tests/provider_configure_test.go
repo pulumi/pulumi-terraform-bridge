@@ -30,6 +30,7 @@ import (
 )
 
 func TestConfigure(t *testing.T) {
+    t.Parallel()
 	t.Run("string", crosstests.MakeConfigure(
 		schema.Schema{Attributes: map[string]schema.Attribute{
 			"k": schema.StringAttribute{Optional: true},
@@ -58,6 +59,7 @@ func TestConfigure(t *testing.T) {
 // TestConfigureInvalidTypes tests configure for inputs that are not type-safe but that we
 // expect to work.
 func TestConfigureInvalidTypes(t *testing.T) {
+    t.Parallel()
 	t.Setenv("PULUMI_DEBUG_YAML_DISABLE_TYPE_CHECKING", "true")
 
 	t.Run("bool-type-conversion", crosstests.MakeConfigure(
@@ -73,6 +75,7 @@ func TestConfigureInvalidTypes(t *testing.T) {
 //
 // The resource TestConfigRes will read stringConfigProp information the provider receives via Configure.
 func TestConfigureToCreate(t *testing.T) {
+    t.Parallel()
 	server, err := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
 	require.NoError(t, err)
 	replay.ReplaySequence(t, server, `
@@ -107,6 +110,7 @@ func TestConfigureToCreate(t *testing.T) {
 }
 
 func TestConfigureBooleans(t *testing.T) {
+    t.Parallel()
 	// Non-string properties caused trouble at some point, test booleans.
 	server, err := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
 	require.NoError(t, err)
@@ -127,6 +131,7 @@ func TestConfigureBooleans(t *testing.T) {
 }
 
 func TestConfigureErrorReplacement(t *testing.T) {
+    t.Parallel()
 	t.Run("replace_config_properties", func(t *testing.T) {
 		errString := `some error with "config_property" and "config" but not config`
 		prov := &testprovider.ConfigTestProvider{
@@ -186,6 +191,7 @@ func TestConfigureErrorReplacement(t *testing.T) {
 }
 
 func TestJSONNestedConfigure(t *testing.T) {
+    t.Parallel()
 	p := testprovider.SyntheticTestBridgeProvider()
 	server, err := newProviderServer(t, p)
 	require.NoError(t, err)
@@ -208,6 +214,7 @@ func TestJSONNestedConfigure(t *testing.T) {
 }
 
 func TestJSONNestedConfigureWithSecrets(t *testing.T) {
+    t.Parallel()
 	server, err := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
 	require.NoError(t, err)
 	replay.ReplaySequence(t, server, `
@@ -247,6 +254,7 @@ func TestJSONNestedConfigureWithSecrets(t *testing.T) {
 }
 
 func TestConfigureWithSecrets(t *testing.T) {
+    t.Parallel()
 	server, err := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
 	require.NoError(t, err)
 	replay.ReplaySequence(t, server, `

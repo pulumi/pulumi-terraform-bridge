@@ -28,6 +28,7 @@ import (
 )
 
 func TestAutoFill(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipped on windows: test issues with newlines")
 	}

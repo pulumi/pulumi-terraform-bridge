@@ -24,6 +24,7 @@ import (
 )
 
 func TestTerraformResourceName(t *testing.T) {
+    t.Parallel()
 	urn := resource.URN("urn:pulumi:dev::stack1::random:index/randomInteger:RandomInteger::priority")
 	p := &provider{
 		info: tfbridge.ProviderInfo{

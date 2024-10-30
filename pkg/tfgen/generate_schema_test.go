@@ -117,6 +117,7 @@ func TestMiniMuxedReplace(t *testing.T) {
 }
 
 func TestCSharpMiniRandom(t *testing.T) {
+	t.Parallel()
 	provider := testprovider.ProviderMiniRandomCSharp()
 	schema, err := GenerateSchema(provider, diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
 		Color: colors.Never,
@@ -487,6 +488,7 @@ func TestAppendExample_NoExampleUsage(t *testing.T) {
 }
 
 func TestAppendExample_NoExampleUsage_ImportsPresent(t *testing.T) {
+	t.Parallel()
 	input := `Description Text
 
 ## Import

@@ -48,6 +48,7 @@ import (
 )
 
 func TestConvertViaPulumiCLI(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS == "windows" {
 		// Currently there is a test issue in CI/test setup:
 		//

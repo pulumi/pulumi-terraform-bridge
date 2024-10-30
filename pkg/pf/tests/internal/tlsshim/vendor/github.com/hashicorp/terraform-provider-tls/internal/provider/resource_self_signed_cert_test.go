@@ -17,6 +17,7 @@ import (
 )
 
 func TestResourceSelfSignedCert(t *testing.T) {
+    t.Parallel()
 	r.UnitTest(t, r.TestCase{
 		ProtoV5ProviderFactories: protoV5ProviderFactories(),
 		Steps: []r.TestStep{
@@ -92,6 +93,7 @@ EOT
 }
 
 func TestAccResourceSelfSignedCert_UpgradeFromVersion3_4_0(t *testing.T) {
+    t.Parallel()
 	r.Test(t, r.TestCase{
 		Steps: []r.TestStep{
 			{
@@ -193,6 +195,7 @@ func TestAccResourceSelfSignedCert_UpgradeFromVersion3_4_0(t *testing.T) {
 }
 
 func TestResourceSelfSignedCert_DetectExpiringAndExpired(t *testing.T) {
+    t.Parallel()
 	oldNow := overridableTimeFunc
 	r.UnitTest(t, r.TestCase{
 		ProtoV5ProviderFactories: protoV5ProviderFactories(),
@@ -219,6 +222,7 @@ func TestResourceSelfSignedCert_DetectExpiringAndExpired(t *testing.T) {
 }
 
 func TestResourceSelfSignedCert_DetectExpiring_Refresh(t *testing.T) {
+    t.Parallel()
 	oldNow := overridableTimeFunc
 	r.UnitTest(t, r.TestCase{
 		ProtoV5ProviderFactories: protoV5ProviderFactories(),
@@ -245,6 +249,7 @@ func TestResourceSelfSignedCert_DetectExpiring_Refresh(t *testing.T) {
 }
 
 func TestResourceSelfSignedCert_DetectExpired_Refresh(t *testing.T) {
+    t.Parallel()
 	oldNow := overridableTimeFunc
 	r.UnitTest(t, r.TestCase{
 		ProtoV5ProviderFactories: protoV5ProviderFactories(),
@@ -271,6 +276,7 @@ func TestResourceSelfSignedCert_DetectExpired_Refresh(t *testing.T) {
 }
 
 func TestResourceSelfSignedCert_ReadyForRenewal_ValidityPeriodZero(t *testing.T) {
+    t.Parallel()
 	oldNow := overridableTimeFunc
 	r.UnitTest(t, r.TestCase{
 		ProtoV5ProviderFactories: protoV5ProviderFactories(),
@@ -287,6 +293,7 @@ func TestResourceSelfSignedCert_ReadyForRenewal_ValidityPeriodZero(t *testing.T)
 }
 
 func TestResourceSelfSignedCert_ReadyForRenewal_EarlyRenewalGreaterThanValidityPeriod(t *testing.T) {
+    t.Parallel()
 	oldNow := overridableTimeFunc
 	r.UnitTest(t, r.TestCase{
 		ProtoV5ProviderFactories: protoV5ProviderFactories(),
@@ -303,6 +310,7 @@ func TestResourceSelfSignedCert_ReadyForRenewal_EarlyRenewalGreaterThanValidityP
 }
 
 func TestResourceSelfSignedCert_ReadyForRenewal_EarlyRenewalEqualsValidityPeriod(t *testing.T) {
+    t.Parallel()
 	oldNow := overridableTimeFunc
 	r.UnitTest(t, r.TestCase{
 		ProtoV5ProviderFactories: protoV5ProviderFactories(),
@@ -319,6 +327,7 @@ func TestResourceSelfSignedCert_ReadyForRenewal_EarlyRenewalEqualsValidityPeriod
 }
 
 func TestResourceSelfSignedCert_RecreatesAfterExpired(t *testing.T) {
+    t.Parallel()
 	oldNow := overridableTimeFunc
 	var previousCert string
 	r.UnitTest(t, r.TestCase{
@@ -373,6 +382,7 @@ func TestResourceSelfSignedCert_RecreatesAfterExpired(t *testing.T) {
 }
 
 func TestResourceSelfSignedCert_NotRecreatedForEarlyRenewalUpdateInFuture(t *testing.T) {
+    t.Parallel()
 	oldNow := overridableTimeFunc
 	var previousCert string
 	r.UnitTest(t, r.TestCase{
@@ -427,6 +437,7 @@ func TestResourceSelfSignedCert_NotRecreatedForEarlyRenewalUpdateInFuture(t *tes
 }
 
 func TestResourceSelfSignedCert_KeyIDs(t *testing.T) {
+    t.Parallel()
 	r.UnitTest(t, r.TestCase{
 		ProtoV5ProviderFactories: protoV5ProviderFactories(),
 		PreCheck:                 setTimeForTest("2019-06-14T12:00:00Z"),
@@ -475,6 +486,7 @@ EOT
 }
 
 func TestResourceSelfSignedCert_InvalidConfigs(t *testing.T) {
+    t.Parallel()
 	r.UnitTest(t, r.TestCase{
 		ProtoV5ProviderFactories: protoV5ProviderFactories(),
 		Steps: []r.TestStep{
@@ -618,6 +630,7 @@ EOT
 }
 
 func TestResourceSelfSignedCert_FromED25519PrivateKeyResource(t *testing.T) {
+    t.Parallel()
 	r.UnitTest(t, r.TestCase{
 		ProtoV5ProviderFactories: protoV5ProviderFactories(),
 		Steps: []r.TestStep{
@@ -648,6 +661,7 @@ func TestResourceSelfSignedCert_FromED25519PrivateKeyResource(t *testing.T) {
 }
 
 func TestResourceSelfSignedCert_FromECDSAPrivateKeyResource(t *testing.T) {
+    t.Parallel()
 	r.UnitTest(t, r.TestCase{
 		ProtoV5ProviderFactories: protoV5ProviderFactories(),
 		Steps: []r.TestStep{
@@ -680,6 +694,7 @@ func TestResourceSelfSignedCert_FromECDSAPrivateKeyResource(t *testing.T) {
 }
 
 func TestResourceSelfSignedCert_FromECDSAPrivateKeyResource_PKCS8(t *testing.T) {
+    t.Parallel()
 	r.UnitTest(t, r.TestCase{
 		ProtoV5ProviderFactories: protoV5ProviderFactories(),
 		Steps: []r.TestStep{
@@ -712,6 +727,7 @@ func TestResourceSelfSignedCert_FromECDSAPrivateKeyResource_PKCS8(t *testing.T) 
 }
 
 func TestResourceSelfSignedCert_FromRSAPrivateKeyResource(t *testing.T) {
+    t.Parallel()
 	r.UnitTest(t, r.TestCase{
 		ProtoV5ProviderFactories: protoV5ProviderFactories(),
 		Steps: []r.TestStep{
@@ -744,6 +760,7 @@ func TestResourceSelfSignedCert_FromRSAPrivateKeyResource(t *testing.T) {
 }
 
 func TestResourceSelfSignedCert_NoSubject(t *testing.T) {
+    t.Parallel()
 	r.UnitTest(t, r.TestCase{
 		ProtoV5ProviderFactories: protoV5ProviderFactories(),
 		Steps: []r.TestStep{

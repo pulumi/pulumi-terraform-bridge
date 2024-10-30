@@ -707,6 +707,7 @@ func TestMakeResourceRawConfig(t *testing.T) {
 }
 
 func TestRecoverCtyValue(t *testing.T) {
+	t.Parallel()
 	type testCase struct {
 		name   string
 		dT     cty.Type

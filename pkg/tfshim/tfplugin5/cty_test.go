@@ -15,6 +15,7 @@ func testCtyToGo(t *testing.T, expected interface{}, val cty.Value) {
 }
 
 func TestBoolean(t *testing.T) {
+	t.Parallel()
 	testCtyToGo(t, nil, cty.NullVal(cty.Bool))
 	testCtyToGo(t, UnknownVariableValue, cty.UnknownVal(cty.Bool))
 
@@ -23,6 +24,7 @@ func TestBoolean(t *testing.T) {
 }
 
 func TestNumber(t *testing.T) {
+	t.Parallel()
 	testCtyToGo(t, nil, cty.NullVal(cty.Number))
 	testCtyToGo(t, UnknownVariableValue, cty.UnknownVal(cty.Number))
 
@@ -32,6 +34,7 @@ func TestNumber(t *testing.T) {
 }
 
 func TestString(t *testing.T) {
+	t.Parallel()
 	testCtyToGo(t, nil, cty.NullVal(cty.String))
 	testCtyToGo(t, UnknownVariableValue, cty.UnknownVal(cty.String))
 
@@ -40,6 +43,7 @@ func TestString(t *testing.T) {
 }
 
 func TestTuple(t *testing.T) {
+	t.Parallel()
 	doubleT := cty.Tuple([]cty.Type{cty.Bool, cty.String})
 	tripleT := cty.Tuple([]cty.Type{cty.String, cty.String, cty.String})
 
@@ -55,6 +59,7 @@ func TestTuple(t *testing.T) {
 }
 
 func TestList(t *testing.T) {
+	t.Parallel()
 	listT := cty.List(cty.String)
 
 	testCtyToGo(t, nil, cty.NullVal(listT))
@@ -68,6 +73,7 @@ func TestList(t *testing.T) {
 }
 
 func TestSet(t *testing.T) {
+	t.Parallel()
 	setT := cty.Set(cty.String)
 
 	testCtyToGo(t, nil, cty.NullVal(setT))
@@ -78,6 +84,7 @@ func TestSet(t *testing.T) {
 }
 
 func TestMap(t *testing.T) {
+	t.Parallel()
 	mapT := cty.Map(cty.String)
 
 	testCtyToGo(t, nil, cty.NullVal(mapT))
@@ -105,6 +112,7 @@ func TestMap(t *testing.T) {
 }
 
 func TestObject(t *testing.T) {
+	t.Parallel()
 	objectT := cty.Object(map[string]cty.Type{
 		"foo": cty.String,
 		"bar": cty.List(cty.String),

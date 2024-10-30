@@ -1873,6 +1873,7 @@ func TestCheckConfig(t *testing.T) {
 }
 
 func TestConfigure(t *testing.T) {
+	t.Parallel()
 	t.Run("handle_secret_nested_objects", func(t *testing.T) {
 		p := testprovider.ProviderV2()
 
@@ -3595,6 +3596,7 @@ func testDestroy(t *testing.T, newProvider func(*schema.Provider) shim.Provider)
 }
 
 func TestSchemaFuncsNotCalledDuringRuntime(t *testing.T) {
+	t.Parallel()
 	p := testprovider.SchemaFuncPanicsProvider()
 	shimProv := shimv2.NewProvider(p)
 	provider := &Provider{
@@ -3650,6 +3652,7 @@ func TestSchemaFuncsNotCalledDuringRuntime(t *testing.T) {
 }
 
 func TestMaxItemsOneConflictsWith(t *testing.T) {
+	t.Parallel()
 	p := &schemav2.Provider{
 		Schema: map[string]*schemav2.Schema{},
 		ResourcesMap: map[string]*schemav2.Resource{
@@ -3924,6 +3927,7 @@ func TestComputedMaxItemsOneNotSpecified(t *testing.T) {
 }
 
 func TestProviderConfigMinMaxItemsOne(t *testing.T) {
+	t.Parallel()
 	p := &schemav2.Provider{
 		Schema: map[string]*schemav2.Schema{
 			"max_items_one_config": {
@@ -4072,6 +4076,7 @@ func TestMaxItemsOnePropCheckResponseNoNulls(t *testing.T) {
 
 // TODO[pulumi/pulumi#15636] if/when Pulumi supports customizing Read timeouts these could be added here.
 func TestCustomTimeouts(t *testing.T) {
+	t.Parallel()
 	// TODO[pulumi/pulumi-terraform-bridge#2386]
 	t.Skipf("Skipping test until pulumi/pulumi-terraform-bridge#2386 is resolved")
 	t.Parallel()

@@ -24,6 +24,7 @@ import (
 )
 
 func TestAccProviderConfig(t *testing.T) {
+    t.Parallel()
 	opts := accTestOptions(t).With(integration.ProgramTestOptions{
 		Dir: "provider-config",
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {

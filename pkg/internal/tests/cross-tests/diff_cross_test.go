@@ -290,8 +290,8 @@ func TestSetReordering(t *testing.T) {
 //	│   on test.tf line 1, in resource "crossprovider_testres" "example":
 //	│    1: resource "crossprovider_testres" "example" {
 func TestEmptyRequiredList(t *testing.T) {
-	t.Skip("TODO - fix panic and make a negative test here")
 	t.Parallel()
+	t.Skip("TODO - fix panic and make a negative test here")
 	resource := &schema.Resource{
 		Schema: map[string]*schema.Schema{
 			"f0": {
@@ -1054,6 +1054,7 @@ func findKeyInPulumiDetailedDiff(detailedDiff map[string]interface{}, key string
 }
 
 func TestNilVsEmptyNestedCollections(t *testing.T) {
+	t.Parallel()
 	// TODO[pulumi/pulumi-terraform-bridge#2517]: remove once accurate bridge previews are rolled out
 	t.Setenv("PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW", "true")
 	for _, MaxItems := range []int{0, 1} {

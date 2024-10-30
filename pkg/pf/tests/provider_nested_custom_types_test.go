@@ -23,6 +23,7 @@ import (
 )
 
 func TestNestedCustomTypeEncoding(t *testing.T) {
+    t.Parallel()
 
 	testProvider := pb.NewProvider(pb.NewProviderArgs{
 		// This resource is modified from AWS Bedrockagent.

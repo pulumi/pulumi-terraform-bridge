@@ -25,6 +25,7 @@ import (
 )
 
 func TestRegressHCloud175(t *testing.T) {
+    t.Parallel()
 	ctx := context.Background()
 
 	subnetResource := func() *schema.Resource {

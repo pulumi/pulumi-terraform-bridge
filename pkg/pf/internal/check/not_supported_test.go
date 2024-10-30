@@ -24,6 +24,7 @@ import (
 )
 
 func TestZeroRecognizer(t *testing.T) {
+    t.Parallel()
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
 	u := &notSupportedUtil{

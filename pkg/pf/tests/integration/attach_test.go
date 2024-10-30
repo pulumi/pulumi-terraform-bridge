@@ -25,6 +25,7 @@ import (
 )
 
 func TestAttach(t *testing.T) {
+    t.Parallel()
 	if testing.Short() {
 		t.Skip()
 	}
@@ -41,6 +42,7 @@ func TestAttach(t *testing.T) {
 }
 
 func TestAttachMuxed(t *testing.T) {
+    t.Parallel()
 	if testing.Short() {
 		t.Skip()
 	}

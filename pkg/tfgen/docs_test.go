@@ -103,6 +103,7 @@ func TestReformatText(t *testing.T) {
 }
 
 func TestArgumentRegex(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		input    []string

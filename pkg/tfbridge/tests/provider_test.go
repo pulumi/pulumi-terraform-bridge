@@ -460,6 +460,7 @@ func TestInputsEmptyCollections(t *testing.T) {
 
 // Demonstrating the use of the newTestProvider helper.
 func TestWithNewTestProvider(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	p := newTestProvider(ctx, tfbridge.ProviderInfo{
 		P: shimv2.NewProvider(&schema.Provider{
@@ -510,6 +511,7 @@ func TestWithNewTestProvider(t *testing.T) {
 
 // TestRegress1932 tests that we can have a list with different types (string & unknown)
 func TestRegress1932(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	p := newTestProvider(ctx, tfbridge.ProviderInfo{
 		P: shimv2.NewProvider(&schema.Provider{
@@ -593,6 +595,7 @@ func TestRegress1932(t *testing.T) {
 }
 
 func TestReproMinimalDiffCycle(t *testing.T) {
+	t.Parallel()
 	customResponseSchema := func() *schema.Schema {
 		return &schema.Schema{
 			Type:     schema.TypeList,
@@ -723,6 +726,7 @@ func TestReproMinimalDiffCycle(t *testing.T) {
 }
 
 func TestValidateConfig(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	p := newTestProvider(ctx, tfbridge.ProviderInfo{
 		P: shimv2.NewProvider(&schema.Provider{
@@ -780,6 +784,7 @@ func TestValidateConfig(t *testing.T) {
 // Assert that passing strings into fields of boolean type triggers a type-checking error message, even if some of the
 // resource inputs are unknown. See also: https://github.com/pulumi/pulumi-aws/issues/4342
 func TestTypeCheckingMistypedBooleansWithUnknowns(t *testing.T) {
+	t.Parallel()
 	t.Setenv("PULUMI_ERROR_TYPE_CHECKER", "true")
 	ctx := context.Background()
 	resourceID := "aws_ecs_service"

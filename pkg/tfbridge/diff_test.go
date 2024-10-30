@@ -1534,6 +1534,7 @@ func TestNestedComputedSetUpdate(t *testing.T) {
 }
 
 func TestNestedComputedSetAdd(t *testing.T) {
+	t.Parallel()
 	// TODO[pulumi/pulumi-terraform-bridge#2427]: Incorrect detailed diff with unknown elements
 	t.Skip("Skipping until pulumi/pulumi-terraform-bridge#2427 is resolved")
 	t.Parallel()
@@ -1615,6 +1616,7 @@ func TestNestedComputedSetIntUpdateReplace(t *testing.T) {
 }
 
 func TestNestedComputedSetIntAdd(t *testing.T) {
+	t.Parallel()
 	// TODO[pulumi/pulumi-terraform-bridge#2427]: Incorrect detailed diff with unknown elements
 	t.Skip("Skipping until pulumi/pulumi-terraform-bridge#2427 is resolved")
 	t.Parallel()

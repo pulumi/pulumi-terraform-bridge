@@ -23,6 +23,7 @@ import (
 )
 
 func TestAccProviderSecrets(t *testing.T) {
+    t.Parallel()
 	opts := accTestOptions(t).With(integration.ProgramTestOptions{
 		Dir: "provider-secrets",
 

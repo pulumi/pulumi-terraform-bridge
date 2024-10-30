@@ -68,6 +68,7 @@ func TestGenerateHash(t *testing.T) {
 }
 
 func TestAccResourcePassword_Import(t *testing.T) {
+    t.Parallel()
 	resource.UnitTest(t, resource.TestCase{
 		ProtoV5ProviderFactories: protoV5ProviderFactories(),
 		Steps: []resource.TestStep{
@@ -129,6 +130,7 @@ func TestAccResourcePassword_BcryptHash(t *testing.T) {
 // TestAccResourcePassword_BcryptHash_FromVersion3_3_2 verifies behaviour when
 // upgrading state from schema V2 to V3 without a bcrypt_hash update.
 func TestAccResourcePassword_BcryptHash_FromVersion3_3_2(t *testing.T) {
+    t.Parallel()
 	var bcryptHash1, bcryptHash2, result1, result2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -163,6 +165,7 @@ func TestAccResourcePassword_BcryptHash_FromVersion3_3_2(t *testing.T) {
 // TestAccResourcePassword_BcryptHash_FromVersion3_4_2 verifies behaviour when
 // upgrading state from schema V2 to V3 with an expected bcrypt_hash update.
 func TestAccResourcePassword_BcryptHash_FromVersion3_4_2(t *testing.T) {
+    t.Parallel()
 	var bcryptHash1, bcryptHash2, result1, result2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -195,6 +198,7 @@ func TestAccResourcePassword_BcryptHash_FromVersion3_4_2(t *testing.T) {
 }
 
 func TestAccResourcePassword_Override(t *testing.T) {
+    t.Parallel()
 	resource.UnitTest(t, resource.TestCase{
 		ProtoV5ProviderFactories: protoV5ProviderFactories(),
 		Steps: []resource.TestStep{
@@ -220,6 +224,7 @@ func TestAccResourcePassword_Override(t *testing.T) {
 // override_special value to null and should not result in a plan difference.
 // Reference: https://github.com/hashicorp/terraform-provider-random/issues/306
 func TestAccResourcePassword_OverrideSpecial_FromVersion3_3_2(t *testing.T) {
+    t.Parallel()
 	var result1, result2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -254,6 +259,7 @@ func TestAccResourcePassword_OverrideSpecial_FromVersion3_3_2(t *testing.T) {
 // override_special value to "", while other versions do not.
 // Reference: https://github.com/hashicorp/terraform-provider-random/issues/306
 func TestAccResourcePassword_OverrideSpecial_FromVersion3_4_2(t *testing.T) {
+    t.Parallel()
 	var result1, result2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -287,6 +293,7 @@ func TestAccResourcePassword_OverrideSpecial_FromVersion3_4_2(t *testing.T) {
 // null for length, lower, number, special, upper, min_lower, min_numeric, min_special, min_upper attributes in state.
 // v3.1.3 was selected as this is the last provider version using schema version 0.
 func TestAccResourcePassword_Import_FromVersion3_1_3(t *testing.T) {
+    t.Parallel()
 	var result1, result2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -348,6 +355,7 @@ func TestAccResourcePassword_Import_FromVersion3_1_3(t *testing.T) {
 // null for length, lower, number, special, upper, min_lower, min_numeric, min_special, min_upper attributes in state.
 // v3.2.0 was selected as this is the last provider version using schema version 1.
 func TestAccResourcePassword_Import_FromVersion3_2_0(t *testing.T) {
+    t.Parallel()
 	var result1, result2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -409,6 +417,7 @@ func TestAccResourcePassword_Import_FromVersion3_2_0(t *testing.T) {
 // empty map {} for keepers and empty string for override_special in state.
 // v3.4.2 was selected as this is the last provider version using schema version 2.
 func TestAccResourcePassword_Import_FromVersion3_4_2(t *testing.T) {
+    t.Parallel()
 	var result1, result2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -868,6 +877,7 @@ func TestAccResourcePassword_StateUpgradeV1toV3(t *testing.T) {
 }
 
 func TestAccResourcePassword_Min(t *testing.T) {
+    t.Parallel()
 	resource.UnitTest(t, resource.TestCase{
 		ProtoV5ProviderFactories: protoV5ProviderFactories(),
 		Steps: []resource.TestStep{
@@ -894,6 +904,7 @@ func TestAccResourcePassword_Min(t *testing.T) {
 
 // TestAccResourcePassword_UpgradeFromVersion2_2_1 verifies behaviour when upgrading state from schema V0 to V3.
 func TestAccResourcePassword_UpgradeFromVersion2_2_1(t *testing.T) {
+    t.Parallel()
 	resource.Test(t, resource.TestCase{
 		PreCheck: func() {
 			if runtime.GOOS == "darwin" && runtime.GOARCH == "arm64" {
@@ -973,6 +984,7 @@ func TestAccResourcePassword_UpgradeFromVersion2_2_1(t *testing.T) {
 
 // TestAccResourcePassword_UpgradeFromVersion3_2_0 verifies behaviour when upgrading state from schema V1 to V3.
 func TestAccResourcePassword_UpgradeFromVersion3_2_0(t *testing.T) {
+    t.Parallel()
 	resource.Test(t, resource.TestCase{
 		Steps: []resource.TestStep{
 			{
@@ -1048,6 +1060,7 @@ func TestAccResourcePassword_UpgradeFromVersion3_2_0(t *testing.T) {
 
 // TestAccResourcePassword_UpgradeFromVersion3_3_2 verifies behaviour when upgrading from SDKv2 to the Framework.
 func TestAccResourcePassword_UpgradeFromVersion3_3_2(t *testing.T) {
+    t.Parallel()
 	resource.Test(t, resource.TestCase{
 		Steps: []resource.TestStep{
 			{
@@ -1960,6 +1973,7 @@ func TestUpgradePasswordStateV2toV3(t *testing.T) {
 }
 
 func TestAccResourcePassword_NumberNumericErrors(t *testing.T) {
+    t.Parallel()
 	resource.UnitTest(t, resource.TestCase{
 		ProtoV5ProviderFactories: protoV5ProviderFactories(),
 		Steps: []resource.TestStep{
@@ -1976,6 +1990,7 @@ func TestAccResourcePassword_NumberNumericErrors(t *testing.T) {
 }
 
 func TestAccResourcePassword_Keepers_Keep_EmptyMap(t *testing.T) {
+    t.Parallel()
 	var result1, result2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -2008,6 +2023,7 @@ func TestAccResourcePassword_Keepers_Keep_EmptyMap(t *testing.T) {
 }
 
 func TestAccResourcePassword_Keepers_Keep_EmptyMapToNullValue(t *testing.T) {
+    t.Parallel()
 	var result1, result2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -2042,6 +2058,7 @@ func TestAccResourcePassword_Keepers_Keep_EmptyMapToNullValue(t *testing.T) {
 }
 
 func TestAccResourcePassword_Keepers_Keep_NullMap(t *testing.T) {
+    t.Parallel()
 	var result1, result2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -2072,6 +2089,7 @@ func TestAccResourcePassword_Keepers_Keep_NullMap(t *testing.T) {
 }
 
 func TestAccResourcePassword_Keepers_Keep_NullMapToNullValue(t *testing.T) {
+    t.Parallel()
 	var result1, result2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -2105,6 +2123,7 @@ func TestAccResourcePassword_Keepers_Keep_NullMapToNullValue(t *testing.T) {
 }
 
 func TestAccResourcePassword_Keepers_Keep_NullValue(t *testing.T) {
+    t.Parallel()
 	var result1, result2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -2141,6 +2160,7 @@ func TestAccResourcePassword_Keepers_Keep_NullValue(t *testing.T) {
 }
 
 func TestAccResourcePassword_Keepers_Keep_NullValues(t *testing.T) {
+    t.Parallel()
 	var result1, result2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -2179,6 +2199,7 @@ func TestAccResourcePassword_Keepers_Keep_NullValues(t *testing.T) {
 }
 
 func TestAccResourcePassword_Keepers_Keep_Value(t *testing.T) {
+    t.Parallel()
 	var result1, result2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -2215,6 +2236,7 @@ func TestAccResourcePassword_Keepers_Keep_Value(t *testing.T) {
 }
 
 func TestAccResourcePassword_Keepers_Keep_Values(t *testing.T) {
+    t.Parallel()
 	var result1, result2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -2253,6 +2275,7 @@ func TestAccResourcePassword_Keepers_Keep_Values(t *testing.T) {
 }
 
 func TestAccResourcePassword_Keepers_Replace_EmptyMapToValue(t *testing.T) {
+    t.Parallel()
 	var result1, result2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -2287,6 +2310,7 @@ func TestAccResourcePassword_Keepers_Replace_EmptyMapToValue(t *testing.T) {
 }
 
 func TestAccResourcePassword_Keepers_Replace_NullMapToValue(t *testing.T) {
+    t.Parallel()
 	var result1, result2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -2320,6 +2344,7 @@ func TestAccResourcePassword_Keepers_Replace_NullMapToValue(t *testing.T) {
 }
 
 func TestAccResourcePassword_Keepers_Replace_NullValueToValue(t *testing.T) {
+    t.Parallel()
 	var result1, result2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -2356,6 +2381,7 @@ func TestAccResourcePassword_Keepers_Replace_NullValueToValue(t *testing.T) {
 }
 
 func TestAccResourcePassword_Keepers_Replace_ValueToEmptyMap(t *testing.T) {
+    t.Parallel()
 	var result1, result2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -2390,6 +2416,7 @@ func TestAccResourcePassword_Keepers_Replace_ValueToEmptyMap(t *testing.T) {
 }
 
 func TestAccResourcePassword_Keepers_Replace_ValueToNullMap(t *testing.T) {
+    t.Parallel()
 	var result1, result2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -2423,6 +2450,7 @@ func TestAccResourcePassword_Keepers_Replace_ValueToNullMap(t *testing.T) {
 }
 
 func TestAccResourcePassword_Keepers_Replace_ValueToNullValue(t *testing.T) {
+    t.Parallel()
 	var result1, result2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -2459,6 +2487,7 @@ func TestAccResourcePassword_Keepers_Replace_ValueToNullValue(t *testing.T) {
 }
 
 func TestAccResourcePassword_Keepers_Replace_ValueToNewValue(t *testing.T) {
+    t.Parallel()
 	var result1, result2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -2495,6 +2524,7 @@ func TestAccResourcePassword_Keepers_Replace_ValueToNewValue(t *testing.T) {
 }
 
 func TestAccResourcePassword_Keepers_FrameworkMigration_NullMapToNullValue(t *testing.T) {
+    t.Parallel()
 	var result1, result2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -2531,6 +2561,7 @@ func TestAccResourcePassword_Keepers_FrameworkMigration_NullMapToNullValue(t *te
 }
 
 func TestAccResourcePassword_Keepers_FrameworkMigration_NullMapToValue(t *testing.T) {
+    t.Parallel()
 	var result1, result2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -2567,6 +2598,7 @@ func TestAccResourcePassword_Keepers_FrameworkMigration_NullMapToValue(t *testin
 }
 
 func TestAccResourcePassword_Keepers_FrameworkMigration_NullMapToMultipleNullValue(t *testing.T) {
+    t.Parallel()
 	var result1, result2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -2605,6 +2637,7 @@ func TestAccResourcePassword_Keepers_FrameworkMigration_NullMapToMultipleNullVal
 }
 
 func TestAccResourcePassword_Keepers_FrameworkMigration_NullMapToMultipleValue(t *testing.T) {
+    t.Parallel()
 	var result1, result2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -2643,6 +2676,7 @@ func TestAccResourcePassword_Keepers_FrameworkMigration_NullMapToMultipleValue(t
 }
 
 func TestAccResourcePassword_Keepers_FrameworkMigration_NullMapValue(t *testing.T) {
+    t.Parallel()
 	var result1, result2 string
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -2681,6 +2715,7 @@ func TestAccResourcePassword_Keepers_FrameworkMigration_NullMapValue(t *testing.
 }
 
 func TestAccResourcePassword_Keepers_FrameworkMigration_NullMapValueToValue(t *testing.T) {
+    t.Parallel()
 	var result1, result2 string
 
 	resource.ParallelTest(t, resource.TestCase{

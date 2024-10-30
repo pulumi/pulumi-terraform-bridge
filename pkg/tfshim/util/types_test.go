@@ -24,6 +24,7 @@ import (
 )
 
 func TestIsOfTypeMap(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		name        string
 		expectIsMap bool

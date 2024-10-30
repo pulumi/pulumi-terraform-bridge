@@ -28,6 +28,7 @@ import (
 )
 
 func TestBasic(t *testing.T) {
+    t.Parallel()
 	provBuilder := providerbuilder.NewProvider(
 		providerbuilder.NewProviderArgs{
 			AllResources: []providerbuilder.Resource{
@@ -60,6 +61,7 @@ resources:
 }
 
 func TestComputedSetNoDiffWhenElementRemoved(t *testing.T) {
+    t.Parallel()
 	// Regression test for [pulumi/pulumi-terraform-bridge#2192]
 	provBuilder := pb.NewProvider(pb.NewProviderArgs{
 		AllResources: []providerbuilder.Resource{
@@ -150,6 +152,7 @@ resources:
 }
 
 func TestIDAttribute(t *testing.T) {
+    t.Parallel()
 	tests := []struct {
 		name                     string
 		attribute                rschema.Attribute
@@ -306,6 +309,7 @@ resources:
 }
 
 func TestDefaults(t *testing.T) {
+    t.Parallel()
 	provBuilder := pb.NewProvider(pb.NewProviderArgs{
 		AllResources: []providerbuilder.Resource{
 			{
@@ -366,6 +370,7 @@ func (c changeReasonPlanModifier) MarkdownDescription(context.Context) string {
 }
 
 func TestPlanModifiers(t *testing.T) {
+    t.Parallel()
 	provBuilder := pb.NewProvider(pb.NewProviderArgs{
 		AllResources: []providerbuilder.Resource{
 			{

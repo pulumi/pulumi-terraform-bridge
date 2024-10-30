@@ -26,6 +26,7 @@ import (
 )
 
 func TestTopLevelPropertyKeySet(t *testing.T) {
+    t.Parallel()
 	str := (&schema.Schema{
 		Type: shim.TypeString,
 	}).Shim()

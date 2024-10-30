@@ -116,6 +116,7 @@ func newProviderServer(info tfbridge.ProviderInfo) (server pulumirpc.ResourcePro
 }
 
 func TestMuxWithProvider(t *testing.T) {
+    t.Parallel()
 	info := tfbridge.ProviderInfo{
 		P:          shimv2.NewProvider(newTFProvider()),
 		Name:       "random",

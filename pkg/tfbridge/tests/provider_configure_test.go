@@ -24,6 +24,7 @@ import (
 )
 
 func TestConfigureSimpleValues(t *testing.T) {
+	t.Parallel()
 	t.Skip("TODO[pulumi/pulumi-terraform-bridge#2530]: flaky")
 	t.Run("string", crosstests.MakeConfigure(map[string]*schema.Schema{
 		"f0": {Type: schema.TypeString, Required: true},
@@ -56,6 +57,7 @@ func TestConfigureSimpleValues(t *testing.T) {
 }
 
 func TestConfigureSimpleSecretValues(t *testing.T) {
+	t.Parallel()
 	t.Run("string", crosstests.MakeConfigure(map[string]*schema.Schema{
 		"f0": {Type: schema.TypeString, Required: true},
 	}, cty.ObjectVal(map[string]cty.Value{
