@@ -6,6 +6,7 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/walk"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/propertyvalue"
 )
 
@@ -43,6 +44,11 @@ func (k propertyPath) Index(i int) propertyPath {
 func (k propertyPath) IsReservedKey() bool {
 	leaf := k[len(k)-1]
 	return leaf == "__meta" || leaf == "__defaults"
+}
+
+func (k propertyPath) GetFromMap(v resource.PropertyMap) (resource.PropertyValue, bool) {
+	path := resource.PropertyPath(k)
+	return path.Get(resource.NewProperty(v))
 }
 
 func lookupSchemas(
@@ -104,4 +110,24 @@ func propertyValueTriggersReplacement(
 	contract.AssertNoErrorf(err, "TransformPropertyValue should not return an error")
 
 	return replacement
+}
+
+// pathContainsComputed returns true if the schema contains a Computed property at a path prefixed by path.
+func pathContainsComputed(
+	path propertyPath, rootTFSchema shim.SchemaMap, rootPulumiSchema map[string]*info.Schema,
+) bool {
+	tfs, _, err := lookupSchemas(path, rootTFSchema, rootPulumiSchema)
+	if err != nil {
+		return false
+	}
+
+	computed := false
+	visitor := func(path walk.SchemaPath, tfs shim.Schema) {
+		if tfs.Computed() {
+			computed = true
+		}
+	}
+	walk.VisitSchema(tfs, visitor)
+
+	return computed
 }

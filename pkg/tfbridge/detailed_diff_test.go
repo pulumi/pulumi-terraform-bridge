@@ -1,6 +1,9 @@
 package tfbridge
 
 import (
+	"bytes"
+	"context"
+	"fmt"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -13,6 +16,7 @@ import (
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	shimschema "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/logging"
 )
 
 func TestDiffPair(t *testing.T) {
@@ -288,7 +292,7 @@ func runDetailedDiffTest(
 	expected map[string]*pulumirpc.PropertyDiff,
 ) {
 	t.Helper()
-	differ := detailedDiffer{tfs: tfs, ps: ps}
+	differ := detailedDiffer{tfs: tfs, ps: ps, newInputs: new}
 	actual := differ.makeDetailedDiffPropertyMap(old, new)
 
 	require.Equal(t, expected, actual)
@@ -957,7 +961,7 @@ func TestDetailedDiffTFForceNewAttributeCollection(t *testing.T) {
 			value1:             []interface{}{"val1"},
 			value2:             []interface{}{"val2"},
 			computedCollection: ComputedVal,
-			computedElem:       []interface{}{ComputedVal},
+			computedElem:       nil,
 		},
 		{
 			name: "map",
@@ -998,6 +1002,7 @@ func TestDetailedDiffTFForceNewAttributeCollection(t *testing.T) {
 					"prop": tt.computedCollection,
 				},
 			)
+
 			propertyMapComputedElem := resource.NewPropertyMapFromMap(
 				map[string]interface{}{
 					"prop": tt.computedElem,
@@ -1033,23 +1038,26 @@ func TestDetailedDiffTFForceNewAttributeCollection(t *testing.T) {
 					})
 			})
 
-			t.Run("changed to computed elem", func(t *testing.T) {
-				runDetailedDiffTest(t, propertyMapListVal1, propertyMapComputedElem, tfs, ps, map[string]*pulumirpc.PropertyDiff{
-					tt.elementIndex: {Kind: pulumirpc.PropertyDiff_UPDATE_REPLACE},
-				})
-			})
-
 			t.Run("changed from empty to computed collection", func(t *testing.T) {
 				runDetailedDiffTest(t, propertyMapEmpty, propertyMapComputedCollection, tfs, ps, map[string]*pulumirpc.PropertyDiff{
 					"prop": {Kind: pulumirpc.PropertyDiff_ADD_REPLACE},
 				})
 			})
 
-			t.Run("changed from empty to computed elem", func(t *testing.T) {
-				runDetailedDiffTest(t, propertyMapEmpty, propertyMapComputedElem, tfs, ps, map[string]*pulumirpc.PropertyDiff{
-					"prop": {Kind: pulumirpc.PropertyDiff_ADD_REPLACE},
+			if tt.computedElem != nil {
+
+				t.Run("changed to computed elem", func(t *testing.T) {
+					runDetailedDiffTest(t, propertyMapListVal1, propertyMapComputedElem, tfs, ps, map[string]*pulumirpc.PropertyDiff{
+						tt.elementIndex: {Kind: pulumirpc.PropertyDiff_UPDATE_REPLACE},
+					})
 				})
-			})
+
+				t.Run("changed from empty to computed elem", func(t *testing.T) {
+					runDetailedDiffTest(t, propertyMapEmpty, propertyMapComputedElem, tfs, ps, map[string]*pulumirpc.PropertyDiff{
+						"prop": {Kind: pulumirpc.PropertyDiff_ADD_REPLACE},
+					})
+				})
+			}
 		})
 	}
 }
@@ -1748,6 +1756,576 @@ func TestDetailedDiffPulumiSchemaOverride(t *testing.T) {
 	})
 }
 
+func TestDetailedDiffSetAttribute(t *testing.T) {
+	sdkv2Schema := map[string]*schema.Schema{
+		"foo": {
+			Type: schema.TypeSet,
+			Elem: &schema.Schema{Type: schema.TypeString},
+		},
+	}
+	ps, tfs := map[string]*info.Schema{}, shimv2.NewSchemaMap(sdkv2Schema)
+
+	propertyMapElems := func(elems ...interface{}) resource.PropertyMap {
+		return resource.NewPropertyMapFromMap(
+			map[string]interface{}{
+				"foo": elems,
+			},
+		)
+	}
+
+	t.Run("unchanged", func(t *testing.T) {
+		runDetailedDiffTest(t, propertyMapElems("val1"), propertyMapElems("val1"), tfs, ps,
+			map[string]*pulumirpc.PropertyDiff{})
+	})
+
+	t.Run("changed non-empty", func(t *testing.T) {
+		runDetailedDiffTest(t,
+			propertyMapElems("val1"),
+			propertyMapElems("val2"), tfs, ps, map[string]*pulumirpc.PropertyDiff{
+				"foo[0]": {Kind: pulumirpc.PropertyDiff_UPDATE},
+			})
+	})
+
+	t.Run("changed from empty", func(t *testing.T) {
+		runDetailedDiffTest(t,
+			propertyMapElems(),
+			propertyMapElems("val1"), tfs, ps, map[string]*pulumirpc.PropertyDiff{
+				"foo[0]": {Kind: pulumirpc.PropertyDiff_ADD},
+			})
+	})
+
+	t.Run("changed to empty", func(t *testing.T) {
+		runDetailedDiffTest(t,
+			propertyMapElems("val1"),
+			propertyMapElems(), tfs, ps, map[string]*pulumirpc.PropertyDiff{
+				"foo[0]": {Kind: pulumirpc.PropertyDiff_DELETE},
+			})
+	})
+
+	t.Run("removed front", func(t *testing.T) {
+		runDetailedDiffTest(t,
+			propertyMapElems("val1", "val2", "val3"),
+			propertyMapElems("val2", "val3"), tfs, ps, map[string]*pulumirpc.PropertyDiff{
+				"foo[0]": {Kind: pulumirpc.PropertyDiff_DELETE},
+			})
+	})
+
+	t.Run("removed middle", func(t *testing.T) {
+		runDetailedDiffTest(t,
+			propertyMapElems("val1", "val2", "val3"),
+			propertyMapElems("val1", "val3"), tfs, ps, map[string]*pulumirpc.PropertyDiff{
+				"foo[1]": {Kind: pulumirpc.PropertyDiff_DELETE},
+			})
+	})
+
+	t.Run("removed end", func(t *testing.T) {
+		runDetailedDiffTest(t,
+			propertyMapElems("val1", "val2", "val3"),
+			propertyMapElems("val1", "val2"), tfs, ps, map[string]*pulumirpc.PropertyDiff{
+				"foo[2]": {Kind: pulumirpc.PropertyDiff_DELETE},
+			})
+	})
+
+	t.Run("added front", func(t *testing.T) {
+		runDetailedDiffTest(t,
+			propertyMapElems("val2", "val3"),
+			propertyMapElems("val1", "val2", "val3"), tfs, ps, map[string]*pulumirpc.PropertyDiff{
+				"foo[0]": {Kind: pulumirpc.PropertyDiff_ADD},
+			})
+	})
+
+	t.Run("added middle", func(t *testing.T) {
+		runDetailedDiffTest(t,
+			propertyMapElems("val1", "val3"),
+			propertyMapElems("val1", "val2", "val3"), tfs, ps, map[string]*pulumirpc.PropertyDiff{
+				"foo[1]": {Kind: pulumirpc.PropertyDiff_ADD},
+			})
+	})
+
+	t.Run("added end", func(t *testing.T) {
+		runDetailedDiffTest(t, propertyMapElems("val1", "val2"),
+			propertyMapElems("val1", "val2", "val3"), tfs, ps, map[string]*pulumirpc.PropertyDiff{
+				"foo[2]": {Kind: pulumirpc.PropertyDiff_ADD},
+			})
+	})
+
+	t.Run("same element updated", func(t *testing.T) {
+		runDetailedDiffTest(t,
+			propertyMapElems("val1", "val2", "val3"),
+			propertyMapElems("val1", "val4", "val3"), tfs, ps,
+			map[string]*pulumirpc.PropertyDiff{
+				"foo[1]": {Kind: pulumirpc.PropertyDiff_UPDATE},
+			},
+		)
+	})
+
+	t.Run("shuffled", func(t *testing.T) {
+		runDetailedDiffTest(t,
+			propertyMapElems("val1", "val2", "val3"),
+			propertyMapElems("val3", "val2", "val1"), tfs, ps, map[string]*pulumirpc.PropertyDiff{})
+	})
+
+	t.Run("shuffled with duplicates", func(t *testing.T) {
+		runDetailedDiffTest(t,
+			propertyMapElems("val1", "val2", "val3"),
+			propertyMapElems("val3", "val2", "val1", "val1"), tfs, ps, map[string]*pulumirpc.PropertyDiff{})
+	})
+
+	t.Run("shuffled added front", func(t *testing.T) {
+		runDetailedDiffTest(t,
+			propertyMapElems("val2", "val3"),
+			propertyMapElems("val1", "val3", "val2"), tfs, ps, map[string]*pulumirpc.PropertyDiff{
+				"foo[0]": {Kind: pulumirpc.PropertyDiff_ADD},
+			})
+	})
+
+	t.Run("shuffled added middle", func(t *testing.T) {
+		runDetailedDiffTest(t,
+			propertyMapElems("val1", "val3"),
+			propertyMapElems("val3", "val2", "val1"), tfs, ps, map[string]*pulumirpc.PropertyDiff{
+				"foo[1]": {Kind: pulumirpc.PropertyDiff_ADD},
+			})
+	})
+
+	t.Run("shuffled added end", func(t *testing.T) {
+		runDetailedDiffTest(t,
+			propertyMapElems("val1", "val2"),
+			propertyMapElems("val2", "val1", "val3"), tfs, ps, map[string]*pulumirpc.PropertyDiff{
+				"foo[2]": {Kind: pulumirpc.PropertyDiff_ADD},
+			})
+	})
+
+	t.Run("shuffled removed front", func(t *testing.T) {
+		runDetailedDiffTest(t,
+			propertyMapElems("val1", "val2", "val3"),
+			propertyMapElems("val3", "val2"), tfs, ps, map[string]*pulumirpc.PropertyDiff{
+				"foo[0]": {Kind: pulumirpc.PropertyDiff_DELETE},
+			})
+	})
+
+	t.Run("shuffled removed middle", func(t *testing.T) {
+		runDetailedDiffTest(t,
+			propertyMapElems("val1", "val2", "val3"),
+			propertyMapElems("val3", "val1"), tfs, ps, map[string]*pulumirpc.PropertyDiff{
+				"foo[1]": {Kind: pulumirpc.PropertyDiff_DELETE},
+			})
+	})
+
+	t.Run("shuffled removed end", func(t *testing.T) {
+		runDetailedDiffTest(t,
+			propertyMapElems("val1", "val2", "val3"),
+			propertyMapElems("val2", "val1"), tfs, ps, map[string]*pulumirpc.PropertyDiff{
+				"foo[2]": {Kind: pulumirpc.PropertyDiff_DELETE},
+			})
+	})
+
+	t.Run("computed", func(t *testing.T) {
+		runDetailedDiffTest(t,
+			propertyMapElems("val1"),
+			resource.NewPropertyMapFromMap(
+				map[string]interface{}{
+					"foo": computedValue,
+				},
+			),
+			tfs, ps,
+			map[string]*pulumirpc.PropertyDiff{
+				"foo": {Kind: pulumirpc.PropertyDiff_UPDATE},
+			},
+		)
+	})
+
+	t.Run("nil to computed", func(t *testing.T) {
+		runDetailedDiffTest(t,
+			resource.NewPropertyMapFromMap(
+				map[string]interface{}{},
+			),
+			resource.NewPropertyMapFromMap(
+				map[string]interface{}{
+					"foo": computedValue,
+				},
+			),
+			tfs, ps,
+			map[string]*pulumirpc.PropertyDiff{
+				"foo": {Kind: pulumirpc.PropertyDiff_ADD},
+			},
+		)
+	})
+
+	t.Run("empty to computed", func(t *testing.T) {
+		runDetailedDiffTest(t,
+			propertyMapElems(),
+			resource.NewPropertyMapFromMap(
+				map[string]interface{}{
+					"foo": computedValue,
+				},
+			),
+			tfs, ps,
+			map[string]*pulumirpc.PropertyDiff{
+				"foo": {Kind: pulumirpc.PropertyDiff_UPDATE},
+			},
+		)
+	})
+
+	t.Run("two added, two removed", func(t *testing.T) {
+		runDetailedDiffTest(t,
+			propertyMapElems("val1", "val2"),
+			propertyMapElems("val3", "val4"),
+			tfs, ps,
+			map[string]*pulumirpc.PropertyDiff{
+				"foo[0]": {Kind: pulumirpc.PropertyDiff_UPDATE},
+				"foo[1]": {Kind: pulumirpc.PropertyDiff_UPDATE},
+			},
+		)
+	})
+
+	t.Run("two added, two removed, shuffled", func(t *testing.T) {
+		runDetailedDiffTest(t,
+			propertyMapElems("stable1", "stable2", "val1", "val2"),
+			propertyMapElems("val4", "val3", "stable1", "stable2"),
+			tfs, ps,
+			map[string]*pulumirpc.PropertyDiff{
+				"foo[0]": {Kind: pulumirpc.PropertyDiff_ADD},
+				"foo[1]": {Kind: pulumirpc.PropertyDiff_ADD},
+				"foo[2]": {Kind: pulumirpc.PropertyDiff_DELETE},
+				"foo[3]": {Kind: pulumirpc.PropertyDiff_DELETE},
+			},
+		)
+	})
+}
+
+func TestDetailedDiffSetBlock(t *testing.T) {
+	propertyMapElems := func(elems ...string) resource.PropertyMap {
+		var elemMaps []map[string]interface{}
+		for _, elem := range elems {
+			elemMaps = append(elemMaps, map[string]interface{}{"bar": elem})
+		}
+		return resource.NewPropertyMapFromMap(
+			map[string]interface{}{
+				"foo": elemMaps,
+			},
+		)
+	}
+
+	for _, forceNew := range []bool{false, true} {
+		sdkv2Schema := map[string]*schema.Schema{
+			"foo": {
+				Type: schema.TypeSet,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"bar": {
+							Type:     schema.TypeString,
+							Optional: true,
+							ForceNew: forceNew,
+						},
+					},
+				},
+			},
+		}
+		ps, tfs := map[string]*info.Schema{}, shimv2.NewSchemaMap(sdkv2Schema)
+		t.Run(fmt.Sprintf("forceNew=%v", forceNew), func(t *testing.T) {
+			update := pulumirpc.PropertyDiff_UPDATE
+			add := pulumirpc.PropertyDiff_ADD
+			delete := pulumirpc.PropertyDiff_DELETE
+			if forceNew {
+				update = pulumirpc.PropertyDiff_UPDATE_REPLACE
+				add = pulumirpc.PropertyDiff_ADD_REPLACE
+				delete = pulumirpc.PropertyDiff_DELETE_REPLACE
+			}
+
+			t.Run("unchanged", func(t *testing.T) {
+				runDetailedDiffTest(t, propertyMapElems("val1"), propertyMapElems("val1"), tfs, ps,
+					map[string]*pulumirpc.PropertyDiff{})
+			})
+
+			t.Run("changed non-empty", func(t *testing.T) {
+				runDetailedDiffTest(t,
+					propertyMapElems("val1"),
+					propertyMapElems("val2"), tfs, ps, map[string]*pulumirpc.PropertyDiff{
+						"foo[0].bar": {Kind: update},
+					},
+				)
+			})
+
+			t.Run("changed from empty", func(t *testing.T) {
+				runDetailedDiffTest(t,
+					propertyMapElems(),
+					propertyMapElems("val1"), tfs, ps, map[string]*pulumirpc.PropertyDiff{
+						"foo[0]": {Kind: add},
+					},
+				)
+			})
+
+			t.Run("changed to empty", func(t *testing.T) {
+				runDetailedDiffTest(t,
+					propertyMapElems("val1"),
+					propertyMapElems(), tfs, ps, map[string]*pulumirpc.PropertyDiff{
+						"foo[0]": {Kind: delete},
+					},
+				)
+			})
+
+			t.Run("removed front", func(t *testing.T) {
+				runDetailedDiffTest(t,
+					propertyMapElems("val1", "val2", "val3"),
+					propertyMapElems("val2", "val3"), tfs, ps, map[string]*pulumirpc.PropertyDiff{
+						"foo[0]": {Kind: delete},
+					},
+				)
+			})
+
+			t.Run("removed middle", func(t *testing.T) {
+				runDetailedDiffTest(t,
+					propertyMapElems("val1", "val2", "val3"),
+					propertyMapElems("val1", "val3"), tfs, ps, map[string]*pulumirpc.PropertyDiff{
+						"foo[1]": {Kind: delete},
+					},
+				)
+			})
+
+			t.Run("removed end", func(t *testing.T) {
+				runDetailedDiffTest(t,
+					propertyMapElems("val1", "val2", "val3"),
+					propertyMapElems("val1", "val2"), tfs, ps, map[string]*pulumirpc.PropertyDiff{
+						"foo[2]": {Kind: delete},
+					},
+				)
+			})
+
+			t.Run("added front", func(t *testing.T) {
+				runDetailedDiffTest(t,
+					propertyMapElems("val2", "val3"),
+					propertyMapElems("val1", "val2", "val3"), tfs, ps, map[string]*pulumirpc.PropertyDiff{
+						"foo[0]": {Kind: add},
+					},
+				)
+			})
+
+			t.Run("added middle", func(t *testing.T) {
+				runDetailedDiffTest(t,
+					propertyMapElems("val1", "val3"),
+					propertyMapElems("val1", "val2", "val3"), tfs, ps, map[string]*pulumirpc.PropertyDiff{
+						"foo[1]": {Kind: add},
+					},
+				)
+			})
+
+			t.Run("added end", func(t *testing.T) {
+				runDetailedDiffTest(t,
+					propertyMapElems("val1", "val2"),
+					propertyMapElems("val1", "val2", "val3"), tfs, ps, map[string]*pulumirpc.PropertyDiff{
+						"foo[2]": {Kind: add},
+					},
+				)
+			})
+
+			t.Run("same element updated", func(t *testing.T) {
+				runDetailedDiffTest(t,
+					propertyMapElems("val1", "val2", "val3"),
+					propertyMapElems("val1", "val4", "val3"), tfs, ps,
+					map[string]*pulumirpc.PropertyDiff{
+						"foo[1].bar": {Kind: update},
+					},
+				)
+			})
+
+			t.Run("shuffled", func(t *testing.T) {
+				runDetailedDiffTest(t,
+					propertyMapElems("val1", "val2", "val3"),
+					propertyMapElems("val3", "val2", "val1"), tfs, ps, map[string]*pulumirpc.PropertyDiff{})
+			})
+
+			t.Run("shuffled with duplicates", func(t *testing.T) {
+				runDetailedDiffTest(t,
+					propertyMapElems("val1", "val2", "val3"),
+					propertyMapElems("val3", "val2", "val1", "val1"), tfs, ps, map[string]*pulumirpc.PropertyDiff{})
+			})
+
+			t.Run("shuffled added front", func(t *testing.T) {
+				runDetailedDiffTest(t,
+					propertyMapElems("val2", "val3"),
+					propertyMapElems("val1", "val3", "val2"), tfs, ps, map[string]*pulumirpc.PropertyDiff{
+						"foo[0]": {Kind: add},
+					},
+				)
+			})
+
+			t.Run("shuffled added middle", func(t *testing.T) {
+				runDetailedDiffTest(t,
+					propertyMapElems("val1", "val3"),
+					propertyMapElems("val3", "val2", "val1"), tfs, ps, map[string]*pulumirpc.PropertyDiff{
+						"foo[1]": {Kind: add},
+					},
+				)
+			})
+
+			t.Run("shuffled added end", func(t *testing.T) {
+				runDetailedDiffTest(t,
+					propertyMapElems("val1", "val2"),
+					propertyMapElems("val2", "val1", "val3"), tfs, ps, map[string]*pulumirpc.PropertyDiff{
+						"foo[2]": {Kind: add},
+					},
+				)
+			})
+
+			t.Run("shuffled removed front", func(t *testing.T) {
+				runDetailedDiffTest(t,
+					propertyMapElems("val1", "val2", "val3"),
+					propertyMapElems("val3", "val2"), tfs, ps, map[string]*pulumirpc.PropertyDiff{
+						"foo[0]": {Kind: delete},
+					},
+				)
+			})
+
+			t.Run("shuffled removed middle", func(t *testing.T) {
+				runDetailedDiffTest(t,
+					propertyMapElems("val1", "val2", "val3"),
+					propertyMapElems("val3", "val1"), tfs, ps, map[string]*pulumirpc.PropertyDiff{
+						"foo[1]": {Kind: delete},
+					},
+				)
+			})
+
+			t.Run("shuffled removed end", func(t *testing.T) {
+				runDetailedDiffTest(t,
+					propertyMapElems("val1", "val2", "val3"),
+					propertyMapElems("val2", "val1"), tfs, ps, map[string]*pulumirpc.PropertyDiff{
+						"foo[2]": {Kind: delete},
+					},
+				)
+			})
+
+			t.Run("computed", func(t *testing.T) {
+				runDetailedDiffTest(t,
+					propertyMapElems("val1"),
+					resource.NewPropertyMapFromMap(
+						map[string]interface{}{
+							"foo": computedValue,
+						},
+					),
+					tfs, ps,
+					map[string]*pulumirpc.PropertyDiff{
+						"foo": {Kind: update},
+					},
+				)
+			})
+
+			t.Run("nil to computed", func(t *testing.T) {
+				runDetailedDiffTest(t,
+					resource.NewPropertyMapFromMap(
+						map[string]interface{}{},
+					),
+					resource.NewPropertyMapFromMap(
+						map[string]interface{}{
+							"foo": computedValue,
+						},
+					),
+					tfs, ps,
+					map[string]*pulumirpc.PropertyDiff{
+						"foo": {Kind: pulumirpc.PropertyDiff_ADD},
+					},
+				)
+			})
+
+			t.Run("empty to computed", func(t *testing.T) {
+				runDetailedDiffTest(t,
+					propertyMapElems(),
+					resource.NewPropertyMapFromMap(
+						map[string]interface{}{
+							"foo": computedValue,
+						},
+					),
+					tfs, ps,
+					map[string]*pulumirpc.PropertyDiff{
+						"foo": {Kind: pulumirpc.PropertyDiff_UPDATE},
+					},
+				)
+			})
+		})
+	}
+}
+
+func TestDetailedDiffSetBlockNestedMaxItemsOne(t *testing.T) {
+	customResponseSchema := func() *schema.Schema {
+		return &schema.Schema{
+			Type:     schema.TypeList,
+			Optional: true,
+			MaxItems: 1,
+			Elem: &schema.Resource{
+				Schema: map[string]*schema.Schema{
+					"custom_response_body_key": {
+						Type:     schema.TypeString,
+						Optional: true,
+					},
+				},
+			},
+		}
+	}
+	blockConfigSchema := func() *schema.Schema {
+		return &schema.Schema{
+			Type:     schema.TypeList,
+			Optional: true,
+			MaxItems: 1,
+			Elem: &schema.Resource{
+				Schema: map[string]*schema.Schema{
+					"custom_response": customResponseSchema(),
+				},
+			},
+		}
+	}
+	ruleElement := &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"action": {
+				Type:     schema.TypeList,
+				Optional: true,
+				MaxItems: 1,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"block": blockConfigSchema(),
+					},
+				},
+			},
+		},
+	}
+
+	schMap := map[string]*schema.Schema{
+		"rule": {
+			Type:     schema.TypeSet,
+			Optional: true,
+			Elem:     ruleElement,
+		},
+	}
+
+	ps, tfs := map[string]*info.Schema{}, shimv2.NewSchemaMap(schMap)
+
+	t.Run("unchanged", func(t *testing.T) {
+		runDetailedDiffTest(t, resource.NewPropertyMapFromMap(map[string]interface{}{
+			"rule": []map[string]interface{}{
+				{
+					"action": map[string]interface{}{
+						"block": map[string]interface{}{
+							"custom_response": map[string]interface{}{
+								"custom_response_body_key": "val1",
+							},
+						},
+					},
+				},
+			},
+		}), resource.NewPropertyMapFromMap(map[string]interface{}{
+			"rule": []map[string]interface{}{
+				{
+					"action": map[string]interface{}{
+						"block": map[string]interface{}{
+							"custom_response": map[string]interface{}{
+								"custom_response_body_key": "val1",
+							},
+						},
+					},
+				},
+			},
+		}), tfs, ps, map[string]*pulumirpc.PropertyDiff{})
+	})
+}
+
 func TestDetailedDiffMismatchedSchemas(t *testing.T) {
 	stringSchema := map[string]*schema.Schema{
 		"foo": {
@@ -1859,4 +2437,175 @@ func TestDetailedDiffMismatchedSchemas(t *testing.T) {
 			"foo": {Kind: pulumirpc.PropertyDiff_UPDATE},
 		})
 	})
+}
+
+func TestDetailedDiffSetHashChanges(t *testing.T) {
+	runTest := func(old, new hashIndexMap, expectedRemoved, expectedAdded hashIndexMap) {
+		t.Helper()
+		removed, added := computeSetHashChanges(old, new)
+
+		require.Equal(t, removed, expectedRemoved)
+		require.Equal(t, added, expectedAdded)
+	}
+
+	runTest(hashIndexMap{}, hashIndexMap{}, hashIndexMap{}, hashIndexMap{})
+	runTest(hashIndexMap{1: 1}, hashIndexMap{1: 1}, hashIndexMap{}, hashIndexMap{})
+	runTest(hashIndexMap{1: 1}, hashIndexMap{}, hashIndexMap{1: 1}, hashIndexMap{})
+	runTest(hashIndexMap{1: 1}, hashIndexMap{2: 2}, hashIndexMap{1: 1}, hashIndexMap{2: 2})
+}
+
+func TestDetailedDiffMatchNewIndicesToInputs(t *testing.T) {
+	tfs := shimv2.NewSchemaMap(map[string]*schema.Schema{
+		"foo": {
+			Type: schema.TypeSet,
+			Elem: &schema.Schema{
+				Type: schema.TypeString,
+			},
+		},
+	})
+
+	getHash := func(element string) setHash {
+		return setHash(tfs.Get("foo").SetHash(element))
+	}
+
+	runTest := func(
+		newInputs []resource.PropertyValue, changes hashIndexMap, expected hashIndexMap, logBuf *bytes.Buffer,
+	) {
+		t.Helper()
+		ctx := logging.InitLogging(context.Background(), logging.LogOptions{
+			LogSink: &testLogSink{buf: logBuf},
+		})
+		inputs := resource.NewPropertyMapFromMap(map[string]interface{}{
+			"foo": newInputs,
+		})
+		differ := detailedDiffer{
+			ctx:       ctx,
+			tfs:       tfs,
+			ps:        nil,
+			newInputs: inputs,
+		}
+		matched := differ.matchNewIndicesToInputs(newPropertyPath("foo"), changes)
+		require.Equal(t, matched, expected)
+	}
+
+	t.Run("single element", func(t *testing.T) {
+		logBuf := &bytes.Buffer{}
+		runTest(
+			[]resource.PropertyValue{resource.NewStringProperty("val1")},
+			hashIndexMap{getHash("val1"): 0},
+			hashIndexMap{getHash("val1"): 0},
+			logBuf,
+		)
+		require.Empty(t, logBuf.String())
+	})
+
+	t.Run("single element, doesn't match", func(t *testing.T) {
+		logBuf := &bytes.Buffer{}
+		runTest(
+			[]resource.PropertyValue{resource.NewStringProperty("val1")},
+			hashIndexMap{getHash("val2"): 0},
+			hashIndexMap{getHash("val2"): 0},
+			logBuf,
+		)
+		require.Contains(t, logBuf.String(), "Additional changes detected in foo")
+	})
+
+	t.Run("two elements, one changed", func(t *testing.T) {
+		logBuf := &bytes.Buffer{}
+		runTest(
+			[]resource.PropertyValue{resource.NewStringProperty("val1"), resource.NewStringProperty("val2")},
+			hashIndexMap{getHash("val2"): 1},
+			hashIndexMap{getHash("val2"): 1},
+			logBuf,
+		)
+		require.Empty(t, logBuf.String())
+	})
+
+	t.Run("two elements, both changed", func(t *testing.T) {
+		logBuf := &bytes.Buffer{}
+		runTest(
+			[]resource.PropertyValue{resource.NewStringProperty("val1"), resource.NewStringProperty("val2")},
+			hashIndexMap{getHash("val1"): 0, getHash("val2"): 1},
+			hashIndexMap{getHash("val1"): 0, getHash("val2"): 1},
+			logBuf,
+		)
+		require.Empty(t, logBuf.String())
+	})
+
+	t.Run("two elements, one changed, one doesn't match", func(t *testing.T) {
+		logBuf := &bytes.Buffer{}
+		runTest(
+			[]resource.PropertyValue{resource.NewStringProperty("val1"), resource.NewStringProperty("val2")},
+			hashIndexMap{getHash("val1"): 0, getHash("val3"): 1},
+			hashIndexMap{getHash("val1"): 0, getHash("val3"): 1},
+			logBuf,
+		)
+		require.Contains(t, logBuf.String(), "Additional changes detected in foo")
+	})
+}
+
+func TestDetailedDiffBuildChangesIndexMap(t *testing.T) {
+	runTest := func(added, removed hashIndexMap, expected map[arrayIndex]hashPair) {
+		t.Helper()
+		changes := buildChangesIndexMap(added, removed)
+		require.Equal(t, expected, changes)
+	}
+
+	t.Run("empty", func(t *testing.T) {
+		runTest(hashIndexMap{}, hashIndexMap{}, map[arrayIndex]hashPair{})
+	})
+	t.Run("one added", func(t *testing.T) {
+		runTest(hashIndexMap{1: 0}, hashIndexMap{}, map[arrayIndex]hashPair{
+			0: {oldHash: -1, newHash: 1},
+		})
+	})
+	t.Run("one removed", func(t *testing.T) {
+		runTest(hashIndexMap{}, hashIndexMap{1: 0}, map[arrayIndex]hashPair{
+			0: {oldHash: 1, newHash: -1},
+		})
+	})
+	t.Run("one added, one removed, different indices", func(t *testing.T) {
+		runTest(hashIndexMap{1: 0}, hashIndexMap{2: 1}, map[arrayIndex]hashPair{
+			0: {oldHash: -1, newHash: 1},
+			1: {oldHash: 2, newHash: -1},
+		})
+	})
+
+	t.Run("one added, one removed, same indices", func(t *testing.T) {
+		runTest(hashIndexMap{1: 0}, hashIndexMap{2: 0}, map[arrayIndex]hashPair{
+			0: {oldHash: 2, newHash: 1},
+		})
+	})
+}
+
+func TestDetailedDiffSetHashPanicCaught(t *testing.T) {
+	tfs := shimv2.NewSchemaMap(map[string]*schema.Schema{
+		"foo": {
+			Type: schema.TypeSet,
+			Elem: &schema.Schema{
+				Type: schema.TypeString,
+			},
+			Set: func(v interface{}) int {
+				panic("test")
+			},
+		},
+	})
+
+	buf := &bytes.Buffer{}
+	ctx := logging.InitLogging(context.Background(), logging.LogOptions{
+		LogSink: &testLogSink{buf: buf},
+	})
+
+	differ := detailedDiffer{
+		ctx: ctx,
+		tfs: tfs,
+		ps:  nil,
+	}
+
+	differ.calculateSetHashIndexMap(
+		newPropertyPath("foo"),
+		[]resource.PropertyValue{resource.NewStringProperty("val1")},
+	)
+
+	require.Contains(t, buf.String(), "Failed to calculate preview for element in foo")
 }

@@ -341,6 +341,24 @@ func MakeTerraformInputs(
 	return makeTerraformInputsWithOptions(ctx, instance, config, olds, news, tfs, ps, makeTerraformInputsOptions{})
 }
 
+// makeSingleTerraformInput converts a single Pulumi property value into a plain go value suitable for use by Terraform.
+// makeSingleTerraformInput does not apply any defaults or other transformations.
+func makeSingleTerraformInput(
+	ctx context.Context, name string, val resource.PropertyValue, tfs shim.Schema, ps *SchemaInfo,
+) (interface{}, error) {
+	cctx := &conversionContext{
+		Ctx:                         ctx,
+		ComputeDefaultOptions:       ComputeDefaultOptions{},
+		ProviderConfig:              nil,
+		ApplyDefaults:               false,
+		ApplyTFDefaults:             false,
+		Assets:                      AssetTable{},
+		UnknownCollectionsSupported: false,
+	}
+
+	return cctx.makeTerraformInput(name, resource.NewNullProperty(), val, tfs, ps)
+}
+
 // makeTerraformInput takes a single property plus custom schema info and does whatever is necessary
 // to prepare it for use by Terraform. Note that this function may have side effects, for instance
 // if it is necessary to spill an asset to disk in order to create a name out of it. Please take

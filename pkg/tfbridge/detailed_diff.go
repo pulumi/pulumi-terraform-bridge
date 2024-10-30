@@ -3,6 +3,7 @@ package tfbridge
 import (
 	"cmp"
 	"context"
+	"fmt"
 	"slices"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -126,8 +127,11 @@ func makeBaseDiff(old, new resource.PropertyValue) baseDiff {
 type detailedDiffKey string
 
 type detailedDiffer struct {
+	ctx context.Context
 	tfs shim.SchemaMap
 	ps  map[string]*SchemaInfo
+	// These are used to convert set indices back to something the engine can reference.
+	newInputs resource.PropertyMap
 }
 
 func (differ detailedDiffer) propertyPathToSchemaPath(path propertyPath) walk.SchemaPath {
@@ -151,6 +155,54 @@ func (differ detailedDiffer) getEffectiveType(path walk.SchemaPath) shim.ValueTy
 	}
 
 	return tfs.Type()
+}
+
+type (
+	setHash    int
+	arrayIndex int
+)
+
+type hashIndexMap map[setHash]arrayIndex
+
+func (differ detailedDiffer) calculateSetHashIndexMap(
+	path propertyPath, listVal []resource.PropertyValue,
+) hashIndexMap {
+	identities := make(hashIndexMap)
+
+	tfs, ps, err := lookupSchemas(path, differ.tfs, differ.ps)
+	if err != nil {
+		return nil
+	}
+
+	convertedVal, err := makeSingleTerraformInput(
+		differ.ctx, path.String(), resource.NewArrayProperty(listVal), tfs, ps)
+	if err != nil {
+		return nil
+	}
+
+	if convertedVal == nil {
+		return nil
+	}
+
+	convertedListVal, ok := convertedVal.([]interface{})
+	contract.Assertf(ok, "converted value should be a list")
+
+	// Calculate the identity of each element. Note that the SetHash function can panic
+	// in the case of custom SetHash functions which get unexpected inputs.
+	for i, newElem := range convertedListVal {
+		elementHash := func() int {
+			defer func() {
+				if r := recover(); r != nil {
+					GetLogger(differ.ctx).Warn(fmt.Sprintf(
+						"Failed to calculate preview for element in %s: %v",
+						path.String(), r))
+				}
+			}()
+			return tfs.SetHash(newElem)
+		}()
+		identities[setHash(elementHash)] = arrayIndex(i)
+	}
+	return identities
 }
 
 // makePlainPropDiff is used for plain properties and ones with an unknown schema.
@@ -228,8 +280,7 @@ func (differ detailedDiffer) makePropDiff(
 	case shim.TypeList:
 		return differ.makeListDiff(path, old, new)
 	case shim.TypeSet:
-		// TODO[pulumi/pulumi-terraform-bridge#2200]: Implement set diffing
-		return differ.makeListDiff(path, old, new)
+		return differ.makeSetDiff(path, old, new)
 	case shim.TypeMap:
 		// Note that TF objects are represented as maps when returned by LookupSchemas
 		return differ.makeMapDiff(path, old, new)
@@ -264,6 +315,117 @@ func (differ detailedDiffer) makeListDiff(
 		}
 	}
 
+	return diff
+}
+
+func computeSetHashChanges(
+	oldIdentities, newIdentities hashIndexMap,
+) (removed, added hashIndexMap) {
+	removed = hashIndexMap{}
+	added = hashIndexMap{}
+
+	for elementHash := range oldIdentities {
+		if _, ok := newIdentities[elementHash]; !ok {
+			removed[elementHash] = oldIdentities[elementHash]
+		}
+	}
+
+	for elementHash := range newIdentities {
+		if _, ok := oldIdentities[elementHash]; !ok {
+			added[elementHash] = newIdentities[elementHash]
+		}
+	}
+
+	return
+}
+
+func (differ detailedDiffer) matchNewIndicesToInputs(
+	path propertyPath, changedIdentities hashIndexMap,
+) hashIndexMap {
+	matched := hashIndexMap{}
+
+	newInputsList := []resource.PropertyValue{}
+
+	newInputs, newInputsOk := path.GetFromMap(differ.newInputs)
+	if newInputsOk && isPresent(newInputs) && newInputs.IsArray() {
+		newInputsList = newInputs.ArrayValue()
+	}
+
+	inputIdentities := hashIndexMap{}
+
+	if !pathContainsComputed(path, differ.tfs, differ.ps) {
+		// The inputs are only safe to hash if the schema has no computed properties
+		inputIdentities = differ.calculateSetHashIndexMap(path, newInputsList)
+	}
+
+	for elementHash, newStateIndex := range changedIdentities {
+		if inputIndex, ok := inputIdentities[elementHash]; ok {
+			matched[elementHash] = inputIndex
+		} else {
+			GetLogger(differ.ctx).Warn(fmt.Sprintf(
+				"Additional changes detected in %s, the displayed diff might be inaccurate",
+				path.String()))
+			matched[elementHash] = newStateIndex
+		}
+	}
+
+	return matched
+}
+
+type hashPair struct {
+	oldHash setHash
+	newHash setHash
+}
+
+func buildChangesIndexMap(added, removed hashIndexMap) map[arrayIndex]hashPair {
+	changes := map[arrayIndex]hashPair{}
+	for hash, index := range added {
+		changes[index] = hashPair{oldHash: -1, newHash: hash}
+	}
+	for hash, index := range removed {
+		if el, ok := changes[index]; !ok {
+			changes[index] = hashPair{oldHash: hash, newHash: -1}
+		} else {
+			el.oldHash = hash
+			changes[index] = el
+		}
+	}
+	return changes
+}
+
+func (differ detailedDiffer) makeSetDiff(
+	path propertyPath, old, new resource.PropertyValue,
+) map[detailedDiffKey]*pulumirpc.PropertyDiff {
+	diff := make(map[detailedDiffKey]*pulumirpc.PropertyDiff)
+	oldList := old.ArrayValue()
+	newList := new.ArrayValue()
+
+	oldIdentities := differ.calculateSetHashIndexMap(path, oldList)
+	newIdentities := differ.calculateSetHashIndexMap(path, newList)
+
+	removed, added := computeSetHashChanges(oldIdentities, newIdentities)
+
+	// We need to match the new indices to the inputs to ensure that the identity of the
+	// elements is preserved - this is necessary since the planning process can reorder
+	// the elements.
+	addedInputs := differ.matchNewIndicesToInputs(path, added)
+
+	changes := buildChangesIndexMap(addedInputs, removed)
+	for index, hashes := range changes {
+		oldVal := resource.NewNullProperty()
+		if removedIndex, ok := removed[hashes.oldHash]; ok {
+			oldVal = oldList[removedIndex]
+		}
+		newVal := resource.NewNullProperty()
+		if addedIndex, ok := added[hashes.newHash]; ok {
+			newVal = newList[addedIndex]
+		}
+
+		elemDiff := differ.makePropDiff(path.Index(int(index)), oldVal, newVal)
+		for subKey, subDiff := range elemDiff {
+			diff[subKey] = subDiff
+		}
+	}
 	return diff
 }
 
@@ -322,6 +484,7 @@ func makeDetailedDiffV2(
 	diff shim.InstanceDiff,
 	assets AssetTable,
 	supportsSecrets bool,
+	newInputs resource.PropertyMap,
 ) (map[string]*pulumirpc.PropertyDiff, error) {
 	// We need to compare the new and olds after all transformations have been applied.
 	// ex. state upgrades, implementation-specific normalizations etc.
@@ -343,6 +506,6 @@ func makeDetailedDiffV2(
 		return nil, err
 	}
 
-	differ := detailedDiffer{tfs: tfs, ps: ps}
+	differ := detailedDiffer{ctx: ctx, tfs: tfs, ps: ps, newInputs: newInputs}
 	return differ.makeDetailedDiffPropertyMap(priorProps, props), nil
 }
