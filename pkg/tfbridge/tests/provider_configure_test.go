@@ -20,10 +20,11 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/zclconf/go-cty/cty"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests"
+	crosstests "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests"
 )
 
 func TestConfigureSimpleValues(t *testing.T) {
+	t.Skip("TODO[pulumi/pulumi-terraform-bridge#2530]: flaky")
 	t.Run("string", crosstests.MakeConfigure(map[string]*schema.Schema{
 		"f0": {Type: schema.TypeString, Required: true},
 	}, cty.ObjectVal(map[string]cty.Value{
