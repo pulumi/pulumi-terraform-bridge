@@ -18,12 +18,12 @@ import (
 	"testing"
 
 	"encoding/json"
+
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestAccProviderSecrets(t *testing.T) {
-    t.Parallel()
 	opts := accTestOptions(t).With(integration.ProgramTestOptions{
 		Dir: "provider-secrets",
 
