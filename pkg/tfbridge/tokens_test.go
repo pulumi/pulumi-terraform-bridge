@@ -1199,8 +1199,7 @@ func TestMaxItemsOneDataSourceAliasing(t *testing.T) {
 	})
 }
 
-func TestAutoAliasingChangeDataSources(t *testing.T) {
-	t.Parallel()
+func TestAutoAliasingChangeDataSources(t *testing.T) { //nolint:paralleltest
 	provider := func(t *testing.T, meta string, n int) *tfbridge.ProviderInfo {
 		dsName := ptokens.ModuleMember(fmt.Sprintf("pkg:index:getD%d", n))
 		info, err := metadata.New([]byte(meta))
