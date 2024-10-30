@@ -19,6 +19,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/providerbuilder"
 	pb "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/providerbuilder"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/pulcheck"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
@@ -54,7 +55,7 @@ resources:
         properties:
             s: "hello"`
 
-	pt, err := pulCheck(t, prov, program)
+	pt, err := pulcheck.PulCheck(t, prov, program)
 	require.NoError(t, err)
 
 	pt.Up(t)
@@ -128,7 +129,7 @@ resources:
                 - name: "vlan1"
                   vlanId: "1"`
 
-	pt, err := pulCheck(t, prov, program1)
+	pt, err := pulcheck.PulCheck(t, prov, program1)
 	require.NoError(t, err)
 
 	pt.Up(t)
@@ -286,7 +287,7 @@ resources:
             s: "hello"
 `
 
-			pt, err := pulCheck(t, prov, program)
+			pt, err := pulcheck.PulCheck(t, prov, program)
 			if tc.expectTFGenErrorContains != "" {
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), tc.expectTFGenErrorContains)
@@ -343,7 +344,7 @@ resources:
 outputs:
     changeReason: ${mainRes.changeReason}`
 
-	pt, err := pulCheck(t, prov, program)
+	pt, err := pulcheck.PulCheck(t, prov, program)
 	require.NoError(t, err)
 	upRes := pt.Up(t)
 	t.Log(upRes.StdOut)
@@ -406,7 +407,7 @@ resources:
 outputs:
     changeReason: ${mainRes.changeReason}`
 
-	pt, err := pulCheck(t, prov, program)
+	pt, err := pulcheck.PulCheck(t, prov, program)
 	require.NoError(t, err)
 	upRes := pt.Up(t)
 	t.Log(upRes.StdOut)
