@@ -36,7 +36,6 @@ func TestConfigure(t *testing.T) {
 			"k": schema.StringAttribute{Optional: true},
 		}},
 		map[string]cty.Value{"k": cty.StringVal("foo")},
-		resource.PropertyMap{"k": resource.NewProperty("foo")},
 	))
 
 	t.Run("secret-string", crosstests.MakeConfigure(
@@ -44,7 +43,7 @@ func TestConfigure(t *testing.T) {
 			"k": schema.StringAttribute{Optional: true},
 		}},
 		map[string]cty.Value{"k": cty.StringVal("foo")},
-		resource.PropertyMap{"k": resource.MakeSecret(resource.NewProperty("foo"))},
+		crosstests.ConfigurePulumiConfig(resource.PropertyMap{"k": resource.MakeSecret(resource.NewProperty("foo"))}),
 	))
 
 	t.Run("bool", crosstests.MakeConfigure(
@@ -52,7 +51,6 @@ func TestConfigure(t *testing.T) {
 			"b": schema.BoolAttribute{Optional: true},
 		}},
 		map[string]cty.Value{"b": cty.BoolVal(false)},
-		resource.PropertyMap{"b": resource.NewProperty(false)},
 	))
 }
 
@@ -66,7 +64,7 @@ func TestConfigureInvalidTypes(t *testing.T) {
 			"b": schema.BoolAttribute{Optional: true},
 		}},
 		map[string]cty.Value{"b": cty.BoolVal(false)},
-		resource.PropertyMap{"b": resource.NewProperty("false")},
+		crosstests.ConfigurePulumiConfig(resource.PropertyMap{"b": resource.NewProperty("false")}),
 	))
 }
 

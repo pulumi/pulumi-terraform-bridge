@@ -87,14 +87,14 @@ func runPulumiUpgrade(t T, res1, res2 *schema.Resource, config1, config2 cty.Val
 		tfResourceName:      defRtype,
 	}
 
-	yamlProgram := pd.generateYAML(t, inferPulumiValue(t,
+	yamlProgram := pd.generateYAML(t, InferPulumiValue(t,
 		prov1.P.ResourcesMap().Get(pd.tfResourceName).Schema(), nil, config1))
 	pt := pulcheck.PulCheck(t, prov1, string(yamlProgram))
 	pt.Up(t)
 	stack := pt.ExportStack(t)
 	schemaVersion1 := getVersionInState(t, stack)
 
-	yamlProgram = pd.generateYAML(t, inferPulumiValue(t,
+	yamlProgram = pd.generateYAML(t, InferPulumiValue(t,
 		prov1.P.ResourcesMap().Get(pd.tfResourceName).Schema(), nil, config2))
 	p := filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml")
 	err := os.WriteFile(p, yamlProgram, 0o600)

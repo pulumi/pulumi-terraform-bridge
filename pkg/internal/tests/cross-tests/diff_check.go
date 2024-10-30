@@ -85,12 +85,12 @@ func runDiffCheck(t T, tc diffTestCase) diffResult {
 		tfResourceName:      defRtype,
 	}
 
-	yamlProgram := pd.generateYAML(t, inferPulumiValue(t,
+	yamlProgram := pd.generateYAML(t, InferPulumiValue(t,
 		bridgedProvider.P.ResourcesMap().Get(defRtype).Schema(), nil, tfConfig1))
 	pt := pulcheck.PulCheck(t, bridgedProvider, string(yamlProgram))
 	pt.Up(t)
 
-	yamlProgram = pd.generateYAML(t, inferPulumiValue(t,
+	yamlProgram = pd.generateYAML(t, InferPulumiValue(t,
 		bridgedProvider.P.ResourcesMap().Get(defRtype).Schema(), nil, tfConfig2))
 	err := os.WriteFile(filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml"), yamlProgram, 0o600)
 	require.NoErrorf(t, err, "writing Pulumi.yaml")
