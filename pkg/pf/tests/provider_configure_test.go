@@ -30,13 +30,35 @@ import (
 )
 
 func TestConfigure(t *testing.T) {
-    t.Parallel()
-	t.Run("string", crosstests.MakeConfigure(
-		schema.Schema{Attributes: map[string]schema.Attribute{
-			"k": schema.StringAttribute{Optional: true},
-		}},
-		map[string]cty.Value{"k": cty.StringVal("foo")},
-	))
+	t.Parallel()
+
+	t.Run("string", testConfigurePrimitive{
+		zeroValue:    cty.StringVal(""),
+		nonZeroValue: cty.StringVal("a string"),
+		attrOptional: schema.StringAttribute{Optional: true},
+		attrRequired: schema.StringAttribute{Required: true},
+	}.run)
+
+	t.Run("bool", testConfigurePrimitive{
+		zeroValue:    cty.BoolVal(false),
+		nonZeroValue: cty.BoolVal(true),
+		attrOptional: schema.BoolAttribute{Optional: true},
+		attrRequired: schema.BoolAttribute{Required: true},
+	}.run)
+
+	t.Run("int", testConfigurePrimitive{
+		zeroValue:    cty.NumberIntVal(0),
+		nonZeroValue: cty.NumberIntVal(123),
+		attrOptional: schema.Int64Attribute{Optional: true},
+		attrRequired: schema.Int64Attribute{Required: true},
+	}.run)
+
+	t.Run("float", testConfigurePrimitive{
+		zeroValue:    cty.NumberFloatVal(0),
+		nonZeroValue: cty.NumberFloatVal(123.5),
+		attrOptional: schema.Float64Attribute{Optional: true},
+		attrRequired: schema.Float64Attribute{Required: true},
+	}.run)
 
 	t.Run("secret-string", crosstests.MakeConfigure(
 		schema.Schema{Attributes: map[string]schema.Attribute{
@@ -45,12 +67,40 @@ func TestConfigure(t *testing.T) {
 		map[string]cty.Value{"k": cty.StringVal("foo")},
 		crosstests.ConfigurePulumiConfig(resource.PropertyMap{"k": resource.MakeSecret(resource.NewProperty("foo"))}),
 	))
+}
 
-	t.Run("bool", crosstests.MakeConfigure(
+type testConfigurePrimitive struct {
+	zeroValue, nonZeroValue    cty.Value
+	attrOptional, attrRequired schema.Attribute
+}
+
+func (tc testConfigurePrimitive) run(t *testing.T) {
+	t.Parallel()
+	t.Run("zero value - optional", crosstests.MakeConfigure(
 		schema.Schema{Attributes: map[string]schema.Attribute{
-			"b": schema.BoolAttribute{Optional: true},
+			"v": tc.attrOptional,
 		}},
-		map[string]cty.Value{"b": cty.BoolVal(false)},
+		map[string]cty.Value{"v": tc.zeroValue},
+	))
+
+	t.Run("zero value - required", crosstests.MakeConfigure(
+		schema.Schema{Attributes: map[string]schema.Attribute{
+			"v": tc.attrRequired,
+		}},
+		map[string]cty.Value{"v": tc.zeroValue},
+	))
+	t.Run("value - optional", crosstests.MakeConfigure(
+		schema.Schema{Attributes: map[string]schema.Attribute{
+			"v": tc.attrOptional,
+		}},
+		map[string]cty.Value{"v": tc.nonZeroValue},
+	))
+
+	t.Run("value - required", crosstests.MakeConfigure(
+		schema.Schema{Attributes: map[string]schema.Attribute{
+			"v": tc.attrRequired,
+		}},
+		map[string]cty.Value{"v": tc.nonZeroValue},
 	))
 }
 
@@ -59,12 +109,52 @@ func TestConfigure(t *testing.T) {
 func TestConfigureInvalidTypes(t *testing.T) {
 	t.Setenv("PULUMI_DEBUG_YAML_DISABLE_TYPE_CHECKING", "true")
 
-	t.Run("bool-type-conversion", crosstests.MakeConfigure(
+	t.Run("string-as-bool", crosstests.MakeConfigure(
 		schema.Schema{Attributes: map[string]schema.Attribute{
 			"b": schema.BoolAttribute{Optional: true},
 		}},
 		map[string]cty.Value{"b": cty.BoolVal(false)},
 		crosstests.ConfigurePulumiConfig(resource.PropertyMap{"b": resource.NewProperty("false")}),
+	))
+
+	t.Run("string-as-int", crosstests.MakeConfigure(
+		schema.Schema{Attributes: map[string]schema.Attribute{
+			"b": schema.Int64Attribute{Optional: true},
+		}},
+		map[string]cty.Value{"b": cty.NumberIntVal(1234)},
+		crosstests.ConfigurePulumiConfig(resource.PropertyMap{"b": resource.NewProperty("1234")}),
+	))
+
+	t.Run("string-as-float", crosstests.MakeConfigure(
+		schema.Schema{Attributes: map[string]schema.Attribute{
+			"b": schema.Float64Attribute{Optional: true},
+		}},
+		map[string]cty.Value{"b": cty.NumberFloatVal(1234.5)},
+		crosstests.ConfigurePulumiConfig(resource.PropertyMap{"b": resource.NewProperty("1234.5")}),
+	))
+
+	t.Run("bool-as-string", crosstests.MakeConfigure(
+		schema.Schema{Attributes: map[string]schema.Attribute{
+			"b": schema.StringAttribute{Optional: true},
+		}},
+		map[string]cty.Value{"b": cty.StringVal("false")},
+		crosstests.ConfigurePulumiConfig(resource.PropertyMap{"b": resource.NewProperty(false)}),
+	))
+
+	t.Run("int-as-string", crosstests.MakeConfigure(
+		schema.Schema{Attributes: map[string]schema.Attribute{
+			"b": schema.StringAttribute{Optional: true},
+		}},
+		map[string]cty.Value{"b": cty.StringVal("1234")},
+		crosstests.ConfigurePulumiConfig(resource.PropertyMap{"b": resource.NewProperty(1234.0)}),
+	))
+
+	t.Run("float-as-string", crosstests.MakeConfigure(
+		schema.Schema{Attributes: map[string]schema.Attribute{
+			"b": schema.StringAttribute{Optional: true},
+		}},
+		map[string]cty.Value{"b": cty.StringVal("1234.5")},
+		crosstests.ConfigurePulumiConfig(resource.PropertyMap{"b": resource.NewProperty(1234.5)}),
 	))
 }
 
@@ -72,7 +162,7 @@ func TestConfigureInvalidTypes(t *testing.T) {
 //
 // The resource TestConfigRes will read stringConfigProp information the provider receives via Configure.
 func TestConfigureToCreate(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	server, err := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
 	require.NoError(t, err)
 	replay.ReplaySequence(t, server, `
@@ -107,7 +197,7 @@ func TestConfigureToCreate(t *testing.T) {
 }
 
 func TestConfigureBooleans(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	// Non-string properties caused trouble at some point, test booleans.
 	server, err := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
 	require.NoError(t, err)
@@ -128,7 +218,7 @@ func TestConfigureBooleans(t *testing.T) {
 }
 
 func TestConfigureErrorReplacement(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	t.Run("replace_config_properties", func(t *testing.T) {
 		errString := `some error with "config_property" and "config" but not config`
 		prov := &testprovider.ConfigTestProvider{
@@ -188,7 +278,7 @@ func TestConfigureErrorReplacement(t *testing.T) {
 }
 
 func TestJSONNestedConfigure(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	p := testprovider.SyntheticTestBridgeProvider()
 	server, err := newProviderServer(t, p)
 	require.NoError(t, err)
@@ -211,7 +301,7 @@ func TestJSONNestedConfigure(t *testing.T) {
 }
 
 func TestJSONNestedConfigureWithSecrets(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	server, err := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
 	require.NoError(t, err)
 	replay.ReplaySequence(t, server, `
@@ -251,7 +341,7 @@ func TestJSONNestedConfigureWithSecrets(t *testing.T) {
 }
 
 func TestConfigureWithSecrets(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	server, err := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
 	require.NoError(t, err)
 	replay.ReplaySequence(t, server, `
