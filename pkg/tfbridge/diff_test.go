@@ -277,7 +277,6 @@ func diffTest(t *testing.T, tfs map[string]*v2Schema.Schema, inputs,
 	expectedDiffChanges pulumirpc.DiffResponse_DiffChanges,
 	ignoreChanges ...string,
 ) {
-	t.Parallel()
 	ctx := context.Background()
 
 	inputsMap := resource.NewPropertyMapFromMap(inputs)

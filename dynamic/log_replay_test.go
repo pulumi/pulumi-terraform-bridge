@@ -19,6 +19,7 @@ import (
 )
 
 func TestLogReplayProvider(t *testing.T) {
+	t.Parallel()
 	grpcLogs, err := os.ReadFile("./testdata/TestLogReplayProvider/grpc_log_random.json")
 	if err != nil {
 		t.Fatalf("failed to read grpc log: %v", err)
@@ -77,6 +78,7 @@ func makeLogReplayProvider(t *testing.T, name, version string, grpcLogs []byte) 
 
 // Asserts that the replayed provider can answer all the engine calls and return the correct output.
 func TestLogReplayProviderWithProgram(t *testing.T) {
+	t.Parallel()
 	grpcLogs, err := os.ReadFile(
 		"./testdata/TestLogReplayProvider/grpc_log_random.json")
 	if err != nil {
