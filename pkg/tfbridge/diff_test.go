@@ -292,7 +292,6 @@ func diffTest(t *testing.T, tfs map[string]*v2Schema.Schema, inputs,
 
 	for _, s := range setup {
 		t.Run(s.name, func(t *testing.T) {
-			t.Parallel()
 			t.Run("standard", func(t *testing.T) {
 				t.Parallel()
 				sch, r, provider, info := s.setup(tfs)
@@ -323,7 +322,6 @@ func diffTest(t *testing.T, tfs map[string]*v2Schema.Schema, inputs,
 
 	for _, s := range setup {
 		t.Run(s.name, func(t *testing.T) {
-			t.Parallel()
 			// Add an ignoreChanges entry for each path in the expected diff, then re-convert the diff
 			// and check the result.
 			t.Run("withIgnoreAllExpected", func(t *testing.T) {
