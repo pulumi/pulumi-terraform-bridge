@@ -164,6 +164,15 @@ func TestApplyEditRules(t *testing.T) {
 			phase:    info.PostCodeTranslation,
 		},
 		{
+			// Found in confluentcloud
+			name: "Strips mentions of Terraform version With Backticks",
+			docFile: DocFile{
+				Content: []byte("Terraform `v0.13` and later:"),
+			},
+			expected: []byte(""),
+			phase:    info.PostCodeTranslation,
+		},
+		{
 			// Found in linode
 			name: "Rewrites providers.tf to Pulumi.yaml",
 			docFile: DocFile{
