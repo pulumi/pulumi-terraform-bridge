@@ -15,10 +15,13 @@
 package tfbridgetests
 
 import (
+	"strconv"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/pulumi/providertest/replay"
 	crosstests "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/cross-tests"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/testprovider"
@@ -60,12 +63,165 @@ func TestConfigure(t *testing.T) {
 		attrRequired: schema.Float64Attribute{Required: true},
 	}.run)
 
+	t.Run("list-attribute", func(t *testing.T) {
+		testConfigureCollection{
+			attrOptional: func(a attr.Type) schema.Attribute {
+				return schema.ListAttribute{Optional: true, ElementType: a}
+			},
+			makeCollection: func(v []cty.Value, elem cty.Type) cty.Value {
+				if len(v) == 0 {
+					return cty.ListValEmpty(elem)
+				}
+				return cty.ListVal(v)
+			},
+		}.run(t)
+
+		t.Run("null element", func(t *testing.T) {
+			t.Skip("TODO[pulumi/pulumi-terraform-bridge#2555]: Pulumi behavior does not match TF when passing a null to an array")
+			crosstests.Configure(t,
+				schema.Schema{Attributes: map[string]schema.Attribute{
+					"k": schema.ListAttribute{Optional: true, ElementType: types.StringType},
+				}},
+				map[string]cty.Value{
+					"k": cty.ListVal([]cty.Value{
+						cty.NullVal(cty.String),
+						cty.StringVal("another-value"),
+					}),
+				},
+			)
+		})
+	})
+
+	t.Run("set-attribute", testConfigureCollection{
+		attrOptional: func(a attr.Type) schema.Attribute {
+			return schema.SetAttribute{Optional: true, ElementType: a}
+		},
+		makeCollection: func(v []cty.Value, elem cty.Type) cty.Value {
+			if len(v) == 0 {
+				return cty.SetValEmpty(elem)
+			}
+			return cty.SetVal(v)
+		},
+	}.run)
+
+	t.Run("map-attribute", testConfigureCollection{
+		attrOptional: func(a attr.Type) schema.Attribute {
+			return schema.MapAttribute{Optional: true, ElementType: a}
+		},
+		makeCollection: func(v []cty.Value, elem cty.Type) cty.Value {
+			if len(v) == 0 {
+				return cty.MapValEmpty(elem)
+			}
+			m := make(map[string]cty.Value, len(v))
+			for i, e := range v {
+				m[strconv.Itoa(i)] = e
+			}
+			return cty.MapVal(m)
+		},
+	}.run)
+
+	t.Run("single-nested-attribute", func(t *testing.T) {
+		t.Parallel()
+
+		optionalAttrs := schema.Schema{Attributes: map[string]schema.Attribute{
+			"o": schema.SingleNestedAttribute{
+				Attributes: map[string]schema.Attribute{
+					"n1": schema.StringAttribute{Optional: true},
+					"n2": schema.BoolAttribute{Optional: true},
+				},
+				Optional: true,
+			},
+		}}
+
+		t.Run("missing", crosstests.MakeConfigure(optionalAttrs,
+			map[string]cty.Value{},
+		))
+
+		t.Run("empty", crosstests.MakeConfigure(optionalAttrs,
+			map[string]cty.Value{"o": cty.EmptyObjectVal},
+		))
+
+		t.Run("null", crosstests.MakeConfigure(optionalAttrs,
+			map[string]cty.Value{
+				"o": cty.NullVal(cty.Object(map[string]cty.Type{"n1": cty.String, "n2": cty.Bool})),
+			},
+		))
+
+		t.Run("full", crosstests.MakeConfigure(optionalAttrs,
+			map[string]cty.Value{
+				"o": cty.ObjectVal(map[string]cty.Value{
+					"n1": cty.StringVal("123"),
+					"n2": cty.BoolVal(false),
+				}),
+			},
+		))
+
+		t.Run("partial", crosstests.MakeConfigure(optionalAttrs,
+			map[string]cty.Value{
+				"o": cty.ObjectVal(map[string]cty.Value{
+					"n1": cty.StringVal("123"),
+				}),
+			},
+		))
+	})
+}
+
+func TestConfigureSecrets(t *testing.T) {
+	t.Parallel()
 	t.Run("secret-string", crosstests.MakeConfigure(
 		schema.Schema{Attributes: map[string]schema.Attribute{
 			"k": schema.StringAttribute{Optional: true},
 		}},
 		map[string]cty.Value{"k": cty.StringVal("foo")},
 		crosstests.ConfigurePulumiConfig(resource.PropertyMap{"k": resource.MakeSecret(resource.NewProperty("foo"))}),
+	))
+}
+
+type testConfigureCollection struct {
+	attrOptional   func(attr.Type) schema.Attribute
+	makeCollection func([]cty.Value, cty.Type) cty.Value
+}
+
+func (tc testConfigureCollection) run(t *testing.T) {
+	t.Parallel()
+
+	t.Run("missing", crosstests.MakeConfigure(
+		schema.Schema{Attributes: map[string]schema.Attribute{
+			"k": tc.attrOptional(types.StringType),
+		}},
+		map[string]cty.Value{},
+	))
+
+	t.Run("empty", crosstests.MakeConfigure(
+		schema.Schema{Attributes: map[string]schema.Attribute{
+			"k": tc.attrOptional(types.StringType),
+		}},
+		map[string]cty.Value{
+			"k": tc.makeCollection(nil, cty.String),
+		},
+	))
+
+	t.Run("1 element", crosstests.MakeConfigure(
+		schema.Schema{Attributes: map[string]schema.Attribute{
+			"k": tc.attrOptional(types.StringType),
+		}},
+		map[string]cty.Value{
+			"k": tc.makeCollection([]cty.Value{
+				cty.StringVal("some-value"),
+			}, cty.String),
+		},
+	))
+
+	t.Run("n element", crosstests.MakeConfigure(
+		schema.Schema{Attributes: map[string]schema.Attribute{
+			"k": tc.attrOptional(types.StringType),
+		}},
+		map[string]cty.Value{
+			"k": tc.makeCollection([]cty.Value{
+				cty.StringVal("some-value"),
+				cty.StringVal("another-value"),
+			}, cty.String),
+		},
 	))
 }
 
