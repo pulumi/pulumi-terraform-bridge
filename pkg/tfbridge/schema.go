@@ -161,7 +161,7 @@ import (
 // sits on top of the gRPC interface. As a result, the inputs tfbridge passes to the plugin SDK's APIs are not
 // subject to the preprocessing that is performed when Terraform interacts with the provider via the gRPC API.
 //
-tfbridge also used the gRPC interface (ideally in-memory or in-process), its implementation may be simpler.
+// If tfbridge also used the gRPC interface (ideally in-memory or in-process), its implementation may be simpler.
 // With that approach, tfbridge would be responsible for producing config and state in the same shape as the Terraform
 // CLI and expected by the gRPC interface, and that config and state would be subject to the same pipeline as that
 // produced by the Terraform CLI. The major blocker to this design is our current approach to default values, which
