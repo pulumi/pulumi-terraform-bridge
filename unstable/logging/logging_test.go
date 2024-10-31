@@ -192,6 +192,7 @@ func TestLogging(t *testing.T) {
 }
 
 func TestSetupRootLoggers(t *testing.T) {
+	t.Parallel()
 	var buf bytes.Buffer
 	ctx := setupRootLoggers(context.Background(), &buf)
 	tflog.Error(ctx, "Something went wrong")
@@ -199,6 +200,7 @@ func TestSetupRootLoggers(t *testing.T) {
 }
 
 func TestParseLevelFromRawString(t *testing.T) {
+	t.Parallel()
 	msg := "2023-03-15T10:52:48.612-0500 [ERROR] provider/resource_integer.go:113: " +
 		"provider: Create RandomInteger - ERROR +fields: superfield=supervalue a=1 b=b"
 	lev, rest := parseLevelFromRawString(msg)
@@ -208,6 +210,7 @@ func TestParseLevelFromRawString(t *testing.T) {
 }
 
 func TestParseUrnFromRawString(t *testing.T) {
+	t.Parallel()
 	t.Run("quoted", func(t *testing.T) {
 		msg := "2023-03-15T10:52:48.612-0500 [ERROR] provider/resource_integer.go:113: " +
 			"provider: Oops: urn=\"some-urn\" value=2"

@@ -32,6 +32,7 @@ import (
 )
 
 func TestReadFromRefresh(t *testing.T) {
+    t.Parallel()
 	// This test case was obtained by running `pulumi refresh` on a simple stack with one RandomPassword.
 	//
 	// Specifically testing for:
@@ -150,6 +151,7 @@ func TestReadFromRefresh(t *testing.T) {
 }
 
 func TestImportRandomPassword(t *testing.T) {
+    t.Parallel()
 	server, err := newProviderServer(t, testprovider.RandomProvider())
 	require.NoError(t, err)
 	testCase := `
@@ -192,6 +194,7 @@ func TestImportRandomPassword(t *testing.T) {
 }
 
 func TestImportingResourcesWithBlocks(t *testing.T) {
+    t.Parallel()
 	// Importing a resource that has blocks such as Testnest resource used to panic. Ensure that it minimally
 	// succeeds.
 	server, err := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
@@ -222,6 +225,7 @@ func TestImportingResourcesWithBlocks(t *testing.T) {
 }
 
 func TestImportingResourcesWithoutDefaults(t *testing.T) {
+    t.Parallel()
 	// Importing a resource that has blocks used to add a `__defaults: []` entry to the `response.inputs`
 	// ensure that it no longer does so
 	server, err := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
@@ -260,6 +264,7 @@ func TestImportingResourcesWithoutDefaults(t *testing.T) {
 // Check that importing a resource that does not exist returns an empty property bag and
 // no ID.
 func TestImportingMissingResources(t *testing.T) {
+    t.Parallel()
 	server, err := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
 	require.NoError(t, err)
 	testCase := `
@@ -279,6 +284,7 @@ func TestImportingMissingResources(t *testing.T) {
 }
 
 func TestImportingResourcesWithNestedAttributes(t *testing.T) {
+    t.Parallel()
 	// Importing a resource that has attribute blocks such as Testnest resource used to panic. Ensure that it minimally
 	// succeeds.
 	server, err := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
@@ -306,6 +312,7 @@ func TestImportingResourcesWithNestedAttributes(t *testing.T) {
 // Check that refreshing a resource that does not exist returns an empty property bag and
 // no ID.
 func TestRefreshMissingResources(t *testing.T) {
+    t.Parallel()
 	server, err := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
 	require.NoError(t, err)
 	testCase := `
@@ -336,6 +343,7 @@ func TestRefreshMissingResources(t *testing.T) {
 //
 // See https://github.com/pulumi/pulumi-terraform-bridge/issues/1919
 func TestRefreshResourceNotFound(t *testing.T) {
+    t.Parallel()
 	r := pb.Resource{
 		Name: "resource",
 		ResourceSchema: fwsch.Schema{
@@ -400,6 +408,7 @@ func TestRefreshResourceNotFound(t *testing.T) {
 }
 
 func TestRefreshSupportsCustomID(t *testing.T) {
+    t.Parallel()
 	p := testprovider.RandomProvider()
 	server, err := newProviderServer(t, p)
 	require.NoError(t, err)
@@ -501,6 +510,7 @@ func TestRefreshSupportsCustomID(t *testing.T) {
 }
 
 func TestImportSupportsCustomID(t *testing.T) {
+    t.Parallel()
 	p := testprovider.RandomProvider()
 	p.Resources["random_password"].ComputeID = func(
 		ctx context.Context, state resource.PropertyMap,

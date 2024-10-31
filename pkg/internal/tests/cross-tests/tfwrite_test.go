@@ -26,6 +26,7 @@ import (
 )
 
 func TestWriteHCL(t *testing.T) {
+	t.Parallel()
 	type testCase struct {
 		name   string
 		value  cty.Value

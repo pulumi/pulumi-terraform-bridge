@@ -9,6 +9,7 @@ import (
 )
 
 func TestNewInterpolatedVariable(t *testing.T) {
+    t.Parallel()
 	tests := []struct {
 		Input string
 		Want  InterpolatedVariable
@@ -102,6 +103,7 @@ func TestNewInterpolatedVariable(t *testing.T) {
 }
 
 func TestNewResourceVariable(t *testing.T) {
+    t.Parallel()
 	v, err := NewResourceVariable("foo.bar.baz")
 	if err != nil {
 		t.Fatalf("err: %s", err)
@@ -129,6 +131,7 @@ func TestNewResourceVariable(t *testing.T) {
 }
 
 func TestNewResourceVariableData(t *testing.T) {
+    t.Parallel()
 	v, err := NewResourceVariable("data.foo.bar.baz")
 	if err != nil {
 		t.Fatalf("err: %s", err)
@@ -156,6 +159,7 @@ func TestNewResourceVariableData(t *testing.T) {
 }
 
 func TestNewUserVariable(t *testing.T) {
+    t.Parallel()
 	v, err := NewUserVariable("var.bar")
 	if err != nil {
 		t.Fatalf("err: %s", err)
@@ -170,6 +174,7 @@ func TestNewUserVariable(t *testing.T) {
 }
 
 func TestNewUserVariable_oldMapDotIndexErr(t *testing.T) {
+    t.Parallel()
 	_, err := NewUserVariable("var.bar.baz")
 	if err == nil || !strings.Contains(err.Error(), "Invalid dot index") {
 		t.Fatalf("Expected dot index err, got: %#v", err)
@@ -177,10 +182,12 @@ func TestNewUserVariable_oldMapDotIndexErr(t *testing.T) {
 }
 
 func TestResourceVariable_impl(t *testing.T) {
+    t.Parallel()
 	var _ InterpolatedVariable = new(ResourceVariable)
 }
 
 func TestResourceVariable_Multi(t *testing.T) {
+    t.Parallel()
 	v, err := NewResourceVariable("foo.bar.*.baz")
 	if err != nil {
 		t.Fatalf("err: %s", err)
@@ -201,6 +208,7 @@ func TestResourceVariable_Multi(t *testing.T) {
 }
 
 func TestResourceVariable_MultiIndex(t *testing.T) {
+    t.Parallel()
 	cases := []struct {
 		Input string
 		Index int
@@ -229,10 +237,12 @@ func TestResourceVariable_MultiIndex(t *testing.T) {
 }
 
 func TestUserVariable_impl(t *testing.T) {
+    t.Parallel()
 	var _ InterpolatedVariable = new(UserVariable)
 }
 
 func TestDetectVariables(t *testing.T) {
+    t.Parallel()
 	cases := []struct {
 		Input  string
 		Result []InterpolatedVariable

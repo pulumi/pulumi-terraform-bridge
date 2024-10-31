@@ -33,6 +33,7 @@ const (
 var computedValue = resource.Computed{Element: resource.NewStringProperty("")}
 
 func TestCustomizeDiff(t *testing.T) {
+	t.Parallel()
 	inputsMap := resource.NewPropertyMapFromMap(map[string]interface{}{
 		"prop": "foo",
 	})
@@ -54,6 +55,7 @@ func TestCustomizeDiff(t *testing.T) {
 	var ignores []string
 
 	t.Run("CustomDiffCausesAddReplace", func(t *testing.T) {
+		t.Parallel()
 		ctx := context.Background()
 		// expected diff
 		expected := map[string]DiffKind{
@@ -111,6 +113,7 @@ func TestCustomizeDiff(t *testing.T) {
 	})
 
 	t.Run("NoCustomDiffCausesNoDiff", func(t *testing.T) {
+		t.Parallel()
 		ctx := context.Background()
 		// expected diff
 		expected := map[string]DiffKind{}
@@ -154,6 +157,7 @@ func TestCustomizeDiff(t *testing.T) {
 	})
 
 	t.Run("CustomDiffDoesNotPanicOnGetRawStateOrRawConfig", func(t *testing.T) {
+		t.Parallel()
 		{
 			{
 				ctx := context.Background()
@@ -289,6 +293,7 @@ func diffTest(t *testing.T, tfs map[string]*v2Schema.Schema, inputs,
 	for _, s := range setup {
 		t.Run(s.name, func(t *testing.T) {
 			t.Run("standard", func(t *testing.T) {
+				t.Parallel()
 				sch, r, provider, info := s.setup(tfs)
 
 				tfState, err := makeTerraformStateWithOpts(ctx, r, "id", stateMap,
@@ -320,6 +325,7 @@ func diffTest(t *testing.T, tfs map[string]*v2Schema.Schema, inputs,
 			// Add an ignoreChanges entry for each path in the expected diff, then re-convert the diff
 			// and check the result.
 			t.Run("withIgnoreAllExpected", func(t *testing.T) {
+				t.Parallel()
 				sch, r, provider, info := s.setup(tfs)
 				tfState, err := makeTerraformStateWithOpts(ctx, r, "id", stateMap,
 					makeTerraformStateOptions{
@@ -346,6 +352,7 @@ func diffTest(t *testing.T, tfs map[string]*v2Schema.Schema, inputs,
 }
 
 func TestCustomDiffProducesReplace(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {Type: v2Schema.TypeString},
@@ -363,6 +370,7 @@ func TestCustomDiffProducesReplace(t *testing.T) {
 }
 
 func TestEmptyDiff(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {Type: v2Schema.TypeString},
@@ -380,6 +388,7 @@ func TestEmptyDiff(t *testing.T) {
 }
 
 func TestSimpleAdd(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {Type: v2Schema.TypeString, Optional: true},
@@ -398,6 +407,7 @@ func TestSimpleAdd(t *testing.T) {
 }
 
 func TestSimpleAddReplace(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {Type: v2Schema.TypeString, Optional: true, ForceNew: true},
@@ -416,6 +426,7 @@ func TestSimpleAddReplace(t *testing.T) {
 }
 
 func TestSimpleDelete(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {Type: v2Schema.TypeString, Optional: true},
@@ -433,6 +444,7 @@ func TestSimpleDelete(t *testing.T) {
 }
 
 func TestSimpleDeleteReplace(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {Type: v2Schema.TypeString, Optional: true, ForceNew: true},
@@ -450,6 +462,7 @@ func TestSimpleDeleteReplace(t *testing.T) {
 }
 
 func TestSimpleUpdate(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {Type: v2Schema.TypeString},
@@ -469,6 +482,7 @@ func TestSimpleUpdate(t *testing.T) {
 }
 
 func TestSimpleUpdateReplace(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {Type: v2Schema.TypeString, ForceNew: true},
@@ -488,6 +502,7 @@ func TestSimpleUpdateReplace(t *testing.T) {
 }
 
 func TestNestedAdd(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {Type: v2Schema.TypeMap},
@@ -506,6 +521,7 @@ func TestNestedAdd(t *testing.T) {
 }
 
 func TestNestedAddReplace(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {Type: v2Schema.TypeMap, ForceNew: true},
@@ -524,6 +540,7 @@ func TestNestedAddReplace(t *testing.T) {
 }
 
 func TestNestedDelete(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {Type: v2Schema.TypeMap},
@@ -541,6 +558,7 @@ func TestNestedDelete(t *testing.T) {
 }
 
 func TestNestedDeleteReplace(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {Type: v2Schema.TypeMap, ForceNew: true},
@@ -558,6 +576,7 @@ func TestNestedDeleteReplace(t *testing.T) {
 }
 
 func TestNestedUpdate(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {Type: v2Schema.TypeMap},
@@ -577,6 +596,7 @@ func TestNestedUpdate(t *testing.T) {
 }
 
 func TestNestedUpdateReplace(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {Type: v2Schema.TypeMap, ForceNew: true},
@@ -596,6 +616,7 @@ func TestNestedUpdateReplace(t *testing.T) {
 }
 
 func TestNestedIgnore(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {Type: v2Schema.TypeMap, ForceNew: true},
@@ -614,6 +635,7 @@ func TestNestedIgnore(t *testing.T) {
 }
 
 func TestListAdd(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {Type: v2Schema.TypeList, Elem: &v2Schema.Schema{Type: v2Schema.TypeString}},
@@ -632,6 +654,7 @@ func TestListAdd(t *testing.T) {
 }
 
 func TestListAddReplace(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {Type: v2Schema.TypeList, Elem: &v2Schema.Schema{Type: v2Schema.TypeString}, ForceNew: true},
@@ -650,6 +673,7 @@ func TestListAddReplace(t *testing.T) {
 }
 
 func TestListDelete(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {Type: v2Schema.TypeList, Elem: &v2Schema.Schema{Type: v2Schema.TypeString}},
@@ -667,6 +691,7 @@ func TestListDelete(t *testing.T) {
 }
 
 func TestListDeleteReplace(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {Type: v2Schema.TypeList, Elem: &v2Schema.Schema{Type: v2Schema.TypeString}, ForceNew: true},
@@ -684,6 +709,7 @@ func TestListDeleteReplace(t *testing.T) {
 }
 
 func TestListUpdate(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {Type: v2Schema.TypeList, Elem: &v2Schema.Schema{Type: v2Schema.TypeString}},
@@ -703,6 +729,7 @@ func TestListUpdate(t *testing.T) {
 }
 
 func TestListUpdateReplace(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {Type: v2Schema.TypeList, Elem: &v2Schema.Schema{Type: v2Schema.TypeString}, ForceNew: true},
@@ -722,6 +749,7 @@ func TestListUpdateReplace(t *testing.T) {
 }
 
 func TestListIgnore(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {Type: v2Schema.TypeList, Elem: &v2Schema.Schema{Type: v2Schema.TypeString}},
@@ -740,6 +768,7 @@ func TestListIgnore(t *testing.T) {
 }
 
 func TestMaxItemsOneListAdd(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {Type: v2Schema.TypeList, Elem: &v2Schema.Schema{Type: v2Schema.TypeString}, MaxItems: 1},
@@ -759,6 +788,7 @@ func TestMaxItemsOneListAdd(t *testing.T) {
 }
 
 func TestMaxItemsOneListAddReplace(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {Type: v2Schema.TypeList, Elem: &v2Schema.Schema{Type: v2Schema.TypeString}, ForceNew: true, MaxItems: 1},
@@ -778,6 +808,7 @@ func TestMaxItemsOneListAddReplace(t *testing.T) {
 }
 
 func TestMaxItemsOneListDelete(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {Type: v2Schema.TypeList, Elem: &v2Schema.Schema{Type: v2Schema.TypeString}, MaxItems: 1},
@@ -795,6 +826,7 @@ func TestMaxItemsOneListDelete(t *testing.T) {
 }
 
 func TestMaxItemsOneListDeleteReplace(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {Type: v2Schema.TypeList, Elem: &v2Schema.Schema{Type: v2Schema.TypeString}, ForceNew: true, MaxItems: 1},
@@ -812,6 +844,7 @@ func TestMaxItemsOneListDeleteReplace(t *testing.T) {
 }
 
 func TestMaxItemsOneListUpdate(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {Type: v2Schema.TypeList, Elem: &v2Schema.Schema{Type: v2Schema.TypeString}, MaxItems: 1},
@@ -831,6 +864,7 @@ func TestMaxItemsOneListUpdate(t *testing.T) {
 }
 
 func TestMaxItemsOneListUpdateReplace(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {Type: v2Schema.TypeList, Elem: &v2Schema.Schema{Type: v2Schema.TypeString}, ForceNew: true, MaxItems: 1},
@@ -850,6 +884,7 @@ func TestMaxItemsOneListUpdateReplace(t *testing.T) {
 }
 
 func TestMaxItemsOneListIgnore(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {Type: v2Schema.TypeList, Elem: &v2Schema.Schema{Type: v2Schema.TypeString}, MaxItems: 1},
@@ -868,6 +903,7 @@ func TestMaxItemsOneListIgnore(t *testing.T) {
 }
 
 func TestSetAdd(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {
@@ -890,6 +926,7 @@ func TestSetAdd(t *testing.T) {
 }
 
 func TestSetAddReplace(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {
@@ -913,6 +950,7 @@ func TestSetAddReplace(t *testing.T) {
 }
 
 func TestSetDelete(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {
@@ -934,6 +972,7 @@ func TestSetDelete(t *testing.T) {
 }
 
 func TestSetDeleteReplace(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {
@@ -956,6 +995,7 @@ func TestSetDeleteReplace(t *testing.T) {
 }
 
 func TestSetUpdate(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {Type: v2Schema.TypeSet, Elem: &v2Schema.Schema{Type: v2Schema.TypeString}},
@@ -975,6 +1015,7 @@ func TestSetUpdate(t *testing.T) {
 }
 
 func TestSetIgnore(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {Type: v2Schema.TypeSet, Elem: &v2Schema.Schema{Type: v2Schema.TypeString}},
@@ -993,6 +1034,7 @@ func TestSetIgnore(t *testing.T) {
 }
 
 func TestSetUpdateReplace(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {Type: v2Schema.TypeSet, Elem: &v2Schema.Schema{Type: v2Schema.TypeString}, ForceNew: true},
@@ -1012,6 +1054,7 @@ func TestSetUpdateReplace(t *testing.T) {
 }
 
 func TestMaxItemsOneSetAdd(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {
@@ -1036,6 +1079,7 @@ func TestMaxItemsOneSetAdd(t *testing.T) {
 }
 
 func TestMaxItemsOneSetAddReplace(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {
@@ -1061,6 +1105,7 @@ func TestMaxItemsOneSetAddReplace(t *testing.T) {
 }
 
 func TestMaxItemsOneSetDelete(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {
@@ -1083,6 +1128,7 @@ func TestMaxItemsOneSetDelete(t *testing.T) {
 }
 
 func TestMaxItemsOneSetDeleteReplace(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {
@@ -1106,6 +1152,7 @@ func TestMaxItemsOneSetDeleteReplace(t *testing.T) {
 }
 
 func TestMaxItemsOneSetUpdate(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {Type: v2Schema.TypeSet, Elem: &v2Schema.Schema{Type: v2Schema.TypeString}, MaxItems: 1},
@@ -1125,6 +1172,7 @@ func TestMaxItemsOneSetUpdate(t *testing.T) {
 }
 
 func TestMaxItemsOneSetIgnore(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {Type: v2Schema.TypeSet, Elem: &v2Schema.Schema{Type: v2Schema.TypeString}, MaxItems: 1},
@@ -1143,6 +1191,7 @@ func TestMaxItemsOneSetIgnore(t *testing.T) {
 }
 
 func TestMaxItemsOneSetUpdateReplace(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {Type: v2Schema.TypeSet, Elem: &v2Schema.Schema{Type: v2Schema.TypeString}, ForceNew: true, MaxItems: 1},
@@ -1162,6 +1211,7 @@ func TestMaxItemsOneSetUpdateReplace(t *testing.T) {
 }
 
 func TestSetNestedUpdate(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {
@@ -1188,6 +1238,7 @@ func TestSetNestedUpdate(t *testing.T) {
 }
 
 func TestSetNestedUpdateReplace(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {
@@ -1214,6 +1265,7 @@ func TestSetNestedUpdateReplace(t *testing.T) {
 }
 
 func TestSetNestedIgnore(t *testing.T) {
+	t.Parallel()
 	for _, ignore := range []string{"prop[0]", "prop"} {
 		diffTest(t,
 			map[string]*v2Schema.Schema{
@@ -1241,6 +1293,7 @@ func TestSetNestedIgnore(t *testing.T) {
 }
 
 func TestComputedSimpleUpdate(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {Type: v2Schema.TypeString},
@@ -1260,6 +1313,7 @@ func TestComputedSimpleUpdate(t *testing.T) {
 }
 
 func TestComputedSimpleUpdateReplace(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {Type: v2Schema.TypeString, ForceNew: true},
@@ -1279,6 +1333,7 @@ func TestComputedSimpleUpdateReplace(t *testing.T) {
 }
 
 func TestComputedMapUpdate(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {Type: v2Schema.TypeMap},
@@ -1298,6 +1353,7 @@ func TestComputedMapUpdate(t *testing.T) {
 }
 
 func TestComputedNestedUpdate(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {Type: v2Schema.TypeMap},
@@ -1317,6 +1373,7 @@ func TestComputedNestedUpdate(t *testing.T) {
 }
 
 func TestComputedNestedUpdateReplace(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {Type: v2Schema.TypeMap, ForceNew: true},
@@ -1336,6 +1393,7 @@ func TestComputedNestedUpdateReplace(t *testing.T) {
 }
 
 func TestComputedNestedIgnore(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {Type: v2Schema.TypeMap},
@@ -1354,6 +1412,7 @@ func TestComputedNestedIgnore(t *testing.T) {
 }
 
 func TestComputedListUpdate(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {Type: v2Schema.TypeList, Elem: &v2Schema.Schema{Type: v2Schema.TypeString}},
@@ -1373,6 +1432,7 @@ func TestComputedListUpdate(t *testing.T) {
 }
 
 func TestComputedListElementUpdate(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {Type: v2Schema.TypeList, Elem: &v2Schema.Schema{Type: v2Schema.TypeString}},
@@ -1392,6 +1452,7 @@ func TestComputedListElementUpdate(t *testing.T) {
 }
 
 func TestComputedListElementUpdateReplace(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {Type: v2Schema.TypeList, Elem: &v2Schema.Schema{Type: v2Schema.TypeString}, ForceNew: true},
@@ -1411,6 +1472,7 @@ func TestComputedListElementUpdateReplace(t *testing.T) {
 }
 
 func TestComputedListElementIgnore(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {Type: v2Schema.TypeList, Elem: &v2Schema.Schema{Type: v2Schema.TypeString}},
@@ -1429,6 +1491,7 @@ func TestComputedListElementIgnore(t *testing.T) {
 }
 
 func TestComputedSetUpdate(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {Type: v2Schema.TypeSet, Elem: &v2Schema.Schema{Type: v2Schema.TypeString}},
@@ -1448,6 +1511,7 @@ func TestComputedSetUpdate(t *testing.T) {
 }
 
 func TestNestedComputedSetUpdate(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {Type: v2Schema.TypeSet, Elem: &v2Schema.Schema{Type: v2Schema.TypeString}},
@@ -1467,8 +1531,10 @@ func TestNestedComputedSetUpdate(t *testing.T) {
 }
 
 func TestNestedComputedSetAdd(t *testing.T) {
+	t.Parallel()
 	// TODO[pulumi/pulumi-terraform-bridge#2427]: Incorrect detailed diff with unknown elements
 	t.Skip("Skipping until pulumi/pulumi-terraform-bridge#2427 is resolved")
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {Type: v2Schema.TypeSet, Elem: &v2Schema.Schema{Type: v2Schema.TypeString}},
@@ -1487,6 +1553,7 @@ func TestNestedComputedSetAdd(t *testing.T) {
 }
 
 func TestNestedComputedSetUpdateReplace(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {Type: v2Schema.TypeSet, Elem: &v2Schema.Schema{Type: v2Schema.TypeString}, ForceNew: true},
@@ -1506,6 +1573,7 @@ func TestNestedComputedSetUpdateReplace(t *testing.T) {
 }
 
 func TestNestedComputedSetIntUpdate(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {Type: v2Schema.TypeSet, Elem: &v2Schema.Schema{Type: v2Schema.TypeInt}},
@@ -1525,6 +1593,7 @@ func TestNestedComputedSetIntUpdate(t *testing.T) {
 }
 
 func TestNestedComputedSetIntUpdateReplace(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {Type: v2Schema.TypeSet, Elem: &v2Schema.Schema{Type: v2Schema.TypeInt}, ForceNew: true},
@@ -1544,8 +1613,10 @@ func TestNestedComputedSetIntUpdateReplace(t *testing.T) {
 }
 
 func TestNestedComputedSetIntAdd(t *testing.T) {
+	t.Parallel()
 	// TODO[pulumi/pulumi-terraform-bridge#2427]: Incorrect detailed diff with unknown elements
 	t.Skip("Skipping until pulumi/pulumi-terraform-bridge#2427 is resolved")
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {Type: v2Schema.TypeSet, Elem: &v2Schema.Schema{Type: v2Schema.TypeInt}},
@@ -1564,6 +1635,7 @@ func TestNestedComputedSetIntAdd(t *testing.T) {
 }
 
 func TestComputedSetUpdateReplace(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {Type: v2Schema.TypeSet, Elem: &v2Schema.Schema{Type: v2Schema.TypeString}, ForceNew: true},
@@ -1583,6 +1655,7 @@ func TestComputedSetUpdateReplace(t *testing.T) {
 }
 
 func TestComputedSetNestedUpdate(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {
@@ -1609,6 +1682,7 @@ func TestComputedSetNestedUpdate(t *testing.T) {
 }
 
 func TestComputedSetNestedUpdateReplace(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {
@@ -1635,6 +1709,7 @@ func TestComputedSetNestedUpdateReplace(t *testing.T) {
 }
 
 func TestComputedSetNestedIgnore(t *testing.T) {
+	t.Parallel()
 	for _, ignore := range []string{"prop[0]", "prop"} {
 		diffTest(t,
 			map[string]*v2Schema.Schema{
@@ -1662,6 +1737,7 @@ func TestComputedSetNestedIgnore(t *testing.T) {
 }
 
 func TestRawElementNames(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {
@@ -1703,6 +1779,7 @@ func TestRawElementNames(t *testing.T) {
 // SETS AND LISTS WITH MULTIPLE ITEMS
 
 func TestCollectionsWithMultipleItems(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		name                   string
 		state                  []interface{}
@@ -1863,6 +1940,7 @@ func TestCollectionsWithMultipleItems(t *testing.T) {
 		expected map[string]DiffKind, expectedChanges pulumirpc.DiffResponse_DiffChanges,
 	) {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			diffTest(t,
 				map[string]*v2Schema.Schema{
 					"prop": {
@@ -1899,6 +1977,7 @@ func TestCollectionsWithMultipleItems(t *testing.T) {
 }
 
 func TestSetNestedAddReplace(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
 			"prop": {
@@ -1926,6 +2005,7 @@ func TestSetNestedAddReplace(t *testing.T) {
 }
 
 func TestListNestedAddReplace(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		// tfSchema
 		map[string]*v2Schema.Schema{
@@ -1957,6 +2037,7 @@ func TestListNestedAddReplace(t *testing.T) {
 }
 
 func TestListNestedUpdate(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		// tfSchema
 		map[string]*v2Schema.Schema{
@@ -1988,6 +2069,7 @@ func TestListNestedUpdate(t *testing.T) {
 }
 
 func TestListNestedDeleteReplace(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		// tfSchema
 		map[string]*v2Schema.Schema{
@@ -2017,6 +2099,7 @@ func TestListNestedDeleteReplace(t *testing.T) {
 }
 
 func TestSetNestedDeleteReplace(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		// tfSchema
 		map[string]*v2Schema.Schema{
@@ -2046,6 +2129,7 @@ func TestSetNestedDeleteReplace(t *testing.T) {
 }
 
 func TestListNestedAddMaxItemsOne(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		// tfSchema
 		map[string]*v2Schema.Schema{
@@ -2130,6 +2214,7 @@ func diffTest2(t *testing.T, tc diffTestCase) {
 }
 
 func TestChangingMaxItems1FilterProperty(t *testing.T) {
+	t.Parallel()
 	schema := map[string]*v2Schema.Schema{
 		"rule": {
 			Type:     v2Schema.TypeList,

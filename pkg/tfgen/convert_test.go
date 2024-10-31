@@ -30,6 +30,7 @@ import (
 )
 
 func TestConvert(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS == "windows" {
 		// TODO[pulumi/pulumi-terraform-bridge#408]
 		t.Skip("Skipped on windows")

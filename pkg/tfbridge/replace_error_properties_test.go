@@ -7,6 +7,7 @@ import (
 )
 
 func TestReplaceSubstringsRegex(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		s            string
 		replacements map[string]string

@@ -9,6 +9,7 @@ import (
 )
 
 func TestUpgradeInputsStringBasic(t *testing.T) {
+	t.Parallel()
 	res := &schema.Resource{
 		Schema: map[string]*schema.Schema{
 			"f0": {
@@ -52,6 +53,7 @@ func TestUpgradeInputsStringBasic(t *testing.T) {
 }
 
 func TestUpgradeInputsStringBasicNonZeroVersion(t *testing.T) {
+	t.Parallel()
 	res := &schema.Resource{
 		Schema: map[string]*schema.Schema{
 			"f0": {
@@ -96,6 +98,7 @@ func TestUpgradeInputsStringBasicNonZeroVersion(t *testing.T) {
 }
 
 func TestUpgradeInputsObjectBasic(t *testing.T) {
+	t.Parallel()
 	res := &schema.Resource{
 		Schema: map[string]*schema.Schema{
 			"f0": {

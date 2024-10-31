@@ -11,6 +11,7 @@ import (
 )
 
 func TestTfComputed(t *testing.T) {
+    t.Parallel()
 	prov := schema.Provider{
 		ResourcesMap: map[string]*schema.Resource{
 			"test_resource": {
@@ -68,6 +69,7 @@ resource "test_resource" "test" {
 //
 // - https://github.com/pulumi/pulumi-nomad/issues/389
 func TestTfMapMissingElem(t *testing.T) {
+    t.Parallel()
 	prov := schema.Provider{
 		ResourcesMap: map[string]*schema.Resource{
 			"test_resource": {
@@ -126,6 +128,7 @@ resource "test_resource" "test" {
 }
 
 func TestTfUnknownObjects(t *testing.T) {
+    t.Parallel()
 	prov := schema.Provider{
 		ResourcesMap: map[string]*schema.Resource{
 			"test_resource": {

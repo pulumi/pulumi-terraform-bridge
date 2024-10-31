@@ -28,6 +28,7 @@ import (
 //
 // See testdatagen/genrandom/generate.sh for regenerating the test data.
 func TestGenRandom(t *testing.T) {
+    t.Parallel()
 	traces := []string{
 		// TODO enable once Configure replay is implemented.
 		// "testdata/genrandom/random-delete-preview.json",

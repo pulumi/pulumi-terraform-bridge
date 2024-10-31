@@ -30,6 +30,7 @@ import (
 )
 
 func TestGetMapping(t *testing.T) {
+    t.Parallel()
 	ctx := context.Background()
 	info := testprovider.RandomProvider()
 
@@ -87,6 +88,7 @@ func TestGetMapping(t *testing.T) {
 }
 
 func TestMuxedGetMapping(t *testing.T) {
+    t.Parallel()
 	ctx := context.Background()
 
 	info := testprovider.MuxedRandomProvider()

@@ -21,6 +21,7 @@ import (
 )
 
 func TestSetAutoNamingDoesNotPanic(t *testing.T) {
+    t.Parallel()
 	prov := tfbridge.ProviderInfo{
 		P: nil,
 		Resources: map[string]*tfbridge.ResourceInfo{

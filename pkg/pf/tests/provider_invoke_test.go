@@ -23,6 +23,7 @@ import (
 )
 
 func TestBasicInvoke(t *testing.T) {
+    t.Parallel()
 	server, err := newProviderServer(t, testprovider.TLSProvider())
 	require.NoError(t, err)
 
@@ -63,6 +64,7 @@ func TestBasicInvoke(t *testing.T) {
 }
 
 func TestInvokeWithInvalidData(t *testing.T) {
+    t.Parallel()
 	p := testprovider.TLSProvider()
 	server, err := newProviderServer(t, p)
 	require.NoError(t, err)

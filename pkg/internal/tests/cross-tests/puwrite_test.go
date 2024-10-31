@@ -12,6 +12,7 @@ import (
 )
 
 func TestGenerateYaml(t *testing.T) {
+	t.Parallel()
 	providerShortName := "crossprovider"
 	rtype := "crossprovider_testres"
 	rtok := "TestRes"

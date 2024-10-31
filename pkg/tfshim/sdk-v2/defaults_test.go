@@ -21,7 +21,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
+	sdkv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
 
 // Regressing an issue in the wild where a default value is given that does not validate. Currently pkg/tfbridge may
@@ -31,6 +31,7 @@ import (
 //
 // See pulumi/pulumi-terraform-bridge#720
 func TestDroppingInvalidDefaults(t *testing.T) {
+	t.Parallel()
 	suspectSchema := sdkv2.NewSchema(&schema.Schema{
 		Type:         schema.TypeInt,
 		Optional:     true,

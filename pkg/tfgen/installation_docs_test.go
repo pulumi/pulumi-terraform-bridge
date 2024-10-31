@@ -108,6 +108,7 @@ func TestPlainDocsParser(t *testing.T) {
 }
 
 func TestTrimFrontmatter(t *testing.T) {
+	t.Parallel()
 	type testCase struct {
 		// The name of the test case.
 		name     string
@@ -142,6 +143,7 @@ func TestTrimFrontmatter(t *testing.T) {
 }
 
 func TestRemoveTitle(t *testing.T) {
+	t.Parallel()
 	type testCase struct {
 		// The name of the test case.
 		name     string
@@ -290,7 +292,6 @@ func TestWriteFrontMatter(t *testing.T) {
 }
 
 func TestTranslateCodeBlocks(t *testing.T) {
-
 	type testCase struct {
 		// The name of the test case.
 		name       string

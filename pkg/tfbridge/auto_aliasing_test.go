@@ -14,6 +14,7 @@ import (
 // Cover the RunningProviderStage fast-track of MustApplyAutoAliases. The only information needed in
 // this case is autoSettings. Verify that it gets applied.
 func TestFastAutoAliasingAtRuntime(t *testing.T) {
+	t.Parallel()
 	originalStage := currentRuntimeStage
 	currentRuntimeStage = runningProviderStage
 	t.Cleanup(func() { currentRuntimeStage = originalStage })

@@ -31,6 +31,7 @@ import (
 )
 
 func TestTransformOutputs(t *testing.T) {
+    t.Parallel()
 	p := testprovider.SyntheticTestBridgeProvider()
 
 	p.Resources["testbridge_testcompres"].TransformOutputs = func(
@@ -151,6 +152,7 @@ func TestTransformOutputs(t *testing.T) {
 }
 
 func TestTransformFromState(t *testing.T) {
+    t.Parallel()
 	provider := func(t *testing.T) pulumirpc.ResourceProviderServer {
 		p := testprovider.AssertProvider(func(config tfsdk.Config, old, new *tfsdk.State) {
 			// GetRawState is not available during deletes.

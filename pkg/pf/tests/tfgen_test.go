@@ -33,6 +33,7 @@ import (
 )
 
 func TestRenameResourceWithAliasInAugmentedProvider(t *testing.T) {
+    t.Parallel()
 	ctx := context.Background()
 	discardSink := diag.DefaultSink(os.Stdout, os.Stdout, diag.FormatOptions{Color: colors.Never})
 	providerID := "my"

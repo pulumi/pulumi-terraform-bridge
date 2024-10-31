@@ -31,6 +31,7 @@ import (
 
 // See https://github.com/pulumi/pulumi-terraform-bridge/issues/1020
 func TestRegress1020(t *testing.T) {
+    t.Parallel()
 	ctx := context.Background()
 
 	CIDRBlocksEqual := func(cidr1, cidr2 string) bool {

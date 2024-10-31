@@ -19,6 +19,7 @@ import (
 )
 
 func TestProvider2UpgradeResourceState(t *testing.T) {
+	t.Parallel()
 	const tfToken = "test_token"
 	for _, tc := range []struct {
 		name      string
@@ -298,6 +299,7 @@ func TestProvider2UpgradeResourceState(t *testing.T) {
 }
 
 func TestNormalizeBlockCollections(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name     string
 		res      *schema.Resource
@@ -486,6 +488,7 @@ func TestNormalizeBlockCollections(t *testing.T) {
 }
 
 func TestConfigWithTimeouts(t *testing.T) {
+	t.Parallel()
 	type testCase struct {
 		name                  string
 		topts                 shim.TimeoutOptions

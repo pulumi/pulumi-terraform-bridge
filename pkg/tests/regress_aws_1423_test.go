@@ -27,6 +27,7 @@ import (
 )
 
 func TestRegressAws1423(t *testing.T) {
+    t.Parallel()
 	ctx := context.Background()
 
 	resource := webaclschema.ResourceWebACL()

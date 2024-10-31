@@ -35,6 +35,7 @@ func assertTrailing(t *testing.T, c *Comments, expected ...string) {
 }
 
 func TestExtractComments(t *testing.T) {
+	t.Parallel()
 	const hclText = `
 # Accept the AWS region as input.
 variable "aws_region" {

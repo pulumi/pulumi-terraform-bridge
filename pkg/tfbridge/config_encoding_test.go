@@ -29,6 +29,7 @@ import (
 )
 
 func TestConfigEncoding(t *testing.T) {
+	t.Parallel()
 	type testCase struct {
 		ty shim.ValueType
 		v  *structpb.Value

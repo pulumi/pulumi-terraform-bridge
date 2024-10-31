@@ -18,6 +18,7 @@ var pulumiAccept = func() bool {
 }()
 
 func TestParseTextSeq(t *testing.T) {
+	t.Parallel()
 	turnaround := func(src string) {
 		res, err := parseTextSeq(parseNode(src).FirstChild, true)
 		if err != nil {
@@ -43,6 +44,7 @@ func TestParseTextSeq(t *testing.T) {
 }
 
 func TestParsePreamble(t *testing.T) {
+	t.Parallel()
 	node := parseNode(`<a id="nestedblock--widget--group_definition--widget--id--request"></a>`)
 	actual := parsePreamble(node, func(x *bf.Node) {})
 	if actual == nil {
@@ -56,6 +58,7 @@ func TestParsePreamble(t *testing.T) {
 }
 
 func TestParseParameterFromDescription(t *testing.T) {
+	t.Parallel()
 	actual := parseParameterFromDescription(
 		"heatmap_definition",
 		"(Block List, Max: 1) The definition for a Heatmap widget. (see below for nested schema)")
@@ -70,6 +73,7 @@ func TestParseParameterFromDescription(t *testing.T) {
 }
 
 func TestParseTopLevelSchema(t *testing.T) {
+	t.Parallel()
 	markdown := readTestFile(t, "mini.md")
 
 	var schema *topLevelSchema
@@ -111,6 +115,7 @@ func TestParseTopLevelSchema(t *testing.T) {
 }
 
 func TestParseNestedSchemaIntoDoc(t *testing.T) {
+	t.Parallel()
 	markdown := readTestFile(t, "mini.md")
 	out := &entityDocs{}
 	parseDoc([]byte(markdown)).Walk(func(node *bf.Node, entering bool) bf.WalkStatus {

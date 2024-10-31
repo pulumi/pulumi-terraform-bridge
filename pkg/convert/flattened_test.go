@@ -29,6 +29,7 @@ import (
 )
 
 func TestFlattenedEncoder(t *testing.T) {
+	t.Parallel()
 	listEncoder, err := newPropertyEncoder(
 		maxItemsOneCollectionPropContext("p", shim.TypeList),
 		"p",
@@ -78,6 +79,7 @@ func TestFlattenedEncoder(t *testing.T) {
 }
 
 func TestFlattenedDecoder(t *testing.T) {
+	t.Parallel()
 	listDecoder, err := newPropertyDecoder(
 		maxItemsOneCollectionPropContext("p", shim.TypeList),
 		"p",

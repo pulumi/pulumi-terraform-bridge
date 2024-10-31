@@ -48,6 +48,7 @@ import (
 // TestRegress611 tests against test_data/regress-611-schema.json.
 // To update the contents of test_data/regress-611-schema.json run the test with env var PULUMI_ACCEPT set to "true".
 func TestRegress611(t *testing.T) {
+	t.Parallel()
 	provider := testprovider.ProviderRegress611()
 	schema, err := GenerateSchema(provider, diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
 		Color: colors.Never,
@@ -57,6 +58,7 @@ func TestRegress611(t *testing.T) {
 }
 
 func TestRegressMiniRandom(t *testing.T) {
+	t.Parallel()
 	provider := testprovider.ProviderMiniRandom()
 	schema, err := GenerateSchema(provider, diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
 		Color: colors.Never,
@@ -66,6 +68,7 @@ func TestRegressMiniRandom(t *testing.T) {
 }
 
 func TestMiniMuxed(t *testing.T) {
+	t.Parallel()
 	provider := testprovider.ProviderMiniMuxed()
 	provider.MetadataInfo = tfbridge.NewProviderMetadata(nil)
 	schema, err := GenerateSchema(provider, diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
@@ -91,6 +94,7 @@ func TestMiniMuxed(t *testing.T) {
 }
 
 func TestMiniMuxedReplace(t *testing.T) {
+	t.Parallel()
 	provider := testprovider.ProviderMiniMuxedReplace()
 	provider.MetadataInfo = tfbridge.NewProviderMetadata(nil)
 	schema, err := GenerateSchema(provider, diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
@@ -113,6 +117,7 @@ func TestMiniMuxedReplace(t *testing.T) {
 }
 
 func TestCSharpMiniRandom(t *testing.T) {
+	t.Parallel()
 	provider := testprovider.ProviderMiniRandomCSharp()
 	schema, err := GenerateSchema(provider, diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
 		Color: colors.Never,
@@ -126,6 +131,7 @@ func TestCSharpMiniRandom(t *testing.T) {
 // projection is going to generate named types for every instance of the shared schema. This may lead to SDK bloat. Test
 // the ability of the provider author to curb the bloat and force an explicit sharing.
 func TestTypeSharing(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS == "windows" {
 		t.Skipf("Skipping on Windows due to a test setup issue")
 	}
@@ -294,6 +300,7 @@ func TestTypeSharing(t *testing.T) {
 //     replacing terraform references with pulumi references e.g.
 //     `aws_s3_bucket_acl` -> `aws.s3.BucketAclV2`
 func TestPropertyDocumentationEdits(t *testing.T) {
+	t.Parallel()
 	provider := testprovider.ProviderMiniAws()
 	provider.MetadataInfo = tfbridge.NewProviderMetadata(nil)
 	schema, err := GenerateSchema(provider, diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
@@ -316,6 +323,7 @@ func TestPropertyDocumentationEdits(t *testing.T) {
 }
 
 func TestNestedMaxItemsOne(t *testing.T) {
+	t.Parallel()
 	provider := testprovider.ProviderMiniCloudflare()
 	meta, err := metadata.New(nil)
 	require.NoError(t, err)
@@ -354,6 +362,7 @@ func TestNestedMaxItemsOne(t *testing.T) {
 }
 
 func TestNestedDescriptions(t *testing.T) {
+	t.Parallel()
 	provider := testprovider.ProviderNestedDescriptions()
 	schema, err := GenerateSchema(provider, diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
 		Color: colors.Never,
@@ -363,6 +372,7 @@ func TestNestedDescriptions(t *testing.T) {
 }
 
 func TestAppendExample_InsertMiddle(t *testing.T) {
+	t.Parallel()
 	descTmpl := `Description text
 
 ## Example Usage
@@ -404,6 +414,7 @@ Import content
 }
 
 func TestAppendExample_InsertEnd(t *testing.T) {
+	t.Parallel()
 	descTmpl := `Description text
 
 ## Example Usage
@@ -438,6 +449,7 @@ Basic example content
 
 // Extra test case to ensure that we do not modify the source material internally in the function.
 func TestAppendExample_NoOp(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, "", appendExample("", ""))
 	assert.Equal(t, "foo\nbar", appendExample("foo\nbar", ""))
 
@@ -453,6 +465,7 @@ example usage content
 // There are resources (or more commonly, functions) that do not have ## Example Usage in the in the source description.
 // Therefore, we need to add the H2 if none exists to emit a well-formed doc page.
 func TestAppendExample_NoExampleUsage(t *testing.T) {
+	t.Parallel()
 	input := "Description Text"
 	markdownTmpl := `### My Example
 
@@ -475,6 +488,7 @@ func TestAppendExample_NoExampleUsage(t *testing.T) {
 }
 
 func TestAppendExample_NoExampleUsage_ImportsPresent(t *testing.T) {
+	t.Parallel()
 	input := `Description Text
 
 ## Import
@@ -522,6 +536,7 @@ func renderTemplate(tmpl string) string {
 }
 
 func TestGetDefaultReadme(t *testing.T) {
+	t.Parallel()
 	//nolint:lll
 	expected := "> This provider is a derived work of the [Terraform Provider](https://github.com/hashicorp/terraform-provider-aws)\n" +
 		"> distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n" +
@@ -535,6 +550,7 @@ func TestGetDefaultReadme(t *testing.T) {
 }
 
 func TestPropagateLanguageOptions(t *testing.T) {
+	t.Parallel()
 	provider := testprovider.ProviderMiniRandom() // choice of provider is arbitrary here
 
 	require.Nil(t, provider.Golang)
@@ -614,6 +630,7 @@ func TestPropagateLanguageOptions(t *testing.T) {
 }
 
 func TestDefaultInfoFails(t *testing.T) {
+	t.Parallel()
 	provider := testprovider.ProviderDefaultInfo()
 	meta, err := metadata.New(nil)
 	require.NoError(t, err)
@@ -635,6 +652,7 @@ func TestDefaultInfoFails(t *testing.T) {
 }
 
 func TestRegress1626(t *testing.T) {
+	t.Parallel()
 	info := testprovider.ProviderMiniTalos()
 	sink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never})
 	s, err := GenerateSchema(info, sink)

@@ -22,6 +22,7 @@ import (
 )
 
 func TestMarshal(t *testing.T) {
+	t.Parallel()
 	data, err := New(nil)
 	require.NoError(t, err)
 
@@ -44,6 +45,7 @@ func TestMarshal(t *testing.T) {
 }
 
 func TestMarshalIndent(t *testing.T) {
+	t.Parallel()
 	data, err := New(nil)
 	require.NoError(t, err)
 

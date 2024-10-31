@@ -32,7 +32,7 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/zclconf/go-cty/cty"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests"
+	crosstests "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
@@ -460,6 +460,7 @@ func TestInputsEmptyCollections(t *testing.T) {
 
 // Demonstrating the use of the newTestProvider helper.
 func TestWithNewTestProvider(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	p := newTestProvider(ctx, tfbridge.ProviderInfo{
 		P: shimv2.NewProvider(&schema.Provider{
@@ -510,6 +511,7 @@ func TestWithNewTestProvider(t *testing.T) {
 
 // TestRegress1932 tests that we can have a list with different types (string & unknown)
 func TestRegress1932(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	p := newTestProvider(ctx, tfbridge.ProviderInfo{
 		P: shimv2.NewProvider(&schema.Provider{
@@ -593,6 +595,7 @@ func TestRegress1932(t *testing.T) {
 }
 
 func TestReproMinimalDiffCycle(t *testing.T) {
+	t.Parallel()
 	customResponseSchema := func() *schema.Schema {
 		return &schema.Schema{
 			Type:     schema.TypeList,

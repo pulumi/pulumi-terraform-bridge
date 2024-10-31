@@ -29,6 +29,7 @@ import (
 )
 
 func TestAttach(t *testing.T) {
+    t.Parallel()
 	req := &pulumirpc.PluginAttach{Address: "test"}
 	ctx := context.Background()
 
@@ -91,6 +92,7 @@ func (h *host) Log(context.Context, diag.Severity, urn.URN, string) error {
 }
 
 func TestDiffConfig(t *testing.T) {
+    t.Parallel()
 	type testCase struct {
 		name           string
 		request        *pulumirpc.DiffRequest

@@ -9,6 +9,7 @@ import (
 )
 
 func TestNewRawConfig(t *testing.T) {
+    t.Parallel()
 	raw := map[string]interface{}{
 		"foo": "${var.bar}",
 		"bar": `${file("boom.txt")}`,
@@ -28,6 +29,7 @@ func TestNewRawConfig(t *testing.T) {
 }
 
 func TestRawConfig_basic(t *testing.T) {
+    t.Parallel()
 	raw := map[string]interface{}{
 		"foo": "${var.bar}",
 	}
@@ -66,6 +68,7 @@ func TestRawConfig_basic(t *testing.T) {
 }
 
 func TestRawConfig_double(t *testing.T) {
+    t.Parallel()
 	raw := map[string]interface{}{
 		"foo": "${var.bar}",
 	}
@@ -115,6 +118,7 @@ func TestRawConfig_double(t *testing.T) {
 }
 
 func TestRawConfigInterpolate_escaped(t *testing.T) {
+    t.Parallel()
 	raw := map[string]interface{}{
 		"foo": "bar-$${baz}",
 	}
@@ -147,6 +151,7 @@ func TestRawConfigInterpolate_escaped(t *testing.T) {
 }
 
 func TestRawConfig_merge(t *testing.T) {
+    t.Parallel()
 	raw1 := map[string]interface{}{
 		"foo": "${var.foo}",
 		"bar": "${var.bar}",
@@ -229,6 +234,7 @@ func TestRawConfig_merge(t *testing.T) {
 }
 
 func TestRawConfig_syntax(t *testing.T) {
+    t.Parallel()
 	raw := map[string]interface{}{
 		"foo": "${var",
 	}
@@ -239,6 +245,7 @@ func TestRawConfig_syntax(t *testing.T) {
 }
 
 func TestRawConfig_unknown(t *testing.T) {
+    t.Parallel()
 	raw := map[string]interface{}{
 		"foo": "${var.bar}",
 	}
@@ -272,6 +279,7 @@ func TestRawConfig_unknown(t *testing.T) {
 }
 
 func TestRawConfig_unknownPartial(t *testing.T) {
+    t.Parallel()
 	raw := map[string]interface{}{
 		"foo": "${var.bar}/32",
 	}
@@ -305,6 +313,7 @@ func TestRawConfig_unknownPartial(t *testing.T) {
 }
 
 func TestRawConfig_unknownPartialList(t *testing.T) {
+    t.Parallel()
 	raw := map[string]interface{}{
 		"foo": []interface{}{
 			"${var.bar}/32",
@@ -344,6 +353,7 @@ func TestRawConfig_unknownPartialList(t *testing.T) {
 // look like they had no slice index when they in fact do. This test is not
 // very reliable but it did fail before the fix and passed after.
 func TestRawConfig_sliceIndexLoss(t *testing.T) {
+    t.Parallel()
 	raw := map[string]interface{}{
 		"slice": []map[string]interface{}{
 			{
@@ -383,6 +393,7 @@ func TestRawConfig_sliceIndexLoss(t *testing.T) {
 }
 
 func TestRawConfigCopy(t *testing.T) {
+    t.Parallel()
 	raw := map[string]interface{}{
 		"foo": "${var.bar}",
 	}
@@ -436,6 +447,7 @@ func TestRawConfigCopy(t *testing.T) {
 }
 
 func TestRawConfigValue(t *testing.T) {
+    t.Parallel()
 	raw := map[string]interface{}{
 		"foo": "${var.bar}",
 	}
@@ -471,12 +483,14 @@ func TestRawConfigValue(t *testing.T) {
 }
 
 func TestRawConfig_implGob(t *testing.T) {
+    t.Parallel()
 	var _ gob.GobDecoder = new(RawConfig)
 	var _ gob.GobEncoder = new(RawConfig)
 }
 
 // verify that RawMap returns an identical copy
 func TestNewRawConfig_rawMap(t *testing.T) {
+    t.Parallel()
 	raw := map[string]interface{}{
 		"foo": "${var.bar}",
 		"bar": `${file("boom.txt")}`,

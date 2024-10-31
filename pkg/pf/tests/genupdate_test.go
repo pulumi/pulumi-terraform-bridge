@@ -30,6 +30,7 @@ import (
 //	PULUMI_DEBUG_GPRC=$PWD/grpc.json go test -run TestUpdateProgram
 //	jq -s . grpc.json
 func TestGenUpdates(t *testing.T) {
+    t.Parallel()
 	trace := "testdata/updateprogram.json"
 
 	server, err := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())

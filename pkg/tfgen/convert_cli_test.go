@@ -422,6 +422,7 @@ This is some intentionally broken HCL that should not convert.
 }
 
 func TestNotYetImplementedErrorHandling(t *testing.T) {
+	t.Parallel()
 	// Example of an actual diag emitted in pulumi-gcp. For the purposes of bridging, need to
 	// make sure this is actually an error so that this example drops out.
 	exampleDiag := hcl.Diagnostic{
@@ -450,6 +451,7 @@ func TestNotYetImplementedErrorHandling(t *testing.T) {
 }
 
 func TestNotSupportedLifecyleHookErrorHandling(t *testing.T) {
+	t.Parallel()
 	warningReplaceTriggeredBy := &hcl.Diagnostic{
 		Severity: hcl.DiagWarning,
 		Summary:  "converting replace_triggered_by lifecycle hook is not supported",

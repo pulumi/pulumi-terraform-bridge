@@ -20,6 +20,7 @@ linters:
     - revive
     - unconvert
     - unused
+    - paralleltest
 issues:
   exclude:
     - "unused-parameter: parameter"
@@ -44,3 +45,5 @@ linters-settings:
       - default
       - prefix(github.com/pulumi/pulumi-terraform-bridge)
     skip-generated: true
+  paralleltest:
+    ignore-missing-subtests: true

@@ -34,6 +34,7 @@ import (
 )
 
 func TestTokensSingleModule(t *testing.T) {
+	t.Parallel()
 	info := tfbridge.ProviderInfo{
 		P: (&schema.Provider{
 			ResourcesMap: schema.ResourceMap{
@@ -148,6 +149,7 @@ func TestTokensCornerCases(t *testing.T) {
 }
 
 func TestTokensKnownModules(t *testing.T) {
+	t.Parallel()
 	info := tfbridge.ProviderInfo{
 		P: (&schema.Provider{
 			ResourcesMap: schema.ResourceMap{
@@ -181,6 +183,7 @@ func TestTokensKnownModules(t *testing.T) {
 }
 
 func TestTokensKnownModulesAlreadyMapped(t *testing.T) {
+	t.Parallel()
 	info := tfbridge.ProviderInfo{
 		P: (&schema.Provider{
 			ResourcesMap: schema.ResourceMap{
@@ -206,6 +209,7 @@ func TestTokensKnownModulesAlreadyMapped(t *testing.T) {
 }
 
 func TestTokensMappedModules(t *testing.T) {
+	t.Parallel()
 	info := tfbridge.ProviderInfo{
 		P: (&schema.Provider{
 			ResourcesMap: schema.ResourceMap{
@@ -239,6 +243,7 @@ func TestTokensMappedModules(t *testing.T) {
 }
 
 func TestUnmappable(t *testing.T) {
+	t.Parallel()
 	info := tfbridge.ProviderInfo{
 		P: (&schema.Provider{
 			ResourcesMap: schema.ResourceMap{
@@ -282,6 +287,7 @@ func TestUnmappable(t *testing.T) {
 }
 
 func TestMapperExistingToken(t *testing.T) {
+	t.Parallel()
 	provider := func() *tfbridge.ProviderInfo {
 		return &tfbridge.ProviderInfo{
 			P: (&schema.Provider{
@@ -333,6 +339,7 @@ func TestMapperExistingToken(t *testing.T) {
 }
 
 func TestIgnored(t *testing.T) {
+	t.Parallel()
 	info := tfbridge.ProviderInfo{
 		P: (&schema.Provider{
 			ResourcesMap: schema.ResourceMap{
@@ -352,6 +359,7 @@ func TestIgnored(t *testing.T) {
 }
 
 func TestTokensInferredModules(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name            string
 		resourceMapping map[string]string
@@ -541,7 +549,7 @@ func makeAutoAliasing(t *testing.T) (
 	}
 }
 
-func TestTokenAliasing(t *testing.T) {
+func TestTokenAliasing(t *testing.T) { //nolint:paralleltest
 	// We run this test multiple times to guard against nondeterminism.
 	//
 	// See https://github.com/pulumi/pulumi-terraform-bridge/issues/1286.
@@ -551,11 +559,11 @@ func TestTokenAliasing(t *testing.T) {
 }
 
 func TestTokenAliasing1(t *testing.T) {
+	t.Parallel()
 	testTokenAliasing(t)
 }
 
 func testTokenAliasing(t *testing.T) {
-	t.Parallel()
 	provider := func() *tfbridge.ProviderInfo {
 		return &tfbridge.ProviderInfo{
 			P: (&schema.Provider{
@@ -707,6 +715,7 @@ func testTokenAliasing(t *testing.T) {
 }
 
 func TestMaxItemsOneAliasing(t *testing.T) {
+	t.Parallel()
 	provider := func(f1, f2 bool) *tfbridge.ProviderInfo {
 		prov := &tfbridge.ProviderInfo{
 			P: (&schema.Provider{
@@ -845,6 +854,7 @@ func TestMaxItemsOneAliasing(t *testing.T) {
 }
 
 func TestMaxItemsOneAliasingExpiring(t *testing.T) {
+	t.Parallel()
 	provider := func(f1, f2 bool) *tfbridge.ProviderInfo {
 		prov := &tfbridge.ProviderInfo{
 			P: (&schema.Provider{
@@ -915,6 +925,7 @@ func TestMaxItemsOneAliasingExpiring(t *testing.T) {
 }
 
 func TestMaxItemsOneAliasingNested(t *testing.T) {
+	t.Parallel()
 	provider := func(f1, f2 bool) *tfbridge.ProviderInfo {
 		prov := &tfbridge.ProviderInfo{
 			P: (&schema.Provider{
@@ -1021,6 +1032,7 @@ func TestMaxItemsOneAliasingNested(t *testing.T) {
 // as `MaxItemsOne: nonNil` for some non-nil value, we don't leave that field entry behind
 // since that will disable SetAutonaming.
 func TestMaxItemsOneAliasingWithAutoNaming(t *testing.T) {
+	t.Parallel()
 	provider := func() *tfbridge.ProviderInfo {
 		info, err := metadata.New(nil)
 		require.NoError(t, err)
@@ -1104,6 +1116,7 @@ func TestMaxItemsOneAliasingWithAutoNaming(t *testing.T) {
 }
 
 func TestMaxItemsOneDataSourceAliasing(t *testing.T) {
+	t.Parallel()
 	provider := func() *tfbridge.ProviderInfo {
 		info, err := metadata.New(nil)
 		require.NoError(t, err)
@@ -1185,7 +1198,7 @@ func TestMaxItemsOneDataSourceAliasing(t *testing.T) {
 	})
 }
 
-func TestAutoAliasingChangeDataSources(t *testing.T) {
+func TestAutoAliasingChangeDataSources(t *testing.T) { //nolint:paralleltest
 	provider := func(t *testing.T, meta string, n int) *tfbridge.ProviderInfo {
 		dsName := ptokens.ModuleMember(fmt.Sprintf("pkg:index:getD%d", n))
 		info, err := metadata.New([]byte(meta))
@@ -1353,6 +1366,7 @@ func TestAutoAliasingChangeDataSources(t *testing.T) {
 }
 
 func TestDeletedResourcesAutoAliasing(t *testing.T) {
+	t.Parallel()
 	provider := func(t *testing.T, tok string, resourceMap schema.ResourceMap, meta []byte) *tfbridge.ProviderInfo {
 		info, err := metadata.New(meta)
 		require.NoError(t, err)

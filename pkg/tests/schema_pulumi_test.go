@@ -29,6 +29,7 @@ import (
 )
 
 func TestBasic(t *testing.T) {
+    t.Parallel()
 	resMap := map[string]*schema.Resource{
 		"prov_test": {
 			Schema: map[string]*schema.Schema{
@@ -58,6 +59,7 @@ outputs:
 }
 
 func TestUnknownHandling(t *testing.T) {
+    t.Parallel()
 	resMap := map[string]*schema.Resource{
 		"prov_test": {
 			Schema: map[string]*schema.Schema{
@@ -108,6 +110,7 @@ outputs:
 }
 
 func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
+    t.Parallel()
 	for _, tc := range []struct {
 		name               string
 		planResourceChange bool
@@ -745,6 +748,7 @@ func trimDiff(t *testing.T, diff string) string {
 }
 
 func TestUnknownBlocks(t *testing.T) {
+    t.Parallel()
 	resMap := map[string]*schema.Resource{
 		"prov_test": {
 			Schema: map[string]*schema.Schema{
@@ -1365,6 +1369,7 @@ resources:
 }
 
 func TestFullyComputedNestedAttribute(t *testing.T) {
+    t.Parallel()
 	resMap := map[string]*schema.Resource{
 		"prov_test": {
 			Schema: map[string]*schema.Schema{
@@ -1444,6 +1449,7 @@ runtime: yaml
 }
 
 func TestConfigureGetRawConfigDoesNotPanic(t *testing.T) {
+    t.Parallel()
 	// Regression test for [pulumi/pulumi-terraform-bridge#2262]
 	getOkExists := func(d *schema.ResourceData, key string) (interface{}, bool) {
 		v := d.GetRawConfig().GetAttr(key)
@@ -1514,6 +1520,7 @@ outputs:
 
 // TODO[pulumi/pulumi-terraform-bridge#2274]: Move to actual cross-test suite once the plumbing is done
 func TestConfigureCrossTest(t *testing.T) {
+    t.Parallel()
 	resMap := map[string]*schema.Resource{
 		"prov_test": {
 			Schema: map[string]*schema.Schema{
@@ -1705,6 +1712,7 @@ resource "prov_test" "test" {
 }
 
 func TestBigIntOverride(t *testing.T) {
+    t.Parallel()
 	getZoneFromStack := func(data []byte) string {
 		var stateMap map[string]interface{}
 		err := json.Unmarshal(data, &stateMap)
@@ -2877,6 +2885,7 @@ resources:
 }
 
 func TestFailedValidatorOnReadHandling(t *testing.T) {
+    t.Parallel()
 	type PulumiResources struct {
 		Type       string                 `yaml:"type"`
 		Properties map[string]interface{} `yaml:"properties"`
@@ -3234,6 +3243,7 @@ runtime: yaml
 }
 
 func TestCreateCustomTimeoutsCrossTest(t *testing.T) {
+    t.Parallel()
 	test := func(
 		t *testing.T,
 		schemaCreateTimeout *time.Duration,
@@ -3369,6 +3379,7 @@ resource "prov_test" "mainRes" {
 }
 
 func TestStateFunc(t *testing.T) {
+    t.Parallel()
 	resMap := map[string]*schema.Resource{
 		"prov_test": {
 			CreateContext: func(ctx context.Context, d *schema.ResourceData, i interface{}) diag.Diagnostics {
@@ -3417,6 +3428,7 @@ outputs:
 //
 // The test is set up to reproduce https://github.com/pulumi/pulumi-gcp/issues/2372.
 func TestPlanStateEdit(t *testing.T) {
+    t.Parallel()
 	setLabelsDiff := func(_ context.Context, d *schema.ResourceDiff, _ interface{}) error {
 		raw := d.Get("labels")
 		if raw == nil {
@@ -3525,6 +3537,7 @@ outputs:
 }
 
 func TestMakeTerraformResultNilVsEmptyMap(t *testing.T) {
+    t.Parallel()
 	// Nil and empty maps are not equal
 	nilMap := resource.NewObjectProperty(nil)
 	emptyMap := resource.NewObjectProperty(resource.PropertyMap{})

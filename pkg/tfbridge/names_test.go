@@ -30,6 +30,7 @@ import (
 )
 
 func TestPulumiToTerraformName(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, "", PulumiToTerraformName("", nil, nil))
 	assert.Equal(t, "test", PulumiToTerraformName("test", nil, nil))
 	assert.Equal(t, "test_name", PulumiToTerraformName("testName", nil, nil))
@@ -40,6 +41,7 @@ func TestPulumiToTerraformName(t *testing.T) {
 }
 
 func TestTerraformToPulumiName(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, "", TerraformToPulumiName("", nil, nil, false))
 	assert.Equal(t, "test", TerraformToPulumiName("test", nil, nil, false))
 	assert.Equal(t, "testName", TerraformToPulumiName("test_name", nil, nil, false))
@@ -53,6 +55,7 @@ func TestTerraformToPulumiName(t *testing.T) {
 }
 
 func TestTerraformToPulumiNameWithSchemaInfoOverride(t *testing.T) {
+	t.Parallel()
 	tfs := map[string]*schema.Schema{
 		"list_property": {
 			Type: schema.TypeList,
@@ -73,6 +76,7 @@ func TestTerraformToPulumiNameWithSchemaInfoOverride(t *testing.T) {
 }
 
 func TestPulumiToTerraformNameWithSchemaInfoOverride(t *testing.T) {
+	t.Parallel()
 	tfs := map[string]*schema.Schema{
 		"list_property": {
 			Type: schema.TypeList,
@@ -92,6 +96,7 @@ func TestPulumiToTerraformNameWithSchemaInfoOverride(t *testing.T) {
 }
 
 func TestPluralize(t *testing.T) {
+	t.Parallel()
 	tfs := map[string]*schema.Schema{
 		"some_thing": {
 			Type: schema.TypeSet,
@@ -123,6 +128,7 @@ func TestPluralize(t *testing.T) {
 }
 
 func TestFromName(t *testing.T) {
+	t.Parallel()
 	res1 := &PulumiResource{
 		URN: "urn:pulumi:test::test::pkgA:index:t1::n1",
 		Properties: resource.PropertyMap{

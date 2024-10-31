@@ -31,6 +31,7 @@ import (
 )
 
 func TestResourceDecoder(t *testing.T) {
+	t.Parallel()
 	myResource := "my_resource"
 
 	type testCase struct {
@@ -181,6 +182,7 @@ func TestResourceDecoder(t *testing.T) {
 }
 
 func TestResourceEncoder(t *testing.T) {
+	t.Parallel()
 	myResource := "my_resource"
 
 	type testCase struct {
@@ -246,6 +248,7 @@ func TestResourceEncoder(t *testing.T) {
 }
 
 func TestDataSourceDecoder(t *testing.T) {
+	t.Parallel()
 	myDataSource := "my_datasource"
 
 	type testCase struct {
@@ -348,6 +351,7 @@ func TestDataSourceDecoder(t *testing.T) {
 }
 
 func TestDataSourceEncoder(t *testing.T) {
+	t.Parallel()
 	myDataSource := "my_datasource"
 
 	type testCase struct {
@@ -407,6 +411,7 @@ func TestDataSourceEncoder(t *testing.T) {
 }
 
 func TestConfigEncoder(t *testing.T) {
+	t.Parallel()
 	type testCase struct {
 		testName string
 		schema   *schema.SchemaMap
@@ -461,6 +466,7 @@ func TestConfigEncoder(t *testing.T) {
 
 // Boost coverage of deriveEncoder, deriveDecoder over collections especially.
 func TestTypeDerivations(t *testing.T) {
+	t.Parallel()
 	type testCase struct {
 		name      string
 		schemaMap schema.SchemaMap
@@ -558,6 +564,7 @@ func TestTypeDerivations(t *testing.T) {
 
 // Tuple types need coverage as well.
 func TestTupleDerivations(t *testing.T) {
+	t.Parallel()
 	type testCase struct {
 		name      string
 		schemaMap schema.SchemaMap
@@ -634,6 +641,7 @@ func TestTupleDerivations(t *testing.T) {
 }
 
 func TestAdapter(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		input    resource.PropertyValue

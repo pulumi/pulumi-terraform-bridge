@@ -23,6 +23,7 @@ import (
 )
 
 func TestUpdateWritesSchemaVersion(t *testing.T) {
+    t.Parallel()
 	server, err := newProviderServer(t, testprovider.RandomProvider())
 	require.NoError(t, err)
 	testutils.Replay(t, server, `
@@ -62,6 +63,7 @@ func TestUpdateWritesSchemaVersion(t *testing.T) {
 }
 
 func TestUpdateWithIntID(t *testing.T) {
+    t.Parallel()
 	server, err := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
 	require.NoError(t, err)
 	testCase := `

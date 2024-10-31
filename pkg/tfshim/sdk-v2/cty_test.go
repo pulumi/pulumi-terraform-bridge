@@ -12,7 +12,7 @@ import (
 	"pgregory.net/rapid"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/internal/testprovider"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2/internal/rapid"
+	rapidgen "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2/internal/rapid"
 )
 
 var awsSSMParameterSchema = &schema.Resource{
@@ -370,6 +370,7 @@ var auth0TenantSchema = &schema.Resource{
 }
 
 func TestMakeResourceRawConfig(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name     string
 		schema   *schema.Resource
@@ -706,6 +707,7 @@ func TestMakeResourceRawConfig(t *testing.T) {
 }
 
 func TestRecoverCtyValue(t *testing.T) {
+	t.Parallel()
 	type testCase struct {
 		name   string
 		dT     cty.Type
@@ -793,6 +795,7 @@ func TestRecoverCtyValue(t *testing.T) {
 }
 
 func TestRecoverAndCoerceCtyValue(t *testing.T) {
+	t.Parallel()
 	rapid.Check(t, func(t *rapid.T) {
 		depth := 3
 		res := rapidgen.ResourceProperGen(depth).Draw(t, "res")

@@ -27,6 +27,7 @@ import (
 func ref[T any](t T) *T { return &t }
 
 func TestValidateNameOverride(t *testing.T) {
+	t.Parallel()
 	r := func() shim.Resource {
 		return (&schema.Resource{
 			Schema: schema.SchemaMap{

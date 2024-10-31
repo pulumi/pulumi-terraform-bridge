@@ -23,6 +23,7 @@ var errorsOnly = []*proto.Diagnostic{
 var mixed = append(append([]*proto.Diagnostic{}, warningsOnly...), errorsOnly...)
 
 func TestWarningsAndErrors(t *testing.T) {
+	t.Parallel()
 	warnings, errors := unmarshalWarningsAndErrors(warningsOnly)
 	assert.Equal(t, []string{"warning 1", "warning 2"}, warnings)
 	assert.Empty(t, errors)
@@ -43,6 +44,7 @@ func TestWarningsAndErrors(t *testing.T) {
 }
 
 func TestErrors(t *testing.T) {
+	t.Parallel()
 	err := unmarshalErrors(warningsOnly)
 	assert.NoError(t, err)
 

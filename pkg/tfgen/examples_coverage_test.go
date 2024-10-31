@@ -21,6 +21,7 @@ import (
 )
 
 func TestCoverageExport(t *testing.T) {
+	t.Parallel()
 	ce := &CoverageTracker{}
 	ct := newCoverageExportUtil(ce)
 	err := ct.tryExport(t.TempDir())

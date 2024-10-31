@@ -51,6 +51,7 @@ type testcase struct {
 }
 
 func TestReformatText(t *testing.T) {
+	t.Parallel()
 	tests := []testcase{
 		{
 			Input:    "The DNS name for the given subnet/AZ per [documented convention](http://docs.aws.amazon.com/efs/latest/ug/mounting-fs-mount-cmd-dns-name.html).", //nolint:lll
@@ -102,6 +103,7 @@ func TestReformatText(t *testing.T) {
 }
 
 func TestArgumentRegex(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		input    []string
@@ -625,6 +627,7 @@ func TestArgumentRegex(t *testing.T) {
 }
 
 func TestArgumentRegexAuto(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		input    []string
@@ -660,6 +663,7 @@ func TestArgumentRegexAuto(t *testing.T) {
 }
 
 func TestGetFooterLinks(t *testing.T) {
+	t.Parallel()
 	input := `## Attributes Reference
 
 For **environment** the following attributes are supported:
@@ -680,6 +684,7 @@ For **environment** the following attributes are supported:
 }
 
 func TestReplaceFooterLinks(t *testing.T) {
+	t.Parallel()
 	inputText := `# Resource: aws_lambda_function
 
 	Provides a Lambda Function resource. Lambda allows you to trigger execution of code in response to events in AWS, enabling serverless backend solutions. The Lambda Function itself includes source code and runtime configuration.
@@ -1314,6 +1319,7 @@ content
 }
 
 func TestFixExamplesHeaders(t *testing.T) {
+	t.Parallel()
 	codeFence := "```"
 	t.Run("WithCodeFences", func(t *testing.T) {
 		markdown := `
@@ -1371,6 +1377,7 @@ Misleading example title without any actual code fences. We should not modify th
 }
 
 func TestExtractExamples(t *testing.T) {
+	t.Parallel()
 	basic := `Previews a CIDR from an IPAM address pool. Only works for private IPv4.
 
 ~> **NOTE:** This functionality is also encapsulated in a resource sharing the same name. The data source can be used when you need to use the cidr in a calculation of the same Root module, count for example. However, once a cidr range has been allocated that was previewed, the next refresh will find a **new** cidr and may force new resources downstream. Make sure to use Terraform's lifecycle ignore_changes policy if this is undesirable.
@@ -1395,6 +1402,7 @@ Basic usage:`
 }
 
 func TestReformatExamples(t *testing.T) {
+	t.Parallel()
 	runTest := func(input string, expected [][]string) {
 		inputSections := splitByMarkdownHeaders(input, 2)
 		actual := reformatExamples(inputSections)
@@ -1517,11 +1525,13 @@ content`
 }
 
 func TestFormatEntityName(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, "'prov_entity'", formatEntityName("prov_entity"))
 	assert.Equal(t, "'prov_entity' (aliased or renamed)", formatEntityName("prov_entity_legacy"))
 }
 
 func TestHclConversionsToString(t *testing.T) {
+	t.Parallel()
 	input := map[string]string{
 		"typescript": "var foo = bar;",
 		"java":       "FooFactory fooFactory = new FooFactory();",
@@ -1571,6 +1581,7 @@ FooFactory fooFactory = new FooFactory();
 }
 
 func TestParseArgFromMarkdownLine(t *testing.T) {
+	t.Parallel()
 	//nolint:lll
 	tests := []struct {
 		input         string
@@ -1602,6 +1613,7 @@ func TestParseArgFromMarkdownLine(t *testing.T) {
 }
 
 func TestParseAttributesReferenceSection(t *testing.T) {
+	t.Parallel()
 	ret := entityDocs{
 		Arguments:  make(map[docsPath]*argumentDocs),
 		Attributes: make(map[string]string),
@@ -1618,6 +1630,7 @@ func TestParseAttributesReferenceSection(t *testing.T) {
 }
 
 func TestParseAttributesReferenceSectionParsesNested(t *testing.T) {
+	t.Parallel()
 	ret := entityDocs{
 		Arguments:  make(map[docsPath]*argumentDocs),
 		Attributes: make(map[string]string),
@@ -1635,6 +1648,7 @@ func TestParseAttributesReferenceSectionParsesNested(t *testing.T) {
 }
 
 func TestParseAttributesReferenceSectionParsesNestedOrderAgnostic(t *testing.T) {
+	t.Parallel()
 	ret := entityDocs{
 		Arguments:  make(map[docsPath]*argumentDocs),
 		Attributes: make(map[string]string),
@@ -1652,6 +1666,7 @@ func TestParseAttributesReferenceSectionParsesNestedOrderAgnostic(t *testing.T) 
 }
 
 func TestParseAttributesReferenceSectionFlattensListAttributes(t *testing.T) {
+	t.Parallel()
 	ret := entityDocs{
 		Arguments:  make(map[docsPath]*argumentDocs),
 		Attributes: make(map[string]string),
@@ -1672,6 +1687,7 @@ func TestParseAttributesReferenceSectionFlattensListAttributes(t *testing.T) {
 }
 
 func TestGetNestedBlockName(t *testing.T) {
+	t.Parallel()
 	var tests = []struct {
 		input    string
 		expected []string
@@ -1702,6 +1718,7 @@ func TestGetNestedBlockName(t *testing.T) {
 }
 
 func TestOverlayAttributesToAttributes(t *testing.T) {
+	t.Parallel()
 	source := entityDocs{
 		Attributes: map[string]string{
 			"overwrite_me": "overwritten_desc",
@@ -1730,6 +1747,7 @@ func TestOverlayAttributesToAttributes(t *testing.T) {
 }
 
 func TestOverlayArgsToAttributes(t *testing.T) {
+	t.Parallel()
 	source := entityDocs{
 		Arguments: map[docsPath]*argumentDocs{
 			"overwrite_me": {
@@ -1762,6 +1780,7 @@ func TestOverlayArgsToAttributes(t *testing.T) {
 }
 
 func TestOverlayArgsToArgs(t *testing.T) {
+	t.Parallel()
 	source := entityDocs{
 		Arguments: map[docsPath]*argumentDocs{
 			"overwrite_me":                     {description: "overwritten_desc"},
@@ -1799,6 +1818,7 @@ func TestOverlayArgsToArgs(t *testing.T) {
 }
 
 func TestParseImports_NoOverrides(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS == "windows" {
 		t.Skipf("Skippping on windows - tests cases need to be made robust to newline handling")
 	}
@@ -1886,6 +1906,7 @@ func TestParseImports_NoOverrides(t *testing.T) {
 }
 
 func TestParseImports_WithOverride(t *testing.T) {
+	t.Parallel()
 	parser := tfMarkdownParser{
 		info: &mockResource{
 			docs: tfbridge.DocInfo{
@@ -1902,6 +1923,7 @@ func TestParseImports_WithOverride(t *testing.T) {
 func ref[T any](t T) *T { return &t }
 
 func TestConvertExamples(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS == "windows" {
 		t.Skipf("Skipping on windows to avoid failing on incorrect newline handling")
 	}
@@ -1986,6 +2008,7 @@ func TestConvertExamples(t *testing.T) {
 }
 
 func TestConvertExamplesInner(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS == "windows" {
 		t.Skipf("Skipping on windows to avoid failing on incorrect newline handling")
 	}
@@ -2049,6 +2072,7 @@ func TestConvertExamplesInner(t *testing.T) {
 }
 
 func TestFindFencesAndHeaders(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS == "windows" {
 		t.Skipf("Skipping on windows to avoid failing on incorrect newline handling")
 	}
@@ -2113,6 +2137,7 @@ func TestFindFencesAndHeaders(t *testing.T) {
 }
 
 func TestExampleGeneration(t *testing.T) {
+	t.Parallel()
 	info := testprovider.ProviderMiniRandom()
 
 	markdown := []byte(`
@@ -2452,6 +2477,7 @@ func readlines(t *testing.T, file string) []string {
 }
 
 func TestFixupImports(t *testing.T) {
+	t.Parallel()
 	tests := []struct{ text, expected string }{
 		{
 			"% terraform import thing",
@@ -2524,6 +2550,7 @@ func TestFixupImports(t *testing.T) {
 }
 
 func TestGuessIsHCL(t *testing.T) {
+	t.Parallel()
 	type testCase struct {
 		code string
 		hcl  bool

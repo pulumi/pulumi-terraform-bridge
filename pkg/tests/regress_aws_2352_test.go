@@ -29,6 +29,7 @@ import (
 )
 
 func TestRegressAws2352(t *testing.T) {
+    t.Parallel()
 	ctx := context.Background()
 
 	createDotStringHashcode := func(s string) int {

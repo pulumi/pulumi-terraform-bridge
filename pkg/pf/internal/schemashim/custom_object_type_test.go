@@ -30,6 +30,7 @@ import (
 )
 
 func TestCustomObject(t *testing.T) {
+    t.Parallel()
 	ctx := context.Background()
 
 	obj := newObjectPseudoResource(NewObjectTypeOf[SomeType](ctx), nil, nil)
