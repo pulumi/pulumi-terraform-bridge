@@ -100,7 +100,7 @@ func visitBoundListProperty(n *BoundListProperty, pre, post BoundNodeVisitor) (B
 
 func visitBoundMapProperty(n *BoundMapProperty, pre, post BoundNodeVisitor) (BoundNode, error) {
 	// Sort the keys to ensure a deterministic visitation order.
-	keys := make([]string, 0, len(n.Elements))
+	var keys []string
 	for k := range n.Elements {
 		keys = append(keys, k)
 	}

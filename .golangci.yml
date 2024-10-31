@@ -6,8 +6,10 @@ linters:
   enable:
     - durationcheck
     - errcheck
+    # - exhaustive
     - gci
     - gofumpt
+    - goheader
     - goprintffuncname
     - gosec
     - gosimple
@@ -18,7 +20,8 @@ linters:
     - misspell
     - nakedret
     - nolintlint
-    - prealloc
+    # - perfsprint
+    # - prealloc
     - revive
     - staticcheck
     - tenv
@@ -45,10 +48,6 @@ issues:
     - pf
     - x/muxer
     - testing
-  exclude-rules:
-    - path: pkg/tfgen/*
-      linters:
-        - prealloc
 linters-settings:
   gci:
     sections:
@@ -71,7 +70,32 @@ linters-settings:
       - sortslice
       # Detect write to struct/arrays by-value that aren't read again.
       - unusedwrite
+  # depguard:
+  #   rules:
+  #     protobuf:
+  #       deny:
+  #         - pkg: "github.com/golang/protobuf"
+  #           desc: Use google.golang.org/protobuf instead
   importas:
     alias:
     - pkg: github.com/pulumi/pulumi/sdk/v3/proto/go
       alias: pulumirpc
+  # goheader:
+  #   values:
+  #     regexp:
+  #       COPYRIGHT_YEARS: (\d{4}-)?\d{4}
+  #       WHITESPACE: \s*
+  #   template: |-
+  #     Copyright {{ COPYRIGHT_YEARS }}, Pulumi Corporation.
+
+  #     Licensed under the Apache License, Version 2.0 (the "License");
+  #     you may not use this file except in compliance with the License.
+  #     You may obtain a copy of the License at
+
+  #     {{ WHITESPACE }}http://www.apache.org/licenses/LICENSE-2.0
+
+  #     Unless required by applicable law or agreed to in writing, software
+  #     distributed under the License is distributed on an "AS IS" BASIS,
+  #     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  #     See the License for the specific language governing permissions and
+  #     limitations under the License.

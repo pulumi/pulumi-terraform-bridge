@@ -22,7 +22,7 @@ import (
 )
 
 func ApplyIgnoreChanges(old, new resource.PropertyMap, ignoreChanges []string) (resource.PropertyMap, error) {
-	paths := make([]resource.PropertyPath, 0, len(ignoreChanges))
+	var paths []resource.PropertyPath
 	var errs []error
 	for i, p := range ignoreChanges {
 		pp, err := resource.ParsePropertyPath(p)
