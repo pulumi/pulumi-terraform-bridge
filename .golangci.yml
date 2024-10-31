@@ -5,7 +5,6 @@ linters:
   enable-all: false
   enable:
     - durationcheck
-    # - depguard
     - errcheck
     - gci
     - gofumpt
