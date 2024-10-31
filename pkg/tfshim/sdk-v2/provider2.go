@@ -227,7 +227,7 @@ func (*planResourceChangeImpl) warnIgnoredCustomTimeouts(
 	if len(timeoutOverrides) == 0 {
 		return
 	}
-	var parts []string
+	parts := make([]string, 0, len(timeoutOverrides))
 	for k, v := range timeoutOverrides {
 		parts = append(parts, fmt.Sprintf("%s=%s", k, v.String()))
 	}

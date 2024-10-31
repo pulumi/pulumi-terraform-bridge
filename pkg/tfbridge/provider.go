@@ -1837,7 +1837,7 @@ func (p *Provider) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*p
 	}
 
 	// Now produce a return value of any properties that failed verification.
-	var failures []*pulumirpc.CheckFailure
+	failures := make([]*pulumirpc.CheckFailure, 0, len(errs))
 	for _, err := range errs {
 		failures = append(failures, &pulumirpc.CheckFailure{
 			Reason: err.Error(),

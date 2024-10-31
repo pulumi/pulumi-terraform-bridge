@@ -61,7 +61,7 @@ func (enc *setEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.Valu
 		return tftypes.NewValue(setTy, nil),
 			retErr("expected an Array PropertyValue, got a %T", p)
 	}
-	var values []tftypes.Value
+	values := make([]tftypes.Value, 0, len(p.ArrayValue()))
 	for i, pv := range p.ArrayValue() {
 		v, err := enc.elementEncoder.fromPropertyValue(pv)
 		if err != nil {

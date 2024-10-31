@@ -56,7 +56,7 @@ func (enc *listEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.Val
 		return tftypes.NewValue(listTy, nil),
 			fmt.Errorf("Expected an Array PropertyValue")
 	}
-	var values []tftypes.Value
+	values := make([]tftypes.Value, 0, len(p.ArrayValue()))
 	for i, pv := range p.ArrayValue() {
 		v, err := enc.elementEncoder.fromPropertyValue(pv)
 		if err != nil {
