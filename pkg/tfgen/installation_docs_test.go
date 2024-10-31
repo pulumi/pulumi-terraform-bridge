@@ -190,7 +190,6 @@ func TestWriteInstallationInstructions(t *testing.T) {
 	}
 
 	tc := testCase{
-
 		name: "Generates Install Information From Package Name",
 		expected: "## Installation\n\n" +
 			"The testcase provider is available as a package in all Pulumi languages:\n\n" +
@@ -458,12 +457,14 @@ func TestSkipDefaultSectionHeaders(t *testing.T) {
 			headersToSkip: getDefaultHeadersToSkip(),
 			input:         "### Delete Protection",
 			expected:      "",
-		}, {
+		},
+		{
 			name:          "Skips Sections About Contributing",
 			headersToSkip: getDefaultHeadersToSkip(),
 			input:         "## Contributing",
 			expected:      "",
-		}, {
+		},
+		{
 			name:          "Does Not Skip Sections About Unicorns",
 			headersToSkip: getDefaultHeadersToSkip(),
 			input:         "## Unicorns",

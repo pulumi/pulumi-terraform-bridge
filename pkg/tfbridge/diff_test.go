@@ -298,7 +298,8 @@ func diffTest(t *testing.T, tfs map[string]*v2Schema.Schema, inputs,
 
 				tfState, err := makeTerraformStateWithOpts(ctx, r, "id", stateMap,
 					makeTerraformStateOptions{
-						defaultZeroSchemaVersion: true, unknownCollectionsSupported: provider.SupportsUnknownCollections()})
+						defaultZeroSchemaVersion: true, unknownCollectionsSupported: provider.SupportsUnknownCollections(),
+					})
 				assert.NoError(t, err)
 
 				config, _, err := MakeTerraformConfig(ctx, &Provider{tf: provider}, inputsMap, sch, info)
@@ -329,7 +330,8 @@ func diffTest(t *testing.T, tfs map[string]*v2Schema.Schema, inputs,
 				sch, r, provider, info := s.setup(tfs)
 				tfState, err := makeTerraformStateWithOpts(ctx, r, "id", stateMap,
 					makeTerraformStateOptions{
-						defaultZeroSchemaVersion: true, unknownCollectionsSupported: provider.SupportsUnknownCollections()})
+						defaultZeroSchemaVersion: true, unknownCollectionsSupported: provider.SupportsUnknownCollections(),
+					})
 				assert.NoError(t, err)
 
 				config, _, err := MakeTerraformConfig(ctx, &Provider{tf: provider}, inputsMap, sch, info)

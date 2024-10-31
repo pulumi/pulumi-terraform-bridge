@@ -243,7 +243,7 @@ const (
 	PreCodeTranslation EditPhase = iota
 	// PostCodeTranslation directs an info.DocsEdit to occur after resource example code is translated.
 	// It should be used when a docs edit would otherwise affect the code conversion mechanics.
-	//TODO[https://github.com/pulumi/pulumi-terraform-bridge/issues/2459]: Right now, PostCodeTranslation is only
+	// TODO[https://github.com/pulumi/pulumi-terraform-bridge/issues/2459]: Right now, PostCodeTranslation is only
 	// called on installation docs.
 	PostCodeTranslation
 )

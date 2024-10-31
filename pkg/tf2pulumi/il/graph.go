@@ -504,8 +504,8 @@ func (b *builder) logf(format string, arguments ...interface{}) {
 // In addition to the bound property, this function returns the set of nodes referenced by the property's
 // interpolations. If v is nil, the returned BoundNode will also be nil.
 func (b *builder) bindProperty(
-	path string, v interface{}, sch Schemas, hasCountIndex bool) (BoundNode, nodeSet, error) {
-
+	path string, v interface{}, sch Schemas, hasCountIndex bool,
+) (BoundNode, nodeSet, error) {
 	if v == nil {
 		return nil, nil, nil
 	}
@@ -542,8 +542,8 @@ func (b *builder) bindProperty(
 // In addition to the bound property, this function returns the set of nodes referenced by the property's
 // interpolations.
 func (b *builder) bindProperties(name string, raw *config.RawConfig, sch Schemas,
-	hasCountIndex bool) (*BoundMapProperty, nodeSet, error) {
-
+	hasCountIndex bool,
+) (*BoundMapProperty, nodeSet, error) {
 	v, deps, err := b.bindProperty(name, raw.Raw, sch, hasCountIndex)
 	if err != nil {
 		return nil, nil, err

@@ -131,7 +131,6 @@ func TokensKnownModules(
 func TokensMappedModules(
 	tfPackagePrefix, defaultModule string, modules map[string]string, finalize MakeToken,
 ) DefaultStrategy {
-
 	mods := make([]string, 0, len(modules))
 	for k := range modules {
 		mods = append(mods, k)
@@ -866,7 +865,6 @@ func aliasOrRenameResource(
 				b.AliasInfo{Type: (*string)(&legacy)})
 		}
 	}
-
 }
 
 func aliasDataSource(
@@ -900,7 +898,6 @@ func aliasDataSource(
 	}
 
 	applyResourceMaxItemsOneAliasing(ds, &hist[tfToken].Fields, &computed.Fields)
-
 }
 
 func aliasOrRenameDataSource(
@@ -929,5 +926,4 @@ func aliasOrRenameDataSource(
 			computed.Tok, legacy.Module().Name().String(),
 			computed.Tok.Module().Name().String(), computed)
 	}
-
 }

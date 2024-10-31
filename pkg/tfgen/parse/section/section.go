@@ -88,7 +88,6 @@ func (s sectionParser) transform(node ast.Node, reader text.Reader, pc parser.Co
 			section.AppendChild(section, child)
 		}
 		s.transform(section, reader, pc, true)
-
 	}
 }
 
@@ -101,5 +100,4 @@ func (sectionRenderer) RegisterFuncs(r renderer.NodeRendererFuncRegisterer) {
 		return ast.WalkContinue, nil
 	}
 	r.Register(Kind, f)
-
 }

@@ -69,8 +69,8 @@ type propertyVisitor func(attributeKey, propertyPath string, value resource.Prop
 // check to see if the InstanceDiff has an entry for that path.
 func visitPropertyValue(
 	ctx context.Context, name, path string, v resource.PropertyValue, tfs shim.Schema,
-	ps *SchemaInfo, visitor propertyVisitor) {
-
+	ps *SchemaInfo, visitor propertyVisitor,
+) {
 	if IsMaxItemsOne(tfs, ps) {
 		if v.IsNull() {
 			v = resource.NewArrayProperty([]resource.PropertyValue{})
@@ -178,7 +178,6 @@ func makePropertyDiff(
 	ps *SchemaInfo,
 	finalize bool,
 ) {
-
 	visitor := func(name, path string, v resource.PropertyValue) bool {
 		switch {
 		case v.IsArray():

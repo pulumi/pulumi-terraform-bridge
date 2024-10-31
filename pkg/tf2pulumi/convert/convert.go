@@ -45,10 +45,10 @@ const (
 	LanguageYaml       string = "yaml"
 )
 
-var (
-	ValidLanguages = []string{LanguageTypescript, LanguagePulumi, LanguagePython, LanguageCSharp,
-		LanguageGo, LanguageJava, LanguageYaml}
-)
+var ValidLanguages = []string{
+	LanguageTypescript, LanguagePulumi, LanguagePython, LanguageCSharp,
+	LanguageGo, LanguageJava, LanguageYaml,
+}
 
 type Diagnostics struct {
 	All   hcl.Diagnostics
@@ -93,7 +93,6 @@ func Convert(opts Options) (map[string][]byte, Diagnostics, error) {
 	}
 
 	tfFiles, program, diagnostics, err := internalEject(ejectOpts)
-
 	if err != nil {
 		return nil, Diagnostics{All: diagnostics, files: tfFiles}, err
 	}

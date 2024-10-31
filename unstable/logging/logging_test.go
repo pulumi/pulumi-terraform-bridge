@@ -146,7 +146,6 @@ func TestLogging(t *testing.T) {
 				log := getLogger(ctx)
 				log.Warn("warn")
 				log.Status().Info("info - status")
-
 			},
 			logs: []log{
 				{

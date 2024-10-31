@@ -278,5 +278,4 @@ func TestApplyCustomEditRules(t *testing.T) {
 			assertEqualHTML(t, string(tt.expected), string(actual))
 		})
 	}
-
 }

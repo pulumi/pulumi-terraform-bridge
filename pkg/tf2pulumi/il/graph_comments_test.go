@@ -127,7 +127,7 @@ output "security_group_name" {
 		contract.IgnoreError(os.RemoveAll(dir))
 	}()
 
-	err = os.WriteFile(path.Join(dir, "main.tf"), []byte(hclText), 0600)
+	err = os.WriteFile(path.Join(dir, "main.tf"), []byte(hclText), 0o600)
 	if err != nil {
 		t.Fatalf("could not create main.tf: %v", err)
 	}

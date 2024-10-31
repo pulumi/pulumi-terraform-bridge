@@ -321,7 +321,7 @@ func (cc *cliConverter) convertViaPulumiPrepareDebugFolder(
 
 	// write out all examples into tf files for easy consumption
 	for k, v := range examples {
-		err := os.WriteFile(filepath.Join(d, fmt.Sprintf("%s.tf", k)), []byte(v), 0600)
+		err := os.WriteFile(filepath.Join(d, fmt.Sprintf("%s.tf", k)), []byte(v), 0o600)
 		if err != nil {
 			return "", err
 		}
@@ -334,7 +334,7 @@ set -euo pipefail
 pulumi %s
 `, strings.Join(args, " ")))
 
-	if err := os.WriteFile(filepath.Join(d, "repro.sh"), script, 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(d, "repro.sh"), script, 0o600); err != nil {
 		return "", err
 	}
 
@@ -352,7 +352,7 @@ func (cc *cliConverter) convertViaPulumiCLICommandArgs(
 	if err != nil {
 		return "", nil, fmt.Errorf("convertViaPulumiCLI: failed to marshal examples to JSON: %w", err)
 	}
-	if err := os.WriteFile(examplesJSONPath, examplesBytes, 0600); err != nil {
+	if err := os.WriteFile(examplesJSONPath, examplesBytes, 0o600); err != nil {
 		return "", nil, fmt.Errorf("convertViaPulumiCLI: failed to write a temp examples.json file: %w", err)
 	}
 
@@ -365,7 +365,7 @@ func (cc *cliConverter) convertViaPulumiCLICommandArgs(
 
 	// Prepare mappings folder if necessary.
 	if len(mappings) > 0 {
-		if err := os.MkdirAll(mappingsDir, 0755); err != nil {
+		if err := os.MkdirAll(mappingsDir, 0o755); err != nil {
 			return "", nil, fmt.Errorf("convertViaPulumiCLI: failed to write mappings folder: %w", err)
 		}
 	}
@@ -379,7 +379,7 @@ func (cc *cliConverter) convertViaPulumiCLICommandArgs(
 			return "", nil, fmt.Errorf("convertViaPulumiCLI: failed to write mappings folder: %w", err)
 		}
 		mf := cc.mappingsFile(mappingsDir, info)
-		if err := os.WriteFile(mf, bytes, 0600); err != nil {
+		if err := os.WriteFile(mf, bytes, 0o600); err != nil {
 			return "", nil, fmt.Errorf("convertViaPulumiCLI: failed to write mappings file: %w", err)
 		}
 	}

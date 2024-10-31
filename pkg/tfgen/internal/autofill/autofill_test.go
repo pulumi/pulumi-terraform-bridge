@@ -79,10 +79,10 @@ resource "aws_route53_zone" "example" {
 
 	fs := afero.NewMemMapFs()
 
-	err = afero.WriteFile(fs, "aws_acm_certificate.tf", []byte(injectAcmCert), 0600)
+	err = afero.WriteFile(fs, "aws_acm_certificate.tf", []byte(injectAcmCert), 0o600)
 	require.NoError(t, err)
 
-	err = afero.WriteFile(fs, "aws_route53_zone.tf", []byte(injectRoute53Zone), 0600)
+	err = afero.WriteFile(fs, "aws_route53_zone.tf", []byte(injectRoute53Zone), 0o600)
 	require.NoError(t, err)
 
 	taf := newAferoAutoFiller(fs)

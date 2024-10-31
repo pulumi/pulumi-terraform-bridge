@@ -281,7 +281,6 @@ func MarkPromptDataSources(g *Graph) map[*ResourceNode]bool {
 		})
 		contract.Assertf(err == nil, `err == nil`)
 	}
-
 }
 
 // isBooleanValue rerturns true if the given expression produces a value that can be considered to be true or false.

@@ -3785,7 +3785,6 @@ func TestExtractInputsFromOutputsSdkv2(t *testing.T) {
 			require.NoError(t, err)
 			tc.expected.Equal(t, result)
 		})
-
 	}
 }
 

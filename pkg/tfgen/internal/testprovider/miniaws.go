@@ -25,7 +25,6 @@ import (
 )
 
 func ProviderMiniAws() tfbridge.ProviderInfo {
-
 	return tfbridge.ProviderInfo{
 		P:           shimv2.NewProvider(testproviderdata.ProviderMiniAws()),
 		Name:        "aws",
@@ -51,7 +50,6 @@ func ProviderMiniAws() tfbridge.ProviderInfo {
 							[]byte(" The provider will only perform drift detection if a configuration value is provided."),
 						)
 						return content, nil
-
 					},
 				},
 			}

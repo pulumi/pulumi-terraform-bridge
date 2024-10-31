@@ -42,11 +42,11 @@ func defaultEditRules() editRules {
 		// These edit rules allow us to safely transform certain strings that we would otherwise need in the
 		// code translation or nested type discovery process.
 		// These rules are currently only called when generating installation docs.
-		//TODO[https://github.com/pulumi/pulumi-terraform-bridge/issues/2459] Call info.PostCodeTranslation rules
+		// TODO[https://github.com/pulumi/pulumi-terraform-bridge/issues/2459] Call info.PostCodeTranslation rules
 		// on all docs.
 		skipSectionHeadersEdit(),
 		removeTfVersionMentions(),
-		//Replace "providers.tf" with "Pulumi.yaml"
+		// Replace "providers.tf" with "Pulumi.yaml"
 		reReplace(`providers.tf`, `Pulumi.yaml`, info.PostCodeTranslation),
 		reReplace(`terraform init`, `pulumi up`, info.PostCodeTranslation),
 		// Replace all " T/terraform" with " P/pulumi"
@@ -135,12 +135,11 @@ func reReplace(from, to string, phase info.EditPhase) tfbridge.DocsEdit {
 }
 
 func fixupImports() tfbridge.DocsEdit {
-
 	var inlineImportRegexp = regexp.MustCompile("% [tT]erraform import.*")
 	var quotedImportRegexp = regexp.MustCompile("`[tT]erraform import`")
 
 	// (?s) makes the '.' match newlines (in addition to everything else).
-	var blockImportRegexp = regexp.MustCompile("(?s)In [tT]erraform v[0-9]+\\.[0-9]+\\.[0-9]+ and later," +
+	blockImportRegexp := regexp.MustCompile("(?s)In [tT]erraform v[0-9]+\\.[0-9]+\\.[0-9]+ and later," +
 		" use an `import` block.*?```.+?```\n")
 
 	return tfbridge.DocsEdit{

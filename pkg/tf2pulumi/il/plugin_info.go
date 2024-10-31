@@ -53,8 +53,8 @@ func NewMapperProviderInfoSource(mapper convert.Mapper) ProviderInfoSource {
 }
 
 func (mapper *mapperProviderInfoSource) GetProviderInfo(
-	registryName, namespace, name, version string) (*tfbridge.ProviderInfo, error) {
-
+	registryName, namespace, name, version string,
+) (*tfbridge.ProviderInfo, error) {
 	data, err := mapper.mapper.GetMapping(context.TODO(), name, GetPulumiProviderName(name))
 	if err != nil {
 		return nil, err
@@ -98,8 +98,8 @@ func (cache *CachingProviderInfoSource) getProviderInfo(key string) (*tfbridge.P
 // GetProviderInfo returns the tfbridge information for the indicated Terraform provider as well as the name of the
 // corresponding Pulumi resource provider.
 func (cache *CachingProviderInfoSource) GetProviderInfo(
-	registryName, namespace, name, version string) (*tfbridge.ProviderInfo, error) {
-
+	registryName, namespace, name, version string,
+) (*tfbridge.ProviderInfo, error) {
 	key := cache.cacheKey(registryName, namespace, name, version)
 
 	if info, ok := cache.getProviderInfo(key); ok {
@@ -132,8 +132,8 @@ func NewMultiProviderInfoSource(sources ...ProviderInfoSource) ProviderInfoSourc
 }
 
 func (s multiProviderInfoSource) GetProviderInfo(
-	registryName, namespace, name, version string) (*tfbridge.ProviderInfo, error) {
-
+	registryName, namespace, name, version string,
+) (*tfbridge.ProviderInfo, error) {
 	for _, s := range s {
 		if s != nil {
 			if info, err := s.GetProviderInfo(registryName, namespace, name, version); err == nil && info != nil {
@@ -178,8 +178,8 @@ func GetTerraformProviderName(info tfbridge.ProviderInfo) string {
 // GetProviderInfo returns the tfbridge information for the indicated Terraform provider as well as the name of the
 // corresponding Pulumi resource provider.
 func (pluginProviderInfoSource) GetProviderInfo(
-	registryName, namespace, name, version string) (*tfbridge.ProviderInfo, error) {
-
+	registryName, namespace, name, version string,
+) (*tfbridge.ProviderInfo, error) {
 	tfProviderName := name
 	pluginName := GetPulumiProviderName(tfProviderName)
 

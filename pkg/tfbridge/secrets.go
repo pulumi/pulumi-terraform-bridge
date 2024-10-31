@@ -26,7 +26,8 @@ import (
 // property is considered secret if it is declared Sensitive in the SchemaMap in the upstream provider. Users may also
 // override a matching SchemaInfo.Secret setting to force a property to be considered secret or non-secret.
 func MarkSchemaSecrets(ctx context.Context, schemaMap shim.SchemaMap, configInfos map[string]*SchemaInfo,
-	pv resource.PropertyValue) resource.PropertyValue {
+	pv resource.PropertyValue,
+) resource.PropertyValue {
 	ss := &schemaSecrets{schemaMap, configInfos}
 	return ss.markSchemaSecretsTransform(make(resource.PropertyPath, 0), pv)
 }

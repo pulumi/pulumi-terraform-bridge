@@ -57,7 +57,8 @@ func Test_ForceNew(t *testing.T) {
 		Var            variable
 		ShouldForceNew bool
 	}{
-		{Name: "Pulumi Schema with ForceNew Override ShouldForceNew true",
+		{
+			Name: "Pulumi Schema with ForceNew Override ShouldForceNew true",
 			Var: variable{
 				name: "v",
 				schema: shimv1.NewSchema(&schema.Schema{
@@ -365,7 +366,6 @@ func Test_ProviderWithOmittedTypes(t *testing.T) {
 		assert.Len(t, spec.Resources["test:index:Bar"].InputProperties, 1)
 		assert.Len(t, spec.Types, 1)
 	})
-
 }
 
 func TestModulePlacementForType(t *testing.T) {
@@ -447,7 +447,6 @@ func TestModulePlacementForType(t *testing.T) {
 			assert.Equal(t, tc.expect, mod)
 		})
 	}
-
 }
 
 func TestWithoutPackageName(t *testing.T) {

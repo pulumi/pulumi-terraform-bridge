@@ -57,8 +57,8 @@ func NewProvider(ctx context.Context, client proto.ProviderClient, terraformVers
 }
 
 func (p *provider) decodeState(resource *resource, s *instanceState,
-	val cty.Value, meta map[string]interface{}) (shim.InstanceState, error) {
-
+	val cty.Value, meta map[string]interface{},
+) (shim.InstanceState, error) {
 	if !val.Type().IsObjectType() || !val.IsKnown() {
 		return nil, fmt.Errorf("internal error: state is not an object or is unknown")
 	}
@@ -285,7 +285,6 @@ func (p *provider) Configure(ctx context.Context, c shim.ResourceConfig) error {
 func (p *provider) Diff(
 	ctx context.Context, t string, s shim.InstanceState, c shim.ResourceConfig, opts shim.DiffOptions,
 ) (shim.InstanceDiff, error) {
-
 	if opts.IgnoreChanges != nil {
 		return nil, fmt.Errorf("IgnoreChanges option is not yet supported")
 	}
