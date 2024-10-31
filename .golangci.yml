@@ -20,8 +20,6 @@ linters:
     - misspell
     - nakedret
     - nolintlint
-    # - perfsprint
-    # - prealloc
     - revive
     - staticcheck
     - tenv
