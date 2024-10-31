@@ -72,7 +72,6 @@ type Provider interface {
 //
 // `=`, `<=`, `>=` sigils can be used just like in TF.
 func NamedProvider(ctx context.Context, key, version string) (Provider, error) {
-
 	p, err := tfaddr.ParseProviderSource(key)
 	if err != nil {
 		return nil, fmt.Errorf("invalid provider name: %w", err)
@@ -145,7 +144,6 @@ func getProviderServer(
 
 	// Look through existing packages to see if the package we want is already downloaded.
 	if packages, ok := systemCache.AllAvailablePackages()[addr]; ok {
-
 		// packages is sorted by precedence, so the first cached result is safe to
 		// use.
 		acceptable := versions.MeetingConstraints(version)
@@ -265,13 +263,15 @@ func runProvider(ctx context.Context, meta *providercache.CachedProvider) (Provi
 		if err != nil {
 			return nil, err
 		}
-		return provider{v6,
+		return provider{
+			v6,
 			meta.Provider.Type, meta.Version.String(), meta.Provider.String(),
 			rpcClient.Close,
 		}, nil
 	case 6:
 		p := tfplugin6.NewProviderClient(rpcClient.(*plugin.GRPCClient).Conn)
-		return provider{v6shim.New(p),
+		return provider{
+			v6shim.New(p),
 			meta.Provider.Type, meta.Version.String(), meta.Provider.String(),
 			rpcClient.Close,
 		}, nil

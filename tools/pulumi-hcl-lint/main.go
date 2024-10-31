@@ -35,7 +35,7 @@ func main() {
 	if out == "" {
 		outWriter = os.Stdout
 	} else {
-		f, err := os.OpenFile(out, os.O_CREATE|os.O_WRONLY, 0644)
+		f, err := os.OpenFile(out, os.O_CREATE|os.O_WRONLY, 0o644)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "failed to open output file: %v", err)
 			os.Exit(1)
