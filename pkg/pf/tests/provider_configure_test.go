@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/testprovider"
 	tfpf "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/require"
 	"github.com/zclconf/go-cty/cty"
@@ -164,6 +165,82 @@ func TestConfigure(t *testing.T) {
 			},
 		))
 	})
+}
+
+func TestConfigureNameOverrides(t *testing.T) {
+	t.Parallel()
+
+	t.Run("top-level", crosstests.MakeConfigure(
+		schema.Schema{Attributes: map[string]schema.Attribute{
+			"tf_name": schema.StringAttribute{Optional: true},
+		}},
+		map[string]cty.Value{
+			"tf_name": cty.StringVal("my-value"),
+		},
+		crosstests.ConfigureProviderInfo(map[string]*info.Schema{
+			"tf_name": {Name: "puName"},
+		}),
+	))
+
+	t.Run("nested-attribute", func(t *testing.T) {
+		t.Parallel()
+		t.Skip("TODO[pulumi/pulumi-terraform-bridge#2560]: Attribute nested type overrides don't line up for PF")
+		crosstests.Configure(t,
+			schema.Schema{
+				Attributes: map[string]schema.Attribute{
+					"a": schema.SingleNestedAttribute{
+						Optional: true,
+						Attributes: map[string]schema.Attribute{
+							"as": schema.Int64Attribute{Optional: true},
+						},
+					},
+				},
+			},
+			map[string]cty.Value{
+				"a": cty.ObjectVal(map[string]cty.Value{
+					"as": cty.NumberIntVal(123),
+				}),
+			},
+			crosstests.ConfigureProviderInfo(map[string]*info.Schema{
+				"a": {
+					Name: "puAttr",
+					Elem: &info.Schema{Fields: map[string]*info.Schema{
+						"as": {Name: "puNestedAttrField"},
+					}},
+				},
+			}),
+		)
+	})
+
+	t.Run("nested-block", crosstests.MakeConfigure(
+		schema.Schema{
+			Blocks: map[string]schema.Block{
+				"b": schema.ListNestedBlock{NestedObject: schema.NestedBlockObject{
+					Attributes: map[string]schema.Attribute{
+						"bs": schema.Float64Attribute{Optional: true},
+					},
+				}},
+			},
+		},
+		map[string]cty.Value{
+			"b": cty.ListVal([]cty.Value{
+				cty.ObjectVal(map[string]cty.Value{
+					"bs": cty.NumberFloatVal(0.5),
+				}),
+				cty.ObjectVal(map[string]cty.Value{
+					"bs": cty.NumberFloatVal(1.5),
+				}),
+			}),
+		},
+		crosstests.ConfigureProviderInfo(map[string]*info.Schema{
+			"b": {
+				Name: "puBlock",
+				Elem: &info.Schema{Fields: map[string]*info.Schema{
+					"bs": {Name: "puListNestedBlockField"},
+				}},
+			},
+		}),
+	))
 }
 
 func TestConfigureSecrets(t *testing.T) {
