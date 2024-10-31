@@ -1011,7 +1011,6 @@ func getNestedNameWithColon(match string) []string {
 // - "The `private_cluster_config` block supports:" -> "private_cluster_config"
 // - "The optional settings.backup_configuration subblock supports:" -> "settings.backup_configuration"
 func getNestedBlockNames(line string) []string {
-	nested := ""
 	var nestedBlockNames []string
 
 	for i, match := range nestedObjectRegexps {
@@ -1026,7 +1025,7 @@ func getNestedBlockNames(line string) []string {
 			nestedBlockNames = getNestedNameWithColon(matches[1])
 			break
 		} else if len(matches) >= 2 {
-			nested = strings.ToLower(matches[1])
+			nested := strings.ToLower(matches[1])
 			nested = strings.Replace(nested, " ", "_", -1)
 			nested = strings.TrimSuffix(nested, "[]")
 			nestedBlockNames = append(nestedBlockNames, nested)
@@ -1538,7 +1537,7 @@ func findCodeBlock(doc string, i int) (codeBlock, bool) {
 func findHeader(doc string, i int) (int, bool) {
 	h2 := "##"
 	h3 := "###"
-	foundH2, foundH3 := false, false
+	var foundH2, foundH3 bool
 
 	if i == 0 {
 		// handle header at very beginning of doc
@@ -2290,7 +2289,8 @@ func reformatText(g infoContext, text string, footerLinks map[string]string) (st
 	codeBlocks := codeBlocks.FindAllStringIndex(text, -1)
 
 	var parts []string
-	start, end := 0, 0
+	var end int
+	start := 0
 	for _, codeBlock := range codeBlocks {
 		end = codeBlock[0]
 

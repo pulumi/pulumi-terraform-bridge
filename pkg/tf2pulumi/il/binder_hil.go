@@ -226,7 +226,8 @@ func (b *propertyBinder) bindVariableAccess(n *ast.VariableAccess) (BoundExpr, e
 		return nil, err
 	}
 
-	elements, sch, exprType, ilNode := []string(nil), Schemas{}, TypeUnknown, Node(nil)
+	var exprType Type
+	elements, sch, ilNode := []string(nil), Schemas{}, Node(nil)
 	switch v := tfVar.(type) {
 	case *config.CountVariable:
 		// "count."

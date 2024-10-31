@@ -16,7 +16,6 @@ package tfbridge
 
 import (
 	"context"
-	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -923,7 +922,6 @@ func fixedDefault(value interface{}) func() (interface{}, error) {
 }
 
 func TestDefaults(t *testing.T) {
-	t.Parallel()
 	ctx := context.Background()
 	for _, f := range factories {
 		t.Run(f.SDKVersion(), func(t *testing.T) {
@@ -951,8 +949,7 @@ func TestDefaults(t *testing.T) {
 			//     - www: old default "OLW", deprecated, required, no input -> "OLW"
 			//     - xxx: old default "OLX", deprecated, no input => nothing
 			//     - yyy: TF default "TLY", deprecated, no input => nothing
-			err := os.Setenv("PTFV2", "1337")
-			assert.Nil(t, err)
+			t.Setenv("PTFV2", "1337")
 			asset, err := resource.NewTextAsset("hello")
 			assert.Nil(t, err)
 

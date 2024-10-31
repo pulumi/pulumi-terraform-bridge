@@ -1547,7 +1547,7 @@ func extractInputs(
 				break
 			}
 
-			defaultElem := false
+			var defaultElem bool
 			oldArray[i], defaultElem = extractInputs(oldArray[i], newArray[i], etfs, eps)
 			if !defaultElem {
 				possibleDefault = false

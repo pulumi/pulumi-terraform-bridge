@@ -135,8 +135,8 @@ func reReplace(from, to string, phase info.EditPhase) tfbridge.DocsEdit {
 }
 
 func fixupImports() tfbridge.DocsEdit {
-	var inlineImportRegexp = regexp.MustCompile("% [tT]erraform import.*")
-	var quotedImportRegexp = regexp.MustCompile("`[tT]erraform import`")
+	inlineImportRegexp := regexp.MustCompile("% [tT]erraform import.*")
+	quotedImportRegexp := regexp.MustCompile("`[tT]erraform import`")
 
 	// (?s) makes the '.' match newlines (in addition to everything else).
 	blockImportRegexp := regexp.MustCompile("(?s)In [tT]erraform v[0-9]+\\.[0-9]+\\.[0-9]+ and later," +
