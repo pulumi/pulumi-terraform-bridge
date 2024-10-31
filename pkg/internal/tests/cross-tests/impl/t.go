@@ -12,10 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package crosstests
+package crosstestsimpl
 
 import (
-	crosstestsimpl "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests/impl"
+	"github.com/pulumi/providertest/pulumitest"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-type T = crosstestsimpl.T
+// Abstractions to allow tests to work against both *[testing.T] and [rapid.TB].
+type T interface {
+	Logf(string, ...any)
+	TempDir() string
+	Skip(...any)
+	require.TestingT
+	assert.TestingT
+	pulumitest.PT
+}

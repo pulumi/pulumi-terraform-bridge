@@ -25,6 +25,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/zclconf/go-cty/cty"
 
+	crosstestsimpl "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests/impl"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/pulcheck"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
@@ -63,7 +64,7 @@ func Create(
 	if opts.puConfig != nil {
 		puConfig = *opts.puConfig
 	} else {
-		puConfig = InferPulumiValue(t,
+		puConfig = crosstestsimpl.InferPulumiValue(t,
 			shimv2.NewSchemaMap(resourceSchema),
 			opts.resourceInfo.GetFields(),
 			tfConfig,

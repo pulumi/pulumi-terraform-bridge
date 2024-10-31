@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/providertest/pulumitest"
 	"github.com/pulumi/providertest/pulumitest/opttest"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests"
+	crosstestsimpl "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests/impl"
 	pb "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/providerbuilder"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfgen"
@@ -138,7 +139,7 @@ resource "` + providerName + `_res" "res" {}
 		if opts.puConfig != nil {
 			puConfig = *opts.puConfig
 		} else {
-			puConfig = crosstests.InferPulumiValue(t,
+			puConfig = crosstestsimpl.InferPulumiValue(t,
 				tfbridge.ShimProvider(prov(nil)).Schema(),
 				opts.resourceInfo,
 				cty.ObjectVal(tfConfig),

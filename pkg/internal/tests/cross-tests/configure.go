@@ -25,6 +25,7 @@ import (
 	"github.com/zclconf/go-cty/cty"
 	"gopkg.in/yaml.v3"
 
+	crosstestsimpl "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests/impl"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/pulcheck"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/tfcheck"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
@@ -61,7 +62,7 @@ func Configure(
 	if opts.puConfig != nil {
 		puConfig = *opts.puConfig
 	} else {
-		puConfig = InferPulumiValue(t,
+		puConfig = crosstestsimpl.InferPulumiValue(t,
 			shimv2.NewSchemaMap(provider),
 			opts.resourceInfo.GetFields(),
 			tfConfig,
