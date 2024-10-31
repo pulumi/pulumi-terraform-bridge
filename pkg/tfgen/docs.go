@@ -181,8 +181,8 @@ func formatEntityName(rawname string) string {
 // getDocsForResource extracts documentation details for the given package from
 // TF website documentation markdown content
 func getDocsForResource(g *Generator, source DocsSource, kind DocKind,
-	rawname string, info tfbridge.ResourceOrDataSourceInfo) (entityDocs, error) {
-
+	rawname string, info tfbridge.ResourceOrDataSourceInfo,
+) (entityDocs, error) {
 	if g.skipDocs {
 		return entityDocs{}, nil
 	}
@@ -277,11 +277,13 @@ func getDocsForResource(g *Generator, source DocsSource, kind DocKind,
 	return doc, nil
 }
 
-type expandedArguments map[string]*argumentNode
-type argumentNode struct {
-	docs     *argumentDocs
-	children expandedArguments
-}
+type (
+	expandedArguments map[string]*argumentNode
+	argumentNode      struct {
+		docs     *argumentDocs
+		children expandedArguments
+	}
+)
 
 func (a *argumentNode) get(seg string) *argumentNode {
 	if a.children == nil {
@@ -456,8 +458,8 @@ func splitStringsAtIndexes(s string, splits []int) []string {
 // parseTFMarkdown takes a TF website markdown doc and extracts a structured representation for use in
 // generating doc comments
 func parseTFMarkdown(g *Generator, info tfbridge.ResourceOrDataSourceInfo, kind DocKind,
-	markdown []byte, markdownFileName, rawname string) (entityDocs, error) {
-
+	markdown []byte, markdownFileName, rawname string,
+) (entityDocs, error) {
 	p := &tfMarkdownParser{
 		sink:             g,
 		info:             info,
@@ -833,7 +835,6 @@ type bulletListEntry struct {
 //
 //nolint:lll
 func trackBulletListIndentation(line, name string, tracker []bulletListEntry) []bulletListEntry {
-
 	listMarkerLocation := listMarkerRegex.FindStringIndex(line)
 	contract.Assertf(len(listMarkerLocation) == 2,
 		"Expected to find bullet list marker in line %s", line)
@@ -1010,7 +1011,6 @@ func getNestedNameWithColon(match string) []string {
 // - "The `private_cluster_config` block supports:" -> "private_cluster_config"
 // - "The optional settings.backup_configuration subblock supports:" -> "settings.backup_configuration"
 func getNestedBlockNames(line string) []string {
-	nested := ""
 	var nestedBlockNames []string
 
 	for i, match := range nestedObjectRegexps {
@@ -1025,7 +1025,7 @@ func getNestedBlockNames(line string) []string {
 			nestedBlockNames = getNestedNameWithColon(matches[1])
 			break
 		} else if len(matches) >= 2 {
-			nested = strings.ToLower(matches[1])
+			nested := strings.ToLower(matches[1])
 			nested = strings.Replace(nested, " ", "_", -1)
 			nested = strings.TrimSuffix(nested, "[]")
 			nestedBlockNames = append(nestedBlockNames, nested)
@@ -1051,7 +1051,6 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 				}
 				ret.Arguments[nested.join(name)] = &argumentDocs{desc}
 			}
-
 		} else {
 			if genericNestedRegexp.MatchString(line) {
 				return
@@ -1061,8 +1060,8 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 		}
 	}
 	// This function adds the current line as a description to the last matched resource,
-	//in cases where there's no resource match found on this line.
-	//It represents a multi-line description for a field.
+	// in cases where there's no resource match found on this line.
+	// It represents a multi-line description for a field.
 	extendExistingHeading := func(line string) {
 		if len(nesteds) > 0 {
 			for _, nested := range nesteds {
@@ -1099,7 +1098,6 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 			name := bulletListTracker[len(bulletListTracker)-1].name
 			lastMatch = name
 			addNewHeading(name, desc, line)
-
 		} else if strings.TrimSpace(line) == "---" {
 			// --- is a markdown section break. This probably indicates the
 			// section is over, but we take it to mean that the current
@@ -1109,7 +1107,7 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 		} else if nestedBlockCurrentLine := getNestedBlockNames(line); hadSpace && len(nestedBlockCurrentLine) > 0 {
 			// This tells us if there's a resource that is about to have subfields (nesteds)
 			// in subsequent lines.
-			//empty nesteds
+			// empty nesteds
 			nesteds = []docsPath{}
 			for _, item := range nestedBlockCurrentLine {
 				nesteds = append(nesteds, docsPath(item))
@@ -1119,11 +1117,10 @@ func parseArgReferenceSection(subsection []string, ret *entityDocs) {
 		} else if !isBlank(line) && lastMatch != "" {
 			// This appends the current line to the previous match's description.
 			extendExistingHeading(line)
-
 		} else if nestedBlockCurrentLine := getNestedBlockNames(line); len(nestedBlockCurrentLine) > 0 {
 			// This tells us if there's a resource that is about to have subfields (nesteds)
 			// in subsequent lines.
-			//empty nesteds
+			// empty nesteds
 			nesteds = []docsPath{}
 			for _, item := range nestedBlockCurrentLine {
 				nesteds = append(nesteds, docsPath(item))
@@ -1372,7 +1369,8 @@ var importCodePattern = regexp.MustCompile(
 func parseImportCode(code string) (struct {
 	Name string
 	ID   string
-}, bool) {
+}, bool,
+) {
 	type ret struct {
 		Name string
 		ID   string
@@ -1486,7 +1484,7 @@ func (g *Generator) convertExamples(docs string, path examplePath) string {
 		// The shortcode should be replaced with the new HTML comment, either in the incoming docs, or here to avoid
 		// breaking users.
 
-		//We need to surround the examples in the examples shortcode for rendering on the registry
+		// We need to surround the examples in the examples shortcode for rendering on the registry
 
 		// Find the index of "## Example Usage"
 		exampleIndex := strings.Index(docs, "## Example Usage")
@@ -1521,7 +1519,7 @@ type codeBlock struct {
 func findCodeBlock(doc string, i int) (codeBlock, bool) {
 	codeFence := "```"
 	var block codeBlock
-	//find opening code fence
+	// find opening code fence
 	if doc[i:i+len(codeFence)] == codeFence {
 		block.start = i
 		// find closing code fence
@@ -1539,15 +1537,14 @@ func findCodeBlock(doc string, i int) (codeBlock, bool) {
 func findHeader(doc string, i int) (int, bool) {
 	h2 := "##"
 	h3 := "###"
-	foundH2, foundH3 := false, false
+	var foundH2, foundH3 bool
 
 	if i == 0 {
-		//handle header at very beginning of doc
+		// handle header at very beginning of doc
 		foundH2 = doc[i:i+len(h2)] == h2
 		foundH3 = doc[i:i+len(h3)] == h3
-
 	} else {
-		//all other headers must be preceded by a newline
+		// all other headers must be preceded by a newline
 		foundH2 = doc[i:i+len(h2)] == h2 && string(doc[i-1]) == "\n"
 		foundH3 = doc[i:i+len(h3)] == h3 && string(doc[i-1]) == "\n"
 	}
@@ -1560,6 +1557,7 @@ func findHeader(doc string, i int) (int, bool) {
 	}
 	return -1, false
 }
+
 func findFencesAndHeaders(doc string) []codeBlock {
 	codeFence := "```"
 	var codeBlocks []codeBlock
@@ -1603,7 +1601,6 @@ func (g *Generator) convertExamplesInner(
 	stripSection := false
 	stripSectionHeader := 0
 	for _, tfBlock := range codeBlocks {
-
 		// if the section has a header we append the header after trying to convert the code.
 		hasHeader := tfBlock.headerStart >= 0 && textStart < tfBlock.headerStart
 
@@ -1614,7 +1611,6 @@ func (g *Generator) convertExamplesInner(
 				end = tfBlock.headerStart
 			}
 			fprintf("%s", docs[textStart:end])
-
 		} else {
 			// if we are stripping this section and still have the same header, we append nothing and skip to the next
 			// code block.
@@ -1638,7 +1634,6 @@ func (g *Generator) convertExamplesInner(
 			// Only attempt to convert code blocks that are either explicitly marked as Terraform, or
 			// unmarked. For unmarked snippets further gate by a regex guess if it is actually Terraform.
 			if isHCL(fenceLanguage, hcl) {
-
 				// generate the code block and append
 				if g.language.shouldConvertExamples() {
 					hcl := docs[tfBlock.start+nextNewLine+1 : tfBlock.end]
@@ -1677,7 +1672,6 @@ func (g *Generator) convertExamplesInner(
 						default:
 							fprintf("%s", convertedBlock)
 						}
-
 					}
 				}
 			} else {
@@ -1714,7 +1708,7 @@ type ConversionError struct {
 // construct a new ConversionError. The argument is expected to be
 // the value that was recovered from the panic.
 func newConversionError(panicArg interface{}, trace string) *ConversionError {
-	var err = fmt.Errorf("panic converting HCL: %s", panicArg)
+	err := fmt.Errorf("panic converting HCL: %s", panicArg)
 	return &ConversionError{
 		panicArg:   panicArg,
 		trace:      trace,
@@ -1754,7 +1748,7 @@ func (g *Generator) convert(
 		}
 		files = map[string][]byte{}
 		diags = convert.Diagnostics{}
-		var trace = string(debug.Stack())
+		trace := string(debug.Stack())
 		err = newConversionError(v, trace)
 		g.coverageTracker.languageConversionPanic(e, languageName, fmt.Sprintf("%v", v))
 	}()
@@ -2241,7 +2235,6 @@ func elide(text string) bool {
 
 // reformatText processes markdown strings from TF docs and cleans them for inclusion in Pulumi docs
 func reformatText(g infoContext, text string, footerLinks map[string]string) (string, bool) {
-
 	cleanupText := func(text string) (string, bool) {
 		// Remove incorrect documentation.
 		if elide(text) {
@@ -2296,7 +2289,8 @@ func reformatText(g infoContext, text string, footerLinks map[string]string) (st
 	codeBlocks := codeBlocks.FindAllStringIndex(text, -1)
 
 	var parts []string
-	start, end := 0, 0
+	var end int
+	start := 0
 	for _, codeBlock := range codeBlocks {
 		end = codeBlock[0]
 
@@ -2342,9 +2336,7 @@ func replaceFooterLinks(text string, footerLinks map[string]string) string {
 	})
 }
 
-var (
-	guessIsHCLPattern = regexp.MustCompile(`(resource|data)\s+["][^"]+["]\s+["][^"]+["]\s+[{]`)
-)
+var guessIsHCLPattern = regexp.MustCompile(`(resource|data)\s+["][^"]+["]\s+["][^"]+["]\s+[{]`)
 
 func guessIsHCL(code string) bool {
 	return guessIsHCLPattern.MatchString(code)

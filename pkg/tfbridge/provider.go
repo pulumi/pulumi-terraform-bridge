@@ -964,7 +964,6 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 		if err != nil {
 			return nil, err
 		}
-
 	}
 
 	news, err := plugin.UnmarshalProperties(req.GetNews(), plugin.MarshalOptions{
@@ -1257,7 +1256,6 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 
 	if changes == pulumirpc.DiffResponse_DIFF_NONE &&
 		markWronglyTypedMaxItemsOneStateDiff(schema, fields, olds) {
-
 		changes = pulumirpc.DiffResponse_DIFF_SOME
 	}
 
@@ -1554,7 +1552,6 @@ func (p *Provider) processImportValidationErrors(
 	rescfg := MakeTerraformConfigFromInputs(ctx, p.tf, tfInputs)
 	_, errs := p.tf.ValidateResource(ctx, tfName, rescfg)
 	for _, e := range errs {
-
 		path, _, _ := parseCheckError(schema, schemaInfos, e)
 
 		// do not process errors on nested types

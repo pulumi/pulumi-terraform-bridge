@@ -43,8 +43,8 @@ func (s *ProviderInfoSource) getProviderInfo(tfProviderName string) (*tfbridge.P
 // GetProviderInfo returns the tfbridge information for the indicated Terraform provider as well as the name of the
 // corresponding Pulumi resource provider.
 func (s *ProviderInfoSource) GetProviderInfo(
-	registryName, namespace, name, version string) (*tfbridge.ProviderInfo, error) {
-
+	registryName, namespace, name, version string,
+) (*tfbridge.ProviderInfo, error) {
 	if info, ok := s.getProviderInfo(name); ok {
 		return info, nil
 	}

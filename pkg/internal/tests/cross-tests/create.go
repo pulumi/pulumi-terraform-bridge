@@ -54,7 +54,6 @@ func Create(
 	t T, resourceSchema map[string]*schema.Schema, tfConfig cty.Value,
 	options ...CreateOption,
 ) {
-
 	var opts createOpts
 	for _, f := range options {
 		f(&opts)

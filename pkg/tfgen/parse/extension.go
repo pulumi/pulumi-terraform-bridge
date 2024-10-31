@@ -43,7 +43,6 @@ func (s tfRegistryExtension) Extend(md goldmark.Markdown) {
 		parser.WithASTTransformers(
 			util.Prioritized(recognizeHeaderAfterHTML{}, 902),
 		))
-
 }
 
 // recognizeHeaderAfterHTML allows us to work around a difference in how TF's registry parses

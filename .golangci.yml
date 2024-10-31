@@ -4,27 +4,34 @@ run:
 linters:
   enable-all: false
   enable:
+    - durationcheck
     - errcheck
-    - gofmt
     - gci
+    - gofumpt
+    - goheader
+    - goprintffuncname
     - gosec
+    - gosimple
     - govet
+    - importas
     - ineffassign
     - lll
-    - gosimple
-    - staticcheck
-    - unused
     - misspell
     - nakedret
     - nolintlint
     - revive
+    - staticcheck
+    - tenv
     - unconvert
     - unused
     - paralleltest
+    - wastedassign
+    - whitespace
 issues:
   exclude:
     - "unused-parameter: parameter"
     - "redefines-builtin-id:"
+    - "exhaustive"
   exclude-dirs:
     - pkg/tf2pulumi/internal/addrs
     - pkg/tf2pulumi/internal/config
@@ -47,3 +54,20 @@ linters-settings:
     skip-generated: true
   paralleltest:
     ignore-missing-subtests: true
+  nakedret:
+    # Make an issue if func has more lines of code than this setting, and it has naked returns.
+    # Default: 30
+    max-func-lines: 60
+  govet:
+    enable:
+      - nilness
+      # Reject comparisons of reflect.Value with DeepEqual or '=='.
+      - reflectvaluecompare
+      # Reject sort.Slice calls with a non-slice argument.
+      - sortslice
+      # Detect write to struct/arrays by-value that aren't read again.
+      - unusedwrite
+  importas:
+    alias:
+    - pkg: github.com/pulumi/pulumi/sdk/v3/proto/go
+      alias: pulumirpc

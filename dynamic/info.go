@@ -32,7 +32,6 @@ import (
 )
 
 func providerInfo(ctx context.Context, p run.Provider, value parameterize.Value) (tfbridge.ProviderInfo, error) {
-
 	provider := proto.New(ctx, p)
 	prov := tfbridge.ProviderInfo{
 		P:           provider,

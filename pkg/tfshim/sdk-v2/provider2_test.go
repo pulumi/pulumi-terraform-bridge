@@ -514,7 +514,8 @@ func TestConfigWithTimeouts(t *testing.T) {
 			}},
 			configWithoutTimeouts: map[string]any{"x": 1},
 			expected:              map[string]any{"x": 1, "timeouts": map[string]any{"create": "1s"}},
-		}, {
+		},
+		{
 			name: "customize update timeout",
 			rschema: schema.Resource{
 				Timeouts: &schema.ResourceTimeout{Update: &sec20},
@@ -527,7 +528,8 @@ func TestConfigWithTimeouts(t *testing.T) {
 			}},
 			configWithoutTimeouts: map[string]any{"x": 1},
 			expected:              map[string]any{"x": 1, "timeouts": map[string]any{"update": "1s"}},
-		}, {
+		},
+		{
 			name: "customize delete timeout",
 			rschema: schema.Resource{
 				Timeouts: &schema.ResourceTimeout{Delete: &sec20},

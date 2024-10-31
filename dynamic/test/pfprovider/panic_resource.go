@@ -10,8 +10,10 @@ import (
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
-var _ resource.Resource = &panicResource{}
-var _ resource.ResourceWithImportState = &panicResource{}
+var (
+	_ resource.Resource                = &panicResource{}
+	_ resource.ResourceWithImportState = &panicResource{}
+)
 
 func NewPanicResource() resource.Resource { return &panicResource{} }
 

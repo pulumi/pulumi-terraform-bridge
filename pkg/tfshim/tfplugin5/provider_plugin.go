@@ -27,8 +27,8 @@ type providerPlugin struct {
 }
 
 func (p *providerPlugin) GRPCClient(ctx context.Context, broker *plugin.GRPCBroker,
-	c *grpc.ClientConn) (interface{}, error) {
-
+	c *grpc.ClientConn,
+) (interface{}, error) {
 	return NewProvider(ctx, proto.NewProviderClient(c), p.terraformVersion)
 }
 

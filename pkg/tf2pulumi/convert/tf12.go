@@ -1401,8 +1401,8 @@ func (b *tf12binder) rewriteExpression(n model.Expression, resource *resource) (
 }
 
 func (b *tf12binder) rewriteFunctionCall(
-	n *model.FunctionCallExpression) (*model.FunctionCallExpression, hcl.Diagnostics) {
-
+	n *model.FunctionCallExpression,
+) (*model.FunctionCallExpression, hcl.Diagnostics) {
 	switch n.Name {
 	case "file":
 		n.Name = "readFile"
@@ -1439,8 +1439,8 @@ func internalTrivia(traversal []syntax.TraverserTokens) (syntax.TriviaList, synt
 }
 
 func makeSimpleTraversal(name string, part model.Traversable,
-	original *model.ScopeTraversalExpression) *model.ScopeTraversalExpression {
-
+	original *model.ScopeTraversalExpression,
+) *model.ScopeTraversalExpression {
 	x := &model.ScopeTraversalExpression{
 		RootName:  name,
 		Traversal: hcl.Traversal{hcl.TraverseRoot{Name: name}},
@@ -1455,8 +1455,8 @@ func makeSimpleTraversal(name string, part model.Traversable,
 }
 
 func (b *tf12binder) rewriteScopeTraversal(n *model.ScopeTraversalExpression,
-	res *resource) (*model.ScopeTraversalExpression, hcl.Diagnostics) {
-
+	res *resource,
+) (*model.ScopeTraversalExpression, hcl.Diagnostics) {
 	name, offset := "", 0
 	var schemas il.Schemas
 	for i, p := range n.Parts {
@@ -1728,8 +1728,8 @@ func (b *tf12binder) genResource(w io.Writer, r *resource) hcl.Diagnostics {
 }
 
 func (b *tf12binder) resourceType(addr addrs.Resource,
-	subject hcl.Range) (string, il.Schemas, model.Type, hcl.Diagnostics) {
-
+	subject hcl.Range,
+) (string, il.Schemas, model.Type, hcl.Diagnostics) {
 	providerName := addr.ImpliedProvider()
 
 	info, ok := b.providers[providerName]
@@ -1779,8 +1779,8 @@ func (b *tf12binder) resourceType(addr addrs.Resource,
 }
 
 func (b *tf12binder) providerType(providerName string,
-	subject hcl.Range) (string, il.Schemas, model.Type, hcl.Diagnostics) {
-
+	subject hcl.Range,
+) (string, il.Schemas, model.Type, hcl.Diagnostics) {
 	tok := "pulumi:providers:" + providerName
 
 	info, ok := b.providers[providerName]

@@ -22,8 +22,10 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
-type numberEncoder struct{}
-type numberDecoder struct{}
+type (
+	numberEncoder struct{}
+	numberDecoder struct{}
+)
 
 func newNumberEncoder() Encoder {
 	return &numberEncoder{}

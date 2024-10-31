@@ -107,6 +107,7 @@ func (p *inmemoryProvider) GetPluginInfo(context.Context) (workspace.PluginInfo,
 func (p *inmemoryProvider) Close() error {
 	return nil
 }
+
 func (p *inmemoryProvider) SignalCancellation(context.Context) error {
 	return nil
 }
@@ -130,7 +131,8 @@ func (host *inmemoryProviderHost) Provider(pkg workspace.PackageDescriptor) (plu
 // loaded. If it is, it returns it's provider. Otherwise, we defer
 // inmemoryProviderHost.Host.
 func (host *inmemoryProviderHost) ResolvePlugin(kind apitype.PluginKind, name string,
-	version *semver.Version) (*workspace.PluginInfo, error) {
+	version *semver.Version,
+) (*workspace.PluginInfo, error) {
 	if name == host.provider.name.String() {
 		info, err := host.provider.GetPluginInfo(context.TODO())
 		if err != nil {
@@ -142,8 +144,8 @@ func (host *inmemoryProviderHost) ResolvePlugin(kind apitype.PluginKind, name st
 }
 
 func (host *inmemoryProviderHost) GetProviderInfo(
-	registryName, namespace, name, version string) (*tfbridge.ProviderInfo, error) {
-
+	registryName, namespace, name, version string,
+) (*tfbridge.ProviderInfo, error) {
 	if name == il.GetTerraformProviderName(host.provider.info) {
 		return &host.provider.info, nil
 	}

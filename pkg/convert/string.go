@@ -22,8 +22,10 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
-type stringEncoder struct{}
-type stringDecoder struct{}
+type (
+	stringEncoder struct{}
+	stringDecoder struct{}
+)
 
 func newStringEncoder() Encoder {
 	return &stringEncoder{}

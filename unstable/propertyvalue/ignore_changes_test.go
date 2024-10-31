@@ -141,7 +141,6 @@ func TestIgnoreChanges(t *testing.T) {
 				assert.NotEqual(t, prev, value)
 			} else {
 				assert.Equal(t, prev, value)
-
 			}
 		})
 	}

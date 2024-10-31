@@ -676,7 +676,6 @@ func TestMaxItemsOneAliasingExpiring(t *testing.T) {
         }
     }
 }`, string(metadata.MarshalIndent()))
-
 }
 
 func TestMaxItemsOneAliasingNested(t *testing.T) {

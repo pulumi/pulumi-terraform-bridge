@@ -81,7 +81,7 @@ func renderTemplate(title, contents string) (string, error) {
 		Contents:   contents,
 	}
 
-	var buf = bytes.Buffer{}
+	buf := bytes.Buffer{}
 	err := outputTemplate.Execute(&buf, data)
 	if err != nil {
 		return "", err

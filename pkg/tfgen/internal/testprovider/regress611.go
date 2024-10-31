@@ -132,7 +132,6 @@ func ProviderRegress611() tfbridge.ProviderInfo {
 			},
 		},
 		Resources: map[string]*tfbridge.ResourceInfo{
-
 			// Identity and Access Management (IAM)
 			"aws_iam_access_key": {Tok: awsResource(iamMod, "AccessKey")},
 			"aws_iam_account_alias": {

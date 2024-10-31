@@ -21,7 +21,6 @@ import (
 )
 
 func ProviderMiniCloudflare() tfbridge.ProviderInfo {
-
 	return tfbridge.ProviderInfo{
 		P:           shimv2.NewProvider(testproviderdata.ProviderMiniCloudflare()),
 		Name:        "cloudflare",

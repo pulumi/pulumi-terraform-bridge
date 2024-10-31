@@ -27,7 +27,6 @@ import (
 func MappedModules(
 	tfPackagePrefix, defaultModule string, modules map[string]string, finalize Make,
 ) Strategy {
-
 	mods := make([]string, 0, len(modules))
 	for k := range modules {
 		mods = append(mods, k)

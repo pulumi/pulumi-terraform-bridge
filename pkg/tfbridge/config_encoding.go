@@ -195,7 +195,8 @@ func (enc *ConfigEncoding) MarshalProperties(props resource.PropertyMap) (*struc
 }
 
 func (enc *ConfigEncoding) jsonEncodePropertyValue(k resource.PropertyKey,
-	v resource.PropertyValue) (resource.PropertyValue, error) {
+	v resource.PropertyValue,
+) (resource.PropertyValue, error) {
 	if v.ContainsUnknowns() {
 		return resource.NewStringProperty(plugin.UnknownStringValue), nil
 	}

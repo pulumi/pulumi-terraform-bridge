@@ -21,8 +21,10 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
-type boolEncoder struct{}
-type boolDecoder struct{}
+type (
+	boolEncoder struct{}
+	boolDecoder struct{}
+)
 
 func newBoolEncoder() Encoder {
 	return &boolEncoder{}

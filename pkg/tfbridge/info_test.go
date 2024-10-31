@@ -289,7 +289,6 @@ func TestDelegateIDField(t *testing.T) {
 			_, _ = computeID(context.Background(), resource.PropertyMap{
 				"computed": resource.MakeComputed(resource.NewProperty("computed")),
 			})
-
 		})
 	})
 }

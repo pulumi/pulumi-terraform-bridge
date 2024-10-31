@@ -52,7 +52,6 @@ func Configure(
 	t T, provider map[string]*schema.Schema, tfConfig cty.Value,
 	options ...ConfigureOption,
 ) {
-
 	var opts configureOpts
 	for _, f := range options {
 		f(&opts)

@@ -110,7 +110,7 @@ func findDanglingReferences(hcl string) (finalRefs []hclResourceRef, finalErr er
 			finalErr = err
 		}
 	}()
-	if err := os.WriteFile(filepath.Join(dir, "infra.tf"), []byte(hcl), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "infra.tf"), []byte(hcl), 0o600); err != nil {
 		return nil, err
 	}
 	o := filepath.Join(dir, "errors.json")

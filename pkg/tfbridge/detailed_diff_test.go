@@ -1059,7 +1059,6 @@ func TestDetailedDiffTFForceNewAttributeCollection(t *testing.T) {
 			})
 
 			if tt.computedElem != nil {
-
 				t.Run("changed to computed elem", func(t *testing.T) {
 					runDetailedDiffTest(t, propertyMapListVal1, propertyMapComputedElem, tfs, ps, map[string]*pulumirpc.PropertyDiff{
 						tt.elementIndex: {Kind: pulumirpc.PropertyDiff_UPDATE_REPLACE},

@@ -104,7 +104,6 @@ func (t Type) String() string {
 		s = fmt.Sprintf("output<%s>", s)
 	}
 	return s
-
 }
 
 // dumper is used to dump bound nodes in a simple S-expression style.

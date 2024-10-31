@@ -53,7 +53,6 @@ func (p *Provider) SetAutonaming(maxLength int, separator string) {
 			if sch, hasName := schema.Schema().GetOk(nameProperty); hasName &&
 				(sch.Optional() || sch.Required()) && // Is an input type
 				sch.Type() == shim.TypeString { // has type string
-
 				if _, hasfield := res.Fields[nameProperty]; !hasfield {
 					ensureMap(&res.Fields)[nameProperty] = AutoName(nameProperty, maxLength, separator)
 				}

@@ -68,7 +68,6 @@ func ConvertResourceValue(t require.TestingT, properties resource.PropertyMap) m
 			}, true
 		}
 		return nil, false
-
 	}
 	return properties.MapRepl(nil, convertValue)
 }

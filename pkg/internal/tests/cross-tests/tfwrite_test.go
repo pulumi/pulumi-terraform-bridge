@@ -444,5 +444,4 @@ func TestWritePFHCLProvider(t *testing.T) {
 			tt.expect.Equal(t, actual.String())
 		})
 	}
-
 }

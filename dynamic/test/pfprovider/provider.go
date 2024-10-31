@@ -12,8 +12,10 @@ import (
 )
 
 // Ensure ScaffoldingProvider satisfies various provider interfaces.
-var _ provider.Provider = &PFProvider{}
-var _ provider.ProviderWithFunctions = &PFProvider{}
+var (
+	_ provider.Provider              = &PFProvider{}
+	_ provider.ProviderWithFunctions = &PFProvider{}
+)
 
 // PFProvider defines the provider implementation.
 type PFProvider struct {

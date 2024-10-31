@@ -74,8 +74,8 @@ func resolvePath(path *proto.AttributePath, ty cty.Type) {
 }
 
 func diffTest(t *testing.T, attributes map[string]cty.Type, requiresReplace []*proto.AttributePath,
-	planned, prior interface{}, expected map[string]shim.ResourceAttrDiff) {
-
+	planned, prior interface{}, expected map[string]shim.ResourceAttrDiff,
+) {
 	objectType := cty.Object(attributes)
 
 	for _, p := range requiresReplace {

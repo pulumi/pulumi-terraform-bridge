@@ -41,9 +41,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/internal/testprovider"
 )
 
-var (
-	accept = cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT"))
-)
+var accept = cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT"))
 
 type testcase struct {
 	Input    string
@@ -357,7 +355,6 @@ func TestArgumentRegex(t *testing.T) {
 				"* `country` - (Optional) Two digit code that specifies the country in which the certificate subject located. Must be less than or equal to 2 characters in length.",
 			},
 			expected: map[docsPath]*argumentDocs{
-
 				"certificate_authority_configuration.key_algorithm":     {description: "Type of the public key algorithm and size, in bits, of the key pair that your key pair creates when it issues a certificate. Valid values can be found in the [ACM PCA Documentation](https://docs.aws.amazon.com/privateca/latest/APIReference/API_CertificateAuthorityConfiguration.html)."},
 				"certificate_authority_configuration.signing_algorithm": {description: "Name of the algorithm your private CA uses to sign certificate requests. Valid values can be found in the [ACM PCA Documentation](https://docs.aws.amazon.com/privateca/latest/APIReference/API_CertificateAuthorityConfiguration.html)."},
 				"certificate_authority_configuration.subject":           {description: "Nested argument that contains X.500 distinguished name information. At least one nested attribute must be specified."},
@@ -489,10 +486,11 @@ func TestArgumentRegex(t *testing.T) {
 				"       If a field differs, the virtual cluster creation will fail.",
 			},
 			expected: map[docsPath]*argumentDocs{
-				"node_pool_config": {description: "The configuration for the GKE node pool. \nIf specified, " +
-					"Dataproc attempts to create a node pool with the specified shape.\nIf one with the same name " +
-					"already exists, it is verified against all specified fields.\nIf a field differs, the virtual " +
-					"cluster creation will fail.",
+				"node_pool_config": {
+					description: "The configuration for the GKE node pool. \nIf specified, " +
+						"Dataproc attempts to create a node pool with the specified shape.\nIf one with the same name " +
+						"already exists, it is verified against all specified fields.\nIf a field differs, the virtual " +
+						"cluster creation will fail.",
 				},
 			},
 		},
@@ -921,7 +919,6 @@ content
 					"",
 				},
 				{
-
 					"## Import",
 					"",
 					"A Container App Environment Custom Domain Suffix can be imported using the `resource id` of its parent container ontainer App Environment , e.g.",
@@ -1574,7 +1571,7 @@ FooFactory fooFactory = new FooFactory();
 		CodeFences: "```",
 	}
 
-	var buf = bytes.Buffer{}
+	buf := bytes.Buffer{}
 	_ = outputTemplate.Execute(&buf, data)
 
 	assert.Equal(t, buf.String(), hclConversionsToString(input))
@@ -1598,7 +1595,7 @@ func TestParseArgFromMarkdownLine(t *testing.T) {
 		{"* `principal_tags`: (Optional: []) - String to string map of variables.", "principal_tags", "String to string map of variables.", true},
 		{"  * `id` - The id of the property", "id", "The id of the property", true},
 		{"  * id - The id of the property", "", "", false},
-		//In rare cases, we may have a match where description is empty like the following, taken from https://github.com/hashicorp/terraform-provider-aws/blob/main/website/docs/r/spot_fleet_request.html.markdown
+		// In rare cases, we may have a match where description is empty like the following, taken from https://github.com/hashicorp/terraform-provider-aws/blob/main/website/docs/r/spot_fleet_request.html.markdown
 		{"* `instance_pools_to_use_count` - (Optional; Default: 1)", "instance_pools_to_use_count", "", true},
 		{"", "", "", false},
 		{"Most of these arguments directly correspond to the", "", "", false},
@@ -1688,7 +1685,7 @@ func TestParseAttributesReferenceSectionFlattensListAttributes(t *testing.T) {
 
 func TestGetNestedBlockName(t *testing.T) {
 	t.Parallel()
-	var tests = []struct {
+	tests := []struct {
 		input    string
 		expected []string
 	}{
@@ -1822,7 +1819,7 @@ func TestParseImports_NoOverrides(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skipf("Skippping on windows - tests cases need to be made robust to newline handling")
 	}
-	var tests = []struct {
+	tests := []struct {
 		input        []string
 		token        tokens.Token
 		expected     string
@@ -1997,7 +1994,7 @@ func TestConvertExamples(t *testing.T) {
 			out := filepath.Join("test_data", "convertExamples",
 				fmt.Sprintf("%s_out.md", tc.name))
 			if accept {
-				err = os.WriteFile(out, []byte(result), 0600)
+				err = os.WriteFile(out, []byte(result), 0o600)
 				require.NoError(t, err)
 			}
 			expect, err := os.ReadFile(out)
@@ -2061,7 +2058,7 @@ func TestConvertExamplesInner(t *testing.T) {
 			out := filepath.Join("test_data", "convertExamples",
 				fmt.Sprintf("%s_out.md", tc.name))
 			if accept {
-				err = os.WriteFile(out, []byte(result), 0600)
+				err = os.WriteFile(out, []byte(result), 0o600)
 				require.NoError(t, err)
 			}
 			expect, err := os.ReadFile(out)
@@ -2131,9 +2128,7 @@ func TestFindFencesAndHeaders(t *testing.T) {
 			actual := findFencesAndHeaders(testDoc)
 			assert.Equal(t, tc.expected, actual)
 		})
-
 	}
-
 }
 
 func TestExampleGeneration(t *testing.T) {
@@ -2257,7 +2252,6 @@ This should be interpolated in.
 					default:
 						return nil, fmt.Errorf("invalid path %q", name)
 					}
-
 				}
 				tc.info = &tfbridge.ResourceInfo{Docs: &tfbridge.DocInfo{
 					ReplaceExamplesSection: true,
@@ -2362,6 +2356,7 @@ func TestErrorMissingDocs(t *testing.T) {
 		})
 	}
 }
+
 func TestErrorNilDocs(t *testing.T) {
 	t.Run("", func(t *testing.T) {
 		g := &Generator{
@@ -2387,6 +2382,7 @@ func (m mockSource) getResource(rawname string, info *tfbridge.DocInfo) (*DocFil
 		FileName: rawname + ".md",
 	}, nil
 }
+
 func (m mockSource) getDatasource(rawname string, info *tfbridge.DocInfo) (*DocFile, error) {
 	return nil, nil
 }
@@ -2457,7 +2453,7 @@ func readfile(t *testing.T, file string) string {
 
 func writefile(t *testing.T, file string, bytes []byte) {
 	t.Helper()
-	err := os.WriteFile(file, bytes, 0600)
+	err := os.WriteFile(file, bytes, 0o600)
 	require.NoError(t, err)
 }
 

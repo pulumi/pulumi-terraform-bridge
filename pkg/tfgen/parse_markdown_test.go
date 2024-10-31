@@ -142,7 +142,7 @@ func compareTestFile(
 	comp func(t assert.TestingT, expected string, actual string, msgAndArgs ...interface{}) bool,
 ) {
 	if pulumiAccept {
-		err := os.WriteFile(testFilePath(path), []byte(actual), 0600)
+		err := os.WriteFile(testFilePath(path), []byte(actual), 0o600)
 		assert.NoError(t, err)
 	} else {
 		comp(t, readTestFile(t, path), actual)

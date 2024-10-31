@@ -51,5 +51,4 @@ func TestDroppingInvalidDefaults(t *testing.T) {
 	dv, err = goodSchema.DefaultValue()
 	assert.Equal(t, -1, dv)
 	assert.NoError(t, err)
-
 }

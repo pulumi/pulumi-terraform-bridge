@@ -136,7 +136,8 @@ func newPropertyEncoder(
 }
 
 func newPropertyDecoder(pctx *schemaPropContext, name terraformPropertyName,
-	t tftypes.Type) (Decoder, error) {
+	t tftypes.Type,
+) (Decoder, error) {
 	dec, err := deriveDecoder(pctx, t)
 	if err != nil {
 		return nil, fmt.Errorf("Cannot derive a decoder for property %q: %w", name, err)

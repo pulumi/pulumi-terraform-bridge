@@ -171,7 +171,6 @@ func runUpgradeStateInputCheck(t T, tc upgradeStateTestCase) {
 			return
 		}
 		assertValEqual(t, "UpgradeRawState", upgradeRawStates[0], upgradeRawStates[1])
-
 	} else {
 		assert.Equal(t, schemaVersion1, tc.Resource.SchemaVersion)
 		assert.Equal(t, schemaVersion2, upgradeRes.SchemaVersion)

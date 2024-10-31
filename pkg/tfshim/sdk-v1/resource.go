@@ -9,8 +9,10 @@ import (
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
-var _ = shim.Resource(v1Resource{})
-var _ = shim.ResourceMap(v1ResourceMap{})
+var (
+	_ = shim.Resource(v1Resource{})
+	_ = shim.ResourceMap(v1ResourceMap{})
+)
 
 type v1Resource struct {
 	tf *schema.Resource

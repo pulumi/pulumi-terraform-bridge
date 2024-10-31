@@ -59,7 +59,6 @@ func TestConvert(t *testing.T) {
 			Loader:                   loader,
 			SkipResourceTypechecking: true,
 		})
-
 	}
 
 	check := func(hcl string) (map[string][]byte, convert.Diagnostics) {

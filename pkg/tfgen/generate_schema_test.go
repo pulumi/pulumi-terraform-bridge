@@ -473,8 +473,7 @@ func TestAppendExample_NoExampleUsage(t *testing.T) {
 # My example content
 {{ .CodeFences }}
 `
-	expectedTmpl :=
-		`Description Text
+	expectedTmpl := `Description Text
 
 ## Example Usage
 
@@ -501,8 +500,7 @@ import content
 # My example content
 {{ .CodeFences }}
 `
-	expectedTmpl :=
-		`Description Text
+	expectedTmpl := `Description Text
 
 ## Example Usage
 
@@ -529,7 +527,7 @@ func renderTemplate(tmpl string) string {
 		CodeFences: "```",
 	}
 
-	var buf = bytes.Buffer{}
+	buf := bytes.Buffer{}
 	_ = outputTemplate.Execute(&buf, data)
 
 	return buf.String()

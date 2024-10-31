@@ -60,5 +60,4 @@ func (info *Metadata) assertValid() {
 	// a string constant, the "tfgen time" location from which bytes was
 	// extracted. This error is irrecoverable and needs to be fixed at compile time.
 	contract.Assertf(info.Path != "", "Path must be non-empty")
-
 }

@@ -32,7 +32,7 @@ type genWriter struct {
 }
 
 func newGenWriter(tool string, fs afero.Fs, file string) (*genWriter, error) {
-	f, err := fs.OpenFile(file, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
+	f, err := fs.OpenFile(file, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0o600)
 	if err != nil {
 		return nil, err
 	}
