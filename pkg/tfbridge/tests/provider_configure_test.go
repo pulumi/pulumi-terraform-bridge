@@ -25,7 +25,13 @@ import (
 
 func TestConfigureSimpleValues(t *testing.T) {
 	t.Parallel()
-	t.Skip("TODO[pulumi/pulumi-terraform-bridge#2530]: flaky")
+	// TestConfigureSimpleValues was previously flaky:
+	//
+	// https://github.com/pulumi/pulumi-terraform-bridge/issues/2530
+	//
+	// The investigation was inconclusive, so we are adding back into circulation to
+	// see if the failures continue with tighter asserts.
+
 	t.Run("string", crosstests.MakeConfigure(map[string]*schema.Schema{
 		"f0": {Type: schema.TypeString, Required: true},
 	}, cty.ObjectVal(map[string]cty.Value{
