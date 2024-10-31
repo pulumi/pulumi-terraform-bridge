@@ -922,7 +922,6 @@ func fixedDefault(value interface{}) func() (interface{}, error) {
 }
 
 func TestDefaults(t *testing.T) {
-	t.Parallel()
 	ctx := context.Background()
 	for _, f := range factories {
 		t.Run(f.SDKVersion(), func(t *testing.T) {
