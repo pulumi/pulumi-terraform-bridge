@@ -209,11 +209,34 @@ func TestApplyEditRules(t *testing.T) {
 		},
 		{
 			// Found in scm
-			name: "Replaces 'D/data source(s)' with 'F/function(s)",
+			name: "Replaces 'D/data source(s)' with 'F/function(s)'",
 			docFile: DocFile{
 				Content: []byte(readfile(t, "test_data/replace-data-source/input.md")),
 			},
 			expected: []byte(readfile(t, "test_data/replace-data-source/expected.md")),
+			phase:    info.PostCodeTranslation,
+		},
+		{
+			name: "Replaces 'Terraform W/workspace' with 'Pulumi Stack'",
+			docFile: DocFile{
+				Content: []byte("Manage a single Schema Registry cluster in the same Terraform workspace"),
+			},
+			expected: []byte("Manage a single Schema Registry cluster in the same Pulumi Stack"),
+		},
+		{
+			name: "Replaces '# Schema' with '# Configuration Reference'",
+			docFile: DocFile{
+				Content: []byte("# Schema \n\n This provider's schema reference is as follows"),
+			},
+			expected: []byte("# Configuration Reference \n\n This provider's schema reference is as follows"),
+			phase:    info.PostCodeTranslation,
+		},
+		{
+			name: "Leaves regular 'Schema'strings as-is",
+			docFile: DocFile{
+				Content: []byte("Manage a single Schema Registry cluster"),
+			},
+			expected: []byte("Manage a single Schema Registry cluster"),
 			phase:    info.PostCodeTranslation,
 		},
 	}

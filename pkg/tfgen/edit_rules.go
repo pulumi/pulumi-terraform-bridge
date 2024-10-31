@@ -33,6 +33,7 @@ func defaultEditRules() editRules {
 		reReplace(`"([mM])ade (by|with) [tT]erraform"`, `"Made $2 Pulumi"`, info.PreCodeTranslation),
 		// A markdown link that has terraform in the link component.
 		reReplace(`\[([^\]]*)\]\([^\)]*terraform([^\)]*)\)`, "$1", info.PreCodeTranslation),
+		reReplace("Terraform [Ww]orkspace", "Pulumi Stack", info.PreCodeTranslation),
 		fixupImports(),
 		// Replace content such as "jdoe@hashicorp.com" with "jdoe@example.com"
 		reReplace("@hashicorp.com", "@example.com", info.PreCodeTranslation),
@@ -64,8 +65,8 @@ func defaultEditRules() editRules {
 			`Configuration Reference`, info.PostCodeTranslation),
 		reReplace(`# Arguments`,
 			`# Configuration Reference`, info.PostCodeTranslation),
-		reReplace(`Schema`,
-			`Configuration Reference`, info.PostCodeTranslation),
+		reReplace(`# Schema`,
+			`# Configuration Reference`, info.PostCodeTranslation),
 		reReplace("### Optional\n", "", info.PostCodeTranslation),
 		reReplace(`block contains the following arguments`,
 			`input has the following nested fields`, info.PostCodeTranslation),
