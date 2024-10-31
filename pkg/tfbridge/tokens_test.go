@@ -549,8 +549,7 @@ func makeAutoAliasing(t *testing.T) (
 	}
 }
 
-func TestTokenAliasing(t *testing.T) {
-	t.Parallel()
+func TestTokenAliasing(t *testing.T) { //nolint:paralleltest
 	// We run this test multiple times to guard against nondeterminism.
 	//
 	// See https://github.com/pulumi/pulumi-terraform-bridge/issues/1286.
