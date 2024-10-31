@@ -13,6 +13,7 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	sdkv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
 func TestPlainDocsParser(t *testing.T) {
@@ -91,7 +92,6 @@ func TestPlainDocsParser(t *testing.T) {
 					Golang: &tfbridge.GolangInfo{
 						ImportBasePath: "github.com/pulumi/pulumi-libvirt/sdk/go/libvirt",
 					},
-					Name: "libvirt",
 				},
 				cliConverterState: &cliConverter{
 					info: p,
@@ -99,6 +99,7 @@ func TestPlainDocsParser(t *testing.T) {
 				},
 				editRules: tt.edits,
 				language:  RegistryDocs,
+				pkg:       tokens.NewPackageToken("libvirt"),
 			}
 			actual, err := plainDocsParser(&tt.docFile, g)
 			require.NoError(t, err)

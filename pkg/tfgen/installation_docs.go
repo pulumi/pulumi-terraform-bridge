@@ -35,7 +35,7 @@ func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
 
 	// Add pulumi-specific front matter
 	// Generate pulumi-specific front matter
-	frontMatter := writeFrontMatter(g.info.Name)
+	frontMatter := writeFrontMatter(g.pkg.Name().String())
 
 	// Remove the title. A title gets populated from Hugo frontmatter; we do not want two.
 	content, err = removeTitle(content)
@@ -47,7 +47,7 @@ func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
 	content = stripSchemaGeneratedByTFPluginDocs(content)
 
 	// Generate pulumi-specific installation instructions
-	installationInstructions := writeInstallationInstructions(g.info.Golang.ImportBasePath, g.info.Name)
+	installationInstructions := writeInstallationInstructions(g.info.Golang.ImportBasePath, g.pkg.Name().String())
 
 	// Determine if we should write an overview header.
 	overviewHeader := getOverviewHeader(content)
