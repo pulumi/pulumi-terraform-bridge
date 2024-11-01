@@ -89,17 +89,7 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 			expectedOutputNested:   map[string]interface{}{"val": "test"},
 		},
 		{
-			name:                   "map nonempty without planResourceChange",
-			planResourceChange:     false,
-			schemaType:             schema.TypeMap,
-			cloudVal:               map[string]interface{}{"val": "test"},
-			programVal:             `{"val": "test"}`,
-			expectedOutputTopLevel: map[string]interface{}{"val": "test"},
-			expectedOutputNested:   map[string]interface{}{"val": "test"},
-		},
-		{
-			name:                   "map nonempty with planResourceChange with cloud override",
-			planResourceChange:     true,
+			name:                   "map nonempty with cloud override",
 			schemaType:             schema.TypeMap,
 			cloudVal:               map[string]interface{}{"val": "test"},
 			programVal:             `{"val": "test"}`,
@@ -243,26 +233,11 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 			expectedOutputTopLevel: []interface{}{"val"},
 			expectedOutputNested:   []interface{}{"val"},
 		},
-		{
-			name:                   "set nonempty without planResourceChange with cloud override",
-			planResourceChange:     false,
-			schemaType:             schema.TypeSet,
-			cloudVal:               []interface{}{"val"},
-			programVal:             `["val"]`,
-			createCloudValOverride: true,
-			expectedOutputTopLevel: []interface{}{"val"},
-			expectedOutputNested:   []interface{}{"val"},
-		},
 	} {
 		collectionPropPlural := ""
 		pluralized := tc.schemaType == schema.TypeList || tc.schemaType == schema.TypeSet
 		if pluralized {
 			collectionPropPlural += "s"
-		}
-
-		opts := []pulcheck.BridgedProviderOpt{}
-		if !tc.planResourceChange {
-			opts = append(opts, pulcheck.DisablePlanResourceChange())
 		}
 
 		t.Run(tc.name, func(t *testing.T) {
