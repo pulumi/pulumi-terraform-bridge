@@ -121,7 +121,7 @@ type Provider struct {
 
 	// An optional file path to the root of the upstream provider's git repo, for use in docs generation.
 	//
-	// It UpstreamRepoPath is left blank, it is inferred to the location where Go downloaded the build
+	// If UpstreamRepoPath is left blank, it is inferred to the location where Go downloaded the build
 	// dependency of the provider. The following fields influence the inference decision:
 	//
 	// - GitHubHost
