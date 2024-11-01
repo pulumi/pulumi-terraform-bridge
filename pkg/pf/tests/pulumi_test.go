@@ -29,6 +29,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestShowFailure(t *testing.T) { t.Fail() }
+
 // Quick setup for integration-testing PF-based providers.
 func newPulumiTest(t *testing.T, p provider.Provider, testProgramYAML string) *pulumitest.PulumiTest {
 	ctx := context.Background()
