@@ -21,14 +21,12 @@ import (
 // can be customized.
 //go:generate go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs generate -provider-name scaffolding
 
-var (
-	// these will be set by the goreleaser configuration
-	// to appropriate values for the compiled binary.
-	version = "dev"
+// these will be set by the goreleaser configuration
+// to appropriate values for the compiled binary.
+var version = "dev"
 
-	// goreleaser can pass other information to the main package, such as the specific commit
-	// https://goreleaser.com/cookbooks/using-main.version/
-)
+// goreleaser can pass other information to the main package, such as the specific commit
+// https://goreleaser.com/cookbooks/using-main.version/
 
 func main() {
 	var debug bool
@@ -42,7 +40,6 @@ func main() {
 	}
 
 	err := providerserver.Serve(context.Background(), New(version), opts)
-
 	if err != nil {
 		log.Fatal(err.Error())
 	}

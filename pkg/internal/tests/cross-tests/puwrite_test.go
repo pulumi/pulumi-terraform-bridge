@@ -8,10 +8,12 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 
+	crosstestsimpl "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests/impl"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
 
 func TestGenerateYaml(t *testing.T) {
+	t.Parallel()
 	providerShortName := "crossprovider"
 	rtype := "crossprovider_testres"
 	rtok := "TestRes"
@@ -123,7 +125,7 @@ runtime: yaml
 			))
 			schema := shimProvider.ResourcesMap().Get(rtype).Schema()
 			out, err := generateYaml(t, rtoken,
-				inferPulumiValue(t, schema, nil, coalesceInputs(t, tc.schema, tc.tfConfig)))
+				crosstestsimpl.InferPulumiValue(t, schema, nil, coalesceInputs(t, tc.schema, tc.tfConfig)))
 			require.NoError(t, err)
 			b, err := yaml.Marshal(out)
 			require.NoError(t, err)

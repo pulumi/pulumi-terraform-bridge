@@ -27,6 +27,7 @@ import (
 )
 
 func TestRegress923(t *testing.T) {
+    t.Parallel()
 	ctx := context.Background()
 
 	resource := &schema.Resource{

@@ -20,10 +20,18 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/zclconf/go-cty/cty"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests"
+	crosstests "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests"
 )
 
 func TestConfigureSimpleValues(t *testing.T) {
+	t.Parallel()
+	// TestConfigureSimpleValues was previously flaky:
+	//
+	// https://github.com/pulumi/pulumi-terraform-bridge/issues/2530
+	//
+	// The investigation was inconclusive, so we are adding back into circulation to
+	// see if the failures continue with tighter asserts.
+
 	t.Run("string", crosstests.MakeConfigure(map[string]*schema.Schema{
 		"f0": {Type: schema.TypeString, Required: true},
 	}, cty.ObjectVal(map[string]cty.Value{
@@ -55,6 +63,7 @@ func TestConfigureSimpleValues(t *testing.T) {
 }
 
 func TestConfigureSimpleSecretValues(t *testing.T) {
+	t.Parallel()
 	t.Run("string", crosstests.MakeConfigure(map[string]*schema.Schema{
 		"f0": {Type: schema.TypeString, Required: true},
 	}, cty.ObjectVal(map[string]cty.Value{

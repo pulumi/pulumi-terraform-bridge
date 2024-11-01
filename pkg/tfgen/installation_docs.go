@@ -23,7 +23,6 @@ import (
 )
 
 func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
-
 	// Apply pre-code translation edit rules. This applies all default edit rules and provider-supplied edit rules in
 	// the default pre-code translation phase.
 	contentBytes, err := g.editRules.apply(docFile.FileName, docFile.Content, info.PreCodeTranslation)
@@ -56,7 +55,7 @@ func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
 	// Add instructions to top of file
 	contentStr := frontMatter + installationInstructions + overviewHeader + string(content)
 
-	//Translate code blocks to Pulumi
+	// Translate code blocks to Pulumi
 	contentStr, err = translateCodeBlocks(contentStr, g)
 	if err != nil {
 		return nil, err
@@ -68,7 +67,7 @@ func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	//Reformat field names. Configuration fields are camelCased like nodejs.
+	// Reformat field names. Configuration fields are camelCased like nodejs.
 	contentStr, _ = reformatText(infoContext{
 		language: "nodejs",
 		pkg:      g.pkg,
@@ -105,7 +104,6 @@ func writeFrontMatter(providerName string) string {
 // Java: com.pulumi/foo
 // ****
 func writeInstallationInstructions(goImportBasePath, providerName string) string {
-
 	// Capitalize the package name for C#
 	capitalize := cases.Title(language.English)
 	cSharpName := capitalize.String(providerName)
@@ -140,6 +138,7 @@ func stripSchemaGeneratedByTFPluginDocs(content []byte) []byte {
 	content = tfplugindocsComment.ReplaceAll(content, nil)
 	return content
 }
+
 func translateCodeBlocks(contentStr string, g *Generator) (string, error) {
 	var returnContent string
 	// Extract code blocks
@@ -161,7 +160,7 @@ func translateCodeBlocks(contentStr string, g *Generator) (string, error) {
 		returnContent = returnContent + contentStr[startIndex:block.start]
 		nextNewLine := strings.Index(contentStr[block.start:block.end], "\n")
 		if nextNewLine == -1 {
-			//Write the inline block
+			// Write the inline block
 			returnContent = returnContent + contentStr[block.start:block.end] + codeFence + "\n"
 			continue
 		}
@@ -195,7 +194,7 @@ func processConfigYaml(pulumiYAML, lang string) string {
 	nameRegex := regexp.MustCompile(`name: /*`)
 	pulumiYAMLFile := nameRegex.ReplaceAllString(pulumiYAML, "name: configuration-example")
 	// Replace the runtime with the language specified.
-	//Unfortunately, lang strings don't quite map to runtime strings.
+	// Unfortunately, lang strings don't quite map to runtime strings.
 	if lang == "typescript" {
 		lang = "nodejs"
 	}
@@ -246,8 +245,7 @@ func convertExample(g *Generator, code string, exampleNumber int) (string, error
 	return exampleContent, nil
 }
 
-type titleRemover struct {
-}
+type titleRemover struct{}
 
 var _ parser.ASTTransformer = titleRemover{}
 
@@ -413,6 +411,7 @@ func getTfVersionsToRemove() []*regexp.Regexp {
 		regexp.MustCompile(`(It|This provider) requires( at least)? [tT]erraform [v0-9]+\.?[0-9]?\.?[0-9]?( or later)?.`),
 		regexp.MustCompile(`(?s)(For )?[tT]erraform [v0-9]+\.?[0-9]?\.?[0-9]? and (later|earlier):`),
 		regexp.MustCompile(`A minimum of [tT]erraform [v0-9]+\.?[0-9]?\.?[0-9]? is recommended.`),
+		regexp.MustCompile("[tT]erraform `[v0-9.]+` (and|or) later:"),
 	}
 	return tfVersionsToRemove
 }
@@ -429,5 +428,4 @@ func removeTfVersionMentions() tfbridge.DocsEdit {
 		},
 		Phase: info.PostCodeTranslation,
 	}
-
 }

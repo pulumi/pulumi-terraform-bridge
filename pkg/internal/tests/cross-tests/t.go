@@ -12,20 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Abstractions to allow tests to work against both *testing.T and rapid.TB.
 package crosstests
 
 import (
-	"github.com/pulumi/providertest/pulumitest"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	crosstestsimpl "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests/impl"
 )
 
-type T interface {
-	Logf(string, ...any)
-	TempDir() string
-	Skip(...any)
-	require.TestingT
-	assert.TestingT
-	pulumitest.PT
-}
+type T = crosstestsimpl.T

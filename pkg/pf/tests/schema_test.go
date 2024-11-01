@@ -32,6 +32,7 @@ import (
 )
 
 func TestSchemaGen(t *testing.T) {
+    t.Parallel()
 	t.Run("random", func(t *testing.T) {
 		_, err := genMetadata(t, testprovider.RandomProvider())
 		require.NoError(t, err)
@@ -70,6 +71,7 @@ func TestSchemaGen(t *testing.T) {
 }
 
 func TestSchemaGenInSync(t *testing.T) {
+    t.Parallel()
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping on Windows due to a minor path discrepancy in actual vs generated schema")
 	}

@@ -30,6 +30,7 @@ import (
 )
 
 func TestConvert(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS == "windows" {
 		// TODO[pulumi/pulumi-terraform-bridge#408]
 		t.Skip("Skipped on windows")
@@ -58,7 +59,6 @@ func TestConvert(t *testing.T) {
 			Loader:                   loader,
 			SkipResourceTypechecking: true,
 		})
-
 	}
 
 	check := func(hcl string) (map[string][]byte, convert.Diagnostics) {

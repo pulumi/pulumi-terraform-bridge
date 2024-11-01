@@ -25,6 +25,7 @@ import (
 )
 
 func TestProposedNew(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name   string
 		res    *schema.Resource
@@ -74,6 +75,7 @@ func TestProposedNew(t *testing.T) {
 }
 
 func TestCtyTurnaround(t *testing.T) {
+	t.Parallel()
 	type testCase struct {
 		value cty.Value
 	}

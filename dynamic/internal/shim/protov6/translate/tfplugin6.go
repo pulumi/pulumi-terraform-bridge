@@ -95,6 +95,7 @@ func diagnostic(i *tfplugin6.Diagnostic) *tfprotov6.Diagnostic {
 		Attribute: attributePathRequest(i.Attribute),
 	}
 }
+
 func diagnosticSeverity(i tfplugin6.Diagnostic_Severity) tfprotov6.DiagnosticSeverity {
 	switch i {
 	case tfplugin6.Diagnostic_ERROR:

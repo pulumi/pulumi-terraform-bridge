@@ -16,6 +16,7 @@ import (
 )
 
 func TestGetModuleMajorVersion(t *testing.T) {
+	t.Parallel()
 	type testcase struct {
 		version              string
 		expectedMajorVersion string
@@ -47,14 +48,17 @@ func TestGetModuleMajorVersion(t *testing.T) {
 }
 
 func TestMakeMember(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, "package:module:member", MakeMember("package", "module", "member").String())
 }
 
 func TestMakeType(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, "package:module:member", MakeType("package", "module", "member").String())
 }
 
 func TestMakeDataSource(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, "package:module/getSomething:getSomething",
 		MakeDataSource("package", "module", "getSomething").String())
 	assert.Equal(t, "package:module/getSomething:GetSomething",
@@ -62,10 +66,12 @@ func TestMakeDataSource(t *testing.T) {
 }
 
 func TestMakeResource(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, "package:module/myResource:MyResource", MakeResource("package", "module", "MyResource").String())
 }
 
 func TestStringValue(t *testing.T) {
+	t.Parallel()
 	myMap := map[resource.PropertyKey]resource.PropertyValue{
 		"key1": {V: "value1"},
 	}
@@ -132,6 +138,7 @@ func TestConfigArrayValue(t *testing.T) {
 }
 
 func TestMarshalElem(t *testing.T) {
+	t.Parallel()
 	turnaround := func(elem interface{}) interface{} {
 		me := MarshallableSchema{Elem: MarshalElem(elem)}
 		bytes, err := json.Marshal(me)
@@ -282,7 +289,6 @@ func TestDelegateIDField(t *testing.T) {
 			_, _ = computeID(context.Background(), resource.PropertyMap{
 				"computed": resource.MakeComputed(resource.NewProperty("computed")),
 			})
-
 		})
 	})
 }

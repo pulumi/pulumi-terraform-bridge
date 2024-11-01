@@ -19,6 +19,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/providerbuilder"
 	pb "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/providerbuilder"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/pulcheck"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
@@ -28,6 +29,7 @@ import (
 )
 
 func TestBasic(t *testing.T) {
+    t.Parallel()
 	provBuilder := providerbuilder.NewProvider(
 		providerbuilder.NewProviderArgs{
 			AllResources: []providerbuilder.Resource{
@@ -53,13 +55,14 @@ resources:
         properties:
             s: "hello"`
 
-	pt, err := pulCheck(t, prov, program)
+	pt, err := pulcheck.PulCheck(t, prov, program)
 	require.NoError(t, err)
 
 	pt.Up(t)
 }
 
 func TestComputedSetNoDiffWhenElementRemoved(t *testing.T) {
+    t.Parallel()
 	// Regression test for [pulumi/pulumi-terraform-bridge#2192]
 	provBuilder := pb.NewProvider(pb.NewProviderArgs{
 		AllResources: []providerbuilder.Resource{
@@ -126,7 +129,7 @@ resources:
                 - name: "vlan1"
                   vlanId: "1"`
 
-	pt, err := pulCheck(t, prov, program1)
+	pt, err := pulcheck.PulCheck(t, prov, program1)
 	require.NoError(t, err)
 
 	pt.Up(t)
@@ -150,6 +153,7 @@ resources:
 }
 
 func TestIDAttribute(t *testing.T) {
+    t.Parallel()
 	tests := []struct {
 		name                     string
 		attribute                rschema.Attribute
@@ -283,7 +287,7 @@ resources:
             s: "hello"
 `
 
-			pt, err := pulCheck(t, prov, program)
+			pt, err := pulcheck.PulCheck(t, prov, program)
 			if tc.expectTFGenErrorContains != "" {
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), tc.expectTFGenErrorContains)
@@ -306,6 +310,7 @@ resources:
 }
 
 func TestDefaults(t *testing.T) {
+    t.Parallel()
 	provBuilder := pb.NewProvider(pb.NewProviderArgs{
 		AllResources: []providerbuilder.Resource{
 			{
@@ -339,7 +344,7 @@ resources:
 outputs:
     changeReason: ${mainRes.changeReason}`
 
-	pt, err := pulCheck(t, prov, program)
+	pt, err := pulcheck.PulCheck(t, prov, program)
 	require.NoError(t, err)
 	upRes := pt.Up(t)
 	t.Log(upRes.StdOut)
@@ -366,6 +371,7 @@ func (c changeReasonPlanModifier) MarkdownDescription(context.Context) string {
 }
 
 func TestPlanModifiers(t *testing.T) {
+    t.Parallel()
 	provBuilder := pb.NewProvider(pb.NewProviderArgs{
 		AllResources: []providerbuilder.Resource{
 			{
@@ -401,7 +407,7 @@ resources:
 outputs:
     changeReason: ${mainRes.changeReason}`
 
-	pt, err := pulCheck(t, prov, program)
+	pt, err := pulcheck.PulCheck(t, prov, program)
 	require.NoError(t, err)
 	upRes := pt.Up(t)
 	t.Log(upRes.StdOut)

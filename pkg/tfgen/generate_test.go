@@ -40,6 +40,7 @@ import (
 )
 
 func Test_DeprecationFromTFSchema(t *testing.T) {
+	t.Parallel()
 	v := &variable{
 		name:   "v",
 		schema: shimv1.NewSchema(&schema.Schema{Type: schema.TypeString, Deprecated: "This is deprecated"}),
@@ -50,12 +51,14 @@ func Test_DeprecationFromTFSchema(t *testing.T) {
 }
 
 func Test_ForceNew(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		Name           string
 		Var            variable
 		ShouldForceNew bool
 	}{
-		{Name: "Pulumi Schema with ForceNew Override ShouldForceNew true",
+		{
+			Name: "Pulumi Schema with ForceNew Override ShouldForceNew true",
 			Var: variable{
 				name: "v",
 				schema: shimv1.NewSchema(&schema.Schema{
@@ -108,6 +111,7 @@ func Test_ForceNew(t *testing.T) {
 }
 
 func Test_GenerateTestDataSchemas(t *testing.T) {
+	t.Parallel()
 	// This is to assert that all the schemas we save in tf2pulumi/convert/testdata/schemas, match up with the
 	// mapping files in tf2pulumi/convert/testdata/mappings. Add in the use of PULUMI_ACCEPT and it means you
 	// don't have to manually write schemas, just mappings for tests.
@@ -145,6 +149,7 @@ func Test_GenerateTestDataSchemas(t *testing.T) {
 // Encoding of Elem() and Type() is tricky when recognizing types, cover all the cases here documented in the
 // shim.Schema.Elem() docstring.
 func Test_makePropertyType(t *testing.T) {
+	t.Parallel()
 
 	g := &Generator{}
 	path := paths.NewProperyPath(paths.NewConfigPath(), paths.PropertyName{
@@ -268,6 +273,7 @@ func Test_makePropertyType(t *testing.T) {
 }
 
 func Test_ProviderWithOmittedTypes(t *testing.T) {
+	t.Parallel()
 
 	gen := func(t *testing.T, f func(*tfbridge.ResourceInfo)) pschema.PackageSpec {
 		strType := (&shimschema.Schema{Type: shim.TypeString}).Shim()
@@ -360,7 +366,6 @@ func Test_ProviderWithOmittedTypes(t *testing.T) {
 		assert.Len(t, spec.Resources["test:index:Bar"].InputProperties, 1)
 		assert.Len(t, spec.Types, 1)
 	})
-
 }
 
 func TestModulePlacementForType(t *testing.T) {
@@ -442,15 +447,16 @@ func TestModulePlacementForType(t *testing.T) {
 			assert.Equal(t, tc.expect, mod)
 		})
 	}
-
 }
 
 func TestWithoutPackageName(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, "http", withoutPackageName("http", "http"))
 	assert.Equal(t, "s3_bucket", withoutPackageName("aws", "aws_s3_bucket"))
 }
 
 func TestGetNestedDescriptionFromParsedDocs(t *testing.T) {
+	t.Parallel()
 	testEntityDoc := entityDocs{
 		Description: "This is a test resource description",
 		Arguments: map[docsPath]*argumentDocs{
@@ -510,6 +516,7 @@ func TestGetNestedDescriptionFromParsedDocs(t *testing.T) {
 }
 
 func TestGetUniqueLeafDocsDescriptions(t *testing.T) {
+	t.Parallel()
 	testArguments := map[docsPath]*argumentDocs{
 		"configuration":             {description: "Configuration block for broker configuration."},
 		"configuration.revision":    {description: "Revision of the Configuration."},

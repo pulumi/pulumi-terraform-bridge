@@ -21,7 +21,6 @@ import (
 )
 
 func ProviderDefaultInfo() tfbridge.ProviderInfo {
-
 	return tfbridge.ProviderInfo{
 		P:           shimv2.NewProvider(testproviderdata.ProviderDefaultInfo()),
 		Name:        "default-info",

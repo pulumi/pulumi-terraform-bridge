@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/providertest/pulumitest"
 	"github.com/pulumi/providertest/pulumitest/opttest"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests"
+	crosstestsimpl "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests/impl"
 	pb "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/providerbuilder"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfgen"
@@ -50,10 +51,10 @@ import (
 //	}
 //
 // For details on the test itself, see [Configure].
-func MakeConfigure(schema schema.Schema, tfConfig map[string]cty.Value, puConfig resource.PropertyMap) func(t *testing.T) {
+func MakeConfigure(schema schema.Schema, tfConfig map[string]cty.Value, options ...ConfigureOption) func(t *testing.T) {
 	return func(t *testing.T) {
 		t.Parallel()
-		Configure(t, schema, tfConfig, puConfig)
+		Configure(t, schema, tfConfig, options...)
 	}
 }
 
@@ -81,8 +82,13 @@ func MakeConfigure(schema schema.Schema, tfConfig map[string]cty.Value, puConfig
 //	+--------------------+                      +---------------------+
 //
 // Configure should be safe to run in parallel.
-func Configure(t *testing.T, schema schema.Schema, tfConfig map[string]cty.Value, puConfig resource.PropertyMap) {
+func Configure(t *testing.T, schema schema.Schema, tfConfig map[string]cty.Value, options ...ConfigureOption) {
 	skipUnlessLinux(t)
+
+	var opts configureOpts
+	for _, f := range options {
+		f(&opts)
+	}
 
 	// By default, logs only show when they are on a failed test. By logging to
 	// topLevelT, we can log items to be shown if downstream tests fail.
@@ -129,6 +135,17 @@ resource "` + providerName + `_res" "res" {}
 		defer propageteSkip(topLevelT, t)
 		dir := t.TempDir()
 
+		var puConfig resource.PropertyMap
+		if opts.puConfig != nil {
+			puConfig = *opts.puConfig
+		} else {
+			puConfig = crosstestsimpl.InferPulumiValue(t,
+				tfbridge.ShimProvider(prov(nil)).Schema(),
+				opts.resourceInfo,
+				cty.ObjectVal(tfConfig),
+			)
+		}
+
 		pulumiYaml := map[string]any{
 			"name":    "project",
 			"runtime": "yaml",
@@ -151,11 +168,13 @@ resource "` + providerName + `_res" "res" {}
 
 		makeProvider := func(providers.PulumiTest) (pulumirpc.ResourceProviderServer, error) {
 			ctx, sink := context.Background(), testLogSink{t}
+
 			p := info.Provider{
 				Name:             providerName,
 				P:                tfbridge.ShimProvider(prov(&puOutput)),
 				Version:          "0.1.0-dev",
 				UpstreamRepoPath: ".",
+				Config:           opts.resourceInfo,
 			}
 			p.MustComputeTokens(tokens.SingleModule(providerName, "index", tokens.MakeStandard(providerName)))
 
@@ -194,4 +213,21 @@ resource "` + providerName + `_res" "res" {}
 		}
 		assert.Equal(t, tfOutput, puOutput)
 	})
+}
+
+type configureOpts struct {
+	resourceInfo map[string]*info.Schema
+	puConfig     *resource.PropertyMap
+}
+
+type ConfigureOption func(*configureOpts)
+
+// CreateResourceInfo specifies a map of [info.Schema] to apply to the provider under test.
+func ConfigureProviderInfo(info map[string]*info.Schema) ConfigureOption {
+	return func(o *configureOpts) { o.resourceInfo = info }
+}
+
+// ConfigurePulumiConfig specifies an explicit pulumi value for the configure call.
+func ConfigurePulumiConfig(config resource.PropertyMap) ConfigureOption {
+	return func(o *configureOpts) { o.puConfig = &config }
 }

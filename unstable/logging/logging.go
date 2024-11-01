@@ -77,7 +77,6 @@ func InitLogging(ctx context.Context, opts LogOptions) context.Context {
 // Providers based on https://developer.hashicorp.com/terraform/plugin/sdkv2 emit logs via
 // helper_schema and helper_resource sub-systems, that need to be registered here.
 func setupSubsystems(ctx context.Context, opts LogOptions) context.Context {
-
 	// TF providers respect finer-grained control via TF_LOG_SDK and
 	// TF_LOG_SDK_HELPER_RESOURCE variables, but only TF_LOG is respected here for the
 	// moment, as that is the only option documented for Pulumi.
@@ -276,8 +275,10 @@ func parseTfLogEnvVar() hclog.Level {
 	return hclog.LevelFromString(os.Getenv(tfLogEnvVar))
 }
 
-var quotedUrnPattern = regexp.MustCompile(`[ ]urn=["]([^"]+)["]`)
-var bareUrnPattern = regexp.MustCompile(`[ ]urn=([^ ]+)`)
+var (
+	quotedUrnPattern = regexp.MustCompile(`[ ]urn=["]([^"]+)["]`)
+	bareUrnPattern   = regexp.MustCompile(`[ ]urn=([^ ]+)`)
+)
 
 func parseUrnFromRawString(s string) (resource.URN, string) {
 	if ok := quotedUrnPattern.FindStringSubmatch(s); len(ok) > 0 {

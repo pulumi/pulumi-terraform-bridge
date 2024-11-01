@@ -80,7 +80,8 @@ func (pf paramFlags) String() string {
 func parseTopLevelSchemaIntoDocs(
 	accumulatedDocs *entityDocs,
 	topLevelSchema *topLevelSchema,
-	warn func(fmt string, arg ...interface{})) {
+	warn func(fmt string, arg ...interface{}),
+) {
 	for _, param := range topLevelSchema.allParameters() {
 		oldDesc, haveOldDesc := accumulatedDocs.Attributes[param.name]
 		if haveOldDesc && oldDesc != param.desc {
@@ -153,8 +154,8 @@ func parseTopLevelSchema(node *bf.Node, consumeNode func(node *bf.Node)) (*topLe
 func parseNestedSchemaIntoDocs(
 	accumulatedDocs *entityDocs,
 	nestedSchema *nestedSchema,
-	warn func(fmt string, arg ...interface{})) {
-
+	warn func(fmt string, arg ...interface{}),
+) {
 	accumulatedDocs.ensure()
 	for _, param := range nestedSchema.allParameters() {
 		oldDesc, ok := accumulatedDocs.Arguments[docsPath(nestedSchema.longName).join(param.name)]
@@ -271,7 +272,7 @@ func parseParameterSection(node *bf.Node, consumeNode func(node *bf.Node)) (para
 				return -1, nil, nil, err
 			}
 
-			if ps == nil || node == nil || node.Next == nil {
+			if ps == nil || node.Next == nil {
 				return -1, nil, nil, fmt.Errorf("Expected a parameter list, got %s", prettyPrint(node.Next))
 			}
 
@@ -282,9 +283,11 @@ func parseParameterSection(node *bf.Node, consumeNode func(node *bf.Node)) (para
 	return -1, nil, nil, nil
 }
 
-var optionalPattern = regexp.MustCompile("(?i)^optional[:]?$")
-var requiredPattern = regexp.MustCompile("(?i)^required[:]?$")
-var readonlyPattern = regexp.MustCompile("(?i)^read-only[:]?$")
+var (
+	optionalPattern = regexp.MustCompile("(?i)^optional[:]?$")
+	requiredPattern = regexp.MustCompile("(?i)^required[:]?$")
+	readonlyPattern = regexp.MustCompile("(?i)^read-only[:]?$")
+)
 
 func parseParamFlagLiteral(text string) *paramFlags {
 	if optionalPattern.MatchString(text) {

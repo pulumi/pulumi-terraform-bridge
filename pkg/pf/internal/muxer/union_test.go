@@ -22,6 +22,7 @@ import (
 )
 
 func TestUnionMap(t *testing.T) {
+    t.Parallel()
 	m1 := testMap{
 		"one": "n1",
 		"two": "n2",

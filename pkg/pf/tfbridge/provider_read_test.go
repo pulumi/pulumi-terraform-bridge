@@ -8,6 +8,7 @@ import (
 )
 
 func TestDeleteNestedDefaults(t *testing.T) {
+    t.Parallel()
 	tests := []struct {
 		name     string
 		inputs   resource.PropertyMap

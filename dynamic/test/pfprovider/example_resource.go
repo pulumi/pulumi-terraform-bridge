@@ -21,8 +21,10 @@ import (
 )
 
 // Ensure provider defined types fully satisfy framework interfaces.
-var _ resource.Resource = &resourceValidateInputs{}
-var _ resource.ResourceWithImportState = &resourceValidateInputs{}
+var (
+	_ resource.Resource                = &resourceValidateInputs{}
+	_ resource.ResourceWithImportState = &resourceValidateInputs{}
+)
 
 func NewExampleResource() resource.Resource { return &resourceValidateInputs{} }
 
@@ -208,7 +210,6 @@ type data struct {
 func (r *resourceValidateInputs) Create(
 	ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse,
 ) {
-
 	var data data
 	// Read Terraform plan data into the model
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
@@ -301,7 +302,6 @@ func (c check) inputAttributes(data data) {
 func (r *resourceValidateInputs) Delete(
 	ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse,
 ) {
-
 	var data data
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
 	if resp.Diagnostics.HasError() {

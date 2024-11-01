@@ -33,6 +33,7 @@ import (
 
 // Test how various SDKv2-based schemata translate to the shim.Schema layer.
 func TestSchemaShimRepresentations(t *testing.T) {
+	t.Parallel()
 	type testCase struct {
 		name           string
 		resourceSchema map[string]*schema.Schema

@@ -26,6 +26,7 @@ import (
 )
 
 func TestValidateInputType_objects(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		name     string
 		typeRef  string
@@ -810,6 +811,7 @@ func TestValidateInputType_objects(t *testing.T) {
 }
 
 func TestValidateInputType_arrays(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		name     string
 		typeRef  string
@@ -1292,6 +1294,7 @@ func TestValidateInputType_arrays(t *testing.T) {
 }
 
 func TestValidateInputType_toplevel(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		name            string
 		inputProperties map[string]pschema.PropertySpec
@@ -1603,6 +1606,7 @@ func TestValidateInputType_toplevel(t *testing.T) {
 }
 
 func TestValidateConfigType(t *testing.T) {
+	t.Parallel()
 	testCases := []struct {
 		name      string
 		inputName string
@@ -1632,7 +1636,7 @@ func TestValidateConfigType(t *testing.T) {
 			}),
 		},
 		{
-			//TODO: Remove this test when https://github.com/pulumi/pulumi-terraform-bridge/issues/2520 is resolved.
+			// TODO: Remove this test when https://github.com/pulumi/pulumi-terraform-bridge/issues/2520 is resolved.
 			// This tests a workaround path to keep the type checker from tripping on missing functionality in the
 			// config encoding and will fail once that is fixed.
 			name:      "allows_bool_strings",

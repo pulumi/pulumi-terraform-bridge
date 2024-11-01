@@ -25,6 +25,7 @@ import (
 	"github.com/zclconf/go-cty/cty"
 	"gopkg.in/yaml.v3"
 
+	crosstestsimpl "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests/impl"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/pulcheck"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/tfcheck"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
@@ -52,7 +53,6 @@ func Configure(
 	t T, provider map[string]*schema.Schema, tfConfig cty.Value,
 	options ...ConfigureOption,
 ) {
-
 	var opts configureOpts
 	for _, f := range options {
 		f(&opts)
@@ -62,7 +62,7 @@ func Configure(
 	if opts.puConfig != nil {
 		puConfig = *opts.puConfig
 	} else {
-		puConfig = inferPulumiValue(t,
+		puConfig = crosstestsimpl.InferPulumiValue(t,
 			shimv2.NewSchemaMap(provider),
 			opts.resourceInfo.GetFields(),
 			tfConfig,
@@ -82,6 +82,9 @@ func Configure(
 		return &schema.Provider{
 			Schema: provider,
 			ConfigureContextFunc: func(_ context.Context, rd *schema.ResourceData) (any, diag.Diagnostics) {
+				if rd == nil {
+					return nil, diag.Errorf("Attempted to configure the provider with nil %T", rd)
+				}
 				*writeTo = result{rd, true, false}
 
 				return configureResult, nil
@@ -114,7 +117,7 @@ func Configure(
 	require.NoError(t, tfd.Apply(t, plan))
 
 	require.True(t, tfResult.wasSet, "terraform configure result was not set")
-	require.True(t, tfResult.wasSet, "terraform resource result was not set")
+	require.True(t, tfResult.resourceCreated, "terraform resource result was not set")
 
 	bridgedProvider := pulcheck.BridgedProvider(
 		t, defProviderShortName, makeProvider(&puResult),
@@ -141,8 +144,11 @@ func Configure(
 
 	pt.Up(t)
 
-	require.True(t, tfResult.wasSet, "pulumi configure result was not set")
-	require.True(t, tfResult.wasSet, "pulumi resource result was not set")
+	require.True(t, puResult.wasSet, "pulumi configure result was not set")
+	// We don't create a resource for Pulumi since `pulumi up` will always provision a provider, even when
+	// it won't be used in any resource creation.
+	//
+	//	require.True(t, puResult.resourceCreated, "pulumi resource result was not set")
 
 	assertResourceDataEqual(t, provider, tfResult.data, puResult.data)
 }

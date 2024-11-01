@@ -19,6 +19,7 @@ import (
 )
 
 func TestExtractInputsFromOutputsPF(t *testing.T) {
+    t.Parallel()
 	type testCase struct {
 		name      string
 		props     resource.PropertyMap

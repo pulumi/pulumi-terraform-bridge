@@ -30,6 +30,7 @@ import (
 )
 
 func TestUnchangedBasicObject(t *testing.T) {
+	t.Parallel()
 	cfg := map[string]any{"f0": []any{map[string]any{"x": "ok"}}}
 	runDiffCheck(t, diffTestCase{
 		Resource: &schema.Resource{
@@ -52,6 +53,7 @@ func TestUnchangedBasicObject(t *testing.T) {
 }
 
 func TestDiffBasicTypes(t *testing.T) {
+	t.Parallel()
 	res := &schema.Resource{
 		Schema: map[string]*schema.Schema{
 			"other_prop": {
@@ -258,6 +260,7 @@ func TestDiffBasicTypes(t *testing.T) {
 }
 
 func TestSetReordering(t *testing.T) {
+	t.Parallel()
 	resource := &schema.Resource{
 		Schema: map[string]*schema.Schema{
 			"set": {
@@ -287,6 +290,7 @@ func TestSetReordering(t *testing.T) {
 //	│   on test.tf line 1, in resource "crossprovider_testres" "example":
 //	│    1: resource "crossprovider_testres" "example" {
 func TestEmptyRequiredList(t *testing.T) {
+	t.Parallel()
 	t.Skip("TODO - fix panic and make a negative test here")
 	resource := &schema.Resource{
 		Schema: map[string]*schema.Schema{
@@ -312,6 +316,7 @@ func TestEmptyRequiredList(t *testing.T) {
 }
 
 func TestAws2442(t *testing.T) {
+	t.Parallel()
 	hashes := map[int]string{}
 
 	stringHashcode := func(s string) int {
@@ -569,6 +574,7 @@ func TestAws2442(t *testing.T) {
 }
 
 func TestSimpleOptionalComputed(t *testing.T) {
+	t.Parallel()
 	emptyConfig := tftypes.NewValue(tftypes.Object{}, map[string]tftypes.Value{})
 	nonEmptyConfig := tftypes.NewValue(
 		tftypes.Object{
@@ -615,6 +621,7 @@ func TestSimpleOptionalComputed(t *testing.T) {
 }
 
 func TestOptionalComputedAttrCollection(t *testing.T) {
+	t.Parallel()
 	emptyConfig := tftypes.NewValue(tftypes.Object{}, map[string]tftypes.Value{})
 	t0 := tftypes.List{ElementType: tftypes.String}
 	t1 := tftypes.Object{
@@ -685,6 +692,7 @@ func TestOptionalComputedAttrCollection(t *testing.T) {
 }
 
 func TestOptionalComputedBlockCollection(t *testing.T) {
+	t.Parallel()
 	emptyConfig := tftypes.NewValue(tftypes.Object{}, map[string]tftypes.Value{})
 	t0 := tftypes.Object{
 		AttributeTypes: map[string]tftypes.Type{
@@ -764,6 +772,7 @@ func TestOptionalComputedBlockCollection(t *testing.T) {
 }
 
 func TestComputedSetFieldsNoDiff(t *testing.T) {
+	t.Parallel()
 	elemSchema := schema.Resource{
 		Schema: map[string]*schema.Schema{
 			"metro_code": {
@@ -833,6 +842,7 @@ func TestComputedSetFieldsNoDiff(t *testing.T) {
 }
 
 func TestMaxItemsOneCollectionOnlyDiff(t *testing.T) {
+	t.Parallel()
 	sch := map[string]*schema.Schema{
 		"rule": {
 			Type:     schema.TypeList,
@@ -943,6 +953,7 @@ func TestMaxItemsOneCollectionOnlyDiff(t *testing.T) {
 }
 
 func TestNilVsEmptyListProperty(t *testing.T) {
+	t.Parallel()
 	cfgEmpty := map[string]any{"f0": []any{}}
 	cfgNil := map[string]any{}
 
@@ -980,6 +991,7 @@ func TestNilVsEmptyListProperty(t *testing.T) {
 }
 
 func TestNilVsEmptyMapProperty(t *testing.T) {
+	t.Parallel()
 	cfgEmpty := map[string]any{"f0": map[string]any{}}
 	cfgNil := map[string]any{}
 
@@ -1231,6 +1243,7 @@ func TestNilVsEmptyNestedCollections(t *testing.T) {
 }
 
 func TestAttributeCollectionForceNew(t *testing.T) {
+	t.Parallel()
 	res := &schema.Resource{
 		Schema: map[string]*schema.Schema{
 			"list": {
@@ -1367,6 +1380,7 @@ func TestAttributeCollectionForceNew(t *testing.T) {
 }
 
 func TestBlockCollectionForceNew(t *testing.T) {
+	t.Parallel()
 	res := &schema.Resource{
 		Schema: map[string]*schema.Schema{
 			"list": {
@@ -1476,6 +1490,7 @@ func TestBlockCollectionForceNew(t *testing.T) {
 }
 
 func TestBlockCollectionElementForceNew(t *testing.T) {
+	t.Parallel()
 	res := &schema.Resource{
 		Schema: map[string]*schema.Schema{
 			"list": {

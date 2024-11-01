@@ -33,6 +33,7 @@ var (
 )
 
 type grpcLog struct {
+	Name     string   `json:"name"`
 	Call     string   `json:"call"`
 	Request  string   `json:"request"`
 	Response string   `json:"response"`
@@ -48,15 +49,22 @@ func writeGRPCLog(log grpcLog) error {
 
 	if grpcLogFileTarget == nil {
 		var err error
-		grpcLogFileTarget, err = os.Create(pulumiTFDebugGRPCLogs)
-		if err != nil {
-			return err
+		if _, err = os.Stat(pulumiTFDebugGRPCLogs); os.IsNotExist(err) {
+			grpcLogFileTarget, err = os.Create(pulumiTFDebugGRPCLogs)
+			if err != nil {
+				return err
+			}
+		} else {
+			grpcLogFileTarget, err = os.OpenFile(pulumiTFDebugGRPCLogs, os.O_APPEND|os.O_WRONLY, 0o600)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
 	b, err := json.Marshal(log)
 	contract.AssertNoErrorf(err, "%T should always marshal", log)
-	_, err = grpcLogFileTarget.Write(append(b, '\n'))
+	_, err = grpcLogFileTarget.Write(append(b, ',', '\n'))
 	if err != nil {
 		return err
 	}
@@ -72,13 +80,14 @@ func Translate[
 	ctx context.Context,
 	call Call,
 	i In,
-	m MapResult,
+	m MapResult, opts ...grpc.CallOption,
 ) (_ Final, err error) {
 	var log grpcLog
 	if pulumiTFDebugGRPCLogs != "" {
 		log.Request = i.String()
-		if _, line, num, ok := runtime.Caller(2); ok {
+		if pc, line, num, ok := runtime.Caller(2); ok {
 			log.Call = fmt.Sprintf("%s:%d", line, num)
+			log.Name = runtime.FuncForPC(pc).Name()
 		}
 		defer func() {
 			e := writeGRPCLog(log)
@@ -94,7 +103,11 @@ func Translate[
 		return tmp, err
 	}
 	if pulumiTFDebugGRPCLogs != "" {
-		log.Response = v.String()
+		jsonOut, jsonErr := json.Marshal(v)
+		if jsonErr != nil {
+			err = jsonErr
+		}
+		log.Response = string(jsonOut)
 	}
 	return m(v), nil
 }

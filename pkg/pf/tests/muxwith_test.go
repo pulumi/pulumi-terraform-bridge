@@ -27,6 +27,7 @@ import (
 
 // Add coverage for pf.NewMuxProvider.
 func TestNewMuxProvider(t *testing.T) {
+    t.Parallel()
 	createCallCount := 0
 
 	r := pb.Resource{

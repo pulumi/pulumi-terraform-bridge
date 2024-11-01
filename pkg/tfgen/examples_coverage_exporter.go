@@ -38,9 +38,8 @@ func newCoverageExportUtil(coverageTracker *CoverageTracker) coverageExportUtil 
 // The entire export utility interface. Will attempt to export the Coverage Tracker's data into the
 // specified output directory, and will panic if an error is encountered along the way
 func (ce *coverageExportUtil) tryExport(outputDirectory string) error {
-
 	// "summary.json" is the file name that other Pulumi coverage trackers use
-	var err = ce.exportByExample(outputDirectory, "byExample.json")
+	err := ce.exportByExample(outputDirectory, "byExample.json")
 	if err != nil {
 		return err
 	}
@@ -66,7 +65,6 @@ func (ce *coverageExportUtil) tryExport(outputDirectory string) error {
 // Four different ways to export coverage data:
 // The first mode, which lists each example individually in one big file. This is the most detailed.
 func (ce *coverageExportUtil) exportByExample(outputDirectory string, fileName string) error {
-
 	// The Coverage Tracker data structure is flattened down to the example level, and they all
 	// get individually written to the file in order to not have the "{ }" brackets at the start and end
 	type FlattenedExample struct {
@@ -103,13 +101,12 @@ func (ce *coverageExportUtil) exportByExample(outputDirectory string, fileName s
 			result = append(append(result, marshalledExample...), uint8('\n'))
 		}
 	}
-	return os.WriteFile(jsonOutputLocation, result, 0600)
+	return os.WriteFile(jsonOutputLocation, result, 0o600)
 }
 
 // The second mode, which exports information about each language such as total number of
 // examples, common failure messages, and failure severity percentages.
 func (ce *coverageExportUtil) exportByLanguage(outputDirectory string, fileName string) error {
-
 	// The Coverage Tracker data structure is flattened to gather statistics about each language
 	type NumPct struct {
 		Number int
@@ -132,27 +129,29 @@ func (ce *coverageExportUtil) exportByLanguage(outputDirectory string, fileName 
 	}
 
 	// Main map for holding all the language conversion statistics
-	var allLanguageStatistics = make(map[string]*LanguageStatistic)
+	allLanguageStatistics := make(map[string]*LanguageStatistic)
 
 	// All the conversion attempts for each example are iterated by language name and
 	// their results are added to the main map
 	for _, page := range ce.Tracker.EncounteredPages {
 		for _, example := range page.Examples {
 			for languageName, conversionResult := range example.ConversionResults {
-
 				// Obtaining the current language we will be creating statistics for
 				var currentLanguage *LanguageStatistic
 				if existingLanguage, ok := allLanguageStatistics[languageName]; ok {
-
 					// Current language already exists in main map
 					currentLanguage = existingLanguage
 				} else {
-
 					// The main map doesn't yet contain this language, and it needs to be added
-					allLanguageStatistics[languageName] = &LanguageStatistic{0,
-						NumPct{0, 0.0}, NumPct{0, 0.0},
-						NumPct{0, 0.0}, NumPct{0, 0.0},
-						make(map[string]int), []ErrorMessage{}}
+					allLanguageStatistics[languageName] = &LanguageStatistic{
+						0,
+						NumPct{0, 0.0},
+						NumPct{0, 0.0},
+						NumPct{0, 0.0},
+						NumPct{0, 0.0},
+						make(map[string]int),
+						[]ErrorMessage{},
+					}
 					currentLanguage = allLanguageStatistics[languageName]
 				}
 
@@ -161,7 +160,6 @@ func (ce *coverageExportUtil) exportByLanguage(outputDirectory string, fileName 
 				if conversionResult.FailureSeverity == Success {
 					currentLanguage.Successes.Number++
 				} else {
-
 					// A failure occurred during conversion so we take the failure info
 					// and add it to the histogram
 					currentLanguage._errorHistogram[conversionResult.FailureInfo]++
@@ -180,7 +178,6 @@ func (ce *coverageExportUtil) exportByLanguage(outputDirectory string, fileName 
 	}
 
 	for _, language := range allLanguageStatistics {
-
 		// Calculating error percentages for all languages that were found
 		if language.Total > 0 {
 			language.Successes.Pct = float64(language.Successes.Number) / float64(language.Total) * 100.0
@@ -211,7 +208,6 @@ func (ce *coverageExportUtil) exportByLanguage(outputDirectory string, fileName 
 
 // The third mode, which lists failure reaons, quantities and percentages for the provider as a whole.
 func (ce *coverageExportUtil) exportOverall(outputDirectory string, fileName string) error {
-
 	// The Coverage Tracker data structure is flattened to gather statistics about the provider
 	type NumPct struct {
 		Number int
@@ -237,10 +233,16 @@ func (ce *coverageExportUtil) exportOverall(outputDirectory string, fileName str
 	}
 
 	// Main variable for holding the overall provider conversion results
-	var providerStatistic = ProviderStatistic{ce.Tracker.ProviderName,
-		ce.Tracker.ProviderVersion, 0, 0, NumPct{0, 0.0},
-		NumPct{0, 0.0}, NumPct{0, 0.0},
-		NumPct{0, 0.0}, make(map[string]int), []ErrorMessage{}}
+	providerStatistic := ProviderStatistic{
+		ce.Tracker.ProviderName,
+		ce.Tracker.ProviderVersion, 0, 0,
+		NumPct{0, 0.0},
+		NumPct{0, 0.0},
+		NumPct{0, 0.0},
+		NumPct{0, 0.0},
+		make(map[string]int),
+		[]ErrorMessage{},
+	}
 
 	// All the conversion attempts for each example are iterated by language name and
 	// their results are added to the overall statistic
@@ -252,7 +254,6 @@ func (ce *coverageExportUtil) exportOverall(outputDirectory string, fileName str
 				if conversionResult.FailureSeverity == Success {
 					providerStatistic.Successes.Number++
 				} else {
-
 					// A failure occurred during conversion so we take the failure info
 					// and add it to the histogram
 					providerStatistic._errorHistogram[conversionResult.FailureInfo]++
@@ -307,7 +308,6 @@ func (ce *coverageExportUtil) exportOverall(outputDirectory string, fileName str
 // - the original HCL
 // - the conversion results for all languages
 func (ce *coverageExportUtil) exportMarkdown(outputDirectory string, fileName string) error {
-
 	// The Coverage Tracker data structure is flattened down to the example level, and they all
 	// get individually written to the file in order to not have the "{ }" brackets at the start and end
 	type FlattenedExample struct {
@@ -357,7 +357,6 @@ func (ce *coverageExportUtil) exportMarkdown(outputDirectory string, fileName st
 
 	out := ""
 	for _, example := range brokenExamples {
-
 		type exampleResult struct {
 			lang   string
 			result LanguageConversionResult
@@ -437,7 +436,7 @@ func (ce *coverageExportUtil) exportMarkdown(outputDirectory string, fileName st
 		}
 	}
 
-	return os.WriteFile(targetFile, []byte(out), 0600)
+	return os.WriteFile(targetFile, []byte(out), 0o600)
 }
 
 // The Coverage Tracker data structure is flattened to gather statistics about each language
@@ -455,8 +454,8 @@ type providerStatistic struct {
 
 func (ce coverageExportUtil) produceStatistics() (map[string]*languageStatistic, providerStatistic) {
 	// Main maps for holding the overall provider summary, and each language conversion statistic
-	var allLanguageStatistics = make(map[string]*languageStatistic)
-	var providerStats = providerStatistic{ce.Tracker.ProviderName, 0, 0, 0}
+	allLanguageStatistics := make(map[string]*languageStatistic)
+	providerStats := providerStatistic{ce.Tracker.ProviderName, 0, 0, 0}
 
 	// All the conversion attempts for each example are iterated by language name and
 	// their results are added to the main map
@@ -469,11 +468,9 @@ func (ce coverageExportUtil) produceStatistics() (map[string]*languageStatistic,
 				// Obtaining the current language we will be creating statistics for
 				var currentLanguage *languageStatistic
 				if val, ok := allLanguageStatistics[languageName]; ok {
-
 					// Current language already exists in main map
 					currentLanguage = val
 				} else {
-
 					// The main map doesn't yet contain this language, and it needs to be added
 					allLanguageStatistics[languageName] = &languageStatistic{0, 0}
 					currentLanguage = allLanguageStatistics[languageName]
@@ -532,13 +529,13 @@ func (ce *coverageExportUtil) exportHumanReadable(outputDirectory string, fileNa
 	}
 	fileString := ce.produceHumanReadableSummary()
 
-	return os.WriteFile(targetFile, []byte(fileString), 0600)
+	return os.WriteFile(targetFile, []byte(fileString), 0o600)
 }
 
 // Minor helper functions to assist with exporting results
 func createEmptyFile(outputDirectory string, fileName string) (string, error) {
 	outputLocation := filepath.Join(outputDirectory, fileName)
-	err := os.MkdirAll(outputDirectory, 0700)
+	err := os.MkdirAll(outputDirectory, 0o700)
 	return outputLocation, err
 }
 
@@ -547,5 +544,5 @@ func marshalAndWriteJSON(unmarshalledData interface{}, finalDestination string) 
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(finalDestination, jsonBytes, 0600)
+	return os.WriteFile(finalDestination, jsonBytes, 0o600)
 }

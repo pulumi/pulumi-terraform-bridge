@@ -41,9 +41,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/internal/testprovider"
 )
 
-var (
-	accept = cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT"))
-)
+var accept = cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT"))
 
 type testcase struct {
 	Input    string
@@ -51,6 +49,7 @@ type testcase struct {
 }
 
 func TestReformatText(t *testing.T) {
+	t.Parallel()
 	tests := []testcase{
 		{
 			Input:    "The DNS name for the given subnet/AZ per [documented convention](http://docs.aws.amazon.com/efs/latest/ug/mounting-fs-mount-cmd-dns-name.html).", //nolint:lll
@@ -102,6 +101,7 @@ func TestReformatText(t *testing.T) {
 }
 
 func TestArgumentRegex(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		input    []string
@@ -355,7 +355,6 @@ func TestArgumentRegex(t *testing.T) {
 				"* `country` - (Optional) Two digit code that specifies the country in which the certificate subject located. Must be less than or equal to 2 characters in length.",
 			},
 			expected: map[docsPath]*argumentDocs{
-
 				"certificate_authority_configuration.key_algorithm":     {description: "Type of the public key algorithm and size, in bits, of the key pair that your key pair creates when it issues a certificate. Valid values can be found in the [ACM PCA Documentation](https://docs.aws.amazon.com/privateca/latest/APIReference/API_CertificateAuthorityConfiguration.html)."},
 				"certificate_authority_configuration.signing_algorithm": {description: "Name of the algorithm your private CA uses to sign certificate requests. Valid values can be found in the [ACM PCA Documentation](https://docs.aws.amazon.com/privateca/latest/APIReference/API_CertificateAuthorityConfiguration.html)."},
 				"certificate_authority_configuration.subject":           {description: "Nested argument that contains X.500 distinguished name information. At least one nested attribute must be specified."},
@@ -487,10 +486,11 @@ func TestArgumentRegex(t *testing.T) {
 				"       If a field differs, the virtual cluster creation will fail.",
 			},
 			expected: map[docsPath]*argumentDocs{
-				"node_pool_config": {description: "The configuration for the GKE node pool. \nIf specified, " +
-					"Dataproc attempts to create a node pool with the specified shape.\nIf one with the same name " +
-					"already exists, it is verified against all specified fields.\nIf a field differs, the virtual " +
-					"cluster creation will fail.",
+				"node_pool_config": {
+					description: "The configuration for the GKE node pool. \nIf specified, " +
+						"Dataproc attempts to create a node pool with the specified shape.\nIf one with the same name " +
+						"already exists, it is verified against all specified fields.\nIf a field differs, the virtual " +
+						"cluster creation will fail.",
 				},
 			},
 		},
@@ -625,6 +625,7 @@ func TestArgumentRegex(t *testing.T) {
 }
 
 func TestArgumentRegexAuto(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		input    []string
@@ -660,6 +661,7 @@ func TestArgumentRegexAuto(t *testing.T) {
 }
 
 func TestGetFooterLinks(t *testing.T) {
+	t.Parallel()
 	input := `## Attributes Reference
 
 For **environment** the following attributes are supported:
@@ -680,6 +682,7 @@ For **environment** the following attributes are supported:
 }
 
 func TestReplaceFooterLinks(t *testing.T) {
+	t.Parallel()
 	inputText := `# Resource: aws_lambda_function
 
 	Provides a Lambda Function resource. Lambda allows you to trigger execution of code in response to events in AWS, enabling serverless backend solutions. The Lambda Function itself includes source code and runtime configuration.
@@ -916,7 +919,6 @@ content
 					"",
 				},
 				{
-
 					"## Import",
 					"",
 					"A Container App Environment Custom Domain Suffix can be imported using the `resource id` of its parent container ontainer App Environment , e.g.",
@@ -1314,6 +1316,7 @@ content
 }
 
 func TestFixExamplesHeaders(t *testing.T) {
+	t.Parallel()
 	codeFence := "```"
 	t.Run("WithCodeFences", func(t *testing.T) {
 		markdown := `
@@ -1371,6 +1374,7 @@ Misleading example title without any actual code fences. We should not modify th
 }
 
 func TestExtractExamples(t *testing.T) {
+	t.Parallel()
 	basic := `Previews a CIDR from an IPAM address pool. Only works for private IPv4.
 
 ~> **NOTE:** This functionality is also encapsulated in a resource sharing the same name. The data source can be used when you need to use the cidr in a calculation of the same Root module, count for example. However, once a cidr range has been allocated that was previewed, the next refresh will find a **new** cidr and may force new resources downstream. Make sure to use Terraform's lifecycle ignore_changes policy if this is undesirable.
@@ -1395,6 +1399,7 @@ Basic usage:`
 }
 
 func TestReformatExamples(t *testing.T) {
+	t.Parallel()
 	runTest := func(input string, expected [][]string) {
 		inputSections := splitByMarkdownHeaders(input, 2)
 		actual := reformatExamples(inputSections)
@@ -1517,11 +1522,13 @@ content`
 }
 
 func TestFormatEntityName(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, "'prov_entity'", formatEntityName("prov_entity"))
 	assert.Equal(t, "'prov_entity' (aliased or renamed)", formatEntityName("prov_entity_legacy"))
 }
 
 func TestHclConversionsToString(t *testing.T) {
+	t.Parallel()
 	input := map[string]string{
 		"typescript": "var foo = bar;",
 		"java":       "FooFactory fooFactory = new FooFactory();",
@@ -1564,13 +1571,14 @@ FooFactory fooFactory = new FooFactory();
 		CodeFences: "```",
 	}
 
-	var buf = bytes.Buffer{}
+	buf := bytes.Buffer{}
 	_ = outputTemplate.Execute(&buf, data)
 
 	assert.Equal(t, buf.String(), hclConversionsToString(input))
 }
 
 func TestParseArgFromMarkdownLine(t *testing.T) {
+	t.Parallel()
 	//nolint:lll
 	tests := []struct {
 		input         string
@@ -1587,7 +1595,7 @@ func TestParseArgFromMarkdownLine(t *testing.T) {
 		{"* `principal_tags`: (Optional: []) - String to string map of variables.", "principal_tags", "String to string map of variables.", true},
 		{"  * `id` - The id of the property", "id", "The id of the property", true},
 		{"  * id - The id of the property", "", "", false},
-		//In rare cases, we may have a match where description is empty like the following, taken from https://github.com/hashicorp/terraform-provider-aws/blob/main/website/docs/r/spot_fleet_request.html.markdown
+		// In rare cases, we may have a match where description is empty like the following, taken from https://github.com/hashicorp/terraform-provider-aws/blob/main/website/docs/r/spot_fleet_request.html.markdown
 		{"* `instance_pools_to_use_count` - (Optional; Default: 1)", "instance_pools_to_use_count", "", true},
 		{"", "", "", false},
 		{"Most of these arguments directly correspond to the", "", "", false},
@@ -1602,6 +1610,7 @@ func TestParseArgFromMarkdownLine(t *testing.T) {
 }
 
 func TestParseAttributesReferenceSection(t *testing.T) {
+	t.Parallel()
 	ret := entityDocs{
 		Arguments:  make(map[docsPath]*argumentDocs),
 		Attributes: make(map[string]string),
@@ -1618,6 +1627,7 @@ func TestParseAttributesReferenceSection(t *testing.T) {
 }
 
 func TestParseAttributesReferenceSectionParsesNested(t *testing.T) {
+	t.Parallel()
 	ret := entityDocs{
 		Arguments:  make(map[docsPath]*argumentDocs),
 		Attributes: make(map[string]string),
@@ -1635,6 +1645,7 @@ func TestParseAttributesReferenceSectionParsesNested(t *testing.T) {
 }
 
 func TestParseAttributesReferenceSectionParsesNestedOrderAgnostic(t *testing.T) {
+	t.Parallel()
 	ret := entityDocs{
 		Arguments:  make(map[docsPath]*argumentDocs),
 		Attributes: make(map[string]string),
@@ -1652,6 +1663,7 @@ func TestParseAttributesReferenceSectionParsesNestedOrderAgnostic(t *testing.T) 
 }
 
 func TestParseAttributesReferenceSectionFlattensListAttributes(t *testing.T) {
+	t.Parallel()
 	ret := entityDocs{
 		Arguments:  make(map[docsPath]*argumentDocs),
 		Attributes: make(map[string]string),
@@ -1672,7 +1684,8 @@ func TestParseAttributesReferenceSectionFlattensListAttributes(t *testing.T) {
 }
 
 func TestGetNestedBlockName(t *testing.T) {
-	var tests = []struct {
+	t.Parallel()
+	tests := []struct {
 		input    string
 		expected []string
 	}{
@@ -1702,6 +1715,7 @@ func TestGetNestedBlockName(t *testing.T) {
 }
 
 func TestOverlayAttributesToAttributes(t *testing.T) {
+	t.Parallel()
 	source := entityDocs{
 		Attributes: map[string]string{
 			"overwrite_me": "overwritten_desc",
@@ -1730,6 +1744,7 @@ func TestOverlayAttributesToAttributes(t *testing.T) {
 }
 
 func TestOverlayArgsToAttributes(t *testing.T) {
+	t.Parallel()
 	source := entityDocs{
 		Arguments: map[docsPath]*argumentDocs{
 			"overwrite_me": {
@@ -1762,6 +1777,7 @@ func TestOverlayArgsToAttributes(t *testing.T) {
 }
 
 func TestOverlayArgsToArgs(t *testing.T) {
+	t.Parallel()
 	source := entityDocs{
 		Arguments: map[docsPath]*argumentDocs{
 			"overwrite_me":                     {description: "overwritten_desc"},
@@ -1799,10 +1815,11 @@ func TestOverlayArgsToArgs(t *testing.T) {
 }
 
 func TestParseImports_NoOverrides(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS == "windows" {
 		t.Skipf("Skippping on windows - tests cases need to be made robust to newline handling")
 	}
-	var tests = []struct {
+	tests := []struct {
 		input        []string
 		token        tokens.Token
 		expected     string
@@ -1886,6 +1903,7 @@ func TestParseImports_NoOverrides(t *testing.T) {
 }
 
 func TestParseImports_WithOverride(t *testing.T) {
+	t.Parallel()
 	parser := tfMarkdownParser{
 		info: &mockResource{
 			docs: tfbridge.DocInfo{
@@ -1902,6 +1920,7 @@ func TestParseImports_WithOverride(t *testing.T) {
 func ref[T any](t T) *T { return &t }
 
 func TestConvertExamples(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS == "windows" {
 		t.Skipf("Skipping on windows to avoid failing on incorrect newline handling")
 	}
@@ -1975,7 +1994,7 @@ func TestConvertExamples(t *testing.T) {
 			out := filepath.Join("test_data", "convertExamples",
 				fmt.Sprintf("%s_out.md", tc.name))
 			if accept {
-				err = os.WriteFile(out, []byte(result), 0600)
+				err = os.WriteFile(out, []byte(result), 0o600)
 				require.NoError(t, err)
 			}
 			expect, err := os.ReadFile(out)
@@ -1986,6 +2005,7 @@ func TestConvertExamples(t *testing.T) {
 }
 
 func TestConvertExamplesInner(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS == "windows" {
 		t.Skipf("Skipping on windows to avoid failing on incorrect newline handling")
 	}
@@ -2038,7 +2058,7 @@ func TestConvertExamplesInner(t *testing.T) {
 			out := filepath.Join("test_data", "convertExamples",
 				fmt.Sprintf("%s_out.md", tc.name))
 			if accept {
-				err = os.WriteFile(out, []byte(result), 0600)
+				err = os.WriteFile(out, []byte(result), 0o600)
 				require.NoError(t, err)
 			}
 			expect, err := os.ReadFile(out)
@@ -2049,6 +2069,7 @@ func TestConvertExamplesInner(t *testing.T) {
 }
 
 func TestFindFencesAndHeaders(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS == "windows" {
 		t.Skipf("Skipping on windows to avoid failing on incorrect newline handling")
 	}
@@ -2107,12 +2128,11 @@ func TestFindFencesAndHeaders(t *testing.T) {
 			actual := findFencesAndHeaders(testDoc)
 			assert.Equal(t, tc.expected, actual)
 		})
-
 	}
-
 }
 
 func TestExampleGeneration(t *testing.T) {
+	t.Parallel()
 	info := testprovider.ProviderMiniRandom()
 
 	markdown := []byte(`
@@ -2232,7 +2252,6 @@ This should be interpolated in.
 					default:
 						return nil, fmt.Errorf("invalid path %q", name)
 					}
-
 				}
 				tc.info = &tfbridge.ResourceInfo{Docs: &tfbridge.DocInfo{
 					ReplaceExamplesSection: true,
@@ -2337,6 +2356,7 @@ func TestErrorMissingDocs(t *testing.T) {
 		})
 	}
 }
+
 func TestErrorNilDocs(t *testing.T) {
 	t.Run("", func(t *testing.T) {
 		g := &Generator{
@@ -2362,6 +2382,7 @@ func (m mockSource) getResource(rawname string, info *tfbridge.DocInfo) (*DocFil
 		FileName: rawname + ".md",
 	}, nil
 }
+
 func (m mockSource) getDatasource(rawname string, info *tfbridge.DocInfo) (*DocFile, error) {
 	return nil, nil
 }
@@ -2432,7 +2453,7 @@ func readfile(t *testing.T, file string) string {
 
 func writefile(t *testing.T, file string, bytes []byte) {
 	t.Helper()
-	err := os.WriteFile(file, bytes, 0600)
+	err := os.WriteFile(file, bytes, 0o600)
 	require.NoError(t, err)
 }
 
@@ -2452,6 +2473,7 @@ func readlines(t *testing.T, file string) []string {
 }
 
 func TestFixupImports(t *testing.T) {
+	t.Parallel()
 	tests := []struct{ text, expected string }{
 		{
 			"% terraform import thing",
@@ -2524,6 +2546,7 @@ func TestFixupImports(t *testing.T) {
 }
 
 func TestGuessIsHCL(t *testing.T) {
+	t.Parallel()
 	type testCase struct {
 		code string
 		hcl  bool

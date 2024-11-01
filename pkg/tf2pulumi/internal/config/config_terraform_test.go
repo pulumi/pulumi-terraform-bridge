@@ -6,6 +6,7 @@ import (
 )
 
 func TestBackendHash(t *testing.T) {
+    t.Parallel()
 	// WARNING: The codes below should _never_ change. If they change, it
 	// means that a future TF version may falsely recognize unchanged backend
 	// configuration as changed. Ultimately this should have no adverse

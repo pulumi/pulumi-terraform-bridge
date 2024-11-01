@@ -403,7 +403,7 @@ func skipWindows(t *testing.T) {
 	t.Skipf("autogold does not play nice with windows newlines")
 }
 
-func TestSchemaGeneration(t *testing.T) {
+func TestSchemaGeneration(t *testing.T) { //nolint:paralleltest
 	skipWindows(t)
 
 	t.Run("unparameterized", func(t *testing.T) {
@@ -457,6 +457,7 @@ func TestSchemaGeneration(t *testing.T) {
 }
 
 func TestRandomCreate(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	server := grpcTestServer(ctx, t)
 	parameterizeResp, err := server.Parameterize(ctx, &pulumirpc.ParameterizeRequest{

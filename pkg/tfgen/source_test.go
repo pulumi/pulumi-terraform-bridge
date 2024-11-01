@@ -70,8 +70,8 @@ func TestGetDocsPath(t *testing.T) {
 			repo := t.TempDir()
 			for _, f := range tt.files {
 				p := filepath.Join(repo, f)
-				require.NoError(t, os.MkdirAll(filepath.Dir(p), 0700))
-				require.NoError(t, os.WriteFile(p, []byte("test"), 0600))
+				require.NoError(t, os.MkdirAll(filepath.Dir(p), 0o700))
+				require.NoError(t, os.WriteFile(p, []byte("test"), 0o600))
 			}
 
 			check := func(expected, actual []string, err error) {
@@ -82,7 +82,6 @@ func TestGetDocsPath(t *testing.T) {
 					expected[i] = filepath.Join(repo, v)
 				}
 				assert.Equal(t, expected, actual)
-
 			}
 
 			actualResource, err := getDocsPath(repo, ResourceDocs)
@@ -102,22 +101,23 @@ func TestGetNarkdownNames(t *testing.T) {
 		rawName       string
 		globalInfo    *tfbridge.DocRuleInfo
 		expectedNames []string
-	}{{
-		name:          "Generates collection of possible markdown names",
-		packagePrefix: "mongodbatlas",
-		rawName:       "mongodbatlas_x509_authentication_database_user",
-		globalInfo:    nil,
-		expectedNames: []string{
-			"x509_authentication_database_user.html.markdown",
-			"x509_authentication_database_user.markdown",
-			"x509_authentication_database_user.html.md",
-			"x509_authentication_database_user.md",
-			"mongodbatlas_x509_authentication_database_user.html.markdown",
-			"mongodbatlas_x509_authentication_database_user.markdown",
-			"mongodbatlas_x509_authentication_database_user.html.md",
-			"mongodbatlas_x509_authentication_database_user.md",
+	}{
+		{
+			name:          "Generates collection of possible markdown names",
+			packagePrefix: "mongodbatlas",
+			rawName:       "mongodbatlas_x509_authentication_database_user",
+			globalInfo:    nil,
+			expectedNames: []string{
+				"x509_authentication_database_user.html.markdown",
+				"x509_authentication_database_user.markdown",
+				"x509_authentication_database_user.html.md",
+				"x509_authentication_database_user.md",
+				"mongodbatlas_x509_authentication_database_user.html.markdown",
+				"mongodbatlas_x509_authentication_database_user.markdown",
+				"mongodbatlas_x509_authentication_database_user.html.md",
+				"mongodbatlas_x509_authentication_database_user.md",
+			},
 		},
-	},
 		{
 			name:          "Trims tfbridge.RenamedEntitySuffix from possible markdown names",
 			packagePrefix: "mongodbatlas",

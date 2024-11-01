@@ -24,6 +24,7 @@ func newLocal(t *testing.T, name, value string) *config.Local {
 }
 
 func TestCircularLocals(t *testing.T) {
+	t.Parallel()
 	cfg := &config.Config{
 		Locals: []*config.Local{newLocal(t, "a", "${local.a}")},
 	}
@@ -42,6 +43,7 @@ func TestCircularLocals(t *testing.T) {
 }
 
 func TestLocalForwardReferences(t *testing.T) {
+	t.Parallel()
 	cfg := &config.Config{
 		Locals: []*config.Local{
 			newLocal(t, "a", "${local.b}"),
@@ -55,6 +57,7 @@ func TestLocalForwardReferences(t *testing.T) {
 }
 
 func TestMetaProperties(t *testing.T) {
+	t.Parallel()
 	info := test.NewProviderInfoSource("../testdata/providers")
 
 	conf, err := config.LoadDir("testdata/test_meta_properties")

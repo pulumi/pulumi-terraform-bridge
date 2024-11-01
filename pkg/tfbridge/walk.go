@@ -42,7 +42,8 @@ type SchemaPath = walk.SchemaPath
 func PropertyPathToSchemaPath(
 	propertyPath resource.PropertyPath,
 	schemaMap shim.SchemaMap,
-	schemaInfos map[string]*SchemaInfo) SchemaPath {
+	schemaInfos map[string]*SchemaInfo,
+) SchemaPath {
 	return propertyPathToSchemaPath(walk.NewSchemaPath(), propertyPath, schemaMap, schemaInfos)
 }
 
@@ -52,7 +53,6 @@ func propertyPathToSchemaPath(
 	schemaMap shim.SchemaMap,
 	schemaInfos map[string]*SchemaInfo,
 ) SchemaPath {
-
 	if len(propertyPath) == 0 {
 		return basePath
 	}
@@ -82,7 +82,6 @@ func propertyPathToSchemaPathInner(
 	schema shim.Schema,
 	schemaInfo *SchemaInfo,
 ) SchemaPath {
-
 	if len(propertyPath) == 0 {
 		return basePath
 	}
@@ -110,7 +109,6 @@ func propertyPathToSchemaPathInner(
 			elemPP = propertyPath[1:]
 		}
 		switch e := schema.Elem().(type) {
-
 		// (schema, schemaInfo) represents a list or set nested object (schema ~
 		// List[{x: T}] or schema ~ Set[{x: T}]), so we traverse the inner object
 		// with the associated .Elem.Fields.
@@ -165,7 +163,8 @@ func propertyPathToSchemaPathInner(
 func SchemaPathToPropertyPath(
 	schemaPath SchemaPath,
 	schemaMap shim.SchemaMap,
-	schemaInfos map[string]*SchemaInfo) resource.PropertyPath {
+	schemaInfos map[string]*SchemaInfo,
+) resource.PropertyPath {
 	return schemaPathToPropertyPath(resource.PropertyPath{}, schemaPath, schemaMap, schemaInfos)
 }
 
@@ -173,8 +172,8 @@ func schemaPathToPropertyPath(
 	basePath resource.PropertyPath,
 	schemaPath SchemaPath,
 	schemaMap shim.SchemaMap,
-	schemaInfos map[string]*SchemaInfo) resource.PropertyPath {
-
+	schemaInfos map[string]*SchemaInfo,
+) resource.PropertyPath {
 	if len(schemaPath) == 0 {
 		return basePath
 	}
@@ -204,7 +203,6 @@ func schemaPathToPropertyPathInner(
 	schema shim.Schema,
 	schemaInfo *SchemaInfo,
 ) resource.PropertyPath {
-
 	if len(schemaPath) == 0 {
 		return basePath
 	}
@@ -229,7 +227,6 @@ func schemaPathToPropertyPathInner(
 			basePath = append(basePath, "*")
 		}
 		switch e := schema.Elem().(type) {
-
 		// (schema, schemaInfo) represents a list or set nested object (schema ~
 		// List[{x: T}] or schema ~ Set[{x: T}]), so we traverse the inner object
 		// with the associated .Elem.Fields.
@@ -254,8 +251,8 @@ func schemaPathToPropertyPathInner(
 // Convenience method to lookup both a Schema and a SchemaInfo by path.
 func LookupSchemas(schemaPath SchemaPath,
 	schemaMap shim.SchemaMap,
-	schemaInfos map[string]*SchemaInfo) (shim.Schema, *SchemaInfo, error) {
-
+	schemaInfos map[string]*SchemaInfo,
+) (shim.Schema, *SchemaInfo, error) {
 	s, err := walk.LookupSchemaMapPath(schemaPath, schemaMap)
 	if err != nil {
 		return nil, nil, err
@@ -269,7 +266,6 @@ func LookupSchemaInfoMapPath(
 	schemaPath SchemaPath,
 	schemaInfos map[string]*SchemaInfo,
 ) *SchemaInfo {
-
 	if len(schemaPath) == 0 {
 		return nil
 	}
@@ -399,7 +395,8 @@ type PropertyVisitor = func(PropertyVisitInfo) (PropertyVisitResult, error)
 // documentation.
 func MustTraverseProperties(
 	prov *ProviderInfo, traversalID string, visitor PropertyVisitor,
-	opts ...TraversalOption) {
+	opts ...TraversalOption,
+) {
 	err := TraverseProperties(prov, traversalID, visitor, opts...)
 	contract.AssertNoErrorf(err, "failed to traverse provider schemas")
 }

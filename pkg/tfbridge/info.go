@@ -65,8 +65,10 @@ const (
 // but can also contain specific name translations.
 type ProviderInfo = info.Provider
 
-type Logger = log.Logger
-type Log = log.Log
+type (
+	Logger = log.Logger
+	Log    = log.Log
+)
 
 // Get access to the [Logger] associated with this context.
 func GetLogger(ctx context.Context) Logger {

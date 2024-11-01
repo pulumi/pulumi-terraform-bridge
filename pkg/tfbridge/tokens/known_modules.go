@@ -30,7 +30,6 @@ func knownModules[T info.Resource | info.DataSource](
 	moduleTransform func(string) string,
 ) info.ElementStrategy[T] {
 	return func(tfToken string, elem *T) error {
-
 		var tk string
 		if t, foundPrefix := strings.CutPrefix(tfToken, prefix); foundPrefix {
 			if t == "" {

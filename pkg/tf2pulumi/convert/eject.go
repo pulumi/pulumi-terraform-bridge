@@ -89,8 +89,8 @@ func Eject(dir string, loader schema.ReferenceLoader, mapper convert.Mapper) (*w
 
 // Used for testing so we can check eject with partial options set works.
 func ejectWithOpts(dir string, loader schema.ReferenceLoader, mapper convert.Mapper,
-	setOpts func(*EjectOptions)) (*workspace.Project, *pcl.Program, error) {
-
+	setOpts func(*EjectOptions),
+) (*workspace.Project, *pcl.Program, error) {
 	if loader == nil {
 		panic("must provide a non-nil loader")
 	}

@@ -74,8 +74,8 @@ func resolvePath(path *proto.AttributePath, ty cty.Type) {
 }
 
 func diffTest(t *testing.T, attributes map[string]cty.Type, requiresReplace []*proto.AttributePath,
-	planned, prior interface{}, expected map[string]shim.ResourceAttrDiff) {
-
+	planned, prior interface{}, expected map[string]shim.ResourceAttrDiff,
+) {
 	objectType := cty.Object(attributes)
 
 	for _, p := range requiresReplace {
@@ -108,6 +108,7 @@ func diffTest(t *testing.T, attributes map[string]cty.Type, requiresReplace []*p
 }
 
 func TestEmptyDiff(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]cty.Type{
 			"prop": cty.String,
@@ -126,6 +127,7 @@ func TestEmptyDiff(t *testing.T) {
 }
 
 func TestSimpleAdd(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]cty.Type{
 			"prop": cty.String,
@@ -145,6 +147,7 @@ func TestSimpleAdd(t *testing.T) {
 }
 
 func TestSimpleAddReplace(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]cty.Type{
 			"prop": cty.String,
@@ -164,6 +167,7 @@ func TestSimpleAddReplace(t *testing.T) {
 }
 
 func TestSimpleDelete(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]cty.Type{
 			"prop": cty.String,
@@ -183,6 +187,7 @@ func TestSimpleDelete(t *testing.T) {
 }
 
 func TestSimpleDeleteReplace(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]cty.Type{
 			"prop": cty.String,
@@ -202,6 +207,7 @@ func TestSimpleDeleteReplace(t *testing.T) {
 }
 
 func TestSimpleUpdate(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]cty.Type{
 			"prop": cty.String,
@@ -222,6 +228,7 @@ func TestSimpleUpdate(t *testing.T) {
 }
 
 func TestSimpleUpdateReplace(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]cty.Type{
 			"prop": cty.String,
@@ -242,6 +249,7 @@ func TestSimpleUpdateReplace(t *testing.T) {
 }
 
 func TestNestedAdd(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]cty.Type{
 			"prop": cty.Map(cty.String),
@@ -262,6 +270,7 @@ func TestNestedAdd(t *testing.T) {
 }
 
 func TestNestedAddReplace(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]cty.Type{
 			"prop": cty.Map(cty.String),
@@ -300,6 +309,7 @@ func TestNestedAddReplace(t *testing.T) {
 }
 
 func TestNestedDelete(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]cty.Type{
 			"prop": cty.Map(cty.String),
@@ -320,6 +330,7 @@ func TestNestedDelete(t *testing.T) {
 }
 
 func TestNestedDeleteReplace(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]cty.Type{
 			"prop": cty.Map(cty.String),
@@ -358,6 +369,7 @@ func TestNestedDeleteReplace(t *testing.T) {
 }
 
 func TestNestedUpdate(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]cty.Type{
 			"prop": cty.Map(cty.String),
@@ -378,6 +390,7 @@ func TestNestedUpdate(t *testing.T) {
 }
 
 func TestNestedUpdateReplace(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]cty.Type{
 			"prop": cty.Map(cty.String),
@@ -416,6 +429,7 @@ func TestNestedUpdateReplace(t *testing.T) {
 }
 
 func TestListAdd(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]cty.Type{
 			"prop": cty.List(cty.String),
@@ -436,6 +450,7 @@ func TestListAdd(t *testing.T) {
 }
 
 func TestListAddReplace(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]cty.Type{
 			"prop": cty.List(cty.String),
@@ -474,6 +489,7 @@ func TestListAddReplace(t *testing.T) {
 }
 
 func TestListDelete(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]cty.Type{
 			"prop": cty.List(cty.String),
@@ -494,6 +510,7 @@ func TestListDelete(t *testing.T) {
 }
 
 func TestListDeleteReplace(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]cty.Type{
 			"prop": cty.List(cty.String),
@@ -532,6 +549,7 @@ func TestListDeleteReplace(t *testing.T) {
 }
 
 func TestListUpdate(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]cty.Type{
 			"prop": cty.List(cty.String),
@@ -552,6 +570,7 @@ func TestListUpdate(t *testing.T) {
 }
 
 func TestListUpdateReplace(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]cty.Type{
 			"prop": cty.List(cty.String),
@@ -590,6 +609,7 @@ func TestListUpdateReplace(t *testing.T) {
 }
 
 func TestSetAdd(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]cty.Type{
 			"prop": cty.Set(cty.String),
@@ -610,6 +630,7 @@ func TestSetAdd(t *testing.T) {
 }
 
 func TestSetAddReplace(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]cty.Type{
 			"prop": cty.Set(cty.String),
@@ -630,6 +651,7 @@ func TestSetAddReplace(t *testing.T) {
 }
 
 func TestSetDelete(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]cty.Type{
 			"prop": cty.Set(cty.String),
@@ -650,6 +672,7 @@ func TestSetDelete(t *testing.T) {
 }
 
 func TestSetDeleteReplace(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]cty.Type{
 			"prop": cty.Set(cty.String),
@@ -670,6 +693,7 @@ func TestSetDeleteReplace(t *testing.T) {
 }
 
 func TestUnknownSimpleUpdate(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]cty.Type{
 			"prop": cty.String,
@@ -690,6 +714,7 @@ func TestUnknownSimpleUpdate(t *testing.T) {
 }
 
 func TestUnknownSimpleUpdateReplace(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]cty.Type{
 			"prop": cty.String,
@@ -710,6 +735,7 @@ func TestUnknownSimpleUpdateReplace(t *testing.T) {
 }
 
 func TestUnknownMapUpdate(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]cty.Type{
 			"prop": cty.Map(cty.String),
@@ -730,6 +756,7 @@ func TestUnknownMapUpdate(t *testing.T) {
 }
 
 func TestUnknownNestedUpdate(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]cty.Type{
 			"prop": cty.Map(cty.String),
@@ -750,6 +777,7 @@ func TestUnknownNestedUpdate(t *testing.T) {
 }
 
 func TestUnknownNestedUpdateReplace(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]cty.Type{
 			"prop": cty.Map(cty.String),
@@ -788,6 +816,7 @@ func TestUnknownNestedUpdateReplace(t *testing.T) {
 }
 
 func TestUnknownListUpdate(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]cty.Type{
 			"prop": cty.List(cty.String),
@@ -808,6 +837,7 @@ func TestUnknownListUpdate(t *testing.T) {
 }
 
 func TestUnknownListElementUpdate(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]cty.Type{
 			"prop": cty.List(cty.String),
@@ -828,6 +858,7 @@ func TestUnknownListElementUpdate(t *testing.T) {
 }
 
 func TestUnknownListElementUpdateReplace(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]cty.Type{
 			"prop": cty.List(cty.String),
@@ -866,6 +897,7 @@ func TestUnknownListElementUpdateReplace(t *testing.T) {
 }
 
 func TestUnknownSetUpdate(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]cty.Type{
 			"prop": cty.Set(cty.String),
@@ -886,6 +918,7 @@ func TestUnknownSetUpdate(t *testing.T) {
 }
 
 func TestUnknownSetUpdateReplace(t *testing.T) {
+	t.Parallel()
 	diffTest(t,
 		map[string]cty.Type{
 			"prop": cty.Set(cty.String),

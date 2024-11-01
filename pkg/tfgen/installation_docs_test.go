@@ -108,6 +108,7 @@ func TestPlainDocsParser(t *testing.T) {
 }
 
 func TestTrimFrontmatter(t *testing.T) {
+	t.Parallel()
 	type testCase struct {
 		// The name of the test case.
 		name     string
@@ -142,6 +143,7 @@ func TestTrimFrontmatter(t *testing.T) {
 }
 
 func TestRemoveTitle(t *testing.T) {
+	t.Parallel()
 	type testCase struct {
 		// The name of the test case.
 		name     string
@@ -188,7 +190,6 @@ func TestWriteInstallationInstructions(t *testing.T) {
 	}
 
 	tc := testCase{
-
 		name: "Generates Install Information From Package Name",
 		expected: "## Installation\n\n" +
 			"The testcase provider is available as a package in all Pulumi languages:\n\n" +
@@ -290,7 +291,6 @@ func TestWriteFrontMatter(t *testing.T) {
 }
 
 func TestTranslateCodeBlocks(t *testing.T) {
-
 	type testCase struct {
 		// The name of the test case.
 		name       string
@@ -457,12 +457,14 @@ func TestSkipDefaultSectionHeaders(t *testing.T) {
 			headersToSkip: getDefaultHeadersToSkip(),
 			input:         "### Delete Protection",
 			expected:      "",
-		}, {
+		},
+		{
 			name:          "Skips Sections About Contributing",
 			headersToSkip: getDefaultHeadersToSkip(),
 			input:         "## Contributing",
 			expected:      "",
-		}, {
+		},
+		{
 			name:          "Does Not Skip Sections About Unicorns",
 			headersToSkip: getDefaultHeadersToSkip(),
 			input:         "## Unicorns",

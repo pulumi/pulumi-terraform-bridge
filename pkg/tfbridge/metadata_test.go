@@ -11,6 +11,7 @@ import (
 )
 
 func TestMetadataInfo(t *testing.T) {
+	t.Parallel()
 	data, err := md.New(nil)
 	require.NoError(t, err)
 

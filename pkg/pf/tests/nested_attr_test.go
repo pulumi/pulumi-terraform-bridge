@@ -28,6 +28,7 @@ import (
 )
 
 func TestNestedType(t *testing.T) {
+    t.Parallel()
 	ctx := context.Background()
 	info := testprovider.SyntheticTestBridgeProvider()
 	res, err := info.P.(pf.ShimProvider).Resources(ctx)

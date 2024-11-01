@@ -13,6 +13,7 @@ import (
 )
 
 func TestMarkPromptDataSources(t *testing.T) {
+	t.Parallel()
 	runTest := func(source string, expected map[string]bool) {
 		dir, err := os.MkdirTemp("", "")
 		if err != nil {
@@ -22,7 +23,7 @@ func TestMarkPromptDataSources(t *testing.T) {
 			contract.IgnoreError(os.RemoveAll(dir))
 		}()
 
-		err = os.WriteFile(path.Join(dir, "main.tf"), []byte(source), 0600)
+		err = os.WriteFile(path.Join(dir, "main.tf"), []byte(source), 0o600)
 		if err != nil {
 			t.Fatalf("could not create main.tf: %v", err)
 		}

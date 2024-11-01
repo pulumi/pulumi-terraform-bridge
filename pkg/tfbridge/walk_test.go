@@ -29,6 +29,7 @@ import (
 )
 
 func TestPropertyPathToSchemaPath(t *testing.T) {
+	t.Parallel()
 	yes := true
 	strSchema := (&schema.Schema{Type: shim.TypeString, Optional: true}).Shim()
 
@@ -211,6 +212,7 @@ func TestPropertyPathToSchemaPath(t *testing.T) {
 }
 
 func TestLookupSchemaInfoMapPath(t *testing.T) {
+	t.Parallel()
 	yes := true
 
 	schemaInfos := map[string]*SchemaInfo{
@@ -281,6 +283,7 @@ func TestLookupSchemaInfoMapPath(t *testing.T) {
 }
 
 func TestTraverseProperties(t *testing.T) {
+	t.Parallel()
 	prov := &ProviderInfo{
 		P:              shimv2.NewProvider(testTFProviderV2),
 		IgnoreMappings: []string{"nested_secret_resource"},
@@ -320,7 +323,8 @@ func TestTraverseProperties(t *testing.T) {
 
 	assert.Equal(t, map[string][]walk.SchemaPath{
 		"": {
-			walk.NewSchemaPath().GetAttr("config_value")},
+			walk.NewSchemaPath().GetAttr("config_value"),
+		},
 		"example_resource": {
 			walk.NewSchemaPath().GetAttr("array_property_value"),
 			walk.NewSchemaPath().GetAttr("array_property_value"),
@@ -350,7 +354,8 @@ func TestTraverseProperties(t *testing.T) {
 			walk.NewSchemaPath().GetAttr("string_property_value"),
 			walk.NewSchemaPath().GetAttr("string_property_value"),
 			walk.NewSchemaPath().GetAttr("string_with_bad_interpolation"),
-			walk.NewSchemaPath().GetAttr("string_with_bad_interpolation")},
+			walk.NewSchemaPath().GetAttr("string_with_bad_interpolation"),
+		},
 		"second_resource": {
 			walk.NewSchemaPath().GetAttr("array_property_value"),
 			walk.NewSchemaPath().GetAttr("array_property_value").Element(),
@@ -367,7 +372,8 @@ func TestTraverseProperties(t *testing.T) {
 			walk.NewSchemaPath().GetAttr("set_property_value"),
 			walk.NewSchemaPath().GetAttr("set_property_value").Element(),
 			walk.NewSchemaPath().GetAttr("string_property_value"),
-			walk.NewSchemaPath().GetAttr("string_with_bad_interpolation")},
+			walk.NewSchemaPath().GetAttr("string_with_bad_interpolation"),
+		},
 	}, seenPaths)
 
 	seenPaths = map[string][]SchemaPath{}
@@ -387,13 +393,16 @@ func TestTraverseProperties(t *testing.T) {
 		"example_resource": {
 			walk.NewSchemaPath().GetAttr("bool_property_value"),
 			walk.NewSchemaPath().GetAttr("bool_property_value"),
-			walk.NewSchemaPath().GetAttr("nested_resources").Element().GetAttr("opt_bool")},
+			walk.NewSchemaPath().GetAttr("nested_resources").Element().GetAttr("opt_bool"),
+		},
 		"second_resource": {
-			walk.NewSchemaPath().GetAttr("bool_property_value")},
+			walk.NewSchemaPath().GetAttr("bool_property_value"),
+		},
 	}, seenPaths)
 }
 
 func TestTraversePropertiesSchemaInfo(t *testing.T) {
+	t.Parallel()
 	md := NewProviderMetadata(nil)
 	prov := &ProviderInfo{
 		P:            shimv2.NewProvider(testTFProviderV2),

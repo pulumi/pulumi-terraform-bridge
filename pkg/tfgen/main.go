@@ -60,8 +60,8 @@ func Main(pkg string, version string, prov tfbridge.ProviderInfo) {
 
 // Like Main but allows to customize the generation logic past the parsing of cmd-line arguments.
 func MainWithCustomGenerate(pkg string, version string, prov tfbridge.ProviderInfo,
-	gen func(GeneratorOptions) error) {
-
+	gen func(GeneratorOptions) error,
+) {
 	if err := newTFGenCmd(pkg, version, prov, gen).Execute(); err != nil {
 		_, fmterr := fmt.Fprintf(os.Stderr, "An error occurred: %v\n", err)
 		contract.IgnoreError(fmterr)
@@ -70,8 +70,8 @@ func MainWithCustomGenerate(pkg string, version string, prov tfbridge.ProviderIn
 }
 
 func newTFGenCmd(pkg string, version string, prov tfbridge.ProviderInfo,
-	gen func(GeneratorOptions) error) *cobra.Command {
-
+	gen func(GeneratorOptions) error,
+) *cobra.Command {
 	var logToStderr bool
 	var outDir string
 	var overlaysDir string
@@ -141,7 +141,7 @@ func newTFGenCmd(pkg string, version string, prov tfbridge.ProviderInfo,
 				if err != nil {
 					return err
 				}
-				if err = os.MkdirAll(absOutDir, 0700); err != nil {
+				if err = os.MkdirAll(absOutDir, 0o700); err != nil {
 					return err
 				}
 				root = afero.NewBasePathFs(afero.NewOsFs(), absOutDir)

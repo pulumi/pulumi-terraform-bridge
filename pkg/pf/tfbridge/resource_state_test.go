@@ -23,6 +23,7 @@ import (
 )
 
 func TestParseResourceStateFromTFInner(t *testing.T) {
+    t.Parallel()
 	ctx := context.Background()
 
 	ty := tftypes.Object{

@@ -47,6 +47,7 @@ import (
 )
 
 func TestShimBoolAttr(t *testing.T) {
+    t.Parallel()
 	checkShim(t, shimTestCase{
 		stdProvider(schema.Schema{
 			Attributes: map[string]schema.Attribute{
@@ -91,6 +92,7 @@ func TestShimBoolAttr(t *testing.T) {
 }
 
 func TestShimStringAttr(t *testing.T) {
+    t.Parallel()
 	checkShim(t, shimTestCase{
 		stdProvider(schema.Schema{
 			Attributes: map[string]schema.Attribute{
@@ -135,6 +137,7 @@ func TestShimStringAttr(t *testing.T) {
 }
 
 func TestShimNumberAttr(t *testing.T) {
+    t.Parallel()
 	checkShim(t, shimTestCase{
 		stdProvider(schema.Schema{
 			Attributes: map[string]schema.Attribute{
@@ -179,6 +182,7 @@ func TestShimNumberAttr(t *testing.T) {
 }
 
 func TestShimListOfStringAttr(t *testing.T) {
+    t.Parallel()
 	checkShim(t, shimTestCase{
 		stdProvider(schema.Schema{
 			Attributes: map[string]schema.Attribute{
@@ -240,6 +244,7 @@ func TestShimListOfStringAttr(t *testing.T) {
 }
 
 func TestShimMapOfStringAttr(t *testing.T) {
+    t.Parallel()
 	checkShim(t, shimTestCase{
 		stdProvider(schema.Schema{
 			Attributes: map[string]schema.Attribute{
@@ -301,6 +306,7 @@ func TestShimMapOfStringAttr(t *testing.T) {
 }
 
 func TestShimSetOfStringAttr(t *testing.T) {
+    t.Parallel()
 	checkShim(t, shimTestCase{
 		stdProvider(schema.Schema{
 			Attributes: map[string]schema.Attribute{
@@ -362,6 +368,7 @@ func TestShimSetOfStringAttr(t *testing.T) {
 }
 
 func TestShimListNestedAttr(t *testing.T) {
+    t.Parallel()
 	checkShim(t, shimTestCase{
 		stdProvider(schema.Schema{
 			Attributes: map[string]schema.Attribute{
@@ -444,6 +451,7 @@ func TestShimListNestedAttr(t *testing.T) {
 }
 
 func TestShimSetNestedAttr(t *testing.T) {
+    t.Parallel()
 	checkShim(t, shimTestCase{
 		stdProvider(schema.Schema{
 			Attributes: map[string]schema.Attribute{
@@ -526,6 +534,7 @@ func TestShimSetNestedAttr(t *testing.T) {
 }
 
 func TestShimMapNestedAttr(t *testing.T) {
+    t.Parallel()
 	checkShim(t, shimTestCase{
 		stdProvider(schema.Schema{
 			Attributes: map[string]schema.Attribute{
@@ -608,6 +617,7 @@ func TestShimMapNestedAttr(t *testing.T) {
 }
 
 func TestShimSingleNestedAttr(t *testing.T) {
+    t.Parallel()
 	checkShim(t, shimTestCase{
 		stdProvider(schema.Schema{
 			Attributes: map[string]schema.Attribute{
@@ -674,6 +684,7 @@ func TestShimSingleNestedAttr(t *testing.T) {
 }
 
 func TestShimObjectAttr(t *testing.T) {
+    t.Parallel()
 	checkShim(t, shimTestCase{
 		stdProvider(schema.Schema{
 			Attributes: map[string]schema.Attribute{
@@ -742,6 +753,7 @@ func TestShimObjectAttr(t *testing.T) {
 }
 
 func TestShimDynamicAttr(t *testing.T) {
+    t.Parallel()
 	checkShim(t, shimTestCase{
 		stdProvider(schema.Schema{
 			Attributes: map[string]schema.Attribute{
@@ -788,6 +800,7 @@ func TestShimDynamicAttr(t *testing.T) {
 }
 
 func TestShimSingleNestedBlock(t *testing.T) {
+    t.Parallel()
 	checkShim(t, shimTestCase{
 		stdProvider(schema.Schema{
 			Blocks: map[string]schema.Block{
@@ -853,6 +866,7 @@ func TestShimSingleNestedBlock(t *testing.T) {
 }
 
 func TestShimListNestedBlock(t *testing.T) {
+    t.Parallel()
 	checkShim(t, shimTestCase{
 		stdProvider(schema.Schema{
 			Blocks: map[string]schema.Block{
@@ -931,6 +945,7 @@ func TestShimListNestedBlock(t *testing.T) {
 // The bridge attempts some heuristics to infer listvalidator.SizeAtMost(1) and apply flattening. It is unclear how
 // often it is used but there are non-0 actual examples, such as data_storage on elasticache serverless_cache in AWS.
 func TestShimListNestedFlattenedBlock(t *testing.T) {
+    t.Parallel()
 	checkShim(t, shimTestCase{
 		stdProvider(schema.Schema{
 			Blocks: map[string]schema.Block{
@@ -1002,6 +1017,7 @@ func TestShimListNestedFlattenedBlock(t *testing.T) {
 }
 
 func TestShimSetNestedBlock(t *testing.T) {
+    t.Parallel()
 	checkShim(t, shimTestCase{
 		stdProvider(schema.Schema{
 			Blocks: map[string]schema.Block{

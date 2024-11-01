@@ -83,6 +83,7 @@ func loadConfig(t *testing.T, path string) *config.Config {
 }
 
 func TestGenOrder(t *testing.T) {
+	t.Parallel()
 	info := test.NewProviderInfoSource("../testdata/providers")
 
 	conf := loadConfig(t, "testdata/test_gen_order")

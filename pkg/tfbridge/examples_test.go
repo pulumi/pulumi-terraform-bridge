@@ -7,6 +7,7 @@ import (
 )
 
 func TestInlineExampleGetMarkdown(t *testing.T) {
+	t.Parallel()
 	expected := "### Inline Title\n\n```hcl\n# HCL inline contents\n```\n"
 	example := InlineHclExample{
 		Title:    "Inline Title",
@@ -20,6 +21,7 @@ func TestInlineExampleGetMarkdown(t *testing.T) {
 }
 
 func TestLocalFileExampleGetMarkdown(t *testing.T) {
+	t.Parallel()
 	expected := "### File Title\n\n```hcl\n# HCL file contents\n```\n"
 
 	example := LocalFileHclExample{

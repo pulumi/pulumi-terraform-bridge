@@ -112,7 +112,7 @@ func (ec *examplesCache) Store(originalHCL, language, result string) {
 	}
 	k := ec.exampleKey(originalHCL, language)
 	p := filepath.Join(ec.fulldir(), k)
-	err := os.WriteFile(p, []byte(result), 0600)
+	err := os.WriteFile(p, []byte(result), 0o600)
 	contract.AssertNoErrorf(err, "failed to write to the examples cache")
 }
 
@@ -237,13 +237,13 @@ func (ec *examplesCache) fulldir() string {
 
 func (ec *examplesCache) prepareDir() {
 	d := ec.fulldir()
-	err := os.MkdirAll(d, 0755)
+	err := os.MkdirAll(d, 0o755)
 	contract.AssertNoErrorf(err, "failed to prepare dir specified by %q",
 		pulumiConvertExamplesCacheDirEnvVar)
 
 	bytes, err := json.Marshal(ec)
 	contract.AssertNoErrorf(err, "examplesCache should marshal to JSON")
 
-	err = os.WriteFile(filepath.Join(d, "cache.json"), bytes, 0600)
+	err = os.WriteFile(filepath.Join(d, "cache.json"), bytes, 0o600)
 	contract.AssertNoErrorf(err, "failed to write cache.json")
 }

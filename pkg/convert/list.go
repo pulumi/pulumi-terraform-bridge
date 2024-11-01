@@ -77,7 +77,6 @@ func (dec *listDecoder) toPropertyValue(v tftypes.Value) (resource.PropertyValue
 	}
 	values := []resource.PropertyValue{}
 	for _, e := range elements {
-
 		ev, err := decode(dec.elementDecoder, e)
 		if err != nil {
 			return resource.PropertyValue{},

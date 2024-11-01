@@ -26,6 +26,7 @@ import (
 )
 
 func TestCreateWithComputedOptionals(t *testing.T) {
+    t.Parallel()
 	server, err := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
 	require.NoError(t, err)
 	testCase := `
@@ -51,6 +52,7 @@ func TestCreateWithComputedOptionals(t *testing.T) {
 }
 
 func TestCreateWithIntID(t *testing.T) {
+    t.Parallel()
 	server, err := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
 	require.NoError(t, err)
 	testCase := `
@@ -73,6 +75,7 @@ func TestCreateWithIntID(t *testing.T) {
 }
 
 func TestCreateWritesSchemaVersion(t *testing.T) {
+    t.Parallel()
 	server, err := newProviderServer(t, testprovider.RandomProvider())
 	require.NoError(t, err)
 
@@ -108,6 +111,7 @@ func TestCreateWritesSchemaVersion(t *testing.T) {
 }
 
 func TestPreviewCreate(t *testing.T) {
+    t.Parallel()
 	server, err := newProviderServer(t, testprovider.RandomProvider())
 	require.NoError(t, err)
 
@@ -141,6 +145,7 @@ func TestPreviewCreate(t *testing.T) {
 }
 
 func TestMuxedAliasCreate(t *testing.T) {
+    t.Parallel()
 	server := newMuxedProviderServer(t, testprovider.MuxedRandomProvider())
 
 	testCase := func(typ string) string {
@@ -180,6 +185,7 @@ func TestMuxedAliasCreate(t *testing.T) {
 }
 
 func TestCreateWithFirstClassSecrets(t *testing.T) {
+    t.Parallel()
 	server, err := newProviderServer(t, testprovider.RandomProvider())
 	require.NoError(t, err)
 	testCase := `
@@ -207,6 +213,7 @@ func TestCreateWithFirstClassSecrets(t *testing.T) {
 }
 
 func TestCreateWithSchemaBasedSecrets(t *testing.T) {
+    t.Parallel()
 	// Ensure that resources that mark output properties as secret in the schema return them as secrets.
 	// RandomPassword is a good example. Surprisingly this test requires a Configure call first, otherwise the
 	// plubming is confused about secrets bits and retursn the wrong result. The test represents production use.
@@ -262,6 +269,7 @@ func TestCreateWithSchemaBasedSecrets(t *testing.T) {
 }
 
 func TestCreateSupportsCustomID(t *testing.T) {
+    t.Parallel()
 	p := testprovider.RandomProvider()
 	p.Resources["random_pet"].ComputeID = func(
 		ctx context.Context, state resource.PropertyMap,

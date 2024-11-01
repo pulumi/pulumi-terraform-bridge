@@ -19,6 +19,7 @@ import (
 )
 
 func TestProvider2UpgradeResourceState(t *testing.T) {
+	t.Parallel()
 	const tfToken = "test_token"
 	for _, tc := range []struct {
 		name      string
@@ -298,6 +299,7 @@ func TestProvider2UpgradeResourceState(t *testing.T) {
 }
 
 func TestNormalizeBlockCollections(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name     string
 		res      *schema.Resource
@@ -486,6 +488,7 @@ func TestNormalizeBlockCollections(t *testing.T) {
 }
 
 func TestConfigWithTimeouts(t *testing.T) {
+	t.Parallel()
 	type testCase struct {
 		name                  string
 		topts                 shim.TimeoutOptions
@@ -511,7 +514,8 @@ func TestConfigWithTimeouts(t *testing.T) {
 			}},
 			configWithoutTimeouts: map[string]any{"x": 1},
 			expected:              map[string]any{"x": 1, "timeouts": map[string]any{"create": "1s"}},
-		}, {
+		},
+		{
 			name: "customize update timeout",
 			rschema: schema.Resource{
 				Timeouts: &schema.ResourceTimeout{Update: &sec20},
@@ -524,7 +528,8 @@ func TestConfigWithTimeouts(t *testing.T) {
 			}},
 			configWithoutTimeouts: map[string]any{"x": 1},
 			expected:              map[string]any{"x": 1, "timeouts": map[string]any{"update": "1s"}},
-		}, {
+		},
+		{
 			name: "customize delete timeout",
 			rschema: schema.Resource{
 				Timeouts: &schema.ResourceTimeout{Delete: &sec20},

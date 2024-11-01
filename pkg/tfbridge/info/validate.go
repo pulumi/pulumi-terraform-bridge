@@ -111,7 +111,6 @@ func (c *infoCheck) checkProperty(path walk.SchemaPath, tfs shim.Schema, ps *Sch
 	}
 
 	switch elem := tfs.Elem().(type) {
-
 	// s.Elem() case 1
 	//
 	// There is a simple element type here, so we just recursively validate that.

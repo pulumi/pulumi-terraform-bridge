@@ -23,26 +23,32 @@ var errorsOnly = []*proto.Diagnostic{
 var mixed = append(append([]*proto.Diagnostic{}, warningsOnly...), errorsOnly...)
 
 func TestWarningsAndErrors(t *testing.T) {
+	t.Parallel()
 	warnings, errors := unmarshalWarningsAndErrors(warningsOnly)
 	assert.Equal(t, []string{"warning 1", "warning 2"}, warnings)
 	assert.Empty(t, errors)
 
 	warnings, errors = unmarshalWarningsAndErrors(errorsOnly)
 	assert.Empty(t, warnings)
-	assert.Equal(t, errors, []error{&diagnostics.ValidationError{Summary: "error 1"},
-		&diagnostics.ValidationError{Summary: "error 2"}})
+	assert.Equal(t, errors, []error{
+		&diagnostics.ValidationError{Summary: "error 1"},
+		&diagnostics.ValidationError{Summary: "error 2"},
+	})
 	assert.EqualError(t, errors[0], "error 1")
 	assert.EqualError(t, errors[1], "error 2")
 
 	warnings, errors = unmarshalWarningsAndErrors(mixed)
 	assert.Equal(t, []string{"warning 1", "warning 2"}, warnings)
-	assert.Equal(t, errors, []error{&diagnostics.ValidationError{Summary: "error 1"},
-		&diagnostics.ValidationError{Summary: "error 2"}})
+	assert.Equal(t, errors, []error{
+		&diagnostics.ValidationError{Summary: "error 1"},
+		&diagnostics.ValidationError{Summary: "error 2"},
+	})
 	assert.EqualError(t, errors[0], "error 1")
 	assert.EqualError(t, errors[1], "error 2")
 }
 
 func TestErrors(t *testing.T) {
+	t.Parallel()
 	err := unmarshalErrors(warningsOnly)
 	assert.NoError(t, err)
 

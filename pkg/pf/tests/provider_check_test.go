@@ -36,6 +36,7 @@ import (
 )
 
 func TestCheck(t *testing.T) {
+    t.Parallel()
 	type testCase struct {
 		name        string
 		schema      schema.Schema
@@ -356,6 +357,7 @@ func TestCheck(t *testing.T) {
 }
 
 func TestCheckWithIntID(t *testing.T) {
+    t.Parallel()
 	server, err := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
 	require.NoError(t, err)
 	testCase := `

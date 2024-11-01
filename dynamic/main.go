@@ -43,7 +43,6 @@ const (
 )
 
 func initialSetup() (info.Provider, pfbridge.ProviderMetadata, func() error) {
-
 	var tfServer run.Provider
 	info := info.Provider{
 		DisplayName:  "Any Terraform Provider",

@@ -171,6 +171,7 @@ func applyPragmas(src io.Reader, dst io.Writer, isExperimental bool) error {
 // These tests can also be run with PULUMI_EXPERIMENTAL=1, in which case the resulting pcl is checked against
 // a folder "experimental_pcl".
 func TestEject(t *testing.T) {
+	t.Parallel()
 	// Test framework for eject
 	// Each folder in testdata has a pcl folder, we check that if we convert the hcl we get the expected pcl
 	// You can regenerate the test data by running "PULUMI_ACCEPT=1 go test" in this folder (pkg/tf2pulumi/convert).
@@ -215,7 +216,7 @@ func TestEject(t *testing.T) {
 
 			// Copy the .tf files to a new directory and fix up any "#if EXPERIMENTAL/#else/#endif" sections
 			hclPath := filepath.Join(t.TempDir(), tt.name)
-			err := os.MkdirAll(hclPath, 0750)
+			err := os.MkdirAll(hclPath, 0o750)
 			require.NoError(t, err)
 
 			err = filepath.WalkDir(tt.path, func(path string, d fs.DirEntry, err error) error {
@@ -237,7 +238,7 @@ func TestEject(t *testing.T) {
 
 					dstPath := filepath.Join(hclPath, relativePath)
 					dstDir := filepath.Dir(dstPath)
-					err = os.MkdirAll(dstDir, 0750)
+					err = os.MkdirAll(dstDir, 0o750)
 					if err != nil {
 						return fmt.Errorf("could not create dst dir: %w", err)
 					}
@@ -294,12 +295,12 @@ func TestEject(t *testing.T) {
 			if cmdutil.IsTruthy(os.Getenv("PULUMI_ACCEPT")) {
 				err := os.RemoveAll(pclPath)
 				require.NoError(t, err)
-				err = os.Mkdir(pclPath, 0700)
+				err = os.Mkdir(pclPath, 0o700)
 				require.NoError(t, err)
 				for filename, source := range program.Source() {
 					// normalize windows newlines to unix ones
 					expectedPcl := []byte(strings.Replace(source, "\r\n", "\n", -1))
-					err := os.WriteFile(filepath.Join(pclPath, filename), expectedPcl, 0600)
+					err := os.WriteFile(filepath.Join(pclPath, filename), expectedPcl, 0o600)
 					require.NoError(t, err)
 				}
 			}

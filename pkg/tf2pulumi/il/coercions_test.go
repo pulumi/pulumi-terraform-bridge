@@ -7,6 +7,7 @@ import (
 )
 
 func TestStringCoercions(t *testing.T) {
+	t.Parallel()
 	type testCase struct {
 		input    string
 		expected interface{}

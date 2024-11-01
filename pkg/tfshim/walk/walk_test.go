@@ -57,6 +57,7 @@ var testSchemaMap shim.SchemaMap = schema.SchemaMap{
 }
 
 func TestLookupSchemaPath(t *testing.T) {
+	t.Parallel()
 	s := testSchemaMap
 
 	type testCase struct {
@@ -117,6 +118,7 @@ func TestLookupSchemaPath(t *testing.T) {
 }
 
 func TestVisitSchemaMap(t *testing.T) {
+	t.Parallel()
 	expectPaths := []SchemaPath{
 		NewSchemaPath().GetAttr("x"),
 		NewSchemaPath().GetAttr("x").GetAttr("y"),
@@ -135,6 +137,7 @@ func TestVisitSchemaMap(t *testing.T) {
 }
 
 func TestEncodeDecodeSchemaPath(t *testing.T) {
+	t.Parallel()
 	type testCase struct {
 		p     SchemaPath
 		s     string

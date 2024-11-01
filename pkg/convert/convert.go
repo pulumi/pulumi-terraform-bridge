@@ -148,7 +148,8 @@ Please report to https://github.com/pulumi/pulumi-terraform-bridge/issues`)
 }
 
 func EncodePropertyMapToDynamic(enc Encoder, objectType tftypes.Object,
-	pmap resource.PropertyMap) (*tfprotov6.DynamicValue, error) {
+	pmap resource.PropertyMap,
+) (*tfprotov6.DynamicValue, error) {
 	v, err := EncodePropertyMap(enc, pmap)
 	if err != nil {
 		return nil, err

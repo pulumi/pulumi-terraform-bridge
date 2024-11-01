@@ -223,7 +223,6 @@ func fixURN(providerName string) fixupProperty {
 			f.Name = tfbridge.TerraformToPulumiNameV2(v, s, r.Schema.Fields)
 		}
 		return nil
-
 	}
 }
 

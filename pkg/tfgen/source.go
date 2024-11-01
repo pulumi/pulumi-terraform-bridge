@@ -183,7 +183,6 @@ func getRepoPath(gitHost string, org string, provider string, version string) (_
 }
 
 func getMarkdownNames(packagePrefix, rawName string, globalInfo *tfbridge.DocRuleInfo) []string {
-
 	// Handle resources/datasources renamed with the tfbridge.RenamedEntitySuffix, `_legacy_`
 	// We want to be finding docs for the rawName _without_ the suffix, so we trim it if present.
 	trimmedName := strings.TrimSuffix(rawName, tfbridge.RenamedEntitySuffix)

@@ -18,22 +18,32 @@ import (
 	"bytes"
 	"os"
 	"os/exec"
-	"strings"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/pulcheck"
+	"github.com/stretchr/testify/require"
 )
 
+func (d *TfDriver) execTf(t pulcheck.T, args ...string) ([]byte, error) {
+	cmd, err := execCmd(t, d.cwd, []string{d.formatReattachEnvVar()}, getTFCommand(), args...)
+	if stderr := cmd.Stderr.(*bytes.Buffer).String(); len(stderr) > 0 {
+		t.Logf("%q stderr:\n%s\n", cmd.String(), stderr)
+	}
+	return cmd.Stdout.(*bytes.Buffer).Bytes(), err
+}
+
 func execCmd(t pulcheck.T, wdir string, environ []string, program string, args ...string) (*exec.Cmd, error) {
-	t.Logf("%s %s", program, strings.Join(args, " "))
 	cmd := exec.Command(program, args...)
+	require.NoError(t, cmd.Err)
 	var stdout, stderr bytes.Buffer
-	cmd.Dir = wdir
-	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, environ...)
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
+	cmd.Dir = wdir
+	cmd.Env = append(os.Environ(), environ...)
+	t.Logf("%s", cmd.String())
 	err := cmd.Run()
-	t.Logf("error from `%s %s`\n\nStdout:\n%s\n\nStderr:\n%s\n\n",
-		program, strings.Join(args, " "), stdout.String(), stderr.String())
+	if err != nil {
+		t.Logf("error from %q\n\nStdout:\n%s\n\nStderr:\n%s\n\n",
+			cmd.String(), stdout.String(), stderr.String())
+	}
 	return cmd, err
 }

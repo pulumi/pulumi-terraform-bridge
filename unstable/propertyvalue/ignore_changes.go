@@ -40,7 +40,6 @@ func ApplyIgnoreChanges(old, new resource.PropertyMap, ignoreChanges []string) (
 	newValue := resource.NewObjectProperty(new.Copy())
 	oldValue := resource.NewObjectProperty(old)
 	for _, p := range paths {
-
 		// Its not 100% clear on what an empty property path means at this point.
 		//
 		// applyIgnoreChanges will treat an empty path as fully resolved, so we

@@ -88,8 +88,8 @@ func extractSchemaVersion(meta map[string]any) (int64, bool, error) {
 }
 
 func upgradeResourceState(ctx context.Context, t string, p *schema.Provider, res *schema.Resource,
-	instanceState *terraform.InstanceState) (*terraform.InstanceState, error) {
-
+	instanceState *terraform.InstanceState,
+) (*terraform.InstanceState, error) {
 	if instanceState == nil {
 		return nil, nil
 	}

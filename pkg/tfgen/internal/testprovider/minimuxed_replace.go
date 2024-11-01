@@ -116,12 +116,14 @@ type muxReplaceProvider struct {
 }
 
 func (m *muxReplaceProvider) GetSpec(ctx context.Context,
-	name, version string) (schema.PackageSpec, error) {
+	name, version string,
+) (schema.PackageSpec, error) {
 	return m.packageSchema, nil
 }
 
 func (m *muxReplaceProvider) GetInstance(ctx context.Context,
 	name, version string,
-	host *provider.HostClient) (pulumirpc.ResourceProviderServer, error) {
+	host *provider.HostClient,
+) (pulumirpc.ResourceProviderServer, error) {
 	return m, nil
 }

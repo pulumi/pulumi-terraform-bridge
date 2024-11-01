@@ -21,6 +21,7 @@ import (
 )
 
 func TestRecoverKeys(t *testing.T) {
+	t.Parallel()
 	keys := recoverKeys()
 	t.Logf("provider: %v", keys.provider)
 	require.NotNil(t, keys.provider)

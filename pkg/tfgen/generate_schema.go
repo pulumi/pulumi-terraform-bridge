@@ -117,8 +117,8 @@ type declarer interface {
 }
 
 func (nt *schemaNestedTypes) declareType(typePath paths.TypePath, declarer declarer, namePrefix, name string,
-	typ *propertyType, isInput bool) string {
-
+	typ *propertyType, isInput bool,
+) string {
 	// Generate a name for this nested type.
 	var typeName string
 
@@ -184,8 +184,8 @@ func (nt *schemaNestedTypes) declareType(typePath paths.TypePath, declarer decla
 
 func (nt *schemaNestedTypes) gatherFromProperties(pathContext paths.TypePath,
 	declarer declarer, namePrefix string, ps []*variable,
-	isInput bool) {
-
+	isInput bool,
+) {
 	for _, p := range ps {
 		name := p.name
 
@@ -204,8 +204,8 @@ func (nt *schemaNestedTypes) gatherFromProperties(pathContext paths.TypePath,
 }
 
 func (nt *schemaNestedTypes) gatherFromPropertyType(typePath paths.TypePath, declarer declarer, namePrefix,
-	name string, typ *propertyType, isInput bool) {
-
+	name string, typ *propertyType, isInput bool,
+) {
 	switch typ.kind {
 	case kindList, kindSet, kindMap:
 		if typ.element != nil {
@@ -228,7 +228,6 @@ func genPulumiSchema(
 	pack *pkg, name tokens.Package, version string, info tfbridge.ProviderInfo,
 	logSink diag.Sink,
 ) (pschema.PackageSpec, error) {
-
 	g := &schemaGenerator{
 		pkg:      name,
 		version:  version,
@@ -415,7 +414,7 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg, sink diag.Sink) (pschema.Pac
 // diagnostics displayed to the user so they are not overwhelmed by giant page of
 // diagnostics.
 func sinkHclDiagnostics(sink diag.Sink, diags hcl.Diagnostics) {
-	var diagsToDisplay = 6      // The total number of diagnostics to show.
+	diagsToDisplay := 6         // The total number of diagnostics to show.
 	var undisplayedErrors int   // The number of errors that were elided.
 	var undisplayedWarnings int // The number of warnings that were elided.
 
@@ -467,7 +466,6 @@ func sinkHclDiagnostics(sink diag.Sink, diags hcl.Diagnostics) {
 	if undisplayedWarnings > 0 {
 		sink.Warningf(&diag.Diag{Message: "%d additional warnings"}, undisplayedWarnings)
 	}
-
 }
 
 func javaLanguageExtensions(providerInfo *tfbridge.ProviderInfo) pschema.RawMessage {
@@ -589,8 +587,8 @@ func nodeLanguageExtensions(providerInfo *tfbridge.ProviderInfo, readme string) 
 
 func getDefaultReadme(pulumiPackageName tokens.Package, tfProviderShortName string, tfGitHubOrg string,
 	pulumiProvLicense tfbridge.TFProviderLicense, pulumiProvLicenseURI string, githubHost string,
-	pulumiProvRepo string) string {
-
+	pulumiProvRepo string,
+) string {
 	//nolint:lll
 	standardDocReadme := `> This provider is a derived work of the [Terraform Provider](https://%[6]s/%[3]s/terraform-provider-%[2]s)
 > distributed under [%[4]s](%[5]s). If you encounter a bug or missing feature,

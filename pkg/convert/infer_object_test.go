@@ -11,6 +11,7 @@ import (
 )
 
 func TestInferType(t *testing.T) {
+	t.Parallel()
 	type testCase struct {
 		name   string
 		schema *schema.Schema

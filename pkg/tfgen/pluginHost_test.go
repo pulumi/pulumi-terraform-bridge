@@ -26,6 +26,7 @@ import (
 )
 
 func TestCachingPluginHost(t *testing.T) {
+	t.Parallel()
 	h := &testHost{nil, false}
 	c := newCachingProviderHost(h)
 
@@ -34,7 +35,6 @@ func TestCachingPluginHost(t *testing.T) {
 
 	for _, pkg := range []tokens.Package{"a", "b"} {
 		for _, version := range []*semver.Version{nil, &v1, &v2} {
-
 			p1, err := h.Provider(workspace.PackageDescriptor{
 				PluginSpec: workspace.PluginSpec{Name: string(pkg), Version: version},
 			})

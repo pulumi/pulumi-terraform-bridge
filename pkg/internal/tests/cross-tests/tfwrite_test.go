@@ -26,6 +26,7 @@ import (
 )
 
 func TestWriteHCL(t *testing.T) {
+	t.Parallel()
 	type testCase struct {
 		name   string
 		value  cty.Value
@@ -443,5 +444,4 @@ func TestWritePFHCLProvider(t *testing.T) {
 			tt.expect.Equal(t, actual.String())
 		})
 	}
-
 }
