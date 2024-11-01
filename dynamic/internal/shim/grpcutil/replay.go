@@ -57,6 +57,7 @@ func NewLogReplayProvider(name, version string, logs []byte) LogReplayProvider {
 func (p LogReplayProvider) mustPopLog(method string) grpcLog {
 	logs, ok := p.methodLogs[method]
 	contract.Assertf(ok && len(logs) > 0, "no logs for method %s, logs: %s", method, p.methodLogs)
+	// TODO[pulumi/pulumi-terraform-bridge#2571]: Consider a cleverer way of matching multiple logs for the same method.
 	log := logs[0]
 	logs = logs[1:]
 	p.methodLogs[method] = logs
