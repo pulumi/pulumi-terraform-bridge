@@ -47,8 +47,6 @@ jobs:
         run: cd pkg/pf && make build
       - name: Test
         run: make test
-      - name: Test PF
-        run: cd pkg/pf && make test
       - name: Test Dynamic
         run: cd dynamic && make test
       - name: Upload coverage reports to Codecov
