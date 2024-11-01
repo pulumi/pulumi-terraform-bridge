@@ -23,7 +23,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func (d *TfDriver) execTf(t pulcheck.T, args ...string) ([]byte, error) {
+func (d *TFDriver) execTf(t pulcheck.T, args ...string) ([]byte, error) {
 	cmd, err := execCmd(t, d.cwd, []string{d.formatReattachEnvVar()}, getTFCommand(), args...)
 	if stderr := cmd.Stderr.(*bytes.Buffer).String(); len(stderr) > 0 {
 		t.Logf("%q stderr:\n%s\n", cmd.String(), stderr)

@@ -27,7 +27,7 @@ import (
 	"github.com/pulumi/providertest/providers"
 	"github.com/pulumi/providertest/pulumitest"
 	"github.com/pulumi/providertest/pulumitest/opttest"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests"
+	crosstests "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests"
 	crosstestsimpl "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests/impl"
 	pb "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/providerbuilder"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
@@ -110,7 +110,7 @@ func Configure(t *testing.T, schema schema.Schema, tfConfig map[string]cty.Value
 
 	var tfOutput, puOutput tfsdk.Config
 	t.Run("tf", func(t *testing.T) {
-		defer propageteSkip(topLevelT, t)
+		defer propagateSkip(topLevelT, t)
 		var hcl bytes.Buffer
 		err := crosstests.WritePF(&hcl).Provider(schema, providerName, tfConfig)
 		require.NoError(t, err)
@@ -132,7 +132,7 @@ resource "` + providerName + `_res" "res" {}
 	})
 
 	t.Run("bridged", func(t *testing.T) {
-		defer propageteSkip(topLevelT, t)
+		defer propagateSkip(topLevelT, t)
 		dir := t.TempDir()
 
 		var puConfig resource.PropertyMap
