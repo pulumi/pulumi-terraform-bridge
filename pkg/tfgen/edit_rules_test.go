@@ -217,6 +217,23 @@ func TestApplyEditRules(t *testing.T) {
 			phase:    info.PostCodeTranslation,
 		},
 		{
+			// Found in snowflake
+			name: "Replaces 'datasource' with 'function'",
+			docFile: DocFile{
+				Content: []byte("Currently deprecated datasources"),
+			},
+			expected: []byte("Currently deprecated functions"),
+			phase:    info.PostCodeTranslation,
+		},
+		{
+			name: "Replaces 'Datasource' with 'Function'",
+			docFile: DocFile{
+				Content: []byte("How About This Datasource"),
+			},
+			expected: []byte("How About This Function"),
+			phase:    info.PostCodeTranslation,
+		},
+		{
 			name: "Replaces 'Terraform W/workspace' with 'Pulumi Stack'",
 			docFile: DocFile{
 				Content: []byte("Manage a single Schema Registry cluster in the same Terraform workspace"),

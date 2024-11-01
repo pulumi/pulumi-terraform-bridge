@@ -74,6 +74,8 @@ func defaultEditRules() editRules {
 		reReplace("`provider` block", "provider configuration", info.PostCodeTranslation),
 		reReplace("Data Source", "Function", info.PostCodeTranslation),
 		reReplace("data source", "function", info.PostCodeTranslation),
+		reReplace("Datasource", "Function", info.PostCodeTranslation),
+		reReplace("datasource", "function", info.PostCodeTranslation),
 	}
 }
 
