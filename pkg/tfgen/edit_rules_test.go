@@ -256,6 +256,15 @@ func TestApplyEditRules(t *testing.T) {
 			expected: []byte("Manage a single Schema Registry cluster"),
 			phase:    info.PostCodeTranslation,
 		},
+		{
+			// Found in snowflake
+			name: "Replaces '# Configuration Schema' with '# Configuration Reference  ",
+			docFile: DocFile{
+				Content: []byte("# Configuration Schema"),
+			},
+			expected: []byte("# Configuration Reference"),
+			phase:    info.PostCodeTranslation,
+		},
 	}
 	edits := defaultEditRules()
 

@@ -65,6 +65,8 @@ func defaultEditRules() editRules {
 			`Configuration Reference`, info.PostCodeTranslation),
 		reReplace(`# Arguments`,
 			`# Configuration Reference`, info.PostCodeTranslation),
+		reReplace(`# Configuration Schema`,
+			`# Configuration Reference`, info.PostCodeTranslation),
 		reReplace(`# Schema`,
 			`# Configuration Reference`, info.PostCodeTranslation),
 		reReplace("### Optional\n", "", info.PostCodeTranslation),
