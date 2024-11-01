@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hexops/autogold/v2"
+	"github.com/pulumi/providertest/pulumitest/opttest"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/pulcheck"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
@@ -703,8 +704,7 @@ resources:
 }
 
 func TestDetailedDiffPlainTypes(t *testing.T) {
-	// TODO[pulumi/pulumi-terraform-bridge#2517]: Remove this once accurate bridge previews are rolled out
-	t.Setenv("PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW", "true")
+	t.Parallel()
 	resMap := map[string]*schema.Resource{
 		"prov_test": {
 			Schema: map[string]*schema.Schema{
@@ -1763,7 +1763,9 @@ resources:
 			props2, err := json.Marshal(tc.props2)
 			require.NoError(t, err)
 			program2 := fmt.Sprintf(program, string(props2))
-			pt := pulcheck.PulCheck(t, bridgedProvider, program1)
+			// TODO[pulumi/pulumi-terraform-bridge#2517]: remove once accurate bridge previews are rolled out
+			pt := pulcheck.PulCheck(t, bridgedProvider, program1,
+				opttest.Env("PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW", "true"))
 			pt.Up(t)
 
 			pulumiYamlPath := filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml")
@@ -1779,9 +1781,7 @@ resources:
 }
 
 func TestUnknownCollectionForceNewDetailedDiff(t *testing.T) {
-	// TODO[pulumi/pulumi-terraform-bridge#2517]: Remove this once accurate bridge previews are rolled out
-	t.Setenv("PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW", "true")
-
+	t.Parallel()
 	collectionForceNewResource := func(typ schema.ValueType) *schema.Resource {
 		return &schema.Resource{
 			Schema: map[string]*schema.Schema{
@@ -1870,7 +1870,9 @@ func TestUnknownCollectionForceNewDetailedDiff(t *testing.T) {
 `
 
 	runTest := func(t *testing.T, program2 string, bridgedProvider info.Provider, expectedOutput autogold.Value) {
-		pt := pulcheck.PulCheck(t, bridgedProvider, initialProgram)
+		// TODO[pulumi/pulumi-terraform-bridge#2517]: remove once accurate bridge previews are rolled out
+		pt := pulcheck.PulCheck(t, bridgedProvider, initialProgram,
+			opttest.Env("PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW", "true"))
 		pt.Up(t)
 		pt.WritePulumiYaml(t, program2)
 

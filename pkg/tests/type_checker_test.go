@@ -6,12 +6,13 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/pulumi/providertest/pulumitest/opttest"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/pulcheck"
 	"github.com/stretchr/testify/require"
 )
 
 func TestTypeChecker(t *testing.T) {
-	t.Setenv("PULUMI_DEBUG_YAML_DISABLE_TYPE_CHECKING", "true")
+	t.Parallel()
 	resMap := map[string]*schema.Resource{
 		"prov_test": {
 			Schema: map[string]*schema.Schema{
@@ -57,10 +58,13 @@ runtime: yaml
 resources:
   mainRes:
     type: prov:index:Test
-	properties: %s`, propsJSON)
+    properties: %s`, propsJSON)
 
 		bridgedProvider := pulcheck.BridgedProvider(t, "prov", &schema.Provider{ResourcesMap: resMap})
-		pt := pulcheck.PulCheck(t, bridgedProvider, program)
+		pt := pulcheck.PulCheck(t, bridgedProvider, program,
+			opttest.Env("PULUMI_DEBUG_YAML_DISABLE_TYPE_CHECKING", "true"),
+			opttest.Env("PULUMI_ERROR_TYPE_CHECKER", "true"),
+		)
 		_, err = pt.CurrentStack().Up(pt.Context())
 
 		require.ErrorContains(t, err, "Unexpected type at field")
