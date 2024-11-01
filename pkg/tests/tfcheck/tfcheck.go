@@ -122,38 +122,31 @@ func (d *TfDriver) Write(t pulcheck.T, program string) {
 
 func (d *TfDriver) Plan(t pulcheck.T) (*TfPlan, error) {
 	planFile := filepath.Join(d.cwd, "test.tfplan")
-	env := []string{d.formatReattachEnvVar()}
-	tfCmd := getTFCommand()
-	cm, err := execCmd(t, d.cwd, env, tfCmd, "plan", "-refresh=false", "-out", planFile, "-no-color")
+	planStdoutBytes, err := d.execTf(t, "plan", "-refresh=false", "-out", planFile, "-no-color")
 	if err != nil {
 		return nil, err
 	}
-	planStdout := cm.Stdout.(*bytes.Buffer).String()
-	planStdout = strings.Split(planStdout, "───")[0] // trim unstable output about the plan file
-	cmd, err := execCmd(t, d.cwd, env, tfCmd, "show", "-json", planFile)
+	planStdout := strings.Split(string(planStdoutBytes), "───")[0] // trim unstable output about the plan file
+	stdout, err := d.execTf(t, "show", "-json", planFile)
 	require.NoError(t, err)
 	tp := TfPlan{PlanFile: planFile, StdOut: planStdout}
-	err = json.Unmarshal(cmd.Stdout.(*bytes.Buffer).Bytes(), &tp.RawPlan)
+	err = json.Unmarshal(stdout, &tp.RawPlan)
 	require.NoErrorf(t, err, "failed to unmarshal terraform plan")
 	return &tp, nil
 }
 
 func (d *TfDriver) Apply(t pulcheck.T, plan *TfPlan) error {
-	tfCmd := getTFCommand()
-	_, err := execCmd(t, d.cwd, []string{d.formatReattachEnvVar()},
-		tfCmd, "apply", "-auto-approve", "-refresh=false", plan.PlanFile)
+	_, err := d.execTf(t, "apply", "-auto-approve", "-refresh=false", plan.PlanFile)
 	return err
 }
 
 func (d *TfDriver) Show(t pulcheck.T, planFile string) string {
-	tfCmd := getTFCommand()
-	cmd, err := execCmd(t, d.cwd, []string{d.formatReattachEnvVar()}, tfCmd, "show", "-json", planFile)
+	res, err := d.execTf(t, "show", "-json", planFile)
 	require.NoError(t, err)
-	res := cmd.Stdout.(*bytes.Buffer)
-	buf := bytes.NewBuffer(nil)
-	err = json.Indent(buf, res.Bytes(), "", "    ")
+	var dst bytes.Buffer
+	err = json.Indent(&dst, res, "", "    ")
 	require.NoError(t, err)
-	return buf.String()
+	return dst.String()
 }
 
 func (d *TfDriver) GetState(t pulcheck.T) string {
@@ -166,11 +159,9 @@ func (d *TfDriver) GetState(t pulcheck.T) string {
 }
 
 func (d *TfDriver) GetOutput(t pulcheck.T, outputName string) string {
-	tfCmd := getTFCommand()
-	cmd, err := execCmd(t, d.cwd, []string{d.formatReattachEnvVar()}, tfCmd, "output", outputName)
+	resB, err := d.execTf(t, "output", outputName)
 	require.NoError(t, err)
-	res := cmd.Stdout.(*bytes.Buffer).String()
-	res = strings.TrimSuffix(res, "\n")
+	res := strings.TrimSuffix(string(resB), "\n")
 	res = strings.Trim(res, "\"")
 	return res
 }
