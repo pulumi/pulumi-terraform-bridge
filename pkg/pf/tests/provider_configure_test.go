@@ -165,6 +165,55 @@ func TestConfigure(t *testing.T) {
 			},
 		))
 	})
+
+	t.Run("single-nested-block", func(t *testing.T) {
+		t.Parallel()
+
+		optionalAttrs := schema.Schema{Blocks: map[string]schema.Block{
+			"o": schema.SingleNestedBlock{
+				Attributes: map[string]schema.Attribute{
+					"n1": schema.StringAttribute{Optional: true},
+					"n2": schema.BoolAttribute{Optional: true},
+				},
+			},
+		}}
+
+		t.Run("missing", crosstests.MakeConfigure(optionalAttrs,
+			map[string]cty.Value{},
+		))
+
+		t.Run("empty", crosstests.MakeConfigure(optionalAttrs,
+			map[string]cty.Value{"o": cty.EmptyObjectVal},
+		))
+
+		t.Run("null", func(t *testing.T) {
+			t.Skip("TODO[pulumi/pulumi-terraform-bridge#2564] Null blocks don't match")
+			t.Parallel()
+			crosstests.Configure(t,
+				optionalAttrs,
+				map[string]cty.Value{
+					"o": cty.NullVal(cty.Object(map[string]cty.Type{"n1": cty.String, "n2": cty.Bool})),
+				},
+			)
+		})
+
+		t.Run("full", crosstests.MakeConfigure(optionalAttrs,
+			map[string]cty.Value{
+				"o": cty.ObjectVal(map[string]cty.Value{
+					"n1": cty.StringVal("123"),
+					"n2": cty.BoolVal(false),
+				}),
+			},
+		))
+
+		t.Run("partial", crosstests.MakeConfigure(optionalAttrs,
+			map[string]cty.Value{
+				"o": cty.ObjectVal(map[string]cty.Value{
+					"n1": cty.StringVal("123"),
+				}),
+			},
+		))
+	})
 }
 
 func TestConfigureNameOverrides(t *testing.T) {
@@ -182,9 +231,9 @@ func TestConfigureNameOverrides(t *testing.T) {
 		}),
 	))
 
-	t.Run("nested-attribute", func(t *testing.T) {
+	t.Run("single-nested-attribute", func(t *testing.T) {
+		t.Skip("TODO[pulumi/pulumi-terraform-bridge#2560]: SingleNestedAttribute nested type overrides don't line up for PF")
 		t.Parallel()
-		t.Skip("TODO[pulumi/pulumi-terraform-bridge#2560]: Attribute nested type overrides don't line up for PF")
 		crosstests.Configure(t,
 			schema.Schema{
 				Attributes: map[string]schema.Attribute{
@@ -212,7 +261,36 @@ func TestConfigureNameOverrides(t *testing.T) {
 		)
 	})
 
-	t.Run("nested-block", crosstests.MakeConfigure(
+	t.Run("single-nested-block", func(t *testing.T) {
+		t.Skip("TODO[pulumi/pulumi-terraform-bridge#2560]: SingleNestedBlock type overrides don't line up for PF")
+		t.Parallel()
+		crosstests.Configure(t,
+			schema.Schema{
+				Blocks: map[string]schema.Block{
+					"a": schema.SingleNestedBlock{
+						Attributes: map[string]schema.Attribute{
+							"as": schema.Int64Attribute{Optional: true},
+						},
+					},
+				},
+			},
+			map[string]cty.Value{
+				"a": cty.ObjectVal(map[string]cty.Value{
+					"as": cty.NumberIntVal(123),
+				}),
+			},
+			crosstests.ConfigureProviderInfo(map[string]*info.Schema{
+				"a": {
+					Name: "puAttr",
+					Elem: &info.Schema{Fields: map[string]*info.Schema{
+						"as": {Name: "puNestedAttrField"},
+					}},
+				},
+			}),
+		)
+	})
+
+	t.Run("list-nested-block", crosstests.MakeConfigure(
 		schema.Schema{
 			Blocks: map[string]schema.Block{
 				"b": schema.ListNestedBlock{NestedObject: schema.NestedBlockObject{
@@ -261,6 +339,7 @@ type testConfigureCollection struct {
 
 func (tc testConfigureCollection) run(t *testing.T) {
 	t.Parallel()
+	t.Helper()
 
 	t.Run("missing", crosstests.MakeConfigure(
 		schema.Schema{Attributes: map[string]schema.Attribute{
@@ -309,6 +388,8 @@ type testConfigurePrimitive struct {
 
 func (tc testConfigurePrimitive) run(t *testing.T) {
 	t.Parallel()
+	t.Helper()
+
 	t.Run("zero value - optional", crosstests.MakeConfigure(
 		schema.Schema{Attributes: map[string]schema.Attribute{
 			"v": tc.attrOptional,
