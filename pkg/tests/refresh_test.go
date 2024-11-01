@@ -18,7 +18,6 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
 		name               string
-		planResourceChange bool
 		schemaType         schema.ValueType
 		cloudVal           interface{}
 		programVal         string
@@ -31,8 +30,7 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 		expectedOutputNested   interface{}
 	}{
 		{
-			name:                   "map null with planResourceChange",
-			planResourceChange:     true,
+			name:                   "map null",
 			schemaType:             schema.TypeMap,
 			cloudVal:               map[string]interface{}{},
 			programVal:             "null",
@@ -40,18 +38,7 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 			expectedOutputNested:   nil,
 		},
 		{
-			name:               "map null without planResourceChange",
-			planResourceChange: false,
-			schemaType:         schema.TypeMap,
-			cloudVal:           map[string]interface{}{},
-			programVal:         "null",
-			// Note the difference in expected output between top level and nested properties
-			expectedOutputTopLevel: nil,
-			expectedOutputNested:   map[string]interface{}{},
-		},
-		{
-			name:                   "map null with planResourceChange with nil cloud value",
-			planResourceChange:     true,
+			name:                   "map null with nil cloud value",
 			schemaType:             schema.TypeMap,
 			cloudVal:               nil,
 			programVal:             "null",
@@ -59,17 +46,7 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 			expectedOutputNested:   nil,
 		},
 		{
-			name:                   "map null without planResourceChange with nil cloud value",
-			planResourceChange:     false,
-			schemaType:             schema.TypeMap,
-			cloudVal:               nil,
-			programVal:             "null",
-			expectedOutputTopLevel: nil,
-			expectedOutputNested:   map[string]interface{}{},
-		},
-		{
-			name:                   "map null with planResourceChange with cloud override",
-			planResourceChange:     true,
+			name:                   "map null with cloud override",
 			schemaType:             schema.TypeMap,
 			cloudVal:               map[string]interface{}{},
 			programVal:             "null",
@@ -78,18 +55,7 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 			expectedOutputNested:   nil,
 		},
 		{
-			name:                   "map null without planResourceChange with cloud override",
-			planResourceChange:     false,
-			schemaType:             schema.TypeMap,
-			cloudVal:               map[string]interface{}{},
-			programVal:             "null",
-			createCloudValOverride: true,
-			expectedOutputTopLevel: map[string]interface{}{},
-			expectedOutputNested:   map[string]interface{}{},
-		},
-		{
-			name:                   "map null with planResourceChange with nil cloud value and cloud override",
-			planResourceChange:     true,
+			name:                   "map null with nil cloud value and cloud override",
 			schemaType:             schema.TypeMap,
 			cloudVal:               nil,
 			programVal:             "null",
@@ -98,18 +64,7 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 			expectedOutputNested:   nil,
 		},
 		{
-			name:                   "map null without planResourceChange with nil cloud value and cloud override",
-			planResourceChange:     false,
-			schemaType:             schema.TypeMap,
-			cloudVal:               nil,
-			programVal:             "null",
-			createCloudValOverride: true,
-			expectedOutputTopLevel: map[string]interface{}{},
-			expectedOutputNested:   map[string]interface{}{},
-		},
-		{
-			name:                   "map empty with planResourceChange",
-			planResourceChange:     true,
+			name:                   "map empty",
 			schemaType:             schema.TypeMap,
 			cloudVal:               map[string]interface{}{},
 			programVal:             "{}",
@@ -117,18 +72,7 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 			expectedOutputNested:   nil,
 		},
 		{
-			name:               "map empty without planResourceChange",
-			planResourceChange: false,
-			schemaType:         schema.TypeMap,
-			cloudVal:           map[string]interface{}{},
-			programVal:         "{}",
-			// Note the difference in expected output between top level and nested properties
-			expectedOutputTopLevel: nil,
-			expectedOutputNested:   map[string]interface{}{},
-		},
-		{
-			name:                   "map empty with planResourceChange with cloud override",
-			planResourceChange:     true,
+			name:                   "map empty with cloud override",
 			schemaType:             schema.TypeMap,
 			cloudVal:               map[string]interface{}{},
 			programVal:             "{}",
@@ -137,18 +81,7 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 			expectedOutputNested:   nil,
 		},
 		{
-			name:                   "map empty without planResourceChange with cloud override",
-			planResourceChange:     false,
-			schemaType:             schema.TypeMap,
-			cloudVal:               map[string]interface{}{},
-			programVal:             "{}",
-			createCloudValOverride: true,
-			expectedOutputTopLevel: map[string]interface{}{},
-			expectedOutputNested:   map[string]interface{}{},
-		},
-		{
-			name:                   "map nonempty with planResourceChange",
-			planResourceChange:     true,
+			name:                   "map nonempty",
 			schemaType:             schema.TypeMap,
 			cloudVal:               map[string]interface{}{"val": "test"},
 			programVal:             `{"val": "test"}`,
@@ -175,18 +108,7 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 			expectedOutputNested:   map[string]interface{}{"val": "test"},
 		},
 		{
-			name:                   "map nonempty without planResourceChange with cloud override",
-			planResourceChange:     false,
-			schemaType:             schema.TypeMap,
-			cloudVal:               map[string]interface{}{"val": "test"},
-			programVal:             `{"val": "test"}`,
-			createCloudValOverride: true,
-			expectedOutputTopLevel: map[string]interface{}{"val": "test"},
-			expectedOutputNested:   map[string]interface{}{"val": "test"},
-		},
-		{
-			name:                   "list null with planResourceChange",
-			planResourceChange:     true,
+			name:                   "list null",
 			schemaType:             schema.TypeList,
 			cloudVal:               []interface{}{},
 			programVal:             "null",
@@ -194,18 +116,7 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 			expectedOutputNested:   nil,
 		},
 		{
-			name:               "list null without planResourceChange",
-			planResourceChange: false,
-			schemaType:         schema.TypeList,
-			cloudVal:           []interface{}{},
-			programVal:         "null",
-			// Note the difference in expected output between top level and nested properties
-			expectedOutputTopLevel: nil,
-			expectedOutputNested:   []interface{}{},
-		},
-		{
-			name:                   "list null with planResourceChange with nil cloud value",
-			planResourceChange:     true,
+			name:                   "list null with nil cloud value",
 			schemaType:             schema.TypeList,
 			cloudVal:               nil,
 			programVal:             "null",
@@ -213,18 +124,7 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 			expectedOutputNested:   nil,
 		},
 		{
-			name:               "list null without planResourceChange with nil cloud value",
-			planResourceChange: false,
-			schemaType:         schema.TypeList,
-			cloudVal:           nil,
-			programVal:         "null",
-			// Note the difference in expected output between top level and nested properties
-			expectedOutputTopLevel: nil,
-			expectedOutputNested:   []interface{}{},
-		},
-		{
-			name:                   "list null with planResourceChange with cloud override",
-			planResourceChange:     true,
+			name:                   "list null with cloud override",
 			schemaType:             schema.TypeList,
 			cloudVal:               []interface{}{},
 			programVal:             "null",
@@ -233,18 +133,7 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 			expectedOutputNested:   nil,
 		},
 		{
-			name:                   "list null without planResourceChange with cloud override",
-			planResourceChange:     false,
-			schemaType:             schema.TypeList,
-			cloudVal:               []interface{}{},
-			programVal:             "null",
-			createCloudValOverride: true,
-			expectedOutputTopLevel: []interface{}{},
-			expectedOutputNested:   []interface{}{},
-		},
-		{
-			name:                   "list null with planResourceChange with nil cloud value and cloud override",
-			planResourceChange:     true,
+			name:                   "list null with nil cloud value and cloud override",
 			schemaType:             schema.TypeList,
 			cloudVal:               nil,
 			programVal:             "null",
@@ -253,18 +142,7 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 			expectedOutputNested:   nil,
 		},
 		{
-			name:                   "list null without planResourceChange with nil cloud value and cloud override",
-			planResourceChange:     false,
-			schemaType:             schema.TypeList,
-			cloudVal:               nil,
-			programVal:             "null",
-			createCloudValOverride: true,
-			expectedOutputTopLevel: []interface{}{},
-			expectedOutputNested:   []interface{}{},
-		},
-		{
-			name:                   "list empty with planResourceChange",
-			planResourceChange:     true,
+			name:                   "list empty",
 			schemaType:             schema.TypeList,
 			cloudVal:               []string{},
 			programVal:             "[]",
@@ -272,18 +150,7 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 			expectedOutputNested:   []interface{}{},
 		},
 		{
-			name:               "list empty without planResourceChange",
-			planResourceChange: false,
-			schemaType:         schema.TypeList,
-			cloudVal:           []string{},
-			programVal:         "[]",
-			// Note the difference in expected output between top level and nested properties
-			expectedOutputTopLevel: nil,
-			expectedOutputNested:   []interface{}{},
-		},
-		{
-			name:                   "list empty with planResourceChange with cloud override",
-			planResourceChange:     true,
+			name:                   "list empty with cloud override",
 			schemaType:             schema.TypeList,
 			cloudVal:               []string{},
 			programVal:             "[]",
@@ -292,18 +159,7 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 			expectedOutputNested:   []interface{}{},
 		},
 		{
-			name:                   "list empty without planResourceChange with cloud override",
-			planResourceChange:     false,
-			schemaType:             schema.TypeList,
-			cloudVal:               []string{},
-			programVal:             "[]",
-			createCloudValOverride: true,
-			expectedOutputTopLevel: []interface{}{},
-			expectedOutputNested:   []interface{}{},
-		},
-		{
-			name:                   "list nonempty with planResourceChange",
-			planResourceChange:     true,
+			name:                   "list nonempty",
 			schemaType:             schema.TypeList,
 			cloudVal:               []interface{}{"val"},
 			programVal:             `["val"]`,
@@ -311,17 +167,7 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 			expectedOutputNested:   []interface{}{"val"},
 		},
 		{
-			name:                   "list nonempty without planResourceChange",
-			planResourceChange:     false,
-			schemaType:             schema.TypeList,
-			cloudVal:               []interface{}{"val"},
-			programVal:             `["val"]`,
-			expectedOutputTopLevel: []interface{}{"val"},
-			expectedOutputNested:   []interface{}{"val"},
-		},
-		{
-			name:                   "list nonempty with planResourceChange with cloud override",
-			planResourceChange:     true,
+			name:                   "list nonempty with cloud override",
 			schemaType:             schema.TypeList,
 			cloudVal:               []interface{}{"val"},
 			programVal:             `["val"]`,
@@ -330,18 +176,7 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 			expectedOutputNested:   []interface{}{"val"},
 		},
 		{
-			name:                   "list nonempty without planResourceChange with cloud override",
-			planResourceChange:     false,
-			schemaType:             schema.TypeList,
-			cloudVal:               []interface{}{"val"},
-			programVal:             `["val"]`,
-			createCloudValOverride: true,
-			expectedOutputTopLevel: []interface{}{"val"},
-			expectedOutputNested:   []interface{}{"val"},
-		},
-		{
-			name:                   "set null with planResourceChange",
-			planResourceChange:     true,
+			name:                   "set null",
 			schemaType:             schema.TypeSet,
 			cloudVal:               []interface{}{},
 			programVal:             "null",
@@ -349,18 +184,7 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 			expectedOutputNested:   nil,
 		},
 		{
-			name:               "set null without planResourceChange",
-			planResourceChange: false,
-			schemaType:         schema.TypeSet,
-			cloudVal:           []interface{}{},
-			programVal:         "null",
-			// Note the difference in expected output between top level and nested properties
-			expectedOutputTopLevel: nil,
-			expectedOutputNested:   []interface{}{},
-		},
-		{
-			name:                   "set null with planResourceChange with nil cloud value",
-			planResourceChange:     true,
+			name:                   "set null with nil cloud value",
 			schemaType:             schema.TypeSet,
 			cloudVal:               nil,
 			programVal:             "null",
@@ -368,17 +192,7 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 			expectedOutputNested:   nil,
 		},
 		{
-			name:                   "set null without planResourceChange with nil cloud value",
-			planResourceChange:     false,
-			schemaType:             schema.TypeSet,
-			cloudVal:               nil,
-			programVal:             "null",
-			expectedOutputTopLevel: nil,
-			expectedOutputNested:   []interface{}{},
-		},
-		{
-			name:                   "set null with planResourceChange with cloud override",
-			planResourceChange:     true,
+			name:                   "set null with cloud override",
 			schemaType:             schema.TypeSet,
 			cloudVal:               []interface{}{},
 			programVal:             "null",
@@ -387,18 +201,7 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 			expectedOutputNested:   nil,
 		},
 		{
-			name:                   "set null without planResourceChange with cloud override",
-			planResourceChange:     false,
-			schemaType:             schema.TypeSet,
-			cloudVal:               []interface{}{},
-			programVal:             "null",
-			createCloudValOverride: true,
-			expectedOutputTopLevel: []interface{}{},
-			expectedOutputNested:   []interface{}{},
-		},
-		{
-			name:                   "set null with planResourceChange with nil cloud value and cloud override",
-			planResourceChange:     true,
+			name:                   "set null with nil cloud value and cloud override",
 			schemaType:             schema.TypeSet,
 			cloudVal:               nil,
 			programVal:             "null",
@@ -407,18 +210,7 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 			expectedOutputNested:   nil,
 		},
 		{
-			name:                   "set null without planResourceChange with nil cloud value and cloud override",
-			planResourceChange:     false,
-			schemaType:             schema.TypeSet,
-			cloudVal:               nil,
-			programVal:             "null",
-			createCloudValOverride: true,
-			expectedOutputTopLevel: []interface{}{},
-			expectedOutputNested:   []interface{}{},
-		},
-		{
-			name:                   "set empty with planResourceChange",
-			planResourceChange:     true,
+			name:                   "set empty",
 			schemaType:             schema.TypeSet,
 			cloudVal:               []interface{}{},
 			programVal:             "[]",
@@ -426,18 +218,7 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 			expectedOutputNested:   nil,
 		},
 		{
-			name:               "set empty without planResourceChange",
-			planResourceChange: false,
-			schemaType:         schema.TypeSet,
-			cloudVal:           []interface{}{},
-			programVal:         "[]",
-			// Note the difference in expected output between top level and nested properties
-			expectedOutputTopLevel: nil,
-			expectedOutputNested:   []interface{}{},
-		},
-		{
-			name:                   "set empty with planResourceChange with cloud override",
-			planResourceChange:     true,
+			name:                   "set empty with cloud override",
 			schemaType:             schema.TypeSet,
 			cloudVal:               []interface{}{},
 			programVal:             "[]",
@@ -446,26 +227,7 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 			expectedOutputNested:   nil,
 		},
 		{
-			name:                   "set empty without planResourceChange with cloud override",
-			planResourceChange:     false,
-			schemaType:             schema.TypeSet,
-			cloudVal:               []interface{}{},
-			programVal:             "[]",
-			createCloudValOverride: true,
-			expectedOutputTopLevel: []interface{}{},
-			expectedOutputNested:   []interface{}{},
-		},
-		{
-			name:                   "set nonempty with planResourceChange",
-			schemaType:             schema.TypeSet,
-			cloudVal:               []interface{}{"val"},
-			programVal:             `["val"]`,
-			expectedOutputTopLevel: []interface{}{"val"},
-			expectedOutputNested:   []interface{}{"val"},
-		},
-		{
-			name:                   "set nonempty without planResourceChange",
-			planResourceChange:     false,
+			name:                   "set nonempty",
 			schemaType:             schema.TypeSet,
 			cloudVal:               []interface{}{"val"},
 			programVal:             `["val"]`,
@@ -539,7 +301,7 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 				}
 
 				tfp := &schema.Provider{ResourcesMap: resMap}
-				bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp, opts...)
+				bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
 				program := fmt.Sprintf(`
 name: test
 runtime: yaml
@@ -610,7 +372,7 @@ outputs:
 				}
 
 				tfp := &schema.Provider{ResourcesMap: resMap}
-				bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp, opts...)
+				bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
 				program := fmt.Sprintf(`
 name: test
 runtime: yaml
