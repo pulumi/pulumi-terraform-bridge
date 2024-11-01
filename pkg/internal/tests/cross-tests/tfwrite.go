@@ -117,6 +117,10 @@ func writePfBlock(key string, parentBody *hclwrite.Body, schemas pfproviderschem
 	case pfproviderschema.SingleNestedBlock:
 		body := parentBody.AppendNewBlock(key, nil).Body()
 
+		if value.IsNull() {
+			return
+		}
+
 		writePfObject(body, pfproviderschema.NestedBlockObject{
 			Attributes: schemas.Attributes,
 			Blocks:     schemas.Blocks,
