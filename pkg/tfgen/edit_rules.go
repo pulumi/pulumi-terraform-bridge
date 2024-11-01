@@ -65,6 +65,8 @@ func defaultEditRules() editRules {
 			`Configuration Reference`, info.PostCodeTranslation),
 		reReplace(`# Arguments`,
 			`# Configuration Reference`, info.PostCodeTranslation),
+		reReplace(`# Configuration Schema`,
+			`# Configuration Reference`, info.PostCodeTranslation),
 		reReplace(`# Schema`,
 			`# Configuration Reference`, info.PostCodeTranslation),
 		reReplace("### Optional\n", "", info.PostCodeTranslation),
@@ -74,6 +76,8 @@ func defaultEditRules() editRules {
 		reReplace("`provider` block", "provider configuration", info.PostCodeTranslation),
 		reReplace("Data Source", "Function", info.PostCodeTranslation),
 		reReplace("data source", "function", info.PostCodeTranslation),
+		reReplace("Datasource", "Function", info.PostCodeTranslation),
+		reReplace("datasource", "function", info.PostCodeTranslation),
 	}
 }
 
