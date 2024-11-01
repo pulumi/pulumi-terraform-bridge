@@ -181,11 +181,13 @@ func TestDiffBasicTypes(t *testing.T) {
 	for _, tc := range typeCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			res := res
 			tc := tc
 			res.Schema["prop"] = tc.prop
 
 			t.Run("no diff", func(t *testing.T) {
+				t.Parallel()
 				tfAction := runDiffCheck(t, diffTestCase{
 					Resource: res,
 					Config1:  tc.config1,
@@ -196,6 +198,7 @@ func TestDiffBasicTypes(t *testing.T) {
 			})
 
 			t.Run("diff", func(t *testing.T) {
+				t.Parallel()
 				tfAction := runDiffCheck(t, diffTestCase{
 					Resource: res,
 					Config1:  tc.config1,
@@ -206,6 +209,7 @@ func TestDiffBasicTypes(t *testing.T) {
 			})
 
 			t.Run("create", func(t *testing.T) {
+				t.Parallel()
 				tfAction := runDiffCheck(t, diffTestCase{
 					Resource: res,
 					Config1:  nil,
@@ -216,6 +220,7 @@ func TestDiffBasicTypes(t *testing.T) {
 			})
 
 			t.Run("delete", func(t *testing.T) {
+				t.Parallel()
 				tfAction := runDiffCheck(t, diffTestCase{
 					Resource: res,
 					Config1:  tc.config1,
@@ -226,6 +231,7 @@ func TestDiffBasicTypes(t *testing.T) {
 			})
 
 			t.Run("replace", func(t *testing.T) {
+				t.Parallel()
 				res := res
 				res.Schema["prop"].ForceNew = true
 				if nestedRes, ok := res.Schema["prop"].Elem.(*schema.Resource); ok {
@@ -241,6 +247,7 @@ func TestDiffBasicTypes(t *testing.T) {
 			})
 
 			t.Run("replace delete first", func(t *testing.T) {
+				t.Parallel()
 				res := res
 				res.Schema["prop"].ForceNew = true
 				if nestedRes, ok := res.Schema["prop"].Elem.(*schema.Resource); ok {
@@ -594,7 +601,9 @@ func TestSimpleOptionalComputed(t *testing.T) {
 		{"non-empty to empty", nonEmptyConfig, emptyConfig},
 		{"non-empty to non-empty", nonEmptyConfig, nonEmptyConfig},
 	} {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			runDiffCheck(t, diffTestCase{
 				Resource: &schema.Resource{
 					Schema: map[string]*schema.Schema{
@@ -662,6 +671,7 @@ func TestOptionalComputedAttrCollection(t *testing.T) {
 		{"set max items one non-empty to non-empty", 1, schema.TypeSet, nonEmptyConfig, nonEmptyConfig},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			runDiffCheck(t, diffTestCase{
 				Resource: &schema.Resource{
 					Schema: map[string]*schema.Schema{
@@ -737,6 +747,7 @@ func TestOptionalComputedBlockCollection(t *testing.T) {
 		{"set max items one non-empty to non-empty", 1, schema.TypeSet, nonEmptyConfig, nonEmptyConfig},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			runDiffCheck(t, diffTestCase{
 				Resource: &schema.Resource{
 					Schema: map[string]*schema.Schema{
@@ -1275,6 +1286,7 @@ func TestAttributeCollectionForceNew(t *testing.T) {
 
 	t.Run("list", func(t *testing.T) {
 		t.Run("changed non-empty", func(t *testing.T) {
+			t.Parallel()
 			res := runDiffCheck(t, diffTestCase{
 				Resource: res,
 				Config1:  map[string]any{"list": []any{"A"}},
@@ -1286,6 +1298,7 @@ func TestAttributeCollectionForceNew(t *testing.T) {
 		})
 
 		t.Run("changed to empty", func(t *testing.T) {
+			t.Parallel()
 			res := runDiffCheck(t, diffTestCase{
 				Resource: res,
 				Config1:  map[string]any{"list": []any{"A"}},
@@ -1297,6 +1310,7 @@ func TestAttributeCollectionForceNew(t *testing.T) {
 		})
 
 		t.Run("changed from empty", func(t *testing.T) {
+			t.Parallel()
 			res := runDiffCheck(t, diffTestCase{
 				Resource: res,
 				Config1:  map[string]any{"list": []any{}},
@@ -1309,7 +1323,9 @@ func TestAttributeCollectionForceNew(t *testing.T) {
 	})
 
 	t.Run("set", func(t *testing.T) {
+		t.Parallel()
 		t.Run("changed non-empty", func(t *testing.T) {
+			t.Parallel()
 			res := runDiffCheck(t, diffTestCase{
 				Resource: res,
 				Config1:  map[string]any{"set": []any{"A"}},
@@ -1321,6 +1337,7 @@ func TestAttributeCollectionForceNew(t *testing.T) {
 		})
 
 		t.Run("changed to empty", func(t *testing.T) {
+			t.Parallel()
 			res := runDiffCheck(t, diffTestCase{
 				Resource: res,
 				Config1:  map[string]any{"set": []any{"A"}},
@@ -1332,6 +1349,7 @@ func TestAttributeCollectionForceNew(t *testing.T) {
 		})
 
 		t.Run("changed from empty", func(t *testing.T) {
+			t.Parallel()
 			res := runDiffCheck(t, diffTestCase{
 				Resource: res,
 				Config1:  map[string]any{"set": []any{}},
@@ -1344,7 +1362,9 @@ func TestAttributeCollectionForceNew(t *testing.T) {
 	})
 
 	t.Run("map", func(t *testing.T) {
+		t.Parallel()
 		t.Run("changed non-empty", func(t *testing.T) {
+			t.Parallel()
 			res := runDiffCheck(t, diffTestCase{
 				Resource: res,
 				Config1:  map[string]any{"map": map[string]any{"A": "A"}},
@@ -1356,6 +1376,7 @@ func TestAttributeCollectionForceNew(t *testing.T) {
 		})
 
 		t.Run("changed to empty", func(t *testing.T) {
+			t.Parallel()
 			res := runDiffCheck(t, diffTestCase{
 				Resource: res,
 				Config1:  map[string]any{"map": map[string]any{"A": "A"}},
@@ -1367,6 +1388,7 @@ func TestAttributeCollectionForceNew(t *testing.T) {
 		})
 
 		t.Run("changed from empty", func(t *testing.T) {
+			t.Parallel()
 			res := runDiffCheck(t, diffTestCase{
 				Resource: res,
 				Config1:  map[string]any{"map": map[string]any{}},
@@ -1417,7 +1439,9 @@ func TestBlockCollectionForceNew(t *testing.T) {
 	}
 
 	t.Run("list", func(t *testing.T) {
+		t.Parallel()
 		t.Run("changed non-empty", func(t *testing.T) {
+			t.Parallel()
 			res := runDiffCheck(t, diffTestCase{
 				Resource: res,
 				Config1:  map[string]any{"list": []any{map[string]any{"x": "A"}}},
@@ -1430,6 +1454,7 @@ func TestBlockCollectionForceNew(t *testing.T) {
 		})
 
 		t.Run("changed to empty", func(t *testing.T) {
+			t.Parallel()
 			res := runDiffCheck(t, diffTestCase{
 				Resource: res,
 				Config1:  map[string]any{"list": []any{map[string]any{"x": "A"}}},
@@ -1441,6 +1466,7 @@ func TestBlockCollectionForceNew(t *testing.T) {
 		})
 
 		t.Run("changed from empty", func(t *testing.T) {
+			t.Parallel()
 			res := runDiffCheck(t, diffTestCase{
 				Resource: res,
 				Config1:  map[string]any{"list": []any{}},
@@ -1453,7 +1479,9 @@ func TestBlockCollectionForceNew(t *testing.T) {
 	})
 
 	t.Run("set", func(t *testing.T) {
+		t.Parallel()
 		t.Run("changed non-empty", func(t *testing.T) {
+			t.Parallel()
 			res := runDiffCheck(t, diffTestCase{
 				Resource: res,
 				Config1:  map[string]any{"set": []any{map[string]any{"x": "A"}}},
@@ -1466,6 +1494,7 @@ func TestBlockCollectionForceNew(t *testing.T) {
 		})
 
 		t.Run("changed to empty", func(t *testing.T) {
+			t.Parallel()
 			res := runDiffCheck(t, diffTestCase{
 				Resource: res,
 				Config1:  map[string]any{"set": []any{map[string]any{"x": "A"}}},
@@ -1477,6 +1506,7 @@ func TestBlockCollectionForceNew(t *testing.T) {
 		})
 
 		t.Run("changed from empty", func(t *testing.T) {
+			t.Parallel()
 			res := runDiffCheck(t, diffTestCase{
 				Resource: res,
 				Config1:  map[string]any{"set": []any{}},
@@ -1523,7 +1553,9 @@ func TestBlockCollectionElementForceNew(t *testing.T) {
 	}
 
 	t.Run("list", func(t *testing.T) {
+		t.Parallel()
 		t.Run("changed non-empty", func(t *testing.T) {
+			t.Parallel()
 			res := runDiffCheck(t, diffTestCase{
 				Resource: res,
 				Config1:  map[string]any{"list": []any{map[string]any{"x": "A"}}},
@@ -1535,6 +1567,7 @@ func TestBlockCollectionElementForceNew(t *testing.T) {
 		})
 
 		t.Run("changed to empty", func(t *testing.T) {
+			t.Parallel()
 			res := runDiffCheck(t, diffTestCase{
 				Resource: res,
 				Config1:  map[string]any{"list": []any{map[string]any{"x": "A"}}},
@@ -1546,6 +1579,7 @@ func TestBlockCollectionElementForceNew(t *testing.T) {
 		})
 
 		t.Run("changed from empty", func(t *testing.T) {
+			t.Parallel()
 			res := runDiffCheck(t, diffTestCase{
 				Resource: res,
 				Config1:  map[string]any{"list": []any{}},
@@ -1558,7 +1592,9 @@ func TestBlockCollectionElementForceNew(t *testing.T) {
 	})
 
 	t.Run("set", func(t *testing.T) {
+		t.Parallel()
 		t.Run("changed non-empty", func(t *testing.T) {
+			t.Parallel()
 			res := runDiffCheck(t, diffTestCase{
 				Resource: res,
 				Config1:  map[string]any{"set": []any{map[string]any{"x": "A"}}},
@@ -1570,6 +1606,7 @@ func TestBlockCollectionElementForceNew(t *testing.T) {
 		})
 
 		t.Run("changed to empty", func(t *testing.T) {
+			t.Parallel()
 			res := runDiffCheck(t, diffTestCase{
 				Resource: res,
 				Config1:  map[string]any{"set": []any{map[string]any{"x": "A"}}},
@@ -1581,6 +1618,7 @@ func TestBlockCollectionElementForceNew(t *testing.T) {
 		})
 
 		t.Run("changed from empty", func(t *testing.T) {
+			t.Parallel()
 			res := runDiffCheck(t, diffTestCase{
 				Resource: res,
 				Config1:  map[string]any{"set": []any{}},

@@ -504,6 +504,7 @@ func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 		}
 
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			t.Run("top level", func(t *testing.T) {
 				t.Parallel()
 				resMap := map[string]*schema.Resource{

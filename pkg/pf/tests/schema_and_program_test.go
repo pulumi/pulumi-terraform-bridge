@@ -232,7 +232,8 @@ func TestIDAttribute(t *testing.T) {
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			provBuilder := providerbuilder.Provider{
+    t.Parallel()
+	provBuilder := providerbuilder.Provider{
 				TypeName:       "prov",
 				Version:        "0.0.1",
 				ProviderSchema: pschema.Schema{},
