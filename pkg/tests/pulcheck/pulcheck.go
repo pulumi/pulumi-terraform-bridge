@@ -195,7 +195,7 @@ func skipUnlessLinux(t T) {
 }
 
 // This is an experimental API.
-func PulCheck(t T, bridgedProvider info.Provider, program string) *pulumitest.PulumiTest {
+func PulCheck(t T, bridgedProvider info.Provider, program string, opts ...opttest.Option) *pulumitest.PulumiTest {
 	skipUnlessLinux(t)
 	puwd := t.TempDir()
 	p := filepath.Join(puwd, "Pulumi.yaml")
@@ -204,7 +204,7 @@ func PulCheck(t T, bridgedProvider info.Provider, program string) *pulumitest.Pu
 	err := os.WriteFile(p, []byte(program), 0o600)
 	require.NoError(t, err)
 
-	opts := []opttest.Option{
+	defaultOpts := []opttest.Option{
 		opttest.Env("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "true"),
 		opttest.TestInPlace(),
 		opttest.SkipInstall(),
@@ -218,5 +218,6 @@ func PulCheck(t T, bridgedProvider info.Provider, program string) *pulumitest.Pu
 		),
 	}
 
-	return pulumitest.NewPulumiTest(t, puwd, opts...)
+	defaultOpts = append(defaultOpts, opts...)
+	return pulumitest.NewPulumiTest(t, puwd, defaultOpts...)
 }
