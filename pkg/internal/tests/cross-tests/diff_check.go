@@ -80,11 +80,11 @@ func runDiffCheck(t T, tc diffTestCase) crosstestsimpl.DiffResult {
 	require.NoErrorf(t, err, "writing Pulumi.yaml")
 
 	previewRes := pt.Preview(t)
+	diffResponse := crosstestsimpl.GetPulumiDiffResponse(t, pt)
 	x := pt.Up(t)
 
 	changes := tfd.driver.ParseChangesFromTFPlan(tfDiffPlan)
 
-	diffResponse := crosstestsimpl.GetPulumiDiffResponse(t, pt)
 	crosstestsimpl.VerifyBasicDiffAgreement(t, changes.Actions, x.Summary, diffResponse)
 
 	return crosstestsimpl.DiffResult{
