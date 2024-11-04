@@ -30,17 +30,12 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
-func propagateSkip(parent, child *testing.T) {
-	if child.Skipped() {
-		parent.Skipf("skipping due to skipped child test")
-	}
-}
-
 type testLogSink struct{ t *testing.T }
 
 func (s testLogSink) Log(_ context.Context, sev diag.Severity, urn resource.URN, msg string) error {
 	return s.log("LOG", sev, urn, msg)
 }
+
 func (s testLogSink) LogStatus(_ context.Context, sev diag.Severity, urn resource.URN, msg string) error {
 	return s.log("STATUS", sev, urn, msg)
 }
