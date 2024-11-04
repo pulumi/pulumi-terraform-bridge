@@ -19,19 +19,15 @@ import (
 	"os"
 	"runtime"
 	"strings"
-	"testing"
 
+	crosstestsimpl "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests/impl"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
-func propageteSkip(parent, child *testing.T) {
-	if child.Skipped() {
-		parent.Skipf("skipping due to skipped child test")
-	}
-}
+type T = crosstestsimpl.T
 
-type testLogSink struct{ t *testing.T }
+type testLogSink struct{ t T }
 
 func (s testLogSink) Log(_ context.Context, sev diag.Severity, urn resource.URN, msg string) error {
 	return s.log("LOG", sev, urn, msg)
@@ -49,7 +45,7 @@ func (s testLogSink) log(kind string, sev diag.Severity, urn resource.URN, msg s
 	return nil
 }
 
-func skipUnlessLinux(t *testing.T) {
+func skipUnlessLinux(t T) {
 	if ci, ok := os.LookupEnv("CI"); ok && ci == "true" && !strings.Contains(strings.ToLower(runtime.GOOS), "linux") {
 		t.Skip("Skipping on non-Linux platforms as our CI does not yet install Terraform CLI required for these tests")
 	}

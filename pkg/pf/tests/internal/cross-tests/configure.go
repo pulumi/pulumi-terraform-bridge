@@ -82,7 +82,7 @@ func MakeConfigure(schema schema.Schema, tfConfig map[string]cty.Value, options 
 //	+--------------------+                      +---------------------+
 //
 // Configure should be safe to run in parallel.
-func Configure(t *testing.T, schema schema.Schema, tfConfig map[string]cty.Value, options ...ConfigureOption) {
+func Configure(t T, schema schema.Schema, tfConfig map[string]cty.Value, options ...ConfigureOption) {
 	skipUnlessLinux(t)
 
 	var opts configureOpts
@@ -109,8 +109,9 @@ func Configure(t *testing.T, schema schema.Schema, tfConfig map[string]cty.Value
 	}
 
 	var tfOutput, puOutput tfsdk.Config
-	t.Run("tf", func(t *testing.T) {
-		defer propageteSkip(topLevelT, t)
+
+	// Run the TF half of the cross-test
+	{
 		var hcl bytes.Buffer
 		err := crosstests.WritePF(&hcl).Provider(schema, providerName, tfConfig)
 		require.NoError(t, err)
@@ -129,10 +130,10 @@ resource "` + providerName + `_res" "res" {}
 		require.NoError(t, err)
 		err = driver.Apply(t, plan)
 		require.NoError(t, err)
-	})
+	}
 
-	t.Run("bridged", func(t *testing.T) {
-		defer propageteSkip(topLevelT, t)
+	// Run the Pulumi half of the cross-test
+	{
 		dir := t.TempDir()
 
 		var puConfig resource.PropertyMap
@@ -204,15 +205,9 @@ resource "` + providerName + `_res" "res" {}
 		)
 		contract.Ignore(test.Preview(t)) // Assert that the preview succeeded, but not the result.
 		contract.Ignore(test.Up(t))      // Assert that the update succeeded, but not the result.
-	})
+	}
 
-	skipCompare := t.Failed() || t.Skipped()
-	t.Run("compare", func(t *testing.T) {
-		if skipCompare {
-			t.Skipf("skipping since earlier steps did not complete")
-		}
-		assert.Equal(t, tfOutput, puOutput)
-	})
+	assert.Equal(t, tfOutput, puOutput)
 }
 
 type configureOpts struct {
