@@ -80,7 +80,7 @@ func Diff(t *testing.T, schema rschema.Schema, tfConfig1, tfConfig2 map[string]c
 		defer propagateSkip(topLevelT, t)
 		var hcl1 bytes.Buffer
 
-		err := WritePF(&hcl1).Resource(schema, "testprovider_test", "res", tfConfig1)
+		err := writeResource(&hcl1, schema, "testprovider_test", "res", tfConfig1)
 		require.NoError(t, err)
 
 		driver := tfcheck.NewTfDriver(t, t.TempDir(), prov.TypeName, prov)
@@ -92,7 +92,7 @@ func Diff(t *testing.T, schema rschema.Schema, tfConfig1, tfConfig2 map[string]c
 		require.NoError(t, err)
 
 		var hcl2 bytes.Buffer
-		err = WritePF(&hcl2).Resource(schema, "testprovider_test", "res", tfConfig2)
+		err = writeResource(&hcl2, schema, "testprovider_test", "res", tfConfig2)
 		require.NoError(t, err)
 		driver.Write(t, hcl2.String())
 		plan, err = driver.Plan(t)
