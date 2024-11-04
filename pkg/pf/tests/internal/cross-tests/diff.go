@@ -28,22 +28,22 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/tfcheck"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/require"
 	"github.com/zclconf/go-cty/cty"
 	"gopkg.in/yaml.v3"
 )
 
-// MakeDiff returns a [testing] subtest of [Diff].
-//
-//	func TestMyProperty(t *testing.T) {
-//		t.Run("my-subtest", crosstests.MakeDiff(schema, tfConfig, puConfig))
-//	}
-//
-// For details on the test itself, see [Diff].
-func MakeDiff(schema rschema.Schema, tfConfig1, tfConfig2 map[string]cty.Value, options ...DiffOption) func(t *testing.T) {
-	return func(t *testing.T) {
-		t.Parallel()
-		Diff(t, schema, tfConfig1, tfConfig2, options...)
+func yamlResource(t *testing.T, properties resource.PropertyMap) map[string]any {
+	return map[string]any{
+		"name":    "project",
+		"runtime": "yaml",
+		"resources": map[string]any{
+			"p": map[string]any{
+				"type":       "testprovider:index:Test",
+				"properties": crosstests.ConvertResourceValue(t, properties),
+			},
+		},
 	}
 }
 
@@ -65,13 +65,15 @@ func Diff(t *testing.T, schema rschema.Schema, tfConfig1, tfConfig2 map[string]c
 
 	prov := pb.NewProvider(pb.NewProviderArgs{
 		AllResources: []pb.Resource{{
-			Name:           "res",
+			Name:           "test",
 			ResourceSchema: schema,
 		}},
 	})
 
 	shimProvider := tfbridge.ShimProvider(prov)
 
+	var tfOut string
+	var pulumiOut string
 	var tfChanges tfcheck.TFChange
 	var pulumiRes auto.UpResult
 	var diffResponse crosstestsimpl.PulumiDiffResp
@@ -79,7 +81,7 @@ func Diff(t *testing.T, schema rschema.Schema, tfConfig1, tfConfig2 map[string]c
 		defer propagateSkip(topLevelT, t)
 		var hcl1 bytes.Buffer
 
-		err := WritePF(&hcl1).Resource(schema, "res", "res", tfConfig1)
+		err := WritePF(&hcl1).Resource(schema, "testprovider_test", "res", tfConfig1)
 		require.NoError(t, err)
 
 		driver := tfcheck.NewTfDriver(t, t.TempDir(), prov.TypeName, prov)
@@ -91,50 +93,31 @@ func Diff(t *testing.T, schema rschema.Schema, tfConfig1, tfConfig2 map[string]c
 		require.NoError(t, err)
 
 		var hcl2 bytes.Buffer
-		err = WritePF(&hcl2).Resource(schema, "res", "res", tfConfig2)
+		err = WritePF(&hcl2).Resource(schema, "testprovider_test", "res", tfConfig2)
 		require.NoError(t, err)
 		driver.Write(t, hcl2.String())
 		plan, err = driver.Plan(t)
 		require.NoError(t, err)
 		tfChanges = driver.ParseChangesFromTFPlan(plan)
+		tfOut = plan.StdOut
 	})
 
 	t.Run("bridged", func(t *testing.T) {
 		defer propagateSkip(topLevelT, t)
 
 		puConfig1 := crosstestsimpl.InferPulumiValue(t,
-			shimProvider.ResourcesMap().Get("res").Schema(),
+			shimProvider.ResourcesMap().Get("testprovider_test").Schema(),
 			opts.resourceInfo,
 			cty.ObjectVal(tfConfig1),
 		)
+		pulumiYaml1 := yamlResource(t, puConfig1)
 
 		puConfig2 := crosstestsimpl.InferPulumiValue(t,
-			shimProvider.ResourcesMap().Get("res").Schema(),
+			shimProvider.ResourcesMap().Get("testprovider_test").Schema(),
 			opts.resourceInfo,
 			cty.ObjectVal(tfConfig2),
 		)
-
-		pulumiYaml1 := map[string]any{
-			"name":    "project",
-			"runtime": "yaml",
-			"resources": map[string]any{
-				"p": map[string]any{
-					"type":       "testprovider:res",
-					"properties": crosstests.ConvertResourceValue(t, puConfig1),
-				},
-			},
-		}
-
-		pulumiYaml2 := map[string]any{
-			"name":    "project",
-			"runtime": "yaml",
-			"resources": map[string]any{
-				"p": map[string]any{
-					"type":       "testprovider:res",
-					"properties": crosstests.ConvertResourceValue(t, puConfig2),
-				},
-			},
-		}
+		pulumiYaml2 := yamlResource(t, puConfig2)
 
 		bytes, err := yaml.Marshal(pulumiYaml1)
 		require.NoError(t, err)
@@ -148,6 +131,10 @@ func Diff(t *testing.T, schema rschema.Schema, tfConfig1, tfConfig2 map[string]c
 		require.NoError(t, err)
 		topLevelT.Logf("Pulumi.yaml:\n%s", string(bytes))
 		pt.WritePulumiYaml(t, string(bytes))
+
+		previewRes := pt.Preview(t)
+		pulumiOut = previewRes.StdOut
+
 		pulumiRes = pt.Up(t)
 
 		diffResponse = crosstestsimpl.PulumiDiffResp{}
@@ -171,6 +158,8 @@ func Diff(t *testing.T, schema rschema.Schema, tfConfig1, tfConfig2 map[string]c
 	return crosstestsimpl.DiffResult{
 		TFDiff:     tfChanges,
 		PulumiDiff: diffResponse,
+		TFOut:      tfOut,
+		PulumiOut:  pulumiOut,
 	}
 }
 
