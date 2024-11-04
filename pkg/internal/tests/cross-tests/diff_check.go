@@ -15,7 +15,6 @@
 package crosstests
 
 import (
-	"encoding/json"
 	"os"
 	"path/filepath"
 
@@ -85,13 +84,7 @@ func runDiffCheck(t T, tc diffTestCase) crosstestsimpl.DiffResult {
 
 	changes := tfd.driver.ParseChangesFromTFPlan(tfDiffPlan)
 
-	diffResponse := crosstestsimpl.PulumiDiffResp{}
-	for _, entry := range pt.GrpcLog(t).Entries {
-		if entry.Method == "/pulumirpc.ResourceProvider/Diff" {
-			err := json.Unmarshal(entry.Response, &diffResponse)
-			require.NoError(t, err)
-		}
-	}
+	diffResponse := crosstestsimpl.GetPulumiDiffResponse(t, pt)
 	crosstestsimpl.VerifyBasicDiffAgreement(t, changes.Actions, x.Summary, diffResponse)
 
 	return crosstestsimpl.DiffResult{

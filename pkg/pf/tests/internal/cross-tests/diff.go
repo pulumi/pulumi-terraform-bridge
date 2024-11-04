@@ -16,7 +16,6 @@ package crosstests
 
 import (
 	"bytes"
-	"encoding/json"
 	"testing"
 
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -137,13 +136,7 @@ func Diff(t *testing.T, schema rschema.Schema, tfConfig1, tfConfig2 map[string]c
 
 		pulumiRes = pt.Up(t)
 
-		diffResponse = crosstestsimpl.PulumiDiffResp{}
-		for _, entry := range pt.GrpcLog(t).Entries {
-			if entry.Method == "/pulumirpc.ResourceProvider/Diff" {
-				err := json.Unmarshal(entry.Response, &diffResponse)
-				require.NoError(t, err)
-			}
-		}
+		diffResponse = crosstestsimpl.GetPulumiDiffResponse(t, pt)
 	})
 
 	skipCompare := t.Failed() || t.Skipped()
