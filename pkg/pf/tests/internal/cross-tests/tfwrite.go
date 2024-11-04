@@ -12,29 +12,33 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-type PFWriter struct{ out io.Writer }
-
-func WritePF(out io.Writer) PFWriter { return PFWriter{out} }
-
-func (w PFWriter) Provider(sch pschema.Schema, providerName string, config map[string]cty.Value) error {
+// Provider writes a provider declaration to an HCL file.
+//
+// Note that unknowns are not yet supported in cty.Value, it will error out if found.
+func writeProvider(out io.Writer, sch pschema.Schema, providerName string, config map[string]cty.Value) error {
 	if !cty.ObjectVal(config).IsWhollyKnown() {
 		return fmt.Errorf("WriteHCL cannot yet write unknowns")
 	}
 	f := hclwrite.NewEmptyFile()
 	block := f.Body().AppendNewBlock("provider", []string{providerName})
 	writePfProvider(block.Body(), sch, config)
-	_, err := f.WriteTo(w.out)
+	_, err := f.WriteTo(out)
 	return err
 }
 
-func (w PFWriter) Resource(sch rschema.Schema, resourceType, resourceName string, config map[string]cty.Value) error {
+// Resource writes a resource declaration to an HCL file.
+//
+// Note that unknowns are not yet supported in cty.Value, it will error out if found.
+func writeResource(
+	out io.Writer, sch rschema.Schema, resourceType, resourceName string, config map[string]cty.Value,
+) error {
 	if !cty.ObjectVal(config).IsWhollyKnown() {
 		return fmt.Errorf("WriteHCL cannot yet write unknowns")
 	}
 	f := hclwrite.NewEmptyFile()
 	block := f.Body().AppendNewBlock("resource", []string{resourceType, resourceName})
 	writePfResource(block.Body(), sch, config)
-	_, err := f.WriteTo(w.out)
+	_, err := f.WriteTo(out)
 	return err
 }
 

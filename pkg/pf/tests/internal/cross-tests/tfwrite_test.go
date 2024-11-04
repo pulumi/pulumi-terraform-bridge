@@ -175,7 +175,7 @@ func TestWritePFHCLProvider(t *testing.T) {
 			t.Parallel()
 
 			var actual bytes.Buffer
-			err := WritePF(&actual).Provider(tt.schema, "test", tt.value)
+			err := writeProvider(&actual, tt.schema, "test", tt.value)
 			require.NoError(t, err)
 			tt.expect.Equal(t, actual.String())
 		})
