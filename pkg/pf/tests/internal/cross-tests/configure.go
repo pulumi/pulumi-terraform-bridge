@@ -106,96 +106,102 @@ func Configure(t *testing.T, schema schema.Schema, tfConfig map[string]cty.Value
 	}
 
 	var tfOutput, puOutput tfsdk.Config
-	var hcl bytes.Buffer
-	err := writeProvider(&hcl, schema, providerName, tfConfig)
-	require.NoError(t, err)
-	// TF does not configure providers unless they are involved with creating
-	// a resource or datasource, so we create "res" to give the TF provider a
-	// reason to be configured.
-	hcl.WriteString(`
+	// Run the TF part
+	{
+		var hcl bytes.Buffer
+		err := writeProvider(&hcl, schema, providerName, tfConfig)
+		require.NoError(t, err)
+		// TF does not configure providers unless they are involved with creating
+		// a resource or datasource, so we create "res" to give the TF provider a
+		// reason to be configured.
+		hcl.WriteString(`
 resource "` + providerName + `_res" "res" {}
 `)
 
-	prov := provbuilder(&tfOutput)
-	driver := tfcheck.NewTfDriver(t, t.TempDir(), prov.TypeName, prov)
+		prov := provbuilder(&tfOutput)
+		driver := tfcheck.NewTfDriver(t, t.TempDir(), prov.TypeName, prov)
 
-	driver.Write(t, hcl.String())
-	plan, err := driver.Plan(t)
-	require.NoError(t, err)
-	err = driver.Apply(t, plan)
-	require.NoError(t, err)
-
-	dir := t.TempDir()
-
-	var puConfig resource.PropertyMap
-	if opts.puConfig != nil {
-		puConfig = *opts.puConfig
-	} else {
-		puConfig = crosstestsimpl.InferPulumiValue(t,
-			tfbridge.ShimProvider(provbuilder(nil)).Schema(),
-			opts.resourceInfo,
-			cty.ObjectVal(tfConfig),
-		)
+		driver.Write(t, hcl.String())
+		plan, err := driver.Plan(t)
+		require.NoError(t, err)
+		err = driver.Apply(t, plan)
+		require.NoError(t, err)
 	}
 
-	pulumiYaml := map[string]any{
-		"name":    "project",
-		"runtime": "yaml",
-		"backend": map[string]any{
-			"url": "file://./data",
-		},
-		"resources": map[string]any{
-			"p": map[string]any{
-				"type":       "pulumi:providers:" + providerName,
-				"properties": crosstests.ConvertResourceValue(t, puConfig),
+	// Run the Pulumi part
+	{
+		dir := t.TempDir()
+
+		var puConfig resource.PropertyMap
+		if opts.puConfig != nil {
+			puConfig = *opts.puConfig
+		} else {
+			puConfig = crosstestsimpl.InferPulumiValue(t,
+				tfbridge.ShimProvider(provbuilder(nil)).Schema(),
+				opts.resourceInfo,
+				cty.ObjectVal(tfConfig),
+			)
+		}
+
+		pulumiYaml := map[string]any{
+			"name":    "project",
+			"runtime": "yaml",
+			"backend": map[string]any{
+				"url": "file://./data",
 			},
-		},
+			"resources": map[string]any{
+				"p": map[string]any{
+					"type":       "pulumi:providers:" + providerName,
+					"properties": crosstests.ConvertResourceValue(t, puConfig),
+				},
+			},
+		}
+
+		bytes, err := yaml.Marshal(pulumiYaml)
+		require.NoError(t, err)
+		t.Logf("Pulumi.yaml:\n%s", string(bytes))
+		err = os.WriteFile(filepath.Join(dir, "Pulumi.yaml"), bytes, 0o600)
+		require.NoError(t, err)
+
+		makeProvider := func(providers.PulumiTest) (pulumirpc.ResourceProviderServer, error) {
+			ctx, sink := context.Background(), testLogSink{t}
+
+			p := info.Provider{
+				Name:             providerName,
+				P:                tfbridge.ShimProvider(provbuilder(&puOutput)),
+				Version:          "0.1.0-dev",
+				UpstreamRepoPath: ".",
+				Config:           opts.resourceInfo,
+			}
+			p.MustComputeTokens(tokens.SingleModule(providerName, "index", tokens.MakeStandard(providerName)))
+
+			for _, v := range p.DataSources {
+				v.Docs = &info.Doc{Markdown: []byte{' '} /* don't warn the user that docs cannot be found */}
+			}
+			for _, v := range p.Resources {
+				v.Docs = &info.Doc{Markdown: []byte{' '} /* don't warn the user that docs cannot be found */}
+			}
+			schema, err := tfgen.GenerateSchema(ctx, tfgen.GenerateSchemaOptions{
+				ProviderInfo: p,
+			})
+			if err != nil {
+				return nil, err
+			}
+
+			p.MetadataInfo = &info.Metadata{Path: "non-empty"}
+			return tfbridge.NewProviderServer(ctx, sink, p, tfbridge.ProviderMetadata{
+				PackageSchema: schema.ProviderMetadata.PackageSchema,
+			})
+		}
+
+		test := pulumitest.NewPulumiTest(t, dir,
+			opttest.AttachProviderServer(providerName, makeProvider),
+			opttest.SkipInstall(),
+			opttest.Env("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "true"),
+		)
+		contract.Ignore(test.Preview(t)) // Assert that the preview succeeded, but not the result.
+		contract.Ignore(test.Up(t))      // Assert that the update succeeded, but not the result.
 	}
-
-	bytes, err := yaml.Marshal(pulumiYaml)
-	require.NoError(t, err)
-	t.Logf("Pulumi.yaml:\n%s", string(bytes))
-	err = os.WriteFile(filepath.Join(dir, "Pulumi.yaml"), bytes, 0o600)
-	require.NoError(t, err)
-
-	makeProvider := func(providers.PulumiTest) (pulumirpc.ResourceProviderServer, error) {
-		ctx, sink := context.Background(), testLogSink{t}
-
-		p := info.Provider{
-			Name:             providerName,
-			P:                tfbridge.ShimProvider(provbuilder(&puOutput)),
-			Version:          "0.1.0-dev",
-			UpstreamRepoPath: ".",
-			Config:           opts.resourceInfo,
-		}
-		p.MustComputeTokens(tokens.SingleModule(providerName, "index", tokens.MakeStandard(providerName)))
-
-		for _, v := range p.DataSources {
-			v.Docs = &info.Doc{Markdown: []byte{' '} /* don't warn the user that docs cannot be found */}
-		}
-		for _, v := range p.Resources {
-			v.Docs = &info.Doc{Markdown: []byte{' '} /* don't warn the user that docs cannot be found */}
-		}
-		schema, err := tfgen.GenerateSchema(ctx, tfgen.GenerateSchemaOptions{
-			ProviderInfo: p,
-		})
-		if err != nil {
-			return nil, err
-		}
-
-		p.MetadataInfo = &info.Metadata{Path: "non-empty"}
-		return tfbridge.NewProviderServer(ctx, sink, p, tfbridge.ProviderMetadata{
-			PackageSchema: schema.ProviderMetadata.PackageSchema,
-		})
-	}
-
-	test := pulumitest.NewPulumiTest(t, dir,
-		opttest.AttachProviderServer(providerName, makeProvider),
-		opttest.SkipInstall(),
-		opttest.Env("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "true"),
-	)
-	contract.Ignore(test.Preview(t)) // Assert that the preview succeeded, but not the result.
-	contract.Ignore(test.Up(t))      // Assert that the update succeeded, but not the result.
 
 	assert.Equal(t, tfOutput, puOutput)
 }
