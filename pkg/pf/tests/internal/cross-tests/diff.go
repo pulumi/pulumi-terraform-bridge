@@ -136,7 +136,7 @@ func Diff(t *testing.T, schema rschema.Schema, tfConfig1, tfConfig2 map[string]c
 
 		pulumiRes = pt.Up(t)
 
-		diffResponse = crosstestsimpl.GetPulumiDiffResponse(t, pt)
+		diffResponse = crosstestsimpl.GetPulumiDiffResponse(t, pt.GrpcLog(t).Entries)
 	})
 
 	skipCompare := t.Failed() || t.Skipped()
