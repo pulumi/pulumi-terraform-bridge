@@ -92,10 +92,10 @@ func GetPulumiDiffResponse(t T, pt *pulumitest.PulumiTest) PulumiDiffResp {
 			require.False(t, found)
 			err := json.Unmarshal(entry.Response, &diffResponse)
 			require.NoError(t, err)
+			found = true
 		}
 	}
 
 	require.True(t, found, "expected to find a diff entry in the gRPC log")
-
 	return diffResponse
 }
