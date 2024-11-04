@@ -16,7 +16,6 @@ package crosstests
 
 import (
 	"bytes"
-	"testing"
 
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	crosstests "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests"
@@ -32,7 +31,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func yamlResource(t *testing.T, properties resource.PropertyMap) map[string]any {
+func yamlResource(t T, properties resource.PropertyMap) map[string]any {
 	return map[string]any{
 		"name":    "project",
 		"runtime": "yaml",
@@ -49,7 +48,7 @@ func yamlResource(t *testing.T, properties resource.PropertyMap) map[string]any 
 // when computed by Terraform and Pulumi.
 //
 // Diff should be safe to run in parallel.
-func Diff(t *testing.T, schema rschema.Schema, tfConfig1, tfConfig2 map[string]cty.Value, options ...DiffOption) crosstestsimpl.DiffResult {
+func Diff(t T, schema rschema.Schema, tfConfig1, tfConfig2 map[string]cty.Value, options ...DiffOption) crosstestsimpl.DiffResult {
 	skipUnlessLinux(t)
 
 	var opts diffOpts

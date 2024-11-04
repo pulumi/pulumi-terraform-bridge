@@ -82,7 +82,7 @@ func MakeConfigure(schema schema.Schema, tfConfig map[string]cty.Value, options 
 //	+--------------------+                      +---------------------+
 //
 // Configure should be safe to run in parallel.
-func Configure(t *testing.T, schema schema.Schema, tfConfig map[string]cty.Value, options ...ConfigureOption) {
+func Configure(t T, schema schema.Schema, tfConfig map[string]cty.Value, options ...ConfigureOption) {
 	skipUnlessLinux(t)
 
 	var opts configureOpts
