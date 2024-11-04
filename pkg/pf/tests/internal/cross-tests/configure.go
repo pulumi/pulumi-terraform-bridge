@@ -112,7 +112,7 @@ func Configure(t *testing.T, schema schema.Schema, tfConfig map[string]cty.Value
 	t.Run("tf", func(t *testing.T) {
 		defer propagateSkip(topLevelT, t)
 		var hcl bytes.Buffer
-		err := crosstests.WritePF(&hcl).Provider(schema, providerName, tfConfig)
+		err := writeProvider(&hcl, schema, providerName, tfConfig)
 		require.NoError(t, err)
 		// TF does not configure providers unless they are involved with creating
 		// a resource or datasource, so we create "res" to give the TF provider a
