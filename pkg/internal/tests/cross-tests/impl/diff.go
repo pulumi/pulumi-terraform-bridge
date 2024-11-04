@@ -19,6 +19,8 @@ type PulumiDiffResp struct {
 type DiffResult struct {
 	TFDiff     tfcheck.TFChange
 	PulumiDiff PulumiDiffResp
+	TFOut      string
+	PulumiOut  string
 }
 
 func VerifyBasicDiffAgreement(t T, tfActions []string, us auto.UpdateSummary, diffResponse PulumiDiffResp) {

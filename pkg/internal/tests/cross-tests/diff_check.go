@@ -79,6 +79,8 @@ func runDiffCheck(t T, tc diffTestCase) crosstestsimpl.DiffResult {
 		bridgedProvider.P.ResourcesMap().Get(defRtype).Schema(), nil, tfConfig2))
 	err := os.WriteFile(filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml"), yamlProgram, 0o600)
 	require.NoErrorf(t, err, "writing Pulumi.yaml")
+
+	previewRes := pt.Preview(t)
 	x := pt.Up(t)
 
 	changes := tfd.driver.ParseChangesFromTFPlan(tfDiffPlan)
@@ -95,5 +97,7 @@ func runDiffCheck(t T, tc diffTestCase) crosstestsimpl.DiffResult {
 	return crosstestsimpl.DiffResult{
 		TFDiff:     changes,
 		PulumiDiff: diffResponse,
+		TFOut:      tfDiffPlan.StdOut,
+		PulumiOut:  previewRes.StdOut,
 	}
 }
