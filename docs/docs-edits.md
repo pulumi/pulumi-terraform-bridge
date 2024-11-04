@@ -6,13 +6,16 @@ What this means is that in order for a registry docs page to be changed, the ide
 However, since Pulumi does not own those upstream repositories, such changes are difficult and slow, and we have devised some workarounds.
 In this document, we attempt to show the use of the most common of these workarounds.
 
-*Note to community contributors:*
-While this document is mostly aimed at bridge maintainers, we do hope that this sheds some light on our docsgen process, and may empower you to attempt a docs fix in the future.
-But perhaps this will also serve to explain why from a maintainer burden perspective it is never "just" a simple typo fix.
+> [!NOTE]
+> *For community contributors*
+> 
+> While this document is mostly aimed at bridge maintainers, we do hope that this sheds some light on our docsgen process, and may empower you to attempt a docs fix in the future.
+> But perhaps this will also serve to explain why from a maintainer burden perspective it is never "just" a simple typo fix.
 
 ## Process
 
-*Note*: It is assumed that the reader of this document is familiar with the provider build and development process, of which the following is a small part.
+> [!NOTE]
+> It is assumed that the reader of this document is familiar with the provider build and development process, of which the following is a small part.
 
 For resource and function pages, the bridge converts docs, adds extra information from the Terraform schema field, and reads the result into the Pulumi provider schema.
 The registry docsgen tool will then later use this information to generate docs pages.
@@ -82,7 +85,8 @@ var removeBadText = tfbridge.DocsEdit{
 
 Here's an example of a large find/replace that reads from files fo find and set text.
 It is recommended that if you must do this, you include a hard error so that we don't wind up with orphaned code that finds nothing.
-*Note*: Large find/replaces are discouraged and should only be used for critical files, such as the `_index.md` landing page, or frequently visited resource pages.
+> [!NOTE]
+> Large find/replaces are discouraged and should only be used for critical files, such as the `_index.md` landing page, or frequently visited resource pages.
 ```go
 var cleanUpOverviewSection = tfbridge.DocsEdit{
     Path: "index.md",
