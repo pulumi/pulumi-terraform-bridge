@@ -82,7 +82,7 @@ func MakeConfigure(schema schema.Schema, tfConfig map[string]cty.Value, options 
 //	+--------------------+                      +---------------------+
 //
 // Configure should be safe to run in parallel.
-func Configure(t *testing.T, schema schema.Schema, tfConfig map[string]cty.Value, options ...ConfigureOption) {
+func Configure(t T, schema schema.Schema, tfConfig map[string]cty.Value, options ...ConfigureOption) {
 	skipUnlessLinux(t)
 
 	var opts configureOpts
@@ -90,12 +90,9 @@ func Configure(t *testing.T, schema schema.Schema, tfConfig map[string]cty.Value
 		f(&opts)
 	}
 
-	// By default, logs only show when they are on a failed test. By logging to
-	// topLevelT, we can log items to be shown if downstream tests fail.
-	topLevelT := t
 	const providerName = "test"
 
-	prov := func(config *tfsdk.Config) *pb.Provider {
+	provbuilder := func(config *tfsdk.Config) *pb.Provider {
 		return pb.NewProvider(pb.NewProviderArgs{
 			TypeName:       providerName,
 			ProviderSchema: schema,
@@ -109,8 +106,8 @@ func Configure(t *testing.T, schema schema.Schema, tfConfig map[string]cty.Value
 	}
 
 	var tfOutput, puOutput tfsdk.Config
-	t.Run("tf", func(t *testing.T) {
-		defer propagateSkip(topLevelT, t)
+	// Run the TF part
+	{
 		var hcl bytes.Buffer
 		err := writeProvider(&hcl, schema, providerName, tfConfig)
 		require.NoError(t, err)
@@ -121,7 +118,7 @@ func Configure(t *testing.T, schema schema.Schema, tfConfig map[string]cty.Value
 resource "` + providerName + `_res" "res" {}
 `)
 
-		prov := prov(&tfOutput)
+		prov := provbuilder(&tfOutput)
 		driver := tfcheck.NewTfDriver(t, t.TempDir(), prov.TypeName, prov)
 
 		driver.Write(t, hcl.String())
@@ -129,10 +126,10 @@ resource "` + providerName + `_res" "res" {}
 		require.NoError(t, err)
 		err = driver.Apply(t, plan)
 		require.NoError(t, err)
-	})
+	}
 
-	t.Run("bridged", func(t *testing.T) {
-		defer propagateSkip(topLevelT, t)
+	// Run the Pulumi part
+	{
 		dir := t.TempDir()
 
 		var puConfig resource.PropertyMap
@@ -140,7 +137,7 @@ resource "` + providerName + `_res" "res" {}
 			puConfig = *opts.puConfig
 		} else {
 			puConfig = crosstestsimpl.InferPulumiValue(t,
-				tfbridge.ShimProvider(prov(nil)).Schema(),
+				tfbridge.ShimProvider(provbuilder(nil)).Schema(),
 				opts.resourceInfo,
 				cty.ObjectVal(tfConfig),
 			)
@@ -162,8 +159,8 @@ resource "` + providerName + `_res" "res" {}
 
 		bytes, err := yaml.Marshal(pulumiYaml)
 		require.NoError(t, err)
-		topLevelT.Logf("Pulumi.yaml:\n%s", string(bytes))
-		err = os.WriteFile(filepath.Join(dir, "Pulumi.yaml"), bytes, 0600)
+		t.Logf("Pulumi.yaml:\n%s", string(bytes))
+		err = os.WriteFile(filepath.Join(dir, "Pulumi.yaml"), bytes, 0o600)
 		require.NoError(t, err)
 
 		makeProvider := func(providers.PulumiTest) (pulumirpc.ResourceProviderServer, error) {
@@ -171,7 +168,7 @@ resource "` + providerName + `_res" "res" {}
 
 			p := info.Provider{
 				Name:             providerName,
-				P:                tfbridge.ShimProvider(prov(&puOutput)),
+				P:                tfbridge.ShimProvider(provbuilder(&puOutput)),
 				Version:          "0.1.0-dev",
 				UpstreamRepoPath: ".",
 				Config:           opts.resourceInfo,
@@ -204,15 +201,9 @@ resource "` + providerName + `_res" "res" {}
 		)
 		contract.Ignore(test.Preview(t)) // Assert that the preview succeeded, but not the result.
 		contract.Ignore(test.Up(t))      // Assert that the update succeeded, but not the result.
-	})
+	}
 
-	skipCompare := t.Failed() || t.Skipped()
-	t.Run("compare", func(t *testing.T) {
-		if skipCompare {
-			t.Skipf("skipping since earlier steps did not complete")
-		}
-		assert.Equal(t, tfOutput, puOutput)
-	})
+	assert.Equal(t, tfOutput, puOutput)
 }
 
 type configureOpts struct {

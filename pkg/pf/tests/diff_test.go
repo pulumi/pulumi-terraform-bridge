@@ -19,7 +19,9 @@ func TestSimpleNoDiff(t *testing.T) {
 	}
 
 	res := crosstests.Diff(t, sch,
-		map[string]cty.Value{"key": cty.StringVal("value")}, map[string]cty.Value{"key": cty.StringVal("value1")})
+		map[string]cty.Value{"key": cty.StringVal("value")},
+		map[string]cty.Value{"key": cty.StringVal("value1")},
+	)
 
 	autogold.Expect(`
 Terraform used the selected providers to generate the following execution

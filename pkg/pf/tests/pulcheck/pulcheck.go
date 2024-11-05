@@ -7,11 +7,11 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"testing"
 
 	"github.com/pulumi/providertest/providers"
 	"github.com/pulumi/providertest/pulumitest"
 	"github.com/pulumi/providertest/pulumitest/opttest"
+	crosstestsimpl "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests/impl"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfgen"
 	tfbridge0 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
@@ -24,7 +24,9 @@ import (
 	"google.golang.org/grpc"
 )
 
-func testSink(t *testing.T) diag.Sink {
+type T = crosstestsimpl.T
+
+func testSink(t T) diag.Sink {
 	var stdout, stderr bytes.Buffer
 
 	testSink := diag.DefaultSink(&stdout, &stderr, diag.FormatOptions{
@@ -43,7 +45,7 @@ func testSink(t *testing.T) diag.Sink {
 	return testSink
 }
 
-func genMetadata(t *testing.T, info tfbridge0.ProviderInfo) (tfbridge.ProviderMetadata, error) {
+func genMetadata(t T, info tfbridge0.ProviderInfo) (tfbridge.ProviderMetadata, error) {
 	generated, err := tfgen.GenerateSchema(context.Background(), tfgen.GenerateSchemaOptions{
 		ProviderInfo:    info,
 		DiagnosticsSink: testSink(t),
@@ -54,7 +56,7 @@ func genMetadata(t *testing.T, info tfbridge0.ProviderInfo) (tfbridge.ProviderMe
 	return generated.ProviderMetadata, nil
 }
 
-func newProviderServer(t *testing.T, info tfbridge0.ProviderInfo) (pulumirpc.ResourceProviderServer, error) {
+func newProviderServer(t T, info tfbridge0.ProviderInfo) (pulumirpc.ResourceProviderServer, error) {
 	ctx := context.Background()
 	meta, err := genMetadata(t, info)
 	if err != nil {
@@ -65,7 +67,7 @@ func newProviderServer(t *testing.T, info tfbridge0.ProviderInfo) (pulumirpc.Res
 	return srv, nil
 }
 
-func startPulumiProvider(t *testing.T, prov pulumirpc.ResourceProviderServer) *rpcutil.ServeHandle {
+func startPulumiProvider(t T, prov pulumirpc.ResourceProviderServer) *rpcutil.ServeHandle {
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Init: func(srv *grpc.Server) error {
 			pulumirpc.RegisterResourceProviderServer(srv, prov)
@@ -76,7 +78,7 @@ func startPulumiProvider(t *testing.T, prov pulumirpc.ResourceProviderServer) *r
 	return &handle
 }
 
-func skipUnlessLinux(t *testing.T) {
+func skipUnlessLinux(t T) {
 	if ci, ok := os.LookupEnv("CI"); ok && ci == "true" && !strings.Contains(strings.ToLower(runtime.GOOS), "linux") {
 		// TODO[pulumi/pulumi-terraform-bridge#2221]
 		t.Skip("Skipping on non-Linux platforms")
@@ -84,7 +86,7 @@ func skipUnlessLinux(t *testing.T) {
 }
 
 // PulCheck creates a new Pulumi test from a bridged provider and a program.
-func PulCheck(t *testing.T, bridgedProvider info.Provider, program string, opts ...opttest.Option) (*pulumitest.PulumiTest, error) {
+func PulCheck(t T, bridgedProvider info.Provider, program string, opts ...opttest.Option) (*pulumitest.PulumiTest, error) {
 	skipUnlessLinux(t)
 	puwd := t.TempDir()
 	p := filepath.Join(puwd, "Pulumi.yaml")
