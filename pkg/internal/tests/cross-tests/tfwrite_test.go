@@ -20,6 +20,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hexops/autogold/v2"
+	crosstestsimpl "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests/impl"
 	"github.com/stretchr/testify/require"
 	"github.com/zclconf/go-cty/cty"
 )
@@ -266,7 +267,8 @@ resource "res" "ex" {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			var out bytes.Buffer
-			err := writeResource(&out, tc.schema, "res", "ex", tc.value)
+			sch := NewHCLSchemaSDKv2(tc.schema)
+			err := crosstestsimpl.WriteResource(&out, sch, "res", "ex", tc.value)
 			require.NoError(t, err)
 			tc.expect.Equal(t, "\n"+out.String())
 		})
