@@ -80,7 +80,7 @@ func Diff(t T, schema rschema.Schema, tfConfig1, tfConfig2 map[string]cty.Value,
 	require.NoError(t, err)
 
 	var hcl2 bytes.Buffer
-	err = writeResource(&hcl1, schema, "testprovider_test", "res", tfConfig2)
+	err = writeResource(&hcl2, schema, "testprovider_test", "res", tfConfig2)
 	require.NoError(t, err)
 	driver.Write(t, hcl2.String())
 	plan, err = driver.Plan(t)
