@@ -27,11 +27,9 @@ jobs:
         cache-dependency-path: |
             **/go.sum
     - name: Install golangci-lint
-      uses: golangci/golangci-lint-action@v4
+      uses: golangci/golangci-lint-action@v6
       with:
           skip-cache: true
-          skip-pkg-cache: true
-          skip-build-cache: true
           version: v1.60
     - name: Update Pulumi/Pulumi
       id: gomod
