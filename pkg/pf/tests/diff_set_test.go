@@ -89,6 +89,9 @@ func TestDetailedDiffSetAttribute(t *testing.T) {
 		for i, v := range el {
 			slice[i] = cty.StringVal(v)
 		}
+		if len(slice) == 0 {
+			return cty.ListValEmpty(cty.String)
+		}
 		return cty.ListVal(slice)
 	}
 
@@ -101,9 +104,11 @@ func TestDetailedDiffSetAttribute(t *testing.T) {
 				},
 			)
 		}
+		if len(slice) == 0 {
+			return cty.ListValEmpty(cty.Object(map[string]cty.Type{"nested": cty.String}))
+		}
 		return cty.ListVal(slice)
 	}
-
 
 	t.Run("unchanged non-empty", func(t *testing.T) {
 		t.Parallel()

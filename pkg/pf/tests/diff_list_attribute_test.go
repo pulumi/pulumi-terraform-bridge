@@ -86,6 +86,9 @@ func TestDetailedDiffListAttribute(t *testing.T) {
 		for i, v := range el {
 			slice[i] = cty.StringVal(v)
 		}
+		if len(slice) == 0 {
+			return cty.ListValEmpty(cty.String)
+		}
 		return cty.ListVal(slice)
 	}
 
@@ -97,6 +100,9 @@ func TestDetailedDiffListAttribute(t *testing.T) {
 					"nested": cty.StringVal(v),
 				},
 			)
+		}
+		if len(slice) == 0 {
+			return cty.ListValEmpty(cty.Object(map[string]cty.Type{"nested": cty.String}))
 		}
 		return cty.ListVal(slice)
 	}
