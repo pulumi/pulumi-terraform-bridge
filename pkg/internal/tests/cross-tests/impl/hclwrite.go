@@ -32,6 +32,9 @@ type ShimHCLSchema interface {
 	Blocks() map[string]ShimHCLBlock
 }
 
+// WriteProvider writes a provider declaration to an HCL file.
+//
+// Note that unknowns are not yet supported in cty.Value, it will error out if found.
 func WriteProvider(w io.Writer, schema ShimHCLSchema, providerType string, config map[string]cty.Value) error {
 	if !cty.ObjectVal(config).IsWhollyKnown() {
 		return fmt.Errorf("WriteHCL cannot yet write unknowns")
@@ -59,6 +62,9 @@ func WithCreateBeforeDestroy(createBeforeDestroy bool) WriteResourceOption {
 	}
 }
 
+// WriteResource writes a resource declaration to an HCL file.
+//
+// Note that unknowns are not yet supported in cty.Value, it will error out if found.
 func WriteResource(
 	w io.Writer, schema ShimHCLSchema, resourceType, resourceName string, config map[string]cty.Value,
 	opts ...WriteResourceOption,
