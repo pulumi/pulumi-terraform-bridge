@@ -69,7 +69,8 @@ func Diff(t T, schema rschema.Schema, tfConfig1, tfConfig2 map[string]cty.Value,
 	var hcl1 bytes.Buffer
 
 	sch := NewHCLSchemaPFResource(schema)
-	err := crosstestsimpl.WriteResource(&hcl1, sch, "testprovider_test", "res", tfConfig1)
+	err := crosstestsimpl.WriteResource(&hcl1, sch, "testprovider_test", "res", tfConfig1,
+		crosstestsimpl.WithCreateBeforeDestroy(true))
 	require.NoError(t, err)
 
 	driver := tfcheck.NewTfDriver(t, t.TempDir(), prov.TypeName, prov)
@@ -81,7 +82,8 @@ func Diff(t T, schema rschema.Schema, tfConfig1, tfConfig2 map[string]cty.Value,
 	require.NoError(t, err)
 
 	var hcl2 bytes.Buffer
-	err = crosstestsimpl.WriteResource(&hcl2, sch, "testprovider_test", "res", tfConfig2)
+	err = crosstestsimpl.WriteResource(&hcl2, sch, "testprovider_test", "res", tfConfig2,
+		crosstestsimpl.WithCreateBeforeDestroy(true))
 	require.NoError(t, err)
 	driver.Write(t, hcl2.String())
 	plan, err = driver.Plan(t)
