@@ -158,6 +158,12 @@ var pulumiNames = map[string]string{
 	"template": "terraform-template",
 }
 
+// HasPulumiProviderName returns true if the given Terraform provider has a corresponding Pulumi provider name.
+func HasPulumiProviderName(terraformProviderName string) bool {
+	_, hasPulumiName := pulumiNames[terraformProviderName]
+	return hasPulumiName
+}
+
 // GetPulumiProviderName returns the Pulumi name for the given Terraform provider. In most cases the two names will be
 // identical.
 func GetPulumiProviderName(terraformProviderName string) string {
