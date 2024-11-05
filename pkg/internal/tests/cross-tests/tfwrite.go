@@ -17,6 +17,7 @@ package crosstests
 
 import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+
 	crosstestsimpl "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests/impl"
 )
 
