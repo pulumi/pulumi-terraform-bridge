@@ -22,7 +22,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/provider"
-	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
+	pschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/pulumi/providertest/providers"
 	"github.com/pulumi/providertest/pulumitest"
@@ -51,7 +51,7 @@ import (
 //	}
 //
 // For details on the test itself, see [Configure].
-func MakeConfigure(schema schema.Schema, tfConfig map[string]cty.Value, options ...ConfigureOption) func(t *testing.T) {
+func MakeConfigure(schema pschema.Schema, tfConfig map[string]cty.Value, options ...ConfigureOption) func(t *testing.T) {
 	return func(t *testing.T) {
 		t.Parallel()
 		Configure(t, schema, tfConfig, options...)
@@ -82,7 +82,7 @@ func MakeConfigure(schema schema.Schema, tfConfig map[string]cty.Value, options 
 //	+--------------------+                      +---------------------+
 //
 // Configure should be safe to run in parallel.
-func Configure(t T, schema schema.Schema, tfConfig map[string]cty.Value, options ...ConfigureOption) {
+func Configure(t T, schema pschema.Schema, tfConfig map[string]cty.Value, options ...ConfigureOption) {
 	skipUnlessLinux(t)
 
 	var opts configureOpts
@@ -109,7 +109,8 @@ func Configure(t T, schema schema.Schema, tfConfig map[string]cty.Value, options
 	// Run the TF part
 	{
 		var hcl bytes.Buffer
-		err := writeProvider(&hcl, schema, providerName, tfConfig)
+		sch := NewHCLSchemaPFProvider(schema)
+		err := crosstestsimpl.WriteProvider(&hcl, sch, providerName, tfConfig)
 		require.NoError(t, err)
 		// TF does not configure providers unless they are involved with creating
 		// a resource or datasource, so we create "res" to give the TF provider a
