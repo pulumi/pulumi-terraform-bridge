@@ -81,6 +81,26 @@ func TestDetailedDiffListAttribute(t *testing.T) {
 		},
 	}
 
+	attrList := func(el ...string) cty.Value {
+		slice := make([]cty.Value, len(el))
+		for i, v := range el {
+			slice[i] = cty.StringVal(v)
+		}
+		return cty.ListVal(slice)
+	}
+
+	blockList := func(el ...string) cty.Value {
+		slice := make([]cty.Value, len(el))
+		for i, v := range el {
+			slice[i] = cty.ObjectVal(
+				map[string]cty.Value{
+					"nested": cty.StringVal(v),
+				},
+			)
+		}
+		return cty.ListVal(slice)
+	}
+
 	t.Run("unchanged non-empty", func(t *testing.T) {
 		t.Parallel()
 
@@ -88,8 +108,8 @@ func TestDetailedDiffListAttribute(t *testing.T) {
 			t.Parallel()
 
 			res := crosstests.Diff(t, attributeSchema,
-				map[string]cty.Value{"key": cty.ListVal([]cty.Value{cty.StringVal("value")})},
-				map[string]cty.Value{"key": cty.ListVal([]cty.Value{cty.StringVal("value")})},
+				map[string]cty.Value{"key": attrList("value")},
+				map[string]cty.Value{"key": attrList("value")},
 			)
 
 			autogold.Expect(`
@@ -102,8 +122,50 @@ func TestDetailedDiffListAttribute(t *testing.T) {
 			t.Parallel()
 
 			res := crosstests.Diff(t, attributeReplaceSchema,
-				map[string]cty.Value{"key": cty.ListVal([]cty.Value{cty.StringVal("value")})},
-				map[string]cty.Value{"key": cty.ListVal([]cty.Value{cty.StringVal("value")})},
+				map[string]cty.Value{"key": attrList("value")},
+				map[string]cty.Value{"key": attrList("value")},
+			)
+
+			autogold.Expect(`
+`).Equal(t, res.TFOut)
+			autogold.Expect(`
+`).Equal(t, res.PulumiOut)
+		})
+
+		t.Run("block no replace", func(t *testing.T) {
+			t.Parallel()
+
+			res := crosstests.Diff(t, blockSchema,
+				map[string]cty.Value{"key": blockList("value")},
+				map[string]cty.Value{"key": blockList("value")},
+			)
+
+			autogold.Expect(`
+`).Equal(t, res.TFOut)
+			autogold.Expect(`
+`).Equal(t, res.PulumiOut)
+		})
+
+		t.Run("block requires replace", func(t *testing.T) {
+			t.Parallel()
+
+			res := crosstests.Diff(t, blockReplaceSchema,
+				map[string]cty.Value{"key": blockList("value")},
+				map[string]cty.Value{"key": blockList("value")},
+			)
+
+			autogold.Expect(`
+`).Equal(t, res.TFOut)
+			autogold.Expect(`
+`).Equal(t, res.PulumiOut)
+		})
+
+		t.Run("block nested requires replace", func(t *testing.T) {
+			t.Parallel()
+
+			res := crosstests.Diff(t, blockNestedReplaceSchema,
+				map[string]cty.Value{"key": blockList("value")},
+				map[string]cty.Value{"key": blockList("value")},
 			)
 
 			autogold.Expect(`
@@ -118,8 +180,8 @@ func TestDetailedDiffListAttribute(t *testing.T) {
 
 		t.Run("no replace", func(t *testing.T) {
 			res := crosstests.Diff(t, attributeSchema,
-				map[string]cty.Value{"key": cty.ListVal([]cty.Value{cty.StringVal("value")})},
-				map[string]cty.Value{"key": cty.ListVal([]cty.Value{cty.StringVal("value1")})},
+				map[string]cty.Value{"key": attrList("value")},
+				map[string]cty.Value{"key": attrList("value1")},
 			)
 
 			autogold.Expect(`
@@ -130,8 +192,36 @@ func TestDetailedDiffListAttribute(t *testing.T) {
 
 		t.Run("requires replace", func(t *testing.T) {
 			res := crosstests.Diff(t, attributeReplaceSchema,
-				map[string]cty.Value{"key": cty.ListVal([]cty.Value{cty.StringVal("value")})},
-				map[string]cty.Value{"key": cty.ListVal([]cty.Value{cty.StringVal("value1")})},
+				map[string]cty.Value{"key": attrList("value")},
+				map[string]cty.Value{"key": attrList("value1")},
+			)
+
+			autogold.Expect(`
+`).Equal(t, res.TFOut)
+			autogold.Expect(`
+`).Equal(t, res.PulumiOut)
+		})
+
+		t.Run("block no replace", func(t *testing.T) {
+			t.Parallel()
+
+			res := crosstests.Diff(t, blockSchema,
+				map[string]cty.Value{"key": blockList("value")},
+				map[string]cty.Value{"key": blockList("value1")},
+			)
+
+			autogold.Expect(`
+`).Equal(t, res.TFOut)
+			autogold.Expect(`
+`).Equal(t, res.PulumiOut)
+		})
+
+		t.Run("block requires replace", func(t *testing.T) {
+			t.Parallel()
+
+			res := crosstests.Diff(t, blockReplaceSchema,
+				map[string]cty.Value{"key": blockList("value")},
+				map[string]cty.Value{"key": blockList("value1")},
 			)
 
 			autogold.Expect(`
@@ -147,7 +237,7 @@ func TestDetailedDiffListAttribute(t *testing.T) {
 		t.Run("no replace", func(t *testing.T) {
 			res := crosstests.Diff(t, attributeSchema,
 				map[string]cty.Value{},
-				map[string]cty.Value{"key": cty.ListVal([]cty.Value{cty.StringVal("value")})},
+				map[string]cty.Value{"key": attrList("value")},
 			)
 
 			autogold.Expect(`
@@ -159,7 +249,49 @@ func TestDetailedDiffListAttribute(t *testing.T) {
 		t.Run("requires replace", func(t *testing.T) {
 			res := crosstests.Diff(t, attributeReplaceSchema,
 				map[string]cty.Value{},
-				map[string]cty.Value{"key": cty.ListVal([]cty.Value{cty.StringVal("value")})},
+				map[string]cty.Value{"key": attrList("value")},
+			)
+
+			autogold.Expect(`
+`).Equal(t, res.TFOut)
+			autogold.Expect(`
+`).Equal(t, res.PulumiOut)
+		})
+
+		t.Run("block no replace", func(t *testing.T) {
+			t.Parallel()
+
+			res := crosstests.Diff(t, blockSchema,
+				map[string]cty.Value{},
+				map[string]cty.Value{"key": blockList("value")},
+			)
+
+			autogold.Expect(`
+`).Equal(t, res.TFOut)
+			autogold.Expect(`
+`).Equal(t, res.PulumiOut)
+		})
+
+		t.Run("block requires replace", func(t *testing.T) {
+			t.Parallel()
+
+			res := crosstests.Diff(t, blockReplaceSchema,
+				map[string]cty.Value{},
+				map[string]cty.Value{"key": blockList("value")},
+			)
+
+			autogold.Expect(`
+`).Equal(t, res.TFOut)
+			autogold.Expect(`
+`).Equal(t, res.PulumiOut)
+		})
+
+		t.Run("block nested requires replace", func(t *testing.T) {
+			t.Parallel()
+
+			res := crosstests.Diff(t, blockNestedReplaceSchema,
+				map[string]cty.Value{},
+				map[string]cty.Value{"key": blockList("value")},
 			)
 
 			autogold.Expect(`
@@ -174,7 +306,7 @@ func TestDetailedDiffListAttribute(t *testing.T) {
 
 		t.Run("no replace", func(t *testing.T) {
 			res := crosstests.Diff(t, attributeSchema,
-				map[string]cty.Value{"key": cty.ListVal([]cty.Value{cty.StringVal("value")})},
+				map[string]cty.Value{"key": attrList("value")},
 				map[string]cty.Value{},
 			)
 
@@ -186,7 +318,49 @@ func TestDetailedDiffListAttribute(t *testing.T) {
 
 		t.Run("requires replace", func(t *testing.T) {
 			res := crosstests.Diff(t, attributeReplaceSchema,
-				map[string]cty.Value{"key": cty.ListVal([]cty.Value{cty.StringVal("value")})},
+				map[string]cty.Value{"key": attrList("value")},
+				map[string]cty.Value{},
+			)
+
+			autogold.Expect(`
+`).Equal(t, res.TFOut)
+			autogold.Expect(`
+`).Equal(t, res.PulumiOut)
+		})
+
+		t.Run("block no replace", func(t *testing.T) {
+			t.Parallel()
+
+			res := crosstests.Diff(t, blockSchema,
+				map[string]cty.Value{"key": blockList("value")},
+				map[string]cty.Value{},
+			)
+
+			autogold.Expect(`
+`).Equal(t, res.TFOut)
+			autogold.Expect(`
+`).Equal(t, res.PulumiOut)
+		})
+
+		t.Run("block requires replace", func(t *testing.T) {
+			t.Parallel()
+
+			res := crosstests.Diff(t, blockReplaceSchema,
+				map[string]cty.Value{"key": blockList("value")},
+				map[string]cty.Value{},
+			)
+
+			autogold.Expect(`
+`).Equal(t, res.TFOut)
+			autogold.Expect(`
+`).Equal(t, res.PulumiOut)
+		})
+
+		t.Run("block nested requires replace", func(t *testing.T) {
+			t.Parallel()
+
+			res := crosstests.Diff(t, blockNestedReplaceSchema,
+				map[string]cty.Value{"key": blockList("value")},
 				map[string]cty.Value{},
 			)
 
@@ -223,6 +397,34 @@ func TestDetailedDiffListAttribute(t *testing.T) {
 			autogold.Expect(`
 `).Equal(t, res.PulumiOut)
 		})
+
+		t.Run("block no replace", func(t *testing.T) {
+			t.Parallel()
+
+			res := crosstests.Diff(t, blockSchema,
+				map[string]cty.Value{"key": cty.NullVal(cty.List(cty.Object(map[string]cty.Type{"nested": cty.String})))},
+				map[string]cty.Value{},
+			)
+
+			autogold.Expect(`
+`).Equal(t, res.TFOut)
+			autogold.Expect(`
+`).Equal(t, res.PulumiOut)
+		})
+
+		t.Run("block requires replace", func(t *testing.T) {
+			t.Parallel()
+
+			res := crosstests.Diff(t, blockReplaceSchema,
+				map[string]cty.Value{"key": cty.NullVal(cty.List(cty.Object(map[string]cty.Type{"nested": cty.String})))},
+				map[string]cty.Value{},
+			)
+
+			autogold.Expect(`
+`).Equal(t, res.TFOut)
+			autogold.Expect(`
+`).Equal(t, res.PulumiOut)
+		})
 	})
 
 	t.Run("null to non-null", func(t *testing.T) {
@@ -231,7 +433,7 @@ func TestDetailedDiffListAttribute(t *testing.T) {
 		t.Run("no replace", func(t *testing.T) {
 			res := crosstests.Diff(t, attributeSchema,
 				map[string]cty.Value{"key": cty.NullVal(cty.List(cty.String))},
-				map[string]cty.Value{"key": cty.ListVal([]cty.Value{cty.StringVal("value")})},
+				map[string]cty.Value{"key": attrList("value")},
 			)
 
 			autogold.Expect(`
@@ -243,7 +445,49 @@ func TestDetailedDiffListAttribute(t *testing.T) {
 		t.Run("requires replace", func(t *testing.T) {
 			res := crosstests.Diff(t, attributeReplaceSchema,
 				map[string]cty.Value{"key": cty.NullVal(cty.List(cty.String))},
-				map[string]cty.Value{"key": cty.ListVal([]cty.Value{cty.StringVal("value")})},
+				map[string]cty.Value{"key": attrList("value")},
+			)
+
+			autogold.Expect(`
+`).Equal(t, res.TFOut)
+			autogold.Expect(`
+`).Equal(t, res.PulumiOut)
+		})
+
+		t.Run("block no replace", func(t *testing.T) {
+			t.Parallel()
+
+			res := crosstests.Diff(t, blockSchema,
+				map[string]cty.Value{"key": cty.NullVal(cty.List(cty.Object(map[string]cty.Type{"nested": cty.String})))},
+				map[string]cty.Value{"key": blockList("value")},
+			)
+
+			autogold.Expect(`
+`).Equal(t, res.TFOut)
+			autogold.Expect(`
+`).Equal(t, res.PulumiOut)
+		})
+
+		t.Run("block requires replace", func(t *testing.T) {
+			t.Parallel()
+
+			res := crosstests.Diff(t, blockReplaceSchema,
+				map[string]cty.Value{"key": cty.NullVal(cty.List(cty.Object(map[string]cty.Type{"nested": cty.String})))},
+				map[string]cty.Value{"key": blockList("value")},
+			)
+
+			autogold.Expect(`
+`).Equal(t, res.TFOut)
+			autogold.Expect(`
+`).Equal(t, res.PulumiOut)
+		})
+
+		t.Run("block nested requires replace", func(t *testing.T) {
+			t.Parallel()
+
+			res := crosstests.Diff(t, blockNestedReplaceSchema,
+				map[string]cty.Value{"key": cty.NullVal(cty.List(cty.Object(map[string]cty.Type{"nested": cty.String})))},
+				map[string]cty.Value{"key": blockList("value")},
 			)
 
 			autogold.Expect(`
@@ -258,7 +502,7 @@ func TestDetailedDiffListAttribute(t *testing.T) {
 
 		t.Run("no replace", func(t *testing.T) {
 			res := crosstests.Diff(t, attributeSchema,
-				map[string]cty.Value{"key": cty.ListVal([]cty.Value{cty.StringVal("value")})},
+				map[string]cty.Value{"key": attrList("value")},
 				map[string]cty.Value{"key": cty.NullVal(cty.List(cty.String))},
 			)
 
@@ -270,8 +514,50 @@ func TestDetailedDiffListAttribute(t *testing.T) {
 
 		t.Run("requires replace", func(t *testing.T) {
 			res := crosstests.Diff(t, attributeReplaceSchema,
-				map[string]cty.Value{"key": cty.ListVal([]cty.Value{cty.StringVal("value")})},
+				map[string]cty.Value{"key": attrList("value")},
 				map[string]cty.Value{"key": cty.NullVal(cty.List(cty.String))},
+			)
+
+			autogold.Expect(`
+`).Equal(t, res.TFOut)
+			autogold.Expect(`
+`).Equal(t, res.PulumiOut)
+		})
+
+		t.Run("block no replace", func(t *testing.T) {
+			t.Parallel()
+
+			res := crosstests.Diff(t, blockSchema,
+				map[string]cty.Value{"key": blockList("value")},
+				map[string]cty.Value{"key": cty.NullVal(cty.List(cty.Object(map[string]cty.Type{"nested": cty.String})))},
+			)
+
+			autogold.Expect(`
+`).Equal(t, res.TFOut)
+			autogold.Expect(`
+`).Equal(t, res.PulumiOut)
+		})
+
+		t.Run("block requires replace", func(t *testing.T) {
+			t.Parallel()
+
+			res := crosstests.Diff(t, blockReplaceSchema,
+				map[string]cty.Value{"key": blockList("value")},
+				map[string]cty.Value{"key": cty.NullVal(cty.List(cty.Object(map[string]cty.Type{"nested": cty.String})))},
+			)
+
+			autogold.Expect(`
+`).Equal(t, res.TFOut)
+			autogold.Expect(`
+`).Equal(t, res.PulumiOut)
+		})
+
+		t.Run("block nested requires replace", func(t *testing.T) {
+			t.Parallel()
+
+			res := crosstests.Diff(t, blockNestedReplaceSchema,
+				map[string]cty.Value{"key": blockList("value")},
+				map[string]cty.Value{"key": cty.NullVal(cty.List(cty.Object(map[string]cty.Type{"nested": cty.String})))},
 			)
 
 			autogold.Expect(`
@@ -287,7 +573,7 @@ func TestDetailedDiffListAttribute(t *testing.T) {
 		t.Run("no replace", func(t *testing.T) {
 			res := crosstests.Diff(t, attributeSchema,
 				map[string]cty.Value{"key": cty.NullVal(cty.List(cty.String))},
-				map[string]cty.Value{"key": cty.ListValEmpty(cty.String)},
+				map[string]cty.Value{"key": attrList()},
 			)
 
 			autogold.Expect(`
@@ -299,7 +585,35 @@ func TestDetailedDiffListAttribute(t *testing.T) {
 		t.Run("requires replace", func(t *testing.T) {
 			res := crosstests.Diff(t, attributeReplaceSchema,
 				map[string]cty.Value{"key": cty.NullVal(cty.List(cty.String))},
-				map[string]cty.Value{"key": cty.ListValEmpty(cty.String)},
+				map[string]cty.Value{"key": attrList()},
+			)
+
+			autogold.Expect(`
+`).Equal(t, res.TFOut)
+			autogold.Expect(`
+`).Equal(t, res.PulumiOut)
+		})
+
+		t.Run("block no replace", func(t *testing.T) {
+			t.Parallel()
+
+			res := crosstests.Diff(t, blockSchema,
+				map[string]cty.Value{"key": cty.NullVal(cty.List(cty.Object(map[string]cty.Type{"nested": cty.String})))},
+				map[string]cty.Value{"key": blockList()},
+			)
+
+			autogold.Expect(`
+`).Equal(t, res.TFOut)
+			autogold.Expect(`
+`).Equal(t, res.PulumiOut)
+		})
+
+		t.Run("block requires replace", func(t *testing.T) {
+			t.Parallel()
+
+			res := crosstests.Diff(t, blockReplaceSchema,
+				map[string]cty.Value{"key": cty.NullVal(cty.List(cty.Object(map[string]cty.Type{"nested": cty.String})))},
+				map[string]cty.Value{"key": blockList()},
 			)
 
 			autogold.Expect(`
@@ -314,7 +628,7 @@ func TestDetailedDiffListAttribute(t *testing.T) {
 
 		t.Run("no replace", func(t *testing.T) {
 			res := crosstests.Diff(t, attributeSchema,
-				map[string]cty.Value{"key": cty.ListValEmpty(cty.String)},
+				map[string]cty.Value{"key": attrList()},
 				map[string]cty.Value{"key": cty.NullVal(cty.List(cty.String))},
 			)
 
@@ -326,8 +640,50 @@ func TestDetailedDiffListAttribute(t *testing.T) {
 
 		t.Run("requires replace", func(t *testing.T) {
 			res := crosstests.Diff(t, attributeReplaceSchema,
-				map[string]cty.Value{"key": cty.ListValEmpty(cty.String)},
+				map[string]cty.Value{"key": attrList()},
 				map[string]cty.Value{"key": cty.NullVal(cty.List(cty.String))},
+			)
+
+			autogold.Expect(`
+`).Equal(t, res.TFOut)
+			autogold.Expect(`
+`).Equal(t, res.PulumiOut)
+		})
+
+		t.Run("block no replace", func(t *testing.T) {
+			t.Parallel()
+
+			res := crosstests.Diff(t, blockSchema,
+				map[string]cty.Value{"key": blockList()},
+				map[string]cty.Value{"key": cty.NullVal(cty.List(cty.Object(map[string]cty.Type{"nested": cty.String})))},
+			)
+
+			autogold.Expect(`
+`).Equal(t, res.TFOut)
+			autogold.Expect(`
+`).Equal(t, res.PulumiOut)
+		})
+
+		t.Run("block requires replace", func(t *testing.T) {
+			t.Parallel()
+
+			res := crosstests.Diff(t, blockReplaceSchema,
+				map[string]cty.Value{"key": blockList()},
+				map[string]cty.Value{"key": cty.NullVal(cty.List(cty.Object(map[string]cty.Type{"nested": cty.String})))},
+			)
+
+			autogold.Expect(`
+`).Equal(t, res.TFOut)
+			autogold.Expect(`
+`).Equal(t, res.PulumiOut)
+		})
+
+		t.Run("block nested requires replace", func(t *testing.T) {
+			t.Parallel()
+
+			res := crosstests.Diff(t, blockNestedReplaceSchema,
+				map[string]cty.Value{"key": blockList()},
+				map[string]cty.Value{"key": cty.NullVal(cty.List(cty.Object(map[string]cty.Type{"nested": cty.String})))},
 			)
 
 			autogold.Expect(`
@@ -341,9 +697,10 @@ func TestDetailedDiffListAttribute(t *testing.T) {
 		t.Parallel()
 
 		t.Run("no replace", func(t *testing.T) {
+			t.Parallel()
 			res := crosstests.Diff(t, attributeSchema,
-				map[string]cty.Value{"key": cty.ListVal([]cty.Value{cty.StringVal("value")})},
-				map[string]cty.Value{"key": cty.ListVal([]cty.Value{cty.StringVal("value"), cty.StringVal("value1")})},
+				map[string]cty.Value{"key": attrList("value")},
+				map[string]cty.Value{"key": attrList("value", "value1")},
 			)
 
 			autogold.Expect(`
@@ -353,9 +710,49 @@ func TestDetailedDiffListAttribute(t *testing.T) {
 		})
 
 		t.Run("requires replace", func(t *testing.T) {
+			t.Parallel()
 			res := crosstests.Diff(t, attributeReplaceSchema,
-				map[string]cty.Value{"key": cty.ListVal([]cty.Value{cty.StringVal("value")})},
-				map[string]cty.Value{"key": cty.ListVal([]cty.Value{cty.StringVal("value"), cty.StringVal("value1")})},
+				map[string]cty.Value{"key": attrList("value")},
+				map[string]cty.Value{"key": attrList("value", "value1")},
+			)
+
+			autogold.Expect(`
+`).Equal(t, res.TFOut)
+			autogold.Expect(`
+`).Equal(t, res.PulumiOut)
+		})
+
+		t.Run("block no replace", func(t *testing.T) {
+			t.Parallel()
+			res := crosstests.Diff(t, blockSchema,
+				map[string]cty.Value{"key": blockList("value")},
+				map[string]cty.Value{"key": blockList("value", "value1")},
+			)
+
+			autogold.Expect(`
+`).Equal(t, res.TFOut)
+			autogold.Expect(`
+`).Equal(t, res.PulumiOut)
+		})
+
+		t.Run("block requires replace", func(t *testing.T) {
+			t.Parallel()
+			res := crosstests.Diff(t, blockReplaceSchema,
+				map[string]cty.Value{"key": blockList("value")},
+				map[string]cty.Value{"key": blockList("value", "value1")},
+			)
+
+			autogold.Expect(`
+`).Equal(t, res.TFOut)
+			autogold.Expect(`
+`).Equal(t, res.PulumiOut)
+		})
+
+		t.Run("block nested requires replace", func(t *testing.T) {
+			t.Parallel()
+			res := crosstests.Diff(t, blockNestedReplaceSchema,
+				map[string]cty.Value{"key": blockList("value")},
+				map[string]cty.Value{"key": blockList("value", "value1")},
 			)
 
 			autogold.Expect(`
@@ -370,8 +767,8 @@ func TestDetailedDiffListAttribute(t *testing.T) {
 
 		t.Run("no replace", func(t *testing.T) {
 			res := crosstests.Diff(t, attributeSchema,
-				map[string]cty.Value{"key": cty.ListVal([]cty.Value{cty.StringVal("value"), cty.StringVal("value1")})},
-				map[string]cty.Value{"key": cty.ListVal([]cty.Value{cty.StringVal("value")})},
+				map[string]cty.Value{"key": attrList("value", "value1")},
+				map[string]cty.Value{"key": attrList("value")},
 			)
 
 			autogold.Expect(`
@@ -382,8 +779,47 @@ func TestDetailedDiffListAttribute(t *testing.T) {
 
 		t.Run("requires replace", func(t *testing.T) {
 			res := crosstests.Diff(t, attributeReplaceSchema,
-				map[string]cty.Value{"key": cty.ListVal([]cty.Value{cty.StringVal("value"), cty.StringVal("value1")})},
-				map[string]cty.Value{"key": cty.ListVal([]cty.Value{cty.StringVal("value")})},
+				map[string]cty.Value{"key": attrList("value", "value1")},
+				map[string]cty.Value{"key": attrList("value")},
+			)
+
+			autogold.Expect(`
+`).Equal(t, res.TFOut)
+			autogold.Expect(`
+`).Equal(t, res.PulumiOut)
+		})
+
+		t.Run("block no replace", func(t *testing.T) {
+			t.Parallel()
+			res := crosstests.Diff(t, blockSchema,
+				map[string]cty.Value{"key": blockList("value", "value1")},
+				map[string]cty.Value{"key": blockList("value")},
+			)
+
+			autogold.Expect(`
+`).Equal(t, res.TFOut)
+			autogold.Expect(`
+`).Equal(t, res.PulumiOut)
+		})
+
+		t.Run("block requires replace", func(t *testing.T) {
+			t.Parallel()
+			res := crosstests.Diff(t, blockReplaceSchema,
+				map[string]cty.Value{"key": blockList("value", "value1")},
+				map[string]cty.Value{"key": blockList("value")},
+			)
+
+			autogold.Expect(`
+`).Equal(t, res.TFOut)
+			autogold.Expect(`
+`).Equal(t, res.PulumiOut)
+		})
+
+		t.Run("block nested requires replace", func(t *testing.T) {
+			t.Parallel()
+			res := crosstests.Diff(t, blockNestedReplaceSchema,
+				map[string]cty.Value{"key": blockList("value", "value1")},
+				map[string]cty.Value{"key": blockList("value")},
 			)
 
 			autogold.Expect(`
