@@ -77,6 +77,10 @@ func WriteResource(
 		opt(o)
 	}
 
+	if config == nil {
+		config = map[string]cty.Value{}
+	}
+
 	if o.lifecycleArgs.CreateBeforeDestroy {
 		config["lifecycle"] = cty.ObjectVal(map[string]cty.Value{
 			"create_before_destroy": cty.True,
@@ -130,6 +134,9 @@ func writeBlock(body *hclwrite.Body, schema ShimHCLSchema, config map[string]cty
 
 	for _, key := range blockList {
 		block := schema.Blocks()[key]
+		if _, ok := config[key]; !ok {
+			continue
+		}
 		switch block.GetNestingMode() {
 		case NestingSingle:
 			newBlock := body.AppendNewBlock(key, nil)
