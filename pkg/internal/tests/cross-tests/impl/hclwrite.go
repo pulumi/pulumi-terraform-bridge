@@ -134,9 +134,10 @@ func writeBlock(body *hclwrite.Body, schema ShimHCLSchema, config map[string]cty
 
 	for _, key := range blockList {
 		block := schema.Blocks()[key]
-		if _, ok := config[key]; !ok {
+		if v, ok := config[key]; !ok || v.IsNull() {
 			continue
 		}
+
 		switch block.GetNestingMode() {
 		case NestingSingle:
 			newBlock := body.AppendNewBlock(key, nil)
