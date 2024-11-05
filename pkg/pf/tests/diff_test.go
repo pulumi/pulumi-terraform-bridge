@@ -4,6 +4,8 @@ import (
 	"testing"
 
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hexops/autogold/v2"
 	crosstests "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/cross-tests"
 	"github.com/zclconf/go-cty/cty"
@@ -48,4 +50,141 @@ Resources:
     1 unchanged
 
 `).Equal(t, res.PulumiOut)
+}
+
+func TestDetailedDiffStringAttribute(t *testing.T) {
+	t.Parallel()
+
+	sch := rschema.Schema{
+		Attributes: map[string]rschema.Attribute{
+			"key": rschema.StringAttribute{Optional: true},
+		},
+	}
+
+	t.Run("unchanged", func(t *testing.T) {
+		t.Parallel()
+
+		res := crosstests.Diff(t, sch,
+			map[string]cty.Value{"key": cty.StringVal("value")},
+			map[string]cty.Value{"key": cty.StringVal("value")},
+		)
+
+		autogold.Expect(`
+`).Equal(t, res.TFOut)
+		autogold.Expect(`
+`).Equal(t, res.PulumiOut)
+	})
+
+	t.Run("added", func(t *testing.T) {
+		t.Parallel()
+
+		res := crosstests.Diff(t, sch,
+			map[string]cty.Value{},
+			map[string]cty.Value{"key": cty.StringVal("value")},
+		)
+
+		autogold.Expect(`
+`).Equal(t, res.TFOut)
+		autogold.Expect(`
+`).Equal(t, res.PulumiOut)
+	})
+
+	t.Run("removed", func(t *testing.T) {
+		t.Parallel()
+
+		res := crosstests.Diff(t, sch,
+			map[string]cty.Value{"key": cty.StringVal("value")},
+			map[string]cty.Value{},
+		)
+
+		autogold.Expect(`
+`).Equal(t, res.TFOut)
+		autogold.Expect(`
+`).Equal(t, res.PulumiOut)
+	})
+
+	t.Run("changed", func(t *testing.T) {
+		t.Parallel()
+
+		res := crosstests.Diff(t, sch,
+			map[string]cty.Value{"key": cty.StringVal("value")},
+			map[string]cty.Value{"key": cty.StringVal("value1")},
+		)
+
+		autogold.Expect(`
+`).Equal(t, res.TFOut)
+		autogold.Expect(`
+`).Equal(t, res.PulumiOut)
+	})
+}
+
+func TestDetailedDiffStringAttributeRequiresReplace(t *testing.T) {
+	t.Parallel()
+
+	sch := rschema.Schema{
+		Attributes: map[string]rschema.Attribute{
+			"key": rschema.StringAttribute{
+				Optional: true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
+			},
+		},
+	}
+
+	t.Run("unchanged", func(t *testing.T) {
+		t.Parallel()
+
+		res := crosstests.Diff(t, sch,
+			map[string]cty.Value{"key": cty.StringVal("value")},
+			map[string]cty.Value{"key": cty.StringVal("value")},
+		)
+
+		autogold.Expect(`
+`).Equal(t, res.TFOut)
+		autogold.Expect(`
+`).Equal(t, res.PulumiOut)
+	})
+
+	t.Run("added", func(t *testing.T) {
+		t.Parallel()
+
+		res := crosstests.Diff(t, sch,
+			map[string]cty.Value{},
+			map[string]cty.Value{"key": cty.StringVal("value")},
+		)
+
+		autogold.Expect(`
+`).Equal(t, res.TFOut)
+		autogold.Expect(`
+`).Equal(t, res.PulumiOut)
+	})
+
+	t.Run("removed", func(t *testing.T) {
+		t.Parallel()
+
+		res := crosstests.Diff(t, sch,
+			map[string]cty.Value{"key": cty.StringVal("value")},
+			map[string]cty.Value{},
+		)
+
+		autogold.Expect(`
+`).Equal(t, res.TFOut)
+		autogold.Expect(`
+`).Equal(t, res.PulumiOut)
+	})
+
+	t.Run("changed", func(t *testing.T) {
+		t.Parallel()
+
+		res := crosstests.Diff(t, sch,
+			map[string]cty.Value{"key": cty.StringVal("value")},
+			map[string]cty.Value{"key": cty.StringVal("value1")},
+		)
+
+		autogold.Expect(`
+`).Equal(t, res.TFOut)
+		autogold.Expect(`
+`).Equal(t, res.PulumiOut)
+	})
 }
