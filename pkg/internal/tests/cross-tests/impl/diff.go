@@ -1,8 +1,10 @@
 package crosstestsimpl
 
 import (
+	"encoding/json"
 	"fmt"
 
+	"github.com/pulumi/providertest/grpclog"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/stretchr/testify/assert"
@@ -19,6 +21,10 @@ type PulumiDiffResp struct {
 type DiffResult struct {
 	TFDiff     tfcheck.TFChange
 	PulumiDiff PulumiDiffResp
+	// TFOut is the stdout of the terraform plan command
+	TFOut string
+	// PulumiOut is the stdout of the pulumi preview command
+	PulumiOut string
 }
 
 func VerifyBasicDiffAgreement(t T, tfActions []string, us auto.UpdateSummary, diffResponse PulumiDiffResp) {
@@ -76,4 +82,20 @@ func VerifyBasicDiffAgreement(t T, tfActions []string, us auto.UpdateSummary, di
 	} else {
 		panic("TODO: do not understand this TF action yet: " + fmt.Sprint(tfActions))
 	}
+}
+
+func GetPulumiDiffResponse(t T, entries []grpclog.GrpcLogEntry) PulumiDiffResp {
+	diffResponse := PulumiDiffResp{}
+	found := false
+	for _, entry := range entries {
+		t.Logf("entry.Method: %s", entry.Method)
+		if entry.Method == "/pulumirpc.ResourceProvider/Diff" {
+			require.False(t, found, "expected to find only one Diff entry in the gRPC log")
+			err := json.Unmarshal(entry.Response, &diffResponse)
+			require.NoError(t, err)
+			found = true
+		}
+	}
+
+	return diffResponse
 }

@@ -15,7 +15,6 @@
 package crosstests
 
 import (
-	"encoding/json"
 	"os"
 	"path/filepath"
 
@@ -79,21 +78,19 @@ func runDiffCheck(t T, tc diffTestCase) crosstestsimpl.DiffResult {
 		bridgedProvider.P.ResourcesMap().Get(defRtype).Schema(), nil, tfConfig2))
 	err := os.WriteFile(filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml"), yamlProgram, 0o600)
 	require.NoErrorf(t, err, "writing Pulumi.yaml")
+
+	previewRes := pt.Preview(t)
+	diffResponse := crosstestsimpl.GetPulumiDiffResponse(t, pt.GrpcLog(t).Entries)
 	x := pt.Up(t)
 
 	changes := tfd.driver.ParseChangesFromTFPlan(tfDiffPlan)
 
-	diffResponse := crosstestsimpl.PulumiDiffResp{}
-	for _, entry := range pt.GrpcLog(t).Entries {
-		if entry.Method == "/pulumirpc.ResourceProvider/Diff" {
-			err := json.Unmarshal(entry.Response, &diffResponse)
-			require.NoError(t, err)
-		}
-	}
 	crosstestsimpl.VerifyBasicDiffAgreement(t, changes.Actions, x.Summary, diffResponse)
 
 	return crosstestsimpl.DiffResult{
 		TFDiff:     changes,
 		PulumiDiff: diffResponse,
+		TFOut:      tfDiffPlan.StdOut,
+		PulumiOut:  previewRes.StdOut,
 	}
 }
