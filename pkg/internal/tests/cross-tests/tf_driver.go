@@ -117,7 +117,7 @@ func (d *TfResDriver) write(
 		config = cty.ObjectVal(ctyMap)
 	}
 	sch := NewHCLSchemaSDKv2(resourceSchema)
-	err := crosstestsimpl.WriteResource(&buf, sch, resourceType, resourceName, config)
+	err := crosstestsimpl.WriteResource(&buf, sch, resourceType, resourceName, config.AsValueMap())
 	require.NoError(t, err)
 	t.Logf("HCL: \n%s\n", buf.String())
 	d.driver.Write(t, buf.String())
@@ -126,14 +126,14 @@ func (d *TfResDriver) write(
 func providerHCLProgram(t T, typ string, provider *schema.Provider, config cty.Value) string {
 	var out bytes.Buffer
 	sch := NewHCLSchemaSDKv2(provider.Schema)
-	require.NoError(t, crosstestsimpl.WriteProvider(&out, sch, typ, config))
+	require.NoError(t, crosstestsimpl.WriteProvider(&out, sch, typ, config.AsValueMap()))
 
 	res := provider.Resources()
 	if l := len(res); l != 1 {
 		require.FailNow(t, "Expected provider to have 1 resource (found %d), ambiguous resource choice", l)
 	}
 
-	require.NoError(t, crosstestsimpl.WriteResource(&out, sch, res[0].Name, "res", cty.EmptyObjectVal))
+	require.NoError(t, crosstestsimpl.WriteResource(&out, sch, res[0].Name, "res", map[string]cty.Value{}))
 
 	return out.String()
 }

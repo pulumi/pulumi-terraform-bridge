@@ -32,24 +32,26 @@ type ShimHCLSchema interface {
 	Blocks() map[string]ShimHCLBlock
 }
 
-func WriteProvider(w io.Writer, schema ShimHCLSchema, providerType string, config cty.Value) error {
-	if !config.IsWhollyKnown() {
+func WriteProvider(w io.Writer, schema ShimHCLSchema, providerType string, config map[string]cty.Value) error {
+	if !cty.ObjectVal(config).IsWhollyKnown() {
 		return fmt.Errorf("WriteHCL cannot yet write unknowns")
 	}
 	f := hclwrite.NewEmptyFile()
 	block := f.Body().AppendNewBlock("provider", []string{providerType})
-	writeBlock(block.Body(), schema, config.AsValueMap())
+	writeBlock(block.Body(), schema, config)
 	_, err := f.WriteTo(w)
 	return err
 }
 
-func WriteResource(w io.Writer, schema ShimHCLSchema, resourceType, resourceName string, config cty.Value) error {
-	if !config.IsWhollyKnown() {
+func WriteResource(
+	w io.Writer, schema ShimHCLSchema, resourceType, resourceName string, config map[string]cty.Value,
+) error {
+	if !cty.ObjectVal(config).IsWhollyKnown() {
 		return fmt.Errorf("WriteHCL cannot yet write unknowns")
 	}
 	f := hclwrite.NewEmptyFile()
 	block := f.Body().AppendNewBlock("resource", []string{resourceType, resourceName})
-	writeBlock(block.Body(), schema, config.AsValueMap())
+	writeBlock(block.Body(), schema, config)
 	_, err := f.WriteTo(w)
 	return err
 }

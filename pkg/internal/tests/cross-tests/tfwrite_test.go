@@ -268,7 +268,7 @@ resource "res" "ex" {
 		t.Run(tc.name, func(t *testing.T) {
 			var out bytes.Buffer
 			sch := NewHCLSchemaSDKv2(tc.schema)
-			err := crosstestsimpl.WriteResource(&out, sch, "res", "ex", tc.value)
+			err := crosstestsimpl.WriteResource(&out, sch, "res", "ex", tc.value.AsValueMap())
 			require.NoError(t, err)
 			tc.expect.Equal(t, "\n"+out.String())
 		})
