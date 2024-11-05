@@ -275,3 +275,28 @@ resource "res" "ex" {
 		})
 	}
 }
+
+func TestWriteLifecycle(t *testing.T) {
+	t.Parallel()
+
+	sch := NewHCLSchemaSDKv2(map[string]*schema.Schema{
+		"prop": {
+			Type:     schema.TypeString,
+			Optional: true,
+		},
+	})
+
+	var out bytes.Buffer
+	err := crosstestsimpl.WriteResource(&out, sch, "res", "ex", map[string]cty.Value{
+		"prop": cty.StringVal("OK"),
+	}, crosstestsimpl.WithCreateBeforeDestroy(true))
+	require.NoError(t, err)
+	autogold.Expect(`
+resource "res" "ex" {
+  prop = "OK"
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+`).Equal(t, "\n"+out.String())
+}

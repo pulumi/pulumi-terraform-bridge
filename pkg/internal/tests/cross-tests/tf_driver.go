@@ -106,18 +106,12 @@ func (d *TfResDriver) write(
 	lifecycle lifecycleArgs,
 ) {
 	var buf bytes.Buffer
+	opts := []crosstestsimpl.WriteResourceOption{}
 	if lifecycle.CreateBeforeDestroy {
-		ctyMap := config.AsValueMap()
-		if ctyMap == nil {
-			ctyMap = map[string]cty.Value{}
-		}
-		ctyMap["lifecycle"] = cty.ObjectVal(map[string]cty.Value{
-			"create_before_destroy": cty.True,
-		})
-		config = cty.ObjectVal(ctyMap)
+		opts = append(opts, crosstestsimpl.WithCreateBeforeDestroy(true))
 	}
 	sch := NewHCLSchemaSDKv2(resourceSchema)
-	err := crosstestsimpl.WriteResource(&buf, sch, resourceType, resourceName, config.AsValueMap())
+	err := crosstestsimpl.WriteResource(&buf, sch, resourceType, resourceName, config.AsValueMap(), opts...)
 	require.NoError(t, err)
 	t.Logf("HCL: \n%s\n", buf.String())
 	d.driver.Write(t, buf.String())

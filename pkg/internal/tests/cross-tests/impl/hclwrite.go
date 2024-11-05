@@ -43,17 +43,63 @@ func WriteProvider(w io.Writer, schema ShimHCLSchema, providerType string, confi
 	return err
 }
 
+type lifecycleArgs struct {
+	CreateBeforeDestroy bool
+}
+
+type writeResourceOptions struct {
+	lifecycleArgs lifecycleArgs
+}
+
+type WriteResourceOption func(*writeResourceOptions)
+
+func WithCreateBeforeDestroy(createBeforeDestroy bool) WriteResourceOption {
+	return func(o *writeResourceOptions) {
+		o.lifecycleArgs.CreateBeforeDestroy = createBeforeDestroy
+	}
+}
+
 func WriteResource(
 	w io.Writer, schema ShimHCLSchema, resourceType, resourceName string, config map[string]cty.Value,
+	opts ...WriteResourceOption,
 ) error {
 	if !cty.ObjectVal(config).IsWhollyKnown() {
 		return fmt.Errorf("WriteHCL cannot yet write unknowns")
 	}
+	o := &writeResourceOptions{}
+	for _, opt := range opts {
+		opt(o)
+	}
+
+	if o.lifecycleArgs.CreateBeforeDestroy {
+		config["lifecycle"] = cty.ObjectVal(map[string]cty.Value{
+			"create_before_destroy": cty.True,
+		})
+	}
+
 	f := hclwrite.NewEmptyFile()
 	block := f.Body().AppendNewBlock("resource", []string{resourceType, resourceName})
 	writeBlock(block.Body(), schema, config)
 	_, err := f.WriteTo(w)
 	return err
+}
+
+type lifecycleBlock struct{}
+
+var _ ShimHCLBlock = &lifecycleBlock{}
+
+func (b *lifecycleBlock) GetNestingMode() Nesting {
+	return NestingSingle
+}
+
+func (b *lifecycleBlock) Attributes() map[string]ShimHCLAttribute {
+	return map[string]ShimHCLAttribute{
+		"create_before_destroy": cty.Bool,
+	}
+}
+
+func (b *lifecycleBlock) Blocks() map[string]ShimHCLBlock {
+	return map[string]ShimHCLBlock{}
 }
 
 func writeBlock(body *hclwrite.Body, schema ShimHCLSchema, config map[string]cty.Value) {
@@ -90,5 +136,11 @@ func writeBlock(body *hclwrite.Body, schema ShimHCLSchema, config map[string]cty
 		default:
 			contract.Failf("unexpected nesting mode %v", block.GetNestingMode())
 		}
+	}
+
+	// lifecycle block
+	if _, ok := config["lifecycle"]; ok {
+		newBlock := body.AppendNewBlock("lifecycle", nil)
+		writeBlock(newBlock.Body(), &lifecycleBlock{}, config["lifecycle"].AsValueMap())
 	}
 }
