@@ -70,8 +70,17 @@ func TestDetailedDiffStringAttribute(t *testing.T) {
 		)
 
 		autogold.Expect(`
+No changes. Your infrastructure matches the configuration.
+
+Terraform has compared your real infrastructure against your configuration
+and found no differences, so no changes are needed.
 `).Equal(t, res.TFOut)
-		autogold.Expect(`
+		autogold.Expect(`Previewing update (test):
+
+    pulumi:pulumi:Stack project-test
+Resources:
+    2 unchanged
+
 `).Equal(t, res.PulumiOut)
 	})
 
@@ -84,8 +93,29 @@ func TestDetailedDiffStringAttribute(t *testing.T) {
 		)
 
 		autogold.Expect(`
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  ~ update in-place
+
+Terraform will perform the following actions:
+
+  # testprovider_test.res will be updated in-place
+  ~ resource "testprovider_test" "res" {
+        id  = "test-id"
+      + key = "value"
+    }
+
+Plan: 0 to add, 1 to change, 0 to destroy.
+
 `).Equal(t, res.TFOut)
-		autogold.Expect(`
+		autogold.Expect(`Previewing update (test):
+
+ ~  testprovider:index:Test p update [diff: +key]
+    pulumi:pulumi:Stack project-test
+Resources:
+    ~ 1 to update
+    1 unchanged
+
 `).Equal(t, res.PulumiOut)
 	})
 
@@ -98,8 +128,29 @@ func TestDetailedDiffStringAttribute(t *testing.T) {
 		)
 
 		autogold.Expect(`
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  ~ update in-place
+
+Terraform will perform the following actions:
+
+  # testprovider_test.res will be updated in-place
+  ~ resource "testprovider_test" "res" {
+        id  = "test-id"
+      - key = "value" -> null
+    }
+
+Plan: 0 to add, 1 to change, 0 to destroy.
+
 `).Equal(t, res.TFOut)
-		autogold.Expect(`
+		autogold.Expect(`Previewing update (test):
+
+ ~  testprovider:index:Test p update [diff: -key]
+    pulumi:pulumi:Stack project-test
+Resources:
+    ~ 1 to update
+    1 unchanged
+
 `).Equal(t, res.PulumiOut)
 	})
 
@@ -112,8 +163,29 @@ func TestDetailedDiffStringAttribute(t *testing.T) {
 		)
 
 		autogold.Expect(`
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  ~ update in-place
+
+Terraform will perform the following actions:
+
+  # testprovider_test.res will be updated in-place
+  ~ resource "testprovider_test" "res" {
+        id  = "test-id"
+      ~ key = "value" -> "value1"
+    }
+
+Plan: 0 to add, 1 to change, 0 to destroy.
+
 `).Equal(t, res.TFOut)
-		autogold.Expect(`
+		autogold.Expect(`Previewing update (test):
+
+ ~  testprovider:index:Test p update [diff: ~key]
+    pulumi:pulumi:Stack project-test
+Resources:
+    ~ 1 to update
+    1 unchanged
+
 `).Equal(t, res.PulumiOut)
 	})
 }
@@ -141,8 +213,17 @@ func TestDetailedDiffStringAttributeRequiresReplace(t *testing.T) {
 		)
 
 		autogold.Expect(`
+No changes. Your infrastructure matches the configuration.
+
+Terraform has compared your real infrastructure against your configuration
+and found no differences, so no changes are needed.
 `).Equal(t, res.TFOut)
-		autogold.Expect(`
+		autogold.Expect(`Previewing update (test):
+
+    pulumi:pulumi:Stack project-test
+Resources:
+    2 unchanged
+
 `).Equal(t, res.PulumiOut)
 	})
 
@@ -155,8 +236,31 @@ func TestDetailedDiffStringAttributeRequiresReplace(t *testing.T) {
 		)
 
 		autogold.Expect(`
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
++/- create replacement and then destroy
+
+Terraform will perform the following actions:
+
+  # testprovider_test.res must be replaced
++/- resource "testprovider_test" "res" {
+      ~ id  = "test-id" -> (known after apply)
+      + key = "value" # forces replacement
+    }
+
+Plan: 1 to add, 0 to change, 1 to destroy.
+
 `).Equal(t, res.TFOut)
-		autogold.Expect(`
+		autogold.Expect(`Previewing update (test):
+
+ ++ testprovider:index:Test p create replacement [diff: +key]
+ +- testprovider:index:Test p replace [diff: +key]
+ -- testprovider:index:Test p delete original [diff: +key]
+    pulumi:pulumi:Stack project-test
+Resources:
+    +-1 to replace
+    1 unchanged
+
 `).Equal(t, res.PulumiOut)
 	})
 
@@ -169,8 +273,31 @@ func TestDetailedDiffStringAttributeRequiresReplace(t *testing.T) {
 		)
 
 		autogold.Expect(`
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
++/- create replacement and then destroy
+
+Terraform will perform the following actions:
+
+  # testprovider_test.res must be replaced
++/- resource "testprovider_test" "res" {
+      ~ id  = "test-id" -> (known after apply)
+      - key = "value" -> null # forces replacement
+    }
+
+Plan: 1 to add, 0 to change, 1 to destroy.
+
 `).Equal(t, res.TFOut)
-		autogold.Expect(`
+		autogold.Expect(`Previewing update (test):
+
+ ++ testprovider:index:Test p create replacement [diff: -key]
+ +- testprovider:index:Test p replace [diff: -key]
+ -- testprovider:index:Test p delete original [diff: -key]
+    pulumi:pulumi:Stack project-test
+Resources:
+    +-1 to replace
+    1 unchanged
+
 `).Equal(t, res.PulumiOut)
 	})
 
@@ -183,8 +310,31 @@ func TestDetailedDiffStringAttributeRequiresReplace(t *testing.T) {
 		)
 
 		autogold.Expect(`
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
++/- create replacement and then destroy
+
+Terraform will perform the following actions:
+
+  # testprovider_test.res must be replaced
++/- resource "testprovider_test" "res" {
+      ~ id  = "test-id" -> (known after apply)
+      ~ key = "value" -> "value1" # forces replacement
+    }
+
+Plan: 1 to add, 0 to change, 1 to destroy.
+
 `).Equal(t, res.TFOut)
-		autogold.Expect(`
+		autogold.Expect(`Previewing update (test):
+
+ ++ testprovider:index:Test p create replacement [diff: ~key]
+ +- testprovider:index:Test p replace [diff: ~key]
+ -- testprovider:index:Test p delete original [diff: ~key]
+    pulumi:pulumi:Stack project-test
+Resources:
+    +-1 to replace
+    1 unchanged
+
 `).Equal(t, res.PulumiOut)
 	})
 }
