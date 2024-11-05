@@ -137,10 +137,15 @@ func Configure(
 	require.NoErrorf(t, err, "marshaling Pulumi.yaml")
 	t.Logf("\n\n%s", yamlProgram)
 
-	pulcheck.PulCheck(t, bridgedProvider, string(yamlProgram)).Up(t)
+	pt := pulcheck.PulCheck(t, bridgedProvider, string(yamlProgram))
+	pt.Up(t)
 
-	require.True(t, puResult.wasSet, "pulumi configure result was not set (.resourceCreated = %t)",
-		puResult.resourceCreated)
+	if !puResult.wasSet {
+		log, err := pt.GrpcLog(t).Marshal()
+		require.NoError(t, err)
+		require.Failf(t, "puResult was not set", "pulumi configure result was not set (.resourceCreated = %t)\n%s",
+			puResult.resourceCreated, string(log))
+	}
 	require.True(t, puResult.resourceCreated, "pulumi resource result was not set")
 
 	assertResourceDataEqual(t, provider, tfResult.data, puResult.data)
