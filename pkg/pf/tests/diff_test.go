@@ -55,16 +55,24 @@ Resources:
 func TestDetailedDiffStringAttribute(t *testing.T) {
 	t.Parallel()
 
-	sch := rschema.Schema{
+	attributeSchema := rschema.Schema{
 		Attributes: map[string]rschema.Attribute{
 			"key": rschema.StringAttribute{Optional: true},
 		},
 	}
 
+	attributeReplaceSchema := rschema.Schema{
+		Attributes: map[string]rschema.Attribute{
+			"key": rschema.StringAttribute{
+				Optional:      true,
+				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
+			},
+		},
+	}
+
 	t.Run("unchanged", func(t *testing.T) {
 		t.Parallel()
-
-		res := crosstests.Diff(t, sch,
+		res := crosstests.Diff(t, attributeSchema,
 			map[string]cty.Value{"key": cty.StringVal("value")},
 			map[string]cty.Value{"key": cty.StringVal("value")},
 		)
@@ -87,7 +95,7 @@ Resources:
 	t.Run("added", func(t *testing.T) {
 		t.Parallel()
 
-		res := crosstests.Diff(t, sch,
+		res := crosstests.Diff(t, attributeSchema,
 			map[string]cty.Value{},
 			map[string]cty.Value{"key": cty.StringVal("value")},
 		)
@@ -122,7 +130,7 @@ Resources:
 	t.Run("removed", func(t *testing.T) {
 		t.Parallel()
 
-		res := crosstests.Diff(t, sch,
+		res := crosstests.Diff(t, attributeSchema,
 			map[string]cty.Value{"key": cty.StringVal("value")},
 			map[string]cty.Value{},
 		)
@@ -157,7 +165,7 @@ Resources:
 	t.Run("changed", func(t *testing.T) {
 		t.Parallel()
 
-		res := crosstests.Diff(t, sch,
+		res := crosstests.Diff(t, attributeSchema,
 			map[string]cty.Value{"key": cty.StringVal("value")},
 			map[string]cty.Value{"key": cty.StringVal("value1")},
 		)
