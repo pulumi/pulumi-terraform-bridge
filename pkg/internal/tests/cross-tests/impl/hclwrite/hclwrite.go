@@ -94,6 +94,7 @@ func WriteResource(
 	writeBlock(block.Body(), schema, config)
 
 	// lifecycle block
+	contract.Assertf(config["lifecycle"].IsNull(), "lifecycle block should be specified with a lifecycle option")
 	lifecycle := map[string]cty.Value{}
 	if o.lifecycleArgs.CreateBeforeDestroy {
 		lifecycle["create_before_destroy"] = cty.True
