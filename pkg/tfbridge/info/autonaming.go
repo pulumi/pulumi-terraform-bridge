@@ -129,7 +129,7 @@ func ComputeAutoNameDefault(
 	defaultOptions ComputeDefaultOptions,
 ) (interface{}, error) {
 	if defaultOptions.URN == "" {
-		return nil, fmt.Errorf("AutoName is onnly supported for resources, expected Resource URN to be set")
+		return nil, fmt.Errorf("AutoName is only supported for resources, expected Resource URN to be set")
 	}
 
 	// Reuse the value from prior state if available. Note that this code currently only runs for Plugin Framework
