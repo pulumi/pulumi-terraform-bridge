@@ -49,7 +49,11 @@ func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
 	content = stripSchemaGeneratedByTFPluginDocs(content)
 
 	// Generate pulumi-specific installation instructions
-	installationInstructions := writeInstallationInstructions(g.info.Golang.ImportBasePath, providerName, g.pkg.Name().String())
+	installationInstructions := writeInstallationInstructions(
+		g.info.Golang.ImportBasePath,
+		providerName,
+		g.pkg.Name().String(),
+	)
 
 	// Determine if we should write an overview header.
 	overviewHeader := getOverviewHeader(content)

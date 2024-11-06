@@ -236,7 +236,8 @@ func TestWriteInstallationInstructions(t *testing.T) {
 	}
 
 	tests := []testCase{
-		{name: "Generates Install Information From Package Name",
+		{
+			name: "Generates Install Information From Package Name",
 			expected: "## Installation\n\n" +
 				"The testcase provider is available as a package in all Pulumi languages:\n\n" +
 				"* JavaScript/TypeScript: [`@pulumi/testcase`](https://www.npmjs.com/package/@pulumi/testcase)\n" +
