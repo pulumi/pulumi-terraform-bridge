@@ -1,3 +1,5 @@
+// hclwrite is a shared interface for writing HCL files for cross-tests.
+// Both the Terraform Plugin SDK bridge and the Pulumi Framework bridge implement this interface.
 package hclwrite
 
 import (
@@ -10,6 +12,7 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
+// Nesting is the nesting mode of a block.
 type Nesting string
 
 const (
@@ -19,14 +22,17 @@ const (
 	NestingSet     Nesting = "NestingSet"
 )
 
+// ShimHCLAttribute is an attribute used to write a value to an HCL file.
 type ShimHCLAttribute struct{}
 
+// ShimHCLBlock is a block used to write a value to an HCL file.
 type ShimHCLBlock interface {
 	GetNestingMode() Nesting
 	GetAttributes() map[string]ShimHCLAttribute
 	GetBlocks() map[string]ShimHCLBlock
 }
 
+// ShimHCLSchema is the schema used to write a value to an HCL file.
 type ShimHCLSchema interface {
 	GetAttributes() map[string]ShimHCLAttribute
 	GetBlocks() map[string]ShimHCLBlock
@@ -54,8 +60,10 @@ type writeResourceOptions struct {
 	lifecycleArgs lifecycleArgs
 }
 
+// WriteResourceOption is an option for WriteResource.
 type WriteResourceOption func(*writeResourceOptions)
 
+// WithCreateBeforeDestroy is an option to set the create_before_destroy attribute on a resource.
 func WithCreateBeforeDestroy(createBeforeDestroy bool) WriteResourceOption {
 	return func(o *writeResourceOptions) {
 		o.lifecycleArgs.CreateBeforeDestroy = createBeforeDestroy
