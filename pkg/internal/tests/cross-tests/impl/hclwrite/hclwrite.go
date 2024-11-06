@@ -100,7 +100,7 @@ func WriteResource(
 	}
 	if len(lifecycle) > 0 {
 		newBlock := block.Body().AppendNewBlock("lifecycle", nil)
-		writeBlock(newBlock.Body(), &lifecycleBlock{}, config["lifecycle"].AsValueMap())
+		writeBlock(newBlock.Body(), &lifecycleBlock{}, lifecycle)
 	}
 	_, err := f.WriteTo(w)
 	return err
