@@ -629,7 +629,7 @@ type Default struct {
 	EnvVars []string
 }
 
-// Configures [DefaultInfo.ComputeDefault].
+// Configures [Default.ComputeDefault].
 type ComputeDefaultOptions struct {
 	// URN identifying the Resource. Set when computing default properties for a Resource, and unset for functions.
 	URN resource.URN
@@ -1099,7 +1099,7 @@ func (m *MarshallableSchema) Unmarshal() *Schema {
 	}
 }
 
-// MarshallableDefault is the JSON-marshallable form of a Pulumi DefaultInfo value.
+// MarshallableDefault is the JSON-marshallable form of a Pulumi [Default] value.
 type MarshallableDefault struct {
 	AutoNamed bool        `json:"autonamed,omitempty"`
 	IsFunc    bool        `json:"isFunc,omitempty"`
@@ -1107,7 +1107,7 @@ type MarshallableDefault struct {
 	EnvVars   []string    `json:"envvars,omitempty"`
 }
 
-// MarshalDefault converts a Pulumi DefaultInfo value into a MarshallableDefaultInfo value.
+// MarshalDefault converts a Pulumi DefaultInfo value into a [MarshallableDefault] value.
 func MarshalDefault(d *Default) *MarshallableDefault {
 	if d == nil {
 		return nil
@@ -1121,7 +1121,7 @@ func MarshalDefault(d *Default) *MarshallableDefault {
 	}
 }
 
-// Unmarshal creates a mostly-initialized Pulumi DefaultInfo value from the given MarshallableDefaultInfo.
+// Unmarshal creates a mostly-initialized Pulumi [Default] value from the given [MarshallableDefault].
 func (m *MarshallableDefault) Unmarshal() *Default {
 	if m == nil {
 		return nil
@@ -1135,7 +1135,7 @@ func (m *MarshallableDefault) Unmarshal() *Default {
 
 	if m.IsFunc {
 		defInfo.ComputeDefault = func(context.Context, ComputeDefaultOptions) (interface{}, error) {
-			panic("transforms cannot be run on unmarshaled DefaultInfo values")
+			panic("transforms cannot be run on unmarshaled Default values")
 		}
 	}
 	return defInfo
