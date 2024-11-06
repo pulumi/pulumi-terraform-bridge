@@ -136,13 +136,6 @@ type bridgedProviderOpts struct {
 // BridgedProviderOpts
 type BridgedProviderOpt func(*bridgedProviderOpts)
 
-// WithPlanResourceChange
-func DisablePlanResourceChange() BridgedProviderOpt {
-	return func(o *bridgedProviderOpts) {
-		o.DisablePlanResourceChange = true
-	}
-}
-
 func WithStateEdit(f shimv2.PlanStateEditFunc) BridgedProviderOpt {
 	return func(o *bridgedProviderOpts) {
 		o.StateEdit = f
@@ -175,9 +168,6 @@ func BridgedProvider(t T, providerName string, tfp *schema.Provider, opts ...Bri
 	EnsureProviderValid(t, tfp)
 
 	shimProvider := shimv2.NewProvider(tfp,
-		shimv2.WithPlanResourceChange(
-			func(tfResourceType string) bool { return !options.DisablePlanResourceChange },
-		),
 		shimv2.WithPlanStateEdit(options.StateEdit),
 	)
 

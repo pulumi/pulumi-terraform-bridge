@@ -526,12 +526,6 @@ func TestIgnoreChangesV2(t *testing.T) {
 	testIgnoreChangesV2(t, shimv2.NewProvider(testTFProviderV2))
 }
 
-func TestIgnoreChangesV2WithPlanResourceChange(t *testing.T) {
-	t.Parallel()
-	opt := shimv2.WithPlanResourceChange(func(string) bool { return true })
-	testIgnoreChangesV2(t, shimv2.NewProvider(testTFProviderV2, opt))
-}
-
 func testIgnoreChangesV2(t *testing.T, prov shim.Provider) {
 	provider := &Provider{
 		tf:     prov,
@@ -3286,17 +3280,9 @@ func TestPreConfigureCallbackEmitsFailures(t *testing.T) {
 
 func TestImport(t *testing.T) {
 	t.Parallel()
-	t.Run("sdkv2", func(t *testing.T) {
-		testImport(t, func(p *schema.Provider) shim.Provider {
-			return shimv2.NewProvider(p)
-		})
-	})
-	t.Run("sdkv2/planResourceChange", func(t *testing.T) {
-		testImport(t, func(p *schema.Provider) shim.Provider {
-			return shimv2.NewProvider(p, shimv2.WithPlanResourceChange(func(s string) bool {
-				return true
-			}))
-		})
+
+	testImport(t, func(p *schema.Provider) shim.Provider {
+		return shimv2.NewProvider(p)
 	})
 }
 
@@ -3383,17 +3369,8 @@ func testImport(t *testing.T, newProvider func(*schema.Provider) shim.Provider) 
 
 func TestRefresh(t *testing.T) {
 	t.Parallel()
-	t.Run("sdkv2", func(t *testing.T) {
-		testRefresh(t, func(p *schema.Provider) shim.Provider {
-			return shimv2.NewProvider(p)
-		})
-	})
-	t.Run("sdkv2/planResourceChange", func(t *testing.T) {
-		testRefresh(t, func(p *schema.Provider) shim.Provider {
-			return shimv2.NewProvider(p, shimv2.WithPlanResourceChange(func(s string) bool {
-				return true
-			}))
-		})
+	testRefresh(t, func(p *schema.Provider) shim.Provider {
+		return shimv2.NewProvider(p)
 	})
 }
 
@@ -3531,17 +3508,9 @@ func testRefresh(t *testing.T, newProvider func(*schema.Provider) shim.Provider)
 
 func TestDestroy(t *testing.T) {
 	t.Parallel()
-	t.Run("sdkv2", func(t *testing.T) {
-		testDestroy(t, func(p *schema.Provider) shim.Provider {
-			return shimv2.NewProvider(p)
-		})
-	})
-	t.Run("sdkv2/planResourceChange", func(t *testing.T) {
-		testDestroy(t, func(p *schema.Provider) shim.Provider {
-			return shimv2.NewProvider(p, shimv2.WithPlanResourceChange(func(s string) bool {
-				return true
-			}))
-		})
+
+	testDestroy(t, func(p *schema.Provider) shim.Provider {
+		return shimv2.NewProvider(p)
 	})
 }
 
@@ -4177,10 +4146,7 @@ func TestCustomTimeouts(t *testing.T) {
 			},
 		}
 
-		shimmedProvider := shimv2.NewProvider(upstreamProvider,
-			shimv2.WithPlanResourceChange(func(tfResourceType string) bool {
-				return true
-			}))
+		shimmedProvider := shimv2.NewProvider(upstreamProvider)
 
 		bridgedProvider := &Provider{
 			tf:   shimmedProvider,
@@ -4368,7 +4334,7 @@ func TestProviderMetaPlanResourceChangeNoError(t *testing.T) {
 	}
 	p.SetMeta(otherMetaType{val: "foo"})
 
-	shimProv := shimv2.NewProvider(p, shimv2.WithPlanResourceChange(func(string) bool { return true }))
+	shimProv := shimv2.NewProvider(p)
 	provider := &Provider{
 		tf:     shimProv,
 		config: shimv2.NewSchemaMap(p.Schema),
@@ -4715,7 +4681,7 @@ func TestPlanResourceChangeStateUpgrade(t *testing.T) {
 			},
 		},
 	}
-	shimProv := shimv2.NewProvider(p, shimv2.WithPlanResourceChange(func(tfResourceType string) bool { return true }))
+	shimProv := shimv2.NewProvider(p)
 	provider := &Provider{
 		tf:     shimProv,
 		config: shimv2.NewSchemaMap(p.Schema),
@@ -4867,7 +4833,7 @@ func TestUnknowns(t *testing.T) {
 		Schema:       map[string]*schemav2.Schema{},
 		ResourcesMap: UnknownsSchema(),
 	}
-	shimProv := shimv2.NewProvider(p, shimv2.WithPlanResourceChange(func(tfResourceType string) bool { return true }))
+	shimProv := shimv2.NewProvider(p)
 	provider := &Provider{
 		tf:     shimProv,
 		config: shimv2.NewSchemaMap(p.Schema),
