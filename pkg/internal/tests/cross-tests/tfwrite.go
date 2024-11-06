@@ -44,7 +44,7 @@ func sdkV2NestingToShim(nesting sdkV2NestingMode) hclwrite.Nesting {
 	case sdkV2NestingModeSet:
 		return hclwrite.NestingSet
 	default:
-		contract.Failf("invalid nesting mode: %d for the SDKv2 schema", nesting)
+		contract.Failf("Unexpected nesting mode: %d for the SDKv2 schema", nesting)
 		return hclwrite.NestingInvalid
 	}
 }
