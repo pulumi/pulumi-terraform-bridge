@@ -1,7 +1,6 @@
 package crosstests
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
@@ -28,28 +27,22 @@ func TestUpgradeInputsStringBasic(t *testing.T) {
 			"f0": tftypes.NewValue(tftypes.String, val),
 		})
 	}
-	for _, PRC := range []bool{true, false} {
-		t.Run(fmt.Sprintf("PRC=%v", PRC), func(t *testing.T) {
-			t.Run("same", func(t *testing.T) {
-				runUpgradeStateInputCheck(t, upgradeStateTestCase{
-					Resource:                  res,
-					Config1:                   configVal("val"),
-					Config2:                   configVal("val"),
-					DisablePlanResourceChange: !PRC,
-					ExpectEqual:               true,
-				})
-			})
-
-			t.Run("different", func(t *testing.T) {
-				runUpgradeStateInputCheck(t, upgradeStateTestCase{
-					Resource:                  res,
-					Config1:                   configVal("val1"),
-					Config2:                   configVal("val2"),
-					DisablePlanResourceChange: !PRC,
-				})
-			})
+	t.Run("same", func(t *testing.T) {
+		runUpgradeStateInputCheck(t, upgradeStateTestCase{
+			Resource:                  res,
+			Config1:                   configVal("val"),
+			Config2:                   configVal("val"),
+			ExpectEqual:               true,
 		})
-	}
+	})
+
+	t.Run("different", func(t *testing.T) {
+		runUpgradeStateInputCheck(t, upgradeStateTestCase{
+			Resource:                  res,
+			Config1:                   configVal("val1"),
+			Config2:                   configVal("val2"),
+		})
+	})
 }
 
 func TestUpgradeInputsStringBasicNonZeroVersion(t *testing.T) {
@@ -73,28 +66,22 @@ func TestUpgradeInputsStringBasicNonZeroVersion(t *testing.T) {
 			"f0": tftypes.NewValue(tftypes.String, val),
 		})
 	}
-	for _, PRC := range []bool{true, false} {
-		t.Run(fmt.Sprintf("PRC=%v", PRC), func(t *testing.T) {
-			t.Run("same", func(t *testing.T) {
-				runUpgradeStateInputCheck(t, upgradeStateTestCase{
-					Resource:                  res,
-					Config1:                   configVal("val"),
-					Config2:                   configVal("val"),
-					DisablePlanResourceChange: !PRC,
-					ExpectEqual:               true,
-				})
-			})
-
-			t.Run("different", func(t *testing.T) {
-				runUpgradeStateInputCheck(t, upgradeStateTestCase{
-					Resource:                  res,
-					Config1:                   configVal("val1"),
-					Config2:                   configVal("val2"),
-					DisablePlanResourceChange: !PRC,
-				})
-			})
+	t.Run("same", func(t *testing.T) {
+		runUpgradeStateInputCheck(t, upgradeStateTestCase{
+			Resource:                  res,
+			Config1:                   configVal("val"),
+			Config2:                   configVal("val"),
+			ExpectEqual:               true,
 		})
-	}
+	})
+
+	t.Run("different", func(t *testing.T) {
+		runUpgradeStateInputCheck(t, upgradeStateTestCase{
+			Resource:                  res,
+			Config1:                   configVal("val1"),
+			Config2:                   configVal("val2"),
+		})
+	})
 }
 
 func TestUpgradeInputsObjectBasic(t *testing.T) {
@@ -140,26 +127,20 @@ func TestUpgradeInputsObjectBasic(t *testing.T) {
 			},
 		)
 	}
-	for _, PRC := range []bool{true, false} {
-		t.Run(fmt.Sprintf("PRC=%v", PRC), func(t *testing.T) {
-			t.Run("same", func(t *testing.T) {
-				runUpgradeStateInputCheck(t, upgradeStateTestCase{
-					Resource:                  res,
-					Config1:                   configVal("val"),
-					Config2:                   configVal("val"),
-					DisablePlanResourceChange: !PRC,
-					ExpectEqual:               true,
-				})
-			})
-
-			t.Run("different", func(t *testing.T) {
-				runUpgradeStateInputCheck(t, upgradeStateTestCase{
-					Resource:                  res,
-					Config1:                   configVal("val1"),
-					Config2:                   configVal("val2"),
-					DisablePlanResourceChange: !PRC,
-				})
-			})
+	t.Run("same", func(t *testing.T) {
+		runUpgradeStateInputCheck(t, upgradeStateTestCase{
+			Resource:                  res,
+			Config1:                   configVal("val"),
+			Config2:                   configVal("val"),
+			ExpectEqual:               true,
 		})
-	}
+	})
+
+	t.Run("different", func(t *testing.T) {
+		runUpgradeStateInputCheck(t, upgradeStateTestCase{
+			Resource:                  res,
+			Config1:                   configVal("val1"),
+			Config2:                   configVal("val2"),
+		})
+	})
 }

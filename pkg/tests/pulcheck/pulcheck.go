@@ -127,10 +127,9 @@ type T interface {
 }
 
 type bridgedProviderOpts struct {
-	DisablePlanResourceChange bool
-	StateEdit                 shimv2.PlanStateEditFunc
-	resourceInfo              map[string]*info.Resource
-	configInfo                map[string]*info.Schema
+	StateEdit    shimv2.PlanStateEditFunc
+	resourceInfo map[string]*info.Resource
+	configInfo   map[string]*info.Schema
 }
 
 // BridgedProviderOpts

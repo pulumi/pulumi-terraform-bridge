@@ -411,7 +411,7 @@ func TestFailedValidatorOnReadHandling(t *testing.T) {
 				},
 			}
 			tfp := &schema.Provider{ResourcesMap: resMap}
-			bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp, pulcheck.DisablePlanResourceChange())
+			bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
 			program := `
 name: test
 runtime: yaml
