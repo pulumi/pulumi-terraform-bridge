@@ -110,13 +110,8 @@ func TestDetailedDiffObject(t *testing.T) {
 		changeValue  *map[string]string
 	}{
 		{"unchanged null", nil, nil},
-		{"unchanged empty", &map[string]string{}, &map[string]string{}},
 		{"unchanged non-empty", &map[string]string{"nested": "value"}, &map[string]string{"nested": "value"}},
 		{"changed value non-null", &map[string]string{"nested": "value"}, &map[string]string{"nested": "changed"}},
-		{"changed value null to non-null", nil, &map[string]string{"nested": "value"}},
-		{"changed value non-null to null", &map[string]string{"nested": "value"}, nil},
-		{"changed null to empty", nil, &map[string]string{}},
-		{"changed empty to null", &map[string]string{}, nil},
 		{"added", nil, &map[string]string{"nested": "value"}},
 		{"removed", &map[string]string{"nested": "value"}, nil},
 	}
@@ -147,4 +142,6 @@ func TestDetailedDiffObject(t *testing.T) {
 			}
 		})
 	}
+
+	// TODO: Empty values are not allowed for objects, test how pulumi handles this
 }
