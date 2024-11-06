@@ -156,7 +156,7 @@ func ComputeAutoNameDefault(
 	// resources, as SDKv2 based resources avoid calling ComputedDefaults in the first place in update situations.
 	// To do that SDKv2 based resources track __defaults meta-key to distinguish between values originating from
 	// defaulting machinery from values originating from user code. Unfortunately Plugin Framework cannot reliably
-	// disinguish default values, therefore it always calls ComputedDefaults. To compensate, this code block avoids
+	// distinguish default values, therefore it always calls ComputedDefaults. To compensate, this code block avoids
 	// re-generating the auto-name if it is located in PriorState and reuses the old one; this avoids generating a
 	// fresh random value and causing a replace plan.
 	if defaultOptions.PriorState != nil && defaultOptions.PriorValue.V != nil {
