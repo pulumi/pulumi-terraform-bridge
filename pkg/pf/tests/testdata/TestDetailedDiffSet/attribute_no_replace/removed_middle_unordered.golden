@@ -1,0 +1,39 @@
+tfbridgetests.testOutput{
+	initialValue: &[]string{
+		"val3",
+		"val1",
+		"val2",
+	},
+	changeValue: &[]string{
+		"val3",
+		"val1",
+	},
+	tfOut: `
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  ~ update in-place
+
+Terraform will perform the following actions:
+
+  # testprovider_test.res will be updated in-place
+  ~ resource "testprovider_test" "res" {
+        id  = "test-id"
+      ~ key = [
+          - "val2",
+            # (2 unchanged elements hidden)
+        ]
+    }
+
+Plan: 0 to add, 1 to change, 0 to destroy.
+
+`,
+	pulumiOut: `Previewing update (test):
+
+ ~  testprovider:index:Test p update [diff: ~keys]
+    pulumi:pulumi:Stack project-test
+Resources:
+    ~ 1 to update
+    1 unchanged
+
+`,
+}
