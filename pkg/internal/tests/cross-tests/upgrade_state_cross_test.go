@@ -29,18 +29,18 @@ func TestUpgradeInputsStringBasic(t *testing.T) {
 	}
 	t.Run("same", func(t *testing.T) {
 		runUpgradeStateInputCheck(t, upgradeStateTestCase{
-			Resource:                  res,
-			Config1:                   configVal("val"),
-			Config2:                   configVal("val"),
-			ExpectEqual:               true,
+			Resource:    res,
+			Config1:     configVal("val"),
+			Config2:     configVal("val"),
+			ExpectEqual: true,
 		})
 	})
 
 	t.Run("different", func(t *testing.T) {
 		runUpgradeStateInputCheck(t, upgradeStateTestCase{
-			Resource:                  res,
-			Config1:                   configVal("val1"),
-			Config2:                   configVal("val2"),
+			Resource: res,
+			Config1:  configVal("val1"),
+			Config2:  configVal("val2"),
 		})
 	})
 }
@@ -68,18 +68,18 @@ func TestUpgradeInputsStringBasicNonZeroVersion(t *testing.T) {
 	}
 	t.Run("same", func(t *testing.T) {
 		runUpgradeStateInputCheck(t, upgradeStateTestCase{
-			Resource:                  res,
-			Config1:                   configVal("val"),
-			Config2:                   configVal("val"),
-			ExpectEqual:               true,
+			Resource:    res,
+			Config1:     configVal("val"),
+			Config2:     configVal("val"),
+			ExpectEqual: true,
 		})
 	})
 
 	t.Run("different", func(t *testing.T) {
 		runUpgradeStateInputCheck(t, upgradeStateTestCase{
-			Resource:                  res,
-			Config1:                   configVal("val1"),
-			Config2:                   configVal("val2"),
+			Resource: res,
+			Config1:  configVal("val1"),
+			Config2:  configVal("val2"),
 		})
 	})
 }
@@ -129,18 +129,18 @@ func TestUpgradeInputsObjectBasic(t *testing.T) {
 	}
 	t.Run("same", func(t *testing.T) {
 		runUpgradeStateInputCheck(t, upgradeStateTestCase{
-			Resource:                  res,
-			Config1:                   configVal("val"),
-			Config2:                   configVal("val"),
-			ExpectEqual:               true,
+			Resource:    res,
+			Config1:     configVal("val"),
+			Config2:     configVal("val"),
+			ExpectEqual: true,
 		})
 	})
 
 	t.Run("different", func(t *testing.T) {
 		runUpgradeStateInputCheck(t, upgradeStateTestCase{
-			Resource:                  res,
-			Config1:                   configVal("val1"),
-			Config2:                   configVal("val2"),
+			Resource: res,
+			Config1:  configVal("val1"),
+			Config2:  configVal("val2"),
 		})
 	})
 }
