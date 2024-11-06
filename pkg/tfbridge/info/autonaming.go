@@ -107,7 +107,7 @@ func AutoName(name string, maxlength int, separator string) *Schema {
 	}
 }
 
-// AutoNameOptions provides parameters to AutoName to control how names will be generated
+// AutoNameOptions provides parameters to [AutoName] to control how names will be generated
 type AutoNameOptions struct {
 	// A separator between name and random portions of the
 	Separator string
