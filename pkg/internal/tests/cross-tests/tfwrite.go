@@ -21,51 +21,56 @@ import (
 	crosstestsimpl "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests/impl"
 )
 
-func sdkV2NestingToShim(nesting string) crosstestsimpl.Nesting {
+// This is a copy of the NestingMode enum in the Terraform Plugin SDK.
+// It is duplicated here because the type is not exported.
+type sdkV2NestingMode int
+
+const (
+	sdkV2NestingModeInvalid sdkV2NestingMode = iota
+	sdkV2NestingModeSingle
+	sdkV2NestingModeGroup
+	sdkV2NestingModeList
+	sdkV2NestingModeSet
+	sdkV2NestingModeMap
+)
+
+func sdkV2NestingToShim(nesting sdkV2NestingMode) crosstestsimpl.Nesting {
 	switch nesting {
-	case "NestingSingle":
+	case sdkV2NestingModeSingle:
 		return crosstestsimpl.NestingSingle
-	case "NestingList":
+	case sdkV2NestingModeList:
 		return crosstestsimpl.NestingList
-	case "NestingSet":
+	case sdkV2NestingModeSet:
 		return crosstestsimpl.NestingSet
 	default:
 		return crosstestsimpl.NestingInvalid
 	}
 }
 
-type hclSchemaSDKv2 struct {
-	sch map[string]*schema.Schema
-}
-
-func NewHCLSchemaSDKv2(sch map[string]*schema.Schema) crosstestsimpl.ShimHCLSchema {
-	return hclSchemaSDKv2{sch: sch}
-}
+type hclSchemaSDKv2 map[string]*schema.Schema
 
 var _ crosstestsimpl.ShimHCLSchema = hclSchemaSDKv2{}
 
 func (s hclSchemaSDKv2) Attributes() map[string]crosstestsimpl.ShimHCLAttribute {
-	internalMap := schema.InternalMap(s.sch)
+	internalMap := schema.InternalMap(s)
 	coreConfigSchema := internalMap.CoreConfigSchema()
-	attrMap := make(map[string]crosstestsimpl.ShimHCLAttribute)
-	for key, attr := range coreConfigSchema.Attributes {
-		attrMap[key] = attr
+	attrMap := make(map[string]crosstestsimpl.ShimHCLAttribute, len(s))
+	for key := range coreConfigSchema.Attributes {
+		attrMap[key] = crosstestsimpl.ShimHCLAttribute{}
 	}
 	return attrMap
 }
 
 func (s hclSchemaSDKv2) Blocks() map[string]crosstestsimpl.ShimHCLBlock {
-	internalMap := schema.InternalMap(s.sch)
+	internalMap := schema.InternalMap(s)
 	coreConfigSchema := internalMap.CoreConfigSchema()
-	blockMap := make(map[string]crosstestsimpl.ShimHCLBlock)
-	for key := range coreConfigSchema.BlockTypes {
-		res := s.sch[key].Elem.(*schema.Resource)
-		nesting := coreConfigSchema.BlockTypes[key].Nesting.String()
+	blockMap := make(map[string]crosstestsimpl.ShimHCLBlock, len(coreConfigSchema.BlockTypes))
+	for key, block := range coreConfigSchema.BlockTypes {
+		res := s[key].Elem.(*schema.Resource)
+		nesting := block.Nesting
 		blockMap[key] = hclBlockSDKv2{
-			hclSchemaSDKv2: hclSchemaSDKv2{
-				sch: res.Schema,
-			},
-			nesting: sdkV2NestingToShim(nesting),
+			hclSchemaSDKv2: hclSchemaSDKv2(res.Schema),
+			nesting:        sdkV2NestingToShim(sdkV2NestingMode(nesting)),
 		}
 	}
 	return blockMap

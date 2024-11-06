@@ -177,7 +177,7 @@ func TestWritePFHCLProvider(t *testing.T) {
 			t.Parallel()
 
 			var actual bytes.Buffer
-			sch := NewHCLSchemaPFProvider(tt.schema)
+			sch := hclSchemaPFProvider{tt.schema}
 			err := crosstestsimpl.WriteProvider(&actual, sch, "test", tt.value)
 			require.NoError(t, err)
 			tt.expect.Equal(t, actual.String())

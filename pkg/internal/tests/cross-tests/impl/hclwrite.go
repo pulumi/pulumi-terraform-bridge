@@ -19,7 +19,7 @@ const (
 	NestingSet     Nesting = "NestingSet"
 )
 
-type ShimHCLAttribute interface{}
+type ShimHCLAttribute struct{}
 
 type ShimHCLBlock interface {
 	GetNestingMode() Nesting
@@ -37,7 +37,7 @@ type ShimHCLSchema interface {
 // Note that unknowns are not yet supported in cty.Value, it will error out if found.
 func WriteProvider(w io.Writer, schema ShimHCLSchema, providerType string, config map[string]cty.Value) error {
 	if !cty.ObjectVal(config).IsWhollyKnown() {
-		return fmt.Errorf("WriteHCL cannot yet write unknowns")
+		return fmt.Errorf("WriteProvider cannot yet write unknowns")
 	}
 	f := hclwrite.NewEmptyFile()
 	block := f.Body().AppendNewBlock("provider", []string{providerType})
@@ -70,7 +70,7 @@ func WriteResource(
 	opts ...WriteResourceOption,
 ) error {
 	if !cty.ObjectVal(config).IsWhollyKnown() {
-		return fmt.Errorf("WriteHCL cannot yet write unknowns")
+		return fmt.Errorf("WriteResource cannot yet write unknowns")
 	}
 	o := &writeResourceOptions{}
 	for _, opt := range opts {
@@ -81,15 +81,19 @@ func WriteResource(
 		config = map[string]cty.Value{}
 	}
 
-	if o.lifecycleArgs.CreateBeforeDestroy {
-		config["lifecycle"] = cty.ObjectVal(map[string]cty.Value{
-			"create_before_destroy": cty.True,
-		})
-	}
-
 	f := hclwrite.NewEmptyFile()
 	block := f.Body().AppendNewBlock("resource", []string{resourceType, resourceName})
 	writeBlock(block.Body(), schema, config)
+
+	// lifecycle block
+	lifecycle := map[string]cty.Value{}
+	if o.lifecycleArgs.CreateBeforeDestroy {
+		lifecycle["create_before_destroy"] = cty.True
+	}
+	if len(lifecycle) > 0 {
+		newBlock := block.Body().AppendNewBlock("lifecycle", nil)
+		writeBlock(newBlock.Body(), &lifecycleBlock{}, config["lifecycle"].AsValueMap())
+	}
 	_, err := f.WriteTo(w)
 	return err
 }
@@ -104,7 +108,7 @@ func (b *lifecycleBlock) GetNestingMode() Nesting {
 
 func (b *lifecycleBlock) Attributes() map[string]ShimHCLAttribute {
 	return map[string]ShimHCLAttribute{
-		"create_before_destroy": cty.Bool,
+		"create_before_destroy": {},
 	}
 }
 
@@ -150,11 +154,5 @@ func writeBlock(body *hclwrite.Body, schema ShimHCLSchema, config map[string]cty
 		default:
 			contract.Failf("unexpected nesting mode %v", block.GetNestingMode())
 		}
-	}
-
-	// lifecycle block
-	if _, ok := config["lifecycle"]; ok {
-		newBlock := body.AppendNewBlock("lifecycle", nil)
-		writeBlock(newBlock.Body(), &lifecycleBlock{}, config["lifecycle"].AsValueMap())
 	}
 }

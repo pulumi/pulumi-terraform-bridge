@@ -7,6 +7,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
+// This is a copy of the BlockNestingMode enum in the Terraform Plugin Framework.
+// It is duplicated here because the type is not exported.
 type pfNestingMode uint8
 
 const (
@@ -42,8 +44,8 @@ func pSchemaBlockToObject(block pschema.Block) pschema.NestedBlockObject {
 		}
 	default:
 		contract.Failf("Unknown block type: %T", block)
+		return pschema.NestedBlockObject{}
 	}
-	return pschema.NestedBlockObject{}
 }
 
 func rSchemaBlockToObject(block rschema.Block) rschema.NestedBlockObject {
@@ -69,14 +71,10 @@ type hclSchemaPFProvider struct {
 
 var _ crosstestsimpl.ShimHCLSchema = hclSchemaPFProvider{}
 
-func NewHCLSchemaPFProvider(sch pschema.Schema) crosstestsimpl.ShimHCLSchema {
-	return hclSchemaPFProvider{sch: sch}
-}
-
 func (s hclSchemaPFProvider) Attributes() map[string]crosstestsimpl.ShimHCLAttribute {
 	attrMap := make(map[string]crosstestsimpl.ShimHCLAttribute)
-	for key, attr := range s.sch.Attributes {
-		attrMap[key] = attr
+	for key := range s.sch.Attributes {
+		attrMap[key] = crosstestsimpl.ShimHCLAttribute{}
 	}
 	return attrMap
 }
@@ -101,8 +99,8 @@ var _ crosstestsimpl.ShimHCLBlock = hclBlockPFProvider{}
 
 func (s hclBlockPFProvider) Attributes() map[string]crosstestsimpl.ShimHCLAttribute {
 	attrMap := make(map[string]crosstestsimpl.ShimHCLAttribute)
-	for key, attr := range s.nestedObject.Attributes {
-		attrMap[key] = attr
+	for key := range s.nestedObject.Attributes {
+		attrMap[key] = crosstestsimpl.ShimHCLAttribute{}
 	}
 	return attrMap
 }
@@ -134,8 +132,8 @@ func NewHCLSchemaPFResource(sch rschema.Schema) crosstestsimpl.ShimHCLSchema {
 
 func (s hclSchemaPFResource) Attributes() map[string]crosstestsimpl.ShimHCLAttribute {
 	attrMap := make(map[string]crosstestsimpl.ShimHCLAttribute)
-	for key, attr := range s.sch.Attributes {
-		attrMap[key] = attr
+	for key := range s.sch.Attributes {
+		attrMap[key] = crosstestsimpl.ShimHCLAttribute{}
 	}
 	return attrMap
 }
@@ -160,8 +158,8 @@ var _ crosstestsimpl.ShimHCLBlock = hclBlockPFResource{}
 
 func (s hclBlockPFResource) Attributes() map[string]crosstestsimpl.ShimHCLAttribute {
 	attrMap := make(map[string]crosstestsimpl.ShimHCLAttribute)
-	for key, attr := range s.nestedObject.Attributes {
-		attrMap[key] = attr
+	for key := range s.nestedObject.Attributes {
+		attrMap[key] = crosstestsimpl.ShimHCLAttribute{}
 	}
 	return attrMap
 }

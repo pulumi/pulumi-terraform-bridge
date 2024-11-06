@@ -268,7 +268,7 @@ resource "res" "ex" {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			var out bytes.Buffer
-			sch := NewHCLSchemaSDKv2(tc.schema)
+			sch := hclSchemaSDKv2(tc.schema)
 			err := crosstestsimpl.WriteResource(&out, sch, "res", "ex", tc.value.AsValueMap())
 			require.NoError(t, err)
 			tc.expect.Equal(t, "\n"+out.String())
@@ -279,7 +279,7 @@ resource "res" "ex" {
 func TestWriteLifecycle(t *testing.T) {
 	t.Parallel()
 
-	sch := NewHCLSchemaSDKv2(map[string]*schema.Schema{
+	sch := hclSchemaSDKv2(map[string]*schema.Schema{
 		"prop": {
 			Type:     schema.TypeString,
 			Optional: true,
