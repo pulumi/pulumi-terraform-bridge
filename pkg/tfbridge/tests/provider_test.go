@@ -739,7 +739,7 @@ func TestValidateConfig(t *testing.T) {
 					},
 				},
 			},
-		}, shimv2.WithDiffStrategy(shimv2.PlanState)),
+		}),
 		Name:           "testprov",
 		ResourcePrefix: "example",
 	}, newTestProviderOptions{})

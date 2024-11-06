@@ -58,7 +58,7 @@ func WithPlanStateEdit(f PlanStateEditFunc) providerOption { //nolint:revive
 	}
 }
 
-// Deprecated.
+// Deprecated: WithDiffStrategy is no longer used.
 // TODO[pulumi/pulumi-terraform-bridge#2062] clean up deprecation.
 func WithDiffStrategy(s DiffStrategy) providerOption { //nolint:revive
 	return func(opts providerOptions) (providerOptions, error) {
