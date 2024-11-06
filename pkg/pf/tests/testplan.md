@@ -115,10 +115,10 @@ Schemas:
 1. Object attribute
    - object attribute without RequiresReplace
    - object attribute with RequiresReplace
-1. Object nested attribute
-   - object nested attribute without RequiresReplace
-   - object nested attribute with RequiresReplace on the object
-   - object nested attribute with RequiresReplace on the nested attribute
+1. Single nested block
+   - single nested block without RequiresReplace
+   - single nested block with RequiresReplace on the object
+   - single nested block with RequiresReplace on the nested attribute
 
 
 Scenarios:
