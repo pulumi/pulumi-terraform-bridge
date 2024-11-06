@@ -23,13 +23,13 @@ type ShimHCLAttribute struct{}
 
 type ShimHCLBlock interface {
 	GetNestingMode() Nesting
-	Attributes() map[string]ShimHCLAttribute
-	Blocks() map[string]ShimHCLBlock
+	GetAttributes() map[string]ShimHCLAttribute
+	GetBlocks() map[string]ShimHCLBlock
 }
 
 type ShimHCLSchema interface {
-	Attributes() map[string]ShimHCLAttribute
-	Blocks() map[string]ShimHCLBlock
+	GetAttributes() map[string]ShimHCLAttribute
+	GetBlocks() map[string]ShimHCLBlock
 }
 
 // WriteProvider writes a provider declaration to an HCL file.
@@ -106,19 +106,19 @@ func (b *lifecycleBlock) GetNestingMode() Nesting {
 	return NestingSingle
 }
 
-func (b *lifecycleBlock) Attributes() map[string]ShimHCLAttribute {
+func (b *lifecycleBlock) GetAttributes() map[string]ShimHCLAttribute {
 	return map[string]ShimHCLAttribute{
 		"create_before_destroy": {},
 	}
 }
 
-func (b *lifecycleBlock) Blocks() map[string]ShimHCLBlock {
+func (b *lifecycleBlock) GetBlocks() map[string]ShimHCLBlock {
 	return map[string]ShimHCLBlock{}
 }
 
 func writeBlock(body *hclwrite.Body, schema ShimHCLSchema, config map[string]cty.Value) {
-	attributeList := make([]string, 0, len(schema.Attributes()))
-	for key := range schema.Attributes() {
+	attributeList := make([]string, 0, len(schema.GetAttributes()))
+	for key := range schema.GetAttributes() {
 		attributeList = append(attributeList, key)
 	}
 	sort.Strings(attributeList)
@@ -130,14 +130,14 @@ func writeBlock(body *hclwrite.Body, schema ShimHCLSchema, config map[string]cty
 		body.SetAttributeValue(key, v)
 	}
 
-	blockList := make([]string, 0, len(schema.Blocks()))
-	for key := range schema.Blocks() {
+	blockList := make([]string, 0, len(schema.GetBlocks()))
+	for key := range schema.GetBlocks() {
 		blockList = append(blockList, key)
 	}
 	sort.Strings(blockList)
 
 	for _, key := range blockList {
-		block := schema.Blocks()[key]
+		block := schema.GetBlocks()[key]
 		if v, ok := config[key]; !ok || v.IsNull() {
 			continue
 		}

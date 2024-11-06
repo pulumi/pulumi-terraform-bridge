@@ -68,7 +68,7 @@ func Diff(t T, schema rschema.Schema, tfConfig1, tfConfig2 map[string]cty.Value,
 	// Run the TF part
 	var hcl1 bytes.Buffer
 
-	sch := NewHCLSchemaPFResource(schema)
+	sch := hclSchemaPFResource(schema)
 	err := crosstestsimpl.WriteResource(&hcl1, sch, "testprovider_test", "res", tfConfig1,
 		crosstestsimpl.WithCreateBeforeDestroy(true))
 	require.NoError(t, err)

@@ -65,23 +65,21 @@ func rSchemaBlockToObject(block rschema.Block) rschema.NestedBlockObject {
 	return rschema.NestedBlockObject{}
 }
 
-type hclSchemaPFProvider struct {
-	sch pschema.Schema
-}
+type hclSchemaPFProvider pschema.Schema
 
 var _ crosstestsimpl.ShimHCLSchema = hclSchemaPFProvider{}
 
-func (s hclSchemaPFProvider) Attributes() map[string]crosstestsimpl.ShimHCLAttribute {
+func (s hclSchemaPFProvider) GetAttributes() map[string]crosstestsimpl.ShimHCLAttribute {
 	attrMap := make(map[string]crosstestsimpl.ShimHCLAttribute)
-	for key := range s.sch.Attributes {
+	for key := range s.Attributes {
 		attrMap[key] = crosstestsimpl.ShimHCLAttribute{}
 	}
 	return attrMap
 }
 
-func (s hclSchemaPFProvider) Blocks() map[string]crosstestsimpl.ShimHCLBlock {
+func (s hclSchemaPFProvider) GetBlocks() map[string]crosstestsimpl.ShimHCLBlock {
 	blockMap := make(map[string]crosstestsimpl.ShimHCLBlock)
-	for key, block := range s.sch.Blocks {
+	for key, block := range s.Blocks {
 		blockMap[key] = hclBlockPFProvider{
 			nestedObject: pSchemaBlockToObject(block),
 			nesting:      pfNestingToShim(pfNestingMode(block.GetNestingMode())),
@@ -97,7 +95,7 @@ type hclBlockPFProvider struct {
 
 var _ crosstestsimpl.ShimHCLBlock = hclBlockPFProvider{}
 
-func (s hclBlockPFProvider) Attributes() map[string]crosstestsimpl.ShimHCLAttribute {
+func (s hclBlockPFProvider) GetAttributes() map[string]crosstestsimpl.ShimHCLAttribute {
 	attrMap := make(map[string]crosstestsimpl.ShimHCLAttribute)
 	for key := range s.nestedObject.Attributes {
 		attrMap[key] = crosstestsimpl.ShimHCLAttribute{}
@@ -105,7 +103,7 @@ func (s hclBlockPFProvider) Attributes() map[string]crosstestsimpl.ShimHCLAttrib
 	return attrMap
 }
 
-func (s hclBlockPFProvider) Blocks() map[string]crosstestsimpl.ShimHCLBlock {
+func (s hclBlockPFProvider) GetBlocks() map[string]crosstestsimpl.ShimHCLBlock {
 	blockMap := make(map[string]crosstestsimpl.ShimHCLBlock)
 	for key, block := range s.nestedObject.Blocks {
 		blockMap[key] = hclBlockPFProvider{
@@ -120,27 +118,21 @@ func (s hclBlockPFProvider) GetNestingMode() crosstestsimpl.Nesting {
 	return s.nesting
 }
 
-type hclSchemaPFResource struct {
-	sch rschema.Schema
-}
+type hclSchemaPFResource rschema.Schema
 
 var _ crosstestsimpl.ShimHCLSchema = hclSchemaPFResource{}
 
-func NewHCLSchemaPFResource(sch rschema.Schema) crosstestsimpl.ShimHCLSchema {
-	return hclSchemaPFResource{sch: sch}
-}
-
-func (s hclSchemaPFResource) Attributes() map[string]crosstestsimpl.ShimHCLAttribute {
+func (s hclSchemaPFResource) GetAttributes() map[string]crosstestsimpl.ShimHCLAttribute {
 	attrMap := make(map[string]crosstestsimpl.ShimHCLAttribute)
-	for key := range s.sch.Attributes {
+	for key := range s.Attributes {
 		attrMap[key] = crosstestsimpl.ShimHCLAttribute{}
 	}
 	return attrMap
 }
 
-func (s hclSchemaPFResource) Blocks() map[string]crosstestsimpl.ShimHCLBlock {
+func (s hclSchemaPFResource) GetBlocks() map[string]crosstestsimpl.ShimHCLBlock {
 	blockMap := make(map[string]crosstestsimpl.ShimHCLBlock)
-	for key, block := range s.sch.Blocks {
+	for key, block := range s.Blocks {
 		blockMap[key] = hclBlockPFResource{
 			nestedObject: rSchemaBlockToObject(block),
 			nesting:      pfNestingToShim(pfNestingMode(block.GetNestingMode())),
@@ -156,7 +148,7 @@ type hclBlockPFResource struct {
 
 var _ crosstestsimpl.ShimHCLBlock = hclBlockPFResource{}
 
-func (s hclBlockPFResource) Attributes() map[string]crosstestsimpl.ShimHCLAttribute {
+func (s hclBlockPFResource) GetAttributes() map[string]crosstestsimpl.ShimHCLAttribute {
 	attrMap := make(map[string]crosstestsimpl.ShimHCLAttribute)
 	for key := range s.nestedObject.Attributes {
 		attrMap[key] = crosstestsimpl.ShimHCLAttribute{}
@@ -164,7 +156,7 @@ func (s hclBlockPFResource) Attributes() map[string]crosstestsimpl.ShimHCLAttrib
 	return attrMap
 }
 
-func (s hclBlockPFResource) Blocks() map[string]crosstestsimpl.ShimHCLBlock {
+func (s hclBlockPFResource) GetBlocks() map[string]crosstestsimpl.ShimHCLBlock {
 	blockMap := make(map[string]crosstestsimpl.ShimHCLBlock)
 	for key, block := range s.nestedObject.Blocks {
 		blockMap[key] = hclBlockPFResource{

@@ -177,7 +177,7 @@ func TestWritePFHCLProvider(t *testing.T) {
 			t.Parallel()
 
 			var actual bytes.Buffer
-			sch := hclSchemaPFProvider{tt.schema}
+			sch := hclSchemaPFProvider(tt.schema)
 			err := crosstestsimpl.WriteProvider(&actual, sch, "test", tt.value)
 			require.NoError(t, err)
 			tt.expect.Equal(t, actual.String())
@@ -350,7 +350,7 @@ func TestWritePFHCLResource(t *testing.T) {
 			t.Parallel()
 
 			var actual bytes.Buffer
-			sch := NewHCLSchemaPFResource(tt.schema)
+			sch := hclSchemaPFResource(tt.schema)
 			err := crosstestsimpl.WriteResource(&actual, sch, "testprovider_test", "test", tt.value)
 			require.NoError(t, err)
 			tt.expect.Equal(t, actual.String())

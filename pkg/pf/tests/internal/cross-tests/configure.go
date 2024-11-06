@@ -109,7 +109,7 @@ func Configure(t T, schema pschema.Schema, tfConfig map[string]cty.Value, option
 	// Run the TF part
 	{
 		var hcl bytes.Buffer
-		err := crosstestsimpl.WriteProvider(&hcl, hclSchemaPFProvider{schema}, providerName, tfConfig)
+		err := crosstestsimpl.WriteProvider(&hcl, hclSchemaPFProvider(schema), providerName, tfConfig)
 		require.NoError(t, err)
 		// TF does not configure providers unless they are involved with creating
 		// a resource or datasource, so we create "res" to give the TF provider a

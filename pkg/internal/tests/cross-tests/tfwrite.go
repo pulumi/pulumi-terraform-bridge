@@ -51,7 +51,7 @@ type hclSchemaSDKv2 map[string]*schema.Schema
 
 var _ crosstestsimpl.ShimHCLSchema = hclSchemaSDKv2{}
 
-func (s hclSchemaSDKv2) Attributes() map[string]crosstestsimpl.ShimHCLAttribute {
+func (s hclSchemaSDKv2) GetAttributes() map[string]crosstestsimpl.ShimHCLAttribute {
 	internalMap := schema.InternalMap(s)
 	coreConfigSchema := internalMap.CoreConfigSchema()
 	attrMap := make(map[string]crosstestsimpl.ShimHCLAttribute, len(s))
@@ -61,7 +61,7 @@ func (s hclSchemaSDKv2) Attributes() map[string]crosstestsimpl.ShimHCLAttribute 
 	return attrMap
 }
 
-func (s hclSchemaSDKv2) Blocks() map[string]crosstestsimpl.ShimHCLBlock {
+func (s hclSchemaSDKv2) GetBlocks() map[string]crosstestsimpl.ShimHCLBlock {
 	internalMap := schema.InternalMap(s)
 	coreConfigSchema := internalMap.CoreConfigSchema()
 	blockMap := make(map[string]crosstestsimpl.ShimHCLBlock, len(coreConfigSchema.BlockTypes))
