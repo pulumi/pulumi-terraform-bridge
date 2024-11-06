@@ -33,9 +33,11 @@ func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
 	// Get file content without front matter
 	content := trimFrontMatter(contentBytes)
 
+	providerName := getProviderName(g)
+
 	// Add pulumi-specific front matter
 	// Generate pulumi-specific front matter
-	frontMatter := writeFrontMatter(g.pkg.Name().String())
+	frontMatter := writeFrontMatter(providerName)
 
 	// Remove the title. A title gets populated from Hugo frontmatter; we do not want two.
 	content, err = removeTitle(content)
@@ -47,7 +49,7 @@ func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
 	content = stripSchemaGeneratedByTFPluginDocs(content)
 
 	// Generate pulumi-specific installation instructions
-	installationInstructions := writeInstallationInstructions(g.info.Golang.ImportBasePath, g.pkg.Name().String())
+	installationInstructions := writeInstallationInstructions(g.info.Golang.ImportBasePath, providerName, g.pkg.Name().String())
 
 	// Determine if we should write an overview header.
 	overviewHeader := getOverviewHeader(content)
@@ -103,20 +105,21 @@ func writeFrontMatter(providerName string) string {
 // .NET: Pulumi.foo
 // Java: com.pulumi/foo
 // ****
-func writeInstallationInstructions(goImportBasePath, providerName string) string {
+func writeInstallationInstructions(goImportBasePath, displayName, pkgName string) string {
 	// Capitalize the package name for C#
 	capitalize := cases.Title(language.English)
-	cSharpName := capitalize.String(providerName)
+	cSharpName := capitalize.String(pkgName)
 
 	return fmt.Sprintf(
 		"## Installation\n\n"+
 			"The %[1]s provider is available as a package in all Pulumi languages:\n\n"+
-			"* JavaScript/TypeScript: [`@pulumi/%[1]s`](https://www.npmjs.com/package/@pulumi/%[1]s)\n"+
-			"* Python: [`pulumi-%[1]s`](https://pypi.org/project/pulumi-%[1]s/)\n"+
-			"* Go: [`%[3]s`](https://github.com/pulumi/pulumi-%[1]s)\n"+
-			"* .NET: [`Pulumi.%[2]s`](https://www.nuget.org/packages/Pulumi.%[2]s)\n"+
-			"* Java: [`com.pulumi/%[1]s`](https://central.sonatype.com/artifact/com.pulumi/%[1]s)\n\n",
-		providerName,
+			"* JavaScript/TypeScript: [`@pulumi/%[2]s`](https://www.npmjs.com/package/@pulumi/%[2]s)\n"+
+			"* Python: [`pulumi-%[2]s`](https://pypi.org/project/pulumi-%[2]s/)\n"+
+			"* Go: [`%[4]s`](https://github.com/pulumi/pulumi-%[2]s)\n"+
+			"* .NET: [`Pulumi.%[3]s`](https://www.nuget.org/packages/Pulumi.%[3]s)\n"+
+			"* Java: [`com.pulumi/%[2]s`](https://central.sonatype.com/artifact/com.pulumi/%[2]s)\n\n",
+		displayName,
+		pkgName,
 		cSharpName,
 		goImportBasePath,
 	)
@@ -428,4 +431,12 @@ func removeTfVersionMentions() tfbridge.DocsEdit {
 		},
 		Phase: info.PostCodeTranslation,
 	}
+}
+
+func getProviderName(g *Generator) string {
+	providerName := g.info.DisplayName
+	if providerName != "" {
+		return providerName
+	}
+	return g.pkg.Name().String()
 }
