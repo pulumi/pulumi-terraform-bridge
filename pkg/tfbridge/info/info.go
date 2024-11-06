@@ -613,11 +613,14 @@ type Default struct {
 	// Config uses a configuration variable from this package as the default value.
 	Config string
 
-	// Deprecated. Use ComputeDefault.
+	// Deprecated. Use [Default.ComputeDefault].
 	From func(res *PulumiResource) (interface{}, error)
 
-	// ComputeDefault specifies how to compute a default value for the given property by consulting other properties
-	// such as the resource's URN. See [ComputeDefaultOptions] for all available information.
+	// ComputeDefault specifies a strategy for how to pick a default value when the user has not specified any value
+	// in their program.
+	//
+	// One common use case for this functionality is auto-naming, see [AutoName] for a recommended starting point
+	// and [ComputeAutoNameDefault] for the specific implementation.
 	ComputeDefault func(ctx context.Context, opts ComputeDefaultOptions) (interface{}, error)
 
 	// Value injects a raw literal value as the default.
