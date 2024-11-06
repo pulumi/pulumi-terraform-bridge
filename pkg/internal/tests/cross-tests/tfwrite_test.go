@@ -22,6 +22,8 @@ import (
 	"github.com/hexops/autogold/v2"
 	"github.com/stretchr/testify/require"
 	"github.com/zclconf/go-cty/cty"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests/impl/hclwrite"
 )
 
 func TestWriteHCL(t *testing.T) {
@@ -266,9 +268,35 @@ resource "res" "ex" {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			var out bytes.Buffer
-			err := writeResource(&out, tc.schema, "res", "ex", tc.value)
+			sch := hclSchemaSDKv2(tc.schema)
+			err := hclwrite.WriteResource(&out, sch, "res", "ex", tc.value.AsValueMap())
 			require.NoError(t, err)
 			tc.expect.Equal(t, "\n"+out.String())
 		})
 	}
+}
+
+func TestWriteLifecycle(t *testing.T) {
+	t.Parallel()
+
+	sch := hclSchemaSDKv2(map[string]*schema.Schema{
+		"prop": {
+			Type:     schema.TypeString,
+			Optional: true,
+		},
+	})
+
+	var out bytes.Buffer
+	err := hclwrite.WriteResource(&out, sch, "res", "ex", map[string]cty.Value{
+		"prop": cty.StringVal("OK"),
+	}, hclwrite.WithCreateBeforeDestroy(true))
+	require.NoError(t, err)
+	autogold.Expect(`
+resource "res" "ex" {
+  prop = "OK"
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+`).Equal(t, "\n"+out.String())
 }

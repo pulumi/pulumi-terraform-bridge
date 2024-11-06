@@ -7,6 +7,7 @@ import (
 	pschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hexops/autogold/v2"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests/impl/hclwrite"
 	"github.com/stretchr/testify/require"
 	"github.com/zclconf/go-cty/cty"
 )
@@ -176,7 +177,8 @@ func TestWritePFHCLProvider(t *testing.T) {
 			t.Parallel()
 
 			var actual bytes.Buffer
-			err := writeProvider(&actual, tt.schema, "test", tt.value)
+			sch := hclSchemaPFProvider(tt.schema)
+			err := hclwrite.WriteProvider(&actual, sch, "test", tt.value)
 			require.NoError(t, err)
 			tt.expect.Equal(t, actual.String())
 		})
@@ -348,7 +350,8 @@ func TestWritePFHCLResource(t *testing.T) {
 			t.Parallel()
 
 			var actual bytes.Buffer
-			err := writeResource(&actual, tt.schema, "testprovider_test", "test", tt.value)
+			sch := hclSchemaPFResource(tt.schema)
+			err := hclwrite.WriteResource(&actual, sch, "testprovider_test", "test", tt.value)
 			require.NoError(t, err)
 			tt.expect.Equal(t, actual.String())
 		})

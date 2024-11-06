@@ -24,6 +24,7 @@ import (
 	"github.com/zclconf/go-cty/cty"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/convert"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests/impl/hclwrite"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/tfcheck"
 	sdkv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
@@ -105,17 +106,12 @@ func (d *TfResDriver) write(
 	lifecycle lifecycleArgs,
 ) {
 	var buf bytes.Buffer
+	opts := []hclwrite.WriteResourceOption{}
 	if lifecycle.CreateBeforeDestroy {
-		ctyMap := config.AsValueMap()
-		if ctyMap == nil {
-			ctyMap = map[string]cty.Value{}
-		}
-		ctyMap["lifecycle"] = cty.ObjectVal(map[string]cty.Value{
-			"create_before_destroy": cty.True,
-		})
-		config = cty.ObjectVal(ctyMap)
+		opts = append(opts, hclwrite.WithCreateBeforeDestroy(true))
 	}
-	err := writeResource(&buf, resourceSchema, resourceType, resourceName, config)
+	sch := hclSchemaSDKv2(resourceSchema)
+	err := hclwrite.WriteResource(&buf, sch, resourceType, resourceName, config.AsValueMap(), opts...)
 	require.NoError(t, err)
 	t.Logf("HCL: \n%s\n", buf.String())
 	d.driver.Write(t, buf.String())
@@ -123,14 +119,15 @@ func (d *TfResDriver) write(
 
 func providerHCLProgram(t T, typ string, provider *schema.Provider, config cty.Value) string {
 	var out bytes.Buffer
-	require.NoError(t, writeProvider(&out, provider.Schema, typ, config))
+	sch := hclSchemaSDKv2(provider.Schema)
+	require.NoError(t, hclwrite.WriteProvider(&out, sch, typ, config.AsValueMap()))
 
 	res := provider.Resources()
 	if l := len(res); l != 1 {
 		require.FailNow(t, "Expected provider to have 1 resource (found %d), ambiguous resource choice", l)
 	}
 
-	require.NoError(t, writeResource(&out, map[string]*schema.Schema{}, res[0].Name, "res", cty.EmptyObjectVal))
+	require.NoError(t, hclwrite.WriteResource(&out, sch, res[0].Name, "res", map[string]cty.Value{}))
 
 	return out.String()
 }

@@ -16,115 +16,77 @@
 package crosstests
 
 import (
-	"fmt"
-	"io"
-	"sort"
-
-	"github.com/hashicorp/hcl/v2/hclwrite"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/zclconf/go-cty/cty"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests/impl/hclwrite"
 )
 
-// Provider writes a provider declaration to an HCL file.
-//
-// Note that unknowns are not yet supported in cty.Value, it will error out if found.
-func writeProvider(out io.Writer, sch map[string]*schema.Schema, typ string, config cty.Value) error {
-	if !config.IsWhollyKnown() {
-		return fmt.Errorf("WriteHCL cannot yet write unknowns")
+// This is a copy of the NestingMode enum in the Terraform Plugin SDK.
+// It is duplicated here because the type is not exported.
+type sdkV2NestingMode int
+
+const (
+	sdkV2NestingModeInvalid sdkV2NestingMode = iota
+	sdkV2NestingModeSingle
+	sdkV2NestingModeGroup
+	sdkV2NestingModeList
+	sdkV2NestingModeSet
+	sdkV2NestingModeMap
+)
+
+func sdkV2NestingToShim(nesting sdkV2NestingMode) hclwrite.Nesting {
+	switch nesting {
+	case sdkV2NestingModeSingle:
+		return hclwrite.NestingSingle
+	case sdkV2NestingModeList:
+		return hclwrite.NestingList
+	case sdkV2NestingModeSet:
+		return hclwrite.NestingSet
+	default:
+		contract.Failf("Unexpected nesting mode: %d for the SDKv2 schema", nesting)
+		return hclwrite.NestingInvalid
 	}
-	f := hclwrite.NewEmptyFile()
-	block := f.Body().AppendNewBlock("provider", []string{typ})
-	writeBlock(block.Body(), sch, config.AsValueMap())
-	_, err := f.WriteTo(out)
-	return err
 }
 
-// Resource writes a resource declaration to an HCL file.
-//
-// Note that unknowns are not yet supported in cty.Value, it will error out if found.
-func writeResource(
-	out io.Writer, sch map[string]*schema.Schema, resourceType, resourceName string, config cty.Value,
-) error {
-	if !config.IsWhollyKnown() {
-		return fmt.Errorf("WriteHCL cannot yet write unknowns")
-	}
-	f := hclwrite.NewEmptyFile()
-	block := f.Body().AppendNewBlock("resource", []string{resourceType, resourceName})
-	writeBlock(block.Body(), sch, config.AsValueMap())
-	_, err := f.WriteTo(out)
-	return err
-}
+type hclSchemaSDKv2 map[string]*schema.Schema
 
-func writeBlock(body *hclwrite.Body, schemas map[string]*schema.Schema, values map[string]cty.Value) {
-	internalMap := schema.InternalMap(schemas)
+var _ hclwrite.ShimHCLSchema = hclSchemaSDKv2{}
+
+func (s hclSchemaSDKv2) GetAttributes() map[string]hclwrite.ShimHCLAttribute {
+	internalMap := schema.InternalMap(s)
 	coreConfigSchema := internalMap.CoreConfigSchema()
-
-	blockKeys := make([]string, 0, len(coreConfigSchema.BlockTypes))
-	for key := range coreConfigSchema.BlockTypes {
-		blockKeys = append(blockKeys, key)
-	}
-	sort.Strings(blockKeys)
-
-	for _, key := range blockKeys {
-		bl := coreConfigSchema.BlockTypes[key]
-		switch bl.Nesting.String() {
-		case "NestingSingle":
-			v, ok := values[key]
-			if !ok {
-				continue
-			}
-			newBlock := body.AppendNewBlock(key, nil)
-			res, ok := schemas[key].Elem.(*schema.Resource)
-			if !ok {
-				contract.Failf("unexpected schema type %s", key)
-			}
-			writeBlock(newBlock.Body(), res.Schema, v.AsValueMap())
-		case "NestingGroup":
-			contract.Failf("unexpected NestingGroup for %s with schema %s", key, schemas[key].GoString())
-		case "NestingList", "NestingSet":
-			v, ok := values[key]
-			if !ok {
-				continue
-			}
-			res, ok := schemas[key].Elem.(*schema.Resource)
-			if !ok {
-				contract.Failf("unexpected schema type %s", key)
-			}
-			for _, elem := range v.AsValueSlice() {
-				newBlock := body.AppendNewBlock(key, nil)
-				writeBlock(newBlock.Body(), res.Schema, elem.AsValueMap())
-			}
-		case "NestingMap":
-			contract.Failf("unexpected NestingMap for %s with schema %s", key, schemas[key].GoString())
-		default:
-			contract.Failf("unexpected nesting mode %v", bl.Nesting)
-		}
-	}
-
-	// lifecycle block
-	if _, ok := values["lifecycle"]; ok {
-		newBlock := body.AppendNewBlock("lifecycle", nil)
-		lifecycleSchema := map[string]*schema.Schema{
-			"create_before_destroy": {
-				Type:     schema.TypeBool,
-				Optional: true,
-			},
-		}
-		writeBlock(newBlock.Body(), lifecycleSchema, values["lifecycle"].AsValueMap())
-	}
-
-	attrKeys := make([]string, 0, len(coreConfigSchema.Attributes))
+	attrMap := make(map[string]hclwrite.ShimHCLAttribute, len(s))
 	for key := range coreConfigSchema.Attributes {
-		attrKeys = append(attrKeys, key)
+		attrMap[key] = hclwrite.ShimHCLAttribute{}
 	}
-	sort.Strings(attrKeys)
-
-	for _, key := range attrKeys {
-		v, ok := values[key]
-		if !ok {
-			continue
-		}
-		body.SetAttributeValue(key, v)
-	}
+	return attrMap
 }
+
+func (s hclSchemaSDKv2) GetBlocks() map[string]hclwrite.ShimHCLBlock {
+	internalMap := schema.InternalMap(s)
+	coreConfigSchema := internalMap.CoreConfigSchema()
+	blockMap := make(map[string]hclwrite.ShimHCLBlock, len(coreConfigSchema.BlockTypes))
+	for key, block := range coreConfigSchema.BlockTypes {
+		res := s[key].Elem.(*schema.Resource)
+		nesting := block.Nesting
+		blockMap[key] = hclBlockSDKv2{
+			hclSchemaSDKv2: hclSchemaSDKv2(res.Schema),
+			nesting:        sdkV2NestingToShim(sdkV2NestingMode(nesting)),
+		}
+	}
+	return blockMap
+}
+
+type hclBlockSDKv2 struct {
+	hclSchemaSDKv2
+	nesting hclwrite.Nesting
+}
+
+var _ hclwrite.ShimHCLBlock = hclBlockSDKv2{}
+
+func (b hclBlockSDKv2) GetNestingMode() hclwrite.Nesting {
+	return b.nesting
+}
+
+var _ hclwrite.ShimHCLBlock = hclBlockSDKv2{}

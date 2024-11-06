@@ -1,173 +1,172 @@
 package crosstests
 
 import (
-	"fmt"
-	"io"
-	"sort"
-
-	"github.com/hashicorp/hcl/v2/hclwrite"
 	pschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests/impl/hclwrite"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/zclconf/go-cty/cty"
 )
 
-// Provider writes a provider declaration to an HCL file.
-//
-// Note that unknowns are not yet supported in cty.Value, it will error out if found.
-func writeProvider(out io.Writer, sch pschema.Schema, providerName string, config map[string]cty.Value) error {
-	if !cty.ObjectVal(config).IsWhollyKnown() {
-		return fmt.Errorf("WriteHCL cannot yet write unknowns")
+// This is a copy of the BlockNestingMode enum in the Terraform Plugin Framework.
+// It is duplicated here because the type is not exported.
+type pfNestingMode uint8
+
+const (
+	pfNestingModeUnknown pfNestingMode = 0
+	pfNestingModeList    pfNestingMode = 1
+	pfNestingModeSet     pfNestingMode = 2
+	pfNestingModeSingle  pfNestingMode = 3
+)
+
+func pfNestingToShim(nesting pfNestingMode) hclwrite.Nesting {
+	switch nesting {
+	case pfNestingModeSingle:
+		return hclwrite.NestingSingle
+	case pfNestingModeList:
+		return hclwrite.NestingList
+	case pfNestingModeSet:
+		return hclwrite.NestingSet
+	default:
+		return hclwrite.NestingInvalid
 	}
-	f := hclwrite.NewEmptyFile()
-	block := f.Body().AppendNewBlock("provider", []string{providerName})
-	writePfProvider(block.Body(), sch, config)
-	_, err := f.WriteTo(out)
-	return err
 }
 
-// Resource writes a resource declaration to an HCL file.
-//
-// Note that unknowns are not yet supported in cty.Value, it will error out if found.
-func writeResource(
-	out io.Writer, sch rschema.Schema, resourceType, resourceName string, config map[string]cty.Value,
-) error {
-	if !cty.ObjectVal(config).IsWhollyKnown() {
-		return fmt.Errorf("WriteHCL cannot yet write unknowns")
-	}
-	f := hclwrite.NewEmptyFile()
-	block := f.Body().AppendNewBlock("resource", []string{resourceType, resourceName})
-	writePfResource(block.Body(), sch, config)
-	_, err := f.WriteTo(out)
-	return err
-}
-
-func writePfProvider(body *hclwrite.Body, schemas pschema.Schema, values map[string]cty.Value) {
-	writePfObjectProvider(body, pschema.NestedBlockObject{
-		Attributes: schemas.Attributes,
-		Blocks:     schemas.Blocks,
-	}, values)
-}
-
-func writePfResource(body *hclwrite.Body, schemas rschema.Schema, values map[string]cty.Value) {
-	writePfObjectResource(body, rschema.NestedBlockObject{
-		Attributes: schemas.Attributes,
-		Blocks:     schemas.Blocks,
-	}, values)
-}
-
-// writePfBlockProvider writes the values for a single schema block to parentBody.
-//
-// Because blocks can be repeated (ListNestedBlock and SetNestedBlock), writePfBlockProvider
-// can write an arbitrary number of blocks.
-//
-// For example, writing a list would add two blocks to parentBody:
-//
-//	writePfBlockProvider("key", parentBody, ListNestedBlock{count: int}, cty.Value([{count: 1}, {count: 2}]))
-//
-//	key {
-//	  count = 1
-//	}
-//	key {
-//	  count = 2
-//	}
-//
-// This is why writePfBlockProvider is called with parentBody, instead of with the block body
-// already created (as with [writeBlock]).
-func writePfBlockProvider(key string, parentBody *hclwrite.Body, schemas pschema.Block, value cty.Value) {
-	switch schemas := schemas.(type) {
+func pSchemaBlockToObject(block pschema.Block) pschema.NestedBlockObject {
+	switch block := block.(type) {
 	case pschema.ListNestedBlock:
-		for _, v := range value.AsValueSlice() {
-			b := parentBody.AppendNewBlock(key, nil).Body()
-			writePfObjectProvider(b, schemas.NestedObject, v.AsValueMap())
-		}
+		return block.NestedObject
 	case pschema.SetNestedBlock:
-		values := value.AsValueSet().Values()
-		for _, v := range values {
-			b := parentBody.AppendNewBlock(key, nil).Body()
-			writePfObjectProvider(b, schemas.NestedObject, v.AsValueMap())
-		}
+		return block.NestedObject
 	case pschema.SingleNestedBlock:
-		body := parentBody.AppendNewBlock(key, nil).Body()
-
-		if value.IsNull() {
-			return
+		return pschema.NestedBlockObject{
+			Attributes: block.Attributes,
+			Blocks:     block.Blocks,
 		}
-
-		writePfObjectProvider(body, pschema.NestedBlockObject{
-			Attributes: schemas.Attributes,
-			Blocks:     schemas.Blocks,
-		}, value.AsValueMap())
 	default:
-		contract.Failf("Unknown block type: %T", schemas)
+		contract.Failf("Unknown block type: %T", block)
+		return pschema.NestedBlockObject{}
 	}
 }
 
-func writePfBlockResource(key string, parentBody *hclwrite.Body, schemas rschema.Block, value cty.Value) {
-	switch schemas := schemas.(type) {
+func rSchemaBlockToObject(block rschema.Block) rschema.NestedBlockObject {
+	switch block := block.(type) {
 	case rschema.ListNestedBlock:
-		for _, v := range value.AsValueSlice() {
-			b := parentBody.AppendNewBlock(key, nil).Body()
-			writePfObjectResource(b, schemas.NestedObject, v.AsValueMap())
-		}
+		return block.NestedObject
 	case rschema.SetNestedBlock:
-		values := value.AsValueSet().Values()
-		for _, v := range values {
-			b := parentBody.AppendNewBlock(key, nil).Body()
-			writePfObjectResource(b, schemas.NestedObject, v.AsValueMap())
-		}
+		return block.NestedObject
 	case rschema.SingleNestedBlock:
-		body := parentBody.AppendNewBlock(key, nil).Body()
-
-		if value.IsNull() {
-			return
+		return rschema.NestedBlockObject{
+			Attributes: block.Attributes,
+			Blocks:     block.Blocks,
 		}
-
-		writePfObjectResource(body, rschema.NestedBlockObject{
-			Attributes: schemas.Attributes,
-			Blocks:     schemas.Blocks,
-		}, value.AsValueMap())
 	default:
-		contract.Failf("Unknown block type: %T", schemas)
+		contract.Failf("Unknown block type: %T", block)
 	}
+	return rschema.NestedBlockObject{}
 }
 
-func writePfObjectProvider(body *hclwrite.Body, schemas pschema.NestedBlockObject, values map[string]cty.Value) {
-	keys := make([]string, 0, len(values))
-	for k := range values {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
+type hclSchemaPFProvider pschema.Schema
 
-	for _, key := range keys {
-		if _, ok := schemas.Attributes[key]; ok {
-			body.SetAttributeValue(key, values[key])
-			continue
-		}
-		if block, ok := schemas.Blocks[key]; ok {
-			writePfBlockProvider(key, body, block, values[key])
-			continue
-		}
-		contract.Failf("Could not find a attr or block for value key %q", key)
+var _ hclwrite.ShimHCLSchema = hclSchemaPFProvider{}
+
+func (s hclSchemaPFProvider) GetAttributes() map[string]hclwrite.ShimHCLAttribute {
+	attrMap := make(map[string]hclwrite.ShimHCLAttribute)
+	for key := range s.Attributes {
+		attrMap[key] = hclwrite.ShimHCLAttribute{}
 	}
+	return attrMap
 }
 
-func writePfObjectResource(body *hclwrite.Body, schemas rschema.NestedBlockObject, values map[string]cty.Value) {
-	keys := make([]string, 0, len(values))
-	for k := range values {
-		keys = append(keys, k)
+func (s hclSchemaPFProvider) GetBlocks() map[string]hclwrite.ShimHCLBlock {
+	blockMap := make(map[string]hclwrite.ShimHCLBlock)
+	for key, block := range s.Blocks {
+		blockMap[key] = hclBlockPFProvider{
+			nestedObject: pSchemaBlockToObject(block),
+			nesting:      pfNestingToShim(pfNestingMode(block.GetNestingMode())),
+		}
 	}
-	sort.Strings(keys)
+	return blockMap
+}
 
-	for _, key := range keys {
-		if _, ok := schemas.Attributes[key]; ok {
-			body.SetAttributeValue(key, values[key])
-			continue
-		}
-		if block, ok := schemas.Blocks[key]; ok {
-			writePfBlockResource(key, body, block, values[key])
-			continue
-		}
-		contract.Failf("Could not find a attr or block for value key %q", key)
+type hclBlockPFProvider struct {
+	nestedObject pschema.NestedBlockObject
+	nesting      hclwrite.Nesting
+}
+
+var _ hclwrite.ShimHCLBlock = hclBlockPFProvider{}
+
+func (s hclBlockPFProvider) GetAttributes() map[string]hclwrite.ShimHCLAttribute {
+	attrMap := make(map[string]hclwrite.ShimHCLAttribute)
+	for key := range s.nestedObject.Attributes {
+		attrMap[key] = hclwrite.ShimHCLAttribute{}
 	}
+	return attrMap
+}
+
+func (s hclBlockPFProvider) GetBlocks() map[string]hclwrite.ShimHCLBlock {
+	blockMap := make(map[string]hclwrite.ShimHCLBlock)
+	for key, block := range s.nestedObject.Blocks {
+		blockMap[key] = hclBlockPFProvider{
+			nestedObject: pSchemaBlockToObject(block),
+			nesting:      pfNestingToShim(pfNestingMode(block.GetNestingMode())),
+		}
+	}
+	return blockMap
+}
+
+func (s hclBlockPFProvider) GetNestingMode() hclwrite.Nesting {
+	return s.nesting
+}
+
+type hclSchemaPFResource rschema.Schema
+
+var _ hclwrite.ShimHCLSchema = hclSchemaPFResource{}
+
+func (s hclSchemaPFResource) GetAttributes() map[string]hclwrite.ShimHCLAttribute {
+	attrMap := make(map[string]hclwrite.ShimHCLAttribute)
+	for key := range s.Attributes {
+		attrMap[key] = hclwrite.ShimHCLAttribute{}
+	}
+	return attrMap
+}
+
+func (s hclSchemaPFResource) GetBlocks() map[string]hclwrite.ShimHCLBlock {
+	blockMap := make(map[string]hclwrite.ShimHCLBlock)
+	for key, block := range s.Blocks {
+		blockMap[key] = hclBlockPFResource{
+			nestedObject: rSchemaBlockToObject(block),
+			nesting:      pfNestingToShim(pfNestingMode(block.GetNestingMode())),
+		}
+	}
+	return blockMap
+}
+
+type hclBlockPFResource struct {
+	nestedObject rschema.NestedBlockObject
+	nesting      hclwrite.Nesting
+}
+
+var _ hclwrite.ShimHCLBlock = hclBlockPFResource{}
+
+func (s hclBlockPFResource) GetAttributes() map[string]hclwrite.ShimHCLAttribute {
+	attrMap := make(map[string]hclwrite.ShimHCLAttribute)
+	for key := range s.nestedObject.Attributes {
+		attrMap[key] = hclwrite.ShimHCLAttribute{}
+	}
+	return attrMap
+}
+
+func (s hclBlockPFResource) GetBlocks() map[string]hclwrite.ShimHCLBlock {
+	blockMap := make(map[string]hclwrite.ShimHCLBlock)
+	for key, block := range s.nestedObject.Blocks {
+		blockMap[key] = hclBlockPFResource{
+			nestedObject: rSchemaBlockToObject(block),
+			nesting:      pfNestingToShim(pfNestingMode(block.GetNestingMode())),
+		}
+	}
+	return blockMap
+}
+
+func (s hclBlockPFResource) GetNestingMode() hclwrite.Nesting {
+	return s.nesting
 }
