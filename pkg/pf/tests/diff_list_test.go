@@ -13,7 +13,7 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-func TestDetailedDiffListAttribute(t *testing.T) {
+func TestDetailedDiffList(t *testing.T) {
 	t.Parallel()
 
 	attributeSchema := rschema.Schema{
