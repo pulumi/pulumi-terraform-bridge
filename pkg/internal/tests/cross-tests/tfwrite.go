@@ -18,7 +18,7 @@ package crosstests
 import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
-	crosstestsimpl "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests/impl"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests/impl/hclwrite"
 )
 
 // This is a copy of the NestingMode enum in the Terraform Plugin SDK.
@@ -34,37 +34,37 @@ const (
 	sdkV2NestingModeMap
 )
 
-func sdkV2NestingToShim(nesting sdkV2NestingMode) crosstestsimpl.Nesting {
+func sdkV2NestingToShim(nesting sdkV2NestingMode) hclwrite.Nesting {
 	switch nesting {
 	case sdkV2NestingModeSingle:
-		return crosstestsimpl.NestingSingle
+		return hclwrite.NestingSingle
 	case sdkV2NestingModeList:
-		return crosstestsimpl.NestingList
+		return hclwrite.NestingList
 	case sdkV2NestingModeSet:
-		return crosstestsimpl.NestingSet
+		return hclwrite.NestingSet
 	default:
-		return crosstestsimpl.NestingInvalid
+		return hclwrite.NestingInvalid
 	}
 }
 
 type hclSchemaSDKv2 map[string]*schema.Schema
 
-var _ crosstestsimpl.ShimHCLSchema = hclSchemaSDKv2{}
+var _ hclwrite.ShimHCLSchema = hclSchemaSDKv2{}
 
-func (s hclSchemaSDKv2) GetAttributes() map[string]crosstestsimpl.ShimHCLAttribute {
+func (s hclSchemaSDKv2) GetAttributes() map[string]hclwrite.ShimHCLAttribute {
 	internalMap := schema.InternalMap(s)
 	coreConfigSchema := internalMap.CoreConfigSchema()
-	attrMap := make(map[string]crosstestsimpl.ShimHCLAttribute, len(s))
+	attrMap := make(map[string]hclwrite.ShimHCLAttribute, len(s))
 	for key := range coreConfigSchema.Attributes {
-		attrMap[key] = crosstestsimpl.ShimHCLAttribute{}
+		attrMap[key] = hclwrite.ShimHCLAttribute{}
 	}
 	return attrMap
 }
 
-func (s hclSchemaSDKv2) GetBlocks() map[string]crosstestsimpl.ShimHCLBlock {
+func (s hclSchemaSDKv2) GetBlocks() map[string]hclwrite.ShimHCLBlock {
 	internalMap := schema.InternalMap(s)
 	coreConfigSchema := internalMap.CoreConfigSchema()
-	blockMap := make(map[string]crosstestsimpl.ShimHCLBlock, len(coreConfigSchema.BlockTypes))
+	blockMap := make(map[string]hclwrite.ShimHCLBlock, len(coreConfigSchema.BlockTypes))
 	for key, block := range coreConfigSchema.BlockTypes {
 		res := s[key].Elem.(*schema.Resource)
 		nesting := block.Nesting
@@ -78,13 +78,13 @@ func (s hclSchemaSDKv2) GetBlocks() map[string]crosstestsimpl.ShimHCLBlock {
 
 type hclBlockSDKv2 struct {
 	hclSchemaSDKv2
-	nesting crosstestsimpl.Nesting
+	nesting hclwrite.Nesting
 }
 
-var _ crosstestsimpl.ShimHCLBlock = hclBlockSDKv2{}
+var _ hclwrite.ShimHCLBlock = hclBlockSDKv2{}
 
-func (b hclBlockSDKv2) GetNestingMode() crosstestsimpl.Nesting {
+func (b hclBlockSDKv2) GetNestingMode() hclwrite.Nesting {
 	return b.nesting
 }
 
-var _ crosstestsimpl.ShimHCLBlock = hclBlockSDKv2{}
+var _ hclwrite.ShimHCLBlock = hclBlockSDKv2{}

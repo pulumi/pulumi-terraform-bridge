@@ -20,6 +20,7 @@ import (
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	crosstests "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests"
 	crosstestsimpl "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests/impl"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests/impl/hclwrite"
 	pb "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/providerbuilder"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/pulcheck"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
@@ -69,8 +70,8 @@ func Diff(t T, schema rschema.Schema, tfConfig1, tfConfig2 map[string]cty.Value,
 	var hcl1 bytes.Buffer
 
 	sch := hclSchemaPFResource(schema)
-	err := crosstestsimpl.WriteResource(&hcl1, sch, "testprovider_test", "res", tfConfig1,
-		crosstestsimpl.WithCreateBeforeDestroy(true))
+	err := hclwrite.WriteResource(&hcl1, sch, "testprovider_test", "res", tfConfig1,
+		hclwrite.WithCreateBeforeDestroy(true))
 	require.NoError(t, err)
 
 	driver := tfcheck.NewTfDriver(t, t.TempDir(), prov.TypeName, prov)
@@ -82,8 +83,8 @@ func Diff(t T, schema rschema.Schema, tfConfig1, tfConfig2 map[string]cty.Value,
 	require.NoError(t, err)
 
 	var hcl2 bytes.Buffer
-	err = crosstestsimpl.WriteResource(&hcl2, sch, "testprovider_test", "res", tfConfig2,
-		crosstestsimpl.WithCreateBeforeDestroy(true))
+	err = hclwrite.WriteResource(&hcl2, sch, "testprovider_test", "res", tfConfig2,
+		hclwrite.WithCreateBeforeDestroy(true))
 	require.NoError(t, err)
 	driver.Write(t, hcl2.String())
 	plan, err = driver.Plan(t)

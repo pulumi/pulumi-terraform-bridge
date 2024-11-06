@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/providertest/pulumitest/opttest"
 	crosstests "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests"
 	crosstestsimpl "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests/impl"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests/impl/hclwrite"
 	pb "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/providerbuilder"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfgen"
@@ -109,7 +110,7 @@ func Configure(t T, schema pschema.Schema, tfConfig map[string]cty.Value, option
 	// Run the TF part
 	{
 		var hcl bytes.Buffer
-		err := crosstestsimpl.WriteProvider(&hcl, hclSchemaPFProvider(schema), providerName, tfConfig)
+		err := hclwrite.WriteProvider(&hcl, hclSchemaPFProvider(schema), providerName, tfConfig)
 		require.NoError(t, err)
 		// TF does not configure providers unless they are involved with creating
 		// a resource or datasource, so we create "res" to give the TF provider a

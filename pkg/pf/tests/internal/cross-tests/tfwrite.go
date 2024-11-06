@@ -3,7 +3,7 @@ package crosstests
 import (
 	pschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	crosstestsimpl "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests/impl"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests/impl/hclwrite"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -18,16 +18,16 @@ const (
 	pfNestingModeSingle  pfNestingMode = 3
 )
 
-func pfNestingToShim(nesting pfNestingMode) crosstestsimpl.Nesting {
+func pfNestingToShim(nesting pfNestingMode) hclwrite.Nesting {
 	switch nesting {
 	case pfNestingModeSingle:
-		return crosstestsimpl.NestingSingle
+		return hclwrite.NestingSingle
 	case pfNestingModeList:
-		return crosstestsimpl.NestingList
+		return hclwrite.NestingList
 	case pfNestingModeSet:
-		return crosstestsimpl.NestingSet
+		return hclwrite.NestingSet
 	default:
-		return crosstestsimpl.NestingInvalid
+		return hclwrite.NestingInvalid
 	}
 }
 
@@ -67,18 +67,18 @@ func rSchemaBlockToObject(block rschema.Block) rschema.NestedBlockObject {
 
 type hclSchemaPFProvider pschema.Schema
 
-var _ crosstestsimpl.ShimHCLSchema = hclSchemaPFProvider{}
+var _ hclwrite.ShimHCLSchema = hclSchemaPFProvider{}
 
-func (s hclSchemaPFProvider) GetAttributes() map[string]crosstestsimpl.ShimHCLAttribute {
-	attrMap := make(map[string]crosstestsimpl.ShimHCLAttribute)
+func (s hclSchemaPFProvider) GetAttributes() map[string]hclwrite.ShimHCLAttribute {
+	attrMap := make(map[string]hclwrite.ShimHCLAttribute)
 	for key := range s.Attributes {
-		attrMap[key] = crosstestsimpl.ShimHCLAttribute{}
+		attrMap[key] = hclwrite.ShimHCLAttribute{}
 	}
 	return attrMap
 }
 
-func (s hclSchemaPFProvider) GetBlocks() map[string]crosstestsimpl.ShimHCLBlock {
-	blockMap := make(map[string]crosstestsimpl.ShimHCLBlock)
+func (s hclSchemaPFProvider) GetBlocks() map[string]hclwrite.ShimHCLBlock {
+	blockMap := make(map[string]hclwrite.ShimHCLBlock)
 	for key, block := range s.Blocks {
 		blockMap[key] = hclBlockPFProvider{
 			nestedObject: pSchemaBlockToObject(block),
@@ -90,21 +90,21 @@ func (s hclSchemaPFProvider) GetBlocks() map[string]crosstestsimpl.ShimHCLBlock 
 
 type hclBlockPFProvider struct {
 	nestedObject pschema.NestedBlockObject
-	nesting      crosstestsimpl.Nesting
+	nesting      hclwrite.Nesting
 }
 
-var _ crosstestsimpl.ShimHCLBlock = hclBlockPFProvider{}
+var _ hclwrite.ShimHCLBlock = hclBlockPFProvider{}
 
-func (s hclBlockPFProvider) GetAttributes() map[string]crosstestsimpl.ShimHCLAttribute {
-	attrMap := make(map[string]crosstestsimpl.ShimHCLAttribute)
+func (s hclBlockPFProvider) GetAttributes() map[string]hclwrite.ShimHCLAttribute {
+	attrMap := make(map[string]hclwrite.ShimHCLAttribute)
 	for key := range s.nestedObject.Attributes {
-		attrMap[key] = crosstestsimpl.ShimHCLAttribute{}
+		attrMap[key] = hclwrite.ShimHCLAttribute{}
 	}
 	return attrMap
 }
 
-func (s hclBlockPFProvider) GetBlocks() map[string]crosstestsimpl.ShimHCLBlock {
-	blockMap := make(map[string]crosstestsimpl.ShimHCLBlock)
+func (s hclBlockPFProvider) GetBlocks() map[string]hclwrite.ShimHCLBlock {
+	blockMap := make(map[string]hclwrite.ShimHCLBlock)
 	for key, block := range s.nestedObject.Blocks {
 		blockMap[key] = hclBlockPFProvider{
 			nestedObject: pSchemaBlockToObject(block),
@@ -114,24 +114,24 @@ func (s hclBlockPFProvider) GetBlocks() map[string]crosstestsimpl.ShimHCLBlock {
 	return blockMap
 }
 
-func (s hclBlockPFProvider) GetNestingMode() crosstestsimpl.Nesting {
+func (s hclBlockPFProvider) GetNestingMode() hclwrite.Nesting {
 	return s.nesting
 }
 
 type hclSchemaPFResource rschema.Schema
 
-var _ crosstestsimpl.ShimHCLSchema = hclSchemaPFResource{}
+var _ hclwrite.ShimHCLSchema = hclSchemaPFResource{}
 
-func (s hclSchemaPFResource) GetAttributes() map[string]crosstestsimpl.ShimHCLAttribute {
-	attrMap := make(map[string]crosstestsimpl.ShimHCLAttribute)
+func (s hclSchemaPFResource) GetAttributes() map[string]hclwrite.ShimHCLAttribute {
+	attrMap := make(map[string]hclwrite.ShimHCLAttribute)
 	for key := range s.Attributes {
-		attrMap[key] = crosstestsimpl.ShimHCLAttribute{}
+		attrMap[key] = hclwrite.ShimHCLAttribute{}
 	}
 	return attrMap
 }
 
-func (s hclSchemaPFResource) GetBlocks() map[string]crosstestsimpl.ShimHCLBlock {
-	blockMap := make(map[string]crosstestsimpl.ShimHCLBlock)
+func (s hclSchemaPFResource) GetBlocks() map[string]hclwrite.ShimHCLBlock {
+	blockMap := make(map[string]hclwrite.ShimHCLBlock)
 	for key, block := range s.Blocks {
 		blockMap[key] = hclBlockPFResource{
 			nestedObject: rSchemaBlockToObject(block),
@@ -143,21 +143,21 @@ func (s hclSchemaPFResource) GetBlocks() map[string]crosstestsimpl.ShimHCLBlock 
 
 type hclBlockPFResource struct {
 	nestedObject rschema.NestedBlockObject
-	nesting      crosstestsimpl.Nesting
+	nesting      hclwrite.Nesting
 }
 
-var _ crosstestsimpl.ShimHCLBlock = hclBlockPFResource{}
+var _ hclwrite.ShimHCLBlock = hclBlockPFResource{}
 
-func (s hclBlockPFResource) GetAttributes() map[string]crosstestsimpl.ShimHCLAttribute {
-	attrMap := make(map[string]crosstestsimpl.ShimHCLAttribute)
+func (s hclBlockPFResource) GetAttributes() map[string]hclwrite.ShimHCLAttribute {
+	attrMap := make(map[string]hclwrite.ShimHCLAttribute)
 	for key := range s.nestedObject.Attributes {
-		attrMap[key] = crosstestsimpl.ShimHCLAttribute{}
+		attrMap[key] = hclwrite.ShimHCLAttribute{}
 	}
 	return attrMap
 }
 
-func (s hclBlockPFResource) GetBlocks() map[string]crosstestsimpl.ShimHCLBlock {
-	blockMap := make(map[string]crosstestsimpl.ShimHCLBlock)
+func (s hclBlockPFResource) GetBlocks() map[string]hclwrite.ShimHCLBlock {
+	blockMap := make(map[string]hclwrite.ShimHCLBlock)
 	for key, block := range s.nestedObject.Blocks {
 		blockMap[key] = hclBlockPFResource{
 			nestedObject: rSchemaBlockToObject(block),
@@ -167,6 +167,6 @@ func (s hclBlockPFResource) GetBlocks() map[string]crosstestsimpl.ShimHCLBlock {
 	return blockMap
 }
 
-func (s hclBlockPFResource) GetNestingMode() crosstestsimpl.Nesting {
+func (s hclBlockPFResource) GetNestingMode() hclwrite.Nesting {
 	return s.nesting
 }

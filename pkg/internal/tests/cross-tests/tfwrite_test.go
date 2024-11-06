@@ -23,7 +23,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/zclconf/go-cty/cty"
 
-	crosstestsimpl "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests/impl"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests/impl/hclwrite"
 )
 
 func TestWriteHCL(t *testing.T) {
@@ -269,7 +269,7 @@ resource "res" "ex" {
 		t.Run(tc.name, func(t *testing.T) {
 			var out bytes.Buffer
 			sch := hclSchemaSDKv2(tc.schema)
-			err := crosstestsimpl.WriteResource(&out, sch, "res", "ex", tc.value.AsValueMap())
+			err := hclwrite.WriteResource(&out, sch, "res", "ex", tc.value.AsValueMap())
 			require.NoError(t, err)
 			tc.expect.Equal(t, "\n"+out.String())
 		})
@@ -287,9 +287,9 @@ func TestWriteLifecycle(t *testing.T) {
 	})
 
 	var out bytes.Buffer
-	err := crosstestsimpl.WriteResource(&out, sch, "res", "ex", map[string]cty.Value{
+	err := hclwrite.WriteResource(&out, sch, "res", "ex", map[string]cty.Value{
 		"prop": cty.StringVal("OK"),
-	}, crosstestsimpl.WithCreateBeforeDestroy(true))
+	}, hclwrite.WithCreateBeforeDestroy(true))
 	require.NoError(t, err)
 	autogold.Expect(`
 resource "res" "ex" {

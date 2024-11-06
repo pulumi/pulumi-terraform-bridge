@@ -1,4 +1,4 @@
-package crosstestsimpl
+package hclwrite
 
 import (
 	"fmt"
