@@ -17,9 +17,9 @@ package crosstests
 
 import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests/impl/hclwrite"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // This is a copy of the NestingMode enum in the Terraform Plugin SDK.
