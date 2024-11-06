@@ -6,3 +6,12 @@ coverage:
     patch:
       default:
         informational: true
+
+ignore:
+  # Integration test frameworks
+  - "tests/"
+  - "pkg/tests"
+  - "pkg/internal/tests"
+  - "pkg/pf/tests"
+  # Deprecated module
+  - "pf"
