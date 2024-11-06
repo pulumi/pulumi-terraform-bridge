@@ -86,7 +86,6 @@ func getProviderOptions(opts []providerOption) (providerOptions, error) {
 // TODO[pulumi/pulumi-terraform-bridge#2593] clean up deprecation.
 func WithPlanResourceChange(filter func(tfResourceType string) bool) providerOption { //nolint:revive
 	return func(opts providerOptions) (providerOptions, error) {
-		opts.planResourceChangeFilter = filter
 		return opts, nil
 	}
 }
