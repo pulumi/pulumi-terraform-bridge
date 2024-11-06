@@ -22,7 +22,7 @@ import (
 )
 
 type providerOptions struct {
-	planStateEdit            PlanStateEditFunc
+	planStateEdit PlanStateEditFunc
 }
 
 type providerOption func(providerOptions) (providerOptions, error)
