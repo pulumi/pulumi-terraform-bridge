@@ -22,7 +22,6 @@ import (
 )
 
 type providerOptions struct {
-	planResourceChangeFilter func(string) bool
 	planStateEdit            PlanStateEditFunc
 }
 
