@@ -123,6 +123,26 @@ type AutoNameOptions struct {
 	PostTransform func(res *PulumiResource, name string) (string, error)
 }
 
+// Configures a property to automatically populate with an auto-computed name when no value is given to it by the user.
+//
+// The easiest way to get started with auto-computed names is by using the [AutoName] function. ComputeAutoNameDefault
+// is intended for advanced use cases, to be invoked like this:
+//
+//	&Default{
+//		AutoNamed: true,
+//		ComputeDefault: func(ctx context.Context, opts ComputeDefaultOptions) (interface{}, error) {
+//			return ComputeAutoNameDefault(ctx, autoNameOptions, opts)
+//		},
+//	}
+//
+// If the user did not provide any values for the configured field, ComputeAutoNameDefault will create a default value
+// based on the name of the resource and a random suffix, and populate the property with this default value. For
+// example, if the resource is named "deployer", the new value may look like "deployer-6587896".
+//
+// ComputeAutoNameDefault respects the prior state of the resource and will never attempt to replace a value that is
+// already populated in the state with a fresh auto-name default.
+//
+// See [AutoNameOptions] for configuring how the generated default values look like.
 func ComputeAutoNameDefault(
 	ctx context.Context,
 	options AutoNameOptions,
