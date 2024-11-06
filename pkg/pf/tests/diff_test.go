@@ -11,6 +11,8 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
+func ref[T any](t T) *T { return &t }
+
 func TestSimpleNoDiff(t *testing.T) {
 	t.Parallel()
 
@@ -70,27 +72,58 @@ func TestDetailedDiffStringAttribute(t *testing.T) {
 		},
 	}
 
-	t.Run("unchanged", func(t *testing.T) {
-		t.Parallel()
-		initialValue := cty.StringVal("value")
-		changedValue := cty.StringVal("value")
-	})
+	schemas := []struct {
+		name   string
+		schema rschema.Schema
+	}{
+		{"no replace", attributeSchema},
+		{"replace", attributeReplaceSchema},
+	}
 
-	t.Run("added", func(t *testing.T) {
-		t.Parallel()
-		initialValue := cty.NullVal(cty.DynamicPseudoType)
-		changedValue := cty.StringVal("value")
-	})
+	makeValue := func(s *string) cty.Value {
+		if s == nil {
+			return cty.NullVal(cty.DynamicPseudoType)
+		}
+		return cty.StringVal(*s)
+	}
 
-	t.Run("removed", func(t *testing.T) {
-		t.Parallel()
-		initialValue := cty.StringVal("value")
-		changedValue := cty.NullVal(cty.DynamicPseudoType)
-	})
+	scenarios := []struct {
+		name         string
+		initialValue *string
+		changeValue  *string
+	}{
+		{"unchanged", ref("value"), ref("value")},
+		{"changed", ref("value"), ref("value1")},
+		{"added", nil, ref("value")},
+		{"removed", ref("value"), nil},
+	}
 
-	t.Run("changed", func(t *testing.T) {
-		t.Parallel()
-		initialValue := cty.StringVal("value")
-		changedValue := cty.StringVal("value1")
-	})
+	type testOutput struct {
+		initialValue *string
+		changeValue  *string
+		tfOut        string
+		pulumiOut    string
+	}
+
+	for _, schema := range schemas {
+		t.Run(schema.name, func(t *testing.T) {
+			t.Parallel()
+			for _, scenario := range scenarios {
+				t.Run(scenario.name, func(t *testing.T) {
+					t.Parallel()
+					initialValue := makeValue(scenario.initialValue)
+					changeValue := makeValue(scenario.changeValue)
+
+					res := crosstests.Diff(t, schema.schema, map[string]cty.Value{"key": initialValue}, map[string]cty.Value{"key": changeValue})
+
+					autogold.ExpectFile(t, testOutput{
+						initialValue: scenario.initialValue,
+						changeValue:  scenario.changeValue,
+						tfOut:        res.TFOut,
+						pulumiOut:    res.PulumiOut,
+					})
+				})
+			}
+		})
+	}
 }

@@ -9,6 +9,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hexops/autogold/v2"
+	crosstests "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/cross-tests"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -39,6 +41,7 @@ func TestDetailedDiffSet(t *testing.T) {
 	nestedAttributeSchema := rschema.Schema{
 		Attributes: map[string]rschema.Attribute{
 			"key": rschema.SetNestedAttribute{
+				Optional: true,
 				NestedObject: rschema.NestedAttributeObject{
 					Attributes: map[string]rschema.Attribute{
 						"nested": rschema.StringAttribute{Optional: true},
@@ -51,6 +54,7 @@ func TestDetailedDiffSet(t *testing.T) {
 	nestedAttributeReplaceSchema := rschema.Schema{
 		Attributes: map[string]rschema.Attribute{
 			"key": rschema.SetNestedAttribute{
+				Optional: true,
 				NestedObject: rschema.NestedAttributeObject{
 					Attributes: map[string]rschema.Attribute{
 						"nested": rschema.StringAttribute{Optional: true},
@@ -66,6 +70,7 @@ func TestDetailedDiffSet(t *testing.T) {
 	nestedAttributeNestedReplaceSchema := rschema.Schema{
 		Attributes: map[string]rschema.Attribute{
 			"key": rschema.SetNestedAttribute{
+				Optional: true,
 				NestedObject: rschema.NestedAttributeObject{
 					Attributes: map[string]rschema.Attribute{
 						"nested": rschema.StringAttribute{
@@ -79,7 +84,6 @@ func TestDetailedDiffSet(t *testing.T) {
 			},
 		},
 	}
-
 
 	blockSchema := rschema.Schema{
 		Blocks: map[string]rschema.Block{
@@ -127,9 +131,12 @@ func TestDetailedDiffSet(t *testing.T) {
 		},
 	}
 
-	attrList := func(el ...string) cty.Value {
-		slice := make([]cty.Value, len(el))
-		for i, v := range el {
+	attrList := func(arr *[]string) cty.Value {
+		if arr == nil {
+			return cty.NullVal(cty.DynamicPseudoType)
+		}
+		slice := make([]cty.Value, len(*arr))
+		for i, v := range *arr {
 			slice[i] = cty.StringVal(v)
 		}
 		if len(slice) == 0 {
@@ -138,9 +145,12 @@ func TestDetailedDiffSet(t *testing.T) {
 		return cty.ListVal(slice)
 	}
 
-	blockList := func(el ...string) cty.Value {
-		slice := make([]cty.Value, len(el))
-		for i, v := range el {
+	nestedAttrList := func(arr *[]string) cty.Value {
+		if arr == nil {
+			return cty.NullVal(cty.DynamicPseudoType)
+		}
+		slice := make([]cty.Value, len(*arr))
+		for i, v := range *arr {
 			slice[i] = cty.ObjectVal(
 				map[string]cty.Value{
 					"nested": cty.StringVal(v),
@@ -153,145 +163,81 @@ func TestDetailedDiffSet(t *testing.T) {
 		return cty.ListVal(slice)
 	}
 
-	t.Run("unchanged non-empty", func(t *testing.T) {
-		t.Parallel()
-		initialValue := []string{"value"}
-		changedValue := []string{"value"}
-	})
+	schemaValueMakerPairs := []struct {
+		name       string
+		schema     rschema.Schema
+		valueMaker func(*[]string) cty.Value
+	}{
+		{"attribute no replace", attributeSchema, attrList},
+		{"attribute requires replace", attributeReplaceSchema, attrList},
+		{"nested attribute no replace", nestedAttributeSchema, nestedAttrList},
+		{"nested attribute requires replace", nestedAttributeReplaceSchema, nestedAttrList},
+		{"nested attribute nested requires replace", nestedAttributeNestedReplaceSchema, nestedAttrList},
+		{"block no replace", blockSchema, nestedAttrList},
+		{"block requires replace", blockReplaceSchema, nestedAttrList},
+		{"block nested requires replace", blockNestedReplaceSchema, nestedAttrList},
+	}
 
-	t.Run("changed", func(t *testing.T) {
-		t.Parallel()
-		initialValue := []string{"value"}
-		changedValue := []string{"value1"}
-	})
+	scenarios := []struct {
+		name         string
+		initialValue *[]string
+		changeValue  *[]string
+	}{
+		{"unchanged non-empty", &[]string{"value"}, &[]string{"value"}},
+		{"unchanged empty", &[]string{}, &[]string{}},
+		{"unchanged null", nil, nil},
 
-	t.Run("added", func(t *testing.T) {
-		t.Parallel()
-		initialValue := []string{}
-		changedValue := []string{"value"}
-	})
+		{"changed non-null", &[]string{"value"}, &[]string{"value1"}},
+		{"changed null to non-null", nil, &[]string{"value"}},
+		{"changed non-null to null", &[]string{"value"}, nil},
+		{"changed null to empty", nil, &[]string{}},
+		{"changed empty to null", &[]string{}, nil},
+		{"added", &[]string{}, &[]string{"value"}},
+		{"removed", &[]string{"value"}, &[]string{}},
+		{"removed front", &[]string{"val1", "val2", "val3"}, &[]string{"val2", "val3"}},
+		{"removed front unordered", &[]string{"val2", "val3", "val1"}, &[]string{"val3", "val1"}},
+		{"removed middle", &[]string{"val1", "val2", "val3"}, &[]string{"val1", "val3"}},
+		{"removed middle unordered", &[]string{"val3", "val1", "val2"}, &[]string{"val3", "val1"}},
+		{"removed end", &[]string{"val1", "val2", "val3"}, &[]string{"val1", "val2"}},
+		{"removed end unordered", &[]string{"val2", "val3", "val1"}, &[]string{"val2", "val3"}},
+		{"added front", &[]string{"val2", "val3"}, &[]string{"val1", "val2", "val3"}},
+		{"added front unordered", &[]string{"val3", "val1"}, &[]string{"val2", "val3", "val1"}},
+		{"added middle", &[]string{"val1", "val3"}, &[]string{"val1", "val2", "val3"}},
+		{"added middle unordered", &[]string{"val2", "val1"}, &[]string{"val2", "val3", "val1"}},
+		{"added end", &[]string{"val1", "val2"}, &[]string{"val1", "val2", "val3"}},
+		{"added end unordered", &[]string{"val2", "val3"}, &[]string{"val2", "val3", "val1"}},
+		{"shuffled", &[]string{"val1", "val2", "val3"}, &[]string{"val3", "val1", "val2"}},
+		{"shuffled unordered", &[]string{"val2", "val3", "val1"}, &[]string{"val3", "val1", "val2"}},
+	}
 
-	t.Run("removed", func(t *testing.T) {
-		t.Parallel()
-		initialValue := []string{"value"}
-		changedValue := []string{}
-	})
+	type testOutput struct {
+		initialValue *[]string
+		changeValue  *[]string
+		tfOut        string
+		pulumiOut    string
+	}
 
+	for _, schemaValueMakerPair := range schemaValueMakerPairs {
+		t.Run(schemaValueMakerPair.name, func(t *testing.T) {
+			t.Parallel()
+			for _, scenario := range scenarios {
+				t.Run(scenario.name, func(t *testing.T) {
+					t.Parallel()
+					initialValue := schemaValueMakerPair.valueMaker(scenario.initialValue)
+					changeValue := schemaValueMakerPair.valueMaker(scenario.changeValue)
 
+					diff := crosstests.Diff(t, schemaValueMakerPair.schema, map[string]cty.Value{"key": initialValue}, map[string]cty.Value{"key": changeValue})
 
-	t.Run("null unchanged", func(t *testing.T) {
-		t.Parallel()
-		initialValue := cty.NullVal(cty.DynamicPseudoType)
-		changedValue := cty.NullVal(cty.DynamicPseudoType)
-	})
-
-	t.Run("null to non-null", func(t *testing.T) {
-		t.Parallel()
-		initialValue := cty.NullVal(cty.DynamicPseudoType)
-		changedValue := []string{"value"}
-	})
-
-	t.Run("non-null to null", func(t *testing.T) {
-		t.Parallel()
-		initialValue := []string{"value"}
-		changedValue := cty.NullVal(cty.DynamicPseudoType)
-	})
-
-	t.Run("changed null to empty", func(t *testing.T) {
-		t.Parallel()
-		initialValue := cty.NullVal(cty.DynamicPseudoType)
-		changedValue := []string{}
-	})
-
-	t.Run("changed empty to null", func(t *testing.T) {
-		t.Parallel()
-		initialValue := []string{}
-		changedValue := cty.NullVal(cty.DynamicPseudoType)
-	})
-
-	t.Run("removed front", func(t *testing.T) {
-		t.Parallel()
-		initialValue := []string{"val1", "val2", "val3"}
-		changedValue := []string{"val2", "val3"}
-	})
-
-	t.Run("removed front unordered", func(t *testing.T) {
-		t.Parallel()
-		initialValue := []string{"val2", "val3", "val1"}
-		changedValue := []string{"val3", "val1"}
-	})
-
-	t.Run("removed middle", func(t *testing.T) {
-		t.Parallel()
-		initialValue := []string{"val1", "val2", "val3"}
-		changedValue := []string{"val1", "val3"}
-	})
-
-	t.Run("removed middle unordered", func(t *testing.T) {
-		t.Parallel()
-		initialValue := []string{"val3", "val1", "val2"}
-		changedValue := []string{"val3", "val1"}
-	})
-
-	t.Run("removed end", func(t *testing.T) {
-		t.Parallel()
-		initialValue := []string{"val1", "val2", "val3"}
-		changedValue := []string{"val1", "val2"}
-	})
-
-	t.Run("removed end unordered", func(t *testing.T) {
-		t.Parallel()
-		initialValue := []string{"val2", "val3", "val1"}
-		changedValue := []string{"val2", "val3"}
-	})
-
-	t.Run("added front", func(t *testing.T) {
-		t.Parallel()
-		initialValue := []string{"val2", "val3"}
-		changedValue := []string{"val1", "val2", "val3"}
-	})
-
-	t.Run("added front unordered", func(t *testing.T) {
-		t.Parallel()
-		initialValue := []string{"val3", "val1"}
-		changedValue := []string{"val2", "val3", "val1"}
-	})
-
-	t.Run("added middle", func(t *testing.T) {
-		t.Parallel()
-		initialValue := []string{"val1", "val3"}
-		changedValue := []string{"val1", "val2", "val3"}
-	})
-
-	t.Run("added middle unordered", func(t *testing.T) {
-		t.Parallel()
-		initialValue := []string{"val2", "val1"}
-		changedValue := []string{"val2", "val3", "val1"}
-	})
-
-	t.Run("added end", func(t *testing.T) {
-		t.Parallel()
-		initialValue := []string{"val1", "val2"}
-		changedValue := []string{"val1", "val2", "val3"}
-	})
-
-	t.Run("added end unordered", func(t *testing.T) {
-		t.Parallel()
-		initialValue := []string{"val2", "val3"}
-		changedValue := []string{"val2", "val3", "val1"}
-	})
-
-	t.Run("shuffled", func(t *testing.T) {
-		t.Parallel()
-		initialValue := []string{"val1", "val2", "val3"}
-		changedValue := []string{"val3", "val1", "val2"}
-	})
-
-	t.Run("shuffled unordered", func(t *testing.T) {
-		t.Parallel()
-		initialValue := []string{"val2", "val3", "val1"}
-		changedValue := []string{"val3", "val1", "val2"}
-	})
+					autogold.ExpectFile(t, testOutput{
+						initialValue: scenario.initialValue,
+						changeValue:  scenario.changeValue,
+						tfOut:        diff.TFOut,
+						pulumiOut:    diff.PulumiOut,
+					})
+				})
+			}
+		})
+	}
 
 	// PF does not allow duplicates in sets, so we don't test that here.
 	// TODO: test pulumi behaviour

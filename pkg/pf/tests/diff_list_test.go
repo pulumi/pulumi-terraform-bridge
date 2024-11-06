@@ -8,6 +8,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hexops/autogold/v2"
+	crosstests "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/cross-tests"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -38,6 +40,7 @@ func TestDetailedDiffList(t *testing.T) {
 	nestedAttributeSchema := rschema.Schema{
 		Attributes: map[string]rschema.Attribute{
 			"key": rschema.ListNestedAttribute{
+				Optional: true,
 				NestedObject: rschema.NestedAttributeObject{
 					Attributes: map[string]rschema.Attribute{
 						"nested": rschema.StringAttribute{Optional: true},
@@ -50,6 +53,7 @@ func TestDetailedDiffList(t *testing.T) {
 	nestedAttributeReplaceSchema := rschema.Schema{
 		Attributes: map[string]rschema.Attribute{
 			"key": rschema.ListNestedAttribute{
+				Optional: true,
 				NestedObject: rschema.NestedAttributeObject{
 					Attributes: map[string]rschema.Attribute{
 						"nested": rschema.StringAttribute{
@@ -67,6 +71,7 @@ func TestDetailedDiffList(t *testing.T) {
 	nestedAttributeNestedReplaceSchema := rschema.Schema{
 		Attributes: map[string]rschema.Attribute{
 			"key": rschema.ListNestedAttribute{
+				Optional: true,
 				NestedObject: rschema.NestedAttributeObject{
 					Attributes: map[string]rschema.Attribute{
 						"nested": rschema.StringAttribute{
@@ -125,9 +130,12 @@ func TestDetailedDiffList(t *testing.T) {
 		},
 	}
 
-	attrList := func(el ...string) cty.Value {
-		slice := make([]cty.Value, len(el))
-		for i, v := range el {
+	attrList := func(arr *[]string) cty.Value {
+		if arr == nil {
+			return cty.NullVal(cty.DynamicPseudoType)
+		}
+		slice := make([]cty.Value, len(*arr))
+		for i, v := range *arr {
 			slice[i] = cty.StringVal(v)
 		}
 		if len(slice) == 0 {
@@ -136,9 +144,12 @@ func TestDetailedDiffList(t *testing.T) {
 		return cty.ListVal(slice)
 	}
 
-	nestedAttrList := func(el ...string) cty.Value {
-		slice := make([]cty.Value, len(el))
-		for i, v := range el {
+	nestedAttrList := func(arr *[]string) cty.Value {
+		if arr == nil {
+			return cty.NullVal(cty.DynamicPseudoType)
+		}
+		slice := make([]cty.Value, len(*arr))
+		for i, v := range *arr {
 			slice[i] = cty.ObjectVal(
 				map[string]cty.Value{
 					"nested": cty.StringVal(v),
@@ -151,70 +162,66 @@ func TestDetailedDiffList(t *testing.T) {
 		return cty.ListVal(slice)
 	}
 
-	t.Run("unchanged non-empty", func(t *testing.T) {
-		t.Parallel()
-		initialValue := []string{"value"}
-		changeValue := []string{"value"}
-	})
+	schemaValueMakerPairs := []struct {
+		name       string
+		schema     rschema.Schema
+		valueMaker func(*[]string) cty.Value
+	}{
+		{"attribute no replace", attributeSchema, attrList},
+		{"attribute requires replace", attributeReplaceSchema, attrList},
+		{"nested attribute no replace", nestedAttributeSchema, nestedAttrList},
+		{"nested attribute requires replace", nestedAttributeReplaceSchema, nestedAttrList},
+		{"nested attribute nested requires replace", nestedAttributeNestedReplaceSchema, nestedAttrList},
+		{"block no replace", blockSchema, nestedAttrList},
+		{"block requires replace", blockReplaceSchema, nestedAttrList},
+		{"block nested requires replace", blockNestedReplaceSchema, nestedAttrList},
+	}
 
-	t.Run("changed", func(t *testing.T) {
-		t.Parallel()
-		initialValue := []string{"value"}
-		changeValue := []string{"value1"}
+	scenarios := []struct {
+		name         string
+		initialValue *[]string
+		changeValue  *[]string
+	}{
+		{"unchanged non-empty", &[]string{"value"}, &[]string{"value"}},
+		{"changed non-empty", &[]string{"value"}, &[]string{"value1"}},
+		{"added", &[]string{}, &[]string{"value"}},
+		{"removed", &[]string{"value"}, &[]string{}},
+		{"null unchanged", nil, nil},
+		{"null to non-null", nil, &[]string{"value"}},
+		{"non-null to null", &[]string{"value"}, nil},
+		{"changed null to empty", nil, &[]string{}},
+		{"changed empty to null", &[]string{}, nil},
+		{"element added", &[]string{"value"}, &[]string{"value", "value1"}},
+		{"element removed", &[]string{"value", "value1"}, &[]string{"value"}},
+	}
 
-	})
+	type testOutput struct {
+		initialValue *[]string
+		changeValue  *[]string
+		tfOut        string
+		pulumiOut    string
+	}
 
-	t.Run("added", func(t *testing.T) {
-		t.Parallel()
-		initialValue := []string{}
-		changeValue := []string{"value"}
-	})
+	for _, schemaValueMakerPair := range schemaValueMakerPairs {
+		t.Run(schemaValueMakerPair.name, func(t *testing.T) {
+			t.Parallel()
+			for _, scenario := range scenarios {
+				t.Run(scenario.name, func(t *testing.T) {
+					t.Parallel()
+					initialValue := schemaValueMakerPair.valueMaker(scenario.initialValue)
+					changeValue := schemaValueMakerPair.valueMaker(scenario.changeValue)
 
-	t.Run("removed", func(t *testing.T) {
-		t.Parallel()
-		initialValue := []string{"value"}
-		changeValue := []string{}
-	})
+					diff := crosstests.Diff(
+						t, schemaValueMakerPair.schema, map[string]cty.Value{"key": initialValue}, map[string]cty.Value{"key": changeValue})
 
-	t.Run("null unchanged", func(t *testing.T) {
-		t.Parallel()
-		initialValue := cty.NullVal(cty.DynamicPseudoType)
-		changeValue := cty.NullVal(cty.DynamicPseudoType)
-	})
-
-	t.Run("null to non-null", func(t *testing.T) {
-		t.Parallel()
-		initialValue := cty.NullVal(cty.DynamicPseudoType)
-		changeValue := []string{"value"}
-	})
-
-	t.Run("non-null to null", func(t *testing.T) {
-		t.Parallel()
-		initialValue := []string{"value"}
-		changeValue := cty.NullVal(cty.DynamicPseudoType)
-	})
-
-	t.Run("changed null to empty", func(t *testing.T) {
-		t.Parallel()
-		initialValue := cty.NullVal(cty.DynamicPseudoType)
-		changeValue := []string{}
-	})
-
-	t.Run("changed empty to null", func(t *testing.T) {
-		t.Parallel()
-		initialValue := []string{}
-		changeValue := cty.NullVal(cty.DynamicPseudoType)
-	})
-
-	t.Run("element added", func(t *testing.T) {
-		t.Parallel()
-		initialValue := []string{"value"}
-		changeValue := []string{"value", "value1"}
-	})
-
-	t.Run("element removed", func(t *testing.T) {
-		t.Parallel()
-		initialValue := []string{"value", "value1"}
-		changeValue := []string{"value"}
-	})
+					autogold.ExpectFile(t, testOutput{
+						initialValue: scenario.initialValue,
+						changeValue:  scenario.changeValue,
+						tfOut:        diff.TFOut,
+						pulumiOut:    diff.PulumiOut,
+					})
+				})
+			}
+		})
+	}
 }
