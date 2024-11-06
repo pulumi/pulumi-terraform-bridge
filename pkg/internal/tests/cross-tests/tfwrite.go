@@ -19,6 +19,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests/impl/hclwrite"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // This is a copy of the NestingMode enum in the Terraform Plugin SDK.
@@ -43,6 +44,7 @@ func sdkV2NestingToShim(nesting sdkV2NestingMode) hclwrite.Nesting {
 	case sdkV2NestingModeSet:
 		return hclwrite.NestingSet
 	default:
+		contract.Failf("invalid nesting mode: %d for the SDKv2 schema", nesting)
 		return hclwrite.NestingInvalid
 	}
 }
