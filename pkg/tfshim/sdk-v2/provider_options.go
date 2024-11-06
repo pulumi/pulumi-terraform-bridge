@@ -22,8 +22,7 @@ import (
 )
 
 type providerOptions struct {
-	planResourceChangeFilter func(string) bool
-	planStateEdit            PlanStateEditFunc
+	planStateEdit PlanStateEditFunc
 }
 
 type providerOption func(providerOptions) (providerOptions, error)
@@ -81,9 +80,11 @@ func getProviderOptions(opts []providerOption) (providerOptions, error) {
 
 // Selectively opt-in resources that pass the filter to using PlanResourceChange. Resources are
 // identified by their TF type name such as aws_ssm_document.
+//
+// Deprecated: this no longer has any effect.
+// TODO[pulumi/pulumi-terraform-bridge#2593] clean up deprecation.
 func WithPlanResourceChange(filter func(tfResourceType string) bool) providerOption { //nolint:revive
 	return func(opts providerOptions) (providerOptions, error) {
-		opts.planResourceChangeFilter = filter
 		return opts, nil
 	}
 }

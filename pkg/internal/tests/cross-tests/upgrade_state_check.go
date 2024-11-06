@@ -41,8 +41,6 @@ type upgradeStateTestCase struct {
 	Config2     any
 	ExpectEqual bool
 	ObjectType  *tftypes.Object
-
-	DisablePlanResourceChange bool
 }
 
 func getVersionInState(t T, stack apitype.UntypedDeployment) int {
@@ -71,11 +69,8 @@ func getVersionInState(t T, stack apitype.UntypedDeployment) int {
 	return int(schemaVersion)
 }
 
-func runPulumiUpgrade(t T, res1, res2 *schema.Resource, config1, config2 cty.Value, disablePlanResourceChange bool) (int, int) {
+func runPulumiUpgrade(t T, res1, res2 *schema.Resource, config1, config2 cty.Value) (int, int) {
 	opts := []pulcheck.BridgedProviderOpt{}
-	if disablePlanResourceChange {
-		opts = append(opts, pulcheck.DisablePlanResourceChange())
-	}
 
 	tfp1 := &schema.Provider{ResourcesMap: map[string]*schema.Resource{defRtype: res1}}
 	prov1 := pulcheck.BridgedProvider(t, defProviderShortName, tfp1, opts...)
@@ -160,7 +155,7 @@ func runUpgradeStateInputCheck(t T, tc upgradeStateTestCase) {
 	tfd2 := newTFResDriver(t, tfwd, defProviderShortName, defRtype, &upgradeRes)
 	_ = tfd2.writePlanApply(t, tc.Resource.Schema, defRtype, "example", config2, lifecycleArgs{})
 
-	schemaVersion1, schemaVersion2 := runPulumiUpgrade(t, tc.Resource, &upgradeRes, config1, config2, tc.DisablePlanResourceChange)
+	schemaVersion1, schemaVersion2 := runPulumiUpgrade(t, tc.Resource, &upgradeRes, config1, config2)
 
 	if tc.ExpectEqual {
 		assert.Equal(t, schemaVersion1, tc.Resource.SchemaVersion)
