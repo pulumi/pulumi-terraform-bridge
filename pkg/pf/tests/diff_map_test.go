@@ -19,7 +19,7 @@ func TestDetailedDiffMap(t *testing.T) {
 	attributeSchema := rschema.Schema{
 		Attributes: map[string]rschema.Attribute{
 			"key": rschema.MapAttribute{
-				Optional: true,
+				Optional:    true,
 				ElementType: types.StringType,
 			},
 		},
@@ -28,7 +28,7 @@ func TestDetailedDiffMap(t *testing.T) {
 	attributeReplaceSchema := rschema.Schema{
 		Attributes: map[string]rschema.Attribute{
 			"key": rschema.MapAttribute{
-				Optional: true,
+				Optional:    true,
 				ElementType: types.StringType,
 				PlanModifiers: []planmodifier.Map{
 					mapplanmodifier.RequiresReplace(),
