@@ -21,14 +21,17 @@ Plan: 1 to add, 0 to change, 1 to destroy.
 
 `,
 	pulumiOut: `Previewing update (test):
-
- ++ testprovider:index:Test p create replacement [diff: +key]
- +- testprovider:index:Test p replace [diff: +key]
- -- testprovider:index:Test p delete original [diff: +key]
-    pulumi:pulumi:Stack project-test
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::project::pulumi:pulumi:Stack::project-test]
+    +-testprovider:index/test:Test: (replace)
+        [id=test-id]
+        [urn=urn:pulumi:test::project::testprovider:index/test:Test::p]
+      ~ id : "test-id" => output<string>
+      + key: {
+          + k: "value"
+        }
 Resources:
     +-1 to replace
     1 unchanged
-
 `,
 }
