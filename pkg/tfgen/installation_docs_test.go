@@ -108,6 +108,50 @@ func TestPlainDocsParser(t *testing.T) {
 	}
 }
 
+func TestDisplayNameFallback(t *testing.T) {
+	t.Parallel()
+
+	type testCase struct {
+		// The name of the test case.
+		name        string
+		displayName string
+		pkgName     string
+		expected    string
+	}
+
+	tests := []testCase{
+		{
+			name:        "Uses Display Name",
+			displayName: "Unicorn",
+			pkgName:     "Horse",
+			expected:    "Unicorn",
+		},
+		{
+			name:     "Defaults to pkgName as provider name",
+			pkgName:  "Horse",
+			expected: "Horse",
+		},
+	}
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			if runtime.GOOS == "windows" {
+				t.Skipf("Skipping on Windows due to a newline handling issue")
+			}
+			g := &Generator{
+				info: tfbridge.ProviderInfo{
+					DisplayName: tt.displayName,
+				},
+				pkg: tokens.NewPackageToken(tokens.PackageName(tt.pkgName)),
+			}
+			actual := getProviderName(g)
+
+			assert.Equal(t, tt.expected, actual)
+		})
+	}
+}
+
 func TestTrimFrontmatter(t *testing.T) {
 	t.Parallel()
 	type testCase struct {
@@ -186,28 +230,51 @@ func TestWriteInstallationInstructions(t *testing.T) {
 		// The name of the test case.
 		name             string
 		goImportBasePath string
+		displayName      string
 		packageName      string
 		expected         string
 	}
 
-	tc := testCase{
-		name: "Generates Install Information From Package Name",
-		expected: "## Installation\n\n" +
-			"The testcase provider is available as a package in all Pulumi languages:\n\n" +
-			"* JavaScript/TypeScript: [`@pulumi/testcase`](https://www.npmjs.com/package/@pulumi/testcase)\n" +
-			"* Python: [`pulumi-testcase`](https://pypi.org/project/pulumi-testcase/)\n" +
-			"* Go: [`github.com/pulumi/pulumi-testcase/sdk/v3/go/pulumi-testcase`](https://github.com/pulumi/pulumi-testcase)\n" +
-			"* .NET: [`Pulumi.Testcase`](https://www.nuget.org/packages/Pulumi.Testcase)\n" +
-			"* Java: [`com.pulumi/testcase`](https://central.sonatype.com/artifact/com.pulumi/testcase)\n\n",
-		goImportBasePath: "github.com/pulumi/pulumi-testcase/sdk/v3/go/pulumi-testcase",
-		packageName:      "testcase",
+	tests := []testCase{
+		{
+			name: "Generates Install Information From Package Name",
+			expected: "## Installation\n\n" +
+				"The testcase provider is available as a package in all Pulumi languages:\n\n" +
+				"* JavaScript/TypeScript: [`@pulumi/testcase`](https://www.npmjs.com/package/@pulumi/testcase)\n" +
+				"* Python: [`pulumi-testcase`](https://pypi.org/project/pulumi-testcase/)\n" +
+				"* Go: [`github.com/pulumi/pulumi-testcase/sdk/v3/go/pulumi-testcase`](https://github.com/pulumi/pulumi-testcase)\n" +
+				"* .NET: [`Pulumi.Testcase`](https://www.nuget.org/packages/Pulumi.Testcase)\n" +
+				"* Java: [`com.pulumi/testcase`](https://central.sonatype.com/artifact/com.pulumi/testcase)\n\n",
+			goImportBasePath: "github.com/pulumi/pulumi-testcase/sdk/v3/go/pulumi-testcase",
+			displayName:      "testcase",
+			packageName:      "testcase",
+		},
+		{
+			name: "Generates Install Information From Display And Package Names",
+			expected: "## Installation\n\n" +
+				"The Test Case provider is available as a package in all Pulumi languages:\n\n" +
+				"* JavaScript/TypeScript: [`@pulumi/testcase`](https://www.npmjs.com/package/@pulumi/testcase)\n" +
+				"* Python: [`pulumi-testcase`](https://pypi.org/project/pulumi-testcase/)\n" +
+				"* Go: [`github.com/pulumi/pulumi-testcase/sdk/v3/go/pulumi-testcase`](https://github.com/pulumi/pulumi-testcase)\n" +
+				"* .NET: [`Pulumi.Testcase`](https://www.nuget.org/packages/Pulumi.Testcase)\n" +
+				"* Java: [`com.pulumi/testcase`](https://central.sonatype.com/artifact/com.pulumi/testcase)\n\n",
+			goImportBasePath: "github.com/pulumi/pulumi-testcase/sdk/v3/go/pulumi-testcase",
+			displayName:      "Test Case",
+			packageName:      "testcase",
+		},
 	}
 
-	t.Run(tc.name, func(t *testing.T) {
-		t.Parallel()
-		actual := writeInstallationInstructions(tc.goImportBasePath, tc.packageName)
-		require.Equal(t, tc.expected, actual)
-	})
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			if runtime.GOOS == "windows" {
+				t.Skipf("Skipping on Windows due to a test setup issue")
+			}
+			t.Parallel()
+			actual := writeInstallationInstructions(tt.goImportBasePath, tt.displayName, tt.packageName)
+			assert.Equal(t, tt.expected, actual)
+		})
+	}
 }
 
 func TestWriteOverviewHeader(t *testing.T) {
