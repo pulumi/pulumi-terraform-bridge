@@ -1,11 +1,14 @@
 package tfbridgetests
 
 import (
+	"context"
 	"testing"
 
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/defaults"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hexops/autogold/v2"
 	crosstests "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/cross-tests"
 	"github.com/zclconf/go-cty/cty"
@@ -54,6 +57,28 @@ Resources:
 `).Equal(t, res.PulumiOut)
 }
 
+type stringDefault string
+
+var _ defaults.String = stringDefault("default")
+
+func (s stringDefault) DefaultString(ctx context.Context, req defaults.StringRequest, resp *defaults.StringResponse) {
+	resp.PlanValue = basetypes.NewStringValue(string(s))
+}
+
+func (s stringDefault) PlanModifyString(ctx context.Context, req planmodifier.StringRequest, resp *planmodifier.StringResponse) {
+	if req.PlanValue.IsNull() || req.PlanValue.IsUnknown() {
+		resp.PlanValue = basetypes.NewStringValue(string(s))
+	}
+}
+
+func (s stringDefault) Description(ctx context.Context) string {
+	return "description"
+}
+
+func (s stringDefault) MarkdownDescription(ctx context.Context) string {
+	return "markdown description"
+}
+
 func TestDetailedDiffStringAttribute(t *testing.T) {
 	t.Parallel()
 
@@ -72,12 +97,57 @@ func TestDetailedDiffStringAttribute(t *testing.T) {
 		},
 	}
 
+	attributeSchemaWithDefault := rschema.Schema{
+		Attributes: map[string]rschema.Attribute{
+			"key": rschema.StringAttribute{
+				Optional: true,
+				Computed: true,
+				Default:  stringDefault("default"),
+			},
+		},
+	}
+
+	attributeSchemaWithDefaultReplace := rschema.Schema{
+		Attributes: map[string]rschema.Attribute{
+			"key": rschema.StringAttribute{
+				Optional:      true,
+				Computed:      true,
+				Default:       stringDefault("default"),
+				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
+			},
+		},
+	}
+
+	attributeSchemaWitPlanModifierDefault := rschema.Schema{
+		Attributes: map[string]rschema.Attribute{
+			"key": rschema.StringAttribute{
+				Optional:      true,
+				Computed:      true,
+				PlanModifiers: []planmodifier.String{stringDefault("default")},
+			},
+		},
+	}
+
+	attributeSchemaWithPlanModifierDefaultReplace := rschema.Schema{
+		Attributes: map[string]rschema.Attribute{
+			"key": rschema.StringAttribute{
+				Optional:      true,
+				Computed:      true,
+				PlanModifiers: []planmodifier.String{stringDefault("default"), stringplanmodifier.RequiresReplace()},
+			},
+		},
+	}
+
 	schemas := []struct {
 		name   string
 		schema rschema.Schema
 	}{
 		{"no replace", attributeSchema},
 		{"replace", attributeReplaceSchema},
+		{"default", attributeSchemaWithDefault},
+		{"default replace", attributeSchemaWithDefaultReplace},
+		{"plan modifier default", attributeSchemaWitPlanModifierDefault},
+		{"plan modifier default replace", attributeSchemaWithPlanModifierDefaultReplace},
 	}
 
 	makeValue := func(s *string) cty.Value {
