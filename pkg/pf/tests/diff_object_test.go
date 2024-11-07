@@ -1,6 +1,7 @@
 package tfbridgetests
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -93,16 +94,23 @@ func TestDetailedDiffObject(t *testing.T) {
 		return cty.ObjectVal(values)
 	}
 
-	schemas := []struct {
+	type namedSchema struct {
 		name   string
 		schema rschema.Schema
-	}{
+	}
+
+	attrSchemas := []namedSchema{
 		{"attribute no replace", attributeSchema},
 		{"attribute requires replace", attributeReplaceSchema},
+	}
+
+	blockSchemas := []namedSchema{
 		{"nested block no replace", nestedBlockSchema},
 		{"nested block requires replace", nestedBlockReplaceSchema},
 		{"nested block nested requires replace", nestedBlockNestedReplaceSchema},
 	}
+
+	schemas := append(attrSchemas, blockSchemas...)
 
 	scenarios := []struct {
 		name         string
@@ -114,6 +122,17 @@ func TestDetailedDiffObject(t *testing.T) {
 		{"changed value non-null", &map[string]string{"nested": "value"}, &map[string]string{"nested": "changed"}},
 		{"added", nil, &map[string]string{"nested": "value"}},
 		{"removed", &map[string]string{"nested": "value"}, nil},
+	}
+
+	// Attribute objects can't be empty, but block objects can.
+	emptyBlockScenarios := []struct {
+		name         string
+		initialValue *map[string]string
+		changeValue  *map[string]string
+	}{
+		{"unchanged empty", &map[string]string{}, &map[string]string{}},
+		{"changed empty to non-empty", &map[string]string{}, &map[string]string{"nested": "value"}},
+		{"changed non-empty to empty", &map[string]string{"nested": "value"}, &map[string]string{}},
 	}
 
 	type testOutput struct {
@@ -140,8 +159,23 @@ func TestDetailedDiffObject(t *testing.T) {
 					})
 				})
 			}
+
+			if strings.Contains(schema.name, "block") {
+				for _, scenario := range emptyBlockScenarios {
+					t.Run(scenario.name, func(t *testing.T) {
+						t.Parallel()
+						initialValue := map[string]cty.Value{"key": makeValue(scenario.initialValue)}
+						changeValue := map[string]cty.Value{"key": makeValue(scenario.changeValue)}
+						diff := crosstests.Diff(t, schema.schema, initialValue, changeValue)
+						autogold.ExpectFile(t, testOutput{
+							initialValue: scenario.initialValue,
+							changeValue:  scenario.changeValue,
+							tfOut:        diff.TFOut,
+							pulumiOut:    diff.PulumiOut,
+						})
+					})
+				}
+			}
 		})
 	}
-
-	// TODO: Empty values are not allowed for objects, test how pulumi handles this
 }
