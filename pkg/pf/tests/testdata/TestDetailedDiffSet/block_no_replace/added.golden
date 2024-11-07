@@ -15,7 +15,7 @@ Terraform will perform the following actions:
       + key {
           + nested = "value"
         }
-    }BROKEN
+    }
 
 Plan: 0 to add, 1 to change, 0 to destroy.
 
