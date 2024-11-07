@@ -150,7 +150,8 @@ func TestDetailedDiffMap(t *testing.T) {
 		{"changed value non-null", &map[string]*string{"k": ref("value")}, &map[string]*string{"k": ref("value1")}},
 
 		{"changed value null to non-null", &map[string]*string{"k": nil}, &map[string]*string{"k": ref("value")}},
-		// TODO: fails
+		// TODO[pulumi/pulumi-terraform-bridge#752]: We do not correctly identify the replace here.
+		// see pkg/pf/tests/testdata/TestDetailedDiffMap/nested_attribute_nested_requires_replace/changed_value_non-null_to_null.golden
 		// {"changed value non-null to null", &map[string]*string{"k": ref("value")}, &map[string]*string{"k": nil}},
 	}
 

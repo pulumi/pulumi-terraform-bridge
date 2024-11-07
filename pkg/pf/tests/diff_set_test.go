@@ -239,6 +239,5 @@ func TestDetailedDiffSet(t *testing.T) {
 		})
 	}
 
-	// PF does not allow duplicates in sets, so we don't test that here.
-	// TODO: test pulumi behaviour
+	// Both pulumi and TF do not allow duplicates in sets, so we don't test that here.
 }
