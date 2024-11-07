@@ -474,6 +474,16 @@ func (differ detailedDiffer) makeDetailedDiffPropertyMap(
 	return result
 }
 
+func MakeDetailedDiffV2(
+	ctx context.Context,
+	tfs shim.SchemaMap,
+	ps map[string]*SchemaInfo,
+	priorProps, props, newInputs resource.PropertyMap,
+) map[string]*pulumirpc.PropertyDiff {
+	differ := detailedDiffer{ctx: ctx, tfs: tfs, ps: ps, newInputs: newInputs}
+	return differ.makeDetailedDiffPropertyMap(priorProps, props)
+}
+
 func makeDetailedDiffV2(
 	ctx context.Context,
 	tfs shim.SchemaMap,
@@ -506,6 +516,5 @@ func makeDetailedDiffV2(
 		return nil, err
 	}
 
-	differ := detailedDiffer{ctx: ctx, tfs: tfs, ps: ps, newInputs: newInputs}
-	return differ.makeDetailedDiffPropertyMap(priorProps, props), nil
+	return MakeDetailedDiffV2(ctx, tfs, ps, priorProps, props, newInputs), nil
 }
