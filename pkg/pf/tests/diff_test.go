@@ -47,13 +47,15 @@ Plan: 0 to add, 1 to change, 0 to destroy.
 
 `).Equal(t, res.TFOut)
 	autogold.Expect(`Previewing update (test):
-
- ~  testprovider:index:Test p update [diff: ~key]
-    pulumi:pulumi:Stack project-test
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::project::pulumi:pulumi:Stack::project-test]
+    ~ testprovider:index/test:Test: (update)
+        [id=test-id]
+        [urn=urn:pulumi:test::project::testprovider:index/test:Test::p]
+      ~ key: "value" => "value1"
 Resources:
     ~ 1 to update
     1 unchanged
-
 `).Equal(t, res.PulumiOut)
 }
 
