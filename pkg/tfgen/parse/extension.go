@@ -200,7 +200,7 @@ func (tableRenderer tableRenderer) render(
 			}
 			return ast.WalkSkipChildren, nil
 		default:
-			return ast.WalkStop, fmt.Errorf("unexpected node in a table: %s", n.Kind().String())
+			return ast.WalkStop, fmt.Errorf("unexpected node in a table: %s", n.Kind())
 		}
 	})
 	table := tablewriter.NewWriter(writer)
