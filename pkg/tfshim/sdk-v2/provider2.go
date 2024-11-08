@@ -237,6 +237,100 @@ func (*planResourceChangeImpl) warnIgnoredCustomTimeouts(
 	log.GetLogger(ctx).Warn(msg)
 }
 
+func (p *planResourceChangeImpl) Plan(
+	ctx context.Context,
+	t string,
+	s shim.InstanceState,
+	c shim.ResourceConfig,
+	opts shim.DiffOptions,
+) (shim.InstanceState, error) {
+	s, err := p.upgradeState(ctx, t, s)
+	if err != nil {
+		return nil, err
+	}
+
+	state := p.unpackInstanceState(t, s)
+	res := p.tf.ResourcesMap[t]
+	ty := res.CoreConfigSchema().ImpliedType()
+
+	meta, err := p.providerMeta()
+	if err != nil {
+		return nil, err
+	}
+
+	cfg, err := recoverAndCoerceCtyValueWithSchema(res.CoreConfigSchema(),
+		p.configWithTimeouts(ctx, c, opts.TimeoutOptions, ty))
+	if err != nil {
+		return nil, fmt.Errorf("Resource %q: %w", t, err)
+	}
+	cfg = normalizeBlockCollections(cfg, res)
+
+	prop, err := proposedNew(res, state.stateValue, cfg)
+	if err != nil {
+		return nil, err
+	}
+	st := state.stateValue
+	ic := opts.IgnoreChanges
+	priv := state.meta
+	plan, err := p.server.PlanResourceChange(ctx, t, ty, cfg, st, prop, priv, meta, ic)
+	if err != nil {
+		return nil, err
+	}
+
+	plannedState, err := p.planEdit(ctx, PlanStateEditRequest{
+		NewInputs:      opts.NewInputs,
+		ProviderConfig: opts.ProviderConfig,
+		TfToken:        t,
+		PlanState:      plan.PlannedState,
+	})
+
+	return &v2InstanceState2{
+		resourceType: t,
+		stateValue:   plannedState,
+		meta:         plan.PlannedPrivate,
+	}, err
+}
+
+func (p *planResourceChangeImpl) DiffFromPlan(
+	ctx context.Context,
+	t string,
+	s shim.InstanceState,
+	pl shim.InstanceState,
+) (shim.InstanceDiff, error) {
+	state := p.unpackInstanceState(t, s)
+	st := state.stateValue
+	plan := p.unpackInstanceState(t, pl)
+	plannedState := plan.stateValue
+	//nolint:lll
+	// Taken from https://github.com/opentofu/opentofu/blob/864aa9d1d629090cfc4ddf9fdd344d34dee9793e/internal/tofu/node_resource_abstract_instance.go#L1024
+	// We need to unmark the values to make sure Equals works.
+	// Equals will return unknown if either value is unknown.
+	// START
+	unmarkedPrior, _ := st.UnmarkDeep()
+	unmarkedPlan, _ := plannedState.UnmarkDeep()
+	eqV := unmarkedPrior.Equals(unmarkedPlan)
+	eq := eqV.IsKnown() && eqV.True()
+	// END
+
+	diffOverride := shim.DiffOverrideUpdate
+	if eq {
+		diffOverride = shim.DiffOverrideNoUpdate
+	}
+
+	// TODO: We need the new inputs here from the engine too, planned state is not enough.
+	return &v2InstanceDiff2{
+		v2InstanceDiff: v2InstanceDiff{
+			tf: plan.PlannedDiff,
+		},
+		config:                    cfg,
+		plannedState:              plannedState,
+		diffEqualDecisionOverride: diffOverride,
+		plannedPrivate:            plan.Meta(),
+		prior:                     st,
+		priorMeta:                 state.Meta(),
+	}, nil
+}
+
 func (p *planResourceChangeImpl) Diff(
 	ctx context.Context,
 	t string,

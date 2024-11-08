@@ -950,9 +950,13 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 	label := fmt.Sprintf("%s.Check(%s/%s)", p.label(), urn, res.TFName)
 	glog.V(9).Infof("%s executing", label)
 
+	opts, err := getProviderOptions(p.providerOpts)
+	if err != nil {
+		return nil, err
+	}
+
 	// Unmarshal the old and new properties.
 	var olds resource.PropertyMap
-	var err error
 	if req.GetOlds() != nil {
 		olds, err = plugin.UnmarshalProperties(req.GetOlds(), plugin.MarshalOptions{
 			Label: fmt.Sprintf("%s.olds", label), KeepUnknowns: true,
@@ -960,6 +964,7 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 		if err != nil {
 			return nil, err
 		}
+		// TODO: This is old inputs, not old state - should we not be calling transformFromState here?
 		olds, err = transformFromState(ctx, res.Schema, olds)
 		if err != nil {
 			return nil, err
@@ -971,6 +976,18 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 	})
 	if err != nil {
 		return nil, err
+	}
+
+	var oldOutputs resource.PropertyMap
+	if req.GetOldOutputs() != nil {
+		oldOutputs, err = plugin.UnmarshalProperties(req.GetOldOutputs(), plugin.MarshalOptions{
+			Label: fmt.Sprintf("%s.oldOutputs", label), KeepUnknowns: true, SkipNulls: true,
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		// TODO: transformFromState?
 	}
 
 	logger := GetLogger(ctx)
@@ -1043,10 +1060,33 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 		return nil, err
 	}
 
-	// After all is said and done, we need to go back and return only what got populated as a diff from the origin.
-	pinputs := MakeTerraformOutputs(
-		ctx, p.tf, inputs, schemaMap, res.Schema.Fields, assets, p.supportsSecrets,
-	)
+	var pinputs resource.PropertyMap
+	if planProv, ok := p.tf.(shim.ProviderWithPlan); ok {
+		state, err := makeTerraformStateWithOpts(ctx, res, oldOutputs.Mappable()["id"].(string), oldOutputs,
+			makeTerraformStateOptions{
+				defaultZeroSchemaVersion:    opts.defaultZeroSchemaVersion,
+				unknownCollectionsSupported: p.tf.SupportsUnknownCollections(),
+			},
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		state, err = planProv.Plan(ctx, res.TFName, state, rescfg, shim.DiffOptions{})
+		if err != nil {
+			return nil, err
+		}
+
+		pinputs, err = MakeTerraformResult(ctx, p.tf, state, schemaMap, res.Schema.Fields, assets, p.supportsSecrets)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		// After all is said and done, we need to go back and return only what got populated as a diff from the origin.
+		pinputs = MakeTerraformOutputs(
+			ctx, p.tf, inputs, schemaMap, res.Schema.Fields, assets, p.supportsSecrets,
+		)
+	}
 
 	pinputsWithSecrets := MarkSchemaSecrets(ctx, schemaMap, res.Schema.Fields,
 		resource.NewObjectProperty(pinputs)).ObjectValue()

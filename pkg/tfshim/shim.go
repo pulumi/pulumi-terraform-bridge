@@ -297,6 +297,18 @@ type Provider interface {
 	SupportsUnknownCollections() bool
 }
 
+
+type ProviderWithPlan interface {
+	Provider
+	Plan(
+		ctx context.Context,
+		t string,
+		s InstanceState,
+		c ResourceConfig,
+		opts DiffOptions,
+	) (InstanceState, error)
+}
+
 type TimeoutOptions struct {
 	ResourceTimeout  *ResourceTimeout // optional
 	TimeoutOverrides map[TimeoutKey]time.Duration
