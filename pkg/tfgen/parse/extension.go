@@ -152,9 +152,7 @@ func (tableRenderer tableRenderer) RegisterFuncs(r renderer.NodeRendererFuncRegi
 }
 
 func (tableRenderer tableRenderer) render(
-	writer util.BufWriter, source []byte, n ast.Node, entering bool,
-) (ast.WalkStatus, error) {
-
+	writer util.BufWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
 	if !entering {
 		return ast.WalkSkipChildren, nil
 	}

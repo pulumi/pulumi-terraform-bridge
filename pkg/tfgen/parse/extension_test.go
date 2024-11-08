@@ -89,10 +89,6 @@ func TestRenderTable(t *testing.T) {
 				goldmark.WithExtensions(TFRegistryExtension),
 			).Convert([]byte(tt.input), &out)
 			require.NoError(t, err)
-			//err = os.WriteFile("../test_data/table-rendering/actual.md", out.Bytes(), 0600)
-			if err != nil {
-				panic(err)
-			}
 			tt.expected.Equal(t, out.String())
 		})
 	}
@@ -103,10 +99,4 @@ func readfile(t *testing.T, file string) string {
 	bytes, err := os.ReadFile(file)
 	require.NoError(t, err)
 	return string(bytes)
-}
-
-func writefile(t *testing.T, file string, bytes []byte) {
-	t.Helper()
-	err := os.WriteFile(file, bytes, 0600)
-	require.NoError(t, err)
 }
