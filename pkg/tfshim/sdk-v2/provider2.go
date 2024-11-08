@@ -317,12 +317,7 @@ func (p *planResourceChangeImpl) DiffFromPlan(
 		diffOverride = shim.DiffOverrideNoUpdate
 	}
 
-	// TODO: We need the new inputs here from the engine too, planned state is not enough.
 	return &v2InstanceDiff2{
-		v2InstanceDiff: v2InstanceDiff{
-			tf: plan.PlannedDiff,
-		},
-		config:                    cfg,
 		plannedState:              plannedState,
 		diffEqualDecisionOverride: diffOverride,
 		plannedPrivate:            plan.Meta(),
@@ -412,6 +407,55 @@ func (p *planResourceChangeImpl) planEdit(ctx context.Context, e PlanStateEditRe
 		return e.PlanState, nil
 	}
 	return p.planEditFunc(ctx, e)
+}
+
+func (p *planResourceChangeImpl) ApplyFromPlan(
+	ctx context.Context, t string, s shim.InstanceState, pl shim.InstanceState, input shim.ResourceConfig,
+) (shim.InstanceState, error) {
+	res := p.tf.ResourcesMap[t]
+	ty := res.CoreConfigSchema().ImpliedType()
+	s, err := p.upgradeState(ctx, t, s)
+	if err != nil {
+		return nil, err
+	}
+	state := p.unpackInstanceState(t, s)
+	plan := p.unpackInstanceState(t, pl)
+	meta, err := p.providerMeta()
+	if err != nil {
+		return nil, err
+	}
+
+	cfg, err := recoverAndCoerceCtyValueWithSchema(res.CoreConfigSchema(),
+		// TODO: Timeouts
+		p.configWithTimeouts(ctx, input, shim.TimeoutOptions{}, ty))
+	if err != nil {
+		return nil, fmt.Errorf("Resource %q: %w", t, err)
+	}
+	cfg = normalizeBlockCollections(cfg, res)
+
+	ctyConfig, ctyState, ctyPlan := cfg, state.stateValue, plan.stateValue
+
+	// Merge plannedPrivate and v2InstanceDiff.tf.Meta into a single map. This is necessary because
+	// timeouts are stored in the Meta and not in plannedPrivate.
+
+	// TODO: meta, plannedprivate
+	priv := make(map[string]interface{})
+	// if len(diff.plannedPrivate) > 0 {
+	// 	maps.Copy(priv, diff.plannedPrivate)
+	// }
+	// if len(diff.v2InstanceDiff.tf.Meta) > 0 {
+	// 	maps.Copy(priv, diff.v2InstanceDiff.tf.Meta)
+	// }
+
+	resp, err := p.server.ApplyResourceChange(ctx, t, ty, ctyConfig, ctyState, ctyPlan, priv, meta)
+	if err != nil {
+		return nil, err
+	}
+	return &v2InstanceState2{
+		resourceType: t,
+		stateValue:   resp.stateValue,
+		meta:         resp.meta,
+	}, nil
 }
 
 func (p *planResourceChangeImpl) Apply(

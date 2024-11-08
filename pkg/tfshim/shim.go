@@ -307,6 +307,21 @@ type ProviderWithPlan interface {
 		c ResourceConfig,
 		opts DiffOptions,
 	) (InstanceState, error)
+
+	DiffFromPlan(
+		ctx context.Context,
+		t string,
+		s InstanceState,
+		pl InstanceState,
+	) (InstanceDiff, error)
+
+	ApplyFromPlan(
+		ctx context.Context,
+		t string,
+		s InstanceState,
+		pl InstanceState,
+		input ResourceConfig,
+	) (InstanceState, error)
 }
 
 type TimeoutOptions struct {
