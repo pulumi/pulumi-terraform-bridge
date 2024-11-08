@@ -17,6 +17,7 @@ package parse
 import (
 	"bytes"
 	"os"
+	"runtime"
 	"testing"
 
 	"github.com/hexops/autogold/v2"
@@ -26,6 +27,9 @@ import (
 
 func TestRenderTable(t *testing.T) {
 	t.Parallel()
+	if runtime.GOOS == "windows" {
+		t.Skipf("Skipping on windows to avoid failing on incorrect newline handling")
+	}
 
 	tests := []struct {
 		name     string
