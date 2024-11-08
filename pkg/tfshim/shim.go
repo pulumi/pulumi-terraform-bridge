@@ -297,7 +297,6 @@ type Provider interface {
 	SupportsUnknownCollections() bool
 }
 
-
 type ProviderWithPlan interface {
 	Provider
 	Plan(
