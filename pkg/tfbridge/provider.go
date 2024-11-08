@@ -1701,6 +1701,9 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 				defaultZeroSchemaVersion:    opts.defaultZeroSchemaVersion,
 				unknownCollectionsSupported: p.tf.SupportsUnknownCollections(),
 			})
+		if err != nil {
+			return nil, err
+		}
 
 		diff, err = planProv.DiffFromPlan(ctx, res.TFName, state, plannedState)
 		if err != nil {
@@ -1735,15 +1738,12 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 			}
 
 			newstate, err = planProv.ApplyFromPlan(ctx, res.TFName, state, plannedState, prePlanConfig)
-
+			if err != nil {
+				return nil, err
+			}
 		} else {
-			newstate, err = makeTerraformStateWithOpts(ctx, res, req.GetId(), news,
-				makeTerraformStateOptions{
-					defaultZeroSchemaVersion:    opts.defaultZeroSchemaVersion,
-					unknownCollectionsSupported: p.tf.SupportsUnknownCollections(),
-				})
+			newstate = plannedState
 		}
-
 	} else {
 		var config shim.ResourceConfig
 		config, assets, err = MakeTerraformConfig(ctx, p, news, schema, fields)
