@@ -20,7 +20,6 @@ import (
 	"strings"
 
 	"github.com/olekukonko/tablewriter"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/parse/section"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	markdown "github.com/teekennedy/goldmark-markdown"
 	"github.com/yuin/goldmark"
@@ -31,6 +30,8 @@ import (
 	"github.com/yuin/goldmark/renderer"
 	"github.com/yuin/goldmark/text"
 	"github.com/yuin/goldmark/util"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/parse/section"
 )
 
 // TFRegistryExtension is the catch-all extension to prepare TF registry markdown to be
