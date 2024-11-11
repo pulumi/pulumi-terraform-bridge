@@ -4,7 +4,7 @@ go 1.22.3
 
 replace (
 	// Use OpenTofu's fork of hcl (copied from OpenTofu).
-	github.com/hashicorp/hcl/v2 v2.20.1 => github.com/opentofu/hcl/v2 v2.0.0-20240416130056-03228b26f391
+	github.com/hashicorp/hcl/v2 => github.com/opentofu/hcl/v2 v2.0.0-20240416130056-03228b26f391
 
 	// Use Pulumi's fork of the terraform-plugin-sdk.
 	github.com/hashicorp/terraform-plugin-sdk/v2 => github.com/pulumi/terraform-plugin-sdk/v2 v2.0.0-20240520223432-0c0bf0d65f10
