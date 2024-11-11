@@ -16,6 +16,7 @@ package parse
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"runtime"
 	"testing"
@@ -23,6 +24,7 @@ import (
 	"github.com/hexops/autogold/v2"
 	"github.com/stretchr/testify/require"
 	"github.com/yuin/goldmark"
+	"github.com/yuin/goldmark/text"
 )
 
 func TestRenderTable(t *testing.T) {
@@ -83,15 +85,35 @@ func TestRenderTable(t *testing.T) {
 			input:    readfile(t, "../test_data/table-rendering/input.md"),
 			expected: autogold.Expect(readfile(t, "../test_data/table-rendering/expected.md")),
 		},
+		{
+			name:     "in-middle-of-document",
+			input:    readfile(t, "../test_data/table-rendering/in-middle-of-doc-input.md"),
+			expected: autogold.Expect(readfile(t, "../test_data/table-rendering/in-middle-of-doc-expected.md")),
+		},
 	}
 
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			var out bytes.Buffer
-			err := goldmark.New(
-				goldmark.WithExtensions(TFRegistryExtension),
-			).Convert([]byte(tt.input), &out)
+			//
+			//reader := text.NewReader(source)
+			//doc := m.parser.Parse(reader, opts...)
+			//return m.renderer.Render(writer, source, doc)
+
+			m := goldmark.New(goldmark.WithExtensions(TFRegistryExtension))
+			reader := text.NewReader([]byte(tt.input))
+
+			doc := m.Parser().Parse(reader)
+			//doc.Dump([]byte(tt.input), 0)
+
+			err := m.Renderer().Render(&out, []byte(tt.input), doc)
+
+			fmt.Println(out.String())
+
+			//err = goldmark.New(
+			//	goldmark.WithExtensions(TFRegistryExtension),
+			//).Convert([]byte(tt.input), &out)
 			require.NoError(t, err)
 			tt.expected.Equal(t, out.String())
 		})
