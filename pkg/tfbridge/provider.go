@@ -1061,7 +1061,7 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 	}
 
 	var pinputs resource.PropertyMap
-	if planProv, ok := p.tf.(shim.ProviderWithPlan); ok {
+	if planProv, ok := p.tf.(shim.ProviderWithPlan); ok && opts.enableAccurateBridgePreview {
 		// TODO: sort out ID
 		resID := "check_id"
 		if oldID, ok := oldOutputs.Mappable()["id"]; ok {
@@ -1196,7 +1196,7 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 	ic := newIgnoreChanges(ctx, schema, fields, olds, news, req.GetIgnoreChanges())
 
 	var diff shim.InstanceDiff
-	if planProv, ok := p.tf.(shim.ProviderWithPlan); ok {
+	if planProv, ok := p.tf.(shim.ProviderWithPlan); ok && opts.enableAccurateBridgePreview {
 		diff, err = callWithRecover(urn, p.recoverOnTypeError, func() (shim.InstanceDiff, error) {
 			return planProv.DiffFromPlan(ctx, res.TFName, state, state)
 		})
@@ -1700,7 +1700,7 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 	var newstate shim.InstanceState
 	var reasons []string
 
-	if planProv, ok := p.tf.(shim.ProviderWithPlan); ok {
+	if planProv, ok := p.tf.(shim.ProviderWithPlan); ok && opts.enableAccurateBridgePreview {
 		plannedState, err := makeTerraformStateWithOpts(ctx, res, req.GetId(), news,
 			makeTerraformStateOptions{
 				defaultZeroSchemaVersion:    opts.defaultZeroSchemaVersion,
