@@ -193,6 +193,12 @@ func TestDetailedDiffList(t *testing.T) {
 		{"changed empty to null", &[]string{}, nil},
 		{"element added", &[]string{"value"}, &[]string{"value", "value1"}},
 		{"element removed", &[]string{"value", "value1"}, &[]string{"value"}},
+		{"removed front", &[]string{"val1", "val2", "val3"}, &[]string{"val2", "val3"}},
+		{"removed middle", &[]string{"val1", "val2", "val3"}, &[]string{"val1", "val3"}},
+		{"removed end", &[]string{"val1", "val2", "val3"}, &[]string{"val1", "val2"}},
+		{"added front", &[]string{"val2", "val3"}, &[]string{"val1", "val2", "val3"}},
+		{"added middle", &[]string{"val1", "val3"}, &[]string{"val1", "val2", "val3"}},
+		{"added end", &[]string{"val1", "val2"}, &[]string{"val1", "val2", "val3"}},
 	}
 
 	type testOutput struct {
