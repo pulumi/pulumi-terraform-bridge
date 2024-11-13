@@ -84,7 +84,8 @@ func (p *Provider) RenameDataSource(resourceName string, legacyTok tokens.Module
 			currentInfo.Tok.Name().String()))
 	p.DataSources[resourceName] = &currentInfo
 	p.DataSources[legacyResourceName] = &legacyInfo
-	p.P.DataSourcesMap().Set(legacyResourceName, p.P.DataSourcesMap().Get(resourceName))
+	err := shim.CloneResource(p.P.DataSourcesMap(), resourceName, legacyResourceName)
+	contract.AssertNoErrorf(err, "Failed to rename the data source")
 }
 
 func generateResourceName(packageName tokens.Package, moduleName string, moduleMemberName string) string {
