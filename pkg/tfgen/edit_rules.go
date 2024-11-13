@@ -37,6 +37,7 @@ func defaultEditRules() editRules {
 		fixupImports(),
 		// Replace content such as "jdoe@hashicorp.com" with "jdoe@example.com"
 		reReplace("@hashicorp.com", "@example.com", info.PreCodeTranslation),
+		reReplace(`"Managed by Terraform"`, `"Managed by Pulumi"`, info.PreCodeTranslation),
 
 		// The following edit rules may be applied after translating the code sections in a document.
 		// Their primary use case is for the docs translation approach spearheaded in installation_docs.go.
