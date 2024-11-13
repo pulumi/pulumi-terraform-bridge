@@ -143,7 +143,7 @@ func (p *provider) DiffWithContext(
 			checkedInputs,
 		)
 
-		pluginDetailedDiff := make(map[string]plugin.PropertyDiff, len(detailedDiff))
+		pluginDetailedDiff = make(map[string]plugin.PropertyDiff, len(detailedDiff))
 		for k, v := range detailedDiff {
 			pluginDetailedDiff[k] = plugin.PropertyDiff{Kind: plugin.DiffKind(v.Kind), InputDiff: v.InputDiff}
 		}
