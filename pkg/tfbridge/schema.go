@@ -551,7 +551,8 @@ func (ctx *conversionContext) makeTerraformInput(
 		// interpolated variables whose inputs are currently unknown.
 		return makeTerraformUnknown(tfs, ctx.UnknownCollectionsSupported), nil
 	default:
-		contract.Failf("Unexpected value marshaled: %v", v)
+		// TODO
+		contract.Failf("Unexpected value marshaled: %v (%T)", v, v.V)
 		return nil, nil
 	}
 }
