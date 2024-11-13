@@ -1062,7 +1062,12 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 
 	var pinputs resource.PropertyMap
 	if planProv, ok := p.tf.(shim.ProviderWithPlan); ok {
-		state, err := makeTerraformStateWithOpts(ctx, res, oldOutputs.Mappable()["id"].(string), oldOutputs,
+		// TODO: sort out ID
+		resID := "check_id"
+		if oldID, ok := oldOutputs.Mappable()["id"]; ok {
+			resID = oldID.(string)
+		}
+		state, err := makeTerraformStateWithOpts(ctx, res, resID, oldOutputs,
 			makeTerraformStateOptions{
 				defaultZeroSchemaVersion:    opts.defaultZeroSchemaVersion,
 				unknownCollectionsSupported: p.tf.SupportsUnknownCollections(),

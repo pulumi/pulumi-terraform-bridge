@@ -56,7 +56,7 @@ type v2Provider struct {
 	opts []providerOption
 }
 
-var _ shim.Provider = (*v2Provider)(nil)
+var _ shim.ProviderWithPlan = (*v2Provider)(nil)
 
 func NewProvider(p *schema.Provider, opts ...providerOption) shim.Provider {
 	prov := v2Provider{
@@ -111,6 +111,36 @@ func (p v2Provider) stopContext(ctx context.Context) context.Context {
 	//
 	// See: https://github.com/hashicorp/terraform-plugin-sdk/blob/main/helper/schema/grpc_provider.go#L60C1-L60C80
 	return ctx
+}
+
+// TODO: clean up
+func (p v2Provider) ApplyFromPlan(
+	ctx context.Context,
+	t string,
+	s shim.InstanceState,
+	pl shim.InstanceState,
+	input shim.ResourceConfig,
+) (shim.InstanceState, error) {
+	panic("not implemented")
+}
+
+func (p v2Provider) DiffFromPlan(
+	ctx context.Context,
+	t string,
+	s shim.InstanceState,
+	pl shim.InstanceState,
+) (shim.InstanceDiff, error) {
+	panic("not implemented")
+}
+
+func (p v2Provider) Plan(
+	ctx context.Context,
+	t string,
+	s shim.InstanceState,
+	c shim.ResourceConfig,
+	opts shim.DiffOptions,
+) (shim.InstanceState, error) {
+	panic("not implemented")
 }
 
 func (p v2Provider) Apply(

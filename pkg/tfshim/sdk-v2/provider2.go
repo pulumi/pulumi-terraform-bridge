@@ -920,8 +920,23 @@ type planResourceChangeProvider interface {
 		opts shim.DiffOptions,
 	) (shim.InstanceDiff, error)
 
+	DiffFromPlan(
+		ctx context.Context,
+		t string,
+		s shim.InstanceState,
+		pl shim.InstanceState,
+	) (shim.InstanceDiff, error)
+
 	Apply(
 		ctx context.Context, t string, s shim.InstanceState, d shim.InstanceDiff,
+	) (shim.InstanceState, error)
+
+	ApplyFromPlan(
+		ctx context.Context, t string, s shim.InstanceState, pl shim.InstanceState, input shim.ResourceConfig,
+	) (shim.InstanceState, error)
+
+	Plan(
+		ctx context.Context, t string, s shim.InstanceState, c shim.ResourceConfig, opts shim.DiffOptions,
 	) (shim.InstanceState, error)
 
 	Refresh(
@@ -1006,6 +1021,34 @@ func (p *providerWithPlanResourceChangeDispatch) NewDestroyDiff(
 		return p.planResourceChangeProvider.NewDestroyDiff(ctx, t, opts)
 	}
 	return p.Provider.NewDestroyDiff(ctx, t, opts)
+}
+
+func (p *providerWithPlanResourceChangeDispatch) ApplyFromPlan(
+	ctx context.Context, t string, s shim.InstanceState, pl shim.InstanceState, input shim.ResourceConfig,
+) (shim.InstanceState, error) {
+	if p.usePlanResourceChange(t) {
+		return p.planResourceChangeProvider.ApplyFromPlan(ctx, t, s, pl, input)
+	}
+
+	panic("not implemented")
+}
+
+func (p *providerWithPlanResourceChangeDispatch) DiffFromPlan(
+	ctx context.Context, t string, s shim.InstanceState, pl shim.InstanceState,
+) (shim.InstanceDiff, error) {
+	if p.usePlanResourceChange(t) {
+		return p.planResourceChangeProvider.DiffFromPlan(ctx, t, s, pl)
+	}
+	panic("not implemented")
+}
+
+func (p *providerWithPlanResourceChangeDispatch) Plan(
+	ctx context.Context, t string, s shim.InstanceState, c shim.ResourceConfig, opts shim.DiffOptions,
+) (shim.InstanceState, error) {
+	if p.usePlanResourceChange(t) {
+		return p.planResourceChangeProvider.Plan(ctx, t, s, c, opts)
+	}
+	panic("not implemented")
 }
 
 type v2ResourceCustomMap struct {
