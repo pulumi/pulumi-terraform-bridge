@@ -59,6 +59,7 @@ func (p *Provider) RenameResourceWithAlias(resourceName string, legacyTok tokens
 	contract.AssertNoErrorf(err, "Failed to rename the resource")
 }
 
+// RenameDataSource adds an alias to a data source and marks the original as deprecated.
 func (p *Provider) RenameDataSource(resourceName string, legacyTok tokens.ModuleMember, newTok tokens.ModuleMember,
 	legacyModule string, newModule string, info *DataSource,
 ) {

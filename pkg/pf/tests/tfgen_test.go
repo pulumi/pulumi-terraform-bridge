@@ -64,7 +64,7 @@ func TestRenameResourceWithAliasInAugmentedProvider(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestRenameDataSourceWithAliasInAugmentedProvider(t *testing.T) {
+func TestRenameMuxedDataSourceWithAliasInAugmentedProvider(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	discardSink := diag.DefaultSink(os.Stdout, os.Stdout, diag.FormatOptions{Color: colors.Never})
@@ -93,6 +93,9 @@ func TestRenameDataSourceWithAliasInAugmentedProvider(t *testing.T) {
 	i.RenameDataSource(fullDataSourceID, legacyToken, aliasToken, resModule, resModule, nil)
 	_, err := tfgen.GenerateSchema(i, discardSink)
 	require.NoError(t, err)
-	_, err = i.P.(*muxer.ProviderShim).ResolveDispatch(&i)
+	table, err := i.P.(*muxer.ProviderShim).ResolveDispatch(&i)
 	require.NoError(t, err)
+
+	require.Contains(t, table.Functions, string(aliasToken))
+	require.Contains(t, table.Functions, string(legacyToken))
 }
