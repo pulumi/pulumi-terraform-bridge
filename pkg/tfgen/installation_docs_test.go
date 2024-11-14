@@ -131,6 +131,17 @@ func TestDisplayNameFallback(t *testing.T) {
 			pkgName:  "Horse",
 			expected: "Horse",
 		},
+		{
+			name:     "Capitalizes pkgName if lower case",
+			pkgName:  "shetlandpony",
+			expected: "Shetlandpony",
+		},
+		{
+			name:        "Does not alter Display Name",
+			displayName: "Palo Alto Networks Cloud NGFW For AWS Provider",
+			pkgName:     "cloudngfwaws",
+			expected:    "Palo Alto Networks Cloud NGFW For AWS Provider",
+		},
 	}
 	for _, tt := range tests {
 		tt := tt
@@ -145,7 +156,7 @@ func TestDisplayNameFallback(t *testing.T) {
 				},
 				pkg: tokens.NewPackageToken(tokens.PackageName(tt.pkgName)),
 			}
-			actual := getProviderName(g)
+			actual := getProviderDisplayName(g)
 
 			assert.Equal(t, tt.expected, actual)
 		})

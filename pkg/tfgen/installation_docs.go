@@ -33,11 +33,11 @@ func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
 	// Get file content without front matter
 	content := trimFrontMatter(contentBytes)
 
-	providerName := getProviderName(g)
+	providerDisplayName := getProviderDisplayName(g)
 
 	// Add pulumi-specific front matter
 	// Generate pulumi-specific front matter
-	frontMatter := writeFrontMatter(providerName)
+	frontMatter := writeFrontMatter(providerDisplayName)
 
 	// Remove the title. A title gets populated from Hugo frontmatter; we do not want two.
 	content, err = removeTitle(content)
@@ -51,7 +51,7 @@ func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
 	// Generate pulumi-specific installation instructions
 	installationInstructions := writeInstallationInstructions(
 		g.info.Golang.ImportBasePath,
-		providerName,
+		providerDisplayName,
 		g.pkg.Name().String(),
 	)
 
@@ -83,10 +83,7 @@ func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
 	return []byte(contentStr), nil
 }
 
-func writeFrontMatter(providerName string) string {
-	// Capitalize the package name
-	capitalize := cases.Title(language.English)
-	title := capitalize.String(providerName)
+func writeFrontMatter(providerDisplayName string) string {
 	return fmt.Sprintf(delimiter+
 		"# *** WARNING: This file was auto-generated. "+
 		"Do not edit by hand unless you're certain you know what you are doing! ***\n"+
@@ -95,7 +92,7 @@ func writeFrontMatter(providerName string) string {
 		"layout: package\n"+
 		delimiter+
 		"\n",
-		title)
+		providerDisplayName)
 }
 
 // writeInstallationInstructions renders the following for any provider:
@@ -437,10 +434,16 @@ func removeTfVersionMentions() tfbridge.DocsEdit {
 	}
 }
 
-func getProviderName(g *Generator) string {
+func getProviderDisplayName(g *Generator) string {
 	providerName := g.info.DisplayName
 	if providerName != "" {
 		return providerName
 	}
-	return g.pkg.Name().String()
+	// If the provider hasn't set an explicit Display Name, we infer from the package name.
+	providerName = g.pkg.Name().String()
+	// For display purposes, we'll capitalize the name.
+	// This won't always work well - "aws" --> "Aws" isn't necessarily what we want
+	// but it's a reasonable fallback option when info.DisplayName isn't set.
+	capitalize := cases.Title(language.English)
+	return capitalize.String(providerName)
 }
