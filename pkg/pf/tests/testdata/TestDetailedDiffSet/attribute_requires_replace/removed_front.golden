@@ -20,8 +20,7 @@ Terraform will perform the following actions:
       ~ id  = "test-id" -> (known after apply)
       ~ key = [ # forces replacement
           - "val1",
-            "val2",
-            # (1 unchanged element hidden)
+            # (2 unchanged elements hidden)
         ]
     }
 

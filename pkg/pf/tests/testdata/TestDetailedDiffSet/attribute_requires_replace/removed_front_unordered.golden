@@ -20,8 +20,7 @@ Terraform will perform the following actions:
       ~ id  = "test-id" -> (known after apply)
       ~ key = [ # forces replacement
           - "val2",
-            "val3",
-            # (1 unchanged element hidden)
+            # (2 unchanged elements hidden)
         ]
     }
 
@@ -36,9 +35,9 @@ Plan: 1 to add, 0 to change, 1 to destroy.
         [urn=urn:pulumi:test::project::testprovider:index/test:Test::p]
       ~ id  : "test-id" => output<string>
       ~ keys: [
-          ~ [0]: "val2" => "val3"
-          ~ [1]: "val3" => "val1"
-          - [2]: "val1"
+            [0]: "val1"
+          ~ [1]: "val2" => "val3"
+          - [2]: "val3"
         ]
 Resources:
     +-1 to replace
