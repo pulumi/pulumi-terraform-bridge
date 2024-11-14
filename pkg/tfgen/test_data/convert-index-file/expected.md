@@ -6,7 +6,7 @@ layout: package
 ---
 ## Installation
 
-The libvirt provider is available as a package in all Pulumi languages:
+The Libvirt provider is available as a package in all Pulumi languages:
 
 * JavaScript/TypeScript: [`@pulumi/libvirt`](https://www.npmjs.com/package/@pulumi/libvirt)
 * Python: [`pulumi-libvirt`](https://pypi.org/project/pulumi-libvirt/)

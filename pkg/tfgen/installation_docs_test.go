@@ -351,7 +351,7 @@ func TestWriteFrontMatter(t *testing.T) {
 
 	tc := testCase{
 		name:         "Generates Front Matter for installation-configuration.md",
-		providerName: "test",
+		providerName: "Test",
 		expected: delimiter +
 			"# *** WARNING: This file was auto-generated. " +
 			"Do not edit by hand unless you're certain you know what you are doing! ***\n" +
