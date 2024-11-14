@@ -28,7 +28,7 @@ import (
 
 func TestBasic(t *testing.T) {
 	t.Parallel()
-	resMap := map[string]*schema.Resource{
+	tfResourceMap := map[string]*schema.Resource{
 		"prov_test": {
 			Schema: map[string]*schema.Schema{
 				"test": {
@@ -38,8 +38,8 @@ func TestBasic(t *testing.T) {
 			},
 		},
 	}
-	tfp := &schema.Provider{ResourcesMap: resMap}
-	bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
+	tfProvider := &schema.Provider{ResourcesMap: tfResourceMap}
+	bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfProvider)
 	program := `
 name: test
 runtime: yaml
@@ -52,22 +52,22 @@ outputs:
   testOut: ${mainRes.test}
 `
 	pt := pulcheck.PulCheck(t, bridgedProvider, program)
-	res := pt.Up(t)
-	require.Equal(t, "hello", res.Outputs["testOut"].Value)
+	upResult := pt.Up(t)
+	require.Equal(t, "hello", upResult.Outputs["testOut"].Value)
 }
 ```
 
 #### Explanation
 
-`resMap` is a map of Terraform resource types to their schemas. This can be adapted from an existing Terraform provider or created ad-hoc. `tfp` is the Terraform provider which uses `resMap` to construct the provider.
+`tfResourceMap` is a map of Terraform resource types to their schemas. This can be adapted from an existing Terraform provider or created ad-hoc. `tfProvider` is the Terraform provider which uses `tfResourceMap` to construct the provider.
 
 `bridgedProvider` is a wrapper around a Terraform provider that has been instrumented to work with Pulumi. The `pulcheck` package provides a helper to create a bridged provider.
 
 `program` is a Pulumi program that uses the bridged provider. In this example, it creates a single resource and exports its output.
 
-`pt` is an instance of the [`pulumiTest` library](https://github.com/pulumi/providertest/tree/main/pulumitest) which uses Automation API to run the Pulumi program.
+`pt` is an instance of the [`pulumiTest` library](https://github.com/pulumi/providertest/tree/main/pulumitest) which uses Automation API to run the Pulumi program. It is returned by the `PulCheck` helper, which is a wrapper around the `pulumiTest` library specifically for testing bridged providers.
 
-`res` is the result of running the Pulumi program. It contains the outputs of the program as well as GRPC logs and other useful information which can help us assert that the program behaves as expected.
+`upResult` is the result of running the Pulumi program. It contains the outputs of the program as well as GRPC logs and other useful information which can help us assert that the program behaves as expected.
 
 
 ### Example from the Plugin Framework
@@ -107,12 +107,15 @@ resources:
     mainRes:
         type: testprovider:index:Test
         properties:
-            s: "hello"`
+            s: "hello"
+outputs:
+  testOut: ${mainRes.s}`
 
 	pt, err := pulcheck.PulCheck(t, prov, program)
 	require.NoError(t, err)
 
-	pt.Up(t)
+	upResult := pt.Up(t)
+	require.Equal(t, "hello", upResult.Outputs["testOut"].Value)
 }
 ```
 
