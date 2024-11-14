@@ -267,7 +267,7 @@ func TestApplyEditRules(t *testing.T) {
 		},
 		{
 			// Found in azuredevops: https://github.com/pulumi/pulumi-terraform-bridge/issues/2610
-			name: `Replaces "Managed by Terraform" with "Manged by Pulumi"`,
+			name: `Replaces "Managed by Terraform" with "Managed by Pulumi"`,
 			docFile: DocFile{
 				Content: []byte(`
 const example = new azuredevops.Project("example", {
@@ -282,10 +282,11 @@ const example = new azuredevops.Project("example", {
 `),
 		},
 		{
-			name: "Does not replace \"Managed by Terraform\" with \"Manged by Pulumi\" (require quotes)",
-			// It's harder to tell if Managed by Terraform would sense to replace, so we don't do it for now.
+			name: "Does not replace \"Managed by Terraform\" with \"Managed by Pulumi\" if no quotes",
+			// It's harder to tell if Managed by Terraform (without quotes) would make sense to replace,
+			// so we don't do it for now.
 			//
-			// We don't have a canonical example where this does not work.
+			// We don't currently have a canonical example where this breaks docsgen.
 			docFile: DocFile{
 				Content: []byte(`
     This Resource is Managed by Terraform
