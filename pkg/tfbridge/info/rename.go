@@ -59,10 +59,11 @@ func (p *Provider) RenameResourceWithAlias(resourceName string, legacyTok tokens
 	contract.AssertNoErrorf(err, "Failed to rename the resource")
 }
 
-func (p *Provider) RenameDataSource(resourceName string, legacyTok tokens.ModuleMember, newTok tokens.ModuleMember,
+// RenameDataSource adds an alias to a data source and marks the original as deprecated.
+func (p *Provider) RenameDataSource(dataSourceName string, legacyTok tokens.ModuleMember, newTok tokens.ModuleMember,
 	legacyModule string, newModule string, info *DataSource,
 ) {
-	legacyResourceName := resourceName + RenamedEntitySuffix
+	legacyResourceName := dataSourceName + RenamedEntitySuffix
 	if info == nil {
 		info = &DataSource{}
 	}
@@ -82,9 +83,10 @@ func (p *Provider) RenameDataSource(resourceName string, legacyTok tokens.Module
 			legacyInfo.Tok.Name().String()),
 		generateResourceName(currentInfo.Tok.Module().Package(), strings.ToLower(newModule),
 			currentInfo.Tok.Name().String()))
-	p.DataSources[resourceName] = &currentInfo
+	p.DataSources[dataSourceName] = &currentInfo
 	p.DataSources[legacyResourceName] = &legacyInfo
-	p.P.DataSourcesMap().Set(legacyResourceName, p.P.DataSourcesMap().Get(resourceName))
+	err := shim.CloneResource(p.P.DataSourcesMap(), dataSourceName, legacyResourceName)
+	contract.AssertNoErrorf(err, "Failed to rename the data source")
 }
 
 func generateResourceName(packageName tokens.Package, moduleName string, moduleMemberName string) string {
