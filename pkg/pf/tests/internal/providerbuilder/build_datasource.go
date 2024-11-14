@@ -37,9 +37,6 @@ func (r *DataSource) Schema(ctx context.Context, _ datasource.SchemaRequest, re 
 }
 
 func (r *DataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	if r.ReadFunc == nil {
-		return
-	}
 	r.ReadFunc(ctx, req, resp)
 }
 
