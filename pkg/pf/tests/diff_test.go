@@ -1,13 +1,20 @@
 package tfbridgetests
 
 import (
+	"context"
 	"testing"
 
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/defaults"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hexops/autogold/v2"
 	crosstests "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/cross-tests"
 	"github.com/zclconf/go-cty/cty"
 )
+
+func ref[T any](t T) *T { return &t }
 
 func TestSimpleNoDiff(t *testing.T) {
 	t.Parallel()
@@ -40,12 +47,155 @@ Plan: 0 to add, 1 to change, 0 to destroy.
 
 `).Equal(t, res.TFOut)
 	autogold.Expect(`Previewing update (test):
-
- ~  testprovider:index:Test p update [diff: ~key]
-    pulumi:pulumi:Stack project-test
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::project::pulumi:pulumi:Stack::project-test]
+    ~ testprovider:index/test:Test: (update)
+        [id=test-id]
+        [urn=urn:pulumi:test::project::testprovider:index/test:Test::p]
+      ~ key: "value" => "value1"
 Resources:
     ~ 1 to update
     1 unchanged
-
 `).Equal(t, res.PulumiOut)
+}
+
+type stringDefault string
+
+var _ defaults.String = stringDefault("default")
+
+func (s stringDefault) DefaultString(ctx context.Context, req defaults.StringRequest, resp *defaults.StringResponse) {
+	resp.PlanValue = basetypes.NewStringValue(string(s))
+}
+
+func (s stringDefault) PlanModifyString(ctx context.Context, req planmodifier.StringRequest, resp *planmodifier.StringResponse) {
+	if req.PlanValue.IsNull() || req.PlanValue.IsUnknown() {
+		resp.PlanValue = basetypes.NewStringValue(string(s))
+	}
+}
+
+func (s stringDefault) Description(ctx context.Context) string {
+	return "description"
+}
+
+func (s stringDefault) MarkdownDescription(ctx context.Context) string {
+	return "markdown description"
+}
+
+func TestDetailedDiffStringAttribute(t *testing.T) {
+	t.Parallel()
+
+	attributeSchema := rschema.Schema{
+		Attributes: map[string]rschema.Attribute{
+			"key": rschema.StringAttribute{Optional: true},
+		},
+	}
+
+	attributeReplaceSchema := rschema.Schema{
+		Attributes: map[string]rschema.Attribute{
+			"key": rschema.StringAttribute{
+				Optional:      true,
+				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
+			},
+		},
+	}
+
+	attributeSchemaWithDefault := rschema.Schema{
+		Attributes: map[string]rschema.Attribute{
+			"key": rschema.StringAttribute{
+				Optional: true,
+				Computed: true,
+				Default:  stringDefault("default"),
+			},
+		},
+	}
+
+	attributeSchemaWithDefaultReplace := rschema.Schema{
+		Attributes: map[string]rschema.Attribute{
+			"key": rschema.StringAttribute{
+				Optional:      true,
+				Computed:      true,
+				Default:       stringDefault("default"),
+				PlanModifiers: []planmodifier.String{stringplanmodifier.RequiresReplace()},
+			},
+		},
+	}
+
+	attributeSchemaWitPlanModifierDefault := rschema.Schema{
+		Attributes: map[string]rschema.Attribute{
+			"key": rschema.StringAttribute{
+				Optional:      true,
+				Computed:      true,
+				PlanModifiers: []planmodifier.String{stringDefault("default")},
+			},
+		},
+	}
+
+	attributeSchemaWithPlanModifierDefaultReplace := rschema.Schema{
+		Attributes: map[string]rschema.Attribute{
+			"key": rschema.StringAttribute{
+				Optional:      true,
+				Computed:      true,
+				PlanModifiers: []planmodifier.String{stringDefault("default"), stringplanmodifier.RequiresReplace()},
+			},
+		},
+	}
+
+	schemas := []struct {
+		name   string
+		schema rschema.Schema
+	}{
+		{"no replace", attributeSchema},
+		{"replace", attributeReplaceSchema},
+		{"default", attributeSchemaWithDefault},
+		{"default replace", attributeSchemaWithDefaultReplace},
+		{"plan modifier default", attributeSchemaWitPlanModifierDefault},
+		{"plan modifier default replace", attributeSchemaWithPlanModifierDefaultReplace},
+	}
+
+	makeValue := func(s *string) cty.Value {
+		if s == nil {
+			return cty.NullVal(cty.DynamicPseudoType)
+		}
+		return cty.StringVal(*s)
+	}
+
+	scenarios := []struct {
+		name         string
+		initialValue *string
+		changeValue  *string
+	}{
+		{"unchanged", ref("value"), ref("value")},
+		{"changed", ref("value"), ref("value1")},
+		{"added", nil, ref("value")},
+		{"removed", ref("value"), nil},
+	}
+
+	type testOutput struct {
+		initialValue *string
+		changeValue  *string
+		tfOut        string
+		pulumiOut    string
+	}
+
+	for _, schema := range schemas {
+		t.Run(schema.name, func(t *testing.T) {
+			t.Parallel()
+			for _, scenario := range scenarios {
+				t.Run(scenario.name, func(t *testing.T) {
+					t.Parallel()
+					initialValue := makeValue(scenario.initialValue)
+					changeValue := makeValue(scenario.changeValue)
+
+					res := crosstests.Diff(t, schema.schema, map[string]cty.Value{"key": initialValue}, map[string]cty.Value{"key": changeValue})
+
+					autogold.ExpectFile(t, testOutput{
+						initialValue: scenario.initialValue,
+						changeValue:  scenario.changeValue,
+						tfOut:        res.TFOut,
+						pulumiOut:    res.PulumiOut,
+					})
+				})
+			}
+		})
+	}
 }
