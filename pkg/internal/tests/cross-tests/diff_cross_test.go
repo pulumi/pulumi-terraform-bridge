@@ -188,6 +188,8 @@ func TestDiffBasicTypes(t *testing.T) {
 
 			t.Run("no diff", func(t *testing.T) {
 				t.Parallel()
+				res := res
+				tc := tc
 				tfAction := runDiffCheck(t, diffTestCase{
 					Resource: res,
 					Config1:  tc.config1,
@@ -199,6 +201,8 @@ func TestDiffBasicTypes(t *testing.T) {
 
 			t.Run("diff", func(t *testing.T) {
 				t.Parallel()
+				res := res
+				tc := tc
 				tfAction := runDiffCheck(t, diffTestCase{
 					Resource: res,
 					Config1:  tc.config1,
@@ -210,6 +214,8 @@ func TestDiffBasicTypes(t *testing.T) {
 
 			t.Run("create", func(t *testing.T) {
 				t.Parallel()
+				res := res
+				tc := tc
 				tfAction := runDiffCheck(t, diffTestCase{
 					Resource: res,
 					Config1:  nil,
@@ -221,6 +227,8 @@ func TestDiffBasicTypes(t *testing.T) {
 
 			t.Run("delete", func(t *testing.T) {
 				t.Parallel()
+				res := res
+				tc := tc
 				tfAction := runDiffCheck(t, diffTestCase{
 					Resource: res,
 					Config1:  tc.config1,
@@ -233,6 +241,7 @@ func TestDiffBasicTypes(t *testing.T) {
 			t.Run("replace", func(t *testing.T) {
 				t.Parallel()
 				res := res
+				tc := tc
 				res.Schema["prop"].ForceNew = true
 				if nestedRes, ok := res.Schema["prop"].Elem.(*schema.Resource); ok {
 					nestedRes.Schema["x"].ForceNew = true
@@ -249,6 +258,7 @@ func TestDiffBasicTypes(t *testing.T) {
 			t.Run("replace delete first", func(t *testing.T) {
 				t.Parallel()
 				res := res
+				tc := tc
 				res.Schema["prop"].ForceNew = true
 				if nestedRes, ok := res.Schema["prop"].Elem.(*schema.Resource); ok {
 					nestedRes.Schema["x"].ForceNew = true
