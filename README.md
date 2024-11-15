@@ -51,6 +51,8 @@ behavior also leverages the Terraform provider schema, for operations like perfo
 
 This section only matters if you want to build this bridge from scratch, or use it in your own project.
 
+See also the Pulumi Terraform Bridge [developer docs](https://pulumi-developer-docs.readthedocs.io/projects/pulumi-terraform-bridge/en/latest/docs/README.html).
+
 ### Prerequisites
 
 Before doing any development, there are a few prerequisites to install:
