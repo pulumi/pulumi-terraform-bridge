@@ -14,5 +14,6 @@
 /docs/guides/overlays
 /docs/guides/resource-ids
 /docs/guides/sets
+/docs/guides/testing
 /docs/guides/upgrade-sdk-to-mux
 :::
