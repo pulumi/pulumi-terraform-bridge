@@ -12,7 +12,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hexops/autogold/v2"
-	"github.com/pulumi/providertest/pulumitest/opttest"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/pulcheck"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
@@ -768,7 +767,7 @@ func TestDetailedDiffPlainTypes(t *testing.T) {
 		},
 	}
 	tfp := &schema.Provider{ResourcesMap: resMap}
-	bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
+	bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp, pulcheck.EnableAccurateBridgePreviews())
 
 	program := `
 name: test
@@ -1763,9 +1762,7 @@ resources:
 			props2, err := json.Marshal(tc.props2)
 			require.NoError(t, err)
 			program2 := fmt.Sprintf(program, string(props2))
-			// TODO[pulumi/pulumi-terraform-bridge#2517]: remove once accurate bridge previews are rolled out
-			pt := pulcheck.PulCheck(t, bridgedProvider, program1,
-				opttest.Env("PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW", "true"))
+			pt := pulcheck.PulCheck(t, bridgedProvider, program1)
 			pt.Up(t)
 
 			pulumiYamlPath := filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml")
@@ -1870,9 +1867,7 @@ func TestUnknownCollectionForceNewDetailedDiff(t *testing.T) {
 `
 
 	runTest := func(t *testing.T, program2 string, bridgedProvider info.Provider, expectedOutput autogold.Value) {
-		// TODO[pulumi/pulumi-terraform-bridge#2517]: remove once accurate bridge previews are rolled out
-		pt := pulcheck.PulCheck(t, bridgedProvider, initialProgram,
-			opttest.Env("PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW", "true"))
+		pt := pulcheck.PulCheck(t, bridgedProvider, initialProgram)
 		pt.Up(t)
 		pt.WritePulumiYaml(t, program2)
 
@@ -1888,7 +1883,7 @@ func TestUnknownCollectionForceNewDetailedDiff(t *testing.T) {
 		}
 
 		tfp := &schema.Provider{ResourcesMap: resMap}
-		bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
+		bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp, pulcheck.EnableAccurateBridgePreviews())
 		runTest := func(t *testing.T, program2 string, expectedOutput autogold.Value) {
 			runTest(t, program2, bridgedProvider, expectedOutput)
 		}
@@ -1951,7 +1946,7 @@ func TestUnknownCollectionForceNewDetailedDiff(t *testing.T) {
 		}
 
 		tfp := &schema.Provider{ResourcesMap: resMap}
-		bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
+		bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp, pulcheck.EnableAccurateBridgePreviews())
 		runTest := func(t *testing.T, program2 string, expectedOutput autogold.Value) {
 			runTest(t, program2, bridgedProvider, expectedOutput)
 		}
@@ -2014,7 +2009,7 @@ func TestUnknownCollectionForceNewDetailedDiff(t *testing.T) {
 		}
 
 		tfp := &schema.Provider{ResourcesMap: resMap}
-		bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
+		bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp, pulcheck.EnableAccurateBridgePreviews())
 		runTest := func(t *testing.T, program2 string, expectedOutput autogold.Value) {
 			runTest(t, program2, bridgedProvider, expectedOutput)
 		}
@@ -2077,7 +2072,7 @@ func TestUnknownCollectionForceNewDetailedDiff(t *testing.T) {
 		}
 
 		tfp := &schema.Provider{ResourcesMap: resMap}
-		bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
+		bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp, pulcheck.EnableAccurateBridgePreviews())
 		runTest := func(t *testing.T, program2 string, expectedOutput autogold.Value) {
 			runTest(t, program2, bridgedProvider, expectedOutput)
 		}

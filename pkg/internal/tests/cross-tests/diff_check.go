@@ -24,7 +24,6 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/pulumi/providertest/pulumitest/opttest"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/stretchr/testify/assert"
@@ -76,7 +75,7 @@ func runDiffCheck(t T, tc diffTestCase) diffResult {
 
 	resMap := map[string]*schema.Resource{defRtype: tc.Resource}
 	tfp := &schema.Provider{ResourcesMap: resMap}
-	bridgedProvider := pulcheck.BridgedProvider(t, defProviderShortName, tfp)
+	bridgedProvider := pulcheck.BridgedProvider(t, defProviderShortName, tfp, pulcheck.EnableAccurateBridgePreviews())
 	if tc.DeleteBeforeReplace {
 		bridgedProvider.Resources[defRtype].DeleteBeforeReplace = true
 	}
@@ -90,7 +89,7 @@ func runDiffCheck(t T, tc diffTestCase) diffResult {
 	yamlProgram := pd.generateYAML(t, crosstestsimpl.InferPulumiValue(t,
 		bridgedProvider.P.ResourcesMap().Get(defRtype).Schema(), nil, tfConfig1))
 	// TODO[pulumi/pulumi-terraform-bridge#2517]: remove once accurate bridge previews are rolled out
-	pt := pulcheck.PulCheck(t, bridgedProvider, string(yamlProgram), opttest.Env("PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW", "true"))
+	pt := pulcheck.PulCheck(t, bridgedProvider, string(yamlProgram))
 	pt.Up(t)
 
 	yamlProgram = pd.generateYAML(t, crosstestsimpl.InferPulumiValue(t,

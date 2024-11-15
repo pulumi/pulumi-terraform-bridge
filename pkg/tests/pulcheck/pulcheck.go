@@ -127,9 +127,10 @@ type T interface {
 }
 
 type bridgedProviderOpts struct {
-	DisablePlanResourceChange bool
-	StateEdit                 shimv2.PlanStateEditFunc
-	resourceInfo              map[string]*info.Resource
+	DisablePlanResourceChange    bool
+	StateEdit                    shimv2.PlanStateEditFunc
+	resourceInfo                 map[string]*info.Resource
+	EnableAccurateBridgePreviews bool
 }
 
 // BridgedProviderOpts
@@ -139,6 +140,12 @@ type BridgedProviderOpt func(*bridgedProviderOpts)
 func DisablePlanResourceChange() BridgedProviderOpt {
 	return func(o *bridgedProviderOpts) {
 		o.DisablePlanResourceChange = true
+	}
+}
+
+func EnableAccurateBridgePreviews() BridgedProviderOpt {
+	return func(o *bridgedProviderOpts) {
+		o.EnableAccurateBridgePreviews = true
 	}
 }
 
@@ -165,6 +172,14 @@ func BridgedProvider(t T, providerName string, tfp *schema.Provider, opts ...Bri
 
 	EnsureProviderValid(t, tfp)
 
+	// If the PULUMI_ACCURATE_BRIDGE_PREVIEWS environment variable is set, use it to enable
+	// accurate bridge previews.
+	accurateBridgePreviews := os.Getenv("PULUMI_ACCURATE_BRIDGE_PREVIEWS") == "true"
+	// Otherwise, use the value of the EnableAccurateBridgePreviews option.
+	if !accurateBridgePreviews {
+		accurateBridgePreviews = options.EnableAccurateBridgePreviews
+	}
+
 	shimProvider := shimv2.NewProvider(tfp,
 		shimv2.WithPlanResourceChange(
 			func(tfResourceType string) bool { return !options.DisablePlanResourceChange },
@@ -179,6 +194,7 @@ func BridgedProvider(t T, providerName string, tfp *schema.Provider, opts ...Bri
 		MetadataInfo:                   &tfbridge.MetadataInfo{},
 		EnableZeroDefaultSchemaVersion: true,
 		Resources:                      options.resourceInfo,
+		EnableAccurateBridgePreview:    accurateBridgePreviews,
 	}
 	makeToken := func(module, name string) (string, error) {
 		return tokens.MakeStandard(providerName)(module, name)
