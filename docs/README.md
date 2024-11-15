@@ -9,3 +9,6 @@ complete documentation for maintainers of and contributors to the Terraform Brid
 
 self
 guides/README
+Pulumi Developer Documentation <https://pulumi-developer-docs.readthedocs.io/latest/docs/README.html>
+
+:::
