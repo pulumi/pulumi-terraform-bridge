@@ -25,13 +25,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type TfDriver struct {
+type TFDriver struct {
 	cwd            string
 	providerName   string
 	reattachConfig *plugin.ReattachConfig
 }
 
-type TfPlan struct {
+type TFPlan struct {
 	StdOut   string
 	PlanFile string
 	RawPlan  any
@@ -62,7 +62,7 @@ type providerv6 interface {
 }
 
 // This takes a sdkv2 schema.Provider or a providerv6
-func NewTfDriver(t pulcheck.T, dir, providerName string, prov any) *TfDriver {
+func NewTfDriver(t pulcheck.T, dir, providerName string, prov any) *TFDriver {
 	switch p := prov.(type) {
 	case *schema.Provider:
 		return newTfDriverSDK(t, dir, providerName, p)
@@ -74,7 +74,7 @@ func NewTfDriver(t pulcheck.T, dir, providerName string, prov any) *TfDriver {
 	}
 }
 
-func newTfDriverSDK(t pulcheck.T, dir, providerName string, prov *schema.Provider) *TfDriver {
+func newTfDriverSDK(t pulcheck.T, dir, providerName string, prov *schema.Provider) *TFDriver {
 	pulcheck.EnsureProviderValid(t, prov)
 	v6server, err := tf5to6server.UpgradeServer(context.Background(),
 		func() tfprotov5.ProviderServer { return prov.GRPCProvider() })
@@ -82,7 +82,7 @@ func newTfDriverSDK(t pulcheck.T, dir, providerName string, prov *schema.Provide
 	return newTFDriverV6(t, dir, providerName, v6server)
 }
 
-func newTFDriverV6(t pulcheck.T, dir, providerName string, prov tfprotov6.ProviderServer) *TfDriver {
+func newTFDriverV6(t pulcheck.T, dir, providerName string, prov tfprotov6.ProviderServer) *TFDriver {
 	skipUnlessLinux(t)
 	disableTFLogging()
 
@@ -107,20 +107,20 @@ func newTFDriverV6(t pulcheck.T, dir, providerName string, prov tfprotov6.Provid
 	}()
 
 	reattachConfig := <-reattachConfigCh
-	return &TfDriver{
+	return &TFDriver{
 		providerName:   providerName,
 		cwd:            dir,
 		reattachConfig: reattachConfig,
 	}
 }
 
-func (d *TfDriver) Write(t pulcheck.T, program string) {
+func (d *TFDriver) Write(t pulcheck.T, program string) {
 	t.Logf("HCL: \n%s\n", program)
 	err := os.WriteFile(filepath.Join(d.cwd, "test.tf"), []byte(program), 0o600)
 	require.NoErrorf(t, err, "writing test.tf")
 }
 
-func (d *TfDriver) Plan(t pulcheck.T) (*TfPlan, error) {
+func (d *TFDriver) Plan(t pulcheck.T) (*TFPlan, error) {
 	planFile := filepath.Join(d.cwd, "test.tfplan")
 	planStdoutBytes, err := d.execTf(t, "plan", "-refresh=false", "-out", planFile, "-no-color")
 	if err != nil {
@@ -129,18 +129,18 @@ func (d *TfDriver) Plan(t pulcheck.T) (*TfPlan, error) {
 	planStdout := strings.Split(string(planStdoutBytes), "───")[0] // trim unstable output about the plan file
 	stdout, err := d.execTf(t, "show", "-json", planFile)
 	require.NoError(t, err)
-	tp := TfPlan{PlanFile: planFile, StdOut: planStdout}
+	tp := TFPlan{PlanFile: planFile, StdOut: planStdout}
 	err = json.Unmarshal(stdout, &tp.RawPlan)
 	require.NoErrorf(t, err, "failed to unmarshal terraform plan")
 	return &tp, nil
 }
 
-func (d *TfDriver) Apply(t pulcheck.T, plan *TfPlan) error {
+func (d *TFDriver) Apply(t pulcheck.T, plan *TFPlan) error {
 	_, err := d.execTf(t, "apply", "-auto-approve", "-refresh=false", plan.PlanFile)
 	return err
 }
 
-func (d *TfDriver) Show(t pulcheck.T, planFile string) string {
+func (d *TFDriver) Show(t pulcheck.T, planFile string) string {
 	res, err := d.execTf(t, "show", "-json", planFile)
 	require.NoError(t, err)
 	var dst bytes.Buffer
@@ -149,7 +149,7 @@ func (d *TfDriver) Show(t pulcheck.T, planFile string) string {
 	return dst.String()
 }
 
-func (d *TfDriver) GetState(t pulcheck.T) string {
+func (d *TFDriver) GetState(t pulcheck.T) string {
 	res, err := os.ReadFile(path.Join(d.cwd, "terraform.tfstate"))
 	require.NoError(t, err)
 	buf := bytes.NewBuffer(nil)
@@ -158,7 +158,7 @@ func (d *TfDriver) GetState(t pulcheck.T) string {
 	return buf.String()
 }
 
-func (d *TfDriver) GetOutput(t pulcheck.T, outputName string) string {
+func (d *TFDriver) GetOutput(t pulcheck.T, outputName string) string {
 	resB, err := d.execTf(t, "output", outputName)
 	require.NoError(t, err)
 	res := strings.TrimSuffix(string(resB), "\n")
@@ -166,7 +166,7 @@ func (d *TfDriver) GetOutput(t pulcheck.T, outputName string) string {
 	return res
 }
 
-func (d *TfDriver) formatReattachEnvVar() string {
+func (d *TFDriver) formatReattachEnvVar() string {
 	name := d.providerName
 	pluginReattachConfig := d.reattachConfig
 
@@ -198,4 +198,30 @@ func (d *TfDriver) formatReattachEnvVar() string {
 
 	contract.AssertNoErrorf(err, "failed to build TF_REATTACH_PROVIDERS string")
 	return fmt.Sprintf("TF_REATTACH_PROVIDERS=%s", string(reattachBytes))
+}
+
+type TFChange struct {
+	Actions []string       `json:"actions"`
+	Before  map[string]any `json:"before"`
+	After   map[string]any `json:"after"`
+}
+
+// Still discovering the structure of JSON-serialized TF plans. The information required from these is, primarily, is
+// whether the resource is staying unchanged, being updated or replaced. Secondarily, would be also great to know
+// detailed paths of properties causing the change, though that is more difficult to cross-compare with Pulumi.
+//
+// For now this is code is similar to `jq .resource_changes[0].change.actions[0] plan.json`.
+func (*TFDriver) ParseChangesFromTFPlan(plan *TFPlan) TFChange {
+	type p struct {
+		ResourceChanges []struct {
+			Change TFChange `json:"change"`
+		} `json:"resource_changes"`
+	}
+	jb, err := json.Marshal(plan.RawPlan)
+	contract.AssertNoErrorf(err, "failed to marshal terraform plan")
+	var pp p
+	err = json.Unmarshal(jb, &pp)
+	contract.AssertNoErrorf(err, "failed to unmarshal terraform plan")
+	contract.Assertf(len(pp.ResourceChanges) == 1, "expected exactly one resource change")
+	return pp.ResourceChanges[0].Change
 }

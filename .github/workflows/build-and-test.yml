@@ -47,8 +47,6 @@ jobs:
         run: cd pkg/pf && make build
       - name: Test
         run: make test
-      - name: Test PF
-        run: cd pkg/pf && make test
       - name: Test Dynamic
         run: cd dynamic && make test
       - name: Upload coverage reports to Codecov
@@ -72,11 +70,9 @@ jobs:
           cache-dependency-path: |
             **/go.sum
       - name: Install golangci-lint
-        uses: golangci/golangci-lint-action@v4
+        uses: golangci/golangci-lint-action@v6
         with:
           skip-cache: true
-          skip-pkg-cache: true
-          skip-build-cache: true
           version: v1.60
       - name: Lint
         run: make lint

@@ -87,23 +87,19 @@ func TestBigIntOverride(t *testing.T) {
 		},
 	}
 
-	runTest := func(t *testing.T, PRC bool) {
-		tfp := &schema.Provider{ResourcesMap: resMap}
-		opts := []pulcheck.BridgedProviderOpt{}
-		if !PRC {
-			opts = append(opts, pulcheck.DisablePlanResourceChange())
-		}
-		bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp, opts...)
-		bridgedProvider.Resources["prov_test"] = &tfbridge.ResourceInfo{
-			Tok: "prov:index:Test",
-			Fields: map[string]*tfbridge.SchemaInfo{
-				"managed_zone_id": {
-					Type: "string",
-				},
+	tfp := &schema.Provider{ResourcesMap: resMap}
+	opts := []pulcheck.BridgedProviderOpt{}
+	bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp, opts...)
+	bridgedProvider.Resources["prov_test"] = &tfbridge.ResourceInfo{
+		Tok: "prov:index:Test",
+		Fields: map[string]*tfbridge.SchemaInfo{
+			"managed_zone_id": {
+				Type: "string",
 			},
-		}
+		},
+	}
 
-		program := `
+	program := `
 name: test
 runtime: yaml
 resources:
@@ -113,35 +109,26 @@ resources:
             prop: %s
 `
 
-		pt := pulcheck.PulCheck(t, bridgedProvider, fmt.Sprintf(program, "val"))
-		pt.Up(t)
+	pt := pulcheck.PulCheck(t, bridgedProvider, fmt.Sprintf(program, "val"))
+	pt.Up(t)
 
-		// Check the state is correct
-		stack := pt.ExportStack(t)
-		data, err := stack.Deployment.MarshalJSON()
-		require.NoError(t, err)
-		require.Equal(t, fmt.Sprint(bigInt), getZoneFromStack(data))
+	// Check the state is correct
+	stack := pt.ExportStack(t)
+	data, err := stack.Deployment.MarshalJSON()
+	require.NoError(t, err)
+	require.Equal(t, fmt.Sprint(bigInt), getZoneFromStack(data))
 
-		program2 := fmt.Sprintf(program, "val2")
-		pulumiYamlPath := filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml")
-		err = os.WriteFile(pulumiYamlPath, []byte(program2), 0o600)
-		require.NoError(t, err)
+	program2 := fmt.Sprintf(program, "val2")
+	pulumiYamlPath := filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml")
+	err = os.WriteFile(pulumiYamlPath, []byte(program2), 0o600)
+	require.NoError(t, err)
 
-		pt.Up(t)
-		// Check the state is correct
-		stack = pt.ExportStack(t)
-		data, err = stack.Deployment.MarshalJSON()
-		require.NoError(t, err)
-		require.Equal(t, fmt.Sprint(bigInt), getZoneFromStack(data))
-	}
-
-	t.Run("PRC disabled", func(t *testing.T) {
-		runTest(t, false)
-	})
-
-	t.Run("PRC enabled", func(t *testing.T) {
-		runTest(t, true)
-	})
+	pt.Up(t)
+	// Check the state is correct
+	stack = pt.ExportStack(t)
+	data, err = stack.Deployment.MarshalJSON()
+	require.NoError(t, err)
+	require.Equal(t, fmt.Sprint(bigInt), getZoneFromStack(data))
 }
 
 func TestMakeTerraformResultNilVsEmptyMap(t *testing.T) {

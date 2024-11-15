@@ -27,7 +27,7 @@ import (
 )
 
 func TestRegressAws1423(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	ctx := context.Background()
 
 	resource := webaclschema.ResourceWebACL()
@@ -39,11 +39,7 @@ func TestRegressAws1423(t *testing.T) {
 		},
 	}
 
-	p := shimv2.NewProvider(tfProvider,
-		shimv2.WithDiffStrategy(shimv2.PlanState),
-		shimv2.WithPlanResourceChange(func(s string) bool {
-			return s == "aws_wafv2_web_acl"
-		}))
+	p := shimv2.NewProvider(tfProvider)
 
 	info := tfbridge.ProviderInfo{
 		P:           p,

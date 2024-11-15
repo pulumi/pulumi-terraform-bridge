@@ -26,10 +26,17 @@ require (
 
 require (
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
+	github.com/hashicorp/logutils v1.0.0 // indirect
+	github.com/hashicorp/terraform-plugin-sdk/v2 v2.33.0 // indirect
 	github.com/nxadm/tail v1.4.11 // indirect
+	github.com/olekukonko/tablewriter v0.0.5 // indirect
+	github.com/pulumi/terraform-diff-reader v0.0.2 // indirect
 	github.com/teekennedy/goldmark-markdown v0.3.0 // indirect
+	github.com/vmihailenco/msgpack v4.0.4+incompatible // indirect
 	github.com/yuin/goldmark v1.7.4 // indirect
+	google.golang.org/appengine v1.6.8 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
+	gotest.tools v2.2.0+incompatible // indirect
 )
 
 require (

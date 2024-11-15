@@ -28,10 +28,16 @@ func ShimSchemaOnlyProvider(ctx context.Context, provider pfprovider.Provider) s
 	if err != nil {
 		panic(err)
 	}
+	dataSources, err := pfutils.GatherDatasources(ctx, provider, NewSchemaMap)
+	if err != nil {
+		panic(err)
+	}
 	resourceMap := newSchemaOnlyResourceMap(resources)
+	dataSourceMap := newSchemaOnlyDataSourceMap(dataSources)
 	return &SchemaOnlyProvider{
-		ctx:         ctx,
-		tf:          provider,
-		resourceMap: resourceMap,
+		ctx:           ctx,
+		tf:            provider,
+		resourceMap:   resourceMap,
+		dataSourceMap: dataSourceMap,
 	}
 }

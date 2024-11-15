@@ -120,9 +120,7 @@ runtime: yaml
 					},
 				},
 			}
-			shimProvider := shimv2.NewProvider(tfp, shimv2.WithPlanResourceChange(
-				func(tfResourceType string) bool { return true },
-			))
+			shimProvider := shimv2.NewProvider(tfp)
 			schema := shimProvider.ResourcesMap().Get(rtype).Schema()
 			out, err := generateYaml(t, rtoken,
 				crosstestsimpl.InferPulumiValue(t, schema, nil, coalesceInputs(t, tc.schema, tc.tfConfig)))
