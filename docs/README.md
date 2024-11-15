@@ -3,8 +3,24 @@
 Welcome to the Pulumi Terraform Bridge developer documentation! This site is designed to provide
 complete documentation for maintainers of and contributors to the Terraform Bridge as well as authors of Bridged Providers.
 
+Some topics of interest to provider maintainers might be:
 
-Please refer to the {doc}`pulumi:documentation` for information on how to work with the developer docs.
+- {doc}`guides/new-provider`
+- {doc}`guides/muxwith`
+- {doc}`guides/upgrade-sdk-to-mux`
+- {doc}`guides/auto-aliasing`
+- {doc}`guides/automatic-token-mapping`
+- {doc}`guides/docs-edits`
+
+
+Some more advanced topics might be of interest to contributors:
+
+- {doc}`guides/testing`
+- {doc}`guides/sets`
+- {doc}`guides/metadata`
+
+
+Please refer to the main Pulumi {doc}`pulumi:docs/documentation` for information on how to work with the developer docs. The setup for the Pulumi Terraform Bridge developer docs is identical to the setup for the Pulumi developer docs.
 
 :::{toctree}
 :maxdepth: 2
