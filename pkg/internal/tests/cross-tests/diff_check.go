@@ -88,7 +88,6 @@ func runDiffCheck(t T, tc diffTestCase) diffResult {
 
 	yamlProgram := pd.generateYAML(t, crosstestsimpl.InferPulumiValue(t,
 		bridgedProvider.P.ResourcesMap().Get(defRtype).Schema(), nil, tfConfig1))
-	// TODO[pulumi/pulumi-terraform-bridge#2517]: remove once accurate bridge previews are rolled out
 	pt := pulcheck.PulCheck(t, bridgedProvider, string(yamlProgram))
 	pt.Up(t)
 
