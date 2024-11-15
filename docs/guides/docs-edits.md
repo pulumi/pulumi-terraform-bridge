@@ -20,7 +20,7 @@ In this document, we attempt to show the use of the most common of these workaro
 For resource and function pages, the bridge converts docs, adds extra information from the Terraform schema field, and reads the result into the Pulumi provider schema.
 The registry docsgen tool will then later use this information to generate docs pages.
 
-```mermaid
+```{mermaid}
 flowchart LR
 A[Provider:<br> Provide additional edit rules via tfbridge.ProviderInfo.DocRules. Order matters!]--> B(Provider: <br>make tfgen)
 B --> C(Bridge docs.go:<br>Read content of upstream document files at expected location)
@@ -33,7 +33,7 @@ F --> G[Provider:<br> Write examples, description, nested descriptions, and inpu
 For the provider's top-level registry landing page, there is a slightly separate process that writes to a top-level `docs/` folder instead.
 The registry will render this file directly, without registry docsgen.
 
-```mermaid
+```{mermaid}
 flowchart LR
 A[Provider: <br> Provide additional edit rules via tfbridge.ProviderInfo.DocRules. Order matters!] --> B(Provider:<br>pulumi-tfgen<provider> registry-docs -out ../docs)
 B --> C(Bridge installation_docs.go:<br>Read content of upstream index file - index.md or index.html.markdown)   
