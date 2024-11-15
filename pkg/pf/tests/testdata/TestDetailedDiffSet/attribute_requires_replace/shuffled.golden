@@ -10,6 +10,7 @@ tfbridgetests.testOutput{
 		"val2",
 	},
 	tfOut: `
+<<<<<<< HEAD
 Terraform used the selected providers to generate the following execution
 plan. Resource actions are indicated with the following symbols:
 +/- create replacement and then destroy
@@ -29,10 +30,17 @@ Terraform will perform the following actions:
 
 Plan: 1 to add, 0 to change, 1 to destroy.
 
+=======
+No changes. Your infrastructure matches the configuration.
+
+Terraform has compared your real infrastructure against your configuration
+and found no differences, so no changes are needed.
+>>>>>>> master
 `,
 	pulumiOut: `Previewing update (test):
   pulumi:pulumi:Stack: (same)
     [urn=urn:pulumi:test::project::pulumi:pulumi:Stack::project-test]
+<<<<<<< HEAD
     +-testprovider:index/test:Test: (replace)
         [id=test-id]
         [urn=urn:pulumi:test::project::testprovider:index/test:Test::p]
@@ -45,5 +53,9 @@ Plan: 1 to add, 0 to change, 1 to destroy.
 Resources:
     +-1 to replace
     1 unchanged
+=======
+Resources:
+    2 unchanged
+>>>>>>> master
 `,
 }

@@ -14,7 +14,11 @@ Terraform will perform the following actions:
 +/- resource "testprovider_test" "res" {
       ~ id  = "test-id" -> (known after apply)
       ~ key = {
+<<<<<<< HEAD
           ~ "k" = { # forces replacement
+=======
+          + "k" = { # forces replacement
+>>>>>>> master
               + nested = "value"
             },
         }

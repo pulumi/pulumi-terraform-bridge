@@ -17,6 +17,7 @@ import (
 	"context"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
+	dschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
@@ -36,6 +37,7 @@ type Provider struct {
 	Version        string
 	ProviderSchema schema.Schema
 	AllResources   []Resource
+	AllDataSources []DataSource
 
 	configureFunc func(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse)
 }
@@ -58,7 +60,14 @@ func (impl *Provider) Configure(ctx context.Context, req provider.ConfigureReque
 }
 
 func (impl *Provider) DataSources(ctx context.Context) []func() datasource.DataSource {
-	return []func() datasource.DataSource{}
+	d := make([]func() datasource.DataSource, len(impl.AllDataSources))
+	for i := 0; i < len(impl.AllDataSources); i++ {
+		i := i
+		d[i] = func() datasource.DataSource {
+			return &impl.AllDataSources[i]
+		}
+	}
+	return d
 }
 
 func (impl *Provider) Resources(ctx context.Context) []func() resource.Resource {
@@ -81,6 +90,7 @@ type NewProviderArgs struct {
 	Version        string
 	ProviderSchema schema.Schema
 	AllResources   []Resource
+	AllDataSources []DataSource
 
 	ConfigureFunc func(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse)
 }
@@ -92,6 +102,7 @@ func NewProvider(params NewProviderArgs) *Provider {
 		Version:        params.Version,
 		ProviderSchema: params.ProviderSchema,
 		AllResources:   params.AllResources,
+		AllDataSources: params.AllDataSources,
 
 		configureFunc: params.ConfigureFunc,
 	}
@@ -126,6 +137,19 @@ func NewProvider(params NewProviderArgs) *Provider {
 		if r.UpdateFunc == nil {
 			r.UpdateFunc = func(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 				resp.State = tfsdk.State(req.Plan)
+			}
+		}
+	}
+
+	for i := range prov.AllDataSources {
+		d := &prov.AllDataSources[i]
+		if d.DataSourceSchema.Attributes == nil {
+			d.DataSourceSchema.Attributes = map[string]dschema.Attribute{}
+		}
+
+		if d.ReadFunc == nil {
+			d.ReadFunc = func(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
+				resp.State = tfsdk.State(req.Config)
 			}
 		}
 	}
