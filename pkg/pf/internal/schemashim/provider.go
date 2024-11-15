@@ -35,6 +35,7 @@ type SchemaOnlyProvider struct {
 	ctx         context.Context
 	tf          pfprovider.Provider
 	resourceMap shim.ResourceMap
+	dataSourceMap shim.ResourceMap
 }
 
 func (p *SchemaOnlyProvider) Server(ctx context.Context) (tfprotov6.ProviderServer, error) {
@@ -87,11 +88,7 @@ func (p *SchemaOnlyProvider) ResourcesMap() shim.ResourceMap {
 }
 
 func (p *SchemaOnlyProvider) DataSourcesMap() shim.ResourceMap {
-	dataSources, err := pfutils.GatherDatasources(context.TODO(), p.tf, NewSchemaMap)
-	if err != nil {
-		panic(err)
-	}
-	return &schemaOnlyDataSourceMap{dataSources}
+	return p.dataSourceMap
 }
 
 func (p *SchemaOnlyProvider) InternalValidate() error {
