@@ -22,7 +22,7 @@ func runDetailedDiffTest(
 	t *testing.T, resMap map[string]*schema.Resource, program1, program2 string,
 ) (string, map[string]interface{}) {
 	tfp := &schema.Provider{ResourcesMap: resMap}
-	bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
+	bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp, pulcheck.EnableAccurateBridgePreviews())
 	pt := pulcheck.PulCheck(t, bridgedProvider, program1)
 	pt.Up(t)
 	pulumiYamlPath := filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml")
@@ -49,8 +49,7 @@ func runDetailedDiffTest(
 }
 
 func TestDetailedDiffSet(t *testing.T) {
-	// TODO[pulumi/pulumi-terraform-bridge#2517]: Remove this once accurate bridge previews are rolled out
-	t.Setenv("PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW", "true")
+	t.Parallel()
 	runTest := func(t *testing.T, resMap map[string]*schema.Resource, props1, props2 interface{},
 		expected, expectedDetailedDiff autogold.Value,
 	) {
@@ -1716,6 +1715,7 @@ resources:
 		t.Run(tc.name, func(t *testing.T) {
 			for _, forceNew := range []bool{false, true} {
 				t.Run(fmt.Sprintf("ForceNew=%v", forceNew), func(t *testing.T) {
+					t.Parallel()
 					expected := tc.expectedAttr
 					if forceNew {
 						expected = tc.expectedAttrForceNew
@@ -1828,8 +1828,7 @@ outputs:
 }
 
 func TestDetailedDiffUnknownSetAttributeElement(t *testing.T) {
-	// TODO[pulumi/pulumi-terraform-bridge#2517]: Remove this once accurate bridge previews are rolled out
-	t.Setenv("PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW", "true")
+	t.Parallel()
 	resMap := map[string]*schema.Resource{
 		"prov_test": {
 			Schema: map[string]*schema.Schema{
@@ -2037,8 +2036,7 @@ func TestDetailedDiffUnknownSetAttributeElement(t *testing.T) {
 }
 
 func TestUnknownSetAttributeDiff(t *testing.T) {
-	// TODO[pulumi/pulumi-terraform-bridge#2517]: Remove this once accurate bridge previews are rolled out
-	t.Setenv("PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW", "true")
+	t.Parallel()
 	resMap := map[string]*schema.Resource{
 		"prov_test": {
 			Schema: map[string]*schema.Schema{
@@ -2110,8 +2108,7 @@ func TestUnknownSetAttributeDiff(t *testing.T) {
 }
 
 func TestDetailedDiffSetDuplicates(t *testing.T) {
-	// TODO[pulumi/pulumi-terraform-bridge#2517]: Remove this once accurate bridge previews are rolled out
-	t.Setenv("PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW", "true")
+	t.Parallel()
 	resMap := map[string]*schema.Resource{
 		"prov_test": {
 			Schema: map[string]*schema.Schema{
@@ -2126,7 +2123,7 @@ func TestDetailedDiffSetDuplicates(t *testing.T) {
 		},
 	}
 	tfp := &schema.Provider{ResourcesMap: resMap}
-	bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
+	bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp, pulcheck.EnableAccurateBridgePreviews())
 
 	program := `
 name: test
@@ -2200,9 +2197,7 @@ Plan: 0 to add, 1 to change, 0 to destroy.
 }
 
 func TestDetailedDiffSetNestedAttributeUpdated(t *testing.T) {
-	// TODO[pulumi/pulumi-terraform-bridge#2517]: Remove this once accurate bridge previews are rolled out
-	t.Setenv("PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW", "true")
-
+	t.Parallel()
 	resMap := map[string]*schema.Resource{
 		"prov_test": {
 			Schema: map[string]*schema.Schema{
@@ -2232,7 +2227,7 @@ func TestDetailedDiffSetNestedAttributeUpdated(t *testing.T) {
 
 	tfp := &schema.Provider{ResourcesMap: resMap}
 
-	bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
+	bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp, pulcheck.EnableAccurateBridgePreviews())
 
 	program := `
 name: test
@@ -2367,9 +2362,7 @@ Plan: 0 to add, 1 to change, 0 to destroy.
 }
 
 func TestDetailedDiffSetComputedNestedAttribute(t *testing.T) {
-	// TODO[pulumi/pulumi-terraform-bridge#2517]: Remove this once accurate bridge previews are rolled out
-	t.Setenv("PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW", "true")
-
+	t.Parallel()
 	resCount := 0
 	setComputedProp := func(t *testing.T, d *schema.ResourceData, _ interface{}) diag.Diagnostics {
 		testSet := d.Get("test").(*schema.Set)
@@ -2421,7 +2414,7 @@ func TestDetailedDiffSetComputedNestedAttribute(t *testing.T) {
 	}
 
 	tfp := &schema.Provider{ResourcesMap: resMap}
-	bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
+	bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp, pulcheck.EnableAccurateBridgePreviews())
 
 	program := `
 name: test

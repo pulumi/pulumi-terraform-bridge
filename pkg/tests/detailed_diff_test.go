@@ -703,8 +703,7 @@ resources:
 }
 
 func TestDetailedDiffPlainTypes(t *testing.T) {
-	// TODO[pulumi/pulumi-terraform-bridge#2517]: Remove this once accurate bridge previews are rolled out
-	t.Setenv("PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW", "true")
+	t.Parallel()
 	resMap := map[string]*schema.Resource{
 		"prov_test": {
 			Schema: map[string]*schema.Schema{
@@ -768,7 +767,7 @@ func TestDetailedDiffPlainTypes(t *testing.T) {
 		},
 	}
 	tfp := &schema.Provider{ResourcesMap: resMap}
-	bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
+	bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp, pulcheck.EnableAccurateBridgePreviews())
 
 	program := `
 name: test
@@ -1779,9 +1778,7 @@ resources:
 }
 
 func TestUnknownCollectionForceNewDetailedDiff(t *testing.T) {
-	// TODO[pulumi/pulumi-terraform-bridge#2517]: Remove this once accurate bridge previews are rolled out
-	t.Setenv("PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW", "true")
-
+	t.Parallel()
 	collectionForceNewResource := func(typ schema.ValueType) *schema.Resource {
 		return &schema.Resource{
 			Schema: map[string]*schema.Schema{
@@ -1886,7 +1883,7 @@ func TestUnknownCollectionForceNewDetailedDiff(t *testing.T) {
 		}
 
 		tfp := &schema.Provider{ResourcesMap: resMap}
-		bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
+		bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp, pulcheck.EnableAccurateBridgePreviews())
 		runTest := func(t *testing.T, program2 string, expectedOutput autogold.Value) {
 			runTest(t, program2, bridgedProvider, expectedOutput)
 		}
@@ -1949,7 +1946,7 @@ func TestUnknownCollectionForceNewDetailedDiff(t *testing.T) {
 		}
 
 		tfp := &schema.Provider{ResourcesMap: resMap}
-		bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
+		bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp, pulcheck.EnableAccurateBridgePreviews())
 		runTest := func(t *testing.T, program2 string, expectedOutput autogold.Value) {
 			runTest(t, program2, bridgedProvider, expectedOutput)
 		}
@@ -2012,7 +2009,7 @@ func TestUnknownCollectionForceNewDetailedDiff(t *testing.T) {
 		}
 
 		tfp := &schema.Provider{ResourcesMap: resMap}
-		bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
+		bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp, pulcheck.EnableAccurateBridgePreviews())
 		runTest := func(t *testing.T, program2 string, expectedOutput autogold.Value) {
 			runTest(t, program2, bridgedProvider, expectedOutput)
 		}
@@ -2075,7 +2072,7 @@ func TestUnknownCollectionForceNewDetailedDiff(t *testing.T) {
 		}
 
 		tfp := &schema.Provider{ResourcesMap: resMap}
-		bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
+		bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp, pulcheck.EnableAccurateBridgePreviews())
 		runTest := func(t *testing.T, program2 string, expectedOutput autogold.Value) {
 			runTest(t, program2, bridgedProvider, expectedOutput)
 		}
