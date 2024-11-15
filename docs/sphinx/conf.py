@@ -52,7 +52,8 @@ myst_enable_extensions = [
     "colon_fence",
     "deflist",
     "fieldlist",
-]
+
+myst_fence_as_directive = ["mermaid"]]
 
 myst_links_external_new_tab = True
 

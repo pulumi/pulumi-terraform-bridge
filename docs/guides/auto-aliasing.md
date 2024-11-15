@@ -53,7 +53,7 @@ from.
 
 The dataflow for aliases history goes like this:
 
-```{mermaid}
+```mermaid
 flowchart TD
     A["Field History\n(bridge-metadata.json)"] -->|go:embed| B["resources.go: func Provider()"]
     B --> C["Token Mapping\n(manual & automatic)"]
