@@ -127,20 +127,13 @@ type T interface {
 }
 
 type bridgedProviderOpts struct {
-	DisablePlanResourceChange bool
-	StateEdit                 shimv2.PlanStateEditFunc
-	resourceInfo              map[string]*info.Resource
+	StateEdit    shimv2.PlanStateEditFunc
+	resourceInfo map[string]*info.Resource
+	configInfo   map[string]*info.Schema
 }
 
 // BridgedProviderOpts
 type BridgedProviderOpt func(*bridgedProviderOpts)
-
-// WithPlanResourceChange
-func DisablePlanResourceChange() BridgedProviderOpt {
-	return func(o *bridgedProviderOpts) {
-		o.DisablePlanResourceChange = true
-	}
-}
 
 func WithStateEdit(f shimv2.PlanStateEditFunc) BridgedProviderOpt {
 	return func(o *bridgedProviderOpts) {
@@ -156,6 +149,14 @@ func WithResourceInfo(info map[string]*info.Resource) BridgedProviderOpt {
 	return func(o *bridgedProviderOpts) { o.resourceInfo = info }
 }
 
+// WithResourceInfo allows the user to set the info.Provider.Config field within a
+// [BridgedProvider].
+//
+// This is an experimental API.
+func WithConfigInfo(info map[string]*info.Schema) BridgedProviderOpt {
+	return func(o *bridgedProviderOpts) { o.configInfo = info }
+}
+
 // This is an experimental API.
 func BridgedProvider(t T, providerName string, tfp *schema.Provider, opts ...BridgedProviderOpt) info.Provider {
 	var options bridgedProviderOpts
@@ -166,9 +167,6 @@ func BridgedProvider(t T, providerName string, tfp *schema.Provider, opts ...Bri
 	EnsureProviderValid(t, tfp)
 
 	shimProvider := shimv2.NewProvider(tfp,
-		shimv2.WithPlanResourceChange(
-			func(tfResourceType string) bool { return !options.DisablePlanResourceChange },
-		),
 		shimv2.WithPlanStateEdit(options.StateEdit),
 	)
 
@@ -179,6 +177,7 @@ func BridgedProvider(t T, providerName string, tfp *schema.Provider, opts ...Bri
 		MetadataInfo:                   &tfbridge.MetadataInfo{},
 		EnableZeroDefaultSchemaVersion: true,
 		Resources:                      options.resourceInfo,
+		Config:                         options.configInfo,
 	}
 	makeToken := func(module, name string) (string, error) {
 		return tokens.MakeStandard(providerName)(module, name)

@@ -33,7 +33,7 @@ import (
 )
 
 func TestRenameResourceWithAliasInAugmentedProvider(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	ctx := context.Background()
 	discardSink := diag.DefaultSink(os.Stdout, os.Stdout, diag.FormatOptions{Color: colors.Never})
 	providerID := "my"
@@ -62,4 +62,40 @@ func TestRenameResourceWithAliasInAugmentedProvider(t *testing.T) {
 	require.NoError(t, err)
 	_, err = i.P.(*muxer.ProviderShim).ResolveDispatch(&i)
 	require.NoError(t, err)
+}
+
+func TestRenameMuxedDataSourceWithAliasInAugmentedProvider(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	discardSink := diag.DefaultSink(os.Stdout, os.Stdout, diag.FormatOptions{Color: colors.Never})
+	providerID := "my"
+	dataSourceID := "ds"
+	fullDataSourceID := fmt.Sprintf("%s_%s", providerID, dataSourceID)
+	resModule := "mod"
+	baselineProvider := (&helper.Provider{}).Shim()
+	pfProvider := pb.NewProvider(pb.NewProviderArgs{
+		TypeName: providerID,
+		AllDataSources: []providerbuilder.DataSource{
+			{Name: dataSourceID},
+		},
+	})
+
+	legacyToken := tokens.ModuleMember(fmt.Sprintf("my:%s:DataSource", resModule))
+	aliasToken := tokens.ModuleMember(fmt.Sprintf("my:%s:LegacyDataSource", resModule))
+	di := &info.DataSource{Tok: legacyToken}
+	i := info.Provider{
+		Name: providerID,
+		P:    muxer.AugmentShimWithPF(ctx, baselineProvider, pfProvider),
+		DataSources: map[string]*info.DataSource{
+			fullDataSourceID: di,
+		},
+	}
+	i.RenameDataSource(fullDataSourceID, legacyToken, aliasToken, resModule, resModule, nil)
+	_, err := tfgen.GenerateSchema(i, discardSink)
+	require.NoError(t, err)
+	table, err := i.P.(*muxer.ProviderShim).ResolveDispatch(&i)
+	require.NoError(t, err)
+
+	require.Contains(t, table.Functions, string(aliasToken))
+	require.Contains(t, table.Functions, string(legacyToken))
 }

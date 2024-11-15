@@ -535,9 +535,7 @@ func TestRegress1932(t *testing.T) {
 					},
 				},
 			},
-		}, shimv2.WithPlanResourceChange(func(s string) bool {
-			return true
-		})),
+		}),
 		Name:           "aws",
 		ResourcePrefix: "example",
 		Resources: map[string]*tfbridge.ResourceInfo{
@@ -661,9 +659,7 @@ func TestReproMinimalDiffCycle(t *testing.T) {
 			ResourcesMap: map[string]*schema.Resource{
 				"example_resource": resource,
 			},
-		}, shimv2.WithPlanResourceChange(func(tfResourceType string) bool {
-			return true
-		})),
+		}),
 		Name:           "testprov",
 		ResourcePrefix: "example",
 		Resources: map[string]*tfbridge.ResourceInfo{
@@ -743,7 +739,7 @@ func TestValidateConfig(t *testing.T) {
 					},
 				},
 			},
-		}, shimv2.WithDiffStrategy(shimv2.PlanState)),
+		}),
 		Name:           "testprov",
 		ResourcePrefix: "example",
 	}, newTestProviderOptions{})

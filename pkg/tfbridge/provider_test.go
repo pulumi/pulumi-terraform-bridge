@@ -526,12 +526,6 @@ func TestIgnoreChangesV2(t *testing.T) {
 	testIgnoreChangesV2(t, shimv2.NewProvider(testTFProviderV2))
 }
 
-func TestIgnoreChangesV2WithPlanResourceChange(t *testing.T) {
-	t.Parallel()
-	opt := shimv2.WithPlanResourceChange(func(string) bool { return true })
-	testIgnoreChangesV2(t, shimv2.NewProvider(testTFProviderV2, opt))
-}
-
 func testIgnoreChangesV2(t *testing.T, prov shim.Provider) {
 	provider := &Provider{
 		tf:     prov,
@@ -3286,17 +3280,9 @@ func TestPreConfigureCallbackEmitsFailures(t *testing.T) {
 
 func TestImport(t *testing.T) {
 	t.Parallel()
-	t.Run("sdkv2", func(t *testing.T) {
-		testImport(t, func(p *schema.Provider) shim.Provider {
-			return shimv2.NewProvider(p)
-		})
-	})
-	t.Run("sdkv2/planResourceChange", func(t *testing.T) {
-		testImport(t, func(p *schema.Provider) shim.Provider {
-			return shimv2.NewProvider(p, shimv2.WithPlanResourceChange(func(s string) bool {
-				return true
-			}))
-		})
+
+	testImport(t, func(p *schema.Provider) shim.Provider {
+		return shimv2.NewProvider(p)
 	})
 }
 
@@ -3383,17 +3369,8 @@ func testImport(t *testing.T, newProvider func(*schema.Provider) shim.Provider) 
 
 func TestRefresh(t *testing.T) {
 	t.Parallel()
-	t.Run("sdkv2", func(t *testing.T) {
-		testRefresh(t, func(p *schema.Provider) shim.Provider {
-			return shimv2.NewProvider(p)
-		})
-	})
-	t.Run("sdkv2/planResourceChange", func(t *testing.T) {
-		testRefresh(t, func(p *schema.Provider) shim.Provider {
-			return shimv2.NewProvider(p, shimv2.WithPlanResourceChange(func(s string) bool {
-				return true
-			}))
-		})
+	testRefresh(t, func(p *schema.Provider) shim.Provider {
+		return shimv2.NewProvider(p)
 	})
 }
 
@@ -3531,17 +3508,9 @@ func testRefresh(t *testing.T, newProvider func(*schema.Provider) shim.Provider)
 
 func TestDestroy(t *testing.T) {
 	t.Parallel()
-	t.Run("sdkv2", func(t *testing.T) {
-		testDestroy(t, func(p *schema.Provider) shim.Provider {
-			return shimv2.NewProvider(p)
-		})
-	})
-	t.Run("sdkv2/planResourceChange", func(t *testing.T) {
-		testDestroy(t, func(p *schema.Provider) shim.Provider {
-			return shimv2.NewProvider(p, shimv2.WithPlanResourceChange(func(s string) bool {
-				return true
-			}))
-		})
+
+	testDestroy(t, func(p *schema.Provider) shim.Provider {
+		return shimv2.NewProvider(p)
 	})
 }
 
@@ -4177,10 +4146,7 @@ func TestCustomTimeouts(t *testing.T) {
 			},
 		}
 
-		shimmedProvider := shimv2.NewProvider(upstreamProvider,
-			shimv2.WithPlanResourceChange(func(tfResourceType string) bool {
-				return true
-			}))
+		shimmedProvider := shimv2.NewProvider(upstreamProvider)
 
 		bridgedProvider := &Provider{
 			tf:   shimmedProvider,
@@ -4368,7 +4334,7 @@ func TestProviderMetaPlanResourceChangeNoError(t *testing.T) {
 	}
 	p.SetMeta(otherMetaType{val: "foo"})
 
-	shimProv := shimv2.NewProvider(p, shimv2.WithPlanResourceChange(func(string) bool { return true }))
+	shimProv := shimv2.NewProvider(p)
 	provider := &Provider{
 		tf:     shimProv,
 		config: shimv2.NewSchemaMap(p.Schema),
@@ -4715,7 +4681,7 @@ func TestPlanResourceChangeStateUpgrade(t *testing.T) {
 			},
 		},
 	}
-	shimProv := shimv2.NewProvider(p, shimv2.WithPlanResourceChange(func(tfResourceType string) bool { return true }))
+	shimProv := shimv2.NewProvider(p)
 	provider := &Provider{
 		tf:     shimProv,
 		config: shimv2.NewSchemaMap(p.Schema),
@@ -4867,413 +4833,7 @@ func TestUnknowns(t *testing.T) {
 		Schema:       map[string]*schemav2.Schema{},
 		ResourcesMap: UnknownsSchema(),
 	}
-	shimProv := shimv2.NewProvider(p, shimv2.WithPlanResourceChange(func(tfResourceType string) bool { return false }))
-	provider := &Provider{
-		tf:     shimProv,
-		config: shimv2.NewSchemaMap(p.Schema),
-		info: ProviderInfo{
-			P:              shimProv,
-			ResourcePrefix: "example",
-			Resources: map[string]*ResourceInfo{
-				"example_resource": {Tok: "ExampleResource"},
-			},
-		},
-	}
-	provider.initResourceMaps()
-
-	t.Run("unknown for string prop", func(t *testing.T) {
-		testutils.Replay(t, provider, `
-	{
-		"method": "/pulumirpc.ResourceProvider/Create",
-		"request": {
-			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
-			"properties":{
-				"__defaults":[],
-				"stringProp":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
-			},
-			"preview":true
-		},
-		"response": {
-			"properties":{
-				"id":""
-			}
-		}
-	}`)
-	})
-
-	t.Run("unknown for set prop", func(t *testing.T) {
-		testutils.Replay(t, provider, `
-	{
-		"method": "/pulumirpc.ResourceProvider/Create",
-		"request": {
-			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
-			"properties":{
-				"__defaults":[],
-				"setProps":["04da6b54-80e4-46f7-96ec-b56ff0331ba9"]
-			},
-			"preview":true
-		},
-		"response": {
-			"properties":{
-				"id":""
-			}
-		}
-	}`)
-	})
-
-	t.Run("unknown for set block prop subprop", func(t *testing.T) {
-		testutils.Replay(t, provider, `
-	{
-		"method": "/pulumirpc.ResourceProvider/Create",
-		"request": {
-			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
-			"properties":{
-				"__defaults":[],
-				"setBlockProps":[{"prop":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"}]
-			},
-			"preview":true
-		},
-		"response": {
-			"properties":{
-				"id":""
-			}
-		}
-	}`)
-	})
-
-	t.Run("unknown for set block prop", func(t *testing.T) {
-		testutils.Replay(t, provider, `
-	{
-		"method": "/pulumirpc.ResourceProvider/Create",
-		"request": {
-			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
-			"properties":{
-				"__defaults":[],
-				"setBlockProps":["04da6b54-80e4-46f7-96ec-b56ff0331ba9"]
-			},
-			"preview":true
-		},
-		"response": {
-			"properties":{
-				"id":""
-			}
-		}
-	}`)
-	})
-
-	t.Run("unknown for set block prop collection", func(t *testing.T) {
-		// TODO[pulumi/pulumi-terraform-bridge#1885]
-		testutils.Replay(t, provider, `
-	{
-		"method": "/pulumirpc.ResourceProvider/Create",
-		"request": {
-			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
-			"properties":{
-				"__defaults":[],
-				"setBlockProps":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
-			},
-			"preview":true
-		},
-		"response": {
-			"properties":{
-				"id":""
-			}
-		}
-	}`)
-	})
-
-	t.Run("unknown for list prop", func(t *testing.T) {
-		testutils.Replay(t, provider, `
-	{
-		"method": "/pulumirpc.ResourceProvider/Create",
-		"request": {
-			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
-			"properties":{
-				"__defaults":[],
-				"listProps":["04da6b54-80e4-46f7-96ec-b56ff0331ba9"]
-			},
-			"preview":true
-		},
-		"response": {
-			"properties":{
-				"id": ""
-			}
-		}
-	}`)
-	})
-
-	t.Run("unknown for list block prop subprop", func(t *testing.T) {
-		testutils.Replay(t, provider, `
-	{
-		"method": "/pulumirpc.ResourceProvider/Create",
-		"request": {
-			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
-			"properties":{
-				"__defaults":[],
-				"listBlockProps":[{"prop":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"}]
-			},
-			"preview":true
-		},
-		"response": {
-			"properties":{
-				"id":"",
-				"listBlockProps":[{"prop":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"}]
-			}
-		}
-	}`)
-	})
-
-	t.Run("unknown for list block prop", func(t *testing.T) {
-		testutils.Replay(t, provider, `
-	{
-		"method": "/pulumirpc.ResourceProvider/Create",
-		"request": {
-			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
-			"properties":{
-				"__defaults":[],
-				"listBlockProps":["04da6b54-80e4-46f7-96ec-b56ff0331ba9"]
-			},
-			"preview":true
-		},
-		"response": {
-			"properties":{
-				"id":""
-			}
-		}
-	}`)
-	})
-
-	t.Run("unknown for list block prop collection", func(t *testing.T) {
-		// TODO[pulumi/pulumi-terraform-bridge#1885]
-		testutils.Replay(t, provider, `
-	{
-		"method": "/pulumirpc.ResourceProvider/Create",
-		"request": {
-			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
-			"properties":{
-				"__defaults":[],
-				"listBlockProps":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
-			},
-			"preview":true
-		},
-		"response": {
-			"properties":{
-				"id":""
-			}
-		}
-	}`)
-	})
-
-	t.Run("unknown for nested list prop", func(t *testing.T) {
-		// The unknownness gets promoted one level up. This seems to be TF behaviour, independent of PRC.
-		testutils.Replay(t, provider, `
-	{
-		"method": "/pulumirpc.ResourceProvider/Create",
-		"request": {
-			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
-			"properties":{
-				"__defaults":[],
-				"nestedListProps":[["04da6b54-80e4-46f7-96ec-b56ff0331ba9"]]
-			},
-			"preview":true
-		},
-		"response": {
-			"properties":{
-				"id":"",
-				"nestedListProps":["04da6b54-80e4-46f7-96ec-b56ff0331ba9"]
-			}
-		}
-	}`)
-	})
-
-	t.Run("unknown for nested list block prop nested subprop", func(t *testing.T) {
-		testutils.Replay(t, provider, `
-	{
-		"method": "/pulumirpc.ResourceProvider/Create",
-		"request": {
-			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
-			"properties":{
-				"__defaults":[],
-				"nestedListBlockProps":[{"nestedProps":[{"prop":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"}]}]
-			},
-			"preview":true
-		},
-		"response": {
-			"properties":{
-				"id":"",
-				"nestedListBlockProps":[{"nestedProps":[{"prop":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"}]}]
-			}
-		}
-	}`)
-	})
-
-	t.Run("unknown for nested list block nested prop", func(t *testing.T) {
-		testutils.Replay(t, provider, `
-	{
-		"method": "/pulumirpc.ResourceProvider/Create",
-		"request": {
-			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
-			"properties":{
-				"__defaults":[],
-				"nestedListBlockProps":[{"nestedProps":["04da6b54-80e4-46f7-96ec-b56ff0331ba9"]}]
-			},
-			"preview":true
-		},
-		"response": {
-			"properties":{
-				"id":"",
-				"nestedListBlockProps":[{"nestedProps":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"}]
-			}
-		}
-	}`)
-	})
-
-	t.Run("unknown for nested list block prop nested collection", func(t *testing.T) {
-		// TODO[pulumi/pulumi-terraform-bridge#1885]
-		testutils.Replay(t, provider, `
-	{
-		"method": "/pulumirpc.ResourceProvider/Create",
-		"request": {
-			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
-			"properties":{
-				"__defaults":[],
-				"nestedListBlockProps":[{"nestedProps":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"}]
-			},
-			"preview":true
-		},
-		"response": {
-			"properties":{
-				"id":"",
-				"nestedListBlockProps":[{"nestedProps":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"}]
-			}
-		}
-	}`)
-	})
-
-	t.Run("unknown for nested list block prop", func(t *testing.T) {
-		testutils.Replay(t, provider, `
-	{
-		"method": "/pulumirpc.ResourceProvider/Create",
-		"request": {
-			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
-			"properties":{
-				"__defaults":[],
-				"nestedListBlockProps":["04da6b54-80e4-46f7-96ec-b56ff0331ba9"]
-			},
-			"preview":true
-		},
-		"response": {
-			"properties":{
-				"id":""
-			}
-		}
-	}`)
-	})
-
-	t.Run("unknown for nested list block prop collection", func(t *testing.T) {
-		// TODO[pulumi/pulumi-terraform-bridge#1885]
-		testutils.Replay(t, provider, `
-	{
-		"method": "/pulumirpc.ResourceProvider/Create",
-		"request": {
-			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
-			"properties":{
-				"__defaults":[],
-				"nestedListBlockProps":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
-			},
-			"preview":true
-		},
-		"response": {
-			"properties":{
-				"id":""
-			}
-		}
-	}`)
-	})
-
-	t.Run("unknown for max items one prop", func(t *testing.T) {
-		testutils.Replay(t, provider, `
-	{
-		"method": "/pulumirpc.ResourceProvider/Create",
-		"request": {
-			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
-			"properties":{
-				"__defaults":[],
-				"maxItemsOneProp":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
-			},
-			"preview":true
-		},
-		"response": {
-			"properties":{
-				"id":""
-			}
-		}
-	}`)
-	})
-
-	t.Run("unknown for max items one block prop", func(t *testing.T) {
-		testutils.Replay(t, provider, `
-	{
-		"method": "/pulumirpc.ResourceProvider/Create",
-		"request": {
-			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
-			"properties":{
-				"__defaults":[],
-				"maxItemsOneBlockProp":{"prop":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"}
-			},
-			"preview":true
-		},
-		"response": {
-			"properties":{
-				"id":"",
-				"maxItemsOneBlockProp": {"prop":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"}
-			}
-		}
-	}`)
-	})
-
-	t.Run("unknown for max items one block", func(t *testing.T) {
-		testutils.Replay(t, provider, `
-	{
-		"method": "/pulumirpc.ResourceProvider/Create",
-		"request": {
-			"urn": "urn:pulumi:dev::teststack::ExampleResource::exres",
-			"properties":{
-				"__defaults":[],
-				"maxItemsOneBlockProp":"04da6b54-80e4-46f7-96ec-b56ff0331ba9"
-			},
-			"preview":true
-		},
-		"response": {
-			"properties":{
-				"id":""
-			}
-		}
-	}`)
-	})
-}
-
-func TestPlanResourceChangeUnknowns(t *testing.T) {
-	t.Parallel()
-	// Related to [pulumi/pulumi-terraform-bridge#1885]
-	// This test is to ensure that we can handle unknowns in the schema.
-	// Note that the behaviour here might not match TF and can NOT match TF completely
-	// as HCL has no way of expressing unknown blocks.
-	// We currently have a workaround in makeTerraformInputs where we convert unknown blocks
-	// to blocks of unknown.
-	//
-	// The structure is that for each property we inject an unknown at every level.
-	// For the block tests:
-	// _subprop is an unknown for the subproperty in the block object
-	// _prop is an unknown for the whole block
-	// _collection is an unknown for the whole collection
-	// The nested match the above convention but also iterate over the nested object.
-
-	p := &schemav2.Provider{
-		Schema:       map[string]*schemav2.Schema{},
-		ResourcesMap: UnknownsSchema(),
-	}
-	shimProv := shimv2.NewProvider(p, shimv2.WithPlanResourceChange(func(tfResourceType string) bool { return true }))
+	shimProv := shimv2.NewProvider(p)
 	provider := &Provider{
 		tf:     shimProv,
 		config: shimv2.NewSchemaMap(p.Schema),

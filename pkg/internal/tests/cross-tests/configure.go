@@ -20,7 +20,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/stretchr/testify/require"
 	"github.com/zclconf/go-cty/cty"
 	"gopkg.in/yaml.v3"
@@ -64,7 +63,7 @@ func Configure(
 	} else {
 		puConfig = crosstestsimpl.InferPulumiValue(t,
 			shimv2.NewSchemaMap(provider),
-			opts.resourceInfo.GetFields(),
+			opts.providerInfo,
 			tfConfig,
 		)
 	}
@@ -121,40 +120,39 @@ func Configure(
 
 	bridgedProvider := pulcheck.BridgedProvider(
 		t, defProviderShortName, makeProvider(&puResult),
-		pulcheck.WithResourceInfo(map[string]*info.Resource{defRtype: opts.resourceInfo}),
+		pulcheck.WithConfigInfo(opts.providerInfo),
+		pulcheck.WithResourceInfo(map[string]*info.Resource{defRtype: {Tok: defRtoken}}),
 	)
-	pd := &pulumiDriver{
-		name:                defProviderShortName,
-		pulumiResourceToken: "pulumi:providers:" + defProviderShortName,
-	}
 
-	data, err := generateYaml(t, pd.pulumiResourceToken, puConfig)
+	data, err := generateYaml(t, "pulumi:providers:"+defProviderShortName, puConfig)
 	require.NoErrorf(t, err, "generateYaml")
 	data["resources"].(map[string]any)["res"] = map[string]any{
-		"type":       "crosstests:Res",
+		"type":       defRtoken,
 		"properties": map[string]any{},
+		"options": map[string]any{
+			"provider": "${example}",
+		},
 	}
-	b, err := yaml.Marshal(data)
+	yamlProgram, err := yaml.Marshal(data)
 	require.NoErrorf(t, err, "marshaling Pulumi.yaml")
-	t.Logf("\n\n%s", b)
-
-	yamlProgram := pd.generateYAML(t, puConfig)
+	t.Logf("\n\n%s", yamlProgram)
 
 	pt := pulcheck.PulCheck(t, bridgedProvider, string(yamlProgram))
-
 	pt.Up(t)
 
-	require.True(t, puResult.wasSet, "pulumi configure result was not set")
-	// We don't create a resource for Pulumi since `pulumi up` will always provision a provider, even when
-	// it won't be used in any resource creation.
-	//
-	//	require.True(t, puResult.resourceCreated, "pulumi resource result was not set")
+	if !puResult.wasSet {
+		log, err := pt.GrpcLog(t).Marshal()
+		require.NoError(t, err)
+		require.Failf(t, "puResult was not set", "pulumi configure result was not set (.resourceCreated = %t)\n%s",
+			puResult.resourceCreated, string(log))
+	}
+	require.True(t, puResult.resourceCreated, "pulumi resource result was not set")
 
 	assertResourceDataEqual(t, provider, tfResult.data, puResult.data)
 }
 
 type configureOpts struct {
-	resourceInfo *info.Resource
+	providerInfo map[string]*info.Schema
 	puConfig     *resource.PropertyMap
 }
 
@@ -162,9 +160,8 @@ type configureOpts struct {
 type ConfigureOption func(*configureOpts)
 
 // CreateResourceInfo specifies an [info.Resource] to apply to the resource under test.
-func ConfigureProviderInfo(info info.Resource) ConfigureOption {
-	contract.Assertf(info.Tok == "", "cannot set info.Tok, it will not be respected")
-	return func(o *configureOpts) { o.resourceInfo = &info }
+func ConfigureProviderInfo(info map[string]*info.Schema) ConfigureOption {
+	return func(o *configureOpts) { o.providerInfo = info }
 }
 
 // ConfigurePulumiConfig specifies an explicit pulumi value for the configure call.

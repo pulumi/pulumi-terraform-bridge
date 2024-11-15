@@ -116,7 +116,7 @@ func TestRegressAws2352(t *testing.T) {
 		},
 	}
 
-	p := shimv2.NewProvider(tfProvider, shimv2.WithDiffStrategy(shimv2.PlanState))
+	p := shimv2.NewProvider(tfProvider)
 
 	info := tfbridge.ProviderInfo{
 		P:           p,
