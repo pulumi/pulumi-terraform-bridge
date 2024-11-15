@@ -1,4 +1,6 @@
-# Automatic Aliasing (`ApplyAutoAliases`)
+# Automatic Aliasing
+
+## Automatic Aliasing (`ApplyAutoAliases`)
 
 Automatically applies backwards compatibility best practices.
 
@@ -51,7 +53,7 @@ from.
 
 The dataflow for aliases history goes like this:
 
-``` mermaid
+```mermaid
 flowchart TD
     A["Field History\n(bridge-metadata.json)"] -->|go:embed| B["resources.go: func Provider()"]
     B --> C["Token Mapping\n(manual & automatic)"]
@@ -110,7 +112,7 @@ For example, this is the (abbreviated & modified) history for GCP's compute auto
 
 Here are the details of each action as it applies to `"google_compute_autoscaler" in turn:
 
-# Call `ProviderInfo.RenameResourceWithAlias` or `ProviderInfo.RenameDataSource`
+## Call `ProviderInfo.RenameResourceWithAlias` or `ProviderInfo.RenameDataSource`
 
 "google_compute_autoscaler.majorVersion" tells us that this record was last updated at
 major version 6. One of the previous names is also at major version 6, so we want to
@@ -122,7 +124,7 @@ for the old Pulumi token
 hard aliased when `make tfgen` is run on version 7, since we are then allowed to make
 breaking changes.
 
-# Edit `ResourceInfo.Aliases`
+## Edit `ResourceInfo.Aliases`
 
 In this history, we have recorded two prior names for "google_compute_autoscaler":
 "gcp:auto/autoscalar:Autoscalar" and "gcp:auto/scaler:Scaler". Since
@@ -132,7 +134,7 @@ full backwards compatibility. Instead, we will apply a type alias to
 ""gcp:auto/scaler:Scaler"}`. This makes it easy for consumers to upgrade from the old
 name to the new.
 
-# Edit `SchemaInfo.MaxItemsOne`
+## Edit `SchemaInfo.MaxItemsOne`
 
 The provider has been shipped with fields that could have `MaxItemsOne` applied. Any
 change here is breaking to our users, so we prevent it. As long as the provider's major
