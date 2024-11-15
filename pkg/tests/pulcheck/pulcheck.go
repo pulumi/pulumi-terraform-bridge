@@ -127,13 +127,20 @@ type T interface {
 }
 
 type bridgedProviderOpts struct {
-	StateEdit    shimv2.PlanStateEditFunc
-	resourceInfo map[string]*info.Resource
-	configInfo   map[string]*info.Schema
+	StateEdit                    shimv2.PlanStateEditFunc
+	resourceInfo                 map[string]*info.Resource
+	configInfo                   map[string]*info.Schema
+	EnableAccurateBridgePreviews bool
 }
 
 // BridgedProviderOpts
 type BridgedProviderOpt func(*bridgedProviderOpts)
+
+func EnableAccurateBridgePreviews() BridgedProviderOpt {
+	return func(o *bridgedProviderOpts) {
+		o.EnableAccurateBridgePreviews = true
+	}
+}
 
 func WithStateEdit(f shimv2.PlanStateEditFunc) BridgedProviderOpt {
 	return func(o *bridgedProviderOpts) {
@@ -166,6 +173,14 @@ func BridgedProvider(t T, providerName string, tfp *schema.Provider, opts ...Bri
 
 	EnsureProviderValid(t, tfp)
 
+	// If the PULUMI_ACCURATE_BRIDGE_PREVIEWS environment variable is set, use it to enable
+	// accurate bridge previews.
+	accurateBridgePreviews := os.Getenv("PULUMI_ACCURATE_BRIDGE_PREVIEWS") == "true"
+	// Otherwise, use the value of the EnableAccurateBridgePreviews option.
+	if !accurateBridgePreviews {
+		accurateBridgePreviews = options.EnableAccurateBridgePreviews
+	}
+
 	shimProvider := shimv2.NewProvider(tfp,
 		shimv2.WithPlanStateEdit(options.StateEdit),
 	)
@@ -177,6 +192,7 @@ func BridgedProvider(t T, providerName string, tfp *schema.Provider, opts ...Bri
 		MetadataInfo:                   &tfbridge.MetadataInfo{},
 		EnableZeroDefaultSchemaVersion: true,
 		Resources:                      options.resourceInfo,
+		EnableAccurateBridgePreview:    accurateBridgePreviews,
 		Config:                         options.configInfo,
 	}
 	makeToken := func(module, name string) (string, error) {
@@ -194,7 +210,7 @@ func skipUnlessLinux(t T) {
 }
 
 // This is an experimental API.
-func PulCheck(t T, bridgedProvider info.Provider, program string) *pulumitest.PulumiTest {
+func PulCheck(t T, bridgedProvider info.Provider, program string, opts ...opttest.Option) *pulumitest.PulumiTest {
 	skipUnlessLinux(t)
 	puwd := t.TempDir()
 	p := filepath.Join(puwd, "Pulumi.yaml")
@@ -203,7 +219,7 @@ func PulCheck(t T, bridgedProvider info.Provider, program string) *pulumitest.Pu
 	err := os.WriteFile(p, []byte(program), 0o600)
 	require.NoError(t, err)
 
-	opts := []opttest.Option{
+	defaultOpts := []opttest.Option{
 		opttest.Env("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "true"),
 		opttest.TestInPlace(),
 		opttest.SkipInstall(),
@@ -217,5 +233,6 @@ func PulCheck(t T, bridgedProvider info.Provider, program string) *pulumitest.Pu
 		),
 	}
 
-	return pulumitest.NewPulumiTest(t, puwd, opts...)
+	defaultOpts = append(defaultOpts, opts...)
+	return pulumitest.NewPulumiTest(t, puwd, defaultOpts...)
 }

@@ -58,7 +58,7 @@ func runDiffCheck(t T, tc diffTestCase) crosstestsimpl.DiffResult {
 
 	resMap := map[string]*schema.Resource{defRtype: tc.Resource}
 	tfp := &schema.Provider{ResourcesMap: resMap}
-	bridgedProvider := pulcheck.BridgedProvider(t, defProviderShortName, tfp)
+	bridgedProvider := pulcheck.BridgedProvider(t, defProviderShortName, tfp, pulcheck.EnableAccurateBridgePreviews())
 	if tc.DeleteBeforeReplace {
 		bridgedProvider.Resources[defRtype].DeleteBeforeReplace = true
 	}

@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/tfcheck"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/require"
 	"github.com/zclconf/go-cty/cty"
@@ -120,7 +121,7 @@ func Diff(t T, schema rschema.Schema, tfConfig1, tfConfig2 map[string]cty.Value,
 	t.Logf("Pulumi.yaml:\n%s", string(bytes))
 	pt.WritePulumiYaml(t, string(bytes))
 
-	previewRes := pt.Preview(t)
+	previewRes := pt.Preview(t, optpreview.Diff())
 	pulumiRes := pt.Up(t)
 	diffResponse := crosstestsimpl.GetPulumiDiffResponse(t, pt.GrpcLog(t).Entries)
 

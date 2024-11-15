@@ -131,6 +131,17 @@ func TestDisplayNameFallback(t *testing.T) {
 			pkgName:  "Horse",
 			expected: "Horse",
 		},
+		{
+			name:     "Capitalizes pkgName if lower case",
+			pkgName:  "shetlandpony",
+			expected: "Shetlandpony",
+		},
+		{
+			name:        "Does not alter Display Name",
+			displayName: "Palo Alto Networks Cloud NGFW For AWS Provider",
+			pkgName:     "cloudngfwaws",
+			expected:    "Palo Alto Networks Cloud NGFW For AWS Provider",
+		},
 	}
 	for _, tt := range tests {
 		tt := tt
@@ -145,7 +156,7 @@ func TestDisplayNameFallback(t *testing.T) {
 				},
 				pkg: tokens.NewPackageToken(tokens.PackageName(tt.pkgName)),
 			}
-			actual := getProviderName(g)
+			actual := getProviderDisplayName(g)
 
 			assert.Equal(t, tt.expected, actual)
 		})
@@ -340,7 +351,7 @@ func TestWriteFrontMatter(t *testing.T) {
 
 	tc := testCase{
 		name:         "Generates Front Matter for installation-configuration.md",
-		providerName: "test",
+		providerName: "Test",
 		expected: delimiter +
 			"# *** WARNING: This file was auto-generated. " +
 			"Do not edit by hand unless you're certain you know what you are doing! ***\n" +

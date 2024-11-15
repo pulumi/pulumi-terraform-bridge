@@ -1,0 +1,54 @@
+tfbridgetests.testOutput{
+	initialValue: &[]string{
+		"val2",
+		"val3",
+	},
+	changeValue: &[]string{
+		"val2",
+		"val3",
+		"val1",
+	},
+	tfOut: `
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
++/- create replacement and then destroy
+
+Terraform will perform the following actions:
+
+  # testprovider_test.res must be replaced
++/- resource "testprovider_test" "res" {
+      ~ id  = "test-id" -> (known after apply)
+      ~ key = [
+          + { # forces replacement
+              + nested = "val1"
+            },
+            # (2 unchanged elements hidden)
+        ]
+    }
+
+Plan: 1 to add, 0 to change, 1 to destroy.
+
+`,
+	pulumiOut: `Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::project::pulumi:pulumi:Stack::project-test]
+    +-testprovider:index/test:Test: (replace)
+        [id=test-id]
+        [urn=urn:pulumi:test::project::testprovider:index/test:Test::p]
+      ~ id  : "test-id" => output<string>
+      ~ keys: [
+          ~ [0]: {
+                  ~ nested: "val2" => "val1"
+                }
+          ~ [1]: {
+                  ~ nested: "val3" => "val2"
+                }
+          + [2]: {
+                  + nested: "val3"
+                }
+        ]
+Resources:
+    +-1 to replace
+    1 unchanged
+`,
+}

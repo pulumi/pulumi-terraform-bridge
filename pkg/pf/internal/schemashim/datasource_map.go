@@ -17,39 +17,16 @@ package schemashim
 import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/runtypes"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 )
 
-type schemaOnlyDataSourceMap struct {
-	dataSources runtypes.DataSources
-}
-
-var _ shim.ResourceMap = (*schemaOnlyDataSourceMap)(nil)
-
-func (m *schemaOnlyDataSourceMap) Len() int {
-	return len(m.dataSources.All())
-}
-
-func (m *schemaOnlyDataSourceMap) Get(key string) shim.Resource {
-	s := m.dataSources.Schema(runtypes.TypeName(key))
-	return &schemaOnlyDataSource{s}
-}
-
-func (m *schemaOnlyDataSourceMap) GetOk(key string) (shim.Resource, bool) {
-	if !m.dataSources.Has(runtypes.TypeName(key)) {
-		return nil, false
+// Data Source map needs to support Set (mutability) for RenameDataSource.
+func newSchemaOnlyDataSourceMap(dataSources runtypes.DataSources) shim.ResourceMap {
+	m := schema.ResourceMap{}
+	for _, name := range dataSources.All() {
+		key := string(name)
+		v := dataSources.Schema(name)
+		m[key] = &schemaOnlyDataSource{v}
 	}
-	return m.Get(key), true
-}
-
-func (m *schemaOnlyDataSourceMap) Range(each func(key string, value shim.Resource) bool) {
-	for _, typeName := range m.dataSources.All() {
-		key := string(typeName)
-		if !each(key, m.Get(key)) {
-			return
-		}
-	}
-}
-
-func (*schemaOnlyDataSourceMap) Set(key string, value shim.Resource) {
-	panic("Set not supported - is it possible to treat this as immutable?")
+	return m
 }

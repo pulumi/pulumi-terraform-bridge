@@ -265,6 +265,37 @@ func TestApplyEditRules(t *testing.T) {
 			expected: []byte("# Configuration Reference"),
 			phase:    info.PostCodeTranslation,
 		},
+		{
+			// Found in azuredevops: https://github.com/pulumi/pulumi-terraform-bridge/issues/2610
+			name: `Replaces "Managed by Terraform" with "Managed by Pulumi"`,
+			docFile: DocFile{
+				Content: []byte(`
+const example = new azuredevops.Project("example", {
+    description: "Managed by Terraform",
+});
+`),
+			},
+			expected: []byte(`
+const example = new azuredevops.Project("example", {
+    description: "Managed by Pulumi",
+});
+`),
+		},
+		{
+			name: "Does not replace \"Managed by Terraform\" with \"Managed by Pulumi\" if no quotes",
+			// It's harder to tell if Managed by Terraform (without quotes) would make sense to replace,
+			// so we don't do it for now.
+			//
+			// We don't currently have a canonical example where this breaks docsgen.
+			docFile: DocFile{
+				Content: []byte(`
+    This Resource is Managed by Terraform
+`),
+			},
+			expected: []byte(`
+    This Resource is Managed by Terraform
+`),
+		},
 	}
 	edits := defaultEditRules()
 

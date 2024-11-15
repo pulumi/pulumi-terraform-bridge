@@ -20,6 +20,7 @@ import (
 	"testing"
 
 	"encoding/json"
+
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -229,6 +230,7 @@ func TestCreateResourceWithDynamicAttribute(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			r := pb.Resource{
 				Name: "r",
 				CreateFunc: func(

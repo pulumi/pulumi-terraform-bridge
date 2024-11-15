@@ -16,12 +16,18 @@ package parse
 
 import (
 	"bytes"
+	"fmt"
+	"strings"
 
+	"github.com/olekukonko/tablewriter"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	markdown "github.com/teekennedy/goldmark-markdown"
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/ast"
 	"github.com/yuin/goldmark/extension"
+	extensionast "github.com/yuin/goldmark/extension/ast"
 	"github.com/yuin/goldmark/parser"
+	"github.com/yuin/goldmark/renderer"
 	"github.com/yuin/goldmark/text"
 	"github.com/yuin/goldmark/util"
 
@@ -37,12 +43,42 @@ var TFRegistryExtension goldmark.Extender = tfRegistryExtension{}
 type tfRegistryExtension struct{}
 
 func (s tfRegistryExtension) Extend(md goldmark.Markdown) {
+	md.SetRenderer(markdown.NewRenderer())
 	extension.GFM.Extend(md)
 	section.Extension.Extend(md)
 	md.Parser().AddOptions(
 		parser.WithASTTransformers(
 			util.Prioritized(recognizeHeaderAfterHTML{}, 902),
 		))
+	md.Renderer().AddOptions(renderer.WithNodeRenderers(
+		// The markdown renderer we use does not support rendering out tables.[^1].
+		//
+		// Without intervention, tables are rendered out as HTML. This works fine
+		// for the registry (since it renders HTML). It works poorly for SDK docs,
+		// since the HTML content is shown as-is.
+		//
+		// [^1]: https://github.com/teekennedy/goldmark-markdown/issues/19
+		util.Prioritized(tableRenderer{md.Renderer()}, 499),
+		// The markdown renderer we use does not support rendering raw
+		// [ast.String] nodes.[^2] We just render them out as-is.
+		//
+		//nolint:lll
+		//
+		// [^2]: https://github.com/teekennedy/goldmark-markdown/blob/0cdef017688474073914d6db7e293a028150c0cb/renderer.go#L95-L96
+		util.Prioritized(renderType{
+			kind: ast.KindString,
+			f: func(
+				writer util.BufWriter,
+				_ []byte, n ast.Node, entering bool,
+			) (ast.WalkStatus, error) {
+				if !entering {
+					return ast.WalkContinue, nil
+				}
+				_, err := writer.Write(n.(*ast.String).Value)
+				return ast.WalkContinue, err
+			},
+		}, 100),
+	))
 }
 
 // recognizeHeaderAfterHTML allows us to work around a difference in how TF's registry parses
@@ -84,4 +120,100 @@ func WalkNode[T ast.Node](node ast.Node, f func(T)) {
 		return ast.WalkContinue, nil
 	})
 	contract.AssertNoErrorf(err, "impossible: ast.Walk never returns an error")
+}
+
+type renderType struct {
+	kind ast.NodeKind
+	f    renderer.NodeRendererFunc
+}
+
+func (renderType renderType) RegisterFuncs(r renderer.NodeRendererFuncRegisterer) {
+	r.Register(renderType.kind, renderType.f)
+}
+
+func panicOnRender(writer util.BufWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
+	contract.Failf("The renderer for %s should not have been called", n.Kind())
+	return ast.WalkStop, nil
+}
+
+var _ renderer.NodeRenderer = (*tableRenderer)(nil)
+
+type tableRenderer struct {
+	renderer.Renderer
+}
+
+func (tableRenderer tableRenderer) RegisterFuncs(r renderer.NodeRendererFuncRegisterer) {
+	r.Register(extensionast.KindTable, tableRenderer.render)
+	r.Register(extensionast.KindTableHeader, panicOnRender)
+	r.Register(extensionast.KindTableRow, panicOnRender)
+	r.Register(extensionast.KindTableCell,
+		func(writer util.BufWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
+			return ast.WalkContinue, nil
+		})
+}
+
+func (tableRenderer tableRenderer) render(
+	writer util.BufWriter, source []byte, n ast.Node, entering bool,
+) (ast.WalkStatus, error) {
+	if !entering {
+		return ast.WalkSkipChildren, nil
+	}
+	_, err := writer.WriteRune('\n') // this is so that we have a newline between markdown elements.
+	contract.AssertNoErrorf(err, "impossible")
+	var inHeader bool
+	header := make([]string, 0, len(n.(*extensionast.Table).Alignments))
+	var rows [][]string
+	err = ast.Walk(n, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
+		switch n := n.(type) {
+		case *extensionast.Table:
+			return ast.WalkContinue, nil
+		case *extensionast.TableHeader:
+			inHeader = entering
+			return ast.WalkContinue, nil
+		case *extensionast.TableRow:
+			if entering {
+				rows = append(rows, make([]string, 0, len(n.Alignments)))
+			}
+			return ast.WalkContinue, nil
+		case *extensionast.TableCell:
+			if entering {
+				var cell bytes.Buffer
+				textBlock := ast.NewTextBlock()
+				child := n.FirstChild()
+				for {
+					if child == nil {
+						break
+					}
+					next := child.NextSibling()
+					textBlock.AppendChild(textBlock, child)
+					child = next
+				}
+				err := tableRenderer.Render(&cell, source, textBlock)
+				if err != nil {
+					return ast.WalkStop, err
+				}
+				content := strings.TrimSpace(cell.String())
+				if inHeader {
+					header = append(header, content)
+				} else {
+					rows[len(rows)-1] = append(rows[len(rows)-1], content)
+				}
+			}
+			return ast.WalkSkipChildren, nil
+		default:
+			return ast.WalkStop, fmt.Errorf("unexpected node in a table: %s", n.Kind())
+		}
+	})
+	table := tablewriter.NewWriter(writer)
+	table.SetHeader(header)
+	table.SetBorders(tablewriter.Border{Left: true, Top: false, Right: true, Bottom: false})
+	table.SetCenterSeparator("|")
+	table.SetAutoFormatHeaders(false)
+	table.SetAutoMergeCells(false)
+	table.SetAutoWrapText(false)
+	table.SetReflowDuringAutoWrap(false)
+	table.AppendBulk(rows)
+	table.Render()
+
+	return ast.WalkSkipChildren, err
 }

@@ -6,7 +6,7 @@ go 1.22.0
 
 toolchain go1.23.1
 
-require github.com/pulumi/pulumi-terraform-bridge/v3 v3.94.0
+require github.com/pulumi/pulumi-terraform-bridge/v3 v3.95.0
 
 require (
 	dario.cat/mergo v1.0.0 // indirect
@@ -136,6 +136,7 @@ require (
 	github.com/muesli/cancelreader v0.2.2 // indirect
 	github.com/natefinch/atomic v1.0.1 // indirect
 	github.com/oklog/run v1.1.0 // indirect
+	github.com/olekukonko/tablewriter v0.0.5 // indirect
 	github.com/opentracing/basictracer-go v1.1.0 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/pgavlin/goldmark v1.1.33-0.20200616210433-b5eb04559386 // indirect
