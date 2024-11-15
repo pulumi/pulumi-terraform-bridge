@@ -40,20 +40,6 @@ Plan: 0 to add, 1 to change, 0 to destroy.
     ~ testprovider:index/test:Test: (update)
         [id=test-id]
         [urn=urn:pulumi:test::project::testprovider:index/test:Test::p]
-<<<<<<< HEAD
-=======
-      ~ keys: [
-          ~ [0]: {
-                  ~ nested: "val2" => "val1"
-                }
-          ~ [1]: {
-                  ~ nested: "val3" => "val2"
-                }
-          + [2]: {
-                  + nested: "val3"
-                }
-        ]
->>>>>>> master
 Resources:
     ~ 1 to update
     1 unchanged

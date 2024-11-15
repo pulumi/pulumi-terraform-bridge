@@ -19,14 +19,8 @@ Terraform will perform the following actions:
 +/- resource "testprovider_test" "res" {
       ~ id  = "test-id" -> (known after apply)
       ~ key = [ # forces replacement
-<<<<<<< HEAD
-            # (1 unchanged element hidden)
-            "val3",
-          - "val1",
-=======
           - "val1",
             # (2 unchanged elements hidden)
->>>>>>> master
         ]
     }
 
@@ -41,15 +35,9 @@ Plan: 1 to add, 0 to change, 1 to destroy.
         [urn=urn:pulumi:test::project::testprovider:index/test:Test::p]
       ~ id  : "test-id" => output<string>
       ~ keys: [
-<<<<<<< HEAD
-            [0]: "val2"
-            [1]: "val3"
-          - [2]: "val1"
-=======
           ~ [0]: "val1" => "val2"
           ~ [1]: "val2" => "val3"
           - [2]: "val3"
->>>>>>> master
         ]
 Resources:
     +-1 to replace
