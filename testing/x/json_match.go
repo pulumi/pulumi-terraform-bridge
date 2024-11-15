@@ -18,11 +18,11 @@ import (
 	pkgtesting "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/x/testing"
 )
 
-// TODO(Deprecated): Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/x/testing.JSONMatchOption instead.
+// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/x/testing.JSONMatchOption instead.
 type JSONMatchOption = pkgtesting.JSONMatchOption
 
-// TODO(Deprecated): Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/x/testing.WithUnorderedArrayPaths instead.
+// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/x/testing.WithUnorderedArrayPaths instead.
 var WithUnorderedArrayPaths = pkgtesting.WithUnorderedArrayPaths
 
-// TODO(Deprecated): Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/x/testing.AssertJSONMatchesPattern instead.
+// Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/x/testing.AssertJSONMatchesPattern instead.
 var AssertJSONMatchesPattern = pkgtesting.AssertJSONMatchesPattern

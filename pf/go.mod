@@ -1,3 +1,5 @@
+// Deprecated: use the github.com/pulumi/pulumi-terraform-bridge/v3 module instead.
+
 module github.com/pulumi/pulumi-terraform-bridge/pf
 
 go 1.22.0
