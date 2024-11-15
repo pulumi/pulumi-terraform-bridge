@@ -656,6 +656,7 @@ resources:
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			computedProgram := fmt.Sprintf(tc.program, "null", "null")
 
 			t.Run("initial preview", func(t *testing.T) {
@@ -667,6 +668,7 @@ resources:
 			})
 
 			t.Run("update preview", func(t *testing.T) {
+				t.Parallel()
 				t.Skipf("Skipping this test as it this case is not handled by the TF plugin sdk")
 				// The TF plugin SDK does not handle removing an input for a computed value, even if the provider implements it.
 				// The plugin SDK always fills an empty Computed property with the value from the state.
@@ -686,6 +688,7 @@ resources:
 			})
 
 			t.Run("update preview with computed", func(t *testing.T) {
+				t.Parallel()
 				pt := pulcheck.PulCheck(t, bridgedProvider, tc.initialKnownProgram)
 				pt.Up(t)
 
