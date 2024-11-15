@@ -54,14 +54,6 @@ func TestUnchangedBasicObject(t *testing.T) {
 
 func TestDiffBasicTypes(t *testing.T) {
 	t.Parallel()
-	res := &schema.Resource{
-		Schema: map[string]*schema.Schema{
-			"other_prop": {
-				Type:     schema.TypeString,
-				Optional: true,
-			},
-		},
-	}
 
 	typeCases := []struct {
 		name             string
@@ -179,19 +171,32 @@ func TestDiffBasicTypes(t *testing.T) {
 	}
 
 	for _, tc := range typeCases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			res := res
-			tc := tc
-			res.Schema["prop"] = tc.prop
+			res := func(forceNew bool) *schema.Resource {
+				res := &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"other_prop": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"prop": tc.prop,
+					},
+				}
+
+				if forceNew {
+					res.Schema["prop"].ForceNew = true
+					if nestedRes, ok := res.Schema["prop"].Elem.(*schema.Resource); ok {
+						nestedRes.Schema["x"].ForceNew = true
+					}
+				}
+
+				return res
+			}
 
 			t.Run("no diff", func(t *testing.T) {
-				t.Parallel()
-				res := res
-				tc := tc
 				tfAction := runDiffCheck(t, diffTestCase{
-					Resource: res,
+					Resource: res(false),
 					Config1:  tc.config1,
 					Config2:  tc.config1,
 				})
@@ -200,11 +205,8 @@ func TestDiffBasicTypes(t *testing.T) {
 			})
 
 			t.Run("diff", func(t *testing.T) {
-				t.Parallel()
-				res := res
-				tc := tc
 				tfAction := runDiffCheck(t, diffTestCase{
-					Resource: res,
+					Resource: res(false),
 					Config1:  tc.config1,
 					Config2:  tc.config2,
 				})
@@ -213,11 +215,8 @@ func TestDiffBasicTypes(t *testing.T) {
 			})
 
 			t.Run("create", func(t *testing.T) {
-				t.Parallel()
-				res := res
-				tc := tc
 				tfAction := runDiffCheck(t, diffTestCase{
-					Resource: res,
+					Resource: res(false),
 					Config1:  nil,
 					Config2:  tc.config1,
 				})
@@ -226,11 +225,8 @@ func TestDiffBasicTypes(t *testing.T) {
 			})
 
 			t.Run("delete", func(t *testing.T) {
-				t.Parallel()
-				res := res
-				tc := tc
 				tfAction := runDiffCheck(t, diffTestCase{
-					Resource: res,
+					Resource: res(false),
 					Config1:  tc.config1,
 					Config2:  nil,
 				})
@@ -239,15 +235,8 @@ func TestDiffBasicTypes(t *testing.T) {
 			})
 
 			t.Run("replace", func(t *testing.T) {
-				t.Parallel()
-				res := res
-				tc := tc
-				res.Schema["prop"].ForceNew = true
-				if nestedRes, ok := res.Schema["prop"].Elem.(*schema.Resource); ok {
-					nestedRes.Schema["x"].ForceNew = true
-				}
 				tfAction := runDiffCheck(t, diffTestCase{
-					Resource: res,
+					Resource: res(true),
 					Config1:  tc.config1,
 					Config2:  tc.config2,
 				})
@@ -256,15 +245,8 @@ func TestDiffBasicTypes(t *testing.T) {
 			})
 
 			t.Run("replace delete first", func(t *testing.T) {
-				t.Parallel()
-				res := res
-				tc := tc
-				res.Schema["prop"].ForceNew = true
-				if nestedRes, ok := res.Schema["prop"].Elem.(*schema.Resource); ok {
-					nestedRes.Schema["x"].ForceNew = true
-				}
 				tfAction := runDiffCheck(t, diffTestCase{
-					Resource:            res,
+					Resource:            res(true),
 					Config1:             tc.config1,
 					Config2:             tc.config2,
 					DeleteBeforeReplace: true,
