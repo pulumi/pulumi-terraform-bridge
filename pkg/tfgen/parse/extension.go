@@ -49,6 +49,7 @@ func (s tfRegistryExtension) Extend(md goldmark.Markdown) {
 		parser.WithASTTransformers(
 			util.Prioritized(recognizeHeaderAfterHTML{}, 902),
 		))
+	r := markdown.NewRenderer()
 	md.Renderer().AddOptions(renderer.WithNodeRenderers(
 		// The markdown renderer we use does not support rendering out tables.[^1].
 		//
@@ -57,7 +58,11 @@ func (s tfRegistryExtension) Extend(md goldmark.Markdown) {
 		// since the HTML content is shown as-is.
 		//
 		// [^1]: https://github.com/teekennedy/goldmark-markdown/issues/19
-		util.Prioritized(tableRenderer{md.Renderer()}, 499),
+		util.Prioritized(tableRenderer{
+			r:      r,
+			rows:   make([][]string, 0),
+			header: make([]string, 0),
+		}, 499),
 		//// The markdown renderer we use does not support rendering raw
 		//// [ast.String] nodes.[^2] We just render them out as-is.
 		////
@@ -138,17 +143,116 @@ func panicOnRender(writer util.BufWriter, source []byte, n ast.Node, entering bo
 var _ renderer.NodeRenderer = (*tableRenderer)(nil)
 
 type tableRenderer struct {
-	r *renderer.Renderer
+	r           *markdown.Renderer
+	header      []string
+	rows        [][]string
+	tableWriter *tablewriter.Table
+	inHeader    bool
+	alignments  int
 }
 
 func (tableRenderer tableRenderer) RegisterFuncs(r renderer.NodeRendererFuncRegisterer) {
-	r.Register(extensionast.KindTable, tableRenderer.render)
-	//r.Register(extensionast.KindTableHeader, panicOnRender)
-	//r.Register(extensionast.KindTableRow, panicOnRender)
+	r.Register(extensionast.KindTable, tableRenderer.renderTable)
+	r.Register(extensionast.KindTableHeader, tableRenderer.renderHeader)
+	r.Register(extensionast.KindTableRow, tableRenderer.renderRow)
+	r.Register(extensionast.KindTableCell, tableRenderer.renderCell)
+
+	//r.Register(extensionast.KindTable, tableRenderer.render)
+	//r.Register(extensionast.KindTableHeader, func(writer util.BufWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
+	//	return ast.WalkContinue, nil
+	//})
+	//r.Register(extensionast.KindTableRow, func(writer util.BufWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
+	//	return ast.WalkContinue, nil
+	//})
 	//r.Register(extensionast.KindTableCell,
 	//	func(writer util.BufWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
 	//		return ast.WalkContinue, nil
 	//	})
+}
+
+func (tableRenderer *tableRenderer) renderTable(
+	writer util.BufWriter,
+	source []byte,
+	n ast.Node,
+	entering bool,
+) (ast.WalkStatus, error) {
+	if entering {
+		tableRenderer.alignments = len(n.(*extensionast.Table).Alignments)
+		tableRenderer.header = make([]string, 0, tableRenderer.alignments)
+		tableRenderer.rows = [][]string{}
+		tableRenderer.tableWriter = tablewriter.NewWriter(writer)
+
+	} else {
+		tableRenderer.tableWriter.SetHeader(tableRenderer.header)
+		tableRenderer.tableWriter.SetBorders(tablewriter.Border{Left: true, Top: false, Right: true, Bottom: false})
+		tableRenderer.tableWriter.SetCenterSeparator("|")
+		tableRenderer.tableWriter.SetAutoFormatHeaders(false)
+		tableRenderer.tableWriter.SetAutoMergeCells(false)
+		tableRenderer.tableWriter.SetAutoWrapText(false)
+		tableRenderer.tableWriter.SetReflowDuringAutoWrap(false)
+		tableRenderer.tableWriter.AppendBulk(tableRenderer.rows)
+		tableRenderer.tableWriter.Render()
+	}
+	return ast.WalkContinue, nil
+}
+
+func (tableRenderer *tableRenderer) renderHeader(
+	writer util.BufWriter,
+	source []byte,
+	n ast.Node,
+	entering bool,
+) (ast.WalkStatus, error) {
+	tableRenderer.inHeader = entering
+	return ast.WalkContinue, nil
+}
+
+func (tableRenderer *tableRenderer) renderRow(
+	writer util.BufWriter,
+	source []byte,
+	n ast.Node,
+	entering bool,
+) (ast.WalkStatus, error) {
+	if entering {
+		tableRenderer.rows = append(tableRenderer.rows, make([]string, 0, tableRenderer.alignments)) //TODO: call this table width
+	}
+
+	return ast.WalkContinue, nil
+}
+
+func (tableRenderer *tableRenderer) renderCell(
+	writer util.BufWriter,
+	source []byte,
+	n ast.Node,
+	entering bool,
+) (ast.WalkStatus, error) {
+
+	if entering {
+		var cell bytes.Buffer
+		textBlock := ast.NewTextBlock()
+		child := n.FirstChild()
+		for {
+			if child == nil {
+				break
+			}
+			next := child.NextSibling()
+			textBlock.AppendChild(textBlock, child)
+			child = next
+		}
+		err := (*tableRenderer.r).Render(&cell, source, textBlock)
+		if err != nil {
+			return ast.WalkStop, err
+		}
+		content := strings.TrimSpace(cell.String())
+		//content := string(textBlock.Text(source))
+		//(*tableRenderer.r).
+
+		if tableRenderer.inHeader {
+			tableRenderer.header = append(tableRenderer.header, content)
+		} else {
+			tableRenderer.rows[len(tableRenderer.rows)-1] = append(tableRenderer.rows[len(tableRenderer.rows)-1], content)
+		}
+	}
+	return ast.WalkSkipChildren, nil
 }
 
 func (tableRenderer tableRenderer) render(
@@ -238,7 +342,7 @@ func (tableRenderer tableRenderer) render(
 	if err != nil {
 		panic("wtf")
 	}
-	return ast.WalkContinue, err
+	return ast.WalkSkipChildren, err
 }
 
 //
