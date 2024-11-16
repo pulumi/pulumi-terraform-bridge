@@ -5,7 +5,6 @@
 | **r1c1** | r1c2 |
 
 this is also dropped
-
 ## Another Header
 
 With More Stuff!

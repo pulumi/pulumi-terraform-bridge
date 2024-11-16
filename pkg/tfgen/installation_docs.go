@@ -44,6 +44,7 @@ func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	// Strip the tfplugindocs generation HTML comment
 	content = stripSchemaGeneratedByTFPluginDocs(content)
 

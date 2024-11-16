@@ -16,16 +16,15 @@ package parse
 
 import (
 	"bytes"
-	"fmt"
-	"github.com/olekukonko/tablewriter"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/parse/section"
-	"github.com/yuin/goldmark/extension"
 	"strings"
 
+	"github.com/olekukonko/tablewriter"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/parse/section"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	markdown "github.com/teekennedy/goldmark-markdown"
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/ast"
+	"github.com/yuin/goldmark/extension"
 	extensionast "github.com/yuin/goldmark/extension/ast"
 	"github.com/yuin/goldmark/parser"
 	"github.com/yuin/goldmark/renderer"
@@ -49,7 +48,6 @@ func (s tfRegistryExtension) Extend(md goldmark.Markdown) {
 		parser.WithASTTransformers(
 			util.Prioritized(recognizeHeaderAfterHTML{}, 902),
 		))
-	r := markdown.NewRenderer()
 	md.Renderer().AddOptions(renderer.WithNodeRenderers(
 		// The markdown renderer we use does not support rendering out tables.[^1].
 		//
@@ -59,29 +57,29 @@ func (s tfRegistryExtension) Extend(md goldmark.Markdown) {
 		//
 		// [^1]: https://github.com/teekennedy/goldmark-markdown/issues/19
 		util.Prioritized(tableRenderer{
-			r:      r,
-			rows:   make([][]string, 0),
-			header: make([]string, 0),
+			renderer:  markdown.NewRenderer(),
+			rows:      make([][]string, 0),
+			headerRow: make([]string, 0),
 		}, 499),
-		//// The markdown renderer we use does not support rendering raw
-		//// [ast.String] nodes.[^2] We just render them out as-is.
-		////
-		////nolint:lll
-		////
-		//// [^2]: https://github.com/teekennedy/goldmark-markdown/blob/0cdef017688474073914d6db7e293a028150c0cb/renderer.go#L95-L96
-		//util.Prioritized(renderType{
-		//	kind: ast.KindString,
-		//	f: func(
-		//		writer util.BufWriter,
-		//		_ []byte, n ast.Node, entering bool,
-		//	) (ast.WalkStatus, error) {
-		//		if !entering {
-		//			return ast.WalkContinue, nil
-		//		}
-		//		_, err := writer.Write(n.(*ast.String).Value)
-		//		return ast.WalkContinue, err
-		//	},
-		//}, 100),
+		// The markdown renderer we use does not support rendering raw
+		// [ast.String] nodes.[^2] We just render them out as-is.
+		//
+		//nolint:lll
+		//
+		// [^2]: https://github.com/teekennedy/goldmark-markdown/blob/0cdef017688474073914d6db7e293a028150c0cb/renderer.go#L95-L96
+		util.Prioritized(renderType{
+			kind: ast.KindString,
+			f: func(
+				writer util.BufWriter,
+				_ []byte, n ast.Node, entering bool,
+			) (ast.WalkStatus, error) {
+				if !entering {
+					return ast.WalkContinue, nil
+				}
+				_, err := writer.Write(n.(*ast.String).Value)
+				return ast.WalkContinue, err
+			},
+		}, 100),
 	))
 }
 
@@ -126,29 +124,24 @@ func WalkNode[T ast.Node](node ast.Node, f func(T)) {
 	contract.AssertNoErrorf(err, "impossible: ast.Walk never returns an error")
 }
 
-//type renderType struct {
-//	kind ast.NodeKind
-//	f    renderer.NodeRendererFunc
-//}
-//
-//func (renderType renderType) RegisterFuncs(r renderer.NodeRendererFuncRegisterer) {
-//	r.Register(renderType.kind, renderType.f)
-//}
+type renderType struct {
+	kind ast.NodeKind
+	f    renderer.NodeRendererFunc
+}
 
-func panicOnRender(writer util.BufWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
-	contract.Failf("The renderer for %s should not have been called", n.Kind())
-	return ast.WalkStop, nil
+func (renderType renderType) RegisterFuncs(r renderer.NodeRendererFuncRegisterer) {
+	r.Register(renderType.kind, renderType.f)
 }
 
 var _ renderer.NodeRenderer = (*tableRenderer)(nil)
 
 type tableRenderer struct {
-	r           *markdown.Renderer
-	header      []string
+	renderer    *markdown.Renderer
+	headerRow   []string
 	rows        [][]string
 	tableWriter *tablewriter.Table
 	inHeader    bool
-	alignments  int
+	tableWidth  int
 }
 
 func (tableRenderer tableRenderer) RegisterFuncs(r renderer.NodeRendererFuncRegisterer) {
@@ -156,18 +149,6 @@ func (tableRenderer tableRenderer) RegisterFuncs(r renderer.NodeRendererFuncRegi
 	r.Register(extensionast.KindTableHeader, tableRenderer.renderHeader)
 	r.Register(extensionast.KindTableRow, tableRenderer.renderRow)
 	r.Register(extensionast.KindTableCell, tableRenderer.renderCell)
-
-	//r.Register(extensionast.KindTable, tableRenderer.render)
-	//r.Register(extensionast.KindTableHeader, func(writer util.BufWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
-	//	return ast.WalkContinue, nil
-	//})
-	//r.Register(extensionast.KindTableRow, func(writer util.BufWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
-	//	return ast.WalkContinue, nil
-	//})
-	//r.Register(extensionast.KindTableCell,
-	//	func(writer util.BufWriter, source []byte, n ast.Node, entering bool) (ast.WalkStatus, error) {
-	//		return ast.WalkContinue, nil
-	//	})
 }
 
 func (tableRenderer *tableRenderer) renderTable(
@@ -177,13 +158,15 @@ func (tableRenderer *tableRenderer) renderTable(
 	entering bool,
 ) (ast.WalkStatus, error) {
 	if entering {
-		tableRenderer.alignments = len(n.(*extensionast.Table).Alignments)
-		tableRenderer.header = make([]string, 0, tableRenderer.alignments)
+		tableRenderer.tableWidth = len(n.(*extensionast.Table).Alignments)
+		tableRenderer.headerRow = make([]string, 0, tableRenderer.tableWidth)
 		tableRenderer.rows = [][]string{}
 		tableRenderer.tableWriter = tablewriter.NewWriter(writer)
 
 	} else {
-		tableRenderer.tableWriter.SetHeader(tableRenderer.header)
+		_, err := writer.WriteRune('\n')
+		contract.AssertNoErrorf(err, "impossible")
+		tableRenderer.tableWriter.SetHeader(tableRenderer.headerRow)
 		tableRenderer.tableWriter.SetBorders(tablewriter.Border{Left: true, Top: false, Right: true, Bottom: false})
 		tableRenderer.tableWriter.SetCenterSeparator("|")
 		tableRenderer.tableWriter.SetAutoFormatHeaders(false)
@@ -213,7 +196,7 @@ func (tableRenderer *tableRenderer) renderRow(
 	entering bool,
 ) (ast.WalkStatus, error) {
 	if entering {
-		tableRenderer.rows = append(tableRenderer.rows, make([]string, 0, tableRenderer.alignments)) //TODO: call this table width
+		tableRenderer.rows = append(tableRenderer.rows, make([]string, 0, tableRenderer.tableWidth)) //TODO: call this table width
 	}
 
 	return ast.WalkContinue, nil
@@ -238,125 +221,16 @@ func (tableRenderer *tableRenderer) renderCell(
 			textBlock.AppendChild(textBlock, child)
 			child = next
 		}
-		err := (*tableRenderer.r).Render(&cell, source, textBlock)
+		err := (*tableRenderer.renderer).Render(&cell, source, textBlock)
 		if err != nil {
 			return ast.WalkStop, err
 		}
 		content := strings.TrimSpace(cell.String())
-		//content := string(textBlock.Text(source))
-		//(*tableRenderer.r).
-
 		if tableRenderer.inHeader {
-			tableRenderer.header = append(tableRenderer.header, content)
+			tableRenderer.headerRow = append(tableRenderer.headerRow, content)
 		} else {
 			tableRenderer.rows[len(tableRenderer.rows)-1] = append(tableRenderer.rows[len(tableRenderer.rows)-1], content)
 		}
 	}
 	return ast.WalkSkipChildren, nil
 }
-
-func (tableRenderer tableRenderer) render(
-	writer util.BufWriter, source []byte, n ast.Node, entering bool,
-) (ast.WalkStatus, error) {
-	//fmt.Println("before++++++++++++++++++++++++")
-	//
-	//n.Dump(source, 0)
-	//fmt.Println("before end++++++++++++++++++++++++")
-
-	if !entering {
-		return ast.WalkContinue, nil
-	}
-
-	_, err := writer.WriteRune('\n') // this is so that we have a newline between markdown elements.
-	contract.AssertNoErrorf(err, "impossible")
-	var inHeader bool
-	header := make([]string, 0, len(n.(*extensionast.Table).Alignments))
-	var rows [][]string
-	err = ast.Walk(n, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
-		switch n := n.(type) {
-		case *extensionast.Table:
-			//tableRow := ast.NewTextBlock()
-			//err = tableRenderer.Render(writer, source, tableRow)
-			return ast.WalkContinue, nil
-		case *extensionast.TableHeader:
-			//tableRow := ast.NewTextBlock()
-			//err = tableRenderer.Render(writer, source, tableRow)
-			inHeader = entering
-			return ast.WalkContinue, nil
-		case *extensionast.TableRow:
-			//tableRow := ast.NewTextBlock()
-			if entering {
-				//err = tableRenderer.Render(writer, source, tableRow)
-				rows = append(rows, make([]string, 0, len(n.Alignments)))
-			}
-			return ast.WalkContinue, nil
-		case *extensionast.TableCell:
-			if entering {
-				var cell bytes.Buffer
-				textBlock := ast.NewTextBlock()
-				child := n.FirstChild()
-				for {
-					if child == nil {
-						break
-					}
-					next := child.NextSibling()
-					textBlock.AppendChild(textBlock, child)
-					child = next
-				}
-				err := (*tableRenderer.r).Render(&cell, source, textBlock)
-				if err != nil {
-					return ast.WalkStop, err
-				}
-				content := strings.TrimSpace(cell.String())
-				if inHeader {
-					header = append(header, content)
-				} else {
-					rows[len(rows)-1] = append(rows[len(rows)-1], content)
-				}
-			}
-			//tableRenderer.render(writer, source, n, entering)
-			//err := tableRenderer.r.Render(writer, source, n)
-			//if err != nil {
-			//	panic("wtf")
-			//}
-			return ast.WalkContinue, nil
-		default:
-			return ast.WalkStop, fmt.Errorf("unexpected node in a table: %s", n.Kind())
-		}
-
-	})
-	table := tablewriter.NewWriter(writer)
-	table.SetHeader(header)
-	table.SetBorders(tablewriter.Border{Left: true, Top: false, Right: true, Bottom: false})
-	table.SetCenterSeparator("|")
-	table.SetAutoFormatHeaders(false)
-	table.SetAutoMergeCells(false)
-	table.SetAutoWrapText(false)
-	table.SetReflowDuringAutoWrap(false)
-	table.AppendBulk(rows)
-	table.Render()
-	fmt.Println("after++++++++++++++++++++++++")
-	n.Dump(source, 0)
-	fmt.Println("++++++++++++++++++++++++")
-	//err = tableRenderer.Render(writer, source, n)
-	if err != nil {
-		panic("wtf")
-	}
-	return ast.WalkSkipChildren, err
-}
-
-//
-//func (tableRenderer tableRenderer) renderBlockSeparator(node ast.Node, entering bool) ast.WalkStatus {
-//
-//	tableRenderer.rc = newRenderContext(w, source, r.config)if entering {
-//		// Add blank previous line if applicable
-//		if node.PreviousSibling() != nil && node.HasBlankPreviousLines() {
-//			tableRenderer.rc.writer.EndLine()
-//			tableRenderer.Renderer.
-//		}
-//	} else {
-//		// Flush line buffer to complete line written by previous block
-//		r.rc.writer.FlushLine()
-//	}
-//	return ast.WalkContinue
-//}

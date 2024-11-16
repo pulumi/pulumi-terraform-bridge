@@ -16,7 +16,6 @@ package parse
 
 import (
 	"bytes"
-	"fmt"
 	"os"
 	"runtime"
 	"testing"
@@ -24,7 +23,6 @@ import (
 	"github.com/hexops/autogold/v2"
 	"github.com/stretchr/testify/require"
 	"github.com/yuin/goldmark"
-	"github.com/yuin/goldmark/text"
 )
 
 func TestRenderTable(t *testing.T) {
@@ -96,24 +94,9 @@ func TestRenderTable(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			var out bytes.Buffer
-			//
-			//reader := text.NewReader(source)
-			//doc := m.parser.Parse(reader, opts...)
-			//return m.renderer.Render(writer, source, doc)
-
-			m := goldmark.New(goldmark.WithExtensions(TFRegistryExtension))
-			reader := text.NewReader([]byte(tt.input))
-
-			doc := m.Parser().Parse(reader)
-			//doc.Dump([]byte(tt.input), 0)
-
-			err := m.Renderer().Render(&out, []byte(tt.input), doc)
-
-			fmt.Println(out.String())
-
-			//err = goldmark.New(
-			//	goldmark.WithExtensions(TFRegistryExtension),
-			//).Convert([]byte(tt.input), &out)
+			err := goldmark.New(
+				goldmark.WithExtensions(TFRegistryExtension),
+			).Convert([]byte(tt.input), &out)
 			require.NoError(t, err)
 			tt.expected.Equal(t, out.String())
 		})
