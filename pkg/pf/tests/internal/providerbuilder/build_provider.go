@@ -18,14 +18,10 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	dschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 )
@@ -112,33 +108,6 @@ func NewProvider(params NewProviderArgs) *Provider {
 	}
 	if prov.Version == "" {
 		prov.Version = "0.0.1"
-	}
-
-	for i := range prov.AllResources {
-		r := &prov.AllResources[i]
-		if r.ResourceSchema.Attributes == nil {
-			r.ResourceSchema.Attributes = map[string]rschema.Attribute{}
-		}
-
-		if r.ResourceSchema.Attributes["id"] == nil {
-			r.ResourceSchema.Attributes["id"] = rschema.StringAttribute{
-				Computed: true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.UseStateForUnknown(),
-				},
-			}
-		}
-		if r.CreateFunc == nil {
-			r.CreateFunc = func(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-				resp.State = tfsdk.State(req.Plan)
-				resp.State.SetAttribute(ctx, path.Root("id"), "test-id")
-			}
-		}
-		if r.UpdateFunc == nil {
-			r.UpdateFunc = func(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-				resp.State = tfsdk.State(req.Plan)
-			}
-		}
 	}
 
 	for i := range prov.AllDataSources {

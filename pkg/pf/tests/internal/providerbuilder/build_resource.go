@@ -17,9 +17,57 @@ package providerbuilder
 import (
 	"context"
 
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 )
+
+type NewResourceArgs struct {
+	Name           string
+	ResourceSchema schema.Schema
+
+	CreateFunc      func(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse)
+	ReadFunc        func(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse)
+	UpdateFunc      func(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse)
+	DeleteFunc      func(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse)
+	ImportStateFunc func(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse)
+}
+
+func NewResource(args NewResourceArgs) Resource {
+	if args.Name == "" {
+		args.Name = "test"
+	}
+
+	if args.ResourceSchema.Attributes == nil {
+		args.ResourceSchema.Attributes = map[string]schema.Attribute{}
+	}
+
+	if args.ResourceSchema.Attributes["id"] == nil {
+		args.ResourceSchema.Attributes["id"] = schema.StringAttribute{
+			Computed: true,
+			PlanModifiers: []planmodifier.String{
+				stringplanmodifier.UseStateForUnknown(),
+			},
+		}
+	}
+
+	if args.CreateFunc == nil {
+		args.CreateFunc = func(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+			resp.State = tfsdk.State(req.Plan)
+			resp.State.SetAttribute(ctx, path.Root("id"), "test-id")
+		}
+	}
+	if args.UpdateFunc == nil {
+		args.UpdateFunc = func(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+			resp.State = tfsdk.State(req.Plan)
+		}
+	}
+
+	return Resource(args)
+}
 
 type Resource struct {
 	Name           string
