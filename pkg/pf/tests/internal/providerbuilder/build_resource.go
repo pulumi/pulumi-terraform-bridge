@@ -71,6 +71,7 @@ func NewResource(args NewResourceArgs) Resource {
 	return Resource(args)
 }
 
+// Resource is a utility type that helps define PF resources. Prefer creating via NewResource.
 type Resource struct {
 	Name           string
 	ResourceSchema schema.Schema

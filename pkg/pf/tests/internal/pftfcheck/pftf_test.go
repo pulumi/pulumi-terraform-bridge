@@ -14,14 +14,14 @@ func TestBasic(t *testing.T) {
     t.Parallel()
 	prov := pb.NewProvider(pb.NewProviderArgs{
 		AllResources: []pb.Resource{
-			{
+			pb.NewResource(pb.NewResourceArgs{
 				Name: "res",
 				ResourceSchema: rschema.Schema{
 					Attributes: map[string]rschema.Attribute{
 						"s": rschema.StringAttribute{Optional: true},
 					},
 				},
-			},
+			}),
 		},
 	})
 
@@ -48,7 +48,7 @@ func TestDefaults(t *testing.T) {
     t.Parallel()
 	prov := pb.NewProvider(pb.NewProviderArgs{
 		AllResources: []pb.Resource{
-			{
+			pb.NewResource(pb.NewResourceArgs{
 				Name: "res",
 				ResourceSchema: rschema.Schema{
 					Attributes: map[string]rschema.Attribute{
@@ -59,7 +59,7 @@ func TestDefaults(t *testing.T) {
 						},
 					},
 				},
-			},
+			}),
 		},
 	})
 
