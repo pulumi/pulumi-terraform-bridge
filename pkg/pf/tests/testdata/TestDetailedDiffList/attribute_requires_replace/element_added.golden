@@ -31,9 +31,7 @@ Plan: 1 to add, 0 to change, 1 to destroy.
     +-testprovider:index/test:Test: (replace)
         [id=test-id]
         [urn=urn:pulumi:test::project::testprovider:index/test:Test::p]
-      ~ id  : "test-id" => output<string>
       ~ keys: [
-            [0]: "value"
           + [1]: "value1"
         ]
 Resources:

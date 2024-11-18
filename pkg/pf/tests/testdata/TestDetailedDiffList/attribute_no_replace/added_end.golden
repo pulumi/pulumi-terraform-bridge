@@ -35,8 +35,6 @@ Plan: 0 to add, 1 to change, 0 to destroy.
         [id=test-id]
         [urn=urn:pulumi:test::project::testprovider:index/test:Test::p]
       ~ keys: [
-            [0]: "val1"
-            [1]: "val2"
           + [2]: "val3"
         ]
 Resources:
