@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -187,4 +188,53 @@ func TestMakeTerraformResultNilVsEmptyMap(t *testing.T) {
 		assert.NotNil(t, props)
 		assert.True(t, props["test"].DeepEquals(emptyMap))
 	})
+}
+
+func TestNoProviderStdout(t *testing.T) {
+	// Test that the provider's stdout is not captured by the Pulumi CLI.
+	// This fixes issues with the TF providers printing directly to stdout.
+
+	originalStdout := os.Stdout
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	os.Stdout = w
+
+	resMap := map[string]*schema.Resource{
+		"prov_test": {
+			Schema: map[string]*schema.Schema{
+				"test": {
+					Type:     schema.TypeString,
+					Optional: true,
+				},
+			},
+			CreateContext: func(ctx context.Context, rd *schema.ResourceData, i interface{}) diag.Diagnostics {
+				fmt.Println("STDOUT")
+				rd.SetId("newid")
+				return diag.Diagnostics{}
+			},
+		},
+	}
+	tfp := &schema.Provider{ResourcesMap: resMap}
+	bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
+	program := `
+name: test
+runtime: yaml
+resources:
+  mainRes:
+    type: prov:index:Test
+	properties:
+	  test: "hello"
+`
+	pt := pulcheck.PulCheck(t, bridgedProvider, program)
+	res := pt.Up(t)
+	require.NotContains(t, res.StdOut, "STDOUT")
+
+	os.Stdout = originalStdout
+	w.Close()
+	var buf bytes.Buffer
+	_, err = buf.ReadFrom(r)
+	require.NoError(t, err)
+	capturedOutput := buf.String()
+
+	require.NotContains(t, capturedOutput, "STDOUT")
 }
