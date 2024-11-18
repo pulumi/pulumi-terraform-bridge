@@ -1,5 +1,22 @@
 {
   "changes": "DIFF_SOME",
+  "detailedDiff": {
+    "attrBoolRequired": {
+      "kind": "UPDATE"
+    },
+    "attrIntRequired": {
+      "kind": "UPDATE"
+    },
+    "attrNumberComputed": {},
+    "attrNumberRequired": {
+      "kind": "UPDATE"
+    },
+    "attrStringDefault": {},
+    "attrStringDefaultOverridden": {},
+    "attrStringRequired": {
+      "kind": "UPDATE"
+    }
+  },
   "diffs": [
     "attrBoolRequired",
     "attrIntRequired",
@@ -8,5 +25,6 @@
     "attrStringDefault",
     "attrStringDefaultOverridden",
     "attrStringRequired"
-  ]
+  ],
+  "hasDetailedDiff": true
 }

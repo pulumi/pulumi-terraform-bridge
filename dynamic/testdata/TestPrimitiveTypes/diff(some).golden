@@ -1,10 +1,22 @@
 {
   "changes": "DIFF_SOME",
+  "detailedDiff": {
+    "attrNumberComputed": {},
+    "attrNumberRequired": {
+      "kind": "DELETE"
+    },
+    "attrStringDefault": {},
+    "attrStringDefaultOverridden": {},
+    "attrStringRequired": {
+      "kind": "UPDATE"
+    }
+  },
   "diffs": [
     "attrNumberComputed",
     "attrNumberRequired",
     "attrStringDefault",
     "attrStringDefaultOverridden",
     "attrStringRequired"
-  ]
+  ],
+  "hasDetailedDiff": true
 }
