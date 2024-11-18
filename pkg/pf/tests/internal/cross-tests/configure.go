@@ -100,9 +100,11 @@ func Configure(t T, schema pschema.Schema, tfConfig map[string]cty.Value, option
 			ConfigureFunc: func(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
 				*config = req.Config
 			},
-			AllResources: []pb.Resource{{
-				Name: "res",
-			}},
+			AllResources: []pb.Resource{
+				pb.NewResource(pb.NewResourceArgs{
+					Name: "res",
+				}),
+			},
 		})
 	}
 
