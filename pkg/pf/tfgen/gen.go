@@ -32,6 +32,7 @@ import (
 type GenerateSchemaOptions struct {
 	ProviderInfo    sdkbridge.ProviderInfo
 	DiagnosticsSink diag.Sink
+	XInMemoryDocs   bool
 }
 
 type GenerateSchemaResult struct {
@@ -58,8 +59,8 @@ func GenerateSchema(_ context.Context, opts GenerateSchemaOptions) (*GenerateSch
 	generated, err := realtfgen.GenerateSchemaWithOptions(realtfgen.GenerateSchemaOptions{
 		ProviderInfo:    opts.ProviderInfo,
 		DiagnosticsSink: sink,
+		XInMemoryDocs:   opts.XInMemoryDocs,
 	})
-
 	if err != nil {
 		return nil, err
 	}

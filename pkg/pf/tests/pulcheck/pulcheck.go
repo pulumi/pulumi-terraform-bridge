@@ -49,6 +49,7 @@ func genMetadata(t T, info tfbridge0.ProviderInfo) (tfbridge.ProviderMetadata, e
 	generated, err := tfgen.GenerateSchema(context.Background(), tfgen.GenerateSchemaOptions{
 		ProviderInfo:    info,
 		DiagnosticsSink: testSink(t),
+		XInMemoryDocs:   true,
 	})
 	if err != nil {
 		return tfbridge.ProviderMetadata{}, err
