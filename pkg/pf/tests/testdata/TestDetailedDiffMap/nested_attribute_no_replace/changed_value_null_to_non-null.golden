@@ -14,11 +14,7 @@ Terraform will perform the following actions:
   ~ resource "testprovider_test" "res" {
         id  = "test-id"
       ~ key = {
-<<<<<<< HEAD
-          ~ "k" = {
-=======
           + "k" = {
->>>>>>> master
               + nested = "value"
             },
         }

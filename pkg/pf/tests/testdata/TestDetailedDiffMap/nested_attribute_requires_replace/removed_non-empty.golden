@@ -25,16 +25,17 @@ Plan: 1 to add, 0 to change, 1 to destroy.
 	pulumiOut: `Previewing update (test):
   pulumi:pulumi:Stack: (same)
     [urn=urn:pulumi:test::project::pulumi:pulumi:Stack::project-test]
-    ~ testprovider:index/test:Test: (update)
+    +-testprovider:index/test:Test: (replace)
         [id=test-id]
         [urn=urn:pulumi:test::project::testprovider:index/test:Test::p]
+      ~ id : "test-id" => output<string>
       - key: {
           - k: {
               - nested: "value"
             }
         }
 Resources:
-    ~ 1 to update
+    +-1 to replace
     1 unchanged
 `,
 }
