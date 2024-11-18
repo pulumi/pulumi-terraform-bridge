@@ -237,6 +237,95 @@ func (*planResourceChangeImpl) warnIgnoredCustomTimeouts(
 	log.GetLogger(ctx).Warn(msg)
 }
 
+func (p *planResourceChangeImpl) Plan(
+	ctx context.Context,
+	t string,
+	s shim.InstanceState,
+	c shim.ResourceConfig,
+	opts shim.DiffOptions,
+) (shim.InstanceState, error) {
+	s, err := p.upgradeState(ctx, t, s)
+	if err != nil {
+		return nil, err
+	}
+
+	state := p.unpackInstanceState(t, s)
+	res := p.tf.ResourcesMap[t]
+	ty := res.CoreConfigSchema().ImpliedType()
+
+	meta, err := p.providerMeta()
+	if err != nil {
+		return nil, err
+	}
+
+	cfg, err := recoverAndCoerceCtyValueWithSchema(res.CoreConfigSchema(),
+		p.configWithTimeouts(ctx, c, opts.TimeoutOptions, ty))
+	if err != nil {
+		return nil, fmt.Errorf("Resource %q: %w", t, err)
+	}
+	cfg = normalizeBlockCollections(cfg, res)
+
+	prop, err := proposedNew(res, state.stateValue, cfg)
+	if err != nil {
+		return nil, err
+	}
+	st := state.stateValue
+	ic := opts.IgnoreChanges
+	priv := state.meta
+	plan, err := p.server.PlanResourceChange(ctx, t, ty, cfg, st, prop, priv, meta, ic)
+	if err != nil {
+		return nil, err
+	}
+
+	plannedState, err := p.planEdit(ctx, PlanStateEditRequest{
+		NewInputs:      opts.NewInputs,
+		ProviderConfig: opts.ProviderConfig,
+		TfToken:        t,
+		PlanState:      plan.PlannedState,
+	})
+
+	return &v2InstanceState2{
+		resourceType: t,
+		stateValue:   plannedState,
+		meta:         plan.PlannedPrivate,
+	}, err
+}
+
+func (p *planResourceChangeImpl) DiffFromPlan(
+	ctx context.Context,
+	t string,
+	s shim.InstanceState,
+	pl shim.InstanceState,
+) (shim.InstanceDiff, error) {
+	state := p.unpackInstanceState(t, s)
+	st := state.stateValue
+	plan := p.unpackInstanceState(t, pl)
+	plannedState := plan.stateValue
+	//nolint:lll
+	// Taken from https://github.com/opentofu/opentofu/blob/864aa9d1d629090cfc4ddf9fdd344d34dee9793e/internal/tofu/node_resource_abstract_instance.go#L1024
+	// We need to unmark the values to make sure Equals works.
+	// Equals will return unknown if either value is unknown.
+	// START
+	unmarkedPrior, _ := st.UnmarkDeep()
+	unmarkedPlan, _ := plannedState.UnmarkDeep()
+	eqV := unmarkedPrior.Equals(unmarkedPlan)
+	eq := eqV.IsKnown() && eqV.True()
+	// END
+
+	diffOverride := shim.DiffOverrideUpdate
+	if eq {
+		diffOverride = shim.DiffOverrideNoUpdate
+	}
+
+	return &v2InstanceDiff2{
+		plannedState:              plannedState,
+		diffEqualDecisionOverride: diffOverride,
+		plannedPrivate:            plan.Meta(),
+		prior:                     st,
+		priorMeta:                 state.Meta(),
+	}, nil
+}
+
 func (p *planResourceChangeImpl) Diff(
 	ctx context.Context,
 	t string,
@@ -318,6 +407,55 @@ func (p *planResourceChangeImpl) planEdit(ctx context.Context, e PlanStateEditRe
 		return e.PlanState, nil
 	}
 	return p.planEditFunc(ctx, e)
+}
+
+func (p *planResourceChangeImpl) ApplyFromPlan(
+	ctx context.Context, t string, s shim.InstanceState, pl shim.InstanceState, input shim.ResourceConfig,
+) (shim.InstanceState, error) {
+	res := p.tf.ResourcesMap[t]
+	ty := res.CoreConfigSchema().ImpliedType()
+	s, err := p.upgradeState(ctx, t, s)
+	if err != nil {
+		return nil, err
+	}
+	state := p.unpackInstanceState(t, s)
+	plan := p.unpackInstanceState(t, pl)
+	meta, err := p.providerMeta()
+	if err != nil {
+		return nil, err
+	}
+
+	cfg, err := recoverAndCoerceCtyValueWithSchema(res.CoreConfigSchema(),
+		// TODO: Timeouts
+		p.configWithTimeouts(ctx, input, shim.TimeoutOptions{}, ty))
+	if err != nil {
+		return nil, fmt.Errorf("Resource %q: %w", t, err)
+	}
+	cfg = normalizeBlockCollections(cfg, res)
+
+	ctyConfig, ctyState, ctyPlan := cfg, state.stateValue, plan.stateValue
+
+	// Merge plannedPrivate and v2InstanceDiff.tf.Meta into a single map. This is necessary because
+	// timeouts are stored in the Meta and not in plannedPrivate.
+
+	// TODO: meta, plannedprivate
+	priv := make(map[string]interface{})
+	// if len(diff.plannedPrivate) > 0 {
+	// 	maps.Copy(priv, diff.plannedPrivate)
+	// }
+	// if len(diff.v2InstanceDiff.tf.Meta) > 0 {
+	// 	maps.Copy(priv, diff.v2InstanceDiff.tf.Meta)
+	// }
+
+	resp, err := p.server.ApplyResourceChange(ctx, t, ty, ctyConfig, ctyState, ctyPlan, priv, meta)
+	if err != nil {
+		return nil, err
+	}
+	return &v2InstanceState2{
+		resourceType: t,
+		stateValue:   resp.stateValue,
+		meta:         resp.meta,
+	}, nil
 }
 
 func (p *planResourceChangeImpl) Apply(
@@ -782,8 +920,23 @@ type planResourceChangeProvider interface {
 		opts shim.DiffOptions,
 	) (shim.InstanceDiff, error)
 
+	DiffFromPlan(
+		ctx context.Context,
+		t string,
+		s shim.InstanceState,
+		pl shim.InstanceState,
+	) (shim.InstanceDiff, error)
+
 	Apply(
 		ctx context.Context, t string, s shim.InstanceState, d shim.InstanceDiff,
+	) (shim.InstanceState, error)
+
+	ApplyFromPlan(
+		ctx context.Context, t string, s shim.InstanceState, pl shim.InstanceState, input shim.ResourceConfig,
+	) (shim.InstanceState, error)
+
+	Plan(
+		ctx context.Context, t string, s shim.InstanceState, c shim.ResourceConfig, opts shim.DiffOptions,
 	) (shim.InstanceState, error)
 
 	Refresh(
@@ -868,6 +1021,34 @@ func (p *providerWithPlanResourceChangeDispatch) NewDestroyDiff(
 		return p.planResourceChangeProvider.NewDestroyDiff(ctx, t, opts)
 	}
 	return p.Provider.NewDestroyDiff(ctx, t, opts)
+}
+
+func (p *providerWithPlanResourceChangeDispatch) ApplyFromPlan(
+	ctx context.Context, t string, s shim.InstanceState, pl shim.InstanceState, input shim.ResourceConfig,
+) (shim.InstanceState, error) {
+	if p.usePlanResourceChange(t) {
+		return p.planResourceChangeProvider.ApplyFromPlan(ctx, t, s, pl, input)
+	}
+
+	panic("not implemented")
+}
+
+func (p *providerWithPlanResourceChangeDispatch) DiffFromPlan(
+	ctx context.Context, t string, s shim.InstanceState, pl shim.InstanceState,
+) (shim.InstanceDiff, error) {
+	if p.usePlanResourceChange(t) {
+		return p.planResourceChangeProvider.DiffFromPlan(ctx, t, s, pl)
+	}
+	panic("not implemented")
+}
+
+func (p *providerWithPlanResourceChangeDispatch) Plan(
+	ctx context.Context, t string, s shim.InstanceState, c shim.ResourceConfig, opts shim.DiffOptions,
+) (shim.InstanceState, error) {
+	if p.usePlanResourceChange(t) {
+		return p.planResourceChangeProvider.Plan(ctx, t, s, c, opts)
+	}
+	panic("not implemented")
 }
 
 type v2ResourceCustomMap struct {

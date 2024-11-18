@@ -950,9 +950,13 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 	label := fmt.Sprintf("%s.Check(%s/%s)", p.label(), urn, res.TFName)
 	glog.V(9).Infof("%s executing", label)
 
+	opts, err := getProviderOptions(p.providerOpts)
+	if err != nil {
+		return nil, err
+	}
+
 	// Unmarshal the old and new properties.
 	var olds resource.PropertyMap
-	var err error
 	if req.GetOlds() != nil {
 		olds, err = plugin.UnmarshalProperties(req.GetOlds(), plugin.MarshalOptions{
 			Label: fmt.Sprintf("%s.olds", label), KeepUnknowns: true,
@@ -960,6 +964,7 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 		if err != nil {
 			return nil, err
 		}
+		// TODO: This is old inputs, not old state - should we not be calling transformFromState here?
 		olds, err = transformFromState(ctx, res.Schema, olds)
 		if err != nil {
 			return nil, err
@@ -971,6 +976,18 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 	})
 	if err != nil {
 		return nil, err
+	}
+
+	var oldOutputs resource.PropertyMap
+	if req.GetOldOutputs() != nil {
+		oldOutputs, err = plugin.UnmarshalProperties(req.GetOldOutputs(), plugin.MarshalOptions{
+			Label: fmt.Sprintf("%s.oldOutputs", label), KeepUnknowns: true, SkipNulls: true,
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		// TODO: transformFromState?
 	}
 
 	logger := GetLogger(ctx)
@@ -1043,10 +1060,42 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 		return nil, err
 	}
 
-	// After all is said and done, we need to go back and return only what got populated as a diff from the origin.
-	pinputs := MakeTerraformOutputs(
-		ctx, p.tf, inputs, schemaMap, res.Schema.Fields, assets, p.supportsSecrets,
-	)
+	var pinputs resource.PropertyMap
+	if planProv, ok := p.tf.(shim.ProviderWithPlan); ok && opts.enableAccurateBridgePreview {
+		// TODO: sort out ID
+		resID := "check_id"
+		if oldID, ok := oldOutputs.Mappable()["id"]; ok {
+			resID = oldID.(string)
+		}
+		state, err := makeTerraformStateWithOpts(ctx, res, resID, oldOutputs,
+			makeTerraformStateOptions{
+				defaultZeroSchemaVersion:    opts.defaultZeroSchemaVersion,
+				unknownCollectionsSupported: p.tf.SupportsUnknownCollections(),
+			},
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		state, err = planProv.Plan(ctx, res.TFName, state, rescfg, shim.DiffOptions{
+			// TODO: Check needs ignore changes!
+			NewInputs:      news,
+			ProviderConfig: p.configValues,
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		pinputs, err = MakeTerraformResult(ctx, p.tf, state, schemaMap, res.Schema.Fields, assets, p.supportsSecrets)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		// After all is said and done, we need to go back and return only what got populated as a diff from the origin.
+		pinputs = MakeTerraformOutputs(
+			ctx, p.tf, inputs, schemaMap, res.Schema.Fields, assets, p.supportsSecrets,
+		)
+	}
 
 	pinputsWithSecrets := MarkSchemaSecrets(ctx, schemaMap, res.Schema.Fields,
 		resource.NewObjectProperty(pinputs)).ObjectValue()
@@ -1146,13 +1195,20 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 
 	ic := newIgnoreChanges(ctx, schema, fields, olds, news, req.GetIgnoreChanges())
 
-	diff, err := callWithRecover(urn, p.recoverOnTypeError, func() (shim.InstanceDiff, error) {
-		return p.tf.Diff(ctx, res.TFName, state, config, shim.DiffOptions{
-			IgnoreChanges:  ic,
-			NewInputs:      news,
-			ProviderConfig: p.configValues,
+	var diff shim.InstanceDiff
+	if planProv, ok := p.tf.(shim.ProviderWithPlan); ok && opts.enableAccurateBridgePreview {
+		diff, err = callWithRecover(urn, p.recoverOnTypeError, func() (shim.InstanceDiff, error) {
+			return planProv.DiffFromPlan(ctx, res.TFName, state, state)
 		})
-	})
+	} else {
+		diff, err = callWithRecover(urn, p.recoverOnTypeError, func() (shim.InstanceDiff, error) {
+			return p.tf.Diff(ctx, res.TFName, state, config, shim.DiffOptions{
+				IgnoreChanges:  ic,
+				NewInputs:      news,
+				ProviderConfig: p.configValues,
+			})
+		})
+	}
 	if err != nil {
 		return nil, errors.Wrapf(err, "diffing %s", urn)
 	}
@@ -1639,69 +1695,124 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 
 	schema, fields := res.TF.Schema(), res.Schema.Fields
 
-	config, assets, err := MakeTerraformConfig(ctx, p, news, schema, fields)
-	if err != nil {
-		return nil, errors.Wrapf(err, "preparing %s's new property state", urn)
-	}
-
-	ic := newIgnoreChanges(ctx, schema, fields, olds, news, req.GetIgnoreChanges())
-
-	timeouts, err := res.TF.DecodeTimeouts(config)
-	if err != nil {
-		return nil, errors.Errorf("error decoding timeout: %s", err)
-	}
-
-	diff, err := callWithRecover(urn, p.recoverOnTypeError, func() (shim.InstanceDiff, error) {
-		return p.tf.Diff(ctx, res.TFName, state, config, shim.DiffOptions{
-			IgnoreChanges:  ic,
-			NewInputs:      news,
-			ProviderConfig: p.configValues,
-			TimeoutOptions: shim.TimeoutOptions{
-				TimeoutOverrides: newTimeoutOverrides(shim.TimeoutUpdate, req.Timeout),
-				ResourceTimeout:  timeouts,
-			},
-		})
-	})
-	if err != nil {
-		return nil, errors.Wrapf(err, "diffing %s", urn)
-	}
-	if diff == nil {
-		// It is very possible for us to get here with a nil diff: custom diffing behavior, etc. can cause
-		// textual/structural changes not to be semantic changes. A better solution would be to change the result of
-		// Diff to indicate no change, but that is a slightly riskier change that we'd rather not take at the current
-		// moment.
-		return &pulumirpc.UpdateResponse{Properties: req.GetOlds()}, nil
-	}
-
-	if diff.Destroy() || diff.RequiresNew() {
-		return nil, fmt.Errorf("internal: expected diff to not require deletion or replacement"+
-			" during Update of %s. Found delete=%t, replace=%t. This indicates a bug in provider.",
-			urn, diff.Destroy(), diff.RequiresNew())
-	}
-
+	var assets AssetTable
+	var diff shim.InstanceDiff
 	var newstate shim.InstanceState
 	var reasons []string
-	if !req.GetPreview() {
-		newstate, err = p.tf.Apply(ctx, res.TFName, state, diff)
-		if newstate == nil {
+
+	if planProv, ok := p.tf.(shim.ProviderWithPlan); ok && opts.enableAccurateBridgePreview {
+		plannedState, err := makeTerraformStateWithOpts(ctx, res, req.GetId(), news,
+			makeTerraformStateOptions{
+				defaultZeroSchemaVersion:    opts.defaultZeroSchemaVersion,
+				unknownCollectionsSupported: p.tf.SupportsUnknownCollections(),
+			})
+		if err != nil {
+			return nil, err
+		}
+
+		diff, err = planProv.DiffFromPlan(ctx, res.TFName, state, plannedState)
+		if err != nil {
+			return nil, err
+		}
+
+		if diff == nil {
+			// It is very possible for us to get here with a nil diff: custom diffing behavior, etc. can cause
+			// textual/structural changes not to be semantic changes. A better solution would be to change the result of
+			// Diff to indicate no change, but that is a slightly riskier change that we'd rather not take at the current
+			// moment.
+			return &pulumirpc.UpdateResponse{Properties: req.GetOlds()}, nil
+		}
+
+		if diff.Destroy() || diff.RequiresNew() {
+			return nil, fmt.Errorf("internal: expected diff to not require deletion or replacement"+
+				" during Update of %s. Found delete=%t, replace=%t. This indicates a bug in provider.",
+				urn, diff.Destroy(), diff.RequiresNew())
+		}
+
+		if !req.GetPreview() {
+			newsPreplan, err := plugin.UnmarshalProperties(req.GetUncheckedNewInputs(),
+				plugin.MarshalOptions{Label: fmt.Sprintf("%s.news", label), KeepUnknowns: true})
 			if err != nil {
 				return nil, err
 			}
 
-			return nil, fmt.Errorf("Resource provider reported that the resource did not exist while updating %s.\n\n"+
-				"This is usually a result of the resource having been deleted outside of Pulumi, and can often be "+
-				"fixed by running `pulumi refresh` before updating.", urn)
-		}
-		if newstate.ID() == "" {
-			return nil, fmt.Errorf("expected non-empty ID for new state during Update of %s", urn)
-		}
-		if err != nil {
-			reasons = append(reasons, errors.Wrapf(err, "updating %s", urn).Error())
+			// TODO: assets
+			prePlanConfig, _, err := MakeTerraformConfig(ctx, p, newsPreplan, schema, fields)
+			if err != nil {
+				return nil, errors.Wrapf(err, "preparing %s's new property state", urn)
+			}
+
+			newstate, err = planProv.ApplyFromPlan(ctx, res.TFName, state, plannedState, prePlanConfig)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			newstate = plannedState
 		}
 	} else {
-		newstate, err = diff.ProposedState(res.TF, state)
+		var config shim.ResourceConfig
+		config, assets, err = MakeTerraformConfig(ctx, p, news, schema, fields)
 		if err != nil {
-			return nil, fmt.Errorf("internal error: failed to fetch proposed state during diff (%w)", err)
+			return nil, errors.Wrapf(err, "preparing %s's new property state", urn)
+		}
+
+		ic := newIgnoreChanges(ctx, schema, fields, olds, news, req.GetIgnoreChanges())
+
+		timeouts, err := res.TF.DecodeTimeouts(config)
+		if err != nil {
+			return nil, errors.Errorf("error decoding timeout: %s", err)
+		}
+		diff, err = callWithRecover(urn, p.recoverOnTypeError, func() (shim.InstanceDiff, error) {
+			return p.tf.Diff(ctx, res.TFName, state, config, shim.DiffOptions{
+				IgnoreChanges:  ic,
+				NewInputs:      news,
+				ProviderConfig: p.configValues,
+				TimeoutOptions: shim.TimeoutOptions{
+					TimeoutOverrides: newTimeoutOverrides(shim.TimeoutUpdate, req.Timeout),
+					ResourceTimeout:  timeouts,
+				},
+			})
+		})
+		if err != nil {
+			return nil, errors.Wrapf(err, "diffing %s", urn)
+		}
+
+		if diff == nil {
+			// It is very possible for us to get here with a nil diff: custom diffing behavior, etc. can cause
+			// textual/structural changes not to be semantic changes. A better solution would be to change the result of
+			// Diff to indicate no change, but that is a slightly riskier change that we'd rather not take at the current
+			// moment.
+			return &pulumirpc.UpdateResponse{Properties: req.GetOlds()}, nil
+		}
+
+		if diff.Destroy() || diff.RequiresNew() {
+			return nil, fmt.Errorf("internal: expected diff to not require deletion or replacement"+
+				" during Update of %s. Found delete=%t, replace=%t. This indicates a bug in provider.",
+				urn, diff.Destroy(), diff.RequiresNew())
+		}
+
+		if !req.GetPreview() {
+			newstate, err = p.tf.Apply(ctx, res.TFName, state, diff)
+			if newstate == nil {
+				if err != nil {
+					return nil, err
+				}
+
+				return nil, fmt.Errorf("Resource provider reported that the resource did not exist while updating %s.\n\n"+
+					"This is usually a result of the resource having been deleted outside of Pulumi, and can often be "+
+					"fixed by running `pulumi refresh` before updating.", urn)
+			}
+			if newstate.ID() == "" {
+				return nil, fmt.Errorf("expected non-empty ID for new state during Update of %s", urn)
+			}
+			if err != nil {
+				reasons = append(reasons, errors.Wrapf(err, "updating %s", urn).Error())
+			}
+		} else {
+			newstate, err = diff.ProposedState(res.TF, state)
+			if err != nil {
+				return nil, fmt.Errorf("internal error: failed to fetch proposed state during diff (%w)", err)
+			}
 		}
 	}
 
