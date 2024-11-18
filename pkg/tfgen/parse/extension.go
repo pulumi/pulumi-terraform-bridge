@@ -19,7 +19,6 @@ import (
 	"strings"
 
 	"github.com/olekukonko/tablewriter"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/parse/section"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	markdown "github.com/teekennedy/goldmark-markdown"
 	"github.com/yuin/goldmark"
@@ -30,6 +29,8 @@ import (
 	"github.com/yuin/goldmark/renderer"
 	"github.com/yuin/goldmark/text"
 	"github.com/yuin/goldmark/util"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/parse/section"
 )
 
 // TFRegistryExtension is the catch-all extension to prepare TF registry markdown to be
@@ -162,7 +163,6 @@ func (tableRenderer *tableRenderer) renderTable(
 		tableRenderer.headerRow = make([]string, 0, tableRenderer.tableWidth)
 		tableRenderer.rows = [][]string{}
 		tableRenderer.tableWriter = tablewriter.NewWriter(writer)
-
 	} else {
 		_, err := writer.WriteRune('\n')
 		contract.AssertNoErrorf(err, "impossible")
@@ -196,7 +196,7 @@ func (tableRenderer *tableRenderer) renderRow(
 	entering bool,
 ) (ast.WalkStatus, error) {
 	if entering {
-		tableRenderer.rows = append(tableRenderer.rows, make([]string, 0, tableRenderer.tableWidth)) //TODO: call this table width
+		tableRenderer.rows = append(tableRenderer.rows, make([]string, 0, tableRenderer.tableWidth))
 	}
 
 	return ast.WalkContinue, nil
@@ -208,7 +208,6 @@ func (tableRenderer *tableRenderer) renderCell(
 	n ast.Node,
 	entering bool,
 ) (ast.WalkStatus, error) {
-
 	if entering {
 		var cell bytes.Buffer
 		textBlock := ast.NewTextBlock()
