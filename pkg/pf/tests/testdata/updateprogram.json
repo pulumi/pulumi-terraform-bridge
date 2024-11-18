@@ -1360,7 +1360,16 @@
       "diffs": [
         "optionalInputString",
         "requiredInputString"
-      ]
+      ],
+      "hasDetailedDiff": true,
+      "detailedDiff": {
+        "optionalInputString": {
+          "kind": "UPDATE"
+        },
+        "requiredInputString": {
+          "kind": "UPDATE"
+        }
+      }
     },
     "metadata": {
       "kind": "resource",
@@ -1687,7 +1696,16 @@
       "diffs": [
         "optionalInputString",
         "requiredInputString"
-      ]
+      ],
+      "hasDetailedDiff": true,
+      "detailedDiff": {
+        "optionalInputString": {
+          "kind": "UPDATE"
+        },
+        "requiredInputString": {
+          "kind": "UPDATE"
+        }
+      }
     },
     "metadata": {
       "kind": "resource",

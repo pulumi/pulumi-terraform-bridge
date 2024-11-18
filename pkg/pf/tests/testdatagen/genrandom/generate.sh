@@ -6,7 +6,7 @@ mkdir -p $PWD/bin
 
 HERE=$PWD
 
-(cd $PWD/../../internal/cmd/pulumi-resource-random && go build -o $HERE/bin/pulumi-resource-random)
+(cd $PWD/../../internal/testprovider/cmd/pulumi-resource-random && go build -o $HERE/bin/pulumi-resource-random)
 
 export PATH=$PWD/bin:$PATH
 export PATH=~/.pulumi-dev/bin:$PATH

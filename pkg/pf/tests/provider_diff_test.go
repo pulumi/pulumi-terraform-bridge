@@ -80,7 +80,13 @@ func TestOptionRemovalTestresDiff(t *testing.T) {
             "changes": "DIFF_SOME",
             "diffs": [
                "optionalInputString"
-            ]
+            ],
+            "hasDetailedDiff": true,
+            "detailedDiff": {
+              "optionalInputString": {
+                "kind": "DELETE"
+              }
+            }
           }
         }
         `
@@ -310,7 +316,13 @@ func TestSetNestedObjectAddedOtherDiff(t *testing.T) {
             "diffs": [
               "other",
               "vlanNames"
-            ]
+            ],
+            "hasDetailedDiff": true,
+            "detailedDiff": {
+              "other": {
+                "kind": "UPDATE"
+              }
+            }
           }
         }
         `
