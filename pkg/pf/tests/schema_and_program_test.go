@@ -33,14 +33,13 @@ func TestBasic(t *testing.T) {
 	provBuilder := providerbuilder.NewProvider(
 		providerbuilder.NewProviderArgs{
 			AllResources: []providerbuilder.Resource{
-				{
-					Name: "test",
+				providerbuilder.NewResource(providerbuilder.NewResourceArgs{
 					ResourceSchema: rschema.Schema{
 						Attributes: map[string]rschema.Attribute{
 							"s": rschema.StringAttribute{Optional: true},
 						},
 					},
-				},
+				}),
 			},
 		})
 
@@ -66,8 +65,7 @@ func TestComputedSetNoDiffWhenElementRemoved(t *testing.T) {
 	// Regression test for [pulumi/pulumi-terraform-bridge#2192]
 	provBuilder := pb.NewProvider(pb.NewProviderArgs{
 		AllResources: []providerbuilder.Resource{
-			{
-				Name: "test",
+			providerbuilder.NewResource(providerbuilder.NewResourceArgs{
 				ResourceSchema: rschema.Schema{
 					Attributes: map[string]rschema.Attribute{
 						"vlan_names": rschema.SetNestedAttribute{
@@ -99,7 +97,7 @@ func TestComputedSetNoDiffWhenElementRemoved(t *testing.T) {
 						},
 					},
 				},
-			},
+			}),
 		},
 	})
 
@@ -238,8 +236,7 @@ func TestIDAttribute(t *testing.T) {
 				Version:        "0.0.1",
 				ProviderSchema: pschema.Schema{},
 				AllResources: []providerbuilder.Resource{
-					{
-						Name: "test",
+					providerbuilder.NewResource(providerbuilder.NewResourceArgs{
 						ResourceSchema: rschema.Schema{
 							Attributes: map[string]rschema.Attribute{
 								"id": tc.attribute,
@@ -252,7 +249,7 @@ func TestIDAttribute(t *testing.T) {
 							resp.State.SetAttribute(ctx, path.Root("id"), "test-id")
 							resp.State.SetAttribute(ctx, path.Root("x"), "x-id")
 						},
-					},
+					}),
 				},
 			}
 
@@ -314,8 +311,7 @@ func TestDefaults(t *testing.T) {
 	t.Parallel()
 	provBuilder := pb.NewProvider(pb.NewProviderArgs{
 		AllResources: []providerbuilder.Resource{
-			{
-				Name: "test",
+			providerbuilder.NewResource(providerbuilder.NewResourceArgs{
 				ResourceSchema: rschema.Schema{
 					Attributes: map[string]rschema.Attribute{
 						"other_prop": rschema.StringAttribute{
@@ -328,7 +324,7 @@ func TestDefaults(t *testing.T) {
 						},
 					},
 				},
-			},
+			}),
 		},
 	})
 
@@ -375,8 +371,7 @@ func TestPlanModifiers(t *testing.T) {
 	t.Parallel()
 	provBuilder := pb.NewProvider(pb.NewProviderArgs{
 		AllResources: []providerbuilder.Resource{
-			{
-				Name: "test",
+			providerbuilder.NewResource(providerbuilder.NewResourceArgs{
 				ResourceSchema: rschema.Schema{
 					Attributes: map[string]rschema.Attribute{
 						"other_prop": rschema.StringAttribute{
@@ -391,7 +386,7 @@ func TestPlanModifiers(t *testing.T) {
 						},
 					},
 				},
-			},
+			}),
 		},
 	})
 
