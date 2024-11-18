@@ -323,6 +323,7 @@ func TestDetailedDiffObject(t *testing.T) {
 		changeValue  *map[string]string
 		tfOut        string
 		pulumiOut    string
+		detailedDiff map[string]interface{}
 	}
 
 	for _, schema := range schemas {
@@ -342,6 +343,7 @@ func TestDetailedDiffObject(t *testing.T) {
 						changeValue:  scenario.changeValue,
 						tfOut:        diff.TFOut,
 						pulumiOut:    diff.PulumiOut,
+						detailedDiff: diff.PulumiDiff.DetailedDiff,
 					})
 				})
 			}
@@ -361,6 +363,7 @@ func TestDetailedDiffObject(t *testing.T) {
 							changeValue:  scenario.changeValue,
 							tfOut:        diff.TFOut,
 							pulumiOut:    diff.PulumiOut,
+							detailedDiff: diff.PulumiDiff.DetailedDiff,
 						})
 					})
 				}

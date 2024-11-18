@@ -180,6 +180,7 @@ func TestDetailedDiffStringAttribute(t *testing.T) {
 		changeValue  *string
 		tfOut        string
 		pulumiOut    string
+		detailedDiff map[string]interface{}
 	}
 
 	for _, schema := range schemas {
@@ -201,6 +202,7 @@ func TestDetailedDiffStringAttribute(t *testing.T) {
 						changeValue:  scenario.changeValue,
 						tfOut:        diff.TFOut,
 						pulumiOut:    diff.PulumiOut,
+						detailedDiff: diff.PulumiDiff.DetailedDiff,
 					})
 				})
 			}
