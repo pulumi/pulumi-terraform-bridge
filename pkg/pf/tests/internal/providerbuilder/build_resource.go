@@ -26,6 +26,7 @@ import (
 )
 
 type NewResourceArgs struct {
+	// Name is the name of the resource. Defaults to "test".
 	Name           string
 	ResourceSchema schema.Schema
 
@@ -36,6 +37,7 @@ type NewResourceArgs struct {
 	ImportStateFunc func(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse)
 }
 
+// NewResource creates a new Resource with the given parameters, filling reasonable defaults.
 func NewResource(args NewResourceArgs) Resource {
 	if args.Name == "" {
 		args.Name = "test"
