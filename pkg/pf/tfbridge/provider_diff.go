@@ -122,11 +122,39 @@ func (p *provider) DiffWithContext(
 		changes = plugin.DiffSome
 	}
 
+	var pluginDetailedDiff map[string]plugin.PropertyDiff
+	{
+		priorProps, err := convert.DecodePropertyMap(ctx, rh.decoder, priorState.state.Value)
+		if err != nil {
+			return plugin.DiffResult{}, err
+		}
+
+		props, err := convert.DecodePropertyMap(ctx, rh.decoder, plannedStateValue)
+		if err != nil {
+			return plugin.DiffResult{}, err
+		}
+
+		detailedDiff := tfbridge.MakeDetailedDiffV2(
+			ctx,
+			rh.schemaOnlyShimResource.Schema(),
+			rh.pulumiResourceInfo.GetFields(),
+			priorProps,
+			props,
+			checkedInputs,
+		)
+
+		pluginDetailedDiff = make(map[string]plugin.PropertyDiff, len(detailedDiff))
+		for k, v := range detailedDiff {
+			pluginDetailedDiff[k] = plugin.PropertyDiff{Kind: plugin.DiffKind(v.Kind), InputDiff: v.InputDiff}
+		}
+	}
+
 	diffResult := plugin.DiffResult{
 		Changes:             changes,
 		ReplaceKeys:         replaceKeys,
 		ChangedKeys:         changedKeys,
 		DeleteBeforeReplace: deleteBeforeReplace,
+		DetailedDiff:        pluginDetailedDiff,
 	}
 
 	// TODO[pulumi/pulumi-terraform-bridge#824] StableKeys
