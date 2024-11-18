@@ -18,6 +18,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sort"
+	"strings"
 
 	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
@@ -76,13 +78,15 @@ func (p *providerServer) checkNYI(method string, err error) error {
 	return err
 }
 
-func (p *providerServer) marshalDiff(diff pl.DiffResult) (*pulumirpc.DiffResponse, error) {
-	changes := pulumirpc.DiffResponse_DIFF_UNKNOWN
+func (p *providerServer) marshalDiff(diff plugin.DiffResult) (*pulumirpc.DiffResponse, error) {
+	var changes pulumirpc.DiffResponse_DiffChanges
 	switch diff.Changes {
 	case pl.DiffNone:
 		changes = pulumirpc.DiffResponse_DIFF_NONE
 	case pl.DiffSome:
 		changes = pulumirpc.DiffResponse_DIFF_SOME
+	case pl.DiffUnknown:
+		changes = pulumirpc.DiffResponse_DIFF_UNKNOWN
 	}
 
 	// Infer the result from the detailed diff.
@@ -100,9 +104,16 @@ func (p *providerServer) marshalDiff(diff pl.DiffResult) (*pulumirpc.DiffRespons
 	} else {
 		changes = pulumirpc.DiffResponse_DIFF_SOME
 
+		properties := map[string]struct{}{}
 		detailedDiff = make(map[string]*pulumirpc.PropertyDiff)
 		for path, diff := range diff.DetailedDiff {
-			diffs = append(diffs, path)
+			for k := range detailedDiff {
+				// Turn the attribute name into a top-level property name by trimming everything after the first dot.
+				if firstSep := strings.IndexAny(k, ".["); firstSep != -1 {
+					k = k[:firstSep]
+				}
+				properties[k] = struct{}{}
+			}
 
 			var kind pulumirpc.PropertyDiff_Kind
 			switch diff.Kind {
@@ -125,6 +136,11 @@ func (p *providerServer) marshalDiff(diff pl.DiffResult) (*pulumirpc.DiffRespons
 				InputDiff: diff.InputDiff,
 			}
 		}
+		diffs = make([]string, 0, len(properties))
+		for k := range properties {
+			diffs = append(diffs, k)
+		}
+		sort.Strings(diffs)
 	}
 
 	return &pulumirpc.DiffResponse{
@@ -133,6 +149,7 @@ func (p *providerServer) marshalDiff(diff pl.DiffResult) (*pulumirpc.DiffRespons
 		Changes:             changes,
 		Diffs:               diffs,
 		DetailedDiff:        detailedDiff,
+		HasDetailedDiff:     len(detailedDiff) > 0,
 	}, nil
 }
 
