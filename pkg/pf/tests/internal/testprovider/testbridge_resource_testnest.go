@@ -28,8 +28,10 @@ import (
 
 type testnest struct{}
 
-var _ resource.Resource = &testnest{}
-var _ resource.ResourceWithImportState = &testnest{}
+var (
+	_ resource.Resource                = &testnest{}
+	_ resource.ResourceWithImportState = &testnest{}
+)
 
 func newTestnest() resource.Resource {
 	return &testnest{}

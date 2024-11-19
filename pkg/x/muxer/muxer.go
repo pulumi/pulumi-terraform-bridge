@@ -28,7 +28,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	urn "github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	rpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -45,7 +45,7 @@ func mux(
 	dispatchTable dispatchTable,
 	pulumiSchema []byte,
 	getMappingHandlers getMappingHandler,
-	servers ...rpc.ResourceProviderServer,
+	servers ...pulumirpc.ResourceProviderServer,
 ) *muxer {
 	contract.Assertf(len(servers) > 0, "Cannot instantiate an empty muxer")
 	return &muxer{
@@ -57,12 +57,12 @@ func mux(
 	}
 }
 
-var _ rpc.ResourceProviderServer = ((*muxer)(nil))
+var _ pulumirpc.ResourceProviderServer = ((*muxer)(nil))
 
-type server = rpc.ResourceProviderServer
+type server = pulumirpc.ResourceProviderServer
 
 type muxer struct {
-	rpc.UnimplementedResourceProviderServer
+	pulumirpc.UnimplementedResourceProviderServer
 
 	host hostClient
 
@@ -111,26 +111,26 @@ func (m *muxer) getResource(token string) server {
 	return m.servers[i]
 }
 
-func (m *muxer) GetSchema(ctx context.Context, req *rpc.GetSchemaRequest) (*rpc.GetSchemaResponse, error) {
+func (m *muxer) GetSchema(ctx context.Context, req *pulumirpc.GetSchemaRequest) (*pulumirpc.GetSchemaResponse, error) {
 	if req.Version != SchemaVersion {
 		return nil, fmt.Errorf("Expected schema version %d, got %d",
 			SchemaVersion, req.GetVersion())
 	}
-	return &rpc.GetSchemaResponse{Schema: string(m.schema)}, nil
+	return &pulumirpc.GetSchemaResponse{Schema: string(m.schema)}, nil
 }
 
-func (m *muxer) CheckConfig(ctx context.Context, req *rpc.CheckRequest) (*rpc.CheckResponse, error) {
-	subs := make([]func() tuple[*rpc.CheckResponse, error], len(m.servers))
+func (m *muxer) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest) (*pulumirpc.CheckResponse, error) {
+	subs := make([]func() tuple[*pulumirpc.CheckResponse, error], len(m.servers))
 	for i, s := range m.servers {
 		i, s := i, s
-		subs[i] = func() tuple[*rpc.CheckResponse, error] {
-			req := proto.Clone(req).(*rpc.CheckRequest)
+		subs[i] = func() tuple[*pulumirpc.CheckResponse, error] {
+			req := proto.Clone(req).(*pulumirpc.CheckRequest)
 			return newTuple(s.CheckConfig(ctx, req))
 		}
 	}
 
 	inputs := &structpb.Struct{Fields: map[string]*structpb.Value{}}
-	failures := []*rpc.CheckFailure{}
+	failures := []*pulumirpc.CheckFailure{}
 	uniqueFailures := map[string]struct{}{}
 	var errs multierror.Error
 	uniqueErrors := map[string]struct{}{}
@@ -172,7 +172,7 @@ func (m *muxer) CheckConfig(ctx context.Context, req *rpc.CheckRequest) (*rpc.Ch
 		}
 	}
 
-	return &rpc.CheckResponse{
+	return &pulumirpc.CheckResponse{
 		Inputs:   inputs,
 		Failures: failures,
 	}, m.muxedErrors(&errs)
@@ -206,12 +206,12 @@ func (m *muxer) muxedErrors(errs *multierror.Error) error {
 	return validErrors.ErrorOrNil()
 }
 
-func (m *muxer) DiffConfig(ctx context.Context, req *rpc.DiffRequest) (*rpc.DiffResponse, error) {
-	subs := make([]func() tuple[*rpc.DiffResponse, error], len(m.servers))
+func (m *muxer) DiffConfig(ctx context.Context, req *pulumirpc.DiffRequest) (*pulumirpc.DiffResponse, error) {
+	subs := make([]func() tuple[*pulumirpc.DiffResponse, error], len(m.servers))
 	for i, s := range m.servers {
 		i, s := i, s
-		subs[i] = func() tuple[*rpc.DiffResponse, error] {
-			req := proto.Clone(req).(*rpc.DiffRequest)
+		subs[i] = func() tuple[*pulumirpc.DiffResponse, error] {
+			req := proto.Clone(req).(*pulumirpc.DiffRequest)
 			return newTuple(s.DiffConfig(ctx, req))
 		}
 	}
@@ -228,13 +228,13 @@ func (m *muxer) DiffConfig(ctx context.Context, req *rpc.DiffRequest) (*rpc.Diff
 		diffs    = make(set[string]) // The AND of each server, sans replaces
 		stables  = make(set[string]) // The AND of each server, sans replaces and diffs
 
-		changes rpc.DiffResponse_DiffChanges = rpc.DiffResponse_DIFF_NONE
+		changes pulumirpc.DiffResponse_DiffChanges = pulumirpc.DiffResponse_DIFF_NONE
 
 		errs = new(multierror.Error)
 	)
 
 	var (
-		detailedDiff    = map[string]*rpc.PropertyDiff{}
+		detailedDiff    = map[string]*pulumirpc.PropertyDiff{}
 		hasDetailedDiff = true
 	)
 
@@ -250,7 +250,7 @@ func (m *muxer) DiffConfig(ctx context.Context, req *rpc.DiffRequest) (*rpc.Diff
 			deleteBeforeReplace = true
 		}
 
-		if changes == rpc.DiffResponse_DIFF_NONE {
+		if changes == pulumirpc.DiffResponse_DIFF_NONE {
 			changes = resp.GetChanges()
 		}
 
@@ -276,7 +276,7 @@ func (m *muxer) DiffConfig(ctx context.Context, req *rpc.DiffRequest) (*rpc.Diff
 
 	diffs = diffs.setMinus(replaces)
 	stables = stables.setMinus(replaces).setMinus(diffs)
-	return &rpc.DiffResponse{
+	return &pulumirpc.DiffResponse{
 		Replaces:            replaces.elements(),
 		Stables:             stables.elements(),
 		DeleteBeforeReplace: deleteBeforeReplace,
@@ -288,18 +288,18 @@ func (m *muxer) DiffConfig(ctx context.Context, req *rpc.DiffRequest) (*rpc.Diff
 	}, m.muxedErrors(errs)
 }
 
-func (m *muxer) Configure(ctx context.Context, req *rpc.ConfigureRequest) (*rpc.ConfigureResponse, error) {
+func (m *muxer) Configure(ctx context.Context, req *pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error) {
 	// Configure determines what the values the provider understands. We take the
 	// `and` of configure values.
-	subs := make([]func() tuple[*rpc.ConfigureResponse, error], len(m.servers))
+	subs := make([]func() tuple[*pulumirpc.ConfigureResponse, error], len(m.servers))
 	for i, s := range m.servers {
 		i, s := i, s
-		subs[i] = func() tuple[*rpc.ConfigureResponse, error] {
-			req := proto.Clone(req).(*rpc.ConfigureRequest)
+		subs[i] = func() tuple[*pulumirpc.ConfigureResponse, error] {
+			req := proto.Clone(req).(*pulumirpc.ConfigureRequest)
 			return newTuple(s.Configure(ctx, req))
 		}
 	}
-	response := &rpc.ConfigureResponse{
+	response := &pulumirpc.ConfigureResponse{
 		AcceptSecrets:   true,
 		SupportsPreview: true,
 		AcceptResources: true,
@@ -335,7 +335,7 @@ func resourceMethod[T resourceRequest, R any](m *muxer, req T, f func(m server) 
 	return f(server)
 }
 
-func (m *muxer) Invoke(ctx context.Context, req *rpc.InvokeRequest) (*rpc.InvokeResponse, error) {
+func (m *muxer) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*pulumirpc.InvokeResponse, error) {
 	server := m.getFunction(req.GetTok())
 	if server == nil {
 		return nil, status.Errorf(codes.NotFound, "Invoke '%s' not found.", req.GetTok())
@@ -343,7 +343,7 @@ func (m *muxer) Invoke(ctx context.Context, req *rpc.InvokeRequest) (*rpc.Invoke
 	return server.Invoke(ctx, req)
 }
 
-func (m *muxer) StreamInvoke(req *rpc.InvokeRequest, s rpc.ResourceProvider_StreamInvokeServer) error {
+func (m *muxer) StreamInvoke(req *pulumirpc.InvokeRequest, s pulumirpc.ResourceProvider_StreamInvokeServer) error {
 	server := m.getFunction(req.GetTok())
 	if server == nil {
 		return status.Errorf(codes.NotFound, "Invoke '%s' not found.", req.GetTok())
@@ -351,7 +351,7 @@ func (m *muxer) StreamInvoke(req *rpc.InvokeRequest, s rpc.ResourceProvider_Stre
 	return server.StreamInvoke(req, s)
 }
 
-func (m *muxer) Call(ctx context.Context, req *rpc.CallRequest) (*rpc.CallResponse, error) {
+func (m *muxer) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error) {
 	server := m.getFunction(req.GetTok())
 	if server == nil {
 		return nil, status.Errorf(codes.NotFound, "Resource Method '%s' not found.", req.GetTok())
@@ -359,43 +359,43 @@ func (m *muxer) Call(ctx context.Context, req *rpc.CallRequest) (*rpc.CallRespon
 	return server.Call(ctx, req)
 }
 
-func (m *muxer) Check(ctx context.Context, req *rpc.CheckRequest) (*rpc.CheckResponse, error) {
-	return resourceMethod(m, req, func(m server) (*rpc.CheckResponse, error) {
+func (m *muxer) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pulumirpc.CheckResponse, error) {
+	return resourceMethod(m, req, func(m server) (*pulumirpc.CheckResponse, error) {
 		return m.Check(ctx, req)
 	})
 }
 
-func (m *muxer) Diff(ctx context.Context, req *rpc.DiffRequest) (*rpc.DiffResponse, error) {
-	return resourceMethod(m, req, func(m server) (*rpc.DiffResponse, error) {
+func (m *muxer) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulumirpc.DiffResponse, error) {
+	return resourceMethod(m, req, func(m server) (*pulumirpc.DiffResponse, error) {
 		return m.Diff(ctx, req)
 	})
 }
 
-func (m *muxer) Create(ctx context.Context, req *rpc.CreateRequest) (*rpc.CreateResponse, error) {
-	return resourceMethod(m, req, func(m server) (*rpc.CreateResponse, error) {
+func (m *muxer) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*pulumirpc.CreateResponse, error) {
+	return resourceMethod(m, req, func(m server) (*pulumirpc.CreateResponse, error) {
 		return m.Create(ctx, req)
 	})
 }
 
-func (m *muxer) Read(ctx context.Context, req *rpc.ReadRequest) (*rpc.ReadResponse, error) {
-	return resourceMethod(m, req, func(m server) (*rpc.ReadResponse, error) {
+func (m *muxer) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulumirpc.ReadResponse, error) {
+	return resourceMethod(m, req, func(m server) (*pulumirpc.ReadResponse, error) {
 		return m.Read(ctx, req)
 	})
 }
 
-func (m *muxer) Update(ctx context.Context, req *rpc.UpdateRequest) (*rpc.UpdateResponse, error) {
-	return resourceMethod(m, req, func(m server) (*rpc.UpdateResponse, error) {
+func (m *muxer) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*pulumirpc.UpdateResponse, error) {
+	return resourceMethod(m, req, func(m server) (*pulumirpc.UpdateResponse, error) {
 		return m.Update(ctx, req)
 	})
 }
 
-func (m *muxer) Delete(ctx context.Context, req *rpc.DeleteRequest) (*emptypb.Empty, error) {
+func (m *muxer) Delete(ctx context.Context, req *pulumirpc.DeleteRequest) (*emptypb.Empty, error) {
 	return resourceMethod(m, req, func(m server) (*emptypb.Empty, error) {
 		return m.Delete(ctx, req)
 	})
 }
 
-func (m *muxer) Construct(ctx context.Context, req *rpc.ConstructRequest) (*rpc.ConstructResponse, error) {
+func (m *muxer) Construct(ctx context.Context, req *pulumirpc.ConstructRequest) (*pulumirpc.ConstructResponse, error) {
 	server := m.getResource(req.GetType())
 	if server == nil {
 		return nil, status.Errorf(codes.NotFound, "Component Resource type '%s' does not exist.", req.GetType())
@@ -418,13 +418,13 @@ func (m *muxer) Cancel(ctx context.Context, e *emptypb.Empty) (*emptypb.Empty, e
 	return e, m.muxedErrors(errs)
 }
 
-func (m *muxer) GetPluginInfo(ctx context.Context, e *emptypb.Empty) (*rpc.PluginInfo, error) {
+func (m *muxer) GetPluginInfo(ctx context.Context, e *emptypb.Empty) (*pulumirpc.PluginInfo, error) {
 	// rpc.PluginInfo only returns the version. We just return the version
 	// of the most prominent plugin.
 	return m.servers[0].GetPluginInfo(ctx, e)
 }
 
-func (m *muxer) Attach(ctx context.Context, req *rpc.PluginAttach) (*emptypb.Empty, error) {
+func (m *muxer) Attach(ctx context.Context, req *pulumirpc.PluginAttach) (*emptypb.Empty, error) {
 	attach := make([]func() error, len(m.servers))
 	for i, s := range m.servers {
 		s := s
@@ -436,7 +436,7 @@ func (m *muxer) Attach(ctx context.Context, req *rpc.PluginAttach) (*emptypb.Emp
 
 	var closeErr error
 	// Because in Go, an interface type is not nil even when its underlying value is nil, the nil check here
-	//must test the underlying type.
+	// must test the underlying type.
 	if !reflect.ValueOf(m.host).IsNil() {
 		closeErr = m.host.Close()
 	}
@@ -448,7 +448,7 @@ func (m *muxer) Attach(ctx context.Context, req *rpc.PluginAttach) (*emptypb.Emp
 
 type getMappingArgs struct {
 	m   *muxer
-	req *rpc.GetMappingRequest
+	req *pulumirpc.GetMappingRequest
 	ctx context.Context
 
 	err error
@@ -460,7 +460,9 @@ func (a *getMappingArgs) Fetch() []GetMappingResponse {
 	return resp
 }
 
-func (m *muxer) GetMapping(ctx context.Context, req *rpc.GetMappingRequest) (*rpc.GetMappingResponse, error) {
+func (m *muxer) GetMapping(
+	ctx context.Context, req *pulumirpc.GetMappingRequest,
+) (*pulumirpc.GetMappingResponse, error) {
 	// We need to merge multiple mappings
 	combineMapping, found := m.getMappingByKey[req.Key]
 	if !found {
@@ -474,11 +476,11 @@ func (m *muxer) GetMapping(ctx context.Context, req *rpc.GetMappingRequest) (*rp
 			// There are no results and some sub-providers implemented the
 			// method. This means that no provider responded to this key. We return an
 			// empty response.
-			return &rpc.GetMappingResponse{}, nil
+			return &pulumirpc.GetMappingResponse{}, nil
 		case 1:
 			// We don't need to worry about merging GetMapping data if there is only one
 			// server with valid data.
-			return &rpc.GetMappingResponse{
+			return &pulumirpc.GetMappingResponse{
 				Provider: results[0].Provider,
 				Data:     results[0].Data,
 			}, nil
@@ -494,20 +496,20 @@ func (m *muxer) GetMapping(ctx context.Context, req *rpc.GetMappingRequest) (*rp
 		}
 		return nil, err
 	}
-	return &rpc.GetMappingResponse{
+	return &pulumirpc.GetMappingResponse{
 		Provider: result.Provider,
 		Data:     result.Data,
 	}, nil
 }
 
 func (m *muxer) getMappingRaw(
-	ctx context.Context, req *rpc.GetMappingRequest, strict bool,
+	ctx context.Context, req *pulumirpc.GetMappingRequest, strict bool,
 ) ([]GetMappingResponse, error) {
-	subs := make([]func() tuple[*rpc.GetMappingResponse, error], len(m.servers))
+	subs := make([]func() tuple[*pulumirpc.GetMappingResponse, error], len(m.servers))
 	for i, s := range m.servers {
 		i, s := i, s
-		subs[i] = func() tuple[*rpc.GetMappingResponse, error] {
-			return newTuple(s.GetMapping(ctx, proto.Clone(req).(*rpc.GetMappingRequest)))
+		subs[i] = func() tuple[*pulumirpc.GetMappingResponse, error] {
+			return newTuple(s.GetMapping(ctx, proto.Clone(req).(*pulumirpc.GetMappingRequest)))
 		}
 	}
 	errs := new(multierror.Error)
@@ -555,7 +557,7 @@ func (m *muxer) Warnf(ctx context.Context, method, msg string, a ...any) error {
 // `mergeDetailedDiff` copies values from `src` to  `dst`.
 //
 // A returned err indicates a conflict between src and dst.
-func mergeDetailedDiff(dst map[string]*rpc.PropertyDiff, src map[string]*rpc.PropertyDiff) error {
+func mergeDetailedDiff(dst map[string]*pulumirpc.PropertyDiff, src map[string]*pulumirpc.PropertyDiff) error {
 	var errs []error
 	for k, v := range src {
 		existing, ok := dst[k]
@@ -653,10 +655,10 @@ func showStruct(value *structpb.Value) string {
 	return string(j)
 }
 
-func dominatingDiffResponse(responses []tuple[*rpc.DiffResponse, error]) *rpc.DiffResponse {
+func dominatingDiffResponse(responses []tuple[*pulumirpc.DiffResponse, error]) *pulumirpc.DiffResponse {
 	unimplemented := 0
 	errors := 0
-	var resp *rpc.DiffResponse
+	var resp *pulumirpc.DiffResponse
 	for _, r := range responses {
 		if r.B != nil {
 			errors++

@@ -20,10 +20,9 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-
+	testutils "github.com/pulumi/providertest/replay"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
-	testutils "github.com/pulumi/providertest/replay"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
@@ -31,7 +30,7 @@ import (
 
 // See https://github.com/pulumi/pulumi-terraform-bridge/issues/1020
 func TestRegress1020(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	ctx := context.Background()
 
 	CIDRBlocksEqual := func(cidr1, cidr2 string) bool {

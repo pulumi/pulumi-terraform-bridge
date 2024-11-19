@@ -17,14 +17,12 @@ package tfbridgetests
 import (
 	"encoding/json"
 	"os"
+	"runtime"
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-
-	"runtime"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/testprovider"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
@@ -32,7 +30,7 @@ import (
 )
 
 func TestSchemaGen(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	t.Run("random", func(t *testing.T) {
 		_, err := genMetadata(t, testprovider.RandomProvider())
 		require.NoError(t, err)
@@ -71,7 +69,7 @@ func TestSchemaGen(t *testing.T) {
 }
 
 func TestSchemaGenInSync(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	if runtime.GOOS == "windows" {
 		t.Skip("Skipping on Windows due to a minor path discrepancy in actual vs generated schema")
 	}
@@ -149,5 +147,4 @@ func TestSchemaGenInSync(t *testing.T) {
 				tc.name)
 		})
 	}
-
 }

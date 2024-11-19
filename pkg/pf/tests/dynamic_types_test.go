@@ -16,10 +16,9 @@ package tfbridgetests
 
 import (
 	"context"
+	"encoding/json"
 	"math/big"
 	"testing"
-
-	"encoding/json"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -27,15 +26,16 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
-	pb "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/providerbuilder"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
+
+	pb "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/providerbuilder"
 )
 
 func TestCreateResourceWithDynamicAttribute(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	type testCase struct {
 		name                     string                 // test case name
 		manifestToSend           any                    // assumes a Pulumi YAML expression

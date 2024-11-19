@@ -46,12 +46,12 @@ func marshalProviderShim(t *testing.T, p shim.Provider) []byte {
 }
 
 func TestShimSchema(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	autogold.Expect("{}\n").Equal(t, string(marshalProviderShim(t, proto.Empty())))
 }
 
 func TestDynamicType(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	b := marshalProviderShim(t,
 		proto.New(context.Background(), providerServer{
 			SchemaResponse: &tfprotov6.GetProviderSchemaResponse{
@@ -78,7 +78,7 @@ func TestDynamicType(t *testing.T) {
 }
 
 func TestBlockSchemaGeneration(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	p := proto.New(context.Background(), providerServer{
 		SchemaResponse: &tfprotov6.GetProviderSchemaResponse{
 			ResourceSchemas: map[string]*tfprotov6.Schema{

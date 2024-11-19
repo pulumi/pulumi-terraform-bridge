@@ -68,7 +68,8 @@ func (p *provider) InvokeWithContext(
 }
 
 func (p *provider) validateDataResourceConfig(ctx context.Context, handle datasourceHandle,
-	config *tfprotov6.DynamicValue) ([]plugin.CheckFailure, error) {
+	config *tfprotov6.DynamicValue,
+) ([]plugin.CheckFailure, error) {
 	req := &tfprotov6.ValidateDataResourceConfigRequest{
 		TypeName: handle.terraformDataSourceName,
 		Config:   config,
@@ -81,8 +82,8 @@ func (p *provider) validateDataResourceConfig(ctx context.Context, handle dataso
 }
 
 func (p *provider) readDataSource(ctx context.Context, handle datasourceHandle,
-	config *tfprotov6.DynamicValue) (resource.PropertyMap, []plugin.CheckFailure, error) {
-
+	config *tfprotov6.DynamicValue,
+) (resource.PropertyMap, []plugin.CheckFailure, error) {
 	typ := handle.schema.Type(ctx).(tftypes.Object)
 
 	req := &tfprotov6.ReadDataSourceRequest{
@@ -126,7 +127,8 @@ func (p *provider) readDataSource(ctx context.Context, handle datasourceHandle,
 }
 
 func (p *provider) processInvokeDiagnostics(ds datasourceHandle,
-	diags []*tfprotov6.Diagnostic) ([]plugin.CheckFailure, error) {
+	diags []*tfprotov6.Diagnostic,
+) ([]plugin.CheckFailure, error) {
 	failures, rest := p.parseInvokePropertyCheckFailures(ds, diags)
 	return failures, p.processDiagnostics(rest)
 }
@@ -134,7 +136,8 @@ func (p *provider) processInvokeDiagnostics(ds datasourceHandle,
 // Some of the diagnostics pertain to an individual property and should be returned as plugin.CheckFailure for an
 // optimal rendering by Pulumi CLI.
 func (p *provider) parseInvokePropertyCheckFailures(ds datasourceHandle, diags []*tfprotov6.Diagnostic) (
-	[]plugin.CheckFailure, []*tfprotov6.Diagnostic) {
+	[]plugin.CheckFailure, []*tfprotov6.Diagnostic,
+) {
 	rest := []*tfprotov6.Diagnostic{}
 	failures := []plugin.CheckFailure{}
 

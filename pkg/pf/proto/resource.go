@@ -81,6 +81,7 @@ func (r resource) Timeouts() *shim.ResourceTimeout {
 func (r resource) InstanceState(id string, object, meta map[string]interface{}) (shim.InstanceState, error) {
 	panic("Cannot call InstanceState for a schema only resource")
 }
+
 func (r resource) DecodeTimeouts(config shim.ResourceConfig) (*shim.ResourceTimeout, error) {
 	panic("Cannot call DecodeTimeouts for a schema only resource")
 }

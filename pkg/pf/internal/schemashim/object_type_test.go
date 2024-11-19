@@ -31,7 +31,7 @@ import (
 )
 
 func TestObjectAttribute(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	objectAttr := schema.ObjectAttribute{
 		AttributeTypes: map[string]attr.Type{
 			"s": basetypes.StringType{},
@@ -44,7 +44,7 @@ func TestObjectAttribute(t *testing.T) {
 }
 
 func TestTypeSchemaDescriptionIsEmpty(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	shimmedType := &typeSchema{
 		t:      basetypes.StringType{},
 		nested: nil,
@@ -53,7 +53,7 @@ func TestTypeSchemaDescriptionIsEmpty(t *testing.T) {
 }
 
 func TestSingleNestedBlock(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	b := schema.SingleNestedBlock{
 		Attributes: simpleObjectAttributes(),
 	}
@@ -66,7 +66,7 @@ func TestSingleNestedBlock(t *testing.T) {
 }
 
 func TestListNestedBlock(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	b := schema.ListNestedBlock{
 		NestedObject: schema.NestedBlockObject{
 			Attributes: simpleObjectAttributes(),
@@ -80,7 +80,7 @@ func TestListNestedBlock(t *testing.T) {
 }
 
 func TestSetNestedBlock(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	b := schema.SetNestedBlock{
 		NestedObject: schema.NestedBlockObject{
 			Attributes: simpleObjectAttributes(),
@@ -94,7 +94,7 @@ func TestSetNestedBlock(t *testing.T) {
 }
 
 func TestDeeplyNestedBlock(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	b := schema.ListNestedBlock{
 		NestedObject: schema.NestedBlockObject{
 			Blocks: map[string]schema.Block{

@@ -28,11 +28,13 @@ type PropagatesNullFrom struct {
 	AnotherAttribute string
 }
 
-var _ planmodifier.String = PropagatesNullFrom{}
-var _ planmodifier.Number = PropagatesNullFrom{}
-var _ planmodifier.Bool = PropagatesNullFrom{}
-var _ planmodifier.List = PropagatesNullFrom{}
-var _ planmodifier.Map = PropagatesNullFrom{}
+var (
+	_ planmodifier.String = PropagatesNullFrom{}
+	_ planmodifier.Number = PropagatesNullFrom{}
+	_ planmodifier.Bool   = PropagatesNullFrom{}
+	_ planmodifier.List   = PropagatesNullFrom{}
+	_ planmodifier.Map    = PropagatesNullFrom{}
+)
 
 func (mod PropagatesNullFrom) Description(_ context.Context) string {
 	return "Sets plan to null if AnotherAttribute is null in config"
@@ -43,35 +45,40 @@ func (mod PropagatesNullFrom) MarkdownDescription(ctx context.Context) string {
 }
 
 func (mod PropagatesNullFrom) PlanModifyNumber(ctx context.Context, req planmodifier.NumberRequest,
-	resp *planmodifier.NumberResponse) {
+	resp *planmodifier.NumberResponse,
+) {
 	if mod.anotherAttributeIsNull(req.Config) {
 		resp.PlanValue = types.NumberNull()
 	}
 }
 
 func (mod PropagatesNullFrom) PlanModifyString(ctx context.Context, req planmodifier.StringRequest,
-	resp *planmodifier.StringResponse) {
+	resp *planmodifier.StringResponse,
+) {
 	if mod.anotherAttributeIsNull(req.Config) {
 		resp.PlanValue = types.StringNull()
 	}
 }
 
 func (mod PropagatesNullFrom) PlanModifyBool(ctx context.Context, req planmodifier.BoolRequest,
-	resp *planmodifier.BoolResponse) {
+	resp *planmodifier.BoolResponse,
+) {
 	if mod.anotherAttributeIsNull(req.Config) {
 		resp.PlanValue = types.BoolNull()
 	}
 }
 
 func (mod PropagatesNullFrom) PlanModifyList(ctx context.Context, req planmodifier.ListRequest,
-	resp *planmodifier.ListResponse) {
+	resp *planmodifier.ListResponse,
+) {
 	if mod.anotherAttributeIsNull(req.Config) {
 		resp.PlanValue = types.ListNull(req.PlanValue.ElementType(ctx))
 	}
 }
 
 func (mod PropagatesNullFrom) PlanModifyMap(ctx context.Context, req planmodifier.MapRequest,
-	resp *planmodifier.MapResponse) {
+	resp *planmodifier.MapResponse,
+) {
 	if mod.anotherAttributeIsNull(req.Config) {
 		resp.PlanValue = types.MapNull(req.PlanValue.ElementType(ctx))
 	}

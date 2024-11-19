@@ -41,7 +41,7 @@ import (
 // Regressing an issue with AWS provider not recognizing that assume_role config setting is singular via
 // listvalidator.SizeAtMost(1).
 func TestMaxItemsOne(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	ctx := context.Background()
 	s := pschema.Schema{
 		Blocks: map[string]pschema.Block{

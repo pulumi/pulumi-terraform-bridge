@@ -23,11 +23,11 @@ import (
 	pschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+	testutils "github.com/pulumi/providertest/replay"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	testutils "github.com/pulumi/providertest/replay"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/providerbuilder"
 	pb "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/providerbuilder"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/testprovider"
@@ -36,7 +36,7 @@ import (
 )
 
 func TestCheck(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	type testCase struct {
 		name        string
 		schema      schema.Schema
@@ -359,7 +359,7 @@ func TestCheck(t *testing.T) {
 }
 
 func TestCheckWithIntID(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	server, err := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
 	require.NoError(t, err)
 	testCase := `

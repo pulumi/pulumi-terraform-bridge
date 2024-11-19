@@ -95,7 +95,6 @@ func (p *provider) validateResourceConfig(
 	rh resourceHandle,
 	inputs resource.PropertyMap,
 ) ([]plugin.CheckFailure, error) {
-
 	tfType := rh.schema.Type(ctx).(tftypes.Object)
 
 	encodedInputs, err := convert.EncodePropertyMapToDynamic(rh.encoder, tfType, inputs)

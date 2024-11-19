@@ -18,14 +18,15 @@ import (
 	"testing"
 
 	testutils "github.com/pulumi/providertest/replay"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/testprovider"
-	tfbridge "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/require"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/testprovider"
+	tfbridge "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 
 func TestPreStateUpgradeHook(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	info := testprovider.RandomProvider()
 	info.Resources["random_string"].PreStateUpgradeHook = func(args tfbridge.PreStateUpgradeHookArgs) (int64, resource.PropertyMap, error) {
 		// Assume that if prior state is missing a schema version marker, it really is a corrupt state at version 2.

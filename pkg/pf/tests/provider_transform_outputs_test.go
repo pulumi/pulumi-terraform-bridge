@@ -20,18 +20,18 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	testutils "github.com/pulumi/providertest/replay"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	testutils "github.com/pulumi/providertest/replay"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/testprovider"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 
 func TestTransformOutputs(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	p := testprovider.SyntheticTestBridgeProvider()
 
 	p.Resources["testbridge_testcompres"].TransformOutputs = func(
@@ -152,7 +152,7 @@ func TestTransformOutputs(t *testing.T) {
 }
 
 func TestTransformFromState(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	provider := func(t *testing.T) pulumirpc.ResourceProviderServer {
 		p := testprovider.AssertProvider(func(config tfsdk.Config, old, new *tfsdk.State) {
 			// GetRawState is not available during deletes.

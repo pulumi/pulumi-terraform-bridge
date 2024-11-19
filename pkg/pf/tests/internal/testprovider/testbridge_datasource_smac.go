@@ -47,8 +47,8 @@ func (*smacDataSource) Schema(_ context.Context, _ datasource.SchemaRequest, res
 func (ds *smacDataSource) Configure(
 	_ context.Context,
 	rq datasource.ConfigureRequest,
-	re *datasource.ConfigureResponse) {
-
+	re *datasource.ConfigureResponse,
+) {
 	data, ok := rq.ProviderData.(resourceData)
 	if ok {
 		ds.smac = data.skipMetadataAPICheck

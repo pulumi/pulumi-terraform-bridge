@@ -7,20 +7,20 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/pulcheck"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optrefresh"
 	"github.com/stretchr/testify/require"
-)
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/pulcheck"
+)
 
 func TestCollectionsNullEmptyRefreshClean(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {
-		name               string
-		schemaType         schema.ValueType
-		cloudVal           interface{}
-		programVal         string
+		name       string
+		schemaType schema.ValueType
+		cloudVal   interface{}
+		programVal string
 		// If true, the cloud value will be set in the CreateContext
 		// This is behaviour observed in both AWS and GCP providers, as well as a few others
 		// where the provider returns an empty collections when a nil one was specified in inputs.

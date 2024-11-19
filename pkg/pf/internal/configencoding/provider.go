@@ -85,7 +85,8 @@ func (p *provider[T]) CheckConfigWithContext(
 
 func (p *provider[T]) DiffConfigWithContext(
 	ctx context.Context, urn resource.URN, oldInputs, olds, news resource.PropertyMap,
-	allowUnknowns bool, ignoreChanges []string) (plugin.DiffResult, error) {
+	allowUnknowns bool, ignoreChanges []string,
+) (plugin.DiffResult, error) {
 	encoding := p.GetConfigEncoding(ctx)
 	oldInputs, err := encoding.UnfoldProperties(oldInputs)
 	if err != nil {

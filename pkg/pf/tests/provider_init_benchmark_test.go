@@ -2,10 +2,11 @@ package tfbridgetests
 
 import (
 	"fmt"
+	"testing"
+
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/testprovider"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/testprovider/sdkv2randomprovider"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
-	"testing"
 )
 
 // Benchmark tests based on init of an example large provider

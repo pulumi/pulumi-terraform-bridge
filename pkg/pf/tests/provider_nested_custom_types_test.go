@@ -14,16 +14,17 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
+	"github.com/stretchr/testify/assert"
+
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/convert"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/providerbuilder"
 	pb "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/providerbuilder"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
 	tfbridge0 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestNestedCustomTypeEncoding(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 
 	testProvider := pb.NewProvider(pb.NewProviderArgs{
 		// This resource is modified from AWS Bedrockagent.
@@ -31,22 +32,22 @@ func TestNestedCustomTypeEncoding(t *testing.T) {
 			pb.NewResource(pb.NewResourceArgs{
 				Name: "bedrockagent",
 				ResourceSchema: schema.Schema{
-				Attributes: map[string]schema.Attribute{
-					"prompt_override_configuration": schema.ListAttribute{ // proto5 Optional+Computed nested block.
-						CustomType: NewListNestedObjectTypeOf[promptOverrideConfigurationModel](context.Background()),
-						Optional:   true,
-						Computed:   true,
-						PlanModifiers: []planmodifier.List{
-							listplanmodifier.UseStateForUnknown(),
-						},
-						Validators: []validator.List{
-							listvalidator.SizeAtMost(1),
-						},
-						ElementType: basetypes.ObjectType{
-							AttrTypes: AttributeTypesMust[promptOverrideConfigurationModel](context.Background()),
+					Attributes: map[string]schema.Attribute{
+						"prompt_override_configuration": schema.ListAttribute{ // proto5 Optional+Computed nested block.
+							CustomType: NewListNestedObjectTypeOf[promptOverrideConfigurationModel](context.Background()),
+							Optional:   true,
+							Computed:   true,
+							PlanModifiers: []planmodifier.List{
+								listplanmodifier.UseStateForUnknown(),
+							},
+							Validators: []validator.List{
+								listvalidator.SizeAtMost(1),
+							},
+							ElementType: basetypes.ObjectType{
+								AttrTypes: AttributeTypesMust[promptOverrideConfigurationModel](context.Background()),
+							},
 						},
 					},
-				},
 				},
 			}),
 		},
@@ -150,6 +151,7 @@ func (setNested SetNestedObjectValueOf[T]) Equal(o attr.Value) bool {
 func (setNested SetNestedObjectValueOf[T]) Type(ctx context.Context) attr.Type {
 	return NewSetNestedObjectTypeOf[T](ctx)
 }
+
 func NewSetNestedObjectTypeOf[T any](ctx context.Context) SetNestedObjectTypeOf[T] {
 	return SetNestedObjectTypeOf[T]{basetypes.SetType{ElemType: NewObjectTypeOf[T](ctx)}}
 }

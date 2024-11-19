@@ -18,13 +18,14 @@ import (
 	"testing"
 
 	testutils "github.com/pulumi/providertest/replay"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/testprovider"
 	"github.com/stretchr/testify/require"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/testprovider"
 )
 
 // Test that preview diff in presence of computed attributes results in an empty diff.
 func TestEmptyTestresDiff(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	server, err := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
 	require.NoError(t, err)
 	testCase := `
@@ -54,7 +55,7 @@ func TestEmptyTestresDiff(t *testing.T) {
 
 // Test removing an optional input.
 func TestOptionRemovalTestresDiff(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	server, err := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
 	require.NoError(t, err)
 	testCase := `
@@ -88,7 +89,7 @@ func TestOptionRemovalTestresDiff(t *testing.T) {
 
 // Make sure optionalInputBoolCopy does not cause non-empty diff when not actually changing.
 func TestEmptyTestresDiffWithOptionalComputed(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	server, err := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
 	require.NoError(t, err)
 	testCase := `
@@ -119,7 +120,7 @@ func TestEmptyTestresDiffWithOptionalComputed(t *testing.T) {
 }
 
 func TestDiffWithSecrets(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	server, err := newProviderServer(t, testprovider.RandomProvider())
 	require.NoError(t, err)
 
@@ -163,7 +164,7 @@ func TestDiffWithSecrets(t *testing.T) {
 
 // See https://github.com/pulumi/pulumi-random/issues/258
 func TestDiffVersionUpgrade(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	server, err := newProviderServer(t, testprovider.RandomProvider())
 	require.NoError(t, err)
 	testCase := `
@@ -208,7 +209,7 @@ func TestDiffVersionUpgrade(t *testing.T) {
 }
 
 func TestSetNestedObjectAdded(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	server, err := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
 	require.NoError(t, err)
 	testCase := `
@@ -259,7 +260,7 @@ func TestSetNestedObjectAdded(t *testing.T) {
 }
 
 func TestSetNestedObjectAddedOtherDiff(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	server, err := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
 	require.NoError(t, err)
 	testCase := `

@@ -90,7 +90,6 @@ func Replay(t *testing.T, server pulumirpc.ResourceProviderServer, jsonLog strin
 	assert.NoError(t, err)
 
 	switch entry.Method {
-
 	case "/pulumirpc.ResourceProvider/GetSchema":
 		replay(t, entry, new(pulumirpc.GetSchemaRequest), server.GetSchema)
 

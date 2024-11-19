@@ -32,9 +32,9 @@ import (
 var _ = pf.ShimProvider(&SchemaOnlyProvider{})
 
 type SchemaOnlyProvider struct {
-	ctx         context.Context
-	tf          pfprovider.Provider
-	resourceMap shim.ResourceMap
+	ctx           context.Context
+	tf            pfprovider.Provider
+	resourceMap   shim.ResourceMap
 	dataSourceMap shim.ResourceMap
 }
 
@@ -106,7 +106,8 @@ func (p *SchemaOnlyProvider) ValidateResource(
 }
 
 func (p *SchemaOnlyProvider) ValidateDataSource(
-	context.Context, string, shim.ResourceConfig) ([]string, []error) {
+	context.Context, string, shim.ResourceConfig,
+) ([]string, []error) {
 	panic("schemaOnlyProvider does not implement runtime operation ValidateDataSource")
 }
 
@@ -167,6 +168,7 @@ func (p *SchemaOnlyProvider) NewResourceConfig(context.Context, map[string]inter
 func (p *SchemaOnlyProvider) NewProviderConfig(context.Context, map[string]interface{}) shim.ResourceConfig {
 	panic("schemaOnlyProvider does not implement runtime operation ProviderConfig")
 }
+
 func (p *SchemaOnlyProvider) IsSet(context.Context, interface{}) ([]interface{}, bool) {
 	panic("schemaOnlyProvider does not implement runtime operation IsSet")
 }

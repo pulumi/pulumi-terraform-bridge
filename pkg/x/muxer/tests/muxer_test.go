@@ -24,7 +24,7 @@ import (
 
 	testutils "github.com/pulumi/providertest/replay"
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
-	rpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -35,7 +35,7 @@ import (
 )
 
 func TestSimpleDispatch(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	var m muxer.DispatchTable
 	m.Resources = map[string]int{
 		"test:mod:A": 0,
@@ -70,7 +70,7 @@ func TestSimpleDispatch(t *testing.T) {
 }
 
 func TestCheckConfigErrorNotDuplicated(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	var m muxer.DispatchTable
 	m.Resources = map[string]int{
 		"test:mod:A": 0,
@@ -85,7 +85,7 @@ func TestCheckConfigErrorNotDuplicated(t *testing.T) {
 }
 
 func TestCheckConfigDifferentErrorsNotDropped(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	var m muxer.DispatchTable
 	m.Resources = map[string]int{
 		"test:mod:A": 0,
@@ -106,7 +106,7 @@ func TestCheckConfigDifferentErrorsNotDropped(t *testing.T) {
 }
 
 func TestCheckConfigOneErrorReturned(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	var m muxer.DispatchTable
 	m.Resources = map[string]int{
 		"test:mod:A": 0,
@@ -121,7 +121,7 @@ func TestCheckConfigOneErrorReturned(t *testing.T) {
 }
 
 func TestConfigure(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	var m muxer.DispatchTable
 	m.Resources = map[string]int{
 		"test:mod:A": 0,
@@ -162,7 +162,7 @@ func TestConfigure(t *testing.T) {
 }
 
 func TestDivergentCheckConfig(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	// Early versions of muxer failed hard on divergent responses from CheckConfig. This test ensures that it can
 	// tolerate such responses (with logging or warning). The practical case is divergent handling of secret markers
 	// where pf and v3 based providers respond with the same value but do not agree on the secret markers.
@@ -203,7 +203,7 @@ func TestDivergentCheckConfig(t *testing.T) {
 }
 
 func TestGetMapping(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	t.Run("single-responding-server", func(t *testing.T) {
 		var m muxer.DispatchTable
 		m.Resources = map[string]int{
@@ -301,7 +301,7 @@ func (m testMuxer) replay(exchanges ...Exchange) {
 				})
 		}
 	}
-	servers := make([]rpc.ResourceProviderServer, len(serverBehavior))
+	servers := make([]pulumirpc.ResourceProviderServer, len(serverBehavior))
 	for i, s := range serverBehavior {
 		servers[i] = &server{t: m.t, calls: s}
 	}
@@ -365,17 +365,16 @@ func part(provider int, request, response string, errors []string) ExchangePart 
 func buildMux(
 	t *testing.T, mapping muxer.DispatchTable,
 	getMappings map[string]muxer.MultiMappingHandler,
-	servers ...rpc.ResourceProviderServer,
-) rpc.ResourceProviderServer {
+	servers ...pulumirpc.ResourceProviderServer,
+) pulumirpc.ResourceProviderServer {
 	endpoints := make([]muxer.Endpoint, len(servers))
 	for i, s := range servers {
 		i, s := i, s
 		endpoints[i] = muxer.Endpoint{
-			Server: func(*provider.HostClient) (rpc.ResourceProviderServer, error) {
+			Server: func(*provider.HostClient) (pulumirpc.ResourceProviderServer, error) {
 				return s, nil
 			},
 		}
-
 	}
 	s, err := muxer.Main{
 		Servers:           endpoints,
@@ -387,10 +386,10 @@ func buildMux(
 	return s
 }
 
-var _ rpc.ResourceProviderServer = ((*server)(nil))
+var _ pulumirpc.ResourceProviderServer = ((*server)(nil))
 
 type server struct {
-	rpc.UnimplementedResourceProviderServer
+	pulumirpc.UnimplementedResourceProviderServer
 
 	t *testing.T
 
@@ -431,75 +430,77 @@ func handleMethod[T proto.Message, R proto.Message](m *server, req T) (R, error)
 	return r, err
 }
 
-func (m *server) GetSchema(ctx context.Context, req *rpc.GetSchemaRequest) (*rpc.GetSchemaResponse, error) {
-	return handleMethod[*rpc.GetSchemaRequest, *rpc.GetSchemaResponse](m, req)
+func (m *server) GetSchema(ctx context.Context, req *pulumirpc.GetSchemaRequest) (*pulumirpc.GetSchemaResponse, error) {
+	return handleMethod[*pulumirpc.GetSchemaRequest, *pulumirpc.GetSchemaResponse](m, req)
 }
 
-func (m *server) CheckConfig(ctx context.Context, req *rpc.CheckRequest) (*rpc.CheckResponse, error) {
-	return handleMethod[*rpc.CheckRequest, *rpc.CheckResponse](m, req)
+func (m *server) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest) (*pulumirpc.CheckResponse, error) {
+	return handleMethod[*pulumirpc.CheckRequest, *pulumirpc.CheckResponse](m, req)
 }
 
-func (m *server) DiffConfig(ctx context.Context, req *rpc.DiffRequest) (*rpc.DiffResponse, error) {
-	return handleMethod[*rpc.DiffRequest, *rpc.DiffResponse](m, req)
+func (m *server) DiffConfig(ctx context.Context, req *pulumirpc.DiffRequest) (*pulumirpc.DiffResponse, error) {
+	return handleMethod[*pulumirpc.DiffRequest, *pulumirpc.DiffResponse](m, req)
 }
 
-func (m *server) Configure(ctx context.Context, req *rpc.ConfigureRequest) (*rpc.ConfigureResponse, error) {
-	return handleMethod[*rpc.ConfigureRequest, *rpc.ConfigureResponse](m, req)
+func (m *server) Configure(ctx context.Context, req *pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error) {
+	return handleMethod[*pulumirpc.ConfigureRequest, *pulumirpc.ConfigureResponse](m, req)
 }
 
-func (m *server) Invoke(ctx context.Context, req *rpc.InvokeRequest) (*rpc.InvokeResponse, error) {
-	return handleMethod[*rpc.InvokeRequest, *rpc.InvokeResponse](m, req)
+func (m *server) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*pulumirpc.InvokeResponse, error) {
+	return handleMethod[*pulumirpc.InvokeRequest, *pulumirpc.InvokeResponse](m, req)
 }
 
-func (m *server) StreamInvoke(req *rpc.InvokeRequest, s rpc.ResourceProvider_StreamInvokeServer) error {
+func (m *server) StreamInvoke(req *pulumirpc.InvokeRequest, s pulumirpc.ResourceProvider_StreamInvokeServer) error {
 	assert.Fail(m.t, "StreamInvoke not implemented on `server`")
 	return fmt.Errorf("UNIMPLEMENTED")
 }
 
-func (m *server) Call(ctx context.Context, req *rpc.CallRequest) (*rpc.CallResponse, error) {
-	return handleMethod[*rpc.CallRequest, *rpc.CallResponse](m, req)
+func (m *server) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error) {
+	return handleMethod[*pulumirpc.CallRequest, *pulumirpc.CallResponse](m, req)
 }
 
-func (m *server) Check(ctx context.Context, req *rpc.CheckRequest) (*rpc.CheckResponse, error) {
-	return handleMethod[*rpc.CheckRequest, *rpc.CheckResponse](m, req)
+func (m *server) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pulumirpc.CheckResponse, error) {
+	return handleMethod[*pulumirpc.CheckRequest, *pulumirpc.CheckResponse](m, req)
 }
 
-func (m *server) Diff(ctx context.Context, req *rpc.DiffRequest) (*rpc.DiffResponse, error) {
-	return handleMethod[*rpc.DiffRequest, *rpc.DiffResponse](m, req)
+func (m *server) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulumirpc.DiffResponse, error) {
+	return handleMethod[*pulumirpc.DiffRequest, *pulumirpc.DiffResponse](m, req)
 }
 
-func (m *server) Create(ctx context.Context, req *rpc.CreateRequest) (*rpc.CreateResponse, error) {
-	return handleMethod[*rpc.CreateRequest, *rpc.CreateResponse](m, req)
+func (m *server) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*pulumirpc.CreateResponse, error) {
+	return handleMethod[*pulumirpc.CreateRequest, *pulumirpc.CreateResponse](m, req)
 }
 
-func (m *server) Read(ctx context.Context, req *rpc.ReadRequest) (*rpc.ReadResponse, error) {
-	return handleMethod[*rpc.ReadRequest, *rpc.ReadResponse](m, req)
+func (m *server) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulumirpc.ReadResponse, error) {
+	return handleMethod[*pulumirpc.ReadRequest, *pulumirpc.ReadResponse](m, req)
 }
 
-func (m *server) Update(ctx context.Context, req *rpc.UpdateRequest) (*rpc.UpdateResponse, error) {
-	return handleMethod[*rpc.UpdateRequest, *rpc.UpdateResponse](m, req)
+func (m *server) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*pulumirpc.UpdateResponse, error) {
+	return handleMethod[*pulumirpc.UpdateRequest, *pulumirpc.UpdateResponse](m, req)
 }
 
-func (m *server) Delete(ctx context.Context, req *rpc.DeleteRequest) (*emptypb.Empty, error) {
-	return handleMethod[*rpc.DeleteRequest, *emptypb.Empty](m, req)
+func (m *server) Delete(ctx context.Context, req *pulumirpc.DeleteRequest) (*emptypb.Empty, error) {
+	return handleMethod[*pulumirpc.DeleteRequest, *emptypb.Empty](m, req)
 }
 
-func (m *server) Construct(ctx context.Context, req *rpc.ConstructRequest) (*rpc.ConstructResponse, error) {
-	return handleMethod[*rpc.ConstructRequest, *rpc.ConstructResponse](m, req)
+func (m *server) Construct(ctx context.Context, req *pulumirpc.ConstructRequest) (*pulumirpc.ConstructResponse, error) {
+	return handleMethod[*pulumirpc.ConstructRequest, *pulumirpc.ConstructResponse](m, req)
 }
 
 func (m *server) Cancel(ctx context.Context, e *emptypb.Empty) (*emptypb.Empty, error) {
 	return handleMethod[*emptypb.Empty, *emptypb.Empty](m, e)
 }
 
-func (m *server) GetPluginInfo(ctx context.Context, e *emptypb.Empty) (*rpc.PluginInfo, error) {
-	return handleMethod[*emptypb.Empty, *rpc.PluginInfo](m, e)
+func (m *server) GetPluginInfo(ctx context.Context, e *emptypb.Empty) (*pulumirpc.PluginInfo, error) {
+	return handleMethod[*emptypb.Empty, *pulumirpc.PluginInfo](m, e)
 }
 
-func (m *server) Attach(ctx context.Context, req *rpc.PluginAttach) (*emptypb.Empty, error) {
-	return handleMethod[*rpc.PluginAttach, *emptypb.Empty](m, req)
+func (m *server) Attach(ctx context.Context, req *pulumirpc.PluginAttach) (*emptypb.Empty, error) {
+	return handleMethod[*pulumirpc.PluginAttach, *emptypb.Empty](m, req)
 }
 
-func (m *server) GetMapping(ctx context.Context, req *rpc.GetMappingRequest) (*rpc.GetMappingResponse, error) {
-	return handleMethod[*rpc.GetMappingRequest, *rpc.GetMappingResponse](m, req)
+func (m *server) GetMapping(
+	ctx context.Context, req *pulumirpc.GetMappingRequest,
+) (*pulumirpc.GetMappingResponse, error) {
+	return handleMethod[*pulumirpc.GetMappingRequest, *pulumirpc.GetMappingResponse](m, req)
 }

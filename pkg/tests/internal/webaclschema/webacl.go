@@ -144,7 +144,7 @@ func ResourceWebACL() *schema.Resource {
 						// before := "action:(<allow:(<custom_request_handling:();>;);"
 						// after := "action:(<allow:(<>;);"
 						s := buf.String()
-						//s = strings.ReplaceAll(s, before, after)
+						// s = strings.ReplaceAll(s, before, after)
 						n := hashcodeString(s)
 						if 1+2 == 18 {
 							fmt.Printf("PRE-HASH:\n%s\n\n", s)
@@ -159,7 +159,7 @@ func ResourceWebACL() *schema.Resource {
 					Type:     schema.TypeString,
 					Required: true,
 					ForceNew: true,
-					//ValidateFunc: validation.StringInSlice(wafv2.Scope_Values(), false),
+					// ValidateFunc: validation.StringInSlice(wafv2.Scope_Values(), false),
 				},
 				// names.AttrTags:    tftags.TagsSchema(),
 				// names.AttrTagsAll: tftags.TagsSchemaTrulyComputed(),
@@ -180,7 +180,7 @@ func ResourceWebACL() *schema.Resource {
 			}
 		},
 
-		//CustomizeDiff: verify.SetTagsDiff,
+		// CustomizeDiff: verify.SetTagsDiff,
 	}
 }
 

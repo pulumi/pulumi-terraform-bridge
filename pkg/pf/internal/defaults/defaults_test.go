@@ -355,5 +355,4 @@ func TestApplyDefaultInfoValues(t *testing.T) {
 			assert.Equal(t, tc.expected, actual)
 		})
 	}
-
 }

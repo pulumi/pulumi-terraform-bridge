@@ -46,11 +46,13 @@ func (*schemaOnlyResource) Timeouts() *shim.ResourceTimeout {
 }
 
 func (*schemaOnlyResource) InstanceState(id string, object,
-	meta map[string]interface{}) (shim.InstanceState, error) {
+	meta map[string]interface{},
+) (shim.InstanceState, error) {
 	panic("schemaOnlyResource does not implement runtime operation InstanceState")
 }
 
 func (*schemaOnlyResource) DecodeTimeouts(
-	config shim.ResourceConfig) (*shim.ResourceTimeout, error) {
+	config shim.ResourceConfig,
+) (*shim.ResourceTimeout, error) {
 	panic("schemaOnlyResource does not implement runtime operation DecodeTimeouts")
 }

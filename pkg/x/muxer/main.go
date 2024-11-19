@@ -21,7 +21,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	rpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
 // Mux multiple rpc servers into a single server by routing based on request type and urn.
@@ -96,8 +96,8 @@ type Main struct {
 	GetMappingHandler map[string]MultiMappingHandler
 }
 
-func (m Main) Server(host *provider.HostClient, module, version string) (rpc.ResourceProviderServer, error) {
-	servers := make([]rpc.ResourceProviderServer, len(m.Servers))
+func (m Main) Server(host *provider.HostClient, module, version string) (pulumirpc.ResourceProviderServer, error) {
+	servers := make([]pulumirpc.ResourceProviderServer, len(m.Servers))
 	for i, s := range m.Servers {
 		var err error
 		servers[i], err = s.Server(host)
@@ -108,7 +108,7 @@ func (m Main) Server(host *provider.HostClient, module, version string) (rpc.Res
 
 	dispatchTable, pulumiSchema := m.DispatchTable.dispatchTable, m.Schema
 	if dispatchTable.isEmpty() || len(pulumiSchema) == 0 {
-		req := &rpc.GetSchemaRequest{Version: SchemaVersion}
+		req := &pulumirpc.GetSchemaRequest{Version: SchemaVersion}
 		primary, err := servers[0].GetSchema(context.Background(), req)
 		contract.AssertNoErrorf(err, "Muxing requires GetSchema for dispatch")
 		targetSchema := new(schema.PackageSpec)
@@ -139,5 +139,5 @@ func (m Main) Server(host *provider.HostClient, module, version string) (rpc.Res
 }
 
 type Endpoint struct {
-	Server func(*provider.HostClient) (rpc.ResourceProviderServer, error)
+	Server func(*provider.HostClient) (pulumirpc.ResourceProviderServer, error)
 }

@@ -22,17 +22,18 @@ import (
 	fwres "github.com/hashicorp/terraform-plugin-framework/resource"
 	fwsch "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	testutils "github.com/pulumi/providertest/replay"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/stretchr/testify/require"
+
 	pb "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/providerbuilder"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/testprovider"
 	tfpf "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/stretchr/testify/require"
 )
 
 func TestReadFromRefresh(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	// This test case was obtained by running `pulumi refresh` on a simple stack with one RandomPassword.
 	//
 	// Specifically testing for:
@@ -151,7 +152,7 @@ func TestReadFromRefresh(t *testing.T) {
 }
 
 func TestImportRandomPassword(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	server, err := newProviderServer(t, testprovider.RandomProvider())
 	require.NoError(t, err)
 	testCase := `
@@ -194,7 +195,7 @@ func TestImportRandomPassword(t *testing.T) {
 }
 
 func TestImportingResourcesWithBlocks(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	// Importing a resource that has blocks such as Testnest resource used to panic. Ensure that it minimally
 	// succeeds.
 	server, err := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
@@ -225,7 +226,7 @@ func TestImportingResourcesWithBlocks(t *testing.T) {
 }
 
 func TestImportingResourcesWithoutDefaults(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	// Importing a resource that has blocks used to add a `__defaults: []` entry to the `response.inputs`
 	// ensure that it no longer does so
 	server, err := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
@@ -264,7 +265,7 @@ func TestImportingResourcesWithoutDefaults(t *testing.T) {
 // Check that importing a resource that does not exist returns an empty property bag and
 // no ID.
 func TestImportingMissingResources(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	server, err := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
 	require.NoError(t, err)
 	testCase := `
@@ -284,7 +285,7 @@ func TestImportingMissingResources(t *testing.T) {
 }
 
 func TestImportingResourcesWithNestedAttributes(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	// Importing a resource that has attribute blocks such as Testnest resource used to panic. Ensure that it minimally
 	// succeeds.
 	server, err := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
@@ -312,7 +313,7 @@ func TestImportingResourcesWithNestedAttributes(t *testing.T) {
 // Check that refreshing a resource that does not exist returns an empty property bag and
 // no ID.
 func TestRefreshMissingResources(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	server, err := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
 	require.NoError(t, err)
 	testCase := `
@@ -343,7 +344,7 @@ func TestRefreshMissingResources(t *testing.T) {
 //
 // See https://github.com/pulumi/pulumi-terraform-bridge/issues/1919
 func TestRefreshResourceNotFound(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	r := pb.NewResource(pb.NewResourceArgs{
 		Name: "resource",
 		ResourceSchema: fwsch.Schema{
@@ -408,7 +409,7 @@ func TestRefreshResourceNotFound(t *testing.T) {
 }
 
 func TestRefreshSupportsCustomID(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	p := testprovider.RandomProvider()
 	server, err := newProviderServer(t, p)
 	require.NoError(t, err)
@@ -510,7 +511,7 @@ func TestRefreshSupportsCustomID(t *testing.T) {
 }
 
 func TestImportSupportsCustomID(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	p := testprovider.RandomProvider()
 	p.Resources["random_password"].ComputeID = func(
 		ctx context.Context, state resource.PropertyMap,

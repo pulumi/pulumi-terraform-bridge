@@ -24,9 +24,11 @@ func (Provider) InternalValidate() error { panic("Unimplemented") }
 func (Provider) Validate(ctx context.Context, c shim.ResourceConfig) ([]string, []error) {
 	panic("Unimplemented")
 }
+
 func (Provider) ValidateResource(ctx context.Context, t string, c shim.ResourceConfig) ([]string, []error) {
 	panic("Unimplemented")
 }
+
 func (Provider) ValidateDataSource(ctx context.Context, t string, c shim.ResourceConfig) ([]string, []error) {
 	panic("Unimplemented")
 }
@@ -60,6 +62,7 @@ func (Provider) Refresh(
 func (Provider) ReadDataDiff(ctx context.Context, t string, c shim.ResourceConfig) (shim.InstanceDiff, error) {
 	panic("Unimplemented")
 }
+
 func (Provider) ReadDataApply(ctx context.Context, t string, d shim.InstanceDiff) (shim.InstanceState, error) {
 	panic("Unimplemented")
 }

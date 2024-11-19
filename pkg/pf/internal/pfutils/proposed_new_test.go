@@ -40,7 +40,7 @@ type runtimeSchemaAdapter struct{ Schema }
 func (runtimeSchemaAdapter) Shim() shim.SchemaMap { panic("UNIMPLEMENTED") }
 
 func TestComputedOptionalBecomingUnknown(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	schema := rschema.Schema{Attributes: map[string]rschema.Attribute{
 		"foo": rschema.SingleNestedAttribute{
 			Attributes: map[string]rschema.Attribute{
@@ -65,7 +65,7 @@ func TestComputedOptionalBecomingUnknown(t *testing.T) {
 //
 // https://github.com/hashicorp/terraform/blob/v1.3.6/internal/plans/objchange/objchange.go
 func TestProposedNewBaseCases(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	schema := rschema.Schema{Attributes: map[string]rschema.Attribute{
 		"foo": rschema.StringAttribute{
 			Optional: true,
@@ -223,7 +223,7 @@ func TestProposedNewBaseCases(t *testing.T) {
 //
 // https://github.com/hashicorp/terraform/blob/v1.3.6/internal/plans/objchange/objchange_test.go#L12
 func TestProposedNewWithPortedCases(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	testAttributes := map[string]rschema.Attribute{
 		"optional": rschema.StringAttribute{
 			Optional: true,
@@ -241,7 +241,6 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 	}
 
 	tests := map[string]testcase{
-
 		"empty": {
 			runtimeSchemaAdapter{
 				FromResourceSchema(rschema.Schema{Attributes: map[string]rschema.Attribute{}}),

@@ -18,8 +18,9 @@ import (
 	"testing"
 
 	testutils "github.com/pulumi/providertest/replay"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/testprovider"
 	"github.com/stretchr/testify/require"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/testprovider"
 )
 
 // These tests replay gRPC logs from a well-behaved test program in testdatagen/genrandom to verify
@@ -28,7 +29,7 @@ import (
 //
 // See testdatagen/genrandom/generate.sh for regenerating the test data.
 func TestGenRandom(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	traces := []string{
 		// TODO enable once Configure replay is implemented.
 		// "testdata/genrandom/random-delete-preview.json",

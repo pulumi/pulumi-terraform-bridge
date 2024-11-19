@@ -29,7 +29,8 @@ func newEchoDataSource() datasource.DataSource {
 type echoDataSource struct{}
 
 func (*echoDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest,
-	resp *datasource.MetadataResponse) {
+	resp *datasource.MetadataResponse,
+) {
 	resp.TypeName = req.ProviderTypeName + "_echo"
 }
 

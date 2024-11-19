@@ -28,6 +28,20 @@ linters:
     - wastedassign
     - whitespace
 issues:
+  exclude-rules:
+    # Exclude some linters from running on tests files.
+    - path: pkg/pf/tests
+      linters:
+        - lll
+        - paralleltest
+    - path: pkg/tests
+      linters:
+        - lll
+        - paralleltest
+    - path: pkg/pf/tests
+      linters:
+        - lll
+        - paralleltest
   exclude:
     - "unused-parameter: parameter"
     - "redefines-builtin-id:"
@@ -38,13 +52,6 @@ issues:
     - pkg/tf2pulumi/internal/configs
     - pkg/vendored
     # TODO(https://github.com/pulumi/pulumi-terraform-bridge/issues/2474)
-    - pkg/pf/tests
-    - pkg/tests
-    - pkg/x/testing
-    - pkg/x/muxer/tests
-    - pf
-    - x/muxer
-    - testing
 linters-settings:
   gci:
     sections:

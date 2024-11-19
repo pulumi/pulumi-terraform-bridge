@@ -54,7 +54,8 @@ func NonComputedEq(schema tftypes.AttributePathStepper) Eq {
 }
 
 func replaceComputedAttributesWithNull(schema tftypes.AttributePathStepper,
-	offset *tftypes.AttributePath, val tftypes.Value) (tftypes.Value, error) {
+	offset *tftypes.AttributePath, val tftypes.Value,
+) (tftypes.Value, error) {
 	return tftypes.Transform(val, func(p *tftypes.AttributePath, v tftypes.Value) (tftypes.Value, error) {
 		realPath := joinPaths(offset, p)
 		if ab, err := LookupTerraformPath(schema, realPath); err == nil && ab.IsAttr && ab.Attr.IsComputed() {

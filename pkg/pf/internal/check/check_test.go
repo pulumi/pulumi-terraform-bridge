@@ -60,7 +60,7 @@ func (m *mockSchema) Computed() bool {
 }
 
 func TestIsInputProperty(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	tests := []struct {
 		name    string
 		schema  shim.Schema
@@ -96,7 +96,7 @@ func TestIsInputProperty(t *testing.T) {
 }
 
 func TestMissingIDProperty(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	stderr, err := test(t, tfbridge.ProviderInfo{
 		P: pfbridge.ShimProvider(testProvider{missingID: true}),
 	})
@@ -108,7 +108,7 @@ func TestMissingIDProperty(t *testing.T) {
 }
 
 func TestMissingIDWithOverride(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	stderr, err := test(t, tfbridge.ProviderInfo{
 		P: pfbridge.ShimProvider(testProvider{missingID: true}),
 		Resources: map[string]*tfbridge.ResourceInfo{
@@ -123,7 +123,7 @@ func TestMissingIDWithOverride(t *testing.T) {
 }
 
 func TestMissingIDUnmapped(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	stderr, err := test(t, tfbridge.ProviderInfo{
 		P:              pfbridge.ShimProvider(testProvider{missingID: true}),
 		IgnoreMappings: []string{"test_res"},
@@ -134,7 +134,7 @@ func TestMissingIDUnmapped(t *testing.T) {
 }
 
 func TestSensitiveID(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	stderr, err := test(t, tfbridge.ProviderInfo{
 		P: pfbridge.ShimProvider(testProvider{sensitiveID: true}),
 	})
@@ -145,7 +145,7 @@ func TestSensitiveID(t *testing.T) {
 }
 
 func TestSensitiveIDWithOverride(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	t.Run("false", func(t *testing.T) {
 		stderr, err := test(t, tfbridge.ProviderInfo{
 			P: pfbridge.ShimProvider(testProvider{sensitiveID: true}),
@@ -173,7 +173,7 @@ func TestSensitiveIDWithOverride(t *testing.T) {
 }
 
 func TestInvalidInputID(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	tests := []struct {
 		name     string
 		idSchema idSchema
@@ -267,7 +267,7 @@ func TestInvalidInputID(t *testing.T) {
 }
 
 func TestMuxedProvider(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	stderr, err := test(t, tfbridge.ProviderInfo{
 		P: pfbridge.MuxShimWithPF(context.Background(),
 			sdkv2.NewProvider(testSDKv2Provider()),

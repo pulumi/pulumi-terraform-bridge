@@ -11,7 +11,7 @@ import (
 )
 
 func TestMapAttribute(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	mapAttr := schema.MapAttribute{
 		Optional:    true,
 		ElementType: basetypes.StringType{},

@@ -29,7 +29,7 @@ import (
 )
 
 func TestAttach(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	req := &pulumirpc.PluginAttach{Address: "test"}
 	ctx := context.Background()
 
@@ -49,7 +49,8 @@ func TestAttach(t *testing.T) {
 			servers: []server{
 				&attach{t: t, expected: "test"},
 				&attach{t: t, expected: "test"},
-			}}
+			},
+		}
 		_, err := m.Attach(ctx, req)
 		assert.NoError(t, err)
 		for i, s := range m.servers {
@@ -92,7 +93,7 @@ func (h *host) Log(context.Context, diag.Severity, urn.URN, string) error {
 }
 
 func TestDiffConfig(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	type testCase struct {
 		name           string
 		request        *pulumirpc.DiffRequest

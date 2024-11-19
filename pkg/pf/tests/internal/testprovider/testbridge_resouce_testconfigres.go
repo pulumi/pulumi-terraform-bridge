@@ -26,8 +26,10 @@ type testconfigres struct {
 	config string
 }
 
-var _ resource.Resource = (*testconfigres)(nil)
-var _ resource.ResourceWithConfigure = (*testconfigres)(nil)
+var (
+	_ resource.Resource              = (*testconfigres)(nil)
+	_ resource.ResourceWithConfigure = (*testconfigres)(nil)
+)
 
 func newTestConfigRes() resource.Resource {
 	return &testconfigres{}

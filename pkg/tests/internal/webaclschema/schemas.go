@@ -12,7 +12,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/wafv2"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
-	// "github.com/hashicorp/terraform-provider-aws/internal/verify"
 )
 
 var listOfEmptyObjectSchema *schema.Schema = &schema.Schema{
@@ -161,7 +160,7 @@ func ipSetReferenceStatementSchema() *schema.Schema {
 				"arn": {
 					Type:     schema.TypeString,
 					Required: true,
-					//ValidateFunc: verify.ValidARN,
+					// ValidateFunc: verify.ValidARN,
 				},
 				"ip_set_forwarded_ip_config": {
 					Type:     schema.TypeList,
@@ -1050,7 +1049,7 @@ func ruleGroupReferenceStatementSchema() *schema.Schema {
 				"arn": {
 					Type:     schema.TypeString,
 					Required: true,
-					//ValidateFunc: verify.ValidARN,
+					// ValidateFunc: verify.ValidARN,
 				},
 				"rule_action_override": ruleActionOverrideSchema(),
 			},
