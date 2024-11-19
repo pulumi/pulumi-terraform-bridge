@@ -83,6 +83,11 @@ func TestRenderTable(t *testing.T) {
 			input:    readfile(t, "../test_data/table-rendering/input.md"),
 			expected: autogold.Expect(readfile(t, "../test_data/table-rendering/expected.md")),
 		},
+		{
+			name:     "in-middle-of-document",
+			input:    readfile(t, "../test_data/table-rendering/in-middle-of-doc-input.md"),
+			expected: autogold.Expect(readfile(t, "../test_data/table-rendering/in-middle-of-doc-expected.md")),
+		},
 	}
 
 	for _, tt := range tests {

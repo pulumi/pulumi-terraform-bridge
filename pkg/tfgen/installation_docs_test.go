@@ -78,6 +78,16 @@ func TestPlainDocsParser(t *testing.T) {
 				},
 			),
 		},
+		{
+			// Discovered while generating docs for SD-WAN.
+			// Tests whether the custom table renderer is used correctly in docsgen overall.
+			name: "Transforms table correctly",
+			docFile: DocFile{
+				Content: []byte(readfile(t, "test_data/convert-index-file-with-table/input.md")),
+			},
+			expected: []byte(readfile(t, "test_data/convert-index-file-with-table/expected.md")),
+			edits:    defaultEditRules(),
+		},
 	}
 	for _, tt := range tests {
 		tt := tt
