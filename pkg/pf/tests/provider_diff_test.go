@@ -126,8 +126,8 @@ func TestEmptyTestresDiffWithOptionalComputed(t *testing.T) {
 }
 
 func TestDiffWithSecrets(t *testing.T) {
-  t.Parallel()
-  t.Skip("TODO: secrets")  
+	t.Parallel()
+	t.Skip("TODO: secrets")
 
 	server, err := newProviderServer(t, testprovider.RandomProvider())
 	require.NoError(t, err)
