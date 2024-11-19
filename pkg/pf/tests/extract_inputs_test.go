@@ -904,10 +904,10 @@ func TestExtractInputsFromOutputsPF(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			prov := pb.NewProvider(pb.NewProviderArgs{
 				AllResources: []pb.Resource{
-					{
+					pb.NewResource(pb.NewResourceArgs{
 						Name:           "test",
 						ResourceSchema: tc.resSchema,
-					},
+					}),
 				},
 			})
 

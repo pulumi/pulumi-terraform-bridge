@@ -17,7 +17,6 @@ package crosstests
 import (
 	"bytes"
 
-	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	crosstests "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests"
 	crosstestsimpl "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests/impl"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests/impl/hclwrite"
@@ -50,7 +49,7 @@ func yamlResource(t T, properties resource.PropertyMap) map[string]any {
 // when computed by Terraform and Pulumi.
 //
 // Diff should be safe to run in parallel.
-func Diff(t T, schema rschema.Schema, tfConfig1, tfConfig2 map[string]cty.Value, options ...DiffOption) crosstestsimpl.DiffResult {
+func Diff(t T, res pb.Resource, tfConfig1, tfConfig2 map[string]cty.Value, options ...DiffOption) crosstestsimpl.DiffResult {
 	skipUnlessLinux(t)
 
 	var opts diffOpts
@@ -59,10 +58,7 @@ func Diff(t T, schema rschema.Schema, tfConfig1, tfConfig2 map[string]cty.Value,
 	}
 
 	prov := pb.NewProvider(pb.NewProviderArgs{
-		AllResources: []pb.Resource{{
-			Name:           "test",
-			ResourceSchema: schema,
-		}},
+		AllResources: []pb.Resource{res},
 	})
 
 	shimProvider := tfbridge.ShimProvider(prov)
@@ -70,7 +66,7 @@ func Diff(t T, schema rschema.Schema, tfConfig1, tfConfig2 map[string]cty.Value,
 	// Run the TF part
 	var hcl1 bytes.Buffer
 
-	sch := hclSchemaPFResource(schema)
+	sch := hclSchemaPFResource(res.ResourceSchema)
 	err := hclwrite.WriteResource(&hcl1, sch, "testprovider_test", "res", tfConfig1,
 		hclwrite.WithCreateBeforeDestroy(true))
 	require.NoError(t, err)

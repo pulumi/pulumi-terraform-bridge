@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hexops/autogold/v2"
 	crosstests "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/cross-tests"
+	pb "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/providerbuilder"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -171,8 +172,11 @@ func TestDetailedDiffMap(t *testing.T) {
 					t.Parallel()
 					initialValue := schemaValueMakerPair.valueMaker(scenario.initialValue)
 					changeValue := schemaValueMakerPair.valueMaker(scenario.changeValue)
+					res := pb.NewResource(pb.NewResourceArgs{
+						ResourceSchema: schemaValueMakerPair.schema,
+					})
 
-					diff := crosstests.Diff(t, schemaValueMakerPair.schema, map[string]cty.Value{"key": initialValue}, map[string]cty.Value{"key": changeValue})
+					diff := crosstests.Diff(t, res, map[string]cty.Value{"key": initialValue}, map[string]cty.Value{"key": changeValue})
 
 					autogold.ExpectFile(t, testOutput{
 						initialValue: scenario.initialValue,

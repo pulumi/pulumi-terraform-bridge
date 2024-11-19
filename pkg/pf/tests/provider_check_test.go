@@ -319,10 +319,12 @@ func TestCheck(t *testing.T) {
 						},
 					},
 				},
-				AllResources: []providerbuilder.Resource{{
-					Name:           "res",
-					ResourceSchema: tc.schema,
-				}},
+				AllResources: []providerbuilder.Resource{
+					pb.NewResource(pb.NewResourceArgs{
+						Name:           "res",
+						ResourceSchema: tc.schema,
+					}),
+				},
 			})
 			res := tfbridge0.ResourceInfo{
 				Tok: "testprovider:index/res:Res",

@@ -30,7 +30,7 @@ func TestNewMuxProvider(t *testing.T) {
     t.Parallel()
 	createCallCount := 0
 
-	r := pb.Resource{
+	r := pb.NewResource(pb.NewResourceArgs{
 		Name: "r",
 		CreateFunc: func(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 			t.Logf("CREATE called: %v", req.Plan.Raw.String())
@@ -45,7 +45,7 @@ func TestNewMuxProvider(t *testing.T) {
 				},
 			},
 		},
-	}
+	})
 
 	p := pb.NewProvider(pb.NewProviderArgs{
 		AllResources: []pb.Resource{r},

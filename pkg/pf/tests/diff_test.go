@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hexops/autogold/v2"
 	crosstests "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/cross-tests"
+	pb "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/providerbuilder"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -25,7 +26,10 @@ func TestSimpleNoDiff(t *testing.T) {
 		},
 	}
 
-	res := crosstests.Diff(t, sch,
+	res := pb.NewResource(pb.NewResourceArgs{
+		ResourceSchema: sch,
+	})
+	diff := crosstests.Diff(t, res,
 		map[string]cty.Value{"key": cty.StringVal("value")},
 		map[string]cty.Value{"key": cty.StringVal("value1")},
 	)
@@ -45,7 +49,7 @@ Terraform will perform the following actions:
 
 Plan: 0 to add, 1 to change, 0 to destroy.
 
-`).Equal(t, res.TFOut)
+`).Equal(t, diff.TFOut)
 	autogold.Expect(`Previewing update (test):
   pulumi:pulumi:Stack: (same)
     [urn=urn:pulumi:test::project::pulumi:pulumi:Stack::project-test]
@@ -56,7 +60,7 @@ Plan: 0 to add, 1 to change, 0 to destroy.
 Resources:
     ~ 1 to update
     1 unchanged
-`).Equal(t, res.PulumiOut)
+`).Equal(t, diff.PulumiOut)
 }
 
 type stringDefault string
@@ -186,13 +190,16 @@ func TestDetailedDiffStringAttribute(t *testing.T) {
 					initialValue := makeValue(scenario.initialValue)
 					changeValue := makeValue(scenario.changeValue)
 
-					res := crosstests.Diff(t, schema.schema, map[string]cty.Value{"key": initialValue}, map[string]cty.Value{"key": changeValue})
+					res := pb.NewResource(pb.NewResourceArgs{
+						ResourceSchema: schema.schema,
+					})
+					diff := crosstests.Diff(t, res, map[string]cty.Value{"key": initialValue}, map[string]cty.Value{"key": changeValue})
 
 					autogold.ExpectFile(t, testOutput{
 						initialValue: scenario.initialValue,
 						changeValue:  scenario.changeValue,
-						tfOut:        res.TFOut,
-						pulumiOut:    res.PulumiOut,
+						tfOut:        diff.TFOut,
+						pulumiOut:    diff.PulumiOut,
 					})
 				})
 			}
