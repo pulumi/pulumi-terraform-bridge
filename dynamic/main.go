@@ -22,6 +22,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/opentofu/opentofu/shim/run"
+	gogen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
@@ -61,6 +62,8 @@ func initialSetup() (info.Provider, pfbridge.ProviderMetadata, func() error) {
 		},
 	}
 
+	var tfProviderName string
+
 	var metadata pfbridge.ProviderMetadata
 	metadata = pfbridge.ProviderMetadata{
 		XGetSchema: func(ctx context.Context, req plugin.GetSchemaRequest) ([]byte, error) {
@@ -74,6 +77,14 @@ func initialSetup() (info.Provider, pfbridge.ProviderMetadata, func() error) {
 			if err != nil {
 				return nil, err
 			}
+
+			goPkgInfo, err := json.Marshal(gogen.GoPackageInfo{
+				AppendPath: tfProviderName,
+			})
+			if err != nil {
+				return nil, fmt.Errorf("marshal: %w", err)
+			}
+			packageSchema.PackageSpec.Language["go"] = goPkgInfo
 
 			if info.SchemaPostProcessor != nil {
 				info.SchemaPostProcessor(&packageSchema.PackageSpec)
@@ -116,6 +127,7 @@ func initialSetup() (info.Provider, pfbridge.ProviderMetadata, func() error) {
 			if err != nil {
 				return plugin.ParameterizeResponse{}, err
 			}
+			tfProviderName = p.Name()
 
 			v, err := semver.Parse(p.Version())
 			if err != nil {
