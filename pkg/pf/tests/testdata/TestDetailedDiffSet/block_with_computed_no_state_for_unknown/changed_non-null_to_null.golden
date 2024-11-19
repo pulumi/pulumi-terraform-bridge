@@ -30,7 +30,8 @@ Plan: 0 to add, 1 to change, 0 to destroy.
         [urn=urn:pulumi:test::project::testprovider:index/test:Test::p]
       - keys: [
       -     [0]: {
-              - nested: "value"
+              - computed: "computed-value"
+              - nested  : "value"
             }
         ]
 Resources:
