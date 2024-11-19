@@ -20,12 +20,13 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	testutils "github.com/pulumi/providertest/replay"
+
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
 
 func TestRegressHCloud175(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	ctx := context.Background()
 
 	subnetResource := func() *schema.Resource {

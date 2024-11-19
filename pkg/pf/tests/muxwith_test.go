@@ -21,13 +21,14 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	pb "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/providerbuilder"
 	"github.com/stretchr/testify/require"
+
+	pb "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/providerbuilder"
 )
 
 // Add coverage for pf.NewMuxProvider.
 func TestNewMuxProvider(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	createCallCount := 0
 
 	r := pb.NewResource(pb.NewResourceArgs{

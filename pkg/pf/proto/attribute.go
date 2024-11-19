@@ -82,7 +82,6 @@ func (a attribute) Elem() interface{} {
 		}
 	}
 	return element{a.attr.ValueType(), a.Optional()}.Elem()
-
 }
 
 // Defaults are applied in the provider binary, not here

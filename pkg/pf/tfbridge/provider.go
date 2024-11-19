@@ -93,7 +93,8 @@ func ShimProviderWithContext(ctx context.Context, p pfprovider.Provider) shim.Pr
 }
 
 func newProviderWithContext(ctx context.Context, info tfbridge.ProviderInfo,
-	meta ProviderMetadata) (configencoding.Provider[*provider], error) {
+	meta ProviderMetadata,
+) (configencoding.Provider[*provider], error) {
 	const infoPErrMSg string = "info.P must be constructed with ShimProvider or ShimProviderWithContext"
 
 	if info.P == nil {
@@ -273,7 +274,8 @@ func (p *provider) terraformDatasourceName(functionToken tokens.ModuleMember) (s
 // NOT IMPLEMENTED: Call dynamically executes a method in the provider associated with a component resource.
 func (p *provider) CallWithContext(_ context.Context,
 	tok tokens.ModuleMember, args resource.PropertyMap, info plugin.CallInfo,
-	options plugin.CallOptions) (plugin.CallResult, error) {
+	options plugin.CallOptions,
+) (plugin.CallResult, error) {
 	return plugin.CallResult{},
 		fmt.Errorf("Call is not implemented for Terraform Plugin Framework bridged providers")
 }
@@ -281,7 +283,8 @@ func (p *provider) CallWithContext(_ context.Context,
 // NOT IMPLEMENTED: Construct creates a new component resource.
 func (p *provider) ConstructWithContext(_ context.Context,
 	info plugin.ConstructInfo, typ tokens.Type, name tokens.QName, parent resource.URN,
-	inputs resource.PropertyMap, options plugin.ConstructOptions) (plugin.ConstructResult, error) {
+	inputs resource.PropertyMap, options plugin.ConstructOptions,
+) (plugin.ConstructResult, error) {
 	return plugin.ConstructResult{},
 		fmt.Errorf("Construct is not implemented for Terraform Plugin Framework bridged providers")
 }

@@ -232,7 +232,6 @@ func validateNested(
 	req provider.ConfigureRequest,
 	resp *provider.ConfigureResponse,
 ) {
-
 	check := func(path path.Path, expected, actual any) {
 		if !reflect.DeepEqual(expected, actual) {
 			resp.Diagnostics.AddAttributeError(path, "mismatched expectations",

@@ -195,7 +195,6 @@ func (prov *provider) Invoke(
 ) (plugin.InvokeResponse, error) {
 	p, f, err := prov.ProviderWithContext.InvokeWithContext(ctx, req.Tok, req.Args)
 	return plugin.InvokeResponse{Properties: p, Failures: f}, err
-
 }
 
 func (prov *provider) StreamInvoke(

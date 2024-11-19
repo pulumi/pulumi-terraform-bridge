@@ -50,9 +50,11 @@ func (s *attrSchema) Required() bool {
 func (*attrSchema) Default() interface{} {
 	panic("Default() should not be called during schema generation")
 }
+
 func (*attrSchema) DefaultFunc() shim.SchemaDefaultFunc {
 	panic("DefaultFunc() should not be called during schema generation")
 }
+
 func (*attrSchema) DefaultValue() (interface{}, error) {
 	// DefaultValue() should not be called by tfgen, but it currently may be called by ExtractInputsFromOutputs, so
 	// returning nil is better than a panic.
@@ -118,8 +120,8 @@ func (*attrSchema) MinItems() int {
 
 func (*attrSchema) ConflictsWith() []string {
 	panic("ConflictsWith() should not be called during schema generation")
-
 }
+
 func (*attrSchema) ExactlyOneOf() []string {
 	panic("ExactlyOneOf() should not be called during schema generation")
 }

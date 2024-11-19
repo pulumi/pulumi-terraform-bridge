@@ -24,6 +24,7 @@ import (
 
 func (p *provider) StreamInvokeWithContext(_ context.Context,
 	tok tokens.ModuleMember, args resource.PropertyMap,
-	onNext func(resource.PropertyMap) error) ([]plugin.CheckFailure, error) {
+	onNext func(resource.PropertyMap) error,
+) ([]plugin.CheckFailure, error) {
 	panic("StreamInvoke() should not be called for bridged providers")
 }

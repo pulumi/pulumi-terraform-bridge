@@ -16,11 +16,11 @@ package testprovider
 
 import (
 	"context"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -28,8 +28,10 @@ import (
 
 type testnestattr struct{}
 
-var _ resource.Resource = &testnestattr{}
-var _ resource.ResourceWithImportState = &testnestattr{}
+var (
+	_ resource.Resource                = &testnestattr{}
+	_ resource.ResourceWithImportState = &testnestattr{}
+)
 
 func newTestnestattr() resource.Resource {
 	return &testnestattr{}
@@ -117,7 +119,6 @@ func (e *testnestattr) Delete(ctx context.Context, req resource.DeleteRequest, r
 // If setting an attribute with the import identifier, it is recommended to use the ImportStatePassthroughID() call in
 // this method.
 func (e *testnestattr) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
-
 	type model struct {
 		ID       types.String   `tfsdk:"id"`
 		Services []ServiceModel `tfsdk:"services"`

@@ -127,7 +127,6 @@ func MainWithMuxer(ctx context.Context, pkg string, info tfbridge.ProviderInfo, 
 func MakeMuxedServer(
 	ctx context.Context, pkg string, info tfbridge.ProviderInfo, schema []byte,
 ) func(host *rprovider.HostClient) (pulumirpc.ResourceProviderServer, error) {
-
 	shim, ok := info.P.(*pfmuxer.ProviderShim)
 	contract.Assertf(ok, "MainWithMuxer must have a ProviderInfo.P created with AugmentShimWithPF")
 	_, err := shim.ResolveDispatch(&info)
@@ -175,12 +174,14 @@ func MakeMuxedServer(
 						infoCopy.P = prov
 						return NewProviderServer(ctx, host,
 							infoCopy, ProviderMetadata{PackageSchema: schema})
-					}})
+					},
+				})
 			default:
 				m.Servers = append(m.Servers, muxer.Endpoint{
 					Server: func(host *rprovider.HostClient) (pulumirpc.ResourceProviderServer, error) {
 						return tfbridge.NewProvider(ctx, host, pkg, version, prov, info, schema), nil
-					}})
+					},
+				})
 			}
 		}
 		return m.Server(host, pkg, version)

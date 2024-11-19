@@ -30,7 +30,7 @@ import (
 )
 
 func TestCustomObject(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	ctx := context.Background()
 
 	obj := newObjectPseudoResource(NewObjectTypeOf[SomeType](ctx), nil, nil)
@@ -105,7 +105,6 @@ func (t objectTypeOf[T]) ValueFromObject(
 
 func (t objectTypeOf[T]) ValueFromTerraform(ctx context.Context, in tftypes.Value) (attr.Value, error) {
 	attrValue, err := t.ObjectType.ValueFromTerraform(ctx, in)
-
 	if err != nil {
 		return nil, err
 	}

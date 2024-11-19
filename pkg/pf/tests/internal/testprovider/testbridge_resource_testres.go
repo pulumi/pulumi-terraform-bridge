@@ -39,7 +39,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
-
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 )
 
@@ -539,7 +538,7 @@ func (e *testres) freshID(statedir string) (string, error) {
 		}
 	}
 
-	if err := os.WriteFile(cF, []byte(fmt.Sprintf("%d", i+1)), 0600); err != nil {
+	if err := os.WriteFile(cF, []byte(fmt.Sprintf("%d", i+1)), 0o600); err != nil {
 		return "", err
 	}
 
@@ -574,7 +573,7 @@ func (e *testres) writeCloudState(ctx context.Context, file string, state tfsdk.
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(file, stateBytes, 0600)
+	return os.WriteFile(file, stateBytes, 0o600)
 }
 
 func (*testres) stateToBytes(ctx context.Context, state tfsdk.State) ([]byte, error) {

@@ -126,6 +126,7 @@ func (err errWrongIDType) Error() string {
 type errMissingIDAttribute struct{}
 
 func (errMissingIDAttribute) Error() string {
+	//nolint:lll
 	return `no "id" attribute. To map this resource consider specifying ResourceInfo.ComputeID to a valid field on the upstream resource`
 }
 

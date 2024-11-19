@@ -5,13 +5,14 @@ import (
 
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
+	"github.com/stretchr/testify/require"
+
 	pb "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/providerbuilder"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/tfcheck"
-	"github.com/stretchr/testify/require"
 )
 
 func TestBasic(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	prov := pb.NewProvider(pb.NewProviderArgs{
 		AllResources: []pb.Resource{
 			pb.NewResource(pb.NewResourceArgs{
@@ -45,7 +46,7 @@ output "s_val" {
 }
 
 func TestDefaults(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	prov := pb.NewProvider(pb.NewProviderArgs{
 		AllResources: []pb.Resource{
 			pb.NewResource(pb.NewResourceArgs{

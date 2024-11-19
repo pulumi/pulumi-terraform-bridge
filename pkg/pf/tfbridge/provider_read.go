@@ -125,7 +125,6 @@ func (p *provider) readResource(
 	rh *resourceHandle,
 	currentStateMap resource.PropertyMap,
 ) (plugin.ReadResult, error) {
-
 	currentStateRaw, err := parseResourceState(rh, currentStateMap)
 	if err != nil {
 		return plugin.ReadResult{}, fmt.Errorf("failed to get current raw state: %w", err)

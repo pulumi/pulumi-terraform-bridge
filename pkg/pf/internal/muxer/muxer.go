@@ -99,7 +99,6 @@ func (m *ProviderShim) ResourceIsPF(token string) bool {
 		}
 		_, ok := p.(pf.ShimProvider)
 		return ok
-
 	}
 	return false
 }
@@ -114,7 +113,6 @@ func (m *ProviderShim) DataSourceIsPF(token string) bool {
 		}
 		_, ok := p.(pf.ShimProvider)
 		return ok
-
 	}
 	return false
 }

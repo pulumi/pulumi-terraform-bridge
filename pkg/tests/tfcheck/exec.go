@@ -19,8 +19,9 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/pulcheck"
 	"github.com/stretchr/testify/require"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/pulcheck"
 )
 
 func (d *TFDriver) execTf(t pulcheck.T, args ...string) ([]byte, error) {

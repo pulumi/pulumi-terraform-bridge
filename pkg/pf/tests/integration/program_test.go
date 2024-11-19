@@ -231,7 +231,6 @@ func TestTracePropagation(t *testing.T) {
 			return prepareStateFolder(info.Root)
 		},
 	})
-
 }
 
 // Note that random_bytes is an interesting resource that does not specify an ID where Pulumi requires it. Add a test
@@ -255,7 +254,7 @@ func TestResourceWithoutID(t *testing.T) {
 }
 
 func prepareStateFolder(root string) error {
-	err := os.Mkdir(filepath.Join(root, "state"), 0777)
+	err := os.Mkdir(filepath.Join(root, "state"), 0o777)
 	if os.IsExist(err) {
 		return nil
 	}
@@ -274,7 +273,6 @@ func ensureTestBridgeProviderCompiled(wd string) error {
 		return err
 	}
 	return ensure("pulumi-resource-muxedrandom")
-
 }
 
 // Stacks may define tests inline by a simple convention of providing

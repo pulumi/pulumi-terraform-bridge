@@ -33,7 +33,6 @@ func (p *provider) GetMappingWithContext(ctx context.Context, key, provider stri
 	// The prototype converter uses the key "tf", but the new plugin converter uses "terraform". For now support
 	// both, eventually we can remove the "tf" key.
 	if key == "tf" || key == "terraform" {
-
 		// The provider key should either be empty (old engines) or the name of the provider we support (new engines)
 		if provider != "" && provider != mapped {
 			return nil, "", fmt.Errorf("unknown provider %q", provider)

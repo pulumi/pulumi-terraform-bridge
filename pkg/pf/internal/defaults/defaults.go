@@ -92,7 +92,6 @@ func getDefaultValue(
 		for _, n := range defaultInfo.EnvVars {
 			// Following code in v3/tfbridge, ignoring set but empty env vars.
 			if str, ok := os.LookupEnv(n); ok && str != "" {
-
 				v, err := parseValueFromEnv(fieldSchema, str)
 				if err != nil {
 					msg := fmt.Errorf("Cannot parse the value of environment variable '%s'"+

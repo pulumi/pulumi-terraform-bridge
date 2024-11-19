@@ -20,8 +20,10 @@ import (
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
-var _ = shim.Schema(element{})
-var _ = shim.Resource(elementObject{})
+var (
+	_ = shim.Schema(element{})
+	_ = shim.Resource(elementObject{})
+)
 
 type element struct {
 	typ      tftypes.Type
@@ -55,7 +57,6 @@ func (e element) Type() shim.ValueType {
 	default:
 		return shim.TypeInvalid
 	}
-
 }
 
 func (e element) Elem() interface{} {

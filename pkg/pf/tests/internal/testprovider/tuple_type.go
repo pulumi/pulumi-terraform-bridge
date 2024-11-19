@@ -62,8 +62,10 @@ func (c TupleType) ApplyTerraform5AttributePathStep(step tftypes.AttributePathSt
 	return c.attr(int(i)), nil
 }
 
-var _ attr.TypeWithElementTypes = ((*TupleType)(nil))
-var _ pfutils.BlockLike = ((*TupleType)(nil))
+var (
+	_ attr.TypeWithElementTypes = ((*TupleType)(nil))
+	_ pfutils.BlockLike         = ((*TupleType)(nil))
+)
 
 func (c TupleType) GetDeprecationMessage() string  { return "" }
 func (c TupleType) GetDescription() string         { return "" }

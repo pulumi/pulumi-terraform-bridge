@@ -42,7 +42,8 @@ type objectPseudoResource struct {
 
 func newObjectPseudoResource(t basetypes.ObjectTypable,
 	nestedAttrs map[string]pfutils.Attr,
-	nestedBlocks map[string]pfutils.Block) *objectPseudoResource {
+	nestedBlocks map[string]pfutils.Block,
+) *objectPseudoResource {
 	lowerType := t.TerraformType(context.Background())
 	objType, ok := lowerType.(tftypes.Object)
 	contract.Assertf(ok, "t basetypes.ObjectTypable should produce a tftypes.Object "+
@@ -61,8 +62,10 @@ func newObjectPseudoResource(t basetypes.ObjectTypable,
 	}
 }
 
-var _ shim.Resource = (*objectPseudoResource)(nil)
-var _ shim.SchemaMap = (*objectPseudoResource)(nil)
+var (
+	_ shim.Resource  = (*objectPseudoResource)(nil)
+	_ shim.SchemaMap = (*objectPseudoResource)(nil)
+)
 
 func (r *objectPseudoResource) Validate() error {
 	return nil
@@ -92,13 +95,15 @@ func (*objectPseudoResource) Timeouts() *shim.ResourceTimeout {
 }
 
 func (*objectPseudoResource) InstanceState(id string, object,
-	meta map[string]interface{}) (shim.InstanceState, error) {
+	meta map[string]interface{},
+) (shim.InstanceState, error) {
 	panic("This is an Object type encoded as a shim.Resource, and " +
 		"InstanceState() should not be called on this entity during schema generation")
 }
 
 func (*objectPseudoResource) DecodeTimeouts(
-	config shim.ResourceConfig) (*shim.ResourceTimeout, error) {
+	config shim.ResourceConfig,
+) (*shim.ResourceTimeout, error) {
 	panic("This is an Object type encoded as a shim.Resource, and " +
 		"DecodeTimeouts() should not be called on this entity during schema generation")
 }
@@ -187,7 +192,8 @@ func newTuplePseudoResource(t attr.TypeWithElementTypes) shim.Resource {
 	return &tuplePseudoResource{
 		schemaOnly: schemaOnly{"tuplePseudoResource"},
 		attrs:      attrs,
-		tuple:      t}
+		tuple:      t,
+	}
 }
 
 func (*tuplePseudoResource) SchemaVersion() int         { panic("TODO") }
@@ -236,7 +242,7 @@ type schemaOnly struct{ typ string }
 
 func (s *schemaOnly) Importer() shim.ImportFunc {
 	m := "type"
-	if s != nil || s.typ != "" {
+	if s != nil && s.typ != "" {
 		m = s.typ
 	}
 	panic(m + " does not implement runtime operation ImporterFunc")
@@ -244,25 +250,27 @@ func (s *schemaOnly) Importer() shim.ImportFunc {
 
 func (s *schemaOnly) Timeouts() *shim.ResourceTimeout {
 	m := "type"
-	if s != nil || s.typ != "" {
+	if s != nil && s.typ != "" {
 		m = s.typ
 	}
 	panic(m + " does not implement runtime operation Timeouts")
 }
 
 func (s *schemaOnly) InstanceState(id string, object,
-	meta map[string]interface{}) (shim.InstanceState, error) {
+	meta map[string]interface{},
+) (shim.InstanceState, error) {
 	m := "type"
-	if s != nil || s.typ != "" {
+	if s != nil && s.typ != "" {
 		m = s.typ
 	}
 	panic(m + " does not implement runtime operation InstanceState")
 }
 
 func (s *schemaOnly) DecodeTimeouts(
-	config shim.ResourceConfig) (*shim.ResourceTimeout, error) {
+	config shim.ResourceConfig,
+) (*shim.ResourceTimeout, error) {
 	m := "type"
-	if s != nil || s.typ != "" {
+	if s != nil && s.typ != "" {
 		m = s.typ
 	}
 	panic(m + " does not implement runtime operation DecodeTimeouts")

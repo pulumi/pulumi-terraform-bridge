@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -26,11 +27,10 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/testprovider"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
 	tfbridge0 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 )
 
 func TestGetMapping(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	ctx := context.Background()
 	info := testprovider.RandomProvider()
 
@@ -88,7 +88,7 @@ func TestGetMapping(t *testing.T) {
 }
 
 func TestMuxedGetMapping(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	ctx := context.Background()
 
 	info := testprovider.MuxedRandomProvider()

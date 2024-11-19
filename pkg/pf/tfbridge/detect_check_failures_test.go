@@ -25,7 +25,7 @@ import (
 )
 
 func TestDetectCheckFailures(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	ctx := context.Background()
 	p := &provider{}
 	urn := resource.NewURN("stack", "project", "", "typ", "name")

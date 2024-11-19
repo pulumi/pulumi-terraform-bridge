@@ -86,7 +86,6 @@ func formatAttributePathAsPropertyPath(
 	}
 	p := tfbridge.NewCheckFailurePath(schemaMap, schemaInfos, string(n))
 	for _, s := range steps[1:] {
-
 		switch s := s.(type) {
 		case tftypes.AttributeName:
 			p = p.Attribute(string(s))
@@ -99,7 +98,6 @@ func formatAttributePathAsPropertyPath(
 		default:
 			contract.Failf("Unhandled match case for tftypes.AttributePathStep")
 		}
-
 	}
 	return p, nil
 }

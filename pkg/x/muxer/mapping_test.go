@@ -23,7 +23,7 @@ import (
 )
 
 func TestMergeSchemasAndComputeDispatchTable(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	s1 := schema.PackageSpec{
 		Name: "pkg",
 		Resources: map[string]schema.ResourceSpec{

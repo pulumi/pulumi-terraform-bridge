@@ -20,22 +20,20 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
-
+	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
+	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hexops/autogold/v2"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"google.golang.org/protobuf/types/known/structpb"
-
+	testutils "github.com/pulumi/providertest/replay"
 	hostclient "github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/structpb"
 
-	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
-	testutils "github.com/pulumi/providertest/replay"
 	pb "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/providerbuilder"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
 	tfbridge0 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
@@ -43,7 +41,7 @@ import (
 )
 
 func TestCheckConfig(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	t.Run("minimal", func(t *testing.T) {
 		schema := schema.Schema{}
 		testutils.Replay(t, makeProviderServer(t, schema), `
@@ -215,7 +213,7 @@ func TestCheckConfig(t *testing.T) {
 		require.NoError(t, err)
 		require.NoError(t, err)
 		require.Equal(t, 1, len(resp.Failures))
-		//nolint:lll
+
 		autogold.Expect("`testprovider:cofnigValue` is not a valid configuration key for the testprovider provider. Did you mean `testprovider:configValue`? If the referenced key is not intended for the provider, please choose a different namespace from `testprovider:`.").Equal(t, resp.Failures[0].Reason)
 	})
 
@@ -469,7 +467,7 @@ func TestCheckConfig(t *testing.T) {
 }
 
 func TestPreConfigureCallback(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	t.Run("PreConfigureCallback called by CheckConfig", func(t *testing.T) {
 		schema := schema.Schema{
 			Attributes: map[string]schema.Attribute{

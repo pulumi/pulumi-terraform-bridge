@@ -29,7 +29,7 @@ import (
 
 // This example is taken from aws:resourceexplorer/index:Index "timeouts" property.
 func TestCustomTypeEmbeddingObjectType(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	type timeoutsType struct {
 		basetypes.ObjectType
 	}
@@ -62,7 +62,7 @@ func TestCustomTypeEmbeddingObjectType(t *testing.T) {
 }
 
 func TestCustomListType(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	ctx := context.Background()
 
 	raw := schema.ListNestedBlock{
@@ -91,7 +91,7 @@ func TestCustomListType(t *testing.T) {
 }
 
 func TestCustomListAttribute(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	ctx := context.Background()
 
 	raw := schema.ListNestedAttribute{
@@ -120,7 +120,7 @@ func TestCustomListAttribute(t *testing.T) {
 }
 
 func TestCustomSetType(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	ctx := context.Background()
 
 	raw := schema.SetNestedBlock{
@@ -160,9 +160,7 @@ type setNestedObjectTypeOf[T any] struct {
 	basetypes.SetType
 }
 
-var (
-	_ basetypes.ListTypable = (*listNestedObjectTypeOf[struct{}])(nil)
-)
+var _ basetypes.ListTypable = (*listNestedObjectTypeOf[struct{}])(nil)
 
 func newListNestedObjectTypeOf[T any](ctx context.Context, elemType attr.Type) listNestedObjectTypeOf[T] {
 	return listNestedObjectTypeOf[T]{basetypes.ListType{ElemType: elemType}}

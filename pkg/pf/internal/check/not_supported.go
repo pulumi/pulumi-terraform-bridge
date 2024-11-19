@@ -45,7 +45,7 @@ func notSupported(sink diag.Sink, prov tfbridge.ProviderInfo, isPFResource, isPF
 			" pf/tfbridge.ShimProvider or pf/tfbridge.ShimProviderWithContext.\nMuxed SDK and" +
 			" Plugin Framework based providers must have ProviderInfo.P be created from" +
 			" pf/tfbridge.MuxShimWithPF or pf/tfbridgepf/tfbridge.MuxShimWithDisjointgPF."
-		u.warn(warning)
+		u.warnf(warning)
 	}
 
 	if prov.Resources != nil {
@@ -83,7 +83,7 @@ type notSupportedUtil struct {
 	sink diag.Sink
 }
 
-func (u *notSupportedUtil) warn(format string, arg ...interface{}) {
+func (u *notSupportedUtil) warnf(format string, arg ...interface{}) {
 	u.sink.Warningf(&diag.Diag{Message: format}, arg...)
 }
 
@@ -92,7 +92,7 @@ func (u *notSupportedUtil) assertIsZero(path string, shouldBeZero interface{}) {
 	if va.IsZero() {
 		return
 	}
-	u.warn("%s received a non-zero custom value %v that is being ignored."+
+	u.warnf("%s received a non-zero custom value %v that is being ignored."+
 		" Plugin Framework based providers do not yet support this feature.",
 		path, shouldBeZero)
 }

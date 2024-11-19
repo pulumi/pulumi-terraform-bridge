@@ -33,7 +33,6 @@ func (p *provider) DeleteWithContext(
 	outputs resource.PropertyMap,
 	timeout float64,
 ) (resource.Status, error) {
-
 	ctx = p.initLogging(ctx, p.logSink, urn)
 
 	rh, err := p.resourceHandle(ctx, urn)
