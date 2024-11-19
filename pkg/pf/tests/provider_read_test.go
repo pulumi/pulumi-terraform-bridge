@@ -344,7 +344,7 @@ func TestRefreshMissingResources(t *testing.T) {
 // See https://github.com/pulumi/pulumi-terraform-bridge/issues/1919
 func TestRefreshResourceNotFound(t *testing.T) {
     t.Parallel()
-	r := pb.Resource{
+	r := pb.NewResource(pb.NewResourceArgs{
 		Name: "resource",
 		ResourceSchema: fwsch.Schema{
 			Attributes: map[string]fwsch.Attribute{
@@ -358,7 +358,7 @@ func TestRefreshResourceNotFound(t *testing.T) {
 			// Indicate that it was no found and should be removed from state.
 			resp.State.RemoveResource(ctx)
 		},
-	}
+	})
 
 	p := pb.NewProvider(pb.NewProviderArgs{
 		TypeName: "my",

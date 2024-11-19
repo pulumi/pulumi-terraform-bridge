@@ -27,9 +27,10 @@ func TestNestedCustomTypeEncoding(t *testing.T) {
 
 	testProvider := pb.NewProvider(pb.NewProviderArgs{
 		// This resource is modified from AWS Bedrockagent.
-		AllResources: []providerbuilder.Resource{{
-			Name: "bedrockagent",
-			ResourceSchema: schema.Schema{
+		AllResources: []providerbuilder.Resource{
+			pb.NewResource(pb.NewResourceArgs{
+				Name: "bedrockagent",
+				ResourceSchema: schema.Schema{
 				Attributes: map[string]schema.Attribute{
 					"prompt_override_configuration": schema.ListAttribute{ // proto5 Optional+Computed nested block.
 						CustomType: NewListNestedObjectTypeOf[promptOverrideConfigurationModel](context.Background()),
@@ -46,8 +47,9 @@ func TestNestedCustomTypeEncoding(t *testing.T) {
 						},
 					},
 				},
-			},
-		}},
+				},
+			}),
+		},
 	})
 	res := tfbridge0.ResourceInfo{
 		Tok: "testprovider:index/bedrockagent:Bedrockagent",

@@ -231,7 +231,7 @@ func TestCreateResourceWithDynamicAttribute(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			r := pb.Resource{
+			r := pb.NewResource(pb.NewResourceArgs{
 				Name: "r",
 				CreateFunc: func(
 					ctx context.Context,
@@ -266,10 +266,10 @@ func TestCreateResourceWithDynamicAttribute(t *testing.T) {
 						},
 					},
 				},
-			}
+			})
 
 			// Define an aux resource to produce unknown values for testing.
-			r0 := pb.Resource{
+			r0 := pb.NewResource(pb.NewResourceArgs{
 				Name: "r0",
 				CreateFunc: func(
 					ctx context.Context,
@@ -298,7 +298,7 @@ func TestCreateResourceWithDynamicAttribute(t *testing.T) {
 						},
 					},
 				},
-			}
+			})
 
 			p := pb.NewProvider(pb.NewProviderArgs{
 				AllResources: []pb.Resource{r, r0},

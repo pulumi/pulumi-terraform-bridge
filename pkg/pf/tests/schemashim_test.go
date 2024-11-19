@@ -1150,9 +1150,11 @@ func checkShim(t *testing.T, tc shimTestCase) {
 func stdProvider(resourceSchema schema.Schema) *pb.Provider {
 	return &pb.Provider{
 		TypeName: "testprov",
-		AllResources: []pb.Resource{{
-			Name:           "r1",
-			ResourceSchema: resourceSchema,
-		}},
+		AllResources: []pb.Resource{
+			pb.NewResource(pb.NewResourceArgs{
+				Name:           "r1",
+				ResourceSchema: resourceSchema,
+			}),
+		},
 	}
 }

@@ -44,7 +44,9 @@ func TestRenameResourceWithAliasInAugmentedProvider(t *testing.T) {
 	pfProvider := pb.NewProvider(pb.NewProviderArgs{
 		TypeName: providerID,
 		AllResources: []providerbuilder.Resource{
-			{Name: resourceID},
+			pb.NewResource(pb.NewResourceArgs{
+				Name: resourceID,
+			}),
 		},
 	})
 	legacyToken := tokens.Type(fmt.Sprintf("my:%s:Resource", resModule))
