@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
@@ -151,7 +152,80 @@ func TestDetailedDiffSet(t *testing.T) {
 		},
 	})
 
-	computedCreateFunc := func(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	computedAttributeCreateFunc := func(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+		type ObjectModel struct {
+			ID   types.String `tfsdk:"id"`
+			Keys types.Set    `tfsdk:"key"`
+		}
+		reqVal := ObjectModel{}
+		diags := req.Plan.Get(ctx, &reqVal)
+		contract.Assertf(diags.ErrorsCount() == 0, "failed to get attribute: %v", diags)
+
+		respVal := ObjectModel{
+			ID: types.StringValue("test-id"),
+		}
+		if reqVal.Keys.IsUnknown() {
+			respVal.Keys = types.SetValueMust(types.StringType, []attr.Value{
+				types.StringValue("value"),
+			})
+		} else {
+			respVal.Keys = reqVal.Keys
+		}
+
+		diags = resp.State.Set(ctx, &respVal)
+		contract.Assertf(diags.ErrorsCount() == 0, "failed to set attribute: %v", diags)
+	}
+
+	computedAttributeUpdateFunc := func(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+		createResp := resource.CreateResponse{
+			State:       resp.State,
+			Diagnostics: resp.Diagnostics,
+		}
+		computedAttributeCreateFunc(ctx, resource.CreateRequest{
+			Plan:         req.Plan,
+			Config:       req.Config,
+			ProviderMeta: req.ProviderMeta,
+		}, &createResp)
+		resp.State = createResp.State
+		resp.Diagnostics = createResp.Diagnostics
+	}
+
+	computedSetAttributeSchema := pb.NewResource(pb.NewResourceArgs{
+		ResourceSchema: rschema.Schema{
+			Attributes: map[string]rschema.Attribute{
+				"key": rschema.SetAttribute{
+					Optional:    true,
+					ElementType: types.StringType,
+					Computed:    true,
+					PlanModifiers: []planmodifier.Set{
+						setplanmodifier.UseStateForUnknown(),
+					},
+				},
+			},
+		},
+		CreateFunc: computedAttributeCreateFunc,
+		UpdateFunc: computedAttributeUpdateFunc,
+	})
+
+	computedSetAttributeReplaceSchema := pb.NewResource(pb.NewResourceArgs{
+		ResourceSchema: rschema.Schema{
+			Attributes: map[string]rschema.Attribute{
+				"key": rschema.SetAttribute{
+					Optional:    true,
+					ElementType: types.StringType,
+					Computed:    true,
+					PlanModifiers: []planmodifier.Set{
+						setplanmodifier.RequiresReplace(),
+						setplanmodifier.UseStateForUnknown(),
+					},
+				},
+			},
+		},
+		CreateFunc: computedAttributeCreateFunc,
+		UpdateFunc: computedAttributeUpdateFunc,
+	})
+
+	computedBlockCreateFunc := func(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 		type Nested struct {
 			Nested   types.String `tfsdk:"nested"`
 			Computed types.String `tfsdk:"computed"`
@@ -192,12 +266,12 @@ func TestDetailedDiffSet(t *testing.T) {
 		contract.Assertf(diags.ErrorsCount() == 0, "failed to set attribute: %v", diags)
 	}
 
-	computedUpdateFunc := func(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	computedBlockUpdateFunc := func(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
 		createResp := resource.CreateResponse{
 			State:       resp.State,
 			Diagnostics: resp.Diagnostics,
 		}
-		computedCreateFunc(ctx, resource.CreateRequest{
+		computedBlockCreateFunc(ctx, resource.CreateRequest{
 			Plan:         req.Plan,
 			Config:       req.Config,
 			ProviderMeta: req.ProviderMeta,
@@ -226,8 +300,8 @@ func TestDetailedDiffSet(t *testing.T) {
 				},
 			},
 		},
-		CreateFunc: computedCreateFunc,
-		UpdateFunc: computedUpdateFunc,
+		CreateFunc: computedBlockCreateFunc,
+		UpdateFunc: computedBlockUpdateFunc,
 	})
 
 	blockSchemaWithComputedNoStateForUnknown := pb.NewResource(pb.NewResourceArgs{
@@ -246,8 +320,8 @@ func TestDetailedDiffSet(t *testing.T) {
 				},
 			},
 		},
-		CreateFunc: computedCreateFunc,
-		UpdateFunc: computedUpdateFunc,
+		CreateFunc: computedBlockCreateFunc,
+		UpdateFunc: computedBlockUpdateFunc,
 	})
 
 	blockSchemaWithComputedReplace := pb.NewResource(pb.NewResourceArgs{
@@ -272,8 +346,8 @@ func TestDetailedDiffSet(t *testing.T) {
 				},
 			},
 		},
-		CreateFunc: computedCreateFunc,
-		UpdateFunc: computedUpdateFunc,
+		CreateFunc: computedBlockCreateFunc,
+		UpdateFunc: computedBlockUpdateFunc,
 	})
 
 	blockSchemaWithComputedNestedReplace := pb.NewResource(pb.NewResourceArgs{
@@ -300,8 +374,8 @@ func TestDetailedDiffSet(t *testing.T) {
 				},
 			},
 		},
-		CreateFunc: computedCreateFunc,
-		UpdateFunc: computedUpdateFunc,
+		CreateFunc: computedBlockCreateFunc,
+		UpdateFunc: computedBlockUpdateFunc,
 	})
 
 	blockSchemaWithComputedComputedRequiresReplace := pb.NewResource(pb.NewResourceArgs{
@@ -324,8 +398,8 @@ func TestDetailedDiffSet(t *testing.T) {
 				},
 			},
 		},
-		CreateFunc: computedCreateFunc,
-		UpdateFunc: computedUpdateFunc,
+		CreateFunc: computedBlockCreateFunc,
+		UpdateFunc: computedBlockUpdateFunc,
 	})
 
 	attrList := func(arr *[]string) cty.Value {
@@ -393,7 +467,11 @@ func TestDetailedDiffSet(t *testing.T) {
 		{"block requires replace", blockReplaceSchema, nestedAttrList},
 		{"block nested requires replace", blockNestedReplaceSchema, nestedAttrList},
 
-		// Computed, each state we test both the behaviour when the computed value is specified in the program and when it is not.
+		// Computed attributes
+		{"attribute with computed no replace", computedSetAttributeSchema, attrList},
+		{"attribute with computed requires replace", computedSetAttributeReplaceSchema, attrList},
+
+		// Computed blocks, each state we test both the behaviour when the computed value is specified in the program and when it is not.
 		{"block with computed no replace computed", blockSchemaWithComputed, nestedAttrList},
 		{"block with computed no replace computed specified in program", blockSchemaWithComputed, nestedAttrListWithComputedSpecified},
 		{"block with computed requires replace", blockSchemaWithComputedReplace, nestedAttrList},
