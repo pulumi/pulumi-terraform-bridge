@@ -63,14 +63,23 @@ func initialSetup() (info.Provider, pfbridge.ProviderMetadata, func() error) {
 	}
 
 	var metadata pfbridge.ProviderMetadata
+	var fullDocs bool
 	metadata = pfbridge.ProviderMetadata{
 		XGetSchema: func(ctx context.Context, req plugin.GetSchemaRequest) ([]byte, error) {
+			// By default, only read in docs from TF schema
+			var schemaDocsOnly = true
+			// If full docs is expected set schemaDocsOnly to false
+			if fullDocs {
+				schemaDocsOnly = false
+			}
+
 			packageSchema, err := tfgen.GenerateSchemaWithOptions(tfgen.GenerateSchemaOptions{
 				ProviderInfo: info,
 				DiagnosticsSink: diag.DefaultSink(os.Stdout, os.Stderr, diag.FormatOptions{
 					Color: colors.Always,
 				}),
-				XInMemoryDocs: true,
+				XInMemoryDocs:     schemaDocsOnly,
+				XLoadUpstreamRepo: fullDocs,
 			})
 			if err != nil {
 				return nil, err
@@ -147,6 +156,7 @@ func initialSetup() (info.Provider, pfbridge.ProviderMetadata, func() error) {
 			if err != nil {
 				return plugin.ParameterizeResponse{}, err
 			}
+			fullDocs = args.Remote.Docs
 
 			return plugin.ParameterizeResponse{
 				Name:    p.Name(),

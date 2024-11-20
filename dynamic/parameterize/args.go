@@ -31,6 +31,8 @@ type RemoteArgs struct {
 	Name string
 	// Version is the (possibly empty) version constraint on the provider.
 	Version string
+	// Docs is the (possibly empty) argument to download and write docs into the schema
+	Docs bool
 }
 
 // LocalArgs represents a local TF provider referenced by path.
@@ -52,6 +54,13 @@ func ParseArgs(args []string) (Args, error) {
 	// This is a registry based provider
 	var remote RemoteArgs
 	switch len(args) {
+	// The third argument, if any, is the full docs option for when we need to generate docs
+	case 3:
+		docsArg := args[2]
+		if docsArg == "fullDocs" {
+			remote.Docs = true
+		}
+		fallthrough
 	// The second argument, if any is the version
 	case 2:
 		remote.Version = args[1]
@@ -61,6 +70,6 @@ func ParseArgs(args []string) (Args, error) {
 		remote.Name = args[0]
 		return Args{Remote: &remote}, nil
 	default:
-		return Args{}, fmt.Errorf("expected to be parameterized by 1-2 arguments: <name> [version]")
+		return Args{}, fmt.Errorf("expected to be parameterized by 1-3 arguments: <name> [version] [fullDocs]")
 	}
 }

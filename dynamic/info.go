@@ -33,12 +33,22 @@ import (
 
 func providerInfo(ctx context.Context, p run.Provider, value parameterize.Value) (tfbridge.ProviderInfo, error) {
 	provider := proto.New(ctx, p)
+	// TODO: what if this is local?
+	remoteURL := value.Remote.URL
+	//remoteVersion := value.Remote.Version //TODO: use the package ?
+	urlFields := strings.Split(remoteURL, "/")
+	//TODO: the final two fields here are the github repo where the docs are, maybe?
+	// -> find out if this assertion is true; if yes then we're good, if no, we need more options
+	ghOrg := urlFields[len(urlFields)-2]
+	ghRepo := urlFields[len(urlFields)-1]
+	ghAddr := "https://github.com/" + ghOrg + "/terraform-provider-" + ghRepo
 	prov := tfbridge.ProviderInfo{
-		P:           provider,
-		Name:        p.Name(),
-		Version:     p.Version(),
-		Description: "A Pulumi provider dynamically bridged from " + p.Name() + ".",
-		Publisher:   "Pulumi",
+		P:                provider,
+		Name:             p.Name(),
+		Version:          p.Version(),
+		Description:      "A Pulumi provider dynamically bridged from " + p.Name() + ".",
+		Publisher:        "Pulumi",
+		UpstreamRepoPath: ghAddr,
 
 		ResourcePrefix: inferResourcePrefix(provider),
 
