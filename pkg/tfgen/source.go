@@ -86,7 +86,6 @@ func (gh *gitRepoSource) getFile(
 	if info != nil && len(info.Markdown) != 0 {
 		return &DocFile{Content: info.Markdown}, nil
 	}
-
 	repoPath := gh.upstreamRepoPath
 	if repoPath == "" {
 		var err error
@@ -95,6 +94,12 @@ func (gh *gitRepoSource) getFile(
 			return nil, fmt.Errorf("repo for token %q: %w", rawname, err)
 		}
 	}
+	// reset repoPath for dynamic providers
+	_, err := os.Stat("./dynamicDocsDir")
+	if err == nil {
+		repoPath = "./dynamicDocsDir"
+	}
+
 	var possibleMarkdownNames []string
 	switch kind {
 	case InstallationDocs:

@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
 	"sort"
@@ -78,6 +79,9 @@ type Generator struct {
 	// Set if we can't find the docs repo and we have already printed a warning
 	// message.
 	noDocsRepo bool
+
+	// Set if we want to download the upstream repo for docs purposes
+	loadDocsRepo bool
 
 	cliConverterState *cliConverter
 
@@ -775,9 +779,10 @@ func GenerateSchema(info tfbridge.ProviderInfo, sink diag.Sink) (pschema.Package
 }
 
 type GenerateSchemaOptions struct {
-	ProviderInfo    tfbridge.ProviderInfo
-	DiagnosticsSink diag.Sink
-	XInMemoryDocs   bool
+	ProviderInfo      tfbridge.ProviderInfo
+	DiagnosticsSink   diag.Sink
+	XInMemoryDocs     bool
+	XLoadUpstreamRepo bool
 }
 
 type GenerateSchemaResult struct {
@@ -786,21 +791,22 @@ type GenerateSchemaResult struct {
 
 func GenerateSchemaWithOptions(opts GenerateSchemaOptions) (*GenerateSchemaResult, error) {
 	ctx := context.Background()
+
 	info := opts.ProviderInfo
 	sink := opts.DiagnosticsSink
 	g, err := NewGenerator(GeneratorOptions{
-		Package:       info.Name,
-		Version:       info.Version,
-		Language:      Schema,
-		ProviderInfo:  info,
-		Root:          afero.NewMemMapFs(),
-		Sink:          sink,
-		XInMemoryDocs: opts.XInMemoryDocs,
+		Package:           info.Name,
+		Version:           info.Version,
+		Language:          Schema,
+		ProviderInfo:      info,
+		Root:              afero.NewMemMapFs(),
+		Sink:              sink,
+		XInMemoryDocs:     opts.XInMemoryDocs,
+		XLoadUpstreamRepo: opts.XLoadUpstreamRepo,
 	})
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to create generator")
 	}
-
 	return g.generateSchemaResult(ctx)
 }
 
@@ -823,6 +829,11 @@ type GeneratorOptions struct {
 	// XInMemoryDocs is an experimental feature, and does not have any backwards
 	// compatibility guarantees.
 	XInMemoryDocs bool
+	// XLoadUpstreamRepo instructs the generator to fetch the upstream repo for docsgen purposes.
+	//
+	// XLoadUpstreamRepo is an experimental feature, and does not have any backwards
+	//compatibility guarantees.
+	XLoadUpstreamRepo bool
 }
 
 // NewGenerator returns a code-generator for the given language runtime and package info.
@@ -887,21 +898,23 @@ func NewGenerator(opts GeneratorOptions) (*Generator, error) {
 	}
 
 	return &Generator{
-		pkg:             pkg,
-		version:         version,
-		language:        lang,
-		info:            info,
-		root:            root,
-		providerShim:    providerShim,
-		pluginHost:      newCachingProviderHost(host),
-		packageCache:    pcl.NewPackageCache(),
-		infoSource:      host,
-		sink:            sink,
-		skipDocs:        opts.SkipDocs,
-		skipExamples:    opts.SkipExamples,
-		coverageTracker: opts.CoverageTracker,
-		editRules:       getEditRules(info.DocRules),
-		noDocsRepo:      opts.XInMemoryDocs,
+		pkg:              pkg,
+		version:          version,
+		language:         lang,
+		info:             info,
+		root:             root,
+		providerShim:     providerShim,
+		pluginHost:       newCachingProviderHost(host),
+		packageCache:     pcl.NewPackageCache(),
+		infoSource:       host,
+		terraformVersion: opts.TerraformVersion,
+		sink:             sink,
+		skipDocs:         opts.SkipDocs,
+		skipExamples:     opts.SkipExamples,
+		coverageTracker:  opts.CoverageTracker,
+		editRules:        getEditRules(info.DocRules),
+		noDocsRepo:       opts.XInMemoryDocs,
+		loadDocsRepo:     opts.XLoadUpstreamRepo,
 	}, nil
 }
 
@@ -941,6 +954,14 @@ func (g *Generator) generateSchemaResult(ctx context.Context) (*GenerateSchemaRe
 	if err != nil {
 		return nil, err
 	}
+
+	// if docs don't exist, i.e. because the provider is dynamic, download docs at version and repo address
+	if g.loadDocsRepo {
+		versionWithPrefix := "v" + g.info.Version
+		cmd := exec.Command("git", "clone", "--depth", "1", "-b", versionWithPrefix, g.info.UpstreamRepoPath, "dynamicDocsDir")
+		err = cmd.Run()
+	}
+
 	// First gather up the entire package contents. This structure is complete and sufficient to hand off to the
 	// language-specific generators to create the full output.
 	pack, err := g.gatherPackage()
@@ -1206,6 +1227,7 @@ func (g *Generator) gatherProvider() (*resourceType, error) {
 		Tok:    tokens.Type(g.pkg.String()),
 		Fields: g.info.Config,
 	}
+
 	res, err := g.gatherResource("", (&schema.Resource{Schema: cfg}).Shim(), info, true)
 	return res, err
 }
@@ -1303,7 +1325,7 @@ func (g *Generator) gatherResource(rawname string,
 	var entityDocs entityDocs
 	if !isProvider {
 		// If g.noDocsRepo is set, we have established that it's pointless to get
-		// docs from the repo, so we don't try.
+		// docs from the repo, so we don't try. // TODO: is this redundant? unclear!
 		if !g.noDocsRepo {
 			source := NewGitRepoDocsSource(g)
 			pulumiDocs, err := getDocsForResource(g, source, ResourceDocs, rawname, info)
@@ -1676,8 +1698,9 @@ func (g *Generator) checkNoDocsError(err error) bool {
 		return false
 	}
 
-	// If we have already warned, we can just discard the message
+	// If we have already warned, we can just discard the message - TODO: this comment is about code we DIDN'T write I think!
 	if !g.noDocsRepo {
+		//panic(g.noDocsRepo)
 		g.logMissingRepoPath(e)
 	}
 	g.noDocsRepo = true
