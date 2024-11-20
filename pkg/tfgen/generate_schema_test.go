@@ -31,6 +31,7 @@ import (
 	gogen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
 	tsgen "github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
 	pygen "github.com/pulumi/pulumi/pkg/v3/codegen/python"
+	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/stretchr/testify/assert"
@@ -359,6 +360,71 @@ func TestNestedMaxItemsOne(t *testing.T) {
 	}))
 	assert.NoError(t, err)
 	assert.Equal(t, schema, schema2)
+}
+
+// TestNestedTypeSingularization shows that we singularize types associated with list
+// properties.
+//
+// The test also shows that we can override this behavior by setting [tfbridge.SchemaInfo.NestedType].
+//
+//nolint:lll // Long type names make it arduous to stay under the 120 char limit.
+func TestNestedTypeSingularization(t *testing.T) {
+	t.Parallel()
+
+	t.Run("default", func(t *testing.T) {
+		provider := testprovider.ProviderMiniCloudflare()
+		{
+			actionParameters := provider.Resources["cloudflare_ruleset"].Fields["rules"].Elem.Fields["action_parameters"]
+			actionParameters.MaxItemsOne = nil
+			actionParameters.Elem.Fields["phases"].MaxItemsOne = nil
+		}
+		actual, err := GenerateSchema(provider, diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
+			Color: colors.Never,
+		}))
+		assert.NoError(t, err)
+
+		autogold.Expect(pschema.PropertySpec{
+			TypeSpec: pschema.TypeSpec{
+				Type:  "array",
+				Items: &pschema.TypeSpec{Ref: "#/types/cloudflare:index/RulesetRuleActionParameterPhase:RulesetRuleActionParameterPhase"},
+			},
+			Language: map[string]pschema.RawMessage{},
+		}).Equal(t, actual.Types["cloudflare:index/RulesetRuleActionParameter:RulesetRuleActionParameter"].Properties["phases"])
+	})
+
+	t.Run("disable", func(t *testing.T) {
+		provider := testprovider.ProviderMiniCloudflare()
+		{
+			actionParameters := provider.Resources["cloudflare_ruleset"].Fields["rules"].Elem.Fields["action_parameters"]
+			actionParameters.MaxItemsOne = nil
+			actionParameters.Elem.Fields["phases"].MaxItemsOne = nil
+			actionParameters.Elem.Fields["phases"].Elem = &tfbridge.SchemaInfo{NestedType: "RulesetRuleActionParameterPhases"}
+		}
+		actual, err := GenerateSchema(provider, diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
+			Color: colors.Never,
+		}))
+		assert.NoError(t, err)
+
+		autogold.Expect(pschema.PropertySpec{
+			TypeSpec: pschema.TypeSpec{
+				Type: "array",
+				Items: &pschema.TypeSpec{
+					Ref: "#/types/cloudflare:index/RulesetRuleActionParameterPhases:RulesetRuleActionParameterPhases",
+				},
+			},
+			Language: map[string]pschema.RawMessage{},
+		}).Equal(t, actual.Types["cloudflare:index/RulesetRuleActionParameter:RulesetRuleActionParameter"].Properties["phases"])
+
+		// Check that a type of the correct name gets generated.
+		autogold.Expect(pschema.ComplexTypeSpec{ObjectTypeSpec: pschema.ObjectTypeSpec{
+			Properties: map[string]pschema.PropertySpec{"phase1": {
+				TypeSpec: pschema.TypeSpec{Type: "string"},
+				Language: map[string]pschema.RawMessage{},
+			}},
+			Type:     "object",
+			Required: []string{"phase1"},
+		}}).Equal(t, actual.Types["cloudflare:index/RulesetRuleActionParameterPhases:RulesetRuleActionParameterPhases"])
+	})
 }
 
 func TestNestedDescriptions(t *testing.T) {
