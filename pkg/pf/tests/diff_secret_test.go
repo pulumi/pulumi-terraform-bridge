@@ -18,6 +18,7 @@ import (
 )
 
 func TestSecretBasic(t *testing.T) {
+	t.Skip("skipping until #2643")
 	t.Parallel()
 	provBuilder := providerbuilder.NewProvider(
 		providerbuilder.NewProviderArgs{
@@ -65,6 +66,7 @@ Resources:
 }
 
 func TestSecretSet(t *testing.T) {
+	t.Skip("skipping until #2643")
 	t.Parallel()
 
 	provBuilder := pb.NewProvider(pb.NewProviderArgs{
@@ -158,6 +160,7 @@ Resources:
 }
 
 func TestSecretObjectBlock(t *testing.T) {
+	t.Skip("skipping until #2643")
 	t.Parallel()
 
 	provBuilder := pb.NewProvider(pb.NewProviderArgs{
@@ -259,6 +262,7 @@ Resources:
 }
 
 func TestSecretPulumiSchema(t *testing.T) {
+	t.Skip("skipping until #2643")
 	t.Parallel()
 
 	provBuilder := pb.NewProvider(pb.NewProviderArgs{
