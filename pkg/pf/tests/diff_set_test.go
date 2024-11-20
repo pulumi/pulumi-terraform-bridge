@@ -7,10 +7,12 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/defaults"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hexops/autogold/v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
@@ -18,6 +20,24 @@ import (
 	crosstests "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/cross-tests"
 	pb "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/providerbuilder"
 )
+
+type setDefault string
+
+var _ defaults.Set = setDefault("default")
+
+func (s setDefault) DefaultSet(ctx context.Context, req defaults.SetRequest, resp *defaults.SetResponse) {
+	resp.PlanValue = basetypes.NewSetValueMust(types.StringType, []attr.Value{
+		basetypes.NewStringValue("value"),
+	})
+}
+
+func (s setDefault) Description(ctx context.Context) string {
+	return "description"
+}
+
+func (s setDefault) MarkdownDescription(ctx context.Context) string {
+	return "markdown description"
+}
 
 func TestDetailedDiffSet(t *testing.T) {
 	t.Parallel()
@@ -28,6 +48,22 @@ func TestDetailedDiffSet(t *testing.T) {
 				"key": rschema.SetAttribute{
 					Optional:    true,
 					ElementType: types.StringType,
+				},
+			},
+		},
+	})
+
+	attributeSchemaWithDefault := pb.NewResource(pb.NewResourceArgs{
+		ResourceSchema: rschema.Schema{
+			Attributes: map[string]rschema.Attribute{
+				"key": rschema.SetAttribute{
+					Optional:    true,
+					Computed:    true,
+					ElementType: types.StringType,
+					Default:     setDefault("default"),
+					PlanModifiers: []planmodifier.Set{
+						setplanmodifier.UseStateForUnknown(),
+					},
 				},
 			},
 		},
@@ -107,6 +143,27 @@ func TestDetailedDiffSet(t *testing.T) {
 					NestedObject: rschema.NestedBlockObject{
 						Attributes: map[string]rschema.Attribute{
 							"nested": rschema.StringAttribute{Optional: true},
+						},
+					},
+				},
+			},
+		},
+	})
+
+	blockSchemaWithDefault := pb.NewResource(pb.NewResourceArgs{
+		ResourceSchema: rschema.Schema{
+			Blocks: map[string]rschema.Block{
+				"key": rschema.SetNestedBlock{
+					NestedObject: rschema.NestedBlockObject{
+						Attributes: map[string]rschema.Attribute{
+							"nested": rschema.StringAttribute{
+								Optional: true,
+								Default:  stringDefault("default"),
+								Computed: true,
+								PlanModifiers: []planmodifier.String{
+									stringplanmodifier.UseStateForUnknown(),
+								},
+							},
 						},
 					},
 				},
@@ -466,6 +523,10 @@ func TestDetailedDiffSet(t *testing.T) {
 		{"block no replace", blockSchema, nestedAttrList},
 		{"block requires replace", blockReplaceSchema, nestedAttrList},
 		{"block nested requires replace", blockNestedReplaceSchema, nestedAttrList},
+
+		// Defaults
+		{"attribute with default", attributeSchemaWithDefault, attrList},
+		{"block with default", blockSchemaWithDefault, nestedAttrList},
 
 		// Computed attributes
 		{"attribute with computed no replace", computedSetAttributeSchema, attrList},
