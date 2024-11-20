@@ -12,6 +12,7 @@ import (
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/walk"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/propertyvalue"
 )
 
 func isPresent(val resource.PropertyValue) bool {
@@ -482,6 +483,13 @@ func MakeDetailedDiffV2(
 	ps map[string]*SchemaInfo,
 	priorProps, props, newInputs resource.PropertyMap,
 ) map[string]*pulumirpc.PropertyDiff {
+	stripSecretsAndOutputs := func(props resource.PropertyMap) resource.PropertyMap {
+		propsVal := propertyvalue.RemoveSecretsAndOutputs(resource.NewProperty(props))
+		return propsVal.ObjectValue()
+	}
+	priorProps = stripSecretsAndOutputs(priorProps)
+	props = stripSecretsAndOutputs(props)
+	newInputs = stripSecretsAndOutputs(newInputs)
 	differ := detailedDiffer{ctx: ctx, tfs: tfs, ps: ps, newInputs: newInputs}
 	return differ.makeDetailedDiffPropertyMap(priorProps, props)
 }
