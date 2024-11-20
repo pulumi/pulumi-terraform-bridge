@@ -1,14 +1,17 @@
 package tfbridgetests
 
 import (
+	"context"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework/resource"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hexops/autogold/v2"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
 
 	crosstests "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/cross-tests"
@@ -18,119 +21,312 @@ import (
 func TestDetailedDiffSet(t *testing.T) {
 	t.Parallel()
 
-	attributeSchema := rschema.Schema{
-		Attributes: map[string]rschema.Attribute{
-			"key": rschema.SetAttribute{
-				Optional:    true,
-				ElementType: types.StringType,
-			},
-		},
-	}
-
-	attributeReplaceSchema := rschema.Schema{
-		Attributes: map[string]rschema.Attribute{
-			"key": rschema.SetAttribute{
-				Optional:    true,
-				ElementType: types.StringType,
-				PlanModifiers: []planmodifier.Set{
-					setplanmodifier.RequiresReplace(),
+	attributeSchema := pb.NewResource(pb.NewResourceArgs{
+		ResourceSchema: rschema.Schema{
+			Attributes: map[string]rschema.Attribute{
+				"key": rschema.SetAttribute{
+					Optional:    true,
+					ElementType: types.StringType,
 				},
 			},
 		},
-	}
+	})
 
-	nestedAttributeSchema := rschema.Schema{
-		Attributes: map[string]rschema.Attribute{
-			"key": rschema.SetNestedAttribute{
-				Optional: true,
-				NestedObject: rschema.NestedAttributeObject{
-					Attributes: map[string]rschema.Attribute{
-						"nested": rschema.StringAttribute{Optional: true},
+	attributeReplaceSchema := pb.NewResource(pb.NewResourceArgs{
+		ResourceSchema: rschema.Schema{
+			Attributes: map[string]rschema.Attribute{
+				"key": rschema.SetAttribute{
+					Optional:    true,
+					ElementType: types.StringType,
+					PlanModifiers: []planmodifier.Set{
+						setplanmodifier.RequiresReplace(),
 					},
 				},
 			},
 		},
-	}
+	})
 
-	nestedAttributeReplaceSchema := rschema.Schema{
-		Attributes: map[string]rschema.Attribute{
-			"key": rschema.SetNestedAttribute{
-				Optional: true,
-				NestedObject: rschema.NestedAttributeObject{
-					Attributes: map[string]rschema.Attribute{
-						"nested": rschema.StringAttribute{Optional: true},
+	nestedAttributeSchema := pb.NewResource(pb.NewResourceArgs{
+		ResourceSchema: rschema.Schema{
+			Attributes: map[string]rschema.Attribute{
+				"key": rschema.SetNestedAttribute{
+					Optional: true,
+					NestedObject: rschema.NestedAttributeObject{
+						Attributes: map[string]rschema.Attribute{
+							"nested": rschema.StringAttribute{Optional: true},
+						},
 					},
-				},
-				PlanModifiers: []planmodifier.Set{
-					setplanmodifier.RequiresReplace(),
 				},
 			},
 		},
-	}
+	})
 
-	nestedAttributeNestedReplaceSchema := rschema.Schema{
-		Attributes: map[string]rschema.Attribute{
-			"key": rschema.SetNestedAttribute{
-				Optional: true,
-				NestedObject: rschema.NestedAttributeObject{
-					Attributes: map[string]rschema.Attribute{
-						"nested": rschema.StringAttribute{
-							Optional: true,
-							PlanModifiers: []planmodifier.String{
-								stringplanmodifier.RequiresReplace(),
+	nestedAttributeReplaceSchema := pb.NewResource(pb.NewResourceArgs{
+		ResourceSchema: rschema.Schema{
+			Attributes: map[string]rschema.Attribute{
+				"key": rschema.SetNestedAttribute{
+					Optional: true,
+					NestedObject: rschema.NestedAttributeObject{
+						Attributes: map[string]rschema.Attribute{
+							"nested": rschema.StringAttribute{Optional: true},
+						},
+					},
+					PlanModifiers: []planmodifier.Set{
+						setplanmodifier.RequiresReplace(),
+					},
+				},
+			},
+		},
+	})
+
+	nestedAttributeNestedReplaceSchema := pb.NewResource(pb.NewResourceArgs{
+		ResourceSchema: rschema.Schema{
+			Attributes: map[string]rschema.Attribute{
+				"key": rschema.SetNestedAttribute{
+					Optional: true,
+					NestedObject: rschema.NestedAttributeObject{
+						Attributes: map[string]rschema.Attribute{
+							"nested": rschema.StringAttribute{
+								Optional: true,
+								PlanModifiers: []planmodifier.String{
+									stringplanmodifier.RequiresReplace(),
+								},
 							},
 						},
 					},
 				},
 			},
 		},
-	}
+	})
 
-	blockSchema := rschema.Schema{
-		Blocks: map[string]rschema.Block{
-			"key": rschema.SetNestedBlock{
-				NestedObject: rschema.NestedBlockObject{
-					Attributes: map[string]rschema.Attribute{
-						"nested": rschema.StringAttribute{Optional: true},
-					},
-				},
-			},
-		},
-	}
-
-	blockReplaceSchema := rschema.Schema{
-		Blocks: map[string]rschema.Block{
-			"key": rschema.SetNestedBlock{
-				NestedObject: rschema.NestedBlockObject{
-					Attributes: map[string]rschema.Attribute{
-						"nested": rschema.StringAttribute{
-							Optional: true,
+	blockSchema := pb.NewResource(pb.NewResourceArgs{
+		ResourceSchema: rschema.Schema{
+			Blocks: map[string]rschema.Block{
+				"key": rschema.SetNestedBlock{
+					NestedObject: rschema.NestedBlockObject{
+						Attributes: map[string]rschema.Attribute{
+							"nested": rschema.StringAttribute{Optional: true},
 						},
 					},
 				},
-				PlanModifiers: []planmodifier.Set{
-					setplanmodifier.RequiresReplace(),
+			},
+		},
+	})
+
+	blockReplaceSchema := pb.NewResource(pb.NewResourceArgs{
+		ResourceSchema: rschema.Schema{
+			Blocks: map[string]rschema.Block{
+				"key": rschema.SetNestedBlock{
+					NestedObject: rschema.NestedBlockObject{
+						Attributes: map[string]rschema.Attribute{
+							"nested": rschema.StringAttribute{
+								Optional: true,
+							},
+						},
+					},
+					PlanModifiers: []planmodifier.Set{
+						setplanmodifier.RequiresReplace(),
+					},
 				},
 			},
 		},
-	}
+	})
 
-	blockNestedReplaceSchema := rschema.Schema{
-		Blocks: map[string]rschema.Block{
-			"key": rschema.SetNestedBlock{
-				NestedObject: rschema.NestedBlockObject{
-					Attributes: map[string]rschema.Attribute{
-						"nested": rschema.StringAttribute{
-							Optional: true,
-							PlanModifiers: []planmodifier.String{
-								stringplanmodifier.RequiresReplace(),
+	blockNestedReplaceSchema := pb.NewResource(pb.NewResourceArgs{
+		ResourceSchema: rschema.Schema{
+			Blocks: map[string]rschema.Block{
+				"key": rschema.SetNestedBlock{
+					NestedObject: rschema.NestedBlockObject{
+						Attributes: map[string]rschema.Attribute{
+							"nested": rschema.StringAttribute{
+								Optional: true,
+								PlanModifiers: []planmodifier.String{
+									stringplanmodifier.RequiresReplace(),
+								},
 							},
 						},
 					},
 				},
 			},
 		},
+	})
+
+	computedCreateFunc := func(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+		type Nested struct {
+			Nested   types.String `tfsdk:"nested"`
+			Computed types.String `tfsdk:"computed"`
+		}
+
+		type ObjectModel struct {
+			ID   types.String `tfsdk:"id"`
+			Keys []Nested     `tfsdk:"key"`
+		}
+
+		reqObj := ObjectModel{}
+		diags := req.Plan.Get(ctx, &reqObj)
+		contract.Assertf(diags.ErrorsCount() == 0, "failed to get attribute: %v", diags)
+
+		respObj := ObjectModel{
+			ID:   types.StringValue("test-id"),
+			Keys: make([]Nested, len(reqObj.Keys)),
+		}
+
+		for i, key := range reqObj.Keys {
+			newKey := Nested{}
+			if key.Computed.IsNull() || key.Computed.IsUnknown() {
+				nestedVal := ""
+				if !key.Nested.IsNull() && !key.Nested.IsUnknown() {
+					nestedVal = key.Nested.ValueString()
+				}
+				computedVal := "computed-" + nestedVal
+				newKey.Nested = types.StringValue(nestedVal)
+				newKey.Computed = types.StringValue(computedVal)
+			} else {
+				newKey.Nested = key.Nested
+				newKey.Computed = key.Computed
+			}
+			respObj.Keys[i] = newKey
+		}
+
+		diags = resp.State.Set(ctx, &respObj)
+		contract.Assertf(diags.ErrorsCount() == 0, "failed to set attribute: %v", diags)
 	}
+
+	computedUpdateFunc := func(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+		createResp := resource.CreateResponse{
+			State:       resp.State,
+			Diagnostics: resp.Diagnostics,
+		}
+		computedCreateFunc(ctx, resource.CreateRequest{
+			Plan:         req.Plan,
+			Config:       req.Config,
+			ProviderMeta: req.ProviderMeta,
+		}, &createResp)
+
+		resp.State = createResp.State
+		resp.Diagnostics = createResp.Diagnostics
+	}
+
+	blockSchemaWithComputed := pb.NewResource(pb.NewResourceArgs{
+		ResourceSchema: rschema.Schema{
+			Blocks: map[string]rschema.Block{
+				"key": rschema.SetNestedBlock{
+					NestedObject: rschema.NestedBlockObject{
+						Attributes: map[string]rschema.Attribute{
+							"nested": rschema.StringAttribute{Optional: true},
+							"computed": rschema.StringAttribute{
+								Computed: true,
+								Optional: true,
+								PlanModifiers: []planmodifier.String{
+									stringplanmodifier.UseStateForUnknown(),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		CreateFunc: computedCreateFunc,
+		UpdateFunc: computedUpdateFunc,
+	})
+
+	blockSchemaWithComputedNoStateForUnknown := pb.NewResource(pb.NewResourceArgs{
+		ResourceSchema: rschema.Schema{
+			Blocks: map[string]rschema.Block{
+				"key": rschema.SetNestedBlock{
+					NestedObject: rschema.NestedBlockObject{
+						Attributes: map[string]rschema.Attribute{
+							"nested": rschema.StringAttribute{Optional: true},
+							"computed": rschema.StringAttribute{
+								Computed: true,
+								Optional: true,
+							},
+						},
+					},
+				},
+			},
+		},
+		CreateFunc: computedCreateFunc,
+		UpdateFunc: computedUpdateFunc,
+	})
+
+	blockSchemaWithComputedReplace := pb.NewResource(pb.NewResourceArgs{
+		ResourceSchema: rschema.Schema{
+			Blocks: map[string]rschema.Block{
+				"key": rschema.SetNestedBlock{
+					NestedObject: rschema.NestedBlockObject{
+						Attributes: map[string]rschema.Attribute{
+							"nested": rschema.StringAttribute{Optional: true},
+							"computed": rschema.StringAttribute{
+								Computed: true,
+								Optional: true,
+								PlanModifiers: []planmodifier.String{
+									stringplanmodifier.UseStateForUnknown(),
+								},
+							},
+						},
+					},
+					PlanModifiers: []planmodifier.Set{
+						setplanmodifier.RequiresReplace(),
+					},
+				},
+			},
+		},
+		CreateFunc: computedCreateFunc,
+		UpdateFunc: computedUpdateFunc,
+	})
+
+	blockSchemaWithComputedNestedReplace := pb.NewResource(pb.NewResourceArgs{
+		ResourceSchema: rschema.Schema{
+			Blocks: map[string]rschema.Block{
+				"key": rschema.SetNestedBlock{
+					NestedObject: rschema.NestedBlockObject{
+						Attributes: map[string]rschema.Attribute{
+							"nested": rschema.StringAttribute{
+								Optional: true,
+								PlanModifiers: []planmodifier.String{
+									stringplanmodifier.RequiresReplace(),
+								},
+							},
+							"computed": rschema.StringAttribute{
+								Computed: true,
+								Optional: true,
+								PlanModifiers: []planmodifier.String{
+									stringplanmodifier.UseStateForUnknown(),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		CreateFunc: computedCreateFunc,
+		UpdateFunc: computedUpdateFunc,
+	})
+
+	blockSchemaWithComputedComputedRequiresReplace := pb.NewResource(pb.NewResourceArgs{
+		ResourceSchema: rschema.Schema{
+			Blocks: map[string]rschema.Block{
+				"key": rschema.SetNestedBlock{
+					NestedObject: rschema.NestedBlockObject{
+						Attributes: map[string]rschema.Attribute{
+							"nested": rschema.StringAttribute{Optional: true},
+							"computed": rschema.StringAttribute{
+								Computed: true,
+								Optional: true,
+								PlanModifiers: []planmodifier.String{
+									stringplanmodifier.UseStateForUnknown(),
+									stringplanmodifier.RequiresReplace(),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		CreateFunc: computedCreateFunc,
+		UpdateFunc: computedUpdateFunc,
+	})
 
 	attrList := func(arr *[]string) cty.Value {
 		if arr == nil {
@@ -164,9 +360,28 @@ func TestDetailedDiffSet(t *testing.T) {
 		return cty.ListVal(slice)
 	}
 
+	nestedAttrListWithComputedSpecified := func(arr *[]string) cty.Value {
+		if arr == nil {
+			return cty.NullVal(cty.DynamicPseudoType)
+		}
+		slice := make([]cty.Value, len(*arr))
+		for i, v := range *arr {
+			slice[i] = cty.ObjectVal(
+				map[string]cty.Value{
+					"nested":   cty.StringVal(v),
+					"computed": cty.StringVal("non-computed-" + v),
+				},
+			)
+		}
+		if len(slice) == 0 {
+			return cty.ListValEmpty(cty.Object(map[string]cty.Type{"nested": cty.String}))
+		}
+		return cty.ListVal(slice)
+	}
+
 	schemaValueMakerPairs := []struct {
 		name       string
-		schema     rschema.Schema
+		res        pb.Resource
 		valueMaker func(*[]string) cty.Value
 	}{
 		{"attribute no replace", attributeSchema, attrList},
@@ -177,6 +392,19 @@ func TestDetailedDiffSet(t *testing.T) {
 		{"block no replace", blockSchema, nestedAttrList},
 		{"block requires replace", blockReplaceSchema, nestedAttrList},
 		{"block nested requires replace", blockNestedReplaceSchema, nestedAttrList},
+
+		// Computed, each state we test both the behaviour when the computed value is specified in the program and when it is not.
+		{"block with computed no replace computed", blockSchemaWithComputed, nestedAttrList},
+		{"block with computed no replace computed specified in program", blockSchemaWithComputed, nestedAttrListWithComputedSpecified},
+		{"block with computed requires replace", blockSchemaWithComputedReplace, nestedAttrList},
+		{"block with computed requires replace computed specified in program", blockSchemaWithComputedReplace, nestedAttrListWithComputedSpecified},
+		{"block with computed and nested requires replace", blockSchemaWithComputedNestedReplace, nestedAttrList},
+		{"block with computed and nested requires replace computed specified in program", blockSchemaWithComputedNestedReplace, nestedAttrListWithComputedSpecified},
+		{"block with computed and computed requires replace", blockSchemaWithComputedComputedRequiresReplace, nestedAttrList},
+		{"block with computed and computed requires replace computed specified in program", blockSchemaWithComputedComputedRequiresReplace, nestedAttrListWithComputedSpecified},
+		// Rarely used, but supported
+		{"block with computed no state for unknown", blockSchemaWithComputedNoStateForUnknown, nestedAttrList},
+		{"block with computed no state for unknown computed specified in program", blockSchemaWithComputedNoStateForUnknown, nestedAttrListWithComputedSpecified},
 	}
 
 	scenarios := []struct {
@@ -227,10 +455,7 @@ func TestDetailedDiffSet(t *testing.T) {
 					initialValue := schemaValueMakerPair.valueMaker(scenario.initialValue)
 					changeValue := schemaValueMakerPair.valueMaker(scenario.changeValue)
 
-					res := pb.NewResource(pb.NewResourceArgs{
-						ResourceSchema: schemaValueMakerPair.schema,
-					})
-					diff := crosstests.Diff(t, res, map[string]cty.Value{"key": initialValue}, map[string]cty.Value{"key": changeValue})
+					diff := crosstests.Diff(t, schemaValueMakerPair.res, map[string]cty.Value{"key": initialValue}, map[string]cty.Value{"key": changeValue})
 
 					autogold.ExpectFile(t, testOutput{
 						initialValue: scenario.initialValue,
