@@ -3,7 +3,7 @@ module github.com/opentofu/opentofu/shim
 go 1.22.3
 
 // Use OpenTofu's fork of hcl (copied from OpenTofu).
-replace github.com/hashicorp/hcl/v2 v2.20.1 => github.com/opentofu/hcl/v2 v2.0.0-20240416130056-03228b26f391
+replace github.com/hashicorp/hcl/v2 => github.com/opentofu/hcl/v2 v2.0.0-20240416130056-03228b26f391
 
 require (
 	github.com/apparentlymart/go-versions v1.0.1
