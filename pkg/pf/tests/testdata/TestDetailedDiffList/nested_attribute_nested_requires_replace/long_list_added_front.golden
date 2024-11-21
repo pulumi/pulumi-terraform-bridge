@@ -1,0 +1,203 @@
+tfbridgetests.testOutput{
+	initialValue: &[]string{
+		"value0",
+		"value1",
+		"value2",
+		"value3",
+		"value4",
+		"value5",
+		"value6",
+		"value7",
+		"value8",
+		"value9",
+		"value10",
+		"value11",
+		"value12",
+		"value13",
+		"value14",
+		"value15",
+		"value16",
+		"value17",
+		"value18",
+		"value19",
+	},
+	changeValue: &[]string{
+		"value20",
+		"value0",
+		"value1",
+		"value2",
+		"value3",
+		"value4",
+		"value5",
+		"value6",
+		"value7",
+		"value8",
+		"value9",
+		"value10",
+		"value11",
+		"value12",
+		"value13",
+		"value14",
+		"value15",
+		"value16",
+		"value17",
+		"value18",
+		"value19",
+	},
+	tfOut: `
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
++/- create replacement and then destroy
+
+Terraform will perform the following actions:
+
+  # testprovider_test.res must be replaced
++/- resource "testprovider_test" "res" {
+      ~ id  = "test-id" -> (known after apply)
+      ~ key = [
+          ~ {
+              ~ nested = "value0" -> "value20" # forces replacement
+            },
+          ~ {
+              ~ nested = "value1" -> "value0" # forces replacement
+            },
+          ~ {
+              ~ nested = "value2" -> "value1" # forces replacement
+            },
+          ~ {
+              ~ nested = "value3" -> "value2" # forces replacement
+            },
+          ~ {
+              ~ nested = "value4" -> "value3" # forces replacement
+            },
+          ~ {
+              ~ nested = "value5" -> "value4" # forces replacement
+            },
+          ~ {
+              ~ nested = "value6" -> "value5" # forces replacement
+            },
+          ~ {
+              ~ nested = "value7" -> "value6" # forces replacement
+            },
+          ~ {
+              ~ nested = "value8" -> "value7" # forces replacement
+            },
+          ~ {
+              ~ nested = "value9" -> "value8" # forces replacement
+            },
+          ~ {
+              ~ nested = "value10" -> "value9" # forces replacement
+            },
+          ~ {
+              ~ nested = "value11" -> "value10" # forces replacement
+            },
+          ~ {
+              ~ nested = "value12" -> "value11" # forces replacement
+            },
+          ~ {
+              ~ nested = "value13" -> "value12" # forces replacement
+            },
+          ~ {
+              ~ nested = "value14" -> "value13" # forces replacement
+            },
+          ~ {
+              ~ nested = "value15" -> "value14" # forces replacement
+            },
+          ~ {
+              ~ nested = "value16" -> "value15" # forces replacement
+            },
+          ~ {
+              ~ nested = "value17" -> "value16" # forces replacement
+            },
+          ~ {
+              ~ nested = "value18" -> "value17" # forces replacement
+            },
+          ~ {
+              ~ nested = "value19" -> "value18" # forces replacement
+            },
+          + {
+              + nested = "value19" # forces replacement
+            },
+        ]
+    }
+
+Plan: 1 to add, 0 to change, 1 to destroy.
+
+`,
+	pulumiOut: `Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::project::pulumi:pulumi:Stack::project-test]
+    +-testprovider:index/test:Test: (replace)
+        [id=test-id]
+        [urn=urn:pulumi:test::project::testprovider:index/test:Test::p]
+      ~ id  : "test-id" => output<string>
+      ~ keys: [
+          ~ [0]: {
+                  ~ nested: "value0" => "value20"
+                }
+          ~ [1]: {
+                  ~ nested: "value1" => "value0"
+                }
+          ~ [2]: {
+                  ~ nested: "value2" => "value1"
+                }
+          ~ [3]: {
+                  ~ nested: "value3" => "value2"
+                }
+          ~ [4]: {
+                  ~ nested: "value4" => "value3"
+                }
+          ~ [5]: {
+                  ~ nested: "value5" => "value4"
+                }
+          ~ [6]: {
+                  ~ nested: "value6" => "value5"
+                }
+          ~ [7]: {
+                  ~ nested: "value7" => "value6"
+                }
+          ~ [8]: {
+                  ~ nested: "value8" => "value7"
+                }
+          ~ [9]: {
+                  ~ nested: "value9" => "value8"
+                }
+          ~ [10]: {
+                  ~ nested: "value10" => "value9"
+                }
+          ~ [11]: {
+                  ~ nested: "value11" => "value10"
+                }
+          ~ [12]: {
+                  ~ nested: "value12" => "value11"
+                }
+          ~ [13]: {
+                  ~ nested: "value13" => "value12"
+                }
+          ~ [14]: {
+                  ~ nested: "value14" => "value13"
+                }
+          ~ [15]: {
+                  ~ nested: "value15" => "value14"
+                }
+          ~ [16]: {
+                  ~ nested: "value16" => "value15"
+                }
+          ~ [17]: {
+                  ~ nested: "value17" => "value16"
+                }
+          ~ [18]: {
+                  ~ nested: "value18" => "value17"
+                }
+          ~ [19]: {
+                  ~ nested: "value19" => "value18"
+                }
+          + [20]: {
+                  + nested: "value19"
+                }
+        ]
+Resources:
+    +-1 to replace
+    1 unchanged
+`,
+}

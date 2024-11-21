@@ -1,6 +1,7 @@
 package tfbridgetests
 
 import (
+	"fmt"
 	"testing"
 
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -179,6 +180,14 @@ func TestDetailedDiffList(t *testing.T) {
 		{"block nested requires replace", blockNestedReplaceSchema, nestedAttrList},
 	}
 
+	longList := &[]string{}
+	for i := 0; i < 20; i++ {
+		*longList = append(*longList, fmt.Sprintf("value%d", i))
+	}
+	longListAddedBack := append([]string{}, *longList...)
+	longListAddedBack = append(longListAddedBack, "value20")
+	longListAddedFront := append([]string{"value20"}, *longList...)
+
 	scenarios := []struct {
 		name         string
 		initialValue *[]string
@@ -201,6 +210,8 @@ func TestDetailedDiffList(t *testing.T) {
 		{"added front", &[]string{"val2", "val3"}, &[]string{"val1", "val2", "val3"}},
 		{"added middle", &[]string{"val1", "val3"}, &[]string{"val1", "val2", "val3"}},
 		{"added end", &[]string{"val1", "val2"}, &[]string{"val1", "val2", "val3"}},
+		{"long list added", longList, &longListAddedBack},
+		{"long list added front", longList, &longListAddedFront},
 	}
 
 	type testOutput struct {
