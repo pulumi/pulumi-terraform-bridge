@@ -558,8 +558,7 @@ func TestTokenAliasing(t *testing.T) { //nolint:paralleltest
 	}
 }
 
-func TestTokenAliasing1(t *testing.T) {
-	t.Parallel()
+func TestTokenAliasing1(t *testing.T) { //nolint:paralleltest
 	testTokenAliasing(t)
 }
 
