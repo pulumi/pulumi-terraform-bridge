@@ -1778,6 +1778,7 @@ func extractSchemaInputsObject(
 	for k, e := range state {
 		_, etfs, eps := getInfoFromPulumiName(k, tfs, ps)
 		typeKnown := tfs != nil && etfs != nil
+		allowDrop := eps == nil || !eps.XAlwaysIncludeInImport
 
 		// We drop fields that are not present in the schema.
 		//
@@ -1793,7 +1794,7 @@ func extractSchemaInputsObject(
 
 		ev := extractSchemaInputs(e, etfs, eps)
 
-		if !etfs.Required() && isDefaultOrZeroValue(etfs, eps, ev) {
+		if allowDrop && !etfs.Required() && isDefaultOrZeroValue(etfs, eps, ev) {
 			glog.V(9).Infof("skipping '%v' (not required + default or zero value)", k)
 			continue
 		}
