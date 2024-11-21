@@ -2107,6 +2107,109 @@ func (s volatileMap) Get(key string) shim.Schema {
 	return v
 }
 
+func TestImportKeepOverride(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name              string
+		input             resource.PropertyMap
+		tfs               schema.SchemaMap
+		ps                func(treat bool) map[string]*SchemaInfo
+		expectedTreated   resource.PropertyMap
+		expectedUntreated resource.PropertyMap
+	}{
+		{
+			name:  "top-level",
+			input: resource.PropertyMap{"topLevel": resource.NewProperty(0.0)},
+			tfs: schema.SchemaMap{
+				"top_level": (&schema.Schema{
+					Type:     shim.TypeFloat,
+					Optional: true,
+				}).Shim(),
+			},
+			ps: func(treat bool) map[string]*SchemaInfo {
+				return map[string]*SchemaInfo{
+					"top_level": {XAlwaysIncludeInImport: treat},
+				}
+			},
+			expectedTreated: resource.PropertyMap{
+				"topLevel":   resource.NewProperty(0.0),
+				"__defaults": resource.NewProperty([]resource.PropertyValue{}),
+			},
+			expectedUntreated: resource.PropertyMap{
+				"__defaults": resource.NewProperty([]resource.PropertyValue{}),
+			},
+		},
+		{
+			name: "nested-level",
+			input: resource.PropertyMap{"f": resource.NewProperty([]resource.PropertyValue{
+				resource.NewProperty(resource.PropertyMap{
+					"nested": resource.NewProperty(false),
+				}),
+			})},
+			tfs: schema.SchemaMap{
+				"f": (&schema.Schema{
+					Type:     shim.TypeList,
+					Optional: true,
+					Elem: (&schema.Resource{Schema: schema.SchemaMap{
+						"nested": (&schema.Schema{
+							Type:     shim.TypeBool,
+							Optional: true,
+						}).Shim(),
+					}}).Shim(),
+				}).Shim(),
+			},
+			ps: func(treat bool) map[string]*SchemaInfo {
+				return map[string]*SchemaInfo{
+					"f": {Elem: &SchemaInfo{
+						Fields: map[string]*SchemaInfo{
+							"nested": {XAlwaysIncludeInImport: treat},
+						},
+					}},
+				}
+			},
+			expectedTreated: resource.PropertyMap{
+				"f": resource.NewProperty([]resource.PropertyValue{
+					resource.NewProperty(resource.PropertyMap{
+						"nested":     resource.NewProperty(false),
+						"__defaults": resource.NewProperty([]resource.PropertyValue{}),
+					}),
+				}),
+				"__defaults": resource.NewProperty([]resource.PropertyValue{}),
+			},
+			expectedUntreated: resource.PropertyMap{
+				"f": resource.NewProperty([]resource.PropertyValue{
+					resource.NewProperty(resource.PropertyMap{
+						"__defaults": resource.NewProperty([]resource.PropertyValue{}),
+					}),
+				}),
+				"__defaults": resource.NewProperty([]resource.PropertyValue{}),
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			t.Run("treated", func(t *testing.T) {
+				actual, err := ExtractInputsFromOutputs(nil, tt.input, tt.tfs, tt.ps(true),
+					false /* isRefresh */)
+				require.NoError(t, err)
+				assert.Equal(t, tt.expectedTreated, actual)
+			})
+
+			t.Run("untreated", func(t *testing.T) {
+				actual, err := ExtractInputsFromOutputs(nil, tt.input, tt.tfs, tt.ps(false),
+					false /* isRefresh */)
+				require.NoError(t, err)
+				assert.Equal(t, tt.expectedUntreated, actual)
+			})
+		})
+	}
+}
+
 func TestRefreshExtractInputsFromOutputsMaxItemsOne(t *testing.T) {
 	t.Parallel()
 
@@ -2177,9 +2280,21 @@ func TestRefreshExtractInputsFromOutputsMaxItemsOne(t *testing.T) {
 		}
 	}
 
-	_, err := ExtractInputsFromOutputs(ruleSetProps(), ruleSetProps(),
+	actual, err := ExtractInputsFromOutputs(ruleSetProps(), ruleSetProps(),
 		ruleSetSchema(), ruleSetPs(), true)
-	assert.NoError(t, err)
+	require.NoError(t, err)
+	assert.Equal(t, resource.PropertyMap{
+		"rule": resource.NewProperty(resource.PropertyMap{
+			"action": resource.NewProperty([]resource.PropertyValue{
+				resource.NewProperty(resource.PropertyMap{
+					"overwritten": resource.NewProperty(resource.PropertyMap{
+						"from": resource.NewProperty(299.0),
+						"to":   resource.NewProperty(999.0),
+					}),
+				}),
+			}),
+		}),
+	}, actual)
 }
 
 func TestRefreshExtractInputsFromOutputsListOfObjects(t *testing.T) {

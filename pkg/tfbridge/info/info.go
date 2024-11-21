@@ -560,6 +560,40 @@ type Schema struct {
 	//
 	// Experimental.
 	TypeName *string
+
+	// XAlwaysIncludeInImport prevents the field from pruning zero values when generating import inputs.
+	//
+	// This is necessary to accommodate Terraform providers that distinguish between the zero value of a property
+	// and no value of the property.
+	//
+	// For example, consider cloudflare_ruleset resource (https://github.com/pulumi/pulumi-cloudflare/issues/957):
+	//
+	//	resources:
+	//	  cache_rules:
+	//	    type: cloudflare:Ruleset
+	//	    properties:
+	//	      kind: zone
+	//	      rules:
+	//	      - action: set_cache_settings
+	//	        action_parameters:
+	//	          cache: false
+	//
+	// Importing cache_rules will result in the following code:
+	//
+	//	resources:
+	//	  cache_rules:
+	//	    type: cloudflare:Ruleset
+	//	    properties:
+	//	      kind: zone
+	//	      rules:
+	//	      - action: set_cache_settings
+	//
+	// action_parameters.cache is dropped because "false" is the default value of boolean. Unfortunately, the
+	// cloudflare provider treats "cache: false" very differently from "cache: null". Setting XAlwaysIncludeInImport
+	// ensures that "cache: false" is always included in the resulting output.
+	//
+	// Experimental.
+	XAlwaysIncludeInImport bool
 }
 
 // Config represents a synthetic configuration variable that is Pulumi-only, and not passed to Terraform.
