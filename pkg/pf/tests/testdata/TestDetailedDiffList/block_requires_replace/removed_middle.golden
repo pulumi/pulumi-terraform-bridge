@@ -50,4 +50,8 @@ Resources:
     +-1 to replace
     1 unchanged
 `,
+	detailedDiff: map[string]interface{}{
+		"keys[1].nested": map[string]interface{}{"kind": "UPDATE"},
+		"keys[2]":        map[string]interface{}{"kind": "DELETE"},
+	},
 }

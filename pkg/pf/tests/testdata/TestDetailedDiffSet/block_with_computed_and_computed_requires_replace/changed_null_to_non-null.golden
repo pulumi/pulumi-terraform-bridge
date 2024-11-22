@@ -37,4 +37,5 @@ Resources:
     +-1 to replace
     1 unchanged
 `,
+	detailedDiff: map[string]interface{}{"keys[0]": map[string]interface{}{}},
 }
