@@ -48,6 +48,7 @@ func TestGenRandom(t *testing.T) {
 
 		t.Run(trace, func(t *testing.T) {
 			p := testprovider.RandomProvider()
+			p.EnableAccurateBridgePreview = true
 			server, err := newProviderServer(t, p)
 			require.NoError(t, err)
 			testutils.ReplayFile(t, server, trace)

@@ -56,7 +56,9 @@ func TestEmptyTestresDiff(t *testing.T) {
 // Test removing an optional input.
 func TestOptionRemovalTestresDiff(t *testing.T) {
 	t.Parallel()
-	server, err := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
+	info := testprovider.SyntheticTestBridgeProvider()
+	info.EnableAccurateBridgePreview = true
+	server, err := newProviderServer(t, info)
 	require.NoError(t, err)
 	testCase := `
         {
@@ -270,7 +272,9 @@ func TestSetNestedObjectAdded(t *testing.T) {
 
 func TestSetNestedObjectAddedOtherDiff(t *testing.T) {
 	t.Parallel()
-	server, err := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
+	info := testprovider.SyntheticTestBridgeProvider()
+	info.EnableAccurateBridgePreview = true
+	server, err := newProviderServer(t, info)
 	require.NoError(t, err)
 	testCase := `
         {
