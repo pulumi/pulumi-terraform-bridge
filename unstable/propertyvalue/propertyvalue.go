@@ -128,6 +128,22 @@ func RemoveSecrets(pv resource.PropertyValue) resource.PropertyValue {
 	return Transform(unsecret, pv)
 }
 
+func RemoveSecretsAndOutputs(pv resource.PropertyValue) resource.PropertyValue {
+	return Transform(func(pv resource.PropertyValue) resource.PropertyValue {
+		if pv.IsSecret() {
+			return pv.SecretValue().Element
+		}
+		if pv.IsOutput() {
+			o := pv.OutputValue()
+			if !o.Known {
+				return resource.NewComputedProperty(resource.Computed{Element: resource.NewStringProperty("")})
+			}
+			return o.Element
+		}
+		return pv
+	}, pv)
+}
+
 func extendPath(p resource.PropertyPath, segment any) resource.PropertyPath {
 	rp := make(resource.PropertyPath, len(p)+1)
 	copy(rp, p)
