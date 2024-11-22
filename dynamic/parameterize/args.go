@@ -59,6 +59,8 @@ func ParseArgs(args []string) (Args, error) {
 		docsArg := args[2]
 		if docsArg == "fullDocs" {
 			remote.Docs = true
+		} else {
+			return Args{}, fmt.Errorf("expected third parameterized argument to be 'fullDocs' or empty")
 		}
 		fallthrough
 	// The second argument, if any is the version
@@ -70,6 +72,6 @@ func ParseArgs(args []string) (Args, error) {
 		remote.Name = args[0]
 		return Args{Remote: &remote}, nil
 	default:
-		return Args{}, fmt.Errorf("expected to be parameterized by 1-3 arguments: <name> [version] [fullDocs]")
+		return Args{}, fmt.Errorf("expected to be parameterized by 1-3 arguments: <name> [version] fullDocs")
 	}
 }

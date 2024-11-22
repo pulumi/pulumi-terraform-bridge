@@ -51,12 +51,26 @@ func TestParseArgs(t *testing.T) {
 		{
 			name:   "no args",
 			args:   []string{},
-			errMsg: autogold.Expect("expected to be parameterized by 1-2 arguments: <name> [version]"),
+			errMsg: autogold.Expect("expected to be parameterized by 1-3 arguments: <name> [version] fullDocs"),
 		},
 		{
 			name:   "too many args",
+			args:   []string{"arg1", "arg2", "arg3", "arg4"},
+			errMsg: autogold.Expect("expected to be parameterized by 1-3 arguments: <name> [version] fullDocs"),
+		},
+		{
+			name:   "invalid third arg",
 			args:   []string{"arg1", "arg2", "arg3"},
-			errMsg: autogold.Expect("expected to be parameterized by 1-2 arguments: <name> [version]"),
+			errMsg: autogold.Expect("expected third parameterized argument to be 'fullDocs' or empty"),
+		},
+		{
+			name: "valid third arg",
+			args: []string{"my-registry.io/typ", "1.2.3", "fullDocs"},
+			expect: Args{Remote: &RemoteArgs{
+				Name:    "my-registry.io/typ",
+				Version: "1.2.3",
+				Docs:    true,
+			}},
 		},
 	}
 
