@@ -180,7 +180,7 @@ func TestDetailedDiffStringAttribute(t *testing.T) {
 		changeValue  *string
 		tfOut        string
 		pulumiOut    string
-		detailedDiff  map[string]any
+		detailedDiff map[string]any
 	}
 
 	for _, schema := range schemas {

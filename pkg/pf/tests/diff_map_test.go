@@ -163,7 +163,7 @@ func TestDetailedDiffMap(t *testing.T) {
 		changeValue  *map[string]*string
 		tfOut        string
 		pulumiOut    string
-		detailedDiff  map[string]any
+		detailedDiff map[string]any
 	}
 
 	for _, schemaValueMakerPair := range schemaValueMakerPairs {
