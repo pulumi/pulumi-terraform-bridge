@@ -10,3 +10,12 @@ ignore:
   - "pkg/vendored"
   # deprecated
   - "pkg/tfshim/tfplugin5"
+  # scripts folder
+  - "scripts"
+  - "unstable/scripts"
+  # test frameworks
+  - "pkg/internal/tests"
+  - "pkg/tests"
+  - "pkg/pf/tests"
+  - "pkg/x/testing"
+
