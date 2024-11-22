@@ -33,6 +33,26 @@ func TestRemoveSecrets(t *testing.T) {
 	})
 }
 
+func TestRemoveSecretsAndOutputs(t *testing.T) {
+	t.Parallel()
+	rapid.Check(t, func(t *rapid.T) {
+		randomPV := rtesting.PropertyValueGenerator(5 /* maxDepth */).Draw(t, "pv")
+		result := RemoveSecretsAndOutputs(randomPV)
+		if result.ContainsSecrets() {
+			t.Fatalf("RemoveSecretsAndOutputs(randomPV).ContainsSecrets()")
+		}
+
+		visitor := func(path resource.PropertyPath, val resource.PropertyValue) (resource.PropertyValue, error) {
+			require.False(t, val.IsSecret())
+			require.False(t, val.IsOutput())
+			return val, nil
+		}
+
+		_, err := TransformPropertyValue(resource.PropertyPath{}, visitor, result)
+		require.NoError(t, err)
+	})
+}
+
 func TestIsNilArray(t *testing.T) {
 	t.Parallel()
 
