@@ -962,6 +962,9 @@ func (g *Generator) generateSchemaResult(ctx context.Context) (*GenerateSchemaRe
 		ghRepo := "https://github.com/" + g.info.GitHubOrg + "/terraform-provider-" + g.info.Name
 		cmd := exec.Command("git", "clone", "--depth", "1", "-b", versionWithPrefix, ghRepo, dynamicDocsDir)
 		err = cmd.Run()
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to clone upstream provider for docs")
+		}
 	}
 
 	// First gather up the entire package contents. This structure is complete and sufficient to hand off to the
