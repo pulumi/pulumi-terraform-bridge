@@ -62,8 +62,9 @@ func TestStacktraceDisplayed(t *testing.T) {
 }
 
 func TestPrimitiveTypes(t *testing.T) {
-	t.Parallel()
 	skipWindows(t)
+	// TODO[pulumi/pulumi-terraform-bridge#2517]: fix once accurate bridge previews are enabled by default
+	t.Setenv("PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW", "true")
 
 	ctx := context.Background()
 
@@ -114,18 +115,18 @@ func TestPrimitiveTypes(t *testing.T) {
 	t.Run("check", assertGRPCCall(grpc.Check, &pulumirpc.CheckRequest{
 		Urn:  urn,
 		News: inputs(),
-	}))
+	}, noParallel))
 
 	t.Run("create(preview)", assertGRPCCall(grpc.Create, &pulumirpc.CreateRequest{
 		Preview:    true,
 		Urn:        urn,
 		Properties: inputs(),
-	}))
+	}, noParallel))
 
 	t.Run("create", assertGRPCCall(grpc.Create, &pulumirpc.CreateRequest{
 		Urn:        urn,
 		Properties: inputs(),
-	}))
+	}, noParallel))
 
 	t.Run("diff(none)", assertGRPCCall(grpc.Diff, &pulumirpc.DiffRequest{
 		Id:        "example-id-0",
@@ -133,7 +134,7 @@ func TestPrimitiveTypes(t *testing.T) {
 		Olds:      outputs(),
 		News:      inputs(),
 		OldInputs: inputs(),
-	}))
+	}, noParallel))
 
 	t.Run("diff(some)", assertGRPCCall(grpc.Diff, &pulumirpc.DiffRequest{
 		Id:  "example-id-1",
@@ -155,7 +156,7 @@ func TestPrimitiveTypes(t *testing.T) {
 			"attrStringDefaultOverridden": resource.NewProperty("overridden"),
 		}),
 		OldInputs: inputs(),
-	}))
+	}, noParallel))
 
 	t.Run("diff(all)", assertGRPCCall(grpc.Diff, &pulumirpc.DiffRequest{
 		Id:  "example-id-2",
@@ -177,13 +178,13 @@ func TestPrimitiveTypes(t *testing.T) {
 			"attrNumberRequired": resource.NewProperty(12.3456789),
 		}),
 		OldInputs: inputs(),
-	}))
+	}, noParallel))
 
 	t.Run("delete", assertGRPCCall(grpc.Delete, &pulumirpc.DeleteRequest{
 		Id:         "example-id-delete",
 		Urn:        urn,
 		Properties: outputs(),
-	}))
+	}, noParallel))
 
 	t.Run("update", assertGRPCCall(grpc.Update, &pulumirpc.UpdateRequest{
 		Id:   "example-update-id",
@@ -192,18 +193,18 @@ func TestPrimitiveTypes(t *testing.T) {
 		News: marshal(with(outputProps(), resource.PropertyMap{
 			"attrBoolRequired": resource.NewProperty(false),
 		})),
-	}))
+	}, noParallel))
 
 	t.Run("read", assertGRPCCall(grpc.Read, &pulumirpc.ReadRequest{
 		Id:         "example-read-id",
 		Urn:        urn,
 		Properties: outputs(),
-	}))
+	}, noParallel))
 
 	t.Run("import", assertGRPCCall(grpc.Read, &pulumirpc.ReadRequest{
 		Id:  "example-read-id",
 		Urn: urn,
-	}))
+	}, noParallel))
 }
 
 func TestConfigure(t *testing.T) {
