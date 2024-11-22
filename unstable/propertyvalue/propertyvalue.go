@@ -39,6 +39,18 @@ func TransformErr(
 		}, value)
 }
 
+// isNilArray returns true if a property value is not nil but its underlying array is nil.
+// See https://dave.cheney.net/2017/08/09/typed-nils-in-go-2 for more details.
+func isNilArray(value resource.PropertyValue) bool {
+	return value.IsArray() && !value.IsNull() && value.ArrayValue() == nil
+}
+
+// isNilObject returns true if a property value is not nil but its underlying object is nil.
+// See https://dave.cheney.net/2017/08/09/typed-nils-in-go-2 for more details.
+func isNilObject(value resource.PropertyValue) bool {
+	return value.IsObject() && !value.IsNull() && value.ObjectValue() == nil
+}
+
 func TransformPropertyValue(
 	path resource.PropertyPath,
 	transformer func(resource.PropertyPath, resource.PropertyValue) (resource.PropertyValue, error),
@@ -46,25 +58,31 @@ func TransformPropertyValue(
 ) (resource.PropertyValue, error) {
 	switch {
 	case value.IsArray():
-		tvs := []resource.PropertyValue{}
-		for i, v := range value.ArrayValue() {
-			tv, err := TransformPropertyValue(extendPath(path, i), transformer, v)
-			if err != nil {
-				return resource.NewNullProperty(), err
+		// preserve nil arrays
+		if !isNilArray(value) {
+			tvs := []resource.PropertyValue{}
+			for i, v := range value.ArrayValue() {
+				tv, err := TransformPropertyValue(extendPath(path, i), transformer, v)
+				if err != nil {
+					return resource.NewNullProperty(), err
+				}
+				tvs = append(tvs, tv)
 			}
-			tvs = append(tvs, tv)
+			value = resource.NewArrayProperty(tvs)
 		}
-		value = resource.NewArrayProperty(tvs)
 	case value.IsObject():
-		pm := make(resource.PropertyMap)
-		for k, v := range value.ObjectValue() {
-			tv, err := TransformPropertyValue(extendPath(path, string(k)), transformer, v)
-			if err != nil {
-				return resource.NewNullProperty(), err
+		// preserve nil objects
+		if !isNilObject(value) {
+			pm := make(resource.PropertyMap)
+			for k, v := range value.ObjectValue() {
+				tv, err := TransformPropertyValue(extendPath(path, string(k)), transformer, v)
+				if err != nil {
+					return resource.NewNullProperty(), err
+				}
+				pm[k] = tv
 			}
-			pm[k] = tv
+			value = resource.NewObjectProperty(pm)
 		}
-		value = resource.NewObjectProperty(pm)
 	case value.IsOutput():
 		o := value.OutputValue()
 		te, err := TransformPropertyValue(path, transformer, o.Element)
