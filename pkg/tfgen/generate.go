@@ -959,7 +959,8 @@ func (g *Generator) generateSchemaResult(ctx context.Context) (*GenerateSchemaRe
 	// if docs don't exist, i.e. because the provider is dynamic, download docs at version and repo address
 	if g.loadDocsRepo {
 		versionWithPrefix := "v" + g.info.Version
-		cmd := exec.Command("git", "clone", "--depth", "1", "-b", versionWithPrefix, g.info.UpstreamRepoPath, dynamicDocsDir)
+		ghRepo := "https://github.com/" + g.info.GitHubOrg + "/terraform-provider-" + g.info.Name
+		cmd := exec.Command("git", "clone", "--depth", "1", "-b", versionWithPrefix, ghRepo, dynamicDocsDir)
 		err = cmd.Run()
 	}
 
@@ -1228,7 +1229,6 @@ func (g *Generator) gatherProvider() (*resourceType, error) {
 		Tok:    tokens.Type(g.pkg.String()),
 		Fields: g.info.Config,
 	}
-
 	res, err := g.gatherResource("", (&schema.Resource{Schema: cfg}).Shim(), info, true)
 	return res, err
 }
@@ -1326,7 +1326,7 @@ func (g *Generator) gatherResource(rawname string,
 	var entityDocs entityDocs
 	if !isProvider {
 		// If g.noDocsRepo is set, we have established that it's pointless to get
-		// docs from the repo, so we don't try. // TODO: is this redundant? unclear!
+		// docs from the repo, so we don't try.
 		if !g.noDocsRepo {
 			source := NewGitRepoDocsSource(g)
 			pulumiDocs, err := getDocsForResource(g, source, ResourceDocs, rawname, info)
@@ -1699,9 +1699,8 @@ func (g *Generator) checkNoDocsError(err error) bool {
 		return false
 	}
 
-	// If we have already warned, we can just discard the message - TODO: this comment is about code we DIDN'T write I think!
+	// If we have already warned, we can just discard the message
 	if !g.noDocsRepo {
-		//panic(g.noDocsRepo)
 		g.logMissingRepoPath(e)
 	}
 	g.noDocsRepo = true
