@@ -78,8 +78,8 @@ func initialSetup() (info.Provider, pfbridge.ProviderMetadata, func() error) {
 				DiagnosticsSink: diag.DefaultSink(os.Stdout, os.Stderr, diag.FormatOptions{
 					Color: colors.Always,
 				}),
-				XInMemoryDocs:     schemaDocsOnly,
-				XLoadUpstreamRepo: fullDocs,
+				XInMemoryDocs:            schemaDocsOnly,
+				XLoadUpstreamRepoForDocs: fullDocs,
 			})
 			if err != nil {
 				return nil, err
@@ -157,7 +157,6 @@ func initialSetup() (info.Provider, pfbridge.ProviderMetadata, func() error) {
 				return plugin.ParameterizeResponse{}, err
 			}
 			fullDocs = args.Remote.Docs
-
 			return plugin.ParameterizeResponse{
 				Name:    p.Name(),
 				Version: v,

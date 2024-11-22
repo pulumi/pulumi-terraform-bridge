@@ -94,10 +94,10 @@ func (gh *gitRepoSource) getFile(
 			return nil, fmt.Errorf("repo for token %q: %w", rawname, err)
 		}
 	}
-	// reset repoPath for dynamic providers
-	_, err := os.Stat("./dynamicDocsDir")
-	if err == nil {
-		repoPath = "./dynamicDocsDir"
+
+	// When we build full docs for dynamic providers, we expect a local download of the git repo in dynamicDocsDir.
+	if _, err := os.Stat(dynamicDocsDir); err == nil {
+		repoPath = dynamicDocsDir
 	}
 
 	var possibleMarkdownNames []string

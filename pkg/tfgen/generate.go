@@ -53,9 +53,10 @@ import (
 )
 
 const (
-	tfgen         = "the Pulumi Terraform Bridge (tfgen) Tool"
-	defaultOutDir = "sdk/"
-	maxWidth      = 120 // the ideal maximum width of the generated file.
+	tfgen          = "the Pulumi Terraform Bridge (tfgen) Tool"
+	defaultOutDir  = "sdk/"
+	maxWidth       = 120 // the ideal maximum width of the generated file.
+	dynamicDocsDir = "dynamicDocsDir"
 )
 
 type Generator struct {
@@ -80,7 +81,7 @@ type Generator struct {
 	// message.
 	noDocsRepo bool
 
-	// Set if we want to download the upstream repo for docs purposes
+	// Set if we want to download the upstream repo for docs purposes.
 	loadDocsRepo bool
 
 	cliConverterState *cliConverter
@@ -779,10 +780,10 @@ func GenerateSchema(info tfbridge.ProviderInfo, sink diag.Sink) (pschema.Package
 }
 
 type GenerateSchemaOptions struct {
-	ProviderInfo      tfbridge.ProviderInfo
-	DiagnosticsSink   diag.Sink
-	XInMemoryDocs     bool
-	XLoadUpstreamRepo bool
+	ProviderInfo             tfbridge.ProviderInfo
+	DiagnosticsSink          diag.Sink
+	XInMemoryDocs            bool
+	XLoadUpstreamRepoForDocs bool
 }
 
 type GenerateSchemaResult struct {
@@ -795,14 +796,14 @@ func GenerateSchemaWithOptions(opts GenerateSchemaOptions) (*GenerateSchemaResul
 	info := opts.ProviderInfo
 	sink := opts.DiagnosticsSink
 	g, err := NewGenerator(GeneratorOptions{
-		Package:           info.Name,
-		Version:           info.Version,
-		Language:          Schema,
-		ProviderInfo:      info,
-		Root:              afero.NewMemMapFs(),
-		Sink:              sink,
-		XInMemoryDocs:     opts.XInMemoryDocs,
-		XLoadUpstreamRepo: opts.XLoadUpstreamRepo,
+		Package:                  info.Name,
+		Version:                  info.Version,
+		Language:                 Schema,
+		ProviderInfo:             info,
+		Root:                     afero.NewMemMapFs(),
+		Sink:                     sink,
+		XInMemoryDocs:            opts.XInMemoryDocs,
+		XLoadUpstreamRepoForDocs: opts.XLoadUpstreamRepoForDocs,
 	})
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to create generator")
@@ -829,11 +830,11 @@ type GeneratorOptions struct {
 	// XInMemoryDocs is an experimental feature, and does not have any backwards
 	// compatibility guarantees.
 	XInMemoryDocs bool
-	// XLoadUpstreamRepo instructs the generator to fetch the upstream repo for docsgen purposes.
+	// XLoadUpstreamRepoForDocs instructs the generator to fetch the upstream repo for docsgen purposes.
 	//
-	// XLoadUpstreamRepo is an experimental feature, and does not have any backwards
+	// XLoadUpstreamRepoForDocs is an experimental feature, and does not have any backwards
 	//compatibility guarantees.
-	XLoadUpstreamRepo bool
+	XLoadUpstreamRepoForDocs bool
 }
 
 // NewGenerator returns a code-generator for the given language runtime and package info.
@@ -914,7 +915,7 @@ func NewGenerator(opts GeneratorOptions) (*Generator, error) {
 		coverageTracker:  opts.CoverageTracker,
 		editRules:        getEditRules(info.DocRules),
 		noDocsRepo:       opts.XInMemoryDocs,
-		loadDocsRepo:     opts.XLoadUpstreamRepo,
+		loadDocsRepo:     opts.XLoadUpstreamRepoForDocs,
 	}, nil
 }
 
@@ -958,7 +959,7 @@ func (g *Generator) generateSchemaResult(ctx context.Context) (*GenerateSchemaRe
 	// if docs don't exist, i.e. because the provider is dynamic, download docs at version and repo address
 	if g.loadDocsRepo {
 		versionWithPrefix := "v" + g.info.Version
-		cmd := exec.Command("git", "clone", "--depth", "1", "-b", versionWithPrefix, g.info.UpstreamRepoPath, "dynamicDocsDir")
+		cmd := exec.Command("git", "clone", "--depth", "1", "-b", versionWithPrefix, g.info.UpstreamRepoPath, dynamicDocsDir)
 		err = cmd.Run()
 	}
 
