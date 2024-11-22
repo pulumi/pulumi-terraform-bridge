@@ -17,7 +17,9 @@ package propertyvalue
 import (
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	rtesting "github.com/pulumi/pulumi/sdk/v3/go/common/resource/testing"
+	"github.com/stretchr/testify/require"
 	"pgregory.net/rapid"
 )
 
@@ -29,4 +31,41 @@ func TestRemoveSecrets(t *testing.T) {
 			t.Fatalf("RemoveSecrets(randomPV).ContainsSecrets()")
 		}
 	})
+}
+
+func TestIsNilArray(t *testing.T) {
+	t.Parallel()
+
+	require.True(t, isNilArray(resource.PropertyValue{V: []resource.PropertyValue(nil)}))
+	require.False(t, isNilArray(resource.PropertyValue{V: []resource.PropertyValue{}}))
+}
+
+func TestIsNilObject(t *testing.T) {
+	t.Parallel()
+
+	require.True(t, isNilObject(resource.PropertyValue{V: resource.PropertyMap(nil)}))
+	require.False(t, isNilObject(resource.PropertyValue{V: resource.PropertyMap{}}))
+}
+
+func TestTransformPreservesNilArrays(t *testing.T) {
+	t.Parallel()
+
+	nilArrayPV := resource.PropertyValue{V: []resource.PropertyValue(nil)}
+	result := Transform(func(value resource.PropertyValue) resource.PropertyValue {
+		return value
+	}, nilArrayPV)
+
+	require.True(t, result.IsArray())
+	require.Nil(t, result.ArrayValue())
+}
+
+func TestTransformPreservesNilObjects(t *testing.T) {
+	t.Parallel()
+
+	nilObjectPV := resource.PropertyValue{V: resource.PropertyMap(nil)}
+	result := Transform(func(value resource.PropertyValue) resource.PropertyValue {
+		return value
+	}, nilObjectPV)
+	require.True(t, result.IsObject())
+	require.Nil(t, result.ObjectValue())
 }
