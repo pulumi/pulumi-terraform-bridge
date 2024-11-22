@@ -6,7 +6,7 @@ go 1.22.0
 
 toolchain go1.23.1
 
-require github.com/pulumi/pulumi-terraform-bridge/v3 v3.95.0
+require github.com/pulumi/pulumi-terraform-bridge/v3 v3.96.0
 
 require (
 	dario.cat/mergo v1.0.0 // indirect
