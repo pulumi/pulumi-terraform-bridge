@@ -23,9 +23,9 @@ import (
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	pl "github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -76,55 +76,57 @@ func (p *providerServer) checkNYI(method string, err error) error {
 	return err
 }
 
+func pluginDiffKindToRPC(kind pl.DiffKind) pulumirpc.PropertyDiff_Kind {
+	switch kind {
+	case pl.DiffAdd:
+		return pulumirpc.PropertyDiff_ADD
+	case pl.DiffAddReplace:
+		return pulumirpc.PropertyDiff_ADD_REPLACE
+	case pl.DiffDelete:
+		return pulumirpc.PropertyDiff_DELETE
+	case pl.DiffDeleteReplace:
+		return pulumirpc.PropertyDiff_DELETE_REPLACE
+	case pl.DiffUpdate:
+		return pulumirpc.PropertyDiff_UPDATE
+	case pl.DiffUpdateReplace:
+		return pulumirpc.PropertyDiff_UPDATE_REPLACE
+	default:
+		contract.Assertf(false, "unknown diff kind: %v", kind)
+		return pulumirpc.PropertyDiff_ADD
+	}
+}
+
 func (p *providerServer) marshalDiff(diff pl.DiffResult) (*pulumirpc.DiffResponse, error) {
-	changes := pulumirpc.DiffResponse_DIFF_UNKNOWN
+	var changes pulumirpc.DiffResponse_DiffChanges
 	switch diff.Changes {
 	case pl.DiffNone:
 		changes = pulumirpc.DiffResponse_DIFF_NONE
 	case pl.DiffSome:
 		changes = pulumirpc.DiffResponse_DIFF_SOME
+	case pl.DiffUnknown:
+		changes = pulumirpc.DiffResponse_DIFF_UNKNOWN
 	}
 
 	// Infer the result from the detailed diff.
 	var diffs, replaces []string
 	var detailedDiff map[string]*pulumirpc.PropertyDiff
-	if len(diff.DetailedDiff) == 0 {
-		diffs = make([]string, len(diff.ChangedKeys))
-		for i, k := range diff.ChangedKeys {
-			diffs[i] = string(k)
-		}
-		replaces = make([]string, len(diff.ReplaceKeys))
-		for i, k := range diff.ReplaceKeys {
-			replaces[i] = string(k)
-		}
-	} else {
-		changes = pulumirpc.DiffResponse_DIFF_SOME
-
+	if len(diff.DetailedDiff) != 0 {
 		detailedDiff = make(map[string]*pulumirpc.PropertyDiff)
 		for path, diff := range diff.DetailedDiff {
-			diffs = append(diffs, path)
-
-			var kind pulumirpc.PropertyDiff_Kind
-			switch diff.Kind {
-			case pl.DiffAdd:
-				kind = pulumirpc.PropertyDiff_ADD
-			case pl.DiffAddReplace:
-				kind, replaces = pulumirpc.PropertyDiff_ADD_REPLACE, append(replaces, path)
-			case pl.DiffDelete:
-				kind = pulumirpc.PropertyDiff_DELETE
-			case pl.DiffDeleteReplace:
-				kind, replaces = pulumirpc.PropertyDiff_DELETE, append(replaces, path)
-			case pl.DiffUpdate:
-				kind = pulumirpc.PropertyDiff_UPDATE
-			case pl.DiffUpdateReplace:
-				kind, replaces = pulumirpc.PropertyDiff_UPDATE_REPLACE, append(replaces, path)
-			}
-
 			detailedDiff[path] = &pulumirpc.PropertyDiff{
-				Kind:      kind,
+				Kind:      pluginDiffKindToRPC(diff.Kind),
 				InputDiff: diff.InputDiff,
 			}
 		}
+	}
+
+	diffs = make([]string, len(diff.ChangedKeys))
+	for i, k := range diff.ChangedKeys {
+		diffs[i] = string(k)
+	}
+	replaces = make([]string, len(diff.ReplaceKeys))
+	for i, k := range diff.ReplaceKeys {
+		replaces[i] = string(k)
 	}
 
 	return &pulumirpc.DiffResponse{
@@ -133,25 +135,26 @@ func (p *providerServer) marshalDiff(diff pl.DiffResult) (*pulumirpc.DiffRespons
 		Changes:             changes,
 		Diffs:               diffs,
 		DetailedDiff:        detailedDiff,
+		HasDetailedDiff:     len(detailedDiff) > 0,
 	}, nil
 }
 
 type forwardServer struct {
-	plugin.UnimplementedProvider
+	pl.UnimplementedProvider
 
-	parameterize func(context.Context, plugin.ParameterizeRequest) (plugin.ParameterizeResponse, error)
+	parameterize func(context.Context, pl.ParameterizeRequest) (pl.ParameterizeResponse, error)
 }
 
 func (p forwardServer) Parameterize(
-	ctx context.Context, req plugin.ParameterizeRequest,
-) (plugin.ParameterizeResponse, error) {
+	ctx context.Context, req pl.ParameterizeRequest,
+) (pl.ParameterizeResponse, error) {
 	return p.parameterize(ctx, req)
 }
 
 func (p *providerServer) Parameterize(
 	ctx context.Context, req *pulumirpc.ParameterizeRequest,
 ) (*pulumirpc.ParameterizeResponse, error) {
-	return plugin.NewProviderServer(&forwardServer{
+	return pl.NewProviderServer(&forwardServer{
 		parameterize: p.provider.ParameterizeWithContext,
 	}).Parameterize(ctx, req)
 }
@@ -167,7 +170,7 @@ func (p *providerServer) GetSchema(ctx context.Context,
 		}
 		subpackageVersion = &ver
 	}
-	schema, err := p.provider.GetSchemaWithContext(ctx, plugin.GetSchemaRequest{
+	schema, err := p.provider.GetSchemaWithContext(ctx, pl.GetSchemaRequest{
 		Version:           req.GetVersion(),
 		SubpackageName:    req.SubpackageName,
 		SubpackageVersion: subpackageVersion,
