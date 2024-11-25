@@ -17,6 +17,7 @@ package tfbridge
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/blang/semver"
 	pfprovider "github.com/hashicorp/terraform-plugin-framework/provider"
@@ -27,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -41,6 +43,31 @@ import (
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/logging"
 )
+
+type providerOptions struct {
+	enableAccurateBridgePreview bool
+}
+
+type providerOption func(providerOptions) (providerOptions, error)
+
+func withAccurateBridgePreview() providerOption {
+	return func(opts providerOptions) (providerOptions, error) {
+		opts.enableAccurateBridgePreview = true
+		return opts, nil
+	}
+}
+
+func getProviderOptions(opts []providerOption) (providerOptions, error) {
+	res := providerOptions{}
+	for _, o := range opts {
+		var err error
+		res, err = o(res)
+		if err != nil {
+			return res, err
+		}
+	}
+	return res, nil
+}
 
 // Provider implements the Pulumi resource provider operations for any
 // Terraform plugin built with Terraform Plugin Framework.
@@ -66,6 +93,7 @@ type provider struct {
 	lastKnownProviderConfig resource.PropertyMap
 
 	schemaOnlyProvider shim.Provider
+	providerOpts       []providerOption
 }
 
 var _ pl.ProviderWithContext = &provider{}
@@ -148,6 +176,11 @@ func newProviderWithContext(ctx context.Context, info tfbridge.ProviderInfo,
 		}
 	}
 
+	opts := []providerOption{}
+	if info.EnableAccurateBridgePreview || cmdutil.IsTruthy(os.Getenv("PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW")) {
+		opts = append(opts, withAccurateBridgePreview())
+	}
+
 	p := &provider{
 		tfServer:           server6,
 		info:               info,
@@ -160,6 +193,7 @@ func newProviderWithContext(ctx context.Context, info tfbridge.ProviderInfo,
 		version:            semverVersion,
 		schemaOnlyProvider: info.P,
 		parameterize:       meta.XParamaterize,
+		providerOpts:       opts,
 	}
 
 	return configencoding.New(p), nil
