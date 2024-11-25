@@ -26,7 +26,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hexops/autogold/v2"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/stretchr/testify/require"
+	"github.com/zclconf/go-cty/cty"
 )
 
 func TestUnchangedBasicObject(t *testing.T) {
@@ -1618,6 +1621,116 @@ func TestBlockCollectionElementForceNew(t *testing.T) {
 
 			require.Equal(t, []string{"create", "delete"}, res.TFDiff.Actions)
 			require.True(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "ADD_REPLACE"))
+		})
+	})
+}
+
+func TestDetailedDiffReplacementComputedProperty(t *testing.T) {
+	t.Parallel()
+	// TODO[pulumi/pulumi-terraform-bridge#2660]
+	// We fail to re-compute computed properties when the resource is being replaced.
+	res := &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"computed": {
+				Type:     schema.TypeString,
+				Computed: true,
+			},
+			"other": {
+				Type:     schema.TypeString,
+				Optional: true,
+				ForceNew: true,
+			},
+		},
+		CreateContext: func(ctx context.Context, rd *schema.ResourceData, meta interface{}) diag.Diagnostics {
+			rd.SetId("r1")
+
+			err := rd.Set("computed", "computed_value")
+			contract.AssertNoErrorf(err, "setting computed")
+			return nil
+		},
+	}
+
+	type testOutput struct {
+		initialValue cty.Value
+		changeValue  cty.Value
+		tfOut        string
+		pulumiOut    string
+		detailedDiff map[string]any
+	}
+
+	t.Run("no change", func(t *testing.T) {
+		t.Parallel()
+		initialValue := cty.ObjectVal(map[string]cty.Value{})
+		changeValue := cty.ObjectVal(map[string]cty.Value{})
+		diff := runDiffCheck(t, diffTestCase{
+			Resource: res,
+			Config1:  initialValue,
+			Config2:  changeValue,
+		})
+
+		autogold.ExpectFile(t, testOutput{
+			initialValue: initialValue,
+			changeValue:  changeValue,
+			tfOut:        diff.TFOut,
+			pulumiOut:    diff.PulumiOut,
+			detailedDiff: diff.PulumiDiff.DetailedDiff,
+		})
+	})
+
+	t.Run("non-computed added", func(t *testing.T) {
+		t.Parallel()
+		initialValue := cty.ObjectVal(map[string]cty.Value{})
+		changeValue := cty.ObjectVal(map[string]cty.Value{"other": cty.StringVal("other_value")})
+		diff := runDiffCheck(t, diffTestCase{
+			Resource: res,
+			Config1:  initialValue,
+			Config2:  changeValue,
+		})
+
+		autogold.ExpectFile(t, testOutput{
+			initialValue: initialValue,
+			changeValue:  changeValue,
+			tfOut:        diff.TFOut,
+			pulumiOut:    diff.PulumiOut,
+			detailedDiff: diff.PulumiDiff.DetailedDiff,
+		})
+	})
+
+	t.Run("non-computed removed", func(t *testing.T) {
+		t.Parallel()
+		initialValue := cty.ObjectVal(map[string]cty.Value{"other": cty.StringVal("other_value")})
+		changeValue := cty.ObjectVal(map[string]cty.Value{})
+		diff := runDiffCheck(t, diffTestCase{
+			Resource: res,
+			Config1:  initialValue,
+			Config2:  changeValue,
+		})
+
+		autogold.ExpectFile(t, testOutput{
+			initialValue: initialValue,
+			changeValue:  changeValue,
+			tfOut:        diff.TFOut,
+			pulumiOut:    diff.PulumiOut,
+			detailedDiff: diff.PulumiDiff.DetailedDiff,
+		})
+	})
+
+	t.Run("non-computed changed", func(t *testing.T) {
+		t.Parallel()
+		initialValue := cty.ObjectVal(map[string]cty.Value{"other": cty.StringVal("other_value")})
+		changeValue := cty.ObjectVal(map[string]cty.Value{"other": cty.StringVal("other_value_2")})
+		diff := runDiffCheck(t, diffTestCase{
+			Resource: res,
+			Config1:  initialValue,
+			Config2:  changeValue,
+		})
+
+		autogold.ExpectFile(t, testOutput{
+			initialValue: initialValue,
+			changeValue:  changeValue,
+			tfOut:        diff.TFOut,
+			pulumiOut:    diff.PulumiOut,
+			detailedDiff: diff.PulumiDiff.DetailedDiff,
 		})
 	})
 }
