@@ -2,7 +2,21 @@
   {
     "method": "/pulumirpc.LanguageRuntime/GetPluginInfo",
     "request": {},
-    "response": {},
+    "response": {
+      "version": "3.133.1-dev.0"
+    },
+    "metadata": {
+      "kind": "language",
+      "mode": "client",
+      "runtime": "go"
+    }
+  },
+  {
+    "method": "/pulumirpc.LanguageRuntime/GetPluginInfo",
+    "request": {},
+    "response": {
+      "version": "3.133.1-dev.0"
+    },
     "metadata": {
       "kind": "language",
       "mode": "client",
@@ -12,9 +26,15 @@
   {
     "method": "/pulumirpc.LanguageRuntime/GetRequiredPlugins",
     "request": {
-      "project": "genradom",
-      "pwd": "/Users/t0yv0/code/pulumi-terraform-bridge/pf/tests/testdatagen/genrandom",
-      "program": "."
+      "project": "deprecated",
+      "pwd": "/Users/vvm/code/pulumi-terraform-bridge/pkg/pf/tests/testdatagen/genrandom",
+      "program": ".",
+      "info": {
+        "rootDirectory": "/Users/vvm/code/pulumi-terraform-bridge/pkg/pf/tests/testdatagen/genrandom",
+        "programDirectory": "/Users/vvm/code/pulumi-terraform-bridge/pkg/pf/tests/testdatagen/genrandom",
+        "entryPoint": ".",
+        "options": {}
+      }
     },
     "response": {
       "plugins": [
@@ -32,35 +52,69 @@
     }
   },
   {
-    "method": "/pulumirpc.ResourceProvider/GetPluginInfo",
+    "method": "/pulumirpc.Analyzer/GetPluginInfo",
     "request": {},
     "response": {
-      "version": "4.8.2"
+      "version": "1.8.0"
     },
     "metadata": {
-      "kind": "resource",
+      "kind": "analyzer",
       "mode": "client",
-      "name": "random"
+      "name": "pulumi-internal-policies"
     }
   },
   {
-    "method": "/pulumirpc.ResourceProvider/Configure",
-    "request": {
-      "args": {
-        "version": "4.8.2"
-      },
-      "acceptSecrets": true,
-      "acceptResources": true
-    },
+    "method": "/pulumirpc.Analyzer/GetAnalyzerInfo",
+    "request": {},
     "response": {
-      "acceptSecrets": true,
-      "supportsPreview": true,
-      "acceptResources": true
+      "name": "pulumi-internal-policies",
+      "policies": [
+        {
+          "name": "s3-no-public-read",
+          "description": "Prohibits setting the publicRead or publicReadWrite permission on AWS S3 buckets."
+        },
+        {
+          "name": "s3-bucket-replication-enabled",
+          "description": "Encourages use of cross-region replication for S3 buckets."
+        },
+        {
+          "name": "prohibited-public-internet",
+          "description": "Ingress with public internet access are prohibited",
+          "enforcementLevel": "MANDATORY"
+        }
+      ],
+      "version": "0.0.6",
+      "supportsConfig": true
     },
     "metadata": {
-      "kind": "resource",
+      "kind": "analyzer",
       "mode": "client",
-      "name": "random"
+      "name": "pulumi-internal-policies"
+    }
+  },
+  {
+    "method": "/pulumirpc.Analyzer/Configure",
+    "request": {
+      "policyConfig": {
+        "all": {
+          "properties": {}
+        },
+        "prohibited-public-internet": {
+          "properties": {}
+        },
+        "s3-bucket-replication-enabled": {
+          "properties": {}
+        },
+        "s3-no-public-read": {
+          "properties": {}
+        }
+      }
+    },
+    "response": {},
+    "metadata": {
+      "kind": "analyzer",
+      "mode": "client",
+      "name": "pulumi-internal-policies"
     }
   },
   {
@@ -88,6 +142,102 @@
     }
   },
   {
+    "method": "/pulumirpc.ResourceMonitor/SupportsFeature",
+    "request": {
+      "id": "deletedWith"
+    },
+    "response": {
+      "hasSupport": true
+    },
+    "metadata": {
+      "mode": "server"
+    }
+  },
+  {
+    "method": "/pulumirpc.ResourceMonitor/SupportsFeature",
+    "request": {
+      "id": "aliasSpecs"
+    },
+    "response": {
+      "hasSupport": true
+    },
+    "metadata": {
+      "mode": "server"
+    }
+  },
+  {
+    "method": "/pulumirpc.ResourceMonitor/SupportsFeature",
+    "request": {
+      "id": "transforms"
+    },
+    "response": {
+      "hasSupport": true
+    },
+    "metadata": {
+      "mode": "server"
+    }
+  },
+  {
+    "method": "/pulumirpc.ResourceMonitor/SupportsFeature",
+    "request": {
+      "id": "invokeTransforms"
+    },
+    "response": {
+      "hasSupport": true
+    },
+    "metadata": {
+      "mode": "server"
+    }
+  },
+  {
+    "method": "/pulumirpc.ResourceMonitor/SupportsFeature",
+    "request": {
+      "id": "parameterization"
+    },
+    "response": {
+      "hasSupport": true
+    },
+    "metadata": {
+      "mode": "server"
+    }
+  },
+  {
+    "method": "/pulumirpc.Analyzer/Remediate",
+    "request": {
+      "type": "pulumi:pulumi:Stack",
+      "properties": {},
+      "urn": "urn:pulumi:generate::genradom::pulumi:pulumi:Stack::genradom-generate",
+      "name": "genradom-generate",
+      "options": {
+        "customTimeouts": {}
+      }
+    },
+    "response": {},
+    "metadata": {
+      "kind": "analyzer",
+      "mode": "client",
+      "name": "pulumi-internal-policies"
+    }
+  },
+  {
+    "method": "/pulumirpc.Analyzer/Analyze",
+    "request": {
+      "type": "pulumi:pulumi:Stack",
+      "properties": {},
+      "urn": "urn:pulumi:generate::genradom::pulumi:pulumi:Stack::genradom-generate",
+      "name": "genradom-generate",
+      "options": {
+        "customTimeouts": {}
+      }
+    },
+    "response": {},
+    "metadata": {
+      "kind": "analyzer",
+      "mode": "client",
+      "name": "pulumi-internal-policies"
+    }
+  },
+  {
     "method": "/pulumirpc.ResourceMonitor/RegisterResource",
     "request": {
       "type": "pulumi:pulumi:Stack",
@@ -95,7 +245,12 @@
       "object": {},
       "acceptSecrets": true,
       "customTimeouts": {},
-      "acceptResources": true
+      "acceptResources": true,
+      "sourcePosition": {
+        "uri": "project://%2FUsers%2Fvvm%2Fgo%2Fpkg%2Fmod%2Fgithub.com%2Fpulumi%2Fpulumi%2Fsdk%2Fv3@v3.137.0%2Fgo%2Fpulumi%2Frun.go",
+        "line": 98
+      },
+      "supportsResultReporting": true
     },
     "response": {
       "urn": "urn:pulumi:generate::genradom::pulumi:pulumi:Stack::genradom-generate",
@@ -121,21 +276,86 @@
     "request": {
       "project": "genradom",
       "stack": "generate",
-      "pwd": "/Users/t0yv0/code/pulumi-terraform-bridge/pf/tests/testdatagen/genrandom",
+      "pwd": "/Users/vvm/code/pulumi-terraform-bridge/pkg/pf/tests/testdatagen/genrandom",
       "program": ".",
       "config": {
         "genradom:min": "0"
       },
       "dryRun": true,
-      "parallel": 2147483647,
-      "monitorAddress": "127.0.0.1:57354",
-      "organization": "t0yv0"
+      "parallel": 48,
+      "monitorAddress": "127.0.0.1:52719",
+      "organization": "pulumi",
+      "configPropertyMap": {
+        "genradom:min": 0
+      },
+      "info": {
+        "rootDirectory": "/Users/vvm/code/pulumi-terraform-bridge/pkg/pf/tests/testdatagen/genrandom",
+        "programDirectory": "/Users/vvm/code/pulumi-terraform-bridge/pkg/pf/tests/testdatagen/genrandom",
+        "entryPoint": ".",
+        "options": {}
+      },
+      "loaderTarget": "127.0.0.1:52720"
     },
     "response": {},
     "metadata": {
       "kind": "language",
       "mode": "client",
       "runtime": "go"
+    }
+  },
+  {
+    "method": "/pulumirpc.ResourceProvider/GetPluginInfo",
+    "request": {},
+    "response": {
+      "version": "4.8.2"
+    },
+    "metadata": {
+      "kind": "resource",
+      "mode": "client",
+      "name": "random"
+    }
+  },
+  {
+    "method": "/pulumirpc.ResourceProvider/Configure",
+    "request": {
+      "args": {
+        "version": "4.8.2"
+      },
+      "acceptSecrets": true,
+      "acceptResources": true,
+      "sendsOldInputs": true,
+      "sendsOldInputsToDelete": true
+    },
+    "response": {
+      "supportsPreview": true,
+      "acceptResources": true
+    },
+    "metadata": {
+      "kind": "resource",
+      "mode": "client",
+      "name": "random"
+    }
+  },
+  {
+    "method": "/pulumirpc.Analyzer/AnalyzeStack",
+    "request": {
+      "resources": [
+        {
+          "type": "pulumi:pulumi:Stack",
+          "properties": {},
+          "urn": "urn:pulumi:generate::genradom::pulumi:pulumi:Stack::genradom-generate",
+          "name": "genradom-generate",
+          "options": {
+            "customTimeouts": {}
+          }
+        }
+      ]
+    },
+    "response": {},
+    "metadata": {
+      "kind": "analyzer",
+      "mode": "client",
+      "name": "pulumi-internal-policies"
     }
   }
 ]

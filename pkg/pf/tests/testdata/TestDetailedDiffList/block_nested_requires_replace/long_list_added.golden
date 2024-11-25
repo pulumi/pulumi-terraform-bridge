@@ -71,68 +71,7 @@ Plan: 1 to add, 0 to change, 1 to destroy.
     +-testprovider:index/test:Test: (replace)
         [id=test-id]
         [urn=urn:pulumi:test::project::testprovider:index/test:Test::p]
-      ~ id  : "test-id" => output<string>
       ~ keys: [
-            [0]: {
-                    nested: "value0"
-                }
-            [1]: {
-                    nested: "value1"
-                }
-            [2]: {
-                    nested: "value2"
-                }
-            [3]: {
-                    nested: "value3"
-                }
-            [4]: {
-                    nested: "value4"
-                }
-            [5]: {
-                    nested: "value5"
-                }
-            [6]: {
-                    nested: "value6"
-                }
-            [7]: {
-                    nested: "value7"
-                }
-            [8]: {
-                    nested: "value8"
-                }
-            [9]: {
-                    nested: "value9"
-                }
-            [10]: {
-                    nested: "value10"
-                }
-            [11]: {
-                    nested: "value11"
-                }
-            [12]: {
-                    nested: "value12"
-                }
-            [13]: {
-                    nested: "value13"
-                }
-            [14]: {
-                    nested: "value14"
-                }
-            [15]: {
-                    nested: "value15"
-                }
-            [16]: {
-                    nested: "value16"
-                }
-            [17]: {
-                    nested: "value17"
-                }
-            [18]: {
-                    nested: "value18"
-                }
-            [19]: {
-                    nested: "value19"
-                }
           + [20]: {
                   + nested: "value20"
                 }

@@ -122,15 +122,52 @@ func (p *provider) DiffWithContext(
 		changes = plugin.DiffSome
 	}
 
+	pluginDetailedDiff, err := calculateDetailedDiff(ctx, &rh, priorState, plannedStateValue, checkedInputs)
+	if err != nil {
+		return plugin.DiffResult{}, err
+	}
+
 	diffResult := plugin.DiffResult{
 		Changes:             changes,
 		ReplaceKeys:         replaceKeys,
 		ChangedKeys:         changedKeys,
 		DeleteBeforeReplace: deleteBeforeReplace,
+		DetailedDiff:        pluginDetailedDiff,
 	}
 
 	// TODO[pulumi/pulumi-terraform-bridge#824] StableKeys
 	return diffResult, nil
+}
+
+func calculateDetailedDiff(
+	ctx context.Context, rh *resourceHandle, priorState *upgradedResourceState,
+	plannedStateValue tftypes.Value, checkedInputs resource.PropertyMap,
+) (map[string]plugin.PropertyDiff, error) {
+	priorProps, err := convert.DecodePropertyMap(ctx, rh.decoder, priorState.state.Value)
+	if err != nil {
+		return nil, err
+	}
+
+	props, err := convert.DecodePropertyMap(ctx, rh.decoder, plannedStateValue)
+	if err != nil {
+		return nil, err
+	}
+
+	detailedDiff := tfbridge.MakeDetailedDiffV2(
+		ctx,
+		rh.schemaOnlyShimResource.Schema(),
+		rh.pulumiResourceInfo.GetFields(),
+		priorProps,
+		props,
+		checkedInputs,
+	)
+
+	pluginDetailedDiff := make(map[string]plugin.PropertyDiff, len(detailedDiff))
+	for k, v := range detailedDiff {
+		pluginDetailedDiff[k] = plugin.PropertyDiff{Kind: plugin.DiffKind(v.Kind), InputDiff: v.InputDiff}
+	}
+
+	return pluginDetailedDiff, nil
 }
 
 // For each path x.y.z extracts the next step x and converts it to a matching Pulumi key. Removes

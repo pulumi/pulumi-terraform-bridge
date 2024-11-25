@@ -39,9 +39,6 @@ Plan: 0 to add, 1 to change, 0 to destroy.
         [id=test-id]
         [urn=urn:pulumi:test::project::testprovider:index/test:Test::p]
       ~ keys: [
-            [0]: {
-                    nested: "val1"
-                }
           ~ [1]: {
                   ~ nested: "val3" => "val2"
                 }
