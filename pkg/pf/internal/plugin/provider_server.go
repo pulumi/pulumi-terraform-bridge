@@ -23,9 +23,9 @@ import (
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	pl "github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -76,7 +76,27 @@ func (p *providerServer) checkNYI(method string, err error) error {
 	return err
 }
 
-func (p *providerServer) marshalDiff(diff plugin.DiffResult) (*pulumirpc.DiffResponse, error) {
+func pluginDiffKindToRPC(kind pl.DiffKind) pulumirpc.PropertyDiff_Kind {
+	switch kind {
+	case pl.DiffAdd:
+		return pulumirpc.PropertyDiff_ADD
+	case pl.DiffAddReplace:
+		return pulumirpc.PropertyDiff_ADD_REPLACE
+	case pl.DiffDelete:
+		return pulumirpc.PropertyDiff_DELETE
+	case pl.DiffDeleteReplace:
+		return pulumirpc.PropertyDiff_DELETE_REPLACE
+	case pl.DiffUpdate:
+		return pulumirpc.PropertyDiff_UPDATE
+	case pl.DiffUpdateReplace:
+		return pulumirpc.PropertyDiff_UPDATE_REPLACE
+	default:
+		contract.Assertf(false, "unknown diff kind: %v", kind)
+		return pulumirpc.PropertyDiff_ADD
+	}
+}
+
+func (p *providerServer) marshalDiff(diff pl.DiffResult) (*pulumirpc.DiffResponse, error) {
 	var changes pulumirpc.DiffResponse_DiffChanges
 	switch diff.Changes {
 	case pl.DiffNone:
@@ -94,7 +114,7 @@ func (p *providerServer) marshalDiff(diff plugin.DiffResult) (*pulumirpc.DiffRes
 		detailedDiff = make(map[string]*pulumirpc.PropertyDiff)
 		for path, diff := range diff.DetailedDiff {
 			detailedDiff[path] = &pulumirpc.PropertyDiff{
-				Kind:      pulumirpc.PropertyDiff_Kind(diff.Kind), //nolint:gosec
+				Kind:      pluginDiffKindToRPC(diff.Kind),
 				InputDiff: diff.InputDiff,
 			}
 		}
@@ -120,21 +140,21 @@ func (p *providerServer) marshalDiff(diff plugin.DiffResult) (*pulumirpc.DiffRes
 }
 
 type forwardServer struct {
-	plugin.UnimplementedProvider
+	pl.UnimplementedProvider
 
-	parameterize func(context.Context, plugin.ParameterizeRequest) (plugin.ParameterizeResponse, error)
+	parameterize func(context.Context, pl.ParameterizeRequest) (pl.ParameterizeResponse, error)
 }
 
 func (p forwardServer) Parameterize(
-	ctx context.Context, req plugin.ParameterizeRequest,
-) (plugin.ParameterizeResponse, error) {
+	ctx context.Context, req pl.ParameterizeRequest,
+) (pl.ParameterizeResponse, error) {
 	return p.parameterize(ctx, req)
 }
 
 func (p *providerServer) Parameterize(
 	ctx context.Context, req *pulumirpc.ParameterizeRequest,
 ) (*pulumirpc.ParameterizeResponse, error) {
-	return plugin.NewProviderServer(&forwardServer{
+	return pl.NewProviderServer(&forwardServer{
 		parameterize: p.provider.ParameterizeWithContext,
 	}).Parameterize(ctx, req)
 }
@@ -150,7 +170,7 @@ func (p *providerServer) GetSchema(ctx context.Context,
 		}
 		subpackageVersion = &ver
 	}
-	schema, err := p.provider.GetSchemaWithContext(ctx, plugin.GetSchemaRequest{
+	schema, err := p.provider.GetSchemaWithContext(ctx, pl.GetSchemaRequest{
 		Version:           req.GetVersion(),
 		SubpackageName:    req.SubpackageName,
 		SubpackageVersion: subpackageVersion,
