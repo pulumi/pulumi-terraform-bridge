@@ -122,17 +122,24 @@ func (p *provider) DiffWithContext(
 		changes = plugin.DiffSome
 	}
 
-	pluginDetailedDiff, err := calculateDetailedDiff(ctx, &rh, priorState, plannedStateValue, checkedInputs)
-	if err != nil {
-		return plugin.DiffResult{}, err
-	}
-
 	diffResult := plugin.DiffResult{
 		Changes:             changes,
 		ReplaceKeys:         replaceKeys,
 		ChangedKeys:         changedKeys,
 		DeleteBeforeReplace: deleteBeforeReplace,
-		DetailedDiff:        pluginDetailedDiff,
+	}
+
+	providerOpts, err := getProviderOptions(p.providerOpts)
+	if err != nil {
+		return plugin.DiffResult{}, err
+	}
+
+	if providerOpts.enableAccurateBridgePreview {
+		pluginDetailedDiff, err := calculateDetailedDiff(ctx, &rh, priorState, plannedStateValue, checkedInputs)
+		if err != nil {
+			return plugin.DiffResult{}, err
+		}
+		diffResult.DetailedDiff = pluginDetailedDiff
 	}
 
 	// TODO[pulumi/pulumi-terraform-bridge#824] StableKeys

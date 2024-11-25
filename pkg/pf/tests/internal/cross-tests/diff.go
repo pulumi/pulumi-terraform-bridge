@@ -109,7 +109,7 @@ func Diff(t T, res pb.Resource, tfConfig1, tfConfig2 map[string]cty.Value, optio
 	require.NoError(t, err)
 	t.Logf("Pulumi.yaml:\n%s", string(bytes))
 
-	pt, err := pulcheck.PulCheck(t, bridgedProvider(prov), string(bytes))
+	pt, err := pulcheck.PulCheck(t, bridgedProvider(prov, bridgedProviderOpts{enableAccurateBridgePreview: true}), string(bytes))
 	require.NoError(t, err)
 	pt.Up(t)
 

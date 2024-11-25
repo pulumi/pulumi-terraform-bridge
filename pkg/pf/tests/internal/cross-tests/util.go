@@ -58,14 +58,19 @@ func skipUnlessLinux(t T) {
 	}
 }
 
-func bridgedProvider(prov *providerbuilder.Provider) info.Provider {
+type bridgedProviderOpts struct {
+	enableAccurateBridgePreview bool
+}
+
+func bridgedProvider(prov *providerbuilder.Provider, opts bridgedProviderOpts) info.Provider {
 	shimProvider := tfbridge.ShimProvider(prov)
 
 	provider := tfbridge0.ProviderInfo{
-		P:            shimProvider,
-		Name:         prov.TypeName,
-		Version:      prov.Version,
-		MetadataInfo: &tfbridge0.MetadataInfo{},
+		P:                           shimProvider,
+		Name:                        prov.TypeName,
+		Version:                     prov.Version,
+		MetadataInfo:                &tfbridge0.MetadataInfo{},
+		EnableAccurateBridgePreview: opts.enableAccurateBridgePreview,
 	}
 
 	provider.MustComputeTokens(tokens.SingleModule(prov.TypeName, "index", tokens.MakeStandard(prov.TypeName)))
