@@ -12,6 +12,7 @@ import (
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/walk"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/propertyvalue"
 )
 
 func isPresent(val resource.PropertyValue) bool {
@@ -482,6 +483,19 @@ func MakeDetailedDiffV2(
 	ps map[string]*SchemaInfo,
 	priorProps, props, newInputs resource.PropertyMap,
 ) map[string]*pulumirpc.PropertyDiff {
+	// Strip secrets and outputs from the properties before calculating the diff.
+	// This allows the rest of the algorithm to focus on the actual changes and not
+	// have to deal with the extra noise.
+	// This is safe to do here because the detailed diff we return to the engine
+	// is only represented by paths to the values and not the values themselves.
+	// The engine will then takes care of masking secrets.
+	stripSecretsAndOutputs := func(props resource.PropertyMap) resource.PropertyMap {
+		propsVal := propertyvalue.RemoveSecretsAndOutputs(resource.NewProperty(props))
+		return propsVal.ObjectValue()
+	}
+	priorProps = stripSecretsAndOutputs(priorProps)
+	props = stripSecretsAndOutputs(props)
+	newInputs = stripSecretsAndOutputs(newInputs)
 	differ := detailedDiffer{ctx: ctx, tfs: tfs, ps: ps, newInputs: newInputs}
 	return differ.makeDetailedDiffPropertyMap(priorProps, props)
 }

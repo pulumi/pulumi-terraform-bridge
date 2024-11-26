@@ -18,7 +18,6 @@ import (
 )
 
 func TestSecretBasic(t *testing.T) {
-	t.Skip("skipping until #2643")
 	t.Parallel()
 	provBuilder := providerbuilder.NewProvider(
 		providerbuilder.NewProviderArgs{
@@ -58,7 +57,7 @@ resources:
     ~ testprovider:index/test:Test: (update)
         [id=test-id]
         [urn=urn:pulumi:test::test::testprovider:index/test:Test::mainRes]
-        s: [secret]
+      ~ s: [secret] => [secret]
 Resources:
     ~ 1 to update
     1 unchanged
@@ -66,7 +65,6 @@ Resources:
 }
 
 func TestSecretSet(t *testing.T) {
-	t.Skip("skipping until #2643")
 	t.Parallel()
 
 	provBuilder := pb.NewProvider(pb.NewProviderArgs{
@@ -160,7 +158,6 @@ Resources:
 }
 
 func TestSecretObjectBlock(t *testing.T) {
-	t.Skip("skipping until #2643")
 	t.Parallel()
 
 	provBuilder := pb.NewProvider(pb.NewProviderArgs{
@@ -205,7 +202,9 @@ resources:
     ~ testprovider:index/test:Test: (update)
         [id=test-id]
         [urn=urn:pulumi:test::test::testprovider:index/test:Test::mainRes]
-        key: [secret]
+      ~ key: {
+          ~ prop1: [secret] => [secret]
+        }
 Resources:
     ~ 1 to update
     1 unchanged
@@ -226,9 +225,8 @@ Resources:
     ~ testprovider:index/test:Test: (update)
         [id=test-id]
         [urn=urn:pulumi:test::test::testprovider:index/test:Test::mainRes]
-        key: {
-            prop1: [secret]
-            prop2: "value2"
+      ~ key: {
+          ~ prop1: [secret] => [secret]
         }
 Resources:
     ~ 1 to update
@@ -251,7 +249,6 @@ Resources:
         [id=test-id]
         [urn=urn:pulumi:test::test::testprovider:index/test:Test::mainRes]
       ~ key: {
-            prop1: [secret]
           ~ prop2: "value2" => "value3"
         }
 Resources:
@@ -262,7 +259,6 @@ Resources:
 }
 
 func TestSecretPulumiSchema(t *testing.T) {
-	t.Skip("skipping until #2643")
 	t.Parallel()
 
 	provBuilder := pb.NewProvider(pb.NewProviderArgs{
@@ -306,7 +302,7 @@ resources:
     ~ testprovider:index/test:Test: (update)
         [id=test-id]
         [urn=urn:pulumi:test::test::testprovider:index/test:Test::mainRes]
-        s: [secret]
+      ~ s: [secret] => [secret]
 Resources:
     ~ 1 to update
     1 unchanged

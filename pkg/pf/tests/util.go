@@ -51,10 +51,11 @@ func bridgedProvider(prov *providerbuilder.Provider) info.Provider {
 	shimProvider := tfbridge.ShimProvider(prov)
 
 	provider := tfbridge0.ProviderInfo{
-		P:            shimProvider,
-		Name:         prov.TypeName,
-		Version:      "0.0.1",
-		MetadataInfo: &tfbridge0.MetadataInfo{},
+		P:                           shimProvider,
+		Name:                        prov.TypeName,
+		Version:                     "0.0.1",
+		MetadataInfo:                &tfbridge0.MetadataInfo{},
+		EnableAccurateBridgePreview: true,
 	}
 
 	provider.MustComputeTokens(tokens.SingleModule(prov.TypeName, "index", tokens.MakeStandard(prov.TypeName)))

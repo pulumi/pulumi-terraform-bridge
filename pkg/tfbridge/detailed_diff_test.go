@@ -299,8 +299,7 @@ func runDetailedDiffTest(
 	expected map[string]*pulumirpc.PropertyDiff,
 ) {
 	t.Helper()
-	differ := detailedDiffer{tfs: tfs, ps: ps, newInputs: new}
-	actual := differ.makeDetailedDiffPropertyMap(old, new)
+	actual := MakeDetailedDiffV2(context.Background(), tfs, ps, old, new, new)
 
 	require.Equal(t, expected, actual)
 }
@@ -484,21 +483,54 @@ func TestBasicDetailedDiff(t *testing.T) {
 					"foo": ComputedVal,
 				},
 			)
+			propertyMapSecretValue1 := resource.NewPropertyMapFromMap(
+				map[string]interface{}{
+					"foo": tt.value1,
+				},
+			)
+			propertyMapSecretValue1["foo"] = resource.NewSecretProperty(
+				&resource.Secret{Element: propertyMapSecretValue1["foo"]})
+
+			propertyMapSecretValue2 := resource.NewPropertyMapFromMap(
+				map[string]interface{}{
+					"foo": tt.value2,
+				},
+			)
+			propertyMapSecretValue2["foo"] = resource.NewSecretProperty(
+				&resource.Secret{Element: propertyMapSecretValue2["foo"]})
+
+			propertyMapOutputValue1 := resource.NewPropertyMapFromMap(
+				map[string]interface{}{
+					"foo": tt.value1,
+				},
+			)
+			propertyMapOutputValue1["foo"] = resource.NewOutputProperty(
+				resource.Output{Element: propertyMapOutputValue1["foo"], Known: true})
+
+			propertyMapOutputValue2 := resource.NewPropertyMapFromMap(
+				map[string]interface{}{
+					"foo": tt.value2,
+				},
+			)
+			propertyMapOutputValue2["foo"] = resource.NewOutputProperty(
+				resource.Output{Element: propertyMapOutputValue2["foo"], Known: true})
+
+			defaultChangePath := "foo"
+			if tt.listLike && tt.objectLike {
+				defaultChangePath = "foo[0].foo"
+			} else if tt.listLike {
+				defaultChangePath = "foo[0]"
+			} else if tt.objectLike {
+				defaultChangePath = "foo.foo"
+			}
 
 			t.Run("unchanged", func(t *testing.T) {
 				runDetailedDiffTest(t, propertyMapValue1, propertyMapValue1, tfs, ps, map[string]*pulumirpc.PropertyDiff{})
 			})
 
 			t.Run("changed non-empty", func(t *testing.T) {
-				expected := make(map[string]*pulumirpc.PropertyDiff)
-				if tt.listLike && tt.objectLike {
-					expected["foo[0].foo"] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE}
-				} else if tt.listLike {
-					expected["foo[0]"] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE}
-				} else if tt.objectLike {
-					expected["foo.foo"] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE}
-				} else {
-					expected["foo"] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE}
+				expected := map[string]*pulumirpc.PropertyDiff{
+					defaultChangePath: {Kind: pulumirpc.PropertyDiff_UPDATE},
 				}
 				runDetailedDiffTest(t, propertyMapValue1, propertyMapValue2, tfs, ps, expected)
 			})
@@ -566,6 +598,56 @@ func TestBasicDetailedDiff(t *testing.T) {
 					runDetailedDiffTest(t, propertyMapNil, propertyMapEmpty, tfs, ps, added())
 				})
 			}
+
+			t.Run("secret unchanged", func(t *testing.T) {
+				runDetailedDiffTest(
+					t, propertyMapSecretValue1, propertyMapSecretValue1, tfs, ps, map[string]*pulumirpc.PropertyDiff{})
+			})
+
+			t.Run("value unchanged secretness changed", func(t *testing.T) {
+				runDetailedDiffTest(
+					t, propertyMapValue1, propertyMapSecretValue1, tfs, ps, map[string]*pulumirpc.PropertyDiff{})
+			})
+
+			t.Run("secret added", func(t *testing.T) {
+				runDetailedDiffTest(t, propertyMapNil, propertyMapSecretValue1, tfs, ps, added())
+			})
+
+			t.Run("secret deleted", func(t *testing.T) {
+				runDetailedDiffTest(t, propertyMapSecretValue1, propertyMapNil, tfs, ps, deleted())
+			})
+
+			t.Run("secret changed", func(t *testing.T) {
+				expected := map[string]*pulumirpc.PropertyDiff{
+					defaultChangePath: {Kind: pulumirpc.PropertyDiff_UPDATE},
+				}
+				runDetailedDiffTest(t, propertyMapSecretValue1, propertyMapSecretValue2, tfs, ps, expected)
+			})
+
+			t.Run("output unchanged", func(t *testing.T) {
+				runDetailedDiffTest(
+					t, propertyMapOutputValue1, propertyMapOutputValue1, tfs, ps, map[string]*pulumirpc.PropertyDiff{})
+			})
+
+			t.Run("value unchanged outputness changed", func(t *testing.T) {
+				runDetailedDiffTest(
+					t, propertyMapValue1, propertyMapOutputValue1, tfs, ps, map[string]*pulumirpc.PropertyDiff{})
+			})
+
+			t.Run("output added", func(t *testing.T) {
+				runDetailedDiffTest(t, propertyMapNil, propertyMapOutputValue1, tfs, ps, added())
+			})
+
+			t.Run("output deleted", func(t *testing.T) {
+				runDetailedDiffTest(t, propertyMapOutputValue1, propertyMapNil, tfs, ps, deleted())
+			})
+
+			t.Run("output changed", func(t *testing.T) {
+				expected := map[string]*pulumirpc.PropertyDiff{
+					defaultChangePath: {Kind: pulumirpc.PropertyDiff_UPDATE},
+				}
+				runDetailedDiffTest(t, propertyMapOutputValue1, propertyMapOutputValue2, tfs, ps, expected)
+			})
 		})
 	}
 }
@@ -612,6 +694,16 @@ func TestDetailedDiffObject(t *testing.T) {
 		},
 	)
 
+	propertyMapWithSecrets := resource.PropertyMap{
+		resource.PropertyKey("foo"): resource.NewPropertyValue(
+			resource.PropertyMap{
+				resource.PropertyKey("prop1"): resource.NewSecretProperty(
+					&resource.Secret{Element: resource.NewStringProperty("val1")}),
+				resource.PropertyKey("prop2"): resource.NewStringProperty("qux"),
+			},
+		),
+	}
+
 	t.Run("unchanged", func(t *testing.T) {
 		runDetailedDiffTest(t, propertyMapProp1Val1, propertyMapProp1Val1, tfs, ps, map[string]*pulumirpc.PropertyDiff{})
 	})
@@ -651,6 +743,18 @@ func TestDetailedDiffObject(t *testing.T) {
 	t.Run("added non empty", func(t *testing.T) {
 		runDetailedDiffTest(t, propertyMapProp1Val1, propertyMapBothProps, tfs, ps, map[string]*pulumirpc.PropertyDiff{
 			"foo.prop2": {Kind: pulumirpc.PropertyDiff_ADD},
+		})
+	})
+
+	t.Run("secret added", func(t *testing.T) {
+		runDetailedDiffTest(t, propertyMapProp2, propertyMapWithSecrets, tfs, ps, map[string]*pulumirpc.PropertyDiff{
+			"foo.prop1": {Kind: pulumirpc.PropertyDiff_ADD},
+		})
+	})
+
+	t.Run("secret deleted", func(t *testing.T) {
+		runDetailedDiffTest(t, propertyMapWithSecrets, propertyMapProp2, tfs, ps, map[string]*pulumirpc.PropertyDiff{
+			"foo.prop1": {Kind: pulumirpc.PropertyDiff_DELETE},
 		})
 	})
 }
@@ -822,6 +926,22 @@ func TestDetailedDiffSet(t *testing.T) {
 		},
 	)
 
+	propertyMapWithSecrets := resource.NewPropertyMapFromMap(
+		map[string]interface{}{
+			"foo": []interface{}{resource.NewSecretProperty(
+				&resource.Secret{Element: resource.NewStringProperty("val1")}), "val2"},
+		},
+	)
+
+	propertyMapWithSecretsAndOutputs := resource.NewPropertyMapFromMap(
+		map[string]interface{}{
+			"foo": []interface{}{
+				resource.NewSecretProperty(&resource.Secret{Element: resource.NewStringProperty("val1")}),
+				resource.NewOutputProperty(resource.Output{Element: resource.NewStringProperty("val2")}),
+			},
+		},
+	)
+
 	t.Run("unchanged", func(t *testing.T) {
 		runDetailedDiffTest(t, propertyMapVal1, propertyMapVal1, tfs, ps, map[string]*pulumirpc.PropertyDiff{})
 	})
@@ -868,6 +988,38 @@ func TestDetailedDiffSet(t *testing.T) {
 		runDetailedDiffTest(t, propertyMapEmpty, propertyMapBoth, tfs, ps, map[string]*pulumirpc.PropertyDiff{
 			"foo[0]": {Kind: pulumirpc.PropertyDiff_ADD},
 			"foo[1]": {Kind: pulumirpc.PropertyDiff_ADD},
+		})
+	})
+
+	t.Run("secret added", func(t *testing.T) {
+		runDetailedDiffTest(t, propertyMapVal2, propertyMapWithSecrets, tfs, ps, map[string]*pulumirpc.PropertyDiff{
+			"foo[0]": {Kind: pulumirpc.PropertyDiff_ADD},
+		})
+	})
+
+	t.Run("secret and output added", func(t *testing.T) {
+		runDetailedDiffTest(
+			t, propertyMapEmpty, propertyMapWithSecretsAndOutputs, tfs, ps, map[string]*pulumirpc.PropertyDiff{
+				"foo[0]": {Kind: pulumirpc.PropertyDiff_ADD},
+				"foo[1]": {Kind: pulumirpc.PropertyDiff_ADD},
+			})
+	})
+
+	t.Run("secret removed", func(t *testing.T) {
+		runDetailedDiffTest(t, propertyMapWithSecrets, propertyMapVal2, tfs, ps, map[string]*pulumirpc.PropertyDiff{
+			"foo[0]": {Kind: pulumirpc.PropertyDiff_DELETE},
+		})
+	})
+
+	t.Run("output removed", func(t *testing.T) {
+		runDetailedDiffTest(t, propertyMapWithSecretsAndOutputs, propertyMapVal1, tfs, ps, map[string]*pulumirpc.PropertyDiff{
+			"foo[1]": {Kind: pulumirpc.PropertyDiff_DELETE},
+		})
+	})
+
+	t.Run("secretness and outputness changed", func(t *testing.T) {
+		runDetailedDiffTest(t, propertyMapWithSecretsAndOutputs, propertyMapBoth, tfs, ps, map[string]*pulumirpc.PropertyDiff{
+			"foo[1]": {Kind: pulumirpc.PropertyDiff_UPDATE},
 		})
 	})
 }
