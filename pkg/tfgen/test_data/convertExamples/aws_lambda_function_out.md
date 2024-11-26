@@ -290,8 +290,8 @@ resources:
 variables:
   assumeRole:
     fn::invoke:
-      Function: aws:iam:getPolicyDocument
-      Arguments:
+      function: aws:iam:getPolicyDocument
+      arguments:
         statements:
           - effect: Allow
             principals:
@@ -302,8 +302,8 @@ variables:
               - sts:AssumeRole
   lambda:
     fn::invoke:
-      Function: archive:getFile
-      Arguments:
+      function: archive:getFile
+      arguments:
         type: zip
         sourceFile: lambda.js
         outputPath: lambda_function_payload.zip
@@ -654,8 +654,8 @@ resources:
 variables:
   assumeRole:
     fn::invoke:
-      Function: aws:iam:getPolicyDocument
-      Arguments:
+      function: aws:iam:getPolicyDocument
+      arguments:
         statements:
           - effect: Allow
             principals:
@@ -1007,7 +1007,7 @@ resources:
         securityGroupIds:
           - ${aws_security_group.sg_for_lambda.id}
     options:
-      dependson:
+      dependsOn:
         - ${alpha}
   # EFS file system
   efsForLambda:
@@ -1350,7 +1350,7 @@ resources:
       loggingConfig:
         logFormat: Text
     options:
-      dependson:
+      dependsOn:
         - ${lambdaLogs}
         - ${example}
   # This is to optionally manage the CloudWatch Log Group for the Lambda Function.
@@ -1373,8 +1373,8 @@ resources:
 variables:
   lambdaLoggingPolicyDocument:
     fn::invoke:
-      Function: aws:iam:getPolicyDocument
-      Arguments:
+      function: aws:iam:getPolicyDocument
+      arguments:
         statements:
           - effect: Allow
             actions:
