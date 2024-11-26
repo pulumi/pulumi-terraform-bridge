@@ -2173,6 +2173,7 @@ type diffTestCase struct {
 }
 
 func diffTest2(t *testing.T, tc diffTestCase) {
+	t.Helper()
 	ctx := context.Background()
 	res := &v2Schema.Resource{
 		Schema: tc.resourceSchema,
@@ -2271,6 +2272,45 @@ func TestChangingMaxItems1FilterProperty(t *testing.T) {
 		expected: map[string]*pulumirpc.PropertyDiff{
 			"rules[0].filter": {
 				Kind: pulumirpc.PropertyDiff_UPDATE,
+			},
+		},
+	})
+}
+
+func TestPropertyWithDot(t *testing.T) {
+	t.Parallel()
+	// TODO[pulumi/pulumi-terraform-bridge#2669]
+	t.Skip("We currently fail to return the correct detailed diff for this case")
+
+	schema := map[string]*v2Schema.Schema{
+		"prop": {
+			Type:     v2Schema.TypeMap,
+			Optional: true,
+			Elem: &v2Schema.Schema{
+				Type: v2Schema.TypeString,
+			},
+		},
+	}
+
+	diffTest2(t, diffTestCase{
+		resourceSchema: schema,
+		state: resource.PropertyMap{
+			"prop": resource.NewObjectProperty(resource.PropertyMap{
+				"foo": resource.NewStringProperty("bar"),
+			}),
+		},
+		inputs: resource.PropertyMap{
+			"prop": resource.NewObjectProperty(resource.PropertyMap{
+				"foo.bar": resource.NewStringProperty("baz"),
+			}),
+		},
+		expectedDiffChanges: pulumirpc.DiffResponse_DIFF_SOME,
+		expected: map[string]*pulumirpc.PropertyDiff{
+			"prop.foo": {
+				Kind: pulumirpc.PropertyDiff_DELETE,
+			},
+			"prop[\"foo.bar\"]": {
+				Kind: pulumirpc.PropertyDiff_ADD,
 			},
 		},
 	})
