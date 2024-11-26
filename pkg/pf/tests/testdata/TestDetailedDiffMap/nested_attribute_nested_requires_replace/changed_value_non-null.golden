@@ -38,4 +38,5 @@ Resources:
     +-1 to replace
     1 unchanged
 `,
+	detailedDiff: map[string]interface{}{"key.k.nested": map[string]interface{}{"kind": "UPDATE"}},
 }

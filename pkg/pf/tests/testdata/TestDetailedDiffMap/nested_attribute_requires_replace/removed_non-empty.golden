@@ -37,4 +37,5 @@ Resources:
     +-1 to replace
     1 unchanged
 `,
+	detailedDiff: map[string]interface{}{"key": map[string]interface{}{"kind": "DELETE"}},
 }

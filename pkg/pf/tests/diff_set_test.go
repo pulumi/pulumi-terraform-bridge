@@ -583,6 +583,7 @@ func TestDetailedDiffSet(t *testing.T) {
 		changeValue  *[]string
 		tfOut        string
 		pulumiOut    string
+		detailedDiff map[string]any
 	}
 
 	for _, schemaValueMakerPair := range schemaValueMakerPairs {
@@ -601,6 +602,7 @@ func TestDetailedDiffSet(t *testing.T) {
 						changeValue:  scenario.changeValue,
 						tfOut:        diff.TFOut,
 						pulumiOut:    diff.PulumiOut,
+						detailedDiff: diff.PulumiDiff.DetailedDiff,
 					})
 				})
 			}
