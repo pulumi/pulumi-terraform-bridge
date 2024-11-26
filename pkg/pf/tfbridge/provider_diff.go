@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -28,6 +29,52 @@ import (
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/propertyvalue"
 )
+
+func (p *provider) getPlanAndPriorState(
+	ctx context.Context, priorStateMap resource.PropertyMap, rh resourceHandle,
+	checkedInputs resource.PropertyMap, ignoreChanges []string,
+) (*tfprotov6.PlanResourceChangeResponse, *upgradedResourceState, error) {
+	priorStateMap, err := transformFromState(ctx, rh, priorStateMap)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	checkedInputs, err = propertyvalue.ApplyIgnoreChanges(priorStateMap, checkedInputs, ignoreChanges)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to apply ignore changes: %w", err)
+	}
+
+	rawPriorState, err := parseResourceState(&rh, priorStateMap)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	priorState, err := p.UpgradeResourceState(ctx, &rh, rawPriorState)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	checkedInputsValue, err := convert.EncodePropertyMap(rh.encoder, checkedInputs)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	planResp, err := p.plan(ctx, rh.terraformResourceName, rh.schema, priorState, checkedInputsValue)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// NOTE: this currently ignores planRep.PlanedPrivate but it is unclear if it should signal differences between
+	// planResp.PlannedPrivate and priorState.PrivateState() when the only thing that is changing is the private
+	// state. Currently assume that planResp will signal RequiresReplace if needed anyway and there is no useful way
+	// to surface private state differences to the user from the Diff method.
+
+	if err := p.processDiagnostics(planResp.Diagnostics); err != nil {
+		return nil, nil, err
+	}
+
+	return planResp, priorState, nil
+}
 
 // Diff checks what impacts a hypothetical update will have on the resource's properties. Receives checkedInputs from
 // Check and the prior state. The implementation here calls PlanResourceChange Terraform method. Essentially:
@@ -51,46 +98,13 @@ func (p *provider) DiffWithContext(
 		return plugin.DiffResult{}, err
 	}
 
-	priorStateMap, err = transformFromState(ctx, rh, priorStateMap)
-	if err != nil {
-		return plugin.DiffResult{}, err
-	}
-
-	checkedInputs, err = propertyvalue.ApplyIgnoreChanges(priorStateMap, checkedInputs, ignoreChanges)
-	if err != nil {
-		return plugin.DiffResult{}, fmt.Errorf("failed to apply ignore changes: %w", err)
-	}
-
-	rawPriorState, err := parseResourceState(&rh, priorStateMap)
-	if err != nil {
-		return plugin.DiffResult{}, err
-	}
-
-	priorState, err := p.UpgradeResourceState(ctx, &rh, rawPriorState)
+	planResp, priorState, err := p.getPlanAndPriorState(
+		ctx, priorStateMap, rh, checkedInputs, ignoreChanges)
 	if err != nil {
 		return plugin.DiffResult{}, err
 	}
 
 	tfType := rh.schema.Type(ctx).(tftypes.Object)
-
-	checkedInputsValue, err := convert.EncodePropertyMap(rh.encoder, checkedInputs)
-	if err != nil {
-		return plugin.DiffResult{}, err
-	}
-
-	planResp, err := p.plan(ctx, rh.terraformResourceName, rh.schema, priorState, checkedInputsValue)
-	if err != nil {
-		return plugin.DiffResult{}, err
-	}
-
-	// NOTE: this currently ignores planRep.PlanedPrivate but it is unclear if it should signal differences between
-	// planResp.PlannedPrivate and priorState.PrivateState() when the only thing that is changing is the private
-	// state. Currently assume that planResp will signal RequiresReplace if needed anyway and there is no useful way
-	// to surface private state differences to the user from the Diff method.
-
-	if err := p.processDiagnostics(planResp.Diagnostics); err != nil {
-		return plugin.DiffResult{}, err
-	}
 
 	// TODO[pulumi/pulumi-terraform-bridge#751] ignoreChanges support
 	plannedStateValue, err := planResp.PlannedState.Unmarshal(tfType)
@@ -135,6 +149,13 @@ func (p *provider) DiffWithContext(
 	}
 
 	if providerOpts.enableAccurateBridgePreview {
+		if len(planResp.RequiresReplace) > 0 {
+			// If we have a replace, we need to recompute the plan with a nil prior
+			// in order to correctly mark computed properties for recomputation.
+			//nolint:lll
+			// https://github.com/opentofu/opentofu/blob/864aa9d1d629090cfc4ddf9fdd344d34dee9793e/internal/tofu/node_resource_abstract_instance.go#L1054
+			// TODO plan again with nil prior
+		}
 		pluginDetailedDiff, err := calculateDetailedDiff(ctx, &rh, priorState, plannedStateValue, checkedInputs)
 		if err != nil {
 			return plugin.DiffResult{}, err
