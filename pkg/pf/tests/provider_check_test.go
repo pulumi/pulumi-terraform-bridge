@@ -190,7 +190,8 @@ func TestCheck(t *testing.T) {
 			    },
 			    "response": {
 			      "supportsPreview": true,
-			      "acceptResources": true
+			      "acceptResources": true,
+			      "supportsAutonamingConfiguration": true
 			    }
 			  },
 			  {
@@ -238,7 +239,8 @@ func TestCheck(t *testing.T) {
 			    },
 			    "response": {
 			      "supportsPreview": true,
-			      "acceptResources": true
+			      "acceptResources": true,
+			      "supportsAutonamingConfiguration": true
 			    }
 			  },
 			  {
