@@ -457,6 +457,48 @@ func TestSchemaGeneration(t *testing.T) { //nolint:paralleltest
 	testSchema("databricks/databricks", "1.50.0")
 }
 
+func TestSchemaGenerationFullDocs(t *testing.T) { //nolint:paralleltest
+	skipWindows(t)
+	type testCase struct {
+		name     string
+		version  string
+		fullDocs bool
+	}
+
+	tc := testCase{
+		name:     "hashicorp/random",
+		version:  "3.6.3",
+		fullDocs: true,
+	}
+	t.Run(strings.Join([]string{tc.name, tc.version}, "-"), func(t *testing.T) {
+		helper.Integration(t)
+		ctx := context.Background()
+
+		server := grpcTestServer(ctx, t)
+
+		result, err := server.Parameterize(ctx, &pulumirpc.ParameterizeRequest{
+			Parameters: &pulumirpc.ParameterizeRequest_Args{
+				Args: &pulumirpc.ParameterizeRequest_ParametersArgs{
+					Args: []string{tc.name, tc.version, "fullDocs"},
+				},
+			},
+		})
+		require.NoError(t, err)
+
+		assert.Equal(t, tc.version, result.Version)
+
+		schema, err := server.GetSchema(ctx, &pulumirpc.GetSchemaRequest{
+			SubpackageName:    result.Name,
+			SubpackageVersion: result.Version,
+		})
+
+		require.NoError(t, err)
+		var fmtSchema bytes.Buffer
+		require.NoError(t, json.Indent(&fmtSchema, []byte(schema.Schema), "", "    "))
+		autogold.ExpectFile(t, autogold.Raw(fmtSchema.String()))
+	})
+}
+
 func TestRandomCreate(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
