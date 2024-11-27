@@ -33,24 +33,13 @@ import (
 
 func providerInfo(ctx context.Context, p run.Provider, value parameterize.Value) (tfbridge.ProviderInfo, error) {
 	provider := proto.New(ctx, p)
-	// TODO: handle docsgen for a local dynamic provider
-	// https://github.com/opentofu/registry/issues/1337: Due to discrepancies in the registry protocol/implementation,
-	// we infer the Terraform provider's source code repository via the following assumptions:
-	// - The provider's source code is hosted at github.com
-	// - The provider's github org, for providers, is the namespace field of the registry name
-	// Example:
-	//
-	// opentofu.org/provider/hashicorp/random -> "hashicorp" is deduced to be the github org.
-	// Note that this will only work for the provider (not the module) protocol.
-	urlFields := strings.Split(value.Remote.URL, "/")
-	ghOrg := urlFields[len(urlFields)-2]
+
 	prov := tfbridge.ProviderInfo{
 		P:              provider,
 		Name:           p.Name(),
 		Version:        p.Version(),
 		Description:    "A Pulumi provider dynamically bridged from " + p.Name() + ".",
 		Publisher:      "Pulumi",
-		GitHubOrg:      ghOrg,
 		ResourcePrefix: inferResourcePrefix(provider),
 
 		// To avoid bogging down schema generation speed, we skip all examples.
@@ -94,6 +83,22 @@ func providerInfo(ctx context.Context, p run.Provider, value parameterize.Value)
 				Parameter: value.Marshal(),
 			}
 		},
+	}
+	// Add presumed best-effort GitHub org to the provider info.
+	// We do not yet handle full docsgen for a local dynamic provider so we do not set the GitHubOrg field in that case.
+	if value.Remote != nil {
+		// https://github.com/opentofu/registry/issues/1337:
+		// Due to discrepancies in the registry protocol/implementation,
+		// we infer the Terraform provider's source code repository via the following assumptions:
+		// - The provider's source code is hosted at github.com
+		// - The provider's github org, for providers, is the namespace field of the registry name
+		// Example:
+		//
+		// opentofu.org/provider/hashicorp/random -> "hashicorp" is deduced to be the github org.
+		// Note that this will only work for the provider (not the module) protocol.
+		urlFields := strings.Split(value.Remote.URL, "/")
+		ghOrg := urlFields[len(urlFields)-2]
+		prov.GitHubOrg = ghOrg
 	}
 
 	if err := fixup.Default(&prov); err != nil {
