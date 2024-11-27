@@ -17,11 +17,7 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"os"
-	"os/exec"
-
 	"github.com/blang/semver"
 	"github.com/opentofu/opentofu/shim/run"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -29,6 +25,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"os"
+	"os/exec"
 
 	"github.com/pulumi/pulumi-terraform-bridge/dynamic/parameterize"
 	"github.com/pulumi/pulumi-terraform-bridge/dynamic/version"
@@ -159,19 +157,20 @@ func initialSetup() (info.Provider, pfbridge.ProviderMetadata, func() error) {
 			}
 			fullDocs = args.Remote.Docs
 			if fullDocs {
-				upstreamRepoDir := "terraform-provider-" + info.Name + "-v" + info.Version
-				// Only clone if the directory doesn't exist in the expected location
-				if _, err := os.Stat(upstreamRepoDir); errors.Is(err, os.ErrNotExist) {
-					versionWithPrefix := "v" + info.Version
-					ghRepo := "https://github.com/" + info.GitHubOrg + "/terraform-provider-" + info.Name
-
-					cmd := exec.Command("git", "clone", "--depth", "1", "-b", versionWithPrefix, ghRepo, upstreamRepoDir)
-					err = cmd.Run()
-					if err != nil {
-						return plugin.ParameterizeResponse{}, err
-					}
+				// Write the upstream files at this version to a temporary directory
+				tmpDir, err := os.MkdirTemp("", "upstreamRepoDir")
+				if err != nil {
+					return plugin.ParameterizeResponse{}, err
 				}
-				info.UpstreamRepoPath = upstreamRepoDir
+				versionWithPrefix := "v" + info.Version
+				ghRepo := "https://github.com/" + info.GitHubOrg + "/terraform-provider-" + info.Name
+
+				cmd := exec.Command("git", "clone", "--depth", "1", "-b", versionWithPrefix, ghRepo, tmpDir)
+				err = cmd.Run()
+				if err != nil {
+					return plugin.ParameterizeResponse{}, err
+				}
+				info.UpstreamRepoPath = tmpDir
 			}
 			return plugin.ParameterizeResponse{
 				Name:    p.Name(),
