@@ -154,7 +154,16 @@ func (p *provider) DiffWithContext(
 			// in order to correctly mark computed properties for recomputation.
 			//nolint:lll
 			// https://github.com/opentofu/opentofu/blob/864aa9d1d629090cfc4ddf9fdd344d34dee9793e/internal/tofu/node_resource_abstract_instance.go#L1054
-			// TODO plan again with nil prior
+			planResp, _, err = p.getPlanAndPriorState(
+				ctx, resource.PropertyMap{}, rh, checkedInputs, ignoreChanges)
+			if err != nil {
+				return plugin.DiffResult{}, err
+			}
+
+			plannedStateValue, err = planResp.PlannedState.Unmarshal(tfType)
+			if err != nil {
+				return plugin.DiffResult{}, err
+			}
 		}
 		pluginDetailedDiff, err := calculateDetailedDiff(ctx, &rh, priorState, plannedStateValue, checkedInputs)
 		if err != nil {
