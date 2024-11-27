@@ -34,8 +34,15 @@ import (
 func providerInfo(ctx context.Context, p run.Provider, value parameterize.Value) (tfbridge.ProviderInfo, error) {
 	provider := proto.New(ctx, p)
 	// TODO: handle docsgen for a local dynamic provider
-	remoteURL := value.Remote.URL
-	urlFields := strings.Split(remoteURL, "/")
+	// https://github.com/opentofu/registry/issues/1337: Due to discrepancies in the registry protocol/implementation,
+	// we infer the Terraform provider's source code repository via the following assumptions:
+	// - The provider's source code is hosted at github.com
+	// - The provider's github org, for providers, is the namespace field of the registry name
+	// Example:
+	//
+	// opentofu.org/provider/hashicorp/random -> "hashicorp" is deduced to be the github org.
+	// Note that this will only work for the provider (not the module) protocol.
+	urlFields := strings.Split(value.Remote.URL, "/")
 	ghOrg := urlFields[len(urlFields)-2]
 	prov := tfbridge.ProviderInfo{
 		P:              provider,
