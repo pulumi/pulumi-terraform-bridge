@@ -20,6 +20,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
 	"github.com/stretchr/testify/require"
 
 	crosstestsimpl "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests/impl"
@@ -79,7 +80,7 @@ func runDiffCheck(t T, tc diffTestCase) crosstestsimpl.DiffResult {
 	err := os.WriteFile(filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml"), yamlProgram, 0o600)
 	require.NoErrorf(t, err, "writing Pulumi.yaml")
 
-	previewRes := pt.Preview(t)
+	previewRes := pt.Preview(t, optpreview.Diff())
 	diffResponse := crosstestsimpl.GetPulumiDiffResponse(t, pt.GrpcLog(t).Entries)
 	x := pt.Up(t)
 
