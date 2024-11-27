@@ -34,6 +34,7 @@ Plan: 1 to add, 0 to change, 1 to destroy.
     +-testprovider:index/test:Test: (replace)
         [id=test-id]
         [urn=urn:pulumi:test::project::testprovider:index/test:Test::p]
+      - id  : "test-id"
       ~ keys: [
           + [2]: "val3"
         ]
@@ -41,5 +42,8 @@ Resources:
     +-1 to replace
     1 unchanged
 `,
-	detailedDiff: map[string]interface{}{"keys[2]": map[string]interface{}{}},
+	detailedDiff: map[string]interface{}{
+		"id":      map[string]interface{}{"kind": "UPDATE"},
+		"keys[2]": map[string]interface{}{},
+	},
 }
