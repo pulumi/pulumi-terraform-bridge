@@ -926,7 +926,8 @@ func (p *Provider) Configure(ctx context.Context,
 	}
 
 	return &pulumirpc.ConfigureResponse{
-		SupportsPreview: true,
+		SupportsPreview:                 true,
+		SupportsAutonamingConfiguration: true,
 	}, nil
 }
 
@@ -1015,9 +1016,17 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 		}
 	}
 
+	var autonaming *info.ComputeDefaultAutonamingOptions
+	if req.Autonaming != nil {
+		autonaming = &info.ComputeDefaultAutonamingOptions{
+			ProposedName: req.Autonaming.ProposedName,
+			Mode:         info.ComputeDefaultAutonamingOptionsMode(req.Autonaming.Mode),
+		}
+	}
+
 	tfname := res.TFName
 	inputs, _, err := makeTerraformInputsWithOptions(ctx,
-		&PulumiResource{URN: urn, Properties: news, Seed: req.RandomSeed},
+		&PulumiResource{URN: urn, Properties: news, Seed: req.RandomSeed, Autonaming: autonaming},
 		p.configValues, olds, news, schemaMap, res.Schema.Fields,
 		makeTerraformInputsOptions{DisableTFDefaults: true, UnknownCollectionsSupported: p.tf.SupportsUnknownCollections()})
 	if err != nil {
@@ -1036,7 +1045,7 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 
 	// Now re-generate the inputs WITH the TF defaults
 	inputs, assets, err := makeTerraformInputsWithOptions(ctx,
-		&PulumiResource{URN: urn, Properties: news, Seed: req.RandomSeed},
+		&PulumiResource{URN: urn, Properties: news, Seed: req.RandomSeed, Autonaming: autonaming},
 		p.configValues, olds, news, schemaMap, res.Schema.Fields,
 		makeTerraformInputsOptions{UnknownCollectionsSupported: p.tf.SupportsUnknownCollections()})
 	if err != nil {

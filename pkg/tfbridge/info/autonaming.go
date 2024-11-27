@@ -17,6 +17,7 @@ package info
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/golang/glog"
 	"github.com/pkg/errors"
@@ -170,7 +171,45 @@ func ComputeAutoNameDefault(
 	if options.Transform != nil {
 		vs = options.Transform(vs)
 	}
-	if options.Randlen > 0 {
+	if defaultOptions.Autonaming != nil {
+		switch defaultOptions.Autonaming.Mode {
+		case ModePropose:
+			// In propose mode, we can use the proposed name as a suggestion
+			vs = defaultOptions.Autonaming.ProposedName
+			if options.Transform != nil {
+				vs = options.Transform(vs)
+			}
+			// Apply maxlen constraint if specified
+			if options.Maxlen > 0 && len(vs) > options.Maxlen {
+				return nil, fmt.Errorf("calculated name '%s' exceeds maximum length of %d", vs, options.Maxlen)
+			}
+			// Apply charset constraint if specified
+			if len(options.Charset) > 0 {
+				charsetStr := string(options.Charset)
+
+				// Replace separators that aren't in the valid charset
+				if !strings.ContainsRune(charsetStr, '-') {
+					vs = strings.ReplaceAll(vs, "-", options.Separator)
+				}
+				if !strings.ContainsRune(charsetStr, '_') {
+					vs = strings.ReplaceAll(vs, "_", options.Separator)
+				}
+
+				for _, c := range vs {
+					if !strings.ContainsRune(charsetStr, c) {
+						return nil, fmt.Errorf("calculated name '%s' contains invalid character '%c' not in charset '%s'",
+							vs, c, charsetStr)
+					}
+				}
+			}
+		case ModeEnforce:
+			// In enforce mode, we must use exactly the proposed name, ignoring all resource options
+			return defaultOptions.Autonaming.ProposedName, nil
+		case ModeDisable:
+			// In disable mode, we should return an error if no explicit name was provided
+			return nil, fmt.Errorf("automatic naming is disabled but no explicit name was provided")
+		}
+	} else if options.Randlen > 0 {
 		uniqueHex, err := resource.NewUniqueName(
 			defaultOptions.Seed, vs+options.Separator, options.Randlen, options.Maxlen, options.Charset)
 		if err != nil {
@@ -183,6 +222,7 @@ func ComputeAutoNameDefault(
 			URN:        defaultOptions.URN,
 			Properties: defaultOptions.Properties,
 			Seed:       defaultOptions.Seed,
+			Autonaming: defaultOptions.Autonaming,
 		}, vs)
 	}
 	return vs, nil

@@ -23,6 +23,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 )
@@ -64,6 +65,10 @@ func TestApplyDefaultInfoValues(t *testing.T) {
 		a := []rune("12345")
 		unique, err := resource.NewUniqueName(res.Seed, n, 3, 12, a)
 		return resource.NewStringProperty(unique), err
+	}
+
+	testFromAutoname := func(res *tfbridge.PulumiResource) (interface{}, error) {
+		return resource.NewStringProperty(res.Autonaming.ProposedName), nil
 	}
 
 	testComputeDefaults := func(
@@ -236,6 +241,28 @@ func TestApplyDefaultInfoValues(t *testing.T) {
 			},
 			expected: resource.PropertyMap{
 				"stringProp": resource.NewStringProperty("n1-453"),
+			},
+		},
+		{
+			name: "From function can compute defaults with autoname",
+			fieldInfos: map[string]*tfbridge.SchemaInfo{
+				"string_prop": {
+					Default: &tfbridge.DefaultInfo{
+						From: testFromAutoname,
+					},
+				},
+			},
+			computeDefaultOptions: tfbridge.ComputeDefaultOptions{
+				URN:        "urn:pulumi:test::test::pkgA:index:t1::n1",
+				Properties: resource.PropertyMap{},
+				Seed:       []byte(`123`),
+				Autonaming: &info.ComputeDefaultAutonamingOptions{
+					ProposedName: "n1-777",
+					Mode:         info.ModePropose,
+				},
+			},
+			expected: resource.PropertyMap{
+				"stringProp": resource.NewStringProperty("n1-777"),
 			},
 		},
 		{

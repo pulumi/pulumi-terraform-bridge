@@ -29,6 +29,8 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
 type providerServer struct {
@@ -333,6 +335,10 @@ func (p *providerServer) Configure(ctx context.Context,
 		// reason about data flow within the underlying provider (TF), we allow
 		// the engine to apply its own heuristics.
 		AcceptSecrets: false,
+
+		// Check will accept a configuration property for engine to propose auto-naming format and mode
+		// when user opts in to control it.
+		SupportsAutonamingConfiguration: true,
 	}, nil
 }
 
@@ -349,7 +355,15 @@ func (p *providerServer) Check(ctx context.Context, req *pulumirpc.CheckRequest)
 		return nil, err
 	}
 
-	newInputs, failures, err := p.provider.CheckWithContext(ctx, urn, state, inputs, true, req.RandomSeed)
+	var autonaming *info.ComputeDefaultAutonamingOptions
+	if req.Autonaming != nil {
+		autonaming = &info.ComputeDefaultAutonamingOptions{
+			ProposedName: req.Autonaming.ProposedName,
+			Mode:         info.ComputeDefaultAutonamingOptionsMode(req.Autonaming.Mode),
+		}
+	}
+
+	newInputs, failures, err := p.provider.CheckWithContext(ctx, urn, state, inputs, true, req.RandomSeed, autonaming)
 	if err != nil {
 		return nil, err
 	}

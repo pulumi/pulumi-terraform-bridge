@@ -666,6 +666,27 @@ type Default struct {
 	EnvVars []string
 }
 
+// ComputeDefaultAutonamingOptionsMode is the mode that controls how the provider handles the proposed name. If not
+// specified, defaults to `Propose`.
+type ComputeDefaultAutonamingOptionsMode int32
+
+const (
+	// ModePropose means the provider may use the proposed name as a suggestion but is free to modify it.
+	ModePropose ComputeDefaultAutonamingOptionsMode = 0
+	// ModeEnforce means the provider must use exactly the proposed name or return an error.
+	ModeEnforce ComputeDefaultAutonamingOptionsMode = 1
+	// ModeDisable means the provider should disable automatic naming and return an error if no explicit name
+	// is provided by user's program.
+	ModeDisable ComputeDefaultAutonamingOptionsMode = 2
+)
+
+// ComputeDefaultAutonamingOptions controls how auto-naming behaves when the engine provides explicit naming
+// preferences. This is used by the engine to pass user preference for naming patterns.
+type ComputeDefaultAutonamingOptions struct {
+	ProposedName string
+	Mode         ComputeDefaultAutonamingOptionsMode
+}
+
 // Configures [Default.ComputeDefault].
 type ComputeDefaultOptions struct {
 	// URN identifying the Resource. Set when computing default properties for a Resource, and unset for functions.
@@ -685,6 +706,9 @@ type ComputeDefaultOptions struct {
 	// example, that random values generated across "pulumi preview" and "pulumi up" in the same deployment are
 	// consistent. This currently is only available for resource changes.
 	Seed []byte
+
+	// The engine can provide auto-naming options if the user configured an explicit preference for it.
+	Autonaming *ComputeDefaultAutonamingOptions
 }
 
 // PulumiResource is just a little bundle that carries URN, seed and properties around.
@@ -692,6 +716,7 @@ type PulumiResource struct {
 	URN        resource.URN
 	Properties resource.PropertyMap
 	Seed       []byte
+	Autonaming *ComputeDefaultAutonamingOptions
 }
 
 // Overlay contains optional overlay information.  Each info has a 1:1 correspondence with a module and

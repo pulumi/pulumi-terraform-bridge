@@ -25,6 +25,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
 // A version of Provider interface that is enhanced by giving access to the request Context.
@@ -44,7 +46,8 @@ type ProviderWithContext interface {
 	ConfigureWithContext(ctx context.Context, inputs resource.PropertyMap) error
 
 	CheckWithContext(ctx context.Context, urn resource.URN, olds, news resource.PropertyMap,
-		allowUnknowns bool, randomSeed []byte) (resource.PropertyMap, []p.CheckFailure, error)
+		allowUnknowns bool, randomSeed []byte, autonaming *info.ComputeDefaultAutonamingOptions,
+	) (resource.PropertyMap, []p.CheckFailure, error)
 
 	DiffWithContext(ctx context.Context, urn resource.URN, id resource.ID, olds resource.PropertyMap,
 		news resource.PropertyMap, allowUnknowns bool, ignoreChanges []string) (p.DiffResult, error)
@@ -148,8 +151,15 @@ func (prov *provider) Configure(
 func (prov *provider) Check(
 	ctx context.Context, req plugin.CheckRequest,
 ) (plugin.CheckResponse, error) {
+	var autonaming *info.ComputeDefaultAutonamingOptions
+	if req.Autonaming != nil {
+		autonaming = &info.ComputeDefaultAutonamingOptions{
+			ProposedName: req.Autonaming.ProposedName,
+			Mode:         info.ComputeDefaultAutonamingOptionsMode(req.Autonaming.Mode),
+		}
+	}
 	c, f, err := prov.ProviderWithContext.CheckWithContext(
-		ctx, req.URN, req.Olds, req.News, req.AllowUnknowns, req.RandomSeed)
+		ctx, req.URN, req.Olds, req.News, req.AllowUnknowns, req.RandomSeed, autonaming)
 	return plugin.CheckResponse{Properties: c, Failures: f}, err
 }
 

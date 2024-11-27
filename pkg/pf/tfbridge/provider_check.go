@@ -26,6 +26,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/convert"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/defaults"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
 // Check validates the given resource inputs from the user program and computes checked inputs that fill out default
@@ -37,6 +38,7 @@ func (p *provider) CheckWithContext(
 	inputs resource.PropertyMap,
 	allowUnknowns bool,
 	randomSeed []byte,
+	autonaming *info.ComputeDefaultAutonamingOptions,
 ) (resource.PropertyMap, []plugin.CheckFailure, error) {
 	ctx = p.initLogging(ctx, p.logSink, urn)
 
@@ -71,6 +73,7 @@ func (p *provider) CheckWithContext(
 			Properties: checkedInputs,
 			Seed:       randomSeed,
 			PriorState: priorState,
+			Autonaming: autonaming,
 		},
 		PropertyMap:    checkedInputs,
 		ProviderConfig: p.lastKnownProviderConfig,

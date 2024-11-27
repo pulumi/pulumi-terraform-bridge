@@ -313,6 +313,7 @@ func makeTerraformInputsWithOptions(
 			PriorState: olds,
 			Properties: instance.Properties,
 			Seed:       instance.Seed,
+			Autonaming: instance.Autonaming,
 			URN:        instance.URN,
 		}
 	}
@@ -849,6 +850,7 @@ func (ctx *conversionContext) applyDefaults(
 					URN:        ctx.ComputeDefaultOptions.URN,
 					Properties: ctx.ComputeDefaultOptions.Properties,
 					Seed:       ctx.ComputeDefaultOptions.Seed,
+					Autonaming: ctx.ComputeDefaultOptions.Autonaming,
 				})
 				if err != nil {
 					return err
