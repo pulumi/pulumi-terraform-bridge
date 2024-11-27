@@ -17,8 +17,10 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 
 	"github.com/blang/semver"
 	"github.com/opentofu/opentofu/shim/run"
@@ -78,8 +80,7 @@ func initialSetup() (info.Provider, pfbridge.ProviderMetadata, func() error) {
 				DiagnosticsSink: diag.DefaultSink(os.Stdout, os.Stderr, diag.FormatOptions{
 					Color: colors.Always,
 				}),
-				XInMemoryDocs:            schemaDocsOnly,
-				XLoadUpstreamRepoForDocs: fullDocs,
+				XInMemoryDocs: schemaDocsOnly,
 			})
 			if err != nil {
 				return nil, err
@@ -157,6 +158,21 @@ func initialSetup() (info.Provider, pfbridge.ProviderMetadata, func() error) {
 				return plugin.ParameterizeResponse{}, err
 			}
 			fullDocs = args.Remote.Docs
+			if fullDocs {
+				upstreamRepoDir := "terraform-provider-" + info.Name + "-v" + info.Version
+				// Only clone if the directory doesn't exist in the expected location
+				if _, err := os.Stat(upstreamRepoDir); errors.Is(err, os.ErrNotExist) {
+					versionWithPrefix := "v" + info.Version
+					ghRepo := "https://github.com/" + info.GitHubOrg + "/terraform-provider-" + info.Name
+
+					cmd := exec.Command("git", "clone", "--depth", "1", "-b", versionWithPrefix, ghRepo, upstreamRepoDir)
+					err = cmd.Run()
+					if err != nil {
+						return plugin.ParameterizeResponse{}, err
+					}
+				}
+				info.UpstreamRepoPath = upstreamRepoDir
+			}
 			return plugin.ParameterizeResponse{
 				Name:    p.Name(),
 				Version: v,
