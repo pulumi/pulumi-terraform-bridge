@@ -327,6 +327,10 @@ func (p *providerServer) Configure(ctx context.Context,
 		// reason about data flow within the underlying provider (TF), we allow
 		// the engine to apply its own heuristics.
 		AcceptSecrets: false,
+
+		// Check will accept a configuration property for engine to propose auto-naming format and mode
+		// when user opts in to control it.
+		SupportsAutonamingConfiguration: true,
 	}, nil
 }
 
