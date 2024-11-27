@@ -72,6 +72,6 @@ func ParseArgs(args []string) (Args, error) {
 		remote.Name = args[0]
 		return Args{Remote: &remote}, nil
 	default:
-		return Args{}, fmt.Errorf("expected to be parameterized by 1-3 arguments: <name> [version] fullDocs")
+		return Args{}, fmt.Errorf("expected to be parameterized by 1-3 arguments: <name> [version] [fullDocs]")
 	}
 }

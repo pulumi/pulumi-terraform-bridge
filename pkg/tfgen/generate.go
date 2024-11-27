@@ -786,7 +786,6 @@ type GenerateSchemaResult struct {
 
 func GenerateSchemaWithOptions(opts GenerateSchemaOptions) (*GenerateSchemaResult, error) {
 	ctx := context.Background()
-
 	info := opts.ProviderInfo
 	sink := opts.DiagnosticsSink
 	g, err := NewGenerator(GeneratorOptions{
@@ -801,6 +800,7 @@ func GenerateSchemaWithOptions(opts GenerateSchemaOptions) (*GenerateSchemaResul
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to create generator")
 	}
+
 	return g.generateSchemaResult(ctx)
 }
 
