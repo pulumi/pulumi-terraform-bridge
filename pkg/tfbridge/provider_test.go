@@ -944,7 +944,8 @@ func TestCheckCallback(t *testing.T) {
 			      }
 			    },
 			    "response": {
-			      "supportsPreview": true
+			      "supportsPreview": true,
+			      "supportsAutonamingConfiguration": true
 			    }
 			  },
 			  {
@@ -1980,7 +1981,8 @@ func TestConfigure(t *testing.T) {
 			    "acceptResources": true
 			  },
 			  "response": {
-			    "supportsPreview": true
+			    "supportsPreview": true,
+			    "supportsAutonamingConfiguration": true
 			  }
 			}`)
 	})
@@ -3716,7 +3718,8 @@ func TestMaxItemsOneConflictsWith(t *testing.T) {
 				"variables": {}
 			  },
 			  "response": {
-				"supportsPreview": true
+				"supportsPreview": true,
+				"supportsAutonamingConfiguration": true
 			  }
 			},
 			{
@@ -3749,7 +3752,8 @@ func TestMaxItemsOneConflictsWith(t *testing.T) {
 				"variables": {}
 			  },
 			  "response": {
-				"supportsPreview": true
+				"supportsPreview": true,
+				"supportsAutonamingConfiguration": true
 			  }
 			},
 			{
@@ -3815,7 +3819,8 @@ func TestMinMaxItemsOneOptional(t *testing.T) {
 				"variables": {}
 			  },
 			  "response": {
-				"supportsPreview": true
+				"supportsPreview": true,
+				"supportsAutonamingConfiguration": true
 			  }
 			},
 			{
@@ -3846,7 +3851,8 @@ func TestMinMaxItemsOneOptional(t *testing.T) {
 				"variables": {}
 			  },
 			  "response": {
-				"supportsPreview": true
+				"supportsPreview": true,
+				"supportsAutonamingConfiguration": true
 			  }
 			},
 			{
@@ -3920,7 +3926,8 @@ func TestComputedMaxItemsOneNotSpecified(t *testing.T) {
 				"variables": {}
 			  },
 			  "response": {
-				"supportsPreview": true
+				"supportsPreview": true,
+				"supportsAutonamingConfiguration": true
 			  }
 			},
 			{
