@@ -18,6 +18,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"os/exec"
+
 	"github.com/blang/semver"
 	"github.com/opentofu/opentofu/shim/run"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -25,8 +28,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"os"
-	"os/exec"
 
 	"github.com/pulumi/pulumi-terraform-bridge/dynamic/parameterize"
 	"github.com/pulumi/pulumi-terraform-bridge/dynamic/version"
@@ -66,19 +67,12 @@ func initialSetup() (info.Provider, pfbridge.ProviderMetadata, func() error) {
 	var fullDocs bool
 	metadata = pfbridge.ProviderMetadata{
 		XGetSchema: func(ctx context.Context, req plugin.GetSchemaRequest) ([]byte, error) {
-			// By default, only read in docs from TF schema
-			var schemaDocsOnly = true
-			// If full docs is expected set schemaDocsOnly to false
-			if fullDocs {
-				schemaDocsOnly = false
-			}
-
 			packageSchema, err := tfgen.GenerateSchemaWithOptions(tfgen.GenerateSchemaOptions{
 				ProviderInfo: info,
 				DiagnosticsSink: diag.DefaultSink(os.Stdout, os.Stderr, diag.FormatOptions{
 					Color: colors.Always,
 				}),
-				XInMemoryDocs: schemaDocsOnly,
+				XInMemoryDocs: !fullDocs,
 			})
 			if err != nil {
 				return nil, err
@@ -155,23 +149,36 @@ func initialSetup() (info.Provider, pfbridge.ProviderMetadata, func() error) {
 			if err != nil {
 				return plugin.ParameterizeResponse{}, err
 			}
-			fullDocs = args.Remote.Docs
-			if fullDocs {
-				// Write the upstream files at this version to a temporary directory
-				tmpDir, err := os.MkdirTemp("", "upstreamRepoDir")
-				if err != nil {
-					return plugin.ParameterizeResponse{}, err
-				}
-				versionWithPrefix := "v" + info.Version
-				ghRepo := "https://github.com/" + info.GitHubOrg + "/terraform-provider-" + info.Name
 
-				cmd := exec.Command("git", "clone", "--depth", "1", "-b", versionWithPrefix, ghRepo, tmpDir)
-				err = cmd.Run()
-				if err != nil {
-					return plugin.ParameterizeResponse{}, err
+			if args.Remote != nil {
+				fullDocs = args.Remote.Docs
+				if fullDocs {
+					// Write the upstream files at this version to a temporary directory
+					tmpDir, err := os.MkdirTemp("", "upstreamRepoDir")
+					if err != nil {
+						return plugin.ParameterizeResponse{}, err
+					}
+					versionWithPrefix := "v" + info.Version
+					ghRepo := "https://github.com/" + info.GitHubOrg + "/terraform-provider-" + info.Name
+
+					cmd := exec.Command(
+						"git", "clone", "--depth", "1", "-b", versionWithPrefix, ghRepo, tmpDir,
+					)
+					err = cmd.Run()
+					if err != nil {
+						return plugin.ParameterizeResponse{}, err
+					}
+					info.UpstreamRepoPath = tmpDir
 				}
-				info.UpstreamRepoPath = tmpDir
 			}
+
+			if args.Local != nil {
+				if args.Local.DocsLocation != "" {
+					info.UpstreamRepoPath = args.Local.DocsLocation
+					fullDocs = true
+				}
+			}
+
 			return plugin.ParameterizeResponse{
 				Name:    p.Name(),
 				Version: v,
