@@ -85,7 +85,7 @@ func providerInfo(ctx context.Context, p run.Provider, value parameterize.Value)
 		},
 	}
 	// Add presumed best-effort GitHub org to the provider info.
-	// We do not yet handle full docsgen for a local dynamic provider so we do not set the GitHubOrg field in that case.
+	// We do not set the GitHubOrg field for a local dynamic provider.
 	if value.Remote != nil {
 		// https://github.com/opentofu/registry/issues/1337:
 		// Due to discrepancies in the registry protocol/implementation,

@@ -39,14 +39,22 @@ type RemoteArgs struct {
 type LocalArgs struct {
 	// Path is the path to the provider binary. It can be relative or absolute.
 	Path string
+	// DocsLocation is the path to the provider documentation.
+	DocsLocation string
 }
 
 func ParseArgs(args []string) (Args, error) {
 	// Check for a leading '.' or '/' to indicate a path
+
 	if len(args) >= 1 &&
 		(strings.HasPrefix(args[0], "./") || strings.HasPrefix(args[0], "/")) {
 		if len(args) > 1 {
-			return Args{}, fmt.Errorf("path based providers are only parameterized by 1 argument: <path>")
+			docsArg := args[1]
+			docsLocation, found := strings.CutPrefix(docsArg, "docsLocation=")
+			if !found {
+				return Args{}, fmt.Errorf("path based providers are only parameterized by 2 arguments: <path> [docsLocation]")
+			}
+			return Args{Local: &LocalArgs{Path: args[0], DocsLocation: docsLocation}}, nil
 		}
 		return Args{Local: &LocalArgs{Path: args[0]}}, nil
 	}

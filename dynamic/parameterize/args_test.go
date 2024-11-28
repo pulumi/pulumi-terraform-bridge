@@ -36,6 +36,23 @@ func TestParseArgs(t *testing.T) {
 			expect: Args{Local: &LocalArgs{Path: "./my-provider"}},
 		},
 		{
+			name: "local too many args",
+			args: []string{"./my-provider", "nonsense"},
+			errMsg: autogold.Expect(
+				"path based providers are only parameterized by 2 arguments: <path> [docsLocation]",
+			),
+		},
+		{
+			name: "local with docs location",
+			args: []string{"./my-provider", "docsLocation=./my-provider"},
+			expect: Args{
+				Local: &LocalArgs{
+					Path:         "./my-provider",
+					DocsLocation: "./my-provider",
+				},
+			},
+		},
+		{
 			name:   "remote",
 			args:   []string{"my-registry.io/typ"},
 			expect: Args{Remote: &RemoteArgs{Name: "my-registry.io/typ"}},
