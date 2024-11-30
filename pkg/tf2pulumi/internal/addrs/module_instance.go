@@ -20,9 +20,7 @@ import (
 // creation.
 type ModuleInstance []ModuleInstanceStep
 
-var (
-	_ Targetable = ModuleInstance(nil)
-)
+var _ Targetable = ModuleInstance(nil)
 
 func ParseModuleInstance(traversal hcl.Traversal) (ModuleInstance, hcl.Diagnostics) {
 	mi, remain, diags := parseModuleInstancePrefix(traversal)

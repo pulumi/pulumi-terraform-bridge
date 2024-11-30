@@ -85,7 +85,6 @@ func (b *Backend) Rehash() uint64 {
 		"type":   b.Type,
 		"config": b.RawConfig.Raw,
 	}, nil)
-
 	// This should never happen since we have just some basic primitives
 	// so panic if there is an error.
 	if err != nil {

@@ -55,7 +55,6 @@ func main() {
 }
 
 func files() []file {
-
 	replacePkg := gofmtReplace(fmt.Sprintf(
 		`"%s/internal/configs/configschema" -> "%s/configs/configschema"`,
 		oldPkg, newPkg,
@@ -127,8 +126,7 @@ func files() []file {
 			src:  "internal/plugin6/convert/schema.go",
 			dest: "convert/schema.go",
 			transforms: append(transforms, func(s string) string {
-				elided :=
-					`func ProtoToProviderSchema(s *proto.Schema) providers.Schema {
+				elided := `func ProtoToProviderSchema(s *proto.Schema) providers.Schema {
 	return providers.Schema{
 		Version: s.Version,
 		Block:   ProtoToConfigSchema(s.Block),

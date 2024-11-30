@@ -271,7 +271,6 @@ func assertPlannedAttrValid(name string, attrS *configschema.Attribute, priorSta
 }
 
 func assertPlannedValueValid(attrS *configschema.Attribute, priorV, configV, plannedV cty.Value, path cty.Path) []error {
-
 	var errs []error
 	if unrefinedValue(plannedV).RawEquals(unrefinedValue(configV)) {
 		// This is the easy path: provider didn't change anything at all.

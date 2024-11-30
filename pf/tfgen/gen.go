@@ -26,4 +26,3 @@ type GenerateSchemaResult = pkgpf.GenerateSchemaResult
 
 // Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfgen.GenerateSchema instead.
 var GenerateSchema = pkgpf.GenerateSchema
-

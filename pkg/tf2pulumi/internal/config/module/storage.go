@@ -143,7 +143,7 @@ func (s Storage) recordModule(rec moduleRecord) error {
 	}
 
 	manifestPath := filepath.Join(s.StorageDir, manifestName)
-	return os.WriteFile(manifestPath, js, 0644)
+	return os.WriteFile(manifestPath, js, 0o644)
 }
 
 // load the manifest from dir, and return all module versions matching the

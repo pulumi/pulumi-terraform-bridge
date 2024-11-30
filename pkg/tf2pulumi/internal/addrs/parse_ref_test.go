@@ -10,13 +10,12 @@ import (
 )
 
 func TestParseRef(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	tests := []struct {
 		Input   string
 		Want    *Reference
 		WantErr string
 	}{
-
 		// count
 		{
 			`count.index`,

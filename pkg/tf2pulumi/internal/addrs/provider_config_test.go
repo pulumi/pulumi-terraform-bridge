@@ -10,7 +10,7 @@ import (
 )
 
 func TestParseAbsProviderConfig(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	tests := []struct {
 		Input    string
 		Want     AbsProviderConfig
@@ -154,7 +154,7 @@ func TestParseAbsProviderConfig(t *testing.T) {
 }
 
 func TestAbsProviderConfigString(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	tests := []struct {
 		Config AbsProviderConfig
 		Want   string
@@ -200,7 +200,7 @@ func TestAbsProviderConfigString(t *testing.T) {
 }
 
 func TestAbsProviderConfigLegacyString(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	tests := []struct {
 		Config AbsProviderConfig
 		Want   string

@@ -204,7 +204,6 @@ func (pt Provider) IsLegacy() bool {
 	}
 
 	return pt.Hostname == DefaultRegistryHost && pt.Namespace == LegacyProviderNamespace
-
 }
 
 // IsDefault returns true if the provider is a default hashicorp provider

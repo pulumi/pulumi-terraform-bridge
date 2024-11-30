@@ -9,7 +9,7 @@ import (
 )
 
 func TestParseTarget(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	tests := []struct {
 		Input   string
 		Want    *Target

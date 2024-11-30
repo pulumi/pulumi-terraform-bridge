@@ -459,7 +459,6 @@ func loadModulesHcl(list *ast.ObjectList) ([]*Module, error) {
 // loadLocalsHcl recurses into the given HCL object turns it into
 // a list of locals.
 func loadLocalsHcl(list *ast.ObjectList) ([]*Local, error) {
-
 	result := make([]*Local, 0, len(list.Items))
 
 	for _, block := range list.Items {
@@ -490,7 +489,6 @@ func loadLocalsHcl(list *ast.ObjectList) ([]*Local, error) {
 				rawConfig, err := NewRawConfig(map[string]interface{}{
 					"value": v,
 				})
-
 				if err != nil {
 					return nil, fmt.Errorf(
 						"error parsing local value %q at %s: %s",

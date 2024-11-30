@@ -52,7 +52,7 @@ func copyDir(dst, src string) error {
 				return nil
 			}
 
-			if err := os.MkdirAll(dstPath, 0755); err != nil {
+			if err := os.MkdirAll(dstPath, 0o755); err != nil {
 				return err
 			}
 

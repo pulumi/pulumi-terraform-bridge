@@ -7,7 +7,6 @@ import (
 )
 
 func main() {
-
 	pulumi.Run(func(ctx *pulumi.Context) error {
 		conf := config.New(ctx, "")
 		minn := conf.RequireInt("min")
@@ -26,5 +25,4 @@ func main() {
 		}
 		return nil
 	})
-
 }

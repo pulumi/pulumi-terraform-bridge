@@ -27,7 +27,6 @@ var ShimProvider = pkgpf.ShimProvider
 // Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge.ShimProviderWithContext instead.
 var ShimProviderWithContext = pkgpf.ShimProviderWithContext
 
-
 // Deprecated: Use github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge.NewProviderServer instead.
 var NewProviderServer = pkgpf.NewProviderServer
 

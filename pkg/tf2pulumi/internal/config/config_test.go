@@ -39,7 +39,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestConfigCopy(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	c := testConfig(t, "copy-basic")
 	rOrig := c.Resources[0]
 	rCopy := rOrig.Copy()
@@ -82,11 +82,10 @@ func TestConfigCopy(t *testing.T) {
 	if rOrig.Lifecycle.IgnoreChanges[0] == rCopy.Lifecycle.IgnoreChanges[0] {
 		t.Fatalf("Expected Lifecycle to be copied, but it behaves like a ref!")
 	}
-
 }
 
 func TestConfigCount(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	c := testConfig(t, "count-int")
 	actual, err := c.Resources[0].Count()
 	if err != nil {
@@ -98,7 +97,7 @@ func TestConfigCount(t *testing.T) {
 }
 
 func TestConfigCount_string(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	c := testConfig(t, "count-string")
 	actual, err := c.Resources[0].Count()
 	if err != nil {
@@ -111,7 +110,7 @@ func TestConfigCount_string(t *testing.T) {
 
 // Terraform GH-11800
 func TestConfigCount_list(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	c := testConfig(t, "count-list")
 
 	// The key is to interpolate so it doesn't fail parsing
@@ -129,7 +128,7 @@ func TestConfigCount_list(t *testing.T) {
 }
 
 func TestConfigCount_var(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	c := testConfig(t, "count-var")
 	_, err := c.Resources[0].Count()
 	if err == nil {
@@ -138,7 +137,7 @@ func TestConfigCount_var(t *testing.T) {
 }
 
 func TestConfig_emptyCollections(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	c := testConfig(t, "empty-collections")
 	if len(c.Variables) != 3 {
 		t.Fatalf("bad: expected 3 variables, got %d", len(c.Variables))
@@ -164,7 +163,7 @@ func TestConfig_emptyCollections(t *testing.T) {
 }
 
 func TestNameRegexp(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	cases := []struct {
 		Input string
 		Match bool
@@ -185,7 +184,7 @@ func TestNameRegexp(t *testing.T) {
 }
 
 func TestProviderConfigName(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	pcs := []*ProviderConfig{
 		{Name: "aw"},
 		{Name: "aws"},
@@ -209,7 +208,7 @@ func testConfig(t *testing.T, name string) *Config {
 }
 
 func TestConfigDataCount(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	c := testConfig(t, "data-count")
 	actual, err := c.Resources[0].Count()
 	if err != nil {
@@ -227,7 +226,7 @@ func TestConfigDataCount(t *testing.T) {
 }
 
 func TestConfigProviderVersion(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	c := testConfig(t, "provider-version")
 
 	if len(c.ProviderConfigs) != 1 {
@@ -249,7 +248,7 @@ func TestConfigProviderVersion(t *testing.T) {
 }
 
 func TestResourceProviderFullName(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	type testCase struct {
 		ResourceName string
 		Alias        string
@@ -300,7 +299,7 @@ func TestResourceProviderFullName(t *testing.T) {
 }
 
 func TestConfigModuleProviders(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	c := testConfig(t, "module-providers")
 
 	if len(c.Modules) != 1 {

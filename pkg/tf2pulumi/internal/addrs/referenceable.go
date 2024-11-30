@@ -13,8 +13,7 @@ type Referenceable interface {
 	String() string
 }
 
-type referenceable struct {
-}
+type referenceable struct{}
 
 func (r referenceable) referenceableSigil() {
 }

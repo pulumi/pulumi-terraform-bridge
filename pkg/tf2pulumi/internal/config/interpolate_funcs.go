@@ -1565,7 +1565,6 @@ func interpolationFuncTimeAdd() ast.Function {
 		},
 		ReturnType: ast.TypeString,
 		Callback: func(args []interface{}) (interface{}, error) {
-
 			ts, err := time.Parse(time.RFC3339, args[0].(string))
 			if err != nil {
 				return nil, err
@@ -1686,7 +1685,6 @@ func interpolationFuncTranspose() ast.Function {
 		ArgTypes:   []ast.Type{ast.TypeMap},
 		ReturnType: ast.TypeMap,
 		Callback: func(args []interface{}) (interface{}, error) {
-
 			inputMap := args[0].(map[string]ast.Variable)
 			outputMap := make(map[string]ast.Variable)
 			tmpMap := make(map[string][]string)

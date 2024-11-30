@@ -330,7 +330,8 @@ func (c *Config) validateDependsOn(
 	n string,
 	v []string,
 	resources map[string]*Resource,
-	modules map[string]*Module) []error {
+	modules map[string]*Module,
+) []error {
 	// Verify depends on points to resources that all exist
 	var errs []error
 	for _, d := range v {

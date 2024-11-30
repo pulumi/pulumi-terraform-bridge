@@ -19,8 +19,7 @@ type Targetable interface {
 	String() string
 }
 
-type targetable struct {
-}
+type targetable struct{}
 
 func (r targetable) targetableSigil() {
 }
