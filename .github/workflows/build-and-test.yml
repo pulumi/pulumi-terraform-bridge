@@ -73,6 +73,6 @@ jobs:
         uses: golangci/golangci-lint-action@v6
         with:
           skip-cache: true
-          version: v1.60
+          version: v1.62
       - name: Lint
         run: make lint
