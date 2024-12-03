@@ -98,8 +98,9 @@ func providerInfo(ctx context.Context, p run.Provider, value parameterize.Value)
 		// Note that this will only work for the provider (not the module) protocol.
 		urlFields := strings.Split(value.Remote.URL, "/")
 		ghOrg := urlFields[len(urlFields)-2]
+		name := urlFields[len(urlFields)-1]
 		prov.GitHubOrg = ghOrg
-
+		prov.Repository = "https://github.com/" + ghOrg + "/terraform-provider-" + name
 	}
 
 	if err := fixup.Default(&prov); err != nil {

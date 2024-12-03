@@ -39,18 +39,25 @@ func TestParseArgs(t *testing.T) {
 			name: "local too many args",
 			args: []string{"./my-provider", "nonsense"},
 			errMsg: autogold.Expect(
-				"path based providers are only parameterized by 2 arguments: <path> [docsLocation]",
+				"path based providers are only parameterized by 2 arguments: <path> [upstreamRepoPath=<path/to/files>]",
 			),
 		},
 		{
 			name: "local with docs location",
-			args: []string{"./my-provider", "docsLocation=./my-provider"},
+			args: []string{"./my-provider", "upstreamRepoPath=./my-provider"},
 			expect: Args{
 				Local: &LocalArgs{
-					Path:         "./my-provider",
-					DocsLocation: "./my-provider",
+					Path:             "./my-provider",
+					UpstreamRepoPath: "./my-provider",
 				},
 			},
+		},
+		{
+			name: "local empty upstreamRepoPath",
+			args: []string{"./my-provider", "upstreamRepoPath="},
+			errMsg: autogold.Expect(
+				"upstreamRepoPath must be set to a non-empty value: upstreamRepoPath=path/to/files",
+			),
 		},
 		{
 			name:   "remote",

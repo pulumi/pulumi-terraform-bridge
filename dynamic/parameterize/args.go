@@ -31,7 +31,7 @@ type RemoteArgs struct {
 	Name string
 	// Version is the (possibly empty) version constraint on the provider.
 	Version string
-	// Docs is the (possibly empty) argument to download and write docs into the schema
+	// Docs indicates if full schema documentation should be generated.
 	Docs bool
 }
 
@@ -39,22 +39,33 @@ type RemoteArgs struct {
 type LocalArgs struct {
 	// Path is the path to the provider binary. It can be relative or absolute.
 	Path string
-	// DocsLocation is the path to the provider documentation.
-	DocsLocation string
+	// UpstreamRepoPath (if provided) is the local path to the dynamically bridged Terraform provider's repo.
+	//
+	// If set, full documentation will be generated for the provider.
+	// If not set, only documentation from the TF provider's schema will be used.
+	UpstreamRepoPath string
 }
 
 func ParseArgs(args []string) (Args, error) {
 	// Check for a leading '.' or '/' to indicate a path
-
 	if len(args) >= 1 &&
 		(strings.HasPrefix(args[0], "./") || strings.HasPrefix(args[0], "/")) {
 		if len(args) > 1 {
 			docsArg := args[1]
-			docsLocation, found := strings.CutPrefix(docsArg, "docsLocation=")
+			upstreamRepoPath, found := strings.CutPrefix(docsArg, "upstreamRepoPath=")
 			if !found {
-				return Args{}, fmt.Errorf("path based providers are only parameterized by 2 arguments: <path> [docsLocation]")
+				return Args{}, fmt.Errorf(
+					"path based providers are only parameterized by 2 arguments: <path> " +
+						"[upstreamRepoPath=<path/to/files>]",
+				)
 			}
-			return Args{Local: &LocalArgs{Path: args[0], DocsLocation: docsLocation}}, nil
+			if upstreamRepoPath == "" {
+				return Args{}, fmt.Errorf(
+					"upstreamRepoPath must be set to a non-empty value: " +
+						"upstreamRepoPath=path/to/files",
+				)
+			}
+			return Args{Local: &LocalArgs{Path: args[0], UpstreamRepoPath: upstreamRepoPath}}, nil
 		}
 		return Args{Local: &LocalArgs{Path: args[0]}}, nil
 	}

@@ -18,10 +18,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/pkg/errors"
-	"github.com/spf13/afero"
 	"os"
 	"os/exec"
+
+	"github.com/pkg/errors"
+	"github.com/spf13/afero"
 
 	"github.com/blang/semver"
 	"github.com/opentofu/opentofu/shim/run"
@@ -169,11 +170,9 @@ func initialSetup() (info.Provider, pfbridge.ProviderMetadata, func() error) {
 					if err != nil {
 						return plugin.ParameterizeResponse{}, err
 					}
-					versionWithPrefix := "v" + info.Version
-					ghRepo := "https://github.com/" + info.GitHubOrg + "/terraform-provider-" + info.Name
-
+					versionTag := "v" + info.Version
 					cmd := exec.Command(
-						"git", "clone", "--depth", "1", "-b", versionWithPrefix, ghRepo, tmpDir,
+						"git", "clone", "--depth", "1", "-b", versionTag, info.Repository, tmpDir,
 					)
 					err = cmd.Run()
 					if err != nil {
@@ -184,8 +183,8 @@ func initialSetup() (info.Provider, pfbridge.ProviderMetadata, func() error) {
 			}
 
 			if args.Local != nil {
-				if args.Local.DocsLocation != "" {
-					info.UpstreamRepoPath = args.Local.DocsLocation
+				if args.Local.UpstreamRepoPath != "" {
+					info.UpstreamRepoPath = args.Local.UpstreamRepoPath
 					fullDocs = true
 				}
 			}
