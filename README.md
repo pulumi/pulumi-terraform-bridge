@@ -15,7 +15,7 @@ If you want to wrap a _new_ Terraform provider as a Pulumi provider, check out [
 
 The recommended way to start developing a new TF provider is with [pulumi-tf-provider-boilerplate](https://github.com/pulumi/pulumi-tf-provider-boilerplate).
 
-If you want details on how provider development works, please see [our docs](./docs/new-provider.md).
+If you want details on how provider development works, please see [our docs](./docs/guides/new-provider.md).
 
 ## Upgrading an Existing Bridged Provider
 
@@ -29,7 +29,7 @@ To upgrade a provider that was bridged from a Terraform provider built against [
 Plugin SDK](https://github.com/hashicorp/terraform-plugin-sdk) and you want to upgrade it
 to a version that has migrated some but not all resources/datasources to the [Terraform
 Plugin Framework](https://github.com/hashicorp/terraform-plugin-sdk?tab=readme-ov-file),
-see [here](./docs/upgrade-sdk-to-mux.md).
+see [here](./docs/guides/upgrade-sdk-to-mux.md).
 
 ## Overview
 
