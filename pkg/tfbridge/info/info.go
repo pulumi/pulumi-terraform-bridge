@@ -129,9 +129,6 @@ type Provider struct {
 	// - Name
 	// - TFProviderModuleVersion
 	//
-	// For dynamically bridged providers, when the fullDocs option is set on the parameterized inputs,
-	// this field will be automatically set to a temporary directory containing a shallow clone of the upstream repo.
-
 	// This list may change over time.
 	UpstreamRepoPath string
 

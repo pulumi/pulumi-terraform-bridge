@@ -941,7 +941,6 @@ func (g *Generator) generateSchemaResult(ctx context.Context) (*GenerateSchemaRe
 	if err != nil {
 		return nil, err
 	}
-
 	// First gather up the entire package contents. This structure is complete and sufficient to hand off to the
 	// language-specific generators to create the full output.
 	pack, err := g.gatherPackage()
@@ -1422,6 +1421,7 @@ func (g *Generator) gatherResource(rawname string,
 			g.warn(msg)
 		}
 	}
+
 	return res, nil
 }
 

@@ -86,6 +86,7 @@ func (gh *gitRepoSource) getFile(
 	if info != nil && len(info.Markdown) != 0 {
 		return &DocFile{Content: info.Markdown}, nil
 	}
+
 	repoPath := gh.upstreamRepoPath
 	if repoPath == "" {
 		var err error
