@@ -886,22 +886,21 @@ func NewGenerator(opts GeneratorOptions) (*Generator, error) {
 	}
 
 	return &Generator{
-		pkg:              pkg,
-		version:          version,
-		language:         lang,
-		info:             info,
-		root:             root,
-		providerShim:     providerShim,
-		pluginHost:       newCachingProviderHost(host),
-		packageCache:     pcl.NewPackageCache(),
-		infoSource:       host,
-		terraformVersion: opts.TerraformVersion,
-		sink:             sink,
-		skipDocs:         opts.SkipDocs,
-		skipExamples:     opts.SkipExamples,
-		coverageTracker:  opts.CoverageTracker,
-		editRules:        getEditRules(info.DocRules),
-		noDocsRepo:       opts.XInMemoryDocs,
+		pkg:             pkg,
+		version:         version,
+		language:        lang,
+		info:            info,
+		root:            root,
+		providerShim:    providerShim,
+		pluginHost:      newCachingProviderHost(host),
+		packageCache:    pcl.NewPackageCache(),
+		infoSource:      host,
+		sink:            sink,
+		skipDocs:        opts.SkipDocs,
+		skipExamples:    opts.SkipExamples,
+		coverageTracker: opts.CoverageTracker,
+		editRules:       getEditRules(info.DocRules),
+		noDocsRepo:      opts.XInMemoryDocs,
 	}, nil
 }
 

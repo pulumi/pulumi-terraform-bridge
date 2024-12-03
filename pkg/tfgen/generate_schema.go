@@ -587,16 +587,27 @@ func nodeLanguageExtensions(providerInfo *tfbridge.ProviderInfo, readme string) 
 
 func getDefaultReadme(pulumiPackageName tokens.Package, tfProviderShortName string, tfGitHubOrg string,
 	pulumiProvLicense tfbridge.TFProviderLicense, pulumiProvLicenseURI string, githubHost string,
-	pulumiProvRepo string,
+	sourceRepo string,
 ) string {
 	//nolint:lll
 	standardDocReadme := `> This provider is a derived work of the [Terraform Provider](https://%[6]s/%[3]s/terraform-provider-%[2]s)
 > distributed under [%[4]s](%[5]s). If you encounter a bug or missing feature,
 > first check the [` + "`pulumi-%[1]s`" + ` repo](%[7]s/issues); however, if that doesn't turn up anything,
 > please consult the source [` + "`terraform-provider-%[2]s`" + ` repo](https://%[6]s/%[3]s/terraform-provider-%[2]s/issues).`
+	//nolint:lll
+	dynamicDocReadme := `> This provider is a derived work of the [Terraform Provider](https://%[6]s/%[3]s/terraform-provider-%[2]s)
+> distributed under [%[4]s](%[5]s). If you encounter a bug or missing feature,
+> please consult the source [` + "`terraform-provider-%[2]s`" + ` repo](https://%[6]s/%[3]s/terraform-provider-%[2]s/issues).`
 
-	return fmt.Sprintf(standardDocReadme, pulumiPackageName, tfProviderShortName, tfGitHubOrg, pulumiProvLicense,
-		pulumiProvLicenseURI, githubHost, pulumiProvRepo)
+	var returnReadme string
+	if strings.Contains(sourceRepo, "pulumi") {
+		returnReadme = standardDocReadme
+	} else {
+		returnReadme = dynamicDocReadme
+	}
+
+	return fmt.Sprintf(returnReadme, pulumiPackageName, tfProviderShortName, tfGitHubOrg, pulumiProvLicense,
+		pulumiProvLicenseURI, githubHost, sourceRepo)
 }
 
 func (g *schemaGenerator) genDocComment(comment string) string {

@@ -136,6 +136,7 @@ func Test_GenerateTestDataSchemas(t *testing.T) {
 			pkg := strings.Replace(info.Name(), filepath.Ext(info.Name()), "", -1)
 			provInfo, err := providerInfoSource.GetProviderInfo("", "", pkg, "")
 			require.NoError(t, err)
+			provInfo.Repository = "https://github.com/pulumi/pulumi-" + pkg
 
 			schema, err := GenerateSchema(*provInfo, nilSink)
 			require.NoError(t, err)
