@@ -49,6 +49,7 @@ func initialSetup() (info.Provider, pfbridge.ProviderMetadata, func() error) {
 		P:            proto.Empty(),
 		Name:         baseProviderName,
 		Keywords:     []string{"category/utility"},
+		Repository:   "https://github.com/pulumi/pulumi-terraform-provider",
 		LogoURL:      "https://raw.githubusercontent.com/pulumi/pulumi-terraform-provider/main/assets/logo.png",
 		Version:      version.Version(),
 		Description:  "Use any Terraform provider with Pulumi",
