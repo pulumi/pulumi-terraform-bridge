@@ -43,7 +43,7 @@ func providerInfo(ctx context.Context, p run.Provider, value parameterize.Value)
 		ResourcePrefix: inferResourcePrefix(provider),
 
 		// To avoid bogging down schema generation speed, we skip all examples.
-		SkipExamples: func(tfbridge.SkipExamplesArgs) bool { return true },
+		SkipExamples: func(tfbridge.SkipExamplesArgs) bool { return false },
 
 		MetadataInfo: &tfbridge.MetadataInfo{
 			Path: "", Data: tfbridge.ProviderMetadata(nil),
@@ -99,6 +99,7 @@ func providerInfo(ctx context.Context, p run.Provider, value parameterize.Value)
 		urlFields := strings.Split(value.Remote.URL, "/")
 		ghOrg := urlFields[len(urlFields)-2]
 		prov.GitHubOrg = ghOrg
+
 	}
 
 	if err := fixup.Default(&prov); err != nil {
