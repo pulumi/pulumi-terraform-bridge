@@ -1764,7 +1764,6 @@ func (g *Generator) convert(
 		PluginHost:               g.pluginHost,
 		ProviderInfoSource:       g.infoSource,
 		SkipResourceTypechecking: true,
-		TerraformVersion:         g.terraformVersion,
 	})
 
 	return

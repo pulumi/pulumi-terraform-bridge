@@ -89,7 +89,6 @@ func Convert(opts Options) (map[string][]byte, Diagnostics, error) {
 		Logger:                     opts.Logger,
 		SkipResourceTypechecking:   opts.SkipResourceTypechecking,
 		TargetSDKVersion:           opts.TargetSDKVersion,
-		TerraformVersion:           opts.TerraformVersion,
 	}
 
 	tfFiles, program, diagnostics, err := internalEject(ejectOpts)
@@ -176,6 +175,8 @@ type Options struct {
 	// The target SDK version.
 	TargetSDKVersion string
 	// The version of Terraform targeteds by the input configuration.
+	//
+	// Deprecated: This field no longer has any effect, and will be removed in a future version of the bridge.
 	TerraformVersion string
 
 	// TargetOptions captures any target-specific options.
