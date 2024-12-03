@@ -1,6 +1,6 @@
 module github.com/pulumi/pulumi-terraform-bridge/v3
 
-go 1.22.0
+go 1.22.3
 
 toolchain go1.23.2
 

@@ -828,7 +828,6 @@ type GeneratorOptions struct {
 // NewGenerator returns a code-generator for the given language runtime and package info.
 func NewGenerator(opts GeneratorOptions) (*Generator, error) {
 	pkgName, version, lang, info, root := opts.Package, opts.Version, opts.Language, opts.ProviderInfo, opts.Root
-
 	pkg := tokens.NewPackageToken(tokens.PackageName(tokens.IntoQName(pkgName)))
 
 	// Ensure the language is valid.
@@ -927,10 +926,10 @@ type GenerateOptions struct {
 }
 
 // Generate creates Pulumi packages from the information it was initialized with.
-func (g *Generator) Generate() error {
+func (g *Generator) Generate() (*GenerateSchemaResult, error) {
 	genSchemaResult, err := g.generateSchemaResult(context.Background())
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Now push the schema through the rest of the generator.
@@ -955,7 +954,6 @@ func (g *Generator) generateSchemaResult(ctx context.Context) (*GenerateSchemaRe
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to create Pulumi schema")
 	}
-
 	// Apply schema post-processing if defined in the provider.
 	if g.info.SchemaPostProcessor != nil {
 		g.info.SchemaPostProcessor(&pulumiPackageSpec)
@@ -970,7 +968,7 @@ func (g *Generator) generateSchemaResult(ctx context.Context) (*GenerateSchemaRe
 // This is an unstable API. We have exposed it so other packages within
 // pulumi-terraform-bridge can consume it. We do not recommend other packages consume this
 // API.
-func (g *Generator) UnstableGenerateFromSchema(genSchemaResult *GenerateSchemaResult) error {
+func (g *Generator) UnstableGenerateFromSchema(genSchemaResult *GenerateSchemaResult) (*GenerateSchemaResult, error) {
 	pulumiPackageSpec := genSchemaResult.PackageSpec
 	schemaStats = schemaTools.CountStats(pulumiPackageSpec)
 
@@ -978,20 +976,19 @@ func (g *Generator) UnstableGenerateFromSchema(genSchemaResult *GenerateSchemaRe
 	var err error
 	g.providerShim.schema, err = json.Marshal(pulumiPackageSpec)
 	if err != nil {
-		return errors.Wrapf(err, "failed to marshal intermediate schema")
+		return nil, errors.Wrapf(err, "failed to marshal intermediate schema")
 	}
 
 	// Add any supplemental examples:
 	err = addExtraHclExamplesToResources(g.info.ExtraResourceHclExamples, &pulumiPackageSpec)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	err = addExtraHclExamplesToFunctions(g.info.ExtraFunctionHclExamples, &pulumiPackageSpec)
 	if err != nil {
-		return err
+		return nil, err
 	}
-
 	// Convert examples.
 	if !g.skipExamples {
 		pulumiPackageSpec = g.convertExamplesInSchema(pulumiPackageSpec)
@@ -1006,11 +1003,11 @@ func (g *Generator) UnstableGenerateFromSchema(genSchemaResult *GenerateSchemaRe
 		source := NewGitRepoDocsSource(g)
 		installationFile, err := source.getInstallation(nil)
 		if err != nil {
-			return errors.Wrapf(err, "failed to obtain an index.md file for this provider")
+			return nil, errors.Wrapf(err, "failed to obtain an index.md file for this provider")
 		}
 		content, err := plainDocsParser(installationFile, g)
 		if err != nil {
-			return errors.Wrapf(err, "failed to parse installation docs")
+			return nil, errors.Wrapf(err, "failed to parse installation docs")
 		}
 		files["_index.md"] = content
 	case Schema:
@@ -1019,7 +1016,7 @@ func (g *Generator) UnstableGenerateFromSchema(genSchemaResult *GenerateSchemaRe
 
 		bytes, err := json.MarshalIndent(pulumiPackageSpec, "", "    ")
 		if err != nil {
-			return errors.Wrapf(err, "failed to marshal schema")
+			return nil, errors.Wrapf(err, "failed to marshal schema")
 		}
 		files = map[string][]byte{"schema.json": bytes}
 
@@ -1032,7 +1029,7 @@ func (g *Generator) UnstableGenerateFromSchema(genSchemaResult *GenerateSchemaRe
 		}
 	case PCL:
 		if g.skipExamples {
-			return fmt.Errorf("Cannot set skipExamples and get PCL")
+			return nil, fmt.Errorf("Cannot set skipExamples and get PCL")
 		}
 		files = map[string][]byte{}
 		for path, code := range g.convertedCode {
@@ -1042,13 +1039,13 @@ func (g *Generator) UnstableGenerateFromSchema(genSchemaResult *GenerateSchemaRe
 	default:
 		pulumiPackage, diags, err := pschema.BindSpec(pulumiPackageSpec, nil)
 		if err != nil {
-			return errors.Wrapf(err, "failed to import Pulumi schema")
+			return nil, errors.Wrapf(err, "failed to import Pulumi schema")
 		}
 		if diags.HasErrors() {
-			return err
+			return nil, err
 		}
 		if files, err = g.language.emitSDK(pulumiPackage, g.info, g.root); err != nil {
-			return errors.Wrapf(err, "failed to generate package")
+			return nil, errors.Wrapf(err, "failed to generate package")
 		}
 	}
 
@@ -1060,21 +1057,21 @@ func (g *Generator) UnstableGenerateFromSchema(genSchemaResult *GenerateSchemaRe
 			}
 		}
 		if err := emitFile(g.root, f, contents); err != nil {
-			return errors.Wrapf(err, "emitting file %v", f)
+			return nil, errors.Wrapf(err, "emitting file %v", f)
 		}
 	}
 
 	// Emit the Pulumi project information.
 	if g.language != RegistryDocs {
 		if err = g.emitProjectMetadata(g.pkg, g.language); err != nil {
-			return errors.Wrapf(err, "failed to create project file")
+			return nil, errors.Wrapf(err, "failed to create project file")
 		}
 	}
 
 	// Close the plugin host.
 	g.pluginHost.Close()
 
-	return nil
+	return &GenerateSchemaResult{PackageSpec: pulumiPackageSpec}, nil
 }
 
 // gatherPackage creates a package plus module structure for the entire set of members of this package.
@@ -1425,7 +1422,6 @@ func (g *Generator) gatherResource(rawname string,
 			g.warn(msg)
 		}
 	}
-
 	return res, nil
 }
 

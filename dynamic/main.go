@@ -18,6 +18,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/pkg/errors"
+	"github.com/spf13/afero"
 	"os"
 	"os/exec"
 
@@ -67,13 +69,23 @@ func initialSetup() (info.Provider, pfbridge.ProviderMetadata, func() error) {
 	var fullDocs bool
 	metadata = pfbridge.ProviderMetadata{
 		XGetSchema: func(ctx context.Context, req plugin.GetSchemaRequest) ([]byte, error) {
-			packageSchema, err := tfgen.GenerateSchemaWithOptions(tfgen.GenerateSchemaOptions{
+			// Create a custom generator for schema and, of fullDocs is set, examples
+			g, err := tfgen.NewGenerator(tfgen.GeneratorOptions{
+				Package:      info.Name,
+				Version:      info.Version,
+				Language:     tfgen.Schema,
 				ProviderInfo: info,
-				DiagnosticsSink: diag.DefaultSink(os.Stdout, os.Stderr, diag.FormatOptions{
+				Root:         afero.NewMemMapFs(),
+				Sink: diag.DefaultSink(os.Stdout, os.Stderr, diag.FormatOptions{
 					Color: colors.Always,
 				}),
 				XInMemoryDocs: !fullDocs,
+				SkipExamples:  !fullDocs,
 			})
+			if err != nil {
+				return nil, errors.Wrapf(err, "failed to create generator")
+			}
+			packageSchema, err := g.Generate()
 			if err != nil {
 				return nil, err
 			}
@@ -81,7 +93,6 @@ func initialSetup() (info.Provider, pfbridge.ProviderMetadata, func() error) {
 			if info.SchemaPostProcessor != nil {
 				info.SchemaPostProcessor(&packageSchema.PackageSpec)
 			}
-
 			return json.Marshal(packageSchema.PackageSpec)
 		},
 		XParamaterize: func(ctx context.Context, req plugin.ParameterizeRequest) (plugin.ParameterizeResponse, error) {
