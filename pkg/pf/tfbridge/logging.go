@@ -19,8 +19,8 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/internal/logging"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/logging"
 )
 
 // Configures logging. Note that urn is optional but useful to identify logs with resources.

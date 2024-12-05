@@ -19,7 +19,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/logging"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/internal/logging"
 )
 
 // Send logs or status logs to the user.
