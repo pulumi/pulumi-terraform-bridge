@@ -21,15 +21,23 @@ import (
 	"os"
 	"strings"
 
-	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/logging"
 )
 
-// LogRedirector creates a new redirection writer that takes as input plugin stderr output, and routes it to the
-// correct Pulumi stream based on the standard Terraform logging output prefixes.
+// LogRedirector creates a new redirection writer that takes [log] messages as input, and
+// routes it to the Pulumi correct structured logging.
+//
+// It looks for lines that contain log level information and routes them to their Pulumi
+// equivalent. A line is considered to have log level information when it contains one of:
+//
+// - "[TRACE]"
+// - "[DEBUG]"
+// - "[INFO]"
+// - "[WARN]"
+// - "[ERROR]"
 type LogRedirector struct {
 	ctx    context.Context
 	level  level        // log level requested by TF_LOG
@@ -74,11 +82,12 @@ const (
 	tfErrorPrefix = "[ERROR]"
 )
 
-func NewTerraformLogRedirector(ctx context.Context, hostClient *provider.HostClient) *LogRedirector {
-	lr := &LogRedirector{ctx: ctx, sink: hostClient}
+// NewTerraformLogRedirector creates a [LogRedirector] that responds to the TF_LOG
+// environmental variable.
+func NewTerraformLogRedirector(ctx context.Context, sink logging.Sink) *LogRedirector {
+	lr := &LogRedirector{ctx: ctx, sink: sink}
 
-	tfLog, ok := os.LookupEnv("TF_LOG")
-	if ok {
+	if tfLog, ok := os.LookupEnv("TF_LOG"); ok {
 		switch strings.ToLower(tfLog) {
 		case "trace":
 			lr.level = traceLevel
