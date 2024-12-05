@@ -23,6 +23,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/pulcheck"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -61,10 +62,11 @@ func TestAccProviderSecrets(t *testing.T) {
 // with a plain value The plain value does not leak to state but is secreted instate.
 func TestAccProviderConfigureSecrets(t *testing.T) {
 	type testCase struct {
-		name       string
-		program    string
-		configure  func(t *testing.T, rd *schema.ResourceData)
-		checkState func(t *testing.T, d *apitype.DeploymentV3)
+		name               string
+		program            string
+		configure          func(t *testing.T, ctx context.Context, stack *auto.Stack)
+		checkConfigureCall func(t *testing.T, rd *schema.ResourceData)
+		checkState         func(t *testing.T, d *apitype.DeploymentV3)
 	}
 
 	testCases := []testCase{
@@ -86,11 +88,40 @@ func TestAccProviderConfigureSecrets(t *testing.T) {
                                 options:
                                     provider: ${prov}
 			`,
-			configure: func(t *testing.T, rd *schema.ResourceData) {
+			checkConfigureCall: func(t *testing.T, rd *schema.ResourceData) {
 				require.Equal(t, "SECRET", rd.Get("string_config"))
 			},
 			checkState: func(t *testing.T, d *apitype.DeploymentV3) {
-				p := requireProvider(t, d)
+				p := requireExplicitProvider(t, d)
+				requireSecret(t, p.Inputs["stringConfig"], `p.Inputs["stringConfig"]`)
+				requireSecret(t, p.Outputs["stringConfig"], `p.Outputs["stringConfig"]`)
+			},
+		},
+		{
+			name: "default-provider/string",
+			program: `
+                        name: test
+                        runtime: yaml
+                        resources:
+                            mainRes:
+                                type: prov:index:Test
+                                properties:
+                                    stringProp: "foo"
+			`,
+			configure: func(t *testing.T, ctx context.Context, stack *auto.Stack) {
+				t.Helper()
+				err := stack.SetConfig(ctx, "prov:stringConfig", auto.ConfigValue{
+					Value:  "SECRET",
+					Secret: true,
+				})
+				require.NoError(t, err)
+			},
+			checkConfigureCall: func(t *testing.T, rd *schema.ResourceData) {
+				t.Helper()
+				require.Equal(t, "SECRET", rd.Get("string_config"))
+			},
+			checkState: func(t *testing.T, d *apitype.DeploymentV3) {
+				p := requireDefaultProvider(t, d)
 				requireSecret(t, p.Inputs["stringConfig"], `p.Inputs["stringConfig"]`)
 				requireSecret(t, p.Outputs["stringConfig"], `p.Outputs["stringConfig"]`)
 			},
@@ -99,6 +130,7 @@ func TestAccProviderConfigureSecrets(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
 			res := &schema.Resource{
 				Schema: map[string]*schema.Schema{
 					"string_prop": {
@@ -109,7 +141,7 @@ func TestAccProviderConfigureSecrets(t *testing.T) {
 			}
 			tfp := &schema.Provider{
 				ConfigureContextFunc: func(ctx context.Context, rd *schema.ResourceData) (interface{}, diag.Diagnostics) {
-					tc.configure(t, rd)
+					tc.checkConfigureCall(t, rd)
 					return &struct{}{}, diag.Diagnostics{}
 				},
 				Schema: map[string]*schema.Schema{
@@ -122,6 +154,9 @@ func TestAccProviderConfigureSecrets(t *testing.T) {
 			}
 			bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
 			pt := pulcheck.PulCheck(t, bridgedProvider, tc.program)
+			if tc.configure != nil {
+				tc.configure(t, ctx, pt.CurrentStack())
+			}
 			out := pt.Up(t)
 			t.Logf("%s\n%s", out.StdOut, out.StdErr)
 			state := pt.ExportStack(t)
@@ -134,9 +169,20 @@ func TestAccProviderConfigureSecrets(t *testing.T) {
 }
 
 // Requires an explicit provider record in the state and returns it.
-func requireProvider(t *testing.T, d *apitype.DeploymentV3) apitype.ResourceV3 {
+func requireExplicitProvider(t *testing.T, d *apitype.DeploymentV3) apitype.ResourceV3 {
 	for _, r := range d.Resources {
 		if r.URN == "urn:pulumi:test::test::pulumi:providers:prov::prov" {
+			return r
+		}
+	}
+	require.Fail(t, "Expected to find an explicit provider record")
+	return apitype.ResourceV3{}
+}
+
+// Requires a default provider record in the state and returns it.
+func requireDefaultProvider(t *testing.T, d *apitype.DeploymentV3) apitype.ResourceV3 {
+	for _, r := range d.Resources {
+		if r.URN == "urn:pulumi:test::test::pulumi:providers:prov::default" {
 			return r
 		}
 	}
