@@ -58,21 +58,20 @@ const (
 )
 
 type Generator struct {
-	pkg              tokens.Package        // the Pulumi package name (e.g. `gcp`)
-	version          string                // the package version.
-	language         Language              // the language runtime to generate.
-	info             tfbridge.ProviderInfo // the provider info for customizing code generation
-	root             afero.Fs              // the output virtual filesystem.
-	providerShim     *inmemoryProvider     // a provider shim to hold the provider schema during example conversion.
-	pluginHost       plugin.Host           // the plugin host for tf2pulumi.
-	packageCache     *pcl.PackageCache     // the package cache for tf2pulumi.
-	infoSource       il.ProviderInfoSource // the provider info source for tf2pulumi.
-	terraformVersion string                // the Terraform version to target for example codegen, if any
-	sink             diag.Sink
-	skipDocs         bool
-	skipExamples     bool
-	coverageTracker  *CoverageTracker
-	editRules        editRules
+	pkg             tokens.Package        // the Pulumi package name (e.g. `gcp`)
+	version         string                // the package version.
+	language        Language              // the language runtime to generate.
+	info            tfbridge.ProviderInfo // the provider info for customizing code generation
+	root            afero.Fs              // the output virtual filesystem.
+	providerShim    *inmemoryProvider     // a provider shim to hold the provider schema during example conversion.
+	pluginHost      plugin.Host           // the plugin host for tf2pulumi.
+	packageCache    *pcl.PackageCache     // the package cache for tf2pulumi.
+	infoSource      il.ProviderInfoSource // the provider info source for tf2pulumi.
+	sink            diag.Sink
+	skipDocs        bool
+	skipExamples    bool
+	coverageTracker *CoverageTracker
+	editRules       editRules
 
 	convertedCode map[string][]byte
 
@@ -813,7 +812,6 @@ type GeneratorOptions struct {
 	Root               afero.Fs
 	ProviderInfoSource il.ProviderInfoSource
 	PluginHost         plugin.Host
-	TerraformVersion   string
 	Sink               diag.Sink
 	Debug              bool
 	SkipDocs           bool
@@ -889,22 +887,21 @@ func NewGenerator(opts GeneratorOptions) (*Generator, error) {
 	}
 
 	return &Generator{
-		pkg:              pkg,
-		version:          version,
-		language:         lang,
-		info:             info,
-		root:             root,
-		providerShim:     providerShim,
-		pluginHost:       newCachingProviderHost(host),
-		packageCache:     pcl.NewPackageCache(),
-		infoSource:       host,
-		terraformVersion: opts.TerraformVersion,
-		sink:             sink,
-		skipDocs:         opts.SkipDocs,
-		skipExamples:     opts.SkipExamples,
-		coverageTracker:  opts.CoverageTracker,
-		editRules:        getEditRules(info.DocRules),
-		noDocsRepo:       opts.XInMemoryDocs,
+		pkg:             pkg,
+		version:         version,
+		language:        lang,
+		info:            info,
+		root:            root,
+		providerShim:    providerShim,
+		pluginHost:      newCachingProviderHost(host),
+		packageCache:    pcl.NewPackageCache(),
+		infoSource:      host,
+		sink:            sink,
+		skipDocs:        opts.SkipDocs,
+		skipExamples:    opts.SkipExamples,
+		coverageTracker: opts.CoverageTracker,
+		editRules:       getEditRules(info.DocRules),
+		noDocsRepo:      opts.XInMemoryDocs,
 	}, nil
 }
 
