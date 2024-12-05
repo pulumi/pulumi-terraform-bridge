@@ -109,7 +109,6 @@ func TestAccProviderConfigureSecrets(t *testing.T) {
                                     stringProp: "foo"
 			`,
 			configure: func(t *testing.T, ctx context.Context, stack *auto.Stack) {
-				t.Helper()
 				err := stack.SetConfig(ctx, "prov:stringConfig", auto.ConfigValue{
 					Value:  "SECRET",
 					Secret: true,
@@ -117,7 +116,6 @@ func TestAccProviderConfigureSecrets(t *testing.T) {
 				require.NoError(t, err)
 			},
 			checkConfigureCall: func(t *testing.T, rd *schema.ResourceData) {
-				t.Helper()
 				require.Equal(t, "SECRET", rd.Get("string_config"))
 			},
 			checkState: func(t *testing.T, d *apitype.DeploymentV3) {
@@ -170,6 +168,7 @@ func TestAccProviderConfigureSecrets(t *testing.T) {
 
 // Requires an explicit provider record in the state and returns it.
 func requireExplicitProvider(t *testing.T, d *apitype.DeploymentV3) apitype.ResourceV3 {
+	t.Helper()
 	for _, r := range d.Resources {
 		if r.URN == "urn:pulumi:test::test::pulumi:providers:prov::prov" {
 			return r
@@ -181,6 +180,7 @@ func requireExplicitProvider(t *testing.T, d *apitype.DeploymentV3) apitype.Reso
 
 // Requires a default provider record in the state and returns it.
 func requireDefaultProvider(t *testing.T, d *apitype.DeploymentV3) apitype.ResourceV3 {
+	t.Helper()
 	for _, r := range d.Resources {
 		if r.URN == "urn:pulumi:test::test::pulumi:providers:prov::default" {
 			return r
@@ -192,6 +192,7 @@ func requireDefaultProvider(t *testing.T, d *apitype.DeploymentV3) apitype.Resou
 
 // Ensures that isSecret(value) assertion holds.
 func requireSecret(t *testing.T, value any, expr string) {
+	t.Helper()
 	require.Truef(t, isSecret(value), "Expected %s to be a secret, got %#v", expr, value)
 }
 
