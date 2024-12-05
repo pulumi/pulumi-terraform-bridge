@@ -71,7 +71,7 @@ func TestAccProviderConfigureSecrets(t *testing.T) {
 
 	testCases := []testCase{
 		{
-			name: "explicit-provider/string",
+			name: "explicit-provider/first-class-secret/string",
 			program: `
                         name: test
                         runtime: yaml
@@ -98,7 +98,33 @@ func TestAccProviderConfigureSecrets(t *testing.T) {
 			},
 		},
 		{
-			name: "default-provider/string",
+			name: "explicit-provider/schema-secret/string",
+			program: `
+                        name: test
+                        runtime: yaml
+                        resources:
+                            prov:
+                                type: pulumi:providers:prov
+                                properties:
+                                    secretStringConfig: "SECRET"
+                            mainRes:
+                                type: prov:index:Test
+                                properties:
+                                    stringProp: "foo"
+                                options:
+                                    provider: ${prov}
+			`,
+			checkConfigureCall: func(t *testing.T, rd *schema.ResourceData) {
+				require.Equal(t, "SECRET", rd.Get("secret_string_config"))
+			},
+			checkState: func(t *testing.T, d *apitype.DeploymentV3) {
+				p := requireExplicitProvider(t, d)
+				requireSecret(t, p.Inputs["secretStringConfig"], `p.Inputs["secretStringConfig"]`)
+				requireSecret(t, p.Outputs["secretStringConfig"], `p.Outputs["secretStringConfig"]`)
+			},
+		},
+		{
+			name: "default-provider/first-class-secret/string",
 			program: `
                         name: test
                         runtime: yaml
@@ -124,6 +150,32 @@ func TestAccProviderConfigureSecrets(t *testing.T) {
 				requireSecret(t, p.Outputs["stringConfig"], `p.Outputs["stringConfig"]`)
 			},
 		},
+		{
+			name: "default-provider/schema-secret/string",
+			program: `
+                        name: test
+                        runtime: yaml
+                        resources:
+                            mainRes:
+                                type: prov:index:Test
+                                properties:
+                                    stringProp: "foo"
+			`,
+			configure: func(t *testing.T, ctx context.Context, stack *auto.Stack) {
+				err := stack.SetConfig(ctx, "prov:secretStringConfig", auto.ConfigValue{
+					Value: "SECRET",
+				})
+				require.NoError(t, err)
+			},
+			checkConfigureCall: func(t *testing.T, rd *schema.ResourceData) {
+				require.Equal(t, "SECRET", rd.Get("secret_string_config"))
+			},
+			checkState: func(t *testing.T, d *apitype.DeploymentV3) {
+				p := requireDefaultProvider(t, d)
+				requireSecret(t, p.Inputs["secretStringConfig"], `p.Inputs["secretStringConfig"]`)
+				requireSecret(t, p.Outputs["secretStringConfig"], `p.Outputs["secretStringConfig"]`)
+			},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -146,6 +198,11 @@ func TestAccProviderConfigureSecrets(t *testing.T) {
 					"string_config": {
 						Type:     schema.TypeString,
 						Optional: true,
+					},
+					"secret_string_config": {
+						Type:      schema.TypeString,
+						Optional:  true,
+						Sensitive: true,
 					},
 				},
 				ResourcesMap: map[string]*schema.Resource{"prov_test": res},
