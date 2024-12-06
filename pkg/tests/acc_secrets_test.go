@@ -51,16 +51,15 @@ func TestAccProviderSecrets(t *testing.T) {
 // property-nesting: top-level vs nested
 // provider-type: explicit, default
 //
-// Check that first-class secrets work as expected at integration level (via Pulumi CLI).
+// Check that first-class secrets work as expected: when a program configures the provider with a secret input Pulumi up
+// succeeds and TF code receives the expected un-secreted value Secret material does not leak to state.
 //
-// When a program configures the provider with a secret input
-// Pulumi up succeeds and TF code receives the expected un-secreted value
-// Secret material does not leak to state
+// Check that schema-based secrets work as expected: when a provider property is sensitive according to SchemaInfo or
+// underlying TF schema, the user configures the provider with a plain value. The plain value does not leak to state but
+// is secreted in the state.
 //
-// Check that schema-based secrets work as expected:
-//
-// When a provider property is sensitive according to SchemaInfo or underlying TF schema User configures the provider
-// with a plain value The plain value does not leak to state but is secreted instate.
+// This tests exercise the bridge and Pulumi CLI together intentionally as secret handling for nested properties
+// historically had some quirks in the Pulumi CLI.
 func TestAccProviderConfigureSecrets(t *testing.T) {
 	type primType struct {
 		name            string
@@ -90,16 +89,19 @@ func TestAccProviderConfigureSecrets(t *testing.T) {
 				Value: "SECRET",
 			},
 		},
-		// {
-		// 	name:            "int",
-		// 	capitalizedName: "Int",
-		// 	yamlLiteral:     `42`,
-		// 	valueInTF:       int64(42),
-		// 	schema: schema.Schema{
-		// 		Type:     schema.TypeInt,
-		// 		Optional: true,
-		// 	},
-		// },
+		{
+			name:            "int",
+			capitalizedName: "Int",
+			yamlLiteral:     `42`,
+			valueInTF:       int(42),
+			schema: schema.Schema{
+				Type:     schema.TypeInt,
+				Optional: true,
+			},
+			configValue: auto.ConfigValue{
+				Value: "42",
+			},
+		},
 	}
 
 	type testCase struct {
