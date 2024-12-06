@@ -242,6 +242,31 @@ func TestTokensMappedModules(t *testing.T) {
 	}, info.Resources)
 }
 
+func TestTokensMostSpecificMappedModules(t *testing.T) {
+	t.Parallel()
+	info := tfbridge.ProviderInfo{
+		P: (&schema.Provider{
+			ResourcesMap: schema.ResourceMap{
+				"prov_type_kind":          nil,
+				"prov_type_specific_kind": nil,
+			},
+		}).Shim(),
+	}
+	err := info.ComputeTokens(tfbridge.Strategy{
+		Resource: tokens.MappedModules("prov_", "", map[string]string{
+			"type":          "type",
+			"type_specific": "specific",
+		}, func(module, name string) (string, error) {
+			return fmt.Sprintf("prov:%s:%s", module, name), nil
+		}).Resource,
+	})
+	require.NoError(t, err)
+	assert.Equal(t, map[string]*tfbridge.ResourceInfo{
+		"prov_type_kind":          {Tok: "prov:type:Kind"},
+		"prov_type_specific_kind": {Tok: "prov:specific:Kind"},
+	}, info.Resources)
+}
+
 func TestUnmappable(t *testing.T) {
 	t.Parallel()
 	info := tfbridge.ProviderInfo{
