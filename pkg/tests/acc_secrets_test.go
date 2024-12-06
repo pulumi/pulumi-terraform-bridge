@@ -102,6 +102,19 @@ func TestAccProviderConfigureSecrets(t *testing.T) {
 				Value: "42",
 			},
 		},
+		{
+			name:            "bool",
+			capitalizedName: "Bool",
+			yamlLiteral:     `false`,
+			valueInTF:       false,
+			schema: schema.Schema{
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
+			configValue: auto.ConfigValue{
+				Value: "false",
+			},
+		},
 	}
 
 	type testCase struct {
