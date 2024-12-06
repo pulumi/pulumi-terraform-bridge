@@ -36,6 +36,30 @@ func TestParseArgs(t *testing.T) {
 			expect: Args{Local: &LocalArgs{Path: "./my-provider"}},
 		},
 		{
+			name: "local too many args",
+			args: []string{"./my-provider", "nonsense"},
+			errMsg: autogold.Expect(
+				"path based providers are only parameterized by 2 arguments: <path> [upstreamRepoPath=<path/to/files>]",
+			),
+		},
+		{
+			name: "local with docs location",
+			args: []string{"./my-provider", "upstreamRepoPath=./my-provider"},
+			expect: Args{
+				Local: &LocalArgs{
+					Path:             "./my-provider",
+					UpstreamRepoPath: "./my-provider",
+				},
+			},
+		},
+		{
+			name: "local empty upstreamRepoPath",
+			args: []string{"./my-provider", "upstreamRepoPath="},
+			errMsg: autogold.Expect(
+				"upstreamRepoPath must be set to a non-empty value: upstreamRepoPath=path/to/files",
+			),
+		},
+		{
 			name:   "remote",
 			args:   []string{"my-registry.io/typ"},
 			expect: Args{Remote: &RemoteArgs{Name: "my-registry.io/typ"}},
@@ -51,12 +75,26 @@ func TestParseArgs(t *testing.T) {
 		{
 			name:   "no args",
 			args:   []string{},
-			errMsg: autogold.Expect("expected to be parameterized by 1-2 arguments: <name> [version]"),
+			errMsg: autogold.Expect("expected to be parameterized by 1-3 arguments: <name> [version] [fullDocs]"),
 		},
 		{
 			name:   "too many args",
+			args:   []string{"arg1", "arg2", "arg3", "arg4"},
+			errMsg: autogold.Expect("expected to be parameterized by 1-3 arguments: <name> [version] [fullDocs]"),
+		},
+		{
+			name:   "invalid third arg",
 			args:   []string{"arg1", "arg2", "arg3"},
-			errMsg: autogold.Expect("expected to be parameterized by 1-2 arguments: <name> [version]"),
+			errMsg: autogold.Expect("expected third parameterized argument to be 'fullDocs' or empty"),
+		},
+		{
+			name: "valid third arg",
+			args: []string{"my-registry.io/typ", "1.2.3", "fullDocs"},
+			expect: Args{Remote: &RemoteArgs{
+				Name:    "my-registry.io/typ",
+				Version: "1.2.3",
+				Docs:    true,
+			}},
 		},
 	}
 

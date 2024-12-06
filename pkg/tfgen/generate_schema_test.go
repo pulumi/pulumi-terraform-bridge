@@ -222,6 +222,7 @@ func TestTypeSharing(t *testing.T) {
 			},
 		}),
 		UpstreamRepoPath: tmpdir,
+		Repository:       "https://github.com/pulumi/pulumi-testprov",
 		Resources: map[string]*info.Resource{
 			"testprov_r1": {
 				Tok: "testprov:index:R1",
