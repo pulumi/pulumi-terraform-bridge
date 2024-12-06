@@ -349,7 +349,7 @@ func (p *planResourceChangeImpl) Apply(
 
 	resp, err := p.server.ApplyResourceChange(ctx, t, ty, cfg, st, pl, priv, meta)
 	if err != nil {
-		return nil, err
+		return resp, err
 	}
 	return &v2InstanceState2{
 		resourceType: t,
@@ -662,25 +662,28 @@ func (s *grpcServer) ApplyResourceChange(
 		}
 		req.ProviderMeta = &tfprotov5.DynamicValue{MsgPack: providerMetaVal}
 	}
-	resp, err := s.gserver.ApplyResourceChange(ctx, req)
-	if err := handleDiagnostics(ctx, resp.Diagnostics, err); err != nil {
-		return nil, err
-	}
-	newState, err := msgpack.Unmarshal(resp.NewState.MsgPack, ty)
-	if err != nil {
-		return nil, err
-	}
+	resp, applyErr := s.gserver.ApplyResourceChange(ctx, req)
+	newState := cty.Value{}
 	var meta map[string]interface{}
-	if resp.Private != nil {
-		if err := json.Unmarshal(resp.Private, &meta); err != nil {
-			return nil, err
+	if resp != nil {
+		if resp.NewState != nil {
+			newState, err = msgpack.Unmarshal(resp.NewState.MsgPack, ty)
+			if err != nil {
+				return nil, err
+			}
+		}
+		if resp.Private != nil {
+			if err := json.Unmarshal(resp.Private, &meta); err != nil {
+				return nil, err
+			}
 		}
 	}
+	returnErr := handleDiagnostics(ctx, resp.Diagnostics, applyErr)
 	return &v2InstanceState2{
 		resourceType: typeName,
 		stateValue:   newState,
 		meta:         meta,
-	}, nil
+	}, returnErr
 }
 
 func (s *grpcServer) ReadResource(
