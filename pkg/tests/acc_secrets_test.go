@@ -23,6 +23,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/pulcheck"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -61,18 +62,25 @@ func TestAccProviderSecrets(t *testing.T) {
 // This tests exercise the bridge and Pulumi CLI together intentionally as secret handling for nested properties
 // historically had some quirks in the Pulumi CLI.
 func TestAccProviderConfigureSecrets(t *testing.T) {
+	type configSetter func(ctx context.Context, t *testing.T, stack *auto.Stack, basePath string, secret bool)
+
 	type primType struct {
 		name            string
 		capitalizedName string
 		yamlLiteral     string
 		valueInTF       any
-		configValue     auto.ConfigValue
+		configSetter    configSetter
 		schema          schema.Schema
 	}
 
-	secretConfigValue := func(cv auto.ConfigValue) auto.ConfigValue {
-		cv.Secret = true
-		return cv
+	setConfigValue := func(cv auto.ConfigValue) configSetter {
+		return func(ctx context.Context, t *testing.T, stack *auto.Stack, basePath string, secret bool) {
+			if secret {
+				cv.Secret = true
+			}
+			err := stack.SetConfigWithOptions(ctx, basePath, cv, &auto.ConfigOptions{Path: true})
+			require.NoError(t, err)
+		}
 	}
 
 	primTypes := []primType{
@@ -85,9 +93,9 @@ func TestAccProviderConfigureSecrets(t *testing.T) {
 				Type:     schema.TypeString,
 				Optional: true,
 			},
-			configValue: auto.ConfigValue{
+			configSetter: setConfigValue(auto.ConfigValue{
 				Value: "SECRET",
-			},
+			}),
 		},
 		{
 			name:            "int",
@@ -98,9 +106,9 @@ func TestAccProviderConfigureSecrets(t *testing.T) {
 				Type:     schema.TypeInt,
 				Optional: true,
 			},
-			configValue: auto.ConfigValue{
+			configSetter: setConfigValue(auto.ConfigValue{
 				Value: "42",
-			},
+			}),
 		},
 		{
 			name:            "bool",
@@ -111,8 +119,36 @@ func TestAccProviderConfigureSecrets(t *testing.T) {
 				Type:     schema.TypeBool,
 				Optional: true,
 			},
-			configValue: auto.ConfigValue{
+			configSetter: setConfigValue(auto.ConfigValue{
 				Value: "false",
+			}),
+		},
+		{
+			name:            "strlist",
+			capitalizedName: "Strlist",
+			yamlLiteral:     `["A","B"]`,
+			valueInTF:       []any{"A", "B"},
+			schema: schema.Schema{
+				Type: schema.TypeList,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
+				Optional: true,
+			},
+			configSetter: func(
+				ctx context.Context,
+				t *testing.T,
+				stack *auto.Stack,
+				basePath string,
+				secret bool,
+			) {
+				o := &auto.ConfigOptions{Path: true}
+				err := stack.SetConfigWithOptions(ctx, fmt.Sprintf("%s[0]", basePath),
+					auto.ConfigValue{Value: "A", Secret: secret}, o)
+				require.NoError(t, err)
+				err = stack.SetConfigWithOptions(ctx, fmt.Sprintf("%s[1]", basePath),
+					auto.ConfigValue{Value: "B", Secret: secret}, o)
+				require.NoError(t, err)
 			},
 		},
 	}
@@ -197,10 +233,8 @@ func TestAccProviderConfigureSecrets(t *testing.T) {
 	                            stringProp: "foo"
 			`,
 			configure: func(t *testing.T, ctx context.Context, stack *auto.Stack) {
-				err := stack.SetConfig(ctx,
-					fmt.Sprintf("prov:basic%sConfig", ty.capitalizedName),
-					secretConfigValue(ty.configValue))
-				assert.NoError(t, err)
+				p := fmt.Sprintf("prov:basic%sConfig", ty.capitalizedName)
+				ty.configSetter(ctx, t, stack, p, true /*secret*/)
 			},
 			checkConfigureCall: func(t *testing.T, rd *schema.ResourceData) {
 				assert.Equal(t, ty.valueInTF, rd.Get(fmt.Sprintf("basic_%s_config", ty.name)))
@@ -225,9 +259,8 @@ func TestAccProviderConfigureSecrets(t *testing.T) {
 	                            stringProp: "foo"
 			`,
 			configure: func(t *testing.T, ctx context.Context, stack *auto.Stack) {
-				err := stack.SetConfig(ctx, fmt.Sprintf("prov:secret%sConfig", ty.capitalizedName),
-					ty.configValue)
-				assert.NoError(t, err)
+				p := fmt.Sprintf("prov:secret%sConfig", ty.capitalizedName)
+				ty.configSetter(ctx, t, stack, p, false /*secret*/)
 			},
 			checkConfigureCall: func(t *testing.T, rd *schema.ResourceData) {
 				assert.Equal(t, ty.valueInTF, rd.Get(fmt.Sprintf("secret_%s_config", ty.name)))
@@ -316,13 +349,8 @@ func TestAccProviderConfigureSecrets(t *testing.T) {
 		                    stringProp: "foo"
 			`,
 			configure: func(t *testing.T, ctx context.Context, stack *auto.Stack) {
-				err := stack.SetConfigWithOptions(ctx,
-					fmt.Sprintf("prov:obj.nested%sConfig", ty.capitalizedName),
-					secretConfigValue(ty.configValue),
-					&auto.ConfigOptions{
-						Path: true,
-					})
-				require.NoError(t, err)
+				p := fmt.Sprintf("prov:obj.nested%sConfig", ty.capitalizedName)
+				ty.configSetter(ctx, t, stack, p, true /*secret*/)
 			},
 			checkConfigureCall: func(t *testing.T, rd *schema.ResourceData) {
 				assert.Equal(t, ty.valueInTF, rd.Get(fmt.Sprintf("obj.0.nested_%s_config", ty.name)))
@@ -348,11 +376,8 @@ func TestAccProviderConfigureSecrets(t *testing.T) {
 		                    stringProp: "foo"
 			`,
 			configure: func(t *testing.T, ctx context.Context, stack *auto.Stack) {
-				err := stack.SetConfigWithOptions(ctx,
-					fmt.Sprintf("prov:obj.nestedSecret%sConfig", ty.capitalizedName),
-					ty.configValue,
-					&auto.ConfigOptions{Path: true})
-				require.NoError(t, err)
+				p := fmt.Sprintf("prov:obj.nestedSecret%sConfig", ty.capitalizedName)
+				ty.configSetter(ctx, t, stack, p, false /*secret*/)
 			},
 			checkConfigureCall: func(t *testing.T, rd *schema.ResourceData) {
 				assert.Equal(t, ty.valueInTF,
@@ -418,6 +443,31 @@ func TestAccProviderConfigureSecrets(t *testing.T) {
 				ResourcesMap: map[string]*schema.Resource{"prov_test": res},
 			}
 			bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
+			bridgedProvider.Config = map[string]*info.Schema{
+				"basic_strlist_config": {
+					// Prevent basicStrlistConfigs pluralization
+					Name: "basicStrlistConfig",
+				},
+				"secret_strlist_config": {
+					// Prevent secretStrlistConfigs pluralization
+					Name: "secretStrlistConfig",
+				},
+				"obj": {
+					Elem: &info.Schema{
+						Fields: map[string]*info.Schema{
+							"nested_strlist_config": {
+								// Prevent nestedStrlistConfigs pluralization
+								Name: "nestedStrlistConfig",
+							},
+							"nested_secret_strlist_config": {
+								// Prevent nestedSecretStrlistConfigs pluralization
+								Name: "nestedSecretStrlistConfig",
+							},
+						},
+					},
+				},
+			}
+
 			pt := pulcheck.PulCheck(t, bridgedProvider, tc.program)
 			if tc.configure != nil {
 				tc.configure(t, ctx, pt.CurrentStack())
