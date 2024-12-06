@@ -7,6 +7,7 @@
         "category/utility"
     ],
     "license": "Apache-2.0",
+    "repository": "https://github.com/pulumi/pulumi-terraform-provider",
     "logoUrl": "https://raw.githubusercontent.com/pulumi/pulumi-terraform-provider/main/assets/logo.png",
     "meta": {
         "moduleFormat": "(.*)(?:/[^/]*)"
