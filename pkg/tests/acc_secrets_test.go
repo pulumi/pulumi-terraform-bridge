@@ -17,6 +17,7 @@ package tests
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
@@ -61,6 +62,46 @@ func TestAccProviderSecrets(t *testing.T) {
 // When a provider property is sensitive according to SchemaInfo or underlying TF schema User configures the provider
 // with a plain value The plain value does not leak to state but is secreted instate.
 func TestAccProviderConfigureSecrets(t *testing.T) {
+	type primType struct {
+		name            string
+		capitalizedName string
+		yamlLiteral     string
+		valueInTF       any
+		configValue     auto.ConfigValue
+		schema          schema.Schema
+	}
+
+	secretConfigValue := func(cv auto.ConfigValue) auto.ConfigValue {
+		cv.Secret = true
+		return cv
+	}
+
+	primTypes := []primType{
+		{
+			name:            "string",
+			capitalizedName: "String",
+			yamlLiteral:     `"SECRET"`,
+			valueInTF:       "SECRET",
+			schema: schema.Schema{
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			configValue: auto.ConfigValue{
+				Value: "SECRET",
+			},
+		},
+		// {
+		// 	name:            "int",
+		// 	capitalizedName: "Int",
+		// 	yamlLiteral:     `42`,
+		// 	valueInTF:       int64(42),
+		// 	schema: schema.Schema{
+		// 		Type:     schema.TypeInt,
+		// 		Optional: true,
+		// 	},
+		// },
+	}
+
 	type testCase struct {
 		name               string
 		program            string
@@ -69,176 +110,187 @@ func TestAccProviderConfigureSecrets(t *testing.T) {
 		checkState         func(t *testing.T, d *apitype.DeploymentV3)
 	}
 
-	testCases := []testCase{
-		{
-			name: "explicit-provider/first-class-secret/string",
-			program: `
-                        name: test
-                        runtime: yaml
-                        resources:
-                            prov:
-                                type: pulumi:providers:prov
-                                properties:
-                                    stringConfig:
-                                        fn::secret: "SECRET"
-                            mainRes:
-                                type: prov:index:Test
-                                properties:
-                                    stringProp: "foo"
-                                options:
-                                    provider: ${prov}
-			`,
+	testCases := []testCase{}
+
+	for _, ty := range primTypes {
+		testCases = append(testCases, testCase{
+			name: fmt.Sprintf("explicit-provider/first-class-secret/%s", ty.name),
+			program: fmt.Sprintf(`
+	                name: test
+	                runtime: yaml
+	                resources:
+	                    prov:
+	                        type: pulumi:providers:prov
+	                        properties:
+	                            basic%sConfig:
+	                                fn::secret: %s
+	                    mainRes:
+	                        type: prov:index:Test
+	                        properties:
+	                            stringProp: "foo"
+	                        options:
+	                            provider: ${prov}
+			`, ty.capitalizedName, ty.yamlLiteral),
 			checkConfigureCall: func(t *testing.T, rd *schema.ResourceData) {
-				assert.Equal(t, "SECRET", rd.Get("string_config"))
+				assert.Equal(t, ty.valueInTF, rd.Get(fmt.Sprintf("basic_%s_config", ty.name)))
+			},
+			checkState: func(t *testing.T, d *apitype.DeploymentV3) {
+				n := fmt.Sprintf("basic%sConfig", ty.capitalizedName)
+				p := requireExplicitProvider(t, d)
+				requireSecret(t, p.Inputs[n], fmt.Sprintf(`p.Inputs["%s"]`, n))
+				requireSecret(t, p.Outputs[n], fmt.Sprintf(`p.Outputs["%s"]`, n))
+			},
+		})
+
+		testCases = append(testCases, testCase{
+			name: fmt.Sprintf("explicit-provider/schema-secret/%s", ty.name),
+			program: fmt.Sprintf(`
+	                name: test
+	                runtime: yaml
+	                resources:
+	                    prov:
+	                        type: pulumi:providers:prov
+	                        properties:
+	                            secret%sConfig: %s
+	                    mainRes:
+	                        type: prov:index:Test
+	                        properties:
+	                            stringProp: "foo"
+	                        options:
+	                            provider: ${prov}
+			`, ty.capitalizedName, ty.yamlLiteral),
+			checkConfigureCall: func(t *testing.T, rd *schema.ResourceData) {
+				assert.Equal(t, ty.valueInTF, rd.Get(fmt.Sprintf("secret_%s_config", ty.name)))
 			},
 			checkState: func(t *testing.T, d *apitype.DeploymentV3) {
 				p := requireExplicitProvider(t, d)
-				requireSecret(t, p.Inputs["stringConfig"], `p.Inputs["stringConfig"]`)
-				requireSecret(t, p.Outputs["stringConfig"], `p.Outputs["stringConfig"]`)
+				n := fmt.Sprintf("secret%sConfig", ty.capitalizedName)
+				requireSecret(t, p.Inputs[n], fmt.Sprintf(`p.Inputs[%s]`, n))
+				requireSecret(t, p.Outputs[n], fmt.Sprintf(`p.Outputs[%s]`, n))
 			},
-		},
-		{
-			name: "explicit-provider/schema-secret/string",
+		})
+
+		testCases = append(testCases, testCase{
+			name: fmt.Sprintf("default-provider/first-class-secret/%s", ty.name),
 			program: `
-                        name: test
-                        runtime: yaml
-                        resources:
-                            prov:
-                                type: pulumi:providers:prov
-                                properties:
-                                    secretStringConfig: "SECRET"
-                            mainRes:
-                                type: prov:index:Test
-                                properties:
-                                    stringProp: "foo"
-                                options:
-                                    provider: ${prov}
-			`,
-			checkConfigureCall: func(t *testing.T, rd *schema.ResourceData) {
-				assert.Equal(t, "SECRET", rd.Get("secret_string_config"))
-			},
-			checkState: func(t *testing.T, d *apitype.DeploymentV3) {
-				p := requireExplicitProvider(t, d)
-				requireSecret(t, p.Inputs["secretStringConfig"], `p.Inputs["secretStringConfig"]`)
-				requireSecret(t, p.Outputs["secretStringConfig"], `p.Outputs["secretStringConfig"]`)
-			},
-		},
-		{
-			name: "default-provider/first-class-secret/string",
-			program: `
-                        name: test
-                        runtime: yaml
-                        resources:
-                            mainRes:
-                                type: prov:index:Test
-                                properties:
-                                    stringProp: "foo"
+	                name: test
+	                runtime: yaml
+	                resources:
+	                    mainRes:
+	                        type: prov:index:Test
+	                        properties:
+	                            stringProp: "foo"
 			`,
 			configure: func(t *testing.T, ctx context.Context, stack *auto.Stack) {
-				err := stack.SetConfig(ctx, "prov:stringConfig", auto.ConfigValue{
-					Value:  "SECRET",
-					Secret: true,
-				})
+				err := stack.SetConfig(ctx,
+					fmt.Sprintf("prov:basic%sConfig", ty.capitalizedName),
+					secretConfigValue(ty.configValue))
 				assert.NoError(t, err)
 			},
 			checkConfigureCall: func(t *testing.T, rd *schema.ResourceData) {
-				assert.Equal(t, "SECRET", rd.Get("string_config"))
+				assert.Equal(t, ty.valueInTF, rd.Get(fmt.Sprintf("basic_%s_config", ty.name)))
 			},
 			checkState: func(t *testing.T, d *apitype.DeploymentV3) {
+				n := fmt.Sprintf("basic%sConfig", ty.capitalizedName)
 				p := requireDefaultProvider(t, d)
-				requireSecret(t, p.Inputs["stringConfig"], `p.Inputs["stringConfig"]`)
-				requireSecret(t, p.Outputs["stringConfig"], `p.Outputs["stringConfig"]`)
+				requireSecret(t, p.Inputs[n], fmt.Sprintf(`p.Inputs["%s"]`, n))
+				requireSecret(t, p.Outputs[n], fmt.Sprintf(`p.Outputs["%s"]`, n))
 			},
-		},
-		{
-			name: "default-provider/schema-secret/string",
+		})
+
+		testCases = append(testCases, testCase{
+			name: fmt.Sprintf("default-provider/schema-secret/%s", ty.name),
 			program: `
-                        name: test
-                        runtime: yaml
-                        resources:
-                            mainRes:
-                                type: prov:index:Test
-                                properties:
-                                    stringProp: "foo"
+	                name: test
+	                runtime: yaml
+	                resources:
+	                    mainRes:
+	                        type: prov:index:Test
+	                        properties:
+	                            stringProp: "foo"
 			`,
 			configure: func(t *testing.T, ctx context.Context, stack *auto.Stack) {
-				err := stack.SetConfig(ctx, "prov:secretStringConfig", auto.ConfigValue{
-					Value: "SECRET",
-				})
+				err := stack.SetConfig(ctx, fmt.Sprintf("prov:secret%sConfig", ty.capitalizedName),
+					ty.configValue)
 				assert.NoError(t, err)
 			},
 			checkConfigureCall: func(t *testing.T, rd *schema.ResourceData) {
-				assert.Equal(t, "SECRET", rd.Get("secret_string_config"))
+				assert.Equal(t, ty.valueInTF, rd.Get(fmt.Sprintf("secret_%s_config", ty.name)))
 			},
 			checkState: func(t *testing.T, d *apitype.DeploymentV3) {
 				p := requireDefaultProvider(t, d)
-				requireSecret(t, p.Inputs["secretStringConfig"], `p.Inputs["secretStringConfig"]`)
-				requireSecret(t, p.Outputs["secretStringConfig"], `p.Outputs["secretStringConfig"]`)
+				n := fmt.Sprintf("secret%sConfig", ty.capitalizedName)
+				requireSecret(t, p.Inputs[n], fmt.Sprintf(`p.Inputs["%s"]`, n))
+				requireSecret(t, p.Outputs[n], fmt.Sprintf(`p.Outputs["%s"]`, n))
 			},
-		},
-		{
-			name: "explicit-provider/first-class-secret/nested-string",
-			program: `
-                        name: test
-                        runtime: yaml
-                        resources:
-                            prov:
-                                type: pulumi:providers:prov
-                                properties:
-                                    obj:
-                                        nestedStringConfig:
-                                            fn::secret:
-                                                "SECRET"
-                            mainRes:
-                                type: prov:index:Test
-                                properties:
-                                    stringProp: "foo"
-                                options:
-                                    provider: ${prov}
-			`,
+		})
+
+		testCases = append(testCases, testCase{
+			name: fmt.Sprintf("explicit-provider/first-class-secret/nested-%s", ty.name),
+			program: fmt.Sprintf(`
+	                name: test
+	                runtime: yaml
+	                resources:
+	                    prov:
+	                        type: pulumi:providers:prov
+	                        properties:
+	                            obj:
+	                                nested%sConfig:
+	                                    fn::secret:
+	                                        %s
+	                    mainRes:
+	                        type: prov:index:Test
+	                        properties:
+	                            stringProp: "foo"
+	                        options:
+	                            provider: ${prov}
+			`, ty.capitalizedName, ty.yamlLiteral),
 			checkConfigureCall: func(t *testing.T, rd *schema.ResourceData) {
-				assert.Equal(t, "SECRET", rd.Get("obj.0.nested_string_config"))
+				assert.Equal(t, ty.valueInTF, rd.Get(fmt.Sprintf("obj.0.nested_%s_config", ty.name)))
 			},
 			checkState: func(t *testing.T, d *apitype.DeploymentV3) {
 				p := requireExplicitProvider(t, d)
 				// Current versions of the Pulumi CLI make the entire `obj` secret but it should be OK
-				// to accept only the nestedStringConfig to be secreted as well.
+				// to accept only the nested*Config to be secreted as well.
 				requireSecret(t, p.Inputs["obj"], `p.Inputs["obj"]`)
 				requireSecret(t, p.Outputs["obj"], `p.Outputs["obj"]`)
 			},
-		},
-		{
-			name: "explicit-provider/schema-secret/nested-string",
-			program: `
-                        name: test
-                        runtime: yaml
-                        resources:
-                            prov:
-                                type: pulumi:providers:prov
-                                properties:
-                                    obj:
-                                        nestedSecretStringConfig:
-                                            "SECRET"
-                            mainRes:
-                                type: prov:index:Test
-                                properties:
-                                    stringProp: "foo"
-                                options:
-                                    provider: ${prov}
-			`,
+		})
+
+		testCases = append(testCases, testCase{
+			name: fmt.Sprintf("explicit-provider/schema-secret/nested-%s", ty.name),
+			program: fmt.Sprintf(`
+	                name: test
+	                runtime: yaml
+	                resources:
+	                    prov:
+	                        type: pulumi:providers:prov
+	                        properties:
+	                            obj:
+	                                nestedSecret%sConfig:
+	                                    %s
+	                    mainRes:
+	                        type: prov:index:Test
+	                        properties:
+	                            stringProp: "foo"
+	                        options:
+	                            provider: ${prov}
+			`, ty.capitalizedName, ty.yamlLiteral),
 			checkConfigureCall: func(t *testing.T, rd *schema.ResourceData) {
-				assert.Equal(t, "SECRET", rd.Get("obj.0.nested_secret_string_config"))
+				assert.Equal(t, ty.valueInTF,
+					rd.Get(fmt.Sprintf("obj.0.nested_secret_%s_config", ty.name)))
 			},
 			checkState: func(t *testing.T, d *apitype.DeploymentV3) {
 				p := requireExplicitProvider(t, d)
 				// Current versions of the Pulumi CLI make the entire `obj` secret but it should be OK
-				// to accept only the nestedStringConfig to be secreted as well.
+				// to accept only the nested*Config to be secreted as well.
 				requireSecret(t, p.Inputs["obj"], `p.Inputs["obj"]`)
 				requireSecret(t, p.Outputs["obj"], `p.Outputs["obj"]`)
 			},
-		},
-		{
-			name: "default-provider/first-class-secret/nested-string",
+		})
+
+		testCases = append(testCases, testCase{
+			name: fmt.Sprintf("default-provider/first-class-secret/nested-%s", ty.name),
 			program: `
 		        name: test
 		        runtime: yaml
@@ -249,27 +301,28 @@ func TestAccProviderConfigureSecrets(t *testing.T) {
 		                    stringProp: "foo"
 			`,
 			configure: func(t *testing.T, ctx context.Context, stack *auto.Stack) {
-				err := stack.SetConfigWithOptions(ctx, "prov:obj.nestedStringConfig", auto.ConfigValue{
-					Value:  "SECRET",
-					Secret: true,
-				}, &auto.ConfigOptions{
-					Path: true,
-				})
+				err := stack.SetConfigWithOptions(ctx,
+					fmt.Sprintf("prov:obj.nested%sConfig", ty.capitalizedName),
+					secretConfigValue(ty.configValue),
+					&auto.ConfigOptions{
+						Path: true,
+					})
 				require.NoError(t, err)
 			},
 			checkConfigureCall: func(t *testing.T, rd *schema.ResourceData) {
-				assert.Equal(t, "SECRET", rd.Get("obj.0.nested_string_config"))
+				assert.Equal(t, ty.valueInTF, rd.Get(fmt.Sprintf("obj.0.nested_%s_config", ty.name)))
 			},
 			checkState: func(t *testing.T, d *apitype.DeploymentV3) {
 				p := requireDefaultProvider(t, d)
 				// Current versions of the Pulumi CLI make the entire `obj` secret but it should be OK
-				// to accept only the nestedStringConfig to be secreted as well.
+				// to accept only the nested*Config to be secreted as well.
 				requireSecret(t, p.Inputs["obj"], `p.Inputs["obj"]`)
 				requireSecret(t, p.Outputs["obj"], `p.Outputs["obj"]`)
 			},
-		},
-		{
-			name: "default-provider/schema-secret/nested-string",
+		})
+
+		testCases = append(testCases, testCase{
+			name: fmt.Sprintf("default-provider/schema-secret/nested-%s", ty.name),
 			program: `
 		        name: test
 		        runtime: yaml
@@ -280,55 +333,51 @@ func TestAccProviderConfigureSecrets(t *testing.T) {
 		                    stringProp: "foo"
 			`,
 			configure: func(t *testing.T, ctx context.Context, stack *auto.Stack) {
-				err := stack.SetConfigWithOptions(ctx, "prov:obj.nestedSecretStringConfig",
-					auto.ConfigValue{
-						Value:  "SECRET",
-						Secret: true,
-					},
+				err := stack.SetConfigWithOptions(ctx,
+					fmt.Sprintf("prov:obj.nestedSecret%sConfig", ty.capitalizedName),
+					ty.configValue,
 					&auto.ConfigOptions{Path: true})
 				require.NoError(t, err)
 			},
 			checkConfigureCall: func(t *testing.T, rd *schema.ResourceData) {
-				assert.Equal(t, "SECRET", rd.Get("obj.0.nested_secret_string_config"))
+				assert.Equal(t, ty.valueInTF,
+					rd.Get(fmt.Sprintf("obj.0.nested_secret_%s_config", ty.name)))
 			},
 			checkState: func(t *testing.T, d *apitype.DeploymentV3) {
 				p := requireDefaultProvider(t, d)
 				// Current versions of the Pulumi CLI make the entire `obj` secret but it should be OK
-				// to accept only the nestedStringConfig to be secreted as well.
+				// to accept only the nested*Config to be secreted as well.
 				requireSecret(t, p.Inputs["obj"], `p.Inputs["obj"]`)
 				requireSecret(t, p.Outputs["obj"], `p.Outputs["obj"]`)
 			},
-		},
+		})
+	}
+
+	nestedObjConfigSchema := &schema.Resource{
+		Schema: map[string]*schema.Schema{},
+	}
+
+	for _, ty := range primTypes {
+		nestedObjConfigSchema.Schema[fmt.Sprintf("nested_%s_config", ty.name)] = &ty.schema
+		secretSchema := ty.schema
+		secretSchema.Sensitive = true
+		nestedObjConfigSchema.Schema[fmt.Sprintf("nested_secret_%s_config", ty.name)] = &secretSchema
 	}
 
 	configSchema := map[string]*schema.Schema{
-		"string_config": {
-			Type:     schema.TypeString,
-			Optional: true,
-		},
-		"secret_string_config": {
-			Type:      schema.TypeString,
-			Optional:  true,
-			Sensitive: true,
-		},
 		"obj": {
 			Type:     schema.TypeList,
 			Optional: true,
 			MaxItems: 1,
-			Elem: &schema.Resource{
-				Schema: map[string]*schema.Schema{
-					"nested_string_config": {
-						Type:     schema.TypeString,
-						Optional: true,
-					},
-					"nested_secret_string_config": {
-						Type:      schema.TypeString,
-						Optional:  true,
-						Sensitive: true,
-					},
-				},
-			},
+			Elem:     nestedObjConfigSchema,
 		},
+	}
+
+	for _, ty := range primTypes {
+		configSchema[fmt.Sprintf("basic_%s_config", ty.name)] = &ty.schema
+		secretSchema := ty.schema
+		secretSchema.Sensitive = true
+		configSchema[fmt.Sprintf("secret_%s_config", ty.name)] = &secretSchema
 	}
 
 	for _, tc := range testCases {
