@@ -136,7 +136,8 @@ func TestConfigure(t *testing.T) {
         "c": "3"
       }
     }`, `{
-      "supportsPreview": true
+      "supportsPreview": true,
+      "supportsAutonamingConfiguration": true
   }`, nil,
 			part(0, `{
   "args": {
@@ -146,7 +147,8 @@ func TestConfigure(t *testing.T) {
   }
 }`, `{
   "acceptSecrets": true,
-  "supportsPreview": true
+  "supportsPreview": true,
+  "supportsAutonamingConfiguration": true
 }`, nil),
 			part(1, `{
   "args": {
@@ -156,7 +158,8 @@ func TestConfigure(t *testing.T) {
   }
 }`, `{
   "supportsPreview": true,
-  "acceptResources": true
+  "acceptResources": true,
+  "supportsAutonamingConfiguration": true
 }`, nil),
 		))
 }
