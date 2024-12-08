@@ -59,7 +59,11 @@ func runDiffCheck(t T, tc diffTestCase) crosstestsimpl.DiffResult {
 
 	resMap := map[string]*schema.Resource{defRtype: tc.Resource}
 	tfp := &schema.Provider{ResourcesMap: resMap}
-	bridgedProvider := pulcheck.BridgedProvider(t, defProviderShortName, tfp, pulcheck.EnableAccurateBridgePreviews())
+	opts := []pulcheck.BridgedProviderOpt{}
+	if os.Getenv("PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW") != "false" {
+		opts = append(opts, pulcheck.EnableAccurateBridgePreviews())
+	}
+	bridgedProvider := pulcheck.BridgedProvider(t, defProviderShortName, tfp, opts...)
 	if tc.DeleteBeforeReplace {
 		bridgedProvider.Resources[defRtype].DeleteBeforeReplace = true
 	}
