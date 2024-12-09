@@ -42,9 +42,6 @@ func providerInfo(ctx context.Context, p run.Provider, value parameterize.Value)
 		Publisher:      "Pulumi",
 		ResourcePrefix: inferResourcePrefix(provider),
 
-		// To avoid bogging down schema generation speed, we skip all examples.
-		SkipExamples: func(tfbridge.SkipExamplesArgs) bool { return false },
-
 		MetadataInfo: &tfbridge.MetadataInfo{
 			Path: "", Data: tfbridge.ProviderMetadata(nil),
 		},

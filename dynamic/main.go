@@ -69,7 +69,7 @@ func initialSetup() (info.Provider, pfbridge.ProviderMetadata, func() error) {
 	var fullDocs bool
 	metadata = pfbridge.ProviderMetadata{
 		XGetSchema: func(ctx context.Context, req plugin.GetSchemaRequest) ([]byte, error) {
-			// Create a custom generator for schema and, of fullDocs is set, examples
+			// Create a custom generator for schema. Examples will only be generated if `fullDocs` is set.
 			g, err := tfgen.NewGenerator(tfgen.GeneratorOptions{
 				Package:      info.Name,
 				Version:      info.Version,
@@ -93,6 +93,7 @@ func initialSetup() (info.Provider, pfbridge.ProviderMetadata, func() error) {
 			if info.SchemaPostProcessor != nil {
 				info.SchemaPostProcessor(&packageSchema.PackageSpec)
 			}
+
 			return json.Marshal(packageSchema.PackageSpec)
 		},
 		XParamaterize: func(ctx context.Context, req plugin.ParameterizeRequest) (plugin.ParameterizeResponse, error) {
@@ -161,7 +162,14 @@ func initialSetup() (info.Provider, pfbridge.ProviderMetadata, func() error) {
 				return plugin.ParameterizeResponse{}, err
 			}
 
-			if args.Remote != nil {
+			switch args.Remote {
+			case nil:
+				// We're using local args.
+				if args.Local.UpstreamRepoPath != "" {
+					info.UpstreamRepoPath = args.Local.UpstreamRepoPath
+					fullDocs = true
+				}
+			default:
 				fullDocs = args.Remote.Docs
 				if fullDocs {
 					// Write the upstream files at this version to a temporary directory
@@ -178,13 +186,6 @@ func initialSetup() (info.Provider, pfbridge.ProviderMetadata, func() error) {
 						return plugin.ParameterizeResponse{}, err
 					}
 					info.UpstreamRepoPath = tmpDir
-				}
-			}
-
-			if args.Local != nil {
-				if args.Local.UpstreamRepoPath != "" {
-					info.UpstreamRepoPath = args.Local.UpstreamRepoPath
-					fullDocs = true
 				}
 			}
 
