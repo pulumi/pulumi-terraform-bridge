@@ -19,14 +19,17 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 
 	"github.com/blang/semver"
 	"github.com/opentofu/opentofu/shim/run"
+	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/spf13/afero"
 
 	"github.com/pulumi/pulumi-terraform-bridge/dynamic/parameterize"
 	"github.com/pulumi/pulumi-terraform-bridge/dynamic/version"
@@ -63,15 +66,26 @@ func initialSetup() (info.Provider, pfbridge.ProviderMetadata, func() error) {
 	}
 
 	var metadata pfbridge.ProviderMetadata
+	var fullDocs bool
 	metadata = pfbridge.ProviderMetadata{
 		XGetSchema: func(ctx context.Context, req plugin.GetSchemaRequest) ([]byte, error) {
-			packageSchema, err := tfgen.GenerateSchemaWithOptions(tfgen.GenerateSchemaOptions{
+			// Create a custom generator for schema. Examples will only be generated if `fullDocs` is set.
+			g, err := tfgen.NewGenerator(tfgen.GeneratorOptions{
+				Package:      info.Name,
+				Version:      info.Version,
+				Language:     tfgen.Schema,
 				ProviderInfo: info,
-				DiagnosticsSink: diag.DefaultSink(os.Stdout, os.Stderr, diag.FormatOptions{
+				Root:         afero.NewMemMapFs(),
+				Sink: diag.DefaultSink(os.Stdout, os.Stderr, diag.FormatOptions{
 					Color: colors.Always,
 				}),
-				XInMemoryDocs: true,
+				XInMemoryDocs: !fullDocs,
+				SkipExamples:  !fullDocs,
 			})
+			if err != nil {
+				return nil, errors.Wrapf(err, "failed to create generator")
+			}
+			packageSchema, err := g.Generate()
 			if err != nil {
 				return nil, err
 			}
@@ -146,6 +160,33 @@ func initialSetup() (info.Provider, pfbridge.ProviderMetadata, func() error) {
 			err = pfbridge.XParameterizeResetProvider(ctx, info, metadata)
 			if err != nil {
 				return plugin.ParameterizeResponse{}, err
+			}
+
+			switch args.Remote {
+			case nil:
+				// We're using local args.
+				if args.Local.UpstreamRepoPath != "" {
+					info.UpstreamRepoPath = args.Local.UpstreamRepoPath
+					fullDocs = true
+				}
+			default:
+				fullDocs = args.Remote.Docs
+				if fullDocs {
+					// Write the upstream files at this version to a temporary directory
+					tmpDir, err := os.MkdirTemp("", "upstreamRepoDir")
+					if err != nil {
+						return plugin.ParameterizeResponse{}, err
+					}
+					versionTag := "v" + info.Version
+					cmd := exec.Command(
+						"git", "clone", "--depth", "1", "-b", versionTag, info.Repository, tmpDir,
+					)
+					err = cmd.Run()
+					if err != nil {
+						return plugin.ParameterizeResponse{}, err
+					}
+					info.UpstreamRepoPath = tmpDir
+				}
 			}
 
 			return plugin.ParameterizeResponse{

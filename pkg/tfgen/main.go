@@ -49,11 +49,7 @@ func Main(pkg string, version string, prov tfbridge.ProviderInfo) {
 		}
 
 		// Let's generate some code!
-		err = g.Generate()
-		if err != nil {
-			return err
-		}
-
+		_, err = g.Generate()
 		return err
 	})
 }

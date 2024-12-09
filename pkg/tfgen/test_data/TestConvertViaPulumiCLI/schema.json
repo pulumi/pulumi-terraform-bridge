@@ -6,12 +6,12 @@
   },
   "language": {
     "nodejs": {
-      "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-simple)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e first check the [`pulumi-simple` repo](/issues); however, if that doesn't turn up anything,\n\u003e please consult the source [`terraform-provider-simple` repo](https://github.com/terraform-providers/terraform-provider-simple/issues).",
+      "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-simple)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e please consult the source [`terraform-provider-simple` repo](https://github.com/terraform-providers/terraform-provider-simple/issues).",
       "compatibility": "tfbridge20",
       "disableUnionOutputTypes": true
     },
     "python": {
-      "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-simple)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e first check the [`pulumi-simple` repo](/issues); however, if that doesn't turn up anything,\n\u003e please consult the source [`terraform-provider-simple` repo](https://github.com/terraform-providers/terraform-provider-simple/issues).",
+      "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-simple)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e please consult the source [`terraform-provider-simple` repo](https://github.com/terraform-providers/terraform-provider-simple/issues).",
       "compatibility": "tfbridge20",
       "pyproject": {}
     }
