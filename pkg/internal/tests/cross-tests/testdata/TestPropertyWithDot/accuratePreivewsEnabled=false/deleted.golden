@@ -1,0 +1,42 @@
+crosstests.diffTestOutput{
+	initialValue: cty.Value{
+		ty: cty.Type{typeImpl: cty.typeObject{
+			AttrTypes: map[string]cty.Type{"prop": {
+				typeImpl: cty.typeList{ElementTypeT: cty.Type{
+					typeImpl: cty.typeObject{AttrTypes: map[string]cty.Type{
+						"foo": {typeImpl: cty.primitiveType{
+							Kind: cty.primitiveTypeKind(83),
+						}},
+						"foo.bar": {typeImpl: cty.primitiveType{Kind: cty.primitiveTypeKind(83)}},
+					}},
+				}},
+			}},
+		}},
+		v: map[string]interface{}{"prop": []interface{}{map[string]interface{}{
+			"foo":     "bar",
+			"foo.bar": "baz",
+		}}},
+	},
+	changeValue: cty.Value{
+		ty: cty.Type{typeImpl: cty.typeObject{AttrTypes: map[string]cty.Type{"prop": {typeImpl: cty.typeList{
+			ElementTypeT: cty.Type{typeImpl: cty.typeObject{
+				AttrTypes: map[string]cty.Type{"foo": {
+					typeImpl: cty.primitiveType{Kind: cty.primitiveTypeKind(83)},
+				}},
+			}},
+		}}}}},
+		v: map[string]interface{}{"prop": []interface{}{map[string]interface{}{"foo": "bar"}}},
+	},
+	tfOut: `
+No changes. Your infrastructure matches the configuration.
+
+Terraform has compared your real infrastructure against your configuration
+and found no differences, so no changes are needed.
+`,
+	pulumiOut: `Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::project::pulumi:pulumi:Stack::project-test]
+Resources:
+    2 unchanged
+`,
+}

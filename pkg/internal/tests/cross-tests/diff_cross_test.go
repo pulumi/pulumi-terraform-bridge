@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"hash/crc32"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -1625,6 +1626,14 @@ func TestBlockCollectionElementForceNew(t *testing.T) {
 	})
 }
 
+type diffTestOutput struct {
+	initialValue cty.Value
+	changeValue  cty.Value
+	tfOut        string
+	pulumiOut    string
+	detailedDiff map[string]any
+}
+
 func TestDetailedDiffReplacementComputedProperty(t *testing.T) {
 	t.Parallel()
 	// TODO[pulumi/pulumi-terraform-bridge#2660]
@@ -1650,14 +1659,6 @@ func TestDetailedDiffReplacementComputedProperty(t *testing.T) {
 		},
 	}
 
-	type testOutput struct {
-		initialValue cty.Value
-		changeValue  cty.Value
-		tfOut        string
-		pulumiOut    string
-		detailedDiff map[string]any
-	}
-
 	t.Run("no change", func(t *testing.T) {
 		t.Parallel()
 		initialValue := cty.ObjectVal(map[string]cty.Value{})
@@ -1668,7 +1669,7 @@ func TestDetailedDiffReplacementComputedProperty(t *testing.T) {
 			Config2:  changeValue,
 		})
 
-		autogold.ExpectFile(t, testOutput{
+		autogold.ExpectFile(t, diffTestOutput{
 			initialValue: initialValue,
 			changeValue:  changeValue,
 			tfOut:        diff.TFOut,
@@ -1687,7 +1688,7 @@ func TestDetailedDiffReplacementComputedProperty(t *testing.T) {
 			Config2:  changeValue,
 		})
 
-		autogold.ExpectFile(t, testOutput{
+		autogold.ExpectFile(t, diffTestOutput{
 			initialValue: initialValue,
 			changeValue:  changeValue,
 			tfOut:        diff.TFOut,
@@ -1706,7 +1707,7 @@ func TestDetailedDiffReplacementComputedProperty(t *testing.T) {
 			Config2:  changeValue,
 		})
 
-		autogold.ExpectFile(t, testOutput{
+		autogold.ExpectFile(t, diffTestOutput{
 			initialValue: initialValue,
 			changeValue:  changeValue,
 			tfOut:        diff.TFOut,
@@ -1725,7 +1726,7 @@ func TestDetailedDiffReplacementComputedProperty(t *testing.T) {
 			Config2:  changeValue,
 		})
 
-		autogold.ExpectFile(t, testOutput{
+		autogold.ExpectFile(t, diffTestOutput{
 			initialValue: initialValue,
 			changeValue:  changeValue,
 			tfOut:        diff.TFOut,
@@ -1733,4 +1734,113 @@ func TestDetailedDiffReplacementComputedProperty(t *testing.T) {
 			detailedDiff: diff.PulumiDiff.DetailedDiff,
 		})
 	})
+}
+
+func TestPropertyWithDot(t *testing.T) {
+	res := &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"prop": {
+				Type:     schema.TypeList,
+				Optional: true,
+				MaxItems: 1,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"foo": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, accuratePreivewsEnabled := range []bool{true, false} {
+		t.Run(fmt.Sprintf("accuratePreivewsEnabled=%v", accuratePreivewsEnabled), func(t *testing.T) {
+			t.Setenv("PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW", strconv.FormatBool(accuratePreivewsEnabled))
+			t.Run("unchanged", func(t *testing.T) {
+				initialValue := cty.ObjectVal(map[string]cty.Value{
+					"prop": cty.ListVal([]cty.Value{
+						cty.ObjectVal(map[string]cty.Value{"foo.bar": cty.StringVal("baz")}),
+					}),
+				})
+				changeValue := cty.ObjectVal(map[string]cty.Value{
+					"prop": cty.ListVal([]cty.Value{
+						cty.ObjectVal(map[string]cty.Value{"foo.bar": cty.StringVal("baz")}),
+					}),
+				})
+				diff := runDiffCheck(t, diffTestCase{
+					Resource: res,
+					Config1:  initialValue,
+					Config2:  changeValue,
+				})
+
+				autogold.ExpectFile(t, diffTestOutput{
+					initialValue: initialValue,
+					changeValue:  changeValue,
+					tfOut:        diff.TFOut,
+					pulumiOut:    diff.PulumiOut,
+					detailedDiff: diff.PulumiDiff.DetailedDiff,
+				})
+			})
+
+			t.Run("added", func(t *testing.T) {
+				initialValue := cty.ObjectVal(map[string]cty.Value{
+					"prop": cty.ListVal([]cty.Value{
+						cty.ObjectVal(map[string]cty.Value{"foo": cty.StringVal("bar")}),
+					}),
+				})
+				changeValue := cty.ObjectVal(map[string]cty.Value{
+					"prop": cty.ListVal([]cty.Value{
+						cty.ObjectVal(map[string]cty.Value{
+							"foo":     cty.StringVal("bar"),
+							"foo.bar": cty.StringVal("baz"),
+						}),
+					}),
+				})
+				diff := runDiffCheck(t, diffTestCase{
+					Resource: res,
+					Config1:  initialValue,
+					Config2:  changeValue,
+				})
+
+				autogold.ExpectFile(t, diffTestOutput{
+					initialValue: initialValue,
+					changeValue:  changeValue,
+					tfOut:        diff.TFOut,
+					pulumiOut:    diff.PulumiOut,
+					detailedDiff: diff.PulumiDiff.DetailedDiff,
+				})
+			})
+
+			t.Run("deleted", func(t *testing.T) {
+				initialValue := cty.ObjectVal(map[string]cty.Value{
+					"prop": cty.ListVal([]cty.Value{
+						cty.ObjectVal(map[string]cty.Value{
+							"foo":     cty.StringVal("bar"),
+							"foo.bar": cty.StringVal("baz"),
+						}),
+					}),
+				})
+				changeValue := cty.ObjectVal(map[string]cty.Value{
+					"prop": cty.ListVal([]cty.Value{
+						cty.ObjectVal(map[string]cty.Value{"foo": cty.StringVal("bar")}),
+					}),
+				})
+				diff := runDiffCheck(t, diffTestCase{
+					Resource: res,
+					Config1:  initialValue,
+					Config2:  changeValue,
+				})
+
+				autogold.ExpectFile(t, diffTestOutput{
+					initialValue: initialValue,
+					changeValue:  changeValue,
+					tfOut:        diff.TFOut,
+					pulumiOut:    diff.PulumiOut,
+					detailedDiff: diff.PulumiDiff.DetailedDiff,
+				})
+			})
+		})
+	}
 }
