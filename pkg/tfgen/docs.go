@@ -186,7 +186,6 @@ func getDocsForResource(g *Generator, source DocsSource, kind DocKind,
 	if g.skipDocs {
 		return entityDocs{}, nil
 	}
-
 	var docInfo *tfbridge.DocInfo
 	if info != nil {
 		docInfo = info.GetDocs()
@@ -209,6 +208,7 @@ func getDocsForResource(g *Generator, source DocsSource, kind DocKind,
 			docFile = nil
 		}
 	}
+
 	if err != nil {
 		return entityDocs{}, fmt.Errorf("get docs for token %s: %w", rawname, err)
 	}
@@ -1457,6 +1457,7 @@ func (g *Generator) convertExamples(docs string, path examplePath) string {
 	if docs == "" {
 		return ""
 	}
+
 	if g.info.SkipExamples != nil {
 		if g.info.SkipExamples(tfbridge.SkipExamplesArgs{
 			Token:       path.Token(),

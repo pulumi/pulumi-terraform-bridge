@@ -83,18 +83,45 @@ func TestParseArgs(t *testing.T) {
 			errMsg: autogold.Expect("expected to be parameterized by 1-3 arguments: <name> [version] [fullDocs]"),
 		},
 		{
-			name:   "invalid third arg",
-			args:   []string{"arg1", "arg2", "arg3"},
-			errMsg: autogold.Expect("expected third parameterized argument to be 'fullDocs' or empty"),
+			name: "invalid third arg",
+			args: []string{"arg1", "arg2", "arg3"},
+			errMsg: autogold.Expect(
+				"expected third parameterized argument to be 'fullDocs=true/false' or be empty",
+			),
 		},
 		{
-			name: "valid third arg",
-			args: []string{"my-registry.io/typ", "1.2.3", "fullDocs"},
+			name: "empty third arg",
+			args: []string{"arg1", "arg2"},
+			expect: Args{Remote: &RemoteArgs{
+				Name:    "arg1",
+				Version: "arg2",
+				Docs:    false,
+			}},
+		},
+		{
+			name: "valid third arg true",
+			args: []string{"my-registry.io/typ", "1.2.3", "fullDocs=true"},
 			expect: Args{Remote: &RemoteArgs{
 				Name:    "my-registry.io/typ",
 				Version: "1.2.3",
 				Docs:    true,
 			}},
+		},
+		{
+			name: "valid third arg false",
+			args: []string{"my-registry.io/typ", "1.2.3", "fullDocs=false"},
+			expect: Args{Remote: &RemoteArgs{
+				Name:    "my-registry.io/typ",
+				Version: "1.2.3",
+				Docs:    false,
+			}},
+		},
+		{
+			name: "third arg invalid input",
+			args: []string{"my-registry.io/typ", "1.2.3", "fullDocs=invalid-input"},
+			errMsg: autogold.Expect(
+				"expected third parameterized argument to be 'fullDocs=true/false' or be empty",
+			),
 		},
 	}
 

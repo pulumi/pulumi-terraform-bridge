@@ -462,14 +462,15 @@ func TestSchemaGenerationFullDocs(t *testing.T) { //nolint:paralleltest
 	type testCase struct {
 		name     string
 		version  string
-		fullDocs bool
+		fullDocs string
 	}
 
 	tc := testCase{
 		name:     "hashicorp/random",
 		version:  "3.6.3",
-		fullDocs: true,
+		fullDocs: "fullDocs=true",
 	}
+
 	t.Run(strings.Join([]string{tc.name, tc.version}, "-"), func(t *testing.T) {
 		helper.Integration(t)
 		ctx := context.Background()
@@ -479,7 +480,7 @@ func TestSchemaGenerationFullDocs(t *testing.T) { //nolint:paralleltest
 		result, err := server.Parameterize(ctx, &pulumirpc.ParameterizeRequest{
 			Parameters: &pulumirpc.ParameterizeRequest_Args{
 				Args: &pulumirpc.ParameterizeRequest_ParametersArgs{
-					Args: []string{tc.name, tc.version, "fullDocs"},
+					Args: []string{tc.name, tc.version, tc.fullDocs},
 				},
 			},
 		})
