@@ -348,7 +348,8 @@
     },
     "response": {
       "supportsPreview": true,
-      "acceptResources": true
+      "acceptResources": true,
+      "supportsAutonamingConfiguration": true
     },
     "metadata": {
       "kind": "resource",

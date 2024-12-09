@@ -491,7 +491,8 @@ func TestConfigureToCreate(t *testing.T) {
 	    },
 	    "response": {
 	      "supportsPreview": true,
-	      "acceptResources": true
+	      "acceptResources": true,
+	      "supportsAutonamingConfiguration": true
 	    }
 	  },
 	  {
@@ -527,7 +528,8 @@ func TestConfigureBooleans(t *testing.T) {
 	  },
 	  "response": {
 	    "supportsPreview": true,
-	    "acceptResources": true
+	    "acceptResources": true,
+	    "supportsAutonamingConfiguration": true
 	  }
 	}`)
 }
@@ -610,7 +612,8 @@ func TestJSONNestedConfigure(t *testing.T) {
 		  },
 		  "response": {
 		    "supportsPreview": true,
-		    "acceptResources": true
+		    "acceptResources": true,
+		    "supportsAutonamingConfiguration": true
 		  }
 		}`)
 }
@@ -635,7 +638,8 @@ func TestJSONNestedConfigureWithSecrets(t *testing.T) {
     },
     "response": {
       "supportsPreview": true,
-      "acceptResources": true
+      "acceptResources": true,
+      "supportsAutonamingConfiguration": true
     }
   },
   {
@@ -687,7 +691,8 @@ func TestConfigureWithSecrets(t *testing.T) {
     },
     "response": {
       "supportsPreview": true,
-      "acceptResources": true
+      "acceptResources": true,
+      "supportsAutonamingConfiguration": true
     }
   },
   {

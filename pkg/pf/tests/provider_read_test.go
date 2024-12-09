@@ -57,7 +57,8 @@ func TestReadFromRefresh(t *testing.T) {
 	  },
 	  "response": {
 	    "supportsPreview": true,
-	    "acceptResources": true
+	    "acceptResources": true,
+	    "supportsAutonamingConfiguration": true
 	  },
 	  "metadata": {
 	    "kind": "resource",
@@ -433,7 +434,8 @@ func TestRefreshSupportsCustomID(t *testing.T) {
 	  },
 	  "response": {
 	    "supportsPreview": true,
-	    "acceptResources": true
+	    "acceptResources": true,
+	    "supportsAutonamingConfiguration": true
 	  },
 	  "metadata": {
 	    "kind": "resource",
