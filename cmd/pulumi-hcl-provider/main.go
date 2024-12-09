@@ -17,6 +17,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -125,6 +126,21 @@ func (*hclResourceProviderServer) Construct(
 		return nil, err
 	}
 
+	requiredProviders, err := inferTFRequiredProviders(d)
+	if err != nil {
+		return nil, err
+	}
+
+	proxies, err := startTFProviderProxies(requiredProviders)
+	if err != nil {
+		return nil, err
+	}
+
+	err = planTF(d, proxies)
+	if err != nil {
+		return nil, err
+	}
+
 	return &pulumirpc.ConstructResponse{
 		State: &structpb.Struct{
 			Fields: map[string]*structpb.Value{
@@ -200,10 +216,72 @@ func prepareTFWorkspace() (string, error) {
 	return d, nil
 }
 
-// OK so.. We build a TF workspace;
-// we infer which providers are needed
+func planTF(d string, proxies tfProviderProxies) error {
+	cmd := exec.Command("terraform", "plan")
+	cmd.Env = os.Environ()
+	reattach, err := computeReattachConfig(d, proxies)
+	if err != nil {
+		return err
+	}
+	reattachJSON, err := json.Marshal(reattach)
+	if err != nil {
+		return err
+	}
+	cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", envTfReattachProviders, string(reattachJSON)))
+	cmd.Stdout = os.Stderr
+	cmd.Stderr = os.Stderr
+	cmd.Dir = d
+	return cmd.Run()
+}
+
+// Find which providers are used by a TF d workspace directory.
+//
+// This can use the following command to parse its output:
+//
+//	terraform providers
+func inferTFRequiredProviders(string) (map[string]struct{}, error) {
+	// TODO assuming just AWS provider is needed for now.
+	return map[string]struct{}{"aws": {}}, nil
+}
+
+type tfProviderProxies []*tfProviderProxyHandle
+
+func (pps tfProviderProxies) Close() error {
+	var errs []error
+	for _, pp := range pps {
+		if err := pp.Close(); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	return errors.Join(errs...)
+}
+
+func startTFProviderProxies(requiredProviders map[string]struct{}) (tfProviderProxies, error) {
+	res := tfProviderProxies(nil)
+	for p := range requiredProviders {
+		pp, err := startTFProviderProxy(p)
+		if err != nil {
+			return nil, err
+		}
+		res = append(res, pp)
+	}
+	return res, nil
+}
+
+// Build a TF_REATTACH_PROVIDERS configuration for a d TF workspace directory.
+//
+// This will redirect running operations against these providers to Pulumi proxies.
+//
+// Inferring which providers are needed
 // we use debug functionality to make these providers.
 // then we run terraform plan
+func computeReattachConfig(_ string, proxies tfProviderProxies) (map[string]any, error) {
+	cfg := map[string]any{}
+	for _, proxy := range proxies {
+		cfg[fmt.Sprintf("registry.terraform.io/hashicorp/%s", proxy.ProviderName)] = proxy.computeReattachConfig()
+	}
+	return cfg, nil
+}
 
 var _ pulumirpc.ResourceProviderServer = (*hclResourceProviderServer)(nil)
 
