@@ -347,15 +347,7 @@ func (p *planResourceChangeImpl) Apply(
 		maps.Copy(priv, diff.v2InstanceDiff.tf.Meta)
 	}
 
-	resp, err := p.server.ApplyResourceChange(ctx, t, ty, cfg, st, pl, priv, meta)
-	if err != nil {
-		return resp, err
-	}
-	return &v2InstanceState2{
-		resourceType: t,
-		stateValue:   resp.stateValue,
-		meta:         resp.meta,
-	}, nil
+	return p.server.ApplyResourceChange(ctx, t, ty, cfg, st, pl, priv, meta)
 }
 
 // This method is called to service `pulumi refresh` requests and maps naturally to the TF
