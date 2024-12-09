@@ -17,6 +17,7 @@ package tfbridge
 import (
 	"context"
 	"fmt"
+	"q"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
@@ -162,12 +163,15 @@ func (p *provider) validateProviderConfig(
 		return nil, err
 	}
 
+	q.Q(inputs)
+
 	resp, err := p.tfServer.ValidateProviderConfig(ctx, &tfprotov6.ValidateProviderConfigRequest{
 		Config: config,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("error calling ValidateProviderConfig: %w", err)
 	}
+	q.Q(resp.Diagnostics)
 
 	// Note: according to the docs on resp.PrepareConfig for new providers it typically is equal to config passed in
 	// ValidateProviderConfigRequest so the code here ignores it for now.
@@ -195,6 +199,10 @@ func (p *provider) validateProviderConfig(
 		}
 		// Ignoring version key as it seems to be special.
 		if k == "version" || k == "pluginDownloadURL" {
+			continue
+		}
+
+		if _, has := p.info.ExtraConfig[string(k)]; has {
 			continue
 		}
 		// TODO[https://github.com/pulumi/pulumi/issues/16757] While #16757 is

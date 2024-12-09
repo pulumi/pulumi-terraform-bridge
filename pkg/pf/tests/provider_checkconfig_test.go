@@ -22,6 +22,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
+	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hexops/autogold/v2"
@@ -34,9 +35,11 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/structpb"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/providerbuilder"
 	pb "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/providerbuilder"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
 	tfbridge0 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
@@ -801,4 +804,37 @@ func makeProviderServer(
 	server, err := newProviderServer(t, info)
 	require.NoError(t, err)
 	return server
+}
+
+func TestExtraConfigDoesNotCauseCheckFailure(t *testing.T) {
+	t.Parallel()
+
+	provBuilder := providerbuilder.NewProvider(
+		providerbuilder.NewProviderArgs{
+			AllResources: []providerbuilder.Resource{
+				providerbuilder.NewResource(providerbuilder.NewResourceArgs{
+					ResourceSchema: rschema.Schema{
+						Attributes: map[string]rschema.Attribute{
+							"s": rschema.StringAttribute{Optional: true},
+						},
+					},
+				}),
+			},
+			ProviderSchema: schema.Schema{
+				Attributes: map[string]schema.Attribute{
+					"config": schema.StringAttribute{Optional: true},
+				},
+			},
+		})
+
+	prov := bridgedProvider(provBuilder)
+
+	prov.ExtraConfig["extra"] = &info.Config{
+		Schema: shim.Schema{
+			Attributes: map[string]shim.SchemaAttribute{
+				"extra": shim.SchemaAttribute{Optional: true},
+			},
+		},
+	}
+
 }
