@@ -1,18 +1,20 @@
+WORKING_DIR := $(shell pwd)
+
+preview:: export PATH := $(WORKING_DIR)/bin:$(PATH)
 preview:: export AWS_PROFILE := devsandbox
 preview:: npm-add
 	pulumi preview
 
 npm-add:: packages-add
-	npm add vpcaws@file:sdks/vpcaws
+	npm add hcl@file:sdks/hcl
 
-packages-add:: export PATH := $(WORKING_DIR)/bin:$(PATH)
 packages-add:: bin/pulumi-resource-hcl
 	rm -rf sdks
 	pulumi package add ./bin/pulumi-resource-hcl terraform-aws-modules/vpc/aws 5.16.0
 	# replace version placeholder with an actual version
-	(cd sdks/vpcaws && jq '.version = "1.0.0"' package.json > package-tmp.json)
-	cp sdks/vpcaws/package-tmp.json sdks/vpcaws/package.json
-	rm sdks/vpcaws/package-tmp.json
+	(cd sdks/hcl && jq '.version = "1.0.0"' package.json > package-tmp.json)
+	cp sdks/hcl/package-tmp.json sdks/hcl/package.json
+	rm sdks/hcl/package-tmp.json
 
 bin/pulumi-resource-hcl::
 	mkdir -p bin

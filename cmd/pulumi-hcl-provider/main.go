@@ -107,10 +107,10 @@ func parseParameterizeArgs(args *pulumirpc.ParameterizeRequest_ParametersArgs) (
 func inferPulumiSchemaForModule(mref TFModuleRef, mver TFModuleVersion) (*schema.PackageSpec, error) {
 	if mref == "terraform-aws-modules/vpc/aws" && mver == "5.16.0" {
 		return &schema.PackageSpec{
-			Name:    "vpcaws",
-			Version: string(mver),
+			Name:    "hcl",
+			Version: "0.0.1",
 			Resources: map[string]schema.ResourceSpec{
-				"vpcaws:index:VpcAws": {
+				"hcl:index:VpcAws": {
 					InputProperties: map[string]schema.PropertySpec{
 						"cidr": {
 							TypeSpec: schema.TypeSpec{Type: "string"},
