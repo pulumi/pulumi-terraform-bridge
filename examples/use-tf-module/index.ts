@@ -1,11 +1,7 @@
-import * as pulumi from "@pulumi/pulumi";
-import * as aws from "@pulumi/aws";
-import * as awsx from "@pulumi/awsx";
+import * as hcl from "hcl";
 
-import * as vpcaws from "vpcaws";
+const vpc = new hcl.VpcAws("my-vpc", {
+    cidr: "10.0.0.0/16",
+});
 
-// Create an AWS resource (S3 Bucket)
-const bucket = new aws.s3.BucketV2("my-bucket");
-
-// Export the name of the bucket
-export const bucketName = bucket.id;
+export const defaultVpcId = vpc.defaultVpcId;

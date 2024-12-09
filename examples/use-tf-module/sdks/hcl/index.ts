@@ -20,18 +20,18 @@ const _module = {
     version: utilities.getVersion(),
     construct: (name: string, type: string, urn: string): pulumi.Resource => {
         switch (type) {
-            case "vpcaws:index:VpcAws":
+            case "hcl:index:VpcAws":
                 return new VpcAws(name, <any>undefined, { urn })
             default:
                 throw new Error(`unknown resource type ${type}`);
         }
     },
 };
-pulumi.runtime.registerResourceModule("vpcaws", "index", _module)
-pulumi.runtime.registerResourcePackage("vpcaws", {
+pulumi.runtime.registerResourceModule("hcl", "index", _module)
+pulumi.runtime.registerResourcePackage("hcl", {
     version: utilities.getVersion(),
     constructProvider: (name: string, type: string, urn: string): pulumi.ProviderResource => {
-        if (type !== "pulumi:providers:vpcaws") {
+        if (type !== "pulumi:providers:hcl") {
             throw new Error(`unknown provider type ${type}`);
         }
         return new Provider(name, <any>undefined, { urn });

@@ -6,7 +6,7 @@ import * as utilities from "./utilities";
 
 export class VpcAws extends pulumi.ComponentResource {
     /** @internal */
-    public static readonly __pulumiType = 'vpcaws:index:VpcAws';
+    public static readonly __pulumiType = 'hcl:index:VpcAws';
 
     /**
      * Returns true if the given object is an instance of VpcAws.  This is designed to work even
