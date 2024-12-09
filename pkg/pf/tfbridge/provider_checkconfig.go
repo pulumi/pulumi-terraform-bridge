@@ -197,6 +197,10 @@ func (p *provider) validateProviderConfig(
 		if k == "version" || k == "pluginDownloadURL" {
 			continue
 		}
+
+		if _, has := p.info.ExtraConfig[string(k)]; has {
+			continue
+		}
 		// TODO[https://github.com/pulumi/pulumi/issues/16757] While #16757 is
 		// outstanding, we need to filter out the keys for parameterized providers
 		// from the top level namespace.
