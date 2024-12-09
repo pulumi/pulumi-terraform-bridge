@@ -1,5 +1,5 @@
 {
-  "name": "@pulumi/vpcaws",
+  "name": "@pulumi/hcl",
   "version": "1.0.0",
   "main": "bin/index.js",
   "scripts": {
@@ -15,6 +15,6 @@
   },
   "pulumi": {
     "resource": true,
-    "name": "vpcaws"
+    "name": "hcl"
   }
 }
