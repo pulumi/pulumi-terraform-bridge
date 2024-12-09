@@ -18,12 +18,18 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 func main() {
@@ -80,6 +86,124 @@ func (s *hclResourceProviderServer) GetSchema(
 	}
 	return &pulumirpc.GetSchemaResponse{Schema: string(specBytes)}, nil
 }
+
+func (*hclResourceProviderServer) GetPluginInfo(
+	ctx context.Context,
+	req *emptypb.Empty,
+) (*pulumirpc.PluginInfo, error) {
+	return &pulumirpc.PluginInfo{
+		Version: "1.0.0",
+	}, nil
+}
+
+func (*hclResourceProviderServer) Configure(
+	ctx context.Context,
+	req *pulumirpc.ConfigureRequest,
+) (*pulumirpc.ConfigureResponse, error) {
+	return &pulumirpc.ConfigureResponse{
+		AcceptSecrets:   true,
+		SupportsPreview: true,
+		AcceptOutputs:   true,
+		AcceptResources: true,
+	}, nil
+}
+
+func (*hclResourceProviderServer) Construct(
+	ctx context.Context,
+	req *pulumirpc.ConstructRequest,
+) (*pulumirpc.ConstructResponse, error) {
+	contract.Assertf(req.Type == "hcl:index:VpcAws", "TODO only hcl:index:VpcAws is supported in Construct")
+	contract.Assertf(req.DryRun == true, "TODO Construct only works in preview for now")
+
+	d, err := prepareTFWorkspace()
+	if err != nil {
+		return nil, err
+	}
+
+	err = initTF(d)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pulumirpc.ConstructResponse{
+		State: &structpb.Struct{
+			Fields: map[string]*structpb.Value{
+				"defaultVpcId": structpb.NewStringValue("testing"),
+			},
+		},
+	}, nil
+}
+
+// Runs terraform init in a given d directory.
+//
+// Running terraform init will:
+//
+//	resolve and download modules to .terraform/modules
+//	resolve and download providers to .terraform/providers
+//	build .terraform.lock.hcl with resolved versions
+//
+// For the purposes of this code provider binaries will not be needed, so there is is a bit inefficient.
+func initTF(d string) error {
+	cmd := exec.Command("terraform", "init")
+	cmd.Stdout = os.Stderr
+	cmd.Stderr = os.Stderr
+	cmd.Dir = d
+	return cmd.Run()
+}
+
+// Prepare a folder with TF files to send
+func prepareTFWorkspace() (string, error) {
+	wd, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+
+	d := filepath.Join(wd, ".hcl", "temp-workspace")
+
+	err = os.RemoveAll(d)
+	if err != nil {
+		return "", err
+	}
+
+	err = os.MkdirAll(d, 0755)
+	if err != nil {
+		return "", err
+	}
+
+	// TODO inputs to TF need to be translated from Pulumi inputs.
+	//
+	// https://developer.hashicorp.com/terraform/language/syntax/json
+	jsonTF := map[string]any{
+		"module": map[string]any{
+			"vpc": map[string]any{
+				"source":             "terraform-aws-modules/vpc/aws",
+				"name":               "by-vpc",
+				"cidr":               "10.0.0.0/16",
+				"azs":                []any{"us-west-2a", "es-west-2b"},
+				"private_subnets":    []any{"10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"},
+				"public_subnets":     []any{"10.0.101.0/24", "10.0.102.0/24", "10.0.103.0/24"},
+				"enable_nat_gateway": true,
+				"enable_vpn_gateway": true,
+			},
+		},
+	}
+
+	jsonTFBytes, err := json.MarshalIndent(jsonTF, "", "  ")
+	if err != nil {
+		return "", err
+	}
+
+	err = os.WriteFile(filepath.Join(d, "infra.tf.json"), jsonTFBytes, 0755)
+	if err != nil {
+		return "", err
+	}
+	return d, nil
+}
+
+// OK so.. We build a TF workspace;
+// we infer which providers are needed
+// we use debug functionality to make these providers.
+// then we run terraform plan
 
 var _ pulumirpc.ResourceProviderServer = (*hclResourceProviderServer)(nil)
 
