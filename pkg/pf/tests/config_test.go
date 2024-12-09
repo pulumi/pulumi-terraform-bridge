@@ -148,9 +148,6 @@ func TestAccProviderConfigureSecretsPluginFramework(t *testing.T) {
 		},
 	}
 
-	// TODO remove this limit
-	primTypes = primTypes[0:1]
-
 	type testCase struct {
 		name               string
 		program            string
@@ -194,6 +191,8 @@ func TestAccProviderConfigureSecretsPluginFramework(t *testing.T) {
 				requireSecret(t, p.Outputs[n], fmt.Sprintf(`p.Outputs["%s"]`, n))
 			},
 		})
+
+		continue // TODO remove this
 
 		testCases = append(testCases, testCase{
 			name: fmt.Sprintf("explicit-provider/schema-secret/%s", ty.name),
@@ -394,9 +393,6 @@ func TestAccProviderConfigureSecretsPluginFramework(t *testing.T) {
 			// },
 		})
 	}
-
-	// TODO Remove this limit
-	testCases = testCases[0:1]
 
 	nestedObjConfigSchema := pschema.ObjectAttribute{
 		Optional:       true,
