@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/internal/logging"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf"
 	pfmuxer "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/muxer"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
@@ -126,7 +127,7 @@ func MainWithMuxer(ctx context.Context, pkg string, info tfbridge.ProviderInfo, 
 // of pulumi-terraform-bridge.  This is an experimental API.
 func MakeMuxedServer(
 	ctx context.Context, pkg string, info tfbridge.ProviderInfo, schema []byte,
-) func(host *rprovider.HostClient) (pulumirpc.ResourceProviderServer, error) {
+) func(*rprovider.HostClient) (pulumirpc.ResourceProviderServer, error) {
 	shim, ok := info.P.(*pfmuxer.ProviderShim)
 	contract.Assertf(ok, "MainWithMuxer must have a ProviderInfo.P created with AugmentShimWithPF")
 	_, err := shim.ResolveDispatch(&info)
@@ -172,7 +173,15 @@ func MakeMuxedServer(
 					Server: func(host *rprovider.HostClient) (pulumirpc.ResourceProviderServer, error) {
 						infoCopy := info
 						infoCopy.P = prov
-						return NewProviderServer(ctx, host,
+
+						// https://github.com/pulumi/pulumi-terraform-bridge/issues/2697:
+						// Avoid accidentally casting (*rprovider.HostClient)(nil) to
+						// (logging.Sink)((*rprovider.HostClient)(nil)).
+						var sink logging.Sink
+						if host != nil {
+							sink = host
+						}
+						return NewProviderServer(ctx, sink,
 							infoCopy, ProviderMetadata{PackageSchema: schema})
 					},
 				})
