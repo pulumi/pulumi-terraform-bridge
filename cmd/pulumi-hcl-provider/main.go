@@ -121,10 +121,10 @@ func (*hclResourceProviderServer) Construct(
 		return nil, err
 	}
 
-	err = initTF(d)
-	if err != nil {
-		return nil, err
-	}
+	// err = initTF(d)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	requiredProviders, err := inferTFRequiredProviders(d)
 	if err != nil {
@@ -135,6 +135,11 @@ func (*hclResourceProviderServer) Construct(
 	if err != nil {
 		return nil, err
 	}
+
+	defer func() {
+		err := proxies.Close()
+		contract.AssertNoErrorf(err, "failed to close proxies")
+	}()
 
 	err = planTF(d, proxies)
 	if err != nil {
@@ -176,10 +181,10 @@ func prepareTFWorkspace() (string, error) {
 
 	d := filepath.Join(wd, ".hcl", "temp-workspace")
 
-	err = os.RemoveAll(d)
-	if err != nil {
-		return "", err
-	}
+	// err = os.RemoveAll(d)
+	// if err != nil {
+	// 	return "", err
+	// }
 
 	err = os.MkdirAll(d, 0755)
 	if err != nil {
