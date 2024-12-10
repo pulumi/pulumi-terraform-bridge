@@ -33,17 +33,14 @@ import (
 
 func providerInfo(ctx context.Context, p run.Provider, value parameterize.Value) (tfbridge.ProviderInfo, error) {
 	provider := proto.New(ctx, p)
+
 	prov := tfbridge.ProviderInfo{
-		P:           provider,
-		Name:        p.Name(),
-		Version:     p.Version(),
-		Description: "A Pulumi provider dynamically bridged from " + p.Name() + ".",
-		Publisher:   "Pulumi",
-
+		P:              provider,
+		Name:           p.Name(),
+		Version:        p.Version(),
+		Description:    "A Pulumi provider dynamically bridged from " + p.Name() + ".",
+		Publisher:      "Pulumi",
 		ResourcePrefix: inferResourcePrefix(provider),
-
-		// To avoid bogging down schema generation speed, we skip all examples.
-		SkipExamples: func(tfbridge.SkipExamplesArgs) bool { return true },
 
 		MetadataInfo: &tfbridge.MetadataInfo{
 			Path: "", Data: tfbridge.ProviderMetadata(nil),
@@ -83,6 +80,24 @@ func providerInfo(ctx context.Context, p run.Provider, value parameterize.Value)
 				Parameter: value.Marshal(),
 			}
 		},
+	}
+	// Add presumed best-effort GitHub org to the provider info.
+	// We do not set the GitHubOrg field for a local dynamic provider.
+	if value.Remote != nil {
+		// https://github.com/opentofu/registry/issues/1337:
+		// Due to discrepancies in the registry protocol/implementation,
+		// we infer the Terraform provider's source code repository via the following assumptions:
+		// - The provider's source code is hosted at github.com
+		// - The provider's github org, for providers, is the namespace field of the registry name
+		// Example:
+		//
+		// opentofu.org/provider/hashicorp/random -> "hashicorp" is deduced to be the github org.
+		// Note that this will only work for the provider (not the module) protocol.
+		urlFields := strings.Split(value.Remote.URL, "/")
+		ghOrg := urlFields[len(urlFields)-2]
+		name := urlFields[len(urlFields)-1]
+		prov.GitHubOrg = ghOrg
+		prov.Repository = "https://github.com/" + ghOrg + "/terraform-provider-" + name
 	}
 
 	if err := fixup.Default(&prov); err != nil {

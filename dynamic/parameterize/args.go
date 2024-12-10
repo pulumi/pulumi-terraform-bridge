@@ -31,12 +31,19 @@ type RemoteArgs struct {
 	Name string
 	// Version is the (possibly empty) version constraint on the provider.
 	Version string
+	// Docs indicates if full schema documentation should be generated.
+	Docs bool
 }
 
 // LocalArgs represents a local TF provider referenced by path.
 type LocalArgs struct {
 	// Path is the path to the provider binary. It can be relative or absolute.
 	Path string
+	// UpstreamRepoPath (if provided) is the local path to the dynamically bridged Terraform provider's repo.
+	//
+	// If set, full documentation will be generated for the provider.
+	// If not set, only documentation from the TF provider's schema will be used.
+	UpstreamRepoPath string
 }
 
 func ParseArgs(args []string) (Args, error) {
@@ -44,7 +51,21 @@ func ParseArgs(args []string) (Args, error) {
 	if len(args) >= 1 &&
 		(strings.HasPrefix(args[0], "./") || strings.HasPrefix(args[0], "/")) {
 		if len(args) > 1 {
-			return Args{}, fmt.Errorf("path based providers are only parameterized by 1 argument: <path>")
+			docsArg := args[1]
+			upstreamRepoPath, found := strings.CutPrefix(docsArg, "upstreamRepoPath=")
+			if !found {
+				return Args{}, fmt.Errorf(
+					"path based providers are only parameterized by 2 arguments: <path> " +
+						"[upstreamRepoPath=<path/to/files>]",
+				)
+			}
+			if upstreamRepoPath == "" {
+				return Args{}, fmt.Errorf(
+					"upstreamRepoPath must be set to a non-empty value: " +
+						"upstreamRepoPath=path/to/files",
+				)
+			}
+			return Args{Local: &LocalArgs{Path: args[0], UpstreamRepoPath: upstreamRepoPath}}, nil
 		}
 		return Args{Local: &LocalArgs{Path: args[0]}}, nil
 	}
@@ -52,6 +73,26 @@ func ParseArgs(args []string) (Args, error) {
 	// This is a registry based provider
 	var remote RemoteArgs
 	switch len(args) {
+	// The third argument, if any, is the full docs option for when we need to generate docs
+	case 3:
+		docsArg := args[2]
+		errMsg := "expected third parameterized argument to be 'fullDocs=<true|false>' or be empty"
+
+		fullDocs, found := strings.CutPrefix(docsArg, "fullDocs=")
+		if !found {
+			return Args{}, fmt.Errorf("%s", errMsg)
+		}
+
+		switch fullDocs {
+		case "true":
+			remote.Docs = true
+		case "false":
+			// Do nothing
+		default:
+			return Args{}, fmt.Errorf("%s", errMsg)
+		}
+
+		fallthrough
 	// The second argument, if any is the version
 	case 2:
 		remote.Version = args[1]
@@ -61,6 +102,6 @@ func ParseArgs(args []string) (Args, error) {
 		remote.Name = args[0]
 		return Args{Remote: &remote}, nil
 	default:
-		return Args{}, fmt.Errorf("expected to be parameterized by 1-2 arguments: <name> [version]")
+		return Args{}, fmt.Errorf("expected to be parameterized by 1-3 arguments: <name> [version] [fullDocs=<true|false>]")
 	}
 }

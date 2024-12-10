@@ -1,17 +1,18 @@
 {
   "name": "testprov",
   "attribution": "This Pulumi package is based on the [`testprov` Terraform Provider](https://github.com/terraform-providers/terraform-provider-testprov).",
+  "repository": "https://github.com/pulumi/pulumi-testprov",
   "meta": {
     "moduleFormat": "(.*)(?:/[^/]*)"
   },
   "language": {
     "nodejs": {
-      "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-testprov)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e first check the [`pulumi-testprov` repo](/issues); however, if that doesn't turn up anything,\n\u003e please consult the source [`terraform-provider-testprov` repo](https://github.com/terraform-providers/terraform-provider-testprov/issues).",
+      "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-testprov)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e first check the [`pulumi-testprov` repo](https://github.com/pulumi/pulumi-testprov/issues); however, if that doesn't turn up anything,\n\u003e please consult the source [`terraform-provider-testprov` repo](https://github.com/terraform-providers/terraform-provider-testprov/issues).",
       "compatibility": "tfbridge20",
       "disableUnionOutputTypes": true
     },
     "python": {
-      "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-testprov)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e first check the [`pulumi-testprov` repo](/issues); however, if that doesn't turn up anything,\n\u003e please consult the source [`terraform-provider-testprov` repo](https://github.com/terraform-providers/terraform-provider-testprov/issues).",
+      "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-testprov)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e first check the [`pulumi-testprov` repo](https://github.com/pulumi/pulumi-testprov/issues); however, if that doesn't turn up anything,\n\u003e please consult the source [`terraform-provider-testprov` repo](https://github.com/terraform-providers/terraform-provider-testprov/issues).",
       "compatibility": "tfbridge20",
       "pyproject": {}
     }

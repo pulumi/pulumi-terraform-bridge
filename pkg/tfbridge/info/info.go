@@ -119,7 +119,7 @@ type Provider struct {
 	// Rules that control file discovery and edits for any subset of docs in a provider.
 	DocRules *DocRule
 
-	// An optional file path to the root of the upstream provider's git repo, for use in docs generation.
+	// An optional local file path to the root of the upstream provider's git repo, for use in docs generation.
 	//
 	// If UpstreamRepoPath is left blank, it is inferred to the location where Go downloaded the build
 	// dependency of the provider. The following fields influence the inference decision:

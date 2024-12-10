@@ -2165,7 +2165,7 @@ throw new Exception("!");
 	})
 	assert.NoError(t, err)
 
-	err = g.Generate()
+	_, err = g.Generate()
 	assert.NoError(t, err)
 
 	f, err := inmem.Open("schema.json")

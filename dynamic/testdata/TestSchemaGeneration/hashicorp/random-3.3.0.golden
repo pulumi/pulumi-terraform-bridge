@@ -1,8 +1,8 @@
 {
     "name": "random",
-    "version": "3.3.0",
     "description": "A Pulumi provider dynamically bridged from random.",
-    "attribution": "This Pulumi package is based on the [`random` Terraform Provider](https://github.com/terraform-providers/terraform-provider-random).",
+    "attribution": "This Pulumi package is based on the [`random` Terraform Provider](https://github.com/hashicorp/terraform-provider-random).",
+    "repository": "https://github.com/hashicorp/terraform-provider-random",
     "publisher": "Pulumi",
     "meta": {
         "moduleFormat": "(.*)(?:/[^/]*)"
@@ -28,14 +28,14 @@
         },
         "nodejs": {
             "packageDescription": "A Pulumi provider dynamically bridged from random.",
-            "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-random)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e first check the [`pulumi-random` repo](/issues); however, if that doesn't turn up anything,\n\u003e please consult the source [`terraform-provider-random` repo](https://github.com/terraform-providers/terraform-provider-random/issues).",
+            "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/hashicorp/terraform-provider-random)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e please consult the source [`terraform-provider-random` repo](https://github.com/hashicorp/terraform-provider-random/issues).",
             "compatibility": "tfbridge20",
             "disableUnionOutputTypes": true,
             "liftSingleValueMethodReturns": true,
             "respectSchemaVersion": true
         },
         "python": {
-            "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-random)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e first check the [`pulumi-random` repo](/issues); however, if that doesn't turn up anything,\n\u003e please consult the source [`terraform-provider-random` repo](https://github.com/terraform-providers/terraform-provider-random/issues).",
+            "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/hashicorp/terraform-provider-random)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e please consult the source [`terraform-provider-random` repo](https://github.com/hashicorp/terraform-provider-random/issues).",
             "compatibility": "tfbridge20",
             "respectSchemaVersion": true,
             "pyproject": {
