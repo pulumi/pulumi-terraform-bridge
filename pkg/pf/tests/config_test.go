@@ -475,16 +475,14 @@ func TestAccProviderConfigureSecretsPluginFramework(t *testing.T) {
 					Name: "secretStrlistConfig",
 				},
 				"obj": {
-					Elem: &info.Schema{
-						Fields: map[string]*info.Schema{
-							"nested_strlist_config": {
-								// Prevent nestedStrlistConfigs pluralization
-								Name: "nestedStrlistConfig",
-							},
-							"nested_secret_strlist_config": {
-								// Prevent nestedSecretStrlistConfigs pluralization
-								Name: "nestedSecretStrlistConfig",
-							},
+					Fields: map[string]*info.Schema{
+						"nested_strlist_config": {
+							// Prevent nestedStrlistConfigs pluralization
+							Name: "nestedStrlistConfig",
+						},
+						"nested_secret_strlist_config": {
+							// Prevent nestedSecretStrlistConfigs pluralization
+							Name: "nestedSecretStrlistConfig",
 						},
 					},
 				},
