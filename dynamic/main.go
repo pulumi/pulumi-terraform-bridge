@@ -95,6 +95,30 @@ func initialSetup() (info.Provider, pfbridge.ProviderMetadata, func() error) {
 				info.SchemaPostProcessor(&packageSchema.PackageSpec)
 			}
 
+			if fullDocs {
+				// Create a custom generator for registry docs (_index.md).
+				root := afero.NewBasePathFs(afero.NewOsFs(), "docs")
+				indexGenerator, err := tfgen.NewGenerator(tfgen.GeneratorOptions{
+					Package:      info.Name,
+					Version:      info.Version,
+					Language:     tfgen.RegistryDocs,
+					ProviderInfo: info,
+					Root:         root,
+					Sink: diag.DefaultSink(os.Stdout, os.Stderr, diag.FormatOptions{
+						Color: colors.Always,
+					}),
+					XInMemoryDocs: !fullDocs,
+					SkipExamples:  !fullDocs,
+				})
+				if err != nil {
+					return nil, errors.Wrapf(err, "failed to create generator")
+				}
+				_, err = indexGenerator.Generate()
+				if err != nil {
+					return nil, err
+				}
+			}
+
 			return json.Marshal(packageSchema.PackageSpec)
 		},
 		XParamaterize: func(ctx context.Context, req plugin.ParameterizeRequest) (plugin.ParameterizeResponse, error) {
