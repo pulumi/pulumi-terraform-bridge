@@ -1,9 +1,6 @@
-LDFLAGS := -ldflags "-X google.golang.org/protobuf/reflect/protoregistry.conflictPolicy=ignore"
-
 build: bin
 	go build \
 		-o bin/pulumi-resource-terraform-provider \
-		${LDFLAGS} \
 		github.com/pulumi/pulumi-terraform-bridge/dynamic
 
 install: build
@@ -12,15 +9,15 @@ install: build
 		--file bin/pulumi-resource-terraform-provider --reinstall
 
 test_unit:
-	cd internal/shim && go test ${LDFLAGS} ./...
-	go test -short ${LDFLAGS} ./...
+	cd internal/shim && go test ./...
+	go test -short ./...
 
 test:
-	cd internal/shim && go test -v ${LDFLAGS} ./...
-	go test -v ${LDFLAGS} ./...
+	cd internal/shim && go test -v ./...
+	go test -v ./...
 
 test_accept:
-	go test -v ${LDFLAGS} ./... -update
+	go test -v ./... -update
 
 bin:
 	mkdir bin

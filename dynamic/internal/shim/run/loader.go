@@ -29,14 +29,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-mux/tf5to6server"
 	disco "github.com/hashicorp/terraform-svchost/disco"
-	"github.com/opentofu/opentofu/internal/getproviders"
-	"github.com/opentofu/opentofu/internal/logging"
-	tfplugin "github.com/opentofu/opentofu/internal/plugin"
-	"github.com/opentofu/opentofu/internal/providercache"
-	"github.com/opentofu/opentofu/internal/tfplugin5"
-	"github.com/opentofu/opentofu/internal/tfplugin6"
-	v5shim "github.com/opentofu/opentofu/shim/protov5"
-	v6shim "github.com/opentofu/opentofu/shim/protov6"
 	tfaddr "github.com/opentofu/registry-address"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
@@ -44,7 +36,15 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	v5shim "github.com/pulumi/pulumi-terraform-bridge/dynamic/internal/shim/protov5"
+	v6shim "github.com/pulumi/pulumi-terraform-bridge/dynamic/internal/shim/protov6"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/opentofu/getproviders"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/opentofu/logging"
+	tfplugin "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/opentofu/plugin"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/opentofu/providercache"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/tfplugin5"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/tfplugin6"
 )
 
 // envPluginCache allows users to override where we cache TF providers used by
