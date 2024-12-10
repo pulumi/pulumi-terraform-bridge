@@ -22,7 +22,6 @@ import (
 	"os/exec"
 
 	"github.com/blang/semver"
-	"github.com/opentofu/opentofu/shim/run"
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -31,6 +30,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/spf13/afero"
 
+	"github.com/pulumi/pulumi-terraform-bridge/dynamic/internal/shim/run"
 	"github.com/pulumi/pulumi-terraform-bridge/dynamic/parameterize"
 	"github.com/pulumi/pulumi-terraform-bridge/dynamic/version"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/proto"
