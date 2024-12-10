@@ -53,16 +53,15 @@ func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
 		g.info.Golang.ImportBasePath,
 		providerDisplayName,
 		g.pkg.Name().String(),
+		g.info.GitHubOrg,
+		g.info.Repository,
 	)
 
 	// Determine if we should write an overview header.
 	overviewHeader := getOverviewHeader(content)
 
-	// Add instructions to top of file
-	contentStr := frontMatter + installationInstructions + overviewHeader + string(content)
-
 	// Translate code blocks to Pulumi
-	contentStr, err = translateCodeBlocks(contentStr, g)
+	contentStr, err := translateCodeBlocks(string(content), g)
 	if err != nil {
 		return nil, err
 	}
@@ -79,6 +78,11 @@ func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
 		pkg:      g.pkg,
 		info:     g.info,
 	}, string(contentBytes), nil)
+
+	// Add instructions to top of file
+	// Instructions need to be added _after_ the editRules are called,
+	// because if "hashicorp" or "terraform" show up in the dynamic provider source, we want that to remain.
+	contentStr = frontMatter + installationInstructions + overviewHeader + contentStr
 
 	return []byte(contentStr), nil
 }
@@ -106,24 +110,40 @@ func writeFrontMatter(providerDisplayName string) string {
 // .NET: Pulumi.foo
 // Java: com.pulumi/foo
 // ****
-func writeInstallationInstructions(goImportBasePath, displayName, pkgName string) string {
+func writeInstallationInstructions(goImportBasePath, displayName, pkgName, ghOrg, sourceRepo string) string {
 	// Capitalize the package name for C#
 	capitalize := cases.Title(language.English)
 	cSharpName := capitalize.String(pkgName)
 
-	return fmt.Sprintf(
-		"## Installation\n\n"+
-			"The %[1]s provider is available as a package in all Pulumi languages:\n\n"+
-			"* JavaScript/TypeScript: [`@pulumi/%[2]s`](https://www.npmjs.com/package/@pulumi/%[2]s)\n"+
-			"* Python: [`pulumi-%[2]s`](https://pypi.org/project/pulumi-%[2]s/)\n"+
-			"* Go: [`%[4]s`](https://github.com/pulumi/pulumi-%[2]s)\n"+
-			"* .NET: [`Pulumi.%[3]s`](https://www.nuget.org/packages/Pulumi.%[3]s)\n"+
-			"* Java: [`com.pulumi/%[2]s`](https://central.sonatype.com/artifact/com.pulumi/%[2]s)\n\n",
-		displayName,
-		pkgName,
-		cSharpName,
-		goImportBasePath,
-	)
+	var instructions string
+	if strings.Contains(sourceRepo, "pulumi") {
+		instructions = fmt.Sprintf(
+			"## Installation\n\n"+
+				"The %[1]s provider is available as a package in all Pulumi languages:\n\n"+
+				"* JavaScript/TypeScript: [`@pulumi/%[2]s`](https://www.npmjs.com/package/@pulumi/%[2]s)\n"+
+				"* Python: [`pulumi-%[2]s`](https://pypi.org/project/pulumi-%[2]s/)\n"+
+				"* Go: [`%[4]s`](https://github.com/pulumi/pulumi-%[2]s)\n"+
+				"* .NET: [`Pulumi.%[3]s`](https://www.nuget.org/packages/Pulumi.%[3]s)\n"+
+				"* Java: [`com.pulumi/%[2]s`](https://central.sonatype.com/artifact/com.pulumi/%[2]s)\n\n",
+			displayName,
+			pkgName,
+			cSharpName,
+			goImportBasePath,
+		)
+	} else {
+		instructions = fmt.Sprintf("## Generate Provider\n\n"+
+			"The %[1]s provider must be installed as a Local Package by following the "+
+			"[instructions for Any Terraform Provider]"+
+			"(https://www.pulumi.com/registry/packages/terraform-provider/):\n\n"+
+			"```bash\n"+
+			"pulumi package gen-sdk terraform-provider %[2]s/%[3]s\n"+
+			"```\n",
+			displayName,
+			ghOrg,
+			pkgName,
+		)
+	}
+	return instructions
 }
 
 func getOverviewHeader(content []byte) string {
