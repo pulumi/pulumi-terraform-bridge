@@ -96,7 +96,7 @@ func runPulumiUpgrade(t T, res1, res2 *schema.Resource, config1, config2 cty.Val
 	err := os.WriteFile(p, yamlProgram, 0o600)
 	require.NoErrorf(t, err, "writing Pulumi.yaml")
 
-	handle, err := pulcheck.StartPulumiProvider(context.Background(), defProviderShortName, defProviderVer, prov2)
+	handle, err := pulcheck.StartPulumiProvider(context.Background(), prov2)
 	require.NoError(t, err)
 	pt.CurrentStack().Workspace().SetEnvVar("PULUMI_DEBUG_PROVIDERS", fmt.Sprintf("%s:%d", defProviderShortName, handle.Port))
 	pt.Up(t)

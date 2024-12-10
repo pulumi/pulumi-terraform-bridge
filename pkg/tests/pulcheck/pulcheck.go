@@ -86,8 +86,7 @@ func EnsureProviderValid(t T, tfp *schema.Provider) {
 	require.NoError(t, tfp.InternalValidate())
 }
 
-// This is an experimental API.
-func StartPulumiProvider(ctx context.Context, name, version string, providerInfo tfbridge.ProviderInfo) (*rpcutil.ServeHandle, error) {
+func ProviderServerFromInfo(ctx context.Context, providerInfo tfbridge.ProviderInfo) (pulumirpc.ResourceProviderServer, error) {
 	sink := pulumidiag.DefaultSink(io.Discard, io.Discard, pulumidiag.FormatOptions{
 		Color: colors.Never,
 	})
@@ -102,7 +101,15 @@ func StartPulumiProvider(ctx context.Context, name, version string, providerInfo
 		return nil, fmt.Errorf("json.MarshalIndent(schema, ..) failed: %w", err)
 	}
 
-	prov := tfbridge.NewProvider(ctx, nil, name, version, providerInfo.P, providerInfo, schemaBytes)
+	return tfbridge.NewProvider(ctx, nil, providerInfo.Name, providerInfo.Version, providerInfo.P, providerInfo, schemaBytes), nil
+}
+
+// This is an experimental API.
+func StartPulumiProvider(ctx context.Context, providerInfo tfbridge.ProviderInfo) (*rpcutil.ServeHandle, error) {
+	prov, err := ProviderServerFromInfo(ctx, providerInfo)
+	if err != nil {
+		return nil, fmt.Errorf("ProviderServerFromInfo failed: %w", err)
+	}
 
 	handle, err := rpcutil.ServeWithOptions(rpcutil.ServeOptions{
 		Init: func(srv *grpc.Server) error {
@@ -227,7 +234,7 @@ func PulCheck(t T, bridgedProvider info.Provider, program string, opts ...opttes
 		opttest.AttachProvider(
 			bridgedProvider.Name,
 			func(ctx context.Context, pt providers.PulumiTest) (providers.Port, error) {
-				handle, err := StartPulumiProvider(ctx, bridgedProvider.Name, bridgedProvider.Version, bridgedProvider)
+				handle, err := StartPulumiProvider(ctx, bridgedProvider)
 				require.NoError(t, err)
 				return providers.Port(handle.Port), nil
 			},
