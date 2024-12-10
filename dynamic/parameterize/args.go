@@ -76,7 +76,7 @@ func ParseArgs(args []string) (Args, error) {
 	// The third argument, if any, is the full docs option for when we need to generate docs
 	case 3:
 		docsArg := args[2]
-		errMsg := "expected third parameterized argument to be 'fullDocs=true/false' or be empty"
+		errMsg := "expected third parameterized argument to be 'fullDocs=<true|false>' or be empty"
 
 		fullDocs, found := strings.CutPrefix(docsArg, "fullDocs=")
 		if !found {
@@ -102,6 +102,6 @@ func ParseArgs(args []string) (Args, error) {
 		remote.Name = args[0]
 		return Args{Remote: &remote}, nil
 	default:
-		return Args{}, fmt.Errorf("expected to be parameterized by 1-3 arguments: <name> [version] [fullDocs]")
+		return Args{}, fmt.Errorf("expected to be parameterized by 1-3 arguments: <name> [version] [fullDocs=<true|false>]")
 	}
 }
