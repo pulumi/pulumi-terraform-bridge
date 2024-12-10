@@ -34,14 +34,16 @@
         builder = "${pkgs.bash}/bin/bash";
         coreutils = pkgs.coreutils;
         protoc = pkgs.protobuf3_20;
-        protogo = pkgs.protoc-gen-go;
+        gengo = pkgs.protoc-gen-go;
+        gengogrpc = pkgs.protoc-gen-go-grpc;
         args = [ "-c" ''
-          export PATH=$coreutils/bin:$protoc/bin:$protogo/bin
+          set -euo pipefail
+          export PATH=$coreutils/bin:$protoc/bin:$gengo/bin:$gengogrpc/bin
           mkdir -p $out
-          cd $out
           cp ${tfplugin6-protos}/tfplugin6_pulumi.proto $out/tfplugin6_pulumi.proto
-          protoc --proto_path ${tfplugin6-protos} ${tfplugin6-protos}/tfplugin6_pulumi.proto --go_out=.
-          mv $out/github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/*/* $out/
+          cd $out
+          protoc --go_out=. --go-grpc_out=. --proto_path ${tfplugin6-protos} ${tfplugin6-protos}/tfplugin6_pulumi.proto
+          mv $out/github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/tfplugin6/* $out/
           rm -rf $out/github.com
         ''];
         system = sys;
