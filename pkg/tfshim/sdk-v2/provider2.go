@@ -89,6 +89,9 @@ func (s *v2InstanceState2) Type() string {
 }
 
 func (s *v2InstanceState2) ID() string {
+	if s.stateValue.IsNull() {
+		return ""
+	}
 	id := s.stateValue.GetAttr("id")
 	if !id.IsKnown() {
 		return ""
@@ -621,7 +624,7 @@ func (s *grpcServer) ApplyResourceChange(
 	config, priorState, plannedState cty.Value,
 	plannedMeta map[string]interface{},
 	providerMeta *cty.Value,
-) (*v2InstanceState2, error) {
+) (shim.InstanceState, error) {
 	configVal, err := msgpack.Marshal(config, ty)
 	if err != nil {
 		return nil, err
@@ -671,6 +674,9 @@ func (s *grpcServer) ApplyResourceChange(
 		}
 	}
 	returnErr := handleDiagnostics(ctx, resp.Diagnostics, applyErr)
+	if newState.IsNull() {
+		return nil, returnErr
+	}
 	return &v2InstanceState2{
 		resourceType: typeName,
 		stateValue:   newState,
