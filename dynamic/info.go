@@ -67,6 +67,7 @@ func providerInfo(ctx context.Context, p run.Provider, value parameterize.Value)
 				"github.com/pulumi/pulumi-terraform-provider/sdks/go",
 				p.Name(),
 				tfbridge.GetModuleMajorVersion(p.Version()),
+				p.Name(),
 			),
 			RootPackageName:              p.Name(),
 			LiftSingleValueMethodReturns: true,
