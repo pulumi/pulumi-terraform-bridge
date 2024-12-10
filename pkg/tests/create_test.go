@@ -8,11 +8,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	testutils "github.com/pulumi/providertest/replay"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/stretchr/testify/require"
 	"github.com/zclconf/go-cty/cty"
 
 	crosstests "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/pulcheck"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
@@ -409,4 +413,70 @@ func TestInputsEmptyCollections(t *testing.T) {
 			cty.EmptyObjectVal,
 		))
 	}
+}
+
+func TestCreateFails(t *testing.T) {
+	t.Parallel()
+
+	resMap := map[string]*schema.Resource{
+		"prov_test": {
+			Schema: map[string]*schema.Schema{
+				"test": {
+					Type:     schema.TypeString,
+					Required: true,
+				},
+			},
+			CreateContext: func(ctx context.Context, rd *schema.ResourceData, i interface{}) diag.Diagnostics {
+				return diag.Errorf("CREATE FAILURE")
+			},
+		},
+	}
+	prov := &schema.Provider{ResourcesMap: resMap}
+	bridgedProvider := pulcheck.BridgedProvider(t, "prov", prov)
+
+	pt := pulcheck.PulCheck(t, bridgedProvider, `
+name: test
+runtime: yaml
+resources:
+  mainRes:
+    type: prov:index:Test
+	properties:
+	  test: "hello"
+`)
+
+	_, err := pt.CurrentStack().Up(pt.Context())
+	require.Error(t, err)
+	require.ErrorContains(t, err, "CREATE FAILURE")
+}
+
+func TestCreateUnrecognizedType(t *testing.T) {
+	t.Parallel()
+
+	resMap := map[string]*schema.Resource{
+		"prov_test": {
+			Schema: map[string]*schema.Schema{
+				"test": {
+					Type:     schema.TypeString,
+					Required: true,
+				},
+			},
+		},
+	}
+	prov := &schema.Provider{ResourcesMap: resMap}
+	bridgedProvider := pulcheck.BridgedProvider(t, "prov", prov)
+	providerServer, err := pulcheck.ProviderServerFromInfo(context.Background(), bridgedProvider)
+	require.NoError(t, err)
+
+	testutils.Replay(t, providerServer, `
+	{
+		"method": "/pulumirpc.ResourceProvider/Create",
+		"request": {
+			"urn": "urn:pulumi:dev::teststack::prov:index/unknownResource:UnknownResource::exres",
+			"properties": {
+				"test": "hello"
+			}
+		},
+		"errors": ["unrecognized resource type (Create): prov:index/unknownResource:UnknownResource"]
+	}
+	`)
 }
