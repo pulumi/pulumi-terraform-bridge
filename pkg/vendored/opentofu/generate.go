@@ -67,11 +67,35 @@ func files() []file {
 		protoPkg,
 	))
 
+	replaceTfDiagsRef := gofmtReplace(fmt.Sprintf(
+		`"%s/internal/tfdiags" -> "%s/tfdiags"`,
+		oldPkg, newPkg,
+	))
+
+	replaceAddrsRef := gofmtReplace(fmt.Sprintf(
+		`"%s/internal/addrs" -> "%s/addrs"`,
+		oldPkg, newPkg,
+	))
+
+	replaceHttpClientRef := gofmtReplace(fmt.Sprintf(
+		`"%s/internal/httpclient" -> "%s/httpclient"`,
+		oldPkg, newPkg,
+	))
+
+	replaceLoggingRef := gofmtReplace(fmt.Sprintf(
+		`"%s/internal/logging" -> "%s/logging"`,
+		oldPkg, newPkg,
+	))
+
 	transforms := []func(string) string{
 		replacePkg,
 		doNotEditWarning,
 		fixupCodeTypeError,
 		fixupTFPlugin6Ref,
+		replaceTfDiagsRef,
+		replaceAddrsRef,
+		replaceHttpClientRef,
+		replaceLoggingRef,
 	}
 
 	return []file{
@@ -138,6 +162,106 @@ func files() []file {
 				s = strings.ReplaceAll(s, `"github.com/opentofu/opentofu/internal/providers"`, "")
 				return s
 			}),
+		},
+		{
+			src:        "internal/tfdiags/config_traversals.go",
+			dest:       "tfdiags/config_traversals.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/tfdiags/rpc_friendly.go",
+			dest:       "tfdiags/rpc_friendly.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/tfdiags/error.go",
+			dest:       "tfdiags/error.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/tfdiags/hcl.go",
+			dest:       "tfdiags/hcl.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/tfdiags/source_range.go",
+			dest:       "tfdiags/source_range.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/tfdiags/diagnostic.go",
+			dest:       "tfdiags/diagnostic.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/tfdiags/diagnostics.go",
+			dest:       "tfdiags/diagnostics.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/addrs/provider.go",
+			dest:       "addrs/provider.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/getproviders/source.go",
+			dest:       "getproviders/source.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/getproviders/types.go",
+			dest:       "getproviders/types.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/getproviders/hash.go",
+			dest:       "getproviders/hash.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/getproviders/errors.go",
+			dest:       "getproviders/errors.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/getproviders/package_authentication.go",
+			dest:       "getproviders/package_authentication.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/getproviders/registry_client.go",
+			dest:       "getproviders/registry_client.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/getproviders/registry_source.go",
+			dest:       "getproviders/registry_source.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/getproviders/filesystem_search.go",
+			dest:       "getproviders/filesystem_search.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/httpclient/client.go",
+			dest:       "httpclient/client.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/httpclient/useragent.go",
+			dest:       "httpclient/useragent.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/logging/logging.go",
+			dest:       "logging/logging.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/logging/panic.go",
+			dest:       "logging/panic.go",
+			transforms: transforms,
 		},
 	}
 }
