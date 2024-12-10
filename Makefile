@@ -31,7 +31,7 @@ test:: install_plugins
 	@mkdir -p bin
 	go build -o bin ./internal/testing/pulumi-terraform-bridge-test-provider
 	PULUMI_TERRAFORM_BRIDGE_TEST_PROVIDER=$(shell pwd)/bin/pulumi-terraform-bridge-test-provider \
-		go test -v -count=1 -coverprofile="coverage.txt" -coverpkg=./... -timeout 2h -parallel ${TESTPARALLELISM} ./...
+		go test -v -count=1 -coverprofile="coverage.txt" -coverpkg=./...,github.com/hashicorp/terraform-plugin-framework,github.com/hashicorp/terraform-plugin-sdk,github.com/hashicorp/terraform-plugin-sdk/v2 -timeout 2h -parallel ${TESTPARALLELISM} ./...
 
 # Run tests while accepting current output as expected output "golden"
 # tests. In case where system behavior changes intentionally this can
