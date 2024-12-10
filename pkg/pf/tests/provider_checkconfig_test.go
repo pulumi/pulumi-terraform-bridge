@@ -22,6 +22,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
+	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hexops/autogold/v2"
@@ -34,10 +35,14 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/structpb"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/providerbuilder"
 	pb "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/providerbuilder"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/pulcheck"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
 	tfbridge0 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	shimschema "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 )
 
 func TestCheckConfig(t *testing.T) {
@@ -801,4 +806,76 @@ func makeProviderServer(
 	server, err := newProviderServer(t, info)
 	require.NoError(t, err)
 	return server
+}
+
+func TestExtraConfig(t *testing.T) {
+	t.Parallel()
+
+	provBuilder := providerbuilder.NewProvider(
+		providerbuilder.NewProviderArgs{
+			AllResources: []providerbuilder.Resource{
+				providerbuilder.NewResource(providerbuilder.NewResourceArgs{
+					ResourceSchema: rschema.Schema{
+						Attributes: map[string]rschema.Attribute{
+							"s": rschema.StringAttribute{Optional: true},
+						},
+					},
+				}),
+			},
+			ProviderSchema: schema.Schema{
+				Attributes: map[string]schema.Attribute{
+					"config": schema.StringAttribute{Optional: true},
+				},
+			},
+		})
+
+	prov := bridgedProvider(provBuilder)
+
+	prov.ExtraConfig = map[string]*info.Config{
+		"extraConf": {
+			Schema: (&shimschema.Schema{
+				Type:     shim.TypeString,
+				Optional: true,
+			}).Shim(),
+		},
+	}
+
+	t.Run("unknown config causes check failure", func(t *testing.T) {
+		t.Parallel()
+
+		program := `
+name: test
+runtime: yaml
+resources:
+    mainRes:
+        type: testprovider:index:Test
+        properties:
+            s: "hello"`
+
+		pt, err := pulcheck.PulCheck(t, prov, program)
+		require.NoError(t, err)
+		pt.SetConfig(t, "testprovider:unknown", "value")
+
+		_, err = pt.CurrentStack().Up(pt.Context())
+		require.ErrorContains(t, err, "is not a valid configuration key for the testprovider provider")
+	})
+
+	t.Run("extra config does not cause check failure", func(t *testing.T) {
+		t.Parallel()
+
+		program := `
+name: test
+runtime: yaml
+resources:
+    mainRes:
+        type: testprovider:index:Test
+        properties:
+            s: "hello"`
+
+		pt, err := pulcheck.PulCheck(t, prov, program)
+		require.NoError(t, err)
+		pt.SetConfig(t, "testprovider:extraConf", "value")
+
+		pt.Up(t)
+	})
 }
