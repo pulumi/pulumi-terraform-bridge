@@ -9,9 +9,35 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/zclconf/go-cty/cty"
 
+	crosstests "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/pulcheck"
 )
+
+// TestStateFunc ensures that resources with a StateFunc set on their schema are correctly
+// handled. This includes ensuring that the PlannedPrivate blob is passed from
+// PlanResourceChange to ApplyResourceChange. If this is passed correctly, the provider
+// will see the original value of the field, rather than the value that was produced by
+// the StateFunc.
+func TestStateFuncProviderNotAffected(t *testing.T) {
+	t.Parallel()
+	crosstests.Create(t,
+		map[string]*schema.Schema{
+			"test": {
+				Type:     schema.TypeString,
+				Optional: true,
+				ForceNew: true,
+				StateFunc: func(v interface{}) string {
+					return v.(string) + " world"
+				},
+			},
+		},
+		cty.ObjectVal(map[string]cty.Value{
+			"test": cty.StringVal("hello"),
+		}),
+	)
+}
 
 func TestStateFunc(t *testing.T) {
 	t.Parallel()
