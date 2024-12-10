@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/provider"
@@ -52,10 +53,10 @@ func TestAccProviderConfigureSecretsPluginFramework(t *testing.T) {
 
 	setConfigValue := func(cv auto.ConfigValue) configSetter {
 		return func(ctx context.Context, t *testing.T, stack *auto.Stack, basePath string, secret bool) {
-			if secret {
-				cv.Secret = true
-			}
-			err := stack.SetConfigWithOptions(ctx, basePath, cv, &auto.ConfigOptions{Path: true})
+			err := stack.SetConfigWithOptions(ctx, basePath, auto.ConfigValue{
+				Value:  cv.Value,
+				Secret: secret,
+			}, &auto.ConfigOptions{Path: true})
 			require.NoError(t, err)
 		}
 	}
@@ -418,19 +419,19 @@ func TestAccProviderConfigureSecretsPluginFramework(t *testing.T) {
 		})
 	}
 
-	nestedObjConfigSchema := pschema.SingleNestedAttribute{
+	nestedObjS := pschema.SingleNestedAttribute{
 		Optional:   true,
 		Attributes: map[string]pschema.Attribute{},
 	}
 
 	for _, ty := range primTypes {
-		nestedObjConfigSchema.Attributes[fmt.Sprintf("nested_%s_config", ty.name)] = ty.attrSchema
-		nestedObjConfigSchema.Attributes[fmt.Sprintf("nested_secret_%s_config", ty.name)] = ty.sensitiveAttrSchema
+		nestedObjS.Attributes[fmt.Sprintf("nested_%s_config", ty.name)] = ty.attrSchema
+		nestedObjS.Attributes[fmt.Sprintf("nested_secret_%s_config", ty.name)] = ty.sensitiveAttrSchema
 	}
 
 	configSchema := pschema.Schema{
 		Attributes: map[string]pschema.Attribute{
-			"obj": nestedObjConfigSchema,
+			"obj": nestedObjS,
 		},
 	}
 
@@ -451,7 +452,11 @@ func TestAccProviderConfigureSecretsPluginFramework(t *testing.T) {
 			})
 			tfp := providerbuilder.NewProvider(providerbuilder.NewProviderArgs{
 				TypeName: "prov",
-				ConfigureFunc: func(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
+				ConfigureFunc: func(
+					ctx context.Context,
+					req provider.ConfigureRequest,
+					resp *provider.ConfigureResponse,
+				) {
 					tc.checkConfigureCall(t, ctx, &req.Config)
 				},
 				ProviderSchema: configSchema,
