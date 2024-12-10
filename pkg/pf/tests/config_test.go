@@ -12,13 +12,14 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/providerbuilder"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/pulcheck"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/providerbuilder"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/pulcheck"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
 // For the following combinations:
@@ -441,6 +442,16 @@ func TestAccProviderConfigureSecretsPluginFramework(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			if tc.name == "explicit-provider/first-class-secret/nested-strlist" ||
+				tc.name == "explicit-provider/schema-secret/nested-strlist" {
+				t.Skip("TODO[pulumi/pulumi-terraform-bridge#2714] tfgen ignores name overrides")
+			}
+
+			if tc.name == "default-provider/first-class-secret/nested-int" ||
+				tc.name == "default-provider/first-class-secret/nested-bool" {
+				t.Skip("TODO[pulumi/pulumi-terraform-bridge#2715] cannot encode provider configuration")
+			}
+
 			ctx := context.Background()
 			res := providerbuilder.NewResource(providerbuilder.NewResourceArgs{
 				ResourceSchema: rschema.Schema{
