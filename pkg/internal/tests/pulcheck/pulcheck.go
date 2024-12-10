@@ -86,7 +86,9 @@ func EnsureProviderValid(t T, tfp *schema.Provider) {
 	require.NoError(t, tfp.InternalValidate())
 }
 
-func ProviderServerFromInfo(ctx context.Context, providerInfo tfbridge.ProviderInfo) (pulumirpc.ResourceProviderServer, error) {
+func ProviderServerFromInfo(
+	ctx context.Context, providerInfo tfbridge.ProviderInfo,
+) (pulumirpc.ResourceProviderServer, error) {
 	sink := pulumidiag.DefaultSink(io.Discard, io.Discard, pulumidiag.FormatOptions{
 		Color: colors.Never,
 	})
@@ -101,7 +103,8 @@ func ProviderServerFromInfo(ctx context.Context, providerInfo tfbridge.ProviderI
 		return nil, fmt.Errorf("json.MarshalIndent(schema, ..) failed: %w", err)
 	}
 
-	return tfbridge.NewProvider(ctx, nil, providerInfo.Name, providerInfo.Version, providerInfo.P, providerInfo, schemaBytes), nil
+	return tfbridge.NewProvider(
+		ctx, nil, providerInfo.Name, providerInfo.Version, providerInfo.P, providerInfo, schemaBytes), nil
 }
 
 // This is an experimental API.
