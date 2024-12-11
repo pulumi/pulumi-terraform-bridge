@@ -1,4 +1,4 @@
-.PHONY: build install tfplugin
+.PHONY: build install vendor-tfplugin vendor
 
 build::
 	echo "Use 'nix build' or 'make tfplugin' instead"
@@ -36,8 +36,11 @@ install:: tfplugin5_pulumi.pb.go tfplugin6_pulumi.pb.go tfplugin5_pulumi_grpc.pb
 	mkdir -p "${out}"
 	cp $^ "${out}/"
 
+vendor:: vendor-tfplugin
+	go generate
+
 # This target runs outside of the nix environment.
-tfplugin::
+vendor-tfplugin::
 	nix build
 	rm -rf tfplugin5
 	mkdir -p tfplugin5
