@@ -15,6 +15,8 @@
 //go:build generate
 // +build generate
 
+//go:generate go run generate.go
+
 package main
 
 import (
@@ -27,43 +29,37 @@ import (
 	"strings"
 )
 
-//go:generate go run generate.go
-
-const (
-	oldPkg   = "github.com/hashicorp/terraform-plugin-go"
-	newPkg   = "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/terraform-plugin-go"
-	protoPkg = "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/tfplugin6"
-	tpgRepo  = "https://github.com/hashicorp/terraform-plugin-go"
-	tpgVer   = "v0.22.0"
-)
-
-type file struct {
-	src        string
-	dest       string
-	transforms []func(string) string
-}
-
 func main() {
-	remote := fetchRemote()
-	fmt.Println(remote)
-
-	for _, f := range files() {
-		install(remote, f)
-	}
+	vendorTerraformPluginGo("v0.22.0")
 }
 
-func files() []file {
+func vendorTerraformPluginGo(version string) {
+	oldPkg := "github.com/hashicorp/terraform-plugin-go"
+	protoPkg := "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/tfplugin6"
+
 	fixupTFPlugin6Ref := gofmtReplace(fmt.Sprintf(
 		`"%s" -> "%s"`,
 		fmt.Sprintf("%s/tfprotov6/internal/tfplugin6", oldPkg),
 		protoPkg,
 	))
 
-	transforms := []func(string) string{
-		fixupTFPlugin6Ref,
+	doNotEditWarning := func(code string) string {
+		return fmt.Sprintf("// Code copied from %s by go generate; DO NOT EDIT.\n", oldPkg) + code
 	}
 
-	return []file{
+	fixupCodeTypeError := func(code string) string {
+		before := `panic(fmt.Sprintf("unsupported block nesting mode %s"`
+		after := `panic(fmt.Sprintf("unsupported block nesting mode %v"`
+		return strings.ReplaceAll(code, before, after)
+	}
+
+	transforms := []func(string) string{
+		doNotEditWarning,
+		fixupTFPlugin6Ref,
+		fixupCodeTypeError,
+	}
+
+	files := []file{
 		{
 			src:  "LICENSE",
 			dest: "tfprotov6/LICENSE",
@@ -84,34 +80,61 @@ func files() []file {
 			transforms: transforms,
 		},
 	}
+
+	vendor(vendorOpts{
+		repo:      "https://github.com/hashicorp/terraform-plugin-go",
+		version:   version,
+		files:     files,
+		targetDir: "terraform-plugin-go",
+	})
 }
 
-func install(remote string, f file) {
-	srcPath := filepath.Join(remote, filepath.Join(strings.Split(f.src, "/")...))
-	code, err := os.ReadFile(srcPath)
+type file struct {
+	src        string
+	dest       string
+	transforms []func(string) string
+}
+
+type vendorOpts struct {
+	repo      string
+	version   string
+	files     []file
+	targetDir string
+}
+
+func vendor(opts vendorOpts) {
+	err := os.RemoveAll(opts.targetDir)
 	if err != nil {
 		log.Fatal(err)
 	}
-	for _, t := range f.transforms {
-		code = []byte(t(string(code)))
-	}
-	destPath := filepath.Join(strings.Split(f.dest, "/")...)
-	ensureDirFor(destPath)
-	if err := os.WriteFile(destPath, code, os.ModePerm); err != nil {
-		log.Fatal(err)
+	sources := fetchRemote(opts.repo, opts.version)
+	for _, f := range opts.files {
+		srcPath := filepath.Join(sources, filepath.Join(strings.Split(f.src, "/")...))
+		code, err := os.ReadFile(srcPath)
+		if err != nil {
+			log.Fatal(err)
+		}
+		for _, t := range f.transforms {
+			code = []byte(t(string(code)))
+		}
+		destPath := filepath.Join(opts.targetDir, filepath.Join(strings.Split(f.dest, "/")...))
+		ensureDirFor(destPath)
+		if err := os.WriteFile(destPath, code, os.ModePerm); err != nil {
+			log.Fatal(err)
+		}
 	}
 }
 
-func ensureDirFor(path string) {
-	err := os.MkdirAll(filepath.Dir(path), os.ModePerm)
-	if err != nil {
-		log.Fatal(err)
-	}
-}
-
-func fetchRemote() string {
+// Resolves a Git repository to a local folder and returns that folder.
+//
+// Example:
+//
+//	fetchRemote("https://github.com/hashicorp/terraform-plugin-go", "v0.22.0")
+func fetchRemote(repo, version string) string {
+	parts := strings.Split(repo, "/")
+	lastPart := parts[len(parts)-1]
 	tmp := os.TempDir()
-	dir := filepath.Join(tmp, "terraform-plugin-go-"+tpgVer)
+	dir := filepath.Join(tmp, lastPart+"-"+version)
 	stat, err := os.Stat(dir)
 	if err != nil && !os.IsNotExist(err) {
 		log.Fatal(err)
@@ -120,7 +143,7 @@ func fetchRemote() string {
 		if err := os.Mkdir(dir, os.ModePerm); err != nil {
 			log.Fatal(err)
 		}
-		cmd := exec.Command("git", "clone", "-b", tpgVer, tpgRepo, dir)
+		cmd := exec.Command("git", "clone", "-b", version, repo, dir)
 		if err := cmd.Run(); err != nil {
 			log.Fatal(err)
 		}
@@ -148,12 +171,9 @@ func gofmtReplace(spec string) func(string) string {
 	}
 }
 
-func doNotEditWarning(code string) string {
-	return "// Code copied from " + tpgRepo + " by go generate; DO NOT EDIT.\n" + code
-}
-
-func fixupCodeTypeError(code string) string {
-	before := `panic(fmt.Sprintf("unsupported block nesting mode %s"`
-	after := `panic(fmt.Sprintf("unsupported block nesting mode %v"`
-	return strings.ReplaceAll(code, before, after)
+func ensureDirFor(path string) {
+	err := os.MkdirAll(filepath.Dir(path), os.ModePerm)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
