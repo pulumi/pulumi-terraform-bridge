@@ -23,18 +23,8 @@ Borrows TF Protocol 6 proto definitions and rebuilds the Go code for use in brid
 
 Similarly to `tfplugin6` but builds TF Protocol 5 definitions.
 
-
-## Helpers
-
-### proto
-
-Scripts for acquiring and re-generating `tfplugin5` and `tfplugin6` packages. To rebuild:
-
-    cd proto
-    make tfplugin
-
 ## Notes
 
-The vendored code is currently maintained via `go generate` scripts. To re-acquire the code, run `go generate`. Consult `generate.go` to edit version references or transformations.
+The vendored code is currently maintained via `go generate` script and `Makefile`. To re-acquire all the code, run `make vendor`. Consult `generate.go` to edit version references or transformations.
 
 This folder is called `vendored` and not `vendor` to avoid conflicting with Go module vendoring.
