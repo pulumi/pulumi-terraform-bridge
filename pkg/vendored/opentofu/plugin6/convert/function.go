@@ -1,4 +1,4 @@
-// Code copied from https://github.com/opentofu/opentofu.git by go generate; DO NOT EDIT.
+// Code copied from github.com/opentofu/opentofu by go generate; DO NOT EDIT.
 package convert
 
 import (
