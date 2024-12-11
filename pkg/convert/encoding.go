@@ -118,6 +118,10 @@ func buildPropertyDecoders(
 				propertyEncoders[tfName] = newStringDecoder()
 				continue
 			}
+			// TODO apparently timeouts piggy-back on the TFv6 protocol and this needs to be resolved.
+			if tfName == "timeouts" {
+				continue
+			}
 			return nil, fmt.Errorf("ERR AT %q %w", tfName, err)
 		}
 		dec, err := newPropertyDecoder(pctx, tfName, t)
