@@ -173,7 +173,7 @@ func ComputeAutoNameDefault(
 	}
 	if defaultOptions.Autonaming != nil {
 		switch defaultOptions.Autonaming.Mode {
-		case ModePropose:
+		case ComputeDefaultAutonamingModePropose:
 			// In propose mode, we can use the proposed name as a suggestion
 			vs = defaultOptions.Autonaming.ProposedName
 			if options.Transform != nil {
@@ -202,10 +202,10 @@ func ComputeAutoNameDefault(
 					}
 				}
 			}
-		case ModeEnforce:
+		case ComputeDefaultAutonamingModeEnforce:
 			// In enforce mode, we must use exactly the proposed name, ignoring all resource options
 			return defaultOptions.Autonaming.ProposedName, nil
-		case ModeDisable:
+		case ComputeDefaultAutonamingModeDisable:
 			// In disable mode, we should return an error if no explicit name was provided
 			return nil, fmt.Errorf("automatic naming is disabled but no explicit name was provided")
 		}

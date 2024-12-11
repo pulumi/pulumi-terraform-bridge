@@ -258,7 +258,7 @@ func TestApplyDefaultInfoValues(t *testing.T) {
 				Seed:       []byte(`123`),
 				Autonaming: &info.ComputeDefaultAutonamingOptions{
 					ProposedName: "n1-777",
-					Mode:         info.ModePropose,
+					Mode:         info.ComputeDefaultAutonamingModePropose,
 				},
 			},
 			expected: resource.PropertyMap{

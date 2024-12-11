@@ -163,7 +163,7 @@ func TestFromNameSeedAndAutonaming(t *testing.T) {
 		Seed:       []byte("test-seed"),
 		Autonaming: &info.ComputeDefaultAutonamingOptions{
 			ProposedName: "proposed-name",
-			Mode:         info.ModePropose,
+			Mode:         info.ComputeDefaultAutonamingModePropose,
 		},
 	}
 

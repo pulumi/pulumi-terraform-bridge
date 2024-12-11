@@ -802,8 +802,8 @@ func TestProviderPreviewV2(t *testing.T) {
 func TestProviderCheckWithAutonaming(t *testing.T) {
 	t.Parallel()
 	provider := &Provider{
-		tf:     shimv1.NewProvider(testTFProvider),
-		config: shimv1.NewSchemaMap(testTFProvider.Schema),
+		tf:     shimv2.NewProvider(testTFProviderV2),
+		config: shimv2.NewSchemaMap(testTFProviderV2.Schema),
 	}
 	provider.resources = map[tokens.Type]Resource{
 		"ExampleResource": {

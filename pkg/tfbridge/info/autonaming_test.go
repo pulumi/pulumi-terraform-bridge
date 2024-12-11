@@ -69,7 +69,7 @@ func TestComputeAutoNameDefault(t *testing.T) {
 			Seed: []byte("test-seed"),
 			Autonaming: &ComputeDefaultAutonamingOptions{
 				ProposedName: "proposed-name",
-				Mode:         ModePropose,
+				Mode:         ComputeDefaultAutonamingModePropose,
 			},
 		}
 
@@ -84,7 +84,7 @@ func TestComputeAutoNameDefault(t *testing.T) {
 			Seed: []byte("test-seed"),
 			Autonaming: &ComputeDefaultAutonamingOptions{
 				ProposedName: "proposed-name",
-				Mode:         ModePropose,
+				Mode:         ComputeDefaultAutonamingModePropose,
 			},
 		}
 
@@ -103,7 +103,7 @@ func TestComputeAutoNameDefault(t *testing.T) {
 			Seed: []byte("test-seed"),
 			Autonaming: &ComputeDefaultAutonamingOptions{
 				ProposedName: "this-is-a-very-long-proposed-name",
-				Mode:         ModePropose,
+				Mode:         ComputeDefaultAutonamingModePropose,
 			},
 		}
 
@@ -120,7 +120,7 @@ func TestComputeAutoNameDefault(t *testing.T) {
 			Seed: []byte("test-seed"),
 			Autonaming: &ComputeDefaultAutonamingOptions{
 				ProposedName: "name-123",
-				Mode:         ModePropose,
+				Mode:         ComputeDefaultAutonamingModePropose,
 			},
 		}
 
@@ -137,7 +137,7 @@ func TestComputeAutoNameDefault(t *testing.T) {
 			Seed: []byte("test-seed"),
 			Autonaming: &ComputeDefaultAutonamingOptions{
 				ProposedName: "name-with-dashes",
-				Mode:         ModePropose,
+				Mode:         ComputeDefaultAutonamingModePropose,
 			},
 		}
 
@@ -154,7 +154,7 @@ func TestComputeAutoNameDefault(t *testing.T) {
 			Seed: []byte("test-seed"),
 			Autonaming: &ComputeDefaultAutonamingOptions{
 				ProposedName: "name-with_mixed-separators",
-				Mode:         ModePropose,
+				Mode:         ComputeDefaultAutonamingModePropose,
 			},
 		}
 
@@ -172,7 +172,7 @@ func TestComputeAutoNameDefault(t *testing.T) {
 			Seed: []byte("test-seed"),
 			Autonaming: &ComputeDefaultAutonamingOptions{
 				ProposedName: "name-with-dashes",
-				Mode:         ModePropose,
+				Mode:         ComputeDefaultAutonamingModePropose,
 			},
 		}
 
@@ -191,7 +191,7 @@ func TestComputeAutoNameDefault(t *testing.T) {
 			Seed: []byte("test-seed"),
 			Autonaming: &ComputeDefaultAutonamingOptions{
 				ProposedName: "name-with_mixed-separators",
-				Mode:         ModePropose,
+				Mode:         ComputeDefaultAutonamingModePropose,
 			},
 		}
 
@@ -211,7 +211,7 @@ func TestComputeAutoNameDefault(t *testing.T) {
 			Seed: []byte("test-seed"),
 			Autonaming: &ComputeDefaultAutonamingOptions{
 				ProposedName: "proposed-name",
-				Mode:         ModeEnforce,
+				Mode:         ComputeDefaultAutonamingModeEnforce,
 			},
 		}
 
@@ -238,7 +238,7 @@ func TestComputeAutoNameDefault(t *testing.T) {
 			Seed: []byte("test-seed"),
 			Autonaming: &ComputeDefaultAutonamingOptions{
 				ProposedName: "proposed-name",
-				Mode:         ModeDisable,
+				Mode:         ComputeDefaultAutonamingModeDisable,
 			},
 		}
 

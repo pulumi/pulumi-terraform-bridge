@@ -671,13 +671,15 @@ type Default struct {
 type ComputeDefaultAutonamingOptionsMode int32
 
 const (
-	// ModePropose means the provider may use the proposed name as a suggestion but is free to modify it.
-	ModePropose ComputeDefaultAutonamingOptionsMode = 0
-	// ModeEnforce means the provider must use exactly the proposed name or return an error.
-	ModeEnforce ComputeDefaultAutonamingOptionsMode = 1
-	// ModeDisable means the provider should disable automatic naming and return an error if no explicit name
-	// is provided by user's program.
-	ModeDisable ComputeDefaultAutonamingOptionsMode = 2
+	// ComputeDefaultAutonamingModePropose means the provider may use the proposed name as a suggestion but is free
+	// to modify it.
+	ComputeDefaultAutonamingModePropose ComputeDefaultAutonamingOptionsMode = iota
+	// ComputeDefaultAutonamingModeEnforce means the provider must use exactly the proposed name (if present)
+	// or return an error if the proposed name is invalid.
+	ComputeDefaultAutonamingModeEnforce ComputeDefaultAutonamingOptionsMode = 1
+	// ComputeDefaultAutonamingModeDisable means the provider should disable automatic naming and return an error
+	// if no explicit name is provided by user's program.
+	ComputeDefaultAutonamingModeDisable ComputeDefaultAutonamingOptionsMode = 2
 )
 
 // ComputeDefaultAutonamingOptions controls how auto-naming behaves when the engine provides explicit naming
