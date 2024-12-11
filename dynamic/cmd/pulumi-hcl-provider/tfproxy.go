@@ -14,6 +14,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6/tf6server"
 	bridgedAwsProvider "github.com/pulumi/pulumi-aws/provider/v6"
+	"github.com/pulumi/pulumi-aws/provider/v6/pkg/version"
 	"github.com/pulumi/pulumi-terraform-bridge/dynamic/internal/shim/run"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -43,6 +44,7 @@ func newResourceMonitorClient(monitorEndpoint string) (pulumirpc.ResourceMonitor
 }
 
 func newTfProxyProviderServer(monitorEndoint string) *tfProxyProviderServer {
+	version.Version = "6.64.0"
 	bridged := bridgedAwsProvider.Provider()
 	c, err := newResourceMonitorClient(monitorEndoint)
 	contract.AssertNoErrorf(err, "loading AWS provider failed")
@@ -58,7 +60,7 @@ func newTfProxyProviderServer(monitorEndoint string) *tfProxyProviderServer {
 type tfProxyProviderServer struct {
 	monitorClient pulumirpc.ResourceMonitorClient
 	awsProvider   run.Provider
-	awsBridged    info.Provider
+	awsBridged    *info.Provider
 	UnimplementedProviderServer
 	resourceSchemas map[string]*tfprotov6.Schema
 }
@@ -126,13 +128,13 @@ func (p *tfProxyProviderServer) PlanResourceChange(
 
 	rn := tfResourceName(req.TypeName)
 
-	obj, err := translateResourceArgs(ctx, rn, req.ProposedNewState, p.resourceSchemas)
+	obj, err := translateResourceArgs(ctx, rn, req.ProposedNewState, p.resourceSchemas, p.awsBridged)
 	if err != nil {
 		return nil, err
 	}
 
 	_, err = p.monitorClient.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
-		Type:   translateTypeName(rn),
+		Type:   translateTypeName(p.awsBridged, rn),
 		Name:   translateResourceName(resp.PlannedState),
 		Custom: true,
 		Object: obj,
