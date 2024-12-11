@@ -1,5 +1,6 @@
 {
     "name": "databricks",
+    "version": "1.50.0",
     "description": "A Pulumi provider dynamically bridged from databricks.",
     "attribution": "This Pulumi package is based on the [`databricks` Terraform Provider](https://github.com/databricks/terraform-provider-databricks).",
     "repository": "https://github.com/databricks/terraform-provider-databricks",

@@ -1009,9 +1009,11 @@ func (g *Generator) UnstableGenerateFromSchema(genSchemaResult *GenerateSchemaRe
 		}
 		files["_index.md"] = content
 	case Schema:
-		// Omit the version so that the spec is stable if the version is e.g. derived from the current Git commit hash.
-		pulumiPackageSpec.Version = ""
-
+		// For pulumi-owned (not dynamically bridged) providers, omit the version so that the spec is stable
+		// if the version is e.g. derived from the current Git commit hash.
+		if strings.Contains(g.info.Repository, "pulumi") {
+			pulumiPackageSpec.Version = ""
+		}
 		bytes, err := json.MarshalIndent(pulumiPackageSpec, "", "    ")
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to marshal schema")
