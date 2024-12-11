@@ -147,7 +147,6 @@ require (
 	github.com/natefinch/atomic v1.0.1 // indirect
 	github.com/nightlyone/lockfile v1.0.0 // indirect
 	github.com/oklog/run v1.1.0 // indirect
-	github.com/opentofu/opentofu v1.8.7 // indirect
 	github.com/opentofu/registry-address v0.0.0-20230922120653-901b9ae4061a
 	github.com/opentracing/basictracer-go v1.1.0 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect

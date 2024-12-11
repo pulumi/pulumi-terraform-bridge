@@ -41,7 +41,6 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/mitchellh/reflectwalk v1.0.2
 	github.com/olekukonko/tablewriter v0.0.5
-	github.com/opentofu/opentofu v1.8.7
 	github.com/opentofu/registry-address v0.0.0-20230922120653-901b9ae4061a
 	github.com/pkg/errors v0.9.1
 	github.com/pulumi/inflector v0.1.1
@@ -182,7 +181,7 @@ require (
 	github.com/googleapis/gax-go/v2 v2.12.2 // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/grpc-ecosystem/grpc-opentracing v0.0.0-20180507213350-8e809c8a8645 // indirect
-	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
+	github.com/hashicorp/go-cleanhttp v0.5.2
 	github.com/hashicorp/go-retryablehttp v0.7.7
 	github.com/hashicorp/go-rootcerts v1.0.2 // indirect
 	github.com/hashicorp/go-safetemp v1.0.0 // indirect
