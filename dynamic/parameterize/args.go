@@ -43,6 +43,8 @@ type RemoteArgs struct {
 
 	// Docs indicates if full schema documentation should be generated.
 	Docs bool
+	// IndexDocOutDir allows us to set a specific directory to write `_index.md` to.
+	IndexDocOutDir string
 }
 
 // LocalArgs represents a local TF provider referenced by path.
@@ -55,8 +57,11 @@ type LocalArgs struct {
 	// If set, full documentation will be generated for the provider.
 	// If not set, only documentation from the TF provider's schema will be used.
 	UpstreamRepoPath string
+	// IndexDocOutDir allows us to set a specific directory to write `_index.md` to.
+	IndexDocOutDir string
 }
 
+<<<<<<< HEAD
 func ParseArgs(ctx context.Context, a []string) (Args, error) {
 	var args Args
 	var fullDocs bool
@@ -70,6 +75,7 @@ func ParseArgs(ctx context.Context, a []string) (Args, error) {
 		},
 		Args: cobra.RangeArgs(1, 2),
 	}
+
 	cmd.Flags().BoolVar(&fullDocs, "fullDocs", false,
 		"Generate a schema with full docs, at the expense of speed")
 	cmd.Flags().StringVar(&upstreamRepoPath, "upstreamRepoPath", "",
@@ -141,4 +147,5 @@ func parseArgs(_ context.Context, args []string, fullDocs bool, upstreamRepoPath
 		Version: version,
 		Docs:    fullDocs,
 	}}, nil
+
 }

@@ -67,6 +67,7 @@ func initialSetup() (info.Provider, pfbridge.ProviderMetadata, func() error) {
 
 	var metadata pfbridge.ProviderMetadata
 	var fullDocs bool
+	var indexDocOutDir string
 	metadata = pfbridge.ProviderMetadata{
 		XGetSchema: func(ctx context.Context, req plugin.GetSchemaRequest) ([]byte, error) {
 			// Create a custom generator for schema. Examples will only be generated if `fullDocs` is set.
@@ -95,20 +96,19 @@ func initialSetup() (info.Provider, pfbridge.ProviderMetadata, func() error) {
 				info.SchemaPostProcessor(&packageSchema.PackageSpec)
 			}
 
-			if fullDocs {
+			if indexDocOutDir != "" {
 				// Create a custom generator for registry docs (_index.md).
-				root := afero.NewBasePathFs(afero.NewOsFs(), "docs")
 				indexGenerator, err := tfgen.NewGenerator(tfgen.GeneratorOptions{
 					Package:      info.Name,
 					Version:      info.Version,
 					Language:     tfgen.RegistryDocs,
 					ProviderInfo: info,
-					Root:         root,
+					Root:         afero.NewBasePathFs(afero.NewOsFs(), indexDocOutDir),
 					Sink: diag.DefaultSink(os.Stdout, os.Stderr, diag.FormatOptions{
 						Color: colors.Always,
 					}),
-					XInMemoryDocs: !fullDocs,
-					SkipExamples:  !fullDocs,
+					XInMemoryDocs: false,
+					SkipExamples:  false,
 				})
 				if err != nil {
 					return nil, errors.Wrapf(err, "failed to create generator")
@@ -189,13 +189,15 @@ func initialSetup() (info.Provider, pfbridge.ProviderMetadata, func() error) {
 			switch args.Remote {
 			case nil:
 				// We're using local args.
+				indexDocOutDir = args.Local.IndexDocOutDir
 				if args.Local.UpstreamRepoPath != "" {
 					info.UpstreamRepoPath = args.Local.UpstreamRepoPath
 					fullDocs = true
 				}
 			default:
+				indexDocOutDir = args.Remote.IndexDocOutDir
 				fullDocs = args.Remote.Docs
-				if fullDocs {
+				if fullDocs || indexDocOutDir != "" {
 					// Write the upstream files at this version to a temporary directory
 					tmpDir, err := os.MkdirTemp("", "upstreamRepoDir")
 					if err != nil {
