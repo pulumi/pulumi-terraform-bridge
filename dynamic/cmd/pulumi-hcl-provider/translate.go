@@ -15,13 +15,13 @@ import (
 
 type tfResourceName string
 
-func translateTypeName(n tfResourceName) string {
-	switch n {
-	case "aws_vpc":
-		return "aws:ec2/vpc:Vpc"
-	default:
-		panic(fmt.Sprintf("Unknown type name: %s", n))
+func translateTypeName(bridgedProvider *info.Provider, n tfResourceName) string {
+	for r, rr := range bridgedProvider.Resources {
+		if r == string(n) {
+			return string(rr.Tok)
+		}
 	}
+	panic(fmt.Sprintf("Unknown type name: %s", n))
 }
 
 var resourceNameCounter atomic.Int32
@@ -37,7 +37,7 @@ func translateResourceArgs(
 	n tfResourceName,
 	dv *tfprotov6.DynamicValue,
 	resourceSchemas map[string]*tfprotov6.Schema,
-	bridgedProvider info.Provider,
+	bridgedProvider *info.Provider,
 ) (*structpb.Struct, error) {
 	rschema, ok := resourceSchemas[string(n)]
 	if !ok {
@@ -47,7 +47,7 @@ func translateResourceArgs(
 	if !ok {
 		return nil, fmt.Errorf("Bad object type for resource: %q", n)
 	}
-	encoding := convert.NewEncoding(bridgedProvider.P, &bridgedProvider)
+	encoding := convert.NewEncoding(bridgedProvider.P, bridgedProvider)
 	dec, err := encoding.NewResourceDecoder(string(n), objectType)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to derive a resource decoder: %v", err)

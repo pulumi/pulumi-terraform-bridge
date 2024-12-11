@@ -114,7 +114,11 @@ func buildPropertyDecoders(
 	for tfName, t := range objectType.AttributeTypes {
 		pctx, err := mctx.GetAttr(tfName)
 		if err != nil {
-			return nil, err
+			if tfName == "id" {
+				propertyEncoders[tfName] = newStringDecoder()
+				continue
+			}
+			return nil, fmt.Errorf("ERR AT %q %w", tfName, err)
 		}
 		dec, err := newPropertyDecoder(pctx, tfName, t)
 		if err != nil {
