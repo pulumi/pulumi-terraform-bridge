@@ -641,3 +641,40 @@ func (l *testLogger) Error(msg string) {
 func (*testLogger) StatusUntyped() any {
 	return "?"
 }
+
+func TestInstanceStateId(t *testing.T) {
+	t.Parallel()
+
+	state := v2InstanceState2{
+		stateValue: cty.ObjectVal(map[string]cty.Value{
+			"id": cty.StringVal("1"),
+		}),
+	}
+	assert.Equal(t, "1", state.ID())
+
+	state.stateValue = cty.ObjectVal(map[string]cty.Value{
+		"id": cty.UnknownVal(cty.String),
+	})
+	assert.Equal(t, "", state.ID())
+
+	state.stateValue = cty.Value{}
+	assert.Equal(t, "", state.ID())
+}
+
+func TestInstanceStateObject(t *testing.T) {
+	t.Parallel()
+
+	state := v2InstanceState2{
+		stateValue: cty.ObjectVal(map[string]cty.Value{
+			"id": cty.StringVal("1"),
+		}),
+	}
+	actual, err := state.Object(nil)
+	require.NoError(t, err)
+	assert.Equal(t, map[string]interface{}{"id": "1"}, actual)
+
+	state.stateValue = cty.Value{}
+	actual, err = state.Object(nil)
+	require.NoError(t, err)
+	assert.Equal(t, map[string]interface{}(nil), actual)
+}

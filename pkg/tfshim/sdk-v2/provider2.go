@@ -89,6 +89,9 @@ func (s *v2InstanceState2) Type() string {
 }
 
 func (s *v2InstanceState2) ID() string {
+	if s.stateValue.IsNull() {
+		return ""
+	}
 	id := s.stateValue.GetAttr("id")
 	if !id.IsKnown() {
 		return ""
@@ -347,15 +350,7 @@ func (p *planResourceChangeImpl) Apply(
 		maps.Copy(priv, diff.v2InstanceDiff.tf.Meta)
 	}
 
-	resp, err := p.server.ApplyResourceChange(ctx, t, ty, cfg, st, pl, priv, meta)
-	if err != nil {
-		return nil, err
-	}
-	return &v2InstanceState2{
-		resourceType: t,
-		stateValue:   resp.stateValue,
-		meta:         resp.meta,
-	}, nil
+	return p.server.ApplyResourceChange(ctx, t, ty, cfg, st, pl, priv, meta)
 }
 
 // This method is called to service `pulumi refresh` requests and maps naturally to the TF
@@ -629,7 +624,7 @@ func (s *grpcServer) ApplyResourceChange(
 	config, priorState, plannedState cty.Value,
 	plannedMeta map[string]interface{},
 	providerMeta *cty.Value,
-) (*v2InstanceState2, error) {
+) (shim.InstanceState, error) {
 	configVal, err := msgpack.Marshal(config, ty)
 	if err != nil {
 		return nil, err
@@ -662,25 +657,31 @@ func (s *grpcServer) ApplyResourceChange(
 		}
 		req.ProviderMeta = &tfprotov5.DynamicValue{MsgPack: providerMetaVal}
 	}
-	resp, err := s.gserver.ApplyResourceChange(ctx, req)
-	if err := handleDiagnostics(ctx, resp.Diagnostics, err); err != nil {
-		return nil, err
-	}
-	newState, err := msgpack.Unmarshal(resp.NewState.MsgPack, ty)
-	if err != nil {
-		return nil, err
-	}
+	resp, applyErr := s.gserver.ApplyResourceChange(ctx, req)
+	newState := cty.Value{}
 	var meta map[string]interface{}
-	if resp.Private != nil {
-		if err := json.Unmarshal(resp.Private, &meta); err != nil {
-			return nil, err
+	if resp != nil {
+		if resp.NewState != nil {
+			newState, err = msgpack.Unmarshal(resp.NewState.MsgPack, ty)
+			if err != nil {
+				return nil, err
+			}
 		}
+		if resp.Private != nil {
+			if err := json.Unmarshal(resp.Private, &meta); err != nil {
+				return nil, err
+			}
+		}
+	}
+	returnErr := handleDiagnostics(ctx, resp.Diagnostics, applyErr)
+	if newState.IsNull() {
+		return nil, returnErr
 	}
 	return &v2InstanceState2{
 		resourceType: typeName,
 		stateValue:   newState,
 		meta:         meta,
-	}, nil
+	}, returnErr
 }
 
 func (s *grpcServer) ReadResource(
