@@ -19,11 +19,12 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/opentofu/opentofu/internal/tfplugin6"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/reflect/protoreflect"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/tfplugin6"
 )
 
 // LogReplayProvider is a provider that replays logs from a previous run.

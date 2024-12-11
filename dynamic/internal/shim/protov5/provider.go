@@ -23,9 +23,10 @@ import (
 	"context"
 
 	"github.com/hashicorp/terraform-plugin-go/tfprotov5"
-	"github.com/opentofu/opentofu/internal/tfplugin5"
-	"github.com/opentofu/opentofu/shim/grpcutil"
-	"github.com/opentofu/opentofu/shim/protov5/translate"
+
+	"github.com/pulumi/pulumi-terraform-bridge/dynamic/internal/shim/grpcutil"
+	"github.com/pulumi/pulumi-terraform-bridge/dynamic/internal/shim/protov5/translate"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/tfplugin5"
 )
 
 var _ tfprotov5.ProviderServer = (*provider)(nil)

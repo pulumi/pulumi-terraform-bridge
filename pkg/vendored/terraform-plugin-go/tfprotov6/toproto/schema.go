@@ -1,3 +1,4 @@
+// Code copied from github.com/hashicorp/terraform-plugin-go by go generate; DO NOT EDIT.
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
