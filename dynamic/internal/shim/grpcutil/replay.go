@@ -19,7 +19,7 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/opentofu/opentofu/internal/tfplugin6"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/tfplugin6"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/encoding/prototext"

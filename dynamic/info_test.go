@@ -20,7 +20,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
-	"github.com/opentofu/opentofu/shim/run"
+	"github.com/pulumi/pulumi-terraform-bridge/dynamic/internal/shim/run"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 

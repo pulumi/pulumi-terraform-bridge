@@ -7,10 +7,10 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
-	"github.com/opentofu/opentofu/shim/grpcutil"
-	v6shim "github.com/opentofu/opentofu/shim/protov6"
 	"github.com/pulumi/providertest/pulumitest/optnewstack"
 	"github.com/pulumi/providertest/pulumitest/opttest"
+	"github.com/pulumi/pulumi-terraform-bridge/dynamic/internal/shim/grpcutil"
+	v6shim "github.com/pulumi/pulumi-terraform-bridge/dynamic/internal/shim/protov6"
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi-terraform-bridge/dynamic/parameterize"

@@ -19,7 +19,7 @@ import (
 	"path"
 	"strings"
 
-	"github.com/opentofu/opentofu/shim/run"
+	"github.com/pulumi/pulumi-terraform-bridge/dynamic/internal/shim/run"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 
 	"github.com/pulumi/pulumi-terraform-bridge/dynamic/internal/fixup"
