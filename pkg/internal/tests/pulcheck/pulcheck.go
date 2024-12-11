@@ -40,6 +40,8 @@ func propNeedsUpdate(prop *schema.Schema) bool {
 	return true
 }
 
+// resourceNeedsUpdate returns true if the TF SDK schema validation would consider the
+// resource to need an update method.
 func resourceNeedsUpdate(res *schema.Resource) bool {
 	// If any of the properties need an update, then the resource needs an update.
 	for _, s := range res.Schema {
@@ -53,6 +55,26 @@ func resourceNeedsUpdate(res *schema.Resource) bool {
 // This is an experimental API.
 func EnsureProviderValid(t T, tfp *schema.Provider) {
 	for _, r := range tfp.ResourcesMap {
+		if r.Schema["id"] == nil {
+			r.Schema["id"] = &schema.Schema{
+				Type:     schema.TypeString,
+				Computed: true,
+			}
+		}
+
+		// If the resource will be flagged as not needing an Update method by the TF SDK schema
+		// validation then add a no-op update_prop property that will instead force the resource
+		// to need an Update method.
+		// This is necessary to work around a bug in the TF SDK schema validation where some resources which
+		// do need an Update method will instead be flagged as not needing an Update method.
+		// See https://github.com/pulumi/pulumi-terraform-bridge/pull/2723#issuecomment-2541518646
+		if !resourceNeedsUpdate(r) {
+			r.Schema["update_prop"] = &schema.Schema{
+				Type:     schema.TypeString,
+				Optional: true,
+			}
+		}
+
 		if r.ReadContext == nil {
 			r.ReadContext = func(_ context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 				return nil
@@ -75,7 +97,9 @@ func EnsureProviderValid(t T, tfp *schema.Provider) {
 			}
 		}
 
-		if resourceNeedsUpdate(r) && r.UpdateContext == nil {
+		// Because of the no-op update_prop property added above, all resources will now
+		// need an Update method.
+		if r.UpdateContext == nil {
 			r.UpdateContext = func(
 				ctx context.Context, rd *schema.ResourceData, i interface{},
 			) diag.Diagnostics {
