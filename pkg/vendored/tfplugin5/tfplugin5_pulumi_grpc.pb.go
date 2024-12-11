@@ -26,7 +26,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.3.0
 // - protoc             v3.20.3
-// source: tfplugin5_pulumi.proto
+// source: tfplugin5.proto
 
 package tfplugin5
 
@@ -43,22 +43,22 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	Provider_GetMetadata_FullMethodName                = "/tfplugin5_pulumi.Provider/GetMetadata"
-	Provider_GetSchema_FullMethodName                  = "/tfplugin5_pulumi.Provider/GetSchema"
-	Provider_PrepareProviderConfig_FullMethodName      = "/tfplugin5_pulumi.Provider/PrepareProviderConfig"
-	Provider_ValidateResourceTypeConfig_FullMethodName = "/tfplugin5_pulumi.Provider/ValidateResourceTypeConfig"
-	Provider_ValidateDataSourceConfig_FullMethodName   = "/tfplugin5_pulumi.Provider/ValidateDataSourceConfig"
-	Provider_UpgradeResourceState_FullMethodName       = "/tfplugin5_pulumi.Provider/UpgradeResourceState"
-	Provider_Configure_FullMethodName                  = "/tfplugin5_pulumi.Provider/Configure"
-	Provider_ReadResource_FullMethodName               = "/tfplugin5_pulumi.Provider/ReadResource"
-	Provider_PlanResourceChange_FullMethodName         = "/tfplugin5_pulumi.Provider/PlanResourceChange"
-	Provider_ApplyResourceChange_FullMethodName        = "/tfplugin5_pulumi.Provider/ApplyResourceChange"
-	Provider_ImportResourceState_FullMethodName        = "/tfplugin5_pulumi.Provider/ImportResourceState"
-	Provider_MoveResourceState_FullMethodName          = "/tfplugin5_pulumi.Provider/MoveResourceState"
-	Provider_ReadDataSource_FullMethodName             = "/tfplugin5_pulumi.Provider/ReadDataSource"
-	Provider_GetFunctions_FullMethodName               = "/tfplugin5_pulumi.Provider/GetFunctions"
-	Provider_CallFunction_FullMethodName               = "/tfplugin5_pulumi.Provider/CallFunction"
-	Provider_Stop_FullMethodName                       = "/tfplugin5_pulumi.Provider/Stop"
+	Provider_GetMetadata_FullMethodName                = "/tfplugin5.Provider/GetMetadata"
+	Provider_GetSchema_FullMethodName                  = "/tfplugin5.Provider/GetSchema"
+	Provider_PrepareProviderConfig_FullMethodName      = "/tfplugin5.Provider/PrepareProviderConfig"
+	Provider_ValidateResourceTypeConfig_FullMethodName = "/tfplugin5.Provider/ValidateResourceTypeConfig"
+	Provider_ValidateDataSourceConfig_FullMethodName   = "/tfplugin5.Provider/ValidateDataSourceConfig"
+	Provider_UpgradeResourceState_FullMethodName       = "/tfplugin5.Provider/UpgradeResourceState"
+	Provider_Configure_FullMethodName                  = "/tfplugin5.Provider/Configure"
+	Provider_ReadResource_FullMethodName               = "/tfplugin5.Provider/ReadResource"
+	Provider_PlanResourceChange_FullMethodName         = "/tfplugin5.Provider/PlanResourceChange"
+	Provider_ApplyResourceChange_FullMethodName        = "/tfplugin5.Provider/ApplyResourceChange"
+	Provider_ImportResourceState_FullMethodName        = "/tfplugin5.Provider/ImportResourceState"
+	Provider_MoveResourceState_FullMethodName          = "/tfplugin5.Provider/MoveResourceState"
+	Provider_ReadDataSource_FullMethodName             = "/tfplugin5.Provider/ReadDataSource"
+	Provider_GetFunctions_FullMethodName               = "/tfplugin5.Provider/GetFunctions"
+	Provider_CallFunction_FullMethodName               = "/tfplugin5.Provider/CallFunction"
+	Provider_Stop_FullMethodName                       = "/tfplugin5.Provider/Stop"
 )
 
 // ProviderClient is the client API for Provider service.
@@ -641,7 +641,7 @@ func _Provider_Stop_Handler(srv interface{}, ctx context.Context, dec func(inter
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var Provider_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "tfplugin5_pulumi.Provider",
+	ServiceName: "tfplugin5.Provider",
 	HandlerType: (*ProviderServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -710,14 +710,14 @@ var Provider_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "tfplugin5_pulumi.proto",
+	Metadata: "tfplugin5.proto",
 }
 
 const (
-	Provisioner_GetSchema_FullMethodName                 = "/tfplugin5_pulumi.Provisioner/GetSchema"
-	Provisioner_ValidateProvisionerConfig_FullMethodName = "/tfplugin5_pulumi.Provisioner/ValidateProvisionerConfig"
-	Provisioner_ProvisionResource_FullMethodName         = "/tfplugin5_pulumi.Provisioner/ProvisionResource"
-	Provisioner_Stop_FullMethodName                      = "/tfplugin5_pulumi.Provisioner/Stop"
+	Provisioner_GetSchema_FullMethodName                 = "/tfplugin5.Provisioner/GetSchema"
+	Provisioner_ValidateProvisionerConfig_FullMethodName = "/tfplugin5.Provisioner/ValidateProvisionerConfig"
+	Provisioner_ProvisionResource_FullMethodName         = "/tfplugin5.Provisioner/ProvisionResource"
+	Provisioner_Stop_FullMethodName                      = "/tfplugin5.Provisioner/Stop"
 )
 
 // ProvisionerClient is the client API for Provisioner service.
@@ -916,7 +916,7 @@ func _Provisioner_Stop_Handler(srv interface{}, ctx context.Context, dec func(in
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var Provisioner_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "tfplugin5_pulumi.Provisioner",
+	ServiceName: "tfplugin5.Provisioner",
 	HandlerType: (*ProvisionerServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -939,5 +939,5 @@ var Provisioner_ServiceDesc = grpc.ServiceDesc{
 			ServerStreams: true,
 		},
 	},
-	Metadata: "tfplugin5_pulumi.proto",
+	Metadata: "tfplugin5.proto",
 }
