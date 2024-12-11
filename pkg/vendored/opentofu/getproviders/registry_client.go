@@ -26,7 +26,7 @@ import (
 	svchost "github.com/hashicorp/terraform-svchost"
 	svcauth "github.com/hashicorp/terraform-svchost/auth"
 
-	"github.com/opentofu/opentofu/version"
+	
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/opentofu/addrs"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/opentofu/httpclient"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/opentofu/logging"
@@ -177,7 +177,7 @@ func (c *registryClient) PackageMeta(ctx context.Context, provider addrs.Provide
 	endpointPath, err := url.Parse(path.Join(
 		provider.Namespace,
 		provider.Type,
-		version.String(),
+		"v1.7.2",
 		"download",
 		target.OS,
 		target.Arch,
@@ -413,7 +413,7 @@ func (c *registryClient) addHeadersToRequest(req *http.Request) {
 	if c.creds != nil {
 		c.creds.PrepareRequest(req)
 	}
-	req.Header.Set(terraformVersionHeader, version.String())
+	req.Header.Set(terraformVersionHeader, "v1.7.2")
 }
 
 func (c *registryClient) errQueryFailed(provider addrs.Provider, err error) error {

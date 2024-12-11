@@ -10,7 +10,7 @@ import (
 	"net/http"
 
 	cleanhttp "github.com/hashicorp/go-cleanhttp"
-	"github.com/opentofu/opentofu/version"
+	
 )
 
 // New returns the DefaultPooledClient from the cleanhttp
@@ -18,7 +18,7 @@ import (
 func New() *http.Client {
 	cli := cleanhttp.DefaultPooledClient()
 	cli.Transport = &userAgentRoundTripper{
-		userAgent: OpenTofuUserAgent(version.Version),
+		userAgent: OpenTofuUserAgent("v1.7.2"),
 		inner:     cli.Transport,
 	}
 	return cli

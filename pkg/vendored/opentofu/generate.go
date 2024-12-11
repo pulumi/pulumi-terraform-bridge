@@ -134,6 +134,16 @@ func files() []file {
 		oldPkg, newPkg,
 	))
 
+	removeOpentofuVersion := func(s string) string {
+		imp := `"github.com/opentofu/opentofu/version"`
+		if strings.Contains(s, imp) {
+			s = strings.ReplaceAll(s, "version.Version", fmt.Sprintf(`"%s"`, opentofuVer))
+			s = strings.ReplaceAll(s, "version.String()", fmt.Sprintf(`"%s"`, opentofuVer))
+		}
+		s = strings.ReplaceAll(s, imp, "")
+		return s
+	}
+
 	transforms := []func(string) string{
 		replacePkg,
 		doNotEditWarning,
@@ -152,6 +162,7 @@ func files() []file {
 		replaceStatesRef,
 		replaceConfigsHcl2ShimRef,
 		replacePlugin6Ref,
+		removeOpentofuVersion,
 	}
 
 	return []file{
