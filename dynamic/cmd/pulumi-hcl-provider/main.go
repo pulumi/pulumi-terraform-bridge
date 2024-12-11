@@ -121,17 +121,17 @@ func (*hclResourceProviderServer) Construct(
 		return nil, err
 	}
 
-	// err = initTF(d)
-	// if err != nil {
-	// 	return nil, err
-	// }
+	err = initTF(d)
+	if err != nil {
+		return nil, err
+	}
 
 	requiredProviders, err := inferTFRequiredProviders(d)
 	if err != nil {
 		return nil, err
 	}
 
-	proxies, err := startTFProviderProxies(requiredProviders)
+	proxies, err := startTFProviderProxies(requiredProviders, req.MonitorEndpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -261,10 +261,10 @@ func (pps tfProviderProxies) Close() error {
 	return errors.Join(errs...)
 }
 
-func startTFProviderProxies(requiredProviders map[string]struct{}) (tfProviderProxies, error) {
+func startTFProviderProxies(requiredProviders map[string]struct{}, monitorEndpoint string) (tfProviderProxies, error) {
 	res := tfProviderProxies(nil)
 	for p := range requiredProviders {
-		pp, err := startTFProviderProxy(p)
+		pp, err := startTFProviderProxy(p, monitorEndpoint)
 		if err != nil {
 			return nil, err
 		}
