@@ -203,22 +203,22 @@ func files() []file {
 			dest:       "plans/objchange/plan_valid.go",
 			transforms: transforms,
 		},
-		// 		{
-		// 			src:  "internal/plugin6/convert/schema.go",
-		// 			dest: "convert/schema.go",
-		// 			transforms: append(transforms, func(s string) string {
-		// 				elided :=
-		// 					`func ProtoToProviderSchema(s *proto.Schema) providers.Schema {
-		// 	return providers.Schema{
-		// 		Version: s.Version,
-		// 		Block:   ProtoToConfigSchema(s.Block),
-		// 	}
-		// }`
-		// 				s = strings.ReplaceAll(s, elided, "")
-		// 				s = strings.ReplaceAll(s, `"github.com/opentofu/opentofu/internal/providers"`, "")
-		// 				return s
-		// 			}),
-		// 		},
+		{
+			src:  "internal/plugin6/convert/schema.go",
+			dest: "convert/schema.go",
+			transforms: append(transforms, func(s string) string {
+				elided :=
+					`func ProtoToProviderSchema(s *proto.Schema) providers.Schema {
+			return providers.Schema{
+				Version: s.Version,
+				Block:   ProtoToConfigSchema(s.Block),
+			}
+		}`
+				s = strings.ReplaceAll(s, elided, "")
+				s = strings.ReplaceAll(s, `"github.com/opentofu/opentofu/internal/providers"`, "")
+				return s
+			}),
+		},
 		{
 			src:        "internal/tfdiags/config_traversals.go",
 			dest:       "tfdiags/config_traversals.go",
