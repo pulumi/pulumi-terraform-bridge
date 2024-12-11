@@ -3,45 +3,87 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"os/signal"
 	"testing"
 	"time"
 
-	"fmt"
 	"github.com/hashicorp/go-plugin"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6/tf6server"
+	"github.com/opentofu/opentofu/shim/run"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
 )
 
+func loadAWSProvider(ctx context.Context) (run.Provider, error) {
+	return run.NamedProvider(ctx, "hashicorp/aws", "5.80.0")
+}
+
+func newTfProxyProviderServer() *tfProxyProviderServer {
+	awsProvider, err := loadAWSProvider(context.Background())
+	contract.AssertNoErrorf(err, "loading AWS provider failed")
+	return &tfProxyProviderServer{
+		awsProvider: awsProvider,
+	}
+}
+
 type tfProxyProviderServer struct {
+	awsProvider run.Provider
 	UnimplementedProviderServer
 }
 
-func (*tfProxyProviderServer) GetMetadata(ctx context.Context, req *tfprotov6.GetMetadataRequest) (*tfprotov6.GetMetadataResponse, error) {
-	return &tfprotov6.GetMetadataResponse{
-		Diagnostics: []*tfprotov6.Diagnostic{
-			{
-				Severity: tfprotov6.DiagnosticSeverityError,
-				Summary:  "GetMetadata Summary",
-				Detail:   "GetMetadata Detail",
-			},
-		},
-	}, nil
+func (p *tfProxyProviderServer) GetMetadata(
+	ctx context.Context,
+	req *tfprotov6.GetMetadataRequest,
+) (*tfprotov6.GetMetadataResponse, error) {
+	return p.awsProvider.GetMetadata(ctx, req)
 }
 
-func (*tfProxyProviderServer) GetProviderSchema(ctx context.Context, req *tfprotov6.GetProviderSchemaRequest) (*tfprotov6.GetProviderSchemaResponse, error) {
-	return &tfprotov6.GetProviderSchemaResponse{Diagnostics: []*tfprotov6.Diagnostic{
-		{
-			Severity: tfprotov6.DiagnosticSeverityError,
-			Summary:  "GetProviderSchema Summary",
-			Detail:   "GetProviderSchema Detail",
-		},
-	}}, nil
+func (p *tfProxyProviderServer) GetProviderSchema(
+	ctx context.Context,
+	req *tfprotov6.GetProviderSchemaRequest,
+) (*tfprotov6.GetProviderSchemaResponse, error) {
+	return p.awsProvider.GetProviderSchema(ctx, req)
+}
+
+func (p *tfProxyProviderServer) ValidateDataResourceConfig(
+	ctx context.Context,
+	req *tfprotov6.ValidateDataResourceConfigRequest,
+) (*tfprotov6.ValidateDataResourceConfigResponse, error) {
+	return p.awsProvider.ValidateDataResourceConfig(ctx, req)
+}
+
+func (p *tfProxyProviderServer) ValidateResourceConfig(
+	ctx context.Context,
+	req *tfprotov6.ValidateResourceConfigRequest,
+) (*tfprotov6.ValidateResourceConfigResponse, error) {
+	return p.awsProvider.ValidateResourceConfig(ctx, req)
+}
+
+func (p *tfProxyProviderServer) ValidateProviderConfig(
+	ctx context.Context,
+	req *tfprotov6.ValidateProviderConfigRequest,
+) (*tfprotov6.ValidateProviderConfigResponse, error) {
+	return p.awsProvider.ValidateProviderConfig(ctx, req)
+}
+
+func (p *tfProxyProviderServer) ConfigureProvider(
+	ctx context.Context,
+	req *tfprotov6.ConfigureProviderRequest,
+) (*tfprotov6.ConfigureProviderResponse, error) {
+	return p.awsProvider.ConfigureProvider(ctx, req)
+}
+
+func (p *tfProxyProviderServer) PlanResourceChange(
+	ctx context.Context,
+	req *tfprotov6.PlanResourceChangeRequest,
+) (*tfprotov6.PlanResourceChangeResponse, error) {
+	return p.awsProvider.PlanResourceChange(ctx, req)
 }
 
 var _ tfprotov6.ProviderServer = (*tfProxyProviderServer)(nil)
@@ -75,7 +117,7 @@ const (
 
 func startTFProviderProxy(providerName string) (*tfProviderProxyHandle, error) {
 	serverHandle, reattachConfig, err := simpleServe(providerName, func() tfprotov6.ProviderServer {
-		return &tfProxyProviderServer{}
+		return newTfProxyProviderServer()
 	})
 	if err != nil {
 		return nil, err
@@ -114,7 +156,7 @@ func simpleServe(
 	// Defaults
 	conf := simpleServeConfig{
 		managedDebug:                      true, // need to set this explicitly in the modified version
-		managedDebugReattachConfigTimeout: 2 * time.Second,
+		managedDebugReattachConfigTimeout: 120 * time.Second,
 		managedDebugStopSignals:           []os.Signal{os.Interrupt},
 	}
 

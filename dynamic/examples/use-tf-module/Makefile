@@ -3,7 +3,8 @@ WORKING_DIR := $(shell pwd)
 preview:: export PATH := $(WORKING_DIR)/bin:$(PATH)
 preview:: export AWS_PROFILE := devsandbox
 preview:: npm-add
-	pulumi preview
+	pulumi stack select dev
+	(pulumi preview && echo OK)
 
 npm-add:: packages-add
 	npm add hcl@file:sdks/hcl
@@ -16,8 +17,10 @@ packages-add:: bin/pulumi-resource-hcl
 	cp sdks/hcl/package-tmp.json sdks/hcl/package.json
 	rm sdks/hcl/package-tmp.json
 
+
+bin/pulumi-resource-hcl:: export LDFLAGS := -ldflags "-X google.golang.org/protobuf/reflect/protoregistry.conflictPolicy=ignore"
 bin/pulumi-resource-hcl::
-	mkdir -p bin
-	go build -o bin/pulumi-resource-hcl ../../cmd/pulumi-hcl-provider
+	mkdir -p binx
+	go build $(LDFLAGS) -o bin/pulumi-resource-hcl ../../cmd/pulumi-hcl-provider
 
 .PHONY: compile npm-add packages-add bin/pulumi-resource-hcl
