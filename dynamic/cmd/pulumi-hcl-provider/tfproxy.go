@@ -14,9 +14,14 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6/tf6server"
 	"github.com/opentofu/opentofu/shim/run"
+	bridgedAwsProvider "github.com/pulumi/pulumi-aws/provider/v6"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials/insecure"
 	status "google.golang.org/grpc/status"
 )
 
@@ -24,17 +29,38 @@ func loadAWSProvider(ctx context.Context) (run.Provider, error) {
 	return run.NamedProvider(ctx, "hashicorp/aws", "5.80.0")
 }
 
-func newTfProxyProviderServer() *tfProxyProviderServer {
+func newResourceMonitorClient(monitorEndpoint string) (pulumirpc.ResourceMonitorClient, error) {
+	// Connect to the resource monitor and create an appropriate client.
+	conn, err := grpc.NewClient(
+		monitorEndpoint,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		rpcutil.GrpcChannelOptions(),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("could not connect to resource monitor: %w", err)
+	}
+	return pulumirpc.NewResourceMonitorClient(conn), nil
+}
+
+func newTfProxyProviderServer(monitorEndoint string) *tfProxyProviderServer {
+	bridged := bridgedAwsProvider.Provider()
+	c, err := newResourceMonitorClient(monitorEndoint)
+	contract.AssertNoErrorf(err, "loading AWS provider failed")
 	awsProvider, err := loadAWSProvider(context.Background())
 	contract.AssertNoErrorf(err, "loading AWS provider failed")
 	return &tfProxyProviderServer{
-		awsProvider: awsProvider,
+		monitorClient: c,
+		awsProvider:   awsProvider,
+		awsBridged:    bridged,
 	}
 }
 
 type tfProxyProviderServer struct {
-	awsProvider run.Provider
+	monitorClient pulumirpc.ResourceMonitorClient
+	awsProvider   run.Provider
+	awsBridged    info.Provider
 	UnimplementedProviderServer
+	resourceSchemas map[string]*tfprotov6.Schema
 }
 
 func (p *tfProxyProviderServer) GetMetadata(
@@ -48,7 +74,12 @@ func (p *tfProxyProviderServer) GetProviderSchema(
 	ctx context.Context,
 	req *tfprotov6.GetProviderSchemaRequest,
 ) (*tfprotov6.GetProviderSchemaResponse, error) {
-	return p.awsProvider.GetProviderSchema(ctx, req)
+	resp, err := p.awsProvider.GetProviderSchema(ctx, req)
+	if err != nil {
+		return resp, err
+	}
+	p.resourceSchemas = resp.ResourceSchemas
+	return resp, nil
 }
 
 func (p *tfProxyProviderServer) ValidateDataResourceConfig(
@@ -83,7 +114,33 @@ func (p *tfProxyProviderServer) PlanResourceChange(
 	ctx context.Context,
 	req *tfprotov6.PlanResourceChangeRequest,
 ) (*tfprotov6.PlanResourceChangeResponse, error) {
-	return p.awsProvider.PlanResourceChange(ctx, req)
+	priorStateIsNull, err := req.PriorState.IsNull()
+	contract.AssertNoErrorf(err, "PriorState.IsNull() should not fail")
+	contract.Assertf(priorStateIsNull, "PriorState should be IsNull")
+	contract.Assertf(req.PriorPrivate == nil, "PriorPrivate should be nil")
+
+	resp, err := p.awsProvider.PlanResourceChange(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	rn := tfResourceName(req.TypeName)
+
+	obj, err := translateResourceArgs(ctx, rn, req.ProposedNewState, p.resourceSchemas)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = p.monitorClient.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
+		Type:   translateTypeName(rn),
+		Name:   translateResourceName(resp.PlannedState),
+		Custom: true,
+		Object: obj,
+	})
+
+	// TODO Parent: this should be parented on the component presumably?
+
+	return resp, err
 }
 
 var _ tfprotov6.ProviderServer = (*tfProxyProviderServer)(nil)
@@ -115,9 +172,9 @@ const (
 	grpcMaxMessageSize = 256 << 20
 )
 
-func startTFProviderProxy(providerName string) (*tfProviderProxyHandle, error) {
+func startTFProviderProxy(providerName, monitorEndpoint string) (*tfProviderProxyHandle, error) {
 	serverHandle, reattachConfig, err := simpleServe(providerName, func() tfprotov6.ProviderServer {
-		return newTfProxyProviderServer()
+		return newTfProxyProviderServer(monitorEndpoint)
 	})
 	if err != nil {
 		return nil, err
