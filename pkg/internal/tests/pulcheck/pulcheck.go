@@ -53,6 +53,20 @@ func resourceNeedsUpdate(res *schema.Resource) bool {
 // This is an experimental API.
 func EnsureProviderValid(t T, tfp *schema.Provider) {
 	for _, r := range tfp.ResourcesMap {
+		if r.Schema["id"] == nil {
+			r.Schema["id"] = &schema.Schema{
+				Type:     schema.TypeString,
+				Computed: true,
+			}
+		}
+
+		if !resourceNeedsUpdate(r) {
+			r.Schema["update_prop"] = &schema.Schema{
+				Type:     schema.TypeString,
+				Optional: true,
+			}
+		}
+
 		if r.ReadContext == nil {
 			r.ReadContext = func(_ context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 				return nil
@@ -75,7 +89,7 @@ func EnsureProviderValid(t T, tfp *schema.Provider) {
 			}
 		}
 
-		if resourceNeedsUpdate(r) && r.UpdateContext == nil {
+		if r.UpdateContext == nil {
 			r.UpdateContext = func(
 				ctx context.Context, rd *schema.ResourceData, i interface{},
 			) diag.Diagnostics {
