@@ -39,5 +39,9 @@ install:: tfplugin5_pulumi.pb.go tfplugin6_pulumi.pb.go tfplugin5_pulumi_grpc.pb
 # This target runs outside of the nix environment.
 tfplugin::
 	nix build
-	cp result/tfplugin5* ../tfplugin5
-	cp result/tfplugin6* ../tfplugin6
+	rm -rf tfplugin5
+	mkdir -p tfplugin5
+	cp result/tfplugin5* ./tfplugin5/
+	rm -rf tfplugin6
+	mkdir -p tfplugin6
+	cp result/tfplugin6* ./tfplugin6/
