@@ -192,6 +192,6 @@ func ParseCheckableStr(kind CheckableKind, src string) (Checkable, tfdiags.Diagn
 		return InputVariable{Name: name}.Absolute(path), diags
 
 	default:
-		panic(fmt.Sprintf("unsupported CheckableKind %s", kind))
+		panic(fmt.Sprintf("unsupported CheckableKind %v", kind))
 	}
 }

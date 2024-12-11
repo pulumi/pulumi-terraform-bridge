@@ -309,9 +309,13 @@ func vendorOpenTOFU(version string) {
 			transforms: transforms,
 		},
 		{
-			src:        "internal/addrs/checkable.go",
-			dest:       "addrs/checkable.go",
-			transforms: transforms,
+			src:  "internal/addrs/checkable.go",
+			dest: "addrs/checkable.go",
+			transforms: append(transforms, func(s string) string {
+				code := `fmt.Sprintf("unsupported CheckableKind %s", kind)`
+				repl := `fmt.Sprintf("unsupported CheckableKind %v", kind)`
+				return strings.ReplaceAll(s, code, repl)
+			}),
 		},
 		{
 			src:        "internal/addrs/check.go",
