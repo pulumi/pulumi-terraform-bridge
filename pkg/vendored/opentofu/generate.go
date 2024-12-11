@@ -266,9 +266,13 @@ func files() []file {
 			transforms: transforms,
 		},
 		{
-			src:        "internal/tfdiags/diagnostic.go",
-			dest:       "tfdiags/diagnostic.go",
-			transforms: transforms,
+			src:  "internal/tfdiags/diagnostic.go",
+			dest: "tfdiags/diagnostic.go",
+			transforms: append(transforms, func(s string) string {
+				code := `panic(fmt.Sprintf("unknown diagnostic severity %s", s))`
+				replace := `panic(fmt.Sprintf("unknown diagnostic severity %v", s))`
+				return strings.ReplaceAll(s, code, replace)
+			}),
 		},
 		{
 			src:        "internal/tfdiags/diagnostics.go",

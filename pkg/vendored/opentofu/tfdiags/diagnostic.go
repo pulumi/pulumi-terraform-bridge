@@ -49,7 +49,7 @@ func (s Severity) ToHCL() hcl.DiagnosticSeverity {
 	default:
 		// The above should always be exhaustive for all of the valid
 		// Severity values in this package.
-		panic(fmt.Sprintf("unknown diagnostic severity %s", s))
+		panic(fmt.Sprintf("unknown diagnostic severity %v", s))
 	}
 }
 
