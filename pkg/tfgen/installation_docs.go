@@ -99,7 +99,7 @@ func writeFrontMatter(providerDisplayName string) string {
 		providerDisplayName)
 }
 
-// writeInstallationInstructions renders the following for any provider:
+// writeInstallationInstructions renders the following for a pulumi-maintained provider:
 // ****
 // Installation
 // The Foo provider is available as a package in all Pulumi languages:
@@ -109,6 +109,16 @@ func writeFrontMatter(providerDisplayName string) string {
 // Go: github.com/pulumi/pulumi-foo/sdk/v3/go/foo
 // .NET: Pulumi.foo
 // Java: com.pulumi/foo
+// ****
+//
+// A dynamically bridged provider receives the following instead:
+// ****
+// ## Generate Provider
+//
+// The Foo provider must be installed as a Local Package by following the instructions for Any Terraform Provider: (link)
+// ```bash
+// pulumi package add terraform-provider org/foo
+// ```
 // ****
 func writeInstallationInstructions(goImportBasePath, displayName, pkgName, ghOrg, sourceRepo string) string {
 	// Capitalize the package name for C#
@@ -136,7 +146,7 @@ func writeInstallationInstructions(goImportBasePath, displayName, pkgName, ghOrg
 			"[instructions for Any Terraform Provider]"+
 			"(https://www.pulumi.com/registry/packages/terraform-provider/):\n\n"+
 			"```bash\n"+
-			"pulumi package gen-sdk terraform-provider %[2]s/%[3]s\n"+
+			"pulumi package add terraform-provider %[2]s/%[3]s\n"+
 			"```\n",
 			displayName,
 			ghOrg,
