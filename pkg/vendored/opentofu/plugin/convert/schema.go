@@ -11,10 +11,9 @@ import (
 	"reflect"
 	"sort"
 
-	
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/opentofu/configs/configschema"
-	proto "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/tfplugin6"
-	"github.com/zclconf/go-cty/cty"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/opentofu/providers"
+	proto "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/tfplugin5"
 )
 
 // ConfigSchemaToProto takes a *configschema.Block and converts it to a
@@ -40,17 +39,12 @@ func ConfigSchemaToProto(b *configschema.Block) *proto.Schema_Block {
 			Deprecated:      a.Deprecated,
 		}
 
-		if a.Type != cty.NilType {
-			ty, err := json.Marshal(a.Type)
-			if err != nil {
-				panic(err)
-			}
-			attr.Type = ty
+		ty, err := json.Marshal(a.Type)
+		if err != nil {
+			panic(err)
 		}
 
-		if a.NestedType != nil {
-			attr.NestedType = configschemaObjectToProto(a.NestedType)
-		}
+		attr.Type = ty
 
 		block.Attributes = append(block.Attributes, attr)
 	}
@@ -98,7 +92,12 @@ func protoSchemaNestedBlock(name string, b *configschema.NestedBlock) *proto.Sch
 }
 
 // ProtoToProviderSchema takes a proto.Schema and converts it to a providers.Schema.
-
+func ProtoToProviderSchema(s *proto.Schema) providers.Schema {
+	return providers.Schema{
+		Version: s.Version,
+		Block:   ProtoToConfigSchema(s.Block),
+	}
+}
 
 // ProtoToConfigSchema takes the GetSchcema_Block from a grpc response and converts it
 // to a tofu *configschema.Block.
@@ -123,14 +122,8 @@ func ProtoToConfigSchema(b *proto.Schema_Block) *configschema.Block {
 			Deprecated:      a.Deprecated,
 		}
 
-		if a.Type != nil {
-			if err := json.Unmarshal(a.Type, &attr.Type); err != nil {
-				panic(err)
-			}
-		}
-
-		if a.NestedType != nil {
-			attr.NestedType = protoObjectToConfigSchema(a.NestedType)
+		if err := json.Unmarshal(a.Type, &attr.Type); err != nil {
+			panic(err)
 		}
 
 		block.Attributes[a.Name] = attr
@@ -181,54 +174,6 @@ func schemaNestedBlock(b *proto.Schema_NestedBlock) *configschema.NestedBlock {
 	return nb
 }
 
-func protoObjectToConfigSchema(b *proto.Schema_Object) *configschema.Object {
-	var nesting configschema.NestingMode
-	switch b.Nesting {
-	case proto.Schema_Object_SINGLE:
-		nesting = configschema.NestingSingle
-	case proto.Schema_Object_LIST:
-		nesting = configschema.NestingList
-	case proto.Schema_Object_MAP:
-		nesting = configschema.NestingMap
-	case proto.Schema_Object_SET:
-		nesting = configschema.NestingSet
-	default:
-		// In all other cases we'll leave it as the zero value (invalid) and
-		// let the caller validate it and deal with this.
-	}
-
-	object := &configschema.Object{
-		Attributes: make(map[string]*configschema.Attribute),
-		Nesting:    nesting,
-	}
-
-	for _, a := range b.Attributes {
-		attr := &configschema.Attribute{
-			Description:     a.Description,
-			DescriptionKind: schemaStringKind(a.DescriptionKind),
-			Required:        a.Required,
-			Optional:        a.Optional,
-			Computed:        a.Computed,
-			Sensitive:       a.Sensitive,
-			Deprecated:      a.Deprecated,
-		}
-
-		if a.Type != nil {
-			if err := json.Unmarshal(a.Type, &attr.Type); err != nil {
-				panic(err)
-			}
-		}
-
-		if a.NestedType != nil {
-			attr.NestedType = protoObjectToConfigSchema(a.NestedType)
-		}
-
-		object.Attributes[a.Name] = attr
-	}
-
-	return object
-}
-
 // sortedKeys returns the lexically sorted keys from the given map. This is
 // used to make schema conversions are deterministic. This panics if map keys
 // are not a string.
@@ -243,56 +188,4 @@ func sortedKeys(m interface{}) []string {
 
 	sort.Strings(keys)
 	return keys
-}
-
-func configschemaObjectToProto(b *configschema.Object) *proto.Schema_Object {
-	var nesting proto.Schema_Object_NestingMode
-	switch b.Nesting {
-	case configschema.NestingSingle:
-		nesting = proto.Schema_Object_SINGLE
-	case configschema.NestingList:
-		nesting = proto.Schema_Object_LIST
-	case configschema.NestingSet:
-		nesting = proto.Schema_Object_SET
-	case configschema.NestingMap:
-		nesting = proto.Schema_Object_MAP
-	default:
-		nesting = proto.Schema_Object_INVALID
-	}
-
-	attributes := make([]*proto.Schema_Attribute, 0, len(b.Attributes))
-
-	for _, name := range sortedKeys(b.Attributes) {
-		a := b.Attributes[name]
-
-		attr := &proto.Schema_Attribute{
-			Name:            name,
-			Description:     a.Description,
-			DescriptionKind: protoStringKind(a.DescriptionKind),
-			Optional:        a.Optional,
-			Computed:        a.Computed,
-			Required:        a.Required,
-			Sensitive:       a.Sensitive,
-			Deprecated:      a.Deprecated,
-		}
-
-		if a.Type != cty.NilType {
-			ty, err := json.Marshal(a.Type)
-			if err != nil {
-				panic(err)
-			}
-			attr.Type = ty
-		}
-
-		if a.NestedType != nil {
-			attr.NestedType = configschemaObjectToProto(a.NestedType)
-		}
-
-		attributes = append(attributes, attr)
-	}
-
-	return &proto.Schema_Object{
-		Attributes: attributes,
-		Nesting:    nesting,
-	}
 }

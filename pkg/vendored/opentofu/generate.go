@@ -35,6 +35,7 @@ const (
 	oldPkg       = "github.com/opentofu/opentofu"
 	newPkg       = "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/opentofu"
 	protoPkg     = "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/tfplugin6"
+	proto5Pkg    = "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/tfplugin5"
 	opentofuRepo = "https://github.com/opentofu/opentofu.git"
 	opentofuVer  = "v1.7.2"
 )
@@ -67,6 +68,12 @@ func files() []file {
 		protoPkg,
 	))
 
+	fixupTFPlugin5Ref := gofmtReplace(fmt.Sprintf(
+		`"%s" -> "%s"`,
+		fmt.Sprintf("%s/internal/tfplugin5", oldPkg),
+		proto5Pkg,
+	))
+
 	replaceTfDiagsRef := gofmtReplace(fmt.Sprintf(
 		`"%s/internal/tfdiags" -> "%s/tfdiags"`,
 		oldPkg, newPkg,
@@ -87,15 +94,64 @@ func files() []file {
 		oldPkg, newPkg,
 	))
 
+	replaceGetProvidersRef := gofmtReplace(fmt.Sprintf(
+		`"%s/internal/getproviders" -> "%s/getproviders"`,
+		oldPkg, newPkg,
+	))
+
+	replaceCopyRef := gofmtReplace(fmt.Sprintf(
+		`"%s/internal/copy" -> "%s/copy"`,
+		oldPkg, newPkg,
+	))
+
+	replaceProvidersRef := gofmtReplace(fmt.Sprintf(
+		`"%s/internal/providers" -> "%s/providers"`,
+		oldPkg, newPkg,
+	))
+
+	replaceConfigsHcl2ShimRef := gofmtReplace(fmt.Sprintf(
+		`"%s/internal/configs/hcl2shim" -> "%s/configs/hcl2shim"`,
+		oldPkg, newPkg,
+	))
+
+	replaceStatesRef := gofmtReplace(fmt.Sprintf(
+		`"%s/internal/states" -> "%s/states"`,
+		oldPkg, newPkg,
+	))
+
+	replacePluginConvertRef := gofmtReplace(fmt.Sprintf(
+		`"%s/internal/plugin/convert" -> "%s/plugin/convert"`,
+		oldPkg, newPkg,
+	))
+
+	replacePlugin6Ref := gofmtReplace(fmt.Sprintf(
+		`"%s/internal/plugin6" -> "%s/plugin6"`,
+		oldPkg, newPkg,
+	))
+
+	replacePlugin6ConvertRef := gofmtReplace(fmt.Sprintf(
+		`"%s/internal/plugin6/convert" -> "%s/plugin6/convert"`,
+		oldPkg, newPkg,
+	))
+
 	transforms := []func(string) string{
 		replacePkg,
 		doNotEditWarning,
 		fixupCodeTypeError,
+		fixupTFPlugin5Ref,
 		fixupTFPlugin6Ref,
 		replaceTfDiagsRef,
 		replaceAddrsRef,
 		replaceHttpClientRef,
 		replaceLoggingRef,
+		replaceGetProvidersRef,
+		replaceCopyRef,
+		replacePluginConvertRef,
+		replacePlugin6ConvertRef,
+		replaceProvidersRef,
+		replaceStatesRef,
+		replaceConfigsHcl2ShimRef,
+		replacePlugin6Ref,
 	}
 
 	return []file{
@@ -147,30 +203,40 @@ func files() []file {
 			dest:       "plans/objchange/plan_valid.go",
 			transforms: transforms,
 		},
-		{
-			src:  "internal/plugin6/convert/schema.go",
-			dest: "convert/schema.go",
-			transforms: append(transforms, func(s string) string {
-				elided :=
-					`func ProtoToProviderSchema(s *proto.Schema) providers.Schema {
-	return providers.Schema{
-		Version: s.Version,
-		Block:   ProtoToConfigSchema(s.Block),
-	}
-}`
-				s = strings.ReplaceAll(s, elided, "")
-				s = strings.ReplaceAll(s, `"github.com/opentofu/opentofu/internal/providers"`, "")
-				return s
-			}),
-		},
+		// 		{
+		// 			src:  "internal/plugin6/convert/schema.go",
+		// 			dest: "convert/schema.go",
+		// 			transforms: append(transforms, func(s string) string {
+		// 				elided :=
+		// 					`func ProtoToProviderSchema(s *proto.Schema) providers.Schema {
+		// 	return providers.Schema{
+		// 		Version: s.Version,
+		// 		Block:   ProtoToConfigSchema(s.Block),
+		// 	}
+		// }`
+		// 				s = strings.ReplaceAll(s, elided, "")
+		// 				s = strings.ReplaceAll(s, `"github.com/opentofu/opentofu/internal/providers"`, "")
+		// 				return s
+		// 			}),
+		// 		},
 		{
 			src:        "internal/tfdiags/config_traversals.go",
 			dest:       "tfdiags/config_traversals.go",
 			transforms: transforms,
 		},
 		{
+			src:        "internal/tfdiags/diagnostic_base.go",
+			dest:       "tfdiags/diagnostic_base.go",
+			transforms: transforms,
+		},
+		{
 			src:        "internal/tfdiags/rpc_friendly.go",
 			dest:       "tfdiags/rpc_friendly.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/tfdiags/contextual.go",
+			dest:       "tfdiags/contextual.go",
 			transforms: transforms,
 		},
 		{
@@ -199,8 +265,88 @@ func files() []file {
 			transforms: transforms,
 		},
 		{
+			src:        "internal/tfdiags/sourceless.go",
+			dest:       "tfdiags/sourceless.go",
+			transforms: transforms,
+		},
+		{
 			src:        "internal/addrs/provider.go",
 			dest:       "addrs/provider.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/addrs/targetable.go",
+			dest:       "addrs/targetable.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/addrs/resource.go",
+			dest:       "addrs/resource.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/addrs/module_call.go",
+			dest:       "addrs/module_call.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/addrs/output_value.go",
+			dest:       "addrs/output_value.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/addrs/check_rule.go",
+			dest:       "addrs/check_rule.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/addrs/checkable.go",
+			dest:       "addrs/checkable.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/addrs/check.go",
+			dest:       "addrs/check.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/addrs/referenceable.go",
+			dest:       "addrs/referenceable.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/addrs/unique_key.go",
+			dest:       "addrs/unique_key.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/addrs/instance_key.go",
+			dest:       "addrs/instance_key.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/addrs/input_variable.go",
+			dest:       "addrs/input_variable.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/addrs/parse_target.go",
+			dest:       "addrs/parse_target.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/addrs/module_instance.go",
+			dest:       "addrs/module_instance.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/addrs/module.go",
+			dest:       "addrs/module.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/addrs/resource.go",
+			dest:       "addrs/resource.go",
 			transforms: transforms,
 		},
 		{
@@ -261,6 +407,148 @@ func files() []file {
 		{
 			src:        "internal/logging/panic.go",
 			dest:       "logging/panic.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/providercache/cached_provider.go",
+			dest:       "providercache/cached_provider.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/providercache/dir.go",
+			dest:       "providercache/dir.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/providercache/dir_modify.go",
+			dest:       "providercache/dir_modify.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/providercache/package_install.go",
+			dest:       "providercache/package_install.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/copy/copy_dir.go",
+			dest:       "copy/copy_dir.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/copy/copy_file.go",
+			dest:       "copy/copy_file.go",
+			transforms: transforms,
+		},
+		{
+			src:  "internal/plugin/plugin.go",
+			dest: "plugin/plugin.go",
+			transforms: append(transforms, func(s string) string {
+				// imp := `"github.com/opentofu/opentofu/internal/plugin6"`
+				// s = strings.ReplaceAll(s, imp, "")
+				code := `"provisioner": &GRPCProvisionerPlugin{},`
+				s = strings.ReplaceAll(s, code, "")
+				return s
+			}),
+		},
+		{
+			src:  "internal/plugin/serve.go",
+			dest: "plugin/serve.go",
+			transforms: append(transforms, func(s string) string {
+				code := `if opts.GRPCProvisionerFunc != nil {
+			plugins[5]["provisioner"] = &GRPCProvisionerPlugin{
+				GRPCProvisioner: opts.GRPCProvisionerFunc,
+			}
+		}`
+				s = strings.ReplaceAll(s, code, "")
+				return s
+
+			}),
+		},
+		{
+			src:        "internal/plugin/grpc_error.go",
+			dest:       "plugin/grpc_error.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/plugin/grpc_provider.go",
+			dest:       "plugin/grpc_provider.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/plugin/convert/diagnostics.go",
+			dest:       "plugin/convert/diagnostics.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/plugin/convert/schema.go",
+			dest:       "plugin/convert/schema.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/plugin/convert/function.go",
+			dest:       "plugin/convert/function.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/providers/schemas.go",
+			dest:       "providers/schemas.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/providers/schema_cache.go",
+			dest:       "providers/schema_cache.go",
+			transforms: transforms,
+		},
+		{
+			src:  "internal/providers/provider.go",
+			dest: "providers/provider.go",
+			transforms: append(transforms, func(s string) string {
+				imp := `"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/opentofu/states"`
+				s = strings.ReplaceAll(s, imp, "")
+				code := `func (ir ImportedResource) AsInstanceObject() *states.ResourceInstanceObject {
+	return &states.ResourceInstanceObject{
+		Status:  states.ObjectReady,
+		Value:   ir.State,
+		Private: ir.Private,
+	}
+}`
+				s = strings.ReplaceAll(s, code, "")
+				return s
+			}),
+		},
+		{
+			src:        "internal/configs/hcl2shim/flatmap.go",
+			dest:       "configs/hcl2shim/flatmap.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/configs/hcl2shim/values.go",
+			dest:       "configs/hcl2shim/values.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/plugin6/grpc_provider.go",
+			dest:       "plugin6/grpc_provider.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/plugin6/grpc_error.go",
+			dest:       "plugin6/grpc_error.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/plugin6/convert/diagnostics.go",
+			dest:       "plugin6/convert/diagnostics.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/plugin6/convert/schema.go",
+			dest:       "plugin6/convert/schema.go",
+			transforms: transforms,
+		},
+		{
+			src:        "internal/plugin6/convert/function.go",
+			dest:       "plugin6/convert/function.go",
 			transforms: transforms,
 		},
 	}
