@@ -114,7 +114,6 @@ func (*hclResourceProviderServer) Construct(
 	req *pulumirpc.ConstructRequest,
 ) (*pulumirpc.ConstructResponse, error) {
 	contract.Assertf(req.Type == "hcl:index:VpcAws", "TODO only hcl:index:VpcAws is supported in Construct")
-	contract.Assertf(req.DryRun == true, "TODO Construct only works in preview for now")
 
 	d, err := prepareTFWorkspace()
 	if err != nil {
@@ -141,9 +140,18 @@ func (*hclResourceProviderServer) Construct(
 		contract.AssertNoErrorf(err, "failed to close proxies")
 	}()
 
-	err = planTF(d, proxies)
-	if err != nil {
-		return nil, err
+	if req.DryRun == true {
+		// Handle pulumi preview.
+		err = planTF(d, proxies)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		// handle pulumi up
+		err = upTF(d, proxies)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return &pulumirpc.ConstructResponse{
@@ -225,8 +233,8 @@ func prepareTFWorkspace() (string, error) {
 	return d, nil
 }
 
-func planTF(d string, proxies tfProviderProxies) error {
-	cmd := exec.Command("terraform", "plan")
+func runTF(d string, proxies tfProviderProxies, command ...string) error {
+	cmd := exec.Command("terraform", command...)
 	cmd.Env = os.Environ()
 	reattach, err := computeReattachConfig(d, proxies)
 	if err != nil {
@@ -243,6 +251,14 @@ func planTF(d string, proxies tfProviderProxies) error {
 	}
 	cmd.Dir = d
 	return cmd.Run()
+}
+
+func upTF(d string, proxies tfProviderProxies) error {
+	return runTF(d, proxies, "apply", "-auto-approve")
+}
+
+func planTF(d string, proxies tfProviderProxies) error {
+	return runTF(d, proxies, "plan")
 }
 
 // Find which providers are used by a TF d workspace directory.

@@ -64,3 +64,36 @@ func translateResourceArgs(
 		KeepOutputValues: true,
 	})
 }
+
+func translateResourceOutputs(
+	n tfResourceName,
+	outputs *structpb.Struct,
+	resourceSchemas map[string]*tfprotov6.Schema,
+	bridgedProvider *info.Provider,
+) (*tfprotov6.DynamicValue, error) {
+	propMap, err := plugin.UnmarshalProperties(outputs, plugin.MarshalOptions{
+		Label:            "translateResourceOutputs",
+		KeepUnknowns:     true,
+		KeepSecrets:      true,
+		KeepResources:    true,
+		KeepOutputValues: true,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	rschema, ok := resourceSchemas[string(n)]
+	if !ok {
+		return nil, fmt.Errorf("Unknown resource: %q", n)
+	}
+	objectType, ok := rschema.ValueType().(tftypes.Object)
+	if !ok {
+		return nil, fmt.Errorf("Bad object type for resource: %q", n)
+	}
+	encoding := convert.NewEncoding(bridgedProvider.P, bridgedProvider)
+	enc, err := encoding.NewResourceEncoder(string(n), objectType)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to derive a resource encoder: %v", err)
+	}
+	return convert.EncodePropertyMapToDynamic(enc, objectType, propMap)
+}

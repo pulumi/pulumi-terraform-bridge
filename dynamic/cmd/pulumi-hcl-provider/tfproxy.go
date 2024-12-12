@@ -121,6 +121,10 @@ func (p *tfProxyProviderServer) PlanResourceChange(
 	contract.Assertf(priorStateIsNull, "PriorState should be IsNull")
 	contract.Assertf(req.PriorPrivate == nil, "PriorPrivate should be nil")
 
+	// TODO this is a temporary code path.
+	//
+	// The real code should not be calling into the actual awsProvider but instead interpreting the results of
+	// RegisterResource that will inside them the results of planning the change.
 	resp, err := p.awsProvider.PlanResourceChange(ctx, req)
 	if err != nil {
 		return nil, err
@@ -128,21 +132,91 @@ func (p *tfProxyProviderServer) PlanResourceChange(
 
 	rn := tfResourceName(req.TypeName)
 
-	obj, err := translateResourceArgs(ctx, rn, req.ProposedNewState, p.resourceSchemas, p.awsBridged)
+	// Should this translate req.Config or req.ProposedNewState? In case the state is nil these are usually the
+	// same. The underlying bridged provider will re-plan the ProposedNewState anyway. Going with Config.
+	obj, err := translateResourceArgs(ctx, rn, req.Config, p.resourceSchemas, p.awsBridged)
 	if err != nil {
 		return nil, err
 	}
 
 	_, err = p.monitorClient.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
-		Type:   translateTypeName(p.awsBridged, rn),
-		Name:   translateResourceName(resp.PlannedState),
-		Custom: true,
-		Object: obj,
+		Type:            translateTypeName(p.awsBridged, rn),
+		Name:            translateResourceName(req.Config),
+		Custom:          true,
+		Object:          obj,
+		AcceptSecrets:   true,
+		AcceptResources: true,
 	})
 
 	// TODO Parent: this should be parented on the component presumably?
-
 	return resp, err
+}
+
+func (p *tfProxyProviderServer) ApplyResourceChange(
+	ctx context.Context,
+	req *tfprotov6.ApplyResourceChangeRequest,
+) (*tfprotov6.ApplyResourceChangeResponse, error) {
+	priorStateIsNull, err := req.PriorState.IsNull()
+	contract.AssertNoErrorf(err, "PriorState.IsNull() should not fail")
+	contract.Assertf(priorStateIsNull, "PriorState should be IsNull")
+
+	planningDelete, err := req.PlannedState.IsNull()
+	contract.AssertNoErrorf(err, "req.PlannedState.IsNull() should not fail")
+	if planningDelete {
+		// Pulumi will take care of deleting out of band.
+		//
+		// Need to pretend to TF that we deleted the resource successfully.
+		return &tfprotov6.ApplyResourceChangeResponse{
+			NewState: req.PlannedState, // that is, return null
+		}, nil
+	}
+
+	rn := tfResourceName(req.TypeName)
+
+	// Discard req.PlannedState here because Pulumi will re-plan with the proper state. Use Config as it is supposed
+	// to represent the program being interpreted.
+	obj, err := translateResourceArgs(ctx, rn, req.Config, p.resourceSchemas, p.awsBridged)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := p.monitorClient.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
+		Type:            translateTypeName(p.awsBridged, rn),
+		Name:            translateResourceName(req.Config),
+		Custom:          true,
+		Object:          obj,
+		AcceptSecrets:   true,
+		AcceptResources: true,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.Result != pulumirpc.Result_SUCCESS {
+		return &tfprotov6.ApplyResourceChangeResponse{
+			Diagnostics: []*tfprotov6.Diagnostic{{
+				Severity: tfprotov6.DiagnosticSeverityError,
+				Summary:  fmt.Sprintf("Resource did not provision under Pulumi: %q", resp.Result),
+			}},
+		}, nil
+	}
+
+	// TODO do we need to repackage resp.Id in a special way for Terraform?
+
+	newState, err := translateResourceOutputs(rn, resp.Object, p.resourceSchemas, p.awsBridged)
+	if err != nil {
+		return nil, err
+	}
+
+	return &tfprotov6.ApplyResourceChangeResponse{
+		NewState: newState,
+
+		// Does the resource private state need to be smuggled back to TF? Probably the answer is yes. The
+		// private state is encoded inside Pulumi __meta state and this can be recovered.
+		//
+		// Private: []byte{},
+
+	}, nil
 }
 
 var _ tfprotov6.ProviderServer = (*tfProxyProviderServer)(nil)

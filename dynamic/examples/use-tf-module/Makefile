@@ -6,6 +6,11 @@ preview:: npm-add
 	pulumi stack select dev
 	(pulumi preview --diff >preview.log && echo OK)
 
+up:: export PATH := $(WORKING_DIR)/bin:$(PATH)
+up:: export AWS_PROFILE := devsandbox
+up:: npm-add preview
+	(pulumi up --skip-preview >up.log && echo OK)
+
 npm-add:: packages-add
 	npm add hcl@file:sdks/hcl
 
