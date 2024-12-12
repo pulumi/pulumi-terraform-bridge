@@ -777,7 +777,7 @@ Plan: 0 to add, 1 to change, 0 to destroy.
 	})
 }
 
-func TestDetailedDiffSetCrossTest(t *testing.T) {
+func TestDetailedDiffSet(t *testing.T) {
 	t.Parallel()
 
 	attributeSchema := schema.Resource{
@@ -827,6 +827,24 @@ func TestDetailedDiffSetCrossTest(t *testing.T) {
 			"test": {
 				Type:     schema.TypeSet,
 				Optional: true,
+				ForceNew: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"nested": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	blockSchemaNestedForceNew := schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"test": {
+				Type:     schema.TypeSet,
+				Optional: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"nested": {
@@ -872,15 +890,23 @@ func TestDetailedDiffSetCrossTest(t *testing.T) {
 		return cty.ListVal(slice)
 	}
 
-	schemaValueMakerPairs := []struct {
+	noForceNewSchemaValueMakerPairs := []struct {
 		name       string
 		res        schema.Resource
 		valueMaker func(*[]string) cty.Value
 	}{
 		{"attribute no force new", attributeSchema, attrList},
-		{"attribute force new", attributeSchemaForceNew, attrList},
 		{"block no force new", blockSchema, nestedAttrList},
-		{"block force new", blockSchemaForceNew, nestedAttrList},
+	}
+
+	forceNewSchemaValueMakerPairs := []struct {
+		name       string
+		res        schema.Resource
+		valueMaker func(*[]string) cty.Value
+	}{
+		{"attribute force new", attributeSchemaForceNew, attrList},
+		{"block top level force new", blockSchemaForceNew, nestedAttrList},
+		{"block nested force new", blockSchemaNestedForceNew, nestedAttrList},
 	}
 
 	scenarios := []struct {
@@ -916,7 +942,6 @@ func TestDetailedDiffSetCrossTest(t *testing.T) {
 		{"added end unordered", &[]string{"val2", "val3"}, &[]string{"val2", "val3", "val1"}},
 
 		{"same element updated", &[]string{"val1", "val2", "val3"}, &[]string{"val1", "val4", "val3"}},
-		{"same element updated unordered", &[]string{"val2", "val3", "val1"}, &[]string{"val2", "val4", "val1"}},
 
 		{"shuffled", &[]string{"val1", "val2", "val3"}, &[]string{"val3", "val1", "val2"}},
 		{"shuffled unordered", &[]string{"val2", "val3", "val1"}, &[]string{"val3", "val1", "val2"}},
@@ -933,11 +958,23 @@ func TestDetailedDiffSetCrossTest(t *testing.T) {
 
 		{"two added", &[]string{"val1", "val2"}, &[]string{"val1", "val2", "val3", "val4"}},
 		{"two removed", &[]string{"val1", "val2", "val3", "val4"}, &[]string{"val1", "val2"}},
+	}
+
+	// TODO[pulumi/pulumi-terraform-bridge#2726]: These tests fail to produce the correct replacement plan
+	// for the force new shcemas
+	extraScenarios := []struct {
+		name         string
+		initialValue *[]string
+		changeValue  *[]string
+	}{
+		{"same element updated unordered", &[]string{"val2", "val3", "val1"}, &[]string{"val2", "val4", "val1"}},
 		{"two added and two removed", &[]string{"val1", "val2", "val3", "val4"}, &[]string{"val1", "val2", "val5", "val6"}},
 		{"two added and two removed shuffled, one overlaps", &[]string{"val1", "val2", "val3", "val4"}, &[]string{"val1", "val5", "val6", "val2"}},
 		{"two added and two removed shuffled, no overlaps", &[]string{"val1", "val2", "val3", "val4"}, &[]string{"val5", "val6", "val1", "val2"}},
 		{"two added and two removed shuffled, with duplicates", &[]string{"val1", "val2", "val3", "val4"}, &[]string{"val1", "val5", "val6", "val2", "val1", "val2"}},
 	}
+
+	allScenarios := append(scenarios, extraScenarios...)
 
 	type testOutput struct {
 		initialValue *[]string
@@ -947,24 +984,40 @@ func TestDetailedDiffSetCrossTest(t *testing.T) {
 		detailedDiff map[string]any
 	}
 
-	for _, schemaValueMakerPair := range schemaValueMakerPairs {
+	runTest := func(t *testing.T, schema schema.Resource, valueMaker func(*[]string) cty.Value, val1 *[]string, val2 *[]string) {
+		initialValue := valueMaker(val1)
+		changeValue := valueMaker(val2)
+
+		diff := crosstests.Diff(t, &schema, map[string]cty.Value{"test": initialValue}, map[string]cty.Value{"test": changeValue})
+
+		autogold.ExpectFile(t, testOutput{
+			initialValue: val1,
+			changeValue:  val2,
+			tfOut:        diff.TFOut,
+			pulumiOut:    diff.PulumiOut,
+			detailedDiff: diff.PulumiDiff.DetailedDiff,
+		})
+	}
+
+	for _, schemaValueMakerPair := range forceNewSchemaValueMakerPairs {
 		t.Run(schemaValueMakerPair.name, func(t *testing.T) {
 			t.Parallel()
 			for _, scenario := range scenarios {
 				t.Run(scenario.name, func(t *testing.T) {
 					t.Parallel()
-					initialValue := schemaValueMakerPair.valueMaker(scenario.initialValue)
-					changeValue := schemaValueMakerPair.valueMaker(scenario.changeValue)
+					runTest(t, schemaValueMakerPair.res, schemaValueMakerPair.valueMaker, scenario.initialValue, scenario.changeValue)
+				})
+			}
+		})
+	}
 
-					diff := crosstests.Diff(t, &schemaValueMakerPair.res, map[string]cty.Value{"test": initialValue}, map[string]cty.Value{"test": changeValue})
-
-					autogold.ExpectFile(t, testOutput{
-						initialValue: scenario.initialValue,
-						changeValue:  scenario.changeValue,
-						tfOut:        diff.TFOut,
-						pulumiOut:    diff.PulumiOut,
-						detailedDiff: diff.PulumiDiff.DetailedDiff,
-					})
+	for _, schemaValueMakerPair := range noForceNewSchemaValueMakerPairs {
+		t.Run(schemaValueMakerPair.name, func(t *testing.T) {
+			t.Parallel()
+			for _, scenario := range allScenarios {
+				t.Run(scenario.name, func(t *testing.T) {
+					t.Parallel()
+					runTest(t, schemaValueMakerPair.res, schemaValueMakerPair.valueMaker, scenario.initialValue, scenario.changeValue)
 				})
 			}
 		})
