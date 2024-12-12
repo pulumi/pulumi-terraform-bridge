@@ -36,14 +36,21 @@ func TestParseArgs(t *testing.T) {
 			expect: Args{Local: &LocalArgs{Path: "./my-provider"}},
 		},
 		{
-			name: "local too many args",
+			name: "local invalid second arg",
 			args: []string{"./my-provider", "nonsense"},
 			errMsg: autogold.Expect(
-				"path based providers are only parameterized by 2 arguments: <path> [upstreamRepoPath=<path/to/files>]",
+				"expected second parameterized argument to be 'upstreamRepoPath=<path/to/files>' or be empty",
 			),
 		},
 		{
-			name: "local with docs location",
+			name: "local empty upstreamRepoPath",
+			args: []string{"./my-provider", "upstreamRepoPath="},
+			errMsg: autogold.Expect(
+				"upstreamRepoPath must be set to a non-empty value: upstreamRepoPath=path/to/files",
+			),
+		},
+		{
+			name: "local with valid upstreamRepoPath",
 			args: []string{"./my-provider", "upstreamRepoPath=./my-provider"},
 			expect: Args{
 				Local: &LocalArgs{
@@ -53,12 +60,42 @@ func TestParseArgs(t *testing.T) {
 			},
 		},
 		{
-			name: "local empty upstreamRepoPath",
-			args: []string{"./my-provider", "upstreamRepoPath="},
+			name: "local invalid third arg",
+			args: []string{"./my-provider", "upstreamRepoPath=./my-provider", "invalid"},
 			errMsg: autogold.Expect(
-				"upstreamRepoPath must be set to a non-empty value: upstreamRepoPath=path/to/files",
+				"expected third parameterized argument to be 'indexDocOutDir=/path/to/dir' or be empty",
 			),
 		},
+		{
+			name: "local with empty indexDocOutDir",
+			args: []string{"./my-provider", "upstreamRepoPath=./my-provider"},
+			expect: Args{
+				Local: &LocalArgs{
+					Path:             "./my-provider",
+					UpstreamRepoPath: "./my-provider",
+					IndexDocOutDir:   "",
+				},
+			},
+		},
+		{
+			name: "local with valid indexDocOutDir",
+			args: []string{"./my-provider", "upstreamRepoPath=./my-provider", "indexDocOutDir=hello"},
+			expect: Args{
+				Local: &LocalArgs{
+					Path:             "./my-provider",
+					UpstreamRepoPath: "./my-provider",
+					IndexDocOutDir:   "hello",
+				},
+			},
+		},
+		{
+			name: "local too many args",
+			args: []string{"./my-provider", "upstreamRepoPath=./my-provider", "indexDocOutDir=hello", "nonsense"},
+			errMsg: autogold.Expect(
+				"path based providers are parameterized by 1-3 arguments: <path> [upstreamRepoPath=<path/to/files>] [indexDocOutDir=</path/to/dir>]",
+			),
+		},
+
 		{
 			name:   "remote",
 			args:   []string{"my-registry.io/typ"},
@@ -73,14 +110,16 @@ func TestParseArgs(t *testing.T) {
 			}},
 		},
 		{
-			name:   "no args",
-			args:   []string{},
-			errMsg: autogold.Expect("expected to be parameterized by 1-3 arguments: <name> [version] [fullDocs=<true|false>]"),
+			name: "no args",
+			args: []string{},
+			errMsg: autogold.Expect("expected to be parameterized by 1-4 arguments: <name> [version] " +
+				"[fullDocs=<true|false>] [indexDocOutDir=<path/to/dir>]"),
 		},
 		{
-			name:   "too many args",
-			args:   []string{"arg1", "arg2", "arg3", "arg4"},
-			errMsg: autogold.Expect("expected to be parameterized by 1-3 arguments: <name> [version] [fullDocs=<true|false>]"),
+			name: "too many args",
+			args: []string{"arg1", "arg2", "arg3", "arg4", "arg5"},
+			errMsg: autogold.Expect("expected to be parameterized by 1-4 arguments: <name> [version] " +
+				"[fullDocs=<true|false>] [indexDocOutDir=<path/to/dir>]"),
 		},
 		{
 			name: "invalid third arg",
@@ -122,6 +161,33 @@ func TestParseArgs(t *testing.T) {
 			errMsg: autogold.Expect(
 				"expected third parameterized argument to be 'fullDocs=<true|false>' or be empty",
 			),
+		},
+		{
+			name: "fourth arg invalid input",
+			args: []string{"my-registry.io/typ", "1.2.3", "fullDocs=true", "invalid"},
+			errMsg: autogold.Expect(
+				"expected fourth parameterized argument to be 'indexDocOutDir=/path/to/dir' or be empty",
+			),
+		},
+		{
+			name: "fourth arg valid input",
+			args: []string{"my-registry.io/typ", "1.2.3", "fullDocs=true", "indexDocOutDir=hello"},
+			expect: Args{Remote: &RemoteArgs{
+				Name:           "my-registry.io/typ",
+				Version:        "1.2.3",
+				Docs:           true,
+				IndexDocOutDir: "hello",
+			}},
+		},
+		{
+			name: "fourth arg empty input",
+			args: []string{"my-registry.io/typ", "1.2.3", "fullDocs=true", "indexDocOutDir="},
+			expect: Args{Remote: &RemoteArgs{
+				Name:           "my-registry.io/typ",
+				Version:        "1.2.3",
+				Docs:           true,
+				IndexDocOutDir: "",
+			}},
 		},
 	}
 

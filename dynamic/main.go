@@ -197,11 +197,12 @@ func initialSetup() (info.Provider, pfbridge.ProviderMetadata, func() error) {
 				if args.Local.UpstreamRepoPath != "" {
 					info.UpstreamRepoPath = args.Local.UpstreamRepoPath
 					fullDocs = true
+					indexDocOutDir = args.Local.IndexDocOutDir
 				}
 			default:
-				indexDocOutDir = args.Remote.IndexDocOutDir
 				fullDocs = args.Remote.Docs
 				if fullDocs {
+					indexDocOutDir = args.Remote.IndexDocOutDir
 					// Write the upstream files at this version to a temporary directory
 					tmpDir, err := os.MkdirTemp("", "upstreamRepoDir")
 					if err != nil {
