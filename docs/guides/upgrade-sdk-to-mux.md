@@ -10,7 +10,7 @@ Framework](https://github.com/hashicorp/terraform-plugin-sdk?tab=readme-ov-file)
    `github.com/hashicorp/terraform-plugin-framework/provider.Provider` from the upstream
    provider.  If the provider is shimmed (or needs to be), you can follow step (1) from
    ["How to Upgrade a Bridged Provider to Plugin
-   Framework"](../pf/README.md#how-to-upgrade-a-bridged-provider-to-plugin-framework).
+   Framework"](./upgrade-sdk-to-mux.md).
 
 1. Find the tfgen binary `main` that calls `tfgen.Main` from
    `github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen` and update it to call
