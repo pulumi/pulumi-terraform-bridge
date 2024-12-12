@@ -300,10 +300,11 @@ func (m *muxer) Configure(ctx context.Context, req *pulumirpc.ConfigureRequest) 
 		}
 	}
 	response := &pulumirpc.ConfigureResponse{
-		AcceptSecrets:   true,
-		SupportsPreview: true,
-		AcceptResources: true,
-		AcceptOutputs:   true,
+		AcceptSecrets:                   true,
+		SupportsPreview:                 true,
+		AcceptResources:                 true,
+		AcceptOutputs:                   true,
+		SupportsAutonamingConfiguration: true,
 	}
 	errs := new(multierror.Error)
 	for _, r := range asyncJoin(subs) {
@@ -315,6 +316,8 @@ func (m *muxer) Configure(ctx context.Context, req *pulumirpc.ConfigureRequest) 
 		response.AcceptResources = response.AcceptResources && r.A.GetAcceptResources()
 		response.AcceptSecrets = response.AcceptSecrets && r.A.GetAcceptSecrets()
 		response.SupportsPreview = response.SupportsPreview && r.A.GetSupportsPreview()
+		response.SupportsAutonamingConfiguration = response.SupportsAutonamingConfiguration &&
+			r.A.GetSupportsAutonamingConfiguration()
 	}
 	return response, m.muxedErrors(errs)
 }

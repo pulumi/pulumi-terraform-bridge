@@ -799,6 +799,54 @@ func TestProviderPreviewV2(t *testing.T) {
 	}).DeepEquals(outs["nestedResources"]))
 }
 
+func TestProviderCheckWithAutonaming(t *testing.T) {
+	t.Parallel()
+	provider := &Provider{
+		tf:     shimv2.NewProvider(testTFProviderV2),
+		config: shimv2.NewSchemaMap(testTFProviderV2.Schema),
+	}
+	provider.resources = map[tokens.Type]Resource{
+		"ExampleResource": {
+			TF:     shimv1.NewResource(testTFProvider.ResourcesMap["example_resource"]),
+			TFName: "example_resource",
+			Schema: &ResourceInfo{
+				Tok: "ExampleResource",
+				Fields: map[string]*SchemaInfo{
+					"string_property_value": AutoNameWithCustomOptions("string_property_value", AutoNameOptions{
+						Separator: "-",
+						Maxlen:    50,
+						Randlen:   8,
+					}),
+				},
+			},
+		},
+	}
+	urn := resource.NewURN("stack", "project", "", "ExampleResource", "name")
+
+	pulumiIns, err := plugin.MarshalProperties(resource.PropertyMap{
+		"arrayPropertyValues": resource.NewArrayProperty([]resource.PropertyValue{resource.NewStringProperty("foo")}),
+	}, plugin.MarshalOptions{KeepUnknowns: true})
+	assert.NoError(t, err)
+	checkResp, err := provider.Check(context.Background(), &pulumirpc.CheckRequest{
+		Urn:  string(urn),
+		News: pulumiIns,
+		Autonaming: &pulumirpc.CheckRequest_AutonamingOptions{
+			ProposedName: "this-name-please",
+			Mode:         pulumirpc.CheckRequest_AutonamingOptions_ENFORCE,
+		},
+	})
+
+	require.NoError(t, err)
+	require.NotNil(t, checkResp)
+	require.Empty(t, checkResp.Failures)
+	ins, err := plugin.UnmarshalProperties(checkResp.GetInputs(), plugin.MarshalOptions{})
+	require.NoError(t, err)
+	name := ins["string_property_value"]
+	require.True(t, name.IsString())
+	require.Equal(t, "this-name-please", name.StringValue())
+	_ = name
+}
+
 func testCheckFailures(t *testing.T, provider *Provider, typeName tokens.Type) []*pulumirpc.CheckFailure {
 	urn := resource.NewURN("stack", "project", "", typeName, "name")
 	unknown := resource.MakeComputed(resource.NewStringProperty(""))
@@ -896,7 +944,8 @@ func TestCheckCallback(t *testing.T) {
 			      }
 			    },
 			    "response": {
-			      "supportsPreview": true
+			      "supportsPreview": true,
+			      "supportsAutonamingConfiguration": true
 			    }
 			  },
 			  {
@@ -1932,7 +1981,8 @@ func TestConfigure(t *testing.T) {
 			    "acceptResources": true
 			  },
 			  "response": {
-			    "supportsPreview": true
+			    "supportsPreview": true,
+			    "supportsAutonamingConfiguration": true
 			  }
 			}`)
 	})
@@ -3668,7 +3718,8 @@ func TestMaxItemsOneConflictsWith(t *testing.T) {
 				"variables": {}
 			  },
 			  "response": {
-				"supportsPreview": true
+				"supportsPreview": true,
+				"supportsAutonamingConfiguration": true
 			  }
 			},
 			{
@@ -3701,7 +3752,8 @@ func TestMaxItemsOneConflictsWith(t *testing.T) {
 				"variables": {}
 			  },
 			  "response": {
-				"supportsPreview": true
+				"supportsPreview": true,
+				"supportsAutonamingConfiguration": true
 			  }
 			},
 			{
@@ -3767,7 +3819,8 @@ func TestMinMaxItemsOneOptional(t *testing.T) {
 				"variables": {}
 			  },
 			  "response": {
-				"supportsPreview": true
+				"supportsPreview": true,
+				"supportsAutonamingConfiguration": true
 			  }
 			},
 			{
@@ -3798,7 +3851,8 @@ func TestMinMaxItemsOneOptional(t *testing.T) {
 				"variables": {}
 			  },
 			  "response": {
-				"supportsPreview": true
+				"supportsPreview": true,
+				"supportsAutonamingConfiguration": true
 			  }
 			},
 			{
@@ -3872,7 +3926,8 @@ func TestComputedMaxItemsOneNotSpecified(t *testing.T) {
 				"variables": {}
 			  },
 			  "response": {
-				"supportsPreview": true
+				"supportsPreview": true,
+				"supportsAutonamingConfiguration": true
 			  }
 			},
 			{

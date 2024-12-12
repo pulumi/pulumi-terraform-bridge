@@ -153,6 +153,7 @@ func getDefaultValue(
 			URN:        cdOptions.URN,
 			Properties: cdOptions.Properties,
 			Seed:       cdOptions.Seed,
+			Autonaming: cdOptions.Autonaming,
 		})
 		if err != nil {
 			msg := fmt.Errorf("Failed computing a default value for property '%s': %w",

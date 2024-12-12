@@ -234,6 +234,7 @@ func TestConfigure(t *testing.T) {
 		}),
 	}, noParallel, expect(autogold.Expect(`{
   "acceptResources": true,
+  "supportsAutonamingConfiguration": true,
   "supportsPreview": true
 }`)))(t)
 

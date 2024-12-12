@@ -309,6 +309,7 @@ func FromName(options AutoNameOptions) func(res *PulumiResource) (interface{}, e
 			URN:        res.URN,
 			Properties: res.Properties,
 			Seed:       res.Seed,
+			Autonaming: res.Autonaming,
 		})
 	}
 }

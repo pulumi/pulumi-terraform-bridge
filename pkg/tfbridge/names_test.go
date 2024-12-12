@@ -25,6 +25,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shimv1 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v1"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
@@ -152,6 +153,32 @@ func TestFromName(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, out1, len("n1")+1+7+len(".fifo"))
 	assert.True(t, strings.HasSuffix(out1.(string), ".fifo"))
+}
+
+func TestFromNameSeedAndAutonaming(t *testing.T) {
+	t.Parallel()
+	res := &PulumiResource{
+		URN:        "urn:pulumi:test::test::pkgA:index:t1::n1",
+		Properties: resource.PropertyMap{},
+		Seed:       []byte("test-seed"),
+		Autonaming: &info.ComputeDefaultAutonamingOptions{
+			ProposedName: "proposed-name",
+			Mode:         info.ComputeDefaultAutonamingModePropose,
+		},
+	}
+
+	f := FromName(AutoNameOptions{
+		Separator: "-",
+		Maxlen:    80,
+		Randlen:   7,
+	})
+
+	out, err := f(res)
+	assert.NoError(t, err)
+
+	// Verify the output is a string and has expected format
+	outStr := out.(string)
+	assert.Equal(t, "proposed-name", outStr)
 }
 
 func TestBijectiveNameConversion(t *testing.T) {

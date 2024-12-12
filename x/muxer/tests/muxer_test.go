@@ -35,7 +35,7 @@ import (
 )
 
 func TestSimpleDispatch(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	var m muxer.DispatchTable
 	m.Resources = map[string]int{
 		"test:mod:A": 0,
@@ -70,7 +70,7 @@ func TestSimpleDispatch(t *testing.T) {
 }
 
 func TestCheckConfigErrorNotDuplicated(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	var m muxer.DispatchTable
 	m.Resources = map[string]int{
 		"test:mod:A": 0,
@@ -85,7 +85,7 @@ func TestCheckConfigErrorNotDuplicated(t *testing.T) {
 }
 
 func TestCheckConfigDifferentErrorsNotDropped(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	var m muxer.DispatchTable
 	m.Resources = map[string]int{
 		"test:mod:A": 0,
@@ -106,7 +106,7 @@ func TestCheckConfigDifferentErrorsNotDropped(t *testing.T) {
 }
 
 func TestCheckConfigOneErrorReturned(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	var m muxer.DispatchTable
 	m.Resources = map[string]int{
 		"test:mod:A": 0,
@@ -121,7 +121,7 @@ func TestCheckConfigOneErrorReturned(t *testing.T) {
 }
 
 func TestConfigure(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	var m muxer.DispatchTable
 	m.Resources = map[string]int{
 		"test:mod:A": 0,
@@ -136,7 +136,8 @@ func TestConfigure(t *testing.T) {
         "c": "3"
       }
     }`, `{
-      "supportsPreview": true
+      "supportsPreview": true,
+      "supportsAutonamingConfiguration": true
   }`, nil,
 			part(0, `{
   "args": {
@@ -146,7 +147,8 @@ func TestConfigure(t *testing.T) {
   }
 }`, `{
   "acceptSecrets": true,
-  "supportsPreview": true
+  "supportsPreview": true,
+  "supportsAutonamingConfiguration": true
 }`, nil),
 			part(1, `{
   "args": {
@@ -156,13 +158,14 @@ func TestConfigure(t *testing.T) {
   }
 }`, `{
   "supportsPreview": true,
-  "acceptResources": true
+  "acceptResources": true,
+  "supportsAutonamingConfiguration": true
 }`, nil),
 		))
 }
 
 func TestDivergentCheckConfig(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	// Early versions of muxer failed hard on divergent responses from CheckConfig. This test ensures that it can
 	// tolerate such responses (with logging or warning). The practical case is divergent handling of secret markers
 	// where pf and v3 based providers respond with the same value but do not agree on the secret markers.
@@ -203,7 +206,7 @@ func TestDivergentCheckConfig(t *testing.T) {
 }
 
 func TestGetMapping(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	t.Run("single-responding-server", func(t *testing.T) {
 		var m muxer.DispatchTable
 		m.Resources = map[string]int{
