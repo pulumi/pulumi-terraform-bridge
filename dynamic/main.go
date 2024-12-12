@@ -62,7 +62,6 @@ func initialSetup() (info.Provider, pfbridge.ProviderMetadata, func() error) {
 			spec.Attribution = ""
 			spec.Provider = schema.ResourceSpec{}
 			spec.Language = nil
-			spec.Version = version.Version()
 		},
 	}
 
@@ -90,6 +89,7 @@ func initialSetup() (info.Provider, pfbridge.ProviderMetadata, func() error) {
 			if err != nil {
 				return nil, err
 			}
+			packageSchema.PackageSpec.Version = info.Version
 
 			if info.SchemaPostProcessor != nil {
 				info.SchemaPostProcessor(&packageSchema.PackageSpec)
@@ -132,7 +132,6 @@ func initialSetup() (info.Provider, pfbridge.ProviderMetadata, func() error) {
 			if err != nil {
 				return plugin.ParameterizeResponse{}, err
 			}
-
 			v, err := semver.Parse(p.Version())
 			if err != nil {
 				return plugin.ParameterizeResponse{}, err
