@@ -159,6 +159,12 @@ func (p *providerServer) Parameterize(
 	}).Parameterize(ctx, req)
 }
 
+func (p *providerServer) Handshake(ctx context.Context,
+	req *pulumirpc.ProviderHandshakeRequest,
+) (*pulumirpc.ProviderHandshakeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "Handshake is not yet implemented")
+}
+
 func (p *providerServer) GetSchema(ctx context.Context,
 	req *pulumirpc.GetSchemaRequest,
 ) (*pulumirpc.GetSchemaResponse, error) {
