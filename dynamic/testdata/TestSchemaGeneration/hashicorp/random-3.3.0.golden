@@ -1,5 +1,6 @@
 {
     "name": "random",
+    "version": "3.3.0",
     "description": "A Pulumi provider dynamically bridged from random.",
     "attribution": "This Pulumi package is based on the [`random` Terraform Provider](https://github.com/hashicorp/terraform-provider-random).",
     "repository": "https://github.com/hashicorp/terraform-provider-random",
