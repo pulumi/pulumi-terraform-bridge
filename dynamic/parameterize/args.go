@@ -33,6 +33,8 @@ type RemoteArgs struct {
 	Version string
 	// Docs indicates if full schema documentation should be generated.
 	Docs bool
+	// IndexDocOutDir allows us to set a specific directory to write `_index.md` to.
+	IndexDocOutDir string
 }
 
 // LocalArgs represents a local TF provider referenced by path.
@@ -73,6 +75,17 @@ func ParseArgs(args []string) (Args, error) {
 	// This is a registry based provider
 	var remote RemoteArgs
 	switch len(args) {
+	// The fourth argument, if any, allows us to set the outdir for _index.md.
+	case 4:
+		outDirArg := args[3]
+		errMsg := "lol even more flags "
+		outDir, found := strings.CutPrefix(outDirArg, "indexDocOutDir=")
+		if !found {
+			return Args{}, fmt.Errorf("%s", errMsg)
+		}
+		remote.IndexDocOutDir = outDir
+		fallthrough
+
 	// The third argument, if any, is the full docs option for when we need to generate docs
 	case 3:
 		docsArg := args[2]

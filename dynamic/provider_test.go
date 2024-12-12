@@ -500,6 +500,56 @@ func TestSchemaGenerationFullDocs(t *testing.T) { //nolint:paralleltest
 	})
 }
 
+func TestSchemaGenerationFullDocsWithIndexDocOutDir(t *testing.T) { //nolint:paralleltest
+	skipWindows(t)
+	type testCase struct {
+		name           string
+		providerName   string
+		version        string
+		fullDocs       string
+		indexDocOutDir string
+	}
+
+	tc := testCase{
+		name:           "random-index-md",
+		providerName:   "hashicorp/random",
+		version:        "3.6.3",
+		fullDocs:       "fullDocs=true",
+		indexDocOutDir: "localdir",
+	}
+
+	t.Run(tc.name, func(t *testing.T) {
+		helper.Integration(t)
+		ctx := context.Background()
+
+		server := grpcTestServer(ctx, t)
+
+		result, err := server.Parameterize(ctx, &pulumirpc.ParameterizeRequest{
+			Parameters: &pulumirpc.ParameterizeRequest_Args{
+				Args: &pulumirpc.ParameterizeRequest_ParametersArgs{
+					Args: []string{tc.providerName, tc.version, "fullDocs=true", "indexDocOutDir=" + tc.indexDocOutDir},
+				},
+			},
+		})
+		require.NoError(t, err)
+
+		assert.Equal(t, tc.version, result.Version)
+
+		_, err = server.GetSchema(ctx, &pulumirpc.GetSchemaRequest{
+			SubpackageName:    result.Name,
+			SubpackageVersion: result.Version,
+		})
+
+		indexFileBytes, err := os.ReadFile(tc.indexDocOutDir + "/_index.md")
+
+		require.NoError(t, err)
+		autogold.ExpectFile(t, autogold.Raw(indexFileBytes))
+		// Clean up generated file
+		os.Remove(tc.indexDocOutDir + "/_index.md")
+	})
+
+}
+
 func TestRandomCreate(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()

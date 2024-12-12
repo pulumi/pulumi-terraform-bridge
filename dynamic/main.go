@@ -67,6 +67,7 @@ func initialSetup() (info.Provider, pfbridge.ProviderMetadata, func() error) {
 
 	var metadata pfbridge.ProviderMetadata
 	var fullDocs bool
+	var indexDocOutDir string
 	metadata = pfbridge.ProviderMetadata{
 		XGetSchema: func(ctx context.Context, req plugin.GetSchemaRequest) ([]byte, error) {
 			// Create a custom generator for schema. Examples will only be generated if `fullDocs` is set.
@@ -96,7 +97,11 @@ func initialSetup() (info.Provider, pfbridge.ProviderMetadata, func() error) {
 
 			if fullDocs {
 				// Create a custom generator for registry docs (_index.md).
-				root := afero.NewBasePathFs(afero.NewOsFs(), "docs")
+				root := afero.NewMemMapFs()
+				if indexDocOutDir != "" {
+					root = afero.NewBasePathFs(afero.NewOsFs(), indexDocOutDir)
+				}
+
 				indexGenerator, err := tfgen.NewGenerator(tfgen.GeneratorOptions{
 					Package:      info.Name,
 					Version:      info.Version,
@@ -194,6 +199,7 @@ func initialSetup() (info.Provider, pfbridge.ProviderMetadata, func() error) {
 					fullDocs = true
 				}
 			default:
+				indexDocOutDir = args.Remote.IndexDocOutDir
 				fullDocs = args.Remote.Docs
 				if fullDocs {
 					// Write the upstream files at this version to a temporary directory
