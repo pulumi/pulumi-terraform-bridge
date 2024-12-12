@@ -2,9 +2,9 @@
 
 module github.com/pulumi/pulumi-terraform-bridge/testing
 
-go 1.22.0
+go 1.22.3
 
-toolchain go1.23.1
+toolchain go1.23.4
 
 replace github.com/pulumi/pulumi-terraform-bridge/v3 => ../
 
@@ -22,8 +22,8 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/pulumi/pulumi/sdk/v3 v3.142.0 // indirect
 	golang.org/x/net v0.28.0 // indirect
-	golang.org/x/sys v0.24.0 // indirect
-	golang.org/x/text v0.17.0 // indirect
+	golang.org/x/sys v0.28.0 // indirect
+	golang.org/x/text v0.21.0 // indirect
 	google.golang.org/grpc v1.67.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
