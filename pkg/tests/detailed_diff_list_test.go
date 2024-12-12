@@ -23,6 +23,17 @@ func TestDetailedDiffList(t *testing.T) {
 		},
 	}
 
+	listAttrSchemaForceNew := schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"list_attr": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem:     &schema.Schema{Type: schema.TypeString},
+				ForceNew: true,
+			},
+		},
+	}
+
 	maxItemsOneAttrSchema := schema.Resource{
 		Schema: map[string]*schema.Schema{
 			"list_attr": {
@@ -30,6 +41,18 @@ func TestDetailedDiffList(t *testing.T) {
 				Optional: true,
 				MaxItems: 1,
 				Elem:     &schema.Schema{Type: schema.TypeString},
+			},
+		},
+	}
+
+	maxItemsOneAttrSchemaForceNew := schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"list_attr": {
+				Type:     schema.TypeList,
+				Optional: true,
+				MaxItems: 1,
+				Elem:     &schema.Schema{Type: schema.TypeString},
+				ForceNew: true,
 			},
 		},
 	}
@@ -51,6 +74,43 @@ func TestDetailedDiffList(t *testing.T) {
 		},
 	}
 
+	listBlockSchemaForceNew := schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"list_block": {
+				Type:     schema.TypeList,
+				Optional: true,
+				ForceNew: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"prop": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	listBlockSchemaNestedForceNew := schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"list_block": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"nested_prop": {
+							Type:     schema.TypeString,
+							Optional: true,
+							ForceNew: true,
+						},
+					},
+				},
+			},
+		},
+	}
+	_ = listBlockSchemaNestedForceNew
+
 	maxItemsOneBlockSchema := schema.Resource{
 		Schema: map[string]*schema.Schema{
 			"list_block": {
@@ -68,6 +128,46 @@ func TestDetailedDiffList(t *testing.T) {
 			},
 		},
 	}
+
+	maxItemsOneBlockSchemaForceNew := schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"list_block": {
+				Type:     schema.TypeList,
+				Optional: true,
+				MaxItems: 1,
+				ForceNew: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"nested_prop": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+					},
+				},
+			},
+		},
+	}
+	_ = maxItemsOneBlockSchemaForceNew
+
+	maxItemsOneBlockSchemaNestedForceNew := schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"list_block": {
+				Type:     schema.TypeList,
+				Optional: true,
+				MaxItems: 1,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"nested_prop": {
+							Type:     schema.TypeString,
+							Optional: true,
+							ForceNew: true,
+						},
+					},
+				},
+			},
+		},
+	}
+	_ = maxItemsOneBlockSchemaNestedForceNew
 
 	attrList := func(arr *[]string) map[string]cty.Value {
 		if arr == nil {
@@ -135,7 +235,11 @@ func TestDetailedDiffList(t *testing.T) {
 		valueMaker func(*[]string) map[string]cty.Value
 	}{
 		{"list attribute", listAttrSchema, attrList},
+		{"list attribute force new", listAttrSchemaForceNew, attrList},
 		{"list block", listBlockSchema, blockList},
+		{"list block force new", listBlockSchemaForceNew, blockList},
+		// TODO[pulumi/pulumi-terraform-bridge#2726]: These tests fail to produce the correct replacement plan
+		// {"list block nested force new", listBlockSchemaNestedForceNew, blockList},
 	}
 
 	maxItemsOnePairs := []struct {
@@ -144,7 +248,11 @@ func TestDetailedDiffList(t *testing.T) {
 		valueMaker func(*[]string) map[string]cty.Value
 	}{
 		{"max items one attribute", maxItemsOneAttrSchema, attrList},
+		{"max items one attribute force new", maxItemsOneAttrSchemaForceNew, attrList},
 		{"max items one block", maxItemsOneBlockSchema, nestedBlockList},
+		// TODO[pulumi/pulumi-terraform-bridge#2726]: These tests fail to produce the correct replacement plan
+		// {"max items one block force new", maxItemsOneBlockSchemaForceNew, nestedBlockList},
+		// {"max items one block nested force new", maxItemsOneBlockSchemaNestedForceNew, nestedBlockList},
 	}
 
 	oneElementScenarios := []struct {
