@@ -166,8 +166,12 @@ func (*hclResourceProviderServer) Construct(
 // For the purposes of this code provider binaries will not be needed, so there is is a bit inefficient.
 func initTF(d string) error {
 	cmd := exec.Command("terraform", "init")
-	cmd.Stdout = os.Stderr
-	cmd.Stderr = os.Stderr
+
+	if _, debug := os.LookupEnv("DEBUG"); debug {
+		cmd.Stdout = os.Stderr
+		cmd.Stderr = os.Stderr
+	}
+
 	cmd.Dir = d
 	return cmd.Run()
 }
@@ -233,8 +237,10 @@ func planTF(d string, proxies tfProviderProxies) error {
 		return err
 	}
 	cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", envTfReattachProviders, string(reattachJSON)))
-	cmd.Stdout = os.Stderr
-	cmd.Stderr = os.Stderr
+	if _, debug := os.LookupEnv("DEBUG"); debug {
+		cmd.Stdout = os.Stderr
+		cmd.Stderr = os.Stderr
+	}
 	cmd.Dir = d
 	return cmd.Run()
 }
