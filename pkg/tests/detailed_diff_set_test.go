@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hexops/autogold/v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/stretchr/testify/require"
 	"github.com/zclconf/go-cty/cty"
 
@@ -858,6 +859,301 @@ func TestDetailedDiffSet(t *testing.T) {
 		},
 	}
 
+	computedAttributeSchema := schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"test": {
+				Type:     schema.TypeSet,
+				Optional: true,
+				Computed: true,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
+			},
+		},
+		CreateContext: func(ctx context.Context, d *schema.ResourceData, i interface{}) diag.Diagnostics {
+			d.SetId("id")
+			setHashFunc := d.Get("test").(*schema.Set).F
+			err := d.Set("test", schema.NewSet(setHashFunc, []interface{}{"computed"}))
+			contract.Assertf(err == nil, "failed to set attribute: %v", err)
+			return nil
+		},
+		UpdateContext: func(ctx context.Context, d *schema.ResourceData, i interface{}) diag.Diagnostics {
+			if d.Get("test") == nil {
+				setHashFunc := d.Get("test").(*schema.Set).F
+				err := d.Set("test", schema.NewSet(setHashFunc, []interface{}{"computed"}))
+				contract.Assertf(err == nil, "failed to set attribute: %v", err)
+			}
+			return nil
+		},
+	}
+
+	computedAttributeSchemaForceNew := schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"test": {
+				Type:     schema.TypeSet,
+				Optional: true,
+				Computed: true,
+				ForceNew: true,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
+			},
+		},
+		CreateContext: func(ctx context.Context, d *schema.ResourceData, i interface{}) diag.Diagnostics {
+			d.SetId("id")
+			if d.Get("test") == nil {
+				err := d.Set("test", schema.NewSet(schema.HashString, []interface{}{"computed"}))
+				contract.Assertf(err == nil, "failed to set attribute: %v", err)
+			}
+			return nil
+		},
+		UpdateContext: func(ctx context.Context, d *schema.ResourceData, i interface{}) diag.Diagnostics {
+			if d.Get("test") == nil {
+				err := d.Set("test", schema.NewSet(schema.HashString, []interface{}{"computed"}))
+				contract.Assertf(err == nil, "failed to set attribute: %v", err)
+			}
+			return nil
+		},
+	}
+
+	computedSetBlockAttributeFunc := func(_ context.Context, d *schema.ResourceData, _ interface{}) {
+		contract.Assertf(d.Get("test") != nil, "test attribute is nil")
+		testVals := d.Get("test").(*schema.Set).List()
+		for _, v := range testVals {
+			val := v.(map[string]interface{})
+			if val["computed"] == nil {
+				compVal := "computed1"
+				if val["nested"] != nil {
+					compVal = val["nested"].(string)
+				}
+				val["computed"] = compVal
+			}
+		}
+		setHashFunc := d.Get("test").(*schema.Set).F
+		err := d.Set("test", schema.NewSet(setHashFunc, testVals))
+		contract.Assertf(err == nil, "failed to set attribute: %v", err)
+	}
+
+	computedSetBlockFunc := func(ctx context.Context, d *schema.ResourceData, i interface{}) {
+		if d.Get("test") == nil {
+			setHashFunc := d.Get("test").(*schema.Set).F
+			err := d.Set("test", schema.NewSet(setHashFunc, []interface{}{
+				map[string]interface{}{
+					"nested":   "computed",
+					"computed": "computed1",
+				},
+			}))
+			contract.Assertf(err == nil, "failed to set attribute: %v", err)
+		} else {
+			computedSetBlockAttributeFunc(ctx, d, i)
+		}
+	}
+
+	blockSchemaComputed := schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"test": {
+				Type:     schema.TypeSet,
+				Optional: true,
+				Computed: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"nested": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"computed": {
+							Type:     schema.TypeString,
+							Optional: true,
+							Computed: true,
+						},
+					},
+				},
+			},
+		},
+		CreateContext: func(ctx context.Context, d *schema.ResourceData, i interface{}) diag.Diagnostics {
+			d.SetId("id")
+			computedSetBlockFunc(ctx, d, i)
+			return nil
+		},
+		UpdateContext: func(ctx context.Context, d *schema.ResourceData, i interface{}) diag.Diagnostics {
+			computedSetBlockFunc(ctx, d, i)
+			return nil
+		},
+	}
+
+	blockSchemaComputedForceNew := schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"test": {
+				Type:     schema.TypeSet,
+				Optional: true,
+				ForceNew: true,
+				Computed: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"nested": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"computed": {
+							Type:     schema.TypeString,
+							Optional: true,
+							Computed: true,
+						},
+					},
+				},
+			},
+		},
+		CreateContext: func(ctx context.Context, d *schema.ResourceData, i interface{}) diag.Diagnostics {
+			d.SetId("id")
+			computedSetBlockFunc(ctx, d, i)
+			return nil
+		},
+		UpdateContext: func(ctx context.Context, d *schema.ResourceData, i interface{}) diag.Diagnostics {
+			computedSetBlockFunc(ctx, d, i)
+			return nil
+		},
+	}
+
+	blockSchemaComputedNestedForceNew := schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"test": {
+				Type:     schema.TypeSet,
+				Optional: true,
+				Computed: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"nested": {
+							Type:     schema.TypeString,
+							Optional: true,
+							ForceNew: true,
+						},
+						"computed": {
+							Type:     schema.TypeString,
+							Optional: true,
+							Computed: true,
+						},
+					},
+				},
+			},
+		},
+		CreateContext: func(ctx context.Context, d *schema.ResourceData, i interface{}) diag.Diagnostics {
+			d.SetId("id")
+			computedSetBlockFunc(ctx, d, i)
+			return nil
+		},
+		UpdateContext: func(ctx context.Context, d *schema.ResourceData, i interface{}) diag.Diagnostics {
+			computedSetBlockFunc(ctx, d, i)
+			return nil
+		},
+	}
+
+	blockSchemaNestedComputed := schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"test": {
+				Type:     schema.TypeSet,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"nested": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"computed": {
+							Type:     schema.TypeString,
+							Optional: true,
+							Computed: true,
+						},
+					},
+				},
+			},
+		},
+		CreateContext: func(ctx context.Context, d *schema.ResourceData, i interface{}) diag.Diagnostics {
+			d.SetId("id")
+			if d.Get("test") != nil {
+				computedSetBlockAttributeFunc(ctx, d, i)
+			}
+			return nil
+		},
+		UpdateContext: func(ctx context.Context, d *schema.ResourceData, i interface{}) diag.Diagnostics {
+			if d.Get("test") != nil {
+				computedSetBlockAttributeFunc(ctx, d, i)
+			}
+			return nil
+		},
+	}
+
+	blockSchemaNestedComputedForceNew := schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"test": {
+				Type:     schema.TypeSet,
+				Optional: true,
+				ForceNew: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"nested": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"computed": {
+							Type:     schema.TypeString,
+							Optional: true,
+							Computed: true,
+						},
+					},
+				},
+			},
+		},
+		CreateContext: func(ctx context.Context, d *schema.ResourceData, i interface{}) diag.Diagnostics {
+			d.SetId("id")
+			if d.Get("test") != nil {
+				computedSetBlockAttributeFunc(ctx, d, i)
+			}
+			return nil
+		},
+		UpdateContext: func(ctx context.Context, d *schema.ResourceData, i interface{}) diag.Diagnostics {
+			if d.Get("test") != nil {
+				computedSetBlockAttributeFunc(ctx, d, i)
+			}
+			return nil
+		},
+	}
+
+	blockSchemaNestedComputedNestedForceNew := schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"test": {
+				Type:     schema.TypeSet,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"nested": {
+							Type:     schema.TypeString,
+							Optional: true,
+							ForceNew: true,
+						},
+						"computed": {
+							Type:     schema.TypeString,
+							Optional: true,
+							Computed: true,
+						},
+					},
+				},
+			},
+		},
+		CreateContext: func(ctx context.Context, d *schema.ResourceData, i interface{}) diag.Diagnostics {
+			d.SetId("id")
+			if d.Get("test") != nil {
+				computedSetBlockAttributeFunc(ctx, d, i)
+			}
+			return nil
+		},
+		UpdateContext: func(ctx context.Context, d *schema.ResourceData, i interface{}) diag.Diagnostics {
+			if d.Get("test") != nil {
+				computedSetBlockAttributeFunc(ctx, d, i)
+			}
+			return nil
+		},
+	}
+
 	attrList := func(arr *[]string) cty.Value {
 		if arr == nil {
 			return cty.NullVal(cty.DynamicPseudoType)
@@ -890,23 +1186,65 @@ func TestDetailedDiffSet(t *testing.T) {
 		return cty.ListVal(slice)
 	}
 
-	schemaValueMakerPairs := []struct {
+	nestedAttrListWithComputedSpecified := func(arr *[]string) cty.Value {
+		if arr == nil {
+			return cty.NullVal(cty.DynamicPseudoType)
+		}
+
+		slice := make([]cty.Value, len(*arr))
+		for i, v := range *arr {
+			slice[i] = cty.ObjectVal(
+				map[string]cty.Value{
+					"nested":   cty.StringVal(v),
+					"computed": cty.StringVal("non-computed-" + v),
+				},
+			)
+		}
+		if len(slice) == 0 {
+			return cty.ListValEmpty(cty.Object(map[string]cty.Type{
+				"nested":   cty.String,
+				"computed": cty.String,
+			}))
+		}
+		return cty.ListVal(slice)
+	}
+
+	type schemaValueMakerPair struct {
 		name       string
 		res        schema.Resource
 		valueMaker func(*[]string) cty.Value
-	}{
-		{"attribute no force new", attributeSchema, attrList},
-		{"block no force new", blockSchema, nestedAttrList},
-		{"attribute force new", attributeSchemaForceNew, attrList},
-		{"block force new", blockSchemaForceNew, nestedAttrList},
-		{"block nested force new", blockSchemaNestedForceNew, nestedAttrList},
 	}
 
-	scenarios := []struct {
+	type testScenario struct {
 		name         string
 		initialValue *[]string
 		changeValue  *[]string
-	}{
+	}
+
+	schemaValueMakerPairs := []schemaValueMakerPair{
+		{"attribute no force new", attributeSchema, attrList},
+		{"block no force new", blockSchema, nestedAttrList},
+		{"computed attribute no force new", computedAttributeSchema, attrList},
+		{"block with computed no replace", blockSchemaComputed, nestedAttrList},
+		{"block with computed no replace computed specified in program", blockSchemaComputed, nestedAttrListWithComputedSpecified},
+		{"block with nested computed no replace", blockSchemaNestedComputed, nestedAttrList},
+		{"block with nested computed no replace computed specified in program", blockSchemaNestedComputed, nestedAttrListWithComputedSpecified},
+
+		{"attribute force new", attributeSchemaForceNew, attrList},
+		{"block top level force new", blockSchemaForceNew, nestedAttrList},
+		{"block nested force new", blockSchemaNestedForceNew, nestedAttrList},
+		{"computed attribute force new", computedAttributeSchemaForceNew, attrList},
+		{"block with computed force new", blockSchemaComputedForceNew, nestedAttrList},
+		{"block with computed force new computed specified in program", blockSchemaComputedForceNew, nestedAttrListWithComputedSpecified},
+		{"block with computed and nested force new", blockSchemaComputedNestedForceNew, nestedAttrList},
+		{"block with computed and nested force new computed specified in program", blockSchemaComputedNestedForceNew, nestedAttrListWithComputedSpecified},
+		{"block with nested computed and force new", blockSchemaNestedComputedForceNew, nestedAttrList},
+		{"block with nested computed and force new computed specified in program", blockSchemaNestedComputedForceNew, nestedAttrListWithComputedSpecified},
+		{"block with nested computed and nested force new", blockSchemaNestedComputedNestedForceNew, nestedAttrList},
+		{"block with nested computed and nested force new computed specified in program", blockSchemaNestedComputedNestedForceNew, nestedAttrListWithComputedSpecified},
+	}
+
+	scenarios := []testScenario{
 		{"unchanged non-empty", &[]string{"value"}, &[]string{"value"}},
 		{"unchanged empty", &[]string{}, &[]string{}},
 		{"unchanged null", nil, nil},
