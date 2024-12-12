@@ -56,7 +56,6 @@ require (
 	github.com/teekennedy/goldmark-markdown v0.3.0
 	github.com/terraform-providers/terraform-provider-random v1.3.2-0.20231204135814-c6e90de46687
 	github.com/yuin/goldmark v1.7.4
-	github.com/zclconf/go-cty v1.14.2
 	github.com/zclconf/go-cty v1.14.4
 	golang.org/x/crypto v0.31.0
 	golang.org/x/mod v0.18.0
