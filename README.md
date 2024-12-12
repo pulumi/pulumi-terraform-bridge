@@ -19,17 +19,12 @@ If you want details on how provider development works, please see [our docs](./d
 
 ## Upgrading an Existing Bridged Provider
 
-To upgrade a provider that used to use the [Terraform Plugin
-SDK](https://github.com/hashicorp/terraform-plugin-sdk) to a version that uses the
-[Terraform Plugin
-Framework](https://github.com/hashicorp/terraform-plugin-framework?tab=readme), see
-[here](./pf/README.md#how-to-upgrade-a-bridged-provider-to-plugin-framework).
+To upgrade a provider that used to use the [Terraform Plugin SDK](https://github.com/hashicorp/terraform-plugin-sdk) to a version that
+uses the [Terraform Plugin Framework](https://github.com/hashicorp/terraform-plugin-framework?tab=readme), see [here](https://pulumi-developer-docs.readthedocs.io/projects/pulumi-terraform-bridge/en/latest/docs/guides/upgrade-sdk-to-pf.html).
 
 To upgrade a provider that was bridged from a Terraform provider built against [Terraform
-Plugin SDK](https://github.com/hashicorp/terraform-plugin-sdk) and you want to upgrade it
-to a version that has migrated some but not all resources/datasources to the [Terraform
-Plugin Framework](https://github.com/hashicorp/terraform-plugin-sdk?tab=readme-ov-file),
-see [here](./docs/guides/upgrade-sdk-to-mux.md).
+Plugin SDK](https://github.com/hashicorp/terraform-plugin-sdk) and you want to upgrade it to a version that has migrated some but not all
+resources/datasources to the [Terraform Plugin Framework](https://github.com/hashicorp/terraform-plugin-sdk?tab=readme-ov-file), see [here](./docs/guides/upgrade-sdk-to-mux.md).
 
 ## Overview
 
