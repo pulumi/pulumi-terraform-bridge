@@ -23,6 +23,8 @@ import (
 	p "github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // A version of Provider interface that is enhanced by giving access to the request Context.
@@ -99,6 +101,12 @@ type provider struct {
 var _ plugin.Provider = (*provider)(nil)
 
 func (prov *provider) Pkg() tokens.Package { return prov.ProviderWithContext.Pkg() }
+
+func (prov *provider) Handshake(ctx context.Context,
+	req plugin.ProviderHandshakeRequest,
+) (*plugin.ProviderHandshakeResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "Handshake is not yet implemented")
+}
 
 func (prov *provider) Parameterize(
 	ctx context.Context, req plugin.ParameterizeRequest,
