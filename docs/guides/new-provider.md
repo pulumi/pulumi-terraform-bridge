@@ -60,8 +60,7 @@ Terraform provider, see [MuxWith](./muxwith.md).
 ## Pulumi Bridge for Terraform Plugin Framework
 
 For instructions on bridging a Terraform provider built using the [Terraform Plugin
-Framework](https://developer.hashicorp.com/terraform/plugin/framework), please see
-[pf/README.md](../pf/README.md).
+Framework](https://developer.hashicorp.com/terraform/plugin/framework), please see [New PF Provider](./new-pf-provider.md).
 
 ## Version Requirements
 
