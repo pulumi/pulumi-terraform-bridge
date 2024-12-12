@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -269,6 +270,14 @@ func TestDetailedDiffList(t *testing.T) {
 		{"changed", ref([]string{"val1"}), ref([]string{"val2"})},
 	}
 
+	longList := &[]string{}
+	for i := 0; i < 20; i++ {
+		*longList = append(*longList, fmt.Sprintf("value%d", i))
+	}
+	longListAddedBack := append([]string{}, *longList...)
+	longListAddedBack = append(longListAddedBack, "value20")
+	longListAddedFront := append([]string{"value20"}, *longList...)
+
 	multiElementScenarios := []struct {
 		name         string
 		initialValue *[]string
@@ -280,6 +289,12 @@ func TestDetailedDiffList(t *testing.T) {
 		{"list element removed front", ref([]string{"val1", "val2", "val3"}), ref([]string{"val3", "val2"})},
 		{"list element removed middle", ref([]string{"val1", "val2", "val3"}), ref([]string{"val3", "val1"})},
 		{"list element removed end", ref([]string{"val1", "val2", "val3"}), ref([]string{"val2", "val1"})},
+		{"one added, one removed", ref([]string{"val1", "val2", "val3"}), ref([]string{"val2", "val3", "val4"})},
+		{"long list added back", longList, &longListAddedBack},
+		// TODO[pulumi/pulumi-terraform-bridge#2239]: These cases present as multiple changes instead of just one
+		{"long list added front", longList, &longListAddedFront},
+		{"long list removed front", &longListAddedFront, longList},
+		{"long list removed back", &longListAddedBack, longList},
 	}
 
 	scenarios := append(oneElementScenarios, multiElementScenarios...)
