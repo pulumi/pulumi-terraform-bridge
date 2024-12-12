@@ -291,13 +291,13 @@ func (m *muxer) DiffConfig(ctx context.Context, req *pulumirpc.DiffRequest) (*pu
 func (m *muxer) Configure(ctx context.Context, req *pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error) {
 	// Configure determines what the values the provider understands. We take the
 	// `and` of configure values.
-	subs := make([]func() tuple[*pulumirpc.ConfigureResponse, error], len(m.servers))
+	results := make([]tuple[*pulumirpc.ConfigureResponse, error], len(m.servers))
 	for i, s := range m.servers {
 		i, s := i, s
-		subs[i] = func() tuple[*pulumirpc.ConfigureResponse, error] {
+		results[i] = func() tuple[*pulumirpc.ConfigureResponse, error] {
 			req := proto.Clone(req).(*pulumirpc.ConfigureRequest)
 			return newTuple(s.Configure(ctx, req))
-		}
+		}()
 	}
 	response := &pulumirpc.ConfigureResponse{
 		AcceptSecrets:                   true,
@@ -307,7 +307,7 @@ func (m *muxer) Configure(ctx context.Context, req *pulumirpc.ConfigureRequest) 
 		SupportsAutonamingConfiguration: true,
 	}
 	errs := new(multierror.Error)
-	for _, r := range asyncJoin(subs) {
+	for _, r := range results {
 		if r.B != nil {
 			errs.Errors = append(errs.Errors, r.B)
 			continue
