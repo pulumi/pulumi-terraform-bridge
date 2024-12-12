@@ -62,6 +62,7 @@ func initialSetup() (info.Provider, pfbridge.ProviderMetadata, func() error) {
 			spec.Attribution = ""
 			spec.Provider = schema.ResourceSpec{}
 			spec.Language = nil
+			spec.Version = version.Version()
 		},
 	}
 
