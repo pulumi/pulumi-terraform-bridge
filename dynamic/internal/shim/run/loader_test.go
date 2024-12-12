@@ -16,7 +16,6 @@ package run
 
 import (
 	"context"
-	"os"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
@@ -37,8 +36,7 @@ func TestLoadProvider(t *testing.T) {
 
 	t.Run("registry", func(t *testing.T) {
 		// Do not cache during the test.
-		err := os.Setenv(envPluginCache, t.TempDir())
-		require.NoError(t, err)
+		t.Setenv(envPluginCache, t.TempDir())
 
 		Integration(t)
 		ctx := context.Background()
