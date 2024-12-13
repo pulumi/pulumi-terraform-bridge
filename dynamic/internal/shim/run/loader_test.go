@@ -22,6 +22,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"runtime"
 )
 
 func Integration(t *testing.T) {
@@ -32,6 +33,8 @@ func Integration(t *testing.T) {
 }
 
 func TestLoadProvider(t *testing.T) {
+	skipWindows(t, "TempDir plugin cache does not clean correctly on Windows runners")
+
 	// Do not cache during the test.
 	t.Setenv(envPluginCache, t.TempDir())
 
@@ -96,4 +99,12 @@ func TestLoadProvider(t *testing.T) {
 			}},
 		}}, resp.Provider)
 	})
+}
+
+func skipWindows(t *testing.T, reason string) {
+	t.Helper()
+	if runtime.GOOS != "windows" {
+		return
+	}
+	t.Skipf(reason)
 }
