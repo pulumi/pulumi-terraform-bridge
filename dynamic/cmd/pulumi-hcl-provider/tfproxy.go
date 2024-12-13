@@ -43,7 +43,7 @@ func newResourceMonitorClient(monitorEndpoint string) (pulumirpc.ResourceMonitor
 	return pulumirpc.NewResourceMonitorClient(conn), nil
 }
 
-func newTfProxyProviderServer(monitorEndoint string) *tfProxyProviderServer {
+func newTfProxyProviderServer(monitorEndoint string, dryRun bool) *tfProxyProviderServer {
 	version.Version = "6.64.0"
 	bridged := bridgedAwsProvider.Provider()
 	c, err := newResourceMonitorClient(monitorEndoint)
@@ -54,6 +54,7 @@ func newTfProxyProviderServer(monitorEndoint string) *tfProxyProviderServer {
 		monitorClient: c,
 		awsProvider:   awsProvider,
 		awsBridged:    bridged,
+		dryRun:        dryRun,
 	}
 }
 
@@ -63,6 +64,7 @@ type tfProxyProviderServer struct {
 	awsBridged    *info.Provider
 	UnimplementedProviderServer
 	resourceSchemas map[string]*tfprotov6.Schema
+	dryRun          bool
 }
 
 func (p *tfProxyProviderServer) GetMetadata(
@@ -121,6 +123,9 @@ func (p *tfProxyProviderServer) PlanResourceChange(
 	contract.Assertf(priorStateIsNull, "PriorState should be IsNull")
 	contract.Assertf(req.PriorPrivate == nil, "PriorPrivate should be nil")
 
+	fmt.Printf("[%s] PlanResourceChange\n", req.TypeName)
+	defer fmt.Printf("[%s] PlanResourceChange DONE\n", req.TypeName)
+
 	// TODO this is a temporary code path.
 	//
 	// The real code should not be calling into the actual awsProvider but instead interpreting the results of
@@ -134,19 +139,26 @@ func (p *tfProxyProviderServer) PlanResourceChange(
 
 	// Should this translate req.Config or req.ProposedNewState? In case the state is nil these are usually the
 	// same. The underlying bridged provider will re-plan the ProposedNewState anyway. Going with Config.
-	obj, err := translateResourceArgs(ctx, rn, req.Config, p.resourceSchemas, p.awsBridged)
+	obj, err := translateResourceArgs(ctx, rn, req.Config, p.resourceSchemas, p.awsBridged, req.TypeName)
 	if err != nil {
 		return nil, err
 	}
 
-	_, err = p.monitorClient.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
-		Type:            translateTypeName(p.awsBridged, rn),
-		Name:            translateResourceName(req.Config),
-		Custom:          true,
-		Object:          obj,
-		AcceptSecrets:   true,
-		AcceptResources: true,
-	})
+	// In dryRun=true this runs under `pulumi preview` and `terraform plan` and needs to interact with Pulumi.
+	//
+	// In dryRun=false this runs under `pulumi up` and `terraform apply`. In this case Terraform plan may contain
+	// unknowns but Pulumi will no longer tolerate unknowns. Simply ignore Pulumi in this case as it will catch up
+	// and do the right thing during ApplyResourceChange.
+	if p.dryRun {
+		_, err = p.monitorClient.RegisterResource(ctx, &pulumirpc.RegisterResourceRequest{
+			Type:            translateTypeName(p.awsBridged, rn),
+			Name:            translateResourceName(req.Config),
+			Custom:          true,
+			Object:          obj,
+			AcceptSecrets:   true,
+			AcceptResources: true,
+		})
+	}
 
 	// TODO Parent: this should be parented on the component presumably?
 	return resp, err
@@ -171,11 +183,14 @@ func (p *tfProxyProviderServer) ApplyResourceChange(
 		}, nil
 	}
 
+	fmt.Printf("[%s] ApplyResourceChange\n", req.TypeName)
+	defer fmt.Printf("[%s] ApplyResourceChange DONE\n", req.TypeName)
+
 	rn := tfResourceName(req.TypeName)
 
 	// Discard req.PlannedState here because Pulumi will re-plan with the proper state. Use Config as it is supposed
 	// to represent the program being interpreted.
-	obj, err := translateResourceArgs(ctx, rn, req.Config, p.resourceSchemas, p.awsBridged)
+	obj, err := translateResourceArgs(ctx, rn, req.Config, p.resourceSchemas, p.awsBridged, req.TypeName)
 	if err != nil {
 		return nil, err
 	}
@@ -203,13 +218,19 @@ func (p *tfProxyProviderServer) ApplyResourceChange(
 
 	// TODO do we need to repackage resp.Id in a special way for Terraform?
 
-	newState, err := translateResourceOutputs(rn, resp.Object, p.resourceSchemas, p.awsBridged)
+	newState, err := translateResourceOutputs(rn, resp.Object, p.resourceSchemas, p.awsBridged, req.TypeName)
 	if err != nil {
 		return nil, err
 	}
 
 	return &tfprotov6.ApplyResourceChangeResponse{
-		NewState: newState,
+		// Currently without this we cannot pass the objchange.AssertObjectCompatible check even for a simple
+		// create scenario.
+		//
+		// https://github.com/opentofu/opentofu/blob/aeaeacc94d8b5fad8792a8fff273857594085599/internal/tofu/node_resource_abstract_instance.go#L2456
+
+		UnsafeToUseLegacyTypeSystem: true,
+		NewState:                    newState,
 
 		// Does the resource private state need to be smuggled back to TF? Probably the answer is yes. The
 		// private state is encoded inside Pulumi __meta state and this can be recovered.
@@ -248,9 +269,9 @@ const (
 	grpcMaxMessageSize = 256 << 20
 )
 
-func startTFProviderProxy(providerName, monitorEndpoint string) (*tfProviderProxyHandle, error) {
+func startTFProviderProxy(providerName, monitorEndpoint string, dryRun bool) (*tfProviderProxyHandle, error) {
 	serverHandle, reattachConfig, err := simpleServe(providerName, func() tfprotov6.ProviderServer {
-		return newTfProxyProviderServer(monitorEndpoint)
+		return newTfProxyProviderServer(monitorEndpoint, dryRun)
 	})
 	if err != nil {
 		return nil, err

@@ -38,6 +38,7 @@ func translateResourceArgs(
 	dv *tfprotov6.DynamicValue,
 	resourceSchemas map[string]*tfprotov6.Schema,
 	bridgedProvider *info.Provider,
+	label string,
 ) (*structpb.Struct, error) {
 	rschema, ok := resourceSchemas[string(n)]
 	if !ok {
@@ -56,6 +57,9 @@ func translateResourceArgs(
 	if err != nil {
 		return nil, err
 	}
+
+	//fmt.Printf("[%s] Sending resource args to pulumi: %#v\n\n", label, pm)
+
 	return plugin.MarshalProperties(pm, plugin.MarshalOptions{
 		Label:            "translateResourceArgs",
 		KeepUnknowns:     true,
@@ -70,6 +74,7 @@ func translateResourceOutputs(
 	outputs *structpb.Struct,
 	resourceSchemas map[string]*tfprotov6.Schema,
 	bridgedProvider *info.Provider,
+	label string,
 ) (*tfprotov6.DynamicValue, error) {
 	propMap, err := plugin.UnmarshalProperties(outputs, plugin.MarshalOptions{
 		Label:            "translateResourceOutputs",
@@ -82,6 +87,8 @@ func translateResourceOutputs(
 		return nil, err
 	}
 
+	//fmt.Printf("[%s] Receiving resource outputs from pulumi: %#v\n\n", label, propMap)
+
 	rschema, ok := resourceSchemas[string(n)]
 	if !ok {
 		return nil, fmt.Errorf("Unknown resource: %q", n)
@@ -91,9 +98,37 @@ func translateResourceOutputs(
 		return nil, fmt.Errorf("Bad object type for resource: %q", n)
 	}
 	encoding := convert.NewEncoding(bridgedProvider.P, bridgedProvider)
-	enc, err := encoding.NewResourceEncoder(string(n), objectType)
+
+	// Removing timeouts as it seems to be a special meta-property that chokes NewResourceEncoder?
+	enc, err := encoding.NewResourceEncoder(string(n), objectTypeWithoutTimeouts(objectType))
 	if err != nil {
 		return nil, fmt.Errorf("Failed to derive a resource encoder: %v", err)
 	}
-	return convert.EncodePropertyMapToDynamic(enc, objectType, propMap)
+	v, err := convert.EncodePropertyMap(enc, propMap)
+	if err != nil {
+		return nil, err
+	}
+
+	var bag map[string]tftypes.Value
+	if err := v.As(&bag); err != nil {
+		return nil, err
+	}
+
+	if tt, needTimeouts := objectType.AttributeTypes["timeouts"]; needTimeouts {
+		bag["timeouts"] = tftypes.NewValue(tt, nil)
+	}
+
+	dv, err := tfprotov6.NewDynamicValue(objectType, tftypes.NewValue(objectType, bag))
+	return &dv, err
+}
+
+func objectTypeWithoutTimeouts(x tftypes.Object) tftypes.Object {
+	r := tftypes.Object{AttributeTypes: map[string]tftypes.Type{}}
+	for n, ty := range x.AttributeTypes {
+		if n == "timeouts" {
+			continue
+		}
+		r.AttributeTypes[n] = ty
+	}
+	return r
 }

@@ -8,8 +8,12 @@ preview:: npm-add
 
 up:: export PATH := $(WORKING_DIR)/bin:$(PATH)
 up:: export AWS_PROFILE := devsandbox
-up:: npm-add preview
+up:: npm-add
+	pulumi stack select dev
+	pulumi destroy --yes
 	(pulumi up --skip-preview >up.log && echo OK)
+	grep -v '@caller' up.log >up-clean.log
+
 
 npm-add:: packages-add
 	npm add hcl@file:sdks/hcl

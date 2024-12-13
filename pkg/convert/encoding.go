@@ -94,12 +94,22 @@ func buildPropertyEncoders(
 ) (map[terraformPropertyName]Encoder, error) {
 	propertyEncoders := map[terraformPropertyName]Encoder{}
 	for tfName, t := range objectType.AttributeTypes {
+		if tfName == "id" {
+			propertyEncoders[tfName] = newStringEncoder()
+			continue
+		}
 		pctx, err := mctx.GetAttr(tfName)
 		if err != nil {
+			if tfName == "timeouts" {
+				continue
+			}
 			return nil, err
 		}
 		enc, err := newPropertyEncoder(pctx, tfName, t)
 		if err != nil {
+			if tfName == "timeouts" {
+				continue
+			}
 			return nil, err
 		}
 		propertyEncoders[tfName] = enc

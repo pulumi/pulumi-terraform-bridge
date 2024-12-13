@@ -130,7 +130,7 @@ func (*hclResourceProviderServer) Construct(
 		return nil, err
 	}
 
-	proxies, err := startTFProviderProxies(requiredProviders, req.MonitorEndpoint)
+	proxies, err := startTFProviderProxies(requiredProviders, req.MonitorEndpoint, req.DryRun)
 	if err != nil {
 		return nil, err
 	}
@@ -193,10 +193,10 @@ func prepareTFWorkspace() (string, error) {
 
 	d := filepath.Join(wd, ".hcl", "temp-workspace")
 
-	// err = os.RemoveAll(d)
-	// if err != nil {
-	// 	return "", err
-	// }
+	err = os.RemoveAll(d)
+	if err != nil {
+		return "", err
+	}
 
 	err = os.MkdirAll(d, 0755)
 	if err != nil {
@@ -209,10 +209,11 @@ func prepareTFWorkspace() (string, error) {
 	jsonTF := map[string]any{
 		"module": map[string]any{
 			"vpc": map[string]any{
+				// TODO this value needs to be translated from the Parameterize call.
 				"source":             "terraform-aws-modules/vpc/aws",
-				"name":               "by-vpc",
+				"name":               "my-vpc",
 				"cidr":               "10.0.0.0/16",
-				"azs":                []any{"us-west-2a", "es-west-2b"},
+				"azs":                []any{"us-east-1a", "us-east-1b"},
 				"private_subnets":    []any{"10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"},
 				"public_subnets":     []any{"10.0.101.0/24", "10.0.102.0/24", "10.0.103.0/24"},
 				"enable_nat_gateway": true,
@@ -283,10 +284,10 @@ func (pps tfProviderProxies) Close() error {
 	return errors.Join(errs...)
 }
 
-func startTFProviderProxies(requiredProviders map[string]struct{}, monitorEndpoint string) (tfProviderProxies, error) {
+func startTFProviderProxies(requiredProviders map[string]struct{}, monitorEndpoint string, dryRun bool) (tfProviderProxies, error) {
 	res := tfProviderProxies(nil)
 	for p := range requiredProviders {
-		pp, err := startTFProviderProxy(p, monitorEndpoint)
+		pp, err := startTFProviderProxy(p, monitorEndpoint, dryRun)
 		if err != nil {
 			return nil, err
 		}
