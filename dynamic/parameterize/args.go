@@ -84,6 +84,7 @@ func ParseArgs(ctx context.Context, a []string) (Args, error) {
 			),
 			"impossible - these are static values and should never fail",
 		)
+
 	}
 
 	cmd.SetArgs(a)
