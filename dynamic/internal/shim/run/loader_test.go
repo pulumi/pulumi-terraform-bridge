@@ -32,12 +32,10 @@ func Integration(t *testing.T) {
 }
 
 func TestLoadProvider(t *testing.T) {
-	t.Parallel()
+	// Do not cache during the test.
+	t.Setenv(envPluginCache, t.TempDir())
 
 	t.Run("registry", func(t *testing.T) {
-		// Do not cache during the test.
-		t.Setenv(envPluginCache, t.TempDir())
-
 		Integration(t)
 		ctx := context.Background()
 
