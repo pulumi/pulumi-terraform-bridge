@@ -79,7 +79,7 @@ func NamedProvider(ctx context.Context, key, version string) (Provider, error) {
 
 	v, err := getproviders.ParseVersionConstraints(version)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not parse version constraint %q: %w", version, err)
 	}
 
 	return getProviderServer(ctx, p, v, disco.New())

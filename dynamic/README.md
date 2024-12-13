@@ -243,6 +243,28 @@ func ReadResourceRequest(i *tfprotov6.ReadResourceRequest) *tfplugin6.ReadResour
 	}
 }
 ```
+
+### `package parameterize`
+
+`package parameterize` is responsible for reading and writing the values passed in the [Parameterize](https://pulumi-developer-docs.readthedocs.io/latest/docs/_generated/proto/provider.html#parameterize) gRPC
+call. `args.go` is responsible for handling the CLI args (`ParametersArgs)` version of Parameterize, while
+`value.go` is responsible for handling the `ParametersValue` version of `Parameterize`.
+
+#### Args
+
+Arg values are parsed with [`cobra`](https://github.com/spf13/cobra).
+
+For maintainers: there are two hidden flags (use `PULUMI_DEV=true` to display) used in example generation:
+
+| Flag                 | Description                                                                  |
+|----------------------|------------------------------------------------------------------------------|
+| `--fullDocs`         | Attempt to generate full docs with documentation.                            |
+| `--upstreamRepoPath` | The local path to the repository root where the upstream provider docs live. |
+
+These flags are hidden because they are expected to be used by other Pulumi processes, not by end users.
+
+#### Value
+
 ## Releasing & [`pulumi/pulumi-terraform-provider`](https://github.com/pulumi/pulumi-terraform-provider)
 
 The `pulumi-terraform-provider` codebase is located in

@@ -15,11 +15,14 @@
 package parameterize
 
 import (
+	"context"
 	"testing"
 
 	"github.com/hexops/autogold/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/testutil"
 )
 
 func TestParseArgs(t *testing.T) {
@@ -36,28 +39,19 @@ func TestParseArgs(t *testing.T) {
 			expect: Args{Local: &LocalArgs{Path: "./my-provider"}},
 		},
 		{
-			name: "local too many args",
-			args: []string{"./my-provider", "nonsense"},
-			errMsg: autogold.Expect(
-				"path based providers are only parameterized by 2 arguments: <path> [upstreamRepoPath=<path/to/files>]",
-			),
+			name:   "local too many args",
+			args:   []string{"./my-provider", "nonsense"},
+			errMsg: autogold.Expect(`local providers only accept one argument, found 2`),
 		},
 		{
 			name: "local with docs location",
-			args: []string{"./my-provider", "upstreamRepoPath=./my-provider"},
+			args: []string{"./my-provider", "--upstreamRepoPath=./my-provider"},
 			expect: Args{
 				Local: &LocalArgs{
 					Path:             "./my-provider",
 					UpstreamRepoPath: "./my-provider",
 				},
 			},
-		},
-		{
-			name: "local empty upstreamRepoPath",
-			args: []string{"./my-provider", "upstreamRepoPath="},
-			errMsg: autogold.Expect(
-				"upstreamRepoPath must be set to a non-empty value: upstreamRepoPath=path/to/files",
-			),
 		},
 		{
 			name:   "remote",
@@ -75,19 +69,17 @@ func TestParseArgs(t *testing.T) {
 		{
 			name:   "no args",
 			args:   []string{},
-			errMsg: autogold.Expect("expected to be parameterized by 1-3 arguments: <name> [version] [fullDocs=<true|false>]"),
+			errMsg: autogold.Expect("accepts between 1 and 2 arg(s), received 0"),
 		},
 		{
 			name:   "too many args",
 			args:   []string{"arg1", "arg2", "arg3", "arg4"},
-			errMsg: autogold.Expect("expected to be parameterized by 1-3 arguments: <name> [version] [fullDocs=<true|false>]"),
+			errMsg: autogold.Expect("accepts between 1 and 2 arg(s), received 4"),
 		},
 		{
-			name: "invalid third arg",
-			args: []string{"arg1", "arg2", "arg3"},
-			errMsg: autogold.Expect(
-				"expected third parameterized argument to be 'fullDocs=<true|false>' or be empty",
-			),
+			name:   "invalid third arg",
+			args:   []string{"arg1", "arg2", "arg3"},
+			errMsg: autogold.Expect(`accepts between 1 and 2 arg(s), received 3`),
 		},
 		{
 			name: "empty third arg",
@@ -100,7 +92,7 @@ func TestParseArgs(t *testing.T) {
 		},
 		{
 			name: "valid third arg true",
-			args: []string{"my-registry.io/typ", "1.2.3", "fullDocs=true"},
+			args: []string{"my-registry.io/typ", "1.2.3", "--fullDocs=true"},
 			expect: Args{Remote: &RemoteArgs{
 				Name:    "my-registry.io/typ",
 				Version: "1.2.3",
@@ -109,7 +101,7 @@ func TestParseArgs(t *testing.T) {
 		},
 		{
 			name: "valid third arg false",
-			args: []string{"my-registry.io/typ", "1.2.3", "fullDocs=false"},
+			args: []string{"my-registry.io/typ", "1.2.3", "--fullDocs=false"},
 			expect: Args{Remote: &RemoteArgs{
 				Name:    "my-registry.io/typ",
 				Version: "1.2.3",
@@ -118,9 +110,10 @@ func TestParseArgs(t *testing.T) {
 		},
 		{
 			name: "third arg invalid input",
-			args: []string{"my-registry.io/typ", "1.2.3", "fullDocs=invalid-input"},
+			args: []string{"my-registry.io/typ", "1.2.3", "--fullDocs=invalid-input"},
+			//nolint:lll
 			errMsg: autogold.Expect(
-				"expected third parameterized argument to be 'fullDocs=<true|false>' or be empty",
+				`invalid argument "invalid-input" for "--fullDocs" flag: strconv.ParseBool: parsing "invalid-input": invalid syntax`,
 			),
 		},
 	}
@@ -128,7 +121,8 @@ func TestParseArgs(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
-			actual, err := ParseArgs(tt.args)
+			ctx := testutil.InitLogging(t, context.Background(), nil)
+			actual, err := ParseArgs(ctx, tt.args)
 			if tt.errMsg == nil {
 				require.NoError(t, err)
 				assert.Equal(t, tt.expect, actual)
