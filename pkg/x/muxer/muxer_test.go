@@ -17,6 +17,7 @@ package muxer
 import (
 	"context"
 	"fmt"
+	"sync/atomic"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -199,4 +200,38 @@ func (s diffConfigServer) DiffConfig(
 		return s.resp, nil
 	}
 	return s.UnimplementedResourceProviderServer.DiffConfig(ctx, req)
+}
+
+func TestConfigureInSequence(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+
+	for i := 0; i < 1000; i++ {
+		var count atomic.Uint32
+		m := &muxer{
+			host: &host{},
+			servers: []server{
+				configure{t: t, expect: 0, counter: &count},
+				configure{t: t, expect: 1, counter: &count},
+				configure{t: t, expect: 2, counter: &count},
+				configure{t: t, expect: 3, counter: &count},
+			},
+		}
+		_, err := m.Configure(ctx, &pulumirpc.ConfigureRequest{})
+		require.NoError(t, err)
+
+		assert.Equal(t, uint32(4), count.Load())
+	}
+}
+
+type configure struct {
+	pulumirpc.UnimplementedResourceProviderServer
+	t       *testing.T
+	expect  uint32
+	counter *atomic.Uint32
+}
+
+func (c configure) Configure(context.Context, *pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error) {
+	assert.True(c.t, c.counter.CompareAndSwap(c.expect, c.expect+1), "")
+	return &pulumirpc.ConfigureResponse{}, nil
 }

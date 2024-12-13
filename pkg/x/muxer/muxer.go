@@ -291,14 +291,6 @@ func (m *muxer) DiffConfig(ctx context.Context, req *pulumirpc.DiffRequest) (*pu
 func (m *muxer) Configure(ctx context.Context, req *pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error) {
 	// Configure determines what the values the provider understands. We take the
 	// `and` of configure values.
-	subs := make([]func() tuple[*pulumirpc.ConfigureResponse, error], len(m.servers))
-	for i, s := range m.servers {
-		i, s := i, s
-		subs[i] = func() tuple[*pulumirpc.ConfigureResponse, error] {
-			req := proto.Clone(req).(*pulumirpc.ConfigureRequest)
-			return newTuple(s.Configure(ctx, req))
-		}
-	}
 	response := &pulumirpc.ConfigureResponse{
 		AcceptSecrets:                   true,
 		SupportsPreview:                 true,
@@ -307,17 +299,20 @@ func (m *muxer) Configure(ctx context.Context, req *pulumirpc.ConfigureRequest) 
 		SupportsAutonamingConfiguration: true,
 	}
 	errs := new(multierror.Error)
-	for _, r := range asyncJoin(subs) {
-		if r.B != nil {
-			errs.Errors = append(errs.Errors, r.B)
+
+	for _, s := range m.servers {
+		req := proto.Clone(req).(*pulumirpc.ConfigureRequest)
+		r, err := s.Configure(ctx, req)
+		if err != nil {
+			errs.Errors = append(errs.Errors, err)
 			continue
 		}
-		response.AcceptOutputs = response.AcceptOutputs && r.A.GetAcceptOutputs()
-		response.AcceptResources = response.AcceptResources && r.A.GetAcceptResources()
-		response.AcceptSecrets = response.AcceptSecrets && r.A.GetAcceptSecrets()
-		response.SupportsPreview = response.SupportsPreview && r.A.GetSupportsPreview()
+		response.AcceptOutputs = response.AcceptOutputs && r.GetAcceptOutputs()
+		response.AcceptResources = response.AcceptResources && r.GetAcceptResources()
+		response.AcceptSecrets = response.AcceptSecrets && r.GetAcceptSecrets()
+		response.SupportsPreview = response.SupportsPreview && r.GetSupportsPreview()
 		response.SupportsAutonamingConfiguration = response.SupportsAutonamingConfiguration &&
-			r.A.GetSupportsAutonamingConfiguration()
+			r.GetSupportsAutonamingConfiguration()
 	}
 	return response, m.muxedErrors(errs)
 }
