@@ -1,0 +1,224 @@
+tests.testOutput{
+	initialValue: &[]string{
+		"value20",
+		"value0",
+		"value1",
+		"value2",
+		"value3",
+		"value4",
+		"value5",
+		"value6",
+		"value7",
+		"value8",
+		"value9",
+		"value10",
+		"value11",
+		"value12",
+		"value13",
+		"value14",
+		"value15",
+		"value16",
+		"value17",
+		"value18",
+		"value19",
+	},
+	changeValue: &[]string{
+		"value0",
+		"value1",
+		"value2",
+		"value3",
+		"value4",
+		"value5",
+		"value6",
+		"value7",
+		"value8",
+		"value9",
+		"value10",
+		"value11",
+		"value12",
+		"value13",
+		"value14",
+		"value15",
+		"value16",
+		"value17",
+		"value18",
+		"value19",
+	},
+	tfOut: `
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
++/- create replacement and then destroy
+
+Terraform will perform the following actions:
+
+  # crossprovider_test_res.example must be replaced
++/- resource "crossprovider_test_res" "example" {
+      ~ id = "newid" -> (known after apply)
+
+      ~ list_block { # forces replacement
+          ~ prop = "value20" -> "value0"
+        }
+      ~ list_block { # forces replacement
+          ~ prop = "value0" -> "value1"
+        }
+      ~ list_block { # forces replacement
+          ~ prop = "value1" -> "value2"
+        }
+      ~ list_block { # forces replacement
+          ~ prop = "value2" -> "value3"
+        }
+      ~ list_block { # forces replacement
+          ~ prop = "value3" -> "value4"
+        }
+      ~ list_block { # forces replacement
+          ~ prop = "value4" -> "value5"
+        }
+      ~ list_block { # forces replacement
+          ~ prop = "value5" -> "value6"
+        }
+      ~ list_block { # forces replacement
+          ~ prop = "value6" -> "value7"
+        }
+      ~ list_block { # forces replacement
+          ~ prop = "value7" -> "value8"
+        }
+      ~ list_block { # forces replacement
+          ~ prop = "value8" -> "value9"
+        }
+      ~ list_block { # forces replacement
+          ~ prop = "value9" -> "value10"
+        }
+      ~ list_block { # forces replacement
+          ~ prop = "value10" -> "value11"
+        }
+      ~ list_block { # forces replacement
+          ~ prop = "value11" -> "value12"
+        }
+      ~ list_block { # forces replacement
+          ~ prop = "value12" -> "value13"
+        }
+      ~ list_block { # forces replacement
+          ~ prop = "value13" -> "value14"
+        }
+      ~ list_block { # forces replacement
+          ~ prop = "value14" -> "value15"
+        }
+      ~ list_block { # forces replacement
+          ~ prop = "value15" -> "value16"
+        }
+      ~ list_block { # forces replacement
+          ~ prop = "value16" -> "value17"
+        }
+      ~ list_block { # forces replacement
+          ~ prop = "value17" -> "value18"
+        }
+      ~ list_block { # forces replacement
+          ~ prop = "value18" -> "value19"
+        }
+      - list_block { # forces replacement
+          - prop = "value19" -> null
+        }
+    }
+
+Plan: 1 to add, 0 to change, 1 to destroy.
+
+`,
+	pulumiOut: `Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::project::pulumi:pulumi:Stack::project-test]
+    +-crossprovider:index/testRes:TestRes: (replace)
+        [id=newid]
+        [urn=urn:pulumi:test::project::crossprovider:index/testRes:TestRes::example]
+      ~ listBlocks: [
+          ~ [0]: {
+                  ~ prop: "value20" => "value0"
+                }
+          ~ [1]: {
+                  ~ prop: "value0" => "value1"
+                }
+          ~ [2]: {
+                  ~ prop: "value1" => "value2"
+                }
+          ~ [3]: {
+                  ~ prop: "value2" => "value3"
+                }
+          ~ [4]: {
+                  ~ prop: "value3" => "value4"
+                }
+          ~ [5]: {
+                  ~ prop: "value4" => "value5"
+                }
+          ~ [6]: {
+                  ~ prop: "value5" => "value6"
+                }
+          ~ [7]: {
+                  ~ prop: "value6" => "value7"
+                }
+          ~ [8]: {
+                  ~ prop: "value7" => "value8"
+                }
+          ~ [9]: {
+                  ~ prop: "value8" => "value9"
+                }
+          ~ [10]: {
+                  ~ prop: "value9" => "value10"
+                }
+          ~ [11]: {
+                  ~ prop: "value10" => "value11"
+                }
+          ~ [12]: {
+                  ~ prop: "value11" => "value12"
+                }
+          ~ [13]: {
+                  ~ prop: "value12" => "value13"
+                }
+          ~ [14]: {
+                  ~ prop: "value13" => "value14"
+                }
+          ~ [15]: {
+                  ~ prop: "value14" => "value15"
+                }
+          ~ [16]: {
+                  ~ prop: "value15" => "value16"
+                }
+          ~ [17]: {
+                  ~ prop: "value16" => "value17"
+                }
+          ~ [18]: {
+                  ~ prop: "value17" => "value18"
+                }
+          ~ [19]: {
+                  ~ prop: "value18" => "value19"
+                }
+          - [20]: {
+                  - prop: "value19"
+                }
+        ]
+Resources:
+    +-1 to replace
+    1 unchanged
+`,
+	detailedDiff: map[string]interface{}{
+		"listBlocks[0].prop":  map[string]interface{}{"kind": "UPDATE"},
+		"listBlocks[10].prop": map[string]interface{}{"kind": "UPDATE"},
+		"listBlocks[11].prop": map[string]interface{}{"kind": "UPDATE"},
+		"listBlocks[12].prop": map[string]interface{}{"kind": "UPDATE"},
+		"listBlocks[13].prop": map[string]interface{}{"kind": "UPDATE"},
+		"listBlocks[14].prop": map[string]interface{}{"kind": "UPDATE"},
+		"listBlocks[15].prop": map[string]interface{}{"kind": "UPDATE"},
+		"listBlocks[16].prop": map[string]interface{}{"kind": "UPDATE"},
+		"listBlocks[17].prop": map[string]interface{}{"kind": "UPDATE"},
+		"listBlocks[18].prop": map[string]interface{}{"kind": "UPDATE"},
+		"listBlocks[19].prop": map[string]interface{}{"kind": "UPDATE"},
+		"listBlocks[1].prop":  map[string]interface{}{"kind": "UPDATE"},
+		"listBlocks[20]":      map[string]interface{}{"kind": "DELETE_REPLACE"},
+		"listBlocks[2].prop":  map[string]interface{}{"kind": "UPDATE"},
+		"listBlocks[3].prop":  map[string]interface{}{"kind": "UPDATE"},
+		"listBlocks[4].prop":  map[string]interface{}{"kind": "UPDATE"},
+		"listBlocks[5].prop":  map[string]interface{}{"kind": "UPDATE"},
+		"listBlocks[6].prop":  map[string]interface{}{"kind": "UPDATE"},
+		"listBlocks[7].prop":  map[string]interface{}{"kind": "UPDATE"},
+		"listBlocks[8].prop":  map[string]interface{}{"kind": "UPDATE"},
+		"listBlocks[9].prop":  map[string]interface{}{"kind": "UPDATE"},
+	},
+}
