@@ -33,10 +33,12 @@ func Integration(t *testing.T) {
 }
 
 func TestLoadProvider(t *testing.T) {
-	skipWindows(t, "TempDir plugin cache does not clean correctly on Windows runners")
-
-	// Do not cache during the test.
-	t.Setenv(envPluginCache, t.TempDir())
+	if runtime.GOOS != "windows" {
+		// Do not cache during the test. This does not seem to work on Windows correctly due to temp dir cleanup
+		// issues, therefore when running on Windows beware that the test may over-optimistically pass against
+		// a cached result from the previous run.
+		t.Setenv(envPluginCache, t.TempDir())
+	}
 
 	t.Run("registry", func(t *testing.T) {
 		Integration(t)
@@ -99,12 +101,4 @@ func TestLoadProvider(t *testing.T) {
 			}},
 		}}, resp.Provider)
 	})
-}
-
-func skipWindows(t *testing.T, reason string) {
-	t.Helper()
-	if runtime.GOOS != "windows" {
-		return
-	}
-	t.Skipf(reason)
 }
