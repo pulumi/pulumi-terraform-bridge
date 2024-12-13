@@ -17,6 +17,7 @@ package tfgen
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path"
@@ -27,7 +28,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/hashicorp/go-multierror"
-	"github.com/pkg/errors"
+	pkgerrors "github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	dotnetgen "github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
 	gogen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
@@ -798,7 +799,7 @@ func GenerateSchemaWithOptions(opts GenerateSchemaOptions) (*GenerateSchemaResul
 		XInMemoryDocs: opts.XInMemoryDocs,
 	})
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to create generator")
+		return nil, pkgerrors.Wrapf(err, "failed to create generator")
 	}
 
 	return g.generateSchemaResult(ctx)
@@ -944,13 +945,13 @@ func (g *Generator) generateSchemaResult(ctx context.Context) (*GenerateSchemaRe
 	// language-specific generators to create the full output.
 	pack, err := g.gatherPackage()
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to gather package metadata")
+		return nil, pkgerrors.Wrapf(err, "failed to gather package metadata")
 	}
 
 	// Convert the package to a Pulumi schema.
 	pulumiPackageSpec, err := genPulumiSchema(pack, g.pkg, g.version, g.info, g.sink)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to create Pulumi schema")
+		return nil, pkgerrors.Wrapf(err, "failed to create Pulumi schema")
 	}
 	// Apply schema post-processing if defined in the provider.
 	if g.info.SchemaPostProcessor != nil {
@@ -974,7 +975,7 @@ func (g *Generator) UnstableGenerateFromSchema(genSchemaResult *GenerateSchemaRe
 	var err error
 	g.providerShim.schema, err = json.Marshal(pulumiPackageSpec)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to marshal intermediate schema")
+		return nil, pkgerrors.Wrapf(err, "failed to marshal intermediate schema")
 	}
 
 	// Add any supplemental examples:
@@ -1001,11 +1002,11 @@ func (g *Generator) UnstableGenerateFromSchema(genSchemaResult *GenerateSchemaRe
 		source := NewGitRepoDocsSource(g)
 		installationFile, err := source.getInstallation(nil)
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to obtain an index.md file for this provider")
+			return nil, pkgerrors.Wrapf(err, "failed to obtain an index.md file for this provider")
 		}
 		content, err := plainDocsParser(installationFile, g)
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to parse installation docs")
+			return nil, pkgerrors.Wrapf(err, "failed to parse installation docs")
 		}
 		files["_index.md"] = content
 	case Schema:
@@ -1014,7 +1015,7 @@ func (g *Generator) UnstableGenerateFromSchema(genSchemaResult *GenerateSchemaRe
 
 		bytes, err := json.MarshalIndent(pulumiPackageSpec, "", "    ")
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to marshal schema")
+			return nil, pkgerrors.Wrapf(err, "failed to marshal schema")
 		}
 		files = map[string][]byte{"schema.json": bytes}
 
@@ -1037,13 +1038,13 @@ func (g *Generator) UnstableGenerateFromSchema(genSchemaResult *GenerateSchemaRe
 	default:
 		pulumiPackage, diags, err := pschema.BindSpec(pulumiPackageSpec, nil)
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to import Pulumi schema")
+			return nil, pkgerrors.Wrapf(err, "failed to import Pulumi schema")
 		}
 		if diags.HasErrors() {
 			return nil, err
 		}
 		if files, err = g.language.emitSDK(pulumiPackage, g.info, g.root); err != nil {
-			return nil, errors.Wrapf(err, "failed to generate package")
+			return nil, pkgerrors.Wrapf(err, "failed to generate package")
 		}
 	}
 
@@ -1055,14 +1056,14 @@ func (g *Generator) UnstableGenerateFromSchema(genSchemaResult *GenerateSchemaRe
 			}
 		}
 		if err := emitFile(g.root, f, contents); err != nil {
-			return nil, errors.Wrapf(err, "emitting file %v", f)
+			return nil, pkgerrors.Wrapf(err, "emitting file %v", f)
 		}
 	}
 
 	// Emit the Pulumi project information.
 	if g.language != RegistryDocs {
 		if err = g.emitProjectMetadata(g.pkg, g.language); err != nil {
-			return nil, errors.Wrapf(err, "failed to create project file")
+			return nil, pkgerrors.Wrapf(err, "failed to create project file")
 		}
 	}
 
@@ -1090,14 +1091,14 @@ func (g *Generator) gatherPackage() (*pkg, error) {
 	// Gather the provider type for this package.
 	provider, err := g.gatherProvider()
 	if err != nil {
-		return nil, errors.Wrapf(err, "problem gathering the provider type")
+		return nil, pkgerrors.Wrapf(err, "problem gathering the provider type")
 	}
 	pack.provider = provider
 
 	// Gather up all resource modules and merge them into the current set.
 	resmods, err := g.gatherResources()
 	if err != nil {
-		return nil, errors.Wrapf(err, "problem gathering resources")
+		return nil, pkgerrors.Wrapf(err, "problem gathering resources")
 	} else if resmods != nil {
 		pack.addModuleMap(resmods)
 	}
@@ -1105,7 +1106,7 @@ func (g *Generator) gatherPackage() (*pkg, error) {
 	// Gather up all data sources into their respective modules and merge them in.
 	dsmods, err := g.gatherDataSources()
 	if err != nil {
-		return nil, errors.Wrapf(err, "problem gathering data sources")
+		return nil, pkgerrors.Wrapf(err, "problem gathering data sources")
 	} else if dsmods != nil {
 		pack.addModuleMap(dsmods)
 	}
@@ -1113,7 +1114,7 @@ func (g *Generator) gatherPackage() (*pkg, error) {
 	// Now go ahead and merge in any overlays into the modules if there are any.
 	olaymods, err := g.gatherOverlays()
 	if err != nil {
-		return nil, errors.Wrapf(err, "problem gathering overlays")
+		return nil, pkgerrors.Wrapf(err, "problem gathering overlays")
 	} else if olaymods != nil {
 		pack.addModuleMap(olaymods)
 	}
@@ -1408,20 +1409,20 @@ func (g *Generator) gatherResource(rawname string,
 	}
 
 	// Ensure there weren't any custom fields that were unrecognized.
+	var errs []error
 	for key := range info.Fields {
 		if _, has := schema.Schema().GetOk(key); !has {
 			msg := fmt.Sprintf("there is a custom mapping on resource '%s' for field '%s', but the field was not "+
 				"found in the Terraform metadata and will be ignored. To fix, remove the mapping.", rawname, key)
-
 			if cmdutil.IsTruthy(os.Getenv("PULUMI_EXTRA_MAPPING_ERROR")) {
-				return nil, errors.New(msg)
+				errs = append(errs, errors.New(msg))
+			} else {
+				g.warn(msg)
 			}
-
-			g.warn(msg)
 		}
 	}
 
-	return res, nil
+	return res, errors.Join(errs...)
 }
 
 func (g *Generator) gatherDataSources() (moduleMap, error) {
@@ -1937,12 +1938,12 @@ func getOverlayFiles(overlay *tfbridge.OverlayInfo, extension string, root afero
 
 func emitFile(fs afero.Fs, relPath string, contents []byte) error {
 	if err := fs.MkdirAll(path.Dir(relPath), 0o700); err != nil {
-		return errors.Wrap(err, "creating directory")
+		return pkgerrors.Wrap(err, "creating directory")
 	}
 
 	f, err := fs.Create(relPath)
 	if err != nil {
-		return errors.Wrap(err, "creating file")
+		return pkgerrors.Wrap(err, "creating file")
 	}
 	defer contract.IgnoreClose(f)
 
