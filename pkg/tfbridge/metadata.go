@@ -15,6 +15,8 @@
 package tfbridge
 
 import (
+	"sync"
+
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 )
@@ -34,19 +36,27 @@ type MetadataInfo = info.Metadata
 // `bytes` is the embedded metadata file.
 func NewProviderMetadata(bytes []byte) *MetadataInfo { return info.NewProviderMetadata(bytes) }
 
-var declaredRuntimeMetadata = map[string]struct{}{
+var declaredRuntimeMetadata = struct {
+	keys map[string]struct{}
+	m    sync.Mutex
+}{keys: map[string]struct{}{
 	autoSettingsKey: {},
 	"mux":           {},
-}
+}}
 
-func declareRuntimeMetadata(label string) { declaredRuntimeMetadata[label] = struct{}{} }
+func declareRuntimeMetadata(label string) {
+	declaredRuntimeMetadata.m.Lock()
+	defer declaredRuntimeMetadata.m.Unlock()
+	declaredRuntimeMetadata.keys[label] = struct{}{}
+}
 
 // trim the metadata to just the keys required for the runtime phase
 // in the future this method might also substitute compressed contents within some keys
 func ExtractRuntimeMetadata(info *MetadataInfo) *MetadataInfo {
 	data, _ := metadata.New(nil)
-
-	for k := range declaredRuntimeMetadata {
+	declaredRuntimeMetadata.m.Lock()
+	defer declaredRuntimeMetadata.m.Unlock()
+	for k := range declaredRuntimeMetadata.keys {
 		metadata.CloneKey(k, info.Data, data)
 	}
 
