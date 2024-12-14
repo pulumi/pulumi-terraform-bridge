@@ -82,7 +82,7 @@ func TestParseArgs(t *testing.T) {
 			errMsg: autogold.Expect(`accepts between 1 and 2 arg(s), received 3`),
 		},
 		{
-			name: "empty third arg",
+			name: "empty fullDocs flag defaults false",
 			args: []string{"arg1", "arg2"},
 			expect: Args{Remote: &RemoteArgs{
 				Name:    "arg1",
@@ -91,29 +91,38 @@ func TestParseArgs(t *testing.T) {
 			}},
 		},
 		{
-			name: "valid third arg true",
-			args: []string{"my-registry.io/typ", "1.2.3", "--fullDocs=true"},
-			expect: Args{Remote: &RemoteArgs{
-				Name:    "my-registry.io/typ",
-				Version: "1.2.3",
-				Docs:    true,
-			}},
-		},
-		{
-			name: "valid third arg false",
-			args: []string{"my-registry.io/typ", "1.2.3", "--fullDocs=false"},
-			expect: Args{Remote: &RemoteArgs{
-				Name:    "my-registry.io/typ",
-				Version: "1.2.3",
-				Docs:    false,
-			}},
-		},
-		{
-			name: "third arg invalid input",
+			name: "fullDocs flag invalid input",
 			args: []string{"my-registry.io/typ", "1.2.3", "--fullDocs=invalid-input"},
 			//nolint:lll
 			errMsg: autogold.Expect(
 				`invalid argument "invalid-input" for "--fullDocs" flag: strconv.ParseBool: parsing "invalid-input": invalid syntax`,
+			),
+		},
+		{
+			name: "indexDocOutDir flag empty",
+			args: []string{"arg1", "arg2", "--indexDocOutDir="},
+			expect: Args{Remote: &RemoteArgs{
+				Name:           "arg1",
+				Version:        "arg2",
+				Docs:           false,
+				IndexDocOutDir: "",
+			}},
+		},
+		{
+			name: "indexDocOutDir sets location",
+			args: []string{"arg1", "arg2", "--indexDocOutDir=localDir"},
+			expect: Args{Remote: &RemoteArgs{
+				Name:           "arg1",
+				Version:        "arg2",
+				Docs:           false,
+				IndexDocOutDir: "localDir",
+			}},
+		},
+		{
+			name: "invalid flag",
+			args: []string{"arg1", "arg2", "--invalid=wrong"},
+			errMsg: autogold.Expect(
+				"unknown flag: --invalid",
 			),
 		},
 	}

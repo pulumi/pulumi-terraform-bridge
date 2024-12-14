@@ -118,7 +118,8 @@ func writeFrontMatter(providerDisplayName string) string {
 //
 //	## Generate Provider
 //
-//	The Foo provider must be installed as a Local Package by following the instructions for Any Terraform Provider: (link)
+//	The Foo provider must be installed as a Local Package by following the instructions for Any Terraform Provider:
+//	(link)
 //	```bash
 //	pulumi package add terraform-provider org/foo
 //	```

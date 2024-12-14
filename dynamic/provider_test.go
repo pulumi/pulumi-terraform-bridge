@@ -535,7 +535,7 @@ func TestSchemaGenerationIndexDocOutDir(t *testing.T) { //nolint:paralleltest
 			result, err := server.Parameterize(ctx, &pulumirpc.ParameterizeRequest{
 				Parameters: &pulumirpc.ParameterizeRequest_Args{
 					Args: &pulumirpc.ParameterizeRequest_ParametersArgs{
-						Args: []string{tc.providerName, tc.version, "fullDocs=" + tc.fullDocs, "indexDocOutDir=" + tc.indexDocOutDir},
+						Args: []string{tc.providerName, tc.version, "--fullDocs=" + tc.fullDocs, "--indexDocOutDir=" + tc.indexDocOutDir},
 					},
 				},
 			})
