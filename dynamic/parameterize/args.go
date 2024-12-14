@@ -61,16 +61,16 @@ type LocalArgs struct {
 	IndexDocOutDir string
 }
 
-<<<<<<< HEAD
 func ParseArgs(ctx context.Context, a []string) (Args, error) {
 	var args Args
 	var fullDocs bool
 	var upstreamRepoPath string
+	var indexDocOutDir string
 	cmd := cobra.Command{
 		Use: "./local | remote version",
 		RunE: func(cmd *cobra.Command, a []string) error {
 			var err error
-			args, err = parseArgs(cmd.Context(), a, fullDocs, upstreamRepoPath)
+			args, err = parseArgs(cmd.Context(), a, fullDocs, upstreamRepoPath, indexDocOutDir)
 			return err
 		},
 		Args: cobra.RangeArgs(1, 2),
@@ -80,6 +80,8 @@ func ParseArgs(ctx context.Context, a []string) (Args, error) {
 		"Generate a schema with full docs, at the expense of speed")
 	cmd.Flags().StringVar(&upstreamRepoPath, "upstreamRepoPath", "",
 		"Specify a local file path to the root of the Git repository of the provider being dynamically bridged")
+	cmd.Flags().StringVar(&indexDocOutDir, "indexDocOutDir", "",
+		"Specify a local output directory for the provider's _index.md file")
 
 	// We hide docs flags since they are not intended for end users, and they may not be stable.
 	if !env.Dev.Value() {
@@ -113,7 +115,7 @@ func ParseArgs(ctx context.Context, a []string) (Args, error) {
 	return args, cmd.ExecuteContext(ctx)
 }
 
-func parseArgs(_ context.Context, args []string, fullDocs bool, upstreamRepoPath string) (Args, error) {
+func parseArgs(_ context.Context, args []string, fullDocs bool, upstreamRepoPath, indexDocOutDir string) (Args, error) {
 	// If we see a local prefix (starts with '.' or '/'), parse args for a local provider
 	if strings.HasPrefix(args[0], ".") || strings.HasPrefix(args[0], "/") {
 		if len(args) > 1 {
@@ -126,7 +128,12 @@ func parseArgs(_ context.Context, args []string, fullDocs bool, upstreamRepoPath
 			}
 			return Args{}, errors.New(msg)
 		}
-		return Args{Local: &LocalArgs{Path: args[0], UpstreamRepoPath: upstreamRepoPath}}, nil
+		return Args{Local: &LocalArgs{
+			Path:             args[0],
+			UpstreamRepoPath: upstreamRepoPath,
+			IndexDocOutDir:   indexDocOutDir,
+		},
+		}, nil
 	}
 
 	if upstreamRepoPath != "" {
@@ -143,9 +150,10 @@ func parseArgs(_ context.Context, args []string, fullDocs bool, upstreamRepoPath
 	}
 
 	return Args{Remote: &RemoteArgs{
-		Name:    args[0],
-		Version: version,
-		Docs:    fullDocs,
+		Name:           args[0],
+		Version:        version,
+		Docs:           fullDocs,
+		IndexDocOutDir: indexDocOutDir,
 	}}, nil
 
 }
