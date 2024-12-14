@@ -104,6 +104,7 @@ func TestPlainDocsParser(t *testing.T) {
 					Golang: &tfbridge.GolangInfo{
 						ImportBasePath: "github.com/pulumi/pulumi-libvirt/sdk/go/libvirt",
 					},
+					Repository: "https://github.com/pulumi/pulumi-libvirt",
 				},
 				cliConverterState: &cliConverter{
 					info: p,
