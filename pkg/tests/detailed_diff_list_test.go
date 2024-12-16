@@ -239,8 +239,7 @@ func TestDetailedDiffList(t *testing.T) {
 		{"list attribute force new", listAttrSchemaForceNew, attrList},
 		{"list block", listBlockSchema, blockList},
 		{"list block force new", listBlockSchemaForceNew, blockList},
-		// TODO[pulumi/pulumi-terraform-bridge#2726]: These tests fail to produce the correct replacement plan
-		// {"list block nested force new", listBlockSchemaNestedForceNew, blockList},
+		{"list block nested force new", listBlockSchemaNestedForceNew, blockList},
 	}
 
 	maxItemsOnePairs := []struct {
@@ -251,9 +250,8 @@ func TestDetailedDiffList(t *testing.T) {
 		{"max items one attribute", maxItemsOneAttrSchema, attrList},
 		{"max items one attribute force new", maxItemsOneAttrSchemaForceNew, attrList},
 		{"max items one block", maxItemsOneBlockSchema, nestedBlockList},
-		// TODO[pulumi/pulumi-terraform-bridge#2726]: These tests fail to produce the correct replacement plan
-		// {"max items one block force new", maxItemsOneBlockSchemaForceNew, nestedBlockList},
-		// {"max items one block nested force new", maxItemsOneBlockSchemaNestedForceNew, nestedBlockList},
+		{"max items one block force new", maxItemsOneBlockSchemaForceNew, nestedBlockList},
+		{"max items one block nested force new", maxItemsOneBlockSchemaNestedForceNew, nestedBlockList},
 	}
 
 	oneElementScenarios := []struct {

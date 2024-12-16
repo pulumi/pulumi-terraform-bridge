@@ -890,22 +890,15 @@ func TestDetailedDiffSet(t *testing.T) {
 		return cty.ListVal(slice)
 	}
 
-	noForceNewSchemaValueMakerPairs := []struct {
+	schemaValueMakerPairs := []struct {
 		name       string
 		res        schema.Resource
 		valueMaker func(*[]string) cty.Value
 	}{
 		{"attribute no force new", attributeSchema, attrList},
 		{"block no force new", blockSchema, nestedAttrList},
-	}
-
-	forceNewSchemaValueMakerPairs := []struct {
-		name       string
-		res        schema.Resource
-		valueMaker func(*[]string) cty.Value
-	}{
 		{"attribute force new", attributeSchemaForceNew, attrList},
-		{"block top level force new", blockSchemaForceNew, nestedAttrList},
+		{"block force new", blockSchemaForceNew, nestedAttrList},
 		{"block nested force new", blockSchemaNestedForceNew, nestedAttrList},
 	}
 
@@ -942,6 +935,7 @@ func TestDetailedDiffSet(t *testing.T) {
 		{"added end unordered", &[]string{"val2", "val3"}, &[]string{"val2", "val3", "val1"}},
 
 		{"same element updated", &[]string{"val1", "val2", "val3"}, &[]string{"val1", "val4", "val3"}},
+		{"same element updated unordered", &[]string{"val2", "val3", "val1"}, &[]string{"val2", "val4", "val1"}},
 
 		{"shuffled", &[]string{"val1", "val2", "val3"}, &[]string{"val3", "val1", "val2"}},
 		{"shuffled unordered", &[]string{"val2", "val3", "val1"}, &[]string{"val3", "val1", "val2"}},
@@ -958,23 +952,11 @@ func TestDetailedDiffSet(t *testing.T) {
 
 		{"two added", &[]string{"val1", "val2"}, &[]string{"val1", "val2", "val3", "val4"}},
 		{"two removed", &[]string{"val1", "val2", "val3", "val4"}, &[]string{"val1", "val2"}},
-	}
-
-	// TODO[pulumi/pulumi-terraform-bridge#2726]: These tests fail to produce the correct replacement plan
-	// for the force new shcemas
-	extraScenarios := []struct {
-		name         string
-		initialValue *[]string
-		changeValue  *[]string
-	}{
-		{"same element updated unordered", &[]string{"val2", "val3", "val1"}, &[]string{"val2", "val4", "val1"}},
 		{"two added and two removed", &[]string{"val1", "val2", "val3", "val4"}, &[]string{"val1", "val2", "val5", "val6"}},
 		{"two added and two removed shuffled, one overlaps", &[]string{"val1", "val2", "val3", "val4"}, &[]string{"val1", "val5", "val6", "val2"}},
 		{"two added and two removed shuffled, no overlaps", &[]string{"val1", "val2", "val3", "val4"}, &[]string{"val5", "val6", "val1", "val2"}},
 		{"two added and two removed shuffled, with duplicates", &[]string{"val1", "val2", "val3", "val4"}, &[]string{"val1", "val5", "val6", "val2", "val1", "val2"}},
 	}
-
-	allScenarios := append(scenarios, extraScenarios...)
 
 	type testOutput struct {
 		initialValue *[]string
@@ -999,22 +981,10 @@ func TestDetailedDiffSet(t *testing.T) {
 		})
 	}
 
-	for _, schemaValueMakerPair := range forceNewSchemaValueMakerPairs {
+	for _, schemaValueMakerPair := range schemaValueMakerPairs {
 		t.Run(schemaValueMakerPair.name, func(t *testing.T) {
 			t.Parallel()
 			for _, scenario := range scenarios {
-				t.Run(scenario.name, func(t *testing.T) {
-					t.Parallel()
-					runTest(t, schemaValueMakerPair.res, schemaValueMakerPair.valueMaker, scenario.initialValue, scenario.changeValue)
-				})
-			}
-		})
-	}
-
-	for _, schemaValueMakerPair := range noForceNewSchemaValueMakerPairs {
-		t.Run(schemaValueMakerPair.name, func(t *testing.T) {
-			t.Parallel()
-			for _, scenario := range allScenarios {
 				t.Run(scenario.name, func(t *testing.T) {
 					t.Parallel()
 					runTest(t, schemaValueMakerPair.res, schemaValueMakerPair.valueMaker, scenario.initialValue, scenario.changeValue)
