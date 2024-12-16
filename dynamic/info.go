@@ -22,7 +22,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 
 	"github.com/pulumi/pulumi-terraform-bridge/dynamic/internal/fixup"
-	"github.com/pulumi/pulumi-terraform-bridge/dynamic/internal/shim/run"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/dynamic/internal/shim/run"
 	"github.com/pulumi/pulumi-terraform-bridge/dynamic/parameterize"
 	"github.com/pulumi/pulumi-terraform-bridge/dynamic/version"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/proto"

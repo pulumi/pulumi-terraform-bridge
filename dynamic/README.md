@@ -206,7 +206,7 @@ A representative gRPC handler looks like this:
 // tfprotov6/provider.go
 import (
     "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/tfplugin6"
-    "github.com/pulumi/pulumi-terraform-bridge/dynamic/internal/shim/protov6/translate"
+    "github.com/pulumi/pulumi-terraform-bridge/v3/dynamic/internal/shim/protov6/translate"
 )
 
 ...

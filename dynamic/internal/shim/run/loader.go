@@ -36,8 +36,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	v5shim "github.com/pulumi/pulumi-terraform-bridge/dynamic/internal/shim/protov5"
-	v6shim "github.com/pulumi/pulumi-terraform-bridge/dynamic/internal/shim/protov6"
+	v5shim "github.com/pulumi/pulumi-terraform-bridge/v3/dynamic/internal/shim/protov5"
+	v6shim "github.com/pulumi/pulumi-terraform-bridge/v3/dynamic/internal/shim/protov6"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/opentofu/getproviders"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/opentofu/logging"
