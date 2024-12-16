@@ -24,6 +24,25 @@
     }
   },
   {
+    "method": "/pulumirpc.LanguageRuntime/GetRequiredPackages",
+    "request": {
+      "info": {
+        "rootDirectory": "/Users/vvm/code/pulumi-terraform-bridge/pkg/pf/tests/testdatagen/genrandom",
+        "programDirectory": "/Users/vvm/code/pulumi-terraform-bridge/pkg/pf/tests/testdatagen/genrandom",
+        "entryPoint": ".",
+        "options": {}
+      }
+    },
+    "errors": [
+      "rpc error: code = Unimplemented desc = unknown method GetRequiredPackages for service pulumirpc.LanguageRuntime"
+    ],
+    "metadata": {
+      "kind": "language",
+      "mode": "client",
+      "runtime": "go"
+    }
+  },
+  {
     "method": "/pulumirpc.LanguageRuntime/GetRequiredPlugins",
     "request": {
       "project": "deprecated",
@@ -247,7 +266,7 @@
       "customTimeouts": {},
       "acceptResources": true,
       "sourcePosition": {
-        "uri": "project://%2FUsers%2Fvvm%2Fgo%2Fpkg%2Fmod%2Fgithub.com%2Fpulumi%2Fpulumi%2Fsdk%2Fv3@v3.137.0%2Fgo%2Fpulumi%2Frun.go",
+        "uri": "project://%2FUsers%2Fvvm%2Fgo%2Fpkg%2Fmod%2Fgithub.com%2Fpulumi%2Fpulumi%2Fsdk%2Fv3@v3.143.0%2Fgo%2Fpulumi%2Frun.go",
         "line": 98
       },
       "supportsResultReporting": true
@@ -282,7 +301,7 @@
         "genradom:min": "0"
       },
       "parallel": 48,
-      "monitorAddress": "127.0.0.1:52744",
+      "monitorAddress": "127.0.0.1:57582",
       "organization": "pulumi",
       "configPropertyMap": {
         "genradom:min": 0
@@ -293,7 +312,7 @@
         "entryPoint": ".",
         "options": {}
       },
-      "loaderTarget": "127.0.0.1:52745"
+      "loaderTarget": "127.0.0.1:57583"
     },
     "response": {},
     "metadata": {

@@ -62,10 +62,8 @@ func TestStacktraceDisplayed(t *testing.T) {
 }
 
 func TestPrimitiveTypes(t *testing.T) {
+	t.Parallel()
 	skipWindows(t)
-	// TODO[pulumi/pulumi-terraform-bridge#2517]: fix once accurate bridge previews are enabled by default
-	t.Setenv("PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW", "true")
-
 	ctx := context.Background()
 
 	grpc := grpcTestServer(ctx, t)

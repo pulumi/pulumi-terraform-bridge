@@ -27,11 +27,10 @@ Plan: 0 to add, 1 to change, 0 to destroy.
         [id=test-id]
         [urn=urn:pulumi:test::project::testprovider:index/test:Test::p]
       ~ key: {
-          ~ nested: "default" => "value"
+          + nested: "value"
         }
 Resources:
     ~ 1 to update
     1 unchanged
 `,
-	detailedDiff: map[string]interface{}{"key.nested": map[string]interface{}{"kind": "UPDATE"}},
 }

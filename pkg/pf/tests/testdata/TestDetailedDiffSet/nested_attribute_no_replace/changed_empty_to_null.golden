@@ -27,5 +27,4 @@ Resources:
     ~ 1 to update
     1 unchanged
 `,
-	detailedDiff: map[string]interface{}{"keys": map[string]interface{}{"kind": "DELETE"}},
 }

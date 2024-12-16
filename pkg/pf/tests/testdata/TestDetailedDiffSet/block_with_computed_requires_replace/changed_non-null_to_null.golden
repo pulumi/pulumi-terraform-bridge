@@ -28,15 +28,15 @@ Plan: 1 to add, 0 to change, 1 to destroy.
     +-testprovider:index/test:Test: (replace)
         [id=test-id]
         [urn=urn:pulumi:test::project::testprovider:index/test:Test::p]
-      - keys: [
-      -     [0]: {
-              - computed: "computed-value"
-              - nested  : "value"
-            }
+      ~ id  : "test-id" => output<string>
+      ~ keys: [
+          - [0]: {
+                  - computed: "computed-value"
+                  - nested  : "value"
+                }
         ]
 Resources:
     +-1 to replace
     1 unchanged
 `,
-	detailedDiff: map[string]interface{}{"keys[0]": map[string]interface{}{"kind": "DELETE"}},
 }

@@ -24,6 +24,25 @@
     }
   },
   {
+    "method": "/pulumirpc.LanguageRuntime/GetRequiredPackages",
+    "request": {
+      "info": {
+        "rootDirectory": "/Users/vvm/code/pulumi-terraform-bridge/pkg/pf/tests/testdatagen/genrandom",
+        "programDirectory": "/Users/vvm/code/pulumi-terraform-bridge/pkg/pf/tests/testdatagen/genrandom",
+        "entryPoint": ".",
+        "options": {}
+      }
+    },
+    "errors": [
+      "rpc error: code = Unimplemented desc = unknown method GetRequiredPackages for service pulumirpc.LanguageRuntime"
+    ],
+    "metadata": {
+      "kind": "language",
+      "mode": "client",
+      "runtime": "go"
+    }
+  },
+  {
     "method": "/pulumirpc.LanguageRuntime/GetRequiredPlugins",
     "request": {
       "project": "deprecated",
@@ -247,7 +266,7 @@
       "customTimeouts": {},
       "acceptResources": true,
       "sourcePosition": {
-        "uri": "project://%2FUsers%2Fvvm%2Fgo%2Fpkg%2Fmod%2Fgithub.com%2Fpulumi%2Fpulumi%2Fsdk%2Fv3@v3.137.0%2Fgo%2Fpulumi%2Frun.go",
+        "uri": "project://%2FUsers%2Fvvm%2Fgo%2Fpkg%2Fmod%2Fgithub.com%2Fpulumi%2Fpulumi%2Fsdk%2Fv3@v3.143.0%2Fgo%2Fpulumi%2Frun.go",
         "line": 98
       },
       "supportsResultReporting": true
@@ -367,7 +386,7 @@
         "min": 1,
         "seed": "pseudo-random-seed"
       },
-      "randomSeed": "Y3YgsM0ynlrgQKkpO3yGyIWDI/Gb5ctYvGD+eRnwgEo=",
+      "randomSeed": "a7hyfYf8aiNP1kPJIKpWmcUBasGehqAy5+ZrFirIFOk=",
       "name": "r1",
       "type": "random:index/randomInteger:RandomInteger"
     },
@@ -537,7 +556,7 @@
         "genradom:min": "1"
       },
       "parallel": 48,
-      "monitorAddress": "127.0.0.1:52603",
+      "monitorAddress": "127.0.0.1:57473",
       "organization": "pulumi",
       "configPropertyMap": {
         "genradom:min": 1
@@ -548,7 +567,7 @@
         "entryPoint": ".",
         "options": {}
       },
-      "loaderTarget": "127.0.0.1:52604"
+      "loaderTarget": "127.0.0.1:57474"
     },
     "response": {},
     "metadata": {
@@ -561,28 +580,6 @@
     "method": "/pulumirpc.Analyzer/AnalyzeStack",
     "request": {
       "resources": [
-        {
-          "type": "pulumi:pulumi:Stack",
-          "properties": {
-            "r.result": 15
-          },
-          "urn": "urn:pulumi:generate::genradom::pulumi:pulumi:Stack::genradom-generate",
-          "name": "genradom-generate",
-          "options": {
-            "customTimeouts": {}
-          }
-        },
-        {
-          "type": "pulumi:providers:random",
-          "properties": {
-            "version": "4.8.2"
-          },
-          "urn": "urn:pulumi:generate::genradom::pulumi:providers:random::default_4_8_2",
-          "name": "default_4_8_2",
-          "options": {
-            "customTimeouts": {}
-          }
-        },
         {
           "type": "random:index/randomInteger:RandomInteger",
           "properties": {
@@ -606,6 +603,28 @@
             "name": "default_4_8_2"
           },
           "parent": "urn:pulumi:generate::genradom::pulumi:pulumi:Stack::genradom-generate"
+        },
+        {
+          "type": "pulumi:pulumi:Stack",
+          "properties": {
+            "r.result": 15
+          },
+          "urn": "urn:pulumi:generate::genradom::pulumi:pulumi:Stack::genradom-generate",
+          "name": "genradom-generate",
+          "options": {
+            "customTimeouts": {}
+          }
+        },
+        {
+          "type": "pulumi:providers:random",
+          "properties": {
+            "version": "4.8.2"
+          },
+          "urn": "urn:pulumi:generate::genradom::pulumi:providers:random::default_4_8_2",
+          "name": "default_4_8_2",
+          "options": {
+            "customTimeouts": {}
+          }
         }
       ]
     },

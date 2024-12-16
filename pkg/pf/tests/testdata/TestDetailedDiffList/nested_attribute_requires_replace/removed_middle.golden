@@ -38,7 +38,11 @@ Plan: 1 to add, 0 to change, 1 to destroy.
     +-testprovider:index/test:Test: (replace)
         [id=test-id]
         [urn=urn:pulumi:test::project::testprovider:index/test:Test::p]
+      ~ id  : "test-id" => output<string>
       ~ keys: [
+            [0]: {
+                    nested: "val1"
+                }
           ~ [1]: {
                   ~ nested: "val2" => "val3"
                 }
@@ -50,8 +54,4 @@ Resources:
     +-1 to replace
     1 unchanged
 `,
-	detailedDiff: map[string]interface{}{
-		"keys[1].nested": map[string]interface{}{"kind": "UPDATE"},
-		"keys[2]":        map[string]interface{}{"kind": "DELETE"},
-	},
 }

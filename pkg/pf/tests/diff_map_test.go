@@ -178,7 +178,10 @@ func TestDetailedDiffMap(t *testing.T) {
 						ResourceSchema: schemaValueMakerPair.schema,
 					})
 
-					diff := crosstests.Diff(t, res, map[string]cty.Value{"key": initialValue}, map[string]cty.Value{"key": changeValue})
+					diff := crosstests.Diff(
+						t, res, map[string]cty.Value{"key": initialValue}, map[string]cty.Value{"key": changeValue},
+						crosstests.DisableAccurateBridgePreview(),
+					)
 
 					autogold.ExpectFile(t, testOutput{
 						initialValue: scenario.initialValue,
