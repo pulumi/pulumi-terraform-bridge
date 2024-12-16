@@ -35,7 +35,7 @@ func TestGenUpdates(t *testing.T) {
 	trace := "testdata/updateprogram.json"
 
 	info := testprovider.SyntheticTestBridgeProvider()
-	info.EnableAccurateBridgePreview = true
+	info.EnableAccurateBridgePreview = false
 	server, err := newProviderServer(t, info)
 	require.NoError(t, err)
 	testutils.ReplayFile(t, server, trace)

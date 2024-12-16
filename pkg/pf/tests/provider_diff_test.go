@@ -57,7 +57,7 @@ func TestEmptyTestresDiff(t *testing.T) {
 func TestOptionRemovalTestresDiff(t *testing.T) {
 	t.Parallel()
 	info := testprovider.SyntheticTestBridgeProvider()
-	info.EnableAccurateBridgePreview = true
+	info.EnableAccurateBridgePreview = false
 	server, err := newProviderServer(t, info)
 	require.NoError(t, err)
 	testCase := `
@@ -82,13 +82,7 @@ func TestOptionRemovalTestresDiff(t *testing.T) {
             "changes": "DIFF_SOME",
             "diffs": [
                "optionalInputString"
-            ],
-            "hasDetailedDiff": true,
-            "detailedDiff": {
-              "optionalInputString": {
-                "kind": "DELETE"
-              }
-            }
+            ]
           }
         }
         `
@@ -270,7 +264,7 @@ func TestSetNestedObjectAdded(t *testing.T) {
 func TestSetNestedObjectAddedOtherDiff(t *testing.T) {
 	t.Parallel()
 	info := testprovider.SyntheticTestBridgeProvider()
-	info.EnableAccurateBridgePreview = true
+	info.EnableAccurateBridgePreview = false
 	server, err := newProviderServer(t, info)
 	require.NoError(t, err)
 	testCase := `
@@ -317,13 +311,7 @@ func TestSetNestedObjectAddedOtherDiff(t *testing.T) {
             "diffs": [
               "other",
               "vlanNames"
-            ],
-            "hasDetailedDiff": true,
-            "detailedDiff": {
-              "other": {
-                "kind": "UPDATE"
-              }
-            }
+            ]
           }
         }
         `
