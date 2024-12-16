@@ -39,15 +39,44 @@ import (
 	shimv1 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v1"
 )
 
-func Test_DeprecationFromTFSchema(t *testing.T) {
+func Test_DeprecationMessage(t *testing.T) {
 	t.Parallel()
-	v := &variable{
-		name:   "v",
-		schema: shimv1.NewSchema(&schema.Schema{Type: schema.TypeString, Deprecated: "This is deprecated"}),
+
+	cases := []struct {
+		name            string
+		variable        *variable
+		expectedMessage string
+	}{
+		{
+			name: "From TF Schema",
+			variable: &variable{
+				schema: shimv1.NewSchema(&schema.Schema{Deprecated: "Terraform says this is deprecated"}),
+			},
+			expectedMessage: "Terraform says this is deprecated",
+		},
+		{
+			name: "From Pulumi Resources File",
+			variable: &variable{
+				schema: shimv1.NewSchema(&schema.Schema{Deprecated: "Pulumi says this is deprecated"}),
+			},
+			expectedMessage: "Pulumi says this is deprecated",
+		},
+		{
+			name: "From Pulumi Resources File Overrides TF Schema",
+			variable: &variable{
+				info:   &tfbridge.SchemaInfo{DeprecationMessage: "Pulumi says this is deprecated"},
+				schema: shimv1.NewSchema(&schema.Schema{Deprecated: "Terraform says this is deprecated"}),
+			},
+			expectedMessage: "Pulumi says this is deprecated",
+		},
 	}
 
-	deprecationMessage := v.deprecationMessage()
-	assert.Equal(t, "This is deprecated", deprecationMessage)
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			deprecationMessage := tc.variable.deprecationMessage()
+			assert.Equal(t, tc.expectedMessage, deprecationMessage)
+		})
+	}
 }
 
 func Test_ForceNew(t *testing.T) {

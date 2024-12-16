@@ -634,12 +634,12 @@ func (v *variable) Name() string { return v.name }
 func (v *variable) Doc() string  { return v.doc }
 
 func (v *variable) deprecationMessage() string {
-	if v.schema != nil && v.schema.Deprecated() != "" {
-		return v.schema.Deprecated()
-	}
-
 	if v.info != nil && v.info.DeprecationMessage != "" {
 		return v.info.DeprecationMessage
+	}
+
+	if v.schema != nil && v.schema.Deprecated() != "" {
+		return v.schema.Deprecated()
 	}
 
 	return ""
