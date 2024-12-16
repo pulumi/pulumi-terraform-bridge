@@ -2858,3 +2858,25 @@ func TestDemoteToNoReplace(t *testing.T) {
 	diff = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE}
 	require.Equal(t, demoteToNoReplace(diff), &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE})
 }
+
+func TestContainsReplace(t *testing.T) {
+	t.Parallel()
+
+	require.True(t, containsReplace(map[string]*pulumirpc.PropertyDiff{
+		"foo": {Kind: pulumirpc.PropertyDiff_UPDATE_REPLACE},
+	}))
+
+	require.True(t, containsReplace(map[string]*pulumirpc.PropertyDiff{
+		"foo": {Kind: pulumirpc.PropertyDiff_ADD_REPLACE},
+	}))
+
+	require.True(t, containsReplace(map[string]*pulumirpc.PropertyDiff{
+		"foo": {Kind: pulumirpc.PropertyDiff_DELETE_REPLACE},
+	}))
+
+	require.False(t, containsReplace(map[string]*pulumirpc.PropertyDiff{
+		"foo": {Kind: pulumirpc.PropertyDiff_UPDATE},
+	}))
+
+	require.False(t, containsReplace(map[string]*pulumirpc.PropertyDiff{}))
+}

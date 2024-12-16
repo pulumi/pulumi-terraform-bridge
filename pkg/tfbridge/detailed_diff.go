@@ -59,13 +59,10 @@ func isTypeShapeMismatched(val resource.PropertyValue, propType shim.ValueType) 
 
 func containsReplace(m map[string]*pulumirpc.PropertyDiff) bool {
 	for _, v := range m {
-		if v.GetKind() == pulumirpc.PropertyDiff_UPDATE_REPLACE {
-			return true
-		}
-		if v.GetKind() == pulumirpc.PropertyDiff_ADD_REPLACE {
-			return true
-		}
-		if v.GetKind() == pulumirpc.PropertyDiff_DELETE_REPLACE {
+		switch v.GetKind() {
+		case pulumirpc.PropertyDiff_UPDATE_REPLACE,
+			pulumirpc.PropertyDiff_ADD_REPLACE,
+			pulumirpc.PropertyDiff_DELETE_REPLACE:
 			return true
 		}
 	}
@@ -509,6 +506,11 @@ func (differ detailedDiffer) makeDetailedDiffPropertyMap(
 
 // MakeDetailedDiffV2 is the main entry point for calculating the detailed diff.
 // This is an internal function that should not be used outside of the pulumi-terraform-bridge.
+//
+// The `replaceOverride` parameter is used to override the replace behavior of the detailed diff.
+// If true, the diff will be overridden to return a replace.
+// If false, the diff will be overridden to not return a replace.
+// If nil, the detailed diff will be returned as is.
 func MakeDetailedDiffV2(
 	ctx context.Context,
 	tfs shim.SchemaMap,
@@ -533,16 +535,18 @@ func MakeDetailedDiffV2(
 	res := differ.makeDetailedDiffPropertyMap(priorProps, props)
 
 	if replaceOverride != nil {
-		if containsReplace(res) && !*replaceOverride {
+		if *replaceOverride {
+			// We need to make sure there is a replace.
+			if !containsReplace(res) {
+				// We use the internal __meta property to trigger a replace when we have failed to
+				// determine the correct detailed diff for it.
+				res[metaKey] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE_REPLACE}
+			}
+		} else {
+			// There is an override for no replaces, so ensure we don't have any.
 			for k, v := range res {
 				res[k] = demoteToNoReplace(v)
 			}
-		}
-
-		if !containsReplace(res) && *replaceOverride {
-			// We use the internal __meta property to trigger a replace when we have failed to
-			// determine the correct detailed diff for it.
-			res["__meta"] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE_REPLACE}
 		}
 	}
 
