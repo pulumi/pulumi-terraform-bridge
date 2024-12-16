@@ -31,13 +31,11 @@ Plan: 0 to add, 1 to change, 0 to destroy.
         [urn=urn:pulumi:test::project::testprovider:index/test:Test::p]
       ~ keys: [
           - [0]: {
-                  - computed: "computed-value"
-                  - nested  : "value"
+                  - nested: "value"
                 }
         ]
 Resources:
     ~ 1 to update
     1 unchanged
 `,
-	detailedDiff: map[string]interface{}{"keys[0]": map[string]interface{}{"kind": "DELETE"}},
 }

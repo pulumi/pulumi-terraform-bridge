@@ -24,6 +24,25 @@
     }
   },
   {
+    "method": "/pulumirpc.LanguageRuntime/GetRequiredPackages",
+    "request": {
+      "info": {
+        "rootDirectory": "/Users/vvm/code/pulumi-terraform-bridge/pkg/pf/tests/testdatagen/genrandom",
+        "programDirectory": "/Users/vvm/code/pulumi-terraform-bridge/pkg/pf/tests/testdatagen/genrandom",
+        "entryPoint": ".",
+        "options": {}
+      }
+    },
+    "errors": [
+      "rpc error: code = Unimplemented desc = unknown method GetRequiredPackages for service pulumirpc.LanguageRuntime"
+    ],
+    "metadata": {
+      "kind": "language",
+      "mode": "client",
+      "runtime": "go"
+    }
+  },
+  {
     "method": "/pulumirpc.LanguageRuntime/GetRequiredPlugins",
     "request": {
       "project": "deprecated",
@@ -247,7 +266,7 @@
       "customTimeouts": {},
       "acceptResources": true,
       "sourcePosition": {
-        "uri": "project://%2FUsers%2Fvvm%2Fgo%2Fpkg%2Fmod%2Fgithub.com%2Fpulumi%2Fpulumi%2Fsdk%2Fv3@v3.137.0%2Fgo%2Fpulumi%2Frun.go",
+        "uri": "project://%2FUsers%2Fvvm%2Fgo%2Fpkg%2Fmod%2Fgithub.com%2Fpulumi%2Fpulumi%2Fsdk%2Fv3@v3.143.0%2Fgo%2Fpulumi%2Frun.go",
         "line": 98
       },
       "supportsResultReporting": true
@@ -396,7 +415,7 @@
         "min": 2,
         "seed": "pseudo-random-seed"
       },
-      "randomSeed": "K/7vIhrCI+kchV7s1Ny5HY+OsrK5r8lZvMNuSYeOK2o=",
+      "randomSeed": "NGFwjkx0vJvJ7FLryzb3zNG9hvU9U7L2KcImawEIvjE=",
       "name": "r1",
       "type": "random:index/randomInteger:RandomInteger"
     },
@@ -505,13 +524,7 @@
       "changes": "DIFF_SOME",
       "diffs": [
         "min"
-      ],
-      "detailedDiff": {
-        "min": {
-          "kind": "UPDATE"
-        }
-      },
-      "hasDetailedDiff": true
+      ]
     },
     "metadata": {
       "kind": "resource",
@@ -529,7 +542,7 @@
         "min": 2,
         "seed": "pseudo-random-seed"
       },
-      "randomSeed": "K/7vIhrCI+kchV7s1Ny5HY+OsrK5r8lZvMNuSYeOK2o=",
+      "randomSeed": "NGFwjkx0vJvJ7FLryzb3zNG9hvU9U7L2KcImawEIvjE=",
       "name": "r1",
       "type": "random:index/randomInteger:RandomInteger"
     },
@@ -639,7 +652,7 @@
         "genradom:min": "2"
       },
       "parallel": 48,
-      "monitorAddress": "127.0.0.1:52693",
+      "monitorAddress": "127.0.0.1:57545",
       "organization": "pulumi",
       "configPropertyMap": {
         "genradom:min": 2
@@ -650,7 +663,7 @@
         "entryPoint": ".",
         "options": {}
       },
-      "loaderTarget": "127.0.0.1:52694"
+      "loaderTarget": "127.0.0.1:57546"
     },
     "response": {},
     "metadata": {

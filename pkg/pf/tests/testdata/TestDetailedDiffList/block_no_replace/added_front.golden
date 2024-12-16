@@ -54,9 +54,4 @@ Resources:
     ~ 1 to update
     1 unchanged
 `,
-	detailedDiff: map[string]interface{}{
-		"keys[0].nested": map[string]interface{}{"kind": "UPDATE"},
-		"keys[1].nested": map[string]interface{}{"kind": "UPDATE"},
-		"keys[2]":        map[string]interface{}{},
-	},
 }

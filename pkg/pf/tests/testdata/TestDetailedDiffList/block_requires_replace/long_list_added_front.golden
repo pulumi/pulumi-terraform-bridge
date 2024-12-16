@@ -129,6 +129,7 @@ Plan: 1 to add, 0 to change, 1 to destroy.
     +-testprovider:index/test:Test: (replace)
         [id=test-id]
         [urn=urn:pulumi:test::project::testprovider:index/test:Test::p]
+      ~ id  : "test-id" => output<string>
       ~ keys: [
           ~ [0]: {
                   ~ nested: "value0" => "value20"
@@ -198,27 +199,4 @@ Resources:
     +-1 to replace
     1 unchanged
 `,
-	detailedDiff: map[string]interface{}{
-		"keys[0].nested":  map[string]interface{}{"kind": "UPDATE"},
-		"keys[10].nested": map[string]interface{}{"kind": "UPDATE"},
-		"keys[11].nested": map[string]interface{}{"kind": "UPDATE"},
-		"keys[12].nested": map[string]interface{}{"kind": "UPDATE"},
-		"keys[13].nested": map[string]interface{}{"kind": "UPDATE"},
-		"keys[14].nested": map[string]interface{}{"kind": "UPDATE"},
-		"keys[15].nested": map[string]interface{}{"kind": "UPDATE"},
-		"keys[16].nested": map[string]interface{}{"kind": "UPDATE"},
-		"keys[17].nested": map[string]interface{}{"kind": "UPDATE"},
-		"keys[18].nested": map[string]interface{}{"kind": "UPDATE"},
-		"keys[19].nested": map[string]interface{}{"kind": "UPDATE"},
-		"keys[1].nested":  map[string]interface{}{"kind": "UPDATE"},
-		"keys[20]":        map[string]interface{}{},
-		"keys[2].nested":  map[string]interface{}{"kind": "UPDATE"},
-		"keys[3].nested":  map[string]interface{}{"kind": "UPDATE"},
-		"keys[4].nested":  map[string]interface{}{"kind": "UPDATE"},
-		"keys[5].nested":  map[string]interface{}{"kind": "UPDATE"},
-		"keys[6].nested":  map[string]interface{}{"kind": "UPDATE"},
-		"keys[7].nested":  map[string]interface{}{"kind": "UPDATE"},
-		"keys[8].nested":  map[string]interface{}{"kind": "UPDATE"},
-		"keys[9].nested":  map[string]interface{}{"kind": "UPDATE"},
-	},
 }

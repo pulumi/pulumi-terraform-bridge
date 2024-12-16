@@ -34,5 +34,4 @@ Resources:
     ~ 1 to update
     1 unchanged
 `,
-	detailedDiff: map[string]interface{}{"key": map[string]interface{}{}},
 }
