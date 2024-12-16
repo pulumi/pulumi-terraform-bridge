@@ -99,8 +99,6 @@ Diving deeper into how the repository is laid out, we see:
 ├── info.go
 ├── internal/
 │  └── shim/
-│     ├── go.mod
-│     ├── go.sum
 │     ├── protov5/
 │     │  ├── provider.go
 │     │  └── translate/
@@ -120,8 +118,8 @@ Diving deeper into how the repository is laid out, we see:
    └── version.go
 ```
 
-The dynamic provider layer consists by design of small, specialized packages. 
-As of time of writing, the entire `dynamic` folder is only 2288 lines of go code[^1]. 
+The dynamic provider layer consists by design of small, specialized packages.
+As of time of writing, the entire `dynamic` folder is only 2288 lines of go code[^1].
 Let's go through each package in turn.
 
 [^1]: `loc --exclude '*._test.go'`
@@ -172,17 +170,21 @@ type Provider interface {
 
 - `run.LocalProvider` takes a path to a Terraform provider and runs it.
 
-When `run` launches a Terraform provider, the provider may implement either the
-[`tfplugin5.ProviderClient`](https://pkg.go.dev/github.com/opentofu/opentofu/internal/tfplugin5#ProviderClient) or [`tfplugin6.ProviderClient`](https://pkg.go.dev/github.com/opentofu/opentofu/internal/tfplugin6#ProviderClient) interface. `run` must return a
-[`tfprotov6.ProviderServer`](https://pkg.go.dev/github.com/hashicorp/terraform-plugin-go/tfprotov6#ProviderServer). The Terraform ecosystem helps with [translating from v5 to v6](https://pkg.go.dev/github.com/hashicorp/terraform-plugin-mux/tf5to6server#UpgradeServer):
+When `run` launches a Terraform provider, the provider may implement either the `tfplugin5.ProviderClient` or
+`tfplugin6.ProviderClient` interface. `run` must return a
+[`tfprotov6.ProviderServer`](https://pkg.go.dev/github.com/hashicorp/terraform-plugin-go/tfprotov6#ProviderServer).
+The Terraform ecosystem helps with [translating from v5 to
+v6](https://pkg.go.dev/github.com/hashicorp/terraform-plugin-mux/tf5to6server#UpgradeServer):
 
 ``` go
 func tf5to6server.UpgradeServer(context.Context, func() tfprotov5.ProviderServer) (tfprotov6.ProviderServer, error)
 ```
 
-We still need to be able to translate from [`tfplugin5.ProviderClient`](https://pkg.go.dev/github.com/opentofu/opentofu/internal/tfplugin5#ProviderClient) and [`tfplugin6.ProviderClient`](https://pkg.go.dev/github.com/opentofu/opentofu/internal/tfplugin6#ProviderClient)
-to [`tfprotov5.ProviderServer`](https://pkg.go.dev/github.com/hashicorp/terraform-plugin-go/tfprotov5#ProviderServer) and [`tfprotov6.ProviderServer`](https://pkg.go.dev/github.com/hashicorp/terraform-plugin-go/tfprotov6#ProviderServer) respectively. For that, see the next
-section.
+We still need to be able to translate from `tfplugin5.ProviderClient` and `tfplugin6.ProviderClient` to
+[`tfprotov5.ProviderServer`](https://pkg.go.dev/github.com/hashicorp/terraform-plugin-go/tfprotov5#ProviderServer)
+and
+[`tfprotov6.ProviderServer`](https://pkg.go.dev/github.com/hashicorp/terraform-plugin-go/tfprotov6#ProviderServer)
+respectively. For that, see the next section.
 
 ### `package protov5` & `package protov6`
 
@@ -203,8 +205,8 @@ A representative gRPC handler looks like this:
 ``` go
 // tfprotov6/provider.go
 import (
-	"github.com/opentofu/opentofu/internal/tfplugin6"
-	"github.com/opentofu/opentofu/shim/protov6/translate"
+    "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/tfplugin6"
+    "github.com/pulumi/pulumi-terraform-bridge/dynamic/internal/shim/protov6/translate"
 )
 
 ...
@@ -225,7 +227,7 @@ The `translate.ReadResourceRequest` call looks like this:
 // tfprotov6/translate/tfplugin6.go
 import (
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
-	"github.com/opentofu/opentofu/internal/tfplugin6"
+    "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/tfplugin6"
 )
 
 ...

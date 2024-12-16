@@ -16,6 +16,7 @@ package run
 
 import (
 	"context"
+	"runtime"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
@@ -31,8 +32,14 @@ func Integration(t *testing.T) {
 	}
 }
 
-func TestLoadProvider(t *testing.T) {
-	t.Parallel()
+// The use of t.Setenv makes it necessary to disable t.Parallel() and skip the paralleltest linter rule.
+func TestLoadProvider(t *testing.T) { //nolint:paralleltest
+	if runtime.GOOS != "windows" {
+		// Do not cache during the test. This does not seem to work on Windows correctly due to temp dir cleanup
+		// issues, therefore when running on Windows beware that the test may over-optimistically pass against
+		// a cached result from the previous run.
+		t.Setenv(envPluginCache, t.TempDir())
+	}
 
 	t.Run("registry", func(t *testing.T) {
 		Integration(t)

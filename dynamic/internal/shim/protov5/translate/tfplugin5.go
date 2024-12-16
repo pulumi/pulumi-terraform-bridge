@@ -17,8 +17,9 @@ package translate
 import (
 	"github.com/hashicorp/terraform-plugin-go/tfprotov5"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
-	"github.com/opentofu/opentofu/internal/tfplugin5"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/tfplugin5"
 )
 
 func GetMetadataRequest(i *tfprotov5.GetMetadataRequest) *tfplugin5.GetMetadata_Request {
