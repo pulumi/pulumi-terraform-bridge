@@ -1175,13 +1175,13 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 			changes = pulumirpc.DiffResponse_DIFF_NONE
 		} else {
 			changes = pulumirpc.DiffResponse_DIFF_SOME
-		}
 
-		replaceDecision := diff.RequiresNew()
-		detailedDiff, err = makeDetailedDiffV2(
-			ctx, schema, fields, res.TF, p.tf, state, diff, assets, p.supportsSecrets, news, &replaceDecision)
-		if err != nil {
-			return nil, err
+			replaceDecision := diff.RequiresNew()
+			detailedDiff, err = makeDetailedDiffV2(
+				ctx, schema, fields, res.TF, p.tf, state, diff, assets, p.supportsSecrets, news, &replaceDecision)
+			if err != nil {
+				return nil, err
+			}
 		}
 	} else {
 		dd := makeDetailedDiffExtra(ctx, schema, fields, olds, news, diff)
