@@ -2836,3 +2836,25 @@ func TestDetailedDiffReplaceOverrideTrue(t *testing.T) {
 		"__meta": {Kind: pulumirpc.PropertyDiff_UPDATE_REPLACE},
 	})
 }
+
+func TestDemoteToNoReplace(t *testing.T) {
+	t.Parallel()
+
+	diff := &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_ADD_REPLACE}
+	require.Equal(t, demoteToNoReplace(diff), &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_ADD})
+
+	diff = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_DELETE_REPLACE}
+	require.Equal(t, demoteToNoReplace(diff), &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_DELETE})
+
+	diff = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE_REPLACE}
+	require.Equal(t, demoteToNoReplace(diff), &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE})
+
+	diff = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_ADD}
+	require.Equal(t, demoteToNoReplace(diff), &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_ADD})
+
+	diff = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_DELETE}
+	require.Equal(t, demoteToNoReplace(diff), &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_DELETE})
+
+	diff = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE}
+	require.Equal(t, demoteToNoReplace(diff), &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE})
+}
