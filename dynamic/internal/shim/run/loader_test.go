@@ -16,13 +16,13 @@ package run
 
 import (
 	"context"
+	"runtime"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"runtime"
 )
 
 func Integration(t *testing.T) {
@@ -32,7 +32,8 @@ func Integration(t *testing.T) {
 	}
 }
 
-func TestLoadProvider(t *testing.T) {
+// The use of t.Setenv makes it necessary to disable t.Parallel() and skip the paralleltest linter rule.
+func TestLoadProvider(t *testing.T) { //nolint:paralleltest
 	if runtime.GOOS != "windows" {
 		// Do not cache during the test. This does not seem to work on Windows correctly due to temp dir cleanup
 		// issues, therefore when running on Windows beware that the test may over-optimistically pass against
