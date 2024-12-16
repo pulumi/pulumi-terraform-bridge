@@ -46,7 +46,6 @@ require (
 	github.com/pulumi/inflector v0.1.1
 	github.com/pulumi/providertest v0.1.3
 	github.com/pulumi/pulumi-java/pkg v0.19.0
-	github.com/pulumi/pulumi-terraform-bridge/dynamic v0.0.0-20241216185952-96fdf9bc898e
 	github.com/pulumi/pulumi-yaml v1.12.0
 	github.com/pulumi/schema-tools v0.1.2
 	github.com/pulumi/terraform-diff-reader v0.0.2

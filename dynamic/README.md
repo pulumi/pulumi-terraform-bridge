@@ -270,7 +270,7 @@ These flags are hidden because they are expected to be used by other Pulumi proc
 ## Releasing & [`pulumi/pulumi-terraform-provider`](https://github.com/pulumi/pulumi-terraform-provider)
 
 The `pulumi-terraform-provider` codebase is located in
-[github.com/pulumi/pulumi-terraform-bridge/dynamic](https://github.com/pulumi/pulumi-terraform-bridge/blob/master/dynamic). However, the provider is released from
+[github.com/pulumi/pulumi-terraform-bridge/v3/dynamic](https://github.com/pulumi/pulumi-terraform-bridge/blob/master/dynamic). However, the provider is released from
 [github.com/pulumi/pulumi-terraform-provider](https://github.com/pulumi/pulumi-terraform-provider). There are 2 reasons for this:
 
 1. Pulumi's plugin discovery mechanism assumes that official plugins are located at
