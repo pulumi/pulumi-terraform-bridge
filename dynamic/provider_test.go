@@ -467,7 +467,7 @@ func TestSchemaGenerationFullDocs(t *testing.T) { //nolint:paralleltest
 	tc := testCase{
 		name:     "hashicorp/random",
 		version:  "3.6.3",
-		fullDocs: "fullDocs=true",
+		fullDocs: "--fullDocs",
 	}
 
 	t.Run(strings.Join([]string{tc.name, tc.version}, "-"), func(t *testing.T) {

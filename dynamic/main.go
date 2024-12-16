@@ -122,7 +122,7 @@ func initialSetup() (info.Provider, pfbridge.ProviderMetadata, func() error) {
 				args = value.IntoArgs()
 			case *plugin.ParameterizeArgs:
 				var err error
-				args, err = parameterize.ParseArgs(params.Args)
+				args, err = parameterize.ParseArgs(ctx, params.Args)
 				if err != nil {
 					return plugin.ParameterizeResponse{}, err
 				}
