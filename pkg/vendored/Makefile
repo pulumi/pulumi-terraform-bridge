@@ -1,7 +1,8 @@
 .PHONY: build install vendor-tfplugin vendor
 
+# The default target is a no-op to trick nix.
 build::
-	echo "Use 'nix build' or 'make tfplugin' instead"
+	echo "Try 'make vendor' instead"
 
 # This and the following targets run inside nix. Use `nix develop` to debug.
 tfplugin5.proto:
