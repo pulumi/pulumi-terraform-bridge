@@ -900,7 +900,7 @@ func TestUnknownCollectionForceNewDetailedDiff(t *testing.T) {
 			runTest(t, program2, autogold.Expect(`
     + prov:index/aux:Aux: (create)
         [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
-    +-prov:index/test:Test: (replace)
+    ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ tests: [
@@ -917,7 +917,7 @@ func TestUnknownCollectionForceNewDetailedDiff(t *testing.T) {
 			runTest(t, program2, autogold.Expect(`
     + prov:index/aux:Aux: (create)
         [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
-    +-prov:index/test:Test: (replace)
+    ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       - tests: [
@@ -1026,7 +1026,7 @@ func TestUnknownCollectionForceNewDetailedDiff(t *testing.T) {
 			runTest(t, program2, autogold.Expect(`
     + prov:index/aux:Aux: (create)
         [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
-    +-prov:index/test:Test: (replace)
+    ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ tests: [
@@ -1043,7 +1043,7 @@ func TestUnknownCollectionForceNewDetailedDiff(t *testing.T) {
 			runTest(t, program2, autogold.Expect(`
     + prov:index/aux:Aux: (create)
         [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
-    +-prov:index/test:Test: (replace)
+    ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       - tests: [

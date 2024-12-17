@@ -57,6 +57,18 @@ func isTypeShapeMismatched(val resource.PropertyValue, propType shim.ValueType) 
 	}
 }
 
+func containsReplace(m map[string]*pulumirpc.PropertyDiff) bool {
+	for _, v := range m {
+		switch v.GetKind() {
+		case pulumirpc.PropertyDiff_UPDATE_REPLACE,
+			pulumirpc.PropertyDiff_ADD_REPLACE,
+			pulumirpc.PropertyDiff_DELETE_REPLACE:
+			return true
+		}
+	}
+	return false
+}
+
 func promoteToReplace(diff *pulumirpc.PropertyDiff) *pulumirpc.PropertyDiff {
 	if diff == nil {
 		return nil
@@ -70,6 +82,23 @@ func promoteToReplace(diff *pulumirpc.PropertyDiff) *pulumirpc.PropertyDiff {
 		return &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_DELETE_REPLACE}
 	case pulumirpc.PropertyDiff_UPDATE:
 		return &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE_REPLACE}
+	default:
+		return diff
+	}
+}
+
+func demoteToNoReplace(diff *pulumirpc.PropertyDiff) *pulumirpc.PropertyDiff {
+	if diff == nil {
+		return nil
+	}
+	kind := diff.GetKind()
+	switch kind {
+	case pulumirpc.PropertyDiff_ADD_REPLACE:
+		return &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_ADD}
+	case pulumirpc.PropertyDiff_DELETE_REPLACE:
+		return &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_DELETE}
+	case pulumirpc.PropertyDiff_UPDATE_REPLACE:
+		return &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE}
 	default:
 		return diff
 	}
@@ -477,11 +506,17 @@ func (differ detailedDiffer) makeDetailedDiffPropertyMap(
 
 // MakeDetailedDiffV2 is the main entry point for calculating the detailed diff.
 // This is an internal function that should not be used outside of the pulumi-terraform-bridge.
+//
+// The `replaceOverride` parameter is used to override the replace behavior of the detailed diff.
+// If true, the diff will be overridden to return a replace.
+// If false, the diff will be overridden to not return a replace.
+// If nil, the detailed diff will be returned as is.
 func MakeDetailedDiffV2(
 	ctx context.Context,
 	tfs shim.SchemaMap,
 	ps map[string]*SchemaInfo,
 	priorProps, props, newInputs resource.PropertyMap,
+	replaceOverride *bool,
 ) map[string]*pulumirpc.PropertyDiff {
 	// Strip secrets and outputs from the properties before calculating the diff.
 	// This allows the rest of the algorithm to focus on the actual changes and not
@@ -497,7 +532,25 @@ func MakeDetailedDiffV2(
 	props = stripSecretsAndOutputs(props)
 	newInputs = stripSecretsAndOutputs(newInputs)
 	differ := detailedDiffer{ctx: ctx, tfs: tfs, ps: ps, newInputs: newInputs}
-	return differ.makeDetailedDiffPropertyMap(priorProps, props)
+	res := differ.makeDetailedDiffPropertyMap(priorProps, props)
+
+	if replaceOverride != nil {
+		if *replaceOverride {
+			// We need to make sure there is a replace.
+			if !containsReplace(res) {
+				// We use the internal __meta property to trigger a replace when we have failed to
+				// determine the correct detailed diff for it.
+				res[metaKey] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE_REPLACE}
+			}
+		} else {
+			// There is an override for no replaces, so ensure we don't have any.
+			for k, v := range res {
+				res[k] = demoteToNoReplace(v)
+			}
+		}
+	}
+
+	return res
 }
 
 func makeDetailedDiffV2(
@@ -511,6 +564,7 @@ func makeDetailedDiffV2(
 	assets AssetTable,
 	supportsSecrets bool,
 	newInputs resource.PropertyMap,
+	replaceOverride *bool,
 ) (map[string]*pulumirpc.PropertyDiff, error) {
 	// We need to compare the new and olds after all transformations have been applied.
 	// ex. state upgrades, implementation-specific normalizations etc.
@@ -532,5 +586,5 @@ func makeDetailedDiffV2(
 		return nil, err
 	}
 
-	return MakeDetailedDiffV2(ctx, tfs, ps, priorProps, props, newInputs), nil
+	return MakeDetailedDiffV2(ctx, tfs, ps, priorProps, props, newInputs, replaceOverride), nil
 }
