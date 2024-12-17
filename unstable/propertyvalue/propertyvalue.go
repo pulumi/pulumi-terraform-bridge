@@ -15,6 +15,8 @@
 package propertyvalue
 
 import (
+	"errors"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
@@ -106,6 +108,81 @@ func TransformPropertyValue(
 		})
 	}
 	return transformer(path, value)
+}
+
+type LimitDescentError struct{}
+
+func (LimitDescentError) Error() string {
+	return "limit descent"
+}
+
+// TransformPropertyValueLimitDescent is a variant of TransformPropertyValue that allows the transformer
+// to return a LimitDescentError to indicate that the recursion should not descend into the value without
+// aborting the whole transformation.
+func TransformPropertyValueLimitDescent(
+	path resource.PropertyPath,
+	transformer func(resource.PropertyPath, resource.PropertyValue) (resource.PropertyValue, error),
+	value resource.PropertyValue,
+) (resource.PropertyValue, error) {
+	value, err := transformer(path, value)
+	if err != nil {
+		if errors.Is(err, LimitDescentError{}) {
+			return value, nil
+		}
+		return resource.NewNullProperty(), err
+	}
+
+	switch {
+	case value.IsArray():
+		// preserve nil arrays
+		if !isNilArray(value) {
+			tvs := []resource.PropertyValue{}
+			for i, v := range value.ArrayValue() {
+				tv, err := TransformPropertyValueLimitDescent(extendPath(path, i), transformer, v)
+				if err != nil {
+					return resource.NewNullProperty(), err
+				}
+				tvs = append(tvs, tv)
+			}
+			value = resource.NewArrayProperty(tvs)
+		}
+	case value.IsObject():
+		// preserve nil objects
+		if !isNilObject(value) {
+			pm := make(resource.PropertyMap)
+			for k, v := range value.ObjectValue() {
+				tv, err := TransformPropertyValueLimitDescent(extendPath(path, string(k)), transformer, v)
+				if err != nil {
+					return resource.NewNullProperty(), err
+				}
+				pm[k] = tv
+			}
+			value = resource.NewObjectProperty(pm)
+		}
+	case value.IsOutput():
+		o := value.OutputValue()
+		te, err := TransformPropertyValueLimitDescent(path, transformer, o.Element)
+		if err != nil {
+			return resource.NewNullProperty(), err
+		}
+		value = resource.NewOutputProperty(resource.Output{
+			Element:      te,
+			Known:        o.Known,
+			Secret:       o.Secret,
+			Dependencies: o.Dependencies,
+		})
+	case value.IsSecret():
+		s := value.SecretValue()
+		te, err := TransformPropertyValueLimitDescent(path, transformer, s.Element)
+		if err != nil {
+			return resource.NewNullProperty(), err
+		}
+		value = resource.NewSecretProperty(&resource.Secret{
+			Element: te,
+		})
+	}
+
+	return value, nil
 }
 
 // Removes any resource.NewSecretProperty wrappers. Removes Secret: true flags from any first-class outputs.
