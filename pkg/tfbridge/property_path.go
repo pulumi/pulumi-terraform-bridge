@@ -222,17 +222,17 @@ func propertyValueTriggersReplacement(
 	return replacement
 }
 
-// propertyValueIsSubsetBarComputed returns true if all values in the walkedValue are also in the comparedValue,
+// isPlanCompatibleWithInputs returns true if all values in the walkedValue are also in the comparedValue,
 // bar any computed properties.
-func propertyValueIsSubsetBarComputed(
+func isPlanCompatibleWithInputs(
 	path propertyPath,
-	comparedValue resource.PropertyValue,
-	walkedValue resource.PropertyValue,
+	inputs resource.PropertyValue,
+	plan resource.PropertyValue,
 	tfs shim.SchemaMap,
 	ps map[string]*info.Schema,
 ) bool {
 	abortErr := errors.New("abort")
-	visitor := func(subpath resource.PropertyPath, walkedSubVal resource.PropertyValue) (resource.PropertyValue, error) {
+	visitor := func(subpath resource.PropertyPath, planSubVal resource.PropertyValue) (resource.PropertyValue, error) {
 		tfs, _, err := lookupSchemas(propertyPath(subpath), tfs, ps)
 		if err != nil {
 			// TODO log
@@ -244,30 +244,30 @@ func propertyValueIsSubsetBarComputed(
 			return resource.NewNullProperty(), abortErr
 		}
 
-		comparedSubVal, ok := relativePath.Get(comparedValue)
-		if !ok {
+		inputsSubVal, ok := relativePath.Get(inputs)
+		if !ok || inputsSubVal.IsNull() {
 			if tfs.Computed() {
-				return walkedSubVal, nil
+				return planSubVal, nil
 			}
 			return resource.NewNullProperty(), abortErr
 		}
 
 		if tfs.Type() == shim.TypeList || tfs.Type() == shim.TypeMap {
 			// We only need to check the leaf values, so we skip any collection types.
-			return walkedSubVal, nil
+			return planSubVal, nil
 		}
 
 		// We can not descend into nested sets as planning re-orders the elements
 		if tfs.Type() == shim.TypeSet {
 			// TODO: more sophisticated comparison of nested sets
-			if walkedSubVal.DeepEquals(comparedSubVal) {
-				return walkedSubVal, propertyvalue.LimitDescentError{}
+			if planSubVal.DeepEquals(inputsSubVal) {
+				return planSubVal, propertyvalue.LimitDescentError{}
 			}
 			return resource.NewNullProperty(), abortErr
 		}
 
-		if walkedSubVal.DeepEquals(comparedSubVal) {
-			return walkedSubVal, nil
+		if planSubVal.DeepEquals(inputsSubVal) {
+			return planSubVal, nil
 		}
 
 		return resource.NewNullProperty(), abortErr
@@ -275,7 +275,68 @@ func propertyValueIsSubsetBarComputed(
 	_, err := propertyvalue.TransformPropertyValueLimitDescent(
 		resource.PropertyPath(path),
 		visitor,
-		walkedValue,
+		plan,
+	)
+	if err == abortErr {
+		return false
+	}
+	contract.AssertNoErrorf(err, "TransformPropertyValue should only return an abort error")
+	return true
+}
+
+func isInputCompatibleWithPlan(
+	path propertyPath,
+	plan resource.PropertyValue,
+	inputs resource.PropertyValue,
+	tfs shim.SchemaMap,
+	ps map[string]*info.Schema,
+) bool {
+	abortErr := errors.New("abort")
+	visitor := func(subpath resource.PropertyPath, inputsSubVal resource.PropertyValue) (resource.PropertyValue, error) {
+		tfs, _, err := lookupSchemas(propertyPath(subpath), tfs, ps)
+		if err != nil {
+			// TODO log
+			return resource.NewNullProperty(), abortErr
+		}
+
+		relativePath, err := propertyPath(subpath).GetPathRelativeTo(path)
+		if err != nil {
+			return resource.NewNullProperty(), abortErr
+		}
+
+		planSubVal, ok := relativePath.Get(plan)
+		if !ok || planSubVal.IsNull() {
+			return resource.NewNullProperty(), abortErr
+		}
+
+		if tfs.Computed() && inputsSubVal.IsNull() {
+			return planSubVal, nil
+		}
+
+		if tfs.Type() == shim.TypeList || tfs.Type() == shim.TypeMap {
+			// We only need to check the leaf values, so we skip any collection types.
+			return inputsSubVal, nil
+		}
+
+		// We can not descend into nested sets as planning re-orders the elements
+		if tfs.Type() == shim.TypeSet {
+			// TODO: more sophisticated comparison of nested sets
+			if inputsSubVal.DeepEquals(planSubVal) {
+				return inputsSubVal, propertyvalue.LimitDescentError{}
+			}
+			return resource.NewNullProperty(), abortErr
+		}
+
+		if inputsSubVal.DeepEquals(planSubVal) {
+			return inputsSubVal, nil
+		}
+
+		return resource.NewNullProperty(), abortErr
+	}
+	_, err := propertyvalue.TransformPropertyValueLimitDescent(
+		resource.PropertyPath(path),
+		visitor,
+		inputs,
 	)
 	if err == abortErr {
 		return false
@@ -296,9 +357,11 @@ func validInputsFromPlan(
 	ps map[string]*info.Schema,
 ) bool {
 	// We walk both the plan and the inputs and check that all differences stem from computed properties.
-	if !propertyValueIsSubsetBarComputed(path, inputs, plan, tfs, ps) {
+	// We first walk over the plan.
+	if !isPlanCompatibleWithInputs(path, inputs, plan, tfs, ps) {
 		return false
 	}
 
-	return propertyValueIsSubsetBarComputed(path, plan, inputs, tfs, ps)
+	// We then walk over the inputs.
+	return isInputCompatibleWithPlan(path, plan, inputs, tfs, ps)
 }
