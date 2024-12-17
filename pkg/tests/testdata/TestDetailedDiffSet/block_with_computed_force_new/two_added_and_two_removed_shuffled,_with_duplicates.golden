@@ -1,0 +1,94 @@
+tests.testOutput{
+	initialValue: &[]string{
+		"val1",
+		"val2",
+		"val3",
+		"val4",
+	},
+	changeValue: &[]string{
+		"val1",
+		"val5",
+		"val6",
+		"val2",
+		"val1",
+		"val2",
+	},
+	tfOut: `
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  ~ update in-place
+
+Terraform will perform the following actions:
+
+  # crossprovider_test_res.example will be updated in-place
+  ~ resource "crossprovider_test_res" "example" {
+        id = "id"
+
+      - test {
+          - nested   = "val1" -> null
+            # (1 unchanged attribute hidden)
+        }
+      - test {
+          - nested   = "val2" -> null
+            # (1 unchanged attribute hidden)
+        }
+      - test {
+          - nested   = "val3" -> null
+            # (1 unchanged attribute hidden)
+        }
+      - test {
+          - nested   = "val4" -> null
+            # (1 unchanged attribute hidden)
+        }
+      + test {
+          + computed = (known after apply)
+          + nested   = "val1"
+        }
+      + test {
+          + computed = (known after apply)
+          + nested   = "val2"
+        }
+      + test {
+          + computed = (known after apply)
+          + nested   = "val5"
+        }
+      + test {
+          + computed = (known after apply)
+          + nested   = "val6"
+        }
+    }
+
+Plan: 0 to add, 1 to change, 0 to destroy.
+
+`,
+	pulumiOut: `Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::project::pulumi:pulumi:Stack::project-test]
+    ~ crossprovider:index/testRes:TestRes: (update)
+        [id=id]
+        [urn=urn:pulumi:test::project::crossprovider:index/testRes:TestRes::example]
+      ~ tests: [
+          ~ [0]: {
+                }
+          ~ [1]: {
+                }
+          ~ [2]: {
+                  ~ nested  : "val3" => "val6"
+                }
+          ~ [3]: {
+                  ~ nested  : "val4" => "val2"
+                }
+        ]
+Resources:
+    ~ 1 to update
+    1 unchanged
+`,
+	detailedDiff: map[string]interface{}{
+		"tests[0].computed": map[string]interface{}{"kind": "UPDATE"},
+		"tests[1].computed": map[string]interface{}{"kind": "UPDATE"},
+		"tests[2].computed": map[string]interface{}{"kind": "UPDATE"},
+		"tests[2].nested":   map[string]interface{}{"kind": "UPDATE"},
+		"tests[3].computed": map[string]interface{}{"kind": "UPDATE"},
+		"tests[3].nested":   map[string]interface{}{"kind": "UPDATE"},
+	},
+}

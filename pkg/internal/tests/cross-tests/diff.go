@@ -41,5 +41,6 @@ func Diff(
 		Config1:             config1Cty,
 		Config2:             config2Cty,
 		DeleteBeforeReplace: o.deleteBeforeReplace,
+		DisableAccurateBridgePreviews: o.disableAccurateBridgePreviews,
 	})
 }
