@@ -37,10 +37,10 @@ func Diff(
 	config2Cty := cty.ObjectVal(config2)
 
 	return runDiffCheck(t, diffTestCase{
-		Resource:            resource,
-		Config1:             config1Cty,
-		Config2:             config2Cty,
-		DeleteBeforeReplace: o.deleteBeforeReplace,
+		Resource:                      resource,
+		Config1:                       config1Cty,
+		Config2:                       config2Cty,
+		DeleteBeforeReplace:           o.deleteBeforeReplace,
 		DisableAccurateBridgePreviews: o.disableAccurateBridgePreviews,
 	})
 }
