@@ -135,7 +135,9 @@ func (p *provider) DiffWithContext(
 	}
 
 	if providerOpts.enableAccurateBridgePreview {
-		pluginDetailedDiff, err := calculateDetailedDiff(ctx, &rh, priorState, plannedStateValue, checkedInputs)
+		replaceOverride := len(replaceKeys) > 0
+		pluginDetailedDiff, err := calculateDetailedDiff(
+			ctx, &rh, priorState, plannedStateValue, checkedInputs, &replaceOverride)
 		if err != nil {
 			return plugin.DiffResult{}, err
 		}
@@ -148,7 +150,7 @@ func (p *provider) DiffWithContext(
 
 func calculateDetailedDiff(
 	ctx context.Context, rh *resourceHandle, priorState *upgradedResourceState,
-	plannedStateValue tftypes.Value, checkedInputs resource.PropertyMap,
+	plannedStateValue tftypes.Value, checkedInputs resource.PropertyMap, replaceOverride *bool,
 ) (map[string]plugin.PropertyDiff, error) {
 	priorProps, err := convert.DecodePropertyMap(ctx, rh.decoder, priorState.state.Value)
 	if err != nil {
@@ -167,6 +169,7 @@ func calculateDetailedDiff(
 		priorProps,
 		props,
 		checkedInputs,
+		replaceOverride,
 	)
 
 	pluginDetailedDiff := make(map[string]plugin.PropertyDiff, len(detailedDiff))

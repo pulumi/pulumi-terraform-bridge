@@ -299,7 +299,7 @@ func runDetailedDiffTest(
 	expected map[string]*pulumirpc.PropertyDiff,
 ) {
 	t.Helper()
-	actual := MakeDetailedDiffV2(context.Background(), tfs, ps, old, new, new)
+	actual := MakeDetailedDiffV2(context.Background(), tfs, ps, old, new, new, nil)
 
 	require.Equal(t, expected, actual)
 }
@@ -2787,4 +2787,96 @@ func TestDetailedDiffSetHashPanicCaught(t *testing.T) {
 	)
 
 	require.Contains(t, buf.String(), "Failed to calculate preview for element in foo")
+}
+
+func TestDetailedDiffReplaceOverrideFalse(t *testing.T) {
+	t.Parallel()
+
+	old := resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "bar",
+	})
+	new := resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "baz",
+	})
+
+	tfs := shimv2.NewSchemaMap(map[string]*schema.Schema{
+		"foo": {
+			Type:     schema.TypeString,
+			Optional: true,
+			ForceNew: true,
+		},
+	})
+
+	actual := MakeDetailedDiffV2(context.Background(), tfs, nil, old, new, new, ref(false))
+	require.Equal(t, actual, map[string]*pulumirpc.PropertyDiff{
+		"foo": {Kind: pulumirpc.PropertyDiff_UPDATE},
+	})
+}
+
+func TestDetailedDiffReplaceOverrideTrue(t *testing.T) {
+	t.Parallel()
+
+	old := resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "bar",
+	})
+	new := resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "baz",
+	})
+
+	tfs := shimv2.NewSchemaMap(map[string]*schema.Schema{
+		"foo": {
+			Type:     schema.TypeString,
+			Optional: true,
+		},
+	})
+
+	actual := MakeDetailedDiffV2(context.Background(), tfs, nil, old, new, new, ref(true))
+	require.Equal(t, actual, map[string]*pulumirpc.PropertyDiff{
+		"foo":    {Kind: pulumirpc.PropertyDiff_UPDATE},
+		"__meta": {Kind: pulumirpc.PropertyDiff_UPDATE_REPLACE},
+	})
+}
+
+func TestDemoteToNoReplace(t *testing.T) {
+	t.Parallel()
+
+	diff := &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_ADD_REPLACE}
+	require.Equal(t, demoteToNoReplace(diff), &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_ADD})
+
+	diff = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_DELETE_REPLACE}
+	require.Equal(t, demoteToNoReplace(diff), &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_DELETE})
+
+	diff = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE_REPLACE}
+	require.Equal(t, demoteToNoReplace(diff), &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE})
+
+	diff = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_ADD}
+	require.Equal(t, demoteToNoReplace(diff), &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_ADD})
+
+	diff = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_DELETE}
+	require.Equal(t, demoteToNoReplace(diff), &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_DELETE})
+
+	diff = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE}
+	require.Equal(t, demoteToNoReplace(diff), &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE})
+}
+
+func TestContainsReplace(t *testing.T) {
+	t.Parallel()
+
+	require.True(t, containsReplace(map[string]*pulumirpc.PropertyDiff{
+		"foo": {Kind: pulumirpc.PropertyDiff_UPDATE_REPLACE},
+	}))
+
+	require.True(t, containsReplace(map[string]*pulumirpc.PropertyDiff{
+		"foo": {Kind: pulumirpc.PropertyDiff_ADD_REPLACE},
+	}))
+
+	require.True(t, containsReplace(map[string]*pulumirpc.PropertyDiff{
+		"foo": {Kind: pulumirpc.PropertyDiff_DELETE_REPLACE},
+	}))
+
+	require.False(t, containsReplace(map[string]*pulumirpc.PropertyDiff{
+		"foo": {Kind: pulumirpc.PropertyDiff_UPDATE},
+	}))
+
+	require.False(t, containsReplace(map[string]*pulumirpc.PropertyDiff{}))
 }
