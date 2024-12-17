@@ -1215,24 +1215,21 @@ func TestDetailedDiffSet(t *testing.T) {
 		valueMaker func(*[]string) cty.Value
 	}
 
-	type testScenario struct {
-		name         string
-		initialValue *[]string
-		changeValue  *[]string
-	}
-
 	schemaValueMakerPairs := []schemaValueMakerPair{
 		{"attribute no force new", attributeSchema, attrList},
 		{"block no force new", blockSchema, nestedAttrList},
+
+		{"attribute force new", attributeSchemaForceNew, attrList},
+		{"block top level force new", blockSchemaForceNew, nestedAttrList},
+		{"block nested force new", blockSchemaNestedForceNew, nestedAttrList},
+	}
+
+	computedSchemaValueMakerPairs := []schemaValueMakerPair{
 		{"computed attribute no force new", computedAttributeSchema, attrList},
 		{"block with computed no replace", blockSchemaComputed, nestedAttrList},
 		{"block with computed no replace computed specified in program", blockSchemaComputed, nestedAttrListWithComputedSpecified},
 		{"block with nested computed no replace", blockSchemaNestedComputed, nestedAttrList},
 		{"block with nested computed no replace computed specified in program", blockSchemaNestedComputed, nestedAttrListWithComputedSpecified},
-
-		{"attribute force new", attributeSchemaForceNew, attrList},
-		{"block top level force new", blockSchemaForceNew, nestedAttrList},
-		{"block nested force new", blockSchemaNestedForceNew, nestedAttrList},
 		{"computed attribute force new", computedAttributeSchemaForceNew, attrList},
 		{"block with computed force new", blockSchemaComputedForceNew, nestedAttrList},
 		{"block with computed force new computed specified in program", blockSchemaComputedForceNew, nestedAttrListWithComputedSpecified},
@@ -1244,7 +1241,11 @@ func TestDetailedDiffSet(t *testing.T) {
 		{"block with nested computed and nested force new computed specified in program", blockSchemaNestedComputedNestedForceNew, nestedAttrListWithComputedSpecified},
 	}
 
-	scenarios := []testScenario{
+	scenarios := []struct {
+		name         string
+		initialValue *[]string
+		changeValue  *[]string
+	}{
 		{"unchanged non-empty", &[]string{"value"}, &[]string{"value"}},
 		{"unchanged empty", &[]string{}, &[]string{}},
 		{"unchanged null", nil, nil},
@@ -1304,11 +1305,18 @@ func TestDetailedDiffSet(t *testing.T) {
 		detailedDiff map[string]any
 	}
 
-	runTest := func(t *testing.T, schema schema.Resource, valueMaker func(*[]string) cty.Value, val1 *[]string, val2 *[]string) {
+	runTest := func(
+		t *testing.T, schema schema.Resource, valueMaker func(*[]string) cty.Value, val1 *[]string, val2 *[]string,
+		disableAccurateBridgePreviews bool,
+	) {
 		initialValue := valueMaker(val1)
 		changeValue := valueMaker(val2)
 
-		diff := crosstests.Diff(t, &schema, map[string]cty.Value{"test": initialValue}, map[string]cty.Value{"test": changeValue})
+		opts := []crosstests.DiffOption{}
+		if disableAccurateBridgePreviews {
+			opts = append(opts, crosstests.DiffDisableAccurateBridgePreviews())
+		}
+		diff := crosstests.Diff(t, &schema, map[string]cty.Value{"test": initialValue}, map[string]cty.Value{"test": changeValue}, opts...)
 
 		autogold.ExpectFile(t, testOutput{
 			initialValue: val1,
@@ -1325,7 +1333,21 @@ func TestDetailedDiffSet(t *testing.T) {
 			for _, scenario := range scenarios {
 				t.Run(scenario.name, func(t *testing.T) {
 					t.Parallel()
-					runTest(t, schemaValueMakerPair.res, schemaValueMakerPair.valueMaker, scenario.initialValue, scenario.changeValue)
+					runTest(t, schemaValueMakerPair.res, schemaValueMakerPair.valueMaker, scenario.initialValue, scenario.changeValue, false)
+				})
+			}
+		})
+	}
+
+	for _, schemaValueMakerPair := range computedSchemaValueMakerPairs {
+		t.Run(schemaValueMakerPair.name, func(t *testing.T) {
+			t.Parallel()
+			for _, scenario := range scenarios {
+				t.Run(scenario.name, func(t *testing.T) {
+					t.Parallel()
+					runTest(
+						t, schemaValueMakerPair.res, schemaValueMakerPair.valueMaker, scenario.initialValue, scenario.changeValue, true,
+					)
 				})
 			}
 		})
