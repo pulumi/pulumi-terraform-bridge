@@ -22,7 +22,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
 
-	helper "github.com/pulumi/pulumi-terraform-bridge/dynamic/internal/testing"
+	helper "github.com/pulumi/pulumi-terraform-bridge/v3/dynamic/internal/testing"
 	pfbridge "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
 )
 

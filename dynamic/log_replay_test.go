@@ -11,9 +11,9 @@ import (
 	"github.com/pulumi/providertest/pulumitest/opttest"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi-terraform-bridge/dynamic/internal/shim/grpcutil"
-	v6shim "github.com/pulumi/pulumi-terraform-bridge/dynamic/internal/shim/protov6"
-	"github.com/pulumi/pulumi-terraform-bridge/dynamic/parameterize"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/dynamic/internal/shim/grpcutil"
+	v6shim "github.com/pulumi/pulumi-terraform-bridge/v3/dynamic/internal/shim/protov6"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/dynamic/parameterize"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/pulcheck"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )

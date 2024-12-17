@@ -1,7 +1,7 @@
 build: bin
 	go build \
 		-o bin/pulumi-resource-terraform-provider \
-		github.com/pulumi/pulumi-terraform-bridge/dynamic
+		github.com/pulumi/pulumi-terraform-bridge/v3/dynamic
 
 install: build
 	pulumi plugin rm resource terraform-provider --all --yes

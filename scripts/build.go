@@ -147,9 +147,6 @@ func findGoModuleRoots() (result []string) {
 	return []string{
 		".",
 		"tools",
-		"dynamic",
-		"dynamic/test/pfprovider",
-		"dynamic/internal/shim",
 		"pkg/pf/tests/testdatagen/genrandom",
 	}
 }
