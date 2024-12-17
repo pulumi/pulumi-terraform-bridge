@@ -18,11 +18,12 @@ import (
 	"strings"
 	"testing"
 
+	sdkv2schema "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/walk"
@@ -456,4 +457,50 @@ func TestTraversePropertiesSchemaInfo(t *testing.T) {
 	assert.Nil(t, prov.Resources["example_resource"].
 		Fields["nested_resources"].Elem.
 		Fields["configuration"])
+}
+
+func TestLookupSchemas(t *testing.T) {
+	t.Parallel()
+
+	t.Run("string schema", func(t *testing.T) {
+		schemaMap := shimv2.NewSchemaMap(map[string]*sdkv2schema.Schema{
+			"foo": {Type: sdkv2schema.TypeString},
+		})
+
+		sch, _, err := LookupSchemas(walk.NewSchemaPath().GetAttr("foo"), schemaMap, nil)
+		require.NoError(t, err)
+		require.Equal(t, shim.TypeString, sch.Type())
+	})
+
+	t.Run("list schema", func(t *testing.T) {
+		tfs := shimv2.NewSchemaMap(map[string]*sdkv2schema.Schema{
+			"myList": {
+				Type:     sdkv2schema.TypeList,
+				Optional: true,
+				Elem: &sdkv2schema.Schema{
+					Type: sdkv2schema.TypeString,
+				},
+			},
+		})
+
+		sch, _, err := LookupSchemas(walk.NewSchemaPath().GetAttr("myList"), tfs, nil)
+		require.NoError(t, err)
+		require.Equal(t, shim.TypeList, sch.Type())
+	})
+
+	t.Run("list element schema", func(t *testing.T) {
+		tfs := shimv2.NewSchemaMap(map[string]*sdkv2schema.Schema{
+			"myList": {
+				Type:     sdkv2schema.TypeList,
+				Optional: true,
+				Elem: &sdkv2schema.Schema{
+					Type: sdkv2schema.TypeString,
+				},
+			},
+		})
+
+		sch, _, err := LookupSchemas(walk.NewSchemaPath().GetAttr("myList").Element(), tfs, nil)
+		require.NoError(t, err)
+		require.Equal(t, shim.TypeString, sch.Type())
+	})
 }
