@@ -2215,7 +2215,7 @@ func TestDetailedDiffSetBlock(t *testing.T) {
 				runDetailedDiffTest(t,
 					propertyMapElems("val1"),
 					propertyMapElems("val2"), tfs, ps, map[string]*pulumirpc.PropertyDiff{
-						"foo[0]": {Kind: update},
+						"foo[0].bar": {Kind: update},
 					},
 				)
 			})
@@ -2297,7 +2297,7 @@ func TestDetailedDiffSetBlock(t *testing.T) {
 					propertyMapElems("val1", "val2", "val3"),
 					propertyMapElems("val1", "val4", "val3"), tfs, ps,
 					map[string]*pulumirpc.PropertyDiff{
-						"foo[1]": {Kind: update},
+						"foo[1].bar": {Kind: update},
 					},
 				)
 			})
@@ -2756,121 +2756,6 @@ func TestContainsReplace(t *testing.T) {
 	require.False(t, containsReplace(map[string]*pulumirpc.PropertyDiff{}))
 }
 
-func TestMakeSetDiffResult(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name         string
-		path         propertyPath
-		removed      []arrayIndex
-		added        []arrayIndex
-		isForceNew   bool
-		expectedDiff map[detailedDiffKey]*pulumirpc.PropertyDiff
-	}{
-		{
-			name:         "empty changes",
-			path:         newPropertyPath("test"),
-			removed:      []arrayIndex{},
-			added:        []arrayIndex{},
-			isForceNew:   false,
-			expectedDiff: map[detailedDiffKey]*pulumirpc.PropertyDiff{},
-		},
-		{
-			name:       "single addition",
-			path:       newPropertyPath("test"),
-			removed:    []arrayIndex{},
-			added:      []arrayIndex{0},
-			isForceNew: false,
-			expectedDiff: map[detailedDiffKey]*pulumirpc.PropertyDiff{
-				"test[0]": {Kind: pulumirpc.PropertyDiff_ADD},
-			},
-		},
-		{
-			name:       "single deletion",
-			path:       newPropertyPath("test"),
-			removed:    []arrayIndex{0},
-			added:      []arrayIndex{},
-			isForceNew: false,
-			expectedDiff: map[detailedDiffKey]*pulumirpc.PropertyDiff{
-				"test[0]": {Kind: pulumirpc.PropertyDiff_DELETE},
-			},
-		},
-		{
-			name:       "single update (same index)",
-			path:       newPropertyPath("test"),
-			removed:    []arrayIndex{0},
-			added:      []arrayIndex{0},
-			isForceNew: false,
-			expectedDiff: map[detailedDiffKey]*pulumirpc.PropertyDiff{
-				"test[0]": {Kind: pulumirpc.PropertyDiff_UPDATE},
-			},
-		},
-		{
-			name:       "multiple changes",
-			path:       newPropertyPath("test"),
-			removed:    []arrayIndex{0, 2},
-			added:      []arrayIndex{1, 3},
-			isForceNew: false,
-			expectedDiff: map[detailedDiffKey]*pulumirpc.PropertyDiff{
-				"test[0]": {Kind: pulumirpc.PropertyDiff_DELETE},
-				"test[1]": {Kind: pulumirpc.PropertyDiff_ADD},
-				"test[2]": {Kind: pulumirpc.PropertyDiff_DELETE},
-				"test[3]": {Kind: pulumirpc.PropertyDiff_ADD},
-			},
-		},
-		{
-			name:       "force new - single addition",
-			path:       newPropertyPath("test"),
-			removed:    []arrayIndex{},
-			added:      []arrayIndex{0},
-			isForceNew: true,
-			expectedDiff: map[detailedDiffKey]*pulumirpc.PropertyDiff{
-				"test[0]": {Kind: pulumirpc.PropertyDiff_ADD_REPLACE},
-			},
-		},
-		{
-			name:       "force new - single deletion",
-			path:       newPropertyPath("test"),
-			removed:    []arrayIndex{0},
-			added:      []arrayIndex{},
-			isForceNew: true,
-			expectedDiff: map[detailedDiffKey]*pulumirpc.PropertyDiff{
-				"test[0]": {Kind: pulumirpc.PropertyDiff_DELETE_REPLACE},
-			},
-		},
-		{
-			name:       "force new - single update",
-			path:       newPropertyPath("test"),
-			removed:    []arrayIndex{0},
-			added:      []arrayIndex{0},
-			isForceNew: true,
-			expectedDiff: map[detailedDiffKey]*pulumirpc.PropertyDiff{
-				"test[0]": {Kind: pulumirpc.PropertyDiff_UPDATE_REPLACE},
-			},
-		},
-		{
-			name:       "nested path",
-			path:       newPropertyPath("parent").Subpath("child"),
-			removed:    []arrayIndex{0},
-			added:      []arrayIndex{1},
-			isForceNew: false,
-			expectedDiff: map[detailedDiffKey]*pulumirpc.PropertyDiff{
-				"parent.child[0]": {Kind: pulumirpc.PropertyDiff_DELETE},
-				"parent.child[1]": {Kind: pulumirpc.PropertyDiff_ADD},
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			result := makeSetDiffResult(tt.path, tt.removed, tt.added, tt.isForceNew)
-			require.Equal(t, tt.expectedDiff, result)
-		})
-	}
-}
-
 func TestMatchPlanElementsToInputs(t *testing.T) {
 	t.Parallel()
 	tfs := shimv2.NewSchemaMap(map[string]*schema.Schema{
@@ -2890,7 +2775,7 @@ func TestMatchPlanElementsToInputs(t *testing.T) {
 		changedIndices  []arrayIndex
 		plannedState    []resource.PropertyValue
 		newInputs       resource.PropertyMap
-		expectedMatches []arrayIndex
+		expectedMatches map[arrayIndex]arrayIndex
 	}{
 		{
 			name:           "basic matching",
@@ -2906,7 +2791,10 @@ func TestMatchPlanElementsToInputs(t *testing.T) {
 					resource.NewStringProperty("bar"),
 				}),
 			},
-			expectedMatches: []arrayIndex{0, 1},
+			expectedMatches: map[arrayIndex]arrayIndex{
+				0: 0,
+				1: 1,
+			},
 		},
 		{
 			name:           "length mismatch returns nil",
@@ -2937,7 +2825,7 @@ func TestMatchPlanElementsToInputs(t *testing.T) {
 					resource.NewStringProperty("qux"),
 				}),
 			},
-			expectedMatches: []arrayIndex{},
+			expectedMatches: map[arrayIndex]arrayIndex{},
 		},
 		{
 			name:           "missing input path returns empty slice",
@@ -2970,6 +2858,142 @@ func TestMatchPlanElementsToInputs(t *testing.T) {
 			if !reflect.DeepEqual(matches, tt.expectedMatches) {
 				t.Errorf("expected matches %v, got %v", tt.expectedMatches, matches)
 			}
+		})
+	}
+}
+
+func TestMakeSetDiffElementResult(t *testing.T) {
+	t.Parallel()
+
+	// Create a basic differ instance for testing
+	differ := detailedDiffer{
+		ctx: context.Background(),
+		tfs: shimv2.NewSchemaMap(map[string]*schema.Schema{
+			"test_set": {
+				Type: schema.TypeSet,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
+			},
+		}),
+	}
+
+	tests := []struct {
+		name     string
+		path     propertyPath
+		changes  map[arrayIndex]setChange
+		oldList  []resource.PropertyValue
+		newList  []resource.PropertyValue
+		expected map[detailedDiffKey]*pulumirpc.PropertyDiff
+	}{
+		{
+			name: "add element",
+			path: newPropertyPath("test_set"),
+			changes: map[arrayIndex]setChange{
+				0: {
+					oldChanged:   false,
+					newChanged:   true,
+					plannedIndex: 0,
+				},
+			},
+			oldList: []resource.PropertyValue{},
+			newList: []resource.PropertyValue{
+				resource.NewStringProperty("new_value"),
+			},
+			expected: map[detailedDiffKey]*pulumirpc.PropertyDiff{
+				detailedDiffKey("test_set[0]"): {Kind: pulumirpc.PropertyDiff_ADD},
+			},
+		},
+		{
+			name: "delete element",
+			path: newPropertyPath("test_set"),
+			changes: map[arrayIndex]setChange{
+				0: {
+					oldChanged:   true,
+					newChanged:   false,
+					plannedIndex: 0,
+				},
+			},
+			oldList: []resource.PropertyValue{
+				resource.NewStringProperty("old_value"),
+			},
+			newList: []resource.PropertyValue{},
+			expected: map[detailedDiffKey]*pulumirpc.PropertyDiff{
+				detailedDiffKey("test_set[0]"): {Kind: pulumirpc.PropertyDiff_DELETE},
+			},
+		},
+		{
+			name: "update element",
+			path: newPropertyPath("test_set"),
+			changes: map[arrayIndex]setChange{
+				0: {
+					oldChanged:   true,
+					newChanged:   true,
+					plannedIndex: 0,
+				},
+			},
+			oldList: []resource.PropertyValue{
+				resource.NewStringProperty("old_value"),
+			},
+			newList: []resource.PropertyValue{
+				resource.NewStringProperty("new_value"),
+			},
+			expected: map[detailedDiffKey]*pulumirpc.PropertyDiff{
+				detailedDiffKey("test_set[0]"): {Kind: pulumirpc.PropertyDiff_UPDATE},
+			},
+		},
+		{
+			name: "multiple changes",
+			path: newPropertyPath("test_set"),
+			changes: map[arrayIndex]setChange{
+				0: {
+					oldChanged:   true,
+					newChanged:   false,
+					plannedIndex: 0,
+				},
+				1: {
+					oldChanged:   true,
+					newChanged:   true,
+					plannedIndex: 1,
+				},
+				2: {
+					oldChanged:   false,
+					newChanged:   true,
+					plannedIndex: 0,
+				},
+			},
+			oldList: []resource.PropertyValue{
+				resource.NewStringProperty("delete_value"),
+				resource.NewStringProperty("update_old_value"),
+				resource.NewStringProperty("no_change_value"),
+			},
+			newList: []resource.PropertyValue{
+				resource.NewStringProperty("no_change_value"),
+				resource.NewStringProperty("update_new_value"),
+				resource.NewStringProperty("add_value"),
+			},
+			expected: map[detailedDiffKey]*pulumirpc.PropertyDiff{
+				detailedDiffKey("test_set[0]"): {Kind: pulumirpc.PropertyDiff_DELETE},
+				detailedDiffKey("test_set[1]"): {Kind: pulumirpc.PropertyDiff_UPDATE},
+				detailedDiffKey("test_set[2]"): {Kind: pulumirpc.PropertyDiff_ADD},
+			},
+		},
+		{
+			name:     "no changes",
+			path:     newPropertyPath("test_set"),
+			changes:  map[arrayIndex]setChange{},
+			oldList:  []resource.PropertyValue{},
+			newList:  []resource.PropertyValue{},
+			expected: map[detailedDiffKey]*pulumirpc.PropertyDiff{},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			result := differ.makeSetDiffElementResult(tt.path, tt.changes, tt.oldList, tt.newList)
+			require.Equal(t, tt.expected, result)
 		})
 	}
 }
