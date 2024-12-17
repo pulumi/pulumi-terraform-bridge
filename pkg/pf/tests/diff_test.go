@@ -195,7 +195,10 @@ func TestDetailedDiffStringAttribute(t *testing.T) {
 					res := pb.NewResource(pb.NewResourceArgs{
 						ResourceSchema: schema.schema,
 					})
-					diff := crosstests.Diff(t, res, map[string]cty.Value{"key": initialValue}, map[string]cty.Value{"key": changeValue})
+					diff := crosstests.Diff(
+						t, res, map[string]cty.Value{"key": initialValue}, map[string]cty.Value{"key": changeValue},
+						crosstests.DisableAccurateBridgePreview(),
+					)
 
 					autogold.ExpectFile(t, testOutput{
 						initialValue: scenario.initialValue,
