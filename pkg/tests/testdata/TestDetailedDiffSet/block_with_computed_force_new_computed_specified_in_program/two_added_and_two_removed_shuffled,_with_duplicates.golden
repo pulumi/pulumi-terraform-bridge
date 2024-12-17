@@ -10,6 +10,8 @@ tests.testOutput{
 		"val5",
 		"val6",
 		"val2",
+		"val1",
+		"val2",
 	},
 	tfOut: `
 Terraform used the selected providers to generate the following execution
@@ -20,19 +22,23 @@ Terraform will perform the following actions:
 
   # crossprovider_test_res.example will be updated in-place
   ~ resource "crossprovider_test_res" "example" {
-        id = "newid"
+        id = "id"
 
       - test {
-          - nested = "val3" -> null
+          - computed = "non-computed-val3" -> null
+          - nested   = "val3" -> null
         }
       - test {
-          - nested = "val4" -> null
+          - computed = "non-computed-val4" -> null
+          - nested   = "val4" -> null
         }
       + test {
-          + nested = "val5"
+          + computed = "non-computed-val5"
+          + nested   = "val5"
         }
       + test {
-          + nested = "val6"
+          + computed = "non-computed-val6"
+          + nested   = "val6"
         }
 
         # (2 unchanged blocks hidden)
@@ -45,17 +51,16 @@ Plan: 0 to add, 1 to change, 0 to destroy.
   pulumi:pulumi:Stack: (same)
     [urn=urn:pulumi:test::project::pulumi:pulumi:Stack::project-test]
     ~ crossprovider:index/testRes:TestRes: (update)
-        [id=newid]
+        [id=id]
         [urn=urn:pulumi:test::project::crossprovider:index/testRes:TestRes::example]
       ~ tests: [
-          + [1]: {
-                  + nested    : "val5"
-                }
           ~ [2]: {
-                  ~ nested: "val3" => "val6"
+                  ~ computed: "non-computed-val3" => "non-computed-val6"
+                  ~ nested  : "val3" => "val6"
                 }
-          - [3]: {
-                  - nested: "val4"
+          ~ [3]: {
+                  ~ computed: "non-computed-val4" => "non-computed-val2"
+                  ~ nested  : "val4" => "val2"
                 }
         ]
 Resources:
@@ -63,8 +68,9 @@ Resources:
     1 unchanged
 `,
 	detailedDiff: map[string]interface{}{
-		"tests[1]":        map[string]interface{}{},
-		"tests[2].nested": map[string]interface{}{"kind": "UPDATE"},
-		"tests[3]":        map[string]interface{}{"kind": "DELETE"},
+		"tests[2].computed": map[string]interface{}{"kind": "UPDATE"},
+		"tests[2].nested":   map[string]interface{}{"kind": "UPDATE"},
+		"tests[3].computed": map[string]interface{}{"kind": "UPDATE"},
+		"tests[3].nested":   map[string]interface{}{"kind": "UPDATE"},
 	},
 }
