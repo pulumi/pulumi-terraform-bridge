@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"sort"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -187,6 +188,14 @@ func (differ detailedDiffer) getEffectiveType(path walk.SchemaPath) shim.ValueTy
 	return tfs.Type()
 }
 
+func (differ detailedDiffer) isForceNew(path propertyPath) bool {
+	tfs, ps, err := lookupSchemas(path, differ.tfs, differ.ps)
+	if err != nil {
+		return false
+	}
+	return isForceNew(tfs, ps)
+}
+
 type (
 	setHash    int
 	arrayIndex int
@@ -310,7 +319,7 @@ func (differ detailedDiffer) makePropDiff(
 	case shim.TypeList:
 		return differ.makeListDiff(path, old, new)
 	case shim.TypeSet:
-		return differ.makeSetDiff(path, old, new)
+		return differ.makeSetDiffAlt(path, old, new)
 	case shim.TypeMap:
 		// Note that TF objects are represented as maps when returned by LookupSchemas
 		return differ.makeMapDiff(path, old, new)
@@ -350,30 +359,35 @@ func (differ detailedDiffer) makeListDiff(
 
 func computeSetHashChanges(
 	oldIdentities, newIdentities hashIndexMap,
-) (removed, added hashIndexMap) {
-	removed = hashIndexMap{}
-	added = hashIndexMap{}
+) (removed, added []arrayIndex) {
+	removed = []arrayIndex{}
+	added = []arrayIndex{}
 
 	for elementHash := range oldIdentities {
 		if _, ok := newIdentities[elementHash]; !ok {
-			removed[elementHash] = oldIdentities[elementHash]
+			removed = append(removed, oldIdentities[elementHash])
 		}
 	}
 
 	for elementHash := range newIdentities {
 		if _, ok := oldIdentities[elementHash]; !ok {
-			added[elementHash] = newIdentities[elementHash]
+			added = append(added, newIdentities[elementHash])
 		}
 	}
+
+	sort.Slice(removed, func(i, j int) bool {
+		return removed[i] < removed[j]
+	})
+	sort.Slice(added, func(i, j int) bool {
+		return added[i] < added[j]
+	})
 
 	return
 }
 
-func (differ detailedDiffer) matchNewIndicesToInputs(
-	path propertyPath, changedIdentities hashIndexMap,
-) hashIndexMap {
-	matched := hashIndexMap{}
-
+func (differ detailedDiffer) matchPlanElementsToInputs(
+	path propertyPath, changedPlanIndices []arrayIndex, plannedState []resource.PropertyValue,
+) []arrayIndex {
 	newInputsList := []resource.PropertyValue{}
 
 	newInputs, newInputsOk := path.GetFromMap(differ.newInputs)
@@ -381,49 +395,38 @@ func (differ detailedDiffer) matchNewIndicesToInputs(
 		newInputsList = newInputs.ArrayValue()
 	}
 
-	inputIdentities := hashIndexMap{}
-
-	if !pathContainsComputed(path, differ.tfs, differ.ps) {
-		// The inputs are only safe to hash if the schema has no computed properties
-		inputIdentities = differ.calculateSetHashIndexMap(path, newInputsList)
+	if len(newInputsList) != len(plannedState) {
+		// If the number of inputs doesn't match the number of planned state elements,
+		// we can't match the elements to the inputs.
+		return nil
 	}
 
-	for elementHash, newStateIndex := range changedIdentities {
-		if inputIndex, ok := inputIdentities[elementHash]; ok {
-			matched[elementHash] = inputIndex
-		} else {
-			GetLogger(differ.ctx).Warn(fmt.Sprintf(
-				"Additional changes detected in %s, the displayed diff might be inaccurate",
-				path.String()))
-			matched[elementHash] = newStateIndex
+	matched := []arrayIndex{}
+	used := make(map[int]bool, len(newInputsList))
+	for k := range used {
+		used[k] = false
+	}
+
+	for _, index := range changedPlanIndices {
+		for i, input := range newInputsList {
+			if used[i] {
+				// This input has already been used to match an element in the planned state.
+				continue
+			}
+
+			match := validInputsFromPlan(path.Index(int(index)), input, plannedState[index], differ.tfs, differ.ps)
+			if match {
+				matched = append(matched, arrayIndex(i))
+				used[i] = true
+				break
+			}
 		}
 	}
 
 	return matched
 }
 
-type hashPair struct {
-	oldHash setHash
-	newHash setHash
-}
-
-func buildChangesIndexMap(added, removed hashIndexMap) map[arrayIndex]hashPair {
-	changes := map[arrayIndex]hashPair{}
-	for hash, index := range added {
-		changes[index] = hashPair{oldHash: -1, newHash: hash}
-	}
-	for hash, index := range removed {
-		if el, ok := changes[index]; !ok {
-			changes[index] = hashPair{oldHash: hash, newHash: -1}
-		} else {
-			el.oldHash = hash
-			changes[index] = el
-		}
-	}
-	return changes
-}
-
-func (differ detailedDiffer) makeSetDiff(
+func (differ detailedDiffer) makeSetDiffAlt(
 	path propertyPath, old, new resource.PropertyValue,
 ) map[detailedDiffKey]*pulumirpc.PropertyDiff {
 	diff := make(map[detailedDiffKey]*pulumirpc.PropertyDiff)
@@ -435,27 +438,66 @@ func (differ detailedDiffer) makeSetDiff(
 
 	removed, added := computeSetHashChanges(oldIdentities, newIdentities)
 
+	isSetForceNew := differ.isForceNew(path)
+
 	// We need to match the new indices to the inputs to ensure that the identity of the
 	// elements is preserved - this is necessary since the planning process can reorder
 	// the elements.
-	addedInputs := differ.matchNewIndicesToInputs(path, added)
-
-	changes := buildChangesIndexMap(addedInputs, removed)
-	for index, hashes := range changes {
-		oldVal := resource.NewNullProperty()
-		if removedIndex, ok := removed[hashes.oldHash]; ok {
-			oldVal = oldList[removedIndex]
+	matchedIndices := differ.matchPlanElementsToInputs(path, added, newList)
+	if matchedIndices == nil || len(matchedIndices) != len(added) {
+		// If we can't match the elements to the inputs, we will return a diff against the whole set.
+		if isSetForceNew {
+			diff[path.Key()] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE_REPLACE}
+		} else {
+			diff[path.Key()] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE}
 		}
-		newVal := resource.NewNullProperty()
-		if addedIndex, ok := added[hashes.newHash]; ok {
-			newVal = newList[addedIndex]
-		}
+		return diff
+	}
 
-		elemDiff := differ.makePropDiff(path.Index(int(index)), oldVal, newVal)
-		for subKey, subDiff := range elemDiff {
-			diff[subKey] = subDiff
+	type setChange struct {
+		oldChanged bool
+		newChanged bool
+	}
+
+	// We need to build a map of what changed for each index in order to present the
+	// correct diff to the engine since it always uses new inputs and old state
+	// to display previews.
+	changes := map[arrayIndex]setChange{}
+	for _, index := range removed {
+		changes[index] = setChange{oldChanged: true, newChanged: false}
+	}
+	for _, index := range added {
+		if _, ok := changes[index]; !ok {
+			changes[index] = setChange{oldChanged: false, newChanged: true}
+		} else {
+			changes[index] = setChange{oldChanged: true, newChanged: true}
 		}
 	}
+
+	for index, change := range changes {
+		if !change.oldChanged && !change.newChanged {
+			continue
+		} else if change.oldChanged && change.newChanged {
+			if isSetForceNew {
+				diff[path.Index(int(index)).Key()] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE_REPLACE}
+			} else {
+				diff[path.Index(int(index)).Key()] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE}
+			}
+		} else if change.oldChanged {
+			if isSetForceNew {
+				diff[path.Index(int(index)).Key()] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_DELETE_REPLACE}
+			} else {
+				diff[path.Index(int(index)).Key()] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_DELETE}
+			}
+		} else if change.newChanged {
+			if isSetForceNew {
+				diff[path.Index(int(index)).Key()] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_ADD_REPLACE}
+			} else {
+				diff[path.Index(int(index)).Key()] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_ADD}
+			}
+		}
+	}
+
 	return diff
 }
 
