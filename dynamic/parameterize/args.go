@@ -40,7 +40,6 @@ type RemoteArgs struct {
 	Name string
 	// Version is the (possibly empty) version constraint on the provider.
 	Version string
-
 	// Docs indicates if full schema documentation should be generated.
 	Docs bool
 	// IndexDocOutDir allows us to set a specific directory to write `_index.md` to.
@@ -51,7 +50,6 @@ type RemoteArgs struct {
 type LocalArgs struct {
 	// Path is the path to the provider binary. It can be relative or absolute.
 	Path string
-
 	// UpstreamRepoPath (if provided) is the local path to the dynamically bridged Terraform provider's repo.
 	//
 	// If set, full documentation will be generated for the provider.
@@ -89,6 +87,7 @@ func ParseArgs(ctx context.Context, a []string) (Args, error) {
 			errors.Join(
 				cmd.Flags().MarkHidden("fullDocs"),
 				cmd.Flags().MarkHidden("upstreamRepoPath"),
+				cmd.Flags().MarkHidden("indexDocOutDir"),
 			),
 			"impossible - these are static values and should never fail",
 		)
