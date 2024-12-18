@@ -233,6 +233,16 @@ func isPlanCompatibleWithInputs(
 ) bool {
 	abortErr := errors.New("abort")
 	visitor := func(subpath resource.PropertyPath, planSubVal resource.PropertyValue) (resource.PropertyValue, error) {
+		// Do not compare and do not descend into internal properties.
+		{
+			lastPathStep := subpath[len(subpath)-1]
+			if stepStr, ok := lastPathStep.(string); ok {
+				if resource.IsInternalPropertyKey(resource.PropertyKey(stepStr)) {
+					return planSubVal, propertyvalue.LimitDescentError{}
+				}
+			}
+		}
+
 		tfs, _, err := lookupSchemas(propertyPath(subpath), tfs, ps)
 		if err != nil {
 			// TODO log
@@ -293,6 +303,16 @@ func isInputCompatibleWithPlan(
 ) bool {
 	abortErr := errors.New("abort")
 	visitor := func(subpath resource.PropertyPath, inputsSubVal resource.PropertyValue) (resource.PropertyValue, error) {
+		// Do not compare and do not descend into internal properties.
+		{
+			lastPathStep := subpath[len(subpath)-1]
+			if stepStr, ok := lastPathStep.(string); ok {
+				if resource.IsInternalPropertyKey(resource.PropertyKey(stepStr)) {
+					return inputsSubVal, propertyvalue.LimitDescentError{}
+				}
+			}
+		}
+
 		tfs, _, err := lookupSchemas(propertyPath(subpath), tfs, ps)
 		if err != nil {
 			// TODO log

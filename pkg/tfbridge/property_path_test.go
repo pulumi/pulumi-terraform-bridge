@@ -508,6 +508,38 @@ func TestValidInputsFromPlan(t *testing.T) {
 			},
 			want: true,
 		},
+		{
+			name: "internal property ignored",
+			path: newPropertyPath("obj"),
+			inputValue: resource.NewArrayProperty(
+				[]resource.PropertyValue{
+					resource.NewObjectProperty(resource.PropertyMap{
+						"nested": resource.NewStringProperty("bar"),
+						"__defaults": resource.NewArrayProperty([]resource.PropertyValue{
+							resource.NewStringProperty("foo"),
+						}),
+					}),
+				},
+			),
+			planValue: resource.NewArrayProperty(
+				[]resource.PropertyValue{
+					resource.NewObjectProperty(resource.PropertyMap{
+						"nested": resource.NewStringProperty("bar"),
+					}),
+				},
+			),
+			sdkv2Schema: map[string]*schema.Schema{
+				"obj": {
+					Type: schema.TypeList,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"nested": {Type: schema.TypeString},
+						},
+					},
+				},
+			},
+			want: true,
+		},
 	}
 
 	for _, tt := range tests {
