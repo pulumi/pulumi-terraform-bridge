@@ -40,40 +40,46 @@ type RemoteArgs struct {
 	Name string
 	// Version is the (possibly empty) version constraint on the provider.
 	Version string
-
 	// Docs indicates if full schema documentation should be generated.
 	Docs bool
+	// IndexDocOutDir allows us to set a specific directory to write `_index.md` to.
+	IndexDocOutDir string
 }
 
 // LocalArgs represents a local TF provider referenced by path.
 type LocalArgs struct {
 	// Path is the path to the provider binary. It can be relative or absolute.
 	Path string
-
 	// UpstreamRepoPath (if provided) is the local path to the dynamically bridged Terraform provider's repo.
 	//
 	// If set, full documentation will be generated for the provider.
 	// If not set, only documentation from the TF provider's schema will be used.
 	UpstreamRepoPath string
+	// IndexDocOutDir allows us to set a specific directory to write `_index.md` to.
+	IndexDocOutDir string
 }
 
 func ParseArgs(ctx context.Context, a []string) (Args, error) {
 	var args Args
 	var fullDocs bool
 	var upstreamRepoPath string
+	var indexDocOutDir string
 	cmd := cobra.Command{
 		Use: "./local | remote version",
 		RunE: func(cmd *cobra.Command, a []string) error {
 			var err error
-			args, err = parseArgs(cmd.Context(), a, fullDocs, upstreamRepoPath)
+			args, err = parseArgs(cmd.Context(), a, fullDocs, upstreamRepoPath, indexDocOutDir)
 			return err
 		},
 		Args: cobra.RangeArgs(1, 2),
 	}
+
 	cmd.Flags().BoolVar(&fullDocs, "fullDocs", false,
 		"Generate a schema with full docs, at the expense of speed")
 	cmd.Flags().StringVar(&upstreamRepoPath, "upstreamRepoPath", "",
 		"Specify a local file path to the root of the Git repository of the provider being dynamically bridged")
+	cmd.Flags().StringVar(&indexDocOutDir, "indexDocOutDir", "",
+		"Specify a local output directory for the provider's _index.md file")
 
 	// We hide docs flags since they are not intended for end users, and they may not be stable.
 	if !env.Dev.Value() {
@@ -81,6 +87,7 @@ func ParseArgs(ctx context.Context, a []string) (Args, error) {
 			errors.Join(
 				cmd.Flags().MarkHidden("fullDocs"),
 				cmd.Flags().MarkHidden("upstreamRepoPath"),
+				cmd.Flags().MarkHidden("indexDocOutDir"),
 			),
 			"impossible - these are static values and should never fail",
 		)
@@ -106,7 +113,7 @@ func ParseArgs(ctx context.Context, a []string) (Args, error) {
 	return args, cmd.ExecuteContext(ctx)
 }
 
-func parseArgs(_ context.Context, args []string, fullDocs bool, upstreamRepoPath string) (Args, error) {
+func parseArgs(_ context.Context, args []string, fullDocs bool, upstreamRepoPath, indexDocOutDir string) (Args, error) {
 	// If we see a local prefix (starts with '.' or '/'), parse args for a local provider
 	if strings.HasPrefix(args[0], ".") || strings.HasPrefix(args[0], "/") {
 		if len(args) > 1 {
@@ -119,7 +126,13 @@ func parseArgs(_ context.Context, args []string, fullDocs bool, upstreamRepoPath
 			}
 			return Args{}, errors.New(msg)
 		}
-		return Args{Local: &LocalArgs{Path: args[0], UpstreamRepoPath: upstreamRepoPath}}, nil
+		return Args{
+			Local: &LocalArgs{
+				Path:             args[0],
+				UpstreamRepoPath: upstreamRepoPath,
+				IndexDocOutDir:   indexDocOutDir,
+			},
+		}, nil
 	}
 
 	if upstreamRepoPath != "" {
@@ -136,8 +149,9 @@ func parseArgs(_ context.Context, args []string, fullDocs bool, upstreamRepoPath
 	}
 
 	return Args{Remote: &RemoteArgs{
-		Name:    args[0],
-		Version: version,
-		Docs:    fullDocs,
+		Name:           args[0],
+		Version:        version,
+		Docs:           fullDocs,
+		IndexDocOutDir: indexDocOutDir,
 	}}, nil
 }

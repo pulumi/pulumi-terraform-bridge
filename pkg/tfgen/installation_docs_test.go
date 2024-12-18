@@ -6,6 +6,8 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/hexops/autogold/v2"
+
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -102,6 +104,7 @@ func TestPlainDocsParser(t *testing.T) {
 					Golang: &tfbridge.GolangInfo{
 						ImportBasePath: "github.com/pulumi/pulumi-libvirt/sdk/go/libvirt",
 					},
+					Repository: "https://github.com/pulumi/pulumi-libvirt",
 				},
 				cliConverterState: &cliConverter{
 					info: p,
@@ -253,35 +256,53 @@ func TestWriteInstallationInstructions(t *testing.T) {
 		goImportBasePath string
 		displayName      string
 		packageName      string
-		expected         string
+		expected         autogold.Value
+		ghOrg            string
+		repository       string
 	}
 
 	tests := []testCase{
 		{
 			name: "Generates Install Information From Package Name",
-			expected: "## Installation\n\n" +
+			expected: autogold.Expect("## Installation\n\n" +
 				"The testcase provider is available as a package in all Pulumi languages:\n\n" +
 				"* JavaScript/TypeScript: [`@pulumi/testcase`](https://www.npmjs.com/package/@pulumi/testcase)\n" +
 				"* Python: [`pulumi-testcase`](https://pypi.org/project/pulumi-testcase/)\n" +
 				"* Go: [`github.com/pulumi/pulumi-testcase/sdk/v3/go/pulumi-testcase`](https://github.com/pulumi/pulumi-testcase)\n" +
 				"* .NET: [`Pulumi.Testcase`](https://www.nuget.org/packages/Pulumi.Testcase)\n" +
-				"* Java: [`com.pulumi/testcase`](https://central.sonatype.com/artifact/com.pulumi/testcase)\n\n",
+				"* Java: [`com.pulumi/testcase`](https://central.sonatype.com/artifact/com.pulumi/testcase)\n\n"),
 			goImportBasePath: "github.com/pulumi/pulumi-testcase/sdk/v3/go/pulumi-testcase",
 			displayName:      "testcase",
 			packageName:      "testcase",
+			repository:       "pulumi-testcase",
+			ghOrg:            "pulumi",
 		},
 		{
 			name: "Generates Install Information From Display And Package Names",
-			expected: "## Installation\n\n" +
+			expected: autogold.Expect("## Installation\n\n" +
 				"The Test Case provider is available as a package in all Pulumi languages:\n\n" +
 				"* JavaScript/TypeScript: [`@pulumi/testcase`](https://www.npmjs.com/package/@pulumi/testcase)\n" +
 				"* Python: [`pulumi-testcase`](https://pypi.org/project/pulumi-testcase/)\n" +
 				"* Go: [`github.com/pulumi/pulumi-testcase/sdk/v3/go/pulumi-testcase`](https://github.com/pulumi/pulumi-testcase)\n" +
 				"* .NET: [`Pulumi.Testcase`](https://www.nuget.org/packages/Pulumi.Testcase)\n" +
-				"* Java: [`com.pulumi/testcase`](https://central.sonatype.com/artifact/com.pulumi/testcase)\n\n",
+				"* Java: [`com.pulumi/testcase`](https://central.sonatype.com/artifact/com.pulumi/testcase)\n\n"),
 			goImportBasePath: "github.com/pulumi/pulumi-testcase/sdk/v3/go/pulumi-testcase",
 			displayName:      "Test Case",
 			packageName:      "testcase",
+			repository:       "pulumi-testcase",
+			ghOrg:            "pulumi",
+		},
+		{
+			name: "Generates Generation Instruction For Dynamically Bridged Provider Using GitHub Org And Source Repo",
+			expected: autogold.Expect("## Generate Provider\n\n" +
+				"The Test Case provider must be installed as a Local Package by following the " +
+				"[instructions for Any Terraform Provider](https://www.pulumi.com/registry/packages/terraform-provider/):\n\n" +
+				"```bash\npulumi package add terraform-provider unicorncorp/testcase\n```\n"),
+			goImportBasePath: "github.com/pulumi/pulumi-testcase/sdk/v3/go/pulumi-testcase",
+			displayName:      "Test Case",
+			packageName:      "testcase",
+			repository:       "terraform-provider-testcase",
+			ghOrg:            "unicorncorp",
 		},
 	}
 
@@ -292,8 +313,8 @@ func TestWriteInstallationInstructions(t *testing.T) {
 				t.Skipf("Skipping on Windows due to a test setup issue")
 			}
 			t.Parallel()
-			actual := writeInstallationInstructions(tt.goImportBasePath, tt.displayName, tt.packageName)
-			assert.Equal(t, tt.expected, actual)
+			actual := writeInstallationInstructions(tt.goImportBasePath, tt.displayName, tt.packageName, tt.ghOrg, tt.repository)
+			tt.expected.Equal(t, actual)
 		})
 	}
 }
