@@ -58,87 +58,49 @@ func TransformPropertyValue(
 	transformer func(resource.PropertyPath, resource.PropertyValue) (resource.PropertyValue, error),
 	value resource.PropertyValue,
 ) (resource.PropertyValue, error) {
-	switch {
-	case value.IsArray():
-		// preserve nil arrays
-		if !isNilArray(value) {
-			tvs := []resource.PropertyValue{}
-			for i, v := range value.ArrayValue() {
-				tv, err := TransformPropertyValue(extendPath(path, i), transformer, v)
-				if err != nil {
-					return resource.NewNullProperty(), err
-				}
-				tvs = append(tvs, tv)
+	return TransformPropertyValueDirectional(
+		path, func(path resource.PropertyPath, value resource.PropertyValue, entering bool) (resource.PropertyValue, error) {
+			if !entering {
+				return transformer(path, value)
 			}
-			value = resource.NewArrayProperty(tvs)
-		}
-	case value.IsObject():
-		// preserve nil objects
-		if !isNilObject(value) {
-			pm := make(resource.PropertyMap)
-			for k, v := range value.ObjectValue() {
-				tv, err := TransformPropertyValue(extendPath(path, string(k)), transformer, v)
-				if err != nil {
-					return resource.NewNullProperty(), err
-				}
-				pm[k] = tv
-			}
-			value = resource.NewObjectProperty(pm)
-		}
-	case value.IsOutput():
-		o := value.OutputValue()
-		te, err := TransformPropertyValue(path, transformer, o.Element)
-		if err != nil {
-			return resource.NewNullProperty(), err
-		}
-		value = resource.NewOutputProperty(resource.Output{
-			Element:      te,
-			Known:        o.Known,
-			Secret:       o.Secret,
-			Dependencies: o.Dependencies,
-		})
-	case value.IsSecret():
-		s := value.SecretValue()
-		te, err := TransformPropertyValue(path, transformer, s.Element)
-		if err != nil {
-			return resource.NewNullProperty(), err
-		}
-		value = resource.NewSecretProperty(&resource.Secret{
-			Element: te,
-		})
-	}
-	return transformer(path, value)
+			return value, nil
+		}, value,
+	)
 }
 
-type LimitDescentError struct{}
+type SkipChildrenError struct{}
 
-func (LimitDescentError) Error() string {
-	return "limit descent"
+func (SkipChildrenError) Error() string {
+	return "skip children"
 }
 
-// TransformPropertyValueLimitDescent is a variant of TransformPropertyValue that allows the transformer
-// to return a LimitDescentError to indicate that the recursion should not descend into the value without
-// aborting the whole transformation.
-func TransformPropertyValueLimitDescent(
+type TransformerDirectional = func(
+	resource.PropertyPath, resource.PropertyValue, bool,
+) (resource.PropertyValue, error)
+
+// TransformPropertyValueDirectional is a variant of TransformPropertyValue that allows the transformer
+// to visit nodes both on the way down and on the way up.
+//
+// The transformer can return a SkipChildrenError to indicate that the recursion should not descend into the value.
+func TransformPropertyValueDirectional(
 	path resource.PropertyPath,
-	transformer func(resource.PropertyPath, resource.PropertyValue) (resource.PropertyValue, error),
+	transformer TransformerDirectional,
 	value resource.PropertyValue,
 ) (resource.PropertyValue, error) {
-	value, err := transformer(path, value)
+	value, err := transformer(path, value, true)
 	if err != nil {
-		if errors.Is(err, LimitDescentError{}) {
+		if errors.Is(err, SkipChildrenError{}) {
 			return value, nil
 		}
-		return resource.NewNullProperty(), err
+		return value, err
 	}
-
 	switch {
 	case value.IsArray():
 		// preserve nil arrays
 		if !isNilArray(value) {
 			tvs := []resource.PropertyValue{}
 			for i, v := range value.ArrayValue() {
-				tv, err := TransformPropertyValueLimitDescent(extendPath(path, i), transformer, v)
+				tv, err := TransformPropertyValueDirectional(extendPath(path, i), transformer, v)
 				if err != nil {
 					return resource.NewNullProperty(), err
 				}
@@ -151,7 +113,7 @@ func TransformPropertyValueLimitDescent(
 		if !isNilObject(value) {
 			pm := make(resource.PropertyMap)
 			for k, v := range value.ObjectValue() {
-				tv, err := TransformPropertyValueLimitDescent(extendPath(path, string(k)), transformer, v)
+				tv, err := TransformPropertyValueDirectional(extendPath(path, string(k)), transformer, v)
 				if err != nil {
 					return resource.NewNullProperty(), err
 				}
@@ -161,7 +123,7 @@ func TransformPropertyValueLimitDescent(
 		}
 	case value.IsOutput():
 		o := value.OutputValue()
-		te, err := TransformPropertyValueLimitDescent(path, transformer, o.Element)
+		te, err := TransformPropertyValueDirectional(path, transformer, o.Element)
 		if err != nil {
 			return resource.NewNullProperty(), err
 		}
@@ -173,7 +135,7 @@ func TransformPropertyValueLimitDescent(
 		})
 	case value.IsSecret():
 		s := value.SecretValue()
-		te, err := TransformPropertyValueLimitDescent(path, transformer, s.Element)
+		te, err := TransformPropertyValueDirectional(path, transformer, s.Element)
 		if err != nil {
 			return resource.NewNullProperty(), err
 		}
@@ -181,8 +143,7 @@ func TransformPropertyValueLimitDescent(
 			Element: te,
 		})
 	}
-
-	return value, nil
+	return transformer(path, value, false)
 }
 
 // Removes any resource.NewSecretProperty wrappers. Removes Secret: true flags from any first-class outputs.

@@ -90,19 +90,23 @@ func TestTransformPreservesNilObjects(t *testing.T) {
 	require.Nil(t, result.ObjectValue())
 }
 
-func TestTransformPropertyValueLimitDescent(t *testing.T) {
+func TestTransformPropertyValueDirectional(t *testing.T) {
 	t.Parallel()
 	t.Run("simple value transformation", func(t *testing.T) {
 		t.Parallel()
 		input := resource.NewStringProperty("hello")
-		transformer := func(_ resource.PropertyPath, v resource.PropertyValue) (resource.PropertyValue, error) {
-			if v.IsString() {
-				return resource.NewStringProperty(v.StringValue() + " world"), nil
+		transformer := func(
+			_ resource.PropertyPath, v resource.PropertyValue, entering bool,
+		) (resource.PropertyValue, error) {
+			if entering {
+				if v.IsString() {
+					return resource.NewStringProperty(v.StringValue() + " world"), nil
+				}
 			}
 			return v, nil
 		}
 
-		result, err := TransformPropertyValueLimitDescent(nil, transformer, input)
+		result, err := TransformPropertyValueDirectional(nil, transformer, input)
 		require.NoError(t, err)
 		require.Equal(t, "hello world", result.StringValue())
 	})
@@ -116,17 +120,21 @@ func TestTransformPropertyValueLimitDescent(t *testing.T) {
 			"string": resource.NewStringProperty("should"),
 		})
 
-		transformer := func(_ resource.PropertyPath, v resource.PropertyValue) (resource.PropertyValue, error) {
-			if v.IsArray() {
-				return v, LimitDescentError{}
-			}
-			if v.IsString() {
-				return resource.NewStringProperty(v.StringValue() + " transformed"), nil
+		transformer := func(
+			_ resource.PropertyPath, v resource.PropertyValue, entering bool,
+		) (resource.PropertyValue, error) {
+			if entering {
+				if v.IsArray() {
+					return v, SkipChildrenError{}
+				}
+				if v.IsString() {
+					return resource.NewStringProperty(v.StringValue() + " transformed"), nil
+				}
 			}
 			return v, nil
 		}
 
-		result, err := TransformPropertyValueLimitDescent(nil, transformer, input)
+		result, err := TransformPropertyValueDirectional(nil, transformer, input)
 		require.NoError(t, err)
 		require.True(t, result.IsObject())
 		require.Equal(t, "should transformed", result.ObjectValue()["string"].StringValue())
