@@ -426,6 +426,41 @@ func (differ detailedDiffer) matchPlanElementsToInputs(
 	return matched
 }
 
+type setChange int
+
+const (
+	setChangeAdd setChange = iota + 1
+	setChangeDelete
+	setChangeReplace
+)
+
+func (c setChange) ToDiffKind(isSetForceNew bool) pulumirpc.PropertyDiff_Kind {
+	switch c {
+	case setChangeReplace:
+		if isSetForceNew {
+			return pulumirpc.PropertyDiff_UPDATE_REPLACE
+		} else {
+			return pulumirpc.PropertyDiff_UPDATE
+		}
+	case setChangeDelete:
+		if isSetForceNew {
+			return pulumirpc.PropertyDiff_DELETE_REPLACE
+		} else {
+			return pulumirpc.PropertyDiff_DELETE
+		}
+	case setChangeAdd:
+		if isSetForceNew {
+			return pulumirpc.PropertyDiff_ADD_REPLACE
+		} else {
+			return pulumirpc.PropertyDiff_ADD
+		}
+	default:
+		contract.Failf("Unsupported setChange value: %v", c)
+		var zero pulumirpc.PropertyDiff_Kind
+		return zero
+	}
+}
+
 func (differ detailedDiffer) makeSetDiffAlt(
 	path propertyPath, old, new resource.PropertyValue,
 ) map[detailedDiffKey]*pulumirpc.PropertyDiff {
@@ -454,47 +489,26 @@ func (differ detailedDiffer) makeSetDiffAlt(
 		return diff
 	}
 
-	type setChange struct {
-		oldChanged bool
-		newChanged bool
-	}
-
 	// We need to build a map of what changed for each index in order to present the
 	// correct diff to the engine since it always uses new inputs and old state
 	// to display previews.
 	changes := map[arrayIndex]setChange{}
 	for _, index := range removed {
-		changes[index] = setChange{oldChanged: true, newChanged: false}
+		changes[index] = setChangeDelete
 	}
 	for _, index := range added {
 		if _, ok := changes[index]; !ok {
-			changes[index] = setChange{oldChanged: false, newChanged: true}
+			changes[index] = setChangeAdd
 		} else {
-			changes[index] = setChange{oldChanged: true, newChanged: true}
+			changes[index] = setChangeReplace
 		}
 	}
 
 	for index, change := range changes {
-		if !change.oldChanged && !change.newChanged {
-			continue
-		} else if change.oldChanged && change.newChanged {
-			if isSetForceNew {
-				diff[path.Index(int(index)).Key()] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE_REPLACE}
-			} else {
-				diff[path.Index(int(index)).Key()] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE}
-			}
-		} else if change.oldChanged {
-			if isSetForceNew {
-				diff[path.Index(int(index)).Key()] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_DELETE_REPLACE}
-			} else {
-				diff[path.Index(int(index)).Key()] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_DELETE}
-			}
-		} else if change.newChanged {
-			if isSetForceNew {
-				diff[path.Index(int(index)).Key()] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_ADD_REPLACE}
-			} else {
-				diff[path.Index(int(index)).Key()] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_ADD}
-			}
+		key := path.Index(int(index)).Key()
+		diff[key] = &pulumirpc.PropertyDiff{
+			Kind: change.ToDiffKind(isSetForceNew),
+			// TODO confirm InputDiff=false is intentional.
 		}
 	}
 

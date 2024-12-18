@@ -25,6 +25,7 @@ func (k propertyPath) String() string {
 	return resource.PropertyPath(k).String()
 }
 
+// This function does not belong in this file.
 func (k propertyPath) Key() detailedDiffKey {
 	return detailedDiffKey(k.String())
 }
