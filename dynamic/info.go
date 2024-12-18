@@ -39,7 +39,6 @@ func providerInfo(ctx context.Context, p run.Provider, value parameterize.Value)
 		Name:           p.Name(),
 		Version:        p.Version(),
 		Description:    "A Pulumi provider dynamically bridged from " + p.Name() + ".",
-		Publisher:      "Pulumi",
 		ResourcePrefix: inferResourcePrefix(provider),
 
 		MetadataInfo: &tfbridge.MetadataInfo{
@@ -97,6 +96,7 @@ func providerInfo(ctx context.Context, p run.Provider, value parameterize.Value)
 		ghOrg := urlFields[len(urlFields)-2]
 		name := urlFields[len(urlFields)-1]
 		prov.GitHubOrg = ghOrg
+		prov.Publisher = ghOrg
 		prov.Repository = "https://github.com/" + ghOrg + "/terraform-provider-" + name
 	}
 

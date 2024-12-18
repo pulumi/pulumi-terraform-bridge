@@ -4,7 +4,7 @@
     "description": "A Pulumi provider dynamically bridged from b2.",
     "attribution": "This Pulumi package is based on the [`b2` Terraform Provider](https://github.com/backblaze/terraform-provider-b2).",
     "repository": "https://github.com/backblaze/terraform-provider-b2",
-    "publisher": "Pulumi",
+    "publisher": "backblaze",
     "meta": {
         "moduleFormat": "(.*)(?:/[^/]*)"
     },
