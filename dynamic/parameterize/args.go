@@ -91,7 +91,6 @@ func ParseArgs(ctx context.Context, a []string) (Args, error) {
 			),
 			"impossible - these are static values and should never fail",
 		)
-
 	}
 
 	cmd.SetArgs(a)
@@ -127,11 +126,12 @@ func parseArgs(_ context.Context, args []string, fullDocs bool, upstreamRepoPath
 			}
 			return Args{}, errors.New(msg)
 		}
-		return Args{Local: &LocalArgs{
-			Path:             args[0],
-			UpstreamRepoPath: upstreamRepoPath,
-			IndexDocOutDir:   indexDocOutDir,
-		},
+		return Args{
+			Local: &LocalArgs{
+				Path:             args[0],
+				UpstreamRepoPath: upstreamRepoPath,
+				IndexDocOutDir:   indexDocOutDir,
+			},
 		}, nil
 	}
 
@@ -154,5 +154,4 @@ func parseArgs(_ context.Context, args []string, fullDocs bool, upstreamRepoPath
 		Docs:           fullDocs,
 		IndexDocOutDir: indexDocOutDir,
 	}}, nil
-
 }

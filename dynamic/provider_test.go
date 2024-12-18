@@ -548,6 +548,8 @@ func TestSchemaGenerationIndexDocOutDir(t *testing.T) { //nolint:paralleltest
 				SubpackageVersion: result.Version,
 			})
 
+			require.NoError(t, err)
+
 			indexFileBytes, err := os.ReadFile(tc.indexDocOutDir + "/_index.md")
 
 			require.NoError(t, err)
@@ -556,7 +558,6 @@ func TestSchemaGenerationIndexDocOutDir(t *testing.T) { //nolint:paralleltest
 			os.Remove(tc.indexDocOutDir + "/_index.md")
 		})
 	}
-
 }
 
 func TestRandomCreate(t *testing.T) {
