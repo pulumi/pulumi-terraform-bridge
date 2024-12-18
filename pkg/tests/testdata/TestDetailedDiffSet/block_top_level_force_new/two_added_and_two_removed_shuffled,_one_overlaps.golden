@@ -44,7 +44,7 @@ Plan: 0 to add, 1 to change, 0 to destroy.
 	pulumiOut: `Previewing update (test):
   pulumi:pulumi:Stack: (same)
     [urn=urn:pulumi:test::project::pulumi:pulumi:Stack::project-test]
-    +-crossprovider:index/testRes:TestRes: (replace)
+    ~ crossprovider:index/testRes:TestRes: (update)
         [id=newid]
         [urn=urn:pulumi:test::project::crossprovider:index/testRes:TestRes::example]
       ~ tests: [
@@ -59,12 +59,12 @@ Plan: 0 to add, 1 to change, 0 to destroy.
                 }
         ]
 Resources:
-    +-1 to replace
+    ~ 1 to update
     1 unchanged
 `,
 	detailedDiff: map[string]interface{}{
-		"tests[1]":        map[string]interface{}{"kind": "ADD_REPLACE"},
+		"tests[1]":        map[string]interface{}{},
 		"tests[2].nested": map[string]interface{}{"kind": "UPDATE"},
-		"tests[3]":        map[string]interface{}{"kind": "DELETE_REPLACE"},
+		"tests[3]":        map[string]interface{}{"kind": "DELETE"},
 	},
 }

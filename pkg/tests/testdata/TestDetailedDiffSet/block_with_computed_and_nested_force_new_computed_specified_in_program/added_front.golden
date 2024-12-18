@@ -1,0 +1,64 @@
+tests.testOutput{
+	initialValue: &[]string{
+		"val2",
+		"val3",
+	},
+	changeValue: &[]string{
+		"val1",
+		"val2",
+		"val3",
+	},
+	tfOut: `
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
++/- create replacement and then destroy
+
+Terraform will perform the following actions:
+
+  # crossprovider_test_res.example must be replaced
++/- resource "crossprovider_test_res" "example" {
+      ~ id = "id" -> (known after apply)
+
+      + test { # forces replacement
+          + computed = "non-computed-val1"
+          + nested   = "val1"
+        }
+
+        # (2 unchanged blocks hidden)
+    }
+
+Plan: 1 to add, 0 to change, 1 to destroy.
+
+`,
+	pulumiOut: `Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::project::pulumi:pulumi:Stack::project-test]
+    +-crossprovider:index/testRes:TestRes: (replace)
+        [id=id]
+        [urn=urn:pulumi:test::project::crossprovider:index/testRes:TestRes::example]
+      ~ tests: [
+          ~ [0]: {
+                  + __defaults: []
+                  ~ computed  : "non-computed-val2" => "non-computed-val1"
+                  ~ nested    : "val2" => "val1"
+                }
+          ~ [1]: {
+                  + __defaults: []
+                  ~ computed  : "non-computed-val3" => "non-computed-val2"
+                  ~ nested    : "val3" => "val2"
+                }
+          + [2]: {
+                  + computed  : "non-computed-val3"
+                  + nested    : "val3"
+                }
+        ]
+Resources:
+    +-1 to replace
+    1 unchanged
+`,
+	detailedDiff: map[string]interface{}{
+		"tests":             map[string]interface{}{"kind": "UPDATE"},
+		"tests[0].computed": map[string]interface{}{},
+		"tests[0].nested":   map[string]interface{}{"kind": "ADD_REPLACE"},
+	},
+}

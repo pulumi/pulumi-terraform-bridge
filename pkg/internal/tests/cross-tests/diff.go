@@ -8,7 +8,8 @@ import (
 )
 
 type diffOpts struct {
-	deleteBeforeReplace bool
+	deleteBeforeReplace           bool
+	disableAccurateBridgePreviews bool
 }
 
 // An option that can be used to customize [Diff].
@@ -17,6 +18,11 @@ type DiffOption func(*diffOpts)
 // DiffDeleteBeforeReplace specifies whether to delete the resource before replacing it.
 func DiffDeleteBeforeReplace(deleteBeforeReplace bool) DiffOption {
 	return func(o *diffOpts) { o.deleteBeforeReplace = deleteBeforeReplace }
+}
+
+// DiffDisableAccurateBridgePreviews specifies whether to disable accurate bridge previews.
+func DiffDisableAccurateBridgePreviews() DiffOption {
+	return func(o *diffOpts) { o.disableAccurateBridgePreviews = true }
 }
 
 func Diff(
@@ -31,9 +37,10 @@ func Diff(
 	config2Cty := cty.ObjectVal(config2)
 
 	return runDiffCheck(t, diffTestCase{
-		Resource:            resource,
-		Config1:             config1Cty,
-		Config2:             config2Cty,
-		DeleteBeforeReplace: o.deleteBeforeReplace,
+		Resource:                      resource,
+		Config1:                       config1Cty,
+		Config2:                       config2Cty,
+		DeleteBeforeReplace:           o.deleteBeforeReplace,
+		DisableAccurateBridgePreviews: o.disableAccurateBridgePreviews,
 	})
 }
