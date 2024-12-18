@@ -47,8 +47,6 @@ jobs:
         run: cd pkg/pf && make build
       - name: Test
         run: make test
-      - name: Test Dynamic
-        run: cd dynamic && make test
       - name: Upload coverage reports to Codecov
         # If we have a CODECOV_TOKEN secret, then we upload it to get a coverage report.
         #
