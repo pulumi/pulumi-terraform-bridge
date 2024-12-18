@@ -240,3 +240,58 @@ resources:
 	require.Len(t, initErrors, 1)
 	require.Contains(t, initErrors[0], "INIT TEST ERROR")
 }
+
+func TestUpdateResourceInitFailure(t *testing.T) {
+	t.Parallel()
+
+	resMap := map[string]*schema.Resource{
+		"prov_test": {
+			Schema: map[string]*schema.Schema{
+				"test": {
+					Type:     schema.TypeString,
+					Required: true,
+				},
+			},
+			UpdateContext: func(ctx context.Context, rd *schema.ResourceData, i interface{}) diag.Diagnostics {
+				return diag.Errorf("UPDATE TEST ERROR")
+			},
+		},
+	}
+	prov := &schema.Provider{ResourcesMap: resMap}
+	bridgedProvider := pulcheck.BridgedProvider(t, "prov", prov)
+
+	program := `
+name: test
+runtime: yaml
+resources:
+  mainRes:
+    type: prov:index:Test
+    properties:
+      test: %s
+`
+
+	pt := pulcheck.PulCheck(t, bridgedProvider, fmt.Sprintf(program, "hello"))
+	pt.Up(t)
+	pt.WritePulumiYaml(t, fmt.Sprintf(program, "hello2"))
+
+	_, err := pt.CurrentStack().Up(pt.Context())
+	require.Error(t, err)
+	require.ErrorContains(t, err, "UPDATE TEST ERROR")
+
+	stack := pt.ExportStack(t)
+
+	data, err := stack.Deployment.MarshalJSON()
+	require.NoError(t, err)
+
+	var stateMap map[string]interface{}
+	err = json.Unmarshal(data, &stateMap)
+	require.NoError(t, err)
+
+	resourcesList := stateMap["resources"].([]interface{})
+	// stack, provider, resource
+	require.Len(t, resourcesList, 3)
+	mainResState := resourcesList[2].(map[string]interface{})
+	initErrors := mainResState["initErrors"].([]interface{})
+	require.Len(t, initErrors, 1)
+	require.Contains(t, initErrors[0], "UPDATE TEST ERROR")
+}
