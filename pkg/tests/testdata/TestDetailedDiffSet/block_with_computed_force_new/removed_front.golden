@@ -52,14 +52,10 @@ Plan: 1 to add, 0 to change, 1 to destroy.
         [urn=urn:pulumi:test::project::crossprovider:index/testRes:TestRes::example]
       ~ tests: [
           ~ [0]: {
-                  + __defaults: []
-                  - computed  : ""
-                  ~ nested    : "val1" => "val2"
+                  ~ nested  : "val1" => "val2"
                 }
           ~ [1]: {
-                  + __defaults: []
-                  - computed  : ""
-                  ~ nested    : "val2" => "val3"
+                  ~ nested  : "val2" => "val3"
                 }
           - [2]: {
                   - computed: ""
@@ -71,7 +67,10 @@ Resources:
     1 unchanged
 `,
 	detailedDiff: map[string]interface{}{
-		"tests":           map[string]interface{}{"kind": "UPDATE"},
-		"tests[0].nested": map[string]interface{}{"kind": "DELETE_REPLACE"},
+		"tests[0].computed": map[string]interface{}{"kind": "UPDATE"},
+		"tests[0].nested":   map[string]interface{}{"kind": "UPDATE"},
+		"tests[1].computed": map[string]interface{}{"kind": "UPDATE"},
+		"tests[1].nested":   map[string]interface{}{"kind": "UPDATE"},
+		"tests[2]":          map[string]interface{}{"kind": "DELETE_REPLACE"},
 	},
 }

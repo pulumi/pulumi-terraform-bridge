@@ -489,6 +489,10 @@ func (differ detailedDiffer) makeSetDiff(
 
 	removed, added := computeSetHashChanges(oldIdentities, newIdentities)
 
+	if len(removed) == 0 && len(added) == 0 {
+		return nil
+	}
+
 	// We need to match the new indices to the inputs to ensure that the identity of the
 	// elements is preserved - this is necessary since the planning process can reorder
 	// the elements.
