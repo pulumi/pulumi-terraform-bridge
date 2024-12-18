@@ -18,73 +18,83 @@ import (
 func TestDetailedDiffMap(t *testing.T) {
 	t.Parallel()
 
-	attributeSchema := rschema.Schema{
-		Attributes: map[string]rschema.Attribute{
-			"key": rschema.MapAttribute{
-				Optional:    true,
-				ElementType: types.StringType,
-			},
-		},
-	}
-
-	attributeReplaceSchema := rschema.Schema{
-		Attributes: map[string]rschema.Attribute{
-			"key": rschema.MapAttribute{
-				Optional:    true,
-				ElementType: types.StringType,
-				PlanModifiers: []planmodifier.Map{
-					mapplanmodifier.RequiresReplace(),
+	attributeSchema := pb.NewResource(pb.NewResourceArgs{
+		ResourceSchema: rschema.Schema{
+			Attributes: map[string]rschema.Attribute{
+				"key": rschema.MapAttribute{
+					Optional:    true,
+					ElementType: types.StringType,
 				},
 			},
 		},
-	}
+	})
 
-	nestedAttributeSchema := rschema.Schema{
-		Attributes: map[string]rschema.Attribute{
-			"key": rschema.MapNestedAttribute{
-				Optional: true,
-				NestedObject: rschema.NestedAttributeObject{
-					Attributes: map[string]rschema.Attribute{
-						"nested": rschema.StringAttribute{Optional: true},
+	attributeReplaceSchema := pb.NewResource(pb.NewResourceArgs{
+		ResourceSchema: rschema.Schema{
+			Attributes: map[string]rschema.Attribute{
+				"key": rschema.MapAttribute{
+					Optional:    true,
+					ElementType: types.StringType,
+					PlanModifiers: []planmodifier.Map{
+						mapplanmodifier.RequiresReplace(),
 					},
 				},
 			},
 		},
-	}
+	})
 
-	nestedAttributeReplaceSchema := rschema.Schema{
-		Attributes: map[string]rschema.Attribute{
-			"key": rschema.MapNestedAttribute{
-				Optional: true,
-				NestedObject: rschema.NestedAttributeObject{
-					Attributes: map[string]rschema.Attribute{
-						"nested": rschema.StringAttribute{Optional: true},
+	nestedAttributeSchema := pb.NewResource(pb.NewResourceArgs{
+		ResourceSchema: rschema.Schema{
+			Attributes: map[string]rschema.Attribute{
+				"key": rschema.MapNestedAttribute{
+					Optional: true,
+					NestedObject: rschema.NestedAttributeObject{
+						Attributes: map[string]rschema.Attribute{
+							"nested": rschema.StringAttribute{Optional: true},
+						},
 					},
-				},
-				PlanModifiers: []planmodifier.Map{
-					mapplanmodifier.RequiresReplace(),
 				},
 			},
 		},
-	}
+	})
 
-	nestedAttributeNestedReplaceSchema := rschema.Schema{
-		Attributes: map[string]rschema.Attribute{
-			"key": rschema.MapNestedAttribute{
-				Optional: true,
-				NestedObject: rschema.NestedAttributeObject{
-					Attributes: map[string]rschema.Attribute{
-						"nested": rschema.StringAttribute{
-							Optional: true,
-							PlanModifiers: []planmodifier.String{
-								stringplanmodifier.RequiresReplace(),
+	nestedAttributeReplaceSchema := pb.NewResource(pb.NewResourceArgs{
+		ResourceSchema: rschema.Schema{
+			Attributes: map[string]rschema.Attribute{
+				"key": rschema.MapNestedAttribute{
+					Optional: true,
+					NestedObject: rschema.NestedAttributeObject{
+						Attributes: map[string]rschema.Attribute{
+							"nested": rschema.StringAttribute{Optional: true},
+						},
+					},
+					PlanModifiers: []planmodifier.Map{
+						mapplanmodifier.RequiresReplace(),
+					},
+				},
+			},
+		},
+	})
+
+	nestedAttributeNestedReplaceSchema := pb.NewResource(pb.NewResourceArgs{
+		ResourceSchema: rschema.Schema{
+			Attributes: map[string]rschema.Attribute{
+				"key": rschema.MapNestedAttribute{
+					Optional: true,
+					NestedObject: rschema.NestedAttributeObject{
+						Attributes: map[string]rschema.Attribute{
+							"nested": rschema.StringAttribute{
+								Optional: true,
+								PlanModifiers: []planmodifier.String{
+									stringplanmodifier.RequiresReplace(),
+								},
 							},
 						},
 					},
 				},
 			},
 		},
-	}
+	})
 
 	attrMap := func(m *map[string]*string) cty.Value {
 		if m == nil {
@@ -126,7 +136,7 @@ func TestDetailedDiffMap(t *testing.T) {
 
 	schemaValueMakerPairs := []struct {
 		name       string
-		schema     rschema.Schema
+		res        pb.Resource
 		valueMaker func(*map[string]*string) cty.Value
 	}{
 		{"attribute no replace", attributeSchema, attrMap},
@@ -174,12 +184,9 @@ func TestDetailedDiffMap(t *testing.T) {
 					t.Parallel()
 					initialValue := schemaValueMakerPair.valueMaker(scenario.initialValue)
 					changeValue := schemaValueMakerPair.valueMaker(scenario.changeValue)
-					res := pb.NewResource(pb.NewResourceArgs{
-						ResourceSchema: schemaValueMakerPair.schema,
-					})
 
 					diff := crosstests.Diff(
-						t, res, map[string]cty.Value{"key": initialValue}, map[string]cty.Value{"key": changeValue},
+						t, schemaValueMakerPair.res, map[string]cty.Value{"key": initialValue}, map[string]cty.Value{"key": changeValue},
 						crosstests.DisableAccurateBridgePreview(),
 					)
 
