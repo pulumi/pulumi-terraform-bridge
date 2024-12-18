@@ -1341,6 +1341,8 @@ func TestDetailedDiffSet(t *testing.T) {
 
 	for _, schemaValueMakerPair := range computedSchemaValueMakerPairs {
 		t.Run(schemaValueMakerPair.name, func(t *testing.T) {
+			// TODO[pulumi/pulumi-terraform-bridge#2528]
+			t.Skipf("These tests are non-deterministic under the non-Accurate Previews bridge.")
 			t.Parallel()
 			for _, scenario := range scenarios {
 				t.Run(scenario.name, func(t *testing.T) {
