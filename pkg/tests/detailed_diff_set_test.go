@@ -583,7 +583,7 @@ func TestDetailedDiffSet(t *testing.T) {
 				t.Run(scenario.name, func(t *testing.T) {
 					t.Parallel()
 					runTest(
-						t, schemaValueMakerPair.res, schemaValueMakerPair.valueMaker, scenario.initialValue, scenario.changeValue, true,
+						t, schemaValueMakerPair.res, schemaValueMakerPair.valueMaker, scenario.initialValue, scenario.changeValue, false,
 					)
 				})
 			}
