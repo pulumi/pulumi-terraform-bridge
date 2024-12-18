@@ -232,13 +232,19 @@ func isPlanCompatibleWithInputs(
 	ps map[string]*info.Schema,
 ) bool {
 	abortErr := errors.New("abort")
-	visitor := func(subpath resource.PropertyPath, planSubVal resource.PropertyValue) (resource.PropertyValue, error) {
+	visitor := func(
+		subpath resource.PropertyPath, planSubVal resource.PropertyValue, entering bool,
+	) (resource.PropertyValue, error) {
+		if !entering {
+			return planSubVal, nil
+		}
+
 		// Do not compare and do not descend into internal properties.
 		{
 			lastPathStep := subpath[len(subpath)-1]
 			if stepStr, ok := lastPathStep.(string); ok {
 				if resource.IsInternalPropertyKey(resource.PropertyKey(stepStr)) {
-					return planSubVal, propertyvalue.LimitDescentError{}
+					return planSubVal, propertyvalue.SkipChildrenError{}
 				}
 			}
 		}
@@ -271,7 +277,7 @@ func isPlanCompatibleWithInputs(
 		if tfs.Type() == shim.TypeSet {
 			// TODO: more sophisticated comparison of nested sets
 			if planSubVal.DeepEquals(inputsSubVal) {
-				return planSubVal, propertyvalue.LimitDescentError{}
+				return planSubVal, propertyvalue.SkipChildrenError{}
 			}
 			return resource.NewNullProperty(), abortErr
 		}
@@ -282,7 +288,7 @@ func isPlanCompatibleWithInputs(
 
 		return resource.NewNullProperty(), abortErr
 	}
-	_, err := propertyvalue.TransformPropertyValueLimitDescent(
+	_, err := propertyvalue.TransformPropertyValueDirectional(
 		resource.PropertyPath(path),
 		visitor,
 		plan,
@@ -302,13 +308,18 @@ func isInputCompatibleWithPlan(
 	ps map[string]*info.Schema,
 ) bool {
 	abortErr := errors.New("abort")
-	visitor := func(subpath resource.PropertyPath, inputsSubVal resource.PropertyValue) (resource.PropertyValue, error) {
+	visitor := func(
+		subpath resource.PropertyPath, inputsSubVal resource.PropertyValue, entering bool,
+	) (resource.PropertyValue, error) {
+		if !entering {
+			return inputsSubVal, nil
+		}
 		// Do not compare and do not descend into internal properties.
 		{
 			lastPathStep := subpath[len(subpath)-1]
 			if stepStr, ok := lastPathStep.(string); ok {
 				if resource.IsInternalPropertyKey(resource.PropertyKey(stepStr)) {
-					return inputsSubVal, propertyvalue.LimitDescentError{}
+					return inputsSubVal, propertyvalue.SkipChildrenError{}
 				}
 			}
 		}
@@ -342,7 +353,7 @@ func isInputCompatibleWithPlan(
 		if tfs.Type() == shim.TypeSet {
 			// TODO: more sophisticated comparison of nested sets
 			if inputsSubVal.DeepEquals(planSubVal) {
-				return inputsSubVal, propertyvalue.LimitDescentError{}
+				return inputsSubVal, propertyvalue.SkipChildrenError{}
 			}
 			return resource.NewNullProperty(), abortErr
 		}
@@ -353,7 +364,7 @@ func isInputCompatibleWithPlan(
 
 		return resource.NewNullProperty(), abortErr
 	}
-	_, err := propertyvalue.TransformPropertyValueLimitDescent(
+	_, err := propertyvalue.TransformPropertyValueDirectional(
 		resource.PropertyPath(path),
 		visitor,
 		inputs,
