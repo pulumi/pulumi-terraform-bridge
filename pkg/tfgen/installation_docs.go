@@ -100,7 +100,6 @@ func writeFrontMatter(providerDisplayName string) string {
 }
 
 // writeInstallationInstructions renders the following for a pulumi-maintained provider:
-// ****
 //
 //	Installation
 //	The Foo provider is available as a package in all Pulumi languages:
@@ -111,10 +110,7 @@ func writeFrontMatter(providerDisplayName string) string {
 //	.NET: Pulumi.foo
 //	Java: com.pulumi/foo
 //
-// ****
-//
 // A dynamically bridged provider receives the following instead:
-// ****
 //
 //	## Generate Provider
 //
@@ -123,8 +119,6 @@ func writeFrontMatter(providerDisplayName string) string {
 //	```bash
 //	pulumi package add terraform-provider org/foo
 //	```
-//
-// ****
 func writeInstallationInstructions(goImportBasePath, displayName, pkgName, ghOrg, sourceRepo string) string {
 	// Capitalize the package name for C#
 	capitalize := cases.Title(language.English)
