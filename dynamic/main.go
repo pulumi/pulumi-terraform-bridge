@@ -19,9 +19,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
 
 	"github.com/blang/semver"
+	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
@@ -204,12 +205,15 @@ func initialSetup() (info.Provider, pfbridge.ProviderMetadata, func() error) {
 						return plugin.ParameterizeResponse{}, err
 					}
 					versionTag := "v" + info.Version
-					cmd := exec.Command(
-						"git", "clone", "--depth", "1", "-b", versionTag, info.Repository, tmpDir,
-					)
-					err = cmd.Run()
+					_, err = git.PlainCloneContext(ctx, tmpDir, false, &git.CloneOptions{
+						URL:           info.Repository,
+						Depth:         1,
+						Tags:          git.NoTags,
+						ReferenceName: plumbing.NewTagReferenceName(versionTag),
+					})
 					if err != nil {
-						return plugin.ParameterizeResponse{}, err
+						return plugin.ParameterizeResponse{}, fmt.Errorf("failed to clone %q@%q: %w",
+							info.Repository, versionTag, err)
 					}
 					info.UpstreamRepoPath = tmpDir
 				}
