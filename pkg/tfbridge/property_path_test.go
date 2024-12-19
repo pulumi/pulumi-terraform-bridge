@@ -3,6 +3,7 @@ package tfbridge
 import (
 	"testing"
 
+	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/require"
 )
@@ -158,5 +159,143 @@ func TestWalkTwoPropertyValues(t *testing.T) {
 
 		require.NoError(t, err)
 		require.Equal(t, []string{"", "a", "a[0]", "a.b"}, visited)
+	})
+
+	t.Run("both arrays error", func(t *testing.T) {
+		val1 := resource.NewArrayProperty([]resource.PropertyValue{
+			resource.NewStringProperty("a"),
+		})
+
+		val2 := resource.NewArrayProperty([]resource.PropertyValue{
+			resource.NewStringProperty("b"),
+		})
+
+		err := walkTwoPropertyValues(
+			propertyPath{},
+			val1,
+			val2,
+			func(path propertyPath, v1, v2 resource.PropertyValue) error {
+				if v1.IsString() || v2.IsString() {
+					return errors.New("error")
+				}
+				return nil
+			})
+
+		require.Error(t, err)
+	})
+
+	t.Run("both objects error", func(t *testing.T) {
+		val1 := resource.NewObjectProperty(resource.PropertyMap{
+			"a": resource.NewStringProperty("a"),
+		})
+
+		val2 := resource.NewObjectProperty(resource.PropertyMap{
+			"b": resource.NewStringProperty("b"),
+		})
+
+		err := walkTwoPropertyValues(
+			propertyPath{},
+			val1,
+			val2,
+			func(path propertyPath, v1, v2 resource.PropertyValue) error {
+				if v1.IsString() || v2.IsString() {
+					return errors.New("error")
+				}
+				return nil
+			})
+
+		require.Error(t, err)
+	})
+
+	t.Run("mismatched types first array error", func(t *testing.T) {
+		val1 := resource.NewArrayProperty([]resource.PropertyValue{
+			resource.NewStringProperty("a"),
+		})
+
+		val2 := resource.NewObjectProperty(resource.PropertyMap{
+			"b": resource.NewStringProperty("b"),
+		})
+
+		err := walkTwoPropertyValues(
+			propertyPath{},
+			val1,
+			val2,
+			func(path propertyPath, v1, v2 resource.PropertyValue) error {
+				if v1.IsString() {
+					return errors.New("error")
+				}
+				return nil
+			})
+
+		require.Error(t, err)
+	})
+
+	t.Run("mismatched types first object error", func(t *testing.T) {
+		val1 := resource.NewObjectProperty(resource.PropertyMap{
+			"a": resource.NewStringProperty("a"),
+		})
+
+		val2 := resource.NewArrayProperty([]resource.PropertyValue{
+			resource.NewStringProperty("b"),
+		})
+
+		err := walkTwoPropertyValues(
+			propertyPath{},
+			val1,
+			val2,
+			func(path propertyPath, v1, v2 resource.PropertyValue) error {
+				if v1.IsString() {
+					return errors.New("error")
+				}
+				return nil
+			})
+
+		require.Error(t, err)
+	})
+
+	t.Run("mismatched types second array error", func(t *testing.T) {
+		val1 := resource.NewObjectProperty(resource.PropertyMap{
+			"a": resource.NewStringProperty("a"),
+		})
+
+		val2 := resource.NewArrayProperty([]resource.PropertyValue{
+			resource.NewStringProperty("b"),
+		})
+
+		err := walkTwoPropertyValues(
+			propertyPath{},
+			val1,
+			val2,
+			func(path propertyPath, v1, v2 resource.PropertyValue) error {
+				if v2.IsString() {
+					return errors.New("error")
+				}
+				return nil
+			})
+
+		require.Error(t, err)
+	})
+
+	t.Run("mismatched types second object error", func(t *testing.T) {
+		val1 := resource.NewArrayProperty([]resource.PropertyValue{
+			resource.NewStringProperty("a"),
+		})
+
+		val2 := resource.NewObjectProperty(resource.PropertyMap{
+			"b": resource.NewStringProperty("b"),
+		})
+
+		err := walkTwoPropertyValues(
+			propertyPath{},
+			val1,
+			val2,
+			func(path propertyPath, v1, v2 resource.PropertyValue) error {
+				if v2.IsString() {
+					return errors.New("error")
+				}
+				return nil
+			})
+
+		require.Error(t, err)
 	})
 }
