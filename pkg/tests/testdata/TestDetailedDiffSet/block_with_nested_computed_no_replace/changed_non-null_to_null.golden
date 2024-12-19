@@ -34,18 +34,9 @@ Plan: 0 to add, 1 to change, 0 to destroy.
               - nested  : "value"
             }
         ]
-      - tests: [
-      -     [0]: {
-              - computed: ""
-              - nested  : "value"
-            }
-        ]
 Resources:
     ~ 1 to update
     1 unchanged
 `,
-	detailedDiff: map[string]interface{}{
-		"tests":           map[string]interface{}{"kind": "UPDATE"},
-		"tests[0].nested": map[string]interface{}{"kind": "DELETE"},
-	},
+	detailedDiff: map[string]interface{}{"tests": map[string]interface{}{"kind": "DELETE"}},
 }

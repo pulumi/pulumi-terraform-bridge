@@ -52,19 +52,21 @@ Plan: 0 to add, 1 to change, 0 to destroy.
         [id=id]
         [urn=urn:pulumi:test::project::crossprovider:index/testRes:TestRes::example]
       ~ tests: [
-          ~ [0]: {
-                  + computed: "non-computed-val5"
-                  + nested  : "val5"
+          + [0]: {
+                  + computed  : "non-computed-val5"
+                  + nested    : "val5"
                 }
-          ~ [1]: {
-                  + computed: "non-computed-val6"
-                  + nested  : "val6"
+          + [1]: {
+                  + computed  : "non-computed-val6"
+                  + nested    : "val6"
                 }
-          ~ [2]: {
-                  - nested: "val3"
+          - [2]: {
+                  - computed: "non-computed-val3"
+                  - nested  : "val3"
                 }
-          ~ [3]: {
-                  - nested: "val4"
+          - [3]: {
+                  - computed: "non-computed-val4"
+                  - nested  : "val4"
                 }
         ]
 Resources:
@@ -72,11 +74,9 @@ Resources:
     1 unchanged
 `,
 	detailedDiff: map[string]interface{}{
-		"tests[0].computed": map[string]interface{}{},
-		"tests[0].nested":   map[string]interface{}{},
-		"tests[1].computed": map[string]interface{}{},
-		"tests[1].nested":   map[string]interface{}{},
-		"tests[2].nested":   map[string]interface{}{"kind": "DELETE"},
-		"tests[3].nested":   map[string]interface{}{"kind": "DELETE"},
+		"tests[0]": map[string]interface{}{},
+		"tests[1]": map[string]interface{}{},
+		"tests[2]": map[string]interface{}{"kind": "DELETE"},
+		"tests[3]": map[string]interface{}{"kind": "DELETE"},
 	},
 }
