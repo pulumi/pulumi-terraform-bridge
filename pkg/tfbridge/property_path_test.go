@@ -6,7 +6,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
@@ -312,20 +311,6 @@ func TestWalkTwoPropertyValues(t *testing.T) {
 func TestPropertyPath(t *testing.T) {
 	t.Parallel()
 	require.Equal(t, newPropertyPath("foo").Subpath("bar").Key(), detailedDiffKey("foo.bar"))
-}
-
-func TestGetPathRelativeTo(t *testing.T) {
-	t.Parallel()
-	relativePath, err := newPropertyPath("foo").Subpath("bar").GetPathRelativeTo(newPropertyPath("foo"))
-	require.NoError(t, err)
-	assert.Equal(t, relativePath, newPropertyPath("bar"))
-
-	relativePath, err = newPropertyPath("foo").Subpath("bar").Index(0).GetPathRelativeTo(newPropertyPath("foo"))
-	require.NoError(t, err)
-	assert.Equal(t, relativePath, newPropertyPath("bar").Index(0))
-
-	_, err = newPropertyPath("foo").GetPathRelativeTo(newPropertyPath("bar"))
-	require.Error(t, err)
 }
 
 func TestLookupSchemasPropertyPath(t *testing.T) {

@@ -45,11 +45,6 @@ func (k propertyPath) Index(i int) propertyPath {
 	return k.append(i)
 }
 
-func (k propertyPath) Get(v resource.PropertyValue) (resource.PropertyValue, bool) {
-	path := resource.PropertyPath(k)
-	return path.Get(v)
-}
-
 func (k propertyPath) IsReservedKey() bool {
 	leaf := k[len(k)-1]
 	return leaf == "__meta" || leaf == "__defaults"
@@ -58,16 +53,6 @@ func (k propertyPath) IsReservedKey() bool {
 func (k propertyPath) GetFromMap(v resource.PropertyMap) (resource.PropertyValue, bool) {
 	path := resource.PropertyPath(k)
 	return path.Get(resource.NewProperty(v))
-}
-
-func (k propertyPath) GetPathRelativeTo(other propertyPath) (propertyPath, error) {
-	contains := resource.PropertyPath(other).Contains(resource.PropertyPath(k))
-	if !contains {
-		return propertyPath{}, errors.New("other path is not a subpath of k")
-	}
-
-	relativePath := resource.PropertyPath(k)[len(resource.PropertyPath(other)):]
-	return propertyPath(relativePath), nil
 }
 
 func lookupSchemas(
@@ -222,160 +207,6 @@ func propertyValueTriggersReplacement(
 	return replacement
 }
 
-// isPlanCompatibleWithInputs returns true if all values in the walkedValue are also in the comparedValue,
-// bar any computed properties.
-func isPlanCompatibleWithInputs(
-	path propertyPath,
-	inputs resource.PropertyValue,
-	plan resource.PropertyValue,
-	tfs shim.SchemaMap,
-	ps map[string]*info.Schema,
-) bool {
-	abortErr := errors.New("abort")
-	visitor := func(
-		subpath resource.PropertyPath, planSubVal resource.PropertyValue, entering bool,
-	) (resource.PropertyValue, error) {
-		if !entering {
-			return planSubVal, nil
-		}
-
-		// Do not compare and do not descend into internal properties.
-		{
-			lastPathStep := subpath[len(subpath)-1]
-			if stepStr, ok := lastPathStep.(string); ok {
-				if resource.IsInternalPropertyKey(resource.PropertyKey(stepStr)) {
-					return planSubVal, propertyvalue.SkipChildrenError{}
-				}
-			}
-		}
-
-		tfs, _, err := lookupSchemas(propertyPath(subpath), tfs, ps)
-		if err != nil {
-			// TODO log
-			return resource.NewNullProperty(), abortErr
-		}
-
-		relativePath, err := propertyPath(subpath).GetPathRelativeTo(path)
-		if err != nil {
-			return resource.NewNullProperty(), abortErr
-		}
-
-		inputsSubVal, ok := relativePath.Get(inputs)
-		if !ok || inputsSubVal.IsNull() {
-			if tfs.Computed() {
-				return planSubVal, nil
-			}
-			return resource.NewNullProperty(), abortErr
-		}
-
-		if tfs.Type() == shim.TypeList || tfs.Type() == shim.TypeMap {
-			// We only need to check the leaf values, so we skip any collection types.
-			return planSubVal, nil
-		}
-
-		// We can not descend into nested sets as planning re-orders the elements
-		if tfs.Type() == shim.TypeSet {
-			// TODO: more sophisticated comparison of nested sets
-			if planSubVal.DeepEquals(inputsSubVal) {
-				return planSubVal, propertyvalue.SkipChildrenError{}
-			}
-			return resource.NewNullProperty(), abortErr
-		}
-
-		if planSubVal.DeepEquals(inputsSubVal) {
-			return planSubVal, nil
-		}
-
-		return resource.NewNullProperty(), abortErr
-	}
-	_, err := propertyvalue.TransformPropertyValueDirectional(
-		resource.PropertyPath(path),
-		visitor,
-		plan,
-	)
-	if err == abortErr {
-		return false
-	}
-	contract.AssertNoErrorf(err, "TransformPropertyValue should only return an abort error")
-	return true
-}
-
-func isInputCompatibleWithPlan(
-	path propertyPath,
-	plan resource.PropertyValue,
-	inputs resource.PropertyValue,
-	tfs shim.SchemaMap,
-	ps map[string]*info.Schema,
-) bool {
-	abortErr := errors.New("abort")
-	visitor := func(
-		subpath resource.PropertyPath, inputsSubVal resource.PropertyValue, entering bool,
-	) (resource.PropertyValue, error) {
-		if !entering {
-			return inputsSubVal, nil
-		}
-		// Do not compare and do not descend into internal properties.
-		{
-			lastPathStep := subpath[len(subpath)-1]
-			if stepStr, ok := lastPathStep.(string); ok {
-				if resource.IsInternalPropertyKey(resource.PropertyKey(stepStr)) {
-					return inputsSubVal, propertyvalue.SkipChildrenError{}
-				}
-			}
-		}
-
-		tfs, _, err := lookupSchemas(propertyPath(subpath), tfs, ps)
-		if err != nil {
-			// TODO log
-			return resource.NewNullProperty(), abortErr
-		}
-
-		relativePath, err := propertyPath(subpath).GetPathRelativeTo(path)
-		if err != nil {
-			return resource.NewNullProperty(), abortErr
-		}
-
-		planSubVal, ok := relativePath.Get(plan)
-		if !ok || planSubVal.IsNull() {
-			return resource.NewNullProperty(), abortErr
-		}
-
-		if tfs.Computed() && inputsSubVal.IsNull() {
-			return planSubVal, nil
-		}
-
-		if tfs.Type() == shim.TypeList || tfs.Type() == shim.TypeMap {
-			// We only need to check the leaf values, so we skip any collection types.
-			return inputsSubVal, nil
-		}
-
-		// We can not descend into nested sets as planning re-orders the elements
-		if tfs.Type() == shim.TypeSet {
-			// TODO: more sophisticated comparison of nested sets
-			if inputsSubVal.DeepEquals(planSubVal) {
-				return inputsSubVal, propertyvalue.SkipChildrenError{}
-			}
-			return resource.NewNullProperty(), abortErr
-		}
-
-		if inputsSubVal.DeepEquals(planSubVal) {
-			return inputsSubVal, nil
-		}
-
-		return resource.NewNullProperty(), abortErr
-	}
-	_, err := propertyvalue.TransformPropertyValueDirectional(
-		resource.PropertyPath(path),
-		visitor,
-		inputs,
-	)
-	if err == abortErr {
-		return false
-	}
-	contract.AssertNoErrorf(err, "TransformPropertyValue should only return an abort error")
-	return true
-}
-
 // validInputsFromPlan returns true if the given plan property value could originate from the given inputs.
 // Under the hood, it walks the plan and the inputs and checks that all differences stem from computed properties.
 // Any differences coming from properties which are not computed will be rejected.
@@ -387,12 +218,55 @@ func validInputsFromPlan(
 	tfs shim.SchemaMap,
 	ps map[string]*info.Schema,
 ) bool {
-	// We walk both the plan and the inputs and check that all differences stem from computed properties.
-	// We first walk over the plan.
-	if !isPlanCompatibleWithInputs(path, inputs, plan, tfs, ps) {
+	abortErr := errors.New("abort")
+	visitor := func(
+		subpath propertyPath, inputsSubVal, planSubVal resource.PropertyValue,
+	) error {
+		// Do not compare and do not descend into internal properties.
+		if subpath.IsReservedKey() {
+			return SkipChildrenError{}
+		}
+
+		tfs, _, err := lookupSchemas(subpath, tfs, ps)
+		if err != nil {
+			// TODO log
+			return abortErr
+		}
+
+		if tfs.Computed() && inputsSubVal.IsNull() {
+			// This is a computed property populated by the plan. We should not recurse into it.
+			return SkipChildrenError{}
+		}
+
+		if tfs.Type() == shim.TypeList || tfs.Type() == shim.TypeMap {
+			// We only need to check the leaf values, so we skip any collection types.
+			return nil
+		}
+
+		// We can not descend into nested sets as planning re-orders the elements
+		if tfs.Type() == shim.TypeSet {
+			// TODO: more sophisticated comparison of nested sets
+			if inputsSubVal.DeepEquals(planSubVal) {
+				return SkipChildrenError{}
+			}
+			return abortErr
+		}
+
+		if inputsSubVal.DeepEquals(planSubVal) {
+			return nil
+		}
+
+		return abortErr
+	}
+	err := walkTwoPropertyValues(
+		path,
+		inputs,
+		plan,
+		visitor,
+	)
+	if err == abortErr {
 		return false
 	}
-
-	// We then walk over the inputs.
-	return isInputCompatibleWithPlan(path, plan, inputs, tfs, ps)
+	contract.AssertNoErrorf(err, "TransformPropertyValue should only return an abort error")
+	return true
 }
