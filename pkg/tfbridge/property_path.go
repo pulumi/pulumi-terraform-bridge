@@ -7,7 +7,6 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/walk"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/propertyvalue"
 )
 
@@ -230,22 +229,66 @@ func propertyValueTriggersReplacement(
 	return replacement
 }
 
-// pathContainsComputed returns true if the schema contains a Computed property at a path prefixed by path.
-func pathContainsComputed(
-	path propertyPath, rootTFSchema shim.SchemaMap, rootPulumiSchema map[string]*info.Schema,
+// validInputsFromPlan returns true if the given plan property value could originate from the given inputs.
+// Under the hood, it walks the plan and the inputs and checks that all differences stem from computed properties.
+// Any differences coming from properties which are not computed will be rejected.
+// Note that we are relying on the fact that the inputs will have defaults already applied.
+func validInputsFromPlan(
+	path propertyPath,
+	inputs resource.PropertyValue,
+	plan resource.PropertyValue,
+	tfs shim.SchemaMap,
+	ps map[string]*info.Schema,
 ) bool {
-	tfs, _, err := lookupSchemas(path, rootTFSchema, rootPulumiSchema)
-	if err != nil {
+	abortErr := errors.New("abort")
+	visitor := func(
+		subpath propertyPath, inputsSubVal, planSubVal resource.PropertyValue,
+	) error {
+		// Do not compare and do not descend into internal properties.
+		if subpath.IsReservedKey() {
+			return SkipChildrenError{}
+		}
+
+		tfs, _, err := lookupSchemas(subpath, tfs, ps)
+		if err != nil {
+			// TODO log
+			return abortErr
+		}
+
+		if tfs.Computed() && inputsSubVal.IsNull() {
+			// This is a computed property populated by the plan. We should not recurse into it.
+			return SkipChildrenError{}
+		}
+
+		if tfs.Type() == shim.TypeList || tfs.Type() == shim.TypeMap {
+			// We only need to check the leaf values, so we skip any collection types.
+			return nil
+		}
+
+		// We can not descend into nested sets as planning re-orders the elements
+		if tfs.Type() == shim.TypeSet {
+			// TODO: more sophisticated comparison of nested sets
+			if inputsSubVal.DeepEquals(planSubVal) {
+				return SkipChildrenError{}
+			}
+			return abortErr
+		}
+
+		if inputsSubVal.DeepEquals(planSubVal) {
+			return nil
+		}
+
+		return abortErr
+	}
+	err := walkTwoPropertyValues(
+		path,
+		inputs,
+		plan,
+		visitor,
+	)
+	if err == abortErr {
 		return false
 	}
-
-	computed := false
-	visitor := func(path walk.SchemaPath, tfs shim.Schema) {
-		if tfs.Computed() {
-			computed = true
-		}
-	}
-	walk.VisitSchema(tfs, visitor)
-
-	return computed
+	contract.AssertNoErrorf(err, "TransformPropertyValue should only return an abort error")
+	return true
 }

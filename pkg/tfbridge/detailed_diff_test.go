@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"reflect"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -2616,7 +2617,7 @@ func TestDetailedDiffMismatchedSchemas(t *testing.T) {
 
 func TestDetailedDiffSetHashChanges(t *testing.T) {
 	t.Parallel()
-	runTest := func(old, new hashIndexMap, expectedRemoved, expectedAdded hashIndexMap) {
+	runTest := func(old, new hashIndexMap, expectedRemoved, expectedAdded []arrayIndex) {
 		t.Helper()
 		removed, added := computeSetHashChanges(old, new)
 
@@ -2624,136 +2625,10 @@ func TestDetailedDiffSetHashChanges(t *testing.T) {
 		require.Equal(t, added, expectedAdded)
 	}
 
-	runTest(hashIndexMap{}, hashIndexMap{}, hashIndexMap{}, hashIndexMap{})
-	runTest(hashIndexMap{1: 1}, hashIndexMap{1: 1}, hashIndexMap{}, hashIndexMap{})
-	runTest(hashIndexMap{1: 1}, hashIndexMap{}, hashIndexMap{1: 1}, hashIndexMap{})
-	runTest(hashIndexMap{1: 1}, hashIndexMap{2: 2}, hashIndexMap{1: 1}, hashIndexMap{2: 2})
-}
-
-func TestDetailedDiffMatchNewIndicesToInputs(t *testing.T) {
-	t.Parallel()
-	tfs := shimv2.NewSchemaMap(map[string]*schema.Schema{
-		"foo": {
-			Type: schema.TypeSet,
-			Elem: &schema.Schema{
-				Type: schema.TypeString,
-			},
-		},
-	})
-
-	getHash := func(element string) setHash {
-		return setHash(tfs.Get("foo").SetHash(element))
-	}
-
-	runTest := func(
-		newInputs []resource.PropertyValue, changes hashIndexMap, expected hashIndexMap, logBuf *bytes.Buffer,
-	) {
-		t.Helper()
-		ctx := logging.InitLogging(context.Background(), logging.LogOptions{
-			LogSink: &testLogSink{buf: logBuf},
-		})
-		inputs := resource.NewPropertyMapFromMap(map[string]interface{}{
-			"foo": newInputs,
-		})
-		differ := detailedDiffer{
-			ctx:       ctx,
-			tfs:       tfs,
-			ps:        nil,
-			newInputs: inputs,
-		}
-		matched := differ.matchNewIndicesToInputs(newPropertyPath("foo"), changes)
-		require.Equal(t, matched, expected)
-	}
-
-	t.Run("single element", func(t *testing.T) {
-		logBuf := &bytes.Buffer{}
-		runTest(
-			[]resource.PropertyValue{resource.NewStringProperty("val1")},
-			hashIndexMap{getHash("val1"): 0},
-			hashIndexMap{getHash("val1"): 0},
-			logBuf,
-		)
-		require.Empty(t, logBuf.String())
-	})
-
-	t.Run("single element, doesn't match", func(t *testing.T) {
-		logBuf := &bytes.Buffer{}
-		runTest(
-			[]resource.PropertyValue{resource.NewStringProperty("val1")},
-			hashIndexMap{getHash("val2"): 0},
-			hashIndexMap{getHash("val2"): 0},
-			logBuf,
-		)
-		require.Contains(t, logBuf.String(), "Additional changes detected in foo")
-	})
-
-	t.Run("two elements, one changed", func(t *testing.T) {
-		logBuf := &bytes.Buffer{}
-		runTest(
-			[]resource.PropertyValue{resource.NewStringProperty("val1"), resource.NewStringProperty("val2")},
-			hashIndexMap{getHash("val2"): 1},
-			hashIndexMap{getHash("val2"): 1},
-			logBuf,
-		)
-		require.Empty(t, logBuf.String())
-	})
-
-	t.Run("two elements, both changed", func(t *testing.T) {
-		logBuf := &bytes.Buffer{}
-		runTest(
-			[]resource.PropertyValue{resource.NewStringProperty("val1"), resource.NewStringProperty("val2")},
-			hashIndexMap{getHash("val1"): 0, getHash("val2"): 1},
-			hashIndexMap{getHash("val1"): 0, getHash("val2"): 1},
-			logBuf,
-		)
-		require.Empty(t, logBuf.String())
-	})
-
-	t.Run("two elements, one changed, one doesn't match", func(t *testing.T) {
-		logBuf := &bytes.Buffer{}
-		runTest(
-			[]resource.PropertyValue{resource.NewStringProperty("val1"), resource.NewStringProperty("val2")},
-			hashIndexMap{getHash("val1"): 0, getHash("val3"): 1},
-			hashIndexMap{getHash("val1"): 0, getHash("val3"): 1},
-			logBuf,
-		)
-		require.Contains(t, logBuf.String(), "Additional changes detected in foo")
-	})
-}
-
-func TestDetailedDiffBuildChangesIndexMap(t *testing.T) {
-	t.Parallel()
-	runTest := func(added, removed hashIndexMap, expected map[arrayIndex]hashPair) {
-		t.Helper()
-		changes := buildChangesIndexMap(added, removed)
-		require.Equal(t, expected, changes)
-	}
-
-	t.Run("empty", func(t *testing.T) {
-		runTest(hashIndexMap{}, hashIndexMap{}, map[arrayIndex]hashPair{})
-	})
-	t.Run("one added", func(t *testing.T) {
-		runTest(hashIndexMap{1: 0}, hashIndexMap{}, map[arrayIndex]hashPair{
-			0: {oldHash: -1, newHash: 1},
-		})
-	})
-	t.Run("one removed", func(t *testing.T) {
-		runTest(hashIndexMap{}, hashIndexMap{1: 0}, map[arrayIndex]hashPair{
-			0: {oldHash: 1, newHash: -1},
-		})
-	})
-	t.Run("one added, one removed, different indices", func(t *testing.T) {
-		runTest(hashIndexMap{1: 0}, hashIndexMap{2: 1}, map[arrayIndex]hashPair{
-			0: {oldHash: -1, newHash: 1},
-			1: {oldHash: 2, newHash: -1},
-		})
-	})
-
-	t.Run("one added, one removed, same indices", func(t *testing.T) {
-		runTest(hashIndexMap{1: 0}, hashIndexMap{2: 0}, map[arrayIndex]hashPair{
-			0: {oldHash: 2, newHash: 1},
-		})
-	})
+	runTest(hashIndexMap{}, hashIndexMap{}, []arrayIndex{}, []arrayIndex{})
+	runTest(hashIndexMap{1: 1}, hashIndexMap{1: 1}, []arrayIndex{}, []arrayIndex{})
+	runTest(hashIndexMap{1: 1}, hashIndexMap{}, []arrayIndex{1}, []arrayIndex{})
+	runTest(hashIndexMap{1: 1}, hashIndexMap{2: 2}, []arrayIndex{1}, []arrayIndex{2})
 }
 
 func TestDetailedDiffSetHashPanicCaught(t *testing.T) {
@@ -2879,4 +2754,246 @@ func TestContainsReplace(t *testing.T) {
 	}))
 
 	require.False(t, containsReplace(map[string]*pulumirpc.PropertyDiff{}))
+}
+
+func TestMatchPlanElementsToInputs(t *testing.T) {
+	t.Parallel()
+	tfs := shimv2.NewSchemaMap(map[string]*schema.Schema{
+		"my_list": {
+			Type:     schema.TypeList,
+			Optional: true,
+			Elem: &schema.Schema{
+				Type: schema.TypeString,
+			},
+		},
+	})
+
+	ps := map[string]*SchemaInfo{}
+	tests := []struct {
+		name            string
+		path            propertyPath
+		changedIndices  []arrayIndex
+		plannedState    []resource.PropertyValue
+		newInputs       resource.PropertyMap
+		expectedMatches map[arrayIndex]arrayIndex
+	}{
+		{
+			name:           "basic matching",
+			path:           newPropertyPath("myList"),
+			changedIndices: []arrayIndex{0, 1},
+			plannedState: []resource.PropertyValue{
+				resource.NewStringProperty("foo"),
+				resource.NewStringProperty("bar"),
+			},
+			newInputs: resource.PropertyMap{
+				"myList": resource.NewArrayProperty([]resource.PropertyValue{
+					resource.NewStringProperty("foo"),
+					resource.NewStringProperty("bar"),
+				}),
+			},
+			expectedMatches: map[arrayIndex]arrayIndex{
+				0: 0,
+				1: 1,
+			},
+		},
+		{
+			name:           "length mismatch returns nil",
+			path:           newPropertyPath("myList"),
+			changedIndices: []arrayIndex{0},
+			plannedState: []resource.PropertyValue{
+				resource.NewStringProperty("foo"),
+				resource.NewStringProperty("bar"),
+			},
+			newInputs: resource.PropertyMap{
+				"myList": resource.NewArrayProperty([]resource.PropertyValue{
+					resource.NewStringProperty("foo"),
+				}),
+			},
+			expectedMatches: nil,
+		},
+		{
+			name:           "no matches returns empty slice",
+			path:           newPropertyPath("myList"),
+			changedIndices: []arrayIndex{0},
+			plannedState: []resource.PropertyValue{
+				resource.NewStringProperty("foo"),
+				resource.NewStringProperty("bar"),
+			},
+			newInputs: resource.PropertyMap{
+				"myList": resource.NewArrayProperty([]resource.PropertyValue{
+					resource.NewStringProperty("baz"),
+					resource.NewStringProperty("qux"),
+				}),
+			},
+			expectedMatches: map[arrayIndex]arrayIndex{},
+		},
+		{
+			name:           "missing input path returns empty slice",
+			path:           newPropertyPath("nonexistentList"),
+			changedIndices: []arrayIndex{0},
+			plannedState: []resource.PropertyValue{
+				resource.NewStringProperty("foo"),
+			},
+			newInputs:       resource.PropertyMap{},
+			expectedMatches: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			differ := detailedDiffer{
+				ctx:       context.Background(),
+				tfs:       tfs,
+				ps:        ps,
+				newInputs: tt.newInputs,
+			}
+
+			matches := differ.matchPlanElementsToInputs(tt.path, tt.changedIndices, tt.plannedState)
+
+			if tt.expectedMatches == nil && matches != nil {
+				t.Errorf("expected nil matches, got %v", matches)
+				return
+			}
+
+			if !reflect.DeepEqual(matches, tt.expectedMatches) {
+				t.Errorf("expected matches %v, got %v", tt.expectedMatches, matches)
+			}
+		})
+	}
+}
+
+func TestMakeSetDiffElementResult(t *testing.T) {
+	t.Parallel()
+
+	// Create a basic differ instance for testing
+	differ := detailedDiffer{
+		ctx: context.Background(),
+		tfs: shimv2.NewSchemaMap(map[string]*schema.Schema{
+			"test_set": {
+				Type: schema.TypeSet,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
+			},
+		}),
+	}
+
+	tests := []struct {
+		name     string
+		path     propertyPath
+		changes  map[arrayIndex]setChange
+		oldList  []resource.PropertyValue
+		newList  []resource.PropertyValue
+		expected map[detailedDiffKey]*pulumirpc.PropertyDiff
+	}{
+		{
+			name: "add element",
+			path: newPropertyPath("test_set"),
+			changes: map[arrayIndex]setChange{
+				0: {
+					oldChanged:   false,
+					newChanged:   true,
+					plannedIndex: 0,
+				},
+			},
+			oldList: []resource.PropertyValue{},
+			newList: []resource.PropertyValue{
+				resource.NewStringProperty("new_value"),
+			},
+			expected: map[detailedDiffKey]*pulumirpc.PropertyDiff{
+				detailedDiffKey("test_set[0]"): {Kind: pulumirpc.PropertyDiff_ADD},
+			},
+		},
+		{
+			name: "delete element",
+			path: newPropertyPath("test_set"),
+			changes: map[arrayIndex]setChange{
+				0: {
+					oldChanged:   true,
+					newChanged:   false,
+					plannedIndex: 0,
+				},
+			},
+			oldList: []resource.PropertyValue{
+				resource.NewStringProperty("old_value"),
+			},
+			newList: []resource.PropertyValue{},
+			expected: map[detailedDiffKey]*pulumirpc.PropertyDiff{
+				detailedDiffKey("test_set[0]"): {Kind: pulumirpc.PropertyDiff_DELETE},
+			},
+		},
+		{
+			name: "update element",
+			path: newPropertyPath("test_set"),
+			changes: map[arrayIndex]setChange{
+				0: {
+					oldChanged:   true,
+					newChanged:   true,
+					plannedIndex: 0,
+				},
+			},
+			oldList: []resource.PropertyValue{
+				resource.NewStringProperty("old_value"),
+			},
+			newList: []resource.PropertyValue{
+				resource.NewStringProperty("new_value"),
+			},
+			expected: map[detailedDiffKey]*pulumirpc.PropertyDiff{
+				detailedDiffKey("test_set[0]"): {Kind: pulumirpc.PropertyDiff_UPDATE},
+			},
+		},
+		{
+			name: "multiple changes",
+			path: newPropertyPath("test_set"),
+			changes: map[arrayIndex]setChange{
+				0: {
+					oldChanged:   true,
+					newChanged:   false,
+					plannedIndex: 0,
+				},
+				1: {
+					oldChanged:   true,
+					newChanged:   true,
+					plannedIndex: 1,
+				},
+				2: {
+					oldChanged:   false,
+					newChanged:   true,
+					plannedIndex: 0,
+				},
+			},
+			oldList: []resource.PropertyValue{
+				resource.NewStringProperty("delete_value"),
+				resource.NewStringProperty("update_old_value"),
+				resource.NewStringProperty("no_change_value"),
+			},
+			newList: []resource.PropertyValue{
+				resource.NewStringProperty("no_change_value"),
+				resource.NewStringProperty("update_new_value"),
+				resource.NewStringProperty("add_value"),
+			},
+			expected: map[detailedDiffKey]*pulumirpc.PropertyDiff{
+				detailedDiffKey("test_set[0]"): {Kind: pulumirpc.PropertyDiff_DELETE},
+				detailedDiffKey("test_set[1]"): {Kind: pulumirpc.PropertyDiff_UPDATE},
+				detailedDiffKey("test_set[2]"): {Kind: pulumirpc.PropertyDiff_ADD},
+			},
+		},
+		{
+			name:     "no changes",
+			path:     newPropertyPath("test_set"),
+			changes:  map[arrayIndex]setChange{},
+			oldList:  []resource.PropertyValue{},
+			newList:  []resource.PropertyValue{},
+			expected: map[detailedDiffKey]*pulumirpc.PropertyDiff{},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			result := differ.makeSetDiffElementResult(tt.path, tt.changes, tt.oldList, tt.newList)
+			require.Equal(t, tt.expected, result)
+		})
+	}
 }
