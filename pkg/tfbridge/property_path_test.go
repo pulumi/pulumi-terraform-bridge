@@ -3,9 +3,13 @@ package tfbridge
 import (
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/require"
+
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
 
 func TestWalkTwoPropertyValues(t *testing.T) {
@@ -301,5 +305,56 @@ func TestWalkTwoPropertyValues(t *testing.T) {
 
 		require.Error(t, err)
 		require.IsType(t, TypeMismatchError{}, err)
+	})
+}
+
+func TestPropertyPath(t *testing.T) {
+	t.Parallel()
+	require.Equal(t, newPropertyPath("foo").Subpath("bar").Key(), detailedDiffKey("foo.bar"))
+}
+
+func TestLookupSchemasPropertyPath(t *testing.T) {
+	t.Parallel()
+
+	t.Run("string schema", func(t *testing.T) {
+		schemaMap := shimv2.NewSchemaMap(map[string]*schema.Schema{
+			"foo": {Type: schema.TypeString},
+		})
+
+		sch, _, err := lookupSchemas(newPropertyPath("foo"), schemaMap, nil)
+		require.NoError(t, err)
+		require.Equal(t, shim.TypeString, sch.Type())
+	})
+
+	t.Run("list schema", func(t *testing.T) {
+		tfs := shimv2.NewSchemaMap(map[string]*schema.Schema{
+			"my_list": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
+			},
+		})
+
+		sch, _, err := lookupSchemas(newPropertyPath("myList"), tfs, nil)
+		require.NoError(t, err)
+		require.Equal(t, shim.TypeList, sch.Type())
+	})
+
+	t.Run("list element schema", func(t *testing.T) {
+		tfs := shimv2.NewSchemaMap(map[string]*schema.Schema{
+			"my_list": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
+			},
+		})
+
+		sch, _, err := lookupSchemas(newPropertyPath("myList").Index(0), tfs, nil)
+		require.NoError(t, err)
+		require.Equal(t, shim.TypeString, sch.Type())
 	})
 }

@@ -5,11 +5,14 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"sort"
 
+	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/walk"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/propertyvalue"
@@ -154,6 +157,103 @@ func makeBaseDiff(old, new resource.PropertyValue) baseDiff {
 	return undecidedDiff
 }
 
+// validInputsFromPlan returns true if the given plan property value could originate from the given inputs.
+// Under the hood, it walks the plan and the inputs and checks that all differences stem from computed properties.
+// Any differences coming from properties which are not computed will be rejected.
+// Note that we are relying on the fact that the inputs will have defaults already applied.
+// Also note that nested sets will only get matched if they are exactly the same.
+func validInputsFromPlan(
+	path propertyPath,
+	inputs resource.PropertyValue,
+	plan resource.PropertyValue,
+	tfs shim.SchemaMap,
+	ps map[string]*info.Schema,
+) bool {
+	abortErr := errors.New("abort")
+	visitor := func(
+		subpath propertyPath, inputsSubVal, planSubVal resource.PropertyValue,
+	) error {
+		contract.Assertf(
+			!inputsSubVal.IsSecret() && !planSubVal.IsSecret() && !inputsSubVal.IsOutput() && !planSubVal.IsOutput(),
+			"validInputsFromPlan does not support secrets or outputs")
+		// Do not compare and do not descend into internal properties.
+		if subpath.IsReservedKey() {
+			return SkipChildrenError{}
+		}
+
+		tfs, _, err := lookupSchemas(subpath, tfs, ps)
+		if err != nil {
+			return abortErr
+		}
+
+		if tfs.Computed() && inputsSubVal.IsNull() {
+			// This is a computed property populated by the plan. We should not recurse into it.
+			return SkipChildrenError{}
+		}
+
+		if tfs.Type() == shim.TypeList || tfs.Type() == shim.TypeSet {
+			// Note that nested sets will likely get their elements reordered.
+			// This means that nested sets will not be matched correctly but that should be a rare case.
+			if inputsSubVal.IsNull() {
+				// The plan is allowed to populate a nil list with an empty value.
+				if (planSubVal.IsArray() && len(planSubVal.ArrayValue()) == 0) || planSubVal.IsNull() {
+					return nil
+				}
+				return abortErr
+			}
+			if planSubVal.IsNull() {
+				// The plan is not allowed to replace an empty list with a nil value.
+				return abortErr
+			}
+
+			if !inputsSubVal.IsArray() || !planSubVal.IsArray() {
+				return abortErr
+			}
+
+			// all non-empty lists will get their element values checked.
+			return nil
+		}
+
+		if tfs.Type() == shim.TypeMap {
+			if inputsSubVal.IsNull() {
+				// The plan is allowed to populate a nil map with an empty value.
+				if (planSubVal.IsObject() && len(planSubVal.ObjectValue()) == 0) || planSubVal.IsNull() {
+					return nil
+				}
+				return abortErr
+			}
+			if planSubVal.IsNull() {
+				// The plan is not allowed to replace an empty map with a nil value.
+				return abortErr
+			}
+
+			if !inputsSubVal.IsObject() || !planSubVal.IsObject() {
+				return abortErr
+			}
+
+			// all non-empty maps will get their element values checked.
+			return nil
+		}
+
+		if inputsSubVal.DeepEquals(planSubVal) {
+			return nil
+		}
+
+		return abortErr
+	}
+	err := walkTwoPropertyValues(
+		path,
+		inputs,
+		plan,
+		visitor,
+	)
+	if err == abortErr || errors.Is(err, TypeMismatchError{}) {
+		return false
+	}
+	contract.AssertNoErrorf(err, "TransformPropertyValue should only return an abort error")
+	return true
+}
+
 type detailedDiffKey string
 
 type detailedDiffer struct {
@@ -185,6 +285,14 @@ func (differ detailedDiffer) getEffectiveType(path walk.SchemaPath) shim.ValueTy
 	}
 
 	return tfs.Type()
+}
+
+func (differ detailedDiffer) isForceNew(path propertyPath) bool {
+	tfs, ps, err := lookupSchemas(path, differ.tfs, differ.ps)
+	if err != nil {
+		return false
+	}
+	return isForceNew(tfs, ps)
 }
 
 type (
@@ -350,77 +458,123 @@ func (differ detailedDiffer) makeListDiff(
 
 func computeSetHashChanges(
 	oldIdentities, newIdentities hashIndexMap,
-) (removed, added hashIndexMap) {
-	removed = hashIndexMap{}
-	added = hashIndexMap{}
+) (removed, added []arrayIndex) {
+	removed = []arrayIndex{}
+	added = []arrayIndex{}
 
 	for elementHash := range oldIdentities {
 		if _, ok := newIdentities[elementHash]; !ok {
-			removed[elementHash] = oldIdentities[elementHash]
+			removed = append(removed, oldIdentities[elementHash])
 		}
 	}
 
 	for elementHash := range newIdentities {
 		if _, ok := oldIdentities[elementHash]; !ok {
-			added[elementHash] = newIdentities[elementHash]
+			added = append(added, newIdentities[elementHash])
 		}
 	}
+
+	sort.Slice(removed, func(i, j int) bool {
+		return removed[i] < removed[j]
+	})
+	sort.Slice(added, func(i, j int) bool {
+		return added[i] < added[j]
+	})
 
 	return
 }
 
-func (differ detailedDiffer) matchNewIndicesToInputs(
-	path propertyPath, changedIdentities hashIndexMap,
-) hashIndexMap {
-	matched := hashIndexMap{}
-
+// matchPlanElementsToInputs is used to match the plan elements to the inputs.
+// It returns a map of inputs indices to the planned state indices.
+func (differ detailedDiffer) matchPlanElementsToInputs(
+	path propertyPath, changedPlanIndices []arrayIndex, plannedState []resource.PropertyValue,
+	rootNewInputs resource.PropertyMap,
+) map[arrayIndex]arrayIndex {
 	newInputsList := []resource.PropertyValue{}
 
-	newInputs, newInputsOk := path.GetFromMap(differ.newInputs)
+	newInputs, newInputsOk := path.GetFromMap(rootNewInputs)
 	if newInputsOk && isPresent(newInputs) && newInputs.IsArray() {
 		newInputsList = newInputs.ArrayValue()
 	}
 
-	inputIdentities := hashIndexMap{}
-
-	if !pathContainsComputed(path, differ.tfs, differ.ps) {
-		// The inputs are only safe to hash if the schema has no computed properties
-		inputIdentities = differ.calculateSetHashIndexMap(path, newInputsList)
+	if len(newInputsList) < len(plannedState) {
+		// If the number of inputs is less than the number of planned state elements,
+		// we can't match the elements to the inputs.
+		return nil
 	}
 
-	for elementHash, newStateIndex := range changedIdentities {
-		if inputIndex, ok := inputIdentities[elementHash]; ok {
-			matched[elementHash] = inputIndex
-		} else {
-			GetLogger(differ.ctx).Warn(fmt.Sprintf(
-				"Additional changes detected in %s, the displayed diff might be inaccurate",
-				path.String()))
-			matched[elementHash] = newStateIndex
+	matched := make(map[arrayIndex]arrayIndex)
+	used := make(map[int]bool, len(newInputsList))
+	for k := range used {
+		used[k] = false
+	}
+
+	for _, index := range changedPlanIndices {
+		for i, input := range newInputsList {
+			if used[i] {
+				// This input has already been used to match an element in the planned state.
+				continue
+			}
+
+			match := validInputsFromPlan(path.Index(int(index)), input, plannedState[index], differ.tfs, differ.ps)
+			if match {
+				matched[arrayIndex(i)] = index
+				used[i] = true
+				break
+			}
 		}
 	}
 
 	return matched
 }
 
-type hashPair struct {
-	oldHash setHash
-	newHash setHash
+type setChange struct {
+	oldChanged   bool
+	newChanged   bool
+	plannedIndex arrayIndex
 }
 
-func buildChangesIndexMap(added, removed hashIndexMap) map[arrayIndex]hashPair {
-	changes := map[arrayIndex]hashPair{}
-	for hash, index := range added {
-		changes[index] = hashPair{oldHash: -1, newHash: hash}
+func makeSetChangeMap(
+	removed []arrayIndex,
+	matchedInputIndices map[arrayIndex]arrayIndex,
+) map[arrayIndex]setChange {
+	changes := map[arrayIndex]setChange{}
+	for _, index := range removed {
+		changes[index] = setChange{oldChanged: true, newChanged: false}
 	}
-	for hash, index := range removed {
-		if el, ok := changes[index]; !ok {
-			changes[index] = hashPair{oldHash: hash, newHash: -1}
+	for inputIndex, planIndex := range matchedInputIndices {
+		if _, ok := changes[inputIndex]; !ok {
+			changes[inputIndex] = setChange{oldChanged: false, newChanged: true, plannedIndex: planIndex}
 		} else {
-			el.oldHash = hash
-			changes[index] = el
+			changes[inputIndex] = setChange{oldChanged: true, newChanged: true, plannedIndex: planIndex}
 		}
 	}
 	return changes
+}
+
+func (differ detailedDiffer) makeSetDiffElementResult(
+	path propertyPath,
+	changes map[arrayIndex]setChange,
+	oldList, newList []resource.PropertyValue,
+) map[detailedDiffKey]*pulumirpc.PropertyDiff {
+	diff := make(map[detailedDiffKey]*pulumirpc.PropertyDiff)
+	for index, change := range changes {
+		oldVal := resource.NewNullProperty()
+		if change.oldChanged {
+			oldVal = oldList[index]
+		}
+		newVal := resource.NewNullProperty()
+		if change.newChanged {
+			newVal = newList[change.plannedIndex]
+		}
+
+		elemDiff := differ.makePropDiff(path.Index(int(index)), oldVal, newVal)
+		for subKey, subDiff := range elemDiff {
+			diff[subKey] = subDiff
+		}
+	}
+
+	return diff
 }
 
 func (differ detailedDiffer) makeSetDiff(
@@ -435,27 +589,30 @@ func (differ detailedDiffer) makeSetDiff(
 
 	removed, added := computeSetHashChanges(oldIdentities, newIdentities)
 
+	if len(removed) == 0 && len(added) == 0 {
+		return nil
+	}
+
 	// We need to match the new indices to the inputs to ensure that the identity of the
 	// elements is preserved - this is necessary since the planning process can reorder
 	// the elements.
-	addedInputs := differ.matchNewIndicesToInputs(path, added)
-
-	changes := buildChangesIndexMap(addedInputs, removed)
-	for index, hashes := range changes {
-		oldVal := resource.NewNullProperty()
-		if removedIndex, ok := removed[hashes.oldHash]; ok {
-			oldVal = oldList[removedIndex]
+	matchedInputIndices := differ.matchPlanElementsToInputs(path, added, newList, differ.newInputs)
+	if matchedInputIndices == nil || len(matchedInputIndices) != len(added) {
+		// If we can't match the elements to the inputs, we will return a diff against the whole set.
+		// This ensures we still display a diff to the user, even if the algorithm can't determine
+		// the correct diff for each element.
+		if differ.isForceNew(path) {
+			diff[path.Key()] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE_REPLACE}
+		} else {
+			diff[path.Key()] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE}
 		}
-		newVal := resource.NewNullProperty()
-		if addedIndex, ok := added[hashes.newHash]; ok {
-			newVal = newList[addedIndex]
-		}
-
-		elemDiff := differ.makePropDiff(path.Index(int(index)), oldVal, newVal)
-		for subKey, subDiff := range elemDiff {
-			diff[subKey] = subDiff
-		}
+		return diff
 	}
+
+	// We've managed to match all elements to the inputs, so we can safely build an element-wise diff.
+	changes := makeSetChangeMap(removed, matchedInputIndices)
+	diff = differ.makeSetDiffElementResult(path, changes, oldList, newList)
+
 	return diff
 }
 

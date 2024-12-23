@@ -34,16 +34,11 @@ Plan: 0 to add, 1 to change, 0 to destroy.
         [id=id]
         [urn=urn:pulumi:test::project::crossprovider:index/testRes:TestRes::example]
       ~ tests: [
-          ~ [0]: "val1" => "val2"
-          ~ [1]: "val2" => "val3"
-          - [2]: "val3"
+          - [0]: "val1"
         ]
 Resources:
     ~ 1 to update
     1 unchanged
 `,
-	detailedDiff: map[string]interface{}{
-		"tests":    map[string]interface{}{"kind": "UPDATE"},
-		"tests[0]": map[string]interface{}{"kind": "DELETE"},
-	},
+	detailedDiff: map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "DELETE"}},
 }
