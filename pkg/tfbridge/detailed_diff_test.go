@@ -3147,13 +3147,12 @@ func TestMatchPlanElementsToInputs(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			differ := detailedDiffer{
-				ctx:       context.Background(),
-				tfs:       tfs,
-				ps:        ps,
-				newInputs: tt.newInputs,
+				ctx: context.Background(),
+				tfs: tfs,
+				ps:  ps,
 			}
 
-			matches := differ.matchPlanElementsToInputs(tt.path, tt.changedIndices, tt.plannedState)
+			matches := differ.matchPlanElementsToInputs(tt.path, tt.changedIndices, tt.plannedState, tt.newInputs)
 
 			if tt.expectedMatches == nil && matches != nil {
 				t.Errorf("expected nil matches, got %v", matches)

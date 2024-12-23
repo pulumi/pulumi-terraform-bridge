@@ -484,10 +484,11 @@ func computeSetHashChanges(
 // It returns a map of inputs indices to the planned state indices.
 func (differ detailedDiffer) matchPlanElementsToInputs(
 	path propertyPath, changedPlanIndices []arrayIndex, plannedState []resource.PropertyValue,
+	rootNewInputs resource.PropertyMap,
 ) map[arrayIndex]arrayIndex {
 	newInputsList := []resource.PropertyValue{}
 
-	newInputs, newInputsOk := path.GetFromMap(differ.newInputs)
+	newInputs, newInputsOk := path.GetFromMap(rootNewInputs)
 	if newInputsOk && isPresent(newInputs) && newInputs.IsArray() {
 		newInputsList = newInputs.ArrayValue()
 	}
@@ -591,7 +592,7 @@ func (differ detailedDiffer) makeSetDiff(
 	// We need to match the new indices to the inputs to ensure that the identity of the
 	// elements is preserved - this is necessary since the planning process can reorder
 	// the elements.
-	matchedInputIndices := differ.matchPlanElementsToInputs(path, added, newList)
+	matchedInputIndices := differ.matchPlanElementsToInputs(path, added, newList, differ.newInputs)
 	if matchedInputIndices == nil || len(matchedInputIndices) != len(added) {
 		// If we can't match the elements to the inputs, we will return a diff against the whole set.
 		// This ensures we still display a diff to the user, even if the algorithm can't determine
