@@ -173,6 +173,9 @@ func validInputsFromPlan(
 	visitor := func(
 		subpath propertyPath, inputsSubVal, planSubVal resource.PropertyValue,
 	) error {
+		contract.Assertf(
+			!inputsSubVal.IsSecret() && !planSubVal.IsSecret() && !inputsSubVal.IsOutput() && !planSubVal.IsOutput(),
+			"validInputsFromPlan does not support secrets or outputs")
 		// Do not compare and do not descend into internal properties.
 		if subpath.IsReservedKey() {
 			return SkipChildrenError{}
@@ -190,6 +193,7 @@ func validInputsFromPlan(
 
 		if tfs.Type() == shim.TypeList || tfs.Type() == shim.TypeSet {
 			// Note that nested sets will likely get their elements reordered.
+			// This means that nested sets will not be matched correctly but that should be a rare case.
 			if inputsSubVal.IsNull() {
 				// The plan is allowed to populate a nil list with an empty value.
 				if (planSubVal.IsArray() && len(planSubVal.ArrayValue()) == 0) || planSubVal.IsNull() {
