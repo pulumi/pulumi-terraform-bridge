@@ -7,10 +7,12 @@ import (
 	"slices"
 	"sort"
 
+	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/walk"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/propertyvalue"
@@ -153,6 +155,99 @@ func makeBaseDiff(old, new resource.PropertyValue) baseDiff {
 	}
 
 	return undecidedDiff
+}
+
+// validInputsFromPlan returns true if the given plan property value could originate from the given inputs.
+// Under the hood, it walks the plan and the inputs and checks that all differences stem from computed properties.
+// Any differences coming from properties which are not computed will be rejected.
+// Note that we are relying on the fact that the inputs will have defaults already applied.
+// Also note that nested sets will only get matched if they are exactly the same.
+func validInputsFromPlan(
+	path propertyPath,
+	inputs resource.PropertyValue,
+	plan resource.PropertyValue,
+	tfs shim.SchemaMap,
+	ps map[string]*info.Schema,
+) bool {
+	abortErr := errors.New("abort")
+	visitor := func(
+		subpath propertyPath, inputsSubVal, planSubVal resource.PropertyValue,
+	) error {
+		// Do not compare and do not descend into internal properties.
+		if subpath.IsReservedKey() {
+			return SkipChildrenError{}
+		}
+
+		tfs, _, err := lookupSchemas(subpath, tfs, ps)
+		if err != nil {
+			return abortErr
+		}
+
+		if tfs.Computed() && inputsSubVal.IsNull() {
+			// This is a computed property populated by the plan. We should not recurse into it.
+			return SkipChildrenError{}
+		}
+
+		if tfs.Type() == shim.TypeList || tfs.Type() == shim.TypeSet {
+			// Note that nested sets will likely get their elements reordered.
+			if inputsSubVal.IsNull() {
+				// The plan is allowed to populate a nil list with an empty value.
+				if (planSubVal.IsArray() && len(planSubVal.ArrayValue()) == 0) || planSubVal.IsNull() {
+					return nil
+				}
+				return abortErr
+			}
+			if planSubVal.IsNull() {
+				// The plan is not allowed to replace an empty list with a nil value.
+				return abortErr
+			}
+
+			if !inputsSubVal.IsArray() || !planSubVal.IsArray() {
+				return abortErr
+			}
+
+			// all non-empty lists will get their element values checked.
+			return nil
+		}
+
+		if tfs.Type() == shim.TypeMap {
+			if inputsSubVal.IsNull() {
+				// The plan is allowed to populate a nil map with an empty value.
+				if (planSubVal.IsObject() && len(planSubVal.ObjectValue()) == 0) || planSubVal.IsNull() {
+					return nil
+				}
+				return abortErr
+			}
+			if planSubVal.IsNull() {
+				// The plan is not allowed to replace an empty map with a nil value.
+				return abortErr
+			}
+
+			if !inputsSubVal.IsObject() || !planSubVal.IsObject() {
+				return abortErr
+			}
+
+			// all non-empty maps will get their element values checked.
+			return nil
+		}
+
+		if inputsSubVal.DeepEquals(planSubVal) {
+			return nil
+		}
+
+		return abortErr
+	}
+	err := walkTwoPropertyValues(
+		path,
+		inputs,
+		plan,
+		visitor,
+	)
+	if err == abortErr || errors.Is(err, TypeMismatchError{}) {
+		return false
+	}
+	contract.AssertNoErrorf(err, "TransformPropertyValue should only return an abort error")
+	return true
 }
 
 type detailedDiffKey string

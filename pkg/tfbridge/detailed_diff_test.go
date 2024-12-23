@@ -20,6 +20,311 @@ import (
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
 
+func TestValidInputsFromPlan(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		path        propertyPath
+		inputValue  resource.PropertyValue
+		planValue   resource.PropertyValue
+		sdkv2Schema map[string]*schema.Schema
+		want        bool
+	}{
+		{
+			name:       "simple matching values",
+			path:       newPropertyPath("foo"),
+			inputValue: resource.NewStringProperty("bar"),
+			planValue:  resource.NewStringProperty("bar"),
+			sdkv2Schema: map[string]*schema.Schema{
+				"foo": {
+					Type:     schema.TypeString,
+					Optional: true,
+				},
+			},
+			want: true,
+		},
+		{
+			name:       "simple mismatched values",
+			path:       newPropertyPath("foo"),
+			inputValue: resource.NewStringProperty("bar"),
+			planValue:  resource.NewStringProperty("baz"),
+			sdkv2Schema: map[string]*schema.Schema{
+				"foo": {
+					Type:     schema.TypeString,
+					Optional: true,
+				},
+			},
+			want: false,
+		},
+		{
+			name:       "computed property allows missing values",
+			path:       newPropertyPath("foo"),
+			inputValue: resource.NewNullProperty(),
+			planValue:  resource.NewStringProperty("computed"),
+			sdkv2Schema: map[string]*schema.Schema{
+				"foo": {
+					Type:     schema.TypeString,
+					Optional: true,
+					Computed: true,
+				},
+			},
+			want: true,
+		},
+		{
+			name:       "non-computed property requires matching values",
+			path:       newPropertyPath("foo"),
+			inputValue: resource.NewStringProperty("bar"),
+			planValue:  resource.NewStringProperty("different"),
+			sdkv2Schema: map[string]*schema.Schema{
+				"foo": {
+					Type:     schema.TypeString,
+					Optional: true,
+				},
+			},
+			want: false,
+		},
+		{
+			name: "set requires exact match",
+			path: newPropertyPath("set"),
+			inputValue: resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewStringProperty("a"),
+				resource.NewStringProperty("b"),
+			}),
+			planValue: resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewStringProperty("b"),
+				resource.NewStringProperty("a"),
+			}),
+			sdkv2Schema: map[string]*schema.Schema{
+				"set": {
+					Type:     schema.TypeSet,
+					Optional: true,
+					Elem: &schema.Schema{
+						Type: schema.TypeString,
+					},
+				},
+			},
+			want: false,
+		},
+		{
+			name: "missing non-computed property",
+			path: newPropertyPath("obj"),
+			inputValue: resource.NewArrayProperty(
+				[]resource.PropertyValue{
+					resource.NewObjectProperty(resource.PropertyMap{}),
+				},
+			),
+			planValue: resource.NewArrayProperty(
+				[]resource.PropertyValue{
+					resource.NewObjectProperty(resource.PropertyMap{
+						"foo": resource.NewStringProperty("bar"),
+					}),
+				},
+			),
+			sdkv2Schema: map[string]*schema.Schema{
+				"obj": {
+					Type: schema.TypeList,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"foo": {
+								Type:     schema.TypeString,
+								Optional: true,
+							},
+						},
+					},
+				},
+			},
+			want: false,
+		},
+		{
+			name: "missing computed property",
+			path: newPropertyPath("obj"),
+			inputValue: resource.NewArrayProperty(
+				[]resource.PropertyValue{
+					resource.NewObjectProperty(resource.PropertyMap{}),
+				},
+			),
+			planValue: resource.NewArrayProperty(
+				[]resource.PropertyValue{
+					resource.NewObjectProperty(resource.PropertyMap{
+						"foo": resource.NewStringProperty("bar"),
+					}),
+				},
+			),
+			sdkv2Schema: map[string]*schema.Schema{
+				"obj": {
+					Type: schema.TypeList,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"foo": {
+								Type:     schema.TypeString,
+								Optional: true,
+								Computed: true,
+							},
+						},
+					},
+				},
+			},
+			want: true,
+		},
+		{
+			name: "internal property ignored",
+			path: newPropertyPath("obj"),
+			inputValue: resource.NewArrayProperty(
+				[]resource.PropertyValue{
+					resource.NewObjectProperty(resource.PropertyMap{
+						"nested": resource.NewStringProperty("bar"),
+						"__defaults": resource.NewArrayProperty([]resource.PropertyValue{
+							resource.NewStringProperty("foo"),
+						}),
+					}),
+				},
+			),
+			planValue: resource.NewArrayProperty(
+				[]resource.PropertyValue{
+					resource.NewObjectProperty(resource.PropertyMap{
+						"nested": resource.NewStringProperty("bar"),
+					}),
+				},
+			),
+			sdkv2Schema: map[string]*schema.Schema{
+				"obj": {
+					Type: schema.TypeList,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"nested": {Type: schema.TypeString},
+						},
+					},
+				},
+			},
+			want: true,
+		},
+		{
+			name:       "unknown value",
+			path:       newPropertyPath("foo"),
+			inputValue: resource.NewNullProperty(),
+			planValue:  resource.NewComputedProperty(resource.Computed{Element: resource.NewStringProperty("")}),
+			sdkv2Schema: map[string]*schema.Schema{
+				"foo": {
+					Type:     schema.TypeString,
+					Optional: true,
+					Computed: true,
+				},
+			},
+			want: true,
+		},
+		{
+			name:       "unknown list value",
+			path:       newPropertyPath("foo"),
+			inputValue: resource.NewNullProperty(),
+			planValue:  resource.NewComputedProperty(resource.Computed{Element: resource.NewStringProperty("")}),
+			sdkv2Schema: map[string]*schema.Schema{
+				"foo": {
+					Type:     schema.TypeList,
+					Optional: true,
+					Computed: true,
+					Elem:     &schema.Schema{Type: schema.TypeString},
+				},
+			},
+			want: true,
+		},
+		{
+			name:       "unknown map value",
+			path:       newPropertyPath("foo"),
+			inputValue: resource.NewNullProperty(),
+			planValue:  resource.NewComputedProperty(resource.Computed{Element: resource.NewStringProperty("")}),
+			sdkv2Schema: map[string]*schema.Schema{
+				"foo": {
+					Type:     schema.TypeMap,
+					Optional: true,
+					Computed: true,
+					Elem:     &schema.Schema{Type: schema.TypeString},
+				},
+			},
+			want: true,
+		},
+		{
+			name:       "unknown list block value",
+			path:       newPropertyPath("foo"),
+			inputValue: resource.NewNullProperty(),
+			planValue:  resource.NewComputedProperty(resource.Computed{Element: resource.NewStringProperty("")}),
+			sdkv2Schema: map[string]*schema.Schema{
+				"foo": {
+					Type:     schema.TypeList,
+					Optional: true,
+					Computed: true,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"bar": {
+								Type:     schema.TypeString,
+								Optional: true,
+							},
+						},
+					},
+				},
+			},
+			want: true,
+		},
+		{
+			name:       "empty to nil list",
+			path:       newPropertyPath("foo"),
+			inputValue: resource.NewArrayProperty([]resource.PropertyValue{}),
+			planValue:  resource.NewNullProperty(),
+			sdkv2Schema: map[string]*schema.Schema{
+				"foo": {
+					Type:     schema.TypeList,
+					Optional: true,
+					Elem:     &schema.Schema{Type: schema.TypeString},
+				},
+			},
+			want: false,
+		},
+		{
+			name:       "nil to empty list",
+			path:       newPropertyPath("foo"),
+			inputValue: resource.NewNullProperty(),
+			planValue:  resource.NewArrayProperty([]resource.PropertyValue{}),
+			sdkv2Schema: map[string]*schema.Schema{
+				"foo": {
+					Type:     schema.TypeList,
+					Optional: true,
+					Elem:     &schema.Schema{Type: schema.TypeString},
+				},
+			},
+			want: true,
+		},
+		{
+			name:       "empty list to empty map",
+			path:       newPropertyPath("foo"),
+			inputValue: resource.NewArrayProperty([]resource.PropertyValue{}),
+			planValue:  resource.NewObjectProperty(resource.PropertyMap{}),
+			sdkv2Schema: map[string]*schema.Schema{
+				"foo": {
+					Type: schema.TypeMap,
+					Elem: &schema.Schema{Type: schema.TypeString},
+				},
+			},
+			want: false,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			tfs := shimv2.NewSchemaMap(tt.sdkv2Schema)
+			got := validInputsFromPlan(
+				tt.path,
+				tt.inputValue,
+				tt.planValue,
+				tfs,
+				nil,
+			)
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
+
 func TestDiffPair(t *testing.T) {
 	t.Parallel()
 	assert.Equal(t, (newPropertyPath("foo").Subpath("bar")).Key(), detailedDiffKey("foo.bar"))
