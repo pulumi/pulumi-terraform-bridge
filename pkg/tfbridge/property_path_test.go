@@ -157,8 +157,8 @@ func TestWalkTwoPropertyValues(t *testing.T) {
 				return nil
 			})
 
-		require.NoError(t, err)
-		require.Equal(t, []string{"", "a", "a[0]", "a.b"}, visited)
+		require.Error(t, err)
+		require.IsType(t, TypeMismatchError{}, err)
 	})
 
 	t.Run("both arrays error", func(t *testing.T) {
@@ -228,6 +228,7 @@ func TestWalkTwoPropertyValues(t *testing.T) {
 			})
 
 		require.Error(t, err)
+		require.IsType(t, TypeMismatchError{}, err)
 	})
 
 	t.Run("mismatched types first object error", func(t *testing.T) {
@@ -251,6 +252,7 @@ func TestWalkTwoPropertyValues(t *testing.T) {
 			})
 
 		require.Error(t, err)
+		require.IsType(t, TypeMismatchError{}, err)
 	})
 
 	t.Run("mismatched types second array error", func(t *testing.T) {
@@ -274,6 +276,7 @@ func TestWalkTwoPropertyValues(t *testing.T) {
 			})
 
 		require.Error(t, err)
+		require.IsType(t, TypeMismatchError{}, err)
 	})
 
 	t.Run("mismatched types second object error", func(t *testing.T) {
@@ -297,5 +300,6 @@ func TestWalkTwoPropertyValues(t *testing.T) {
 			})
 
 		require.Error(t, err)
+		require.IsType(t, TypeMismatchError{}, err)
 	})
 }

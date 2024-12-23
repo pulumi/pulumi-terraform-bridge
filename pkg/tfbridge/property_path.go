@@ -83,6 +83,12 @@ func (SkipChildrenError) Error() string {
 	return "skip children"
 }
 
+type TypeMismatchError struct{}
+
+func (TypeMismatchError) Error() string {
+	return "type mismatch"
+}
+
 type twoPropertyValueVisitor func(path propertyPath, val1, val2 resource.PropertyValue) error
 
 // walkTwoPropertyValues walks the two property values and calls the visitor for each step.
@@ -90,6 +96,10 @@ type twoPropertyValueVisitor func(path propertyPath, val1, val2 resource.Propert
 //
 // The visitor can return SkipChildrenError to skip the children of the current step.
 // In case the two values have different types, we walk both values, starting with val1.
+//
+// Note that elements inside a Secret or Output value will not get visited.
+//
+// Can return a TypeMismatchError in case the two values' types do not match.
 func walkTwoPropertyValues(
 	path propertyPath,
 	val1, val2 resource.PropertyValue,
@@ -101,6 +111,10 @@ func walkTwoPropertyValues(
 			return nil
 		}
 		return err
+	}
+
+	if val1.IsNull() || val2.IsNull() {
+		return nil
 	}
 
 	if val1.IsArray() && val2.IsArray() {
@@ -134,44 +148,8 @@ func walkTwoPropertyValues(
 				return err
 			}
 		}
-	} else {
-		if val1.IsArray() {
-			arr1 := val1.ArrayValue()
-			for i, v := range arr1 {
-				childPath := path.Index(i)
-				err := walkTwoPropertyValues(childPath, v, resource.NewNullProperty(), visitor)
-				if err != nil {
-					return err
-				}
-			}
-		} else if val1.IsObject() {
-			obj1 := val1.ObjectValue()
-			for k, v := range obj1 {
-				err := walkTwoPropertyValues(path.Subkey(k), v, resource.NewNullProperty(), visitor)
-				if err != nil {
-					return err
-				}
-			}
-		}
-
-		if val2.IsArray() {
-			arr2 := val2.ArrayValue()
-			for i, v := range arr2 {
-				childPath := path.Index(i)
-				err := walkTwoPropertyValues(childPath, resource.NewNullProperty(), v, visitor)
-				if err != nil {
-					return err
-				}
-			}
-		} else if val2.IsObject() {
-			obj2 := val2.ObjectValue()
-			for k, v := range obj2 {
-				err := walkTwoPropertyValues(path.Subkey(k), resource.NewNullProperty(), v, visitor)
-				if err != nil {
-					return err
-				}
-			}
-		}
+	} else if val1.IsArray() || val2.IsArray() || val1.IsObject() || val2.IsObject() {
+		return TypeMismatchError{}
 	}
 	return nil
 }
