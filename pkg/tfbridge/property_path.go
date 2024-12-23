@@ -1,6 +1,7 @@
 package tfbridge
 
 import (
+	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
@@ -37,6 +38,10 @@ func (k propertyPath) Subpath(subkey string) propertyPath {
 	return k.append(subkey)
 }
 
+func (k propertyPath) Subkey(subkey resource.PropertyKey) propertyPath {
+	return k.append(string(subkey))
+}
+
 func (k propertyPath) Index(i int) propertyPath {
 	return k.append(i)
 }
@@ -56,6 +61,97 @@ func lookupSchemas(
 ) (shim.Schema, *info.Schema, error) {
 	schemaPath := PropertyPathToSchemaPath(resource.PropertyPath(path), tfs, ps)
 	return LookupSchemas(schemaPath, tfs, ps)
+}
+
+func combinePropertyMapKeys(
+	object1, object2 resource.PropertyMap,
+) map[resource.PropertyKey]struct{} {
+	combined := make(map[resource.PropertyKey]struct{})
+	for k := range object1 {
+		combined[k] = struct{}{}
+	}
+	for k := range object2 {
+		combined[k] = struct{}{}
+	}
+	return combined
+}
+
+// SkipChildrenError is an error that can be returned by the visitor to skip the children of the current step.
+type SkipChildrenError struct{}
+
+func (SkipChildrenError) Error() string {
+	return "skip children"
+}
+
+type TypeMismatchError struct{}
+
+func (TypeMismatchError) Error() string {
+	return "type mismatch"
+}
+
+type twoPropertyValueVisitor func(path propertyPath, val1, val2 resource.PropertyValue) error
+
+// walkTwoPropertyValues walks the two property values and calls the visitor for each step.
+// It returns an error if the visitor returns an error other than SkipChildrenError.
+//
+// The visitor can return SkipChildrenError to skip the children of the current step.
+// In case the two values have different types, we walk both values, starting with val1.
+//
+// Note that elements inside a Secret or Output value will not get visited.
+//
+// Can return a TypeMismatchError in case the two values' types do not match.
+func walkTwoPropertyValues(
+	path propertyPath,
+	val1, val2 resource.PropertyValue,
+	visitor twoPropertyValueVisitor,
+) error {
+	err := visitor(path, val1, val2)
+	if err != nil {
+		if errors.Is(err, SkipChildrenError{}) {
+			return nil
+		}
+		return err
+	}
+
+	if val1.IsNull() || val2.IsNull() {
+		return nil
+	}
+
+	if val1.IsArray() && val2.IsArray() {
+		arr1 := val1.ArrayValue()
+		arr2 := val2.ArrayValue()
+		for i := range max(len(arr1), len(arr2)) {
+			childPath := path.Index(i)
+			var childVal1, childVal2 resource.PropertyValue
+			if i >= len(arr1) {
+				childVal1 = resource.NewNullProperty()
+			} else {
+				childVal1 = arr1[i]
+			}
+			if i >= len(arr2) {
+				childVal2 = resource.NewNullProperty()
+			} else {
+				childVal2 = arr2[i]
+			}
+			err := walkTwoPropertyValues(childPath, childVal1, childVal2, visitor)
+			if err != nil {
+				return err
+			}
+		}
+	} else if val1.IsObject() && val2.IsObject() {
+		obj1 := val1.ObjectValue()
+		obj2 := val2.ObjectValue()
+		combined := combinePropertyMapKeys(obj1, obj2)
+		for k := range combined {
+			err := walkTwoPropertyValues(path.Subkey(k), obj1[k], obj2[k], visitor)
+			if err != nil {
+				return err
+			}
+		}
+	} else if val1.IsArray() || val2.IsArray() || val1.IsObject() || val2.IsObject() {
+		return TypeMismatchError{}
+	}
+	return nil
 }
 
 func propertyPathTriggersReplacement(
