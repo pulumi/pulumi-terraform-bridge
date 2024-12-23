@@ -384,6 +384,19 @@ func TestValidInputsFromPlan(t *testing.T) {
 			want: true,
 		},
 		{
+			name:       "simple mismatched values",
+			path:       newPropertyPath("foo"),
+			inputValue: resource.NewStringProperty("bar"),
+			planValue:  resource.NewStringProperty("baz"),
+			sdkv2Schema: map[string]*schema.Schema{
+				"foo": {
+					Type:     schema.TypeString,
+					Optional: true,
+				},
+			},
+			want: false,
+		},
+		{
 			name:       "computed property allows missing values",
 			path:       newPropertyPath("foo"),
 			inputValue: resource.NewNullProperty(),
@@ -524,6 +537,113 @@ func TestValidInputsFromPlan(t *testing.T) {
 				},
 			},
 			want: true,
+		},
+		{
+			name:       "unknown value",
+			path:       newPropertyPath("foo"),
+			inputValue: resource.NewNullProperty(),
+			planValue:  resource.NewComputedProperty(resource.Computed{Element: resource.NewStringProperty("")}),
+			sdkv2Schema: map[string]*schema.Schema{
+				"foo": {
+					Type:     schema.TypeString,
+					Optional: true,
+					Computed: true,
+				},
+			},
+			want: true,
+		},
+		{
+			name:       "unknown list value",
+			path:       newPropertyPath("foo"),
+			inputValue: resource.NewNullProperty(),
+			planValue:  resource.NewComputedProperty(resource.Computed{Element: resource.NewStringProperty("")}),
+			sdkv2Schema: map[string]*schema.Schema{
+				"foo": {
+					Type:     schema.TypeList,
+					Optional: true,
+					Computed: true,
+					Elem:     &schema.Schema{Type: schema.TypeString},
+				},
+			},
+			want: true,
+		},
+		{
+			name:       "unknown map value",
+			path:       newPropertyPath("foo"),
+			inputValue: resource.NewNullProperty(),
+			planValue:  resource.NewComputedProperty(resource.Computed{Element: resource.NewStringProperty("")}),
+			sdkv2Schema: map[string]*schema.Schema{
+				"foo": {
+					Type:     schema.TypeMap,
+					Optional: true,
+					Computed: true,
+					Elem:     &schema.Schema{Type: schema.TypeString},
+				},
+			},
+			want: true,
+		},
+		{
+			name:       "unknown list block value",
+			path:       newPropertyPath("foo"),
+			inputValue: resource.NewNullProperty(),
+			planValue:  resource.NewComputedProperty(resource.Computed{Element: resource.NewStringProperty("")}),
+			sdkv2Schema: map[string]*schema.Schema{
+				"foo": {
+					Type:     schema.TypeList,
+					Optional: true,
+					Computed: true,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"bar": {
+								Type:     schema.TypeString,
+								Optional: true,
+							},
+						},
+					},
+				},
+			},
+			want: true,
+		},
+		{
+			name:       "empty to nil list",
+			path:       newPropertyPath("foo"),
+			inputValue: resource.NewArrayProperty([]resource.PropertyValue{}),
+			planValue:  resource.NewNullProperty(),
+			sdkv2Schema: map[string]*schema.Schema{
+				"foo": {
+					Type:     schema.TypeList,
+					Optional: true,
+					Elem:     &schema.Schema{Type: schema.TypeString},
+				},
+			},
+			want: false,
+		},
+		{
+			name:       "nil to empty list",
+			path:       newPropertyPath("foo"),
+			inputValue: resource.NewNullProperty(),
+			planValue:  resource.NewArrayProperty([]resource.PropertyValue{}),
+			sdkv2Schema: map[string]*schema.Schema{
+				"foo": {
+					Type:     schema.TypeList,
+					Optional: true,
+					Elem:     &schema.Schema{Type: schema.TypeString},
+				},
+			},
+			want: true,
+		},
+		{
+			name:       "empty list to empty map",
+			path:       newPropertyPath("foo"),
+			inputValue: resource.NewArrayProperty([]resource.PropertyValue{}),
+			planValue:  resource.NewObjectProperty(resource.PropertyMap{}),
+			sdkv2Schema: map[string]*schema.Schema{
+				"foo": {
+					Type: schema.TypeMap,
+					Elem: &schema.Schema{Type: schema.TypeString},
+				},
+			},
+			want: false,
 		},
 	}
 

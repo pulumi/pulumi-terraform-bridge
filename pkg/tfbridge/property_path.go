@@ -211,6 +211,7 @@ func propertyValueTriggersReplacement(
 // Under the hood, it walks the plan and the inputs and checks that all differences stem from computed properties.
 // Any differences coming from properties which are not computed will be rejected.
 // Note that we are relying on the fact that the inputs will have defaults already applied.
+// Also note that nested sets will only get matched if they are exactly the same.
 func validInputsFromPlan(
 	path propertyPath,
 	inputs resource.PropertyValue,
@@ -229,7 +230,6 @@ func validInputsFromPlan(
 
 		tfs, _, err := lookupSchemas(subpath, tfs, ps)
 		if err != nil {
-			// TODO log
 			return abortErr
 		}
 
@@ -238,18 +238,47 @@ func validInputsFromPlan(
 			return SkipChildrenError{}
 		}
 
-		if tfs.Type() == shim.TypeList || tfs.Type() == shim.TypeMap {
-			// We only need to check the leaf values, so we skip any collection types.
+		if tfs.Type() == shim.TypeList || tfs.Type() == shim.TypeSet {
+			// Note that nested sets will likely get their elements reordered.
+			if inputsSubVal.IsNull() {
+				// The plan is allowed to populate a nil list with an empty value.
+				if (planSubVal.IsArray() && len(planSubVal.ArrayValue()) == 0) || planSubVal.IsNull() {
+					return nil
+				}
+				return abortErr
+			}
+			if planSubVal.IsNull() {
+				// The plan is not allowed to replace an empty list with a nil value.
+				return abortErr
+			}
+
+			if !inputsSubVal.IsArray() || !planSubVal.IsArray() {
+				return abortErr
+			}
+
+			// all non-empty lists will get their element values checked.
 			return nil
 		}
 
-		// We can not descend into nested sets as planning re-orders the elements
-		if tfs.Type() == shim.TypeSet {
-			// TODO: more sophisticated comparison of nested sets
-			if inputsSubVal.DeepEquals(planSubVal) {
-				return SkipChildrenError{}
+		if tfs.Type() == shim.TypeMap {
+			if inputsSubVal.IsNull() {
+				// The plan is allowed to populate a nil map with an empty value.
+				if (planSubVal.IsObject() && len(planSubVal.ObjectValue()) == 0) || planSubVal.IsNull() {
+					return nil
+				}
+				return abortErr
 			}
-			return abortErr
+			if planSubVal.IsNull() {
+				// The plan is not allowed to replace an empty map with a nil value.
+				return abortErr
+			}
+
+			if !inputsSubVal.IsObject() || !planSubVal.IsObject() {
+				return abortErr
+			}
+
+			// all non-empty maps will get their element values checked.
+			return nil
 		}
 
 		if inputsSubVal.DeepEquals(planSubVal) {
@@ -264,7 +293,7 @@ func validInputsFromPlan(
 		plan,
 		visitor,
 	)
-	if err == abortErr {
+	if err == abortErr || errors.Is(err, TypeMismatchError{}) {
 		return false
 	}
 	contract.AssertNoErrorf(err, "TransformPropertyValue should only return an abort error")
