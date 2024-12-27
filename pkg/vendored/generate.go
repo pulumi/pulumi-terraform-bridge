@@ -237,11 +237,6 @@ func vendorOpenTOFU(version string) {
 			transforms: transforms,
 		},
 		{
-			src:        "internal/tfdiags/rpc_friendly.go",
-			dest:       "tfdiags/rpc_friendly.go",
-			transforms: transforms,
-		},
-		{
 			src:        "internal/tfdiags/contextual.go",
 			dest:       "tfdiags/contextual.go",
 			transforms: transforms,
@@ -271,9 +266,19 @@ func vendorOpenTOFU(version string) {
 			}),
 		},
 		{
-			src:        "internal/tfdiags/diagnostics.go",
-			dest:       "tfdiags/diagnostics.go",
-			transforms: transforms,
+			src:  "internal/tfdiags/diagnostics.go",
+			dest: "tfdiags/diagnostics.go",
+			transforms: append(transforms, func(s string) string {
+				code := `func (diags Diagnostics) ForRPC() Diagnostics {
+	ret := make(Diagnostics, len(diags))
+	for i := range diags {
+		ret[i] = makeRPCFriendlyDiag(diags[i])
+	}
+	return ret
+}
+`
+				return strings.ReplaceAll(s, code, "")
+			}),
 		},
 		{
 			src:        "internal/tfdiags/sourceless.go",

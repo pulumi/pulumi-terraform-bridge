@@ -123,13 +123,6 @@ func (diags Diagnostics) HasErrors() bool {
 // Note that this loses information about the original objects used to
 // construct the diagnostics, so e.g. the errwrap API will not work as
 // expected on an error-wrapped Diagnostics that came from ForRPC.
-func (diags Diagnostics) ForRPC() Diagnostics {
-	ret := make(Diagnostics, len(diags))
-	for i := range diags {
-		ret[i] = makeRPCFriendlyDiag(diags[i])
-	}
-	return ret
-}
 
 // Err flattens a diagnostics list into a single Go error, or to nil
 // if the diagnostics list does not include any error-level diagnostics.
