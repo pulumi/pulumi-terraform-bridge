@@ -17,6 +17,7 @@ package tfbridge
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/blang/semver"
 	pfprovider "github.com/hashicorp/terraform-plugin-framework/provider"
@@ -27,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -43,14 +45,14 @@ import (
 )
 
 type providerOptions struct {
-	enableAccurateBridgePreview bool
+	enableAccuratePFBridgePreview bool
 }
 
 type providerOption func(providerOptions) (providerOptions, error)
 
-func withAccurateBridgePreview() providerOption {
+func withAccuratePFBridgePreview() providerOption {
 	return func(opts providerOptions) (providerOptions, error) {
-		opts.enableAccurateBridgePreview = true
+		opts.enableAccuratePFBridgePreview = true
 		return opts, nil
 	}
 }
@@ -175,8 +177,8 @@ func newProviderWithContext(ctx context.Context, info tfbridge.ProviderInfo,
 	}
 
 	opts := []providerOption{}
-	if info.EnableAccurateBridgePreview {
-		opts = append(opts, withAccurateBridgePreview())
+	if info.EnableAccuratePFBridgePreview || cmdutil.IsTruthy(os.Getenv("PULUMI_TF_BRIDGE_ACCURATE_PF_BRIDGE_PREVIEW")) {
+		opts = append(opts, withAccuratePFBridgePreview())
 	}
 
 	p := &provider{

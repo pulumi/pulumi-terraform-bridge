@@ -134,7 +134,7 @@ func (p *provider) DiffWithContext(
 		return plugin.DiffResult{}, err
 	}
 
-	if providerOpts.enableAccurateBridgePreview {
+	if providerOpts.enableAccuratePFBridgePreview {
 		replaceOverride := len(replaceKeys) > 0
 		pluginDetailedDiff, err := calculateDetailedDiff(
 			ctx, &rh, priorState, plannedStateValue, checkedInputs, &replaceOverride)
