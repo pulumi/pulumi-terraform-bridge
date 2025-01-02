@@ -12,8 +12,8 @@ import (
 	"github.com/hexops/autogold/v2"
 	"github.com/zclconf/go-cty/cty"
 
+	pb "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/providerbuilder"
 	crosstests "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/cross-tests"
-	pb "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/providerbuilder"
 )
 
 func ref[T any](t T) *T { return &t }

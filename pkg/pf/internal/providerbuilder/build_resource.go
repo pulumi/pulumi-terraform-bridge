@@ -119,7 +119,9 @@ func (r *Resource) Delete(ctx context.Context, req resource.DeleteRequest, resp 
 	r.DeleteFunc(ctx, req, resp)
 }
 
-func (r *Resource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
+func (r *Resource) ImportState(
+	ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse,
+) {
 	if r.ImportStateFunc == nil {
 		return
 	}
