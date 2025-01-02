@@ -24,6 +24,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
+	tfbridge0 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/tokens"
 )
 
 // Provider is a test provider that can be used in tests.
@@ -79,6 +83,22 @@ func (impl *Provider) Resources(ctx context.Context) []func() resource.Resource 
 
 func (impl *Provider) GRPCProvider() tfprotov6.ProviderServer {
 	return providerserver.NewProtocol6(impl)()
+}
+
+func (impl *Provider) ToProviderInfo() tfbridge0.ProviderInfo {
+	shimProvider := tfbridge.ShimProvider(impl)
+
+	provider := tfbridge0.ProviderInfo{
+		P:                           shimProvider,
+		Name:                        impl.TypeName,
+		Version:                     "0.0.1",
+		MetadataInfo:                &tfbridge0.MetadataInfo{},
+		EnableAccurateBridgePreview: true,
+	}
+
+	provider.MustComputeTokens(tokens.SingleModule(impl.TypeName, "index", tokens.MakeStandard(impl.TypeName)))
+
+	return provider
 }
 
 type NewProviderArgs struct {
