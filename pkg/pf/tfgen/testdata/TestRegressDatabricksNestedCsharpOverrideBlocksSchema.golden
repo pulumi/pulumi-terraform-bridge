@@ -1,0 +1,110 @@
+{
+    "name": "testprovider",
+    "version": "0.0.1",
+    "attribution": "This Pulumi package is based on the [`testprovider` Terraform Provider](https://github.com/terraform-providers/terraform-provider-testprovider).",
+    "meta": {
+        "moduleFormat": "(.*)(?:/[^/]*)"
+    },
+    "language": {
+        "nodejs": {
+            "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-testprovider)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e please consult the source [`terraform-provider-testprovider` repo](https://github.com/terraform-providers/terraform-provider-testprovider/issues).",
+            "compatibility": "tfbridge20",
+            "disableUnionOutputTypes": true
+        },
+        "python": {
+            "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-testprovider)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e please consult the source [`terraform-provider-testprovider` repo](https://github.com/terraform-providers/terraform-provider-testprovider/issues).",
+            "compatibility": "tfbridge20",
+            "pyproject": {}
+        }
+    },
+    "config": {},
+    "types": {
+        "testprovider:index/getServingEndpointsEndpoints1:getServingEndpointsEndpoints1": {
+            "properties": {
+                "aiGateway1": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/types/testprovider:index/getServingEndpointsEndpoints1AiGateway1:getServingEndpointsEndpoints1AiGateway1"
+                    }
+                }
+            },
+            "type": "object"
+        },
+        "testprovider:index/getServingEndpointsEndpoints1AiGateway1:getServingEndpointsEndpoints1AiGateway1": {
+            "properties": {
+                "guardrails1": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/types/testprovider:index/getServingEndpointsEndpoints1AiGateway1Guardrails1:getServingEndpointsEndpoints1AiGateway1Guardrails1"
+                    }
+                }
+            },
+            "type": "object"
+        },
+        "testprovider:index/getServingEndpointsEndpoints1AiGateway1Guardrails1:getServingEndpointsEndpoints1AiGateway1Guardrails1": {
+            "properties": {
+                "input1": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/types/testprovider:index/getServingEndpointsEndpoints1AiGateway1Guardrails1Input1:getServingEndpointsEndpoints1AiGateway1Guardrails1Input1"
+                    }
+                }
+            },
+            "type": "object"
+        },
+        "testprovider:index/getServingEndpointsEndpoints1AiGateway1Guardrails1Input1:getServingEndpointsEndpoints1AiGateway1Guardrails1Input1": {
+            "properties": {
+                "maxBatchSize": {
+                    "type": "integer",
+                    "language": {
+                        "csharp": {
+                            "name": "MaxBatchSize1"
+                        }
+                    }
+                }
+            },
+            "type": "object",
+            "required": [
+                "maxBatchSize"
+            ]
+        }
+    },
+    "provider": {
+        "description": "The provider type for the testprovider package. By default, resources use package-wide configuration\nsettings, however an explicit `Provider` instance may be created and passed during resource\nconstruction to achieve fine-grained programmatic control over provider settings. See the\n[documentation](https://www.pulumi.com/docs/reference/programming-model/#providers) for more information.\n"
+    },
+    "functions": {
+        "testprovider:index/getServingEndpoints:getServingEndpoints": {
+            "inputs": {
+                "description": "A collection of arguments for invoking getServingEndpoints.\n",
+                "properties": {
+                    "endpoints1": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/types/testprovider:index/getServingEndpointsEndpoints1:getServingEndpointsEndpoints1"
+                        }
+                    }
+                },
+                "type": "object"
+            },
+            "outputs": {
+                "description": "A collection of values returned by getServingEndpoints.\n",
+                "properties": {
+                    "endpoints1": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/types/testprovider:index/getServingEndpointsEndpoints1:getServingEndpointsEndpoints1"
+                        }
+                    },
+                    "id": {
+                        "type": "string",
+                        "description": "The provider-assigned unique ID for this managed resource.\n"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id"
+                ]
+            }
+        }
+    }
+}
