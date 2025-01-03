@@ -47,7 +47,7 @@ Follow these steps if you have a Pulumi provider that was bridged from a Terrafo
      ```
 
 2. Find tfgen binary `main` that calls `tfgen.Main` from `github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen`
-   and update it to call `tfgen.Main` from `github.com/pulumi/pulumi-terraform-bridge/v3/pf/tfgen`.
+   and update it to call `tfgen.Main` from `github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfgen`.
 
    Note that the extra verson parameter is removed from `tfgen.Main`, so this code:
 
