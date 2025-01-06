@@ -57,7 +57,7 @@ resources:
     ~ testprovider:index/test:Test: (update)
         [id=test-id]
         [urn=urn:pulumi:test::test::testprovider:index/test:Test::mainRes]
-      ~ s: [secret] => [secret]
+        s: [secret]
 Resources:
     ~ 1 to update
     1 unchanged
@@ -202,9 +202,7 @@ resources:
     ~ testprovider:index/test:Test: (update)
         [id=test-id]
         [urn=urn:pulumi:test::test::testprovider:index/test:Test::mainRes]
-      ~ key: {
-          ~ prop1: [secret] => [secret]
-        }
+        key: [secret]
 Resources:
     ~ 1 to update
     1 unchanged
@@ -225,8 +223,9 @@ Resources:
     ~ testprovider:index/test:Test: (update)
         [id=test-id]
         [urn=urn:pulumi:test::test::testprovider:index/test:Test::mainRes]
-      ~ key: {
-          ~ prop1: [secret] => [secret]
+        key: {
+            prop1: [secret]
+            prop2: "value2"
         }
 Resources:
     ~ 1 to update
@@ -249,6 +248,7 @@ Resources:
         [id=test-id]
         [urn=urn:pulumi:test::test::testprovider:index/test:Test::mainRes]
       ~ key: {
+            prop1: [secret]
           ~ prop2: "value2" => "value3"
         }
 Resources:
@@ -302,7 +302,7 @@ resources:
     ~ testprovider:index/test:Test: (update)
         [id=test-id]
         [urn=urn:pulumi:test::test::testprovider:index/test:Test::mainRes]
-      ~ s: [secret] => [secret]
+        s: [secret]
 Resources:
     ~ 1 to update
     1 unchanged
