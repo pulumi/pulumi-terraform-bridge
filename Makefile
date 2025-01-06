@@ -37,6 +37,20 @@ test:: install_plugins
 	PULUMI_TERRAFORM_BRIDGE_TEST_PROVIDER=$(shell pwd)/bin/pulumi-terraform-bridge-test-provider \
 		go test -count=1 -coverprofile="coverage.txt" -coverpkg=./... -timeout 2h -parallel ${TESTPARALLELISM} $(value RUN_TEST_CMD)
 
+test_shard:: install_plugins
+	@mkdir -p bin
+	go build -o bin ./internal/testing/pulumi-terraform-bridge-test-provider
+	PULUMI_TERRAFORM_BRIDGE_TEST_PROVIDER=$(shell pwd)/bin/pulumi-terraform-bridge-test-provider \
+		go test -count=1 -coverprofile="coverage.txt" -coverpkg=./... -timeout 2h -parallel ${TESTPARALLELISM} ./... ${SHARD_CMD}
+
+test_profile:: install_plugins
+	@mkdir -p bin
+	go build -o bin ./internal/testing/pulumi-terraform-bridge-test-provider
+	rm -f testoutput.txt
+	PULUMI_TERRAFORM_BRIDGE_TEST_PROVIDER=$(shell pwd)/bin/pulumi-terraform-bridge-test-provider \
+		go test -count=1 -timeout 2h -parallel ${TESTPARALLELISM} ./... -json | \
+		jq -c -r 'select((.Action == "pass" or .Action == "fail") and .Test != null)' | tee testoutput.txt
+
 # Run tests while accepting current output as expected output "golden"
 # tests. In case where system behavior changes intentionally this can
 # be useful to run to review the differences with git diff.
