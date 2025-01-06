@@ -534,7 +534,7 @@ func TestConfigureBooleans(t *testing.T) {
 	}`)
 }
 
-func TestConfigureErrorReplacement(t *testing.T) {
+func TestConfigureErrorReplacementPF(t *testing.T) {
 	t.Parallel()
 	t.Run("replace_config_properties", func(t *testing.T) {
 		errString := `some error with "config_property" and "config" but not config`

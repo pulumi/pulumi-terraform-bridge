@@ -8,6 +8,7 @@ on:
         required: false
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  TOTAL_SHARDS: 10
 
 jobs:
   test:
@@ -21,6 +22,48 @@ jobs:
         go-version: [1.22.x, 1.23.x]
         platform: [ubuntu-latest, macos-latest, windows-latest]
         feature-flags: ["DEFAULT", "PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW"]
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+        exclude:
+          - platform: windows-latest
+            feature-flags: "PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW"
+          - platform: macos-latest
+            feature-flags: "PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW"
+          - platform: windows-latest
+            shard: 1
+          - platform: windows-latest
+            shard: 2
+          - platform: windows-latest
+            shard: 3
+          - platform: windows-latest
+            shard: 4
+          - platform: windows-latest
+            shard: 5
+          - platform: windows-latest
+            shard: 6
+          - platform: windows-latest
+            shard: 7
+          - platform: windows-latest
+            shard: 8
+          - platform: windows-latest
+            shard: 9
+          - platform: macos-latest
+            shard: 1
+          - platform: macos-latest
+            shard: 2
+          - platform: macos-latest
+            shard: 3
+          - platform: macos-latest
+            shard: 4
+          - platform: macos-latest
+            shard: 5
+          - platform: macos-latest
+            shard: 6
+          - platform: macos-latest
+            shard: 7
+          - platform: macos-latest
+            shard: 8
+          - platform: macos-latest
+            shard: 9
     runs-on: ${{ matrix.platform }}
     steps:
       - name: Install pulumi
@@ -49,8 +92,17 @@ jobs:
         run: make build
       - name: Build PF
         run: cd pkg/pf && make build
+      - name: Shard tests
+        run: echo "SHARD_CMD=$(go run github.com/VenelinMartinov/sharder@9d09afeb1c053b4a0263fbaa5c3c9da1ca2d10e7 --total ${{ env.TOTAL_SHARDS }} --index ${{ matrix.shard }} --output testoutput.txt --format make)" >> $GITHUB_ENV
+        if: ${{ matrix.platform == 'ubuntu-latest' }}
+      - run: echo "$SHARD_CMD"
+        if: ${{ matrix.platform == 'ubuntu-latest' }}
+      - name: Test
+        run: make VERBOSE=true test_shard
+        if: ${{ matrix.platform == 'ubuntu-latest' }}
       - name: Test
         run: make test
+        if: ${{ matrix.platform != 'ubuntu-latest' }}
       - name: Upload coverage reports to Codecov
         # If we have a CODECOV_TOKEN secret, then we upload it to get a coverage report.
         #
