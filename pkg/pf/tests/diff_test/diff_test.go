@@ -1,14 +1,11 @@
 package tfbridgetests
 
 import (
-	"context"
 	"testing"
 
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/defaults"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hexops/autogold/v2"
 	"github.com/zclconf/go-cty/cty"
 
@@ -16,9 +13,7 @@ import (
 	crosstests "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/cross-tests"
 )
 
-func ref[T any](t T) *T { return &t }
-
-func TestSimpleNoDiff(t *testing.T) {
+func TestPFSimpleNoDiff(t *testing.T) {
 	t.Parallel()
 
 	sch := rschema.Schema{
@@ -64,29 +59,7 @@ Resources:
 `).Equal(t, diff.PulumiOut)
 }
 
-type stringDefault string
-
-var _ defaults.String = stringDefault("default")
-
-func (s stringDefault) DefaultString(ctx context.Context, req defaults.StringRequest, resp *defaults.StringResponse) {
-	resp.PlanValue = basetypes.NewStringValue(string(s))
-}
-
-func (s stringDefault) PlanModifyString(ctx context.Context, req planmodifier.StringRequest, resp *planmodifier.StringResponse) {
-	if req.PlanValue.IsNull() || req.PlanValue.IsUnknown() {
-		resp.PlanValue = basetypes.NewStringValue(string(s))
-	}
-}
-
-func (s stringDefault) Description(ctx context.Context) string {
-	return "description"
-}
-
-func (s stringDefault) MarkdownDescription(ctx context.Context) string {
-	return "markdown description"
-}
-
-func TestDetailedDiffStringAttribute(t *testing.T) {
+func TestPFDetailedDiffStringAttribute(t *testing.T) {
 	t.Parallel()
 
 	attributeSchema := rschema.Schema{
@@ -173,14 +146,6 @@ func TestDetailedDiffStringAttribute(t *testing.T) {
 		{"changed", ref("value"), ref("value1")},
 		{"added", nil, ref("value")},
 		{"removed", ref("value"), nil},
-	}
-
-	type testOutput struct {
-		initialValue *string
-		changeValue  *string
-		tfOut        string
-		pulumiOut    string
-		detailedDiff map[string]any
 	}
 
 	for _, schema := range schemas {

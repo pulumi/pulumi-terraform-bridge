@@ -16,7 +16,7 @@ import (
 	crosstests "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/cross-tests"
 )
 
-func TestDetailedDiffList(t *testing.T) {
+func TestPFDetailedDiffList(t *testing.T) {
 	t.Parallel()
 
 	attributeSchema := rschema.Schema{
@@ -133,51 +133,19 @@ func TestDetailedDiffList(t *testing.T) {
 		},
 	}
 
-	attrList := func(arr *[]string) cty.Value {
-		if arr == nil {
-			return cty.NullVal(cty.DynamicPseudoType)
-		}
-		slice := make([]cty.Value, len(*arr))
-		for i, v := range *arr {
-			slice[i] = cty.StringVal(v)
-		}
-		if len(slice) == 0 {
-			return cty.ListValEmpty(cty.String)
-		}
-		return cty.ListVal(slice)
-	}
-
-	nestedAttrList := func(arr *[]string) cty.Value {
-		if arr == nil {
-			return cty.NullVal(cty.DynamicPseudoType)
-		}
-		slice := make([]cty.Value, len(*arr))
-		for i, v := range *arr {
-			slice[i] = cty.ObjectVal(
-				map[string]cty.Value{
-					"nested": cty.StringVal(v),
-				},
-			)
-		}
-		if len(slice) == 0 {
-			return cty.ListValEmpty(cty.Object(map[string]cty.Type{"nested": cty.String}))
-		}
-		return cty.ListVal(slice)
-	}
-
 	schemaValueMakerPairs := []struct {
 		name       string
 		schema     rschema.Schema
 		valueMaker func(*[]string) cty.Value
 	}{
-		{"attribute no replace", attributeSchema, attrList},
-		{"attribute requires replace", attributeReplaceSchema, attrList},
-		{"nested attribute no replace", nestedAttributeSchema, nestedAttrList},
-		{"nested attribute requires replace", nestedAttributeReplaceSchema, nestedAttrList},
-		{"nested attribute nested requires replace", nestedAttributeNestedReplaceSchema, nestedAttrList},
-		{"block no replace", blockSchema, nestedAttrList},
-		{"block requires replace", blockReplaceSchema, nestedAttrList},
-		{"block nested requires replace", blockNestedReplaceSchema, nestedAttrList},
+		{"attribute no replace", attributeSchema, listValueMaker},
+		{"attribute requires replace", attributeReplaceSchema, listValueMaker},
+		{"nested attribute no replace", nestedAttributeSchema, nestedListValueMaker},
+		{"nested attribute requires replace", nestedAttributeReplaceSchema, nestedListValueMaker},
+		{"nested attribute nested requires replace", nestedAttributeNestedReplaceSchema, nestedListValueMaker},
+		{"block no replace", blockSchema, nestedListValueMaker},
+		{"block requires replace", blockReplaceSchema, nestedListValueMaker},
+		{"block nested requires replace", blockNestedReplaceSchema, nestedListValueMaker},
 	}
 
 	longList := &[]string{}
@@ -212,14 +180,6 @@ func TestDetailedDiffList(t *testing.T) {
 		{"added end", &[]string{"val1", "val2"}, &[]string{"val1", "val2", "val3"}},
 		{"long list added", longList, &longListAddedBack},
 		{"long list added front", longList, &longListAddedFront},
-	}
-
-	type testOutput struct {
-		initialValue *[]string
-		changeValue  *[]string
-		tfOut        string
-		pulumiOut    string
-		detailedDiff map[string]any
 	}
 
 	for _, schemaValueMakerPair := range schemaValueMakerPairs {

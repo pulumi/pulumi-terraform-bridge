@@ -1,13 +1,11 @@
 package tfbridgetests
 
 import (
-	"context"
 	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/defaults"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
@@ -20,29 +18,7 @@ import (
 	crosstests "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/cross-tests"
 )
 
-type objectDefault basetypes.ObjectValue
-
-var _ defaults.Object = objectDefault{}
-
-func (o objectDefault) DefaultObject(ctx context.Context, req defaults.ObjectRequest, resp *defaults.ObjectResponse) {
-	resp.PlanValue = basetypes.ObjectValue(o)
-}
-
-func (o objectDefault) PlanModifyObject(ctx context.Context, req planmodifier.ObjectRequest, resp *planmodifier.ObjectResponse) {
-	if req.PlanValue.IsNull() || req.PlanValue.IsUnknown() {
-		resp.PlanValue = basetypes.ObjectValue(o)
-	}
-}
-
-func (o objectDefault) Description(ctx context.Context) string {
-	return "description"
-}
-
-func (o objectDefault) MarkdownDescription(ctx context.Context) string {
-	return "markdown description"
-}
-
-func TestDetailedDiffObject(t *testing.T) {
+func TestPFDetailedDiffObject(t *testing.T) {
 	t.Parallel()
 
 	attributeSchema := rschema.Schema{
@@ -316,14 +292,6 @@ func TestDetailedDiffObject(t *testing.T) {
 		{"unchanged empty", &map[string]string{}, &map[string]string{}},
 		{"changed empty to non-empty", &map[string]string{}, &map[string]string{"nested": "value"}},
 		{"changed non-empty to empty", &map[string]string{"nested": "value"}, &map[string]string{}},
-	}
-
-	type testOutput struct {
-		initialValue *map[string]string
-		changeValue  *map[string]string
-		tfOut        string
-		pulumiOut    string
-		detailedDiff map[string]any
 	}
 
 	for _, schema := range schemas {
