@@ -1,5 +1,5 @@
 tfbridgetests.testOutput{
-	changeValue: &[]string{},
+	initialValue: nil, changeValue: &[]string{},
 	tfOut: `
 No changes. Your infrastructure matches the configuration.
 

@@ -1,5 +1,5 @@
 tfbridgetests.testOutput{
-	changeValue: &map[string]string{
+	initialValue: nil, changeValue: &map[string]string{
 		"nested": "value",
 	},
 	tfOut: `

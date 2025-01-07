@@ -1,5 +1,6 @@
 tfbridgetests.testOutput{
 	initialValue: valast.Ptr("value"),
+	changeValue:  nil,
 	tfOut: `
 No changes. Your infrastructure matches the configuration.
 

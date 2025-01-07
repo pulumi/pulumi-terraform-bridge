@@ -1,5 +1,5 @@
 tfbridgetests.testOutput{
-	changeValue: &[]string{
+	initialValue: nil, changeValue: &[]string{
 		"value",
 	},
 	tfOut: `
