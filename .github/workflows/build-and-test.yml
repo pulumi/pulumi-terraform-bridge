@@ -82,6 +82,8 @@ jobs:
           go-version: ${{ matrix.go-version }}
           cache-dependency-path: |
             **/go.sum
+          # disable caching on windows because it's very slow
+          cache: ${{ matrix.platform != 'windows-latest' }}
       - name: export feature flags
         run: echo ${{ matrix.feature-flags }}=true >> $GITHUB_ENV
         if: ${{ matrix.platform != 'windows-latest' && matrix.feature-flags != 'DEFAULT' }}
