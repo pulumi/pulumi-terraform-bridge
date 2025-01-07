@@ -829,7 +829,7 @@ func TestExtraConfig(t *testing.T) {
 			},
 		})
 
-	prov := bridgedProvider(provBuilder)
+	prov := provBuilder.ToProviderInfo()
 
 	prov.ExtraConfig = map[string]*info.Config{
 		"extraConf": {

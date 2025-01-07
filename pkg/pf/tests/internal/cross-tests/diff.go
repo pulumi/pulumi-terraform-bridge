@@ -109,8 +109,7 @@ func Diff(t T, res pb.Resource, tfConfig1, tfConfig2 map[string]cty.Value, optio
 	require.NoError(t, err)
 	t.Logf("Pulumi.yaml:\n%s", string(bytes))
 
-	pt, err := pulcheck.PulCheck(
-		t, bridgedProvider(prov, bridgedProviderOpts{enableAccurateBridgePreview: !opts.disableAccurateBridgePreview}), string(bytes))
+	pt, err := pulcheck.PulCheck(t, prov.ToProviderInfo(), string(bytes))
 	require.NoError(t, err)
 	pt.Up(t)
 
@@ -134,8 +133,7 @@ func Diff(t T, res pb.Resource, tfConfig1, tfConfig2 map[string]cty.Value, optio
 }
 
 type diffOpts struct {
-	resourceInfo                 map[string]*info.Schema
-	disableAccurateBridgePreview bool
+	resourceInfo map[string]*info.Schema
 }
 
 type DiffOption func(*diffOpts)
@@ -143,9 +141,4 @@ type DiffOption func(*diffOpts)
 // DiffProviderInfo specifies a map of [info.Schema] to apply to the provider under test.
 func DiffProviderInfo(info map[string]*info.Schema) DiffOption {
 	return func(o *diffOpts) { o.resourceInfo = info }
-}
-
-// DisableAccurateBridgePreview disables the accurate bridge preview feature.
-func DisableAccurateBridgePreview() DiffOption {
-	return func(o *diffOpts) { o.disableAccurateBridgePreview = true }
 }

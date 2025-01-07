@@ -27,7 +27,7 @@ func TestAutonaming(t *testing.T) {
 			},
 		})
 
-	prov := bridgedProvider(provBuilder)
+	prov := provBuilder.ToProviderInfo()
 	prov.Resources["testprovider_test"] = &tfbridge.ResourceInfo{
 		Tok: "testprovider:index:Test",
 		Fields: map[string]*tfbridge.SchemaInfo{

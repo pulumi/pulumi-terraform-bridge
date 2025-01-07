@@ -197,7 +197,6 @@ func TestDetailedDiffStringAttribute(t *testing.T) {
 					})
 					diff := crosstests.Diff(
 						t, res, map[string]cty.Value{"key": initialValue}, map[string]cty.Value{"key": changeValue},
-						crosstests.DisableAccurateBridgePreview(),
 					)
 
 					autogold.ExpectFile(t, testOutput{
