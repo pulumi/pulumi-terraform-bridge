@@ -136,8 +136,6 @@ jobs:
       - name: Shard tests
         run: echo "SHARD_CMD=$(go run github.com/VenelinMartinov/sharder@9d09afeb1c053b4a0263fbaa5c3c9da1ca2d10e7 --total ${{ env.TOTAL_SHARDS }} --index ${{ matrix.shard }} --output testoutput.txt --format make)" >> $GITHUB_ENV
         if: ${{ matrix.platform == 'ubuntu-latest' }}
-      - run: echo "$SHARD_CMD"
-        if: ${{ matrix.platform == 'ubuntu-latest' }}
       - name: Test
         run: make VERBOSE=true test_shard
         if: ${{ matrix.platform == 'ubuntu-latest' }}

@@ -20,3 +20,4 @@ pulumi-hcl-lint
 .env
 .aider*
 schema-tpsdkv2.json
+pulumi-hcl-lint
