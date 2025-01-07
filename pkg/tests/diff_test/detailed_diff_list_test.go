@@ -11,7 +11,7 @@ import (
 	crosstests "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests"
 )
 
-func TestDetailedDiffList(t *testing.T) {
+func TestSDKv2DetailedDiffList(t *testing.T) {
 	t.Parallel()
 
 	listAttrSchema := schema.Resource{
@@ -296,14 +296,6 @@ func TestDetailedDiffList(t *testing.T) {
 	}
 
 	scenarios := append(oneElementScenarios, multiElementScenarios...)
-
-	type testOutput struct {
-		initialValue *[]string
-		changeValue  *[]string
-		tfOut        string
-		pulumiOut    string
-		detailedDiff map[string]any
-	}
 
 	runTest := func(t *testing.T, schema schema.Resource, valueMaker func(*[]string) map[string]cty.Value, initialValue *[]string, changeValue *[]string) {
 		diff := crosstests.Diff(t, &schema, valueMaker(initialValue), valueMaker(changeValue))

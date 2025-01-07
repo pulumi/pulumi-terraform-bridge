@@ -10,11 +10,7 @@ import (
 	crosstests "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests"
 )
 
-func ref[T any](v T) *T {
-	return &v
-}
-
-func TestDetailedDiffString(t *testing.T) {
+func TestSDKv2DetailedDiffString(t *testing.T) {
 	t.Parallel()
 
 	res := schema.Resource{
@@ -51,14 +47,6 @@ func TestDetailedDiffString(t *testing.T) {
 		{"changed", valueOne, valueTwo},
 	}
 
-	type testOutput struct {
-		initialValue *string
-		changeValue  *string
-		tfOut        string
-		pulumiOut    string
-		detailedDiff map[string]any
-	}
-
 	for _, scenario := range scenarios {
 		t.Run(scenario.name, func(t *testing.T) {
 			t.Parallel()
@@ -74,7 +62,7 @@ func TestDetailedDiffString(t *testing.T) {
 	}
 }
 
-func TestDetailedDiffMap(t *testing.T) {
+func TestSDKv2DetailedDiffMap(t *testing.T) {
 	t.Parallel()
 
 	res := schema.Resource{
@@ -115,14 +103,6 @@ func TestDetailedDiffMap(t *testing.T) {
 		{"removed", map[string]string{"key": "val"}, map[string]string{}},
 		{"value changed", map[string]string{"key": "val"}, map[string]string{"key": "val2"}},
 		{"key changed", map[string]string{"key": "val"}, map[string]string{"key2": "val"}},
-	}
-
-	type testOutput struct {
-		initialValue map[string]string
-		changeValue  map[string]string
-		tfOut        string
-		pulumiOut    string
-		detailedDiff map[string]any
 	}
 
 	for _, scenario := range scenarios {
