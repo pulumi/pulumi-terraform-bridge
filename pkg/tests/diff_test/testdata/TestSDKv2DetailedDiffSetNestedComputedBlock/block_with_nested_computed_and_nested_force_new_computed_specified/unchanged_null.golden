@@ -1,5 +1,5 @@
 tests.testOutput{
-	initialValue: &[]string{},
+	initialValue: nil, changeValue: nil,
 	tfOut: `
 No changes. Your infrastructure matches the configuration.
 

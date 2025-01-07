@@ -563,7 +563,7 @@ func TestSDKv2DetailedDiffSetNestedComputedBlock(t *testing.T) {
 		{"block with nested computed and force new", blockSchemaNestedComputedForceNew, nestedListValueMaker},
 		{"block with nested computed and force new computed specified in program", blockSchemaNestedComputedForceNew, nestedListValueMakerWithComputedSpecified},
 		{"block with nested computed and nested force new", blockSchemaNestedComputedNestedForceNew, nestedListValueMaker},
-		{"block with nested computed and nested force new computed specified in program", blockSchemaNestedComputedNestedForceNew, nestedListValueMakerWithComputedSpecified},
+		{"block with nested computed and nested force new computed specified", blockSchemaNestedComputedNestedForceNew, nestedListValueMakerWithComputedSpecified},
 	}
 
 	for _, schemaValueMakerPair := range schemaValueMakerPairs {

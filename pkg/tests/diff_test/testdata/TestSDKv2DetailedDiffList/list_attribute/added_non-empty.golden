@@ -1,5 +1,5 @@
 tests.testOutput{
-	changeValue: &[]string{
+	initialValue: nil, changeValue: &[]string{
 		"val1",
 	},
 	tfOut: `
