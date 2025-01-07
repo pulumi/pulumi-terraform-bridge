@@ -1988,7 +1988,7 @@ func TestConfigure(t *testing.T) {
 	})
 }
 
-func TestConfigureErrorReplacementSDKv2(t *testing.T) {
+func TestConfigureErrorReplacement(t *testing.T) {
 	t.Parallel()
 	t.Run("replace_config_properties", func(t *testing.T) {
 		p := testprovider.ProviderV2()

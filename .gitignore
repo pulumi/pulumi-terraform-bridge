@@ -15,5 +15,3 @@ pf/coverage.out
 pf/tests/coverage.out
 
 pulumi-hcl-lint
-
-schema-tpsdkv2.json

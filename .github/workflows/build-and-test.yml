@@ -103,21 +103,17 @@ jobs:
           cache-dependency-path: |
             **/go.sum
           # disable caching on windows because it's very slow
+          # see https://github.com/actions/setup-go/issues/495
           cache: ${{ matrix.platform != 'windows-latest' }}
       - name: export feature flags
         run: echo ${{ matrix.feature-flags }}=true >> $GITHUB_ENV
         if: ${{ matrix.platform != 'windows-latest' && matrix.feature-flags != 'DEFAULT' }}
-      - name: export feature flags
-        run: echo ${{ matrix.feature-flags }}=true >> $env:GITHUB_ENV
-        if: ${{ matrix.platform == 'windows-latest' && matrix.feature-flags != 'DEFAULT' }}
       - name: Build
         run: make build
       - name: Build PF
         run: cd pkg/pf && make build
       - name: Shard tests
         run: echo "SHARD_CMD=$(go run github.com/VenelinMartinov/sharder@9d09afeb1c053b4a0263fbaa5c3c9da1ca2d10e7 --total ${{ env.TOTAL_SHARDS }} --index ${{ matrix.shard }} --output testoutput.txt --format make)" >> $GITHUB_ENV
-        if: ${{ matrix.platform == 'ubuntu-latest' }}
-      - run: echo "$SHARD_CMD"
         if: ${{ matrix.platform == 'ubuntu-latest' }}
       - name: Test
         run: make VERBOSE=true test_shard
