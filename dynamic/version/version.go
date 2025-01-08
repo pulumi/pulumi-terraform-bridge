@@ -15,6 +15,11 @@
 package version
 
 // version is initialized by the Go linker to contain the semver of this build.
+//
+// This is the same mechanism that Pulumi uses to embed versions in all of our binaries.
+// When updating the module version of this library, ensure to update the correct module path in
+// the Goreleaser for https://github.com/pulumi/pulumi-terraform-provider.
+// See also https://github.com/pulumi/pulumi-terraform-provider/pull/56.
 var version string
 
 // The Version of the provider.
