@@ -52,7 +52,7 @@ func (p *provider) DeleteWithContext(
 		return resource.StatusOK, err
 	}
 
-	plannedState, err := tfprotov6.NewDynamicValue(tfType, tftypes.NewValue(tfType, nil))
+	nilState, err := tfprotov6.NewDynamicValue(tfType, tftypes.NewValue(tfType, nil))
 	contract.AssertNoErrorf(err, "nil is always a valid value to marshal to a dynamic state")
 
 	// terraform-plugin-framework recognizes PlannedState=nil ApplyResourceChangeRequest request as DELETE.
@@ -62,7 +62,8 @@ func (p *provider) DeleteWithContext(
 	req := tfprotov6.ApplyResourceChangeRequest{
 		TypeName:     rh.terraformResourceName,
 		PriorState:   priorState,
-		PlannedState: &plannedState,
+		PlannedState: &nilState,
+		Config:       &nilState,
 	}
 
 	resp, err := p.tfServer.ApplyResourceChange(ctx, &req)
