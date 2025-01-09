@@ -260,6 +260,7 @@ func convertExample(g *Generator, code string, exampleNumber int) (string, error
 		choosableEnd = "\n{{% /choosable %}}\n"
 	)
 	exampleContent := chooserStart
+	successfulConversion := false
 
 	// Generate each language in turn and mark up the output with the correct Hugo shortcodes.
 	for _, lang := range langs {
@@ -273,10 +274,17 @@ func convertExample(g *Generator, code string, exampleNumber int) (string, error
 		if err != nil {
 			g.warn(err.Error())
 		}
+		if convertedLang != "" {
+			successfulConversion = true
+		}
+
 		exampleContent += choosableStart + pulumiYAML + convertedLang + choosableEnd
 	}
-	exampleContent += chooserEnd
-	return exampleContent, nil
+
+	if successfulConversion {
+		return exampleContent + chooserEnd, nil
+	}
+	return "", nil
 }
 
 type titleRemover struct{}
