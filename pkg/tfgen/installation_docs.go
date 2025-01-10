@@ -259,6 +259,10 @@ func convertExample(g *Generator, code string, exampleNumber int) (string, error
 		return "", err
 	}
 
+	if pclExample.PCL == "" {
+		return "", nil
+	}
+
 	langs := genLanguageToSlice(g.language)
 	const (
 		chooserStart = `{{< chooser language "typescript,python,go,csharp,java,yaml" >}}` + "\n"
@@ -280,10 +284,9 @@ func convertExample(g *Generator, code string, exampleNumber int) (string, error
 		if err != nil {
 			g.warn(err.Error())
 		}
-		if convertedLang != "" {
+		if convertedLang != exampleUnavailable {
 			successfulConversion = true
 		}
-
 		exampleContent += choosableStart + pulumiYAML + convertedLang + choosableEnd
 	}
 

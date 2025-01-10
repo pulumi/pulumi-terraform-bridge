@@ -45,6 +45,10 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/internal/autofill"
 )
 
+const (
+	exampleUnavailable = "Example currently unavailable in this language\n"
+)
+
 func cliConverterEnabled() bool {
 	return cmdutil.IsTruthy(os.Getenv("PULUMI_CONVERT"))
 }
@@ -645,13 +649,14 @@ func (cc *cliConverter) singleExampleFromHCLToPCL(path, hclCode string) (transla
 func (cc *cliConverter) singleExampleFromPCLToLanguage(example translatedExample, lang string) (string, error) {
 	var err error
 
-	if example.PCL == "" {
-		return "", nil
-	}
 	source, diags, _ := cc.convertPCL(example.PCL, lang)
 	diags = cc.postProcessDiagnostics(diags.Extend(example.Diagnostics))
 	if diags.HasErrors() {
 		err = fmt.Errorf("conversion errors: %s", diags.Error())
+	}
+
+	if source == "" {
+		source = exampleUnavailable
 	}
 	source = "```" + lang + "\n" + source + "```"
 	return source, err
