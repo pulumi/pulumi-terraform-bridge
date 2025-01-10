@@ -1,4 +1,4 @@
-This example is invalid and should not be translated for this test to pass
+This example will only translate the resource code. It has no configuration file.
 
 ## Example Usage
 

@@ -645,6 +645,28 @@ func TestSkipDefaultSectionHeaders(t *testing.T) {
 	}
 }
 
+func TestRemoveEmptyExamples(t *testing.T) {
+	t.Parallel()
+	type testCase struct {
+		name     string
+		input    string
+		expected string
+	}
+
+	tc := testCase{
+		name:     "An empty Example Usage section is skipped",
+		input:    readTestFile(t, "skip-empty-examples/input.md"),
+		expected: readTestFile(t, "skip-empty-examples/expected.md"),
+	}
+
+	t.Run(tc.name, func(t *testing.T) {
+		t.Parallel()
+		actual, err := removeEmptySection("Example Usage", []byte(tc.input))
+		require.NoError(t, err)
+		assertEqualHTML(t, tc.expected, string(actual))
+	})
+}
+
 // Helper func to determine if the HTML rendering is equal.
 // This helps in cases where the processed Markdown is slightly different from the expected Markdown
 // due to goldmark making some (insignificant to the final HTML) changes when parsing and rendering.
@@ -662,26 +684,4 @@ func assertEqualHTML(t *testing.T, expected, actual string) bool {
 		panic(err)
 	}
 	return assert.Equal(t, expectedBuf.String(), outputBuf.String())
-}
-
-func TestRemoveEmptyExamples(t *testing.T) {
-	t.Parallel()
-	type testCase struct {
-		name     string
-		input    string
-		expected string
-	}
-
-	tc := testCase{
-		name:     "An empty Example Usage section is skipped",
-		input:    readTestFile(t, "skip-empty-examples/input.md"),
-		expected: readTestFile(t, "skip-empty-examples/expected.md"),
-	}
-
-	t.Run(tc.name, func(t *testing.T) {
-		t.Parallel()
-		actual, err := removeEmptyExamples(tc.input)
-		require.NoError(t, err)
-		assertEqualHTML(t, tc.expected, actual)
-	})
 }

@@ -67,14 +67,14 @@ func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
 	}
 
 	// If the code translation resulted in an empty examples section, remove it
-	contentStr, err = removeEmptyExamples(contentStr)
+	content, err = removeEmptySection("Example Usage", []byte(contentStr))
 	if err != nil {
 		return nil, err
 	}
 
 	// Apply post-code translation edit rules. This applies all default edit rules and provider-supplied edit rules in
 	// the post-code translation phase.
-	contentBytes, err = g.editRules.apply(docFile.FileName, []byte(contentStr), info.PostCodeTranslation)
+	contentBytes, err = g.editRules.apply(docFile.FileName, content, info.PostCodeTranslation)
 	if err != nil {
 		return nil, err
 	}
@@ -504,31 +504,27 @@ func getProviderDisplayName(g *Generator) string {
 	return capitalize.String(providerName)
 }
 
-func removeEmptyExamples(contentStr string) (string, error) {
-	if checkExamplesEmpty(contentStr) {
-		mybytes, err := SkipSectionByHeaderContent([]byte(contentStr), func(headerText string) bool {
-			return headerText == "Example Usage"
-		})
-		contentStr = string(mybytes)
-		return contentStr, err
+func removeEmptySection(title string, contentBytes []byte) ([]byte, error) {
+	if !isMarkdownSectionEmpty(title, contentBytes) {
+		return contentBytes, nil
 	}
-	return contentStr, nil
-
+	return SkipSectionByHeaderContent(contentBytes, func(headerText string) bool {
+		return headerText == title
+	})
 }
 
-func checkExamplesEmpty(contentStr string) bool {
-
+func isMarkdownSectionEmpty(title string, contentBytes []byte) bool {
 	gm := goldmark.New(goldmark.WithExtensions(parse.TFRegistryExtension))
-	astNode := gm.Parser().Parse(text.NewReader([]byte(contentStr)))
+	astNode := gm.Parser().Parse(text.NewReader(contentBytes))
 
 	isEmpty := false
 
 	err := ast.Walk(astNode, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
 		if section, ok := n.(*section.Section); ok && entering {
-			sectionText := section.Text([]byte(contentStr))
+			sectionText := section.Text(contentBytes)
 			// A little confusingly, we check if the section text _only_ contains the title, "Example Usage".
 			// Non-empty sections contain the title + content, so if we see only the title, the section is empty.
-			if string(sectionText) == "Example Usage" {
+			if string(sectionText) == title {
 				isEmpty = true
 				return ast.WalkStop, nil
 			}
