@@ -227,9 +227,6 @@ func translateCodeBlocks(contentStr string, g *Generator) (string, error) {
 
 // This function renders the Pulumi.yaml config file for a given language if configuration is included in the example.
 func processConfigYaml(pulumiYAML, lang string) string {
-	if pulumiYAML == "" {
-		return pulumiYAML
-	}
 	// Replace the project name from the default `/` to a more descriptive name
 	nameRegex := regexp.MustCompile(`name: /*`)
 	pulumiYAMLFile := nameRegex.ReplaceAllString(pulumiYAML, "name: configuration-example")
@@ -259,8 +256,17 @@ func convertExample(g *Generator, code string, exampleNumber int) (string, error
 		return "", err
 	}
 
-	if pclExample.PCL == "" {
+	// If both PCL and PulumiYAML fields are empty, we can return.
+	if pclExample.PulumiYAML == "" && pclExample.PCL == "" {
 		return "", nil
+	}
+
+	// If we have a valid provider config but no additional code, we only render a YAML configuration block
+	// with no choosers and an empty language runtime field
+	if pclExample.PulumiYAML != "" && pclExample.PCL == "" {
+		if pclExample.PCL == "" {
+			return processConfigYaml(pclExample.PulumiYAML, ""), nil
+		}
 	}
 
 	langs := genLanguageToSlice(g.language)
@@ -277,8 +283,11 @@ func convertExample(g *Generator, code string, exampleNumber int) (string, error
 		choosableStart := fmt.Sprintf("{{%% choosable language %s %%}}\n", lang)
 
 		// Generate the Pulumi.yaml config file for each language
-		configFile := pclExample.PulumiYAML
-		pulumiYAML := processConfigYaml(configFile, lang)
+		var pulumiYAML string
+		if pclExample.PulumiYAML != "" {
+			pulumiYAML = processConfigYaml(pclExample.PulumiYAML, lang)
+		}
+
 		// Generate language example
 		convertedLang, err := converter.singleExampleFromPCLToLanguage(pclExample, lang)
 		if err != nil {

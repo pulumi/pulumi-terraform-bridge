@@ -476,6 +476,32 @@ func TestTranslateCodeBlocks(t *testing.T) {
 				language: RegistryDocs,
 			},
 		},
+		{
+			name:       "Translates standalone provider config into Pulumi config YAML",
+			contentStr: readfile(t, "test_data/installation-docs/provider-config-only.md"),
+			expected:   readfile(t, "test_data/installation-docs/provider-config-only-expected.md"),
+			g: &Generator{
+				sink: mockSink{},
+				cliConverterState: &cliConverter{
+					info: p,
+					pcls: pclsMap,
+				},
+				language: RegistryDocs,
+			},
+		},
+		{
+			name:       "Translates standalone example into languages",
+			contentStr: readfile(t, "test_data/installation-docs/example-only.md"),
+			expected:   readfile(t, "test_data/installation-docs/example-only-expected.md"),
+			g: &Generator{
+				sink: mockSink{},
+				cliConverterState: &cliConverter{
+					info: p,
+					pcls: pclsMap,
+				},
+				language: RegistryDocs,
+			},
+		},
 	}
 
 	for _, tt := range testCases {
