@@ -26,7 +26,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/spf13/afero"
@@ -45,6 +44,20 @@ const (
 	// The name of this *unparameterized* provider.
 	baseProviderName = "terraform-provider"
 )
+
+func main() {
+	ctx := context.Background()
+
+	defaultInfo, metadata, close := initialSetup()
+
+	defer func() {
+		if err := close(); err != nil {
+			fmt.Printf("Failed to close TF provder: %s", err.Error())
+		}
+	}()
+
+	pfbridge.Main(ctx, baseProviderName, defaultInfo, metadata)
+}
 
 func initialSetup() (info.Provider, pfbridge.ProviderMetadata, func() error) {
 	var tfServer run.Provider
@@ -73,14 +86,12 @@ func initialSetup() (info.Provider, pfbridge.ProviderMetadata, func() error) {
 		XGetSchema: func(ctx context.Context, req plugin.GetSchemaRequest) ([]byte, error) {
 			// Create a custom generator for schema. Examples will only be generated if `fullDocs` is set.
 			g, err := tfgen.NewGenerator(tfgen.GeneratorOptions{
-				Package:      info.Name,
-				Version:      info.Version,
-				Language:     tfgen.Schema,
-				ProviderInfo: info,
-				Root:         afero.NewMemMapFs(),
-				Sink: diag.DefaultSink(os.Stdout, os.Stderr, diag.FormatOptions{
-					Color: colors.Always,
-				}),
+				Package:       info.Name,
+				Version:       info.Version,
+				Language:      tfgen.Schema,
+				ProviderInfo:  info,
+				Root:          afero.NewMemMapFs(),
+				Sink:          loggerSink{tfbridge.GetLogger(ctx)},
 				XInMemoryDocs: !fullDocs,
 				SkipExamples:  !fullDocs,
 			})
@@ -100,14 +111,12 @@ func initialSetup() (info.Provider, pfbridge.ProviderMetadata, func() error) {
 			if indexDocOutDir != "" {
 				// Create a custom generator for registry docs (_index.md).
 				indexGenerator, err := tfgen.NewGenerator(tfgen.GeneratorOptions{
-					Package:      info.Name,
-					Version:      info.Version,
-					Language:     tfgen.RegistryDocs,
-					ProviderInfo: info,
-					Root:         afero.NewBasePathFs(afero.NewOsFs(), indexDocOutDir),
-					Sink: diag.DefaultSink(os.Stdout, os.Stderr, diag.FormatOptions{
-						Color: colors.Always,
-					}),
+					Package:       info.Name,
+					Version:       info.Version,
+					Language:      tfgen.RegistryDocs,
+					ProviderInfo:  info,
+					Root:          afero.NewBasePathFs(afero.NewOsFs(), indexDocOutDir),
+					Sink:          loggerSink{tfbridge.GetLogger(ctx)},
 					XInMemoryDocs: false,
 					SkipExamples:  false,
 				})
@@ -255,20 +264,6 @@ func (d doubleParameterizeErr) Error() string {
 		d.existing.name, d.existing.version)
 }
 
-func main() {
-	ctx := context.Background()
-
-	defaultInfo, metadata, close := initialSetup()
-
-	defer func() {
-		if err := close(); err != nil {
-			fmt.Printf("Failed to close TF provder: %s", err.Error())
-		}
-	}()
-
-	pfbridge.Main(ctx, baseProviderName, defaultInfo, metadata)
-}
-
 func getProvider(ctx context.Context, args parameterize.Args) (run.Provider, error) {
 	if local := args.Local; local != nil {
 		return run.LocalProvider(ctx, local.Path)
@@ -279,4 +274,43 @@ func getProvider(ctx context.Context, args parameterize.Args) (run.Provider, err
 		"local or remote must be specified - and that should have already been validated")
 
 	return run.NamedProvider(ctx, remote.Name, remote.Version)
+}
+
+type loggerSink struct{ logger tfbridge.Logger }
+
+func (l loggerSink) Logf(sev diag.Severity, d *diag.Diag, args ...interface{}) {
+	msg, detail := l.Stringify(sev, d, args...)
+	var log func(string)
+	switch sev {
+	case diag.Debug:
+		log = l.logger.Debug
+	case diag.Infoerr:
+		log = l.logger.Info
+	case diag.Warning:
+		log = l.logger.Warn
+	case diag.Error:
+		log = l.logger.Error
+	case diag.Info:
+		fallthrough
+	default:
+		log = l.logger.Info
+	}
+
+	log(msg)
+	if detail != "" {
+		log(detail)
+	}
+}
+
+func (l loggerSink) Debugf(d *diag.Diag, args ...interface{})   { l.Logf(diag.Debug, d, args...) }
+func (l loggerSink) Infof(d *diag.Diag, args ...interface{})    { l.Logf(diag.Info, d, args...) }
+func (l loggerSink) Infoerrf(d *diag.Diag, args ...interface{}) { l.Logf(diag.Infoerr, d, args...) }
+func (l loggerSink) Errorf(d *diag.Diag, args ...interface{})   { l.Logf(diag.Error, d, args...) }
+func (l loggerSink) Warningf(d *diag.Diag, args ...interface{}) { l.Logf(diag.Warning, d, args...) }
+
+func (l loggerSink) Stringify(_ diag.Severity, d *diag.Diag, args ...interface{}) (string, string) {
+	if d.Raw {
+		return fmt.Sprint(append([]any{d.Message}, args...)), ""
+	}
+	return fmt.Sprintf(d.Message, args...), ""
 }
