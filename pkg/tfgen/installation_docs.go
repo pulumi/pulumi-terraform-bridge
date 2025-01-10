@@ -66,6 +66,12 @@ func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
 		return nil, err
 	}
 
+	// If the code translation resulted in an empty examples section, remove it
+	contentStr, err = removeEmptyExamples(contentStr)
+	if err != nil {
+		return nil, err
+	}
+
 	// Apply post-code translation edit rules. This applies all default edit rules and provider-supplied edit rules in
 	// the post-code translation phase.
 	contentBytes, err = g.editRules.apply(docFile.FileName, []byte(contentStr), info.PostCodeTranslation)
@@ -484,4 +490,40 @@ func getProviderDisplayName(g *Generator) string {
 	// but it's a reasonable fallback option when info.DisplayName isn't set.
 	capitalize := cases.Title(language.English)
 	return capitalize.String(providerName)
+}
+
+func removeEmptyExamples(contentStr string) (string, error) {
+	if checkExamplesEmpty(contentStr) {
+		mybytes, err := SkipSectionByHeaderContent([]byte(contentStr), func(headerText string) bool {
+			return headerText == "Example Usage"
+		})
+		contentStr = string(mybytes)
+		return contentStr, err
+	}
+	return contentStr, nil
+
+}
+
+func checkExamplesEmpty(contentStr string) bool {
+
+	gm := goldmark.New(goldmark.WithExtensions(parse.TFRegistryExtension))
+	astNode := gm.Parser().Parse(text.NewReader([]byte(contentStr)))
+
+	isEmpty := false
+
+	err := ast.Walk(astNode, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
+		if section, ok := n.(*section.Section); ok && entering {
+			sectionText := section.Text([]byte(contentStr))
+			// A little confusingly, we check if the section text _only_ contains the title, "Example Usage".
+			// Non-empty sections contain the title + content, so if we see only the title, the section is empty.
+			if string(sectionText) == "Example Usage" {
+				isEmpty = true
+				return ast.WalkStop, nil
+			}
+		}
+		return ast.WalkContinue, nil
+	})
+	contract.AssertNoErrorf(err, "impossible: ast.Walk should never error")
+
+	return isEmpty
 }
