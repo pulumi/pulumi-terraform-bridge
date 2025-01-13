@@ -255,7 +255,10 @@ func (p *provider) ParameterizeWithContext(
 			if err != nil {
 				return err
 			}
+			pp.Unwrap().logSink = p.logSink // Preserve the log sink from p
+
 			*p = *pp.Unwrap()
+
 			return nil
 		})
 
