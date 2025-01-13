@@ -475,7 +475,7 @@ func TestAccProviderConfigureSecretsPluginFramework(t *testing.T) {
 				},
 			})
 
-			bp := bridgedProvider(tfp)
+			bp := tfp.ToProviderInfo()
 			bp.Config = map[string]*info.Schema{
 				"basic_strlist_config": {
 					// Prevent basicStrlistConfigs pluralization

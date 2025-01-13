@@ -337,10 +337,7 @@ func TestDetailedDiffObject(t *testing.T) {
 					res := pb.NewResource(pb.NewResourceArgs{
 						ResourceSchema: schema.schema,
 					})
-					diff := crosstests.Diff(
-						t, res, initialValue, changeValue,
-						crosstests.DisableAccurateBridgePreview(),
-					)
+					diff := crosstests.Diff(t, res, initialValue, changeValue)
 					autogold.ExpectFile(t, testOutput{
 						initialValue: scenario.initialValue,
 						changeValue:  scenario.changeValue,
@@ -360,10 +357,7 @@ func TestDetailedDiffObject(t *testing.T) {
 						res := pb.NewResource(pb.NewResourceArgs{
 							ResourceSchema: schema.schema,
 						})
-						diff := crosstests.Diff(
-							t, res, initialValue, changeValue,
-							crosstests.DisableAccurateBridgePreview(),
-						)
+						diff := crosstests.Diff(t, res, initialValue, changeValue)
 						autogold.ExpectFile(t, testOutput{
 							initialValue: scenario.initialValue,
 							changeValue:  scenario.changeValue,

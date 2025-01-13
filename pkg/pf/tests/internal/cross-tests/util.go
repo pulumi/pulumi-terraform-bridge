@@ -24,11 +24,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 
 	crosstestsimpl "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests/impl"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/providerbuilder"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
-	tfbridge0 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/tokens"
 )
 
 type T = crosstestsimpl.T
@@ -56,24 +51,4 @@ func skipUnlessLinux(t T) {
 	if ci, ok := os.LookupEnv("CI"); ok && ci == "true" && !strings.Contains(strings.ToLower(runtime.GOOS), "linux") {
 		t.Skip("Skipping on non-Linux platforms as our CI does not yet install Terraform CLI required for these tests")
 	}
-}
-
-type bridgedProviderOpts struct {
-	enableAccurateBridgePreview bool
-}
-
-func bridgedProvider(prov *providerbuilder.Provider, opts bridgedProviderOpts) info.Provider {
-	shimProvider := tfbridge.ShimProvider(prov)
-
-	provider := tfbridge0.ProviderInfo{
-		P:                           shimProvider,
-		Name:                        prov.TypeName,
-		Version:                     prov.Version,
-		MetadataInfo:                &tfbridge0.MetadataInfo{},
-		EnableAccurateBridgePreview: opts.enableAccurateBridgePreview,
-	}
-
-	provider.MustComputeTokens(tokens.SingleModule(prov.TypeName, "index", tokens.MakeStandard(prov.TypeName)))
-
-	return provider
 }

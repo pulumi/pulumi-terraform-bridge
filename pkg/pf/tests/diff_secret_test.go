@@ -32,7 +32,7 @@ func TestSecretBasic(t *testing.T) {
 			},
 		})
 
-	prov := bridgedProvider(provBuilder)
+	prov := provBuilder.ToProviderInfo()
 
 	program := `
 name: test
@@ -82,7 +82,7 @@ func TestSecretSet(t *testing.T) {
 		},
 	})
 
-	prov := bridgedProvider(provBuilder)
+	prov := provBuilder.ToProviderInfo()
 
 	program := `
 name: test
@@ -177,7 +177,7 @@ func TestSecretObjectBlock(t *testing.T) {
 		},
 	})
 
-	prov := bridgedProvider(provBuilder)
+	prov := provBuilder.ToProviderInfo()
 
 	program := `
 name: test
@@ -273,7 +273,7 @@ func TestSecretPulumiSchema(t *testing.T) {
 		},
 	})
 
-	prov := bridgedProvider(provBuilder)
+	prov := provBuilder.ToProviderInfo()
 
 	prov.Resources["testprovider_test"].Fields = map[string]*info.Schema{
 		"s": {Secret: tfbridge0.True()},

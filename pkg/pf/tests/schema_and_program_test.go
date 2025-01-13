@@ -44,7 +44,7 @@ func TestBasic(t *testing.T) {
 			},
 		})
 
-	prov := bridgedProvider(provBuilder)
+	prov := provBuilder.ToProviderInfo()
 
 	program := `
 name: test
@@ -102,7 +102,7 @@ func TestComputedSetNoDiffWhenElementRemoved(t *testing.T) {
 		},
 	})
 
-	prov := bridgedProvider(provBuilder)
+	prov := provBuilder.ToProviderInfo()
 
 	program1 := `
 name: test
@@ -262,7 +262,7 @@ func TestIDAttribute(t *testing.T) {
 			if tc.computeIDField != "" {
 				computeIDField = tfbridge.DelegateIDField(presource.PropertyKey(tc.computeIDField), "prov", "")
 			}
-			prov := bridgedProvider(&provBuilder)
+			prov := provBuilder.ToProviderInfo()
 			prov.Resources = map[string]*info.Resource{
 				"prov_test": {
 					Tok:       "prov:index/test:Test",
@@ -329,7 +329,7 @@ func TestDefaults(t *testing.T) {
 		},
 	})
 
-	prov := bridgedProvider(provBuilder)
+	prov := provBuilder.ToProviderInfo()
 
 	program := `
 name: test
@@ -391,7 +391,7 @@ func TestPlanModifiers(t *testing.T) {
 		},
 	})
 
-	prov := bridgedProvider(provBuilder)
+	prov := provBuilder.ToProviderInfo()
 
 	program := `
 name: test
