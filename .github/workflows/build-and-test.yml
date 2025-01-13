@@ -27,6 +27,10 @@ jobs:
         uses: pulumi/actions@v5
         with:
           pulumi-version: dev
+      - name: Install terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
       - name: Check out source code
         uses: actions/checkout@master
       - name: Install Go
