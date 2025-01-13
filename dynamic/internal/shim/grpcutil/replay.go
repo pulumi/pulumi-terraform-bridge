@@ -29,6 +29,11 @@ import (
 
 // LogReplayProvider is a provider that replays logs from a previous run.
 type LogReplayProvider struct {
+	// LogReplayProvider is safe to copy because methodLogs is a by-reference type.
+	// This allows mutating methods on LogReplayProvider to take a by-value copy of
+	// LogReplayProvider while sharing the same reference to the underlying data.
+
+	// methodLogs is the set of un-replayed method logs for the provider.
 	methodLogs map[string][]grpcLog
 }
 
@@ -71,10 +76,11 @@ type protoMessage[T any] interface {
 	*T
 }
 
-func mustUnmarshalLog[Q any, R any, T protoMessage[R]](log grpcLog, methodName string, req T) *Q {
+func mustUnmarshalLog[Q any, R any, T protoMessage[R]](p LogReplayProvider, methodName string, req T) *Q {
+	log := p.mustPopLog(methodName)
 	contract.Assertf(
 		getMethodFromFullName(log.Name) == methodName,
-		"log name %s does not match method name %s", log.Name, methodName)
+		"log name %q does not match method name %q", log.Name, methodName)
 
 	// We need to unmarshal the request to compare the fields because stringifying them is unreliable.
 	var loggedReq R
@@ -82,21 +88,37 @@ func mustUnmarshalLog[Q any, R any, T protoMessage[R]](log grpcLog, methodName s
 	err := prototext.Unmarshal([]byte(log.Request), loggedReqMsg)
 	contract.AssertNoErrorf(err, "failed to unmarshal log request %s", log.Request)
 
-	loggedReqMsg.ProtoReflect().Range(func(fd protoreflect.FieldDescriptor, v protoreflect.Value) bool {
-		contract.Assertf(
-			v.Equal(req.ProtoReflect().Get(fd)),
-			"field %s does not match log field %s", fd.Name(), v.String(),
-		)
-		return true
-	})
+	var checkEqual func(from, to protoreflect.Message)
+	checkEqual = func(from, to protoreflect.Message) {
+		from.Range(func(fd protoreflect.FieldDescriptor, v protoreflect.Value) bool {
+			expected := to.Get(fd)
 
-	req.ProtoReflect().Range(func(fd protoreflect.FieldDescriptor, v protoreflect.Value) bool {
-		contract.Assertf(
-			v.Equal(loggedReqMsg.ProtoReflect().Get(fd)),
-			"field %s does not match log field %s", fd.Name(), v.String(),
-		)
-		return true
-	})
+			// [protoreflect.Message].String() displays like this:
+			//
+			//	&{{} [] [] 0x14000410008}
+			//
+			// If we find two messages that are not equal and use the normal
+			// [contract.Assertf] to error, the error message isn't helpful:
+			//
+			//	panic: fatal: An assertion has failed: field "config" does not match logged field:
+			//
+			//		&{{} [] [] 0x14000410008} != &{{} [] [] 0x14000410008}
+			//
+			// To get useful error reporting, we manually recurse.
+			if v, ok := v.Interface().(protoreflect.Message); ok {
+				if expected, ok := expected.Interface().(protoreflect.Message); ok {
+					checkEqual(v, expected)
+					return true
+				}
+			}
+			contract.Assertf(v.Equal(expected),
+				"field %q does not match logged field %s != %s", fd.FullName(), expected, v)
+			return true
+		})
+	}
+
+	checkEqual(loggedReqMsg.ProtoReflect(), req.ProtoReflect())
+	checkEqual(req.ProtoReflect(), loggedReqMsg.ProtoReflect())
 
 	var resp Q
 	err = json.Unmarshal([]byte(log.Response), &resp)
@@ -107,114 +129,98 @@ func mustUnmarshalLog[Q any, R any, T protoMessage[R]](log grpcLog, methodName s
 func (p LogReplayProvider) GetMetadata(
 	ctx context.Context, req *tfplugin6.GetMetadata_Request, opts ...grpc.CallOption,
 ) (*tfplugin6.GetMetadata_Response, error) {
-	methodName := "GetMetadata"
-	return mustUnmarshalLog[tfplugin6.GetMetadata_Response](p.mustPopLog(methodName), methodName, req), nil
+	return mustUnmarshalLog[tfplugin6.GetMetadata_Response](p, "GetMetadata", req), nil
 }
 
 func (p LogReplayProvider) GetProviderSchema(
 	ctx context.Context, req *tfplugin6.GetProviderSchema_Request, opts ...grpc.CallOption,
 ) (*tfplugin6.GetProviderSchema_Response, error) {
-	methodName := "GetProviderSchema"
-	return mustUnmarshalLog[tfplugin6.GetProviderSchema_Response](p.mustPopLog(methodName), methodName, req), nil
+	return mustUnmarshalLog[tfplugin6.GetProviderSchema_Response](p, "GetProviderSchema", req), nil
 }
 
 func (p LogReplayProvider) ValidateProviderConfig(
 	ctx context.Context, req *tfplugin6.ValidateProviderConfig_Request, opts ...grpc.CallOption,
 ) (*tfplugin6.ValidateProviderConfig_Response, error) {
-	methodName := "ValidateProviderConfig"
-	return mustUnmarshalLog[tfplugin6.ValidateProviderConfig_Response](p.mustPopLog(methodName), methodName, req), nil
+	return mustUnmarshalLog[tfplugin6.ValidateProviderConfig_Response](p, "ValidateProviderConfig", req), nil
 }
 
 func (p LogReplayProvider) ConfigureProvider(
 	ctx context.Context, req *tfplugin6.ConfigureProvider_Request, opts ...grpc.CallOption,
 ) (*tfplugin6.ConfigureProvider_Response, error) {
 	req.ProtoMessage()
-	methodName := "ConfigureProvider"
-	return mustUnmarshalLog[tfplugin6.ConfigureProvider_Response](p.mustPopLog(methodName), methodName, req), nil
+	return mustUnmarshalLog[tfplugin6.ConfigureProvider_Response](p, "ConfigureProvider", req), nil
 }
 
 func (p LogReplayProvider) StopProvider(
 	ctx context.Context, req *tfplugin6.StopProvider_Request, opts ...grpc.CallOption,
 ) (*tfplugin6.StopProvider_Response, error) {
-	methodName := "StopProvider"
-	return mustUnmarshalLog[tfplugin6.StopProvider_Response](p.mustPopLog(methodName), methodName, req), nil
+	return mustUnmarshalLog[tfplugin6.StopProvider_Response](p, "StopProvider", req), nil
 }
 
 func (p LogReplayProvider) ValidateResourceConfig(
 	ctx context.Context, req *tfplugin6.ValidateResourceConfig_Request, opts ...grpc.CallOption,
 ) (*tfplugin6.ValidateResourceConfig_Response, error) {
-	methodName := "ValidateResourceConfig"
-	return mustUnmarshalLog[tfplugin6.ValidateResourceConfig_Response](p.mustPopLog(methodName), methodName, req), nil
+	return mustUnmarshalLog[tfplugin6.ValidateResourceConfig_Response](p, "ValidateResourceConfig", req), nil
 }
 
 func (p LogReplayProvider) UpgradeResourceState(
 	ctx context.Context, req *tfplugin6.UpgradeResourceState_Request, opts ...grpc.CallOption,
 ) (*tfplugin6.UpgradeResourceState_Response, error) {
-	methodName := "UpgradeResourceState"
-	return mustUnmarshalLog[tfplugin6.UpgradeResourceState_Response](p.mustPopLog(methodName), methodName, req), nil
+	return mustUnmarshalLog[tfplugin6.UpgradeResourceState_Response](p, "UpgradeResourceState", req), nil
 }
 
 func (p LogReplayProvider) ReadResource(
 	ctx context.Context, req *tfplugin6.ReadResource_Request, opts ...grpc.CallOption,
 ) (*tfplugin6.ReadResource_Response, error) {
-	methodName := "ReadResource"
-	return mustUnmarshalLog[tfplugin6.ReadResource_Response](p.mustPopLog(methodName), methodName, req), nil
+	return mustUnmarshalLog[tfplugin6.ReadResource_Response](p, "ReadResource", req), nil
 }
 
 func (p LogReplayProvider) PlanResourceChange(
 	ctx context.Context, req *tfplugin6.PlanResourceChange_Request, opts ...grpc.CallOption,
 ) (*tfplugin6.PlanResourceChange_Response, error) {
-	methodName := "PlanResourceChange"
-	return mustUnmarshalLog[tfplugin6.PlanResourceChange_Response](p.mustPopLog(methodName), methodName, req), nil
+	return mustUnmarshalLog[tfplugin6.PlanResourceChange_Response](p, "PlanResourceChange", req), nil
 }
 
 func (p LogReplayProvider) ApplyResourceChange(
 	ctx context.Context, req *tfplugin6.ApplyResourceChange_Request, opts ...grpc.CallOption,
 ) (*tfplugin6.ApplyResourceChange_Response, error) {
-	methodName := "ApplyResourceChange"
-	return mustUnmarshalLog[tfplugin6.ApplyResourceChange_Response](p.mustPopLog(methodName), methodName, req), nil
+	return mustUnmarshalLog[tfplugin6.ApplyResourceChange_Response](p, "ApplyResourceChange", req), nil
 }
 
 func (p LogReplayProvider) ImportResourceState(
 	ctx context.Context, req *tfplugin6.ImportResourceState_Request, opts ...grpc.CallOption,
 ) (*tfplugin6.ImportResourceState_Response, error) {
-	methodName := "ImportResourceState"
-	return mustUnmarshalLog[tfplugin6.ImportResourceState_Response](p.mustPopLog(methodName), methodName, req), nil
+	return mustUnmarshalLog[tfplugin6.ImportResourceState_Response](p, "ImportResourceState", req), nil
 }
 
 func (p LogReplayProvider) ValidateDataResourceConfig(
 	ctx context.Context, req *tfplugin6.ValidateDataResourceConfig_Request, opts ...grpc.CallOption,
 ) (*tfplugin6.ValidateDataResourceConfig_Response, error) {
-	methodName := "ValidateDataResourceConfig"
-	return mustUnmarshalLog[tfplugin6.ValidateDataResourceConfig_Response](p.mustPopLog(methodName), methodName, req), nil
+	return mustUnmarshalLog[tfplugin6.ValidateDataResourceConfig_Response](p, "ValidateDataResourceConfig", req), nil
 }
 
 func (p LogReplayProvider) MoveResourceState(
 	ctx context.Context, req *tfplugin6.MoveResourceState_Request, opts ...grpc.CallOption,
 ) (*tfplugin6.MoveResourceState_Response, error) {
-	methodName := "MoveResourceState"
-	return mustUnmarshalLog[tfplugin6.MoveResourceState_Response](p.mustPopLog(methodName), methodName, req), nil
+	return mustUnmarshalLog[tfplugin6.MoveResourceState_Response](p, "MoveResourceState", req), nil
 }
 
 func (p LogReplayProvider) ReadDataSource(
 	ctx context.Context, req *tfplugin6.ReadDataSource_Request, opts ...grpc.CallOption,
 ) (*tfplugin6.ReadDataSource_Response, error) {
-	methodName := "ReadDataSource"
-	return mustUnmarshalLog[tfplugin6.ReadDataSource_Response](p.mustPopLog(methodName), methodName, req), nil
+	return mustUnmarshalLog[tfplugin6.ReadDataSource_Response](p, "ReadDataSource", req), nil
 }
 
 func (p LogReplayProvider) CallFunction(
 	ctx context.Context, req *tfplugin6.CallFunction_Request, opts ...grpc.CallOption,
 ) (*tfplugin6.CallFunction_Response, error) {
-	methodName := "CallFunction"
-	return mustUnmarshalLog[tfplugin6.CallFunction_Response](p.mustPopLog(methodName), methodName, req), nil
+	return mustUnmarshalLog[tfplugin6.CallFunction_Response](p, "CallFunction", req), nil
 }
 
 func (p LogReplayProvider) GetFunctions(
 	ctx context.Context, req *tfplugin6.GetFunctions_Request, opts ...grpc.CallOption,
 ) (*tfplugin6.GetFunctions_Response, error) {
-	methodName := "GetFunctions"
-	return mustUnmarshalLog[tfplugin6.GetFunctions_Response](p.mustPopLog(methodName), methodName, req), nil
+	return mustUnmarshalLog[tfplugin6.GetFunctions_Response](p, "GetFunctions", req), nil
 }
 
 func (p LogReplayProvider) Close() error {
