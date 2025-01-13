@@ -44,10 +44,10 @@ test_shard:: install_plugins
 test_profile:: install_plugins
 	@mkdir -p bin
 	go build -o bin ./internal/testing/pulumi-terraform-bridge-test-provider
-	rm -f testoutput.txt
+	rm -f test-timings.jsonl
 	PULUMI_TERRAFORM_BRIDGE_TEST_PROVIDER=$(shell pwd)/bin/pulumi-terraform-bridge-test-provider \
 		go test -count=1 -timeout 2h -parallel ${TESTPARALLELISM} ./... -json | \
-		jq -c -r 'select((.Action == "pass" or .Action == "fail") and .Test != null)' | tee testoutput.txt
+		jq -c -r 'select((.Action == "pass" or .Action == "fail") and .Test != null)' | tee test-timings.jsonl
 
 # Run tests while accepting current output as expected output "golden"
 # tests. In case where system behavior changes intentionally this can
