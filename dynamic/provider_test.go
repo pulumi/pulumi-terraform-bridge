@@ -454,6 +454,7 @@ func TestSchemaGeneration(t *testing.T) { //nolint:paralleltest
 	// testSchema("Azure/alz", "0.11.1")
 	testSchema("Backblaze/b2", "0.8.9")
 	testSchema("databricks/databricks", "1.50.0")
+	testSchema("BunnyWay/bunnynet", "0.5.1")
 }
 
 func TestSchemaGenerationFullDocs(t *testing.T) { //nolint:paralleltest

@@ -185,7 +185,9 @@ func fixID(providerName string, tokenPrefix string) fixupProperty {
 			// If either id.Optional or id.Required are set, then the provider allows
 			// (or requires) the user to set "id" as an input. Pulumi does not allow
 			// that, so we alias "id".
-			if !tfIDProperty.Optional() && !tfIDProperty.Required() {
+			// Alternatively if the type of id is not string, we'll replace the property
+			// so we need to alias the original property.
+			if !tfIDProperty.Optional() && !tfIDProperty.Required() && tfIDProperty.Type() == shim.TypeString {
 				return nil
 			}
 

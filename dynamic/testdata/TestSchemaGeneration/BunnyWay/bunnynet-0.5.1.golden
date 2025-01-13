@@ -1,0 +1,3897 @@
+{
+    "name": "bunnynet",
+    "version": "0.5.1",
+    "description": "A Pulumi provider dynamically bridged from bunnynet.",
+    "attribution": "This Pulumi package is based on the [`bunnynet` Terraform Provider](https://github.com/bunnyway/terraform-provider-bunnynet).",
+    "repository": "https://github.com/bunnyway/terraform-provider-bunnynet",
+    "publisher": "bunnyway",
+    "meta": {
+        "moduleFormat": "(.*)(?:/[^/]*)"
+    },
+    "language": {
+        "csharp": {
+            "compatibility": "tfbridge20",
+            "liftSingleValueMethodReturns": true,
+            "respectSchemaVersion": true
+        },
+        "go": {
+            "importBasePath": "github.com/pulumi/pulumi-terraform-provider/sdks/go/bunnynet/bunnynet",
+            "rootPackageName": "bunnynet",
+            "liftSingleValueMethodReturns": true,
+            "generateExtraInputTypes": true,
+            "respectSchemaVersion": true
+        },
+        "java": {
+            "basePackage": "",
+            "buildFiles": "",
+            "gradleNexusPublishPluginVersion": "",
+            "gradleTest": ""
+        },
+        "nodejs": {
+            "packageDescription": "A Pulumi provider dynamically bridged from bunnynet.",
+            "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/bunnyway/terraform-provider-bunnynet)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e please consult the source [`terraform-provider-bunnynet` repo](https://github.com/bunnyway/terraform-provider-bunnynet/issues).",
+            "compatibility": "tfbridge20",
+            "disableUnionOutputTypes": true,
+            "liftSingleValueMethodReturns": true,
+            "respectSchemaVersion": true
+        },
+        "python": {
+            "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/bunnyway/terraform-provider-bunnynet)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e please consult the source [`terraform-provider-bunnynet` repo](https://github.com/bunnyway/terraform-provider-bunnynet/issues).",
+            "compatibility": "tfbridge20",
+            "respectSchemaVersion": true,
+            "pyproject": {
+                "enabled": true
+            }
+        }
+    },
+    "config": {
+        "variables": {
+            "apiKey": {
+                "type": "string",
+                "description": "API key. Can also be set using the `BUNNYNET_API_KEY` environment variable.\n"
+            },
+            "apiUrl": {
+                "type": "string",
+                "description": "Optional. The API URL. Defaults to `https://api.bunny.net`.\n"
+            },
+            "streamApiUrl": {
+                "type": "string",
+                "description": "Optional. The Stream API URL. Defaults to `https://video.bunnycdn.com`.\n"
+            }
+        }
+    },
+    "types": {
+        "bunnynet:index/PullzoneEdgeruleAction:PullzoneEdgeruleAction": {
+            "properties": {
+                "parameter1": {
+                    "type": "string"
+                },
+                "parameter2": {
+                    "type": "string"
+                },
+                "parameter3": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            },
+            "type": "object",
+            "required": [
+                "parameter1",
+                "parameter2",
+                "parameter3",
+                "type"
+            ]
+        },
+        "bunnynet:index/PullzoneEdgeruleTrigger:PullzoneEdgeruleTrigger": {
+            "properties": {
+                "matchType": {
+                    "type": "string"
+                },
+                "parameter1": {
+                    "type": "string"
+                },
+                "parameter2": {
+                    "type": "string"
+                },
+                "patterns": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "type": {
+                    "type": "string"
+                }
+            },
+            "type": "object",
+            "required": [
+                "matchType",
+                "parameter1",
+                "parameter2",
+                "patterns",
+                "type"
+            ]
+        },
+        "bunnynet:index/PullzoneOrigin:PullzoneOrigin": {
+            "properties": {
+                "followRedirects": {
+                    "type": "boolean",
+                    "description": "Indicates whether the zone will follow origin redirects.\n"
+                },
+                "forwardHostHeader": {
+                    "type": "boolean",
+                    "description": "Indicates whether the current hostname is forwarded to the origin.\n"
+                },
+                "hostHeader": {
+                    "type": "string",
+                    "description": "The host header that will be sent to the origin.\n"
+                },
+                "middlewareScript": {
+                    "type": "number",
+                    "description": "The ID of the compute script used as a middleware.\n"
+                },
+                "script": {
+                    "type": "number",
+                    "description": "The ID of the linked compute script.\n"
+                },
+                "storagezone": {
+                    "type": "number",
+                    "description": "The ID of the linked storage zone.\n"
+                },
+                "type": {
+                    "type": "string",
+                    "description": "Options: `ComputeScript`, `DnsAccelerate`, `OriginUrl`, `StorageZone`\n"
+                },
+                "url": {
+                    "type": "string",
+                    "description": "The origin URL from where the files are fetched.\n"
+                },
+                "verifySsl": {
+                    "type": "boolean",
+                    "description": "Indicates whether the Origin's TLS certificate should be verified.\n"
+                }
+            },
+            "type": "object",
+            "required": [
+                "type"
+            ],
+            "language": {
+                "nodejs": {
+                    "requiredOutputs": [
+                        "followRedirects",
+                        "forwardHostHeader",
+                        "hostHeader",
+                        "middlewareScript",
+                        "type",
+                        "verifySsl"
+                    ]
+                }
+            }
+        },
+        "bunnynet:index/PullzoneRouting:PullzoneRouting": {
+            "properties": {
+                "blockedCountries": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "The list of blocked countries with the two-letter Alpha2 ISO codes. Traffic connecting from a blocked country will be rejected on the DNS level.\n"
+                },
+                "filters": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Options: `all`, `eu`, `scripting`\n"
+                },
+                "redirectedCountries": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "The list of budget redirected countries with the two-letter Alpha2 ISO codes. Traffic from a redirected country will connect to the cheapest possible node in North America or Europe.\n"
+                },
+                "tier": {
+                    "type": "string",
+                    "description": "Options: `Standard`, `Volume`\n"
+                },
+                "zones": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Options: `AF`, `ASIA`, `EU`, `SA`, `US`\n"
+                }
+            },
+            "type": "object",
+            "language": {
+                "nodejs": {
+                    "requiredOutputs": [
+                        "blockedCountries",
+                        "filters",
+                        "redirectedCountries",
+                        "tier",
+                        "zones"
+                    ]
+                }
+            }
+        },
+        "bunnynet:index/StreamVideoChapter:StreamVideoChapter": {
+            "properties": {
+                "end": {
+                    "type": "string"
+                },
+                "start": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            },
+            "type": "object",
+            "required": [
+                "end",
+                "start",
+                "title"
+            ]
+        },
+        "bunnynet:index/StreamVideoMoment:StreamVideoMoment": {
+            "properties": {
+                "label": {
+                    "type": "string"
+                },
+                "timestamp": {
+                    "type": "string"
+                }
+            },
+            "type": "object",
+            "required": [
+                "label",
+                "timestamp"
+            ]
+        }
+    },
+    "provider": {
+        "description": "The provider type for the bunnynet package. By default, resources use package-wide configuration\nsettings, however an explicit `Provider` instance may be created and passed during resource\nconstruction to achieve fine-grained programmatic control over provider settings. See the\n[documentation](https://www.pulumi.com/docs/reference/programming-model/#providers) for more information.\n",
+        "properties": {
+            "apiKey": {
+                "type": "string",
+                "description": "API key. Can also be set using the `BUNNYNET_API_KEY` environment variable.\n"
+            },
+            "apiUrl": {
+                "type": "string",
+                "description": "Optional. The API URL. Defaults to `https://api.bunny.net`.\n"
+            },
+            "streamApiUrl": {
+                "type": "string",
+                "description": "Optional. The Stream API URL. Defaults to `https://video.bunnycdn.com`.\n"
+            }
+        },
+        "inputProperties": {
+            "apiKey": {
+                "type": "string",
+                "description": "API key. Can also be set using the `BUNNYNET_API_KEY` environment variable.\n"
+            },
+            "apiUrl": {
+                "type": "string",
+                "description": "Optional. The API URL. Defaults to `https://api.bunny.net`.\n"
+            },
+            "streamApiUrl": {
+                "type": "string",
+                "description": "Optional. The Stream API URL. Defaults to `https://video.bunnycdn.com`.\n"
+            }
+        }
+    },
+    "resources": {
+        "bunnynet:index/computeScript:ComputeScript": {
+            "properties": {
+                "computeScriptId": {
+                    "type": "number",
+                    "description": "The ID of the script.\n"
+                },
+                "content": {
+                    "type": "string",
+                    "description": "The code of the script.\n"
+                },
+                "name": {
+                    "type": "string",
+                    "description": "The name of the script.\n"
+                },
+                "type": {
+                    "type": "string",
+                    "description": "Options: `middleware`, `standalone`\n"
+                }
+            },
+            "required": [
+                "content",
+                "computeScriptId",
+                "name",
+                "type"
+            ],
+            "inputProperties": {
+                "content": {
+                    "type": "string",
+                    "description": "The code of the script.\n"
+                },
+                "name": {
+                    "type": "string",
+                    "description": "The name of the script.\n"
+                },
+                "type": {
+                    "type": "string",
+                    "description": "Options: `middleware`, `standalone`\n"
+                }
+            },
+            "requiredInputs": [
+                "content",
+                "type"
+            ],
+            "stateInputs": {
+                "description": "Input properties used for looking up and filtering ComputeScript resources.\n",
+                "properties": {
+                    "computeScriptId": {
+                        "type": "number",
+                        "description": "The ID of the script.\n"
+                    },
+                    "content": {
+                        "type": "string",
+                        "description": "The code of the script.\n"
+                    },
+                    "name": {
+                        "type": "string",
+                        "description": "The name of the script.\n"
+                    },
+                    "type": {
+                        "type": "string",
+                        "description": "Options: `middleware`, `standalone`\n"
+                    }
+                },
+                "type": "object"
+            }
+        },
+        "bunnynet:index/computeScriptVariable:ComputeScriptVariable": {
+            "properties": {
+                "computeScriptVariableId": {
+                    "type": "number",
+                    "description": "The ID of the environment variable.\n"
+                },
+                "defaultValue": {
+                    "type": "string",
+                    "description": "The default value of the environment variable.\n"
+                },
+                "name": {
+                    "type": "string",
+                    "description": "The name of the environment variable.\n"
+                },
+                "required": {
+                    "type": "boolean",
+                    "description": "Indicates whether the environment variable is required.\n"
+                },
+                "script": {
+                    "type": "number",
+                    "description": "The ID of the associated compute script.\n"
+                }
+            },
+            "required": [
+                "defaultValue",
+                "computeScriptVariableId",
+                "name",
+                "required",
+                "script"
+            ],
+            "inputProperties": {
+                "defaultValue": {
+                    "type": "string",
+                    "description": "The default value of the environment variable.\n"
+                },
+                "name": {
+                    "type": "string",
+                    "description": "The name of the environment variable.\n"
+                },
+                "required": {
+                    "type": "boolean",
+                    "description": "Indicates whether the environment variable is required.\n"
+                },
+                "script": {
+                    "type": "number",
+                    "description": "The ID of the associated compute script.\n"
+                }
+            },
+            "requiredInputs": [
+                "defaultValue",
+                "required",
+                "script"
+            ],
+            "stateInputs": {
+                "description": "Input properties used for looking up and filtering ComputeScriptVariable resources.\n",
+                "properties": {
+                    "computeScriptVariableId": {
+                        "type": "number",
+                        "description": "The ID of the environment variable.\n"
+                    },
+                    "defaultValue": {
+                        "type": "string",
+                        "description": "The default value of the environment variable.\n"
+                    },
+                    "name": {
+                        "type": "string",
+                        "description": "The name of the environment variable.\n"
+                    },
+                    "required": {
+                        "type": "boolean",
+                        "description": "Indicates whether the environment variable is required.\n"
+                    },
+                    "script": {
+                        "type": "number",
+                        "description": "The ID of the associated compute script.\n"
+                    }
+                },
+                "type": "object"
+            }
+        },
+        "bunnynet:index/dnsRecord:DnsRecord": {
+            "properties": {
+                "accelerated": {
+                    "type": "boolean",
+                    "description": "Indicates whether the DNS record should utilize bunny.net’s acceleration services.\n"
+                },
+                "acceleratedPullzone": {
+                    "type": "number",
+                    "description": "The ID of the accelerated pull zone.\n"
+                },
+                "comment": {
+                    "type": "string",
+                    "description": "This property allows users to add descriptive notes for documentation and management purposes.\n"
+                },
+                "dnsRecordId": {
+                    "type": "number",
+                    "description": "The unique identifier for the DNS record.\n"
+                },
+                "enabled": {
+                    "type": "boolean",
+                    "description": "Indicates whether the DNS record is enabled.\n"
+                },
+                "flags": {
+                    "type": "number",
+                    "description": "Flags for advanced DNS settings.\n"
+                },
+                "geolocationLat": {
+                    "type": "number",
+                    "description": "The latitude for geolocation-based routing.\n"
+                },
+                "geolocationLong": {
+                    "type": "number",
+                    "description": "The longitude for geolocation-based routing.\n"
+                },
+                "latencyZone": {
+                    "type": "string",
+                    "description": "The latency zone for latency-based routing.\n"
+                },
+                "linkName": {
+                    "type": "string",
+                    "description": "The name of the linked resource.\n"
+                },
+                "monitorType": {
+                    "type": "string",
+                    "description": "Options: `Http`, `Monitor`, `None`, `Ping`\n"
+                },
+                "name": {
+                    "type": "string",
+                    "description": "The name of the DNS record. Use \u003ccode\u003ename = \"\"\u003c/code\u003e for apex domain records.\n"
+                },
+                "port": {
+                    "type": "number",
+                    "description": "The port number for services that require a specific port.\n"
+                },
+                "priority": {
+                    "type": "number",
+                    "description": "The priority of the DNS record.\n"
+                },
+                "smartRoutingType": {
+                    "type": "string",
+                    "description": "Options: `Geolocation`, `Latency`, `None`\n"
+                },
+                "tag": {
+                    "type": "string",
+                    "description": "A tag for the DNS record.\n"
+                },
+                "ttl": {
+                    "type": "number",
+                    "description": "The time-to-live value for the DNS record.\n"
+                },
+                "type": {
+                    "type": "string",
+                    "description": "Options: `A`, `AAAA`, `CAA`, `CNAME`, `Flatten`, `MX`, `NS`, `PTR`, `PullZone`, `Redirect`, `SRV`, `Script`, `TXT`\n"
+                },
+                "value": {
+                    "type": "string",
+                    "description": "The value of the DNS record.\n"
+                },
+                "weight": {
+                    "type": "number",
+                    "description": "The weight of the DNS record. It is used in load balancing scenarios to distribute traffic based on the specified\nweight.\n"
+                },
+                "zone": {
+                    "type": "number",
+                    "description": "ID of the related DNS zone.\n"
+                }
+            },
+            "required": [
+                "accelerated",
+                "acceleratedPullzone",
+                "comment",
+                "enabled",
+                "flags",
+                "geolocationLat",
+                "geolocationLong",
+                "dnsRecordId",
+                "latencyZone",
+                "linkName",
+                "monitorType",
+                "name",
+                "port",
+                "priority",
+                "smartRoutingType",
+                "tag",
+                "ttl",
+                "type",
+                "value",
+                "weight",
+                "zone"
+            ],
+            "inputProperties": {
+                "accelerated": {
+                    "type": "boolean",
+                    "description": "Indicates whether the DNS record should utilize bunny.net’s acceleration services.\n"
+                },
+                "comment": {
+                    "type": "string",
+                    "description": "This property allows users to add descriptive notes for documentation and management purposes.\n"
+                },
+                "enabled": {
+                    "type": "boolean",
+                    "description": "Indicates whether the DNS record is enabled.\n"
+                },
+                "flags": {
+                    "type": "number",
+                    "description": "Flags for advanced DNS settings.\n"
+                },
+                "geolocationLat": {
+                    "type": "number",
+                    "description": "The latitude for geolocation-based routing.\n"
+                },
+                "geolocationLong": {
+                    "type": "number",
+                    "description": "The longitude for geolocation-based routing.\n"
+                },
+                "latencyZone": {
+                    "type": "string",
+                    "description": "The latency zone for latency-based routing.\n"
+                },
+                "linkName": {
+                    "type": "string",
+                    "description": "The name of the linked resource.\n"
+                },
+                "monitorType": {
+                    "type": "string",
+                    "description": "Options: `Http`, `Monitor`, `None`, `Ping`\n"
+                },
+                "name": {
+                    "type": "string",
+                    "description": "The name of the DNS record. Use \u003ccode\u003ename = \"\"\u003c/code\u003e for apex domain records.\n"
+                },
+                "port": {
+                    "type": "number",
+                    "description": "The port number for services that require a specific port.\n"
+                },
+                "priority": {
+                    "type": "number",
+                    "description": "The priority of the DNS record.\n"
+                },
+                "smartRoutingType": {
+                    "type": "string",
+                    "description": "Options: `Geolocation`, `Latency`, `None`\n"
+                },
+                "tag": {
+                    "type": "string",
+                    "description": "A tag for the DNS record.\n"
+                },
+                "ttl": {
+                    "type": "number",
+                    "description": "The time-to-live value for the DNS record.\n"
+                },
+                "type": {
+                    "type": "string",
+                    "description": "Options: `A`, `AAAA`, `CAA`, `CNAME`, `Flatten`, `MX`, `NS`, `PTR`, `PullZone`, `Redirect`, `SRV`, `Script`, `TXT`\n"
+                },
+                "value": {
+                    "type": "string",
+                    "description": "The value of the DNS record.\n"
+                },
+                "weight": {
+                    "type": "number",
+                    "description": "The weight of the DNS record. It is used in load balancing scenarios to distribute traffic based on the specified\nweight.\n"
+                },
+                "zone": {
+                    "type": "number",
+                    "description": "ID of the related DNS zone.\n"
+                }
+            },
+            "requiredInputs": [
+                "type",
+                "value",
+                "zone"
+            ],
+            "stateInputs": {
+                "description": "Input properties used for looking up and filtering DnsRecord resources.\n",
+                "properties": {
+                    "accelerated": {
+                        "type": "boolean",
+                        "description": "Indicates whether the DNS record should utilize bunny.net’s acceleration services.\n"
+                    },
+                    "acceleratedPullzone": {
+                        "type": "number",
+                        "description": "The ID of the accelerated pull zone.\n"
+                    },
+                    "comment": {
+                        "type": "string",
+                        "description": "This property allows users to add descriptive notes for documentation and management purposes.\n"
+                    },
+                    "dnsRecordId": {
+                        "type": "number",
+                        "description": "The unique identifier for the DNS record.\n"
+                    },
+                    "enabled": {
+                        "type": "boolean",
+                        "description": "Indicates whether the DNS record is enabled.\n"
+                    },
+                    "flags": {
+                        "type": "number",
+                        "description": "Flags for advanced DNS settings.\n"
+                    },
+                    "geolocationLat": {
+                        "type": "number",
+                        "description": "The latitude for geolocation-based routing.\n"
+                    },
+                    "geolocationLong": {
+                        "type": "number",
+                        "description": "The longitude for geolocation-based routing.\n"
+                    },
+                    "latencyZone": {
+                        "type": "string",
+                        "description": "The latency zone for latency-based routing.\n"
+                    },
+                    "linkName": {
+                        "type": "string",
+                        "description": "The name of the linked resource.\n"
+                    },
+                    "monitorType": {
+                        "type": "string",
+                        "description": "Options: `Http`, `Monitor`, `None`, `Ping`\n"
+                    },
+                    "name": {
+                        "type": "string",
+                        "description": "The name of the DNS record. Use \u003ccode\u003ename = \"\"\u003c/code\u003e for apex domain records.\n"
+                    },
+                    "port": {
+                        "type": "number",
+                        "description": "The port number for services that require a specific port.\n"
+                    },
+                    "priority": {
+                        "type": "number",
+                        "description": "The priority of the DNS record.\n"
+                    },
+                    "smartRoutingType": {
+                        "type": "string",
+                        "description": "Options: `Geolocation`, `Latency`, `None`\n"
+                    },
+                    "tag": {
+                        "type": "string",
+                        "description": "A tag for the DNS record.\n"
+                    },
+                    "ttl": {
+                        "type": "number",
+                        "description": "The time-to-live value for the DNS record.\n"
+                    },
+                    "type": {
+                        "type": "string",
+                        "description": "Options: `A`, `AAAA`, `CAA`, `CNAME`, `Flatten`, `MX`, `NS`, `PTR`, `PullZone`, `Redirect`, `SRV`, `Script`, `TXT`\n"
+                    },
+                    "value": {
+                        "type": "string",
+                        "description": "The value of the DNS record.\n"
+                    },
+                    "weight": {
+                        "type": "number",
+                        "description": "The weight of the DNS record. It is used in load balancing scenarios to distribute traffic based on the specified\nweight.\n"
+                    },
+                    "zone": {
+                        "type": "number",
+                        "description": "ID of the related DNS zone.\n"
+                    }
+                },
+                "type": "object"
+            }
+        },
+        "bunnynet:index/dnsZone:DnsZone": {
+            "properties": {
+                "dnsZoneId": {
+                    "type": "number",
+                    "description": "The unique identifier for the DNS zone.\n"
+                },
+                "domain": {
+                    "type": "string",
+                    "description": "The domain name for the DNS zone.\n"
+                },
+                "logAnonymized": {
+                    "type": "boolean",
+                    "description": "Indicates whether DNS logs are anonymized.\n"
+                },
+                "logAnonymizedStyle": {
+                    "type": "string",
+                    "description": "Options: `Drop`, `OneDigit`\n"
+                },
+                "logEnabled": {
+                    "type": "boolean",
+                    "description": "Indicates whether permanent logging for DNS queries is enabled.\n"
+                },
+                "nameserver1": {
+                    "type": "string",
+                    "description": "The primary nameserver for the DNS zone.\n"
+                },
+                "nameserver2": {
+                    "type": "string",
+                    "description": "The secondary nameserver for the DNS zone.\n"
+                },
+                "nameserverCustom": {
+                    "type": "boolean",
+                    "description": "Indicates whether custom nameservers are used.\n"
+                },
+                "soaEmail": {
+                    "type": "string",
+                    "description": "The email address used in the Start of Authority (SOA) record for the DNS zone.\n"
+                }
+            },
+            "required": [
+                "domain",
+                "dnsZoneId",
+                "logAnonymized",
+                "logAnonymizedStyle",
+                "logEnabled",
+                "nameserver1",
+                "nameserver2",
+                "nameserverCustom",
+                "soaEmail"
+            ],
+            "inputProperties": {
+                "domain": {
+                    "type": "string",
+                    "description": "The domain name for the DNS zone.\n"
+                },
+                "logAnonymized": {
+                    "type": "boolean",
+                    "description": "Indicates whether DNS logs are anonymized.\n"
+                },
+                "logAnonymizedStyle": {
+                    "type": "string",
+                    "description": "Options: `Drop`, `OneDigit`\n"
+                },
+                "logEnabled": {
+                    "type": "boolean",
+                    "description": "Indicates whether permanent logging for DNS queries is enabled.\n"
+                },
+                "nameserver1": {
+                    "type": "string",
+                    "description": "The primary nameserver for the DNS zone.\n"
+                },
+                "nameserver2": {
+                    "type": "string",
+                    "description": "The secondary nameserver for the DNS zone.\n"
+                },
+                "nameserverCustom": {
+                    "type": "boolean",
+                    "description": "Indicates whether custom nameservers are used.\n"
+                },
+                "soaEmail": {
+                    "type": "string",
+                    "description": "The email address used in the Start of Authority (SOA) record for the DNS zone.\n"
+                }
+            },
+            "requiredInputs": [
+                "domain"
+            ],
+            "stateInputs": {
+                "description": "Input properties used for looking up and filtering DnsZone resources.\n",
+                "properties": {
+                    "dnsZoneId": {
+                        "type": "number",
+                        "description": "The unique identifier for the DNS zone.\n"
+                    },
+                    "domain": {
+                        "type": "string",
+                        "description": "The domain name for the DNS zone.\n"
+                    },
+                    "logAnonymized": {
+                        "type": "boolean",
+                        "description": "Indicates whether DNS logs are anonymized.\n"
+                    },
+                    "logAnonymizedStyle": {
+                        "type": "string",
+                        "description": "Options: `Drop`, `OneDigit`\n"
+                    },
+                    "logEnabled": {
+                        "type": "boolean",
+                        "description": "Indicates whether permanent logging for DNS queries is enabled.\n"
+                    },
+                    "nameserver1": {
+                        "type": "string",
+                        "description": "The primary nameserver for the DNS zone.\n"
+                    },
+                    "nameserver2": {
+                        "type": "string",
+                        "description": "The secondary nameserver for the DNS zone.\n"
+                    },
+                    "nameserverCustom": {
+                        "type": "boolean",
+                        "description": "Indicates whether custom nameservers are used.\n"
+                    },
+                    "soaEmail": {
+                        "type": "string",
+                        "description": "The email address used in the Start of Authority (SOA) record for the DNS zone.\n"
+                    }
+                },
+                "type": "object"
+            }
+        },
+        "bunnynet:index/pullzone:Pullzone": {
+            "properties": {
+                "addCanonicalHeader": {
+                    "type": "boolean",
+                    "description": "Indicates whether the Canonical header is added to the responses.\n"
+                },
+                "allowReferers": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "The list of referrer hostnames that are allowed to access the pull zone. Requests containing the header \"Referer:\nhostname\" that is not on the list will be rejected. If empty, all the referrers are allowed.\n"
+                },
+                "blockIps": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "The list of IPs that are blocked from accessing the pull zone. Requests coming from the following IPs will be rejected.\nIf empty, all the IPs will be allowed\n"
+                },
+                "blockNoReferer": {
+                    "type": "boolean",
+                    "description": "Indicates whether requests without a referer should be blocked.\n"
+                },
+                "blockPostRequests": {
+                    "type": "boolean",
+                    "description": "Indicates whether to block POST requests.\n"
+                },
+                "blockReferers": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "The list of referrer hostnames that are blocked to access the pull zone. Requests containing the header \"Referer:\nhostname\" that is not on the list will be rejected. If empty, all the referrers are allowed.\n"
+                },
+                "blockRootPath": {
+                    "type": "boolean",
+                    "description": "This property indicates whether to block the root path.\n"
+                },
+                "cacheChunked": {
+                    "type": "boolean",
+                    "description": "Indicates whether the cache slice (Optimize for video) feature is enabled for the Pull Zone\n"
+                },
+                "cacheEnabled": {
+                    "type": "boolean",
+                    "description": "Indicates whether smart caching is enabled.\n"
+                },
+                "cacheErrors": {
+                    "type": "boolean",
+                    "description": "Indicates whether bunny.net should be caching error responses.\n"
+                },
+                "cacheExpirationTime": {
+                    "type": "number",
+                    "description": "The override cache time, in seconds.\n"
+                },
+                "cacheExpirationTimeBrowser": {
+                    "type": "number",
+                    "description": "The override cache time for the end client, in seconds.\n"
+                },
+                "cacheStales": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Options: `offline`, `updating`\n"
+                },
+                "cacheVaries": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Options: `avif`, `cookie`, `country`, `hostname`, `mobile`, `querystring`, `webp`\n"
+                },
+                "cacheVaryCookies": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Contains the list of vary parameters that will be used for vary cache by cookie string. If empty, cookie vary will not\nbe used.\n"
+                },
+                "cacheVaryQuerystrings": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Contains the list of vary parameters that will be used for vary cache by query string. If empty, all parameters will be\nused to construct the key\n"
+                },
+                "cdnDomain": {
+                    "type": "string",
+                    "description": "The CNAME domain of the pull zone for setting up custom hostnames\n"
+                },
+                "corsEnabled": {
+                    "type": "boolean",
+                    "description": "Indicates whether CORS (Cross-Origin Resource Sharing) is enabled.\n"
+                },
+                "corsExtensions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "A list of file extensions for which CORS is enabled.\n"
+                },
+                "disableLetsencrypt": {
+                    "type": "boolean",
+                    "description": "If true, the built-in let's encrypt is disabled and requests are passed to the origin.\n"
+                },
+                "errorpageCustomContent": {
+                    "type": "string",
+                    "description": "Contains the custom error page code that will be returned.\n"
+                },
+                "errorpageCustomEnabled": {
+                    "type": "boolean",
+                    "description": "Indicates whether custom error page code should be enabled.\n"
+                },
+                "errorpageStatuspageCode": {
+                    "type": "string",
+                    "description": "The statuspage code that will be used to build the status widget.\n"
+                },
+                "errorpageStatuspageEnabled": {
+                    "type": "boolean",
+                    "description": "Indicates whether the statuspage widget should be displayed on the error pages.\n"
+                },
+                "errorpageWhitelabel": {
+                    "type": "boolean",
+                    "description": "Indicates whether the error pages should be white-labelled or not\n"
+                },
+                "limitAfter": {
+                    "type": "number",
+                    "description": "The amount of data after the rate limit will be activated.\n"
+                },
+                "limitBandwidth": {
+                    "type": "number",
+                    "description": "The maximum bandwidth limit in bytes.\n"
+                },
+                "limitBurst": {
+                    "type": "number",
+                    "description": "Excessive requests are delayed until their number exceeds the maximum burst size.\n"
+                },
+                "limitConnections": {
+                    "type": "number",
+                    "description": "The number of connections limited per IP.\n"
+                },
+                "limitDownloadSpeed": {
+                    "type": "number",
+                    "description": "The maximum download speed, in kb/s. Use 0 for unlimited.\n"
+                },
+                "limitRequests": {
+                    "type": "number",
+                    "description": "The maximum amount of requests per IP per second.\n"
+                },
+                "logAnonymized": {
+                    "type": "boolean",
+                    "description": "Indicates whether logs are anonymized.\n"
+                },
+                "logAnonymizedStyle": {
+                    "type": "string",
+                    "description": "Options: `Drop`, `OneDigit`\n"
+                },
+                "logEnabled": {
+                    "type": "boolean",
+                    "description": "Indicates whether logging is enabled.\n"
+                },
+                "logForwardEnabled": {
+                    "type": "boolean",
+                    "description": "Indicates whether log forwarding is enabled.\n"
+                },
+                "logForwardFormat": {
+                    "type": "string",
+                    "description": "Options: `JSON`, `Plain`\n"
+                },
+                "logForwardPort": {
+                    "type": "number",
+                    "description": "The port number for log forwarding.\n"
+                },
+                "logForwardProtocol": {
+                    "type": "string",
+                    "description": "Options: `DataDog`, `TCP`, `TCPEncrypted`, `UDP`\n"
+                },
+                "logForwardServer": {
+                    "type": "string",
+                    "description": "The server address for log forwarding.\n"
+                },
+                "logForwardToken": {
+                    "type": "string",
+                    "description": "The token used for log forwarding authentication.\n"
+                },
+                "logStorageEnabled": {
+                    "type": "boolean",
+                    "description": "Indicates whether log storage is enabled.\n"
+                },
+                "logStorageZone": {
+                    "type": "number",
+                    "description": "The storage zone ID for log storage.\n"
+                },
+                "name": {
+                    "type": "string",
+                    "description": "The name of the pull zone.\n"
+                },
+                "optimizerClassesForce": {
+                    "type": "boolean",
+                    "description": "Indicates whether the optimizer class list should be enforced.\n"
+                },
+                "optimizerDynamicImageApi": {
+                    "type": "boolean",
+                    "description": "Indicates whether the image manipulation should be enabled.\n"
+                },
+                "optimizerEnabled": {
+                    "type": "boolean",
+                    "description": "Indicates whether Bunny Optimizer should be enabled.\n"
+                },
+                "optimizerMinifyCss": {
+                    "type": "boolean",
+                    "description": "Indicates whether the CSS minifcation should be enabled.\n"
+                },
+                "optimizerMinifyJs": {
+                    "type": "boolean",
+                    "description": "Indicates whether the JavaScript minifcation should be enabled.\n"
+                },
+                "optimizerSmartimage": {
+                    "type": "boolean",
+                    "description": "Indicates whether the automatic image optimization should be enabled.\n"
+                },
+                "optimizerSmartimageDesktopMaxwidth": {
+                    "type": "number",
+                    "description": "The maximum automatic image size for desktop clients.\n"
+                },
+                "optimizerSmartimageDesktopQuality": {
+                    "type": "number",
+                    "description": "The image quality for desktop clients.\n"
+                },
+                "optimizerSmartimageMobileMaxwidth": {
+                    "type": "number",
+                    "description": "The maximum automatic image size for mobile clients.\n"
+                },
+                "optimizerSmartimageMobileQuality": {
+                    "type": "number",
+                    "description": "Determines the image quality for mobile clients\n"
+                },
+                "optimizerWatermark": {
+                    "type": "boolean",
+                    "description": "Indicates whether image watermarking should be enabled.\n"
+                },
+                "optimizerWatermarkBorderoffset": {
+                    "type": "number",
+                    "description": "The offset of the watermark image.\n"
+                },
+                "optimizerWatermarkMinsize": {
+                    "type": "number",
+                    "description": "The minimum image size to which the watermark will be added.\n"
+                },
+                "optimizerWatermarkPosition": {
+                    "type": "string",
+                    "description": "Options: `BottomLeft`, `BottomRight`, `Center`, `CenterStretch`, `TopLeft`, `TopRight`\n"
+                },
+                "optimizerWatermarkUrl": {
+                    "type": "string",
+                    "description": "The URL of the watermark image.\n"
+                },
+                "optimizerWebp": {
+                    "type": "boolean",
+                    "description": "Indicates whether the WebP optimization should be enabled.\n"
+                },
+                "origin": {
+                    "$ref": "#/types/bunnynet:index/PullzoneOrigin:PullzoneOrigin"
+                },
+                "originshieldConcurrencyLimit": {
+                    "type": "boolean",
+                    "description": "Indicates whether there is a concurrency limit for Origin Shield.\n"
+                },
+                "originshieldConcurrencyRequests": {
+                    "type": "number",
+                    "description": "The number of concurrent requests for Origin Shield.\n"
+                },
+                "originshieldEnabled": {
+                    "type": "boolean",
+                    "description": "Indicates whether Origin Shield is enabled.\n"
+                },
+                "originshieldQueueRequests": {
+                    "type": "number",
+                    "description": "The number of queued requests for Origin Shield.\n"
+                },
+                "originshieldQueueWait": {
+                    "type": "number",
+                    "description": "The maximum wait time for queued requests in Origin Shield, in seconds.\n"
+                },
+                "originshieldZone": {
+                    "type": "string",
+                    "description": "Options: `FR`, `IL`\n"
+                },
+                "permacacheStoragezone": {
+                    "type": "number",
+                    "description": "The storage zone ID for Perma-Cache.\n"
+                },
+                "pullzoneId": {
+                    "type": "number",
+                    "description": "The unique ID of the pull zone.\n"
+                },
+                "requestCoalescingEnabled": {
+                    "type": "boolean",
+                    "description": "Indicates whether request coalescing is enabled.\n"
+                },
+                "requestCoalescingTimeout": {
+                    "type": "number",
+                    "description": "Specifies the timeout period, in seconds, for request coalescing, determining how long to wait before sending combined\nrequests to the origin.\n"
+                },
+                "routing": {
+                    "$ref": "#/types/bunnynet:index/PullzoneRouting:PullzoneRouting"
+                },
+                "s3AuthEnabled": {
+                    "type": "boolean",
+                    "description": "Indicates whether requests to origin will be signed with AWS Signature Version 4.\n"
+                },
+                "s3AuthKey": {
+                    "type": "string",
+                    "description": "The access key used to authenticate the requests.\n"
+                },
+                "s3AuthRegion": {
+                    "type": "string",
+                    "description": "The region name of the bucket used to authenticate the requests.\n"
+                },
+                "s3AuthSecret": {
+                    "type": "string",
+                    "description": "The secret key used to authenticate the requests.\n"
+                },
+                "safehopConnectionTimeout": {
+                    "type": "number",
+                    "description": "The amount of seconds to wait when connecting to the origin. Otherwise the request will fail or retry.\n"
+                },
+                "safehopEnabled": {
+                    "type": "boolean"
+                },
+                "safehopResponseTimeout": {
+                    "type": "number",
+                    "description": "The amount of seconds to wait when waiting for the origin reply. Otherwise the request will fail or retry.\n"
+                },
+                "safehopRetryCount": {
+                    "type": "number",
+                    "description": "The number of retries to the origin server.\n"
+                },
+                "safehopRetryDelay": {
+                    "type": "number",
+                    "description": "The amount of time that the CDN should wait before retrying an origin request.\n"
+                },
+                "safehopRetryReasons": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Options: `5xxResponse`, `connectionTimeout`, `responseTimeout`\n"
+                },
+                "sortQuerystring": {
+                    "type": "boolean",
+                    "description": "If enabled, the query parameters will be automatically sorted into a consistent order before checking the cache.\n"
+                },
+                "stripCookies": {
+                    "type": "boolean",
+                    "description": "If enabled, bunny.net will strip all the Set-Cookie headers from the HTTP responses.\n"
+                },
+                "tlsSupports": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Options: `TLSv1.0`, `TLSv1.1`\n"
+                },
+                "tokenAuthEnabled": {
+                    "type": "boolean",
+                    "description": "Indicates whether requests without a valid token and expiry timestamp will be rejected.\n"
+                },
+                "tokenAuthIpValidation": {
+                    "type": "boolean",
+                    "description": "Indicates whether the secure hash generated by the server will also include an IP address.\n"
+                },
+                "tokenAuthKey": {
+                    "type": "string",
+                    "description": "The auth key used for secure URL token authentication.\n",
+                    "secret": true
+                },
+                "useBackgroundUpdate": {
+                    "type": "boolean",
+                    "description": "Indicates whether cache update is performed in the background.\n"
+                }
+            },
+            "required": [
+                "addCanonicalHeader",
+                "allowReferers",
+                "blockIps",
+                "blockNoReferer",
+                "blockPostRequests",
+                "blockReferers",
+                "blockRootPath",
+                "cacheChunked",
+                "cacheEnabled",
+                "cacheErrors",
+                "cacheExpirationTime",
+                "cacheExpirationTimeBrowser",
+                "cacheStales",
+                "cacheVaries",
+                "cacheVaryCookies",
+                "cacheVaryQuerystrings",
+                "cdnDomain",
+                "corsEnabled",
+                "corsExtensions",
+                "disableLetsencrypt",
+                "errorpageCustomContent",
+                "errorpageCustomEnabled",
+                "errorpageStatuspageCode",
+                "errorpageStatuspageEnabled",
+                "errorpageWhitelabel",
+                "pullzoneId",
+                "limitAfter",
+                "limitBandwidth",
+                "limitBurst",
+                "limitConnections",
+                "limitDownloadSpeed",
+                "limitRequests",
+                "logAnonymized",
+                "logAnonymizedStyle",
+                "logEnabled",
+                "logForwardEnabled",
+                "logForwardFormat",
+                "logForwardPort",
+                "logForwardProtocol",
+                "logForwardServer",
+                "logForwardToken",
+                "logStorageEnabled",
+                "logStorageZone",
+                "name",
+                "optimizerClassesForce",
+                "optimizerDynamicImageApi",
+                "optimizerEnabled",
+                "optimizerMinifyCss",
+                "optimizerMinifyJs",
+                "optimizerSmartimage",
+                "optimizerSmartimageDesktopMaxwidth",
+                "optimizerSmartimageDesktopQuality",
+                "optimizerSmartimageMobileMaxwidth",
+                "optimizerSmartimageMobileQuality",
+                "optimizerWatermark",
+                "optimizerWatermarkBorderoffset",
+                "optimizerWatermarkMinsize",
+                "optimizerWatermarkPosition",
+                "optimizerWatermarkUrl",
+                "optimizerWebp",
+                "originshieldConcurrencyLimit",
+                "originshieldConcurrencyRequests",
+                "originshieldEnabled",
+                "originshieldQueueRequests",
+                "originshieldQueueWait",
+                "originshieldZone",
+                "permacacheStoragezone",
+                "requestCoalescingEnabled",
+                "requestCoalescingTimeout",
+                "s3AuthEnabled",
+                "s3AuthKey",
+                "s3AuthRegion",
+                "s3AuthSecret",
+                "safehopConnectionTimeout",
+                "safehopEnabled",
+                "safehopResponseTimeout",
+                "safehopRetryCount",
+                "safehopRetryDelay",
+                "safehopRetryReasons",
+                "sortQuerystring",
+                "stripCookies",
+                "tlsSupports",
+                "tokenAuthEnabled",
+                "tokenAuthIpValidation",
+                "tokenAuthKey",
+                "useBackgroundUpdate"
+            ],
+            "inputProperties": {
+                "addCanonicalHeader": {
+                    "type": "boolean",
+                    "description": "Indicates whether the Canonical header is added to the responses.\n"
+                },
+                "allowReferers": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "The list of referrer hostnames that are allowed to access the pull zone. Requests containing the header \"Referer:\nhostname\" that is not on the list will be rejected. If empty, all the referrers are allowed.\n"
+                },
+                "blockIps": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "The list of IPs that are blocked from accessing the pull zone. Requests coming from the following IPs will be rejected.\nIf empty, all the IPs will be allowed\n"
+                },
+                "blockNoReferer": {
+                    "type": "boolean",
+                    "description": "Indicates whether requests without a referer should be blocked.\n"
+                },
+                "blockPostRequests": {
+                    "type": "boolean",
+                    "description": "Indicates whether to block POST requests.\n"
+                },
+                "blockReferers": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "The list of referrer hostnames that are blocked to access the pull zone. Requests containing the header \"Referer:\nhostname\" that is not on the list will be rejected. If empty, all the referrers are allowed.\n"
+                },
+                "blockRootPath": {
+                    "type": "boolean",
+                    "description": "This property indicates whether to block the root path.\n"
+                },
+                "cacheChunked": {
+                    "type": "boolean",
+                    "description": "Indicates whether the cache slice (Optimize for video) feature is enabled for the Pull Zone\n"
+                },
+                "cacheEnabled": {
+                    "type": "boolean",
+                    "description": "Indicates whether smart caching is enabled.\n"
+                },
+                "cacheErrors": {
+                    "type": "boolean",
+                    "description": "Indicates whether bunny.net should be caching error responses.\n"
+                },
+                "cacheExpirationTime": {
+                    "type": "number",
+                    "description": "The override cache time, in seconds.\n"
+                },
+                "cacheExpirationTimeBrowser": {
+                    "type": "number",
+                    "description": "The override cache time for the end client, in seconds.\n"
+                },
+                "cacheStales": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Options: `offline`, `updating`\n"
+                },
+                "cacheVaries": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Options: `avif`, `cookie`, `country`, `hostname`, `mobile`, `querystring`, `webp`\n"
+                },
+                "cacheVaryCookies": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Contains the list of vary parameters that will be used for vary cache by cookie string. If empty, cookie vary will not\nbe used.\n"
+                },
+                "cacheVaryQuerystrings": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Contains the list of vary parameters that will be used for vary cache by query string. If empty, all parameters will be\nused to construct the key\n"
+                },
+                "corsEnabled": {
+                    "type": "boolean",
+                    "description": "Indicates whether CORS (Cross-Origin Resource Sharing) is enabled.\n"
+                },
+                "corsExtensions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "A list of file extensions for which CORS is enabled.\n"
+                },
+                "disableLetsencrypt": {
+                    "type": "boolean",
+                    "description": "If true, the built-in let's encrypt is disabled and requests are passed to the origin.\n"
+                },
+                "errorpageCustomContent": {
+                    "type": "string",
+                    "description": "Contains the custom error page code that will be returned.\n"
+                },
+                "errorpageCustomEnabled": {
+                    "type": "boolean",
+                    "description": "Indicates whether custom error page code should be enabled.\n"
+                },
+                "errorpageStatuspageCode": {
+                    "type": "string",
+                    "description": "The statuspage code that will be used to build the status widget.\n"
+                },
+                "errorpageStatuspageEnabled": {
+                    "type": "boolean",
+                    "description": "Indicates whether the statuspage widget should be displayed on the error pages.\n"
+                },
+                "errorpageWhitelabel": {
+                    "type": "boolean",
+                    "description": "Indicates whether the error pages should be white-labelled or not\n"
+                },
+                "limitAfter": {
+                    "type": "number",
+                    "description": "The amount of data after the rate limit will be activated.\n"
+                },
+                "limitBandwidth": {
+                    "type": "number",
+                    "description": "The maximum bandwidth limit in bytes.\n"
+                },
+                "limitBurst": {
+                    "type": "number",
+                    "description": "Excessive requests are delayed until their number exceeds the maximum burst size.\n"
+                },
+                "limitConnections": {
+                    "type": "number",
+                    "description": "The number of connections limited per IP.\n"
+                },
+                "limitDownloadSpeed": {
+                    "type": "number",
+                    "description": "The maximum download speed, in kb/s. Use 0 for unlimited.\n"
+                },
+                "limitRequests": {
+                    "type": "number",
+                    "description": "The maximum amount of requests per IP per second.\n"
+                },
+                "logAnonymized": {
+                    "type": "boolean",
+                    "description": "Indicates whether logs are anonymized.\n"
+                },
+                "logAnonymizedStyle": {
+                    "type": "string",
+                    "description": "Options: `Drop`, `OneDigit`\n"
+                },
+                "logEnabled": {
+                    "type": "boolean",
+                    "description": "Indicates whether logging is enabled.\n"
+                },
+                "logForwardEnabled": {
+                    "type": "boolean",
+                    "description": "Indicates whether log forwarding is enabled.\n"
+                },
+                "logForwardFormat": {
+                    "type": "string",
+                    "description": "Options: `JSON`, `Plain`\n"
+                },
+                "logForwardPort": {
+                    "type": "number",
+                    "description": "The port number for log forwarding.\n"
+                },
+                "logForwardProtocol": {
+                    "type": "string",
+                    "description": "Options: `DataDog`, `TCP`, `TCPEncrypted`, `UDP`\n"
+                },
+                "logForwardServer": {
+                    "type": "string",
+                    "description": "The server address for log forwarding.\n"
+                },
+                "logForwardToken": {
+                    "type": "string",
+                    "description": "The token used for log forwarding authentication.\n"
+                },
+                "logStorageEnabled": {
+                    "type": "boolean",
+                    "description": "Indicates whether log storage is enabled.\n"
+                },
+                "logStorageZone": {
+                    "type": "number",
+                    "description": "The storage zone ID for log storage.\n"
+                },
+                "name": {
+                    "type": "string",
+                    "description": "The name of the pull zone.\n"
+                },
+                "optimizerClassesForce": {
+                    "type": "boolean",
+                    "description": "Indicates whether the optimizer class list should be enforced.\n"
+                },
+                "optimizerDynamicImageApi": {
+                    "type": "boolean",
+                    "description": "Indicates whether the image manipulation should be enabled.\n"
+                },
+                "optimizerEnabled": {
+                    "type": "boolean",
+                    "description": "Indicates whether Bunny Optimizer should be enabled.\n"
+                },
+                "optimizerMinifyCss": {
+                    "type": "boolean",
+                    "description": "Indicates whether the CSS minifcation should be enabled.\n"
+                },
+                "optimizerMinifyJs": {
+                    "type": "boolean",
+                    "description": "Indicates whether the JavaScript minifcation should be enabled.\n"
+                },
+                "optimizerSmartimage": {
+                    "type": "boolean",
+                    "description": "Indicates whether the automatic image optimization should be enabled.\n"
+                },
+                "optimizerSmartimageDesktopMaxwidth": {
+                    "type": "number",
+                    "description": "The maximum automatic image size for desktop clients.\n"
+                },
+                "optimizerSmartimageDesktopQuality": {
+                    "type": "number",
+                    "description": "The image quality for desktop clients.\n"
+                },
+                "optimizerSmartimageMobileMaxwidth": {
+                    "type": "number",
+                    "description": "The maximum automatic image size for mobile clients.\n"
+                },
+                "optimizerSmartimageMobileQuality": {
+                    "type": "number",
+                    "description": "Determines the image quality for mobile clients\n"
+                },
+                "optimizerWatermark": {
+                    "type": "boolean",
+                    "description": "Indicates whether image watermarking should be enabled.\n"
+                },
+                "optimizerWatermarkBorderoffset": {
+                    "type": "number",
+                    "description": "The offset of the watermark image.\n"
+                },
+                "optimizerWatermarkMinsize": {
+                    "type": "number",
+                    "description": "The minimum image size to which the watermark will be added.\n"
+                },
+                "optimizerWatermarkPosition": {
+                    "type": "string",
+                    "description": "Options: `BottomLeft`, `BottomRight`, `Center`, `CenterStretch`, `TopLeft`, `TopRight`\n"
+                },
+                "optimizerWatermarkUrl": {
+                    "type": "string",
+                    "description": "The URL of the watermark image.\n"
+                },
+                "optimizerWebp": {
+                    "type": "boolean",
+                    "description": "Indicates whether the WebP optimization should be enabled.\n"
+                },
+                "origin": {
+                    "$ref": "#/types/bunnynet:index/PullzoneOrigin:PullzoneOrigin"
+                },
+                "originshieldConcurrencyLimit": {
+                    "type": "boolean",
+                    "description": "Indicates whether there is a concurrency limit for Origin Shield.\n"
+                },
+                "originshieldConcurrencyRequests": {
+                    "type": "number",
+                    "description": "The number of concurrent requests for Origin Shield.\n"
+                },
+                "originshieldEnabled": {
+                    "type": "boolean",
+                    "description": "Indicates whether Origin Shield is enabled.\n"
+                },
+                "originshieldQueueRequests": {
+                    "type": "number",
+                    "description": "The number of queued requests for Origin Shield.\n"
+                },
+                "originshieldQueueWait": {
+                    "type": "number",
+                    "description": "The maximum wait time for queued requests in Origin Shield, in seconds.\n"
+                },
+                "originshieldZone": {
+                    "type": "string",
+                    "description": "Options: `FR`, `IL`\n"
+                },
+                "permacacheStoragezone": {
+                    "type": "number",
+                    "description": "The storage zone ID for Perma-Cache.\n"
+                },
+                "requestCoalescingEnabled": {
+                    "type": "boolean",
+                    "description": "Indicates whether request coalescing is enabled.\n"
+                },
+                "requestCoalescingTimeout": {
+                    "type": "number",
+                    "description": "Specifies the timeout period, in seconds, for request coalescing, determining how long to wait before sending combined\nrequests to the origin.\n"
+                },
+                "routing": {
+                    "$ref": "#/types/bunnynet:index/PullzoneRouting:PullzoneRouting"
+                },
+                "s3AuthEnabled": {
+                    "type": "boolean",
+                    "description": "Indicates whether requests to origin will be signed with AWS Signature Version 4.\n"
+                },
+                "s3AuthKey": {
+                    "type": "string",
+                    "description": "The access key used to authenticate the requests.\n"
+                },
+                "s3AuthRegion": {
+                    "type": "string",
+                    "description": "The region name of the bucket used to authenticate the requests.\n"
+                },
+                "s3AuthSecret": {
+                    "type": "string",
+                    "description": "The secret key used to authenticate the requests.\n"
+                },
+                "safehopConnectionTimeout": {
+                    "type": "number",
+                    "description": "The amount of seconds to wait when connecting to the origin. Otherwise the request will fail or retry.\n"
+                },
+                "safehopEnabled": {
+                    "type": "boolean"
+                },
+                "safehopResponseTimeout": {
+                    "type": "number",
+                    "description": "The amount of seconds to wait when waiting for the origin reply. Otherwise the request will fail or retry.\n"
+                },
+                "safehopRetryCount": {
+                    "type": "number",
+                    "description": "The number of retries to the origin server.\n"
+                },
+                "safehopRetryDelay": {
+                    "type": "number",
+                    "description": "The amount of time that the CDN should wait before retrying an origin request.\n"
+                },
+                "safehopRetryReasons": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Options: `5xxResponse`, `connectionTimeout`, `responseTimeout`\n"
+                },
+                "sortQuerystring": {
+                    "type": "boolean",
+                    "description": "If enabled, the query parameters will be automatically sorted into a consistent order before checking the cache.\n"
+                },
+                "stripCookies": {
+                    "type": "boolean",
+                    "description": "If enabled, bunny.net will strip all the Set-Cookie headers from the HTTP responses.\n"
+                },
+                "tlsSupports": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Options: `TLSv1.0`, `TLSv1.1`\n"
+                },
+                "tokenAuthEnabled": {
+                    "type": "boolean",
+                    "description": "Indicates whether requests without a valid token and expiry timestamp will be rejected.\n"
+                },
+                "tokenAuthIpValidation": {
+                    "type": "boolean",
+                    "description": "Indicates whether the secure hash generated by the server will also include an IP address.\n"
+                },
+                "useBackgroundUpdate": {
+                    "type": "boolean",
+                    "description": "Indicates whether cache update is performed in the background.\n"
+                }
+            },
+            "stateInputs": {
+                "description": "Input properties used for looking up and filtering Pullzone resources.\n",
+                "properties": {
+                    "addCanonicalHeader": {
+                        "type": "boolean",
+                        "description": "Indicates whether the Canonical header is added to the responses.\n"
+                    },
+                    "allowReferers": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "The list of referrer hostnames that are allowed to access the pull zone. Requests containing the header \"Referer:\nhostname\" that is not on the list will be rejected. If empty, all the referrers are allowed.\n"
+                    },
+                    "blockIps": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "The list of IPs that are blocked from accessing the pull zone. Requests coming from the following IPs will be rejected.\nIf empty, all the IPs will be allowed\n"
+                    },
+                    "blockNoReferer": {
+                        "type": "boolean",
+                        "description": "Indicates whether requests without a referer should be blocked.\n"
+                    },
+                    "blockPostRequests": {
+                        "type": "boolean",
+                        "description": "Indicates whether to block POST requests.\n"
+                    },
+                    "blockReferers": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "The list of referrer hostnames that are blocked to access the pull zone. Requests containing the header \"Referer:\nhostname\" that is not on the list will be rejected. If empty, all the referrers are allowed.\n"
+                    },
+                    "blockRootPath": {
+                        "type": "boolean",
+                        "description": "This property indicates whether to block the root path.\n"
+                    },
+                    "cacheChunked": {
+                        "type": "boolean",
+                        "description": "Indicates whether the cache slice (Optimize for video) feature is enabled for the Pull Zone\n"
+                    },
+                    "cacheEnabled": {
+                        "type": "boolean",
+                        "description": "Indicates whether smart caching is enabled.\n"
+                    },
+                    "cacheErrors": {
+                        "type": "boolean",
+                        "description": "Indicates whether bunny.net should be caching error responses.\n"
+                    },
+                    "cacheExpirationTime": {
+                        "type": "number",
+                        "description": "The override cache time, in seconds.\n"
+                    },
+                    "cacheExpirationTimeBrowser": {
+                        "type": "number",
+                        "description": "The override cache time for the end client, in seconds.\n"
+                    },
+                    "cacheStales": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Options: `offline`, `updating`\n"
+                    },
+                    "cacheVaries": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Options: `avif`, `cookie`, `country`, `hostname`, `mobile`, `querystring`, `webp`\n"
+                    },
+                    "cacheVaryCookies": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Contains the list of vary parameters that will be used for vary cache by cookie string. If empty, cookie vary will not\nbe used.\n"
+                    },
+                    "cacheVaryQuerystrings": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Contains the list of vary parameters that will be used for vary cache by query string. If empty, all parameters will be\nused to construct the key\n"
+                    },
+                    "cdnDomain": {
+                        "type": "string",
+                        "description": "The CNAME domain of the pull zone for setting up custom hostnames\n"
+                    },
+                    "corsEnabled": {
+                        "type": "boolean",
+                        "description": "Indicates whether CORS (Cross-Origin Resource Sharing) is enabled.\n"
+                    },
+                    "corsExtensions": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "A list of file extensions for which CORS is enabled.\n"
+                    },
+                    "disableLetsencrypt": {
+                        "type": "boolean",
+                        "description": "If true, the built-in let's encrypt is disabled and requests are passed to the origin.\n"
+                    },
+                    "errorpageCustomContent": {
+                        "type": "string",
+                        "description": "Contains the custom error page code that will be returned.\n"
+                    },
+                    "errorpageCustomEnabled": {
+                        "type": "boolean",
+                        "description": "Indicates whether custom error page code should be enabled.\n"
+                    },
+                    "errorpageStatuspageCode": {
+                        "type": "string",
+                        "description": "The statuspage code that will be used to build the status widget.\n"
+                    },
+                    "errorpageStatuspageEnabled": {
+                        "type": "boolean",
+                        "description": "Indicates whether the statuspage widget should be displayed on the error pages.\n"
+                    },
+                    "errorpageWhitelabel": {
+                        "type": "boolean",
+                        "description": "Indicates whether the error pages should be white-labelled or not\n"
+                    },
+                    "limitAfter": {
+                        "type": "number",
+                        "description": "The amount of data after the rate limit will be activated.\n"
+                    },
+                    "limitBandwidth": {
+                        "type": "number",
+                        "description": "The maximum bandwidth limit in bytes.\n"
+                    },
+                    "limitBurst": {
+                        "type": "number",
+                        "description": "Excessive requests are delayed until their number exceeds the maximum burst size.\n"
+                    },
+                    "limitConnections": {
+                        "type": "number",
+                        "description": "The number of connections limited per IP.\n"
+                    },
+                    "limitDownloadSpeed": {
+                        "type": "number",
+                        "description": "The maximum download speed, in kb/s. Use 0 for unlimited.\n"
+                    },
+                    "limitRequests": {
+                        "type": "number",
+                        "description": "The maximum amount of requests per IP per second.\n"
+                    },
+                    "logAnonymized": {
+                        "type": "boolean",
+                        "description": "Indicates whether logs are anonymized.\n"
+                    },
+                    "logAnonymizedStyle": {
+                        "type": "string",
+                        "description": "Options: `Drop`, `OneDigit`\n"
+                    },
+                    "logEnabled": {
+                        "type": "boolean",
+                        "description": "Indicates whether logging is enabled.\n"
+                    },
+                    "logForwardEnabled": {
+                        "type": "boolean",
+                        "description": "Indicates whether log forwarding is enabled.\n"
+                    },
+                    "logForwardFormat": {
+                        "type": "string",
+                        "description": "Options: `JSON`, `Plain`\n"
+                    },
+                    "logForwardPort": {
+                        "type": "number",
+                        "description": "The port number for log forwarding.\n"
+                    },
+                    "logForwardProtocol": {
+                        "type": "string",
+                        "description": "Options: `DataDog`, `TCP`, `TCPEncrypted`, `UDP`\n"
+                    },
+                    "logForwardServer": {
+                        "type": "string",
+                        "description": "The server address for log forwarding.\n"
+                    },
+                    "logForwardToken": {
+                        "type": "string",
+                        "description": "The token used for log forwarding authentication.\n"
+                    },
+                    "logStorageEnabled": {
+                        "type": "boolean",
+                        "description": "Indicates whether log storage is enabled.\n"
+                    },
+                    "logStorageZone": {
+                        "type": "number",
+                        "description": "The storage zone ID for log storage.\n"
+                    },
+                    "name": {
+                        "type": "string",
+                        "description": "The name of the pull zone.\n"
+                    },
+                    "optimizerClassesForce": {
+                        "type": "boolean",
+                        "description": "Indicates whether the optimizer class list should be enforced.\n"
+                    },
+                    "optimizerDynamicImageApi": {
+                        "type": "boolean",
+                        "description": "Indicates whether the image manipulation should be enabled.\n"
+                    },
+                    "optimizerEnabled": {
+                        "type": "boolean",
+                        "description": "Indicates whether Bunny Optimizer should be enabled.\n"
+                    },
+                    "optimizerMinifyCss": {
+                        "type": "boolean",
+                        "description": "Indicates whether the CSS minifcation should be enabled.\n"
+                    },
+                    "optimizerMinifyJs": {
+                        "type": "boolean",
+                        "description": "Indicates whether the JavaScript minifcation should be enabled.\n"
+                    },
+                    "optimizerSmartimage": {
+                        "type": "boolean",
+                        "description": "Indicates whether the automatic image optimization should be enabled.\n"
+                    },
+                    "optimizerSmartimageDesktopMaxwidth": {
+                        "type": "number",
+                        "description": "The maximum automatic image size for desktop clients.\n"
+                    },
+                    "optimizerSmartimageDesktopQuality": {
+                        "type": "number",
+                        "description": "The image quality for desktop clients.\n"
+                    },
+                    "optimizerSmartimageMobileMaxwidth": {
+                        "type": "number",
+                        "description": "The maximum automatic image size for mobile clients.\n"
+                    },
+                    "optimizerSmartimageMobileQuality": {
+                        "type": "number",
+                        "description": "Determines the image quality for mobile clients\n"
+                    },
+                    "optimizerWatermark": {
+                        "type": "boolean",
+                        "description": "Indicates whether image watermarking should be enabled.\n"
+                    },
+                    "optimizerWatermarkBorderoffset": {
+                        "type": "number",
+                        "description": "The offset of the watermark image.\n"
+                    },
+                    "optimizerWatermarkMinsize": {
+                        "type": "number",
+                        "description": "The minimum image size to which the watermark will be added.\n"
+                    },
+                    "optimizerWatermarkPosition": {
+                        "type": "string",
+                        "description": "Options: `BottomLeft`, `BottomRight`, `Center`, `CenterStretch`, `TopLeft`, `TopRight`\n"
+                    },
+                    "optimizerWatermarkUrl": {
+                        "type": "string",
+                        "description": "The URL of the watermark image.\n"
+                    },
+                    "optimizerWebp": {
+                        "type": "boolean",
+                        "description": "Indicates whether the WebP optimization should be enabled.\n"
+                    },
+                    "origin": {
+                        "$ref": "#/types/bunnynet:index/PullzoneOrigin:PullzoneOrigin"
+                    },
+                    "originshieldConcurrencyLimit": {
+                        "type": "boolean",
+                        "description": "Indicates whether there is a concurrency limit for Origin Shield.\n"
+                    },
+                    "originshieldConcurrencyRequests": {
+                        "type": "number",
+                        "description": "The number of concurrent requests for Origin Shield.\n"
+                    },
+                    "originshieldEnabled": {
+                        "type": "boolean",
+                        "description": "Indicates whether Origin Shield is enabled.\n"
+                    },
+                    "originshieldQueueRequests": {
+                        "type": "number",
+                        "description": "The number of queued requests for Origin Shield.\n"
+                    },
+                    "originshieldQueueWait": {
+                        "type": "number",
+                        "description": "The maximum wait time for queued requests in Origin Shield, in seconds.\n"
+                    },
+                    "originshieldZone": {
+                        "type": "string",
+                        "description": "Options: `FR`, `IL`\n"
+                    },
+                    "permacacheStoragezone": {
+                        "type": "number",
+                        "description": "The storage zone ID for Perma-Cache.\n"
+                    },
+                    "pullzoneId": {
+                        "type": "number",
+                        "description": "The unique ID of the pull zone.\n"
+                    },
+                    "requestCoalescingEnabled": {
+                        "type": "boolean",
+                        "description": "Indicates whether request coalescing is enabled.\n"
+                    },
+                    "requestCoalescingTimeout": {
+                        "type": "number",
+                        "description": "Specifies the timeout period, in seconds, for request coalescing, determining how long to wait before sending combined\nrequests to the origin.\n"
+                    },
+                    "routing": {
+                        "$ref": "#/types/bunnynet:index/PullzoneRouting:PullzoneRouting"
+                    },
+                    "s3AuthEnabled": {
+                        "type": "boolean",
+                        "description": "Indicates whether requests to origin will be signed with AWS Signature Version 4.\n"
+                    },
+                    "s3AuthKey": {
+                        "type": "string",
+                        "description": "The access key used to authenticate the requests.\n"
+                    },
+                    "s3AuthRegion": {
+                        "type": "string",
+                        "description": "The region name of the bucket used to authenticate the requests.\n"
+                    },
+                    "s3AuthSecret": {
+                        "type": "string",
+                        "description": "The secret key used to authenticate the requests.\n"
+                    },
+                    "safehopConnectionTimeout": {
+                        "type": "number",
+                        "description": "The amount of seconds to wait when connecting to the origin. Otherwise the request will fail or retry.\n"
+                    },
+                    "safehopEnabled": {
+                        "type": "boolean"
+                    },
+                    "safehopResponseTimeout": {
+                        "type": "number",
+                        "description": "The amount of seconds to wait when waiting for the origin reply. Otherwise the request will fail or retry.\n"
+                    },
+                    "safehopRetryCount": {
+                        "type": "number",
+                        "description": "The number of retries to the origin server.\n"
+                    },
+                    "safehopRetryDelay": {
+                        "type": "number",
+                        "description": "The amount of time that the CDN should wait before retrying an origin request.\n"
+                    },
+                    "safehopRetryReasons": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Options: `5xxResponse`, `connectionTimeout`, `responseTimeout`\n"
+                    },
+                    "sortQuerystring": {
+                        "type": "boolean",
+                        "description": "If enabled, the query parameters will be automatically sorted into a consistent order before checking the cache.\n"
+                    },
+                    "stripCookies": {
+                        "type": "boolean",
+                        "description": "If enabled, bunny.net will strip all the Set-Cookie headers from the HTTP responses.\n"
+                    },
+                    "tlsSupports": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Options: `TLSv1.0`, `TLSv1.1`\n"
+                    },
+                    "tokenAuthEnabled": {
+                        "type": "boolean",
+                        "description": "Indicates whether requests without a valid token and expiry timestamp will be rejected.\n"
+                    },
+                    "tokenAuthIpValidation": {
+                        "type": "boolean",
+                        "description": "Indicates whether the secure hash generated by the server will also include an IP address.\n"
+                    },
+                    "tokenAuthKey": {
+                        "type": "string",
+                        "description": "The auth key used for secure URL token authentication.\n",
+                        "secret": true
+                    },
+                    "useBackgroundUpdate": {
+                        "type": "boolean",
+                        "description": "Indicates whether cache update is performed in the background.\n"
+                    }
+                },
+                "type": "object"
+            }
+        },
+        "bunnynet:index/pullzoneEdgerule:PullzoneEdgerule": {
+            "properties": {
+                "action": {
+                    "type": "string",
+                    "description": "Options: `BlockRequest`, `BypassPermaCache`, `DisableOptimizer`, `DisableTokenAuthentication`,\n`EnableTokenAuthentication`, `ForceCompression`, `ForceDownload`, `ForceSSL`, `IgnoreQueryString`, `OriginStorage`,\n`OriginUrl`, `OverrideBrowserCacheTime`, `OverrideCacheTime`, `OverrideCacheTimePublic`, `Redirect`,\n`SetConnectionLimit`, `SetNetworkRateLimit`, `SetRequestHeader`, `SetRequestsPerSecondLimit`, `SetResponseHeader`,\n`SetStatusCode`\n"
+                },
+                "actionParameter1": {
+                    "type": "string"
+                },
+                "actionParameter2": {
+                    "type": "string"
+                },
+                "actionParameter3": {
+                    "type": "string"
+                },
+                "actions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/types/bunnynet:index/PullzoneEdgeruleAction:PullzoneEdgeruleAction"
+                    },
+                    "description": "List of actions for the edge rule.\n"
+                },
+                "description": {
+                    "type": "string",
+                    "description": "The description of the edge rule.\n"
+                },
+                "enabled": {
+                    "type": "boolean",
+                    "description": "Indicates whether the edge rule is enabled.\n"
+                },
+                "matchType": {
+                    "type": "string",
+                    "description": "Options: `MatchAll`, `MatchAny`, `MatchNone`\n"
+                },
+                "pullzone": {
+                    "type": "number"
+                },
+                "triggers": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/types/bunnynet:index/PullzoneEdgeruleTrigger:PullzoneEdgeruleTrigger"
+                    }
+                }
+            },
+            "required": [
+                "actions",
+                "description",
+                "enabled",
+                "matchType",
+                "pullzone",
+                "triggers"
+            ],
+            "inputProperties": {
+                "action": {
+                    "type": "string",
+                    "description": "Options: `BlockRequest`, `BypassPermaCache`, `DisableOptimizer`, `DisableTokenAuthentication`,\n`EnableTokenAuthentication`, `ForceCompression`, `ForceDownload`, `ForceSSL`, `IgnoreQueryString`, `OriginStorage`,\n`OriginUrl`, `OverrideBrowserCacheTime`, `OverrideCacheTime`, `OverrideCacheTimePublic`, `Redirect`,\n`SetConnectionLimit`, `SetNetworkRateLimit`, `SetRequestHeader`, `SetRequestsPerSecondLimit`, `SetResponseHeader`,\n`SetStatusCode`\n"
+                },
+                "actionParameter1": {
+                    "type": "string"
+                },
+                "actionParameter2": {
+                    "type": "string"
+                },
+                "actionParameter3": {
+                    "type": "string"
+                },
+                "actions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/types/bunnynet:index/PullzoneEdgeruleAction:PullzoneEdgeruleAction"
+                    },
+                    "description": "List of actions for the edge rule.\n"
+                },
+                "description": {
+                    "type": "string",
+                    "description": "The description of the edge rule.\n"
+                },
+                "enabled": {
+                    "type": "boolean",
+                    "description": "Indicates whether the edge rule is enabled.\n"
+                },
+                "matchType": {
+                    "type": "string",
+                    "description": "Options: `MatchAll`, `MatchAny`, `MatchNone`\n"
+                },
+                "pullzone": {
+                    "type": "number"
+                },
+                "triggers": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/types/bunnynet:index/PullzoneEdgeruleTrigger:PullzoneEdgeruleTrigger"
+                    }
+                }
+            },
+            "requiredInputs": [
+                "enabled",
+                "pullzone",
+                "triggers"
+            ],
+            "stateInputs": {
+                "description": "Input properties used for looking up and filtering PullzoneEdgerule resources.\n",
+                "properties": {
+                    "action": {
+                        "type": "string",
+                        "description": "Options: `BlockRequest`, `BypassPermaCache`, `DisableOptimizer`, `DisableTokenAuthentication`,\n`EnableTokenAuthentication`, `ForceCompression`, `ForceDownload`, `ForceSSL`, `IgnoreQueryString`, `OriginStorage`,\n`OriginUrl`, `OverrideBrowserCacheTime`, `OverrideCacheTime`, `OverrideCacheTimePublic`, `Redirect`,\n`SetConnectionLimit`, `SetNetworkRateLimit`, `SetRequestHeader`, `SetRequestsPerSecondLimit`, `SetResponseHeader`,\n`SetStatusCode`\n"
+                    },
+                    "actionParameter1": {
+                        "type": "string"
+                    },
+                    "actionParameter2": {
+                        "type": "string"
+                    },
+                    "actionParameter3": {
+                        "type": "string"
+                    },
+                    "actions": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/types/bunnynet:index/PullzoneEdgeruleAction:PullzoneEdgeruleAction"
+                        },
+                        "description": "List of actions for the edge rule.\n"
+                    },
+                    "description": {
+                        "type": "string",
+                        "description": "The description of the edge rule.\n"
+                    },
+                    "enabled": {
+                        "type": "boolean",
+                        "description": "Indicates whether the edge rule is enabled.\n"
+                    },
+                    "matchType": {
+                        "type": "string",
+                        "description": "Options: `MatchAll`, `MatchAny`, `MatchNone`\n"
+                    },
+                    "pullzone": {
+                        "type": "number"
+                    },
+                    "triggers": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/types/bunnynet:index/PullzoneEdgeruleTrigger:PullzoneEdgeruleTrigger"
+                        }
+                    }
+                },
+                "type": "object"
+            }
+        },
+        "bunnynet:index/pullzoneHostname:PullzoneHostname": {
+            "properties": {
+                "certificate": {
+                    "type": "string",
+                    "description": "The certificate for the hostname, in PEM format. ***Important***: the Bunny API will not return the certificate data, so\nyou'll have to make sure you're importing the correct certificate.\n"
+                },
+                "certificateKey": {
+                    "type": "string",
+                    "description": "The certificate private key for the hostname, in PEM format. ***Important***: the Bunny API will not return the\ncertificate key, so you'll have to make sure you're importing the correct certificate key.\n"
+                },
+                "forceSsl": {
+                    "type": "boolean",
+                    "description": "Indicates whether SSL should be enforced for the hostname.\n"
+                },
+                "isInternal": {
+                    "type": "boolean",
+                    "description": "Indicates whether the hostname is internal (in the CDN domain) or provided by the user.\n"
+                },
+                "name": {
+                    "type": "string",
+                    "description": "The hostname value for the domain name.\n"
+                },
+                "pullzone": {
+                    "type": "number",
+                    "description": "The ID of the linked pull zone.\n"
+                },
+                "pullzoneHostnameId": {
+                    "type": "number",
+                    "description": "The unique ID of the hostname.\n"
+                },
+                "tlsEnabled": {
+                    "type": "boolean",
+                    "description": "Indicates whether the hostname should support HTTPS. If a custom certificate is not provided via the\n\u003ccode\u003ecertificate\u003c/code\u003e attribute, a Domain-validated TLS certificate will be automatically obtained and managed by\nBunny. ***Important***: it is not possible to tell managed and custom certificates apart for imported resources.\n"
+                }
+            },
+            "required": [
+                "certificate",
+                "certificateKey",
+                "forceSsl",
+                "pullzoneHostnameId",
+                "isInternal",
+                "name",
+                "pullzone",
+                "tlsEnabled"
+            ],
+            "inputProperties": {
+                "certificate": {
+                    "type": "string",
+                    "description": "The certificate for the hostname, in PEM format. ***Important***: the Bunny API will not return the certificate data, so\nyou'll have to make sure you're importing the correct certificate.\n"
+                },
+                "certificateKey": {
+                    "type": "string",
+                    "description": "The certificate private key for the hostname, in PEM format. ***Important***: the Bunny API will not return the\ncertificate key, so you'll have to make sure you're importing the correct certificate key.\n"
+                },
+                "forceSsl": {
+                    "type": "boolean",
+                    "description": "Indicates whether SSL should be enforced for the hostname.\n"
+                },
+                "name": {
+                    "type": "string",
+                    "description": "The hostname value for the domain name.\n"
+                },
+                "pullzone": {
+                    "type": "number",
+                    "description": "The ID of the linked pull zone.\n"
+                },
+                "tlsEnabled": {
+                    "type": "boolean",
+                    "description": "Indicates whether the hostname should support HTTPS. If a custom certificate is not provided via the\n\u003ccode\u003ecertificate\u003c/code\u003e attribute, a Domain-validated TLS certificate will be automatically obtained and managed by\nBunny. ***Important***: it is not possible to tell managed and custom certificates apart for imported resources.\n"
+                }
+            },
+            "requiredInputs": [
+                "pullzone"
+            ],
+            "stateInputs": {
+                "description": "Input properties used for looking up and filtering PullzoneHostname resources.\n",
+                "properties": {
+                    "certificate": {
+                        "type": "string",
+                        "description": "The certificate for the hostname, in PEM format. ***Important***: the Bunny API will not return the certificate data, so\nyou'll have to make sure you're importing the correct certificate.\n"
+                    },
+                    "certificateKey": {
+                        "type": "string",
+                        "description": "The certificate private key for the hostname, in PEM format. ***Important***: the Bunny API will not return the\ncertificate key, so you'll have to make sure you're importing the correct certificate key.\n"
+                    },
+                    "forceSsl": {
+                        "type": "boolean",
+                        "description": "Indicates whether SSL should be enforced for the hostname.\n"
+                    },
+                    "isInternal": {
+                        "type": "boolean",
+                        "description": "Indicates whether the hostname is internal (in the CDN domain) or provided by the user.\n"
+                    },
+                    "name": {
+                        "type": "string",
+                        "description": "The hostname value for the domain name.\n"
+                    },
+                    "pullzone": {
+                        "type": "number",
+                        "description": "The ID of the linked pull zone.\n"
+                    },
+                    "pullzoneHostnameId": {
+                        "type": "number",
+                        "description": "The unique ID of the hostname.\n"
+                    },
+                    "tlsEnabled": {
+                        "type": "boolean",
+                        "description": "Indicates whether the hostname should support HTTPS. If a custom certificate is not provided via the\n\u003ccode\u003ecertificate\u003c/code\u003e attribute, a Domain-validated TLS certificate will be automatically obtained and managed by\nBunny. ***Important***: it is not possible to tell managed and custom certificates apart for imported resources.\n"
+                    }
+                },
+                "type": "object"
+            }
+        },
+        "bunnynet:index/pullzoneOptimizerClass:PullzoneOptimizerClass": {
+            "properties": {
+                "aspectRatio": {
+                    "type": "string",
+                    "description": "The aspect ratio for image optimization.\n"
+                },
+                "autoOptimize": {
+                    "type": "string",
+                    "description": "Indicates whether automatic optimization for images is enabled.\n"
+                },
+                "blur": {
+                    "type": "number",
+                    "description": "The level of blur to apply to images.\n"
+                },
+                "brightness": {
+                    "type": "number",
+                    "description": "The brightness adjustment for images.\n"
+                },
+                "contrast": {
+                    "type": "number",
+                    "description": "The contrast adjustment for images.\n"
+                },
+                "crop": {
+                    "type": "string",
+                    "description": "The cropping settings for images.\n"
+                },
+                "cropGravity": {
+                    "type": "string",
+                    "description": "The gravity setting for cropping.\n"
+                },
+                "flip": {
+                    "type": "boolean",
+                    "description": "Indicates whether to flip images horizontally.\n"
+                },
+                "flop": {
+                    "type": "boolean",
+                    "description": "Indicates whether to flip images vertically.\n"
+                },
+                "height": {
+                    "type": "number",
+                    "description": "The height to which images should be resized.\n"
+                },
+                "hue": {
+                    "type": "number",
+                    "description": "The hue adjustment for images.\n"
+                },
+                "name": {
+                    "type": "string",
+                    "description": "The name of the optimizer class.\n"
+                },
+                "pullzone": {
+                    "type": "number",
+                    "description": "The ID of the linked pull zone.\n"
+                },
+                "quality": {
+                    "type": "number",
+                    "description": "The quality setting for image optimization.\n"
+                },
+                "saturation": {
+                    "type": "number",
+                    "description": "The saturation adjustment for images.\n"
+                },
+                "sepia": {
+                    "type": "number",
+                    "description": "The level of sepia tone to apply to images.\n"
+                },
+                "sharpen": {
+                    "type": "boolean",
+                    "description": "Indicates whether to sharpen images.\n"
+                },
+                "width": {
+                    "type": "number",
+                    "description": "The width to which images should be resized.\n"
+                }
+            },
+            "required": [
+                "name",
+                "pullzone"
+            ],
+            "inputProperties": {
+                "aspectRatio": {
+                    "type": "string",
+                    "description": "The aspect ratio for image optimization.\n"
+                },
+                "autoOptimize": {
+                    "type": "string",
+                    "description": "Indicates whether automatic optimization for images is enabled.\n"
+                },
+                "blur": {
+                    "type": "number",
+                    "description": "The level of blur to apply to images.\n"
+                },
+                "brightness": {
+                    "type": "number",
+                    "description": "The brightness adjustment for images.\n"
+                },
+                "contrast": {
+                    "type": "number",
+                    "description": "The contrast adjustment for images.\n"
+                },
+                "crop": {
+                    "type": "string",
+                    "description": "The cropping settings for images.\n"
+                },
+                "cropGravity": {
+                    "type": "string",
+                    "description": "The gravity setting for cropping.\n"
+                },
+                "flip": {
+                    "type": "boolean",
+                    "description": "Indicates whether to flip images horizontally.\n"
+                },
+                "flop": {
+                    "type": "boolean",
+                    "description": "Indicates whether to flip images vertically.\n"
+                },
+                "height": {
+                    "type": "number",
+                    "description": "The height to which images should be resized.\n"
+                },
+                "hue": {
+                    "type": "number",
+                    "description": "The hue adjustment for images.\n"
+                },
+                "name": {
+                    "type": "string",
+                    "description": "The name of the optimizer class.\n"
+                },
+                "pullzone": {
+                    "type": "number",
+                    "description": "The ID of the linked pull zone.\n"
+                },
+                "quality": {
+                    "type": "number",
+                    "description": "The quality setting for image optimization.\n"
+                },
+                "saturation": {
+                    "type": "number",
+                    "description": "The saturation adjustment for images.\n"
+                },
+                "sepia": {
+                    "type": "number",
+                    "description": "The level of sepia tone to apply to images.\n"
+                },
+                "sharpen": {
+                    "type": "boolean",
+                    "description": "Indicates whether to sharpen images.\n"
+                },
+                "width": {
+                    "type": "number",
+                    "description": "The width to which images should be resized.\n"
+                }
+            },
+            "requiredInputs": [
+                "pullzone"
+            ],
+            "stateInputs": {
+                "description": "Input properties used for looking up and filtering PullzoneOptimizerClass resources.\n",
+                "properties": {
+                    "aspectRatio": {
+                        "type": "string",
+                        "description": "The aspect ratio for image optimization.\n"
+                    },
+                    "autoOptimize": {
+                        "type": "string",
+                        "description": "Indicates whether automatic optimization for images is enabled.\n"
+                    },
+                    "blur": {
+                        "type": "number",
+                        "description": "The level of blur to apply to images.\n"
+                    },
+                    "brightness": {
+                        "type": "number",
+                        "description": "The brightness adjustment for images.\n"
+                    },
+                    "contrast": {
+                        "type": "number",
+                        "description": "The contrast adjustment for images.\n"
+                    },
+                    "crop": {
+                        "type": "string",
+                        "description": "The cropping settings for images.\n"
+                    },
+                    "cropGravity": {
+                        "type": "string",
+                        "description": "The gravity setting for cropping.\n"
+                    },
+                    "flip": {
+                        "type": "boolean",
+                        "description": "Indicates whether to flip images horizontally.\n"
+                    },
+                    "flop": {
+                        "type": "boolean",
+                        "description": "Indicates whether to flip images vertically.\n"
+                    },
+                    "height": {
+                        "type": "number",
+                        "description": "The height to which images should be resized.\n"
+                    },
+                    "hue": {
+                        "type": "number",
+                        "description": "The hue adjustment for images.\n"
+                    },
+                    "name": {
+                        "type": "string",
+                        "description": "The name of the optimizer class.\n"
+                    },
+                    "pullzone": {
+                        "type": "number",
+                        "description": "The ID of the linked pull zone.\n"
+                    },
+                    "quality": {
+                        "type": "number",
+                        "description": "The quality setting for image optimization.\n"
+                    },
+                    "saturation": {
+                        "type": "number",
+                        "description": "The saturation adjustment for images.\n"
+                    },
+                    "sepia": {
+                        "type": "number",
+                        "description": "The level of sepia tone to apply to images.\n"
+                    },
+                    "sharpen": {
+                        "type": "boolean",
+                        "description": "Indicates whether to sharpen images.\n"
+                    },
+                    "width": {
+                        "type": "number",
+                        "description": "The width to which images should be resized.\n"
+                    }
+                },
+                "type": "object"
+            }
+        },
+        "bunnynet:index/storageFile:StorageFile": {
+            "properties": {
+                "checksum": {
+                    "type": "string",
+                    "description": "The SHA-256 hash of the stored file.\n"
+                },
+                "content": {
+                    "type": "string",
+                    "description": "The to be stored in the file. Use \u003ccode\u003esource\u003c/code\u003e to upload files from the local disk.\n"
+                },
+                "contentType": {
+                    "type": "string",
+                    "description": "Specifies the content type of the file.\n"
+                },
+                "dateCreated": {
+                    "type": "string",
+                    "description": "The date and time when the file was created.\n"
+                },
+                "dateModified": {
+                    "type": "string",
+                    "description": "The date and time when the file was last modified.\n"
+                },
+                "path": {
+                    "type": "string",
+                    "description": "The path of the file within the storage zone.\n"
+                },
+                "size": {
+                    "type": "number",
+                    "description": "The size of the file in bytes.\n"
+                },
+                "source": {
+                    "type": "string",
+                    "description": "The path in the local disk for the file to be uploaded to the storage zone. Use \u003ccode\u003econtent\u003c/code\u003e to define the\ncontent directly.\n"
+                },
+                "zone": {
+                    "type": "number",
+                    "description": "The ID of the storage zone where the file is stored.\n"
+                }
+            },
+            "required": [
+                "checksum",
+                "contentType",
+                "dateCreated",
+                "dateModified",
+                "path",
+                "size",
+                "zone"
+            ],
+            "inputProperties": {
+                "content": {
+                    "type": "string",
+                    "description": "The to be stored in the file. Use \u003ccode\u003esource\u003c/code\u003e to upload files from the local disk.\n"
+                },
+                "contentType": {
+                    "type": "string",
+                    "description": "Specifies the content type of the file.\n"
+                },
+                "path": {
+                    "type": "string",
+                    "description": "The path of the file within the storage zone.\n"
+                },
+                "source": {
+                    "type": "string",
+                    "description": "The path in the local disk for the file to be uploaded to the storage zone. Use \u003ccode\u003econtent\u003c/code\u003e to define the\ncontent directly.\n"
+                },
+                "zone": {
+                    "type": "number",
+                    "description": "The ID of the storage zone where the file is stored.\n"
+                }
+            },
+            "requiredInputs": [
+                "path",
+                "zone"
+            ],
+            "stateInputs": {
+                "description": "Input properties used for looking up and filtering StorageFile resources.\n",
+                "properties": {
+                    "checksum": {
+                        "type": "string",
+                        "description": "The SHA-256 hash of the stored file.\n"
+                    },
+                    "content": {
+                        "type": "string",
+                        "description": "The to be stored in the file. Use \u003ccode\u003esource\u003c/code\u003e to upload files from the local disk.\n"
+                    },
+                    "contentType": {
+                        "type": "string",
+                        "description": "Specifies the content type of the file.\n"
+                    },
+                    "dateCreated": {
+                        "type": "string",
+                        "description": "The date and time when the file was created.\n"
+                    },
+                    "dateModified": {
+                        "type": "string",
+                        "description": "The date and time when the file was last modified.\n"
+                    },
+                    "path": {
+                        "type": "string",
+                        "description": "The path of the file within the storage zone.\n"
+                    },
+                    "size": {
+                        "type": "number",
+                        "description": "The size of the file in bytes.\n"
+                    },
+                    "source": {
+                        "type": "string",
+                        "description": "The path in the local disk for the file to be uploaded to the storage zone. Use \u003ccode\u003econtent\u003c/code\u003e to define the\ncontent directly.\n"
+                    },
+                    "zone": {
+                        "type": "number",
+                        "description": "The ID of the storage zone where the file is stored.\n"
+                    }
+                },
+                "type": "object"
+            }
+        },
+        "bunnynet:index/storageZone:StorageZone": {
+            "properties": {
+                "custom404FilePath": {
+                    "type": "string",
+                    "description": "The file path for a custom 404 error page.\n"
+                },
+                "dateModified": {
+                    "type": "string",
+                    "description": "The date when the zone was last modified.\n"
+                },
+                "hostname": {
+                    "type": "string",
+                    "description": "The hostname for accessing the storage zone.\n"
+                },
+                "name": {
+                    "type": "string",
+                    "description": "The name of the storage zone.\n"
+                },
+                "password": {
+                    "type": "string",
+                    "description": "The password for accessing the storage zone.\n",
+                    "secret": true
+                },
+                "passwordReadonly": {
+                    "type": "string",
+                    "description": "The read-only password for accessing the storage zone.\n",
+                    "secret": true
+                },
+                "region": {
+                    "type": "string",
+                    "description": "The region where the storage zone is located.\n"
+                },
+                "replicationRegions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "A set of regions for data replication.\n"
+                },
+                "rewrite404To200": {
+                    "type": "boolean",
+                    "description": "Indicates whether to rewrite 404 errors to 200 status.\n"
+                },
+                "storageZoneId": {
+                    "type": "number",
+                    "description": "The ID of the storage zone.\n"
+                },
+                "zoneTier": {
+                    "type": "string",
+                    "description": "Options: `Edge`, `Standard`\n"
+                }
+            },
+            "required": [
+                "dateModified",
+                "hostname",
+                "storageZoneId",
+                "name",
+                "password",
+                "passwordReadonly",
+                "region",
+                "rewrite404To200",
+                "zoneTier"
+            ],
+            "inputProperties": {
+                "custom404FilePath": {
+                    "type": "string",
+                    "description": "The file path for a custom 404 error page.\n"
+                },
+                "name": {
+                    "type": "string",
+                    "description": "The name of the storage zone.\n"
+                },
+                "region": {
+                    "type": "string",
+                    "description": "The region where the storage zone is located.\n"
+                },
+                "replicationRegions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "A set of regions for data replication.\n"
+                },
+                "rewrite404To200": {
+                    "type": "boolean",
+                    "description": "Indicates whether to rewrite 404 errors to 200 status.\n"
+                },
+                "zoneTier": {
+                    "type": "string",
+                    "description": "Options: `Edge`, `Standard`\n"
+                }
+            },
+            "requiredInputs": [
+                "region",
+                "zoneTier"
+            ],
+            "stateInputs": {
+                "description": "Input properties used for looking up and filtering StorageZone resources.\n",
+                "properties": {
+                    "custom404FilePath": {
+                        "type": "string",
+                        "description": "The file path for a custom 404 error page.\n"
+                    },
+                    "dateModified": {
+                        "type": "string",
+                        "description": "The date when the zone was last modified.\n"
+                    },
+                    "hostname": {
+                        "type": "string",
+                        "description": "The hostname for accessing the storage zone.\n"
+                    },
+                    "name": {
+                        "type": "string",
+                        "description": "The name of the storage zone.\n"
+                    },
+                    "password": {
+                        "type": "string",
+                        "description": "The password for accessing the storage zone.\n",
+                        "secret": true
+                    },
+                    "passwordReadonly": {
+                        "type": "string",
+                        "description": "The read-only password for accessing the storage zone.\n",
+                        "secret": true
+                    },
+                    "region": {
+                        "type": "string",
+                        "description": "The region where the storage zone is located.\n"
+                    },
+                    "replicationRegions": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "A set of regions for data replication.\n"
+                    },
+                    "rewrite404To200": {
+                        "type": "boolean",
+                        "description": "Indicates whether to rewrite 404 errors to 200 status.\n"
+                    },
+                    "storageZoneId": {
+                        "type": "number",
+                        "description": "The ID of the storage zone.\n"
+                    },
+                    "zoneTier": {
+                        "type": "string",
+                        "description": "Options: `Edge`, `Standard`\n"
+                    }
+                },
+                "type": "object"
+            }
+        },
+        "bunnynet:index/streamCollection:StreamCollection": {
+            "properties": {
+                "library": {
+                    "type": "number",
+                    "description": "The ID of the stream library to which the collection belongs.\n"
+                },
+                "name": {
+                    "type": "string",
+                    "description": "The name of the stream collection.\n"
+                }
+            },
+            "required": [
+                "library",
+                "name"
+            ],
+            "inputProperties": {
+                "library": {
+                    "type": "number",
+                    "description": "The ID of the stream library to which the collection belongs.\n"
+                },
+                "name": {
+                    "type": "string",
+                    "description": "The name of the stream collection.\n"
+                }
+            },
+            "requiredInputs": [
+                "library"
+            ],
+            "stateInputs": {
+                "description": "Input properties used for looking up and filtering StreamCollection resources.\n",
+                "properties": {
+                    "library": {
+                        "type": "number",
+                        "description": "The ID of the stream library to which the collection belongs.\n"
+                    },
+                    "name": {
+                        "type": "string",
+                        "description": "The name of the stream collection.\n"
+                    }
+                },
+                "type": "object"
+            }
+        },
+        "bunnynet:index/streamLibrary:StreamLibrary": {
+            "properties": {
+                "apiKey": {
+                    "type": "string",
+                    "description": "The API key for accessing the stream library.\n"
+                },
+                "bitrate1080p": {
+                    "type": "number",
+                    "description": "The bitrate used for encoding 1080p videos, in kilobits per second.\n"
+                },
+                "bitrate1440p": {
+                    "type": "number",
+                    "description": "The bitrate used for encoding 1440p videos, in kilobits per second.\n"
+                },
+                "bitrate2160p": {
+                    "type": "number",
+                    "description": "The bitrate used for encoding 2160p videos, in kilobits per second.\n"
+                },
+                "bitrate240p": {
+                    "type": "number",
+                    "description": "The bitrate used for encoding 240p videos, in kilobits per second.\n"
+                },
+                "bitrate360p": {
+                    "type": "number",
+                    "description": "The bitrate used for encoding 360p videos, in kilobits per second.\n"
+                },
+                "bitrate480p": {
+                    "type": "number",
+                    "description": "The bitrate used for encoding 480p videos, in kilobits per second.\n"
+                },
+                "bitrate720p": {
+                    "type": "number",
+                    "description": "The bitrate used for encoding 720p videos, in kilobits per second.\n"
+                },
+                "cdnTokenAuthenticationRequired": {
+                    "type": "boolean",
+                    "description": "Indicates whether CDN token authentication is required.\n"
+                },
+                "contentTaggingEnabled": {
+                    "type": "boolean",
+                    "description": "Indicates whether content tagging is enabled.\n"
+                },
+                "directPlayEnabled": {
+                    "type": "boolean",
+                    "description": "Determines direct play URLs are enabled.\n"
+                },
+                "directUrlFileAccessBlocked": {
+                    "type": "boolean",
+                    "description": "Indicates whether the requests without a referrer are blocked.\n"
+                },
+                "drmMediacageBasicEnabled": {
+                    "type": "boolean",
+                    "description": "Indicates whether the MediaCage basic DRM is enabled\n"
+                },
+                "earlyPlayEnabled": {
+                    "type": "boolean",
+                    "description": "Indicates whether the Early-Play feature is enabled.\n"
+                },
+                "mp4FallbackEnabled": {
+                    "type": "boolean",
+                    "description": "Indicates whether the MP4 fallback feature is enabled.\n"
+                },
+                "multiAudioTrackSupportEnabled": {
+                    "type": "boolean",
+                    "description": "Indicates whether multiple output audio track support is enabled.\n"
+                },
+                "name": {
+                    "type": "string",
+                    "description": "The name of the stream library.\n"
+                },
+                "originalFilesKeep": {
+                    "type": "boolean",
+                    "description": "Indicates whether to keep original files after encoding.\n"
+                },
+                "playerCaptionsBackgroundColor": {
+                    "type": "string",
+                    "description": "The background color of the captions in the video player.\n"
+                },
+                "playerCaptionsFontColor": {
+                    "type": "string",
+                    "description": "The font color of the captions in the video player.\n"
+                },
+                "playerCaptionsFontSize": {
+                    "type": "number",
+                    "description": "The font size of the captions in the video player.\n"
+                },
+                "playerControls": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Options: `airplay`, `captions`, `chromecast`, `current-time`, `duration`, `fast-forward`, `fullscreen`, `mute`, `pip`,\n`play`, `play-large`, `progress`, `rewind`, `settings`, `volume`\n"
+                },
+                "playerCustomHead": {
+                    "type": "string",
+                    "description": "Custom HTML to be included in the head of the video player.\n"
+                },
+                "playerFontFamily": {
+                    "type": "string",
+                    "description": "Options: `arial`, `inter`, `lato`, `oswald`, `raleway`, `roboto`, `rubik`, `ubuntu`\n"
+                },
+                "playerLanguage": {
+                    "type": "string",
+                    "description": "Specifies the language for the video player interface.\n"
+                },
+                "playerPrimaryColor": {
+                    "type": "string",
+                    "description": "Customizes the appearance of the video player.\n"
+                },
+                "playerWatchtimeHeatmapEnabled": {
+                    "type": "boolean",
+                    "description": "Indicates whether the video watch heatmap should be displayed in the player.\n"
+                },
+                "pullzone": {
+                    "type": "number",
+                    "description": "The ID of the linked pullzone.\n"
+                },
+                "referersAlloweds": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "The list of allowed referrer domains allowed to access videos in this library.\n"
+                },
+                "referersBlockeds": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "The list of blocked referrer domains blocked from accessing videos in this library.\n"
+                },
+                "resolutions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "A list of resolutions available for the videos.\n"
+                },
+                "storageZone": {
+                    "type": "number",
+                    "description": "The ID of the linked storage zone.\n"
+                },
+                "streamLibraryId": {
+                    "type": "number"
+                },
+                "transcribingEnabled": {
+                    "type": "boolean",
+                    "description": "Indicates whether the automatic audio transcribing is currently enabled for this zone.\n"
+                },
+                "transcribingLanguages": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "The list of languages that the captions will be automatically transcribed to.\n"
+                },
+                "transcribingSmartDescriptionEnabled": {
+                    "type": "boolean",
+                    "description": "Indicates whether automatic transcribing description generation is currently enabled.\n"
+                },
+                "transcribingSmartTitleEnabled": {
+                    "type": "boolean",
+                    "description": "Indicates whether automatic transcribing title generation is currently enabled.\n"
+                },
+                "vastTagUrl": {
+                    "type": "string",
+                    "description": "The URL of the VAST tag for ad integration.\n"
+                },
+                "viewTokenAuthenticationRequired": {
+                    "type": "boolean",
+                    "description": "Indicates whether the player token authentication is enabled\n"
+                },
+                "watermarkHeight": {
+                    "type": "number",
+                    "description": "The height of the watermark (in %).\n"
+                },
+                "watermarkPositionLeft": {
+                    "type": "number",
+                    "description": "The left offset of the watermark position (in %).\n"
+                },
+                "watermarkPositionTop": {
+                    "type": "number",
+                    "description": "The top offset of the watermark position (in %).\n"
+                },
+                "watermarkWidth": {
+                    "type": "number",
+                    "description": "The width of the watermark (in %).\n"
+                },
+                "webhookUrl": {
+                    "type": "string",
+                    "description": "The URL for webhook notifications.\n"
+                }
+            },
+            "required": [
+                "apiKey",
+                "bitrate1080p",
+                "bitrate1440p",
+                "bitrate2160p",
+                "bitrate240p",
+                "bitrate360p",
+                "bitrate480p",
+                "bitrate720p",
+                "cdnTokenAuthenticationRequired",
+                "contentTaggingEnabled",
+                "directPlayEnabled",
+                "directUrlFileAccessBlocked",
+                "drmMediacageBasicEnabled",
+                "earlyPlayEnabled",
+                "streamLibraryId",
+                "mp4FallbackEnabled",
+                "multiAudioTrackSupportEnabled",
+                "name",
+                "originalFilesKeep",
+                "playerCaptionsBackgroundColor",
+                "playerCaptionsFontColor",
+                "playerCaptionsFontSize",
+                "playerControls",
+                "playerCustomHead",
+                "playerFontFamily",
+                "playerLanguage",
+                "playerPrimaryColor",
+                "playerWatchtimeHeatmapEnabled",
+                "pullzone",
+                "referersAlloweds",
+                "referersBlockeds",
+                "resolutions",
+                "storageZone",
+                "transcribingEnabled",
+                "transcribingLanguages",
+                "transcribingSmartDescriptionEnabled",
+                "transcribingSmartTitleEnabled",
+                "vastTagUrl",
+                "viewTokenAuthenticationRequired",
+                "watermarkHeight",
+                "watermarkPositionLeft",
+                "watermarkPositionTop",
+                "watermarkWidth",
+                "webhookUrl"
+            ],
+            "inputProperties": {
+                "bitrate1080p": {
+                    "type": "number",
+                    "description": "The bitrate used for encoding 1080p videos, in kilobits per second.\n"
+                },
+                "bitrate1440p": {
+                    "type": "number",
+                    "description": "The bitrate used for encoding 1440p videos, in kilobits per second.\n"
+                },
+                "bitrate2160p": {
+                    "type": "number",
+                    "description": "The bitrate used for encoding 2160p videos, in kilobits per second.\n"
+                },
+                "bitrate240p": {
+                    "type": "number",
+                    "description": "The bitrate used for encoding 240p videos, in kilobits per second.\n"
+                },
+                "bitrate360p": {
+                    "type": "number",
+                    "description": "The bitrate used for encoding 360p videos, in kilobits per second.\n"
+                },
+                "bitrate480p": {
+                    "type": "number",
+                    "description": "The bitrate used for encoding 480p videos, in kilobits per second.\n"
+                },
+                "bitrate720p": {
+                    "type": "number",
+                    "description": "The bitrate used for encoding 720p videos, in kilobits per second.\n"
+                },
+                "cdnTokenAuthenticationRequired": {
+                    "type": "boolean",
+                    "description": "Indicates whether CDN token authentication is required.\n"
+                },
+                "contentTaggingEnabled": {
+                    "type": "boolean",
+                    "description": "Indicates whether content tagging is enabled.\n"
+                },
+                "directPlayEnabled": {
+                    "type": "boolean",
+                    "description": "Determines direct play URLs are enabled.\n"
+                },
+                "directUrlFileAccessBlocked": {
+                    "type": "boolean",
+                    "description": "Indicates whether the requests without a referrer are blocked.\n"
+                },
+                "drmMediacageBasicEnabled": {
+                    "type": "boolean",
+                    "description": "Indicates whether the MediaCage basic DRM is enabled\n"
+                },
+                "earlyPlayEnabled": {
+                    "type": "boolean",
+                    "description": "Indicates whether the Early-Play feature is enabled.\n"
+                },
+                "mp4FallbackEnabled": {
+                    "type": "boolean",
+                    "description": "Indicates whether the MP4 fallback feature is enabled.\n"
+                },
+                "multiAudioTrackSupportEnabled": {
+                    "type": "boolean",
+                    "description": "Indicates whether multiple output audio track support is enabled.\n"
+                },
+                "name": {
+                    "type": "string",
+                    "description": "The name of the stream library.\n"
+                },
+                "originalFilesKeep": {
+                    "type": "boolean",
+                    "description": "Indicates whether to keep original files after encoding.\n"
+                },
+                "playerCaptionsBackgroundColor": {
+                    "type": "string",
+                    "description": "The background color of the captions in the video player.\n"
+                },
+                "playerCaptionsFontColor": {
+                    "type": "string",
+                    "description": "The font color of the captions in the video player.\n"
+                },
+                "playerCaptionsFontSize": {
+                    "type": "number",
+                    "description": "The font size of the captions in the video player.\n"
+                },
+                "playerControls": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Options: `airplay`, `captions`, `chromecast`, `current-time`, `duration`, `fast-forward`, `fullscreen`, `mute`, `pip`,\n`play`, `play-large`, `progress`, `rewind`, `settings`, `volume`\n"
+                },
+                "playerCustomHead": {
+                    "type": "string",
+                    "description": "Custom HTML to be included in the head of the video player.\n"
+                },
+                "playerFontFamily": {
+                    "type": "string",
+                    "description": "Options: `arial`, `inter`, `lato`, `oswald`, `raleway`, `roboto`, `rubik`, `ubuntu`\n"
+                },
+                "playerLanguage": {
+                    "type": "string",
+                    "description": "Specifies the language for the video player interface.\n"
+                },
+                "playerPrimaryColor": {
+                    "type": "string",
+                    "description": "Customizes the appearance of the video player.\n"
+                },
+                "playerWatchtimeHeatmapEnabled": {
+                    "type": "boolean",
+                    "description": "Indicates whether the video watch heatmap should be displayed in the player.\n"
+                },
+                "referersAlloweds": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "The list of allowed referrer domains allowed to access videos in this library.\n"
+                },
+                "referersBlockeds": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "The list of blocked referrer domains blocked from accessing videos in this library.\n"
+                },
+                "resolutions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "A list of resolutions available for the videos.\n"
+                },
+                "transcribingEnabled": {
+                    "type": "boolean",
+                    "description": "Indicates whether the automatic audio transcribing is currently enabled for this zone.\n"
+                },
+                "transcribingLanguages": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "The list of languages that the captions will be automatically transcribed to.\n"
+                },
+                "transcribingSmartDescriptionEnabled": {
+                    "type": "boolean",
+                    "description": "Indicates whether automatic transcribing description generation is currently enabled.\n"
+                },
+                "transcribingSmartTitleEnabled": {
+                    "type": "boolean",
+                    "description": "Indicates whether automatic transcribing title generation is currently enabled.\n"
+                },
+                "vastTagUrl": {
+                    "type": "string",
+                    "description": "The URL of the VAST tag for ad integration.\n"
+                },
+                "viewTokenAuthenticationRequired": {
+                    "type": "boolean",
+                    "description": "Indicates whether the player token authentication is enabled\n"
+                },
+                "watermarkHeight": {
+                    "type": "number",
+                    "description": "The height of the watermark (in %).\n"
+                },
+                "watermarkPositionLeft": {
+                    "type": "number",
+                    "description": "The left offset of the watermark position (in %).\n"
+                },
+                "watermarkPositionTop": {
+                    "type": "number",
+                    "description": "The top offset of the watermark position (in %).\n"
+                },
+                "watermarkWidth": {
+                    "type": "number",
+                    "description": "The width of the watermark (in %).\n"
+                },
+                "webhookUrl": {
+                    "type": "string",
+                    "description": "The URL for webhook notifications.\n"
+                }
+            },
+            "stateInputs": {
+                "description": "Input properties used for looking up and filtering StreamLibrary resources.\n",
+                "properties": {
+                    "apiKey": {
+                        "type": "string",
+                        "description": "The API key for accessing the stream library.\n"
+                    },
+                    "bitrate1080p": {
+                        "type": "number",
+                        "description": "The bitrate used for encoding 1080p videos, in kilobits per second.\n"
+                    },
+                    "bitrate1440p": {
+                        "type": "number",
+                        "description": "The bitrate used for encoding 1440p videos, in kilobits per second.\n"
+                    },
+                    "bitrate2160p": {
+                        "type": "number",
+                        "description": "The bitrate used for encoding 2160p videos, in kilobits per second.\n"
+                    },
+                    "bitrate240p": {
+                        "type": "number",
+                        "description": "The bitrate used for encoding 240p videos, in kilobits per second.\n"
+                    },
+                    "bitrate360p": {
+                        "type": "number",
+                        "description": "The bitrate used for encoding 360p videos, in kilobits per second.\n"
+                    },
+                    "bitrate480p": {
+                        "type": "number",
+                        "description": "The bitrate used for encoding 480p videos, in kilobits per second.\n"
+                    },
+                    "bitrate720p": {
+                        "type": "number",
+                        "description": "The bitrate used for encoding 720p videos, in kilobits per second.\n"
+                    },
+                    "cdnTokenAuthenticationRequired": {
+                        "type": "boolean",
+                        "description": "Indicates whether CDN token authentication is required.\n"
+                    },
+                    "contentTaggingEnabled": {
+                        "type": "boolean",
+                        "description": "Indicates whether content tagging is enabled.\n"
+                    },
+                    "directPlayEnabled": {
+                        "type": "boolean",
+                        "description": "Determines direct play URLs are enabled.\n"
+                    },
+                    "directUrlFileAccessBlocked": {
+                        "type": "boolean",
+                        "description": "Indicates whether the requests without a referrer are blocked.\n"
+                    },
+                    "drmMediacageBasicEnabled": {
+                        "type": "boolean",
+                        "description": "Indicates whether the MediaCage basic DRM is enabled\n"
+                    },
+                    "earlyPlayEnabled": {
+                        "type": "boolean",
+                        "description": "Indicates whether the Early-Play feature is enabled.\n"
+                    },
+                    "mp4FallbackEnabled": {
+                        "type": "boolean",
+                        "description": "Indicates whether the MP4 fallback feature is enabled.\n"
+                    },
+                    "multiAudioTrackSupportEnabled": {
+                        "type": "boolean",
+                        "description": "Indicates whether multiple output audio track support is enabled.\n"
+                    },
+                    "name": {
+                        "type": "string",
+                        "description": "The name of the stream library.\n"
+                    },
+                    "originalFilesKeep": {
+                        "type": "boolean",
+                        "description": "Indicates whether to keep original files after encoding.\n"
+                    },
+                    "playerCaptionsBackgroundColor": {
+                        "type": "string",
+                        "description": "The background color of the captions in the video player.\n"
+                    },
+                    "playerCaptionsFontColor": {
+                        "type": "string",
+                        "description": "The font color of the captions in the video player.\n"
+                    },
+                    "playerCaptionsFontSize": {
+                        "type": "number",
+                        "description": "The font size of the captions in the video player.\n"
+                    },
+                    "playerControls": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Options: `airplay`, `captions`, `chromecast`, `current-time`, `duration`, `fast-forward`, `fullscreen`, `mute`, `pip`,\n`play`, `play-large`, `progress`, `rewind`, `settings`, `volume`\n"
+                    },
+                    "playerCustomHead": {
+                        "type": "string",
+                        "description": "Custom HTML to be included in the head of the video player.\n"
+                    },
+                    "playerFontFamily": {
+                        "type": "string",
+                        "description": "Options: `arial`, `inter`, `lato`, `oswald`, `raleway`, `roboto`, `rubik`, `ubuntu`\n"
+                    },
+                    "playerLanguage": {
+                        "type": "string",
+                        "description": "Specifies the language for the video player interface.\n"
+                    },
+                    "playerPrimaryColor": {
+                        "type": "string",
+                        "description": "Customizes the appearance of the video player.\n"
+                    },
+                    "playerWatchtimeHeatmapEnabled": {
+                        "type": "boolean",
+                        "description": "Indicates whether the video watch heatmap should be displayed in the player.\n"
+                    },
+                    "pullzone": {
+                        "type": "number",
+                        "description": "The ID of the linked pullzone.\n"
+                    },
+                    "referersAlloweds": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "The list of allowed referrer domains allowed to access videos in this library.\n"
+                    },
+                    "referersBlockeds": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "The list of blocked referrer domains blocked from accessing videos in this library.\n"
+                    },
+                    "resolutions": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "A list of resolutions available for the videos.\n"
+                    },
+                    "storageZone": {
+                        "type": "number",
+                        "description": "The ID of the linked storage zone.\n"
+                    },
+                    "streamLibraryId": {
+                        "type": "number"
+                    },
+                    "transcribingEnabled": {
+                        "type": "boolean",
+                        "description": "Indicates whether the automatic audio transcribing is currently enabled for this zone.\n"
+                    },
+                    "transcribingLanguages": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "The list of languages that the captions will be automatically transcribed to.\n"
+                    },
+                    "transcribingSmartDescriptionEnabled": {
+                        "type": "boolean",
+                        "description": "Indicates whether automatic transcribing description generation is currently enabled.\n"
+                    },
+                    "transcribingSmartTitleEnabled": {
+                        "type": "boolean",
+                        "description": "Indicates whether automatic transcribing title generation is currently enabled.\n"
+                    },
+                    "vastTagUrl": {
+                        "type": "string",
+                        "description": "The URL of the VAST tag for ad integration.\n"
+                    },
+                    "viewTokenAuthenticationRequired": {
+                        "type": "boolean",
+                        "description": "Indicates whether the player token authentication is enabled\n"
+                    },
+                    "watermarkHeight": {
+                        "type": "number",
+                        "description": "The height of the watermark (in %).\n"
+                    },
+                    "watermarkPositionLeft": {
+                        "type": "number",
+                        "description": "The left offset of the watermark position (in %).\n"
+                    },
+                    "watermarkPositionTop": {
+                        "type": "number",
+                        "description": "The top offset of the watermark position (in %).\n"
+                    },
+                    "watermarkWidth": {
+                        "type": "number",
+                        "description": "The width of the watermark (in %).\n"
+                    },
+                    "webhookUrl": {
+                        "type": "string",
+                        "description": "The URL for webhook notifications.\n"
+                    }
+                },
+                "type": "object"
+            }
+        },
+        "bunnynet:index/streamVideo:StreamVideo": {
+            "properties": {
+                "chapters": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/types/bunnynet:index/StreamVideoChapter:StreamVideoChapter"
+                    },
+                    "description": "The list of chapters available in the video.\n"
+                },
+                "collection": {
+                    "type": "string",
+                    "description": "The ID of the collection to which the video belongs.\n"
+                },
+                "description": {
+                    "type": "string",
+                    "description": "The description of the video.\n"
+                },
+                "library": {
+                    "type": "number",
+                    "description": "The ID of the stream library to which the video belongs.\n"
+                },
+                "moments": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/types/bunnynet:index/StreamVideoMoment:StreamVideoMoment"
+                    },
+                    "description": "The list of moments available in the video.\n"
+                },
+                "title": {
+                    "type": "string",
+                    "description": "The title of the video.\n"
+                }
+            },
+            "required": [
+                "collection",
+                "library",
+                "title"
+            ],
+            "inputProperties": {
+                "chapters": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/types/bunnynet:index/StreamVideoChapter:StreamVideoChapter"
+                    },
+                    "description": "The list of chapters available in the video.\n"
+                },
+                "collection": {
+                    "type": "string",
+                    "description": "The ID of the collection to which the video belongs.\n"
+                },
+                "description": {
+                    "type": "string",
+                    "description": "The description of the video.\n"
+                },
+                "library": {
+                    "type": "number",
+                    "description": "The ID of the stream library to which the video belongs.\n"
+                },
+                "moments": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/types/bunnynet:index/StreamVideoMoment:StreamVideoMoment"
+                    },
+                    "description": "The list of moments available in the video.\n"
+                },
+                "title": {
+                    "type": "string",
+                    "description": "The title of the video.\n"
+                }
+            },
+            "requiredInputs": [
+                "library",
+                "title"
+            ],
+            "stateInputs": {
+                "description": "Input properties used for looking up and filtering StreamVideo resources.\n",
+                "properties": {
+                    "chapters": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/types/bunnynet:index/StreamVideoChapter:StreamVideoChapter"
+                        },
+                        "description": "The list of chapters available in the video.\n"
+                    },
+                    "collection": {
+                        "type": "string",
+                        "description": "The ID of the collection to which the video belongs.\n"
+                    },
+                    "description": {
+                        "type": "string",
+                        "description": "The description of the video.\n"
+                    },
+                    "library": {
+                        "type": "number",
+                        "description": "The ID of the stream library to which the video belongs.\n"
+                    },
+                    "moments": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/types/bunnynet:index/StreamVideoMoment:StreamVideoMoment"
+                        },
+                        "description": "The list of moments available in the video.\n"
+                    },
+                    "title": {
+                        "type": "string",
+                        "description": "The title of the video.\n"
+                    }
+                },
+                "type": "object"
+            }
+        }
+    },
+    "functions": {
+        "bunnynet:index/getDnsRecord:getDnsRecord": {
+            "inputs": {
+                "description": "A collection of arguments for invoking getDnsRecord.\n",
+                "properties": {
+                    "id": {
+                        "type": "number"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string"
+                    },
+                    "zone": {
+                        "type": "number"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name",
+                    "type",
+                    "zone"
+                ]
+            },
+            "outputs": {
+                "description": "A collection of values returned by getDnsRecord.\n",
+                "properties": {
+                    "accelerated": {
+                        "type": "boolean"
+                    },
+                    "acceleratedPullzone": {
+                        "type": "number"
+                    },
+                    "comment": {
+                        "type": "string"
+                    },
+                    "enabled": {
+                        "type": "boolean"
+                    },
+                    "flags": {
+                        "type": "number"
+                    },
+                    "geolocationLat": {
+                        "type": "number"
+                    },
+                    "geolocationLong": {
+                        "type": "number"
+                    },
+                    "id": {
+                        "type": "number"
+                    },
+                    "latencyZone": {
+                        "type": "string"
+                    },
+                    "linkName": {
+                        "type": "string"
+                    },
+                    "monitorType": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "port": {
+                        "type": "number"
+                    },
+                    "priority": {
+                        "type": "number"
+                    },
+                    "smartRoutingType": {
+                        "type": "string"
+                    },
+                    "tag": {
+                        "type": "string"
+                    },
+                    "ttl": {
+                        "type": "number"
+                    },
+                    "type": {
+                        "type": "string"
+                    },
+                    "value": {
+                        "type": "string"
+                    },
+                    "weight": {
+                        "type": "number"
+                    },
+                    "zone": {
+                        "type": "number"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "accelerated",
+                    "acceleratedPullzone",
+                    "comment",
+                    "enabled",
+                    "flags",
+                    "geolocationLat",
+                    "geolocationLong",
+                    "id",
+                    "latencyZone",
+                    "linkName",
+                    "monitorType",
+                    "name",
+                    "port",
+                    "priority",
+                    "smartRoutingType",
+                    "tag",
+                    "ttl",
+                    "type",
+                    "value",
+                    "weight",
+                    "zone"
+                ]
+            }
+        },
+        "bunnynet:index/getDnsZone:getDnsZone": {
+            "inputs": {
+                "description": "A collection of arguments for invoking getDnsZone.\n",
+                "properties": {
+                    "domain": {
+                        "type": "string"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "domain"
+                ]
+            },
+            "outputs": {
+                "description": "A collection of values returned by getDnsZone.\n",
+                "properties": {
+                    "domain": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "number"
+                    },
+                    "logAnonymized": {
+                        "type": "boolean"
+                    },
+                    "logAnonymizedStyle": {
+                        "type": "string"
+                    },
+                    "logEnabled": {
+                        "type": "boolean"
+                    },
+                    "nameserver1": {
+                        "type": "string"
+                    },
+                    "nameserver2": {
+                        "type": "string"
+                    },
+                    "nameserverCustom": {
+                        "type": "boolean"
+                    },
+                    "soaEmail": {
+                        "type": "string"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "domain",
+                    "id",
+                    "logAnonymized",
+                    "logAnonymizedStyle",
+                    "logEnabled",
+                    "nameserver1",
+                    "nameserver2",
+                    "nameserverCustom",
+                    "soaEmail"
+                ]
+            }
+        },
+        "bunnynet:index/getRegion:getRegion": {
+            "inputs": {
+                "description": "A collection of arguments for invoking getRegion.\n",
+                "properties": {
+                    "regionCode": {
+                        "type": "string"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "regionCode"
+                ]
+            },
+            "outputs": {
+                "description": "A collection of values returned by getRegion.\n",
+                "properties": {
+                    "allowLatencyRouting": {
+                        "type": "boolean"
+                    },
+                    "continentCode": {
+                        "type": "string"
+                    },
+                    "countryCode": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "number"
+                    },
+                    "latitude": {
+                        "type": "number"
+                    },
+                    "longitude": {
+                        "type": "number"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "pricePerGigabyte": {
+                        "type": "number"
+                    },
+                    "regionCode": {
+                        "type": "string"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "allowLatencyRouting",
+                    "continentCode",
+                    "countryCode",
+                    "id",
+                    "latitude",
+                    "longitude",
+                    "name",
+                    "pricePerGigabyte",
+                    "regionCode"
+                ]
+            }
+        },
+        "bunnynet:index/getVideoLanguage:getVideoLanguage": {
+            "inputs": {
+                "description": "A collection of arguments for invoking getVideoLanguage.\n",
+                "properties": {
+                    "code": {
+                        "type": "string"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "code"
+                ]
+            },
+            "outputs": {
+                "description": "A collection of values returned by getVideoLanguage.\n",
+                "properties": {
+                    "code": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string",
+                        "description": "The provider-assigned unique ID for this managed resource.\n"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "supportPlayerTranslation": {
+                        "type": "boolean"
+                    },
+                    "supportTranscribing": {
+                        "type": "boolean"
+                    },
+                    "transcribingAccuracy": {
+                        "type": "number"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "code",
+                    "name",
+                    "supportPlayerTranslation",
+                    "supportTranscribing",
+                    "transcribingAccuracy",
+                    "id"
+                ]
+            }
+        }
+    },
+    "parameterization": {
+        "baseProvider": {
+            "name": "terraform-provider",
+            "version": "0.0.0-dev"
+        },
+        "parameter": "eyJyZW1vdGUiOnsidXJsIjoicmVnaXN0cnkub3BlbnRvZnUub3JnL2J1bm55d2F5L2J1bm55bmV0IiwidmVyc2lvbiI6IjAuNS4xIn19"
+    }
+}
