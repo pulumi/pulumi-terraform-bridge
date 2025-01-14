@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	markdown "github.com/teekennedy/goldmark-markdown"
 	"github.com/yuin/goldmark"
@@ -249,18 +250,31 @@ func processConfigYaml(pulumiYAML, lang string) string {
 
 func convertExample(g *Generator, code string, exampleNumber int) (string, error) {
 	// Make an example to record in the cliConverter.
+	g.Sink().Warningf(&diag.Diag{
+		Message: "Starting ConvertExample",
+	})
+
 	converter := g.cliConverter()
 	fileName := fmt.Sprintf("configuration-installation-%d", exampleNumber)
+	g.Sink().Warningf(&diag.Diag{
+		Message: "calling singleExampleFromHCLToPCL",
+	})
 	pclExample, err := converter.singleExampleFromHCLToPCL(fileName, code)
 	if err != nil {
 		return "", err
 	}
+	g.Sink().Warningf(&diag.Diag{
+		Message: "called singleExampleFromHCLToPCL:" + pclExample.PCL + pclExample.PulumiYAML,
+	})
 
 	// If both PCL and PulumiYAML fields are empty, we can return.
 	if pclExample.PulumiYAML == "" && pclExample.PCL == "" {
 		return "", nil
 	}
 
+	g.Sink().Warningf(&diag.Diag{
+		Message: "calling processConfigYaml",
+	})
 	// If we have a valid provider config but no additional code, we only render a YAML configuration block
 	// with no choosers and an empty language runtime field
 	if pclExample.PulumiYAML != "" && pclExample.PCL == "" {
@@ -268,6 +282,9 @@ func convertExample(g *Generator, code string, exampleNumber int) (string, error
 			return processConfigYaml(pclExample.PulumiYAML, ""), nil
 		}
 	}
+	g.Sink().Warningf(&diag.Diag{
+		Message: "calling genLanguageToSlice",
+	})
 
 	langs := genLanguageToSlice(g.language)
 	const (
@@ -287,6 +304,9 @@ func convertExample(g *Generator, code string, exampleNumber int) (string, error
 		if pclExample.PulumiYAML != "" {
 			pulumiYAML = processConfigYaml(pclExample.PulumiYAML, lang)
 		}
+		g.Sink().Warningf(&diag.Diag{
+			Message: "calling singleExampleFromPCLToLanguage " + lang,
+		})
 
 		// Generate language example
 		convertedLang, err := converter.singleExampleFromPCLToLanguage(pclExample, lang)
@@ -302,6 +322,9 @@ func convertExample(g *Generator, code string, exampleNumber int) (string, error
 	if successfulConversion {
 		return exampleContent + chooserEnd, nil
 	}
+	g.Sink().Warningf(&diag.Diag{
+		Message: "returning default at end with empty string",
+	})
 	return "", nil
 }
 
