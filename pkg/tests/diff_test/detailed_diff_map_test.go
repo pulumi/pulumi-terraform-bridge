@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -13,57 +14,49 @@ import (
 func TestSDKv2DetailedDiffMap(t *testing.T) {
 	t.Parallel()
 
-	res := schema.Resource{
-		Schema: map[string]*schema.Schema{
-			"map_prop": {
-				Type:     schema.TypeMap,
-				Optional: true,
-				Elem:     &schema.Schema{Type: schema.TypeString},
-			},
-		},
-	}
-
-	ctyVal := func(v map[string]string) map[string]cty.Value {
-		ctyMap := make(map[string]cty.Value)
-
+	ctyMaker := func(v map[string]string) cty.Value {
 		if len(v) == 0 {
-			return map[string]cty.Value{
-				"map_prop": cty.MapValEmpty(cty.String),
-			}
+			return cty.MapValEmpty(cty.String)
 		}
-
+		ctyMap := make(map[string]cty.Value)
 		for k, v := range v {
 			ctyMap[k] = cty.StringVal(v)
 		}
-		return map[string]cty.Value{
-			"map_prop": cty.MapVal(ctyMap),
-		}
+		return cty.MapVal(ctyMap)
 	}
 
-	scenarios := []struct {
-		name         string
-		initialValue map[string]string
-		changeValue  map[string]string
-	}{
-		{"unchanged empty", map[string]string{}, map[string]string{}},
-		{"unchanged non-empty", map[string]string{"key": "val"}, map[string]string{"key": "val"}},
-		{"added", map[string]string{}, map[string]string{"key": "val"}},
-		{"removed", map[string]string{"key": "val"}, map[string]string{}},
-		{"value changed", map[string]string{"key": "val"}, map[string]string{"key": "val2"}},
-		{"key changed", map[string]string{"key": "val"}, map[string]string{"key2": "val"}},
-	}
+	var nilVal map[string]string
+	schemaValueMakerPairs, scenarios := generatePrimitiveSchemaValueMakerPairs(
+		schema.TypeMap, &schema.Schema{Type: schema.TypeString}, ctyMaker,
+		map[string]string{"key": "val1"}, map[string]string{"key": "val2"},
+		map[string]string{"key": "computedVal"}, map[string]string{"key": "defaultVal"}, nilVal)
 
-	for _, scenario := range scenarios {
-		t.Run(scenario.name, func(t *testing.T) {
+	scenarios = append(scenarios, diffScenario[map[string]string]{
+		name:         "key changed",
+		initialValue: ref(map[string]string{"key": "val1"}),
+		changeValue:  ref(map[string]string{"key2": "val1"}),
+	})
+
+	for _, schemaValueMakerPair := range schemaValueMakerPairs {
+		t.Run(schemaValueMakerPair.name, func(t *testing.T) {
 			t.Parallel()
-			diff := crosstests.Diff(t, &res, ctyVal(scenario.initialValue), ctyVal(scenario.changeValue))
-			autogold.ExpectFile(t, testOutput{
-				initialValue: scenario.initialValue,
-				changeValue:  scenario.changeValue,
-				tfOut:        diff.TFOut,
-				pulumiOut:    diff.PulumiOut,
-				detailedDiff: diff.PulumiDiff.DetailedDiff,
-			})
+			for _, scenario := range scenarios {
+				t.Run(scenario.name, func(t *testing.T) {
+					if strings.Contains(schemaValueMakerPair.name, "required") &&
+						(scenario.initialValue == nil || scenario.changeValue == nil) {
+						t.Skip("Required fields cannot be unset")
+					}
+					t.Parallel()
+					diff := crosstests.Diff(t, &schemaValueMakerPair.schema, schemaValueMakerPair.valueMaker(scenario.initialValue), schemaValueMakerPair.valueMaker(scenario.changeValue))
+					autogold.ExpectFile(t, testOutput{
+						initialValue: scenario.initialValue,
+						changeValue:  scenario.changeValue,
+						tfOut:        diff.TFOut,
+						pulumiOut:    diff.PulumiOut,
+						detailedDiff: diff.PulumiDiff.DetailedDiff,
+					})
+				})
+			}
 		})
 	}
 }
