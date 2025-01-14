@@ -66,9 +66,15 @@ func plainDocsParser(docFile *DocFile, g *Generator) ([]byte, error) {
 		return nil, err
 	}
 
+	// If the code translation resulted in an empty examples section, remove it
+	content, err = removeEmptySection("Example Usage", []byte(contentStr))
+	if err != nil {
+		return nil, err
+	}
+
 	// Apply post-code translation edit rules. This applies all default edit rules and provider-supplied edit rules in
 	// the post-code translation phase.
-	contentBytes, err = g.editRules.apply(docFile.FileName, []byte(contentStr), info.PostCodeTranslation)
+	contentBytes, err = g.editRules.apply(docFile.FileName, content, info.PostCodeTranslation)
 	if err != nil {
 		return nil, err
 	}
@@ -221,9 +227,6 @@ func translateCodeBlocks(contentStr string, g *Generator) (string, error) {
 
 // This function renders the Pulumi.yaml config file for a given language if configuration is included in the example.
 func processConfigYaml(pulumiYAML, lang string) string {
-	if pulumiYAML == "" {
-		return pulumiYAML
-	}
 	// Replace the project name from the default `/` to a more descriptive name
 	nameRegex := regexp.MustCompile(`name: /*`)
 	pulumiYAMLFile := nameRegex.ReplaceAllString(pulumiYAML, "name: configuration-example")
@@ -253,6 +256,19 @@ func convertExample(g *Generator, code string, exampleNumber int) (string, error
 		return "", err
 	}
 
+	// If both PCL and PulumiYAML fields are empty, we can return.
+	if pclExample.PulumiYAML == "" && pclExample.PCL == "" {
+		return "", nil
+	}
+
+	// If we have a valid provider config but no additional code, we only render a YAML configuration block
+	// with no choosers and an empty language runtime field
+	if pclExample.PulumiYAML != "" && pclExample.PCL == "" {
+		if pclExample.PCL == "" {
+			return processConfigYaml(pclExample.PulumiYAML, ""), nil
+		}
+	}
+
 	langs := genLanguageToSlice(g.language)
 	const (
 		chooserStart = `{{< chooser language "typescript,python,go,csharp,java,yaml" >}}` + "\n"
@@ -260,23 +276,33 @@ func convertExample(g *Generator, code string, exampleNumber int) (string, error
 		choosableEnd = "\n{{% /choosable %}}\n"
 	)
 	exampleContent := chooserStart
+	successfulConversion := false
 
 	// Generate each language in turn and mark up the output with the correct Hugo shortcodes.
 	for _, lang := range langs {
 		choosableStart := fmt.Sprintf("{{%% choosable language %s %%}}\n", lang)
 
 		// Generate the Pulumi.yaml config file for each language
-		configFile := pclExample.PulumiYAML
-		pulumiYAML := processConfigYaml(configFile, lang)
+		var pulumiYAML string
+		if pclExample.PulumiYAML != "" {
+			pulumiYAML = processConfigYaml(pclExample.PulumiYAML, lang)
+		}
+
 		// Generate language example
 		convertedLang, err := converter.singleExampleFromPCLToLanguage(pclExample, lang)
 		if err != nil {
 			g.warn(err.Error())
 		}
+		if convertedLang != exampleUnavailable {
+			successfulConversion = true
+		}
 		exampleContent += choosableStart + pulumiYAML + convertedLang + choosableEnd
 	}
-	exampleContent += chooserEnd
-	return exampleContent, nil
+
+	if successfulConversion {
+		return exampleContent + chooserEnd, nil
+	}
+	return "", nil
 }
 
 type titleRemover struct{}
@@ -476,4 +502,38 @@ func getProviderDisplayName(g *Generator) string {
 	// but it's a reasonable fallback option when info.DisplayName isn't set.
 	capitalize := cases.Title(language.English)
 	return capitalize.String(providerName)
+}
+
+func removeEmptySection(title string, contentBytes []byte) ([]byte, error) {
+	if !isMarkdownSectionEmpty(title, contentBytes) {
+		return contentBytes, nil
+	}
+	return SkipSectionByHeaderContent(contentBytes, func(headerText string) bool {
+		return headerText == title
+	})
+}
+
+func isMarkdownSectionEmpty(title string, contentBytes []byte) bool {
+	gm := goldmark.New(goldmark.WithExtensions(parse.TFRegistryExtension))
+	astNode := gm.Parser().Parse(text.NewReader(contentBytes))
+
+	isEmpty := false
+
+	err := ast.Walk(astNode, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
+		if section, ok := n.(*section.Section); ok && entering {
+			if section.HasChildren() {
+				// A titled section is empty if it has only one child - the title.
+				// If the child's text matches the title, the section is empty.
+				sectionText := string(section.FirstChild().Text(contentBytes))
+				if section.FirstChild() == section.LastChild() && sectionText == title {
+					isEmpty = true
+					return ast.WalkStop, nil
+				}
+			}
+		}
+		return ast.WalkContinue, nil
+	})
+	contract.AssertNoErrorf(err, "impossible: ast.Walk should never error")
+
+	return isEmpty
 }

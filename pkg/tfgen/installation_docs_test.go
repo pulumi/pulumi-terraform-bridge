@@ -449,32 +449,78 @@ func TestTranslateCodeBlocks(t *testing.T) {
 	}
 	pclsMap := make(map[string]translatedExample)
 
-	tc := testCase{
-		name:       "Translates HCL from examples ",
-		contentStr: readfile(t, "test_data/installation-docs/configuration.md"),
-		expected:   readfile(t, "test_data/installation-docs/configuration-expected.md"),
-		g: &Generator{
-			sink: mockSink{},
-			cliConverterState: &cliConverter{
-				info: p,
-				pcls: pclsMap,
+	testCases := []testCase{
+		{
+			name:       "Translates HCL from examples ",
+			contentStr: readfile(t, "test_data/installation-docs/configuration.md"),
+			expected:   readfile(t, "test_data/installation-docs/configuration-expected.md"),
+			g: &Generator{
+				sink: mockSink{},
+				cliConverterState: &cliConverter{
+					info: p,
+					pcls: pclsMap,
+				},
+				language: RegistryDocs,
 			},
-			language: RegistryDocs,
+		},
+		{
+			name:       "Does not translate an invalid example and leaves example block blank",
+			contentStr: readfile(t, "test_data/installation-docs/invalid-example.md"),
+			expected:   readfile(t, "test_data/installation-docs/invalid-example-expected.md"),
+			g: &Generator{
+				sink: mockSink{},
+				cliConverterState: &cliConverter{
+					info: p,
+					pcls: pclsMap,
+				},
+				language: RegistryDocs,
+			},
+		},
+		{
+			name:       "Translates standalone provider config into Pulumi config YAML",
+			contentStr: readfile(t, "test_data/installation-docs/provider-config-only.md"),
+			expected:   readfile(t, "test_data/installation-docs/provider-config-only-expected.md"),
+			g: &Generator{
+				sink: mockSink{},
+				cliConverterState: &cliConverter{
+					info: p,
+					pcls: pclsMap,
+				},
+				language: RegistryDocs,
+			},
+		},
+		{
+			name:       "Translates standalone example into languages",
+			contentStr: readfile(t, "test_data/installation-docs/example-only.md"),
+			expected:   readfile(t, "test_data/installation-docs/example-only-expected.md"),
+			g: &Generator{
+				sink: mockSink{},
+				cliConverterState: &cliConverter{
+					info: p,
+					pcls: pclsMap,
+				},
+				language: RegistryDocs,
+			},
 		},
 	}
-	t.Run(tc.name, func(t *testing.T) {
-		if runtime.GOOS == "windows" {
-			// Currently there is a test issue in CI/test setup:
-			//
-			// convertViaPulumiCLI: failed to clean up temp bridge-examples.json file: The
-			// process cannot access the file because it is being used by another process.
-			t.Skipf("Skipping on Windows due to a test setup issue")
-		}
-		t.Setenv("PULUMI_CONVERT", "1")
-		actual, err := translateCodeBlocks(tc.contentStr, tc.g)
-		require.NoError(t, err)
-		require.Equal(t, tc.expected, actual)
-	})
+
+	for _, tt := range testCases {
+		tt := tt
+
+		t.Run(tt.name, func(t *testing.T) {
+			if runtime.GOOS == "windows" {
+				// Currently there is a test issue in CI/test setup:
+				//
+				// convertViaPulumiCLI: failed to clean up temp bridge-examples.json file: The
+				// process cannot access the file because it is being used by another process.
+				t.Skipf("Skipping on Windows due to a test setup issue")
+			}
+			t.Setenv("PULUMI_CONVERT", "1")
+			actual, err := translateCodeBlocks(tt.contentStr, tt.g)
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, actual)
+		})
+	}
 }
 
 func TestSkipSectionHeadersByContent(t *testing.T) {
@@ -597,6 +643,28 @@ func TestSkipDefaultSectionHeaders(t *testing.T) {
 			assertEqualHTML(t, tt.expected, string(actual))
 		})
 	}
+}
+
+func TestRemoveEmptyExamples(t *testing.T) {
+	t.Parallel()
+	type testCase struct {
+		name     string
+		input    string
+		expected string
+	}
+
+	tc := testCase{
+		name:     "An empty Example Usage section is skipped",
+		input:    readTestFile(t, "skip-empty-examples/input.md"),
+		expected: readTestFile(t, "skip-empty-examples/expected.md"),
+	}
+
+	t.Run(tc.name, func(t *testing.T) {
+		t.Parallel()
+		actual, err := removeEmptySection("Example Usage", []byte(tc.input))
+		require.NoError(t, err)
+		assertEqualHTML(t, tc.expected, string(actual))
+	})
 }
 
 // Helper func to determine if the HTML rendering is equal.
