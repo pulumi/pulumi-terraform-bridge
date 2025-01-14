@@ -1,9 +1,24 @@
 package tests
 
-import "github.com/zclconf/go-cty/cty"
+import (
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/zclconf/go-cty/cty"
+)
 
 func ref[T any](v T) *T {
 	return &v
+}
+
+type diffSchemaValueMakerPair[T any] struct {
+	name       string
+	schema     schema.Resource
+	valueMaker func(v *T) map[string]cty.Value
+}
+
+type diffScenario[T any] struct {
+	name         string
+	initialValue *T
+	changeValue  *T
 }
 
 func listValueMaker(arr *[]string) cty.Value {
