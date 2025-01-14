@@ -521,12 +521,14 @@ func isMarkdownSectionEmpty(title string, contentBytes []byte) bool {
 
 	err := ast.Walk(astNode, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
 		if section, ok := n.(*section.Section); ok && entering {
-			sectionText := section.Text(contentBytes)
-			// A little confusingly, we check if the section text _only_ contains the title, "Example Usage".
-			// Non-empty sections contain the title + content, so if we see only the title, the section is empty.
-			if string(sectionText) == title {
-				isEmpty = true
-				return ast.WalkStop, nil
+			if section.HasChildren() {
+				// A titled section is empty if it has only one child - the title.
+				// If the child's text matches the title, the section is empty.
+				sectionText := string(section.FirstChild().Text(contentBytes))
+				if section.FirstChild() == section.LastChild() && sectionText == title {
+					isEmpty = true
+					return ast.WalkStop, nil
+				}
 			}
 		}
 		return ast.WalkContinue, nil
