@@ -1,0 +1,40 @@
+tfbridgetests.testOutput{
+	initialValue: nil, changeValue: &[]string{
+		"value",
+	},
+	tfOut: `
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  ~ update in-place
+
+Terraform will perform the following actions:
+
+  # testprovider_test.res will be updated in-place
+  ~ resource "testprovider_test" "res" {
+        id  = "test-id"
+      + key = [
+          + {
+              + nested = "value"
+            },
+        ]
+    }
+
+Plan: 0 to add, 1 to change, 0 to destroy.
+
+`,
+	pulumiOut: `Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::project::pulumi:pulumi:Stack::project-test]
+    ~ testprovider:index/test:Test: (update)
+        [id=test-id]
+        [urn=urn:pulumi:test::project::testprovider:index/test:Test::p]
+      + keys: [
+      +     [0]: {
+              + nested: "value"
+            }
+        ]
+Resources:
+    ~ 1 to update
+    1 unchanged
+`,
+}

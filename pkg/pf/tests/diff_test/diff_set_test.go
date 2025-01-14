@@ -7,12 +7,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/defaults"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hexops/autogold/v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
@@ -21,25 +19,69 @@ import (
 	crosstests "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/cross-tests"
 )
 
-type setDefault string
-
-var _ defaults.Set = setDefault("default")
-
-func (s setDefault) DefaultSet(ctx context.Context, req defaults.SetRequest, resp *defaults.SetResponse) {
-	resp.PlanValue = basetypes.NewSetValueMust(types.StringType, []attr.Value{
-		basetypes.NewStringValue("value"),
-	})
+type setScenario struct {
+	name         string
+	initialValue *[]string
+	changeValue  *[]string
 }
 
-func (s setDefault) Description(ctx context.Context) string {
-	return "description"
+func setScenarios() []setScenario {
+	return []setScenario{
+		{"unchanged non-empty", &[]string{"value"}, &[]string{"value"}},
+		{"unchanged empty", &[]string{}, &[]string{}},
+		{"unchanged null", nil, nil},
+
+		{"changed non-null", &[]string{"value"}, &[]string{"value1"}},
+		{"changed null to non-null", nil, &[]string{"value"}},
+		{"changed non-null to null", &[]string{"value"}, nil},
+		{"changed null to empty", nil, &[]string{}},
+		{"changed empty to null", &[]string{}, nil},
+		{"added", &[]string{}, &[]string{"value"}},
+		{"removed", &[]string{"value"}, &[]string{}},
+		{"removed front", &[]string{"val1", "val2", "val3"}, &[]string{"val2", "val3"}},
+		{"removed front unordered", &[]string{"val2", "val3", "val1"}, &[]string{"val3", "val1"}},
+		{"removed middle", &[]string{"val1", "val2", "val3"}, &[]string{"val1", "val3"}},
+		{"removed middle unordered", &[]string{"val3", "val1", "val2"}, &[]string{"val3", "val1"}},
+		{"removed end", &[]string{"val1", "val2", "val3"}, &[]string{"val1", "val2"}},
+		{"removed end unordered", &[]string{"val2", "val3", "val1"}, &[]string{"val2", "val3"}},
+		{"added front", &[]string{"val2", "val3"}, &[]string{"val1", "val2", "val3"}},
+		{"added front unordered", &[]string{"val3", "val1"}, &[]string{"val2", "val3", "val1"}},
+		{"added middle", &[]string{"val1", "val3"}, &[]string{"val1", "val2", "val3"}},
+		{"added middle unordered", &[]string{"val2", "val1"}, &[]string{"val2", "val3", "val1"}},
+		{"added end", &[]string{"val1", "val2"}, &[]string{"val1", "val2", "val3"}},
+		{"added end unordered", &[]string{"val2", "val3"}, &[]string{"val2", "val3", "val1"}},
+		{"shuffled", &[]string{"val1", "val2", "val3"}, &[]string{"val3", "val1", "val2"}},
+		{"shuffled unordered", &[]string{"val2", "val3", "val1"}, &[]string{"val3", "val1", "val2"}},
+	}
 }
 
-func (s setDefault) MarkdownDescription(ctx context.Context) string {
-	return "markdown description"
+type setSchemaValueMakerPair struct {
+	name       string
+	res        pb.Resource
+	valueMaker func(*[]string) cty.Value
 }
 
-func TestDetailedDiffSet(t *testing.T) {
+func runSetTest(schemaValueMakerPair setSchemaValueMakerPair, scenario setScenario) func(t *testing.T) {
+	return func(t *testing.T) {
+		t.Parallel()
+		initialValue := schemaValueMakerPair.valueMaker(scenario.initialValue)
+		changeValue := schemaValueMakerPair.valueMaker(scenario.changeValue)
+
+		diff := crosstests.Diff(
+			t, schemaValueMakerPair.res, map[string]cty.Value{"key": initialValue}, map[string]cty.Value{"key": changeValue},
+		)
+
+		autogold.ExpectFile(t, testOutput{
+			initialValue: scenario.initialValue,
+			changeValue:  scenario.changeValue,
+			tfOut:        diff.TFOut,
+			pulumiOut:    diff.PulumiOut,
+			detailedDiff: diff.PulumiDiff.DetailedDiff,
+		})
+	}
+}
+
+func TestPFDetailedDiffSetAttribute(t *testing.T) {
 	t.Parallel()
 
 	attributeSchema := pb.NewResource(pb.NewResourceArgs{
@@ -82,6 +124,25 @@ func TestDetailedDiffSet(t *testing.T) {
 			},
 		},
 	})
+
+	schemaValueMakerPairs := []setSchemaValueMakerPair{
+		{"attribute no replace", attributeSchema, listValueMaker},
+		{"attribute requires replace", attributeReplaceSchema, listValueMaker},
+		{"attribute with default", attributeSchemaWithDefault, listValueMaker},
+	}
+
+	for _, schemaValueMakerPair := range schemaValueMakerPairs {
+		t.Run(schemaValueMakerPair.name, func(t *testing.T) {
+			t.Parallel()
+			for _, scenario := range setScenarios() {
+				t.Run(scenario.name, runSetTest(schemaValueMakerPair, scenario))
+			}
+		})
+	}
+}
+
+func TestPFDetailedDiffSetNestedAttribute(t *testing.T) {
+	t.Parallel()
 
 	nestedAttributeSchema := pb.NewResource(pb.NewResourceArgs{
 		ResourceSchema: rschema.Schema{
@@ -135,6 +196,25 @@ func TestDetailedDiffSet(t *testing.T) {
 			},
 		},
 	})
+
+	schemaValueMakerPairs := []setSchemaValueMakerPair{
+		{"nested attribute no replace", nestedAttributeSchema, nestedListValueMaker},
+		{"nested attribute requires replace", nestedAttributeReplaceSchema, nestedListValueMaker},
+		{"nested attribute nested requires replace", nestedAttributeNestedReplaceSchema, nestedListValueMaker},
+	}
+
+	for _, schemaValueMakerPair := range schemaValueMakerPairs {
+		t.Run(schemaValueMakerPair.name, func(t *testing.T) {
+			t.Parallel()
+			for _, scenario := range setScenarios() {
+				t.Run(scenario.name, runSetTest(schemaValueMakerPair, scenario))
+			}
+		})
+	}
+}
+
+func TestPFDetailedDiffSetBlock(t *testing.T) {
+	t.Parallel()
 
 	blockSchema := pb.NewResource(pb.NewResourceArgs{
 		ResourceSchema: rschema.Schema{
@@ -209,6 +289,26 @@ func TestDetailedDiffSet(t *testing.T) {
 		},
 	})
 
+	schemaValueMakerPairs := []setSchemaValueMakerPair{
+		{"block no replace", blockSchema, nestedListValueMaker},
+		{"block requires replace", blockReplaceSchema, nestedListValueMaker},
+		{"block nested requires replace", blockNestedReplaceSchema, nestedListValueMaker},
+		{"block with default", blockSchemaWithDefault, nestedListValueMaker},
+	}
+
+	for _, schemaValueMakerPair := range schemaValueMakerPairs {
+		t.Run(schemaValueMakerPair.name, func(t *testing.T) {
+			t.Parallel()
+			for _, scenario := range setScenarios() {
+				t.Run(scenario.name, runSetTest(schemaValueMakerPair, scenario))
+			}
+		})
+	}
+}
+
+func TestPFDetailedDiffSetComputedAttribute(t *testing.T) {
+	t.Parallel()
+
 	computedAttributeCreateFunc := func(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 		type ObjectModel struct {
 			ID   types.String `tfsdk:"id"`
@@ -281,6 +381,24 @@ func TestDetailedDiffSet(t *testing.T) {
 		CreateFunc: computedAttributeCreateFunc,
 		UpdateFunc: computedAttributeUpdateFunc,
 	})
+
+	schemaValueMakerPairs := []setSchemaValueMakerPair{
+		{"attribute with computed no replace", computedSetAttributeSchema, listValueMaker},
+		{"attribute with computed requires replace", computedSetAttributeReplaceSchema, listValueMaker},
+	}
+
+	for _, schemaValueMakerPair := range schemaValueMakerPairs {
+		t.Run(schemaValueMakerPair.name, func(t *testing.T) {
+			t.Parallel()
+			for _, scenario := range setScenarios() {
+				t.Run(scenario.name, runSetTest(schemaValueMakerPair, scenario))
+			}
+		})
+	}
+}
+
+func TestPFDetailedDiffSetComputedBlock(t *testing.T) {
+	t.Parallel()
 
 	computedBlockCreateFunc := func(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 		type Nested struct {
@@ -459,157 +577,28 @@ func TestDetailedDiffSet(t *testing.T) {
 		UpdateFunc: computedBlockUpdateFunc,
 	})
 
-	attrList := func(arr *[]string) cty.Value {
-		if arr == nil {
-			return cty.NullVal(cty.DynamicPseudoType)
-		}
-		slice := make([]cty.Value, len(*arr))
-		for i, v := range *arr {
-			slice[i] = cty.StringVal(v)
-		}
-		if len(slice) == 0 {
-			return cty.ListValEmpty(cty.String)
-		}
-		return cty.ListVal(slice)
-	}
-
-	nestedAttrList := func(arr *[]string) cty.Value {
-		if arr == nil {
-			return cty.NullVal(cty.DynamicPseudoType)
-		}
-		slice := make([]cty.Value, len(*arr))
-		for i, v := range *arr {
-			slice[i] = cty.ObjectVal(
-				map[string]cty.Value{
-					"nested": cty.StringVal(v),
-				},
-			)
-		}
-		if len(slice) == 0 {
-			return cty.ListValEmpty(cty.Object(map[string]cty.Type{"nested": cty.String}))
-		}
-		return cty.ListVal(slice)
-	}
-
-	nestedAttrListWithComputedSpecified := func(arr *[]string) cty.Value {
-		if arr == nil {
-			return cty.NullVal(cty.DynamicPseudoType)
-		}
-		slice := make([]cty.Value, len(*arr))
-		for i, v := range *arr {
-			slice[i] = cty.ObjectVal(
-				map[string]cty.Value{
-					"nested":   cty.StringVal(v),
-					"computed": cty.StringVal("non-computed-" + v),
-				},
-			)
-		}
-		if len(slice) == 0 {
-			return cty.ListValEmpty(cty.Object(map[string]cty.Type{"nested": cty.String}))
-		}
-		return cty.ListVal(slice)
-	}
-
-	schemaValueMakerPairs := []struct {
-		name       string
-		res        pb.Resource
-		valueMaker func(*[]string) cty.Value
-	}{
-		{"attribute no replace", attributeSchema, attrList},
-		{"attribute requires replace", attributeReplaceSchema, attrList},
-		{"nested attribute no replace", nestedAttributeSchema, nestedAttrList},
-		{"nested attribute requires replace", nestedAttributeReplaceSchema, nestedAttrList},
-		{"nested attribute nested requires replace", nestedAttributeNestedReplaceSchema, nestedAttrList},
-		{"block no replace", blockSchema, nestedAttrList},
-		{"block requires replace", blockReplaceSchema, nestedAttrList},
-		{"block nested requires replace", blockNestedReplaceSchema, nestedAttrList},
-
-		// Defaults
-		{"attribute with default", attributeSchemaWithDefault, attrList},
-		{"block with default", blockSchemaWithDefault, nestedAttrList},
-
-		// Computed attributes
-		{"attribute with computed no replace", computedSetAttributeSchema, attrList},
-		{"attribute with computed requires replace", computedSetAttributeReplaceSchema, attrList},
-
+	schemaValueMakerPairs := []setSchemaValueMakerPair{
 		// Computed blocks, each state we test both the behaviour when the computed value is specified in the program and when it is not.
-		{"block with computed no replace computed", blockSchemaWithComputed, nestedAttrList},
-		{"block with computed no replace computed specified in program", blockSchemaWithComputed, nestedAttrListWithComputedSpecified},
-		{"block with computed requires replace", blockSchemaWithComputedReplace, nestedAttrList},
-		{"block with computed requires replace computed specified in program", blockSchemaWithComputedReplace, nestedAttrListWithComputedSpecified},
-		{"block with computed and nested requires replace", blockSchemaWithComputedNestedReplace, nestedAttrList},
-		{"block with computed and nested requires replace computed specified in program", blockSchemaWithComputedNestedReplace, nestedAttrListWithComputedSpecified},
-		{"block with computed and computed requires replace", blockSchemaWithComputedComputedRequiresReplace, nestedAttrList},
-		{"block with computed and computed requires replace computed specified in program", blockSchemaWithComputedComputedRequiresReplace, nestedAttrListWithComputedSpecified},
+		{"block with computed no replace computed", blockSchemaWithComputed, nestedListValueMaker},
+		{"block with computed no replace computed specified in program", blockSchemaWithComputed, nestedListValueMakerWithComputedSpecified},
+		{"block with computed requires replace", blockSchemaWithComputedReplace, nestedListValueMaker},
+		{"block with computed requires replace computed specified in program", blockSchemaWithComputedReplace, nestedListValueMakerWithComputedSpecified},
+		{"block with computed and nested requires replace", blockSchemaWithComputedNestedReplace, nestedListValueMaker},
+		{"block with computed and nested requires replace computed specified in program", blockSchemaWithComputedNestedReplace, nestedListValueMakerWithComputedSpecified},
+		{"block with computed and computed requires replace", blockSchemaWithComputedComputedRequiresReplace, nestedListValueMaker},
+		{"block with computed and computed requires replace computed specified in program", blockSchemaWithComputedComputedRequiresReplace, nestedListValueMakerWithComputedSpecified},
 		// Rarely used, but supported
-		{"block with computed no state for unknown", blockSchemaWithComputedNoStateForUnknown, nestedAttrList},
-		{"block with computed no state for unknown computed specified in program", blockSchemaWithComputedNoStateForUnknown, nestedAttrListWithComputedSpecified},
-	}
-
-	scenarios := []struct {
-		name         string
-		initialValue *[]string
-		changeValue  *[]string
-	}{
-		{"unchanged non-empty", &[]string{"value"}, &[]string{"value"}},
-		{"unchanged empty", &[]string{}, &[]string{}},
-		{"unchanged null", nil, nil},
-
-		{"changed non-null", &[]string{"value"}, &[]string{"value1"}},
-		{"changed null to non-null", nil, &[]string{"value"}},
-		{"changed non-null to null", &[]string{"value"}, nil},
-		{"changed null to empty", nil, &[]string{}},
-		{"changed empty to null", &[]string{}, nil},
-		{"added", &[]string{}, &[]string{"value"}},
-		{"removed", &[]string{"value"}, &[]string{}},
-		{"removed front", &[]string{"val1", "val2", "val3"}, &[]string{"val2", "val3"}},
-		{"removed front unordered", &[]string{"val2", "val3", "val1"}, &[]string{"val3", "val1"}},
-		{"removed middle", &[]string{"val1", "val2", "val3"}, &[]string{"val1", "val3"}},
-		{"removed middle unordered", &[]string{"val3", "val1", "val2"}, &[]string{"val3", "val1"}},
-		{"removed end", &[]string{"val1", "val2", "val3"}, &[]string{"val1", "val2"}},
-		{"removed end unordered", &[]string{"val2", "val3", "val1"}, &[]string{"val2", "val3"}},
-		{"added front", &[]string{"val2", "val3"}, &[]string{"val1", "val2", "val3"}},
-		{"added front unordered", &[]string{"val3", "val1"}, &[]string{"val2", "val3", "val1"}},
-		{"added middle", &[]string{"val1", "val3"}, &[]string{"val1", "val2", "val3"}},
-		{"added middle unordered", &[]string{"val2", "val1"}, &[]string{"val2", "val3", "val1"}},
-		{"added end", &[]string{"val1", "val2"}, &[]string{"val1", "val2", "val3"}},
-		{"added end unordered", &[]string{"val2", "val3"}, &[]string{"val2", "val3", "val1"}},
-		{"shuffled", &[]string{"val1", "val2", "val3"}, &[]string{"val3", "val1", "val2"}},
-		{"shuffled unordered", &[]string{"val2", "val3", "val1"}, &[]string{"val3", "val1", "val2"}},
-	}
-
-	type testOutput struct {
-		initialValue *[]string
-		changeValue  *[]string
-		tfOut        string
-		pulumiOut    string
-		detailedDiff map[string]any
+		{"block with computed no state for unknown", blockSchemaWithComputedNoStateForUnknown, nestedListValueMaker},
+		{"block with computed no state for unknown computed specified in program", blockSchemaWithComputedNoStateForUnknown, nestedListValueMakerWithComputedSpecified},
 	}
 
 	for _, schemaValueMakerPair := range schemaValueMakerPairs {
 		t.Run(schemaValueMakerPair.name, func(t *testing.T) {
 			t.Parallel()
-			for _, scenario := range scenarios {
-				t.Run(scenario.name, func(t *testing.T) {
-					t.Parallel()
-					initialValue := schemaValueMakerPair.valueMaker(scenario.initialValue)
-					changeValue := schemaValueMakerPair.valueMaker(scenario.changeValue)
-
-					diff := crosstests.Diff(
-						t, schemaValueMakerPair.res, map[string]cty.Value{"key": initialValue}, map[string]cty.Value{"key": changeValue},
-					)
-
-					autogold.ExpectFile(t, testOutput{
-						initialValue: scenario.initialValue,
-						changeValue:  scenario.changeValue,
-						tfOut:        diff.TFOut,
-						pulumiOut:    diff.PulumiOut,
-						detailedDiff: diff.PulumiDiff.DetailedDiff,
-					})
-				})
+			for _, scenario := range setScenarios() {
+				t.Run(scenario.name, runSetTest(schemaValueMakerPair, scenario))
 			}
 		})
 	}
-
 	// Both pulumi and TF do not allow duplicates in sets, so we don't test that here.
 }

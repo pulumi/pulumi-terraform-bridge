@@ -17,7 +17,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
-func TestSecretBasic(t *testing.T) {
+func TestPFSecretBasic(t *testing.T) {
 	t.Parallel()
 	provBuilder := providerbuilder.NewProvider(
 		providerbuilder.NewProviderArgs{
@@ -157,7 +157,7 @@ Resources:
 	})
 }
 
-func TestSecretObjectBlock(t *testing.T) {
+func TestPFSecretObjectBlock(t *testing.T) {
 	t.Parallel()
 
 	provBuilder := pb.NewProvider(pb.NewProviderArgs{
@@ -258,7 +258,7 @@ Resources:
 	})
 }
 
-func TestSecretPulumiSchema(t *testing.T) {
+func TestPFSecretPulumiSchema(t *testing.T) {
 	t.Parallel()
 
 	provBuilder := pb.NewProvider(pb.NewProviderArgs{

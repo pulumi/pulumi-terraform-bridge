@@ -15,7 +15,7 @@ import (
 	crosstests "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/cross-tests"
 )
 
-func TestDetailedDiffMap(t *testing.T) {
+func TestPFDetailedDiffMap(t *testing.T) {
 	t.Parallel()
 
 	attributeSchema := pb.NewResource(pb.NewResourceArgs{
@@ -166,14 +166,6 @@ func TestDetailedDiffMap(t *testing.T) {
 		// TODO[pulumi/pulumi-terraform-bridge#752]: We do not correctly identify the replace here.
 		// see pkg/pf/tests/testdata/TestDetailedDiffMap/nested_attribute_nested_requires_replace/changed_value_non-null_to_null.golden
 		// {"changed value non-null to null", &map[string]*string{"k": ref("value")}, &map[string]*string{"k": nil}},
-	}
-
-	type testOutput struct {
-		initialValue *map[string]*string
-		changeValue  *map[string]*string
-		tfOut        string
-		pulumiOut    string
-		detailedDiff map[string]any
 	}
 
 	for _, schemaValueMakerPair := range schemaValueMakerPairs {
