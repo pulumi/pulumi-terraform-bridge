@@ -76,7 +76,7 @@ func NewTfDriver(t pulcheck.T, dir, providerName string, prov any) *TFDriver {
 }
 
 func newTfDriverSDK(t pulcheck.T, dir, providerName string, prov *schema.Provider) *TFDriver {
-	pulcheck.EnsureProviderValid(t, prov)
+	prov = pulcheck.WithValidProvider(t, prov)
 	v6server, err := tf5to6server.UpgradeServer(context.Background(),
 		func() tfprotov5.ProviderServer { return prov.GRPCProvider() })
 	require.NoError(t, err)
