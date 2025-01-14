@@ -9,8 +9,8 @@ Terraform will perform the following actions:
 
   # crossprovider_test_res.example must be replaced
 +/- resource "crossprovider_test_res" "example" {
-      ~ id          = "newid" -> (known after apply)
-      ~ string_prop = "val1" -> "val2" # forces replacement
+      ~ id   = "newid" -> (known after apply)
+      ~ prop = "val1" -> "val2" # forces replacement
     }
 
 Plan: 1 to add, 0 to change, 1 to destroy.
@@ -22,10 +22,10 @@ Plan: 1 to add, 0 to change, 1 to destroy.
     +-crossprovider:index/testRes:TestRes: (replace)
         [id=newid]
         [urn=urn:pulumi:test::project::crossprovider:index/testRes:TestRes::example]
-      ~ stringProp: "val1" => "val2"
+      ~ prop: "val1" => "val2"
 Resources:
     +-1 to replace
     1 unchanged
 `,
-	detailedDiff: map[string]interface{}{"stringProp": map[string]interface{}{"kind": "UPDATE_REPLACE"}},
+	detailedDiff: map[string]interface{}{"prop": map[string]interface{}{"kind": "UPDATE_REPLACE"}},
 }
