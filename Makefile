@@ -27,27 +27,12 @@ lint:
 lint_fix:
 	go run scripts/build.go fix-lint
 
+RUN_TEST_CMD ?= ./...
 test:: install_plugins
 	@mkdir -p bin
 	go build -o bin ./internal/testing/pulumi-terraform-bridge-test-provider
 	PULUMI_TERRAFORM_BRIDGE_TEST_PROVIDER=$(shell pwd)/bin/pulumi-terraform-bridge-test-provider \
-		go test -count=1 -coverprofile="coverage.txt" -coverpkg=./... -timeout 2h -parallel ${TESTPARALLELISM} ./...
-
-# Run a single shard of tests. This is a make target for use in CI. It assumes the shard arguments are provided in SHARD_CMD
-test_shard:: install_plugins
-	@mkdir -p bin
-	go build -o bin ./internal/testing/pulumi-terraform-bridge-test-provider
-	PULUMI_TERRAFORM_BRIDGE_TEST_PROVIDER=$(shell pwd)/bin/pulumi-terraform-bridge-test-provider \
-		go test -count=1 -coverprofile="coverage.txt" -coverpkg=./... -timeout 2h -parallel ${TESTPARALLELISM} ./... ${SHARD_CMD}
-
-# Run the tests and record profiling data. This is used for partitioning tests into shards for CI.
-test_profile:: install_plugins
-	@mkdir -p bin
-	go build -o bin ./internal/testing/pulumi-terraform-bridge-test-provider
-	rm -f test-timings.jsonl
-	PULUMI_TERRAFORM_BRIDGE_TEST_PROVIDER=$(shell pwd)/bin/pulumi-terraform-bridge-test-provider \
-		go test -count=1 -timeout 2h -parallel ${TESTPARALLELISM} ./... -json | \
-		jq -c -r 'select((.Action == "pass" or .Action == "fail") and .Test != null)' | tee test-timings.jsonl
+		go test -count=1 -coverprofile="coverage.txt" -coverpkg=./... -timeout 2h -parallel ${TESTPARALLELISM} $(value RUN_TEST_CMD)
 
 # Run tests while accepting current output as expected output "golden"
 # tests. In case where system behavior changes intentionally this can

@@ -119,14 +119,10 @@ jobs:
       - name: Build PF
         run: cd pkg/pf && make build
       - name: Shard tests
-        run: echo "SHARD_CMD=$(go run github.com/pulumi/sharder@828907542fdc6628c49e5139d35fa1f427570550 --total ${{ env.TOTAL_SHARDS }} --index ${{ matrix.shard }} --output test-timings.jsonl --format make)" >> $GITHUB_ENV
-        if: ${{ matrix.platform == 'ubuntu-latest' }}
-      - name: Test
-        run: make VERBOSE=true test_shard
+        run: echo "RUN_TEST_CMD=$(go run github.com/pulumi/shard@5b6297aaffa0c06291fb8231968d7a9f4e6832e6 --total ${{ env.TOTAL_SHARDS }} --index ${{ matrix.shard }} --seed 42)" >> $GITHUB_ENV
         if: ${{ matrix.platform == 'ubuntu-latest' }}
       - name: Test
         run: make test
-        if: ${{ matrix.platform != 'ubuntu-latest' }}
       - name: Upload coverage reports to Codecov
         # If we have a CODECOV_TOKEN secret, then we upload it to get a coverage report.
         #
