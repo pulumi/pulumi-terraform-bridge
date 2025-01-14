@@ -10,7 +10,7 @@ Terraform will perform the following actions:
   # crossprovider_test_res.example will be updated in-place
   ~ resource "crossprovider_test_res" "example" {
         id          = "id"
-      + string_prop = "val1"
+      ~ string_prop = "computed" -> "val1"
     }
 
 Plan: 0 to add, 1 to change, 0 to destroy.
@@ -22,10 +22,10 @@ Plan: 0 to add, 1 to change, 0 to destroy.
     ~ crossprovider:index/testRes:TestRes: (update)
         [id=id]
         [urn=urn:pulumi:test::project::crossprovider:index/testRes:TestRes::example]
-      + stringProp: "val1"
+      ~ stringProp: "computed" => "val1"
 Resources:
     ~ 1 to update
     1 unchanged
 `,
-	detailedDiff: map[string]interface{}{"stringProp": map[string]interface{}{}},
+	detailedDiff: map[string]interface{}{"stringProp": map[string]interface{}{"kind": "UPDATE"}},
 }

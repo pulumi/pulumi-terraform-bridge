@@ -8,8 +8,9 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hexops/autogold/v2"
-	crosstests "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests"
 	"github.com/zclconf/go-cty/cty"
+
+	crosstests "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests"
 )
 
 func TestSDKv2DetailedDiffString(t *testing.T) {
@@ -54,7 +55,7 @@ func TestSDKv2DetailedDiffString(t *testing.T) {
 	}
 
 	setComputedFunc := func(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-		if d.Get("string_prop") == nil {
+		if _, ok := d.GetOk("string_prop"); !ok {
 			err := d.Set("string_prop", "computed")
 			if err != nil {
 				return diag.FromErr(err)
