@@ -10,58 +10,6 @@ import (
 	crosstests "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests"
 )
 
-func TestSDKv2DetailedDiffString(t *testing.T) {
-	t.Parallel()
-
-	res := schema.Resource{
-		Schema: map[string]*schema.Schema{
-			"string_prop": {
-				Type:     schema.TypeString,
-				Optional: true,
-			},
-		},
-	}
-
-	valueOne := ref("val1")
-	valueTwo := ref("val2")
-	var noValue *string
-
-	ctyVal := func(v *string) map[string]cty.Value {
-		if v == nil {
-			return map[string]cty.Value{}
-		}
-		return map[string]cty.Value{
-			"string_prop": cty.StringVal(*v),
-		}
-	}
-
-	scenarios := []struct {
-		name         string
-		initialValue *string
-		changeValue  *string
-	}{
-		{"unchanged empty", noValue, noValue},
-		{"unchanged non-empty", valueOne, valueOne},
-		{"added", noValue, valueOne},
-		{"removed", valueOne, noValue},
-		{"changed", valueOne, valueTwo},
-	}
-
-	for _, scenario := range scenarios {
-		t.Run(scenario.name, func(t *testing.T) {
-			t.Parallel()
-			diff := crosstests.Diff(t, &res, ctyVal(scenario.initialValue), ctyVal(scenario.changeValue))
-			autogold.ExpectFile(t, testOutput{
-				initialValue: scenario.initialValue,
-				changeValue:  scenario.changeValue,
-				tfOut:        diff.TFOut,
-				pulumiOut:    diff.PulumiOut,
-				detailedDiff: diff.PulumiDiff.DetailedDiff,
-			})
-		})
-	}
-}
-
 func TestSDKv2DetailedDiffMap(t *testing.T) {
 	t.Parallel()
 
