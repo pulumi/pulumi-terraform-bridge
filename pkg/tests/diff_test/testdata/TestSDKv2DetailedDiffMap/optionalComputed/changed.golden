@@ -1,8 +1,8 @@
 tests.testOutput{
-	initialValue: map[string]string{
-		"key": "val",
+	initialValue: &map[string]string{
+		"key": "val1",
 	},
-	changeValue: map[string]string{"key": "val2"},
+	changeValue: &map[string]string{"key": "val2"},
 	tfOut: `
 Terraform used the selected providers to generate the following execution
 plan. Resource actions are indicated with the following symbols:
@@ -12,9 +12,9 @@ Terraform will perform the following actions:
 
   # crossprovider_test_res.example will be updated in-place
   ~ resource "crossprovider_test_res" "example" {
-        id       = "newid"
-      ~ map_prop = {
-          ~ "key" = "val" -> "val2"
+        id   = "id"
+      ~ prop = {
+          ~ "key" = "val1" -> "val2"
         }
     }
 
@@ -25,14 +25,14 @@ Plan: 0 to add, 1 to change, 0 to destroy.
   pulumi:pulumi:Stack: (same)
     [urn=urn:pulumi:test::project::pulumi:pulumi:Stack::project-test]
     ~ crossprovider:index/testRes:TestRes: (update)
-        [id=newid]
+        [id=id]
         [urn=urn:pulumi:test::project::crossprovider:index/testRes:TestRes::example]
-      ~ mapProp: {
-          ~ key: "val" => "val2"
+      ~ prop: {
+          ~ key: "val1" => "val2"
         }
 Resources:
     ~ 1 to update
     1 unchanged
 `,
-	detailedDiff: map[string]interface{}{"mapProp.key": map[string]interface{}{"kind": "UPDATE"}},
+	detailedDiff: map[string]interface{}{"prop.key": map[string]interface{}{"kind": "UPDATE"}},
 }

@@ -1,0 +1,43 @@
+tests.testOutput{
+	initialValue: &map[string]string{
+		"key": "val1",
+	},
+	changeValue: &map[string]string{"key2": "val1"},
+	tfOut: `
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
++/- create replacement and then destroy
+
+Terraform will perform the following actions:
+
+  # crossprovider_test_res.example must be replaced
++/- resource "crossprovider_test_res" "example" {
+      ~ id   = "id" -> (known after apply)
+      ~ prop = { # forces replacement
+          - "key"  = "val1" -> null
+          + "key2" = "val1"
+        }
+    }
+
+Plan: 1 to add, 0 to change, 1 to destroy.
+
+`,
+	pulumiOut: `Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::project::pulumi:pulumi:Stack::project-test]
+    +-crossprovider:index/testRes:TestRes: (replace)
+        [id=id]
+        [urn=urn:pulumi:test::project::crossprovider:index/testRes:TestRes::example]
+      ~ prop: {
+          - key : "val1"
+          + key2: "val1"
+        }
+Resources:
+    +-1 to replace
+    1 unchanged
+`,
+	detailedDiff: map[string]interface{}{
+		"prop.key":  map[string]interface{}{"kind": "DELETE_REPLACE"},
+		"prop.key2": map[string]interface{}{"kind": "ADD_REPLACE"},
+	},
+}

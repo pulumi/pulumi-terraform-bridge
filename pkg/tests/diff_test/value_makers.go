@@ -78,7 +78,7 @@ func generateBaseTests[T any](
 		Schema: map[string]*schema.Schema{
 			"prop": {
 				Type:     typ,
-				Elem:     elem,	
+				Elem:     elem,
 				Optional: true,
 			},
 		},

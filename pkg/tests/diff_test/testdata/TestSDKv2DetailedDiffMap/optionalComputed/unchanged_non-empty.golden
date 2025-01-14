@@ -1,8 +1,8 @@
 tests.testOutput{
-	initialValue: map[string]string{
-		"key": "val",
+	initialValue: &map[string]string{
+		"key": "val1",
 	},
-	changeValue: map[string]string{"key": "val"},
+	changeValue: &map[string]string{"key": "val1"},
 	tfOut: `
 No changes. Your infrastructure matches the configuration.
 
