@@ -32,7 +32,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
-func TestAccProviderSecrets(t *testing.T) {
+func TestAccProviderSecrets(t *testing.T) { //nolint:paralleltest // [integration.ProgramTest] already calls t.Parallel
 	opts := accTestOptions(t).With(integration.ProgramTestOptions{
 		Dir: "provider-secrets",
 
@@ -63,6 +63,8 @@ func TestAccProviderSecrets(t *testing.T) {
 // This tests exercise the bridge and Pulumi CLI together intentionally as secret handling for nested properties
 // historically had some quirks in the Pulumi CLI.
 func TestAccProviderConfigureSecrets(t *testing.T) {
+	t.Parallel()
+
 	type configSetter func(ctx context.Context, t *testing.T, stack *auto.Stack, basePath string, secret bool)
 
 	type primType struct {
@@ -423,6 +425,8 @@ func TestAccProviderConfigureSecrets(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			ctx := context.Background()
 			res := &schema.Resource{
 				Schema: map[string]*schema.Schema{
