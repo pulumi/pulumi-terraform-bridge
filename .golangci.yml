@@ -37,7 +37,6 @@ issues:
     - path: pkg/tests
       linters:
         - lll
-        - paralleltest
     - path: pkg/pf/tests
       linters:
         - lll

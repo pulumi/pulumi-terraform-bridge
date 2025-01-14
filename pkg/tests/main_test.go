@@ -34,6 +34,10 @@ func TestMain(m *testing.M) {
 	if err := setupIntegrationTests(); err != nil {
 		log.Fatal(err)
 	}
+	err := os.Setenv("PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION", "true")
+	if err != nil {
+		os.Exit(1)
+	}
 
 	exitCode := m.Run()
 	fmt.Fprintf(os.Stderr, "test main exited with code %d\n", exitCode)

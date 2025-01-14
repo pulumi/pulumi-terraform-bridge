@@ -669,8 +669,8 @@ resources:
 			})
 
 			t.Run("update preview", func(t *testing.T) {
-				t.Parallel()
 				t.Skipf("Skipping this test as it this case is not handled by the TF plugin sdk")
+				t.Parallel()
 				// The TF plugin SDK does not handle removing an input for a computed value, even if the provider implements it.
 				// The plugin SDK always fills an empty Computed property with the value from the state.
 				// Diff in these cases always returns no diff and the old state value is used.
