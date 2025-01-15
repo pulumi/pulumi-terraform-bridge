@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -290,6 +291,40 @@ func (cc *cliConverter) convertViaPulumiCLI(
 	return nil, fmt.Errorf("\n######\n  pulumi convert failed\n  minimal repro: %s\n  full error below\n######\n%w",
 		dir, err)
 }
+func (cc *cliConverter) convertViaPulumiCLIWithLogs(
+	examples map[string]string,
+	mappings []tfbridge.ProviderInfo,
+	g *Generator,
+) (map[string]translatedExample, error) {
+	g.Sink().Warningf(&diag.Diag{
+		Message: "in convertViaPulumiCliWithLogs about to call PulumiCLIStepWithLogs",
+	})
+	translated, err := cc.convertViaPulumiCLIStepWithLogs(examples, mappings, g)
+	if err == nil {
+		return translated, nil
+	}
+
+	// Try to bisect examples to a subset that still errors out.
+	for len(examples) >= 2 {
+		e1, e2 := cc.split2(examples)
+		if _, err := cc.convertViaPulumiCLIStepWithLogs(e1, mappings, g); err != nil {
+			examples = e1
+		} else if _, err := cc.convertViaPulumiCLIStepWithLogs(e2, mappings, g); err != nil {
+			examples = e2
+		} else {
+			break
+		}
+	}
+	g.Sink().Warningf(&diag.Diag{
+		Message: "trying to prepare debug folder but probably cant because hashtag lambda",
+	})
+
+	dir, err2 := cc.convertViaPulumiPrepareDebugFolder(examples, mappings)
+	contract.IgnoreError(err2)
+
+	return nil, fmt.Errorf("\n######\n  pulumi convert failed\n  minimal repro: %s\n  full error below\n######\n%w",
+		dir, err)
+}
 
 func (*cliConverter) split2(xs map[string]string) (map[string]string, map[string]string) {
 	h1 := map[string]string{}
@@ -441,6 +476,85 @@ func (cc *cliConverter) convertViaPulumiCLIStep(
 		}
 	}()
 
+	pulumiPath, cmdArgs, err := cc.convertViaPulumiCLICommandArgs(examples, mappings, outDir, examplesJSON.Name())
+	if err != nil {
+		return nil, err
+	}
+
+	cmd := exec.Command(pulumiPath, cmdArgs...)
+
+	cmd.Dir = filepath.Dir(examplesJSON.Name())
+
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &stdout, &stderr
+
+	if err := cmd.Run(); err != nil {
+		return nil, fmt.Errorf("convertViaPulumiCLI: pulumi command failed: %w\n"+
+			"Stdout:\n%s\n\n"+
+			"Stderr:\n%s\n\n",
+			err, stdout.String(), stderr.String())
+	}
+
+	outputFile := filepath.Join(outDir, filepath.Base(examplesJSON.Name()))
+
+	outputFileBytes, err := os.ReadFile(outputFile)
+	if err != nil {
+		return nil, fmt.Errorf("convertViaPulumiCLI: failed to read output file: %w, "+
+			"check if your Pulumi CLI version is recent enough to include pulumi-converter-terraform v1.0.9",
+			err)
+	}
+
+	var result map[string]translatedExample
+	if err := json.Unmarshal(outputFileBytes, &result); err != nil {
+		return nil, fmt.Errorf("convertViaPulumiCLI: failed to unmarshal output "+
+			"file: %w", err)
+	}
+
+	return result, nil
+}
+
+func (cc *cliConverter) convertViaPulumiCLIStepWithLogs(
+	examples map[string]string,
+	mappings []tfbridge.ProviderInfo,
+	g *Generator,
+) (
+	output map[string]translatedExample,
+	finalError error,
+) {
+	g.Sink().Warningf(&diag.Diag{
+		Message: "in convertViaPulumiCliStepWithLogs about to make a temporary directory",
+	})
+	outDir, err := os.MkdirTemp("", "bridge-examples-output")
+	if err != nil {
+		return nil, fmt.Errorf("convertViaPulumiCLI: failed to create a temp dir "+
+			" bridge-examples-output: %w", err)
+	}
+	defer func() {
+		if err := os.RemoveAll(outDir); err != nil {
+			if finalError == nil {
+				finalError = fmt.Errorf("convertViaPulumiCLI: failed to clean up "+
+					"temp bridge-examples-output dir: %w", err)
+			}
+		}
+	}()
+
+	examplesJSON, err := os.CreateTemp("", "bridge-examples.json")
+	if err != nil {
+		return nil, fmt.Errorf("convertViaPulumiCLI: failed to create a temp "+
+			" bridge-examples.json file: %w", err)
+	}
+	defer func() {
+		if err := os.Remove(examplesJSON.Name()); err != nil {
+			if finalError == nil {
+				finalError = fmt.Errorf("convertViaPulumiCLI: failed to clean up "+
+					"temp bridge-examples.json file: %w", err)
+			}
+		}
+	}()
+
+	g.Sink().Warningf(&diag.Diag{
+		Message: "in convertViaPulumiCliWithLogs about to call convertViaPulumiCLICommandArgs",
+	})
 	pulumiPath, cmdArgs, err := cc.convertViaPulumiCLICommandArgs(examples, mappings, outDir, examplesJSON.Name())
 	if err != nil {
 		return nil, err
@@ -636,9 +750,12 @@ func (*cliConverter) ensureNotSupportedLifecycleHooksIsError(d *hcl.Diagnostic) 
 }
 
 // Function for one-off example converson HCL --> PCL using pulumi-converter-terraform
-func (cc *cliConverter) singleExampleFromHCLToPCL(path, hclCode string) (translatedExample, error) {
+func (cc *cliConverter) singleExampleFromHCLToPCL(path, hclCode string, g *Generator) (translatedExample, error) {
+	g.Sink().Warningf(&diag.Diag{
+		Message: "in singleExampleFromHCLToPCL " + path + hclCode,
+	})
 	key := path
-	result, err := cc.convertViaPulumiCLI(map[string]string{key: hclCode}, []tfbridge.ProviderInfo{cc.info})
+	result, err := cc.convertViaPulumiCLIWithLogs(map[string]string{key: hclCode}, []tfbridge.ProviderInfo{cc.info}, g)
 	if err != nil {
 		return translatedExample{}, nil
 	}

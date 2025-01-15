@@ -256,10 +256,11 @@ func convertExample(g *Generator, code string, exampleNumber int) (string, error
 
 	converter := g.cliConverter()
 	fileName := fmt.Sprintf("configuration-installation-%d", exampleNumber)
+	fmt.Println("does this print?")
 	g.Sink().Warningf(&diag.Diag{
-		Message: "calling singleExampleFromHCLToPCL",
+		Message: "calling singleExampleFromHCLToPCL " + fileName,
 	})
-	pclExample, err := converter.singleExampleFromHCLToPCL(fileName, code)
+	pclExample, err := converter.singleExampleFromHCLToPCL(fileName, code, g)
 	if err != nil {
 		return "", err
 	}
