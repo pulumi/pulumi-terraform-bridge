@@ -647,6 +647,9 @@ func (cc *cliConverter) convertViaPulumiCLIStepWithLogs(
 		Message: "RUNNING COMMAND",
 	})
 	if err := cmd.Run(); err != nil {
+		g.Sink().Warningf(&diag.Diag{
+			Message: "pulumi command failed" + stdout.String() + stderr.String(),
+		})
 		return nil, fmt.Errorf("convertViaPulumiCLI: pulumi command failed: %w\n"+
 			"Stdout:\n%s\n\n"+
 			"Stderr:\n%s\n\n",
@@ -657,6 +660,9 @@ func (cc *cliConverter) convertViaPulumiCLIStepWithLogs(
 
 	outputFileBytes, err := os.ReadFile(outputFile)
 	if err != nil {
+		g.Sink().Warningf(&diag.Diag{
+			Message: "returning early because we can't read the file" + err.Error(),
+		})
 		return nil, fmt.Errorf("convertViaPulumiCLI: failed to read output file: %w, "+
 			"check if your Pulumi CLI version is recent enough to include pulumi-converter-terraform v1.0.9",
 			err)
@@ -664,6 +670,9 @@ func (cc *cliConverter) convertViaPulumiCLIStepWithLogs(
 
 	var result map[string]translatedExample
 	if err := json.Unmarshal(outputFileBytes, &result); err != nil {
+		g.Sink().Warningf(&diag.Diag{
+			Message: "failed to unmarshal output" + err.Error(),
+		})
 		return nil, fmt.Errorf("convertViaPulumiCLI: failed to unmarshal output "+
 			"file: %w", err)
 	}
