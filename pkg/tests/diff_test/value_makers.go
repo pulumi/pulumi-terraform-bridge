@@ -2,10 +2,15 @@ package tests
 
 import (
 	"context"
+	"strings"
+	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hexops/autogold/v2"
 	"github.com/zclconf/go-cty/cty"
+
+	crosstests "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests"
 )
 
 func ref[T any](v T) *T {
@@ -22,6 +27,35 @@ type diffScenario[T any] struct {
 	name         string
 	initialValue *T
 	changeValue  *T
+}
+
+func runSDKv2TestMatrix[T any](
+	t *testing.T, schemaValueMakerPairs []diffSchemaValueMakerPair[T], scenarios []diffScenario[T],
+) {
+	for _, schemaValueMakerPair := range schemaValueMakerPairs {
+		t.Run(schemaValueMakerPair.name, func(t *testing.T) {
+			t.Parallel()
+			for _, scenario := range scenarios {
+				t.Run(scenario.name, func(t *testing.T) {
+					t.Parallel()
+					if strings.Contains(schemaValueMakerPair.name, "required") &&
+						(scenario.initialValue == nil || scenario.changeValue == nil) {
+						t.Skip("Required fields cannot be unset")
+					}
+					diff := crosstests.Diff(
+						t, &schemaValueMakerPair.schema, schemaValueMakerPair.valueMaker(scenario.initialValue),
+						schemaValueMakerPair.valueMaker(scenario.changeValue))
+					autogold.ExpectFile(t, testOutput{
+						initialValue: scenario.initialValue,
+						changeValue:  scenario.changeValue,
+						tfOut:        diff.TFOut,
+						pulumiOut:    diff.PulumiOut,
+						detailedDiff: diff.PulumiDiff.DetailedDiff,
+					})
+				})
+			}
+		})
+	}
 }
 
 func generateBaseTests[T any](
