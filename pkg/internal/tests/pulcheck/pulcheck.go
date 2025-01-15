@@ -52,8 +52,39 @@ func resourceNeedsUpdate(res *schema.Resource) bool {
 	return false
 }
 
+func copyMap[K comparable, V any](m map[K]V, cp func(V) V) map[K]V {
+	dst := make(map[K]V, len(m))
+	for k, v := range m {
+		dst[k] = cp(v)
+	}
+	return dst
+}
+
+// WithValidProvider returns a copy of tfp, with all required fields filled with default
+// values.
+//
 // This is an experimental API.
-func EnsureProviderValid(t T, tfp *schema.Provider) {
+func WithValidProvider(t T, tfp *schema.Provider) *schema.Provider {
+	if tfp == nil {
+		return nil
+	}
+
+	// Copy tfp as deep as we will mutate.
+	{
+		dst := *tfp // memcopy
+		dst.ResourcesMap = copyMap(tfp.ResourcesMap, func(v *schema.Resource) *schema.Resource {
+			cp := *v // memcopy
+			cp.Schema = copyMap(cp.Schema, func(s *schema.Schema) *schema.Schema {
+				cp := *s
+				return &cp
+			})
+			return &cp
+		})
+		tfp = &dst
+	}
+
+	// Now ensure that tfp is valid
+
 	for _, r := range tfp.ResourcesMap {
 		if r.Schema["id"] == nil {
 			r.Schema["id"] = &schema.Schema{
@@ -108,6 +139,8 @@ func EnsureProviderValid(t T, tfp *schema.Provider) {
 		}
 	}
 	require.NoError(t, tfp.InternalValidate())
+
+	return tfp
 }
 
 func ProviderServerFromInfo(
@@ -206,7 +239,7 @@ func BridgedProvider(t T, providerName string, tfp *schema.Provider, opts ...Bri
 		opt(&options)
 	}
 
-	EnsureProviderValid(t, tfp)
+	tfp = WithValidProvider(t, tfp)
 
 	// If the PULUMI_ACCURATE_BRIDGE_PREVIEWS environment variable is set, use it to enable
 	// accurate bridge previews.
@@ -230,10 +263,8 @@ func BridgedProvider(t T, providerName string, tfp *schema.Provider, opts ...Bri
 		EnableAccurateBridgePreview:    accurateBridgePreviews,
 		Config:                         options.configInfo,
 	}
-	makeToken := func(module, name string) (string, error) {
-		return tokens.MakeStandard(providerName)(module, name)
-	}
-	provider.MustComputeTokens(tokens.SingleModule(providerName, "index", makeToken))
+	provider.MustComputeTokens(tokens.SingleModule(providerName,
+		"index", tokens.MakeStandard(providerName)))
 
 	return provider
 }

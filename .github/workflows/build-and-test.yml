@@ -8,6 +8,9 @@ on:
         required: false
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  # Note this needs to match the shard input to the test matrix below as well as pattern in exclude.
+  # see jobs.test.strategy.matrix.{shard,exclude}
+  TOTAL_SHARDS: 15
 
 jobs:
   test:
@@ -21,6 +24,72 @@ jobs:
         go-version: [1.22.x, 1.23.x]
         platform: [ubuntu-latest, macos-latest, windows-latest]
         feature-flags: ["DEFAULT", "PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW"]
+        # Needs to match TOTAL_SHARDS
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
+        exclude:
+          # We do not run non-default feature flags on non-ubuntu. 
+          - platform: windows-latest
+            feature-flags: "PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW"
+          - platform: macos-latest
+            feature-flags: "PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW"
+          # Windows and mac test runs do not need to be sharded as they are fast enough.
+          # In order to do that we will skip all except the 0-th shard.
+          - platform: windows-latest
+            shard: 1
+          - platform: windows-latest
+            shard: 2
+          - platform: windows-latest
+            shard: 3
+          - platform: windows-latest
+            shard: 4
+          - platform: windows-latest
+            shard: 5
+          - platform: windows-latest
+            shard: 6
+          - platform: windows-latest
+            shard: 7
+          - platform: windows-latest
+            shard: 8
+          - platform: windows-latest
+            shard: 9
+          - platform: windows-latest
+            shard: 10
+          - platform: windows-latest
+            shard: 11
+          - platform: windows-latest
+            shard: 12
+          - platform: windows-latest
+            shard: 13
+          - platform: windows-latest
+            shard: 14
+          - platform: macos-latest
+            shard: 1
+          - platform: macos-latest
+            shard: 2
+          - platform: macos-latest
+            shard: 3
+          - platform: macos-latest
+            shard: 4
+          - platform: macos-latest
+            shard: 5
+          - platform: macos-latest
+            shard: 6
+          - platform: macos-latest
+            shard: 7
+          - platform: macos-latest
+            shard: 8
+          - platform: macos-latest
+            shard: 9
+          - platform: macos-latest
+            shard: 10
+          - platform: macos-latest
+            shard: 11
+          - platform: macos-latest
+            shard: 12
+          - platform: macos-latest
+            shard: 13
+          - platform: macos-latest
+            shard: 14
     runs-on: ${{ matrix.platform }}
     steps:
       - name: Install pulumi
@@ -39,16 +108,19 @@ jobs:
           go-version: ${{ matrix.go-version }}
           cache-dependency-path: |
             **/go.sum
+          # disable caching on windows because it's very slow
+          # see https://github.com/actions/setup-go/issues/495
+          cache: ${{ matrix.platform != 'windows-latest' }}
       - name: export feature flags
         run: echo ${{ matrix.feature-flags }}=true >> $GITHUB_ENV
         if: ${{ matrix.platform != 'windows-latest' && matrix.feature-flags != 'DEFAULT' }}
-      - name: export feature flags
-        run: echo ${{ matrix.feature-flags }}=true >> $env:GITHUB_ENV
-        if: ${{ matrix.platform == 'windows-latest' && matrix.feature-flags != 'DEFAULT' }}
       - name: Build
         run: make build
       - name: Build PF
         run: cd pkg/pf && make build
+      - name: Shard tests
+        run: echo "RUN_TEST_CMD=$(go run github.com/pulumi/shard@5b6297aaffa0c06291fb8231968d7a9f4e6832e6 --total ${{ env.TOTAL_SHARDS }} --index ${{ matrix.shard }} --seed 314)" >> $GITHUB_ENV
+        if: ${{ matrix.platform == 'ubuntu-latest' }}
       - name: Test
         run: make test
       - name: Upload coverage reports to Codecov
@@ -78,3 +150,25 @@ jobs:
           version: v1.62
       - name: Lint
         run: make lint
+  sentinel:
+    name: sentinel
+    if: github.event_name == 'repository_dispatch' ||
+      github.event.pull_request.head.repo.full_name == github.repository
+    permissions:
+      statuses: write
+    needs:
+    - test
+    - lint
+    runs-on: ubuntu-latest
+    steps:
+    - uses: guibranco/github-status-action-v2@0849440ec82c5fa69b2377725b9b7852a3977e76 # v1.1.13
+      with:
+        authToken: ${{secrets.GITHUB_TOKEN}}
+        # Write an explicit status check called "Sentinel" which will only pass if this code really runs.
+        # This should always be a required check for PRs.
+        context: 'Sentinel'
+        description: 'All required checks passed'
+        state: 'success'
+        # Write to the PR commit SHA if it's available as we don't want the merge commit sha,
+        # otherwise use the current SHA for any other type of build.
+        sha: ${{ github.event.pull_request.head.sha || github.sha }}

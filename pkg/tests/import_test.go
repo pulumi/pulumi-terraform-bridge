@@ -16,54 +16,57 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/pulcheck"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
 func TestFullyComputedNestedAttribute(t *testing.T) {
 	t.Parallel()
-	resMap := map[string]*schema.Resource{
-		"prov_test": {
-			Schema: map[string]*schema.Schema{
-				"attached_disks": {
-					Type:     schema.TypeList,
-					Optional: true,
-					Elem: &schema.Resource{
-						Schema: map[string]*schema.Schema{
-							"name": {
-								Optional: true,
-								Type:     schema.TypeString,
+
+	bridgedProvider := func(importVal any) info.Provider {
+		return pulcheck.BridgedProvider(t, "prov", &schema.Provider{
+			ResourcesMap: map[string]*schema.Resource{
+				"prov_test": {
+					Schema: map[string]*schema.Schema{
+						"attached_disks": {
+							Type:     schema.TypeList,
+							Optional: true,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									"name": {
+										Optional: true,
+										Type:     schema.TypeString,
+									},
+									"key256": {
+										Computed: true,
+										Type:     schema.TypeString,
+									},
+								},
 							},
-							"key256": {
-								Computed: true,
-								Type:     schema.TypeString,
-							},
+						},
+						"top_level_computed": {
+							Type:     schema.TypeString,
+							Computed: true,
+						},
+					},
+					Importer: &schema.ResourceImporter{
+						StateContext: func(ctx context.Context, rd *schema.ResourceData, i interface{}) ([]*schema.ResourceData, error) {
+							elMap := map[string]any{
+								"name":   "disk1",
+								"key256": importVal,
+							}
+							err := rd.Set("attached_disks", []map[string]any{elMap})
+							require.NoError(t, err)
+
+							err = rd.Set("top_level_computed", "computed_val")
+							require.NoError(t, err)
+
+							return []*schema.ResourceData{rd}, nil
 						},
 					},
 				},
-				"top_level_computed": {
-					Type:     schema.TypeString,
-					Computed: true,
-				},
 			},
-		},
+		})
 	}
-
-	importer := func(val any) func(context.Context, *schema.ResourceData, interface{}) ([]*schema.ResourceData, error) {
-		return func(ctx context.Context, rd *schema.ResourceData, i interface{}) ([]*schema.ResourceData, error) {
-			elMap := map[string]any{
-				"name":   "disk1",
-				"key256": val,
-			}
-			err := rd.Set("attached_disks", []map[string]any{elMap})
-			require.NoError(t, err)
-
-			err = rd.Set("top_level_computed", "computed_val")
-			require.NoError(t, err)
-
-			return []*schema.ResourceData{rd}, nil
-		}
-	}
-	tfp := &schema.Provider{ResourcesMap: resMap}
-	bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
 
 	program := `
 name: test
@@ -83,9 +86,7 @@ runtime: yaml
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			resMap["prov_test"].Importer = &schema.ResourceImporter{
-				StateContext: importer(tc.importVal),
-			}
+			bridgedProvider := bridgedProvider(tc.importVal)
 
 			pt := pulcheck.PulCheck(t, bridgedProvider, program)
 
