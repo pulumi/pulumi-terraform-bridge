@@ -441,6 +441,83 @@ func (cc *cliConverter) convertViaPulumiCLICommandArgs(
 	return pulumiPath, cmdArgs, nil
 }
 
+func (cc *cliConverter) convertViaPulumiCLICommandArgsWithLogs(
+	examples map[string]string,
+	mappings []tfbridge.ProviderInfo,
+	outDir string,
+	examplesJSONPath string,
+	g *Generator,
+) (string, []string, error) {
+	g.Sink().Warningf(&diag.Diag{
+		Message: "in convertViaPulumiCliCommandArgsWithLogs about to write example, which I guess we're not allowed to do?",
+	})
+	// Write example to bridge-examples.json.
+	examplesBytes, err := json.Marshal(examples)
+	if err != nil {
+		return "", nil, fmt.Errorf("convertViaPulumiCLI: failed to marshal examples to JSON: %w", err)
+	}
+	if err := os.WriteFile(examplesJSONPath, examplesBytes, 0o600); err != nil {
+		return "", nil, fmt.Errorf("convertViaPulumiCLI: failed to write a temp examples.json file: %w", err)
+	}
+	g.Sink().Warningf(&diag.Diag{
+		Message: "in convertViaPulumiCliCommandArgsWithLogs finished writing examples. wtf",
+	})
+
+	pulumiPath, err := exec.LookPath("pulumi")
+	if err != nil {
+		return "", nil, fmt.Errorf("convertViaPulumiCLI: pulumi executable not in PATH: %w", err)
+	}
+
+	mappingsDir := filepath.Join(outDir, "mappings")
+
+	// Prepare mappings folder if necessary.
+	if len(mappings) > 0 {
+		if err := os.MkdirAll(mappingsDir, 0o755); err != nil {
+			return "", nil, fmt.Errorf("convertViaPulumiCLI: failed to write mappings folder: %w", err)
+		}
+	}
+
+	// Write out mappings files if necessary.
+	for _, info := range mappings {
+		info := info // remove aliasing lint
+		mpi := tfbridge.MarshalProviderInfo(&info)
+		bytes, err := json.Marshal(mpi)
+		if err != nil {
+			return "", nil, fmt.Errorf("convertViaPulumiCLI: failed to write mappings folder: %w", err)
+		}
+		mf := cc.mappingsFile(mappingsDir, info)
+		if err := os.WriteFile(mf, bytes, 0o600); err != nil {
+			return "", nil, fmt.Errorf("convertViaPulumiCLI: failed to write mappings file: %w", err)
+		}
+	}
+	g.Sink().Warningf(&diag.Diag{
+		Message: "in convertViaPulumiCliCommandArgsWithLogs after mappingsFiles shenanigans. Also, outDir is " + outDir,
+	})
+
+	var mappingsArgs []string
+	for _, info := range mappings {
+		mappingsArgs = append(mappingsArgs, "--mappings", cc.mappingsFile(mappingsDir, info))
+	}
+
+	cmdArgs := []string{
+		"convert",
+		"--from", "terraform",
+		"--language", "pcl",
+		"--out", outDir,
+		"--generate-only",
+	}
+
+	cmdArgs = append(cmdArgs, mappingsArgs...)
+	cmdArgs = append(cmdArgs, "--", "--convert-examples", filepath.Base(examplesJSONPath))
+	g.Sink().Warningf(&diag.Diag{
+		Message: "pulumiPath " + pulumiPath,
+	})
+	g.Sink().Warningf(&diag.Diag{
+		Message: "cmdArgs  " + cmdArgs,
+	})
+	return pulumiPath, cmdArgs, nil
+}
+
 func (cc *cliConverter) convertViaPulumiCLIStep(
 	examples map[string]string,
 	mappings []tfbridge.ProviderInfo,
@@ -555,7 +632,7 @@ func (cc *cliConverter) convertViaPulumiCLIStepWithLogs(
 	g.Sink().Warningf(&diag.Diag{
 		Message: "in convertViaPulumiCliWithLogs about to call convertViaPulumiCLICommandArgs",
 	})
-	pulumiPath, cmdArgs, err := cc.convertViaPulumiCLICommandArgs(examples, mappings, outDir, examplesJSON.Name())
+	pulumiPath, cmdArgs, err := cc.convertViaPulumiCLICommandArgsWithLogs(examples, mappings, outDir, examplesJSON.Name(), g)
 	if err != nil {
 		return nil, err
 	}
@@ -566,7 +643,9 @@ func (cc *cliConverter) convertViaPulumiCLIStepWithLogs(
 
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
-
+	g.Sink().Warningf(&diag.Diag{
+		Message: "RUNNING COMMAND",
+	})
 	if err := cmd.Run(); err != nil {
 		return nil, fmt.Errorf("convertViaPulumiCLI: pulumi command failed: %w\n"+
 			"Stdout:\n%s\n\n"+
