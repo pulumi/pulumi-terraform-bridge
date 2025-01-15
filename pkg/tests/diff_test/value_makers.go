@@ -59,7 +59,7 @@ func runSDKv2TestMatrix[T any](
 }
 
 func generateBaseTests[T any](
-	typ schema.ValueType, ctyMaker func(v T) cty.Value, val1, val2, computedVal, defaultVal, nilVal T,
+	typ schema.ValueType, elem any, ctyMaker func(v T) cty.Value, val1, val2, computedVal, defaultVal, nilVal T,
 ) ([]diffSchemaValueMakerPair[T], []diffScenario[T]) {
 	valueOne := ref(val1)
 	valueTwo := ref(val2)
@@ -78,6 +78,7 @@ func generateBaseTests[T any](
 		Schema: map[string]*schema.Schema{
 			"prop": {
 				Type:     typ,
+				Elem:     elem,
 				Optional: true,
 			},
 		},
@@ -87,6 +88,7 @@ func generateBaseTests[T any](
 		Schema: map[string]*schema.Schema{
 			"prop": {
 				Type:     typ,
+				Elem:     elem,
 				Optional: true,
 				ForceNew: true,
 			},
@@ -97,6 +99,7 @@ func generateBaseTests[T any](
 		Schema: map[string]*schema.Schema{
 			"prop": {
 				Type:     typ,
+				Elem:     elem,
 				Required: true,
 			},
 		},
@@ -106,6 +109,7 @@ func generateBaseTests[T any](
 		Schema: map[string]*schema.Schema{
 			"prop": {
 				Type:     typ,
+				Elem:     elem,
 				ForceNew: true,
 				Required: true,
 			},
@@ -126,6 +130,7 @@ func generateBaseTests[T any](
 		Schema: map[string]*schema.Schema{
 			"prop": {
 				Type:     typ,
+				Elem:     elem,
 				Optional: true,
 				Computed: true,
 			},
@@ -141,6 +146,7 @@ func generateBaseTests[T any](
 		Schema: map[string]*schema.Schema{
 			"prop": {
 				Type:     typ,
+				Elem:     elem,
 				Optional: true,
 				Computed: true,
 				ForceNew: true,
@@ -157,6 +163,7 @@ func generateBaseTests[T any](
 		Schema: map[string]*schema.Schema{
 			"prop": {
 				Type:     typ,
+				Elem:     elem,
 				Optional: true,
 				Default:  defaultVal,
 			},
@@ -167,6 +174,7 @@ func generateBaseTests[T any](
 		Schema: map[string]*schema.Schema{
 			"prop": {
 				Type:     typ,
+				Elem:     elem,
 				Optional: true,
 				Default:  defaultVal,
 				ForceNew: true,

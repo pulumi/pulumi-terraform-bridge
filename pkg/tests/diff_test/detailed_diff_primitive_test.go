@@ -12,7 +12,7 @@ func TestSDKv2DetailedDiffString(t *testing.T) {
 
 	var nilVal string
 	schemaValueMakerPairs, scenarios := generateBaseTests(
-		schema.TypeString, cty.StringVal, "val1", "val2", "computed", "default", nilVal)
+		schema.TypeString, nil, cty.StringVal, "val1", "val2", "computed", "default", nilVal)
 
 	runSDKv2TestMatrix(t, schemaValueMakerPairs, scenarios)
 }
@@ -22,7 +22,7 @@ func TestSDKv2DetailedDiffBool(t *testing.T) {
 
 	var nilVal bool
 	schemaValueMakerPairs, scenarios := generateBaseTests(
-		schema.TypeBool, cty.BoolVal, true, false, true, false, nilVal)
+		schema.TypeBool, nil, cty.BoolVal, true, false, true, false, nilVal)
 
 	runSDKv2TestMatrix(t, schemaValueMakerPairs, scenarios)
 }
@@ -32,7 +32,7 @@ func TestSDKv2DetailedDiffInt(t *testing.T) {
 
 	var nilVal int64
 	schemaValueMakerPairs, scenarios := generateBaseTests(
-		schema.TypeInt, cty.NumberIntVal, 1, 2, 3, 4, nilVal)
+		schema.TypeInt, nil, cty.NumberIntVal, 1, 2, 3, 4, nilVal)
 
 	runSDKv2TestMatrix(t, schemaValueMakerPairs, scenarios)
 }
@@ -42,7 +42,7 @@ func TestSDKv2DetailedDiffFloat(t *testing.T) {
 
 	var nilVal float64
 	schemaValueMakerPairs, scenarios := generateBaseTests(
-		schema.TypeFloat, cty.NumberFloatVal, 1.0, 2.0, 3.0, 4.0, nilVal)
+		schema.TypeFloat, nil, cty.NumberFloatVal, 1.0, 2.0, 3.0, 4.0, nilVal)
 
 	runSDKv2TestMatrix(t, schemaValueMakerPairs, scenarios)
 }
