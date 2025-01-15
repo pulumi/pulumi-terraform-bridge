@@ -513,7 +513,7 @@ func (cc *cliConverter) convertViaPulumiCLICommandArgsWithLogs(
 		Message: "pulumiPath " + pulumiPath,
 	})
 	g.Sink().Warningf(&diag.Diag{
-		Message: "cmdArgs  " + cmdArgs,
+		Message: "cmdArgs  " + strings.Join(cmdArgs, " "),
 	})
 	return pulumiPath, cmdArgs, nil
 }
