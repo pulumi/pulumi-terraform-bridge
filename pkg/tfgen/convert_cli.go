@@ -603,6 +603,9 @@ func (cc *cliConverter) convertViaPulumiCLIStepWithLogs(
 	})
 	outDir, err := os.MkdirTemp("", "bridge-examples-output")
 	if err != nil {
+		g.Sink().Warningf(&diag.Diag{
+			Message: "failed to make temporary directory bridge-examples-output" + err.Error(),
+		})
 		return nil, fmt.Errorf("convertViaPulumiCLI: failed to create a temp dir "+
 			" bridge-examples-output: %w", err)
 	}
@@ -617,6 +620,9 @@ func (cc *cliConverter) convertViaPulumiCLIStepWithLogs(
 
 	examplesJSON, err := os.CreateTemp("tmp", "bridge-examples.json")
 	if err != nil {
+		g.Sink().Warningf(&diag.Diag{
+			Message: "failed to make temporary bridge-examples.json " + examplesJSON.Name() + err.Error(),
+		})
 		return nil, fmt.Errorf("convertViaPulumiCLI: failed to create a temp "+
 			" bridge-examples.json file: %w", err)
 	}
