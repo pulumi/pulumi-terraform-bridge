@@ -316,7 +316,7 @@ func (cc *cliConverter) convertViaPulumiCLIWithLogs(
 		}
 	}
 	g.Sink().Warningf(&diag.Diag{
-		Message: "trying to prepare debug folder but probably cant because hashtag lambda",
+		Message: "preparing debug folder but this is not useful inside a lambda",
 	})
 
 	dir, err2 := cc.convertViaPulumiPrepareDebugFolder(examples, mappings)
