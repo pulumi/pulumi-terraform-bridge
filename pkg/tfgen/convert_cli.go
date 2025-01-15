@@ -615,7 +615,7 @@ func (cc *cliConverter) convertViaPulumiCLIStepWithLogs(
 		}
 	}()
 
-	examplesJSON, err := os.CreateTemp("", "bridge-examples.json")
+	examplesJSON, err := os.CreateTemp("tmp", "bridge-examples.json")
 	if err != nil {
 		return nil, fmt.Errorf("convertViaPulumiCLI: failed to create a temp "+
 			" bridge-examples.json file: %w", err)
