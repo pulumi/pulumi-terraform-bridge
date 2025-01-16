@@ -9,7 +9,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-func setScenarios() []diffScenario[[]string] {
+func oneElementScenarios() []diffScenario[[]string] {
 	return []diffScenario[[]string]{
 		{"unchanged non-empty", &[]string{"value"}, &[]string{"value"}},
 		{"unchanged empty", &[]string{}, &[]string{}},
@@ -23,7 +23,12 @@ func setScenarios() []diffScenario[[]string] {
 
 		{"added", &[]string{}, &[]string{"value"}},
 		{"removed", &[]string{"value"}, &[]string{}},
+	}
+}
 
+func setScenarios() []diffScenario[[]string] {
+	scenarios := oneElementScenarios()
+	multiElementScenarios := []diffScenario[[]string]{
 		{"removed front", &[]string{"val1", "val2", "val3"}, &[]string{"val2", "val3"}},
 		{"removed front unordered", &[]string{"val2", "val3", "val1"}, &[]string{"val3", "val1"}},
 		{"removed middle", &[]string{"val1", "val2", "val3"}, &[]string{"val1", "val3"}},
@@ -61,6 +66,8 @@ func setScenarios() []diffScenario[[]string] {
 		{"two added and two removed shuffled, no overlaps", &[]string{"val1", "val2", "val3", "val4"}, &[]string{"val5", "val6", "val1", "val2"}},
 		{"two added and two removed shuffled, with duplicates", &[]string{"val1", "val2", "val3", "val4"}, &[]string{"val1", "val5", "val6", "val2", "val1", "val2"}},
 	}
+
+	return append(scenarios, multiElementScenarios...)
 }
 
 func TestSDKv2DetailedDiffSetAttribute(t *testing.T) {
@@ -579,4 +586,97 @@ func TestSDKv2DetailedDiffSetDefault(t *testing.T) {
 	}
 
 	runSDKv2TestMatrix(t, diffSchemaValueMakerPairs, setScenarios())
+}
+
+func TestSDKv2DetailedDiffSetMaxItemsOne(t *testing.T) {
+	t.Parallel()
+
+	maxItemsOneAttrSchema := schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"prop": {
+				Type:     schema.TypeSet,
+				Optional: true,
+				MaxItems: 1,
+				Elem:     &schema.Schema{Type: schema.TypeString},
+			},
+		},
+	}
+
+	maxItemsOneAttrSchemaForceNew := schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"prop": {
+				Type:     schema.TypeSet,
+				Optional: true,
+				ForceNew: true,
+				MaxItems: 1,
+				Elem:     &schema.Schema{Type: schema.TypeString},
+			},
+		},
+	}
+
+	maxItemsOneBlockSchema := schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"prop": {
+				Type:     schema.TypeSet,
+				Optional: true,
+				MaxItems: 1,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"nested_prop": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	maxItemsOneBlockSchemaForceNew := schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"prop": {
+				Type:     schema.TypeSet,
+				Optional: true,
+				ForceNew: true,
+				MaxItems: 1,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"nested_prop": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	maxItemsOneBlockSchemaNestedForceNew := schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"prop": {
+				Type:     schema.TypeSet,
+				Optional: true,
+				MaxItems: 1,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"nested_prop": {
+							Type:     schema.TypeString,
+							Optional: true,
+							ForceNew: true,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	diffSchemaValueMakerPairs := []diffSchemaValueMakerPair[[]string]{
+		{"max items one attribute", maxItemsOneAttrSchema, listValueMaker},
+		{"max items one attribute force new", maxItemsOneAttrSchemaForceNew, listValueMaker},
+		{"max items one block", maxItemsOneBlockSchema, nestedListValueMaker},
+		{"max items one block force new", maxItemsOneBlockSchemaForceNew, nestedListValueMaker},
+		{"max items one block nested force new", maxItemsOneBlockSchemaNestedForceNew, nestedListValueMaker},
+	}
+
+	runSDKv2TestMatrix(t, diffSchemaValueMakerPairs, oneElementScenarios())
 }
