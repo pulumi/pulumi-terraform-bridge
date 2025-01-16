@@ -1,0 +1,222 @@
+tests.testOutput{
+	initialValue: &[]string{
+		"value0",
+		"value1",
+		"value2",
+		"value3",
+		"value4",
+		"value5",
+		"value6",
+		"value7",
+		"value8",
+		"value9",
+		"value10",
+		"value11",
+		"value12",
+		"value13",
+		"value14",
+		"value15",
+		"value16",
+		"value17",
+		"value18",
+		"value19",
+	},
+	changeValue: &[]string{
+		"value20",
+		"value0",
+		"value1",
+		"value2",
+		"value3",
+		"value4",
+		"value5",
+		"value6",
+		"value7",
+		"value8",
+		"value9",
+		"value10",
+		"value11",
+		"value12",
+		"value13",
+		"value14",
+		"value15",
+		"value16",
+		"value17",
+		"value18",
+		"value19",
+	},
+	tfOut: `
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  ~ update in-place
+
+Terraform will perform the following actions:
+
+  # crossprovider_test_res.example will be updated in-place
+  ~ resource "crossprovider_test_res" "example" {
+        id = "newid"
+
+      ~ list_block {
+          ~ nested_prop = (sensitive value)
+        }
+      ~ list_block {
+          ~ nested_prop = (sensitive value)
+        }
+      ~ list_block {
+          ~ nested_prop = (sensitive value)
+        }
+      ~ list_block {
+          ~ nested_prop = (sensitive value)
+        }
+      ~ list_block {
+          ~ nested_prop = (sensitive value)
+        }
+      ~ list_block {
+          ~ nested_prop = (sensitive value)
+        }
+      ~ list_block {
+          ~ nested_prop = (sensitive value)
+        }
+      ~ list_block {
+          ~ nested_prop = (sensitive value)
+        }
+      ~ list_block {
+          ~ nested_prop = (sensitive value)
+        }
+      ~ list_block {
+          ~ nested_prop = (sensitive value)
+        }
+      ~ list_block {
+          ~ nested_prop = (sensitive value)
+        }
+      ~ list_block {
+          ~ nested_prop = (sensitive value)
+        }
+      ~ list_block {
+          ~ nested_prop = (sensitive value)
+        }
+      ~ list_block {
+          ~ nested_prop = (sensitive value)
+        }
+      ~ list_block {
+          ~ nested_prop = (sensitive value)
+        }
+      ~ list_block {
+          ~ nested_prop = (sensitive value)
+        }
+      ~ list_block {
+          ~ nested_prop = (sensitive value)
+        }
+      ~ list_block {
+          ~ nested_prop = (sensitive value)
+        }
+      ~ list_block {
+          ~ nested_prop = (sensitive value)
+        }
+      ~ list_block {
+          ~ nested_prop = (sensitive value)
+        }
+      + list_block {
+          + nested_prop = (sensitive value)
+        }
+    }
+
+Plan: 0 to add, 1 to change, 0 to destroy.
+
+`,
+	pulumiOut: `Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::project::pulumi:pulumi:Stack::project-test]
+    ~ crossprovider:index/testRes:TestRes: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::project::crossprovider:index/testRes:TestRes::example]
+      ~ listBlocks: [
+          ~ [0]: {
+                  ~ nestedProp: [secret] => [secret]
+                }
+          ~ [1]: {
+                  ~ nestedProp: [secret] => [secret]
+                }
+          ~ [2]: {
+                  ~ nestedProp: [secret] => [secret]
+                }
+          ~ [3]: {
+                  ~ nestedProp: [secret] => [secret]
+                }
+          ~ [4]: {
+                  ~ nestedProp: [secret] => [secret]
+                }
+          ~ [5]: {
+                  ~ nestedProp: [secret] => [secret]
+                }
+          ~ [6]: {
+                  ~ nestedProp: [secret] => [secret]
+                }
+          ~ [7]: {
+                  ~ nestedProp: [secret] => [secret]
+                }
+          ~ [8]: {
+                  ~ nestedProp: [secret] => [secret]
+                }
+          ~ [9]: {
+                  ~ nestedProp: [secret] => [secret]
+                }
+          ~ [10]: {
+                  ~ nestedProp: [secret] => [secret]
+                }
+          ~ [11]: {
+                  ~ nestedProp: [secret] => [secret]
+                }
+          ~ [12]: {
+                  ~ nestedProp: [secret] => [secret]
+                }
+          ~ [13]: {
+                  ~ nestedProp: [secret] => [secret]
+                }
+          ~ [14]: {
+                  ~ nestedProp: [secret] => [secret]
+                }
+          ~ [15]: {
+                  ~ nestedProp: [secret] => [secret]
+                }
+          ~ [16]: {
+                  ~ nestedProp: [secret] => [secret]
+                }
+          ~ [17]: {
+                  ~ nestedProp: [secret] => [secret]
+                }
+          ~ [18]: {
+                  ~ nestedProp: [secret] => [secret]
+                }
+          ~ [19]: {
+                  ~ nestedProp: [secret] => [secret]
+                }
+          + [20]: [secret]
+        ]
+Resources:
+    ~ 1 to update
+    1 unchanged
+`,
+	detailedDiff: map[string]interface{}{
+		"listBlocks[0].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
+		"listBlocks[10].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"listBlocks[11].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"listBlocks[12].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"listBlocks[13].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"listBlocks[14].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"listBlocks[15].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"listBlocks[16].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"listBlocks[17].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"listBlocks[18].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"listBlocks[19].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"listBlocks[1].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
+		"listBlocks[20]":            map[string]interface{}{},
+		"listBlocks[2].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
+		"listBlocks[3].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
+		"listBlocks[4].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
+		"listBlocks[5].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
+		"listBlocks[6].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
+		"listBlocks[7].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
+		"listBlocks[8].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
+		"listBlocks[9].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
+	},
+}

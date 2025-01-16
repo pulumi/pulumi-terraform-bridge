@@ -110,7 +110,6 @@ func TestSDKv2DetailedDiffList(t *testing.T) {
 			},
 		},
 	}
-	_ = listBlockSchemaNestedForceNew
 
 	maxItemsOneBlockSchema := schema.Resource{
 		Schema: map[string]*schema.Schema{
@@ -148,7 +147,6 @@ func TestSDKv2DetailedDiffList(t *testing.T) {
 			},
 		},
 	}
-	_ = maxItemsOneBlockSchemaForceNew
 
 	maxItemsOneBlockSchemaNestedForceNew := schema.Resource{
 		Schema: map[string]*schema.Schema{
@@ -168,7 +166,42 @@ func TestSDKv2DetailedDiffList(t *testing.T) {
 			},
 		},
 	}
-	_ = maxItemsOneBlockSchemaNestedForceNew
+
+	listBlockSchemaSensitive := schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"list_block": {
+				Type:      schema.TypeList,
+				Optional:  true,
+				Sensitive: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"nested_prop": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	listBlockSchemaNestedSensitive := schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"list_block": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"nested_prop": {
+							Type:      schema.TypeString,
+							Optional:  true,
+							Sensitive: true,
+						},
+					},
+				},
+			},
+		},
+	}
 
 	attrList := func(arr *[]string) map[string]cty.Value {
 		if arr == nil {
@@ -240,6 +273,8 @@ func TestSDKv2DetailedDiffList(t *testing.T) {
 		{"list block", listBlockSchema, blockList},
 		{"list block force new", listBlockSchemaForceNew, blockList},
 		{"list block nested force new", listBlockSchemaNestedForceNew, blockList},
+		{"list block sensitive", listBlockSchemaSensitive, blockList},
+		{"list block nested sensitive", listBlockSchemaNestedSensitive, nestedBlockList},
 	}
 
 	maxItemsOnePairs := []struct {
