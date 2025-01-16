@@ -1,0 +1,246 @@
+tests.testOutput{
+	initialValue: &[]string{
+		"value20",
+		"value0",
+		"value1",
+		"value2",
+		"value3",
+		"value4",
+		"value5",
+		"value6",
+		"value7",
+		"value8",
+		"value9",
+		"value10",
+		"value11",
+		"value12",
+		"value13",
+		"value14",
+		"value15",
+		"value16",
+		"value17",
+		"value18",
+		"value19",
+	},
+	changeValue: &[]string{
+		"value0",
+		"value1",
+		"value2",
+		"value3",
+		"value4",
+		"value5",
+		"value6",
+		"value7",
+		"value8",
+		"value9",
+		"value10",
+		"value11",
+		"value12",
+		"value13",
+		"value14",
+		"value15",
+		"value16",
+		"value17",
+		"value18",
+		"value19",
+	},
+	tfOut: `
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  ~ update in-place
+
+Terraform will perform the following actions:
+
+  # crossprovider_test_res.example will be updated in-place
+  ~ resource "crossprovider_test_res" "example" {
+        id = "newid"
+
+      ~ prop {
+          ~ nested_prop = "value20" -> "value0"
+            # (1 unchanged attribute hidden)
+        }
+      ~ prop {
+          ~ nested_prop = "value0" -> "value1"
+            # (1 unchanged attribute hidden)
+        }
+      ~ prop {
+          ~ nested_prop = "value1" -> "value2"
+            # (1 unchanged attribute hidden)
+        }
+      ~ prop {
+          ~ nested_prop = "value2" -> "value3"
+            # (1 unchanged attribute hidden)
+        }
+      ~ prop {
+          ~ nested_prop = "value3" -> "value4"
+            # (1 unchanged attribute hidden)
+        }
+      ~ prop {
+          ~ nested_prop = "value4" -> "value5"
+            # (1 unchanged attribute hidden)
+        }
+      ~ prop {
+          ~ nested_prop = "value5" -> "value6"
+            # (1 unchanged attribute hidden)
+        }
+      ~ prop {
+          ~ nested_prop = "value6" -> "value7"
+            # (1 unchanged attribute hidden)
+        }
+      ~ prop {
+          ~ nested_prop = "value7" -> "value8"
+            # (1 unchanged attribute hidden)
+        }
+      ~ prop {
+          ~ nested_prop = "value8" -> "value9"
+            # (1 unchanged attribute hidden)
+        }
+      ~ prop {
+          ~ nested_prop = "value9" -> "value10"
+            # (1 unchanged attribute hidden)
+        }
+      ~ prop {
+          ~ nested_prop = "value10" -> "value11"
+            # (1 unchanged attribute hidden)
+        }
+      ~ prop {
+          ~ nested_prop = "value11" -> "value12"
+            # (1 unchanged attribute hidden)
+        }
+      ~ prop {
+          ~ nested_prop = "value12" -> "value13"
+            # (1 unchanged attribute hidden)
+        }
+      ~ prop {
+          ~ nested_prop = "value13" -> "value14"
+            # (1 unchanged attribute hidden)
+        }
+      ~ prop {
+          ~ nested_prop = "value14" -> "value15"
+            # (1 unchanged attribute hidden)
+        }
+      ~ prop {
+          ~ nested_prop = "value15" -> "value16"
+            # (1 unchanged attribute hidden)
+        }
+      ~ prop {
+          ~ nested_prop = "value16" -> "value17"
+            # (1 unchanged attribute hidden)
+        }
+      ~ prop {
+          ~ nested_prop = "value17" -> "value18"
+            # (1 unchanged attribute hidden)
+        }
+      ~ prop {
+          ~ nested_prop = "value18" -> "value19"
+            # (1 unchanged attribute hidden)
+        }
+      - prop {
+          - default     = "default" -> null
+          - nested_prop = "value19" -> null
+        }
+    }
+
+Plan: 0 to add, 1 to change, 0 to destroy.
+
+`,
+	pulumiOut: `Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::project::pulumi:pulumi:Stack::project-test]
+    ~ crossprovider:index/testRes:TestRes: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::project::crossprovider:index/testRes:TestRes::example]
+      ~ props: [
+          ~ [0]: {
+                  ~ nestedProp: "value20" => "value0"
+                }
+          ~ [1]: {
+                  ~ nestedProp: "value0" => "value1"
+                }
+          ~ [2]: {
+                  ~ nestedProp: "value1" => "value2"
+                }
+          ~ [3]: {
+                  ~ nestedProp: "value2" => "value3"
+                }
+          ~ [4]: {
+                  ~ nestedProp: "value3" => "value4"
+                }
+          ~ [5]: {
+                  ~ nestedProp: "value4" => "value5"
+                }
+          ~ [6]: {
+                  ~ nestedProp: "value5" => "value6"
+                }
+          ~ [7]: {
+                  ~ nestedProp: "value6" => "value7"
+                }
+          ~ [8]: {
+                  ~ nestedProp: "value7" => "value8"
+                }
+          ~ [9]: {
+                  ~ nestedProp: "value8" => "value9"
+                }
+          ~ [10]: {
+                  ~ nestedProp: "value9" => "value10"
+                }
+          ~ [11]: {
+                  ~ nestedProp: "value10" => "value11"
+                }
+          ~ [12]: {
+                  ~ nestedProp: "value11" => "value12"
+                }
+          ~ [13]: {
+                  ~ nestedProp: "value12" => "value13"
+                }
+          ~ [14]: {
+                  ~ nestedProp: "value13" => "value14"
+                }
+          ~ [15]: {
+                  ~ nestedProp: "value14" => "value15"
+                }
+          ~ [16]: {
+                  ~ nestedProp: "value15" => "value16"
+                }
+          ~ [17]: {
+                  ~ nestedProp: "value16" => "value17"
+                }
+          ~ [18]: {
+                  ~ nestedProp: "value17" => "value18"
+                }
+          ~ [19]: {
+                  ~ nestedProp: "value18" => "value19"
+                }
+          - [20]: {
+                  - default   : "default"
+                  - nestedProp: "value19"
+                }
+        ]
+Resources:
+    ~ 1 to update
+    1 unchanged
+`,
+	detailedDiff: map[string]interface{}{
+		"props[0].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
+		"props[10].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"props[11].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"props[12].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"props[13].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"props[14].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"props[15].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"props[16].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"props[17].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"props[18].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"props[19].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"props[1].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
+		"props[20]":            map[string]interface{}{"kind": "DELETE"},
+		"props[2].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
+		"props[3].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
+		"props[4].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
+		"props[5].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
+		"props[6].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
+		"props[7].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
+		"props[8].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
+		"props[9].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
+	},
+}
