@@ -13,20 +13,8 @@ import (
 	crosstests "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests"
 )
 
-type setScenario struct {
-	name         string
-	initialValue *[]string
-	changeValue  *[]string
-}
-
-type setSchemaValueMakerPair struct {
-	name       string
-	res        schema.Resource
-	valueMaker func(*[]string) cty.Value
-}
-
-func setScenarios() []setScenario {
-	return []setScenario{
+func setScenarios() []diffScenario[[]string] {
+	return []diffScenario[[]string]{
 		{"unchanged non-empty", &[]string{"value"}, &[]string{"value"}},
 		{"unchanged empty", &[]string{}, &[]string{}},
 		{"unchanged null", nil, nil},
@@ -80,7 +68,7 @@ func setScenarios() []setScenario {
 }
 
 func runSetTest(
-	schema schema.Resource, valueMaker func(*[]string) cty.Value, val1 *[]string, val2 *[]string,
+	schema schema.Resource, valueMaker func(*[]string) map[string]cty.Value, val1 *[]string, val2 *[]string,
 	disableAccurateBridgePreviews bool,
 ) func(t *testing.T) {
 	return func(t *testing.T) {
@@ -92,7 +80,7 @@ func runSetTest(
 		if disableAccurateBridgePreviews {
 			opts = append(opts, crosstests.DiffDisableAccurateBridgePreviews())
 		}
-		diff := crosstests.Diff(t, &schema, map[string]cty.Value{"test": initialValue}, map[string]cty.Value{"test": changeValue}, opts...)
+		diff := crosstests.Diff(t, &schema, initialValue, changeValue, opts...)
 
 		autogold.ExpectFile(t, testOutput{
 			initialValue: val1,
@@ -109,7 +97,7 @@ func TestSDKv2DetailedDiffSetAttribute(t *testing.T) {
 
 	attributeSchema := schema.Resource{
 		Schema: map[string]*schema.Schema{
-			"test": {
+			"prop": {
 				Type:     schema.TypeSet,
 				Optional: true,
 				Elem: &schema.Schema{
@@ -121,7 +109,7 @@ func TestSDKv2DetailedDiffSetAttribute(t *testing.T) {
 
 	attributeSchemaForceNew := schema.Resource{
 		Schema: map[string]*schema.Schema{
-			"test": {
+			"prop": {
 				Type:     schema.TypeSet,
 				Optional: true,
 				Elem: &schema.Schema{
@@ -132,19 +120,12 @@ func TestSDKv2DetailedDiffSetAttribute(t *testing.T) {
 		},
 	}
 
-	setSchemaValueMakerPairs := []setSchemaValueMakerPair{
+	diffSchemaValueMakerPairs := []diffSchemaValueMakerPair[[]string]{
 		{"attribute no force new", attributeSchema, listValueMaker},
 		{"attribute force new", attributeSchemaForceNew, listValueMaker},
 	}
 
-	for _, schemaValueMakerPair := range setSchemaValueMakerPairs {
-		t.Run(schemaValueMakerPair.name, func(t *testing.T) {
-			t.Parallel()
-			for _, scenario := range setScenarios() {
-				t.Run(scenario.name, runSetTest(schemaValueMakerPair.res, schemaValueMakerPair.valueMaker, scenario.initialValue, scenario.changeValue, false))
-			}
-		})
-	}
+	runSDKv2TestMatrix(t, diffSchemaValueMakerPairs, setScenarios())
 }
 
 func TestSDKv2DetailedDiffSetBlock(t *testing.T) {
@@ -152,12 +133,12 @@ func TestSDKv2DetailedDiffSetBlock(t *testing.T) {
 
 	blockSchema := schema.Resource{
 		Schema: map[string]*schema.Schema{
-			"test": {
+			"prop": {
 				Type:     schema.TypeSet,
 				Optional: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"nested": {
+						"nested_prop": {
 							Type:     schema.TypeString,
 							Optional: true,
 						},
@@ -169,13 +150,13 @@ func TestSDKv2DetailedDiffSetBlock(t *testing.T) {
 
 	blockSchemaForceNew := schema.Resource{
 		Schema: map[string]*schema.Schema{
-			"test": {
+			"prop": {
 				Type:     schema.TypeSet,
 				Optional: true,
 				ForceNew: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"nested": {
+						"nested_prop": {
 							Type:     schema.TypeString,
 							Optional: true,
 						},
@@ -187,12 +168,12 @@ func TestSDKv2DetailedDiffSetBlock(t *testing.T) {
 
 	blockSchemaNestedForceNew := schema.Resource{
 		Schema: map[string]*schema.Schema{
-			"test": {
+			"prop": {
 				Type:     schema.TypeSet,
 				Optional: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"nested": {
+						"nested_prop": {
 							Type:     schema.TypeString,
 							Optional: true,
 							ForceNew: true,
@@ -203,20 +184,13 @@ func TestSDKv2DetailedDiffSetBlock(t *testing.T) {
 		},
 	}
 
-	setSchemaValueMakerPairs := []setSchemaValueMakerPair{
+	diffSchemaValueMakerPairs := []diffSchemaValueMakerPair[[]string]{
 		{"block no force new", blockSchema, nestedListValueMaker},
 		{"block top level force new", blockSchemaForceNew, nestedListValueMaker},
 		{"block nested force new", blockSchemaNestedForceNew, nestedListValueMaker},
 	}
 
-	for _, schemaValueMakerPair := range setSchemaValueMakerPairs {
-		t.Run(schemaValueMakerPair.name, func(t *testing.T) {
-			t.Parallel()
-			for _, scenario := range setScenarios() {
-				t.Run(scenario.name, runSetTest(schemaValueMakerPair.res, schemaValueMakerPair.valueMaker, scenario.initialValue, scenario.changeValue, false))
-			}
-		})
-	}
+	runSDKv2TestMatrix(t, diffSchemaValueMakerPairs, setScenarios())
 }
 
 func TestSDKv2DetailedDiffSetComputedAttribute(t *testing.T) {
@@ -224,7 +198,7 @@ func TestSDKv2DetailedDiffSetComputedAttribute(t *testing.T) {
 
 	computedAttributeSchema := schema.Resource{
 		Schema: map[string]*schema.Schema{
-			"test": {
+			"prop": {
 				Type:     schema.TypeSet,
 				Optional: true,
 				Computed: true,
@@ -235,15 +209,15 @@ func TestSDKv2DetailedDiffSetComputedAttribute(t *testing.T) {
 		},
 		CreateContext: func(ctx context.Context, d *schema.ResourceData, i interface{}) diag.Diagnostics {
 			d.SetId("id")
-			setHashFunc := d.Get("test").(*schema.Set).F
-			err := d.Set("test", schema.NewSet(setHashFunc, []interface{}{"computed"}))
+			setHashFunc := d.Get("prop").(*schema.Set).F
+			err := d.Set("prop", schema.NewSet(setHashFunc, []interface{}{"computed"}))
 			contract.Assertf(err == nil, "failed to set attribute: %v", err)
 			return nil
 		},
 		UpdateContext: func(ctx context.Context, d *schema.ResourceData, i interface{}) diag.Diagnostics {
-			if d.Get("test") == nil {
-				setHashFunc := d.Get("test").(*schema.Set).F
-				err := d.Set("test", schema.NewSet(setHashFunc, []interface{}{"computed"}))
+			if d.Get("prop") == nil {
+				setHashFunc := d.Get("prop").(*schema.Set).F
+				err := d.Set("prop", schema.NewSet(setHashFunc, []interface{}{"computed"}))
 				contract.Assertf(err == nil, "failed to set attribute: %v", err)
 			}
 			return nil
@@ -252,7 +226,7 @@ func TestSDKv2DetailedDiffSetComputedAttribute(t *testing.T) {
 
 	computedAttributeSchemaForceNew := schema.Resource{
 		Schema: map[string]*schema.Schema{
-			"test": {
+			"prop": {
 				Type:     schema.TypeSet,
 				Optional: true,
 				Computed: true,
@@ -264,39 +238,32 @@ func TestSDKv2DetailedDiffSetComputedAttribute(t *testing.T) {
 		},
 		CreateContext: func(ctx context.Context, d *schema.ResourceData, i interface{}) diag.Diagnostics {
 			d.SetId("id")
-			if d.Get("test") == nil {
-				err := d.Set("test", schema.NewSet(schema.HashString, []interface{}{"computed"}))
+			if d.Get("prop") == nil {
+				err := d.Set("prop", schema.NewSet(schema.HashString, []interface{}{"computed"}))
 				contract.Assertf(err == nil, "failed to set attribute: %v", err)
 			}
 			return nil
 		},
 		UpdateContext: func(ctx context.Context, d *schema.ResourceData, i interface{}) diag.Diagnostics {
-			if d.Get("test") == nil {
-				err := d.Set("test", schema.NewSet(schema.HashString, []interface{}{"computed"}))
+			if d.Get("prop") == nil {
+				err := d.Set("prop", schema.NewSet(schema.HashString, []interface{}{"computed"}))
 				contract.Assertf(err == nil, "failed to set attribute: %v", err)
 			}
 			return nil
 		},
 	}
 
-	setSchemaValueMakerPairs := []setSchemaValueMakerPair{
+	diffSchemaValueMakerPairs := []diffSchemaValueMakerPair[[]string]{
 		{"computed attribute no force new", computedAttributeSchema, listValueMaker},
 		{"computed attribute force new", computedAttributeSchemaForceNew, listValueMaker},
 	}
 
-	for _, schemaValueMakerPair := range setSchemaValueMakerPairs {
-		t.Run(schemaValueMakerPair.name, func(t *testing.T) {
-			t.Parallel()
-			for _, scenario := range setScenarios() {
-				t.Run(scenario.name, runSetTest(schemaValueMakerPair.res, schemaValueMakerPair.valueMaker, scenario.initialValue, scenario.changeValue, false))
-			}
-		})
-	}
+	runSDKv2TestMatrix(t, diffSchemaValueMakerPairs, setScenarios())
 }
 
 func computedSetBlockAttributeFunc(_ context.Context, d *schema.ResourceData, _ interface{}) {
-	contract.Assertf(d.Get("test") != nil, "test attribute is nil")
-	testVals := d.Get("test").(*schema.Set).List()
+	contract.Assertf(d.Get("prop") != nil, "test attribute is nil")
+	testVals := d.Get("prop").(*schema.Set).List()
 	for _, v := range testVals {
 		val := v.(map[string]interface{})
 		if val["computed"] == nil {
@@ -307,18 +274,18 @@ func computedSetBlockAttributeFunc(_ context.Context, d *schema.ResourceData, _ 
 			val["computed"] = compVal
 		}
 	}
-	setHashFunc := d.Get("test").(*schema.Set).F
-	err := d.Set("test", schema.NewSet(setHashFunc, testVals))
+	setHashFunc := d.Get("prop").(*schema.Set).F
+	err := d.Set("prop", schema.NewSet(setHashFunc, testVals))
 	contract.Assertf(err == nil, "failed to set attribute: %v", err)
 }
 
 func computedSetBlockFunc(ctx context.Context, d *schema.ResourceData, i interface{}) {
-	if d.Get("test") == nil {
-		setHashFunc := d.Get("test").(*schema.Set).F
-		err := d.Set("test", schema.NewSet(setHashFunc, []interface{}{
+	if d.Get("prop") == nil {
+		setHashFunc := d.Get("prop").(*schema.Set).F
+		err := d.Set("prop", schema.NewSet(setHashFunc, []interface{}{
 			map[string]interface{}{
-				"nested":   "computed",
-				"computed": "computed1",
+				"nested_prop": "computed",
+				"computed":    "computed1",
 			},
 		}))
 		contract.Assertf(err == nil, "failed to set attribute: %v", err)
@@ -332,13 +299,13 @@ func TestSDKv2DetailedDiffSetComputedBlock(t *testing.T) {
 
 	blockSchemaComputed := schema.Resource{
 		Schema: map[string]*schema.Schema{
-			"test": {
+			"prop": {
 				Type:     schema.TypeSet,
 				Optional: true,
 				Computed: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"nested": {
+						"nested_prop": {
 							Type:     schema.TypeString,
 							Optional: true,
 						},
@@ -364,14 +331,14 @@ func TestSDKv2DetailedDiffSetComputedBlock(t *testing.T) {
 
 	blockSchemaComputedForceNew := schema.Resource{
 		Schema: map[string]*schema.Schema{
-			"test": {
+			"prop": {
 				Type:     schema.TypeSet,
 				Optional: true,
 				ForceNew: true,
 				Computed: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"nested": {
+						"nested_prop": {
 							Type:     schema.TypeString,
 							Optional: true,
 						},
@@ -397,13 +364,13 @@ func TestSDKv2DetailedDiffSetComputedBlock(t *testing.T) {
 
 	blockSchemaComputedNestedForceNew := schema.Resource{
 		Schema: map[string]*schema.Schema{
-			"test": {
+			"prop": {
 				Type:     schema.TypeSet,
 				Optional: true,
 				Computed: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"nested": {
+						"nested_prop": {
 							Type:     schema.TypeString,
 							Optional: true,
 							ForceNew: true,
@@ -428,7 +395,7 @@ func TestSDKv2DetailedDiffSetComputedBlock(t *testing.T) {
 		},
 	}
 
-	schemaValueMakerPairs := []setSchemaValueMakerPair{
+	schemaValueMakerPairs := []diffSchemaValueMakerPair[[]string]{
 		{"block with computed no replace", blockSchemaComputed, nestedListValueMaker},
 		{"block with computed no replace computed specified in program", blockSchemaComputed, nestedListValueMakerWithComputedSpecified},
 		{"block with computed force new", blockSchemaComputedForceNew, nestedListValueMaker},
@@ -437,14 +404,7 @@ func TestSDKv2DetailedDiffSetComputedBlock(t *testing.T) {
 		{"block with computed and nested force new computed specified in program", blockSchemaComputedNestedForceNew, nestedListValueMakerWithComputedSpecified},
 	}
 
-	for _, schemaValueMakerPair := range schemaValueMakerPairs {
-		t.Run(schemaValueMakerPair.name, func(t *testing.T) {
-			t.Parallel()
-			for _, scenario := range setScenarios() {
-				t.Run(scenario.name, runSetTest(schemaValueMakerPair.res, schemaValueMakerPair.valueMaker, scenario.initialValue, scenario.changeValue, false))
-			}
-		})
-	}
+	runSDKv2TestMatrix(t, schemaValueMakerPairs, setScenarios())
 }
 
 func TestSDKv2DetailedDiffSetNestedComputedBlock(t *testing.T) {
@@ -452,12 +412,12 @@ func TestSDKv2DetailedDiffSetNestedComputedBlock(t *testing.T) {
 
 	blockSchemaNestedComputed := schema.Resource{
 		Schema: map[string]*schema.Schema{
-			"test": {
+			"prop": {
 				Type:     schema.TypeSet,
 				Optional: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"nested": {
+						"nested_prop": {
 							Type:     schema.TypeString,
 							Optional: true,
 						},
@@ -472,13 +432,13 @@ func TestSDKv2DetailedDiffSetNestedComputedBlock(t *testing.T) {
 		},
 		CreateContext: func(ctx context.Context, d *schema.ResourceData, i interface{}) diag.Diagnostics {
 			d.SetId("id")
-			if d.Get("test") != nil {
+			if d.Get("prop") != nil {
 				computedSetBlockAttributeFunc(ctx, d, i)
 			}
 			return nil
 		},
 		UpdateContext: func(ctx context.Context, d *schema.ResourceData, i interface{}) diag.Diagnostics {
-			if d.Get("test") != nil {
+			if d.Get("prop") != nil {
 				computedSetBlockAttributeFunc(ctx, d, i)
 			}
 			return nil
@@ -487,13 +447,13 @@ func TestSDKv2DetailedDiffSetNestedComputedBlock(t *testing.T) {
 
 	blockSchemaNestedComputedForceNew := schema.Resource{
 		Schema: map[string]*schema.Schema{
-			"test": {
+			"prop": {
 				Type:     schema.TypeSet,
 				Optional: true,
 				ForceNew: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"nested": {
+						"nested_prop": {
 							Type:     schema.TypeString,
 							Optional: true,
 						},
@@ -508,13 +468,13 @@ func TestSDKv2DetailedDiffSetNestedComputedBlock(t *testing.T) {
 		},
 		CreateContext: func(ctx context.Context, d *schema.ResourceData, i interface{}) diag.Diagnostics {
 			d.SetId("id")
-			if d.Get("test") != nil {
+			if d.Get("prop") != nil {
 				computedSetBlockAttributeFunc(ctx, d, i)
 			}
 			return nil
 		},
 		UpdateContext: func(ctx context.Context, d *schema.ResourceData, i interface{}) diag.Diagnostics {
-			if d.Get("test") != nil {
+			if d.Get("prop") != nil {
 				computedSetBlockAttributeFunc(ctx, d, i)
 			}
 			return nil
@@ -523,12 +483,12 @@ func TestSDKv2DetailedDiffSetNestedComputedBlock(t *testing.T) {
 
 	blockSchemaNestedComputedNestedForceNew := schema.Resource{
 		Schema: map[string]*schema.Schema{
-			"test": {
+			"prop": {
 				Type:     schema.TypeSet,
 				Optional: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"nested": {
+						"nested_prop": {
 							Type:     schema.TypeString,
 							Optional: true,
 							ForceNew: true,
@@ -544,20 +504,20 @@ func TestSDKv2DetailedDiffSetNestedComputedBlock(t *testing.T) {
 		},
 		CreateContext: func(ctx context.Context, d *schema.ResourceData, i interface{}) diag.Diagnostics {
 			d.SetId("id")
-			if d.Get("test") != nil {
+			if d.Get("prop") != nil {
 				computedSetBlockAttributeFunc(ctx, d, i)
 			}
 			return nil
 		},
 		UpdateContext: func(ctx context.Context, d *schema.ResourceData, i interface{}) diag.Diagnostics {
-			if d.Get("test") != nil {
+			if d.Get("prop") != nil {
 				computedSetBlockAttributeFunc(ctx, d, i)
 			}
 			return nil
 		},
 	}
 
-	schemaValueMakerPairs := []setSchemaValueMakerPair{
+	schemaValueMakerPairs := []diffSchemaValueMakerPair[[]string]{
 		{"block with nested computed no replace", blockSchemaNestedComputed, nestedListValueMaker},
 		{"block with nested computed no replace computed specified in program", blockSchemaNestedComputed, nestedListValueMakerWithComputedSpecified},
 		{"block with nested computed and force new", blockSchemaNestedComputedForceNew, nestedListValueMaker},
@@ -566,14 +526,7 @@ func TestSDKv2DetailedDiffSetNestedComputedBlock(t *testing.T) {
 		{"block with nested computed and nested force new computed specified", blockSchemaNestedComputedNestedForceNew, nestedListValueMakerWithComputedSpecified},
 	}
 
-	for _, schemaValueMakerPair := range schemaValueMakerPairs {
-		t.Run(schemaValueMakerPair.name, func(t *testing.T) {
-			t.Parallel()
-			for _, scenario := range setScenarios() {
-				t.Run(scenario.name, runSetTest(schemaValueMakerPair.res, schemaValueMakerPair.valueMaker, scenario.initialValue, scenario.changeValue, false))
-			}
-		})
-	}
+	runSDKv2TestMatrix(t, schemaValueMakerPairs, setScenarios())
 }
 
 func TestSDKv2DetailedDiffSetBlockSensitive(t *testing.T) {
@@ -581,13 +534,13 @@ func TestSDKv2DetailedDiffSetBlockSensitive(t *testing.T) {
 
 	blockSchemaSensitive := schema.Resource{
 		Schema: map[string]*schema.Schema{
-			"test": {
+			"prop": {
 				Type:      schema.TypeSet,
 				Optional:  true,
 				Sensitive: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"nested": {
+						"nested_prop": {
 							Type:     schema.TypeString,
 							Optional: true,
 						},
@@ -599,12 +552,12 @@ func TestSDKv2DetailedDiffSetBlockSensitive(t *testing.T) {
 
 	blockSchemaNestedSensitive := schema.Resource{
 		Schema: map[string]*schema.Schema{
-			"test": {
+			"prop": {
 				Type:     schema.TypeSet,
 				Optional: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"nested": {
+						"nested_prop": {
 							Type:      schema.TypeString,
 							Optional:  true,
 							Sensitive: true,
@@ -615,17 +568,10 @@ func TestSDKv2DetailedDiffSetBlockSensitive(t *testing.T) {
 		},
 	}
 
-	setSchemaValueMakerPairs := []setSchemaValueMakerPair{
+	diffSchemaValueMakerPairs := []diffSchemaValueMakerPair[[]string]{
 		{"block sensitive", blockSchemaSensitive, nestedListValueMaker},
 		{"block nested sensitive", blockSchemaNestedSensitive, nestedListValueMaker},
 	}
 
-	for _, schemaValueMakerPair := range setSchemaValueMakerPairs {
-		t.Run(schemaValueMakerPair.name, func(t *testing.T) {
-			t.Parallel()
-			for _, scenario := range setScenarios() {
-				t.Run(scenario.name, runSetTest(schemaValueMakerPair.res, schemaValueMakerPair.valueMaker, scenario.initialValue, scenario.changeValue, false))
-			}
-		})
-	}
+	runSDKv2TestMatrix(t, diffSchemaValueMakerPairs, setScenarios())
 }

@@ -17,10 +17,12 @@ func ref[T any](v T) *T {
 	return &v
 }
 
+type valueMaker[T any] func(v *T) map[string]cty.Value
+
 type diffSchemaValueMakerPair[T any] struct {
 	name       string
 	schema     schema.Resource
-	valueMaker func(v *T) map[string]cty.Value
+	valueMaker valueMaker[T]
 }
 
 type diffScenario[T any] struct {
@@ -225,60 +227,74 @@ func generateBaseTests[T any](
 		}
 }
 
-func listValueMaker(arr *[]string) cty.Value {
+func listValueMaker(arr *[]string) map[string]cty.Value {
 	if arr == nil {
-		return cty.NullVal(cty.DynamicPseudoType)
+		return map[string]cty.Value{}
 	}
+
+	if len(*arr) == 0 {
+		return map[string]cty.Value{
+			"prop": cty.ListValEmpty(cty.String),
+		}
+	}
+
 	slice := make([]cty.Value, len(*arr))
 	for i, v := range *arr {
 		slice[i] = cty.StringVal(v)
 	}
-	if len(slice) == 0 {
-		return cty.ListValEmpty(cty.String)
+	return map[string]cty.Value{
+		"prop": cty.ListVal(slice),
 	}
-	return cty.ListVal(slice)
 }
 
-func nestedListValueMaker(arr *[]string) cty.Value {
-	if arr == nil {
-		return cty.NullVal(cty.DynamicPseudoType)
-	}
-	slice := make([]cty.Value, len(*arr))
-	for i, v := range *arr {
-		slice[i] = cty.ObjectVal(
-			map[string]cty.Value{
-				"nested": cty.StringVal(v),
-			},
-		)
-	}
-	if len(slice) == 0 {
-		return cty.ListValEmpty(cty.Object(map[string]cty.Type{"nested": cty.String}))
-	}
-	return cty.ListVal(slice)
-}
+var _ valueMaker[[]string] = listValueMaker
 
-func nestedListValueMakerWithComputedSpecified(arr *[]string) cty.Value {
+func nestedListValueMaker(arr *[]string) map[string]cty.Value {
 	if arr == nil {
-		return cty.NullVal(cty.DynamicPseudoType)
+		return map[string]cty.Value{}
+	}
+
+	if len(*arr) == 0 {
+		return map[string]cty.Value{
+			"prop": cty.ListValEmpty(cty.DynamicPseudoType),
+		}
 	}
 
 	slice := make([]cty.Value, len(*arr))
 	for i, v := range *arr {
-		slice[i] = cty.ObjectVal(
-			map[string]cty.Value{
-				"nested":   cty.StringVal(v),
-				"computed": cty.StringVal("non-computed-" + v),
-			},
-		)
+		slice[i] = cty.ObjectVal(map[string]cty.Value{"nested_prop": cty.StringVal(v)})
 	}
-	if len(slice) == 0 {
-		return cty.ListValEmpty(cty.Object(map[string]cty.Type{
-			"nested":   cty.String,
-			"computed": cty.String,
-		}))
+	return map[string]cty.Value{
+		"prop": cty.ListVal(slice),
 	}
-	return cty.ListVal(slice)
 }
+
+var _ valueMaker[[]string] = nestedListValueMaker
+
+func nestedListValueMakerWithComputedSpecified(arr *[]string) map[string]cty.Value {
+	if arr == nil {
+		return map[string]cty.Value{}
+	}
+
+	if len(*arr) == 0 {
+		return map[string]cty.Value{
+			"prop": cty.ListValEmpty(cty.DynamicPseudoType),
+		}
+	}
+
+	slice := make([]cty.Value, len(*arr))
+	for i, v := range *arr {
+		slice[i] = cty.ObjectVal(map[string]cty.Value{
+			"nested_prop": cty.StringVal(v),
+			"computed":    cty.StringVal("non-computed-" + v),
+		})
+	}
+	return map[string]cty.Value{
+		"prop": cty.ListVal(slice),
+	}
+}
+
+var _ valueMaker[[]string] = nestedListValueMakerWithComputedSpecified
 
 type testOutput struct {
 	initialValue any
