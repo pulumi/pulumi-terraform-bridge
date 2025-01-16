@@ -107,9 +107,9 @@ type translatedExample struct {
 
 // Get or create the cliConverter associated with the Generator.
 func (g *Generator) cliConverter() *cliConverter {
-	if g.cliConverterState != nil {
-		return g.cliConverterState
-	}
+	//if g.cliConverterState != nil {
+	//	return g.cliConverterState
+	//}
 	g.cliConverterState = &cliConverter{
 		generator:    g,
 		hcls:         map[string]struct{}{},
