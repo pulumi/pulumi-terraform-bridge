@@ -637,11 +637,26 @@ func (s *grpcServer) ApplyResourceChange(
 	if err != nil {
 		return nil, err
 	}
+
+	var providerMetaVal []byte
+	if providerMeta != nil {
+		providerMetaVal, err = msgpack.Marshal(*providerMeta, providerMeta.Type())
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		providerMetaVal, err = msgpack.Marshal(cty.NullVal(cty.EmptyObject), cty.EmptyObject)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	req := &tfprotov5.ApplyResourceChangeRequest{
 		TypeName:     typeName,
 		Config:       &tfprotov5.DynamicValue{MsgPack: configVal},
 		PriorState:   &tfprotov5.DynamicValue{MsgPack: priorStateVal},
 		PlannedState: &tfprotov5.DynamicValue{MsgPack: plannedStateVal},
+		ProviderMeta: &tfprotov5.DynamicValue{MsgPack: providerMetaVal},
 	}
 	if len(plannedMeta) > 0 {
 		plannedPrivate, err := json.Marshal(plannedMeta)
