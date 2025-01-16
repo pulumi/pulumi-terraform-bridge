@@ -294,6 +294,29 @@ func nestedListValueMakerWithComputedSpecified(arr *[]string) map[string]cty.Val
 	}
 }
 
+func nestedListValueMakerWithDefaultSpecified(arr *[]string) map[string]cty.Value {
+	if arr == nil {
+		return map[string]cty.Value{}
+	}
+
+	if len(*arr) == 0 {
+		return map[string]cty.Value{
+			"prop": cty.ListValEmpty(cty.DynamicPseudoType),
+		}
+	}
+
+	slice := make([]cty.Value, len(*arr))
+	for i, v := range *arr {
+		slice[i] = cty.ObjectVal(map[string]cty.Value{
+			"nested_prop": cty.StringVal(v),
+			"default":     cty.StringVal("non-default-" + v),
+		})
+	}
+	return map[string]cty.Value{
+		"prop": cty.ListVal(slice),
+	}
+}
+
 var _ valueMaker[[]string] = nestedListValueMakerWithComputedSpecified
 
 type testOutput struct {
