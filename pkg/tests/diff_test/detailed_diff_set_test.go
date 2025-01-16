@@ -6,11 +6,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hexops/autogold/v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/zclconf/go-cty/cty"
-
-	crosstests "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests"
 )
 
 func setScenarios() []diffScenario[[]string] {
@@ -64,31 +60,6 @@ func setScenarios() []diffScenario[[]string] {
 		{"two added and two removed shuffled, one overlaps", &[]string{"val1", "val2", "val3", "val4"}, &[]string{"val1", "val5", "val6", "val2"}},
 		{"two added and two removed shuffled, no overlaps", &[]string{"val1", "val2", "val3", "val4"}, &[]string{"val5", "val6", "val1", "val2"}},
 		{"two added and two removed shuffled, with duplicates", &[]string{"val1", "val2", "val3", "val4"}, &[]string{"val1", "val5", "val6", "val2", "val1", "val2"}},
-	}
-}
-
-func runSetTest(
-	schema schema.Resource, valueMaker func(*[]string) map[string]cty.Value, val1 *[]string, val2 *[]string,
-	disableAccurateBridgePreviews bool,
-) func(t *testing.T) {
-	return func(t *testing.T) {
-		t.Parallel()
-		initialValue := valueMaker(val1)
-		changeValue := valueMaker(val2)
-
-		opts := []crosstests.DiffOption{}
-		if disableAccurateBridgePreviews {
-			opts = append(opts, crosstests.DiffDisableAccurateBridgePreviews())
-		}
-		diff := crosstests.Diff(t, &schema, initialValue, changeValue, opts...)
-
-		autogold.ExpectFile(t, testOutput{
-			initialValue: val1,
-			changeValue:  val2,
-			tfOut:        diff.TFOut,
-			pulumiOut:    diff.PulumiOut,
-			detailedDiff: diff.PulumiDiff.DetailedDiff,
-		})
 	}
 }
 
