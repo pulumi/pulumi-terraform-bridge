@@ -1,0 +1,16 @@
+tests.testOutput{
+	initialValue: valast.Ptr(float64(1)),
+	changeValue:  valast.Ptr(float64(1)),
+	tfOut: `
+No changes. Your infrastructure matches the configuration.
+
+Terraform has compared your real infrastructure against your configuration
+and found no differences, so no changes are needed.
+`,
+	pulumiOut: `Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::project::pulumi:pulumi:Stack::project-test]
+Resources:
+    2 unchanged
+`,
+}

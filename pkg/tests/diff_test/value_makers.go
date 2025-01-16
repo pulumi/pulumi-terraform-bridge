@@ -182,6 +182,29 @@ func generateBaseTests[T any](
 		},
 	}
 
+	sensitiveSchema := schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"prop": {
+				Type:      typ,
+				Elem:      elem,
+				Optional:  true,
+				Sensitive: true,
+			},
+		},
+	}
+
+	sensitiveForceNewSchema := schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"prop": {
+				Type:      typ,
+				Elem:      elem,
+				Optional:  true,
+				Sensitive: true,
+				ForceNew:  true,
+			},
+		},
+	}
+
 	return []diffSchemaValueMakerPair[T]{
 			{"optional", optionalSchema, ctyVal},
 			{"optionalForceNew", optionalForceNewSchema, ctyVal},
@@ -191,6 +214,8 @@ func generateBaseTests[T any](
 			{"optionalComputedForceNew", optionalComputedForceNewSchema, ctyVal},
 			{"optionalDefault", optionalDefaultSchema, ctyVal},
 			{"optionalDefaultForceNew", optionalDefaultForceNewSchema, ctyVal},
+			{"sensitive", sensitiveSchema, ctyVal},
+			{"sensitiveForceNew", sensitiveForceNewSchema, ctyVal},
 		}, []diffScenario[T]{
 			{"unchanged empty", noValue, noValue},
 			{"unchanged non-empty", valueOne, valueOne},
