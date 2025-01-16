@@ -55,8 +55,8 @@ Terraform will perform the following actions:
 +/- resource "crossprovider_test_res" "example" {
       ~ id = "newid" -> (known after apply)
 
-      - list_block { # forces replacement
-          - prop = "value20" -> null
+      - prop { # forces replacement
+          - nested_prop = "value20" -> null
         }
 
         # (20 unchanged blocks hidden)
@@ -71,14 +71,14 @@ Plan: 1 to add, 0 to change, 1 to destroy.
     +-crossprovider:index/testRes:TestRes: (replace)
         [id=newid]
         [urn=urn:pulumi:test::project::crossprovider:index/testRes:TestRes::example]
-      ~ listBlocks: [
+      ~ props: [
           - [20]: {
-                  - prop: "value20"
+                  - nestedProp: "value20"
                 }
         ]
 Resources:
     +-1 to replace
     1 unchanged
 `,
-	detailedDiff: map[string]interface{}{"listBlocks[20]": map[string]interface{}{"kind": "DELETE_REPLACE"}},
+	detailedDiff: map[string]interface{}{"props[20]": map[string]interface{}{"kind": "DELETE_REPLACE"}},
 }

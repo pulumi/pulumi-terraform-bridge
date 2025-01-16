@@ -22,19 +22,19 @@ Terraform will perform the following actions:
   ~ resource "crossprovider_test_res" "example" {
         id = "newid"
 
-      - test {
+      - prop {
           # At least one attribute in this block is (or was) sensitive,
           # so its contents will not be displayed.
         }
-      - test {
+      - prop {
           # At least one attribute in this block is (or was) sensitive,
           # so its contents will not be displayed.
         }
-      + test {
+      + prop {
           # At least one attribute in this block is (or was) sensitive,
           # so its contents will not be displayed.
         }
-      + test {
+      + prop {
           # At least one attribute in this block is (or was) sensitive,
           # so its contents will not be displayed.
         }
@@ -51,12 +51,12 @@ Plan: 0 to add, 1 to change, 0 to destroy.
     ~ crossprovider:index/testRes:TestRes: (update)
         [id=newid]
         [urn=urn:pulumi:test::project::crossprovider:index/testRes:TestRes::example]
-      ~ tests: [
+      ~ props: [
           ~ [2]: {
-                  ~ nested: [secret] => [secret]
+                  ~ nestedProp: [secret] => [secret]
                 }
           ~ [3]: {
-                  ~ nested: [secret] => [secret]
+                  ~ nestedProp: [secret] => [secret]
                 }
         ]
 Resources:
@@ -64,7 +64,7 @@ Resources:
     1 unchanged
 `,
 	detailedDiff: map[string]interface{}{
-		"tests[2].nested": map[string]interface{}{"kind": "UPDATE"},
-		"tests[3].nested": map[string]interface{}{"kind": "UPDATE"},
+		"props[2].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"props[3].nestedProp": map[string]interface{}{"kind": "UPDATE"},
 	},
 }

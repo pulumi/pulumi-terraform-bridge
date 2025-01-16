@@ -47,36 +47,178 @@ tests.testOutput{
 	tfOut: `
 Terraform used the selected providers to generate the following execution
 plan. Resource actions are indicated with the following symbols:
-  ~ update in-place
++/- create replacement and then destroy
 
 Terraform will perform the following actions:
 
-  # crossprovider_test_res.example will be updated in-place
-  ~ resource "crossprovider_test_res" "example" {
-        id = "newid"
+  # crossprovider_test_res.example must be replaced
++/- resource "crossprovider_test_res" "example" {
+      ~ id = "newid" -> (known after apply)
 
-      - list_block {}
-
-        # (20 unchanged blocks hidden)
+      ~ prop {
+          ~ nested_prop = "value20" -> "value0" # forces replacement
+        }
+      ~ prop {
+          ~ nested_prop = "value0" -> "value1" # forces replacement
+        }
+      ~ prop {
+          ~ nested_prop = "value1" -> "value2" # forces replacement
+        }
+      ~ prop {
+          ~ nested_prop = "value2" -> "value3" # forces replacement
+        }
+      ~ prop {
+          ~ nested_prop = "value3" -> "value4" # forces replacement
+        }
+      ~ prop {
+          ~ nested_prop = "value4" -> "value5" # forces replacement
+        }
+      ~ prop {
+          ~ nested_prop = "value5" -> "value6" # forces replacement
+        }
+      ~ prop {
+          ~ nested_prop = "value6" -> "value7" # forces replacement
+        }
+      ~ prop {
+          ~ nested_prop = "value7" -> "value8" # forces replacement
+        }
+      ~ prop {
+          ~ nested_prop = "value8" -> "value9" # forces replacement
+        }
+      ~ prop {
+          ~ nested_prop = "value9" -> "value10" # forces replacement
+        }
+      ~ prop {
+          ~ nested_prop = "value10" -> "value11" # forces replacement
+        }
+      ~ prop {
+          ~ nested_prop = "value11" -> "value12" # forces replacement
+        }
+      ~ prop {
+          ~ nested_prop = "value12" -> "value13" # forces replacement
+        }
+      ~ prop {
+          ~ nested_prop = "value13" -> "value14" # forces replacement
+        }
+      ~ prop {
+          ~ nested_prop = "value14" -> "value15" # forces replacement
+        }
+      ~ prop {
+          ~ nested_prop = "value15" -> "value16" # forces replacement
+        }
+      ~ prop {
+          ~ nested_prop = "value16" -> "value17" # forces replacement
+        }
+      ~ prop {
+          ~ nested_prop = "value17" -> "value18" # forces replacement
+        }
+      ~ prop {
+          ~ nested_prop = "value18" -> "value19" # forces replacement
+        }
+      - prop {
+          - nested_prop = "value19" -> null # forces replacement
+        }
     }
 
-Plan: 0 to add, 1 to change, 0 to destroy.
+Plan: 1 to add, 0 to change, 1 to destroy.
 
 `,
 	pulumiOut: `Previewing update (test):
   pulumi:pulumi:Stack: (same)
     [urn=urn:pulumi:test::project::pulumi:pulumi:Stack::project-test]
-    ~ crossprovider:index/testRes:TestRes: (update)
+    +-crossprovider:index/testRes:TestRes: (replace)
         [id=newid]
         [urn=urn:pulumi:test::project::crossprovider:index/testRes:TestRes::example]
-      ~ listBlocks: [
+      ~ props: [
+          ~ [0]: {
+                  ~ nestedProp: "value20" => "value0"
+                }
+          ~ [1]: {
+                  ~ nestedProp: "value0" => "value1"
+                }
+          ~ [2]: {
+                  ~ nestedProp: "value1" => "value2"
+                }
+          ~ [3]: {
+                  ~ nestedProp: "value2" => "value3"
+                }
+          ~ [4]: {
+                  ~ nestedProp: "value3" => "value4"
+                }
+          ~ [5]: {
+                  ~ nestedProp: "value4" => "value5"
+                }
+          ~ [6]: {
+                  ~ nestedProp: "value5" => "value6"
+                }
+          ~ [7]: {
+                  ~ nestedProp: "value6" => "value7"
+                }
+          ~ [8]: {
+                  ~ nestedProp: "value7" => "value8"
+                }
+          ~ [9]: {
+                  ~ nestedProp: "value8" => "value9"
+                }
+          ~ [10]: {
+                  ~ nestedProp: "value9" => "value10"
+                }
+          ~ [11]: {
+                  ~ nestedProp: "value10" => "value11"
+                }
+          ~ [12]: {
+                  ~ nestedProp: "value11" => "value12"
+                }
+          ~ [13]: {
+                  ~ nestedProp: "value12" => "value13"
+                }
+          ~ [14]: {
+                  ~ nestedProp: "value13" => "value14"
+                }
+          ~ [15]: {
+                  ~ nestedProp: "value14" => "value15"
+                }
+          ~ [16]: {
+                  ~ nestedProp: "value15" => "value16"
+                }
+          ~ [17]: {
+                  ~ nestedProp: "value16" => "value17"
+                }
+          ~ [18]: {
+                  ~ nestedProp: "value17" => "value18"
+                }
+          ~ [19]: {
+                  ~ nestedProp: "value18" => "value19"
+                }
           - [20]: {
-                  - nestedProp: <null>
+                  - nestedProp: "value19"
                 }
         ]
 Resources:
-    ~ 1 to update
+    +-1 to replace
     1 unchanged
 `,
-	detailedDiff: map[string]interface{}{"listBlocks[20]": map[string]interface{}{"kind": "DELETE"}},
+	detailedDiff: map[string]interface{}{
+		"props[0].nestedProp":  map[string]interface{}{"kind": "UPDATE_REPLACE"},
+		"props[10].nestedProp": map[string]interface{}{"kind": "UPDATE_REPLACE"},
+		"props[11].nestedProp": map[string]interface{}{"kind": "UPDATE_REPLACE"},
+		"props[12].nestedProp": map[string]interface{}{"kind": "UPDATE_REPLACE"},
+		"props[13].nestedProp": map[string]interface{}{"kind": "UPDATE_REPLACE"},
+		"props[14].nestedProp": map[string]interface{}{"kind": "UPDATE_REPLACE"},
+		"props[15].nestedProp": map[string]interface{}{"kind": "UPDATE_REPLACE"},
+		"props[16].nestedProp": map[string]interface{}{"kind": "UPDATE_REPLACE"},
+		"props[17].nestedProp": map[string]interface{}{"kind": "UPDATE_REPLACE"},
+		"props[18].nestedProp": map[string]interface{}{"kind": "UPDATE_REPLACE"},
+		"props[19].nestedProp": map[string]interface{}{"kind": "UPDATE_REPLACE"},
+		"props[1].nestedProp":  map[string]interface{}{"kind": "UPDATE_REPLACE"},
+		"props[20]":            map[string]interface{}{"kind": "DELETE_REPLACE"},
+		"props[2].nestedProp":  map[string]interface{}{"kind": "UPDATE_REPLACE"},
+		"props[3].nestedProp":  map[string]interface{}{"kind": "UPDATE_REPLACE"},
+		"props[4].nestedProp":  map[string]interface{}{"kind": "UPDATE_REPLACE"},
+		"props[5].nestedProp":  map[string]interface{}{"kind": "UPDATE_REPLACE"},
+		"props[6].nestedProp":  map[string]interface{}{"kind": "UPDATE_REPLACE"},
+		"props[7].nestedProp":  map[string]interface{}{"kind": "UPDATE_REPLACE"},
+		"props[8].nestedProp":  map[string]interface{}{"kind": "UPDATE_REPLACE"},
+		"props[9].nestedProp":  map[string]interface{}{"kind": "UPDATE_REPLACE"},
+	},
 }

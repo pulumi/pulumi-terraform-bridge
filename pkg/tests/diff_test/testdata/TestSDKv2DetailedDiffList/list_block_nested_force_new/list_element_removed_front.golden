@@ -5,42 +5,58 @@ tests.testOutput{
 		"val3",
 	},
 	changeValue: &[]string{
-		"val3",
 		"val2",
+		"val3",
 	},
 	tfOut: `
 Terraform used the selected providers to generate the following execution
 plan. Resource actions are indicated with the following symbols:
-  ~ update in-place
++/- create replacement and then destroy
 
 Terraform will perform the following actions:
 
-  # crossprovider_test_res.example will be updated in-place
-  ~ resource "crossprovider_test_res" "example" {
-        id = "newid"
+  # crossprovider_test_res.example must be replaced
++/- resource "crossprovider_test_res" "example" {
+      ~ id = "newid" -> (known after apply)
 
-      - list_block {}
-
-        # (2 unchanged blocks hidden)
+      ~ prop {
+          ~ nested_prop = "val1" -> "val2" # forces replacement
+        }
+      ~ prop {
+          ~ nested_prop = "val2" -> "val3" # forces replacement
+        }
+      - prop {
+          - nested_prop = "val3" -> null # forces replacement
+        }
     }
 
-Plan: 0 to add, 1 to change, 0 to destroy.
+Plan: 1 to add, 0 to change, 1 to destroy.
 
 `,
 	pulumiOut: `Previewing update (test):
   pulumi:pulumi:Stack: (same)
     [urn=urn:pulumi:test::project::pulumi:pulumi:Stack::project-test]
-    ~ crossprovider:index/testRes:TestRes: (update)
+    +-crossprovider:index/testRes:TestRes: (replace)
         [id=newid]
         [urn=urn:pulumi:test::project::crossprovider:index/testRes:TestRes::example]
-      ~ listBlocks: [
+      ~ props: [
+          ~ [0]: {
+                  ~ nestedProp: "val1" => "val2"
+                }
+          ~ [1]: {
+                  ~ nestedProp: "val2" => "val3"
+                }
           - [2]: {
-                  - nestedProp: <null>
+                  - nestedProp: "val3"
                 }
         ]
 Resources:
-    ~ 1 to update
+    +-1 to replace
     1 unchanged
 `,
-	detailedDiff: map[string]interface{}{"listBlocks[2]": map[string]interface{}{"kind": "DELETE"}},
+	detailedDiff: map[string]interface{}{
+		"props[0].nestedProp": map[string]interface{}{"kind": "UPDATE_REPLACE"},
+		"props[1].nestedProp": map[string]interface{}{"kind": "UPDATE_REPLACE"},
+		"props[2]":            map[string]interface{}{"kind": "DELETE_REPLACE"},
+	},
 }

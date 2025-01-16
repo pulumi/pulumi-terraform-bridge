@@ -20,13 +20,13 @@ Terraform will perform the following actions:
   ~ resource "crossprovider_test_res" "example" {
         id = "newid"
 
-      ~ list_block {
+      ~ prop {
           ~ nested_prop = (sensitive value)
         }
-      ~ list_block {
+      ~ prop {
           ~ nested_prop = (sensitive value)
         }
-      ~ list_block {
+      ~ prop {
           ~ nested_prop = (sensitive value)
         }
     }
@@ -40,7 +40,7 @@ Plan: 0 to add, 1 to change, 0 to destroy.
     ~ crossprovider:index/testRes:TestRes: (update)
         [id=newid]
         [urn=urn:pulumi:test::project::crossprovider:index/testRes:TestRes::example]
-      ~ listBlocks: [
+      ~ props: [
           ~ [0]: {
                   ~ nestedProp: [secret] => [secret]
                 }
@@ -56,8 +56,8 @@ Resources:
     1 unchanged
 `,
 	detailedDiff: map[string]interface{}{
-		"listBlocks[0].nestedProp": map[string]interface{}{"kind": "UPDATE"},
-		"listBlocks[1].nestedProp": map[string]interface{}{"kind": "UPDATE"},
-		"listBlocks[2].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"props[0].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"props[1].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"props[2].nestedProp": map[string]interface{}{"kind": "UPDATE"},
 	},
 }

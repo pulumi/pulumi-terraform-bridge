@@ -11,8 +11,8 @@ Terraform will perform the following actions:
 
   # crossprovider_test_res.example will be updated in-place
   ~ resource "crossprovider_test_res" "example" {
-        id        = "newid"
-      + list_attr = [
+        id   = "newid"
+      + prop = [
           + "val1",
         ]
     }
@@ -26,10 +26,10 @@ Plan: 0 to add, 1 to change, 0 to destroy.
     ~ crossprovider:index/testRes:TestRes: (update)
         [id=newid]
         [urn=urn:pulumi:test::project::crossprovider:index/testRes:TestRes::example]
-      + listAttr: "val1"
+      + prop: "val1"
 Resources:
     ~ 1 to update
     1 unchanged
 `,
-	detailedDiff: map[string]interface{}{"listAttr": map[string]interface{}{}},
+	detailedDiff: map[string]interface{}{"prop": map[string]interface{}{}},
 }

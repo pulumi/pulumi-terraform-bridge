@@ -5,10 +5,6 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hexops/autogold/v2"
-	"github.com/zclconf/go-cty/cty"
-
-	crosstests "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests"
 )
 
 func TestSDKv2DetailedDiffList(t *testing.T) {
@@ -16,7 +12,7 @@ func TestSDKv2DetailedDiffList(t *testing.T) {
 
 	listAttrSchema := schema.Resource{
 		Schema: map[string]*schema.Schema{
-			"list_attr": {
+			"prop": {
 				Type:     schema.TypeList,
 				Optional: true,
 				Elem:     &schema.Schema{Type: schema.TypeString},
@@ -26,7 +22,7 @@ func TestSDKv2DetailedDiffList(t *testing.T) {
 
 	listAttrSchemaForceNew := schema.Resource{
 		Schema: map[string]*schema.Schema{
-			"list_attr": {
+			"prop": {
 				Type:     schema.TypeList,
 				Optional: true,
 				Elem:     &schema.Schema{Type: schema.TypeString},
@@ -37,7 +33,7 @@ func TestSDKv2DetailedDiffList(t *testing.T) {
 
 	maxItemsOneAttrSchema := schema.Resource{
 		Schema: map[string]*schema.Schema{
-			"list_attr": {
+			"prop": {
 				Type:     schema.TypeList,
 				Optional: true,
 				MaxItems: 1,
@@ -48,7 +44,7 @@ func TestSDKv2DetailedDiffList(t *testing.T) {
 
 	maxItemsOneAttrSchemaForceNew := schema.Resource{
 		Schema: map[string]*schema.Schema{
-			"list_attr": {
+			"prop": {
 				Type:     schema.TypeList,
 				Optional: true,
 				MaxItems: 1,
@@ -60,12 +56,12 @@ func TestSDKv2DetailedDiffList(t *testing.T) {
 
 	listBlockSchema := schema.Resource{
 		Schema: map[string]*schema.Schema{
-			"list_block": {
+			"prop": {
 				Type:     schema.TypeList,
 				Optional: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"prop": {
+						"nested_prop": {
 							Type:     schema.TypeString,
 							Optional: true,
 						},
@@ -77,13 +73,13 @@ func TestSDKv2DetailedDiffList(t *testing.T) {
 
 	listBlockSchemaForceNew := schema.Resource{
 		Schema: map[string]*schema.Schema{
-			"list_block": {
+			"prop": {
 				Type:     schema.TypeList,
 				Optional: true,
 				ForceNew: true,
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
-						"prop": {
+						"nested_prop": {
 							Type:     schema.TypeString,
 							Optional: true,
 						},
@@ -95,7 +91,7 @@ func TestSDKv2DetailedDiffList(t *testing.T) {
 
 	listBlockSchemaNestedForceNew := schema.Resource{
 		Schema: map[string]*schema.Schema{
-			"list_block": {
+			"prop": {
 				Type:     schema.TypeList,
 				Optional: true,
 				Elem: &schema.Resource{
@@ -113,7 +109,7 @@ func TestSDKv2DetailedDiffList(t *testing.T) {
 
 	maxItemsOneBlockSchema := schema.Resource{
 		Schema: map[string]*schema.Schema{
-			"list_block": {
+			"prop": {
 				Type:     schema.TypeList,
 				Optional: true,
 				MaxItems: 1,
@@ -131,7 +127,7 @@ func TestSDKv2DetailedDiffList(t *testing.T) {
 
 	maxItemsOneBlockSchemaForceNew := schema.Resource{
 		Schema: map[string]*schema.Schema{
-			"list_block": {
+			"prop": {
 				Type:     schema.TypeList,
 				Optional: true,
 				MaxItems: 1,
@@ -150,7 +146,7 @@ func TestSDKv2DetailedDiffList(t *testing.T) {
 
 	maxItemsOneBlockSchemaNestedForceNew := schema.Resource{
 		Schema: map[string]*schema.Schema{
-			"list_block": {
+			"prop": {
 				Type:     schema.TypeList,
 				Optional: true,
 				MaxItems: 1,
@@ -169,7 +165,7 @@ func TestSDKv2DetailedDiffList(t *testing.T) {
 
 	listBlockSchemaSensitive := schema.Resource{
 		Schema: map[string]*schema.Schema{
-			"list_block": {
+			"prop": {
 				Type:      schema.TypeList,
 				Optional:  true,
 				Sensitive: true,
@@ -187,7 +183,7 @@ func TestSDKv2DetailedDiffList(t *testing.T) {
 
 	listBlockSchemaNestedSensitive := schema.Resource{
 		Schema: map[string]*schema.Schema{
-			"list_block": {
+			"prop": {
 				Type:     schema.TypeList,
 				Optional: true,
 				Elem: &schema.Resource{
@@ -203,97 +199,25 @@ func TestSDKv2DetailedDiffList(t *testing.T) {
 		},
 	}
 
-	attrList := func(arr *[]string) map[string]cty.Value {
-		if arr == nil {
-			return map[string]cty.Value{}
-		}
-
-		if len(*arr) == 0 {
-			return map[string]cty.Value{
-				"list_attr": cty.ListValEmpty(cty.String),
-			}
-		}
-
-		slice := make([]cty.Value, len(*arr))
-		for i, v := range *arr {
-			slice[i] = cty.StringVal(v)
-		}
-		return map[string]cty.Value{
-			"list_attr": cty.ListVal(slice),
-		}
+	listPairs := []diffSchemaValueMakerPair[[]string]{
+		{"list attribute", listAttrSchema, listValueMaker},
+		{"list attribute force new", listAttrSchemaForceNew, listValueMaker},
+		{"list block", listBlockSchema, nestedListValueMaker},
+		{"list block force new", listBlockSchemaForceNew, nestedListValueMaker},
+		{"list block nested force new", listBlockSchemaNestedForceNew, nestedListValueMaker},
+		{"list block sensitive", listBlockSchemaSensitive, nestedListValueMaker},
+		{"list block nested sensitive", listBlockSchemaNestedSensitive, nestedListValueMaker},
 	}
 
-	blockList := func(arr *[]string) map[string]cty.Value {
-		if arr == nil {
-			return map[string]cty.Value{}
-		}
-
-		if len(*arr) == 0 {
-			return map[string]cty.Value{
-				"list_block": cty.ListValEmpty(cty.DynamicPseudoType),
-			}
-		}
-
-		slice := make([]cty.Value, len(*arr))
-		for i, v := range *arr {
-			slice[i] = cty.ObjectVal(map[string]cty.Value{"prop": cty.StringVal(v)})
-		}
-		return map[string]cty.Value{
-			"list_block": cty.ListVal(slice),
-		}
+	maxItemsOnePairs := []diffSchemaValueMakerPair[[]string]{
+		{"max items one attribute", maxItemsOneAttrSchema, listValueMaker},
+		{"max items one attribute force new", maxItemsOneAttrSchemaForceNew, listValueMaker},
+		{"max items one block", maxItemsOneBlockSchema, nestedListValueMaker},
+		{"max items one block force new", maxItemsOneBlockSchemaForceNew, nestedListValueMaker},
+		{"max items one block nested force new", maxItemsOneBlockSchemaNestedForceNew, nestedListValueMaker},
 	}
 
-	nestedBlockList := func(arr *[]string) map[string]cty.Value {
-		if arr == nil {
-			return map[string]cty.Value{}
-		}
-
-		if len(*arr) == 0 {
-			return map[string]cty.Value{
-				"list_block": cty.ListValEmpty(cty.DynamicPseudoType),
-			}
-		}
-
-		slice := make([]cty.Value, len(*arr))
-		for i, v := range *arr {
-			slice[i] = cty.ObjectVal(map[string]cty.Value{"nested_prop": cty.StringVal(v)})
-		}
-		return map[string]cty.Value{
-			"list_block": cty.ListVal(slice),
-		}
-	}
-
-	listPairs := []struct {
-		name       string
-		schema     schema.Resource
-		valueMaker func(*[]string) map[string]cty.Value
-	}{
-		{"list attribute", listAttrSchema, attrList},
-		{"list attribute force new", listAttrSchemaForceNew, attrList},
-		{"list block", listBlockSchema, blockList},
-		{"list block force new", listBlockSchemaForceNew, blockList},
-		{"list block nested force new", listBlockSchemaNestedForceNew, blockList},
-		{"list block sensitive", listBlockSchemaSensitive, blockList},
-		{"list block nested sensitive", listBlockSchemaNestedSensitive, nestedBlockList},
-	}
-
-	maxItemsOnePairs := []struct {
-		name       string
-		schema     schema.Resource
-		valueMaker func(*[]string) map[string]cty.Value
-	}{
-		{"max items one attribute", maxItemsOneAttrSchema, attrList},
-		{"max items one attribute force new", maxItemsOneAttrSchemaForceNew, attrList},
-		{"max items one block", maxItemsOneBlockSchema, nestedBlockList},
-		{"max items one block force new", maxItemsOneBlockSchemaForceNew, nestedBlockList},
-		{"max items one block nested force new", maxItemsOneBlockSchemaNestedForceNew, nestedBlockList},
-	}
-
-	oneElementScenarios := []struct {
-		name         string
-		initialValue *[]string
-		changeValue  *[]string
-	}{
+	oneElementScenarios := []diffScenario[[]string]{
 		{"unchanged empty", nil, nil},
 		{"unchanged non-empty", ref([]string{"val1"}), ref([]string{"val1"})},
 		{"added non-empty", nil, ref([]string{"val1"})},
@@ -311,17 +235,13 @@ func TestSDKv2DetailedDiffList(t *testing.T) {
 	longListAddedBack = append(longListAddedBack, "value20")
 	longListAddedFront := append([]string{"value20"}, *longList...)
 
-	multiElementScenarios := []struct {
-		name         string
-		initialValue *[]string
-		changeValue  *[]string
-	}{
+	multiElementScenarios := []diffScenario[[]string]{
 		{"list element added front", ref([]string{"val2", "val3"}), ref([]string{"val1", "val2", "val3"})},
 		{"list element added back", ref([]string{"val1", "val2"}), ref([]string{"val1", "val2", "val3"})},
 		{"list element added middle", ref([]string{"val1", "val3"}), ref([]string{"val1", "val2", "val3"})},
-		{"list element removed front", ref([]string{"val1", "val2", "val3"}), ref([]string{"val3", "val2"})},
-		{"list element removed middle", ref([]string{"val1", "val2", "val3"}), ref([]string{"val3", "val1"})},
-		{"list element removed end", ref([]string{"val1", "val2", "val3"}), ref([]string{"val2", "val1"})},
+		{"list element removed front", ref([]string{"val1", "val2", "val3"}), ref([]string{"val2", "val3"})},
+		{"list element removed middle", ref([]string{"val1", "val2", "val3"}), ref([]string{"val1", "val3"})},
+		{"list element removed end", ref([]string{"val1", "val2", "val3"}), ref([]string{"val1", "val2"})},
 		{"one added, one removed", ref([]string{"val1", "val2", "val3"}), ref([]string{"val2", "val3", "val4"})},
 		{"long list added back", longList, &longListAddedBack},
 		// TODO[pulumi/pulumi-terraform-bridge#2239]: These cases present as multiple changes instead of just one
@@ -332,38 +252,6 @@ func TestSDKv2DetailedDiffList(t *testing.T) {
 
 	scenarios := append(oneElementScenarios, multiElementScenarios...)
 
-	runTest := func(t *testing.T, schema schema.Resource, valueMaker func(*[]string) map[string]cty.Value, initialValue *[]string, changeValue *[]string) {
-		diff := crosstests.Diff(t, &schema, valueMaker(initialValue), valueMaker(changeValue))
-		autogold.ExpectFile(t, testOutput{
-			initialValue: initialValue,
-			changeValue:  changeValue,
-			tfOut:        diff.TFOut,
-			pulumiOut:    diff.PulumiOut,
-			detailedDiff: diff.PulumiDiff.DetailedDiff,
-		})
-	}
-
-	for _, schemaValueMakerPair := range listPairs {
-		t.Run(schemaValueMakerPair.name, func(t *testing.T) {
-			t.Parallel()
-			for _, scenario := range scenarios {
-				t.Run(scenario.name, func(t *testing.T) {
-					t.Parallel()
-					runTest(t, schemaValueMakerPair.schema, schemaValueMakerPair.valueMaker, scenario.initialValue, scenario.changeValue)
-				})
-			}
-		})
-	}
-
-	for _, schemaValueMakerPair := range maxItemsOnePairs {
-		t.Run(schemaValueMakerPair.name, func(t *testing.T) {
-			t.Parallel()
-			for _, scenario := range oneElementScenarios {
-				t.Run(scenario.name, func(t *testing.T) {
-					t.Parallel()
-					runTest(t, schemaValueMakerPair.schema, schemaValueMakerPair.valueMaker, scenario.initialValue, scenario.changeValue)
-				})
-			}
-		})
-	}
+	runSDKv2TestMatrix(t, listPairs, scenarios)
+	runSDKv2TestMatrix(t, maxItemsOnePairs, oneElementScenarios)
 }

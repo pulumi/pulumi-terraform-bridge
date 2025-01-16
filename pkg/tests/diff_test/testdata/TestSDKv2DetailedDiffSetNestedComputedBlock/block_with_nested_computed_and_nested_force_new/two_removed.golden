@@ -20,29 +20,29 @@ Terraform will perform the following actions:
 +/- resource "crossprovider_test_res" "example" {
       ~ id = "id" -> (known after apply)
 
-      - test { # forces replacement
-          - nested   = "val1" -> null
+      - prop { # forces replacement
+          - nested_prop = "val1" -> null
             # (1 unchanged attribute hidden)
         }
-      - test { # forces replacement
-          - nested   = "val2" -> null
+      - prop { # forces replacement
+          - nested_prop = "val2" -> null
             # (1 unchanged attribute hidden)
         }
-      - test { # forces replacement
-          - nested   = "val3" -> null
+      - prop { # forces replacement
+          - nested_prop = "val3" -> null
             # (1 unchanged attribute hidden)
         }
-      - test { # forces replacement
-          - nested   = "val4" -> null
+      - prop { # forces replacement
+          - nested_prop = "val4" -> null
             # (1 unchanged attribute hidden)
         }
-      + test { # forces replacement
-          + computed = (known after apply)
-          + nested   = "val1"
+      + prop { # forces replacement
+          + computed    = (known after apply)
+          + nested_prop = "val1"
         }
-      + test { # forces replacement
-          + computed = (known after apply)
-          + nested   = "val2"
+      + prop { # forces replacement
+          + computed    = (known after apply)
+          + nested_prop = "val2"
         }
     }
 
@@ -55,18 +55,18 @@ Plan: 1 to add, 0 to change, 1 to destroy.
     +-crossprovider:index/testRes:TestRes: (replace)
         [id=id]
         [urn=urn:pulumi:test::project::crossprovider:index/testRes:TestRes::example]
-      ~ tests: [
+      ~ props: [
           ~ [0]: {
                 }
           ~ [1]: {
                 }
           - [2]: {
-                  - computed: ""
-                  - nested  : "val3"
+                  - computed  : ""
+                  - nestedProp: "val3"
                 }
           - [3]: {
-                  - computed: ""
-                  - nested  : "val4"
+                  - computed  : ""
+                  - nestedProp: "val4"
                 }
         ]
 Resources:
@@ -74,9 +74,9 @@ Resources:
     1 unchanged
 `,
 	detailedDiff: map[string]interface{}{
-		"tests[0].computed": map[string]interface{}{"kind": "UPDATE"},
-		"tests[1].computed": map[string]interface{}{"kind": "UPDATE"},
-		"tests[2]":          map[string]interface{}{"kind": "DELETE_REPLACE"},
-		"tests[3]":          map[string]interface{}{"kind": "DELETE_REPLACE"},
+		"props[0].computed": map[string]interface{}{"kind": "UPDATE"},
+		"props[1].computed": map[string]interface{}{"kind": "UPDATE"},
+		"props[2]":          map[string]interface{}{"kind": "DELETE_REPLACE"},
+		"props[3]":          map[string]interface{}{"kind": "DELETE_REPLACE"},
 	},
 }

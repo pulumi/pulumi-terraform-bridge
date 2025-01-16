@@ -19,7 +19,7 @@ Terraform will perform the following actions:
   # crossprovider_test_res.example must be replaced
 +/- resource "crossprovider_test_res" "example" {
       ~ id   = "newid" -> (known after apply)
-      ~ test = [ # forces replacement
+      ~ prop = [ # forces replacement
           - "val3",
           + "val4",
             # (2 unchanged elements hidden)
@@ -35,7 +35,7 @@ Plan: 1 to add, 0 to change, 1 to destroy.
     +-crossprovider:index/testRes:TestRes: (replace)
         [id=newid]
         [urn=urn:pulumi:test::project::crossprovider:index/testRes:TestRes::example]
-      ~ tests: [
+      ~ props: [
           + [1]: "val4"
           - [2]: "val3"
         ]
@@ -44,7 +44,7 @@ Resources:
     1 unchanged
 `,
 	detailedDiff: map[string]interface{}{
-		"tests[1]": map[string]interface{}{"kind": "ADD_REPLACE"},
-		"tests[2]": map[string]interface{}{"kind": "DELETE_REPLACE"},
+		"props[1]": map[string]interface{}{"kind": "ADD_REPLACE"},
+		"props[2]": map[string]interface{}{"kind": "DELETE_REPLACE"},
 	},
 }
