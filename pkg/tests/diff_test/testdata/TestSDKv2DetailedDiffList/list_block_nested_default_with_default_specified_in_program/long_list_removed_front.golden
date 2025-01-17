@@ -1,0 +1,286 @@
+tests.testOutput{
+	initialValue: &[]string{
+		"value20",
+		"value0",
+		"value1",
+		"value2",
+		"value3",
+		"value4",
+		"value5",
+		"value6",
+		"value7",
+		"value8",
+		"value9",
+		"value10",
+		"value11",
+		"value12",
+		"value13",
+		"value14",
+		"value15",
+		"value16",
+		"value17",
+		"value18",
+		"value19",
+	},
+	changeValue: &[]string{
+		"value0",
+		"value1",
+		"value2",
+		"value3",
+		"value4",
+		"value5",
+		"value6",
+		"value7",
+		"value8",
+		"value9",
+		"value10",
+		"value11",
+		"value12",
+		"value13",
+		"value14",
+		"value15",
+		"value16",
+		"value17",
+		"value18",
+		"value19",
+	},
+	tfOut: `
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  ~ update in-place
+
+Terraform will perform the following actions:
+
+  # crossprovider_test_res.example will be updated in-place
+  ~ resource "crossprovider_test_res" "example" {
+        id = "newid"
+
+      ~ prop {
+          ~ default     = "non-default-value20" -> "non-default-value0"
+          ~ nested_prop = "value20" -> "value0"
+        }
+      ~ prop {
+          ~ default     = "non-default-value0" -> "non-default-value1"
+          ~ nested_prop = "value0" -> "value1"
+        }
+      ~ prop {
+          ~ default     = "non-default-value1" -> "non-default-value2"
+          ~ nested_prop = "value1" -> "value2"
+        }
+      ~ prop {
+          ~ default     = "non-default-value2" -> "non-default-value3"
+          ~ nested_prop = "value2" -> "value3"
+        }
+      ~ prop {
+          ~ default     = "non-default-value3" -> "non-default-value4"
+          ~ nested_prop = "value3" -> "value4"
+        }
+      ~ prop {
+          ~ default     = "non-default-value4" -> "non-default-value5"
+          ~ nested_prop = "value4" -> "value5"
+        }
+      ~ prop {
+          ~ default     = "non-default-value5" -> "non-default-value6"
+          ~ nested_prop = "value5" -> "value6"
+        }
+      ~ prop {
+          ~ default     = "non-default-value6" -> "non-default-value7"
+          ~ nested_prop = "value6" -> "value7"
+        }
+      ~ prop {
+          ~ default     = "non-default-value7" -> "non-default-value8"
+          ~ nested_prop = "value7" -> "value8"
+        }
+      ~ prop {
+          ~ default     = "non-default-value8" -> "non-default-value9"
+          ~ nested_prop = "value8" -> "value9"
+        }
+      ~ prop {
+          ~ default     = "non-default-value9" -> "non-default-value10"
+          ~ nested_prop = "value9" -> "value10"
+        }
+      ~ prop {
+          ~ default     = "non-default-value10" -> "non-default-value11"
+          ~ nested_prop = "value10" -> "value11"
+        }
+      ~ prop {
+          ~ default     = "non-default-value11" -> "non-default-value12"
+          ~ nested_prop = "value11" -> "value12"
+        }
+      ~ prop {
+          ~ default     = "non-default-value12" -> "non-default-value13"
+          ~ nested_prop = "value12" -> "value13"
+        }
+      ~ prop {
+          ~ default     = "non-default-value13" -> "non-default-value14"
+          ~ nested_prop = "value13" -> "value14"
+        }
+      ~ prop {
+          ~ default     = "non-default-value14" -> "non-default-value15"
+          ~ nested_prop = "value14" -> "value15"
+        }
+      ~ prop {
+          ~ default     = "non-default-value15" -> "non-default-value16"
+          ~ nested_prop = "value15" -> "value16"
+        }
+      ~ prop {
+          ~ default     = "non-default-value16" -> "non-default-value17"
+          ~ nested_prop = "value16" -> "value17"
+        }
+      ~ prop {
+          ~ default     = "non-default-value17" -> "non-default-value18"
+          ~ nested_prop = "value17" -> "value18"
+        }
+      ~ prop {
+          ~ default     = "non-default-value18" -> "non-default-value19"
+          ~ nested_prop = "value18" -> "value19"
+        }
+      - prop {
+          - default     = "non-default-value19" -> null
+          - nested_prop = "value19" -> null
+        }
+    }
+
+Plan: 0 to add, 1 to change, 0 to destroy.
+
+`,
+	pulumiOut: `Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::project::pulumi:pulumi:Stack::project-test]
+    ~ crossprovider:index/testRes:TestRes: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::project::crossprovider:index/testRes:TestRes::example]
+      ~ props: [
+          ~ [0]: {
+                  ~ default   : "non-default-value20" => "non-default-value0"
+                  ~ nestedProp: "value20" => "value0"
+                }
+          ~ [1]: {
+                  ~ default   : "non-default-value0" => "non-default-value1"
+                  ~ nestedProp: "value0" => "value1"
+                }
+          ~ [2]: {
+                  ~ default   : "non-default-value1" => "non-default-value2"
+                  ~ nestedProp: "value1" => "value2"
+                }
+          ~ [3]: {
+                  ~ default   : "non-default-value2" => "non-default-value3"
+                  ~ nestedProp: "value2" => "value3"
+                }
+          ~ [4]: {
+                  ~ default   : "non-default-value3" => "non-default-value4"
+                  ~ nestedProp: "value3" => "value4"
+                }
+          ~ [5]: {
+                  ~ default   : "non-default-value4" => "non-default-value5"
+                  ~ nestedProp: "value4" => "value5"
+                }
+          ~ [6]: {
+                  ~ default   : "non-default-value5" => "non-default-value6"
+                  ~ nestedProp: "value5" => "value6"
+                }
+          ~ [7]: {
+                  ~ default   : "non-default-value6" => "non-default-value7"
+                  ~ nestedProp: "value6" => "value7"
+                }
+          ~ [8]: {
+                  ~ default   : "non-default-value7" => "non-default-value8"
+                  ~ nestedProp: "value7" => "value8"
+                }
+          ~ [9]: {
+                  ~ default   : "non-default-value8" => "non-default-value9"
+                  ~ nestedProp: "value8" => "value9"
+                }
+          ~ [10]: {
+                  ~ default   : "non-default-value9" => "non-default-value10"
+                  ~ nestedProp: "value9" => "value10"
+                }
+          ~ [11]: {
+                  ~ default   : "non-default-value10" => "non-default-value11"
+                  ~ nestedProp: "value10" => "value11"
+                }
+          ~ [12]: {
+                  ~ default   : "non-default-value11" => "non-default-value12"
+                  ~ nestedProp: "value11" => "value12"
+                }
+          ~ [13]: {
+                  ~ default   : "non-default-value12" => "non-default-value13"
+                  ~ nestedProp: "value12" => "value13"
+                }
+          ~ [14]: {
+                  ~ default   : "non-default-value13" => "non-default-value14"
+                  ~ nestedProp: "value13" => "value14"
+                }
+          ~ [15]: {
+                  ~ default   : "non-default-value14" => "non-default-value15"
+                  ~ nestedProp: "value14" => "value15"
+                }
+          ~ [16]: {
+                  ~ default   : "non-default-value15" => "non-default-value16"
+                  ~ nestedProp: "value15" => "value16"
+                }
+          ~ [17]: {
+                  ~ default   : "non-default-value16" => "non-default-value17"
+                  ~ nestedProp: "value16" => "value17"
+                }
+          ~ [18]: {
+                  ~ default   : "non-default-value17" => "non-default-value18"
+                  ~ nestedProp: "value17" => "value18"
+                }
+          ~ [19]: {
+                  ~ default   : "non-default-value18" => "non-default-value19"
+                  ~ nestedProp: "value18" => "value19"
+                }
+          - [20]: {
+                  - default   : "non-default-value19"
+                  - nestedProp: "value19"
+                }
+        ]
+Resources:
+    ~ 1 to update
+    1 unchanged
+`,
+	detailedDiff: map[string]interface{}{
+		"props[0].default":     map[string]interface{}{"kind": "UPDATE"},
+		"props[0].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
+		"props[10].default":    map[string]interface{}{"kind": "UPDATE"},
+		"props[10].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"props[11].default":    map[string]interface{}{"kind": "UPDATE"},
+		"props[11].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"props[12].default":    map[string]interface{}{"kind": "UPDATE"},
+		"props[12].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"props[13].default":    map[string]interface{}{"kind": "UPDATE"},
+		"props[13].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"props[14].default":    map[string]interface{}{"kind": "UPDATE"},
+		"props[14].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"props[15].default":    map[string]interface{}{"kind": "UPDATE"},
+		"props[15].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"props[16].default":    map[string]interface{}{"kind": "UPDATE"},
+		"props[16].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"props[17].default":    map[string]interface{}{"kind": "UPDATE"},
+		"props[17].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"props[18].default":    map[string]interface{}{"kind": "UPDATE"},
+		"props[18].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"props[19].default":    map[string]interface{}{"kind": "UPDATE"},
+		"props[19].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"props[1].default":     map[string]interface{}{"kind": "UPDATE"},
+		"props[1].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
+		"props[20]":            map[string]interface{}{"kind": "DELETE"},
+		"props[2].default":     map[string]interface{}{"kind": "UPDATE"},
+		"props[2].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
+		"props[3].default":     map[string]interface{}{"kind": "UPDATE"},
+		"props[3].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
+		"props[4].default":     map[string]interface{}{"kind": "UPDATE"},
+		"props[4].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
+		"props[5].default":     map[string]interface{}{"kind": "UPDATE"},
+		"props[5].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
+		"props[6].default":     map[string]interface{}{"kind": "UPDATE"},
+		"props[6].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
+		"props[7].default":     map[string]interface{}{"kind": "UPDATE"},
+		"props[7].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
+		"props[8].default":     map[string]interface{}{"kind": "UPDATE"},
+		"props[8].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
+		"props[9].default":     map[string]interface{}{"kind": "UPDATE"},
+		"props[9].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
+	},
+}

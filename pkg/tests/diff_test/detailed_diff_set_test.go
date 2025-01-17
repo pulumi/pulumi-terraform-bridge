@@ -546,3 +546,37 @@ func TestSDKv2DetailedDiffSetBlockSensitive(t *testing.T) {
 
 	runSDKv2TestMatrix(t, diffSchemaValueMakerPairs, setScenarios())
 }
+
+func TestSDKv2DetailedDiffSetDefault(t *testing.T) {
+	t.Parallel()
+	// Note Default is not valid for set types.
+
+	blockSchemaNestedDefault := schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"prop": {
+				Type:     schema.TypeSet,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"nested_prop": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"default": {
+							Type:     schema.TypeString,
+							Optional: true,
+							Default:  "default",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	diffSchemaValueMakerPairs := []diffSchemaValueMakerPair[[]string]{
+		{"block nested default", blockSchemaNestedDefault, nestedListValueMaker},
+		{"block nested default with default specified in program", blockSchemaNestedDefault, nestedListValueMakerWithDefaultSpecified},
+	}
+
+	runSDKv2TestMatrix(t, diffSchemaValueMakerPairs, setScenarios())
+}

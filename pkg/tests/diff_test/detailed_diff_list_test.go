@@ -199,6 +199,28 @@ func TestSDKv2DetailedDiffList(t *testing.T) {
 		},
 	}
 
+	listBlockSchemaNestedDefault := schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"prop": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"nested_prop": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"default": {
+							Type:     schema.TypeString,
+							Optional: true,
+							Default:  "default",
+						},
+					},
+				},
+			},
+		},
+	}
+
 	listPairs := []diffSchemaValueMakerPair[[]string]{
 		{"list attribute", listAttrSchema, listValueMaker},
 		{"list attribute force new", listAttrSchemaForceNew, listValueMaker},
@@ -207,6 +229,11 @@ func TestSDKv2DetailedDiffList(t *testing.T) {
 		{"list block nested force new", listBlockSchemaNestedForceNew, nestedListValueMaker},
 		{"list block sensitive", listBlockSchemaSensitive, nestedListValueMaker},
 		{"list block nested sensitive", listBlockSchemaNestedSensitive, nestedListValueMaker},
+		{"list block nested default", listBlockSchemaNestedDefault, nestedListValueMaker},
+		{
+			"list block nested default with default specified in program",
+			listBlockSchemaNestedDefault, nestedListValueMakerWithDefaultSpecified,
+		},
 	}
 
 	maxItemsOnePairs := []diffSchemaValueMakerPair[[]string]{
