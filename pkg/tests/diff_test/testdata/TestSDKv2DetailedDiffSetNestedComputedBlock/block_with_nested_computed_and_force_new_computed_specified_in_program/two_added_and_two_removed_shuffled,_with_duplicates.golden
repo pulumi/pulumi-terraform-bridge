@@ -24,21 +24,21 @@ Terraform will perform the following actions:
   ~ resource "crossprovider_test_res" "example" {
         id = "id"
 
-      - test {
-          - computed = "non-computed-val3" -> null
-          - nested   = "val3" -> null
+      - prop {
+          - computed    = "non-computed-val3" -> null
+          - nested_prop = "val3" -> null
         }
-      - test {
-          - computed = "non-computed-val4" -> null
-          - nested   = "val4" -> null
+      - prop {
+          - computed    = "non-computed-val4" -> null
+          - nested_prop = "val4" -> null
         }
-      + test {
-          + computed = "non-computed-val5"
-          + nested   = "val5"
+      + prop {
+          + computed    = "non-computed-val5"
+          + nested_prop = "val5"
         }
-      + test {
-          + computed = "non-computed-val6"
-          + nested   = "val6"
+      + prop {
+          + computed    = "non-computed-val6"
+          + nested_prop = "val6"
         }
 
         # (2 unchanged blocks hidden)
@@ -53,18 +53,18 @@ Plan: 0 to add, 1 to change, 0 to destroy.
     ~ crossprovider:index/testRes:TestRes: (update)
         [id=id]
         [urn=urn:pulumi:test::project::crossprovider:index/testRes:TestRes::example]
-      ~ tests: [
+      ~ props: [
           + [1]: {
                   + computed  : "non-computed-val5"
-                  + nested    : "val5"
+                  + nestedProp: "val5"
                 }
           ~ [2]: {
-                  ~ computed: "non-computed-val3" => "non-computed-val6"
-                  ~ nested  : "val3" => "val6"
+                  ~ computed  : "non-computed-val3" => "non-computed-val6"
+                  ~ nestedProp: "val3" => "val6"
                 }
           - [3]: {
-                  - computed: "non-computed-val4"
-                  - nested  : "val4"
+                  - computed  : "non-computed-val4"
+                  - nestedProp: "val4"
                 }
         ]
 Resources:
@@ -72,9 +72,9 @@ Resources:
     1 unchanged
 `,
 	detailedDiff: map[string]interface{}{
-		"tests[1]":          map[string]interface{}{},
-		"tests[2].computed": map[string]interface{}{"kind": "UPDATE"},
-		"tests[2].nested":   map[string]interface{}{"kind": "UPDATE"},
-		"tests[3]":          map[string]interface{}{"kind": "DELETE"},
+		"props[1]":            map[string]interface{}{},
+		"props[2].computed":   map[string]interface{}{"kind": "UPDATE"},
+		"props[2].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"props[3]":            map[string]interface{}{"kind": "DELETE"},
 	},
 }

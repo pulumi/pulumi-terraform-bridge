@@ -55,9 +55,69 @@ Terraform will perform the following actions:
   ~ resource "crossprovider_test_res" "example" {
         id = "newid"
 
-      - list_block {}
-
-        # (20 unchanged blocks hidden)
+      ~ prop {
+          ~ nested_prop = "value20" -> "value0"
+        }
+      ~ prop {
+          ~ nested_prop = "value0" -> "value1"
+        }
+      ~ prop {
+          ~ nested_prop = "value1" -> "value2"
+        }
+      ~ prop {
+          ~ nested_prop = "value2" -> "value3"
+        }
+      ~ prop {
+          ~ nested_prop = "value3" -> "value4"
+        }
+      ~ prop {
+          ~ nested_prop = "value4" -> "value5"
+        }
+      ~ prop {
+          ~ nested_prop = "value5" -> "value6"
+        }
+      ~ prop {
+          ~ nested_prop = "value6" -> "value7"
+        }
+      ~ prop {
+          ~ nested_prop = "value7" -> "value8"
+        }
+      ~ prop {
+          ~ nested_prop = "value8" -> "value9"
+        }
+      ~ prop {
+          ~ nested_prop = "value9" -> "value10"
+        }
+      ~ prop {
+          ~ nested_prop = "value10" -> "value11"
+        }
+      ~ prop {
+          ~ nested_prop = "value11" -> "value12"
+        }
+      ~ prop {
+          ~ nested_prop = "value12" -> "value13"
+        }
+      ~ prop {
+          ~ nested_prop = "value13" -> "value14"
+        }
+      ~ prop {
+          ~ nested_prop = "value14" -> "value15"
+        }
+      ~ prop {
+          ~ nested_prop = "value15" -> "value16"
+        }
+      ~ prop {
+          ~ nested_prop = "value16" -> "value17"
+        }
+      ~ prop {
+          ~ nested_prop = "value17" -> "value18"
+        }
+      ~ prop {
+          ~ nested_prop = "value18" -> "value19"
+        }
+      - prop {
+          - nested_prop = "value19" -> null
+        }
     }
 
 Plan: 0 to add, 1 to change, 0 to destroy.
@@ -69,12 +129,94 @@ Plan: 0 to add, 1 to change, 0 to destroy.
     ~ crossprovider:index/testRes:TestRes: (update)
         [id=newid]
         [urn=urn:pulumi:test::project::crossprovider:index/testRes:TestRes::example]
-      ~ listBlocks: [
+      ~ props: [
+          ~ [0]: {
+                  ~ nestedProp: [secret] => [secret]
+                }
+          ~ [1]: {
+                  ~ nestedProp: [secret] => [secret]
+                }
+          ~ [2]: {
+                  ~ nestedProp: [secret] => [secret]
+                }
+          ~ [3]: {
+                  ~ nestedProp: [secret] => [secret]
+                }
+          ~ [4]: {
+                  ~ nestedProp: [secret] => [secret]
+                }
+          ~ [5]: {
+                  ~ nestedProp: [secret] => [secret]
+                }
+          ~ [6]: {
+                  ~ nestedProp: [secret] => [secret]
+                }
+          ~ [7]: {
+                  ~ nestedProp: [secret] => [secret]
+                }
+          ~ [8]: {
+                  ~ nestedProp: [secret] => [secret]
+                }
+          ~ [9]: {
+                  ~ nestedProp: [secret] => [secret]
+                }
+          ~ [10]: {
+                  ~ nestedProp: [secret] => [secret]
+                }
+          ~ [11]: {
+                  ~ nestedProp: [secret] => [secret]
+                }
+          ~ [12]: {
+                  ~ nestedProp: [secret] => [secret]
+                }
+          ~ [13]: {
+                  ~ nestedProp: [secret] => [secret]
+                }
+          ~ [14]: {
+                  ~ nestedProp: [secret] => [secret]
+                }
+          ~ [15]: {
+                  ~ nestedProp: [secret] => [secret]
+                }
+          ~ [16]: {
+                  ~ nestedProp: [secret] => [secret]
+                }
+          ~ [17]: {
+                  ~ nestedProp: [secret] => [secret]
+                }
+          ~ [18]: {
+                  ~ nestedProp: [secret] => [secret]
+                }
+          ~ [19]: {
+                  ~ nestedProp: [secret] => [secret]
+                }
           - [20]: [secret]
         ]
 Resources:
     ~ 1 to update
     1 unchanged
 `,
-	detailedDiff: map[string]interface{}{"listBlocks[20]": map[string]interface{}{"kind": "DELETE"}},
+	detailedDiff: map[string]interface{}{
+		"props[0].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
+		"props[10].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"props[11].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"props[12].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"props[13].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"props[14].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"props[15].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"props[16].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"props[17].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"props[18].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"props[19].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"props[1].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
+		"props[20]":            map[string]interface{}{"kind": "DELETE"},
+		"props[2].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
+		"props[3].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
+		"props[4].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
+		"props[5].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
+		"props[6].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
+		"props[7].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
+		"props[8].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
+		"props[9].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
+	},
 }

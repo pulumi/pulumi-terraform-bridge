@@ -55,67 +55,67 @@ Terraform will perform the following actions:
   ~ resource "crossprovider_test_res" "example" {
         id = "newid"
 
-      ~ list_block {
+      ~ prop {
           ~ nested_prop = (sensitive value)
         }
-      ~ list_block {
+      ~ prop {
           ~ nested_prop = (sensitive value)
         }
-      ~ list_block {
+      ~ prop {
           ~ nested_prop = (sensitive value)
         }
-      ~ list_block {
+      ~ prop {
           ~ nested_prop = (sensitive value)
         }
-      ~ list_block {
+      ~ prop {
           ~ nested_prop = (sensitive value)
         }
-      ~ list_block {
+      ~ prop {
           ~ nested_prop = (sensitive value)
         }
-      ~ list_block {
+      ~ prop {
           ~ nested_prop = (sensitive value)
         }
-      ~ list_block {
+      ~ prop {
           ~ nested_prop = (sensitive value)
         }
-      ~ list_block {
+      ~ prop {
           ~ nested_prop = (sensitive value)
         }
-      ~ list_block {
+      ~ prop {
           ~ nested_prop = (sensitive value)
         }
-      ~ list_block {
+      ~ prop {
           ~ nested_prop = (sensitive value)
         }
-      ~ list_block {
+      ~ prop {
           ~ nested_prop = (sensitive value)
         }
-      ~ list_block {
+      ~ prop {
           ~ nested_prop = (sensitive value)
         }
-      ~ list_block {
+      ~ prop {
           ~ nested_prop = (sensitive value)
         }
-      ~ list_block {
+      ~ prop {
           ~ nested_prop = (sensitive value)
         }
-      ~ list_block {
+      ~ prop {
           ~ nested_prop = (sensitive value)
         }
-      ~ list_block {
+      ~ prop {
           ~ nested_prop = (sensitive value)
         }
-      ~ list_block {
+      ~ prop {
           ~ nested_prop = (sensitive value)
         }
-      ~ list_block {
+      ~ prop {
           ~ nested_prop = (sensitive value)
         }
-      ~ list_block {
+      ~ prop {
           ~ nested_prop = (sensitive value)
         }
-      + list_block {
+      + prop {
           + nested_prop = (sensitive value)
         }
     }
@@ -129,7 +129,7 @@ Plan: 0 to add, 1 to change, 0 to destroy.
     ~ crossprovider:index/testRes:TestRes: (update)
         [id=newid]
         [urn=urn:pulumi:test::project::crossprovider:index/testRes:TestRes::example]
-      ~ listBlocks: [
+      ~ props: [
           ~ [0]: {
                   ~ nestedProp: [secret] => [secret]
                 }
@@ -197,26 +197,26 @@ Resources:
     1 unchanged
 `,
 	detailedDiff: map[string]interface{}{
-		"listBlocks[0].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
-		"listBlocks[10].nestedProp": map[string]interface{}{"kind": "UPDATE"},
-		"listBlocks[11].nestedProp": map[string]interface{}{"kind": "UPDATE"},
-		"listBlocks[12].nestedProp": map[string]interface{}{"kind": "UPDATE"},
-		"listBlocks[13].nestedProp": map[string]interface{}{"kind": "UPDATE"},
-		"listBlocks[14].nestedProp": map[string]interface{}{"kind": "UPDATE"},
-		"listBlocks[15].nestedProp": map[string]interface{}{"kind": "UPDATE"},
-		"listBlocks[16].nestedProp": map[string]interface{}{"kind": "UPDATE"},
-		"listBlocks[17].nestedProp": map[string]interface{}{"kind": "UPDATE"},
-		"listBlocks[18].nestedProp": map[string]interface{}{"kind": "UPDATE"},
-		"listBlocks[19].nestedProp": map[string]interface{}{"kind": "UPDATE"},
-		"listBlocks[1].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
-		"listBlocks[20]":            map[string]interface{}{},
-		"listBlocks[2].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
-		"listBlocks[3].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
-		"listBlocks[4].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
-		"listBlocks[5].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
-		"listBlocks[6].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
-		"listBlocks[7].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
-		"listBlocks[8].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
-		"listBlocks[9].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
+		"props[0].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
+		"props[10].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"props[11].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"props[12].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"props[13].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"props[14].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"props[15].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"props[16].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"props[17].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"props[18].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"props[19].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"props[1].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
+		"props[20]":            map[string]interface{}{},
+		"props[2].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
+		"props[3].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
+		"props[4].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
+		"props[5].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
+		"props[6].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
+		"props[7].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
+		"props[8].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
+		"props[9].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
 	},
 }

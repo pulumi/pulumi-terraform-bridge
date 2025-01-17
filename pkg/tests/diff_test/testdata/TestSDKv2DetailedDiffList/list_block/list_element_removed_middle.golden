@@ -5,8 +5,8 @@ tests.testOutput{
 		"val3",
 	},
 	changeValue: &[]string{
-		"val3",
 		"val1",
+		"val3",
 	},
 	tfOut: `
 Terraform used the selected providers to generate the following execution
@@ -19,15 +19,14 @@ Terraform will perform the following actions:
   ~ resource "crossprovider_test_res" "example" {
         id = "newid"
 
-      ~ list_block {
-          ~ prop = "val1" -> "val3"
+      ~ prop {
+          ~ nested_prop = "val2" -> "val3"
         }
-      ~ list_block {
-          ~ prop = "val2" -> "val1"
+      - prop {
+          - nested_prop = "val3" -> null
         }
-      - list_block {
-          - prop = "val3" -> null
-        }
+
+        # (1 unchanged block hidden)
     }
 
 Plan: 0 to add, 1 to change, 0 to destroy.
@@ -39,15 +38,12 @@ Plan: 0 to add, 1 to change, 0 to destroy.
     ~ crossprovider:index/testRes:TestRes: (update)
         [id=newid]
         [urn=urn:pulumi:test::project::crossprovider:index/testRes:TestRes::example]
-      ~ listBlocks: [
-          ~ [0]: {
-                  ~ prop: "val1" => "val3"
-                }
+      ~ props: [
           ~ [1]: {
-                  ~ prop: "val2" => "val1"
+                  ~ nestedProp: "val2" => "val3"
                 }
           - [2]: {
-                  - prop: "val3"
+                  - nestedProp: "val3"
                 }
         ]
 Resources:
@@ -55,8 +51,7 @@ Resources:
     1 unchanged
 `,
 	detailedDiff: map[string]interface{}{
-		"listBlocks[0].prop": map[string]interface{}{"kind": "UPDATE"},
-		"listBlocks[1].prop": map[string]interface{}{"kind": "UPDATE"},
-		"listBlocks[2]":      map[string]interface{}{"kind": "DELETE"},
+		"props[1].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"props[2]":            map[string]interface{}{"kind": "DELETE"},
 	},
 }

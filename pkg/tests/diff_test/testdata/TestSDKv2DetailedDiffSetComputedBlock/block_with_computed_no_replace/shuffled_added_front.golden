@@ -19,25 +19,25 @@ Terraform will perform the following actions:
   ~ resource "crossprovider_test_res" "example" {
         id = "id"
 
-      - test {
-          - nested   = "val2" -> null
+      - prop {
+          - nested_prop = "val2" -> null
             # (1 unchanged attribute hidden)
         }
-      - test {
-          - nested   = "val3" -> null
+      - prop {
+          - nested_prop = "val3" -> null
             # (1 unchanged attribute hidden)
         }
-      + test {
-          + computed = (known after apply)
-          + nested   = "val1"
+      + prop {
+          + computed    = (known after apply)
+          + nested_prop = "val1"
         }
-      + test {
-          + computed = (known after apply)
-          + nested   = "val2"
+      + prop {
+          + computed    = (known after apply)
+          + nested_prop = "val2"
         }
-      + test {
-          + computed = (known after apply)
-          + nested   = "val3"
+      + prop {
+          + computed    = (known after apply)
+          + nested_prop = "val3"
         }
     }
 
@@ -50,14 +50,14 @@ Plan: 0 to add, 1 to change, 0 to destroy.
     ~ crossprovider:index/testRes:TestRes: (update)
         [id=id]
         [urn=urn:pulumi:test::project::crossprovider:index/testRes:TestRes::example]
-      ~ tests: [
+      ~ props: [
           ~ [0]: {
-                  ~ nested  : "val2" => "val1"
+                  ~ nestedProp: "val2" => "val1"
                 }
           ~ [1]: {
                 }
           + [2]: {
-                  + nested    : "val2"
+                  + nestedProp: "val2"
                 }
         ]
 Resources:
@@ -65,9 +65,9 @@ Resources:
     1 unchanged
 `,
 	detailedDiff: map[string]interface{}{
-		"tests[0].computed": map[string]interface{}{"kind": "UPDATE"},
-		"tests[0].nested":   map[string]interface{}{"kind": "UPDATE"},
-		"tests[1].computed": map[string]interface{}{"kind": "UPDATE"},
-		"tests[2]":          map[string]interface{}{},
+		"props[0].computed":   map[string]interface{}{"kind": "UPDATE"},
+		"props[0].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"props[1].computed":   map[string]interface{}{"kind": "UPDATE"},
+		"props[2]":            map[string]interface{}{},
 	},
 }

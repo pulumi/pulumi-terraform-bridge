@@ -5,8 +5,8 @@ tests.testOutput{
 		"val3",
 	},
 	changeValue: &[]string{
-		"val3",
 		"val2",
+		"val3",
 	},
 	tfOut: `
 Terraform used the selected providers to generate the following execution
@@ -17,12 +17,11 @@ Terraform will perform the following actions:
 
   # crossprovider_test_res.example will be updated in-place
   ~ resource "crossprovider_test_res" "example" {
-        id        = "newid"
-      ~ list_attr = [
+        id   = "newid"
+      ~ prop = [
           - "val1",
-          - "val2",
-            "val3",
-          + "val2",
+            "val2",
+            # (1 unchanged element hidden)
         ]
     }
 
@@ -35,8 +34,9 @@ Plan: 0 to add, 1 to change, 0 to destroy.
     ~ crossprovider:index/testRes:TestRes: (update)
         [id=newid]
         [urn=urn:pulumi:test::project::crossprovider:index/testRes:TestRes::example]
-      ~ listAttrs: [
-          ~ [0]: "val1" => "val3"
+      ~ props: [
+          ~ [0]: "val1" => "val2"
+          ~ [1]: "val2" => "val3"
           - [2]: "val3"
         ]
 Resources:
@@ -44,7 +44,8 @@ Resources:
     1 unchanged
 `,
 	detailedDiff: map[string]interface{}{
-		"listAttrs[0]": map[string]interface{}{"kind": "UPDATE"},
-		"listAttrs[2]": map[string]interface{}{"kind": "DELETE"},
+		"props[0]": map[string]interface{}{"kind": "UPDATE"},
+		"props[1]": map[string]interface{}{"kind": "UPDATE"},
+		"props[2]": map[string]interface{}{"kind": "DELETE"},
 	},
 }

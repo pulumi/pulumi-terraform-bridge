@@ -19,8 +19,8 @@ Terraform will perform the following actions:
   ~ resource "crossprovider_test_res" "example" {
         id = "newid"
 
-      - test {
-          - nested = "val1" -> null
+      - prop {
+          - nested_prop = "val1" -> null
         }
 
         # (2 unchanged blocks hidden)
@@ -35,14 +35,14 @@ Plan: 0 to add, 1 to change, 0 to destroy.
     ~ crossprovider:index/testRes:TestRes: (update)
         [id=newid]
         [urn=urn:pulumi:test::project::crossprovider:index/testRes:TestRes::example]
-      ~ tests: [
+      ~ props: [
           - [0]: {
-                  - nested: "val1"
+                  - nestedProp: "val1"
                 }
         ]
 Resources:
     ~ 1 to update
     1 unchanged
 `,
-	detailedDiff: map[string]interface{}{"tests[0]": map[string]interface{}{"kind": "DELETE"}},
+	detailedDiff: map[string]interface{}{"props[0]": map[string]interface{}{"kind": "DELETE"}},
 }

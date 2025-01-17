@@ -20,13 +20,13 @@ Terraform will perform the following actions:
 +/- resource "crossprovider_test_res" "example" {
       ~ id = "id" -> (known after apply)
 
-      - test { # forces replacement
-          - computed = "non-computed-val3" -> null
-          - nested   = "val3" -> null
+      - prop { # forces replacement
+          - computed    = "non-computed-val3" -> null
+          - nested_prop = "val3" -> null
         }
-      + test { # forces replacement
-          + computed = "non-computed-val4"
-          + nested   = "val4"
+      + prop { # forces replacement
+          + computed    = "non-computed-val4"
+          + nested_prop = "val4"
         }
 
         # (2 unchanged blocks hidden)
@@ -41,14 +41,14 @@ Plan: 1 to add, 0 to change, 1 to destroy.
     +-crossprovider:index/testRes:TestRes: (replace)
         [id=id]
         [urn=urn:pulumi:test::project::crossprovider:index/testRes:TestRes::example]
-      ~ tests: [
+      ~ props: [
           + [1]: {
                   + computed  : "non-computed-val4"
-                  + nested    : "val4"
+                  + nestedProp: "val4"
                 }
           - [2]: {
-                  - computed: "non-computed-val3"
-                  - nested  : "val3"
+                  - computed  : "non-computed-val3"
+                  - nestedProp: "val3"
                 }
         ]
 Resources:
@@ -56,7 +56,7 @@ Resources:
     1 unchanged
 `,
 	detailedDiff: map[string]interface{}{
-		"tests[1]": map[string]interface{}{"kind": "ADD_REPLACE"},
-		"tests[2]": map[string]interface{}{"kind": "DELETE_REPLACE"},
+		"props[1]": map[string]interface{}{"kind": "ADD_REPLACE"},
+		"props[2]": map[string]interface{}{"kind": "DELETE_REPLACE"},
 	},
 }

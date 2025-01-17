@@ -14,13 +14,13 @@ Terraform will perform the following actions:
   ~ resource "crossprovider_test_res" "example" {
         id = "id"
 
-      - test {
-          - nested   = "value" -> null
+      - prop {
+          - nested_prop = "value" -> null
             # (1 unchanged attribute hidden)
         }
-      + test {
-          + computed = (known after apply)
-          + nested   = "value1"
+      + prop {
+          + computed    = (known after apply)
+          + nested_prop = "value1"
         }
     }
 
@@ -33,9 +33,9 @@ Plan: 0 to add, 1 to change, 0 to destroy.
     ~ crossprovider:index/testRes:TestRes: (update)
         [id=id]
         [urn=urn:pulumi:test::project::crossprovider:index/testRes:TestRes::example]
-      ~ tests: [
+      ~ props: [
           ~ [0]: {
-                  ~ nested  : "value" => "value1"
+                  ~ nestedProp: "value" => "value1"
                 }
         ]
 Resources:
@@ -43,7 +43,7 @@ Resources:
     1 unchanged
 `,
 	detailedDiff: map[string]interface{}{
-		"tests[0].computed": map[string]interface{}{"kind": "UPDATE"},
-		"tests[0].nested":   map[string]interface{}{"kind": "UPDATE"},
+		"props[0].computed":   map[string]interface{}{"kind": "UPDATE"},
+		"props[0].nestedProp": map[string]interface{}{"kind": "UPDATE"},
 	},
 }

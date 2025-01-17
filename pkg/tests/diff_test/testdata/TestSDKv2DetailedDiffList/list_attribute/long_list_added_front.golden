@@ -53,8 +53,8 @@ Terraform will perform the following actions:
 
   # crossprovider_test_res.example will be updated in-place
   ~ resource "crossprovider_test_res" "example" {
-        id        = "newid"
-      ~ list_attr = [
+        id   = "newid"
+      ~ prop = [
           + "value20",
             "value0",
             # (19 unchanged elements hidden)
@@ -70,7 +70,7 @@ Plan: 0 to add, 1 to change, 0 to destroy.
     ~ crossprovider:index/testRes:TestRes: (update)
         [id=newid]
         [urn=urn:pulumi:test::project::crossprovider:index/testRes:TestRes::example]
-      ~ listAttrs: [
+      ~ props: [
           ~ [0]: "value0" => "value20"
           ~ [1]: "value1" => "value0"
           ~ [2]: "value2" => "value1"
@@ -98,26 +98,26 @@ Resources:
     1 unchanged
 `,
 	detailedDiff: map[string]interface{}{
-		"listAttrs[0]":  map[string]interface{}{"kind": "UPDATE"},
-		"listAttrs[10]": map[string]interface{}{"kind": "UPDATE"},
-		"listAttrs[11]": map[string]interface{}{"kind": "UPDATE"},
-		"listAttrs[12]": map[string]interface{}{"kind": "UPDATE"},
-		"listAttrs[13]": map[string]interface{}{"kind": "UPDATE"},
-		"listAttrs[14]": map[string]interface{}{"kind": "UPDATE"},
-		"listAttrs[15]": map[string]interface{}{"kind": "UPDATE"},
-		"listAttrs[16]": map[string]interface{}{"kind": "UPDATE"},
-		"listAttrs[17]": map[string]interface{}{"kind": "UPDATE"},
-		"listAttrs[18]": map[string]interface{}{"kind": "UPDATE"},
-		"listAttrs[19]": map[string]interface{}{"kind": "UPDATE"},
-		"listAttrs[1]":  map[string]interface{}{"kind": "UPDATE"},
-		"listAttrs[20]": map[string]interface{}{},
-		"listAttrs[2]":  map[string]interface{}{"kind": "UPDATE"},
-		"listAttrs[3]":  map[string]interface{}{"kind": "UPDATE"},
-		"listAttrs[4]":  map[string]interface{}{"kind": "UPDATE"},
-		"listAttrs[5]":  map[string]interface{}{"kind": "UPDATE"},
-		"listAttrs[6]":  map[string]interface{}{"kind": "UPDATE"},
-		"listAttrs[7]":  map[string]interface{}{"kind": "UPDATE"},
-		"listAttrs[8]":  map[string]interface{}{"kind": "UPDATE"},
-		"listAttrs[9]":  map[string]interface{}{"kind": "UPDATE"},
+		"props[0]":  map[string]interface{}{"kind": "UPDATE"},
+		"props[10]": map[string]interface{}{"kind": "UPDATE"},
+		"props[11]": map[string]interface{}{"kind": "UPDATE"},
+		"props[12]": map[string]interface{}{"kind": "UPDATE"},
+		"props[13]": map[string]interface{}{"kind": "UPDATE"},
+		"props[14]": map[string]interface{}{"kind": "UPDATE"},
+		"props[15]": map[string]interface{}{"kind": "UPDATE"},
+		"props[16]": map[string]interface{}{"kind": "UPDATE"},
+		"props[17]": map[string]interface{}{"kind": "UPDATE"},
+		"props[18]": map[string]interface{}{"kind": "UPDATE"},
+		"props[19]": map[string]interface{}{"kind": "UPDATE"},
+		"props[1]":  map[string]interface{}{"kind": "UPDATE"},
+		"props[20]": map[string]interface{}{},
+		"props[2]":  map[string]interface{}{"kind": "UPDATE"},
+		"props[3]":  map[string]interface{}{"kind": "UPDATE"},
+		"props[4]":  map[string]interface{}{"kind": "UPDATE"},
+		"props[5]":  map[string]interface{}{"kind": "UPDATE"},
+		"props[6]":  map[string]interface{}{"kind": "UPDATE"},
+		"props[7]":  map[string]interface{}{"kind": "UPDATE"},
+		"props[8]":  map[string]interface{}{"kind": "UPDATE"},
+		"props[9]":  map[string]interface{}{"kind": "UPDATE"},
 	},
 }

@@ -22,17 +22,17 @@ Terraform will perform the following actions:
 +/- resource "crossprovider_test_res" "example" {
       ~ id = "newid" -> (known after apply)
 
-      - test { # forces replacement
-          - nested = "val3" -> null
+      - prop { # forces replacement
+          - nested_prop = "val3" -> null
         }
-      - test { # forces replacement
-          - nested = "val4" -> null
+      - prop { # forces replacement
+          - nested_prop = "val4" -> null
         }
-      + test { # forces replacement
-          + nested = "val5"
+      + prop { # forces replacement
+          + nested_prop = "val5"
         }
-      + test { # forces replacement
-          + nested = "val6"
+      + prop { # forces replacement
+          + nested_prop = "val6"
         }
 
         # (2 unchanged blocks hidden)
@@ -47,15 +47,15 @@ Plan: 1 to add, 0 to change, 1 to destroy.
     +-crossprovider:index/testRes:TestRes: (replace)
         [id=newid]
         [urn=urn:pulumi:test::project::crossprovider:index/testRes:TestRes::example]
-      ~ tests: [
+      ~ props: [
           + [1]: {
-                  + nested    : "val5"
+                  + nestedProp: "val5"
                 }
           ~ [2]: {
-                  ~ nested: "val3" => "val6"
+                  ~ nestedProp: "val3" => "val6"
                 }
           - [3]: {
-                  - nested: "val4"
+                  - nestedProp: "val4"
                 }
         ]
 Resources:
@@ -63,8 +63,8 @@ Resources:
     1 unchanged
 `,
 	detailedDiff: map[string]interface{}{
-		"tests[1]":        map[string]interface{}{"kind": "ADD_REPLACE"},
-		"tests[2].nested": map[string]interface{}{"kind": "UPDATE_REPLACE"},
-		"tests[3]":        map[string]interface{}{"kind": "DELETE_REPLACE"},
+		"props[1]":            map[string]interface{}{"kind": "ADD_REPLACE"},
+		"props[2].nestedProp": map[string]interface{}{"kind": "UPDATE_REPLACE"},
+		"props[3]":            map[string]interface{}{"kind": "DELETE_REPLACE"},
 	},
 }

@@ -21,7 +21,7 @@ Terraform will perform the following actions:
   # crossprovider_test_res.example will be updated in-place
   ~ resource "crossprovider_test_res" "example" {
         id   = "newid"
-      ~ test = [
+      ~ prop = [
           - "val3",
           - "val4",
           + "val5",
@@ -39,7 +39,7 @@ Plan: 0 to add, 1 to change, 0 to destroy.
     ~ crossprovider:index/testRes:TestRes: (update)
         [id=newid]
         [urn=urn:pulumi:test::project::crossprovider:index/testRes:TestRes::example]
-      ~ tests: [
+      ~ props: [
           + [0]: "val5"
           + [1]: "val6"
           - [2]: "val3"
@@ -50,9 +50,9 @@ Resources:
     1 unchanged
 `,
 	detailedDiff: map[string]interface{}{
-		"tests[0]": map[string]interface{}{},
-		"tests[1]": map[string]interface{}{},
-		"tests[2]": map[string]interface{}{"kind": "DELETE"},
-		"tests[3]": map[string]interface{}{"kind": "DELETE"},
+		"props[0]": map[string]interface{}{},
+		"props[1]": map[string]interface{}{},
+		"props[2]": map[string]interface{}{"kind": "DELETE"},
+		"props[3]": map[string]interface{}{"kind": "DELETE"},
 	},
 }
