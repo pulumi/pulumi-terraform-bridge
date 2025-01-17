@@ -575,3 +575,57 @@ func TestSDKv2DetailedDiffSetNestedComputedBlock(t *testing.T) {
 		})
 	}
 }
+
+func TestSDKv2DetailedDiffSetBlockSensitive(t *testing.T) {
+	t.Parallel()
+
+	blockSchemaSensitive := schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"test": {
+				Type:      schema.TypeSet,
+				Optional:  true,
+				Sensitive: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"nested": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	blockSchemaNestedSensitive := schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"test": {
+				Type:     schema.TypeSet,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"nested": {
+							Type:      schema.TypeString,
+							Optional:  true,
+							Sensitive: true,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	setSchemaValueMakerPairs := []setSchemaValueMakerPair{
+		{"block sensitive", blockSchemaSensitive, nestedListValueMaker},
+		{"block nested sensitive", blockSchemaNestedSensitive, nestedListValueMaker},
+	}
+
+	for _, schemaValueMakerPair := range setSchemaValueMakerPairs {
+		t.Run(schemaValueMakerPair.name, func(t *testing.T) {
+			t.Parallel()
+			for _, scenario := range setScenarios() {
+				t.Run(scenario.name, runSetTest(schemaValueMakerPair.res, schemaValueMakerPair.valueMaker, scenario.initialValue, scenario.changeValue, false))
+			}
+		})
+	}
+}
