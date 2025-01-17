@@ -148,7 +148,7 @@ func Configure(
 	}
 	require.True(t, puResult.resourceCreated, "pulumi resource result was not set")
 
-	assertResourceDataEqual(t, provider, tfResult.data, puResult.data)
+	assertResourceDataEqual(t, tfResult.data, puResult.data)
 }
 
 type configureOpts struct {

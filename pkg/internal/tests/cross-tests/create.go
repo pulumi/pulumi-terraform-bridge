@@ -15,10 +15,8 @@ package crosstests
 
 import (
 	"context"
-	"reflect"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -122,19 +120,7 @@ func Create(
 	// Compare the result
 	if assert.True(t, tfResult.wasSet) && assert.True(t, puResult.wasSet) {
 		assert.Equal(t, tfResult.meta, puResult.meta, "meta")
-		// Use cmp to check if data is equal. We need to use cmp instead of
-		// `assert`'s default `reflect.DeepEqual` because cmp treats identical
-		// function pointers as equal, but `reflect.DeepEqual` does not.
-		opts := []cmp.Option{
-			cmp.Exporter(func(reflect.Type) bool { return true }),
-			cmp.Comparer(func(x, y schema.SchemaStateFunc) bool {
-				return reflect.ValueOf(x).Pointer() == reflect.ValueOf(y).Pointer()
-			}),
-		}
-		if !cmp.Equal(tfResult.data, puResult.data, opts...) {
-			t.Logf("Diff: %s", cmp.Diff(tfResult.data, puResult.data, opts...))
-			t.Fail()
-		}
+		assertResourceDataEqual(t, tfResult.data, puResult.data)
 	}
 }
 
