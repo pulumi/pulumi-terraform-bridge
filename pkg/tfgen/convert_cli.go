@@ -654,7 +654,7 @@ func (cc *cliConverter) convertViaPulumiCLIStepWithLogs(
 	})
 	if err := cmd.Run(); err != nil {
 		g.Sink().Warningf(&diag.Diag{
-			Message: "pulumi command failed" + stdout.String() + stderr.String(),
+			Message: "sink debugs pulumi command failed " + stdout.String() + err.Error(),
 		})
 		return nil, fmt.Errorf("convertViaPulumiCLI: pulumi command failed: %w\n"+
 			"Stdout:\n%s\n\n"+
