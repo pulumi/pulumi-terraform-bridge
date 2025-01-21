@@ -1,0 +1,123 @@
+tests.testOutput{
+	initialValue: &[]string{
+		"value20",
+		"value0",
+		"value1",
+		"value2",
+		"value3",
+		"value4",
+		"value5",
+		"value6",
+		"value7",
+		"value8",
+		"value9",
+		"value10",
+		"value11",
+		"value12",
+		"value13",
+		"value14",
+		"value15",
+		"value16",
+		"value17",
+		"value18",
+		"value19",
+	},
+	changeValue: &[]string{
+		"value0",
+		"value1",
+		"value2",
+		"value3",
+		"value4",
+		"value5",
+		"value6",
+		"value7",
+		"value8",
+		"value9",
+		"value10",
+		"value11",
+		"value12",
+		"value13",
+		"value14",
+		"value15",
+		"value16",
+		"value17",
+		"value18",
+		"value19",
+	},
+	tfOut: `
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  ~ update in-place
+
+Terraform will perform the following actions:
+
+  # crossprovider_test_res.example will be updated in-place
+  ~ resource "crossprovider_test_res" "example" {
+        id   = "id"
+      ~ prop = [
+          - "value20",
+            "value0",
+            # (19 unchanged elements hidden)
+        ]
+    }
+
+Plan: 0 to add, 1 to change, 0 to destroy.
+
+`,
+	pulumiOut: `Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::project::pulumi:pulumi:Stack::project-test]
+    ~ crossprovider:index/testRes:TestRes: (update)
+        [id=id]
+        [urn=urn:pulumi:test::project::crossprovider:index/testRes:TestRes::example]
+      ~ props: [
+          ~ [0]: "value20" => "value0"
+          ~ [1]: "value0" => "value1"
+          ~ [2]: "value1" => "value2"
+          ~ [3]: "value2" => "value3"
+          ~ [4]: "value3" => "value4"
+          ~ [5]: "value4" => "value5"
+          ~ [6]: "value5" => "value6"
+          ~ [7]: "value6" => "value7"
+          ~ [8]: "value7" => "value8"
+          ~ [9]: "value8" => "value9"
+          ~ [10]: "value9" => "value10"
+          ~ [11]: "value10" => "value11"
+          ~ [12]: "value11" => "value12"
+          ~ [13]: "value12" => "value13"
+          ~ [14]: "value13" => "value14"
+          ~ [15]: "value14" => "value15"
+          ~ [16]: "value15" => "value16"
+          ~ [17]: "value16" => "value17"
+          ~ [18]: "value17" => "value18"
+          ~ [19]: "value18" => "value19"
+          - [20]: "value19"
+        ]
+Resources:
+    ~ 1 to update
+    1 unchanged
+`,
+	detailedDiff: map[string]interface{}{
+		"props[0]":  map[string]interface{}{"kind": "UPDATE"},
+		"props[10]": map[string]interface{}{"kind": "UPDATE"},
+		"props[11]": map[string]interface{}{"kind": "UPDATE"},
+		"props[12]": map[string]interface{}{"kind": "UPDATE"},
+		"props[13]": map[string]interface{}{"kind": "UPDATE"},
+		"props[14]": map[string]interface{}{"kind": "UPDATE"},
+		"props[15]": map[string]interface{}{"kind": "UPDATE"},
+		"props[16]": map[string]interface{}{"kind": "UPDATE"},
+		"props[17]": map[string]interface{}{"kind": "UPDATE"},
+		"props[18]": map[string]interface{}{"kind": "UPDATE"},
+		"props[19]": map[string]interface{}{"kind": "UPDATE"},
+		"props[1]":  map[string]interface{}{"kind": "UPDATE"},
+		"props[20]": map[string]interface{}{"kind": "DELETE"},
+		"props[2]":  map[string]interface{}{"kind": "UPDATE"},
+		"props[3]":  map[string]interface{}{"kind": "UPDATE"},
+		"props[4]":  map[string]interface{}{"kind": "UPDATE"},
+		"props[5]":  map[string]interface{}{"kind": "UPDATE"},
+		"props[6]":  map[string]interface{}{"kind": "UPDATE"},
+		"props[7]":  map[string]interface{}{"kind": "UPDATE"},
+		"props[8]":  map[string]interface{}{"kind": "UPDATE"},
+		"props[9]":  map[string]interface{}{"kind": "UPDATE"},
+	},
+}
