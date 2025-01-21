@@ -70,12 +70,15 @@ Plan: 1 to add, 0 to change, 1 to destroy.
     +-crossprovider:index/testRes:TestRes: (replace)
         [id=newid]
         [urn=urn:pulumi:test::project::crossprovider:index/testRes:TestRes::example]
-      ~ props: [
+      ~ props : [
           - [20]: "value20"
         ]
 Resources:
     +-1 to replace
     1 unchanged
 `,
-	detailedDiff: map[string]interface{}{"props[20]": map[string]interface{}{"kind": "DELETE_REPLACE"}},
+	detailedDiff: map[string]interface{}{
+		"__meta":    map[string]interface{}{"kind": "UPDATE_REPLACE"},
+		"props[20]": map[string]interface{}{"kind": "DELETE"},
+	},
 }
