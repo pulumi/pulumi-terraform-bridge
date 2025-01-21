@@ -486,7 +486,17 @@ func (differ detailedDiffer) makeListDiff(
 		return nil
 	}
 	if _, ok := tfs.Elem().(shim.Schema); ok || tfs.Elem() == nil {
-		return makeListAttributeDiff(path, oldList, newList)
+		listDiff := makeListAttributeDiff(path, oldList, newList)
+		if tfs.ForceNew() {
+			for k, v := range listDiff {
+				diff[k] = promoteToReplace(v)
+			}
+		} else {
+			for k, v := range listDiff {
+				diff[k] = v
+			}
+		}
+		return diff
 	}
 
 	longerLen := max(len(oldList), len(newList))
