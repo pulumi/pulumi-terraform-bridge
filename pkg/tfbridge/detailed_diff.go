@@ -7,6 +7,7 @@ import (
 	"slices"
 	"sort"
 
+	"github.com/VenelinMartinov/godifft"
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -427,6 +428,38 @@ func (differ detailedDiffer) makePropDiff(
 	}
 }
 
+func makeListAttributeDiff(
+	path propertyPath, old, new []resource.PropertyValue,
+) map[detailedDiffKey]*pulumirpc.PropertyDiff {
+	diff := make(map[detailedDiffKey]*pulumirpc.PropertyDiff)
+	edits := godifft.DiffT(old, new, godifft.DiffTOptions[resource.PropertyValue]{
+		Equals: func(a, b resource.PropertyValue) bool {
+			return a.DeepEquals(b)
+		},
+	})
+
+	for _, edit := range edits {
+		if edit.Change == godifft.Insert {
+			key := path.Index(edit.Index)
+			if diff[key.Key()] == nil {
+				diff[key.Key()] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_ADD}
+			} else {
+				diff[key.Key()] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE}
+			}
+		}
+		if edit.Change == godifft.Remove {
+			key := path.Index(edit.Index)
+			if diff[key.Key()] == nil {
+				diff[key.Key()] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_DELETE}
+			} else {
+				diff[key.Key()] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE}
+			}
+		}
+	}
+
+	return diff
+}
+
 func (differ detailedDiffer) makeListDiff(
 	path propertyPath, old, new resource.PropertyValue,
 ) map[detailedDiffKey]*pulumirpc.PropertyDiff {
@@ -434,9 +467,24 @@ func (differ detailedDiffer) makeListDiff(
 	oldList := old.ArrayValue()
 	newList := new.ArrayValue()
 
-	// naive diffing of lists
-	// TODO[pulumi/pulumi-terraform-bridge#2295]: implement a more sophisticated diffing algorithm
-	// investigate how this interacts with force new - is identity preserved or just order
+	tfs, _, err := lookupSchemas(path, differ.tfs, differ.ps)
+	if err != nil {
+		return nil
+	}
+	if _, ok := tfs.Elem().(shim.Schema); ok || tfs.Elem() == nil {
+		listDiff := makeListAttributeDiff(path, oldList, newList)
+		if tfs.ForceNew() {
+			for k, v := range listDiff {
+				diff[k] = promoteToReplace(v)
+			}
+		} else {
+			for k, v := range listDiff {
+				diff[k] = v
+			}
+		}
+		return diff
+	}
+
 	longerLen := max(len(oldList), len(newList))
 	for i := 0; i < longerLen; i++ {
 		elem := func(l []resource.PropertyValue) resource.PropertyValue {
