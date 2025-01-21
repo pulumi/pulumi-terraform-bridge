@@ -15,6 +15,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/walk"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/opentofu/plans/objchange"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/propertyvalue"
 )
 
@@ -427,6 +428,52 @@ func (differ detailedDiffer) makePropDiff(
 	}
 }
 
+func makeListAttributeDiff(
+	path propertyPath, old, new []resource.PropertyValue,
+) map[detailedDiffKey]*pulumirpc.PropertyDiff {
+	diff := make(map[detailedDiffKey]*pulumirpc.PropertyDiff)
+	lcs := objchange.LongestCommonSubsequence(old, new, func(x, y resource.PropertyValue) bool {
+		return x.DeepEquals(y)
+	})
+
+	//nolint:lll
+	// Adapted from https://github.com/opentofu/opentofu/blob/cb2e9119aa75eeb8e1fa175e2b7a205a4fef129f/internal/command/jsonformat/collections/slice.go#L39
+	var oldIx, newIx, lcsIx int
+	for oldIx < len(old) || newIx < len(new) || lcsIx < len(lcs) {
+		// Step through all the before values until we hit the next item in the
+		// longest common subsequence. We are going to just say that all of
+		// these have been deleted.
+		for oldIx < len(old) && (lcsIx >= len(lcs) || !old[oldIx].DeepEquals(lcs[lcsIx])) {
+			if diff[path.Index(oldIx).Key()] == nil {
+				diff[path.Index(oldIx).Key()] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_DELETE}
+			} else {
+				diff[path.Index(oldIx).Key()] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE}
+			}
+			oldIx++
+		}
+
+		// Now, step through all the after values until hit the next item in the
+		// LCS. We are going to say that all of these have been created.
+		for newIx < len(new) && (lcsIx >= len(lcs) || !new[newIx].DeepEquals(lcs[lcsIx])) {
+			if diff[path.Index(newIx).Key()] == nil {
+				diff[path.Index(newIx).Key()] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_ADD}
+			} else {
+				diff[path.Index(newIx).Key()] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE}
+			}
+			newIx++
+		}
+
+		// Finally, add the item in common as unchanged.
+		if lcsIx < len(lcs) {
+			oldIx++
+			newIx++
+			lcsIx++
+		}
+	}
+
+	return diff
+}
+
 func (differ detailedDiffer) makeListDiff(
 	path propertyPath, old, new resource.PropertyValue,
 ) map[detailedDiffKey]*pulumirpc.PropertyDiff {
@@ -434,9 +481,14 @@ func (differ detailedDiffer) makeListDiff(
 	oldList := old.ArrayValue()
 	newList := new.ArrayValue()
 
-	// naive diffing of lists
-	// TODO[pulumi/pulumi-terraform-bridge#2295]: implement a more sophisticated diffing algorithm
-	// investigate how this interacts with force new - is identity preserved or just order
+	tfs, _, err := lookupSchemas(path, differ.tfs, differ.ps)
+	if err != nil {
+		return nil
+	}
+	if _, ok := tfs.Elem().(shim.Schema); ok || tfs.Elem() == nil {
+		return makeListAttributeDiff(path, oldList, newList)
+	}
+
 	longerLen := max(len(oldList), len(newList))
 	for i := 0; i < longerLen; i++ {
 		elem := func(l []resource.PropertyValue) resource.PropertyValue {

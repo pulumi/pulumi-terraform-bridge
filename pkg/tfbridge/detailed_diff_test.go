@@ -3301,3 +3301,136 @@ func TestMakeSetDiffElementResult(t *testing.T) {
 		})
 	}
 }
+
+func TestMakeListAttributeDiff(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		path     propertyPath
+		old      []resource.PropertyValue
+		new      []resource.PropertyValue
+		expected map[detailedDiffKey]*pulumirpc.PropertyDiff
+	}{
+		{
+			name:     "empty lists",
+			path:     newPropertyPath("list"),
+			old:      []resource.PropertyValue{},
+			new:      []resource.PropertyValue{},
+			expected: map[detailedDiffKey]*pulumirpc.PropertyDiff{},
+		},
+		{
+			name: "add single element",
+			path: newPropertyPath("list"),
+			old:  []resource.PropertyValue{},
+			new:  []resource.PropertyValue{resource.NewStringProperty("new")},
+			expected: map[detailedDiffKey]*pulumirpc.PropertyDiff{
+				"list[0]": {Kind: pulumirpc.PropertyDiff_ADD},
+			},
+		},
+		{
+			name: "delete single element",
+			path: newPropertyPath("list"),
+			old:  []resource.PropertyValue{resource.NewStringProperty("old")},
+			new:  []resource.PropertyValue{},
+			expected: map[detailedDiffKey]*pulumirpc.PropertyDiff{
+				"list[0]": {Kind: pulumirpc.PropertyDiff_DELETE},
+			},
+		},
+		{
+			name: "add multiple elements",
+			path: newPropertyPath("list"),
+			old:  []resource.PropertyValue{resource.NewStringProperty("unchanged")},
+			new: []resource.PropertyValue{
+				resource.NewStringProperty("unchanged"),
+				resource.NewStringProperty("new1"),
+				resource.NewStringProperty("new2"),
+			},
+			expected: map[detailedDiffKey]*pulumirpc.PropertyDiff{
+				"list[1]": {Kind: pulumirpc.PropertyDiff_ADD},
+				"list[2]": {Kind: pulumirpc.PropertyDiff_ADD},
+			},
+		},
+		{
+			name: "delete multiple elements",
+			path: newPropertyPath("list"),
+			old: []resource.PropertyValue{
+				resource.NewStringProperty("old1"),
+				resource.NewStringProperty("old2"),
+				resource.NewStringProperty("unchanged"),
+			},
+			new: []resource.PropertyValue{resource.NewStringProperty("unchanged")},
+			expected: map[detailedDiffKey]*pulumirpc.PropertyDiff{
+				"list[0]": {Kind: pulumirpc.PropertyDiff_DELETE},
+				"list[1]": {Kind: pulumirpc.PropertyDiff_DELETE},
+			},
+		},
+		{
+			name: "reorder elements",
+			path: newPropertyPath("list"),
+			old: []resource.PropertyValue{
+				resource.NewStringProperty("first"),
+				resource.NewStringProperty("second"),
+			},
+			new: []resource.PropertyValue{
+				resource.NewStringProperty("second"),
+				resource.NewStringProperty("first"),
+			},
+			expected: map[detailedDiffKey]*pulumirpc.PropertyDiff{
+				"list[0]": {Kind: pulumirpc.PropertyDiff_DELETE},
+				"list[1]": {Kind: pulumirpc.PropertyDiff_ADD},
+			},
+		},
+		{
+			name: "add and delete makes an update",
+			path: newPropertyPath("list"),
+			old: []resource.PropertyValue{
+				resource.NewStringProperty("unchanged1"),
+				resource.NewStringProperty("old1"),
+				resource.NewStringProperty("unchanged2"),
+			},
+			new: []resource.PropertyValue{
+				resource.NewStringProperty("unchanged1"),
+				resource.NewStringProperty("new1"),
+				resource.NewStringProperty("unchanged2"),
+			},
+			expected: map[detailedDiffKey]*pulumirpc.PropertyDiff{
+				"list[1]": {Kind: pulumirpc.PropertyDiff_UPDATE},
+			},
+		},
+		{
+			name: "longest sequence retained",
+			path: newPropertyPath("list"),
+			old: []resource.PropertyValue{
+				resource.NewStringProperty("unchanged1"),
+				resource.NewStringProperty("old1"),
+				resource.NewStringProperty("unchanged2"),
+				resource.NewStringProperty("old2"),
+				resource.NewStringProperty("unchanged3"),
+			},
+			new: []resource.PropertyValue{
+				resource.NewStringProperty("new1"),
+				resource.NewStringProperty("unchanged1"),
+				resource.NewStringProperty("unchanged2"),
+				resource.NewStringProperty("new2"),
+				resource.NewStringProperty("unchanged3"),
+				resource.NewStringProperty("new3"),
+			},
+			expected: map[detailedDiffKey]*pulumirpc.PropertyDiff{
+				"list[0]": {Kind: pulumirpc.PropertyDiff_ADD},
+				"list[1]": {Kind: pulumirpc.PropertyDiff_DELETE},
+				"list[3]": {Kind: pulumirpc.PropertyDiff_UPDATE},
+				"list[5]": {Kind: pulumirpc.PropertyDiff_ADD},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			result := makeListAttributeDiff(tt.path, tt.old, tt.new)
+			require.Equal(t, tt.expected, result)
+		})
+	}
+}

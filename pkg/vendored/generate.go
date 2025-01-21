@@ -211,6 +211,11 @@ func vendorOpenTOFU(version string) {
 			transforms: transforms,
 		},
 		{
+			src:        "internal/plans/objchange/lcs.go",
+			dest:       "plans/objchange/lcs.go",
+			transforms: transforms,
+		},
+		{
 			src:  "internal/plugin6/convert/schema.go",
 			dest: "convert/schema.go",
 			transforms: append(transforms, func(s string) string {
