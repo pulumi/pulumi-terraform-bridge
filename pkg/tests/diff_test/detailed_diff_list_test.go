@@ -1,10 +1,13 @@
 package tests
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 func TestSDKv2DetailedDiffList(t *testing.T) {
@@ -221,6 +224,110 @@ func TestSDKv2DetailedDiffList(t *testing.T) {
 		},
 	}
 
+	listAttributeSchemaComputed := schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"prop": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Computed: true,
+				Elem:     &schema.Schema{Type: schema.TypeString},
+			},
+		},
+		CreateContext: func(ctx context.Context, d *schema.ResourceData, i interface{}) diag.Diagnostics {
+			d.SetId("id")
+			if _, ok := d.GetOk("prop"); !ok {
+				err := d.Set("prop", []interface{}{"computed"})
+				contract.Assertf(err == nil, "failed to set attribute: %v", err)
+			}
+			return nil
+		},
+		UpdateContext: func(ctx context.Context, d *schema.ResourceData, i interface{}) diag.Diagnostics {
+			if _, ok := d.GetOk("prop"); !ok {
+				err := d.Set("prop", []interface{}{"computed"})
+				contract.Assertf(err == nil, "failed to set attribute: %v", err)
+			}
+			return nil
+		},
+	}
+
+	computedListBlockFunc := func(ctx context.Context, d *schema.ResourceData, i interface{}) diag.Diagnostics {
+		if _, ok := d.GetOk("prop"); !ok {
+			err := d.Set("prop", []map[string]interface{}{{"nested_prop": "computed"}})
+			contract.Assertf(err == nil, "failed to set attribute: %v", err)
+		}
+		return nil
+	}
+
+	listBlockSchemaComputed := schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"prop": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Computed: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"nested_prop": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+					},
+				},
+			},
+		},
+		CreateContext: func(ctx context.Context, rd *schema.ResourceData, i interface{}) diag.Diagnostics {
+			rd.SetId("id")
+			return computedListBlockFunc(ctx, rd, i)
+		},
+		UpdateContext: computedListBlockFunc,
+	}
+
+	computedListBlockNestedFunc := func(ctx context.Context, d *schema.ResourceData, i interface{}) diag.Diagnostics {
+		contract.Assertf(d.Get("prop") != nil, "test attribute is nil")
+		testVals := d.Get("prop").([]interface{})
+		newVals := []map[string]interface{}{}
+		for _, v := range testVals {
+			val := v.(map[string]interface{})
+			if val["computed"] == nil || val["computed"] == "" {
+				compVal := "computed1"
+				if val["nested_prop"] != nil {
+					compVal = val["nested_prop"].(string)
+				}
+				val["computed"] = compVal
+			}
+			newVals = append(newVals, val)
+		}
+		err := d.Set("prop", newVals)
+		contract.Assertf(err == nil, "failed to set attribute: %v", err)
+		return nil
+	}
+
+	listBlockSchemaNestedComputed := schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"prop": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"nested_prop": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"computed": {
+							Type:     schema.TypeString,
+							Optional: true,
+							Computed: true,
+						},
+					},
+				},
+			},
+		},
+		CreateContext: func(ctx context.Context, rd *schema.ResourceData, i interface{}) diag.Diagnostics {
+			rd.SetId("id")
+			return computedListBlockNestedFunc(ctx, rd, i)
+		},
+		UpdateContext: computedListBlockNestedFunc,
+	}
+
 	listPairs := []diffSchemaValueMakerPair[[]string]{
 		{"list attribute", listAttrSchema, listValueMaker},
 		{"list attribute force new", listAttrSchemaForceNew, listValueMaker},
@@ -233,6 +340,17 @@ func TestSDKv2DetailedDiffList(t *testing.T) {
 		{
 			"list block nested default with default specified in program",
 			listBlockSchemaNestedDefault, nestedListValueMakerWithDefaultSpecified,
+		},
+		{"list attribute computed", listAttributeSchemaComputed, listValueMaker},
+		{"list block computed", listBlockSchemaComputed, nestedListValueMaker},
+		{
+			"list block computed with computed specified in program",
+			listBlockSchemaComputed, nestedListValueMakerWithComputedSpecified,
+		},
+		{"list block nested computed", listBlockSchemaNestedComputed, nestedListValueMaker},
+		{
+			"list block nested computed with computed specified in program",
+			listBlockSchemaNestedComputed, nestedListValueMakerWithComputedSpecified,
 		},
 	}
 
