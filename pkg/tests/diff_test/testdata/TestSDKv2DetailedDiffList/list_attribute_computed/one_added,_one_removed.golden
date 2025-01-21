@@ -36,17 +36,15 @@ Plan: 0 to add, 1 to change, 0 to destroy.
         [id=id]
         [urn=urn:pulumi:test::project::crossprovider:index/testRes:TestRes::example]
       ~ props: [
-          ~ [0]: "val1" => "val2"
-          ~ [1]: "val2" => "val3"
-          ~ [2]: "val3" => "val4"
+          - [0]: "val1"
+          + [2]: "val4"
         ]
 Resources:
     ~ 1 to update
     1 unchanged
 `,
 	detailedDiff: map[string]interface{}{
-		"props[0]": map[string]interface{}{"kind": "UPDATE"},
-		"props[1]": map[string]interface{}{"kind": "UPDATE"},
-		"props[2]": map[string]interface{}{"kind": "UPDATE"},
+		"props[0]": map[string]interface{}{"kind": "DELETE"},
+		"props[2]": map[string]interface{}{},
 	},
 }
