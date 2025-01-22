@@ -29,7 +29,7 @@ import (
 )
 
 func main() {
-	err := provider.Main("hcl", func(hc *provider.HostClient) (pulumirpc.ResourceProviderServer, error) {
+	err := provider.Main(providerName, func(hc *provider.HostClient) (pulumirpc.ResourceProviderServer, error) {
 		return newHclResourceProviderServer(hc), nil
 	})
 	if err != nil {
@@ -188,8 +188,8 @@ func computeReattachConfig(_ string, proxies tfProviderProxies) (map[string]any,
 func inferPulumiSchemaForModule(pargs *ParameterizeArgs) (*schema.PackageSpec, error) {
 	if pargs.TFModuleRef == "terraform-aws-modules/vpc/aws" && pargs.TFModuleVersion == "5.16.0" {
 		return &schema.PackageSpec{
-			Name:    "hcl",
-			Version: "0.0.1",
+			Name:    providerName,
+			Version: providerVersion,
 			Resources: map[string]schema.ResourceSpec{
 				"hcl:index:VpcAws": {
 					InputProperties: map[string]schema.PropertySpec{
