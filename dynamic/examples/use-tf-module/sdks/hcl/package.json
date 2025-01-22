@@ -7,7 +7,8 @@
     "postinstall": "node ./scripts/postinstall.js"
   },
   "dependencies": {
-    "@pulumi/pulumi": "^3.136.0"
+    "@pulumi/pulumi": "^3.142.0",
+    "async-mutex": "^0.5.0"
   },
   "devDependencies": {
     "@types/node": "^14",
@@ -15,6 +16,12 @@
   },
   "pulumi": {
     "resource": true,
-    "name": "hcl"
+    "name": "hcl",
+    "version": "0.0.1",
+    "parameterization": {
+      "name": "hcl",
+      "version": "0.0.1",
+      "value": "ewogICJtb2R1bGUiOiAidGVycmFmb3JtLWF3cy1tb2R1bGVzL3ZwYy9hd3MiLAogICJ2ZXJzaW9uIjogIjUuMTYuMCIKfQ=="
+    }
   }
 }

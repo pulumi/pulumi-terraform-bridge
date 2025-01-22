@@ -22,20 +22,19 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	pulumiprovider "github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
-	"google.golang.org/protobuf/types/known/structpb"
 )
 
 func main() {
 	err := provider.Main("hcl", func(hc *provider.HostClient) (pulumirpc.ResourceProviderServer, error) {
-		return &hclResourceProviderServer{}, nil
+		return newHclResourceProviderServer(hc), nil
 	})
 	if err != nil {
 		cmdutil.ExitError(err.Error())
@@ -43,29 +42,33 @@ func main() {
 }
 
 type hclResourceProviderServer struct {
+	params             ParameterizeArgs // available after Parameterize call only
+	hc                 *provider.HostClient
+	moduleStateHandler *moduleStateHandler
 	pulumirpc.UnimplementedResourceProviderServer
+}
+
+func newHclResourceProviderServer(hc *provider.HostClient) *hclResourceProviderServer {
+	modStateHandler := newModuleStateHandler(hc)
+	return &hclResourceProviderServer{
+		hc:                 hc,
+		moduleStateHandler: modStateHandler,
+	}
 }
 
 func (s *hclResourceProviderServer) Parameterize(
 	ctx context.Context,
 	req *pulumirpc.ParameterizeRequest,
 ) (*pulumirpc.ParameterizeResponse, error) {
-	if args := req.GetArgs(); args != nil {
-		pargs, err := parseParameterizeArgs(args)
-		if err != nil {
-			return nil, err
-		}
-		// The name and version values returned here are passed to GetSchema SubpackageName, SubpackageVersion.
-		return &pulumirpc.ParameterizeResponse{
-			Name:    fmt.Sprintf("hcl::%s", pargs.TFModuleRef),
-			Version: string(pargs.TFModuleVersion),
-		}, nil
+	params, err := parseParameterizeRequest(req)
+	if err != nil {
+		return nil, err
 	}
-	if args := req.GetValue(); args != nil {
-		return nil, fmt.Errorf("value is not yet supported")
-	}
-
-	return nil, fmt.Errorf("Impossible")
+	s.params = params
+	return &pulumirpc.ParameterizeResponse{
+		Name:    providerName,
+		Version: providerVersion,
+	}, nil
 }
 
 func (s *hclResourceProviderServer) GetSchema(
@@ -75,9 +78,7 @@ func (s *hclResourceProviderServer) GetSchema(
 	if req.Version != 0 {
 		return nil, fmt.Errorf("req.Version is not yet supported")
 	}
-	m := TFModuleRef(strings.TrimPrefix(req.SubpackageName, "hcl::"))
-	v := TFModuleVersion(req.SubpackageVersion)
-	spec, err := inferPulumiSchemaForModule(m, v)
+	spec, err := inferPulumiSchemaForModule(&s.params)
 	if err != nil {
 		return nil, err
 	}
@@ -109,58 +110,149 @@ func (*hclResourceProviderServer) Configure(
 	}, nil
 }
 
-func (*hclResourceProviderServer) Construct(
+func (rps *hclResourceProviderServer) construct(
+	ctx *pulumi.Context,
+	typ, name string,
+	inputs pulumiprovider.ConstructInputs,
+	options pulumi.ResourceOption,
+) (*pulumiprovider.ConstructResult, error) {
+	switch typ {
+	case "hcl:index:VpcAws":
+		component, err := NewModuleComponentResource(ctx, rps.moduleStateHandler, typ, name, &ModuleComponentArgs{})
+		if err != nil {
+			return nil, fmt.Errorf("NewModuleComponentResource failed: %w", err)
+		}
+		constructResult, err := pulumiprovider.NewConstructResult(component)
+		if err != nil {
+			return nil, fmt.Errorf("pulumiprovider.NewConstructResult failed: %w", err)
+		}
+		return constructResult, nil
+	default:
+		return nil, fmt.Errorf("TODO: only hcl:index:VpcAws is supported in the prototype")
+	}
+}
+
+func (rps *hclResourceProviderServer) Construct(
 	ctx context.Context,
 	req *pulumirpc.ConstructRequest,
 ) (*pulumirpc.ConstructResponse, error) {
-	contract.Assertf(req.Type == "hcl:index:VpcAws", "TODO only hcl:index:VpcAws is supported in Construct")
+	return pulumiprovider.Construct(ctx, req, rps.hc.EngineConn(), rps.construct)
 
-	d, err := prepareTFWorkspace()
-	if err != nil {
-		return nil, err
+	// contract.Assertf(req.Type == "hcl:index:VpcAws", "TODO only hcl:index:VpcAws is supported in Construct")
+
+	// componentURN := urnCreate(req.Name, req.Type, urn.URN(req.Parent), req.Project, req.Stack)
+
+	// resmonClient, err := newResourceMonitorClient(req.MonitorEndpoint)
+	// contract.AssertNoErrorf(err, "Failed initializing a resource monitor client")
+
+	// go rps.registerModuleStateResource(ctx, resmonClient, componentURN)
+
+	// d, err := prepareTFWorkspace()
+	// if err != nil {
+	// 	return nil, err
+	// }
+
+	// err = initTF(d)
+	// if err != nil {
+	// 	return nil, err
+	// }
+
+	// requiredProviders, err := inferTFRequiredProviders(d)
+	// if err != nil {
+	// 	return nil, err
+	// }
+
+	// proxies, err := startTFProviderProxies(requiredProviders, req.MonitorEndpoint, req.DryRun)
+	// if err != nil {
+	// 	return nil, err
+	// }
+
+	// defer func() {
+	// 	err := proxies.Close()
+	// 	contract.AssertNoErrorf(err, "failed to close proxies")
+	// }()
+
+	// if req.DryRun == true {
+	// 	// Handle pulumi preview.
+	// 	err = planTF(d, proxies)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// } else {
+	// 	// handle pulumi up
+	// 	err = upTF(d, proxies)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// }
+
+	// return &pulumirpc.ConstructResponse{
+	// 	State: &structpb.Struct{
+	// 		Fields: map[string]*structpb.Value{
+	// 			"defaultVpcId": structpb.NewStringValue("testing"),
+	// 		},
+	// 	},
+	// }, nil
+}
+
+func (rps *hclResourceProviderServer) Check(
+	ctx context.Context,
+	req *pulumirpc.CheckRequest,
+) (*pulumirpc.CheckResponse, error) {
+	switch req.GetType() {
+	case moduleStateResourceType:
+		return rps.moduleStateHandler.Check(ctx, req)
+	default:
+		return nil, fmt.Errorf("Type %q is not supported yet", req.GetType())
 	}
+}
 
-	err = initTF(d)
-	if err != nil {
-		return nil, err
+func (rps *hclResourceProviderServer) Diff(
+	ctx context.Context,
+	req *pulumirpc.DiffRequest,
+) (*pulumirpc.DiffResponse, error) {
+	switch req.GetType() {
+	case moduleStateResourceType:
+		return rps.moduleStateHandler.Diff(ctx, req)
+	default:
+		return nil, fmt.Errorf("Type %q is not supported yet", req.GetType())
 	}
+}
 
-	requiredProviders, err := inferTFRequiredProviders(d)
-	if err != nil {
-		return nil, err
+func (rps *hclResourceProviderServer) Create(
+	ctx context.Context,
+	req *pulumirpc.CreateRequest,
+) (*pulumirpc.CreateResponse, error) {
+	switch req.GetType() {
+	case moduleStateResourceType:
+		return rps.moduleStateHandler.Create(ctx, req)
+	default:
+		return nil, fmt.Errorf("Type %q is not supported yet", req.GetType())
 	}
+}
 
-	proxies, err := startTFProviderProxies(requiredProviders, req.MonitorEndpoint, req.DryRun)
-	if err != nil {
-		return nil, err
+func (rps *hclResourceProviderServer) Update(
+	ctx context.Context,
+	req *pulumirpc.UpdateRequest,
+) (*pulumirpc.UpdateResponse, error) {
+	switch req.GetType() {
+	case moduleStateResourceType:
+		return rps.moduleStateHandler.Update(ctx, req)
+	default:
+		return nil, fmt.Errorf("Type %q is not supported yet", req.GetType())
 	}
+}
 
-	defer func() {
-		err := proxies.Close()
-		contract.AssertNoErrorf(err, "failed to close proxies")
-	}()
-
-	if req.DryRun == true {
-		// Handle pulumi preview.
-		err = planTF(d, proxies)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		// handle pulumi up
-		err = upTF(d, proxies)
-		if err != nil {
-			return nil, err
-		}
+func (rps *hclResourceProviderServer) Delete(
+	ctx context.Context,
+	req *pulumirpc.DeleteRequest,
+) (*emptypb.Empty, error) {
+	switch req.GetType() {
+	case moduleStateResourceType:
+		return rps.moduleStateHandler.Delete(ctx, req)
+	default:
+		return nil, fmt.Errorf("Type %q is not supported yet", req.GetType())
 	}
-
-	return &pulumirpc.ConstructResponse{
-		State: &structpb.Struct{
-			Fields: map[string]*structpb.Value{
-				"defaultVpcId": structpb.NewStringValue("testing"),
-			},
-		},
-	}, nil
 }
 
 // Runs terraform init in a given d directory.
@@ -313,29 +405,8 @@ func computeReattachConfig(_ string, proxies tfProviderProxies) (map[string]any,
 
 var _ pulumirpc.ResourceProviderServer = (*hclResourceProviderServer)(nil)
 
-// Reference to a Terraform module, for example "terraform-aws-modules/vpc/aws".
-type TFModuleRef string
-
-// Version specification for a Terraform module, for example "5.16.0".
-type TFModuleVersion string
-
-type ParameterizeArgs struct {
-	TFModuleRef     TFModuleRef
-	TFModuleVersion TFModuleVersion
-}
-
-func parseParameterizeArgs(args *pulumirpc.ParameterizeRequest_ParametersArgs) (ParameterizeArgs, error) {
-	if len(args.Args) != 2 {
-		return ParameterizeArgs{}, fmt.Errorf("Expected exactly 2 args")
-	}
-	return ParameterizeArgs{
-		TFModuleRef:     TFModuleRef(args.Args[0]),
-		TFModuleVersion: TFModuleVersion(args.Args[1]),
-	}, nil
-}
-
-func inferPulumiSchemaForModule(mref TFModuleRef, mver TFModuleVersion) (*schema.PackageSpec, error) {
-	if mref == "terraform-aws-modules/vpc/aws" && mver == "5.16.0" {
+func inferPulumiSchemaForModule(pargs *ParameterizeArgs) (*schema.PackageSpec, error) {
+	if pargs.TFModuleRef == "terraform-aws-modules/vpc/aws" && pargs.TFModuleVersion == "5.16.0" {
 		return &schema.PackageSpec{
 			Name:    "hcl",
 			Version: "0.0.1",
@@ -355,7 +426,13 @@ func inferPulumiSchemaForModule(mref TFModuleRef, mver TFModuleVersion) (*schema
 					IsComponent: true,
 				},
 			},
+			Language: map[string]schema.RawMessage{
+				"nodejs": schema.RawMessage(`{"respectSchemaVersion": true}`),
+			},
+			Parameterization: pargs.ToParameterizationSpec(),
 		}, nil
 	}
-	return nil, fmt.Errorf("Cannot infer Pulumi PackageSpec for TF module %q at version %q", mref, mver)
+	return nil, fmt.Errorf("Cannot infer Pulumi PackageSpec for TF module %q at version %q",
+		pargs.TFModuleRef,
+		pargs.TFModuleVersion)
 }

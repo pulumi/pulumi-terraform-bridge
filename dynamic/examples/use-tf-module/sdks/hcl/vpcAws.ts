@@ -38,7 +38,7 @@ export class VpcAws extends pulumi.ComponentResource {
             resourceInputs["defaultVpcId"] = undefined /*out*/;
         }
         opts = pulumi.mergeOptions(utilities.resourceOptsDefaults(), opts);
-        super(VpcAws.__pulumiType, name, resourceInputs, opts, true /*remote*/);
+        super(VpcAws.__pulumiType, name, resourceInputs, opts, true /*remote*/, utilities.getPackage());
     }
 }
 

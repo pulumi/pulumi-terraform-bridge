@@ -3,16 +3,25 @@ WORKING_DIR := $(shell pwd)
 preview:: export PATH := $(WORKING_DIR)/bin:$(PATH)
 preview:: export AWS_PROFILE := devsandbox
 preview:: npm-add
-	pulumi stack select dev
-	(pulumi preview --diff >preview.log && echo OK)
+	pulumi stack select dev2
+	rm -rf "$(WORKING_DIR)/grpc.json"
+	(PULUMI_DEBUG_GRPC="$(WORKING_DIR)/grpc.json" pulumi preview --diff >preview.log && echo OK)
 
 up:: export PATH := $(WORKING_DIR)/bin:$(PATH)
 up:: export AWS_PROFILE := devsandbox
 up:: npm-add
-	pulumi stack select dev
+	pulumi stack select dev2
 	pulumi destroy --yes
-	(pulumi up --skip-preview >up.log && echo OK)
-	grep -v '@caller' up.log >up-clean.log
+	pulumi up --skip-preview
+	# grep -v '@caller' up.log >up-clean.log
+
+up2:: export PATH := $(WORKING_DIR)/bin:$(PATH)
+up2:: export AWS_PROFILE := devsandbox
+up2:: npm-add
+	pulumi stack select dev2
+	pulumi destroy --yes
+	pulumi up --skip-preview
+	pulumi up --skip-preview
 
 
 npm-add:: packages-add
