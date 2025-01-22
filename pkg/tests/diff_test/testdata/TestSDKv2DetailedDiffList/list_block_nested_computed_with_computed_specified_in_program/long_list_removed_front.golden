@@ -1,0 +1,286 @@
+tests.testOutput{
+	initialValue: &[]string{
+		"value20",
+		"value0",
+		"value1",
+		"value2",
+		"value3",
+		"value4",
+		"value5",
+		"value6",
+		"value7",
+		"value8",
+		"value9",
+		"value10",
+		"value11",
+		"value12",
+		"value13",
+		"value14",
+		"value15",
+		"value16",
+		"value17",
+		"value18",
+		"value19",
+	},
+	changeValue: &[]string{
+		"value0",
+		"value1",
+		"value2",
+		"value3",
+		"value4",
+		"value5",
+		"value6",
+		"value7",
+		"value8",
+		"value9",
+		"value10",
+		"value11",
+		"value12",
+		"value13",
+		"value14",
+		"value15",
+		"value16",
+		"value17",
+		"value18",
+		"value19",
+	},
+	tfOut: `
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  ~ update in-place
+
+Terraform will perform the following actions:
+
+  # crossprovider_test_res.example will be updated in-place
+  ~ resource "crossprovider_test_res" "example" {
+        id = "id"
+
+      ~ prop {
+          ~ computed    = "non-computed-value20" -> "non-computed-value0"
+          ~ nested_prop = "value20" -> "value0"
+        }
+      ~ prop {
+          ~ computed    = "non-computed-value0" -> "non-computed-value1"
+          ~ nested_prop = "value0" -> "value1"
+        }
+      ~ prop {
+          ~ computed    = "non-computed-value1" -> "non-computed-value2"
+          ~ nested_prop = "value1" -> "value2"
+        }
+      ~ prop {
+          ~ computed    = "non-computed-value2" -> "non-computed-value3"
+          ~ nested_prop = "value2" -> "value3"
+        }
+      ~ prop {
+          ~ computed    = "non-computed-value3" -> "non-computed-value4"
+          ~ nested_prop = "value3" -> "value4"
+        }
+      ~ prop {
+          ~ computed    = "non-computed-value4" -> "non-computed-value5"
+          ~ nested_prop = "value4" -> "value5"
+        }
+      ~ prop {
+          ~ computed    = "non-computed-value5" -> "non-computed-value6"
+          ~ nested_prop = "value5" -> "value6"
+        }
+      ~ prop {
+          ~ computed    = "non-computed-value6" -> "non-computed-value7"
+          ~ nested_prop = "value6" -> "value7"
+        }
+      ~ prop {
+          ~ computed    = "non-computed-value7" -> "non-computed-value8"
+          ~ nested_prop = "value7" -> "value8"
+        }
+      ~ prop {
+          ~ computed    = "non-computed-value8" -> "non-computed-value9"
+          ~ nested_prop = "value8" -> "value9"
+        }
+      ~ prop {
+          ~ computed    = "non-computed-value9" -> "non-computed-value10"
+          ~ nested_prop = "value9" -> "value10"
+        }
+      ~ prop {
+          ~ computed    = "non-computed-value10" -> "non-computed-value11"
+          ~ nested_prop = "value10" -> "value11"
+        }
+      ~ prop {
+          ~ computed    = "non-computed-value11" -> "non-computed-value12"
+          ~ nested_prop = "value11" -> "value12"
+        }
+      ~ prop {
+          ~ computed    = "non-computed-value12" -> "non-computed-value13"
+          ~ nested_prop = "value12" -> "value13"
+        }
+      ~ prop {
+          ~ computed    = "non-computed-value13" -> "non-computed-value14"
+          ~ nested_prop = "value13" -> "value14"
+        }
+      ~ prop {
+          ~ computed    = "non-computed-value14" -> "non-computed-value15"
+          ~ nested_prop = "value14" -> "value15"
+        }
+      ~ prop {
+          ~ computed    = "non-computed-value15" -> "non-computed-value16"
+          ~ nested_prop = "value15" -> "value16"
+        }
+      ~ prop {
+          ~ computed    = "non-computed-value16" -> "non-computed-value17"
+          ~ nested_prop = "value16" -> "value17"
+        }
+      ~ prop {
+          ~ computed    = "non-computed-value17" -> "non-computed-value18"
+          ~ nested_prop = "value17" -> "value18"
+        }
+      ~ prop {
+          ~ computed    = "non-computed-value18" -> "non-computed-value19"
+          ~ nested_prop = "value18" -> "value19"
+        }
+      - prop {
+          - computed    = "non-computed-value19" -> null
+          - nested_prop = "value19" -> null
+        }
+    }
+
+Plan: 0 to add, 1 to change, 0 to destroy.
+
+`,
+	pulumiOut: `Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::project::pulumi:pulumi:Stack::project-test]
+    ~ crossprovider:index/testRes:TestRes: (update)
+        [id=id]
+        [urn=urn:pulumi:test::project::crossprovider:index/testRes:TestRes::example]
+      ~ props: [
+          ~ [0]: {
+                  ~ computed  : "non-computed-value20" => "non-computed-value0"
+                  ~ nestedProp: "value20" => "value0"
+                }
+          ~ [1]: {
+                  ~ computed  : "non-computed-value0" => "non-computed-value1"
+                  ~ nestedProp: "value0" => "value1"
+                }
+          ~ [2]: {
+                  ~ computed  : "non-computed-value1" => "non-computed-value2"
+                  ~ nestedProp: "value1" => "value2"
+                }
+          ~ [3]: {
+                  ~ computed  : "non-computed-value2" => "non-computed-value3"
+                  ~ nestedProp: "value2" => "value3"
+                }
+          ~ [4]: {
+                  ~ computed  : "non-computed-value3" => "non-computed-value4"
+                  ~ nestedProp: "value3" => "value4"
+                }
+          ~ [5]: {
+                  ~ computed  : "non-computed-value4" => "non-computed-value5"
+                  ~ nestedProp: "value4" => "value5"
+                }
+          ~ [6]: {
+                  ~ computed  : "non-computed-value5" => "non-computed-value6"
+                  ~ nestedProp: "value5" => "value6"
+                }
+          ~ [7]: {
+                  ~ computed  : "non-computed-value6" => "non-computed-value7"
+                  ~ nestedProp: "value6" => "value7"
+                }
+          ~ [8]: {
+                  ~ computed  : "non-computed-value7" => "non-computed-value8"
+                  ~ nestedProp: "value7" => "value8"
+                }
+          ~ [9]: {
+                  ~ computed  : "non-computed-value8" => "non-computed-value9"
+                  ~ nestedProp: "value8" => "value9"
+                }
+          ~ [10]: {
+                  ~ computed  : "non-computed-value9" => "non-computed-value10"
+                  ~ nestedProp: "value9" => "value10"
+                }
+          ~ [11]: {
+                  ~ computed  : "non-computed-value10" => "non-computed-value11"
+                  ~ nestedProp: "value10" => "value11"
+                }
+          ~ [12]: {
+                  ~ computed  : "non-computed-value11" => "non-computed-value12"
+                  ~ nestedProp: "value11" => "value12"
+                }
+          ~ [13]: {
+                  ~ computed  : "non-computed-value12" => "non-computed-value13"
+                  ~ nestedProp: "value12" => "value13"
+                }
+          ~ [14]: {
+                  ~ computed  : "non-computed-value13" => "non-computed-value14"
+                  ~ nestedProp: "value13" => "value14"
+                }
+          ~ [15]: {
+                  ~ computed  : "non-computed-value14" => "non-computed-value15"
+                  ~ nestedProp: "value14" => "value15"
+                }
+          ~ [16]: {
+                  ~ computed  : "non-computed-value15" => "non-computed-value16"
+                  ~ nestedProp: "value15" => "value16"
+                }
+          ~ [17]: {
+                  ~ computed  : "non-computed-value16" => "non-computed-value17"
+                  ~ nestedProp: "value16" => "value17"
+                }
+          ~ [18]: {
+                  ~ computed  : "non-computed-value17" => "non-computed-value18"
+                  ~ nestedProp: "value17" => "value18"
+                }
+          ~ [19]: {
+                  ~ computed  : "non-computed-value18" => "non-computed-value19"
+                  ~ nestedProp: "value18" => "value19"
+                }
+          - [20]: {
+                  - computed  : "non-computed-value19"
+                  - nestedProp: "value19"
+                }
+        ]
+Resources:
+    ~ 1 to update
+    1 unchanged
+`,
+	detailedDiff: map[string]interface{}{
+		"props[0].computed":    map[string]interface{}{"kind": "UPDATE"},
+		"props[0].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
+		"props[10].computed":   map[string]interface{}{"kind": "UPDATE"},
+		"props[10].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"props[11].computed":   map[string]interface{}{"kind": "UPDATE"},
+		"props[11].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"props[12].computed":   map[string]interface{}{"kind": "UPDATE"},
+		"props[12].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"props[13].computed":   map[string]interface{}{"kind": "UPDATE"},
+		"props[13].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"props[14].computed":   map[string]interface{}{"kind": "UPDATE"},
+		"props[14].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"props[15].computed":   map[string]interface{}{"kind": "UPDATE"},
+		"props[15].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"props[16].computed":   map[string]interface{}{"kind": "UPDATE"},
+		"props[16].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"props[17].computed":   map[string]interface{}{"kind": "UPDATE"},
+		"props[17].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"props[18].computed":   map[string]interface{}{"kind": "UPDATE"},
+		"props[18].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"props[19].computed":   map[string]interface{}{"kind": "UPDATE"},
+		"props[19].nestedProp": map[string]interface{}{"kind": "UPDATE"},
+		"props[1].computed":    map[string]interface{}{"kind": "UPDATE"},
+		"props[1].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
+		"props[20]":            map[string]interface{}{"kind": "DELETE"},
+		"props[2].computed":    map[string]interface{}{"kind": "UPDATE"},
+		"props[2].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
+		"props[3].computed":    map[string]interface{}{"kind": "UPDATE"},
+		"props[3].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
+		"props[4].computed":    map[string]interface{}{"kind": "UPDATE"},
+		"props[4].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
+		"props[5].computed":    map[string]interface{}{"kind": "UPDATE"},
+		"props[5].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
+		"props[6].computed":    map[string]interface{}{"kind": "UPDATE"},
+		"props[6].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
+		"props[7].computed":    map[string]interface{}{"kind": "UPDATE"},
+		"props[7].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
+		"props[8].computed":    map[string]interface{}{"kind": "UPDATE"},
+		"props[8].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
+		"props[9].computed":    map[string]interface{}{"kind": "UPDATE"},
+		"props[9].nestedProp":  map[string]interface{}{"kind": "UPDATE"},
+	},
+}
