@@ -476,6 +476,9 @@ func TestTypeOverride(t *testing.T) {
 
 func TestDataSourceAttributeVsBlockSchemaNameOverride(t *testing.T) {
 	t.Parallel()
+	if runtime.GOOS == "windows" {
+		t.Skipf("Skipping on windows - tests cases need to be made robust to newline handling")
+	}
 
 	attrRes := dschema.Schema{
 		Attributes: map[string]dschema.Attribute{
@@ -563,6 +566,9 @@ func TestDataSourceAttributeVsBlockSchemaNameOverride(t *testing.T) {
 func TestResourceAttributeVsBlockSchemaNameOverride(t *testing.T) {
 	t.Skip("TODO[pulumi/pulumi-terraform-bridge#2803] Skip until fixed")
 	t.Parallel()
+	if runtime.GOOS == "windows" {
+		t.Skipf("Skipping on windows - tests cases need to be made robust to newline handling")
+	}
 
 	attrRes := rschema.Schema{
 		Attributes: map[string]rschema.Attribute{
@@ -649,6 +655,10 @@ func TestResourceAttributeVsBlockSchemaNameOverride(t *testing.T) {
 
 func TestRegressDatabricksNestedCsharpOverrideBlocksSchema(t *testing.T) {
 	t.Parallel()
+	if runtime.GOOS == "windows" {
+		t.Skipf("Skipping on windows - tests cases need to be made robust to newline handling")
+	}
+
 	dsSchemaBlocks := dschema.Schema{
 		Blocks: map[string]dschema.Block{
 			"endpoints": dschema.ListNestedBlock{
@@ -741,6 +751,9 @@ func TestRegressDatabricksNestedCsharpOverrideBlocksSchema(t *testing.T) {
 
 func TestRegressDatabricksNestedCsharpOverrideAttributesSchema(t *testing.T) {
 	t.Parallel()
+	if runtime.GOOS == "windows" {
+		t.Skipf("Skipping on windows - tests cases need to be made robust to newline handling")
+	}
 	dsSchemaAttributes := dschema.Schema{
 		Attributes: map[string]dschema.Attribute{
 			"endpoints": dschema.ListNestedAttribute{
