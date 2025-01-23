@@ -85,6 +85,15 @@ func (*attrSchema) StateFunc() shim.SchemaStateFunc {
 
 // Needs to return a shim.Schema, a shim.Resource, or nil.
 func (s *attrSchema) Elem() interface{} {
+	asObjectType := func(typ any) (shim.Resource, bool) {
+		if tt, ok := typ.(basetypes.ObjectTypable); ok {
+			var res shim.Resource = newObjectPseudoResource(tt,
+				s.attr.Nested(),
+				nil)
+			return res, true
+		}
+		return nil, false
+	}
 	switch t := s.attr.GetType().(type) {
 	// The ObjectType can be triggered through tfsdk.SingleNestedAttributes. Logically it defines an attribute with
 	// a type that is an Object type. To encode the schema of the Object type in a way the shim layer understands,
@@ -98,7 +107,11 @@ func (s *attrSchema) Elem() interface{} {
 		var res shim.Resource = newTuplePseudoResource(t)
 		return res
 	case pfattr.TypeWithElementType:
-		return shim.Schema(newTypeSchema(t.ElementType(), s.attr.Nested()))
+		if r, ok := asObjectType(t.ElementType()); ok {
+			return r
+		} else {
+			return shim.Schema(newTypeSchema(t.ElementType(), s.attr.Nested()))
+		}
 
 	// t does not support any kind of element type.
 	default:

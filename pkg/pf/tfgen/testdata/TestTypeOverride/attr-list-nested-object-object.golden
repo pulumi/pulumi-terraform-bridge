@@ -8,7 +8,7 @@
     "types": {
         "testprovider:index/ResA1:ResA1": {
             "properties": {
-                "foo": {
+                "n1": {
                     "type": "string"
                 }
             },

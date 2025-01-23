@@ -388,16 +388,11 @@ func TestShimListNestedAttr(t *testing.T) {
     "testprov_r1": {
       "list_nested_attr": {
         "element": {
-          "schema": {
-            "element": {
-              "resource": {
-                "x": {
-                  "optional": true,
-                  "type": 4
-                }
-              }
-            },
-            "type": 6
+          "resource": {
+            "x": {
+              "optional": true,
+              "type": 4
+            }
           }
         },
         "optional": true,
@@ -471,16 +466,11 @@ func TestShimSetNestedAttr(t *testing.T) {
     "testprov_r1": {
       "set_nested_attr": {
         "element": {
-          "schema": {
-            "element": {
-              "resource": {
-                "x": {
-                  "optional": true,
-                  "type": 4
-                }
-              }
-            },
-            "type": 6
+          "resource": {
+            "x": {
+              "optional": true,
+              "type": 4
+            }
           }
         },
         "optional": true,
@@ -554,16 +544,11 @@ func TestShimMapNestedAttr(t *testing.T) {
     "testprov_r1": {
       "map_nested_attr": {
         "element": {
-          "schema": {
-            "element": {
-              "resource": {
-                "x": {
-                  "optional": true,
-                  "type": 4
-                }
-              }
-            },
-            "type": 6
+          "resource": {
+            "x": {
+              "optional": true,
+              "type": 4
+            }
           }
         },
         "optional": true,
@@ -576,28 +561,19 @@ func TestShimMapNestedAttr(t *testing.T) {
   "resource": {
     "properties": {
       "mapNestedAttr": {
-        "type": "object",
-        "additionalProperties": {
-          "$ref": "#/types/testprov:index/R1MapNestedAttr:R1MapNestedAttr"
-        }
+        "$ref": "#/types/testprov:index/R1MapNestedAttr:R1MapNestedAttr"
       }
     },
     "inputProperties": {
       "mapNestedAttr": {
-        "type": "object",
-        "additionalProperties": {
-          "$ref": "#/types/testprov:index/R1MapNestedAttr:R1MapNestedAttr"
-        }
+        "$ref": "#/types/testprov:index/R1MapNestedAttr:R1MapNestedAttr"
       }
     },
     "stateInputs": {
       "description": "Input properties used for looking up and filtering R1 resources.\n",
       "properties": {
         "mapNestedAttr": {
-          "type": "object",
-          "additionalProperties": {
-            "$ref": "#/types/testprov:index/R1MapNestedAttr:R1MapNestedAttr"
-          }
+          "$ref": "#/types/testprov:index/R1MapNestedAttr:R1MapNestedAttr"
         }
       },
       "type": "object"

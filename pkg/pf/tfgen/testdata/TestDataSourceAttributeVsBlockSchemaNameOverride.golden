@@ -21,7 +21,7 @@
     "types": {
         "testprovider:index/getAttrResCollection1:getAttrResCollection1": {
             "properties": {
-                "prop": {
+                "prop1": {
                     "type": "string"
                 }
             },
