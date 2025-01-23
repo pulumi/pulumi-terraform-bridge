@@ -22,6 +22,7 @@ import (
 )
 
 func TestDiffAppliesCorrectly(t *testing.T) {
+	t.Parallel()
 	rapid.Check(t, func(t *rapid.T) {
 		s1 := rapid.StringMatching(`^[abc]{0,5}`).Draw(t, "s1")
 		s2 := rapid.StringMatching(`^[abc]{0,5}`).Draw(t, "s2")
@@ -29,7 +30,7 @@ func TestDiffAppliesCorrectly(t *testing.T) {
 		eq := func(b1, b2 byte) bool {
 			return b1 == b2
 		}
-		edits := DiffT([]byte(s1), []byte(s2), DiffTOptions[byte]{
+		edits := DiffT([]byte(s1), []byte(s2), DiffOptions[byte]{
 			Equals: eq,
 		})
 
@@ -50,11 +51,12 @@ func TestDiffAppliesCorrectly(t *testing.T) {
 }
 
 func TestDiff(t *testing.T) {
+	t.Parallel()
 	eq := func(a, b byte) bool {
 		return a == b
 	}
 	input := []byte(`mario`)
-	dd := DiffT(input, []byte(`darius`), DiffTOptions[byte]{Equals: eq})
+	dd := DiffT(input, []byte(`darius`), DiffOptions[byte]{Equals: eq})
 	assert.Equal(t, Remove, dd[0].Change)
 	assert.Equal(t, Insert, dd[1].Change)
 	assert.Equal(t, Keep, dd[2].Change)

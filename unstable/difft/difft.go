@@ -79,14 +79,13 @@ func (edits Edits[T]) apply(xs []T, equals func(T, T) bool) ([]T, error) {
 	return output, nil
 }
 
-type DiffTOptions[T any] struct {
+type DiffOptions[T any] struct {
 	Equals func(T, T) bool
 }
 
-func DiffT[T any](xs, ys []T, opts DiffTOptions[T]) Edits[T] {
-	eq := opts.Equals
-	if eq == nil {
-		eq = func(x T, y T) bool {
+func DiffT[T any](xs, ys []T, opts DiffOptions[T]) Edits[T] {
+	if opts.Equals == nil {
+		opts.Equals = func(x T, y T) bool {
 			return any(x) == any(y)
 		}
 	}

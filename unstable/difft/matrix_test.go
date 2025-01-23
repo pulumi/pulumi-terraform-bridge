@@ -21,6 +21,7 @@ import (
 )
 
 func TestMatrix(t *testing.T) {
+	t.Parallel()
 	m := newMatrix(3, 3)
 	m.set(1, 1, 42)
 	assert.Equal(t, 42, m.get(1, 1))
