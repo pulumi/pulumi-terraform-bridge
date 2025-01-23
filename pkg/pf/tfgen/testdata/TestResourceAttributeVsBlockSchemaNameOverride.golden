@@ -19,6 +19,14 @@
     },
     "config": {},
     "types": {
+        "testprovider:index/AttrResCollection1:AttrResCollection1": {
+            "properties": {
+                "prop1": {
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
         "testprovider:index/BlockResCollection1:BlockResCollection1": {
             "properties": {
                 "prop1": {
@@ -32,6 +40,31 @@
         "description": "The provider type for the testprovider package. By default, resources use package-wide configuration\nsettings, however an explicit `Provider` instance may be created and passed during resource\nconstruction to achieve fine-grained programmatic control over provider settings. See the\n[documentation](https://www.pulumi.com/docs/reference/programming-model/#providers) for more information.\n"
     },
     "resources": {
+        "testprovider:index/attrRes:AttrRes": {
+            "properties": {
+                "collection1": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/types/testprovider:index/AttrResCollection1:AttrResCollection1"
+                    }
+                }
+            },
+            "required": [
+                "collection1"
+            ],
+            "stateInputs": {
+                "description": "Input properties used for looking up and filtering AttrRes resources.\n",
+                "properties": {
+                    "collection1": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/types/testprovider:index/AttrResCollection1:AttrResCollection1"
+                        }
+                    }
+                },
+                "type": "object"
+            }
+        },
         "testprovider:index/blockRes:BlockRes": {
             "properties": {
                 "collection1": {

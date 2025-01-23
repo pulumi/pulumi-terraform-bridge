@@ -21,16 +21,16 @@
     "types": {
         "testprovider:index/getServingEndpointsEndpoints1:getServingEndpointsEndpoints1": {
             "properties": {
-                "aiGateways": {
+                "aiGateway1": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/types/testprovider:index/getServingEndpointsEndpoints1AiGateway:getServingEndpointsEndpoints1AiGateway"
+                        "$ref": "#/types/testprovider:index/getServingEndpointsEndpoints1AiGateway1:getServingEndpointsEndpoints1AiGateway1"
                     }
                 }
             },
             "type": "object",
             "required": [
-                "aiGateways"
+                "aiGateway1"
             ],
             "language": {
                 "nodejs": {
@@ -38,18 +38,18 @@
                 }
             }
         },
-        "testprovider:index/getServingEndpointsEndpoints1AiGateway:getServingEndpointsEndpoints1AiGateway": {
+        "testprovider:index/getServingEndpointsEndpoints1AiGateway1:getServingEndpointsEndpoints1AiGateway1": {
             "properties": {
-                "guardrails": {
+                "guardrails1": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/types/testprovider:index/getServingEndpointsEndpoints1AiGatewayGuardrail:getServingEndpointsEndpoints1AiGatewayGuardrail"
+                        "$ref": "#/types/testprovider:index/getServingEndpointsEndpoints1AiGateway1Guardrails1:getServingEndpointsEndpoints1AiGateway1Guardrails1"
                     }
                 }
             },
             "type": "object",
             "required": [
-                "guardrails"
+                "guardrails1"
             ],
             "language": {
                 "nodejs": {
@@ -57,18 +57,18 @@
                 }
             }
         },
-        "testprovider:index/getServingEndpointsEndpoints1AiGatewayGuardrail:getServingEndpointsEndpoints1AiGatewayGuardrail": {
+        "testprovider:index/getServingEndpointsEndpoints1AiGateway1Guardrails1:getServingEndpointsEndpoints1AiGateway1Guardrails1": {
             "properties": {
-                "inputs": {
+                "input1": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/types/testprovider:index/getServingEndpointsEndpoints1AiGatewayGuardrailInput:getServingEndpointsEndpoints1AiGatewayGuardrailInput"
+                        "$ref": "#/types/testprovider:index/getServingEndpointsEndpoints1AiGateway1Guardrails1Input1:getServingEndpointsEndpoints1AiGateway1Guardrails1Input1"
                     }
                 }
             },
             "type": "object",
             "required": [
-                "inputs"
+                "input1"
             ],
             "language": {
                 "nodejs": {
@@ -76,10 +76,15 @@
                 }
             }
         },
-        "testprovider:index/getServingEndpointsEndpoints1AiGatewayGuardrailInput:getServingEndpointsEndpoints1AiGatewayGuardrailInput": {
+        "testprovider:index/getServingEndpointsEndpoints1AiGateway1Guardrails1Input1:getServingEndpointsEndpoints1AiGateway1Guardrails1Input1": {
             "properties": {
                 "maxBatchSize": {
-                    "type": "integer"
+                    "type": "integer",
+                    "language": {
+                        "csharp": {
+                            "name": "MaxBatchSize1"
+                        }
+                    }
                 }
             },
             "type": "object",

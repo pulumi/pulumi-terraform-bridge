@@ -564,7 +564,6 @@ func TestDataSourceAttributeVsBlockSchemaNameOverride(t *testing.T) {
 }
 
 func TestResourceAttributeVsBlockSchemaNameOverride(t *testing.T) {
-	t.Skip("TODO[pulumi/pulumi-terraform-bridge#2803] Skip until fixed")
 	t.Parallel()
 	if runtime.GOOS == "windows" {
 		t.Skipf("Skipping on windows - tests cases need to be made robust to newline handling")

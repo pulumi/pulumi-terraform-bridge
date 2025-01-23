@@ -9,7 +9,7 @@
         "testprovider:index/ResA1:ResA1": {
             "properties": {
                 "n1": {
-                    "type": "number"
+                    "type": "string"
                 }
             },
             "type": "object"
@@ -20,28 +20,19 @@
         "testprovider:index:Res": {
             "properties": {
                 "a1": {
-                    "type": "object",
-                    "additionalProperties": {
-                        "$ref": "#/types/testprovider:index/ResA1:ResA1"
-                    }
+                    "$ref": "#/types/testprovider:index/ResA1:ResA1"
                 }
             },
             "inputProperties": {
                 "a1": {
-                    "type": "object",
-                    "additionalProperties": {
-                        "$ref": "#/types/testprovider:index/ResA1:ResA1"
-                    }
+                    "$ref": "#/types/testprovider:index/ResA1:ResA1"
                 }
             },
             "stateInputs": {
                 "description": "Input properties used for looking up and filtering Res resources.\n",
                 "properties": {
                     "a1": {
-                        "type": "object",
-                        "additionalProperties": {
-                            "$ref": "#/types/testprovider:index/ResA1:ResA1"
-                        }
+                        "$ref": "#/types/testprovider:index/ResA1:ResA1"
                     }
                 },
                 "type": "object"
