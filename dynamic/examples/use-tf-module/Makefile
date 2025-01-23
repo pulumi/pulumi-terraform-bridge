@@ -20,7 +20,9 @@ up2:: export AWS_PROFILE := devsandbox
 up2:: npm-add
 	pulumi stack select dev2
 	pulumi destroy --yes
+	pulumi preview
 	pulumi up --skip-preview
+	pulumi preview
 	pulumi up --skip-preview
 
 

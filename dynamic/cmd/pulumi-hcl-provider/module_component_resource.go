@@ -5,7 +5,6 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"os"
 )
 
 // Parameterized component resource representing the top-level tree of resources for a particular TF module.
@@ -35,10 +34,7 @@ func NewModuleComponentResource(
 		return r
 	})
 
-	ctx.Log.Warn(fmt.Sprintf("AWAITING OLD STATE pid=%d", os.Getpid()), &pulumi.LogArgs{})
-
 	modState := stateStore.AwaitOldState(moduleStateResourcePromise)
-	ctx.Log.Warn(fmt.Sprintf("AWAITING OLD STATE COMPLETED got %q", string(modState.rawState)), &pulumi.LogArgs{})
 
 	defer func() {
 		// TODO make sure the stored state is modified as needed.
@@ -49,6 +45,17 @@ func NewModuleComponentResource(
 		}
 		stateStore.SetNewState(modState)
 	}()
+
+	w, err := newTFWorkspace(".tf", modState.rawState)
+	if err != nil {
+		return nil, fmt.Errorf("newTFWorkspace failed: %w", err)
+	}
+
+	if ctx.DryRun() {
+		w.Plan()
+	} else {
+		w.Apply()
+	}
 
 	if err := ctx.RegisterResourceOutputs(&component, pulumi.Map{}); err != nil {
 		return nil, fmt.Errorf("RegisterResourceOutputs failed: %w", err)
