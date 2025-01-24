@@ -7,7 +7,6 @@ import (
 	"slices"
 	"sort"
 
-	"github.com/VenelinMartinov/godifft"
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -16,6 +15,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/walk"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/difft"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/propertyvalue"
 )
 
@@ -448,14 +448,14 @@ func makeListAttributeDiff(
 		newVals = append(newVals, valIndex{Value: v, Index: i})
 	}
 
-	edits := godifft.DiffT(oldVals, newVals, godifft.DiffTOptions[valIndex]{
+	edits := difft.DiffT(oldVals, newVals, difft.DiffOptions[valIndex]{
 		Equals: func(a, b valIndex) bool {
 			return a.Value.DeepEquals(b.Value)
 		},
 	})
 
 	for _, edit := range edits {
-		if edit.Change == godifft.Insert {
+		if edit.Change == difft.Insert {
 			key := path.Index(edit.Element.Index)
 			if diff[key.Key()] == nil {
 				diff[key.Key()] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_ADD}
@@ -463,7 +463,7 @@ func makeListAttributeDiff(
 				diff[key.Key()] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE}
 			}
 		}
-		if edit.Change == godifft.Remove {
+		if edit.Change == difft.Remove {
 			key := path.Index(edit.Element.Index)
 			if diff[key.Key()] == nil {
 				diff[key.Key()] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_DELETE}

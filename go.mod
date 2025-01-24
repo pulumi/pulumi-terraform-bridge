@@ -5,7 +5,6 @@ go 1.22.3
 toolchain go1.23.2
 
 require (
-	github.com/VenelinMartinov/godifft v0.0.0-20250121184509-75ac876c1bf3
 	github.com/apparentlymart/go-cidr v1.1.0
 	github.com/apparentlymart/go-versions v1.0.3
 	github.com/blang/semver v3.5.1+incompatible
