@@ -428,19 +428,35 @@ func (differ detailedDiffer) makePropDiff(
 	}
 }
 
+// makeListAttributeDiff should only be called for lists of scalar values.
+// Note that the algorithm used is ~N^2, so it should not be used for large lists.
 func makeListAttributeDiff(
 	path propertyPath, old, new []resource.PropertyValue,
 ) map[detailedDiffKey]*pulumirpc.PropertyDiff {
 	diff := make(map[detailedDiffKey]*pulumirpc.PropertyDiff)
-	edits := godifft.DiffT(old, new, godifft.DiffTOptions[resource.PropertyValue]{
-		Equals: func(a, b resource.PropertyValue) bool {
-			return a.DeepEquals(b)
+	type valIndex struct {
+		Value resource.PropertyValue
+		Index int
+	}
+
+	oldVals := []valIndex{}
+	for i, v := range old {
+		oldVals = append(oldVals, valIndex{Value: v, Index: i})
+	}
+	newVals := []valIndex{}
+	for i, v := range new {
+		newVals = append(newVals, valIndex{Value: v, Index: i})
+	}
+
+	edits := godifft.DiffT(oldVals, newVals, godifft.DiffTOptions[valIndex]{
+		Equals: func(a, b valIndex) bool {
+			return a.Value.DeepEquals(b.Value)
 		},
 	})
 
 	for _, edit := range edits {
 		if edit.Change == godifft.Insert {
-			key := path.Index(edit.Index)
+			key := path.Index(edit.Element.Index)
 			if diff[key.Key()] == nil {
 				diff[key.Key()] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_ADD}
 			} else {
@@ -448,7 +464,7 @@ func makeListAttributeDiff(
 			}
 		}
 		if edit.Change == godifft.Remove {
-			key := path.Index(edit.Index)
+			key := path.Index(edit.Element.Index)
 			if diff[key.Key()] == nil {
 				diff[key.Key()] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_DELETE}
 			} else {
@@ -471,7 +487,9 @@ func (differ detailedDiffer) makeListDiff(
 	if err != nil {
 		return nil
 	}
-	if _, ok := tfs.Elem().(shim.Schema); ok || tfs.Elem() == nil {
+
+	// We attempt to optimize the diff displayed for list attributes with a reasonable number of elements.
+	if _, ok := tfs.Elem().(shim.Schema); ok || tfs.Elem() == nil && len(oldList) < 1000 && len(newList) < 1000 {
 		listDiff := makeListAttributeDiff(path, oldList, newList)
 		if tfs.ForceNew() {
 			for k, v := range listDiff {
