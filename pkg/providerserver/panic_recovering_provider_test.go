@@ -69,6 +69,166 @@ func TestPanicRecoveryByMethod(t *testing.T) {
 			expectURN:     autogold.Expect(urn.URN("")),
 			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 method=Handshake): Handshake panic"),
 		},
+		{
+			testName: "Parameterize",
+			send: func(rps pulumirpc.ResourceProviderServer) {
+				rps.Parameterize(ctx, &pulumirpc.ParameterizeRequest{})
+			},
+			expectURN:     autogold.Expect(urn.URN("")),
+			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 method=Parameterize): Parameterize panic"),
+		},
+		{
+			testName: "GetSchema",
+			send: func(rps pulumirpc.ResourceProviderServer) {
+				rps.GetSchema(ctx, &pulumirpc.GetSchemaRequest{})
+			},
+			expectURN:     autogold.Expect(urn.URN("")),
+			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 method=GetSchema): GetSchema panic"),
+		},
+		{
+			testName: "CheckConfig",
+			send: func(rps pulumirpc.ResourceProviderServer) {
+				rps.CheckConfig(ctx, &pulumirpc.CheckRequest{})
+			},
+			expectURN:     autogold.Expect(urn.URN("")),
+			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 method=CheckConfig): CheckConfig panic"),
+		},
+		{
+			testName: "DiffConfig",
+			send: func(rps pulumirpc.ResourceProviderServer) {
+				rps.DiffConfig(ctx, &pulumirpc.DiffRequest{})
+			},
+			expectURN:     autogold.Expect(urn.URN("")),
+			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 method=DiffConfig): DiffConfig panic"),
+		},
+		{
+			testName: "Configure",
+			send: func(rps pulumirpc.ResourceProviderServer) {
+				rps.Configure(ctx, &pulumirpc.ConfigureRequest{})
+			},
+			expectURN:     autogold.Expect(urn.URN("")),
+			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 method=Configure): Configure panic"),
+		},
+		{
+			testName: "Invoke",
+			send: func(rps pulumirpc.ResourceProviderServer) {
+				rps.Invoke(ctx, &pulumirpc.InvokeRequest{})
+			},
+			expectURN:     autogold.Expect(urn.URN("")),
+			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 method=Invoke): Invoke panic"),
+		},
+		// {
+		// 	testName: "StreamInvoke",
+		// 	send: func(rps pulumirpc.ResourceProviderServer) {
+		// 		rps.StreamInvoke(&pulumirpc.InvokeRequest{}, nil)
+		// 	},
+		// 	expectURN:     autogold.Expect(urn.URN("")),
+		// 	expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 method=GetSchema): GetSchema panic"),
+		// },
+		{
+			testName: "Call",
+			send: func(rps pulumirpc.ResourceProviderServer) {
+				rps.Call(ctx, &pulumirpc.CallRequest{})
+			},
+			expectURN:     autogold.Expect(urn.URN("")),
+			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 method=Call): Call panic"),
+		},
+		{
+			testName: "Check",
+			send: func(rps pulumirpc.ResourceProviderServer) {
+				rps.Check(ctx, &pulumirpc.CheckRequest{})
+			},
+			expectURN:     autogold.Expect(urn.URN("")),
+			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 method=Check): Check panic"),
+		},
+		{
+			testName: "Diff",
+			send: func(rps pulumirpc.ResourceProviderServer) {
+				rps.Diff(ctx, &pulumirpc.DiffRequest{})
+			},
+			expectURN:     autogold.Expect(urn.URN("")),
+			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 method=Diff): Diff panic"),
+		},
+		{
+			testName: "Create",
+			send: func(rps pulumirpc.ResourceProviderServer) {
+				rps.Create(ctx, &pulumirpc.CreateRequest{})
+			},
+			expectURN:     autogold.Expect(urn.URN("")),
+			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 method=Create): Create panic"),
+		},
+		{
+			testName: "Read",
+			send: func(rps pulumirpc.ResourceProviderServer) {
+				rps.Read(ctx, &pulumirpc.ReadRequest{})
+			},
+			expectURN:     autogold.Expect(urn.URN("")),
+			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 method=Read): Read panic"),
+		},
+		{
+			testName: "Update",
+			send: func(rps pulumirpc.ResourceProviderServer) {
+				rps.Update(ctx, &pulumirpc.UpdateRequest{})
+			},
+			expectURN:     autogold.Expect(urn.URN("")),
+			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 method=Update): Update panic"),
+		},
+		{
+			testName: "Delete",
+			send: func(rps pulumirpc.ResourceProviderServer) {
+				rps.Delete(ctx, &pulumirpc.DeleteRequest{})
+			},
+			expectURN:     autogold.Expect(urn.URN("")),
+			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 method=Delete): Delete panic"),
+		},
+		{
+			testName: "Construct",
+			send: func(rps pulumirpc.ResourceProviderServer) {
+				rps.Construct(ctx, &pulumirpc.ConstructRequest{})
+			},
+			expectURN:     autogold.Expect(urn.URN("urn:pulumi:::::::")),
+			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 resourceURN=urn:pulumi::::::: method=Construct): Construct panic"),
+		},
+		{
+			testName: "Cancel",
+			send: func(rps pulumirpc.ResourceProviderServer) {
+				rps.Cancel(ctx, &emptypb.Empty{})
+			},
+			expectURN:     autogold.Expect(urn.URN("")),
+			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 method=Cancel): Cancel panic"),
+		},
+		{
+			testName: "GetPluginInfo",
+			send: func(rps pulumirpc.ResourceProviderServer) {
+				rps.GetPluginInfo(ctx, &emptypb.Empty{})
+			},
+			expectURN:     autogold.Expect(urn.URN("")),
+			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 method=GetPluginInfo): GetPluginInfo panic"),
+		},
+		{
+			testName: "Attach",
+			send: func(rps pulumirpc.ResourceProviderServer) {
+				rps.Attach(ctx, &pulumirpc.PluginAttach{})
+			},
+			expectURN:     autogold.Expect(urn.URN("")),
+			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 method=Attach): Attach panic"),
+		},
+		{
+			testName: "GetMapping",
+			send: func(rps pulumirpc.ResourceProviderServer) {
+				rps.GetMapping(ctx, &pulumirpc.GetMappingRequest{})
+			},
+			expectURN:     autogold.Expect(urn.URN("")),
+			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 method=GetMapping): GetMapping panic"),
+		},
+		{
+			testName: "GetMappings",
+			send: func(rps pulumirpc.ResourceProviderServer) {
+				rps.GetMappings(ctx, &pulumirpc.GetMappingsRequest{})
+			},
+			expectURN:     autogold.Expect(urn.URN("")),
+			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 method=GetMappings): GetMappings panic"),
+		},
 	}
 
 	for _, tc := range testCases {
