@@ -54,10 +54,11 @@ func TestFormatPanicMessage(t *testing.T) {
 func TestPanicRecoveryByMethod(t *testing.T) {
 	ctx := context.Background()
 	type testCase struct {
-		testName      string
-		send          func(pulumirpc.ResourceProviderServer)
-		expectURN     autogold.Value
-		expectMessage autogold.Value
+		testName          string
+		send              func(pulumirpc.ResourceProviderServer)
+		expectURN         autogold.Value
+		expectMessage     autogold.Value
+		doNotPanicInCheck bool
 	}
 
 	testCases := []testCase{
@@ -88,26 +89,32 @@ func TestPanicRecoveryByMethod(t *testing.T) {
 		{
 			testName: "CheckConfig",
 			send: func(rps pulumirpc.ResourceProviderServer) {
-				rps.CheckConfig(ctx, &pulumirpc.CheckRequest{})
+				rps.CheckConfig(ctx, &pulumirpc.CheckRequest{
+					Urn: exampleProviderURN(),
+				})
 			},
 			expectURN:     autogold.Expect(urn.URN("")),
-			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 method=CheckConfig): CheckConfig panic"),
+			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 providerURN=urn:pulumi:dev::2024-01-27::pulumi:providers:aws::default_6_67_0::600afa97-4e03-40bd-b032-43e524727453 method=CheckConfig): CheckConfig panic"),
 		},
 		{
 			testName: "DiffConfig",
 			send: func(rps pulumirpc.ResourceProviderServer) {
-				rps.DiffConfig(ctx, &pulumirpc.DiffRequest{})
+				rps.DiffConfig(ctx, &pulumirpc.DiffRequest{
+					Urn: exampleProviderURN(),
+				})
 			},
 			expectURN:     autogold.Expect(urn.URN("")),
-			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 method=DiffConfig): DiffConfig panic"),
+			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 providerURN=urn:pulumi:dev::2024-01-27::pulumi:providers:aws::default_6_67_0::600afa97-4e03-40bd-b032-43e524727453 method=DiffConfig): DiffConfig panic"),
 		},
 		{
-			testName: "Configure",
+			testName:          "Configure",
+			doNotPanicInCheck: true,
 			send: func(rps pulumirpc.ResourceProviderServer) {
+				rps.Check(ctx, &pulumirpc.CheckRequest{Urn: exampleProviderURN()})
 				rps.Configure(ctx, &pulumirpc.ConfigureRequest{})
 			},
-			expectURN:     autogold.Expect(urn.URN("")),
-			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 method=Configure): Configure panic"),
+			expectURN:     autogold.Expect(urn.URN("urn:pulumi:dev::2024-01-27::pulumi:providers:aws::default_6_67_0::600afa97-4e03-40bd-b032-43e524727453")),
+			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 resourceURN=urn:pulumi:dev::2024-01-27::pulumi:providers:aws::default_6_67_0::600afa97-4e03-40bd-b032-43e524727453 method=Check): Check panic"),
 		},
 		{
 			testName: "Invoke",
@@ -254,7 +261,7 @@ func TestPanicRecoveryByMethod(t *testing.T) {
 			logger := &testLogger{}
 			s := NewPanicRecoveringProviderServer(&PanicRecoveringProviderServerOptions{
 				Logger:                 logger,
-				ResourceProviderServer: &testRPS{},
+				ResourceProviderServer: &testRPS{doNotPanicInCheck: tc.doNotPanicInCheck},
 				ProviderName:           "myprov",
 				ProviderVersion:        "1.2.3",
 			})
@@ -284,7 +291,8 @@ func (log *testLogger) Log(context context.Context, sev diag.Severity, urn resou
 
 func expectPanic(t *testing.T, f func()) {
 	defer func() {
-		if r := recover(); r == nil {
+		r := recover()
+		if r == nil {
 			t.Errorf("The code did not panic")
 		}
 	}()
@@ -299,6 +307,12 @@ func exampleResourceURN() string {
 	return "urn:pulumi:production::acmecorp-website::custom:resources:Resource$aws:s3/bucketv2:BucketV2::my-bucket"
 }
 
+// Default and explicit providers have slightly different URNs, using the default URNs to test as this package does not
+// branch on explicit vs default and it should be sufficient.
+func exampleProviderURN() string {
+	return "urn:pulumi:dev::2024-01-27::pulumi:providers:aws::default_6_67_0::600afa97-4e03-40bd-b032-43e524727453"
+}
+
 func examplePanic() (finalError any, debugStack []byte) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -311,6 +325,7 @@ func examplePanic() (finalError any, debugStack []byte) {
 
 type testRPS struct {
 	pulumirpc.UnimplementedResourceProviderServer
+	doNotPanicInCheck bool
 }
 
 var _ pulumirpc.ResourceProviderServer = (*testRPS)(nil)
@@ -340,6 +355,9 @@ func (s *testRPS) CheckConfig(
 	ctx context.Context,
 	req *pulumirpc.CheckRequest,
 ) (*pulumirpc.CheckResponse, error) {
+	if s.doNotPanicInCheck {
+		return &pulumirpc.CheckResponse{}, nil
+	}
 	panic("CheckConfig panic")
 }
 
