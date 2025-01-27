@@ -67,7 +67,7 @@ func TestPanicRecoveryByMethod(t *testing.T) {
 				rps.Handshake(ctx, &pulumirpc.ProviderHandshakeRequest{EngineAddress: "localhost"})
 			},
 			expectURN:     autogold.Expect(urn.URN("")),
-			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov providerVersion=1.2.3 method=Handshake): Handshake panic"),
+			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 method=Handshake): Handshake panic"),
 		},
 	}
 

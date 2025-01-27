@@ -117,7 +117,7 @@ func (s *PanicRecoveringProviderServer) formatPanicMessage(
 	var attrs []slog.Attr
 	attrs = append(attrs, slog.String("provider", s.providerName))
 	if s.providerVersion != "" {
-		attrs = append(attrs, slog.String("providerVersion", s.providerVersion))
+		attrs = append(attrs, slog.String("v", s.providerVersion))
 	}
 	if opts.providerURN != "" {
 		attrs = append(attrs, slog.String("providerURN", opts.providerURN))
@@ -125,8 +125,8 @@ func (s *PanicRecoveringProviderServer) formatPanicMessage(
 	if opts.invokeToken != "" {
 		attrs = append(attrs, slog.String("invokeToken", opts.invokeToken))
 	}
-	if opts.providerURN != "" {
-		attrs = append(attrs, slog.String("providerURN", opts.providerURN))
+	if opts.resourceURN != "" {
+		attrs = append(attrs, slog.String("resourceURN", opts.resourceURN))
 	}
 	if opts.method != "" {
 		attrs = append(attrs, slog.String("method", opts.method))
