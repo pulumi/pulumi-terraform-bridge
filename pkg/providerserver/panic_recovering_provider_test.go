@@ -112,26 +112,32 @@ func TestPanicRecoveryByMethod(t *testing.T) {
 		{
 			testName: "Invoke",
 			send: func(rps pulumirpc.ResourceProviderServer) {
-				rps.Invoke(ctx, &pulumirpc.InvokeRequest{})
+				rps.Invoke(ctx, &pulumirpc.InvokeRequest{
+					Tok: exampleInvokeToken(),
+				})
 			},
 			expectURN:     autogold.Expect(urn.URN("")),
-			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 method=Invoke): Invoke panic"),
+			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 invokeToken=aws:acm/getCertificate:getCertificate method=Invoke): Invoke panic"),
 		},
 		{
 			testName: "StreamInvoke",
 			send: func(rps pulumirpc.ResourceProviderServer) {
-				rps.StreamInvoke(&pulumirpc.InvokeRequest{}, nil)
+				rps.StreamInvoke(&pulumirpc.InvokeRequest{
+					Tok: exampleInvokeToken(),
+				}, nil)
 			},
 			expectURN:     autogold.Expect(urn.URN("")),
-			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 method=StreamInvoke): StreamInvoke panic"),
+			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 invokeToken=aws:acm/getCertificate:getCertificate method=StreamInvoke): StreamInvoke panic"),
 		},
 		{
 			testName: "Call",
 			send: func(rps pulumirpc.ResourceProviderServer) {
-				rps.Call(ctx, &pulumirpc.CallRequest{})
+				rps.Call(ctx, &pulumirpc.CallRequest{
+					Tok: exampleInvokeToken(), // Not a great example, could be improved to show actual Call.
+				})
 			},
 			expectURN:     autogold.Expect(urn.URN("")),
-			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 method=Call): Call panic"),
+			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 invokeToken=aws:acm/getCertificate:getCertificate method=Call): Call panic"),
 		},
 		{
 			testName: "Check",
@@ -283,6 +289,10 @@ func expectPanic(t *testing.T, f func()) {
 		}
 	}()
 	f()
+}
+
+func exampleInvokeToken() string {
+	return "aws:acm/getCertificate:getCertificate"
 }
 
 func exampleResourceURN() string {
