@@ -189,6 +189,22 @@ func (d *v2InstanceDiff2) RequiresNew() bool {
 	return d.tf.RequiresNew()
 }
 
+func processIgnoreChanges(tf *terraform.InstanceDiff, ignored shim.IgnoreChanges) {
+	i := ignored()
+	for k := range tf.Attributes {
+		if _, ok := i[k]; ok {
+			delete(tf.Attributes, k)
+		} else {
+			for attr := range i {
+				if strings.HasPrefix(k, attr+".") {
+					delete(tf.Attributes, k)
+					break
+				}
+			}
+		}
+	}
+}
+
 // Provides PlanResourceChange handling for select resources.
 type planResourceChangeImpl struct {
 	tf           *schema.Provider
@@ -560,9 +576,8 @@ func (p *planResourceChangeImpl) NewDestroyDiff(
 ) shim.InstanceDiff {
 	res := p.tf.ResourcesMap[t]
 	ty := res.CoreConfigSchema().ImpliedType()
-	dd := (&v2Provider{}).NewDestroyDiff(ctx, t, opts).(v2InstanceDiff)
 	return &v2InstanceDiff2{
-		tf:           dd.tf,
+		tf:           &terraform.InstanceDiff{Destroy: true},
 		config:       cty.NullVal(ty),
 		plannedState: cty.NullVal(ty),
 	}
@@ -722,11 +737,10 @@ func (s *grpcServer) PlanResourceChange(
 			Config:           &tfprotov5.DynamicValue{MsgPack: configVal},
 		},
 		TransformInstanceDiff: func(d *terraform.InstanceDiff) *terraform.InstanceDiff {
-			dd := &v2InstanceDiff{d}
 			if ignores != nil {
-				dd.processIgnoreChanges(ignores)
+				processIgnoreChanges(d, ignores)
 			}
-			return dd.tf
+			return d
 		},
 	}
 	if len(priorMeta) > 0 {
