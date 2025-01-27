@@ -18,6 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/internal/logging"
 	crosstestsimpl "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests/impl"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfgen"
@@ -64,7 +65,7 @@ func newProviderServer(t T, info tfbridge0.ProviderInfo) (pulumirpc.ResourceProv
 	if err != nil {
 		return nil, err
 	}
-	srv, err := tfbridge.NewProviderServer(ctx, nil, info, meta)
+	srv, err := tfbridge.NewProviderServer(ctx, logging.NewTestingSink(t), info, meta)
 	require.NoError(t, err)
 	return srv, nil
 }
