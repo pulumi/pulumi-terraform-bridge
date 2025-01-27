@@ -954,80 +954,6 @@ type planResourceChangeProvider interface {
 	Importer(t string) shim.ImportFunc
 }
 
-// Wraps a provider to redirect select resources to use a PlanResourceChange strategy.
-type providerWithPlanResourceChangeDispatch struct {
-	// Fallback provider to dispatch calls to.
-	shim.Provider
-
-	// All resources to serve schema.
-	resources map[string]*schema.Resource
-
-	// Provider handling resources that use PlanResourceChange.
-	planResourceChangeProvider planResourceChangeProvider
-
-	// Predicate that returns true for TF resource names that should use PlanResourceChange.
-	usePlanResourceChange func(resourceName string) bool
-}
-
-// This provider needs to override ResourceMap because it uses a different concrete implementation
-// of shim.Resource and for select resources and needs to make sure the correct one is returned.
-func (p *providerWithPlanResourceChangeDispatch) ResourcesMap() shim.ResourceMap {
-	return &v2ResourceCustomMap{
-		resources: p.resources,
-		pack: func(token string, res *schema.Resource) shim.Resource {
-			if p.usePlanResourceChange(token) {
-				i := p.planResourceChangeProvider.Importer(token)
-				return &v2Resource2{v2Resource{res}, i, token}
-			}
-			return v2Resource{res}
-		},
-	}
-}
-
-// Override Diff method to dispatch appropriately.
-func (p *providerWithPlanResourceChangeDispatch) Diff(
-	ctx context.Context,
-	t string,
-	s shim.InstanceState,
-	c shim.ResourceConfig,
-	opts shim.DiffOptions,
-) (shim.InstanceDiff, error) {
-	if p.usePlanResourceChange(t) {
-		return p.planResourceChangeProvider.Diff(ctx, t, s, c, opts)
-	}
-	return p.Provider.Diff(ctx, t, s, c, opts)
-}
-
-// Override Apply method to dispatch appropriately.
-func (p *providerWithPlanResourceChangeDispatch) Apply(
-	ctx context.Context, t string, s shim.InstanceState, d shim.InstanceDiff,
-) (shim.InstanceState, error) {
-	if p.usePlanResourceChange(t) {
-		return p.planResourceChangeProvider.Apply(ctx, t, s, d)
-	}
-	return p.Provider.Apply(ctx, t, s, d)
-}
-
-// Override Refresh method to dispatch appropriately.
-func (p *providerWithPlanResourceChangeDispatch) Refresh(
-	ctx context.Context, t string, s shim.InstanceState, c shim.ResourceConfig,
-) (shim.InstanceState, error) {
-	if p.usePlanResourceChange(t) {
-		return p.planResourceChangeProvider.Refresh(ctx, t, s, c)
-	}
-	return p.Provider.Refresh(ctx, t, s, c)
-}
-
-// Override NewDestroyDiff to dispatch appropriately.
-func (p *providerWithPlanResourceChangeDispatch) NewDestroyDiff(
-	ctx context.Context, t string, opts shim.TimeoutOptions,
-) shim.InstanceDiff {
-	if p.usePlanResourceChange(t) {
-		return p.planResourceChangeProvider.NewDestroyDiff(ctx, t, opts)
-	}
-	return p.Provider.NewDestroyDiff(ctx, t, opts)
-}
-
 type v2ResourceCustomMap struct {
 	resources map[string]*schema.Resource
 	pack      func(string, *schema.Resource) shim.Resource
@@ -1070,24 +996,17 @@ func (m *v2ResourceCustomMap) Set(key string, value shim.Resource) {
 	}
 }
 
-func newProviderWithPlanResourceChange(
-	p *schema.Provider,
-	prov shim.Provider,
-	filter func(string) bool,
-	planEditFunc PlanStateEditFunc,
-) shim.Provider {
-	return &providerWithPlanResourceChangeDispatch{
-		Provider:  prov,
-		resources: p.ResourcesMap,
-		planResourceChangeProvider: &planResourceChangeImpl{
-			planEditFunc: planEditFunc,
-			tf:           p,
-			server: &grpcServer{
-				gserver: p.GRPCProvider().(*schema.GRPCProviderServer),
-			},
-			resources: p.ResourcesMap,
+func NewProvider(p *schema.Provider, opts ...providerOption) shim.Provider {
+	o, err := getProviderOptions(opts)
+	contract.AssertNoErrorf(err, "provider options failed to apply")
+
+	return &planResourceChangeImpl{
+		planEditFunc: o.planStateEdit,
+		tf:           p,
+		server: &grpcServer{
+			gserver: p.GRPCProvider().(*schema.GRPCProviderServer),
 		},
-		usePlanResourceChange: filter,
+		resources: p.ResourcesMap,
 	}
 }
 
