@@ -47,7 +47,7 @@ type PanicRecoveringProviderServer struct {
 	currentProviderUrn string
 
 	// Exposed for testing.
-	includeStackTraces bool
+	omitStackTraces bool
 }
 
 // The minimal interface implemented by HostClient where Error messages will be logged for each panic.
@@ -133,7 +133,7 @@ func (s *PanicRecoveringProviderServer) formatPanicMessage(
 	}
 	l.LogAttrs(context.Background(), slog.LevelError, fmt.Sprintf("%s", err), attrs...)
 	metadata := strings.TrimSpace(buf.String())
-	if !s.includeStackTraces {
+	if s.omitStackTraces {
 		return fmt.Sprintf("Bridged provider panic (%s): %v", metadata, err)
 	}
 	return fmt.Sprintf("Bridged provider panic (%s): %v\n%s", metadata, err, stack)

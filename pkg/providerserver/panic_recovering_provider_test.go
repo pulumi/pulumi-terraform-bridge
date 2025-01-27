@@ -43,7 +43,7 @@ func TestFormatPanicMessage(t *testing.T) {
 `
 
 	msg := s.formatPanicMessage(panicErr, []byte(exampleStack), &logPanicOptions{resourceURN: exampleResourceURN()})
-	autogold.Expect(`Bridged provider panic (provider=myprov providerVersion=1.2.3): Something went wrong
+	autogold.Expect(`Bridged provider panic (provider=myprov v=1.2.3 resourceURN=urn:pulumi:production::acmecorp-website::custom:resources:Resource$aws:s3/bucketv2:BucketV2::my-bucket): Something went wrong
 
         goroutine 5 [running]:
         runtime/debug.Stack()
@@ -240,7 +240,7 @@ func TestPanicRecoveryByMethod(t *testing.T) {
 				ProviderName:           "myprov",
 				ProviderVersion:        "1.2.3",
 			})
-			s.includeStackTraces = false
+			s.omitStackTraces = true
 
 			expectPanic(t, func() { tc.send(s) })
 
