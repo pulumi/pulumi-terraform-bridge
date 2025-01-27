@@ -467,6 +467,10 @@ func (s *PanicRecoveringProviderServer) GetMappings(
 
 // Guess Pulumi URN from ConstructRequest.
 func constructURN(req *pulumirpc.ConstructRequest) urn.URN {
+	if req.Stack == "" && req.Project == "" && req.Type == "" && req.Name == "" && req.Parent == "" {
+		return ""
+	}
+
 	// Guess Pulumi URN from ConstructRequest
 	stack := tokens.QName(req.Stack)
 	proj := tokens.PackageName(req.Project)

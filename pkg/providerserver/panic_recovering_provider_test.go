@@ -186,8 +186,8 @@ func TestPanicRecoveryByMethod(t *testing.T) {
 			send: func(rps pulumirpc.ResourceProviderServer) {
 				rps.Construct(ctx, &pulumirpc.ConstructRequest{})
 			},
-			expectURN:     autogold.Expect(urn.URN("urn:pulumi:::::::")),
-			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 resourceURN=urn:pulumi::::::: method=Construct): Construct panic"),
+			expectURN:     autogold.Expect(urn.URN("")),
+			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 method=Construct): Construct panic"),
 		},
 		{
 			testName: "Cancel",
