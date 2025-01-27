@@ -338,3 +338,32 @@ type logLike interface {
 	Warn(msg string)
 	Error(msg string)
 }
+
+// Methods required by [NewTestingSink] from *testing.T.
+type T interface {
+	Logf(string, ...any)
+}
+
+// Build a Sink that flushes to *testing.T or a similar context.
+func NewTestingSink(t T) Sink {
+	return &testingLogSink{t: t}
+}
+
+type testingLogSink struct{ t T }
+
+func (s testingLogSink) Log(_ context.Context, sev diag.Severity, urn resource.URN, msg string) error {
+	return s.log("LOG", sev, urn, msg)
+}
+
+func (s testingLogSink) LogStatus(_ context.Context, sev diag.Severity, urn resource.URN, msg string) error {
+	return s.log("STATUS", sev, urn, msg)
+}
+
+func (s testingLogSink) log(kind string, sev diag.Severity, urn resource.URN, msg string) error {
+	var urnMsg string
+	if urn != "" {
+		urnMsg = " (" + string(urn) + ")"
+	}
+	s.t.Logf("Provider[%s]: %s%s: %s", kind, sev, urnMsg, msg)
+	return nil
+}

@@ -15,37 +15,14 @@
 package crosstests
 
 import (
-	"context"
 	"os"
 	"runtime"
 	"strings"
-
-	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 
 	crosstestsimpl "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests/impl"
 )
 
 type T = crosstestsimpl.T
-
-type testLogSink struct{ t T }
-
-func (s testLogSink) Log(_ context.Context, sev diag.Severity, urn resource.URN, msg string) error {
-	return s.log("LOG", sev, urn, msg)
-}
-
-func (s testLogSink) LogStatus(_ context.Context, sev diag.Severity, urn resource.URN, msg string) error {
-	return s.log("STATUS", sev, urn, msg)
-}
-
-func (s testLogSink) log(kind string, sev diag.Severity, urn resource.URN, msg string) error {
-	var urnMsg string
-	if urn != "" {
-		urnMsg = " (" + string(urn) + ")"
-	}
-	s.t.Logf("Provider[%s]: %s%s: %s", kind, sev, urnMsg, msg)
-	return nil
-}
 
 func skipUnlessLinux(t T) {
 	if ci, ok := os.LookupEnv("CI"); ok && ci == "true" && !strings.Contains(strings.ToLower(runtime.GOOS), "linux") {

@@ -46,6 +46,7 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/internal/logging"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/providerserver"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/typechecker"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
@@ -271,7 +272,7 @@ func NewProvider(ctx context.Context, host *provider.HostClient, module, version
 
 func newProvider(ctx context.Context, host *provider.HostClient,
 	module, version string, tf shim.Provider, info ProviderInfo, pulumiSchema []byte,
-) *Provider {
+) pulumirpc.ResourceProviderServer {
 	opts := []providerOption{}
 	if info.EnableZeroDefaultSchemaVersion {
 		opts = append(opts, WithDefaultZeroSchemaVersion())
@@ -301,7 +302,12 @@ func newProvider(ctx context.Context, host *provider.HostClient,
 		}
 		p.pulumiSchemaSpec = &schema
 	}
-	return p
+	return providerserver.NewPanicRecoveringProviderServer(&providerserver.PanicRecoveringProviderServerOptions{
+		Logger:                 host,
+		ResourceProviderServer: p,
+		ProviderName:           module,
+		ProviderVersion:        version,
+	})
 }
 
 func newMuxWithProvider(ctx context.Context, host *provider.HostClient,

@@ -40,6 +40,7 @@ import (
 	pl "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/plugin"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/runtypes"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/schemashim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/providerserver"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
@@ -216,7 +217,14 @@ func NewProviderServer(
 	}
 
 	p.Unwrap().logSink = logSink
-	return pl.NewProviderServerWithContext(p), nil
+	srv := pl.NewProviderServerWithContext(p)
+
+	return providerserver.NewPanicRecoveringProviderServer(&providerserver.PanicRecoveringProviderServerOptions{
+		Logger:                 logSink,
+		ResourceProviderServer: srv,
+		ProviderName:           info.Name,
+		ProviderVersion:        info.Version,
+	}), nil
 }
 
 // Closer closes any underlying OS resources associated with this provider (like processes, RPC channels, etc).
