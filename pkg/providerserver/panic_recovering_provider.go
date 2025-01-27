@@ -391,11 +391,7 @@ func (s *PanicRecoveringProviderServer) Construct(
 	defer func() {
 		if err := recover(); err != nil {
 			opts := &logPanicOptions{}
-			if resp != nil && resp.Urn != "" {
-				opts.resourceURN = resp.Urn
-			} else {
-				opts.resourceURN = string(constructURN(req))
-			}
+			opts.resourceURN = string(constructURN(req))
 			s.logPanic(ctx, "Construct", err, debug.Stack(), opts)
 			panic(err) // rethrow
 		}

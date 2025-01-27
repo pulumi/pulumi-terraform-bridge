@@ -209,6 +209,20 @@ func TestPanicRecoveryByMethod(t *testing.T) {
 		{
 			testName: "Construct",
 			send: func(rps pulumirpc.ResourceProviderServer) {
+				rps.Construct(ctx, &pulumirpc.ConstructRequest{
+					Stack:   "pulumi:production",
+					Project: "acmecorp-website",
+					Type:    "aws:s3/bucketv2:BucketV2",
+					Name:    "myBucket",
+					Parent:  exampleResourceURN(),
+				})
+			},
+			expectURN:     autogold.Expect(urn.URN("urn:pulumi:pulumi:production::acmecorp-website::aws:s3/bucketv2:BucketV2$aws:s3/bucketv2:BucketV2::myBucket")),
+			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 resourceURN=urn:pulumi:pulumi:production::acmecorp-website::aws:s3/bucketv2:BucketV2$aws:s3/bucketv2:BucketV2::myBucket method=Construct): Construct panic"),
+		},
+		{
+			testName: "Construct/inferURN",
+			send: func(rps pulumirpc.ResourceProviderServer) {
 				rps.Construct(ctx, &pulumirpc.ConstructRequest{})
 			},
 			expectURN:     autogold.Expect(urn.URN("")),
