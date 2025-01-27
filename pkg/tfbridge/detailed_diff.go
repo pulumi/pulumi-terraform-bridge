@@ -433,6 +433,7 @@ func (differ detailedDiffer) makePropDiff(
 func makeListAttributeDiff(
 	path propertyPath, old, new []resource.PropertyValue,
 ) map[detailedDiffKey]*pulumirpc.PropertyDiff {
+	contract.Assertf(len(old) < 1000 && len(new) < 1000, "makeListAttributeDiff should not be used for large lists")
 	diff := make(map[detailedDiffKey]*pulumirpc.PropertyDiff)
 	type valIndex struct {
 		Value resource.PropertyValue
@@ -489,7 +490,8 @@ func (differ detailedDiffer) makeListDiff(
 	}
 
 	// We attempt to optimize the diff displayed for list attributes with a reasonable number of elements.
-	if _, ok := tfs.Elem().(shim.Schema); ok || tfs.Elem() == nil && len(oldList) < 1000 && len(newList) < 1000 {
+	_, scalarElemType := tfs.Elem().(shim.Schema)
+	if scalarElemType && len(oldList) < 1000 && len(newList) < 1000 {
 		listDiff := makeListAttributeDiff(path, oldList, newList)
 		if tfs.ForceNew() {
 			for k, v := range listDiff {
