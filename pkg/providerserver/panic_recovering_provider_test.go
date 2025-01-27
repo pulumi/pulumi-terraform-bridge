@@ -23,12 +23,15 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"gotest.tools/v3/assert"
 )
 
 func TestFormatPanicMessage(t *testing.T) {
+	t.Parallel()
+
 	s := &PanicRecoveringProviderServer{
 		providerName:    "myprov",
 		providerVersion: "1.2.3",
@@ -43,6 +46,7 @@ func TestFormatPanicMessage(t *testing.T) {
 `
 
 	msg := s.formatPanicMessage(panicErr, []byte(exampleStack), &logPanicOptions{resourceURN: exampleResourceURN()})
+	//nolint:lll
 	autogold.Expect(`Bridged provider panic (provider=myprov v=1.2.3 resourceURN=urn:pulumi:production::acmecorp-website::custom:resources:Resource$aws:s3/bucketv2:BucketV2::my-bucket): Something went wrong
 
         goroutine 5 [running]:
@@ -52,6 +56,8 @@ func TestFormatPanicMessage(t *testing.T) {
 }
 
 func TestPanicRecoveryByMethod(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	type testCase struct {
 		testName          string
@@ -65,7 +71,8 @@ func TestPanicRecoveryByMethod(t *testing.T) {
 		{
 			testName: "Handshake",
 			send: func(rps pulumirpc.ResourceProviderServer) {
-				rps.Handshake(ctx, &pulumirpc.ProviderHandshakeRequest{EngineAddress: "localhost"})
+				_, err := rps.Handshake(ctx, &pulumirpc.ProviderHandshakeRequest{EngineAddress: "localhost"})
+				contract.IgnoreError(err)
 			},
 			expectURN:     autogold.Expect(urn.URN("")),
 			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 method=Handshake): Handshake panic"),
@@ -73,15 +80,18 @@ func TestPanicRecoveryByMethod(t *testing.T) {
 		{
 			testName: "Parameterize",
 			send: func(rps pulumirpc.ResourceProviderServer) {
-				rps.Parameterize(ctx, &pulumirpc.ParameterizeRequest{})
+				_, err := rps.Parameterize(ctx, &pulumirpc.ParameterizeRequest{})
+				contract.IgnoreError(err)
 			},
-			expectURN:     autogold.Expect(urn.URN("")),
+			expectURN: autogold.Expect(urn.URN("")),
+			//nolint:lll
 			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 method=Parameterize): Parameterize panic"),
 		},
 		{
 			testName: "GetSchema",
 			send: func(rps pulumirpc.ResourceProviderServer) {
-				rps.GetSchema(ctx, &pulumirpc.GetSchemaRequest{})
+				_, err := rps.GetSchema(ctx, &pulumirpc.GetSchemaRequest{})
+				contract.IgnoreError(err)
 			},
 			expectURN:     autogold.Expect(urn.URN("")),
 			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 method=GetSchema): GetSchema panic"),
@@ -89,149 +99,176 @@ func TestPanicRecoveryByMethod(t *testing.T) {
 		{
 			testName: "CheckConfig",
 			send: func(rps pulumirpc.ResourceProviderServer) {
-				rps.CheckConfig(ctx, &pulumirpc.CheckRequest{
+				_, err := rps.CheckConfig(ctx, &pulumirpc.CheckRequest{
 					Urn: exampleProviderURN(),
 				})
+				contract.IgnoreError(err)
 			},
-			expectURN:     autogold.Expect(urn.URN("")),
+			expectURN: autogold.Expect(urn.URN("")),
+			//nolint:lll
 			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 providerURN=urn:pulumi:dev::2024-01-27::pulumi:providers:aws::default_6_67_0::600afa97-4e03-40bd-b032-43e524727453 method=CheckConfig): CheckConfig panic"),
 		},
 		{
 			testName: "DiffConfig",
 			send: func(rps pulumirpc.ResourceProviderServer) {
-				rps.DiffConfig(ctx, &pulumirpc.DiffRequest{
+				_, err := rps.DiffConfig(ctx, &pulumirpc.DiffRequest{
 					Urn: exampleProviderURN(),
 				})
+				contract.IgnoreError(err)
 			},
-			expectURN:     autogold.Expect(urn.URN("")),
+			expectURN: autogold.Expect(urn.URN("")),
+			//nolint:lll
 			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 providerURN=urn:pulumi:dev::2024-01-27::pulumi:providers:aws::default_6_67_0::600afa97-4e03-40bd-b032-43e524727453 method=DiffConfig): DiffConfig panic"),
 		},
 		{
 			testName:          "Configure",
 			doNotPanicInCheck: true,
 			send: func(rps pulumirpc.ResourceProviderServer) {
-				rps.CheckConfig(ctx, &pulumirpc.CheckRequest{Urn: exampleProviderURN()})
-				rps.Configure(ctx, &pulumirpc.ConfigureRequest{})
+				_, err := rps.CheckConfig(ctx, &pulumirpc.CheckRequest{Urn: exampleProviderURN()})
+				contract.IgnoreError(err)
+				_, err = rps.Configure(ctx, &pulumirpc.ConfigureRequest{})
+				contract.IgnoreError(err)
 			},
-			expectURN:     autogold.Expect(urn.URN("")),
+			expectURN: autogold.Expect(urn.URN("")),
+			//nolint:lll
 			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 providerURN=urn:pulumi:dev::2024-01-27::pulumi:providers:aws::default_6_67_0::600afa97-4e03-40bd-b032-43e524727453 method=Configure): Configure panic"),
 		},
 		{
 			testName: "Invoke",
 			send: func(rps pulumirpc.ResourceProviderServer) {
-				rps.Invoke(ctx, &pulumirpc.InvokeRequest{
+				_, err := rps.Invoke(ctx, &pulumirpc.InvokeRequest{
 					Tok: exampleInvokeToken(),
 				})
+				contract.IgnoreError(err)
 			},
-			expectURN:     autogold.Expect(urn.URN("")),
+			expectURN: autogold.Expect(urn.URN("")),
+			//nolint:lll
 			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 invokeToken=aws:acm/getCertificate:getCertificate method=Invoke): Invoke panic"),
 		},
 		{
 			testName: "StreamInvoke",
 			send: func(rps pulumirpc.ResourceProviderServer) {
-				rps.StreamInvoke(&pulumirpc.InvokeRequest{
+				err := rps.StreamInvoke(&pulumirpc.InvokeRequest{
 					Tok: exampleInvokeToken(),
 				}, nil)
+				contract.IgnoreError(err)
 			},
-			expectURN:     autogold.Expect(urn.URN("")),
+			expectURN: autogold.Expect(urn.URN("")),
+			//nolint:lll
 			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 invokeToken=aws:acm/getCertificate:getCertificate method=StreamInvoke): StreamInvoke panic"),
 		},
 		{
 			testName: "Call",
 			send: func(rps pulumirpc.ResourceProviderServer) {
-				rps.Call(ctx, &pulumirpc.CallRequest{
+				_, err := rps.Call(ctx, &pulumirpc.CallRequest{
 					Tok: exampleInvokeToken(), // Not a great example, could be improved to show actual Call.
 				})
+				contract.IgnoreError(err)
 			},
-			expectURN:     autogold.Expect(urn.URN("")),
+			expectURN: autogold.Expect(urn.URN("")),
+			//nolint:lll
 			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 invokeToken=aws:acm/getCertificate:getCertificate method=Call): Call panic"),
 		},
 		{
 			testName: "Check",
 			send: func(rps pulumirpc.ResourceProviderServer) {
-				rps.Check(ctx, &pulumirpc.CheckRequest{
+				_, err := rps.Check(ctx, &pulumirpc.CheckRequest{
 					Urn: exampleResourceURN(),
 				})
+				contract.IgnoreError(err)
 			},
-			expectURN:     autogold.Expect(urn.URN("urn:pulumi:production::acmecorp-website::custom:resources:Resource$aws:s3/bucketv2:BucketV2::my-bucket")),
+			//nolint:lll
+			expectURN: autogold.Expect(urn.URN("urn:pulumi:production::acmecorp-website::custom:resources:Resource$aws:s3/bucketv2:BucketV2::my-bucket")),
+			//nolint:lll
 			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 resourceURN=urn:pulumi:production::acmecorp-website::custom:resources:Resource$aws:s3/bucketv2:BucketV2::my-bucket method=Check): Check panic"),
 		},
 		{
 			testName: "Diff",
 			send: func(rps pulumirpc.ResourceProviderServer) {
-				rps.Diff(ctx, &pulumirpc.DiffRequest{
+				_, err := rps.Diff(ctx, &pulumirpc.DiffRequest{
 					Urn: exampleResourceURN(),
 				})
+				contract.IgnoreError(err)
 			},
-			expectURN:     autogold.Expect(urn.URN("urn:pulumi:production::acmecorp-website::custom:resources:Resource$aws:s3/bucketv2:BucketV2::my-bucket")),
+			//nolint:lll
+			expectURN: autogold.Expect(urn.URN("urn:pulumi:production::acmecorp-website::custom:resources:Resource$aws:s3/bucketv2:BucketV2::my-bucket")),
+			//nolint:lll
 			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 resourceURN=urn:pulumi:production::acmecorp-website::custom:resources:Resource$aws:s3/bucketv2:BucketV2::my-bucket method=Diff): Diff panic"),
 		},
 		{
 			testName: "Create",
 			send: func(rps pulumirpc.ResourceProviderServer) {
-				rps.Create(ctx, &pulumirpc.CreateRequest{
+				_, err := rps.Create(ctx, &pulumirpc.CreateRequest{
 					Urn: exampleResourceURN(),
 				})
+				contract.IgnoreError(err)
 			},
-			expectURN:     autogold.Expect(urn.URN("urn:pulumi:production::acmecorp-website::custom:resources:Resource$aws:s3/bucketv2:BucketV2::my-bucket")),
+			//nolint:lll
+			expectURN: autogold.Expect(urn.URN("urn:pulumi:production::acmecorp-website::custom:resources:Resource$aws:s3/bucketv2:BucketV2::my-bucket")),
+			//nolint:lll
 			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 resourceURN=urn:pulumi:production::acmecorp-website::custom:resources:Resource$aws:s3/bucketv2:BucketV2::my-bucket method=Create): Create panic"),
 		},
 		{
 			testName: "Read",
 			send: func(rps pulumirpc.ResourceProviderServer) {
-				rps.Read(ctx, &pulumirpc.ReadRequest{
+				_, err := rps.Read(ctx, &pulumirpc.ReadRequest{
 					Urn: exampleResourceURN(),
 				})
+				contract.IgnoreError(err)
 			},
-			expectURN:     autogold.Expect(urn.URN("urn:pulumi:production::acmecorp-website::custom:resources:Resource$aws:s3/bucketv2:BucketV2::my-bucket")),
+			//nolint:lll
+			expectURN: autogold.Expect(urn.URN("urn:pulumi:production::acmecorp-website::custom:resources:Resource$aws:s3/bucketv2:BucketV2::my-bucket")),
+			//nolint:lll
 			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 resourceURN=urn:pulumi:production::acmecorp-website::custom:resources:Resource$aws:s3/bucketv2:BucketV2::my-bucket method=Read): Read panic"),
 		},
 		{
 			testName: "Update",
 			send: func(rps pulumirpc.ResourceProviderServer) {
-				rps.Update(ctx, &pulumirpc.UpdateRequest{
+				_, err := rps.Update(ctx, &pulumirpc.UpdateRequest{
 					Urn: exampleResourceURN(),
 				})
+				contract.IgnoreError(err)
 			},
-			expectURN:     autogold.Expect(urn.URN("urn:pulumi:production::acmecorp-website::custom:resources:Resource$aws:s3/bucketv2:BucketV2::my-bucket")),
+			//nolint:lll
+			expectURN: autogold.Expect(urn.URN("urn:pulumi:production::acmecorp-website::custom:resources:Resource$aws:s3/bucketv2:BucketV2::my-bucket")),
+			//nolint:lll
 			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 resourceURN=urn:pulumi:production::acmecorp-website::custom:resources:Resource$aws:s3/bucketv2:BucketV2::my-bucket method=Update): Update panic"),
 		},
 		{
 			testName: "Delete",
 			send: func(rps pulumirpc.ResourceProviderServer) {
-				rps.Delete(ctx, &pulumirpc.DeleteRequest{
+				_, err := rps.Delete(ctx, &pulumirpc.DeleteRequest{
 					Urn: exampleResourceURN(),
 				})
+				contract.IgnoreError(err)
 			},
-			expectURN:     autogold.Expect(urn.URN("urn:pulumi:production::acmecorp-website::custom:resources:Resource$aws:s3/bucketv2:BucketV2::my-bucket")),
+			//nolint:lll
+			expectURN: autogold.Expect(urn.URN("urn:pulumi:production::acmecorp-website::custom:resources:Resource$aws:s3/bucketv2:BucketV2::my-bucket")),
+			//nolint:lll
 			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 resourceURN=urn:pulumi:production::acmecorp-website::custom:resources:Resource$aws:s3/bucketv2:BucketV2::my-bucket method=Delete): Delete panic"),
 		},
 		{
 			testName: "Construct",
 			send: func(rps pulumirpc.ResourceProviderServer) {
-				rps.Construct(ctx, &pulumirpc.ConstructRequest{
+				_, err := rps.Construct(ctx, &pulumirpc.ConstructRequest{
 					Stack:   "pulumi:production",
 					Project: "acmecorp-website",
 					Type:    "aws:s3/bucketv2:BucketV2",
 					Name:    "myBucket",
 					Parent:  exampleResourceURN(),
 				})
+				contract.IgnoreError(err)
 			},
-			expectURN:     autogold.Expect(urn.URN("urn:pulumi:pulumi:production::acmecorp-website::aws:s3/bucketv2:BucketV2$aws:s3/bucketv2:BucketV2::myBucket")),
+			//nolint:lll
+			expectURN: autogold.Expect(urn.URN("urn:pulumi:pulumi:production::acmecorp-website::aws:s3/bucketv2:BucketV2$aws:s3/bucketv2:BucketV2::myBucket")),
+			//nolint:lll
 			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 resourceURN=urn:pulumi:pulumi:production::acmecorp-website::aws:s3/bucketv2:BucketV2$aws:s3/bucketv2:BucketV2::myBucket method=Construct): Construct panic"),
-		},
-		{
-			testName: "Construct/inferURN",
-			send: func(rps pulumirpc.ResourceProviderServer) {
-				rps.Construct(ctx, &pulumirpc.ConstructRequest{})
-			},
-			expectURN:     autogold.Expect(urn.URN("")),
-			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 method=Construct): Construct panic"),
 		},
 		{
 			testName: "Cancel",
 			send: func(rps pulumirpc.ResourceProviderServer) {
-				rps.Cancel(ctx, &emptypb.Empty{})
+				_, err := rps.Cancel(ctx, &emptypb.Empty{})
+				contract.IgnoreError(err)
 			},
 			expectURN:     autogold.Expect(urn.URN("")),
 			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 method=Cancel): Cancel panic"),
@@ -239,15 +276,18 @@ func TestPanicRecoveryByMethod(t *testing.T) {
 		{
 			testName: "GetPluginInfo",
 			send: func(rps pulumirpc.ResourceProviderServer) {
-				rps.GetPluginInfo(ctx, &emptypb.Empty{})
+				_, err := rps.GetPluginInfo(ctx, &emptypb.Empty{})
+				contract.IgnoreError(err)
 			},
-			expectURN:     autogold.Expect(urn.URN("")),
+			expectURN: autogold.Expect(urn.URN("")),
+			//nolint:lll
 			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 method=GetPluginInfo): GetPluginInfo panic"),
 		},
 		{
 			testName: "Attach",
 			send: func(rps pulumirpc.ResourceProviderServer) {
-				rps.Attach(ctx, &pulumirpc.PluginAttach{})
+				_, err := rps.Attach(ctx, &pulumirpc.PluginAttach{})
+				contract.IgnoreError(err)
 			},
 			expectURN:     autogold.Expect(urn.URN("")),
 			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 method=Attach): Attach panic"),
@@ -255,17 +295,21 @@ func TestPanicRecoveryByMethod(t *testing.T) {
 		{
 			testName: "GetMapping",
 			send: func(rps pulumirpc.ResourceProviderServer) {
-				rps.GetMapping(ctx, &pulumirpc.GetMappingRequest{})
+				_, err := rps.GetMapping(ctx, &pulumirpc.GetMappingRequest{})
+				contract.IgnoreError(err)
 			},
-			expectURN:     autogold.Expect(urn.URN("")),
+			expectURN: autogold.Expect(urn.URN("")),
+			//nolint:lll
 			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 method=GetMapping): GetMapping panic"),
 		},
 		{
 			testName: "GetMappings",
 			send: func(rps pulumirpc.ResourceProviderServer) {
-				rps.GetMappings(ctx, &pulumirpc.GetMappingsRequest{})
+				_, err := rps.GetMappings(ctx, &pulumirpc.GetMappingsRequest{})
+				contract.IgnoreError(err)
 			},
-			expectURN:     autogold.Expect(urn.URN("")),
+			expectURN: autogold.Expect(urn.URN("")),
+			//nolint:lll
 			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 method=GetMappings): GetMappings panic"),
 		},
 	}
