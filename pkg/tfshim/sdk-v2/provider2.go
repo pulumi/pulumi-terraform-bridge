@@ -115,7 +115,7 @@ func (s *v2InstanceState2) Meta() map[string]interface{} {
 }
 
 type v2InstanceDiff2 struct {
-	v2InstanceDiff
+	tf *terraform.InstanceDiff
 
 	config                    cty.Value
 	plannedState              cty.Value
@@ -134,13 +134,11 @@ func (d *v2InstanceDiff2) GoString() string {
 		return "nil"
 	}
 	return fmt.Sprintf(`&v2InstanceDiff2{
-    v2InstanceDiff: v2InstanceDiff{
-        tf: %#v,
-    },
-    config:         %#v,
-    plannedState:   %#v,
-    plannedPrivate:    %#v,
-}`, d.v2InstanceDiff.tf, d.config, d.plannedState, d.plannedPrivate)
+	tf:             %#v,
+	config:         %#v,
+	plannedState:   %#v,
+	plannedPrivate: %#v,
+}`, d.tf, d.config, d.plannedState, d.plannedPrivate)
 }
 
 var _ shim.InstanceDiff = (*v2InstanceDiff2)(nil)
@@ -150,7 +148,7 @@ func (d *v2InstanceDiff2) ProposedState(
 ) (shim.InstanceState, error) {
 	return &v2InstanceState2{
 		stateValue: d.plannedState,
-		meta:       d.v2InstanceDiff.tf.Meta,
+		meta:       d.tf.Meta,
 	}, nil
 }
 
@@ -163,6 +161,32 @@ func (d *v2InstanceDiff2) PriorState() (shim.InstanceState, error) {
 
 func (d *v2InstanceDiff2) DiffEqualDecisionOverride() shim.DiffOverride {
 	return d.diffEqualDecisionOverride
+}
+
+func (d *v2InstanceDiff2) Attribute(key string) *shim.ResourceAttrDiff {
+	return resourceAttrDiffToShim(d.tf.Attributes[key])
+}
+
+func (d *v2InstanceDiff2) HasNoChanges() bool {
+	return len(d.Attributes()) == 0
+}
+
+func (d *v2InstanceDiff2) Attributes() map[string]shim.ResourceAttrDiff {
+	m := map[string]shim.ResourceAttrDiff{}
+	for k, v := range d.tf.Attributes {
+		if v != nil {
+			m[k] = *resourceAttrDiffToShim(v)
+		}
+	}
+	return m
+}
+
+func (d *v2InstanceDiff2) Destroy() bool {
+	return d.tf.Destroy
+}
+
+func (d *v2InstanceDiff2) RequiresNew() bool {
+	return d.tf.RequiresNew()
 }
 
 // Provides PlanResourceChange handling for select resources.
@@ -446,9 +470,7 @@ func (p *planResourceChangeImpl) Diff(
 	}
 
 	return &v2InstanceDiff2{
-		v2InstanceDiff: v2InstanceDiff{
-			tf: plan.PlannedDiff,
-		},
+		tf:                        plan.PlannedDiff,
 		config:                    cfg,
 		plannedState:              plannedState,
 		diffEqualDecisionOverride: diffOverride,
@@ -482,14 +504,14 @@ func (p *planResourceChangeImpl) Apply(
 	diff := p.unpackDiff(ty, d)
 	cfg, st, pl := diff.config, state.stateValue, diff.plannedState
 
-	// Merge plannedPrivate and v2InstanceDiff.tf.Meta into a single map. This is necessary because
+	// Merge plannedPrivate and tf.Meta into a single map. This is necessary because
 	// timeouts are stored in the Meta and not in plannedPrivate.
 	priv := make(map[string]interface{})
 	if len(diff.plannedPrivate) > 0 {
 		maps.Copy(priv, diff.plannedPrivate)
 	}
-	if len(diff.v2InstanceDiff.tf.Meta) > 0 {
-		maps.Copy(priv, diff.v2InstanceDiff.tf.Meta)
+	if len(diff.tf.Meta) > 0 {
+		maps.Copy(priv, diff.tf.Meta)
 	}
 
 	return p.server.ApplyResourceChange(ctx, t, ty, cfg, st, pl, priv, meta)
@@ -540,9 +562,9 @@ func (p *planResourceChangeImpl) NewDestroyDiff(
 	ty := res.CoreConfigSchema().ImpliedType()
 	dd := (&v2Provider{}).NewDestroyDiff(ctx, t, opts).(v2InstanceDiff)
 	return &v2InstanceDiff2{
-		v2InstanceDiff: dd,
-		config:         cty.NullVal(ty),
-		plannedState:   cty.NullVal(ty),
+		tf:           dd.tf,
+		config:       cty.NullVal(ty),
+		plannedState: cty.NullVal(ty),
 	}
 }
 
@@ -953,6 +975,8 @@ type planResourceChangeProvider interface {
 	// Moving this method to the provider object from the shim.Resource object for convenience.
 	Importer(t string) shim.ImportFunc
 }
+
+var _ = shim.ResourceMap(&v2ResourceCustomMap{})
 
 type v2ResourceCustomMap struct {
 	resources map[string]*schema.Resource
