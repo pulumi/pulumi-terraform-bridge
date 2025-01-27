@@ -117,14 +117,14 @@ func TestPanicRecoveryByMethod(t *testing.T) {
 			expectURN:     autogold.Expect(urn.URN("")),
 			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 method=Invoke): Invoke panic"),
 		},
-		// {
-		// 	testName: "StreamInvoke",
-		// 	send: func(rps pulumirpc.ResourceProviderServer) {
-		// 		rps.StreamInvoke(&pulumirpc.InvokeRequest{}, nil)
-		// 	},
-		// 	expectURN:     autogold.Expect(urn.URN("")),
-		// 	expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 method=GetSchema): GetSchema panic"),
-		// },
+		{
+			testName: "StreamInvoke",
+			send: func(rps pulumirpc.ResourceProviderServer) {
+				rps.StreamInvoke(&pulumirpc.InvokeRequest{}, nil)
+			},
+			expectURN:     autogold.Expect(urn.URN("")),
+			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 method=StreamInvoke): StreamInvoke panic"),
+		},
 		{
 			testName: "Call",
 			send: func(rps pulumirpc.ResourceProviderServer) {

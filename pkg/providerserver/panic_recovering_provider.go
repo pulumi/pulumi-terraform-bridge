@@ -269,13 +269,13 @@ func (s *PanicRecoveringProviderServer) StreamInvoke(
 ) error {
 	defer func() {
 		if err := recover(); err != nil {
-			s.logPanic(srv.Context(), "StreamInvoke", err, debug.Stack(), &logPanicOptions{
+			s.logPanic(context.Background(), "StreamInvoke", err, debug.Stack(), &logPanicOptions{
 				invokeToken: req.Tok,
 			})
 			panic(err) // rethrow
 		}
 	}()
-	return s.StreamInvoke(req, srv)
+	return s.innerServer.StreamInvoke(req, srv)
 }
 
 func (s *PanicRecoveringProviderServer) Call(
