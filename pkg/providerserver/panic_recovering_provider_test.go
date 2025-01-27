@@ -110,11 +110,11 @@ func TestPanicRecoveryByMethod(t *testing.T) {
 			testName:          "Configure",
 			doNotPanicInCheck: true,
 			send: func(rps pulumirpc.ResourceProviderServer) {
-				rps.Check(ctx, &pulumirpc.CheckRequest{Urn: exampleProviderURN()})
+				rps.CheckConfig(ctx, &pulumirpc.CheckRequest{Urn: exampleProviderURN()})
 				rps.Configure(ctx, &pulumirpc.ConfigureRequest{})
 			},
-			expectURN:     autogold.Expect(urn.URN("urn:pulumi:dev::2024-01-27::pulumi:providers:aws::default_6_67_0::600afa97-4e03-40bd-b032-43e524727453")),
-			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 resourceURN=urn:pulumi:dev::2024-01-27::pulumi:providers:aws::default_6_67_0::600afa97-4e03-40bd-b032-43e524727453 method=Check): Check panic"),
+			expectURN:     autogold.Expect(urn.URN("")),
+			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 providerURN=urn:pulumi:dev::2024-01-27::pulumi:providers:aws::default_6_67_0::600afa97-4e03-40bd-b032-43e524727453 method=Configure): Configure panic"),
 		},
 		{
 			testName: "Invoke",
