@@ -15,6 +15,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/walk"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/difft"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/propertyvalue"
 )
 
@@ -427,6 +428,55 @@ func (differ detailedDiffer) makePropDiff(
 	}
 }
 
+// makeListAttributeDiff should only be called for lists of scalar values.
+// Note that the algorithm used is ~N^2, so it should not be used for large lists.
+func makeListAttributeDiff(
+	path propertyPath, old, new []resource.PropertyValue,
+) map[detailedDiffKey]*pulumirpc.PropertyDiff {
+	contract.Assertf(len(old) < 1000 && len(new) < 1000, "makeListAttributeDiff should not be used for large lists")
+	diff := make(map[detailedDiffKey]*pulumirpc.PropertyDiff)
+	type valIndex struct {
+		Value resource.PropertyValue
+		Index int
+	}
+
+	oldVals := []valIndex{}
+	for i, v := range old {
+		oldVals = append(oldVals, valIndex{Value: v, Index: i})
+	}
+	newVals := []valIndex{}
+	for i, v := range new {
+		newVals = append(newVals, valIndex{Value: v, Index: i})
+	}
+
+	edits := difft.DiffT(oldVals, newVals, difft.DiffOptions[valIndex]{
+		Equals: func(a, b valIndex) bool {
+			return a.Value.DeepEquals(b.Value)
+		},
+	})
+
+	for _, edit := range edits {
+		if edit.Change == difft.Insert {
+			key := path.Index(edit.Element.Index)
+			if diff[key.Key()] == nil {
+				diff[key.Key()] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_ADD}
+			} else {
+				diff[key.Key()] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE}
+			}
+		}
+		if edit.Change == difft.Remove {
+			key := path.Index(edit.Element.Index)
+			if diff[key.Key()] == nil {
+				diff[key.Key()] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_DELETE}
+			} else {
+				diff[key.Key()] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE}
+			}
+		}
+	}
+
+	return diff
+}
+
 func (differ detailedDiffer) makeListDiff(
 	path propertyPath, old, new resource.PropertyValue,
 ) map[detailedDiffKey]*pulumirpc.PropertyDiff {
@@ -434,9 +484,27 @@ func (differ detailedDiffer) makeListDiff(
 	oldList := old.ArrayValue()
 	newList := new.ArrayValue()
 
-	// naive diffing of lists
-	// TODO[pulumi/pulumi-terraform-bridge#2295]: implement a more sophisticated diffing algorithm
-	// investigate how this interacts with force new - is identity preserved or just order
+	tfs, _, err := lookupSchemas(path, differ.tfs, differ.ps)
+	if err != nil {
+		return nil
+	}
+
+	// We attempt to optimize the diff displayed for list attributes with a reasonable number of elements.
+	_, scalarElemType := tfs.Elem().(shim.Schema)
+	if scalarElemType && len(oldList) < 1000 && len(newList) < 1000 {
+		listDiff := makeListAttributeDiff(path, oldList, newList)
+		if tfs.ForceNew() {
+			for k, v := range listDiff {
+				diff[k] = promoteToReplace(v)
+			}
+		} else {
+			for k, v := range listDiff {
+				diff[k] = v
+			}
+		}
+		return diff
+	}
+
 	longerLen := max(len(oldList), len(newList))
 	for i := 0; i < longerLen; i++ {
 		elem := func(l []resource.PropertyValue) resource.PropertyValue {

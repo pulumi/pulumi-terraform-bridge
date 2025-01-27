@@ -71,53 +71,11 @@ Plan: 1 to add, 0 to change, 1 to destroy.
         [id=newid]
         [urn=urn:pulumi:test::project::crossprovider:index/testRes:TestRes::example]
       ~ props: [
-          ~ [0]: "value0" => "value20"
-          ~ [1]: "value1" => "value0"
-          ~ [2]: "value2" => "value1"
-          ~ [3]: "value3" => "value2"
-          ~ [4]: "value4" => "value3"
-          ~ [5]: "value5" => "value4"
-          ~ [6]: "value6" => "value5"
-          ~ [7]: "value7" => "value6"
-          ~ [8]: "value8" => "value7"
-          ~ [9]: "value9" => "value8"
-          ~ [10]: "value10" => "value9"
-          ~ [11]: "value11" => "value10"
-          ~ [12]: "value12" => "value11"
-          ~ [13]: "value13" => "value12"
-          ~ [14]: "value14" => "value13"
-          ~ [15]: "value15" => "value14"
-          ~ [16]: "value16" => "value15"
-          ~ [17]: "value17" => "value16"
-          ~ [18]: "value18" => "value17"
-          ~ [19]: "value19" => "value18"
-          + [20]: "value19"
+          + [0]: "value20"
         ]
 Resources:
     +-1 to replace
     1 unchanged
 `,
-	detailedDiff: map[string]interface{}{
-		"props[0]":  map[string]interface{}{"kind": "UPDATE_REPLACE"},
-		"props[10]": map[string]interface{}{"kind": "UPDATE_REPLACE"},
-		"props[11]": map[string]interface{}{"kind": "UPDATE_REPLACE"},
-		"props[12]": map[string]interface{}{"kind": "UPDATE_REPLACE"},
-		"props[13]": map[string]interface{}{"kind": "UPDATE_REPLACE"},
-		"props[14]": map[string]interface{}{"kind": "UPDATE_REPLACE"},
-		"props[15]": map[string]interface{}{"kind": "UPDATE_REPLACE"},
-		"props[16]": map[string]interface{}{"kind": "UPDATE_REPLACE"},
-		"props[17]": map[string]interface{}{"kind": "UPDATE_REPLACE"},
-		"props[18]": map[string]interface{}{"kind": "UPDATE_REPLACE"},
-		"props[19]": map[string]interface{}{"kind": "UPDATE_REPLACE"},
-		"props[1]":  map[string]interface{}{"kind": "UPDATE_REPLACE"},
-		"props[20]": map[string]interface{}{"kind": "ADD_REPLACE"},
-		"props[2]":  map[string]interface{}{"kind": "UPDATE_REPLACE"},
-		"props[3]":  map[string]interface{}{"kind": "UPDATE_REPLACE"},
-		"props[4]":  map[string]interface{}{"kind": "UPDATE_REPLACE"},
-		"props[5]":  map[string]interface{}{"kind": "UPDATE_REPLACE"},
-		"props[6]":  map[string]interface{}{"kind": "UPDATE_REPLACE"},
-		"props[7]":  map[string]interface{}{"kind": "UPDATE_REPLACE"},
-		"props[8]":  map[string]interface{}{"kind": "UPDATE_REPLACE"},
-		"props[9]":  map[string]interface{}{"kind": "UPDATE_REPLACE"},
-	},
+	detailedDiff: map[string]interface{}{"props[0]": map[string]interface{}{"kind": "ADD_REPLACE"}},
 }
