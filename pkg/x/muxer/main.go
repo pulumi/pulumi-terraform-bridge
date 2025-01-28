@@ -22,6 +22,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/providerserver"
 )
 
 // Mux multiple rpc servers into a single server by routing based on request type and urn.
@@ -135,7 +137,12 @@ func (m Main) Server(host *provider.HostClient, module, version string) (pulumir
 
 	server := mux(host, dispatchTable, pulumiSchema, m.GetMappingHandler, servers...)
 
-	return server, nil
+	return providerserver.NewPanicRecoveringProviderServer(&providerserver.PanicRecoveringProviderServerOptions{
+		Logger:                 host,
+		ResourceProviderServer: server,
+		ProviderName:           module,
+		ProviderVersion:        version,
+	}), nil
 }
 
 type Endpoint struct {

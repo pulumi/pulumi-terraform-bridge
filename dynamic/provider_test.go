@@ -23,6 +23,7 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 
 	helper "github.com/pulumi/pulumi-terraform-bridge/v3/dynamic/internal/testing"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/internal/logging"
 	pfbridge "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
 )
 
@@ -375,7 +376,7 @@ var (
 func grpcTestServer(ctx context.Context, t *testing.T) pulumirpc.ResourceProviderServer {
 	defaultInfo, metadata, close := initialSetup()
 	t.Cleanup(func() { assert.NoError(t, close()) })
-	s, err := pfbridge.NewProviderServer(ctx, nil, defaultInfo, metadata)
+	s, err := pfbridge.NewProviderServer(ctx, logging.NewTestingSink(t), defaultInfo, metadata)
 	require.NoError(t, err)
 	return s
 }

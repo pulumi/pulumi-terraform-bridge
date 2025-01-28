@@ -21,6 +21,7 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/internal/logging"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
 	tfbridge0 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
@@ -31,7 +32,7 @@ func newProviderServer(t *testing.T, info tfbridge0.ProviderInfo) (pulumirpc.Res
 	if err != nil {
 		return nil, err
 	}
-	srv, err := tfbridge.NewProviderServer(ctx, nil, info, meta)
+	srv, err := tfbridge.NewProviderServer(ctx, logging.NewTestingSink(t), info, meta)
 	require.NoError(t, err)
 	return srv, nil
 }

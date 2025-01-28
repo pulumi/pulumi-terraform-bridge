@@ -35,6 +35,7 @@ import (
 	"github.com/zclconf/go-cty/cty"
 	"gopkg.in/yaml.v3"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/internal/logging"
 	crosstests "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests"
 	crosstestsimpl "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests/impl"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests/impl/hclwrite"
@@ -174,7 +175,7 @@ resource "` + providerName + `_res" "res" {}
 		require.NoError(t, err)
 
 		makeProvider := func(providers.PulumiTest) (pulumirpc.ResourceProviderServer, error) {
-			ctx, sink := context.Background(), testLogSink{t}
+			ctx, sink := context.Background(), logging.NewTestingSink(t)
 
 			p := info.Provider{
 				Name:             providerName,
