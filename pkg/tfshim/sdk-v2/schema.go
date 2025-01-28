@@ -86,7 +86,7 @@ func (s v2Schema) StateFunc() shim.SchemaStateFunc {
 func (s v2Schema) Elem() interface{} {
 	switch e := s.tf.Elem.(type) {
 	case *schema.Resource:
-		return v2Resource{e}
+		return newElemResource(e)
 	case *schema.Schema:
 		return v2Schema{e}
 	default:
