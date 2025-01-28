@@ -22,7 +22,6 @@ import (
 	"runtime/debug"
 	"strings"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/internal/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
@@ -30,6 +29,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/protobuf/types/known/emptypb"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/internal/logging"
 )
 
 // A wrapper around a ResourceProviderServer that logs panics.

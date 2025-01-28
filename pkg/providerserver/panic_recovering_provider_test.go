@@ -16,7 +16,6 @@ package providerserver
 
 import (
 	"context"
-	"fmt"
 	"runtime/debug"
 	"testing"
 
@@ -338,6 +337,7 @@ func TestPanicRecoveryByMethod(t *testing.T) {
 // With muxed providers, if we accidentally wrap the provider server twice with the log interceptor it should still
 // annotate the panic only once.
 func TestWrappingIdempotency(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 	logger := &testLogger{}
 	provName := "myprov"
@@ -355,7 +355,10 @@ func TestWrappingIdempotency(t *testing.T) {
 		ProviderName:           provName,
 		ProviderVersion:        ver,
 	})
-	expectPanic(t, func() { s2.Check(ctx, &pulumirpc.CheckRequest{}) })
+	expectPanic(t, func() {
+		_, err := s2.Check(ctx, &pulumirpc.CheckRequest{})
+		contract.IgnoreError(err)
+	})
 	assert.Equal(t, 1, logger.messageCount)
 }
 
