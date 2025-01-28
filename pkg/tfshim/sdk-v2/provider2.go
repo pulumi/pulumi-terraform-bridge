@@ -32,6 +32,16 @@ type v2Resource2 struct {
 	resourceType string
 }
 
+// NewTestOnlyResource is a test-only constructor for v2Resource2.
+// New tests should avoid using this and instead construct a v2 Provider with a TF schema.
+func NewTestOnlyResource(r *schema.Resource) shim.Resource {
+	return &v2Resource2{r, nil, ""}
+}
+
+func newElemResource(r *schema.Resource) shim.Resource {
+	return &v2Resource2{r, nil, ""}
+}
+
 var _ shim.Resource = (*v2Resource2)(nil)
 
 func (r *v2Resource2) Schema() shim.SchemaMap {
@@ -82,11 +92,31 @@ func (r *v2Resource2) DeprecationMessage() string {
 }
 
 func (r *v2Resource2) Timeouts() *shim.ResourceTimeout {
-	return v2Resource{r.tf}.Timeouts()
+	if r.tf.Timeouts == nil {
+		return nil
+	}
+	return &shim.ResourceTimeout{
+		Create:  r.tf.Timeouts.Create,
+		Read:    r.tf.Timeouts.Read,
+		Update:  r.tf.Timeouts.Update,
+		Delete:  r.tf.Timeouts.Delete,
+		Default: r.tf.Timeouts.Default,
+	}
 }
 
 func (r *v2Resource2) DecodeTimeouts(config shim.ResourceConfig) (*shim.ResourceTimeout, error) {
-	return v2Resource{r.tf}.DecodeTimeouts(config)
+	v2Timeouts := &schema.ResourceTimeout{}
+	if err := v2Timeouts.ConfigDecode(r.tf, configFromShim(config)); err != nil {
+		return nil, err
+	}
+
+	return &shim.ResourceTimeout{
+		Create:  v2Timeouts.Create,
+		Read:    v2Timeouts.Read,
+		Update:  v2Timeouts.Update,
+		Delete:  v2Timeouts.Delete,
+		Default: v2Timeouts.Default,
+	}, nil
 }
 
 type v2InstanceState2 struct {
@@ -260,7 +290,12 @@ func (p *planResourceChangeImpl) ResourcesMap() shim.ResourceMap {
 }
 
 func (p *planResourceChangeImpl) DataSourcesMap() shim.ResourceMap {
-	return v2ResourceMap(p.tf.DataSourcesMap)
+	return &v2ResourceCustomMap{
+		resources: p.tf.DataSourcesMap,
+		pack: func(token string, res *schema.Resource) shim.Resource {
+			return &v2Resource2{res, nil, token}
+		},
+	}
 }
 
 func (p *planResourceChangeImpl) InternalValidate() error {
@@ -1038,12 +1073,7 @@ func (m *v2ResourceCustomMap) Range(each func(key string, value shim.Resource) b
 }
 
 func (m *v2ResourceCustomMap) Set(key string, value shim.Resource) {
-	switch r := value.(type) {
-	case v2Resource:
-		m.resources[key] = r.tf
-	case *v2Resource2:
-		m.resources[key] = r.tf
-	}
+	m.resources[key] = value.(*v2Resource2).tf
 }
 
 func NewProvider(p *schema.Provider, opts ...providerOption) shim.Provider {

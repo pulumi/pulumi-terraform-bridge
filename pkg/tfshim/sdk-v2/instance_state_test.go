@@ -10,7 +10,7 @@ import (
 
 func TestToInstanceState(t *testing.T) {
 	t.Parallel()
-	res := NewResource(&schema.Resource{
+	res := newElemResource(&schema.Resource{
 		Schema: map[string]*schema.Schema{
 			"nil_property_value":    {Type: schema.TypeMap},
 			"bool_property_value":   {Type: schema.TypeBool},
@@ -156,7 +156,7 @@ func TestToInstanceState(t *testing.T) {
 	expected := writer.Map()
 
 	// Build the same using makeTerraformAttributesFromInputs.
-	res = NewResource(&schema.Resource{Schema: sharedSchema})
+	res = newElemResource(&schema.Resource{Schema: sharedSchema})
 	state, err = res.InstanceState("id", sharedInputs, nil)
 	assert.NoError(t, err)
 	assert.Equal(t, expected, state.(v2InstanceState).tf.Attributes)
@@ -165,7 +165,7 @@ func TestToInstanceState(t *testing.T) {
 // Test that an unset list still generates a length attribute.
 func TestEmptyListAttribute(t *testing.T) {
 	t.Parallel()
-	res := NewResource(&schema.Resource{
+	res := newElemResource(&schema.Resource{
 		Schema: map[string]*schema.Schema{
 			"list_property": {Type: schema.TypeList, Optional: true},
 		},
@@ -180,7 +180,7 @@ func TestEmptyListAttribute(t *testing.T) {
 
 func TestObjectFromInstanceDiff(t *testing.T) {
 	t.Parallel()
-	res := NewResource(&schema.Resource{
+	res := newElemResource(&schema.Resource{
 		Schema: map[string]*schema.Schema{
 			"nil_property_value":    {Type: schema.TypeMap},
 			"bool_property_value":   {Type: schema.TypeBool},

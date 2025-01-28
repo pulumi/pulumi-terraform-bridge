@@ -243,7 +243,7 @@ func (f shimv2Factory) newResource(r shim.Resource) *schemav2.Resource {
 }
 
 func (f shimv2Factory) NewResource(r *schema.Resource) shim.Resource {
-	return shimv2.NewResource(f.newResource(r.Shim()))
+	return shimv2.NewTestOnlyResource(f.newResource(r.Shim()))
 }
 
 func (f shimv2Factory) NewInstanceState(id string) shim.InstanceState {

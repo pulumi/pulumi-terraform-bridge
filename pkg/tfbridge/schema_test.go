@@ -3057,7 +3057,6 @@ func TestMakeTerraformInputsOnMapNestedObjects(t *testing.T) {
 		},
 	}
 
-	shimmedR := shimv2.NewResource(r)
 	type testCase struct {
 		name   string
 		ps     map[string]*SchemaInfo
@@ -3132,7 +3131,7 @@ func TestMakeTerraformInputsOnMapNestedObjects(t *testing.T) {
 		tc := tc
 
 		t.Run(tc.name, func(t *testing.T) {
-			i, _, err := makeTerraformInputsForConfig(tc.olds, tc.news, shimmedR.Schema(), tc.ps)
+			i, _, err := makeTerraformInputsForConfig(tc.olds, tc.news, shimv2.NewSchemaMap(r.Schema), tc.ps)
 			require.NoError(t, err)
 			require.Equal(t, tc.expect, i)
 		})
@@ -3161,7 +3160,6 @@ func TestRegress940(t *testing.T) {
 			},
 		},
 	}
-	shimmedR := shimv2.NewResource(r)
 
 	var olds, news resource.PropertyMap
 
@@ -3175,7 +3173,7 @@ func TestRegress940(t *testing.T) {
 		}),
 	}
 
-	result, _, err := makeTerraformInputsForConfig(olds, news, shimmedR.Schema(), map[string]*SchemaInfo{})
+	result, _, err := makeTerraformInputsForConfig(olds, news, shimv2.NewSchemaMap(r.Schema), map[string]*SchemaInfo{})
 
 	t.Run("no error with empty keys", func(t *testing.T) {
 		assert.NoError(t, err)
