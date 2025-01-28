@@ -119,6 +119,16 @@ func (r *v2Resource2) DecodeTimeouts(config shim.ResourceConfig) (*shim.Resource
 	}, nil
 }
 
+// NewTestOnlyInstanceState is a test-only constructor for v2InstanceState2.
+// New tests should avoid using this and instead construct a v2 Provider with a TF schema.
+func NewTestOnlyInstanceState(s *terraform.InstanceState) shim.InstanceState {
+	return &v2InstanceState2{
+		resourceType: s.Ephemeral.Type,
+		stateValue:   s.RawState,
+		meta:         s.Meta,
+	}
+}
+
 type v2InstanceState2 struct {
 	resourceType string
 	stateValue   cty.Value
