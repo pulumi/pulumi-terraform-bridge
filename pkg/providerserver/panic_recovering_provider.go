@@ -164,7 +164,7 @@ func (s *PanicRecoveringProviderServer) Handshake(
 	ctx context.Context,
 	req *pulumirpc.ProviderHandshakeRequest,
 ) (*pulumirpc.ProviderHandshakeResponse, error) {
-	if isPanicHandlerInstalled(ctx) {
+	if !isPanicHandlerInstalled(ctx) {
 		defer func() {
 			if err := recover(); err != nil {
 				s.logPanic(ctx, "Handshake", err, debug.Stack(), nil)
@@ -179,7 +179,7 @@ func (s *PanicRecoveringProviderServer) Parameterize(
 	ctx context.Context,
 	req *pulumirpc.ParameterizeRequest,
 ) (*pulumirpc.ParameterizeResponse, error) {
-	if isPanicHandlerInstalled(ctx) {
+	if !isPanicHandlerInstalled(ctx) {
 		defer func() {
 			if err := recover(); err != nil {
 				s.logPanic(ctx, "Parameterize", err, debug.Stack(), nil)
@@ -194,7 +194,7 @@ func (s *PanicRecoveringProviderServer) GetSchema(
 	ctx context.Context,
 	req *pulumirpc.GetSchemaRequest,
 ) (*pulumirpc.GetSchemaResponse, error) {
-	if isPanicHandlerInstalled(ctx) {
+	if !isPanicHandlerInstalled(ctx) {
 		defer func() {
 			if err := recover(); err != nil {
 				s.logPanic(ctx, "GetSchema", err, debug.Stack(), nil)
@@ -210,7 +210,7 @@ func (s *PanicRecoveringProviderServer) CheckConfig(
 	req *pulumirpc.CheckRequest,
 ) (*pulumirpc.CheckResponse, error) {
 	s.currentProviderUrn = req.Urn
-	if isPanicHandlerInstalled(ctx) {
+	if !isPanicHandlerInstalled(ctx) {
 		defer func() {
 			if err := recover(); err != nil {
 				s.logPanic(ctx, "CheckConfig", err, debug.Stack(), &logPanicOptions{
@@ -227,7 +227,7 @@ func (s *PanicRecoveringProviderServer) DiffConfig(
 	ctx context.Context,
 	req *pulumirpc.DiffRequest,
 ) (*pulumirpc.DiffResponse, error) {
-	if isPanicHandlerInstalled(ctx) {
+	if !isPanicHandlerInstalled(ctx) {
 		defer func() {
 			if err := recover(); err != nil {
 				s.logPanic(ctx, "DiffConfig", err, debug.Stack(), &logPanicOptions{
@@ -244,7 +244,7 @@ func (s *PanicRecoveringProviderServer) Configure(
 	ctx context.Context,
 	req *pulumirpc.ConfigureRequest,
 ) (*pulumirpc.ConfigureResponse, error) {
-	if isPanicHandlerInstalled(ctx) {
+	if !isPanicHandlerInstalled(ctx) {
 		defer func() {
 			if err := recover(); err != nil {
 				s.logPanic(ctx, "Configure", err, debug.Stack(), &logPanicOptions{
@@ -261,7 +261,7 @@ func (s *PanicRecoveringProviderServer) Invoke(
 	ctx context.Context,
 	req *pulumirpc.InvokeRequest,
 ) (*pulumirpc.InvokeResponse, error) {
-	if isPanicHandlerInstalled(ctx) {
+	if !isPanicHandlerInstalled(ctx) {
 		defer func() {
 			if err := recover(); err != nil {
 				s.logPanic(ctx, "Invoke", err, debug.Stack(), &logPanicOptions{
@@ -294,7 +294,7 @@ func (s *PanicRecoveringProviderServer) Call(
 	ctx context.Context,
 	req *pulumirpc.CallRequest,
 ) (*pulumirpc.CallResponse, error) {
-	if isPanicHandlerInstalled(ctx) {
+	if !isPanicHandlerInstalled(ctx) {
 		defer func() {
 			if err := recover(); err != nil {
 				// We could possibly do better here if we inferred the URN of the __self__ argument.
@@ -312,7 +312,7 @@ func (s *PanicRecoveringProviderServer) Check(
 	ctx context.Context,
 	req *pulumirpc.CheckRequest,
 ) (*pulumirpc.CheckResponse, error) {
-	if isPanicHandlerInstalled(ctx) {
+	if !isPanicHandlerInstalled(ctx) {
 		defer func() {
 			if err := recover(); err != nil {
 				s.logPanic(ctx, "Check", err, debug.Stack(), &logPanicOptions{
@@ -329,7 +329,7 @@ func (s *PanicRecoveringProviderServer) Diff(
 	ctx context.Context,
 	req *pulumirpc.DiffRequest,
 ) (*pulumirpc.DiffResponse, error) {
-	if isPanicHandlerInstalled(ctx) {
+	if !isPanicHandlerInstalled(ctx) {
 		defer func() {
 			if err := recover(); err != nil {
 				s.logPanic(ctx, "Diff", err, debug.Stack(), &logPanicOptions{
@@ -346,7 +346,7 @@ func (s *PanicRecoveringProviderServer) Create(
 	ctx context.Context,
 	req *pulumirpc.CreateRequest,
 ) (*pulumirpc.CreateResponse, error) {
-	if isPanicHandlerInstalled(ctx) {
+	if !isPanicHandlerInstalled(ctx) {
 		defer func() {
 			if err := recover(); err != nil {
 				s.logPanic(ctx, "Create", err, debug.Stack(), &logPanicOptions{
@@ -363,7 +363,7 @@ func (s *PanicRecoveringProviderServer) Read(
 	ctx context.Context,
 	req *pulumirpc.ReadRequest,
 ) (*pulumirpc.ReadResponse, error) {
-	if isPanicHandlerInstalled(ctx) {
+	if !isPanicHandlerInstalled(ctx) {
 		defer func() {
 			if err := recover(); err != nil {
 				s.logPanic(ctx, "Read", err, debug.Stack(), &logPanicOptions{
@@ -380,7 +380,7 @@ func (s *PanicRecoveringProviderServer) Update(
 	ctx context.Context,
 	req *pulumirpc.UpdateRequest,
 ) (*pulumirpc.UpdateResponse, error) {
-	if isPanicHandlerInstalled(ctx) {
+	if !isPanicHandlerInstalled(ctx) {
 		defer func() {
 			if err := recover(); err != nil {
 				s.logPanic(ctx, "Update", err, debug.Stack(), &logPanicOptions{
