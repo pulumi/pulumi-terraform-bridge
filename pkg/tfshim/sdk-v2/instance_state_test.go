@@ -73,7 +73,7 @@ func TestToInstanceState(t *testing.T) {
 	}, nil)
 
 	assert.NoError(t, err)
-	assert.Equal(t, state.(v2InstanceState).tf.Attributes, map[string]string{
+	assert.Equal(t, objectFromCtyValue(state.(*v2InstanceState2).stateValue), map[string]string{
 		"array_property_value.#":                              "1",
 		"array_property_value.0":                              "an array",
 		"bool_property_value":                                 "false",
@@ -159,7 +159,7 @@ func TestToInstanceState(t *testing.T) {
 	res = newElemResource(&schema.Resource{Schema: sharedSchema})
 	state, err = res.InstanceState("id", sharedInputs, nil)
 	assert.NoError(t, err)
-	assert.Equal(t, expected, state.(v2InstanceState).tf.Attributes)
+	assert.Equal(t, expected, objectFromCtyValue(state.(*v2InstanceState2).stateValue))
 }
 
 // Test that an unset list still generates a length attribute.
@@ -173,150 +173,7 @@ func TestEmptyListAttribute(t *testing.T) {
 
 	state, err := res.InstanceState("id", map[string]interface{}{}, nil)
 	assert.NoError(t, err)
-	assert.Equal(t, state.(v2InstanceState).tf.Attributes, map[string]string{
+	assert.Equal(t, objectFromCtyValue(state.(*v2InstanceState2).stateValue), map[string]string{
 		"list_property.#": "0",
 	})
-}
-
-func TestObjectFromInstanceDiff(t *testing.T) {
-	t.Parallel()
-	res := newElemResource(&schema.Resource{
-		Schema: map[string]*schema.Schema{
-			"nil_property_value":    {Type: schema.TypeMap},
-			"bool_property_value":   {Type: schema.TypeBool},
-			"number_property_value": {Type: schema.TypeInt},
-			"float_property_value":  {Type: schema.TypeFloat},
-			"string_property_value": {Type: schema.TypeString},
-			"array_property_value": {
-				Type: schema.TypeList,
-				Elem: &schema.Schema{Type: schema.TypeString},
-			},
-			"object_property_value": {Type: schema.TypeMap},
-			"map_property_value":    {Type: schema.TypeMap},
-			"nested_resources": {
-				Type:     schema.TypeList,
-				MaxItems: 1,
-				// Embed a `*schema.Resource` to validate that type directed
-				// walk of the schema successfully walks inside Resources as well
-				// as Schemas.
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"configuration": {Type: schema.TypeMap},
-					},
-				},
-			},
-			"set_property_value": {
-				Type: schema.TypeSet,
-				Elem: &schema.Schema{Type: schema.TypeString},
-			},
-			"resource_set_property_value": {
-				Type: schema.TypeSet,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"name":   {Type: schema.TypeString},
-						"labels": {Type: schema.TypeList, Elem: &schema.Schema{Type: schema.TypeInt}},
-					},
-				},
-			},
-			"string_with_bad_interpolation": {Type: schema.TypeString},
-			"removed_property_value": {
-				Type: schema.TypeString,
-			},
-		},
-	})
-
-	state, err := res.InstanceState("id", map[string]interface{}{
-		"nil_property_value":    nil,
-		"bool_property_value":   false,
-		"number_property_value": 42,
-		"float_property_value":  99.6767932,
-		"string_property_value": "ognirts",
-		"array_property_value":  []interface{}{"an array"},
-		"object_property_value": map[string]interface{}{
-			"property_a": "a",
-			"property_b": true,
-		},
-		"map_property_value": map[string]interface{}{
-			"propertyA": "a",
-			"propertyB": true,
-			"propertyC": map[string]interface{}{
-				"nestedPropertyA": true,
-			},
-		},
-		"nested_resources": []interface{}{
-			map[string]interface{}{
-				"configuration": map[string]interface{}{
-					"configurationValue": true,
-				},
-			},
-		},
-		"set_property_value": []interface{}{"set member 1", "set member 2"},
-		"resource_set_property_value": []interface{}{
-			map[string]interface{}{
-				"name":   "someName",
-				"labels": []interface{}{42},
-			},
-		},
-		"string_with_bad_interpolation": "some ${interpolated:value} with syntax errors",
-		"removed_property_value":        "a removed property",
-	}, nil)
-	assert.NoError(t, err)
-
-	s := state.(v2InstanceState)
-	s.diff = &terraform.InstanceDiff{
-		Attributes: map[string]*terraform.ResourceAttrDiff{
-			"number_property_value": {
-				Old:         "42",
-				New:         UnknownVariableValue,
-				NewComputed: true,
-			},
-			"object_property_value.property_a": {
-				Old:         "a",
-				New:         UnknownVariableValue,
-				NewComputed: true,
-			},
-			"map_property_value.%": {
-				Old:         "3",
-				New:         UnknownVariableValue,
-				NewComputed: true,
-			},
-			"nested_resources.0.configuration.configurationValue": {
-				Old:         "true",
-				New:         UnknownVariableValue,
-				NewComputed: true,
-			},
-			"set_property_value.1234": {
-				New:         UnknownVariableValue,
-				NewComputed: true,
-			},
-			"resource_set_property_value.2450673662.labels.0": {
-				New:         UnknownVariableValue,
-				NewComputed: true,
-			},
-		},
-	}
-
-	obj, err := s.Object(res.Schema())
-	assert.NoError(t, err)
-
-	assert.Equal(t, map[string]interface{}{
-		"id":                    "",
-		"bool_property_value":   false,
-		"float_property_value":  99.6767932,
-		"string_property_value": "ognirts",
-		"array_property_value":  []interface{}{"an array"},
-		"object_property_value": map[string]interface{}{
-			"property_a": UnknownVariableValue,
-			"property_b": "true",
-		},
-		"nested_resources": []interface{}{
-			map[string]interface{}{
-				"configuration": map[string]interface{}{
-					"configurationValue": UnknownVariableValue,
-				},
-			},
-		},
-		"string_with_bad_interpolation": "some ${interpolated:value} with syntax errors",
-		"removed_property_value":        "a removed property",
-	}, obj)
 }
