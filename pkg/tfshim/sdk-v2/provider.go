@@ -18,7 +18,11 @@ func stateToShim(r *schema.Resource, s *terraform.InstanceState) shim.InstanceSt
 	if s == nil {
 		return nil
 	}
-	return NewInstanceStateForResource(s, r)
+	return &v2InstanceState2{
+		resourceType: s.Ephemeral.Type,
+		stateValue:   s.RawState,
+		meta:         s.Meta,
+	}
 }
 
 func diffFromShim(d shim.InstanceDiff) *terraform.InstanceDiff {
