@@ -27,12 +27,20 @@ import (
 )
 
 type v2Resource2 struct {
-	v2Resource
+	tf           *schema.Resource
 	importer     shim.ImportFunc
 	resourceType string
 }
 
 var _ shim.Resource = (*v2Resource2)(nil)
+
+func (r *v2Resource2) Schema() shim.SchemaMap {
+	return v2SchemaMap(r.tf.SchemaMap())
+}
+
+func (r *v2Resource2) SchemaVersion() int {
+	return r.tf.SchemaVersion
+}
 
 // This method is called to service `pulumi import` requests and maps naturally to the TF
 // ImportResourceState method. When using `pulumi refresh` this is not called, and instead
@@ -54,7 +62,7 @@ func (r *v2Resource2) InstanceState(
 	}
 	// TODO[pulumi/pulumi-terraform-bridge#1667]: This is not right since it uses the
 	// current schema. 1667 should make this redundant
-	s, err := recoverAndCoerceCtyValueWithSchema(r.v2Resource.tf.CoreConfigSchema(), object)
+	s, err := recoverAndCoerceCtyValueWithSchema(r.tf.CoreConfigSchema(), object)
 	if err != nil {
 		glog.V(9).Infof("failed to coerce config: %v, proceeding with imprecise value", err)
 		original := schema.HCL2ValueFromConfigValue(object)
@@ -67,6 +75,10 @@ func (r *v2Resource2) InstanceState(
 		resourceType: r.resourceType,
 		meta:         meta,
 	}, nil
+}
+
+func (r *v2Resource2) DeprecationMessage() string {
+	return r.tf.DeprecationMessage
 }
 
 func (r *v2Resource2) Timeouts() *shim.ResourceTimeout {
@@ -242,7 +254,7 @@ func (p *planResourceChangeImpl) ResourcesMap() shim.ResourceMap {
 		resources: p.resources,
 		pack: func(token string, res *schema.Resource) shim.Resource {
 			i := p.Importer(token)
-			return &v2Resource2{v2Resource{res}, i, token}
+			return &v2Resource2{res, i, token}
 		},
 	}
 }
