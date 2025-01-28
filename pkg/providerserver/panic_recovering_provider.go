@@ -163,39 +163,45 @@ func (s *PanicRecoveringProviderServer) Handshake(
 	ctx context.Context,
 	req *pulumirpc.ProviderHandshakeRequest,
 ) (*pulumirpc.ProviderHandshakeResponse, error) {
-	defer func() {
-		if err := recover(); err != nil {
-			s.logPanic(ctx, "Handshake", err, debug.Stack(), nil)
-			panic(err) // rethrow
-		}
-	}()
-	return s.innerServer.Handshake(ctx, req)
+	if isPanicHandlerInstalled(ctx) {
+		defer func() {
+			if err := recover(); err != nil {
+				s.logPanic(ctx, "Handshake", err, debug.Stack(), nil)
+				panic(err) // rethrow
+			}
+		}()
+	}
+	return s.innerServer.Handshake(withPanicHandlerInstalled(ctx), req)
 }
 
 func (s *PanicRecoveringProviderServer) Parameterize(
 	ctx context.Context,
 	req *pulumirpc.ParameterizeRequest,
 ) (*pulumirpc.ParameterizeResponse, error) {
-	defer func() {
-		if err := recover(); err != nil {
-			s.logPanic(ctx, "Parameterize", err, debug.Stack(), nil)
-			panic(err) // rethrow
-		}
-	}()
-	return s.innerServer.Parameterize(ctx, req)
+	if isPanicHandlerInstalled(ctx) {
+		defer func() {
+			if err := recover(); err != nil {
+				s.logPanic(ctx, "Parameterize", err, debug.Stack(), nil)
+				panic(err) // rethrow
+			}
+		}()
+	}
+	return s.innerServer.Parameterize(withPanicHandlerInstalled(ctx), req)
 }
 
 func (s *PanicRecoveringProviderServer) GetSchema(
 	ctx context.Context,
 	req *pulumirpc.GetSchemaRequest,
 ) (*pulumirpc.GetSchemaResponse, error) {
-	defer func() {
-		if err := recover(); err != nil {
-			s.logPanic(ctx, "GetSchema", err, debug.Stack(), nil)
-			panic(err) // rethrow
-		}
-	}()
-	return s.innerServer.GetSchema(ctx, req)
+	if isPanicHandlerInstalled(ctx) {
+		defer func() {
+			if err := recover(); err != nil {
+				s.logPanic(ctx, "GetSchema", err, debug.Stack(), nil)
+				panic(err) // rethrow
+			}
+		}()
+	}
+	return s.innerServer.GetSchema(withPanicHandlerInstalled(ctx), req)
 }
 
 func (s *PanicRecoveringProviderServer) CheckConfig(
@@ -203,66 +209,75 @@ func (s *PanicRecoveringProviderServer) CheckConfig(
 	req *pulumirpc.CheckRequest,
 ) (*pulumirpc.CheckResponse, error) {
 	s.currentProviderUrn = req.Urn
-	defer func() {
-		if err := recover(); err != nil {
-			s.logPanic(ctx, "CheckConfig", err, debug.Stack(), &logPanicOptions{
-				providerURN: req.Urn,
-			})
-			panic(err) // rethrow
-		}
-	}()
-	return s.innerServer.CheckConfig(ctx, req)
+	if isPanicHandlerInstalled(ctx) {
+		defer func() {
+			if err := recover(); err != nil {
+				s.logPanic(ctx, "CheckConfig", err, debug.Stack(), &logPanicOptions{
+					providerURN: req.Urn,
+				})
+				panic(err) // rethrow
+			}
+		}()
+	}
+	return s.innerServer.CheckConfig(withPanicHandlerInstalled(ctx), req)
 }
 
 func (s *PanicRecoveringProviderServer) DiffConfig(
 	ctx context.Context,
 	req *pulumirpc.DiffRequest,
 ) (*pulumirpc.DiffResponse, error) {
-	defer func() {
-		if err := recover(); err != nil {
-			s.logPanic(ctx, "DiffConfig", err, debug.Stack(), &logPanicOptions{
-				providerURN: req.Urn,
-			})
-			panic(err) // rethrow
-		}
-	}()
-	return s.innerServer.DiffConfig(ctx, req)
+	if isPanicHandlerInstalled(ctx) {
+		defer func() {
+			if err := recover(); err != nil {
+				s.logPanic(ctx, "DiffConfig", err, debug.Stack(), &logPanicOptions{
+					providerURN: req.Urn,
+				})
+				panic(err) // rethrow
+			}
+		}()
+	}
+	return s.innerServer.DiffConfig(withPanicHandlerInstalled(ctx), req)
 }
 
 func (s *PanicRecoveringProviderServer) Configure(
 	ctx context.Context,
 	req *pulumirpc.ConfigureRequest,
 ) (*pulumirpc.ConfigureResponse, error) {
-	defer func() {
-		if err := recover(); err != nil {
-			s.logPanic(ctx, "Configure", err, debug.Stack(), &logPanicOptions{
-				providerURN: s.currentProviderUrn,
-			})
-			panic(err) // rethrow
-		}
-	}()
-	return s.innerServer.Configure(ctx, req)
+	if isPanicHandlerInstalled(ctx) {
+		defer func() {
+			if err := recover(); err != nil {
+				s.logPanic(ctx, "Configure", err, debug.Stack(), &logPanicOptions{
+					providerURN: s.currentProviderUrn,
+				})
+				panic(err) // rethrow
+			}
+		}()
+	}
+	return s.innerServer.Configure(withPanicHandlerInstalled(ctx), req)
 }
 
 func (s *PanicRecoveringProviderServer) Invoke(
 	ctx context.Context,
 	req *pulumirpc.InvokeRequest,
 ) (*pulumirpc.InvokeResponse, error) {
-	defer func() {
-		if err := recover(); err != nil {
-			s.logPanic(ctx, "Invoke", err, debug.Stack(), &logPanicOptions{
-				invokeToken: req.Tok,
-			})
-			panic(err) // rethrow
-		}
-	}()
-	return s.innerServer.Invoke(ctx, req)
+	if isPanicHandlerInstalled(ctx) {
+		defer func() {
+			if err := recover(); err != nil {
+				s.logPanic(ctx, "Invoke", err, debug.Stack(), &logPanicOptions{
+					invokeToken: req.Tok,
+				})
+				panic(err) // rethrow
+			}
+		}()
+	}
+	return s.innerServer.Invoke(withPanicHandlerInstalled(ctx), req)
 }
 
 func (s *PanicRecoveringProviderServer) StreamInvoke(
 	req *pulumirpc.InvokeRequest,
 	srv pulumirpc.ResourceProvider_StreamInvokeServer,
 ) error {
+	// This may not handle isPanicHandlerInstalled idempotency yet. Not used in bridged providers for now.
 	defer func() {
 		if err := recover(); err != nil {
 			s.logPanic(context.Background(), "StreamInvoke", err, debug.Stack(), &logPanicOptions{
@@ -278,183 +293,209 @@ func (s *PanicRecoveringProviderServer) Call(
 	ctx context.Context,
 	req *pulumirpc.CallRequest,
 ) (*pulumirpc.CallResponse, error) {
-	defer func() {
-		if err := recover(); err != nil {
-			// We could possibly do better here if we inferred the URN of the __self__ argument.
-			s.logPanic(ctx, "Call", err, debug.Stack(), &logPanicOptions{
-				invokeToken: req.Tok,
-			})
-			panic(err) // rethrow
-		}
-	}()
-	return s.innerServer.Call(ctx, req)
+	if isPanicHandlerInstalled(ctx) {
+		defer func() {
+			if err := recover(); err != nil {
+				// We could possibly do better here if we inferred the URN of the __self__ argument.
+				s.logPanic(ctx, "Call", err, debug.Stack(), &logPanicOptions{
+					invokeToken: req.Tok,
+				})
+				panic(err) // rethrow
+			}
+		}()
+	}
+	return s.innerServer.Call(withPanicHandlerInstalled(ctx), req)
 }
 
 func (s *PanicRecoveringProviderServer) Check(
 	ctx context.Context,
 	req *pulumirpc.CheckRequest,
 ) (*pulumirpc.CheckResponse, error) {
-	defer func() {
-		if err := recover(); err != nil {
-			s.logPanic(ctx, "Check", err, debug.Stack(), &logPanicOptions{
-				resourceURN: req.Urn,
-			})
-			panic(err) // rethrow
-		}
-	}()
-	return s.innerServer.Check(ctx, req)
+	if isPanicHandlerInstalled(ctx) {
+		defer func() {
+			if err := recover(); err != nil {
+				s.logPanic(ctx, "Check", err, debug.Stack(), &logPanicOptions{
+					resourceURN: req.Urn,
+				})
+				panic(err) // rethrow
+			}
+		}()
+	}
+	return s.innerServer.Check(withPanicHandlerInstalled(ctx), req)
 }
 
 func (s *PanicRecoveringProviderServer) Diff(
 	ctx context.Context,
 	req *pulumirpc.DiffRequest,
 ) (*pulumirpc.DiffResponse, error) {
-	defer func() {
-		if err := recover(); err != nil {
-			s.logPanic(ctx, "Diff", err, debug.Stack(), &logPanicOptions{
-				resourceURN: req.Urn,
-			})
-			panic(err) // rethrow
-		}
-	}()
-	return s.innerServer.Diff(ctx, req)
+	if isPanicHandlerInstalled(ctx) {
+		defer func() {
+			if err := recover(); err != nil {
+				s.logPanic(ctx, "Diff", err, debug.Stack(), &logPanicOptions{
+					resourceURN: req.Urn,
+				})
+				panic(err) // rethrow
+			}
+		}()
+	}
+	return s.innerServer.Diff(withPanicHandlerInstalled(ctx), req)
 }
 
 func (s *PanicRecoveringProviderServer) Create(
 	ctx context.Context,
 	req *pulumirpc.CreateRequest,
 ) (*pulumirpc.CreateResponse, error) {
-	defer func() {
-		if err := recover(); err != nil {
-			s.logPanic(ctx, "Create", err, debug.Stack(), &logPanicOptions{
-				resourceURN: req.Urn,
-			})
-			panic(err) // rethrow
-		}
-	}()
-	return s.innerServer.Create(ctx, req)
+	if isPanicHandlerInstalled(ctx) {
+		defer func() {
+			if err := recover(); err != nil {
+				s.logPanic(ctx, "Create", err, debug.Stack(), &logPanicOptions{
+					resourceURN: req.Urn,
+				})
+				panic(err) // rethrow
+			}
+		}()
+	}
+	return s.innerServer.Create(withPanicHandlerInstalled(ctx), req)
 }
 
 func (s *PanicRecoveringProviderServer) Read(
 	ctx context.Context,
 	req *pulumirpc.ReadRequest,
 ) (*pulumirpc.ReadResponse, error) {
-	defer func() {
-		if err := recover(); err != nil {
-			s.logPanic(ctx, "Read", err, debug.Stack(), &logPanicOptions{
-				resourceURN: req.Urn,
-			})
-			panic(err) // rethrow
-		}
-	}()
-	return s.innerServer.Read(ctx, req)
+	if isPanicHandlerInstalled(ctx) {
+		defer func() {
+			if err := recover(); err != nil {
+				s.logPanic(ctx, "Read", err, debug.Stack(), &logPanicOptions{
+					resourceURN: req.Urn,
+				})
+				panic(err) // rethrow
+			}
+		}()
+	}
+	return s.innerServer.Read(withPanicHandlerInstalled(ctx), req)
 }
 
 func (s *PanicRecoveringProviderServer) Update(
 	ctx context.Context,
 	req *pulumirpc.UpdateRequest,
 ) (*pulumirpc.UpdateResponse, error) {
-	defer func() {
-		if err := recover(); err != nil {
-			s.logPanic(ctx, "Update", err, debug.Stack(), &logPanicOptions{
-				resourceURN: req.Urn,
-			})
-			panic(err) // rethrow
-		}
-	}()
-	return s.innerServer.Update(ctx, req)
+	if isPanicHandlerInstalled(ctx) {
+		defer func() {
+			if err := recover(); err != nil {
+				s.logPanic(ctx, "Update", err, debug.Stack(), &logPanicOptions{
+					resourceURN: req.Urn,
+				})
+				panic(err) // rethrow
+			}
+		}()
+	}
+	return s.innerServer.Update(withPanicHandlerInstalled(ctx), req)
 }
 
 func (s *PanicRecoveringProviderServer) Delete(
 	ctx context.Context,
 	req *pulumirpc.DeleteRequest,
 ) (*emptypb.Empty, error) {
-	defer func() {
-		if err := recover(); err != nil {
-			s.logPanic(ctx, "Delete", err, debug.Stack(), &logPanicOptions{
-				resourceURN: req.Urn,
-			})
-			panic(err) // rethrow
-		}
-	}()
-	return s.innerServer.Delete(ctx, req)
+	if !isPanicHandlerInstalled(ctx) {
+		defer func() {
+			if err := recover(); err != nil {
+				s.logPanic(ctx, "Delete", err, debug.Stack(), &logPanicOptions{
+					resourceURN: req.Urn,
+				})
+				panic(err) // rethrow
+			}
+		}()
+	}
+	return s.innerServer.Delete(withPanicHandlerInstalled(ctx), req)
 }
 
 func (s *PanicRecoveringProviderServer) Construct(
 	ctx context.Context,
 	req *pulumirpc.ConstructRequest,
 ) (resp *pulumirpc.ConstructResponse, finalError error) {
-	defer func() {
-		if err := recover(); err != nil {
-			opts := &logPanicOptions{}
-			opts.resourceURN = string(constructURN(req))
-			s.logPanic(ctx, "Construct", err, debug.Stack(), opts)
-			panic(err) // rethrow
-		}
-	}()
-	return s.innerServer.Construct(ctx, req)
+	if !isPanicHandlerInstalled(ctx) {
+		defer func() {
+			if err := recover(); err != nil {
+				opts := &logPanicOptions{}
+				opts.resourceURN = string(constructURN(req))
+				s.logPanic(ctx, "Construct", err, debug.Stack(), opts)
+				panic(err) // rethrow
+			}
+		}()
+	}
+	return s.innerServer.Construct(withPanicHandlerInstalled(ctx), req)
 }
 
 func (s *PanicRecoveringProviderServer) Cancel(ctx context.Context, empty *emptypb.Empty) (*emptypb.Empty, error) {
-	defer func() {
-		if err := recover(); err != nil {
-			s.logPanic(ctx, "Cancel", err, debug.Stack(), nil)
-			panic(err) // rethrow
-		}
-	}()
-	return s.innerServer.Cancel(ctx, empty)
+	if !isPanicHandlerInstalled(ctx) {
+		defer func() {
+			if err := recover(); err != nil {
+				s.logPanic(ctx, "Cancel", err, debug.Stack(), nil)
+				panic(err) // rethrow
+			}
+		}()
+	}
+	return s.innerServer.Cancel(withPanicHandlerInstalled(ctx), empty)
 }
 
 func (s *PanicRecoveringProviderServer) GetPluginInfo(
 	ctx context.Context,
 	empty *emptypb.Empty,
 ) (*pulumirpc.PluginInfo, error) {
-	defer func() {
-		if err := recover(); err != nil {
-			s.logPanic(ctx, "GetPluginInfo", err, debug.Stack(), nil)
-			panic(err) // rethrow
-		}
-	}()
-	return s.innerServer.GetPluginInfo(ctx, empty)
+	if !isPanicHandlerInstalled(ctx) {
+		defer func() {
+			if err := recover(); err != nil {
+				s.logPanic(ctx, "GetPluginInfo", err, debug.Stack(), nil)
+				panic(err) // rethrow
+			}
+		}()
+	}
+	return s.innerServer.GetPluginInfo(withPanicHandlerInstalled(ctx), empty)
 }
 
 func (s *PanicRecoveringProviderServer) Attach(
 	ctx context.Context,
 	attach *pulumirpc.PluginAttach,
 ) (*emptypb.Empty, error) {
-	defer func() {
-		if err := recover(); err != nil {
-			s.logPanic(ctx, "Attach", err, debug.Stack(), nil)
-			panic(err) // rethrow
-		}
-	}()
-	return s.innerServer.Attach(ctx, attach)
+	if !isPanicHandlerInstalled(ctx) {
+		defer func() {
+			if err := recover(); err != nil {
+				s.logPanic(ctx, "Attach", err, debug.Stack(), nil)
+				panic(err) // rethrow
+			}
+		}()
+	}
+	return s.innerServer.Attach(withPanicHandlerInstalled(ctx), attach)
 }
 
 func (s *PanicRecoveringProviderServer) GetMapping(
 	ctx context.Context,
 	req *pulumirpc.GetMappingRequest,
 ) (*pulumirpc.GetMappingResponse, error) {
-	defer func() {
-		if err := recover(); err != nil {
-			s.logPanic(ctx, "GetMapping", err, debug.Stack(), nil)
-			panic(err) // rethrow
-		}
-	}()
-	return s.innerServer.GetMapping(ctx, req)
+	if !isPanicHandlerInstalled(ctx) {
+		defer func() {
+			if err := recover(); err != nil {
+				s.logPanic(ctx, "GetMapping", err, debug.Stack(), nil)
+				panic(err) // rethrow
+			}
+		}()
+	}
+	return s.innerServer.GetMapping(withPanicHandlerInstalled(ctx), req)
 }
 
 func (s *PanicRecoveringProviderServer) GetMappings(
 	ctx context.Context,
 	req *pulumirpc.GetMappingsRequest,
 ) (*pulumirpc.GetMappingsResponse, error) {
-	defer func() {
-		if err := recover(); err != nil {
-			s.logPanic(ctx, "GetMappings", err, debug.Stack(), nil)
-			panic(err) // rethrow
-		}
-	}()
-	return s.innerServer.GetMappings(ctx, req)
+	if !isPanicHandlerInstalled(ctx) {
+		defer func() {
+			if err := recover(); err != nil {
+				s.logPanic(ctx, "GetMappings", err, debug.Stack(), nil)
+				panic(err) // rethrow
+			}
+		}()
+	}
+	return s.innerServer.GetMappings(withPanicHandlerInstalled(ctx), req)
 }
 
 // Guess Pulumi URN from ConstructRequest.
@@ -471,4 +512,23 @@ func constructURN(req *pulumirpc.ConstructRequest) urn.URN {
 	}
 	baseType := tokens.Type(req.Type)
 	return urn.New(stack, proj, parentType, baseType, req.Name)
+}
+
+// Define a context.Context key to manage idempotency.
+type ctxKey struct{}
+
+// The key to manage idempotency.
+var theCtxKey = ctxKey{}
+
+func isPanicHandlerInstalled(ctx context.Context) bool {
+	switch v := ctx.Value(theCtxKey).(type) {
+	case bool:
+		return v
+	default:
+		return false
+	}
+}
+
+func withPanicHandlerInstalled(ctx context.Context) context.Context {
+	return context.WithValue(ctx, theCtxKey, true)
 }
