@@ -367,3 +367,18 @@ func (s testingLogSink) log(kind string, sev diag.Severity, urn resource.URN, ms
 	s.t.Logf("Provider[%s]: %s%s: %s", kind, sev, urnMsg, msg)
 	return nil
 }
+
+// This logging sink discards all messages.
+func NewDiscardSink() Sink {
+	return &discardSink{}
+}
+
+type discardSink struct{}
+
+func (s discardSink) Log(_ context.Context, sev diag.Severity, urn resource.URN, msg string) error {
+	return nil
+}
+
+func (s discardSink) LogStatus(_ context.Context, sev diag.Severity, urn resource.URN, msg string) error {
+	return nil
+}

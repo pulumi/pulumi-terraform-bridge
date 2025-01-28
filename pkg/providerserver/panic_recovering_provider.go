@@ -22,7 +22,7 @@ import (
 	"runtime/debug"
 	"strings"
 
-	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/internal/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/urn"
@@ -41,7 +41,7 @@ type PanicRecoveringProviderServer struct {
 	innerServer     pulumirpc.ResourceProviderServer
 	providerName    string
 	providerVersion string
-	logger          Logger
+	logger          logging.Sink
 
 	// A slot to communicate the URN across CheckConfig and Configure calls.
 	currentProviderUrn string
@@ -50,15 +50,8 @@ type PanicRecoveringProviderServer struct {
 	omitStackTraces bool
 }
 
-// The minimal interface implemented by HostClient where Error messages will be logged for each panic.
-type Logger interface {
-	Log(context context.Context, sev diag.Severity, urn resource.URN, msg string) error
-}
-
-var _ Logger = (*provider.HostClient)(nil)
-
 type PanicRecoveringProviderServerOptions struct {
-	Logger                 Logger
+	Logger                 logging.Sink
 	ResourceProviderServer pulumirpc.ResourceProviderServer
 	ProviderName           string
 	ProviderVersion        string
@@ -66,13 +59,16 @@ type PanicRecoveringProviderServerOptions struct {
 
 func NewPanicRecoveringProviderServer(opts *PanicRecoveringProviderServerOptions) *PanicRecoveringProviderServer {
 	contract.Assertf(opts.ResourceProviderServer != nil, "wrappedServer must not be nil")
-	contract.Assertf(opts.Logger != nil, "logger must not be nil")
 	contract.Assertf(opts.ProviderName != "", "providerName must not be empty")
+	logger := opts.Logger
+	if logger == nil {
+		logger = logging.NewDiscardSink()
+	}
 	return &PanicRecoveringProviderServer{
 		innerServer:     opts.ResourceProviderServer,
 		providerName:    opts.ProviderName,
 		providerVersion: opts.ProviderVersion,
-		logger:          opts.Logger,
+		logger:          logger,
 	}
 }
 

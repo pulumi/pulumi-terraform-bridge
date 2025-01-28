@@ -347,6 +347,10 @@ func (log *testLogger) Log(context context.Context, sev diag.Severity, urn resou
 	return nil
 }
 
+func (log *testLogger) LogStatus(context context.Context, sev diag.Severity, urn resource.URN, msg string) error {
+	return log.Log(context, sev, urn, msg)
+}
+
 func expectPanic(t *testing.T, f func()) {
 	defer func() {
 		r := recover()
