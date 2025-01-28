@@ -9,7 +9,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	testing "github.com/mitchellh/go-testing-interface"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
@@ -52,23 +51,10 @@ func diffToShim(d *terraform.InstanceDiff) shim.InstanceDiff {
 }
 
 type v2Provider struct {
-	tf   *schema.Provider
-	opts []providerOption
+	tf *schema.Provider
 }
 
 var _ shim.Provider = (*v2Provider)(nil)
-
-func NewProvider(p *schema.Provider, opts ...providerOption) shim.Provider {
-	prov := v2Provider{
-		tf:   p,
-		opts: opts,
-	}
-
-	o, err := getProviderOptions(opts)
-	contract.AssertNoErrorf(err, "provider options failed to apply")
-
-	return newProviderWithPlanResourceChange(p, prov, func(s string) bool { return true }, o.planStateEdit)
-}
 
 func (p v2Provider) Schema() shim.SchemaMap {
 	return v2SchemaMap(p.tf.Schema)
