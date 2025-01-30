@@ -1957,7 +1957,7 @@ func emitFileIfChanged(vfs afero.Fs, relPath string, contents []byte) error {
 		return emitFile(vfs, relPath, contents)
 	} else if err != nil {
 		// We return if there was an un-expected error.
-		return pkgerrors.Wrapf(err, "unable to detect if %q", relPath)
+		return pkgerrors.Wrapf(err, "unable to detect if %q exists", relPath)
 	}
 	defer existing.Close()
 	existingBytes, err := io.ReadAll(existing)
