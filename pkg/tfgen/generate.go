@@ -15,10 +15,13 @@
 package tfgen
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"io/fs"
 	"os"
 	"path"
 	"path/filepath"
@@ -1048,14 +1051,26 @@ func (g *Generator) UnstableGenerateFromSchema(genSchemaResult *GenerateSchemaRe
 		}
 	}
 
-	// Write the result to disk. Do not overwrite the root-level README.md if any exists.
+	// Write the result to disk. Do not overwrite the root-level README.md if any
+	// exists.
+	emit := emitFile
+	// For the Schema language in particular, we only write files if the write
+	// would cause a change. This allows build systems like Make to correctly
+	// include bridge-metadata.json and schema.json as build dependencies
+	// without always trying to rebuild.
+	//
+	// We don't do this for other languages because reading every file before writing
+	// it is expensive.
+	if g.language == Schema {
+		emit = emitFileIfChanged
+	}
 	for f, contents := range files {
 		if f == "README.md" {
 			if _, err := g.root.Stat(f); err == nil {
 				continue
 			}
 		}
-		if err := emitFile(g.root, f, contents); err != nil {
+		if err := emit(g.root, f, contents); err != nil {
 			return nil, pkgerrors.Wrapf(err, "emitting file %v", f)
 		}
 	}
@@ -1934,6 +1949,25 @@ func getOverlayFiles(overlay *tfbridge.OverlayInfo, extension string, root afero
 		return nil, err
 	}
 	return files, nil
+}
+
+func emitFileIfChanged(vfs afero.Fs, relPath string, contents []byte) error {
+	existing, err := vfs.Open(relPath)
+	if errors.Is(err, fs.ErrNotExist) {
+		return emitFile(vfs, relPath, contents)
+	} else if err != nil {
+		// We return if there was an un-expected error.
+		return pkgerrors.Wrapf(err, "unable to detect if %q exists", relPath)
+	}
+	defer existing.Close()
+	existingBytes, err := io.ReadAll(existing)
+	if err != nil {
+		return pkgerrors.Wrapf(err, "unable to read %q", relPath)
+	}
+	if bytes.Equal(existingBytes, contents) {
+		return nil // No action needed
+	}
+	return emitFile(vfs, relPath, contents)
 }
 
 func emitFile(fs afero.Fs, relPath string, contents []byte) error {
