@@ -156,10 +156,29 @@ func writeInstallationInstructions(goImportBasePath, displayName, pkgName, ghOrg
 		pkgName,
 	)
 
+	deprecatedNote := fmt.Sprintf("~> **NOTE:** This provider has recently been deprecated by Pulumi.\n"+
+		"Going forward, it is available as a [Local Package](https://www.pulumi.com/blog/any-terraform-provider/)"+
+		" instead.\n"+
+		"Please see the [provider's repository](https://github.com/pulumi/pulumi-%s) for details.\n\n", pkgName)
+
 	if strings.Contains(sourceRepo, "pulumi") {
 		return installInstructions
 	}
+	for _, provider := range getDeprecatedProviderNames() {
+		if provider == pkgName {
+			// prepend the deprecation note
+			generateInstructions = deprecatedNote + generateInstructions
+		}
+	}
 	return generateInstructions
+}
+
+// TODO: remove this note after 90 days TODO: make and link issue
+func getDeprecatedProviderNames() []string {
+	providerNames := []string{
+		"civo",
+	}
+	return providerNames
 }
 
 func getOverviewHeader(content []byte) string {
