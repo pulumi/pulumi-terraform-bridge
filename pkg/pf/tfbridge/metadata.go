@@ -29,7 +29,7 @@ type ProviderMetadata struct {
 	// JSON-serialzed Pulumi Package Schema.
 	PackageSchema []byte
 
-	// Deprecated. This field is no longer in use and will be removed in future versions.
+	// Deprecated: This field is no longer in use and will be removed in future versions.
 	BridgeMetadata []byte
 
 	// XParamaterize overrides the functionality of the Paramaterize call.
