@@ -15,9 +15,10 @@
 package tokens
 
 import (
+	"fmt"
 	"sort"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
 // A strategy for assigning tokens to a hand generated set of modules with an arbitrary
@@ -33,16 +34,17 @@ func MappedModules(
 	}
 	sort.Sort(sort.Reverse(sort.StringSlice(mods)))
 
-	transform := func(tf string) string {
+	transform := func(tf string) (string, error) {
 		s, ok := modules[tf]
 		if !ok && tf == defaultModule {
 			// We pass through the default module as is, so it might not be in
 			// `modules`. We need to catch that and return as is.
-			return tf
+			return tf, nil
 		}
-		assert := "Because any mod selected must be from mods, it is guaranteed to be in modules, got %#v"
-		contract.Assertf(ok, assert, tf)
-		return s
+		if !ok {
+			return "", fmt.Errorf("could not find a module that prefixes '%s' in '%#v'", tf, mods)
+		}
+		return s, nil
 	}
 
 	return Strategy{
@@ -51,4 +53,19 @@ func MappedModules(
 		DataSource: knownModules(tfPackagePrefix, defaultModule, mods,
 			knownDataSource(finalize), transform),
 	}
+}
+
+func MappedModulesWithInferredFallback(
+	p *info.Provider,
+	tfPackagePrefix, defaultModule string, modules map[string]string, finalize Make,
+	opts *InferredModulesOpts,
+) (Strategy, error) {
+	inferred, err := InferredModules(p, finalize, opts)
+	if err != nil {
+		return Strategy{}, err
+	}
+	return tokenStrategyWithFallback(
+		MappedModules(tfPackagePrefix, defaultModule, modules, finalize),
+		inferred,
+	), nil
 }

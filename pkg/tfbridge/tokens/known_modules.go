@@ -27,7 +27,7 @@ import (
 func knownModules[T info.Resource | info.DataSource](
 	prefix, defaultModule string, modules []string,
 	apply func(string, string, *T, error) error,
-	moduleTransform func(string) string,
+	moduleTransform func(string) (string, error),
 ) info.ElementStrategy[T] {
 	return func(tfToken string, elem *T) error {
 		var tk string
@@ -53,9 +53,15 @@ func knownModules[T info.Resource | info.DataSource](
 		}
 		var err error
 		if mod == "" {
-			err = fmt.Errorf("could not find a module that prefixes '%s' in '%#v'", tk, modules)
+			return apply("", upperCamelCase(tk), elem,
+				fmt.Errorf("could not find a module that prefixes '%s' in '%#v'", tk, modules))
 		}
-		return apply(moduleTransform(mod), upperCamelCase(strings.TrimPrefix(tk, mod)), elem, err)
+		transformed, err := moduleTransform(mod)
+		if err != nil {
+			return apply("", upperCamelCase(tk), elem,
+				fmt.Errorf("could not transform module '%s': %w", mod, err))
+		}
+		return apply(transformed, upperCamelCase(strings.TrimPrefix(tk, mod)), elem, nil)
 	}
 }
 
@@ -72,9 +78,9 @@ func KnownModules(
 
 	return Strategy{
 		Resource: knownModules(tfPackagePrefix, defaultModule, modules,
-			knownResource(finalize), camelCase),
+			knownResource(finalize), func(s string) (string, error) { return camelCase(s), nil }),
 		DataSource: knownModules(tfPackagePrefix, defaultModule, modules,
-			knownDataSource(finalize), camelCase),
+			knownDataSource(finalize), func(s string) (string, error) { return camelCase(s), nil }),
 	}
 }
 
@@ -110,4 +116,22 @@ func knownDataSource(finalize Make) func(mod, tk string, d *info.DataSource, err
 		d.Tok = tokens.ModuleMember(tk)
 		return nil
 	}
+}
+
+func KnownModulesWithInferredFallback(
+	p *info.Provider,
+	tfPackagePrefix, defaultModule string, modules []string, finalize Make,
+	opts *InferredModulesOpts,
+) (Strategy, error) {
+	if opts.TfPkgPrefix == "" {
+		opts.TfPkgPrefix = tfPackagePrefix
+	}
+	inferred, err := InferredModules(p, finalize, opts)
+	if err != nil {
+		return Strategy{}, err
+	}
+	return tokenStrategyWithFallback(
+		KnownModules(tfPackagePrefix, defaultModule, modules, finalize),
+		inferred,
+	), nil
 }
