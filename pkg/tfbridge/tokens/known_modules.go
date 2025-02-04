@@ -51,11 +51,11 @@ func knownModules[T info.Resource | info.DataSource](
 				break
 			}
 		}
+		var err error
 		if mod == "" {
-			return apply("", upperCamelCase(tk), elem,
-				fmt.Errorf("could not find a module that prefixes '%s' in '%#v'", tk, modules))
+			err = fmt.Errorf("could not find a module that prefixes '%s' in '%#v'", tk, modules)
 		}
-		return apply(moduleTransform(mod), upperCamelCase(strings.TrimPrefix(tk, mod)), elem, nil)
+		return apply(moduleTransform(mod), upperCamelCase(strings.TrimPrefix(tk, mod)), elem, err)
 	}
 }
 
