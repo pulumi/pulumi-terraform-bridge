@@ -27,7 +27,7 @@ import (
 func knownModules[T info.Resource | info.DataSource](
 	prefix, defaultModule string, modules []string,
 	apply func(string, string, *T, error) error,
-	moduleTransform func(string) (string, error),
+	moduleTransform func(string) string,
 ) info.ElementStrategy[T] {
 	return func(tfToken string, elem *T) error {
 		var tk string
@@ -51,17 +51,11 @@ func knownModules[T info.Resource | info.DataSource](
 				break
 			}
 		}
-		var err error
 		if mod == "" {
 			return apply("", upperCamelCase(tk), elem,
 				fmt.Errorf("could not find a module that prefixes '%s' in '%#v'", tk, modules))
 		}
-		transformed, err := moduleTransform(mod)
-		if err != nil {
-			return apply("", upperCamelCase(tk), elem,
-				fmt.Errorf("could not transform module '%s': %w", mod, err))
-		}
-		return apply(transformed, upperCamelCase(strings.TrimPrefix(tk, mod)), elem, nil)
+		return apply(moduleTransform(mod), upperCamelCase(strings.TrimPrefix(tk, mod)), elem, nil)
 	}
 }
 
@@ -78,9 +72,9 @@ func KnownModules(
 
 	return Strategy{
 		Resource: knownModules(tfPackagePrefix, defaultModule, modules,
-			knownResource(finalize), func(s string) (string, error) { return camelCase(s), nil }),
+			knownResource(finalize), camelCase),
 		DataSource: knownModules(tfPackagePrefix, defaultModule, modules,
-			knownDataSource(finalize), func(s string) (string, error) { return camelCase(s), nil }),
+			knownDataSource(finalize), camelCase),
 	}
 }
 
