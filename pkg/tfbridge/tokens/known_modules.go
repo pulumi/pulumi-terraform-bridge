@@ -111,21 +111,3 @@ func knownDataSource(finalize Make) func(mod, tk string, d *info.DataSource, err
 		return nil
 	}
 }
-
-func KnownModulesWithInferredFallback(
-	p *info.Provider, tfPackagePrefix, defaultModule string, modules []string, finalize Make,
-) (Strategy, error) {
-	opts := &InferredModulesOpts{
-		TfPkgPrefix:          tfPackagePrefix,
-		MinimumModuleSize:    2,
-		MimimumSubmoduleSize: 2,
-	}
-	inferred, err := InferredModules(p, finalize, opts)
-	if err != nil {
-		return Strategy{}, err
-	}
-	return tokenStrategyWithFallback(
-		KnownModules(tfPackagePrefix, defaultModule, modules, finalize),
-		inferred,
-	), nil
-}

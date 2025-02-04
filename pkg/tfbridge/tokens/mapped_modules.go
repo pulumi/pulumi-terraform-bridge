@@ -18,8 +18,6 @@ import (
 	"sort"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
 // A strategy for assigning tokens to a hand generated set of modules with an arbitrary
@@ -53,21 +51,4 @@ func MappedModules(
 		DataSource: knownModules(tfPackagePrefix, defaultModule, mods,
 			knownDataSource(finalize), transform),
 	}
-}
-
-func MappedModulesWithInferredFallback(
-	p *info.Provider, tfPackagePrefix, defaultModule string, modules map[string]string, finalize Make,
-) (Strategy, error) {
-	inferred, err := InferredModules(p, finalize, &InferredModulesOpts{
-		TfPkgPrefix:          tfPackagePrefix,
-		MinimumModuleSize:    2,
-		MimimumSubmoduleSize: 2,
-	})
-	if err != nil {
-		return Strategy{}, err
-	}
-	return tokenStrategyWithFallback(
-		MappedModules(tfPackagePrefix, defaultModule, modules, finalize),
-		inferred,
-	), nil
 }

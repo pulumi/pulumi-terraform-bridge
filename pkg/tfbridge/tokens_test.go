@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/tokens"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/tokens/fallbackstrat"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
@@ -196,7 +197,7 @@ func TestTokensKnownModulesWithInferredFallback(t *testing.T) {
 		}).Shim(),
 	}
 
-	strategy, err := tokens.KnownModulesWithInferredFallback(&info,
+	strategy, err := fallbackstrat.KnownModulesWithInferredFallback(&info,
 		"cs101_", "", []string{
 			"fizz_", "fizz_buzz_",
 		}, func(module, name string) (string, error) {
@@ -292,7 +293,7 @@ func TestTokensMappedModulesWithInferredFallback(t *testing.T) {
 			},
 		}).Shim(),
 	}
-	strategy, err := tokens.MappedModulesWithInferredFallback(
+	strategy, err := fallbackstrat.MappedModulesWithInferredFallback(
 		&info,
 		"cs101_", "", map[string]string{
 			"fizz_":      "fIzZ",
