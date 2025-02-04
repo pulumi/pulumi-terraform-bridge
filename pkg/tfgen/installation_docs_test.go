@@ -304,6 +304,24 @@ func TestWriteInstallationInstructions(t *testing.T) {
 			repository:       "terraform-provider-testcase",
 			ghOrg:            "unicorncorp",
 		},
+		{
+			name: "Generates Deprecation Note If Provider on Deprecated List",
+			expected: autogold.Expect(
+				"## Generate Provider\n\n" +
+					"The Civo provider must be installed as a Local Package by following the " +
+					"[instructions for Any Terraform Provider](https://www.pulumi.com/registry/packages/terraform-provider/):\n\n" +
+					"```bash\npulumi package add terraform-provider civo/civo\n```\n" +
+					"~> **NOTE:** This provider was previously published as @pulumi/civo.\n" +
+					"However, that package is no longer being updated." +
+					"Going forward, it is available as a [Local Package](https://www.pulumi.com/blog/any-terraform-provider/) " +
+					"instead.\n" +
+					"Please see the [provider's repository](https://github.com/pulumi/pulumi-civo) for details.\n\n"),
+			goImportBasePath: "github.com/pulumi/pulumi-testcase/sdk/v3/go/pulumi-testcase",
+			displayName:      "Civo",
+			packageName:      "civo",
+			repository:       "terraform-provider-civo",
+			ghOrg:            "civo",
+		},
 	}
 
 	for _, tt := range tests {
