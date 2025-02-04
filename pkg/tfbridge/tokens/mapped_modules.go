@@ -56,10 +56,13 @@ func MappedModules(
 }
 
 func MappedModulesWithInferredFallback(
-	p *info.Provider,
-	tfPackagePrefix, defaultModule string, modules map[string]string, finalize Make,
-	opts *InferredModulesOpts,
+	p *info.Provider, tfPackagePrefix, defaultModule string, modules map[string]string, finalize Make,
 ) (Strategy, error) {
+	opts := &InferredModulesOpts{
+		TfPkgPrefix:          tfPackagePrefix,
+		MinimumModuleSize:    2,
+		MimimumSubmoduleSize: 2,
+	}
 	inferred, err := InferredModules(p, finalize, opts)
 	if err != nil {
 		return Strategy{}, err

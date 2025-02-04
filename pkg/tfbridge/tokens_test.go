@@ -201,9 +201,6 @@ func TestTokensKnownModulesWithInferredFallback(t *testing.T) {
 			"fizz_", "fizz_buzz_",
 		}, func(module, name string) (string, error) {
 			return fmt.Sprintf("cs101:%s:%s", module, name), nil
-		}, &tokens.InferredModulesOpts{
-			MinimumModuleSize:    2,
-			MimimumSubmoduleSize: 2,
 		})
 	require.NoError(t, err)
 
@@ -303,10 +300,6 @@ func TestTokensMappedModulesWithInferredFallback(t *testing.T) {
 		},
 		func(module, name string) (string, error) {
 			return fmt.Sprintf("cs101:%s:%s", module, name), nil
-		},
-		&tokens.InferredModulesOpts{
-			MinimumModuleSize:    2,
-			MimimumSubmoduleSize: 2,
 		},
 	)
 	require.NoError(t, err)

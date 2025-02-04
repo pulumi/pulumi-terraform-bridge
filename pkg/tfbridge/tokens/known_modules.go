@@ -119,12 +119,12 @@ func knownDataSource(finalize Make) func(mod, tk string, d *info.DataSource, err
 }
 
 func KnownModulesWithInferredFallback(
-	p *info.Provider,
-	tfPackagePrefix, defaultModule string, modules []string, finalize Make,
-	opts *InferredModulesOpts,
+	p *info.Provider, tfPackagePrefix, defaultModule string, modules []string, finalize Make,
 ) (Strategy, error) {
-	if opts.TfPkgPrefix == "" {
-		opts.TfPkgPrefix = tfPackagePrefix
+	opts := &InferredModulesOpts{
+		TfPkgPrefix:          tfPackagePrefix,
+		MinimumModuleSize:    2,
+		MimimumSubmoduleSize: 2,
 	}
 	inferred, err := InferredModules(p, finalize, opts)
 	if err != nil {
