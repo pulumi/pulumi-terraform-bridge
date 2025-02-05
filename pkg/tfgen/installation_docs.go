@@ -178,6 +178,7 @@ func writeInstallationInstructions(goImportBasePath, displayName, pkgName, ghOrg
 func getDeprecatedProviderNames() []string {
 	providerNames := []string{
 		"civo",
+		"rke",
 	}
 	return providerNames
 }
