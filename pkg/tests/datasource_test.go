@@ -27,6 +27,7 @@ func TestDataSourceSensitiveOutput(t *testing.T) {
 					},
 				},
 				ReadContext: func(ctx context.Context, d *schema.ResourceData, i interface{}) diag.Diagnostics {
+					d.SetId("id")
 					err := d.Set("prop", "value")
 					require.NoError(t, err)
 					return diag.Diagnostics{}
@@ -44,14 +45,68 @@ variables:
   test:
     fn::invoke:
       function: prov:index:getTest
+      return: prop
 outputs:
-	prov_test: test.prop
+	test: ${test}
 `
 
 	pt := pulcheck.PulCheck(t, bridgedProvider, program)
 	res := pt.Up(t)
 
-	require.Equal(t, true, res.Outputs["prov_test"].Secret)
+	require.Equal(t, "value", res.Outputs["test"].Value)
+	require.Equal(t, true, res.Outputs["test"].Secret)
+}
+
+func TestDataSourceNestedSensitiveOutput(t *testing.T) {
+	t.Parallel()
+
+	prov := &schema.Provider{
+		DataSourcesMap: map[string]*schema.Resource{
+			"prov_test": {
+				Schema: map[string]*schema.Schema{
+					"prop": {
+						Type:     schema.TypeList,
+						Computed: true,
+						Elem: &schema.Resource{
+							Schema: map[string]*schema.Schema{
+								"nested": {
+									Type:      schema.TypeString,
+									Computed:  true,
+									Sensitive: true,
+								},
+							},
+						},
+					},
+				},
+				ReadContext: func(ctx context.Context, d *schema.ResourceData, i interface{}) diag.Diagnostics {
+					d.SetId("id")
+					err := d.Set("prop", []interface{}{map[string]interface{}{"nested": "value"}})
+					require.NoError(t, err)
+					return diag.Diagnostics{}
+				},
+			},
+		},
+	}
+
+	bridgedProvider := pulcheck.BridgedProvider(t, "prov", prov)
+
+	program := `
+name: test
+runtime: yaml
+variables:
+  test:
+    fn::invoke:
+      function: prov:index:getTest
+      return: props
+outputs:
+	test: ${test[0].nested}
+`
+
+	pt := pulcheck.PulCheck(t, bridgedProvider, program)
+	res := pt.Up(t)
+
+	require.Equal(t, "value", res.Outputs["test"].Value)
+	require.Equal(t, true, res.Outputs["test"].Secret)
 }
 
 func TestDataSourceOverlaySecretOutput(t *testing.T) {
@@ -62,11 +117,13 @@ func TestDataSourceOverlaySecretOutput(t *testing.T) {
 			"prov_test": {
 				Schema: map[string]*schema.Schema{
 					"prop": {
-						Type:     schema.TypeString,
-						Computed: true,
+						Type:      schema.TypeString,
+						Computed:  true,
+						Sensitive: true,
 					},
 				},
 				ReadContext: func(ctx context.Context, d *schema.ResourceData, i interface{}) diag.Diagnostics {
+					d.SetId("id")
 					err := d.Set("prop", "value")
 					require.NoError(t, err)
 					return diag.Diagnostics{}
@@ -92,12 +149,14 @@ variables:
   test:
     fn::invoke:
       function: prov:index:getTest
+      return: prop
 outputs:
-	prov_test: test.prop
+	test: ${test}
 `
 
 	pt := pulcheck.PulCheck(t, bridgedProvider, program)
 	res := pt.Up(t)
 
-	require.Equal(t, true, res.Outputs["prov_test"].Secret)
+	require.Equal(t, "value", res.Outputs["test"].Value)
+	require.Equal(t, true, res.Outputs["test"].Secret)
 }
