@@ -13,7 +13,7 @@
 // limitations under the License.
 
 // Package fallbackstrat provides strategies for generating tokens.
-// The strategies here fall back to using the InferredModules strategy
+// The strategies here fall back to using the [tokens.InferredModules] strategy
 // if the primary strategy fails to find a module for a given token.
 package fallbackstrat
 
@@ -48,9 +48,7 @@ func tokenStrategyWithFallback(
 // strategy for the given modules, but falls back to the inferred strategy if
 // the KnownModules strategy fails to find a module for a given token.
 //
-// See https://pkg.go.dev/github.com/pulumi/pulumi-terraform-bridge/v3@v3.102.0/pkg/tfbridge/tokens#KnownModules
-// and https://pkg.go.dev/github.com/pulumi/pulumi-terraform-bridge/v3@v3.102.0/pkg/tfbridge/tokens#InferredModules
-// for more information.
+// See [tokens.KnownModules] and [tokens.InferredModules] for more information.
 func KnownModulesWithInferredFallback(
 	p *info.Provider, tfPackagePrefix, defaultModule string, modules []string, finalize tokens.Make,
 ) (tokens.Strategy, error) {
@@ -73,9 +71,7 @@ func KnownModulesWithInferredFallback(
 // strategy for the given modules, but falls back to the inferred strategy if
 // the MappedModules strategy fails to find a module for a given token.
 //
-// See https://pkg.go.dev/github.com/pulumi/pulumi-terraform-bridge/v3@v3.102.0/pkg/tfbridge/tokens#MappedModules
-// and https://pkg.go.dev/github.com/pulumi/pulumi-terraform-bridge/v3@v3.102.0/pkg/tfbridge/tokens#InferredModules
-// for more information.
+// See [tokens.MappedModules] and [tokens.InferredModules] for more information.
 func MappedModulesWithInferredFallback(
 	p *info.Provider, tfPackagePrefix, defaultModule string, modules map[string]string, finalize tokens.Make,
 ) (tokens.Strategy, error) {
