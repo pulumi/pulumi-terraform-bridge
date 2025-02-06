@@ -179,6 +179,7 @@ func getDeprecatedProviderNames() []string {
 	providerNames := []string{
 		"civo",
 		"rke",
+		"libvirt",
 	}
 	return providerNames
 }
