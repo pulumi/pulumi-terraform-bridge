@@ -88,6 +88,8 @@ func runDiffCheck(t T, tc diffTestCase) crosstestsimpl.DiffResult {
 	require.NoErrorf(t, err, "writing Pulumi.yaml")
 
 	previewRes := pt.Preview(t, optpreview.Diff())
+	require.Empty(t, previewRes.StdErr, "preview should not have errors")
+
 	diffResponse := crosstestsimpl.GetPulumiDiffResponse(t, pt.GrpcLog(t).Entries)
 	x := pt.Up(t)
 
