@@ -1,0 +1,26 @@
+tests.testOutput{
+	initialValue: &[]string{
+		"val1",
+		"val2",
+		"val3",
+		"val4",
+	},
+	changeValue: &[]string{
+		"val5",
+		"val6",
+		"val1",
+		"val2",
+	},
+	tfOut: `
+No changes. Your infrastructure matches the configuration.
+
+Terraform has compared your real infrastructure against your configuration
+and found no differences, so no changes are needed.
+`,
+	pulumiOut: `Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::project::pulumi:pulumi:Stack::project-test]
+Resources:
+    2 unchanged
+`,
+}
