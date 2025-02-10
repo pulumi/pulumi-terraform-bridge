@@ -148,7 +148,7 @@ func (p *FilteringProvider) IsSet(ctx context.Context, v interface{}) ([]interfa
 }
 
 func (p *FilteringProvider) SupportsUnknownCollections() bool {
-	return p.Provider.SupportsUnknownCollections()
+	return p.Provider.SupportsUnknownCollections() //nolint:staticcheck
 }
 
 type filteringMap struct {
