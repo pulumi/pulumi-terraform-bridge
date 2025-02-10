@@ -313,22 +313,20 @@ func (differ detailedDiffer) calculateSetHashIndexMap(
 		return nil
 	}
 
-	convertedVal, err := makeSingleTerraformInput(
-		differ.ctx, path.String(), resource.NewArrayProperty(listVal), tfs, ps)
-	if err != nil {
-		return nil
-	}
+	convertedElements := []interface{}{}
 
-	if convertedVal == nil {
-		return nil
+	for _, elem := range listVal {
+		convertedElem, err := makeSingleTerraformInputForSetElement(
+			differ.ctx, path.String(), elem, tfs, ps)
+		if err != nil {
+			return nil
+		}
+		convertedElements = append(convertedElements, convertedElem)
 	}
-
-	convertedListVal, ok := convertedVal.([]interface{})
-	contract.Assertf(ok, "converted value should be a list")
 
 	// Calculate the identity of each element. Note that the SetHash function can panic
 	// in the case of custom SetHash functions which get unexpected inputs.
-	for i, newElem := range convertedListVal {
+	for i, newElem := range convertedElements {
 		elementHash := func() int {
 			defer func() {
 				if r := recover(); r != nil {

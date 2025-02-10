@@ -9,6 +9,7 @@ import (
 
 var (
 	_ = shim.Schema(v2Schema{})
+	_ = shim.SchemaWithNewSet(v2Schema{})
 	_ = shim.SchemaMap(v2SchemaMap{})
 )
 
@@ -141,6 +142,10 @@ func (s v2Schema) SetHash(v interface{}) int {
 		return -code
 	}
 	return code
+}
+
+func (s v2Schema) NewSet(v []interface{}) interface{} {
+	return schema.NewSet(s.SetHash, v)
 }
 
 type v2SchemaMap map[string]*schema.Schema

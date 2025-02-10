@@ -185,6 +185,11 @@ type Schema interface {
 	SetHash(v interface{}) int
 }
 
+type SchemaWithNewSet interface {
+	Schema
+	NewSet(v []interface{}) interface{}
+}
+
 type SchemaMap interface {
 	Len() int
 	Get(key string) Schema
