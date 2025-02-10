@@ -3179,11 +3179,13 @@ func TestRegress940(t *testing.T) {
 func Test_makeTerraformInputsNoDefaults(t *testing.T) {
 	t.Parallel()
 	type testCase struct {
-		testCaseName string
-		schemaMap    map[string]*schema.Schema
-		schemaInfos  map[string]*SchemaInfo
-		propMap      resource.PropertyMap
-		expect       autogold.Value
+		testCaseName    string
+		schemaMap       map[string]*schema.Schema
+		schemaInfos     map[string]*SchemaInfo
+		propMap         resource.PropertyMap
+		expect          autogold.Value
+		expectDifferent bool
+		expectSDKv2     autogold.Value
 	}
 
 	testCases := []testCase{
@@ -3246,7 +3248,12 @@ func Test_makeTerraformInputsNoDefaults(t *testing.T) {
 				// The string property inside Computed is irrelevant.
 				"unknownArrayValue": resource.Computed{Element: resource.NewStringProperty("")},
 			}),
-			expect: autogold.Expect(map[string]interface{}{"unknown_array_value": "74D93920-ED26-11E3-AC10-0800200C9A66"}),
+			expect: autogold.Expect(map[string]interface{}{
+				"unknown_array_value": []interface{}{"74D93920-ED26-11E3-AC10-0800200C9A66"},
+			}),
+			expectDifferent: true,
+			expectSDKv2: autogold.Expect(
+				map[string]interface{}{"unknown_array_value": "74D93920-ED26-11E3-AC10-0800200C9A66"}),
 		},
 		{
 			testCaseName: "unknown_object_value",
@@ -3586,8 +3593,12 @@ func Test_makeTerraformInputsNoDefaults(t *testing.T) {
 			}
 
 			tc.expect.Equal(t, results[factories[0].SDKVersion()])
-			for k, v := range results {
-				require.Equalf(t, results[factories[0].SDKVersion()], v, k)
+			if !tc.expectDifferent {
+				for k, v := range results {
+					require.Equalf(t, results[factories[0].SDKVersion()], v, k)
+				}
+			} else {
+				tc.expectSDKv2.Equal(t, results[factories[1].SDKVersion()])
 			}
 		})
 	}
