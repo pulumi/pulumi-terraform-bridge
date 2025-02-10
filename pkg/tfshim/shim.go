@@ -185,6 +185,10 @@ type Schema interface {
 	SetHash(v interface{}) int
 }
 
+type SchemaWithNewSet interface {
+	Schema
+	NewSet(v []interface{}) interface{}
+}
 type SchemaWithUnknownCollectionSupported interface {
 	Schema
 	SupportsUnknownCollections()
