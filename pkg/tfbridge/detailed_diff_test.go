@@ -605,8 +605,13 @@ func runDetailedDiffTest(
 	expected map[string]*pulumirpc.PropertyDiff,
 ) {
 	t.Helper()
-	actual := MakeDetailedDiffV2(context.Background(), tfs, ps, old, new, new, nil)
-
+	ctx := context.Background()
+	buf := &bytes.Buffer{}
+	ctx = logging.InitLogging(ctx, logging.LogOptions{
+		LogSink: &testLogSink{buf},
+	})
+	actual := MakeDetailedDiffV2(ctx, tfs, ps, old, new, new, nil)
+	require.Empty(t, buf.String())
 	require.Equal(t, expected, actual)
 }
 
