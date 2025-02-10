@@ -751,6 +751,8 @@ func TestSDKv2DetailedDiffNestedSets(t *testing.T) {
 		},
 	}
 
+	// TODO MaxItemsOne nested set
+
 	nestedSetValueMaker := func(v *[]string) map[string]cty.Value {
 		if v == nil {
 			return map[string]cty.Value{}

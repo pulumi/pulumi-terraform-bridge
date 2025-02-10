@@ -47,7 +47,11 @@ func (k propertyPath) Index(i int) propertyPath {
 
 func (k propertyPath) IsReservedKey() bool {
 	leaf := k[len(k)-1]
-	return leaf == "__meta" || leaf == "__defaults"
+	leafKey, ok := leaf.(string)
+	if !ok {
+		return false
+	}
+	return resource.IsInternalPropertyKey(resource.PropertyKey(leafKey))
 }
 
 func (k propertyPath) GetFromMap(v resource.PropertyMap) (resource.PropertyValue, bool) {

@@ -262,7 +262,9 @@ type detailedDiffer struct {
 	tfs shim.SchemaMap
 	ps  map[string]*SchemaInfo
 	// These are used to convert set indices back to something the engine can reference.
-	newInputs resource.PropertyMap
+	newInputs      resource.PropertyMap
+	oldStateSetHashes map[string][]int
+	newStateSetHashes map[string][]int
 }
 
 func (differ detailedDiffer) propertyPathToSchemaPath(path propertyPath) walk.SchemaPath {
@@ -742,6 +744,8 @@ func MakeDetailedDiffV2(
 	ps map[string]*SchemaInfo,
 	priorProps, props, newInputs resource.PropertyMap,
 	replaceOverride *bool,
+	priorSetHashes map[string][]int,
+	propsSetHashes map[string][]int,
 ) map[string]*pulumirpc.PropertyDiff {
 	// Strip secrets and outputs from the properties before calculating the diff.
 	// This allows the rest of the algorithm to focus on the actual changes and not
@@ -756,7 +760,9 @@ func MakeDetailedDiffV2(
 	priorProps = stripSecretsAndOutputs(priorProps)
 	props = stripSecretsAndOutputs(props)
 	newInputs = stripSecretsAndOutputs(newInputs)
-	differ := detailedDiffer{ctx: ctx, tfs: tfs, ps: ps, newInputs: newInputs}
+	differ := detailedDiffer{
+		ctx: ctx, tfs: tfs, ps: ps, newInputs: newInputs, oldStateSetHashes: priorSetHashes, newStateSetHashes: propsSetHashes,
+	}
 	res := differ.makeDetailedDiffPropertyMap(priorProps, props)
 
 	if replaceOverride != nil {
@@ -811,5 +817,23 @@ func makeDetailedDiffV2(
 		return nil, err
 	}
 
-	return MakeDetailedDiffV2(ctx, tfs, ps, priorProps, props, newInputs, replaceOverride), nil
+	priorSetHashes := make(map[string][]int)
+	if priorProps["__setHashes"].IsObject() {
+		for k, v := range priorProps["__setHashes"].ObjectValue().Mappable() {
+			arrVal, ok := v.([]int)
+			contract.Assertf(ok, "Expected __setHashes to be a map[string][]int, got %T", v)
+			priorSetHashes[k] = arrVal
+		}
+	}
+
+	propsSetHashes := make(map[string][]int)
+	if props["__setHashes"].IsObject() {
+		for k, v := range props["__setHashes"].ObjectValue().Mappable() {
+			arrVal, ok := v.([]int)
+			contract.Assertf(ok, "Expected __setHashes to be a map[string][]int, got %T", v)
+			propsSetHashes[k] = arrVal
+		}
+	}
+
+	return MakeDetailedDiffV2(ctx, tfs, ps, priorProps, props, newInputs, replaceOverride, priorSetHashes, propsSetHashes), nil
 }

@@ -17,9 +17,11 @@ package sdkv2
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	"github.com/hashicorp/go-cty/cty"
+	"github.com/hashicorp/go-cty/cty/gocty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -74,6 +76,37 @@ func unmarshalJSON(data []byte, v interface{}) error {
 	return dec.Decode(v)
 }
 
+func serializeValuePath(p cty.Path) string {
+	buf := &strings.Builder{}
+	for _, step := range p {
+		switch step := step.(type) {
+		case cty.IndexStep:
+			switch {
+			case step.Key.Type().Equals(cty.Number):
+				out := int64(0)
+				err := gocty.FromCtyValue(step.Key, &out)
+				contract.AssertNoErrorf(err, "Failed to convert index step key to int64")
+				buf.WriteString(fmt.Sprintf(".%d", out))
+			case step.Key.Type().Equals(cty.String):
+				str := step.Key.AsString()
+				// escape dots
+				str = strings.ReplaceAll(str, ".", "\\.")
+				buf.WriteString(fmt.Sprintf(".%s", str))
+			case step.Key.Type().IsObjectType():
+				// TODO is this possible?
+				// cty docs say it is: [cty.IndexStep]
+				buf.WriteString(fmt.Sprintf(".%d", step.Key.Hash()))
+			default:
+				// TODO: pipe logger here.
+				contract.Failf("unexpected index step key type: %v", step.Key.Type())
+			}
+		case cty.GetAttrStep:
+			buf.WriteString(fmt.Sprintf(".%s", step.Name))
+		}
+	}
+	return buf.String()
+}
+
 // objectFromCtyValue takes a cty.Value and converts it to JSON object.
 // We do not care about type checking the values, we just want to do our best to recursively convert
 // the cty.Value to the underlying value
@@ -84,14 +117,35 @@ func unmarshalJSON(data []byte, v interface{}) error {
 func objectFromCtyValue(v cty.Value) map[string]interface{} {
 	var path cty.Path
 	buf := &bytes.Buffer{}
+
+	// keep the hashes of all sets
+	hashes := make(map[string][]int)
+	err := cty.Walk(v, func(p cty.Path, v cty.Value) (bool, error) {
+		if v.IsNull() {
+			return true, nil
+		}
+		if v.Type().IsSetType() {
+			pathString := serializeValuePath(p)
+			it := v.ElementIterator()
+			hashes[pathString] = []int{}
+			for it.Next() {
+				_, el := it.Element()
+				hashes[pathString] = append(hashes[pathString], el.Hash())
+			}
+		}
+		return true, nil
+	})
+	contract.AssertNoErrorf(err, "Failed to walk cty.Value")
+
 	// The round trip here to JSON is redundant, we could instead convert from cty to map[string]interface{} directly
-	err := marshal(v, v.Type(), path, buf)
+	err = marshal(v, v.Type(), path, buf)
 	contract.AssertNoErrorf(err, "Failed to marshal cty.Value to a JSON string value")
 
 	var m map[string]interface{}
 	err = unmarshalJSON(buf.Bytes(), &m)
 	contract.AssertNoErrorf(err, "failed to unmarshal: %s", buf.String())
 
+	m["__setHashes"] = hashes
 	return m
 }
 
