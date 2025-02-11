@@ -185,6 +185,11 @@ type Schema interface {
 	SetHash(v interface{}) int
 }
 
+type SchemaWithUnknownCollectionSupported interface {
+	Schema
+	SupportsUnknownCollections()
+}
+
 type SchemaMap interface {
 	Len() int
 	Get(key string) Schema
@@ -292,6 +297,7 @@ type Provider interface {
 	// Checks if a value is representing a Set, and unpacks its elements on success.
 	IsSet(ctx context.Context, v interface{}) ([]interface{}, bool)
 
+	// Deprecated: use SchemaWithUnknownCollectionSupported instead.
 	// SupportsUnknownCollections returns false if the provider needs special handling of unknown collections.
 	// False for the sdkv1 provider.
 	SupportsUnknownCollections() bool

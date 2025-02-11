@@ -9,6 +9,7 @@ import (
 
 var (
 	_ = shim.Schema(v2Schema{})
+	_ = shim.SchemaWithUnknownCollectionSupported(v2Schema{})
 	_ = shim.SchemaMap(v2SchemaMap{})
 )
 
@@ -180,3 +181,5 @@ func (m v2SchemaMap) Range(each func(key string, value shim.Schema) bool) {
 		}
 	}
 }
+
+func (s v2Schema) SupportsUnknownCollections() {}
