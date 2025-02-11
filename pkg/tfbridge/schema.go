@@ -293,8 +293,6 @@ type conversionContext struct {
 	ApplyDefaults         bool
 	ApplyTFDefaults       bool
 	Assets                AssetTable
-	// UseTFSetTypes will output TF Set types when converting sets.
-	UseTFSetTypes bool
 }
 
 type makeTerraformInputsOptions struct {
@@ -354,7 +352,6 @@ func makeSingleTerraformInput(
 		ApplyDefaults:         false,
 		ApplyTFDefaults:       false,
 		Assets:                AssetTable{},
-		UseTFSetTypes:         true,
 	}
 
 	return cctx.makeTerraformInput(name, resource.NewNullProperty(), val, tfs, ps)
