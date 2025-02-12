@@ -76,4 +76,6 @@ jobs:
         github_token: ${{ secrets.PULUMI_BOT_TOKEN }}
       env:
         GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
+    - name: "Set PR to auto-merge"
+      run: "gh pr merge --auto --squash ${{ steps.create-pr.outputs.pr_url }}"
     name: weekly-pulumi-update
