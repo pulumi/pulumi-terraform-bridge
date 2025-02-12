@@ -4015,9 +4015,34 @@ func TestMakeSingleTerraformInput(t *testing.T) {
 
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			result, err := makeSingleTerraformInput(context.Background(), "name", tc.prop, shimv2.NewSchema(tc.schema), nil)
+			result, err := makeSingleTerraformInput(
+				context.Background(), "name", tc.prop, shimv2.NewSchema(tc.schema), nil)
 			require.NoError(t, err)
 			assert.Equal(t, tc.expected, result)
 		})
 	}
+}
+
+// Function pointers make asserting equality slightly more involved here
+func TestMakeSingleTerraformInputSets(t *testing.T) {
+	t.Parallel()
+
+	sch := &schemav2.Schema{
+		Type:     schemav2.TypeSet,
+		Optional: true,
+		Elem: &schemav2.Schema{
+			Type: schemav2.TypeString,
+		},
+	}
+
+	prop := resource.NewArrayProperty([]resource.PropertyValue{
+		resource.NewStringProperty("bar"),
+		resource.NewStringProperty("baz"),
+	})
+
+	result, err := makeSingleTerraformInput(
+		context.Background(), "name", prop, shimv2.NewSchema(sch), nil)
+	require.NoError(t, err)
+	setRes := result.(*schemav2.Set)
+	require.Equal(t, []interface{}{"bar", "baz"}, setRes.List())
 }

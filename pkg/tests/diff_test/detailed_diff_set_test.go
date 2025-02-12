@@ -6,7 +6,12 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/stretchr/testify/require"
+	"github.com/zclconf/go-cty/cty"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/pulcheck"
 )
 
 func oneElementScenarios() []diffScenario[[]string] {
@@ -679,4 +684,102 @@ func TestSDKv2DetailedDiffSetMaxItemsOne(t *testing.T) {
 	}
 
 	runSDKv2TestMatrix(t, diffSchemaValueMakerPairs, oneElementScenarios())
+}
+
+func TestSDKv2DetailedDiffRegressGCP2953(t *testing.T) {
+	t.Parallel()
+
+	res := schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"rule": {
+				Type:     schema.TypeSet,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"src_ip_ranges": {
+							Type:     schema.TypeSet,
+							Optional: true,
+							Elem:     &schema.Schema{Type: schema.TypeString},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	tfp := &schema.Provider{ResourcesMap: map[string]*schema.Resource{
+		"prov_test": &res,
+	}}
+	bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp, pulcheck.EnableAccurateBridgePreviews())
+
+	program := `
+name: test
+runtime: yaml
+resources:
+  mainRes:
+    type: prov:index:Test
+    properties:
+      rules:
+        - srcIpRanges:
+            - "*"`
+
+	pt := pulcheck.PulCheck(t, bridgedProvider, program)
+	pt.Up(t)
+
+	prevRes := pt.Preview(t, optpreview.Diff())
+	require.NotContains(t, prevRes.StdErr, "Failed to calculate preview for element")
+}
+
+func TestSDKv2DetailedDiffNestedSets(t *testing.T) {
+	t.Parallel()
+
+	res := schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"prop": {
+				Type:     schema.TypeSet,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"nested_prop": {
+							Type:     schema.TypeSet,
+							Optional: true,
+							Elem:     &schema.Schema{Type: schema.TypeString},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	nestedSetValueMaker := func(v *[]string) map[string]cty.Value {
+		if v == nil {
+			return map[string]cty.Value{}
+		}
+		if len(*v) == 0 {
+			nested := map[string]cty.Value{
+				"nested_prop": cty.ListValEmpty(cty.String),
+			}
+			return map[string]cty.Value{
+				"prop": cty.ListVal([]cty.Value{cty.ObjectVal(nested)}),
+			}
+		}
+
+		nestedSet := make([]cty.Value, len(*v))
+		for i, v := range *v {
+			nestedSet[i] = cty.StringVal(v)
+		}
+		nested := map[string]cty.Value{
+			"nested_prop": cty.ListVal(nestedSet),
+		}
+
+		return map[string]cty.Value{
+			"prop": cty.ListVal([]cty.Value{cty.ObjectVal(nested)}),
+		}
+	}
+
+	diffSchemaValueMakerPairs := []diffSchemaValueMakerPair[[]string]{
+		{"nested set", res, nestedSetValueMaker},
+	}
+
+	runSDKv2TestMatrix(t, diffSchemaValueMakerPairs, setScenarios())
 }

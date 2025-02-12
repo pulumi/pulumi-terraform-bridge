@@ -9,6 +9,7 @@ import (
 
 var (
 	_ = shim.Schema(v2Schema{})
+	_ = shim.SchemaWithNewSet(v2Schema{})
 	_ = shim.SchemaWithUnknownCollectionSupported(v2Schema{})
 	_ = shim.SchemaMap(v2SchemaMap{})
 )
@@ -137,11 +138,17 @@ func (s v2Schema) SetElement(v interface{}) (interface{}, error) {
 }
 
 func (s v2Schema) SetHash(v interface{}) int {
+	//nolint:lll
+	// adapted from https://github.com/pulumi/terraform-plugin-sdk/blob/4f60ee4e2975c25b88b392e69c87551bb0e26dfc/helper/schema/set.go#L220
 	code := s.tf.ZeroValue().(*schema.Set).F(v)
 	if code < 0 {
 		return -code
 	}
 	return code
+}
+
+func (s v2Schema) NewSet(v []interface{}) interface{} {
+	return schema.NewSet(s.SetHash, v)
 }
 
 type v2SchemaMap map[string]*schema.Schema
