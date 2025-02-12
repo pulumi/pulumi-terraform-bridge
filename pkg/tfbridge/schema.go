@@ -294,6 +294,9 @@ type conversionContext struct {
 	ApplyTFDefaults       bool
 	Assets                AssetTable
 	// UseTFSetTypes will output TF Set types when converting sets.
+	// For example, if called on []string{"val1", "val2"}, it will output a TF Set with
+	// the same values: schema.NewSet([]interface{}{"val1", "val2"}).
+	// Note that this only works for schemas which implement shim.SchemaWithNewSet.
 	UseTFSetTypes bool
 }
 
@@ -340,24 +343,6 @@ func MakeTerraformInputs(
 	olds, news resource.PropertyMap, tfs shim.SchemaMap, ps map[string]*SchemaInfo,
 ) (map[string]interface{}, AssetTable, error) {
 	return makeTerraformInputsWithOptions(ctx, instance, config, olds, news, tfs, ps, makeTerraformInputsOptions{})
-}
-
-// makeSingleTerraformInput converts a single Pulumi property value into a plain go value suitable for use by Terraform.
-// makeSingleTerraformInput does not apply any defaults or other transformations.
-func makeSingleTerraformInputForSetElement(
-	ctx context.Context, name string, val resource.PropertyValue, tfs shim.Schema, ps *SchemaInfo,
-) (interface{}, error) {
-	cctx := &conversionContext{
-		Ctx:                   ctx,
-		ComputeDefaultOptions: ComputeDefaultOptions{},
-		ProviderConfig:        nil,
-		ApplyDefaults:         false,
-		ApplyTFDefaults:       false,
-		Assets:                AssetTable{},
-		UseTFSetTypes:         true,
-	}
-
-	return cctx.makeTerraformInput(name, resource.NewNullProperty(), val, tfs, ps)
 }
 
 // makeTerraformInput takes a single property plus custom schema info and does whatever is necessary

@@ -296,6 +296,25 @@ func (differ detailedDiffer) isForceNew(path propertyPath) bool {
 	return isForceNew(tfs, ps)
 }
 
+// makeSingleTerraformInput converts a single Pulumi property value into a plain go value suitable for use by Terraform.
+// makeSingleTerraformInput does not apply any defaults or other transformations.
+// Note that makeSingleTerraformInput uses UseTFSetTypes=true, so it will return a TF Set for any sets it encounters.
+func makeSingleTerraformInput(
+	ctx context.Context, name string, val resource.PropertyValue, tfs shim.Schema, ps *SchemaInfo,
+) (interface{}, error) {
+	cctx := &conversionContext{
+		Ctx:                   ctx,
+		ComputeDefaultOptions: ComputeDefaultOptions{},
+		ProviderConfig:        nil,
+		ApplyDefaults:         false,
+		ApplyTFDefaults:       false,
+		Assets:                AssetTable{},
+		UseTFSetTypes:         true,
+	}
+
+	return cctx.makeTerraformInput(name, resource.NewNullProperty(), val, tfs, ps)
+}
+
 type (
 	setHash    int
 	arrayIndex int
@@ -304,7 +323,7 @@ type (
 type hashIndexMap map[setHash]arrayIndex
 
 func (differ detailedDiffer) calculateSetHashIndexMap(
-	path propertyPath, listVal []resource.PropertyValue,
+	path propertyPath, setElements []resource.PropertyValue,
 ) hashIndexMap {
 	identities := make(hashIndexMap)
 
@@ -315,8 +334,8 @@ func (differ detailedDiffer) calculateSetHashIndexMap(
 
 	convertedElements := []interface{}{}
 
-	for _, elem := range listVal {
-		convertedElem, err := makeSingleTerraformInputForSetElement(
+	for _, elem := range setElements {
+		convertedElem, err := makeSingleTerraformInput(
 			differ.ctx, path.String(), elem, tfs, ps)
 		if err != nil {
 			return nil
