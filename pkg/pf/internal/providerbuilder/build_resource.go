@@ -30,11 +30,12 @@ type NewResourceArgs struct {
 	Name           string
 	ResourceSchema schema.Schema
 
-	CreateFunc      func(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse)
-	ReadFunc        func(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse)
-	UpdateFunc      func(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse)
-	DeleteFunc      func(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse)
-	ImportStateFunc func(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse)
+	CreateFunc       func(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse)
+	ReadFunc         func(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse)
+	UpdateFunc       func(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse)
+	DeleteFunc       func(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse)
+	ImportStateFunc  func(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse)
+	UpgradeStateFunc func(context.Context) map[int64]resource.StateUpgrader
 }
 
 // NewResource creates a new Resource with the given parameters, filling reasonable defaults.
@@ -67,6 +68,11 @@ func NewResource(args NewResourceArgs) Resource {
 			resp.State = tfsdk.State(req.Plan)
 		}
 	}
+	if args.UpgradeStateFunc == nil {
+		args.UpgradeStateFunc = func(ctx context.Context) map[int64]resource.StateUpgrader {
+			return nil
+		}
+	}
 
 	return Resource(args)
 }
@@ -76,11 +82,12 @@ type Resource struct {
 	Name           string
 	ResourceSchema schema.Schema
 
-	CreateFunc      func(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse)
-	ReadFunc        func(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse)
-	UpdateFunc      func(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse)
-	DeleteFunc      func(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse)
-	ImportStateFunc func(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse)
+	CreateFunc       func(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse)
+	ReadFunc         func(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse)
+	UpdateFunc       func(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse)
+	DeleteFunc       func(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse)
+	ImportStateFunc  func(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse)
+	UpgradeStateFunc func(context.Context) map[int64]resource.StateUpgrader
 }
 
 func (r *Resource) Metadata(ctx context.Context, req resource.MetadataRequest, re *resource.MetadataResponse) {

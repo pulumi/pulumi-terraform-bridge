@@ -3,21 +3,27 @@ package tfbridgetests
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	pschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/setplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	presource "github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -412,4 +418,136 @@ outputs:
 	require.Equal(t, "Default val", upRes.Outputs["changeReason"].Value)
 
 	pt.Preview(t, optpreview.Diff(), optpreview.ExpectNoChanges())
+}
+
+type lifecycleRuleFilterModel struct {
+	ObjectSizeGreaterThan types.Int64 `tfsdk:"object_size_greater_than"`
+}
+type lifecycleRuleFilterModelV0 struct {
+	ObjectSizeGreaterThan types.String `tfsdk:"object_size_greater_than"`
+}
+
+func stringToInt64Legacy(_ context.Context, s types.String, diags *diag.Diagnostics) types.Int64 {
+	if s.ValueString() == "" {
+		return types.Int64Null()
+	}
+
+	v, err := strconv.ParseInt(s.ValueString(), 10, 64)
+	if err != nil {
+		diags.AddError(
+			"Conversion Error",
+			fmt.Sprintf("When upgrading state, failed to read a string as an integer value.\n"+
+				"Value: %q\nError: %s",
+				s.ValueString(),
+				err.Error(),
+			),
+		)
+		return types.Int64Unknown()
+	}
+	return types.Int64Value(v)
+}
+
+func TestStateUpgrade(t *testing.T) {
+	t.Parallel()
+	provBuilder := providerbuilder.NewProvider(
+		providerbuilder.NewProviderArgs{
+			AllResources: []providerbuilder.Resource{
+				providerbuilder.NewResource(providerbuilder.NewResourceArgs{
+					UpgradeStateFunc: func(ctx context.Context) map[int64]resource.StateUpgrader {
+						return map[int64]resource.StateUpgrader{
+							0: {
+								StateUpgrader: func(ctx context.Context, usr1 resource.UpgradeStateRequest, usr2 *resource.UpgradeStateResponse) {
+									var usr1V0 lifecycleRuleFilterModelV0
+									usr2.Diagnostics.Append(usr1.State.Get(ctx, &usr1V0)...)
+									usr2.Diagnostics.Append(usr2.State.Set(ctx, lifecycleRuleFilterModel{
+										ObjectSizeGreaterThan: stringToInt64Legacy(ctx, usr1V0.ObjectSizeGreaterThan, &usr2.Diagnostics),
+									})...)
+								},
+								PriorSchema: &rschema.Schema{
+									Version: 0,
+									Attributes: map[string]rschema.Attribute{
+										"object_size_greater_than": rschema.StringAttribute{
+											Optional: true,
+										},
+									},
+								},
+							},
+						}
+					},
+					ResourceSchema: rschema.Schema{
+						Attributes: map[string]rschema.Attribute{
+							"object_size_greater_than": rschema.Int64Attribute{
+								Optional: true,
+								Computed: true, // Because of Legacy value handling
+								PlanModifiers: []planmodifier.Int64{
+									int64planmodifier.UseStateForUnknown(),
+								},
+							},
+						},
+					},
+				}),
+			},
+		})
+
+	prov := provBuilder.ToProviderInfo()
+
+	program := `
+name: test
+runtime: yaml
+resources:
+    mainRes:
+        type: testprovider:index:Test`
+
+	pt, err := pulcheck.PulCheck(t, prov, program)
+	require.NoError(t, err)
+	pt.ImportStack(t, apitype.UntypedDeployment{
+		Version: 3,
+		Deployment: []byte(`{
+		"manifest": {
+				"time": "2025-02-20T14:09:00.155613-05:00",
+				"magic": "0cfd49ecb2b79ab5c815533dd5e24026f84295ad05c68df3861ea07ea846919a",
+				"version": "v3.150.0"
+		},
+		"resources": [
+				{
+						"urn": "urn:pulumi:test::test::pulumi:pulumi:Stack::test-test",
+						"custom": false,
+						"type": "pulumi:pulumi:Stack",
+						"created": "2025-02-20T19:09:00.146543Z",
+						"modified": "2025-02-20T19:09:00.146543Z"
+				},
+				{
+						"urn": "urn:pulumi:test::test::pulumi:providers:testprovider::default",
+						"custom": true,
+						"id": "127dc091-46cd-41f1-a3a9-ccdeca036b02",
+						"type": "pulumi:providers:testprovider",
+						"created": "2025-02-20T19:09:00.151776Z",
+						"modified": "2025-02-20T19:09:00.151776Z"
+				},
+				{
+						"urn": "urn:pulumi:test::test::testprovider:index/test:Test::mainRes",
+						"custom": true,
+						"id": "test-id",
+						"type": "testprovider:index/test:Test",
+						"inputs": {
+						},
+						"outputs": {
+								"id": "test-id",
+								"objectSizeGreaterThan": ""
+						},
+						"parent": "urn:pulumi:test::test::pulumi:pulumi:Stack::test-test",
+						"provider": "urn:pulumi:test::test::pulumi:providers:testprovider::default::127dc091-46cd-41f1-a3a9-ccdeca036b02",
+						"propertyDependencies": {
+								"objectSizeGreaterThan": []
+						},
+						"created": "2025-02-20T19:09:00.154504Z",
+						"modified": "2025-02-20T19:09:00.154504Z"
+				}
+		],
+		"metadata": {}
+}`),
+	})
+
+	pt.Up(t)
+	assert.Equal(t, 1, 0)
 }
