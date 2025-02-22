@@ -125,3 +125,27 @@ func (emptyServer) GetFunctions(
 ) (*tfprotov6.GetFunctionsResponse, error) {
 	return &tfprotov6.GetFunctionsResponse{}, nil
 }
+
+func (emptyServer) CloseEphemeralResource(
+	context.Context, *tfprotov6.CloseEphemeralResourceRequest,
+) (*tfprotov6.CloseEphemeralResourceResponse, error) {
+	return &tfprotov6.CloseEphemeralResourceResponse{}, nil
+}
+
+func (emptyServer) OpenEphemeralResource(
+	context.Context, *tfprotov6.OpenEphemeralResourceRequest,
+) (*tfprotov6.OpenEphemeralResourceResponse, error) {
+	return &tfprotov6.OpenEphemeralResourceResponse{}, nil
+}
+
+func (emptyServer) RenewEphemeralResource(
+	context.Context, *tfprotov6.RenewEphemeralResourceRequest,
+) (*tfprotov6.RenewEphemeralResourceResponse, error) {
+	return &tfprotov6.RenewEphemeralResourceResponse{}, nil
+}
+
+func (emptyServer) ValidateEphemeralResourceConfig(
+	context.Context, *tfprotov6.ValidateEphemeralResourceConfigRequest,
+) (*tfprotov6.ValidateEphemeralResourceConfigResponse, error) {
+	return &tfprotov6.ValidateEphemeralResourceConfigResponse{}, nil
+}
