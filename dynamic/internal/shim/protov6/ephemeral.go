@@ -17,10 +17,9 @@ package protov6
 import (
 	"context"
 
+	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-
-	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 )
 
 type UnimplementedEphemeralResourceServer struct{}
