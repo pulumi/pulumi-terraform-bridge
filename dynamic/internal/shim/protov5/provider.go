@@ -32,10 +32,13 @@ import (
 var _ tfprotov5.ProviderServer = (*provider)(nil)
 
 func New(server tfplugin5.ProviderClient) tfprotov5.ProviderServer {
-	return provider{server}
+	return provider{remote: server}
 }
 
-type provider struct{ remote tfplugin5.ProviderClient }
+type provider struct {
+	UnimplementedEphemeralResourceServer
+	remote tfplugin5.ProviderClient
+}
 
 func (p provider) GetMetadata(
 	ctx context.Context, req *tfprotov5.GetMetadataRequest,
