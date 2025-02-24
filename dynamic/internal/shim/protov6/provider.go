@@ -32,10 +32,13 @@ import (
 var _ tfprotov6.ProviderServer = (*shimProvider)(nil)
 
 func New(p tfplugin6.ProviderClient) tfprotov6.ProviderServer {
-	return shimProvider{p}
+	return shimProvider{remote: p}
 }
 
-type shimProvider struct{ remote tfplugin6.ProviderClient }
+type shimProvider struct {
+	UnimplementedEphemeralResourceServer
+	remote tfplugin6.ProviderClient
+}
 
 func (p shimProvider) GetMetadata(
 	ctx context.Context, req *tfprotov6.GetMetadataRequest,
