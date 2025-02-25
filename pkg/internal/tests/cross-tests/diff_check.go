@@ -47,6 +47,7 @@ type diffTestCase struct {
 	ObjectType                    *tftypes.Object
 	DeleteBeforeReplace           bool
 	DisableAccurateBridgePreviews bool
+	DisablePlanResourceChange     bool
 
 	// Optional second schema to use as an upgrade test with a different schema.
 	Resource2 *schema.Resource
@@ -77,6 +78,9 @@ func runDiffCheck(t T, tc diffTestCase) crosstestsimpl.DiffResult {
 	opts := []pulcheck.BridgedProviderOpt{}
 	if !tc.DisableAccurateBridgePreviews {
 		opts = append(opts, pulcheck.EnableAccurateBridgePreviews())
+	}
+	if tc.DisablePlanResourceChange {
+		opts = append(opts, pulcheck.DisablePlanResourceChange())
 	}
 
 	bridgedProvider1 := pulcheck.BridgedProvider(t, defProviderShortName, tfp1, opts...)
