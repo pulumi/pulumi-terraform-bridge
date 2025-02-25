@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"hash/crc32"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -1733,4 +1734,56 @@ func TestDetailedDiffReplacementComputedProperty(t *testing.T) {
 			detailedDiff: diff.PulumiDiff.DetailedDiff,
 		})
 	})
+}
+
+func TestDiffProviderUpgradeBasic(t *testing.T) {
+	t.Parallel()
+
+	res1 := &schema.Resource{
+		Schema: map[string]*schema.Schema{"prop": {Type: schema.TypeString, Optional: true}},
+	}
+
+	res2 := &schema.Resource{
+		Schema:        map[string]*schema.Schema{"prop": {Type: schema.TypeInt, Optional: true}},
+		SchemaVersion: 1,
+		StateUpgraders: []schema.StateUpgrader{
+			{
+				Version: 0,
+				Type:    res1.CoreConfigSchema().ImpliedType(),
+				Upgrade: func(ctx context.Context, rawState map[string]any, meta interface{}) (map[string]any, error) {
+					if rawState == nil {
+						rawState = map[string]interface{}{}
+					}
+
+					if _, ok := rawState["prop"]; ok {
+						stringVar, ok := rawState["prop"].(string)
+						var intVar int
+						// TODO[pulumi/pulumi-terraform-bridge#1667]: This is a workaround to handle
+						// the fact that we use the new schema to decode the state
+						if !ok {
+							floatVar := rawState["prop"].(float64)
+							intVar = int(floatVar)
+						} else {
+							var err error
+							intVar, err = strconv.Atoi(stringVar)
+							if err != nil {
+								return nil, err
+							}
+						}
+						rawState["prop"] = intVar
+					}
+
+					return rawState, nil
+				},
+			},
+		},
+	}
+
+	res := Diff(t, res1,
+		map[string]cty.Value{"prop": cty.StringVal("1")},
+		map[string]cty.Value{"prop": cty.NumberIntVal(1)},
+		DiffProviderUpgradedSchema(res2),
+	)
+
+	require.Equal(t, []string{"no-op"}, res.TFDiff.Actions)
 }
