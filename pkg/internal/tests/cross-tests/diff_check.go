@@ -50,6 +50,9 @@ type diffTestCase struct {
 
 	// Optional second schema to use as an upgrade test with a different schema.
 	Resource2 *schema.Resource
+
+	// Whether to skip the diff equivalence check.
+	SkipDiffEquivalenceCheck bool
 }
 
 func runDiffCheck(t T, tc diffTestCase) crosstestsimpl.DiffResult {
@@ -125,7 +128,9 @@ func runDiffCheck(t T, tc diffTestCase) crosstestsimpl.DiffResult {
 
 	changes := tfd.driver.ParseChangesFromTFPlan(tfDiffPlan)
 
-	crosstestsimpl.VerifyBasicDiffAgreement(t, changes.Actions, x.Summary, diffResponse)
+	if !tc.SkipDiffEquivalenceCheck {
+		crosstestsimpl.VerifyBasicDiffAgreement(t, changes.Actions, x.Summary, diffResponse)
+	}
 
 	return crosstestsimpl.DiffResult{
 		TFDiff:     changes,
