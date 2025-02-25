@@ -12,6 +12,7 @@ type diffOpts struct {
 	disableAccurateBridgePreviews bool
 	resource2                     *schema.Resource
 	disablePlanResourceChange     bool
+	skipDiffEquivalenceCheck      bool
 }
 
 // An option that can be used to customize [Diff].
@@ -37,6 +38,11 @@ func DiffDisablePlanResourceChange() DiffOption {
 	return func(o *diffOpts) { o.disablePlanResourceChange = true }
 }
 
+// DiffSkipDiffEquivalenceCheck specifies whether to skip the diff equivalence check.
+func DiffSkipDiffEquivalenceCheck() DiffOption {
+	return func(o *diffOpts) { o.skipDiffEquivalenceCheck = true }
+}
+
 func Diff(
 	t T, resource *schema.Resource, config1, config2 map[string]cty.Value, opts ...DiffOption,
 ) crosstestsimpl.DiffResult {
@@ -56,5 +62,6 @@ func Diff(
 		DisableAccurateBridgePreviews: o.disableAccurateBridgePreviews,
 		Resource2:                     o.resource2,
 		DisablePlanResourceChange:     o.disablePlanResourceChange,
+		SkipDiffEquivalenceCheck:      o.skipDiffEquivalenceCheck,
 	})
 }
