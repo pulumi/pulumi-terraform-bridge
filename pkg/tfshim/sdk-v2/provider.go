@@ -67,6 +67,10 @@ func NewProvider(p *schema.Provider, opts ...providerOption) shim.Provider {
 	o, err := getProviderOptions(opts)
 	contract.AssertNoErrorf(err, "provider options failed to apply")
 
+	if o.planResourceChangeFilter != nil {
+		return newProviderWithPlanResourceChange(p, prov, o.planResourceChangeFilter, o.planStateEdit)
+	}
+
 	return newProviderWithPlanResourceChange(p, prov, func(s string) bool { return true }, o.planStateEdit)
 }
 

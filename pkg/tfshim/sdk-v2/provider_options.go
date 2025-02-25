@@ -22,7 +22,8 @@ import (
 )
 
 type providerOptions struct {
-	planStateEdit PlanStateEditFunc
+	planResourceChangeFilter func(string) bool
+	planStateEdit            PlanStateEditFunc
 }
 
 type providerOption func(providerOptions) (providerOptions, error)
@@ -85,6 +86,16 @@ func getProviderOptions(opts []providerOption) (providerOptions, error) {
 // TODO[pulumi/pulumi-terraform-bridge#2593] clean up deprecation.
 func WithPlanResourceChange(filter func(tfResourceType string) bool) providerOption { //nolint:revive
 	return func(opts providerOptions) (providerOptions, error) {
+		return opts, nil
+	}
+}
+
+// InternalOnlyWithPlanResourceChange is an internal API for testing.
+//
+// It is not intended for use by external users.
+func InternalOnlyWithPlanResourceChange(filter func(string) bool) providerOption { //nolint:revive
+	return func(opts providerOptions) (providerOptions, error) {
+		opts.planResourceChangeFilter = filter
 		return opts, nil
 	}
 }

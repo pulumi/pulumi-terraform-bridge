@@ -11,6 +11,7 @@ type diffOpts struct {
 	deleteBeforeReplace           bool
 	disableAccurateBridgePreviews bool
 	resource2                     *schema.Resource
+	disablePlanResourceChange     bool
 }
 
 // An option that can be used to customize [Diff].
@@ -31,6 +32,11 @@ func DiffProviderUpgradedSchema(resource2 *schema.Resource) DiffOption {
 	return func(o *diffOpts) { o.resource2 = resource2 }
 }
 
+// DiffDisablePlanResourceChange specifies whether to disable the plan resource change.
+func DiffDisablePlanResourceChange() DiffOption {
+	return func(o *diffOpts) { o.disablePlanResourceChange = true }
+}
+
 func Diff(
 	t T, resource *schema.Resource, config1, config2 map[string]cty.Value, opts ...DiffOption,
 ) crosstestsimpl.DiffResult {
@@ -49,5 +55,6 @@ func Diff(
 		DeleteBeforeReplace:           o.deleteBeforeReplace,
 		DisableAccurateBridgePreviews: o.disableAccurateBridgePreviews,
 		Resource2:                     o.resource2,
+		DisablePlanResourceChange:     o.disablePlanResourceChange,
 	})
 }
