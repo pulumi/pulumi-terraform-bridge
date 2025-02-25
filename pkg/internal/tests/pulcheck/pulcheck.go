@@ -199,6 +199,7 @@ type bridgedProviderOpts struct {
 	resourceInfo                 map[string]*info.Resource
 	configInfo                   map[string]*info.Schema
 	EnableAccurateBridgePreviews bool
+	DisablePlanResourceChange    bool
 }
 
 // BridgedProviderOpts
@@ -213,6 +214,12 @@ func EnableAccurateBridgePreviews() BridgedProviderOpt {
 func WithStateEdit(f shimv2.PlanStateEditFunc) BridgedProviderOpt {
 	return func(o *bridgedProviderOpts) {
 		o.StateEdit = f
+	}
+}
+
+func DisablePlanResourceChange() BridgedProviderOpt {
+	return func(o *bridgedProviderOpts) {
+		o.DisablePlanResourceChange = true
 	}
 }
 
@@ -251,6 +258,9 @@ func BridgedProvider(t T, providerName string, tfp *schema.Provider, opts ...Bri
 
 	shimProvider := shimv2.NewProvider(tfp,
 		shimv2.WithPlanStateEdit(options.StateEdit),
+		shimv2.InternalOnlyWithPlanResourceChange(func(s string) bool {
+			return !options.DisablePlanResourceChange
+		}),
 	)
 
 	provider := tfbridge.ProviderInfo{
