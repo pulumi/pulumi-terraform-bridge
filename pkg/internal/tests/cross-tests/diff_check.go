@@ -15,11 +15,14 @@
 package crosstests
 
 import (
-	"os"
-	"path/filepath"
+	"context"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/pulumi/providertest/providers"
+	"github.com/pulumi/providertest/pulumitest"
+	"github.com/pulumi/providertest/pulumitest/optrun"
+	"github.com/pulumi/providertest/pulumitest/opttest"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
 	"github.com/stretchr/testify/require"
 
@@ -44,6 +47,9 @@ type diffTestCase struct {
 	ObjectType                    *tftypes.Object
 	DeleteBeforeReplace           bool
 	DisableAccurateBridgePreviews bool
+
+	// Optional second schema to use as an upgrade test with a different schema.
+	Resource2 *schema.Resource
 }
 
 func runDiffCheck(t T, tc diffTestCase) crosstestsimpl.DiffResult {
@@ -51,24 +57,33 @@ func runDiffCheck(t T, tc diffTestCase) crosstestsimpl.DiffResult {
 	tfwd := t.TempDir()
 
 	lifecycleArgs := lifecycleArgs{CreateBeforeDestroy: !tc.DeleteBeforeReplace}
+	resource1 := tc.Resource
+	resource2 := tc.Resource2
+	if resource2 == nil {
+		resource2 = resource1
+	}
 
-	tfConfig1 := coalesceInputs(t, tc.Resource.Schema, tc.Config1)
-	tfConfig2 := coalesceInputs(t, tc.Resource.Schema, tc.Config2)
-	tfd := newTFResDriver(t, tfwd, defProviderShortName, defRtype, tc.Resource)
-	_ = tfd.writePlanApply(t, tc.Resource.Schema, defRtype, "example", tfConfig1, lifecycleArgs)
-	tfDiffPlan := tfd.writePlanApply(t, tc.Resource.Schema, defRtype, "example", tfConfig2, lifecycleArgs)
+	tfConfig1 := coalesceInputs(t, resource1.Schema, tc.Config1)
+	tfd := newTFResDriver(t, tfwd, defProviderShortName, defRtype, resource1)
+	_ = tfd.writePlanApply(t, resource1.Schema, defRtype, "example", tfConfig1, lifecycleArgs)
 
-	resMap := map[string]*schema.Resource{defRtype: tc.Resource}
-	tfp := &schema.Provider{ResourcesMap: resMap}
+	tfConfig2 := coalesceInputs(t, resource2.Schema, tc.Config2)
+	tfd2 := newTFResDriver(t, tfwd, defProviderShortName, defRtype, resource2)
+	tfDiffPlan := tfd2.writePlanApply(t, resource2.Schema, defRtype, "example", tfConfig2, lifecycleArgs)
+
+	tfp1 := &schema.Provider{ResourcesMap: map[string]*schema.Resource{defRtype: resource1}}
+	tfp2 := &schema.Provider{ResourcesMap: map[string]*schema.Resource{defRtype: resource2}}
 
 	opts := []pulcheck.BridgedProviderOpt{}
 	if !tc.DisableAccurateBridgePreviews {
 		opts = append(opts, pulcheck.EnableAccurateBridgePreviews())
 	}
 
-	bridgedProvider := pulcheck.BridgedProvider(t, defProviderShortName, tfp, opts...)
+	bridgedProvider1 := pulcheck.BridgedProvider(t, defProviderShortName, tfp1, opts...)
+	bridgedProvider2 := pulcheck.BridgedProvider(t, defProviderShortName, tfp2, opts...)
 	if tc.DeleteBeforeReplace {
-		bridgedProvider.Resources[defRtype].DeleteBeforeReplace = true
+		bridgedProvider1.Resources[defRtype].DeleteBeforeReplace = true
+		bridgedProvider2.Resources[defRtype].DeleteBeforeReplace = true
 	}
 
 	pd := &pulumiDriver{
@@ -76,17 +91,32 @@ func runDiffCheck(t T, tc diffTestCase) crosstestsimpl.DiffResult {
 		pulumiResourceToken: defRtoken,
 		tfResourceName:      defRtype,
 	}
+	yamlProgram1 := pd.generateYAML(t, crosstestsimpl.InferPulumiValue(t,
+		bridgedProvider1.P.ResourcesMap().Get(defRtype).Schema(), nil, tfConfig1))
 
-	yamlProgram := pd.generateYAML(t, crosstestsimpl.InferPulumiValue(t,
-		bridgedProvider.P.ResourcesMap().Get(defRtype).Schema(), nil, tfConfig1))
-	pt := pulcheck.PulCheck(t, bridgedProvider, string(yamlProgram))
-	pt.Up(t)
+	yamlProgram2 := pd.generateYAML(t, crosstestsimpl.InferPulumiValue(t,
+		bridgedProvider2.P.ResourcesMap().Get(defRtype).Schema(), nil, tfConfig2))
 
-	yamlProgram = pd.generateYAML(t, crosstestsimpl.InferPulumiValue(t,
-		bridgedProvider.P.ResourcesMap().Get(defRtype).Schema(), nil, tfConfig2))
-	err := os.WriteFile(filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml"), yamlProgram, 0o600)
-	require.NoErrorf(t, err, "writing Pulumi.yaml")
-
+	// We initialize the second provider as it will be used in the preview.
+	// It is temporarily overwritten by the first provider in the Run function.
+	pt := pulcheck.PulCheck(t, bridgedProvider2, string(yamlProgram1))
+	pt.Run(
+		t,
+		func(test *pulumitest.PulumiTest) {
+			test.Up(t)
+		},
+		optrun.WithOpts(
+			opttest.AttachProvider(
+				defProviderShortName,
+				func(ctx context.Context, pt providers.PulumiTest) (providers.Port, error) {
+					handle, err := pulcheck.StartPulumiProvider(ctx, bridgedProvider1)
+					require.NoError(t, err)
+					return providers.Port(handle.Port), nil
+				},
+			),
+		),
+	)
+	pt.WritePulumiYaml(t, string(yamlProgram2))
 	previewRes := pt.Preview(t, optpreview.Diff())
 	require.Empty(t, previewRes.StdErr, "preview should not have errors")
 

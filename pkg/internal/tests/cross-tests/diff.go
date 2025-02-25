@@ -10,6 +10,7 @@ import (
 type diffOpts struct {
 	deleteBeforeReplace           bool
 	disableAccurateBridgePreviews bool
+	resource2                     *schema.Resource
 }
 
 // An option that can be used to customize [Diff].
@@ -23,6 +24,11 @@ func DiffDeleteBeforeReplace(deleteBeforeReplace bool) DiffOption {
 // DiffDisableAccurateBridgePreviews specifies whether to disable accurate bridge previews.
 func DiffDisableAccurateBridgePreviews() DiffOption {
 	return func(o *diffOpts) { o.disableAccurateBridgePreviews = true }
+}
+
+// DiffProviderUpgradedSchema specifies the second provider schema to use for the diff.
+func DiffProviderUpgradedSchema(resource2 *schema.Resource) DiffOption {
+	return func(o *diffOpts) { o.resource2 = resource2 }
 }
 
 func Diff(
@@ -42,5 +48,6 @@ func Diff(
 		Config2:                       config2Cty,
 		DeleteBeforeReplace:           o.deleteBeforeReplace,
 		DisableAccurateBridgePreviews: o.disableAccurateBridgePreviews,
+		Resource2:                     o.resource2,
 	})
 }
