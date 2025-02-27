@@ -1,9 +1,14 @@
 from typing import Any, Iterator
 import argparse
 import subprocess as sp
-
 import requests
 
+NOT_BRIDGED_PROVIDERS = [
+    "aws-apigateway",
+    "awsx",
+    "eks",
+    "terraform-module",
+]
 
 QUERY = """
 {
@@ -48,7 +53,7 @@ def get_provider_map() -> dict[str, bool]:
     resp = requests.get(
         "https://raw.githubusercontent.com/pulumi/ci-mgmt/master/provider-ci/providers.json"
     )
-    return {k: False for k in resp.json()}
+    return {k: False for k in resp.json() if k not in NOT_BRIDGED_PROVIDERS}
 
 
 def get_title(query_result: Any) -> str:
@@ -135,10 +140,15 @@ def main():
                 sp.check_call(["gh", "pr", "close", url])
         else:
             if not closed or show_closed:
-                print(sentinel_status, url)
+                # If the sentinel is SKIPPED, this very likely means the PR failed some checks.
+                if sentinel_status == "SKIPPED":
+                    print('FAILED:', url)
+                else:
+                    print(sentinel_status, url)
 
     for missing_repo in {repo for repo in provider_map if not provider_map[repo]}:
-        print("MISSING", repo_actions_url(missing_repo))
+        # Possibly waiting for plumbing to propagate, we do not know for sure.
+        print("WAITING", missing_repo)
 
 
 if __name__ == "__main__":
