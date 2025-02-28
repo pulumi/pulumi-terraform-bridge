@@ -549,5 +549,4 @@ resources:
 	})
 
 	pt.Up(t)
-	assert.Equal(t, 1, 0)
 }
