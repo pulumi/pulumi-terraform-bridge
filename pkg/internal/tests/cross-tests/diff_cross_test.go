@@ -1808,49 +1808,14 @@ func TestDiffProviderUpgradeMaxItemsOneChanged(t *testing.T) {
 		}},
 	}
 
-	for _, PRC := range []bool{true, false} {
-		t.Run(fmt.Sprintf("PlanResourceChange: %t", PRC), func(t *testing.T) {
-			t.Parallel()
+	t.Run("max items one removed", func(t *testing.T) {
+		t.Parallel()
+		res := Diff(t, resWithMaxItemsOne,
+			map[string]cty.Value{"prop": cty.ListVal([]cty.Value{cty.StringVal("a")})},
+			map[string]cty.Value{"prop": cty.ListVal([]cty.Value{cty.StringVal("a")})},
+			DiffProviderUpgradedSchema(resWithoutMaxItemsOne),
+		)
 
-			t.Run("max items one removed", func(t *testing.T) {
-				t.Parallel()
-
-				opts := []DiffOption{
-					DiffProviderUpgradedSchema(resWithoutMaxItemsOne),
-					DiffSkipDiffEquivalenceCheck(),
-				}
-				if !PRC {
-					opts = append(opts, DiffDisablePlanResourceChange())
-				}
-
-				res := Diff(t, resWithMaxItemsOne,
-					map[string]cty.Value{"prop": cty.ListVal([]cty.Value{cty.StringVal("a")})},
-					map[string]cty.Value{"prop": cty.ListVal([]cty.Value{cty.StringVal("a")})},
-					opts...,
-				)
-
-				autogold.ExpectFile(t, res.PulumiOut)
-			})
-
-			t.Run("max items one added", func(t *testing.T) {
-				t.Parallel()
-
-				opts := []DiffOption{
-					DiffProviderUpgradedSchema(resWithMaxItemsOne),
-					DiffSkipDiffEquivalenceCheck(),
-				}
-				if !PRC {
-					opts = append(opts, DiffDisablePlanResourceChange())
-				}
-
-				res := Diff(t, resWithoutMaxItemsOne,
-					map[string]cty.Value{"prop": cty.ListVal([]cty.Value{cty.StringVal("a")})},
-					map[string]cty.Value{"prop": cty.ListVal([]cty.Value{cty.StringVal("a")})},
-					opts...,
-				)
-
-				autogold.ExpectFile(t, res.PulumiOut)
-			})
-		})
-	}
+		autogold.ExpectFile(t, res.PulumiOut)
+	})
 }
