@@ -1818,4 +1818,17 @@ func TestDiffProviderUpgradeMaxItemsOneChanged(t *testing.T) {
 
 		autogold.ExpectFile(t, res.PulumiOut)
 	})
+
+	t.Run("max items one added", func(t *testing.T) {
+		t.Parallel()
+		res := Diff(t, resWithoutMaxItemsOne,
+			map[string]cty.Value{"prop": cty.ListVal([]cty.Value{cty.StringVal("a")})},
+			map[string]cty.Value{"prop": cty.ListVal([]cty.Value{cty.StringVal("a")})},
+			DiffProviderUpgradedSchema(resWithMaxItemsOne),
+			// Note we produce a diff here while TF does not.
+			DiffSkipDiffEquivalenceCheck(),
+		)
+
+		autogold.ExpectFile(t, res.PulumiOut)
+	})
 }
