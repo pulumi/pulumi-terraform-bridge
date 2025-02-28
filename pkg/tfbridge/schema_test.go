@@ -4166,3 +4166,41 @@ func Test_makeTerraformStateWithOptsMaxItemsOneRemoved(t *testing.T) {
 		autogold.Expect(map[string]interface{}{"prop": []interface{}{[]interface{}{[]interface{}{"X"}}}}).Equal(t, inputs)
 	})
 }
+
+func Test_makeTerraformStateWithOptsMaxItemsOneAdded(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+
+	// Note the behaviour here is that we do not match the "props" key in Pulumi to the "prop" key in TF.
+	// This is because we have lost the schema information about "props", since the property is now "prop"
+	// because of MaxItemsOne singularisation.
+	//
+	// We attempt to send the value in state to TF as is.
+	t.Run("list with max items one added", func(t *testing.T) {
+		m := resource.PropertyMap{
+			"props": resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewStringProperty("X"),
+			}),
+		}
+
+		sch := &schemav2.Schema{
+			Type:     schemav2.TypeList,
+			Optional: true,
+			MaxItems: 1,
+			Elem: &schemav2.Schema{
+				Type:     schemav2.TypeString,
+				Optional: true,
+			},
+		}
+
+		sch2 := sdkv2.NewSchemaMap(map[string]*schemav2.Schema{
+			"prop": sch,
+		})
+
+		inputs, _, err := makeTerraformInputsWithOptions(ctx, nil, nil, nil, m, sch2, nil,
+			makeTerraformInputsOptions{DisableDefaults: true, DisableTFDefaults: true})
+		require.NoError(t, err)
+
+		autogold.Expect(map[string]interface{}{"props": []interface{}{"X"}}).Equal(t, inputs)
+	})
+}
