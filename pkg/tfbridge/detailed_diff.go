@@ -327,7 +327,13 @@ func (differ detailedDiffer) calculateSetHashIndexMap(
 ) hashIndexMap {
 	identities := make(hashIndexMap)
 
-	tfs, ps, err := lookupSchemas(path, differ.tfs, differ.ps)
+	tfs, _, err := lookupSchemas(path, differ.tfs, differ.ps)
+	if err != nil {
+		return nil
+	}
+
+	elementPath := path.Index(0)
+	etfs, eps, err := lookupSchemas(elementPath, differ.tfs, differ.ps)
 	if err != nil {
 		return nil
 	}
@@ -336,7 +342,7 @@ func (differ detailedDiffer) calculateSetHashIndexMap(
 
 	for _, elem := range setElements {
 		convertedElem, err := makeSingleTerraformInput(
-			differ.ctx, path.String(), elem, tfs, ps)
+			differ.ctx, elementPath.String(), elem, etfs, eps)
 		if err != nil {
 			return nil
 		}
