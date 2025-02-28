@@ -22,6 +22,7 @@ import (
 )
 
 func Test_numberEncoder_emptyStringToNull(t *testing.T) {
+	t.Parallel()
 	n := newNumberEncoder()
 	v, err := n.fromPropertyValue(resource.NewStringProperty(""))
 	require.NoError(t, err)
