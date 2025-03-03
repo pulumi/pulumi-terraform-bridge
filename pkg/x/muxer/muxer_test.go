@@ -224,6 +224,46 @@ func TestConfigureInSequence(t *testing.T) {
 	}
 }
 
+// Some providers such as pulumi-gcp will panic in PluginFramework Configure if SDKv2 Configure has
+// produced errors. That is they do not expect both being called in the error case. This test checks
+// that such panics are ignored and processed as expected.
+func TestConfigureIgnorePanics(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+
+	m := &muxer{
+		host: &host{},
+		servers: []server{
+			configureReturnsErrors{},
+			configurePanics{},
+		},
+	}
+	_, err := m.Configure(ctx, &pulumirpc.ConfigureRequest{})
+	require.Error(t, err)
+}
+
+type configureReturnsErrors struct {
+	pulumirpc.UnimplementedResourceProviderServer
+}
+
+func (x configureReturnsErrors) Configure(
+	ctx context.Context,
+	req *pulumirpc.ConfigureRequest,
+) (*pulumirpc.ConfigureResponse, error) {
+	return nil, fmt.Errorf("Required configuration values have not been set")
+}
+
+type configurePanics struct {
+	pulumirpc.UnimplementedResourceProviderServer
+}
+
+func (x configurePanics) Configure(
+	ctx context.Context,
+	req *pulumirpc.ConfigureRequest,
+) (*pulumirpc.ConfigureResponse, error) {
+	panic("Configure panics unexpectedly")
+}
+
 type configure struct {
 	pulumirpc.UnimplementedResourceProviderServer
 	t       *testing.T
