@@ -93,7 +93,7 @@ func newTFGenCmd(pkg string, version string, prov tfbridge.ProviderInfo,
 			"\n" +
 			"Note that there is no custom Pulumi provider code required, because the generated\n" +
 			"provider plugin is metadata-driven and thus works against all Terraform providers.\n",
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+		RunE: cmdutil.RunFuncE(func(cmd *cobra.Command, args []string) error {
 			if profile != "" {
 				f, err := os.Create(profile)
 				if err != nil {
