@@ -302,7 +302,20 @@ func (m *muxer) Configure(ctx context.Context, req *pulumirpc.ConfigureRequest) 
 
 	for _, s := range m.servers {
 		req := proto.Clone(req).(*pulumirpc.ConfigureRequest)
-		r, err := s.Configure(ctx, req)
+
+		var r *pulumirpc.ConfigureResponse
+		var err error
+
+		if errs.Len() > 0 {
+			var panicked bool
+			r, err, panicked = panicRecoveringConfigure(ctx, s, req)
+			if panicked {
+				continue
+			}
+		} else {
+			r, err = s.Configure(ctx, req)
+		}
+
 		if err != nil {
 			errs.Errors = append(errs.Errors, err)
 			continue
@@ -315,6 +328,20 @@ func (m *muxer) Configure(ctx context.Context, req *pulumirpc.ConfigureRequest) 
 			r.GetSupportsAutonamingConfiguration()
 	}
 	return response, m.muxedErrors(errs)
+}
+
+func panicRecoveringConfigure(
+	ctx context.Context,
+	s server,
+	req *pulumirpc.ConfigureRequest,
+) (response *pulumirpc.ConfigureResponse, finalError error, panicked bool) {
+	defer func() {
+		if p := recover(); p != nil {
+			panicked = true
+		}
+	}()
+	r, err := s.Configure(ctx, req)
+	return r, err, false
 }
 
 type resourceRequest interface {
