@@ -227,7 +227,7 @@ func TestConfigureInSequence(t *testing.T) {
 // Some providers such as pulumi-gcp will panic in PluginFramework Configure if SDKv2 Configure has
 // produced errors. That is they do not expect both being called in the error case. This test checks
 // that such panics are ignored and processed as expected.
-func TestConfigureIngorePanics(t *testing.T) {
+func TestConfigureIgnorePanics(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 
