@@ -28,3 +28,21 @@ func assertIsMapType(t *testing.T, shimmed shim.Schema) {
 	schema, isTypeSchema := shimmed.Elem().(*typeSchema)
 	assert.Truef(t, isTypeSchema, "expected shim.Elem() to be of type %T", *schema)
 }
+
+func TestInt32Type(t *testing.T) {
+	t.Parallel()
+	shimmed := &typeSchema{basetypes.Int32Type{}, nil}
+	assert.Equal(t, shim.TypeInt, shimmed.Type())
+}
+
+func TestInt64Type(t *testing.T) {
+	t.Parallel()
+	shimmed := &typeSchema{basetypes.Int64Type{}, nil}
+	assert.Equal(t, shim.TypeInt, shimmed.Type())
+}
+
+func TestNumberType(t *testing.T) {
+	t.Parallel()
+	shimmed := &typeSchema{basetypes.NumberType{}, nil}
+	assert.Equal(t, shim.TypeFloat, shimmed.Type())
+}

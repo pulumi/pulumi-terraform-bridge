@@ -34,6 +34,8 @@ func convertType(typ pfattr.Type) (shim.ValueType, error) {
 	switch {
 	case is(tftypes.Bool):
 		return shim.TypeBool, nil
+	case typ.Equal(basetypes.Int32Type{}):
+		return shim.TypeInt, nil
 	case typ.Equal(basetypes.Int64Type{}):
 		// We special case int, since it is a stable type but not present on the wire.
 		return shim.TypeInt, nil
