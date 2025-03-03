@@ -308,7 +308,7 @@ func (m *muxer) Configure(ctx context.Context, req *pulumirpc.ConfigureRequest) 
 
 		if errs.Len() > 0 {
 			var panicked bool
-			r, err, panicked = panicRecoveringConfigure(ctx, s, req)
+			r, panicked, err = panicRecoveringConfigure(ctx, s, req)
 			if panicked {
 				continue
 			}
@@ -334,14 +334,14 @@ func panicRecoveringConfigure(
 	ctx context.Context,
 	s server,
 	req *pulumirpc.ConfigureRequest,
-) (response *pulumirpc.ConfigureResponse, finalError error, panicked bool) {
+) (response *pulumirpc.ConfigureResponse, panicked bool, finalError error) {
 	defer func() {
 		if p := recover(); p != nil {
 			panicked = true
 		}
 	}()
 	r, err := s.Configure(ctx, req)
-	return r, err, false
+	return r, false, err
 }
 
 type resourceRequest interface {
