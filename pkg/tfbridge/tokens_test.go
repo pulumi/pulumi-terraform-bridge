@@ -738,8 +738,8 @@ func testTokenAliasing(t *testing.T) {
 	assert.Equal(t, modules.Resources, modules4.Resources)
 }
 
+//nolint:paralleltest // This tests is flaky in parallel
 func TestMaxItemsOneAliasing(t *testing.T) {
-	t.Parallel()
 	provider := func(f1, f2 bool) *tfbridge.ProviderInfo {
 		prov := &tfbridge.ProviderInfo{
 			P: (&schema.Provider{
@@ -877,8 +877,8 @@ func TestMaxItemsOneAliasing(t *testing.T) {
 }`).Equal(t, string(metadata.MarshalIndent()))
 }
 
+//nolint:paralleltest // This tests is flaky in parallel
 func TestMaxItemsOneAliasingExpiring(t *testing.T) {
-	t.Parallel()
 	provider := func(f1, f2 bool) *tfbridge.ProviderInfo {
 		prov := &tfbridge.ProviderInfo{
 			P: (&schema.Provider{
@@ -948,8 +948,8 @@ func TestMaxItemsOneAliasingExpiring(t *testing.T) {
 }`).Equal(t, string(metadata.MarshalIndent()))
 }
 
+//nolint:paralleltest // This tests is flaky in parallel
 func TestMaxItemsOneAliasingNested(t *testing.T) {
-	t.Parallel()
 	provider := func(f1, f2 bool) *tfbridge.ProviderInfo {
 		prov := &tfbridge.ProviderInfo{
 			P: (&schema.Provider{
@@ -1055,8 +1055,9 @@ func TestMaxItemsOneAliasingNested(t *testing.T) {
 // their resource's ResourceInfo.Fields. We need to make sure that unless we mark a field
 // as `MaxItemsOne: nonNil` for some non-nil value, we don't leave that field entry behind
 // since that will disable SetAutonaming.
+//
+//nolint:paralleltest // This tests is flaky in parallel
 func TestMaxItemsOneAliasingWithAutoNaming(t *testing.T) {
-	t.Parallel()
 	provider := func() *tfbridge.ProviderInfo {
 		info, err := metadata.New(nil)
 		require.NoError(t, err)
@@ -1139,8 +1140,8 @@ func TestMaxItemsOneAliasingWithAutoNaming(t *testing.T) {
 	})
 }
 
+//nolint:paralleltest // This tests is flaky in parallel
 func TestMaxItemsOneDataSourceAliasing(t *testing.T) {
-	t.Parallel()
 	provider := func() *tfbridge.ProviderInfo {
 		info, err := metadata.New(nil)
 		require.NoError(t, err)
@@ -1389,8 +1390,8 @@ func TestAutoAliasingChangeDataSources(t *testing.T) { //nolint:paralleltest
 	}
 }
 
+//nolint:paralleltest // This tests is flaky in parallel
 func TestDeletedResourcesAutoAliasing(t *testing.T) {
-	t.Parallel()
 	provider := func(t *testing.T, tok string, resourceMap schema.ResourceMap, meta []byte) *tfbridge.ProviderInfo {
 		info, err := metadata.New(meta)
 		require.NoError(t, err)
