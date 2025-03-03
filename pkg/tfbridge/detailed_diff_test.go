@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hexops/autogold/v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/require"
@@ -2941,37 +2942,94 @@ func TestDetailedDiffSetHashChanges(t *testing.T) {
 	runTest(hashIndexMap{1: 1}, hashIndexMap{2: 2}, []arrayIndex{1}, []arrayIndex{2})
 }
 
-func TestDetailedDiffSetHashPanicCaught(t *testing.T) {
+func Test_calculateSetHashIndexMap(t *testing.T) {
 	t.Parallel()
-	tfs := shimv2.NewSchemaMap(map[string]*schema.Schema{
-		"foo": {
-			Type: schema.TypeSet,
-			Elem: &schema.Schema{
-				Type: schema.TypeString,
+
+	t.Run("simple", func(t *testing.T) {
+		t.Parallel()
+		tfs := shimv2.NewSchemaMap(map[string]*schema.Schema{
+			"foo": {
+				Type: schema.TypeSet,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
 			},
-			Set: func(v interface{}) int {
-				panic("test")
-			},
-		},
+		})
+
+		differ := detailedDiffer{
+			ctx: context.Background(),
+			tfs: tfs,
+			ps:  nil,
+		}
+
+		res := differ.calculateSetHashIndexMap(
+			newPropertyPath("foo"),
+			[]resource.PropertyValue{resource.NewStringProperty("val1")},
+		)
+
+		autogold.Expect(hashIndexMap{setHash(95530694): arrayIndex(0)}).Equal(t, res)
 	})
 
-	buf := &bytes.Buffer{}
-	ctx := logging.InitLogging(context.Background(), logging.LogOptions{
-		LogSink: &testLogSink{buf: buf},
+	t.Run("nested list", func(t *testing.T) {
+		t.Parallel()
+		tfs := shimv2.NewSchemaMap(map[string]*schema.Schema{
+			"foo": {
+				Type: schema.TypeSet,
+				Elem: &schema.Schema{
+					Type: schema.TypeList,
+					Elem: &schema.Schema{
+						Type: schema.TypeString,
+					},
+				},
+			},
+		})
+
+		differ := detailedDiffer{
+			ctx: context.Background(),
+			tfs: tfs,
+			ps:  nil,
+		}
+
+		res := differ.calculateSetHashIndexMap(
+			newPropertyPath("foo"),
+			[]resource.PropertyValue{resource.NewArrayProperty([]resource.PropertyValue{resource.NewStringProperty("val1")})},
+		)
+
+		autogold.Expect(hashIndexMap{setHash(3397903954): arrayIndex(0)}).Equal(t, res)
 	})
 
-	differ := detailedDiffer{
-		ctx: ctx,
-		tfs: tfs,
-		ps:  nil,
-	}
+	t.Run("panicing set hash caught", func(t *testing.T) {
+		t.Parallel()
+		tfs := shimv2.NewSchemaMap(map[string]*schema.Schema{
+			"foo": {
+				Type: schema.TypeSet,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
+				Set: func(v interface{}) int {
+					panic("test")
+				},
+			},
+		})
 
-	differ.calculateSetHashIndexMap(
-		newPropertyPath("foo"),
-		[]resource.PropertyValue{resource.NewStringProperty("val1")},
-	)
+		buf := &bytes.Buffer{}
+		ctx := logging.InitLogging(context.Background(), logging.LogOptions{
+			LogSink: &testLogSink{buf: buf},
+		})
 
-	require.Contains(t, buf.String(), "Failed to calculate preview for element in foo")
+		differ := detailedDiffer{
+			ctx: ctx,
+			tfs: tfs,
+			ps:  nil,
+		}
+
+		differ.calculateSetHashIndexMap(
+			newPropertyPath("foo"),
+			[]resource.PropertyValue{resource.NewStringProperty("val1")},
+		)
+
+		require.Contains(t, buf.String(), "Failed to calculate preview for element in foo")
+	})
 }
 
 func TestDetailedDiffReplaceOverrideFalse(t *testing.T) {
