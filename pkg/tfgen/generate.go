@@ -1773,6 +1773,22 @@ func (g *Generator) propertyVariable(parentPath paths.TypePath, key string,
 		if sch != nil {
 			schema = sch.Get(key)
 		}
+		// Suppress write-only attributes via SchemaInfo.Omit
+		//TODO remove when https://github.com/pulumi/pulumi/issues/16600 fully supports ephemeral resources and fields
+		if schema.WriteOnly() {
+			// Create new info map if ours is nil
+			if info == nil {
+				info = make(map[string]*tfbridge.SchemaInfo)
+			}
+			// Set Omit to true
+			info[key] = &tfbridge.SchemaInfo{
+				Omit: true,
+			}
+			//TODO: in AWS this still leaves us with some related resources such as `wo_version`
+			// that will be nonsensical to use and potentially confuse the customer.
+			// But it shouldn't break any users just having them.
+		}
+
 		var varInfo *tfbridge.SchemaInfo
 		if info != nil {
 			varInfo = info[key]
