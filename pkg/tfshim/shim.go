@@ -180,6 +180,7 @@ type Schema interface {
 	Deprecated() string
 	Removed() string
 	Sensitive() bool
+	WriteOnly() bool
 
 	SetElement(config interface{}) (interface{}, error)
 	SetHash(v interface{}) int

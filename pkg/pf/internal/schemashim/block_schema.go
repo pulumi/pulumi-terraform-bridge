@@ -112,6 +112,7 @@ func (*blockSchema) Computed() bool       { return false }
 func (*blockSchema) ForceNew() bool       { return false }
 func (*blockSchema) Removed() string      { return "" }
 func (*blockSchema) Sensitive() bool      { return false }
+func (*blockSchema) WriteOnly() bool      { return false }
 func (s *blockSchema) Deprecated() string { return s.block.GetDeprecationMessage() }
 func (s *blockSchema) MaxItems() int      { return int(s.block.GetMaxItems()) }
 func (s *blockSchema) MinItems() int      { return int(s.block.GetMinItems()) }
