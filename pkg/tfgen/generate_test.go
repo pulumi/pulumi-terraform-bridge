@@ -399,6 +399,7 @@ func Test_ProviderWithOmittedTypes(t *testing.T) {
 }
 
 func TestBridgeOmitsWriteOnlyFields(t *testing.T) {
+	t.Parallel()g
 	p := (&shimschema.Provider{
 		ResourcesMap: shimschema.ResourceMap{
 			"test_res_with_wo": (&shimschema.Resource{
@@ -445,6 +446,7 @@ func TestBridgeOmitsWriteOnlyFields(t *testing.T) {
 }
 
 func TestOmitWriteOnlyFieldsErrorWhenNotOptional(t *testing.T) {
+	t.Parallel()
 	p := (&shimschema.Provider{
 		ResourcesMap: shimschema.ResourceMap{
 			"test_res_wo": (&shimschema.Resource{
@@ -471,6 +473,7 @@ func TestOmitWriteOnlyFieldsErrorWhenNotOptional(t *testing.T) {
 		},
 	})
 	require.Error(t, err)
+	//nolint:lll
 	require.ErrorContains(t, err, "required property \"password_wo[pulumi:\\\"passwordWo\\\"]\" (@ resource[key=\"test_res_wo\",token=\"test:index:WriteOnly\"].outputs.password_wo[pulumi:\"passwordWo\"]) may not be omitted from binding generation\n\n")
 }
 
