@@ -72,6 +72,10 @@ func (s *attrSchema) Computed() bool {
 	return s.attr.IsComputed()
 }
 
+func (s *attrSchema) WriteOnly() bool {
+	return s.attr.IsWriteOnly()
+}
+
 func (s *attrSchema) ForceNew() bool {
 	// TODO[pulumi/pulumi-terraform-bridge#818] try harder to detect
 	return false
