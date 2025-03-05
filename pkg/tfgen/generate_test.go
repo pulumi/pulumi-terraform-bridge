@@ -398,6 +398,82 @@ func Test_ProviderWithOmittedTypes(t *testing.T) {
 	})
 }
 
+func TestBridgeOmitsWriteOnlyFields(t *testing.T) {
+	p := (&shimschema.Provider{
+		ResourcesMap: shimschema.ResourceMap{
+			"test_res_with_wo": (&shimschema.Resource{
+				Schema: shimschema.SchemaMap{
+					"password_wo": (&shimschema.Schema{
+						Type:      shim.TypeString,
+						WriteOnly: true,
+						Optional:  true,
+					}).Shim(),
+				},
+			}).Shim(),
+			"test_res_no_wo": (&shimschema.Resource{
+				Schema: shimschema.SchemaMap{
+					"password_regular": (&shimschema.Schema{
+						Type:     shim.TypeString,
+						Optional: true,
+					}).Shim(),
+				},
+			}).Shim(),
+		},
+	}).Shim()
+	resWO := &tfbridge.ResourceInfo{
+		Tok: "test:index:WriteOnly",
+	}
+	resNoWO := &tfbridge.ResourceInfo{
+		Tok: "test:index:NoWriteOnly",
+	}
+	schemaResult, err := GenerateSchemaWithOptions(GenerateSchemaOptions{
+		ProviderInfo: tfbridge.ProviderInfo{
+			Name: "test",
+			P:    p,
+			Resources: map[string]*tfbridge.ResourceInfo{
+				"test_res_with_wo": resWO,
+				"test_res_no_wo":   resNoWO,
+			},
+		},
+	})
+	require.NoError(t, err)
+
+	spec := schemaResult.PackageSpec
+	assert.Len(t, spec.Resources, 2)
+	assert.Len(t, spec.Resources["test:index:WriteOnly"].InputProperties, 0)
+	assert.Len(t, spec.Resources["test:index:NoWriteOnly"].InputProperties, 1)
+}
+
+func TestOmitWriteOnlyFieldsErrorWhenNotOptional(t *testing.T) {
+	p := (&shimschema.Provider{
+		ResourcesMap: shimschema.ResourceMap{
+			"test_res_wo": (&shimschema.Resource{
+				Schema: shimschema.SchemaMap{
+					"password_wo": (&shimschema.Schema{
+						Type:      shim.TypeString,
+						WriteOnly: true,
+						Required:  true,
+					}).Shim(),
+				},
+			}).Shim(),
+		},
+	}).Shim()
+	resWO := &tfbridge.ResourceInfo{
+		Tok: "test:index:WriteOnly",
+	}
+	_, err := GenerateSchemaWithOptions(GenerateSchemaOptions{
+		ProviderInfo: tfbridge.ProviderInfo{
+			Name: "test",
+			P:    p,
+			Resources: map[string]*tfbridge.ResourceInfo{
+				"test_res_wo": resWO,
+			},
+		},
+	})
+	require.Error(t, err)
+	require.ErrorContains(t, err, "required property \"password_wo[pulumi:\\\"passwordWo\\\"]\" (@ resource[key=\"test_res_wo\",token=\"test:index:WriteOnly\"].outputs.password_wo[pulumi:\"passwordWo\"]) may not be omitted from binding generation\n\n")
+}
+
 func TestModulePlacementForType(t *testing.T) {
 	t.Parallel()
 
