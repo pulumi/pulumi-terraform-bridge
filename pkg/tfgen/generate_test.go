@@ -427,7 +427,11 @@ func TestBridgeOmitsWriteOnlyFields(t *testing.T) {
 	resNoWO := &tfbridge.ResourceInfo{
 		Tok: "test:index:NoWriteOnly",
 	}
+	nilSink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
+		Color: colors.Never,
+	})
 	schemaResult, err := GenerateSchemaWithOptions(GenerateSchemaOptions{
+		DiagnosticsSink: nilSink,
 		ProviderInfo: tfbridge.ProviderInfo{
 			Name: "test",
 			P:    p,
@@ -463,7 +467,11 @@ func TestOmitWriteOnlyFieldsErrorWhenNotOptional(t *testing.T) {
 	resWO := &tfbridge.ResourceInfo{
 		Tok: "test:index:WriteOnly",
 	}
+	nilSink := diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
+		Color: colors.Never,
+	})
 	_, err := GenerateSchemaWithOptions(GenerateSchemaOptions{
+		DiagnosticsSink: nilSink,
 		ProviderInfo: tfbridge.ProviderInfo{
 			Name: "test",
 			P:    p,
