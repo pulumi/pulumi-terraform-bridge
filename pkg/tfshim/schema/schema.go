@@ -24,6 +24,7 @@ type Schema struct {
 	Removed       string
 	Deprecated    string
 	Sensitive     bool
+	WriteOnly     bool
 }
 
 func (s *Schema) Shim() shim.Schema {
@@ -117,6 +118,10 @@ func (s SchemaShim) Deprecated() string {
 
 func (s SchemaShim) Sensitive() bool {
 	return s.V.Sensitive
+}
+
+func (s SchemaShim) WriteOnly() bool {
+	return s.V.WriteOnly
 }
 
 func (s SchemaShim) SetElement(v interface{}) (interface{}, error) {

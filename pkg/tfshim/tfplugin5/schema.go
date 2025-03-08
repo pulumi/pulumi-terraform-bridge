@@ -26,6 +26,7 @@ type attributeSchema struct {
 	minItems    int
 	deprecated  string
 	sensitive   bool
+	writeOnly   bool
 }
 
 func (s *attributeSchema) Type() shim.ValueType {
@@ -102,6 +103,10 @@ func (s *attributeSchema) Deprecated() string {
 
 func (s *attributeSchema) Sensitive() bool {
 	return s.sensitive
+}
+
+func (s *attributeSchema) WriteOnly() bool {
+	return s.writeOnly
 }
 
 func (s *attributeSchema) SetElement(v interface{}) (interface{}, error) {
