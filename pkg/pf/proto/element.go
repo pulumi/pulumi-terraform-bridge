@@ -93,7 +93,6 @@ func (e element) ExactlyOneOf() []string                      { return nil }
 func (e element) Deprecated() string                          { return "" }
 func (e element) Removed() string                             { return "" }
 func (e element) Sensitive() bool                             { return false }
-func (e element) WriteOnly() bool                             { return false }
 func (e element) SetElement(interface{}) (interface{}, error) { return nil, nil }
 func (e element) SetHash(interface{}) int                     { return 0 }
 

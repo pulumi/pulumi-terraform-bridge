@@ -399,7 +399,7 @@ func Test_ProviderWithOmittedTypes(t *testing.T) {
 }
 
 func TestBridgeOmitsWriteOnlyFields(t *testing.T) {
-	t.Parallel()g
+	t.Parallel()
 	p := (&shimschema.Provider{
 		ResourcesMap: shimschema.ResourceMap{
 			"test_res_with_wo": (&shimschema.Resource{

@@ -179,7 +179,6 @@ func (tupElementAttr) GetMarkdownDescription() string { return "" }
 func (tupElementAttr) IsOptional() bool               { return false }
 func (tupElementAttr) IsRequired() bool               { return true }
 func (tupElementAttr) IsSensitive() bool              { return false }
-func (tupElementAttr) IsWriteOnly() bool              { return false }
 func (tupElementAttr) IsComputed() bool               { return false }
 
 func (t tupElementAttr) GetType() attr.Type { return t.e }

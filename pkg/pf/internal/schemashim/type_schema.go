@@ -55,7 +55,6 @@ func (*typeSchema) ForceNew() bool  { return false }
 func (*typeSchema) Optional() bool  { return false }
 func (*typeSchema) Required() bool  { return false }
 func (*typeSchema) Sensitive() bool { return false }
-func (*typeSchema) WriteOnly() bool { return false }
 
 func (s *typeSchema) Elem() interface{} {
 	switch tt := s.t.(type) {

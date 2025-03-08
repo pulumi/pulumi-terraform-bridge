@@ -135,7 +135,6 @@ func (m blockSchema) ConflictsWith() []string             { return nil }
 func (m blockSchema) ExactlyOneOf() []string              { return nil }
 func (m blockSchema) Removed() string                     { return "" }
 func (m blockSchema) Sensitive() bool                     { return false }
-func (m blockSchema) WriteOnly() bool                     { return false }
 
 func (m blockSchema) Deprecated() string { return deprecated(m.block.Block.Deprecated) }
 

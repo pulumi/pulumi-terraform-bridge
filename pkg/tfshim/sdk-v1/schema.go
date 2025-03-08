@@ -123,12 +123,6 @@ func (s v1Schema) Sensitive() bool {
 	return s.tf.Sensitive
 }
 
-func (s v1Schema) WriteOnly() bool {
-	// Upstream v1 does not support this field.
-	// Return false by default.
-	return false
-}
-
 func (s v1Schema) SetElement(v interface{}) (interface{}, error) {
 	raw := map[string]interface{}{"e": []interface{}{v}}
 	reader := &schema.ConfigFieldReader{

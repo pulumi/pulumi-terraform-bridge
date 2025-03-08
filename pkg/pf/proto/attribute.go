@@ -33,7 +33,6 @@ func (a attribute) Description() string { return a.attr.Description }
 func (a attribute) Computed() bool      { return a.attr.Computed }
 func (a attribute) ForceNew() bool      { return false } // The information is not available from tfprotov6
 func (a attribute) Sensitive() bool     { return a.attr.Sensitive }
-func (a attribute) WriteOnly() bool     { return a.attr.WriteOnly }
 func (a attribute) Removed() string     { return "" }
 func (a attribute) Deprecated() string  { return deprecated(a.attr.Deprecated) }
 

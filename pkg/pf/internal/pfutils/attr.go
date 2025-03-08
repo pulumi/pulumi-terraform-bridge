@@ -45,7 +45,6 @@ type AttrLike interface {
 	IsOptional() bool
 	IsRequired() bool
 	IsSensitive() bool
-	IsWriteOnly() bool
 	GetDeprecationMessage() string
 	GetDescription() string
 	GetMarkdownDescription() string
