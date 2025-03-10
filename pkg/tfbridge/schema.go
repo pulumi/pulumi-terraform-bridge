@@ -300,15 +300,15 @@ type conversionContext struct {
 	UseTFSetTypes bool
 }
 
-type makeTerraformInputsOptions struct {
+type MakeTerraformInputsOptions struct {
 	DisableDefaults   bool
 	DisableTFDefaults bool
 }
 
-func makeTerraformInputsWithOptions(
+func MakeTerraformInputsWithOptions(
 	ctx context.Context, instance *PulumiResource, config resource.PropertyMap,
 	olds, news resource.PropertyMap, tfs shim.SchemaMap, ps map[string]*SchemaInfo,
-	opts makeTerraformInputsOptions,
+	opts MakeTerraformInputsOptions,
 ) (map[string]interface{}, AssetTable, error) {
 	cdOptions := ComputeDefaultOptions{}
 	if instance != nil {
@@ -342,7 +342,7 @@ func MakeTerraformInputs(
 	ctx context.Context, instance *PulumiResource, config resource.PropertyMap,
 	olds, news resource.PropertyMap, tfs shim.SchemaMap, ps map[string]*SchemaInfo,
 ) (map[string]interface{}, AssetTable, error) {
-	return makeTerraformInputsWithOptions(ctx, instance, config, olds, news, tfs, ps, makeTerraformInputsOptions{})
+	return MakeTerraformInputsWithOptions(ctx, instance, config, olds, news, tfs, ps, MakeTerraformInputsOptions{})
 }
 
 // makeTerraformInput takes a single property plus custom schema info and does whatever is necessary
@@ -1232,8 +1232,8 @@ func MakeTerraformOutput(
 func MakeTerraformConfig(ctx context.Context, p *Provider, m resource.PropertyMap,
 	tfs shim.SchemaMap, ps map[string]*SchemaInfo,
 ) (shim.ResourceConfig, AssetTable, error) {
-	inputs, assets, err := makeTerraformInputsWithOptions(ctx, nil, p.configValues, nil, m, tfs, ps,
-		makeTerraformInputsOptions{
+	inputs, assets, err := MakeTerraformInputsWithOptions(ctx, nil, p.configValues, nil, m, tfs, ps,
+		MakeTerraformInputsOptions{
 			DisableDefaults: true, DisableTFDefaults: true,
 		})
 	if err != nil {
@@ -1282,12 +1282,12 @@ func makeConfig(v interface{}) interface{} {
 	}
 }
 
-type MakeTerraformInputsOptions struct {
+type MakeTerraformConfigOptions struct {
 	ProviderConfig bool
 }
 
 func MakeTerraformConfigFromInputsWithOpts(
-	ctx context.Context, p shim.Provider, inputs map[string]interface{}, opts MakeTerraformInputsOptions,
+	ctx context.Context, p shim.Provider, inputs map[string]interface{}, opts MakeTerraformConfigOptions,
 ) shim.ResourceConfig {
 	raw := makeConfig(inputs).(map[string]interface{})
 	if opts.ProviderConfig {
@@ -1300,15 +1300,15 @@ func MakeTerraformConfigFromInputsWithOpts(
 func MakeTerraformConfigFromInputs(
 	ctx context.Context, p shim.Provider, inputs map[string]interface{},
 ) shim.ResourceConfig {
-	return MakeTerraformConfigFromInputsWithOpts(ctx, p, inputs, MakeTerraformInputsOptions{})
+	return MakeTerraformConfigFromInputsWithOpts(ctx, p, inputs, MakeTerraformConfigOptions{})
 }
 
-type makeTerraformStateOptions struct {
-	defaultZeroSchemaVersion bool
+type MakeTerraformStateOptions struct {
+	DefaultZeroSchemaVersion bool
 }
 
-func makeTerraformStateWithOpts(
-	ctx context.Context, res Resource, id string, m resource.PropertyMap, opts makeTerraformStateOptions,
+func MakeTerraformStateWithOptions(
+	ctx context.Context, res Resource, id string, m resource.PropertyMap, opts MakeTerraformStateOptions,
 ) (shim.InstanceState, error) {
 	// Parse out any metadata from the state.
 	var meta map[string]interface{}
@@ -1321,7 +1321,7 @@ func makeTerraformStateWithOpts(
 		// schema version, return a meta bag with the current schema version. This
 		// helps avoid migration issues.
 		defaultSchemaVersion := strconv.Itoa(res.TF.SchemaVersion())
-		if opts.defaultZeroSchemaVersion {
+		if opts.DefaultZeroSchemaVersion {
 			defaultSchemaVersion = "0"
 		}
 		meta = map[string]interface{}{"schema_version": defaultSchemaVersion}
@@ -1330,8 +1330,8 @@ func makeTerraformStateWithOpts(
 	// Turn the resource properties into a map. For the most part, this is a straight
 	// Mappable, but we use MapReplace because we use float64s and Terraform uses
 	// ints, to represent numbers.
-	inputs, _, err := makeTerraformInputsWithOptions(ctx, nil, nil, nil, m, res.TF.Schema(), res.Schema.Fields,
-		makeTerraformInputsOptions{DisableDefaults: true, DisableTFDefaults: true})
+	inputs, _, err := MakeTerraformInputsWithOptions(ctx, nil, nil, nil, m, res.TF.Schema(), res.Schema.Fields,
+		MakeTerraformInputsOptions{DisableDefaults: true, DisableTFDefaults: true})
 	if err != nil {
 		return nil, err
 	}
@@ -1346,7 +1346,7 @@ func makeTerraformStateWithOpts(
 func MakeTerraformState(
 	ctx context.Context, res Resource, id string, m resource.PropertyMap,
 ) (shim.InstanceState, error) {
-	return makeTerraformStateWithOpts(ctx, res, id, m, makeTerraformStateOptions{})
+	return MakeTerraformStateWithOptions(ctx, res, id, m, MakeTerraformStateOptions{})
 }
 
 type unmarshalTerraformStateOptions struct {
@@ -1370,8 +1370,8 @@ func unmarshalTerraformStateWithOpts(
 		return nil, err
 	}
 
-	return makeTerraformStateWithOpts(ctx, r, id, props,
-		makeTerraformStateOptions(opts),
+	return MakeTerraformStateWithOptions(ctx, r, id, props,
+		MakeTerraformStateOptions{DefaultZeroSchemaVersion: opts.defaultZeroSchemaVersion},
 	)
 }
 

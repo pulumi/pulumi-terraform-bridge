@@ -720,13 +720,13 @@ func buildTerraformConfig(ctx context.Context, p *Provider, vars resource.Proper
 		}
 	}
 
-	inputs, _, err := makeTerraformInputsWithOptions(ctx, nil, tfVars, nil, tfVars, p.config, p.info.Config,
-		makeTerraformInputsOptions{})
+	inputs, _, err := MakeTerraformInputsWithOptions(ctx, nil, tfVars, nil, tfVars, p.config, p.info.Config,
+		MakeTerraformInputsOptions{})
 	if err != nil {
 		return nil, err
 	}
 
-	return MakeTerraformConfigFromInputsWithOpts(ctx, p.tf, inputs, MakeTerraformInputsOptions{ProviderConfig: true}), nil
+	return MakeTerraformConfigFromInputsWithOpts(ctx, p.tf, inputs, MakeTerraformConfigOptions{ProviderConfig: true}), nil
 }
 
 func validateProviderConfig(
@@ -1031,10 +1031,10 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 	}
 
 	tfname := res.TFName
-	inputs, _, err := makeTerraformInputsWithOptions(ctx,
+	inputs, _, err := MakeTerraformInputsWithOptions(ctx,
 		&PulumiResource{URN: urn, Properties: news, Seed: req.RandomSeed, Autonaming: autonaming},
 		p.configValues, olds, news, schemaMap, res.Schema.Fields,
-		makeTerraformInputsOptions{DisableTFDefaults: true})
+		MakeTerraformInputsOptions{DisableTFDefaults: true})
 	if err != nil {
 		return nil, err
 	}
@@ -1050,10 +1050,10 @@ func (p *Provider) Check(ctx context.Context, req *pulumirpc.CheckRequest) (*pul
 	failures = append(failures, p.adaptCheckFailures(ctx, urn, false /*isProvider*/, schemaMap, schemaInfos, errs)...)
 
 	// Now re-generate the inputs WITH the TF defaults
-	inputs, assets, err := makeTerraformInputsWithOptions(ctx,
+	inputs, assets, err := MakeTerraformInputsWithOptions(ctx,
 		&PulumiResource{URN: urn, Properties: news, Seed: req.RandomSeed, Autonaming: autonaming},
 		p.configValues, olds, news, schemaMap, res.Schema.Fields,
-		makeTerraformInputsOptions{})
+		MakeTerraformInputsOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -1136,9 +1136,9 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 		return nil, err
 	}
 
-	state, err := makeTerraformStateWithOpts(ctx, res, req.GetId(), olds,
-		makeTerraformStateOptions{
-			defaultZeroSchemaVersion: opts.defaultZeroSchemaVersion,
+	state, err := MakeTerraformStateWithOptions(ctx, res, req.GetId(), olds,
+		MakeTerraformStateOptions{
+			DefaultZeroSchemaVersion: opts.defaultZeroSchemaVersion,
 		},
 	)
 	if err != nil {
@@ -1553,10 +1553,10 @@ func (p *Provider) processImportValidationErrors(
 	inputValueWithoutSecrets := propertyvalue.RemoveSecrets(resource.NewObjectProperty(inputs))
 	inputsWithoutSecrets := inputValueWithoutSecrets.ObjectValue()
 	logger := GetLogger(ctx)
-	tfInputs, _, err := makeTerraformInputsWithOptions(ctx,
+	tfInputs, _, err := MakeTerraformInputsWithOptions(ctx,
 		&PulumiResource{URN: urn, Properties: inputs},
 		p.configValues, inputsWithoutSecrets, inputsWithoutSecrets, schema, schemaInfos,
-		makeTerraformInputsOptions{DisableTFDefaults: true})
+		MakeTerraformInputsOptions{DisableTFDefaults: true})
 	if err != nil {
 		logger.Debug(fmt.Sprintf("Failed to makeTerraformInputsOptions."+
 			" This could lead to validation errors during resource import:\nError: %s", err.Error()))
@@ -1636,9 +1636,9 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 		return nil, err
 	}
 
-	state, err := makeTerraformStateWithOpts(ctx, res, req.GetId(), olds,
-		makeTerraformStateOptions{
-			defaultZeroSchemaVersion: opts.defaultZeroSchemaVersion,
+	state, err := MakeTerraformStateWithOptions(ctx, res, req.GetId(), olds,
+		MakeTerraformStateOptions{
+			DefaultZeroSchemaVersion: opts.defaultZeroSchemaVersion,
 		})
 	if err != nil {
 		return nil, errors.Wrapf(err, "unmarshaling %s's instance state", urn)
@@ -1827,14 +1827,14 @@ func (p *Provider) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*p
 
 	// First, create the inputs.
 	tfname := ds.TFName
-	inputs, _, err := makeTerraformInputsWithOptions(
+	inputs, _, err := MakeTerraformInputsWithOptions(
 		ctx,
 		&PulumiResource{Properties: args},
 		p.configValues,
 		nil, args,
 		ds.TF.Schema(),
 		ds.Schema.Fields,
-		makeTerraformInputsOptions{})
+		MakeTerraformInputsOptions{})
 	if err != nil {
 		return nil, errors.Wrapf(err, "couldn't prepare resource %v input state", tfname)
 	}
