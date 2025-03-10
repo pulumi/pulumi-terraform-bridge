@@ -17,6 +17,7 @@ package convert
 import (
 	"fmt"
 	"math/big"
+	"strconv"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -35,7 +36,7 @@ func newNumberDecoder() Decoder {
 	return &numberDecoder{}
 }
 
-func (*numberEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.Value, error) {
+func (ne *numberEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.Value, error) {
 	if propertyValueIsUnknown(p) {
 		return tftypes.NewValue(tftypes.Number, tftypes.UnknownValue), nil
 	}
@@ -46,14 +47,30 @@ func (*numberEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.Value
 	// https://github.com/pulumi/pulumi-aws/issues/5222 where SDKv2 TypeNullableInt gets parsed
 	// into a schema that now expects a number. This case interprets an empty string value as a
 	// nil number when parsing numbers.
-	if p.IsString() && p.StringValue() == "" {
-		return tftypes.NewValue(tftypes.Number, nil), nil
+	if p.IsString() {
+		if p.StringValue() == "" {
+			return tftypes.NewValue(tftypes.Number, nil), nil
+		}
+		v, ok := ne.tryParseNumber(p.StringValue())
+		if ok {
+			return tftypes.NewValue(tftypes.Number, v), nil
+		}
 	}
 	if !p.IsNumber() {
 		return tftypes.NewValue(tftypes.Number, nil),
 			fmt.Errorf("Expected a Number, got %#v %v", p, p.IsString())
 	}
 	return tftypes.NewValue(tftypes.Number, p.NumberValue()), nil
+}
+
+func (*numberEncoder) tryParseNumber(s string) (any, bool) {
+	if v, err := strconv.ParseInt(s, 10 /* base */, 64 /* bitSize */); err == nil {
+		return v, true
+	}
+	if v, err := strconv.ParseFloat(s, 64); err == nil {
+		return v, true
+	}
+	return nil, false
 }
 
 func (*numberDecoder) toPropertyValue(v tftypes.Value) (resource.PropertyValue, error) {
