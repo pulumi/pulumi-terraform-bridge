@@ -51,6 +51,11 @@ type AttrLike interface {
 	GetType() attr.Type
 }
 
+type AttrLikeWithWriteOnly interface {
+	AttrLike
+	IsWriteOnly() bool
+}
+
 func FromProviderAttribute(x pschema.Attribute) Attr {
 	return FromAttrLike(x)
 }

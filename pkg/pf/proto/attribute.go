@@ -22,6 +22,7 @@ import (
 )
 
 var _ = shim.Schema(attribute{})
+var _ = shim.SchemaWithWriteOnly(attribute{})
 
 type attribute struct{ attr tfprotov6.SchemaAttribute }
 
@@ -35,6 +36,7 @@ func (a attribute) ForceNew() bool      { return false } // The information is n
 func (a attribute) Sensitive() bool     { return a.attr.Sensitive }
 func (a attribute) Removed() string     { return "" }
 func (a attribute) Deprecated() string  { return deprecated(a.attr.Deprecated) }
+func (a attribute) WriteOnly() bool     { return a.attr.WriteOnly }
 
 // Type information
 
