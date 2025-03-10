@@ -204,15 +204,8 @@ func stripSchemaGeneratedByTFPluginDocs(content []byte) []byte {
 func translateCodeBlocks(contentStr string, g *Generator) (string, error) {
 	var returnContent string
 	// Extract code blocks
-	codeFence := "```"
-	var codeBlocks []codeBlock
-	for i := 0; i < (len(contentStr) - len(codeFence)); i++ {
-		block, found := findCodeBlock(contentStr, i)
-		if found {
-			codeBlocks = append(codeBlocks, block)
-			i = block.end + 1
-		}
-	}
+	const codeFence string = "```"
+	codeBlocks := findCodeBlocks([]byte(contentStr))
 	if len(codeBlocks) == 0 {
 		return contentStr, nil
 	}

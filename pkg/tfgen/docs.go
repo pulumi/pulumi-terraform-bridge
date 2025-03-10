@@ -37,6 +37,7 @@ import (
 	bf "github.com/russross/blackfriday/v2"
 	"github.com/spf13/afero"
 	"github.com/yuin/goldmark"
+	"github.com/yuin/goldmark/ast"
 	gmast "github.com/yuin/goldmark/ast"
 	gmtext "github.com/yuin/goldmark/text"
 	"golang.org/x/text/cases"
@@ -46,6 +47,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/parse"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/parse/section"
 )
 
 const (
@@ -1516,65 +1518,28 @@ type codeBlock struct {
 	headerStart int // The index of the first "#" in a Markdown header. A value of -1 indicates there's no header.
 }
 
-func findCodeBlock(doc string, i int) (codeBlock, bool) {
-	codeFence := "```"
-	var block codeBlock
-	// find opening code fence
-	if doc[i:i+len(codeFence)] == codeFence {
-		block.start = i
-		// find closing code fence
-		for j := i + len(codeFence); j < (len(doc) - len(codeFence)); j++ {
-			if doc[j:j+len(codeFence)] == codeFence {
-				block.end = j
-				return block, true
+func findCodeBlocks(docs []byte) []codeBlock {
+	rootNode := goldmark.New(goldmark.WithExtensions(parse.TFRegistryExtension)).
+		Parser().Parse(gmtext.NewReader(docs))
+
+	var codeBlocks []codeBlock
+	parse.WalkNode(rootNode, func(cb *ast.FencedCodeBlock) {
+		lines := cb.Lines()
+
+		headerStart := -1
+		for p := cb.Parent(); p != nil; p = p.Parent() {
+			if s, ok := p.(*section.Section); ok {
+				headerStart = bytes.LastIndexByte(docs[:s.FirstChild().Lines().At(0).Start], '\n') + 1
+				break
 			}
 		}
-		return block, false
-	}
-	return block, false
-}
 
-func findHeader(doc string, i int) (int, bool) {
-	h2 := "##"
-	h3 := "###"
-	var foundH2, foundH3 bool
-
-	if i == 0 {
-		// handle header at very beginning of doc
-		foundH2 = doc[i:i+len(h2)] == h2
-		foundH3 = doc[i:i+len(h3)] == h3
-	} else {
-		// all other headers must be preceded by a newline
-		foundH2 = doc[i:i+len(h2)] == h2 && string(doc[i-1]) == "\n"
-		foundH3 = doc[i:i+len(h3)] == h3 && string(doc[i-1]) == "\n"
-	}
-
-	if foundH3 {
-		return i + len(h3), true
-	}
-	if foundH2 {
-		return i + len(h2), true
-	}
-	return -1, false
-}
-
-func findFencesAndHeaders(doc string) []codeBlock {
-	codeFence := "```"
-	var codeBlocks []codeBlock
-	headerStart := -1
-	for i := 0; i < (len(doc) - len(codeFence)); i++ {
-		block, found := findCodeBlock(doc, i)
-		if found {
-			block.headerStart = headerStart
-			codeBlocks = append(codeBlocks, block)
-			i = block.end + 1
-		}
-		headerEnd, found := findHeader(doc, i)
-		if found {
-			headerStart = i
-			i = headerEnd
-		}
-	}
+		codeBlocks = append(codeBlocks, codeBlock{
+			start:       bytes.LastIndexByte(docs[:lines.At(0).Start-1], '\n') + 1,
+			end:         lines.At(lines.Len() - 1).Stop,
+			headerStart: headerStart,
+		})
+	})
 	return codeBlocks
 }
 
@@ -1593,14 +1558,13 @@ func (g *Generator) convertExamplesInner(
 		_, err := fmt.Fprintf(output, f, args...)
 		contract.AssertNoErrorf(err, "Cannot fail to write out output buffer")
 	}
-	codeBlocks := findFencesAndHeaders(docs)
 	const codeFence = "```"
 
 	// Traverse the code blocks and take appropriate action before appending to output
 	textStart := 0
 	stripSection := false
 	stripSectionHeader := 0
-	for _, tfBlock := range codeBlocks {
+	for _, tfBlock := range findCodeBlocks([]byte(docs)) {
 		// if the section has a header we append the header after trying to convert the code.
 		hasHeader := tfBlock.headerStart >= 0 && textStart < tfBlock.headerStart
 
