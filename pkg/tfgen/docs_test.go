@@ -1962,6 +1962,14 @@ func TestConvertExamples(t *testing.T) {
 				token:    "aws:lambda/function:Function",
 			},
 		},
+		{
+			name: "outscale_volume",
+			path: examplePath{
+				fullPath: "#/resources/outscale:index/volume:Volume",
+				token:    "outscale:index/volume:Volume",
+			},
+			language: ref(Schema),
+		},
 	}
 
 	for _, tc := range testCases {
@@ -2125,7 +2133,7 @@ func TestFindFencesAndHeaders(t *testing.T) {
 			testDocBytes, err := os.ReadFile(tc.path)
 			require.NoError(t, err)
 			testDoc := string(testDocBytes)
-			actual := findFencesAndHeaders(testDoc)
+			actual := findCodeBlocks([]byte(testDoc))
 			assert.Equal(t, tc.expected, actual)
 		})
 	}
