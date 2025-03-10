@@ -1774,15 +1774,14 @@ func (g *Generator) propertyVariable(parentPath paths.TypePath, key string,
 			shimSchema = schemaMap.Get(key)
 		}
 		// Suppress write-only attributes via SchemaInfo.Omit
-		// TODO remove when the bridge fully supports ephemeral resources and fields
+		// TODO remove when the bridge fully supports write-only fields:
+		// https://github.com/pulumi/pulumi-terraform-bridge/issues/2938
 		schemaWithWriteOnly, ok := shimSchema.(shim.SchemaWithWriteOnly)
 		if ok {
 			if schemaWithWriteOnly.WriteOnly() {
-				// Create new info map if ours is nil
 				if info == nil {
 					info = make(map[string]*tfbridge.SchemaInfo)
 				}
-				// Set Omit to true
 				if val, ok := info[key]; ok {
 					val.Omit = true
 				} else {
