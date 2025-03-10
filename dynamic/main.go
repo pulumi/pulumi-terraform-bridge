@@ -214,12 +214,20 @@ func initialSetup() (info.Provider, pfbridge.ProviderMetadata, func() error) {
 						return plugin.ParameterizeResponse{}, err
 					}
 					versionTag := "v" + info.Version
-					_, err = git.PlainCloneContext(ctx, tmpDir, false, &git.CloneOptions{
+					cloneArgs := &git.CloneOptions{
 						URL:           info.Repository,
 						Depth:         1,
 						Tags:          git.NoTags,
 						ReferenceName: plumbing.NewTagReferenceName(versionTag),
-					})
+					}
+					_, err = git.PlainCloneContext(ctx, tmpDir, false, cloneArgs)
+
+					// If we don't have a spec at v+info.Version, maybe we have a spec at info.Version itself.
+					if errors.Is(err, git.NoMatchingRefSpecError{}) {
+						versionTag = info.Version
+						cloneArgs.ReferenceName = plumbing.NewTagReferenceName(versionTag)
+						_, err = git.PlainCloneContext(ctx, tmpDir, false, cloneArgs)
+					}
 					if err != nil {
 						return plugin.ParameterizeResponse{}, fmt.Errorf("failed to clone %q@%q: %w",
 							info.Repository, versionTag, err)
