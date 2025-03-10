@@ -17,6 +17,7 @@ package convert
 import (
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/require"
 )
@@ -26,5 +27,29 @@ func Test_numberEncoder_emptyStringToNull(t *testing.T) {
 	n := newNumberEncoder()
 	v, err := n.fromPropertyValue(resource.NewStringProperty(""))
 	require.NoError(t, err)
-	require.True(t, v.IsKnown())
+	require.True(t, v.IsNull())
+}
+
+func Test_nubmerEncoder_tryParseNumber_int(t *testing.T) {
+	t.Parallel()
+	n := newNumberEncoder().(*numberEncoder)
+	v, ok := n.tryParseNumber("42")
+	require.Equal(t, int64(42), v)
+	require.Equal(t, true, ok)
+	vv, err := n.fromPropertyValue(resource.NewStringProperty("42"))
+	require.NoError(t, err)
+	require.Equal(t, tftypes.Number, vv.Type())
+	require.True(t, vv.Equal(tftypes.NewValue(tftypes.Number, int64(42))))
+}
+
+func Test_nubmerEncoder_tryParseNumber_float(t *testing.T) {
+	t.Parallel()
+	n := newNumberEncoder().(*numberEncoder)
+	v, ok := n.tryParseNumber("42.5")
+	require.Equal(t, float64(42.5), v)
+	require.Equal(t, true, ok)
+	vv, err := n.fromPropertyValue(resource.NewStringProperty("42.5"))
+	require.NoError(t, err)
+	require.Equal(t, tftypes.Number, vv.Type())
+	require.True(t, vv.Equal(tftypes.NewValue(tftypes.Number, float64(42.5))))
 }
