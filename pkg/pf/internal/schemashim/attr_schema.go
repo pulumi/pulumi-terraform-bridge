@@ -30,6 +30,8 @@ type attrSchema struct {
 
 var _ shim.Schema = (*attrSchema)(nil)
 
+var _ shim.SchemaWithWriteOnly = (*attrSchema)(nil)
+
 func (s *attrSchema) Type() shim.ValueType {
 	ty := s.attr.GetType()
 	vt, err := convertType(ty)
@@ -137,6 +139,14 @@ func (*attrSchema) Removed() string {
 
 func (s *attrSchema) Sensitive() bool {
 	return s.attr.IsSensitive()
+}
+
+func (s *attrSchema) WriteOnly() bool {
+	schema, ok := s.attr.(pfutils.AttrLikeWithWriteOnly)
+	if ok {
+		return schema.IsWriteOnly()
+	}
+	return false
 }
 
 func (*attrSchema) SetElement(config interface{}) (interface{}, error) {

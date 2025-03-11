@@ -471,3 +471,53 @@ func TestTypeOverride(t *testing.T) {
 		})
 	}
 }
+
+func TestWriteOnlyOmit(t *testing.T) {
+	t.Parallel()
+
+	if runtime.GOOS == "windows" {
+		t.Skipf("Skipping on windows - tests cases need to be made robust to newline handling")
+	}
+
+	schema := rschema.Schema{
+		Attributes: map[string]rschema.Attribute{
+			"a1": rschema.StringAttribute{
+				Optional:  true,
+				WriteOnly: true,
+			},
+		},
+	}
+
+	info := &tfbridge.ResourceInfo{
+		Tok:  "testprovider:index:Res",
+		Docs: &tfbridge.DocInfo{Markdown: []byte{' '}},
+	}
+
+	if _, ok := schema.Attributes["id"]; !ok {
+		schema.Attributes["id"] = rschema.StringAttribute{Computed: true}
+	}
+
+	res, err := GenerateSchema(context.Background(), GenerateSchemaOptions{
+		ProviderInfo: tfbridge.ProviderInfo{
+			Name:             "testprovider",
+			UpstreamRepoPath: ".", // no invalid mappings warnings
+			P: pftfbridge.ShimProvider(&schemaTestProvider{
+				resources: map[string]rschema.Schema{
+					"res": schema,
+				},
+			}),
+			Resources: map[string]*tfbridge.ResourceInfo{
+				"test_res": info,
+			},
+			// Trim the schema for easier comparison
+			SchemaPostProcessor: func(p *pulumischema.PackageSpec) {
+				p.Language = nil
+				p.Provider.Description = ""
+			},
+		},
+	})
+	require.NoError(t, err)
+	var b bytes.Buffer
+	require.NoError(t, json.Indent(&b, res.ProviderMetadata.PackageSchema, "", "    "))
+	autogold.ExpectFile(t, autogold.Raw(b.String()))
+}
