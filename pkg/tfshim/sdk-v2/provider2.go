@@ -163,21 +163,12 @@ func (d *v2InstanceDiff2) DiffEqualDecisionOverride() shim.DiffOverride {
 	return d.diffEqualDecisionOverride
 }
 
-// Provides PlanResourceChange handling for select resources.
-type planResourceChangeImpl struct {
-	tf           *schema.Provider
-	server       *grpcServer
-	planEditFunc PlanStateEditFunc
-}
-
-var _ planResourceChangeProvider = (*planResourceChangeImpl)(nil)
-
 // If the user specifies custom timeout overrides for the resource, encode them in the magic `timeouts` key under config
 // and plannedState. This is how TF communicates this information on the gRPC protocol. The schema default timeouts need
 // not be specially encoded because the gRPC implementation already respects them. A slight complication here is that
 // some resources do not seem to allow customizing timeouts for certain operations, and their impliedType will not have
 // the corresponding slot. Warn the user if the custom timeout is a no-op.
-func (p *planResourceChangeImpl) configWithTimeouts(
+func (p *v2Provider) configWithTimeouts(
 	ctx context.Context,
 	c shim.ResourceConfig,
 	topts shim.TimeoutOptions,
@@ -223,7 +214,7 @@ func (p *planResourceChangeImpl) configWithTimeouts(
 	return config
 }
 
-func (*planResourceChangeImpl) warnIgnoredCustomTimeouts(
+func (*v2Provider) warnIgnoredCustomTimeouts(
 	ctx context.Context,
 	timeoutOverrides map[shim.TimeoutKey]time.Duration,
 ) {
@@ -240,7 +231,7 @@ func (*planResourceChangeImpl) warnIgnoredCustomTimeouts(
 	log.GetLogger(ctx).Warn(msg)
 }
 
-func (p *planResourceChangeImpl) Diff(
+func (p v2Provider) Diff(
 	ctx context.Context,
 	t string,
 	s shim.InstanceState,
@@ -316,14 +307,14 @@ func (p *planResourceChangeImpl) Diff(
 	}, err
 }
 
-func (p *planResourceChangeImpl) planEdit(ctx context.Context, e PlanStateEditRequest) (cty.Value, error) {
+func (p *v2Provider) planEdit(ctx context.Context, e PlanStateEditRequest) (cty.Value, error) {
 	if p.planEditFunc == nil {
 		return e.PlanState, nil
 	}
 	return p.planEditFunc(ctx, e)
 }
 
-func (p *planResourceChangeImpl) Apply(
+func (p v2Provider) Apply(
 	ctx context.Context, t string, s shim.InstanceState, d shim.InstanceDiff,
 ) (shim.InstanceState, error) {
 	res := p.tf.ResourcesMap[t]
@@ -356,7 +347,7 @@ func (p *planResourceChangeImpl) Apply(
 // This method is called to service `pulumi refresh` requests and maps naturally to the TF
 // ReadResource method. When using `pulumi import` this is not called, and instead
 // resource.Importer() is called which maps to the TF ImportResourceState method..
-func (p *planResourceChangeImpl) Refresh(
+func (p v2Provider) Refresh(
 	ctx context.Context,
 	t string,
 	s shim.InstanceState,
@@ -391,12 +382,15 @@ func (p *planResourceChangeImpl) Refresh(
 	}, nil
 }
 
-func (p *planResourceChangeImpl) NewDestroyDiff(
+func (p v2Provider) NewDestroyDiff(
 	ctx context.Context, t string, opts shim.TimeoutOptions,
 ) shim.InstanceDiff {
 	res := p.tf.ResourcesMap[t]
 	ty := res.CoreConfigSchema().ImpliedType()
-	dd := (&v2Provider{}).NewDestroyDiff(ctx, t, opts).(v2InstanceDiff)
+
+	dd := v2InstanceDiff{&terraform.InstanceDiff{Destroy: true}}
+	dd.applyTimeoutOptions(opts)
+
 	return &v2InstanceDiff2{
 		v2InstanceDiff: dd,
 		config:         cty.NullVal(ty),
@@ -404,7 +398,7 @@ func (p *planResourceChangeImpl) NewDestroyDiff(
 	}
 }
 
-func (p *planResourceChangeImpl) Importer(t string) shim.ImportFunc {
+func (p *v2Provider) Importer(t string) shim.ImportFunc {
 	res := p.tf.ResourcesMap[t]
 	ty := res.CoreConfigSchema().ImpliedType()
 	return shim.ImportFunc(func(tt, id string, _ interface{}) ([]shim.InstanceState, error) {
@@ -433,12 +427,12 @@ func (p *planResourceChangeImpl) Importer(t string) shim.ImportFunc {
 	})
 }
 
-func (p *planResourceChangeImpl) providerMeta() (*cty.Value, error) {
+func (p *v2Provider) providerMeta() (*cty.Value, error) {
 	return nil, nil
 	// TODO[pulumi/pulumi-terraform-bridge#1827]: We do not believe that this is load bearing in any providers.
 }
 
-func (*planResourceChangeImpl) unpackDiff(ty cty.Type, d shim.InstanceDiff) *v2InstanceDiff2 {
+func (*v2Provider) unpackDiff(ty cty.Type, d shim.InstanceDiff) *v2InstanceDiff2 {
 	switch d := d.(type) {
 	case nil:
 		contract.Failf("Unexpected nil InstanceDiff")
@@ -451,7 +445,7 @@ func (*planResourceChangeImpl) unpackDiff(ty cty.Type, d shim.InstanceDiff) *v2I
 	}
 }
 
-func (p *planResourceChangeImpl) unpackInstanceState(
+func (p *v2Provider) unpackInstanceState(
 	t string, s shim.InstanceState,
 ) *v2InstanceState2 {
 	switch s := s.(type) {
@@ -472,7 +466,7 @@ func (p *planResourceChangeImpl) unpackInstanceState(
 // Wrapping the pre-existing upgradeInstanceState method here. Since the method is written against
 // terraform.InstanceState interface some adapters are needed to convert to/from cty.Value and meta
 // private bag.
-func (p *planResourceChangeImpl) upgradeState(
+func (p *v2Provider) upgradeState(
 	ctx context.Context,
 	t string, s shim.InstanceState,
 ) (shim.InstanceState, error) {
@@ -788,102 +782,16 @@ func (s *grpcServer) ImportResourceState(
 	return out, nil
 }
 
-// Subset of shim.provider used by providerWithPlanResourceChangeDispatch.
-type planResourceChangeProvider interface {
-	Diff(
-		ctx context.Context,
-		t string,
-		s shim.InstanceState,
-		c shim.ResourceConfig,
-		opts shim.DiffOptions,
-	) (shim.InstanceDiff, error)
-
-	Apply(
-		ctx context.Context, t string, s shim.InstanceState, d shim.InstanceDiff,
-	) (shim.InstanceState, error)
-
-	Refresh(
-		ctx context.Context, t string, s shim.InstanceState, c shim.ResourceConfig,
-	) (shim.InstanceState, error)
-
-	NewDestroyDiff(ctx context.Context, t string, opts shim.TimeoutOptions) shim.InstanceDiff
-
-	// Moving this method to the provider object from the shim.Resource object for convenience.
-	Importer(t string) shim.ImportFunc
-}
-
-// Wraps a provider to redirect select resources to use a PlanResourceChange strategy.
-type providerWithPlanResourceChangeDispatch struct {
-	// Fallback provider to dispatch calls to.
-	shim.Provider
-
-	// All resources to serve schema.
-	resources map[string]*schema.Resource
-
-	// Provider handling resources that use PlanResourceChange.
-	planResourceChangeProvider planResourceChangeProvider
-
-	// Predicate that returns true for TF resource names that should use PlanResourceChange.
-	usePlanResourceChange func(resourceName string) bool
-}
-
 // This provider needs to override ResourceMap because it uses a different concrete implementation
 // of shim.Resource and for select resources and needs to make sure the correct one is returned.
-func (p *providerWithPlanResourceChangeDispatch) ResourcesMap() shim.ResourceMap {
+func (p v2Provider) ResourcesMap() shim.ResourceMap {
 	return &v2ResourceCustomMap{
-		resources: p.resources,
+		resources: p.tf.ResourcesMap,
 		pack: func(token string, res *schema.Resource) shim.Resource {
-			if p.usePlanResourceChange(token) {
-				i := p.planResourceChangeProvider.Importer(token)
-				return &v2Resource2{v2Resource{res}, i, token}
-			}
-			return v2Resource{res}
+			i := p.Importer(token)
+			return &v2Resource2{v2Resource{res}, i, token}
 		},
 	}
-}
-
-// Override Diff method to dispatch appropriately.
-func (p *providerWithPlanResourceChangeDispatch) Diff(
-	ctx context.Context,
-	t string,
-	s shim.InstanceState,
-	c shim.ResourceConfig,
-	opts shim.DiffOptions,
-) (shim.InstanceDiff, error) {
-	if p.usePlanResourceChange(t) {
-		return p.planResourceChangeProvider.Diff(ctx, t, s, c, opts)
-	}
-	return p.Provider.Diff(ctx, t, s, c, opts)
-}
-
-// Override Apply method to dispatch appropriately.
-func (p *providerWithPlanResourceChangeDispatch) Apply(
-	ctx context.Context, t string, s shim.InstanceState, d shim.InstanceDiff,
-) (shim.InstanceState, error) {
-	if p.usePlanResourceChange(t) {
-		return p.planResourceChangeProvider.Apply(ctx, t, s, d)
-	}
-	return p.Provider.Apply(ctx, t, s, d)
-}
-
-// Override Refresh method to dispatch appropriately.
-func (p *providerWithPlanResourceChangeDispatch) Refresh(
-	ctx context.Context, t string, s shim.InstanceState, c shim.ResourceConfig,
-) (shim.InstanceState, error) {
-	if p.usePlanResourceChange(t) {
-		return p.planResourceChangeProvider.Refresh(ctx, t, s, c)
-	}
-	return p.Provider.Refresh(ctx, t, s, c)
-}
-
-// Override NewDestroyDiff to dispatch appropriately.
-func (p *providerWithPlanResourceChangeDispatch) NewDestroyDiff(
-	ctx context.Context, t string, opts shim.TimeoutOptions,
-) shim.InstanceDiff {
-	if p.usePlanResourceChange(t) {
-		return p.planResourceChangeProvider.NewDestroyDiff(ctx, t, opts)
-	}
-	return p.Provider.NewDestroyDiff(ctx, t, opts)
 }
 
 type v2ResourceCustomMap struct {
@@ -925,26 +833,6 @@ func (m *v2ResourceCustomMap) Set(key string, value shim.Resource) {
 		m.resources[key] = r.tf
 	case *v2Resource2:
 		m.resources[key] = r.tf
-	}
-}
-
-func newProviderWithPlanResourceChange(
-	p *schema.Provider,
-	prov shim.Provider,
-	filter func(string) bool,
-	planEditFunc PlanStateEditFunc,
-) shim.Provider {
-	return &providerWithPlanResourceChangeDispatch{
-		Provider:  prov,
-		resources: p.ResourcesMap,
-		planResourceChangeProvider: &planResourceChangeImpl{
-			planEditFunc: planEditFunc,
-			tf:           p,
-			server: &grpcServer{
-				gserver: p.GRPCProvider().(*schema.GRPCProviderServer),
-			},
-		},
-		usePlanResourceChange: filter,
 	}
 }
 

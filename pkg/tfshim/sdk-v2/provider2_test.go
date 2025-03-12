@@ -281,7 +281,7 @@ func TestProvider2UpgradeResourceState(t *testing.T) {
 					tfToken: tc.rSchema,
 				},
 			}
-			actual, err := (&planResourceChangeImpl{
+			actual, err := (&v2Provider{
 				tf:     tf,
 				server: &grpcServer{schema.NewGRPCProviderServer(tf)},
 			}).upgradeState(context.Background(), tfToken, &v2InstanceState2{
@@ -598,7 +598,7 @@ func TestConfigWithTimeouts(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			logger := &testLogger{}
 			ctx := context.WithValue(context.Background(), logging.CtxKey, logger)
-			i := &planResourceChangeImpl{}
+			i := &v2Provider{}
 			ty := tc.rschema.CoreConfigSchema().ImpliedType()
 			// Quick short-cut here, taking advantage of the fact that configWithTimeouts only reads
 			// cfg.tf.Config, set only that. If this needs to be revised, can construct ResourceConfig in
