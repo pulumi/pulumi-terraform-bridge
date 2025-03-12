@@ -1136,7 +1136,7 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 		return nil, err
 	}
 
-	state, err := makeTerraformStateWithOpts(ctx, res, req.GetId(), olds,
+	state, err := makeTerraformStateWithOpts(ctx, res, req.GetId(), olds, // interesting here
 		makeTerraformStateOptions{
 			defaultZeroSchemaVersion: opts.defaultZeroSchemaVersion,
 		},
@@ -1376,7 +1376,7 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 	}
 
 	// Create the ID and property maps and return them.
-	props, err = MakeTerraformResult(ctx, p.tf, newstate, res.TF.Schema(), res.Schema.Fields, assets, p.supportsSecrets)
+	props, err = MakeTerraformResult(ctx, p.tf, newstate, res.TF.Schema(), res.Schema.Fields, assets, p.supportsSecrets) // 1
 	if err != nil {
 		reasons = append(reasons, errors.Wrapf(err, "converting result for %s", urn).Error())
 	}
@@ -1402,6 +1402,7 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 		return nil, initializationError(newstate.ID(), mprops, reasons)
 	}
 
+	// This is one place where things are serialized.
 	return &pulumirpc.CreateResponse{Id: newstate.ID(), Properties: mprops}, nil
 }
 
@@ -1478,7 +1479,7 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 	// Store the ID and properties in the output.  The ID *should* be the same as the input ID, but in the case
 	// that the resource no longer exists, we will simply return the empty string and an empty property map.
 	if newstate != nil {
-		props, err := MakeTerraformResult(ctx, p.tf, newstate, res.TF.Schema(), res.Schema.Fields, assets, p.supportsSecrets)
+		props, err := MakeTerraformResult(ctx, p.tf, newstate, res.TF.Schema(), res.Schema.Fields, assets, p.supportsSecrets) // 2
 		if err != nil {
 			return nil, err
 		}
@@ -1718,7 +1719,8 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 		}
 	}
 
-	props, err := MakeTerraformResult(ctx, p.tf, newstate, res.TF.Schema(), res.Schema.Fields, assets, p.supportsSecrets)
+	// This is another place where it is serialized.
+	props, err := MakeTerraformResult(ctx, p.tf, newstate, res.TF.Schema(), res.Schema.Fields, assets, p.supportsSecrets) // 3
 	if err != nil {
 		reasons = append(reasons, errors.Wrapf(err, "converting result for %s", urn).Error())
 	}
