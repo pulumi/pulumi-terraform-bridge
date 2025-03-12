@@ -79,6 +79,16 @@ type arrayInflections struct {
 	elementInfletions map[int]rawStateInflections
 }
 
+func (ai *arrayInflections) set(key int, value rawStateInflections) {
+	if value == nil {
+		return
+	}
+	if ai.elementInfletions == nil {
+		ai.elementInfletions = map[int]rawStateInflections{}
+	}
+	ai.elementInfletions[key] = value
+}
+
 func (arrayInflections) inflection() {}
 
 var _ rawStateInflections = arrayInflections{}
@@ -219,5 +229,68 @@ func rawStateRecoverNatural(pv resource.PropertyValue) (cty.Value, error) {
 	default:
 		contract.Failf("rawStateRecoverNatural does not recognize this PropertyValue case")
 		return cty.Value{}, errors.New("impossible")
+	}
+}
+
+func rawStateComputeInflections(pv resource.PropertyValue, v cty.Value) (rawStateInflections, error) {
+	contract.Assertf(v.IsKnown(), "rawStateComputeInflections cannot handle unknowns")
+	switch {
+	case v.IsNull():
+		return &typedNull{t: v.Type()}, nil
+	case v.Type().IsPrimitiveType():
+		return nil, nil
+	case v.Type().IsListType():
+		elements := v.AsValueSlice()
+
+		// Checking if [] got encoded as Null due to MaxItems=1.
+		if len(elements) == 0 && pv.IsNull() {
+			return pluralize{elementType: v.Type().ElementType()}, nil
+		}
+
+		// Checking if [x] got encoded as x due to MaxItems=1.
+		if len(elements) == 1 && !pv.IsArray() {
+			inner, err := rawStateComputeInflections(pv, elements[0])
+			if err != nil {
+				return nil, err
+			}
+			return pluralize{inner: inner}, nil
+		}
+
+		// Otherwise PropertyValue should be an array just like the cty.Value is a list.
+		contract.Assertf(pv.IsArray(), "Expected an Array PropertyValue to match a List cty.Value")
+
+		pvElements := pv.ArrayValue()
+
+		contract.Assertf(len(pvElements) == len(elements),
+			"Expected array length parity for PropertyValue and matching cty.Value")
+
+		if len(pvElements) == 0 {
+			return &arrayInflections{t: v.Type()}, nil
+		}
+
+		arrayInfl := arrayInflections{}
+
+		for k, e := range elements {
+			infl, err := rawStateComputeInflections(pvElements[k], e)
+			if err != nil {
+				return nil, err
+			}
+			arrayInfl.set(k, infl)
+		}
+
+		return arrayInfl, nil
+	case v.Type().IsMapType():
+		panic("TODO")
+	case v.Type().IsObjectType():
+		panic("TODO")
+	case v.Type().IsSetType():
+		panic("TODO")
+	case v.Type().IsTupleType():
+		panic("TODO")
+	case v.Type().IsCapsuleType():
+		return nil, errors.New("cty.Value CapsuleType is not supported yet")
+	default:
+		contract.Failf("rawStateComputeInflections does not recognize this cty.Value case")
+		return nil, errors.New("impossible")
 	}
 }
