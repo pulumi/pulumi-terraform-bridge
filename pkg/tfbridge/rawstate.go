@@ -58,6 +58,16 @@ type mapInflections struct {
 	elementInflections map[resource.PropertyKey]rawStateInflections
 }
 
+func (mi *mapInflections) set(key resource.PropertyKey, value rawStateInflections) {
+	if value == nil {
+		return
+	}
+	if mi.elementInflections == nil {
+		mi.elementInflections = map[resource.PropertyKey]rawStateInflections{}
+	}
+	mi.elementInflections[key] = value
+}
+
 func (mapInflections) inflection() {}
 
 var _ rawStateInflections = mapInflections{}
@@ -75,18 +85,18 @@ var _ rawStateInflections = objInflections{}
 
 // Exists to encode inner inflections on array elements. Stores the type for empty arrays.
 type arrayInflections struct {
-	t                 cty.Type
-	elementInfletions map[int]rawStateInflections
+	t                  cty.Type
+	elementInflections map[int]rawStateInflections
 }
 
 func (ai *arrayInflections) set(key int, value rawStateInflections) {
 	if value == nil {
 		return
 	}
-	if ai.elementInfletions == nil {
-		ai.elementInfletions = map[int]rawStateInflections{}
+	if ai.elementInflections == nil {
+		ai.elementInflections = map[int]rawStateInflections{}
 	}
-	ai.elementInfletions[key] = value
+	ai.elementInflections[key] = value
 }
 
 func (arrayInflections) inflection() {}
@@ -166,7 +176,7 @@ func rawStateRecover(pv resource.PropertyValue, infl rawStateInflections) (cty.V
 		}
 		arr := pv.ArrayValue()
 		n := len(arr)
-		for k := range infl.elementInfletions {
+		for k := range infl.elementInflections {
 			if k < 0 || k >= n {
 				return cty.Value{}, fmt.Errorf("Invalid array inflection index %d", k)
 			}
@@ -176,7 +186,7 @@ func rawStateRecover(pv resource.PropertyValue, infl rawStateInflections) (cty.V
 		}
 		var elements []cty.Value
 		for k, v := range arr {
-			r, err := rawStateRecover(v, infl.elementInfletions[k])
+			r, err := rawStateRecover(v, infl.elementInflections[k])
 			if err != nil {
 				return cty.Value{}, err
 			}
@@ -265,7 +275,7 @@ func rawStateComputeInflections(pv resource.PropertyValue, v cty.Value) (rawStat
 			"Expected array length parity for PropertyValue and matching cty.Value")
 
 		if len(pvElements) == 0 {
-			return &arrayInflections{t: v.Type()}, nil
+			return arrayInflections{t: v.Type()}, nil
 		}
 
 		arrayInfl := arrayInflections{}
@@ -280,7 +290,30 @@ func rawStateComputeInflections(pv resource.PropertyValue, v cty.Value) (rawStat
 
 		return arrayInfl, nil
 	case v.Type().IsMapType():
-		panic("TODO")
+		elements := v.AsValueMap()
+		contract.Assertf(pv.IsObject(), "Expected an Object PropertyValue to match a Map cty.Value")
+
+		pvElements := pv.ObjectValue()
+
+		contract.Assertf(len(pvElements) == len(elements),
+			"Expected map length parity for PropertyValue and matching cty.Value")
+
+		if len(pvElements) == 0 {
+			return mapInflections{t: v.Type()}, nil
+		}
+
+		mapInfl := mapInflections{}
+
+		for k, e := range elements {
+			key := resource.PropertyKey(k)
+			infl, err := rawStateComputeInflections(pvElements[key], e)
+			if err != nil {
+				return nil, err
+			}
+			mapInfl.set(key, infl)
+		}
+
+		return mapInfl, nil
 	case v.Type().IsObjectType():
 		panic("TODO")
 	case v.Type().IsSetType():
