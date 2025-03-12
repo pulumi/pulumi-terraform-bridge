@@ -272,7 +272,11 @@ type inflectHelper struct {
 	schemaInfos map[string]*SchemaInfo // top-level schema overrides for a resource
 }
 
-func (ih *inflectHelper) inflections(
+func (ih *inflectHelper) inflections(pv resource.PropertyValue, v cty.Value) (rawStateInflections, error) {
+	return ih.inflectionsAt(walk.NewSchemaPath(), pv, v)
+}
+
+func (ih *inflectHelper) inflectionsAt(
 	path walk.SchemaPath,
 	pv resource.PropertyValue,
 	v cty.Value,
@@ -280,7 +284,7 @@ func (ih *inflectHelper) inflections(
 	contract.Assertf(v.IsKnown(), "rawStateComputeInflections cannot handle unknowns")
 	switch {
 	case v.IsNull():
-		return &typedNull{t: v.Type()}, nil
+		return typedNull{t: v.Type()}, nil
 	case v.Type().IsPrimitiveType():
 		return nil, nil
 	case v.Type().IsListType():
@@ -294,7 +298,7 @@ func (ih *inflectHelper) inflections(
 		// Checking if [x] got encoded as x due to MaxItems=1.
 		if len(elements) == 1 && !pv.IsArray() {
 			subPath := path.Element()
-			inner, err := ih.inflections(subPath, pv, elements[0])
+			inner, err := ih.inflectionsAt(subPath, pv, elements[0])
 			if err != nil {
 				return nil, err
 			}
@@ -317,7 +321,7 @@ func (ih *inflectHelper) inflections(
 
 		subPath := path.Element()
 		for k, e := range elements {
-			infl, err := ih.inflections(subPath, pvElements[k], e)
+			infl, err := ih.inflectionsAt(subPath, pvElements[k], e)
 			if err != nil {
 				return nil, err
 			}
@@ -343,7 +347,7 @@ func (ih *inflectHelper) inflections(
 		subPath := path.Element()
 		for k, e := range elements {
 			key := resource.PropertyKey(k)
-			infl, err := ih.inflections(subPath, pvElements[key], e)
+			infl, err := ih.inflectionsAt(subPath, pvElements[key], e)
 			if err != nil {
 				return nil, err
 			}
@@ -375,7 +379,7 @@ func (ih *inflectHelper) inflections(
 				return nil, err
 			}
 			key := resource.PropertyKey(keyRaw)
-			kInfl, err := ih.inflections(subPath, pvElements[key], v)
+			kInfl, err := ih.inflectionsAt(subPath, pvElements[key], v)
 			if err != nil {
 				return nil, err
 			}
