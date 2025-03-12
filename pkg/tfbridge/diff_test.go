@@ -479,12 +479,15 @@ func TestSimpleUpdate(t *testing.T) {
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
-func TestSimpleUpdateWithUnicode(t *testing.T) {
+func TestNestedPropertyUpdateWithUnicode(t *testing.T) {
 	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
-			"jsonRule": {Type: v2Schema.TypeMap},
-			"outp":     {Type: v2Schema.TypeString, Computed: true},
+			"jsonRule": {
+				Type: v2Schema.TypeMap,
+				Elem: &v2Schema.Schema{Type: v2Schema.TypeString},
+			},
+			"outp": {Type: v2Schema.TypeString, Computed: true},
 		},
 		// inputs
 		map[string]interface{}{
@@ -501,7 +504,7 @@ func TestSimpleUpdateWithUnicode(t *testing.T) {
 		},
 		// expected diff kind per property
 		map[string]DiffKind{},
-		pulumirpc.DiffResponse_DIFF_SOME)
+		pulumirpc.DiffResponse_DIFF_NONE)
 }
 
 func TestSimpleUpdateReplace(t *testing.T) {
