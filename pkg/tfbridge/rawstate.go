@@ -19,6 +19,8 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/go-cty/cty"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/walk"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -77,6 +79,29 @@ type objInflections struct {
 	ignored            map[resource.PropertyKey]struct{}
 	renamed            map[resource.PropertyKey]string
 	elementInflections map[resource.PropertyKey]rawStateInflections
+}
+
+func (oi *objInflections) set(key string, propertyKey resource.PropertyKey, infl rawStateInflections) {
+	if string(propertyKey) != key {
+		if oi.renamed == nil {
+			oi.renamed = make(map[resource.PropertyKey]string)
+		}
+		oi.renamed[propertyKey] = key
+	}
+	if infl == nil {
+		return
+	}
+	if oi.elementInflections == nil {
+		oi.elementInflections = map[resource.PropertyKey]rawStateInflections{}
+	}
+	oi.elementInflections[propertyKey] = infl
+}
+
+func (oi *objInflections) ignore(key resource.PropertyKey) {
+	if oi.ignored == nil {
+		oi.ignored = map[resource.PropertyKey]struct{}{}
+	}
+	oi.ignored[key] = struct{}{}
 }
 
 func (objInflections) inflection() {}
@@ -242,7 +267,16 @@ func rawStateRecoverNatural(pv resource.PropertyValue) (cty.Value, error) {
 	}
 }
 
-func rawStateComputeInflections(pv resource.PropertyValue, v cty.Value) (rawStateInflections, error) {
+type inflectHelper struct {
+	schemaMap   shim.SchemaMap         // top-level schema for a resource
+	schemaInfos map[string]*SchemaInfo // top-level schema overrides for a resource
+}
+
+func (ih *inflectHelper) inflections(
+	path walk.SchemaPath,
+	pv resource.PropertyValue,
+	v cty.Value,
+) (rawStateInflections, error) {
 	contract.Assertf(v.IsKnown(), "rawStateComputeInflections cannot handle unknowns")
 	switch {
 	case v.IsNull():
@@ -259,7 +293,8 @@ func rawStateComputeInflections(pv resource.PropertyValue, v cty.Value) (rawStat
 
 		// Checking if [x] got encoded as x due to MaxItems=1.
 		if len(elements) == 1 && !pv.IsArray() {
-			inner, err := rawStateComputeInflections(pv, elements[0])
+			subPath := path.Element()
+			inner, err := ih.inflections(subPath, pv, elements[0])
 			if err != nil {
 				return nil, err
 			}
@@ -280,8 +315,9 @@ func rawStateComputeInflections(pv resource.PropertyValue, v cty.Value) (rawStat
 
 		arrayInfl := arrayInflections{}
 
+		subPath := path.Element()
 		for k, e := range elements {
-			infl, err := rawStateComputeInflections(pvElements[k], e)
+			infl, err := ih.inflections(subPath, pvElements[k], e)
 			if err != nil {
 				return nil, err
 			}
@@ -304,9 +340,10 @@ func rawStateComputeInflections(pv resource.PropertyValue, v cty.Value) (rawStat
 
 		mapInfl := mapInflections{}
 
+		subPath := path.Element()
 		for k, e := range elements {
 			key := resource.PropertyKey(k)
-			infl, err := rawStateComputeInflections(pvElements[key], e)
+			infl, err := ih.inflections(subPath, pvElements[key], e)
 			if err != nil {
 				return nil, err
 			}
@@ -315,13 +352,50 @@ func rawStateComputeInflections(pv resource.PropertyValue, v cty.Value) (rawStat
 
 		return mapInfl, nil
 	case v.Type().IsObjectType():
-		panic("TODO")
+		elements := v.AsValueMap()
+
+		pvElements := pv.ObjectValue()
+
+		if len(pvElements) == 0 {
+			infl := objInflections{}
+			for k := range pvElements {
+				infl.ignore(k)
+			}
+			return infl, nil
+		}
+
+		infl := objInflections{}
+
+		keySetWithCtyValueMatches := map[resource.PropertyKey]struct{}{}
+
+		for k, v := range elements {
+			subPath := path.GetAttr(k)
+			keyRaw, err := TerraformToPulumiNameAtPath(path, ih.schemaMap, ih.schemaInfos)
+			if err != nil {
+				return nil, err
+			}
+			key := resource.PropertyKey(keyRaw)
+			kInfl, err := ih.inflections(subPath, pvElements[key], v)
+			if err != nil {
+				return nil, err
+			}
+			keySetWithCtyValueMatches[key] = struct{}{}
+			infl.set(k, key, kInfl)
+		}
+
+		for k := range pvElements {
+			if _, ok := keySetWithCtyValueMatches[k]; !ok {
+				infl.ignore(k)
+			}
+		}
+
+		return infl, nil
 	case v.Type().IsSetType():
 		panic("TODO")
 	case v.Type().IsTupleType():
 		panic("TODO")
 	case v.Type().IsCapsuleType():
-		return nil, errors.New("cty.Value CapsuleType is not supported yet")
+		return nil, errors.New("cty.Value CapsuleType is not supported")
 	default:
 		contract.Failf("rawStateComputeInflections does not recognize this cty.Value case")
 		return nil, errors.New("impossible")
