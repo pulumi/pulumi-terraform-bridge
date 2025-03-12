@@ -1,0 +1,223 @@
+// Copyright 2016-2025, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package tfbridge
+
+import (
+	"errors"
+	"fmt"
+
+	"github.com/hashicorp/go-cty/cty"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+)
+
+type rawStateInflections interface {
+	inflection()
+}
+
+// Reverses Pulumi MaxItems=1 flattening.
+//
+// null becomes []
+// x becomes [x]
+type pluralize struct {
+	// Only needed for recovering from a null PropertyValue.
+	elementType cty.Type
+
+	// Inflections to apply to `x` before pluralizing.
+	inner rawStateInflections
+}
+
+func (pluralize) inflection() {}
+
+var _ rawStateInflections = pluralize{}
+
+// To recover nulls to cty.Value they need a type.
+type typedNull struct {
+	t cty.Type
+}
+
+func (typedNull) inflection() {}
+
+var _ rawStateInflections = typedNull{}
+
+// Primarily to distinguish maps from objects when recovering. Stores the type for empty maps.
+type mapInflections struct {
+	t                  cty.Type
+	elementInflections map[resource.PropertyKey]rawStateInflections
+}
+
+func (mapInflections) inflection() {}
+
+var _ rawStateInflections = mapInflections{}
+
+// Distinguish objects from maps when recovering, record renamed properties.
+type objInflections struct {
+	ignored            map[resource.PropertyKey]struct{}
+	renamed            map[resource.PropertyKey]string
+	elementInflections map[resource.PropertyKey]rawStateInflections
+}
+
+func (objInflections) inflection() {}
+
+var _ rawStateInflections = objInflections{}
+
+// Exists to encode inner inflections on array elements. Stores the type for empty arrays.
+type arrayInflections struct {
+	t                 cty.Type
+	elementInfletions map[int]rawStateInflections
+}
+
+func (arrayInflections) inflection() {}
+
+var _ rawStateInflections = arrayInflections{}
+
+func rawStateRecover(pv resource.PropertyValue, infl rawStateInflections) (cty.Value, error) {
+	switch infl := infl.(type) {
+	case nil:
+		return rawStateRecoverNatural(pv)
+	case typedNull:
+		if !pv.IsNull() {
+			return cty.Value{}, errors.New("expected PropertyValue to be Null")
+		}
+		return cty.NullVal(infl.t), nil
+	case pluralize:
+		switch {
+		case pv.IsNull():
+			return cty.ListValEmpty(infl.elementType), nil
+		default:
+			v, err := rawStateRecover(pv, infl.inner)
+			if err != nil {
+				return cty.Value{}, err
+			}
+			return cty.ListVal([]cty.Value{v}), nil
+		}
+	case mapInflections:
+		if !pv.IsObject() {
+			return cty.Value{}, errors.New("expected PropertyValue to be an Object encoding a map")
+		}
+		pm := pv.ObjectValue()
+		recovered := map[string]cty.Value{}
+		for k, v := range pm {
+			elementInfl := infl.elementInflections[k]
+			element, err := rawStateRecover(v, elementInfl)
+			if err != nil {
+				return cty.Value{}, err
+			}
+			recovered[string(k)] = element
+		}
+		if len(recovered) == 0 {
+			return cty.MapValEmpty(infl.t), nil
+		}
+		return cty.MapVal(recovered), nil
+	case objInflections:
+		if !pv.IsObject() {
+			return cty.Value{}, errors.New(
+				"expected PropertyValue to be an Object encoding a cty.Value object",
+			)
+		}
+		pm := pv.ObjectValue()
+		recovered := map[string]cty.Value{}
+		for k, v := range pm {
+			if infl.ignored != nil {
+				if _, ign := infl.ignored[k]; ign {
+					continue
+				}
+			}
+			name, gotName := infl.renamed[k]
+			if !gotName {
+				name = string(k)
+			}
+			elementInfl := infl.elementInflections[k]
+			element, err := rawStateRecover(v, elementInfl)
+			if err != nil {
+				return cty.Value{}, err
+			}
+			recovered[name] = element
+		}
+		if len(recovered) == 0 {
+			return cty.EmptyObjectVal, nil
+		}
+		return cty.ObjectVal(recovered), nil
+	case arrayInflections:
+		if !pv.IsArray() {
+			return cty.Value{}, errors.New("expected PropertyValue to be an Array")
+		}
+		arr := pv.ArrayValue()
+		n := len(arr)
+		for k := range infl.elementInfletions {
+			if k < 0 || k >= n {
+				return cty.Value{}, fmt.Errorf("Invalid array inflection index %d", k)
+			}
+		}
+		if n == 0 {
+			return cty.ListValEmpty(infl.t), nil
+		}
+		var elements []cty.Value
+		for k, v := range arr {
+			r, err := rawStateRecover(v, infl.elementInfletions[k])
+			if err != nil {
+				return cty.Value{}, err
+			}
+			elements = append(elements, r)
+		}
+		return cty.ListVal(elements), nil
+	default:
+		contract.Failf("rawStateRecover does not recognize this rawStateInflections case")
+		return cty.Value{}, errors.New("impossible")
+	}
+}
+
+func rawStateRecoverNatural(pv resource.PropertyValue) (cty.Value, error) {
+	switch {
+	case pv.IsString():
+		return cty.StringVal(pv.StringValue()), nil
+	case pv.IsBool():
+		return cty.BoolVal(pv.BoolValue()), nil
+	case pv.IsNumber():
+		n := pv.NumberValue()
+		return cty.NumberFloatVal(n), nil
+	case pv.IsArray():
+		var elements []cty.Value
+		for _, v := range pv.ArrayValue() {
+			vv, err := rawStateRecoverNatural(v)
+			if err != nil {
+				return cty.Value{}, err
+			}
+			elements = append(elements, vv)
+		}
+		return cty.ListVal(elements), nil
+	case pv.IsObject():
+		return cty.Value{}, errors.New(
+			"rawStateRecoverNatural cannot process Object values due to map vs object confusion",
+		)
+	case pv.IsNull():
+		return cty.Value{}, errors.New(
+			"rawStateRecoverNatural cannot process Null values as they require a type in cty.Value",
+		)
+	case pv.IsArchive():
+		return cty.Value{}, errors.New("rawStateRecoverNatural cannot process Archive values")
+	case pv.IsAsset():
+		return cty.Value{}, errors.New("rawStateRecoverNatural cannot process Asset values")
+	case pv.IsComputed():
+		return cty.Value{}, errors.New("rawStateRecoverNatural cannot process Computed values")
+	case pv.IsResourceReference():
+		return cty.Value{}, errors.New("rawStateRecoverNatural cannot process ResourceReference values")
+	case pv.IsSecret():
+		return cty.Value{}, errors.New("rawStateRecoverNatural cannot process Secret values")
+	default:
+		contract.Failf("rawStateRecoverNatural does not recognize this PropertyValue case")
+		return cty.Value{}, errors.New("impossible")
+	}
+}
