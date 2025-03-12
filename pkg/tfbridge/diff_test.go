@@ -479,6 +479,31 @@ func TestSimpleUpdate(t *testing.T) {
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
+func TestSimpleUpdateWithUnicode(t *testing.T) {
+	t.Parallel()
+	diffTest(t,
+		map[string]*v2Schema.Schema{
+			"jsonRule": {Type: v2Schema.TypeMap},
+			"outp":     {Type: v2Schema.TypeString, Computed: true},
+		},
+		// inputs
+		map[string]interface{}{
+			"jsonRule": map[string]interface{}{
+				"condition": "{\"property\": \"sum\", \"operator\": \">\", \"value\": 2}",
+			},
+		},
+		// state
+		map[string]interface{}{
+			"jsonRule": map[string]interface{}{
+				"condition": "{\"property\": \"sum\", \"operator\": \"\u003e\", \"value\": 2}",
+			},
+			"outp": "bar",
+		},
+		// expected diff kind per property
+		map[string]DiffKind{},
+		pulumirpc.DiffResponse_DIFF_SOME)
+}
+
 func TestSimpleUpdateReplace(t *testing.T) {
 	t.Parallel()
 	diffTest(t,
