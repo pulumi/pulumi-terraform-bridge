@@ -17,12 +17,12 @@ func upgradeResourceStateGRPC(
 	state cty.Value, meta map[string]any,
 	server tfprotov5.ProviderServer,
 ) (cty.Value, map[string]any, error) {
-	// TODO[pulumi/pulumi-terraform-bridge#1667]: This is not quite right but we need
-	// the old TF state to get it right.
-	jsonBytes, err := ctyjson.Marshal(state, state.Type())
-	if err != nil {
-		return cty.Value{}, nil, err
-	}
+	// // TODO[pulumi/pulumi-terraform-bridge#1667]: This is not quite right but we need
+	// // the old TF state to get it right.
+	// jsonBytes, err := ctyjson.Marshal(state, state.Type())
+	// if err != nil {
+	// 	return cty.Value{}, nil, err
+	// }
 
 	version, _, err := extractSchemaVersion(meta)
 	if err != nil {
@@ -45,7 +45,7 @@ func upgradeResourceStateGRPC(
 
 	resp, err := server.UpgradeResourceState(ctx, &tfprotov5.UpgradeResourceStateRequest{
 		TypeName: t,
-		RawState: &tfprotov5.RawState{JSON: jsonBytes},
+		RawState: &tfprotov5.RawState{JSON: jsonBytes}, // RawState
 		Version:  version,
 	})
 	if uerr := handleDiagnostics(ctx, resp.Diagnostics, err); uerr != nil {

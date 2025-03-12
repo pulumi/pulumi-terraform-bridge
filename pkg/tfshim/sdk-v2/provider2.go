@@ -60,7 +60,7 @@ func (r *v2Resource2) InstanceState(
 	}
 	s = normalizeBlockCollections(s, r.tf)
 
-	return &v2InstanceState2{
+	return &v2InstanceState21{ // Is this right?
 		stateValue:   s,
 		resourceType: r.resourceType,
 		meta:         meta,
@@ -75,20 +75,26 @@ func (r *v2Resource2) DecodeTimeouts(config shim.ResourceConfig) (*shim.Resource
 	return v2Resource{r.tf}.DecodeTimeouts(config)
 }
 
-type v2InstanceState2 struct {
+type v2InstanceState21 struct {
 	resourceType string
 	stateValue   cty.Value
 	// Also known as private state.
 	meta map[string]interface{}
+
+	// Modern versions of pulumi-terraform-bridge encode enough information in Pulumi state to recover the exact
+	// value of the state as the writing TF provider emitted it. This data, if available, is not subject to any
+	// schema-aware transformations. If this value is nil then the state being read was written using an older
+	// bridge, and exact RawState is not available, but stateValue can be used as an approximation.
+	recoveredRawState *cty.Value
 }
 
-var _ shim.InstanceState = (*v2InstanceState2)(nil)
+var _ shim.InstanceState = (*v2InstanceState21)(nil)
 
-func (s *v2InstanceState2) Type() string {
+func (s *v2InstanceState21) Type() string {
 	return s.resourceType
 }
 
-func (s *v2InstanceState2) ID() string {
+func (s *v2InstanceState21) ID() string {
 	if s.stateValue.IsNull() {
 		return ""
 	}
@@ -100,7 +106,7 @@ func (s *v2InstanceState2) ID() string {
 	return id.AsString()
 }
 
-func (s *v2InstanceState2) Object(sch shim.SchemaMap) (map[string]interface{}, error) {
+func (s *v2InstanceState21) Object(sch shim.SchemaMap) (map[string]interface{}, error) {
 	res := objectFromCtyValue(s.stateValue)
 	// grpc servers add a "timeouts" key to compensate for infinite diffs; this is not needed in
 	// the Pulumi projection.
@@ -108,7 +114,7 @@ func (s *v2InstanceState2) Object(sch shim.SchemaMap) (map[string]interface{}, e
 	return res, nil
 }
 
-func (s *v2InstanceState2) Meta() map[string]interface{} {
+func (s *v2InstanceState21) Meta() map[string]interface{} {
 	return s.meta
 }
 
@@ -146,14 +152,14 @@ var _ shim.InstanceDiff = (*v2InstanceDiff2)(nil)
 func (d *v2InstanceDiff2) ProposedState(
 	res shim.Resource, priorState shim.InstanceState,
 ) (shim.InstanceState, error) {
-	return &v2InstanceState2{
+	return &v2InstanceState21{ // is this right?
 		stateValue: d.plannedState,
 		meta:       d.v2InstanceDiff.tf.Meta,
 	}, nil
 }
 
 func (d *v2InstanceDiff2) PriorState() (shim.InstanceState, error) {
-	return &v2InstanceState2{
+	return &v2InstanceState21{ // is this right?
 		stateValue: d.prior,
 		meta:       d.priorMeta,
 	}, nil
@@ -375,7 +381,7 @@ func (p v2Provider) Refresh(
 	if rr.stateValue.IsNull() {
 		return nil, nil
 	}
-	return &v2InstanceState2{
+	return &v2InstanceState21{ // is this right?
 		resourceType: rr.resourceType,
 		stateValue:   rr.stateValue,
 		meta:         rr.meta,
@@ -447,16 +453,16 @@ func (*v2Provider) unpackDiff(ty cty.Type, d shim.InstanceDiff) *v2InstanceDiff2
 
 func (p *v2Provider) unpackInstanceState(
 	t string, s shim.InstanceState,
-) *v2InstanceState2 {
+) *v2InstanceState21 { // is this right?
 	switch s := s.(type) {
 	case nil:
 		res := p.tf.ResourcesMap[t]
 		ty := res.CoreConfigSchema().ImpliedType()
-		return &v2InstanceState2{
+		return &v2InstanceState21{
 			resourceType: t,
 			stateValue:   cty.NullVal(ty),
 		}
-	case *v2InstanceState2:
+	case *v2InstanceState21:
 		return s
 	}
 	contract.Failf("Unexpected type for shim.InstanceState: #%T", s)
@@ -483,7 +489,7 @@ func (p *v2Provider) upgradeState(
 		return nil, err
 	}
 
-	return &v2InstanceState2{
+	return &v2InstanceState21{ // is this right?
 		resourceType: t,
 		stateValue:   newState,
 		meta:         newMeta,
@@ -686,7 +692,7 @@ func (s *grpcServer) ApplyResourceChange(
 	if newState.IsNull() {
 		return nil, returnErr
 	}
-	return &v2InstanceState2{
+	return &v2InstanceState21{
 		resourceType: typeName,
 		stateValue:   newState,
 		meta:         meta,
@@ -700,7 +706,7 @@ func (s *grpcServer) ReadResource(
 	currentState cty.Value,
 	meta map[string]interface{},
 	providerMeta *cty.Value,
-) (*v2InstanceState2, error) {
+) (*v2InstanceState21, error) {
 	currentStateVal, err := msgpack.Marshal(currentState, ty)
 	if err != nil {
 		return nil, err
@@ -737,7 +743,7 @@ func (s *grpcServer) ReadResource(
 			return nil, err
 		}
 	}
-	return &v2InstanceState2{
+	return &v2InstanceState21{
 		resourceType: typeName,
 		stateValue:   newState,
 		meta:         meta2,
@@ -749,7 +755,7 @@ func (s *grpcServer) ImportResourceState(
 	typeName string,
 	ty cty.Type,
 	id string,
-) ([]v2InstanceState2, error) {
+) ([]v2InstanceState21, error) { // is this right?
 	req := &tfprotov5.ImportResourceStateRequest{
 		TypeName: typeName,
 		ID:       id,
@@ -758,7 +764,7 @@ func (s *grpcServer) ImportResourceState(
 	if err := handleDiagnostics(ctx, resp.Diagnostics, err); err != nil {
 		return nil, err
 	}
-	out := []v2InstanceState2{}
+	out := []v2InstanceState21{}
 	for _, x := range resp.ImportedResources {
 		ok := x.TypeName == typeName
 		contract.Assertf(ok, "Expect typeName %q=%q", x.TypeName, typeName)
@@ -772,7 +778,7 @@ func (s *grpcServer) ImportResourceState(
 				return nil, err
 			}
 		}
-		s := v2InstanceState2{
+		s := v2InstanceState21{
 			resourceType: x.TypeName,
 			stateValue:   newState,
 			meta:         meta,
