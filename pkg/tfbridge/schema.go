@@ -1040,7 +1040,42 @@ func MakeTerraformResult(
 
 	// If there is any Terraform metadata associated with this state, record it.
 	if state != nil && len(state.Meta()) != 0 {
-		metaJSON, err := json.Marshal(state.Meta())
+		metaMap := state.Meta()
+
+		if stc, ok := state.(shim.InstanceStateWithCtyValue); ok {
+			ih := &inflectHelper{
+				schemaMap:   tfs,
+				schemaInfos: ps,
+			}
+			pv := resource.NewObjectProperty(outMap)
+			infl, err := ih.inflections(pv, stc.Value())
+			if err != nil {
+				GetLogger(ctx).Debug(fmt.Sprintf("Failed encoding raw state\n"+
+					"  value: %s\n"+
+					"  p-map: %s\n"+
+					"  error: %v",
+					stc.Value().GoString(),
+					pv.String(),
+					err))
+				contract.AssertNoErrorf(err, "Failed encoding raw state")
+			}
+			inflEnc, err := rawStateEncodeInflections(infl)
+			if err != nil {
+				GetLogger(ctx).Debug(fmt.Sprintf("Failed marshaling raw state\n"+
+					"  value: %s\n"+
+					"  p-map: %s\n"+
+					"  infl: %#v\n"+
+					"  error: %v",
+					stc.Value().GoString(),
+					pv.String(),
+					infl,
+					err))
+				contract.AssertNoErrorf(err, "Failed marshaling raw state")
+			}
+			metaMap["raw"] = inflEnc
+		}
+
+		metaJSON, err := json.Marshal(metaMap)
 		contract.Assertf(err == nil, "err == nil")
 		outMap[metaKey] = resource.NewStringProperty(string(metaJSON))
 	}
