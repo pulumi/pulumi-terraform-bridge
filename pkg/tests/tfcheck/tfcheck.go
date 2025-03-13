@@ -123,7 +123,7 @@ func (d *TFDriver) Write(t pulcheck.T, program string) {
 
 func (d *TFDriver) Plan(t pulcheck.T) (*TFPlan, error) {
 	planFile := filepath.Join(d.cwd, "test.tfplan")
-	planStdoutBytes, err := d.execTf(t, "plan", "-refresh=false", "-out", planFile, "-no-color")
+	planStdoutBytes, err := d.execTf(t, "plan", "-out", planFile, "-no-color")
 	if err != nil {
 		return nil, err
 	}
@@ -137,7 +137,7 @@ func (d *TFDriver) Plan(t pulcheck.T) (*TFPlan, error) {
 }
 
 func (d *TFDriver) Apply(t pulcheck.T, plan *TFPlan) error {
-	_, err := d.execTf(t, "apply", "-auto-approve", "-refresh=false", plan.PlanFile)
+	_, err := d.execTf(t, "apply", "-auto-approve", plan.PlanFile)
 	return err
 }
 

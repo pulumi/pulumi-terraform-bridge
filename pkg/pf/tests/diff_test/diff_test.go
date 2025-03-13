@@ -2,10 +2,8 @@ package tfbridgetests
 
 import (
 	"context"
-	"regexp"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -13,7 +11,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hexops/autogold/v2"
 	"github.com/zclconf/go-cty/cty"
@@ -73,14 +70,7 @@ func TestPFGitlabDiffRepro(t *testing.T) {
 
 	getSchema := func(withNew bool) rschema.Schema {
 		attributes := map[string]rschema.Attribute{
-			"id": rschema.StringAttribute{
-				MarkdownDescription: `The id of the project hook. In the format of "project:hook_id"`,
-				Computed:            true,
-			},
-			"project": rschema.StringAttribute{
-				MarkdownDescription: "The name or id of the project to add the hook to.",
-				Required:            true,
-			},
+			"key": rschema.StringAttribute{Optional: true},
 			"project_id": rschema.Int64Attribute{
 				MarkdownDescription: "The id of the project for the hook.",
 				Computed:            true,
@@ -88,145 +78,9 @@ func TestPFGitlabDiffRepro(t *testing.T) {
 					int64planmodifier.RequiresReplace(),
 				},
 			},
-			"hook_id": rschema.Int64Attribute{
-				MarkdownDescription: "The id of the project hook.",
-				Computed:            true,
-			},
-			"url": rschema.StringAttribute{
-				MarkdownDescription: "The url of the hook to invoke. Forces re-creation to preserve `token`.",
-				Required:            true,
-				Validators: []validator.String{
-					stringvalidator.RegexMatches(regexp.MustCompile(`^\S+$`), `The URL may not contain whitespace`),
-				},
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-				},
-			},
-			"token": rschema.StringAttribute{
-				MarkdownDescription: "A token to present when invoking the hook. The token is not available for imported resources.",
-				Optional:            true,
-				Computed:            true,
-				Sensitive:           true,
-			},
-			"name": rschema.StringAttribute{
-				MarkdownDescription: "Name of the project webhook.",
-				Optional:            true,
-				Computed:            true,
-			},
-			"description": rschema.StringAttribute{
-				MarkdownDescription: "Description of the webhook.",
-				Optional:            true,
-				Computed:            true,
-			},
-			"push_events": rschema.BoolAttribute{
-				Description: "Invoke the hook for push events.",
-				Optional:    true,
-				Computed:    true,
-				Default:     booldefault.StaticBool(true),
-			},
-			"push_events_branch_filter": rschema.StringAttribute{
-				Description: "Invoke the hook for push events on matching branches only.",
-				Optional:    true,
-				Computed:    true,
-			},
-			"issues_events": rschema.BoolAttribute{
-				Description: "Invoke the hook for issues events.",
-				Optional:    true,
-				Computed:    true,
-				Default:     booldefault.StaticBool(false),
-			},
-			"confidential_issues_events": rschema.BoolAttribute{
-				Description: "Invoke the hook for confidential issues events.",
-				Optional:    true,
-				Computed:    true,
-				Default:     booldefault.StaticBool(false),
-			},
-			"merge_requests_events": rschema.BoolAttribute{
-				Description: "Invoke the hook for merge requests events.",
-				Optional:    true,
-				Computed:    true,
-				Default:     booldefault.StaticBool(false),
-			},
-			"tag_push_events": rschema.BoolAttribute{
-				Description: "Invoke the hook for tag push events.",
-				Optional:    true,
-				Computed:    true,
-				Default:     booldefault.StaticBool(false),
-			},
-			"note_events": rschema.BoolAttribute{
-				Description: "Invoke the hook for note events.",
-				Optional:    true,
-				Computed:    true,
-				Default:     booldefault.StaticBool(false),
-			},
-			"confidential_note_events": rschema.BoolAttribute{
-				Description: "Invoke the hook for confidential note events.",
-				Optional:    true,
-				Computed:    true,
-				Default:     booldefault.StaticBool(false),
-			},
-			"job_events": rschema.BoolAttribute{
-				Description: "Invoke the hook for job events.",
-				Optional:    true,
-				Computed:    true,
-				Default:     booldefault.StaticBool(false),
-			},
-			"pipeline_events": rschema.BoolAttribute{
-				Description: "Invoke the hook for pipeline events.",
-				Optional:    true,
-				Computed:    true,
-				Default:     booldefault.StaticBool(false),
-			},
-			"wiki_page_events": rschema.BoolAttribute{
-				Description: "Invoke the hook for wiki page events.",
-				Optional:    true,
-				Computed:    true,
-				Default:     booldefault.StaticBool(false),
-			},
-			"deployment_events": rschema.BoolAttribute{
-				Description: "Invoke the hook for deployment events.",
-				Optional:    true,
-				Computed:    true,
-				Default:     booldefault.StaticBool(false),
-			},
-			"releases_events": rschema.BoolAttribute{
-				Description: "Invoke the hook for release events.",
-				Optional:    true,
-				Computed:    true,
-				Default:     booldefault.StaticBool(false),
-			},
-			"enable_ssl_verification": rschema.BoolAttribute{
-				Description: "Enable SSL verification when invoking the hook.",
-				Optional:    true,
-				Computed:    true,
-				Default:     booldefault.StaticBool(true),
-			},
-			"custom_webhook_template": rschema.StringAttribute{
-				Description: "Custom webhook template.",
-				Optional:    true,
-				Computed:    true,
-			},
-			"custom_headers": rschema.ListNestedAttribute{
-				Description: "Custom headers for the project webhook.",
-				Optional:    true,
-				NestedObject: rschema.NestedAttributeObject{
-					Attributes: map[string]rschema.Attribute{
-						"key": rschema.StringAttribute{
-							Description: "Key of the custom header.",
-							Required:    true,
-						},
-						"value": rschema.StringAttribute{
-							Required:      true,
-							Description:   "Value of the custom header. This value cannot be imported.",
-							Sensitive:     true,
-							PlanModifiers: []planmodifier.String{stringplanmodifier.UseStateForUnknown()},
-						},
-					},
-				},
-			},
 		}
 		if withNew {
-			attributes["resource_access_token_events"] = rschema.BoolAttribute{
+			attributes["default_val"] = rschema.BoolAttribute{
 				Default:  booldefault.StaticBool(false),
 				Computed: true,
 				Optional: true,
@@ -241,65 +95,29 @@ func TestPFGitlabDiffRepro(t *testing.T) {
 		CreateFunc: func(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
 			resp.State = tfsdk.State(req.Config)
 			resp.State.SetAttribute(ctx, path.Root("project_id"), 123)
-			resp.State.SetAttribute(ctx, path.Root("hook_id"), 567)
 			resp.State.SetAttribute(ctx, path.Root("id"), "abc")
-			resp.State.SetAttribute(ctx, path.Root("enable_ssl_verification"), true)
-			resp.State.SetAttribute(ctx, path.Root("confidential_note_events"), false)
-			resp.State.SetAttribute(ctx, path.Root("releases_events"), false)
-			resp.State.SetAttribute(ctx, path.Root("deployment_events"), false)
-		},
-		UpdateFunc: func(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-			resp.State = tfsdk.State(req.Plan)
 		},
 		ResourceSchema: getSchema(false),
 	})
-
-	inputs := map[string]cty.Value{
-		"project":                    cty.StringVal("project_id"),
-		"name":                       cty.StringVal("webhook-receiver"),
-		"confidential_issues_events": cty.BoolVal(true),
-		"issues_events":              cty.BoolVal(true),
-		"job_events":                 cty.BoolVal(true),
-		"merge_requests_events":      cty.BoolVal(true),
-		"note_events":                cty.BoolVal(true),
-		"pipeline_events":            cty.BoolVal(true),
-		"push_events":                cty.BoolVal(true),
-		"tag_push_events":            cty.BoolVal(true),
-		"url":                        cty.StringVal("https://webhook.receiver.endpoint/hooks/gitlab"),
-		"wiki_page_events":           cty.BoolVal(true),
-	}
 	diff := crosstests.Diff(t, res,
-		inputs,
-		inputs,
+		map[string]cty.Value{"key": cty.StringVal("value")},
+		map[string]cty.Value{"key": cty.StringVal("value")},
 		crosstests.DiffUpdateResource(pb.NewResource(pb.NewResourceArgs{
 			ResourceSchema: getSchema(true),
+			ReadFunc: func(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+				resp.State = tfsdk.State(req.State)
+				resp.State.SetAttribute(ctx, path.Root("default_val"), false)
+			},
 		})),
 		crosstests.DiffSkipUp(true),
 	)
 
-	autogold.Expect(`
-Terraform used the selected providers to generate the following execution
-plan. Resource actions are indicated with the following symbols:
-+/- create replacement and then destroy
+	autogold.Expect(`testprovider_test.res: Refreshing state... [id=abc]
 
-Terraform will perform the following actions:
+No changes. Your infrastructure matches the configuration.
 
-  # testprovider_test.res must be replaced
-+/- resource "testprovider_test" "res" {
-      + custom_webhook_template      = (known after apply)
-      + description                  = (known after apply)
-      ~ hook_id                      = 567 -> (known after apply)
-      ~ id                           = "abc" -> (known after apply)
-        name                         = "webhook-receiver"
-      ~ project_id                   = 123 -> (known after apply) # forces replacement
-      + push_events_branch_filter    = (known after apply)
-      + resource_access_token_events = false
-      + token                        = (sensitive value)
-        # (15 unchanged attributes hidden)
-    }
-
-Plan: 1 to add, 0 to change, 1 to destroy.
-
+Terraform has compared your real infrastructure against your configuration
+and found no differences, so no changes are needed.
 `).Equal(t, diff.TFOut)
 	autogold.Expect(`Previewing update (test):
   pulumi:pulumi:Stack: (same)
@@ -307,30 +125,10 @@ Plan: 1 to add, 0 to change, 1 to destroy.
     +-testprovider:index/test:Test: (replace)
         [id=abc]
         [urn=urn:pulumi:test::project::testprovider:index/test:Test::p]
-        confidentialIssuesEvents : true
-        confidentialNoteEvents   : false
-      + customWebhookTemplate    : output<string>
-        deploymentEvents         : false
-      + description              : output<string>
-        enableSslVerification    : true
-      ~ hookId                   : 567 => output<string>
-      ~ id                       : "abc" => output<string>
-        issuesEvents             : true
-        jobEvents                : true
-        mergeRequestsEvents      : true
-        name                     : "webhook-receiver"
-        noteEvents               : true
-        pipelineEvents           : true
-        project                  : "project_id"
-      ~ projectId                : 123 => output<string>
-        pushEvents               : true
-      + pushEventsBranchFilter   : output<string>
-        releasesEvents           : false
-      + resourceAccessTokenEvents: false
-        tagPushEvents            : true
-      + token                    : [secret]
-        url                      : "https://webhook.receiver.endpoint/hooks/gitlab"
-        wikiPageEvents           : true
+      + defaultVal: false
+      ~ id        : "abc" => output<string>
+        key       : "value"
+      ~ projectId : 123 => output<string>
 Resources:
     +-1 to replace
     1 unchanged
