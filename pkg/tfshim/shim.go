@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/hashicorp/go-cty/cty"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
@@ -23,6 +24,12 @@ type InstanceState interface {
 
 	Object(sch SchemaMap) (map[string]interface{}, error)
 	Meta() map[string]interface{}
+}
+
+// Newer versions of the bridge go to extra length to preserve cty.Value form of as-is raw state inside the Pulumi
+// state file. If the shim supports it it should implement this additional interface to receive this data.
+type InstanceStateWithRawState interface {
+	SetRawState(cty.Value)
 }
 
 type DiffAttrType byte
