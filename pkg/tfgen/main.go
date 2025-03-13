@@ -93,87 +93,93 @@ func newTFGenCmd(pkg string, version string, prov tfbridge.ProviderInfo,
 			"\n" +
 			"Note that there is no custom Pulumi provider code required, because the generated\n" +
 			"provider plugin is metadata-driven and thus works against all Terraform providers.\n",
-		RunE: cmdutil.RunFuncE(func(cmd *cobra.Command, args []string) error {
-			if profile != "" {
-				f, err := os.Create(profile)
-				if err != nil {
-					return err
-				}
-				if err = pprof.StartCPUProfile(f); err != nil {
-					return err
-				}
-				defer pprof.StopCPUProfile()
-			}
-
-			if heapProfile != "" {
-				defer func() {
-					f, err := os.Create(heapProfile)
+		RunE: func(cmd *cobra.Command, args []string) error {
+			runFunc := func(cmd *cobra.Command, args []string) error {
+				if profile != "" {
+					f, err := os.Create(profile)
 					if err != nil {
-						log.Printf("could not write heap profile: %v", err)
-						return
+						return err
 					}
-					runtime.GC() // get up-to-date statistics
-					if err := pprof.WriteHeapProfile(f); err != nil {
-						log.Printf("could not write heap profile: %v", err)
+					if err = pprof.StartCPUProfile(f); err != nil {
+						return err
 					}
-				}()
-			}
-
-			if tracePath != "" {
-				f, err := os.Create(tracePath)
-				if err != nil {
-					return err
+					defer pprof.StopCPUProfile()
 				}
-				if err = trace.Start(f); err != nil {
-					return err
+
+				if heapProfile != "" {
+					defer func() {
+						f, err := os.Create(heapProfile)
+						if err != nil {
+							log.Printf("could not write heap profile: %v", err)
+							return
+						}
+						runtime.GC() // get up-to-date statistics
+						if err := pprof.WriteHeapProfile(f); err != nil {
+							log.Printf("could not write heap profile: %v", err)
+						}
+					}()
 				}
-				defer trace.Stop()
-			}
 
-			// Create the output directory.
-			var root afero.Fs
-			if outDir != "" {
-				absOutDir, err := filepath.Abs(outDir)
-				if err != nil {
-					return err
+				if tracePath != "" {
+					f, err := os.Create(tracePath)
+					if err != nil {
+						return err
+					}
+					if err = trace.Start(f); err != nil {
+						return err
+					}
+					defer trace.Stop()
 				}
-				if err = os.MkdirAll(absOutDir, 0o700); err != nil {
-					return err
+
+				// Create the output directory.
+				var root afero.Fs
+				if outDir != "" {
+					absOutDir, err := filepath.Abs(outDir)
+					if err != nil {
+						return err
+					}
+					if err = os.MkdirAll(absOutDir, 0o700); err != nil {
+						return err
+					}
+					root = afero.NewBasePathFs(afero.NewOsFs(), absOutDir)
 				}
-				root = afero.NewBasePathFs(afero.NewOsFs(), absOutDir)
+
+				// Creating an item to keep track of example coverage if the
+				// COVERAGE_OUTPUT_DIR env is set
+				var coverageTracker *CoverageTracker
+				coverageOutputDir, coverageTrackingOutputEnabled := os.LookupEnv("COVERAGE_OUTPUT_DIR")
+				coverageTracker = newCoverageTracker(prov.Name, prov.Version)
+
+				opts := GeneratorOptions{
+					Package:         pkg,
+					Version:         version,
+					Language:        Language(args[0]),
+					ProviderInfo:    prov,
+					Root:            root,
+					Debug:           debug,
+					SkipDocs:        skipDocs,
+					SkipExamples:    skipExamples,
+					CoverageTracker: coverageTracker,
+				}
+
+				err := gen(opts)
+
+				// Exporting collected coverage data to the directory specified by COVERAGE_OUTPUT_DIR
+				if coverageTrackingOutputEnabled {
+					err = coverageTracker.exportResults(coverageOutputDir)
+				} else {
+					fmt.Println("\nAdditional example conversion stats are available by setting COVERAGE_OUTPUT_DIR.")
+				}
+				fmt.Println(coverageTracker.getShortResultSummary())
+				printDocStats()
+
+				return err
 			}
 
-			// Creating an item to keep track of example coverage if the
-			// COVERAGE_OUTPUT_DIR env is set
-			var coverageTracker *CoverageTracker
-			coverageOutputDir, coverageTrackingOutputEnabled := os.LookupEnv("COVERAGE_OUTPUT_DIR")
-			coverageTracker = newCoverageTracker(prov.Name, prov.Version)
-
-			opts := GeneratorOptions{
-				Package:         pkg,
-				Version:         version,
-				Language:        Language(args[0]),
-				ProviderInfo:    prov,
-				Root:            root,
-				Debug:           debug,
-				SkipDocs:        skipDocs,
-				SkipExamples:    skipExamples,
-				CoverageTracker: coverageTracker,
-			}
-
-			err := gen(opts)
-
-			// Exporting collected coverage data to the directory specified by COVERAGE_OUTPUT_DIR
-			if coverageTrackingOutputEnabled {
-				err = coverageTracker.exportResults(coverageOutputDir)
-			} else {
-				fmt.Println("\nAdditional example conversion stats are available by setting COVERAGE_OUTPUT_DIR.")
-			}
-			fmt.Println(coverageTracker.getShortResultSummary())
-			printDocStats()
-
+			err := runFunc(cmd, args)
+			cmdutil.DisplayErrorMessage(err)
 			return err
-		}),
+		},
 		PersistentPostRun: func(cmd *cobra.Command, args []string) {
 			glog.Flush()
 		},
