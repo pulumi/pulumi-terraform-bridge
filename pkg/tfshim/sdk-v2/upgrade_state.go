@@ -44,7 +44,7 @@ func upgradeResourceStateGRPC(
 
 	resp, err := server.UpgradeResourceState(ctx, &tfprotov5.UpgradeResourceStateRequest{
 		TypeName: t,
-		RawState: &tfprotov5.RawState{JSON: jsonBytes}, // RawState
+		RawState: &tfprotov5.RawState{JSON: jsonBytes},
 		Version:  version,
 	})
 	if uerr := handleDiagnostics(ctx, resp.Diagnostics, err); uerr != nil {
