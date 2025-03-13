@@ -15,6 +15,7 @@
 package tfbridge
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -26,8 +27,31 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/walk"
 )
 
-type rawStateInflections interface {
-	inflection()
+type rawStateInflections struct {
+	TypedNull *typedNull        `json:"null,omitempty"`
+	Pluralize *pluralize        `json:"plu,omitempty"`
+	Map       *mapInflections   `json:"map,omitempty"`
+	Obj       *objInflections   `json:"obj,omitempty"`
+	Array     *arrayInflections `json:"arr,omitempty"`
+}
+
+func (i rawStateInflections) isEmpty() bool {
+	if i.Pluralize != nil {
+		return false
+	}
+	if i.TypedNull != nil {
+		return false
+	}
+	if i.Map != nil {
+		return false
+	}
+	if i.Obj != nil {
+		return false
+	}
+	if i.Array != nil {
+		return false
+	}
+	return true
 }
 
 // Reverses Pulumi MaxItems=1 flattening.
@@ -36,127 +60,107 @@ type rawStateInflections interface {
 // x becomes [x]
 type pluralize struct {
 	// Only needed for recovering from a null PropertyValue.
-	elementType cty.Type
+	ElementType *cty.Type `json:"t,omitempty"`
 
 	// Inflections to apply to `x` before pluralizing.
-	inner rawStateInflections
+	Inner rawStateInflections `json:"i,omitempty"`
 }
-
-func (pluralize) inflection() {}
-
-var _ rawStateInflections = pluralize{}
 
 // To recover nulls to cty.Value they need a type.
 type typedNull struct {
-	t cty.Type
+	T cty.Type `json:"t"`
 }
-
-func (typedNull) inflection() {}
-
-var _ rawStateInflections = typedNull{}
 
 // Primarily to distinguish maps from objects when recovering. Stores the type for empty maps.
 type mapInflections struct {
-	t                  cty.Type
-	elementInflections map[resource.PropertyKey]rawStateInflections
+	T                  *cty.Type                                    `json:"t,omitempty"`
+	ElementInflections map[resource.PropertyKey]rawStateInflections `json:"m,omitempty"`
 }
 
 func (mi *mapInflections) set(key resource.PropertyKey, value rawStateInflections) {
-	if value == nil {
+	if value.isEmpty() {
 		return
 	}
-	if mi.elementInflections == nil {
-		mi.elementInflections = map[resource.PropertyKey]rawStateInflections{}
+	if mi.ElementInflections == nil {
+		mi.ElementInflections = map[resource.PropertyKey]rawStateInflections{}
 	}
-	mi.elementInflections[key] = value
+	mi.ElementInflections[key] = value
 }
-
-func (mapInflections) inflection() {}
-
-var _ rawStateInflections = mapInflections{}
 
 // Distinguish objects from maps when recovering, record renamed properties.
 type objInflections struct {
-	ignored            map[resource.PropertyKey]struct{}
-	renamed            map[resource.PropertyKey]string
-	elementInflections map[resource.PropertyKey]rawStateInflections
+	Ignored            map[resource.PropertyKey]struct{}            `json:"ignored,omitempty"`
+	Renamed            map[resource.PropertyKey]string              `json:"renamed,omitempty"`
+	ElementInflections map[resource.PropertyKey]rawStateInflections `json:"o,omitempty"`
 }
 
 func (oi *objInflections) set(key string, propertyKey resource.PropertyKey, infl rawStateInflections) {
 	if string(propertyKey) != key {
-		if oi.renamed == nil {
-			oi.renamed = make(map[resource.PropertyKey]string)
+		if oi.Renamed == nil {
+			oi.Renamed = make(map[resource.PropertyKey]string)
 		}
-		oi.renamed[propertyKey] = key
+		oi.Renamed[propertyKey] = key
 	}
-	if infl == nil {
+	if infl.isEmpty() {
 		return
 	}
-	if oi.elementInflections == nil {
-		oi.elementInflections = map[resource.PropertyKey]rawStateInflections{}
+	if oi.ElementInflections == nil {
+		oi.ElementInflections = map[resource.PropertyKey]rawStateInflections{}
 	}
-	oi.elementInflections[propertyKey] = infl
+	oi.ElementInflections[propertyKey] = infl
 }
 
 func (oi *objInflections) ignore(key resource.PropertyKey) {
-	if oi.ignored == nil {
-		oi.ignored = map[resource.PropertyKey]struct{}{}
+	if oi.Ignored == nil {
+		oi.Ignored = map[resource.PropertyKey]struct{}{}
 	}
-	oi.ignored[key] = struct{}{}
+	oi.Ignored[key] = struct{}{}
 }
-
-func (objInflections) inflection() {}
-
-var _ rawStateInflections = objInflections{}
 
 // Exists to encode inner inflections on array elements. Stores the type for empty arrays.
 type arrayInflections struct {
-	t                  cty.Type
-	elementInflections map[int]rawStateInflections
+	T                  *cty.Type                   `json:"t,omitempty"`
+	ElementInflections map[int]rawStateInflections `json:"arr"`
 }
 
 func (ai *arrayInflections) set(key int, value rawStateInflections) {
-	if value == nil {
+	if value.isEmpty() {
 		return
 	}
-	if ai.elementInflections == nil {
-		ai.elementInflections = map[int]rawStateInflections{}
+	if ai.ElementInflections == nil {
+		ai.ElementInflections = map[int]rawStateInflections{}
 	}
-	ai.elementInflections[key] = value
+	ai.ElementInflections[key] = value
 }
 
-func (arrayInflections) inflection() {}
-
-var _ rawStateInflections = arrayInflections{}
-
 func rawStateRecover(pv resource.PropertyValue, infl rawStateInflections) (cty.Value, error) {
-	switch infl := infl.(type) {
-	case nil:
+	switch {
+	case infl.isEmpty():
 		return rawStateRecoverNatural(pv)
-	case typedNull:
+	case infl.TypedNull != nil:
 		if !pv.IsNull() {
 			return cty.Value{}, errors.New("expected PropertyValue to be Null")
 		}
-		return cty.NullVal(infl.t), nil
-	case pluralize:
+		return cty.NullVal(infl.TypedNull.T), nil
+	case infl.Pluralize != nil:
 		switch {
 		case pv.IsNull():
-			return cty.ListValEmpty(infl.elementType), nil
+			return cty.ListValEmpty(*infl.Pluralize.ElementType), nil
 		default:
-			v, err := rawStateRecover(pv, infl.inner)
+			v, err := rawStateRecover(pv, infl.Pluralize.Inner)
 			if err != nil {
 				return cty.Value{}, err
 			}
 			return cty.ListVal([]cty.Value{v}), nil
 		}
-	case mapInflections:
+	case infl.Map != nil:
 		if !pv.IsObject() {
 			return cty.Value{}, errors.New("expected PropertyValue to be an Object encoding a map")
 		}
 		pm := pv.ObjectValue()
 		recovered := map[string]cty.Value{}
 		for k, v := range pm {
-			elementInfl := infl.elementInflections[k]
+			elementInfl := infl.Map.ElementInflections[k]
 			element, err := rawStateRecover(v, elementInfl)
 			if err != nil {
 				return cty.Value{}, err
@@ -164,10 +168,10 @@ func rawStateRecover(pv resource.PropertyValue, infl rawStateInflections) (cty.V
 			recovered[string(k)] = element
 		}
 		if len(recovered) == 0 {
-			return cty.MapValEmpty(infl.t), nil
+			return cty.MapValEmpty(*infl.Map.T), nil
 		}
 		return cty.MapVal(recovered), nil
-	case objInflections:
+	case infl.Obj != nil:
 		if !pv.IsObject() {
 			return cty.Value{}, errors.New(
 				"expected PropertyValue to be an Object encoding a cty.Value object",
@@ -176,16 +180,16 @@ func rawStateRecover(pv resource.PropertyValue, infl rawStateInflections) (cty.V
 		pm := pv.ObjectValue()
 		recovered := map[string]cty.Value{}
 		for k, v := range pm {
-			if infl.ignored != nil {
-				if _, ign := infl.ignored[k]; ign {
+			if infl.Obj.Ignored != nil {
+				if _, ign := infl.Obj.Ignored[k]; ign {
 					continue
 				}
 			}
-			name, gotName := infl.renamed[k]
+			name, gotName := infl.Obj.Renamed[k]
 			if !gotName {
 				name = string(k)
 			}
-			elementInfl := infl.elementInflections[k]
+			elementInfl := infl.Obj.ElementInflections[k]
 			element, err := rawStateRecover(v, elementInfl)
 			if err != nil {
 				return cty.Value{}, err
@@ -196,23 +200,23 @@ func rawStateRecover(pv resource.PropertyValue, infl rawStateInflections) (cty.V
 			return cty.EmptyObjectVal, nil
 		}
 		return cty.ObjectVal(recovered), nil
-	case arrayInflections:
+	case infl.Array != nil:
 		if !pv.IsArray() {
 			return cty.Value{}, errors.New("expected PropertyValue to be an Array")
 		}
 		arr := pv.ArrayValue()
 		n := len(arr)
-		for k := range infl.elementInflections {
+		for k := range infl.Array.ElementInflections {
 			if k < 0 || k >= n {
 				return cty.Value{}, fmt.Errorf("Invalid array inflection index %d", k)
 			}
 		}
 		if n == 0 {
-			return cty.ListValEmpty(infl.t), nil
+			return cty.ListValEmpty(*infl.Array.T), nil
 		}
 		var elements []cty.Value
 		for k, v := range arr {
-			r, err := rawStateRecover(v, infl.elementInflections[k])
+			r, err := rawStateRecover(v, infl.Array.ElementInflections[k])
 			if err != nil {
 				return cty.Value{}, err
 			}
@@ -285,15 +289,16 @@ func (ih *inflectHelper) inflectionsAt(
 	contract.Assertf(v.IsKnown(), "rawStateComputeInflections cannot handle unknowns")
 	switch {
 	case v.IsNull():
-		return typedNull{t: v.Type()}, nil
+		return rawStateInflections{TypedNull: &typedNull{T: v.Type()}}, nil
 	case v.Type().IsPrimitiveType():
-		return nil, nil
+		return rawStateInflections{}, nil
 	case v.Type().IsListType():
 		elements := v.AsValueSlice()
 
 		// Checking if [] got encoded as Null due to MaxItems=1.
 		if len(elements) == 0 && pv.IsNull() {
-			return pluralize{elementType: v.Type().ElementType()}, nil
+			t := v.Type().ElementType()
+			return rawStateInflections{Pluralize: &pluralize{ElementType: &t}}, nil
 		}
 
 		// Checking if [x] got encoded as x due to MaxItems=1.
@@ -301,9 +306,9 @@ func (ih *inflectHelper) inflectionsAt(
 			subPath := path.Element()
 			inner, err := ih.inflectionsAt(subPath, pv, elements[0])
 			if err != nil {
-				return nil, err
+				return rawStateInflections{}, err
 			}
-			return pluralize{inner: inner}, nil
+			return rawStateInflections{Pluralize: &pluralize{Inner: inner}}, nil
 		}
 
 		// Otherwise PropertyValue should be an array just like the cty.Value is a list.
@@ -315,7 +320,10 @@ func (ih *inflectHelper) inflectionsAt(
 			"Expected array length parity for PropertyValue and matching cty.Value")
 
 		if len(pvElements) == 0 {
-			return arrayInflections{t: v.Type()}, nil
+			t := v.Type()
+			return rawStateInflections{
+				Array: &arrayInflections{T: &t},
+			}, nil
 		}
 
 		arrayInfl := arrayInflections{}
@@ -324,12 +332,12 @@ func (ih *inflectHelper) inflectionsAt(
 		for k, e := range elements {
 			infl, err := ih.inflectionsAt(subPath, pvElements[k], e)
 			if err != nil {
-				return nil, err
+				return rawStateInflections{}, err
 			}
 			arrayInfl.set(k, infl)
 		}
 
-		return arrayInfl, nil
+		return rawStateInflections{Array: &arrayInfl}, nil
 	case v.Type().IsMapType():
 		elements := v.AsValueMap()
 		contract.Assertf(pv.IsObject(), "Expected an Object PropertyValue to match a Map cty.Value")
@@ -340,7 +348,8 @@ func (ih *inflectHelper) inflectionsAt(
 			"Expected map length parity for PropertyValue and matching cty.Value")
 
 		if len(pvElements) == 0 {
-			return mapInflections{t: v.Type()}, nil
+			t := v.Type()
+			return rawStateInflections{Map: &mapInflections{T: &t}}, nil
 		}
 
 		mapInfl := mapInflections{}
@@ -350,12 +359,13 @@ func (ih *inflectHelper) inflectionsAt(
 			key := resource.PropertyKey(k)
 			infl, err := ih.inflectionsAt(subPath, pvElements[key], e)
 			if err != nil {
-				return nil, err
+				return rawStateInflections{}, err
 			}
 			mapInfl.set(key, infl)
 		}
 
-		return mapInfl, nil
+		return rawStateInflections{Map: &mapInfl}, nil
+
 	case v.Type().IsObjectType():
 		elements := v.AsValueMap()
 
@@ -366,7 +376,7 @@ func (ih *inflectHelper) inflectionsAt(
 			for k := range pvElements {
 				infl.ignore(k)
 			}
-			return infl, nil
+			return rawStateInflections{Obj: &infl}, nil
 		}
 
 		infl := objInflections{}
@@ -377,12 +387,12 @@ func (ih *inflectHelper) inflectionsAt(
 			subPath := path.GetAttr(k)
 			keyRaw, err := TerraformToPulumiNameAtPath(path, ih.schemaMap, ih.schemaInfos)
 			if err != nil {
-				return nil, err
+				return rawStateInflections{}, err
 			}
 			key := resource.PropertyKey(keyRaw)
 			kInfl, err := ih.inflectionsAt(subPath, pvElements[key], v)
 			if err != nil {
-				return nil, err
+				return rawStateInflections{}, err
 			}
 			keySetWithCtyValueMatches[key] = struct{}{}
 			infl.set(k, key, kInfl)
@@ -394,23 +404,43 @@ func (ih *inflectHelper) inflectionsAt(
 			}
 		}
 
-		return infl, nil
+		return rawStateInflections{Obj: &infl}, nil
 	case v.Type().IsSetType():
-		panic("TODO")
+		panic("TODO SetType")
 	case v.Type().IsTupleType():
-		panic("TODO")
+		panic("TODO TypeType")
 	case v.Type().IsCapsuleType():
-		return nil, errors.New("cty.Value CapsuleType is not supported")
+		return rawStateInflections{}, errors.New("cty.Value CapsuleType is not supported")
 	default:
 		contract.Failf("rawStateComputeInflections does not recognize this cty.Value case")
-		return nil, errors.New("impossible")
+		return rawStateInflections{}, errors.New("impossible")
 	}
 }
 
 func rawStateParseInflections(rawData any) (rawStateInflections, error) {
-	return nil, errors.New("TODO")
+	bytes, err := json.Marshal(rawData)
+	if err != nil {
+		return rawStateInflections{}, err
+	}
+
+	var result rawStateInflections
+	if err := json.Unmarshal(bytes, &result); err != nil {
+		return rawStateInflections{}, nil
+	}
+
+	return result, nil
 }
 
 func rawStateEncodeInflections(infl rawStateInflections) (any, error) {
-	return nil, errors.New("TODO")
+	bytes, err := json.Marshal(infl)
+	if err != nil {
+		return nil, err
+	}
+
+	var result any
+	if err := json.Unmarshal(bytes, &result); err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }
