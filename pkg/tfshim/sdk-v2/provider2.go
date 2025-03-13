@@ -60,7 +60,7 @@ func (r *v2Resource2) InstanceState(
 	}
 	s = normalizeBlockCollections(s, r.tf)
 
-	return &v2InstanceState2{ // Is this right?
+	return &v2InstanceState2{
 		stateValue:   s,
 		resourceType: r.resourceType,
 		meta:         meta,
@@ -152,14 +152,14 @@ var _ shim.InstanceDiff = (*v2InstanceDiff2)(nil)
 func (d *v2InstanceDiff2) ProposedState(
 	res shim.Resource, priorState shim.InstanceState,
 ) (shim.InstanceState, error) {
-	return &v2InstanceState2{ // is this right?
+	return &v2InstanceState2{
 		stateValue: d.plannedState,
 		meta:       d.v2InstanceDiff.tf.Meta,
 	}, nil
 }
 
 func (d *v2InstanceDiff2) PriorState() (shim.InstanceState, error) {
-	return &v2InstanceState2{ // is this right?
+	return &v2InstanceState2{
 		stateValue: d.prior,
 		meta:       d.priorMeta,
 	}, nil
@@ -381,7 +381,7 @@ func (p v2Provider) Refresh(
 	if rr.stateValue.IsNull() {
 		return nil, nil
 	}
-	return &v2InstanceState2{ // is this right?
+	return &v2InstanceState2{
 		resourceType: rr.resourceType,
 		stateValue:   rr.stateValue,
 		meta:         rr.meta,
@@ -453,7 +453,7 @@ func (*v2Provider) unpackDiff(ty cty.Type, d shim.InstanceDiff) *v2InstanceDiff2
 
 func (p *v2Provider) unpackInstanceState(
 	t string, s shim.InstanceState,
-) *v2InstanceState2 { // is this right?
+) *v2InstanceState2 {
 	switch s := s.(type) {
 	case nil:
 		res := p.tf.ResourcesMap[t]
@@ -495,7 +495,7 @@ func (p *v2Provider) upgradeState(
 		return nil, err
 	}
 
-	return &v2InstanceState2{ // is this right?
+	return &v2InstanceState2{
 		resourceType: t,
 		stateValue:   newState,
 		meta:         newMeta,
@@ -761,7 +761,7 @@ func (s *grpcServer) ImportResourceState(
 	typeName string,
 	ty cty.Type,
 	id string,
-) ([]v2InstanceState2, error) { // is this right?
+) ([]v2InstanceState2, error) {
 	req := &tfprotov5.ImportResourceStateRequest{
 		TypeName: typeName,
 		ID:       id,
