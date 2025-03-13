@@ -15,12 +15,14 @@
 package tfbridge
 
 import (
+	"encoding/json"
 	"testing"
 
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/require"
 
+	"github.com/hexops/autogold/v2"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
@@ -86,6 +88,185 @@ func Test_rawStateInflections_turnaround(t *testing.T) {
 			t.Logf("cv2:%v", recoveredCtyValue.GoString())
 
 			require.True(t, recoveredCtyValue.RawEquals(tc.cv))
+		})
+	}
+}
+
+func Test_rawstate_inflections_serialization(t *testing.T) {
+	type testCase struct {
+		name   string
+		infl   rawStateInflections
+		expect autogold.Value
+	}
+
+	testCases := []testCase{
+		{
+			name: "typedNull",
+			infl: rawStateInflections{TypedNull: &typedNull{T: cty.Object(map[string]cty.Type{
+				"x": cty.String,
+				"y": cty.Number,
+			})}},
+			expect: autogold.Expect(`{
+ "null": {
+  "t": [
+   "object",
+   {
+    "x": "string",
+    "y": "number"
+   }
+  ]
+ }
+}`),
+		},
+		{
+			name: "pluralize-null",
+			infl: rawStateInflections{Pluralize: &pluralize{ElementType: &cty.String}},
+			expect: autogold.Expect(`{
+ "plu": {
+  "i": {},
+  "t": "string"
+ }
+}`),
+		},
+		{
+			name: "pluralize-inner",
+			infl: rawStateInflections{Pluralize: &pluralize{
+				Inner: rawStateInflections{TypedNull: &typedNull{T: cty.String}},
+			}},
+			expect: autogold.Expect(`{
+ "plu": {
+  "i": {
+   "null": {
+    "t": "string"
+   }
+  }
+ }
+}`),
+		},
+		{
+			name: "map-empty",
+			infl: rawStateInflections{Map: &mapInflections{
+				T: &cty.String,
+			}},
+			expect: autogold.Expect(`{
+ "map": {
+  "t": "string"
+ }
+}`),
+		},
+		{
+			name: "map-regular",
+			infl: rawStateInflections{
+				Map: &mapInflections{
+					ElementInflections: map[resource.PropertyKey]rawStateInflections{
+						"x": {TypedNull: &typedNull{T: cty.Bool}},
+					},
+				},
+			},
+			expect: autogold.Expect(`{
+ "map": {
+  "m": {
+   "x": {
+    "null": {
+     "t": "bool"
+    }
+   }
+  }
+ }
+}`),
+		},
+		{
+			name: "obj",
+			infl: rawStateInflections{
+				Obj: &objInflections{
+					Ignored: map[resource.PropertyKey]struct{}{
+						"__meta": {},
+					},
+					Renamed: map[resource.PropertyKey]string{
+						"fooBar": "foo_bar",
+					},
+					ElementInflections: map[resource.PropertyKey]rawStateInflections{
+						"fooBar": {
+							TypedNull: &typedNull{
+								T: cty.Bool,
+							},
+						},
+					},
+				},
+			},
+			expect: autogold.Expect(`{
+ "obj": {
+  "ignored": {
+   "__meta": {}
+  },
+  "o": {
+   "fooBar": {
+    "null": {
+     "t": "bool"
+    }
+   }
+  },
+  "renamed": {
+   "fooBar": "foo_bar"
+  }
+ }
+}`),
+		},
+		{
+			name: "array-empty",
+			infl: rawStateInflections{
+				Array: &arrayInflections{
+					T: &cty.Bool,
+				},
+			},
+			expect: autogold.Expect(`{
+ "arr": {
+  "arr": null,
+  "t": "bool"
+ }
+}`),
+		},
+		{
+			name: "array-regular",
+			infl: rawStateInflections{
+				Array: &arrayInflections{
+					ElementInflections: map[int]rawStateInflections{
+						1: {
+							TypedNull: &typedNull{T: cty.String},
+						},
+					},
+				},
+			},
+			expect: autogold.Expect(`{
+ "arr": {
+  "arr": {
+   "1": {
+    "null": {
+     "t": "string"
+    }
+   }
+  }
+ }
+}`),
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			encoded, err := rawStateEncodeInflections(tc.infl)
+			require.NoError(t, err)
+
+			t.Logf("encoded: %#v", encoded)
+
+			back, err := rawStateParseInflections(encoded)
+			require.NoError(t, err)
+
+			require.Equalf(t, tc.infl, back, "turnaround")
+
+			encodedJ, err := json.MarshalIndent(encoded, "", " ")
+			require.NoError(t, err)
+
+			tc.expect.Equal(t, string(encodedJ))
 		})
 	}
 }
