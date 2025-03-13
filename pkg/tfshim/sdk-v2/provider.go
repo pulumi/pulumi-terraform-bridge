@@ -23,13 +23,6 @@ func configFromShim(c shim.ResourceConfig) *terraform.ResourceConfig {
 	return c.(v2ResourceConfig).tf
 }
 
-func stateFromShim(s shim.InstanceState) *terraform.InstanceState {
-	if s == nil {
-		return nil
-	}
-	return s.(v2InstanceState).tf
-}
-
 func stateToShim(r *schema.Resource, s *terraform.InstanceState) shim.InstanceState {
 	if s == nil {
 		return nil
@@ -54,28 +47,29 @@ func diffToShim(d *terraform.InstanceDiff) shim.InstanceDiff {
 type v2Provider struct {
 	tf   *schema.Provider
 	opts []providerOption
+
+	server       *grpcServer
+	planEditFunc PlanStateEditFunc
 }
 
 var _ shim.Provider = (*v2Provider)(nil)
 
 func NewProvider(p *schema.Provider, opts ...providerOption) shim.Provider {
-	prov := v2Provider{
-		tf:   p,
-		opts: opts,
-	}
-
 	o, err := getProviderOptions(opts)
 	contract.AssertNoErrorf(err, "provider options failed to apply")
 
-	return newProviderWithPlanResourceChange(p, prov, func(s string) bool { return true }, o.planStateEdit)
+	return v2Provider{
+		planEditFunc: o.planStateEdit,
+		tf:           p,
+		opts:         opts,
+		server: &grpcServer{
+			gserver: p.GRPCProvider().(*schema.GRPCProviderServer),
+		},
+	}
 }
 
 func (p v2Provider) Schema() shim.SchemaMap {
 	return v2SchemaMap(p.tf.Schema)
-}
-
-func (p v2Provider) ResourcesMap() shim.ResourceMap {
-	return v2ResourceMap(p.tf.ResourcesMap)
 }
 
 func (p v2Provider) DataSourcesMap() shim.ResourceMap {
@@ -111,48 +105,6 @@ func (p v2Provider) stopContext(ctx context.Context) context.Context {
 	//
 	// See: https://github.com/hashicorp/terraform-plugin-sdk/blob/main/helper/schema/grpc_provider.go#L60C1-L60C80
 	return ctx
-}
-
-func (p v2Provider) Apply(
-	ctx context.Context,
-	t string,
-	s shim.InstanceState,
-	d shim.InstanceDiff,
-) (shim.InstanceState, error) {
-	r, ok := p.tf.ResourcesMap[t]
-	if !ok {
-		return nil, fmt.Errorf("unknown resource %v", t)
-	}
-	state, err := upgradeResourceState(ctx, t, p.tf, r, stateFromShim(s))
-	if err != nil {
-		return nil, fmt.Errorf("failed to upgrade resource state: %w", err)
-	}
-	state, diags := r.Apply(ctx, state, diffFromShim(d), p.tf.Meta())
-	return stateToShim(r, state), errors(diags)
-}
-
-func (p v2Provider) Refresh(
-	ctx context.Context,
-	t string,
-	s shim.InstanceState,
-	c shim.ResourceConfig,
-) (shim.InstanceState, error) {
-	r, ok := p.tf.ResourcesMap[t]
-	if !ok {
-		return nil, fmt.Errorf("unknown resource %v", t)
-	}
-
-	state, err := upgradeResourceState(ctx, t, p.tf, r, stateFromShim(s))
-	if err != nil {
-		return nil, fmt.Errorf("failed to upgrade resource state: %w", err)
-	}
-
-	if c != nil {
-		state.RawConfig = makeResourceRawConfig(configFromShim(c), r)
-	}
-
-	state, diags := r.RefreshWithoutUpgrade(context.TODO(), state, p.tf.Meta())
-	return stateToShim(r, state), errors(diags)
 }
 
 func (p v2Provider) ReadDataDiff(
@@ -198,12 +150,6 @@ func (p v2Provider) Stop(_ context.Context) error {
 
 func (p v2Provider) InitLogging(_ context.Context) {
 	logging.SetOutput(&testing.RuntimeT{})
-}
-
-func (p v2Provider) NewDestroyDiff(_ context.Context, t string, opts shim.TimeoutOptions) shim.InstanceDiff {
-	d := v2InstanceDiff{&terraform.InstanceDiff{Destroy: true}}
-	d.applyTimeoutOptions(opts)
-	return d
 }
 
 func (p v2Provider) NewResourceConfig(
