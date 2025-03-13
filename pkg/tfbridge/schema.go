@@ -1335,7 +1335,35 @@ func makeTerraformStateWithOpts(
 		return nil, err
 	}
 
-	return res.TF.InstanceState(id, inputs, meta)
+	instanceState, err := res.TF.InstanceState(id, inputs, meta)
+	if err != nil {
+		return nil, err
+	}
+
+	if isr, ok := instanceState.(shim.InstanceStateWithRawState); ok {
+		if raw, hasRaw := meta["raw"]; hasRaw {
+			infl, err := rawStateParseInflections(raw)
+			if err != nil {
+				// Only log at Debug level to avoid leaking secrets to errors.
+				GetLogger(ctx).Debug(fmt.Sprintf("Failed to parse raw state markers:\n"+
+					"  __meta.raw: %#v\n"+
+					"  error: %v", raw, err))
+				contract.AssertNoErrorf(err, "Failed to parse raw state markers")
+			}
+			rawSt, err := rawStateRecover(resource.NewObjectProperty(m), infl)
+			if err != nil {
+				// Only log at Debug level to avoid leaking secrets to errors.
+				GetLogger(ctx).Debug(fmt.Sprintf("Failed recover raw state:\n"+
+					"  __meta.raw: %#v\n"+
+					"  infl: %#v\n"+
+					"  error: %v", raw, infl, err))
+				contract.AssertNoErrorf(err, "Failed to recover raw state")
+			}
+			isr.SetRawState(rawSt)
+		}
+	}
+
+	return instanceState, nil
 }
 
 // MakeTerraformState converts a Pulumi property bag into its Terraform equivalent.  This requires

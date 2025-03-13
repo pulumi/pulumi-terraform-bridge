@@ -406,3 +406,7 @@ func (ih *inflectHelper) inflectionsAt(
 		return nil, errors.New("impossible")
 	}
 }
+
+func rawStateParseInflections(rawData any) (rawStateInflections, error) {
+	return nil, errors.New("TODO")
+}

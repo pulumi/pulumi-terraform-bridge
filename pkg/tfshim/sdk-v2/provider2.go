@@ -88,7 +88,10 @@ type v2InstanceState2 struct {
 	recoveredRawState *cty.Value
 }
 
-var _ shim.InstanceState = (*v2InstanceState2)(nil)
+var (
+	_ shim.InstanceState             = (*v2InstanceState2)(nil)
+	_ shim.InstanceStateWithRawState = (*v2InstanceState2)(nil)
+)
 
 func (s *v2InstanceState2) Type() string {
 	return s.resourceType
@@ -116,6 +119,10 @@ func (s *v2InstanceState2) Object(sch shim.SchemaMap) (map[string]interface{}, e
 
 func (s *v2InstanceState2) Meta() map[string]interface{} {
 	return s.meta
+}
+
+func (s *v2InstanceState2) SetRawState(st cty.Value) {
+	s.recoveredRawState = &st
 }
 
 type v2InstanceDiff2 struct {

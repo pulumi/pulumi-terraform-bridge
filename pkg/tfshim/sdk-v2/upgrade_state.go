@@ -17,7 +17,6 @@ func upgradeResourceStateGRPC(
 	state cty.Value, meta map[string]any,
 	server tfprotov5.ProviderServer,
 ) (cty.Value, map[string]any, error) {
-
 	jsonBytes, err := ctyjson.Marshal(state, state.Type())
 	if err != nil {
 		return cty.Value{}, nil, err
