@@ -26,6 +26,11 @@ type InstanceState interface {
 	Meta() map[string]interface{}
 }
 
+// Newer versions of the bridge want to interact with a cty.Value representation of the state.
+type InstanceStateWithCtyValue interface {
+	Value() cty.Value
+}
+
 // Newer versions of the bridge go to extra length to preserve cty.Value form of as-is raw state inside the Pulumi
 // state file. If the shim supports it it should implement this additional interface to receive this data.
 type InstanceStateWithRawState interface {
