@@ -72,7 +72,7 @@ func getVersionInState(t T, stack apitype.UntypedDeployment) int {
 			schemaVersion = int(n)
 		}
 	}
-	return int(schemaVersion)
+	return schemaVersion
 }
 
 func runPulumiUpgrade(t T, res1, res2 *schema.Resource, config1, config2 cty.Value) (int, int) {
