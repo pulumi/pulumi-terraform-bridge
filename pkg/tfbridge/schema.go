@@ -1041,11 +1041,14 @@ func MakeTerraformResult(
 
 	outMap := MakeTerraformOutputs(ctx, p, outs, tfs, ps, assets, supportsSecrets)
 
+	// When this code is run on preview, there may be unknowns involved.
+	hasUnknowns := outMap.ContainsUnknowns()
+
 	// If there is any Terraform metadata associated with this state, record it.
 	needMeta := state != nil && len(state.Meta()) != 0
 
 	// Also record raw state metadata under metaKey if needed.
-	if _, ok := state.(shim.InstanceStateWithCtyValue); ok {
+	if _, ok := state.(shim.InstanceStateWithCtyValue); ok && !hasUnknowns {
 		needMeta = true
 	}
 
@@ -1058,7 +1061,7 @@ func MakeTerraformResult(
 		metaMap = state.Meta()
 	}
 
-	if stc, ok := state.(shim.InstanceStateWithCtyValue); ok {
+	if stc, ok := state.(shim.InstanceStateWithCtyValue); ok && !hasUnknowns {
 		ih := &inflectHelper{
 			schemaMap:   tfs,
 			schemaInfos: ps,
