@@ -52,6 +52,9 @@ func (i rawStateInflections) isEmpty() bool {
 	if i.Array != nil {
 		return false
 	}
+	if i.Set != nil {
+		return false
+	}
 	return true
 }
 
