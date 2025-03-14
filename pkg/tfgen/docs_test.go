@@ -1968,7 +1968,6 @@ func TestConvertExamples(t *testing.T) {
 				fullPath: "#/resources/outscale:index/volume:Volume",
 				token:    "outscale:index/volume:Volume",
 			},
-			language: ref(Schema),
 		},
 		{
 			name: "random_string",
@@ -1976,7 +1975,13 @@ func TestConvertExamples(t *testing.T) {
 				token:    "random:index/randomString:RandomString",
 				fullPath: "#/resources/random:index/randomString:RandomString",
 			},
-			language: ref(Schema),
+		},
+		{
+			name: "auth0_pages",
+			path: examplePath{
+				token:    "auth0:index/pages:Pages",
+				fullPath: "#/resources/auth0:index/pages:Pages",
+			},
 		},
 	}
 

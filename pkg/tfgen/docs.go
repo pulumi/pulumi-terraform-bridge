@@ -1529,7 +1529,15 @@ func findCodeBlocks(docs []byte) []codeBlock {
 		headerStart := -1
 		for p := cb.Parent(); p != nil; p = p.Parent() {
 			if s, ok := p.(*section.Section); ok {
-				headerStart = bytes.LastIndexByte(docs[:s.FirstChild().Lines().At(0).Start], '\n') + 1
+				l := s.FirstChild().Lines()
+				if l.Len() == 0 {
+					// A header doesn't have any lines if there is no text associated with the
+					// header, then we can't find its location due to limitations of goldmark.
+					//
+					// Just give up on finding a header here.
+					break
+				}
+				headerStart = bytes.LastIndexByte(docs[:l.At(0).Start], '\n') + 1
 				break
 			}
 		}
