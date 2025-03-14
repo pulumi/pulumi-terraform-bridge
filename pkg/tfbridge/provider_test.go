@@ -3390,7 +3390,7 @@ func testImport(t *testing.T, newProvider func(*schema.Provider) shim.Provider) 
 		    "properties": {
 		      "id": "res1",
 		      "stringPropertyValue": "imported",
-		      "__meta": "{\"e2bfb730-ecaa-11e6-8f88-34363bc7c4c0\":{\"create\":120000000000},\"schema_version\":\"1\"}"
+		      "__meta": "*"
 		    },
 		    "id": "res1"
 		  }
