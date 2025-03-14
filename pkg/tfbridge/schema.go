@@ -1049,26 +1049,26 @@ func MakeTerraformResult(
 			pv := resource.NewObjectProperty(outMap)
 			infl, err := ih.inflections(pv, stc.Value())
 			if err != nil {
-				GetLogger(ctx).Debug(fmt.Sprintf("Failed encoding raw state\n"+
-					"  value: %s\n"+
-					"  p-map: %s\n"+
-					"  error: %v",
-					stc.Value().GoString(),
-					pv.String(),
-					err))
+				// GetLogger(ctx).Debug(fmt.Sprintf("Failed encoding raw state\n"+
+				// 	"  value: %s\n"+
+				// 	"  p-map: %s\n"+
+				// 	"  error: %v",
+				// 	stc.Value().GoString(),
+				// 	pv.String(),
+				// 	err))
 				contract.AssertNoErrorf(err, "Failed encoding raw state")
 			}
 			inflEnc, err := rawStateEncodeInflections(infl)
 			if err != nil {
-				GetLogger(ctx).Debug(fmt.Sprintf("Failed marshaling raw state\n"+
-					"  value: %s\n"+
-					"  p-map: %s\n"+
-					"  infl: %#v\n"+
-					"  error: %v",
-					stc.Value().GoString(),
-					pv.String(),
-					infl,
-					err))
+				// GetLogger(ctx).Debug(fmt.Sprintf("Failed marshaling raw state\n"+
+				// 	"  value: %s\n"+
+				// 	"  p-map: %s\n"+
+				// 	"  infl: %#v\n"+
+				// 	"  error: %v",
+				// 	stc.Value().GoString(),
+				// 	pv.String(),
+				// 	infl,
+				// 	err))
 				contract.AssertNoErrorf(err, "Failed marshaling raw state")
 			}
 			metaMap["raw"] = inflEnc
@@ -1380,18 +1380,18 @@ func makeTerraformStateWithOpts(
 			infl, err := rawStateParseInflections(raw)
 			if err != nil {
 				// Only log at Debug level to avoid leaking secrets to errors.
-				GetLogger(ctx).Debug(fmt.Sprintf("Failed to parse raw state markers:\n"+
-					"  __meta.raw: %#v\n"+
-					"  error: %v", raw, err))
+				// GetLogger(ctx).Debug(fmt.Sprintf("Failed to parse raw state markers:\n"+
+				// 	"  __meta.raw: %#v\n"+
+				// 	"  error: %v", raw, err))
 				contract.AssertNoErrorf(err, "Failed to parse raw state markers")
 			}
 			rawSt, err := rawStateRecover(resource.NewObjectProperty(m), infl)
 			if err != nil {
 				// Only log at Debug level to avoid leaking secrets to errors.
-				GetLogger(ctx).Debug(fmt.Sprintf("Failed recover raw state:\n"+
-					"  __meta.raw: %#v\n"+
-					"  infl: %#v\n"+
-					"  error: %v", raw, infl, err))
+				// GetLogger(ctx).Debug(fmt.Sprintf("Failed recover raw state:\n"+
+				// 	"  __meta.raw: %#v\n"+
+				// 	"  infl: %#v\n"+
+				// 	"  error: %v", raw, infl, err))
 				contract.AssertNoErrorf(err, "Failed to recover raw state")
 			}
 			isr.SetRawState(rawSt)
