@@ -33,6 +33,7 @@ type rawStateInflections struct {
 	Map       *mapInflections   `json:"map,omitempty"`
 	Obj       *objInflections   `json:"obj,omitempty"`
 	Array     *arrayInflections `json:"arr,omitempty"`
+	Set       *setInflections   `json:"set,omitempty"`
 }
 
 func (i rawStateInflections) isEmpty() bool {
@@ -133,6 +134,26 @@ func (ai *arrayInflections) set(key int, value rawStateInflections) {
 	ai.ElementInflections[key] = value
 }
 
+// Exists to encode inner inflections on set elements. Stores the type for empty sets.
+type setInflections struct {
+	T *cty.Type `json:"t,omitempty"`
+
+	// Key assumption here is that no re-ordering is possible here.
+	//
+	// Alternatively we could index on hashes of PropertyValue, and check for hash-collisions at write time.
+	ElementInflections map[int]rawStateInflections `json:"set"`
+}
+
+func (ai *setInflections) set(key int, value rawStateInflections) {
+	if value.isEmpty() {
+		return
+	}
+	if ai.ElementInflections == nil {
+		ai.ElementInflections = map[int]rawStateInflections{}
+	}
+	ai.ElementInflections[key] = value
+}
+
 func rawStateRecover(pv resource.PropertyValue, infl rawStateInflections) (cty.Value, error) {
 	switch {
 	case infl.isEmpty():
@@ -223,6 +244,29 @@ func rawStateRecover(pv resource.PropertyValue, infl rawStateInflections) (cty.V
 			elements = append(elements, r)
 		}
 		return cty.ListVal(elements), nil
+	case infl.Set != nil:
+		if !pv.IsArray() {
+			return cty.Value{}, errors.New("expected PropertyValue to be an Array")
+		}
+		arr := pv.ArrayValue()
+		n := len(arr)
+		for k := range infl.Set.ElementInflections {
+			if k < 0 || k >= n {
+				return cty.Value{}, fmt.Errorf("Invalid set inflection index %d", k)
+			}
+		}
+		if n == 0 {
+			return cty.SetValEmpty(*infl.Set.T), nil
+		}
+		var elements []cty.Value
+		for k, v := range arr {
+			r, err := rawStateRecover(v, infl.Set.ElementInflections[k])
+			if err != nil {
+				return cty.Value{}, err
+			}
+			elements = append(elements, r)
+		}
+		return cty.SetVal(elements), nil
 	default:
 		contract.Failf("rawStateRecover does not recognize this rawStateInflections case")
 		return cty.Value{}, errors.New("impossible")
@@ -366,6 +410,58 @@ func (ih *inflectHelper) inflectionsAt(
 
 		return rawStateInflections{Map: &mapInfl}, nil
 
+	case v.Type().IsSetType():
+		// Key assumption here is that when Pulumi translates Set values in states and projects them as Array
+		// PropertyValue, the Array preserves the original ordering.
+
+		elements := v.AsValueSlice()
+
+		// MaxItems=1 handling is exactly similar to lists.
+		//
+		// Checking if [] got encoded as Null due to MaxItems=1.
+		if len(elements) == 0 && pv.IsNull() {
+			t := v.Type().ElementType()
+			return rawStateInflections{Pluralize: &pluralize{ElementType: &t}}, nil
+		}
+
+		// Checking if [x] got encoded as x due to MaxItems=1.
+		if len(elements) == 1 && !pv.IsArray() {
+			subPath := path.Element()
+			inner, err := ih.inflectionsAt(subPath, pv, elements[0])
+			if err != nil {
+				return rawStateInflections{}, err
+			}
+			return rawStateInflections{Pluralize: &pluralize{Inner: inner}}, nil
+		}
+
+		// Otherwise PropertyValue should be an array just like the cty.Value is a set.
+		contract.Assertf(pv.IsArray(), "Expected an Array PropertyValue to match a Set cty.Value")
+
+		pvElements := pv.ArrayValue()
+
+		contract.Assertf(len(pvElements) == len(elements),
+			"Expected array length parity for PropertyValue and matching Set cty.Value")
+
+		if len(pvElements) == 0 {
+			t := v.Type()
+			return rawStateInflections{
+				Set: &setInflections{T: &t},
+			}, nil
+		}
+
+		setInfl := setInflections{}
+
+		subPath := path.Element()
+		for k, e := range elements {
+			infl, err := ih.inflectionsAt(subPath, pvElements[k], e)
+			if err != nil {
+				return rawStateInflections{}, err
+			}
+			setInfl.set(k, infl)
+		}
+
+		return rawStateInflections{Set: &setInfl}, nil
+
 	case v.Type().IsObjectType():
 		elements := v.AsValueMap()
 
@@ -405,8 +501,6 @@ func (ih *inflectHelper) inflectionsAt(
 		}
 
 		return rawStateInflections{Obj: &infl}, nil
-	case v.Type().IsSetType():
-		panic("TODO SetType")
 	case v.Type().IsTupleType():
 		panic("TODO TypeType")
 	case v.Type().IsCapsuleType():
