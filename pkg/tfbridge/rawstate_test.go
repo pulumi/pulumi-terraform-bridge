@@ -26,7 +26,7 @@ import (
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
-func Test_rawStateInflections_turnaround(t *testing.T) {
+func Test_rawstate_inflections_turnaround(t *testing.T) {
 	t.Parallel()
 
 	type testCase struct {
