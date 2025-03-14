@@ -1,11 +1,17 @@
 package tfbridgetests
 
 import (
+	"context"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hexops/autogold/v2"
 	"github.com/zclconf/go-cty/cty"
 
@@ -55,6 +61,76 @@ Plan: 0 to add, 1 to change, 0 to destroy.
       ~ key: "value" => "value1"
 Resources:
     ~ 1 to update
+    1 unchanged
+`).Equal(t, diff.PulumiOut)
+}
+
+func TestPFGitlabDiffRepro(t *testing.T) {
+	t.Parallel()
+
+	getSchema := func(withNew bool) rschema.Schema {
+		attributes := map[string]rschema.Attribute{
+			"key": rschema.StringAttribute{Optional: true},
+			"project_id": rschema.Int64Attribute{
+				MarkdownDescription: "The id of the project for the hook.",
+				Computed:            true,
+				PlanModifiers: []planmodifier.Int64{
+					int64planmodifier.RequiresReplace(),
+				},
+			},
+		}
+		if withNew {
+			attributes["default_val"] = rschema.BoolAttribute{
+				Default:  booldefault.StaticBool(false),
+				Computed: true,
+				Optional: true,
+			}
+		}
+		return rschema.Schema{
+			Attributes: attributes,
+		}
+	}
+
+	res := pb.NewResource(pb.NewResourceArgs{
+		CreateFunc: func(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+			resp.State = tfsdk.State(req.Config)
+			resp.State.SetAttribute(ctx, path.Root("project_id"), 123)
+			resp.State.SetAttribute(ctx, path.Root("id"), "abc")
+		},
+		ResourceSchema: getSchema(false),
+	})
+	diff := crosstests.Diff(t, res,
+		map[string]cty.Value{"key": cty.StringVal("value")},
+		map[string]cty.Value{"key": cty.StringVal("value")},
+		crosstests.DiffUpdateResource(pb.NewResource(pb.NewResourceArgs{
+			ResourceSchema: getSchema(true),
+			ReadFunc: func(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+				resp.State = tfsdk.State(req.State)
+				resp.State.SetAttribute(ctx, path.Root("default_val"), false)
+			},
+		})),
+		crosstests.DiffSkipUp(true),
+	)
+
+	autogold.Expect(`testprovider_test.res: Refreshing state... [id=abc]
+
+No changes. Your infrastructure matches the configuration.
+
+Terraform has compared your real infrastructure against your configuration
+and found no differences, so no changes are needed.
+`).Equal(t, diff.TFOut)
+	autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::project::pulumi:pulumi:Stack::project-test]
+    +-testprovider:index/test:Test: (replace)
+        [id=abc]
+        [urn=urn:pulumi:test::project::testprovider:index/test:Test::p]
+      + defaultVal: false
+      ~ id        : "abc" => output<string>
+        key       : "value"
+      ~ projectId : 123 => output<string>
+Resources:
+    +-1 to replace
     1 unchanged
 `).Equal(t, diff.PulumiOut)
 }
