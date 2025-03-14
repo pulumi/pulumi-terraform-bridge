@@ -37,6 +37,7 @@ import (
 	bf "github.com/russross/blackfriday/v2"
 	"github.com/spf13/afero"
 	"github.com/yuin/goldmark"
+	"github.com/yuin/goldmark/ast"
 	gmast "github.com/yuin/goldmark/ast"
 	gmtext "github.com/yuin/goldmark/text"
 	"golang.org/x/text/cases"
@@ -46,6 +47,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/parse"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/parse/section"
 )
 
 const (
@@ -763,7 +765,7 @@ func (p *tfMarkdownParser) parseSection(h2Section []string) error {
 		case sectionFrontMatter:
 			p.parseFrontMatter(reformattedH3Section)
 		case sectionImports:
-			p.parseImports(reformattedH3Section)
+			p.parseImports(strings.Join(reformattedH3Section, "\n"))
 		default:
 			// Determine if this is a nested argument section.
 			_, isArgument := p.ret.Arguments[docsPath(header)]
@@ -1167,7 +1169,7 @@ func flattenListAttributeKey(attribute string) string {
 	return strings.ReplaceAll(attribute, ".0", "")
 }
 
-func (p *tfMarkdownParser) parseImports(subsection []string) {
+func (p *tfMarkdownParser) parseImports(body string) {
 	var token string
 	if p.info != nil && p.info.GetTok() != "" {
 		token = p.info.GetTok().String()
@@ -1181,7 +1183,7 @@ func (p *tfMarkdownParser) parseImports(subsection []string) {
 %s
 
 `,
-				token, strings.Join(subsection, "\n"), p.ret.Import)
+				token, body, p.ret.Import)
 			if p.sink != nil {
 				p.sink.warn(message)
 			}
@@ -1201,52 +1203,54 @@ func (p *tfMarkdownParser) parseImports(subsection []string) {
 		}
 	}
 
-	if i, ok := tryParseV2Imports(token, subsection); ok {
+	if i, ok := tryParseV2Imports(token, body); ok {
 		p.ret.Import = i
 		return
 	}
 
-	var importDocString string
-	for _, section := range subsection {
-		if strings.Contains(section, "**NOTE:") || strings.Contains(section, "**Please Note:") ||
-			strings.Contains(section, "**Note:**") {
+	importDocs := new(bytes.Buffer)
+	for _, line := range strings.Split(body, "\n") {
+		if strings.Contains(line, "**NOTE:") || strings.Contains(line, "**Please Note:") ||
+			strings.Contains(line, "**Note:**") {
 			// This is a Terraform import specific comment that we don't need to parse or include in our docs
 			continue
 		}
 
 		// Skip another redundant comment
-		if strings.Contains(section, "Import is supported using the following syntax") {
+		if strings.Contains(line, "Import is supported using the following syntax") {
 			continue
 		}
 
 		// Remove the shell comment characters to avoid writing this line as a Markdown H1:
-		section = strings.TrimPrefix(section, "# ")
+		if l1, ok := strings.CutPrefix(line, "#"); ok {
+			if l2, ok := strings.CutPrefix(l1, " "); len(l1) == 0 || ok {
+				line = l2
+			}
+		}
 
 		// There are multiple variations of codeblocks for import syntax
-		section = strings.Replace(section, "```shell", "", -1)
-		section = strings.Replace(section, "```sh", "", -1)
-		section = strings.Replace(section, "```", "", -1)
+		line = strings.ReplaceAll(line, "```shell", "")
+		line = strings.ReplaceAll(line, "```sh", "")
+		line = strings.ReplaceAll(line, "```", "")
 
-		if strings.Contains(section, "terraform import") {
+		if strings.Contains(line, "terraform import") {
 			// First, remove the `$`
-			section := strings.Replace(section, "$ ", "", -1)
+			section := strings.ReplaceAll(line, "$ ", "")
 			// Next, remove `terraform import` from the codeblock
-			section = strings.Replace(section, "terraform import ", "", -1)
-			importString := ""
-			parts := strings.Split(section, " ")
-			for i, p := range parts {
+			section = strings.ReplaceAll(section, "terraform import ", "")
+			var name, id string
+			for i, p := range strings.Split(section, " ") {
 				switch i {
 				case 0:
 					if !isBlank(p) {
 						// split the string on . and take the last item
 						// this gets the identifier broken from the tf resource
 						ids := strings.Split(p, ".")
-						name := ids[len(ids)-1]
-						importString = fmt.Sprintf("%s %s", importString, name)
+						name = ids[len(ids)-1]
 					}
 				default:
 					if !isBlank(p) {
-						importString = fmt.Sprintf("%s %s", importString, p)
+						id += " " + p
 					}
 				}
 			}
@@ -1256,30 +1260,30 @@ func (p *tfMarkdownParser) parseImports(subsection []string) {
 			} else {
 				tok = "MISSING_TOK"
 			}
-			importCommand := fmt.Sprintf("$ pulumi import %s%s\n", tok, importString)
-			importDetails := "```sh\n" + importCommand + "```\n\n"
-			importDocString = importDocString + importDetails
+			emitImportCodeBlock(importDocs, tok, name, strings.TrimSpace(id))
+			importDocs.WriteRune('\n')
 		} else {
-			if !isBlank(section) {
+			if !isBlank(line) {
 				// Ensure every section receives a line break.
-				section = section + "\n\n"
-				importDocString = importDocString + section
+				//
+				// NOTE: The above comment says "section", but each line is actually just a line.
+				importDocs.WriteString(line)
+				importDocs.WriteString("\n\n")
 			}
 		}
 	}
 
-	if len(importDocString) > 0 {
-		p.ret.Import = fmt.Sprintf("## Import\n\n%s", importDocString)
+	if importDocs.Len() > 0 {
+		p.ret.Import = fmt.Sprintf("## Import\n\n%s", importDocs)
 	}
 }
 
 // Recognizes import sections such as ones found in aws_accessanalyzer_analyzer. If the section is
 // recognized, patches up instructions to make sense for the Pulumi projection.
-func tryParseV2Imports(typeToken string, markdownLines []string) (string, bool) {
+func tryParseV2Imports(typeToken string, markdown string) (string, bool) {
 	var out bytes.Buffer
 	fmt.Fprintf(&out, "## Import\n\n")
 
-	markdown := strings.Join(markdownLines, "\n")
 	pn := parseNode(markdown)
 	if pn == nil {
 		return "", false
@@ -1516,65 +1520,36 @@ type codeBlock struct {
 	headerStart int // The index of the first "#" in a Markdown header. A value of -1 indicates there's no header.
 }
 
-func findCodeBlock(doc string, i int) (codeBlock, bool) {
-	codeFence := "```"
-	var block codeBlock
-	// find opening code fence
-	if doc[i:i+len(codeFence)] == codeFence {
-		block.start = i
-		// find closing code fence
-		for j := i + len(codeFence); j < (len(doc) - len(codeFence)); j++ {
-			if doc[j:j+len(codeFence)] == codeFence {
-				block.end = j
-				return block, true
+func findCodeBlocks(docs []byte) []codeBlock {
+	rootNode := goldmark.New(goldmark.WithExtensions(parse.TFRegistryExtension)).
+		Parser().Parse(gmtext.NewReader(docs))
+
+	var codeBlocks []codeBlock
+	parse.WalkNode(rootNode, func(cb *ast.FencedCodeBlock) {
+		lines := cb.Lines()
+
+		headerStart := -1
+		for p := cb.Parent(); p != nil; p = p.Parent() {
+			if s, ok := p.(*section.Section); ok {
+				l := s.FirstChild().Lines()
+				if l.Len() == 0 {
+					// A header doesn't have any lines if there is no text associated with the
+					// header, then we can't find its location due to limitations of goldmark.
+					//
+					// Just give up on finding a header here.
+					break
+				}
+				headerStart = bytes.LastIndexByte(docs[:l.At(0).Start], '\n') + 1
+				break
 			}
 		}
-		return block, false
-	}
-	return block, false
-}
 
-func findHeader(doc string, i int) (int, bool) {
-	h2 := "##"
-	h3 := "###"
-	var foundH2, foundH3 bool
-
-	if i == 0 {
-		// handle header at very beginning of doc
-		foundH2 = doc[i:i+len(h2)] == h2
-		foundH3 = doc[i:i+len(h3)] == h3
-	} else {
-		// all other headers must be preceded by a newline
-		foundH2 = doc[i:i+len(h2)] == h2 && string(doc[i-1]) == "\n"
-		foundH3 = doc[i:i+len(h3)] == h3 && string(doc[i-1]) == "\n"
-	}
-
-	if foundH3 {
-		return i + len(h3), true
-	}
-	if foundH2 {
-		return i + len(h2), true
-	}
-	return -1, false
-}
-
-func findFencesAndHeaders(doc string) []codeBlock {
-	codeFence := "```"
-	var codeBlocks []codeBlock
-	headerStart := -1
-	for i := 0; i < (len(doc) - len(codeFence)); i++ {
-		block, found := findCodeBlock(doc, i)
-		if found {
-			block.headerStart = headerStart
-			codeBlocks = append(codeBlocks, block)
-			i = block.end + 1
-		}
-		headerEnd, found := findHeader(doc, i)
-		if found {
-			headerStart = i
-			i = headerEnd
-		}
-	}
+		codeBlocks = append(codeBlocks, codeBlock{
+			start:       bytes.LastIndexByte(docs[:lines.At(0).Start-1], '\n') + 1,
+			end:         lines.At(lines.Len() - 1).Stop,
+			headerStart: headerStart,
+		})
+	})
 	return codeBlocks
 }
 
@@ -1593,14 +1568,13 @@ func (g *Generator) convertExamplesInner(
 		_, err := fmt.Fprintf(output, f, args...)
 		contract.AssertNoErrorf(err, "Cannot fail to write out output buffer")
 	}
-	codeBlocks := findFencesAndHeaders(docs)
 	const codeFence = "```"
 
 	// Traverse the code blocks and take appropriate action before appending to output
 	textStart := 0
 	stripSection := false
-	stripSectionHeader := 0
-	for _, tfBlock := range codeBlocks {
+	stripSectionHeader := 0 // The index of the header that we might want to strip.
+	for _, tfBlock := range findCodeBlocks([]byte(docs)) {
 		// if the section has a header we append the header after trying to convert the code.
 		hasHeader := tfBlock.headerStart >= 0 && textStart < tfBlock.headerStart
 
@@ -1615,7 +1589,12 @@ func (g *Generator) convertExamplesInner(
 			// if we are stripping this section and still have the same header, we append nothing and skip to the next
 			// code block.
 			if stripSectionHeader == tfBlock.headerStart {
-				textStart = tfBlock.end + len(codeFence)
+				if eol := strings.IndexRune(docs[tfBlock.end:], '\n'); eol > -1 {
+					textStart = tfBlock.end + eol
+				} else {
+					// If no newline character is found, we are at the end of the doc.
+					textStart = len(docs)
+				}
 				continue
 			}
 			if stripSectionHeader < tfBlock.headerStart {
@@ -1682,8 +1661,17 @@ func (g *Generator) convertExamplesInner(
 				fprintf("%s"+codeFence, docs[tfBlock.start:tfBlock.end])
 			}
 		}
-		// The non-code text starts up again after the last closing fences
-		textStart = tfBlock.end + len(codeFence)
+
+		// We want to start including non-code text after the end of the code block.
+		//
+		// The codeblock "ends" with the newline character at the end of the
+		// closing fence.
+		if eol := strings.IndexRune(docs[tfBlock.end:], '\n'); eol > -1 {
+			textStart = tfBlock.end + eol
+		} else {
+			// If no newline character is found, we are at the end of the doc.
+			textStart = len(docs)
+		}
 	}
 	// Append any remainder of the docs string to the output
 	if !stripSection {

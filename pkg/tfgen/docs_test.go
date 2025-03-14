@@ -16,7 +16,6 @@
 package tfgen
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -1820,13 +1819,13 @@ func TestParseImports_NoOverrides(t *testing.T) {
 		t.Skipf("Skippping on windows - tests cases need to be made robust to newline handling")
 	}
 	tests := []struct {
-		input        []string
+		input        string
 		token        tokens.Token
 		expected     string
 		expectedFile string
 	}{
 		{
-			input: []string{
+			input: strings.Join([]string{
 				"",
 				"Import is supported using the following syntax:", // This is intentionally discarded
 				"",
@@ -1835,12 +1834,12 @@ func TestParseImports_NoOverrides(t *testing.T) {
 				"terraform import snowflake_account_grant.example 'accountName|||USAGE|true'",
 				"```",
 				"",
-			},
+			}, "\n"),
 			token:    "snowflake:index/accountGrant:AccountGrant",
 			expected: "## Import\n\nformat is account name | | | privilege | true/false for with_grant_option\n\n```sh\n$ pulumi import snowflake:index/accountGrant:AccountGrant example 'accountName|||USAGE|true'\n```\n\n",
 		},
 		{
-			input: []string{
+			input: strings.Join([]string{
 				"",
 				"Import is supported using the following syntax:", // This is intentionally discarded
 				"",
@@ -1848,12 +1847,12 @@ func TestParseImports_NoOverrides(t *testing.T) {
 				"terraform import snowflake_api_integration.example name",
 				"```",
 				"",
-			},
+			}, "\n"),
 			token:    "snowflake:index/apiIntegration:ApiIntegration",
 			expected: "## Import\n\n```sh\n$ pulumi import snowflake:index/apiIntegration:ApiIntegration example name\n```\n\n",
 		},
 		{
-			input: []string{
+			input: strings.Join([]string{
 				"",
 				"This is a first line in a multi-line import section",
 				"* `{{name}}`",
@@ -1863,24 +1862,56 @@ func TestParseImports_NoOverrides(t *testing.T) {
 				"terraform import gcp_accesscontextmanager_access_level.example name",
 				"```",
 				"",
-			},
+			}, "\n"),
 			token:    "gcp:accesscontextmanager/accessLevel:AccessLevel",
 			expected: "## Import\n\nThis is a first line in a multi-line import section\n\n* `{{name}}`\n\n* `{{id}}`\n\nFor example:\n\n```sh\n$ pulumi import gcp:accesscontextmanager/accessLevel:AccessLevel example name\n```\n\n",
 		},
 		{
-			input:        readlines(t, "test_data/parse-imports/accessanalyzer.md"),
+			input:        readfile(t, "test_data/parse-imports/accessanalyzer.md"),
 			token:        "aws:accessanalyzer/analyzer:Analyzer",
 			expectedFile: "test_data/parse-imports/accessanalyzer-expected.md",
 		},
 		{
-			input:        readlines(t, "test_data/parse-imports/gameliftconfig.md"),
+			input:        readfile(t, "test_data/parse-imports/gameliftconfig.md"),
 			token:        "aws:gamelift/matchmakingConfiguration:MatchmakingConfiguration",
 			expectedFile: "test_data/parse-imports/gameliftconfig-expected.md",
 		},
 		{
-			input:        readlines(t, "test_data/parse-imports/lambdalayer.md"),
+			input:        readfile(t, "test_data/parse-imports/lambdalayer.md"),
 			token:        "aws:lambda/layerVersion:LayerVersion",
 			expectedFile: "test_data/parse-imports/lambdalayer-expected.md",
+		},
+		{
+			input: strings.Join([]string{
+				"",
+				"Import is supported using the following syntax:",
+				"",
+				"```shell",
+				"# As this is not a resource identifiable by an ID within the Auth0 Management API,",
+				"# pages can be imported using a random string.",
+				"#",
+				"# We recommend [Version 4 UUID](https://www.uuidgenerator.net/version4)",
+				"#",
+				"# Example:",
+				`terraform import auth0_pages.my_pages "22f4f21b-017a-319d-92e7-2291c1ca36c4"`,
+				"```",
+				"",
+			}, "\n"),
+			token:        "auth0/index/pages:Pages",
+			expectedFile: "test_data/parse-imports/auth0pages-expected.md",
+		},
+		{
+			input: strings.Join([]string{
+				"",
+				"### This is a sub-section",
+				"",
+				"```shell",
+				`terraform import auth0_pages.my_pages "22f4f21b-017a-319d-92e7-2291c1ca36c4"`,
+				"```",
+				"",
+			}, "\n"),
+			token:    "auth0/index/pages:Pages",
+			expected: "## Import\n\n### This is a sub-section\n\n```sh\n$ pulumi import auth0/index/pages:Pages my_pages \"22f4f21b-017a-319d-92e7-2291c1ca36c4\"\n```\n\n",
 		},
 	}
 
@@ -1912,7 +1943,7 @@ func TestParseImports_WithOverride(t *testing.T) {
 		},
 	}
 
-	parser.parseImports([]string{"this doesn't matter because we are overriding it"})
+	parser.parseImports("this doesn't matter because we are overriding it")
 
 	assert.Equal(t, "## Import\n\noverridden import details", parser.ret.Import)
 }
@@ -1960,6 +1991,27 @@ func TestConvertExamples(t *testing.T) {
 			path: examplePath{
 				fullPath: "#/resources/aws:lambda/function:Function",
 				token:    "aws:lambda/function:Function",
+			},
+		},
+		{
+			name: "outscale_volume",
+			path: examplePath{
+				fullPath: "#/resources/outscale:index/volume:Volume",
+				token:    "outscale:index/volume:Volume",
+			},
+		},
+		{
+			name: "random_string",
+			path: examplePath{
+				token:    "random:index/randomString:RandomString",
+				fullPath: "#/resources/random:index/randomString:RandomString",
+			},
+		},
+		{
+			name: "auth0_pages",
+			path: examplePath{
+				token:    "auth0:index/pages:Pages",
+				fullPath: "#/resources/auth0:index/pages:Pages",
 			},
 		},
 	}
@@ -2125,7 +2177,7 @@ func TestFindFencesAndHeaders(t *testing.T) {
 			testDocBytes, err := os.ReadFile(tc.path)
 			require.NoError(t, err)
 			testDoc := string(testDocBytes)
-			actual := findFencesAndHeaders(testDoc)
+			actual := findCodeBlocks([]byte(testDoc))
 			assert.Equal(t, tc.expected, actual)
 		})
 	}
@@ -2455,21 +2507,6 @@ func writefile(t *testing.T, file string, bytes []byte) {
 	t.Helper()
 	err := os.WriteFile(file, bytes, 0o600)
 	require.NoError(t, err)
-}
-
-func readlines(t *testing.T, file string) []string {
-	t.Helper()
-	f, err := os.Open(file)
-	require.NoError(t, err)
-	defer f.Close()
-
-	var lines []string
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		lines = append(lines, scanner.Text())
-	}
-
-	return lines
 }
 
 func TestFixupImports(t *testing.T) {
