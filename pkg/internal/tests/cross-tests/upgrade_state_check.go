@@ -64,8 +64,14 @@ func getVersionInState(t T, stack apitype.UntypedDeployment) int {
 	var metaMap map[string]interface{}
 	err = json.Unmarshal([]byte(meta), &metaMap)
 	require.NoError(t, err)
-	schemaVersion, err := strconv.ParseInt(metaMap["schema_version"].(string), 10, 64)
-	require.NoError(t, err)
+	var schemaVersion int
+	if sv, ok := metaMap["schema_version"]; ok {
+		if svs, ok := sv.(string); ok {
+			n, err := strconv.ParseInt(svs, 10, 64)
+			require.NoError(t, err)
+			schemaVersion = int(n)
+		}
+	}
 	return int(schemaVersion)
 }
 
