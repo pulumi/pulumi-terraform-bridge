@@ -1563,7 +1563,7 @@ func (g *Generator) convertExamplesInner(
 	// Traverse the code blocks and take appropriate action before appending to output
 	textStart := 0
 	stripSection := false
-	stripSectionHeader := 0
+	stripSectionHeader := 0 // The index of the header that we might want to strip.
 	for _, tfBlock := range findCodeBlocks([]byte(docs)) {
 		// if the section has a header we append the header after trying to convert the code.
 		hasHeader := tfBlock.headerStart >= 0 && textStart < tfBlock.headerStart
@@ -1579,7 +1579,12 @@ func (g *Generator) convertExamplesInner(
 			// if we are stripping this section and still have the same header, we append nothing and skip to the next
 			// code block.
 			if stripSectionHeader == tfBlock.headerStart {
-				textStart = tfBlock.end + len(codeFence)
+				if eol := strings.IndexRune(docs[tfBlock.end:], '\n'); eol > -1 {
+					textStart = tfBlock.end + eol
+				} else {
+					// If no newline character is found, we are at the end of the doc.
+					textStart = len(docs)
+				}
 				continue
 			}
 			if stripSectionHeader < tfBlock.headerStart {
@@ -1646,8 +1651,17 @@ func (g *Generator) convertExamplesInner(
 				fprintf("%s"+codeFence, docs[tfBlock.start:tfBlock.end])
 			}
 		}
-		// The non-code text starts up again after the last closing fences
-		textStart = tfBlock.end + len(codeFence)
+
+		// We want to start including non-code text after the end of the code block.
+		//
+		// The codeblock "ends" with the newline character at the end of the
+		// closing fence.
+		if eol := strings.IndexRune(docs[tfBlock.end:], '\n'); eol > -1 {
+			textStart = tfBlock.end + eol
+		} else {
+			// If no newline character is found, we are at the end of the doc.
+			textStart = len(docs)
+		}
 	}
 	// Append any remainder of the docs string to the output
 	if !stripSection {

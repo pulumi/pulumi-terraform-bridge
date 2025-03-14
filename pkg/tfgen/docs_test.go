@@ -1970,6 +1970,14 @@ func TestConvertExamples(t *testing.T) {
 			},
 			language: ref(Schema),
 		},
+		{
+			name: "random_string",
+			path: examplePath{
+				token:    "random:index/randomString:RandomString",
+				fullPath: "#/resources/random:index/randomString:RandomString",
+			},
+			language: ref(Schema),
+		},
 	}
 
 	for _, tc := range testCases {

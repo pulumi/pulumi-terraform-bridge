@@ -227,7 +227,7 @@ resources:
       subregionName: ${var.region}a
       size: 40
 ```
-<!--End PulumiCodeChooser -->```
+<!--End PulumiCodeChooser -->
 
 ## Argument Reference
 
