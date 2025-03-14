@@ -333,6 +333,16 @@ func (ih *inflectHelper) inflectionsAt(
 	pv resource.PropertyValue,
 	v cty.Value,
 ) (rawStateInflections, error) {
+	// Timeouts are a special property that accidentally gets pushed here for historical reasons; it is not
+	// relevant for the permanent RawState storage. Ignore it for now.
+	if len(path) == 1 {
+		if step, ok := path[0].(walk.GetAttrStep); ok {
+			if step.Name == "timeouts" {
+				return rawStateInflections{}, nil
+			}
+		}
+	}
+
 	contract.Assertf(v.IsKnown(), "rawStateComputeInflections cannot handle unknowns")
 	switch {
 	case v.IsNull():
@@ -467,7 +477,6 @@ func (ih *inflectHelper) inflectionsAt(
 
 	case v.Type().IsObjectType():
 		elements := v.AsValueMap()
-
 		pvElements := pv.ObjectValue()
 
 		if len(pvElements) == 0 {
