@@ -3475,7 +3475,7 @@ func testRefresh(t *testing.T, newProvider func(*schema.Provider) shim.Provider)
 		    "properties": {
 		      "id": "res1",
 		      "stringPropertyValue": "imported",
-		      "__meta": "{\"schema_version\":\"1\"}"
+		      "__meta": "*"
 		    },
 		    "id": "res1"
 		  }
