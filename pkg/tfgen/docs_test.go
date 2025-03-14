@@ -16,7 +16,6 @@
 package tfgen
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -2495,21 +2494,6 @@ func writefile(t *testing.T, file string, bytes []byte) {
 	t.Helper()
 	err := os.WriteFile(file, bytes, 0o600)
 	require.NoError(t, err)
-}
-
-func readlines(t *testing.T, file string) []string {
-	t.Helper()
-	f, err := os.Open(file)
-	require.NoError(t, err)
-	defer f.Close()
-
-	var lines []string
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		lines = append(lines, scanner.Text())
-	}
-
-	return lines
 }
 
 func TestFixupImports(t *testing.T) {
