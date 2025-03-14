@@ -80,9 +80,19 @@ type v2InstanceState2 struct {
 	stateValue   cty.Value
 	// Also known as private state.
 	meta map[string]interface{}
+
+	// Modern versions of pulumi-terraform-bridge encode enough information in Pulumi state to recover the exact
+	// value of the state as the writing TF provider emitted it. This data, if available, is not subject to any
+	// schema-aware transformations. If this value is nil then the state being read was written using an older
+	// bridge, and exact RawState is not available, but stateValue can be used as an approximation.
+	recoveredRawState *cty.Value
 }
 
-var _ shim.InstanceState = (*v2InstanceState2)(nil)
+var (
+	_ shim.InstanceState             = (*v2InstanceState2)(nil)
+	_ shim.InstanceStateWithRawState = (*v2InstanceState2)(nil)
+	_ shim.InstanceStateWithCtyValue = (*v2InstanceState2)(nil)
+)
 
 func (s *v2InstanceState2) Type() string {
 	return s.resourceType
@@ -110,6 +120,14 @@ func (s *v2InstanceState2) Object(sch shim.SchemaMap) (map[string]interface{}, e
 
 func (s *v2InstanceState2) Meta() map[string]interface{} {
 	return s.meta
+}
+
+func (s *v2InstanceState2) SetRawState(st cty.Value) {
+	s.recoveredRawState = &st
+}
+
+func (s *v2InstanceState2) Value() cty.Value {
+	return s.stateValue
 }
 
 type v2InstanceDiff2 struct {
@@ -478,7 +496,13 @@ func (p *v2Provider) upgradeState(
 		return s, nil
 	}
 
-	newState, newMeta, err := upgradeResourceStateGRPC(ctx, t, res, state.stateValue, state.meta, p.server.gserver)
+	// Prefer to use recoveredRawState if available, fall back to approximate stateValue.
+	rawState := state.stateValue
+	if state.recoveredRawState != nil {
+		rawState = *state.recoveredRawState
+	}
+
+	newState, newMeta, err := upgradeResourceStateGRPC(ctx, t, res, rawState, state.meta, p.server.gserver)
 	if err != nil {
 		return nil, err
 	}

@@ -1016,6 +1016,9 @@ func makeTerraformUnknown(tfs shim.Schema) interface{} {
 // metaKey is the key in a TF bridge result that is used to store a resource's meta-attributes.
 const metaKey = "__meta"
 
+// rawKey is where RawState metadata is stored under metaKey.
+const rawKey = "raw"
+
 // MakeTerraformResult expands a Terraform state into an expanded Pulumi resource property map.  This respects
 // the property maps so that results end up with their correct Pulumi names when shipping back to the engine.
 func MakeTerraformResult(
@@ -1038,12 +1041,63 @@ func MakeTerraformResult(
 
 	outMap := MakeTerraformOutputs(ctx, p, outs, tfs, ps, assets, supportsSecrets)
 
+	// When this code is run on preview, there may be unknowns involved.
+	hasUnknowns := outMap.ContainsUnknowns()
+
 	// If there is any Terraform metadata associated with this state, record it.
-	if state != nil && len(state.Meta()) != 0 {
-		metaJSON, err := json.Marshal(state.Meta())
-		contract.Assertf(err == nil, "err == nil")
-		outMap[metaKey] = resource.NewStringProperty(string(metaJSON))
+	needMeta := state != nil && len(state.Meta()) != 0
+
+	// Also record raw state metadata under metaKey if needed.
+	if _, ok := state.(shim.InstanceStateWithCtyValue); ok && !hasUnknowns {
+		needMeta = true
 	}
+
+	if !needMeta {
+		return outMap, nil
+	}
+
+	metaMap := map[string]any{}
+	if state != nil && state.Meta() != nil {
+		metaMap = state.Meta()
+	}
+
+	if stc, ok := state.(shim.InstanceStateWithCtyValue); ok && !hasUnknowns {
+		ih := &inflectHelper{
+			schemaMap:   tfs,
+			schemaInfos: ps,
+		}
+		pv := resource.NewObjectProperty(outMap)
+		infl, err := ih.inflections(pv, stc.Value())
+		if err != nil {
+			// GetLogger(ctx).Debug(fmt.Sprintf("Failed encoding raw state\n"+
+			// 	"  value: %s\n"+
+			// 	"  p-map: %s\n"+
+			// 	"  error: %v",
+			// 	stc.Value().GoString(),
+			// 	pv.String(),
+			// 	err))
+			contract.AssertNoErrorf(err, "Failed encoding raw state")
+		}
+		inflEnc, err := rawStateEncodeInflections(infl)
+		if err != nil {
+			// GetLogger(ctx).Debug(fmt.Sprintf("Failed marshaling raw state\n"+
+			// 	"  value: %s\n"+
+			// 	"  p-map: %s\n"+
+			// 	"  infl: %#v\n"+
+			// 	"  error: %v",
+			// 	stc.Value().GoString(),
+			// 	pv.String(),
+			// 	infl,
+			// 	err))
+			contract.AssertNoErrorf(err, "Failed marshaling raw state")
+		}
+
+		metaMap[rawKey] = inflEnc
+	}
+
+	metaJSON, err := json.Marshal(metaMap)
+	contract.Assertf(err == nil, "err == nil")
+	outMap[metaKey] = resource.NewStringProperty(string(metaJSON))
 
 	return outMap, nil
 }
@@ -1336,7 +1390,35 @@ func makeTerraformStateWithOpts(
 		return nil, err
 	}
 
-	return res.TF.InstanceState(id, inputs, meta)
+	instanceState, err := res.TF.InstanceState(id, inputs, meta)
+	if err != nil {
+		return nil, err
+	}
+
+	if isr, ok := instanceState.(shim.InstanceStateWithRawState); ok {
+		if raw, hasRaw := meta[rawKey]; hasRaw {
+			infl, err := rawStateParseInflections(raw)
+			if err != nil {
+				// Only log at Debug level to avoid leaking secrets to errors.
+				// GetLogger(ctx).Debug(fmt.Sprintf("Failed to parse raw state markers:\n"+
+				// 	"  __meta.raw: %#v\n"+
+				// 	"  error: %v", raw, err))
+				contract.AssertNoErrorf(err, "Failed to parse raw state markers")
+			}
+			rawSt, err := rawStateRecover(resource.NewObjectProperty(m), infl)
+			if err != nil {
+				// Only log at Debug level to avoid leaking secrets to errors.
+				// GetLogger(ctx).Debug(fmt.Sprintf("Failed recover raw state:\n"+
+				// 	"  __meta.raw: %#v\n"+
+				// 	"  infl: %#v\n"+
+				// 	"  error: %v", raw, infl, err))
+				contract.AssertNoErrorf(err, "Failed to recover raw state")
+			}
+			isr.SetRawState(rawSt)
+		}
+	}
+
+	return instanceState, nil
 }
 
 // MakeTerraformState converts a Pulumi property bag into its Terraform equivalent.  This requires
