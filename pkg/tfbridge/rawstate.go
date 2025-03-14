@@ -385,7 +385,7 @@ func (ih *inflectHelper) inflectionsAt(
 
 		for k, v := range elements {
 			subPath := path.GetAttr(k)
-			keyRaw, err := TerraformToPulumiNameAtPath(path, ih.schemaMap, ih.schemaInfos)
+			keyRaw, err := TerraformToPulumiNameAtPath(subPath, ih.schemaMap, ih.schemaInfos)
 			if err != nil {
 				return rawStateInflections{}, err
 			}

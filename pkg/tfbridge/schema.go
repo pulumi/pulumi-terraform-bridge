@@ -1016,6 +1016,9 @@ func makeTerraformUnknown(tfs shim.Schema) interface{} {
 // metaKey is the key in a TF bridge result that is used to store a resource's meta-attributes.
 const metaKey = "__meta"
 
+// rawKey is where RawState metadata is stored under metaKey.
+const rawKey = "raw"
+
 // MakeTerraformResult expands a Terraform state into an expanded Pulumi resource property map.  This respects
 // the property maps so that results end up with their correct Pulumi names when shipping back to the engine.
 func MakeTerraformResult(
@@ -1039,46 +1042,59 @@ func MakeTerraformResult(
 	outMap := MakeTerraformOutputs(ctx, p, outs, tfs, ps, assets, supportsSecrets)
 
 	// If there is any Terraform metadata associated with this state, record it.
-	if state != nil && len(state.Meta()) != 0 {
-		metaMap := state.Meta()
+	needMeta := state != nil && len(state.Meta()) != 0
 
-		if stc, ok := state.(shim.InstanceStateWithCtyValue); ok {
-			ih := &inflectHelper{
-				schemaMap:   tfs,
-				schemaInfos: ps,
-			}
-			pv := resource.NewObjectProperty(outMap)
-			infl, err := ih.inflections(pv, stc.Value())
-			if err != nil {
-				// GetLogger(ctx).Debug(fmt.Sprintf("Failed encoding raw state\n"+
-				// 	"  value: %s\n"+
-				// 	"  p-map: %s\n"+
-				// 	"  error: %v",
-				// 	stc.Value().GoString(),
-				// 	pv.String(),
-				// 	err))
-				contract.AssertNoErrorf(err, "Failed encoding raw state")
-			}
-			inflEnc, err := rawStateEncodeInflections(infl)
-			if err != nil {
-				// GetLogger(ctx).Debug(fmt.Sprintf("Failed marshaling raw state\n"+
-				// 	"  value: %s\n"+
-				// 	"  p-map: %s\n"+
-				// 	"  infl: %#v\n"+
-				// 	"  error: %v",
-				// 	stc.Value().GoString(),
-				// 	pv.String(),
-				// 	infl,
-				// 	err))
-				contract.AssertNoErrorf(err, "Failed marshaling raw state")
-			}
-			metaMap["raw"] = inflEnc
+	// Also record raw state metadata under metaKey if needed.
+	if _, ok := state.(shim.InstanceStateWithCtyValue); ok {
+		needMeta = true
+	}
+
+	if !needMeta {
+		return outMap, nil
+	}
+
+	metaMap := map[string]any{}
+	if state != nil && state.Meta() != nil {
+		metaMap = state.Meta()
+	}
+
+	if stc, ok := state.(shim.InstanceStateWithCtyValue); ok {
+		ih := &inflectHelper{
+			schemaMap:   tfs,
+			schemaInfos: ps,
+		}
+		pv := resource.NewObjectProperty(outMap)
+		infl, err := ih.inflections(pv, stc.Value())
+		if err != nil {
+			// GetLogger(ctx).Debug(fmt.Sprintf("Failed encoding raw state\n"+
+			// 	"  value: %s\n"+
+			// 	"  p-map: %s\n"+
+			// 	"  error: %v",
+			// 	stc.Value().GoString(),
+			// 	pv.String(),
+			// 	err))
+			contract.AssertNoErrorf(err, "Failed encoding raw state")
+		}
+		inflEnc, err := rawStateEncodeInflections(infl)
+		if err != nil {
+			// GetLogger(ctx).Debug(fmt.Sprintf("Failed marshaling raw state\n"+
+			// 	"  value: %s\n"+
+			// 	"  p-map: %s\n"+
+			// 	"  infl: %#v\n"+
+			// 	"  error: %v",
+			// 	stc.Value().GoString(),
+			// 	pv.String(),
+			// 	infl,
+			// 	err))
+			contract.AssertNoErrorf(err, "Failed marshaling raw state")
 		}
 
-		metaJSON, err := json.Marshal(metaMap)
-		contract.Assertf(err == nil, "err == nil")
-		outMap[metaKey] = resource.NewStringProperty(string(metaJSON))
+		metaMap[rawKey] = inflEnc
 	}
+
+	metaJSON, err := json.Marshal(metaMap)
+	contract.Assertf(err == nil, "err == nil")
+	outMap[metaKey] = resource.NewStringProperty(string(metaJSON))
 
 	return outMap, nil
 }
@@ -1377,7 +1393,7 @@ func makeTerraformStateWithOpts(
 	}
 
 	if isr, ok := instanceState.(shim.InstanceStateWithRawState); ok {
-		if raw, hasRaw := meta["raw"]; hasRaw {
+		if raw, hasRaw := meta[rawKey]; hasRaw {
 			infl, err := rawStateParseInflections(raw)
 			if err != nil {
 				// Only log at Debug level to avoid leaking secrets to errors.

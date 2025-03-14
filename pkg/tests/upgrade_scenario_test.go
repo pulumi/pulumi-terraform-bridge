@@ -15,10 +15,16 @@
 package tests
 
 import (
+	"context"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hexops/autogold/v2"
 	"github.com/pulumi/providertest/pulumitest"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/stretchr/testify/require"
+
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/pulcheck"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
@@ -69,6 +75,8 @@ func (tc upgradeTestCase) prepare(t *testing.T) *pulumitest.PulumiTest {
 
 // When TF schema did not change, but Pulumi removes MaxItems=1, the bridged provider should not break.
 func TestUpgrade_Pulumi_Removes_MaxItems1(t *testing.T) {
+	t.Parallel()
+
 	programBefore := `
 name: test
 runtime: yaml
@@ -93,6 +101,16 @@ resources:
                   bool: true
 `
 	r := &schema.Resource{
+		CreateContext: func(ctx context.Context, rd *schema.ResourceData, i interface{}) diag.Diagnostics {
+			rd.SetId("id")
+			require.Truef(t, rd.GetRawState().IsNull(), "RawState is null at create")
+			autogold.Expect([]interface{}{map[string]interface{}{"bool": true, "str": "Hello"}}).Equal(t, rd.Get("obj"))
+			return diag.Diagnostics{}
+		},
+		CustomizeDiff: func(ctx context.Context, rd *schema.ResourceDiff, i interface{}) error {
+			autogold.Expect(`cty.ObjectVal(map[string]cty.Value{"id":cty.StringVal("id"), "obj":cty.ListVal([]cty.Value{cty.ObjectVal(map[string]cty.Value{"bool":cty.True, "str":cty.StringVal("Hello")})})})`).Equal(t, rd.GetRawState().GoString())
+			return nil
+		},
 		Schema: map[string]*schema.Schema{
 			"obj": {
 				Type:     schema.TypeList,
@@ -136,8 +154,9 @@ resources:
 	test := tc.prepare(t)
 
 	previewResult := test.Preview(t)
-	t.Logf("PREVIEW: %v", previewResult.ChangeSummary)
+
+	autogold.Expect(map[apitype.OpType]int{apitype.OpType("same"): 2}).Equal(t, previewResult.ChangeSummary)
 
 	upResult := test.Up(t)
-	t.Logf("UP: %v", upResult.Summary)
+	autogold.Expect(&map[string]int{"same": 2}).Equal(t, upResult.Summary.ResourceChanges)
 }
