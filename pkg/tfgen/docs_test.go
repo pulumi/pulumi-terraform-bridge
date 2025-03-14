@@ -1900,6 +1900,19 @@ func TestParseImports_NoOverrides(t *testing.T) {
 			token:        "auth0/index/pages:Pages",
 			expectedFile: "test_data/parse-imports/auth0pages-expected.md",
 		},
+		{
+			input: strings.Join([]string{
+				"",
+				"### This is a sub-section",
+				"",
+				"```shell",
+				`terraform import auth0_pages.my_pages "22f4f21b-017a-319d-92e7-2291c1ca36c4"`,
+				"```",
+				"",
+			}, "\n"),
+			token:    "auth0/index/pages:Pages",
+			expected: "## Import\n\n### This is a sub-section\n\n```sh\n$ pulumi import auth0/index/pages:Pages my_pages \"22f4f21b-017a-319d-92e7-2291c1ca36c4\"\n```\n\n",
+		},
 	}
 
 	for _, tt := range tests {

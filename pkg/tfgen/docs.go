@@ -1222,8 +1222,10 @@ func (p *tfMarkdownParser) parseImports(body string) {
 		}
 
 		// Remove the shell comment characters to avoid writing this line as a Markdown H1:
-		if l, ok := strings.CutPrefix(line, "#"); ok {
-			line = strings.TrimPrefix(l, " ")
+		if l1, ok := strings.CutPrefix(line, "#"); ok {
+			if l2, ok := strings.CutPrefix(l1, " "); len(l1) == 0 || ok {
+				line = l2
+			}
 		}
 
 		// There are multiple variations of codeblocks for import syntax
@@ -1248,7 +1250,7 @@ func (p *tfMarkdownParser) parseImports(body string) {
 					}
 				default:
 					if !isBlank(p) {
-						id += p
+						id += " " + p
 					}
 				}
 			}
@@ -1258,7 +1260,7 @@ func (p *tfMarkdownParser) parseImports(body string) {
 			} else {
 				tok = "MISSING_TOK"
 			}
-			emitImportCodeBlock(importDocs, tok, name, id)
+			emitImportCodeBlock(importDocs, tok, name, strings.TrimSpace(id))
 			importDocs.WriteRune('\n')
 		} else {
 			if !isBlank(line) {
