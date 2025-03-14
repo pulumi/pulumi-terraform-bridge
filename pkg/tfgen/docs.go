@@ -1208,7 +1208,7 @@ func (p *tfMarkdownParser) parseImports(body string) {
 		return
 	}
 
-	var importDocString string
+	importDocs := new(bytes.Buffer)
 	for _, line := range strings.Split(body, "\n") {
 		if strings.Contains(line, "**NOTE:") || strings.Contains(line, "**Please Note:") ||
 			strings.Contains(line, "**Note:**") {
@@ -1222,33 +1222,33 @@ func (p *tfMarkdownParser) parseImports(body string) {
 		}
 
 		// Remove the shell comment characters to avoid writing this line as a Markdown H1:
-		line = strings.TrimPrefix(line, "# ")
+		if l, ok := strings.CutPrefix(line, "#"); ok {
+			line = strings.TrimPrefix(l, " ")
+		}
 
 		// There are multiple variations of codeblocks for import syntax
-		line = strings.Replace(line, "```shell", "", -1)
-		line = strings.Replace(line, "```sh", "", -1)
-		line = strings.Replace(line, "```", "", -1)
+		line = strings.ReplaceAll(line, "```shell", "")
+		line = strings.ReplaceAll(line, "```sh", "")
+		line = strings.ReplaceAll(line, "```", "")
 
 		if strings.Contains(line, "terraform import") {
 			// First, remove the `$`
-			section := strings.Replace(line, "$ ", "", -1)
+			section := strings.ReplaceAll(line, "$ ", "")
 			// Next, remove `terraform import` from the codeblock
-			section = strings.Replace(section, "terraform import ", "", -1)
-			importString := ""
-			parts := strings.Split(section, " ")
-			for i, p := range parts {
+			section = strings.ReplaceAll(section, "terraform import ", "")
+			var name, id string
+			for i, p := range strings.Split(section, " ") {
 				switch i {
 				case 0:
 					if !isBlank(p) {
 						// split the string on . and take the last item
 						// this gets the identifier broken from the tf resource
 						ids := strings.Split(p, ".")
-						name := ids[len(ids)-1]
-						importString = fmt.Sprintf("%s %s", importString, name)
+						name = ids[len(ids)-1]
 					}
 				default:
 					if !isBlank(p) {
-						importString = fmt.Sprintf("%s %s", importString, p)
+						id += p
 					}
 				}
 			}
@@ -1258,20 +1258,21 @@ func (p *tfMarkdownParser) parseImports(body string) {
 			} else {
 				tok = "MISSING_TOK"
 			}
-			importCommand := fmt.Sprintf("$ pulumi import %s%s\n", tok, importString)
-			importDetails := "```sh\n" + importCommand + "```\n\n"
-			importDocString = importDocString + importDetails
+			emitImportCodeBlock(importDocs, tok, name, id)
+			importDocs.WriteRune('\n')
 		} else {
 			if !isBlank(line) {
 				// Ensure every section receives a line break.
-				line = line + "\n\n"
-				importDocString = importDocString + line
+				//
+				// NOTE: The above comment says "section", but each line is actually just a line.
+				importDocs.WriteString(line)
+				importDocs.WriteString("\n\n")
 			}
 		}
 	}
 
-	if len(importDocString) > 0 {
-		p.ret.Import = fmt.Sprintf("## Import\n\n%s", importDocString)
+	if importDocs.Len() > 0 {
+		p.ret.Import = fmt.Sprintf("## Import\n\n%s", importDocs)
 	}
 }
 

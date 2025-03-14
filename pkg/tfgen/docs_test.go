@@ -1882,6 +1882,25 @@ func TestParseImports_NoOverrides(t *testing.T) {
 			token:        "aws:lambda/layerVersion:LayerVersion",
 			expectedFile: "test_data/parse-imports/lambdalayer-expected.md",
 		},
+		{
+			input: strings.Join([]string{
+				"",
+				"Import is supported using the following syntax:",
+				"",
+				"```shell",
+				"# As this is not a resource identifiable by an ID within the Auth0 Management API,",
+				"# pages can be imported using a random string.",
+				"#",
+				"# We recommend [Version 4 UUID](https://www.uuidgenerator.net/version4)",
+				"#",
+				"# Example:",
+				`terraform import auth0_pages.my_pages "22f4f21b-017a-319d-92e7-2291c1ca36c4"`,
+				"```",
+				"",
+			}, "\n"),
+			token:        "auth0/index/pages:Pages",
+			expectedFile: "test_data/parse-imports/auth0pages-expected.md",
+		},
 	}
 
 	for _, tt := range tests {
