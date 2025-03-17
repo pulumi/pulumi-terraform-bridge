@@ -1613,14 +1613,15 @@ func (g *Generator) convertExamplesInner(
 			fprintf("%s%s", docs[tfBlock.start:tfBlock.end], codeFence)
 		} else {
 			//fenceLanguage := docs[tfBlock.start : tfBlock.start+nextNewLine+1]
-			hcl := docs[tfBlock.start+nextNewLine+1 : tfBlock.end]
+			hcl := docs[tfBlock.start:tfBlock.end]
 
 			// Only attempt to convert code blocks that are either explicitly marked as Terraform, or
 			// unmarked. For unmarked snippets further gate by a regex guess if it is actually Terraform.
 			if isHCL(tfBlock.language, hcl) {
+				//panic("ouch")
 				// generate the code block and append
 				if g.language.shouldConvertExamples() {
-					hcl := docs[tfBlock.start+nextNewLine+1 : tfBlock.end]
+					//hcl := docs[tfBlock.start+nextNewLine+1 : tfBlock.end]
 
 					// Most of our results should be HCL, so we try to convert it.
 					var e *Example
@@ -1631,6 +1632,7 @@ func (g *Generator) convertExamplesInner(
 					langs := genLanguageToSlice(g.language)
 					convertedBlock, err := convertHCL(e, hcl, path.String(), langs)
 					if err != nil {
+						fmt.Println(err)
 						// We do not write this section, ever.
 						//
 						// We have to strip the entire section: any header, the code
@@ -1964,6 +1966,7 @@ func (g *Generator) convertHCL(e *Example, hcl, path string, languages []string)
 	// Partial failure - not returning an error but still emit the warning
 	default:
 		err := g.warnUnableToConvertHCLExample(path, failedLangs)
+		//panic(err)
 		contract.IgnoreError(err)
 		return result.String(), nil
 	}

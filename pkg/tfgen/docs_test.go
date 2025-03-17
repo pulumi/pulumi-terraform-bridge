@@ -1965,10 +1965,10 @@ func TestConvertExamples(t *testing.T) {
 
 	testCases := []testCase{
 		{
-			name: "gcp_get_service_account_id_token",
+			name: "whitespace_before_code_tags",
 			path: examplePath{
-				fullPath: "#/datasources/gcp:serviceaccount/getAccountIdToken:getAccountIdToken",
-				token:    "gcp:serviceaccount/getAccountIdToken:getAccountIdToken",
+				token:    "auth0:index/pages:Pages",
+				fullPath: "#/resources/auth0:index/pages:Pages",
 			},
 		},
 		{
