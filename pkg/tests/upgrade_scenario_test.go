@@ -430,7 +430,7 @@ resources:
 				return diag.Diagnostics{}
 			},
 			CustomizeDiff: func(ctx context.Context, rd *schema.ResourceDiff, i interface{}) error {
-				autogold.Expect(`cty.NullVal(cty.Object(map[string]cty.Type{"id":cty.String, "obj":cty.List(cty.Object(map[string]cty.Type{"bool":cty.Bool, "str":cty.String}))}))`).Equal(t, rd.GetRawState().GoString())
+				autogold.Expect(`cty.ObjectVal(map[string]cty.Value{"id":cty.StringVal("id"), "obj":cty.ListVal([]cty.Value{cty.ObjectVal(map[string]cty.Value{"bool":cty.True, "str":cty.StringVal("Hello")})})})`).Equal(t, rd.GetRawState().GoString())
 				return nil
 			},
 			Schema: map[string]*schema.Schema{
