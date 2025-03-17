@@ -1518,6 +1518,7 @@ type codeBlock struct {
 	start       int // The index of the first backtick of an opening code fence
 	end         int // The index of the first backtick of a closing code fence
 	headerStart int // The index of the first "#" in a Markdown header. A value of -1 indicates there's no header.
+	language    string
 }
 
 func findCodeBlocks(docs []byte) []codeBlock {
@@ -1548,6 +1549,7 @@ func findCodeBlocks(docs []byte) []codeBlock {
 			start:       bytes.LastIndexByte(docs[:lines.At(0).Start-1], '\n') + 1,
 			end:         lines.At(lines.Len() - 1).Stop,
 			headerStart: headerStart,
+			language:    string(cb.Language(docs)),
 		})
 	})
 	return codeBlocks
@@ -1602,17 +1604,20 @@ func (g *Generator) convertExamplesInner(
 			}
 		}
 		// find the actual start index of the code
+		fmt.Println("++++++++++++++++++++++++")
+		fmt.Println(docs[tfBlock.start:tfBlock.end])
+		fmt.Println("++++++++++++++++++++++++")
 		nextNewLine := strings.Index(docs[tfBlock.start:tfBlock.end], "\n")
 		if nextNewLine == -1 {
 			// write the line as-is; this is an in-line fence
 			fprintf("%s%s", docs[tfBlock.start:tfBlock.end], codeFence)
 		} else {
-			fenceLanguage := docs[tfBlock.start : tfBlock.start+nextNewLine+1]
+			//fenceLanguage := docs[tfBlock.start : tfBlock.start+nextNewLine+1]
 			hcl := docs[tfBlock.start+nextNewLine+1 : tfBlock.end]
 
 			// Only attempt to convert code blocks that are either explicitly marked as Terraform, or
 			// unmarked. For unmarked snippets further gate by a regex guess if it is actually Terraform.
-			if isHCL(fenceLanguage, hcl) {
+			if isHCL(tfBlock.language, hcl) {
 				// generate the code block and append
 				if g.language.shouldConvertExamples() {
 					hcl := docs[tfBlock.start+nextNewLine+1 : tfBlock.end]
@@ -2329,7 +2334,14 @@ func guessIsHCL(code string) bool {
 	return guessIsHCLPattern.MatchString(code)
 }
 
-func isHCL(fenceLanguage, code string) bool {
-	return fenceLanguage == "```terraform\n" || fenceLanguage == "```hcl\n" || fenceLanguage == "```tf\n" ||
-		(fenceLanguage == "```\n" && guessIsHCL(code))
+func isHCL(language, code string) bool {
+	fmt.Println("************************c")
+	fmt.Println(language)
+	fmt.Println("************************c")
+	fmt.Println(code)
+
+	fmt.Println("************************c")
+
+	return language == "terraform" || language == "hcl" || language == "tf" ||
+		(language == "" && guessIsHCL(code))
 }

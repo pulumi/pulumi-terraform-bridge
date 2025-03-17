@@ -1965,6 +1965,13 @@ func TestConvertExamples(t *testing.T) {
 
 	testCases := []testCase{
 		{
+			name: "gcp_get_service_account_id_token",
+			path: examplePath{
+				fullPath: "#/datasources/gcp:serviceaccount/getAccountIdToken:getAccountIdToken",
+				token:    "gcp:serviceaccount/getAccountIdToken:getAccountIdToken",
+			},
+		},
+		{
 			name: "wavefront_dashboard_json",
 			path: examplePath{
 				fullPath: "#/resources/wavefront:index/dashboardJson:DashboardJson",
