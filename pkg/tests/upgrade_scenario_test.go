@@ -29,50 +29,6 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
-type upgradeTestCase struct {
-	resourceBefore upgradeTestResource
-	resourceAfter  upgradeTestResource
-}
-
-type upgradeTestResource struct {
-	schema      *schema.Resource
-	info        *info.Resource
-	yamlProgram string
-}
-
-func (tc upgradeTestCase) bridgedProvider(t *testing.T, resource upgradeTestResource) info.Provider {
-	resMap := map[string]*schema.Resource{
-		"prov_test": resource.schema,
-	}
-	tfp := &schema.Provider{ResourcesMap: resMap}
-	p := pulcheck.BridgedProvider(t, "prov", tfp)
-
-	rinfo := resource.info
-	if rinfo == nil {
-		rinfo = &info.Resource{Tok: "prov:index:Test"}
-	}
-	rinfo.Tok = "prov:index:Test"
-	p.Resources = map[string]*info.Resource{
-		"prov_test": rinfo,
-	}
-	return p
-}
-
-func (tc upgradeTestCase) prepare(t *testing.T) *pulumitest.PulumiTest {
-	pt := pulcheck.PulCheck(t, tc.bridgedProvider(t, tc.resourceBefore), tc.resourceBefore.yamlProgram)
-	pt.Up(t)
-	state := pt.ExportStack(t)
-
-	t.Logf("%s", string(state.Deployment))
-	programAfter := tc.resourceBefore.yamlProgram
-	if tc.resourceAfter.yamlProgram != "" {
-		programAfter = tc.resourceAfter.yamlProgram
-	}
-	pt2 := pulcheck.PulCheck(t, tc.bridgedProvider(t, tc.resourceAfter), programAfter)
-	pt2.ImportStack(t, state)
-	return pt2
-}
-
 // When TF schema did not change, but Pulumi removes MaxItems=1, the bridged provider should not break.
 func TestUpgrade_Pulumi_Removes_MaxItems1(t *testing.T) {
 	t.Parallel()
@@ -159,4 +115,301 @@ resources:
 
 	upResult := test.Up(t)
 	autogold.Expect(&map[string]int{"same": 2}).Equal(t, upResult.Summary.ResourceChanges)
+}
+
+// Here underlying schema is not changed, but Pulumi is adding a MaxItems=1 marker.
+func TestUpgrade_Pulumi_Adds_MaxItems1(t *testing.T) {
+	t.Parallel()
+
+	programBefore := `
+name: test
+runtime: yaml
+resources:
+    mainRes:
+        type: prov:index:Test
+        properties:
+            objs:
+                - str: "Hello"
+                  bool: true
+`
+
+	programAfter := `
+name: test
+runtime: yaml
+resources:
+    mainRes:
+        type: prov:index:Test
+        properties:
+            obj:
+                str: "Hello"
+                bool: true
+`
+
+	r := &schema.Resource{
+		CreateContext: func(ctx context.Context, rd *schema.ResourceData, i interface{}) diag.Diagnostics {
+			rd.SetId("id")
+			require.Truef(t, rd.GetRawState().IsNull(), "RawState is null at create")
+			autogold.Expect([]interface{}{map[string]interface{}{"bool": true, "str": "Hello"}}).Equal(t, rd.Get("obj"))
+			return diag.Diagnostics{}
+		},
+		CustomizeDiff: func(ctx context.Context, rd *schema.ResourceDiff, i interface{}) error {
+			autogold.Expect(`cty.ObjectVal(map[string]cty.Value{"id":cty.StringVal("id"), "obj":cty.ListVal([]cty.Value{cty.ObjectVal(map[string]cty.Value{"bool":cty.True, "str":cty.StringVal("Hello")})})})`).Equal(t, rd.GetRawState().GoString())
+			return nil
+		},
+		Schema: map[string]*schema.Schema{
+			"obj": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"str": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"bool": {
+							Type:     schema.TypeBool,
+							Optional: true,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	trueBool := true
+
+	tc := upgradeTestCase{
+		resourceBefore: upgradeTestResource{
+			yamlProgram: programBefore,
+			schema:      r,
+		},
+		resourceAfter: upgradeTestResource{
+			yamlProgram: programAfter,
+			schema:      r,
+			info: &info.Resource{
+				Fields: map[string]*info.Schema{
+					"obj": {
+						MaxItemsOne: &trueBool,
+					},
+				},
+			},
+		},
+	}
+
+	test := tc.prepare(t)
+
+	previewResult := test.Preview(t)
+
+	autogold.Expect(map[apitype.OpType]int{apitype.OpType("same"): 2}).Equal(t, previewResult.ChangeSummary)
+
+	upResult := test.Up(t)
+	autogold.Expect(&map[string]int{"same": 2}).Equal(t, upResult.Summary.ResourceChanges)
+}
+
+func TestUpgrade_Upstream_Adds_MaxItems1(t *testing.T) {
+	t.Parallel()
+
+	programBefore := `
+name: test
+runtime: yaml
+resources:
+    mainRes:
+        type: prov:index:Test
+        properties:
+            objs:
+                - str: "Hello"
+                  bool: true
+`
+
+	programAfter := `
+name: test
+runtime: yaml
+resources:
+    mainRes:
+        type: prov:index:Test
+        properties:
+            obj:
+                str: "Hello"
+                bool: true
+`
+
+	r := func(maxItems int) *schema.Resource {
+		return &schema.Resource{
+			CreateContext: func(ctx context.Context, rd *schema.ResourceData, i interface{}) diag.Diagnostics {
+				rd.SetId("id")
+				require.Truef(t, rd.GetRawState().IsNull(), "RawState is null at create")
+				autogold.Expect([]interface{}{map[string]interface{}{"bool": true, "str": "Hello"}}).Equal(t, rd.Get("obj"))
+				return diag.Diagnostics{}
+			},
+			CustomizeDiff: func(ctx context.Context, rd *schema.ResourceDiff, i interface{}) error {
+				autogold.Expect(`cty.ObjectVal(map[string]cty.Value{"id":cty.StringVal("id"), "obj":cty.ListVal([]cty.Value{cty.ObjectVal(map[string]cty.Value{"bool":cty.True, "str":cty.StringVal("Hello")})})})`).Equal(t, rd.GetRawState().GoString())
+				return nil
+			},
+			Schema: map[string]*schema.Schema{
+				"obj": {
+					Type:     schema.TypeList,
+					Optional: true,
+					MaxItems: maxItems,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"str": {
+								Type:     schema.TypeString,
+								Optional: true,
+							},
+							"bool": {
+								Type:     schema.TypeBool,
+								Optional: true,
+							},
+						},
+					},
+				},
+			},
+		}
+	}
+
+	tc := upgradeTestCase{
+		resourceBefore: upgradeTestResource{
+			yamlProgram: programBefore,
+			schema:      r(0),
+		},
+		resourceAfter: upgradeTestResource{
+			yamlProgram: programAfter,
+			schema:      r(1),
+		},
+	}
+
+	test := tc.prepare(t)
+
+	previewResult := test.Preview(t)
+
+	autogold.Expect(map[apitype.OpType]int{apitype.OpType("same"): 2}).Equal(t, previewResult.ChangeSummary)
+
+	upResult := test.Up(t)
+	autogold.Expect(&map[string]int{"same": 2}).Equal(t, upResult.Summary.ResourceChanges)
+}
+
+func TestUpgrade_Upstream_Removes_MaxItems1(t *testing.T) {
+	t.Parallel()
+
+	programBefore := `
+name: test
+runtime: yaml
+resources:
+    mainRes:
+        type: prov:index:Test
+        properties:
+            obj:
+                str: "Hello"
+                bool: true
+`
+
+	programAfter := `
+name: test
+runtime: yaml
+resources:
+    mainRes:
+        type: prov:index:Test
+        properties:
+            objs:
+                - str: "Hello"
+                  bool: true
+`
+
+	r := func(maxItems int) *schema.Resource {
+		return &schema.Resource{
+			CreateContext: func(ctx context.Context, rd *schema.ResourceData, i interface{}) diag.Diagnostics {
+				rd.SetId("id")
+				require.Truef(t, rd.GetRawState().IsNull(), "RawState is null at create")
+				autogold.Expect([]interface{}{map[string]interface{}{"bool": true, "str": "Hello"}}).Equal(t, rd.Get("obj"))
+				return diag.Diagnostics{}
+			},
+			CustomizeDiff: func(ctx context.Context, rd *schema.ResourceDiff, i interface{}) error {
+				autogold.Expect(`cty.NullVal(cty.Object(map[string]cty.Type{"id":cty.String, "obj":cty.List(cty.Object(map[string]cty.Type{"bool":cty.Bool, "str":cty.String}))}))`).Equal(t, rd.GetRawState().GoString())
+				return nil
+			},
+			Schema: map[string]*schema.Schema{
+				"obj": {
+					Type:     schema.TypeList,
+					Optional: true,
+					MaxItems: maxItems,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"str": {
+								Type:     schema.TypeString,
+								Optional: true,
+							},
+							"bool": {
+								Type:     schema.TypeBool,
+								Optional: true,
+							},
+						},
+					},
+				},
+			},
+		}
+	}
+
+	tc := upgradeTestCase{
+		resourceBefore: upgradeTestResource{
+			yamlProgram: programBefore,
+			schema:      r(1),
+		},
+		resourceAfter: upgradeTestResource{
+			yamlProgram: programAfter,
+			schema:      r(0),
+		},
+	}
+
+	test := tc.prepare(t)
+
+	previewResult := test.Preview(t)
+
+	autogold.Expect(map[apitype.OpType]int{apitype.OpType("same"): 2}).Equal(t, previewResult.ChangeSummary)
+
+	upResult := test.Up(t)
+	autogold.Expect(&map[string]int{"same": 2}).Equal(t, upResult.Summary.ResourceChanges)
+}
+
+type upgradeTestCase struct {
+	resourceBefore upgradeTestResource
+	resourceAfter  upgradeTestResource
+}
+
+type upgradeTestResource struct {
+	schema      *schema.Resource
+	info        *info.Resource
+	yamlProgram string
+}
+
+func (tc upgradeTestCase) bridgedProvider(t *testing.T, resource upgradeTestResource) info.Provider {
+	resMap := map[string]*schema.Resource{
+		"prov_test": resource.schema,
+	}
+	tfp := &schema.Provider{ResourcesMap: resMap}
+	p := pulcheck.BridgedProvider(t, "prov", tfp)
+
+	rinfo := resource.info
+	if rinfo == nil {
+		rinfo = &info.Resource{Tok: "prov:index:Test"}
+	}
+	rinfo.Tok = "prov:index:Test"
+	p.Resources = map[string]*info.Resource{
+		"prov_test": rinfo,
+	}
+	return p
+}
+
+func (tc upgradeTestCase) prepare(t *testing.T) *pulumitest.PulumiTest {
+	pt := pulcheck.PulCheck(t, tc.bridgedProvider(t, tc.resourceBefore), tc.resourceBefore.yamlProgram)
+	pt.Up(t)
+	state := pt.ExportStack(t)
+
+	t.Logf("%s", string(state.Deployment))
+	programAfter := tc.resourceBefore.yamlProgram
+	if tc.resourceAfter.yamlProgram != "" {
+		programAfter = tc.resourceAfter.yamlProgram
+	}
+	pt2 := pulcheck.PulCheck(t, tc.bridgedProvider(t, tc.resourceAfter), programAfter)
+	pt2.ImportStack(t, state)
+	return pt2
 }
