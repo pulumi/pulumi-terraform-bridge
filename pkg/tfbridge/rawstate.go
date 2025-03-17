@@ -158,6 +158,15 @@ func (ai *setInflections) set(key int, value rawStateInflections) {
 }
 
 func rawStateRecover(pv resource.PropertyValue, infl rawStateInflections) (cty.Value, error) {
+	if pv.IsSecret() {
+		return rawStateRecover(pv.SecretValue().Element, infl)
+	}
+	if pv.IsOutput() && pv.OutputValue().Known {
+		return rawStateRecover(pv.OutputValue().Element, infl)
+	}
+	isUnknown := pv.IsComputed() || pv.IsOutput() && !pv.OutputValue().Known
+	contract.Assertf(!isUnknown, "rawStateRecover cannot process unknown values")
+
 	switch {
 	case infl.isEmpty():
 		return rawStateRecoverNatural(pv)
@@ -285,6 +294,15 @@ func rawStateRecoverNatural(pv resource.PropertyValue) (cty.Value, error) {
 	case pv.IsNumber():
 		n := pv.NumberValue()
 		return cty.NumberFloatVal(n), nil
+	case pv.IsSecret():
+		return rawStateRecoverNatural(pv.SecretValue().Element)
+	case pv.IsOutput():
+		ov := pv.OutputValue()
+		contract.Assertf(ov.Known, "rawStateRecoverNatural cannot process unknowns")
+		return rawStateRecoverNatural(ov.Element)
+	case pv.IsComputed():
+		contract.Failf("rawStateRecoverNatural cannot process Computed values")
+		return cty.Value{}, errors.New("rawStateRecoverNatural cannot process Computed values")
 	case pv.IsArray():
 		var elements []cty.Value
 		for _, v := range pv.ArrayValue() {
@@ -307,12 +325,8 @@ func rawStateRecoverNatural(pv resource.PropertyValue) (cty.Value, error) {
 		return cty.Value{}, errors.New("rawStateRecoverNatural cannot process Archive values")
 	case pv.IsAsset():
 		return cty.Value{}, errors.New("rawStateRecoverNatural cannot process Asset values")
-	case pv.IsComputed():
-		return cty.Value{}, errors.New("rawStateRecoverNatural cannot process Computed values")
 	case pv.IsResourceReference():
 		return cty.Value{}, errors.New("rawStateRecoverNatural cannot process ResourceReference values")
-	case pv.IsSecret():
-		return cty.Value{}, errors.New("rawStateRecoverNatural cannot process Secret values")
 	default:
 		contract.Failf("rawStateRecoverNatural does not recognize this PropertyValue case")
 		return cty.Value{}, errors.New("impossible")
@@ -333,6 +347,15 @@ func (ih *inflectHelper) inflectionsAt(
 	pv resource.PropertyValue,
 	v cty.Value,
 ) (rawStateInflections, error) {
+	if pv.IsSecret() {
+		return ih.inflectionsAt(path, pv.SecretValue().Element, v)
+	}
+	if pv.IsOutput() && pv.OutputValue().Known {
+		return ih.inflectionsAt(path, pv.OutputValue().Element, v)
+	}
+	isUnknown := pv.IsComputed() || pv.IsOutput() && !pv.OutputValue().Known
+	contract.Assertf(!isUnknown, "inflectHelper cannot process unknown values")
+
 	// Timeouts are a special property that accidentally gets pushed here for historical reasons; it is not
 	// relevant for the permanent RawState storage. Ignore it for now.
 	if len(path) == 1 {
