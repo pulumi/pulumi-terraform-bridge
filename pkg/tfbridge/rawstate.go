@@ -213,6 +213,10 @@ func rawStateRecover(pv resource.PropertyValue, infl rawStateInflections) (cty.V
 		pm := pv.ObjectValue()
 		recovered := map[string]cty.Value{}
 		for k, v := range pm {
+			if k == metaKey {
+				continue
+			}
+
 			if infl.Obj.Ignored != nil {
 				if _, ign := infl.Obj.Ignored[k]; ign {
 					continue

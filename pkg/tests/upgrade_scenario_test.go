@@ -74,7 +74,7 @@ func TestUpgrade_StateUpgraders(t *testing.T) {
 				meta interface{},
 			) (map[string]interface{}, error) {
 				// Upgrade function is receiving the data as it was written.
-				autogold.Expect(map[string]interface{}{"__meta": `{"raw":{"obj":{}}}`, "id": "id-0", "prop": "one,two,three"}).Equal(t, rawState)
+				autogold.Expect(map[string]interface{}{"id": "id-0", "prop": "one,two,three"}).Equal(t, rawState)
 
 				s := rawState["prop"].(string)
 				parts := strings.Split(s, ",")
