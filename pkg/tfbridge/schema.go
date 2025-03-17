@@ -31,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/log"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 )
@@ -1061,37 +1062,21 @@ func MakeTerraformResult(
 	}
 
 	if stc, ok := state.(shim.InstanceStateWithCtyValue); ok && !hasUnknowns {
-		ih := &inflectHelper{
-			schemaMap:   tfs,
-			schemaInfos: ps,
+		logger := log.TryGetLogger(ctx)
+		if logger == nil {
+			logger = log.NewDiscardLogger()
 		}
-		pv := resource.NewObjectProperty(outMap)
-		infl, err := ih.inflections(pv, stc.Value())
-		if err != nil {
-			// GetLogger(ctx).Debug(fmt.Sprintf("Failed encoding raw state\n"+
-			// 	"  value: %s\n"+
-			// 	"  p-map: %s\n"+
-			// 	"  error: %v",
-			// 	stc.Value().GoString(),
-			// 	pv.String(),
-			// 	err))
-			contract.AssertNoErrorf(err, "Failed encoding raw state")
-		}
-		inflEnc, err := rawStateEncodeInflections(infl)
-		if err != nil {
-			// GetLogger(ctx).Debug(fmt.Sprintf("Failed marshaling raw state\n"+
-			// 	"  value: %s\n"+
-			// 	"  p-map: %s\n"+
-			// 	"  infl: %#v\n"+
-			// 	"  error: %v",
-			// 	stc.Value().GoString(),
-			// 	pv.String(),
-			// 	infl,
-			// 	err))
-			contract.AssertNoErrorf(err, "Failed marshaling raw state")
-		}
+		logger.Debug(fmt.Sprintf("[rawstate]: encoding state for resource %q\n"+
+			"  cty.Value:   %s\n"+
+			"  PropertyMap: %s\n",
+			state.Type(),
+			resource.NewObjectProperty(outMap).String(),
+			stc.Value().GoString(),
+		))
 
-		metaMap[rawKey] = inflEnc
+		inflections, err := rawStateComputeInflections(tfs, ps, outMap, stc.Value())
+		contract.AssertNoErrorf(err, "[rawstate]: failed computing inflections")
+		metaMap[rawKey] = inflections
 	}
 
 	metaJSON, err := json.Marshal(metaMap)
