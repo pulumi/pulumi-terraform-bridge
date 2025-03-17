@@ -23,7 +23,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/require"
 
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	sdkv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
 
 func Test_rawstate_inflections_turnaround(t *testing.T) {
@@ -62,6 +64,62 @@ func Test_rawstate_inflections_turnaround(t *testing.T) {
 			name: "simple-bool",
 			pv:   resource.NewBoolProperty(true),
 			cv:   cty.BoolVal(true),
+		},
+		{
+			name: "maxitems1-flat-object",
+			schemaMap: sdkv2.NewSchemaMap(map[string]*schema.Schema{
+				"prop": {
+					Type:     schema.TypeList,
+					MaxItems: 1,
+					Optional: true,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"str": {
+								Type:     schema.TypeString,
+								Optional: true,
+							},
+						},
+					},
+				},
+			}),
+			pv: resource.NewObjectProperty(resource.PropertyMap{
+				"prop": resource.NewObjectProperty(resource.PropertyMap{
+					"str": resource.NewStringProperty("OK"),
+				}),
+			}),
+			cv: cty.ObjectVal(map[string]cty.Value{
+				"prop": cty.ListVal([]cty.Value{
+					cty.ObjectVal(map[string]cty.Value{
+						"str": cty.StringVal("OK"),
+					}),
+				}),
+			}),
+		},
+		{
+			name: "maxitems1-flat-object-nil",
+			schemaMap: sdkv2.NewSchemaMap(map[string]*schema.Schema{
+				"prop": {
+					Type:     schema.TypeList,
+					MaxItems: 1,
+					Optional: true,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"str": {
+								Type:     schema.TypeString,
+								Optional: true,
+							},
+						},
+					},
+				},
+			}),
+			pv: resource.NewObjectProperty(resource.PropertyMap{
+				"prop": resource.NewNullProperty(),
+			}),
+			cv: cty.ObjectVal(map[string]cty.Value{
+				"prop": cty.ListValEmpty(cty.Object(map[string]cty.Type{
+					"str": cty.String,
+				})),
+			}),
 		},
 	}
 
