@@ -333,6 +333,39 @@ func rawStateRecoverNatural(pv resource.PropertyValue) (cty.Value, error) {
 	}
 }
 
+func rawStateComputeInflections(
+	schemaMap shim.SchemaMap, // top-level schema for a resource
+	schemaInfos map[string]*SchemaInfo, // top-level schema overrides for a resource
+	outMap resource.PropertyMap,
+	rawState cty.Value,
+) (any, error) {
+	ih := &inflectHelper{
+		schemaMap:   schemaMap,
+		schemaInfos: schemaInfos,
+	}
+	pv := resource.NewObjectProperty(outMap)
+	infl, err := ih.inflections(pv, rawState)
+	if err != nil {
+		return nil, fmt.Errorf("[rawstate]: failed computing inflections: %w", err)
+	}
+
+	// Double-check that recovering the cty.Value works as expected, before it is written to the state.
+	ctyValueRecovered, err := rawStateRecover(pv, infl)
+	if err != nil {
+		return nil, fmt.Errorf("[rawstate]: failed recovering value for turnaround check: %w", err)
+	}
+
+	if !ctyValueRecovered.RawEquals(rawState) {
+		return nil, errors.New("[rawstate]: turnaround check failed")
+	}
+
+	inflEnc, err := rawStateEncodeInflections(infl)
+	if err != nil {
+		return nil, fmt.Errorf("[rawstate]: encoding failed")
+	}
+	return inflEnc, nil
+}
+
 type inflectHelper struct {
 	schemaMap   shim.SchemaMap         // top-level schema for a resource
 	schemaInfos map[string]*SchemaInfo // top-level schema overrides for a resource
