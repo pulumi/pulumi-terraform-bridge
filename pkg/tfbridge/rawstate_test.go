@@ -121,6 +121,62 @@ func Test_rawstate_inflections_turnaround(t *testing.T) {
 				})),
 			}),
 		},
+		{
+			name: "maxitems1-flat-set-object",
+			schemaMap: sdkv2.NewSchemaMap(map[string]*schema.Schema{
+				"prop": {
+					Type:     schema.TypeSet,
+					MaxItems: 1,
+					Optional: true,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"str": {
+								Type:     schema.TypeString,
+								Optional: true,
+							},
+						},
+					},
+				},
+			}),
+			pv: resource.NewObjectProperty(resource.PropertyMap{
+				"prop": resource.NewObjectProperty(resource.PropertyMap{
+					"str": resource.NewStringProperty("OK"),
+				}),
+			}),
+			cv: cty.ObjectVal(map[string]cty.Value{
+				"prop": cty.SetVal([]cty.Value{
+					cty.ObjectVal(map[string]cty.Value{
+						"str": cty.StringVal("OK"),
+					}),
+				}),
+			}),
+		},
+		{
+			name: "maxitems1-flat-set-nil",
+			schemaMap: sdkv2.NewSchemaMap(map[string]*schema.Schema{
+				"prop": {
+					Type:     schema.TypeSet,
+					MaxItems: 1,
+					Optional: true,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"str": {
+								Type:     schema.TypeString,
+								Optional: true,
+							},
+						},
+					},
+				},
+			}),
+			pv: resource.NewObjectProperty(resource.PropertyMap{
+				"prop": resource.NewNullProperty(),
+			}),
+			cv: cty.ObjectVal(map[string]cty.Value{
+				"prop": cty.SetValEmpty(cty.Object(map[string]cty.Type{
+					"str": cty.String,
+				})),
+			}),
+		},
 	}
 
 	for _, tc := range testCases {
@@ -138,14 +194,21 @@ func Test_rawstate_inflections_turnaround(t *testing.T) {
 			infl, err := ih.inflections(tc.pv, tc.cv)
 			require.NoError(t, err)
 
-			t.Logf("inflections: %#v", infl)
+			infle, err := rawStateEncodeInflections(infl)
+			require.NoError(t, err)
+
+			t.Logf("inflections: %#v", infle)
 
 			recoveredCtyValue, err := rawStateRecover(tc.pv, infl)
 			require.NoError(t, err)
 
 			t.Logf("cv2:%v", recoveredCtyValue.GoString())
 
-			require.True(t, recoveredCtyValue.RawEquals(tc.cv))
+			require.Truef(t, recoveredCtyValue.RawEquals(tc.cv),
+				"\nExpected: %s\nActual:   %s\n",
+				tc.cv.GoString(),
+				recoveredCtyValue.GoString(),
+			)
 		})
 	}
 }

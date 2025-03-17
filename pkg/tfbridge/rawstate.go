@@ -68,6 +68,9 @@ type pluralize struct {
 
 	// Inflections to apply to `x` before pluralizing.
 	Inner rawStateInflections `json:"i,omitempty"`
+
+	// This is a set and not a list.
+	IsSet bool `json:"set,omitempty"`
 }
 
 // To recover nulls to cty.Value they need a type.
@@ -176,6 +179,18 @@ func rawStateRecover(pv resource.PropertyValue, infl rawStateInflections) (cty.V
 		}
 		return cty.NullVal(infl.TypedNull.T), nil
 	case infl.Pluralize != nil:
+		if infl.Pluralize.IsSet {
+			switch {
+			case pv.IsNull():
+				return cty.SetValEmpty(*infl.Pluralize.ElementType), nil
+			default:
+				v, err := rawStateRecover(pv, infl.Pluralize.Inner)
+				if err != nil {
+					return cty.Value{}, err
+				}
+				return cty.SetVal([]cty.Value{v}), nil
+			}
+		}
 		switch {
 		case pv.IsNull():
 			return cty.ListValEmpty(*infl.Pluralize.ElementType), nil
@@ -494,7 +509,12 @@ func (ih *inflectHelper) inflectionsAt(
 		// Checking if [] got encoded as Null due to MaxItems=1.
 		if len(elements) == 0 && pv.IsNull() {
 			t := v.Type().ElementType()
-			return rawStateInflections{Pluralize: &pluralize{ElementType: &t}}, nil
+			return rawStateInflections{
+				Pluralize: &pluralize{
+					ElementType: &t,
+					IsSet:       true,
+				},
+			}, nil
 		}
 
 		// Checking if [x] got encoded as x due to MaxItems=1.
@@ -504,7 +524,10 @@ func (ih *inflectHelper) inflectionsAt(
 			if err != nil {
 				return rawStateInflections{}, err
 			}
-			return rawStateInflections{Pluralize: &pluralize{Inner: inner}}, nil
+			return rawStateInflections{Pluralize: &pluralize{
+				Inner: inner,
+				IsSet: true,
+			}}, nil
 		}
 
 		// Otherwise PropertyValue should be an array just like the cty.Value is a set.
