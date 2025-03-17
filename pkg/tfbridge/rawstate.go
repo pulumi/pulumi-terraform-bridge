@@ -374,8 +374,14 @@ func rawStateComputeInflections(
 		return nil, fmt.Errorf("[rawstate]: failed recovering value for turnaround check: %w", err)
 	}
 
-	if !ctyValueRecovered.RawEquals(rawState) {
-		return nil, errors.New("[rawstate]: turnaround check failed")
+	mm := rawState.AsValueMap()
+	delete(mm, "timeouts")
+	rawStateWithoutTimeouts := cty.ObjectVal(mm)
+
+	if !ctyValueRecovered.RawEquals(rawStateWithoutTimeouts) {
+		return nil, fmt.Errorf("[rawstate]: turnaround check failed\n  Recovered=%s\n  RawState=%s",
+			ctyValueRecovered.GoString(),
+			rawState.GoString())
 	}
 
 	inflEnc, err := rawStateEncodeInflections(infl)
