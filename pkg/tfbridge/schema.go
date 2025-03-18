@@ -522,15 +522,6 @@ func (ctx *conversionContext) makeTerraformInput(
 				return nil, err
 			}
 
-			if tfs.Type() == shim.TypeMap {
-				// If we have schema information that indicates that this value is being
-				// presented to a map-typed field whose Elem is a shim.Resource, wrap the
-				// value in an array in order to work around a bug in Terraform.
-				//
-				// TODO[pulumi/pulumi-terraform-bridge#1828]: This almost certainly stems from
-				// a bug in the bridge's implementation and not terraform's implementation.
-				return []interface{}{obj}, nil
-			}
 			return obj, nil
 		}
 
