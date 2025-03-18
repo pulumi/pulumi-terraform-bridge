@@ -593,8 +593,7 @@ func (ih *inflectHelper) inflectionsAt(
 			"Expected map length parity for PropertyValue and matching cty.Value")
 
 		if len(pvElements) == 0 {
-			t := v.Type()
-			return rawStateInflections{Map: &mapInflections{T: &t}}, nil
+			return rawStateInflections{Map: &mapInflections{T: v.Type().MapElementType()}}, nil
 		}
 
 		mapInfl := mapInflections{}
