@@ -470,7 +470,7 @@ func rawStateComputeInflections(
 //	rawStateReducePrecision(a).RawEquals(rawStateReducePrecision(b)) == true
 func rawStateReducePrecision(v cty.Value) cty.Value {
 	v2, err := cty.Transform(v, func(p cty.Path, v cty.Value) (cty.Value, error) {
-		if v.IsKnown() && v.Type().Equals(cty.Number) {
+		if v.IsKnown() && !v.IsNull() && v.Type().Equals(cty.Number) {
 			bigFloat := v.AsBigFloat()
 			bigFloat = bigFloat.SetMode(big.AwayFromZero)
 			bigFloat = bigFloat.SetPrec(8)
