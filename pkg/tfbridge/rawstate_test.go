@@ -404,4 +404,5 @@ func Test_rawStateReducePrecision(t *testing.T) {
 	assert.Equal(t, false, a.RawEquals(b))
 	assert.Equal(t, true, rawStateReducePrecision(a).RawEquals(rawStateReducePrecision(b)))
 	assert.Equal(t, false, rawStateReducePrecision(a).RawEquals(cty.NumberFloatVal(1.0999)))
+	assert.Equal(t, cty.NullVal(cty.Number), rawStateReducePrecision(cty.NullVal(cty.Number)))
 }
