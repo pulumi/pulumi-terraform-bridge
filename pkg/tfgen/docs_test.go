@@ -19,6 +19,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -1962,6 +1963,34 @@ func TestConvertExamples(t *testing.T) {
 				token:    "aws:lambda/function:Function",
 			},
 		},
+		{
+			name: "outscale_volume",
+			path: examplePath{
+				fullPath: "#/resources/outscale:index/volume:Volume",
+				token:    "outscale:index/volume:Volume",
+			},
+		},
+		{
+			name: "random_string",
+			path: examplePath{
+				token:    "random:index/randomString:RandomString",
+				fullPath: "#/resources/random:index/randomString:RandomString",
+			},
+		},
+		{
+			name: "auth0_pages",
+			path: examplePath{
+				token:    "auth0:index/pages:Pages",
+				fullPath: "#/resources/auth0:index/pages:Pages",
+			},
+		},
+		{
+			name: "google_service_account_id_token",
+			path: examplePath{
+				token:    "gcp:serviceaccount/getAccountIdToken:getAccountIdToken",
+				fullPath: "#/datasources/gcp:serviceaccount/getAccountIdToken:getAccountIdToken",
+			},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -2068,6 +2097,97 @@ func TestConvertExamplesInner(t *testing.T) {
 	}
 }
 
+func TestFalsePositiveCodeFences(t *testing.T) {
+	t.Parallel()
+
+	inmem := afero.NewMemMapFs()
+	info := testprovider.ProviderMiniRandom()
+	g, err := NewGenerator(GeneratorOptions{
+		Package:      info.Name,
+		Version:      info.Version,
+		Language:     Schema,
+		ProviderInfo: info,
+		Root:         inmem,
+		Sink: diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
+			Color: colors.Never,
+		}),
+	})
+	assert.NoError(t, err)
+
+	input := `
+
+# H1
+
+` + "```inner block```" + `
+
+More comments
+`
+
+	panicOnUse := func(*Example, string, string, []string) (string, error) {
+		panic("Should not be called")
+	}
+	s := g.convertExamplesInner(input, examplePath{}, panicOnUse, false)
+
+	assert.Equal(t, input, s)
+}
+
+func TestSkipLastCodeFenceAfterError(t *testing.T) {
+	t.Parallel()
+
+	inmem := afero.NewMemMapFs()
+	info := testprovider.ProviderMiniRandom()
+	g, err := NewGenerator(GeneratorOptions{
+		Package:      info.Name,
+		Version:      info.Version,
+		Language:     Schema,
+		ProviderInfo: info,
+		Root:         inmem,
+		Sink: diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
+			Color: colors.Never,
+		}),
+	})
+	assert.NoError(t, err)
+
+	input := `
+
+# H1
+
+Some text
+
+# Examples
+
+` + "```hcl" + `
+<invalid>
+` + "```" + `
+
+Skipped (we don't want a newline after the last code fence)
+
+` + "```hcl" + `
+<skipped>
+` + "```"
+
+	panicOnUse := func(_ *Example, code string, _ string, _ []string) (string, error) {
+		switch strings.TrimSpace(code) {
+		case "<invalid>":
+			return "", errors.New("invalid HCL")
+		case "<skipped>":
+			t.Fatalf("This shouldn't have been called - it should have been skipped")
+			fallthrough
+		default:
+			panic("unknown test: " + code)
+		}
+	}
+	s := g.convertExamplesInner(input, examplePath{}, panicOnUse, false)
+
+	assert.Equal(t, `
+
+# H1
+
+Some text
+
+`, s)
+}
+
 func TestFindFencesAndHeaders(t *testing.T) {
 	t.Parallel()
 	if runtime.GOOS == "windows" {
@@ -2085,12 +2205,12 @@ func TestFindFencesAndHeaders(t *testing.T) {
 			path: filepath.Join("test_data", "parse-inner-docs",
 				"aws_lambda_function_description.md"),
 			expected: []codeBlock{
-				{start: 1966, end: 2977, headerStart: 1947},
-				{start: 3001, end: 3224, headerStart: 2982},
-				{start: 3387, end: 4105, headerStart: 3229},
-				{start: 4358, end: 5953, headerStart: 4110},
-				{start: 6622, end: 8041, headerStart: 6421},
-				{start: 9151, end: 9238, headerStart: 9052},
+				{start: 1966, end: 2977, headerStart: 1947, language: "terraform"},
+				{start: 3001, end: 3224, headerStart: 2982, language: "terraform"},
+				{start: 3387, end: 4105, headerStart: 3229, language: "terraform"},
+				{start: 4358, end: 5953, headerStart: 4110, language: "terraform"},
+				{start: 6622, end: 8041, headerStart: 6421, language: "terraform"},
+				{start: 9151, end: 9238, headerStart: 9052, language: "sh"},
 			},
 		},
 		{
@@ -2117,6 +2237,15 @@ func TestFindFencesAndHeaders(t *testing.T) {
 				{start: 92, end: 114, headerStart: 0},
 			},
 		},
+		{
+			name: "indented code fences",
+			path: filepath.Join("test_data", "convertExamples",
+				"google_service_account_id_token.md"),
+			expected: []codeBlock{
+				{start: 858, end: 1617, headerStart: 435, language: "hcl"},
+				{start: 1897, end: 2245, headerStart: 1624, language: "hcl"},
+			},
+		},
 	}
 
 	for _, tc := range testCases {
@@ -2125,7 +2254,7 @@ func TestFindFencesAndHeaders(t *testing.T) {
 			testDocBytes, err := os.ReadFile(tc.path)
 			require.NoError(t, err)
 			testDoc := string(testDocBytes)
-			actual := findFencesAndHeaders(testDoc)
+			actual := findCodeBlocks([]byte(testDoc))
 			assert.Equal(t, tc.expected, actual)
 		})
 	}

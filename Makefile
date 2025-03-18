@@ -11,6 +11,9 @@ install_plugins::
 	pulumi plugin install resource aws 6.22.2
 	pulumi plugin install resource archive 0.0.4
 	pulumi plugin install resource wavefront 3.0.0
+	pulumi plugin install resource auth0 3.16.0
+	pulumi plugin install resource http 0.0.11
+	pulumi plugin install resource gcp 8.22.0
 	pulumi plugin install resource equinix 0.6.0 --server github://api.github.com/equinix
 
 build::

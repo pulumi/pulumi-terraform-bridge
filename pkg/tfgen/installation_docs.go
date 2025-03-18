@@ -204,15 +204,8 @@ func stripSchemaGeneratedByTFPluginDocs(content []byte) []byte {
 func translateCodeBlocks(contentStr string, g *Generator) (string, error) {
 	var returnContent string
 	// Extract code blocks
-	codeFence := "```"
-	var codeBlocks []codeBlock
-	for i := 0; i < (len(contentStr) - len(codeFence)); i++ {
-		block, found := findCodeBlock(contentStr, i)
-		if found {
-			codeBlocks = append(codeBlocks, block)
-			i = block.end + 1
-		}
-	}
+	const codeFence string = "```"
+	codeBlocks := findCodeBlocks([]byte(contentStr))
 	if len(codeBlocks) == 0 {
 		return contentStr, nil
 	}
@@ -226,10 +219,9 @@ func translateCodeBlocks(contentStr string, g *Generator) (string, error) {
 			returnContent = returnContent + contentStr[block.start:block.end] + codeFence + "\n"
 			continue
 		}
-		fenceLanguage := contentStr[block.start : block.start+nextNewLine+1]
-		code := contentStr[block.start+nextNewLine+1 : block.end]
+
 		// Only convert code blocks that we have reasonable suspicion of actually being Terraform.
-		if isHCL(fenceLanguage, code) {
+		if code := block.code([]byte(contentStr)); isHCL(block.language, code) {
 			exampleContent, err := convertExample(g, code, i)
 			if err != nil {
 				return "", err

@@ -37,6 +37,7 @@ import (
 	bf "github.com/russross/blackfriday/v2"
 	"github.com/spf13/afero"
 	"github.com/yuin/goldmark"
+	"github.com/yuin/goldmark/ast"
 	gmast "github.com/yuin/goldmark/ast"
 	gmtext "github.com/yuin/goldmark/text"
 	"golang.org/x/text/cases"
@@ -46,6 +47,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/parse"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/parse/section"
 )
 
 const (
@@ -1511,70 +1513,70 @@ func (g *Generator) convertExamples(docs string, path examplePath) string {
 // codeBlock represents a code block found in the upstream docs, delineated by code fences (```).
 // It also tracks which header it is part of.
 type codeBlock struct {
-	start       int // The index of the first backtick of an opening code fence
-	end         int // The index of the first backtick of a closing code fence
-	headerStart int // The index of the first "#" in a Markdown header. A value of -1 indicates there's no header.
+	start       int    // The index of the first backtick of an opening code fence
+	end         int    // The index of the first backtick of a closing code fence
+	headerStart int    // The index of the first "#" in a Markdown header. A value of -1 indicates there's no header.
+	language    string // The language of the code block.
 }
 
-func findCodeBlock(doc string, i int) (codeBlock, bool) {
-	codeFence := "```"
-	var block codeBlock
-	// find opening code fence
-	if doc[i:i+len(codeFence)] == codeFence {
-		block.start = i
-		// find closing code fence
-		for j := i + len(codeFence); j < (len(doc) - len(codeFence)); j++ {
-			if doc[j:j+len(codeFence)] == codeFence {
-				block.end = j
-				return block, true
+// A string representing the code inside a code block.
+//
+// Given the code block:
+//
+//	```sh
+//	$ cmd \
+//	  --flag
+//
+//	```
+//
+// This method would return "$ cmd \\\n  --flag\n".
+//
+// The returned string represents a view into the passed in byte slice, and does not
+// remove any padding found in the original document.
+func (cb codeBlock) code(document []byte) string {
+	nextNewLine := bytes.IndexRune(document[cb.start:cb.end], '\n')
+	return string(document[cb.start+nextNewLine+1 : cb.end])
+}
+
+func findCodeBlocks(docs []byte) []codeBlock {
+	rootNode := goldmark.New(goldmark.WithExtensions(parse.TFRegistryExtension)).
+		Parser().Parse(gmtext.NewReader(docs))
+
+	var codeBlocks []codeBlock
+	parse.WalkNode(rootNode, func(cb *ast.FencedCodeBlock) {
+		lines := cb.Lines()
+
+		headerStart := -1
+		for p := cb.Parent(); p != nil; p = p.Parent() {
+			if s, ok := p.(*section.Section); ok {
+				l := s.FirstChild().Lines()
+				if l.Len() == 0 {
+					// A header doesn't have any lines if there is no text associated with the
+					// header, then we can't find its location due to limitations of goldmark.
+					//
+					// Just give up on finding a header here.
+					break
+				}
+				headerStart = bytes.LastIndexByte(docs[:l.At(0).Start], '\n') + 1
+				break
 			}
 		}
-		return block, false
-	}
-	return block, false
-}
 
-func findHeader(doc string, i int) (int, bool) {
-	h2 := "##"
-	h3 := "###"
-	var foundH2, foundH3 bool
-
-	if i == 0 {
-		// handle header at very beginning of doc
-		foundH2 = doc[i:i+len(h2)] == h2
-		foundH3 = doc[i:i+len(h3)] == h3
-	} else {
-		// all other headers must be preceded by a newline
-		foundH2 = doc[i:i+len(h2)] == h2 && string(doc[i-1]) == "\n"
-		foundH3 = doc[i:i+len(h3)] == h3 && string(doc[i-1]) == "\n"
-	}
-
-	if foundH3 {
-		return i + len(h3), true
-	}
-	if foundH2 {
-		return i + len(h2), true
-	}
-	return -1, false
-}
-
-func findFencesAndHeaders(doc string) []codeBlock {
-	codeFence := "```"
-	var codeBlocks []codeBlock
-	headerStart := -1
-	for i := 0; i < (len(doc) - len(codeFence)); i++ {
-		block, found := findCodeBlock(doc, i)
-		if found {
-			block.headerStart = headerStart
-			codeBlocks = append(codeBlocks, block)
-			i = block.end + 1
+		firstNewlineOfCodeBlock := bytes.LastIndexByte(docs[:lines.At(0).Start], '\n')
+		firstNewlineOfCodeFence := bytes.LastIndexByte(docs[:firstNewlineOfCodeBlock], '\n')
+		if firstNewlineOfCodeFence == -1 {
+			// This means that docs starts with a code block
+			firstNewlineOfCodeFence = 0
 		}
-		headerEnd, found := findHeader(doc, i)
-		if found {
-			headerStart = i
-			i = headerEnd
-		}
-	}
+		firstBacktickOfCodeFence := bytes.IndexByte(docs[firstNewlineOfCodeFence:], '`') + firstNewlineOfCodeFence
+
+		codeBlocks = append(codeBlocks, codeBlock{
+			start:       firstBacktickOfCodeFence,
+			end:         lines.At(lines.Len() - 1).Stop,
+			headerStart: headerStart,
+			language:    string(cb.Language(docs)),
+		})
+	})
 	return codeBlocks
 }
 
@@ -1593,14 +1595,13 @@ func (g *Generator) convertExamplesInner(
 		_, err := fmt.Fprintf(output, f, args...)
 		contract.AssertNoErrorf(err, "Cannot fail to write out output buffer")
 	}
-	codeBlocks := findFencesAndHeaders(docs)
 	const codeFence = "```"
 
 	// Traverse the code blocks and take appropriate action before appending to output
 	textStart := 0
 	stripSection := false
-	stripSectionHeader := 0
-	for _, tfBlock := range codeBlocks {
+	stripSectionHeader := 0 // The index of the header that we might want to strip.
+	for _, tfBlock := range findCodeBlocks([]byte(docs)) {
 		// if the section has a header we append the header after trying to convert the code.
 		hasHeader := tfBlock.headerStart >= 0 && textStart < tfBlock.headerStart
 
@@ -1615,75 +1616,77 @@ func (g *Generator) convertExamplesInner(
 			// if we are stripping this section and still have the same header, we append nothing and skip to the next
 			// code block.
 			if stripSectionHeader == tfBlock.headerStart {
-				textStart = tfBlock.end + len(codeFence)
+				if eol := strings.IndexRune(docs[tfBlock.end:], '\n'); eol > -1 {
+					textStart = tfBlock.end + eol
+				} else {
+					// If no newline character is found, we are at the end of the doc.
+					textStart = len(docs)
+				}
 				continue
 			}
 			if stripSectionHeader < tfBlock.headerStart {
 				stripSection = false
 			}
 		}
-		// find the actual start index of the code
-		nextNewLine := strings.Index(docs[tfBlock.start:tfBlock.end], "\n")
-		if nextNewLine == -1 {
-			// write the line as-is; this is an in-line fence
-			fprintf("%s%s", docs[tfBlock.start:tfBlock.end], codeFence)
-		} else {
-			fenceLanguage := docs[tfBlock.start : tfBlock.start+nextNewLine+1]
-			hcl := docs[tfBlock.start+nextNewLine+1 : tfBlock.end]
-
-			// Only attempt to convert code blocks that are either explicitly marked as Terraform, or
-			// unmarked. For unmarked snippets further gate by a regex guess if it is actually Terraform.
-			if isHCL(fenceLanguage, hcl) {
-				// generate the code block and append
-				if g.language.shouldConvertExamples() {
-					hcl := docs[tfBlock.start+nextNewLine+1 : tfBlock.end]
-
-					// Most of our results should be HCL, so we try to convert it.
-					var e *Example
-					if useCoverageTracker {
-						e = g.coverageTracker.getOrCreateExample(
-							path.String(), hcl)
+		// Only attempt to convert code blocks that are either explicitly marked as Terraform, or
+		// unmarked. For unmarked snippets further gate by a regex guess if it is actually Terraform.
+		if hcl := tfBlock.code([]byte(docs)); isHCL(tfBlock.language, hcl) {
+			// generate the code block and append
+			if g.language.shouldConvertExamples() {
+				// Most of our results should be HCL, so we try to convert it.
+				var e *Example
+				if useCoverageTracker {
+					e = g.coverageTracker.getOrCreateExample(
+						path.String(), hcl)
+				}
+				langs := genLanguageToSlice(g.language)
+				convertedBlock, err := convertHCL(e, hcl, path.String(), langs)
+				if err != nil {
+					// We do not write this section, ever.
+					//
+					// We have to strip the entire section: any header, the code
+					// block, and any surrounding text.
+					stripSection = true
+					stripSectionHeader = tfBlock.headerStart
+				} else {
+					// append any headers and following text first
+					if hasHeader {
+						fprintf("%s", docs[tfBlock.headerStart:tfBlock.start])
 					}
-					langs := genLanguageToSlice(g.language)
-					convertedBlock, err := convertHCL(e, hcl, path.String(), langs)
-					if err != nil {
-						// We do not write this section, ever.
-						//
-						// We have to strip the entire section: any header, the code
-						// block, and any surrounding text.
-						stripSection = true
-						stripSectionHeader = tfBlock.headerStart
-					} else {
-						// append any headers and following text first
-						if hasHeader {
-							fprintf("%s", docs[tfBlock.headerStart:tfBlock.start])
-						}
 
-						switch g.language {
-						// If we are targeting the schema, then print code switcher
-						// fences for the registry.
-						case Schema:
-							fprintf("%s\n%s\n%s",
-								startPulumiCodeChooser,
-								convertedBlock,
-								endPulumiCodeChooser)
-						// Otherwise skip code switcher fences so they don't show up
-						// in generated SDKs.
-						default:
-							fprintf("%s", convertedBlock)
-						}
+					switch g.language {
+					// If we are targeting the schema, then print code switcher
+					// fences for the registry.
+					case Schema:
+						fprintf("%s\n%s\n%s",
+							startPulumiCodeChooser,
+							convertedBlock,
+							endPulumiCodeChooser)
+					// Otherwise skip code switcher fences so they don't show up
+					// in generated SDKs.
+					default:
+						fprintf("%s", convertedBlock)
 					}
 				}
-			} else {
-				// Take already-valid code blocks as-is.
-				if hasHeader {
-					fprintf("%s", docs[tfBlock.headerStart:tfBlock.start])
-				}
-				fprintf("%s"+codeFence, docs[tfBlock.start:tfBlock.end])
 			}
+		} else {
+			// Take already-valid code blocks as-is.
+			if hasHeader {
+				fprintf("%s", docs[tfBlock.headerStart:tfBlock.start])
+			}
+			fprintf("%s"+codeFence, docs[tfBlock.start:tfBlock.end])
 		}
-		// The non-code text starts up again after the last closing fences
-		textStart = tfBlock.end + len(codeFence)
+
+		// We want to start including non-code text after the end of the code block.
+		//
+		// The codeblock "ends" with the newline character at the end of the
+		// closing fence.
+		if eol := strings.IndexRune(docs[tfBlock.end:], '\n'); eol > -1 {
+			textStart = tfBlock.end + eol
+		} else {
+			// If no newline character is found, we are at the end of the doc.
+			textStart = len(docs)
+		}
 	}
 	// Append any remainder of the docs string to the output
 	if !stripSection {
@@ -2342,6 +2345,12 @@ func guessIsHCL(code string) bool {
 }
 
 func isHCL(fenceLanguage, code string) bool {
-	return fenceLanguage == "```terraform\n" || fenceLanguage == "```hcl\n" || fenceLanguage == "```tf\n" ||
-		(fenceLanguage == "```\n" && guessIsHCL(code))
+	switch fenceLanguage {
+	case "terraform", "hcl", "tf":
+		return true
+	case "":
+		return guessIsHCL(code)
+	default:
+		return false
+	}
 }
