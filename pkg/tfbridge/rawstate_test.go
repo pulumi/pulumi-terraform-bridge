@@ -22,6 +22,7 @@ import (
 	"github.com/hexops/autogold/v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/require"
+	"gotest.tools/v3/assert"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
@@ -392,4 +393,13 @@ func Test_rawstate_inflections_serialization(t *testing.T) {
 			tc.expect.Equal(t, string(encodedJ))
 		})
 	}
+}
+
+func Test_rawStateReducePrecision(t *testing.T) {
+	a := cty.NumberFloatVal(1.1)
+	b := cty.MustParseNumberVal("1.1")
+
+	assert.Equal(t, false, a.RawEquals(b))
+	assert.Equal(t, true, rawStateReducePrecision(a).RawEquals(rawStateReducePrecision(b)))
+	assert.Equal(t, false, rawStateReducePrecision(a).RawEquals(cty.NumberFloatVal(1.0999)))
 }
