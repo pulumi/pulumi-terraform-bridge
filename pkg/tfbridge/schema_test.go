@@ -16,7 +16,6 @@ package tfbridge
 
 import (
 	"context"
-	"encoding/json"
 	"sort"
 	"strconv"
 	"strings"
@@ -891,12 +890,6 @@ func TestResultAttributesRoundTrip(t *testing.T) {
 			expected, ok := readAttributes[k]
 			if !ok {
 				assert.True(t, strings.HasSuffix(k, ".%"))
-			} else if k == "float_property_value" {
-				// Permit float values to have slightly reduced precision.
-
-				//nolint:lll
-				autogold.Expect(json.Number("99.67679320000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000005420578112177798275")).Equal(t, expected)
-				autogold.Expect(json.Number("99.6767932")).Equal(t, v)
 			} else {
 				assert.Equalf(t, expected, v, "attribute: %q", k)
 			}
