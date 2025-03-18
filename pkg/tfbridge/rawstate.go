@@ -471,9 +471,10 @@ func rawStateComputeInflections(
 func rawStateReducePrecision(v cty.Value) cty.Value {
 	v2, err := cty.Transform(v, func(p cty.Path, v cty.Value) (cty.Value, error) {
 		if v.IsKnown() && !v.IsNull() && v.Type().Equals(cty.Number) {
-			bigFloat := v.AsBigFloat()
-			bigFloat = bigFloat.SetMode(big.AwayFromZero)
-			bigFloat = bigFloat.SetPrec(8)
+			bigFloat := big.NewFloat(0.).
+				Copy(v.AsBigFloat()).
+				SetMode(big.AwayFromZero).
+				SetPrec(8)
 			return cty.NumberVal(bigFloat), nil
 		}
 		return v, nil

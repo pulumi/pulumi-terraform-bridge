@@ -16,6 +16,7 @@ package tfbridge
 
 import (
 	"encoding/json"
+	"math/big"
 	"testing"
 
 	"github.com/hashicorp/go-cty/cty"
@@ -405,4 +406,9 @@ func Test_rawStateReducePrecision(t *testing.T) {
 	assert.Equal(t, true, rawStateReducePrecision(a).RawEquals(rawStateReducePrecision(b)))
 	assert.Equal(t, false, rawStateReducePrecision(a).RawEquals(cty.NumberFloatVal(1.0999)))
 	assert.Equal(t, cty.NullVal(cty.Number), rawStateReducePrecision(cty.NullVal(cty.Number)))
+
+	// Check that it does not mutate the inputs.
+	fl := big.NewFloat(1.252235135353451351345134)
+	rawStateReducePrecision(cty.NumberVal(fl))
+	assert.Equal(t, 0, big.NewFloat(1.252235135353451351345134).Cmp(fl))
 }
