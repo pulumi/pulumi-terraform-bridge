@@ -827,9 +827,5 @@ func TestSDKv2DetailedDiffSetNestedList(t *testing.T) {
 		{"nested list", res, listNestedListValueMaker},
 	}
 
-	unchangedScenario := []diffScenario[[]string]{
-		{"unchanged non-empty", &[]string{"value"}, &[]string{"value"}},
-	}
-
-	runSDKv2TestMatrix(t, diffSchemaValueMakerPairs, unchangedScenario)
+	runSDKv2TestMatrix(t, diffSchemaValueMakerPairs, oneElementScenarios())
 }
