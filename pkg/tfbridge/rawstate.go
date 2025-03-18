@@ -27,6 +27,11 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/walk"
 )
 
+// What about type changes like strings to ints and so forth, do we need to account for that?
+//
+// Could we bail from translating and encode cty.Value as is in the delta?
+//
+// Should we store the type, is that sufficient to code PropertyValue to cty.Value, to compensate for num/string etc?
 type rawStateInflections struct {
 	TypedNull *typedNull        `json:"null,omitempty"`
 	Pluralize *pluralize        `json:"plu,omitempty"`
@@ -34,6 +39,7 @@ type rawStateInflections struct {
 	Obj       *objInflections   `json:"obj,omitempty"`
 	Array     *arrayInflections `json:"arr,omitempty"`
 	Set       *setInflections   `json:"set,omitempty"`
+	Asset     *assetInflections `json:"asset,omitempty"`
 }
 
 func (i rawStateInflections) isEmpty() bool {
@@ -53,6 +59,9 @@ func (i rawStateInflections) isEmpty() bool {
 		return false
 	}
 	if i.Set != nil {
+		return false
+	}
+	if i.Asset != nil {
 		return false
 	}
 	return true
@@ -158,6 +167,13 @@ func (ai *setInflections) set(key int, value rawStateInflections) {
 		ai.ElementInflections = map[int]rawStateInflections{}
 	}
 	ai.ElementInflections[key] = value
+}
+
+// Encodes an AssetTranslation to help with decoding assets and archives.
+type assetInflections struct {
+	Kind      AssetTranslationKind   `json:"kind"`
+	Format    resource.ArchiveFormat `json:"archiveFormat,omitempty"`
+	HashField string                 `json:"hashField,omitempty"`
 }
 
 func rawStateRecover(pv resource.PropertyValue, infl rawStateInflections) (cty.Value, error) {
@@ -298,9 +314,45 @@ func rawStateRecover(pv resource.PropertyValue, infl rawStateInflections) (cty.V
 			elements = append(elements, r)
 		}
 		return cty.SetVal(elements), nil
+
+	case infl.Asset != nil:
+		at := AssetTranslation{
+			Kind:      infl.Asset.Kind,
+			Format:    infl.Asset.Format,
+			HashField: infl.Asset.HashField,
+		}
+		var assetOrArchiveValue any
+		switch {
+		case pv.IsAsset():
+			assetValue, err := at.TranslateAsset(pv.AssetValue())
+			if err != nil {
+				return cty.Value{}, fmt.Errorf("TranslateAsset failed: %w", err)
+			}
+			assetOrArchiveValue = assetValue
+		case pv.IsArchive():
+			archiveValue, err := at.TranslateArchive(pv.ArchiveValue())
+			if err != nil {
+				return cty.Value{}, fmt.Errorf("TranslateArchive failed: %w", err)
+			}
+			assetOrArchiveValue = archiveValue
+		default:
+			return cty.Value{}, errors.New("Expected PropertyValue to be an Asset or an Archive")
+		}
+		return rawStateEncodeAssetOrArhiveValue(assetOrArchiveValue)
 	default:
 		contract.Failf("rawStateRecover does not recognize this rawStateInflections case")
 		return cty.Value{}, errors.New("impossible")
+	}
+}
+
+func rawStateEncodeAssetOrArhiveValue(value any) (cty.Value, error) {
+	switch value := value.(type) {
+	case string:
+		return cty.StringVal(value), nil
+	case []byte:
+		return cty.StringVal(string(value)), nil
+	default:
+		return cty.Value{}, fmt.Errorf("Expected TranslateAsset or TranslateArchive to return string|[]byte")
 	}
 }
 
@@ -420,6 +472,21 @@ func (ih *inflectHelper) inflectionsAt(
 				return rawStateInflections{}, nil
 			}
 		}
+	}
+
+	// For assets and archives, save their AssetTranslation, so that at read time this AssetTranslation can be
+	// invoked to TranslateAsset or TranslateArchive.
+	if pv.IsAsset() || pv.IsArchive() {
+		schemaInfo := LookupSchemaInfoMapPath(path, ih.schemaInfos)
+		contract.Assertf(schemaInfo != nil && schemaInfo.Asset != nil,
+			"Assets must be matched with SchemaInfo with AssetTranslation [%q]",
+			path.MustEncodeSchemaPath())
+		at := schemaInfo.Asset
+		return rawStateInflections{Asset: &assetInflections{
+			Kind:      at.Kind,
+			Format:    at.Format,
+			HashField: at.HashField,
+		}}, nil
 	}
 
 	contract.Assertf(v.IsKnown(), "rawStateComputeInflections cannot handle unknowns")
