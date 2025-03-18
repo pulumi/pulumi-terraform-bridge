@@ -179,6 +179,21 @@ func Test_rawstate_inflections_turnaround(t *testing.T) {
 				})),
 			}),
 		},
+		{
+			name: "bigint",
+			schemaMap: sdkv2.NewSchemaMap(map[string]*schema.Schema{
+				"prop": {
+					Type:     schema.TypeInt,
+					Optional: true,
+				},
+			}),
+			pv: resource.NewObjectProperty(resource.PropertyMap{
+				"prop": resource.NewStringProperty("12345678901234567890"),
+			}),
+			cv: cty.ObjectVal(map[string]cty.Value{
+				"prop": cty.MustParseNumberVal("12345678901234567890"),
+			}),
+		},
 	}
 
 	for _, tc := range testCases {
@@ -207,7 +222,7 @@ func Test_rawstate_inflections_turnaround(t *testing.T) {
 			t.Logf("cv2:%v", recoveredCtyValue.GoString())
 
 			require.Truef(t, recoveredCtyValue.RawEquals(tc.cv),
-				"\nExpected: %s\nActual:   %s\n",
+				"cty.Value failed to turn around\nExpected: %s\nActual:   %s\n",
 				tc.cv.GoString(),
 				recoveredCtyValue.GoString(),
 			)
