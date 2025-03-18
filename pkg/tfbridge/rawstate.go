@@ -43,6 +43,7 @@ type rawStateInflections struct {
 	Array     *arrayInflections `json:"arr,omitempty"`
 	Set       *setInflections   `json:"set,omitempty"`
 	Asset     *assetInflections `json:"asset,omitempty"`
+	Num       *numInflections   `json:"num,omitempty"`
 }
 
 func (i rawStateInflections) isEmpty() bool {
@@ -65,6 +66,9 @@ func (i rawStateInflections) isEmpty() bool {
 		return false
 	}
 	if i.Asset != nil {
+		return false
+	}
+	if i.Num != nil {
 		return false
 	}
 	return true
@@ -171,6 +175,10 @@ func (ai *setInflections) set(key int, value rawStateInflections) {
 	}
 	ai.ElementInflections[key] = value
 }
+
+// Used when a TF number is expected, but Pulumi representation is a string. This is the case, for example, for large
+// integers and floats that do not fit the float64 constraints of Pulumi PropertyValue numbers.
+type numInflections struct{}
 
 // Encodes an AssetTranslation to help with decoding assets and archives.
 type assetInflections struct {
@@ -342,6 +350,17 @@ func rawStateRecover(pv resource.PropertyValue, infl rawStateInflections) (cty.V
 			return cty.Value{}, errors.New("Expected PropertyValue to be an Asset or an Archive")
 		}
 		return rawStateEncodeAssetOrArhiveValue(assetOrArchiveValue)
+
+	case infl.Num != nil:
+		if !pv.IsString() {
+			return cty.Value{}, errors.New("Expected PropertyValue to be a String")
+		}
+		v, err := cty.ParseNumberVal(pv.StringValue())
+		if err != nil {
+			return cty.Value{}, fmt.Errorf("Foo: %w", err)
+		}
+		return v, nil
+
 	default:
 		contract.Failf("rawStateRecover does not recognize this rawStateInflections case")
 		return cty.Value{}, errors.New("impossible")
@@ -537,6 +556,8 @@ func (ih *inflectHelper) inflectionsAt(
 	switch {
 	case v.IsNull():
 		return rawStateInflections{TypedNull: &typedNull{T: v.Type()}}, nil
+	case v.Type().Equals(cty.Number) && pv.IsString():
+		return rawStateInflections{Num: &numInflections{}}, nil
 	case v.Type().IsPrimitiveType():
 		return rawStateInflections{}, nil
 	case v.Type().IsListType():
