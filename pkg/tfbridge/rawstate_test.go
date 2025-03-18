@@ -194,6 +194,21 @@ func Test_rawstate_inflections_turnaround(t *testing.T) {
 				"prop": cty.MustParseNumberVal("12345678901234567890"),
 			}),
 		},
+		{
+			name: "bignum",
+			schemaMap: sdkv2.NewSchemaMap(map[string]*schema.Schema{
+				"prop": {
+					Type:     schema.TypeFloat,
+					Optional: true,
+				},
+			}),
+			pv: resource.NewObjectProperty(resource.PropertyMap{
+				"prop": resource.NewStringProperty("12345678.901234567890"),
+			}),
+			cv: cty.ObjectVal(map[string]cty.Value{
+				"prop": cty.MustParseNumberVal("12345678.901234567890"),
+			}),
+		},
 	}
 
 	for _, tc := range testCases {
