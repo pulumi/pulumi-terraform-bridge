@@ -765,7 +765,7 @@ func (p *tfMarkdownParser) parseSection(h2Section []string) error {
 		case sectionFrontMatter:
 			p.parseFrontMatter(reformattedH3Section)
 		case sectionImports:
-			p.parseImports(reformattedH3Section)
+			p.parseImports(strings.Join(reformattedH3Section, "\n"))
 		default:
 			// Determine if this is a nested argument section.
 			_, isArgument := p.ret.Arguments[docsPath(header)]
@@ -1169,7 +1169,7 @@ func flattenListAttributeKey(attribute string) string {
 	return strings.ReplaceAll(attribute, ".0", "")
 }
 
-func (p *tfMarkdownParser) parseImports(subsection []string) {
+func (p *tfMarkdownParser) parseImports(body string) {
 	var token string
 	if p.info != nil && p.info.GetTok() != "" {
 		token = p.info.GetTok().String()
@@ -1183,7 +1183,7 @@ func (p *tfMarkdownParser) parseImports(subsection []string) {
 %s
 
 `,
-				token, strings.Join(subsection, "\n"), p.ret.Import)
+				token, body, p.ret.Import)
 			if p.sink != nil {
 				p.sink.warn(message)
 			}
@@ -1203,52 +1203,65 @@ func (p *tfMarkdownParser) parseImports(subsection []string) {
 		}
 	}
 
-	if i, ok := tryParseV2Imports(token, subsection); ok {
+	if i, ok := tryParseV2Imports(token, body); ok {
 		p.ret.Import = i
 		return
 	}
 
-	var importDocString string
-	for _, section := range subsection {
-		if strings.Contains(section, "**NOTE:") || strings.Contains(section, "**Please Note:") ||
-			strings.Contains(section, "**Note:**") {
+	importDocs := new(bytes.Buffer)
+	for _, line := range strings.Split(body, "\n") {
+		if strings.Contains(line, "**NOTE:") || strings.Contains(line, "**Please Note:") ||
+			strings.Contains(line, "**Note:**") {
 			// This is a Terraform import specific comment that we don't need to parse or include in our docs
 			continue
 		}
 
 		// Skip another redundant comment
-		if strings.Contains(section, "Import is supported using the following syntax") {
+		if strings.Contains(line, "Import is supported using the following syntax") {
 			continue
 		}
 
 		// Remove the shell comment characters to avoid writing this line as a Markdown H1:
-		section = strings.TrimPrefix(section, "# ")
+		if line == "#" {
+			line = ""
+		} else {
+			line = strings.TrimPrefix(line, "# ")
+		}
 
 		// There are multiple variations of codeblocks for import syntax
-		section = strings.Replace(section, "```shell", "", -1)
-		section = strings.Replace(section, "```sh", "", -1)
-		section = strings.Replace(section, "```", "", -1)
+		line = strings.ReplaceAll(line, "```shell", "")
+		line = strings.ReplaceAll(line, "```sh", "")
+		line = strings.ReplaceAll(line, "```", "")
 
-		if strings.Contains(section, "terraform import") {
+		// We have find a line that we assume looks like this:
+		//
+		//	$ terraform import some_resource_token.resource_name import-id
+		//
+		// We want to transform it into a block like this (formatting handled by emitImportCodeBlock):
+		//
+		//	$ pulumi import some:index/resourceToken:ResourceToken resource_name import-id
+		//
+		// We do so by progressive string manipulation of the line
+		if strings.Contains(line, "terraform import") {
 			// First, remove the `$`
-			section := strings.Replace(section, "$ ", "", -1)
+			line := strings.ReplaceAll(line, "$ ", "")
 			// Next, remove `terraform import` from the codeblock
-			section = strings.Replace(section, "terraform import ", "", -1)
-			importString := ""
-			parts := strings.Split(section, " ")
-			for i, p := range parts {
+			line = strings.ReplaceAll(line, "terraform import ", "")
+			var resourceNAme, importID string
+			for i, part := range strings.Split(line, " ") {
 				switch i {
 				case 0:
-					if !isBlank(p) {
-						// split the string on . and take the last item
-						// this gets the identifier broken from the tf resource
-						ids := strings.Split(p, ".")
-						name := ids[len(ids)-1]
-						importString = fmt.Sprintf("%s %s", importString, name)
+					// We assume the first item in the import block is
+					// <some_resource_token>.<resource_name>. We discard
+					// <some_resource_token> and take <resource_name>.
+					if !isBlank(part) {
+						ids := strings.Split(part, ".")
+						resourceNAme = ids[len(ids)-1]
 					}
 				default:
-					if !isBlank(p) {
-						importString = fmt.Sprintf("%s %s", importString, p)
+					// Otherwise, we assume that it is part of the import ID.
+					if !isBlank(part) {
+						importID += " " + part
 					}
 				}
 			}
@@ -1258,30 +1271,32 @@ func (p *tfMarkdownParser) parseImports(subsection []string) {
 			} else {
 				tok = "MISSING_TOK"
 			}
-			importCommand := fmt.Sprintf("$ pulumi import %s%s\n", tok, importString)
-			importDetails := "```sh\n" + importCommand + "```\n\n"
-			importDocString = importDocString + importDetails
+			emitImportCodeBlock(importDocs, tok, resourceNAme, strings.TrimSpace(importID))
+			importDocs.WriteRune('\n')
 		} else {
-			if !isBlank(section) {
+			if !isBlank(line) {
 				// Ensure every section receives a line break.
-				section = section + "\n\n"
-				importDocString = importDocString + section
+				//
+				// TODO[https://github.com/pulumi/pulumi-terraform-bridge/issues/2955]: The
+				// above comment says "section", but each line is actually just a line. We
+				// probably shouldn't be adding 2 \n for each line.
+				importDocs.WriteString(line)
+				importDocs.WriteString("\n\n")
 			}
 		}
 	}
 
-	if len(importDocString) > 0 {
-		p.ret.Import = fmt.Sprintf("## Import\n\n%s", importDocString)
+	if importDocs.Len() > 0 {
+		p.ret.Import = fmt.Sprintf("## Import\n\n%s", importDocs)
 	}
 }
 
 // Recognizes import sections such as ones found in aws_accessanalyzer_analyzer. If the section is
 // recognized, patches up instructions to make sense for the Pulumi projection.
-func tryParseV2Imports(typeToken string, markdownLines []string) (string, bool) {
+func tryParseV2Imports(typeToken string, markdown string) (string, bool) {
 	var out bytes.Buffer
 	fmt.Fprintf(&out, "## Import\n\n")
 
-	markdown := strings.Join(markdownLines, "\n")
 	pn := parseNode(markdown)
 	if pn == nil {
 		return "", false
