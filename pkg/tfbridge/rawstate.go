@@ -18,9 +18,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
+	"os"
 
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
@@ -430,7 +433,20 @@ func rawStateComputeInflections(
 	delete(mm, "timeouts")
 	rawStateWithoutTimeouts := cty.ObjectVal(mm)
 
-	if !ctyValueRecovered.RawEquals(rawStateWithoutTimeouts) {
+	inflE, err := rawStateEncodeInflections(infl)
+	contract.AssertNoErrorf(err, "rawStateEncodeInflections failed")
+
+	if !rawStateReducePrecision(ctyValueRecovered).RawEquals(
+		rawStateReducePrecision(rawStateWithoutTimeouts),
+	) {
+		if cmdutil.IsTruthy(os.Getenv("PULUMI_DEBUG")) {
+			return nil, fmt.Errorf("[rawstate]: turnaround check failed\nrecovered=%s\n"+
+				"rawState =%s\ninfle=%#v",
+				ctyValueRecovered.GoString(),
+				rawStateWithoutTimeouts.GoString(),
+				inflE,
+			)
+		}
 		return nil, errors.New("[rawstate]: turnaround check failed")
 	}
 
@@ -439,6 +455,33 @@ func rawStateComputeInflections(
 		return nil, fmt.Errorf("[rawstate]: encoding failed")
 	}
 	return inflEnc, nil
+}
+
+// Reduce float precision.
+//
+// When comparing values for the turnaround check, precision-induced false positives need to be avoided, e.g:
+//
+//	a := cty.NumberFloatVal(1.1)
+//	b := cty.MustParseNumberVal("1.1")
+//	a.RawEquals(b) == false
+//
+// In contrast:
+//
+//	rawStateReducePrecision(a).RawEquals(rawStateReducePrecision(b)) == true
+func rawStateReducePrecision(v cty.Value) cty.Value {
+	v2, err := cty.Transform(v, func(p cty.Path, v cty.Value) (cty.Value, error) {
+		if v.IsKnown() && v.Type().Equals(cty.Number) {
+			bigFloat := v.AsBigFloat()
+			bigFloat = bigFloat.SetMode(big.AwayFromZero)
+			bigFloat = bigFloat.SetPrec(8)
+			return cty.NumberVal(bigFloat), nil
+		}
+		return v, nil
+	})
+	if err != nil {
+		return v
+	}
+	return v2
 }
 
 type inflectHelper struct {
@@ -523,9 +566,8 @@ func (ih *inflectHelper) inflectionsAt(
 			"Expected array length parity for PropertyValue and matching cty.Value")
 
 		if len(pvElements) == 0 {
-			t := v.Type()
 			return rawStateInflections{
-				Array: &arrayInflections{T: &t},
+				Array: &arrayInflections{T: v.Type().ListElementType()},
 			}, nil
 		}
 
@@ -610,9 +652,8 @@ func (ih *inflectHelper) inflectionsAt(
 			"Expected array length parity for PropertyValue and matching Set cty.Value")
 
 		if len(pvElements) == 0 {
-			t := v.Type()
 			return rawStateInflections{
-				Set: &setInflections{T: &t},
+				Set: &setInflections{T: v.Type().SetElementType()},
 			}, nil
 		}
 
