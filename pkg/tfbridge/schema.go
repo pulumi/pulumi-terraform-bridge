@@ -370,7 +370,8 @@ func (ctx *conversionContext) makeTerraformInput(
 
 				return val
 			}
-			if val.IsComputed() || val.IsOutput() {
+			// Do not attempt to wrap unknowns.
+			if val.IsComputed() || (val.IsOutput() && !val.OutputValue().Known) {
 				return val
 			}
 
