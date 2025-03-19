@@ -28,6 +28,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"gotest.tools/v3/assert"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	sdkv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
@@ -455,10 +456,12 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 	ctx := context.Background()
 
 	type testCase struct {
-		name   string
-		inputs resource.PropertyMap
-		tfs    map[string]*schema.Schema
-		ps     map[string]*SchemaInfo
+		name    string
+		inputs  resource.PropertyMap
+		tfs     map[string]*schema.Schema
+		ps      map[string]*SchemaInfo
+		tfState autogold.Value
+		infl    autogold.Value
 	}
 
 	testCases := []testCase{
@@ -471,6 +474,15 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 				},
 			},
 			inputs: resource.PropertyMap{"str": resource.NewStringProperty("OK")},
+			//nolint:lll
+			tfState: autogold.Expect(`cty.ObjectVal(map[string]cty.Value{"id":cty.StringVal("id0"), "str":cty.StringVal("OK")})`),
+			infl: autogold.Expect(`{
+  "obj": {
+    "ignored": {
+      "__meta": {}
+    }
+  }
+}`),
 		},
 		{
 			name: "bool",
@@ -480,7 +492,15 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 					Optional: true,
 				},
 			},
-			inputs: resource.PropertyMap{"b": resource.NewBoolProperty(true)},
+			inputs:  resource.PropertyMap{"b": resource.NewBoolProperty(true)},
+			tfState: autogold.Expect(`cty.ObjectVal(map[string]cty.Value{"b":cty.True, "id":cty.StringVal("id0")})`),
+			infl: autogold.Expect(`{
+  "obj": {
+    "ignored": {
+      "__meta": {}
+    }
+  }
+}`),
 		},
 		{
 			name: "int",
@@ -490,7 +510,15 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 					Optional: true,
 				},
 			},
-			inputs: resource.PropertyMap{"i": resource.NewNumberProperty(42)},
+			inputs:  resource.PropertyMap{"i": resource.NewNumberProperty(42)},
+			tfState: autogold.Expect(`cty.ObjectVal(map[string]cty.Value{"i":cty.NumberIntVal(42), "id":cty.StringVal("id0")})`),
+			infl: autogold.Expect(`{
+  "obj": {
+    "ignored": {
+      "__meta": {}
+    }
+  }
+}`),
 		},
 		{
 			name: "float",
@@ -501,6 +529,15 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 				},
 			},
 			inputs: resource.PropertyMap{"f": resource.NewNumberProperty(3.14)},
+			//nolint:lll
+			tfState: autogold.Expect(`cty.ObjectVal(map[string]cty.Value{"f":cty.MustParseNumberVal("3.14"), "id":cty.StringVal("id0")})`),
+			infl: autogold.Expect(`{
+  "obj": {
+    "ignored": {
+      "__meta": {}
+    }
+  }
+}`),
 		},
 		{
 			name: "coerced-bool",
@@ -510,7 +547,15 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 					Optional: true,
 				},
 			},
-			inputs: resource.PropertyMap{"b": resource.NewStringProperty("true")},
+			inputs:  resource.PropertyMap{"b": resource.NewStringProperty("true")},
+			tfState: autogold.Expect(`cty.ObjectVal(map[string]cty.Value{"b":cty.True, "id":cty.StringVal("id0")})`),
+			infl: autogold.Expect(`{
+  "obj": {
+    "ignored": {
+      "__meta": {}
+    }
+  }
+}`),
 		},
 		{
 			name: "coerced-int",
@@ -520,7 +565,15 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 					Optional: true,
 				},
 			},
-			inputs: resource.PropertyMap{"i": resource.NewStringProperty("42")},
+			inputs:  resource.PropertyMap{"i": resource.NewStringProperty("42")},
+			tfState: autogold.Expect(`cty.ObjectVal(map[string]cty.Value{"i":cty.NumberIntVal(42), "id":cty.StringVal("id0")})`),
+			infl: autogold.Expect(`{
+  "obj": {
+    "ignored": {
+      "__meta": {}
+    }
+  }
+}`),
 		},
 		{
 			name: "coerced-float",
@@ -531,6 +584,15 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 				},
 			},
 			inputs: resource.PropertyMap{"f": resource.NewStringProperty("3.14")},
+			//nolint:lll
+			tfState: autogold.Expect(`cty.ObjectVal(map[string]cty.Value{"f":cty.MustParseNumberVal("3.14"), "id":cty.StringVal("id0")})`),
+			infl: autogold.Expect(`{
+  "obj": {
+    "ignored": {
+      "__meta": {}
+    }
+  }
+}`),
 		},
 		{
 			name: "list",
@@ -548,6 +610,22 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 				resource.NewStringProperty("B"),
 				resource.NewStringProperty("C"),
 			})},
+			//nolint:lll
+			tfState: autogold.Expect(`cty.ObjectVal(map[string]cty.Value{"id":cty.StringVal("id0"), "ls":cty.ListVal([]cty.Value{cty.StringVal("A"), cty.StringVal("B"), cty.StringVal("C")})})`),
+			infl: autogold.Expect(`{
+  "obj": {
+    "ignored": {
+      "__meta": {}
+    },
+    "o": {
+      "ls": {
+        "arr": {
+          "arr": null
+        }
+      }
+    }
+  }
+}`),
 		},
 		{
 			name: "list-empty",
@@ -561,6 +639,23 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 				},
 			},
 			inputs: resource.PropertyMap{"ls": resource.NewArrayProperty([]resource.PropertyValue{})},
+			//nolint:lll
+			tfState: autogold.Expect(`cty.ObjectVal(map[string]cty.Value{"id":cty.StringVal("id0"), "ls":cty.ListValEmpty(cty.String)})`),
+			infl: autogold.Expect(`{
+  "obj": {
+    "ignored": {
+      "__meta": {}
+    },
+    "o": {
+      "ls": {
+        "arr": {
+          "arr": null,
+          "t": "string"
+        }
+      }
+    }
+  }
+}`),
 		},
 		{
 			name: "list-null",
@@ -574,6 +669,25 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 				},
 			},
 			inputs: resource.PropertyMap{"ls": resource.NewNullProperty()},
+			//nolint:lll
+			tfState: autogold.Expect(`cty.ObjectVal(map[string]cty.Value{"id":cty.StringVal("id0"), "ls":cty.NullVal(cty.List(cty.String))})`),
+			infl: autogold.Expect(`{
+  "obj": {
+    "ignored": {
+      "__meta": {}
+    },
+    "o": {
+      "ls": {
+        "null": {
+          "t": [
+            "list",
+            "string"
+          ]
+        }
+      }
+    }
+  }
+}`),
 		},
 		{
 			name: "list-maxitems1",
@@ -595,6 +709,24 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 			inputs: resource.PropertyMap{"ls": resource.NewObjectProperty(resource.PropertyMap{
 				"x": resource.NewStringProperty("OK"),
 			})},
+			//nolint:lll
+			tfState: autogold.Expect(`cty.ObjectVal(map[string]cty.Value{"id":cty.StringVal("id0"), "ls":cty.ListVal([]cty.Value{cty.ObjectVal(map[string]cty.Value{"x":cty.StringVal("OK")})})})`),
+			infl: autogold.Expect(`{
+  "obj": {
+    "ignored": {
+      "__meta": {}
+    },
+    "o": {
+      "ls": {
+        "plu": {
+          "i": {
+            "obj": {}
+          }
+        }
+      }
+    }
+  }
+}`),
 		},
 		{
 			name: "list-maxitems1-empty",
@@ -614,6 +746,28 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 				},
 			},
 			inputs: resource.PropertyMap{"ls": resource.NewNullProperty()},
+			//nolint:lll
+			tfState: autogold.Expect(`cty.ObjectVal(map[string]cty.Value{"id":cty.StringVal("id0"), "ls":cty.ListValEmpty(cty.Object(map[string]cty.Type{"x":cty.String}))})`),
+			infl: autogold.Expect(`{
+  "obj": {
+    "ignored": {
+      "__meta": {}
+    },
+    "o": {
+      "ls": {
+        "plu": {
+          "i": {},
+          "t": [
+            "object",
+            {
+              "x": "string"
+            }
+          ]
+        }
+      }
+    }
+  }
+}`),
 		},
 		{
 			name: "set",
@@ -631,6 +785,22 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 				resource.NewStringProperty("B"),
 				resource.NewStringProperty("C"),
 			})},
+			//nolint:lll
+			tfState: autogold.Expect(`cty.ObjectVal(map[string]cty.Value{"id":cty.StringVal("id0"), "ls":cty.SetVal([]cty.Value{cty.StringVal("A"), cty.StringVal("B"), cty.StringVal("C")})})`),
+			infl: autogold.Expect(`{
+  "obj": {
+    "ignored": {
+      "__meta": {}
+    },
+    "o": {
+      "ls": {
+        "set": {
+          "set": null
+        }
+      }
+    }
+  }
+}`),
 		},
 		{
 			name: "set-empty",
@@ -644,6 +814,25 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 				},
 			},
 			inputs: resource.PropertyMap{"ls": resource.NewArrayProperty([]resource.PropertyValue{})},
+			//nolint:lll
+			tfState: autogold.Expect(`cty.ObjectVal(map[string]cty.Value{"id":cty.StringVal("id0"), "ls":cty.NullVal(cty.Set(cty.String))})`),
+			infl: autogold.Expect(`{
+  "obj": {
+    "ignored": {
+      "__meta": {}
+    },
+    "o": {
+      "ls": {
+        "null": {
+          "t": [
+            "set",
+            "string"
+          ]
+        }
+      }
+    }
+  }
+}`),
 		},
 		{
 			name: "set-null",
@@ -657,6 +846,25 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 				},
 			},
 			inputs: resource.PropertyMap{"ls": resource.NewNullProperty()},
+			//nolint:lll
+			tfState: autogold.Expect(`cty.ObjectVal(map[string]cty.Value{"id":cty.StringVal("id0"), "ls":cty.NullVal(cty.Set(cty.String))})`),
+			infl: autogold.Expect(`{
+  "obj": {
+    "ignored": {
+      "__meta": {}
+    },
+    "o": {
+      "ls": {
+        "null": {
+          "t": [
+            "set",
+            "string"
+          ]
+        }
+      }
+    }
+  }
+}`),
 		},
 		{
 			name: "set-maxitems1",
@@ -678,6 +886,25 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 			inputs: resource.PropertyMap{"ls": resource.NewObjectProperty(resource.PropertyMap{
 				"x": resource.NewStringProperty("OK"),
 			})},
+			//nolint:lll
+			tfState: autogold.Expect(`cty.ObjectVal(map[string]cty.Value{"id":cty.StringVal("id0"), "ls":cty.SetVal([]cty.Value{cty.ObjectVal(map[string]cty.Value{"x":cty.StringVal("OK")})})})`),
+			infl: autogold.Expect(`{
+  "obj": {
+    "ignored": {
+      "__meta": {}
+    },
+    "o": {
+      "ls": {
+        "plu": {
+          "i": {
+            "obj": {}
+          },
+          "set": true
+        }
+      }
+    }
+  }
+}`),
 		},
 		{
 			name: "set-maxitems1-empty",
@@ -697,13 +924,115 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 				},
 			},
 			inputs: resource.PropertyMap{"ls": resource.NewNullProperty()},
+			//nolint:lll
+			tfState: autogold.Expect(`cty.ObjectVal(map[string]cty.Value{"id":cty.StringVal("id0"), "ls":cty.SetValEmpty(cty.Object(map[string]cty.Type{"x":cty.String}))})`),
+			infl: autogold.Expect(`{
+  "obj": {
+    "ignored": {
+      "__meta": {}
+    },
+    "o": {
+      "ls": {
+        "plu": {
+          "i": {},
+          "set": true,
+          "t": [
+            "object",
+            {
+              "x": "string"
+            }
+          ]
+        }
+      }
+    }
+  }
+}`),
 		},
-
-		// map-empty
-		// map-regular
-		// object
-		// object-with-omitted-prop
-		// object-with-renamed-prop
+		{
+			name: "map",
+			tfs: map[string]*schema.Schema{
+				"ls": {
+					Type:     schema.TypeMap,
+					Optional: true,
+					Elem: &schema.Schema{
+						Type: schema.TypeInt,
+					},
+				},
+			},
+			inputs: resource.PropertyMap{"ls": resource.NewObjectProperty(resource.PropertyMap{
+				"one": resource.NewNumberProperty(1),
+				"two": resource.NewNumberProperty(2),
+			})},
+			//nolint:lll
+			tfState: autogold.Expect(`cty.ObjectVal(map[string]cty.Value{"id":cty.StringVal("id0"), "ls":cty.MapVal(map[string]cty.Value{"one":cty.NumberIntVal(1), "two":cty.NumberIntVal(2)})})`),
+			infl: autogold.Expect(`{
+  "obj": {
+    "ignored": {
+      "__meta": {}
+    },
+    "o": {
+      "ls": {
+        "map": {}
+      }
+    }
+  }
+}`),
+		},
+		{
+			name: "object",
+			tfs: map[string]*schema.Schema{
+				"x": {
+					Type:     schema.TypeList,
+					Optional: true,
+					MaxItems: 1,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"s1": {Type: schema.TypeString, Optional: true},
+							"s2": {Type: schema.TypeString, Optional: true},
+						},
+					},
+				},
+			},
+			ps: map[string]*info.Schema{
+				"x": {
+					Fields: map[string]*info.Schema{
+						"s2": {Name: "renamedS2"},
+					},
+					Elem: &info.Schema{
+						Fields: map[string]*info.Schema{
+							"s2": {Name: "renamedS2"},
+						},
+					},
+				},
+			},
+			inputs: resource.PropertyMap{"x": resource.NewObjectProperty(resource.PropertyMap{
+				"s1":        resource.NewStringProperty("S1"),
+				"renamedS2": resource.NewStringProperty("S2"),
+				"ignoredS3": resource.NewStringProperty("S3"),
+			})},
+			//nolint:lll
+			tfState: autogold.Expect(`cty.ObjectVal(map[string]cty.Value{"id":cty.StringVal("id0"), "x":cty.ListVal([]cty.Value{cty.ObjectVal(map[string]cty.Value{"s1":cty.StringVal("S1"), "s2":cty.StringVal("S2")})})})`),
+			infl: autogold.Expect(`{
+  "obj": {
+    "ignored": {
+      "__meta": {}
+    },
+    "o": {
+      "x": {
+        "plu": {
+          "i": {
+            "obj": {
+              "renamed": {
+                "renamedS2": "s2"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}`),
+		},
 	}
 
 	for _, tc := range testCases {
@@ -714,10 +1043,8 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 				t.Skip("tc.inputs is nil")
 			}
 
-			var (
-				tok             string = "r1"
-				supportsSecrets bool   = true
-			)
+			tok := "r1"
+			supportsSecrets := true
 
 			p := sdkv2.NewProvider(&schema.Provider{
 				ResourcesMap: map[string]*schema.Resource{
@@ -753,6 +1080,8 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 
 			t.Logf("stateValue: %v", stateValue.GoString())
 
+			tc.tfState.Equal(t, stateValue.GoString())
+
 			outMap, err := MakeTerraformResult(ctx, p, state, tfs, tc.ps, assets, supportsSecrets)
 			require.NoError(t, err)
 
@@ -765,6 +1094,14 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 
 			infl, err := ih.inflections(pv, stateValue)
 			require.NoError(t, err)
+
+			inflEnc, err := rawStateEncodeInflections(infl)
+			require.NoError(t, err)
+
+			inflEncJ, err := json.MarshalIndent(inflEnc, "", "  ")
+			require.NoError(t, err)
+
+			tc.infl.Equal(t, string(inflEncJ))
 
 			err = rawStateTurnaroundCheck(stateValue, pv, infl)
 			require.NoError(t, err)
