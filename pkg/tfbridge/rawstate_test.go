@@ -41,11 +41,10 @@ func Test_rawstate_inflections_turnaround(t *testing.T) {
 	t.Parallel()
 
 	type testCase struct {
-		name        string
-		schemaMap   shim.SchemaMap
-		schemaInfos map[string]*SchemaInfo
-		pv          resource.PropertyValue
-		cv          cty.Value
+		name   string
+		schema *schema.Schema
+		pv     resource.PropertyValue
+		cv     cty.Value
 	}
 
 	testCases := []testCase{
@@ -76,203 +75,215 @@ func Test_rawstate_inflections_turnaround(t *testing.T) {
 		},
 		{
 			name: "maxitems1-flat-object",
-			schemaMap: sdkv2.NewSchemaMap(map[string]*schema.Schema{
-				"prop": {
-					Type:     schema.TypeList,
-					MaxItems: 1,
-					Optional: true,
-					Elem: &schema.Resource{
-						Schema: map[string]*schema.Schema{
-							"str": {
-								Type:     schema.TypeString,
-								Optional: true,
-							},
+			schema: &schema.Schema{
+				Type:     schema.TypeList,
+				MaxItems: 1,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"str": {
+							Type:     schema.TypeString,
+							Optional: true,
 						},
 					},
 				},
-			}),
+			},
 			pv: resource.NewObjectProperty(resource.PropertyMap{
-				"prop": resource.NewObjectProperty(resource.PropertyMap{
-					"str": resource.NewStringProperty("OK"),
-				}),
+				"str": resource.NewStringProperty("OK"),
 			}),
-			cv: cty.ObjectVal(map[string]cty.Value{
-				"prop": cty.ListVal([]cty.Value{
-					cty.ObjectVal(map[string]cty.Value{
-						"str": cty.StringVal("OK"),
-					}),
+			cv: cty.ListVal([]cty.Value{
+				cty.ObjectVal(map[string]cty.Value{
+					"str": cty.StringVal("OK"),
 				}),
 			}),
 		},
 		{
 			name: "maxitems1-flat-object-nil",
-			schemaMap: sdkv2.NewSchemaMap(map[string]*schema.Schema{
-				"prop": {
-					Type:     schema.TypeList,
-					MaxItems: 1,
-					Optional: true,
-					Elem: &schema.Resource{
-						Schema: map[string]*schema.Schema{
-							"str": {
-								Type:     schema.TypeString,
-								Optional: true,
-							},
+			schema: &schema.Schema{
+				Type:     schema.TypeList,
+				MaxItems: 1,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"str": {
+							Type:     schema.TypeString,
+							Optional: true,
 						},
 					},
 				},
-			}),
-			pv: resource.NewObjectProperty(resource.PropertyMap{
-				"prop": resource.NewNullProperty(),
-			}),
-			cv: cty.ObjectVal(map[string]cty.Value{
-				"prop": cty.ListValEmpty(cty.Object(map[string]cty.Type{
-					"str": cty.String,
-				})),
-			}),
+			},
+			pv: resource.NewNullProperty(),
+			cv: cty.ListValEmpty(cty.Object(map[string]cty.Type{
+				"str": cty.String,
+			})),
 		},
 		{
 			name: "maxitems1-flat-set-object",
-			schemaMap: sdkv2.NewSchemaMap(map[string]*schema.Schema{
-				"prop": {
-					Type:     schema.TypeSet,
-					MaxItems: 1,
-					Optional: true,
-					Elem: &schema.Resource{
-						Schema: map[string]*schema.Schema{
-							"str": {
-								Type:     schema.TypeString,
-								Optional: true,
-							},
+			schema: &schema.Schema{
+				Type:     schema.TypeSet,
+				MaxItems: 1,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"str": {
+							Type:     schema.TypeString,
+							Optional: true,
 						},
 					},
 				},
-			}),
+			},
 			pv: resource.NewObjectProperty(resource.PropertyMap{
-				"prop": resource.NewObjectProperty(resource.PropertyMap{
-					"str": resource.NewStringProperty("OK"),
-				}),
+				"str": resource.NewStringProperty("OK"),
 			}),
-			cv: cty.ObjectVal(map[string]cty.Value{
-				"prop": cty.SetVal([]cty.Value{
-					cty.ObjectVal(map[string]cty.Value{
-						"str": cty.StringVal("OK"),
-					}),
+			cv: cty.SetVal([]cty.Value{
+				cty.ObjectVal(map[string]cty.Value{
+					"str": cty.StringVal("OK"),
 				}),
 			}),
 		},
 		{
 			name: "maxitems1-flat-set-nil",
-			schemaMap: sdkv2.NewSchemaMap(map[string]*schema.Schema{
-				"prop": {
-					Type:     schema.TypeSet,
-					MaxItems: 1,
-					Optional: true,
-					Elem: &schema.Resource{
-						Schema: map[string]*schema.Schema{
-							"str": {
-								Type:     schema.TypeString,
-								Optional: true,
-							},
+			schema: &schema.Schema{
+				Type:     schema.TypeSet,
+				MaxItems: 1,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"str": {
+							Type:     schema.TypeString,
+							Optional: true,
 						},
 					},
 				},
-			}),
-			pv: resource.NewObjectProperty(resource.PropertyMap{
-				"prop": resource.NewNullProperty(),
-			}),
-			cv: cty.ObjectVal(map[string]cty.Value{
-				"prop": cty.SetValEmpty(cty.Object(map[string]cty.Type{
-					"str": cty.String,
-				})),
-			}),
+			},
+			pv: resource.NewNullProperty(),
+			cv: cty.SetValEmpty(cty.Object(map[string]cty.Type{
+				"str": cty.String,
+			})),
 		},
 		{
 			name: "bigint",
-			schemaMap: sdkv2.NewSchemaMap(map[string]*schema.Schema{
-				"prop": {
-					Type:     schema.TypeInt,
-					Optional: true,
-				},
-			}),
-			pv: resource.NewObjectProperty(resource.PropertyMap{
-				"prop": resource.NewStringProperty("12345678901234567890"),
-			}),
-			cv: cty.ObjectVal(map[string]cty.Value{
-				"prop": cty.MustParseNumberVal("12345678901234567890"),
-			}),
+			schema: &schema.Schema{
+				Type:     schema.TypeInt,
+				Optional: true,
+			},
+			pv: resource.NewStringProperty("12345678901234567890"),
+			cv: cty.MustParseNumberVal("12345678901234567890"),
 		},
 		{
 			name: "bignum",
-			schemaMap: sdkv2.NewSchemaMap(map[string]*schema.Schema{
-				"prop": {
-					Type:     schema.TypeFloat,
-					Optional: true,
-				},
-			}),
-			pv: resource.NewObjectProperty(resource.PropertyMap{
-				"prop": resource.NewStringProperty("12345678.901234567890"),
-			}),
-			cv: cty.ObjectVal(map[string]cty.Value{
-				"prop": cty.MustParseNumberVal("12345678.901234567890"),
-			}),
+			schema: &schema.Schema{
+				Type:     schema.TypeFloat,
+				Optional: true,
+			},
+			pv: resource.NewStringProperty("12345678.901234567890"),
+			cv: cty.MustParseNumberVal("12345678.901234567890"),
 		},
 		{
 			name: "empty-set",
-			schemaMap: sdkv2.NewSchemaMap(map[string]*schema.Schema{
-				"s": {
-					Type:     schema.TypeSet,
-					Optional: true,
-					Elem: &schema.Schema{
-						Type: schema.TypeString,
-					},
+			schema: &schema.Schema{
+				Type:     schema.TypeSet,
+				Optional: true,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
 				},
-			}),
+			},
 			pv: resource.NewArrayProperty([]resource.PropertyValue{}),
 			cv: cty.SetValEmpty(cty.String),
 		},
 		{
 			name: "empty-list",
-			schemaMap: sdkv2.NewSchemaMap(map[string]*schema.Schema{
-				"s": {
-					Type:     schema.TypeList,
-					Optional: true,
-					Elem: &schema.Schema{
-						Type: schema.TypeString,
-					},
+			schema: &schema.Schema{
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
 				},
-			}),
+			},
 			pv: resource.NewArrayProperty([]resource.PropertyValue{}),
 			cv: cty.ListValEmpty(cty.String),
 		},
 		{
 			name: "empty-map",
-			schemaMap: sdkv2.NewSchemaMap(map[string]*schema.Schema{
-				"s": {
-					Type:     schema.TypeMap,
-					Optional: true,
-					Elem: &schema.Schema{
-						Type: schema.TypeString,
-					},
+			schema: &schema.Schema{
+				Type:     schema.TypeMap,
+				Optional: true,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
 				},
-			}),
+			},
 			pv: resource.NewObjectProperty(resource.PropertyMap{}),
 			cv: cty.MapValEmpty(cty.String),
 		},
+		{
+			name: "inflect-inside-list",
+			schema: &schema.Schema{
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Schema{
+					Type: schema.TypeInt,
+				},
+			},
+			pv: resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewStringProperty("12345678901234567890"),
+			}),
+			cv: cty.ListVal([]cty.Value{cty.MustParseNumberVal("12345678901234567890")}),
+		},
+		{
+			name: "inflect-inside-set",
+			schema: &schema.Schema{
+				Type:     schema.TypeSet,
+				Optional: true,
+				Elem: &schema.Schema{
+					Type: schema.TypeInt,
+				},
+			},
+			pv: resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewStringProperty("12345678901234567890"),
+			}),
+			cv: cty.SetVal([]cty.Value{cty.MustParseNumberVal("12345678901234567890")}),
+		},
+		{
+			name: "inflect-inside-map",
+			schema: &schema.Schema{
+				Type:     schema.TypeMap,
+				Optional: true,
+				Elem: &schema.Schema{
+					Type: schema.TypeMap,
+				},
+			},
+			pv: resource.NewObjectProperty(resource.PropertyMap{
+				"x": resource.NewStringProperty("12345678901234567890"),
+			}),
+			cv: cty.MapVal(map[string]cty.Value{"x": cty.MustParseNumberVal("12345678901234567890")}),
+		},
 	}
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
+	for _, tcase := range testCases {
+		t.Run(tcase.name, func(t *testing.T) {
 			t.Parallel()
+			cv := tcase.cv
+			pv := tcase.pv
 
-			ih := inflectHelper{
-				schemaMap:   tc.schemaMap,
-				schemaInfos: tc.schemaInfos,
+			ih := inflectHelper{}
+
+			if tcase.schema != nil {
+				ih.schemaMap = sdkv2.NewSchemaMap(map[string]*schema.Schema{
+					"prop": tcase.schema,
+				})
+
+				cv = cty.ObjectVal(map[string]cty.Value{"prop": cv})
+				pv = resource.NewObjectProperty(resource.PropertyMap{"prop": pv})
+
+				ih.schemaInfos = map[string]*info.Schema{
+					"prop": {Name: "prop"},
+				}
 			}
 
-			t.Logf("pv: %v", tc.pv.String())
-			t.Logf("cv: %v", tc.cv.GoString())
+			t.Logf("pv: %v", pv.String())
+			t.Logf("cv: %v", cv.GoString())
 
-			infl, err := ih.inflections(tc.pv, tc.cv)
+			infl, err := ih.inflections(pv, cv)
 			require.NoError(t, err)
 
 			infle, err := rawStateEncodeInflections(infl)
@@ -280,14 +291,14 @@ func Test_rawstate_inflections_turnaround(t *testing.T) {
 
 			t.Logf("inflections: %#v", infle)
 
-			recoveredCtyValue, err := rawStateRecover(tc.pv, infl)
+			recoveredCtyValue, err := rawStateRecover(pv, infl)
 			require.NoError(t, err)
 
 			t.Logf("cv2:%v", recoveredCtyValue.GoString())
 
-			require.Truef(t, recoveredCtyValue.RawEquals(tc.cv),
+			require.Truef(t, recoveredCtyValue.RawEquals(cv),
 				"cty.Value failed to turn around\nExpected: %s\nActual:   %s\n",
-				tc.cv.GoString(),
+				cv.GoString(),
 				recoveredCtyValue.GoString(),
 			)
 		})
