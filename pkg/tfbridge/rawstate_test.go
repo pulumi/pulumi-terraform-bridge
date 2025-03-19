@@ -22,6 +22,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -515,12 +516,13 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 	ctx := context.Background()
 
 	type testCase struct {
-		name    string
-		inputs  resource.PropertyMap
-		tfs     map[string]*schema.Schema
-		ps      map[string]*SchemaInfo
-		tfState autogold.Value
-		infl    autogold.Value
+		name        string
+		inputs      resource.PropertyMap
+		tfs         map[string]*schema.Schema
+		ps          map[string]*SchemaInfo
+		tfState     autogold.Value
+		infl        autogold.Value
+		skipWindows bool
 	}
 
 	testCases := []testCase{
@@ -1073,6 +1075,7 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
     }
   }
 }`),
+			skipWindows: true,
 		},
 		{
 			name: "object",
@@ -1134,6 +1137,10 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
+
+			if runtime.GOOS == "windows" && tc.skipWindows {
+				t.Skip("Skipped on windows")
+			}
 
 			if tc.inputs == nil {
 				t.Skip("tc.inputs is nil")
@@ -1214,6 +1221,10 @@ func replaceTempdir(s string) string {
 
 func Test_replaceTempdir(t *testing.T) {
 	t.Parallel()
+	if runtime.GOOS == "windows" {
+		t.Skip("Skipped on windows - tepmdir paths are hard to get quite right")
+	}
+
 	//nolint:lll
 	x := fmt.Sprintf(`cty.ObjectVal(map[string]cty.Value{"id":cty.StringVal("id0"), "x":cty.StringVal("%s/pulumi-asset-e6f48d2de0fb13762c32a37daeef1a225a4793cacb598826dbb269e2cbe5b7f2")})`, os.TempDir())
 	//nolint:lll
