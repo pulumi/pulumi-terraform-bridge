@@ -4008,6 +4008,27 @@ func TestMakeSingleTerraformInput(t *testing.T) {
 				}},
 			}},
 		},
+		{
+			// This schema is invalid in the SDKv2 but is produced as an artifact of some operations in the bridge.
+			// This is a result of the inability to otherwise refer to elements of a set/list with a Resource Elem.
+			//
+			// The only current use of this combination is walk.LookupSchema returning a Map with a resource Elem for elemenets
+			// of a list/set of objects. See `TestLookupSchemas/resource elem schema lookup` for an example.
+			name: "map",
+			prop: resource.NewObjectProperty(resource.PropertyMap{
+				"foo": resource.NewStringProperty("bar"),
+			}),
+			schema: &schemav2.Schema{
+				Type:     schemav2.TypeMap,
+				Optional: true,
+				Elem: &schemav2.Resource{
+					Schema: map[string]*schemav2.Schema{
+						"foo": {Type: schemav2.TypeString, Optional: true},
+					},
+				},
+			},
+			expected: map[string]interface{}{"foo": "bar"},
+		},
 	}
 
 	for _, tc := range testCases {
