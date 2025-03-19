@@ -18,6 +18,9 @@ import (
 	"context"
 	"encoding/json"
 	"math/big"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/go-cty/cty"
@@ -31,6 +34,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	sdkv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 )
 
 func Test_rawstate_inflections_turnaround(t *testing.T) {
@@ -979,6 +983,42 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 }`),
 		},
 		{
+			name: "asset",
+			tfs: map[string]*schema.Schema{
+				"x": {
+					Type:     schema.TypeString,
+					Optional: true,
+				},
+			},
+			ps: map[string]*info.Schema{
+				"x": {
+					Asset: &info.AssetTranslation{
+						Kind: FileAsset,
+					},
+				},
+			},
+			inputs: (func() resource.PropertyMap {
+				asset, err := asset.FromPathWithWD(filepath.Join("testdata", "asset.txt"), ".")
+				require.NoError(t, err)
+				return resource.PropertyMap{"x": resource.NewAssetProperty(asset)}
+			})(),
+			tfState: autogold.Expect(`cty.ObjectVal(map[string]cty.Value{"id":cty.StringVal("id0"), "x":cty.StringVal("${TMPDIR}/pulumi-asset-e6f48d2de0fb13762c32a37daeef1a225a4793cacb598826dbb269e2cbe5b7f2")})`),
+			infl: autogold.Expect(`{
+  "obj": {
+    "ignored": {
+      "__meta": {}
+    },
+    "o": {
+      "x": {
+        "asset": {
+          "kind": 0
+        }
+      }
+    }
+  }
+}`),
+		},
+		{
 			name: "object",
 			tfs: map[string]*schema.Schema{
 				"x": {
@@ -1080,7 +1120,8 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 
 			t.Logf("stateValue: %v", stateValue.GoString())
 
-			tc.tfState.Equal(t, stateValue.GoString())
+			tc.tfState.Equal(t, strings.ReplaceAll(stateValue.GoString(),
+				strings.TrimSuffix(os.TempDir(), string(os.PathSeparator)), "${TMPDIR}/"))
 
 			outMap, err := MakeTerraformResult(ctx, p, state, tfs, tc.ps, assets, supportsSecrets)
 			require.NoError(t, err)
