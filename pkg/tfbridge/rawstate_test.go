@@ -1213,6 +1213,7 @@ func replaceTempdir(s string) string {
 }
 
 func Test_replaceTempdir(t *testing.T) {
+	t.Parallel()
 	//nolint:lll
 	x := `cty.ObjectVal(map[string]cty.Value{"id":cty.StringVal("id0"), "x":cty.StringVal("/var/folders/gd/3ncjb1lj5ljgk8xl5ssn_gvc0000gn/T/com.apple.shortcuts.mac-helper/pulumi-asset-e6f48d2de0fb13762c32a37daeef1a225a4793cacb598826dbb269e2cbe5b7f2")})`
 	//nolint:lll
