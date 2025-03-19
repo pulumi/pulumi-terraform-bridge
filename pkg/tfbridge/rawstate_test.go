@@ -28,13 +28,13 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hexops/autogold/v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 	"github.com/stretchr/testify/require"
 	"gotest.tools/v3/assert"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	sdkv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/asset"
 )
 
 func Test_rawstate_inflections_turnaround(t *testing.T) {
@@ -1044,6 +1044,7 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 				require.NoError(t, err)
 				return resource.PropertyMap{"x": resource.NewAssetProperty(asset)}
 			})(),
+			//nolint:lll
 			tfState: autogold.Expect(`cty.ObjectVal(map[string]cty.Value{"id":cty.StringVal("id0"), "x":cty.StringVal("${TMPDIR}/pulumi-asset-e6f48d2de0fb13762c32a37daeef1a225a4793cacb598826dbb269e2cbe5b7f2")})`),
 			infl: autogold.Expect(`{
   "obj": {
