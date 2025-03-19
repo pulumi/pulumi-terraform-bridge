@@ -507,6 +507,8 @@ func (ctx *conversionContext) makeTerraformInput(
 		var tfflds shim.SchemaMap
 
 		if tfs != nil {
+			// This case should not happen for normal schemas but can arise as an artifact of some helper functions
+			// in the bridge. See TestMakeSingleTerraformInput/map for more details.
 			if r, ok := tfs.Elem().(shim.Resource); ok {
 				tfflds = r.Schema()
 			}

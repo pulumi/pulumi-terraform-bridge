@@ -503,4 +503,26 @@ func TestLookupSchemas(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, shim.TypeString, sch.Type())
 	})
+
+	t.Run("resource elem schema lookup", func(t *testing.T) {
+		tfs := shimv2.NewSchemaMap(map[string]*sdkv2schema.Schema{
+			"myList": {
+				Type:     sdkv2schema.TypeList,
+				Optional: true,
+				Elem: &sdkv2schema.Resource{
+					Schema: map[string]*sdkv2schema.Schema{
+						"foo": {Type: sdkv2schema.TypeString},
+					},
+				},
+			},
+		})
+
+		sch, _, err := LookupSchemas(walk.NewSchemaPath().GetAttr("myList").Element(), tfs, nil)
+		require.NoError(t, err)
+
+		// Note that the element of a list of resources is returned as a map. This is not technically correct
+		// but is the what we currently do here.
+		// A Map type with a resource element is not a valid schema in the SDKv2, so this is the only use of that combination.
+		require.Equal(t, shim.TypeMap, sch.Type())
+	})
 }
