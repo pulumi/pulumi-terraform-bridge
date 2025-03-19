@@ -1870,7 +1870,8 @@ func (p *Provider) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*p
 		}
 
 		// Add the special "id" attribute if it wasn't listed in the schema
-		props, err := MakeTerraformResult(ctx, p.tf, invoke, ds.TF.Schema(), ds.Schema.Fields, nil, p.supportsSecrets)
+		props, err := makeTerraformDataSourceResult(ctx, p.tf, invoke, ds.TF.Schema(),
+			ds.Schema.Fields, p.supportsSecrets)
 		if err != nil {
 			return nil, err
 		}
