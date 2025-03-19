@@ -3287,6 +3287,7 @@ func Test_makeTerraformInputsNoDefaults(t *testing.T) {
 				// The string property inside Computed is irrelevant.
 				"objectValue": resource.Computed{Element: resource.NewStringProperty("")},
 			}),
+			//nolint:lll
 			expect:          autogold.Expect(map[string]interface{}{"object_value": []interface{}{map[string]interface{}{"required_property": "74D93920-ED26-11E3-AC10-0800200C9A66"}}}),
 			expectDifferent: true,
 			expectSDKv2:     autogold.Expect(map[string]interface{}{"object_value": "74D93920-ED26-11E3-AC10-0800200C9A66"}),
