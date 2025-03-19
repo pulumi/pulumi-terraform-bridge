@@ -17,9 +17,11 @@ package tfbridge
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"math/big"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -1174,8 +1176,7 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 
 			t.Logf("stateValue: %v", stateValue.GoString())
 
-			tc.tfState.Equal(t, strings.ReplaceAll(stateValue.GoString(),
-				strings.TrimSuffix(os.TempDir(), string(os.PathSeparator)), "${TMPDIR}/"))
+			tc.tfState.Equal(t, replaceTempdir(stateValue.GoString()))
 
 			outMap, err := MakeTerraformResult(ctx, p, state, tfs, tc.ps, assets, supportsSecrets)
 			require.NoError(t, err)
@@ -1202,4 +1203,18 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 			require.NoError(t, err)
 		})
 	}
+}
+
+func replaceTempdir(s string) string {
+	sep := string(os.PathSeparator)
+	tmp := strings.TrimSuffix(os.TempDir(), sep)
+	pattern := regexp.MustCompile(fmt.Sprintf("%s(%s)*", regexp.QuoteMeta(tmp), regexp.QuoteMeta(sep)))
+	return pattern.ReplaceAllLiteralString(s, "${TMPDIR}"+sep)
+}
+
+func Test_replaceTempdir(t *testing.T) {
+	//nolint:lll
+	x := `cty.ObjectVal(map[string]cty.Value{"id":cty.StringVal("id0"), "x":cty.StringVal("/var/folders/gd/3ncjb1lj5ljgk8xl5ssn_gvc0000gn/T/com.apple.shortcuts.mac-helper/pulumi-asset-e6f48d2de0fb13762c32a37daeef1a225a4793cacb598826dbb269e2cbe5b7f2")})`
+	//nolint:lll
+	autogold.Expect(`cty.ObjectVal(map[string]cty.Value{"id":cty.StringVal("id0"), "x":cty.StringVal("${TMPDIR}/pulumi-asset-e6f48d2de0fb13762c32a37daeef1a225a4793cacb598826dbb269e2cbe5b7f2")})`).Equal(t, replaceTempdir(x))
 }
