@@ -273,7 +273,7 @@ resources:
 			}
 
 			// Check GetRawState() during update.
-			//autogold.Expect(`cty.ObjectVal(map[string]cty.Value{"id":cty.StringVal("id"), "obj":cty.ListVal([]cty.Value{cty.ObjectVal(map[string]cty.Value{"bool":cty.True, "str":cty.StringVal("Hello")})})})`).Equal(t, rd.GetRawState().GoString())
+			autogold.Expect(`cty.ObjectVal(map[string]cty.Value{"id":cty.StringVal("id"), "obj":cty.ListVal([]cty.Value{cty.ObjectVal(map[string]cty.Value{"bool":cty.True, "str":cty.StringVal("Hello")})})})`).Equal(t, rd.GetRawState().GoString())
 			return nil
 		},
 		Schema: map[string]*schema.Schema{
@@ -328,8 +328,9 @@ resources:
 
 func TestUpgrade_Upstream_Adds_MaxItems1(t *testing.T) {
 	t.Skip("TODO[pulumi/pulumi-terraform-bridge#1667]")
+	t.Parallel()
 
-	testUpgrade_Upstream_Adds_MaxItems1(t, false /*refresh*/)
+	testUpgradeUpstreamAddsMaxItems1(t, false /*refresh*/)
 }
 
 // Testing refresh is an important part of the upgrade story as the refreshed state needs to contain enough markers to
@@ -337,12 +338,11 @@ func TestUpgrade_Upstream_Adds_MaxItems1(t *testing.T) {
 // the refresh path.
 func TestUpgrade_Refresh(t *testing.T) {
 	t.Skip("TODO[pulumi/pulumi-terraform-bridge#1667]")
-	testUpgrade_Upstream_Adds_MaxItems1(t, true /*refresh*/)
+	t.Parallel()
+	testUpgradeUpstreamAddsMaxItems1(t, true /*refresh*/)
 }
 
-func testUpgrade_Upstream_Adds_MaxItems1(t *testing.T, refresh bool) {
-	t.Parallel()
-
+func testUpgradeUpstreamAddsMaxItems1(t *testing.T, refresh bool) {
 	programBefore := `
 name: test
 runtime: yaml
