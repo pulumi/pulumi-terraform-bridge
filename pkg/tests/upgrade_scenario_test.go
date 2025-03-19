@@ -325,17 +325,21 @@ resources:
 }
 
 func TestUpgrade_Upstream_Adds_MaxItems1(t *testing.T) {
-	testUpgrade_Upstream_Adds_MaxItems1(t, false /*refresh*/)
+	t.Parallel()
+
+	testUpgradeUpstreamAddsMaxItems1(t, false /*refresh*/)
 }
 
 // Testing refresh is an important part of the upgrade story as the refreshed state needs to contain enough markers to
 // reconstruct the expected raw state for the upgrade to go smoothly. Reuse one of the existing test cases here to test
 // the refresh path.
 func TestUpgrade_Refresh(t *testing.T) {
-	testUpgrade_Upstream_Adds_MaxItems1(t, true /*refresh*/)
+	t.Parallel()
+
+	testUpgradeUpstreamAddsMaxItems1(t, true /*refresh*/)
 }
 
-func testUpgrade_Upstream_Adds_MaxItems1(t *testing.T, refresh bool) {
+func testUpgradeUpstreamAddsMaxItems1(t *testing.T, refresh bool) {
 	t.Parallel()
 
 	programBefore := `

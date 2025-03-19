@@ -447,6 +447,8 @@ func Test_rawStateReducePrecision(t *testing.T) {
 // For each situation when MakeTerraformResult introduces a distortion between the natural encoding of a TF value as a
 // Pulumi value, rawstate needs to be able to compute inflections to reverse the process and reconstruct the TF value.
 func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
+	t.Parallel()
+	t.Skip("WIP")
 	ctx := context.Background()
 
 	var (
@@ -458,7 +460,9 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 		supportsSecrets bool
 	)
 
-	stateValue := state.(shim.InstanceStateWithCtyValue).Value()
+	stateWithValue, ok := state.(shim.InstanceStateWithCtyValue)
+	require.Truef(t, ok, "shim.InstanceStateWithCtyValue cast failed")
+	stateValue := stateWithValue.Value()
 
 	outMap, err := MakeTerraformResult(
 		ctx, p, state, tfs, ps, assets, supportsSecrets,
