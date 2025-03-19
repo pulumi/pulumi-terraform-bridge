@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/go-cty/cty"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hexops/autogold/v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -448,28 +449,85 @@ func Test_rawStateReducePrecision(t *testing.T) {
 // Pulumi value, rawstate needs to be able to compute inflections to reverse the process and reconstruct the TF value.
 func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 	t.Parallel()
-	t.Skip("WIP")
 	ctx := context.Background()
 
-	var (
-		p               shim.Provider
-		state           shim.InstanceState
-		tfs             shim.SchemaMap
-		ps              map[string]*SchemaInfo
-		assets          AssetTable
-		supportsSecrets bool
-	)
+	type testCase struct {
+		name   string
+		inputs map[string]any
+		tfs    map[string]*schema.Schema
+		ps     map[string]*SchemaInfo
+	}
 
-	stateWithValue, ok := state.(shim.InstanceStateWithCtyValue)
-	require.Truef(t, ok, "shim.InstanceStateWithCtyValue cast failed")
-	stateValue := stateWithValue.Value()
+	testCases := []testCase{
+		{
 
-	outMap, err := MakeTerraformResult(
-		ctx, p, state, tfs, ps, assets, supportsSecrets,
-	)
-	require.NoError(t, err)
+			name: "simple-string",
+			tfs: map[string]*schema.Schema{
+				"str": {
+					Type:     schema.TypeString,
+					Optional: true,
+				},
+			},
+			inputs: map[string]any{
+				"str": "OK",
+			},
+		},
+	}
 
-	// This function will run the turnaround check.
-	_, err = rawStateComputeInflections(tfs, ps, outMap, stateValue)
-	require.NoError(t, err)
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			var (
+				tok             string     = "r1"
+				assets          AssetTable = AssetTable{}
+				supportsSecrets bool       = true
+			)
+
+			p := sdkv2.NewProvider(&schema.Provider{
+				ResourcesMap: map[string]*schema.Resource{
+					tok: {
+						CreateContext: func(
+							ctx context.Context,
+							rd *schema.ResourceData,
+							i interface{},
+						) diag.Diagnostics {
+							rd.SetId("id0")
+							return nil
+						},
+						Schema: tc.tfs,
+					},
+				},
+			})
+
+			resourceConfig := p.NewResourceConfig(ctx, tc.inputs)
+			instanceDiff, err := p.Diff(ctx, tok, nil /*state*/, resourceConfig, shim.DiffOptions{})
+			require.NoError(t, err)
+
+			state, err := p.Apply(ctx, tok, nil, instanceDiff)
+			require.NoError(t, err)
+
+			stateWithValue, ok := state.(shim.InstanceStateWithCtyValue)
+			require.Truef(t, ok, "shim.InstanceStateWithCtyValue cast failed")
+			stateValue := stateWithValue.Value()
+
+			outMap, err := MakeTerraformResult(
+				ctx, p, state, sdkv2.NewSchemaMap(tc.tfs), tc.ps, assets, supportsSecrets,
+			)
+			require.NoError(t, err)
+
+			ih := &inflectHelper{
+				schemaMap:   sdkv2.NewSchemaMap(tc.tfs),
+				schemaInfos: tc.ps,
+			}
+
+			pv := resource.NewObjectProperty(outMap)
+
+			infl, err := ih.inflections(pv, stateValue)
+			require.NoError(t, err)
+
+			err = rawStateTurnaroundCheck(stateValue, pv, infl)
+			require.NoError(t, err)
+		})
+	}
 }
