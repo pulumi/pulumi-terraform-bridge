@@ -170,6 +170,12 @@ resources:
 			return diag.Diagnostics{}
 		},
 		CustomizeDiff: func(ctx context.Context, rd *schema.ResourceDiff, i interface{}) error {
+			if rd.GetRawState().IsNull() {
+				// During Create, GetRawState is Null; nothing to check.
+				return nil
+			}
+
+			// Check GetRawState() during update.
 			autogold.Expect(`cty.ObjectVal(map[string]cty.Value{"id":cty.StringVal("id"), "obj":cty.ListVal([]cty.Value{cty.ObjectVal(map[string]cty.Value{"bool":cty.True, "str":cty.StringVal("Hello")})})})`).Equal(t, rd.GetRawState().GoString())
 			return nil
 		},
@@ -259,6 +265,12 @@ resources:
 			return diag.Diagnostics{}
 		},
 		CustomizeDiff: func(ctx context.Context, rd *schema.ResourceDiff, i interface{}) error {
+			if rd.GetRawState().IsNull() {
+				// During Create, GetRawState is Null; nothing to check.
+				return nil
+			}
+
+			// Check GetRawState() during update.
 			autogold.Expect(`cty.ObjectVal(map[string]cty.Value{"id":cty.StringVal("id"), "obj":cty.ListVal([]cty.Value{cty.ObjectVal(map[string]cty.Value{"bool":cty.True, "str":cty.StringVal("Hello")})})})`).Equal(t, rd.GetRawState().GoString())
 			return nil
 		},
@@ -348,6 +360,12 @@ resources:
 				return diag.Diagnostics{}
 			},
 			CustomizeDiff: func(ctx context.Context, rd *schema.ResourceDiff, i interface{}) error {
+				if rd.GetRawState().IsNull() {
+					// During Create, GetRawState is Null; nothing to check.
+					return nil
+				}
+
+				// Check GetRawState() during update.
 				autogold.Expect(`cty.ObjectVal(map[string]cty.Value{"id":cty.StringVal("id"), "obj":cty.ListVal([]cty.Value{cty.ObjectVal(map[string]cty.Value{"bool":cty.True, "str":cty.StringVal("Hello")})})})`).Equal(t, rd.GetRawState().GoString())
 				return nil
 			},
@@ -430,6 +448,12 @@ resources:
 				return diag.Diagnostics{}
 			},
 			CustomizeDiff: func(ctx context.Context, rd *schema.ResourceDiff, i interface{}) error {
+				if rd.GetRawState().IsNull() {
+					// During Create, GetRawState is Null; nothing to check.
+					return nil
+				}
+
+				// Check GetRawState() during update.
 				autogold.Expect(`cty.ObjectVal(map[string]cty.Value{"id":cty.StringVal("id"), "obj":cty.ListVal([]cty.Value{cty.ObjectVal(map[string]cty.Value{"bool":cty.True, "str":cty.StringVal("Hello")})})})`).Equal(t, rd.GetRawState().GoString())
 				return nil
 			},
