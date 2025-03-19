@@ -447,41 +447,276 @@ func Test_rawStateReducePrecision(t *testing.T) {
 
 // For each situation when MakeTerraformResult introduces a distortion between the natural encoding of a TF value as a
 // Pulumi value, rawstate needs to be able to compute inflections to reverse the process and reconstruct the TF value.
+//
+// It is useful to look at coverage reports produced solely from this test matrix to check that it covers interesting
+// branches in [MakeTerraformOutput].
 func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 
 	type testCase struct {
 		name   string
-		inputs map[string]any
+		inputs resource.PropertyMap
 		tfs    map[string]*schema.Schema
 		ps     map[string]*SchemaInfo
 	}
 
 	testCases := []testCase{
 		{
-
-			name: "simple-string",
+			name: "string",
 			tfs: map[string]*schema.Schema{
 				"str": {
 					Type:     schema.TypeString,
 					Optional: true,
 				},
 			},
-			inputs: map[string]any{
-				"str": "OK",
-			},
+			inputs: resource.PropertyMap{"str": resource.NewStringProperty("OK")},
 		},
+		{
+			name: "bool",
+			tfs: map[string]*schema.Schema{
+				"b": {
+					Type:     schema.TypeBool,
+					Optional: true,
+				},
+			},
+			inputs: resource.PropertyMap{"b": resource.NewBoolProperty(true)},
+		},
+		{
+			name: "int",
+			tfs: map[string]*schema.Schema{
+				"i": {
+					Type:     schema.TypeInt,
+					Optional: true,
+				},
+			},
+			inputs: resource.PropertyMap{"i": resource.NewNumberProperty(42)},
+		},
+		{
+			name: "float",
+			tfs: map[string]*schema.Schema{
+				"f": {
+					Type:     schema.TypeFloat,
+					Optional: true,
+				},
+			},
+			inputs: resource.PropertyMap{"f": resource.NewNumberProperty(3.14)},
+		},
+		{
+			name: "coerced-bool",
+			tfs: map[string]*schema.Schema{
+				"b": {
+					Type:     schema.TypeBool,
+					Optional: true,
+				},
+			},
+			inputs: resource.PropertyMap{"b": resource.NewStringProperty("true")},
+		},
+		{
+			name: "coerced-int",
+			tfs: map[string]*schema.Schema{
+				"i": {
+					Type:     schema.TypeInt,
+					Optional: true,
+				},
+			},
+			inputs: resource.PropertyMap{"i": resource.NewStringProperty("42")},
+		},
+		{
+			name: "coerced-float",
+			tfs: map[string]*schema.Schema{
+				"f": {
+					Type:     schema.TypeFloat,
+					Optional: true,
+				},
+			},
+			inputs: resource.PropertyMap{"f": resource.NewStringProperty("3.14")},
+		},
+		{
+			name: "list",
+			tfs: map[string]*schema.Schema{
+				"ls": {
+					Type:     schema.TypeList,
+					Optional: true,
+					Elem: &schema.Schema{
+						Type: schema.TypeString,
+					},
+				},
+			},
+			inputs: resource.PropertyMap{"ls": resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewStringProperty("A"),
+				resource.NewStringProperty("B"),
+				resource.NewStringProperty("C"),
+			})},
+		},
+		{
+			name: "list-empty",
+			tfs: map[string]*schema.Schema{
+				"ls": {
+					Type:     schema.TypeList,
+					Optional: true,
+					Elem: &schema.Schema{
+						Type: schema.TypeString,
+					},
+				},
+			},
+			inputs: resource.PropertyMap{"ls": resource.NewArrayProperty([]resource.PropertyValue{})},
+		},
+		{
+			name: "list-null",
+			tfs: map[string]*schema.Schema{
+				"ls": {
+					Type:     schema.TypeList,
+					Optional: true,
+					Elem: &schema.Schema{
+						Type: schema.TypeString,
+					},
+				},
+			},
+			inputs: resource.PropertyMap{"ls": resource.NewNullProperty()},
+		},
+		{
+			name: "list-maxitems1",
+			tfs: map[string]*schema.Schema{
+				"ls": {
+					Type:     schema.TypeList,
+					Optional: true,
+					MaxItems: 1,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"x": {
+								Type:     schema.TypeString,
+								Optional: true,
+							},
+						},
+					},
+				},
+			},
+			inputs: resource.PropertyMap{"ls": resource.NewObjectProperty(resource.PropertyMap{
+				"x": resource.NewStringProperty("OK"),
+			})},
+		},
+		{
+			name: "list-maxitems1-empty",
+			tfs: map[string]*schema.Schema{
+				"ls": {
+					Type:     schema.TypeList,
+					Optional: true,
+					MaxItems: 1,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"x": {
+								Type:     schema.TypeString,
+								Optional: true,
+							},
+						},
+					},
+				},
+			},
+			inputs: resource.PropertyMap{"ls": resource.NewNullProperty()},
+		},
+		{
+			name: "set",
+			tfs: map[string]*schema.Schema{
+				"ls": {
+					Type:     schema.TypeSet,
+					Optional: true,
+					Elem: &schema.Schema{
+						Type: schema.TypeString,
+					},
+				},
+			},
+			inputs: resource.PropertyMap{"ls": resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewStringProperty("A"),
+				resource.NewStringProperty("B"),
+				resource.NewStringProperty("C"),
+			})},
+		},
+		{
+			name: "set-empty",
+			tfs: map[string]*schema.Schema{
+				"ls": {
+					Type:     schema.TypeSet,
+					Optional: true,
+					Elem: &schema.Schema{
+						Type: schema.TypeString,
+					},
+				},
+			},
+			inputs: resource.PropertyMap{"ls": resource.NewArrayProperty([]resource.PropertyValue{})},
+		},
+		{
+			name: "set-null",
+			tfs: map[string]*schema.Schema{
+				"ls": {
+					Type:     schema.TypeSet,
+					Optional: true,
+					Elem: &schema.Schema{
+						Type: schema.TypeString,
+					},
+				},
+			},
+			inputs: resource.PropertyMap{"ls": resource.NewNullProperty()},
+		},
+		{
+			name: "set-maxitems1",
+			tfs: map[string]*schema.Schema{
+				"ls": {
+					Type:     schema.TypeSet,
+					Optional: true,
+					MaxItems: 1,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"x": {
+								Type:     schema.TypeString,
+								Optional: true,
+							},
+						},
+					},
+				},
+			},
+			inputs: resource.PropertyMap{"ls": resource.NewObjectProperty(resource.PropertyMap{
+				"x": resource.NewStringProperty("OK"),
+			})},
+		},
+		{
+			name: "set-maxitems1-empty",
+			tfs: map[string]*schema.Schema{
+				"ls": {
+					Type:     schema.TypeSet,
+					Optional: true,
+					MaxItems: 1,
+					Elem: &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"x": {
+								Type:     schema.TypeString,
+								Optional: true,
+							},
+						},
+					},
+				},
+			},
+			inputs: resource.PropertyMap{"ls": resource.NewNullProperty()},
+		},
+
+		// map-empty
+		// map-regular
+		// object
+		// object-with-omitted-prop
+		// object-with-renamed-prop
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
+			if tc.inputs == nil {
+				t.Skip("tc.inputs is nil")
+			}
+
 			var (
-				tok             string     = "r1"
-				assets          AssetTable = AssetTable{}
-				supportsSecrets bool       = true
+				tok             string = "r1"
+				supportsSecrets bool   = true
 			)
 
 			p := sdkv2.NewProvider(&schema.Provider{
@@ -500,7 +735,12 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 				},
 			})
 
-			resourceConfig := p.NewResourceConfig(ctx, tc.inputs)
+			tfs := sdkv2.NewSchemaMap(tc.tfs)
+			prov := &Provider{tf: p}
+
+			resourceConfig, assets, err := MakeTerraformConfig(ctx, prov, tc.inputs, tfs, tc.ps)
+			require.NoError(t, err)
+
 			instanceDiff, err := p.Diff(ctx, tok, nil /*state*/, resourceConfig, shim.DiffOptions{})
 			require.NoError(t, err)
 
@@ -511,13 +751,13 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 			require.Truef(t, ok, "shim.InstanceStateWithCtyValue cast failed")
 			stateValue := stateWithValue.Value()
 
-			outMap, err := MakeTerraformResult(
-				ctx, p, state, sdkv2.NewSchemaMap(tc.tfs), tc.ps, assets, supportsSecrets,
-			)
+			t.Logf("stateValue: %v", stateValue.GoString())
+
+			outMap, err := MakeTerraformResult(ctx, p, state, tfs, tc.ps, assets, supportsSecrets)
 			require.NoError(t, err)
 
 			ih := &inflectHelper{
-				schemaMap:   sdkv2.NewSchemaMap(tc.tfs),
+				schemaMap:   tfs,
 				schemaInfos: tc.ps,
 			}
 
