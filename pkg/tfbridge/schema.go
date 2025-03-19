@@ -720,7 +720,7 @@ func buildConflictsWith(result map[string]interface{}, tfs shim.SchemaMap) map[s
 
 func (ctx *conversionContext) applyDefaults(
 	result map[string]interface{},
-	olds, news resource.PropertyMap,
+	olds, _news resource.PropertyMap,
 	tfs shim.SchemaMap,
 	ps map[string]*SchemaInfo,
 ) error {
@@ -1020,8 +1020,10 @@ const metaKey = "__meta"
 // rawKey is where RawState metadata is stored under metaKey.
 const rawKey = "raw"
 
-// MakeTerraformResult expands a Terraform state into an expanded Pulumi resource property map.  This respects
+// MakeTerraformResult expands a Terraform resource state into an expanded Pulumi resource property map. This respects
 // the property maps so that results end up with their correct Pulumi names when shipping back to the engine.
+//
+// May be called with unknowns during preview.
 func MakeTerraformResult(
 	ctx context.Context,
 	p shim.Provider,
@@ -1031,38 +1033,71 @@ func MakeTerraformResult(
 	assets AssetTable,
 	supportsSecrets bool,
 ) (resource.PropertyMap, error) {
+	return makeTerraformResultInner(ctx, makeTerraformResultArgs{
+		p:               p,
+		state:           state,
+		tfs:             tfs,
+		ps:              ps,
+		assets:          assets,
+		supportsSecrets: supportsSecrets,
+		isResource:      true,
+	})
+}
+
+// Translates data source responses to Pulumi function Invoke responses.
+//
+// For historical reasons state of type InstanceState actually encodes the data source response here, though it is
+// usually associated with resource states.
+func makeTerraformDataSourceResult(
+	ctx context.Context,
+	p shim.Provider,
+	state shim.InstanceState,
+	tfs shim.SchemaMap,
+	ps map[string]*SchemaInfo,
+	supportsSecrets bool,
+) (resource.PropertyMap, error) {
+	return makeTerraformResultInner(ctx, makeTerraformResultArgs{
+		p:               p,
+		state:           state,
+		tfs:             tfs,
+		ps:              ps,
+		supportsSecrets: supportsSecrets,
+	})
+}
+
+type makeTerraformResultArgs struct {
+	p               shim.Provider
+	state           shim.InstanceState
+	tfs             shim.SchemaMap
+	ps              map[string]*SchemaInfo
+	assets          AssetTable
+	supportsSecrets bool
+	isResource      bool
+}
+
+// Shared Implementation of [MakeTerraformResult]  and [makeTerraformDataSourceResult].
+//
+// The flag isResource distinguishes between the resource and data source use case.
+func makeTerraformResultInner(ctx context.Context, args makeTerraformResultArgs) (resource.PropertyMap, error) {
 	var outs map[string]interface{}
-	if state != nil {
-		obj, err := state.Object(tfs)
+	if args.state != nil {
+		obj, err := args.state.Object(args.tfs)
 		if err != nil {
 			return nil, err
 		}
 		outs = obj
 	}
 
-	outMap := MakeTerraformOutputs(ctx, p, outs, tfs, ps, assets, supportsSecrets)
+	outMap := MakeTerraformOutputs(ctx, args.p, outs, args.tfs, args.ps, args.assets, args.supportsSecrets)
 
-	// When this code is run on preview, there may be unknowns involved.
-	hasUnknowns := outMap.ContainsUnknowns()
+	var metaMap map[string]any
 
-	// If there is any Terraform metadata associated with this state, record it.
-	needMeta := state != nil && len(state.Meta()) != 0
-
-	// Also record raw state metadata under metaKey if needed.
-	if _, ok := state.(shim.InstanceStateWithCtyValue); ok && !hasUnknowns {
-		needMeta = true
+	if args.state != nil && args.state.Meta() != nil && len(args.state.Meta()) > 0 {
+		metaMap = args.state.Meta()
 	}
 
-	if !needMeta {
-		return outMap, nil
-	}
-
-	metaMap := map[string]any{}
-	if state != nil && state.Meta() != nil {
-		metaMap = state.Meta()
-	}
-
-	if stc, ok := state.(shim.InstanceStateWithCtyValue); ok && !hasUnknowns {
+	// In the non-preview resource case, also encode raw state inflections into the metaMap.
+	if s, ok := args.state.(shim.InstanceStateWithCtyValue); ok && !outMap.ContainsUnknowns() && args.isResource {
 		logger := log.TryGetLogger(ctx)
 		if logger == nil {
 			logger = log.NewDiscardLogger()
@@ -1070,19 +1105,26 @@ func MakeTerraformResult(
 		logger.Debug(fmt.Sprintf("[rawstate]: encoding state for resource %q\n"+
 			"  cty.Value:   %s\n"+
 			"  PropertyMap: %s\n",
-			state.Type(),
+			args.state.Type(),
 			resource.NewObjectProperty(outMap).String(),
-			stc.Value().GoString(),
+			s.Value().GoString(),
 		))
 
-		inflections, err := rawStateComputeInflections(tfs, ps, outMap, stc.Value())
+		inflections, err := rawStateComputeInflections(args.tfs, args.ps, outMap, s.Value())
 		contract.AssertNoErrorf(err, "[rawstate]: failed computing inflections")
+		if metaMap == nil {
+			metaMap = map[string]any{}
+		}
+		_, conflict := metaMap[rawKey]
+		contract.Assertf(!conflict, "[rawstate]: conflicting key under %q: %q", metaMap, rawKey)
 		metaMap[rawKey] = inflections
 	}
 
-	metaJSON, err := json.Marshal(metaMap)
-	contract.Assertf(err == nil, "err == nil")
-	outMap[metaKey] = resource.NewStringProperty(string(metaJSON))
+	if metaMap != nil {
+		metaJSON, err := json.Marshal(metaMap)
+		contract.Assertf(err == nil, "err == nil")
+		outMap[metaKey] = resource.NewStringProperty(string(metaJSON))
+	}
 
 	return outMap, nil
 }
@@ -1695,7 +1737,7 @@ func extractInputsObject(
 	return oldInput, possibleDefault || !hasOldDefaults
 }
 
-func getDefaultValue(tfs shim.Schema, ps *SchemaInfo) interface{} {
+func getDefaultValue(tfs shim.Schema, _ *SchemaInfo) interface{} {
 	dv, err := tfs.DefaultValue()
 	if err != nil {
 		if errors.Is(err, ErrSchemaDefaultValue) {

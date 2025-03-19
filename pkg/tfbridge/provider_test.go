@@ -588,7 +588,8 @@ func TestProviderPreview(t *testing.T) {
 
 	outs, err := plugin.UnmarshalProperties(createResp.GetProperties(), plugin.MarshalOptions{KeepUnknowns: true})
 	assert.NoError(t, err)
-	assert.True(t, resource.PropertyMap{
+
+	expected := resource.PropertyMap{
 		"id":                  resource.NewStringProperty(""),
 		"stringPropertyValue": resource.NewStringProperty("foo"),
 		"setPropertyValues":   resource.NewArrayProperty([]resource.PropertyValue{resource.NewStringProperty("foo")}),
@@ -599,7 +600,11 @@ func TestProviderPreview(t *testing.T) {
 			}),
 			"optBool": resource.NewBoolProperty(false),
 		}),
-	}.DeepEquals(outs))
+	}
+	assert.Truef(t, expected.DeepEquals(outs), "expected: %s\nactual: %s\n",
+		resource.NewObjectProperty(expected).String(),
+		resource.NewObjectProperty(outs).String(),
+	)
 
 	// Step 2b: actually create the resource.
 	pulumiIns, err = plugin.MarshalProperties(resource.NewPropertyMapFromMap(map[string]interface{}{
