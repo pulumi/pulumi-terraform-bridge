@@ -442,15 +442,27 @@ func rawStateComputeInflections(
 		return nil, fmt.Errorf("[rawstate]: failed computing inflections: %w", err)
 	}
 
-	// Double-check that recovering the cty.Value works as expected, before it is written to the state.
-	ctyValueRecovered, err := rawStateRecover(pv, infl)
-	if err != nil {
-		return nil, fmt.Errorf("[rawstate]: failed recovering value for turnaround check: %w", err)
+	if err := rawStateTurnaroundCheck(rawState, pv, infl); err != nil {
+		return nil, err
 	}
 
+	inflEnc, err := rawStateEncodeInflections(infl)
+	if err != nil {
+		return nil, fmt.Errorf("[rawstate]: encoding failed")
+	}
+	return inflEnc, nil
+}
+
+func rawStateTurnaroundCheck(rawState cty.Value, pv resource.PropertyValue, infl rawStateInflections) error {
 	mm := rawState.AsValueMap()
 	delete(mm, "timeouts")
 	rawStateWithoutTimeouts := cty.ObjectVal(mm)
+
+	// Double-check that recovering the cty.Value works as expected, before it is written to the state.
+	ctyValueRecovered, err := rawStateRecover(pv, infl)
+	if err != nil {
+		return fmt.Errorf("[rawstate]: failed recovering value for turnaround check: %w", err)
+	}
 
 	inflE, err := rawStateEncodeInflections(infl)
 	contract.AssertNoErrorf(err, "rawStateEncodeInflections failed")
@@ -459,21 +471,17 @@ func rawStateComputeInflections(
 		rawStateReducePrecision(rawStateWithoutTimeouts),
 	) {
 		if cmdutil.IsTruthy(os.Getenv("PULUMI_DEBUG")) {
-			return nil, fmt.Errorf("[rawstate]: turnaround check failed\nrecovered=%s\n"+
+			return fmt.Errorf("[rawstate]: turnaround check failed\nrecovered=%s\n"+
 				"rawState =%s\ninfle=%#v",
 				ctyValueRecovered.GoString(),
 				rawStateWithoutTimeouts.GoString(),
 				inflE,
 			)
 		}
-		return nil, errors.New("[rawstate]: turnaround check failed")
+		return errors.New("[rawstate]: turnaround check failed")
 	}
 
-	inflEnc, err := rawStateEncodeInflections(infl)
-	if err != nil {
-		return nil, fmt.Errorf("[rawstate]: encoding failed")
-	}
-	return inflEnc, nil
+	return nil
 }
 
 // Reduce float precision.
