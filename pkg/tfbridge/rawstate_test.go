@@ -15,6 +15,7 @@
 package tfbridge
 
 import (
+	"context"
 	"encoding/json"
 	"math/big"
 	"testing"
@@ -441,4 +442,30 @@ func Test_rawStateReducePrecision(t *testing.T) {
 	fl := big.NewFloat(1.252235135353451351345134)
 	rawStateReducePrecision(cty.NumberVal(fl))
 	assert.Equal(t, 0, big.NewFloat(1.252235135353451351345134).Cmp(fl))
+}
+
+// For each situation when MakeTerraformResult introduces a distortion between the natural encoding of a TF value as a
+// Pulumi value, rawstate needs to be able to compute inflections to reverse the process and reconstruct the TF value.
+func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
+	ctx := context.Background()
+
+	var (
+		p               shim.Provider
+		state           shim.InstanceState
+		tfs             shim.SchemaMap
+		ps              map[string]*SchemaInfo
+		assets          AssetTable
+		supportsSecrets bool
+	)
+
+	stateValue := state.(shim.InstanceStateWithCtyValue).Value()
+
+	outMap, err := MakeTerraformResult(
+		ctx, p, state, tfs, ps, assets, supportsSecrets,
+	)
+	require.NoError(t, err)
+
+	// This function will run the turnaround check.
+	_, err = rawStateComputeInflections(tfs, ps, outMap, stateValue)
+	require.NoError(t, err)
 }
