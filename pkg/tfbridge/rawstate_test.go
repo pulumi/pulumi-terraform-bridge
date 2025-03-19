@@ -216,6 +216,48 @@ func Test_rawstate_inflections_turnaround(t *testing.T) {
 				"prop": cty.MustParseNumberVal("12345678.901234567890"),
 			}),
 		},
+		{
+			name: "empty-set",
+			schemaMap: sdkv2.NewSchemaMap(map[string]*schema.Schema{
+				"s": {
+					Type:     schema.TypeSet,
+					Optional: true,
+					Elem: &schema.Schema{
+						Type: schema.TypeString,
+					},
+				},
+			}),
+			pv: resource.NewArrayProperty([]resource.PropertyValue{}),
+			cv: cty.SetValEmpty(cty.String),
+		},
+		{
+			name: "empty-list",
+			schemaMap: sdkv2.NewSchemaMap(map[string]*schema.Schema{
+				"s": {
+					Type:     schema.TypeList,
+					Optional: true,
+					Elem: &schema.Schema{
+						Type: schema.TypeString,
+					},
+				},
+			}),
+			pv: resource.NewArrayProperty([]resource.PropertyValue{}),
+			cv: cty.ListValEmpty(cty.String),
+		},
+		{
+			name: "empty-map",
+			schemaMap: sdkv2.NewSchemaMap(map[string]*schema.Schema{
+				"s": {
+					Type:     schema.TypeMap,
+					Optional: true,
+					Elem: &schema.Schema{
+						Type: schema.TypeString,
+					},
+				},
+			}),
+			pv: resource.NewObjectProperty(resource.PropertyMap{}),
+			cv: cty.MapValEmpty(cty.String),
+		},
 	}
 
 	for _, tc := range testCases {
