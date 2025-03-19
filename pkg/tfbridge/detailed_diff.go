@@ -327,8 +327,20 @@ func (differ detailedDiffer) calculateSetHashIndexMap(
 ) hashIndexMap {
 	identities := make(hashIndexMap)
 
-	tfs, ps, err := lookupSchemas(path, differ.tfs, differ.ps)
+	tfs, _, err := lookupSchemas(path, differ.tfs, differ.ps)
 	if err != nil {
+		GetLogger(differ.ctx).Warn(fmt.Sprintf(
+			"Failed to calculate preview for element in %s: Failed schema lookup: %v",
+			path.String(), err))
+		return nil
+	}
+
+	elementPath := path.Index(0)
+	etfs, eps, err := lookupSchemas(elementPath, differ.tfs, differ.ps)
+	if err != nil {
+		GetLogger(differ.ctx).Warn(fmt.Sprintf(
+			"Failed to calculate preview for element in %s: Failed schema lookup: %v",
+			elementPath.String(), err))
 		return nil
 	}
 
@@ -336,8 +348,11 @@ func (differ detailedDiffer) calculateSetHashIndexMap(
 
 	for _, elem := range setElements {
 		convertedElem, err := makeSingleTerraformInput(
-			differ.ctx, path.String(), elem, tfs, ps)
+			differ.ctx, elementPath.String(), elem, etfs, eps)
 		if err != nil {
+			GetLogger(differ.ctx).Warn(fmt.Sprintf(
+				"Failed to calculate preview for element in %s: Failed to make terraform input: %v",
+				elementPath.String(), err))
 			return nil
 		}
 		convertedElements = append(convertedElements, convertedElem)
@@ -350,7 +365,7 @@ func (differ detailedDiffer) calculateSetHashIndexMap(
 			defer func() {
 				if r := recover(); r != nil {
 					GetLogger(differ.ctx).Warn(fmt.Sprintf(
-						"Failed to calculate preview for element in %s: %v",
+						"Failed to calculate preview for element in %s: Failed to calculate set hash: %v",
 						path.String(), r))
 				}
 			}()

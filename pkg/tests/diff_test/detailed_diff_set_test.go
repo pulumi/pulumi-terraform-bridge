@@ -783,3 +783,49 @@ func TestSDKv2DetailedDiffNestedSets(t *testing.T) {
 
 	runSDKv2TestMatrix(t, diffSchemaValueMakerPairs, setScenarios())
 }
+
+func TestSDKv2DetailedDiffSetNestedList(t *testing.T) {
+	t.Parallel()
+
+	res := schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"prop": {
+				Type:     schema.TypeSet,
+				Optional: true,
+				Elem: &schema.Schema{
+					Type: schema.TypeList,
+					Elem: &schema.Schema{
+						Type: schema.TypeString,
+					},
+				},
+			},
+		},
+	}
+
+	listNestedListValueMaker := func(v *[]string) map[string]cty.Value {
+		if v == nil {
+			return map[string]cty.Value{}
+		}
+
+		if len(*v) == 0 {
+			return map[string]cty.Value{
+				"prop": cty.ListVal([]cty.Value{cty.ListValEmpty(cty.String)}),
+			}
+		}
+
+		slice := make([]cty.Value, len(*v))
+		for i, v := range *v {
+			slice[i] = cty.StringVal(v)
+		}
+
+		return map[string]cty.Value{
+			"prop": cty.ListVal([]cty.Value{cty.ListVal(slice)}),
+		}
+	}
+
+	diffSchemaValueMakerPairs := []diffSchemaValueMakerPair[[]string]{
+		{"nested list", res, listNestedListValueMaker},
+	}
+
+	runSDKv2TestMatrix(t, diffSchemaValueMakerPairs, oneElementScenarios())
+}
