@@ -122,7 +122,7 @@ resources:
 		},
 	}
 
-	test := tc.prepare(t)
+	test := tc.prepare(t, false /*refresh*/)
 
 	previewResult := test.Preview(t, optpreview.Diff())
 
@@ -219,7 +219,7 @@ resources:
 		},
 	}
 
-	test := tc.prepare(t)
+	test := tc.prepare(t, false /*refresh*/)
 
 	previewResult := test.Preview(t)
 
@@ -314,7 +314,7 @@ resources:
 		},
 	}
 
-	test := tc.prepare(t)
+	test := tc.prepare(t, false /*refresh*/)
 
 	previewResult := test.Preview(t)
 
@@ -325,6 +325,17 @@ resources:
 }
 
 func TestUpgrade_Upstream_Adds_MaxItems1(t *testing.T) {
+	testUpgrade_Upstream_Adds_MaxItems1(t, false /*refresh*/)
+}
+
+// Testing refresh is an important part of the upgrade story as the refreshed state needs to contain enough markers to
+// reconstruct the expected raw state for the upgrade to go smoothly. Reuse one of the existing test cases here to test
+// the refresh path.
+func TestUpgrade_Refresh(t *testing.T) {
+	testUpgrade_Upstream_Adds_MaxItems1(t, true /*refresh*/)
+}
+
+func testUpgrade_Upstream_Adds_MaxItems1(t *testing.T, refresh bool) {
 	t.Parallel()
 
 	programBefore := `
@@ -402,7 +413,7 @@ resources:
 		},
 	}
 
-	test := tc.prepare(t)
+	test := tc.prepare(t, refresh)
 
 	previewResult := test.Preview(t)
 
@@ -490,7 +501,7 @@ resources:
 		},
 	}
 
-	test := tc.prepare(t)
+	test := tc.prepare(t, false /*refresh*/)
 
 	previewResult := test.Preview(t)
 
@@ -529,9 +540,14 @@ func (tc upgradeTestCase) bridgedProvider(t *testing.T, resource upgradeTestReso
 	return p
 }
 
-func (tc upgradeTestCase) prepare(t *testing.T) *pulumitest.PulumiTest {
+func (tc upgradeTestCase) prepare(t *testing.T, refresh bool) *pulumitest.PulumiTest {
 	pt := pulcheck.PulCheck(t, tc.bridgedProvider(t, tc.resourceBefore), tc.resourceBefore.yamlProgram)
 	pt.Up(t)
+
+	if refresh {
+		pt.Refresh(t)
+	}
+
 	state := pt.ExportStack(t)
 
 	t.Logf("%s", string(state.Deployment))

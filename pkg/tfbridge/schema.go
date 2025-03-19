@@ -1115,8 +1115,10 @@ func makeTerraformResultInner(ctx context.Context, args makeTerraformResultArgs)
 		if metaMap == nil {
 			metaMap = map[string]any{}
 		}
-		_, conflict := metaMap[rawKey]
-		contract.Assertf(!conflict, "[rawstate]: conflicting key under %q: %q", metaMap, rawKey)
+		// Could check for clobbering existing metaMap[rawKey] but it appears that in the pulumi refresh
+		// scenario this is expected. That is the metaMap will contain the previous inflections written by the
+		// bridge. Not enough information to distinguish this from a genuine conflict with the resource Meta
+		// key-space.
 		metaMap[rawKey] = inflections
 	}
 
