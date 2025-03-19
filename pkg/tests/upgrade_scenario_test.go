@@ -340,8 +340,6 @@ func TestUpgrade_Refresh(t *testing.T) {
 }
 
 func testUpgradeUpstreamAddsMaxItems1(t *testing.T, refresh bool) {
-	t.Parallel()
-
 	programBefore := `
 name: test
 runtime: yaml
