@@ -43,6 +43,8 @@ func (ne *numberEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.Va
 	if p.IsNull() {
 		return tftypes.NewValue(tftypes.Number, nil), nil
 	}
+	// TODO: revisit this..
+	//
 	// TODO[pulumi/pulumi-terraform-bridge#1667] workaround a problem in
 	// https://github.com/pulumi/pulumi-aws/issues/5222 where SDKv2 TypeNullableInt gets parsed
 	// into a schema that now expects a number. This case interprets an empty string value as a

@@ -163,7 +163,8 @@ func TestMuxedAliasCreate(t *testing.T) {
 	      "fair": true,
 	      "number": 4,
 	      "suggestionUpdated": false,
-		  "suggestion": "*"
+              "suggestion": "*",
+              "__meta": "*"
 	    }
 	  },
 	  "metadata": {
