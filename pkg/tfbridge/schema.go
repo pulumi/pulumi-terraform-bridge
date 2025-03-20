@@ -1107,7 +1107,7 @@ func makeTerraformResultInner(ctx context.Context, args makeTerraformResultArgs)
 			s.Value().GoString(),
 		))
 
-		delta, err := rawStateComputeDelta(args.tfs, args.ps, outMap, s.Value())
+		delta, err := rawStateComputeDelta(ctx, args.tfs, args.ps, outMap, s.Value())
 		contract.AssertNoErrorf(err, "[rawstate]: failed computing delta")
 		if metaMap == nil {
 			metaMap = map[string]any{}
