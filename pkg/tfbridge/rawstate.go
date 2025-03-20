@@ -30,23 +30,45 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/walk"
 )
 
-// What about type changes like strings to ints and so forth, do we need to account for that?
+// TBD: should we be careful not to expose secrets in the delta.
+
+// rawStateDeltaKey is where [rawStateDelta] is stored under [metaKey].
+const rawStateDeltaKey = "__pulumi_raw_state_delta"
+
+// Represents an efficient delta between PropertyMap and cty.Value representations of resource state.
 //
-// Could we bail from translating and encode cty.Value as is in the delta?
+// Pulumi stores Terraform resource states as PropertyMap in the state file. But providers expect to interact with
+// cty.Value versions of the state. This is especially pertinent when upgrading provider versions. The new Terraform
+// provider code on V-next expects to receive the verbatim raw state JSON written by V-prev and possibly massage it
+// with state upgrade code toward the newly changed schema.
 //
-// Should we store the type, is that sufficient to code PropertyValue to cty.Value, to compensate for num/string etc?
-type rawStateInflections struct {
-	TypedNull *typedNull        `json:"null,omitempty"`
-	Pluralize *pluralize        `json:"plu,omitempty"`
-	Map       *mapInflections   `json:"map,omitempty"`
-	Obj       *objInflections   `json:"obj,omitempty"`
-	Array     *arrayInflections `json:"arr,omitempty"`
-	Set       *setInflections   `json:"set,omitempty"`
-	Asset     *assetInflections `json:"asset,omitempty"`
-	Num       *numInflections   `json:"num,omitempty"`
+// cty.Value has slightly more information that strictly necessary but is taken as an approximation for the Terraform
+// raw state in this code.
+//
+// It is not possible to reconstruct cty.Value from PropertyMap because the transformation is schema aware, and the
+// V-prev schema is not available at read time.
+//
+// It should be possible to store cty.Value alongside PropertyMap in Pulumi state, but this approach would require
+// additional storage. More pertinently, it would complicate editing state files in scenarios requiring state repair.
+//
+// The code takes a hybrid approach instead. It computes a rawStateDelta representing the difference between a
+// PropertyMap and a cty.Value, so that cty.Value need not be stored itself. In typical scenarios rawStateDelta is
+// fairly small. It falls back to storing the entirety of cty.Value if an efficient encoding cannot be computed.
+//
+// At read time, PropertyMap and rawStateDelta are read, and the original cty.Value is reconstructed from the pair.
+type rawStateDelta struct {
+	TypedNull *typedNullDelta `json:"null,omitempty"`
+	Pluralize *pluralizeDelta `json:"plu,omitempty"`
+	Map       *mapDelta       `json:"map,omitempty"`
+	Obj       *objDelta       `json:"obj,omitempty"`
+	Array     *arrayDelta     `json:"arr,omitempty"`
+	Set       *setDelta       `json:"set,omitempty"`
+	Asset     *assetDelta     `json:"asset,omitempty"`
+	Num       *numDelta       `json:"num,omitempty"`
+	/// Replace
 }
 
-func (i rawStateInflections) isEmpty() bool {
+func (i rawStateDelta) isEmpty() bool {
 	if i.Pluralize != nil {
 		return false
 	}
@@ -78,46 +100,46 @@ func (i rawStateInflections) isEmpty() bool {
 //
 // null becomes []
 // x becomes [x]
-type pluralize struct {
+type pluralizeDelta struct {
 	// Only needed for recovering from a null PropertyValue.
 	ElementType *cty.Type `json:"t,omitempty"`
 
-	// Inflections to apply to `x` before pluralizing.
-	Inner rawStateInflections `json:"i,omitempty"`
+	// Delta to apply to `x` before pluralizing.
+	Inner rawStateDelta `json:"i,omitempty"`
 
 	// This is a set and not a list.
 	IsSet bool `json:"set,omitempty"`
 }
 
 // To recover nulls to cty.Value they need a type.
-type typedNull struct {
+type typedNullDelta struct {
 	T cty.Type `json:"t"`
 }
 
 // Primarily to distinguish maps from objects when recovering. Stores the type for empty maps.
-type mapInflections struct {
-	T                  *cty.Type                                    `json:"t,omitempty"`
-	ElementInflections map[resource.PropertyKey]rawStateInflections `json:"m,omitempty"`
+type mapDelta struct {
+	T             *cty.Type                              `json:"t,omitempty"`
+	ElementDeltas map[resource.PropertyKey]rawStateDelta `json:"m,omitempty"`
 }
 
-func (mi *mapInflections) set(key resource.PropertyKey, value rawStateInflections) {
+func (mi *mapDelta) set(key resource.PropertyKey, value rawStateDelta) {
 	if value.isEmpty() {
 		return
 	}
-	if mi.ElementInflections == nil {
-		mi.ElementInflections = map[resource.PropertyKey]rawStateInflections{}
+	if mi.ElementDeltas == nil {
+		mi.ElementDeltas = map[resource.PropertyKey]rawStateDelta{}
 	}
-	mi.ElementInflections[key] = value
+	mi.ElementDeltas[key] = value
 }
 
 // Distinguish objects from maps when recovering, record renamed properties.
-type objInflections struct {
-	Ignored            map[resource.PropertyKey]struct{}            `json:"ignored,omitempty"`
-	Renamed            map[resource.PropertyKey]string              `json:"renamed,omitempty"`
-	ElementInflections map[resource.PropertyKey]rawStateInflections `json:"o,omitempty"`
+type objDelta struct {
+	Ignored       map[resource.PropertyKey]struct{}      `json:"ignored,omitempty"`
+	Renamed       map[resource.PropertyKey]string        `json:"renamed,omitempty"`
+	ElementDeltas map[resource.PropertyKey]rawStateDelta `json:"o,omitempty"`
 }
 
-func (oi *objInflections) set(key string, propertyKey resource.PropertyKey, infl rawStateInflections) {
+func (oi *objDelta) set(key string, propertyKey resource.PropertyKey, infl rawStateDelta) {
 	if string(propertyKey) != key {
 		if oi.Renamed == nil {
 			oi.Renamed = make(map[resource.PropertyKey]string)
@@ -127,67 +149,67 @@ func (oi *objInflections) set(key string, propertyKey resource.PropertyKey, infl
 	if infl.isEmpty() {
 		return
 	}
-	if oi.ElementInflections == nil {
-		oi.ElementInflections = map[resource.PropertyKey]rawStateInflections{}
+	if oi.ElementDeltas == nil {
+		oi.ElementDeltas = map[resource.PropertyKey]rawStateDelta{}
 	}
-	oi.ElementInflections[propertyKey] = infl
+	oi.ElementDeltas[propertyKey] = infl
 }
 
-func (oi *objInflections) ignore(key resource.PropertyKey) {
+func (oi *objDelta) ignore(key resource.PropertyKey) {
 	if oi.Ignored == nil {
 		oi.Ignored = map[resource.PropertyKey]struct{}{}
 	}
 	oi.Ignored[key] = struct{}{}
 }
 
-// Exists to encode inner inflections on array elements. Stores the type for empty arrays.
-type arrayInflections struct {
-	T                  *cty.Type                   `json:"t,omitempty"`
-	ElementInflections map[int]rawStateInflections `json:"arr"`
+// Exists to encode inner deltas on array elements. Stores the type for empty arrays.
+type arrayDelta struct {
+	T             *cty.Type             `json:"t,omitempty"`
+	ElementDeltas map[int]rawStateDelta `json:"arr"`
 }
 
-func (ai *arrayInflections) set(key int, value rawStateInflections) {
+func (ai *arrayDelta) set(key int, value rawStateDelta) {
 	if value.isEmpty() {
 		return
 	}
-	if ai.ElementInflections == nil {
-		ai.ElementInflections = map[int]rawStateInflections{}
+	if ai.ElementDeltas == nil {
+		ai.ElementDeltas = map[int]rawStateDelta{}
 	}
-	ai.ElementInflections[key] = value
+	ai.ElementDeltas[key] = value
 }
 
-// Exists to encode inner inflections on set elements. Stores the type for empty sets.
-type setInflections struct {
+// Exists to encode inner deltas on set elements. Stores the type for empty sets.
+type setDelta struct {
 	T *cty.Type `json:"t,omitempty"`
 
 	// Key assumption here is that no re-ordering is possible here.
 	//
 	// Alternatively we could index on hashes of PropertyValue, and check for hash-collisions at write time.
-	ElementInflections map[int]rawStateInflections `json:"set"`
+	ElementDeltas map[int]rawStateDelta `json:"set"`
 }
 
-func (ai *setInflections) set(key int, value rawStateInflections) {
+func (ai *setDelta) set(key int, value rawStateDelta) {
 	if value.isEmpty() {
 		return
 	}
-	if ai.ElementInflections == nil {
-		ai.ElementInflections = map[int]rawStateInflections{}
+	if ai.ElementDeltas == nil {
+		ai.ElementDeltas = map[int]rawStateDelta{}
 	}
-	ai.ElementInflections[key] = value
+	ai.ElementDeltas[key] = value
 }
 
 // Used when a TF number is expected, but Pulumi representation is a string. This is the case, for example, for large
 // integers and floats that do not fit the float64 constraints of Pulumi PropertyValue numbers.
-type numInflections struct{}
+type numDelta struct{}
 
 // Encodes an AssetTranslation to help with decoding assets and archives.
-type assetInflections struct {
+type assetDelta struct {
 	Kind      AssetTranslationKind   `json:"kind"`
 	Format    resource.ArchiveFormat `json:"archiveFormat,omitempty"`
 	HashField string                 `json:"hashField,omitempty"`
 }
 
-func rawStateRecover(pv resource.PropertyValue, infl rawStateInflections) (cty.Value, error) {
+func rawStateRecover(pv resource.PropertyValue, infl rawStateDelta) (cty.Value, error) {
 	if pv.IsSecret() {
 		return rawStateRecover(pv.SecretValue().Element, infl)
 	}
@@ -235,7 +257,7 @@ func rawStateRecover(pv resource.PropertyValue, infl rawStateInflections) (cty.V
 		pm := pv.ObjectValue()
 		recovered := map[string]cty.Value{}
 		for k, v := range pm {
-			elementInfl := infl.Map.ElementInflections[k]
+			elementInfl := infl.Map.ElementDeltas[k]
 			element, err := rawStateRecover(v, elementInfl)
 			if err != nil {
 				return cty.Value{}, err
@@ -268,7 +290,7 @@ func rawStateRecover(pv resource.PropertyValue, infl rawStateInflections) (cty.V
 			if !gotName {
 				name = string(k)
 			}
-			elementInfl := infl.Obj.ElementInflections[k]
+			elementInfl := infl.Obj.ElementDeltas[k]
 			element, err := rawStateRecover(v, elementInfl)
 			if err != nil {
 				return cty.Value{}, err
@@ -285,9 +307,9 @@ func rawStateRecover(pv resource.PropertyValue, infl rawStateInflections) (cty.V
 		}
 		arr := pv.ArrayValue()
 		n := len(arr)
-		for k := range infl.Array.ElementInflections {
+		for k := range infl.Array.ElementDeltas {
 			if k < 0 || k >= n {
-				return cty.Value{}, fmt.Errorf("Invalid array inflection index %d", k)
+				return cty.Value{}, fmt.Errorf("Invalid array delta index %d", k)
 			}
 		}
 		if n == 0 {
@@ -295,7 +317,7 @@ func rawStateRecover(pv resource.PropertyValue, infl rawStateInflections) (cty.V
 		}
 		var elements []cty.Value
 		for k, v := range arr {
-			r, err := rawStateRecover(v, infl.Array.ElementInflections[k])
+			r, err := rawStateRecover(v, infl.Array.ElementDeltas[k])
 			if err != nil {
 				return cty.Value{}, err
 			}
@@ -308,9 +330,9 @@ func rawStateRecover(pv resource.PropertyValue, infl rawStateInflections) (cty.V
 		}
 		arr := pv.ArrayValue()
 		n := len(arr)
-		for k := range infl.Set.ElementInflections {
+		for k := range infl.Set.ElementDeltas {
 			if k < 0 || k >= n {
-				return cty.Value{}, fmt.Errorf("Invalid set inflection index %d", k)
+				return cty.Value{}, fmt.Errorf("Invalid set delta index %d", k)
 			}
 		}
 		if n == 0 {
@@ -318,7 +340,7 @@ func rawStateRecover(pv resource.PropertyValue, infl rawStateInflections) (cty.V
 		}
 		var elements []cty.Value
 		for k, v := range arr {
-			r, err := rawStateRecover(v, infl.Set.ElementInflections[k])
+			r, err := rawStateRecover(v, infl.Set.ElementDeltas[k])
 			if err != nil {
 				return cty.Value{}, err
 			}
@@ -362,7 +384,7 @@ func rawStateRecover(pv resource.PropertyValue, infl rawStateInflections) (cty.V
 		return v, nil
 
 	default:
-		contract.Failf("rawStateRecover does not recognize this rawStateInflections case")
+		contract.Failf("rawStateRecover does not recognize this rawStateDelta case")
 		return cty.Value{}, errors.New("impossible")
 	}
 }
@@ -426,34 +448,34 @@ func rawStateRecoverNatural(pv resource.PropertyValue) (cty.Value, error) {
 	}
 }
 
-func rawStateComputeInflections(
+func rawStateComputeDelta(
 	schemaMap shim.SchemaMap, // top-level schema for a resource
 	schemaInfos map[string]*SchemaInfo, // top-level schema overrides for a resource
 	outMap resource.PropertyMap,
 	rawState cty.Value,
 ) (any, error) {
-	ih := &inflectHelper{
+	ih := &rawStateDeltaHelper{
 		schemaMap:   schemaMap,
 		schemaInfos: schemaInfos,
 	}
 	pv := resource.NewObjectProperty(outMap)
-	infl, err := ih.inflections(pv, rawState)
+	infl, err := ih.delta(pv, rawState)
 	if err != nil {
-		return nil, fmt.Errorf("[rawstate]: failed computing inflections: %w", err)
+		return nil, fmt.Errorf("[rawstate]: failed computing deltax: %w", err)
 	}
 
 	if err := rawStateTurnaroundCheck(rawState, pv, infl); err != nil {
 		return nil, err
 	}
 
-	inflEnc, err := rawStateEncodeInflections(infl)
+	delta, err := rawStateEncodeDelta(infl)
 	if err != nil {
 		return nil, fmt.Errorf("[rawstate]: encoding failed")
 	}
-	return inflEnc, nil
+	return delta, nil
 }
 
-func rawStateTurnaroundCheck(rawState cty.Value, pv resource.PropertyValue, infl rawStateInflections) error {
+func rawStateTurnaroundCheck(rawState cty.Value, pv resource.PropertyValue, infl rawStateDelta) error {
 	mm := rawState.AsValueMap()
 	delete(mm, "timeouts")
 	rawStateWithoutTimeouts := cty.ObjectVal(mm)
@@ -464,18 +486,18 @@ func rawStateTurnaroundCheck(rawState cty.Value, pv resource.PropertyValue, infl
 		return fmt.Errorf("[rawstate]: failed recovering value for turnaround check: %w", err)
 	}
 
-	inflE, err := rawStateEncodeInflections(infl)
-	contract.AssertNoErrorf(err, "rawStateEncodeInflections failed")
+	delta, err := rawStateEncodeDelta(infl)
+	contract.AssertNoErrorf(err, "rawStateEncodeDeltax failed")
 
 	if !rawStateReducePrecision(ctyValueRecovered).RawEquals(
 		rawStateReducePrecision(rawStateWithoutTimeouts),
 	) {
 		if cmdutil.IsTruthy(os.Getenv("PULUMI_DEBUG")) {
 			return fmt.Errorf("[rawstate]: turnaround check failed\nrecovered=%s\n"+
-				"rawState =%s\ninfle=%#v",
+				"rawState =%s\ndelta=%#v",
 				ctyValueRecovered.GoString(),
 				rawStateWithoutTimeouts.GoString(),
-				inflE,
+				delta,
 			)
 		}
 		return errors.New("[rawstate]: turnaround check failed")
@@ -512,35 +534,35 @@ func rawStateReducePrecision(v cty.Value) cty.Value {
 	return v2
 }
 
-type inflectHelper struct {
+type rawStateDeltaHelper struct {
 	schemaMap   shim.SchemaMap         // top-level schema for a resource
 	schemaInfos map[string]*SchemaInfo // top-level schema overrides for a resource
 }
 
-func (ih *inflectHelper) inflections(pv resource.PropertyValue, v cty.Value) (rawStateInflections, error) {
-	return ih.inflectionsAt(walk.NewSchemaPath(), pv, v)
+func (ih *rawStateDeltaHelper) delta(pv resource.PropertyValue, v cty.Value) (rawStateDelta, error) {
+	return ih.deltaAt(walk.NewSchemaPath(), pv, v)
 }
 
-func (ih *inflectHelper) inflectionsAt(
+func (ih *rawStateDeltaHelper) deltaAt(
 	path walk.SchemaPath,
 	pv resource.PropertyValue,
 	v cty.Value,
-) (rawStateInflections, error) {
+) (rawStateDelta, error) {
 	if pv.IsSecret() {
-		return ih.inflectionsAt(path, pv.SecretValue().Element, v)
+		return ih.deltaAt(path, pv.SecretValue().Element, v)
 	}
 	if pv.IsOutput() && pv.OutputValue().Known {
-		return ih.inflectionsAt(path, pv.OutputValue().Element, v)
+		return ih.deltaAt(path, pv.OutputValue().Element, v)
 	}
 	isUnknown := pv.IsComputed() || pv.IsOutput() && !pv.OutputValue().Known
-	contract.Assertf(!isUnknown, "inflectHelper cannot process unknown values")
+	contract.Assertf(!isUnknown, "rawStateDeltaHelper cannot process unknown values")
 
 	// Timeouts are a special property that accidentally gets pushed here for historical reasons; it is not
 	// relevant for the permanent RawState storage. Ignore it for now.
 	if len(path) == 1 {
 		if step, ok := path[0].(walk.GetAttrStep); ok {
 			if step.Name == "timeouts" {
-				return rawStateInflections{}, nil
+				return rawStateDelta{}, nil
 			}
 		}
 	}
@@ -553,38 +575,38 @@ func (ih *inflectHelper) inflectionsAt(
 			"Assets must be matched with SchemaInfo with AssetTranslation [%q]",
 			path.MustEncodeSchemaPath())
 		at := schemaInfo.Asset
-		return rawStateInflections{Asset: &assetInflections{
+		return rawStateDelta{Asset: &assetDelta{
 			Kind:      at.Kind,
 			Format:    at.Format,
 			HashField: at.HashField,
 		}}, nil
 	}
 
-	contract.Assertf(v.IsKnown(), "rawStateComputeInflections cannot handle unknowns")
+	contract.Assertf(v.IsKnown(), "rawStateDeltaHelper cannot handle unknowns")
 	switch {
 	case v.IsNull():
-		return rawStateInflections{TypedNull: &typedNull{T: v.Type()}}, nil
+		return rawStateDelta{TypedNull: &typedNullDelta{T: v.Type()}}, nil
 	case v.Type().Equals(cty.Number) && pv.IsString():
-		return rawStateInflections{Num: &numInflections{}}, nil
+		return rawStateDelta{Num: &numDelta{}}, nil
 	case v.Type().IsPrimitiveType():
-		return rawStateInflections{}, nil
+		return rawStateDelta{}, nil
 	case v.Type().IsListType():
 		elements := v.AsValueSlice()
 
 		// Checking if [] got encoded as Null due to MaxItems=1.
 		if len(elements) == 0 && pv.IsNull() {
 			t := v.Type().ElementType()
-			return rawStateInflections{Pluralize: &pluralize{ElementType: &t}}, nil
+			return rawStateDelta{Pluralize: &pluralizeDelta{ElementType: &t}}, nil
 		}
 
 		// Checking if [x] got encoded as x due to MaxItems=1.
 		if len(elements) == 1 && !pv.IsArray() {
 			subPath := path.Element()
-			inner, err := ih.inflectionsAt(subPath, pv, elements[0])
+			inner, err := ih.deltaAt(subPath, pv, elements[0])
 			if err != nil {
-				return rawStateInflections{}, err
+				return rawStateDelta{}, err
 			}
-			return rawStateInflections{Pluralize: &pluralize{Inner: inner}}, nil
+			return rawStateDelta{Pluralize: &pluralizeDelta{Inner: inner}}, nil
 		}
 
 		// Otherwise PropertyValue should be an array just like the cty.Value is a list.
@@ -596,23 +618,23 @@ func (ih *inflectHelper) inflectionsAt(
 			"Expected array length parity for PropertyValue and matching cty.Value")
 
 		if len(pvElements) == 0 {
-			return rawStateInflections{
-				Array: &arrayInflections{T: v.Type().ListElementType()},
+			return rawStateDelta{
+				Array: &arrayDelta{T: v.Type().ListElementType()},
 			}, nil
 		}
 
-		arrayInfl := arrayInflections{}
+		arrayInfl := arrayDelta{}
 
 		subPath := path.Element()
 		for k, e := range elements {
-			infl, err := ih.inflectionsAt(subPath, pvElements[k], e)
+			infl, err := ih.deltaAt(subPath, pvElements[k], e)
 			if err != nil {
-				return rawStateInflections{}, err
+				return rawStateDelta{}, err
 			}
 			arrayInfl.set(k, infl)
 		}
 
-		return rawStateInflections{Array: &arrayInfl}, nil
+		return rawStateDelta{Array: &arrayInfl}, nil
 	case v.Type().IsMapType():
 		elements := v.AsValueMap()
 		contract.Assertf(pv.IsObject(), "Expected an Object PropertyValue to match a Map cty.Value")
@@ -623,22 +645,22 @@ func (ih *inflectHelper) inflectionsAt(
 			"Expected map length parity for PropertyValue and matching cty.Value")
 
 		if len(pvElements) == 0 {
-			return rawStateInflections{Map: &mapInflections{T: v.Type().MapElementType()}}, nil
+			return rawStateDelta{Map: &mapDelta{T: v.Type().MapElementType()}}, nil
 		}
 
-		mapInfl := mapInflections{}
+		mapInfl := mapDelta{}
 
 		subPath := path.Element()
 		for k, e := range elements {
 			key := resource.PropertyKey(k)
-			infl, err := ih.inflectionsAt(subPath, pvElements[key], e)
+			infl, err := ih.deltaAt(subPath, pvElements[key], e)
 			if err != nil {
-				return rawStateInflections{}, err
+				return rawStateDelta{}, err
 			}
 			mapInfl.set(key, infl)
 		}
 
-		return rawStateInflections{Map: &mapInfl}, nil
+		return rawStateDelta{Map: &mapInfl}, nil
 
 	case v.Type().IsSetType():
 		// Key assumption here is that when Pulumi translates Set values in states and projects them as Array
@@ -651,8 +673,8 @@ func (ih *inflectHelper) inflectionsAt(
 		// Checking if [] got encoded as Null due to MaxItems=1.
 		if len(elements) == 0 && pv.IsNull() {
 			t := v.Type().ElementType()
-			return rawStateInflections{
-				Pluralize: &pluralize{
+			return rawStateDelta{
+				Pluralize: &pluralizeDelta{
 					ElementType: &t,
 					IsSet:       true,
 				},
@@ -662,11 +684,11 @@ func (ih *inflectHelper) inflectionsAt(
 		// Checking if [x] got encoded as x due to MaxItems=1.
 		if len(elements) == 1 && !pv.IsArray() {
 			subPath := path.Element()
-			inner, err := ih.inflectionsAt(subPath, pv, elements[0])
+			inner, err := ih.deltaAt(subPath, pv, elements[0])
 			if err != nil {
-				return rawStateInflections{}, err
+				return rawStateDelta{}, err
 			}
-			return rawStateInflections{Pluralize: &pluralize{
+			return rawStateDelta{Pluralize: &pluralizeDelta{
 				Inner: inner,
 				IsSet: true,
 			}}, nil
@@ -681,37 +703,37 @@ func (ih *inflectHelper) inflectionsAt(
 			"Expected array length parity for PropertyValue and matching Set cty.Value")
 
 		if len(pvElements) == 0 {
-			return rawStateInflections{
-				Set: &setInflections{T: v.Type().SetElementType()},
+			return rawStateDelta{
+				Set: &setDelta{T: v.Type().SetElementType()},
 			}, nil
 		}
 
-		setInfl := setInflections{}
+		setInfl := setDelta{}
 
 		subPath := path.Element()
 		for k, e := range elements {
-			infl, err := ih.inflectionsAt(subPath, pvElements[k], e)
+			infl, err := ih.deltaAt(subPath, pvElements[k], e)
 			if err != nil {
-				return rawStateInflections{}, err
+				return rawStateDelta{}, err
 			}
 			setInfl.set(k, infl)
 		}
 
-		return rawStateInflections{Set: &setInfl}, nil
+		return rawStateDelta{Set: &setInfl}, nil
 
 	case v.Type().IsObjectType():
 		elements := v.AsValueMap()
 		pvElements := pv.ObjectValue()
 
 		if len(pvElements) == 0 {
-			infl := objInflections{}
+			infl := objDelta{}
 			for k := range pvElements {
 				infl.ignore(k)
 			}
-			return rawStateInflections{Obj: &infl}, nil
+			return rawStateDelta{Obj: &infl}, nil
 		}
 
-		infl := objInflections{}
+		infl := objDelta{}
 
 		keySetWithCtyValueMatches := map[resource.PropertyKey]struct{}{}
 
@@ -719,12 +741,12 @@ func (ih *inflectHelper) inflectionsAt(
 			subPath := path.GetAttr(k)
 			keyRaw, err := TerraformToPulumiNameAtPath(subPath, ih.schemaMap, ih.schemaInfos)
 			if err != nil {
-				return rawStateInflections{}, err
+				return rawStateDelta{}, err
 			}
 			key := resource.PropertyKey(keyRaw)
-			kInfl, err := ih.inflectionsAt(subPath, pvElements[key], v)
+			kInfl, err := ih.deltaAt(subPath, pvElements[key], v)
 			if err != nil {
-				return rawStateInflections{}, err
+				return rawStateDelta{}, err
 			}
 			keySetWithCtyValueMatches[key] = struct{}{}
 			infl.set(k, key, kInfl)
@@ -736,32 +758,32 @@ func (ih *inflectHelper) inflectionsAt(
 			}
 		}
 
-		return rawStateInflections{Obj: &infl}, nil
+		return rawStateDelta{Obj: &infl}, nil
 	case v.Type().IsTupleType():
 		panic("TODO TypeType")
 	case v.Type().IsCapsuleType():
-		return rawStateInflections{}, errors.New("cty.Value CapsuleType is not supported")
+		return rawStateDelta{}, errors.New("cty.Value CapsuleType is not supported")
 	default:
-		contract.Failf("rawStateComputeInflections does not recognize this cty.Value case")
-		return rawStateInflections{}, errors.New("impossible")
+		contract.Failf("rawStateDeltaHelper does not recognize this cty.Value case")
+		return rawStateDelta{}, errors.New("impossible")
 	}
 }
 
-func rawStateParseInflections(rawData any) (rawStateInflections, error) {
+func rawStateParseDelta(rawData any) (rawStateDelta, error) {
 	bytes, err := json.Marshal(rawData)
 	if err != nil {
-		return rawStateInflections{}, err
+		return rawStateDelta{}, err
 	}
 
-	var result rawStateInflections
+	var result rawStateDelta
 	if err := json.Unmarshal(bytes, &result); err != nil {
-		return rawStateInflections{}, nil
+		return rawStateDelta{}, nil
 	}
 
 	return result, nil
 }
 
-func rawStateEncodeInflections(infl rawStateInflections) (any, error) {
+func rawStateEncodeDelta(infl rawStateDelta) (any, error) {
 	bytes, err := json.Marshal(infl)
 	if err != nil {
 		return nil, err
