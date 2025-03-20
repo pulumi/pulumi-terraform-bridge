@@ -360,6 +360,7 @@ func (ctx *conversionContext) makeTerraformInput(
 	// and wrap it in an array.
 	// It is never correct to pass a scalar value to Terraform, where the schema indicates
 	// that a collection is expected.
+	contract.Assertf(!v.ContainsSecrets(), "secrets in inputs are not expected")
 	if tfs != nil && (tfs.Type() == shim.TypeList || tfs.Type() == shim.TypeSet) {
 		wrap := func(val resource.PropertyValue) resource.PropertyValue {
 			if val.IsNull() {
