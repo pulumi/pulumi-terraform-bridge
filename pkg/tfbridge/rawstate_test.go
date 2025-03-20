@@ -40,7 +40,7 @@ import (
 	sdkv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
 
-func Test_rawstate_inflections_turnaround(t *testing.T) {
+func Test_rawstate_delta_turnaround(t *testing.T) {
 	t.Parallel()
 
 	type testCase struct {
@@ -219,7 +219,7 @@ func Test_rawstate_inflections_turnaround(t *testing.T) {
 			cv: cty.MapValEmpty(cty.String),
 		},
 		{
-			name: "inflect-inside-list",
+			name: "inside-list",
 			schema: &schema.Schema{
 				Type:     schema.TypeList,
 				Optional: true,
@@ -233,7 +233,7 @@ func Test_rawstate_inflections_turnaround(t *testing.T) {
 			cv: cty.ListVal([]cty.Value{cty.MustParseNumberVal("12345678901234567890")}),
 		},
 		{
-			name: "inflect-inside-set",
+			name: "inside-set",
 			schema: &schema.Schema{
 				Type:     schema.TypeSet,
 				Optional: true,
@@ -247,7 +247,7 @@ func Test_rawstate_inflections_turnaround(t *testing.T) {
 			cv: cty.SetVal([]cty.Value{cty.MustParseNumberVal("12345678901234567890")}),
 		},
 		{
-			name: "inflect-inside-map",
+			name: "inside-map",
 			schema: &schema.Schema{
 				Type:     schema.TypeMap,
 				Optional: true,
@@ -268,7 +268,7 @@ func Test_rawstate_inflections_turnaround(t *testing.T) {
 			cv := tcase.cv
 			pv := tcase.pv
 
-			ih := inflectHelper{}
+			ih := rawStateDeltaHelper{}
 
 			if tcase.schema != nil {
 				ih.schemaMap = sdkv2.NewSchemaMap(map[string]*schema.Schema{
@@ -286,15 +286,15 @@ func Test_rawstate_inflections_turnaround(t *testing.T) {
 			t.Logf("pv: %v", pv.String())
 			t.Logf("cv: %v", cv.GoString())
 
-			infl, err := ih.inflections(pv, cv)
+			delta, err := ih.delta(pv, cv)
 			require.NoError(t, err)
 
-			infle, err := rawStateEncodeInflections(infl)
+			deltae, err := rawStateEncodeDelta(delta)
 			require.NoError(t, err)
 
-			t.Logf("inflections: %#v", infle)
+			t.Logf("delta: %#v", deltae)
 
-			recoveredCtyValue, err := rawStateRecover(pv, infl)
+			recoveredCtyValue, err := rawStateRecover(pv, delta)
 			require.NoError(t, err)
 
 			t.Logf("cv2:%v", recoveredCtyValue.GoString())
@@ -308,19 +308,19 @@ func Test_rawstate_inflections_turnaround(t *testing.T) {
 	}
 }
 
-func Test_rawstate_inflections_serialization(t *testing.T) {
+func Test_rawstate_delta_serialization(t *testing.T) {
 	t.Parallel()
 
 	type testCase struct {
 		name   string
-		infl   rawStateInflections
+		infl   rawStateDelta
 		expect autogold.Value
 	}
 
 	testCases := []testCase{
 		{
 			name: "typedNull",
-			infl: rawStateInflections{TypedNull: &typedNull{T: cty.Object(map[string]cty.Type{
+			infl: rawStateDelta{TypedNull: &typedNullDelta{T: cty.Object(map[string]cty.Type{
 				"x": cty.String,
 				"y": cty.Number,
 			})}},
@@ -338,7 +338,7 @@ func Test_rawstate_inflections_serialization(t *testing.T) {
 		},
 		{
 			name: "pluralize-null",
-			infl: rawStateInflections{Pluralize: &pluralize{ElementType: &cty.String}},
+			infl: rawStateDelta{Pluralize: &pluralizeDelta{ElementType: &cty.String}},
 			expect: autogold.Expect(`{
  "plu": {
   "i": {},
@@ -348,8 +348,8 @@ func Test_rawstate_inflections_serialization(t *testing.T) {
 		},
 		{
 			name: "pluralize-inner",
-			infl: rawStateInflections{Pluralize: &pluralize{
-				Inner: rawStateInflections{TypedNull: &typedNull{T: cty.String}},
+			infl: rawStateDelta{Pluralize: &pluralizeDelta{
+				Inner: rawStateDelta{TypedNull: &typedNullDelta{T: cty.String}},
 			}},
 			expect: autogold.Expect(`{
  "plu": {
@@ -363,7 +363,7 @@ func Test_rawstate_inflections_serialization(t *testing.T) {
 		},
 		{
 			name: "map-empty",
-			infl: rawStateInflections{Map: &mapInflections{
+			infl: rawStateDelta{Map: &mapDelta{
 				T: &cty.String,
 			}},
 			expect: autogold.Expect(`{
@@ -374,10 +374,10 @@ func Test_rawstate_inflections_serialization(t *testing.T) {
 		},
 		{
 			name: "map-regular",
-			infl: rawStateInflections{
-				Map: &mapInflections{
-					ElementInflections: map[resource.PropertyKey]rawStateInflections{
-						"x": {TypedNull: &typedNull{T: cty.Bool}},
+			infl: rawStateDelta{
+				Map: &mapDelta{
+					ElementDeltas: map[resource.PropertyKey]rawStateDelta{
+						"x": {TypedNull: &typedNullDelta{T: cty.Bool}},
 					},
 				},
 			},
@@ -395,17 +395,17 @@ func Test_rawstate_inflections_serialization(t *testing.T) {
 		},
 		{
 			name: "obj",
-			infl: rawStateInflections{
-				Obj: &objInflections{
+			infl: rawStateDelta{
+				Obj: &objDelta{
 					Ignored: map[resource.PropertyKey]struct{}{
 						"__meta": {},
 					},
 					Renamed: map[resource.PropertyKey]string{
 						"fooBar": "foo_bar",
 					},
-					ElementInflections: map[resource.PropertyKey]rawStateInflections{
+					ElementDeltas: map[resource.PropertyKey]rawStateDelta{
 						"fooBar": {
-							TypedNull: &typedNull{
+							TypedNull: &typedNullDelta{
 								T: cty.Bool,
 							},
 						},
@@ -432,8 +432,8 @@ func Test_rawstate_inflections_serialization(t *testing.T) {
 		},
 		{
 			name: "array-empty",
-			infl: rawStateInflections{
-				Array: &arrayInflections{
+			infl: rawStateDelta{
+				Array: &arrayDelta{
 					T: &cty.Bool,
 				},
 			},
@@ -446,11 +446,11 @@ func Test_rawstate_inflections_serialization(t *testing.T) {
 		},
 		{
 			name: "array-regular",
-			infl: rawStateInflections{
-				Array: &arrayInflections{
-					ElementInflections: map[int]rawStateInflections{
+			infl: rawStateDelta{
+				Array: &arrayDelta{
+					ElementDeltas: map[int]rawStateDelta{
 						1: {
-							TypedNull: &typedNull{T: cty.String},
+							TypedNull: &typedNullDelta{T: cty.String},
 						},
 					},
 				},
@@ -471,12 +471,12 @@ func Test_rawstate_inflections_serialization(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			encoded, err := rawStateEncodeInflections(tc.infl)
+			encoded, err := rawStateEncodeDelta(tc.infl)
 			require.NoError(t, err)
 
 			t.Logf("encoded: %#v", encoded)
 
-			back, err := rawStateParseInflections(encoded)
+			back, err := rawStateParseDelta(encoded)
 			require.NoError(t, err)
 
 			require.Equalf(t, tc.infl, back, "turnaround")
@@ -507,7 +507,7 @@ func Test_rawStateReducePrecision(t *testing.T) {
 }
 
 // For each situation when MakeTerraformResult introduces a distortion between the natural encoding of a TF value as a
-// Pulumi value, rawstate needs to be able to compute inflections to reverse the process and reconstruct the TF value.
+// Pulumi value, rawstate needs to be able to compute delta to reverse the process and reconstruct the TF value.
 //
 // It is useful to look at coverage reports produced solely from this test matrix to check that it covers interesting
 // branches in [MakeTerraformOutput].
@@ -1188,25 +1188,25 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 			outMap, err := MakeTerraformResult(ctx, p, state, tfs, tc.ps, assets, supportsSecrets)
 			require.NoError(t, err)
 
-			ih := &inflectHelper{
+			ih := &rawStateDeltaHelper{
 				schemaMap:   tfs,
 				schemaInfos: tc.ps,
 			}
 
 			pv := resource.NewObjectProperty(outMap)
 
-			infl, err := ih.inflections(pv, stateValue)
+			delta, err := ih.delta(pv, stateValue)
 			require.NoError(t, err)
 
-			inflEnc, err := rawStateEncodeInflections(infl)
+			deltae, err := rawStateEncodeDelta(delta)
 			require.NoError(t, err)
 
-			inflEncJ, err := json.MarshalIndent(inflEnc, "", "  ")
+			deltaj, err := json.MarshalIndent(deltae, "", "  ")
 			require.NoError(t, err)
 
-			tc.infl.Equal(t, string(inflEncJ))
+			tc.infl.Equal(t, string(deltaj))
 
-			err = rawStateTurnaroundCheck(stateValue, pv, infl)
+			err = rawStateTurnaroundCheck(stateValue, pv, delta)
 			require.NoError(t, err)
 		})
 	}

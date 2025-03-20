@@ -1016,9 +1016,6 @@ func makeTerraformUnknown(tfs shim.Schema) interface{} {
 // metaKey is the key in a TF bridge result that is used to store a resource's meta-attributes.
 const metaKey = "__meta"
 
-// rawKey is where RawState metadata is stored under metaKey.
-const rawKey = "raw"
-
 // MakeTerraformResult expands a Terraform resource state into an expanded Pulumi resource property map. This respects
 // the property maps so that results end up with their correct Pulumi names when shipping back to the engine.
 //
@@ -1095,7 +1092,7 @@ func makeTerraformResultInner(ctx context.Context, args makeTerraformResultArgs)
 		metaMap = args.state.Meta()
 	}
 
-	// In the non-preview resource case, also encode raw state inflections into the metaMap.
+	// In the non-preview resource case, also encode raw state delta into the metaMap.
 	if s, ok := args.state.(shim.InstanceStateWithCtyValue); ok && !outMap.ContainsUnknowns() && args.isResource {
 		logger := log.TryGetLogger(ctx)
 		if logger == nil {
@@ -1109,16 +1106,16 @@ func makeTerraformResultInner(ctx context.Context, args makeTerraformResultArgs)
 			s.Value().GoString(),
 		))
 
-		inflections, err := rawStateComputeInflections(args.tfs, args.ps, outMap, s.Value())
-		contract.AssertNoErrorf(err, "[rawstate]: failed computing inflections")
+		delta, err := rawStateComputeDelta(args.tfs, args.ps, outMap, s.Value())
+		contract.AssertNoErrorf(err, "[rawstate]: failed computing delta")
 		if metaMap == nil {
 			metaMap = map[string]any{}
 		}
 		// Could check for clobbering existing metaMap[rawKey] but it appears that in the pulumi refresh
-		// scenario this is expected. That is the metaMap will contain the previous inflections written by the
+		// scenario this is expected. That is the metaMap will contain the previous delta written by the
 		// bridge. Not enough information to distinguish this from a genuine conflict with the resource Meta
 		// key-space.
-		metaMap[rawKey] = inflections
+		metaMap[rawStateDeltaKey] = delta
 	}
 
 	if metaMap != nil {
@@ -1424,8 +1421,8 @@ func makeTerraformStateWithOpts(
 	}
 
 	if isr, ok := instanceState.(shim.InstanceStateWithRawState); ok {
-		if raw, hasRaw := meta[rawKey]; hasRaw {
-			infl, err := rawStateParseInflections(raw)
+		if raw, hasRaw := meta[rawStateDeltaKey]; hasRaw {
+			delta, err := rawStateParseDelta(raw)
 			if err != nil {
 				// Only log at Debug level to avoid leaking secrets to errors.
 				// GetLogger(ctx).Debug(fmt.Sprintf("Failed to parse raw state markers:\n"+
@@ -1433,13 +1430,13 @@ func makeTerraformStateWithOpts(
 				// 	"  error: %v", raw, err))
 				contract.AssertNoErrorf(err, "Failed to parse raw state markers")
 			}
-			rawSt, err := rawStateRecover(resource.NewObjectProperty(m), infl)
+			rawSt, err := rawStateRecover(resource.NewObjectProperty(m), delta)
 			if err != nil {
 				// Only log at Debug level to avoid leaking secrets to errors.
 				// GetLogger(ctx).Debug(fmt.Sprintf("Failed recover raw state:\n"+
 				// 	"  __meta.raw: %#v\n"+
-				// 	"  infl: %#v\n"+
-				// 	"  error: %v", raw, infl, err))
+				// 	"  delta: %#v\n"+
+				// 	"  error: %v", raw, delta, err))
 				contract.AssertNoErrorf(err, "Failed to recover raw state")
 			}
 			isr.SetRawState(rawSt)
