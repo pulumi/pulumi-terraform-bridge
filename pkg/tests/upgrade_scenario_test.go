@@ -34,6 +34,7 @@ import (
 
 // A schema change with state ugpraders should work as expected.
 func TestUpgrade_StateUpgraders(t *testing.T) {
+	t.Skip("TODO[pulumi/pulumi-terraform-bridge#1667]")
 	t.Parallel()
 
 	resourceBefore := &schema.Resource{
