@@ -286,8 +286,7 @@ func Test_rawstate_delta_turnaround(t *testing.T) {
 			t.Logf("pv: %v", pv.String())
 			t.Logf("cv: %v", cv.GoString())
 
-			delta, err := ih.delta(pv, cv)
-			require.NoError(t, err)
+			delta := ih.delta(pv, cv)
 
 			deltae, err := rawStateEncodeDelta(delta)
 			require.NoError(t, err)
@@ -1195,8 +1194,7 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 
 			pv := resource.NewObjectProperty(outMap)
 
-			delta, err := ih.delta(pv, stateValue)
-			require.NoError(t, err)
+			delta := ih.delta(pv, stateValue)
 
 			deltae, err := rawStateEncodeDelta(delta)
 			require.NoError(t, err)
