@@ -1228,3 +1228,97 @@ func Test_replaceTempdir(t *testing.T) {
 	//nolint:lll
 	autogold.Expect(`cty.ObjectVal(map[string]cty.Value{"id":cty.StringVal("id0"), "x":cty.StringVal("${TMPDIR}/pulumi-asset-e6f48d2de0fb13762c32a37daeef1a225a4793cacb598826dbb269e2cbe5b7f2")})`).Equal(t, replaceTempdir(x))
 }
+
+func Test_rawStateDelta_PropertyValue_serialization(t *testing.T) {
+	t.Parallel()
+
+	type testCase struct {
+		name     string
+		rsd      rawStateDelta
+		expect   autogold.Value
+		noExpect bool
+	}
+
+	testCases := []testCase{
+		{
+			name: "typedNull",
+			rsd:  rawStateDelta{TypedNull: &typedNullDelta{T: cty.Bool}},
+			expect: autogold.Expect(resource.PropertyValue{V: resource.PropertyMap{
+				resource.PropertyKey("null"): resource.PropertyValue{V: resource.PropertyMap{
+					resource.PropertyKey("t"): resource.PropertyValue{V: "bool"},
+				}},
+			}}),
+		},
+		{
+			name: "pluralize",
+			rsd: rawStateDelta{Pluralize: &pluralizeDelta{
+				Inner: rawStateDelta{TypedNull: &typedNullDelta{T: cty.Bool}},
+				IsSet: true,
+			}},
+			expect: autogold.Expect(resource.PropertyValue{V: resource.PropertyMap{
+				resource.PropertyKey("plu"): resource.PropertyValue{V: resource.PropertyMap{
+					resource.PropertyKey("i"): resource.PropertyValue{V: resource.PropertyMap{
+						resource.PropertyKey("null"): resource.PropertyValue{V: resource.PropertyMap{
+							resource.PropertyKey("t"): resource.PropertyValue{V: "bool"},
+						}},
+					}},
+					resource.PropertyKey("set"): resource.PropertyValue{V: true},
+				}},
+			}}),
+		},
+		{
+			name: "replace-secret",
+			rsd: rawStateDelta{
+				Replace: newReplaceDelta(cty.TupleVal([]cty.Value{
+					cty.StringVal("OK"),
+					cty.NullVal(cty.Bool),
+				})),
+			},
+			expect: autogold.Expect(resource.PropertyValue{V: resource.PropertyMap{
+				resource.PropertyKey("replace"): resource.PropertyValue{V: &resource.Secret{
+					Element: resource.PropertyValue{V: resource.PropertyMap{
+						resource.PropertyKey("replacement"): resource.PropertyValue{V: []resource.PropertyValue{
+							{V: "OK"},
+							{},
+						}},
+						resource.PropertyKey("t"): resource.PropertyValue{V: []resource.PropertyValue{
+							{V: "tuple"},
+							{V: []resource.PropertyValue{
+								{V: "string"},
+								{V: "bool"},
+							}},
+						}},
+					}},
+				}},
+			}}),
+		},
+		{
+			name: "replace-deep-secret",
+			rsd: rawStateDelta{
+				Array: &arrayDelta{
+					ElementDeltas: map[int]rawStateDelta{
+						0: {
+							Replace: newReplaceDelta(cty.TupleVal([]cty.Value{
+								cty.StringVal("OK"),
+								cty.NullVal(cty.Bool),
+							})),
+						},
+					},
+				},
+			},
+			noExpect: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			pv := tc.rsd.toPropertyValue()
+			if !tc.noExpect {
+				tc.expect.Equal(t, pv)
+			}
+			back, err := newRawStateDeltaFromPropertyValue(pv)
+			require.NoError(t, err)
+			require.Equal(t, tc.rsd.Replace, back.Replace)
+		})
+	}
+}

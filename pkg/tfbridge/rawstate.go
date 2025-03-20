@@ -31,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/log"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/walk"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/propertyvalue"
 )
 
 // rawStateDeltaKey is where [rawStateDelta] is stored under [metaKey].
@@ -69,35 +70,73 @@ type rawStateDelta struct {
 	Replace   *replaceDelta   `json:"replace,omitempty"`
 }
 
-func (i rawStateDelta) isEmpty() bool {
-	if i.Pluralize != nil {
+func (d rawStateDelta) isEmpty() bool {
+	if d.Pluralize != nil {
 		return false
 	}
-	if i.TypedNull != nil {
+	if d.TypedNull != nil {
 		return false
 	}
-	if i.Map != nil {
+	if d.Map != nil {
 		return false
 	}
-	if i.Obj != nil {
+	if d.Obj != nil {
 		return false
 	}
-	if i.Array != nil {
+	if d.Array != nil {
 		return false
 	}
-	if i.Set != nil {
+	if d.Set != nil {
 		return false
 	}
-	if i.Asset != nil {
+	if d.Asset != nil {
 		return false
 	}
-	if i.Num != nil {
+	if d.Num != nil {
 		return false
 	}
-	if i.Replace != nil {
+	if d.Replace != nil {
 		return false
 	}
 	return true
+}
+
+func (d rawStateDelta) toPropertyValue() resource.PropertyValue {
+	if d.isEmpty() {
+		return resource.NewNullProperty()
+	}
+
+	bytes, err := json.Marshal(d)
+	contract.AssertNoErrorf(err, "json.Marshal should not fail on rawStateDelta")
+
+	var result any
+	err = json.Unmarshal(bytes, &result)
+	contract.AssertNoErrorf(err, "json.Unmarshal should not fail on marshalled rawStateDelta")
+
+	replv := func(i interface{}) (resource.PropertyValue, bool) {
+		switch i := i.(type) {
+		case map[string]any:
+			if _, ok := i["replacement"]; ok {
+				// the replaceDelta case needs to be secreted.
+				return resource.MakeSecret(resource.NewPropertyValue(i)), true
+			}
+		}
+		return resource.PropertyValue{}, false
+	}
+
+	return resource.NewPropertyValueRepl(result, nil /*replk*/, replv)
+}
+
+func newRawStateDeltaFromPropertyValue(pv resource.PropertyValue) (rawStateDelta, error) {
+	pvNoSecret := propertyvalue.RemoveSecrets(pv)
+	bytes, err := json.Marshal(pvNoSecret.Mappable())
+	contract.AssertNoErrorf(err, "Failed to json.Marshal(pv.Mappable())")
+	var rsd rawStateDelta
+	err = json.Unmarshal(bytes, &rsd)
+	if err != nil {
+		return rawStateDelta{}, err
+	}
+	return rsd, nil
 }
 
 // Reverses Pulumi MaxItems=1 flattening.
@@ -218,7 +257,7 @@ type assetDelta struct {
 // be secreted.
 type replaceDelta struct {
 	T cty.Type        `json:"t"`
-	V json.RawMessage `json:"v"`
+	V json.RawMessage `json:"replacement"`
 }
 
 func (d replaceDelta) Value() cty.Value {
