@@ -58,11 +58,22 @@ func Diff(t T, res pb.Resource, tfConfig1, tfConfig2 map[string]cty.Value, optio
 		f(&opts)
 	}
 
+	tmpDir := t.TempDir()
 	prov := pb.NewProvider(pb.NewProviderArgs{
 		AllResources: []pb.Resource{res},
 	})
 
 	shimProvider := tfbridge.ShimProvider(prov)
+
+	prov2 := *prov
+	shimProvider2 := shimProvider
+	if opts.updateResource != nil {
+		p2 := pb.NewProvider(pb.NewProviderArgs{
+			AllResources: []pb.Resource{*opts.updateResource},
+		})
+		prov2 = *p2
+		shimProvider2 = tfbridge.ShimProvider(&prov2)
+	}
 
 	// Run the TF part
 	var hcl1 bytes.Buffer
@@ -72,7 +83,7 @@ func Diff(t T, res pb.Resource, tfConfig1, tfConfig2 map[string]cty.Value, optio
 		hclwrite.WithCreateBeforeDestroy(true))
 	require.NoError(t, err)
 
-	driver := tfcheck.NewTfDriver(t, t.TempDir(), prov.TypeName, prov)
+	driver := tfcheck.NewTfDriver(t, tmpDir, prov.TypeName, prov)
 
 	driver.Write(t, hcl1.String())
 	plan, err := driver.Plan(t)
@@ -80,14 +91,17 @@ func Diff(t T, res pb.Resource, tfConfig1, tfConfig2 map[string]cty.Value, optio
 	err = driver.Apply(t, plan)
 	require.NoError(t, err)
 
+	sch2 := hclSchemaPFResource(opts.updateResource.ResourceSchema)
+	driver2 := tfcheck.NewTfDriver(t, tmpDir, prov2.TypeName, &prov2)
 	var hcl2 bytes.Buffer
-	err = hclwrite.WriteResource(&hcl2, sch, "testprovider_test", "res", tfConfig2,
+	err = hclwrite.WriteResource(&hcl2, sch2, "testprovider_test", "res", tfConfig2,
 		hclwrite.WithCreateBeforeDestroy(true))
 	require.NoError(t, err)
-	driver.Write(t, hcl2.String())
-	plan, err = driver.Plan(t)
+	driver2.Write(t, hcl2.String())
+	plan, err = driver2.Plan(t)
 	require.NoError(t, err)
-	tfChanges := driver.ParseChangesFromTFPlan(plan)
+	tfChanges := driver2.ParseChangesFromTFPlan(plan)
+	t.Logf("TF Changes: %v", tfChanges)
 
 	// Run the Pulumi part
 
@@ -99,7 +113,7 @@ func Diff(t T, res pb.Resource, tfConfig1, tfConfig2 map[string]cty.Value, optio
 	pulumiYaml1 := yamlResource(t, puConfig1)
 
 	puConfig2 := crosstestsimpl.InferPulumiValue(t,
-		shimProvider.ResourcesMap().Get("testprovider_test").Schema(),
+		shimProvider2.ResourcesMap().Get("testprovider_test").Schema(),
 		opts.resourceInfo,
 		cty.ObjectVal(tfConfig2),
 	)
@@ -112,17 +126,23 @@ func Diff(t T, res pb.Resource, tfConfig1, tfConfig2 map[string]cty.Value, optio
 	pt, err := pulcheck.PulCheck(t, prov.ToProviderInfo(), string(bytes))
 	require.NoError(t, err)
 	pt.Up(t)
+	state := pt.ExportStack(t)
 
 	bytes, err = yaml.Marshal(pulumiYaml2)
 	require.NoError(t, err)
 	t.Logf("Pulumi.yaml:\n%s", string(bytes))
-	pt.WritePulumiYaml(t, string(bytes))
+	pt2, err := pulcheck.PulCheck(t, prov2.ToProviderInfo(), string(bytes))
+	require.NoError(t, err)
+	pt2.ImportStack(t, state)
 
-	previewRes := pt.Preview(t, optpreview.Diff())
-	pulumiRes := pt.Up(t)
-	diffResponse := crosstestsimpl.GetPulumiDiffResponse(t, pt.GrpcLog(t).Entries)
+	previewRes := pt2.Preview(t, optpreview.Diff())
+	if !opts.skipUp {
+		pulumiRes := pt2.Up(t)
+		diffResponse := crosstestsimpl.GetPulumiDiffResponse(t, pt2.GrpcLog(t).Entries)
+		crosstestsimpl.VerifyBasicDiffAgreement(t, tfChanges.Actions, pulumiRes.Summary, diffResponse)
+	}
 
-	crosstestsimpl.VerifyBasicDiffAgreement(t, tfChanges.Actions, pulumiRes.Summary, diffResponse)
+	diffResponse := crosstestsimpl.GetPulumiDiffResponse(t, pt2.GrpcLog(t).Entries)
 
 	return crosstestsimpl.DiffResult{
 		TFDiff:     tfChanges,
@@ -133,7 +153,9 @@ func Diff(t T, res pb.Resource, tfConfig1, tfConfig2 map[string]cty.Value, optio
 }
 
 type diffOpts struct {
-	resourceInfo map[string]*info.Schema
+	resourceInfo   map[string]*info.Schema
+	updateResource *pb.Resource
+	skipUp         bool
 }
 
 type DiffOption func(*diffOpts)
@@ -141,4 +163,12 @@ type DiffOption func(*diffOpts)
 // DiffProviderInfo specifies a map of [info.Schema] to apply to the provider under test.
 func DiffProviderInfo(info map[string]*info.Schema) DiffOption {
 	return func(o *diffOpts) { o.resourceInfo = info }
+}
+
+func DiffUpdateResource(res pb.Resource) DiffOption {
+	return func(o *diffOpts) { o.updateResource = &res }
+}
+
+func DiffSkipUp(skip bool) DiffOption {
+	return func(o *diffOpts) { o.skipUp = skip }
 }
