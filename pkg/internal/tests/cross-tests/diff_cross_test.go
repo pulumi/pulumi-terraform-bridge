@@ -1787,3 +1787,94 @@ func TestDiffProviderUpgradeBasic(t *testing.T) {
 
 	require.Equal(t, []string{"no-op"}, res.TFDiff.Actions)
 }
+
+func TestStateUpgradeSet(t *testing.T) {
+	t.Parallel()
+
+	res1 := &schema.Resource{
+		Schema: map[string]*schema.Schema{"prop": {Type: schema.TypeString, Optional: true}},
+	}
+
+	res2 := &schema.Resource{
+		SchemaVersion: 1,
+		Schema: map[string]*schema.Schema{
+			"prop": {
+				Type:     schema.TypeSet,
+				Optional: true,
+				Elem:     &schema.Schema{Type: schema.TypeString},
+			},
+		},
+		StateUpgraders: []schema.StateUpgrader{
+			{
+				Version: 0,
+				Type:    res1.CoreConfigSchema().ImpliedType(),
+				Upgrade: func(ctx context.Context, rawState map[string]any, meta interface{}) (map[string]any, error) {
+					if rawState == nil {
+						rawState = map[string]interface{}{}
+					}
+
+					if _, ok := rawState["prop"]; ok {
+						if _, ok := rawState["prop"].(string); ok {
+							rawState["prop"] = []interface{}{rawState["prop"]}
+						}
+					}
+
+					return rawState, nil
+				},
+			},
+		},
+	}
+
+	res := Diff(t, res1,
+		map[string]cty.Value{"prop": cty.StringVal("a")},
+		map[string]cty.Value{"prop": cty.ListVal([]cty.Value{cty.StringVal("a")})},
+		DiffProviderUpgradedSchema(res2),
+	)
+
+	autogold.ExpectFile(t, res.PulumiOut)
+}
+
+func TestDiffProviderUpgradeMaxItemsOneChanged(t *testing.T) {
+	t.Parallel()
+
+	resWithMaxItemsOne := &schema.Resource{
+		Schema: map[string]*schema.Schema{"prop": {
+			Type:     schema.TypeList,
+			Optional: true,
+			MaxItems: 1,
+			Elem:     &schema.Schema{Type: schema.TypeString},
+		}},
+	}
+
+	resWithoutMaxItemsOne := &schema.Resource{
+		Schema: map[string]*schema.Schema{"prop": {
+			Type:     schema.TypeList,
+			Optional: true,
+			Elem:     &schema.Schema{Type: schema.TypeString},
+		}},
+	}
+
+	t.Run("max items one removed", func(t *testing.T) {
+		t.Parallel()
+		res := Diff(t, resWithMaxItemsOne,
+			map[string]cty.Value{"prop": cty.ListVal([]cty.Value{cty.StringVal("a")})},
+			map[string]cty.Value{"prop": cty.ListVal([]cty.Value{cty.StringVal("a")})},
+			DiffProviderUpgradedSchema(resWithoutMaxItemsOne),
+		)
+
+		autogold.ExpectFile(t, res.PulumiOut)
+	})
+
+	t.Run("max items one added", func(t *testing.T) {
+		t.Parallel()
+		res := Diff(t, resWithoutMaxItemsOne,
+			map[string]cty.Value{"prop": cty.ListVal([]cty.Value{cty.StringVal("a")})},
+			map[string]cty.Value{"prop": cty.ListVal([]cty.Value{cty.StringVal("a")})},
+			DiffProviderUpgradedSchema(resWithMaxItemsOne),
+			// Note we produce a diff here while TF does not.
+			DiffSkipDiffEquivalenceCheck(),
+		)
+
+		autogold.ExpectFile(t, res.PulumiOut)
+	})
+}

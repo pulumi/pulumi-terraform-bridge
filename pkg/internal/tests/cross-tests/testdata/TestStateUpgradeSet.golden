@@ -1,0 +1,6 @@
+`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::project::pulumi:pulumi:Stack::project-test]
+Resources:
+    2 unchanged
+`

@@ -39,6 +39,7 @@ import (
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 	shimv1 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v1"
+	sdkv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
 
@@ -277,11 +278,11 @@ func TestMakeTerraformInputsWithMaxItemsOne(t *testing.T) {
 				),
 			},
 			expectedNoDefaults: map[string]interface{}{
-				"element": []interface{}{"el"},
+				"element": []interface{}{[]interface{}{"el"}},
 			},
 			expectedForConfig: map[string]interface{}{
 				"__defaults": []interface{}{},
-				"element":    []interface{}{"el"},
+				"element":    []interface{}{[]interface{}{"el"}},
 			},
 		},
 	}
@@ -3286,9 +3287,10 @@ func Test_makeTerraformInputsNoDefaults(t *testing.T) {
 				// The string property inside Computed is irrelevant.
 				"objectValue": resource.Computed{Element: resource.NewStringProperty("")},
 			}),
-			// NOTE: is this what we want? Should this be [unk] or unk?
 			//nolint:lll
-			expect: autogold.Expect(map[string]interface{}{"object_value": []interface{}{"74D93920-ED26-11E3-AC10-0800200C9A66"}}),
+			expect:          autogold.Expect(map[string]interface{}{"object_value": []interface{}{map[string]interface{}{"required_property": "74D93920-ED26-11E3-AC10-0800200C9A66"}}}),
+			expectDifferent: true,
+			expectSDKv2:     autogold.Expect(map[string]interface{}{"object_value": "74D93920-ED26-11E3-AC10-0800200C9A66"}),
 		},
 		{
 			testCaseName: "object",
@@ -4066,4 +4068,140 @@ func TestMakeSingleTerraformInputSets(t *testing.T) {
 	require.NoError(t, err)
 	setRes := result.(*schemav2.Set)
 	require.Equal(t, []interface{}{"bar", "baz"}, setRes.List())
+}
+
+func Test_makeTerraformStateWithOptsMaxItemsOneRemoved(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+
+	t.Run("list with max items one removed", func(t *testing.T) {
+		m := resource.PropertyMap{
+			"prop": resource.NewStringProperty("X"),
+		}
+
+		sch := &schemav2.Schema{
+			Type:     schemav2.TypeList,
+			Optional: true,
+			Elem: &schemav2.Schema{
+				Type:     schemav2.TypeString,
+				Optional: true,
+			},
+		}
+
+		sch2 := sdkv2.NewSchemaMap(map[string]*schemav2.Schema{
+			"prop": sch,
+		})
+
+		inputs, _, err := makeTerraformInputsWithOptions(ctx, nil, nil, nil, m, sch2, nil,
+			makeTerraformInputsOptions{DisableDefaults: true, DisableTFDefaults: true})
+		require.NoError(t, err)
+
+		autogold.Expect(map[string]interface{}{"prop": []interface{}{"X"}}).Equal(t, inputs)
+	})
+
+	t.Run("nested list with max items one removed", func(t *testing.T) {
+		m := resource.PropertyMap{
+			"prop": resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewStringProperty("X"),
+			}),
+		}
+
+		sch := &schemav2.Schema{
+			Type:     schemav2.TypeList,
+			Optional: true,
+			Elem: &schemav2.Schema{
+				Type:     schemav2.TypeList,
+				Optional: true,
+				Elem: &schemav2.Schema{
+					Type:     schemav2.TypeString,
+					Optional: true,
+				},
+			},
+		}
+
+		sch2 := sdkv2.NewSchemaMap(map[string]*schemav2.Schema{
+			"prop": sch,
+		})
+
+		inputs, _, err := makeTerraformInputsWithOptions(ctx, nil, nil, nil, m, sch2, nil,
+			makeTerraformInputsOptions{DisableDefaults: true, DisableTFDefaults: true})
+		require.NoError(t, err)
+
+		autogold.Expect(map[string]interface{}{"prop": []interface{}{[]interface{}{"X"}}}).Equal(t, inputs)
+	})
+
+	t.Run("triple nested list with max items one removed", func(t *testing.T) {
+		m := resource.PropertyMap{
+			"prop": resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewArrayProperty([]resource.PropertyValue{
+					resource.NewStringProperty("X"),
+				}),
+			}),
+		}
+
+		sch := &schemav2.Schema{
+			Type:     schemav2.TypeList,
+			Optional: true,
+			Elem: &schemav2.Schema{
+				Type:     schemav2.TypeList,
+				Optional: true,
+				Elem: &schemav2.Schema{
+					Type:     schemav2.TypeList,
+					Optional: true,
+					Elem: &schemav2.Schema{
+						Type:     schemav2.TypeString,
+						Optional: true,
+					},
+				},
+			},
+		}
+
+		sch2 := sdkv2.NewSchemaMap(map[string]*schemav2.Schema{
+			"prop": sch,
+		})
+
+		inputs, _, err := makeTerraformInputsWithOptions(ctx, nil, nil, nil, m, sch2, nil,
+			makeTerraformInputsOptions{DisableDefaults: true, DisableTFDefaults: true})
+		require.NoError(t, err)
+
+		autogold.Expect(map[string]interface{}{"prop": []interface{}{[]interface{}{[]interface{}{"X"}}}}).Equal(t, inputs)
+	})
+}
+
+func Test_makeTerraformStateWithOptsMaxItemsOneAdded(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+
+	// Note the behaviour here is that we do not match the "props" key in Pulumi to the "prop" key in TF.
+	// This is because we have lost the schema information about "props", since the property is now "prop"
+	// because of MaxItemsOne singularisation.
+	//
+	// We attempt to send the value in state to TF as is.
+	t.Run("list with max items one added", func(t *testing.T) {
+		m := resource.PropertyMap{
+			"props": resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewStringProperty("X"),
+			}),
+		}
+
+		sch := &schemav2.Schema{
+			Type:     schemav2.TypeList,
+			Optional: true,
+			MaxItems: 1,
+			Elem: &schemav2.Schema{
+				Type:     schemav2.TypeString,
+				Optional: true,
+			},
+		}
+
+		sch2 := sdkv2.NewSchemaMap(map[string]*schemav2.Schema{
+			"prop": sch,
+		})
+
+		inputs, _, err := makeTerraformInputsWithOptions(ctx, nil, nil, nil, m, sch2, nil,
+			makeTerraformInputsOptions{DisableDefaults: true, DisableTFDefaults: true})
+		require.NoError(t, err)
+
+		autogold.Expect(map[string]interface{}{"props": []interface{}{"X"}}).Equal(t, inputs)
+	})
 }

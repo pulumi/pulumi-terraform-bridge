@@ -43,26 +43,6 @@ resources:
 		require.ErrorContains(t, err, expectedError)
 	}
 
-	t.Run("flat type instead of array", func(t *testing.T) {
-		resMap := makeResMap(map[string]*schema.Schema{
-			"network_configuration": {
-				Type:     schema.TypeList,
-				Optional: true,
-				MaxItems: 1,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"subnets": {
-							Type:     schema.TypeSet,
-							Optional: true,
-							Elem:     &schema.Schema{Type: schema.TypeString},
-						},
-					},
-				},
-			},
-		})
-		runTest(t, resMap, map[string]interface{}{"networkConfiguration": map[string]any{"subnets": "subnet"}}, "expected array type, got")
-	})
-
 	t.Run("flat type instead of map", func(t *testing.T) {
 		resMap := makeResMap(map[string]*schema.Schema{
 			"tags": {

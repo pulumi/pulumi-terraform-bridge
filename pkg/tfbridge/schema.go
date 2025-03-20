@@ -355,13 +355,25 @@ func (ctx *conversionContext) makeTerraformInput(
 	tfs shim.Schema,
 	ps *SchemaInfo,
 ) (interface{}, error) {
-	// For TypeList or TypeSet with MaxItems==1, we will have projected as a scalar
-	// nested value, and need to wrap it into a single-element array before passing to
-	// Terraform.
-	if IsMaxItemsOne(tfs, ps) {
+	// For TypeList or Typeset with MaxItems==1, we will have projected as a scalar.
+	// If the MaxItemsOne is removed, we need still to correctly handle the scalar value
+	// and wrap it in an array.
+	// It is never correct to pass a scalar value to Terraform, where the schema indicates
+	// that a collection is expected.
+	contract.Assertf(!v.ContainsSecrets(), "secrets in inputs are not expected")
+	if tfs != nil && (tfs.Type() == shim.TypeList || tfs.Type() == shim.TypeSet) {
 		wrap := func(val resource.PropertyValue) resource.PropertyValue {
 			if val.IsNull() {
-				return resource.NewArrayProperty([]resource.PropertyValue{})
+				// Keep the old behavior of presenting null maxItemsOne values as empty arrays.
+				if IsMaxItemsOne(tfs, ps) {
+					return resource.NewArrayProperty([]resource.PropertyValue{})
+				}
+
+				return val
+			}
+			// Do not attempt to wrap unknowns.
+			if val.IsComputed() || (val.IsOutput() && !val.OutputValue().Known) {
+				return val
 			}
 
 			// If we are expecting a value of type `[T]` where `T != TypeList`
@@ -371,14 +383,8 @@ func (ctx *conversionContext) makeTerraformInput(
 			// This is possible when the old state is from a previous version
 			// with `MaxItemsOne=false` but the new state has
 			// `MaxItemsOne=true`.
-			if elem := tfs.Elem(); elem != nil {
-				if elem, ok := elem.(shim.Schema); ok &&
-					// If the underlying type is not a list or set,
-					// but the value is a list, we just return as is.
-					!(elem.Type() == shim.TypeList || elem.Type() == shim.TypeSet) &&
-					val.IsArray() {
-					return val
-				}
+			if val.IsArray() {
+				return val
 			}
 
 			return resource.NewArrayProperty([]resource.PropertyValue{val})
