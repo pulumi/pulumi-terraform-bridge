@@ -746,7 +746,9 @@ func (ih *rawStateDeltaHelper) computeDeltaAt(
 		pvElements := pv.ArrayValue()
 
 		if len(pvElements) != len(elements) {
-			return rawStateDelta{}, errors.New("Expected array length parity for PropertyValue and matching Set cty.Value")
+			return rawStateDelta{}, errors.New(
+				"Expected array length parity for PropertyValue and matching Set cty.Value",
+			)
 		}
 
 		if len(pvElements) == 0 {
