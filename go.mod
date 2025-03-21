@@ -10,7 +10,7 @@ require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/davecgh/go-spew v1.1.1
 	github.com/go-test/deep v1.0.3
-	github.com/golang/glog v1.2.2
+	github.com/golang/glog v1.2.4
 	github.com/golang/protobuf v1.5.4
 	github.com/hashicorp/errwrap v1.1.0
 	github.com/hashicorp/go-cty v1.4.1-0.20200414143053-d3edf31b6320
@@ -46,7 +46,7 @@ require (
 	github.com/pulumi/inflector v0.1.1
 	github.com/pulumi/providertest v0.1.3
 	github.com/pulumi/pulumi-java/pkg v0.19.0
-	github.com/pulumi/pulumi-yaml v1.12.0
+	github.com/pulumi/pulumi-yaml v1.14.1
 	github.com/pulumi/schema-tools v0.1.2
 	github.com/pulumi/terraform-diff-reader v0.0.2
 	github.com/russross/blackfriday/v2 v2.1.0
@@ -59,7 +59,7 @@ require (
 	github.com/zclconf/go-cty v1.16.2
 	golang.org/x/crypto v0.33.0
 	golang.org/x/mod v0.22.0
-	golang.org/x/net v0.34.0
+	golang.org/x/net v0.35.0
 	golang.org/x/text v0.22.0
 	google.golang.org/grpc v1.69.4
 	google.golang.org/protobuf v1.36.3
@@ -94,7 +94,7 @@ require (
 	github.com/dustinkirkland/golang-petname v0.0.0-20191129215211-8e5a1ed0cff0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
-	github.com/go-jose/go-jose/v3 v3.0.3 // indirect
+	github.com/go-jose/go-jose/v3 v3.0.4 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/golang-jwt/jwt/v5 v5.2.1 // indirect
@@ -220,8 +220,8 @@ require (
 	github.com/pkg/term v1.1.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/posener/complete v1.2.3 // indirect
-	github.com/pulumi/pulumi/pkg/v3 v3.156.0
-	github.com/pulumi/pulumi/sdk/v3 v3.156.0
+	github.com/pulumi/pulumi/pkg/v3 v3.157.0
+	github.com/pulumi/pulumi/sdk/v3 v3.157.0
 	github.com/rivo/uniseg v0.4.4 // indirect
 	github.com/rogpeppe/go-internal v1.12.0 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect

@@ -564,9 +564,9 @@ func (p *providerServer) Construct(ctx context.Context,
 	options := pl.ConstructOptions{
 		Aliases:              aliases,
 		Dependencies:         dependencies,
-		Protect:              req.GetProtect(),
 		Providers:            req.GetProviders(),
 		PropertyDependencies: propertyDependencies,
+		Protect:              req.Protect,
 	}
 
 	result, err := p.provider.ConstructWithContext(ctx, info, typ, name, parent, inputs, options)
