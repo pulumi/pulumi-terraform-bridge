@@ -16,10 +16,12 @@ package tfbridge
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/pfutils"
 )
@@ -28,21 +30,27 @@ import (
 func (p *provider) UpgradeResourceState(
 	ctx context.Context,
 	rh *resourceHandle,
-	st *resourceState,
+	st *rawResourceState,
 ) (*upgradedResourceState, error) {
-	if st.TFSchemaVersion >= rh.schema.ResourceSchemaVersion() {
-		return &upgradedResourceState{st}, nil
-	}
 	tfType := rh.schema.Type(ctx).(tftypes.Object)
-	rawState, err := pfutils.NewRawState(tfType, st.Value)
-	if err != nil {
-		return nil, fmt.Errorf("error calling NewRawState: %w", err)
-	}
 	req := &tfprotov6.UpgradeResourceStateRequest{
 		TypeName: rh.terraformResourceName,
 		Version:  st.TFSchemaVersion,
-		RawState: rawState,
 	}
+
+	if st.RawState != nil {
+		req.RawState = st.RawState
+	} else if st.Value != nil {
+		rawState, err := pfutils.NewRawState(tfType, *st.Value)
+		if err != nil {
+			return nil, fmt.Errorf("error calling NewRawState: %w", err)
+		}
+		req.RawState = rawState
+	} else {
+		contract.Failf("rawResourceState should have either RawState or Value set")
+		return nil, errors.New("Contract failure")
+	}
+
 	resp, err := p.tfServer.UpgradeResourceState(ctx, req)
 	if err != nil {
 		return nil, fmt.Errorf("error calling UpgradeResourceState: %w", err)

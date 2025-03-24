@@ -307,14 +307,14 @@ func Test_rawstate_delta_serialization(t *testing.T) {
 
 	type testCase struct {
 		name   string
-		infl   rawStateDelta
+		infl   RawStateDelta
 		expect autogold.Value
 	}
 
 	testCases := []testCase{
 		{
 			name: "typedNull",
-			infl: rawStateDelta{TypedNull: &typedNullDelta{T: cty.Object(map[string]cty.Type{
+			infl: RawStateDelta{TypedNull: &typedNullDelta{T: cty.Object(map[string]cty.Type{
 				"x": cty.String,
 				"y": cty.Number,
 			})}},
@@ -332,7 +332,7 @@ func Test_rawstate_delta_serialization(t *testing.T) {
 		},
 		{
 			name: "pluralize-null",
-			infl: rawStateDelta{Pluralize: &pluralizeDelta{ElementType: &cty.String}},
+			infl: RawStateDelta{Pluralize: &pluralizeDelta{ElementType: &cty.String}},
 			expect: autogold.Expect(`{
  "plu": {
   "i": {},
@@ -342,8 +342,8 @@ func Test_rawstate_delta_serialization(t *testing.T) {
 		},
 		{
 			name: "pluralize-inner",
-			infl: rawStateDelta{Pluralize: &pluralizeDelta{
-				Inner: rawStateDelta{TypedNull: &typedNullDelta{T: cty.String}},
+			infl: RawStateDelta{Pluralize: &pluralizeDelta{
+				Inner: RawStateDelta{TypedNull: &typedNullDelta{T: cty.String}},
 			}},
 			expect: autogold.Expect(`{
  "plu": {
@@ -357,7 +357,7 @@ func Test_rawstate_delta_serialization(t *testing.T) {
 		},
 		{
 			name: "map-empty",
-			infl: rawStateDelta{Map: &mapDelta{
+			infl: RawStateDelta{Map: &mapDelta{
 				T: &cty.String,
 			}},
 			expect: autogold.Expect(`{
@@ -368,9 +368,9 @@ func Test_rawstate_delta_serialization(t *testing.T) {
 		},
 		{
 			name: "map-regular",
-			infl: rawStateDelta{
+			infl: RawStateDelta{
 				Map: &mapDelta{
-					ElementDeltas: map[resource.PropertyKey]rawStateDelta{
+					ElementDeltas: map[resource.PropertyKey]RawStateDelta{
 						"x": {TypedNull: &typedNullDelta{T: cty.Bool}},
 					},
 				},
@@ -389,7 +389,7 @@ func Test_rawstate_delta_serialization(t *testing.T) {
 		},
 		{
 			name: "obj",
-			infl: rawStateDelta{
+			infl: RawStateDelta{
 				Obj: &objDelta{
 					Ignored: map[resource.PropertyKey]struct{}{
 						"__meta": {},
@@ -397,7 +397,7 @@ func Test_rawstate_delta_serialization(t *testing.T) {
 					Renamed: map[resource.PropertyKey]string{
 						"fooBar": "foo_bar",
 					},
-					ElementDeltas: map[resource.PropertyKey]rawStateDelta{
+					ElementDeltas: map[resource.PropertyKey]RawStateDelta{
 						"fooBar": {
 							TypedNull: &typedNullDelta{
 								T: cty.Bool,
@@ -426,7 +426,7 @@ func Test_rawstate_delta_serialization(t *testing.T) {
 		},
 		{
 			name: "array-empty",
-			infl: rawStateDelta{
+			infl: RawStateDelta{
 				Array: &arrayDelta{
 					T: &cty.Bool,
 				},
@@ -440,9 +440,9 @@ func Test_rawstate_delta_serialization(t *testing.T) {
 		},
 		{
 			name: "array-regular",
-			infl: rawStateDelta{
+			infl: RawStateDelta{
 				Array: &arrayDelta{
-					ElementDeltas: map[int]rawStateDelta{
+					ElementDeltas: map[int]RawStateDelta{
 						1: {
 							TypedNull: &typedNullDelta{T: cty.String},
 						},
@@ -467,7 +467,7 @@ func Test_rawstate_delta_serialization(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			encoded := tc.infl.toPropertyValue()
 			t.Logf("encoded: %s", encoded.String())
-			back, err := newRawStateDeltaFromPropertyValue(encoded)
+			back, err := NewRawStateDeltaFromPropertyValue(encoded)
 			require.NoError(t, err)
 			require.Equalf(t, tc.infl, back, "turnaround")
 			encodedJSON, err := json.MarshalIndent(encoded.Mappable(), "", " ")
@@ -1153,7 +1153,7 @@ func Test_rawStateDelta_PropertyValue_serialization(t *testing.T) {
 
 	type testCase struct {
 		name     string
-		rsd      rawStateDelta
+		rsd      RawStateDelta
 		expect   autogold.Value
 		noExpect bool
 	}
@@ -1161,7 +1161,7 @@ func Test_rawStateDelta_PropertyValue_serialization(t *testing.T) {
 	testCases := []testCase{
 		{
 			name: "typedNull",
-			rsd:  rawStateDelta{TypedNull: &typedNullDelta{T: cty.Bool}},
+			rsd:  RawStateDelta{TypedNull: &typedNullDelta{T: cty.Bool}},
 			expect: autogold.Expect(resource.PropertyValue{V: resource.PropertyMap{
 				resource.PropertyKey("null"): resource.PropertyValue{V: resource.PropertyMap{
 					resource.PropertyKey("t"): resource.PropertyValue{V: "bool"},
@@ -1170,8 +1170,8 @@ func Test_rawStateDelta_PropertyValue_serialization(t *testing.T) {
 		},
 		{
 			name: "pluralize",
-			rsd: rawStateDelta{Pluralize: &pluralizeDelta{
-				Inner: rawStateDelta{TypedNull: &typedNullDelta{T: cty.Bool}},
+			rsd: RawStateDelta{Pluralize: &pluralizeDelta{
+				Inner: RawStateDelta{TypedNull: &typedNullDelta{T: cty.Bool}},
 				IsSet: true,
 			}},
 			expect: autogold.Expect(resource.PropertyValue{V: resource.PropertyMap{
@@ -1187,7 +1187,7 @@ func Test_rawStateDelta_PropertyValue_serialization(t *testing.T) {
 		},
 		{
 			name: "replace-secret",
-			rsd: rawStateDelta{
+			rsd: RawStateDelta{
 				Replace: newReplaceDelta(cty.TupleVal([]cty.Value{
 					cty.StringVal("OK"),
 					cty.NullVal(cty.Bool),
@@ -1213,9 +1213,9 @@ func Test_rawStateDelta_PropertyValue_serialization(t *testing.T) {
 		},
 		{
 			name: "replace-deep-secret",
-			rsd: rawStateDelta{
+			rsd: RawStateDelta{
 				Array: &arrayDelta{
-					ElementDeltas: map[int]rawStateDelta{
+					ElementDeltas: map[int]RawStateDelta{
 						0: {
 							Replace: newReplaceDelta(cty.TupleVal([]cty.Value{
 								cty.StringVal("OK"),
@@ -1235,7 +1235,7 @@ func Test_rawStateDelta_PropertyValue_serialization(t *testing.T) {
 			if !tc.noExpect {
 				tc.expect.Equal(t, pv)
 			}
-			back, err := newRawStateDeltaFromPropertyValue(pv)
+			back, err := NewRawStateDeltaFromPropertyValue(pv)
 			require.NoError(t, err)
 			require.Equal(t, tc.rsd.Replace, back.Replace)
 		})

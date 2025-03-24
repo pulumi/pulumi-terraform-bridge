@@ -53,12 +53,12 @@ const rawStateDeltaKey = "__pulumi_raw_state_delta"
 // It should be possible to store cty.Value alongside PropertyMap in Pulumi state, but this approach would require
 // additional storage. More pertinently, it would complicate editing state files in scenarios requiring state repair.
 //
-// The code takes a hybrid approach instead. It computes a rawStateDelta representing the difference between a
-// PropertyMap and a cty.Value, so that cty.Value need not be stored itself. In typical scenarios rawStateDelta is
+// The code takes a hybrid approach instead. It computes a RawStateDelta representing the difference between a
+// PropertyMap and a cty.Value, so that cty.Value need not be stored itself. In typical scenarios RawStateDelta is
 // fairly small. It falls back to storing the entirety of cty.Value if an efficient encoding cannot be computed.
 //
-// At read time, PropertyMap and rawStateDelta are read, and the original cty.Value is reconstructed from the pair.
-type rawStateDelta struct {
+// At read time, PropertyMap and RawStateDelta are read, and the original cty.Value is reconstructed from the pair.
+type RawStateDelta struct {
 	TypedNull *typedNullDelta `json:"null,omitempty"`
 	Pluralize *pluralizeDelta `json:"plu,omitempty"`
 	Map       *mapDelta       `json:"map,omitempty"`
@@ -70,7 +70,11 @@ type rawStateDelta struct {
 	Replace   *replaceDelta   `json:"replace,omitempty"`
 }
 
-func (d rawStateDelta) isEmpty() bool {
+func (d RawStateDelta) Recover(pv resource.PropertyValue) (cty.Value, error) {
+	return rawStateRecover(pv, d)
+}
+
+func (d RawStateDelta) isEmpty() bool {
 	if d.Pluralize != nil {
 		return false
 	}
@@ -101,7 +105,7 @@ func (d rawStateDelta) isEmpty() bool {
 	return true
 }
 
-func (d rawStateDelta) toPropertyValue() resource.PropertyValue {
+func (d RawStateDelta) ToPropertyValue() resource.PropertyValue {
 	if d.isEmpty() {
 		return resource.NewNullProperty()
 	}
@@ -127,14 +131,14 @@ func (d rawStateDelta) toPropertyValue() resource.PropertyValue {
 	return resource.NewPropertyValueRepl(result, nil /*replk*/, replv)
 }
 
-func newRawStateDeltaFromPropertyValue(pv resource.PropertyValue) (rawStateDelta, error) {
+func NewRawStateDeltaFromPropertyValue(pv resource.PropertyValue) (RawStateDelta, error) {
 	pvNoSecret := propertyvalue.RemoveSecrets(pv)
 	bytes, err := json.Marshal(pvNoSecret.Mappable())
 	contract.AssertNoErrorf(err, "Failed to json.Marshal(pv.Mappable())")
-	var rsd rawStateDelta
+	var rsd RawStateDelta
 	err = json.Unmarshal(bytes, &rsd)
 	if err != nil {
-		return rawStateDelta{}, err
+		return RawStateDelta{}, err
 	}
 	return rsd, nil
 }
@@ -148,7 +152,7 @@ type pluralizeDelta struct {
 	ElementType *cty.Type `json:"t,omitempty"`
 
 	// Delta to apply to `x` before pluralizing.
-	Inner rawStateDelta `json:"i,omitempty"`
+	Inner RawStateDelta `json:"i,omitempty"`
 
 	// This is a set and not a list.
 	IsSet bool `json:"set,omitempty"`
@@ -162,15 +166,15 @@ type typedNullDelta struct {
 // Primarily to distinguish maps from objects when recovering. Stores the type for empty maps.
 type mapDelta struct {
 	T             *cty.Type                              `json:"t,omitempty"`
-	ElementDeltas map[resource.PropertyKey]rawStateDelta `json:"m,omitempty"`
+	ElementDeltas map[resource.PropertyKey]RawStateDelta `json:"m,omitempty"`
 }
 
-func (mi *mapDelta) set(key resource.PropertyKey, value rawStateDelta) {
+func (mi *mapDelta) set(key resource.PropertyKey, value RawStateDelta) {
 	if value.isEmpty() {
 		return
 	}
 	if mi.ElementDeltas == nil {
-		mi.ElementDeltas = map[resource.PropertyKey]rawStateDelta{}
+		mi.ElementDeltas = map[resource.PropertyKey]RawStateDelta{}
 	}
 	mi.ElementDeltas[key] = value
 }
@@ -185,10 +189,10 @@ type objDelta struct {
 	// are omitted to minimize the payload. All other property names are stored under [Renamed].
 	Renamed map[resource.PropertyKey]string `json:"renamed,omitempty"`
 
-	ElementDeltas map[resource.PropertyKey]rawStateDelta `json:"o,omitempty"`
+	ElementDeltas map[resource.PropertyKey]RawStateDelta `json:"o,omitempty"`
 }
 
-func (oi *objDelta) set(key string, propertyKey resource.PropertyKey, infl rawStateDelta) {
+func (oi *objDelta) set(key string, propertyKey resource.PropertyKey, infl RawStateDelta) {
 	if PulumiToTerraformName(string(propertyKey), nil, nil) != key {
 		if oi.Renamed == nil {
 			oi.Renamed = make(map[resource.PropertyKey]string)
@@ -199,7 +203,7 @@ func (oi *objDelta) set(key string, propertyKey resource.PropertyKey, infl rawSt
 		return
 	}
 	if oi.ElementDeltas == nil {
-		oi.ElementDeltas = map[resource.PropertyKey]rawStateDelta{}
+		oi.ElementDeltas = map[resource.PropertyKey]RawStateDelta{}
 	}
 	oi.ElementDeltas[propertyKey] = infl
 }
@@ -214,15 +218,15 @@ func (oi *objDelta) ignore(key resource.PropertyKey) {
 // Exists to encode inner deltas on array elements. Stores the type for empty arrays.
 type arrayDelta struct {
 	T             *cty.Type             `json:"t,omitempty"`
-	ElementDeltas map[int]rawStateDelta `json:"arr"`
+	ElementDeltas map[int]RawStateDelta `json:"arr"`
 }
 
-func (ai *arrayDelta) set(key int, value rawStateDelta) {
+func (ai *arrayDelta) set(key int, value RawStateDelta) {
 	if value.isEmpty() {
 		return
 	}
 	if ai.ElementDeltas == nil {
-		ai.ElementDeltas = map[int]rawStateDelta{}
+		ai.ElementDeltas = map[int]RawStateDelta{}
 	}
 	ai.ElementDeltas[key] = value
 }
@@ -234,15 +238,15 @@ type setDelta struct {
 	// Key assumption here is that no re-ordering is possible here.
 	//
 	// Alternatively we could index on hashes of PropertyValue, and check for hash-collisions at write time.
-	ElementDeltas map[int]rawStateDelta `json:"set"`
+	ElementDeltas map[int]RawStateDelta `json:"set"`
 }
 
-func (ai *setDelta) set(key int, value rawStateDelta) {
+func (ai *setDelta) set(key int, value RawStateDelta) {
 	if value.isEmpty() {
 		return
 	}
 	if ai.ElementDeltas == nil {
-		ai.ElementDeltas = map[int]rawStateDelta{}
+		ai.ElementDeltas = map[int]RawStateDelta{}
 	}
 	ai.ElementDeltas[key] = value
 }
@@ -278,7 +282,7 @@ func newReplaceDelta(value cty.Value) *replaceDelta {
 	return &replaceDelta{V: bytes, T: value.Type()}
 }
 
-func rawStateRecover(pv resource.PropertyValue, infl rawStateDelta) (cty.Value, error) {
+func rawStateRecover(pv resource.PropertyValue, infl RawStateDelta) (cty.Value, error) {
 	if pv.IsSecret() {
 		return rawStateRecover(pv.SecretValue().Element, infl)
 	}
@@ -519,29 +523,28 @@ func rawStateRecoverNatural(pv resource.PropertyValue) (cty.Value, error) {
 	}
 }
 
-func rawStateComputeDelta(
+func RawStateComputeDelta(
 	ctx context.Context,
 	schemaMap shim.SchemaMap, // top-level schema for a resource
 	schemaInfos map[string]*SchemaInfo, // top-level schema overrides for a resource
 	outMap resource.PropertyMap,
 	rawState cty.Value,
-) (resource.PropertyValue, error) {
+) RawStateDelta {
 	ih := &rawStateDeltaHelper{
 		schemaMap:   schemaMap,
 		schemaInfos: schemaInfos,
 		logger:      log.TryGetLogger(ctx),
 	}
 	pv := resource.NewObjectProperty(outMap)
-	infl := ih.delta(pv, rawState)
+	delta := ih.delta(pv, rawState)
 
-	if err := rawStateTurnaroundCheck(rawState, pv, infl); err != nil {
-		return resource.PropertyValue{}, err
-	}
+	err := rawStateTurnaroundCheck(rawState, pv, delta)
+	contract.AssertNoErrorf(err, "rawstate: failed computing delta")
 
-	return infl.toPropertyValue(), nil
+	return delta
 }
 
-func rawStateTurnaroundCheck(rawState cty.Value, pv resource.PropertyValue, infl rawStateDelta) error {
+func rawStateTurnaroundCheck(rawState cty.Value, pv resource.PropertyValue, infl RawStateDelta) error {
 	mm := rawState.AsValueMap()
 	delete(mm, "timeouts")
 	rawStateWithoutTimeouts := cty.ObjectVal(mm)
@@ -560,7 +563,7 @@ func rawStateTurnaroundCheck(rawState cty.Value, pv resource.PropertyValue, infl
 				"rawState =%s\ndelta=%#v",
 				ctyValueRecovered.GoString(),
 				rawStateWithoutTimeouts.GoString(),
-				infl.toPropertyValue().String(),
+				infl.ToPropertyValue().String(),
 			)
 		}
 		return errors.New("[rawstate]: turnaround check failed")
@@ -603,7 +606,7 @@ type rawStateDeltaHelper struct {
 	logger      log.Logger
 }
 
-func (ih *rawStateDeltaHelper) delta(pv resource.PropertyValue, v cty.Value) rawStateDelta {
+func (ih *rawStateDeltaHelper) delta(pv resource.PropertyValue, v cty.Value) RawStateDelta {
 	return ih.deltaAt(walk.NewSchemaPath(), pv, v)
 }
 
@@ -611,7 +614,7 @@ func (ih *rawStateDeltaHelper) deltaAt(
 	path walk.SchemaPath,
 	pv resource.PropertyValue,
 	v cty.Value,
-) rawStateDelta {
+) RawStateDelta {
 	delta, err := ih.computeDeltaAt(path, pv, v)
 	if err == nil {
 		return delta
@@ -624,14 +627,14 @@ func (ih *rawStateDeltaHelper) deltaAt(
 			err,
 		))
 	}
-	return rawStateDelta{Replace: newReplaceDelta(v)}
+	return RawStateDelta{Replace: newReplaceDelta(v)}
 }
 
 func (ih *rawStateDeltaHelper) computeDeltaAt(
 	path walk.SchemaPath,
 	pv resource.PropertyValue,
 	v cty.Value,
-) (rawStateDelta, error) {
+) (RawStateDelta, error) {
 	if pv.IsSecret() {
 		return ih.deltaAt(path, pv.SecretValue().Element, v), nil
 	}
@@ -647,7 +650,7 @@ func (ih *rawStateDeltaHelper) computeDeltaAt(
 	if len(path) == 1 {
 		if step, ok := path[0].(walk.GetAttrStep); ok {
 			if step.Name == "timeouts" {
-				return rawStateDelta{}, nil
+				return RawStateDelta{}, nil
 			}
 		}
 	}
@@ -660,7 +663,7 @@ func (ih *rawStateDeltaHelper) computeDeltaAt(
 			"Assets must be matched with SchemaInfo with AssetTranslation [%q]",
 			path.MustEncodeSchemaPath())
 		at := schemaInfo.Asset
-		return rawStateDelta{Asset: &assetDelta{
+		return RawStateDelta{Asset: &assetDelta{
 			Kind:      at.Kind,
 			Format:    at.Format,
 			HashField: at.HashField,
@@ -669,42 +672,42 @@ func (ih *rawStateDeltaHelper) computeDeltaAt(
 
 	switch {
 	case v.IsNull():
-		return rawStateDelta{TypedNull: &typedNullDelta{T: v.Type()}}, nil
+		return RawStateDelta{TypedNull: &typedNullDelta{T: v.Type()}}, nil
 	case v.Type().Equals(cty.Number) && pv.IsString():
-		return rawStateDelta{Num: &numDelta{}}, nil
+		return RawStateDelta{Num: &numDelta{}}, nil
 	case v.Type().IsPrimitiveType():
-		return rawStateDelta{}, nil
+		return RawStateDelta{}, nil
 	case v.Type().IsListType():
 		elements := v.AsValueSlice()
 
 		// Checking if [] got encoded as Null due to MaxItems=1.
 		if len(elements) == 0 && pv.IsNull() {
 			t := v.Type().ElementType()
-			return rawStateDelta{Pluralize: &pluralizeDelta{ElementType: &t}}, nil
+			return RawStateDelta{Pluralize: &pluralizeDelta{ElementType: &t}}, nil
 		}
 
 		// Checking if [x] got encoded as x due to MaxItems=1.
 		if len(elements) == 1 && !pv.IsArray() {
 			subPath := path.Element()
 			inner := ih.deltaAt(subPath, pv, elements[0])
-			return rawStateDelta{Pluralize: &pluralizeDelta{Inner: inner}}, nil
+			return RawStateDelta{Pluralize: &pluralizeDelta{Inner: inner}}, nil
 		}
 
 		// Otherwise PropertyValue should be an array just like the cty.Value is a list.
 		if !pv.IsArray() {
-			return rawStateDelta{}, errors.New("Expected an Array PropertyValue to match a List cty.Value")
+			return RawStateDelta{}, errors.New("Expected an Array PropertyValue to match a List cty.Value")
 		}
 
 		pvElements := pv.ArrayValue()
 
 		if len(pvElements) != len(elements) {
-			return rawStateDelta{}, errors.New(
+			return RawStateDelta{}, errors.New(
 				"Expected array length parity for PropertyValue and matching cty.Value",
 			)
 		}
 
 		if len(pvElements) == 0 {
-			return rawStateDelta{
+			return RawStateDelta{
 				Array: &arrayDelta{T: v.Type().ListElementType()},
 			}, nil
 		}
@@ -717,23 +720,23 @@ func (ih *rawStateDeltaHelper) computeDeltaAt(
 			arrayInfl.set(k, infl)
 		}
 
-		return rawStateDelta{Array: &arrayInfl}, nil
+		return RawStateDelta{Array: &arrayInfl}, nil
 	case v.Type().IsMapType():
 		elements := v.AsValueMap()
 		if !pv.IsObject() {
-			return rawStateDelta{}, errors.New("Expected an Object PropertyValue to match a Map cty.Value")
+			return RawStateDelta{}, errors.New("Expected an Object PropertyValue to match a Map cty.Value")
 		}
 
 		pvElements := pv.ObjectValue()
 
 		if len(pvElements) != len(elements) {
-			return rawStateDelta{}, errors.New(
+			return RawStateDelta{}, errors.New(
 				"Expected map length parity for PropertyValue and matching cty.Value",
 			)
 		}
 
 		if len(pvElements) == 0 {
-			return rawStateDelta{Map: &mapDelta{T: v.Type().MapElementType()}}, nil
+			return RawStateDelta{Map: &mapDelta{T: v.Type().MapElementType()}}, nil
 		}
 
 		mapInfl := mapDelta{}
@@ -745,7 +748,7 @@ func (ih *rawStateDeltaHelper) computeDeltaAt(
 			mapInfl.set(key, infl)
 		}
 
-		return rawStateDelta{Map: &mapInfl}, nil
+		return RawStateDelta{Map: &mapInfl}, nil
 
 	case v.Type().IsSetType():
 		// Key assumption here is that when Pulumi translates Set values in states and projects them as Array
@@ -758,7 +761,7 @@ func (ih *rawStateDeltaHelper) computeDeltaAt(
 		// Checking if [] got encoded as Null due to MaxItems=1.
 		if len(elements) == 0 && pv.IsNull() {
 			t := v.Type().ElementType()
-			return rawStateDelta{
+			return RawStateDelta{
 				Pluralize: &pluralizeDelta{
 					ElementType: &t,
 					IsSet:       true,
@@ -770,7 +773,7 @@ func (ih *rawStateDeltaHelper) computeDeltaAt(
 		if len(elements) == 1 && !pv.IsArray() {
 			subPath := path.Element()
 			inner := ih.deltaAt(subPath, pv, elements[0])
-			return rawStateDelta{Pluralize: &pluralizeDelta{
+			return RawStateDelta{Pluralize: &pluralizeDelta{
 				Inner: inner,
 				IsSet: true,
 			}}, nil
@@ -778,19 +781,19 @@ func (ih *rawStateDeltaHelper) computeDeltaAt(
 
 		// Otherwise PropertyValue should be an array just like the cty.Value is a set.
 		if !pv.IsArray() {
-			return rawStateDelta{}, errors.New("Expected an Array PropertyValue to match a Set cty.Value")
+			return RawStateDelta{}, errors.New("Expected an Array PropertyValue to match a Set cty.Value")
 		}
 
 		pvElements := pv.ArrayValue()
 
 		if len(pvElements) != len(elements) {
-			return rawStateDelta{}, errors.New(
+			return RawStateDelta{}, errors.New(
 				"Expected array length parity for PropertyValue and matching Set cty.Value",
 			)
 		}
 
 		if len(pvElements) == 0 {
-			return rawStateDelta{
+			return RawStateDelta{
 				Set: &setDelta{T: v.Type().SetElementType()},
 			}, nil
 		}
@@ -803,7 +806,7 @@ func (ih *rawStateDeltaHelper) computeDeltaAt(
 			setInfl.set(k, infl)
 		}
 
-		return rawStateDelta{Set: &setInfl}, nil
+		return RawStateDelta{Set: &setInfl}, nil
 
 	case v.Type().IsObjectType():
 		elements := v.AsValueMap()
@@ -817,7 +820,7 @@ func (ih *rawStateDeltaHelper) computeDeltaAt(
 				}
 				infl.ignore(k)
 			}
-			return rawStateDelta{Obj: &infl}, nil
+			return RawStateDelta{Obj: &infl}, nil
 		}
 
 		infl := objDelta{}
@@ -828,7 +831,7 @@ func (ih *rawStateDeltaHelper) computeDeltaAt(
 			subPath := path.GetAttr(k)
 			keyRaw, err := TerraformToPulumiNameAtPath(subPath, ih.schemaMap, ih.schemaInfos)
 			if err != nil {
-				return rawStateDelta{}, err
+				return RawStateDelta{}, err
 			}
 			key := resource.PropertyKey(keyRaw)
 			delta := ih.deltaAt(subPath, pvElements[key], v)
@@ -845,13 +848,13 @@ func (ih *rawStateDeltaHelper) computeDeltaAt(
 			}
 		}
 
-		return rawStateDelta{Obj: &infl}, nil
+		return RawStateDelta{Obj: &infl}, nil
 	case v.Type().IsTupleType():
-		return rawStateDelta{}, errors.New("cty.Value TupleType is not supported")
+		return RawStateDelta{}, errors.New("cty.Value TupleType is not supported")
 	case v.Type().IsCapsuleType():
-		return rawStateDelta{}, errors.New("cty.Value CapsuleType is not supported")
+		return RawStateDelta{}, errors.New("cty.Value CapsuleType is not supported")
 	default:
 		contract.Failf("rawStateDeltaHelper does not recognize this cty.Value case")
-		return rawStateDelta{}, errors.New("impossible")
+		return RawStateDelta{}, errors.New("impossible")
 	}
 }

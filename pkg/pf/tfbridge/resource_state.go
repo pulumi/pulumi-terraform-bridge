@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,15 +21,23 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/hashicorp/go-cty/cty"
+	ctyjson "github.com/hashicorp/go-cty/cty/json"
+	ctymsgpack "github.com/hashicorp/go-cty/cty/msgpack"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/convert"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 
-const metaKey = "__meta"
+const (
+	metaKey          = "__meta"
+	rawStateDeltaKey = "__pulumi_raw_state_delta"
+)
 
 type resourceState struct {
 	TFSchemaVersion int64
@@ -51,6 +59,14 @@ func (u *upgradedResourceState) ToPropertyMap(ctx context.Context, rh *resourceH
 	if err != nil {
 		return nil, err
 	}
+
+	s, err := convertStateToCtyValue(rh.schema.Type(ctx), u.state.Value)
+	if err != nil {
+		return nil, err
+	}
+	delta := tfbridge.RawStateComputeDelta(ctx, rh.schema.Shim(), rh.pulumiResourceInfo.GetFields(), propMap, s)
+	propMap[rawStateDeltaKey] = delta.ToPropertyValue()
+
 	return updateMeta(propMap, metaState{
 		SchemaVersion: u.state.TFSchemaVersion,
 		PrivateState:  u.state.Private,
@@ -70,11 +86,30 @@ func newResourceState(ctx context.Context, rh *resourceHandle, private []byte) *
 	}
 }
 
-func parseResourceState(rh *resourceHandle, props resource.PropertyMap) (*resourceState, error) {
+// Represents Terraform state as parsed from a Pulumi state file.
+type rawResourceState struct {
+	TFSchemaVersion int64
+	Private         []byte
+
+	// Newer versions of the bridge recover RawState from Pulumi state.
+	RawState *tfprotov6.RawState
+
+	// Legacy bridge states do not have enough information to recover [RawState]; instead they approximate the
+	// [Value] by converting the Pulumi state [PropertyMap] to the Terraform type using the current schema. This
+	// causes problems if the current schema is different from the schema the state was written with.
+	Value *tftypes.Value
+}
+
+func parseResourceState(
+	ctx context.Context,
+	rh *resourceHandle,
+	props resource.PropertyMap,
+) (*rawResourceState, error) {
 	parsedMeta, err := parseMeta(props)
 	if err != nil {
 		return nil, err
 	}
+
 	stateVersion := parsedMeta.SchemaVersion
 
 	if rh.pulumiResourceInfo.PreStateUpgradeHook != nil {
@@ -96,15 +131,51 @@ func parseResourceState(rh *resourceHandle, props resource.PropertyMap) (*resour
 		}
 	}
 
+	// States written by newer version of the bridge should be able to recover the raw state.
+	if deltaPV, ok := props[rawStateDeltaKey]; ok {
+		rawState, err := recoverRawState(props, deltaPV)
+
+		// Log details at Debug level since they may contain secrets.
+		tflog.Debug(ctx, "[pf/tfbridge] Failed to recover raw state for Plugin Framework",
+			map[string]any{
+				"token": rh.token,
+				"props": props.Mappable(),
+			})
+
+		contract.AssertNoErrorf(err, "Failed to recover raw state for Plugin Framework")
+		return &rawResourceState{
+			RawState:        rawState,
+			TFSchemaVersion: stateVersion,
+			Private:         parsedMeta.PrivateState,
+		}, nil
+	}
+
+	// Otherwise fallback on imprecise parsing.
 	value, err := convert.EncodePropertyMap(rh.encoder, props)
 	if err != nil {
 		return nil, err
 	}
-	return &resourceState{
-		Value:           value,
+	return &rawResourceState{
 		TFSchemaVersion: stateVersion,
+		Value:           &value,
 		Private:         parsedMeta.PrivateState,
 	}, nil
+}
+
+func recoverRawState(props resource.PropertyMap, deltaPV resource.PropertyValue) (*tfprotov6.RawState, error) {
+	delta, err := tfbridge.NewRawStateDeltaFromPropertyValue(deltaPV)
+	if err != nil {
+		return nil, fmt.Errorf("NewRawStateDeltaFromPropertyValue failed: %w", err)
+	}
+	stateValue, err := delta.Recover(resource.NewObjectProperty(props))
+	if err != nil {
+		return nil, fmt.Errorf("delta.Recover failed: %w", err)
+	}
+	rawJSON, err := ctyjson.Marshal(stateValue, stateValue.Type())
+	if err != nil {
+		return nil, fmt.Errorf("ctyjson.Marshal failed: %w", err)
+	}
+	return &tfprotov6.RawState{JSON: rawJSON}, nil
 }
 
 func parseResourceStateFromTF(
@@ -118,7 +189,7 @@ func parseResourceStateFromTF(
 }
 
 func parseResourceStateFromTFInner(
-	ctx context.Context,
+	_ context.Context,
 	resourceTerraformType tftypes.Type,
 	resourceSchemaVersion int64,
 	state *tfprotov6.DynamicValue,
@@ -217,4 +288,22 @@ func updateMeta(m resource.PropertyMap, newMeta metaState) (resource.PropertyMap
 	c := m.Copy()
 	c[metaKey] = resource.NewStringProperty(string(updatedMeta))
 	return c, nil
+}
+
+func convertTypeToCty(t tftypes.Type) (cty.Type, error) {
+	ctyTypeJSON, err := json.Marshal(t)
+	contract.AssertNoErrorf(err, "tftypes.Type json.Marshal() failed unexpectedly")
+	return ctyjson.UnmarshalType(ctyTypeJSON)
+}
+
+func convertStateToCtyValue(objectType tftypes.Type, value tftypes.Value) (cty.Value, error) {
+	objectTypeCty, err := convertTypeToCty(objectType)
+	if err != nil {
+		return cty.NilVal, err
+	}
+	dv, err := tfprotov6.NewDynamicValue(objectType, value)
+	if err != nil {
+		return cty.NilVal, err
+	}
+	return ctymsgpack.Unmarshal(dv.MsgPack, objectTypeCty)
 }
