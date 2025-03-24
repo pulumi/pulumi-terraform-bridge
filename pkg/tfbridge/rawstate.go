@@ -849,31 +849,3 @@ func (ih *rawStateDeltaHelper) computeDeltaAt(
 		return rawStateDelta{}, errors.New("impossible")
 	}
 }
-
-// func rawStateParseDelta(rawData any) (rawStateDelta, error) {
-// 	bytes, err := json.Marshal(rawData)
-// 	if err != nil {
-// 		return rawStateDelta{}, err
-// 	}
-
-// 	var result rawStateDelta
-// 	if err := json.Unmarshal(bytes, &result); err != nil {
-// 		return rawStateDelta{}, nil
-// 	}
-
-// 	return result, nil
-// }
-
-// func rawStateEncodeDelta(infl rawStateDelta) (any, error) {
-// 	bytes, err := json.Marshal(infl)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	var result any
-// 	if err := json.Unmarshal(bytes, &result); err != nil {
-// 		return nil, err
-// 	}
-
-// 	return result, nil
-// }
