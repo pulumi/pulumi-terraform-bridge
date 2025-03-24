@@ -2715,7 +2715,8 @@ func TestTransformFromState(t *testing.T) {
 		    "properties": {
 		      "id": "*",
                       "stringPropertyValue": "NEW",
-		      "__meta": "*"
+		      "__meta": "*",
+		      "__pulumi_raw_state_delta": "*"
 		    }
 		  }
 		}`)
@@ -2739,7 +2740,8 @@ func TestTransformFromState(t *testing.T) {
 		    "properties": {
 		      "id": "*",
 		      "stringPropertyValue": "SET",
-		      "__meta": "*"
+		      "__meta": "*",
+		      "__pulumi_raw_state_delta": "*"
 		    }
 		  }
 		}`)
@@ -2798,7 +2800,8 @@ func TestTransformFromState(t *testing.T) {
 		    "properties": {
 			"id": "*",
 			"stringPropertyValue": "SET",
-			"__meta": "*"
+			"__meta": "*",
+                        "__pulumi_raw_state_delta": "*"
 		    }
 		  }
 		}`)
