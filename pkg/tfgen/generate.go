@@ -1753,6 +1753,12 @@ func propertyName(key string, sch shim.SchemaMap, custom map[string]*tfbridge.Sc
 	// BUGBUG: work around issue in the Elastic Transcoder where a field has a trailing ":".
 	key = strings.TrimSuffix(key, ":")
 
+	// "pulumi" is a reserved word.
+	// Rewrite the supplied upstream key to something compatible when there is an upstream clash.
+	if key == "pulumi" {
+		key = "pulumi_info"
+	}
+
 	return tfbridge.TerraformToPulumiNameV2(key, sch, custom)
 }
 
