@@ -36,7 +36,8 @@ func TestUpdateWritesSchemaVersion(t *testing.T) {
 	    "olds": {
 	      "__meta": "{\"schema_version\": \"2\"}",
 	      "length": 1,
-	      "result": "x"
+	      "result": "x",
+              "id": "old-id"
 	    },
 	    "news": {
 	      "length": 2
@@ -45,6 +46,7 @@ func TestUpdateWritesSchemaVersion(t *testing.T) {
 	  "response": {
 	    "properties": {
 	      "__meta": "{\"schema_version\":\"2\"}",
+              "__pulumi_raw_state_delta": "*",
 	      "id": "*",
 	      "length": 2,
 	      "lower": true,

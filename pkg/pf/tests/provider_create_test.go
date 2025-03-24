@@ -244,6 +244,7 @@ func TestCreateWithSchemaBasedSecrets(t *testing.T) {
 	      "id": "none",
 	      "properties": {
 		"__meta": "{\"schema_version\":\"3\"}",
+                "__pulumi_raw_state_delta": "*",
 		"bcryptHash": {
 		  "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
 		  "value": "*"
