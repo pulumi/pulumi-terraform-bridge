@@ -85,7 +85,8 @@ func TestUpdateWithIntID(t *testing.T) {
           },
           "response": {
             "properties": {
-              "id": "90"
+              "id": "90",
+              "__pulumi_raw_state_delta": "*"
             }
           }
         }

@@ -253,6 +253,7 @@ func TestTransformFromState(t *testing.T) {
 		  },
 		  "response": {
 		    "properties": {
+                     "__pulumi_raw_state_delta": "*",
 		      "stringPropertyValue": "SET"
 		    }
 		  }
@@ -310,7 +311,8 @@ func TestTransformFromState(t *testing.T) {
 	            "inputs": "*",
 		    "properties": {
                         "id": "0",
-			"stringPropertyValue": "SET"
+			"stringPropertyValue": "SET",
+                        "__pulumi_raw_state_delta": "*"
 		    }
 		  }
 		}`)

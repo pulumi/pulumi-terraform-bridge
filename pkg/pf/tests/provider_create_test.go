@@ -44,7 +44,8 @@ func TestCreateWithComputedOptionals(t *testing.T) {
             "id": "r1",
             "properties": {
               "ecdsacurve": "P384",
-              "id": "r1"
+              "id": "r1",
+              "__pulumi_raw_state_delta": "*"
             }
           }
         }
@@ -67,7 +68,8 @@ func TestCreateWithIntID(t *testing.T) {
           "response": {
             "id": "1234",
             "properties": {
-              "id": "1234"
+              "id": "1234",
+              "__pulumi_raw_state_delta": "*"
             }
           }
         }
@@ -93,6 +95,7 @@ func TestCreateWritesSchemaVersion(t *testing.T) {
 	    "id": "*",
 	    "properties": {
 	      "__meta": "{\"schema_version\":\"2\"}",
+              "__pulumi_raw_state_delta": "*",
 	      "id": "*",
 	      "result": "*",
 	      "length": 1,
@@ -300,7 +303,8 @@ func TestCreateSupportsCustomID(t *testing.T) {
             "properties": {
               "id": "customID2",
               "length": 2,
-              "separator": "BbAXG:}h"
+              "separator": "BbAXG:}h",
+              "__pulumi_raw_state_delta": "*"
             }
           }
 	}`
