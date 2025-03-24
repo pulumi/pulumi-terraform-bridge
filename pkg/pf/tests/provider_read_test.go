@@ -168,6 +168,7 @@ func TestImportRandomPassword(t *testing.T) {
 	    "id": "none",
 	    "properties": {
 	      "__meta": "{\"schema_version\":\"3\"}",
+              "__pulumi_raw_state_delta": "*",
 	      "bcryptHash": "*",
 	      "id": "none",
 	      "length": 11,
