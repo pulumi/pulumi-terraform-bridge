@@ -177,13 +177,19 @@ func (mi *mapDelta) set(key resource.PropertyKey, value rawStateDelta) {
 
 // Distinguish objects from maps when recovering, record renamed properties.
 type objDelta struct {
-	Ignored       map[resource.PropertyKey]struct{}      `json:"ignored,omitempty"`
-	Renamed       map[resource.PropertyKey]string        `json:"renamed,omitempty"`
+	Ignored map[resource.PropertyKey]struct{} `json:"ignored,omitempty"`
+
+	// Store a TF proprety name for non-typical properties.
+	//
+	// For typical properties, [PulumiToTerraformName] without any schema will compute the matching TF name. These
+	// are omitted to minimize the payload. All other property names are stored under [Renamed].
+	Renamed map[resource.PropertyKey]string `json:"renamed,omitempty"`
+
 	ElementDeltas map[resource.PropertyKey]rawStateDelta `json:"o,omitempty"`
 }
 
 func (oi *objDelta) set(key string, propertyKey resource.PropertyKey, infl rawStateDelta) {
-	if string(propertyKey) != key {
+	if PulumiToTerraformName(string(propertyKey), nil, nil) != key {
 		if oi.Renamed == nil {
 			oi.Renamed = make(map[resource.PropertyKey]string)
 		}
@@ -353,7 +359,7 @@ func rawStateRecover(pv resource.PropertyValue, infl rawStateDelta) (cty.Value, 
 			}
 			name, gotName := infl.Obj.Renamed[k]
 			if !gotName {
-				name = string(k)
+				name = PulumiToTerraformName(string(k), nil, nil)
 			}
 			elementInfl := infl.Obj.ElementDeltas[k]
 			element, err := rawStateRecover(v, elementInfl)
