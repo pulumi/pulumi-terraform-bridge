@@ -53,5 +53,6 @@ func TestGenRandom(t *testing.T) {
 			require.NoError(t, err)
 			testutils.ReplayFile(t, server, trace)
 		})
+
 	}
 }
