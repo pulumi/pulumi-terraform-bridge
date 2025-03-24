@@ -179,7 +179,7 @@ func (mi *mapDelta) set(key resource.PropertyKey, value rawStateDelta) {
 type objDelta struct {
 	Ignored map[resource.PropertyKey]struct{} `json:"ignored,omitempty"`
 
-	// Store a TF proprety name for non-typical properties.
+	// Store a TF property name for non-typical properties.
 	//
 	// For typical properties, [PulumiToTerraformName] without any schema will compute the matching TF name. These
 	// are omitted to minimize the payload. All other property names are stored under [Renamed].
