@@ -72,15 +72,11 @@ tests/bin/pulumi-tfgen-muxedrandom::
 	echo '{}' > tests/internal/testprovider/cmd/pulumi-resource-muxedrandom/bridge-metadata.json
 	(cd tests/internal/testprovider/cmd/pulumi-tfgen-muxedrandom && go build -o ../../../../bin/)
 
-gen.testdata::
-	(cd tests/testdatagen/genrandom && ./generate.sh)
-
 .PHONY: test tidy
 
 tidy::
 	go mod tidy
 	cd tests && go mod tidy
 	cd dynamic && go mod tidy
-	cd tests/testdatagen/genrandom && go mod tidy
 
 .PHONY: todos
