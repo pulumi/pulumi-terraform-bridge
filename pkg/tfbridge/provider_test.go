@@ -3395,7 +3395,8 @@ func testImport(t *testing.T, newProvider func(*schema.Provider) shim.Provider) 
 		    "properties": {
 		      "id": "res1",
 		      "stringPropertyValue": "imported",
-		      "__meta": "*"
+		      "__meta": "*",
+                      "__pulumi_raw_state_delta": "*"
 		    },
 		    "id": "res1"
 		  }
@@ -3480,7 +3481,8 @@ func testRefresh(t *testing.T, newProvider func(*schema.Provider) shim.Provider)
 		    "properties": {
 		      "id": "res1",
 		      "stringPropertyValue": "imported",
-		      "__meta": "*"
+		      "__meta": "*",
+                      "__pulumi_raw_state_delta": "*"
 		    },
 		    "id": "res1"
 		  }
@@ -3545,6 +3547,7 @@ func testRefresh(t *testing.T, newProvider func(*schema.Provider) shim.Provider)
 		    "properties": {
                       "id": "someres",
                       "__meta": "*",
+                      "__pulumi_raw_state_delta": "*",
 		      "stringPropertyValue": {
 			"4dabf18193072939515e22adb298388d": "c44067f5952c0a294b673a41bacd8c17",
 			"hash": "a72e573d8c91ec1c6bb0dfdf641bc2de1e2417c0d980ecfcdf039c2a9bcbbf67"

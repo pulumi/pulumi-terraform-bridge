@@ -164,7 +164,7 @@ func TestMuxedAliasCreate(t *testing.T) {
 	      "number": 4,
 	      "suggestionUpdated": false,
               "suggestion": "*",
-              "__meta": "*"
+              "__pulumi_raw_state_delta": "*"
 	    }
 	  },
 	  "metadata": {

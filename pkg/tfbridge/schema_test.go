@@ -2970,8 +2970,9 @@ func TestExtractSchemaInputsNestedMaxItemsOne(t *testing.T) {
 			outs, err := plugin.UnmarshalProperties(resp.GetProperties(), plugin.MarshalOptions{})
 			assert.NoError(t, err)
 
-			// Ignore __meta as it can get complicated.
-			delete(outs, "__meta")
+			// Ignore special keys as the values can get complicated.
+			delete(outs, metaKey)
+			delete(outs, rawStateDeltaKey)
 			assert.Equal(t, tt.expectedOutputs, outs, "outputs")
 
 			ins, err := plugin.UnmarshalProperties(resp.GetInputs(), plugin.MarshalOptions{})
