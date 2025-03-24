@@ -34,9 +34,15 @@ func (p *provider) UpgradeResourceState(
 		return &upgradedResourceState{st}, nil
 	}
 	tfType := rh.schema.Type(ctx).(tftypes.Object)
-	rawState, err := pfutils.NewRawState(tfType, st.Value)
-	if err != nil {
-		return nil, fmt.Errorf("error calling NewRawState: %w", err)
+	var rawState *tfprotov6.RawState
+	if st.RawStateValue != nil {
+		rawState = &tfprotov6.RawState{JSON: *st.RawStateValue}
+	} else {
+		var err error
+		rawState, err = pfutils.NewRawState(tfType, st.Value)
+		if err != nil {
+			return nil, fmt.Errorf("error calling NewRawState: %w", err)
+		}
 	}
 	req := &tfprotov6.UpgradeResourceStateRequest{
 		TypeName: rh.terraformResourceName,

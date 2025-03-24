@@ -35,6 +35,7 @@ type resourceState struct {
 	TFSchemaVersion int64
 	Value           tftypes.Value
 	Private         []byte
+	RawStateValue   *[]byte
 }
 
 // Resource state where UpgradeResourceState has been already done if necessary.
@@ -70,7 +71,9 @@ func newResourceState(ctx context.Context, rh *resourceHandle, private []byte) *
 	}
 }
 
-func parseResourceState(rh *resourceHandle, props resource.PropertyMap) (*resourceState, error) {
+func parseResourceState(
+	ctx context.Context, rh *resourceHandle, props resource.PropertyMap, resID resource.ID,
+) (*resourceState, error) {
 	parsedMeta, err := parseMeta(props)
 	if err != nil {
 		return nil, err
@@ -100,10 +103,28 @@ func parseResourceState(rh *resourceHandle, props resource.PropertyMap) (*resour
 	if err != nil {
 		return nil, err
 	}
+
+	var rawStateValue *[]byte
+	// If there was a schema change, we need to parse the raw state
+	if rh.schema.ResourceSchemaVersion() > stateVersion {
+		rawSchema, err := rh.schema.ResourceProtoSchema(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		rawStateValue, err = parseRawResourceState(
+			ctx, rh.pulumiResourceInfo, rh.schemaOnlyShimResource.Schema(), rawSchema,
+			rh.terraformResourceName, resID, int(rh.schema.ResourceSchemaVersion()), props)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return &resourceState{
 		Value:           value,
 		TFSchemaVersion: stateVersion,
 		Private:         parsedMeta.PrivateState,
+		RawStateValue:   rawStateValue,
 	}, nil
 }
 
