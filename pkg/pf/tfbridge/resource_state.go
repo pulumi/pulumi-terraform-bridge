@@ -55,7 +55,16 @@ func (u *upgradedResourceState) PrivateState() []byte {
 }
 
 func (u *upgradedResourceState) ToPropertyMap(ctx context.Context, rh *resourceHandle) (resource.PropertyMap, error) {
-	propMap, err := convert.DecodePropertyMap(ctx, rh.decoder, u.state.Value)
+	pmStrict, err := convert.DecodePropertyMapWithOptions(ctx, rh.decoder, u.state.Value, convert.DecodeOptions{
+		PreserveNull: true,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	pm, err := convert.DecodePropertyMapWithOptions(ctx, rh.decoder, u.state.Value, convert.DecodeOptions{
+		PreserveNull: false,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -64,10 +73,10 @@ func (u *upgradedResourceState) ToPropertyMap(ctx context.Context, rh *resourceH
 	if err != nil {
 		return nil, err
 	}
-	delta := tfbridge.RawStateComputeDelta(ctx, rh.schema.Shim(), rh.pulumiResourceInfo.GetFields(), propMap, s)
-	propMap[rawStateDeltaKey] = delta.ToPropertyValue()
+	delta := tfbridge.RawStateComputeDelta(ctx, rh.schema.Shim(), rh.pulumiResourceInfo.GetFields(), pmStrict, s)
+	pm[rawStateDeltaKey] = delta.ToPropertyValue()
 
-	return updateMeta(propMap, metaState{
+	return updateMeta(pm, metaState{
 		SchemaVersion: u.state.TFSchemaVersion,
 		PrivateState:  u.state.Private,
 	})
