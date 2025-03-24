@@ -806,6 +806,9 @@ func (ih *rawStateDeltaHelper) computeDeltaAt(
 		if len(pvElements) == 0 {
 			infl := objDelta{}
 			for k := range pvElements {
+				if k == metaKey || k == rawStateDeltaKey || k == defaultsKey {
+					continue
+				}
 				infl.ignore(k)
 			}
 			return rawStateDelta{Obj: &infl}, nil
@@ -828,6 +831,9 @@ func (ih *rawStateDeltaHelper) computeDeltaAt(
 		}
 
 		for k := range pvElements {
+			if k == metaKey || k == rawStateDeltaKey || k == defaultsKey {
+				continue
+			}
 			if _, ok := keySetWithCtyValueMatches[k]; !ok {
 				infl.ignore(k)
 			}

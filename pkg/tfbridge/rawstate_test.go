@@ -526,11 +526,7 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 			//nolint:lll
 			tfState: autogold.Expect(`cty.ObjectVal(map[string]cty.Value{"id":cty.StringVal("id0"), "str":cty.StringVal("OK")})`),
 			infl: autogold.Expect(`{
-  "obj": {
-    "ignored": {
-      "__pulumi_raw_state_delta": {}
-    }
-  }
+  "obj": {}
 }`),
 		},
 		{
@@ -544,11 +540,7 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 			inputs:  resource.PropertyMap{"b": resource.NewBoolProperty(true)},
 			tfState: autogold.Expect(`cty.ObjectVal(map[string]cty.Value{"b":cty.True, "id":cty.StringVal("id0")})`),
 			infl: autogold.Expect(`{
-  "obj": {
-    "ignored": {
-      "__pulumi_raw_state_delta": {}
-    }
-  }
+  "obj": {}
 }`),
 		},
 		{
@@ -562,11 +554,7 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 			inputs:  resource.PropertyMap{"i": resource.NewNumberProperty(42)},
 			tfState: autogold.Expect(`cty.ObjectVal(map[string]cty.Value{"i":cty.NumberIntVal(42), "id":cty.StringVal("id0")})`),
 			infl: autogold.Expect(`{
-  "obj": {
-    "ignored": {
-      "__pulumi_raw_state_delta": {}
-    }
-  }
+  "obj": {}
 }`),
 		},
 		{
@@ -581,11 +569,7 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 			//nolint:lll
 			tfState: autogold.Expect(`cty.ObjectVal(map[string]cty.Value{"f":cty.MustParseNumberVal("3.14"), "id":cty.StringVal("id0")})`),
 			infl: autogold.Expect(`{
-  "obj": {
-    "ignored": {
-      "__pulumi_raw_state_delta": {}
-    }
-  }
+  "obj": {}
 }`),
 		},
 		{
@@ -599,11 +583,7 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 			inputs:  resource.PropertyMap{"b": resource.NewStringProperty("true")},
 			tfState: autogold.Expect(`cty.ObjectVal(map[string]cty.Value{"b":cty.True, "id":cty.StringVal("id0")})`),
 			infl: autogold.Expect(`{
-  "obj": {
-    "ignored": {
-      "__pulumi_raw_state_delta": {}
-    }
-  }
+  "obj": {}
 }`),
 		},
 		{
@@ -617,11 +597,7 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 			inputs:  resource.PropertyMap{"i": resource.NewStringProperty("42")},
 			tfState: autogold.Expect(`cty.ObjectVal(map[string]cty.Value{"i":cty.NumberIntVal(42), "id":cty.StringVal("id0")})`),
 			infl: autogold.Expect(`{
-  "obj": {
-    "ignored": {
-      "__pulumi_raw_state_delta": {}
-    }
-  }
+  "obj": {}
 }`),
 		},
 		{
@@ -636,11 +612,7 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 			//nolint:lll
 			tfState: autogold.Expect(`cty.ObjectVal(map[string]cty.Value{"f":cty.MustParseNumberVal("3.14"), "id":cty.StringVal("id0")})`),
 			infl: autogold.Expect(`{
-  "obj": {
-    "ignored": {
-      "__pulumi_raw_state_delta": {}
-    }
-  }
+  "obj": {}
 }`),
 		},
 		{
@@ -663,9 +635,6 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 			tfState: autogold.Expect(`cty.ObjectVal(map[string]cty.Value{"id":cty.StringVal("id0"), "ls":cty.ListVal([]cty.Value{cty.StringVal("A"), cty.StringVal("B"), cty.StringVal("C")})})`),
 			infl: autogold.Expect(`{
   "obj": {
-    "ignored": {
-      "__pulumi_raw_state_delta": {}
-    },
     "o": {
       "ls": {
         "arr": {
@@ -692,9 +661,6 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 			tfState: autogold.Expect(`cty.ObjectVal(map[string]cty.Value{"id":cty.StringVal("id0"), "ls":cty.ListValEmpty(cty.String)})`),
 			infl: autogold.Expect(`{
   "obj": {
-    "ignored": {
-      "__pulumi_raw_state_delta": {}
-    },
     "o": {
       "ls": {
         "arr": {
@@ -722,9 +688,6 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 			tfState: autogold.Expect(`cty.ObjectVal(map[string]cty.Value{"id":cty.StringVal("id0"), "ls":cty.NullVal(cty.List(cty.String))})`),
 			infl: autogold.Expect(`{
   "obj": {
-    "ignored": {
-      "__pulumi_raw_state_delta": {}
-    },
     "o": {
       "ls": {
         "null": {
@@ -762,9 +725,6 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 			tfState: autogold.Expect(`cty.ObjectVal(map[string]cty.Value{"id":cty.StringVal("id0"), "ls":cty.ListVal([]cty.Value{cty.ObjectVal(map[string]cty.Value{"x":cty.StringVal("OK")})})})`),
 			infl: autogold.Expect(`{
   "obj": {
-    "ignored": {
-      "__pulumi_raw_state_delta": {}
-    },
     "o": {
       "ls": {
         "plu": {
@@ -799,9 +759,6 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 			tfState: autogold.Expect(`cty.ObjectVal(map[string]cty.Value{"id":cty.StringVal("id0"), "ls":cty.ListValEmpty(cty.Object(map[string]cty.Type{"x":cty.String}))})`),
 			infl: autogold.Expect(`{
   "obj": {
-    "ignored": {
-      "__pulumi_raw_state_delta": {}
-    },
     "o": {
       "ls": {
         "plu": {
@@ -838,9 +795,6 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 			tfState: autogold.Expect(`cty.ObjectVal(map[string]cty.Value{"id":cty.StringVal("id0"), "ls":cty.SetVal([]cty.Value{cty.StringVal("A"), cty.StringVal("B"), cty.StringVal("C")})})`),
 			infl: autogold.Expect(`{
   "obj": {
-    "ignored": {
-      "__pulumi_raw_state_delta": {}
-    },
     "o": {
       "ls": {
         "set": {
@@ -867,9 +821,6 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 			tfState: autogold.Expect(`cty.ObjectVal(map[string]cty.Value{"id":cty.StringVal("id0"), "ls":cty.NullVal(cty.Set(cty.String))})`),
 			infl: autogold.Expect(`{
   "obj": {
-    "ignored": {
-      "__pulumi_raw_state_delta": {}
-    },
     "o": {
       "ls": {
         "null": {
@@ -899,9 +850,6 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 			tfState: autogold.Expect(`cty.ObjectVal(map[string]cty.Value{"id":cty.StringVal("id0"), "ls":cty.NullVal(cty.Set(cty.String))})`),
 			infl: autogold.Expect(`{
   "obj": {
-    "ignored": {
-      "__pulumi_raw_state_delta": {}
-    },
     "o": {
       "ls": {
         "null": {
@@ -939,9 +887,6 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 			tfState: autogold.Expect(`cty.ObjectVal(map[string]cty.Value{"id":cty.StringVal("id0"), "ls":cty.SetVal([]cty.Value{cty.ObjectVal(map[string]cty.Value{"x":cty.StringVal("OK")})})})`),
 			infl: autogold.Expect(`{
   "obj": {
-    "ignored": {
-      "__pulumi_raw_state_delta": {}
-    },
     "o": {
       "ls": {
         "plu": {
@@ -977,9 +922,6 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 			tfState: autogold.Expect(`cty.ObjectVal(map[string]cty.Value{"id":cty.StringVal("id0"), "ls":cty.SetValEmpty(cty.Object(map[string]cty.Type{"x":cty.String}))})`),
 			infl: autogold.Expect(`{
   "obj": {
-    "ignored": {
-      "__pulumi_raw_state_delta": {}
-    },
     "o": {
       "ls": {
         "plu": {
@@ -1016,9 +958,6 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 			tfState: autogold.Expect(`cty.ObjectVal(map[string]cty.Value{"id":cty.StringVal("id0"), "ls":cty.MapVal(map[string]cty.Value{"one":cty.NumberIntVal(1), "two":cty.NumberIntVal(2)})})`),
 			infl: autogold.Expect(`{
   "obj": {
-    "ignored": {
-      "__pulumi_raw_state_delta": {}
-    },
     "o": {
       "ls": {
         "map": {}
@@ -1051,9 +990,6 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 			tfState: autogold.Expect(`cty.ObjectVal(map[string]cty.Value{"id":cty.StringVal("id0"), "x":cty.StringVal("${TMPDIR}/pulumi-asset-e6f48d2de0fb13762c32a37daeef1a225a4793cacb598826dbb269e2cbe5b7f2")})`),
 			infl: autogold.Expect(`{
   "obj": {
-    "ignored": {
-      "__pulumi_raw_state_delta": {}
-    },
     "o": {
       "x": {
         "asset": {
@@ -1101,9 +1037,6 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 			tfState: autogold.Expect(`cty.ObjectVal(map[string]cty.Value{"id":cty.StringVal("id0"), "x":cty.ListVal([]cty.Value{cty.ObjectVal(map[string]cty.Value{"s1":cty.StringVal("S1"), "s2":cty.StringVal("S2")})})})`),
 			infl: autogold.Expect(`{
   "obj": {
-    "ignored": {
-      "__pulumi_raw_state_delta": {}
-    },
     "o": {
       "x": {
         "plu": {
