@@ -610,7 +610,7 @@ func (ctx *conversionContext) makeObjectTerraformInputs(
 	for key, value := range news {
 		// If this is a reserved property, ignore it.
 		switch key {
-		case defaultsKey, metaKey:
+		case defaultsKey, metaKey, rawStateDeltaKey:
 			continue
 		}
 
@@ -1086,13 +1086,15 @@ func makeTerraformResultInner(ctx context.Context, args makeTerraformResultArgs)
 
 	outMap := MakeTerraformOutputs(ctx, args.p, outs, args.tfs, args.ps, args.assets, args.supportsSecrets)
 
-	var metaMap map[string]any
-
+	// Encode a map under metaKey. For historical reasons it is a JSON-encoded string.
 	if args.state != nil && args.state.Meta() != nil && len(args.state.Meta()) > 0 {
-		metaMap = args.state.Meta()
+		metaMap := args.state.Meta()
+		metaJSON, err := json.Marshal(metaMap)
+		contract.Assertf(err == nil, "json.Marshal failed on metaMap data for the %q key", metaKey)
+		outMap[metaKey] = resource.NewStringProperty(string(metaJSON))
 	}
 
-	// In the non-preview resource case, also encode raw state delta into the metaMap.
+	// In the non-preview resource case, also encode raw state delta into the outMap.
 	if s, ok := args.state.(shim.InstanceStateWithCtyValue); ok && !outMap.ContainsUnknowns() && args.isResource {
 		logger := log.TryGetLogger(ctx)
 		if logger == nil {
@@ -1108,20 +1110,11 @@ func makeTerraformResultInner(ctx context.Context, args makeTerraformResultArgs)
 
 		delta, err := rawStateComputeDelta(ctx, args.tfs, args.ps, outMap, s.Value())
 		contract.AssertNoErrorf(err, "[rawstate]: failed computing delta")
-		if metaMap == nil {
-			metaMap = map[string]any{}
-		}
-		// Could check for clobbering existing metaMap[rawKey] but it appears that in the pulumi refresh
-		// scenario this is expected. That is the metaMap will contain the previous delta written by the
-		// bridge. Not enough information to distinguish this from a genuine conflict with the resource Meta
-		// key-space.
-		metaMap[rawStateDeltaKey] = delta
-	}
 
-	if metaMap != nil {
-		metaJSON, err := json.Marshal(metaMap)
-		contract.Assertf(err == nil, "err == nil")
-		outMap[metaKey] = resource.NewStringProperty(string(metaJSON))
+		// Could check for clobbering existing outMap[rawKey] but it appears that in the pulumi refresh
+		// scenario this is expected: outMap will contain the previous delta written by the bridge. Not enough
+		// information to distinguish this from a genuine conflict with the resource.
+		outMap[rawStateDeltaKey] = delta
 	}
 
 	return outMap, nil
@@ -1350,7 +1343,7 @@ func makeConfig(v interface{}) interface{} {
 		for k, e := range v {
 			// If this is a reserved property, ignore it.
 			switch k {
-			case defaultsKey, metaKey:
+			case defaultsKey, metaKey, rawStateDeltaKey:
 				continue
 			}
 			r[k] = makeConfig(e)
@@ -1421,22 +1414,31 @@ func makeTerraformStateWithOpts(
 	}
 
 	if isr, ok := instanceState.(shim.InstanceStateWithRawState); ok {
-		if raw, hasRaw := meta[rawStateDeltaKey]; hasRaw {
-			delta, err := rawStateParseDelta(raw)
+		if deltaValue, hasDelta := m[rawStateDeltaKey]; hasDelta {
+			// Only log error details at Debug level to avoid leaking secrets to errors.
+			logger := log.TryGetLogger(ctx)
+			if logger == nil {
+				logger = log.NewDiscardLogger()
+			}
+
+			delta, err := newRawStateDeltaFromPropertyValue(deltaValue)
 			if err != nil {
-				// Only log at Debug level to avoid leaking secrets to errors.
-				// GetLogger(ctx).Debug(fmt.Sprintf("Failed to parse raw state markers:\n"+
-				// 	"  __meta.raw: %#v\n"+
-				// 	"  error: %v", raw, err))
+				logger.Debug(fmt.Sprintf("Failed to parse raw state markers:\n"+
+					"  %q: %#v\n"+
+					"  error: %v",
+					rawStateDeltaKey,
+					delta.toPropertyValue().String(),
+					err))
 				contract.AssertNoErrorf(err, "Failed to parse raw state markers")
 			}
 			rawSt, err := rawStateRecover(resource.NewObjectProperty(m), delta)
 			if err != nil {
-				// Only log at Debug level to avoid leaking secrets to errors.
-				// GetLogger(ctx).Debug(fmt.Sprintf("Failed recover raw state:\n"+
-				// 	"  __meta.raw: %#v\n"+
-				// 	"  delta: %#v\n"+
-				// 	"  error: %v", raw, delta, err))
+				logger.Debug(fmt.Sprintf("Failed recover raw state:\n"+
+					"  %q: %#v\n"+
+					"  error: %v",
+					rawStateDeltaKey,
+					delta.toPropertyValue().String(),
+					err))
 				contract.AssertNoErrorf(err, "Failed to recover raw state")
 			}
 			isr.SetRawState(rawSt)

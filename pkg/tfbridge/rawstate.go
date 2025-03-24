@@ -342,7 +342,7 @@ func rawStateRecover(pv resource.PropertyValue, infl rawStateDelta) (cty.Value, 
 		pm := pv.ObjectValue()
 		recovered := map[string]cty.Value{}
 		for k, v := range pm {
-			if k == metaKey {
+			if k == metaKey || k == rawStateDeltaKey {
 				continue
 			}
 
@@ -519,7 +519,7 @@ func rawStateComputeDelta(
 	schemaInfos map[string]*SchemaInfo, // top-level schema overrides for a resource
 	outMap resource.PropertyMap,
 	rawState cty.Value,
-) (any, error) {
+) (resource.PropertyValue, error) {
 	ih := &rawStateDeltaHelper{
 		schemaMap:   schemaMap,
 		schemaInfos: schemaInfos,
@@ -529,14 +529,10 @@ func rawStateComputeDelta(
 	infl := ih.delta(pv, rawState)
 
 	if err := rawStateTurnaroundCheck(rawState, pv, infl); err != nil {
-		return nil, err
+		return resource.PropertyValue{}, err
 	}
 
-	delta, err := rawStateEncodeDelta(infl)
-	if err != nil {
-		return nil, fmt.Errorf("[rawstate]: encoding failed")
-	}
-	return delta, nil
+	return infl.toPropertyValue(), nil
 }
 
 func rawStateTurnaroundCheck(rawState cty.Value, pv resource.PropertyValue, infl rawStateDelta) error {
@@ -550,9 +546,6 @@ func rawStateTurnaroundCheck(rawState cty.Value, pv resource.PropertyValue, infl
 		return fmt.Errorf("[rawstate]: failed recovering value for turnaround check: %w", err)
 	}
 
-	delta, err := rawStateEncodeDelta(infl)
-	contract.AssertNoErrorf(err, "rawStateEncodeDelta failed")
-
 	if !rawStateReducePrecision(ctyValueRecovered).RawEquals(
 		rawStateReducePrecision(rawStateWithoutTimeouts),
 	) {
@@ -561,7 +554,7 @@ func rawStateTurnaroundCheck(rawState cty.Value, pv resource.PropertyValue, infl
 				"rawState =%s\ndelta=%#v",
 				ctyValueRecovered.GoString(),
 				rawStateWithoutTimeouts.GoString(),
-				delta,
+				infl.toPropertyValue().String(),
 			)
 		}
 		return errors.New("[rawstate]: turnaround check failed")
@@ -851,30 +844,30 @@ func (ih *rawStateDeltaHelper) computeDeltaAt(
 	}
 }
 
-func rawStateParseDelta(rawData any) (rawStateDelta, error) {
-	bytes, err := json.Marshal(rawData)
-	if err != nil {
-		return rawStateDelta{}, err
-	}
+// func rawStateParseDelta(rawData any) (rawStateDelta, error) {
+// 	bytes, err := json.Marshal(rawData)
+// 	if err != nil {
+// 		return rawStateDelta{}, err
+// 	}
 
-	var result rawStateDelta
-	if err := json.Unmarshal(bytes, &result); err != nil {
-		return rawStateDelta{}, nil
-	}
+// 	var result rawStateDelta
+// 	if err := json.Unmarshal(bytes, &result); err != nil {
+// 		return rawStateDelta{}, nil
+// 	}
 
-	return result, nil
-}
+// 	return result, nil
+// }
 
-func rawStateEncodeDelta(infl rawStateDelta) (any, error) {
-	bytes, err := json.Marshal(infl)
-	if err != nil {
-		return nil, err
-	}
+// func rawStateEncodeDelta(infl rawStateDelta) (any, error) {
+// 	bytes, err := json.Marshal(infl)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	var result any
-	if err := json.Unmarshal(bytes, &result); err != nil {
-		return nil, err
-	}
+// 	var result any
+// 	if err := json.Unmarshal(bytes, &result); err != nil {
+// 		return nil, err
+// 	}
 
-	return result, nil
-}
+// 	return result, nil
+// }

@@ -1264,7 +1264,7 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 			// limit the blast radius of this change to diffs that we know will panic
 			// later on.
 			len(replaces) == 0 {
-			replaces = append(replaces, "__meta")
+			replaces = append(replaces, metaKey)
 			changes = pulumirpc.DiffResponse_DIFF_SOME
 		}
 	}
