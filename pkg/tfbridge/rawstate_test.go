@@ -465,7 +465,7 @@ func Test_rawstate_delta_serialization(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			encoded := tc.infl.toPropertyValue()
+			encoded := tc.infl.ToPropertyValue()
 			t.Logf("encoded: %s", encoded.String())
 			back, err := NewRawStateDeltaFromPropertyValue(encoded)
 			require.NoError(t, err)
@@ -1118,7 +1118,7 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 
 			delta := ih.delta(pv, stateValue)
 
-			deltaPV := delta.toPropertyValue()
+			deltaPV := delta.ToPropertyValue()
 			deltaJSON, err := json.MarshalIndent(deltaPV.Mappable(), "", "  ")
 			require.NoError(t, err)
 			tc.infl.Equal(t, string(deltaJSON))
@@ -1231,7 +1231,7 @@ func Test_rawStateDelta_PropertyValue_serialization(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			pv := tc.rsd.toPropertyValue()
+			pv := tc.rsd.ToPropertyValue()
 			if !tc.noExpect {
 				tc.expect.Equal(t, pv)
 			}
