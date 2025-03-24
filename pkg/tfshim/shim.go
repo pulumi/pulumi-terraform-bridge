@@ -31,12 +31,6 @@ type InstanceStateWithCtyValue interface {
 	Value() cty.Value
 }
 
-// Newer versions of the bridge go to extra length to preserve cty.Value form of as-is raw state inside the Pulumi
-// state file. If the shim supports it it should implement this additional interface to receive this data.
-type InstanceStateWithRawState interface {
-	SetRawState(cty.Value)
-}
-
 type DiffAttrType byte
 
 const (
@@ -242,8 +236,16 @@ type Resource interface {
 	DeprecationMessage() string
 	Timeouts() *ResourceTimeout
 
+	// Prefer [ResourceWithNewInstanceState.NewInstanceState] when cty.Value form can be recovered.
 	InstanceState(id string, object, meta map[string]interface{}) (InstanceState, error)
+
 	DecodeTimeouts(config ResourceConfig) (*ResourceTimeout, error)
+}
+
+// Newer versions of the bridge go to extra length to preserve cty.Value form of as-is raw state inside the Pulumi
+// state file. If the shim supports it it should implement this additional interface to receive this data.
+type ResourceWithNewInstanceState interface {
+	NewInstanceState(object cty.Value, meta map[string]interface{}) (InstanceState, error)
 }
 
 type ResourceMap interface {

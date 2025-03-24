@@ -1399,21 +1399,9 @@ func makeTerraformStateWithOpts(
 		meta = map[string]interface{}{"schema_version": defaultSchemaVersion}
 	}
 
-	// Turn the resource properties into a map. For the most part, this is a straight
-	// Mappable, but we use MapReplace because we use float64s and Terraform uses
-	// ints, to represent numbers.
-	inputs, _, err := makeTerraformInputsWithOptions(ctx, nil, nil, nil, m, res.TF.Schema(), res.Schema.Fields,
-		makeTerraformInputsOptions{DisableDefaults: true, DisableTFDefaults: true})
-	if err != nil {
-		return nil, err
-	}
-
-	instanceState, err := res.TF.InstanceState(id, inputs, meta)
-	if err != nil {
-		return nil, err
-	}
-
-	if isr, ok := instanceState.(shim.InstanceStateWithRawState); ok {
+	// Newer versions of the bridge encode a delta that allows recovering the Terraform State as a cty.Value from
+	// the PropertyMap and the delta. Check if this is the case and the recovered raw state is available.
+	if newStyleResource, ok := res.TF.(shim.ResourceWithNewInstanceState); ok {
 		if deltaValue, hasDelta := m[rawStateDeltaKey]; hasDelta {
 			// Only log error details at Debug level to avoid leaking secrets to errors.
 			logger := log.TryGetLogger(ctx)
@@ -1431,7 +1419,7 @@ func makeTerraformStateWithOpts(
 					err))
 				contract.AssertNoErrorf(err, "Failed to parse raw state markers")
 			}
-			rawSt, err := rawStateRecover(resource.NewObjectProperty(m), delta)
+			recoveredRawState, err := rawStateRecover(resource.NewObjectProperty(m), delta)
 			if err != nil {
 				logger.Debug(fmt.Sprintf("Failed recover raw state:\n"+
 					"  %q: %#v\n"+
@@ -1441,8 +1429,23 @@ func makeTerraformStateWithOpts(
 					err))
 				contract.AssertNoErrorf(err, "Failed to recover raw state")
 			}
-			isr.SetRawState(rawSt)
+
+			return newStyleResource.NewInstanceState(recoveredRawState, meta)
 		}
+	}
+
+	// Turn the resource properties into a map. For the most part, this is a straight
+	// Mappable, but we use MapReplace because we use float64s and Terraform uses
+	// ints, to represent numbers.
+	inputs, _, err := makeTerraformInputsWithOptions(ctx, nil, nil, nil, m, res.TF.Schema(), res.Schema.Fields,
+		makeTerraformInputsOptions{DisableDefaults: true, DisableTFDefaults: true})
+	if err != nil {
+		return nil, err
+	}
+
+	instanceState, err := res.TF.InstanceState(id, inputs, meta)
+	if err != nil {
+		return nil, err
 	}
 
 	return instanceState, nil

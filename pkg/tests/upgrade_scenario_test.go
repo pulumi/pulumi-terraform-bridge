@@ -32,7 +32,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
-// A schema change with state ugpraders should work as expected.
+// A schema change with state upgraders should work as expected.
 func TestUpgrade_StateUpgraders(t *testing.T) {
 	t.Parallel()
 

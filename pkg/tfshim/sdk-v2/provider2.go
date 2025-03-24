@@ -31,6 +31,7 @@ type v2Resource2 struct {
 }
 
 var _ shim.Resource = (*v2Resource2)(nil)
+var _ shim.ResourceWithNewInstanceState = (*v2Resource2)(nil)
 
 // This method is called to service `pulumi import` requests and maps naturally to the TF
 // ImportResourceState method. When using `pulumi refresh` this is not called, and instead
@@ -39,6 +40,15 @@ func (r *v2Resource2) Importer() shim.ImportFunc {
 	return r.importer
 }
 
+func (r *v2Resource2) NewInstanceState(state cty.Value, meta map[string]any) (shim.InstanceState, error) {
+	return &v2InstanceState2{
+		stateValue:   state,
+		resourceType: r.resourceType,
+		meta:         meta,
+	}, nil
+}
+
+// NewInstanceState is preferred, but this is called in the legacy case.
 func (r *v2Resource2) InstanceState(
 	id string, object, meta map[string]interface{},
 ) (shim.InstanceState, error) {
@@ -50,10 +60,6 @@ func (r *v2Resource2) InstanceState(
 		copy["id"] = id
 		object = copy
 	}
-	// TODO: revisit this..
-	//
-	// TODO[pulumi/pulumi-terraform-bridge#1667]: This is not right since it uses the
-	// current schema. 1667 should make this redundant
 	s, err := recoverAndCoerceCtyValueWithSchema(r.v2Resource.tf.CoreConfigSchema(), object)
 	if err != nil {
 		glog.V(9).Infof("failed to coerce config: %v, proceeding with imprecise value", err)
@@ -82,17 +88,10 @@ type v2InstanceState2 struct {
 	stateValue   cty.Value
 	// Also known as private state.
 	meta map[string]interface{}
-
-	// Modern versions of pulumi-terraform-bridge encode enough information in Pulumi state to recover the exact
-	// value of the state as the writing TF provider emitted it. This data, if available, is not subject to any
-	// schema-aware transformations. If this value is nil then the state being read was written using an older
-	// bridge, and exact RawState is not available, but stateValue can be used as an approximation.
-	recoveredRawState *cty.Value
 }
 
 var (
 	_ shim.InstanceState             = (*v2InstanceState2)(nil)
-	_ shim.InstanceStateWithRawState = (*v2InstanceState2)(nil)
 	_ shim.InstanceStateWithCtyValue = (*v2InstanceState2)(nil)
 )
 
@@ -122,10 +121,6 @@ func (s *v2InstanceState2) Object(sch shim.SchemaMap) (map[string]interface{}, e
 
 func (s *v2InstanceState2) Meta() map[string]interface{} {
 	return s.meta
-}
-
-func (s *v2InstanceState2) SetRawState(st cty.Value) {
-	s.recoveredRawState = &st
 }
 
 func (s *v2InstanceState2) Value() cty.Value {
@@ -498,11 +493,7 @@ func (p *v2Provider) upgradeState(
 		return s, nil
 	}
 
-	// Prefer to use recoveredRawState if available, fall back to approximate stateValue.
 	rawState := state.stateValue
-	if state.recoveredRawState != nil {
-		rawState = *state.recoveredRawState
-	}
 
 	newState, newMeta, err := upgradeResourceStateGRPC(ctx, t, res, rawState, state.meta, p.server.gserver)
 	if err != nil {
