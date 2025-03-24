@@ -30,8 +30,10 @@ type v2Resource2 struct {
 	resourceType string
 }
 
-var _ shim.Resource = (*v2Resource2)(nil)
-var _ shim.ResourceWithNewInstanceState = (*v2Resource2)(nil)
+var (
+	_ shim.Resource                     = (*v2Resource2)(nil)
+	_ shim.ResourceWithNewInstanceState = (*v2Resource2)(nil)
+)
 
 // This method is called to service `pulumi import` requests and maps naturally to the TF
 // ImportResourceState method. When using `pulumi refresh` this is not called, and instead

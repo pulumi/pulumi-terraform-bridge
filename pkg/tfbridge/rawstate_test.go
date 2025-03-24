@@ -288,11 +288,6 @@ func Test_rawstate_delta_turnaround(t *testing.T) {
 
 			delta := ih.delta(pv, cv)
 
-			deltae, err := rawStateEncodeDelta(delta)
-			require.NoError(t, err)
-
-			t.Logf("delta: %#v", deltae)
-
 			recoveredCtyValue, err := rawStateRecover(pv, delta)
 			require.NoError(t, err)
 
@@ -470,20 +465,14 @@ func Test_rawstate_delta_serialization(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			encoded, err := rawStateEncodeDelta(tc.infl)
+			encoded := tc.infl.toPropertyValue()
+			t.Logf("encoded: %s", encoded.String())
+			back, err := newRawStateDeltaFromPropertyValue(encoded)
 			require.NoError(t, err)
-
-			t.Logf("encoded: %#v", encoded)
-
-			back, err := rawStateParseDelta(encoded)
-			require.NoError(t, err)
-
 			require.Equalf(t, tc.infl, back, "turnaround")
-
-			encodedJ, err := json.MarshalIndent(encoded, "", " ")
+			encodedJSON, err := json.MarshalIndent(encoded.Mappable(), "", " ")
 			require.NoError(t, err)
-
-			tc.expect.Equal(t, string(encodedJ))
+			tc.expect.Equal(t, string(encodedJSON))
 		})
 	}
 }
@@ -539,7 +528,7 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 			infl: autogold.Expect(`{
   "obj": {
     "ignored": {
-      "__meta": {}
+      "__pulumi_raw_state_delta": {}
     }
   }
 }`),
@@ -557,7 +546,7 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 			infl: autogold.Expect(`{
   "obj": {
     "ignored": {
-      "__meta": {}
+      "__pulumi_raw_state_delta": {}
     }
   }
 }`),
@@ -575,7 +564,7 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 			infl: autogold.Expect(`{
   "obj": {
     "ignored": {
-      "__meta": {}
+      "__pulumi_raw_state_delta": {}
     }
   }
 }`),
@@ -594,7 +583,7 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 			infl: autogold.Expect(`{
   "obj": {
     "ignored": {
-      "__meta": {}
+      "__pulumi_raw_state_delta": {}
     }
   }
 }`),
@@ -612,7 +601,7 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 			infl: autogold.Expect(`{
   "obj": {
     "ignored": {
-      "__meta": {}
+      "__pulumi_raw_state_delta": {}
     }
   }
 }`),
@@ -630,7 +619,7 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 			infl: autogold.Expect(`{
   "obj": {
     "ignored": {
-      "__meta": {}
+      "__pulumi_raw_state_delta": {}
     }
   }
 }`),
@@ -649,7 +638,7 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 			infl: autogold.Expect(`{
   "obj": {
     "ignored": {
-      "__meta": {}
+      "__pulumi_raw_state_delta": {}
     }
   }
 }`),
@@ -675,7 +664,7 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 			infl: autogold.Expect(`{
   "obj": {
     "ignored": {
-      "__meta": {}
+      "__pulumi_raw_state_delta": {}
     },
     "o": {
       "ls": {
@@ -704,7 +693,7 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 			infl: autogold.Expect(`{
   "obj": {
     "ignored": {
-      "__meta": {}
+      "__pulumi_raw_state_delta": {}
     },
     "o": {
       "ls": {
@@ -734,7 +723,7 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 			infl: autogold.Expect(`{
   "obj": {
     "ignored": {
-      "__meta": {}
+      "__pulumi_raw_state_delta": {}
     },
     "o": {
       "ls": {
@@ -774,7 +763,7 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 			infl: autogold.Expect(`{
   "obj": {
     "ignored": {
-      "__meta": {}
+      "__pulumi_raw_state_delta": {}
     },
     "o": {
       "ls": {
@@ -811,7 +800,7 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 			infl: autogold.Expect(`{
   "obj": {
     "ignored": {
-      "__meta": {}
+      "__pulumi_raw_state_delta": {}
     },
     "o": {
       "ls": {
@@ -850,7 +839,7 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 			infl: autogold.Expect(`{
   "obj": {
     "ignored": {
-      "__meta": {}
+      "__pulumi_raw_state_delta": {}
     },
     "o": {
       "ls": {
@@ -879,7 +868,7 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 			infl: autogold.Expect(`{
   "obj": {
     "ignored": {
-      "__meta": {}
+      "__pulumi_raw_state_delta": {}
     },
     "o": {
       "ls": {
@@ -911,7 +900,7 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 			infl: autogold.Expect(`{
   "obj": {
     "ignored": {
-      "__meta": {}
+      "__pulumi_raw_state_delta": {}
     },
     "o": {
       "ls": {
@@ -951,7 +940,7 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 			infl: autogold.Expect(`{
   "obj": {
     "ignored": {
-      "__meta": {}
+      "__pulumi_raw_state_delta": {}
     },
     "o": {
       "ls": {
@@ -989,7 +978,7 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 			infl: autogold.Expect(`{
   "obj": {
     "ignored": {
-      "__meta": {}
+      "__pulumi_raw_state_delta": {}
     },
     "o": {
       "ls": {
@@ -1028,7 +1017,7 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 			infl: autogold.Expect(`{
   "obj": {
     "ignored": {
-      "__meta": {}
+      "__pulumi_raw_state_delta": {}
     },
     "o": {
       "ls": {
@@ -1063,7 +1052,7 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 			infl: autogold.Expect(`{
   "obj": {
     "ignored": {
-      "__meta": {}
+      "__pulumi_raw_state_delta": {}
     },
     "o": {
       "x": {
@@ -1113,7 +1102,7 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 			infl: autogold.Expect(`{
   "obj": {
     "ignored": {
-      "__meta": {}
+      "__pulumi_raw_state_delta": {}
     },
     "o": {
       "x": {
@@ -1196,13 +1185,10 @@ func Test_rawstate_against_MakeTerraformResult(t *testing.T) {
 
 			delta := ih.delta(pv, stateValue)
 
-			deltae, err := rawStateEncodeDelta(delta)
+			deltaPV := delta.toPropertyValue()
+			deltaJSON, err := json.MarshalIndent(deltaPV.Mappable(), "", "  ")
 			require.NoError(t, err)
-
-			deltaj, err := json.MarshalIndent(deltae, "", "  ")
-			require.NoError(t, err)
-
-			tc.infl.Equal(t, string(deltaj))
+			tc.infl.Equal(t, string(deltaJSON))
 
 			err = rawStateTurnaroundCheck(stateValue, pv, delta)
 			require.NoError(t, err)
