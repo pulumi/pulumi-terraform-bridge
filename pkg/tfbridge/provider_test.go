@@ -2417,6 +2417,7 @@ func TestTransformOutputs(t *testing.T) {
                       "stringPropertyValue": "TRANSFORMED",
 		      "boolPropertyValue": "*",
 		      "__meta": "*",
+                      "__pulumi_raw_state_delta": "*",
 		      "objectPropertyValue": "*",
 		      "floatPropertyValue": "*",
 		      "stringPropertyValue": "*",
@@ -2453,6 +2454,7 @@ func TestTransformOutputs(t *testing.T) {
 		      "id": "*",
                       "stringPropertyValue": "TRANSFORMED",
 		      "__meta": "*",
+                      "__pulumi_raw_state_delta": "*",
 		      "objectPropertyValue": "*",
 		      "floatPropertyValue": "*",
 		      "stringPropertyValue": "*",
@@ -2489,6 +2491,8 @@ func TestTransformOutputs(t *testing.T) {
 		      "stringPropertyValue": "TRANSFORMED",
 		      "boolPropertyValue": "*",
 		      "__meta": "*",
+                      "__pulumi_raw_state_delta": "*",
+
 		      "objectPropertyValue": "*",
 		      "floatPropertyValue": "*",
 		      "arrayPropertyValues": "*",
@@ -2496,7 +2500,7 @@ func TestTransformOutputs(t *testing.T) {
 		      "numberPropertyValue": "*",
 		      "setPropertyValues": "*",
 		      "stringWithBadInterpolation": "*",
-			  "nilPropertyValue": "*"
+                      "nilPropertyValue": "*"
 		    }
 		  }
 		}`)
@@ -2519,6 +2523,7 @@ func TestTransformOutputs(t *testing.T) {
 			"stringPropertyValue": "TRANSFORMED",
 			"boolPropertyValue": "*",
 			"__meta": "*",
+                        "__pulumi_raw_state_delta": "*",
 			"objectPropertyValue": "*",
 			"floatPropertyValue": "*",
 			"arrayPropertyValues": "*",
@@ -2526,7 +2531,7 @@ func TestTransformOutputs(t *testing.T) {
 			"numberPropertyValue": "*",
 			"setPropertyValues": "*",
 			"stringWithBadInterpolation": "*",
-			  "nilPropertyValue": "*"
+                        "nilPropertyValue": "*"
 		    }
 		  }
 		}`)
