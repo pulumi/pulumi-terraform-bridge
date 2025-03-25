@@ -1,3 +1,0 @@
-name: genradom
-description: Generate testdata from the random provider
-runtime: go

@@ -147,7 +147,6 @@ func findGoModuleRoots() (result []string) {
 	return []string{
 		".",
 		"tools",
-		"pkg/pf/tests/testdatagen/genrandom",
 	}
 }
 
