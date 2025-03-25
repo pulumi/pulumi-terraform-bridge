@@ -95,7 +95,7 @@ jobs:
       - name: Install pulumi
         uses: pulumi/actions@v5
         with:
-          pulumi-version: dev
+          pulumi-version: v3.156.0
       - name: Install terraform
         uses: hashicorp/setup-terraform@v3
         with:
