@@ -539,7 +539,14 @@ func RawStateComputeDelta(
 	delta := ih.delta(pv, rawState)
 
 	err := rawStateTurnaroundCheck(rawState, pv, delta)
-	contract.AssertNoErrorf(err, "rawstate: failed computing delta")
+	contract.AssertNoErrorf(err, "[rawstate]: failed computing delta\n"+
+		"  outMap   :: %s\n\n"+
+		"  rawState :: %s\n\n"+
+		"  delta    :: %s\n\n",
+		resource.NewObjectProperty(outMap).String(),
+		rawState.GoString(),
+		delta.ToPropertyValue().String(),
+	)
 
 	return delta
 }
@@ -552,21 +559,21 @@ func rawStateTurnaroundCheck(rawState cty.Value, pv resource.PropertyValue, infl
 	// Double-check that recovering the cty.Value works as expected, before it is written to the state.
 	ctyValueRecovered, err := rawStateRecover(pv, infl)
 	if err != nil {
-		return fmt.Errorf("[rawstate]: failed recovering value for turnaround check: %w", err)
+		return fmt.Errorf("failed recovering value for turnaround check: %w", err)
 	}
 
 	if !rawStateReducePrecision(ctyValueRecovered).RawEquals(
 		rawStateReducePrecision(rawStateWithoutTimeouts),
 	) {
 		if cmdutil.IsTruthy(os.Getenv("PULUMI_DEBUG")) {
-			return fmt.Errorf("[rawstate]: turnaround check failed\nrecovered=%s\n"+
+			return fmt.Errorf("turnaround check failed\nrecovered=%s\n"+
 				"rawState =%s\ndelta=%#v",
 				ctyValueRecovered.GoString(),
 				rawStateWithoutTimeouts.GoString(),
 				infl.ToPropertyValue().String(),
 			)
 		}
-		return errors.New("[rawstate]: turnaround check failed")
+		return errors.New("turnaround check failed")
 	}
 
 	return nil
