@@ -1138,7 +1138,7 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 
 	state, err := MakeTerraformStateWithOpts(ctx, res, req.GetId(), olds,
 		MakeTerraformStateOptions{
-			DefaultZeroSchemaVersion: opts.defaultZeroSchemaVersion,
+			DefaultCurrentSchemaVersion: !opts.defaultZeroSchemaVersion,
 		},
 	)
 	if err != nil {
@@ -1638,7 +1638,7 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 
 	state, err := MakeTerraformStateWithOpts(ctx, res, req.GetId(), olds,
 		MakeTerraformStateOptions{
-			DefaultZeroSchemaVersion: opts.defaultZeroSchemaVersion,
+			DefaultCurrentSchemaVersion: !opts.defaultZeroSchemaVersion,
 		})
 	if err != nil {
 		return nil, errors.Wrapf(err, "unmarshaling %s's instance state", urn)

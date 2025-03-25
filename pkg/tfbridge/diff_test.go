@@ -91,7 +91,7 @@ func TestCustomizeDiff(t *testing.T) {
 			Schema: &ResourceInfo{Fields: info},
 		}
 		tfState, err := MakeTerraformStateWithOpts(ctx, r, "id", stateMap,
-			MakeTerraformStateOptions{DefaultZeroSchemaVersion: true})
+			MakeTerraformStateOptions{})
 		assert.NoError(t, err)
 
 		config, _, err := MakeTerraformConfig(ctx, &Provider{tf: provider}, inputsMap, sch, info)
@@ -135,7 +135,7 @@ func TestCustomizeDiff(t *testing.T) {
 			Schema: &ResourceInfo{Fields: info},
 		}
 		tfState, err := MakeTerraformStateWithOpts(ctx, r, "id", stateMap,
-			MakeTerraformStateOptions{DefaultZeroSchemaVersion: true})
+			MakeTerraformStateOptions{})
 		assert.NoError(t, err)
 
 		config, _, err := MakeTerraformConfig(ctx, &Provider{tf: provider}, inputsMap, sch, info)
@@ -190,7 +190,7 @@ func TestCustomizeDiff(t *testing.T) {
 					Schema: &ResourceInfo{Fields: info},
 				}
 				tfState, err := MakeTerraformStateWithOpts(ctx, r, "id", stateMap,
-					MakeTerraformStateOptions{DefaultZeroSchemaVersion: true})
+					MakeTerraformStateOptions{})
 				assert.NoError(t, err)
 
 				config, _, err := MakeTerraformConfig(ctx, &Provider{tf: provider}, inputsMap, sch, info)
@@ -297,7 +297,7 @@ func diffTest(t *testing.T, tfs map[string]*v2Schema.Schema, inputs,
 				sch, r, provider, info := s.setup(tfs)
 
 				tfState, err := MakeTerraformStateWithOpts(ctx, r, "id", stateMap,
-					MakeTerraformStateOptions{DefaultZeroSchemaVersion: true})
+					MakeTerraformStateOptions{})
 				assert.NoError(t, err)
 
 				config, _, err := MakeTerraformConfig(ctx, &Provider{tf: provider}, inputsMap, sch, info)
@@ -327,7 +327,7 @@ func diffTest(t *testing.T, tfs map[string]*v2Schema.Schema, inputs,
 				t.Parallel()
 				sch, r, provider, info := s.setup(tfs)
 				tfState, err := MakeTerraformStateWithOpts(ctx, r, "id", stateMap,
-					MakeTerraformStateOptions{DefaultZeroSchemaVersion: true})
+					MakeTerraformStateOptions{})
 				assert.NoError(t, err)
 
 				config, _, err := MakeTerraformConfig(ctx, &Provider{tf: provider}, inputsMap, sch, info)

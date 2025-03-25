@@ -1303,7 +1303,9 @@ func MakeTerraformConfigFromInputs(
 }
 
 type MakeTerraformStateOptions struct {
-	DefaultZeroSchemaVersion bool
+	// DefaultCurrentSchemaVersion is true if the default schema version should be the current schema version.
+	// This is legacy behaviour and is maintained for backwards compatibility. New uses should not set this.
+	DefaultCurrentSchemaVersion bool
 }
 
 func MakeTerraformStateWithOpts(
@@ -1320,7 +1322,7 @@ func MakeTerraformStateWithOpts(
 		// schema version, return a meta bag with the current schema version. This
 		// helps avoid migration issues.
 		defaultSchemaVersion := strconv.Itoa(res.TF.SchemaVersion())
-		if opts.DefaultZeroSchemaVersion {
+		if !opts.DefaultCurrentSchemaVersion {
 			defaultSchemaVersion = "0"
 		}
 		meta = map[string]interface{}{"schema_version": defaultSchemaVersion}
@@ -1345,7 +1347,7 @@ func MakeTerraformStateWithOpts(
 func MakeTerraformState(
 	ctx context.Context, res Resource, id string, m resource.PropertyMap,
 ) (shim.InstanceState, error) {
-	return MakeTerraformStateWithOpts(ctx, res, id, m, MakeTerraformStateOptions{})
+	return MakeTerraformStateWithOpts(ctx, res, id, m, MakeTerraformStateOptions{DefaultCurrentSchemaVersion: true})
 }
 
 type unmarshalTerraformStateOptions struct {
@@ -1370,7 +1372,7 @@ func unmarshalTerraformStateWithOpts(
 	}
 
 	return MakeTerraformStateWithOpts(ctx, r, id, props,
-		MakeTerraformStateOptions{DefaultZeroSchemaVersion: opts.defaultZeroSchemaVersion},
+		MakeTerraformStateOptions{DefaultCurrentSchemaVersion: !opts.defaultZeroSchemaVersion},
 	)
 }
 
