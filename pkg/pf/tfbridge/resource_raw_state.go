@@ -17,15 +17,11 @@ import (
 	"context"
 
 	ctyjson "github.com/hashicorp/go-cty/cty/json"
-	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/opentofu/configs/configschema"
-	opentofuconvert "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/opentofu/convert"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/vendored/terraform-plugin-go/tfprotov6/toproto"
 )
 
 type rawInstanceState struct {
@@ -59,7 +55,6 @@ var _ = shim.Resource(runtimeStateResource{})
 type runtimeStateResource struct {
 	schemaVersion int
 	schema        shim.SchemaMap
-	block         *configschema.Block
 }
 
 func (r runtimeStateResource) Schema() shim.SchemaMap {
@@ -113,18 +108,14 @@ func parseRawResourceState(
 	pulumiResourceInfo *tfbridge.ResourceInfo,
 	// TODO: generate the shim.SchemaMap from the tfprotov6.Schema?
 	schemaMap shim.SchemaMap,
-	rawSchema *tfprotov6.Schema,
 	tfResourceName string,
 	resID resource.ID,
 	schemaVersion int,
 	props resource.PropertyMap,
 ) (*[]byte, error) {
-	protoSchema := toproto.Schema(rawSchema)
-	block := opentofuconvert.ProtoToConfigSchema(protoSchema.GetBlock())
 	shimRes := runtimeStateResource{
 		schemaVersion: schemaVersion,
 		schema:        schemaMap,
-		block:         block,
 	}
 
 	instanceState, err := tfbridge.MakeTerraformStateWithOpts(

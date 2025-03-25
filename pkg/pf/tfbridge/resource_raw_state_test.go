@@ -32,23 +32,20 @@ func Test_parseRawResourceState(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 
-	rsch := rschema.Schema{
-		Attributes: map[string]rschema.Attribute{
-			"s": rschema.StringAttribute{
-				Optional: true,
+	sch := schemashim.NewSchemaMap(
+		pfutils.FromResourceSchema(
+			rschema.Schema{
+				Attributes: map[string]rschema.Attribute{
+					"s": rschema.StringAttribute{
+						Optional: true,
+					},
+				},
 			},
-		},
-	}
-
-	pfutilsSch := pfutils.FromResourceSchema(rsch)
-
-	protoSch, err := pfutilsSch.ResourceProtoSchema(ctx)
-	require.NoError(t, err)
-
-	sch := schemashim.NewSchemaMap(pfutils.FromResourceSchema(rsch))
+		),
+	)
 
 	st, err := parseRawResourceState(
-		ctx, &tfbridge.ResourceInfo{}, sch, protoSch, "test", resource.ID("id"), 0,
+		ctx, &tfbridge.ResourceInfo{}, sch, "test", resource.ID("id"), 0,
 		resource.PropertyMap{"s": resource.NewStringProperty("s1")})
 	require.NoError(t, err)
 

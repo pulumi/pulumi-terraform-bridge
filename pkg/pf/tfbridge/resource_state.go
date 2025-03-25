@@ -107,13 +107,8 @@ func parseResourceState(
 	var rawStateValue *[]byte
 	// If there was a schema change, we need to parse the raw state
 	if rh.schema.ResourceSchemaVersion() > stateVersion {
-		rawSchema, err := rh.schema.ResourceProtoSchema(ctx)
-		if err != nil {
-			return nil, err
-		}
-
 		rawStateValue, err = parseRawResourceState(
-			ctx, rh.pulumiResourceInfo, rh.schemaOnlyShimResource.Schema(), rawSchema,
+			ctx, rh.pulumiResourceInfo, rh.schemaOnlyShimResource.Schema(),
 			rh.terraformResourceName, resID, int(rh.schema.ResourceSchemaVersion()), props)
 		if err != nil {
 			return nil, err
