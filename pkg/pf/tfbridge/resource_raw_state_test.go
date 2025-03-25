@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hexops/autogold/v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/require"
@@ -32,25 +33,102 @@ func Test_parseRawResourceState(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 
-	sch := schemashim.NewSchemaMap(
-		pfutils.FromResourceSchema(
-			rschema.Schema{
-				Attributes: map[string]rschema.Attribute{
-					"s": rschema.StringAttribute{
-						Optional: true,
+	t.Run("string attribute", func(t *testing.T) {
+		t.Parallel()
+		sch := schemashim.NewSchemaMap(
+			pfutils.FromResourceSchema(
+				rschema.Schema{
+					Attributes: map[string]rschema.Attribute{
+						"s": rschema.StringAttribute{
+							Optional: true,
+						},
 					},
 				},
-			},
-		),
-	)
+			),
+		)
 
-	st, err := parseRawResourceState(
-		ctx, &tfbridge.ResourceInfo{}, sch, "test", resource.ID("id"), 0,
-		resource.PropertyMap{"s": resource.NewStringProperty("s1")})
-	require.NoError(t, err)
+		st, err := parseRawResourceState(
+			ctx, &tfbridge.ResourceInfo{}, sch, "test", resource.ID("id"), 0,
+			resource.PropertyMap{"s": resource.NewStringProperty("s1")})
+		require.NoError(t, err)
 
-	var m map[string]any
-	require.NoError(t, json.Unmarshal(*st, &m))
+		var m map[string]any
+		require.NoError(t, json.Unmarshal(*st, &m))
 
-	autogold.Expect(map[string]any{"id": "id", "s": "s1"}).Equal(t, m)
+		autogold.Expect(map[string]any{"id": "id", "s": "s1"}).Equal(t, m)
+	})
+
+	t.Run("list attribute", func(t *testing.T) {
+		t.Parallel()
+		sch := schemashim.NewSchemaMap(
+			pfutils.FromResourceSchema(
+				rschema.Schema{
+					Attributes: map[string]rschema.Attribute{
+						"l": rschema.ListAttribute{
+							Optional:    true,
+							ElementType: types.StringType,
+						},
+					},
+				},
+			),
+		)
+
+		st, err := parseRawResourceState(
+			ctx, &tfbridge.ResourceInfo{}, sch, "test", resource.ID("id"), 0,
+			resource.PropertyMap{"l": resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewStringProperty("a"),
+				resource.NewStringProperty("b"),
+			})},
+		)
+		require.NoError(t, err)
+
+		var m map[string]any
+		require.NoError(t, json.Unmarshal(*st, &m))
+
+		autogold.Expect(map[string]any{"id": "id", "l": []any{"a", "b"}}).Equal(t, m)
+	})
+
+	t.Run("set nested block with map attribute", func(t *testing.T) {
+		t.Parallel()
+
+		sch := schemashim.NewSchemaMap(
+			pfutils.FromResourceSchema(
+				rschema.Schema{
+					Blocks: map[string]rschema.Block{
+						"b": rschema.SetNestedBlock{
+							NestedObject: rschema.NestedBlockObject{
+								Attributes: map[string]rschema.Attribute{
+									"m": rschema.MapAttribute{
+										Optional:    true,
+										ElementType: types.StringType,
+									},
+								},
+							},
+						},
+					},
+				},
+			),
+		)
+
+		st, err := parseRawResourceState(
+			ctx, &tfbridge.ResourceInfo{}, sch, "test", resource.ID("id"), 0,
+			resource.PropertyMap{"b": resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewObjectProperty(resource.PropertyMap{
+					"m": resource.NewObjectProperty(resource.PropertyMap{
+						"a": resource.NewStringProperty("a"),
+						"b": resource.NewStringProperty("b"),
+					}),
+				}),
+			})},
+		)
+		require.NoError(t, err)
+
+		var m map[string]any
+		require.NoError(t, json.Unmarshal(*st, &m))
+
+		autogold.Expect(map[string]any{
+			"b":  []any{map[string]any{"m": map[string]any{"a": "a", "b": "b"}}},
+			"id": "id",
+		}).Equal(t, m)
+	})
 }
