@@ -99,7 +99,6 @@ func Test_Meraki_NetworkAlertSettings(t *testing.T) {
 				},
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
-
 						"alert_destinations": schema.SingleNestedAttribute{
 							MarkdownDescription: `A hash of destinations for this specific alert`,
 							Computed:            true,
@@ -107,7 +106,6 @@ func Test_Meraki_NetworkAlertSettings(t *testing.T) {
 								objectplanmodifier.UseStateForUnknown(),
 							},
 							Attributes: map[string]schema.Attribute{
-
 								"all_admins": schema.BoolAttribute{
 									MarkdownDescription: `If true, then all network admins will receive emails for this alert`,
 									Computed:            true,
@@ -156,7 +154,6 @@ func Test_Meraki_NetworkAlertSettings(t *testing.T) {
 								objectplanmodifier.UseStateForUnknown(),
 							},
 							Attributes: map[string]schema.Attribute{
-
 								"timeout": schema.Int64Attribute{
 									Computed: true,
 									PlanModifiers: []planmodifier.Int64{
@@ -195,7 +192,6 @@ func Test_Meraki_NetworkAlertSettings(t *testing.T) {
 				},
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
-
 						"alert_destinations": schema.SingleNestedAttribute{
 							MarkdownDescription: `A hash of destinations for this specific alert`,
 							Optional:            true,
@@ -203,7 +199,6 @@ func Test_Meraki_NetworkAlertSettings(t *testing.T) {
 								objectplanmodifier.UseStateForUnknown(),
 							},
 							Attributes: map[string]schema.Attribute{
-
 								"all_admins": schema.BoolAttribute{
 									MarkdownDescription: `If true, then all network admins will receive emails for this alert`,
 									Optional:            true,
@@ -251,7 +246,6 @@ func Test_Meraki_NetworkAlertSettings(t *testing.T) {
 								objectplanmodifier.UseStateForUnknown(),
 							},
 							Attributes: map[string]schema.Attribute{
-
 								"timeout": schema.Int64Attribute{
 									Optional: true,
 									PlanModifiers: []planmodifier.Int64{
@@ -290,7 +284,6 @@ func Test_Meraki_NetworkAlertSettings(t *testing.T) {
 					objectplanmodifier.UseStateForUnknown(),
 				},
 				Attributes: map[string]schema.Attribute{
-
 					"all_admins": schema.BoolAttribute{
 						MarkdownDescription: `If true, then all network admins will receive emails.`,
 						Computed:            true,
@@ -338,7 +331,6 @@ func Test_Meraki_NetworkAlertSettings(t *testing.T) {
 					objectplanmodifier.UseStateForUnknown(),
 				},
 				Attributes: map[string]schema.Attribute{
-
 					"by_port_schedules": schema.SingleNestedAttribute{
 						MarkdownDescription: `by_port_schedules`,
 						Computed:            true,
@@ -370,7 +362,6 @@ func Test_Meraki_NetworkAlertSettings(t *testing.T) {
 	r := pb.NewResource(pb.NewResourceArgs{
 		Name: "r",
 		CreateFunc: func(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-
 			// Retrieve values from plan
 			var data NetworksAlertsSettingsRs
 
@@ -393,7 +384,6 @@ func Test_Meraki_NetworkAlertSettings(t *testing.T) {
 
 			diags := resp.State.Set(ctx, &data)
 			resp.Diagnostics.Append(diags...)
-
 		},
 		ResourceSchema: networkAlertSettingsSchema,
 	})
