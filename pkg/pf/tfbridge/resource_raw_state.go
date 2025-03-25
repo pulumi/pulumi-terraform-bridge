@@ -106,7 +106,6 @@ func (r runtimeStateResource) DecodeTimeouts(config shim.ResourceConfig) (*shim.
 func parseRawResourceState(
 	ctx context.Context,
 	pulumiResourceInfo *tfbridge.ResourceInfo,
-	// TODO: generate the shim.SchemaMap from the tfprotov6.Schema?
 	schemaMap shim.SchemaMap,
 	tfResourceName string,
 	resID resource.ID,
@@ -127,9 +126,7 @@ func parseRawResourceState(
 		},
 		resID.String(),
 		props,
-		tfbridge.MakeTerraformStateOptions{
-			DefaultZeroSchemaVersion: true,
-		},
+		tfbridge.MakeTerraformStateOptions{},
 	)
 	if err != nil {
 		return nil, err
