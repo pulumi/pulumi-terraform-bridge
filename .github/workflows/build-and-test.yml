@@ -92,16 +92,16 @@ jobs:
             shard: 14
     runs-on: ${{ matrix.platform }}
     steps:
-      - name: Install pulumi
-        uses: pulumi/actions@v5
-        with:
-          pulumi-version: v3.156.0
       - name: Install terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_wrapper: false
       - name: Check out source code
         uses: actions/checkout@master
+      - name: Install pulumi
+        uses: pulumi/actions@v5
+        with:
+          pulumi-version-file: .pulumi.version
       - name: Install Go
         uses: actions/setup-go@v5
         with:
