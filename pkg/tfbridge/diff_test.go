@@ -90,8 +90,8 @@ func TestCustomizeDiff(t *testing.T) {
 			TF:     provider.ResourcesMap().Get("resource"),
 			Schema: &ResourceInfo{Fields: info},
 		}
-		tfState, err := makeTerraformStateWithOpts(ctx, r, "id", stateMap,
-			makeTerraformStateOptions{defaultZeroSchemaVersion: true})
+		tfState, err := MakeTerraformStateWithOpts(ctx, r, "id", stateMap,
+			MakeTerraformStateOptions{DefaultZeroSchemaVersion: true})
 		assert.NoError(t, err)
 
 		config, _, err := MakeTerraformConfig(ctx, &Provider{tf: provider}, inputsMap, sch, info)
@@ -134,8 +134,8 @@ func TestCustomizeDiff(t *testing.T) {
 			TF:     provider.ResourcesMap().Get("resource"),
 			Schema: &ResourceInfo{Fields: info},
 		}
-		tfState, err := makeTerraformStateWithOpts(ctx, r, "id", stateMap,
-			makeTerraformStateOptions{defaultZeroSchemaVersion: true})
+		tfState, err := MakeTerraformStateWithOpts(ctx, r, "id", stateMap,
+			MakeTerraformStateOptions{DefaultZeroSchemaVersion: true})
 		assert.NoError(t, err)
 
 		config, _, err := MakeTerraformConfig(ctx, &Provider{tf: provider}, inputsMap, sch, info)
@@ -189,8 +189,8 @@ func TestCustomizeDiff(t *testing.T) {
 					TF:     provider.ResourcesMap().Get("resource"),
 					Schema: &ResourceInfo{Fields: info},
 				}
-				tfState, err := makeTerraformStateWithOpts(ctx, r, "id", stateMap,
-					makeTerraformStateOptions{defaultZeroSchemaVersion: true})
+				tfState, err := MakeTerraformStateWithOpts(ctx, r, "id", stateMap,
+					MakeTerraformStateOptions{DefaultZeroSchemaVersion: true})
 				assert.NoError(t, err)
 
 				config, _, err := MakeTerraformConfig(ctx, &Provider{tf: provider}, inputsMap, sch, info)
@@ -296,8 +296,8 @@ func diffTest(t *testing.T, tfs map[string]*v2Schema.Schema, inputs,
 				t.Parallel()
 				sch, r, provider, info := s.setup(tfs)
 
-				tfState, err := makeTerraformStateWithOpts(ctx, r, "id", stateMap,
-					makeTerraformStateOptions{defaultZeroSchemaVersion: true})
+				tfState, err := MakeTerraformStateWithOpts(ctx, r, "id", stateMap,
+					MakeTerraformStateOptions{DefaultZeroSchemaVersion: true})
 				assert.NoError(t, err)
 
 				config, _, err := MakeTerraformConfig(ctx, &Provider{tf: provider}, inputsMap, sch, info)
@@ -326,8 +326,8 @@ func diffTest(t *testing.T, tfs map[string]*v2Schema.Schema, inputs,
 			t.Run("withIgnoreAllExpected", func(t *testing.T) {
 				t.Parallel()
 				sch, r, provider, info := s.setup(tfs)
-				tfState, err := makeTerraformStateWithOpts(ctx, r, "id", stateMap,
-					makeTerraformStateOptions{defaultZeroSchemaVersion: true})
+				tfState, err := MakeTerraformStateWithOpts(ctx, r, "id", stateMap,
+					MakeTerraformStateOptions{DefaultZeroSchemaVersion: true})
 				assert.NoError(t, err)
 
 				config, _, err := MakeTerraformConfig(ctx, &Provider{tf: provider}, inputsMap, sch, info)

@@ -1302,12 +1302,12 @@ func MakeTerraformConfigFromInputs(
 	return MakeTerraformConfigFromInputsWithOpts(ctx, p, inputs, MakeTerraformInputsOptions{})
 }
 
-type makeTerraformStateOptions struct {
-	defaultZeroSchemaVersion bool
+type MakeTerraformStateOptions struct {
+	DefaultZeroSchemaVersion bool
 }
 
-func makeTerraformStateWithOpts(
-	ctx context.Context, res Resource, id string, m resource.PropertyMap, opts makeTerraformStateOptions,
+func MakeTerraformStateWithOpts(
+	ctx context.Context, res Resource, id string, m resource.PropertyMap, opts MakeTerraformStateOptions,
 ) (shim.InstanceState, error) {
 	// Parse out any metadata from the state.
 	var meta map[string]interface{}
@@ -1320,7 +1320,7 @@ func makeTerraformStateWithOpts(
 		// schema version, return a meta bag with the current schema version. This
 		// helps avoid migration issues.
 		defaultSchemaVersion := strconv.Itoa(res.TF.SchemaVersion())
-		if opts.defaultZeroSchemaVersion {
+		if opts.DefaultZeroSchemaVersion {
 			defaultSchemaVersion = "0"
 		}
 		meta = map[string]interface{}{"schema_version": defaultSchemaVersion}
@@ -1341,11 +1341,11 @@ func makeTerraformStateWithOpts(
 // MakeTerraformState converts a Pulumi property bag into its Terraform equivalent.  This requires
 // flattening everything and serializing individual properties as strings.  This is a little awkward, but it's how
 // Terraform represents resource properties (schemas are simply sugar on top).
-// Deprecated: Use makeTerraformStateWithOpts instead.
+// Deprecated: Use MakeTerraformStateWithOpts instead.
 func MakeTerraformState(
 	ctx context.Context, res Resource, id string, m resource.PropertyMap,
 ) (shim.InstanceState, error) {
-	return makeTerraformStateWithOpts(ctx, res, id, m, makeTerraformStateOptions{})
+	return MakeTerraformStateWithOpts(ctx, res, id, m, MakeTerraformStateOptions{})
 }
 
 type unmarshalTerraformStateOptions struct {
@@ -1369,8 +1369,8 @@ func unmarshalTerraformStateWithOpts(
 		return nil, err
 	}
 
-	return makeTerraformStateWithOpts(ctx, r, id, props,
-		makeTerraformStateOptions(opts),
+	return MakeTerraformStateWithOpts(ctx, r, id, props,
+		MakeTerraformStateOptions{DefaultZeroSchemaVersion: opts.defaultZeroSchemaVersion},
 	)
 }
 
