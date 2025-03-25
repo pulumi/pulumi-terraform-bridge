@@ -61,7 +61,7 @@ func (p *provider) DiffWithContext(
 		return plugin.DiffResult{}, fmt.Errorf("failed to apply ignore changes: %w", err)
 	}
 
-	rawPriorState, err := parseResourceState(&rh, priorStateMap)
+	rawPriorState, err := parseResourceState(ctx, &rh, priorStateMap, id)
 	if err != nil {
 		return plugin.DiffResult{}, err
 	}

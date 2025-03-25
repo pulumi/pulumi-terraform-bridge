@@ -63,7 +63,7 @@ func (p *provider) ReadWithContext(
 			return plugin.ReadResult{}, 0, err
 		}
 
-		result, err = p.readResource(ctx, &rh, currentStateMap)
+		result, err = p.readResource(ctx, &rh, id, currentStateMap)
 	} else {
 		result, err = p.importResource(ctx, &rh, id)
 	}
@@ -123,9 +123,10 @@ func deleteDefaultsKey(inputs resource.PropertyMap) {
 func (p *provider) readResource(
 	ctx context.Context,
 	rh *resourceHandle,
+	id resource.ID,
 	currentStateMap resource.PropertyMap,
 ) (plugin.ReadResult, error) {
-	currentStateRaw, err := parseResourceState(rh, currentStateMap)
+	currentStateRaw, err := parseResourceState(ctx, rh, currentStateMap, id)
 	if err != nil {
 		return plugin.ReadResult{}, fmt.Errorf("failed to get current raw state: %w", err)
 	}
@@ -263,5 +264,5 @@ func (p *provider) importResource(
 	}
 
 	// Now that the resource has been translated to TF state, read it.
-	return p.readResource(ctx, rh, readStateMap)
+	return p.readResource(ctx, rh, id, readStateMap)
 }

@@ -56,7 +56,7 @@ func (p *provider) UpdateWithContext(
 
 	tfType := rh.schema.Type(ctx).(tftypes.Object)
 
-	rawPriorState, err := parseResourceState(&rh, priorStateMap)
+	rawPriorState, err := parseResourceState(ctx, &rh, priorStateMap, id)
 	if err != nil {
 		return nil, 0, err
 	}

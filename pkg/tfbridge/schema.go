@@ -262,7 +262,11 @@ func getSchema(m shim.SchemaMap, key string) shim.Schema {
 	if m == nil {
 		return nil
 	}
-	return m.Get(key)
+	s, ok := m.GetOk(key)
+	if !ok {
+		return nil
+	}
+	return s
 }
 
 func elemSchemas(sch shim.Schema, ps *SchemaInfo) (shim.Schema, *SchemaInfo) {
