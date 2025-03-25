@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/big"
 
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
@@ -62,6 +63,24 @@ func (p *provider) UpgradeResourceState(
 	if err != nil {
 		return nil, fmt.Errorf("error unmarshalling the response from UpgradeResourceState: %w", err)
 	}
+
+	// Downgrade float precision to 53. This is important because pulumi.PropertyValue stores float64, and
+	// tftypes.Value originating from Pulumi would have this precision, but the native precision coming from
+	// UpgradeResourceState is 512. Mismatches in precision may lead to spurious diffs.
+	v, err = tftypes.Transform(v, func(ap *tftypes.AttributePath, v tftypes.Value) (tftypes.Value, error) {
+		if v.IsKnown() && !v.IsNull() && v.Type().Is(tftypes.Number) {
+			var n big.Float
+			err := v.As(&n)
+			contract.AssertNoErrorf(err, "Values of tftypes.Number type should unpack to big.Float")
+			if n.Prec() != 53 {
+				v2 := tftypes.NewValue(tftypes.Number, new(big.Float).Copy(&n).SetPrec(53))
+				return v2, nil
+			}
+		}
+		return v, nil
+	})
+	contract.AssertNoErrorf(err, "float precision downgrade transform should not fail")
+
 	return &upgradedResourceState{&resourceState{
 		TFSchemaVersion: rh.schema.ResourceSchemaVersion(),
 		Value:           v,
