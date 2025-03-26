@@ -22,6 +22,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
+	"github.com/hexops/autogold/v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	presource "github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -34,6 +35,10 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
+
+func ref[T any](t T) *T {
+	return &t
+}
 
 func TestBasic(t *testing.T) {
 	t.Parallel()
@@ -549,4 +554,78 @@ resources:
 	})
 
 	pt.Up(t)
+}
+
+func TestAliasesSchemaUpgrade(t *testing.T) {
+	// TODO[pulumi/pulumi-terraform-bridge#2969]: Support resource aliases
+	t.Skip("PF does not support resource aliases")
+	t.Parallel()
+
+	prov1 := pb.NewProvider(pb.NewProviderArgs{
+		AllResources: []providerbuilder.Resource{
+			providerbuilder.NewResource(providerbuilder.NewResourceArgs{
+				Name: "test",
+				ResourceSchema: rschema.Schema{
+					Attributes: map[string]rschema.Attribute{
+						"test": rschema.StringAttribute{Optional: true},
+					},
+				},
+			}),
+		},
+	})
+
+	prov2 := pb.NewProvider(pb.NewProviderArgs{
+		AllResources: []providerbuilder.Resource{
+			providerbuilder.NewResource(providerbuilder.NewResourceArgs{
+				Name: "test2",
+				ResourceSchema: rschema.Schema{
+					Attributes: map[string]rschema.Attribute{
+						"test": rschema.StringAttribute{Optional: true},
+					},
+				},
+			}),
+		},
+	})
+
+	bridgedProvider2 := prov2.ToProviderInfo()
+	bridgedProvider2.Resources = map[string]*info.Resource{
+		"testprovider_test2": {
+			Aliases: []info.Alias{
+				{
+					Type: ref("testprovider:index/test:Test"),
+				},
+			},
+		},
+	}
+
+	pt, err := pulcheck.PulCheck(t, prov1.ToProviderInfo(), `
+name: test
+runtime: yaml
+resources:
+  mainRes:
+    type: testprovider:index/test:Test
+    properties:
+      test: "hello"
+`)
+	require.NoError(t, err)
+	pt.Up(t)
+	stack := pt.ExportStack(t)
+
+	yamlProgram := `
+name: test
+runtime: yaml
+resources:
+  mainRes:
+    type: testprovider:index/test2:Test2
+    properties:
+      test: "hello"
+`
+
+	pt2, err := pulcheck.PulCheck(t, bridgedProvider2, yamlProgram)
+	require.NoError(t, err)
+	pt2.ImportStack(t, stack)
+
+	res := pt2.Up(t)
+
+	autogold.Expect(&map[string]int{"same": 2}).Equal(t, res.Summary.ResourceChanges)
 }
