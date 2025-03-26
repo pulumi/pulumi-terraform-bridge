@@ -16,6 +16,8 @@ package tfbridgetests
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -35,12 +37,12 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 
 	pb "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/providerbuilder"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
+	"github.com/stretchr/testify/require"
 )
 
 type NetworksAlertsSettingsRs struct {
-	// Workaround automatically added IDs in the test Pulumi bridge test framework.
-	ID types.String `tfsdk:"id"`
-
 	NetworkID           types.String                                                   `tfsdk:"network_id"`
 	Alerts              *[]ResponseNetworksGetNetworkAlertsSettingsAlertsRs            `tfsdk:"alerts"`
 	AlertsResponse      *[]ResponseNetworksGetNetworkAlertsSettingsAlertsRs            `tfsdk:"alerts_response"`
@@ -380,57 +382,28 @@ func Test_Meraki_NetworkAlertSettings(t *testing.T) {
 				return
 			}
 
-			data.ID = basetypes.NewStringValue("id-0")
-
 			diags := resp.State.Set(ctx, &data)
+
 			resp.Diagnostics.Append(diags...)
 		},
 		ResourceSchema: networkAlertSettingsSchema,
+		CustomID:       true,
 	})
 
 	provider := pb.NewProvider(pb.NewProviderArgs{
 		AllResources: []pb.Resource{r},
 	})
 
-	programYAML := `
-        name: test-program
-        runtime: yaml
-        resources:
-          my-res:
-            type: testprovider:index:R
-            properties:
-              networkId: "my-network-id"
-              defaultDestinations:
-                snmp: false
-                allAdmins: true
-              muting:
-                byPortSchedules:
-                  enabled: true
-              alerts:
-                - type: applianceDown
-                  alertDestinations:
-                    allAdmins: false
-                    snmp: false
-                  enabled: true
-                  filters:
-                    timeout: 5
-                - type: usageAlert
-                  alertDestinations:
-                    allAdmins: false
-                    snmp: false
-                  enabled: true
-                  filters:
-                    period: 1200
-                    threshold: 104857600
-                - type: dhcpNoLeases
-                  alertDestinations:
-                    allAdmins: false
-                    snmp: false
-                  enabled: true
-                  filters: {}
-        `
+	sourceYAML, err := os.ReadFile(filepath.Join("testdata", "meraki", "Pulumi.yaml"))
+	require.NoError(t, err)
 
-	test := newPulumiTest(t, provider, programYAML)
+	programYAML := string(sourceYAML)
+
+	test := newPulumiTestWithOpts(t, provider, programYAML, pulumiTestOpts{
+		resourceInfo: &info.Resource{
+			ComputeID: tfbridge.DelegateIDField("networkId", "meraki", "https://example.org"),
+		},
+	})
 
 	previewAndUpdate := func(name, prog string, expectPreviewChanges, expectChanges autogold.Value) {
 		test.WritePulumiYaml(t, prog)
