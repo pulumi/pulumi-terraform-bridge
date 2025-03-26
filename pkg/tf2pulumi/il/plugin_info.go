@@ -24,6 +24,7 @@ import (
 	"os/exec"
 	"sync"
 
+	"github.com/blang/semver"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
@@ -194,7 +195,15 @@ func (pluginProviderInfoSource) GetProviderInfo(
 	diag := diag.DefaultSink(os.Stdout, os.Stderr, diag.FormatOptions{
 		Color: colors.Never,
 	})
-	path, err := workspace.GetPluginPath(diag, apitype.ResourcePlugin, pluginName, nil, nil)
+
+	parsedVersion := semver.MustParse(version)
+
+	pluginSpec, err := workspace.NewPluginSpec(pluginName, apitype.ResourcePlugin, &parsedVersion, "", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	path, err := workspace.GetPluginPath(diag, pluginSpec, nil)
 	if err != nil {
 		return nil, err
 	} else if path == "" {

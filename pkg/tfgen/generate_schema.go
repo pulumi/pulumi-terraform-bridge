@@ -832,9 +832,7 @@ func (g *schemaGenerator) genResourceType(mod tokens.Module, res *resourceType) 
 
 	for _, a := range res.info.Aliases {
 		spec.Aliases = append(spec.Aliases, pschema.AliasSpec{
-			Name:    a.Name,
-			Project: a.Project,
-			Type:    a.Type,
+			Type: *a.Type,
 		})
 	}
 
