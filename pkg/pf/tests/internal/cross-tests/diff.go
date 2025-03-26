@@ -58,48 +58,48 @@ func Diff(t T, res pb.Resource, tfConfig1, tfConfig2 map[string]cty.Value, optio
 		f(&opts)
 	}
 
-	prov := pb.NewProvider(pb.NewProviderArgs{
+	tfwd := t.TempDir()
+	prov1 := pb.NewProvider(pb.NewProviderArgs{
 		AllResources: []pb.Resource{res},
 	})
+	prov2 := prov1
+	if opts.resource2 != nil {
+		prov2 = pb.NewProvider(pb.NewProviderArgs{
+			AllResources: []pb.Resource{*opts.resource2},
+		})
+	}
 
-	shimProvider := tfbridge.ShimProvider(prov)
-
+	shimProvider1 := tfbridge.ShimProvider(prov1)
+	shimProvider2 := tfbridge.ShimProvider(prov2)
 	// Run the TF part
 	var hcl1 bytes.Buffer
 
-	sch := hclSchemaPFResource(res.ResourceSchema)
-	err := hclwrite.WriteResource(&hcl1, sch, "testprovider_test", "res", tfConfig1,
+	sch1 := hclSchemaPFResource(res.ResourceSchema)
+	err := hclwrite.WriteResource(&hcl1, sch1, "testprovider_test", "res", tfConfig1,
 		hclwrite.WithCreateBeforeDestroy(true))
 	require.NoError(t, err)
-
-	driver := tfcheck.NewTfDriver(t, t.TempDir(), prov.TypeName, prov)
-
-	driver.Write(t, hcl1.String())
-	plan, err := driver.Plan(t)
-	require.NoError(t, err)
-	err = driver.Apply(t, plan)
-	require.NoError(t, err)
+	runTFPlanApply(t, prov1, tfwd, hcl1.String())
 
 	var hcl2 bytes.Buffer
-	err = hclwrite.WriteResource(&hcl2, sch, "testprovider_test", "res", tfConfig2,
+	sch2 := sch1
+	if opts.resource2 != nil {
+		sch2 = hclSchemaPFResource(opts.resource2.ResourceSchema)
+	}
+	err = hclwrite.WriteResource(&hcl2, sch2, "testprovider_test", "res", tfConfig2,
 		hclwrite.WithCreateBeforeDestroy(true))
 	require.NoError(t, err)
-	driver.Write(t, hcl2.String())
-	plan, err = driver.Plan(t)
-	require.NoError(t, err)
-	tfChanges := driver.ParseChangesFromTFPlan(plan)
+	tfChanges, tfOut := runTFPlanApply(t, prov2, tfwd, hcl2.String())
 
 	// Run the Pulumi part
-
 	puConfig1 := crosstestsimpl.InferPulumiValue(t,
-		shimProvider.ResourcesMap().Get("testprovider_test").Schema(),
+		shimProvider1.ResourcesMap().Get("testprovider_test").Schema(),
 		opts.resourceInfo,
 		cty.ObjectVal(tfConfig1),
 	)
 	pulumiYaml1 := yamlResource(t, puConfig1)
 
 	puConfig2 := crosstestsimpl.InferPulumiValue(t,
-		shimProvider.ResourcesMap().Get("testprovider_test").Schema(),
+		shimProvider2.ResourcesMap().Get("testprovider_test").Schema(),
 		opts.resourceInfo,
 		cty.ObjectVal(tfConfig2),
 	)
@@ -109,31 +109,46 @@ func Diff(t T, res pb.Resource, tfConfig1, tfConfig2 map[string]cty.Value, optio
 	require.NoError(t, err)
 	t.Logf("Pulumi.yaml:\n%s", string(bytes))
 
-	pt, err := pulcheck.PulCheck(t, prov.ToProviderInfo(), string(bytes))
+	pt1, err := pulcheck.PulCheck(t, prov1.ToProviderInfo(), string(bytes))
 	require.NoError(t, err)
-	pt.Up(t)
+	pt1.Up(t)
+
+	state := pt1.ExportStack(t)
 
 	bytes, err = yaml.Marshal(pulumiYaml2)
 	require.NoError(t, err)
 	t.Logf("Pulumi.yaml:\n%s", string(bytes))
-	pt.WritePulumiYaml(t, string(bytes))
+	pt2, err := pulcheck.PulCheck(t, prov2.ToProviderInfo(), string(bytes))
+	require.NoError(t, err)
+	pt2.ImportStack(t, state)
 
-	previewRes := pt.Preview(t, optpreview.Diff())
-	pulumiRes := pt.Up(t)
-	diffResponse := crosstestsimpl.GetPulumiDiffResponse(t, pt.GrpcLog(t).Entries)
+	previewRes := pt2.Preview(t, optpreview.Diff())
+	pulumiRes := pt2.Up(t)
+	diffResponse := crosstestsimpl.GetPulumiDiffResponse(t, pt2.GrpcLog(t).Entries)
 
 	crosstestsimpl.VerifyBasicDiffAgreement(t, tfChanges.Actions, pulumiRes.Summary, diffResponse)
 
 	return crosstestsimpl.DiffResult{
 		TFDiff:     tfChanges,
 		PulumiDiff: diffResponse,
-		TFOut:      plan.StdOut,
+		TFOut:      tfOut,
 		PulumiOut:  previewRes.StdOut,
 	}
 }
 
+func runTFPlanApply(t T, pb *pb.Provider, wd string, hcl string) (tfcheck.TFChange, string) {
+	driver := tfcheck.NewTfDriver(t, wd, pb.TypeName, pb)
+	driver.Write(t, hcl)
+	plan, err := driver.Plan(t)
+	require.NoError(t, err)
+	err = driver.Apply(t, plan)
+	require.NoError(t, err)
+	return driver.ParseChangesFromTFPlan(plan), plan.StdOut
+}
+
 type diffOpts struct {
 	resourceInfo map[string]*info.Schema
+	resource2    *pb.Resource
 }
 
 type DiffOption func(*diffOpts)
@@ -141,4 +156,9 @@ type DiffOption func(*diffOpts)
 // DiffProviderInfo specifies a map of [info.Schema] to apply to the provider under test.
 func DiffProviderInfo(info map[string]*info.Schema) DiffOption {
 	return func(o *diffOpts) { o.resourceInfo = info }
+}
+
+// DiffProviderUpgradedSchema specifies the second provider schema to use for the diff.
+func DiffProviderUpgradedSchema(resource2 pb.Resource) DiffOption {
+	return func(o *diffOpts) { o.resource2 = &resource2 }
 }
