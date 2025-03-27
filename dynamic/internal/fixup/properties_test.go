@@ -15,6 +15,7 @@
 package fixup_test
 
 import (
+	"fmt"
 	"testing"
 
 	_ "github.com/hexops/autogold/v2" // autogold registers a flag for -update
@@ -307,4 +308,29 @@ func TestFixProviderResourceName(t *testing.T) {
 	err := fixup.Default(&p)
 	require.NoError(t, err)
 	assert.Equal(t, tokens.Type("test:index/testProvider:TestProvider"), p.Resources["test_provider"].Tok)
+}
+
+func TestFixPropertyNamedPulumiRenamedPulumiInfo(t *testing.T) {
+	t.Parallel()
+
+	p := info.Provider{
+		Name: "test",
+		P: (&schema.Provider{
+			ResourcesMap: schema.ResourceMap{
+				"test_res": (&schema.Resource{
+					Schema: schema.SchemaMap{
+						"pulumi": (&schema.Schema{
+							Type: shim.TypeString,
+						}).Shim(),
+					},
+				}).Shim(),
+			},
+		}).Shim(),
+	}
+
+	err := fixup.Default(&p)
+	require.NoError(t, err)
+	fmt.Println(p.Resources["test_res"].Fields["pulumi"].Name)
+	assert.NotNil(t, p.Resources["test_res"])
+	assert.Equal(t, "pulumiInfo", p.Resources["test_res"].Fields["pulumi"].Name)
 }

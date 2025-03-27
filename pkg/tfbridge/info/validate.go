@@ -88,6 +88,7 @@ var (
 	errCannotSpecifyNameOnElem         = fmt.Errorf("cannot specify .Name on a List[T], Map[T] or Set[T] type")
 	errCannotSetMaxItemsOne            = fmt.Errorf("can only specify .MaxItemsOne on List[T] or Set[T] type")
 	errFieldsShouldBeOnElem            = fmt.Errorf(".Fields should be .Elem.Fields")
+	errPropertyNameCannotBePulumi      = fmt.Errorf("a property should not be named pulumi")
 )
 
 func (c *infoCheck) checkResource(tfToken string, schema shim.SchemaMap, info map[string]*Schema) {
@@ -104,6 +105,10 @@ func (c *infoCheck) checkProperty(path walk.SchemaPath, tfs shim.Schema, ps *Sch
 	// If there is no override, then there were no mistakes.
 	if ps == nil {
 		return
+	}
+
+	if ps.Name == "pulumi" {
+		c.error(path, errPropertyNameCannotBePulumi)
 	}
 
 	if t := tfs.Type(); t != shim.TypeSet && t != shim.TypeList && ps.MaxItemsOne != nil {
