@@ -138,6 +138,8 @@ func badPropertyName(providerName, tokenPrefix, key string) fixupProperty {
 		return fixURN(providerName)
 	case "id":
 		return fixID(providerName, tokenPrefix)
+	case "pulumi":
+		return fixPulumi()
 	default:
 		return nil
 	}
@@ -223,6 +225,19 @@ func fixURN(providerName string) fixupProperty {
 		}
 		if f := getField(&r.Schema.Fields, "urn"); f.Name == "" {
 			f.Name = tfbridge.TerraformToPulumiNameV2(v, s, r.Schema.Fields)
+		}
+		return nil
+	}
+}
+
+func fixPulumi() fixupProperty {
+	return func(resource tfbridge.Resource) error {
+		schemaMap := resource.TF.Schema()
+		if _, ok := schemaMap.GetOk("pulumi_info"); ok {
+			return fmt.Errorf("no available new name for the 'pulumi' string, tried %q", "pulumi_info")
+		}
+		if schemaInfo := getField(&resource.Schema.Fields, "pulumi"); schemaInfo.Name == "" {
+			schemaInfo.Name = tfbridge.TerraformToPulumiNameV2("pulumi_info", schemaMap, resource.Schema.Fields)
 		}
 		return nil
 	}
