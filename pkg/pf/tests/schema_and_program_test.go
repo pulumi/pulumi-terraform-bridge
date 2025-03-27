@@ -556,7 +556,7 @@ resources:
 	pt.Up(t)
 }
 
-func TestAliasesSchemaUpgrade(t *testing.T) {
+func TestPFAliasesSchemaUpgrade(t *testing.T) {
 	t.Parallel()
 
 	prov1 := pb.NewProvider(pb.NewProviderArgs{
@@ -593,27 +593,27 @@ func TestAliasesSchemaUpgrade(t *testing.T) {
 	}
 
 	pt, err := pulcheck.PulCheck(t, prov1.ToProviderInfo(), `
-name: test
-runtime: yaml
-resources:
-  mainRes:
-    type: testprovider:index/test:Test
-    properties:
-      test: "hello"
-`)
+    name: test
+    runtime: yaml
+    resources:
+      mainRes:
+        type: testprovider:index/test:Test
+        properties:
+          test: "hello"
+    `)
 	require.NoError(t, err)
 	pt.Up(t)
 	stack := pt.ExportStack(t)
 
 	yamlProgram := `
-name: test
-runtime: yaml
-resources:
-  mainRes:
-    type: testprovider:index/test2:Test2
-    properties:
-      test: "hello"
-`
+    name: test
+    runtime: yaml
+    resources:
+      mainRes:
+        type: testprovider:index/test2:Test2
+        properties:
+          test: "hello"
+    `
 
 	pt2, err := pulcheck.PulCheck(t, bridgedProvider2, yamlProgram)
 	require.NoError(t, err)

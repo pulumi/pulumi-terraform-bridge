@@ -302,7 +302,7 @@ resources:
 	require.Contains(t, initErrors[0], "UPDATE TEST ERROR")
 }
 
-func TestAliasesSchemaUpgrade(t *testing.T) {
+func TestSDKv2AliasesSchemaUpgrade(t *testing.T) {
 	t.Parallel()
 
 	prov1 := &schema.Provider{
@@ -340,27 +340,27 @@ func TestAliasesSchemaUpgrade(t *testing.T) {
 	}))
 
 	pt := pulcheck.PulCheck(t, bridgedProvider1, `
-name: test
-runtime: yaml
-resources:
-  mainRes:
-    type: prov:index/test:Test
-	properties:
-	  test: "hello"
-`)
+    name: test
+    runtime: yaml
+    resources:
+      mainRes:
+        type: prov:index/test:Test
+    	properties:
+    	  test: "hello"
+    `)
 
 	pt.Up(t)
 	stack := pt.ExportStack(t)
 
 	yamlProgram := `
-name: test
-runtime: yaml
-resources:
-  mainRes:
-    type: prov:index/test2:Test2
-	properties:
-	  test: "hello"
-`
+    name: test
+    runtime: yaml
+    resources:
+      mainRes:
+        type: prov:index/test2:Test2
+    	properties:
+    	  test: "hello"
+    `
 
 	pt2 := pulcheck.PulCheck(t, bridgedProvider2, yamlProgram)
 	pt2.ImportStack(t, stack)
