@@ -557,8 +557,6 @@ resources:
 }
 
 func TestAliasesSchemaUpgrade(t *testing.T) {
-	// TODO[pulumi/pulumi-terraform-bridge#2969]: Support resource aliases
-	t.Skip("PF does not support resource aliases")
 	t.Parallel()
 
 	prov1 := pb.NewProvider(pb.NewProviderArgs{
@@ -588,13 +586,9 @@ func TestAliasesSchemaUpgrade(t *testing.T) {
 	})
 
 	bridgedProvider2 := prov2.ToProviderInfo()
-	bridgedProvider2.Resources = map[string]*info.Resource{
-		"testprovider_test2": {
-			Aliases: []info.Alias{
-				{
-					Type: ref("testprovider:index/test:Test"),
-				},
-			},
+	bridgedProvider2.Resources["testprovider_test2"].Aliases = []info.Alias{
+		{
+			Type: ref("testprovider:index/test:Test"),
 		},
 	}
 
