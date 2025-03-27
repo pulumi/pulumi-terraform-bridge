@@ -135,4 +135,14 @@ func (r *Resource) ImportState(
 	r.ImportStateFunc(ctx, req, resp)
 }
 
-var _ resource.ResourceWithImportState = &Resource{}
+func (r *Resource) UpgradeState(ctx context.Context) map[int64]resource.StateUpgrader {
+	if r.UpgradeStateFunc == nil {
+		return nil
+	}
+	return r.UpgradeStateFunc(ctx)
+}
+
+var (
+	_ resource.ResourceWithImportState  = (*Resource)(nil)
+	_ resource.ResourceWithUpgradeState = (*Resource)(nil)
+)
