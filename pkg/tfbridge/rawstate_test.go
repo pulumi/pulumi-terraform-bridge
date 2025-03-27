@@ -38,6 +38,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	sdkv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
+	"sort"
 )
 
 func Test_rawstate_delta_turnaround(t *testing.T) {
@@ -397,7 +398,7 @@ func Test_rawstate_delta_serialization(t *testing.T) {
 					Renamed: map[resource.PropertyKey]string{
 						"fooBar": "foo_bar",
 					},
-					ElementDeltas: map[resource.PropertyKey]RawStateDelta{
+					PropertyDeltas: map[resource.PropertyKey]RawStateDelta{
 						"fooBar": {
 							TypedNull: &typedNullDelta{
 								T: cty.Bool,
@@ -427,7 +428,7 @@ func Test_rawstate_delta_serialization(t *testing.T) {
 		{
 			name: "array-empty",
 			infl: RawStateDelta{
-				Array: &arrayDelta{
+				Array: &arrayOrSetDelta{
 					T: &cty.Bool,
 				},
 			},
@@ -441,7 +442,7 @@ func Test_rawstate_delta_serialization(t *testing.T) {
 		{
 			name: "array-regular",
 			infl: RawStateDelta{
-				Array: &arrayDelta{
+				Array: &arrayOrSetDelta{
 					ElementDeltas: map[int]RawStateDelta{
 						1: {
 							TypedNull: &typedNullDelta{T: cty.String},
@@ -467,7 +468,7 @@ func Test_rawstate_delta_serialization(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			encoded := tc.infl.ToPropertyValue()
 			t.Logf("encoded: %s", encoded.String())
-			back, err := NewRawStateDeltaFromPropertyValue(encoded)
+			back, err := UnmarshalRawStateDelta(encoded)
 			require.NoError(t, err)
 			require.Equalf(t, tc.infl, back, "turnaround")
 			encodedJSON, err := json.MarshalIndent(encoded.Mappable(), "", " ")
@@ -1214,7 +1215,7 @@ func Test_rawStateDelta_PropertyValue_serialization(t *testing.T) {
 		{
 			name: "replace-deep-secret",
 			rsd: RawStateDelta{
-				Array: &arrayDelta{
+				Array: &arrayOrSetDelta{
 					ElementDeltas: map[int]RawStateDelta{
 						0: {
 							Replace: newReplaceDelta(cty.TupleVal([]cty.Value{
@@ -1235,9 +1236,24 @@ func Test_rawStateDelta_PropertyValue_serialization(t *testing.T) {
 			if !tc.noExpect {
 				tc.expect.Equal(t, pv)
 			}
-			back, err := NewRawStateDeltaFromPropertyValue(pv)
+			back, err := UnmarshalRawStateDelta(pv)
 			require.NoError(t, err)
 			require.Equal(t, tc.rsd.Replace, back.Replace)
 		})
 	}
+}
+
+func insertSorted(slice []string, val string) []string {
+	// Find the insertion index using binary search
+	index := sort.Search(len(slice), func(i int) bool { return slice[i] >= val })
+
+	// Insert the element at the correct position
+	slice = append(slice[:index], append([]string{val}, slice[index:]...)...)
+	return slice
+}
+
+func TestInsertSorted(t *testing.T) {
+	a := []string{"apple", "banana", "cherry"}
+
+	t.Logf("%v", insertSorted(a, "aa"))
 }

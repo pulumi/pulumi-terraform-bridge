@@ -1113,7 +1113,7 @@ func makeTerraformResultInner(ctx context.Context, args makeTerraformResultArgs)
 		// Could check for clobbering existing outMap[rawKey] but it appears that in the pulumi refresh
 		// scenario this is expected: outMap will contain the previous delta written by the bridge. Not enough
 		// information to distinguish this from a genuine conflict with the resource.
-		outMap[rawStateDeltaKey] = delta.ToPropertyValue()
+		outMap[rawStateDeltaKey] = delta.Marshal()
 	}
 
 	return outMap, nil
@@ -1408,23 +1408,23 @@ func makeTerraformStateWithOpts(
 				logger = log.NewDiscardLogger()
 			}
 
-			delta, err := NewRawStateDeltaFromPropertyValue(deltaValue)
+			delta, err := UnmarshalRawStateDelta(deltaValue)
 			if err != nil {
 				logger.Debug(fmt.Sprintf("Failed to parse raw state markers:\n"+
 					"  %q: %#v\n"+
 					"  error: %v",
 					rawStateDeltaKey,
-					delta.ToPropertyValue().String(),
+					delta.Marshal().String(),
 					err))
 				contract.AssertNoErrorf(err, "Failed to parse raw state markers")
 			}
-			recoveredRawState, err := rawStateRecover(resource.NewObjectProperty(m), delta)
+			recoveredRawState, err := delta.Recover(resource.NewObjectProperty(m))
 			if err != nil {
 				logger.Debug(fmt.Sprintf("Failed recover raw state:\n"+
 					"  %q: %#v\n"+
 					"  error: %v",
 					rawStateDeltaKey,
-					delta.ToPropertyValue().String(),
+					delta.Marshal().String(),
 					err))
 				contract.AssertNoErrorf(err, "Failed to recover raw state")
 			}

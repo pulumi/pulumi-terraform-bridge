@@ -172,7 +172,7 @@ func parseResourceState(
 }
 
 func recoverRawState(props resource.PropertyMap, deltaPV resource.PropertyValue) (*tfprotov6.RawState, error) {
-	delta, err := tfbridge.NewRawStateDeltaFromPropertyValue(deltaPV)
+	delta, err := tfbridge.UnmarshalRawStateDelta(deltaPV)
 	if err != nil {
 		return nil, fmt.Errorf("NewRawStateDeltaFromPropertyValue failed: %w", err)
 	}
