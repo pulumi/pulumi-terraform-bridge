@@ -35,7 +35,6 @@ func RandomProvider(t *testing.T) integration.LocalDependency {
 }
 
 func pluginDependency(t *testing.T, name string, version semver.Version) integration.LocalDependency {
-
 	pluginSpec, err := workspace.NewPluginSpec(name, apitype.ResourcePlugin, &version, "", nil)
 	require.NoError(t, err)
 	path, err := workspace.GetPluginPath(
