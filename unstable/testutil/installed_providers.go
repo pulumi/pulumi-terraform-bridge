@@ -35,11 +35,14 @@ func RandomProvider(t *testing.T) integration.LocalDependency {
 }
 
 func pluginDependency(t *testing.T, name string, version semver.Version) integration.LocalDependency {
+
+	pluginSpec, err := workspace.NewPluginSpec(name, apitype.ResourcePlugin, &version, "", nil)
+	require.NoError(t, err)
 	path, err := workspace.GetPluginPath(
 		diag.DefaultSink(os.Stdout, os.Stderr, diag.FormatOptions{
 			Color: colors.Never,
 		}),
-		apitype.ResourcePlugin, name, &version, nil)
+		pluginSpec, nil)
 	require.NoError(t, err,
 		`The %s provider at this version should have been installed by "make install_plugins"`, name)
 	return integration.LocalDependency{
