@@ -24,7 +24,6 @@ import (
 	"os/exec"
 	"sync"
 
-	"github.com/blang/semver"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/convert"
@@ -196,9 +195,7 @@ func (pluginProviderInfoSource) GetProviderInfo(
 		Color: colors.Never,
 	})
 
-	parsedVersion := semver.MustParse(version)
-
-	pluginSpec, err := workspace.NewPluginSpec(pluginName, apitype.ResourcePlugin, &parsedVersion, "", nil)
+	pluginSpec, err := workspace.NewPluginSpec(pluginName, apitype.ResourcePlugin, nil, "", nil)
 	if err != nil {
 		return nil, err
 	}
