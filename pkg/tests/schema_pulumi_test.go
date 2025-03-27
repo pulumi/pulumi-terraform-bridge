@@ -10,13 +10,19 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hexops/autogold/v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/pulcheck"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
+
+func ref[T any](t T) *T {
+	return &t
+}
 
 func TestBasic(t *testing.T) {
 	t.Parallel()
@@ -294,4 +300,72 @@ resources:
 	initErrors := mainResState["initErrors"].([]interface{})
 	require.Len(t, initErrors, 1)
 	require.Contains(t, initErrors[0], "UPDATE TEST ERROR")
+}
+
+func TestSDKv2AliasesSchemaUpgrade(t *testing.T) {
+	t.Parallel()
+
+	prov1 := &schema.Provider{
+		ResourcesMap: map[string]*schema.Resource{
+			"prov_test": {
+				Schema: map[string]*schema.Schema{
+					"test": {
+						Type:     schema.TypeString,
+						Optional: true,
+					},
+				},
+			},
+		},
+	}
+	bridgedProvider1 := pulcheck.BridgedProvider(t, "prov", prov1)
+
+	prov2 := &schema.Provider{
+		ResourcesMap: map[string]*schema.Resource{
+			"prov_test2": {Schema: map[string]*schema.Schema{
+				"test": {
+					Type:     schema.TypeString,
+					Optional: true,
+				},
+			}},
+		},
+	}
+	bridgedProvider2 := pulcheck.BridgedProvider(t, "prov", prov2, pulcheck.WithResourceInfo(map[string]*info.Resource{
+		"prov_test2": {
+			Aliases: []info.Alias{
+				{
+					Type: ref("prov:index/test:Test"),
+				},
+			},
+		},
+	}))
+
+	pt := pulcheck.PulCheck(t, bridgedProvider1, `
+    name: test
+    runtime: yaml
+    resources:
+      mainRes:
+        type: prov:index/test:Test
+    	properties:
+    	  test: "hello"
+    `)
+
+	pt.Up(t)
+	stack := pt.ExportStack(t)
+
+	yamlProgram := `
+    name: test
+    runtime: yaml
+    resources:
+      mainRes:
+        type: prov:index/test2:Test2
+    	properties:
+    	  test: "hello"
+    `
+
+	pt2 := pulcheck.PulCheck(t, bridgedProvider2, yamlProgram)
+	pt2.ImportStack(t, stack)
+
+	res := pt2.Up(t)
+
+	autogold.Expect(&map[string]int{"same": 2}).Equal(t, res.Summary.ResourceChanges)
 }
