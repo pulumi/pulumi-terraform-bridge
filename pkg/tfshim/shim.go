@@ -242,12 +242,6 @@ type Resource interface {
 	DecodeTimeouts(config ResourceConfig) (*ResourceTimeout, error)
 }
 
-// Newer versions of the bridge go to extra length to preserve cty.Value form of as-is raw state inside the Pulumi
-// state file. If the shim supports it it should implement this additional interface to receive this data.
-type ResourceWithNewInstanceState interface {
-	NewInstanceState(object cty.Value, meta map[string]interface{}) (InstanceState, error)
-}
-
 type ResourceMap interface {
 	Len() int
 	Get(key string) Resource
@@ -357,3 +351,22 @@ type DiffOptions struct {
 //
 // https://www.pulumi.com/docs/concepts/options/ignorechanges/
 type IgnoreChanges = func() map[string]struct{}
+
+// RawState is the raw un-encoded Terraform state, without type information. It is passed as-is for providers to
+// upgrade and run migrations on.
+//
+// The representation is the result of parsing the JSON format accepted on the gRPC Terraform protocol:
+//
+//	https://github.com/hashicorp/terraform-plugin-go/blob/v0.26.0/tfprotov5/internal/tfplugin5/tfplugin5.pb.go#L519
+//	https://github.com/hashicorp/terraform-plugin-go/blob/v0.26.0/tfprotov6/state.go#L35
+type RawState any
+
+type ProviderWithRawStateSupport interface {
+	Provider
+
+	// Construct a new empty state when creating a resource.
+	NewEmptyState(ctx context.Context, t string) InstanceState
+
+	// Ensure raw state is upgraded to the current resource schema version.
+	UpgradeState(ctx context.Context, t string, state RawState, meta map[string]any) (InstanceState, error)
+}

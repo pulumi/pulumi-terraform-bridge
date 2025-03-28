@@ -37,29 +37,6 @@ import (
 // rawStateDeltaKey is a special key to store [RawStateDelta] is Pulumi states.
 const rawStateDeltaKey = "__pulumi_raw_state_delta"
 
-// RawState is the raw un-encoded Terraform state, without type information. It is passed as-is for providers to
-// upgrade and run migrations on.
-//
-// The representation is the result of parsing the JSON format accepted on the gRPC Terraform protocol:
-//
-//	https://github.com/hashicorp/terraform-plugin-go/blob/v0.26.0/tfprotov5/internal/tfplugin5/tfplugin5.pb.go#L519
-//	https://github.com/hashicorp/terraform-plugin-go/blob/v0.26.0/tfprotov6/state.go#L35
-type RawState struct{}
-
-func (r RawState) prettyPrint() string {
-	bytes, err := json.MarshalIndent(r, "", "  ")
-	contract.AssertNoErrorf(err, "unexpected json.MarshalIndent failure on RawState")
-	return string(bytes)
-}
-
-func (r RawState) JSON() any {
-	panic("TODO")
-}
-
-func newRawState(json any) RawState {
-	panic("TODO")
-}
-
 func newRawStateFromCtyValue(v cty.Value) RawState {
 	rawStateJSON, err := ctyjson.Marshal(v, v.Type())
 	contract.AssertNoErrorf(err, "ctyjson.Marshal failed")

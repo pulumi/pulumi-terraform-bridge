@@ -2,22 +2,26 @@ package sdkv2
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
 
 	"github.com/hashicorp/go-cty/cty"
-	ctyjson "github.com/hashicorp/go-cty/cty/json"
 	"github.com/hashicorp/go-cty/cty/msgpack"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov5"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
 func upgradeResourceStateGRPC(
-	ctx context.Context, t string, res *schema.Resource,
-	state cty.Value, meta map[string]any,
+	ctx context.Context,
+	t string,
+	res *schema.Resource,
+	state shim.RawState,
+	meta map[string]any,
 	server tfprotov5.ProviderServer,
 ) (cty.Value, map[string]any, error) {
-	jsonBytes, err := ctyjson.Marshal(state, state.Type())
+	jsonBytes, err := json.Marshal(state)
 	if err != nil {
 		return cty.Value{}, nil, err
 	}
