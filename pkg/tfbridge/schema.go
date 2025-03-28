@@ -1400,38 +1400,38 @@ func makeTerraformStateWithOpts(
 
 	// Newer versions of the bridge encode a delta that allows recovering the Terraform State as a cty.Value from
 	// the PropertyMap and the delta. Check if this is the case and the recovered raw state is available.
-	if newStyleResource, ok := res.TF.(shim.ResourceWithNewInstanceState); ok {
-		if deltaValue, hasDelta := m[rawStateDeltaKey]; hasDelta {
-			// Only log error details at Debug level to avoid leaking secrets to errors.
-			logger := log.TryGetLogger(ctx)
-			if logger == nil {
-				logger = log.NewDiscardLogger()
-			}
-
-			delta, err := UnmarshalRawStateDelta(deltaValue)
-			if err != nil {
-				logger.Debug(fmt.Sprintf("Failed to parse raw state markers:\n"+
-					"  %q: %#v\n"+
-					"  error: %v",
-					rawStateDeltaKey,
-					delta.Marshal().String(),
-					err))
-				contract.AssertNoErrorf(err, "Failed to parse raw state markers")
-			}
-			recoveredRawState, err := delta.Recover(resource.NewObjectProperty(m))
-			if err != nil {
-				logger.Debug(fmt.Sprintf("Failed recover raw state:\n"+
-					"  %q: %#v\n"+
-					"  error: %v",
-					rawStateDeltaKey,
-					delta.Marshal().String(),
-					err))
-				contract.AssertNoErrorf(err, "Failed to recover raw state")
-			}
-
-			return newStyleResource.NewInstanceState(recoveredRawState, meta)
+	//if newStyleResource, ok := res.TF.(shim.ResourceWithNewInstanceState); ok {
+	if deltaValue, hasDelta := m[rawStateDeltaKey]; hasDelta {
+		// Only log error details at Debug level to avoid leaking secrets to errors.
+		logger := log.TryGetLogger(ctx)
+		if logger == nil {
+			logger = log.NewDiscardLogger()
 		}
+
+		delta, err := UnmarshalRawStateDelta(deltaValue)
+		if err != nil {
+			logger.Debug(fmt.Sprintf("Failed to parse raw state markers:\n"+
+				"  %q: %#v\n"+
+				"  error: %v",
+				rawStateDeltaKey,
+				delta.Marshal().String(),
+				err))
+			contract.AssertNoErrorf(err, "Failed to parse raw state markers")
+		}
+		recoveredRawState, err := delta.Recover(resource.NewObjectProperty(m))
+		if err != nil {
+			logger.Debug(fmt.Sprintf("Failed recover raw state:\n"+
+				"  %q: %#v\n"+
+				"  error: %v",
+				rawStateDeltaKey,
+				delta.Marshal().String(),
+				err))
+			contract.AssertNoErrorf(err, "Failed to recover raw state")
+		}
+
+		return newStyleResource.NewInstanceState(recoveredRawState, meta)
 	}
+	//}
 
 	// Turn the resource properties into a map. For the most part, this is a straight
 	// Mappable, but we use MapReplace because we use float64s and Terraform uses

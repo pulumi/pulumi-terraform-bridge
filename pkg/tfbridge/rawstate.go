@@ -37,15 +37,6 @@ import (
 // rawStateDeltaKey is a special key to store [RawStateDelta] is Pulumi states.
 const rawStateDeltaKey = "__pulumi_raw_state_delta"
 
-func newRawStateFromCtyValue(v cty.Value) RawState {
-	rawStateJSON, err := ctyjson.Marshal(v, v.Type())
-	contract.AssertNoErrorf(err, "ctyjson.Marshal failed")
-	var rawStateRepr any
-	err = json.Unmarshal(rawStateJSON, &rawStateRepr)
-	contract.AssertNoErrorf(err, "json.Unmarshal failed")
-	return newRawState(rawStateRepr)
-}
-
 // RawStateDelta encodes how to translate PropertyMap to RawState.
 //
 // Pulumi stores Terraform resource states as PropertyMap in the state. But providers expect to interact with the
@@ -76,7 +67,7 @@ type RawStateDelta struct {
 }
 
 // Patches a Pulumi value with the delta to recover the original RawState.
-func (d RawStateDelta) Recover(pv resource.PropertyValue) (RawState, error) {
+func (d RawStateDelta) Recover(pv resource.PropertyValue) (shim.RawState, error) {
 	if pv.IsSecret() {
 		return d.Recover(pv.SecretValue().Element)
 	}
@@ -94,31 +85,31 @@ func (d RawStateDelta) Recover(pv resource.PropertyValue) (RawState, error) {
 	case d.Pluralize != nil:
 		switch {
 		case pv.IsNull():
-			return newRawState([]any{}), nil
+			return shim.RawState([]any{}), nil
 		default:
 			v, err := d.Pluralize.Inner.Recover(pv)
 			if err != nil {
-				return RawState{}, err
+				return nil, err
 			}
-			return newRawState([]any{v}), nil
+			return shim.RawState([]any{v}), nil
 		}
 	case d.Map != nil:
 		if !pv.IsObject() {
-			return RawState{}, errors.New("expected PropertyValue to be an Object encoding a map")
+			return nil, errors.New("expected PropertyValue to be an Object encoding a map")
 		}
 		pm := pv.ObjectValue()
 		recovered := map[string]any{}
 		for k, v := range pm {
 			element, err := d.Map.ElementDeltas[k].Recover(v)
 			if err != nil {
-				return RawState{}, err
+				return nil, err
 			}
-			recovered[string(k)] = element.JSON()
+			recovered[string(k)] = element
 		}
-		return newRawState(recovered), nil
+		return shim.RawState(recovered), nil
 	case d.Obj != nil:
 		if !pv.IsObject() {
-			return RawState{}, errors.New(
+			return nil, errors.New(
 				"expected PropertyValue to be an Object encoding a Terraform object",
 			)
 		}
@@ -144,34 +135,34 @@ func (d RawStateDelta) Recover(pv resource.PropertyValue) (RawState, error) {
 			}
 			prop, err := d.Obj.PropertyDeltas[k].Recover(v)
 			if err != nil {
-				return RawState{}, err
+				return nil, err
 			}
-			recovered[name] = prop.JSON()
+			recovered[name] = prop
 		}
-		return newRawState(recovered), nil
+		return shim.RawState(recovered), nil
 	case d.ArrayOrSet != nil:
 		if !pv.IsArray() {
-			return RawState{}, errors.New("expected PropertyValue to be an Array")
+			return nil, errors.New("expected PropertyValue to be an Array")
 		}
 		arr := pv.ArrayValue()
 		n := len(arr)
 		for k := range d.ArrayOrSet.ElementDeltas {
 			if k < 0 || k >= n {
-				return RawState{}, fmt.Errorf("Invalid array delta index %d", k)
+				return nil, fmt.Errorf("Invalid array delta index %d", k)
 			}
 		}
 		if n == 0 {
-			return newRawState([]any{}), nil
+			return shim.RawState([]any{}), nil
 		}
 		var elements []any
 		for k, v := range arr {
 			r, err := d.ArrayOrSet.ElementDeltas[k].Recover(v)
 			if err != nil {
-				return RawState{}, err
+				return nil, err
 			}
-			elements = append(elements, r.JSON())
+			elements = append(elements, r)
 		}
-		return newRawState(elements), nil
+		return shim.RawState(elements), nil
 	case d.Asset != nil:
 		at := AssetTranslation{
 			Kind:      d.Asset.Kind,
@@ -183,44 +174,44 @@ func (d RawStateDelta) Recover(pv resource.PropertyValue) (RawState, error) {
 		case pv.IsAsset():
 			assetValue, err := at.TranslateAsset(pv.AssetValue())
 			if err != nil {
-				return RawState{}, fmt.Errorf("TranslateAsset failed: %w", err)
+				return nil, fmt.Errorf("TranslateAsset failed: %w", err)
 			}
 			assetOrArchiveValue = assetValue
 		case pv.IsArchive():
 			archiveValue, err := at.TranslateArchive(pv.ArchiveValue())
 			if err != nil {
-				return RawState{}, fmt.Errorf("TranslateArchive failed: %w", err)
+				return nil, fmt.Errorf("TranslateArchive failed: %w", err)
 			}
 			assetOrArchiveValue = archiveValue
 		default:
-			return RawState{}, errors.New("Expected PropertyValue to be an Asset or an Archive")
+			return nil, errors.New("Expected PropertyValue to be an Asset or an Archive")
 		}
 		return rawStateEncodeAssetOrArhiveValue(assetOrArchiveValue)
 	case d.Num != nil:
 		if !pv.IsString() {
-			return RawState{}, errors.New("Expected PropertyValue to be a String")
+			return nil, errors.New("Expected PropertyValue to be a String")
 		}
 		v := json.Number(pv.StringValue())
-		return newRawState(v), nil
+		return shim.RawState(v), nil
 	default:
 		contract.Failf("RawStateDelta.Recover does not recognize this rawStateDelta case")
-		return RawState{}, errors.New("impossible")
+		return nil, errors.New("impossible")
 	}
 }
 
-func rawStateRecoverNatural(pv resource.PropertyValue) (RawState, error) {
+func rawStateRecoverNatural(pv resource.PropertyValue) (shim.RawState, error) {
 	switch {
 	case pv.IsString():
-		return newRawState(pv.StringValue()), nil
+		return shim.RawState(pv.StringValue()), nil
 	case pv.IsBool():
-		return newRawState(pv.BoolValue()), nil
+		return shim.RawState(pv.BoolValue()), nil
 	case pv.IsNumber():
 		n := pv.NumberValue()
 		nv, err := json.Marshal(n)
 		if err != nil {
-			return RawState{}, err
+			return nil, err
 		}
-		return newRawState(json.Number(string(nv))), nil
+		return shim.RawState(json.Number(string(nv))), nil
 	case pv.IsSecret():
 		return rawStateRecoverNatural(pv.SecretValue().Element)
 	case pv.IsOutput():
@@ -229,32 +220,32 @@ func rawStateRecoverNatural(pv resource.PropertyValue) (RawState, error) {
 		return rawStateRecoverNatural(ov.Element)
 	case pv.IsComputed():
 		contract.Failf("rawStateRecoverNatural cannot process Computed values")
-		return RawState{}, errors.New("rawStateRecoverNatural cannot process Computed values")
+		return nil, errors.New("rawStateRecoverNatural cannot process Computed values")
 	case pv.IsArray():
 		var elements []any
 		for _, v := range pv.ArrayValue() {
 			vv, err := rawStateRecoverNatural(v)
 			if err != nil {
-				return RawState{}, err
+				return nil, err
 			}
-			elements = append(elements, vv.JSON())
+			elements = append(elements, vv)
 		}
-		return newRawState(elements), nil
+		return shim.RawState(elements), nil
 	case pv.IsObject():
-		return RawState{}, errors.New(
+		return nil, errors.New(
 			"rawStateRecoverNatural cannot process Object values due to map vs object confusion",
 		)
 	case pv.IsNull():
-		return newRawState(nil), nil
+		return shim.RawState(nil), nil
 	case pv.IsArchive():
-		return RawState{}, errors.New("rawStateRecoverNatural cannot process Archive values")
+		return nil, errors.New("rawStateRecoverNatural cannot process Archive values")
 	case pv.IsAsset():
-		return RawState{}, errors.New("rawStateRecoverNatural cannot process Asset values")
+		return nil, errors.New("rawStateRecoverNatural cannot process Asset values")
 	case pv.IsResourceReference():
-		return RawState{}, errors.New("rawStateRecoverNatural cannot process ResourceReference values")
+		return nil, errors.New("rawStateRecoverNatural cannot process ResourceReference values")
 	default:
 		contract.Failf("rawStateRecoverNatural does not recognize this PropertyValue case")
-		return RawState{}, errors.New("impossible")
+		return nil, errors.New("impossible")
 	}
 }
 
@@ -417,17 +408,17 @@ type assetDelta struct {
 // carries the RawState as it was encountered. NOTE that this can leak sensitive information to the state and must be
 // secreted.
 type replaceDelta struct {
-	Raw RawState `json:"raw"`
+	Raw shim.RawState `json:"raw"`
 }
 
-func rawStateEncodeAssetOrArhiveValue(value any) (RawState, error) {
+func rawStateEncodeAssetOrArhiveValue(value any) (shim.RawState, error) {
 	switch value := value.(type) {
 	case string:
-		return newRawState(value), nil
+		return shim.RawState(value), nil
 	case []byte:
-		return newRawState(string(value)), nil
+		return shim.RawState(string(value)), nil
 	default:
-		return RawState{}, fmt.Errorf("Expected TranslateAsset or TranslateArchive to return string|[]byte")
+		return nil, fmt.Errorf("Expected TranslateAsset or TranslateArchive to return string|[]byte")
 	}
 }
 
@@ -452,8 +443,8 @@ func RawStateComputeDelta(
 	return delta
 }
 
-func (d RawStateDelta) turnaroundCheck(rawState RawState, pv resource.PropertyValue) error {
-	mm, ok := rawState.JSON().(map[string]any)
+func (d RawStateDelta) turnaroundCheck(rawState shim.RawState, pv resource.PropertyValue) error {
+	mm, ok := rawState.(map[string]any)
 	if !ok {
 		return errors.New("expected rawState to be a map")
 	}
@@ -759,4 +750,13 @@ func (ih *rawStateDeltaHelper) computeDeltaAt(
 		contract.Failf("rawStateDeltaHelper does not recognize this cty.Value case")
 		return RawStateDelta{}, errors.New("impossible")
 	}
+}
+
+func newRawStateFromCtyValue(v cty.Value) shim.RawState {
+	rawStateJSON, err := ctyjson.Marshal(v, v.Type())
+	contract.AssertNoErrorf(err, "ctyjson.Marshal failed")
+	var rawStateRepr any
+	err = json.Unmarshal(rawStateJSON, &rawStateRepr)
+	contract.AssertNoErrorf(err, "json.Unmarshal failed")
+	return shim.RawState(rawStateRepr)
 }
