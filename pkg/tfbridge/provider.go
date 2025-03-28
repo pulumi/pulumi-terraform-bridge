@@ -1136,7 +1136,7 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 		return nil, err
 	}
 
-	state, err := makeTerraformStateWithOpts(ctx, res, req.GetId(), olds,
+	state, err := makeTerraformStateWithOpts(ctx, p.tf.(shim.ProviderWithRawStateSupport), res, req.GetId(), olds,
 		makeTerraformStateOptions{
 			defaultZeroSchemaVersion: opts.defaultZeroSchemaVersion,
 		},
@@ -1438,7 +1438,7 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 	if err != nil {
 		return nil, err
 	}
-	state, err := unmarshalTerraformStateWithOpts(ctx, res, id, req.GetProperties(), fmt.Sprintf("%s.state", label),
+	state, err := unmarshalTerraformStateWithOpts(ctx, p.tf, res, id, req.GetProperties(), fmt.Sprintf("%s.state", label),
 		unmarshalTerraformStateOptions{
 			defaultZeroSchemaVersion: opts.defaultZeroSchemaVersion,
 		})
@@ -1636,7 +1636,7 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 		return nil, err
 	}
 
-	state, err := makeTerraformStateWithOpts(ctx, res, req.GetId(), olds,
+	state, err := makeTerraformStateWithOpts(ctx, p.tf, res, req.GetId(), olds,
 		makeTerraformStateOptions{
 			defaultZeroSchemaVersion: opts.defaultZeroSchemaVersion,
 		})
@@ -1770,7 +1770,7 @@ func (p *Provider) Delete(ctx context.Context, req *pulumirpc.DeleteRequest) (*p
 		return nil, err
 	}
 	// Fetch the resource attributes since many providers need more than just the ID to perform the delete.
-	state, err := unmarshalTerraformStateWithOpts(ctx, res, req.GetId(), req.GetProperties(), label,
+	state, err := unmarshalTerraformStateWithOpts(ctx, p.tf, res, req.GetId(), req.GetProperties(), label,
 		unmarshalTerraformStateOptions{
 			defaultZeroSchemaVersion: opts.defaultZeroSchemaVersion,
 		})
