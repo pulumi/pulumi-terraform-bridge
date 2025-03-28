@@ -111,7 +111,6 @@ func (u *notSupportedUtil) resource(path string, res *tfbridge.ResourceInfo) {
 	u.fields(path, res.Fields)
 	u.assertIsZero(path+".UniqueNameFields", res.UniqueNameFields)
 	u.assertIsZero(path+".Docs", res.Docs)
-	u.assertIsZero(path+".Aliases", res.Aliases)
 }
 
 func (u *notSupportedUtil) schema(path string, schema *tfbridge.SchemaInfo) {
