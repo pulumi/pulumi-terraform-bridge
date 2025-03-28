@@ -6,10 +6,10 @@ This example will only translate the resource code. It has no configuration file
 {{% choosable language typescript %}}
 ```typescript
 import * as pulumi from "@pulumi/pulumi";
-import * as simple from "@pulumi/simple";
+import * as openstack from "@pulumi/openstack";
 
 //# Define a resource
-const aResource = new simple.index.Resource("a_resource", {
+const aResource = new openstack.index.Resource("a_resource", {
     renamedInput1: "hello",
     inputTwo: true,
 });
@@ -19,10 +19,10 @@ export const someOutput = aResource.result;
 {{% choosable language python %}}
 ```python
 import pulumi
-import pulumi_simple as simple
+import pulumi_openstack as openstack
 
 ## Define a resource
-a_resource = simple.index.Resource("a_resource",
+a_resource = openstack.index.Resource("a_resource",
     renamed_input1=hello,
     input_two=True)
 pulumi.export("someOutput", a_resource["result"])
@@ -33,12 +33,12 @@ pulumi.export("someOutput", a_resource["result"])
 using System.Collections.Generic;
 using System.Linq;
 using Pulumi;
-using Simple = Pulumi.Simple;
+using OpenStack = Pulumi.OpenStack;
 
 return await Deployment.RunAsync(() => 
 {
     //# Define a resource
-    var aResource = new Simple.Index.Resource("a_resource", new()
+    var aResource = new OpenStack.Index.Resource("a_resource", new()
     {
         RenamedInput1 = "hello",
         InputTwo = true,
@@ -57,14 +57,14 @@ return await Deployment.RunAsync(() =>
 package main
 
 import (
-	"github.com/pulumi/pulumi-simple/sdk/go/simple"
+	"github.com/pulumi/pulumi-openstack/sdk/v5/go/openstack"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
 		// # Define a resource
-		aResource, err := simple.NewResource(ctx, "a_resource", &simple.ResourceArgs{
+		aResource, err := openstack.NewResource(ctx, "a_resource", &openstack.ResourceArgs{
 			RenamedInput1: "hello",
 			InputTwo:      true,
 		})
@@ -82,7 +82,7 @@ func main() {
 resources:
   ## Define a resource
   aResource:
-    type: simple:resource
+    type: openstack:resource
     name: a_resource
     properties:
       renamedInput1: hello
@@ -98,8 +98,8 @@ package generated_program;
 import com.pulumi.Context;
 import com.pulumi.Pulumi;
 import com.pulumi.core.Output;
-import com.pulumi.simple.resource;
-import com.pulumi.simple.resourceArgs;
+import com.pulumi.openstack.resource;
+import com.pulumi.openstack.resourceArgs;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Map;

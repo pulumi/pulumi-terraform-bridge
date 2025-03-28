@@ -8,14 +8,14 @@ terraform {
   required_version = ">= 0.14.0"
   required_providers {
     simple = {
-      source  = "terraform-provider-simple/simple"
+      source  = "terraform-provider-openstack/openstack"
       version = "~> 1.53.0"
     }
   }
 }
 
 # Configure the OpenStack Provider
-provider "simple-provider" {
+provider "openstack" {
   user_name   = "admin"
   tenant_name = "admin"
   password    = "pwd"
@@ -23,16 +23,15 @@ provider "simple-provider" {
   region      = "RegionOne"
 }
 ## Define a resource
-resource "simple_resource" "a_resource" {
+resource "openstack_resource" "a_resource" {
   input_one = "hello"
   input_two = true
 }
 
 output "some_output" {
-  value = simple_resource.a_resource.result
+  value = openstack_resource.a_resource.result
 }
 ```
 
 ## Configuration Reference
-
 The following configuration inputs are supported:

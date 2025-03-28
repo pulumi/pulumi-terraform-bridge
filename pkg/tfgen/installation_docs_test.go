@@ -427,10 +427,10 @@ func TestTranslateCodeBlocks(t *testing.T) {
 		expected   autogold.Value
 	}
 	p := tfbridge.ProviderInfo{
-		Name: "simple",
+		Name: "openstack",
 		P: sdkv2.NewProvider(&schema.Provider{
 			ResourcesMap: map[string]*schema.Resource{
-				"simple_resource": {
+				"openstack_resource": {
 					Schema: map[string]*schema.Schema{
 						"input_one": {
 							Type:     schema.TypeString,
@@ -444,14 +444,14 @@ func TestTranslateCodeBlocks(t *testing.T) {
 				},
 			},
 			DataSourcesMap: map[string]*schema.Resource{
-				"simple_data_source": {
+				"openstack_data_source": {
 					Schema: map[string]*schema.Schema{},
 				},
 			},
 		}),
 		Resources: map[string]*tfbridge.ResourceInfo{
-			"simple_resource": {
-				Tok: "simple:index:resource",
+			"openstack_resource": {
+				Tok: "openstack:index:resource",
 				Fields: map[string]*tfbridge.SchemaInfo{
 					"input_one": {
 						Name: "renamedInput1",
@@ -460,8 +460,8 @@ func TestTranslateCodeBlocks(t *testing.T) {
 			},
 		},
 		DataSources: map[string]*tfbridge.DataSourceInfo{
-			"simple_data_source": {
-				Tok: "simple:index:dataSource",
+			"openstack_data_source": {
+				Tok: "openstack:index:dataSource",
 			},
 		},
 	}
