@@ -1,5 +1,26 @@
 {
   "properties": {
+    "__pulumi_raw_state_delta": {
+      "obj": {
+        "o": {
+          "attrBoolComputed": {
+            "null": {
+              "t": "bool"
+            }
+          },
+          "attrNumberComputed": {
+            "null": {
+              "t": "number"
+            }
+          },
+          "attrStringComputed": {
+            "null": {
+              "t": "string"
+            }
+          }
+        }
+      }
+    },
     "attrBoolRequired": true,
     "attrIntComputed": 256,
     "attrIntRequired": 64,

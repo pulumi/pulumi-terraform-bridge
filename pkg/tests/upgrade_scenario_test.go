@@ -32,9 +32,8 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
-// A schema change with state ugpraders should work as expected.
+// A schema change with state upgraders should work as expected.
 func TestUpgrade_StateUpgraders(t *testing.T) {
-	t.Skip("TODO[pulumi/pulumi-terraform-bridge#1667]")
 	t.Parallel()
 
 	resourceBefore := &schema.Resource{
@@ -138,7 +137,6 @@ resources:
 
 // When TF schema did not change, but Pulumi removes MaxItems=1, the bridged provider should not break.
 func TestUpgrade_Pulumi_Removes_MaxItems1(t *testing.T) {
-	t.Skip("TODO[pulumi/pulumi-terraform-bridge#1667]")
 	t.Parallel()
 
 	programBefore := `
@@ -233,7 +231,6 @@ resources:
 
 // Here underlying schema is not changed, but Pulumi is adding a MaxItems=1 marker.
 func TestUpgrade_Pulumi_Adds_MaxItems1(t *testing.T) {
-	t.Skip("TODO[pulumi/pulumi-terraform-bridge#1667]")
 	t.Parallel()
 
 	programBefore := `
@@ -328,7 +325,6 @@ resources:
 }
 
 func TestUpgrade_Upstream_Adds_MaxItems1(t *testing.T) {
-	t.Skip("TODO[pulumi/pulumi-terraform-bridge#1667]")
 	t.Parallel()
 
 	testUpgradeUpstreamAddsMaxItems1(t, false /*refresh*/)
@@ -338,8 +334,8 @@ func TestUpgrade_Upstream_Adds_MaxItems1(t *testing.T) {
 // reconstruct the expected raw state for the upgrade to go smoothly. Reuse one of the existing test cases here to test
 // the refresh path.
 func TestUpgrade_Refresh(t *testing.T) {
-	t.Skip("TODO[pulumi/pulumi-terraform-bridge#1667]")
 	t.Parallel()
+
 	testUpgradeUpstreamAddsMaxItems1(t, true /*refresh*/)
 }
 
@@ -430,8 +426,6 @@ resources:
 }
 
 func TestUpgrade_Upstream_Removes_MaxItems1(t *testing.T) {
-	t.Skip("TODO[pulumi/pulumi-terraform-bridge#1667]")
-
 	t.Parallel()
 
 	programBefore := `

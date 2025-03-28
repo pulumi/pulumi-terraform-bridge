@@ -872,7 +872,7 @@ func TestResultAttributesRoundTrip(t *testing.T) {
 			if !ok {
 				assert.True(t, strings.HasSuffix(k, ".%"))
 			} else {
-				assert.Equal(t, expected, v)
+				assert.Equalf(t, expected, v, "attribute: %q", k)
 			}
 		}
 	})
@@ -892,7 +892,7 @@ func TestResultAttributesRoundTrip(t *testing.T) {
 			if !ok {
 				assert.True(t, strings.HasSuffix(k, ".%"))
 			} else {
-				assert.Equal(t, expected, v)
+				assert.Equalf(t, expected, v, "attribute: %q", k)
 			}
 		}
 	})
@@ -2872,8 +2872,7 @@ func TestExtractSchemaInputsNestedMaxItemsOne(t *testing.T) {
 		{
 			name: "no overrides",
 			expectedOutputs: resource.PropertyMap{
-				"id":     resource.NewProperty("MyID"),
-				"__meta": resource.NewStringProperty("{\"schema_version\":\"0\"}"),
+				"id": resource.NewProperty("MyID"),
 				"listObjectMaxitems": resource.NewProperty(resource.PropertyMap{
 					"field1":     resource.NewProperty(true),
 					"listScalar": resource.NewProperty(2.0),
@@ -2921,8 +2920,7 @@ func TestExtractSchemaInputsNestedMaxItemsOne(t *testing.T) {
 				},
 			},
 			expectedOutputs: resource.PropertyMap{
-				"id":     resource.NewProperty("MyID"),
-				"__meta": resource.NewStringProperty("{\"schema_version\":\"0\"}"),
+				"id": resource.NewProperty("MyID"),
 				"listObject": resource.NewProperty(resource.PropertyMap{
 					"field1": resource.NewProperty(false),
 					"listScalars": resource.NewProperty([]resource.PropertyValue{
@@ -2971,6 +2969,10 @@ func TestExtractSchemaInputsNestedMaxItemsOne(t *testing.T) {
 
 			outs, err := plugin.UnmarshalProperties(resp.GetProperties(), plugin.MarshalOptions{})
 			assert.NoError(t, err)
+
+			// Ignore special keys as the values can get complicated.
+			delete(outs, metaKey)
+			delete(outs, rawStateDeltaKey)
 			assert.Equal(t, tt.expectedOutputs, outs, "outputs")
 
 			ins, err := plugin.UnmarshalProperties(resp.GetInputs(), plugin.MarshalOptions{})

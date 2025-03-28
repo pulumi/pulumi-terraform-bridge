@@ -64,9 +64,15 @@ func getVersionInState(t T, stack apitype.UntypedDeployment) int {
 	var metaMap map[string]interface{}
 	err = json.Unmarshal([]byte(meta), &metaMap)
 	require.NoError(t, err)
-	schemaVersion, err := strconv.ParseInt(metaMap["schema_version"].(string), 10, 64)
-	require.NoError(t, err)
-	return int(schemaVersion)
+	var schemaVersion int
+	if sv, ok := metaMap["schema_version"]; ok {
+		if svs, ok := sv.(string); ok {
+			n, err := strconv.ParseInt(svs, 10, 64)
+			require.NoError(t, err)
+			schemaVersion = int(n)
+		}
+	}
+	return schemaVersion
 }
 
 func runPulumiUpgrade(t T, res1, res2 *schema.Resource, config1, config2 cty.Value) (int, int) {

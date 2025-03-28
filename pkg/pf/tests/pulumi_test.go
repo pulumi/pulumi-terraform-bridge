@@ -21,6 +21,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	sdkv2schema "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pulumi/providertest/pulumitest"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/pulcheck"
@@ -32,6 +33,20 @@ import (
 
 // Quick setup for integration-testing PF-based providers.
 func newPulumiTest(t *testing.T, p provider.Provider, testProgramYAML string) *pulumitest.PulumiTest {
+	return newPulumiTestWithOpts(t, p, testProgramYAML, pulumiTestOpts{})
+}
+
+type pulumiTestOpts struct {
+	resourceInfo *info.Resource
+}
+
+// Quick setup for integration-testing PF-based providers.
+func newPulumiTestWithOpts(
+	t *testing.T,
+	p provider.Provider,
+	testProgramYAML string,
+	opts pulumiTestOpts,
+) *pulumitest.PulumiTest {
 	ctx := context.Background()
 
 	// Due to some historical limitations it is not yet possible to directly pass a PF-based provider to the main
@@ -53,6 +68,18 @@ func newPulumiTest(t *testing.T, p provider.Provider, testProgramYAML string) *p
 	}
 
 	muxProviderInfo.MustComputeTokens(tokens.SingleModule(providerName, "index", makeToken))
+
+	if opts.resourceInfo != nil {
+		contract.Assertf(len(muxProviderInfo.Resources) == 1, "this code expects one resource only")
+		var resourceID string
+		for k := range muxProviderInfo.Resources {
+			resourceID = k
+		}
+		tok := muxProviderInfo.Resources[resourceID].Tok
+		info := *opts.resourceInfo
+		info.Tok = tok
+		muxProviderInfo.Resources[resourceID] = &info
+	}
 
 	muxProvider, err := pf.NewMuxProvider(ctx, muxProviderInfo, nil)
 	require.NoError(t, err)

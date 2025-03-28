@@ -52,7 +52,10 @@ type v2Provider struct {
 	planEditFunc PlanStateEditFunc
 }
 
-var _ shim.Provider = (*v2Provider)(nil)
+var (
+	_ shim.Provider                    = (*v2Provider)(nil)
+	_ shim.ProviderWithRawStateSupport = (*v2Provider)(nil)
+)
 
 func NewProvider(p *schema.Provider, opts ...providerOption) shim.Provider {
 	o, err := getProviderOptions(opts)
