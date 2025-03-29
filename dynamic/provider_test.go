@@ -468,8 +468,8 @@ func TestSchemaGenerationFullDocs(t *testing.T) { //nolint:paralleltest
 
 	tests := []testCase{
 		{
-			name:     "hashicorp/random",
-			version:  "3.6.3",
+			name:     "dell/redfish",
+			version:  "1.5.0",
 			fullDocs: "--fullDocs",
 		},
 		{

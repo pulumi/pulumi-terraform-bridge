@@ -561,10 +561,11 @@ func (p *providerServer) Construct(ctx context.Context,
 		}
 		propertyDependencies[resource.PropertyKey(name)] = urns
 	}
+	protect := req.GetProtect()
 	options := pl.ConstructOptions{
 		Aliases:              aliases,
 		Dependencies:         dependencies,
-		Protect:              req.GetProtect(),
+		Protect:              &protect,
 		Providers:            req.GetProviders(),
 		PropertyDependencies: propertyDependencies,
 	}

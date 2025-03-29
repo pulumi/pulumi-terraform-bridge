@@ -126,21 +126,20 @@ func (host *inmemoryProviderHost) Provider(pkg workspace.PackageDescriptor) (plu
 	return host.Host.Provider(pkg)
 }
 
-// ResolvePlugin resolves a plugin kind, name, and optional semver to a candidate plugin
+// ResolvePlugin resolves a workspace.PluginSpec to a candidate plugin
 // to load. inmemoryProviderHost does this by checking if the generating provider is being
-// loaded. If it is, it returns it's provider. Otherwise, we defer
+// loaded. If it is, it returns its provider. Otherwise, we defer
 // inmemoryProviderHost.Host.
-func (host *inmemoryProviderHost) ResolvePlugin(kind apitype.PluginKind, name string,
-	version *semver.Version,
-) (*workspace.PluginInfo, error) {
-	if name == host.provider.name.String() {
+func (host *inmemoryProviderHost) ResolvePlugin(pluginSpec workspace.PluginSpec) (*workspace.PluginInfo, error) {
+	if pluginSpec.Name == host.provider.name.String() {
 		info, err := host.provider.GetPluginInfo(context.TODO())
 		if err != nil {
 			return nil, err
 		}
 		return &info, nil
 	}
-	return host.Host.ResolvePlugin(kind, name, version)
+
+	return host.Host.ResolvePlugin(pluginSpec)
 }
 
 func (host *inmemoryProviderHost) GetProviderInfo(

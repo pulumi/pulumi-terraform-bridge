@@ -7,48 +7,48 @@ With this resource you can manage custom HTML for the Login, Reset Password, Mul
 import * as pulumi from "@pulumi/pulumi";
 import * as auth0 from "@pulumi/auth0";
 
-const myPages = new auth0.Pages("myPages", {
-    changePassword: {
-        enabled: true,
-        html: "<html><body>My Custom Reset Password Page</body></html>",
-    },
-    error: {
-        html: "<html><body>My Custom Error Page</body></html>",
-        showLogLink: true,
-        url: "https://example.com",
-    },
-    guardianMfa: {
-        enabled: true,
-        html: "<html><body>My Custom MFA Page</body></html>",
-    },
-    login: {
+const myPages = new auth0.index.Auth0_pages("myPages", {
+    login: [{
         enabled: true,
         html: "<html><body>My Custom Login Page</body></html>",
-    },
+    }],
+    changePassword: [{
+        enabled: true,
+        html: "<html><body>My Custom Reset Password Page</body></html>",
+    }],
+    guardianMfa: [{
+        enabled: true,
+        html: "<html><body>My Custom MFA Page</body></html>",
+    }],
+    error: [{
+        showLogLink: true,
+        html: "<html><body>My Custom Error Page</body></html>",
+        url: "https://example.com",
+    }],
 });
 ```
 ```python
 import pulumi
 import pulumi_auth0 as auth0
 
-my_pages = auth0.Pages("myPages",
-    change_password={
-        "enabled": True,
-        "html": "<html><body>My Custom Reset Password Page</body></html>",
-    },
-    error={
-        "html": "<html><body>My Custom Error Page</body></html>",
-        "show_log_link": True,
-        "url": "https://example.com",
-    },
-    guardian_mfa={
-        "enabled": True,
-        "html": "<html><body>My Custom MFA Page</body></html>",
-    },
-    login={
-        "enabled": True,
-        "html": "<html><body>My Custom Login Page</body></html>",
-    })
+my_pages = auth0.index.Auth0_pages("myPages",
+    login=[{
+        enabled: True,
+        html: <html><body>My Custom Login Page</body></html>,
+    }],
+    change_password=[{
+        enabled: True,
+        html: <html><body>My Custom Reset Password Page</body></html>,
+    }],
+    guardian_mfa=[{
+        enabled: True,
+        html: <html><body>My Custom MFA Page</body></html>,
+    }],
+    error=[{
+        showLogLink: True,
+        html: <html><body>My Custom Error Page</body></html>,
+        url: https://example.com,
+    }])
 ```
 ```csharp
 using System.Collections.Generic;
@@ -58,28 +58,40 @@ using Auth0 = Pulumi.Auth0;
 
 return await Deployment.RunAsync(() => 
 {
-    var myPages = new Auth0.Pages("myPages", new()
+    var myPages = new Auth0.Index.Auth0_pages("myPages", new()
     {
-        ChangePassword = new Auth0.Inputs.PagesChangePasswordArgs
+        Login = new[]
         {
-            Enabled = true,
-            Html = "<html><body>My Custom Reset Password Page</body></html>",
+            
+            {
+                { "enabled", true },
+                { "html", "<html><body>My Custom Login Page</body></html>" },
+            },
         },
-        Error = new Auth0.Inputs.PagesErrorArgs
+        ChangePassword = new[]
         {
-            Html = "<html><body>My Custom Error Page</body></html>",
-            ShowLogLink = true,
-            Url = "https://example.com",
+            
+            {
+                { "enabled", true },
+                { "html", "<html><body>My Custom Reset Password Page</body></html>" },
+            },
         },
-        GuardianMfa = new Auth0.Inputs.PagesGuardianMfaArgs
+        GuardianMfa = new[]
         {
-            Enabled = true,
-            Html = "<html><body>My Custom MFA Page</body></html>",
+            
+            {
+                { "enabled", true },
+                { "html", "<html><body>My Custom MFA Page</body></html>" },
+            },
         },
-        Login = new Auth0.Inputs.PagesLoginArgs
+        Error = new[]
         {
-            Enabled = true,
-            Html = "<html><body>My Custom Login Page</body></html>",
+            
+            {
+                { "showLogLink", true },
+                { "html", "<html><body>My Custom Error Page</body></html>" },
+                { "url", "https://example.com" },
+            },
         },
     });
 
@@ -89,29 +101,37 @@ return await Deployment.RunAsync(() =>
 package main
 
 import (
-	"github.com/pulumi/pulumi-auth0/sdk/v3/go/auth0"
+	"github.com/pulumi/pulumi-auth0/sdk/go/auth0"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
-		_, err := auth0.NewPages(ctx, "myPages", &auth0.PagesArgs{
-			ChangePassword: &auth0.PagesChangePasswordArgs{
-				Enabled: pulumi.Bool(true),
-				Html:    pulumi.String("<html><body>My Custom Reset Password Page</body></html>"),
+		_, err := auth0.NewAuth0_pages(ctx, "myPages", &auth0.Auth0_pagesArgs{
+			Login: []map[string]interface{}{
+				map[string]interface{}{
+					"enabled": true,
+					"html":    "<html><body>My Custom Login Page</body></html>",
+				},
 			},
-			Error: &auth0.PagesErrorArgs{
-				Html:        pulumi.String("<html><body>My Custom Error Page</body></html>"),
-				ShowLogLink: pulumi.Bool(true),
-				Url:         pulumi.String("https://example.com"),
+			ChangePassword: []map[string]interface{}{
+				map[string]interface{}{
+					"enabled": true,
+					"html":    "<html><body>My Custom Reset Password Page</body></html>",
+				},
 			},
-			GuardianMfa: &auth0.PagesGuardianMfaArgs{
-				Enabled: pulumi.Bool(true),
-				Html:    pulumi.String("<html><body>My Custom MFA Page</body></html>"),
+			GuardianMfa: []map[string]interface{}{
+				map[string]interface{}{
+					"enabled": true,
+					"html":    "<html><body>My Custom MFA Page</body></html>",
+				},
 			},
-			Login: &auth0.PagesLoginArgs{
-				Enabled: pulumi.Bool(true),
-				Html:    pulumi.String("<html><body>My Custom Login Page</body></html>"),
+			Error: []map[string]interface{}{
+				map[string]interface{}{
+					"showLogLink": true,
+					"html":        "<html><body>My Custom Error Page</body></html>",
+					"url":         "https://example.com",
+				},
 			},
 		})
 		if err != nil {
@@ -127,12 +147,8 @@ package generated_program;
 import com.pulumi.Context;
 import com.pulumi.Pulumi;
 import com.pulumi.core.Output;
-import com.pulumi.auth0.Pages;
-import com.pulumi.auth0.PagesArgs;
-import com.pulumi.auth0.inputs.PagesChangePasswordArgs;
-import com.pulumi.auth0.inputs.PagesErrorArgs;
-import com.pulumi.auth0.inputs.PagesGuardianMfaArgs;
-import com.pulumi.auth0.inputs.PagesLoginArgs;
+import com.pulumi.auth0.auth0_pages;
+import com.pulumi.auth0.auth0_pagesArgs;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Map;
@@ -146,24 +162,24 @@ public class App {
     }
 
     public static void stack(Context ctx) {
-        var myPages = new Pages("myPages", PagesArgs.builder()
-            .changePassword(PagesChangePasswordArgs.builder()
-                .enabled(true)
-                .html("<html><body>My Custom Reset Password Page</body></html>")
-                .build())
-            .error(PagesErrorArgs.builder()
-                .html("<html><body>My Custom Error Page</body></html>")
-                .showLogLink(true)
-                .url("https://example.com")
-                .build())
-            .guardianMfa(PagesGuardianMfaArgs.builder()
-                .enabled(true)
-                .html("<html><body>My Custom MFA Page</body></html>")
-                .build())
-            .login(PagesLoginArgs.builder()
-                .enabled(true)
-                .html("<html><body>My Custom Login Page</body></html>")
-                .build())
+        var myPages = new Auth0_pages("myPages", Auth0_pagesArgs.builder()
+            .login(List.of(Map.ofEntries(
+                Map.entry("enabled", true),
+                Map.entry("html", "<html><body>My Custom Login Page</body></html>")
+            )))
+            .changePassword(List.of(Map.ofEntries(
+                Map.entry("enabled", true),
+                Map.entry("html", "<html><body>My Custom Reset Password Page</body></html>")
+            )))
+            .guardianMfa(List.of(Map.ofEntries(
+                Map.entry("enabled", true),
+                Map.entry("html", "<html><body>My Custom MFA Page</body></html>")
+            )))
+            .error(List.of(Map.ofEntries(
+                Map.entry("showLogLink", true),
+                Map.entry("html", "<html><body>My Custom Error Page</body></html>"),
+                Map.entry("url", "https://example.com")
+            )))
             .build());
 
     }
@@ -172,21 +188,21 @@ public class App {
 ```yaml
 resources:
   myPages:
-    type: auth0:Pages
+    type: auth0:auth0_pages
     properties:
-      changePassword:
-        enabled: true
-        html: <html><body>My Custom Reset Password Page</body></html>
-      error:
-        html: <html><body>My Custom Error Page</body></html>
-        showLogLink: true
-        url: https://example.com
-      guardianMfa:
-        enabled: true
-        html: <html><body>My Custom MFA Page</body></html>
       login:
-        enabled: true
-        html: <html><body>My Custom Login Page</body></html>
+        - enabled: true
+          html: <html><body>My Custom Login Page</body></html>
+      changePassword:
+        - enabled: true
+          html: <html><body>My Custom Reset Password Page</body></html>
+      guardianMfa:
+        - enabled: true
+          html: <html><body>My Custom MFA Page</body></html>
+      error:
+        - showLogLink: true
+          html: <html><body>My Custom Error Page</body></html>
+          url: https://example.com
 ```
 <!--End PulumiCodeChooser -->
 
