@@ -41,7 +41,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	bridgetesting "github.com/pulumi/pulumi-terraform-bridge/v3/internal/testing"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	sdkv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
@@ -193,8 +192,20 @@ output "someOutput" {
 		err = json.Unmarshal(d, &schema)
 		assert.NoError(t, err)
 
-		bridgetesting.AssertEqualsJSONFile(t,
-			"test_data/TestConvertViaPulumiCLI/schema.json", schema)
+		normalizedJSON, err := json.MarshalIndent(schema, "", "  ")
+		assert.NoError(t, err)
+
+		autogold.ExpectFile(t, autogold.Raw(string(normalizedJSON)))
+
+		t.Run("Description", func(t *testing.T) {
+			// Since schema diffs are difficult to see, specifically demonstrate the description diff.
+			var desc string
+			for _, r := range schema.Resources {
+				desc = r.Description
+			}
+
+			autogold.ExpectFile(t, autogold.Raw(desc))
+		})
 
 		autogold.Expect(`
 Provider:     simple
