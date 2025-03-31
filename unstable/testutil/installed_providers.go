@@ -39,7 +39,13 @@ func pluginDependency(t *testing.T, name string, version semver.Version) integra
 		diag.DefaultSink(os.Stdout, os.Stderr, diag.FormatOptions{
 			Color: colors.Never,
 		}),
-		apitype.ResourcePlugin, name, &version, nil)
+		workspace.PluginSpec{
+			Name:    name,
+			Kind:    apitype.ResourcePlugin,
+			Version: &version,
+		},
+		nil,
+	)
 	require.NoError(t, err,
 		`The %s provider at this version should have been installed by "make install_plugins"`, name)
 	return integration.LocalDependency{

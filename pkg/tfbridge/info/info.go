@@ -345,8 +345,12 @@ func (info Provider) GetProviderModuleVersion() string {
 // contained in), without causing resources to be recreated for customers who migrate from the
 // original resource to the current resource.
 type Alias struct {
-	Name    *string
-	Type    *string
+	Type *string
+
+	// Deprecated: name aliases are not supported and will be removed.
+	Name *string
+
+	// Deprecated: project aliases are not supported and will be removed.
 	Project *string
 }
 
