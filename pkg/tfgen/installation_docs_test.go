@@ -419,7 +419,6 @@ func TestWriteFrontMatter(t *testing.T) {
 }
 
 func TestTranslateCodeBlocks(t *testing.T) {
-	t.Skip("TODO[pulumi/pulumi-terraform-bridge#2974] insufficient isolation, slow and not exactly reproducible")
 
 	type testCase struct {
 		name       string
