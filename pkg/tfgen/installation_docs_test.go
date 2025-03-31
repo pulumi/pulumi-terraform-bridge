@@ -188,8 +188,8 @@ func TestTrimFrontmatter(t *testing.T) {
 	tests := []testCase{
 		{
 			name:     "Strips Upstream Frontmatter",
-			input:    readfile(t, "test_data/strip-front-matter/simple-input.md"),
-			expected: readfile(t, "test_data/strip-front-matter/simple-expected.md"),
+			input:    readfile(t, "test_data/strip-front-matter/openstack-input.md"),
+			expected: readfile(t, "test_data/strip-front-matter/openstack-expected.md"),
 		},
 		{
 			name:     "Returns Body If No Frontmatter",
@@ -223,8 +223,8 @@ func TestRemoveTitle(t *testing.T) {
 	tests := []testCase{
 		{
 			name:     "Strips Title Placed Anywhere",
-			input:    readfile(t, "test_data/remove-title/simple-input.md"),
-			expected: readfile(t, "test_data/remove-title/simple-expected.md"),
+			input:    readfile(t, "test_data/remove-title/openstack-input.md"),
+			expected: readfile(t, "test_data/remove-title/openstack-expected.md"),
 		},
 		{
 			name:     "Strips Title On Top",
