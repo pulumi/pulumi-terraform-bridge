@@ -23,10 +23,10 @@ func TestPlainDocsParser(t *testing.T) {
 
 	type testCase struct {
 		// The name of the test case.
-		name     string
-		docFile  DocFile
-		expected []byte
-		edits    editRules
+		name    string
+		desc    string
+		docFile DocFile
+		edits   editRules
 	}
 	// Mock provider for test conversion
 	p := tfbridge.ProviderInfo{
@@ -52,21 +52,21 @@ func TestPlainDocsParser(t *testing.T) {
 
 	tests := []testCase{
 		{
-			name: "Converts index.md file into Pulumi installation file",
+			name: "index",
+			desc: "Converts index.md file into Pulumi installation file",
 			docFile: DocFile{
 				Content: []byte(readfile(t, "test_data/convert-index-file/input.md")),
 			},
-			expected: []byte(readfile(t, "test_data/convert-index-file/expected.md")),
-			edits:    defaultEditRules(),
+			edits: defaultEditRules(),
 		},
 		{
+			name: "editRules",
 			// Discovered while generating docs for Libvirt - the test case has an incorrect ```hcl
 			// on what should be a shell script. The provider's edit rule removes this.
-			name: "Applies provider supplied edit rules",
+			desc: "Applies provider supplied edit rules",
 			docFile: DocFile{
 				Content: []byte(readfile(t, "test_data/convert-index-file-edit-rules/input.md")),
 			},
-			expected: []byte(readfile(t, "test_data/convert-index-file-edit-rules/expected.md")),
 			edits: append(
 				defaultEditRules(),
 				tfbridge.DocsEdit{
@@ -83,12 +83,12 @@ func TestPlainDocsParser(t *testing.T) {
 		{
 			// Discovered while generating docs for SD-WAN.
 			// Tests whether the custom table renderer is used correctly in docsgen overall.
-			name: "Transforms table correctly",
+			name: "table",
+			desc: "Transforms table correctly",
 			docFile: DocFile{
 				Content: []byte(readfile(t, "test_data/convert-index-file-with-table/input.md")),
 			},
-			expected: []byte(readfile(t, "test_data/convert-index-file-with-table/expected.md")),
-			edits:    defaultEditRules(),
+			edits: defaultEditRules(),
 		},
 	}
 	for _, tt := range tests {
@@ -116,7 +116,7 @@ func TestPlainDocsParser(t *testing.T) {
 			}
 			actual, err := plainDocsParser(&tt.docFile, g)
 			require.NoError(t, err)
-			assertEqualHTML(t, string(tt.expected), string(actual))
+			autogold.ExpectFile(t, autogold.Raw(string(actual)))
 		})
 	}
 }
