@@ -25,12 +25,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hexops/autogold/v2"
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -526,13 +524,11 @@ func (*testPluginHost) EnsurePlugins([]workspace.PluginSpec, plugin.Flags) error
 	panic("Unexpected call")
 }
 
-func (*testPluginHost) ResolvePlugin(
-	k apitype.PluginKind, name string, version *semver.Version,
-) (*workspace.PluginInfo, error) {
+func (*testPluginHost) ResolvePlugin(spec workspace.PluginSpec) (*workspace.PluginInfo, error) {
 	return &workspace.PluginInfo{
-		Name:    name,
-		Kind:    k,
-		Version: version,
+		Name:    spec.Name,
+		Kind:    spec.Kind,
+		Version: spec.Version,
 	}, nil
 }
 
