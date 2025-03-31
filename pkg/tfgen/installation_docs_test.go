@@ -23,10 +23,9 @@ func TestPlainDocsParser(t *testing.T) {
 
 	type testCase struct {
 		// The name of the test case.
-		name     string
-		docFile  DocFile
-		expected []byte
-		edits    editRules
+		name    string
+		docFile DocFile
+		edits   editRules
 	}
 	// Mock provider for test conversion
 	p := tfbridge.ProviderInfo{
@@ -56,8 +55,7 @@ func TestPlainDocsParser(t *testing.T) {
 			docFile: DocFile{
 				Content: []byte(readfile(t, "test_data/convert-index-file/input.md")),
 			},
-			expected: []byte(readfile(t, "test_data/convert-index-file/expected.md")),
-			edits:    defaultEditRules(),
+			edits: defaultEditRules(),
 		},
 		{
 			// Discovered while generating docs for Libvirt - the test case has an incorrect ```hcl
@@ -66,7 +64,6 @@ func TestPlainDocsParser(t *testing.T) {
 			docFile: DocFile{
 				Content: []byte(readfile(t, "test_data/convert-index-file-edit-rules/input.md")),
 			},
-			expected: []byte(readfile(t, "test_data/convert-index-file-edit-rules/expected.md")),
 			edits: append(
 				defaultEditRules(),
 				tfbridge.DocsEdit{
@@ -87,8 +84,7 @@ func TestPlainDocsParser(t *testing.T) {
 			docFile: DocFile{
 				Content: []byte(readfile(t, "test_data/convert-index-file-with-table/input.md")),
 			},
-			expected: []byte(readfile(t, "test_data/convert-index-file-with-table/expected.md")),
-			edits:    defaultEditRules(),
+			edits: defaultEditRules(),
 		},
 	}
 	for _, tt := range tests {
@@ -116,7 +112,7 @@ func TestPlainDocsParser(t *testing.T) {
 			}
 			actual, err := plainDocsParser(&tt.docFile, g)
 			require.NoError(t, err)
-			assertEqualHTML(t, string(tt.expected), string(actual))
+			autogold.ExpectFile(t, actual)
 		})
 	}
 }
