@@ -4,13 +4,13 @@ This example will only translate the resource code. It has no configuration file
 
 ```hcl
 ## Define a resource
-resource "openstack_resource" "a_resource" {
+resource "simple_resource" "a_resource" {
   input_one = "hello"
   input_two = true
 }
 
 output "some_output" {
-  value = openstack_resource.a_resource.result
+  value = simple_resource.a_resource.result
 }
 ```
 

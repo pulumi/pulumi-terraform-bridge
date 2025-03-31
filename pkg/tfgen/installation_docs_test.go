@@ -188,8 +188,8 @@ func TestTrimFrontmatter(t *testing.T) {
 	tests := []testCase{
 		{
 			name:     "Strips Upstream Frontmatter",
-			input:    readfile(t, "test_data/strip-front-matter/openstack-input.md"),
-			expected: readfile(t, "test_data/strip-front-matter/openstack-expected.md"),
+			input:    readfile(t, "test_data/strip-front-matter/simple-input.md"),
+			expected: readfile(t, "test_data/strip-front-matter/simple-expected.md"),
 		},
 		{
 			name:     "Returns Body If No Frontmatter",
@@ -223,8 +223,8 @@ func TestRemoveTitle(t *testing.T) {
 	tests := []testCase{
 		{
 			name:     "Strips Title Placed Anywhere",
-			input:    readfile(t, "test_data/remove-title/openstack-input.md"),
-			expected: readfile(t, "test_data/remove-title/openstack-expected.md"),
+			input:    readfile(t, "test_data/remove-title/simple-input.md"),
+			expected: readfile(t, "test_data/remove-title/simple-expected.md"),
 		},
 		{
 			name:     "Strips Title On Top",
@@ -427,10 +427,10 @@ func TestTranslateCodeBlocks(t *testing.T) {
 		expected   autogold.Value
 	}
 	p := tfbridge.ProviderInfo{
-		Name: "openstack",
+		Name: "simple",
 		P: sdkv2.NewProvider(&schema.Provider{
 			ResourcesMap: map[string]*schema.Resource{
-				"openstack_resource": {
+				"simple_resource": {
 					Schema: map[string]*schema.Schema{
 						"input_one": {
 							Type:     schema.TypeString,
@@ -444,14 +444,14 @@ func TestTranslateCodeBlocks(t *testing.T) {
 				},
 			},
 			DataSourcesMap: map[string]*schema.Resource{
-				"openstack_data_source": {
+				"simple_data_source": {
 					Schema: map[string]*schema.Schema{},
 				},
 			},
 		}),
 		Resources: map[string]*tfbridge.ResourceInfo{
-			"openstack_resource": {
-				Tok: "openstack:index:resource",
+			"simple_resource": {
+				Tok: "simple:index:resource",
 				Fields: map[string]*tfbridge.SchemaInfo{
 					"input_one": {
 						Name: "renamedInput1",
@@ -460,8 +460,8 @@ func TestTranslateCodeBlocks(t *testing.T) {
 			},
 		},
 		DataSources: map[string]*tfbridge.DataSourceInfo{
-			"openstack_data_source": {
-				Tok: "openstack:index:dataSource",
+			"simple_data_source": {
+				Tok: "simple:index:dataSource",
 			},
 		},
 	}
@@ -471,7 +471,6 @@ func TestTranslateCodeBlocks(t *testing.T) {
 		{
 			name:       "Translates HCL from examples ",
 			contentStr: readfile(t, "test_data/installation-docs/configuration.md"),
-			expected:   autogold.Expect(readfile(t, "test_data/installation-docs/configuration-expected.md")),
 			g: &Generator{
 				sink: mockSink{},
 				cliConverterState: &cliConverter{
@@ -484,7 +483,6 @@ func TestTranslateCodeBlocks(t *testing.T) {
 		{
 			name:       "Does not translate an invalid example and leaves example block blank",
 			contentStr: readfile(t, "test_data/installation-docs/invalid-example.md"),
-			expected:   autogold.Expect(readfile(t, "test_data/installation-docs/invalid-example-expected.md")),
 			g: &Generator{
 				sink: mockSink{},
 				cliConverterState: &cliConverter{
@@ -497,7 +495,6 @@ func TestTranslateCodeBlocks(t *testing.T) {
 		{
 			name:       "Translates standalone provider config into Pulumi config YAML",
 			contentStr: readfile(t, "test_data/installation-docs/provider-config-only.md"),
-			expected:   autogold.Expect(readfile(t, "test_data/installation-docs/provider-config-only-expected.md")),
 			g: &Generator{
 				sink: mockSink{},
 				cliConverterState: &cliConverter{
@@ -510,7 +507,6 @@ func TestTranslateCodeBlocks(t *testing.T) {
 		{
 			name:       "Translates standalone example into languages",
 			contentStr: readfile(t, "test_data/installation-docs/example-only.md"),
-			expected:   autogold.Expect(readfile(t, "test_data/installation-docs/example-only-expected.md")),
 			g: &Generator{
 				sink: mockSink{},
 				cliConverterState: &cliConverter{
@@ -536,7 +532,7 @@ func TestTranslateCodeBlocks(t *testing.T) {
 			t.Setenv("PULUMI_CONVERT", "1")
 			actual, err := translateCodeBlocks(tt.contentStr, tt.g)
 			require.NoError(t, err)
-			tt.expected.Equal(t, actual)
+			autogold.ExpectFile(t, actual)
 		})
 	}
 }
