@@ -419,7 +419,6 @@ func TestWriteFrontMatter(t *testing.T) {
 }
 
 func TestTranslateCodeBlocks(t *testing.T) {
-
 	type testCase struct {
 		name       string
 		desc       string
