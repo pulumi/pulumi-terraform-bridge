@@ -831,11 +831,11 @@ func (g *schemaGenerator) genResourceType(mod tokens.Module, res *resourceType) 
 	}
 
 	for _, a := range res.info.Aliases {
-		aspec := pschema.AliasSpec{}
-		if a.Type != nil {
+		if a.Type != nil && *a.Type != "" {
+			aspec := pschema.AliasSpec{}
 			aspec.Type = *a.Type
+			spec.Aliases = append(spec.Aliases, aspec)
 		}
-		spec.Aliases = append(spec.Aliases, aspec)
 	}
 
 	spec.Language = map[string]pschema.RawMessage{}
