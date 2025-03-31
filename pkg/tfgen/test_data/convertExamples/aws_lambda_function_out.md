@@ -246,7 +246,7 @@ public class App {
             .build());
 
         var iamForLambda = new Role("iamForLambda", RoleArgs.builder()
-            .assumeRolePolicy(assumeRole.applyValue(getPolicyDocumentResult -> getPolicyDocumentResult.json()))
+            .assumeRolePolicy(assumeRole.json())
             .build());
 
         final var lambda = ArchiveFunctions.getFile(GetFileArgs.builder()
@@ -619,7 +619,7 @@ public class App {
             .build());
 
         var iamForLambda = new Role("iamForLambda", RoleArgs.builder()
-            .assumeRolePolicy(assumeRole.applyValue(getPolicyDocumentResult -> getPolicyDocumentResult.json()))
+            .assumeRolePolicy(assumeRole.json())
             .build());
 
         var testLambda = new Function("testLambda", FunctionArgs.builder()
@@ -1317,7 +1317,7 @@ public class App {
         var lambdaLoggingPolicy = new Policy("lambdaLoggingPolicy", PolicyArgs.builder()
             .path("/")
             .description("IAM policy for logging from a lambda")
-            .policy(lambdaLoggingPolicyDocument.applyValue(getPolicyDocumentResult -> getPolicyDocumentResult.json()))
+            .policy(lambdaLoggingPolicyDocument.json())
             .build());
 
         var lambdaLogs = new RolePolicyAttachment("lambdaLogs", RolePolicyAttachmentArgs.builder()

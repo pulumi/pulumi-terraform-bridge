@@ -14,8 +14,8 @@ terraform {
   }
 }
 
-# Configure the OpenStack Provider
-provider "simple-provider" {
+# Configure the Simple Provider
+provider "simple" {
   user_name   = "admin"
   tenant_name = "admin"
   password    = "pwd"
@@ -34,5 +34,4 @@ output "some_output" {
 ```
 
 ## Configuration Reference
-
 The following configuration inputs are supported:

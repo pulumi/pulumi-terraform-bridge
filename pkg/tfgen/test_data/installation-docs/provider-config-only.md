@@ -3,7 +3,7 @@ This example should translate at least the Pulumi config
 ## Example Usage
 
 ```hcl
-# Configure the OpenStack Provider
+# Configure the Simple Provider
 provider "simple-provider" {
   user_name   = "admin"
   tenant_name = "admin"

@@ -194,7 +194,13 @@ func (pluginProviderInfoSource) GetProviderInfo(
 	diag := diag.DefaultSink(os.Stdout, os.Stderr, diag.FormatOptions{
 		Color: colors.Never,
 	})
-	path, err := workspace.GetPluginPath(diag, apitype.ResourcePlugin, pluginName, nil, nil)
+
+	pluginSpec, err := workspace.NewPluginSpec(pluginName, apitype.ResourcePlugin, nil, "", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	path, err := workspace.GetPluginPath(diag, pluginSpec, nil)
 	if err != nil {
 		return nil, err
 	} else if path == "" {

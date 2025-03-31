@@ -23,10 +23,9 @@ func TestPlainDocsParser(t *testing.T) {
 
 	type testCase struct {
 		// The name of the test case.
-		name     string
-		docFile  DocFile
-		expected []byte
-		edits    editRules
+		name    string
+		docFile DocFile
+		edits   editRules
 	}
 	// Mock provider for test conversion
 	p := tfbridge.ProviderInfo{
@@ -56,8 +55,7 @@ func TestPlainDocsParser(t *testing.T) {
 			docFile: DocFile{
 				Content: []byte(readfile(t, "test_data/convert-index-file/input.md")),
 			},
-			expected: []byte(readfile(t, "test_data/convert-index-file/expected.md")),
-			edits:    defaultEditRules(),
+			edits: defaultEditRules(),
 		},
 		{
 			// Discovered while generating docs for Libvirt - the test case has an incorrect ```hcl
@@ -66,7 +64,6 @@ func TestPlainDocsParser(t *testing.T) {
 			docFile: DocFile{
 				Content: []byte(readfile(t, "test_data/convert-index-file-edit-rules/input.md")),
 			},
-			expected: []byte(readfile(t, "test_data/convert-index-file-edit-rules/expected.md")),
 			edits: append(
 				defaultEditRules(),
 				tfbridge.DocsEdit{
@@ -87,8 +84,7 @@ func TestPlainDocsParser(t *testing.T) {
 			docFile: DocFile{
 				Content: []byte(readfile(t, "test_data/convert-index-file-with-table/input.md")),
 			},
-			expected: []byte(readfile(t, "test_data/convert-index-file-with-table/expected.md")),
-			edits:    defaultEditRules(),
+			edits: defaultEditRules(),
 		},
 	}
 	for _, tt := range tests {
@@ -116,7 +112,7 @@ func TestPlainDocsParser(t *testing.T) {
 			}
 			actual, err := plainDocsParser(&tt.docFile, g)
 			require.NoError(t, err)
-			assertEqualHTML(t, string(tt.expected), string(actual))
+			autogold.ExpectFile(t, actual)
 		})
 	}
 }
@@ -424,7 +420,6 @@ func TestTranslateCodeBlocks(t *testing.T) {
 		name       string
 		contentStr string
 		g          *Generator
-		expected   string
 	}
 	p := tfbridge.ProviderInfo{
 		Name: "simple",
@@ -471,7 +466,6 @@ func TestTranslateCodeBlocks(t *testing.T) {
 		{
 			name:       "Translates HCL from examples ",
 			contentStr: readfile(t, "test_data/installation-docs/configuration.md"),
-			expected:   readfile(t, "test_data/installation-docs/configuration-expected.md"),
 			g: &Generator{
 				sink: mockSink{},
 				cliConverterState: &cliConverter{
@@ -484,7 +478,6 @@ func TestTranslateCodeBlocks(t *testing.T) {
 		{
 			name:       "Does not translate an invalid example and leaves example block blank",
 			contentStr: readfile(t, "test_data/installation-docs/invalid-example.md"),
-			expected:   readfile(t, "test_data/installation-docs/invalid-example-expected.md"),
 			g: &Generator{
 				sink: mockSink{},
 				cliConverterState: &cliConverter{
@@ -497,7 +490,6 @@ func TestTranslateCodeBlocks(t *testing.T) {
 		{
 			name:       "Translates standalone provider config into Pulumi config YAML",
 			contentStr: readfile(t, "test_data/installation-docs/provider-config-only.md"),
-			expected:   readfile(t, "test_data/installation-docs/provider-config-only-expected.md"),
 			g: &Generator{
 				sink: mockSink{},
 				cliConverterState: &cliConverter{
@@ -510,7 +502,6 @@ func TestTranslateCodeBlocks(t *testing.T) {
 		{
 			name:       "Translates standalone example into languages",
 			contentStr: readfile(t, "test_data/installation-docs/example-only.md"),
-			expected:   readfile(t, "test_data/installation-docs/example-only-expected.md"),
 			g: &Generator{
 				sink: mockSink{},
 				cliConverterState: &cliConverter{
@@ -536,7 +527,7 @@ func TestTranslateCodeBlocks(t *testing.T) {
 			t.Setenv("PULUMI_CONVERT", "1")
 			actual, err := translateCodeBlocks(tt.contentStr, tt.g)
 			require.NoError(t, err)
-			require.Equal(t, tt.expected, actual)
+			autogold.ExpectFile(t, actual)
 		})
 	}
 }
