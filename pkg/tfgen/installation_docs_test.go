@@ -420,11 +420,10 @@ func TestWriteFrontMatter(t *testing.T) {
 
 func TestTranslateCodeBlocks(t *testing.T) {
 	type testCase struct {
-		// The name of the test case.
 		name       string
+		desc       string
 		contentStr string
 		g          *Generator
-		expected   string
 	}
 	p := tfbridge.ProviderInfo{
 		Name: "simple",
@@ -469,9 +468,9 @@ func TestTranslateCodeBlocks(t *testing.T) {
 
 	testCases := []testCase{
 		{
-			name:       "Translates HCL from examples ",
+			name:       "configuration",
+			desc:       "Translates HCL from examples ",
 			contentStr: readfile(t, "test_data/installation-docs/configuration.md"),
-			expected:   readfile(t, "test_data/installation-docs/configuration-expected.md"),
 			g: &Generator{
 				sink: mockSink{},
 				cliConverterState: &cliConverter{
@@ -482,9 +481,9 @@ func TestTranslateCodeBlocks(t *testing.T) {
 			},
 		},
 		{
-			name:       "Does not translate an invalid example and leaves example block blank",
+			name:       "invalid-example",
+			desc:       "Does not translate an invalid example and leaves example block blank",
 			contentStr: readfile(t, "test_data/installation-docs/invalid-example.md"),
-			expected:   readfile(t, "test_data/installation-docs/invalid-example-expected.md"),
 			g: &Generator{
 				sink: mockSink{},
 				cliConverterState: &cliConverter{
@@ -495,9 +494,9 @@ func TestTranslateCodeBlocks(t *testing.T) {
 			},
 		},
 		{
-			name:       "Translates standalone provider config into Pulumi config YAML",
+			name:       "provider-config-only",
+			desc:       "Translates standalone provider config into Pulumi config YAML",
 			contentStr: readfile(t, "test_data/installation-docs/provider-config-only.md"),
-			expected:   readfile(t, "test_data/installation-docs/provider-config-only-expected.md"),
 			g: &Generator{
 				sink: mockSink{},
 				cliConverterState: &cliConverter{
@@ -508,9 +507,9 @@ func TestTranslateCodeBlocks(t *testing.T) {
 			},
 		},
 		{
-			name:       "Translates standalone example into languages",
+			name:       "example-only",
+			desc:       "Translates standalone example into languages",
 			contentStr: readfile(t, "test_data/installation-docs/example-only.md"),
-			expected:   readfile(t, "test_data/installation-docs/example-only-expected.md"),
 			g: &Generator{
 				sink: mockSink{},
 				cliConverterState: &cliConverter{
@@ -536,7 +535,7 @@ func TestTranslateCodeBlocks(t *testing.T) {
 			t.Setenv("PULUMI_CONVERT", "1")
 			actual, err := translateCodeBlocks(tt.contentStr, tt.g)
 			require.NoError(t, err)
-			require.Equal(t, tt.expected, actual)
+			autogold.ExpectFile(t, autogold.Raw(actual))
 		})
 	}
 }
