@@ -2204,6 +2204,8 @@ github.com/pulumi/pulumi-java/pkg v1.8.0 h1:xCTQqTGxDj1f+VmCR//V0x355rAkc2b2VCIi
 github.com/pulumi/pulumi-java/pkg v1.8.0/go.mod h1:VH4YGMcPEYuMyOJjohMTepAqPSFPgmz4I3U4q5sJ89o=
 github.com/pulumi/pulumi-yaml v1.12.0 h1:ThJP+EBqeJyCnS6w6/PwcEFOT5o112qv0lObhefmFCk=
 github.com/pulumi/pulumi-yaml v1.12.0/go.mod h1:EhZd1XDfuLa15O51qVVE16U6r8ldK9mLIBclqWCX27Y=
+github.com/pulumi/pulumi-yaml v1.15.1 h1:4T36uwbJlQMbcK/X3U9BuqMZFEN4lnAIysPtqDvm0Tg=
+github.com/pulumi/pulumi-yaml v1.15.1/go.mod h1:J3HzbFVhR7sOsZQT7nztBgetcCbxFkOeOMvZDkQs0IU=
 github.com/pulumi/pulumi/pkg/v3 v3.159.0 h1:8NNtlhFJ012BIGRJeoZd3CXIVlY8yS62oaFbtmsNcoo=
 github.com/pulumi/pulumi/pkg/v3 v3.159.0/go.mod h1:TAmVLhu4y7vwq7rrFdANJjFsd+YYY/VuyG2AWQ6i+iE=
 github.com/pulumi/pulumi/sdk/v3 v3.159.0 h1:pfBVSqfRNM7X1RmxJzjLSsVQe6nv9cAdM207K5sE4Ck=
