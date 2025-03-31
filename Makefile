@@ -6,7 +6,7 @@ export PULUMI_DISABLE_AUTOMATIC_PLUGIN_ACQUISITION := true
 PROJECT_DIR := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 
 install_plugins::
-	pulumi plugin install converter terraform 1.1.0
+	pulumi plugin install converter terraform 1.0.20
 	pulumi plugin install resource random 4.16.3
 	pulumi plugin install resource aws 6.22.2
 	pulumi plugin install resource archive 0.0.4
