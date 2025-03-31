@@ -424,7 +424,6 @@ func TestTranslateCodeBlocks(t *testing.T) {
 		name       string
 		contentStr string
 		g          *Generator
-		expected   autogold.Value
 	}
 	p := tfbridge.ProviderInfo{
 		Name: "simple",
