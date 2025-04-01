@@ -167,8 +167,8 @@ public class App {
             .lifetime("300s")
             .build());
 
-        var impersonated = new Provider("impersonated", ProviderArgs.builder()
-            .accessToken(impersonatedAccountAccessToken.applyValue(getAccountAccessTokenResult -> getAccountAccessTokenResult.accessToken()))
+        var impersonated = new com.pulumi.pulumi.providers.Provider("impersonated", com.pulumi.pulumi.providers.ProviderArgs.builder()
+            .accessToken(impersonatedAccountAccessToken.accessToken())
             .build());
 
         final var oidc = ServiceaccountFunctions.getAccountIdToken(GetAccountIdTokenArgs.builder()
@@ -178,7 +178,7 @@ public class App {
             .targetAudience("https://foo.bar/")
             .build());
 
-        ctx.export("oidcToken", oidc.applyValue(getAccountIdTokenResult -> getAccountIdTokenResult.idToken()));
+        ctx.export("oidcToken", oidc.idToken());
     }
 }
 ```
@@ -336,10 +336,10 @@ public class App {
 
         final var cloudrun = HttpFunctions.getHttp(GetHttpArgs.builder()
             .url("https://your.cloud.run.app/")
-            .requestHeaders(Map.of("Authorization", String.format("Bearer %s", oidc.applyValue(getAccountIdTokenResult -> getAccountIdTokenResult.idToken()))))
+            .requestHeaders(Map.of("Authorization", String.format("Bearer %s", oidc.idToken())))
             .build());
 
-        ctx.export("cloudRunResponse", cloudrun.applyValue(getHttpResult -> getHttpResult.body()));
+        ctx.export("cloudRunResponse", cloudrun.body());
     }
 }
 ```

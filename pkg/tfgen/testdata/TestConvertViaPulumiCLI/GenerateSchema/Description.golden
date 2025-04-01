@@ -69,7 +69,7 @@ import com.pulumi.Context;
 import com.pulumi.Pulumi;
 import com.pulumi.core.Output;
 import com.pulumi.simple.resource;
-import com.pulumi.simple.ResourceArgs;
+import com.pulumi.simple.resourceArgs;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Map;
@@ -85,7 +85,7 @@ public class App {
     public static void stack(Context ctx) {
         var aResource = new Resource("aResource", ResourceArgs.builder()
             .renamedInput1("hello")
-            .inputTwo(true)
+            .inputTwo("true")
             .build());
 
         ctx.export("someOutput", aResource.result());

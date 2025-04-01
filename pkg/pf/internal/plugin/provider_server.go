@@ -564,7 +564,7 @@ func (p *providerServer) Construct(ctx context.Context,
 	options := pl.ConstructOptions{
 		Aliases:              aliases,
 		Dependencies:         dependencies,
-		Protect:              req.GetProtect(),
+		Protect:              req.Protect,
 		Providers:            req.GetProviders(),
 		PropertyDependencies: propertyDependencies,
 	}
