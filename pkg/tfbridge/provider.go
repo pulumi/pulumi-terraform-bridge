@@ -1122,7 +1122,7 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 
 	// To figure out if we have a replacement, perform the diff and then look for RequiresNew flags.
 	olds, err := plugin.UnmarshalProperties(req.GetOlds(),
-		plugin.MarshalOptions{Label: fmt.Sprintf("%s.olds", label), SkipNulls: true})
+		plugin.MarshalOptions{Label: fmt.Sprintf("%s.olds", label)})
 	if err != nil {
 		return nil, err
 	}
