@@ -44,7 +44,7 @@ type flattenedDecoder struct {
 	elementDecoder Decoder
 }
 
-func (dec *flattenedDecoder) toPropertyValue(v tftypes.Value) (resource.PropertyValue, error) {
+func (dec *flattenedDecoder) toPropertyValue(v tftypes.Value, dopts DecodeOptions) (resource.PropertyValue, error) {
 	var list []tftypes.Value
 	if err := v.As(&list); err != nil {
 		return resource.PropertyValue{}, err
@@ -53,7 +53,7 @@ func (dec *flattenedDecoder) toPropertyValue(v tftypes.Value) (resource.Property
 	case 0:
 		return resource.NewNullProperty(), nil
 	case 1:
-		return decode(dec.elementDecoder, list[0])
+		return decode(dec.elementDecoder, list[0], dopts)
 	default:
 		msg := "IsMaxItemsOne list or set has too many (%d) values"
 		err := fmt.Errorf(msg, len(list))

@@ -35,13 +35,14 @@ func TestResourceDecoder(t *testing.T) {
 	myResource := "my_resource"
 
 	type testCase struct {
-		testName  string
-		schema    *schema.SchemaMap
-		info      *tfbridge.ProviderInfo
-		typ       tftypes.Object
-		val       tftypes.Value
-		expect    autogold.Value
-		expectMap resource.PropertyMap
+		testName   string
+		schema     *schema.SchemaMap
+		info       *tfbridge.ProviderInfo
+		typ        tftypes.Object
+		val        tftypes.Value
+		expect     autogold.Value
+		expectMap  resource.PropertyMap
+		decodeOpts DecodeOptions
 	}
 
 	makeProvider := func(schemaMap *schema.SchemaMap) *schema.Provider {
@@ -89,6 +90,63 @@ func TestResourceDecoder(t *testing.T) {
 				resource.PropertyKey("id"): resource.PropertyValue{V: "myid"},
 			}),
 		},
+		(func() testCase {
+			xy := tftypes.Object{AttributeTypes: map[string]tftypes.Type{
+				"x": tftypes.String,
+				"y": tftypes.Number,
+			}}
+			xyList := tftypes.List{ElementType: xy}
+			obj := tftypes.Object{AttributeTypes: map[string]tftypes.Type{
+				"id":  tftypes.String,
+				"foo": xyList,
+			}}
+			return testCase{
+				testName: "presrveNil",
+				schema: &schema.SchemaMap{
+					"id": (&schema.Schema{
+						Type: shim.TypeString,
+					}).Shim(),
+					"foo": (&schema.Schema{
+						Type:     shim.TypeList,
+						Optional: true,
+						Elem: (&schema.Resource{
+							Schema: schema.SchemaMap{
+								"x": (&schema.Schema{
+									Type:     shim.TypeString,
+									Optional: true,
+								}).Shim(),
+								"y": (&schema.Schema{
+									Type:     shim.TypeInt,
+									Optional: true,
+								}).Shim(),
+							},
+						}).Shim(),
+					}).Shim(),
+				},
+				typ: obj,
+				val: tftypes.NewValue(obj, map[string]tftypes.Value{
+					"id": tftypes.NewValue(tftypes.String, "id0"),
+					"foo": tftypes.NewValue(xyList, []tftypes.Value{
+						tftypes.NewValue(xy, map[string]tftypes.Value{
+							"x": tftypes.NewValue(tftypes.String, nil),
+							"y": tftypes.NewValue(tftypes.Number, nil),
+						}),
+					}),
+				}),
+				decodeOpts: DecodeOptions{PreserveNull: true},
+				expect: autogold.Expect(resource.PropertyMap{
+					resource.PropertyKey("foos"): resource.PropertyValue{
+						V: []resource.PropertyValue{{
+							V: resource.PropertyMap{
+								resource.PropertyKey("x"): resource.PropertyValue{},
+								resource.PropertyKey("y"): resource.PropertyValue{},
+							},
+						}},
+					},
+					resource.PropertyKey("id"): resource.PropertyValue{V: "id0"},
+				}),
+			}
+		})(),
 	}
 
 	for _, schemaHasID := range []bool{false, true} {
@@ -170,7 +228,7 @@ func TestResourceDecoder(t *testing.T) {
 			enc := NewEncoding(makeProvider(tc.schema).Shim(), tc.info)
 			decoder, err := enc.NewResourceDecoder(myResource, tc.typ)
 			require.NoError(t, err)
-			got, err := DecodePropertyMap(context.Background(), decoder, tc.val)
+			got, err := DecodePropertyMapWithOptions(context.Background(), decoder, tc.val, tc.decodeOpts)
 			require.NoError(t, err)
 			if tc.expectMap != nil {
 				require.Equal(t, tc.expectMap, got)
@@ -681,7 +739,7 @@ func TestAdapter(t *testing.T) {
 					t.Logf("skipping since the encoder should error")
 					return
 				}
-				v, err := decode(newStringOverIntDecoder(), tt.expected)
+				v, err := decode(newStringOverIntDecoder(), tt.expected, DecodeOptions{})
 				assert.NoError(t, err)
 				if !assert.True(t, v.DeepEquals(tt.input)) {
 					assert.Equal(t, v, tt.input)

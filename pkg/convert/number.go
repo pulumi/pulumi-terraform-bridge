@@ -73,7 +73,7 @@ func (*numberEncoder) tryParseNumber(s string) (any, bool) {
 	return nil, false
 }
 
-func (*numberDecoder) toPropertyValue(v tftypes.Value) (resource.PropertyValue, error) {
+func (*numberDecoder) toPropertyValue(v tftypes.Value, _ DecodeOptions) (resource.PropertyValue, error) {
 	if !v.IsKnown() {
 		return unknownProperty(), nil
 	}
