@@ -255,6 +255,8 @@ func Test_TValue_Remove(t *testing.T) {
 }
 
 func Test_TType(t *testing.T) {
+	t.Parallel()
+
 	assert.True(t, valueshim.FromTType(tftypes.Bool).IsBooleanType())
 	assert.True(t, valueshim.FromTType(tftypes.String).IsStringType())
 	assert.True(t, valueshim.FromTType(tftypes.Number).IsNumberType())

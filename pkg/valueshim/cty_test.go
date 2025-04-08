@@ -20,9 +20,10 @@ import (
 
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hexops/autogold/v2"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/valueshim"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/valueshim"
 )
 
 func Test_HCtyValue_IsNull(t *testing.T) {
@@ -250,6 +251,8 @@ func Test_HCtyValue_Remove(t *testing.T) {
 }
 
 func Test_HCtyType(t *testing.T) {
+	t.Parallel()
+
 	assert.True(t, valueshim.FromHCtyType(cty.Bool).IsBooleanType())
 	assert.True(t, valueshim.FromHCtyType(cty.String).IsStringType())
 	assert.True(t, valueshim.FromHCtyType(cty.Number).IsNumberType())
