@@ -1246,6 +1246,24 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 			(sch.ForceNew() || (cust != nil && cust.Stable != nil && *cust.Stable)) {
 			stables = append(stables, string(name))
 		}
+
+		if replaced[string(name)] && sch.ForceNew() && sch.Default() != nil {
+			// If the property is ForceNew and has a default value,
+			// then we need to check if it was already present in the old state to
+			// decide whether a replace is warrented. If it was not present in the old state
+			// then we need to make it stable such that it doesn't cause a replace just
+			// because the schema has been changed
+			_, presentInOldState := olds[name]
+			_, presentInOldInputs := req.GetOldInputs().Fields[string(name)]
+			_, presentInNewInputs := req.GetNews().Fields[string(name)]
+			if !presentInOldState && !presentInOldInputs && !presentInNewInputs {
+				// This is an entire new field that was added to the schema
+				// should not cause a replace when the user didn't use it
+				stables = append(stables, string(name))
+				delete(replaced, string(name))
+			}
+		}
+
 		return true
 	})
 

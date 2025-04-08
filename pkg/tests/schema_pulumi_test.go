@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hexops/autogold/v2"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -368,4 +369,72 @@ func TestSDKv2AliasesSchemaUpgrade(t *testing.T) {
 	res := pt2.Up(t)
 
 	autogold.Expect(&map[string]int{"same": 2}).Equal(t, res.Summary.ResourceChanges)
+}
+
+// Test that adding a ForceNew field with a default is not a breaking change.
+func TestAddForceNewField(t *testing.T) {
+	t.Parallel()
+
+	bridgedProvider0 := pulcheck.BridgedProvider(t, "prov", &schema.Provider{
+		ResourcesMap: map[string]*schema.Resource{
+			"prov_test": {
+				Schema: map[string]*schema.Schema{
+					"x": {
+						Type:     schema.TypeString,
+						Optional: true,
+					},
+				},
+			},
+		},
+	})
+
+	bridgedProvider1 := pulcheck.BridgedProvider(t, "prov", &schema.Provider{
+		ResourcesMap: map[string]*schema.Resource{
+			"prov_test": {
+				Schema: map[string]*schema.Schema{
+					"x": {
+						Type:     schema.TypeString,
+						Optional: true,
+					},
+					"test": {
+						Type:     schema.TypeBool,
+						Optional: true,
+						Default:  false,
+						ForceNew: true,
+					},
+				},
+			},
+		},
+	})
+
+	program0 := `
+name: test
+runtime: yaml
+resources:
+  mainRes:
+    type: prov:index:Test
+    properties:
+     x: "v1"
+`
+	program1 := `
+name: test
+runtime: yaml
+resources:
+  mainRes:
+    type: prov:index:Test
+    properties:
+     x: "v2"
+`
+
+	pt0 := pulcheck.PulCheck(t, bridgedProvider0, program0)
+	pt0.Up(t)
+	state := pt0.ExportStack(t)
+
+	pt1 := pulcheck.PulCheck(t, bridgedProvider1, program1)
+	pt1.ImportStack(t, state)
+	preview := pt1.Preview(t, optpreview.Diff())
+	t.Logf("%s", preview.StdOut)
+	t.Logf("%v", preview.ChangeSummary)
+
+	require.Equal(t, 0, preview.ChangeSummary["replace"])
 }
