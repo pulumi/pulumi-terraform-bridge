@@ -95,7 +95,7 @@ func TestFlattenedDecoder(t *testing.T) {
 	t.Run("singleton-list", func(t *testing.T) {
 		tfValue := tftypes.NewValue(tftypes.List{ElementType: tftypes.String},
 			[]tftypes.Value{tftypes.NewValue(tftypes.String, "foo")})
-		actual, err := decode(listDecoder, tfValue)
+		actual, err := decode(listDecoder, tfValue, DecodeOptions{})
 		require.NoError(t, err)
 		expected := resource.NewStringProperty("foo")
 		assert.Equal(t, expected, actual)
@@ -103,7 +103,7 @@ func TestFlattenedDecoder(t *testing.T) {
 
 	t.Run("empty-list", func(t *testing.T) {
 		tfValue := tftypes.NewValue(tftypes.List{ElementType: tftypes.String}, []tftypes.Value{})
-		actual, err := decode(listDecoder, tfValue)
+		actual, err := decode(listDecoder, tfValue, DecodeOptions{})
 		require.NoError(t, err)
 		expected := resource.NewNullProperty()
 		assert.Equal(t, expected, actual)
@@ -112,7 +112,7 @@ func TestFlattenedDecoder(t *testing.T) {
 	t.Run("singleton-set", func(t *testing.T) {
 		tfValue := tftypes.NewValue(tftypes.Set{ElementType: tftypes.String},
 			[]tftypes.Value{tftypes.NewValue(tftypes.String, "foo")})
-		actual, err := decode(setDecoder, tfValue)
+		actual, err := decode(setDecoder, tfValue, DecodeOptions{})
 		require.NoError(t, err)
 		expected := resource.NewStringProperty("foo")
 		assert.Equal(t, expected, actual)
@@ -120,7 +120,7 @@ func TestFlattenedDecoder(t *testing.T) {
 
 	t.Run("empty-set", func(t *testing.T) {
 		tfValue := tftypes.NewValue(tftypes.Set{ElementType: tftypes.String}, []tftypes.Value{})
-		actual, err := decode(setDecoder, tfValue)
+		actual, err := decode(setDecoder, tfValue, DecodeOptions{})
 		require.NoError(t, err)
 		expected := resource.NewNullProperty()
 		assert.Equal(t, expected, actual)
@@ -128,7 +128,7 @@ func TestFlattenedDecoder(t *testing.T) {
 
 	t.Run("error-propagation", func(t *testing.T) {
 		tfValue := tftypes.NewValue(tftypes.String, "mistyped")
-		_, err := decode(listDecoder, tfValue)
+		_, err := decode(listDecoder, tfValue, DecodeOptions{})
 		require.Error(t, err)
 	})
 
@@ -136,7 +136,7 @@ func TestFlattenedDecoder(t *testing.T) {
 		tfValue := tftypes.NewValue(tftypes.List{ElementType: tftypes.String}, []tftypes.Value{
 			tftypes.NewValue(tftypes.String, tftypes.UnknownValue),
 		})
-		v, err := decode(listDecoder, tfValue)
+		v, err := decode(listDecoder, tfValue, DecodeOptions{})
 		require.NoError(t, err)
 		require.Equal(t, unknownProperty(), v)
 	})
@@ -145,21 +145,21 @@ func TestFlattenedDecoder(t *testing.T) {
 		tfValue := tftypes.NewValue(tftypes.Set{ElementType: tftypes.String}, []tftypes.Value{
 			tftypes.NewValue(tftypes.String, tftypes.UnknownValue),
 		})
-		v, err := decode(setDecoder, tfValue)
+		v, err := decode(setDecoder, tfValue, DecodeOptions{})
 		require.NoError(t, err)
 		require.Equal(t, unknownProperty(), v)
 	})
 
 	t.Run("unknown-list", func(t *testing.T) {
 		tfValue := tftypes.NewValue(tftypes.List{ElementType: tftypes.String}, tftypes.UnknownValue)
-		v, err := decode(listDecoder, tfValue)
+		v, err := decode(listDecoder, tfValue, DecodeOptions{})
 		require.NoError(t, err)
 		require.Equal(t, unknownProperty(), v)
 	})
 
 	t.Run("unknown-set", func(t *testing.T) {
 		tfValue := tftypes.NewValue(tftypes.Set{ElementType: tftypes.String}, tftypes.UnknownValue)
-		v, err := decode(setDecoder, tfValue)
+		v, err := decode(setDecoder, tfValue, DecodeOptions{})
 		require.NoError(t, err)
 		require.Equal(t, unknownProperty(), v)
 	})

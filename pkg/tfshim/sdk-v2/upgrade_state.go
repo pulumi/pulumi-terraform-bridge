@@ -2,28 +2,41 @@ package sdkv2
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
 
 	"github.com/hashicorp/go-cty/cty"
-	ctyjson "github.com/hashicorp/go-cty/cty/json"
 	"github.com/hashicorp/go-cty/cty/msgpack"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov5"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
 func upgradeResourceStateGRPC(
-	ctx context.Context, t string, res *schema.Resource,
-	state cty.Value, meta map[string]any,
+	ctx context.Context,
+	t string,
+	res *schema.Resource,
+	state shim.RawState,
+	meta map[string]any,
 	server tfprotov5.ProviderServer,
 ) (cty.Value, map[string]any, error) {
-	// TODO[pulumi/pulumi-terraform-bridge#1667]: This is not quite right but we need
-	// the old TF state to get it right.
-	jsonBytes, err := ctyjson.Marshal(state, state.Type())
+	jsonBytes, err := json.Marshal(state)
 	if err != nil {
 		return cty.Value{}, nil, err
 	}
+	return upgradeResourceStateGRPCInner(ctx, t, res, jsonBytes, meta, server)
+}
 
+func upgradeResourceStateGRPCInner(
+	ctx context.Context,
+	t string,
+	res *schema.Resource,
+	jsonBytes json.RawMessage, // raw state in JSON representation
+	meta map[string]any,
+	server tfprotov5.ProviderServer,
+) (cty.Value, map[string]any, error) {
 	version, _, err := extractSchemaVersion(meta)
 	if err != nil {
 		return cty.Value{}, nil, err

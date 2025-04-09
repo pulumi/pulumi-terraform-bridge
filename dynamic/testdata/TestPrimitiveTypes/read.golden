@@ -2,6 +2,9 @@
   "id": "output-id",
   "inputs": {},
   "properties": {
+    "__pulumi_raw_state_delta": {
+      "obj": {}
+    },
     "attrBoolRequired": true,
     "attrIntComputed": 10000,
     "attrIntRequired": 64,

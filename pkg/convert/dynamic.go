@@ -103,7 +103,7 @@ func newDynamicDecoder() Decoder {
 	return &dynamicDecoder{}
 }
 
-func (dec *dynamicDecoder) toPropertyValue(v tftypes.Value) (resource.PropertyValue, error) {
+func (dec *dynamicDecoder) toPropertyValue(v tftypes.Value, dopts DecodeOptions) (resource.PropertyValue, error) {
 	switch {
 	case !v.IsKnown():
 		return unknownProperty(), nil
@@ -139,7 +139,7 @@ func (dec *dynamicDecoder) toPropertyValue(v tftypes.Value) (resource.PropertyVa
 		}
 		var translated []resource.PropertyValue
 		for _, e := range elements {
-			te, err := dec.toPropertyValue(e)
+			te, err := dec.toPropertyValue(e, dopts)
 			if err != nil {
 				return resource.PropertyValue{}, err
 			}
@@ -154,7 +154,7 @@ func (dec *dynamicDecoder) toPropertyValue(v tftypes.Value) (resource.PropertyVa
 		}
 		translated := make(resource.PropertyMap)
 		for k, v := range elements {
-			tv, err := dec.toPropertyValue(v)
+			tv, err := dec.toPropertyValue(v, dopts)
 			if err != nil {
 				return resource.PropertyValue{}, err
 			}
@@ -171,7 +171,7 @@ func (dec *dynamicDecoder) toPropertyValue(v tftypes.Value) (resource.PropertyVa
 		}
 		var result []resource.PropertyValue
 		for _, e := range elements {
-			te, err := dec.toPropertyValue(e)
+			te, err := dec.toPropertyValue(e, dopts)
 			if err != nil {
 				return resource.PropertyValue{}, err
 			}

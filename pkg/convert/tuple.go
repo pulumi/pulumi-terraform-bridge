@@ -79,7 +79,7 @@ func (enc *tupleEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.Va
 	return tftypes.NewValue(typ, values), nil
 }
 
-func (dec *tupleDecoder) toPropertyValue(v tftypes.Value) (resource.PropertyValue, error) {
+func (dec *tupleDecoder) toPropertyValue(v tftypes.Value, dopts DecodeOptions) (resource.PropertyValue, error) {
 	var elements []tftypes.Value
 	if err := v.As(&elements); err != nil {
 		return resource.PropertyValue{},
@@ -88,7 +88,7 @@ func (dec *tupleDecoder) toPropertyValue(v tftypes.Value) (resource.PropertyValu
 	values := make([]resource.PropertyValue, len(elements))
 	for i, e := range elements {
 		var err error
-		values[i], err = decode(dec.decoders[i], e)
+		values[i], err = decode(dec.decoders[i], e, dopts)
 		if err != nil {
 			return resource.PropertyValue{},
 				fmt.Errorf("failed to decode tuple[%d] (%s): %w", i, v, err)

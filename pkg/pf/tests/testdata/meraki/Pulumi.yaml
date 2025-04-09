@@ -1,0 +1,280 @@
+name: test-program
+runtime: yaml
+resources:
+  my-res:
+    type: testprovider:index:R
+    properties:
+      networkId: "my-network-id"
+      defaultDestinations:
+        snmp: false
+        allAdmins: true
+      muting:
+        byPortSchedules:
+          enabled: true
+      alerts:
+
+        - alertDestinations:
+            allAdmins: false
+            snmp: false
+          enabled: true
+          filters:
+            timeout: 5
+          type: applianceDown
+
+        - alertDestinations:
+            allAdmins: false
+            snmp: false
+          enabled: false
+          filters:
+            period: 1200
+            threshold: 104857600
+          type: "usageAlert"
+
+        - alertDestinations:
+            allAdmins: false
+            snmp: false
+          enabled: true
+          filters:
+            timeout: 5
+          type: "portDown"
+
+        - alertDestinations:
+            allAdmins: false
+            snmp: false
+          enabled: true
+          filters:
+            timeout: 5
+          type: "switchDown"
+
+        - alertDestinations:
+            allAdmins: false
+            snmp: false
+          enabled: true
+          filters:
+            timeout: 5
+          type: "cellularGatewayDown"
+
+        - alertDestinations:
+            allAdmins: false
+            snmp: false
+          enabled: true
+          filters:
+            timeout: 5
+          type: "gatewayDown"
+
+        - alertDestinations:
+            allAdmins: false
+            snmp: false
+          enabled: false
+          filters:
+            timeout: 60
+          type: "repeaterDown"
+
+        - alertDestinations:
+            allAdmins: false
+            snmp: false
+          enabled: true
+          filters: {}
+          type: "ampMalwareDetected"
+
+        - alertDestinations:
+            allAdmins: false
+            snmp: false
+          enabled: false
+          filters: {}
+          type: "ampMalwareBlocked"
+
+        - alertDestinations:
+            allAdmins: false
+            snmp: false
+          enabled: true
+          filters: {}
+          type: "failoverEvent"
+
+        - alertDestinations:
+            allAdmins: false
+            snmp: false
+          enabled: true
+          filters: {}
+          type: "dhcpNoLeases"
+        - alertDestinations:
+            allAdmins: false
+            snmp: false
+          enabled: true
+          filters: {}
+          type: "rogueDhcp"
+
+        - alertDestinations:
+            allAdmins: false
+            snmp: false
+          enabled: true
+          filters: {}
+          type: "ipConflict"
+
+        - alertDestinations:
+            allAdmins: false
+            snmp: false
+          enabled: false
+          filters: {}
+          type: "ip6Conflict"
+
+        - alertDestinations:
+            allAdmins: false
+            snmp: false
+          enabled: false
+          filters: {}
+          type: "dhcp6naRenumber"
+
+        - alertDestinations:
+            allAdmins: false
+            snmp: false
+          enabled: false
+          filters: {}
+          type: "dhcp6pdRenumber"
+
+        - alertDestinations:
+            allAdmins: false
+            snmp: false
+          enabled: true
+          filters: {}
+          type: "cellularUpDown"
+
+        - alertDestinations:
+            allAdmins: false
+            snmp: false
+          enabled: false
+          filters: {}
+          type: "clientConnectivity"
+
+        - alertDestinations:
+            allAdmins: false
+            snmp: false
+          enabled: true
+          filters: {}
+          type: "vrrp"
+
+        - alertDestinations:
+            allAdmins: false
+            snmp: false
+          enabled: true
+          filters: {}
+          type: "vpnConnectivityChange"
+
+        - alertDestinations:
+            allAdmins: false
+            snmp: false
+          enabled: true
+          filters: {}
+          type: "settingsChanged"
+
+        - alertDestinations:
+            allAdmins: false
+            snmp: false
+          enabled: false
+          filters: {}
+          type: "weeklyUmbrella"
+
+        - alertDestinations:
+            allAdmins: false
+            snmp: false
+          enabled: false
+          filters: {}
+          type: "prefixStarvation"
+
+        - alertDestinations:
+            allAdmins: false
+            snmp: false
+          enabled: true
+          filters: {}
+          type: "powerSupplyDown"
+
+        - alertDestinations:
+            allAdmins: false
+            snmp: false
+          enabled: true
+          filters: {}
+          type: "rpsBackup"
+
+        - alertDestinations:
+            allAdmins: false
+            snmp: false
+          enabled: true
+          filters: {}
+          type: "udldError"
+
+        - alertDestinations:
+            allAdmins: false
+            snmp: false
+          enabled: true
+          filters: {}
+          type: "portError"
+
+        - alertDestinations:
+            allAdmins: false
+            snmp: false
+          enabled: true
+          filters: {}
+          type: "portSpeed"
+
+        - alertDestinations:
+            allAdmins: false
+            snmp: false
+          enabled: true
+          filters: {}
+          type: "newDhcpServer"
+
+        - alertDestinations:
+            allAdmins: false
+            snmp: false
+          enabled: true
+          filters: {}
+          type: "switchCriticalTemperature"
+
+        - alertDestinations:
+            allAdmins: false
+            snmp: false
+          enabled: true
+          filters: {}
+          type: "gatewayToRepeater"
+
+        - alertDestinations:
+            allAdmins: false
+            snmp: false
+          enabled: true
+          filters: {}
+          type: "rogueAp"
+
+        - alertDestinations:
+            allAdmins: false
+            snmp: false
+          enabled: false
+          filters: {}
+          type: "snr"
+
+        - alertDestinations:
+            allAdmins: false
+            snmp: false
+          enabled: false
+          filters: {}
+          type: "highWirelessUsage"
+
+        - alertDestinations:
+            allAdmins: false
+            snmp: false
+          enabled: false
+          filters: {}
+          type: "onboarding"
+
+        - alertDestinations:
+            allAdmins: false
+            snmp: false
+          enabled: false
+          filters: {}
+          type: "weeklyPresence"
+
+        - alertDestinations:
+            allAdmins: false
+            snmp: false
+          enabled: false
+          filters: {}
+          type: "uplinkIp6Conflict"
