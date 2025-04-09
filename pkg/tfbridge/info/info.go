@@ -170,6 +170,7 @@ type Provider struct {
 	// EnableZeroDefaultSchemaVersion makes the provider default
 	// to version 0 when no version is specified in the state of a resource.
 	EnableZeroDefaultSchemaVersion bool
+	// Deprecated: This flag is enabled by default and will be removed in a future release.
 	// EnableAccurateBridgePreview makes the SDKv2 bridge use an experimental feature
 	// to generate more accurate diffs and previews for resources
 	EnableAccurateBridgePreview bool

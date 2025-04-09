@@ -23,15 +23,10 @@ jobs:
         # go version in our go.mod files.
         go-version: [1.22.x, 1.23.x]
         platform: [ubuntu-latest, macos-latest, windows-latest]
-        feature-flags: ["DEFAULT", "PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW"]
+        feature-flags: ["DEFAULT"]
         # Needs to match TOTAL_SHARDS
         shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
         exclude:
-          # We do not run non-default feature flags on non-ubuntu. 
-          - platform: windows-latest
-            feature-flags: "PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW"
-          - platform: macos-latest
-            feature-flags: "PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW"
           # Windows and mac test runs do not need to be sharded as they are fast enough.
           # In order to do that we will skip all except the 0-th shard.
           - platform: windows-latest

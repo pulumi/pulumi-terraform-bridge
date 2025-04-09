@@ -2530,7 +2530,7 @@ func TestTransformOutputs(t *testing.T) {
 
 func TestSkipDetailedDiff(t *testing.T) {
 	t.Parallel()
-	provider := func(t *testing.T, skipDetailedDiffForChanges bool) *Provider {
+	provider := func() *Provider {
 		p := testprovider.CustomizedDiffProvider(func(data *schema.ResourceData) {})
 		shimProvider := shimv2.NewProvider(p)
 		return &Provider{
@@ -2551,7 +2551,7 @@ func TestSkipDetailedDiff(t *testing.T) {
 		}
 	}
 	t.Run("Diff", func(t *testing.T) {
-		testutils.Replay(t, provider(t, true), `
+		testutils.Replay(t, provider(), `
                 {
 		  "method": "/pulumirpc.ResourceProvider/Diff",
 		  "request": {
@@ -2562,21 +2562,17 @@ func TestSkipDetailedDiff(t *testing.T) {
 		  },
 		  "response": {
 		    "changes": "DIFF_SOME",
-		    "hasDetailedDiff": true
+		    "hasDetailedDiff": true,
+			"detailedDiff": {
+				"labels": {}
+			},
+			"diffs": ["labels"]
 		  }
 		}`)
 	})
 
-	// This test checks that we will flag some meta field (`__meta`) as a replace if
-	// the upstream diff indicates a replace but there is no field associated with the
-	// replace.
-	//
-	// We do this since Pulumi's gRPC protocol doesn't have direct support for
-	// declaring a replace on a resource without an associated property.
 	t.Run("EmptyDiffWithReplace", func(t *testing.T) {
-		test := func(skipDetailedDiffForChanges bool) func(t *testing.T) {
-			return func(t *testing.T) {
-				testutils.Replay(t, provider(t, skipDetailedDiffForChanges), `
+		testutils.Replay(t, provider(), `
                 {
 		  "method": "/pulumirpc.ResourceProvider/Diff",
 		  "request": {
@@ -2588,21 +2584,18 @@ func TestSkipDetailedDiff(t *testing.T) {
 		  "response": {
 		    "changes": "DIFF_SOME",
 		    "replaces": ["__meta"],
-		    "hasDetailedDiff": true
+		    "hasDetailedDiff": true,
+			"detailedDiff": {
+				"__meta": {"kind": "UPDATE_REPLACE"},
+				"labels": {}
+			},
+			"diffs": ["__meta", "labels"]
 		  }
 		}`)
-			}
-		}
-		t.Run("withDetailedDiff", test(false))
-		t.Run("skipDetailedDiff", test(true))
 	})
 
-	// This test checks that we don't insert extraneous replaces when there is an
-	// existing field that holds a replace.
 	t.Run("FullDiffWithReplace", func(t *testing.T) {
-		test := func(skipDetailedDiffForChanges bool) func(t *testing.T) {
-			return func(t *testing.T) {
-				testutils.Replay(t, provider(t, skipDetailedDiffForChanges), `
+		testutils.Replay(t, provider(), `
                 {
 		  "method": "/pulumirpc.ResourceProvider/Diff",
 		  "request": {
@@ -2613,16 +2606,15 @@ func TestSkipDetailedDiff(t *testing.T) {
 		  },
 		  "response": {
 		    "changes": "DIFF_SOME",
-		    "replaces": ["labels"],
+		    "replaces": ["__meta"],
 		    "hasDetailedDiff": true,
-		    "detailedDiff": { "labels": { "kind": "UPDATE_REPLACE" } },
-		    "diffs": ["labels"]
+		    "detailedDiff": {
+				"__meta": {"kind": "UPDATE_REPLACE"},
+				"labels": {"kind": "UPDATE"}
+			},
+		    "diffs": ["__meta", "labels"]
 		  }
 		}`)
-			}
-		}
-		t.Run("withDetailedDiff", test(false))
-		t.Run("skipDetailedDiff", test(true))
 	})
 }
 
@@ -2855,11 +2847,10 @@ func TestMaxItemOneWrongStateDiff(t *testing.T) {
 				"changes": "DIFF_SOME",
 				"hasDetailedDiff": true,
 				"detailedDiff": {
-					"nested_str": {
-						"kind": "UPDATE"
+					"nestedStr": {
 					}
 				},
-				"diffs": ["nested_str"]
+				"diffs": ["nestedStr"]
 			}
 		}`)
 	})
@@ -5452,9 +5443,6 @@ func TestSetDuplicatedDiffEntries(t *testing.T) {
             "privileges"
         ],
         "detailedDiff": {
-            "privileges": {
-                "kind": "UPDATE"
-            },
             "privileges[0]": {
                 "kind": "DELETE"
             },

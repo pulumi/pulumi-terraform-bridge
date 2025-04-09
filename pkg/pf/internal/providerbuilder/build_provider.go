@@ -89,11 +89,10 @@ func (impl *Provider) ToProviderInfo() tfbridge0.ProviderInfo {
 	shimProvider := tfbridge.ShimProvider(impl)
 
 	provider := tfbridge0.ProviderInfo{
-		P:                           shimProvider,
-		Name:                        impl.TypeName,
-		Version:                     "0.0.1",
-		MetadataInfo:                &tfbridge0.MetadataInfo{},
-		EnableAccurateBridgePreview: true,
+		P:            shimProvider,
+		Name:         impl.TypeName,
+		Version:      "0.0.1",
+		MetadataInfo: &tfbridge0.MetadataInfo{},
 	}
 
 	provider.MustComputeTokens(tokens.SingleModule(impl.TypeName, "index", tokens.MakeStandard(impl.TypeName)))

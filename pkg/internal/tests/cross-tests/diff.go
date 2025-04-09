@@ -8,10 +8,9 @@ import (
 )
 
 type diffOpts struct {
-	deleteBeforeReplace           bool
-	disableAccurateBridgePreviews bool
-	resource2                     *schema.Resource
-	skipDiffEquivalenceCheck      bool
+	deleteBeforeReplace      bool
+	resource2                *schema.Resource
+	skipDiffEquivalenceCheck bool
 }
 
 // An option that can be used to customize [Diff].
@@ -20,11 +19,6 @@ type DiffOption func(*diffOpts)
 // DiffDeleteBeforeReplace specifies whether to delete the resource before replacing it.
 func DiffDeleteBeforeReplace(deleteBeforeReplace bool) DiffOption {
 	return func(o *diffOpts) { o.deleteBeforeReplace = deleteBeforeReplace }
-}
-
-// DiffDisableAccurateBridgePreviews specifies whether to disable accurate bridge previews.
-func DiffDisableAccurateBridgePreviews() DiffOption {
-	return func(o *diffOpts) { o.disableAccurateBridgePreviews = true }
 }
 
 // DiffProviderUpgradedSchema specifies the second provider schema to use for the diff.
@@ -49,12 +43,11 @@ func Diff(
 	config2Cty := cty.ObjectVal(config2)
 
 	return runDiffCheck(t, diffTestCase{
-		Resource:                      resource,
-		Config1:                       config1Cty,
-		Config2:                       config2Cty,
-		DeleteBeforeReplace:           o.deleteBeforeReplace,
-		DisableAccurateBridgePreviews: o.disableAccurateBridgePreviews,
-		Resource2:                     o.resource2,
-		SkipDiffEquivalenceCheck:      o.skipDiffEquivalenceCheck,
+		Resource:                 resource,
+		Config1:                  config1Cty,
+		Config2:                  config2Cty,
+		DeleteBeforeReplace:      o.deleteBeforeReplace,
+		Resource2:                o.resource2,
+		SkipDiffEquivalenceCheck: o.skipDiffEquivalenceCheck,
 	})
 }
