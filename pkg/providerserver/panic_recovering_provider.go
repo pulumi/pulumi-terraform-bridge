@@ -274,22 +274,6 @@ func (s *PanicRecoveringProviderServer) Invoke(
 	return s.innerServer.Invoke(withPanicHandlerInstalled(ctx), req)
 }
 
-func (s *PanicRecoveringProviderServer) StreamInvoke(
-	req *pulumirpc.InvokeRequest,
-	srv pulumirpc.ResourceProvider_StreamInvokeServer,
-) error {
-	// This may not handle isPanicHandlerInstalled idempotency yet. Not used in bridged providers for now.
-	defer func() {
-		if err := recover(); err != nil {
-			s.logPanic(context.Background(), "StreamInvoke", err, debug.Stack(), &logPanicOptions{
-				invokeToken: req.Tok,
-			})
-			panic(err) // rethrow
-		}
-	}()
-	return s.innerServer.StreamInvoke(req, srv)
-}
-
 func (s *PanicRecoveringProviderServer) Call(
 	ctx context.Context,
 	req *pulumirpc.CallRequest,

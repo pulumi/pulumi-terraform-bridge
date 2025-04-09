@@ -18,7 +18,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"reflect"
 	"testing"
 
@@ -451,11 +450,6 @@ func (m *server) Configure(ctx context.Context, req *pulumirpc.ConfigureRequest)
 
 func (m *server) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*pulumirpc.InvokeResponse, error) {
 	return handleMethod[*pulumirpc.InvokeRequest, *pulumirpc.InvokeResponse](m, req)
-}
-
-func (m *server) StreamInvoke(req *pulumirpc.InvokeRequest, s pulumirpc.ResourceProvider_StreamInvokeServer) error {
-	assert.Fail(m.t, "StreamInvoke not implemented on `server`")
-	return fmt.Errorf("UNIMPLEMENTED")
 }
 
 func (m *server) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error) {
