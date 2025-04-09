@@ -622,38 +622,6 @@ func (p *providerServer) Invoke(ctx context.Context, req *pulumirpc.InvokeReques
 	}, nil
 }
 
-func (p *providerServer) StreamInvoke(req *pulumirpc.InvokeRequest,
-	server pulumirpc.ResourceProvider_StreamInvokeServer,
-) error {
-	args, err := pl.UnmarshalProperties(req.GetArgs(), p.unmarshalOptions("args"))
-	if err != nil {
-		return err
-	}
-
-	failures, err := p.provider.StreamInvokeWithContext(server.Context(), tokens.ModuleMember(req.GetTok()), args,
-		func(item resource.PropertyMap) error {
-			rpcItem, err := pl.MarshalProperties(item, p.marshalOptions("item"))
-			if err != nil {
-				return err
-			}
-
-			return server.Send(&pulumirpc.InvokeResponse{Return: rpcItem})
-		})
-	if err != nil {
-		return err
-	}
-	if len(failures) == 0 {
-		return nil
-	}
-
-	rpcFailures := make([]*pulumirpc.CheckFailure, len(failures))
-	for i, f := range failures {
-		rpcFailures[i] = &pulumirpc.CheckFailure{Property: string(f.Property), Reason: f.Reason}
-	}
-
-	return server.Send(&pulumirpc.InvokeResponse{Failures: rpcFailures})
-}
-
 func (p *providerServer) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error) {
 	args, err := pl.UnmarshalProperties(req.GetArgs(), p.unmarshalOptions("args"))
 	if err != nil {
