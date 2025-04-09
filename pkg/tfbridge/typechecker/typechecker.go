@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/reservedkeys"
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -217,7 +218,7 @@ func (v *TypeChecker) validatePropertyValue(
 			objectValue := propertyValue.ObjectValue()
 			failures := []Failure{}
 			for _, propertyKey := range objectValue.StableKeys() {
-				if strings.HasPrefix(string(propertyKey), "__") {
+				if reservedkeys.IsBridgeReservedKey(string(propertyKey)) {
 					continue
 				}
 				pb := append(propertyPath, string(propertyKey))
