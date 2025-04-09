@@ -2265,9 +2265,7 @@ func TestChangingMaxItems1FilterProperty(t *testing.T) {
 		},
 		expectedDiffChanges: pulumirpc.DiffResponse_DIFF_SOME,
 		expected: map[string]*pulumirpc.PropertyDiff{
-			"rules[0].filter": {
-				Kind: pulumirpc.PropertyDiff_UPDATE,
-			},
+			"rules[0].filter": {},
 		},
 	})
 }
