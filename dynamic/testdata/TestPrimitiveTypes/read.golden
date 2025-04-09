@@ -3,7 +3,20 @@
   "inputs": {},
   "properties": {
     "__pulumi_raw_state_delta": {
-      "obj": {}
+      "obj": {
+        "ps": {
+          "attrBoolComputed": {
+            "replace": {
+              "raw": null
+            }
+          },
+          "attrNumberComputed": {
+            "replace": {
+              "raw": null
+            }
+          }
+        }
+      }
     },
     "attrBoolRequired": true,
     "attrIntComputed": 10000,
