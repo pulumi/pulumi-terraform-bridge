@@ -44,6 +44,7 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/internal/logging"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/internal/testprovider"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/reservedkeys"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	shimv1 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v1"
@@ -712,7 +713,7 @@ func TestProviderPreviewV2(t *testing.T) {
 	assert.NoError(t, err)
 	//nolint:lll
 	autogold.Expect(resource.PropertyMap{
-		resource.PropertyKey("__meta"): resource.PropertyValue{
+		resource.PropertyKey(reservedkeys.Meta): resource.PropertyValue{
 			V: `{"_new_extra_shim":{},"e2bfb730-ecaa-11e6-8f88-34363bc7c4c0":{"create":120000000000}}`,
 		},
 		resource.PropertyKey("arrayPropertyValues"): resource.PropertyValue{},

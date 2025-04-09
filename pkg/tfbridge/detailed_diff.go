@@ -12,6 +12,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/reservedkeys"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/walk"
@@ -797,7 +798,9 @@ func MakeDetailedDiffV2(
 			if !containsReplace(res) {
 				// We use the internal __meta property to trigger a replace when we have failed to
 				// determine the correct detailed diff for it.
-				res[metaKey] = &pulumirpc.PropertyDiff{Kind: pulumirpc.PropertyDiff_UPDATE_REPLACE}
+				res[reservedkeys.Meta] = &pulumirpc.PropertyDiff{
+					Kind: pulumirpc.PropertyDiff_UPDATE_REPLACE,
+				}
 			}
 		} else {
 			// There is an override for no replaces, so ensure we don't have any.

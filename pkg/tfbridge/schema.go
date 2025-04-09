@@ -31,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/reservedkeys"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 )
@@ -608,8 +609,7 @@ func (ctx *conversionContext) makeObjectTerraformInputs(
 	// Enumerate the inputs provided and add them to the map using their Terraform names.
 	for key, value := range news {
 		// If this is a reserved property, ignore it.
-		switch key {
-		case defaultsKey, metaKey:
+		if reservedkeys.IsBridgeReservedKey(string(key)) {
 			continue
 		}
 
@@ -1012,9 +1012,6 @@ func makeTerraformUnknown(tfs shim.Schema) interface{} {
 	}
 }
 
-// metaKey is the key in a TF bridge result that is used to store a resource's meta-attributes.
-const metaKey = "__meta"
-
 // MakeTerraformResult expands a Terraform state into an expanded Pulumi resource property map.  This respects
 // the property maps so that results end up with their correct Pulumi names when shipping back to the engine.
 func MakeTerraformResult(
@@ -1041,7 +1038,7 @@ func MakeTerraformResult(
 	if state != nil && len(state.Meta()) != 0 {
 		metaJSON, err := json.Marshal(state.Meta())
 		contract.Assertf(err == nil, "err == nil")
-		outMap[metaKey] = resource.NewStringProperty(string(metaJSON))
+		outMap[reservedkeys.Meta] = resource.NewStringProperty(string(metaJSON))
 	}
 
 	return outMap, nil
@@ -1269,8 +1266,7 @@ func makeConfig(v interface{}) interface{} {
 		r := make(map[string]interface{})
 		for k, e := range v {
 			// If this is a reserved property, ignore it.
-			switch k {
-			case defaultsKey, metaKey:
+			if reservedkeys.IsBridgeReservedKey(k) {
 				continue
 			}
 			r[k] = makeConfig(e)
@@ -1311,7 +1307,7 @@ func makeTerraformStateWithOpts(
 ) (shim.InstanceState, error) {
 	// Parse out any metadata from the state.
 	var meta map[string]interface{}
-	if metaProperty, hasMeta := m[metaKey]; hasMeta && metaProperty.IsString() {
+	if metaProperty, hasMeta := m[reservedkeys.Meta]; hasMeta && metaProperty.IsString() {
 		if err := json.Unmarshal([]byte(metaProperty.StringValue()), &meta); err != nil {
 			return nil, err
 		}

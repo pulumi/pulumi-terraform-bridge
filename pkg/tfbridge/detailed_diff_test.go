@@ -15,6 +15,7 @@ import (
 	"gotest.tools/v3/assert"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/internal/logging"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/reservedkeys"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	shimschema "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
@@ -336,9 +337,9 @@ func TestDiffPair(t *testing.T) {
 
 func TestReservedKey(t *testing.T) {
 	t.Parallel()
-	assert.Equal(t, newPropertyPath("foo").Subpath("__meta").IsReservedKey(), true)
-	assert.Equal(t, newPropertyPath("foo").Subpath("__defaults").IsReservedKey(), true)
-	assert.Equal(t, newPropertyPath("__defaults").IsReservedKey(), true)
+	assert.Equal(t, newPropertyPath("foo").Subpath(reservedkeys.Meta).IsReservedKey(), true)
+	assert.Equal(t, newPropertyPath("foo").Subpath(reservedkeys.Defaults).IsReservedKey(), true)
+	assert.Equal(t, newPropertyPath(reservedkeys.Defaults).IsReservedKey(), true)
 	assert.Equal(t, newPropertyPath("foo").Subpath("bar").IsReservedKey(), false)
 }
 
@@ -3075,8 +3076,8 @@ func TestDetailedDiffReplaceOverrideTrue(t *testing.T) {
 
 	actual := MakeDetailedDiffV2(context.Background(), tfs, nil, old, new, new, ref(true))
 	require.Equal(t, actual, map[string]*pulumirpc.PropertyDiff{
-		"foo":    {Kind: pulumirpc.PropertyDiff_UPDATE},
-		"__meta": {Kind: pulumirpc.PropertyDiff_UPDATE_REPLACE},
+		"foo":             {Kind: pulumirpc.PropertyDiff_UPDATE},
+		reservedkeys.Meta: {Kind: pulumirpc.PropertyDiff_UPDATE_REPLACE},
 	})
 }
 

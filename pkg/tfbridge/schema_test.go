@@ -36,6 +36,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/internal/testprovider"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/reservedkeys"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 	shimv1 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v1"
@@ -681,7 +682,7 @@ func TestMetaProperties(t *testing.T) {
 			assert.Equal(t, read, read2)
 
 			// Delete the resource's meta-property and ensure that we re-populate its schema version.
-			delete(props, metaKey)
+			delete(props, reservedkeys.Meta)
 
 			state, err = makeTerraformStateWithOpts(
 				ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props,
@@ -758,7 +759,7 @@ func TestInjectingCustomTimeouts(t *testing.T) {
 			assert.Equal(t, read, read2)
 
 			// Delete the resource's meta-property and ensure that we re-populate its schema version.
-			delete(props, metaKey)
+			delete(props, reservedkeys.Meta)
 
 			state, err = makeTerraformStateWithOpts(
 				ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props,
@@ -2872,8 +2873,8 @@ func TestExtractSchemaInputsNestedMaxItemsOne(t *testing.T) {
 		{
 			name: "no overrides",
 			expectedOutputs: resource.PropertyMap{
-				"id":     resource.NewProperty("MyID"),
-				"__meta": resource.NewStringProperty("{\"schema_version\":\"0\"}"),
+				"id":              resource.NewProperty("MyID"),
+				reservedkeys.Meta: resource.NewStringProperty("{\"schema_version\":\"0\"}"),
 				"listObjectMaxitems": resource.NewProperty(resource.PropertyMap{
 					"field1":     resource.NewProperty(true),
 					"listScalar": resource.NewProperty(2.0),
@@ -2886,16 +2887,16 @@ func TestExtractSchemaInputsNestedMaxItemsOne(t *testing.T) {
 				}),
 			},
 			expectedInputs: resource.PropertyMap{
-				"__defaults": resource.NewProperty([]resource.PropertyValue{}),
+				reservedkeys.Defaults: resource.NewProperty([]resource.PropertyValue{}),
 				"listObjectMaxitems": resource.NewProperty(resource.PropertyMap{
-					"__defaults": resource.NewProperty([]resource.PropertyValue{}),
-					"field1":     resource.NewProperty(true),
-					"listScalar": resource.NewProperty(2.0),
+					reservedkeys.Defaults: resource.NewProperty([]resource.PropertyValue{}),
+					"field1":              resource.NewProperty(true),
+					"listScalar":          resource.NewProperty(2.0),
 				}),
 				"listObjects": resource.NewProperty([]resource.PropertyValue{
 					resource.NewProperty(resource.PropertyMap{
-						"__defaults": resource.NewProperty([]resource.PropertyValue{}),
-						"listScalar": resource.NewProperty(1.0),
+						reservedkeys.Defaults: resource.NewProperty([]resource.PropertyValue{}),
+						"listScalar":          resource.NewProperty(1.0),
 					}),
 				}),
 			},
@@ -2921,8 +2922,8 @@ func TestExtractSchemaInputsNestedMaxItemsOne(t *testing.T) {
 				},
 			},
 			expectedOutputs: resource.PropertyMap{
-				"id":     resource.NewProperty("MyID"),
-				"__meta": resource.NewStringProperty("{\"schema_version\":\"0\"}"),
+				"id":                  resource.NewProperty("MyID"),
+				reservedkeys.Defaults: resource.NewStringProperty("{\"schema_version\":\"0\"}"),
 				"listObject": resource.NewProperty(resource.PropertyMap{
 					"field1": resource.NewProperty(false),
 					"listScalars": resource.NewProperty([]resource.PropertyValue{

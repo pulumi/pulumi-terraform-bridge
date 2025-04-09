@@ -5,6 +5,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/reservedkeys"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/propertyvalue"
@@ -47,7 +48,10 @@ func (k propertyPath) Index(i int) propertyPath {
 
 func (k propertyPath) IsReservedKey() bool {
 	leaf := k[len(k)-1]
-	return leaf == "__meta" || leaf == "__defaults"
+	if s, ok := leaf.(string); ok {
+		return reservedkeys.IsBridgeReservedKey(s)
+	}
+	return false
 }
 
 func (k propertyPath) GetFromMap(v resource.PropertyMap) (resource.PropertyValue, bool) {
