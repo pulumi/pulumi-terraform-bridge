@@ -765,8 +765,8 @@ func (ih *rawStateDeltaHelper) computeDeltaAt(
 			key := resource.PropertyKey(keyRaw)
 
 			var delta RawStateDelta
-			if _, isIntersectingKey := pvElements[key]; isIntersectingKey {
-				delta = ih.deltaAt(subPath, pv, v)
+			if subPV, isIntersectingKey := pvElements[key]; isIntersectingKey {
+				delta = ih.deltaAt(subPath, subPV, v)
 			} else {
 				// Missing matching PropertyValue for key, generate a replace delta.
 				n := resource.NewNullProperty()
