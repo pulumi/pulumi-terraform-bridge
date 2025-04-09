@@ -24,10 +24,14 @@ const (
 	// property, the property's old value will only be used as the default if the property's key is present in the
 	// defaults list for the old property bag.
 	Defaults = "__defaults"
+
+	// The __pulumi_raw_state_delta key records the delta between a Pulumi-recorded PropertyMap state and the
+	// bridged provider Terraform Raw state, so that the latter can be reconstructed as-is at read time.
+	RawStateDelta = "__pulumi_raw_state_delta"
 )
 
 func IsBridgeReservedKey(name string) bool {
-	if name == Meta || name == Defaults {
+	if name == Meta || name == Defaults || name == RawStateDelta {
 		return true
 	}
 	return false

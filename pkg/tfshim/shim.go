@@ -2,9 +2,11 @@ package shim
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
+	"github.com/hashicorp/go-cty/cty"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
@@ -23,6 +25,11 @@ type InstanceState interface {
 
 	Object(sch SchemaMap) (map[string]interface{}, error)
 	Meta() map[string]interface{}
+}
+
+// Newer versions of the bridge want to interact with a cty.Value representation of the state.
+type InstanceStateWithCtyValue interface {
+	Value() cty.Value
 }
 
 type DiffAttrType byte
@@ -230,7 +237,9 @@ type Resource interface {
 	DeprecationMessage() string
 	Timeouts() *ResourceTimeout
 
+	// Prefer [ResourceWithNewInstanceState.NewInstanceState] when cty.Value form can be recovered.
 	InstanceState(id string, object, meta map[string]interface{}) (InstanceState, error)
+
 	DecodeTimeouts(config ResourceConfig) (*ResourceTimeout, error)
 }
 
@@ -343,3 +352,31 @@ type DiffOptions struct {
 //
 // https://www.pulumi.com/docs/concepts/options/ignorechanges/
 type IgnoreChanges = func() map[string]struct{}
+
+// RawState is the raw un-encoded Terraform state, without type information. It is passed as-is for providers to
+// upgrade and run migrations on.
+//
+// The representation matches the format accepted on the gRPC Terraform protocol:
+//
+//	https://github.com/hashicorp/terraform-plugin-go/blob/v0.26.0/tfprotov5/internal/tfplugin5/tfplugin5.pb.go#L519
+//	https://github.com/hashicorp/terraform-plugin-go/blob/v0.26.0/tfprotov6/state.go#L35
+type RawState json.RawMessage
+
+func (x RawState) MarshalJSON() ([]byte, error) {
+	return x, nil
+}
+
+func (x *RawState) UnmarshalJSON(raw []byte) error {
+	*x = raw
+	return nil
+}
+
+type ProviderWithRawStateSupport interface {
+	Provider
+
+	// Construct a new empty state when creating a resource.
+	NewEmptyState(ctx context.Context, t string) InstanceState
+
+	// Ensure raw state is upgraded to the current resource schema version.
+	UpgradeState(ctx context.Context, t string, state RawState, meta map[string]any) (InstanceState, error)
+}
