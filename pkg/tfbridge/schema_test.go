@@ -2922,8 +2922,8 @@ func TestExtractSchemaInputsNestedMaxItemsOne(t *testing.T) {
 				},
 			},
 			expectedOutputs: resource.PropertyMap{
-				"id":                  resource.NewProperty("MyID"),
-				reservedkeys.Defaults: resource.NewStringProperty("{\"schema_version\":\"0\"}"),
+				"id":              resource.NewProperty("MyID"),
+				reservedkeys.Meta: resource.NewStringProperty("{\"schema_version\":\"0\"}"),
 				"listObject": resource.NewProperty(resource.PropertyMap{
 					"field1": resource.NewProperty(false),
 					"listScalars": resource.NewProperty([]resource.PropertyValue{
