@@ -57,7 +57,6 @@ func TestEmptyTestresDiff(t *testing.T) {
 func TestOptionRemovalTestresDiff(t *testing.T) {
 	t.Parallel()
 	info := testprovider.SyntheticTestBridgeProvider()
-	info.EnableAccurateBridgePreview = false
 	server, err := newProviderServer(t, info)
 	require.NoError(t, err)
 	testCase := `
@@ -264,7 +263,6 @@ func TestSetNestedObjectAdded(t *testing.T) {
 func TestSetNestedObjectAddedOtherDiff(t *testing.T) {
 	t.Parallel()
 	info := testprovider.SyntheticTestBridgeProvider()
-	info.EnableAccurateBridgePreview = false
 	server, err := newProviderServer(t, info)
 	require.NoError(t, err)
 	testCase := `

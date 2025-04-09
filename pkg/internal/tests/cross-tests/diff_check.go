@@ -44,9 +44,8 @@ type diffTestCase struct {
 	Config1, Config2 any
 
 	// Optional object type for the resource. If left nil will be inferred from Resource schema.
-	ObjectType                    *tftypes.Object
-	DeleteBeforeReplace           bool
-	DisableAccurateBridgePreviews bool
+	ObjectType          *tftypes.Object
+	DeleteBeforeReplace bool
 
 	// Optional second schema to use as an upgrade test with a different schema.
 	Resource2 *schema.Resource
@@ -77,13 +76,8 @@ func runDiffCheck(t T, tc diffTestCase) crosstestsimpl.DiffResult {
 	tfp1 := &schema.Provider{ResourcesMap: map[string]*schema.Resource{defRtype: resource1}}
 	tfp2 := &schema.Provider{ResourcesMap: map[string]*schema.Resource{defRtype: resource2}}
 
-	opts := []pulcheck.BridgedProviderOpt{}
-	if !tc.DisableAccurateBridgePreviews {
-		opts = append(opts, pulcheck.EnableAccurateBridgePreviews())
-	}
-
-	bridgedProvider1 := pulcheck.BridgedProvider(t, defProviderShortName, tfp1, opts...)
-	bridgedProvider2 := pulcheck.BridgedProvider(t, defProviderShortName, tfp2, opts...)
+	bridgedProvider1 := pulcheck.BridgedProvider(t, defProviderShortName, tfp1)
+	bridgedProvider2 := pulcheck.BridgedProvider(t, defProviderShortName, tfp2)
 	if tc.DeleteBeforeReplace {
 		bridgedProvider1.Resources[defRtype].DeleteBeforeReplace = true
 		bridgedProvider2.Resources[defRtype].DeleteBeforeReplace = true
