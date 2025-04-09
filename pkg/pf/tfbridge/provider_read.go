@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/reservedkeys"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/propertyvalue"
 )
@@ -101,13 +102,13 @@ func (p *provider) ReadWithContext(
 // The `__defaults` key is something used in sdkv2 and is not handled here in pf. Because
 // of some code reuse between sdkv2 & pf the `__defaults` key is getting inserted
 func deleteDefaultsKey(inputs resource.PropertyMap) {
-	delete(inputs, "__defaults")
+	delete(inputs, reservedkeys.Defaults)
 	for key, value := range inputs {
 		newVal, err := propertyvalue.TransformPropertyValue(
 			resource.PropertyPath{},
 			func(pp resource.PropertyPath, pv resource.PropertyValue) (resource.PropertyValue, error) {
 				if pv.IsObject() {
-					delete(pv.ObjectValue(), "__defaults")
+					delete(pv.ObjectValue(), reservedkeys.Defaults)
 				}
 				return pv, nil
 			},

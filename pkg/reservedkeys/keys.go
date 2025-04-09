@@ -18,8 +18,11 @@ const (
 	// The __meta key is reserved for storing private resource state and schema version.
 	Meta = "__meta"
 
-	// The __defaults key is reserved for storing information indicating whether a property got populated by the
-	// a default value or otherwise, to distinguish how it should be handled during updates.
+	// The __defaultsKey is the name of the input property that is used to track which property keys were populated
+	// using default values from the resource's schema. This information is used to inform which input properties
+	// should be populated using old defaults in subsequent updates. When populating the default value for an input
+	// property, the property's old value will only be used as the default if the property's key is present in the
+	// defaults list for the old property bag.
 	Defaults = "__defaults"
 )
 

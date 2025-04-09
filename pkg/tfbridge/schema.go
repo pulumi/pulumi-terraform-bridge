@@ -180,13 +180,6 @@ import (
 // rather a lot of things.
 const TerraformUnknownVariableValue = "74D93920-ED26-11E3-AC10-0800200C9A66"
 
-// defaultsKey is the name of the input property that is used to track which property keys were populated using
-// default values from the resource's schema. This information is used to inform which input properties should be
-// populated using old defaults in subsequent updates. When populating the default value for an input property, the
-// property's old value will only be used as the default if the property's key is present in the defaults list for
-// the old property bag.
-const defaultsKey = "__defaults"
-
 // AssetTable is used to record which properties in a call to MakeTerraformInputs were assets so that they can be
 // marshaled back to assets by MakeTerraformOutputs.
 type AssetTable map[*SchemaInfo]resource.PropertyValue
@@ -202,7 +195,7 @@ func nameRequiresDeleteBeforeReplace(news resource.PropertyMap, olds resource.Pr
 ) bool {
 	fields := resourceInfo.Fields
 
-	defaults, hasDefaults := news[defaultsKey]
+	defaults, hasDefaults := news[reservedkeys.Defaults]
 	if !hasDefaults || !defaults.IsArray() {
 		// If there is no list of properties that were populated using defaults, consider the resource autonamed.
 		// This avoids setting delete-before-replace for resources that were created before the defaults list existed.
@@ -732,7 +725,7 @@ func (ctx *conversionContext) applyDefaults(
 	// Pull the list of old defaults if any. If there is no list, then we will treat all old values as being usable
 	// for new defaults. If there is a list, we will only propagate defaults that were themselves defaults.
 	useOldDefault := func(key resource.PropertyKey) bool { return true }
-	if oldDefaults, ok := olds[defaultsKey]; ok {
+	if oldDefaults, ok := olds[reservedkeys.Defaults]; ok {
 		oldDefaultSet := make(map[resource.PropertyKey]bool)
 		for _, k := range oldDefaults.ArrayValue() {
 			oldDefaultSet[resource.PropertyKey(k.StringValue())] = true
@@ -950,7 +943,7 @@ func (ctx *conversionContext) applyDefaults(
 	sort.Slice(newDefaults, func(i, j int) bool {
 		return newDefaults[i].(resource.PropertyKey) < newDefaults[j].(resource.PropertyKey)
 	})
-	result[defaultsKey] = newDefaults
+	result[reservedkeys.Defaults] = newDefaults
 
 	return nil
 }
@@ -1585,7 +1578,7 @@ func extractInputsObject(
 	// If we have a list of inputs that were populated by defaults, filter out any properties that changed and add
 	// the result to the new inputs.
 	defaultNames, hasOldDefaults := map[string]bool{}, false
-	if oldDefaultNames, ok := oldInput[defaultsKey]; ok && oldDefaultNames.IsArray() {
+	if oldDefaultNames, ok := oldInput[reservedkeys.Defaults]; ok && oldDefaultNames.IsArray() {
 		hasOldDefaults = true
 		for _, k := range oldDefaultNames.ArrayValue() {
 			if k.IsString() {
@@ -1617,7 +1610,7 @@ func extractInputsObject(
 			return defaults[i].StringValue() < defaults[j].StringValue()
 		})
 
-		oldInput[defaultsKey] = resource.NewArrayProperty(defaults)
+		oldInput[reservedkeys.Defaults] = resource.NewArrayProperty(defaults)
 	}
 
 	return oldInput, possibleDefault || !hasOldDefaults
@@ -1674,7 +1667,7 @@ func isDefaultOrZeroValue(tfs shim.Schema, ps *SchemaInfo, v resource.PropertyVa
 		case 0:
 			return true
 		case 1:
-			_, ok := obj[defaultsKey]
+			_, ok := obj[reservedkeys.Defaults]
 			return ok
 		default:
 			return false
@@ -1745,8 +1738,8 @@ func extractSchemaInputs(
 
 		// To match previous behavior, we insert the default key for Map types.
 		//
-		// TODO: We should probably remove the extraneous defaultsKey here.
-		v[defaultsKey] = resource.NewArrayProperty([]resource.PropertyValue{})
+		// TODO: We should probably remove the extraneous reservedkeys.Defaults here.
+		v[reservedkeys.Defaults] = resource.NewArrayProperty([]resource.PropertyValue{})
 		return resource.NewObjectProperty(v)
 	default:
 		return state
@@ -1784,7 +1777,7 @@ func extractSchemaInputsObject(
 
 		v[k] = ev
 	}
-	v[defaultsKey] = resource.NewArrayProperty([]resource.PropertyValue{})
+	v[reservedkeys.Defaults] = resource.NewArrayProperty([]resource.PropertyValue{})
 
 	return v
 }

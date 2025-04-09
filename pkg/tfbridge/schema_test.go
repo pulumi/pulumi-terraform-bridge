@@ -173,7 +173,7 @@ func TestMakeTerraformInputMixedMaxItemsOne(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			olds := resource.PropertyMap{
 				"element": tt.oldState,
-				"__defaults": resource.NewArrayProperty(
+				reservedkeys.Defaults: resource.NewArrayProperty(
 					[]resource.PropertyValue{
 						resource.NewStringProperty("other"),
 					},
@@ -181,7 +181,7 @@ func TestMakeTerraformInputMixedMaxItemsOne(t *testing.T) {
 			}
 			news := resource.PropertyMap{
 				"element": tt.newState,
-				"__defaults": resource.NewArrayProperty(
+				reservedkeys.Defaults: resource.NewArrayProperty(
 					[]resource.PropertyValue{
 						resource.NewStringProperty("other"),
 					},
@@ -230,7 +230,7 @@ func TestMakeTerraformInputsWithMaxItemsOne(t *testing.T) {
 		"empty-olds": {
 			olds: resource.PropertyMap{},
 			news: resource.PropertyMap{
-				"__defaults": resource.NewArrayProperty(
+				reservedkeys.Defaults: resource.NewArrayProperty(
 					[]resource.PropertyValue{
 						resource.NewStringProperty("other"),
 					},
@@ -238,20 +238,20 @@ func TestMakeTerraformInputsWithMaxItemsOne(t *testing.T) {
 			},
 			expectedNoDefaults: map[string]interface{}{},
 			expectedForConfig: map[string]interface{}{
-				"__defaults": []interface{}{},
+				reservedkeys.Defaults: []interface{}{},
 			},
 		},
 		"non-empty-olds": {
 			olds: resource.PropertyMap{
 				"element": resource.NewStringProperty("el"),
-				"__defaults": resource.NewArrayProperty(
+				reservedkeys.Defaults: resource.NewArrayProperty(
 					[]resource.PropertyValue{
 						resource.NewStringProperty("other"),
 					},
 				),
 			},
 			news: resource.PropertyMap{
-				"__defaults": resource.NewArrayProperty(
+				reservedkeys.Defaults: resource.NewArrayProperty(
 					[]resource.PropertyValue{
 						resource.NewStringProperty("other"),
 					},
@@ -259,12 +259,12 @@ func TestMakeTerraformInputsWithMaxItemsOne(t *testing.T) {
 			},
 			expectedNoDefaults: map[string]interface{}{},
 			expectedForConfig: map[string]interface{}{
-				"__defaults": []interface{}{},
+				reservedkeys.Defaults: []interface{}{},
 			},
 		},
 		"non-missing-news": {
 			olds: resource.PropertyMap{
-				"__defaults": resource.NewArrayProperty(
+				reservedkeys.Defaults: resource.NewArrayProperty(
 					[]resource.PropertyValue{
 						resource.NewStringProperty("other"),
 					},
@@ -272,7 +272,7 @@ func TestMakeTerraformInputsWithMaxItemsOne(t *testing.T) {
 			},
 			news: resource.PropertyMap{
 				"element": resource.NewStringProperty("el"),
-				"__defaults": resource.NewArrayProperty(
+				reservedkeys.Defaults: resource.NewArrayProperty(
 					[]resource.PropertyValue{
 						resource.NewStringProperty("other"),
 					},
@@ -282,8 +282,8 @@ func TestMakeTerraformInputsWithMaxItemsOne(t *testing.T) {
 				"element": []interface{}{[]interface{}{"el"}},
 			},
 			expectedForConfig: map[string]interface{}{
-				"__defaults": []interface{}{},
-				"element":    []interface{}{[]interface{}{"el"}},
+				reservedkeys.Defaults: []interface{}{},
+				"element":             []interface{}{[]interface{}{"el"}},
 			},
 		},
 	}
@@ -900,9 +900,9 @@ func TestResultAttributesRoundTrip(t *testing.T) {
 }
 
 func sortDefaultsList(m resource.PropertyMap) {
-	defs := m[defaultsKey].ArrayValue()
+	defs := m[reservedkeys.Defaults].ArrayValue()
 	sort.Slice(defs, func(i, j int) bool { return defs[i].StringValue() < defs[j].StringValue() })
-	m[defaultsKey] = resource.NewArrayProperty(defs)
+	m[reservedkeys.Defaults] = resource.NewArrayProperty(defs)
 }
 
 func fixedDefault(value interface{}) func() (interface{}, error) {
@@ -990,7 +990,7 @@ func TestDefaults(t *testing.T) {
 				"x2stringxint":  {Type: "int", Default: &DefaultInfo{Value: 1}},
 			}
 			olds := resource.PropertyMap{
-				defaultsKey: resource.NewPropertyValue([]interface{}{
+				reservedkeys.Defaults: resource.NewPropertyValue([]interface{}{
 					"iii", "jjj", "lll", "mmm", "www", "xxx",
 				}),
 				"iii": resource.NewStringProperty("OLI"),
@@ -1019,7 +1019,7 @@ func TestDefaults(t *testing.T) {
 			sortDefaultsList(outputs)
 
 			assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
-				defaultsKey: []interface{}{
+				reservedkeys.Defaults: []interface{}{
 					"cc2", "ccc", "ee2", "eee", "ggg", "iii", "ll2", "lll",
 					"mm2", "mmm", "uuu", "vvv", "www",
 					"x2stringxbool", "x2stringxint",
@@ -1051,7 +1051,7 @@ func TestDefaults(t *testing.T) {
 
 			// Now delete the defaults list from the olds and re-run. This will affect the values for "ll2" and "mm2", which
 			// will be pulled from the old inputs instead of regenerated.
-			delete(olds, defaultsKey)
+			delete(olds, reservedkeys.Defaults)
 			inputs, assets, err = makeTerraformInputsForConfig(olds, props, tfs, ps)
 			assert.NoError(t, err)
 
@@ -1064,7 +1064,7 @@ func TestDefaults(t *testing.T) {
 			// sort the defaults list before the equality test below.
 			sortDefaultsList(outputs)
 			assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
-				defaultsKey: []interface{}{
+				reservedkeys.Defaults: []interface{}{
 					"cc2", "ccc", "ee2", "eee", "ggg", "iii", "ll2", "lll",
 					"mm2", "mmm", "uuu", "vvv", "www",
 
@@ -1123,7 +1123,7 @@ func TestDefaultsConflictsWith(t *testing.T) {
 				"oo2": {Default: &DefaultInfo{Value: "PO2"}},
 			}
 			olds := resource.PropertyMap{
-				defaultsKey: resource.NewPropertyValue([]interface{}{}),
+				reservedkeys.Defaults: resource.NewPropertyValue([]interface{}{}),
 			}
 			props := resource.PropertyMap{}
 
@@ -1133,7 +1133,7 @@ func TestDefaultsConflictsWith(t *testing.T) {
 			sortDefaultsList(outputs)
 
 			assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
-				defaultsKey: []interface{}{
+				reservedkeys.Defaults: []interface{}{
 					"abc", "oo2", "x1of1",
 				},
 				"abc": "ABC",
@@ -1145,7 +1145,7 @@ func TestDefaultsConflictsWith(t *testing.T) {
 				"x1of1": "x1of1-value",
 			}), outputs)
 
-			delete(olds, defaultsKey)
+			delete(olds, reservedkeys.Defaults)
 			inputs, assets, err = makeTerraformInputsForConfig(olds, props, tfs, ps)
 			assert.NoError(t, err)
 
@@ -1153,7 +1153,7 @@ func TestDefaultsConflictsWith(t *testing.T) {
 			sortDefaultsList(outputs)
 
 			assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
-				defaultsKey: []interface{}{
+				reservedkeys.Defaults: []interface{}{
 					"abc", "oo2", "x1of1",
 				},
 				"abc": "ABC",
@@ -1365,7 +1365,7 @@ func TestOverridingTFSchema(t *testing.T) {
 				require.NoError(t, err)
 				expected := map[string]any{
 					// SDKv2 Providers have __defaults included.
-					"__defaults": []any{},
+					reservedkeys.Defaults: []any{},
 				}
 
 				switch tfInput := tt.tfInput.(type) {
@@ -1843,7 +1843,7 @@ func TestExtractInputsFromOutputs(t *testing.T) {
 
 	tfres := tfProvider.ResourcesMap["importable_resource"]
 	tfres.Read = func(d *schemav1.ResourceData, meta interface{}) error {
-		_, ok := d.GetOk(defaultsKey)
+		_, ok := d.GetOk(reservedkeys.Defaults)
 		assert.False(t, ok)
 
 		if _, ok := d.GetOk("input_a"); !ok {
@@ -1860,7 +1860,7 @@ func TestExtractInputsFromOutputs(t *testing.T) {
 		return nil
 	}
 	tfres.Create = func(d *schemav1.ResourceData, meta interface{}) error {
-		_, ok := d.GetOk(defaultsKey)
+		_, ok := d.GetOk(reservedkeys.Defaults)
 		assert.False(t, ok)
 
 		d.SetId("MyID")
@@ -1922,12 +1922,12 @@ func TestExtractInputsFromOutputs(t *testing.T) {
 	ins, err := plugin.UnmarshalProperties(resp.GetInputs(), plugin.MarshalOptions{})
 	assert.NoError(t, err)
 	expected := resource.NewPropertyMapFromMap(map[string]interface{}{
-		defaultsKey: []interface{}{},
-		"inputA":    "input_a_read",
-		"inoutC":    "inout_c_read",
-		"inoutD":    "inout_d_read",
-		"inputI":    "",
-		"inoutK":    "",
+		reservedkeys.Defaults: []interface{}{},
+		"inputA":              "input_a_read",
+		"inoutC":              "inout_c_read",
+		"inoutD":              "inout_d_read",
+		"inputI":              "",
+		"inoutK":              "",
 	})
 	assert.Equal(t, expected, ins)
 
@@ -1954,12 +1954,12 @@ func TestExtractInputsFromOutputs(t *testing.T) {
 	assert.NoError(t, err)
 	sortDefaultsList(checkedIns)
 	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
-		defaultsKey: []interface{}{"inoutD", "inoutK", "inputF", "inputH"},
-		"inputA":    "input_a_create",
-		"inoutD":    "inout_d_default",
+		reservedkeys.Defaults: []interface{}{"inoutD", "inoutK", "inputF", "inputH"},
+		"inputA":              "input_a_create",
+		"inoutD":              "inout_d_default",
 		"inputE": map[string]interface{}{
-			defaultsKey: []interface{}{"fieldA"},
-			"fieldA":    "field_a_default",
+			reservedkeys.Defaults: []interface{}{"fieldA"},
+			"fieldA":              "field_a_default",
 		},
 		"inputF": "input_f_default",
 		"inputH": "Input_H_Default",
@@ -2024,12 +2024,12 @@ func TestExtractInputsFromOutputs(t *testing.T) {
 	ins, err = plugin.UnmarshalProperties(resp.GetInputs(), plugin.MarshalOptions{})
 	assert.NoError(t, err)
 	assert.Equal(t, resource.NewPropertyMapFromMap(map[string]interface{}{
-		defaultsKey: []interface{}{"inputF", "inputH"},
-		"inputA":    "input_a_create",
-		"inoutD":    "inout_d_read",
+		reservedkeys.Defaults: []interface{}{"inputF", "inputH"},
+		"inputA":              "input_a_create",
+		"inoutD":              "inout_d_read",
 		"inputE": map[string]interface{}{
-			defaultsKey: []interface{}{"fieldA"},
-			"fieldA":    "field_a_default",
+			reservedkeys.Defaults: []interface{}{"fieldA"},
+			"fieldA":              "field_a_default",
 		},
 		"inputF": "input_f_default",
 		"inputH": "Input_H_Default",
@@ -2038,8 +2038,8 @@ func TestExtractInputsFromOutputs(t *testing.T) {
 
 	// Step 3a. delete the default annotations from the checked inputs and re-run the read. No default annotations
 	// should be present in the result. This is the refresh-after-upgrade case.
-	delete(checkedIns, defaultsKey)
-	delete(checkedIns["inputE"].ObjectValue(), defaultsKey)
+	delete(checkedIns, reservedkeys.Defaults)
+	delete(checkedIns["inputE"].ObjectValue(), reservedkeys.Defaults)
 	checkedInsForRefresh, err := plugin.MarshalProperties(checkedIns, plugin.MarshalOptions{})
 	assert.NoError(t, err)
 
@@ -2121,11 +2121,11 @@ func TestImportKeepOverride(t *testing.T) {
 				}
 			},
 			expectedTreated: resource.PropertyMap{
-				"topLevel":   resource.NewProperty(0.0),
-				"__defaults": resource.NewProperty([]resource.PropertyValue{}),
+				"topLevel":            resource.NewProperty(0.0),
+				reservedkeys.Defaults: resource.NewProperty([]resource.PropertyValue{}),
 			},
 			expectedUntreated: resource.PropertyMap{
-				"__defaults": resource.NewProperty([]resource.PropertyValue{}),
+				reservedkeys.Defaults: resource.NewProperty([]resource.PropertyValue{}),
 			},
 		},
 		{
@@ -2159,19 +2159,19 @@ func TestImportKeepOverride(t *testing.T) {
 			expectedTreated: resource.PropertyMap{
 				"f": resource.NewProperty([]resource.PropertyValue{
 					resource.NewProperty(resource.PropertyMap{
-						"nested":     resource.NewProperty(false),
-						"__defaults": resource.NewProperty([]resource.PropertyValue{}),
+						"nested":              resource.NewProperty(false),
+						reservedkeys.Defaults: resource.NewProperty([]resource.PropertyValue{}),
 					}),
 				}),
-				"__defaults": resource.NewProperty([]resource.PropertyValue{}),
+				reservedkeys.Defaults: resource.NewProperty([]resource.PropertyValue{}),
 			},
 			expectedUntreated: resource.PropertyMap{
 				"f": resource.NewProperty([]resource.PropertyValue{
 					resource.NewProperty(resource.PropertyMap{
-						"__defaults": resource.NewProperty([]resource.PropertyValue{}),
+						reservedkeys.Defaults: resource.NewProperty([]resource.PropertyValue{}),
 					}),
 				}),
-				"__defaults": resource.NewProperty([]resource.PropertyValue{}),
+				reservedkeys.Defaults: resource.NewProperty([]resource.PropertyValue{}),
 			},
 		},
 	}
@@ -2595,7 +2595,7 @@ func TestDeleteBeforeReplaceAutoname(t *testing.T) {
 	// delete-before-replace. This tests the back-compat scenario.
 	checkedIns, err := plugin.UnmarshalProperties(checkResp.GetInputs(), plugin.MarshalOptions{})
 	assert.NoError(t, err)
-	delete(checkedIns, defaultsKey)
+	delete(checkedIns, reservedkeys.Defaults)
 	marshaledIns, err := plugin.MarshalProperties(checkedIns, plugin.MarshalOptions{})
 	assert.NoError(t, err)
 
@@ -2657,7 +2657,7 @@ func TestExtractDefaultSecretInputs(t *testing.T) {
 
 	tfres := tfProvider.ResourcesMap["importable_resource"]
 	tfres.Read = func(d *schemav1.ResourceData, meta interface{}) error {
-		_, ok := d.GetOk(defaultsKey)
+		_, ok := d.GetOk(reservedkeys.Defaults)
 		assert.False(t, ok)
 
 		set(d, "input_a", "input_a_read")
@@ -2700,9 +2700,9 @@ func TestExtractDefaultSecretInputs(t *testing.T) {
 	ins, err := plugin.UnmarshalProperties(resp.GetInputs(), plugin.MarshalOptions{})
 	assert.NoError(t, err)
 	expected := resource.NewPropertyMapFromMap(map[string]interface{}{
-		defaultsKey: []interface{}{},
-		"inputA":    "input_a_read",
-		"inputC":    "input_c_read",
+		reservedkeys.Defaults: []interface{}{},
+		"inputA":              "input_a_read",
+		"inputC":              "input_c_read",
 	})
 	assert.Equal(t, expected, ins)
 }
@@ -2728,7 +2728,7 @@ func TestExtractDefaultIntegerInputs(t *testing.T) {
 
 	tfres := tfProvider.ResourcesMap["importable_resource"]
 	tfres.Read = func(d *schemav1.ResourceData, meta interface{}) error {
-		_, ok := d.GetOk(defaultsKey)
+		_, ok := d.GetOk(reservedkeys.Defaults)
 		assert.False(t, ok)
 
 		set(d, "input_a", 0)
@@ -2773,7 +2773,7 @@ func TestExtractDefaultIntegerInputs(t *testing.T) {
 	ins, err := plugin.UnmarshalProperties(resp.GetInputs(), plugin.MarshalOptions{})
 	assert.NoError(t, err)
 	expected := resource.NewPropertyMapFromMap(map[string]interface{}{
-		defaultsKey: []interface{}{},
+		reservedkeys.Defaults: []interface{}{},
 	})
 	assert.Equal(t, expected, ins)
 }
@@ -2831,7 +2831,7 @@ func TestExtractSchemaInputsNestedMaxItemsOne(t *testing.T) {
 		tfres.ReadContext = func(
 			_ context.Context, d *schemav2.ResourceData, meta interface{},
 		) diag.Diagnostics {
-			_, ok := d.GetOk(defaultsKey)
+			_, ok := d.GetOk(reservedkeys.Defaults)
 			assert.False(t, ok)
 
 			set(d, "list_object", []any{
@@ -2938,18 +2938,18 @@ func TestExtractSchemaInputsNestedMaxItemsOne(t *testing.T) {
 				}),
 			},
 			expectedInputs: resource.PropertyMap{
-				"__defaults": resource.NewProperty([]resource.PropertyValue{}),
+				reservedkeys.Defaults: resource.NewProperty([]resource.PropertyValue{}),
 				"listObject": resource.NewProperty(resource.PropertyMap{
-					"__defaults": resource.NewProperty([]resource.PropertyValue{}),
+					reservedkeys.Defaults: resource.NewProperty([]resource.PropertyValue{}),
 					"listScalars": resource.NewProperty([]resource.PropertyValue{
 						resource.NewProperty(1.0),
 					}),
 				}),
 				"listObjectMaxitems": resource.NewProperty([]resource.PropertyValue{
 					resource.NewProperty(resource.PropertyMap{
-						"__defaults":  resource.NewProperty([]resource.PropertyValue{}),
-						"field1":      resource.NewProperty(true),
-						"overwritten": resource.NewProperty(2.0),
+						reservedkeys.Defaults: resource.NewProperty([]resource.PropertyValue{}),
+						"field1":              resource.NewProperty(true),
+						"overwritten":         resource.NewProperty(2.0),
 					}),
 				}),
 			},
@@ -3067,12 +3067,12 @@ func TestMakeTerraformInputsOnMapNestedObjects(t *testing.T) {
 				}),
 			},
 			expect: map[string]interface{}{
-				"__defaults": []interface{}{},
+				reservedkeys.Defaults: []interface{}{},
 				"map_prop": map[string]interface{}{
 					"elem1": []interface{}{
 						map[string]interface{}{
-							"__defaults": []interface{}{},
-							"x_prop":     "xPropValue",
+							reservedkeys.Defaults: []interface{}{},
+							"x_prop":              "xPropValue",
 						},
 					},
 				},
@@ -3103,12 +3103,12 @@ func TestMakeTerraformInputsOnMapNestedObjects(t *testing.T) {
 				},
 			},
 			expect: map[string]interface{}{
-				"__defaults": []interface{}{},
+				reservedkeys.Defaults: []interface{}{},
 				"map_prop": map[string]interface{}{
 					"elem1": []interface{}{
 						map[string]interface{}{
-							"__defaults": []interface{}{},
-							"x_prop":     "xPropValue",
+							reservedkeys.Defaults: []interface{}{},
+							"x_prop":              "xPropValue",
 						},
 					},
 				},
@@ -3625,7 +3625,7 @@ func TestExtractInputsFromOutputsSdkv2(t *testing.T) {
 				"foo": {Type: schemav2.TypeString, Optional: true},
 			},
 			expected: autogold.Expect(resource.PropertyMap{
-				resource.PropertyKey("__defaults"): resource.PropertyValue{
+				resource.PropertyKey(reservedkeys.Defaults): resource.PropertyValue{
 					V: []resource.PropertyValue{},
 				},
 				resource.PropertyKey("foo"): resource.PropertyValue{V: "bar"},
@@ -3637,7 +3637,7 @@ func TestExtractInputsFromOutputsSdkv2(t *testing.T) {
 			schemaMap: map[string]*schemav2.Schema{
 				"foo": {Type: schemav2.TypeString, Optional: true, Default: "baz"},
 			},
-			expected: autogold.Expect(resource.PropertyMap{resource.PropertyKey("__defaults"): resource.PropertyValue{
+			expected: autogold.Expect(resource.PropertyMap{resource.PropertyKey(reservedkeys.Defaults): resource.PropertyValue{
 				V: []resource.PropertyValue{},
 			}}),
 		},
@@ -3647,7 +3647,7 @@ func TestExtractInputsFromOutputsSdkv2(t *testing.T) {
 			schemaMap: map[string]*schemav2.Schema{
 				"foo": {Type: schemav2.TypeString, Optional: true},
 			},
-			expected: autogold.Expect(resource.PropertyMap{resource.PropertyKey("__defaults"): resource.PropertyValue{
+			expected: autogold.Expect(resource.PropertyMap{resource.PropertyKey(reservedkeys.Defaults): resource.PropertyValue{
 				V: []resource.PropertyValue{},
 			}}),
 		},
@@ -3659,7 +3659,7 @@ func TestExtractInputsFromOutputsSdkv2(t *testing.T) {
 			schemaMap: map[string]*schemav2.Schema{
 				"foo": {Type: schemav2.TypeString, Computed: true},
 			},
-			expected: autogold.Expect(resource.PropertyMap{resource.PropertyKey("__defaults"): resource.PropertyValue{
+			expected: autogold.Expect(resource.PropertyMap{resource.PropertyKey(reservedkeys.Defaults): resource.PropertyValue{
 				V: []resource.PropertyValue{},
 			}}),
 		},
@@ -3680,11 +3680,11 @@ func TestExtractInputsFromOutputsSdkv2(t *testing.T) {
 				},
 			},
 			expected: autogold.Expect(resource.PropertyMap{
-				resource.PropertyKey("__defaults"): resource.PropertyValue{
+				resource.PropertyKey(reservedkeys.Defaults): resource.PropertyValue{
 					V: []resource.PropertyValue{},
 				},
 				resource.PropertyKey("foo"): resource.PropertyValue{V: resource.PropertyMap{
-					resource.PropertyKey("__defaults"): resource.PropertyValue{
+					resource.PropertyKey(reservedkeys.Defaults): resource.PropertyValue{
 						V: []resource.PropertyValue{},
 					},
 					resource.PropertyKey("bar"): resource.PropertyValue{V: "baz"},
@@ -3705,7 +3705,7 @@ func TestExtractInputsFromOutputsSdkv2(t *testing.T) {
 					},
 				},
 			},
-			expected: autogold.Expect(resource.PropertyMap{resource.PropertyKey("__defaults"): resource.PropertyValue{
+			expected: autogold.Expect(resource.PropertyMap{resource.PropertyKey(reservedkeys.Defaults): resource.PropertyValue{
 				V: []resource.PropertyValue{},
 			}}),
 		},
@@ -3724,7 +3724,7 @@ func TestExtractInputsFromOutputsSdkv2(t *testing.T) {
 				},
 			},
 			expected: autogold.Expect(resource.PropertyMap{
-				resource.PropertyKey("__defaults"): resource.PropertyValue{
+				resource.PropertyKey(reservedkeys.Defaults): resource.PropertyValue{
 					V: []resource.PropertyValue{},
 				},
 				resource.PropertyKey("foo"): resource.PropertyValue{V: []resource.PropertyValue{{
@@ -3749,12 +3749,12 @@ func TestExtractInputsFromOutputsSdkv2(t *testing.T) {
 				},
 			},
 			expected: autogold.Expect(resource.PropertyMap{
-				resource.PropertyKey("__defaults"): resource.PropertyValue{
+				resource.PropertyKey(reservedkeys.Defaults): resource.PropertyValue{
 					V: []resource.PropertyValue{},
 				},
 				resource.PropertyKey("foo"): resource.PropertyValue{V: []resource.PropertyValue{{
 					V: resource.PropertyMap{
-						resource.PropertyKey("__defaults"): resource.PropertyValue{
+						resource.PropertyKey(reservedkeys.Defaults): resource.PropertyValue{
 							V: []resource.PropertyValue{},
 						},
 						resource.PropertyKey("bar"): resource.PropertyValue{V: "baz"},
@@ -3778,7 +3778,7 @@ func TestExtractInputsFromOutputsSdkv2(t *testing.T) {
 					},
 				},
 			},
-			expected: autogold.Expect(resource.PropertyMap{resource.PropertyKey("__defaults"): resource.PropertyValue{
+			expected: autogold.Expect(resource.PropertyMap{resource.PropertyKey(reservedkeys.Defaults): resource.PropertyValue{
 				V: []resource.PropertyValue{},
 			}}),
 		},
@@ -3802,11 +3802,11 @@ func TestExtractInputsFromOutputsSdkv2(t *testing.T) {
 				},
 			},
 			expected: autogold.Expect(resource.PropertyMap{
-				resource.PropertyKey("__defaults"): resource.PropertyValue{
+				resource.PropertyKey(reservedkeys.Defaults): resource.PropertyValue{
 					V: []resource.PropertyValue{},
 				},
 				resource.PropertyKey("foo"): resource.PropertyValue{V: resource.PropertyMap{
-					resource.PropertyKey("__defaults"): resource.PropertyValue{
+					resource.PropertyKey(reservedkeys.Defaults): resource.PropertyValue{
 						V: []resource.PropertyValue{},
 					},
 					resource.PropertyKey("bar"): resource.PropertyValue{V: "baz"},
@@ -3852,11 +3852,11 @@ func TestExtractInputsFromOutputsSdkv2(t *testing.T) {
 				},
 			},
 			expected: autogold.Expect(resource.PropertyMap{
-				resource.PropertyKey("__defaults"): resource.PropertyValue{
+				resource.PropertyKey(reservedkeys.Defaults): resource.PropertyValue{
 					V: []resource.PropertyValue{},
 				},
 				resource.PropertyKey("foo"): resource.PropertyValue{V: []resource.PropertyValue{{
-					V: resource.PropertyMap{resource.PropertyKey("__defaults"): resource.PropertyValue{
+					V: resource.PropertyMap{resource.PropertyKey(reservedkeys.Defaults): resource.PropertyValue{
 						V: []resource.PropertyValue{},
 					}},
 				}}},
@@ -3879,7 +3879,7 @@ func TestExtractInputsFromOutputsSdkv2(t *testing.T) {
 					},
 				},
 			},
-			expected: autogold.Expect(resource.PropertyMap{resource.PropertyKey("__defaults"): resource.PropertyValue{
+			expected: autogold.Expect(resource.PropertyMap{resource.PropertyKey(reservedkeys.Defaults): resource.PropertyValue{
 				V: []resource.PropertyValue{},
 			}}),
 		},
