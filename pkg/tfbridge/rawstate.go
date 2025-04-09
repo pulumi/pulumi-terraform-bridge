@@ -745,28 +745,14 @@ func (ih *rawStateDeltaHelper) computeDeltaAt(
 		return RawStateDelta{ArrayOrSet: &setInfl}, nil
 
 	case v.Type().IsObjectType() && !v.IsNull():
-		elements := v.AsValueMap()
-
 		if !pv.IsObject() {
 			return RawStateDelta{}, errors.New("Expected an Object PropertyValue for an Object cty.Value")
 		}
 
+		elements := v.AsValueMap()
 		pvElements := pv.ObjectValue()
-
-		if len(pvElements) == 0 {
-			infl := objDelta{}
-			for k := range pvElements {
-				if reservedkeys.IsBridgeReservedKey(string(k)) {
-					continue
-				}
-				infl.ignore(k)
-			}
-			return RawStateDelta{Obj: &infl}, nil
-		}
-
 		infl := objDelta{}
-
-		keySetWithCtyValueMatches := map[resource.PropertyKey]struct{}{}
+		handledKeys := map[resource.PropertyKey]struct{}{}
 
 		for k, v := range elements {
 			subPath := path.GetAttr(k)
@@ -775,22 +761,28 @@ func (ih *rawStateDeltaHelper) computeDeltaAt(
 				return RawStateDelta{}, err
 			}
 			key := resource.PropertyKey(keyRaw)
-			var delta RawStateDelta
-			pv, hasPV := pvElements[key]
-			if !hasPV {
-				delta = ih.replaceDeltaAt(subPath, pv, v, fmt.Errorf("No PropertyValue at key"))
-			} else {
-				delta = ih.deltaAt(subPath, pv, v)
+			if reservedkeys.IsBridgeReservedKey(string(k)) {
+				continue
 			}
-			keySetWithCtyValueMatches[key] = struct{}{}
+
+			var delta RawStateDelta
+			if _, isIntersectingKey := pvElements[key]; isIntersectingKey {
+				delta = ih.deltaAt(subPath, pv, v)
+			} else {
+				// Missing matching PropertyValue for key, generate a replace delta.
+				n := resource.NewNullProperty()
+				delta = ih.replaceDeltaAt(subPath, n, v, fmt.Errorf("No PropertyValue at key"))
+			}
 			infl.set(k, key, delta)
+			handledKeys[key] = struct{}{}
 		}
 
+		// Any non-reserved keys in pv that are not handled yet should be marked as ignored.
 		for k := range pvElements {
 			if reservedkeys.IsBridgeReservedKey(string(k)) {
 				continue
 			}
-			if _, ok := keySetWithCtyValueMatches[k]; !ok {
+			if _, ok := handledKeys[k]; !ok {
 				infl.ignore(k)
 			}
 		}
