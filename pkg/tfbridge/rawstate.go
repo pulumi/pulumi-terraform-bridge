@@ -760,10 +760,9 @@ func (ih *rawStateDeltaHelper) computeDeltaAt(
 			if err != nil {
 				return RawStateDelta{}, err
 			}
+			contract.Assertf(!reservedkeys.IsBridgeReservedKey(keyRaw),
+				"Terraform resource uses a key reserved for Pulumi bridged providers: %q", keyRaw)
 			key := resource.PropertyKey(keyRaw)
-			if reservedkeys.IsBridgeReservedKey(string(k)) {
-				continue
-			}
 
 			var delta RawStateDelta
 			if _, isIntersectingKey := pvElements[key]; isIntersectingKey {
