@@ -31,6 +31,7 @@ import (
 
 	crosstestsimpl "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests/impl"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/pulcheck"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/reservedkeys"
 )
 
 type upgradeStateTestCase struct {
@@ -55,7 +56,7 @@ func getVersionInState(t T, stack apitype.UntypedDeployment) int {
 	require.Len(t, resourcesList, 3)
 	testResState := resourcesList[2].(map[string]interface{})
 	resOutputs := testResState["outputs"].(map[string]interface{})
-	metaVar := resOutputs["__meta"]
+	metaVar := resOutputs[reservedkeys.Meta]
 	if metaVar == nil {
 		// If the resource does not have a meta field, assume the schema version is 0.
 		return 0

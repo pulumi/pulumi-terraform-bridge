@@ -17,7 +17,6 @@ package tfbridge
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/opentracing/opentracing-go"
@@ -27,6 +26,7 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/convert"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/defaults"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/reservedkeys"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
@@ -190,7 +190,7 @@ func (p *provider) validateProviderConfig(
 	// but pkg/v3 bridge generated CheckFailures for these. Here is some extra code to compensate.
 	for k := range inputs {
 		// Skip reserved keys such as __defaults.
-		if strings.HasPrefix(string(k), "__") {
+		if reservedkeys.IsBridgeReservedKey(string(k)) {
 			continue
 		}
 		// Ignoring version key as it seems to be special.

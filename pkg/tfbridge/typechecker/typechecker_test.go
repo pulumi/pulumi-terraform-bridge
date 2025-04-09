@@ -23,6 +23,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/reservedkeys"
 )
 
 func TestValidateInputType_objects(t *testing.T) {
@@ -1425,8 +1427,8 @@ func TestValidateInputType_toplevel(t *testing.T) {
 			name: "object_type_success",
 			input: resource.NewObjectProperty(
 				resource.NewPropertyMapFromMap(map[string]interface{}{
-					"foo":        "bar",
-					"__defaults": []string{"hello"},
+					"foo":                 "bar",
+					reservedkeys.Defaults: []string{"hello"},
 				}),
 			),
 			inputProperties: map[string]pschema.PropertySpec{

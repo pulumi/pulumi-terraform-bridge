@@ -19,6 +19,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/dynamic/parameterize"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/pulcheck"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/reservedkeys"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
@@ -73,7 +74,7 @@ func TestConfigInDestroy(t *testing.T) {
 			"name": resource.NewProperty("Section Name"),
 		},
 		Outputs: resource.PropertyMap{
-			"__meta":                  resource.NewProperty("{\"private_state\":\"bnVsbA==\"}"),
+			reservedkeys.Meta:         resource.NewProperty("{\"private_state\":\"bnVsbA==\"}"),
 			"description":             resource.NewProperty(""),
 			"displayOrder":            resource.NewProperty(0.0),
 			"dnsResolverId":           resource.NewProperty(0.0),
