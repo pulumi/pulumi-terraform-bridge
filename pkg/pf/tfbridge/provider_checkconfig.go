@@ -17,7 +17,6 @@ package tfbridge
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/opentracing/opentracing-go"
