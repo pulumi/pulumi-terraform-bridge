@@ -17,6 +17,7 @@ package tfbridge
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/ryboe/q"
 	"log"
 	"os"
 	"sort"
@@ -1762,6 +1763,26 @@ func (p *Provider) Construct(context.Context, *pulumirpc.ConstructRequest) (*pul
 
 // Call dynamically executes a method in the provider associated with a component resource.
 func (p *Provider) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error) {
+
+	ctx = p.loggingContext(ctx, "")
+	tok := "pulumi:providers:random/sayHello" // TODO: get this from the req
+	q.Q(req)
+	switch tok {
+	case "pulumi:providers:random/sayHello":
+		outputs := resource.NewPropertyMapFromMap(map[string]interface{}{
+			"message": "👋 Hello from the Go provider!",
+		})
+
+		outputResult, err := plugin.MarshalProperties(outputs, plugin.MarshalOptions{})
+		if err != nil {
+			return nil, err
+		}
+		return &pulumirpc.CallResponse{
+			Return: outputResult,
+		}, nil
+	default:
+		return nil, fmt.Errorf("unknown method %q", tok)
+	}
 	return nil, status.Error(codes.Unimplemented, "Call is not yet implemented")
 }
 

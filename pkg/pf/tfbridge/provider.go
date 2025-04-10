@@ -17,6 +17,7 @@ package tfbridge
 import (
 	"context"
 	"fmt"
+	"github.com/ryboe/q"
 	"os"
 
 	"github.com/blang/semver"
@@ -321,8 +322,30 @@ func (p *provider) CallWithContext(_ context.Context,
 	tok tokens.ModuleMember, args resource.PropertyMap, info plugin.CallInfo,
 	options plugin.CallOptions,
 ) (plugin.CallResult, error) {
-	return plugin.CallResult{},
-		fmt.Errorf("Call is not implemented for Terraform Plugin Framework bridged providers")
+	//panic("why is this a pf provider wahhhhh")
+	tokenHardCode := "pulumi:providers:random/sayHello" // TODO: get this from the req
+	q.Q(tok)
+	switch tokenHardCode {
+	case "pulumi:providers:random/sayHello":
+		outputs := resource.NewPropertyMapFromMap(map[string]interface{}{
+			"message": "👋 Hello from the Go provider!",
+		})
+
+		//outputResult, err := plugin.MarshalProperties(outputs, plugin.MarshalOptions{})
+		//if err != nil {
+		//	return plugin.CallResult{}, err
+		//}
+		return plugin.CallResult{
+			Return: outputs,
+		}, nil
+	default:
+		return plugin.CallResult{}, fmt.Errorf("unknown method %q", tok)
+	}
+
+	//return plugin.CallResult{
+	//		Return: outputResult,
+	//	},
+	//	fmt.Errorf("Call is not implemented for Terraform Plugin Framework bridged providers")
 }
 
 // NOT IMPLEMENTED: Construct creates a new component resource.
