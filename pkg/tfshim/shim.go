@@ -3,6 +3,7 @@ package shim
 import (
 	"context"
 	"fmt"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -10,6 +11,11 @@ import (
 
 type ResourceConfig interface {
 	IsSet(k string) bool
+}
+
+type ResourceConfigWithGetterForSdkV2 interface {
+	ResourceConfig
+	GetTFConfig() terraform.ResourceConfig
 }
 
 type InstanceState interface {

@@ -17,7 +17,6 @@ package tfbridge
 import (
 	"context"
 	"fmt"
-
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -80,6 +79,9 @@ func (p *provider) ConfigureWithContext(ctx context.Context, inputs resource.Pro
 	p.lastKnownProviderConfig = inputs
 
 	config, err := convert.EncodePropertyMapToDynamic(p.configEncoder, p.configType, inputs)
+	//q.Q(config)
+	//q.Q(inputs)
+
 	if err != nil {
 		return fmt.Errorf("cannot encode provider configuration to call ConfigureProvider: %w", err)
 	}

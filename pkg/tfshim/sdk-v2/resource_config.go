@@ -2,11 +2,11 @@ package sdkv2
 
 import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
-
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
 var _ = shim.ResourceConfig(v2ResourceConfig{})
+var _ shim.ResourceConfigWithGetterForSdkV2 = (*v2ResourceConfig)(nil)
 
 type v2ResourceConfig struct {
 	tf *terraform.ResourceConfig
@@ -26,4 +26,8 @@ func (c v2ResourceConfig) IsSet(key string) bool {
 	}
 
 	return false
+}
+
+func (c v2ResourceConfig) GetTFConfig() terraform.ResourceConfig {
+	return *c.tf
 }
