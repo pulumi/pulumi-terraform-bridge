@@ -49,20 +49,10 @@ func (u *upgradedResourceState) PrivateState() []byte {
 }
 
 func (u *upgradedResourceState) ToPropertyMap(ctx context.Context, rh *resourceHandle) (resource.PropertyMap, error) {
-	schemaInfos := rh.pulumiResourceInfo.GetFields()
-	v := valueshim.FromTValue(u.state.Value)
-
 	pm, err := convert.DecodePropertyMap(ctx, rh.decoder, u.state.Value)
 	if err != nil {
 		return nil, err
 	}
-
-	delta, err := tfbridge.RawStateComputeDelta(ctx, rh.schema.Shim(), schemaInfos, pm, v)
-	if err != nil {
-		return nil, err
-	}
-
-	pm[reservedkeys.RawStateDelta] = delta.Marshal()
 
 	return updateMeta(pm, metaState{
 		SchemaVersion: u.state.TFSchemaVersion,
@@ -281,4 +271,17 @@ func updateMeta(m resource.PropertyMap, newMeta metaState) (resource.PropertyMap
 	c := m.Copy()
 	c[reservedkeys.Meta] = resource.NewStringProperty(string(updatedMeta))
 	return c, nil
+}
+
+// Stores delta under reservedkeys.RawStateDelta; should be called right before returning to the engine.
+func insertRawStateDelta(ctx context.Context, rh *resourceHandle, pm resource.PropertyMap, state tftypes.Value) error {
+	schemaInfos := rh.pulumiResourceInfo.GetFields()
+	v := valueshim.FromTValue(state)
+
+	delta, err := tfbridge.RawStateComputeDelta(ctx, rh.schema.Shim(), schemaInfos, pm, v)
+	if err != nil {
+		return err
+	}
+	pm[reservedkeys.RawStateDelta] = delta.Marshal()
+	return nil
 }

@@ -135,5 +135,9 @@ func (p *provider) UpdateWithContext(
 		}
 	}
 
+	if err := insertRawStateDelta(ctx, &rh, updatedStateMap, updatedState.state.Value); err != nil {
+		return nil, 0, err
+	}
+
 	return updatedStateMap, resource.StatusOK, nil
 }
