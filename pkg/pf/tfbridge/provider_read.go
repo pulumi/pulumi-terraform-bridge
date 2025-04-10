@@ -64,7 +64,7 @@ func (p *provider) ReadWithContext(
 			return plugin.ReadResult{}, 0, err
 		}
 
-		result, err = p.readResource(ctx, &rh, currentStateMap)
+		result, err = p.refreshResource(ctx, &rh, currentStateMap)
 	} else {
 		result, err = p.importResource(ctx, &rh, id)
 	}
@@ -120,8 +120,9 @@ func deleteDefaultsKey(inputs resource.PropertyMap) {
 	}
 }
 
-// readResource calls the PF's ReadResource method on the given resource.
-func (p *provider) readResource(
+// Executes the `pulumi refresh` scenario: upgrades the resource state map first and then passes it to the PF
+// ReadResource method.
+func (p *provider) refreshResource(
 	ctx context.Context,
 	rh *resourceHandle,
 	currentStateMap resource.PropertyMap,
@@ -136,6 +137,15 @@ func (p *provider) readResource(
 		return plugin.ReadResult{}, fmt.Errorf("failed to get current state: %w", err)
 	}
 
+	return p.readResource(ctx, rh, currentState)
+}
+
+// readResource calls the PF's ReadResource method on the given resource.
+func (p *provider) readResource(
+	ctx context.Context,
+	rh *resourceHandle,
+	currentState *upgradedResourceState,
+) (plugin.ReadResult, error) {
 	currentStateDV, err := makeDynamicValue(currentState.state.Value)
 	if err != nil {
 		return plugin.ReadResult{}, fmt.Errorf("failed to get dynamic value: %w", err)
@@ -246,11 +256,6 @@ func (p *provider) importResource(
 		return plugin.ReadResult{}, err
 	}
 
-	readStateMap, err := readState.ToPropertyMap(ctx, rh)
-	if err != nil {
-		return plugin.ReadResult{}, err
-	}
-
 	isNull, err := r.State.IsNull()
 	if err != nil {
 		return plugin.ReadResult{}, err
@@ -264,5 +269,5 @@ func (p *provider) importResource(
 	}
 
 	// Now that the resource has been translated to TF state, read it.
-	return p.readResource(ctx, rh, readStateMap)
+	return p.readResource(ctx, rh, readState)
 }
