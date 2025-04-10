@@ -812,7 +812,7 @@ func TestUnknownCollectionForceNewDetailedDiff(t *testing.T) {
 		}
 
 		tfp := &schema.Provider{ResourcesMap: resMap}
-		bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp, pulcheck.EnableAccurateBridgePreviews())
+		bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
 		runTest := func(t *testing.T, program2 string, expectedOutput autogold.Value) {
 			runTest(t, program2, bridgedProvider, expectedOutput)
 		}
@@ -875,7 +875,7 @@ func TestUnknownCollectionForceNewDetailedDiff(t *testing.T) {
 		}
 
 		tfp := &schema.Provider{ResourcesMap: resMap}
-		bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp, pulcheck.EnableAccurateBridgePreviews())
+		bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
 		runTest := func(t *testing.T, program2 string, expectedOutput autogold.Value) {
 			runTest(t, program2, bridgedProvider, expectedOutput)
 		}
@@ -938,7 +938,7 @@ func TestUnknownCollectionForceNewDetailedDiff(t *testing.T) {
 		}
 
 		tfp := &schema.Provider{ResourcesMap: resMap}
-		bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp, pulcheck.EnableAccurateBridgePreviews())
+		bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
 		runTest := func(t *testing.T, program2 string, expectedOutput autogold.Value) {
 			runTest(t, program2, bridgedProvider, expectedOutput)
 		}
@@ -1001,7 +1001,7 @@ func TestUnknownCollectionForceNewDetailedDiff(t *testing.T) {
 		}
 
 		tfp := &schema.Provider{ResourcesMap: resMap}
-		bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp, pulcheck.EnableAccurateBridgePreviews())
+		bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
 		runTest := func(t *testing.T, program2 string, expectedOutput autogold.Value) {
 			runTest(t, program2, bridgedProvider, expectedOutput)
 		}
@@ -1062,7 +1062,7 @@ func runDetailedDiffTest(
 	t *testing.T, resMap map[string]*schema.Resource, program1, program2 string,
 ) (string, map[string]interface{}) {
 	tfp := &schema.Provider{ResourcesMap: resMap}
-	bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp, pulcheck.EnableAccurateBridgePreviews())
+	bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
 	pt := pulcheck.PulCheck(t, bridgedProvider, program1)
 	pt.Up(t)
 	pulumiYamlPath := filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml")

@@ -57,8 +57,7 @@ import (
 )
 
 type providerOptions struct {
-	defaultZeroSchemaVersion    bool
-	enableAccurateBridgePreview bool
+	defaultZeroSchemaVersion bool
 }
 
 type providerOption func(providerOptions) (providerOptions, error)
@@ -66,13 +65,6 @@ type providerOption func(providerOptions) (providerOptions, error)
 func WithDefaultZeroSchemaVersion() providerOption { //nolint:revive
 	return func(opts providerOptions) (providerOptions, error) {
 		opts.defaultZeroSchemaVersion = true
-		return opts, nil
-	}
-}
-
-func withAccurateBridgePreview() providerOption {
-	return func(opts providerOptions) (providerOptions, error) {
-		opts.enableAccurateBridgePreview = true
 		return opts, nil
 	}
 }
@@ -276,10 +268,6 @@ func newProvider(ctx context.Context, host *provider.HostClient,
 	opts := []providerOption{}
 	if info.EnableZeroDefaultSchemaVersion {
 		opts = append(opts, WithDefaultZeroSchemaVersion())
-	}
-
-	if info.EnableAccurateBridgePreview || cmdutil.IsTruthy(os.Getenv("PULUMI_TF_BRIDGE_ACCURATE_BRIDGE_PREVIEW")) {
-		opts = append(opts, withAccurateBridgePreview())
 	}
 
 	p := &Provider{
@@ -1137,9 +1125,7 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 	}
 
 	state, err := makeTerraformStateWithOpts(ctx, res, req.GetId(), olds,
-		makeTerraformStateOptions{
-			defaultZeroSchemaVersion: opts.defaultZeroSchemaVersion,
-		},
+		makeTerraformStateOptions(opts),
 	)
 	if err != nil {
 		return nil, errors.Wrapf(err, "unmarshaling %s's instance state", urn)
@@ -1175,7 +1161,7 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 	var changes pulumirpc.DiffResponse_DiffChanges
 
 	decisionOverride := diff.DiffEqualDecisionOverride()
-	if opts.enableAccurateBridgePreview && decisionOverride != shim.DiffNoOverride {
+	if decisionOverride != shim.DiffNoOverride {
 		if decisionOverride == shim.DiffOverrideNoUpdate {
 			changes = pulumirpc.DiffResponse_DIFF_NONE
 		} else {
@@ -1269,23 +1255,6 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 
 	deleteBeforeReplace := len(replaces) > 0 &&
 		(res.Schema.DeleteBeforeReplace || nameRequiresDeleteBeforeReplace(news, olds, schema, res.Schema))
-
-	if !opts.enableAccurateBridgePreview {
-		// If the upstream diff object indicates a replace is necessary and we have not
-		// recorded any replaces, that means that `makeDetailedDiff` failed to translate a
-		// property. This is known to happen for computed input properties:
-		//
-		// https://github.com/pulumi/pulumi-aws/issues/2971
-		if (diff.RequiresNew() || diff.Destroy()) &&
-			// In theory, we should be safe to set __meta as replaces whenever
-			// `diff.RequiresNew() || diff.Destroy()` but by checking replaces we
-			// limit the blast radius of this change to diffs that we know will panic
-			// later on.
-			len(replaces) == 0 {
-			replaces = append(replaces, "__meta")
-			changes = pulumirpc.DiffResponse_DIFF_SOME
-		}
-	}
 
 	if changes == pulumirpc.DiffResponse_DIFF_NONE &&
 		markWronglyTypedMaxItemsOneStateDiff(schema, fields, olds) {
@@ -1457,9 +1426,8 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 		return nil, err
 	}
 	state, err := unmarshalTerraformStateWithOpts(ctx, res, id, req.GetProperties(), fmt.Sprintf("%s.state", label),
-		unmarshalTerraformStateOptions{
-			defaultZeroSchemaVersion: opts.defaultZeroSchemaVersion,
-		})
+		unmarshalTerraformStateOptions(opts),
+	)
 	if err != nil {
 		return nil, errors.Wrapf(err, "unmarshaling %s's instance state", urn)
 	}
@@ -1655,9 +1623,8 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 	}
 
 	state, err := makeTerraformStateWithOpts(ctx, res, req.GetId(), olds,
-		makeTerraformStateOptions{
-			defaultZeroSchemaVersion: opts.defaultZeroSchemaVersion,
-		})
+		makeTerraformStateOptions(opts),
+	)
 	if err != nil {
 		return nil, errors.Wrapf(err, "unmarshaling %s's instance state", urn)
 	}
@@ -1789,9 +1756,8 @@ func (p *Provider) Delete(ctx context.Context, req *pulumirpc.DeleteRequest) (*p
 	}
 	// Fetch the resource attributes since many providers need more than just the ID to perform the delete.
 	state, err := unmarshalTerraformStateWithOpts(ctx, res, req.GetId(), req.GetProperties(), label,
-		unmarshalTerraformStateOptions{
-			defaultZeroSchemaVersion: opts.defaultZeroSchemaVersion,
-		})
+		unmarshalTerraformStateOptions(opts),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -1908,15 +1874,6 @@ func (p *Provider) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*p
 		Return:   ret,
 		Failures: failures,
 	}, nil
-}
-
-// StreamInvoke dynamically executes a built-in function in the provider. The result is streamed
-// back as a series of messages.
-func (p *Provider) StreamInvoke(
-	req *pulumirpc.InvokeRequest, server pulumirpc.ResourceProvider_StreamInvokeServer,
-) error {
-	tok := tokens.ModuleMember(req.GetTok())
-	return errors.Errorf("unrecognized data function (StreamInvoke): %s", tok)
 }
 
 // GetPluginInfo implements an RPC call that returns the version of this plugin.

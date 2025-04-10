@@ -47,7 +47,7 @@ import (
 //   - Construct: The type token is passed directly. The server who's schema provided the
 //     resource is routed the whole request.
 //
-//   - Invoke, StreamInvoke, Call: The type token is passed directly. The server who's
+//   - Invoke, Call: The type token is passed directly. The server who's
 //     schema provided the function is routed the whole request.
 //
 // Each provider specifies in it's schema what options it accepts as configuration. Config

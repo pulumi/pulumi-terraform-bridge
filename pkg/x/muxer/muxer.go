@@ -368,14 +368,6 @@ func (m *muxer) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*pulu
 	return server.Invoke(ctx, req)
 }
 
-func (m *muxer) StreamInvoke(req *pulumirpc.InvokeRequest, s pulumirpc.ResourceProvider_StreamInvokeServer) error {
-	server := m.getFunction(req.GetTok())
-	if server == nil {
-		return status.Errorf(codes.NotFound, "Invoke '%s' not found.", req.GetTok())
-	}
-	return server.StreamInvoke(req, s)
-}
-
 func (m *muxer) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error) {
 	server := m.getFunction(req.GetTok())
 	if server == nil {

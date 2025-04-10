@@ -105,8 +105,6 @@ func Replay(t *testing.T, server pulumirpc.ResourceProviderServer, jsonLog strin
 	case "/pulumirpc.ResourceProvider/Invoke":
 		replay(t, entry, new(pulumirpc.InvokeRequest), server.Invoke)
 
-	// TODO StreamInvoke might need some special handling as it is a streaming RPC method.
-
 	case "/pulumirpc.ResourceProvider/Call":
 		replay(t, entry, new(pulumirpc.CallRequest), server.Call)
 
@@ -218,8 +216,6 @@ func ReplayFile(t *testing.T, server pulumirpc.ResourceProviderServer, traceFile
 		}
 		// TODO support replaying all these method calls.
 		switch entry.Method {
-		case "/pulumirpc.ResourceProvider/StreamInvoke":
-			continue
 		case "/pulumirpc.ResourceProvider/GetPluginInfo":
 			continue
 		default:

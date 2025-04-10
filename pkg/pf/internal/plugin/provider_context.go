@@ -72,12 +72,6 @@ type ProviderWithContext interface {
 	InvokeWithContext(ctx context.Context, tok tokens.ModuleMember,
 		args resource.PropertyMap) (resource.PropertyMap, []p.CheckFailure, error)
 
-	StreamInvokeWithContext(
-		ctx context.Context,
-		tok tokens.ModuleMember,
-		args resource.PropertyMap,
-		onNext func(resource.PropertyMap) error) ([]p.CheckFailure, error)
-
 	CallWithContext(ctx context.Context, tok tokens.ModuleMember, args resource.PropertyMap, info p.CallInfo,
 		options p.CallOptions) (p.CallResult, error)
 
@@ -213,13 +207,6 @@ func (prov *provider) Invoke(
 ) (plugin.InvokeResponse, error) {
 	p, f, err := prov.ProviderWithContext.InvokeWithContext(ctx, req.Tok, req.Args)
 	return plugin.InvokeResponse{Properties: p, Failures: f}, err
-}
-
-func (prov *provider) StreamInvoke(
-	ctx context.Context, req plugin.StreamInvokeRequest,
-) (plugin.StreamInvokeResponse, error) {
-	f, err := prov.ProviderWithContext.StreamInvokeWithContext(ctx, req.Tok, req.Args, req.OnNext)
-	return plugin.StreamInvokeResponse{Failures: f}, err
 }
 
 func (prov *provider) Call(

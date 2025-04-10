@@ -146,18 +146,6 @@ func TestPanicRecoveryByMethod(t *testing.T) {
 			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 invokeToken=aws:acm/getCertificate:getCertificate method=Invoke): Invoke panic"),
 		},
 		{
-			testName: "StreamInvoke",
-			send: func(rps pulumirpc.ResourceProviderServer) {
-				err := rps.StreamInvoke(&pulumirpc.InvokeRequest{
-					Tok: exampleInvokeToken(),
-				}, nil)
-				contract.IgnoreError(err)
-			},
-			expectURN: autogold.Expect(urn.URN("")),
-			//nolint:lll
-			expectMessage: autogold.Expect("Bridged provider panic (provider=myprov v=1.2.3 invokeToken=aws:acm/getCertificate:getCertificate method=StreamInvoke): StreamInvoke panic"),
-		},
-		{
 			testName: "Call",
 			send: func(rps pulumirpc.ResourceProviderServer) {
 				_, err := rps.Call(ctx, &pulumirpc.CallRequest{
@@ -470,13 +458,6 @@ func (s *testRPS) Invoke(
 	req *pulumirpc.InvokeRequest,
 ) (*pulumirpc.InvokeResponse, error) {
 	panic("Invoke panic")
-}
-
-func (s *testRPS) StreamInvoke(
-	req *pulumirpc.InvokeRequest,
-	srv pulumirpc.ResourceProvider_StreamInvokeServer,
-) error {
-	panic("StreamInvoke panic")
 }
 
 func (s *testRPS) Call(

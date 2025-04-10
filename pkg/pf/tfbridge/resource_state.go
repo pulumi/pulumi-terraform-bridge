@@ -26,10 +26,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/convert"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/reservedkeys"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
-
-const metaKey = "__meta"
 
 type resourceState struct {
 	TFSchemaVersion int64
@@ -153,10 +152,10 @@ func parseMeta(m resource.PropertyMap) (metaState, error) {
 		PrivateState  string `json:"private_state"`
 	}
 	var meta metaBlock
-	if metaProperty, hasMeta := m[metaKey]; hasMeta && metaProperty.IsString() {
+	if metaProperty, hasMeta := m[reservedkeys.Meta]; hasMeta && metaProperty.IsString() {
 		if err := json.Unmarshal([]byte(metaProperty.StringValue()), &meta); err != nil {
 			err = fmt.Errorf("expected %q special property to be a JSON-marshalled string: %w",
-				metaKey, err)
+				reservedkeys.Meta, err)
 			return metaState{}, err
 		}
 		var versionN int64
@@ -164,7 +163,7 @@ func parseMeta(m resource.PropertyMap) (metaState, error) {
 			versionI, err := strconv.Atoi(meta.SchemaVersion)
 			if err != nil {
 				err = fmt.Errorf(`expected props[%q]["schema_version"] to be an integer, got %q: %w`,
-					metaKey, meta.SchemaVersion, err)
+					reservedkeys.Meta, meta.SchemaVersion, err)
 				return metaState{}, err
 			}
 			versionN = int64(versionI)
@@ -192,10 +191,10 @@ func parseMeta(m resource.PropertyMap) (metaState, error) {
 // __meta.private_state similarly.
 func updateMeta(m resource.PropertyMap, newMeta metaState) (resource.PropertyMap, error) {
 	var meta map[string]interface{}
-	if metaProperty, hasMeta := m[metaKey]; hasMeta && metaProperty.IsString() {
+	if metaProperty, hasMeta := m[reservedkeys.Meta]; hasMeta && metaProperty.IsString() {
 		if err := json.Unmarshal([]byte(metaProperty.StringValue()), &meta); err != nil {
 			err = fmt.Errorf("expected %q special property to be a JSON-marshalled string: %w",
-				metaKey, err)
+				reservedkeys.Meta, err)
 			return nil, err
 		}
 	} else {
@@ -215,6 +214,6 @@ func updateMeta(m resource.PropertyMap, newMeta metaState) (resource.PropertyMap
 		return nil, err
 	}
 	c := m.Copy()
-	c[metaKey] = resource.NewStringProperty(string(updatedMeta))
+	c[reservedkeys.Meta] = resource.NewStringProperty(string(updatedMeta))
 	return c, nil
 }

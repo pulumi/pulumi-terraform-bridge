@@ -710,7 +710,7 @@ func TestSDKv2DetailedDiffRegressGCP2953(t *testing.T) {
 	tfp := &schema.Provider{ResourcesMap: map[string]*schema.Resource{
 		"prov_test": &res,
 	}}
-	bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp, pulcheck.EnableAccurateBridgePreviews())
+	bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
 
 	program := `
 name: test
