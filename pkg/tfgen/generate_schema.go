@@ -46,6 +46,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/internal/paths"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/x/muxer"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
+	"github.com/ryboe/q"
 )
 
 const (
@@ -321,7 +322,10 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg, sink diag.Sink) (pschema.Pac
 		spec.Config = g.genConfig(config)
 	}
 
+	q.Q(spec.Functions)
+
 	if pack.provider != nil {
+
 		indexModToken := tokens.NewModuleToken(g.pkg, indexMod)
 		for _, t := range gatherSchemaNestedTypesForMember(pack.provider) {
 			tok := g.genObjectTypeToken(t)
@@ -331,6 +335,48 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg, sink diag.Sink) (pschema.Pac
 			}
 		}
 		spec.Provider = g.genResourceType(indexModToken, pack.provider)
+
+		// Add a random Function to this spec, and then also add it to its methods
+		// Functions are standalone
+		sayHello := pschema.FunctionSpec{
+			Description: "whatever this is jsut for fun",
+			Inputs: &pschema.ObjectTypeSpec{
+				Type: "pulumi:providers:random/sayHello",
+				Properties: map[string]pschema.PropertySpec{
+					"__self__": {
+						TypeSpec: pschema.TypeSpec{
+							Type: "ref",
+							Ref:  "#/resources/pulumi:providers:random",
+						},
+					},
+				},
+				Required: []string{"__self__"},
+			},
+
+			MultiArgumentInputs: nil,
+			Outputs:             nil,
+			ReturnType: &pschema.ReturnTypeSpec{
+				ObjectTypeSpec: &pschema.ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]pschema.PropertySpec{
+						"result": {
+							TypeSpec: pschema.TypeSpec{
+								Type: "string",
+							},
+						},
+					},
+					Required: []string{"result"},
+				},
+			},
+			DeprecationMessage:        "",
+			Language:                  nil,
+			IsOverlay:                 false,
+			OverlaySupportedLanguages: nil,
+		}
+		spec.Functions["pulumi:providers:random/sayHello"] = sayHello
+		methods := map[string]string{"sayHello": "pulumi:providers:random/sayHello"}
+		spec.Provider.Methods = methods
+		q.Q(spec.Provider.Methods)
 
 		// Ensure that input properties are mirrored as output properties, but without fields set which
 		// are only meaningful for input properties.
@@ -346,6 +392,7 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg, sink diag.Sink) (pschema.Pac
 			spec.Provider.Properties[propName] = outputProp
 		}
 	}
+	q.Q(spec.Functions)
 
 	for token, typ := range g.info.ExtraTypes {
 		if _, defined := spec.Types[token]; defined {
