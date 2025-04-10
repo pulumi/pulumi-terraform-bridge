@@ -60,9 +60,14 @@ func Test_rawstate_delta_turnaround(t *testing.T) {
 			cv:   cty.NullVal(cty.String),
 		},
 		{
-			name: "null-number",
+			name: "simple-number",
 			pv:   resource.NewNumberProperty(42.5),
 			cv:   cty.NumberFloatVal(42.5),
+		},
+		{
+			name: "unequal-number",
+			pv:   resource.NewNumberProperty(42.5),
+			cv:   cty.NumberFloatVal(-42.5),
 		},
 		{
 			name: "empty-string",
@@ -75,9 +80,19 @@ func Test_rawstate_delta_turnaround(t *testing.T) {
 			cv:   cty.StringVal("simple"),
 		},
 		{
+			name: "unequal-string",
+			pv:   resource.NewStringProperty("simple"),
+			cv:   cty.StringVal("difficult"),
+		},
+		{
 			name: "simple-bool",
 			pv:   resource.NewBoolProperty(true),
 			cv:   cty.BoolVal(true),
+		},
+		{
+			name: "unequal-bool",
+			pv:   resource.NewBoolProperty(true),
+			cv:   cty.BoolVal(false),
 		},
 		{
 			name: "maxitems1-flat-object",
