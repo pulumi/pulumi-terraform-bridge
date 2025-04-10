@@ -369,3 +369,65 @@ func TestSDKv2AliasesSchemaUpgrade(t *testing.T) {
 
 	autogold.Expect(&map[string]int{"same": 2}).Equal(t, res.Summary.ResourceChanges)
 }
+
+func TestSDKv2AliasesRenameWithAlias(t *testing.T) {
+	t.Parallel()
+
+	prov1 := &schema.Provider{
+		ResourcesMap: map[string]*schema.Resource{
+			"prov_test": {
+				Schema: map[string]*schema.Schema{
+					"test": {
+						Type:     schema.TypeString,
+						Optional: true,
+					},
+				},
+			},
+		},
+	}
+	bridgedProvider1 := pulcheck.BridgedProvider(t, "prov", prov1)
+
+	prov2 := &schema.Provider{
+		ResourcesMap: map[string]*schema.Resource{
+			"prov_test2": {Schema: map[string]*schema.Schema{
+				"test": {
+					Type:     schema.TypeString,
+					Optional: true,
+				},
+			}},
+		},
+	}
+	bridgedProvider2 := pulcheck.BridgedProvider(t, "prov", prov2)
+	bridgedProvider2.RenameResourceWithAlias(
+		"prov_test2", "prov:index/test:Test", "prov:index/test2:Test2", "index", "index", nil)
+
+	pt := pulcheck.PulCheck(t, bridgedProvider1, `
+    name: test
+    runtime: yaml
+    resources:
+      mainRes:
+        type: prov:index/test:Test
+    	properties:
+    	  test: "hello"
+    `)
+
+	pt.Up(t)
+	stack := pt.ExportStack(t)
+
+	yamlProgram := `
+    name: test
+    runtime: yaml
+    resources:
+      mainRes:
+        type: prov:index/test:Test
+    	properties:
+    	  test: "hello"
+    `
+
+	pt2 := pulcheck.PulCheck(t, bridgedProvider2, yamlProgram)
+	pt2.ImportStack(t, stack)
+
+	res := pt2.Up(t)
+
+	autogold.Expect(&map[string]int{"same": 2}).Equal(t, res.Summary.ResourceChanges)
+}
