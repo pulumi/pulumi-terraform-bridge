@@ -17,7 +17,9 @@ package tfbridge
 import (
 	"context"
 	"fmt"
+	"github.com/ryboe/q"
 	"os"
+	"strings"
 
 	"github.com/blang/semver"
 	pfprovider "github.com/hashicorp/terraform-plugin-framework/provider"
@@ -321,8 +323,35 @@ func (p *provider) CallWithContext(_ context.Context,
 	tok tokens.ModuleMember, args resource.PropertyMap, info plugin.CallInfo,
 	options plugin.CallOptions,
 ) (plugin.CallResult, error) {
-	return plugin.CallResult{},
-		fmt.Errorf("Call is not implemented for Terraform Plugin Framework bridged providers")
+	//panic("why is this a pf provider wahhhhh")
+	q.Q(args)
+	q.Q(info)
+	q.Q(p.lastKnownProviderConfig)
+	_, functionName, found := strings.Cut(tok.String(), "/")
+	if !found {
+		return plugin.CallResult{}, fmt.Errorf("malformed and unknown method %q", tok)
+	}
+	switch functionName {
+	case "terraformConfig":
+		outputs := resource.NewPropertyMapFromMap(map[string]interface{}{
+			"message": "👋 Hello from the PF bridge!",
+		})
+
+		//outputResult, err := plugin.MarshalProperties(outputs, plugin.MarshalOptions{})
+		//if err != nil {
+		//	return plugin.CallResult{}, err
+		//}
+		return plugin.CallResult{
+			Return: outputs,
+		}, nil
+	default:
+		return plugin.CallResult{}, fmt.Errorf("ALSO PF UGH unknown method %q", tok)
+	}
+
+	//return plugin.CallResult{
+	//		Return: outputResult,
+	//	},
+	//	fmt.Errorf("Call is not implemented for Terraform Plugin Framework bridged providers")
 }
 
 // NOT IMPLEMENTED: Construct creates a new component resource.
