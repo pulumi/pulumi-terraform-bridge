@@ -1788,6 +1788,42 @@ func TestDiffProviderUpgradeBasic(t *testing.T) {
 	require.Equal(t, []string{"no-op"}, res.TFDiff.Actions)
 }
 
+func TestNewlyAddedForceNewFieldDoesNotCauseReplacement(t *testing.T) {
+	t.Parallel()
+	resourceBefore := &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"x": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+		},
+	}
+
+	resourceAfter := &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"x": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"test": {
+				Type:     schema.TypeBool,
+				Optional: true,
+				Default:  false,
+				ForceNew: true,
+			},
+		},
+	}
+
+	diff := Diff(t, resourceBefore,
+		map[string]cty.Value{"x": cty.StringVal("v1")},
+		map[string]cty.Value{"x": cty.StringVal("v2")},
+		DiffProviderUpgradedSchema(resourceAfter),
+	)
+
+	// The diff should be an update, not a replacement.
+	require.Equal(t, []string{"create", "delete"}, diff.TFDiff.Actions)
+}
+
 func TestStateUpgradeSet(t *testing.T) {
 	t.Parallel()
 
