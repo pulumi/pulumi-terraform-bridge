@@ -266,3 +266,9 @@ func Test_TType(t *testing.T) {
 	assert.True(t, valueshim.FromTType(tftypes.Object{}).IsObjectType())
 	assert.Equal(t, "tftypes.Object[]", valueshim.FromTType(tftypes.Object{}).GoString())
 }
+
+func Test_TValue_ToX(t *testing.T) {
+	assert.Equal(t, "OK", valueshim.FromTValue(tftypes.NewValue(tftypes.String, "OK")).StringValue())
+	assert.Equal(t, 42.41, valueshim.FromTValue(tftypes.NewValue(tftypes.Number, 42.41)).NumberValue())
+	assert.Equal(t, true, valueshim.FromTValue(tftypes.NewValue(tftypes.Bool, true)).BoolValue())
+}
