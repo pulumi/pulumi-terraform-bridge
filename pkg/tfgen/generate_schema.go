@@ -335,18 +335,19 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg, sink diag.Sink) (pschema.Pac
 			}
 		}
 		spec.Provider = g.genResourceType(indexModToken, pack.provider)
-
+		providerSelfRef := "#/resources/pulumi:providers:" + pack.name.String()
+		sayHelloToken := "pulumi:providers:" + pack.name.String() + "/sayHello"
 		// Add a random Function to this spec, and then also add it to its methods
 		// Functions are standalone
 		sayHello := pschema.FunctionSpec{
-			Description: "whatever this is jsut for fun",
+			Description: "whatever this is just for fun",
 			Inputs: &pschema.ObjectTypeSpec{
-				Type: "pulumi:providers:random/sayHello",
+				Type: sayHelloToken,
 				Properties: map[string]pschema.PropertySpec{
 					"__self__": {
 						TypeSpec: pschema.TypeSpec{
 							Type: "ref",
-							Ref:  "#/resources/pulumi:providers:random",
+							Ref:  providerSelfRef,
 						},
 					},
 				},
@@ -373,8 +374,9 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg, sink diag.Sink) (pschema.Pac
 			IsOverlay:                 false,
 			OverlaySupportedLanguages: nil,
 		}
-		spec.Functions["pulumi:providers:random/sayHello"] = sayHello
-		methods := map[string]string{"sayHello": "pulumi:providers:random/sayHello"}
+
+		spec.Functions[sayHelloToken] = sayHello
+		methods := map[string]string{"sayHello": sayHelloToken}
 		spec.Provider.Methods = methods
 		q.Q(spec.Provider.Methods)
 
