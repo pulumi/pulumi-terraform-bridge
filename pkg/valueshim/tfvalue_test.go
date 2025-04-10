@@ -268,6 +268,8 @@ func Test_TType(t *testing.T) {
 }
 
 func Test_TValue_ToX(t *testing.T) {
+	t.Parallel()
+
 	assert.Equal(t, "OK", valueshim.FromTValue(tftypes.NewValue(tftypes.String, "OK")).StringValue())
 	assert.Equal(t, 42.41, valueshim.FromTValue(tftypes.NewValue(tftypes.Number, 42.41)).NumberValue())
 	assert.Equal(t, true, valueshim.FromTValue(tftypes.NewValue(tftypes.Bool, true)).BoolValue())
