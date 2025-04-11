@@ -15,14 +15,15 @@
 package schemashim
 
 import (
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/runtypes"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 )
 
 // Resource map needs to support Set (mutability) for RenameResourceWithAlias.
-func newSchemaOnlyResourceMap(resources runtypes.Resources) shim.ResourceMap {
-	m := schema.ResourceMap{}
+func newSchemaOnlyResourceMap(resources runtypes.Resources) schemaOnlyResourceMap {
+	m := schemaOnlyResourceMap{}
 	for _, name := range resources.All() {
 		key := string(name)
 		v := resources.Schema(name)
@@ -30,3 +31,56 @@ func newSchemaOnlyResourceMap(resources runtypes.Resources) shim.ResourceMap {
 	}
 	return m
 }
+
+type schemaOnlyResourceMap map[string]*schemaOnlyResource
+
+var (
+	_ shim.ResourceMap   = schemaOnlyResourceMap{}
+	_ runtypes.Resources = schemaOnlyResourceMap{}
+)
+
+func (m schemaOnlyResourceMap) Len() int {
+	return len(m)
+}
+
+func (m schemaOnlyResourceMap) Get(key string) shim.Resource {
+	return m[key]
+}
+
+func (m schemaOnlyResourceMap) GetOk(key string) (shim.Resource, bool) {
+	v, ok := m[key]
+	return v, ok
+}
+
+func (m schemaOnlyResourceMap) Range(each func(key string, value shim.Resource) bool) {
+	for k, v := range m {
+		if !each(k, v) {
+			return
+		}
+	}
+}
+
+func (m schemaOnlyResourceMap) Set(key string, value shim.Resource) {
+	v, ok := value.(*schemaOnlyResource)
+	contract.Assertf(ok, "Set must be a %T, found a %T", v, value)
+	m[key] = v
+}
+
+func (m schemaOnlyResourceMap) All() []runtypes.TypeName {
+	arr := make([]runtypes.TypeName, 0, len(m))
+	for k := range m {
+		arr = append(arr, runtypes.TypeName(k))
+	}
+	return arr
+}
+
+func (m schemaOnlyResourceMap) Has(key runtypes.TypeName) bool {
+	_, ok := m[string(key)]
+	return ok
+}
+
+func (m schemaOnlyResourceMap) Schema(key runtypes.TypeName) runtypes.Schema {
+	return m[string(key)].tf
+}
+
+func (m schemaOnlyResourceMap) IsResources() {}

@@ -15,14 +15,15 @@
 package schemashim
 
 import (
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/runtypes"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 )
 
 // Data Source map needs to support Set (mutability) for RenameDataSource.
-func newSchemaOnlyDataSourceMap(dataSources runtypes.DataSources) shim.ResourceMap {
-	m := schema.ResourceMap{}
+func newSchemaOnlyDataSourceMap(dataSources runtypes.DataSources) schemaOnlyDataSourceMap {
+	m := schemaOnlyDataSourceMap{}
 	for _, name := range dataSources.All() {
 		key := string(name)
 		v := dataSources.Schema(name)
@@ -30,3 +31,56 @@ func newSchemaOnlyDataSourceMap(dataSources runtypes.DataSources) shim.ResourceM
 	}
 	return m
 }
+
+type schemaOnlyDataSourceMap map[string]*schemaOnlyDataSource
+
+var (
+	_ shim.ResourceMap     = schemaOnlyDataSourceMap{}
+	_ runtypes.DataSources = schemaOnlyDataSourceMap{}
+)
+
+func (m schemaOnlyDataSourceMap) Len() int {
+	return len(m)
+}
+
+func (m schemaOnlyDataSourceMap) Get(key string) shim.Resource {
+	return m[key]
+}
+
+func (m schemaOnlyDataSourceMap) GetOk(key string) (shim.Resource, bool) {
+	v, ok := m[key]
+	return v, ok
+}
+
+func (m schemaOnlyDataSourceMap) Range(each func(key string, value shim.Resource) bool) {
+	for k, v := range m {
+		if !each(k, v) {
+			return
+		}
+	}
+}
+
+func (m schemaOnlyDataSourceMap) Set(key string, value shim.Resource) {
+	v, ok := value.(*schemaOnlyDataSource)
+	contract.Assertf(ok, "Set must be a %T, found a %T", v, value)
+	m[key] = v
+}
+
+func (m schemaOnlyDataSourceMap) All() []runtypes.TypeName {
+	arr := make([]runtypes.TypeName, 0, len(m))
+	for k := range m {
+		arr = append(arr, runtypes.TypeName(k))
+	}
+	return arr
+}
+
+func (m schemaOnlyDataSourceMap) Has(key runtypes.TypeName) bool {
+	_, ok := m[string(key)]
+	return ok
+}
+
+func (m schemaOnlyDataSourceMap) Schema(key runtypes.TypeName) runtypes.Schema {
+	return m[string(key)].tf
+}
+
+func (m schemaOnlyDataSourceMap) IsDataSources() {}
