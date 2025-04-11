@@ -48,11 +48,10 @@ func GatherDatasources[F func(Schema) shim.SchemaMap](
 			return nil, fmt.Errorf("Resource %s GetSchema() error: %w", meta.TypeName, err)
 		}
 
-		typeName := runtypes.TypeName(meta.TypeName)
-		ds[typeName] = entry[func() datasource.DataSource]{
+		ds[runtypes.TypeOrRenamedEntityName(meta.TypeName)] = entry[func() datasource.DataSource]{
 			t:      makeDataSource,
 			schema: FromDataSourceSchema(dataSourceSchema),
-			tfName: typeName,
+			tfName: runtypes.TypeName(meta.TypeName),
 		}
 	}
 
@@ -64,7 +63,7 @@ type dataSources struct {
 	convert func(Schema) shim.SchemaMap
 }
 
-func (r dataSources) Schema(t runtypes.TypeName) runtypes.Schema {
+func (r dataSources) Schema(t runtypes.TypeOrRenamedEntityName) runtypes.Schema {
 	entry := r.collection[t]
 	return runtypesSchemaAdapter{entry.schema, r.convert, entry.tfName}
 }

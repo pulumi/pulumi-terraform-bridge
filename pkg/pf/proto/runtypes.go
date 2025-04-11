@@ -87,22 +87,22 @@ func (datasources) IsDataSources() {}
 
 type collection map[string]*tfprotov6.Schema
 
-func (c collection) All() []runtypes.TypeName {
-	arr := make([]runtypes.TypeName, 0, len(c))
+func (c collection) All() []runtypes.TypeOrRenamedEntityName {
+	arr := make([]runtypes.TypeOrRenamedEntityName, 0, len(c))
 	for k := range c {
-		arr = append(arr, runtypes.TypeName(k))
+		arr = append(arr, runtypes.TypeOrRenamedEntityName(k))
 	}
 	return arr
 }
 
-func (c collection) Has(key runtypes.TypeName) bool {
+func (c collection) Has(key runtypes.TypeOrRenamedEntityName) bool {
 	_, ok := c[string(key)]
 	return ok
 }
 
-func (c collection) Schema(key runtypes.TypeName) runtypes.Schema {
+func (c collection) Schema(key runtypes.TypeOrRenamedEntityName) runtypes.Schema {
 	s, ok := c[string(key)]
 	contract.Assertf(ok, "called Schema on a resource that does not exist")
 
-	return schema{s, key}
+	return schema{s, runtypes.TypeName(key)}
 }

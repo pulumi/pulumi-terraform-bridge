@@ -50,13 +50,13 @@ type entry[T any] struct {
 	t      T
 }
 
-type collection[T any] map[runtypes.TypeName]entry[T]
+type collection[T any] map[runtypes.TypeOrRenamedEntityName]entry[T]
 
-func (c collection[T]) All() []runtypes.TypeName {
+func (c collection[T]) All() []runtypes.TypeOrRenamedEntityName {
 	if c == nil {
 		return nil
 	}
-	var names []runtypes.TypeName
+	var names []runtypes.TypeOrRenamedEntityName
 	for name := range c {
 		names = append(names, name)
 	}
@@ -66,11 +66,11 @@ func (c collection[T]) All() []runtypes.TypeName {
 	return names
 }
 
-func (c collection[T]) Has(name runtypes.TypeName) bool {
+func (c collection[T]) Has(name runtypes.TypeOrRenamedEntityName) bool {
 	_, ok := c[name]
 	return ok
 }
 
-func (c collection[T]) Schema(name runtypes.TypeName) Schema {
+func (c collection[T]) Schema(name runtypes.TypeOrRenamedEntityName) Schema {
 	return c[name].schema
 }

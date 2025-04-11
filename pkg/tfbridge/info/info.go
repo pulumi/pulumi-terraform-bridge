@@ -71,8 +71,8 @@ type Provider struct {
 	Version        string                             // the version of the provider package.
 	Config         map[string]*Schema                 // a map of TF name to config schema overrides.
 	ExtraConfig    map[string]*Config                 // a list of Pulumi-only configuration variables.
-	Resources      map[string]*Resource               // a map of TF name to Pulumi name; standard mangling occurs if no entry.
-	DataSources    map[string]*DataSource             // a map of TF name to Pulumi resource info.
+	Resources      map[string]*Resource               // a map of TF type or renamed entity name to Pulumi resource info.
+	DataSources    map[string]*DataSource             // a map of TF type or renamed entity name to Pulumi resource info.
 	ExtraTypes     map[string]pschema.ComplexTypeSpec // a map of Pulumi token to schema type for extra types.
 	ExtraResources map[string]pschema.ResourceSpec    // a map of Pulumi token to schema type for extra resources.
 	ExtraFunctions map[string]pschema.FunctionSpec    // a map of Pulumi token to schema type for extra functions.

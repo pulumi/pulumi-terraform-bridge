@@ -48,11 +48,10 @@ func GatherResources[F func(Schema) shim.SchemaMap](
 			return nil, fmt.Errorf("Resource %s GetSchema() error: %w", meta.TypeName, err)
 		}
 
-		typeName := runtypes.TypeName(meta.TypeName)
-		rs[typeName] = entry[func() resource.Resource]{
+		rs[runtypes.TypeOrRenamedEntityName(meta.TypeName)] = entry[func() resource.Resource]{
 			t:      makeResource,
 			schema: FromResourceSchema(resSchema),
-			tfName: typeName,
+			tfName: runtypes.TypeName(meta.TypeName),
 		}
 	}
 
@@ -80,7 +79,7 @@ func (r runtypesSchemaAdapter) TFName() runtypes.TypeName {
 	return r.tfName
 }
 
-func (r resources) Schema(t runtypes.TypeName) runtypes.Schema {
+func (r resources) Schema(t runtypes.TypeOrRenamedEntityName) runtypes.Schema {
 	entry := r.collection[t]
 	return runtypesSchemaAdapter{entry.schema, r.convert, entry.tfName}
 }

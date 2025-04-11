@@ -42,8 +42,7 @@ func (p *provider) datasourceHandle(ctx context.Context, token tokens.ModuleMemb
 		return datasourceHandle{}, err
 	}
 
-	typeName := runtypes.TypeName(dsName)
-	schema := p.datasources.Schema(typeName)
+	schema := p.datasources.Schema(runtypes.TypeOrRenamedEntityName(dsName))
 
 	typ := schema.Type(ctx).(tftypes.Object)
 
