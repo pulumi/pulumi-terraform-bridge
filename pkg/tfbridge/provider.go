@@ -1358,6 +1358,10 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 		}
 	}
 
+	if err := RawStateInjectDelta(ctx, res.TF.Schema(), res.Schema.Fields, props, newstate); err != nil {
+		return nil, err
+	}
+
 	mprops, err := plugin.MarshalProperties(props, plugin.MarshalOptions{
 		Label:        fmt.Sprintf("%s.outs", label),
 		KeepUnknowns: req.GetPreview(),
@@ -1459,14 +1463,6 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 			}
 		}
 
-		mprops, err := plugin.MarshalProperties(props, plugin.MarshalOptions{
-			Label:       label + ".state",
-			KeepSecrets: p.supportsSecrets,
-		})
-		if err != nil {
-			return nil, err
-		}
-
 		inputs, err := ExtractInputsFromOutputs(oldInputs, props, res.TF.Schema(), res.Schema.Fields, isRefresh)
 		if err != nil {
 			return nil, err
@@ -1484,6 +1480,18 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 
 		minputs, err := plugin.MarshalProperties(cleanInputs, plugin.MarshalOptions{
 			Label:       label + ".inputs",
+			KeepSecrets: p.supportsSecrets,
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		if err := RawStateInjectDelta(ctx, res.TF.Schema(), res.Schema.Fields, props, newstate); err != nil {
+			return nil, err
+		}
+
+		mprops, err := plugin.MarshalProperties(props, plugin.MarshalOptions{
+			Label:       label + ".state",
 			KeepSecrets: p.supportsSecrets,
 		})
 		if err != nil {
@@ -1696,6 +1704,10 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	if err := RawStateInjectDelta(ctx, res.TF.Schema(), res.Schema.Fields, props, newstate); err != nil {
+		return nil, err
 	}
 
 	mprops, err := plugin.MarshalProperties(props, plugin.MarshalOptions{
