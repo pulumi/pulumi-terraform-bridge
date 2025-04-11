@@ -1124,7 +1124,7 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 		return nil, err
 	}
 
-	state, err := makeTerraformStateWithOpts(ctx, p.tf, res, req.GetId(), olds,
+	state, err := makeTerraformStateWithOpts(ctx, res, req.GetId(), olds,
 		makeTerraformStateOptions(opts),
 	)
 	if err != nil {
@@ -1407,7 +1407,7 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 	if err != nil {
 		return nil, err
 	}
-	state, err := unmarshalTerraformStateWithOpts(ctx, p.tf, res, id, req.GetProperties(), fmt.Sprintf("%s.state", label),
+	state, err := unmarshalTerraformStateWithOpts(ctx, res, id, req.GetProperties(), fmt.Sprintf("%s.state", label),
 		unmarshalTerraformStateOptions(opts),
 	)
 	if err != nil {
@@ -1604,7 +1604,7 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 		return nil, err
 	}
 
-	state, err := makeTerraformStateWithOpts(ctx, p.tf, res, req.GetId(), olds,
+	state, err := makeTerraformStateWithOpts(ctx, res, req.GetId(), olds,
 		makeTerraformStateOptions(opts),
 	)
 	if err != nil {
@@ -1737,7 +1737,7 @@ func (p *Provider) Delete(ctx context.Context, req *pulumirpc.DeleteRequest) (*p
 		return nil, err
 	}
 	// Fetch the resource attributes since many providers need more than just the ID to perform the delete.
-	state, err := unmarshalTerraformStateWithOpts(ctx, p.tf, res, req.GetId(), req.GetProperties(), label,
+	state, err := unmarshalTerraformStateWithOpts(ctx, res, req.GetId(), req.GetProperties(), label,
 		unmarshalTerraformStateOptions(opts),
 	)
 	if err != nil {
@@ -1836,8 +1836,7 @@ func (p *Provider) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*p
 		}
 
 		// Add the special "id" attribute if it wasn't listed in the schema
-		props, err := makeTerraformDataSourceResult(ctx, p.tf, invoke, ds.TF.Schema(),
-			ds.Schema.Fields, p.supportsSecrets)
+		props, err := MakeTerraformResult(ctx, p.tf, invoke, ds.TF.Schema(), ds.Schema.Fields, nil, p.supportsSecrets)
 		if err != nil {
 			return nil, err
 		}
