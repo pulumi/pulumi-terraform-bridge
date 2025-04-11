@@ -32,10 +32,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/reservedkeys"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/log"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/valueshim"
 )
 
 // This file deals with translating between the Pulumi representations of a resource's configuration and state and the
@@ -713,7 +711,7 @@ func buildConflictsWith(result map[string]interface{}, tfs shim.SchemaMap) map[s
 
 func (ctx *conversionContext) applyDefaults(
 	result map[string]interface{},
-	olds, _news resource.PropertyMap,
+	olds, news resource.PropertyMap,
 	tfs shim.SchemaMap,
 	ps map[string]*SchemaInfo,
 ) error {
@@ -1009,8 +1007,6 @@ func makeTerraformUnknown(tfs shim.Schema) interface{} {
 
 // MakeTerraformResult expands a Terraform state into an expanded Pulumi resource property map.  This respects
 // the property maps so that results end up with their correct Pulumi names when shipping back to the engine.
-//
-// May be called with unknowns during preview.
 func MakeTerraformResult(
 	ctx context.Context,
 	p shim.Provider,
@@ -1020,94 +1016,22 @@ func MakeTerraformResult(
 	assets AssetTable,
 	supportsSecrets bool,
 ) (resource.PropertyMap, error) {
-	return makeTerraformResultInner(ctx, makeTerraformResultArgs{
-		p:               p,
-		state:           state,
-		tfs:             tfs,
-		ps:              ps,
-		assets:          assets,
-		supportsSecrets: supportsSecrets,
-		isResource:      true,
-	})
-}
-
-// Translates data source responses to Pulumi function Invoke responses.
-//
-// For historical reasons state of type InstanceState actually encodes the data source response here, though it is
-// usually associated with resource states.
-func makeTerraformDataSourceResult(
-	ctx context.Context,
-	p shim.Provider,
-	state shim.InstanceState,
-	tfs shim.SchemaMap,
-	ps map[string]*SchemaInfo,
-	supportsSecrets bool,
-) (resource.PropertyMap, error) {
-	return makeTerraformResultInner(ctx, makeTerraformResultArgs{
-		p:               p,
-		state:           state,
-		tfs:             tfs,
-		ps:              ps,
-		supportsSecrets: supportsSecrets,
-	})
-}
-
-type makeTerraformResultArgs struct {
-	p               shim.Provider
-	state           shim.InstanceState
-	tfs             shim.SchemaMap
-	ps              map[string]*SchemaInfo
-	assets          AssetTable
-	supportsSecrets bool
-	isResource      bool
-}
-
-// Shared Implementation of [MakeTerraformResult]  and [makeTerraformDataSourceResult].
-//
-// The flag isResource distinguishes between the resource and data source use case.
-func makeTerraformResultInner(ctx context.Context, args makeTerraformResultArgs) (resource.PropertyMap, error) {
 	var outs map[string]interface{}
-	if args.state != nil {
-		obj, err := args.state.Object(args.tfs)
+	if state != nil {
+		obj, err := state.Object(tfs)
 		if err != nil {
 			return nil, err
 		}
 		outs = obj
 	}
 
-	outMap := MakeTerraformOutputs(ctx, args.p, outs, args.tfs, args.ps, args.assets, args.supportsSecrets)
+	outMap := MakeTerraformOutputs(ctx, p, outs, tfs, ps, assets, supportsSecrets)
 
-	// Encode a map under metaKey. For historical reasons it is a JSON-encoded string.
-	if args.state != nil && args.state.Meta() != nil && len(args.state.Meta()) > 0 {
-		metaMap := args.state.Meta()
-		metaJSON, err := json.Marshal(metaMap)
-		contract.Assertf(err == nil, "json.Marshal failed on metaMap data for the %q key", reservedkeys.Meta)
+	// If there is any Terraform metadata associated with this state, record it.
+	if state != nil && len(state.Meta()) != 0 {
+		metaJSON, err := json.Marshal(state.Meta())
+		contract.Assertf(err == nil, "err == nil")
 		outMap[reservedkeys.Meta] = resource.NewStringProperty(string(metaJSON))
-	}
-
-	// In the non-preview resource case, also encode raw state delta into the outMap.
-	if s, ok := args.state.(shim.InstanceStateWithCtyValue); ok && !outMap.ContainsUnknowns() && args.isResource {
-		logger := log.TryGetLogger(ctx)
-		if logger == nil {
-			logger = log.NewDiscardLogger()
-		}
-		logger.Debug(fmt.Sprintf("[rawstate]: encoding state for resource %q\n"+
-			"  cty.Value:   %s\n"+
-			"  PropertyMap: %s\n",
-			args.state.Type(),
-			resource.NewObjectProperty(outMap).String(),
-			s.Value().GoString(),
-		))
-
-		delta, err := RawStateComputeDelta(ctx, args.tfs, args.ps, outMap, valueshim.FromHCtyValue(s.Value()))
-		if err != nil {
-			return nil, err
-		}
-
-		// Could check for clobbering existing outMap[rawKey] but it appears that in the pulumi refresh
-		// scenario this is expected: outMap will contain the previous delta written by the bridge. Not enough
-		// information to distinguish this from a genuine conflict with the resource.
-		outMap[reservedkeys.RawStateDelta] = delta.Marshal()
 	}
 
 	return outMap, nil
@@ -1372,12 +1296,7 @@ type makeTerraformStateOptions struct {
 }
 
 func makeTerraformStateWithOpts(
-	ctx context.Context,
-	provider shim.Provider,
-	res Resource,
-	id string,
-	m resource.PropertyMap,
-	opts makeTerraformStateOptions,
+	ctx context.Context, res Resource, id string, m resource.PropertyMap, opts makeTerraformStateOptions,
 ) (shim.InstanceState, error) {
 	// Parse out any metadata from the state.
 	var meta map[string]interface{}
@@ -1396,40 +1315,6 @@ func makeTerraformStateWithOpts(
 		meta = map[string]interface{}{"schema_version": defaultSchemaVersion}
 	}
 
-	// Newer versions of the bridge encode a delta that allows recovering the raw Terraform state from the
-	// PropertyMap. Prefer this method if available.
-	providerWithRawStateSupport, rawStateSupported := provider.(shim.ProviderWithRawStateSupport)
-	if deltaValue, hasDelta := m[reservedkeys.RawStateDelta]; hasDelta && rawStateSupported {
-		// Only log error details at Debug level to avoid leaking secrets to errors.
-		logger := log.TryGetLogger(ctx)
-		if logger == nil {
-			logger = log.NewDiscardLogger()
-		}
-
-		delta, err := UnmarshalRawStateDelta(deltaValue)
-		if err != nil {
-			logger.Debug(fmt.Sprintf("Failed to parse raw state markers:\n"+
-				"  %q: %#v\n"+
-				"  error: %v",
-				reservedkeys.RawStateDelta,
-				delta.Marshal().String(),
-				err))
-			contract.AssertNoErrorf(err, "Failed to parse raw state markers")
-		}
-		recoveredRawState, err := delta.Recover(resource.NewObjectProperty(m))
-		if err != nil {
-			logger.Debug(fmt.Sprintf("Failed recover raw state:\n"+
-				"  %q: %#v\n"+
-				"  error: %v",
-				reservedkeys.RawStateDelta,
-				delta.Marshal().String(),
-				err))
-			contract.AssertNoErrorf(err, "Failed to recover raw state")
-		}
-
-		return providerWithRawStateSupport.UpgradeState(ctx, res.TFName, recoveredRawState, meta)
-	}
-
 	// Turn the resource properties into a map. For the most part, this is a straight
 	// Mappable, but we use MapReplace because we use float64s and Terraform uses
 	// ints, to represent numbers.
@@ -1439,12 +1324,7 @@ func makeTerraformStateWithOpts(
 		return nil, err
 	}
 
-	instanceState, err := res.TF.InstanceState(id, inputs, meta)
-	if err != nil {
-		return nil, err
-	}
-
-	return instanceState, nil
+	return res.TF.InstanceState(id, inputs, meta)
 }
 
 // MakeTerraformState converts a Pulumi property bag into its Terraform equivalent.  This requires
@@ -1454,7 +1334,7 @@ func makeTerraformStateWithOpts(
 func MakeTerraformState(
 	ctx context.Context, res Resource, id string, m resource.PropertyMap,
 ) (shim.InstanceState, error) {
-	return makeTerraformStateWithOpts(ctx, nil, res, id, m, makeTerraformStateOptions{})
+	return makeTerraformStateWithOpts(ctx, res, id, m, makeTerraformStateOptions{})
 }
 
 type unmarshalTerraformStateOptions struct {
@@ -1462,12 +1342,7 @@ type unmarshalTerraformStateOptions struct {
 }
 
 func unmarshalTerraformStateWithOpts(
-	ctx context.Context,
-	provider shim.Provider,
-	r Resource,
-	id string,
-	m *pbstruct.Struct,
-	l string,
+	ctx context.Context, r Resource, id string, m *pbstruct.Struct, l string,
 	opts unmarshalTerraformStateOptions,
 ) (shim.InstanceState, error) {
 	props, err := plugin.UnmarshalProperties(m, plugin.MarshalOptions{
@@ -1483,7 +1358,9 @@ func unmarshalTerraformStateWithOpts(
 		return nil, err
 	}
 
-	return makeTerraformStateWithOpts(ctx, provider, r, id, props, makeTerraformStateOptions(opts))
+	return makeTerraformStateWithOpts(ctx, r, id, props,
+		makeTerraformStateOptions(opts),
+	)
 }
 
 // UnmarshalTerraformState unmarshals a Terraform instance state from an RPC property map.
@@ -1491,7 +1368,7 @@ func unmarshalTerraformStateWithOpts(
 func UnmarshalTerraformState(
 	ctx context.Context, r Resource, id string, m *pbstruct.Struct, l string,
 ) (shim.InstanceState, error) {
-	return unmarshalTerraformStateWithOpts(ctx, nil, r, id, m, l, unmarshalTerraformStateOptions{})
+	return unmarshalTerraformStateWithOpts(ctx, r, id, m, l, unmarshalTerraformStateOptions{})
 }
 
 // IsMaxItemsOne returns true if the schema/info pair represents a TypeList or TypeSet which should project
@@ -1739,7 +1616,7 @@ func extractInputsObject(
 	return oldInput, possibleDefault || !hasOldDefaults
 }
 
-func getDefaultValue(tfs shim.Schema, _ *SchemaInfo) interface{} {
+func getDefaultValue(tfs shim.Schema, ps *SchemaInfo) interface{} {
 	dv, err := tfs.DefaultValue()
 	if err != nil {
 		if errors.Is(err, ErrSchemaDefaultValue) {
