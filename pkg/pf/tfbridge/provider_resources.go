@@ -48,7 +48,7 @@ func (p *provider) resourceHandle(ctx context.Context, urn pulumiresource.URN) (
 	schema := p.resources.Schema(n)
 
 	result := resourceHandle{
-		terraformResourceName: typeName,
+		terraformResourceName: string(schema.TFName()),
 		schema:                schema,
 	}
 

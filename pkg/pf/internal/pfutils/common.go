@@ -46,6 +46,7 @@ func checkDiagsForErrors(diag diag.Diagnostics) error {
 
 type entry[T any] struct {
 	schema Schema
+	tfName runtypes.TypeName
 	t      T
 }
 

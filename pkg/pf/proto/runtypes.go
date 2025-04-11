@@ -41,7 +41,10 @@ func (p Provider) DataSources(context.Context) (runtypes.DataSources, error) {
 	return datasources{collection(v.DataSourceSchemas)}, nil
 }
 
-type schema struct{ s *tfprotov6.Schema }
+type schema struct {
+	s      *tfprotov6.Schema
+	tfName runtypes.TypeName
+}
 
 var _ = runtypes.Schema(schema{})
 
@@ -66,11 +69,19 @@ func (s schema) Shim() shim.SchemaMap {
 	return blockMap{s.s.Block}
 }
 
+func (s schema) TFName() runtypes.TypeName {
+	return s.tfName
+}
+
+var _ runtypes.Resources = resources{}
+
 type resources struct{ collection }
 
 func (resources) IsResources() {}
 
 type datasources struct{ collection }
+
+var _ runtypes.DataSources = datasources{}
 
 func (datasources) IsDataSources() {}
 
@@ -93,5 +104,5 @@ func (c collection) Schema(key runtypes.TypeName) runtypes.Schema {
 	s, ok := c[string(key)]
 	contract.Assertf(ok, "called Schema on a resource that does not exist")
 
-	return schema{s}
+	return schema{s, key}
 }

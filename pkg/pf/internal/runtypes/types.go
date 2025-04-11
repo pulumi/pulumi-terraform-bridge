@@ -37,6 +37,8 @@ type Schema interface {
 	DeprecationMessage() string
 
 	ResourceProtoSchema(ctx context.Context) (*tfprotov6.Schema, error)
+
+	TFName() TypeName
 }
 
 // Full resource type, including the provider type prefix and an underscore. For example,

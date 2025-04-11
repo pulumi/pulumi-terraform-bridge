@@ -48,14 +48,18 @@ func GatherResources[F func(Schema) shim.SchemaMap](
 			return nil, fmt.Errorf("Resource %s GetSchema() error: %w", meta.TypeName, err)
 		}
 
-		rs[runtypes.TypeName(meta.TypeName)] = entry[func() resource.Resource]{
+		typeName := runtypes.TypeName(meta.TypeName)
+		rs[typeName] = entry[func() resource.Resource]{
 			t:      makeResource,
 			schema: FromResourceSchema(resSchema),
+			tfName: typeName,
 		}
 	}
 
 	return &resources{collection: rs, convert: f}, nil
 }
+
+var _ runtypes.Resources = resources{}
 
 type resources struct {
 	collection[func() resource.Resource]
@@ -65,14 +69,20 @@ type resources struct {
 type runtypesSchemaAdapter struct {
 	Schema
 	converter func(Schema) shim.SchemaMap
+	tfName    runtypes.TypeName
 }
 
 func (r runtypesSchemaAdapter) Shim() shim.SchemaMap {
 	return r.converter(r.Schema)
 }
 
+func (r runtypesSchemaAdapter) TFName() runtypes.TypeName {
+	return r.tfName
+}
+
 func (r resources) Schema(t runtypes.TypeName) runtypes.Schema {
-	return runtypesSchemaAdapter{r.collection.Schema(t), r.convert}
+	entry := r.collection[t]
+	return runtypesSchemaAdapter{entry.schema, r.convert, entry.tfName}
 }
 
 func (resources) IsResources() {}
