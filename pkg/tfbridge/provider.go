@@ -1765,12 +1765,17 @@ func (p *Provider) Construct(context.Context, *pulumirpc.ConstructRequest) (*pul
 func (p *Provider) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error) {
 
 	ctx = p.loggingContext(ctx, "")
-	tok := "pulumi:providers:random/sayHello" // TODO: get this from the req
 	q.Q(req)
-	switch tok {
-	case "pulumi:providers:random/sayHello":
+	q.Q(req.GetTok())
+
+	_, functionName, found := strings.Cut(req.GetTok(), "/")
+	if !found {
+		return nil, fmt.Errorf("malformed and unknown method %q", req.GetTok())
+	}
+	switch functionName {
+	case "sayHello":
 		outputs := resource.NewPropertyMapFromMap(map[string]interface{}{
-			"message": "👋 Hello from the Go provider!",
+			"message": "👋 Hello from the REGULAR bridge!",
 		})
 
 		outputResult, err := plugin.MarshalProperties(outputs, plugin.MarshalOptions{})
@@ -1781,7 +1786,7 @@ func (p *Provider) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulum
 			Return: outputResult,
 		}, nil
 	default:
-		return nil, fmt.Errorf("unknown method %q", tok)
+		return nil, fmt.Errorf("muahahaha unknown method %q", req.GetTok())
 	}
 	return nil, status.Error(codes.Unimplemented, "Call is not yet implemented")
 }

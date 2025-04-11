@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"github.com/ryboe/q"
 	"os"
+	"strings"
 
 	"github.com/blang/semver"
 	pfprovider "github.com/hashicorp/terraform-plugin-framework/provider"
@@ -323,12 +324,17 @@ func (p *provider) CallWithContext(_ context.Context,
 	options plugin.CallOptions,
 ) (plugin.CallResult, error) {
 	//panic("why is this a pf provider wahhhhh")
-	tokenHardCode := "pulumi:providers:random/sayHello" // TODO: get this from the req
-	q.Q(tok)
-	switch tokenHardCode {
-	case "pulumi:providers:random/sayHello":
+	q.Q(args)
+	q.Q(info)
+	q.Q(p.lastKnownProviderConfig)
+	_, functionName, found := strings.Cut(tok.String(), "/")
+	if !found {
+		return plugin.CallResult{}, fmt.Errorf("malformed and unknown method %q", tok)
+	}
+	switch functionName {
+	case "sayHello":
 		outputs := resource.NewPropertyMapFromMap(map[string]interface{}{
-			"message": "👋 Hello from the Go provider!",
+			"message": "👋 Hello from the PF bridge!",
 		})
 
 		//outputResult, err := plugin.MarshalProperties(outputs, plugin.MarshalOptions{})
@@ -339,7 +345,7 @@ func (p *provider) CallWithContext(_ context.Context,
 			Return: outputs,
 		}, nil
 	default:
-		return plugin.CallResult{}, fmt.Errorf("unknown method %q", tok)
+		return plugin.CallResult{}, fmt.Errorf("ALSO PF UGH unknown method %q", tok)
 	}
 
 	//return plugin.CallResult{

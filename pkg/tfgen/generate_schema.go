@@ -46,7 +46,6 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/internal/paths"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/x/muxer"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
-	"github.com/ryboe/q"
 )
 
 const (
@@ -322,8 +321,6 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg, sink diag.Sink) (pschema.Pac
 		spec.Config = g.genConfig(config)
 	}
 
-	q.Q(spec.Functions)
-
 	if pack.provider != nil {
 
 		indexModToken := tokens.NewModuleToken(g.pkg, indexMod)
@@ -378,7 +375,7 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg, sink diag.Sink) (pschema.Pac
 		spec.Functions[sayHelloToken] = sayHello
 		methods := map[string]string{"sayHello": sayHelloToken}
 		spec.Provider.Methods = methods
-		q.Q(spec.Provider.Methods)
+		//q.Q(spec.Provider.Methods)
 
 		// Ensure that input properties are mirrored as output properties, but without fields set which
 		// are only meaningful for input properties.
@@ -394,7 +391,7 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg, sink diag.Sink) (pschema.Pac
 			spec.Provider.Properties[propName] = outputProp
 		}
 	}
-	q.Q(spec.Functions)
+	//q.Q(spec.Functions)
 
 	for token, typ := range g.info.ExtraTypes {
 		if _, defined := spec.Types[token]; defined {
