@@ -442,6 +442,26 @@ func rawStateEncodeAssetOrArhiveValue(value any) (rawstate.Builder, error) {
 	}
 }
 
+func RawStateInjectDelta(
+	ctx context.Context,
+	schemaMap shim.SchemaMap, // top-level schema for a resource
+	schemaInfos map[string]*SchemaInfo, // top-level schema overrides for a resource
+	outMap resource.PropertyMap,
+	instanceState shim.InstanceState,
+) error {
+	instanceStateCty, ok := instanceState.(shim.InstanceStateWithCtyValue)
+	if !ok {
+		return nil
+	}
+	v := valueshim.FromHCtyValue(instanceStateCty.Value())
+	d, err := RawStateComputeDelta(ctx, schemaMap, schemaInfos, outMap, v)
+	if err != nil {
+		return err
+	}
+	outMap[reservedkeys.RawStateDelta] = d.Marshal()
+	return nil
+}
+
 func RawStateComputeDelta(
 	ctx context.Context,
 	schemaMap shim.SchemaMap, // top-level schema for a resource
