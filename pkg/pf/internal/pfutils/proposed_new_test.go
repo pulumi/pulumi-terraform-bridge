@@ -39,6 +39,8 @@ type runtimeSchemaAdapter struct{ Schema }
 
 func (runtimeSchemaAdapter) Shim() shim.SchemaMap { panic("UNIMPLEMENTED") }
 
+func (runtimeSchemaAdapter) TFName() runtypes.TypeName { panic("UNIMPLEMENTED") }
+
 func TestComputedOptionalBecomingUnknown(t *testing.T) {
 	t.Parallel()
 	schema := rschema.Schema{Attributes: map[string]rschema.Attribute{
