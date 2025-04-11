@@ -249,6 +249,30 @@ func Test_rawstate_delta_turnaround(t *testing.T) {
 			cv: cty.MapValEmpty(cty.String),
 		},
 		{
+			name: "null-vs-empty-map",
+			schema: &schema.Schema{
+				Type:     schema.TypeMap,
+				Optional: true,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
+			},
+			pv: resource.NewNullProperty(),
+			cv: cty.MapValEmpty(cty.String),
+		},
+		{
+			name: "empty-map-vs-null",
+			schema: &schema.Schema{
+				Type:     schema.TypeMap,
+				Optional: true,
+				Elem: &schema.Schema{
+					Type: schema.TypeString,
+				},
+			},
+			pv: resource.NewObjectProperty(resource.PropertyMap{}),
+			cv: cty.NullVal(cty.Map(cty.String)),
+		},
+		{
 			name: "inside-list",
 			schema: &schema.Schema{
 				Type:     schema.TypeList,
