@@ -34,8 +34,8 @@ var _ = pf.ShimProvider(&SchemaOnlyProvider{})
 type SchemaOnlyProvider struct {
 	ctx           context.Context
 	tf            pfprovider.Provider
-	resourceMap   shim.ResourceMap
-	dataSourceMap shim.ResourceMap
+	resourceMap   schemaOnlyResourceMap
+	dataSourceMap schemaOnlyDataSourceMap
 }
 
 func (p *SchemaOnlyProvider) Server(ctx context.Context) (tfprotov6.ProviderServer, error) {
@@ -53,11 +53,11 @@ func (p *SchemaOnlyProvider) Server(ctx context.Context) (tfprotov6.ProviderServ
 }
 
 func (p *SchemaOnlyProvider) Resources(ctx context.Context) (runtypes.Resources, error) {
-	return pfutils.GatherResources(ctx, p.tf, NewSchemaMap)
+	return p.resourceMap, nil
 }
 
 func (p *SchemaOnlyProvider) DataSources(ctx context.Context) (runtypes.DataSources, error) {
-	return pfutils.GatherDatasources(ctx, p.tf, NewSchemaMap)
+	return p.dataSourceMap, nil
 }
 
 func (p *SchemaOnlyProvider) Config(ctx context.Context) (tftypes.Object, error) {
