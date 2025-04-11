@@ -24,6 +24,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hexops/autogold/v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optup"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	presource "github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
@@ -622,4 +623,68 @@ func TestPFAliasesSchemaUpgrade(t *testing.T) {
 	res := pt2.Up(t)
 
 	autogold.Expect(&map[string]int{"same": 2}).Equal(t, res.Summary.ResourceChanges)
+}
+
+func TestPFAliasesRenameWithAlias(t *testing.T) {
+	// TODO[pulumi/pulumi-terraform-bridge#2992]
+	t.Skip()
+	t.Parallel()
+
+	prov1 := pb.NewProvider(pb.NewProviderArgs{
+		AllResources: []providerbuilder.Resource{
+			providerbuilder.NewResource(providerbuilder.NewResourceArgs{
+				Name: "test",
+				ResourceSchema: rschema.Schema{
+					Attributes: map[string]rschema.Attribute{
+						"test": rschema.StringAttribute{Optional: true},
+					},
+				},
+			}),
+		},
+	})
+
+	prov2 := pb.NewProvider(pb.NewProviderArgs{
+		AllResources: []providerbuilder.Resource{
+			providerbuilder.NewResource(providerbuilder.NewResourceArgs{
+				Name: "test2",
+				ResourceSchema: rschema.Schema{
+					Attributes: map[string]rschema.Attribute{
+						"test": rschema.StringAttribute{Optional: true},
+					},
+				},
+			}),
+		},
+	})
+
+	bridgedProvider2 := prov2.ToProviderInfo()
+	bridgedProvider2.RenameResourceWithAlias(
+		"testprovider_test2", "testprovider:index/test:Test", "testprovider:index/test2:Test2", "index", "index", nil)
+
+	pt, err := pulcheck.PulCheck(t, prov1.ToProviderInfo(), `
+    name: test
+    runtime: yaml
+    resources:
+      mainRes:
+        type: testprovider:index/test:Test
+        properties:
+          test: "hello"
+    `)
+	require.NoError(t, err)
+	pt.Up(t)
+	stack := pt.ExportStack(t)
+
+	yamlProgram := `
+    name: test
+    runtime: yaml
+    resources:
+      mainRes:
+        type: testprovider:index/test:Test
+        properties:
+          test: "hello"
+    `
+
+	pt2, err := pulcheck.PulCheck(t, bridgedProvider2, yamlProgram)
+	require.NoError(t, err)
+	pt2.ImportStack(t, stack)
+	pt2.Up(t, optup.ExpectNoChanges())
 }
