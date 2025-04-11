@@ -449,6 +449,12 @@ func RawStateInjectDelta(
 	outMap resource.PropertyMap,
 	instanceState shim.InstanceState,
 ) error {
+	// If called in a pulumi preview e.g. Create(preview=true) or in a continue-on-error scenario, bail because the
+	// code for deltas cannot process unknowns.
+	if resource.NewObjectProperty(outMap).ContainsUnknowns() {
+		return nil
+	}
+
 	instanceStateCty, ok := instanceState.(shim.InstanceStateWithCtyValue)
 	if !ok {
 		return nil
