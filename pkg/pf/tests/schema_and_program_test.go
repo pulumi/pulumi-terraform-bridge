@@ -626,8 +626,6 @@ func TestPFAliasesSchemaUpgrade(t *testing.T) {
 }
 
 func TestPFAliasesRenameWithAlias(t *testing.T) {
-	// TODO[pulumi/pulumi-terraform-bridge#2992]
-	t.Skip()
 	t.Parallel()
 
 	prov1 := pb.NewProvider(pb.NewProviderArgs{

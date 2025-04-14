@@ -66,20 +66,20 @@ func (m schemaOnlyDataSourceMap) Set(key string, value shim.Resource) {
 	m[key] = v
 }
 
-func (m schemaOnlyDataSourceMap) All() []runtypes.TypeName {
-	arr := make([]runtypes.TypeName, 0, len(m))
+func (m schemaOnlyDataSourceMap) All() []runtypes.TypeOrRenamedEntityName {
+	arr := make([]runtypes.TypeOrRenamedEntityName, 0, len(m))
 	for k := range m {
-		arr = append(arr, runtypes.TypeName(k))
+		arr = append(arr, runtypes.TypeOrRenamedEntityName(k))
 	}
 	return arr
 }
 
-func (m schemaOnlyDataSourceMap) Has(key runtypes.TypeName) bool {
+func (m schemaOnlyDataSourceMap) Has(key runtypes.TypeOrRenamedEntityName) bool {
 	_, ok := m[string(key)]
 	return ok
 }
 
-func (m schemaOnlyDataSourceMap) Schema(key runtypes.TypeName) runtypes.Schema {
+func (m schemaOnlyDataSourceMap) Schema(key runtypes.TypeOrRenamedEntityName) runtypes.Schema {
 	return m[string(key)].tf
 }
 

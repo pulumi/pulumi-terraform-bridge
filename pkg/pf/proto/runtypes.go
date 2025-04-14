@@ -41,7 +41,10 @@ func (p Provider) DataSources(context.Context) (runtypes.DataSources, error) {
 	return datasources{collection(v.DataSourceSchemas)}, nil
 }
 
-type schema struct{ s *tfprotov6.Schema }
+type schema struct {
+	s      *tfprotov6.Schema
+	tfName runtypes.TypeName
+}
 
 var _ = runtypes.Schema(schema{})
 
@@ -66,32 +69,40 @@ func (s schema) Shim() shim.SchemaMap {
 	return blockMap{s.s.Block}
 }
 
+func (s schema) TFName() runtypes.TypeName {
+	return s.tfName
+}
+
+var _ runtypes.Resources = resources{}
+
 type resources struct{ collection }
 
 func (resources) IsResources() {}
 
 type datasources struct{ collection }
 
+var _ runtypes.DataSources = datasources{}
+
 func (datasources) IsDataSources() {}
 
 type collection map[string]*tfprotov6.Schema
 
-func (c collection) All() []runtypes.TypeName {
-	arr := make([]runtypes.TypeName, 0, len(c))
+func (c collection) All() []runtypes.TypeOrRenamedEntityName {
+	arr := make([]runtypes.TypeOrRenamedEntityName, 0, len(c))
 	for k := range c {
-		arr = append(arr, runtypes.TypeName(k))
+		arr = append(arr, runtypes.TypeOrRenamedEntityName(k))
 	}
 	return arr
 }
 
-func (c collection) Has(key runtypes.TypeName) bool {
+func (c collection) Has(key runtypes.TypeOrRenamedEntityName) bool {
 	_, ok := c[string(key)]
 	return ok
 }
 
-func (c collection) Schema(key runtypes.TypeName) runtypes.Schema {
+func (c collection) Schema(key runtypes.TypeOrRenamedEntityName) runtypes.Schema {
 	s, ok := c[string(key)]
 	contract.Assertf(ok, "called Schema on a resource that does not exist")
 
-	return schema{s}
+	return schema{s, runtypes.TypeName(key)}
 }
