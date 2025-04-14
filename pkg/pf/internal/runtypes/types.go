@@ -45,7 +45,8 @@ type Schema interface {
 // examplecloud_thing.
 type TypeName string
 
-// This could be a [TypeName] indicating a real Terraform type or else a TypeName+RenamedEntitySuffix pseudo-type introduced by [info.RenameResourceWithAlias].
+// This could be a [TypeName] indicating a real Terraform type or else a
+// TypeName+RenamedEntitySuffix pseudo-type introduced by [info.RenameResourceWithAlias].
 type TypeOrRenamedEntityName string
 
 type collection interface {

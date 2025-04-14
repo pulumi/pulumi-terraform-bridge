@@ -298,7 +298,7 @@ func (p *provider) SignalCancellationWithContext(_ context.Context) error {
 	return nil
 }
 
-func (p *provider) terraformResourceName(resourceToken tokens.Type) (string, error) {
+func (p *provider) terraformResourceNameOrRenamedEntity(resourceToken tokens.Type) (string, error) {
 	for tfname, v := range p.info.Resources {
 		if v.Tok == resourceToken {
 			return tfname, nil
@@ -307,7 +307,7 @@ func (p *provider) terraformResourceName(resourceToken tokens.Type) (string, err
 	return "", fmt.Errorf("[pf/tfbridge] unknown resource token: %v", resourceToken)
 }
 
-func (p *provider) terraformDatasourceName(functionToken tokens.ModuleMember) (string, error) {
+func (p *provider) terraformDatasourceNameOrRenamedEntity(functionToken tokens.ModuleMember) (string, error) {
 	for tfname, v := range p.info.DataSources {
 		if v.Tok == functionToken {
 			return tfname, nil

@@ -37,7 +37,7 @@ type datasourceHandle struct {
 }
 
 func (p *provider) datasourceHandle(ctx context.Context, token tokens.ModuleMember) (datasourceHandle, error) {
-	dsName, err := p.terraformDatasourceName(token)
+	dsName, err := p.terraformDatasourceNameOrRenamedEntity(token)
 	if err != nil {
 		return datasourceHandle{}, err
 	}

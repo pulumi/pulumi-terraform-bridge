@@ -39,19 +39,19 @@ type resourceHandle struct {
 }
 
 func (p *provider) resourceHandle(ctx context.Context, urn pulumiresource.URN) (resourceHandle, error) {
-	typeName, err := p.terraformResourceName(urn.Type())
+	typeOrRenamedEntityName, err := p.terraformResourceNameOrRenamedEntity(urn.Type())
 	if err != nil {
 		return resourceHandle{}, err
 	}
 
-	schema := p.resources.Schema(runtypes.TypeOrRenamedEntityName(typeName))
+	schema := p.resources.Schema(runtypes.TypeOrRenamedEntityName(typeOrRenamedEntityName))
 
 	result := resourceHandle{
 		terraformResourceName: string(schema.TFName()),
 		schema:                schema,
 	}
 
-	if info, ok := p.info.Resources[typeName]; ok {
+	if info, ok := p.info.Resources[typeOrRenamedEntityName]; ok {
 		result.pulumiResourceInfo = info
 	}
 
@@ -62,12 +62,12 @@ func (p *provider) resourceHandle(ctx context.Context, urn pulumiresource.URN) (
 
 	objectType := result.schema.Type(ctx).(tftypes.Object)
 
-	encoder, err := p.encoding.NewResourceEncoder(typeName, objectType)
+	encoder, err := p.encoding.NewResourceEncoder(typeOrRenamedEntityName, objectType)
 	if err != nil {
 		return resourceHandle{}, fmt.Errorf("Failed to prepare a resource encoder: %s", err)
 	}
 
-	outputsDecoder, err := p.encoding.NewResourceDecoder(typeName, objectType)
+	outputsDecoder, err := p.encoding.NewResourceDecoder(typeOrRenamedEntityName, objectType)
 	if err != nil {
 		return resourceHandle{}, fmt.Errorf("Failed to prepare an resoure decoder: %s", err)
 	}
@@ -76,7 +76,7 @@ func (p *provider) resourceHandle(ctx context.Context, urn pulumiresource.URN) (
 	result.decoder = outputsDecoder
 	result.token = token
 
-	result.schemaOnlyShimResource, _ = p.schemaOnlyProvider.ResourcesMap().GetOk(typeName)
+	result.schemaOnlyShimResource, _ = p.schemaOnlyProvider.ResourcesMap().GetOk(typeOrRenamedEntityName)
 	return result, nil
 }
 
