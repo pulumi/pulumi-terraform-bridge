@@ -17,7 +17,6 @@ package tfbridge
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/ryboe/q"
 	"log"
 	"os"
 	"sort"
@@ -1765,37 +1764,24 @@ func (p *Provider) Construct(context.Context, *pulumirpc.ConstructRequest) (*pul
 func (p *Provider) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error) {
 
 	ctx = p.loggingContext(ctx, "")
-	//q.Q(req)
-	q.Q(req.GetTok())
-	q.Q(p.configValues)
 	tfschemaMap := p.config
-
-	q.Q("provider schema map:", tfschemaMap)
-
 	tfproperties := make(resource.PropertyMap)
-	for key, configValue := range p.configValues {
-		tfNameMaybe := PulumiToTerraformName(string(key), p.config, p.info.Config)
-		q.Q(tfNameMaybe)
-		q.Q(key, configValue)
-		if key == "version" {
-			continue
+
+	// For each Terraform key from p.config, we want to set the corresponding Pulumi configValue.
+	tfschemaMap.Range(func(tfKey string, _ shim.Schema) bool {
+		pulumiKey := TerraformToPulumiNameV2(tfKey, tfschemaMap, p.info.Config)
+		if configValue, ok := p.configValues[resource.PropertyKey(pulumiKey)]; ok {
+			tfproperties[resource.PropertyKey(tfKey)] = configValue
 		}
-		tfproperties[resource.PropertyKey(tfNameMaybe)] = configValue
-
-	}
-
-	q.Q(tfproperties)
+		return true
+	})
 
 	_, functionName, found := strings.Cut(req.GetTok(), "/")
 	if !found {
-		return nil, fmt.Errorf("malformed and unknown method %q", req.GetTok())
+		return nil, fmt.Errorf("error getting method name from method token %q", req.GetTok())
 	}
 	switch functionName {
 	case "terraformConfig":
-		//outputs := resource.NewPropertyMapFromMap(map[string]interface{}{
-		//	"terraformConfig": tfproperties,
-		//})
-
 		outputResult, err := plugin.MarshalProperties(tfproperties, plugin.MarshalOptions{})
 		if err != nil {
 			return nil, err
@@ -1804,9 +1790,8 @@ func (p *Provider) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulum
 			Return: outputResult,
 		}, nil
 	default:
-		return nil, fmt.Errorf("muahahaha unknown method %q", req.GetTok())
+		return nil, fmt.Errorf("unknown method token for Call %q", req.GetTok())
 	}
-	return nil, status.Error(codes.Unimplemented, "Call is not yet implemented")
 }
 
 // Invoke dynamically executes a built-in function in the provider.
