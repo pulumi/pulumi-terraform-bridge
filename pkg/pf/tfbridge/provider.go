@@ -332,7 +332,7 @@ func (p *provider) CallWithContext(_ context.Context,
 		return plugin.CallResult{}, fmt.Errorf("malformed and unknown method %q", tok)
 	}
 	switch functionName {
-	case "sayHello":
+	case "terraformConfig":
 		outputs := resource.NewPropertyMapFromMap(map[string]interface{}{
 			"message": "👋 Hello from the PF bridge!",
 		})

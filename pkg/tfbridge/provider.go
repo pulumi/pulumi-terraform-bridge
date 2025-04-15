@@ -1774,10 +1774,14 @@ func (p *Provider) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulum
 
 	tfproperties := make(resource.PropertyMap)
 	for key, configValue := range p.configValues {
-		tfNameMaybe := PulumiToTerraformName(string(key), tfschemaMap, p.info.Config)
+		tfNameMaybe := PulumiToTerraformName(string(key), p.config, p.info.Config)
 		q.Q(tfNameMaybe)
 		q.Q(key, configValue)
+		if key == "version" {
+			continue
+		}
 		tfproperties[resource.PropertyKey(tfNameMaybe)] = configValue
+
 	}
 
 	q.Q(tfproperties)
@@ -1787,12 +1791,12 @@ func (p *Provider) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulum
 		return nil, fmt.Errorf("malformed and unknown method %q", req.GetTok())
 	}
 	switch functionName {
-	case "sayHello":
-		outputs := resource.NewPropertyMapFromMap(map[string]interface{}{
-			"terraformConfig": tfproperties,
-		})
+	case "terraformConfig":
+		//outputs := resource.NewPropertyMapFromMap(map[string]interface{}{
+		//	"terraformConfig": tfproperties,
+		//})
 
-		outputResult, err := plugin.MarshalProperties(outputs, plugin.MarshalOptions{})
+		outputResult, err := plugin.MarshalProperties(tfproperties, plugin.MarshalOptions{})
 		if err != nil {
 			return nil, err
 		}

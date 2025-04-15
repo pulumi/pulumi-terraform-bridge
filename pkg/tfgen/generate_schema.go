@@ -332,14 +332,17 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg, sink diag.Sink) (pschema.Pac
 			}
 		}
 		spec.Provider = g.genResourceType(indexModToken, pack.provider)
+
+		// For pulumi-terraform-module, we would like to have a Terraform Config method on the provider.
+		// To do so, we Add a Function to this spec, and then add the Function to the provider's Methods,
+		// which will expose it to the provider server's Call() gRPC method.
 		providerSelfRef := "#/resources/pulumi:providers:" + pack.name.String()
-		sayHelloToken := "pulumi:providers:" + pack.name.String() + "/sayHello"
-		// Add a random Function to this spec, and then also add it to its methods
-		// Functions are standalone
-		sayHello := pschema.FunctionSpec{
-			Description: "whatever this is just for fun",
+		terraformConfigFunctionToken := "pulumi:providers:" + pack.name.String() + "/terraformConfig"
+		terraformConfig := pschema.FunctionSpec{
+			Description: "This function returns a Terraform config object with terraform-namecased keys," +
+				"to be used with the Terraform Module Provider.",
 			Inputs: &pschema.ObjectTypeSpec{
-				Type: sayHelloToken,
+				Type: terraformConfigFunctionToken,
 				Properties: map[string]pschema.PropertySpec{
 					"__self__": {
 						TypeSpec: pschema.TypeSpec{
@@ -356,6 +359,7 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg, sink diag.Sink) (pschema.Pac
 			ReturnType: &pschema.ReturnTypeSpec{
 				ObjectTypeSpec: &pschema.ObjectTypeSpec{
 					Type: "object",
+					//TODO: these should probably be fixed up?
 					Properties: map[string]pschema.PropertySpec{
 						"result": {
 							TypeSpec: pschema.TypeSpec{
@@ -372,10 +376,9 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg, sink diag.Sink) (pschema.Pac
 			OverlaySupportedLanguages: nil,
 		}
 
-		spec.Functions[sayHelloToken] = sayHello
-		methods := map[string]string{"sayHello": sayHelloToken}
+		spec.Functions[terraformConfigFunctionToken] = terraformConfig
+		methods := map[string]string{"terraformConfig": terraformConfigFunctionToken}
 		spec.Provider.Methods = methods
-		//q.Q(spec.Provider.Methods)
 
 		// Ensure that input properties are mirrored as output properties, but without fields set which
 		// are only meaningful for input properties.
