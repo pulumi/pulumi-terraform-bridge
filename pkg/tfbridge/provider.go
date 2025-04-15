@@ -17,6 +17,7 @@ package tfbridge
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	"github.com/ryboe/q"
 	"log"
 	"os"
@@ -1761,42 +1762,136 @@ func (p *Provider) Construct(context.Context, *pulumirpc.ConstructRequest) (*pul
 	return nil, status.Error(codes.Unimplemented, "Construct is not yet implemented")
 }
 
+//func (p *Provider) populateTfConfig(tfschema any, resourceValue resource.PropertyValue) resource.PropertyValue {
+//
+//	if resourceValue.IsObject() {
+//		q.Q("checking for object")
+//		if tfschemaMap, ok := tfschema.(*schema.Resource); ok {
+//			q.Q("trying the any cast in object")
+//			tfproperties := make(resource.PropertyMap)
+//			for tfKey, schema := range tfschemaMap.Schema {
+//				pulumiKey := TerraformToPulumiNameV2(tfKey, p.config, p.info.Config)
+//				if configValue, ok := resourceValue.ObjectValue()[resource.PropertyKey(pulumiKey)]; ok {
+//					tfproperties[resource.PropertyKey(tfKey)] = p.populateTfConfig(schema, configValue)
+//				}
+//			}
+//			return resource.NewObjectProperty(tfproperties)
+//		}
+//
+//	}
+//	if resourceValue.IsArray() {
+//		q.Q("checking for array")
+//		if tfschemaMap, ok := tfschema.(*schema.Resource); ok {
+//			q.Q("trying the any cast in array")
+//
+//			//make another property map for returning
+//			tfproperties := make(resource.PropertyMap)
+//			for tfKey, schema := range tfschemaMap.Schema {
+//				// do get the key again
+//				//pulumiKey := TerraformToPulumiNameV2(tfKey, tfschemaMap, p.info.Config)
+//				//but now we don't look it up in a map - resourceValue is a List
+//
+//				list := resourceValue.ArrayValue()
+//				for _, value := range list {
+//					// how do I recurse if the list value is _also_ a nested object?
+//					tfproperties[resource.PropertyKey(tfKey)] = p.populateTfConfig(schema, value)
+//
+//				}
+//			}
+//			return resource.NewObjectProperty(tfproperties)
+//		}
+//	}
+//
+//	if resourceValue.IsBool() || resourceValue.IsString() || resourceValue.IsNumber() {
+//		//if tfschemaMap, ok := tfschema.(*schema.Resource); ok {
+//
+//		return resourceValue
+//		//}
+//	}
+//	q.Q("hitting default")
+//	return resource.PropertyValue{}
+//}
+
+func convertToPropertyMap(input map[string]interface{}) resource.PropertyMap {
+	result := make(resource.PropertyMap)
+	for k, v := range input {
+		result[resource.PropertyKey(k)] = convertToPropertyValue(v)
+	}
+	return result
+}
+
+// Helper to convert nested types into PropertyValue
+func convertToPropertyValue(v interface{}) resource.PropertyValue {
+	switch val := v.(type) {
+	case map[string]interface{}:
+		return resource.NewObjectProperty(convertToPropertyMap(val))
+	case []interface{}:
+		elements := make([]resource.PropertyValue, len(val))
+		for i, item := range val {
+			elements[i] = convertToPropertyValue(item)
+		}
+		return resource.NewArrayProperty(elements)
+	case string:
+		return resource.NewStringProperty(val)
+	case bool:
+		return resource.NewBoolProperty(val)
+	case int:
+		return resource.NewNumberProperty(float64(val))
+	case float64:
+		return resource.NewNumberProperty(val)
+	default:
+		return resource.NewComputedProperty(resource.Computed{})
+	}
+}
+
 // Call dynamically executes a method in the provider associated with a component resource.
 func (p *Provider) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error) {
 
 	ctx = p.loggingContext(ctx, "")
-	//q.Q(req)
-	q.Q(req.GetTok())
-	q.Q(p.configValues)
-	tfschemaMap := p.config
+	//tfschemaMap := p.config
+	//tfproperties := make(resource.PropertyMap)
 
-	q.Q("provider schema map:", tfschemaMap)
+	//
+	//// For each Terraform key from p.config, we want to set the corresponding Pulumi configValue.
+	//tfschemaMap.Range(func(tfKey string, _ shim.Schema) bool {
+	//	pulumiKey := TerraformToPulumiNameV2(tfKey, tfschemaMap, p.info.Config)
+	//	if configValue, ok := p.configValues[resource.PropertyKey(pulumiKey)]; ok {
+	//		tfproperties[resource.PropertyKey(tfKey)] = configValue
+	//	}
+	//	return true
+	//})
 
-	tfproperties := make(resource.PropertyMap)
-	for key, configValue := range p.configValues {
-		tfNameMaybe := PulumiToTerraformName(string(key), p.config, p.info.Config)
-		q.Q(tfNameMaybe)
-		q.Q(key, configValue)
-		if key == "version" {
-			continue
-		}
-		tfproperties[resource.PropertyKey(tfNameMaybe)] = configValue
+	//tfproperty := p.populateTfConfig(tfschemaMap, resource.NewObjectProperty(p.configValues))
+	//tfproperties = tfproperty.ObjectValue()
+	q.Q("ONLY CONSIDER Q BELOW THIS LINE")
+	q.Q("*******************")
 
+	resConfig, err := buildTerraformConfig(ctx, p, p.configValues)
+
+	q.Q(resConfig, err)
+
+	var rawConfig terraform.ResourceConfig
+
+	q.Q("testing the type also for AWS wtf")
+	if cfg, ok := resConfig.(shim.ResourceConfigWithGetterForSdkV2); ok {
+		q.Q("actually the type")
+		rawConfig = cfg.GetTFConfig()
 	}
 
-	q.Q(tfproperties)
+	q.Q(rawConfig.Config)
+
+	something := convertToPropertyMap(rawConfig.Config)
+	q.Q(something)
+
+	// Now read into tfproperties
 
 	_, functionName, found := strings.Cut(req.GetTok(), "/")
 	if !found {
-		return nil, fmt.Errorf("malformed and unknown method %q", req.GetTok())
+		return nil, fmt.Errorf("error getting method name from method token %q", req.GetTok())
 	}
 	switch functionName {
 	case "terraformConfig":
-		//outputs := resource.NewPropertyMapFromMap(map[string]interface{}{
-		//	"terraformConfig": tfproperties,
-		//})
-
-		outputResult, err := plugin.MarshalProperties(tfproperties, plugin.MarshalOptions{})
+		outputResult, err := plugin.MarshalProperties(something, plugin.MarshalOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -1804,9 +1899,8 @@ func (p *Provider) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulum
 			Return: outputResult,
 		}, nil
 	default:
-		return nil, fmt.Errorf("muahahaha unknown method %q", req.GetTok())
+		return nil, fmt.Errorf("unknown method token for Call %q", req.GetTok())
 	}
-	return nil, status.Error(codes.Unimplemented, "Call is not yet implemented")
 }
 
 // Invoke dynamically executes a built-in function in the provider.
