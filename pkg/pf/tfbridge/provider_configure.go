@@ -82,6 +82,8 @@ func (p *provider) ConfigureWithContext(ctx context.Context, inputs resource.Pro
 
 	config, err := convert.EncodePropertyMapToDynamic(p.configEncoder, p.configType, inputs)
 	q.Q(config)
+	q.Q(inputs)
+
 	if err != nil {
 		return fmt.Errorf("cannot encode provider configuration to call ConfigureProvider: %w", err)
 	}
