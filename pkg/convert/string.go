@@ -87,7 +87,7 @@ func (*stringEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.Value
 	}
 }
 
-func (*stringDecoder) toPropertyValue(v tftypes.Value, _ DecodeOptions) (resource.PropertyValue, error) {
+func (*stringDecoder) toPropertyValue(v tftypes.Value) (resource.PropertyValue, error) {
 	if !v.IsKnown() {
 		return unknownProperty(), nil
 	}

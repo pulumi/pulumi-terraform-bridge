@@ -67,7 +67,7 @@ func (enc *mapEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.Valu
 	return tftypes.NewValue(mapTy, values), nil
 }
 
-func (dec *mapDecoder) toPropertyValue(v tftypes.Value, dopts DecodeOptions) (resource.PropertyValue, error) {
+func (dec *mapDecoder) toPropertyValue(v tftypes.Value) (resource.PropertyValue, error) {
 	elements := map[string]tftypes.Value{}
 	if err := v.As(&elements); err != nil {
 		return resource.PropertyValue{},
@@ -76,7 +76,7 @@ func (dec *mapDecoder) toPropertyValue(v tftypes.Value, dopts DecodeOptions) (re
 
 	values := make(resource.PropertyMap)
 	for k, e := range elements {
-		ev, err := decode(dec.elementDecoder, e, dopts)
+		ev, err := decode(dec.elementDecoder, e)
 		if err != nil {
 			return resource.PropertyValue{},
 				fmt.Errorf("decMap fails with %s: %w", e.String(), err)
