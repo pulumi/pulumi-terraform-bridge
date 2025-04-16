@@ -1358,8 +1358,10 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 		}
 	}
 
-	if err := RawStateInjectDelta(ctx, res.TF.Schema(), res.Schema.Fields, props, newstate); err != nil {
-		return nil, err
+	if !p.info.DisableRawStateDelta {
+		if err := RawStateInjectDelta(ctx, res.TF.Schema(), res.Schema.Fields, props, newstate); err != nil {
+			return nil, err
+		}
 	}
 
 	mprops, err := plugin.MarshalProperties(props, plugin.MarshalOptions{
@@ -1486,8 +1488,11 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 			return nil, err
 		}
 
-		if err := RawStateInjectDelta(ctx, res.TF.Schema(), res.Schema.Fields, props, newstate); err != nil {
-			return nil, err
+		if !p.info.DisableRawStateDelta {
+			err := RawStateInjectDelta(ctx, res.TF.Schema(), res.Schema.Fields, props, newstate)
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		mprops, err := plugin.MarshalProperties(props, plugin.MarshalOptions{
@@ -1706,8 +1711,10 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 		}
 	}
 
-	if err := RawStateInjectDelta(ctx, res.TF.Schema(), res.Schema.Fields, props, newstate); err != nil {
-		return nil, err
+	if !p.info.DisableRawStateDelta {
+		if err := RawStateInjectDelta(ctx, res.TF.Schema(), res.Schema.Fields, props, newstate); err != nil {
+			return nil, err
+		}
 	}
 
 	mprops, err := plugin.MarshalProperties(props, plugin.MarshalOptions{
