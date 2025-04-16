@@ -127,8 +127,10 @@ func (p *provider) CreateWithContext(
 		return "", nil, 0, err
 	}
 
-	if err := insertRawStateDelta(ctx, &rh, createdStateMap, createdState.state.Value); err != nil {
-		return "", nil, 0, err
+	if !p.info.DisableRawStateDelta {
+		if err := insertRawStateDelta(ctx, &rh, createdStateMap, createdState.state.Value); err != nil {
+			return "", nil, 0, err
+		}
 	}
 
 	return createdID, createdStateMap, resource.StatusOK, nil
