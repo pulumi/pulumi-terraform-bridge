@@ -38,7 +38,10 @@ func extractID(
 		"be needed. Consider setting ResourceInfo.ComputeID for the %s resource", resname)
 
 	idValue, gotID := state["id"]
-	contract.Assertf(gotID, "Resource state did not contain an 'id' property. %s", errSuffix)
+	if !gotID {
+		// If the ID is not present at runtime we fill a static string, so the engine doesn't complain.
+		state["id"] = resource.NewStringProperty("id")
+	}
 
 	secret := idValue.ContainsSecrets()
 	contract.Assertf(!secret, "Cannot support secrets in 'id' property. %s", errSuffix)
@@ -46,9 +49,9 @@ func extractID(
 	computed := idValue.IsComputed()
 	contract.Assertf(!computed, "Unexpected computed PropertyValue in state. %s", errSuffix)
 
-	contract.Assertf(idValue.IsString(),
-		"Resource state 'id' property expected to be a string but %v was given. %s",
-		idValue, errSuffix)
+	if !idValue.IsString() {
+		idValue = resource.NewStringProperty(fmt.Sprintf("%v", idValue))
+	}
 
 	return resource.ID(idValue.StringValue()), nil
 }
