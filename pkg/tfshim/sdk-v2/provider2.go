@@ -514,10 +514,6 @@ func (p *v2Provider) ensureStateIsUpgraded(
 }
 
 // New-style constructor for empty states.
-func (p v2Provider) NewEmptyState(_ context.Context, t string) shim.InstanceState {
-	return p.newEmptyStateImpl(t)
-}
-
 func (p v2Provider) newEmptyStateImpl(t string) *v2InstanceState2 {
 	res := p.tf.ResourcesMap[t]
 	ty := res.CoreConfigSchema().ImpliedType()

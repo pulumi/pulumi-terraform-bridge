@@ -62,7 +62,10 @@ const (
 type InstanceDiff interface {
 	Attribute(key string) *ResourceAttrDiff
 	HasNoChanges() bool
+
+	// When planning resource creation, pass nil to priorState.
 	ProposedState(res Resource, priorState InstanceState) (InstanceState, error)
+
 	Destroy() bool
 	RequiresNew() bool
 
@@ -237,7 +240,9 @@ type Resource interface {
 	DeprecationMessage() string
 	Timeouts() *ResourceTimeout
 
-	// Prefer [ResourceWithNewInstanceState.NewInstanceState] when cty.Value form can be recovered.
+	// Recovers an InstanceState from data originating from a Pulumi statefile.
+	//
+	// Newer versions of the bridge prefer to call UpgradeState instead whenever raw state is available.
 	InstanceState(id string, object, meta map[string]interface{}) (InstanceState, error)
 
 	DecodeTimeouts(config ResourceConfig) (*ResourceTimeout, error)
@@ -286,7 +291,7 @@ type Provider interface {
 	Diff(
 		ctx context.Context,
 		t string,
-		s InstanceState,
+		s InstanceState, // may be nil when planning Create
 		c ResourceConfig,
 		opts DiffOptions,
 	) (InstanceDiff, error)
@@ -373,9 +378,6 @@ func (x *RawState) UnmarshalJSON(raw []byte) error {
 
 type ProviderWithRawStateSupport interface {
 	Provider
-
-	// Construct a new empty state when creating a resource.
-	NewEmptyState(ctx context.Context, t string) InstanceState
 
 	// Ensure raw state is upgraded to the current resource schema version.
 	UpgradeState(ctx context.Context, t string, state RawState, meta map[string]any) (InstanceState, error)
