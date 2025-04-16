@@ -177,6 +177,10 @@ type Provider struct {
 	// EnableAccuratePFBridgePreview makes the Plugin Framework bridge use an experimental feature
 	// to generate more accurate diffs and previews for resources
 	EnableAccuratePFBridgePreview bool
+
+	// Newer versions of the bridge preserve Terraform raw state by saving the delta between Pulumi state and
+	// Terraform raw state into the state file. Setting this to true disables the feature.
+	DisableRawStateDelta bool
 }
 
 // HclExampler represents a supplemental HCL example for a given resource or function.
