@@ -45,12 +45,12 @@ type adaptedDecoder[T Decoder] struct {
 	decoder T
 }
 
-func (d adaptedDecoder[T]) toPropertyValue(v tftypes.Value, dopts DecodeOptions) (resource.PropertyValue, error) {
+func (d adaptedDecoder[T]) toPropertyValue(v tftypes.Value) (resource.PropertyValue, error) {
 	adapted, err := d.adapter(v)
 	if err != nil {
 		return resource.PropertyValue{}, fmt.Errorf("failed to adapt for %T: %w", d.decoder, err)
 	}
-	return decode(d.decoder, adapted, dopts)
+	return decode(d.decoder, adapted)
 }
 
 func newIntOverrideStringEncoder() Encoder {

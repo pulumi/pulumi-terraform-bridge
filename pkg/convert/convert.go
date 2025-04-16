@@ -100,7 +100,7 @@ type Decoder interface {
 	//
 	// This is because toPropertyValue is not required to handle [tftypes.Value]
 	// modifiers, like secrets and unknown values.
-	toPropertyValue(value tftypes.Value, dopts DecodeOptions) (resource.PropertyValue, error)
+	toPropertyValue(tftypes.Value) (resource.PropertyValue, error)
 }
 
 func NewObjectDecoder(os ObjectSchema) (Decoder, error) {
@@ -121,33 +121,18 @@ func EncodePropertyMap(enc Encoder, pmap resource.PropertyMap) (tftypes.Value, e
 	return enc.fromPropertyValue(propertyvalue.RemoveSecrets(resource.NewObjectProperty(pmap)))
 }
 
-func decode(dec Decoder, v tftypes.Value, dopts DecodeOptions) (resource.PropertyValue, error) {
+func decode(dec Decoder, v tftypes.Value) (resource.PropertyValue, error) {
 	if !v.IsKnown() {
 		return unknownProperty(), nil
 	}
 	if v.IsNull() {
 		return resource.NewPropertyValue(nil), nil
 	}
-	return dec.toPropertyValue(v, dopts)
-}
-
-type DecodeOptions struct {
-	// If set, explicit resource.PropertyValue null markers are emitted for null-valued object fields. By default
-	// these null-valued fields are omitted.
-	PreserveNull bool
+	return dec.toPropertyValue(v)
 }
 
 func DecodePropertyMap(ctx context.Context, dec Decoder, v tftypes.Value) (resource.PropertyMap, error) {
-	return DecodePropertyMapWithOptions(ctx, dec, v, DecodeOptions{})
-}
-
-func DecodePropertyMapWithOptions(
-	ctx context.Context,
-	dec Decoder,
-	v tftypes.Value,
-	dopts DecodeOptions,
-) (resource.PropertyMap, error) {
-	pv, err := decode(dec, v, dopts)
+	pv, err := decode(dec, v)
 	if err != nil {
 		return nil, err
 	}
