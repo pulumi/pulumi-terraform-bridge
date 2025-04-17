@@ -484,14 +484,14 @@ func RawStateComputeDelta(
 
 	vWithoutTimeouts := v.Remove("timeouts")
 	delta := ih.delta(pv, vWithoutTimeouts)
-	err := delta.turnaroundCheck(newRawStateFromValue(vWithoutTimeouts), pv)
+	err := delta.turnaroundCheck(ctx, newRawStateFromValue(vWithoutTimeouts), pv)
 	if err != nil {
 		return RawStateDelta{}, err
 	}
 	return delta, nil
 }
 
-func (d RawStateDelta) turnaroundCheck(rawState shim.RawState, pv resource.PropertyValue) error {
+func (d RawStateDelta) turnaroundCheck(ctx context.Context, rawState shim.RawState, pv resource.PropertyValue) error {
 	// Double-check that recovering works as expected, before it is written to the state.
 	rawStateRecovered, err := d.Recover(pv)
 	if err != nil {
@@ -509,16 +509,20 @@ func (d RawStateDelta) turnaroundCheck(rawState shim.RawState, pv resource.Prope
 	}
 
 	if !bytes.Equal(rawStateRecoveredBytes, rawStateWithoutTimeoutsBytes) {
+		logger := log.TryGetLogger(ctx)
+		if logger == nil {
+			logger = log.NewDiscardLogger()
+		}
+		logger.Debug(fmt.Sprintf("recovered raw state does not byte-for-byte match the original raw state\n"+
+			"rawStateWithoutTimeoutsBytes=%s\n"+
+			"rawStateRecoveredBytes=%s\n"+
+			"pv=%s\n"+
+			"delta=%s", string(rawStateWithoutTimeoutsBytes),
+			string(rawStateRecoveredBytes),
+			pv.String(),
+			d.Marshal().String(),
+		))
 		return fmt.Errorf("recovered raw state does not byte-for-byte match the original raw state")
-		// return fmt.Errorf("recovered raw state does not byte-for-byte match the original raw state\n"+
-		// 	"rawStateWithoutTimeoutsBytes=%s\n"+
-		// 	"rawStateRecoveredBytes=%s\n"+
-		// 	"pv=%s\n"+
-		// 	"delta=%s", string(rawStateWithoutTimeoutsBytes),
-		// 	string(rawStateRecoveredBytes),
-		// 	pv.String(),
-		// 	d.Marshal().String(),
-		// )
 	}
 
 	return nil
