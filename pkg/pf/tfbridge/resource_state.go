@@ -74,18 +74,6 @@ func newResourceState(ctx context.Context, rh *resourceHandle, private []byte) *
 	}
 }
 
-func recoverRawState(props resource.PropertyMap, deltaPV resource.PropertyValue) (*tfprotov6.RawState, error) {
-	delta, err := tfbridge.UnmarshalRawStateDelta(deltaPV)
-	if err != nil {
-		return nil, fmt.Errorf("NewRawStateDeltaFromPropertyValue failed: %w", err)
-	}
-	stateValue, err := delta.Recover(resource.NewObjectProperty(props))
-	if err != nil {
-		return nil, fmt.Errorf("delta.Recover failed: %w", err)
-	}
-	return &tfprotov6.RawState{JSON: stateValue}, nil
-}
-
 func parseResourceStateFromTF(
 	ctx context.Context,
 	rh *resourceHandle,
@@ -340,4 +328,16 @@ func (p *provider) upgradeResourceState(
 		Value:           v,
 		Private:         meta.PrivateState,
 	}}, nil
+}
+
+func recoverRawState(props resource.PropertyMap, deltaPV resource.PropertyValue) (*tfprotov6.RawState, error) {
+	delta, err := tfbridge.UnmarshalRawStateDelta(deltaPV)
+	if err != nil {
+		return nil, fmt.Errorf("NewRawStateDeltaFromPropertyValue failed: %w", err)
+	}
+	stateValue, err := delta.Recover(resource.NewObjectProperty(props))
+	if err != nil {
+		return nil, fmt.Errorf("delta.Recover failed: %w", err)
+	}
+	return &tfprotov6.RawState{JSON: stateValue}, nil
 }
