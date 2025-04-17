@@ -671,7 +671,7 @@ func TestMetaProperties(t *testing.T) {
 			resInst := Resource{TF: res, Schema: &ResourceInfo{}, TFName: resName}
 
 			state, err = makeTerraformStateWithOpts(
-				ctx, prov, resInst, state.ID(), props,
+				ctx, resInst, state.ID(), props,
 				makeTerraformStateOptions{defaultZeroSchemaVersion: true})
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
@@ -687,7 +687,7 @@ func TestMetaProperties(t *testing.T) {
 			delete(props, reservedkeys.Meta)
 
 			state, err = makeTerraformStateWithOpts(
-				ctx, prov, resInst, state.ID(), props,
+				ctx, resInst, state.ID(), props,
 				makeTerraformStateOptions{defaultZeroSchemaVersion: true})
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
@@ -718,7 +718,7 @@ func TestMetaProperties(t *testing.T) {
 			assert.NotNil(t, props)
 
 			state, err = makeTerraformStateWithOpts(
-				ctx, prov, resInst, state.ID(), props,
+				ctx, resInst, state.ID(), props,
 				makeTerraformStateOptions{defaultZeroSchemaVersion: true})
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
@@ -751,7 +751,7 @@ func TestInjectingCustomTimeouts(t *testing.T) {
 			resInst := Resource{TF: res, Schema: &ResourceInfo{}, TFName: resName}
 
 			state, err = makeTerraformStateWithOpts(
-				ctx, prov, resInst, state.ID(), props,
+				ctx, resInst, state.ID(), props,
 				makeTerraformStateOptions{defaultZeroSchemaVersion: true})
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
@@ -767,7 +767,7 @@ func TestInjectingCustomTimeouts(t *testing.T) {
 			delete(props, reservedkeys.Meta)
 
 			state, err = makeTerraformStateWithOpts(
-				ctx, prov, resInst, state.ID(), props,
+				ctx, resInst, state.ID(), props,
 				makeTerraformStateOptions{defaultZeroSchemaVersion: true})
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
@@ -802,7 +802,7 @@ func TestInjectingCustomTimeouts(t *testing.T) {
 			assert.NotNil(t, props)
 
 			state, err = makeTerraformStateWithOpts(
-				ctx, prov, resInst, state.ID(), props,
+				ctx, resInst, state.ID(), props,
 				makeTerraformStateOptions{defaultZeroSchemaVersion: true})
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
@@ -850,7 +850,7 @@ func TestResultAttributesRoundTrip(t *testing.T) {
 		assert.NotNil(t, props)
 
 		state, err = makeTerraformStateWithOpts(
-			ctx, prov, Resource{TF: res, Schema: &ResourceInfo{}, TFName: resName},
+			ctx, Resource{TF: res, Schema: &ResourceInfo{}, TFName: resName},
 			state.ID(), props,
 			makeTerraformStateOptions{defaultZeroSchemaVersion: true})
 		assert.NoError(t, err)

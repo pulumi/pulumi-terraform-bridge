@@ -1124,11 +1124,17 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 		return nil, err
 	}
 
-	state, err := makeTerraformStateWithOpts(ctx, p.tf, res, req.GetId(), olds,
-		makeTerraformStateOptions(opts),
-	)
-	if err != nil {
-		return nil, errors.Wrapf(err, "unmarshaling %s's instance state", urn)
+	var state shim.InstanceState
+	if pNew, enabled := makeTerraformStateViaUpgradeEnabled(p.info, p.tf, olds); enabled {
+		state, err = makeTerraformStateViaUpgrade(ctx, pNew, res, olds)
+		if err != nil {
+			return nil, errors.Wrapf(err, "unmarshaling %s's instance state via upgrade", urn)
+		}
+	} else {
+		state, err = makeTerraformStateWithOpts(ctx, res, req.GetId(), olds, makeTerraformStateOptions(opts))
+		if err != nil {
+			return nil, errors.Wrapf(err, "unmarshaling %s's instance state", urn)
+		}
 	}
 
 	news, err := plugin.UnmarshalProperties(req.GetNews(),
@@ -1413,11 +1419,31 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 	if err != nil {
 		return nil, err
 	}
-	state, err := unmarshalTerraformStateWithOpts(ctx, p.tf, res, id, req.GetProperties(), fmt.Sprintf("%s.state", label),
-		unmarshalTerraformStateOptions(opts),
-	)
+
+	props, err := plugin.UnmarshalProperties(req.GetProperties(), plugin.MarshalOptions{
+		Label:     fmt.Sprintf("%s.state", label),
+		SkipNulls: true,
+	})
 	if err != nil {
-		return nil, errors.Wrapf(err, "unmarshaling %s's instance state", urn)
+		return nil, err
+	}
+
+	props, err = transformFromState(ctx, res.Schema, props)
+	if err != nil {
+		return nil, err
+	}
+
+	var state shim.InstanceState
+	if pNew, enabled := makeTerraformStateViaUpgradeEnabled(p.info, p.tf, props); enabled {
+		state, err = makeTerraformStateViaUpgrade(ctx, pNew, res, props)
+		if err != nil {
+			return nil, errors.Wrapf(err, "unmarshaling %s's instance state via upgrade", urn)
+		}
+	} else {
+		state, err = makeTerraformStateWithOpts(ctx, res, req.GetId(), props, makeTerraformStateOptions(opts))
+		if err != nil {
+			return nil, errors.Wrapf(err, "unmarshaling %s's instance state", urn)
+		}
 	}
 
 	var isImportOrGet bool
@@ -1617,11 +1643,17 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 		return nil, err
 	}
 
-	state, err := makeTerraformStateWithOpts(ctx, p.tf, res, req.GetId(), olds,
-		makeTerraformStateOptions(opts),
-	)
-	if err != nil {
-		return nil, errors.Wrapf(err, "unmarshaling %s's instance state", urn)
+	var state shim.InstanceState
+	if pNew, enabled := makeTerraformStateViaUpgradeEnabled(p.info, p.tf, olds); enabled {
+		state, err = makeTerraformStateViaUpgrade(ctx, pNew, res, olds)
+		if err != nil {
+			return nil, errors.Wrapf(err, "unmarshaling %s's instance state via upgrade", urn)
+		}
+	} else {
+		state, err = makeTerraformStateWithOpts(ctx, res, req.GetId(), olds, makeTerraformStateOptions(opts))
+		if err != nil {
+			return nil, errors.Wrapf(err, "unmarshaling %s's instance state", urn)
+		}
 	}
 
 	news, err := plugin.UnmarshalProperties(req.GetNews(),
@@ -1755,12 +1787,33 @@ func (p *Provider) Delete(ctx context.Context, req *pulumirpc.DeleteRequest) (*p
 	if err != nil {
 		return nil, err
 	}
+
 	// Fetch the resource attributes since many providers need more than just the ID to perform the delete.
-	state, err := unmarshalTerraformStateWithOpts(ctx, p.tf, res, req.GetId(), req.GetProperties(), label,
-		unmarshalTerraformStateOptions(opts),
-	)
+
+	props, err := plugin.UnmarshalProperties(req.GetProperties(), plugin.MarshalOptions{
+		Label:     label,
+		SkipNulls: true,
+	})
 	if err != nil {
 		return nil, err
+	}
+
+	props, err = transformFromState(ctx, res.Schema, props)
+	if err != nil {
+		return nil, err
+	}
+
+	var state shim.InstanceState
+	if pNew, enabled := makeTerraformStateViaUpgradeEnabled(p.info, p.tf, props); enabled {
+		state, err = makeTerraformStateViaUpgrade(ctx, pNew, res, props)
+		if err != nil {
+			return nil, errors.Wrapf(err, "unmarshaling %s's instance state via upgrade", urn)
+		}
+	} else {
+		state, err = makeTerraformStateWithOpts(ctx, res, req.GetId(), props, makeTerraformStateOptions(opts))
+		if err != nil {
+			return nil, errors.Wrapf(err, "unmarshaling %s's instance state", urn)
+		}
 	}
 
 	// Create a new destroy diff.
