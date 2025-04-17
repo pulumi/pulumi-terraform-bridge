@@ -5850,198 +5850,125 @@ func TestProcessImportValidationErrors(t *testing.T) {
 func TestProviderCall(t *testing.T) {
 	t.Parallel()
 	shimProvider := shimv2.NewProvider(testTFProviderV2)
-	provider := &Provider{
-		tf:     shimProvider,
-		config: shimv2.NewSchemaMap(testTFProviderV2.Schema),
-	}
-	provider.resources = map[tokens.Type]Resource{
-		"ExampleResource": {
-			TF:     shimProvider.ResourcesMap().Get("example_resource"),
-			TFName: "example_resource",
-			Schema: &ResourceInfo{Tok: "ExampleResource"},
+
+	nestedConfigSchema := map[string]*schema.Schema{
+		"region": {
+			Type:     schema.TypeString,
+			Optional: true,
 		},
-	}
-	provider.dataSources = map[tokens.ModuleMember]DataSource{
-		"testprovider:index/res:Res": {
-			TF:     shimProvider.DataSourcesMap().Get("example_resource"),
-			TFName: "example_resource",
-			Schema: &DataSourceInfo{
-				Tok: "testprovider:index/res:Res",
+		"ignore_tags": {
+			Type:     schema.TypeList,
+			Optional: true,
+			MaxItems: 1,
+			Elem: &schema.Resource{
+				Schema: map[string]*schema.Schema{
+					"key_prefixes": {
+						Type:     schema.TypeString,
+						Optional: true,
+					},
+				},
+			},
+		},
+		"nested_list": {
+			Type:     schema.TypeList,
+			Optional: true,
+			Elem: &schema.Resource{
+				Schema: map[string]*schema.Schema{
+					"key": {
+						Type:     schema.TypeString,
+						Required: true,
+					},
+					"value": {
+						Type:     schema.TypeString,
+						Required: true,
+					},
+				},
 			},
 		},
 	}
-	//// Call Configure
-	//
-	//configureReq := &pulumirpc.ConfigureRequest{
-	//	Variables: map[string]string{
-	//		"digitalocean:config:apiEndpoint": "https://api.digitalocean.com",
-	//	},
-	//	Args:                   nil,
-	//	Id:                     nil,
-	//	Urn:                    nil,
-	//	Name:                   nil,
-	//	Type:                   nil,
-	//}
 
-	//variables:{key:"digitalocean:config:apiEndpoint"  value:"https://api.digitalocean.com"}  variables:{key:"digitalocean:config:httpRetryMax"  value:"2"}  variables:{key:"digitalocean:config:token"  value:"mytoken"}  args:{fields:{key:"apiEndpoint"  value:{string_value:"https://api.digitalocean.com"}}  fields:{key:"httpRetryMax"  value:{string_value:"2"}}  fields:{key:"token"  value:{string_value:"mytoken"}}  fields:{key:"version"  value:{string_value:"4.0.0-alpha.0+dev"}}}  acceptSecrets:true  acceptResources:true  sends_old_inputs:true  sends_old_inputs_to_delete:true  id:"04da6b54-80e4-46f7-96ec-b56ff0331ba9"  urn:"urn:pulumi:dev::config-experiment::pulumi:providers:digitalocean::tlsProvider"  name:"tlsProvider"  type:"pulumi:providers:digitalocean"
-
-	//provider.Configure(context.Background())
-
-	provider.configValues = resource.PropertyMap{
-		"apiEndpoint": {
-			V: "https://api.digitalocean.com",
-		},
-		"httpRetryMax": {
-			V: float64(2),
-		},
-		"token": {
-			V: "mytoken",
-		},
-		"version": {
-			V: "4.0.0-alpha.0+dev",
-		},
+	provider := &Provider{
+		tf:     shimProvider,
+		config: shimv2.NewSchemaMap(nestedConfigSchema),
 	}
 
-	provider.config = shimv2.NewSchemaMap(map[string]*schema.Schema{
-		"api_endpoint":        &schema.Schema{Type: 4, ConfigMode: 0, Required: true, Optional: false, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "The URL to use for the DigitalOcean API.", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
-		"http_retry_max":      &schema.Schema{Type: 2, ConfigMode: 0, Required: false, Optional: true, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "The maximum number of retries on a failed API request.", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
-		"http_retry_wait_max": &schema.Schema{Type: 3, ConfigMode: 0, Required: false, Optional: true, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "The maximum wait time (in seconds) between failed API requests.", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
-		"http_retry_wait_min": &schema.Schema{Type: 3, ConfigMode: 0, Required: false, Optional: true, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "The minimum wait time (in seconds) between failed API requests.", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
-		"requests_per_second": &schema.Schema{Type: 3, ConfigMode: 0, Required: false, Optional: true, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "The rate of requests per second to limit the HTTP client.", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
-		"spaces_access_id":    &schema.Schema{Type: 4, ConfigMode: 0, Required: false, Optional: true, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "The access key ID for Spaces API operations.", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
-		"spaces_endpoint":     &schema.Schema{Type: 4, ConfigMode: 0, Required: false, Optional: true, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "The URL to use for the DigitalOcean Spaces API.", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
-		"spaces_secret_key":   &schema.Schema{Type: 4, ConfigMode: 0, Required: false, Optional: true, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "The secret access key for Spaces API operations.", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
-		"token":               &schema.Schema{Type: 4, ConfigMode: 0, Required: false, Optional: true, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "The token key for API operations.", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
-	})
+	//// Set expected configValues and config schema map
+	//provider.configValues = resource.PropertyMap{
+	//	"apiEndpoint": {
+	//		V: "https://api.digitalocean.com",
+	//	},
+	//	"httpRetryMax": {
+	//		V: float64(2),
+	//	},
+	//	"token": {
+	//		V: "mytoken",
+	//	},
+	//	"version": {
+	//		V: "4.0.0-alpha.0+dev",
+	//	},
+	//}
+	//
+	//provider.config = shimv2.NewSchemaMap(map[string]*schema.Schema{
+	//	"api_endpoint":        &schema.Schema{Type: 4, ConfigMode: 0, Required: true, Optional: false, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "The URL to use for the DigitalOcean API.", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
+	//	"http_retry_max":      &schema.Schema{Type: 2, ConfigMode: 0, Required: false, Optional: true, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "The maximum number of retries on a failed API request.", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
+	//	"http_retry_wait_max": &schema.Schema{Type: 3, ConfigMode: 0, Required: false, Optional: true, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "The maximum wait time (in seconds) between failed API requests.", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
+	//	"http_retry_wait_min": &schema.Schema{Type: 3, ConfigMode: 0, Required: false, Optional: true, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "The minimum wait time (in seconds) between failed API requests.", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
+	//	"requests_per_second": &schema.Schema{Type: 3, ConfigMode: 0, Required: false, Optional: true, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "The rate of requests per second to limit the HTTP client.", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
+	//	"spaces_access_id":    &schema.Schema{Type: 4, ConfigMode: 0, Required: false, Optional: true, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "The access key ID for Spaces API operations.", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
+	//	"spaces_endpoint":     &schema.Schema{Type: 4, ConfigMode: 0, Required: false, Optional: true, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "The URL to use for the DigitalOcean Spaces API.", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
+	//	"spaces_secret_key":   &schema.Schema{Type: 4, ConfigMode: 0, Required: false, Optional: true, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "The secret access key for Spaces API operations.", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
+	//	"token":               &schema.Schema{Type: 4, ConfigMode: 0, Required: false, Optional: true, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "The token key for API operations.", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
+	//})
+	//
 
+	//
+	//resp, err := provider.Call(context.Background(), req)
+	//
+	//require.NoError(t, err)
+	//require.NotNil(t, resp)
+	//
+
+	// Configure the test provider to populate with config inputs
+	pulumiConfigs, err := plugin.MarshalProperties(resource.PropertyMap{
+		"region": resource.NewStringProperty("us-west-3"),
+		"ignoreTags": resource.NewObjectProperty(resource.PropertyMap{
+			"keyPrefixes": resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewStringProperty("what"),
+				resource.NewStringProperty("no"),
+				resource.NewStringProperty("not"),
+				resource.NewStringProperty("like"),
+				resource.NewStringProperty("this"),
+			}),
+		}),
+	}, plugin.MarshalOptions{KeepUnknowns: true})
+	assert.NoError(t, err)
+
+	// Actually test Call
 	req := &pulumirpc.CallRequest{
 		Tok: "pulumi:providers:testprovider/terraformConfig",
 	}
+	configureResp, err := provider.Configure(context.Background(), &pulumirpc.ConfigureRequest{
+		Args: pulumiConfigs,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, configureResp)
+	// Test that nested config works
+	// TODO: possibly test invalid inputs
+	// TODO: do more detailed result assertions
 
-	resp, err := provider.Call(context.Background(), req)
+	callResp, err := provider.Call(context.Background(), req)
 
 	require.NoError(t, err)
-	fmt.Println(resp.String())
+	require.NotNil(t, callResp)
 
-	require.NotNil(t, resp)
+	// Test with invalid call method
+	reqInvalidToken := &pulumirpc.CallRequest{
+		Tok: "pulumi:providers:testprovider/unknownMethod",
+	}
 
-	//urn := resource.NewURN("stack", "project", "", "ExampleResource", "name")
-	//
-	//unknown := resource.MakeComputed(resource.NewStringProperty(""))
-	//
-	//// Step 1: create and check an input bag.
-	//pulumiIns, err := plugin.MarshalProperties(resource.PropertyMap{
-	//	"stringPropertyValue": resource.NewStringProperty("foo"),
-	//	"setPropertyValues":   resource.NewArrayProperty([]resource.PropertyValue{resource.NewStringProperty("foo")}),
-	//	"nestedResources": resource.NewObjectProperty(resource.PropertyMap{
-	//		"kind": unknown,
-	//		"configuration": resource.NewObjectProperty(resource.PropertyMap{
-	//			"name": resource.NewStringProperty("foo"),
-	//		}),
-	//	}),
-	//}, plugin.MarshalOptions{KeepUnknowns: true})
-	//assert.NoError(t, err)
-	//checkResp, err := provider.Check(context.Background(), &pulumirpc.CheckRequest{
-	//	Urn:  string(urn),
-	//	News: pulumiIns,
-	//})
-	//assert.NoError(t, err)
-	//
-	//// Step 2a: preview the creation of a resource using the checked input bag.
-	//createResp, err := provider.Create(context.Background(), &pulumirpc.CreateRequest{
-	//	Urn:        string(urn),
-	//	Properties: checkResp.GetInputs(),
-	//	Preview:    true,
-	//})
-	//assert.NoError(t, err)
-	//
-	//outs, err := plugin.UnmarshalProperties(createResp.GetProperties(), plugin.MarshalOptions{KeepUnknowns: true})
-	//assert.NoError(t, err)
-	////nolint:lll
-	//autogold.Expect(resource.PropertyMap{
-	//	resource.PropertyKey(reservedkeys.Meta): resource.PropertyValue{
-	//		V: `{"_new_extra_shim":{},"e2bfb730-ecaa-11e6-8f88-34363bc7c4c0":{"create":120000000000}}`,
-	//	},
-	//	resource.PropertyKey("arrayPropertyValues"): resource.PropertyValue{},
-	//	resource.PropertyKey("boolPropertyValue"):   resource.PropertyValue{},
-	//	resource.PropertyKey("floatPropertyValue"):  resource.PropertyValue{},
-	//	resource.PropertyKey("id"): resource.PropertyValue{V: resource.Computed{Element: resource.PropertyValue{
-	//		V: "",
-	//	}}},
-	//	resource.PropertyKey("nestedResources"): resource.PropertyValue{V: resource.PropertyMap{
-	//		resource.PropertyKey("configuration"): resource.PropertyValue{V: resource.PropertyMap{resource.PropertyKey("name"): resource.PropertyValue{
-	//			V: "foo",
-	//		}}},
-	//		resource.PropertyKey("kind"):    resource.PropertyValue{V: resource.Computed{Element: resource.PropertyValue{V: ""}}},
-	//		resource.PropertyKey("optBool"): resource.PropertyValue{},
-	//	}},
-	//	resource.PropertyKey("nilPropertyValue"):           resource.PropertyValue{},
-	//	resource.PropertyKey("numberPropertyValue"):        resource.PropertyValue{},
-	//	resource.PropertyKey("objectPropertyValue"):        resource.PropertyValue{},
-	//	resource.PropertyKey("setPropertyValues"):          resource.PropertyValue{V: []resource.PropertyValue{{V: "foo"}}},
-	//	resource.PropertyKey("stringPropertyValue"):        resource.PropertyValue{V: "foo"},
-	//	resource.PropertyKey("stringWithBadInterpolation"): resource.PropertyValue{},
-	//}).Equal(t, outs)
-	//
-	//// Step 2b: actually create the resource.
-	//pulumiIns, err = plugin.MarshalProperties(resource.NewPropertyMapFromMap(map[string]interface{}{
-	//	"stringPropertyValue": "foo",
-	//	"setPropertyValues":   []interface{}{"foo"},
-	//	"nestedResources": map[string]interface{}{
-	//		"kind": "foo",
-	//		"configuration": map[string]interface{}{
-	//			"name": "foo",
-	//		},
-	//	},
-	//}), plugin.MarshalOptions{})
-	//assert.NoError(t, err)
-	//checkResp, err = provider.Check(context.Background(), &pulumirpc.CheckRequest{
-	//	Urn:  string(urn),
-	//	News: pulumiIns,
-	//})
-	//assert.NoError(t, err)
-	//createResp, err = provider.Create(context.Background(), &pulumirpc.CreateRequest{
-	//	Urn:        string(urn),
-	//	Properties: checkResp.GetInputs(),
-	//})
-	//assert.NoError(t, err)
-	//
-	//// Step 3: preview an update to the resource we just created.
-	//pulumiIns, err = plugin.MarshalProperties(resource.PropertyMap{
-	//	"stringPropertyValue": resource.NewStringProperty("bar"),
-	//	"setPropertyValues":   resource.NewArrayProperty([]resource.PropertyValue{resource.NewStringProperty("foo")}),
-	//	"nestedResources": resource.NewObjectProperty(resource.PropertyMap{
-	//		"kind": unknown,
-	//		"configuration": resource.NewObjectProperty(resource.PropertyMap{
-	//			"name": resource.NewStringProperty("foo"),
-	//		}),
-	//	}),
-	//}, plugin.MarshalOptions{KeepUnknowns: true})
-	//assert.NoError(t, err)
-	//checkResp, err = provider.Check(context.Background(), &pulumirpc.CheckRequest{
-	//	Urn:  string(urn),
-	//	News: pulumiIns,
-	//	Olds: createResp.GetProperties(),
-	//})
-	//assert.NoError(t, err)
-	//
-	//updateResp, err := provider.Update(context.Background(), &pulumirpc.UpdateRequest{
-	//	Id:      "MyID",
-	//	Urn:     string(urn),
-	//	Olds:    createResp.GetProperties(),
-	//	News:    checkResp.GetInputs(),
-	//	Preview: true,
-	//})
-	//assert.NoError(t, err)
-	//
-	//outs, err = plugin.UnmarshalProperties(updateResp.GetProperties(), plugin.MarshalOptions{KeepUnknowns: true})
-	//assert.NoError(t, err)
-	//assert.Equal(t, resource.NewStringProperty("bar"), outs["stringPropertyValue"])
-	//assert.True(t, resource.NewObjectProperty(resource.PropertyMap{
-	//	"kind": unknown,
-	//	"configuration": resource.NewObjectProperty(resource.PropertyMap{
-	//		"name": resource.NewStringProperty("foo"),
-	//	}),
-	//	"optBool": resource.NewBoolProperty(false),
-	//}).DeepEquals(outs["nestedResources"]))
+	invalidCallResp, err := provider.Call(context.Background(), reqInvalidToken)
+
+	require.Error(t, err)
+	require.ErrorContains(t, err, "unknown method token for Call pulumi:providers:testprovider/unknownMethod")
+	require.Nil(t, invalidCallResp)
 }
