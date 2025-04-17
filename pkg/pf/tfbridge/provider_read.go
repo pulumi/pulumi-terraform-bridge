@@ -148,7 +148,7 @@ func (p *provider) readResource(
 	rh *resourceHandle,
 	currentState *upgradedResourceState,
 ) (plugin.ReadResult, *tftypes.Value, error) {
-	currentStateDV, err := makeDynamicValue(currentState.state.Value)
+	currentStateDV, err := makeDynamicValue(currentState.Value)
 	if err != nil {
 		return plugin.ReadResult{}, nil, fmt.Errorf("failed to get dynamic value: %w", err)
 	}
@@ -180,7 +180,7 @@ func (p *provider) readResource(
 	}
 
 	// TF interprets a null new state as an indication that the resource does not exist in the cloud provider.
-	if readState.state.Value.IsNull() {
+	if readState.Value.IsNull() {
 		return plugin.ReadResult{}, nil, nil
 	}
 
@@ -197,7 +197,7 @@ func (p *provider) readResource(
 	return plugin.ReadResult{
 		ID:      readID,
 		Outputs: readStateMap,
-	}, &readState.state.Value, nil
+	}, &readState.Value, nil
 }
 
 // Execute a Pulumi import against a PF resource.
