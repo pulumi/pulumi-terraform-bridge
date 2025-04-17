@@ -229,6 +229,18 @@ func insertRawStateDelta(ctx context.Context, rh *resourceHandle, pm resource.Pr
 	return nil
 }
 
+func (p *provider) parseAndUpgradeResourceState(
+	ctx context.Context,
+	rh *resourceHandle,
+	props resource.PropertyMap,
+) (*upgradedResourceState, error) {
+	rst, err := parseResourceState(ctx, rh, props)
+	if err != nil {
+		return nil, err
+	}
+	return p.UpgradeResourceState(ctx, rh, rst)
+}
+
 func parseResourceState(
 	ctx context.Context,
 	rh *resourceHandle,

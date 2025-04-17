@@ -135,16 +135,10 @@ func (p *provider) refreshResource(
 	rh *resourceHandle,
 	currentStateMap resource.PropertyMap,
 ) (plugin.ReadResult, *tftypes.Value, error) {
-	currentStateRaw, err := parseResourceState(ctx, rh, currentStateMap)
+	currentState, err := p.parseAndUpgradeResourceState(ctx, rh, currentStateMap)
 	if err != nil {
 		return plugin.ReadResult{}, nil, fmt.Errorf("failed to get current raw state: %w", err)
 	}
-
-	currentState, err := p.UpgradeResourceState(ctx, rh, currentStateRaw)
-	if err != nil {
-		return plugin.ReadResult{}, nil, fmt.Errorf("failed to get current state: %w", err)
-	}
-
 	return p.readResource(ctx, rh, currentState)
 }
 
