@@ -11,14 +11,14 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tfprotov5"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/rawstate"
 )
 
 func upgradeResourceStateGRPC(
 	ctx context.Context,
 	t string,
 	res *schema.Resource,
-	state shim.RawState,
+	state rawstate.RawState,
 	meta map[string]any,
 	server tfprotov5.ProviderServer,
 ) (cty.Value, map[string]any, error) {

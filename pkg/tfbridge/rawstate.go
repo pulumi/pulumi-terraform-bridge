@@ -27,10 +27,10 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/rawstate"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/reservedkeys"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/log"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/rawstate"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/walk"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/valueshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/propertyvalue"
@@ -66,12 +66,12 @@ type RawStateDelta struct {
 }
 
 // Patches a Pulumi value with the delta to recover the original RawState.
-func (d RawStateDelta) Recover(pv resource.PropertyValue) (shim.RawState, error) {
+func (d RawStateDelta) Recover(pv resource.PropertyValue) (rawstate.RawState, error) {
 	b, err := d.recoverRepr(pv)
 	if err != nil {
 		return nil, err
 	}
-	return shim.RawState(b.Build()), nil
+	return b.Build(), nil
 }
 
 func (d RawStateDelta) recoverRepr(pv resource.PropertyValue) (rawstate.Builder, error) {
@@ -88,7 +88,7 @@ func (d RawStateDelta) recoverRepr(pv resource.PropertyValue) (rawstate.Builder,
 	case d.isEmpty():
 		return rawStateRecoverNatural(pv)
 	case d.Replace != nil:
-		return rawstate.RawMessage(json.RawMessage(d.Replace.Raw)), nil
+		return rawstate.State(d.Replace.Raw), nil
 	case d.Pluralize != nil:
 		switch {
 		case pv.IsNull():
@@ -428,7 +428,7 @@ type assetDelta struct {
 // carries the RawState as it was encountered. NOTE that this can leak sensitive information to the state and must be
 // secreted.
 type replaceDelta struct {
-	Raw shim.RawState `json:"raw"`
+	Raw rawstate.RawState `json:"raw"`
 }
 
 func rawStateEncodeAssetOrArhiveValue(value any) (rawstate.Builder, error) {
@@ -491,7 +491,11 @@ func RawStateComputeDelta(
 	return delta, nil
 }
 
-func (d RawStateDelta) turnaroundCheck(ctx context.Context, rawState shim.RawState, pv resource.PropertyValue) error {
+func (d RawStateDelta) turnaroundCheck(
+	ctx context.Context,
+	rawState rawstate.RawState,
+	pv resource.PropertyValue,
+) error {
 	// Double-check that recovering works as expected, before it is written to the state.
 	rawStateRecovered, err := d.Recover(pv)
 	if err != nil {
@@ -823,8 +827,8 @@ func (ih *rawStateDeltaHelper) computeDeltaAt(
 	}
 }
 
-func newRawStateFromValue(v valueshim.Value) shim.RawState {
+func newRawStateFromValue(v valueshim.Value) rawstate.RawState {
 	raw, err := v.Marshal()
 	contract.AssertNoErrorf(err, "v.Marshal() failed")
-	return shim.RawState(raw)
+	return rawstate.RawState(raw)
 }
