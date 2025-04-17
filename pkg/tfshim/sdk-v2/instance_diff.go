@@ -68,6 +68,7 @@ func (d v2InstanceDiff) Attributes() map[string]shim.ResourceAttrDiff {
 }
 
 func (d v2InstanceDiff) ProposedState(res shim.Resource, priorState shim.InstanceState) (shim.InstanceState, error) {
+	panic("v2InstanceDiff.ProposedState should not be called being overridden buy v2InstanceDiff2.ProposedNewState")
 	var prior *terraform.InstanceState
 	if priorState != nil {
 		prior = priorState.(v2InstanceState).tf
