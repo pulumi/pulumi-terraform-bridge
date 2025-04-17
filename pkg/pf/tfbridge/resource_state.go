@@ -18,24 +18,21 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"math/big"
 	"strconv"
 
+	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/convert"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/pfutils"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/reservedkeys"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/valueshim"
-
-	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
-	"github.com/hashicorp/terraform-plugin-go/tftypes"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/pfutils"
 )
 
 type resourceState struct {
@@ -76,20 +73,6 @@ func newResourceState(ctx context.Context, rh *resourceHandle, private []byte) *
 			Private:         private,
 		},
 	}
-}
-
-// Represents Terraform state as parsed from a Pulumi state file.
-type rawResourceState struct {
-	TFSchemaVersion int64
-	Private         []byte
-
-	// Newer versions of the bridge recover RawState from Pulumi state.
-	RawState *tfprotov6.RawState
-
-	// Legacy bridge states do not have enough information to recover [RawState]; instead they approximate the
-	// [Value] by converting the Pulumi state [PropertyMap] to the Terraform type using the current schema. This
-	// causes problems if the current schema is different from the schema the state was written with.
-	Value *tftypes.Value
 }
 
 func recoverRawState(props resource.PropertyMap, deltaPV resource.PropertyValue) (*tfprotov6.RawState, error) {
@@ -234,18 +217,6 @@ func (p *provider) parseAndUpgradeResourceState(
 	rh *resourceHandle,
 	props resource.PropertyMap,
 ) (*upgradedResourceState, error) {
-	rst, err := parseResourceState(ctx, rh, props)
-	if err != nil {
-		return nil, err
-	}
-	return p.UpgradeResourceState(ctx, rh, rst)
-}
-
-func parseResourceState(
-	ctx context.Context,
-	rh *resourceHandle,
-	props resource.PropertyMap,
-) (*rawResourceState, error) {
 	parsedMeta, err := parseMeta(props)
 	if err != nil {
 		return nil, err
@@ -272,60 +243,66 @@ func parseResourceState(
 		}
 	}
 
-	// States written by newer version of the bridge should be able to recover the raw state.
-	if deltaPV, ok := props[reservedkeys.RawStateDelta]; ok {
-		rawState, err := recoverRawState(props, deltaPV)
-
-		// Log details at Debug level since they may contain secrets.
-		tflog.Debug(ctx, "[pf/tfbridge] Failed to recover raw state for Plugin Framework",
-			map[string]any{
-				"token": rh.token,
-				"props": props.Mappable(),
-			})
-
-		contract.AssertNoErrorf(err, "Failed to recover raw state for Plugin Framework")
-		return &rawResourceState{
-			RawState:        rawState,
-			TFSchemaVersion: stateVersion,
-			Private:         parsedMeta.PrivateState,
-		}, nil
+	if stateVersion > rh.schema.ResourceSchemaVersion() {
+		return nil, fmt.Errorf("The current state of %s was created by a newer provider version "+
+			" and cannot be downgraded from resource schema version %d to %d. Please upgrade the provider",
+			rh.token, stateVersion, rh.schema.ResourceSchemaVersion())
 	}
 
-	// Otherwise fallback on imprecise parsing.
+	// States written by newer version of the bridge should be able to recover the raw state.
+	if delta, hasDelta := props[reservedkeys.RawStateDelta]; hasDelta && p.info.EnableRawStateDelta {
+		rawState, err := recoverRawState(props, delta)
+		if err != nil {
+			// Log details at Debug level since they may contain secrets.
+			tflog.Debug(ctx, "[pf/tfbridge] Failed to recover raw state for Plugin Framework",
+				map[string]any{
+					"token": rh.token,
+					"props": props.Mappable(),
+				})
+			return nil, fmt.Errorf("[pf/tfbridge] Failed to recover raw state for Plugin Framework")
+		}
+
+		// Always call the upgrade method, even if at current schema version.
+		return p.upgradeResourceState(ctx, rh, rawState, parsedMeta)
+	}
+
+	// Otherwise fallback to imprecise legacy parsing.
+	tfType := rh.schema.Type(ctx).(tftypes.Object)
 	value, err := convert.EncodePropertyMap(rh.encoder, props)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("[pf/tfbridge] Error calling EncodePropertyMap: %w", err)
 	}
-	return &rawResourceState{
-		TFSchemaVersion: stateVersion,
-		Value:           &value,
-		Private:         parsedMeta.PrivateState,
-	}, nil
+	rawState, err := pfutils.NewRawState(tfType, value)
+	if err != nil {
+		return nil, fmt.Errorf("[pf/tfbridge] Error calling NewRawState: %w", err)
+	}
+
+	// Before EnableRawStateDelta rollout, the behavior used to be to skip the upgrade method in case of an exact
+	// version match. This seems incorrect, but to derisk fixing this problem it is flagged together with
+	// EnableRawStateDelta so it participates in the phased rollout. Remove once rollout completes.
+	if stateVersion == rh.schema.ResourceSchemaVersion() && !p.info.EnableRawStateDelta {
+		return &upgradedResourceState{&resourceState{
+			TFSchemaVersion: stateVersion,
+			Private:         parsedMeta.PrivateState,
+			Value:           value,
+		}}, nil
+	}
+
+	return p.upgradeResourceState(ctx, rh, rawState, parsedMeta)
 }
 
-// Wraps running state migration via the underlying TF UpgradeResourceState method.
-func (p *provider) UpgradeResourceState(
+// Wraps running state migration via the underlying TF upgradeResourceState method.
+func (p *provider) upgradeResourceState(
 	ctx context.Context,
 	rh *resourceHandle,
-	st *rawResourceState,
+	rawState *tfprotov6.RawState,
+	meta metaState,
 ) (*upgradedResourceState, error) {
 	tfType := rh.schema.Type(ctx).(tftypes.Object)
 	req := &tfprotov6.UpgradeResourceStateRequest{
 		TypeName: rh.terraformResourceName,
-		Version:  st.TFSchemaVersion,
-	}
-
-	if st.RawState != nil {
-		req.RawState = st.RawState
-	} else if st.Value != nil {
-		rawState, err := pfutils.NewRawState(tfType, *st.Value)
-		if err != nil {
-			return nil, fmt.Errorf("error calling NewRawState: %w", err)
-		}
-		req.RawState = rawState
-	} else {
-		contract.Failf("rawResourceState should have either RawState or Value set")
-		return nil, errors.New("Contract failure")
+		Version:  meta.SchemaVersion,
+		RawState: rawState,
 	}
 
 	resp, err := p.tfServer.UpgradeResourceState(ctx, req)
@@ -340,26 +317,28 @@ func (p *provider) UpgradeResourceState(
 		return nil, fmt.Errorf("error unmarshalling the response from UpgradeResourceState: %w", err)
 	}
 
-	// Downgrade float precision to 53. This is important because pulumi.PropertyValue stores float64, and
-	// tftypes.Value originating from Pulumi would have this precision, but the native precision coming from
-	// UpgradeResourceState is 512. Mismatches in precision may lead to spurious diffs.
-	v, err = tftypes.Transform(v, func(ap *tftypes.AttributePath, v tftypes.Value) (tftypes.Value, error) {
-		if v.IsKnown() && !v.IsNull() && v.Type().Is(tftypes.Number) {
-			var n big.Float
-			err := v.As(&n)
-			contract.AssertNoErrorf(err, "Values of tftypes.Number type should unpack to big.Float")
-			if n.Prec() != 53 {
-				v2 := tftypes.NewValue(tftypes.Number, new(big.Float).Copy(&n).SetPrec(53))
-				return v2, nil
+	if p.info.EnableRawStateDelta {
+		// Downgrade float precision to 53. This is important because pulumi.PropertyValue stores float64, and
+		// tftypes.Value originating from Pulumi would have this precision, but the native precision coming
+		// from UpgradeResourceState is 512. Mismatches in precision may lead to spurious diffs.
+		v, err = tftypes.Transform(v, func(ap *tftypes.AttributePath, v tftypes.Value) (tftypes.Value, error) {
+			if v.IsKnown() && !v.IsNull() && v.Type().Is(tftypes.Number) {
+				var n big.Float
+				err := v.As(&n)
+				contract.AssertNoErrorf(err, "Values of tftypes.Number type should unpack to big.Float")
+				if n.Prec() != 53 {
+					v2 := tftypes.NewValue(tftypes.Number, new(big.Float).Copy(&n).SetPrec(53))
+					return v2, nil
+				}
 			}
-		}
-		return v, nil
-	})
-	contract.AssertNoErrorf(err, "float precision downgrade transform should not fail")
+			return v, nil
+		})
+		contract.AssertNoErrorf(err, "float precision downgrade transform should not fail")
+	}
 
 	return &upgradedResourceState{&resourceState{
 		TFSchemaVersion: rh.schema.ResourceSchemaVersion(),
 		Value:           v,
-		Private:         st.Private,
+		Private:         meta.PrivateState,
 	}}, nil
 }
