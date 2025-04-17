@@ -115,7 +115,9 @@ func (l Language) shouldConvertExamples() bool {
 	return false
 }
 
-func (l Language) emitSDK(pkg *pschema.Package, info tfbridge.ProviderInfo, root afero.Fs) (map[string][]byte, error) {
+func (l Language) emitSDK(pkg *pschema.Package, info tfbridge.ProviderInfo, root afero.Fs,
+	loader pschema.ReferenceLoader,
+) (map[string][]byte, error) {
 	var extraFiles map[string][]byte
 	var err error
 
@@ -165,7 +167,7 @@ func (l Language) emitSDK(pkg *pschema.Package, info tfbridge.ProviderInfo, root
 		if err != nil && !os.IsNotExist(err) {
 			return nil, err
 		}
-		return nodejsgen.GeneratePackage(tfgen, pkg, extraFiles, nil, false)
+		return nodejsgen.GeneratePackage(tfgen, pkg, extraFiles, nil, false, loader)
 	case Python:
 		if psi := info.Python; psi != nil && psi.Overlay != nil {
 			extraFiles, err = getOverlayFiles(psi.Overlay, ".py", root)
@@ -180,7 +182,7 @@ func (l Language) emitSDK(pkg *pschema.Package, info tfbridge.ProviderInfo, root
 		if err != nil && !os.IsNotExist(err) {
 			return nil, err
 		}
-		return pygen.GeneratePackage(tfgen, pkg, extraFiles)
+		return pygen.GeneratePackage(tfgen, pkg, extraFiles, loader)
 	case CSharp:
 		if psi := info.CSharp; psi != nil && psi.Overlay != nil {
 			extraFiles, err = getOverlayFiles(psi.Overlay, ".cs", root)
@@ -1046,7 +1048,8 @@ func (g *Generator) UnstableGenerateFromSchema(genSchemaResult *GenerateSchemaRe
 		if diags.HasErrors() {
 			return nil, err
 		}
-		if files, err = g.language.emitSDK(pulumiPackage, g.info, g.root); err != nil {
+		loader := pschema.NewPluginLoader(g.pluginHost)
+		if files, err = g.language.emitSDK(pulumiPackage, g.info, g.root, loader); err != nil {
 			return nil, pkgerrors.Wrapf(err, "failed to generate package")
 		}
 	}
