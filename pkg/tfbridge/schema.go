@@ -1324,7 +1324,7 @@ func makeTerraformStateViaUpgradeEnabled(
 	p shim.Provider,
 	pm resource.PropertyMap,
 ) (shim.ProviderWithRawStateSupport, bool) {
-	if !providerInfo.EnableRawStateDelta {
+	if !providerInfo.RawStateDeltaEnabled() {
 		return nil, false
 	}
 	pp, ok := p.(shim.ProviderWithRawStateSupport)
