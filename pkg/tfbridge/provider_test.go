@@ -5892,74 +5892,50 @@ func TestProviderCall(t *testing.T) {
 		config: shimv2.NewSchemaMap(nestedConfigSchema),
 	}
 
-	//// Set expected configValues and config schema map
-	//provider.configValues = resource.PropertyMap{
-	//	"apiEndpoint": {
-	//		V: "https://api.digitalocean.com",
-	//	},
-	//	"httpRetryMax": {
-	//		V: float64(2),
-	//	},
-	//	"token": {
-	//		V: "mytoken",
-	//	},
-	//	"version": {
-	//		V: "4.0.0-alpha.0+dev",
-	//	},
-	//}
-	//
-	//provider.config = shimv2.NewSchemaMap(map[string]*schema.Schema{
-	//	"api_endpoint":        &schema.Schema{Type: 4, ConfigMode: 0, Required: true, Optional: false, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "The URL to use for the DigitalOcean API.", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
-	//	"http_retry_max":      &schema.Schema{Type: 2, ConfigMode: 0, Required: false, Optional: true, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "The maximum number of retries on a failed API request.", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
-	//	"http_retry_wait_max": &schema.Schema{Type: 3, ConfigMode: 0, Required: false, Optional: true, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "The maximum wait time (in seconds) between failed API requests.", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
-	//	"http_retry_wait_min": &schema.Schema{Type: 3, ConfigMode: 0, Required: false, Optional: true, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "The minimum wait time (in seconds) between failed API requests.", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
-	//	"requests_per_second": &schema.Schema{Type: 3, ConfigMode: 0, Required: false, Optional: true, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "The rate of requests per second to limit the HTTP client.", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
-	//	"spaces_access_id":    &schema.Schema{Type: 4, ConfigMode: 0, Required: false, Optional: true, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "The access key ID for Spaces API operations.", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
-	//	"spaces_endpoint":     &schema.Schema{Type: 4, ConfigMode: 0, Required: false, Optional: true, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "The URL to use for the DigitalOcean Spaces API.", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
-	//	"spaces_secret_key":   &schema.Schema{Type: 4, ConfigMode: 0, Required: false, Optional: true, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "The secret access key for Spaces API operations.", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
-	//	"token":               &schema.Schema{Type: 4, ConfigMode: 0, Required: false, Optional: true, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "The token key for API operations.", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
-	//})
-	//
-
-	//
-	//resp, err := provider.Call(context.Background(), req)
-	//
-	//require.NoError(t, err)
-	//require.NotNil(t, resp)
-	//
-
-	// Configure the test provider to populate with config inputs
+	// Setup: Configure the test provider to populate with provider configValues
 	pulumiConfigs, err := plugin.MarshalProperties(resource.PropertyMap{
-		"region": resource.NewStringProperty("us-west-3"),
+		"region": resource.NewStringProperty("us-west-space-odyssey-2000"),
 		"ignoreTags": resource.NewObjectProperty(resource.PropertyMap{
 			"keyPrefixes": resource.NewArrayProperty([]resource.PropertyValue{
-				resource.NewStringProperty("what"),
-				resource.NewStringProperty("no"),
-				resource.NewStringProperty("not"),
-				resource.NewStringProperty("like"),
-				resource.NewStringProperty("this"),
+				resource.NewStringProperty("dev"),
+				resource.NewStringProperty("staging"),
 			}),
 		}),
 	}, plugin.MarshalOptions{KeepUnknowns: true})
 	assert.NoError(t, err)
 
-	// Actually test Call
-	req := &pulumirpc.CallRequest{
-		Tok: "pulumi:providers:testprovider/terraformConfig",
-	}
 	configureResp, err := provider.Configure(context.Background(), &pulumirpc.ConfigureRequest{
 		Args: pulumiConfigs,
 	})
 	require.NoError(t, err)
 	require.NotNil(t, configureResp)
-	// Test that nested config works
-	// TODO: possibly test invalid inputs
-	// TODO: do more detailed result assertions
+
+	// Actually test Call
+	req := &pulumirpc.CallRequest{
+		Tok: "pulumi:providers:testprovider/terraformConfig",
+	}
 
 	callResp, err := provider.Call(context.Background(), req)
 
 	require.NoError(t, err)
 	require.NotNil(t, callResp)
+
+	// Assert our return object is as expected, with terraform_cased keys
+	callReturnProperties, err := plugin.UnmarshalProperties(callResp.GetReturn(), plugin.MarshalOptions{})
+
+	autogold.Expect(resource.PropertyMap{
+		"ignore_tags": resource.PropertyValue{
+			V: []resource.PropertyValue{{
+				V: resource.PropertyMap{"key_prefixes": resource.PropertyValue{
+					V: []resource.PropertyValue{
+						{V: "dev"},
+						{V: "staging"},
+					},
+				}},
+			}},
+		},
+		"region": resource.PropertyValue{V: "us-west-space-odyssey-2000"},
+	}).Equal(t, callReturnProperties)
 
 	// Test with invalid call method
 	reqInvalidToken := &pulumirpc.CallRequest{
