@@ -371,20 +371,20 @@ type objDelta struct {
 	PropertyDeltas map[resource.PropertyKey]RawStateDelta `json:"ps,omitempty"`
 }
 
-func (oi *objDelta) set(key string, propertyKey resource.PropertyKey, infl RawStateDelta) {
+func (oi *objDelta) set(key string, propertyKey resource.PropertyKey, d RawStateDelta) {
 	if PulumiToTerraformName(string(propertyKey), nil, nil) != key {
 		if oi.Renamed == nil {
 			oi.Renamed = make(map[resource.PropertyKey]string)
 		}
 		oi.Renamed[propertyKey] = key
 	}
-	if infl.isEmpty() {
+	if d.isEmpty() {
 		return
 	}
 	if oi.PropertyDeltas == nil {
 		oi.PropertyDeltas = map[resource.PropertyKey]RawStateDelta{}
 	}
-	oi.PropertyDeltas[propertyKey] = infl
+	oi.PropertyDeltas[propertyKey] = d
 }
 
 func (oi *objDelta) ignore(key resource.PropertyKey) {
@@ -680,15 +680,15 @@ func (ih *rawStateDeltaHelper) computeDeltaAt(
 			return RawStateDelta{ArrayOrSet: &arrayOrSetDelta{}}, nil
 		}
 
-		arrayInfl := arrayOrSetDelta{}
+		aDelta := arrayOrSetDelta{}
 
 		subPath := path.Element()
 		for k, e := range elements {
-			infl := ih.deltaAt(subPath, pvElements[k], e)
-			arrayInfl.set(k, infl)
+			d := ih.deltaAt(subPath, pvElements[k], e)
+			aDelta.set(k, d)
 		}
 
-		return RawStateDelta{ArrayOrSet: &arrayInfl}, nil
+		return RawStateDelta{ArrayOrSet: &aDelta}, nil
 
 	case v.Type().IsMapType() && !v.IsNull():
 		elements := v.AsValueMap()
@@ -708,7 +708,7 @@ func (ih *rawStateDeltaHelper) computeDeltaAt(
 			return RawStateDelta{Map: &mapDelta{}}, nil
 		}
 
-		mapInfl := mapDelta{}
+		mDelta := mapDelta{}
 
 		subPath := path.Element()
 		for k, e := range elements {
@@ -717,11 +717,11 @@ func (ih *rawStateDeltaHelper) computeDeltaAt(
 			if !ok {
 				return RawStateDelta{}, fmt.Errorf("Expected matching map keys, missing %q", key)
 			}
-			infl := ih.deltaAt(subPath, pv, e)
-			mapInfl.set(key, infl)
+			d := ih.deltaAt(subPath, pv, e)
+			mDelta.set(key, d)
 		}
 
-		return RawStateDelta{Map: &mapInfl}, nil
+		return RawStateDelta{Map: &mDelta}, nil
 
 	case v.Type().IsSetType() && !v.IsNull():
 		// Key assumption here is that when Pulumi translates Set values in states and projects them as Array
@@ -760,15 +760,15 @@ func (ih *rawStateDeltaHelper) computeDeltaAt(
 			return RawStateDelta{ArrayOrSet: &arrayOrSetDelta{}}, nil
 		}
 
-		setInfl := arrayOrSetDelta{}
+		aDelta := arrayOrSetDelta{}
 
 		subPath := path.Element()
 		for k, e := range elements {
-			infl := ih.deltaAt(subPath, pvElements[k], e)
-			setInfl.set(k, infl)
+			d := ih.deltaAt(subPath, pvElements[k], e)
+			aDelta.set(k, d)
 		}
 
-		return RawStateDelta{ArrayOrSet: &setInfl}, nil
+		return RawStateDelta{ArrayOrSet: &aDelta}, nil
 
 	case v.Type().IsObjectType() && !v.IsNull():
 		if !pv.IsObject() {
@@ -777,7 +777,7 @@ func (ih *rawStateDeltaHelper) computeDeltaAt(
 
 		elements := v.AsValueMap()
 		pvElements := pv.ObjectValue()
-		infl := objDelta{}
+		oDelta := objDelta{}
 		handledKeys := map[resource.PropertyKey]struct{}{}
 
 		for k, v := range elements {
@@ -798,7 +798,7 @@ func (ih *rawStateDeltaHelper) computeDeltaAt(
 				n := resource.NewNullProperty()
 				delta = ih.replaceDeltaAt(subPath, n, v, fmt.Errorf("No PropertyValue at key"))
 			}
-			infl.set(k, key, delta)
+			oDelta.set(k, key, delta)
 			handledKeys[key] = struct{}{}
 		}
 
@@ -808,11 +808,11 @@ func (ih *rawStateDeltaHelper) computeDeltaAt(
 				continue
 			}
 			if _, ok := handledKeys[k]; !ok {
-				infl.ignore(k)
+				oDelta.ignore(k)
 			}
 		}
 
-		return RawStateDelta{Obj: &infl}, nil
+		return RawStateDelta{Obj: &oDelta}, nil
 
 	default:
 		return RawStateDelta{}, fmt.Errorf("no efficient delta for type %s", v.Type().GoString())
