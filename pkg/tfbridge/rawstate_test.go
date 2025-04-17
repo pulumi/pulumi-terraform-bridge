@@ -341,6 +341,30 @@ func Test_rawstate_delta_turnaround(t *testing.T) {
 				"y": cty.StringVal("OK"),
 			})}),
 		},
+		{
+			name: "object-with-ignored-pulumi-keys",
+			schema: &schema.Schema{
+				Type:     schema.TypeList,
+				MaxItems: 1,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"s": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+					},
+				},
+			},
+			pv: resource.NewObjectProperty(resource.PropertyMap{
+				"s":           resource.NewStringProperty("OK"),
+				"ignoredKey":  resource.NewStringProperty("IGNORED"),
+				"ignoredKey2": resource.NewStringProperty("IGNORED2"),
+			}),
+			cv: cty.ListVal([]cty.Value{cty.ObjectVal(map[string]cty.Value{
+				"s": cty.StringVal("OK"),
+			})}),
+		},
 	}
 
 	for _, tcase := range testCases {
