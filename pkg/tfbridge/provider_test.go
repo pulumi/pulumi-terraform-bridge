@@ -5808,3 +5808,240 @@ func TestProcessImportValidationErrors(t *testing.T) {
 		})
 	}
 }
+
+//
+//func TestCall(t *testing.T) {
+//	tfSchemaMap := shimv2.NewSchemaMap(map[string]*schema.Schema{
+//		"access_key":                         &schema.Schema{Type: 4, ConfigMode: 0, Required: false, Optional: true, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "The access key for API operations. You can retrieve this\nfrom the 'Security & Credentials' section of the AWS console.", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
+//		"allowed_account_ids":                &schema.Schema{Type: 7, ConfigMode: 0, Required: false, Optional: true, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: &schema.Schema{Type: 4, ConfigMode: 0, Required: false, Optional: false, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false}, MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string{"forbidden_account_ids"}, ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
+//		"custom_ca_bundle":                   &schema.Schema{Type: 4, ConfigMode: 0, Required: false, Optional: true, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "File containing custom root and intermediate certificates. Can also be configured using the `AWS_CA_BUNDLE` environment variable. (Setting `ca_bundle` in the shared config file is not supported.)", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
+//		"default_tags":                       &schema.Schema{Type: 5, ConfigMode: 0, Required: false, Optional: true, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "Configuration block with settings to default resource tags across all resources.", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: (*schema.Resource)(0x14000967000), MaxItems: 1, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
+//		"ec2_metadata_service_endpoint":      &schema.Schema{Type: 4, ConfigMode: 0, Required: false, Optional: true, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "Address of the EC2 metadata service endpoint to use. Can also be configured using the `AWS_EC2_METADATA_SERVICE_ENDPOINT` environment variable.", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
+//		"ec2_metadata_service_endpoint_mode": &schema.Schema{Type: 4, ConfigMode: 0, Required: false, Optional: true, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "Protocol to use with EC2 metadata service endpoint.Valid values are `IPv4` and `IPv6`. Can also be configured using the `AWS_EC2_METADATA_SERVICE_ENDPOINT_MODE` environment variable.", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
+//		"endpoints":                          &schema.Schema{Type: 7, ConfigMode: 0, Required: false, Optional: true, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: (*schema.Resource)(0x14000967100), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
+//		"forbidden_account_ids":              &schema.Schema{Type: 7, ConfigMode: 0, Required: false, Optional: true, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: &schema.Schema{Type: 4, ConfigMode: 0, Required: false, Optional: false, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false}, MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string{"allowed_account_ids"}, ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
+//		"http_proxy":                         &schema.Schema{Type: 4, ConfigMode: 0, Required: false, Optional: true, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "URL of a proxy to use for HTTP requests when accessing the AWS API. Can also be set using the `HTTP_PROXY` or `http_proxy` environment variables.", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
+//		"https_proxy":                        &schema.Schema{Type: 4, ConfigMode: 0, Required: false, Optional: true, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "URL of a proxy to use for HTTPS requests when accessing the AWS API. Can also be set using the `HTTPS_PROXY` or `https_proxy` environment variables.", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
+//		"ignore_tags":                        &schema.Schema{Type: 5, ConfigMode: 0, Required: false, Optional: true, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "Configuration block with settings to ignore resource tags across all resources.", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: (*schema.Resource)(0x14000967200), MaxItems: 1, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
+//		"insecure":                           &schema.Schema{Type: 1, ConfigMode: 0, Required: false, Optional: true, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "Explicitly allow the provider to perform \"insecure\" SSL requests. If omitted, default value is `false`", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
+//		"max_retries":                        &schema.Schema{Type: 2, ConfigMode: 0, Required: false, Optional: true, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "The maximum number of times an AWS API request is\nbeing executed. If the API request still fails, an error is\nthrown.", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
+//		"no_proxy":                           &schema.Schema{Type: 4, ConfigMode: 0, Required: false, Optional: true, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "Comma-separated list of hosts that should not use HTTP or HTTPS proxies. Can also be set using the `NO_PROXY` or `no_proxy` environment variables.", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
+//		"profile":                            &schema.Schema{Type: 4, ConfigMode: 0, Required: false, Optional: true, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "The profile for API operations. If not set, the default profile\ncreated with `aws configure` will be used.", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
+//		"region":                             &schema.Schema{Type: 4, ConfigMode: 0, Required: false, Optional: true, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "The region where AWS operations will take place. Examples\nare us-east-1, us-west-2, etc.", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
+//		"retry_mode":                         &schema.Schema{Type: 4, ConfigMode: 0, Required: false, Optional: true, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "Specifies how retries are attempted. Valid values are `standard` and `adaptive`. Can also be configured using the `AWS_RETRY_MODE` environment variable.", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
+//		"s3_us_east_1_regional_endpoint":     &schema.Schema{Type: 4, ConfigMode: 0, Required: false, Optional: true, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "Specifies whether S3 API calls in the `us-east-1` region use the legacy global endpoint or a regional endpoint. Valid values are `legacy` or `regional`. Can also be configured using the `AWS_S3_US_EAST_1_REGIONAL_ENDPOINT` environment variable or the `s3_us_east_1_regional_endpoint` shared config file parameter", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
+//		"s3_use_path_style":                  &schema.Schema{Type: 1, ConfigMode: 0, Required: false, Optional: true, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "Set this to true to enable the request to use path-style addressing,\ni.e., https://s3.amazonaws.com/BUCKET/KEY. By default, the S3 client will\nuse virtual hosted bucket addressing when possible\n(https://BUCKET.s3.amazonaws.com/KEY). Specific to the Amazon S3 service.", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
+//		"secret_key":                         &schema.Schema{Type: 4, ConfigMode: 0, Required: false, Optional: true, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "The secret key for API operations. You can retrieve this\nfrom the 'Security & Credentials' section of the AWS console.", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
+//		"shared_config_files":                &schema.Schema{Type: 5, ConfigMode: 0, Required: false, Optional: true, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "List of paths to shared config files. If not set, defaults to [~/.aws/config].", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: &schema.Schema{Type: 4, ConfigMode: 0, Required: false, Optional: false, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false}, MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
+//		"shared_credentials_files":           &schema.Schema{Type: 5, ConfigMode: 0, Required: false, Optional: true, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "List of paths to shared credentials files. If not set, defaults to [~/.aws/credentials].", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: &schema.Schema{Type: 4, ConfigMode: 0, Required: false, Optional: false, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false}, MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
+//		"skip_credentials_validation":        &schema.Schema{Type: 1, ConfigMode: 0, Required: false, Optional: true, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "Skip the credentials validation via STS API. Used for AWS API implementations that do not have STS available/implemented.", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
+//		"skip_metadata_api_check":            &schema.Schema{Type: 4, ConfigMode: 0, Required: false, Optional: true, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "Skip the AWS Metadata API check. Used for AWS API implementations that do not have a metadata api endpoint.", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(0x113d3d4d0), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
+//		"skip_region_validation":             &schema.Schema{Type: 1, ConfigMode: 0, Required: false, Optional: true, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "Skip static validation of region name. Used by users of alternative AWS-like APIs or users w/ access to regions that are not public (yet).", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
+//		"skip_requesting_account_id":         &schema.Schema{Type: 1, ConfigMode: 0, Required: false, Optional: true, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "Skip requesting the account ID. Used for AWS API implementations that do not have IAM/STS API and/or metadata API.", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
+//		"sts_region":                         &schema.Schema{Type: 4, ConfigMode: 0, Required: false, Optional: true, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "The region where AWS STS operations will take place. Examples\nare us-east-1 and us-west-2.", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
+//		"token":                              &schema.Schema{Type: 4, ConfigMode: 0, Required: false, Optional: true, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "session token. A session token is only required if you are\nusing temporary security credentials.", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
+//		"token_bucket_rate_limiter_capacity": &schema.Schema{Type: 2, ConfigMode: 0, Required: false, Optional: true, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "The capacity of the AWS SDK's token bucket rate limiter.", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
+//		"use_dualstack_endpoint":             &schema.Schema{Type: 1, ConfigMode: 0, Required: false, Optional: true, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "Resolve an endpoint with DualStack capability", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
+//		"use_fips_endpoint":                  &schema.Schema{Type: 1, ConfigMode: 0, Required: false, Optional: true, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "Resolve an endpoint with FIPS capability", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
+//	})
+//
+//}
+
+func TestProviderCall(t *testing.T) {
+	t.Parallel()
+	shimProvider := shimv2.NewProvider(testTFProviderV2)
+	provider := &Provider{
+		tf:     shimProvider,
+		config: shimv2.NewSchemaMap(testTFProviderV2.Schema),
+	}
+	provider.resources = map[tokens.Type]Resource{
+		"ExampleResource": {
+			TF:     shimProvider.ResourcesMap().Get("example_resource"),
+			TFName: "example_resource",
+			Schema: &ResourceInfo{Tok: "ExampleResource"},
+		},
+	}
+	provider.dataSources = map[tokens.ModuleMember]DataSource{
+		"testprovider:index/res:Res": {
+			TF:     shimProvider.DataSourcesMap().Get("example_resource"),
+			TFName: "example_resource",
+			Schema: &DataSourceInfo{
+				Tok: "testprovider:index/res:Res",
+			},
+		},
+	}
+	//// Call Configure
+	//
+	//configureReq := &pulumirpc.ConfigureRequest{
+	//	Variables: map[string]string{
+	//		"digitalocean:config:apiEndpoint": "https://api.digitalocean.com",
+	//	},
+	//	Args:                   nil,
+	//	Id:                     nil,
+	//	Urn:                    nil,
+	//	Name:                   nil,
+	//	Type:                   nil,
+	//}
+
+	//variables:{key:"digitalocean:config:apiEndpoint"  value:"https://api.digitalocean.com"}  variables:{key:"digitalocean:config:httpRetryMax"  value:"2"}  variables:{key:"digitalocean:config:token"  value:"mytoken"}  args:{fields:{key:"apiEndpoint"  value:{string_value:"https://api.digitalocean.com"}}  fields:{key:"httpRetryMax"  value:{string_value:"2"}}  fields:{key:"token"  value:{string_value:"mytoken"}}  fields:{key:"version"  value:{string_value:"4.0.0-alpha.0+dev"}}}  acceptSecrets:true  acceptResources:true  sends_old_inputs:true  sends_old_inputs_to_delete:true  id:"04da6b54-80e4-46f7-96ec-b56ff0331ba9"  urn:"urn:pulumi:dev::config-experiment::pulumi:providers:digitalocean::tlsProvider"  name:"tlsProvider"  type:"pulumi:providers:digitalocean"
+
+	//provider.Configure(context.Background())
+
+	provider.configValues = resource.PropertyMap{
+		"apiEndpoint": {
+			V: "https://api.digitalocean.com",
+		},
+		"httpRetryMax": {
+			V: float64(2),
+		},
+		"token": {
+			V: "mytoken",
+		},
+		"version": {
+			V: "4.0.0-alpha.0+dev",
+		},
+	}
+
+	provider.config = shimv2.NewSchemaMap(map[string]*schema.Schema{
+		"api_endpoint":        &schema.Schema{Type: 4, ConfigMode: 0, Required: true, Optional: false, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "The URL to use for the DigitalOcean API.", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
+		"http_retry_max":      &schema.Schema{Type: 2, ConfigMode: 0, Required: false, Optional: true, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "The maximum number of retries on a failed API request.", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
+		"http_retry_wait_max": &schema.Schema{Type: 3, ConfigMode: 0, Required: false, Optional: true, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "The maximum wait time (in seconds) between failed API requests.", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
+		"http_retry_wait_min": &schema.Schema{Type: 3, ConfigMode: 0, Required: false, Optional: true, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "The minimum wait time (in seconds) between failed API requests.", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
+		"requests_per_second": &schema.Schema{Type: 3, ConfigMode: 0, Required: false, Optional: true, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "The rate of requests per second to limit the HTTP client.", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
+		"spaces_access_id":    &schema.Schema{Type: 4, ConfigMode: 0, Required: false, Optional: true, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "The access key ID for Spaces API operations.", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
+		"spaces_endpoint":     &schema.Schema{Type: 4, ConfigMode: 0, Required: false, Optional: true, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "The URL to use for the DigitalOcean Spaces API.", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
+		"spaces_secret_key":   &schema.Schema{Type: 4, ConfigMode: 0, Required: false, Optional: true, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "The secret access key for Spaces API operations.", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
+		"token":               &schema.Schema{Type: 4, ConfigMode: 0, Required: false, Optional: true, Computed: false, ForceNew: false, DiffSuppressFunc: (schema.SchemaDiffSuppressFunc)(nil), DiffSuppressOnRefresh: false, Default: interface{}(nil), DefaultFunc: (schema.SchemaDefaultFunc)(nil), Description: "The token key for API operations.", InputDefault: "", StateFunc: (schema.SchemaStateFunc)(nil), Elem: interface{}(nil), MaxItems: 0, MinItems: 0, Set: (schema.SchemaSetFunc)(nil), ComputedWhen: []string(nil), ConflictsWith: []string(nil), ExactlyOneOf: []string(nil), AtLeastOneOf: []string(nil), RequiredWith: []string(nil), Deprecated: "", ValidateFunc: (schema.SchemaValidateFunc)(nil), ValidateDiagFunc: (schema.SchemaValidateDiagFunc)(nil), Sensitive: false, WriteOnly: false},
+	})
+
+	req := &pulumirpc.CallRequest{
+		Tok: "pulumi:providers:testprovider/terraformConfig",
+	}
+
+	resp, err := provider.Call(context.Background(), req)
+
+	require.NoError(t, err)
+	fmt.Println(resp.String())
+
+	require.NotNil(t, resp)
+
+	//urn := resource.NewURN("stack", "project", "", "ExampleResource", "name")
+	//
+	//unknown := resource.MakeComputed(resource.NewStringProperty(""))
+	//
+	//// Step 1: create and check an input bag.
+	//pulumiIns, err := plugin.MarshalProperties(resource.PropertyMap{
+	//	"stringPropertyValue": resource.NewStringProperty("foo"),
+	//	"setPropertyValues":   resource.NewArrayProperty([]resource.PropertyValue{resource.NewStringProperty("foo")}),
+	//	"nestedResources": resource.NewObjectProperty(resource.PropertyMap{
+	//		"kind": unknown,
+	//		"configuration": resource.NewObjectProperty(resource.PropertyMap{
+	//			"name": resource.NewStringProperty("foo"),
+	//		}),
+	//	}),
+	//}, plugin.MarshalOptions{KeepUnknowns: true})
+	//assert.NoError(t, err)
+	//checkResp, err := provider.Check(context.Background(), &pulumirpc.CheckRequest{
+	//	Urn:  string(urn),
+	//	News: pulumiIns,
+	//})
+	//assert.NoError(t, err)
+	//
+	//// Step 2a: preview the creation of a resource using the checked input bag.
+	//createResp, err := provider.Create(context.Background(), &pulumirpc.CreateRequest{
+	//	Urn:        string(urn),
+	//	Properties: checkResp.GetInputs(),
+	//	Preview:    true,
+	//})
+	//assert.NoError(t, err)
+	//
+	//outs, err := plugin.UnmarshalProperties(createResp.GetProperties(), plugin.MarshalOptions{KeepUnknowns: true})
+	//assert.NoError(t, err)
+	////nolint:lll
+	//autogold.Expect(resource.PropertyMap{
+	//	resource.PropertyKey(reservedkeys.Meta): resource.PropertyValue{
+	//		V: `{"_new_extra_shim":{},"e2bfb730-ecaa-11e6-8f88-34363bc7c4c0":{"create":120000000000}}`,
+	//	},
+	//	resource.PropertyKey("arrayPropertyValues"): resource.PropertyValue{},
+	//	resource.PropertyKey("boolPropertyValue"):   resource.PropertyValue{},
+	//	resource.PropertyKey("floatPropertyValue"):  resource.PropertyValue{},
+	//	resource.PropertyKey("id"): resource.PropertyValue{V: resource.Computed{Element: resource.PropertyValue{
+	//		V: "",
+	//	}}},
+	//	resource.PropertyKey("nestedResources"): resource.PropertyValue{V: resource.PropertyMap{
+	//		resource.PropertyKey("configuration"): resource.PropertyValue{V: resource.PropertyMap{resource.PropertyKey("name"): resource.PropertyValue{
+	//			V: "foo",
+	//		}}},
+	//		resource.PropertyKey("kind"):    resource.PropertyValue{V: resource.Computed{Element: resource.PropertyValue{V: ""}}},
+	//		resource.PropertyKey("optBool"): resource.PropertyValue{},
+	//	}},
+	//	resource.PropertyKey("nilPropertyValue"):           resource.PropertyValue{},
+	//	resource.PropertyKey("numberPropertyValue"):        resource.PropertyValue{},
+	//	resource.PropertyKey("objectPropertyValue"):        resource.PropertyValue{},
+	//	resource.PropertyKey("setPropertyValues"):          resource.PropertyValue{V: []resource.PropertyValue{{V: "foo"}}},
+	//	resource.PropertyKey("stringPropertyValue"):        resource.PropertyValue{V: "foo"},
+	//	resource.PropertyKey("stringWithBadInterpolation"): resource.PropertyValue{},
+	//}).Equal(t, outs)
+	//
+	//// Step 2b: actually create the resource.
+	//pulumiIns, err = plugin.MarshalProperties(resource.NewPropertyMapFromMap(map[string]interface{}{
+	//	"stringPropertyValue": "foo",
+	//	"setPropertyValues":   []interface{}{"foo"},
+	//	"nestedResources": map[string]interface{}{
+	//		"kind": "foo",
+	//		"configuration": map[string]interface{}{
+	//			"name": "foo",
+	//		},
+	//	},
+	//}), plugin.MarshalOptions{})
+	//assert.NoError(t, err)
+	//checkResp, err = provider.Check(context.Background(), &pulumirpc.CheckRequest{
+	//	Urn:  string(urn),
+	//	News: pulumiIns,
+	//})
+	//assert.NoError(t, err)
+	//createResp, err = provider.Create(context.Background(), &pulumirpc.CreateRequest{
+	//	Urn:        string(urn),
+	//	Properties: checkResp.GetInputs(),
+	//})
+	//assert.NoError(t, err)
+	//
+	//// Step 3: preview an update to the resource we just created.
+	//pulumiIns, err = plugin.MarshalProperties(resource.PropertyMap{
+	//	"stringPropertyValue": resource.NewStringProperty("bar"),
+	//	"setPropertyValues":   resource.NewArrayProperty([]resource.PropertyValue{resource.NewStringProperty("foo")}),
+	//	"nestedResources": resource.NewObjectProperty(resource.PropertyMap{
+	//		"kind": unknown,
+	//		"configuration": resource.NewObjectProperty(resource.PropertyMap{
+	//			"name": resource.NewStringProperty("foo"),
+	//		}),
+	//	}),
+	//}, plugin.MarshalOptions{KeepUnknowns: true})
+	//assert.NoError(t, err)
+	//checkResp, err = provider.Check(context.Background(), &pulumirpc.CheckRequest{
+	//	Urn:  string(urn),
+	//	News: pulumiIns,
+	//	Olds: createResp.GetProperties(),
+	//})
+	//assert.NoError(t, err)
+	//
+	//updateResp, err := provider.Update(context.Background(), &pulumirpc.UpdateRequest{
+	//	Id:      "MyID",
+	//	Urn:     string(urn),
+	//	Olds:    createResp.GetProperties(),
+	//	News:    checkResp.GetInputs(),
+	//	Preview: true,
+	//})
+	//assert.NoError(t, err)
+	//
+	//outs, err = plugin.UnmarshalProperties(updateResp.GetProperties(), plugin.MarshalOptions{KeepUnknowns: true})
+	//assert.NoError(t, err)
+	//assert.Equal(t, resource.NewStringProperty("bar"), outs["stringPropertyValue"])
+	//assert.True(t, resource.NewObjectProperty(resource.PropertyMap{
+	//	"kind": unknown,
+	//	"configuration": resource.NewObjectProperty(resource.PropertyMap{
+	//		"name": resource.NewStringProperty("foo"),
+	//	}),
+	//	"optBool": resource.NewBoolProperty(false),
+	//}).DeepEquals(outs["nestedResources"]))
+}
