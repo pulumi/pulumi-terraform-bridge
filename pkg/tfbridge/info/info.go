@@ -179,8 +179,8 @@ type Provider struct {
 	EnableAccuratePFBridgePreview bool
 
 	// Newer versions of the bridge preserve Terraform raw state by saving the delta between Pulumi state and
-	// Terraform raw state into the state file. Setting this to true disables the feature.
-	DisableRawStateDelta bool
+	// Terraform raw state into the state file. Setting this to true enables the feature.
+	EnableRawStateDelta bool
 }
 
 // HclExampler represents a supplemental HCL example for a given resource or function.

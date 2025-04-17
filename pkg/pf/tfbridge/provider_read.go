@@ -97,7 +97,7 @@ func (p *provider) ReadWithContext(
 		deleteDefaultsKey(result.Inputs)
 	}
 
-	if resultingState != nil && !p.info.DisableRawStateDelta {
+	if resultingState != nil && p.info.EnableRawStateDelta {
 		if err := insertRawStateDelta(ctx, &rh, result.Outputs, *resultingState); err != nil {
 			return result, ignoredStatus, err
 		}
