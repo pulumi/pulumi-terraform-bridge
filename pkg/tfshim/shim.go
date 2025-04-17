@@ -2,11 +2,11 @@ package shim
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
 
 	"github.com/hashicorp/go-cty/cty"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/rawstate"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
@@ -358,27 +358,14 @@ type DiffOptions struct {
 // https://www.pulumi.com/docs/concepts/options/ignorechanges/
 type IgnoreChanges = func() map[string]struct{}
 
-// RawState is the raw un-encoded Terraform state, without type information. It is passed as-is for providers to
-// upgrade and run migrations on.
-//
-// The representation matches the format accepted on the gRPC Terraform protocol:
-//
-//	https://github.com/hashicorp/terraform-plugin-go/blob/v0.26.0/tfprotov5/internal/tfplugin5/tfplugin5.pb.go#L519
-//	https://github.com/hashicorp/terraform-plugin-go/blob/v0.26.0/tfprotov6/state.go#L35
-type RawState json.RawMessage
-
-func (x RawState) MarshalJSON() ([]byte, error) {
-	return x, nil
-}
-
-func (x *RawState) UnmarshalJSON(raw []byte) error {
-	*x = raw
-	return nil
-}
-
 type ProviderWithRawStateSupport interface {
 	Provider
 
 	// Ensure raw state is upgraded to the current resource schema version.
-	UpgradeState(ctx context.Context, t string, state RawState, meta map[string]any) (InstanceState, error)
+	UpgradeState(
+		ctx context.Context,
+		t string,
+		state rawstate.RawState,
+		meta map[string]any,
+	) (InstanceState, error)
 }

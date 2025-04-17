@@ -21,6 +21,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/rawstate"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/log"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
@@ -532,7 +533,7 @@ func (p v2Provider) newEmptyStateImpl(t string) *v2InstanceState2 {
 func (p v2Provider) UpgradeState(
 	ctx context.Context,
 	t string,
-	s shim.RawState,
+	s rawstate.RawState,
 	meta map[string]any,
 ) (shim.InstanceState, error) {
 	res := p.tf.ResourcesMap[t]

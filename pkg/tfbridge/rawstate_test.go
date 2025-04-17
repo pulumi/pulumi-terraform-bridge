@@ -36,9 +36,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/rawstate"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/rawstate"
 	sdkv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/valueshim"
 )
@@ -1190,10 +1190,10 @@ func Test_rawStateDelta_PropertyValue_serialization(t *testing.T) {
 		},
 		{
 			name: "replace-secret",
-			rsd: RawStateDelta{Replace: &replaceDelta{Raw: shim.RawState(rawstate.Array(
+			rsd: RawStateDelta{Replace: &replaceDelta{Raw: rawstate.Array(
 				rawstate.String("OK"),
 				rawstate.Null(),
-			).Build())}},
+			).Build()}},
 			expect: autogold.Expect(resource.PropertyValue{V: &resource.Secret{
 				Element: resource.PropertyValue{V: resource.PropertyMap{
 					resource.PropertyKey("replace"): resource.PropertyValue{V: resource.PropertyMap{
@@ -1211,10 +1211,10 @@ func Test_rawStateDelta_PropertyValue_serialization(t *testing.T) {
 				ArrayOrSet: &arrayOrSetDelta{
 					ElementDeltas: map[int]RawStateDelta{
 						0: {
-							Replace: &replaceDelta{Raw: shim.RawState(rawstate.Array(
+							Replace: &replaceDelta{Raw: rawstate.Array(
 								rawstate.String("OK"),
 								rawstate.Null(),
-							).Build())},
+							).Build()},
 						},
 					},
 				},
