@@ -90,7 +90,7 @@ func (p *provider) UpdateWithContext(
 		return plannedStatePropertyMap, resource.StatusOK, nil
 	}
 
-	priorStateDV, checkedInputsDV, err := makeDynamicValues2(priorState.state.Value, checkedInputsValue)
+	priorStateDV, checkedInputsDV, err := makeDynamicValues2(priorState.Value, checkedInputsValue)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -131,7 +131,7 @@ func (p *provider) UpdateWithContext(
 	}
 
 	if p.info.EnableRawStateDelta {
-		if err := insertRawStateDelta(ctx, &rh, updatedStateMap, updatedState.state.Value); err != nil {
+		if err := insertRawStateDelta(ctx, &rh, updatedStateMap, updatedState.Value); err != nil {
 			return nil, 0, err
 		}
 	}

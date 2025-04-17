@@ -35,29 +35,25 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/valueshim"
 )
 
-type resourceState struct {
+// Resource state where UpgradeResourceState has been already done if necessary.
+type upgradedResourceState struct {
 	TFSchemaVersion int64
 	Value           tftypes.Value
 	Private         []byte
 }
 
-// Resource state where UpgradeResourceState has been already done if necessary.
-type upgradedResourceState struct {
-	state *resourceState
-}
-
 func (u *upgradedResourceState) PrivateState() []byte {
-	return u.state.Private
+	return u.Private
 }
 
 func (u *upgradedResourceState) ToPropertyMap(ctx context.Context, rh *resourceHandle) (resource.PropertyMap, error) {
-	propMap, err := convert.DecodePropertyMap(ctx, rh.decoder, u.state.Value)
+	propMap, err := convert.DecodePropertyMap(ctx, rh.decoder, u.Value)
 	if err != nil {
 		return nil, err
 	}
 	return updateMeta(propMap, metaState{
-		SchemaVersion: u.state.TFSchemaVersion,
-		PrivateState:  u.state.Private,
+		SchemaVersion: u.TFSchemaVersion,
+		PrivateState:  u.Private,
 	})
 }
 
@@ -66,11 +62,9 @@ func newResourceState(ctx context.Context, rh *resourceHandle, private []byte) *
 	value := tftypes.NewValue(tfType, nil)
 	schemaVersion := rh.schema.ResourceSchemaVersion()
 	return &upgradedResourceState{
-		&resourceState{
-			Value:           value,
-			TFSchemaVersion: schemaVersion,
-			Private:         private,
-		},
+		Value:           value,
+		TFSchemaVersion: schemaVersion,
+		Private:         private,
 	}
 }
 
@@ -91,7 +85,7 @@ func parseResourceStateFromTFInner(
 	state *tfprotov6.DynamicValue,
 	private []byte,
 ) (*upgradedResourceState, error) {
-	rs := &resourceState{
+	rs := &upgradedResourceState{
 		TFSchemaVersion: resourceSchemaVersion,
 		Private:         private,
 	}
@@ -104,7 +98,7 @@ func parseResourceStateFromTFInner(
 		}
 		rs.Value = v
 	}
-	return &upgradedResourceState{state: rs}, nil
+	return rs, nil
 }
 
 type metaState struct {
@@ -268,11 +262,11 @@ func (p *provider) parseAndUpgradeResourceState(
 	// version match. This seems incorrect, but to derisk fixing this problem it is flagged together with
 	// EnableRawStateDelta so it participates in the phased rollout. Remove once rollout completes.
 	if stateVersion == rh.schema.ResourceSchemaVersion() && !p.info.EnableRawStateDelta {
-		return &upgradedResourceState{&resourceState{
+		return &upgradedResourceState{
 			TFSchemaVersion: stateVersion,
 			Private:         parsedMeta.PrivateState,
 			Value:           value,
-		}}, nil
+		}, nil
 	}
 
 	return p.upgradeResourceState(ctx, rh, rawState, parsedMeta)
@@ -323,11 +317,11 @@ func (p *provider) upgradeResourceState(
 		contract.AssertNoErrorf(err, "float precision downgrade transform should not fail")
 	}
 
-	return &upgradedResourceState{&resourceState{
+	return &upgradedResourceState{
 		TFSchemaVersion: rh.schema.ResourceSchemaVersion(),
 		Value:           v,
 		Private:         meta.PrivateState,
-	}}, nil
+	}, nil
 }
 
 func recoverRawState(props resource.PropertyMap, deltaPV resource.PropertyValue) (*tfprotov6.RawState, error) {
