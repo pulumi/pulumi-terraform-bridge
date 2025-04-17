@@ -231,7 +231,7 @@ func (p *provider) parseAndUpgradeResourceState(
 	}
 
 	// States written by newer version of the bridge should be able to recover the raw state.
-	if delta, hasDelta := props[reservedkeys.RawStateDelta]; hasDelta && p.info.EnableRawStateDelta {
+	if delta, hasDelta := props[reservedkeys.RawStateDelta]; hasDelta && p.info.RawStateDeltaEnabled() {
 		rawState, err := recoverRawState(props, delta)
 		if err != nil {
 			// Log details at Debug level since they may contain secrets.
@@ -261,7 +261,7 @@ func (p *provider) parseAndUpgradeResourceState(
 	// Before EnableRawStateDelta rollout, the behavior used to be to skip the upgrade method in case of an exact
 	// version match. This seems incorrect, but to derisk fixing this problem it is flagged together with
 	// EnableRawStateDelta so it participates in the phased rollout. Remove once rollout completes.
-	if stateVersion == rh.schema.ResourceSchemaVersion() && !p.info.EnableRawStateDelta {
+	if stateVersion == rh.schema.ResourceSchemaVersion() && !p.info.RawStateDeltaEnabled() {
 		return &upgradedResourceState{
 			TFSchemaVersion: stateVersion,
 			Private:         parsedMeta.PrivateState,
@@ -298,7 +298,7 @@ func (p *provider) upgradeResourceState(
 		return nil, fmt.Errorf("error unmarshalling the response from UpgradeResourceState: %w", err)
 	}
 
-	if p.info.EnableRawStateDelta {
+	if p.info.RawStateDeltaEnabled() {
 		// Downgrade float precision to 53. This is important because pulumi.PropertyValue stores float64, and
 		// tftypes.Value originating from Pulumi would have this precision, but the native precision coming
 		// from UpgradeResourceState is 512. Mismatches in precision may lead to spurious diffs.

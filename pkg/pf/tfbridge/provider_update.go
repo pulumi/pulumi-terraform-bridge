@@ -130,7 +130,7 @@ func (p *provider) UpdateWithContext(
 		}
 	}
 
-	if p.info.EnableRawStateDelta {
+	if p.info.RawStateDeltaEnabled() {
 		if err := insertRawStateDelta(ctx, &rh, updatedStateMap, updatedState.Value); err != nil {
 			return nil, 0, err
 		}

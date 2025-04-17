@@ -22,11 +22,13 @@ package info
 
 import (
 	"context"
+	"os"
 
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
@@ -1378,4 +1380,13 @@ type SkipExamplesArgs struct {
 	// "#/resources/aws:acm/certificate:Certificate/arn" would encode that the example pertains to the arn property
 	// of the Certificate resource in the AWS provider.
 	ExamplePath string
+}
+
+var rawStateDeltaEnabledEnvVarValue = os.Getenv("PULUMI_RAW_STATE_DELTA_ENABLED")
+
+func (info *Provider) RawStateDeltaEnabled() bool {
+	if rawStateDeltaEnabledEnvVarValue != "" {
+		return cmdutil.IsTruthy(rawStateDeltaEnabledEnvVarValue)
+	}
+	return info.EnableRawStateDelta
 }
