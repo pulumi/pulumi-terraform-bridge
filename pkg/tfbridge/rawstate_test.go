@@ -360,6 +360,8 @@ func Test_rawstate_delta_turnaround(t *testing.T) {
 				pv = resource.NewObjectProperty(resource.PropertyMap{"prop": pv})
 
 				ih.schemaInfos = map[string]*info.Schema{
+					// Pin the Pulumi name to avoid the bridge pluralizing to props, which
+					// complicates the test but is not relevant.
 					"prop": {Name: "prop"},
 				}
 			}
