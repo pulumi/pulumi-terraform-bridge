@@ -1298,15 +1298,8 @@ type makeTerraformStateOptions struct {
 	defaultZeroSchemaVersion bool
 }
 
-func makeTerraformStateWithOpts(
-	ctx context.Context,
-	provider shim.Provider,
-	res Resource,
-	id string,
-	m resource.PropertyMap,
-	opts makeTerraformStateOptions,
-) (shim.InstanceState, error) {
-	// Parse out any metadata from the state.
+// Parse out any metadata from the state.
+func parseMeta(m resource.PropertyMap, res Resource, opts makeTerraformStateOptions) (map[string]interface{}, error) {
 	var meta map[string]interface{}
 	if metaProperty, hasMeta := m[reservedkeys.Meta]; hasMeta && metaProperty.IsString() {
 		if err := json.Unmarshal([]byte(metaProperty.StringValue()), &meta); err != nil {
@@ -1322,41 +1315,36 @@ func makeTerraformStateWithOpts(
 		}
 		meta = map[string]interface{}{"schema_version": defaultSchemaVersion}
 	}
+	return meta, nil
+}
 
-	// Newer versions of the bridge encode a delta that allows recovering the raw Terraform state from the
-	// PropertyMap. Prefer this method if available.
-	providerWithRawStateSupport, rawStateSupported := provider.(shim.ProviderWithRawStateSupport)
-	if deltaValue, hasDelta := m[reservedkeys.RawStateDelta]; hasDelta && rawStateSupported {
-		// Only log error details at Debug level to avoid leaking secrets to errors.
-		logger := log.TryGetLogger(ctx)
-		if logger == nil {
-			logger = log.NewDiscardLogger()
-		}
-
-		delta, err := UnmarshalRawStateDelta(deltaValue)
-		if err != nil {
-			logger.Debug(fmt.Sprintf("Failed to parse raw state markers:\n"+
-				"  %q: %#v\n"+
-				"  error: %v",
-				reservedkeys.RawStateDelta,
-				delta.Marshal().String(),
-				err))
-			contract.AssertNoErrorf(err, "Failed to parse raw state markers")
-		}
-		recoveredRawState, err := delta.Recover(resource.NewObjectProperty(m))
-		if err != nil {
-			logger.Debug(fmt.Sprintf("Failed recover raw state:\n"+
-				"  %q: %#v\n"+
-				"  error: %v",
-				reservedkeys.RawStateDelta,
-				delta.Marshal().String(),
-				err))
-			contract.AssertNoErrorf(err, "Failed to recover raw state")
-		}
-
-		return providerWithRawStateSupport.UpgradeState(ctx, res.TFName, recoveredRawState, meta)
+// Check if makeTerraformStateViaUpgrade is enabled and applicable. If so return a non-nil provider handle.
+func makeTerraformStateViaUpgradeEnabled(
+	providerInfo ProviderInfo,
+	p shim.Provider,
+	pm resource.PropertyMap,
+) (shim.ProviderWithRawStateSupport, bool) {
+	if !providerInfo.EnableRawStateDelta {
+		return nil, false
 	}
+	pp, ok := p.(shim.ProviderWithRawStateSupport)
+	if !ok {
+		return nil, false
+	}
+	if _, ok := pm[reservedkeys.RawStateDelta]; !ok {
+		return nil, false
+	}
+	return pp, true
+}
 
+// The old method used when [makeTerraformStateViaUpgrade] is not available.
+func makeTerraformStateWithOpts(
+	ctx context.Context,
+	res Resource,
+	id string,
+	m resource.PropertyMap,
+	opts makeTerraformStateOptions,
+) (shim.InstanceState, error) {
 	// Turn the resource properties into a map. For the most part, this is a straight
 	// Mappable, but we use MapReplace because we use float64s and Terraform uses
 	// ints, to represent numbers.
@@ -1365,8 +1353,57 @@ func makeTerraformStateWithOpts(
 	if err != nil {
 		return nil, err
 	}
-
+	meta, err := parseMeta(m, res, opts)
+	if err != nil {
+		return nil, err
+	}
 	return res.TF.InstanceState(id, inputs, meta)
+}
+
+// The preferred method for recreating TF state that is used when the Pulumi state was written with a recent enough
+// bridge code is to reconstruct the TF raw state and pass it to the state upgrade TF life-cycle method. This most
+// closely approximates how TF runs internally.
+func makeTerraformStateViaUpgrade(
+	ctx context.Context,
+	p shim.ProviderWithRawStateSupport,
+	res Resource,
+	m resource.PropertyMap,
+) (shim.InstanceState, error) {
+	// Only log error details at Debug level to avoid leaking secrets to errors.
+	logger := log.TryGetLogger(ctx)
+	if logger == nil {
+		logger = log.NewDiscardLogger()
+	}
+
+	deltaValue, ok := m[reservedkeys.RawStateDelta]
+	contract.Assertf(ok, "makeTerraformStateViaUpgrade should only be called if %s key is set",
+		reservedkeys.RawStateDelta)
+
+	delta, err := UnmarshalRawStateDelta(deltaValue)
+	if err != nil {
+		logger.Debug(fmt.Sprintf("Failed to parse raw state markers:\n"+
+			"  %q: %#v\n"+
+			"  error: %v",
+			reservedkeys.RawStateDelta,
+			delta.Marshal().String(),
+			err))
+		contract.AssertNoErrorf(err, "Failed to parse raw state markers")
+	}
+	recoveredRawState, err := delta.Recover(resource.NewObjectProperty(m))
+	if err != nil {
+		logger.Debug(fmt.Sprintf("Failed recover raw state:\n"+
+			"  %q: %#v\n"+
+			"  error: %v",
+			reservedkeys.RawStateDelta,
+			delta.Marshal().String(),
+			err))
+		contract.AssertNoErrorf(err, "Failed to recover raw state")
+	}
+	meta, err := parseMeta(m, res, makeTerraformStateOptions{defaultZeroSchemaVersion: true})
+	if err != nil {
+		return nil, err
+	}
+	return p.UpgradeState(ctx, res.TFName, recoveredRawState, meta)
 }
 
 // MakeTerraformState converts a Pulumi property bag into its Terraform equivalent.  This requires
@@ -1376,21 +1413,13 @@ func makeTerraformStateWithOpts(
 func MakeTerraformState(
 	ctx context.Context, res Resource, id string, m resource.PropertyMap,
 ) (shim.InstanceState, error) {
-	return makeTerraformStateWithOpts(ctx, nil, res, id, m, makeTerraformStateOptions{})
+	return makeTerraformStateWithOpts(ctx, res, id, m, makeTerraformStateOptions{})
 }
 
-type unmarshalTerraformStateOptions struct {
-	defaultZeroSchemaVersion bool
-}
-
-func unmarshalTerraformStateWithOpts(
-	ctx context.Context,
-	provider shim.Provider,
-	r Resource,
-	id string,
-	m *pbstruct.Struct,
-	l string,
-	opts unmarshalTerraformStateOptions,
+// UnmarshalTerraformState unmarshals a Terraform instance state from an RPC property map.
+// Deprecated: See [transformFromState] and [makeTerraformStateWithOpts] instead.
+func UnmarshalTerraformState(
+	ctx context.Context, r Resource, id string, m *pbstruct.Struct, l string,
 ) (shim.InstanceState, error) {
 	props, err := plugin.UnmarshalProperties(m, plugin.MarshalOptions{
 		Label:     fmt.Sprintf("%s.state", l),
@@ -1405,15 +1434,7 @@ func unmarshalTerraformStateWithOpts(
 		return nil, err
 	}
 
-	return makeTerraformStateWithOpts(ctx, provider, r, id, props, makeTerraformStateOptions(opts))
-}
-
-// UnmarshalTerraformState unmarshals a Terraform instance state from an RPC property map.
-// Deprecated: Use unmarshalTerraformStateWithOpts instead.
-func UnmarshalTerraformState(
-	ctx context.Context, r Resource, id string, m *pbstruct.Struct, l string,
-) (shim.InstanceState, error) {
-	return unmarshalTerraformStateWithOpts(ctx, nil, r, id, m, l, unmarshalTerraformStateOptions{})
+	return makeTerraformStateWithOpts(ctx, r, id, props, makeTerraformStateOptions{})
 }
 
 // IsMaxItemsOne returns true if the schema/info pair represents a TypeList or TypeSet which should project
