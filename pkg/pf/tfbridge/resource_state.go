@@ -92,68 +92,6 @@ type rawResourceState struct {
 	Value *tftypes.Value
 }
 
-func parseResourceState(
-	ctx context.Context,
-	rh *resourceHandle,
-	props resource.PropertyMap,
-) (*rawResourceState, error) {
-	parsedMeta, err := parseMeta(props)
-	if err != nil {
-		return nil, err
-	}
-
-	stateVersion := parsedMeta.SchemaVersion
-
-	if rh.pulumiResourceInfo.PreStateUpgradeHook != nil {
-		var err error
-		stateVersion, props, err = rh.pulumiResourceInfo.PreStateUpgradeHook(tfbridge.PreStateUpgradeHookArgs{
-			ResourceSchemaVersion:   rh.schema.ResourceSchemaVersion(),
-			PriorState:              props.Copy(),
-			PriorStateSchemaVersion: parsedMeta.SchemaVersion,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("PreStateUpgradeHook failed: %w", err)
-		}
-		props, err = updateMeta(props, metaState{
-			SchemaVersion: stateVersion,
-			PrivateState:  parsedMeta.PrivateState,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("PreStateUpgradeHook failed to update schema version: %w", err)
-		}
-	}
-
-	// States written by newer version of the bridge should be able to recover the raw state.
-	if deltaPV, ok := props[reservedkeys.RawStateDelta]; ok {
-		rawState, err := recoverRawState(props, deltaPV)
-
-		// Log details at Debug level since they may contain secrets.
-		tflog.Debug(ctx, "[pf/tfbridge] Failed to recover raw state for Plugin Framework",
-			map[string]any{
-				"token": rh.token,
-				"props": props.Mappable(),
-			})
-
-		contract.AssertNoErrorf(err, "Failed to recover raw state for Plugin Framework")
-		return &rawResourceState{
-			RawState:        rawState,
-			TFSchemaVersion: stateVersion,
-			Private:         parsedMeta.PrivateState,
-		}, nil
-	}
-
-	// Otherwise fallback on imprecise parsing.
-	value, err := convert.EncodePropertyMap(rh.encoder, props)
-	if err != nil {
-		return nil, err
-	}
-	return &rawResourceState{
-		TFSchemaVersion: stateVersion,
-		Value:           &value,
-		Private:         parsedMeta.PrivateState,
-	}, nil
-}
-
 func recoverRawState(props resource.PropertyMap, deltaPV resource.PropertyValue) (*tfprotov6.RawState, error) {
 	delta, err := tfbridge.UnmarshalRawStateDelta(deltaPV)
 	if err != nil {
@@ -289,6 +227,68 @@ func insertRawStateDelta(ctx context.Context, rh *resourceHandle, pm resource.Pr
 	}
 	pm[reservedkeys.RawStateDelta] = delta.Marshal()
 	return nil
+}
+
+func parseResourceState(
+	ctx context.Context,
+	rh *resourceHandle,
+	props resource.PropertyMap,
+) (*rawResourceState, error) {
+	parsedMeta, err := parseMeta(props)
+	if err != nil {
+		return nil, err
+	}
+
+	stateVersion := parsedMeta.SchemaVersion
+
+	if rh.pulumiResourceInfo.PreStateUpgradeHook != nil {
+		var err error
+		stateVersion, props, err = rh.pulumiResourceInfo.PreStateUpgradeHook(tfbridge.PreStateUpgradeHookArgs{
+			ResourceSchemaVersion:   rh.schema.ResourceSchemaVersion(),
+			PriorState:              props.Copy(),
+			PriorStateSchemaVersion: parsedMeta.SchemaVersion,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("PreStateUpgradeHook failed: %w", err)
+		}
+		props, err = updateMeta(props, metaState{
+			SchemaVersion: stateVersion,
+			PrivateState:  parsedMeta.PrivateState,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("PreStateUpgradeHook failed to update schema version: %w", err)
+		}
+	}
+
+	// States written by newer version of the bridge should be able to recover the raw state.
+	if deltaPV, ok := props[reservedkeys.RawStateDelta]; ok {
+		rawState, err := recoverRawState(props, deltaPV)
+
+		// Log details at Debug level since they may contain secrets.
+		tflog.Debug(ctx, "[pf/tfbridge] Failed to recover raw state for Plugin Framework",
+			map[string]any{
+				"token": rh.token,
+				"props": props.Mappable(),
+			})
+
+		contract.AssertNoErrorf(err, "Failed to recover raw state for Plugin Framework")
+		return &rawResourceState{
+			RawState:        rawState,
+			TFSchemaVersion: stateVersion,
+			Private:         parsedMeta.PrivateState,
+		}, nil
+	}
+
+	// Otherwise fallback on imprecise parsing.
+	value, err := convert.EncodePropertyMap(rh.encoder, props)
+	if err != nil {
+		return nil, err
+	}
+	return &rawResourceState{
+		TFSchemaVersion: stateVersion,
+		Value:           &value,
+		Private:         parsedMeta.PrivateState,
+	}, nil
 }
 
 // Wraps running state migration via the underlying TF UpgradeResourceState method.
