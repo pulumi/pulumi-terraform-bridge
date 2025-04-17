@@ -772,7 +772,7 @@ func TestInjectingCustomTimeouts(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 
-			// A bit of discrepancy here: sdkv2 will upgrade the resource state but sdk2 will not;
+			// A bit of discrepancy here: sdkv2 will upgrade the resource state but sdk1 will not;
 			// Since second_resource specifies SchemaVersion: 1, the upgraded result is 1.
 			assert.Contains(t, []string{"0", "1"}, state.Meta()["schema_version"])
 
