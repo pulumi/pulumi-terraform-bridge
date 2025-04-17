@@ -40,8 +40,7 @@ func (r *v2Resource2) Importer() shim.ImportFunc {
 	return r.importer
 }
 
-// The the legacy method of reconstructing an InstanceState. For new providers prefer
-// [shim.ProviderWithRawStateSupport] methods.
+// The the legacy method of reconstructing an InstanceState. For new providers prefer UpgradeState method.
 func (r *v2Resource2) InstanceState(
 	id string, object, meta map[string]interface{},
 ) (shim.InstanceState, error) {
@@ -61,11 +60,8 @@ func (r *v2Resource2) InstanceState(
 	}
 	s = normalizeBlockCollections(s, r.tf)
 
-	return &v2InstanceState2{
-		stateValue:   s,
-		resourceType: r.resourceType,
-		meta:         meta,
-	}, nil
+	// This state has not passed through the upgrade method and is marked as such.
+	return newNonUpgradedInstanceState(r.resourceType, s, meta), nil
 }
 
 func (r *v2Resource2) Timeouts() *shim.ResourceTimeout {
@@ -91,6 +87,24 @@ var (
 	_ shim.InstanceState             = (*v2InstanceState2)(nil)
 	_ shim.InstanceStateWithCtyValue = (*v2InstanceState2)(nil)
 )
+
+func newNonUpgradedInstanceState(resourceType string, stateValue cty.Value, meta map[string]any) *v2InstanceState2 {
+	return &v2InstanceState2{
+		resourceType: resourceType,
+		stateValue:   stateValue,
+		isUpgraded:   false,
+		meta:         meta,
+	}
+}
+
+func newUpgradedInstanceState(resourceType string, stateValue cty.Value, meta map[string]any) *v2InstanceState2 {
+	return &v2InstanceState2{
+		resourceType: resourceType,
+		stateValue:   stateValue,
+		isUpgraded:   true,
+		meta:         meta,
+	}
+}
 
 func (s *v2InstanceState2) markUpgraded() *v2InstanceState2 {
 	copy := *s
@@ -133,6 +147,7 @@ func (s *v2InstanceState2) Value() cty.Value {
 type v2InstanceDiff2 struct {
 	v2InstanceDiff
 
+	resourceType              string
 	config                    cty.Value
 	plannedState              cty.Value
 	plannedPrivate            map[string]interface{}
@@ -164,10 +179,9 @@ var _ shim.InstanceDiff = (*v2InstanceDiff2)(nil)
 func (d *v2InstanceDiff2) ProposedState(
 	res shim.Resource, priorState shim.InstanceState,
 ) (shim.InstanceState, error) {
-	return &v2InstanceState2{
-		stateValue: d.plannedState,
-		meta:       d.v2InstanceDiff.tf.Meta,
-	}, nil
+	// The proposed state is always upgraded, which is a bit of a technicality since the code will not try
+	// upgrading it anyway.
+	return newUpgradedInstanceState(d.resourceType, d.plannedState, d.v2InstanceDiff.tf.Meta), nil
 }
 
 func (d *v2InstanceDiff2) PriorState() (shim.InstanceState, error) {
@@ -318,6 +332,7 @@ func (p v2Provider) Diff(
 		},
 		config:                    cfg,
 		plannedState:              plannedState,
+		resourceType:              t,
 		diffEqualDecisionOverride: diffOverride,
 		plannedPrivate:            plan.PlannedPrivate,
 		prior:                     st,
@@ -393,11 +408,7 @@ func (p v2Provider) Refresh(
 	if rr.stateValue.IsNull() {
 		return nil, nil
 	}
-	return &v2InstanceState2{
-		resourceType: rr.resourceType,
-		stateValue:   rr.stateValue,
-		meta:         rr.meta,
-	}, nil
+	return newUpgradedInstanceState(rr.resourceType, rr.stateValue, rr.meta), nil
 }
 
 func (p v2Provider) NewDestroyDiff(
@@ -410,6 +421,7 @@ func (p v2Provider) NewDestroyDiff(
 	dd.applyTimeoutOptions(opts)
 
 	return &v2InstanceDiff2{
+		resourceType:   t,
 		v2InstanceDiff: dd,
 		config:         cty.NullVal(ty),
 		plannedState:   cty.NullVal(ty),
@@ -506,22 +518,14 @@ func (p *v2Provider) ensureStateIsUpgraded(
 		return nil, err
 	}
 
-	return &v2InstanceState2{
-		resourceType: t,
-		stateValue:   newState,
-		meta:         newMeta,
-	}, nil
+	return newUpgradedInstanceState(t, newState, newMeta), nil
 }
 
 // New-style constructor for empty states.
 func (p v2Provider) newEmptyStateImpl(t string) *v2InstanceState2 {
 	res := p.tf.ResourcesMap[t]
 	ty := res.CoreConfigSchema().ImpliedType()
-	return &v2InstanceState2{
-		resourceType: t,
-		stateValue:   cty.NullVal(ty),
-		isUpgraded:   true,
-	}
+	return newUpgradedInstanceState(t, cty.NullVal(ty), nil)
 }
 
 // New-style upgrade method exposed through the shim layer. Should never be called on creates with nil state.
@@ -538,12 +542,7 @@ func (p v2Provider) UpgradeState(
 		return nil, err
 	}
 
-	return &v2InstanceState2{
-		resourceType: t,
-		stateValue:   newState,
-		meta:         newMeta,
-		isUpgraded:   true,
-	}, nil
+	return newUpgradedInstanceState(t, newState, newMeta), nil
 }
 
 // Helper to unwrap gRPC types from GRPCProviderServer.
@@ -742,11 +741,7 @@ func (s *grpcServer) ApplyResourceChange(
 	if newState.IsNull() {
 		return nil, returnErr
 	}
-	return &v2InstanceState2{
-		resourceType: typeName,
-		stateValue:   newState,
-		meta:         meta,
-	}, returnErr
+	return newUpgradedInstanceState(typeName, newState, meta), returnErr
 }
 
 func (s *grpcServer) ReadResource(
@@ -793,11 +788,7 @@ func (s *grpcServer) ReadResource(
 			return nil, err
 		}
 	}
-	return &v2InstanceState2{
-		resourceType: typeName,
-		stateValue:   newState,
-		meta:         meta2,
-	}, nil
+	return newUpgradedInstanceState(typeName, newState, meta2), nil
 }
 
 func (s *grpcServer) ImportResourceState(
