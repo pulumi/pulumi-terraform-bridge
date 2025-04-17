@@ -51,12 +51,11 @@ func (u *upgradedResourceState) PrivateState() []byte {
 }
 
 func (u *upgradedResourceState) ToPropertyMap(ctx context.Context, rh *resourceHandle) (resource.PropertyMap, error) {
-	pm, err := convert.DecodePropertyMap(ctx, rh.decoder, u.state.Value)
+	propMap, err := convert.DecodePropertyMap(ctx, rh.decoder, u.state.Value)
 	if err != nil {
 		return nil, err
 	}
-
-	return updateMeta(pm, metaState{
+	return updateMeta(propMap, metaState{
 		SchemaVersion: u.state.TFSchemaVersion,
 		PrivateState:  u.state.Private,
 	})
