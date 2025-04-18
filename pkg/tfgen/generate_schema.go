@@ -394,7 +394,6 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg, sink diag.Sink) (pschema.Pac
 			spec.Provider.Properties[propName] = outputProp
 		}
 	}
-	//q.Q(spec.Functions)
 
 	for token, typ := range g.info.ExtraTypes {
 		if _, defined := spec.Types[token]; defined {
