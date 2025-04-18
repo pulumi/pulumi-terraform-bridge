@@ -18,7 +18,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
-	"github.com/ryboe/q"
 	"log"
 	"os"
 	"sort"
@@ -1848,42 +1847,6 @@ func convertToPropertyValue(v interface{}) resource.PropertyValue {
 func (p *Provider) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error) {
 
 	ctx = p.loggingContext(ctx, "")
-	//tfschemaMap := p.config
-	//tfproperties := make(resource.PropertyMap)
-
-	//
-	//// For each Terraform key from p.config, we want to set the corresponding Pulumi configValue.
-	//tfschemaMap.Range(func(tfKey string, _ shim.Schema) bool {
-	//	pulumiKey := TerraformToPulumiNameV2(tfKey, tfschemaMap, p.info.Config)
-	//	if configValue, ok := p.configValues[resource.PropertyKey(pulumiKey)]; ok {
-	//		tfproperties[resource.PropertyKey(tfKey)] = configValue
-	//	}
-	//	return true
-	//})
-
-	//tfproperty := p.populateTfConfig(tfschemaMap, resource.NewObjectProperty(p.configValues))
-	//tfproperties = tfproperty.ObjectValue()
-	q.Q("ONLY CONSIDER Q BELOW THIS LINE")
-	q.Q("*******************")
-
-	resConfig, err := buildTerraformConfig(ctx, p, p.configValues)
-
-	q.Q(resConfig, err)
-
-	var rawConfig terraform.ResourceConfig
-
-	q.Q("testing the type also for AWS wtf")
-	if cfg, ok := resConfig.(shim.ResourceConfigWithGetterForSdkV2); ok {
-		q.Q("actually the type")
-		rawConfig = cfg.GetTFConfig()
-	}
-
-	q.Q(rawConfig.Config)
-
-	something := convertToPropertyMap(rawConfig.Config)
-	q.Q(something)
-
-	// Now read into tfproperties
 
 	_, functionName, found := strings.Cut(req.GetTok(), "/")
 	if !found {
@@ -1891,7 +1854,17 @@ func (p *Provider) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulum
 	}
 	switch functionName {
 	case "terraformConfig":
-		outputResult, err := plugin.MarshalProperties(something, plugin.MarshalOptions{})
+		resConfig, err := buildTerraformConfig(ctx, p, p.configValues)
+
+		var rawConfig terraform.ResourceConfig
+
+		if cfg, ok := resConfig.(shim.ResourceConfigWithGetterForSdkV2); ok {
+			rawConfig = cfg.GetTFConfig()
+		}
+		// Extract values
+		tfConfigOutput := convertToPropertyMap(rawConfig.Config)
+
+		outputResult, err := plugin.MarshalProperties(tfConfigOutput, plugin.MarshalOptions{})
 		if err != nil {
 			return nil, err
 		}
