@@ -97,7 +97,7 @@ type (
 )
 
 func (m *muxer) getFunction(token string) server {
-	// TODO: This is a dev hack; remove when proper handling is set
+	// TODO: Verify this is safe to do
 	if strings.Contains(token, "terraformConfig") {
 		return m.servers[0]
 	}
