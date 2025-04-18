@@ -19,7 +19,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -66,6 +68,7 @@ type upgradeStateTestPhase string
 const (
 	createPhase  upgradeStateTestPhase = "create"
 	refreshPhase upgradeStateTestPhase = "refresh"
+	previewPhase upgradeStateTestPhase = "preview"
 	updatePhase  upgradeStateTestPhase = "update"
 )
 
@@ -88,6 +91,7 @@ type upgradeStateResult struct {
 }
 
 func runUpgradeStateTest(t *testing.T, tc upgradeStateTestCase) upgradeStateResult {
+	t.Helper()
 	result := upgradeStateResult{}
 
 	t.Run("tf", func(t *testing.T) {
@@ -295,12 +299,13 @@ func runUpgradeTestStatePulumi(t T, tc upgradeStateTestCase) upgradeStateResult 
 	pt.ImportStack(t, createdState)
 
 	t.Logf("#### preview")
-	tracker.phase = updatePhase
+	tracker.phase = previewPhase
 	previewResult := pt.Preview(t, optpreview.Diff())
 	t.Logf("%s", previewResult.StdOut+previewResult.StdErr)
 
 	t.Logf("#### update")
-	updateResult := pt.Up(t)
+	tracker.phase = updatePhase
+	updateResult := pt.Up(t) // --skip-preview would be nice here
 	t.Logf("%s", updateResult.StdOut+updateResult.StdErr)
 
 	schemaVersionU := getVersionInState(t, pt.ExportStack(t))
@@ -328,7 +333,7 @@ func runUpgradeStateTestTF(t T, tc upgradeStateTestCase) []upgradeStateTrace {
 
 	tfd := newTFResDriver(t, tfwd, defProviderShortName, defRtype, tc.Resource1)
 
-	t.Logf("create")
+	t.Logf("#### create")
 	tracker.phase = createPhase
 	_ = tfd.writePlanApply(t, tc.Resource1.Schema, defRtype, rname, inputs1, lifecycleArgs{})
 
@@ -337,7 +342,7 @@ func runUpgradeStateTestTF(t T, tc upgradeStateTestCase) []upgradeStateTrace {
 	createdState, err := os.ReadFile(filepath.Join(tfwd, "terraform.tfstate"))
 	require.NoError(t, err)
 
-	t.Logf("refresh")
+	t.Logf("#### refresh")
 	tracker.phase = refreshPhase
 	tfd2.refresh(t, tc.Resource2.Schema, defRtype, rname, inputs2, lifecycleArgs{})
 
@@ -345,9 +350,14 @@ func runUpgradeStateTestTF(t T, tc upgradeStateTestCase) []upgradeStateTrace {
 	err = os.WriteFile(filepath.Join(tfwd, "terraform.tfstate"), createdState, 0o600)
 	require.NoError(t, err)
 
-	t.Logf("apply")
+	t.Logf("#### plan (similar to preview)")
+	tracker.phase = previewPhase
+	plan := tfd2.writePlan(t, tc.Resource2.Schema, defRtype, rname, inputs2, lifecycleArgs{})
+
+	t.Logf("#### apply (similar to update)")
 	tracker.phase = updatePhase
-	_ = tfd2.writePlanApply(t, tc.Resource2.Schema, defRtype, rname, inputs2, lifecycleArgs{})
+	err = tfd2.driver.Apply(t, plan)
+	require.NoError(t, err)
 
 	return tracker.trace
 }
@@ -358,4 +368,10 @@ func nopUpgrade(
 	meta interface{},
 ) (map[string]interface{}, error) {
 	return rawState, nil
+}
+
+func skipUnlessLinux(t T) {
+	if ci, ok := os.LookupEnv("CI"); ok && ci == "true" && !strings.Contains(strings.ToLower(runtime.GOOS), "linux") {
+		t.Skip("Skipping on non-Linux platforms as our CI does not yet install Terraform CLI required for these tests")
+	}
 }

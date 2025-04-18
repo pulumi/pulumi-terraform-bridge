@@ -25,6 +25,7 @@ import (
 
 func TestUpgrade_UpgradersNotCalledWhenVersionIsNotChanging(t *testing.T) {
 	t.Parallel()
+	skipUnlessLinux(t)
 
 	sch := map[string]*schema.Schema{
 		"f0": {
@@ -79,6 +80,7 @@ func TestUpgrade_UpgradersNotCalledWhenVersionIsNotChanging(t *testing.T) {
 // is called and if it is at parity.
 func TestUpgrade_String_0to1_Version(t *testing.T) {
 	t.Parallel()
+	skipUnlessLinux(t)
 
 	sch := map[string]*schema.Schema{
 		"f0": {
@@ -111,10 +113,45 @@ func TestUpgrade_String_0to1_Version(t *testing.T) {
 			SkipSchemaVersionAfterUpdateCheck: true,
 		})
 
-		assert.Equal(t, result.tfUpgrades, result.pulumiUpgrades)
 		autogold.Expect([]upgradeStateTrace{
 			{
 				Phase: upgradeStateTestPhase("refresh"),
+				RawState: map[string]interface{}{
+					"f0": "val",
+					"id": "newid",
+				},
+				Result: map[string]interface{}{
+					"f0": "val",
+					"id": "newid",
+				},
+			},
+			{
+				Phase: upgradeStateTestPhase("preview"),
+				RawState: map[string]interface{}{
+					"f0": "val",
+					"id": "newid",
+				},
+				Result: map[string]interface{}{
+					"f0": "val",
+					"id": "newid",
+				},
+			},
+		}).Equal(t, result.tfUpgrades)
+
+		autogold.Expect([]upgradeStateTrace{
+			{
+				Phase: upgradeStateTestPhase("refresh"),
+				RawState: map[string]interface{}{
+					"f0": "val",
+					"id": "newid",
+				},
+				Result: map[string]interface{}{
+					"f0": "val",
+					"id": "newid",
+				},
+			},
+			{
+				Phase: upgradeStateTestPhase("preview"),
 				RawState: map[string]interface{}{
 					"f0": "val",
 					"id": "newid",
@@ -163,7 +200,7 @@ func TestUpgrade_String_0to1_Version(t *testing.T) {
 				},
 			},
 			{
-				Phase: upgradeStateTestPhase("update"),
+				Phase: upgradeStateTestPhase("preview"),
 				RawState: map[string]interface{}{
 					"f0": "val1",
 					"id": "newid",
@@ -179,6 +216,28 @@ func TestUpgrade_String_0to1_Version(t *testing.T) {
 		autogold.Expect([]upgradeStateTrace{
 			{
 				Phase: upgradeStateTestPhase("refresh"),
+				RawState: map[string]interface{}{
+					"f0": "val1",
+					"id": "newid",
+				},
+				Result: map[string]interface{}{
+					"f0": "val1",
+					"id": "newid",
+				},
+			},
+			{
+				Phase: upgradeStateTestPhase("preview"),
+				RawState: map[string]interface{}{
+					"f0": "val1",
+					"id": "newid",
+				},
+				Result: map[string]interface{}{
+					"f0": "val1",
+					"id": "newid",
+				},
+			},
+			{
+				Phase: upgradeStateTestPhase("preview"),
 				RawState: map[string]interface{}{
 					"f0": "val1",
 					"id": "newid",
@@ -228,6 +287,7 @@ func TestUpgrade_String_0to1_Version(t *testing.T) {
 // Same as the string upgrade test but with objects.
 func TestUpgrade_Object_0to1_Version(t *testing.T) {
 	t.Parallel()
+	skipUnlessLinux(t)
 
 	sch := map[string]*schema.Schema{
 		"f0": {
@@ -271,7 +331,66 @@ func TestUpgrade_Object_0to1_Version(t *testing.T) {
 
 			SkipSchemaVersionAfterUpdateCheck: true,
 		})
-		assert.Equal(t, result.tfUpgrades, result.pulumiUpgrades)
+
+		autogold.Expect([]upgradeStateTrace{
+			{
+				Phase: upgradeStateTestPhase("refresh"),
+				RawState: map[string]interface{}{
+					"f0": []interface{}{map[string]interface{}{"x": "val"}},
+					"id": "newid",
+				},
+				Result: map[string]interface{}{
+					"f0": []interface{}{map[string]interface{}{"x": "val"}},
+					"id": "newid",
+				},
+			},
+			{
+				Phase: upgradeStateTestPhase("preview"),
+				RawState: map[string]interface{}{
+					"f0": []interface{}{map[string]interface{}{"x": "val"}},
+					"id": "newid",
+				},
+				Result: map[string]interface{}{
+					"f0": []interface{}{map[string]interface{}{"x": "val"}},
+					"id": "newid",
+				},
+			},
+		}).Equal(t, result.tfUpgrades)
+		autogold.Expect([]upgradeStateTrace{
+			{
+				Phase: upgradeStateTestPhase("refresh"),
+				RawState: map[string]interface{}{
+					"f0": []interface{}{map[string]interface{}{"x": "val"}},
+					"id": "newid",
+				},
+				Result: map[string]interface{}{
+					"f0": []interface{}{map[string]interface{}{"x": "val"}},
+					"id": "newid",
+				},
+			},
+			{
+				Phase: upgradeStateTestPhase("preview"),
+				RawState: map[string]interface{}{
+					"f0": []interface{}{map[string]interface{}{"x": "val"}},
+					"id": "newid",
+				},
+				Result: map[string]interface{}{
+					"f0": []interface{}{map[string]interface{}{"x": "val"}},
+					"id": "newid",
+				},
+			},
+			{
+				Phase: upgradeStateTestPhase("update"),
+				RawState: map[string]interface{}{
+					"f0": []interface{}{map[string]interface{}{"x": "val"}},
+					"id": "newid",
+				},
+				Result: map[string]interface{}{
+					"f0": []interface{}{map[string]interface{}{"x": "val"}},
+					"id": "newid",
+				},
+			},
+		}).Equal(t, result.pulumiUpgrades)
 	})
 
 	// Check when the values are changing, and it is an effective update.
@@ -298,7 +417,7 @@ func TestUpgrade_Object_0to1_Version(t *testing.T) {
 				},
 			},
 			{
-				Phase: upgradeStateTestPhase("update"),
+				Phase: upgradeStateTestPhase("preview"),
 				RawState: map[string]interface{}{
 					"f0": []interface{}{map[string]interface{}{"x": "val1"}},
 					"id": "newid",
@@ -312,6 +431,28 @@ func TestUpgrade_Object_0to1_Version(t *testing.T) {
 		autogold.Expect([]upgradeStateTrace{
 			{
 				Phase: upgradeStateTestPhase("refresh"),
+				RawState: map[string]interface{}{
+					"f0": []interface{}{map[string]interface{}{"x": "val1"}},
+					"id": "newid",
+				},
+				Result: map[string]interface{}{
+					"f0": []interface{}{map[string]interface{}{"x": "val1"}},
+					"id": "newid",
+				},
+			},
+			{
+				Phase: upgradeStateTestPhase("preview"),
+				RawState: map[string]interface{}{
+					"f0": []interface{}{map[string]interface{}{"x": "val1"}},
+					"id": "newid",
+				},
+				Result: map[string]interface{}{
+					"f0": []interface{}{map[string]interface{}{"x": "val1"}},
+					"id": "newid",
+				},
+			},
+			{
+				Phase: upgradeStateTestPhase("preview"),
 				RawState: map[string]interface{}{
 					"f0": []interface{}{map[string]interface{}{"x": "val1"}},
 					"id": "newid",
@@ -362,6 +503,7 @@ func TestUpgrade_Object_0to1_Version(t *testing.T) {
 // invoked but Pulumi should handle the renaming seamlessly.
 func TestUpgrade_PulumiRenamesProperty(t *testing.T) {
 	t.Parallel()
+	skipUnlessLinux(t)
 
 	sch := map[string]*schema.Schema{
 		"f0": {
@@ -428,6 +570,7 @@ func TestUpgrade_PulumiRenamesProperty(t *testing.T) {
 // reinterpreting a string as a number for example.
 func TestUpgrade_PulumiChangesPropertyType(t *testing.T) {
 	t.Parallel()
+	skipUnlessLinux(t)
 
 	sch := map[string]*schema.Schema{
 		"f0": {

@@ -77,7 +77,7 @@ type lifecycleArgs struct {
 	CreateBeforeDestroy bool
 }
 
-func (d *TfResDriver) writePlanApply(
+func (d *TfResDriver) writePlan(
 	t T,
 	resourceSchema map[string]*schema.Schema,
 	resourceType, resourceName string,
@@ -93,7 +93,18 @@ func (d *TfResDriver) writePlanApply(
 
 	plan, err := d.driver.Plan(t)
 	require.NoError(t, err)
-	err = d.driver.Apply(t, plan)
+	return plan
+}
+
+func (d *TfResDriver) writePlanApply(
+	t T,
+	resourceSchema map[string]*schema.Schema,
+	resourceType, resourceName string,
+	config cty.Value,
+	lifecycle lifecycleArgs,
+) *tfcheck.TFPlan {
+	plan := d.writePlan(t, resourceSchema, resourceType, resourceName, config, lifecycle)
+	err := d.driver.Apply(t, plan)
 	require.NoError(t, err)
 	return plan
 }
