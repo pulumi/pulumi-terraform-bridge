@@ -111,6 +111,7 @@ func TestUpgrade_String_0to1_Version(t *testing.T) {
 			Inputs2:   map[string]any{"f0": "val"},
 
 			// Pulumi does not upgrade this resource to V2 because of a no-op update plan.
+			// TODO[pulumi/pulumi-terraform-bridge#3008]
 			SkipSchemaVersionAfterUpdateCheck: true,
 		})
 
@@ -185,9 +186,6 @@ func TestUpgrade_String_0to1_Version(t *testing.T) {
 			Inputs2:   map[string]any{"f0": "val2"},
 		})
 
-		// Almost equal but not quite - see below.
-		// assert.Equal(t, result.tfUpgrades, result.pulumiUpgrades)
-
 		autogold.Expect([]upgradeStateTrace{
 			{
 				Phase: upgradeStateTestPhase("refresh"),
@@ -213,7 +211,7 @@ func TestUpgrade_String_0to1_Version(t *testing.T) {
 			},
 		}).Equal(t, result.tfUpgrades)
 
-		// There seems to be a problem that Pulumi runs the upgrade function 3 times needlessly during update.
+		// Upgrade calls similar but Pulumi calls the upgrader a few times too many.
 		autogold.Expect([]upgradeStateTrace{
 			{
 				Phase: upgradeStateTestPhase("refresh"),
@@ -403,8 +401,7 @@ func TestUpgrade_Object_0to1_Version(t *testing.T) {
 			Inputs2:   configVal("val2"),
 		})
 
-		// Upgrade calls are not at parity:
-
+		// Upgrade calls similar but Pulumi calls the upgrader a few times too many.
 		autogold.Expect([]upgradeStateTrace{
 			{
 				Phase: upgradeStateTestPhase("refresh"),
