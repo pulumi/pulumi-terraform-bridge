@@ -68,21 +68,14 @@ func (d v2InstanceDiff) Attributes() map[string]shim.ResourceAttrDiff {
 }
 
 func (d v2InstanceDiff) ProposedState(res shim.Resource, priorState shim.InstanceState) (shim.InstanceState, error) {
-	var prior *terraform.InstanceState
-	if priorState != nil {
-		prior = priorState.(v2InstanceState).tf
-	} else {
-		prior = &terraform.InstanceState{
-			Attributes: map[string]string{},
-			Meta:       map[string]interface{}{},
-		}
-	}
-
-	return v2InstanceState{
-		resource: res.(v2Resource).tf,
-		tf:       prior,
-		diff:     d.tf,
-	}, nil
+	// In the current bridge versions, v2InstanceDiff is used by itself only when working with data source calls.
+	// For data sources ProposedState is never called. Consider refactoring away from using shim.InstanceState to
+	// represent those.
+	//
+	// When v2InstanceDiff is used as a struct embedded into v2InstanceDiff2, the outer struct re-implements
+	// ProposedState() so again this method does not get called.
+	contract.Failf("v2InstanceDiff().ProposedState() should not be called")
+	return nil, nil
 }
 
 func (d v2InstanceDiff) PriorState() (shim.InstanceState, error) {
