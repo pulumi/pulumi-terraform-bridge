@@ -60,6 +60,7 @@ type upgradeStateTestCase struct {
 	Inputs2       any
 	InputsMap2    resource.PropertyMap // if nil, best-effort inferred from TF-shaped Inputs2
 
+	ExpectFailure        bool // expect the test to fail, as in downgrades
 	ExpectedRawStateType cty.Type
 
 	SkipPulumi                        string // Reason to skip Pulumi side of the test
@@ -146,10 +147,12 @@ func instrumentCustomizeDiff(t *testing.T, tc upgradeStateTestCase) upgradeState
 	}
 	tc.Resource2 = &r2
 
-	t.Cleanup(func() {
-		n := counter.Load()
-		assert.Truef(t, n > 0, "expected CustomizeDiff to be called at least once, got %d calls", n)
-	})
+	if !tc.ExpectFailure {
+		t.Cleanup(func() {
+			n := counter.Load()
+			assert.Truef(t, n > 0, "expected CustomizeDiff to be called at least once, got %d calls", n)
+		})
+	}
 	return tc
 }
 
@@ -356,7 +359,12 @@ func runUpgradeStateTestTF(t T, tc upgradeStateTestCase) []upgradeStateTrace {
 
 	t.Logf("#### refresh")
 	tracker.phase = refreshPhase
-	tfd2.refresh(t, tc.Resource2.Schema, defRtype, rname, inputs2, lifecycleArgs{})
+	err = tfd2.refreshErr(t, tc.Resource2.Schema, defRtype, rname, inputs2, lifecycleArgs{})
+	if tc.ExpectFailure {
+		require.Errorf(t, err, "refresh should have failed")
+	} else {
+		require.NoErrorf(t, err, "refresh should not have failed")
+	}
 
 	// Reset the state to the created state check apply, as refresh has migrated the state.
 	t.Logf("#### reset state to created state")
@@ -365,7 +373,13 @@ func runUpgradeStateTestTF(t T, tc upgradeStateTestCase) []upgradeStateTrace {
 
 	t.Logf("#### plan (similar to preview)")
 	tracker.phase = previewPhase
-	plan := tfd2.writePlan(t, tc.Resource2.Schema, defRtype, rname, inputs2, lifecycleArgs{})
+	plan, err := tfd2.writePlanErr(t, tc.Resource2.Schema, defRtype, rname, inputs2, lifecycleArgs{})
+	if tc.ExpectFailure {
+		require.Errorf(t, err, "refresh should have failed")
+		return tracker.trace
+	} else {
+		require.NoErrorf(t, err, "refresh should not have failed")
+	}
 
 	t.Logf("#### apply (similar to update)")
 	tracker.phase = updatePhase

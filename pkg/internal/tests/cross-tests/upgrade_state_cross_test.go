@@ -1042,3 +1042,61 @@ func TestUpgrade_PulumiChangesPropertyType(t *testing.T) {
 		autogold.Expect(&map[string]int{"same": 1, "update": 1}).Equal(t, result.pulumiUpResult.Summary.ResourceChanges)
 	})
 }
+
+// When downgrading to a lower schema, TF fails.
+func TestUpgrade_Downgrading(t *testing.T) {
+	t.Parallel()
+	skipUnlessLinux(t)
+
+	sch := map[string]*schema.Schema{
+		"f0": {
+			Type:     schema.TypeString,
+			Optional: true,
+		},
+	}
+
+	res1 := &schema.Resource{
+		Schema:        sch,
+		SchemaVersion: 2,
+	}
+
+	res2 := &schema.Resource{
+		Schema:        sch,
+		SchemaVersion: 1,
+		StateUpgraders: []schema.StateUpgrader{{
+			Version: 0,
+			Type:    res1.CoreConfigSchema().ImpliedType(),
+			Upgrade: nopUpgrade,
+		}},
+	}
+
+	// Check when the values themselves are not changing.
+	t.Run("same", func(t *testing.T) {
+		result := runUpgradeStateTest(t, upgradeStateTestCase{
+			Resource1:     res1,
+			Resource2:     res2,
+			Inputs1:       map[string]any{"f0": "val"},
+			Inputs2:       map[string]any{"f0": "val"},
+			ExpectFailure: true,
+			SkipPulumi:    "TODO[pulumi-terraform-bridge#3009]",
+		})
+
+		assert.Equal(t, result.tfUpgrades, result.pulumiUpgrades)
+		autogold.Expect([]upgradeStateTrace{}).Equal(t, result.pulumiUpgrades)
+	})
+
+	// Check when the values are changing, and it is an effective update.
+	t.Run("different", func(t *testing.T) {
+		result := runUpgradeStateTest(t, upgradeStateTestCase{
+			Resource1:     res1,
+			Resource2:     res2,
+			Inputs1:       map[string]any{"f0": "val1"},
+			Inputs2:       map[string]any{"f0": "val2"},
+			ExpectFailure: true,
+			SkipPulumi:    "TODO[pulumi-terraform-bridge#3009]",
+		})
+
+		assert.Equal(t, result.tfUpgrades, result.pulumiUpgrades)
+		autogold.Expect([]upgradeStateTrace{}).Equal(t, result.pulumiUpgrades)
+	})
+}
