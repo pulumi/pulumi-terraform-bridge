@@ -1,7 +1,6 @@
 package crosstests
 
 import (
-	"context"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -30,13 +29,7 @@ func TestUpgrade_UpgradersNotCalledWhenVersionIsNotChanging(t *testing.T) {
 		StateUpgraders: []schema.StateUpgrader{{
 			Version: 0,
 			Type:    res1.CoreConfigSchema().ImpliedType(),
-			Upgrade: func(
-				ctx context.Context,
-				rawState map[string]interface{},
-				meta interface{},
-			) (map[string]interface{}, error) {
-				return rawState, nil
-			},
+			Upgrade: nopUpgrade,
 		}},
 	}
 
@@ -87,13 +80,7 @@ func TestUpgrade_String_0to1_Version(t *testing.T) {
 		StateUpgraders: []schema.StateUpgrader{{
 			Version: 0,
 			Type:    res1.CoreConfigSchema().ImpliedType(),
-			Upgrade: func(
-				ctx context.Context,
-				rawState map[string]interface{},
-				meta interface{},
-			) (map[string]interface{}, error) {
-				return rawState, nil
-			},
+			Upgrade: nopUpgrade,
 		}},
 	}
 
@@ -250,13 +237,7 @@ func TestUpgrade_Object_0to1_Version(t *testing.T) {
 		StateUpgraders: []schema.StateUpgrader{{
 			Version: 0,
 			Type:    res1.CoreConfigSchema().ImpliedType(),
-			Upgrade: func(
-				ctx context.Context,
-				rawState map[string]interface{},
-				meta interface{},
-			) (map[string]interface{}, error) {
-				return rawState, nil
-			},
+			Upgrade: nopUpgrade,
 		}},
 	}
 

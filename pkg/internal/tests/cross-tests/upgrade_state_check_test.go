@@ -249,3 +249,11 @@ func runUpgradeStateTestTF(t T, tc upgradeStateTestCase) []upgradeStateTrace {
 
 	return tracker.trace
 }
+
+func nopUpgrade(
+	ctx context.Context,
+	rawState map[string]interface{},
+	meta interface{},
+) (map[string]interface{}, error) {
+	return rawState, nil
+}
