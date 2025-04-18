@@ -60,6 +60,9 @@ type upgradeStateTestCase struct {
 	Inputs2       any
 	InputsMap2    resource.PropertyMap // if nil, best-effort inferred from TF-shaped Inputs2
 
+	ExpectedRawStateType cty.Type
+
+	SkipPulumi                        string // Reason to skip Pulumi side of the test
 	SkipSchemaVersionAfterUpdateCheck bool
 }
 
@@ -101,6 +104,9 @@ func runUpgradeStateTest(t *testing.T, tc upgradeStateTestCase) upgradeStateResu
 	})
 
 	t.Run("pulumi", func(t *testing.T) {
+		if tc.SkipPulumi != "" {
+			t.Skip(tc.SkipPulumi)
+		}
 		tcPulumi := instrumentCustomizeDiff(t, tc)
 		tcPulumi = instrumentUpdate(t, tcPulumi)
 		resultPulumi := runUpgradeTestStatePulumi(t, tcPulumi)
@@ -113,13 +119,18 @@ func runUpgradeStateTest(t *testing.T, tc upgradeStateTestCase) upgradeStateResu
 	return result
 }
 
-// Making sure the RawState() received is of an appropriate type. Note that as written the check may be proved too
-// strict for all situations, and may need to be revised when the value is "approximately" of the expected type.
-func checkRawState(t *testing.T, tc upgradeStateTestCase, receivedRawState cty.Value, phase string) {
-	t1 := tc.Resource1.CoreConfigSchema().ImpliedType()
-	t2 := receivedRawState.Type()
-	assert.Truef(t, t1.Equals(t2), "%s expected GetRawState().Type() be %s, got %s",
-		phase, t2.GoString(), t1.GoString())
+// Making sure the RawState() received is of an appropriate type.
+func checkRawState(t *testing.T, tc upgradeStateTestCase, receivedRawState cty.Value, method string) {
+	if tc.ExpectedRawStateType.GoString() == cty.NilType.GoString() {
+		return
+	}
+	receivedValueType := receivedRawState.Type()
+	assert.Truef(t, tc.ExpectedRawStateType.Equals(receivedValueType),
+		"%s expected GetRawState().Type() be %s, got %s; the value is %v",
+		method,
+		tc.ExpectedRawStateType.GoString(),
+		receivedValueType.GoString(),
+		receivedRawState.GoString())
 }
 
 func instrumentCustomizeDiff(t *testing.T, tc upgradeStateTestCase) upgradeStateTestCase {
@@ -339,6 +350,7 @@ func runUpgradeStateTestTF(t T, tc upgradeStateTestCase) []upgradeStateTrace {
 
 	tfd2 := newTFResDriver(t, tfwd, defProviderShortName, defRtype, resource2)
 
+	t.Logf("#### save current state as created state")
 	createdState, err := os.ReadFile(filepath.Join(tfwd, "terraform.tfstate"))
 	require.NoError(t, err)
 
@@ -347,6 +359,7 @@ func runUpgradeStateTestTF(t T, tc upgradeStateTestCase) []upgradeStateTrace {
 	tfd2.refresh(t, tc.Resource2.Schema, defRtype, rname, inputs2, lifecycleArgs{})
 
 	// Reset the state to the created state check apply, as refresh has migrated the state.
+	t.Logf("#### reset state to created state")
 	err = os.WriteFile(filepath.Join(tfwd, "terraform.tfstate"), createdState, 0o600)
 	require.NoError(t, err)
 

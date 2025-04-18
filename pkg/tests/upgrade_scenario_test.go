@@ -16,125 +16,18 @@ package tests
 
 import (
 	"context"
-	"strings"
 	"testing"
 
-	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hexops/autogold/v2"
 	"github.com/pulumi/providertest/pulumitest"
-	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/pulcheck"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
-
-// A schema change with state ugpraders should work as expected.
-func TestUpgrade_StateUpgraders(t *testing.T) {
-	t.Skip("TODO[pulumi/pulumi-terraform-bridge#1667]")
-	t.Parallel()
-
-	resourceBefore := &schema.Resource{
-		CreateContext: func(ctx context.Context, rd *schema.ResourceData, i interface{}) diag.Diagnostics {
-			rd.SetId("id-0")
-			return nil
-		},
-		Schema: map[string]*schema.Schema{
-			"prop": {
-				Type:     schema.TypeString,
-				Optional: true,
-			},
-		},
-	}
-
-	resourceAfter := &schema.Resource{
-		Schema: map[string]*schema.Schema{
-			"prop": {
-				Type:     schema.TypeList,
-				Optional: true,
-				Elem: &schema.Schema{
-					Type: schema.TypeInt,
-				},
-			},
-		},
-		SchemaVersion: 1,
-		CustomizeDiff: func(ctx context.Context, rd *schema.ResourceDiff, i interface{}) error {
-			// Diff is receiving already upgraded data.
-			autogold.Expect(`cty.ObjectVal(map[string]cty.Value{"id":cty.StringVal("id-0"), "prop":cty.ListVal([]cty.Value{cty.NumberIntVal(1), cty.NumberIntVal(2), cty.NumberIntVal(3)})})`).Equal(t, rd.GetRawState().GoString())
-			return nil
-		},
-		StateUpgraders: []schema.StateUpgrader{{
-			Version: 0,
-			Type:    cty.Object(map[string]cty.Type{"prop": cty.String}),
-			Upgrade: func(
-				ctx context.Context,
-				rawState map[string]interface{},
-				meta interface{},
-			) (map[string]interface{}, error) {
-				// Upgrade function is receiving the data as it was written.
-				autogold.Expect(map[string]interface{}{"id": "id-0", "prop": "one,two,three"}).Equal(t, rawState)
-
-				s := rawState["prop"].(string)
-				parts := strings.Split(s, ",")
-				partsN := []int{}
-				for _, p := range parts {
-					parsed := map[string]int{"one": 1, "two": 2, "three": 3}
-					partsN = append(partsN, parsed[p])
-				}
-				return map[string]any{"prop": partsN, "id": rawState["id"]}, nil
-			},
-		}},
-	}
-
-	programBefore := `
-name: test
-runtime: yaml
-resources:
-    mainRes:
-        type: prov:index:Test
-        properties:
-            prop: "one,two,three"
-`
-
-	programAfter := `
-name: test
-runtime: yaml
-resources:
-    mainRes:
-        type: prov:index:Test
-        properties:
-            props:
-                - 1
-                - 2
-                - 3
-`
-
-	tc := upgradeTestCase{
-		resourceBefore: upgradeTestResource{
-			schema:      resourceBefore,
-			yamlProgram: programBefore,
-		},
-		resourceAfter: upgradeTestResource{
-			schema:      resourceAfter,
-			yamlProgram: programAfter,
-		},
-	}
-
-	test := tc.prepare(t, false /*refresh*/)
-
-	previewResult := test.Preview(t, optpreview.Diff())
-
-	t.Logf("%s", previewResult.StdOut)
-
-	autogold.Expect(map[apitype.OpType]int{apitype.OpType("same"): 2}).Equal(t, previewResult.ChangeSummary)
-
-	upResult := test.Up(t)
-
-	autogold.Expect(&map[string]int{"same": 2}).Equal(t, upResult.Summary.ResourceChanges)
-}
 
 // When TF schema did not change, but Pulumi removes MaxItems=1, the bridged provider should not break.
 func TestUpgrade_Pulumi_Removes_MaxItems1(t *testing.T) {
