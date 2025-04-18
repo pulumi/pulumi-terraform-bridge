@@ -24,6 +24,8 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/hashicorp/go-cty/cty"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/stretchr/testify/assert"
@@ -78,16 +80,27 @@ func runUpgradeStateTest(t *testing.T, tc upgradeStateTestCase) upgradeStateResu
 	result := upgradeStateResult{}
 
 	t.Run("tf", func(t *testing.T) {
-		tc1 := instrumentCustomizeDiff(t, tc)
-		result.tfUpgrades = runUpgradeStateTestTF(t, tc1)
+		tcTF := instrumentCustomizeDiff(t, tc)
+		tcTF = instrumentUpdate(t, tcTF)
+		result.tfUpgrades = runUpgradeStateTestTF(t, tcTF)
 	})
 
 	t.Run("pulumi", func(t *testing.T) {
-		tc2 := instrumentCustomizeDiff(t, tc)
-		result.pulumiUpgrades = runUpgradeTestStatePulumi(t, tc2)
+		tcPulumi := instrumentCustomizeDiff(t, tc)
+		tcPulumi = instrumentUpdate(t, tcPulumi)
+		result.pulumiUpgrades = runUpgradeTestStatePulumi(t, tcPulumi)
 	})
 
 	return result
+}
+
+// Making sure the RawState() received is of an appropriate type. Note that as written the check may be proved too
+// strict for all situations, and may need to be revised when the value is "approximately" of the expected type.
+func checkRawState(t *testing.T, tc upgradeStateTestCase, receivedRawState cty.Value, phase string) {
+	t1 := tc.Resource1.CoreConfigSchema().ImpliedType()
+	t2 := receivedRawState.Type()
+	assert.Truef(t, t1.Equals(t2), "%s expected GetRawState().Type() be %s, got %s",
+		phase, t2.GoString(), t1.GoString())
 }
 
 func instrumentCustomizeDiff(t *testing.T, tc upgradeStateTestCase) upgradeStateTestCase {
@@ -98,13 +111,7 @@ func instrumentCustomizeDiff(t *testing.T, tc upgradeStateTestCase) upgradeState
 
 	r2.CustomizeDiff = func(ctx context.Context, rd *schema.ResourceDiff, i interface{}) error {
 		counter.Add(1)
-		// Making sure the RawState() received is of an appropriate type. Note that as written the
-		// check may be proved too strict for all situations, and may need to be revised when the value
-		// is "approximately" of the expected type.
-		t1 := tc.Resource1.CoreConfigSchema().ImpliedType()
-		t2 := rd.GetRawState().Type()
-		assert.Truef(t, t1.Equals(t2), "CustomizeDiff expected GetRawState().Type() be %s, got %s",
-			t2.GoString(), t1.GoString())
+		checkRawState(t, tc, rd.GetRawState(), "CustomizeDiff")
 		return nil
 	}
 	tc.Resource2 = &r2
@@ -113,6 +120,18 @@ func instrumentCustomizeDiff(t *testing.T, tc upgradeStateTestCase) upgradeState
 		n := counter.Load()
 		assert.Truef(t, n > 0, "expected CustomizeDiff to be called at least once, got %d calls", n)
 	})
+	return tc
+}
+
+func instrumentUpdate(t *testing.T, tc upgradeStateTestCase) upgradeStateTestCase {
+	r2 := *tc.Resource2
+	require.Nilf(t, r2.UpdateContext, "Resource2.UpdateContext cannot yet be set in tests")
+
+	r2.UpdateContext = func(ctx context.Context, rd *schema.ResourceData, i interface{}) diag.Diagnostics {
+		checkRawState(t, tc, rd.GetRawState(), "UpdateContext")
+		return nil
+	}
+	tc.Resource2 = &r2
 	return tc
 }
 
