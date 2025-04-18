@@ -402,6 +402,9 @@ func TestUpgrade_PulumiRenamesProperty(t *testing.T) {
 
 		assert.Equal(t, result.tfUpgrades, result.pulumiUpgrades)
 		autogold.Expect([]upgradeStateTrace{}).Equal(t, result.pulumiUpgrades)
+
+		autogold.Expect(&map[string]int{"same": 2}).Equal(t, result.pulumiRefreshResult.Summary.ResourceChanges)
+		autogold.Expect(&map[string]int{"same": 2}).Equal(t, result.pulumiUpResult.Summary.ResourceChanges)
 	})
 
 	t.Run("different", func(t *testing.T) {
@@ -415,6 +418,9 @@ func TestUpgrade_PulumiRenamesProperty(t *testing.T) {
 
 		assert.Equal(t, result.tfUpgrades, result.pulumiUpgrades)
 		autogold.Expect([]upgradeStateTrace{}).Equal(t, result.pulumiUpgrades)
+
+		autogold.Expect(&map[string]int{"same": 2}).Equal(t, result.pulumiRefreshResult.Summary.ResourceChanges)
+		autogold.Expect(&map[string]int{"same": 1, "update": 1}).Equal(t, result.pulumiUpResult.Summary.ResourceChanges)
 	})
 }
 
@@ -464,6 +470,9 @@ func TestUpgrade_PulumiChangesPropertyType(t *testing.T) {
 
 		assert.Equal(t, result.tfUpgrades, result.pulumiUpgrades)
 		autogold.Expect([]upgradeStateTrace{}).Equal(t, result.pulumiUpgrades)
+
+		autogold.Expect(&map[string]int{"same": 2}).Equal(t, result.pulumiRefreshResult.Summary.ResourceChanges)
+		autogold.Expect(&map[string]int{"same": 2}).Equal(t, result.pulumiUpResult.Summary.ResourceChanges)
 	})
 
 	t.Run("different", func(t *testing.T) {
@@ -479,5 +488,8 @@ func TestUpgrade_PulumiChangesPropertyType(t *testing.T) {
 
 		assert.Equal(t, result.tfUpgrades, result.pulumiUpgrades)
 		autogold.Expect([]upgradeStateTrace{}).Equal(t, result.pulumiUpgrades)
+
+		autogold.Expect(&map[string]int{"same": 2}).Equal(t, result.pulumiRefreshResult.Summary.ResourceChanges)
+		autogold.Expect(&map[string]int{"same": 1, "update": 1}).Equal(t, result.pulumiUpResult.Summary.ResourceChanges)
 	})
 }

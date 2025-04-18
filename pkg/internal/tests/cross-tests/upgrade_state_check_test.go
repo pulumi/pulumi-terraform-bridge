@@ -27,6 +27,8 @@ import (
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
@@ -78,8 +80,11 @@ type upgradeStateTrace struct {
 }
 
 type upgradeStateResult struct {
-	pulumiUpgrades []upgradeStateTrace
-	tfUpgrades     []upgradeStateTrace
+	pulumiUpgrades      []upgradeStateTrace
+	tfUpgrades          []upgradeStateTrace
+	pulumiRefreshResult auto.RefreshResult
+	pulumiPreviewResult auto.PreviewResult
+	pulumiUpResult      auto.UpResult
 }
 
 func runUpgradeStateTest(t *testing.T, tc upgradeStateTestCase) upgradeStateResult {
@@ -94,7 +99,11 @@ func runUpgradeStateTest(t *testing.T, tc upgradeStateTestCase) upgradeStateResu
 	t.Run("pulumi", func(t *testing.T) {
 		tcPulumi := instrumentCustomizeDiff(t, tc)
 		tcPulumi = instrumentUpdate(t, tcPulumi)
-		result.pulumiUpgrades = runUpgradeTestStatePulumi(t, tcPulumi)
+		resultPulumi := runUpgradeTestStatePulumi(t, tcPulumi)
+		result.pulumiUpgrades = resultPulumi.pulumiUpgrades
+		result.pulumiRefreshResult = resultPulumi.pulumiRefreshResult
+		result.pulumiPreviewResult = resultPulumi.pulumiPreviewResult
+		result.pulumiUpResult = resultPulumi.pulumiUpResult
 	})
 
 	return result
@@ -220,7 +229,7 @@ func upgradeTestBrigedProvider(t T, r *schema.Resource, ri *info.Resource) info.
 	return p
 }
 
-func runUpgradeTestStatePulumi(t T, tc upgradeStateTestCase) []upgradeStateTrace {
+func runUpgradeTestStatePulumi(t T, tc upgradeStateTestCase) upgradeStateResult {
 	res1 := tc.Resource1
 	res2, tracker := instrumentUpgraders(tc.Resource2)
 
@@ -285,8 +294,12 @@ func runUpgradeTestStatePulumi(t T, tc upgradeStateTestCase) []upgradeStateTrace
 	// Reset to created state as refresh may have edited it.
 	pt.ImportStack(t, createdState)
 
-	t.Logf("#### update")
+	t.Logf("#### preview")
 	tracker.phase = updatePhase
+	previewResult := pt.Preview(t, optpreview.Diff())
+	t.Logf("%s", previewResult.StdOut+previewResult.StdErr)
+
+	t.Logf("#### update")
 	updateResult := pt.Up(t)
 	t.Logf("%s", updateResult.StdOut+updateResult.StdErr)
 
@@ -297,7 +310,12 @@ func runUpgradeTestStatePulumi(t T, tc upgradeStateTestCase) []upgradeStateTrace
 			"bad getVersionInState result for update")
 	}
 
-	return tracker.trace
+	return upgradeStateResult{
+		pulumiUpgrades:      tracker.trace,
+		pulumiPreviewResult: previewResult,
+		pulumiRefreshResult: refreshResult,
+		pulumiUpResult:      updateResult,
+	}
 }
 
 func runUpgradeStateTestTF(t T, tc upgradeStateTestCase) []upgradeStateTrace {
