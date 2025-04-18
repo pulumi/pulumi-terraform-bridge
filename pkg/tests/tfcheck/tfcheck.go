@@ -141,6 +141,11 @@ func (d *TFDriver) Apply(t pulcheck.T, plan *TFPlan) error {
 	return err
 }
 
+func (d *TFDriver) Refresh(t pulcheck.T) error {
+	_, err := d.execTf(t, "refresh")
+	return err
+}
+
 func (d *TFDriver) Show(t pulcheck.T, planFile string) string {
 	res, err := d.execTf(t, "show", "-json", planFile)
 	require.NoError(t, err)
