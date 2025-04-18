@@ -380,11 +380,33 @@ func (p *provider) CallWithContext(_ context.Context,
 ) (plugin.CallResult, error) {
 	q.Q(p.lastKnownProviderConfig)
 	q.Q(p.configType)
-	//q.Q(p.configEncoder)
 
+	//Get the current configuration
+	config, err := convert.EncodePropertyMapToDynamic(p.configEncoder, p.configType, p.lastKnownProviderConfig)
+
+	q.Q(config)
+
+	tftype, err := config.Unmarshal(p.configType)
+	q.Q(tftype, err)
+
+	//TODO: handle the resulting value
+
+	if tftype.IsKnown() {
+
+		switch tftype.Type().(type) {
+		case tftypes.Object:
+			objectMap := make(map[string]tftypes.Value)
+
+			tftype.As(&objectMap)
+			q.Q(objectMap)
+		default:
+			q.Q("Can't handle this value type yet")
+		}
+
+	}
 	//tfConfigSchemaTypes := p.configType.AttributeTypes
 	terraformValue, err := populateTfConfigVals(p.configType, resource.NewPropertyValue(p.lastKnownProviderConfig))
-	q.Q(terraformValue, err)
+	//q.Q(terraformValue, err)
 
 	_, functionName, found := strings.Cut(tok.String(), "/")
 	if !found {
