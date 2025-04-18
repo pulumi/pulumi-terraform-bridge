@@ -34,6 +34,7 @@ import (
 	crosstestsimpl "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests/impl"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/pulcheck"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/reservedkeys"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
 // Verify state upgrade interaction compatibility on schema change.
@@ -45,10 +46,12 @@ import (
 //  3. refresh with the Resource2 provider
 //  4. update to Inputs2 with the Resource2 provider
 type upgradeStateTestCase struct {
-	Resource1 *schema.Resource
-	Inputs1   any
-	Resource2 *schema.Resource
-	Inputs2   any
+	Resource1     *schema.Resource
+	ResourceInfo1 *info.Resource
+	Inputs1       any
+	Resource2     *schema.Resource
+	ResourceInfo2 *info.Resource
+	Inputs2       any
 
 	SkipSchemaVersionAfterUpdateCheck bool
 }
@@ -203,16 +206,26 @@ func getVersionInState(t T, stack apitype.UntypedDeployment) int {
 	return int(schemaVersion)
 }
 
-func runUpgradeTestStatePulumi(t T, tc upgradeStateTestCase) []upgradeStateTrace {
-	opts := []pulcheck.BridgedProviderOpt{}
+func upgradeTestBrigedProvider(t T, r *schema.Resource, ri *info.Resource) info.Provider {
+	tfp := &schema.Provider{ResourcesMap: map[string]*schema.Resource{defRtype: r}}
+	infos := map[string]*info.Resource{}
+	if ri != nil {
+		var resourceInfo info.Resource
+		resourceInfo = *ri
+		if resourceInfo.Tok == "" {
+			resourceInfo.Tok = defRtoken
+		}
+		infos[defRtoken] = &resourceInfo
+	}
+	return pulcheck.BridgedProvider(t, defProviderShortName, tfp, pulcheck.WithResourceInfo(infos))
+}
 
+func runUpgradeTestStatePulumi(t T, tc upgradeStateTestCase) []upgradeStateTrace {
 	res1 := tc.Resource1
 	res2, tracker := instrumentUpgraders(tc.Resource2)
 
-	tfp1 := &schema.Provider{ResourcesMap: map[string]*schema.Resource{defRtype: res1}}
-	prov1 := pulcheck.BridgedProvider(t, defProviderShortName, tfp1, opts...)
-	tfp2 := &schema.Provider{ResourcesMap: map[string]*schema.Resource{defRtype: res2}}
-	prov2 := pulcheck.BridgedProvider(t, defProviderShortName, tfp2, opts...)
+	prov1 := upgradeTestBrigedProvider(t, res1, tc.ResourceInfo1)
+	prov2 := upgradeTestBrigedProvider(t, res2, tc.ResourceInfo2)
 
 	pd := &pulumiDriver{
 		name:                defProviderShortName,
