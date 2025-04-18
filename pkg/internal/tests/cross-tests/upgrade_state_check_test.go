@@ -11,7 +11,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 
-//nolint:lll
 package crosstests
 
 import (
@@ -27,12 +26,12 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	crosstestsimpl "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests/impl"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/pulcheck"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/reservedkeys"
-	"github.com/stretchr/testify/assert"
 )
 
 // Verify state upgrade interaction compatibility on schema change.
@@ -56,8 +55,8 @@ type upgradeStateTestPhase string
 
 const (
 	createPhase  upgradeStateTestPhase = "create"
-	refreshPhase                       = "refresh"
-	updatePhase                        = "update"
+	refreshPhase upgradeStateTestPhase = "refresh"
+	updatePhase  upgradeStateTestPhase = "update"
 )
 
 // Represents an observed call to a state upgrade function.
