@@ -119,17 +119,6 @@ func (d *TfResDriver) writePlanApply(
 	return plan
 }
 
-func (d *TfResDriver) refresh(
-	t T,
-	resourceSchema map[string]*schema.Schema,
-	resourceType, resourceName string,
-	config cty.Value,
-	lifecycle lifecycleArgs,
-) {
-	err := d.refreshErr(t, resourceSchema, resourceType, resourceName, config, lifecycle)
-	require.NoError(t, err)
-}
-
 func (d *TfResDriver) refreshErr(
 	t T,
 	resourceSchema map[string]*schema.Schema,

@@ -377,9 +377,8 @@ func runUpgradeStateTestTF(t T, tc upgradeStateTestCase) []upgradeStateTrace {
 	if tc.ExpectFailure {
 		require.Errorf(t, err, "refresh should have failed")
 		return tracker.trace
-	} else {
-		require.NoErrorf(t, err, "refresh should not have failed")
 	}
+	require.NoErrorf(t, err, "refresh should not have failed")
 
 	t.Logf("#### apply (similar to update)")
 	tracker.phase = updatePhase
