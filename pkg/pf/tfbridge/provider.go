@@ -17,7 +17,6 @@ package tfbridge
 import (
 	"context"
 	"fmt"
-	"github.com/ryboe/q"
 	"os"
 	"strings"
 
@@ -318,99 +317,67 @@ func (p *provider) terraformDatasourceName(functionToken tokens.ModuleMember) (s
 	return "", fmt.Errorf("[pf/tfbridge] unknown datasource token: %v", functionToken)
 }
 
-func populateTfConfigVals(tfType tftypes.Type, val resource.PropertyValue) (resource.PropertyValue, error) {
-
-	if tfType.Is(tftypes.String) || tfType.Is(tftypes.Number) || tfType.Is(tftypes.Bool) || tfType.Is(tftypes.DynamicPseudoType) {
-		return resource.NewPropertyValue(val.V), nil
-	}
-	outputMap := make(resource.PropertyMap)
-	switch t := tfType.(type) {
-	case tftypes.Object:
-		for attributeName, attributeType := range t.AttributeTypes {
-			// Extract from Pulumi PropertyMap
-			attributeValue, ok := val.V.(resource.PropertyMap)[resource.PropertyKey(attributeName)]
-			if !ok || !attributeValue.HasValue() || attributeValue.IsNull() {
-				continue
-			}
-			converted, err := populateTfConfigVals(attributeType, attributeValue)
-			if err != nil {
-				return resource.PropertyValue{}, fmt.Errorf("error in attribute '%s': %w", attributeName, err)
-			}
-			outputMap[resource.PropertyKey(attributeName)] = converted
-		}
-		return resource.NewObjectProperty(outputMap), nil
-
-	case tftypes.List:
-		elemType := t.ElementType
-
-		valArr, ok := val.V.([]resource.PropertyValue)
-		if !ok { //TODO: clean this up
-			// Pulumi might wrap a single object in PropertyMap for a list-of-object
-			if singleValMap, ok := val.V.(resource.PropertyMap); ok {
-				// Wrap in one-element slice
-				valArr = []resource.PropertyValue{resource.NewPropertyValue(singleValMap)}
-			} else {
-				return resource.PropertyValue{}, fmt.Errorf("expected []PropertyValue or PropertyMap for list, got %T", val.V)
-			}
-		}
-		var result []resource.PropertyValue
-		for _, elem := range valArr {
-			if !elem.HasValue() || elem.IsNull() {
-				continue
-			}
-			converted, err := populateTfConfigVals(elemType, elem)
-			if err != nil {
-				return resource.PropertyValue{}, err
-			}
-			result = append(result, converted)
-		}
-		return resource.NewArrayProperty(result), nil
-
-		//TODO: Set and whatever the other thing is?
-
-	default:
-		return resource.PropertyValue{}, fmt.Errorf("unsupported type: %T", tfType)
-	}
-}
-
 // NOT IMPLEMENTED: Call dynamically executes a method in the provider associated with a component resource.
 func (p *provider) CallWithContext(_ context.Context,
 	tok tokens.ModuleMember, args resource.PropertyMap, info plugin.CallInfo,
 	options plugin.CallOptions,
 ) (plugin.CallResult, error) {
-	q.Q(p.lastKnownProviderConfig)
-	q.Q(p.configType)
-	//q.Q(p.configEncoder)
 
-	//tfConfigSchemaTypes := p.configType.AttributeTypes
-	terraformValue, err := populateTfConfigVals(p.configType, resource.NewPropertyValue(p.lastKnownProviderConfig))
-	q.Q(terraformValue, err)
+	//Get the current configuration
+	config, err := convert.EncodePropertyMapToDynamic(p.configEncoder, p.configType, p.lastKnownProviderConfig)
+	if err != nil {
+		return plugin.CallResult{}, fmt.Errorf("error encoding property map")
+	}
 
+	//Get the current configuration
+
+	tftype, err := config.Unmarshal(p.configType)
+
+	//TODO: handle the resulting value
+
+	if tftype.IsKnown() {
+
+		switch tftype.Type().(type) {
+		case tftypes.Object:
+			objectMap := make(map[string]tftypes.Value)
+
+			tftype.As(&objectMap)
+
+		default:
+		}
+
+	}
+
+	if tftype.IsKnown() {
+
+		switch tftype.Type().(type) {
+		case tftypes.Object:
+			objectMap := make(map[string]tftypes.Value)
+
+			tftype.As(&objectMap)
+		default:
+			return plugin.CallResult{}, fmt.Errorf("can't handle this tftype yet")
+		}
+
+	}
+	//TODO: translate
+	terraformValue := p.lastKnownProviderConfig // this is of the wrong key format
 	_, functionName, found := strings.Cut(tok.String(), "/")
 	if !found {
 		return plugin.CallResult{}, fmt.Errorf("malformed and unknown method %q", tok)
 	}
 	switch functionName {
 	case "terraformConfig":
-		//outputs := resource.NewPropertyMapFromMap(map[string]interface{}{
-		//	"message": "👋 Bah humbug!",
-		//})
-
 		//outputResult, err := plugin.MarshalProperties(outputs, plugin.MarshalOptions{})
 		//if err != nil {
 		//	return plugin.CallResult{}, err
 		//}
 		return plugin.CallResult{
-			Return: terraformValue.ObjectValue(),
+			Return: terraformValue,
 		}, nil
 	default:
-		return plugin.CallResult{}, fmt.Errorf("ALSO PF UGH unknown method %q", tok)
+		return plugin.CallResult{}, fmt.Errorf(" unknown method %q", tok)
 	}
-
-	//return plugin.CallResult{
-	//		Return: outputResult,
-	//	},
-	//	fmt.Errorf("Call is not implemented for Terraform Plugin Framework bridged providers")
 }
 
 // NOT IMPLEMENTED: Construct creates a new component resource.
