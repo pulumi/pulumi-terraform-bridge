@@ -117,6 +117,28 @@ func (v tValueShim) Remove(prop string) Value {
 	return tValueShim(tftypes.NewValue(t1, m))
 }
 
+func (v tValueShim) BoolValue() bool {
+	var result bool
+	err := v.val().As(&result)
+	contract.AssertNoErrorf(err, "Cannot cast value as BoolValue")
+	return result
+}
+
+func (v tValueShim) NumberValue() float64 {
+	var result big.Float
+	err := v.val().As(&result)
+	contract.AssertNoErrorf(err, "Cannot cast value as NumberValue")
+	f, _ := result.Float64()
+	return f
+}
+
+func (v tValueShim) StringValue() string {
+	var result string
+	err := v.val().As(&result)
+	contract.AssertNoErrorf(err, "Cannot cast value as StringValue")
+	return result
+}
+
 func jsonMarshal(v tftypes.Value, p *tftypes.AttributePath) (interface{}, error) {
 	if v.IsNull() {
 		return nil, nil

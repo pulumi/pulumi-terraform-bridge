@@ -36,7 +36,7 @@ func TestParseResourceStateFromTFInner(t *testing.T) {
 	t.Run("parses physical nil", func(t *testing.T) {
 		up, err := parseResourceStateFromTFInner(ctx, ty, 0, nil, nil)
 		require.NoError(t, err)
-		require.Equal(t, `tftypes.Object["id":tftypes.String, "x":tftypes.String]<null>`, up.state.Value.String())
+		require.Equal(t, `tftypes.Object["id":tftypes.String, "x":tftypes.String]<null>`, up.Value.String())
 	})
 
 	t.Run("parses logical nil", func(t *testing.T) {
@@ -44,7 +44,7 @@ func TestParseResourceStateFromTFInner(t *testing.T) {
 		require.NoError(t, err)
 		up, err := parseResourceStateFromTFInner(ctx, ty, 0, &dv, nil)
 		require.NoError(t, err)
-		require.Equal(t, `tftypes.Object["id":tftypes.String, "x":tftypes.String]<null>`, up.state.Value.String())
+		require.Equal(t, `tftypes.Object["id":tftypes.String, "x":tftypes.String]<null>`, up.Value.String())
 	})
 
 	t.Run("parses a valid object", func(t *testing.T) {
@@ -56,7 +56,7 @@ func TestParseResourceStateFromTFInner(t *testing.T) {
 		up, err := parseResourceStateFromTFInner(ctx, ty, 0, &dv, nil)
 		require.NoError(t, err)
 		//nolint:lll
-		require.Equal(t, `tftypes.Object["id":tftypes.String, "x":tftypes.String]<"id":tftypes.String<"id1">, "x":tftypes.String<null>>`, up.state.Value.String())
+		require.Equal(t, `tftypes.Object["id":tftypes.String, "x":tftypes.String]<"id":tftypes.String<"id1">, "x":tftypes.String<null>>`, up.Value.String())
 	})
 
 	t.Run("fails to parse a malformed object", func(t *testing.T) {

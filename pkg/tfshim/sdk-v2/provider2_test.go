@@ -284,7 +284,7 @@ func TestProvider2UpgradeResourceState(t *testing.T) {
 			actual, err := (&v2Provider{
 				tf:     tf,
 				server: &grpcServer{schema.NewGRPCProviderServer(tf)},
-			}).upgradeState(context.Background(), tfToken, &v2InstanceState2{
+			}).ensureStateIsUpgraded(context.Background(), tfToken, &v2InstanceState2{
 				resourceType: tfToken,
 				stateValue:   tc.state,
 			})

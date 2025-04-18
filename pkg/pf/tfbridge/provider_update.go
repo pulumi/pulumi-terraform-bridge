@@ -56,12 +56,7 @@ func (p *provider) UpdateWithContext(
 
 	tfType := rh.schema.Type(ctx).(tftypes.Object)
 
-	rawPriorState, err := parseResourceState(&rh, priorStateMap)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	priorState, err := p.UpgradeResourceState(ctx, &rh, rawPriorState)
+	priorState, err := p.parseAndUpgradeResourceState(ctx, &rh, priorStateMap)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -95,7 +90,7 @@ func (p *provider) UpdateWithContext(
 		return plannedStatePropertyMap, resource.StatusOK, nil
 	}
 
-	priorStateDV, checkedInputsDV, err := makeDynamicValues2(priorState.state.Value, checkedInputsValue)
+	priorStateDV, checkedInputsDV, err := makeDynamicValues2(priorState.Value, checkedInputsValue)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -131,6 +126,12 @@ func (p *provider) UpdateWithContext(
 		var err error
 		updatedStateMap, err = rh.pulumiResourceInfo.TransformOutputs(ctx, updatedStateMap)
 		if err != nil {
+			return nil, 0, err
+		}
+	}
+
+	if p.info.RawStateDeltaEnabled() {
+		if err := insertRawStateDelta(ctx, &rh, updatedStateMap, updatedState.Value); err != nil {
 			return nil, 0, err
 		}
 	}

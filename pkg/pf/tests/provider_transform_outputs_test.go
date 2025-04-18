@@ -77,7 +77,8 @@ func TestTransformOutputs(t *testing.T) {
                     "id": "*",
 		    "properties": {
 		      "id": "*",
-		      "ecdsacurve": "TRANSFORMED"
+		      "ecdsacurve": "TRANSFORMED",
+                      "__pulumi_raw_state_delta": "*"
 		    }
 		  }
 		}`)
@@ -115,6 +116,7 @@ func TestTransformOutputs(t *testing.T) {
 		    "id": "0",
 		    "urn": "urn:pulumi:dev::teststack::testbridge:index/testres:Testcompres::exres",
 		    "olds": {
+                      "id": "0",
                       "ecdsacurve": "P384"
 		    },
 		    "news": {
@@ -124,7 +126,8 @@ func TestTransformOutputs(t *testing.T) {
 		  "response": {
 		    "properties": {
 		      "id": "*",
-	              "ecdsacurve": "TRANSFORMED"
+	              "ecdsacurve": "TRANSFORMED",
+                      "__pulumi_raw_state_delta": "*"
 		    }
 		  }
 		}`)
@@ -144,7 +147,8 @@ func TestTransformOutputs(t *testing.T) {
 	            "inputs": "*",
 		    "properties": {
 			"id": "*",
-                        "ecdsacurve": "TRANSFORMED"
+                        "ecdsacurve": "TRANSFORMED",
+                        "__pulumi_raw_state_delta": "*"
 		    }
 		  }
 		}`)
@@ -249,6 +253,7 @@ func TestTransformFromState(t *testing.T) {
 		  },
 		  "response": {
 		    "properties": {
+                     "__pulumi_raw_state_delta": "*",
 		      "stringPropertyValue": "SET"
 		    }
 		  }
@@ -306,7 +311,8 @@ func TestTransformFromState(t *testing.T) {
 	            "inputs": "*",
 		    "properties": {
                         "id": "0",
-			"stringPropertyValue": "SET"
+			"stringPropertyValue": "SET",
+                        "__pulumi_raw_state_delta": "*"
 		    }
 		  }
 		}`)
