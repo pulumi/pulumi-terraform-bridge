@@ -246,9 +246,11 @@ func runUpgradeTestStatePulumi(t T, tc upgradeStateTestCase) []upgradeStateTrace
 	yamlProgram := pd.generateYAML(t, pm1)
 	pt := pulcheck.PulCheck(t, prov1, string(yamlProgram))
 
-	t.Logf("create")
+	t.Logf("#### create")
 	tracker.phase = createPhase
-	pt.Up(t)
+	createResult := pt.Up(t)
+	t.Logf("%s", createResult.StdOut+createResult.StdErr)
+
 	createdState := pt.ExportStack(t)
 
 	schemaVersion1 := getVersionInState(t, createdState)
@@ -271,9 +273,10 @@ func runUpgradeTestStatePulumi(t T, tc upgradeStateTestCase) []upgradeStateTrace
 	pt.CurrentStack().Workspace().SetEnvVar("PULUMI_DEBUG_PROVIDERS",
 		fmt.Sprintf("%s:%d", defProviderShortName, handle.Port))
 
-	t.Logf("refresh")
+	t.Logf("#### refresh")
 	tracker.phase = refreshPhase
-	pt.Refresh(t)
+	refreshResult := pt.Refresh(t)
+	t.Logf("%s", refreshResult.StdOut+refreshResult.StdErr)
 
 	schemaVersionR := getVersionInState(t, pt.ExportStack(t))
 	t.Logf("schema version after refresh is %d", schemaVersionR)
@@ -282,9 +285,10 @@ func runUpgradeTestStatePulumi(t T, tc upgradeStateTestCase) []upgradeStateTrace
 	// Reset to created state as refresh may have edited it.
 	pt.ImportStack(t, createdState)
 
-	t.Logf("update")
+	t.Logf("#### update")
 	tracker.phase = updatePhase
-	pt.Up(t)
+	updateResult := pt.Up(t)
+	t.Logf("%s", updateResult.StdOut+updateResult.StdErr)
 
 	schemaVersionU := getVersionInState(t, pt.ExportStack(t))
 	t.Logf("schema version after update is %d", schemaVersionU)

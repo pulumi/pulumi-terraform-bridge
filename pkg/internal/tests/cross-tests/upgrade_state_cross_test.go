@@ -19,6 +19,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hexops/autogold/v2"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -409,6 +410,70 @@ func TestUpgrade_PulumiRenamesProperty(t *testing.T) {
 			Resource2:     res2,
 			Inputs1:       map[string]any{"f0": "val1"},
 			Inputs2:       map[string]any{"f0": "val2"},
+			ResourceInfo2: res2Info,
+		})
+
+		assert.Equal(t, result.tfUpgrades, result.pulumiUpgrades)
+		autogold.Expect([]upgradeStateTrace{}).Equal(t, result.pulumiUpgrades)
+	})
+}
+
+// There are certain type changes permitted in Pulumi that coalesce naturally without state upgraders, that is
+// reinterpreting a string as a number for example.
+func TestUpgrade_PulumiChangesPropertyType(t *testing.T) {
+	t.Parallel()
+
+	sch := map[string]*schema.Schema{
+		"f0": {
+			Type:     schema.TypeString,
+			Optional: true,
+		},
+	}
+
+	res1 := &schema.Resource{
+		Schema:        sch,
+		SchemaVersion: 1,
+	}
+
+	res2 := &schema.Resource{
+		Schema:        sch,
+		SchemaVersion: 1,
+		StateUpgraders: []schema.StateUpgrader{{
+			Version: 0,
+			Type:    res1.CoreConfigSchema().ImpliedType(),
+			Upgrade: nopUpgrade,
+		}},
+	}
+
+	res2Info := &info.Resource{
+		Fields: map[string]*info.Schema{
+			"f0": {Type: "number"},
+		},
+	}
+
+	t.Run("same", func(t *testing.T) {
+		result := runUpgradeStateTest(t, upgradeStateTestCase{
+			Resource1:     res1,
+			Resource2:     res2,
+			Inputs1:       map[string]any{"f0": "42"},
+			InputsMap1:    resource.PropertyMap{"f0": resource.NewStringProperty("42")},
+			Inputs2:       map[string]any{"f0": "42"},
+			InputsMap2:    resource.PropertyMap{"f0": resource.NewNumberProperty(42)},
+			ResourceInfo2: res2Info,
+		})
+
+		assert.Equal(t, result.tfUpgrades, result.pulumiUpgrades)
+		autogold.Expect([]upgradeStateTrace{}).Equal(t, result.pulumiUpgrades)
+	})
+
+	t.Run("different", func(t *testing.T) {
+		result := runUpgradeStateTest(t, upgradeStateTestCase{
+			Resource1:     res1,
+			Resource2:     res2,
+			Inputs1:       map[string]any{"f0": "42"},
+			InputsMap1:    resource.PropertyMap{"f0": resource.NewStringProperty("42")},
+			Inputs2:       map[string]any{"f0": "7"},
+			InputsMap2:    resource.PropertyMap{"f0": resource.NewNumberProperty(7)},
 			ResourceInfo2: res2Info,
 		})
 
