@@ -28,6 +28,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -49,9 +50,11 @@ type upgradeStateTestCase struct {
 	Resource1     *schema.Resource
 	ResourceInfo1 *info.Resource
 	Inputs1       any
+	InputsMap1    resource.PropertyMap // if nil, best-effort inferred from TF-shaped Inputs1
 	Resource2     *schema.Resource
 	ResourceInfo2 *info.Resource
 	Inputs2       any
+	InputsMap2    resource.PropertyMap // if nil, best-effort inferred from TF-shaped Inputs2
 
 	SkipSchemaVersionAfterUpdateCheck bool
 }
@@ -208,16 +211,13 @@ func getVersionInState(t T, stack apitype.UntypedDeployment) int {
 
 func upgradeTestBrigedProvider(t T, r *schema.Resource, ri *info.Resource) info.Provider {
 	tfp := &schema.Provider{ResourcesMap: map[string]*schema.Resource{defRtype: r}}
-	infos := map[string]*info.Resource{}
+	p := pulcheck.BridgedProvider(t, defProviderShortName, tfp)
 	if ri != nil {
-		var resourceInfo info.Resource
-		resourceInfo = *ri
-		if resourceInfo.Tok == "" {
-			resourceInfo.Tok = defRtoken
-		}
-		infos[defRtoken] = &resourceInfo
+		resourceInfo := *ri
+		resourceInfo.Tok = p.Resources[defRtype].Tok
+		p.Resources[defRtype] = &resourceInfo
 	}
-	return pulcheck.BridgedProvider(t, defProviderShortName, tfp, pulcheck.WithResourceInfo(infos))
+	return p
 }
 
 func runUpgradeTestStatePulumi(t T, tc upgradeStateTestCase) []upgradeStateTrace {
@@ -236,8 +236,14 @@ func runUpgradeTestStatePulumi(t T, tc upgradeStateTestCase) []upgradeStateTrace
 	inputs1 := coalesceInputs(t, tc.Resource1.Schema, tc.Inputs1)
 	inputs2 := coalesceInputs(t, tc.Resource2.Schema, tc.Inputs2)
 
-	yamlProgram := pd.generateYAML(t, crosstestsimpl.InferPulumiValue(t,
-		prov1.P.ResourcesMap().Get(pd.tfResourceName).Schema(), nil, inputs1))
+	pm1 := tc.InputsMap1
+	if pm1 == nil {
+		sch := prov1.P.ResourcesMap().Get(pd.tfResourceName).Schema()
+		info := tc.ResourceInfo1.GetFields()
+		pm1 = crosstestsimpl.InferPulumiValue(t, sch, info, inputs1)
+	}
+
+	yamlProgram := pd.generateYAML(t, pm1)
 	pt := pulcheck.PulCheck(t, prov1, string(yamlProgram))
 
 	t.Logf("create")
@@ -248,8 +254,14 @@ func runUpgradeTestStatePulumi(t T, tc upgradeStateTestCase) []upgradeStateTrace
 	schemaVersion1 := getVersionInState(t, createdState)
 	require.Equalf(t, tc.Resource1.SchemaVersion, schemaVersion1, "bad getVersionInState result for create")
 
-	yamlProgram = pd.generateYAML(t, crosstestsimpl.InferPulumiValue(t,
-		prov1.P.ResourcesMap().Get(pd.tfResourceName).Schema(), nil, inputs2))
+	pm2 := tc.InputsMap2
+	if pm2 == nil {
+		sch := prov1.P.ResourcesMap().Get(pd.tfResourceName).Schema()
+		info := tc.ResourceInfo2.GetFields()
+		pm2 = crosstestsimpl.InferPulumiValue(t, sch, info, inputs2)
+	}
+
+	yamlProgram = pd.generateYAML(t, pm2)
 	p := filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml")
 	err := os.WriteFile(p, yamlProgram, 0o600)
 	require.NoErrorf(t, err, "writing Pulumi.yaml")
