@@ -127,6 +127,82 @@ func TestUpgrade_StateUpgraders(t *testing.T) {
 	}).Equal(t, result.tfUpgrades)
 }
 
+// Pulumi removing MaxItems=1 without TF schema changes should be tolerated, without calling upgraders.
+func TestUpgrade_Pulumi_RemovesMaxItems1(t *testing.T) {
+	t.Parallel()
+	skipUnlessLinux(t)
+
+	sch := map[string]*schema.Schema{
+		"obj": {
+			Type:     schema.TypeList,
+			Optional: true,
+			Elem: &schema.Resource{
+				Schema: map[string]*schema.Schema{
+					"str": {
+						Type:     schema.TypeString,
+						Optional: true,
+					},
+					"bool": {
+						Type:     schema.TypeBool,
+						Optional: true,
+					},
+				},
+			},
+		},
+	}
+
+	trueBool := true
+
+	resourceBeforeAndAfter := &schema.Resource{Schema: sch}
+	resourceInfoBefore := &info.Resource{Fields: map[string]*info.Schema{
+		"obj": {
+			MaxItemsOne: &trueBool,
+		},
+	}}
+
+	tfInputs := map[string]any{
+		"obj": []any{
+			map[string]any{
+				"str":  "Hello",
+				"bool": true,
+			},
+		},
+	}
+
+	pmBefore := resource.NewPropertyMapFromMap(map[string]any{
+		"obj": map[string]any{
+			"str":  "Hello",
+			"bool": true,
+		},
+	})
+
+	pmAfter := resource.NewPropertyMapFromMap(map[string]any{
+		"objs": []any{
+			map[string]any{
+				"str":  "Hello",
+				"bool": true,
+			},
+		},
+	})
+
+	result := runUpgradeStateTest(t, upgradeStateTestCase{
+		Resource1:            resourceBeforeAndAfter,
+		ResourceInfo1:        resourceInfoBefore,
+		Resource2:            resourceBeforeAndAfter,
+		Inputs1:              tfInputs,
+		InputsMap1:           pmBefore,
+		Inputs2:              tfInputs,
+		InputsMap2:           pmAfter,
+		ExpectedRawStateType: resourceBeforeAndAfter.CoreConfigSchema().ImpliedType(),
+	})
+
+	autogold.Expect(&map[string]int{"same": 2}).Equal(t, result.pulumiRefreshResult.Summary.ResourceChanges)
+	autogold.Expect(&map[string]int{"same": 2}).Equal(t, result.pulumiUpResult.Summary.ResourceChanges)
+
+	autogold.Expect([]upgradeStateTrace{}).Equal(t, result.pulumiUpgrades)
+	autogold.Expect([]upgradeStateTrace{}).Equal(t, result.tfUpgrades)
+}
+
 func TestUpgrade_UpgradersNotCalledWhenVersionIsNotChanging(t *testing.T) {
 	t.Parallel()
 	skipUnlessLinux(t)
