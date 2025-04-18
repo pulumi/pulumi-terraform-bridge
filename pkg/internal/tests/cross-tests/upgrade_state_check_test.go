@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -31,6 +32,7 @@ import (
 	crosstestsimpl "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests/impl"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/pulcheck"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/reservedkeys"
+	"github.com/stretchr/testify/assert"
 )
 
 // Verify state upgrade interaction compatibility on schema change.
@@ -74,10 +76,45 @@ type upgradeStateResult struct {
 }
 
 func runUpgradeStateTest(t *testing.T, tc upgradeStateTestCase) upgradeStateResult {
-	return upgradeStateResult{
-		pulumiUpgrades: runUpgradeTestStatePulumi(t, tc),
-		tfUpgrades:     runUpgradeStateTestTF(t, tc),
+	result := upgradeStateResult{}
+
+	t.Run("tf", func(t *testing.T) {
+		tc1 := instrumentCustomizeDiff(t, tc)
+		result.tfUpgrades = runUpgradeStateTestTF(t, tc1)
+	})
+
+	t.Run("pulumi", func(t *testing.T) {
+		tc2 := instrumentCustomizeDiff(t, tc)
+		result.pulumiUpgrades = runUpgradeTestStatePulumi(t, tc2)
+	})
+
+	return result
+}
+
+func instrumentCustomizeDiff(t *testing.T, tc upgradeStateTestCase) upgradeStateTestCase {
+	counter := new(atomic.Int32)
+
+	r2 := *tc.Resource2
+	require.Nilf(t, r2.CustomizeDiff, "Resource2.CustomizeDiff cannot yet be set in tests")
+
+	r2.CustomizeDiff = func(ctx context.Context, rd *schema.ResourceDiff, i interface{}) error {
+		counter.Add(1)
+		// Making sure the RawState() received is of an appropriate type. Note that as written the
+		// check may be proved too strict for all situations, and may need to be revised when the value
+		// is "approximately" of the expected type.
+		t1 := tc.Resource1.CoreConfigSchema().ImpliedType()
+		t2 := rd.GetRawState().Type()
+		assert.Truef(t, t1.Equals(t2), "CustomizeDiff expected GetRawState().Type() be %s, got %s",
+			t2.GoString(), t1.GoString())
+		return nil
 	}
+	tc.Resource2 = &r2
+
+	t.Cleanup(func() {
+		n := counter.Load()
+		assert.Truef(t, n > 0, "expected CustomizeDiff to be called at least once, got %d calls", n)
+	})
+	return tc
 }
 
 type upgraderTracker struct {
