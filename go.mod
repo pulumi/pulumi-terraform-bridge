@@ -1,8 +1,8 @@
 module github.com/pulumi/pulumi-terraform-bridge/v3
 
-go 1.24.0
+go 1.22.3
 
-toolchain go1.24.1
+toolchain go1.23.2
 
 require (
 	github.com/apparentlymart/go-cidr v1.1.0
@@ -50,7 +50,6 @@ require (
 	github.com/pulumi/schema-tools v0.1.2
 	github.com/pulumi/terraform-diff-reader v0.0.2
 	github.com/russross/blackfriday/v2 v2.1.0
-	github.com/ryboe/q v1.0.24
 	github.com/spf13/afero v1.10.0
 	github.com/spf13/cobra v1.9.1
 	github.com/stretchr/testify v1.10.0
@@ -102,8 +101,6 @@ require (
 	github.com/google/s2a-go v0.1.7 // indirect
 	github.com/hexops/gotextdiff v1.0.3 // indirect
 	github.com/iwdgo/sigintwindows v0.2.2 // indirect
-	github.com/kr/pretty v0.3.1 // indirect
-	github.com/kr/text v0.2.0 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mattn/go-localereader v0.0.1 // indirect
@@ -226,7 +223,7 @@ require (
 	github.com/pulumi/pulumi/pkg/v3 v3.163.0
 	github.com/pulumi/pulumi/sdk/v3 v3.163.0
 	github.com/rivo/uniseg v0.4.4 // indirect
-	github.com/rogpeppe/go-internal v1.13.1 // indirect
+	github.com/rogpeppe/go-internal v1.12.0 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
 	github.com/sabhiram/go-gitignore v0.0.0-20210923224102-525f6e181f06 // indirect
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0 // indirect
