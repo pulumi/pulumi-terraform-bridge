@@ -5,22 +5,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/stretchr/testify/require"
 )
-
-func assertValEqual(t T, name string, tfVal, pulVal any) {
-	// usually plugin-sdk schema types
-	if hasEqualTfVal, ok := tfVal.(interface{ Equal(interface{}) bool }); ok {
-		if !hasEqualTfVal.Equal(pulVal) {
-			t.Logf(name + " not equal!")
-			t.Logf("TF value %s", tfVal)
-			t.Logf("PU value %s", pulVal)
-			t.Fail()
-		}
-	} else {
-		require.Equal(t, tfVal, pulVal, "Values for key %s do not match", name)
-	}
-}
 
 func assertResourceDataEqual(t T, tfResult, puResult *schema.ResourceData) {
 	// Use cmp to check if data is equal. We need to use cmp instead of
