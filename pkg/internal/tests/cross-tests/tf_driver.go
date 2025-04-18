@@ -98,6 +98,24 @@ func (d *TfResDriver) writePlanApply(
 	return plan
 }
 
+func (d *TfResDriver) refresh(
+	t T,
+	resourceSchema map[string]*schema.Schema,
+	resourceType, resourceName string,
+	config cty.Value,
+	lifecycle lifecycleArgs,
+) {
+	if !config.IsNull() {
+		d.write(t, resourceSchema, resourceType, resourceName, config, lifecycle)
+	} else {
+		t.Logf("empty config file")
+		d.driver.Write(t, "")
+	}
+
+	err := d.driver.Refresh(t)
+	require.NoError(t, err)
+}
+
 func (d *TfResDriver) write(
 	t T,
 	resourceSchema map[string]*schema.Schema,

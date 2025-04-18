@@ -21,27 +21,105 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"sync"
+	"testing"
 
-	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/stretchr/testify/require"
-	"github.com/zclconf/go-cty/cty"
-	"gotest.tools/v3/assert"
 
 	crosstestsimpl "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests/impl"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/pulcheck"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/reservedkeys"
 )
 
+// Verify state upgrade interaction compatibility on schema change.
+//
+// Play-by-play:
+//
+//  1. provision Inputs1 with the provider based on Resource1 schema
+//  2. build the provider based on Resource2 schema
+//  3. refresh with the Resource2 provider
+//  4. update to Inputs2 with the Resource2 provider
 type upgradeStateTestCase struct {
-	// Schema for the resource under test
-	Resource *schema.Resource
+	Resource1 *schema.Resource
+	Inputs1   any
+	Resource2 *schema.Resource
+	Inputs2   any
 
-	Config1     any
-	Config2     any
-	ExpectEqual bool
-	ObjectType  *tftypes.Object
+	SkipSchemaVersionAfterUpdateCheck bool
+}
+
+type upgradeStateTestPhase string
+
+const (
+	createPhase  upgradeStateTestPhase = "create"
+	refreshPhase                       = "refresh"
+	updatePhase                        = "update"
+)
+
+// Represents an observed call to a state upgrade function.
+type upgradeStateTrace struct {
+	Phase    upgradeStateTestPhase // Phase in the test when the upgrader was called
+	Upgrader int                   // StateUpgrader index in upgraders array that was called
+	RawState any                   // RawState passed to the StateUpgrader
+	Meta     any                   // Meta passed to the StateUpgrader
+	Result   map[string]any        // Result returned by the StateUpgrader
+	Err      error                 // Error returned by the StateUpgrader
+}
+
+type upgradeStateResult struct {
+	pulumiUpgrades []upgradeStateTrace
+	tfUpgrades     []upgradeStateTrace
+}
+
+func runUpgradeStateTest(t *testing.T, tc upgradeStateTestCase) upgradeStateResult {
+	return upgradeStateResult{
+		pulumiUpgrades: runUpgradeTestStatePulumi(t, tc),
+		tfUpgrades:     runUpgradeStateTestTF(t, tc),
+	}
+}
+
+type upgraderTracker struct {
+	phase upgradeStateTestPhase
+	trace []upgradeStateTrace
+	mu    sync.Mutex
+}
+
+func (t *upgraderTracker) instrumentUpgrader(i int, u schema.StateUpgrader) schema.StateUpgrader {
+	upgrade := u.Upgrade
+	return schema.StateUpgrader{
+		Version: u.Version,
+		Type:    u.Type,
+		Upgrade: func(
+			ctx context.Context,
+			rawState map[string]interface{},
+			meta interface{},
+		) (map[string]interface{}, error) {
+			t.mu.Lock()
+			defer t.mu.Unlock()
+			ret, err := upgrade(ctx, rawState, meta)
+			t.trace = append(t.trace, upgradeStateTrace{
+				Phase:    t.phase,
+				Upgrader: i,
+				RawState: rawState,
+				Meta:     meta,
+				Result:   ret,
+				Err:      err,
+			})
+			return ret, err
+		},
+	}
+}
+
+func instrumentUpgraders(s *schema.Resource) (*schema.Resource, *upgraderTracker) {
+	tr := &upgraderTracker{}
+	copy := *s
+	copy.StateUpgraders = make([]schema.StateUpgrader, len(s.StateUpgraders))
+	for i, u := range s.StateUpgraders {
+		copy.StateUpgraders[i] = tr.instrumentUpgrader(i, u)
+	}
+	return &copy, tr
 }
 
 func getVersionInState(t T, stack apitype.UntypedDeployment) int {
@@ -58,7 +136,7 @@ func getVersionInState(t T, stack apitype.UntypedDeployment) int {
 	resOutputs := testResState["outputs"].(map[string]interface{})
 	metaVar := resOutputs[reservedkeys.Meta]
 	if metaVar == nil {
-		// If the resource does not have a meta field, assume the schema version is 0.
+		t.Logf("The resource does not have a meta field, assume the schema version is 0")
 		return 0
 	}
 	meta := metaVar.(string)
@@ -70,8 +148,11 @@ func getVersionInState(t T, stack apitype.UntypedDeployment) int {
 	return int(schemaVersion)
 }
 
-func runPulumiUpgrade(t T, res1, res2 *schema.Resource, config1, config2 cty.Value) (int, int) {
+func runUpgradeTestStatePulumi(t T, tc upgradeStateTestCase) []upgradeStateTrace {
 	opts := []pulcheck.BridgedProviderOpt{}
+
+	res1 := tc.Resource1
+	res2, tracker := instrumentUpgraders(tc.Resource2)
 
 	tfp1 := &schema.Provider{ResourcesMap: map[string]*schema.Resource{defRtype: res1}}
 	prov1 := pulcheck.BridgedProvider(t, defProviderShortName, tfp1, opts...)
@@ -84,98 +165,87 @@ func runPulumiUpgrade(t T, res1, res2 *schema.Resource, config1, config2 cty.Val
 		tfResourceName:      defRtype,
 	}
 
+	inputs1 := coalesceInputs(t, tc.Resource1.Schema, tc.Inputs1)
+	inputs2 := coalesceInputs(t, tc.Resource2.Schema, tc.Inputs2)
+
 	yamlProgram := pd.generateYAML(t, crosstestsimpl.InferPulumiValue(t,
-		prov1.P.ResourcesMap().Get(pd.tfResourceName).Schema(), nil, config1))
+		prov1.P.ResourcesMap().Get(pd.tfResourceName).Schema(), nil, inputs1))
 	pt := pulcheck.PulCheck(t, prov1, string(yamlProgram))
+
+	t.Logf("create")
+	tracker.phase = createPhase
 	pt.Up(t)
-	stack := pt.ExportStack(t)
-	schemaVersion1 := getVersionInState(t, stack)
+	createdState := pt.ExportStack(t)
+
+	schemaVersion1 := getVersionInState(t, createdState)
+	require.Equalf(t, tc.Resource1.SchemaVersion, schemaVersion1, "bad getVersionInState result for create")
 
 	yamlProgram = pd.generateYAML(t, crosstestsimpl.InferPulumiValue(t,
-		prov1.P.ResourcesMap().Get(pd.tfResourceName).Schema(), nil, config2))
+		prov1.P.ResourcesMap().Get(pd.tfResourceName).Schema(), nil, inputs2))
 	p := filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml")
 	err := os.WriteFile(p, yamlProgram, 0o600)
 	require.NoErrorf(t, err, "writing Pulumi.yaml")
 
 	handle, err := pulcheck.StartPulumiProvider(context.Background(), prov2)
 	require.NoError(t, err)
-	pt.CurrentStack().Workspace().SetEnvVar("PULUMI_DEBUG_PROVIDERS", fmt.Sprintf("%s:%d", defProviderShortName, handle.Port))
+	pt.CurrentStack().Workspace().SetEnvVar("PULUMI_DEBUG_PROVIDERS",
+		fmt.Sprintf("%s:%d", defProviderShortName, handle.Port))
+
+	t.Logf("refresh")
+	tracker.phase = refreshPhase
+	pt.Refresh(t)
+
+	schemaVersionR := getVersionInState(t, pt.ExportStack(t))
+	t.Logf("schema version after refresh is %d", schemaVersionR)
+	require.Equalf(t, tc.Resource2.SchemaVersion, schemaVersionR, "bad getVersionInState result for refresh")
+
+	// Reset to created state as refresh may have edited it.
+	pt.ImportStack(t, createdState)
+
+	t.Logf("update")
+	tracker.phase = updatePhase
 	pt.Up(t)
 
-	stack = pt.ExportStack(t)
-	schemaVersion2 := getVersionInState(t, stack)
+	schemaVersionU := getVersionInState(t, pt.ExportStack(t))
+	t.Logf("schema version after update is %d", schemaVersionU)
+	if !tc.SkipSchemaVersionAfterUpdateCheck {
+		require.Equalf(t, tc.Resource2.SchemaVersion, schemaVersionU,
+			"bad getVersionInState result for update")
+	}
 
-	return schemaVersion1, schemaVersion2
+	return tracker.trace
 }
 
-func runUpgradeStateInputCheck(t T, tc upgradeStateTestCase) {
-	upgrades := make([]schema.StateUpgrader, 0)
-	for i := 0; i < tc.Resource.SchemaVersion; i++ {
-		upgrades = append(upgrades, schema.StateUpgrader{
-			Version: i,
-			Type:    tc.Resource.CoreConfigSchema().ImpliedType(),
-			Upgrade: func(
-				ctx context.Context,
-				rawState map[string]interface{},
-				meta interface{},
-			) (map[string]interface{}, error) {
-				return rawState, nil
-			},
-		})
-	}
-
-	upgradeRawStates := make([]map[string]interface{}, 0)
-
-	upgrades = append(upgrades,
-		schema.StateUpgrader{
-			Version: tc.Resource.SchemaVersion,
-			Type:    tc.Resource.CoreConfigSchema().ImpliedType(),
-			Upgrade: func(
-				ctx context.Context,
-				rawState map[string]interface{},
-				meta interface{},
-			) (map[string]interface{}, error) {
-				upgradeRawStates = append(upgradeRawStates, rawState)
-				return rawState, nil
-			},
-		},
-	)
-
-	upgradeRes := *tc.Resource
-	upgradeRes.SchemaVersion = upgradeRes.SchemaVersion + 1
-	upgradeRes.StateUpgraders = upgrades
-
+func runUpgradeStateTestTF(t T, tc upgradeStateTestCase) []upgradeStateTrace {
+	t.Logf("Checking TF behavior")
+	rname := "example"
+	inputs1 := coalesceInputs(t, tc.Resource1.Schema, tc.Inputs1)
+	inputs2 := coalesceInputs(t, tc.Resource2.Schema, tc.Inputs2)
+	resource2, tracker := instrumentUpgraders(tc.Resource2)
 	tfwd := t.TempDir()
 
-	config1 := coalesceInputs(t, tc.Resource.Schema, tc.Config1)
-	config2 := coalesceInputs(t, tc.Resource.Schema, tc.Config2)
+	tfd := newTFResDriver(t, tfwd, defProviderShortName, defRtype, tc.Resource1)
 
-	tfd := newTFResDriver(t, tfwd, defProviderShortName, defRtype, tc.Resource)
-	_ = tfd.writePlanApply(t, tc.Resource.Schema, defRtype, "example", config1, lifecycleArgs{})
+	t.Logf("create")
+	tracker.phase = createPhase
+	_ = tfd.writePlanApply(t, tc.Resource1.Schema, defRtype, rname, inputs1, lifecycleArgs{})
 
-	tfd2 := newTFResDriver(t, tfwd, defProviderShortName, defRtype, &upgradeRes)
-	_ = tfd2.writePlanApply(t, tc.Resource.Schema, defRtype, "example", config2, lifecycleArgs{})
+	tfd2 := newTFResDriver(t, tfwd, defProviderShortName, defRtype, resource2)
 
-	schemaVersion1, schemaVersion2 := runPulumiUpgrade(t, tc.Resource, &upgradeRes, config1, config2)
+	createdState, err := os.ReadFile(filepath.Join(tfwd, "terraform.tfstate"))
+	require.NoError(t, err)
 
-	if tc.ExpectEqual {
-		assert.Equal(t, schemaVersion1, tc.Resource.SchemaVersion)
-		// We never upgrade the state to the new version.
-		// TODO: should we?
+	t.Logf("refresh")
+	tracker.phase = refreshPhase
+	tfd2.refresh(t, tc.Resource2.Schema, defRtype, rname, inputs2, lifecycleArgs{})
 
-		require.Len(t, upgradeRawStates, 2)
-		if len(upgradeRawStates) != 2 {
-			return
-		}
-		assertValEqual(t, "UpgradeRawState", upgradeRawStates[0], upgradeRawStates[1])
-	} else {
-		assert.Equal(t, schemaVersion1, tc.Resource.SchemaVersion)
-		assert.Equal(t, schemaVersion2, upgradeRes.SchemaVersion)
-		require.Len(t, upgradeRawStates, 4)
-		if len(upgradeRawStates) != 4 {
-			return
-		}
-		assertValEqual(t, "UpgradeRawState", upgradeRawStates[0], upgradeRawStates[2])
-		assertValEqual(t, "UpgradeRawState", upgradeRawStates[1], upgradeRawStates[3])
-	}
+	// Reset the state to the created state check apply, as refresh has migrated the state.
+	err = os.WriteFile(filepath.Join(tfwd, "terraform.tfstate"), createdState, 0o600)
+	require.NoError(t, err)
+
+	t.Logf("apply")
+	tracker.phase = updatePhase
+	_ = tfd2.writePlanApply(t, tc.Resource2.Schema, defRtype, rname, inputs2, lifecycleArgs{})
+
+	return tracker.trace
 }
