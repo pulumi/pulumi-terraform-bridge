@@ -20,6 +20,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hexops/autogold/v2"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
 
@@ -128,7 +129,7 @@ func TestUpgrade_StateUpgraders(t *testing.T) {
 }
 
 // Pulumi removing MaxItems=1 without TF schema changes should be tolerated, without calling upgraders.
-func TestUpgrade_Pulumi_RemovesMaxItems1(t *testing.T) {
+func TestUpgrade_Pulumi_Removes_MaxItems1(t *testing.T) {
 	t.Parallel()
 	skipUnlessLinux(t)
 
@@ -197,6 +198,234 @@ func TestUpgrade_Pulumi_RemovesMaxItems1(t *testing.T) {
 	})
 
 	autogold.Expect(&map[string]int{"same": 2}).Equal(t, result.pulumiRefreshResult.Summary.ResourceChanges)
+	autogold.Expect(map[apitype.OpType]int{apitype.OpType("same"): 2}).Equal(t, result.pulumiPreviewResult.ChangeSummary)
+	autogold.Expect(&map[string]int{"same": 2}).Equal(t, result.pulumiUpResult.Summary.ResourceChanges)
+
+	autogold.Expect([]upgradeStateTrace{}).Equal(t, result.pulumiUpgrades)
+	autogold.Expect([]upgradeStateTrace{}).Equal(t, result.tfUpgrades)
+}
+
+// Pulumi adding MaxItems=1 without TF schema changes should be tolerated, without calling upgraders.
+func TestUpgrade_Pulumi_Adds_MaxItems1(t *testing.T) {
+	t.Parallel()
+	skipUnlessLinux(t)
+
+	sch := map[string]*schema.Schema{
+		"obj": {
+			Type:     schema.TypeList,
+			Optional: true,
+			Elem: &schema.Resource{
+				Schema: map[string]*schema.Schema{
+					"str": {
+						Type:     schema.TypeString,
+						Optional: true,
+					},
+					"bool": {
+						Type:     schema.TypeBool,
+						Optional: true,
+					},
+				},
+			},
+		},
+	}
+
+	trueBool := true
+
+	resourceBeforeAndAfter := &schema.Resource{Schema: sch}
+	resourceInfoAfter := &info.Resource{Fields: map[string]*info.Schema{
+		"obj": {
+			MaxItemsOne: &trueBool,
+		},
+	}}
+
+	tfInputs := map[string]any{
+		"obj": []any{
+			map[string]any{
+				"str":  "Hello",
+				"bool": true,
+			},
+		},
+	}
+
+	pmAfter := resource.NewPropertyMapFromMap(map[string]any{
+		"obj": map[string]any{
+			"str":  "Hello",
+			"bool": true,
+		},
+	})
+
+	pmBefore := resource.NewPropertyMapFromMap(map[string]any{
+		"objs": []any{
+			map[string]any{
+				"str":  "Hello",
+				"bool": true,
+			},
+		},
+	})
+
+	result := runUpgradeStateTest(t, upgradeStateTestCase{
+		Resource1:            resourceBeforeAndAfter,
+		Resource2:            resourceBeforeAndAfter,
+		ResourceInfo2:        resourceInfoAfter,
+		Inputs1:              tfInputs,
+		InputsMap1:           pmBefore,
+		Inputs2:              tfInputs,
+		InputsMap2:           pmAfter,
+		ExpectedRawStateType: resourceBeforeAndAfter.CoreConfigSchema().ImpliedType(),
+		SkipPulumi:           "TODO[pulumi/pulumi-terraform-bridge#1667]",
+	})
+
+	autogold.Expect((*map[string]int)(nil)).Equal(t, result.pulumiRefreshResult.Summary.ResourceChanges)
+	// TODO[pulumi/pulumi-terraform-bridge#1667] there should not be any changes here.
+	autogold.Expect(map[apitype.OpType]int{}).Equal(t, result.pulumiPreviewResult.ChangeSummary)
+	autogold.Expect((*map[string]int)(nil)).Equal(t, result.pulumiUpResult.Summary.ResourceChanges)
+
+	autogold.Expect([]upgradeStateTrace{}).Equal(t, result.pulumiUpgrades)
+	autogold.Expect([]upgradeStateTrace{}).Equal(t, result.tfUpgrades)
+}
+
+// Upstream adding MaxItems=1 without TF schema changes should be tolerated, without calling upgraders.
+func TestUpgrade_Upstream_Adds_MaxItems1(t *testing.T) {
+	t.Parallel()
+	skipUnlessLinux(t)
+
+	sch := func(maxItems int) map[string]*schema.Schema {
+		return map[string]*schema.Schema{
+			"obj": {
+				Type:     schema.TypeList,
+				Optional: true,
+				MaxItems: maxItems,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"str": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"bool": {
+							Type:     schema.TypeBool,
+							Optional: true,
+						},
+					},
+				},
+			},
+		}
+	}
+
+	resourceBefore := &schema.Resource{Schema: sch(0)}
+	resourceAfter := &schema.Resource{Schema: sch(1)}
+
+	tfInputs := map[string]any{
+		"obj": []any{
+			map[string]any{
+				"str":  "Hello",
+				"bool": true,
+			},
+		},
+	}
+
+	pmBefore := resource.NewPropertyMapFromMap(map[string]any{
+		"objs": []any{
+			map[string]any{
+				"str":  "Hello",
+				"bool": true,
+			},
+		},
+	})
+
+	pmAfter := resource.NewPropertyMapFromMap(map[string]any{
+		"obj": map[string]any{
+			"str":  "Hello",
+			"bool": true,
+		},
+	})
+
+	result := runUpgradeStateTest(t, upgradeStateTestCase{
+		Resource1:            resourceBefore,
+		Resource2:            resourceAfter,
+		Inputs1:              tfInputs,
+		InputsMap1:           pmBefore,
+		Inputs2:              tfInputs,
+		InputsMap2:           pmAfter,
+		ExpectedRawStateType: resourceAfter.CoreConfigSchema().ImpliedType(),
+		SkipPulumi:           "TODO[pulumi/pulumi-terraform-bridge#1667] unexpected changes",
+	})
+
+	autogold.Expect((*map[string]int)(nil)).Equal(t, result.pulumiRefreshResult.Summary.ResourceChanges)
+	// TODO[pulumi/pulumi-terraform-bridge#1667] there should not be any changes here.
+	autogold.Expect(map[apitype.OpType]int{}).Equal(t, result.pulumiPreviewResult.ChangeSummary)
+	autogold.Expect((*map[string]int)(nil)).Equal(t, result.pulumiUpResult.Summary.ResourceChanges)
+
+	autogold.Expect([]upgradeStateTrace{}).Equal(t, result.pulumiUpgrades)
+	autogold.Expect([]upgradeStateTrace{}).Equal(t, result.tfUpgrades)
+}
+
+// Upstream removing MaxItems=1 without TF schema changes should be tolerated, without calling upgraders.
+func TestUpgrade_Upstream_Removes_MaxItems1(t *testing.T) {
+	t.Parallel()
+	skipUnlessLinux(t)
+
+	sch := func(maxItems int) map[string]*schema.Schema {
+		return map[string]*schema.Schema{
+			"obj": {
+				Type:     schema.TypeList,
+				Optional: true,
+				MaxItems: maxItems,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"str": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"bool": {
+							Type:     schema.TypeBool,
+							Optional: true,
+						},
+					},
+				},
+			},
+		}
+	}
+
+	resourceBefore := &schema.Resource{Schema: sch(1)}
+	resourceAfter := &schema.Resource{Schema: sch(0)}
+
+	tfInputs := map[string]any{
+		"obj": []any{
+			map[string]any{
+				"str":  "Hello",
+				"bool": true,
+			},
+		},
+	}
+
+	pmBefore := resource.NewPropertyMapFromMap(map[string]any{
+		"obj": map[string]any{
+			"str":  "Hello",
+			"bool": true,
+		},
+	})
+
+	pmAfter := resource.NewPropertyMapFromMap(map[string]any{
+		"objs": []any{
+			map[string]any{
+				"str":  "Hello",
+				"bool": true,
+			},
+		},
+	})
+
+	result := runUpgradeStateTest(t, upgradeStateTestCase{
+		Resource1:            resourceBefore,
+		Resource2:            resourceAfter,
+		Inputs1:              tfInputs,
+		InputsMap1:           pmBefore,
+		Inputs2:              tfInputs,
+		InputsMap2:           pmAfter,
+		ExpectedRawStateType: resourceAfter.CoreConfigSchema().ImpliedType(),
+	})
+
+	autogold.Expect(&map[string]int{"same": 2}).Equal(t, result.pulumiRefreshResult.Summary.ResourceChanges)
+	autogold.Expect(map[apitype.OpType]int{apitype.OpType("same"): 2}).Equal(t, result.pulumiPreviewResult.ChangeSummary)
 	autogold.Expect(&map[string]int{"same": 2}).Equal(t, result.pulumiUpResult.Summary.ResourceChanges)
 
 	autogold.Expect([]upgradeStateTrace{}).Equal(t, result.pulumiUpgrades)
