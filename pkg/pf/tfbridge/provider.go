@@ -329,7 +329,24 @@ func (p *provider) CallWithContext(_ context.Context,
 		return plugin.CallResult{}, fmt.Errorf("error encoding property map")
 	}
 
+	//Get the current configuration
+
 	tftype, err := config.Unmarshal(p.configType)
+
+	//TODO: handle the resulting value
+
+	if tftype.IsKnown() {
+
+		switch tftype.Type().(type) {
+		case tftypes.Object:
+			objectMap := make(map[string]tftypes.Value)
+
+			tftype.As(&objectMap)
+
+		default:
+		}
+
+	}
 
 	if tftype.IsKnown() {
 
