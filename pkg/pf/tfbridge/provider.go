@@ -16,6 +16,7 @@ package tfbridge
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -44,6 +45,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/providerserver"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/valueshim"
 )
 
 type providerOptions struct {
@@ -317,66 +319,51 @@ func (p *provider) terraformDatasourceName(functionToken tokens.ModuleMember) (s
 	return "", fmt.Errorf("[pf/tfbridge] unknown datasource token: %v", functionToken)
 }
 
-// NOT IMPLEMENTED: Call dynamically executes a method in the provider associated with a component resource.
-func (p *provider) CallWithContext(_ context.Context,
-	tok tokens.ModuleMember, args resource.PropertyMap, info plugin.CallInfo,
-	options plugin.CallOptions,
-) (plugin.CallResult, error) {
-
+func (p *provider) returnTerraformConfig() (resource.PropertyMap, error) {
 	//Get the current configuration
 	config, err := convert.EncodePropertyMapToDynamic(p.configEncoder, p.configType, p.lastKnownProviderConfig)
 	if err != nil {
-		return plugin.CallResult{}, fmt.Errorf("error encoding property map")
+		return nil, fmt.Errorf("error encoding property map: %v", err)
+	}
+	tfConfigValue, err := config.Unmarshal(p.configType)
+	if err != nil {
+		return nil, fmt.Errorf("error unmarshaling protov6.DynamicValue: %v", err)
+	}
+	//use valueshim package to marshal tfConfigValue into raw json,
+	//which can be unmarshaled into a map[string]interface{}
+	configJSONMessage, err := valueshim.FromTValue(tfConfigValue).Marshal()
+	if err != nil {
+		return nil, fmt.Errorf("error marshaling into raw JSON message: %v", err)
 	}
 
-	//Get the current configuration
-
-	tftype, err := config.Unmarshal(p.configType)
-
-	//TODO: handle the resulting value
-
-	if tftype.IsKnown() {
-
-		switch tftype.Type().(type) {
-		case tftypes.Object:
-			objectMap := make(map[string]tftypes.Value)
-
-			tftype.As(&objectMap)
-
-		default:
-		}
-
+	jsonConfigMap := map[string]any{}
+	err = json.Unmarshal(configJSONMessage, &jsonConfigMap)
+	if err != nil {
+		return nil, fmt.Errorf("error unmarshaling JSON: %v", err)
 	}
+	return resource.NewPropertyMapFromMap(jsonConfigMap), nil
+}
 
-	if tftype.IsKnown() {
-
-		switch tftype.Type().(type) {
-		case tftypes.Object:
-			objectMap := make(map[string]tftypes.Value)
-
-			tftype.As(&objectMap)
-		default:
-			return plugin.CallResult{}, fmt.Errorf("can't handle this tftype yet")
-		}
-
-	}
-	//TODO: translate
-	terraformValue := p.lastKnownProviderConfig // this is of the wrong key format
+func (p *provider) CallWithContext(ctx context.Context,
+	tok tokens.ModuleMember, args resource.PropertyMap, info plugin.CallInfo,
+	options plugin.CallOptions,
+) (plugin.CallResult, error) {
 	_, functionName, found := strings.Cut(tok.String(), "/")
 	if !found {
-		return plugin.CallResult{}, fmt.Errorf("malformed and unknown method %q", tok)
+		return plugin.CallResult{}, fmt.Errorf("error getting method name from method token %q", tok)
 	}
+
 	switch functionName {
 	case "terraformConfig":
-		//outputResult, err := plugin.MarshalProperties(outputs, plugin.MarshalOptions{})
-		//if err != nil {
-		//	return plugin.CallResult{}, err
-		//}
+		returnMap, err := p.returnTerraformConfig()
+		if err != nil {
+			return plugin.CallResult{}, err
+		}
 		return plugin.CallResult{
-			Return: terraformValue,
+			Return: returnMap,
 		}, nil
 	default:
-		return plugin.CallResult{}, fmt.Errorf(" unknown method %q", tok)
+		return plugin.CallResult{}, fmt.Errorf("unknown method %v", tok)
 	}
 }
 
