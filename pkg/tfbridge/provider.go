@@ -17,6 +17,7 @@ package tfbridge
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	"log"
 	"os"
 	"sort"
@@ -1760,9 +1761,69 @@ func (p *Provider) Construct(context.Context, *pulumirpc.ConstructRequest) (*pul
 	return nil, status.Error(codes.Unimplemented, "Construct is not yet implemented")
 }
 
+func convertToPropertyMap(input map[string]interface{}) resource.PropertyMap {
+	result := make(resource.PropertyMap)
+	for k, v := range input {
+		result[resource.PropertyKey(k)] = convertToPropertyValue(v)
+	}
+	return result
+}
+
+// Helper to convert nested types into PropertyValue
+func convertToPropertyValue(v interface{}) resource.PropertyValue {
+	switch val := v.(type) {
+	case map[string]interface{}:
+		return resource.NewObjectProperty(convertToPropertyMap(val))
+	case []interface{}:
+		elements := make([]resource.PropertyValue, len(val))
+		for i, item := range val {
+			elements[i] = convertToPropertyValue(item)
+		}
+		return resource.NewArrayProperty(elements)
+	case string:
+		return resource.NewStringProperty(val)
+	case bool:
+		return resource.NewBoolProperty(val)
+	case int:
+		return resource.NewNumberProperty(float64(val))
+	case float64:
+		return resource.NewNumberProperty(val)
+	default:
+		return resource.NewComputedProperty(resource.Computed{})
+	}
+}
+
 // Call dynamically executes a method in the provider associated with a component resource.
 func (p *Provider) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "Call is not yet implemented")
+
+	ctx = p.loggingContext(ctx, "")
+
+	_, functionName, found := strings.Cut(req.GetTok(), "/")
+	if !found {
+		return nil, fmt.Errorf("error getting method name from method token %q", req.GetTok())
+	}
+	switch functionName {
+	case "terraformConfig":
+		resConfig, err := buildTerraformConfig(ctx, p, p.configValues)
+
+		var rawConfig terraform.ResourceConfig
+
+		if cfg, ok := resConfig.(shim.ResourceConfigWithGetterForSdkV2); ok {
+			rawConfig = cfg.GetTFConfig()
+		}
+		// Extract values
+		tfConfigOutput := convertToPropertyMap(rawConfig.Config)
+
+		outputResult, err := plugin.MarshalProperties(tfConfigOutput, plugin.MarshalOptions{})
+		if err != nil {
+			return nil, err
+		}
+		return &pulumirpc.CallResponse{
+			Return: outputResult,
+		}, nil
+	default:
+		return nil, fmt.Errorf("unknown method token for Call %q", req.GetTok())
+	}
 }
 
 // Invoke dynamically executes a built-in function in the provider.

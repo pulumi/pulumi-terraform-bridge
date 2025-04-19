@@ -5808,3 +5808,105 @@ func TestProcessImportValidationErrors(t *testing.T) {
 		})
 	}
 }
+
+func TestProviderCallTerraformConfig(t *testing.T) {
+	t.Parallel()
+	shimProvider := shimv2.NewProvider(testTFProviderV2)
+
+	nestedConfigSchema := map[string]*schema.Schema{
+		"region": {
+			Type:     schema.TypeString,
+			Optional: true,
+		},
+		"ignore_tags": {
+			Type:     schema.TypeList,
+			Optional: true,
+			MaxItems: 1,
+			Elem: &schema.Resource{
+				Schema: map[string]*schema.Schema{
+					"key_prefixes": {
+						Type:     schema.TypeString,
+						Optional: true,
+					},
+				},
+			},
+		},
+		"nested_list": {
+			Type:     schema.TypeList,
+			Optional: true,
+			Elem: &schema.Resource{
+				Schema: map[string]*schema.Schema{
+					"key": {
+						Type:     schema.TypeString,
+						Required: true,
+					},
+					"value": {
+						Type:     schema.TypeString,
+						Required: true,
+					},
+				},
+			},
+		},
+	}
+
+	provider := &Provider{
+		tf:     shimProvider,
+		config: shimv2.NewSchemaMap(nestedConfigSchema),
+	}
+
+	// Setup: Configure the test provider to populate with provider configValues
+	pulumiConfigs, err := plugin.MarshalProperties(resource.PropertyMap{
+		"region": resource.NewStringProperty("us-west-space-odyssey-2000"),
+		"ignoreTags": resource.NewObjectProperty(resource.PropertyMap{
+			"keyPrefixes": resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewStringProperty("dev"),
+				resource.NewStringProperty("staging"),
+			}),
+		}),
+	}, plugin.MarshalOptions{KeepUnknowns: true})
+	assert.NoError(t, err)
+
+	configureResp, err := provider.Configure(context.Background(), &pulumirpc.ConfigureRequest{
+		Args: pulumiConfigs,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, configureResp)
+
+	// Actually test Call
+	callReq := &pulumirpc.CallRequest{
+		Tok: "pulumi:providers:testprovider/terraformConfig",
+	}
+
+	callResp, err := provider.Call(context.Background(), callReq)
+
+	require.NoError(t, err)
+	require.NotNil(t, callResp)
+
+	// Assert our return object is as expected, with terraform_cased keys
+	callReturnProperties, err := plugin.UnmarshalProperties(callResp.GetReturn(), plugin.MarshalOptions{})
+
+	autogold.Expect(resource.PropertyMap{
+		"ignore_tags": resource.PropertyValue{
+			V: []resource.PropertyValue{{
+				V: resource.PropertyMap{"key_prefixes": resource.PropertyValue{
+					V: []resource.PropertyValue{
+						{V: "dev"},
+						{V: "staging"},
+					},
+				}},
+			}},
+		},
+		"region": resource.PropertyValue{V: "us-west-space-odyssey-2000"},
+	}).Equal(t, callReturnProperties)
+
+	// Assert invalid method token results in error
+	reqInvalidToken := &pulumirpc.CallRequest{
+		Tok: "pulumi:providers:testprovider/unknownMethod",
+	}
+
+	invalidCallResp, err := provider.Call(context.Background(), reqInvalidToken)
+
+	require.Error(t, err)
+	require.ErrorContains(t, err, "unknown method token for Call pulumi:providers:testprovider/unknownMethod")
+	require.Nil(t, invalidCallResp)
+}

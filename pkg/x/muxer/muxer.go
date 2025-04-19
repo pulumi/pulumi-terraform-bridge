@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"strings"
 	"sync"
 
 	"github.com/golang/glog"
@@ -96,10 +97,15 @@ type (
 )
 
 func (m *muxer) getFunction(token string) server {
+	// TODO: Verify this is safe to do
+	if strings.Contains(token, "terraformConfig") {
+		return m.servers[0]
+	}
 	i, ok := m.dispatchTable.Functions[token]
 	if !ok {
 		return nil
 	}
+
 	return m.servers[i]
 }
 

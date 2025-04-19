@@ -16,8 +16,10 @@ package tfbridge
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/blang/semver"
 	pfprovider "github.com/hashicorp/terraform-plugin-framework/provider"
@@ -43,6 +45,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/providerserver"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/valueshim"
 )
 
 type providerOptions struct {
@@ -316,13 +319,48 @@ func (p *provider) terraformDatasourceNameOrRenamedEntity(functionToken tokens.M
 	return "", fmt.Errorf("[pf/tfbridge] unknown datasource token: %v", functionToken)
 }
 
-// NOT IMPLEMENTED: Call dynamically executes a method in the provider associated with a component resource.
-func (p *provider) CallWithContext(_ context.Context,
+func (p *provider) returnTerraformConfig() (resource.PropertyMap, error) {
+
+	//Get the current configuration
+	config, err := convert.EncodePropertyMapToDynamic(p.configEncoder, p.configType, p.lastKnownProviderConfig)
+	tfConfigValue, err := config.Unmarshal(p.configType)
+
+	//use valueshim package to marshal tfConfigValue into raw json,
+	//which can be unmarshaled into a map[string]interface{}
+	configJSONMessage, err := valueshim.FromTValue(tfConfigValue).Marshal()
+	if err != nil {
+		return nil, fmt.Errorf("error marshaling into raw JSON message: %v", err)
+	}
+
+	jsonConfigMap := map[string]any{}
+	err = json.Unmarshal(configJSONMessage, &jsonConfigMap)
+	if err != nil {
+		return nil, fmt.Errorf("error unmarshaling JSON: %v", err)
+	}
+	return resource.NewPropertyMapFromMap(jsonConfigMap), nil
+}
+
+func (p *provider) CallWithContext(ctx context.Context,
 	tok tokens.ModuleMember, args resource.PropertyMap, info plugin.CallInfo,
 	options plugin.CallOptions,
 ) (plugin.CallResult, error) {
-	return plugin.CallResult{},
-		fmt.Errorf("Call is not implemented for Terraform Plugin Framework bridged providers")
+	_, functionName, found := strings.Cut(tok.String(), "/")
+	if !found {
+		return plugin.CallResult{}, fmt.Errorf("error getting method name from method token %q", tok)
+	}
+
+	switch functionName {
+	case "terraformConfig":
+		returnMap, err := p.returnTerraformConfig()
+		if err != nil {
+			return plugin.CallResult{}, err
+		}
+		return plugin.CallResult{
+			Return: returnMap,
+		}, nil
+	default:
+		return plugin.CallResult{}, fmt.Errorf("unknown method %v", tok)
+	}
 }
 
 // NOT IMPLEMENTED: Construct creates a new component resource.
