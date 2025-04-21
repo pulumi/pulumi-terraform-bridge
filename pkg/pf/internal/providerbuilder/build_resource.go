@@ -36,6 +36,7 @@ type NewResourceArgs struct {
 	DeleteFunc       func(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse)
 	ImportStateFunc  func(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse)
 	UpgradeStateFunc func(context.Context) map[int64]resource.StateUpgrader
+	ModifyPlanFunc   func(context.Context, resource.ModifyPlanRequest, *resource.ModifyPlanResponse)
 }
 
 // NewResource creates a new Resource with the given parameters, filling reasonable defaults.
@@ -73,7 +74,6 @@ func NewResource(args NewResourceArgs) Resource {
 			return nil
 		}
 	}
-
 	return Resource(args)
 }
 
@@ -88,6 +88,7 @@ type Resource struct {
 	DeleteFunc       func(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse)
 	ImportStateFunc  func(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse)
 	UpgradeStateFunc func(context.Context) map[int64]resource.StateUpgrader
+	ModifyPlanFunc   func(context.Context, resource.ModifyPlanRequest, *resource.ModifyPlanResponse)
 }
 
 func (r *Resource) Metadata(ctx context.Context, req resource.MetadataRequest, re *resource.MetadataResponse) {
@@ -142,7 +143,18 @@ func (r *Resource) UpgradeState(ctx context.Context) map[int64]resource.StateUpg
 	return r.UpgradeStateFunc(ctx)
 }
 
+func (r *Resource) ModifyPlan(
+	ctx context.Context,
+	req resource.ModifyPlanRequest,
+	resp *resource.ModifyPlanResponse,
+) {
+	if r.ModifyPlanFunc != nil {
+		r.ModifyPlanFunc(ctx, req, resp)
+	}
+}
+
 var (
 	_ resource.ResourceWithImportState  = (*Resource)(nil)
 	_ resource.ResourceWithUpgradeState = (*Resource)(nil)
+	_ resource.ResourceWithModifyPlan   = (*Resource)(nil)
 )
