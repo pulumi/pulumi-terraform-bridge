@@ -30,7 +30,7 @@ import (
 )
 
 // Check a scenario where a schema change is accompanied by a migration function that compensates.
-func TestUpgrade_StateUpgraders(t *testing.T) {
+func TestPFUpgrade_StateUpgraders(t *testing.T) {
 	t.Parallel()
 	skipUnlessLinux(t)
 
@@ -124,7 +124,38 @@ func TestUpgrade_StateUpgraders(t *testing.T) {
 	})
 
 	autogold.Expect([]upgradeStateTrace{}).Equal(t, result.pulumiUpgrades)
-	autogold.Expect(nil).Equal(t, result.tfUpgrades)
+	autogold.Expect([]upgradeStateTrace{
+		{
+			Phase: upgradeStateTestPhase("refresh"),
+			PriorState: map[string]interface{}{
+				"id":   "test-id",
+				"prop": "one,two,three",
+			},
+			ReturnedState: map[string]interface{}{
+				"id": "test-id",
+				"prop": []interface{}{
+					1,
+					2,
+					3,
+				},
+			},
+		},
+		{
+			Phase: upgradeStateTestPhase("preview"),
+			PriorState: map[string]interface{}{
+				"id":   "test-id",
+				"prop": "one,two,three",
+			},
+			ReturnedState: map[string]interface{}{
+				"id": "test-id",
+				"prop": []interface{}{
+					1,
+					2,
+					3,
+				},
+			},
+		},
+	}).Equal(t, result.tfUpgrades)
 }
 
 // /*

@@ -16,6 +16,7 @@ package tfbridgetests
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"testing"
 
@@ -44,23 +45,28 @@ func hclWriteResource(
 	require.NoErrorf(t, err, "Failed to write HCL")
 }
 
-//nolint:unused
-func convertTValueToCtyValue(t *testing.T, value tftypes.Value) cty.Value {
+func convertTValueToCtyValue(value tftypes.Value) (cty.Value, error) {
 	dv, err := tfprotov6.NewDynamicValue(value.Type(), value)
-	require.NoErrorf(t, err, "tfprotov6.NewDynamicValue failed")
+	if err != nil {
+		return cty.NilVal, fmt.Errorf("tfprotov6.NewDynamicValue failed: %w", err)
+	}
 
 	var ctyType cty.Type
 
 	typeBytes, err := json.Marshal(value.Type())
-	require.NoErrorf(t, err, "json.Marshal(value.Type()) failed")
+	if err != nil {
+		return cty.NilVal, fmt.Errorf("json.Marshal(value.Type()) failed: %w", err)
+	}
 
-	err = json.Unmarshal(typeBytes, &ctyType)
-	require.NoErrorf(t, err, "json.Unmarshal() failed to recover a cty.Type")
+	if err = json.Unmarshal(typeBytes, &ctyType); err != nil {
+		return cty.NilVal, fmt.Errorf("json.Unmarshal() failed to recover a cty.Type: %w", err)
+	}
 
 	v, err := msgpack.Unmarshal(dv.MsgPack, ctyType)
-	require.NoErrorf(t, err, "msgpack.Unmarshal() failed to recover a cty.Value")
-
-	return v
+	if err != nil {
+		return cty.NilVal, fmt.Errorf("msgpack.Unmarshal() failed to recover a cty.Value: %w", err)
+	}
+	return v, nil
 }
 
 func getResourceSchema(t *testing.T, res resource.Resource) schema.Schema {

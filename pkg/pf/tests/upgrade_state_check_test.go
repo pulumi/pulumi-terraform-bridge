@@ -41,6 +41,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/zclconf/go-cty/cty"
+	ctyjson "github.com/zclconf/go-cty/cty/json"
 	"gopkg.in/yaml.v3"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests"
@@ -93,10 +94,11 @@ const (
 
 // Represents an observed call to a state upgrade function.
 type upgradeStateTrace struct {
-	Phase    upgradeStateTestPhase // Phase in the test when the upgrader was called
-	Upgrader int64                 // StateUpgrader identified by target version
-	Request  rschema.UpgradeStateRequest
-	Response rschema.UpgradeStateResponse
+	Phase         upgradeStateTestPhase // Phase in the test when the upgrader was called
+	Upgrader      int64                 // StateUpgrader identified by target version
+	PriorState    any
+	ReturnedState any
+	ReturnedError bool
 }
 
 type upgradeStateResult struct {
@@ -191,6 +193,24 @@ type upgraderTracker struct {
 }
 
 func (t *upgraderTracker) instrumentUpgrader(ver int64, u rschema.StateUpgrader) rschema.StateUpgrader {
+	prettyPrintValue := func(v tftypes.Value) (any, error) {
+		cv, err := convertTValueToCtyValue(v)
+		if err != nil {
+			return nil, err
+		}
+		bytes, err := ctyjson.Marshal(cv, cv.Type())
+		if err != nil {
+			return nil, err
+		}
+
+		var out any
+		err = json.Unmarshal(bytes, &out)
+		if err != nil {
+			return nil, err
+		}
+		return out, nil
+	}
+
 	upgrade := u.StateUpgrader
 	return rschema.StateUpgrader{
 		PriorSchema: u.PriorSchema,
@@ -202,11 +222,25 @@ func (t *upgraderTracker) instrumentUpgrader(ver int64, u rschema.StateUpgrader)
 			t.mu.Lock()
 			defer t.mu.Unlock()
 			upgrade(ctx, req, resp)
+
+			priorState, err := prettyPrintValue(req.State.Raw)
+			if err != nil {
+				resp.Diagnostics.AddError("prettyPrintValue failed on req", err.Error())
+				return
+			}
+
+			newState, err := prettyPrintValue(resp.State.Raw)
+			if err != nil {
+				resp.Diagnostics.AddError("prettyPrintValue failed on resp", err.Error())
+				return
+			}
+
 			t.trace = append(t.trace, upgradeStateTrace{
-				Phase:    t.phase,
-				Upgrader: ver,
-				Request:  req,
-				Response: *resp,
+				Phase:         t.phase,
+				Upgrader:      ver,
+				PriorState:    priorState,
+				ReturnedState: newState,
+				ReturnedError: resp.Diagnostics.HasError(),
 			})
 		},
 	}
