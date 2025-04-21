@@ -5811,8 +5811,7 @@ func TestProcessImportValidationErrors(t *testing.T) {
 
 func TestProviderCallTerraformConfig(t *testing.T) {
 	t.Parallel()
-	shimProvider := shimv2.NewProvider(testTFProviderV2)
-
+	// Setup: Give our test provider a more interesting schema
 	nestedConfigSchema := map[string]*schema.Schema{
 		"region": {
 			Type:     schema.TypeString,
@@ -5825,32 +5824,21 @@ func TestProviderCallTerraformConfig(t *testing.T) {
 			Elem: &schema.Resource{
 				Schema: map[string]*schema.Schema{
 					"key_prefixes": {
-						Type:     schema.TypeString,
+						Type:     schema.TypeList,
 						Optional: true,
-					},
-				},
-			},
-		},
-		"nested_list": {
-			Type:     schema.TypeList,
-			Optional: true,
-			Elem: &schema.Resource{
-				Schema: map[string]*schema.Schema{
-					"key": {
-						Type:     schema.TypeString,
-						Required: true,
-					},
-					"value": {
-						Type:     schema.TypeString,
-						Required: true,
+						Elem: &schema.Schema{
+							Type: schema.TypeString,
+						},
 					},
 				},
 			},
 		},
 	}
+	testTFProviderV2.Schema = nestedConfigSchema
+	testProvider := shimv2.NewProvider(testTFProviderV2)
 
 	provider := &Provider{
-		tf:     shimProvider,
+		tf:     testProvider,
 		config: shimv2.NewSchemaMap(nestedConfigSchema),
 	}
 
@@ -5864,7 +5852,7 @@ func TestProviderCallTerraformConfig(t *testing.T) {
 			}),
 		}),
 	}, plugin.MarshalOptions{KeepUnknowns: true})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	configureResp, err := provider.Configure(context.Background(), &pulumirpc.ConfigureRequest{
 		Args: pulumiConfigs,
@@ -5884,7 +5872,7 @@ func TestProviderCallTerraformConfig(t *testing.T) {
 
 	// Assert our return object is as expected, with terraform_cased keys
 	callReturnProperties, err := plugin.UnmarshalProperties(callResp.GetReturn(), plugin.MarshalOptions{})
-
+	require.NoError(t, err)
 	autogold.Expect(resource.PropertyMap{
 		"ignore_tags": resource.PropertyValue{
 			V: []resource.PropertyValue{{
