@@ -1795,7 +1795,6 @@ func convertToPropertyValue(v interface{}) resource.PropertyValue {
 
 // Call dynamically executes a method in the provider associated with a component resource.
 func (p *Provider) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error) {
-
 	ctx = p.loggingContext(ctx, "")
 
 	_, functionName, found := strings.Cut(req.GetTok(), "/")

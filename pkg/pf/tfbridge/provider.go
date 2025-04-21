@@ -320,11 +320,15 @@ func (p *provider) terraformDatasourceNameOrRenamedEntity(functionToken tokens.M
 }
 
 func (p *provider) returnTerraformConfig() (resource.PropertyMap, error) {
-
 	//Get the current configuration
 	config, err := convert.EncodePropertyMapToDynamic(p.configEncoder, p.configType, p.lastKnownProviderConfig)
+	if err != nil {
+		return nil, fmt.Errorf("error encoding property map: %v", err)
+	}
 	tfConfigValue, err := config.Unmarshal(p.configType)
-
+	if err != nil {
+		return nil, fmt.Errorf("error unmarshaling protov6.DynamicValue: %v", err)
+	}
 	//use valueshim package to marshal tfConfigValue into raw json,
 	//which can be unmarshaled into a map[string]interface{}
 	configJSONMessage, err := valueshim.FromTValue(tfConfigValue).Marshal()
