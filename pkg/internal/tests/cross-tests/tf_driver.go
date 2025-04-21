@@ -77,13 +77,25 @@ type lifecycleArgs struct {
 	CreateBeforeDestroy bool
 }
 
-func (d *TfResDriver) writePlanApply(
+func (d *TfResDriver) writePlan(
 	t T,
 	resourceSchema map[string]*schema.Schema,
 	resourceType, resourceName string,
 	config cty.Value,
 	lifecycle lifecycleArgs,
 ) *tfcheck.TFPlan {
+	plan, err := d.writePlanErr(t, resourceSchema, resourceType, resourceName, config, lifecycle)
+	require.NoError(t, err)
+	return plan
+}
+
+func (d *TfResDriver) writePlanErr(
+	t T,
+	resourceSchema map[string]*schema.Schema,
+	resourceType, resourceName string,
+	config cty.Value,
+	lifecycle lifecycleArgs,
+) (*tfcheck.TFPlan, error) {
 	if !config.IsNull() {
 		d.write(t, resourceSchema, resourceType, resourceName, config, lifecycle)
 	} else {
@@ -91,11 +103,37 @@ func (d *TfResDriver) writePlanApply(
 		d.driver.Write(t, "")
 	}
 
-	plan, err := d.driver.Plan(t)
-	require.NoError(t, err)
-	err = d.driver.Apply(t, plan)
+	return d.driver.Plan(t)
+}
+
+func (d *TfResDriver) writePlanApply(
+	t T,
+	resourceSchema map[string]*schema.Schema,
+	resourceType, resourceName string,
+	config cty.Value,
+	lifecycle lifecycleArgs,
+) *tfcheck.TFPlan {
+	plan := d.writePlan(t, resourceSchema, resourceType, resourceName, config, lifecycle)
+	err := d.driver.Apply(t, plan)
 	require.NoError(t, err)
 	return plan
+}
+
+func (d *TfResDriver) refreshErr(
+	t T,
+	resourceSchema map[string]*schema.Schema,
+	resourceType, resourceName string,
+	config cty.Value,
+	lifecycle lifecycleArgs,
+) error {
+	if !config.IsNull() {
+		d.write(t, resourceSchema, resourceType, resourceName, config, lifecycle)
+	} else {
+		t.Logf("empty config file")
+		d.driver.Write(t, "")
+	}
+
+	return d.driver.Refresh(t)
 }
 
 func (d *TfResDriver) write(
