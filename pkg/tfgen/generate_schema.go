@@ -322,7 +322,6 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg, sink diag.Sink) (pschema.Pac
 	}
 
 	if pack.provider != nil {
-
 		indexModToken := tokens.NewModuleToken(g.pkg, indexMod)
 		for _, t := range gatherSchemaNestedTypesForMember(pack.provider) {
 			tok := g.genObjectTypeToken(t)

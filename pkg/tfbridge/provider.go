@@ -17,7 +17,6 @@ package tfbridge
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	"log"
 	"os"
 	"sort"
@@ -29,6 +28,7 @@ import (
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	pbstruct "github.com/golang/protobuf/ptypes/struct"
 	"github.com/hashicorp/go-multierror"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -52,6 +52,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/typechecker"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/walk"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/valueshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/x/muxer"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/propertyvalue"
@@ -1761,39 +1762,33 @@ func (p *Provider) Construct(context.Context, *pulumirpc.ConstructRequest) (*pul
 	return nil, status.Error(codes.Unimplemented, "Construct is not yet implemented")
 }
 
-func convertToPropertyMap(input map[string]interface{}) resource.PropertyMap {
-	result := make(resource.PropertyMap)
-	for k, v := range input {
-		result[resource.PropertyKey(k)] = convertToPropertyValue(v)
+func (p *Provider) returnTerraformConfig(ctx context.Context) (resource.PropertyMap, error) {
+	resConfig, err := buildTerraformConfig(ctx, p, p.configValues)
+	if err != nil {
+		return nil, fmt.Errorf("error building Terraform config: %v", err)
 	}
-	return result
+
+	var rawConfig terraform.ResourceConfig
+
+	if cfg, ok := resConfig.(shim.ResourceConfigWithGetterForSdkV2); ok {
+		rawConfig = cfg.GetTFConfig()
+	}
+
+	configJSONMessage, err := valueshim.FromHCtyValue(rawConfig.CtyValue).Marshal()
+	if err != nil {
+		return nil, fmt.Errorf("error marshaling into raw JSON message: %v", err)
+	}
+
+	jsonConfigMap := map[string]any{}
+	err = json.Unmarshal(configJSONMessage, &jsonConfigMap)
+	if err != nil {
+		return nil, fmt.Errorf("error unmarshaling JSON: %v", err)
+	}
+
+	return resource.NewPropertyMapFromMap(jsonConfigMap), nil
 }
 
-// Helper to convert nested types into PropertyValue
-func convertToPropertyValue(v interface{}) resource.PropertyValue {
-	switch val := v.(type) {
-	case map[string]interface{}:
-		return resource.NewObjectProperty(convertToPropertyMap(val))
-	case []interface{}:
-		elements := make([]resource.PropertyValue, len(val))
-		for i, item := range val {
-			elements[i] = convertToPropertyValue(item)
-		}
-		return resource.NewArrayProperty(elements)
-	case string:
-		return resource.NewStringProperty(val)
-	case bool:
-		return resource.NewBoolProperty(val)
-	case int:
-		return resource.NewNumberProperty(float64(val))
-	case float64:
-		return resource.NewNumberProperty(val)
-	default:
-		return resource.NewComputedProperty(resource.Computed{})
-	}
-}
-
-// Call dynamically executes a method in the provider associated with a component resource.
+// Call dynamically executes a method in the provider.
 func (p *Provider) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error) {
 	ctx = p.loggingContext(ctx, "")
 
@@ -1803,16 +1798,10 @@ func (p *Provider) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulum
 	}
 	switch functionName {
 	case "terraformConfig":
-		resConfig, err := buildTerraformConfig(ctx, p, p.configValues)
-
-		var rawConfig terraform.ResourceConfig
-
-		if cfg, ok := resConfig.(shim.ResourceConfigWithGetterForSdkV2); ok {
-			rawConfig = cfg.GetTFConfig()
+		tfConfigOutput, err := p.returnTerraformConfig(ctx)
+		if err != nil {
+			return nil, err
 		}
-		// Extract values
-		tfConfigOutput := convertToPropertyMap(rawConfig.Config)
-
 		outputResult, err := plugin.MarshalProperties(tfConfigOutput, plugin.MarshalOptions{})
 		if err != nil {
 			return nil, err
@@ -1821,7 +1810,7 @@ func (p *Provider) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulum
 			Return: outputResult,
 		}, nil
 	default:
-		return nil, fmt.Errorf("unknown method token for Call %q", req.GetTok())
+		return nil, fmt.Errorf("unknown method token for Call %s", req.GetTok())
 	}
 }
 
