@@ -1774,6 +1774,10 @@ func (p *Provider) returnTerraformConfig(ctx context.Context) (resource.Property
 		rawConfig = cfg.GetTFConfig()
 	}
 
+	if !rawConfig.CtyValue.IsWhollyKnown() {
+		return nil, fmt.Errorf("cannot use terraformConfig that contains unknown cty values")
+	}
+
 	configJSONMessage, err := valueshim.FromHCtyValue(rawConfig.CtyValue).Marshal()
 	if err != nil {
 		return nil, fmt.Errorf("error marshaling into raw JSON message: %v", err)

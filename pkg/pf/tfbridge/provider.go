@@ -329,6 +329,10 @@ func (p *provider) returnTerraformConfig() (resource.PropertyMap, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error unmarshaling protov6.DynamicValue: %v", err)
 	}
+
+	if !tfConfigValue.IsFullyKnown() {
+		return nil, fmt.Errorf("cannot use terraformConfig that contains unknown tftype values")
+	}
 	// use valueshim package to marshal tfConfigValue into raw json,
 	// which can be unmarshaled into a map[string]interface{}
 	configJSONMessage, err := valueshim.FromTValue(tfConfigValue).Marshal()
