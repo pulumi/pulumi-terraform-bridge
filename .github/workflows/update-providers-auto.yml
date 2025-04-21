@@ -36,6 +36,8 @@ jobs:
             echo "has_hotfix=false" >> $GITHUB_OUTPUT
             echo "No provider hotfix found. Will not trigger provider releases"
           fi
+        env:
+          GH_TOKEN: ${{ github.token }}
 
       - name: Trigger upgrade
         uses: peter-evans/repository-dispatch@v3
