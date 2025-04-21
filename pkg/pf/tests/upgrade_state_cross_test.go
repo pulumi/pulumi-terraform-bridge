@@ -19,14 +19,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hexops/autogold/v2"
-	"github.com/zclconf/go-cty/cty"
-
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	schema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
-	pb "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/providerbuilder"
+	"github.com/hexops/autogold/v2"
 	presource "github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/zclconf/go-cty/cty"
+
+	pb "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/providerbuilder"
 )
 
 // Check a scenario where a schema change is accompanied by a migration function that compensates.
@@ -43,12 +43,12 @@ func TestUpgrade_StateUpgraders(t *testing.T) {
 	})
 
 	type v0Model struct {
-		Id   string `tfsdk:"id"`
+		ID   string `tfsdk:"id"`
 		Prop string `tfsdk:"prop"`
 	}
 
 	type v1Model struct {
-		Id   string  `tfsdk:"id"`
+		ID   string  `tfsdk:"id"`
 		Prop []int32 `tfsdk:"prop"`
 	}
 
@@ -85,7 +85,7 @@ func TestUpgrade_StateUpgraders(t *testing.T) {
 						}
 
 						updState := v1Model{
-							Id:   priorState.Id,
+							ID:   priorState.ID,
 							Prop: partsN,
 						}
 

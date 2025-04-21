@@ -27,7 +27,12 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework/datasource"
+	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
+	rschema "github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -36,12 +41,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/zclconf/go-cty/cty"
+	"gopkg.in/yaml.v3"
 
-	"github.com/hashicorp/terraform-plugin-framework/datasource"
-	"github.com/hashicorp/terraform-plugin-framework/provider"
-	rschema "github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
-	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests"
 	crosstestsimpl "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests/impl"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/pulcheck"
@@ -49,7 +50,6 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/reservedkeys"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/tfcheck"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
-	"gopkg.in/yaml.v3"
 )
 
 // Verify state upgrade interaction compatibility on schema change. This is a Plugin Framework port of similar test
@@ -470,7 +470,7 @@ func upgradeStateWriteHCL(t *testing.T, tc upgradeStateTestCase, pwd string, res
 	tn := getResourceTypeName(tc.tfProviderName(), res)
 	hclWriteResource(t, &buf, tn, res, "example", v)
 	t.Logf("HCL: %s", buf.String())
-	err := os.WriteFile(filepath.Join(pwd, "infra.tf"), buf.Bytes(), 0o700)
+	err := os.WriteFile(filepath.Join(pwd, "infra.tf"), buf.Bytes(), 0o600)
 	require.NoErrorf(t, err, "Failed to write infra.tf")
 }
 

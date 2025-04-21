@@ -23,10 +23,11 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests/impl/hclwrite"
 	"github.com/stretchr/testify/require"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/msgpack"
+
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests/impl/hclwrite"
 )
 
 func hclWriteResource(
@@ -43,6 +44,7 @@ func hclWriteResource(
 	require.NoErrorf(t, err, "Failed to write HCL")
 }
 
+//nolint:unused
 func convertTValueToCtyValue(t *testing.T, value tftypes.Value) cty.Value {
 	dv, err := tfprotov6.NewDynamicValue(value.Type(), value)
 	require.NoErrorf(t, err, "tfprotov6.NewDynamicValue failed")
@@ -102,11 +104,11 @@ var _ hclwrite.ShimHCLBlock = (*hclBlock)(nil)
 
 func (b *hclBlock) GetNestingMode() hclwrite.Nesting {
 	switch b.Block.GetNestingMode() {
-	case 1: //list
+	case 1: // list
 		return hclwrite.NestingList
-	case 2: //set
+	case 2: // set
 		return hclwrite.NestingSet
-	case 3: //single
+	case 3: // single
 		return hclwrite.NestingSingle
 	default:
 		return hclwrite.NestingInvalid
