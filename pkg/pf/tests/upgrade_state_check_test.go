@@ -287,16 +287,20 @@ func getVersionInState(t *testing.T, stack apitype.UntypedDeployment) int {
 	return int(schemaVersion)
 }
 
-func upgradeTestBrigedProvider(t *testing.T, r rschema.Resource, ri *info.Resource) info.Provider {
-	panic("TODO")
-	// tfp := &schema.Provider{ResourcesMap: map[string]*schema.Resource{defRtype: r}}
-	// p := pulcheck.BridgedProvider(t, defProviderShortName, tfp)
-	// if ri != nil {
-	// 	resourceInfo := *ri
-	// 	resourceInfo.Tok = p.Resources[defRtype].Tok
-	// 	p.Resources[defRtype] = &resourceInfo
-	// }
-	// return p
+func upgradeTestBrigedProvider(
+	t *testing.T,
+	tc upgradeStateTestCase,
+	r rschema.Resource,
+	ri *info.Resource,
+) info.Provider {
+	tn := getResourceTypeName(tc.tfProviderName(), r)
+	p := newPulumiTestProviderInfo(t, tc.tfProviderName(), tc.tfProvider(r))
+	if ri != nil {
+		resourceInfo := *ri
+		resourceInfo.Tok = p.Resources[tn].Tok
+		p.Resources[tn] = &resourceInfo
+	}
+	return p
 }
 
 func getSchemaVersion(res rschema.Resource) int64 {
@@ -310,8 +314,8 @@ func runUpgradeTestStatePulumi(t *testing.T, tc upgradeStateTestCase) upgradeSta
 	res1 := tc.Resource1
 	res2, tracker := instrumentUpgraders(tc.Resource2)
 
-	prov1 := upgradeTestBrigedProvider(t, res1, tc.ResourceInfo1)
-	prov2 := upgradeTestBrigedProvider(t, res2, tc.ResourceInfo2)
+	prov1 := upgradeTestBrigedProvider(t, tc, res1, tc.ResourceInfo1)
+	prov2 := upgradeTestBrigedProvider(t, tc, res2, tc.ResourceInfo2)
 
 	tfResourceName := getResourceTypeName(tc.tfProviderName(), res1)
 
@@ -387,9 +391,7 @@ func runUpgradeTestStatePulumi(t *testing.T, tc upgradeStateTestCase) upgradeSta
 	}
 }
 
-func (tc upgradeStateTestCase) tfProviderServerBuilder(resource rschema.Resource) interface {
-	GRPCProvider() tfprotov6.ProviderServer
-} {
+func (tc upgradeStateTestCase) tfProvider(resource rschema.Resource) *upgradeStateTFProvider {
 	return &upgradeStateTFProvider{
 		resource: resource,
 		name:     tc.tfProviderName(),
@@ -445,7 +447,7 @@ func runUpgradeStateTestTF(t *testing.T, tc upgradeStateTestCase) []upgradeState
 	resource1 := tc.Resource1
 	resource2, tracker := instrumentUpgraders(tc.Resource2)
 
-	tfd1 := tfcheck.NewTfDriver(t, tfwd, tc.tfProviderName(), tc.tfProviderServerBuilder(tc.Resource1))
+	tfd1 := tfcheck.NewTfDriver(t, tfwd, tc.tfProviderName(), tc.tfProvider(tc.Resource1))
 
 	t.Logf("#### create")
 	upgradeStateWriteHCL(t, tc, tfwd, resource1, tc.Inputs1)
@@ -456,7 +458,7 @@ func runUpgradeStateTestTF(t *testing.T, tc upgradeStateTestCase) []upgradeState
 	err = tfd1.Apply(t, plan)
 	require.NoErrorf(t, err, "tfd1.Apply failed")
 
-	tfd2 := tfcheck.NewTfDriver(t, tfwd, tc.tfProviderName(), tc.tfProviderServerBuilder(resource2))
+	tfd2 := tfcheck.NewTfDriver(t, tfwd, tc.tfProviderName(), tc.tfProvider(resource2))
 
 	t.Logf("#### save current state as created state")
 	stateFile := filepath.Join(tfwd, "terraform.tfstate")
