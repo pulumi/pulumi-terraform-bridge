@@ -35,6 +35,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/zclconf/go-cty/cty"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
@@ -44,6 +45,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests"
 	crosstestsimpl "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests/impl"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/pulcheck"
+	pb "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/providerbuilder"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/reservedkeys"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/tfcheck"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
@@ -60,13 +62,13 @@ import (
 //  3. refresh with the Resource2 provider
 //  4. update to Inputs2 with the Resource2 provider
 type upgradeStateTestCase struct {
-	Resource1     rschema.Resource
+	Resource1     *pb.Resource
 	ResourceInfo1 *info.Resource
-	Inputs1       tftypes.Value
+	Inputs1       cty.Value
 	InputsMap1    resource.PropertyMap
-	Resource2     rschema.Resource
+	Resource2     *pb.Resource
 	ResourceInfo2 *info.Resource
-	Inputs2       tftypes.Value
+	Inputs2       cty.Value
 	InputsMap2    resource.PropertyMap
 
 	ExpectFailure        bool // expect the test to fail, as in downgrades
@@ -92,7 +94,7 @@ const (
 // Represents an observed call to a state upgrade function.
 type upgradeStateTrace struct {
 	Phase    upgradeStateTestPhase // Phase in the test when the upgrader was called
-	Upgrader int                   // StateUpgrader index in upgraders array that was called
+	Upgrader int64                 // StateUpgrader identified by target version
 	Request  rschema.UpgradeStateRequest
 	Response rschema.UpgradeStateResponse
 }
@@ -147,17 +149,19 @@ func checkRawState(t *testing.T, tc upgradeStateTestCase, receivedRawState tftyp
 
 func instrumentModifyPlan(t *testing.T, tc upgradeStateTestCase) upgradeStateTestCase {
 	counter := new(atomic.Int32)
+	require.Nilf(t, tc.Resource2.ModifyPlanFunc, "ModifyPlanFunc resources cannot yet be used in these tests")
 
-	r2, already := tc.Resource2.(rschema.ResourceWithModifyPlan)
-	require.Falsef(t, already, "ResourceWithModifyPlan resources cannot yet be used in these tests")
+	r2m := *tc.Resource2
 
-	r2m := &resourceWithInstrumentedModifyPlan{
-		Resource: r2,
-		t:        t,
-		tc:       tc,
-		counter:  counter,
+	r2m.ModifyPlanFunc = func(
+		ctx context.Context,
+		req rschema.ModifyPlanRequest,
+		resp *rschema.ModifyPlanResponse,
+	) {
+		counter.Add(1)
+		checkRawState(t, tc, req.Config.Raw, "ModifyPlan")
 	}
-	tc.Resource2 = r2m
+	tc.Resource2 = &r2m
 	if !tc.ExpectFailure {
 		t.Cleanup(func() {
 			n := counter.Load()
@@ -167,47 +171,17 @@ func instrumentModifyPlan(t *testing.T, tc upgradeStateTestCase) upgradeStateTes
 	return tc
 }
 
-type resourceWithInstrumentedModifyPlan struct {
-	t  *testing.T
-	tc upgradeStateTestCase
-	rschema.Resource
-	counter *atomic.Int32
-}
-
-func (r *resourceWithInstrumentedModifyPlan) ModifyPlan(
-	ctx context.Context,
-	req rschema.ModifyPlanRequest,
-	resp *rschema.ModifyPlanResponse,
-) {
-	r.counter.Add(1)
-	checkRawState(r.t, r.tc, req.Config.Raw, "ModifyPlan")
-}
-
-var _ rschema.ResourceWithModifyPlan = (*resourceWithInstrumentedModifyPlan)(nil)
-
 func instrumentUpdate(t *testing.T, tc upgradeStateTestCase) upgradeStateTestCase {
-	r2 := tc.Resource2
-	tc.Resource2 = &resourceWithInstrumentedUpdate{
-		Resource: r2,
-		tc:       tc,
-		t:        t,
+	r2m := *tc.Resource2
+	upd := r2m.UpdateFunc
+	r2m.UpdateFunc = func(ctx context.Context, req rschema.UpdateRequest, resp *rschema.UpdateResponse) {
+		checkRawState(t, tc, req.State.Raw, "Update")
+		if upd != nil {
+			upd(ctx, req, resp)
+		}
 	}
+	tc.Resource2 = &r2m
 	return tc
-}
-
-type resourceWithInstrumentedUpdate struct {
-	rschema.Resource
-	t  *testing.T
-	tc upgradeStateTestCase
-}
-
-func (r *resourceWithInstrumentedUpdate) Update(
-	ctx context.Context,
-	req rschema.UpdateRequest,
-	resp *rschema.UpdateResponse,
-) {
-	checkRawState(r.t, r.tc, req.State.Raw, "Update")
-	r.Resource.Update(ctx, req, resp)
 }
 
 type upgraderTracker struct {
@@ -216,7 +190,7 @@ type upgraderTracker struct {
 	mu    sync.Mutex
 }
 
-func (t *upgraderTracker) instrumentUpgrader(i int, u rschema.StateUpgrader) rschema.StateUpgrader {
+func (t *upgraderTracker) instrumentUpgrader(ver int64, u rschema.StateUpgrader) rschema.StateUpgrader {
 	upgrade := u.StateUpgrader
 	return rschema.StateUpgrader{
 		PriorSchema: u.PriorSchema,
@@ -230,7 +204,7 @@ func (t *upgraderTracker) instrumentUpgrader(i int, u rschema.StateUpgrader) rsc
 			upgrade(ctx, req, resp)
 			t.trace = append(t.trace, upgradeStateTrace{
 				Phase:    t.phase,
-				Upgrader: i,
+				Upgrader: ver,
 				Request:  req,
 				Response: *resp,
 			})
@@ -238,28 +212,22 @@ func (t *upgraderTracker) instrumentUpgrader(i int, u rschema.StateUpgrader) rsc
 	}
 }
 
-type resourceWithInstrumentedUpgraders struct {
-	rschema.Resource
-	tr *upgraderTracker
-}
-
-func (r *resourceWithInstrumentedUpgraders) UpgradeState(ctx context.Context) map[int64]rschema.StateUpgrader {
-	m := map[int64]rschema.StateUpgrader{}
-	if old, ok := r.Resource.(rschema.ResourceWithUpgradeState); ok {
-		m = old.UpgradeState(ctx)
-	}
-	for k := range m {
-		m[k] = m[k]
-	}
-	return m
-}
-
-func instrumentUpgraders(s rschema.Resource) (rschema.Resource, *upgraderTracker) {
+func instrumentUpgraders(r *pb.Resource) (*pb.Resource, *upgraderTracker) {
 	tr := &upgraderTracker{}
-	return &resourceWithInstrumentedUpgraders{Resource: s, tr: tr}, tr
+	rm := *r
+	usf := r.UpgradeStateFunc
+	rm.UpgradeStateFunc = func(ctx context.Context) map[int64]rschema.StateUpgrader {
+		m := map[int64]rschema.StateUpgrader{}
+		if usf != nil {
+			m = usf(ctx)
+		}
+		for k, u := range m {
+			m[k] = tr.instrumentUpgrader(k, u)
+		}
+		return m
+	}
+	return &rm, tr
 }
-
-var _ rschema.ResourceWithUpgradeState = (*resourceWithInstrumentedUpgraders)(nil)
 
 func getVersionInState(t *testing.T, stack apitype.UntypedDeployment) int {
 	data, err := stack.Deployment.MarshalJSON()
@@ -323,7 +291,7 @@ func runUpgradeTestStatePulumi(t *testing.T, tc upgradeStateTestCase) upgradeSta
 	if pm1 == nil {
 		sch := prov1.P.ResourcesMap().Get(tfResourceName).Schema()
 		info := tc.ResourceInfo1.GetFields()
-		pm1 = crosstestsimpl.InferPulumiValue(t, sch, info, convertTValueToCtyValue(t, tc.Inputs1))
+		pm1 = crosstestsimpl.InferPulumiValue(t, sch, info, tc.Inputs1)
 	}
 
 	pt := pulcheck.PulCheck(t, prov1, string(upgradeStateYAML(t, tc, prov1, pm1)))
@@ -342,7 +310,7 @@ func runUpgradeTestStatePulumi(t *testing.T, tc upgradeStateTestCase) upgradeSta
 	if pm2 == nil {
 		sch := prov2.P.ResourcesMap().Get(tfResourceName).Schema()
 		info := tc.ResourceInfo2.GetFields()
-		pm2 = crosstestsimpl.InferPulumiValue(t, sch, info, convertTValueToCtyValue(t, tc.Inputs2))
+		pm2 = crosstestsimpl.InferPulumiValue(t, sch, info, tc.Inputs2)
 	}
 
 	p := filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml")
@@ -434,8 +402,8 @@ func (p *upgradeStateTFProvider) Resources(context.Context) []func() rschema.Res
 
 var _ provider.Provider = &upgradeStateTFProvider{}
 
-func (*upgradeStateTFProvider) GRPCProvider() tfprotov6.ProviderServer {
-	mkProvider := providerserver.NewProtocol6(nil)
+func (p *upgradeStateTFProvider) GRPCProvider() tfprotov6.ProviderServer {
+	mkProvider := providerserver.NewProtocol6(p)
 	return mkProvider()
 }
 
@@ -497,7 +465,7 @@ func runUpgradeStateTestTF(t *testing.T, tc upgradeStateTestCase) []upgradeState
 	return tracker.trace
 }
 
-func upgradeStateWriteHCL(t *testing.T, tc upgradeStateTestCase, pwd string, res rschema.Resource, v tftypes.Value) {
+func upgradeStateWriteHCL(t *testing.T, tc upgradeStateTestCase, pwd string, res rschema.Resource, v cty.Value) {
 	var buf bytes.Buffer
 	tn := getResourceTypeName(tc.tfProviderName(), res)
 	hclWriteResource(t, &buf, tn, res, "example", v)

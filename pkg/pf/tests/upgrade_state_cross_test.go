@@ -14,119 +14,118 @@
 package tfbridgetests
 
 import (
-// "context"
-// "strings"
-// "testing"
+	"context"
+	"fmt"
+	"strings"
+	"testing"
 
-// "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-// "github.com/hexops/autogold/v2"
-// "github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-// "github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-// "github.com/stretchr/testify/assert"
+	"github.com/hexops/autogold/v2"
+	"github.com/zclconf/go-cty/cty"
 
-// "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
+	schema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
+	pb "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/providerbuilder"
+	presource "github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
-// // Check a scenario where a schema change is accompanied by a migration function that compensates.
-// func TestUpgrade_StateUpgraders(t *testing.T) {
-// 	t.Parallel()
-// 	//skipUnlessLinux(t)
+// Check a scenario where a schema change is accompanied by a migration function that compensates.
+func TestUpgrade_StateUpgraders(t *testing.T) {
+	t.Parallel()
+	skipUnlessLinux(t)
 
-// 	resourceBefore := &schema.Resource{
-// 		Schema: map[string]*schema.Schema{
-// 			"prop": {
-// 				Type:     schema.TypeString,
-// 				Optional: true,
-// 			},
-// 		},
-// 	}
+	resourceBefore := pb.NewResource(pb.NewResourceArgs{
+		ResourceSchema: schema.Schema{
+			Attributes: map[string]schema.Attribute{
+				"prop": schema.StringAttribute{Optional: true},
+			},
+		},
+	})
 
-// 	resourceAfter := &schema.Resource{
-// 		Schema: map[string]*schema.Schema{
-// 			"prop": {
-// 				Type:     schema.TypeList,
-// 				Optional: true,
-// 				Elem: &schema.Schema{
-// 					Type: schema.TypeInt,
-// 				},
-// 			},
-// 		},
-// 		SchemaVersion: 1,
-// 		StateUpgraders: []schema.StateUpgrader{{
-// 			Version: 0,
-// 			Type:    resourceBefore.CoreConfigSchema().ImpliedType(),
-// 			Upgrade: func(
-// 				ctx context.Context,
-// 				rawState map[string]interface{},
-// 				meta interface{},
-// 			) (map[string]interface{}, error) {
-// 				// Upgrade function is receiving the data as it was written.
-// 				autogold.Expect(map[string]interface{}{"id": "newid", "prop": "one,two,three"}).Equal(t, rawState)
+	type v0Model struct {
+		Id   string `tfsdk:"id"`
+		Prop string `tfsdk:"prop"`
+	}
 
-// 				s := rawState["prop"].(string)
-// 				parts := strings.Split(s, ",")
-// 				partsN := []int{}
-// 				for _, p := range parts {
-// 					parsed := map[string]int{"one": 1, "two": 2, "three": 3}
-// 					partsN = append(partsN, parsed[p])
-// 				}
-// 				return map[string]any{"prop": partsN, "id": rawState["id"]}, nil
-// 			},
-// 		}},
-// 	}
+	type v1Model struct {
+		Id   string  `tfsdk:"id"`
+		Prop []int32 `tfsdk:"prop"`
+	}
 
-// 	result := runUpgradeStateTest(t, upgradeStateTestCase{
-// 		Resource1:  resourceBefore,
-// 		Resource2:  resourceAfter,
-// 		Inputs1:    map[string]any{"prop": "one,two,three"},
-// 		InputsMap1: resource.PropertyMap{"prop": resource.NewStringProperty("one,two,three")},
-// 		Inputs2:    map[string]any{"prop": []any{int(1), int(2), int(3)}},
-// 		InputsMap2: resource.PropertyMap{"prop": resource.NewArrayProperty([]resource.PropertyValue{
-// 			resource.NewNumberProperty(1),
-// 			resource.NewNumberProperty(2),
-// 			resource.NewNumberProperty(3),
-// 		})},
+	resourceAfter := pb.NewResource(pb.NewResourceArgs{
+		ResourceSchema: schema.Schema{
+			Attributes: map[string]schema.Attribute{
+				"prop": schema.ListAttribute{Optional: true, ElementType: basetypes.Int64Type{}},
+			},
+			Version: 1,
+		},
+		UpgradeStateFunc: func(ctx context.Context) map[int64]resource.StateUpgrader {
+			return map[int64]resource.StateUpgrader{
+				0: {
+					PriorSchema: &resourceBefore.ResourceSchema,
+					StateUpgrader: func(
+						ctx context.Context,
+						req resource.UpgradeStateRequest,
+						resp *resource.UpgradeStateResponse,
+					) {
+						autogold.Expect(`{
+            "id": "test-id",
+            "prop": "one,two,three"
+          }`).Equal(t, string(req.RawState.JSON))
 
-// 		// Apparently in this case TF expects RawState to be received on the new schema.
-// 		ExpectedRawStateType: resourceAfter.CoreConfigSchema().ImpliedType(),
+						var priorState v0Model
+						d0 := req.State.Get(ctx, &priorState)
+						resp.Diagnostics = append(resp.Diagnostics, d0...)
 
-// 		SkipPulumi: "TODO[pulumi/pulumi-terraform-bridge#1667] raw state does not parse properly",
-// 	})
+						partsN := []int32{}
+						parts := strings.Split(priorState.Prop, ",")
+						for _, p := range parts {
+							parsed := map[string]int32{"one": 1, "two": 2, "three": 3}
+							partsN = append(partsN, parsed[p])
+						}
 
-// 	autogold.Expect([]upgradeStateTrace{}).Equal(t, result.pulumiUpgrades)
-// 	autogold.Expect([]upgradeStateTrace{
-// 		{
-// 			Phase: upgradeStateTestPhase("refresh"),
-// 			RawState: map[string]interface{}{
-// 				"id":   "newid",
-// 				"prop": "one,two,three",
-// 			},
-// 			Result: map[string]interface{}{
-// 				"id": "newid",
-// 				"prop": []int{
-// 					1,
-// 					2,
-// 					3,
-// 				},
-// 			},
-// 		},
-// 		{
-// 			Phase: upgradeStateTestPhase("preview"),
-// 			RawState: map[string]interface{}{
-// 				"id":   "newid",
-// 				"prop": "one,two,three",
-// 			},
-// 			Result: map[string]interface{}{
-// 				"id": "newid",
-// 				"prop": []int{
-// 					1,
-// 					2,
-// 					3,
-// 				},
-// 			},
-// 		},
-// 	}).Equal(t, result.tfUpgrades)
-// }
+						updState := v1Model{
+							Id:   priorState.Id,
+							Prop: partsN,
+						}
+
+						d := resp.State.Set(ctx, updState)
+						resp.Diagnostics = append(resp.Diagnostics, d...)
+
+						if d.HasError() {
+							panic(fmt.Sprintf("D!: %v", resp.Diagnostics))
+						}
+					},
+				},
+			}
+		},
+	})
+
+	result := runUpgradeStateTest(t, upgradeStateTestCase{
+		Resource1:  &resourceBefore,
+		Resource2:  &resourceAfter,
+		Inputs1:    cty.ObjectVal(map[string]cty.Value{"prop": cty.StringVal("one,two,three")}),
+		InputsMap1: presource.PropertyMap{"prop": presource.NewStringProperty("one,two,three")},
+		Inputs2: cty.ObjectVal(map[string]cty.Value{"prop": cty.ListVal([]cty.Value{
+			cty.NumberIntVal(1),
+			cty.NumberIntVal(2),
+			cty.NumberIntVal(3),
+		})}),
+		InputsMap2: presource.PropertyMap{"prop": presource.NewArrayProperty([]presource.PropertyValue{
+			presource.NewNumberProperty(1),
+			presource.NewNumberProperty(2),
+			presource.NewNumberProperty(3),
+		})},
+
+		// Apparently in this case TF expects RawState to be received on the new schema.
+		ExpectedRawStateType: resourceAfter.ResourceSchema.Type().TerraformType(context.Background()),
+
+		SkipPulumi: "TODO[pulumi/pulumi-terraform-bridge#1667] raw state does not parse properly",
+	})
+
+	autogold.Expect([]upgradeStateTrace{}).Equal(t, result.pulumiUpgrades)
+	autogold.Expect(nil).Equal(t, result.tfUpgrades)
+}
 
 // /*
 // // Pulumi removing MaxItems=1 without TF schema changes should be tolerated, without calling upgraders.

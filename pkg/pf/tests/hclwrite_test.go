@@ -35,11 +35,11 @@ func hclWriteResource(
 	resourceType string,
 	resourceSchema resource.Resource,
 	resourceName string,
-	resourceConfig tftypes.Value,
+	resourceConfig cty.Value,
 ) {
 	rs := getResourceSchema(t, resourceSchema)
-	v := convertTValueToCtyValue(t, resourceConfig)
-	err := hclwrite.WriteResource(out, &hclSchema{rs}, resourceType, resourceName, v.AsValueMap())
+	vs := resourceConfig.AsValueMap()
+	err := hclwrite.WriteResource(out, &hclSchema{rs}, resourceType, resourceName, vs)
 	require.NoErrorf(t, err, "Failed to write HCL")
 }
 
