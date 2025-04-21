@@ -17,7 +17,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	//"fmt"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -28,9 +28,8 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
-	//pb "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/providerbuilder"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto"
-	//"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -42,12 +41,13 @@ import (
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
-	// crosstestsimpl "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests/impl"
-	// "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests/impl/hclwrite"
-	// "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/pulcheck"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests"
+	crosstestsimpl "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests/impl"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/pulcheck"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/reservedkeys"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/tfcheck"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
+	"gopkg.in/yaml.v3"
 )
 
 // Verify state upgrade interaction compatibility on schema change. This is a Plugin Framework port of similar test
@@ -121,11 +121,11 @@ func runUpgradeStateTest(t *testing.T, tc upgradeStateTestCase) upgradeStateResu
 		}
 		tcPulumi := instrumentModifyPlan(t, tc)
 		tcPulumi = instrumentUpdate(t, tcPulumi)
-		// resultPulumi := runUpgradeTestStatePulumi(t, tcPulumi)
-		// result.pulumiUpgrades = resultPulumi.pulumiUpgrades
-		// result.pulumiRefreshResult = resultPulumi.pulumiRefreshResult
-		// result.pulumiPreviewResult = resultPulumi.pulumiPreviewResult
-		// result.pulumiUpResult = resultPulumi.pulumiUpResult
+		resultPulumi := runUpgradeTestStatePulumi(t, tcPulumi)
+		result.pulumiUpgrades = resultPulumi.pulumiUpgrades
+		result.pulumiRefreshResult = resultPulumi.pulumiRefreshResult
+		result.pulumiPreviewResult = resultPulumi.pulumiPreviewResult
+		result.pulumiUpResult = resultPulumi.pulumiUpResult
 	})
 
 	return result
@@ -287,16 +287,17 @@ func getVersionInState(t *testing.T, stack apitype.UntypedDeployment) int {
 	return int(schemaVersion)
 }
 
-// func upgradeTestBrigedProvider(t *testing.T, r *schema.Resource, ri *info.Resource) info.Provider {
-// 	tfp := &schema.Provider{ResourcesMap: map[string]*schema.Resource{defRtype: r}}
-// 	p := pulcheck.BridgedProvider(t, defProviderShortName, tfp)
-// 	if ri != nil {
-// 		resourceInfo := *ri
-// 		resourceInfo.Tok = p.Resources[defRtype].Tok
-// 		p.Resources[defRtype] = &resourceInfo
-// 	}
-// 	return p
-// }
+func upgradeTestBrigedProvider(t *testing.T, r rschema.Resource, ri *info.Resource) info.Provider {
+	panic("TODO")
+	// tfp := &schema.Provider{ResourcesMap: map[string]*schema.Resource{defRtype: r}}
+	// p := pulcheck.BridgedProvider(t, defProviderShortName, tfp)
+	// if ri != nil {
+	// 	resourceInfo := *ri
+	// 	resourceInfo.Tok = p.Resources[defRtype].Tok
+	// 	p.Resources[defRtype] = &resourceInfo
+	// }
+	// return p
+}
 
 func getSchemaVersion(res rschema.Resource) int64 {
 	resp := &rschema.SchemaResponse{}
@@ -305,96 +306,86 @@ func getSchemaVersion(res rschema.Resource) int64 {
 	return resp.Schema.Version
 }
 
-// func runUpgradeTestStatePulumi(t *testing.T, tc upgradeStateTestCase) upgradeStateResult {
+func runUpgradeTestStatePulumi(t *testing.T, tc upgradeStateTestCase) upgradeStateResult {
+	res1 := tc.Resource1
+	res2, tracker := instrumentUpgraders(tc.Resource2)
 
-// 	res1 := tc.Resource1
-// 	res2, tracker := instrumentUpgraders(tc.Resource2)
+	prov1 := upgradeTestBrigedProvider(t, res1, tc.ResourceInfo1)
+	prov2 := upgradeTestBrigedProvider(t, res2, tc.ResourceInfo2)
 
-// 	prov1 := upgradeTestBrigedProvider(t, res1, tc.ResourceInfo1)
-// 	prov2 := upgradeTestBrigedProvider(t, res2, tc.ResourceInfo2)
+	tfResourceName := getResourceTypeName(tc.tfProviderName(), res1)
 
-// 	pd := &pulumiDriver{
-// 		name:                defProviderShortName,
-// 		pulumiResourceToken: defRtoken,
-// 		tfResourceName:      defRtype,
-// 	}
+	pm1 := tc.InputsMap1
+	if pm1 == nil {
+		sch := prov1.P.ResourcesMap().Get(tfResourceName).Schema()
+		info := tc.ResourceInfo1.GetFields()
+		pm1 = crosstestsimpl.InferPulumiValue(t, sch, info, convertTValueToCtyValue(t, tc.Inputs1))
+	}
 
-// 	inputs1 := coalesceInputs(t, tc.Resource1.Schema, tc.Inputs1)
-// 	inputs2 := coalesceInputs(t, tc.Resource2.Schema, tc.Inputs2)
+	pt := pulcheck.PulCheck(t, prov1, string(upgradeStateYAML(t, tc, prov1, pm1)))
 
-// 	pm1 := tc.InputsMap1
-// 	if pm1 == nil {
-// 		sch := prov1.P.ResourcesMap().Get(pd.tfResourceName).Schema()
-// 		info := tc.ResourceInfo1.GetFields()
-// 		pm1 = crosstestsimpl.InferPulumiValue(t, sch, info, inputs1)
-// 	}
+	t.Logf("#### create")
+	tracker.phase = createPhase
+	createResult := pt.Up(t)
+	t.Logf("%s", createResult.StdOut+createResult.StdErr)
 
-// 	yamlProgram := pd.generateYAML(t, pm1)
-// 	pt := pulcheck.PulCheck(t, prov1, string(yamlProgram))
+	createdState := pt.ExportStack(t)
 
-// 	t.Logf("#### create")
-// 	tracker.phase = createPhase
-// 	createResult := pt.Up(t)
-// 	t.Logf("%s", createResult.StdOut+createResult.StdErr)
+	schemaVersion1 := getVersionInState(t, createdState)
+	require.Equalf(t, getSchemaVersion(tc.Resource1), schemaVersion1, "bad getVersionInState result for create")
 
-// 	createdState := pt.ExportStack(t)
+	pm2 := tc.InputsMap2
+	if pm2 == nil {
+		sch := prov2.P.ResourcesMap().Get(tfResourceName).Schema()
+		info := tc.ResourceInfo2.GetFields()
+		pm2 = crosstestsimpl.InferPulumiValue(t, sch, info, convertTValueToCtyValue(t, tc.Inputs2))
+	}
 
-// 	schemaVersion1 := getVersionInState(t, createdState)
-// 	require.Equalf(t, getSchemaVersion(tc.Resource1), schemaVersion1, "bad getVersionInState result for create")
+	p := filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml")
+	err := os.WriteFile(p, upgradeStateYAML(t, tc, prov2, pm2), 0o600)
+	require.NoErrorf(t, err, "writing Pulumi.yaml")
 
-// 	pm2 := tc.InputsMap2
-// 	if pm2 == nil {
-// 		sch := prov1.P.ResourcesMap().Get(pd.tfResourceName).Schema()
-// 		info := tc.ResourceInfo2.GetFields()
-// 		pm2 = crosstestsimpl.InferPulumiValue(t, sch, info, inputs2)
-// 	}
+	handle, err := pulcheck.StartPulumiProvider(context.Background(), prov2)
+	require.NoError(t, err)
+	pt.CurrentStack().Workspace().SetEnvVar("PULUMI_DEBUG_PROVIDERS",
+		fmt.Sprintf("%s:%d", tc.tfProviderName(), handle.Port))
 
-// 	yamlProgram = pd.generateYAML(t, pm2)
-// 	p := filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml")
-// 	err := os.WriteFile(p, yamlProgram, 0o600)
-// 	require.NoErrorf(t, err, "writing Pulumi.yaml")
+	t.Logf("#### refresh")
+	tracker.phase = refreshPhase
+	refreshResult := pt.Refresh(t)
+	t.Logf("%s", refreshResult.StdOut+refreshResult.StdErr)
 
-// 	handle, err := pulcheck.StartPulumiProvider(context.Background(), prov2)
-// 	require.NoError(t, err)
-// 	pt.CurrentStack().Workspace().SetEnvVar("PULUMI_DEBUG_PROVIDERS",
-// 		fmt.Sprintf("%s:%d", defProviderShortName, handle.Port))
+	schemaVersionR := getVersionInState(t, pt.ExportStack(t))
+	t.Logf("schema version after refresh is %d", schemaVersionR)
+	require.Equalf(t, getSchemaVersion(tc.Resource2), schemaVersionR, "bad getVersionInState result for refresh")
 
-// 	t.Logf("#### refresh")
-// 	tracker.phase = refreshPhase
-// 	refreshResult := pt.Refresh(t)
-// 	t.Logf("%s", refreshResult.StdOut+refreshResult.StdErr)
+	// Reset to created state as refresh may have edited it.
+	pt.ImportStack(t, createdState)
 
-// 	schemaVersionR := getVersionInState(t, pt.ExportStack(t))
-// 	t.Logf("schema version after refresh is %d", schemaVersionR)
-// 	require.Equalf(t, getSchemaVersion(tc.Resource2), schemaVersionR, "bad getVersionInState result for refresh")
+	t.Logf("#### preview")
+	tracker.phase = previewPhase
+	previewResult := pt.Preview(t, optpreview.Diff())
+	t.Logf("%s", previewResult.StdOut+previewResult.StdErr)
 
-// 	// Reset to created state as refresh may have edited it.
-// 	pt.ImportStack(t, createdState)
+	t.Logf("#### update")
+	tracker.phase = updatePhase
+	updateResult := pt.Up(t) // --skip-preview would be nice here
+	t.Logf("%s", updateResult.StdOut+updateResult.StdErr)
 
-// 	t.Logf("#### preview")
-// 	tracker.phase = previewPhase
-// 	previewResult := pt.Preview(t, optpreview.Diff())
-// 	t.Logf("%s", previewResult.StdOut+previewResult.StdErr)
+	schemaVersionU := getVersionInState(t, pt.ExportStack(t))
+	t.Logf("schema version after update is %d", schemaVersionU)
+	if !tc.SkipSchemaVersionAfterUpdateCheck {
+		require.Equalf(t, getSchemaVersion(tc.Resource2), schemaVersionU,
+			"bad getVersionInState result for update")
+	}
 
-// 	t.Logf("#### update")
-// 	tracker.phase = updatePhase
-// 	updateResult := pt.Up(t) // --skip-preview would be nice here
-// 	t.Logf("%s", updateResult.StdOut+updateResult.StdErr)
-
-// 	schemaVersionU := getVersionInState(t, pt.ExportStack(t))
-// 	t.Logf("schema version after update is %d", schemaVersionU)
-// 	if !tc.SkipSchemaVersionAfterUpdateCheck {
-// 		require.Equalf(t, getSchemaVersion(tc.Resource2), schemaVersionU,
-// 			"bad getVersionInState result for update")
-// 	}
-
-// 	return upgradeStateResult{
-// 		pulumiUpgrades:      tracker.trace,
-// 		pulumiPreviewResult: previewResult,
-// 		pulumiRefreshResult: refreshResult,
-// 		pulumiUpResult:      updateResult,
-// 	}
-// }
+	return upgradeStateResult{
+		pulumiUpgrades:      tracker.trace,
+		pulumiPreviewResult: previewResult,
+		pulumiRefreshResult: refreshResult,
+		pulumiUpResult:      updateResult,
+	}
+}
 
 func (tc upgradeStateTestCase) tfProviderServerBuilder(resource rschema.Resource) interface {
 	GRPCProvider() tfprotov6.ProviderServer
@@ -460,8 +451,6 @@ func runUpgradeStateTestTF(t *testing.T, tc upgradeStateTestCase) []upgradeState
 	upgradeStateWriteHCL(t, tc, tfwd, resource1, tc.Inputs1)
 	tracker.phase = createPhase
 
-	// TODO write HCL1
-
 	plan, err := tfd1.Plan(t)
 	require.NoErrorf(t, err, "tfd1.Plan failed")
 	err = tfd1.Apply(t, plan)
@@ -508,19 +497,45 @@ func runUpgradeStateTestTF(t *testing.T, tc upgradeStateTestCase) []upgradeState
 
 func upgradeStateWriteHCL(t *testing.T, tc upgradeStateTestCase, pwd string, res rschema.Resource, v tftypes.Value) {
 	var buf bytes.Buffer
-	tn := getResourceTypeName(t, tc.tfProviderName(), res)
+	tn := getResourceTypeName(tc.tfProviderName(), res)
 	hclWriteResource(t, &buf, tn, res, "example", v)
 	t.Logf("HCL: %s", buf.String())
 	err := os.WriteFile(filepath.Join(pwd, "infra.tf"), buf.Bytes(), 0o700)
 	require.NoErrorf(t, err, "Failed to write infra.tf")
 }
 
-func nopUpgrade(
-	ctx context.Context,
-	rawState map[string]interface{},
-	meta interface{},
-) (map[string]interface{}, error) {
-	return rawState, nil
+func upgradeStateYAML(
+	t *testing.T,
+	tc upgradeStateTestCase,
+	info info.Provider,
+	resourceConfig resource.PropertyMap,
+) []byte {
+	tn := getResourceTypeName(tc.tfProviderName(), tc.Resource1)
+	token := info.Resources[tn].Tok
+
+	data := map[string]any{
+		"name":    "project",
+		"runtime": "yaml",
+		"backend": map[string]any{
+			"url": "file://./data",
+		},
+	}
+	if resourceConfig != nil {
+		data["resources"] = map[string]any{
+			"example": map[string]any{
+				"type": string(token),
+				// This is a bit of a leap of faith that serializing PropertyMap
+				// to YAML in this way will yield valid Pulumi YAML. This probably
+				// needs refinement.
+				"properties": crosstests.ConvertResourceValue(t, resourceConfig),
+			},
+		}
+	}
+
+	b, err := yaml.Marshal(data)
+	require.NoErrorf(t, err, "marshaling Pulumi.yaml")
+	t.Logf("\n\n%s", b)
+	return b
 }
 
 func skipUnlessLinux(t *testing.T) {
@@ -529,7 +544,7 @@ func skipUnlessLinux(t *testing.T) {
 	}
 }
 
-func getResourceTypeName(t *testing.T, providerTypeName string, res rschema.Resource) string {
+func getResourceTypeName(providerTypeName string, res rschema.Resource) string {
 	resp := &rschema.MetadataResponse{}
 	res.Metadata(context.Background(), rschema.MetadataRequest{
 		ProviderTypeName: providerTypeName,
