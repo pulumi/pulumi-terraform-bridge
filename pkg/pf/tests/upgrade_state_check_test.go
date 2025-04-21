@@ -263,7 +263,7 @@ func instrumentUpgraders(r *pb.Resource) (*pb.Resource, *upgraderTracker) {
 	return &rm, tr
 }
 
-func getVersionInState(t *testing.T, stack apitype.UntypedDeployment) int {
+func getVersionInState(t *testing.T, stack apitype.UntypedDeployment) int64 {
 	data, err := stack.Deployment.MarshalJSON()
 	require.NoError(t, err)
 
@@ -286,7 +286,7 @@ func getVersionInState(t *testing.T, stack apitype.UntypedDeployment) int {
 	require.NoError(t, err)
 	schemaVersion, err := strconv.ParseInt(metaMap["schema_version"].(string), 10, 64)
 	require.NoError(t, err)
-	return int(schemaVersion)
+	return schemaVersion
 }
 
 func upgradeTestBrigedProvider(
@@ -296,13 +296,13 @@ func upgradeTestBrigedProvider(
 	ri *info.Resource,
 ) info.Provider {
 	tn := getResourceTypeName(tc.tfProviderName(), r)
-	p := newPulumiTestProviderInfo(t, tc.tfProviderName(), tc.tfProvider(r))
-	if ri != nil {
-		resourceInfo := *ri
-		resourceInfo.Tok = p.Resources[tn].Tok
-		p.Resources[tn] = &resourceInfo
-	}
-	return p
+	return newPulumiTestProviderInfo(t, tc.tfProviderName(), tc.tfProvider(r), func(p *info.Provider) {
+		if ri != nil {
+			resourceInfo := *ri
+			resourceInfo.Tok = p.Resources[tn].Tok
+			p.Resources[tn] = &resourceInfo
+		}
+	})
 }
 
 func getSchemaVersion(res rschema.Resource) int64 {

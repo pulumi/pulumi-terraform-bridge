@@ -23,10 +23,12 @@ import (
 	schema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hexops/autogold/v2"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	presource "github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/zclconf/go-cty/cty"
 
 	pb "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/providerbuilder"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
 // Check a scenario where a schema change is accompanied by a migration function that compensates.
@@ -158,83 +160,80 @@ func TestPFUpgrade_StateUpgraders(t *testing.T) {
 	}).Equal(t, result.tfUpgrades)
 }
 
-// /*
-// // Pulumi removing MaxItems=1 without TF schema changes should be tolerated, without calling upgraders.
-// func TestUpgrade_Pulumi_Removes_MaxItems1(t *testing.T) {
-// 	t.Parallel()
-// 	skipUnlessLinux(t)
+// Pulumi removing MaxItems=1 without TF schema changes should be tolerated, without calling upgraders.
+func TestPFUpgrade_Pulumi_Removes_MaxItems1(t *testing.T) {
+	t.Parallel()
+	skipUnlessLinux(t)
 
-// 	sch := map[string]*schema.Schema{
-// 		"obj": {
-// 			Type:     schema.TypeList,
-// 			Optional: true,
-// 			Elem: &schema.Resource{
-// 				Schema: map[string]*schema.Schema{
-// 					"str": {
-// 						Type:     schema.TypeString,
-// 						Optional: true,
-// 					},
-// 					"bool": {
-// 						Type:     schema.TypeBool,
-// 						Optional: true,
-// 					},
-// 				},
-// 			},
-// 		},
-// 	}
+	resourceBeforeAndAfter := pb.NewResource(pb.NewResourceArgs{
+		ResourceSchema: schema.Schema{
+			Attributes: map[string]schema.Attribute{
+				"obj": schema.ListNestedAttribute{
+					Optional: true,
+					NestedObject: schema.NestedAttributeObject{
+						Attributes: map[string]schema.Attribute{
+							"str":  schema.StringAttribute{Optional: true},
+							"bool": schema.BoolAttribute{Optional: true},
+						},
+					},
+				},
+			},
+		},
+	})
 
-// 	trueBool := true
+	trueBool := true
 
-// 	resourceBeforeAndAfter := &schema.Resource{Schema: sch}
-// 	resourceInfoBefore := &info.Resource{Fields: map[string]*info.Schema{
-// 		"obj": {
-// 			MaxItemsOne: &trueBool,
-// 		},
-// 	}}
+	resourceInfoBefore := &info.Resource{Fields: map[string]*info.Schema{
+		"obj": {
+			MaxItemsOne: &trueBool,
+		},
+	}}
 
-// 	tfInputs := map[string]any{
-// 		"obj": []any{
-// 			map[string]any{
-// 				"str":  "Hello",
-// 				"bool": true,
-// 			},
-// 		},
-// 	}
+	tfInputs := cty.ObjectVal(map[string]cty.Value{
+		"obj": cty.ListVal([]cty.Value{
+			cty.ObjectVal(map[string]cty.Value{
+				"str":  cty.StringVal("Hello"),
+				"bool": cty.BoolVal(true),
+			}),
+		}),
+	})
 
-// 	pmBefore := resource.NewPropertyMapFromMap(map[string]any{
-// 		"obj": map[string]any{
-// 			"str":  "Hello",
-// 			"bool": true,
-// 		},
-// 	})
+	pmBefore := presource.NewPropertyMapFromMap(map[string]any{
+		"obj": map[string]any{
+			"str":  "Hello",
+			"bool": true,
+		},
+	})
 
-// 	pmAfter := resource.NewPropertyMapFromMap(map[string]any{
-// 		"objs": []any{
-// 			map[string]any{
-// 				"str":  "Hello",
-// 				"bool": true,
-// 			},
-// 		},
-// 	})
+	pmAfter := presource.NewPropertyMapFromMap(map[string]any{
+		"objs": []any{
+			map[string]any{
+				"str":  "Hello",
+				"bool": true,
+			},
+		},
+	})
 
-// 	result := runUpgradeStateTest(t, upgradeStateTestCase{
-// 		Resource1:            resourceBeforeAndAfter,
-// 		ResourceInfo1:        resourceInfoBefore,
-// 		Resource2:            resourceBeforeAndAfter,
-// 		Inputs1:              tfInputs,
-// 		InputsMap1:           pmBefore,
-// 		Inputs2:              tfInputs,
-// 		InputsMap2:           pmAfter,
-// 		ExpectedRawStateType: resourceBeforeAndAfter.CoreConfigSchema().ImpliedType(),
-// 	})
+	result := runUpgradeStateTest(t, upgradeStateTestCase{
+		Resource1:            &resourceBeforeAndAfter,
+		ResourceInfo1:        resourceInfoBefore,
+		Resource2:            &resourceBeforeAndAfter,
+		Inputs1:              tfInputs,
+		InputsMap1:           pmBefore,
+		Inputs2:              tfInputs,
+		InputsMap2:           pmAfter,
+		ExpectedRawStateType: resourceBeforeAndAfter.ResourceSchema.Type().TerraformType(context.Background()),
+	})
 
-// 	autogold.Expect(&map[string]int{"same": 2}).Equal(t, result.pulumiRefreshResult.Summary.ResourceChanges)
-// 	autogold.Expect(map[apitype.OpType]int{apitype.OpType("same"): 2}).Equal(t, result.pulumiPreviewResult.ChangeSummary)
-// 	autogold.Expect(&map[string]int{"same": 2}).Equal(t, result.pulumiUpResult.Summary.ResourceChanges)
+	autogold.Expect(&map[string]int{"same": 2}).Equal(t, result.pulumiRefreshResult.Summary.ResourceChanges)
 
-// 	autogold.Expect([]upgradeStateTrace{}).Equal(t, result.pulumiUpgrades)
-// 	autogold.Expect([]upgradeStateTrace{}).Equal(t, result.tfUpgrades)
-// }
+	// TODO[pulumi/pulumi-terraform-bridge#1667] this should be a no-changes diff.
+	autogold.Expect(map[apitype.OpType]int{apitype.OpType("same"): 1, apitype.OpType("update"): 1}).Equal(t, result.pulumiPreviewResult.ChangeSummary)
+	autogold.Expect(&map[string]int{"same": 1, "update": 1}).Equal(t, result.pulumiUpResult.Summary.ResourceChanges)
+
+	autogold.Expect([]upgradeStateTrace{}).Equal(t, result.pulumiUpgrades)
+	autogold.Expect([]upgradeStateTrace{}).Equal(t, result.tfUpgrades)
+}
 
 // // Pulumi adding MaxItems=1 without TF schema changes should be tolerated, without calling upgraders.
 // func TestUpgrade_Pulumi_Adds_MaxItems1(t *testing.T) {
