@@ -411,8 +411,9 @@ func TestSchemaGeneration(t *testing.T) { //nolint:paralleltest
 		helper.Integration(t)
 		ctx := context.Background()
 
-		schema, err := grpcTestServer(ctx, t).
-			GetSchema(ctx, &pulumirpc.GetSchemaRequest{})
+		server := grpcTestServer(ctx, t)
+
+		schema, err := server.GetSchema(ctx, &pulumirpc.GetSchemaRequest{})
 
 		require.NoError(t, err)
 		var fmtSchema bytes.Buffer
