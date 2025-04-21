@@ -77,7 +77,10 @@
     }
   },
   "provider": {
-    "description": "The provider type for the cloudflare package. By default, resources use package-wide configuration\nsettings, however an explicit `Provider` instance may be created and passed during resource\nconstruction to achieve fine-grained programmatic control over provider settings. See the\n[documentation](https://www.pulumi.com/docs/reference/programming-model/#providers) for more information.\n"
+    "description": "The provider type for the cloudflare package. By default, resources use package-wide configuration\nsettings, however an explicit `Provider` instance may be created and passed during resource\nconstruction to achieve fine-grained programmatic control over provider settings. See the\n[documentation](https://www.pulumi.com/docs/reference/programming-model/#providers) for more information.\n",
+    "methods": {
+      "terraformConfig": "pulumi:providers:cloudflare/terraformConfig"
+    }
   },
   "resources": {
     "cloudflare:index/ruleset:Ruleset": {
@@ -142,6 +145,34 @@
             "description": "List of rules to apply to the ruleset.\n"
           }
         },
+        "type": "object"
+      }
+    }
+  },
+  "functions": {
+    "pulumi:providers:cloudflare/terraformConfig": {
+      "description": "This function returns a Terraform config object with terraform-namecased keys,to be used with the Terraform Module Provider.",
+      "inputs": {
+        "properties": {
+          "__self__": {
+            "type": "ref",
+            "$ref": "#/resources/pulumi:providers:cloudflare"
+          }
+        },
+        "type": "pulumi:providers:cloudflare/terraformConfig",
+        "required": [
+          "__self__"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "result"
+        ],
         "type": "object"
       }
     }

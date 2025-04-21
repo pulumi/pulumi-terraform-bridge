@@ -83,7 +83,7 @@ func TestMiniMuxed(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, found)
 
-	assert.Len(t, table.Functions, 1)
+	assert.Len(t, table.Functions, 2)
 	idx, found := table.Functions["minimuxed:index/muxedFunction:muxedFunction"]
 	assert.True(t, found)
 	assert.Equal(t, 1, idx)
@@ -109,7 +109,7 @@ func TestMiniMuxedReplace(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, found)
 
-	assert.Equal(t, 0, len(table.Functions))
+	assert.Equal(t, 1, len(table.Functions))
 
 	assert.Equal(t, 1, len(table.Resources))
 	idx, found := table.Resources["minimuxed:index/minimuxedInteger:MinimuxedInteger"]
