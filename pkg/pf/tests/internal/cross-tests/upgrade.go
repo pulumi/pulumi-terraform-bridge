@@ -25,11 +25,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-framework/datasource"
-	"github.com/hashicorp/terraform-plugin-framework/provider"
-	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
@@ -288,19 +284,19 @@ func getVersionInState(t *testing.T, stack apitype.UntypedDeployment) int64 {
 }
 
 func upgradeTestBrigedProvider(
-	t *testing.T,
 	tc UpgradeStateTestCase,
 	r *pb.Resource,
 	ri *info.Resource,
 ) info.Provider {
 	tn := getResourceTypeName(tc.tfProviderName(), r)
-	return newPulumiTestProviderInfo(t, tc.tfProviderName(), tc.tfProvider(r), func(p *info.Provider) {
-		if ri != nil {
-			resourceInfo := *ri
-			resourceInfo.Tok = p.Resources[tn].Tok
-			p.Resources[tn] = &resourceInfo
-		}
-	})
+	provider := tc.tfProvider(r)
+	providerInfo := provider.ToProviderInfo()
+	if ri != nil {
+		resourceInfo := *ri
+		resourceInfo.Tok = providerInfo.Resources[tn].Tok
+		providerInfo.Resources[tn] = &resourceInfo
+	}
+	return providerInfo
 }
 
 func getSchemaVersion(res rschema.Resource) int64 {
@@ -314,8 +310,8 @@ func runUpgradeTestStatePulumi(t *testing.T, tc UpgradeStateTestCase) UpgradeSta
 	res1 := tc.Resource1
 	res2, tracker := instrumentUpgraders(tc.Resource2)
 
-	prov1 := upgradeTestBrigedProvider(t, tc, res1, tc.ResourceInfo1)
-	prov2 := upgradeTestBrigedProvider(t, tc, res2, tc.ResourceInfo2)
+	prov1 := upgradeTestBrigedProvider(tc, res1, tc.ResourceInfo1)
+	prov2 := upgradeTestBrigedProvider(tc, res2, tc.ResourceInfo2)
 
 	tfResourceName := getResourceTypeName(tc.tfProviderName(), res1)
 
