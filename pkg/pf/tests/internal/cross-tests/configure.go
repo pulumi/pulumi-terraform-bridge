@@ -131,7 +131,7 @@ resource "` + providerName + `_res" "res" {}
 		driver.Write(t, hcl.String())
 		plan, err := driver.Plan(t)
 		require.NoError(t, err)
-		err = driver.Apply(t, plan)
+		err = driver.ApplyPlan(t, plan)
 		require.NoError(t, err)
 	}
 

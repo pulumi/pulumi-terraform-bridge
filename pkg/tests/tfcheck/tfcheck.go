@@ -150,7 +150,7 @@ func (d *TFDriver) Plan(t pulcheck.T) (*TFPlan, error) {
 	return &tp, nil
 }
 
-func (d *TFDriver) Apply(t pulcheck.T, plan *TFPlan) error {
+func (d *TFDriver) ApplyPlan(t pulcheck.T, plan *TFPlan) error {
 	_, err := d.execTf(t, "apply", "-auto-approve", "-refresh=false", plan.PlanFile)
 	return err
 }

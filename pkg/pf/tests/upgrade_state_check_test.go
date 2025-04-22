@@ -459,7 +459,7 @@ func runUpgradeStateTestTF(t *testing.T, tc upgradeStateTestCase) []upgradeState
 
 	plan, err := tfd1.Plan(t)
 	require.NoErrorf(t, err, "tfd1.Plan failed")
-	err = tfd1.Apply(t, plan)
+	err = tfd1.ApplyPlan(t, plan)
 	require.NoErrorf(t, err, "tfd1.Apply failed")
 
 	tfd2 := tfcheck.NewTfDriver(t, tfwd, tc.tfProviderName(), tfcheck.NewTFDriverOpts{
@@ -498,7 +498,7 @@ func runUpgradeStateTestTF(t *testing.T, tc upgradeStateTestCase) []upgradeState
 
 	t.Logf("#### apply (similar to update)")
 	tracker.phase = updatePhase
-	err = tfd2.Apply(t, plan)
+	err = tfd2.ApplyPlan(t, plan)
 	require.NoErrorf(t, err, "tfd2.Apply failed")
 
 	return tracker.trace

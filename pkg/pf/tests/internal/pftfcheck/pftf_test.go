@@ -41,7 +41,7 @@ output "s_val" {
 
 	plan, err := driver.Plan(t)
 	require.NoError(t, err)
-	err = driver.Apply(t, plan)
+	err = driver.ApplyPlan(t, plan)
 	require.NoError(t, err)
 
 	require.Equal(t, "hello", driver.GetOutput(t, "s_val"))
@@ -79,7 +79,7 @@ output "s_val" {
 
 	plan, err := driver.Plan(t)
 	require.NoError(t, err)
-	err = driver.Apply(t, plan)
+	err = driver.ApplyPlan(t, plan)
 	require.NoError(t, err)
 
 	require.Equal(t, "Default val", driver.GetOutput(t, "s_val"))

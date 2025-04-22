@@ -143,7 +143,7 @@ func runTFPlanApply(t T, pb *pb.Provider, wd string, hcl string) (tfcheck.TFChan
 	driver.Write(t, hcl)
 	plan, err := driver.Plan(t)
 	require.NoError(t, err)
-	err = driver.Apply(t, plan)
+	err = driver.ApplyPlan(t, plan)
 	require.NoError(t, err)
 	return driver.ParseChangesFromTFPlan(plan), plan.StdOut
 }

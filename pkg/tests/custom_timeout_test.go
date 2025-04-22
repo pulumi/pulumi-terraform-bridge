@@ -102,7 +102,7 @@ resource "prov_test" "mainRes" {
 			return
 		}
 		require.NoError(t, err)
-		err = tfdriver.Apply(t, plan)
+		err = tfdriver.ApplyPlan(t, plan)
 		require.NoError(t, err)
 		require.NotNil(t, tfCapturedTimeout)
 
