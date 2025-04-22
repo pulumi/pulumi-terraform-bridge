@@ -449,7 +449,9 @@ func runUpgradeStateTestTF(t *testing.T, tc upgradeStateTestCase) []upgradeState
 	resource1 := tc.Resource1
 	resource2, tracker := instrumentUpgraders(tc.Resource2)
 
-	tfd1 := tfcheck.NewTfDriver(t, tfwd, tc.tfProviderName(), tc.tfProvider(tc.Resource1))
+	tfd1 := tfcheck.NewTfDriver(t, tfwd, tc.tfProviderName(), tfcheck.NewTFDriverOpts{
+		V6Provider: tc.tfProvider(resource1),
+	})
 
 	t.Logf("#### create")
 	upgradeStateWriteHCL(t, tc, tfwd, resource1, tc.Inputs1)
@@ -460,7 +462,9 @@ func runUpgradeStateTestTF(t *testing.T, tc upgradeStateTestCase) []upgradeState
 	err = tfd1.Apply(t, plan)
 	require.NoErrorf(t, err, "tfd1.Apply failed")
 
-	tfd2 := tfcheck.NewTfDriver(t, tfwd, tc.tfProviderName(), tc.tfProvider(resource2))
+	tfd2 := tfcheck.NewTfDriver(t, tfwd, tc.tfProviderName(), tfcheck.NewTFDriverOpts{
+		V6Provider: tc.tfProvider(resource2),
+	})
 
 	t.Logf("#### save current state as created state")
 	stateFile := filepath.Join(tfwd, "terraform.tfstate")
@@ -485,11 +489,12 @@ func runUpgradeStateTestTF(t *testing.T, tc upgradeStateTestCase) []upgradeState
 	t.Logf("#### plan (similar to preview)")
 	tracker.phase = previewPhase
 	plan, err = tfd2.Plan(t)
+	t.Logf("%s", plan.StdOut)
 	if tc.ExpectFailure {
-		require.Errorf(t, err, "refresh should have failed")
+		require.Errorf(t, err, "plan should have failed")
 		return tracker.trace
 	}
-	require.NoErrorf(t, err, "refresh should not have failed")
+	require.NoErrorf(t, err, "plan should not have failed")
 
 	t.Logf("#### apply (similar to update)")
 	tracker.phase = updatePhase

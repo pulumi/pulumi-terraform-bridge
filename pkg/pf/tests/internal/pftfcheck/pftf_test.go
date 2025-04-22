@@ -26,7 +26,9 @@ func TestBasic(t *testing.T) {
 		},
 	})
 
-	driver := tfcheck.NewTfDriver(t, t.TempDir(), prov.TypeName, prov)
+	driver := tfcheck.NewTfDriver(t, t.TempDir(), prov.TypeName, tfcheck.NewTFDriverOpts{
+		V6Provider: prov,
+	})
 
 	driver.Write(t, `
 resource "testprovider_res" "test" {
@@ -64,7 +66,9 @@ func TestDefaults(t *testing.T) {
 		},
 	})
 
-	driver := tfcheck.NewTfDriver(t, t.TempDir(), prov.TypeName, prov)
+	driver := tfcheck.NewTfDriver(t, t.TempDir(), prov.TypeName, tfcheck.NewTFDriverOpts{
+		V6Provider: prov,
+	})
 
 	driver.Write(t, `
 resource "testprovider_res" "test" {}

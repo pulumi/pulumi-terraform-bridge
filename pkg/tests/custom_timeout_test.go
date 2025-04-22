@@ -91,7 +91,9 @@ resource "prov_test" "mainRes" {
 	}
 }`, tfTimeout)
 
-		tfdriver := tfcheck.NewTfDriver(t, t.TempDir(), "prov", prov)
+		tfdriver := tfcheck.NewTfDriver(t, t.TempDir(), "prov", tfcheck.NewTFDriverOpts{
+			SDKProvider: prov,
+		})
 		tfdriver.Write(t, tfProgram)
 
 		plan, err := tfdriver.Plan(t)

@@ -124,7 +124,9 @@ resource "` + providerName + `_res" "res" {}
 `)
 
 		prov := provbuilder(&tfOutput)
-		driver := tfcheck.NewTfDriver(t, t.TempDir(), prov.TypeName, prov)
+		driver := tfcheck.NewTfDriver(t, t.TempDir(), prov.TypeName, tfcheck.NewTFDriverOpts{
+			V6Provider: prov,
+		})
 
 		driver.Write(t, hcl.String())
 		plan, err := driver.Plan(t)

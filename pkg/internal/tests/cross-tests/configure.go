@@ -109,7 +109,9 @@ func Configure(
 		}
 	}
 	tfProvider := makeProvider(&tfResult)
-	tfd := tfcheck.NewTfDriver(t, tfwd, defProviderShortName, tfProvider)
+	tfd := tfcheck.NewTfDriver(t, tfwd, defProviderShortName, tfcheck.NewTFDriverOpts{
+		SDKProvider: tfProvider,
+	})
 	tfd.Write(t, providerHCLProgram(t, defProviderShortName, tfProvider, tfConfig))
 	plan, err := tfd.Plan(t)
 	require.NoError(t, err)

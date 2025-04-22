@@ -32,7 +32,9 @@ func TestTfComputed(t *testing.T) {
 		},
 	}
 
-	driver := NewTfDriver(t, t.TempDir(), "test", &prov)
+	driver := NewTfDriver(t, t.TempDir(), "test", NewTFDriverOpts{
+		SDKProvider: &prov,
+	})
 
 	driver.Write(t, `
 resource "test_resource" "test" {
@@ -95,7 +97,9 @@ func TestTfMapMissingElem(t *testing.T) {
 		},
 	}
 
-	driver := NewTfDriver(t, t.TempDir(), "test", &prov)
+	driver := NewTfDriver(t, t.TempDir(), "test", NewTFDriverOpts{
+		SDKProvider: &prov,
+	})
 
 	driver.Write(t, `
 resource "test_resource" "test" {
@@ -177,7 +181,7 @@ func TestTfUnknownObjects(t *testing.T) {
 		},
 	}
 
-	driver := NewTfDriver(t, t.TempDir(), "test", &prov)
+	driver := NewTfDriver(t, t.TempDir(), "test", NewTFDriverOpts{SDKProvider: &prov})
 
 	knownProgram := `
 resource "test_resource" "test" {
