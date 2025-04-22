@@ -5877,8 +5877,10 @@ func TestProviderCallTerraformConfig(t *testing.T) {
 			},
 		},
 	}
-	testTFProviderV2.Schema = nestedConfigSchema
-	testProvider := shimv2.NewProvider(testTFProviderV2)
+
+	v2Provider := testprovider.ProviderV2()
+	v2Provider.Schema = nestedConfigSchema
+	testProvider := shimv2.NewProvider(v2Provider)
 
 	provider := &Provider{
 		tf:     testProvider,
