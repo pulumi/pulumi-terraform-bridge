@@ -361,9 +361,9 @@ func (p *provider) CallWithContext(ctx context.Context,
 	tok tokens.ModuleMember, args resource.PropertyMap, info plugin.CallInfo,
 	options plugin.CallOptions,
 ) (plugin.CallResult, error) {
-	_, functionName, found := strings.Cut(tok.String(), "/")
+	_, functionName, found := strings.Cut(tok.Name().String(), "/")
 	if !found {
-		return plugin.CallResult{}, fmt.Errorf("error getting method name from method token %q", tok)
+		return plugin.CallResult{}, fmt.Errorf("error getting method name from token name %q", tok)
 	}
 
 	switch functionName {
