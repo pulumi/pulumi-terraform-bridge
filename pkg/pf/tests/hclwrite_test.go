@@ -29,6 +29,7 @@ import (
 	"github.com/zclconf/go-cty/cty/msgpack"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests/impl/hclwrite"
+	pfct "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/cross-tests"
 )
 
 func hclWriteResource(
@@ -41,7 +42,7 @@ func hclWriteResource(
 ) {
 	rs := getResourceSchema(t, resourceSchema)
 	vs := resourceConfig.AsValueMap()
-	err := hclwrite.WriteResource(out, &hclSchema{rs}, resourceType, resourceName, vs)
+	err := hclwrite.WriteResource(out, pfct.HCLSchemaPFResource(rs), resourceType, resourceName, vs)
 	require.NoErrorf(t, err, "Failed to write HCL")
 }
 
@@ -77,64 +78,4 @@ func getResourceSchema(t *testing.T, res resource.Resource) schema.Schema {
 	}
 	require.Falsef(t, resp.Diagnostics.HasError(), "res.Schema() returned error diagnostics")
 	return resp.Schema
-}
-
-type hclSchema struct {
-	s schema.Schema
-}
-
-var _ hclwrite.ShimHCLSchema = (*hclSchema)(nil)
-
-func (h *hclSchema) GetAttributes() map[string]hclwrite.ShimHCLAttribute {
-	m := make(map[string]hclwrite.ShimHCLAttribute, len(h.s.Attributes))
-	for k := range h.s.Attributes {
-		m[k] = hclwrite.ShimHCLAttribute{}
-	}
-	return m
-}
-
-func (h *hclSchema) GetBlocks() map[string]hclwrite.ShimHCLBlock {
-	blocks := h.s.GetBlocks()
-	m := make(map[string]hclwrite.ShimHCLBlock, len(blocks))
-	for k, b := range blocks {
-		m[k] = &hclBlock{Block: b}
-	}
-	return m
-}
-
-type hclBlock struct {
-	schema.Block
-}
-
-var _ hclwrite.ShimHCLBlock = (*hclBlock)(nil)
-
-func (b *hclBlock) GetNestingMode() hclwrite.Nesting {
-	switch b.Block.GetNestingMode() {
-	case 1: // list
-		return hclwrite.NestingList
-	case 2: // set
-		return hclwrite.NestingSet
-	case 3: // single
-		return hclwrite.NestingSingle
-	default:
-		return hclwrite.NestingInvalid
-	}
-}
-
-func (b *hclBlock) GetAttributes() map[string]hclwrite.ShimHCLAttribute {
-	attrs := b.Block.GetNestedObject().GetAttributes()
-	m := make(map[string]hclwrite.ShimHCLAttribute, len(attrs))
-	for k := range attrs {
-		m[k] = hclwrite.ShimHCLAttribute{}
-	}
-	return m
-}
-
-func (b *hclBlock) GetBlocks() map[string]hclwrite.ShimHCLBlock {
-	blocks := b.Block.GetNestedObject().GetBlocks()
-	m := make(map[string]hclwrite.ShimHCLBlock, len(blocks))
-	for k, b := range blocks {
-		m[k] = &hclBlock{Block: b}
-	}
-	return m
 }
