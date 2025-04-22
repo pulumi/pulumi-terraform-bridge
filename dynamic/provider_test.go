@@ -408,7 +408,7 @@ func TestSchemaGeneration(t *testing.T) { //nolint:paralleltest
 	skipWindows(t)
 
 	t.Run("unparameterized", func(t *testing.T) {
-		t.Skipf("Skipping to unlock other test failures")
+		t.Skipf("Skipping due to https://github.com/pulumi/pulumi/issues/19274")
 		helper.Integration(t)
 		ctx := context.Background()
 
