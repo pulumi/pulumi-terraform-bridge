@@ -1778,7 +1778,7 @@ func (p *Provider) returnTerraformConfig(ctx context.Context) (resource.Property
 		msg := fmt.Sprintf("It looks like you're trying to use the provider's terraformConfig function. " +
 			"The result of this function is meant for use as the config value of a required provider for a " +
 			"Pulumi Terraform Module. All inputs to provider configuration must be known for this feature to work.")
-		return nil, fmt.Errorf(msg)
+		return nil, errors.New(msg)
 	}
 
 	configJSONMessage, err := valueshim.FromHCtyValue(rawConfig.CtyValue).Marshal()
