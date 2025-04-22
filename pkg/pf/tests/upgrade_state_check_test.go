@@ -555,3 +555,7 @@ func getResourceTypeName(providerTypeName string, res rschema.Resource) string {
 	}, resp)
 	return resp.TypeName
 }
+
+// State upgrader implementation that does not do anything.
+func nopUpgrade(context.Context, rschema.UpgradeStateRequest, *rschema.UpgradeStateResponse) {
+}

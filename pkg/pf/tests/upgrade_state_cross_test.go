@@ -29,6 +29,7 @@ import (
 
 	pb "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/providerbuilder"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
+	"github.com/stretchr/testify/assert"
 )
 
 // Check a scenario where a schema change is accompanied by a migration function that compensates.
@@ -1069,61 +1070,63 @@ func TestPFUpgrade_Pulumi_Adds_MaxItems1(t *testing.T) {
 // 	})
 // }
 
-// // When downgrading to a lower schema, TF fails.
-// func TestUpgrade_Downgrading(t *testing.T) {
-// 	t.Parallel()
-// 	skipUnlessLinux(t)
+// When downgrading to a lower schema, TF fails.
+func TestPFUpgrade_Downgrading(t *testing.T) {
+	t.Parallel()
+	skipUnlessLinux(t)
 
-// 	sch := map[string]*schema.Schema{
-// 		"f0": {
-// 			Type:     schema.TypeString,
-// 			Optional: true,
-// 		},
-// 	}
+	sch := func(version int64) schema.Schema {
+		return schema.Schema{
+			Attributes: map[string]schema.Attribute{
+				"f0": schema.StringAttribute{Optional: true},
+			},
+			Version: version,
+		}
+	}
 
-// 	res1 := &schema.Resource{
-// 		Schema:        sch,
-// 		SchemaVersion: 2,
-// 	}
+	res1 := pb.NewResource(pb.NewResourceArgs{
+		ResourceSchema: sch(2),
+	})
 
-// 	res2 := &schema.Resource{
-// 		Schema:        sch,
-// 		SchemaVersion: 1,
-// 		StateUpgraders: []schema.StateUpgrader{{
-// 			Version: 0,
-// 			Type:    res1.CoreConfigSchema().ImpliedType(),
-// 			Upgrade: nopUpgrade,
-// 		}},
-// 	}
+	res2 := pb.NewResource(pb.NewResourceArgs{
+		ResourceSchema: sch(1),
+		UpgradeStateFunc: func(ctx context.Context) map[int64]resource.StateUpgrader {
+			return map[int64]resource.StateUpgrader{
+				0: {
+					PriorSchema:   &res1.ResourceSchema,
+					StateUpgrader: nopUpgrade,
+				},
+			}
+		},
+	})
 
-// 	// Check when the values themselves are not changing.
-// 	t.Run("same", func(t *testing.T) {
-// 		result := runUpgradeStateTest(t, upgradeStateTestCase{
-// 			Resource1:     res1,
-// 			Resource2:     res2,
-// 			Inputs1:       map[string]any{"f0": "val"},
-// 			Inputs2:       map[string]any{"f0": "val"},
-// 			ExpectFailure: true,
-// 			SkipPulumi:    "TODO[pulumi-terraform-bridge#3009]",
-// 		})
+	// Check when the values themselves are not changing.
+	t.Run("same", func(t *testing.T) {
+		result := runUpgradeStateTest(t, upgradeStateTestCase{
+			Resource1:     &res1,
+			Resource2:     &res2,
+			Inputs1:       cty.ObjectVal(map[string]cty.Value{"f0": cty.StringVal("val")}),
+			Inputs2:       cty.ObjectVal(map[string]cty.Value{"f0": cty.StringVal("val")}),
+			ExpectFailure: true,
+			SkipPulumi:    "TODO[pulumi-terraform-bridge#3009]",
+		})
 
-// 		assert.Equal(t, result.tfUpgrades, result.pulumiUpgrades)
-// 		autogold.Expect([]upgradeStateTrace{}).Equal(t, result.pulumiUpgrades)
-// 	})
+		assert.Equal(t, result.tfUpgrades, result.pulumiUpgrades)
+		autogold.Expect([]upgradeStateTrace{}).Equal(t, result.pulumiUpgrades)
+	})
 
-// 	// Check when the values are changing, and it is an effective update.
-// 	t.Run("different", func(t *testing.T) {
-// 		result := runUpgradeStateTest(t, upgradeStateTestCase{
-// 			Resource1:     res1,
-// 			Resource2:     res2,
-// 			Inputs1:       map[string]any{"f0": "val1"},
-// 			Inputs2:       map[string]any{"f0": "val2"},
-// 			ExpectFailure: true,
-// 			SkipPulumi:    "TODO[pulumi-terraform-bridge#3009]",
-// 		})
+	// Check when the values are changing, and it is an effective update.
+	t.Run("different", func(t *testing.T) {
+		result := runUpgradeStateTest(t, upgradeStateTestCase{
+			Resource1:     &res1,
+			Resource2:     &res2,
+			Inputs1:       cty.ObjectVal(map[string]cty.Value{"f0": cty.StringVal("val1")}),
+			Inputs2:       cty.ObjectVal(map[string]cty.Value{"f0": cty.StringVal("val2")}),
+			ExpectFailure: true,
+			SkipPulumi:    "TODO[pulumi-terraform-bridge#3009]",
+		})
 
-// 		assert.Equal(t, result.tfUpgrades, result.pulumiUpgrades)
-// 		autogold.Expect([]upgradeStateTrace{}).Equal(t, result.pulumiUpgrades)
-// 	})
-// }
-// */
+		assert.Equal(t, result.tfUpgrades, result.pulumiUpgrades)
+		autogold.Expect([]upgradeStateTrace{}).Equal(t, result.pulumiUpgrades)
+	})
+}
