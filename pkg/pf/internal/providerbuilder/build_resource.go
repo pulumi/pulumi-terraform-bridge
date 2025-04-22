@@ -69,6 +69,11 @@ func NewResource(args NewResourceArgs) Resource {
 			resp.State = tfsdk.State(req.Plan)
 		}
 	}
+	if args.ReadFunc == nil {
+		args.ReadFunc = func(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+			resp.State = req.State
+		}
+	}
 	if args.UpgradeStateFunc == nil {
 		args.UpgradeStateFunc = func(ctx context.Context) map[int64]resource.StateUpgrader {
 			return nil

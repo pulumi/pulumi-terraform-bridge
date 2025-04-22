@@ -491,7 +491,6 @@ func runUpgradeStateTestTF(t *testing.T, tc upgradeStateTestCase) []upgradeState
 	t.Logf("#### plan -refresh=false (similar to pulumi preview)")
 	tracker.phase = previewPhase
 	plan, err = tfd2.Plan(t)
-	t.Logf("%s", plan.StdOut)
 	if tc.ExpectFailure {
 		require.Errorf(t, err, "plan should have failed")
 		return tracker.trace
