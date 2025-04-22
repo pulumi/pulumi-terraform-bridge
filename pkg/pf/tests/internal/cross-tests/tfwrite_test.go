@@ -351,7 +351,7 @@ func TestWritePFHCLResource(t *testing.T) {
 			t.Parallel()
 
 			var actual bytes.Buffer
-			sch := hclSchemaPFResource(tt.schema)
+			sch := HCLSchemaPFResource(tt.schema)
 			err := hclwrite.WriteResource(&actual, sch, "testprovider_test", "test", tt.value)
 			require.NoError(t, err)
 			tt.expect.Equal(t, actual.String())

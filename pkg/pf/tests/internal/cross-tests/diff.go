@@ -74,7 +74,7 @@ func Diff(t T, res pb.Resource, tfConfig1, tfConfig2 map[string]cty.Value, optio
 	// Run the TF part
 	var hcl1 bytes.Buffer
 
-	sch1 := hclSchemaPFResource(res.ResourceSchema)
+	sch1 := HCLSchemaPFResource(res.ResourceSchema)
 	err := hclwrite.WriteResource(&hcl1, sch1, "testprovider_test", "res", tfConfig1,
 		hclwrite.WithCreateBeforeDestroy(true))
 	require.NoError(t, err)
@@ -83,7 +83,7 @@ func Diff(t T, res pb.Resource, tfConfig1, tfConfig2 map[string]cty.Value, optio
 	var hcl2 bytes.Buffer
 	sch2 := sch1
 	if opts.resource2 != nil {
-		sch2 = hclSchemaPFResource(opts.resource2.ResourceSchema)
+		sch2 = HCLSchemaPFResource(opts.resource2.ResourceSchema)
 	}
 	err = hclwrite.WriteResource(&hcl2, sch2, "testprovider_test", "res", tfConfig2,
 		hclwrite.WithCreateBeforeDestroy(true))
