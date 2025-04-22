@@ -259,6 +259,9 @@
                 "$ref": "#/types/tls:index/ProviderProxy:ProviderProxy",
                 "description": "Proxy used by resources and data sources that connect to external endpoints.\n"
             }
+        },
+        "methods": {
+            "terraformConfig": "pulumi:providers:tls/terraformConfig"
         }
     },
     "resources": {
@@ -917,6 +920,32 @@
         }
     },
     "functions": {
+        "pulumi:providers:tls/terraformConfig": {
+            "description": "This function returns a Terraform config object with terraform-namecased keys,to be used with the Terraform Module Provider.",
+            "inputs": {
+                "properties": {
+                    "__self__": {
+                        "type": "ref",
+                        "$ref": "#/resources/pulumi:providers:tls"
+                    }
+                },
+                "type": "pulumi:providers:tls/terraformConfig",
+                "required": [
+                    "__self__"
+                ]
+            },
+            "outputs": {
+                "properties": {
+                    "result": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "result"
+                ],
+                "type": "object"
+            }
+        },
         "tls:index/getCertificate:getCertificate": {
             "inputs": {
                 "description": "A collection of arguments for invoking getCertificate.\n",

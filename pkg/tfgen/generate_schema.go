@@ -358,7 +358,7 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg, sink diag.Sink) (pschema.Pac
 			ReturnType: &pschema.ReturnTypeSpec{
 				ObjectTypeSpec: &pschema.ObjectTypeSpec{
 					Type: "object",
-					//TODO: these should probably be fixed up?
+					// TODO: these should probably be fixed up?
 					Properties: map[string]pschema.PropertySpec{
 						"result": {
 							TypeSpec: pschema.TypeSpec{
