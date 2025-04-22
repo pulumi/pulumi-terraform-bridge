@@ -54,14 +54,14 @@ func TestNewMuxProvider(t *testing.T) {
 
 	// Providers using newPulumiTest utilize NewMuxProvider and MuxWith to connect up a PF provider.
 	pt := newPulumiTest(t, p, `
-		name: test-program
-		runtime: yaml
-		resources:
-		  my-res:
-		    type: testprovider:index:R
-		    properties:
-		      p: "FOO"
-		`)
+             name: test-program
+             runtime: yaml
+             resources:
+               my-res:
+                 type: testprovider:index:R
+                 properties:
+                   p: "FOO"
+        `)
 
 	pt.Up(t)
 
