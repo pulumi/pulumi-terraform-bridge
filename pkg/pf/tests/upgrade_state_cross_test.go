@@ -460,58 +460,79 @@ func TestPFUpgrade_Pulumi_Adds_MaxItems1(t *testing.T) {
 // 	autogold.Expect([]upgradeStateTrace{}).Equal(t, result.tfUpgrades)
 // }
 
-// func TestUpgrade_UpgradersNotCalledWhenVersionIsNotChanging(t *testing.T) {
-// 	t.Parallel()
-// 	skipUnlessLinux(t)
+func TestPFUpgrade_UpgradersNotCalledWhenVersionIsNotChanging(t *testing.T) {
+	t.Parallel()
+	skipUnlessLinux(t)
 
-// 	sch := map[string]*schema.Schema{
-// 		"f0": {
-// 			Type:     schema.TypeString,
-// 			Optional: true,
-// 		},
-// 	}
+	sch := func(version int64) schema.Schema {
+		return schema.Schema{
+			Attributes: map[string]schema.Attribute{
+				"f0": schema.StringAttribute{
+					Optional: true,
+				},
+			},
+			Version: version,
+		}
+	}
 
-// 	res1 := &schema.Resource{
-// 		Schema:        sch,
-// 		SchemaVersion: 1,
-// 	}
+	res1 := pb.NewResource(pb.NewResourceArgs{
+		ResourceSchema: sch(1),
+	})
 
-// 	res2 := &schema.Resource{
-// 		Schema:        sch,
-// 		SchemaVersion: 1,
-// 		StateUpgraders: []schema.StateUpgrader{{
-// 			Version: 0,
-// 			Type:    res1.CoreConfigSchema().ImpliedType(),
-// 			Upgrade: nopUpgrade,
-// 		}},
-// 	}
+	res2 := pb.NewResource(pb.NewResourceArgs{
+		ResourceSchema: sch(1),
+		UpgradeStateFunc: func(ctx context.Context) map[int64]resource.StateUpgrader {
+			return map[int64]resource.StateUpgrader{
+				0: {
+					PriorSchema:   &res1.ResourceSchema,
+					StateUpgrader: nopUpgrade,
+				},
+			}
+		},
+	})
 
-// 	// Check when the values themselves are not changing.
-// 	t.Run("same", func(t *testing.T) {
-// 		result := runUpgradeStateTest(t, upgradeStateTestCase{
-// 			Resource1: res1,
-// 			Resource2: res2,
-// 			Inputs1:   map[string]any{"f0": "val"},
-// 			Inputs2:   map[string]any{"f0": "val"},
-// 		})
+	configVal := func(val string) cty.Value {
+		return cty.ObjectVal(map[string]cty.Value{
+			"f0": cty.StringVal(val),
+		})
+	}
 
-// 		assert.Equal(t, result.tfUpgrades, result.pulumiUpgrades)
-// 		autogold.Expect([]upgradeStateTrace{}).Equal(t, result.pulumiUpgrades)
-// 	})
+	propMap := func(val string) presource.PropertyMap {
+		return presource.PropertyMap{
+			"f0": presource.NewStringProperty(val),
+		}
+	}
 
-// 	// Check when the values are changing, and it is an effective update.
-// 	t.Run("different", func(t *testing.T) {
-// 		result := runUpgradeStateTest(t, upgradeStateTestCase{
-// 			Resource1: res1,
-// 			Resource2: res2,
-// 			Inputs1:   map[string]any{"f0": "val1"},
-// 			Inputs2:   map[string]any{"f0": "val2"},
-// 		})
+	// Check when the values themselves are not changing.
+	t.Run("same", func(t *testing.T) {
+		result := runUpgradeStateTest(t, upgradeStateTestCase{
+			Resource1:  &res1,
+			Resource2:  &res2,
+			Inputs1:    configVal("val"),
+			InputsMap1: propMap("val"),
+			Inputs2:    configVal("val"),
+			InputsMap2: propMap("val"),
+		})
 
-// 		assert.Equal(t, result.tfUpgrades, result.pulumiUpgrades)
-// 		autogold.Expect([]upgradeStateTrace{}).Equal(t, result.pulumiUpgrades)
-// 	})
-// }
+		assert.Equal(t, result.tfUpgrades, result.pulumiUpgrades)
+		autogold.Expect([]upgradeStateTrace{}).Equal(t, result.pulumiUpgrades)
+	})
+
+	// Check when the values are changing, and it is an effective update.
+	t.Run("different", func(t *testing.T) {
+		result := runUpgradeStateTest(t, upgradeStateTestCase{
+			Resource1:  &res1,
+			Resource2:  &res2,
+			Inputs1:    configVal("val1"),
+			InputsMap1: propMap("val1"),
+			Inputs2:    configVal("val2"),
+			InputsMap2: propMap("val2"),
+		})
+
+		assert.Equal(t, result.tfUpgrades, result.pulumiUpgrades)
+		autogold.Expect([]upgradeStateTrace{}).Equal(t, result.pulumiUpgrades)
+	})
+}
 
 // Basic check for upgrade logic: the type is not changing, but the schema is. Check how many times the upgrade method
 // is called and if it is at parity.
