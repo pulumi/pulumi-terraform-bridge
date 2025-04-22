@@ -21,11 +21,6 @@ func schemaMap(m map[string]*schema.Schema) shim.SchemaMap {
 	return mm
 }
 
-// var (
-// 	testTFProvider   = testprovider.ProviderV1()
-// 	testTFProviderV2 = testprovider.ProviderV2()
-// )
-
 type shimFactory interface {
 	SDKVersion() string
 	NewSchema(s *schema.Schema) shim.Schema
