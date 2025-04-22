@@ -451,6 +451,7 @@ func runUpgradeStateTestTF(t *testing.T, tc upgradeStateTestCase) []upgradeState
 
 	tfd1 := tfcheck.NewTfDriver(t, tfwd, tc.tfProviderName(), tfcheck.NewTFDriverOpts{
 		V6Provider: tc.tfProvider(resource1),
+		LogOutput:  true,
 	})
 
 	t.Logf("#### create")
@@ -464,6 +465,7 @@ func runUpgradeStateTestTF(t *testing.T, tc upgradeStateTestCase) []upgradeState
 
 	tfd2 := tfcheck.NewTfDriver(t, tfwd, tc.tfProviderName(), tfcheck.NewTFDriverOpts{
 		V6Provider: tc.tfProvider(resource2),
+		LogOutput:  true,
 	})
 
 	t.Logf("#### save current state as created state")
@@ -486,7 +488,7 @@ func runUpgradeStateTestTF(t *testing.T, tc upgradeStateTestCase) []upgradeState
 	err = os.WriteFile(stateFile, createdState, 0o600)
 	require.NoErrorf(t, err, "resetting state failed")
 
-	t.Logf("#### plan (similar to preview)")
+	t.Logf("#### plan -refresh=false (similar to pulumi preview)")
 	tracker.phase = previewPhase
 	plan, err = tfd2.Plan(t)
 	t.Logf("%s", plan.StdOut)
@@ -496,9 +498,9 @@ func runUpgradeStateTestTF(t *testing.T, tc upgradeStateTestCase) []upgradeState
 	}
 	require.NoErrorf(t, err, "plan should not have failed")
 
-	t.Logf("#### apply (similar to update)")
+	t.Logf("#### apply -refresh=false (similar to pulumi update)")
 	tracker.phase = updatePhase
-	err = tfd2.ApplyPlan(t, plan)
+	err = tfd2.Apply(t)
 	require.NoErrorf(t, err, "tfd2.Apply failed")
 
 	return tracker.trace

@@ -771,7 +771,6 @@ func TestPFUpgrade_Object_0to1_Version(t *testing.T) {
 	}
 
 	t.Run("same", func(t *testing.T) {
-		t.Skip()
 		result := runUpgradeStateTest(t, upgradeStateTestCase{
 			Resource1:  &res1,
 			Resource2:  &res2,
@@ -797,6 +796,17 @@ func TestPFUpgrade_Object_0to1_Version(t *testing.T) {
 			},
 			{
 				Phase: upgradeStateTestPhase("preview"),
+				PriorState: map[string]interface{}{
+					"f0": map[string]interface{}{"x": "val"},
+					"id": "test-id",
+				},
+				ReturnedState: map[string]interface{}{
+					"f0": map[string]interface{}{"x": "val"},
+					"id": "test-id",
+				},
+			},
+			{
+				Phase: upgradeStateTestPhase("update"),
 				PriorState: map[string]interface{}{
 					"f0": map[string]interface{}{"x": "val"},
 					"id": "test-id",
@@ -870,6 +880,17 @@ func TestPFUpgrade_Object_0to1_Version(t *testing.T) {
 			},
 			{
 				Phase: upgradeStateTestPhase("preview"),
+				PriorState: map[string]interface{}{
+					"f0": map[string]interface{}{"x": "val1"},
+					"id": "test-id",
+				},
+				ReturnedState: map[string]interface{}{
+					"f0": map[string]interface{}{"x": "val1"},
+					"id": "test-id",
+				},
+			},
+			{
+				Phase: upgradeStateTestPhase("update"),
 				PriorState: map[string]interface{}{
 					"f0": map[string]interface{}{"x": "val1"},
 					"id": "test-id",
