@@ -557,5 +557,7 @@ func getResourceTypeName(providerTypeName string, res rschema.Resource) string {
 }
 
 // State upgrader implementation that does not do anything.
-func nopUpgrade(context.Context, rschema.UpgradeStateRequest, *rschema.UpgradeStateResponse) {
+func nopUpgrade(ctx context.Context, req rschema.UpgradeStateRequest, resp *rschema.UpgradeStateResponse) {
+	contract.Assertf(req.State != nil, "expected UpgradeStateRequest with a non-nil State")
+	resp.State = *req.State
 }

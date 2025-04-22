@@ -21,12 +21,13 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	schema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hexops/autogold/v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	presource "github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/zclconf/go-cty/cty"
 
+	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	pb "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/providerbuilder"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"github.com/stretchr/testify/assert"
@@ -718,219 +719,225 @@ func TestPFUpgrade_Pulumi_Adds_MaxItems1(t *testing.T) {
 // 	})
 // }
 
-// // Same as the string upgrade test but with objects.
-// func TestUpgrade_Object_0to1_Version(t *testing.T) {
-// 	t.Parallel()
-// 	skipUnlessLinux(t)
+// Same as the string upgrade test but with objects.
+func TestPFUpgrade_Object_0to1_Version(t *testing.T) {
+	t.Parallel()
+	skipUnlessLinux(t)
 
-// 	sch := map[string]*schema.Schema{
-// 		"f0": {
-// 			Required: true,
-// 			Type:     schema.TypeList,
-// 			MaxItems: 1,
-// 			Elem: &schema.Resource{
-// 				Schema: map[string]*schema.Schema{
-// 					"x": {Optional: true, Type: schema.TypeString},
-// 				},
-// 			},
-// 		},
-// 	}
+	sch := func(version int64) schema.Schema {
+		return schema.Schema{
+			Attributes: map[string]schema.Attribute{
+				"f0": schema.ObjectAttribute{
+					Required: true,
+					AttributeTypes: map[string]attr.Type{
+						"x": basetypes.StringType{},
+					},
+				},
+			},
+			Version: version,
+		}
+	}
 
-// 	res1 := &schema.Resource{
-// 		Schema: sch,
-// 	}
+	res1 := pb.NewResource(pb.NewResourceArgs{
+		ResourceSchema: sch(0),
+	})
 
-// 	res2 := &schema.Resource{
-// 		Schema:        sch,
-// 		SchemaVersion: 1,
-// 		StateUpgraders: []schema.StateUpgrader{{
-// 			Version: 0,
-// 			Type:    res1.CoreConfigSchema().ImpliedType(),
-// 			Upgrade: nopUpgrade,
-// 		}},
-// 	}
+	res2 := pb.NewResource(pb.NewResourceArgs{
+		ResourceSchema: sch(1),
+		UpgradeStateFunc: func(ctx context.Context) map[int64]resource.StateUpgrader {
+			return map[int64]resource.StateUpgrader{
+				0: {
+					PriorSchema:   &res1.ResourceSchema,
+					StateUpgrader: nopUpgrade,
+				},
+			}
+		},
+	})
 
-// 	configVal := func(val string) map[string]any {
-// 		return map[string]any{
-// 			"f0": []any{map[string]any{"x": val}},
-// 		}
-// 	}
+	configVal := func(val string) cty.Value {
+		return cty.ObjectVal(map[string]cty.Value{
+			"f0": cty.ObjectVal(map[string]cty.Value{
+				"x": cty.StringVal(val),
+			}),
+		})
+	}
 
-// 	t.Run("same", func(t *testing.T) {
-// 		result := runUpgradeStateTest(t, upgradeStateTestCase{
-// 			Resource1: res1,
-// 			Resource2: res2,
-// 			Inputs1:   configVal("val"),
-// 			Inputs2:   configVal("val"),
+	propMap := func(val string) presource.PropertyMap {
+		return presource.PropertyMap{
+			"f0": presource.NewObjectProperty(presource.PropertyMap{
+				"x": presource.NewStringProperty(val),
+			}),
+		}
+	}
 
-// 			SkipSchemaVersionAfterUpdateCheck: true,
-// 		})
+	t.Run("same", func(t *testing.T) {
+		result := runUpgradeStateTest(t, upgradeStateTestCase{
+			Resource1:  &res1,
+			Resource2:  &res2,
+			Inputs1:    configVal("val"),
+			InputsMap1: propMap("val"),
+			Inputs2:    configVal("val"),
+			InputsMap2: propMap("val"),
 
-// 		autogold.Expect([]upgradeStateTrace{
-// 			{
-// 				Phase: upgradeStateTestPhase("refresh"),
-// 				RawState: map[string]interface{}{
-// 					"f0": []interface{}{map[string]interface{}{"x": "val"}},
-// 					"id": "newid",
-// 				},
-// 				Result: map[string]interface{}{
-// 					"f0": []interface{}{map[string]interface{}{"x": "val"}},
-// 					"id": "newid",
-// 				},
-// 			},
-// 			{
-// 				Phase: upgradeStateTestPhase("preview"),
-// 				RawState: map[string]interface{}{
-// 					"f0": []interface{}{map[string]interface{}{"x": "val"}},
-// 					"id": "newid",
-// 				},
-// 				Result: map[string]interface{}{
-// 					"f0": []interface{}{map[string]interface{}{"x": "val"}},
-// 					"id": "newid",
-// 				},
-// 			},
-// 		}).Equal(t, result.tfUpgrades)
-// 		autogold.Expect([]upgradeStateTrace{
-// 			{
-// 				Phase: upgradeStateTestPhase("refresh"),
-// 				RawState: map[string]interface{}{
-// 					"f0": []interface{}{map[string]interface{}{"x": "val"}},
-// 					"id": "newid",
-// 				},
-// 				Result: map[string]interface{}{
-// 					"f0": []interface{}{map[string]interface{}{"x": "val"}},
-// 					"id": "newid",
-// 				},
-// 			},
-// 			{
-// 				Phase: upgradeStateTestPhase("preview"),
-// 				RawState: map[string]interface{}{
-// 					"f0": []interface{}{map[string]interface{}{"x": "val"}},
-// 					"id": "newid",
-// 				},
-// 				Result: map[string]interface{}{
-// 					"f0": []interface{}{map[string]interface{}{"x": "val"}},
-// 					"id": "newid",
-// 				},
-// 			},
-// 			{
-// 				Phase: upgradeStateTestPhase("update"),
-// 				RawState: map[string]interface{}{
-// 					"f0": []interface{}{map[string]interface{}{"x": "val"}},
-// 					"id": "newid",
-// 				},
-// 				Result: map[string]interface{}{
-// 					"f0": []interface{}{map[string]interface{}{"x": "val"}},
-// 					"id": "newid",
-// 				},
-// 			},
-// 		}).Equal(t, result.pulumiUpgrades)
-// 	})
+			SkipSchemaVersionAfterUpdateCheck: true,
+		})
 
-// 	// Check when the values are changing, and it is an effective update.
-// 	t.Run("different", func(t *testing.T) {
-// 		result := runUpgradeStateTest(t, upgradeStateTestCase{
-// 			Resource1: res1,
-// 			Resource2: res2,
-// 			Inputs1:   configVal("val1"),
-// 			Inputs2:   configVal("val2"),
-// 		})
+		autogold.Expect([]upgradeStateTrace{
+			{
+				Phase: upgradeStateTestPhase("refresh"),
+				PriorState: map[string]interface{}{
+					"f0": map[string]interface{}{"x": "val"},
+					"id": "test-id",
+				},
+				ReturnedState: map[string]interface{}{
+					"f0": map[string]interface{}{"x": "val"},
+					"id": "test-id",
+				},
+			},
+			{
+				Phase: upgradeStateTestPhase("preview"),
+				PriorState: map[string]interface{}{
+					"f0": map[string]interface{}{"x": "val"},
+					"id": "test-id",
+				},
+				ReturnedState: map[string]interface{}{
+					"f0": map[string]interface{}{"x": "val"},
+					"id": "test-id",
+				},
+			},
+		}).Equal(t, result.tfUpgrades)
+		autogold.Expect([]upgradeStateTrace{
+			{
+				Phase: upgradeStateTestPhase("refresh"),
+				PriorState: map[string]interface{}{
+					"f0": map[string]interface{}{"x": "val"},
+					"id": "test-id",
+				},
+				ReturnedState: map[string]interface{}{
+					"f0": map[string]interface{}{"x": "val"},
+					"id": "test-id",
+				},
+			},
+			{
+				Phase: upgradeStateTestPhase("preview"),
+				PriorState: map[string]interface{}{
+					"f0": map[string]interface{}{"x": "val"},
+					"id": "test-id",
+				},
+				ReturnedState: map[string]interface{}{
+					"f0": map[string]interface{}{"x": "val"},
+					"id": "test-id",
+				},
+			},
+			{
+				Phase: upgradeStateTestPhase("update"),
+				PriorState: map[string]interface{}{
+					"f0": map[string]interface{}{"x": "val"},
+					"id": "test-id",
+				},
+				ReturnedState: map[string]interface{}{
+					"f0": map[string]interface{}{"x": "val"},
+					"id": "test-id",
+				},
+			},
+		}).Equal(t, result.pulumiUpgrades)
+	})
 
-// 		// Upgrade calls similar but Pulumi calls the upgrader a few times too many.
-// 		autogold.Expect([]upgradeStateTrace{
-// 			{
-// 				Phase: upgradeStateTestPhase("refresh"),
-// 				RawState: map[string]interface{}{
-// 					"f0": []interface{}{map[string]interface{}{"x": "val1"}},
-// 					"id": "newid",
-// 				},
-// 				Result: map[string]interface{}{
-// 					"f0": []interface{}{map[string]interface{}{"x": "val1"}},
-// 					"id": "newid",
-// 				},
-// 			},
-// 			{
-// 				Phase: upgradeStateTestPhase("preview"),
-// 				RawState: map[string]interface{}{
-// 					"f0": []interface{}{map[string]interface{}{"x": "val1"}},
-// 					"id": "newid",
-// 				},
-// 				Result: map[string]interface{}{
-// 					"f0": []interface{}{map[string]interface{}{"x": "val1"}},
-// 					"id": "newid",
-// 				},
-// 			},
-// 		}).Equal(t, result.tfUpgrades)
-// 		autogold.Expect([]upgradeStateTrace{
-// 			{
-// 				Phase: upgradeStateTestPhase("refresh"),
-// 				RawState: map[string]interface{}{
-// 					"f0": []interface{}{map[string]interface{}{"x": "val1"}},
-// 					"id": "newid",
-// 				},
-// 				Result: map[string]interface{}{
-// 					"f0": []interface{}{map[string]interface{}{"x": "val1"}},
-// 					"id": "newid",
-// 				},
-// 			},
-// 			{
-// 				Phase: upgradeStateTestPhase("preview"),
-// 				RawState: map[string]interface{}{
-// 					"f0": []interface{}{map[string]interface{}{"x": "val1"}},
-// 					"id": "newid",
-// 				},
-// 				Result: map[string]interface{}{
-// 					"f0": []interface{}{map[string]interface{}{"x": "val1"}},
-// 					"id": "newid",
-// 				},
-// 			},
-// 			{
-// 				Phase: upgradeStateTestPhase("preview"),
-// 				RawState: map[string]interface{}{
-// 					"f0": []interface{}{map[string]interface{}{"x": "val1"}},
-// 					"id": "newid",
-// 				},
-// 				Result: map[string]interface{}{
-// 					"f0": []interface{}{map[string]interface{}{"x": "val1"}},
-// 					"id": "newid",
-// 				},
-// 			},
-// 			{
-// 				Phase: upgradeStateTestPhase("update"),
-// 				RawState: map[string]interface{}{
-// 					"f0": []interface{}{map[string]interface{}{"x": "val1"}},
-// 					"id": "newid",
-// 				},
-// 				Result: map[string]interface{}{
-// 					"f0": []interface{}{map[string]interface{}{"x": "val1"}},
-// 					"id": "newid",
-// 				},
-// 			},
-// 			{
-// 				Phase: upgradeStateTestPhase("update"),
-// 				RawState: map[string]interface{}{
-// 					"f0": []interface{}{map[string]interface{}{"x": "val1"}},
-// 					"id": "newid",
-// 				},
-// 				Result: map[string]interface{}{
-// 					"f0": []interface{}{map[string]interface{}{"x": "val1"}},
-// 					"id": "newid",
-// 				},
-// 			},
-// 			{
-// 				Phase: upgradeStateTestPhase("update"),
-// 				RawState: map[string]interface{}{
-// 					"f0": []interface{}{map[string]interface{}{"x": "val1"}},
-// 					"id": "newid",
-// 				},
-// 				Result: map[string]interface{}{
-// 					"f0": []interface{}{map[string]interface{}{"x": "val1"}},
-// 					"id": "newid",
-// 				},
-// 			},
-// 		}).Equal(t, result.pulumiUpgrades)
-// 	})
-// }
+	// Check when the values are changing, and it is an effective update.
+	t.Run("different", func(t *testing.T) {
+		result := runUpgradeStateTest(t, upgradeStateTestCase{
+			Resource1:  &res1,
+			Resource2:  &res2,
+			Inputs1:    configVal("val1"),
+			InputsMap1: propMap("val1"),
+			Inputs2:    configVal("val2"),
+			InputsMap2: propMap("val2"),
+		})
+
+		// Upgrade calls similar but Pulumi calls the upgrader a few times too many.
+		autogold.Expect([]upgradeStateTrace{
+			{
+				Phase: upgradeStateTestPhase("refresh"),
+				PriorState: map[string]interface{}{
+					"f0": map[string]interface{}{"x": "val1"},
+					"id": "test-id",
+				},
+				ReturnedState: map[string]interface{}{
+					"f0": map[string]interface{}{"x": "val1"},
+					"id": "test-id",
+				},
+			},
+			{
+				Phase: upgradeStateTestPhase("preview"),
+				PriorState: map[string]interface{}{
+					"f0": map[string]interface{}{"x": "val1"},
+					"id": "test-id",
+				},
+				ReturnedState: map[string]interface{}{
+					"f0": map[string]interface{}{"x": "val1"},
+					"id": "test-id",
+				},
+			},
+		}).Equal(t, result.tfUpgrades)
+		autogold.Expect([]upgradeStateTrace{
+			{
+				Phase: upgradeStateTestPhase("refresh"),
+				PriorState: map[string]interface{}{
+					"f0": map[string]interface{}{"x": "val1"},
+					"id": "test-id",
+				},
+				ReturnedState: map[string]interface{}{
+					"f0": map[string]interface{}{"x": "val1"},
+					"id": "test-id",
+				},
+			},
+			{
+				Phase: upgradeStateTestPhase("preview"),
+				PriorState: map[string]interface{}{
+					"f0": map[string]interface{}{"x": "val1"},
+					"id": "test-id",
+				},
+				ReturnedState: map[string]interface{}{
+					"f0": map[string]interface{}{"x": "val1"},
+					"id": "test-id",
+				},
+			},
+			{
+				Phase: upgradeStateTestPhase("preview"),
+				PriorState: map[string]interface{}{
+					"f0": map[string]interface{}{"x": "val1"},
+					"id": "test-id",
+				},
+				ReturnedState: map[string]interface{}{
+					"f0": map[string]interface{}{"x": "val1"},
+					"id": "test-id",
+				},
+			},
+			{
+				Phase: upgradeStateTestPhase("update"),
+				PriorState: map[string]interface{}{
+					"f0": map[string]interface{}{"x": "val1"},
+					"id": "test-id",
+				},
+				ReturnedState: map[string]interface{}{
+					"f0": map[string]interface{}{"x": "val1"},
+					"id": "test-id",
+				},
+			},
+			{
+				Phase: upgradeStateTestPhase("update"),
+				PriorState: map[string]interface{}{
+					"f0": map[string]interface{}{"x": "val1"},
+					"id": "test-id",
+				},
+				ReturnedState: map[string]interface{}{
+					"f0": map[string]interface{}{"x": "val1"},
+					"id": "test-id",
+				},
+			},
+		}).Equal(t, result.pulumiUpgrades)
+	})
+}
 
 // In this upgrade scenario nothing is changing in TF but Pulumi is renaming a property. State upgraders are not
 // invoked but Pulumi should handle the renaming seamlessly.
