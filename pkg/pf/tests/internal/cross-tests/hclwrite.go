@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 
-package tfbridgetests
+package crosstests
 
 import (
 	"context"
@@ -29,7 +29,6 @@ import (
 	"github.com/zclconf/go-cty/cty/msgpack"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests/impl/hclwrite"
-	pfct "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/cross-tests"
 )
 
 func hclWriteResource(
@@ -42,7 +41,7 @@ func hclWriteResource(
 ) {
 	rs := getResourceSchema(t, resourceSchema)
 	vs := resourceConfig.AsValueMap()
-	err := hclwrite.WriteResource(out, pfct.HCLSchemaPFResource(rs), resourceType, resourceName, vs)
+	err := hclwrite.WriteResource(out, hclSchemaPFResource(rs), resourceType, resourceName, vs)
 	require.NoErrorf(t, err, "Failed to write HCL")
 }
 

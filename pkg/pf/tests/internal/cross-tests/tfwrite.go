@@ -119,11 +119,11 @@ func (s hclBlockPFProvider) GetNestingMode() hclwrite.Nesting {
 	return s.nesting
 }
 
-type HCLSchemaPFResource rschema.Schema
+type hclSchemaPFResource rschema.Schema
 
-var _ hclwrite.ShimHCLSchema = HCLSchemaPFResource{}
+var _ hclwrite.ShimHCLSchema = hclSchemaPFResource{}
 
-func (s HCLSchemaPFResource) GetAttributes() map[string]hclwrite.ShimHCLAttribute {
+func (s hclSchemaPFResource) GetAttributes() map[string]hclwrite.ShimHCLAttribute {
 	attrMap := make(map[string]hclwrite.ShimHCLAttribute)
 	for key := range s.Attributes {
 		attrMap[key] = hclwrite.ShimHCLAttribute{}
@@ -131,7 +131,7 @@ func (s HCLSchemaPFResource) GetAttributes() map[string]hclwrite.ShimHCLAttribut
 	return attrMap
 }
 
-func (s HCLSchemaPFResource) GetBlocks() map[string]hclwrite.ShimHCLBlock {
+func (s hclSchemaPFResource) GetBlocks() map[string]hclwrite.ShimHCLBlock {
 	blockMap := make(map[string]hclwrite.ShimHCLBlock)
 	for key, block := range s.Blocks {
 		blockMap[key] = hclBlockPFResource{

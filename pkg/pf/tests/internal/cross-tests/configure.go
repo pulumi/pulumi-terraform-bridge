@@ -86,7 +86,7 @@ func MakeConfigure(schema pschema.Schema, tfConfig map[string]cty.Value, options
 //
 // Configure should be safe to run in parallel.
 func Configure(t T, schema pschema.Schema, tfConfig map[string]cty.Value, options ...ConfigureOption) {
-	skipUnlessLinux(t)
+	SkipUnlessLinux(t)
 
 	var opts configureOpts
 	for _, f := range options {

@@ -24,7 +24,7 @@ import (
 
 type T = crosstestsimpl.T
 
-func skipUnlessLinux(t T) {
+func SkipUnlessLinux(t T) {
 	if ci, ok := os.LookupEnv("CI"); ok && ci == "true" && !strings.Contains(strings.ToLower(runtime.GOOS), "linux") {
 		t.Skip("Skipping on non-Linux platforms as our CI does not yet install Terraform CLI required for these tests")
 	}

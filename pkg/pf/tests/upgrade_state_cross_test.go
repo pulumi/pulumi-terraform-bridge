@@ -30,13 +30,14 @@ import (
 	"github.com/zclconf/go-cty/cty"
 
 	pb "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/providerbuilder"
+	ct "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/cross-tests"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
 // Check a scenario where a schema change is accompanied by a migration function that compensates.
 func TestPFUpgrade_StateUpgraders(t *testing.T) {
 	t.Parallel()
-	skipUnlessLinux(t)
+	ct.SkipUnlessLinux(t)
 
 	resourceBefore := pb.NewResource(pb.NewResourceArgs{
 		ResourceSchema: schema.Schema{
@@ -105,7 +106,7 @@ func TestPFUpgrade_StateUpgraders(t *testing.T) {
 		},
 	})
 
-	result := runUpgradeStateTest(t, upgradeStateTestCase{
+	tc := ct.UpgradeStateTestCase{
 		Resource1:  &resourceBefore,
 		Resource2:  &resourceAfter,
 		Inputs1:    cty.ObjectVal(map[string]cty.Value{"prop": cty.StringVal("one,two,three")}),
@@ -125,12 +126,14 @@ func TestPFUpgrade_StateUpgraders(t *testing.T) {
 		ExpectedRawStateType: resourceAfter.ResourceSchema.Type().TerraformType(context.Background()),
 
 		SkipPulumi: "TODO[pulumi/pulumi-terraform-bridge#1667] raw state does not parse properly",
-	})
+	}
 
-	autogold.Expect([]upgradeStateTrace{}).Equal(t, result.pulumiUpgrades)
-	autogold.Expect([]upgradeStateTrace{
+	result := tc.Run(t)
+
+	autogold.Expect([]ct.UpgradeStateTrace{}).Equal(t, result.PulumiUpgrades)
+	autogold.Expect([]ct.UpgradeStateTrace{
 		{
-			Phase: upgradeStateTestPhase("refresh"),
+			Phase: ct.UpgradeStateTestPhase("refresh"),
 			PriorState: map[string]interface{}{
 				"id":   "test-id",
 				"prop": "one,two,three",
@@ -145,7 +148,7 @@ func TestPFUpgrade_StateUpgraders(t *testing.T) {
 			},
 		},
 		{
-			Phase: upgradeStateTestPhase("preview"),
+			Phase: ct.UpgradeStateTestPhase("preview"),
 			PriorState: map[string]interface{}{
 				"id":   "test-id",
 				"prop": "one,two,three",
@@ -160,7 +163,7 @@ func TestPFUpgrade_StateUpgraders(t *testing.T) {
 			},
 		},
 		{
-			Phase: upgradeStateTestPhase("update"),
+			Phase: ct.UpgradeStateTestPhase("update"),
 			PriorState: map[string]interface{}{
 				"id":   "test-id",
 				"prop": "one,two,three",
@@ -174,13 +177,13 @@ func TestPFUpgrade_StateUpgraders(t *testing.T) {
 				},
 			},
 		},
-	}).Equal(t, result.tfUpgrades)
+	}).Equal(t, result.TFUpgrades)
 }
 
 // Pulumi removing MaxItems=1 without TF schema changes should be tolerated, without calling upgraders.
 func TestPFUpgrade_Pulumi_Removes_MaxItems1(t *testing.T) {
 	t.Parallel()
-	skipUnlessLinux(t)
+	ct.SkipUnlessLinux(t)
 
 	resourceBeforeAndAfter := pb.NewResource(pb.NewResourceArgs{
 		ResourceSchema: schema.Schema{
@@ -231,7 +234,7 @@ func TestPFUpgrade_Pulumi_Removes_MaxItems1(t *testing.T) {
 		},
 	})
 
-	result := runUpgradeStateTest(t, upgradeStateTestCase{
+	testCase := ct.UpgradeStateTestCase{
 		Resource1:            &resourceBeforeAndAfter,
 		ResourceInfo1:        resourceInfoBefore,
 		Resource2:            &resourceBeforeAndAfter,
@@ -240,22 +243,23 @@ func TestPFUpgrade_Pulumi_Removes_MaxItems1(t *testing.T) {
 		Inputs2:              tfInputs,
 		InputsMap2:           pmAfter,
 		ExpectedRawStateType: resourceBeforeAndAfter.ResourceSchema.Type().TerraformType(context.Background()),
-	})
+	}
+	result := testCase.Run(t)
 
-	autogold.Expect(&map[string]int{"same": 2}).Equal(t, result.pulumiRefreshResult.Summary.ResourceChanges)
+	autogold.Expect(&map[string]int{"same": 2}).Equal(t, result.PulumiRefreshResult.Summary.ResourceChanges)
 
 	// TODO[pulumi/pulumi-terraform-bridge#1667] this should be a no-changes diff.
-	autogold.Expect(map[apitype.OpType]int{apitype.OpType("same"): 1, apitype.OpType("update"): 1}).Equal(t, result.pulumiPreviewResult.ChangeSummary)
-	autogold.Expect(&map[string]int{"same": 1, "update": 1}).Equal(t, result.pulumiUpResult.Summary.ResourceChanges)
+	autogold.Expect(map[apitype.OpType]int{apitype.OpType("same"): 1, apitype.OpType("update"): 1}).Equal(t, result.PulumiPreviewResult.ChangeSummary)
+	autogold.Expect(&map[string]int{"same": 1, "update": 1}).Equal(t, result.PulumiUpResult.Summary.ResourceChanges)
 
-	autogold.Expect([]upgradeStateTrace{}).Equal(t, result.pulumiUpgrades)
-	autogold.Expect([]upgradeStateTrace{}).Equal(t, result.tfUpgrades)
+	autogold.Expect([]ct.UpgradeStateTrace{}).Equal(t, result.PulumiUpgrades)
+	autogold.Expect([]ct.UpgradeStateTrace{}).Equal(t, result.TFUpgrades)
 }
 
 // Pulumi adding MaxItems=1 without TF schema changes should be tolerated, without calling upgraders.
 func TestPFUpgrade_Pulumi_Adds_MaxItems1(t *testing.T) {
 	t.Parallel()
-	skipUnlessLinux(t)
+	ct.SkipUnlessLinux(t)
 
 	resourceBeforeAndAfter := pb.NewResource(pb.NewResourceArgs{
 		ResourceSchema: schema.Schema{
@@ -306,7 +310,7 @@ func TestPFUpgrade_Pulumi_Adds_MaxItems1(t *testing.T) {
 		},
 	})
 
-	result := runUpgradeStateTest(t, upgradeStateTestCase{
+	testCase := ct.UpgradeStateTestCase{
 		Resource1:            &resourceBeforeAndAfter,
 		Resource2:            &resourceBeforeAndAfter,
 		ResourceInfo2:        resourceInfoAfter,
@@ -315,21 +319,23 @@ func TestPFUpgrade_Pulumi_Adds_MaxItems1(t *testing.T) {
 		Inputs2:              tfInputs,
 		InputsMap2:           pmAfter,
 		ExpectedRawStateType: resourceBeforeAndAfter.ResourceSchema.Type().TerraformType(context.Background()),
-	})
+	}
 
-	autogold.Expect(&map[string]int{"same": 2}).Equal(t, result.pulumiRefreshResult.Summary.ResourceChanges)
+	result := testCase.Run(t)
+
+	autogold.Expect(&map[string]int{"same": 2}).Equal(t, result.PulumiRefreshResult.Summary.ResourceChanges)
 
 	// TODO[pulumi/pulumi-terraform-bridge#1667] this should be a no-changes diff.
-	autogold.Expect(map[apitype.OpType]int{apitype.OpType("same"): 1, apitype.OpType("update"): 1}).Equal(t, result.pulumiPreviewResult.ChangeSummary)
-	autogold.Expect(&map[string]int{"same": 1, "update": 1}).Equal(t, result.pulumiUpResult.Summary.ResourceChanges)
+	autogold.Expect(map[apitype.OpType]int{apitype.OpType("same"): 1, apitype.OpType("update"): 1}).Equal(t, result.PulumiPreviewResult.ChangeSummary)
+	autogold.Expect(&map[string]int{"same": 1, "update": 1}).Equal(t, result.PulumiUpResult.Summary.ResourceChanges)
 
-	autogold.Expect([]upgradeStateTrace{}).Equal(t, result.pulumiUpgrades)
-	autogold.Expect([]upgradeStateTrace{}).Equal(t, result.tfUpgrades)
+	autogold.Expect([]ct.UpgradeStateTrace{}).Equal(t, result.PulumiUpgrades)
+	autogold.Expect([]ct.UpgradeStateTrace{}).Equal(t, result.TFUpgrades)
 }
 
 func TestPFUpgrade_UpgradersNotCalledWhenVersionIsNotChanging(t *testing.T) {
 	t.Parallel()
-	skipUnlessLinux(t)
+	ct.SkipUnlessLinux(t)
 
 	sch := func(version int64) schema.Schema {
 		return schema.Schema{
@@ -352,7 +358,7 @@ func TestPFUpgrade_UpgradersNotCalledWhenVersionIsNotChanging(t *testing.T) {
 			return map[int64]resource.StateUpgrader{
 				0: {
 					PriorSchema:   &res1.ResourceSchema,
-					StateUpgrader: nopUpgrade,
+					StateUpgrader: ct.NopUpgrader,
 				},
 			}
 		},
@@ -372,32 +378,33 @@ func TestPFUpgrade_UpgradersNotCalledWhenVersionIsNotChanging(t *testing.T) {
 
 	// Check when the values themselves are not changing.
 	t.Run("same", func(t *testing.T) {
-		result := runUpgradeStateTest(t, upgradeStateTestCase{
+		tc := ct.UpgradeStateTestCase{
 			Resource1:  &res1,
 			Resource2:  &res2,
 			Inputs1:    configVal("val"),
 			InputsMap1: propMap("val"),
 			Inputs2:    configVal("val"),
 			InputsMap2: propMap("val"),
-		})
+		}
+		result := tc.Run(t)
 
-		assert.Equal(t, result.tfUpgrades, result.pulumiUpgrades)
-		autogold.Expect([]upgradeStateTrace{}).Equal(t, result.pulumiUpgrades)
+		assert.Equal(t, result.TFUpgrades, result.PulumiUpgrades)
+		autogold.Expect([]ct.UpgradeStateTrace{}).Equal(t, result.PulumiUpgrades)
 	})
 
 	// Check when the values are changing, and it is an effective update.
 	t.Run("different", func(t *testing.T) {
-		result := runUpgradeStateTest(t, upgradeStateTestCase{
+		tc := ct.UpgradeStateTestCase{
 			Resource1:  &res1,
 			Resource2:  &res2,
 			Inputs1:    configVal("val1"),
 			InputsMap1: propMap("val1"),
 			Inputs2:    configVal("val2"),
 			InputsMap2: propMap("val2"),
-		})
-
-		assert.Equal(t, result.tfUpgrades, result.pulumiUpgrades)
-		autogold.Expect([]upgradeStateTrace{}).Equal(t, result.pulumiUpgrades)
+		}
+		result := tc.Run(t)
+		assert.Equal(t, result.TFUpgrades, result.PulumiUpgrades)
+		autogold.Expect([]ct.UpgradeStateTrace{}).Equal(t, result.PulumiUpgrades)
 	})
 }
 
@@ -405,7 +412,7 @@ func TestPFUpgrade_UpgradersNotCalledWhenVersionIsNotChanging(t *testing.T) {
 // is called and if it is at parity.
 func TestPFUpgrade_String_0to1_Version(t *testing.T) {
 	t.Parallel()
-	skipUnlessLinux(t)
+	ct.SkipUnlessLinux(t)
 
 	sch := func(version int64) schema.Schema {
 		return schema.Schema{
@@ -428,7 +435,7 @@ func TestPFUpgrade_String_0to1_Version(t *testing.T) {
 			return map[int64]resource.StateUpgrader{
 				0: {
 					PriorSchema:   &res1.ResourceSchema,
-					StateUpgrader: nopUpgrade,
+					StateUpgrader: ct.NopUpgrader,
 				},
 			}
 		},
@@ -448,7 +455,7 @@ func TestPFUpgrade_String_0to1_Version(t *testing.T) {
 
 	// Check when the values themselves are not changing.
 	t.Run("same", func(t *testing.T) {
-		result := runUpgradeStateTest(t, upgradeStateTestCase{
+		tc := ct.UpgradeStateTestCase{
 			Resource1:  &res1,
 			Resource2:  &res2,
 			Inputs1:    configVal("val"),
@@ -459,11 +466,12 @@ func TestPFUpgrade_String_0to1_Version(t *testing.T) {
 			// Pulumi does not upgrade this resource to V2 because of a no-op update plan.
 			// TODO[pulumi/pulumi-terraform-bridge#3008]
 			SkipSchemaVersionAfterUpdateCheck: true,
-		})
+		}
+		result := tc.Run(t)
 
-		autogold.Expect([]upgradeStateTrace{
+		autogold.Expect([]ct.UpgradeStateTrace{
 			{
-				Phase: upgradeStateTestPhase("refresh"),
+				Phase: ct.UpgradeStateTestPhase("refresh"),
 				PriorState: map[string]interface{}{
 					"f0": "val",
 					"id": "test-id",
@@ -474,7 +482,7 @@ func TestPFUpgrade_String_0to1_Version(t *testing.T) {
 				},
 			},
 			{
-				Phase: upgradeStateTestPhase("preview"),
+				Phase: ct.UpgradeStateTestPhase("preview"),
 				PriorState: map[string]interface{}{
 					"f0": "val",
 					"id": "test-id",
@@ -485,7 +493,7 @@ func TestPFUpgrade_String_0to1_Version(t *testing.T) {
 				},
 			},
 			{
-				Phase: upgradeStateTestPhase("update"),
+				Phase: ct.UpgradeStateTestPhase("update"),
 				PriorState: map[string]interface{}{
 					"f0": "val",
 					"id": "test-id",
@@ -495,11 +503,11 @@ func TestPFUpgrade_String_0to1_Version(t *testing.T) {
 					"id": "test-id",
 				},
 			},
-		}).Equal(t, result.tfUpgrades)
+		}).Equal(t, result.TFUpgrades)
 
-		autogold.Expect([]upgradeStateTrace{
+		autogold.Expect([]ct.UpgradeStateTrace{
 			{
-				Phase: upgradeStateTestPhase("refresh"),
+				Phase: ct.UpgradeStateTestPhase("refresh"),
 				PriorState: map[string]interface{}{
 					"f0": "val",
 					"id": "test-id",
@@ -510,7 +518,7 @@ func TestPFUpgrade_String_0to1_Version(t *testing.T) {
 				},
 			},
 			{
-				Phase: upgradeStateTestPhase("preview"),
+				Phase: ct.UpgradeStateTestPhase("preview"),
 				PriorState: map[string]interface{}{
 					"f0": "val",
 					"id": "test-id",
@@ -521,7 +529,7 @@ func TestPFUpgrade_String_0to1_Version(t *testing.T) {
 				},
 			},
 			{
-				Phase: upgradeStateTestPhase("update"),
+				Phase: ct.UpgradeStateTestPhase("update"),
 				PriorState: map[string]interface{}{
 					"f0": "val",
 					"id": "test-id",
@@ -531,23 +539,24 @@ func TestPFUpgrade_String_0to1_Version(t *testing.T) {
 					"id": "test-id",
 				},
 			},
-		}).Equal(t, result.pulumiUpgrades)
+		}).Equal(t, result.PulumiUpgrades)
 	})
 
 	// Check when the values are changing, and it is an effective update.
 	t.Run("different", func(t *testing.T) {
-		result := runUpgradeStateTest(t, upgradeStateTestCase{
+		tc := ct.UpgradeStateTestCase{
 			Resource1:  &res1,
 			Resource2:  &res2,
 			Inputs1:    configVal("val1"),
 			InputsMap1: propMap("val1"),
 			Inputs2:    configVal("val1"),
 			InputsMap2: propMap("val2"),
-		})
+		}
+		result := tc.Run(t)
 
-		autogold.Expect([]upgradeStateTrace{
+		autogold.Expect([]ct.UpgradeStateTrace{
 			{
-				Phase: upgradeStateTestPhase("refresh"),
+				Phase: ct.UpgradeStateTestPhase("refresh"),
 				PriorState: map[string]interface{}{
 					"f0": "val1",
 					"id": "test-id",
@@ -558,7 +567,7 @@ func TestPFUpgrade_String_0to1_Version(t *testing.T) {
 				},
 			},
 			{
-				Phase: upgradeStateTestPhase("preview"),
+				Phase: ct.UpgradeStateTestPhase("preview"),
 				PriorState: map[string]interface{}{
 					"f0": "val1",
 					"id": "test-id",
@@ -569,7 +578,7 @@ func TestPFUpgrade_String_0to1_Version(t *testing.T) {
 				},
 			},
 			{
-				Phase: upgradeStateTestPhase("update"),
+				Phase: ct.UpgradeStateTestPhase("update"),
 				PriorState: map[string]interface{}{
 					"f0": "val1",
 					"id": "test-id",
@@ -579,12 +588,12 @@ func TestPFUpgrade_String_0to1_Version(t *testing.T) {
 					"id": "test-id",
 				},
 			},
-		}).Equal(t, result.tfUpgrades)
+		}).Equal(t, result.TFUpgrades)
 
 		// Upgrade calls similar but Pulumi calls the upgrader a few times too many.
-		autogold.Expect([]upgradeStateTrace{
+		autogold.Expect([]ct.UpgradeStateTrace{
 			{
-				Phase: upgradeStateTestPhase("refresh"),
+				Phase: ct.UpgradeStateTestPhase("refresh"),
 				PriorState: map[string]interface{}{
 					"f0": "val1",
 					"id": "test-id",
@@ -595,7 +604,7 @@ func TestPFUpgrade_String_0to1_Version(t *testing.T) {
 				},
 			},
 			{
-				Phase: upgradeStateTestPhase("preview"),
+				Phase: ct.UpgradeStateTestPhase("preview"),
 				PriorState: map[string]interface{}{
 					"f0": "val1",
 					"id": "test-id",
@@ -606,7 +615,7 @@ func TestPFUpgrade_String_0to1_Version(t *testing.T) {
 				},
 			},
 			{
-				Phase: upgradeStateTestPhase("preview"),
+				Phase: ct.UpgradeStateTestPhase("preview"),
 				PriorState: map[string]interface{}{
 					"f0": "val1",
 					"id": "test-id",
@@ -617,7 +626,7 @@ func TestPFUpgrade_String_0to1_Version(t *testing.T) {
 				},
 			},
 			{
-				Phase: upgradeStateTestPhase("update"),
+				Phase: ct.UpgradeStateTestPhase("update"),
 				PriorState: map[string]interface{}{
 					"f0": "val1",
 					"id": "test-id",
@@ -628,7 +637,7 @@ func TestPFUpgrade_String_0to1_Version(t *testing.T) {
 				},
 			},
 			{
-				Phase: upgradeStateTestPhase("update"),
+				Phase: ct.UpgradeStateTestPhase("update"),
 				PriorState: map[string]interface{}{
 					"f0": "val1",
 					"id": "test-id",
@@ -638,14 +647,14 @@ func TestPFUpgrade_String_0to1_Version(t *testing.T) {
 					"id": "test-id",
 				},
 			},
-		}).Equal(t, result.pulumiUpgrades)
+		}).Equal(t, result.PulumiUpgrades)
 	})
 }
 
 // Same as the string upgrade test but with objects.
 func TestPFUpgrade_Object_0to1_Version(t *testing.T) {
 	t.Parallel()
-	skipUnlessLinux(t)
+	ct.SkipUnlessLinux(t)
 
 	sch := func(version int64) schema.Schema {
 		return schema.Schema{
@@ -671,7 +680,7 @@ func TestPFUpgrade_Object_0to1_Version(t *testing.T) {
 			return map[int64]resource.StateUpgrader{
 				0: {
 					PriorSchema:   &res1.ResourceSchema,
-					StateUpgrader: nopUpgrade,
+					StateUpgrader: ct.NopUpgrader,
 				},
 			}
 		},
@@ -694,7 +703,7 @@ func TestPFUpgrade_Object_0to1_Version(t *testing.T) {
 	}
 
 	t.Run("same", func(t *testing.T) {
-		result := runUpgradeStateTest(t, upgradeStateTestCase{
+		tc := ct.UpgradeStateTestCase{
 			Resource1:  &res1,
 			Resource2:  &res2,
 			Inputs1:    configVal("val"),
@@ -703,11 +712,12 @@ func TestPFUpgrade_Object_0to1_Version(t *testing.T) {
 			InputsMap2: propMap("val"),
 
 			SkipSchemaVersionAfterUpdateCheck: true,
-		})
+		}
+		result := tc.Run(t)
 
-		autogold.Expect([]upgradeStateTrace{
+		autogold.Expect([]ct.UpgradeStateTrace{
 			{
-				Phase: upgradeStateTestPhase("refresh"),
+				Phase: ct.UpgradeStateTestPhase("refresh"),
 				PriorState: map[string]interface{}{
 					"f0": map[string]interface{}{"x": "val"},
 					"id": "test-id",
@@ -718,7 +728,7 @@ func TestPFUpgrade_Object_0to1_Version(t *testing.T) {
 				},
 			},
 			{
-				Phase: upgradeStateTestPhase("preview"),
+				Phase: ct.UpgradeStateTestPhase("preview"),
 				PriorState: map[string]interface{}{
 					"f0": map[string]interface{}{"x": "val"},
 					"id": "test-id",
@@ -729,7 +739,7 @@ func TestPFUpgrade_Object_0to1_Version(t *testing.T) {
 				},
 			},
 			{
-				Phase: upgradeStateTestPhase("update"),
+				Phase: ct.UpgradeStateTestPhase("update"),
 				PriorState: map[string]interface{}{
 					"f0": map[string]interface{}{"x": "val"},
 					"id": "test-id",
@@ -739,21 +749,10 @@ func TestPFUpgrade_Object_0to1_Version(t *testing.T) {
 					"id": "test-id",
 				},
 			},
-		}).Equal(t, result.tfUpgrades)
-		autogold.Expect([]upgradeStateTrace{
+		}).Equal(t, result.TFUpgrades)
+		autogold.Expect([]ct.UpgradeStateTrace{
 			{
-				Phase: upgradeStateTestPhase("refresh"),
-				PriorState: map[string]interface{}{
-					"f0": map[string]interface{}{"x": "val"},
-					"id": "test-id",
-				},
-				ReturnedState: map[string]interface{}{
-					"f0": map[string]interface{}{"x": "val"},
-					"id": "test-id",
-				},
-			},
-			{
-				Phase: upgradeStateTestPhase("preview"),
+				Phase: ct.UpgradeStateTestPhase("refresh"),
 				PriorState: map[string]interface{}{
 					"f0": map[string]interface{}{"x": "val"},
 					"id": "test-id",
@@ -764,7 +763,7 @@ func TestPFUpgrade_Object_0to1_Version(t *testing.T) {
 				},
 			},
 			{
-				Phase: upgradeStateTestPhase("update"),
+				Phase: ct.UpgradeStateTestPhase("preview"),
 				PriorState: map[string]interface{}{
 					"f0": map[string]interface{}{"x": "val"},
 					"id": "test-id",
@@ -774,24 +773,36 @@ func TestPFUpgrade_Object_0to1_Version(t *testing.T) {
 					"id": "test-id",
 				},
 			},
-		}).Equal(t, result.pulumiUpgrades)
+			{
+				Phase: ct.UpgradeStateTestPhase("update"),
+				PriorState: map[string]interface{}{
+					"f0": map[string]interface{}{"x": "val"},
+					"id": "test-id",
+				},
+				ReturnedState: map[string]interface{}{
+					"f0": map[string]interface{}{"x": "val"},
+					"id": "test-id",
+				},
+			},
+		}).Equal(t, result.PulumiUpgrades)
 	})
 
 	// Check when the values are changing, and it is an effective update.
 	t.Run("different", func(t *testing.T) {
-		result := runUpgradeStateTest(t, upgradeStateTestCase{
+		tc := ct.UpgradeStateTestCase{
 			Resource1:  &res1,
 			Resource2:  &res2,
 			Inputs1:    configVal("val1"),
 			InputsMap1: propMap("val1"),
 			Inputs2:    configVal("val2"),
 			InputsMap2: propMap("val2"),
-		})
+		}
+		result := tc.Run(t)
 
 		// Upgrade calls similar but Pulumi calls the upgrader a few times too many.
-		autogold.Expect([]upgradeStateTrace{
+		autogold.Expect([]ct.UpgradeStateTrace{
 			{
-				Phase: upgradeStateTestPhase("refresh"),
+				Phase: ct.UpgradeStateTestPhase("refresh"),
 				PriorState: map[string]interface{}{
 					"f0": map[string]interface{}{"x": "val1"},
 					"id": "test-id",
@@ -802,7 +813,7 @@ func TestPFUpgrade_Object_0to1_Version(t *testing.T) {
 				},
 			},
 			{
-				Phase: upgradeStateTestPhase("preview"),
+				Phase: ct.UpgradeStateTestPhase("preview"),
 				PriorState: map[string]interface{}{
 					"f0": map[string]interface{}{"x": "val1"},
 					"id": "test-id",
@@ -813,7 +824,7 @@ func TestPFUpgrade_Object_0to1_Version(t *testing.T) {
 				},
 			},
 			{
-				Phase: upgradeStateTestPhase("update"),
+				Phase: ct.UpgradeStateTestPhase("update"),
 				PriorState: map[string]interface{}{
 					"f0": map[string]interface{}{"x": "val1"},
 					"id": "test-id",
@@ -823,21 +834,10 @@ func TestPFUpgrade_Object_0to1_Version(t *testing.T) {
 					"id": "test-id",
 				},
 			},
-		}).Equal(t, result.tfUpgrades)
-		autogold.Expect([]upgradeStateTrace{
+		}).Equal(t, result.TFUpgrades)
+		autogold.Expect([]ct.UpgradeStateTrace{
 			{
-				Phase: upgradeStateTestPhase("refresh"),
-				PriorState: map[string]interface{}{
-					"f0": map[string]interface{}{"x": "val1"},
-					"id": "test-id",
-				},
-				ReturnedState: map[string]interface{}{
-					"f0": map[string]interface{}{"x": "val1"},
-					"id": "test-id",
-				},
-			},
-			{
-				Phase: upgradeStateTestPhase("preview"),
+				Phase: ct.UpgradeStateTestPhase("refresh"),
 				PriorState: map[string]interface{}{
 					"f0": map[string]interface{}{"x": "val1"},
 					"id": "test-id",
@@ -848,7 +848,7 @@ func TestPFUpgrade_Object_0to1_Version(t *testing.T) {
 				},
 			},
 			{
-				Phase: upgradeStateTestPhase("preview"),
+				Phase: ct.UpgradeStateTestPhase("preview"),
 				PriorState: map[string]interface{}{
 					"f0": map[string]interface{}{"x": "val1"},
 					"id": "test-id",
@@ -859,7 +859,7 @@ func TestPFUpgrade_Object_0to1_Version(t *testing.T) {
 				},
 			},
 			{
-				Phase: upgradeStateTestPhase("update"),
+				Phase: ct.UpgradeStateTestPhase("preview"),
 				PriorState: map[string]interface{}{
 					"f0": map[string]interface{}{"x": "val1"},
 					"id": "test-id",
@@ -870,7 +870,7 @@ func TestPFUpgrade_Object_0to1_Version(t *testing.T) {
 				},
 			},
 			{
-				Phase: upgradeStateTestPhase("update"),
+				Phase: ct.UpgradeStateTestPhase("update"),
 				PriorState: map[string]interface{}{
 					"f0": map[string]interface{}{"x": "val1"},
 					"id": "test-id",
@@ -880,7 +880,18 @@ func TestPFUpgrade_Object_0to1_Version(t *testing.T) {
 					"id": "test-id",
 				},
 			},
-		}).Equal(t, result.pulumiUpgrades)
+			{
+				Phase: ct.UpgradeStateTestPhase("update"),
+				PriorState: map[string]interface{}{
+					"f0": map[string]interface{}{"x": "val1"},
+					"id": "test-id",
+				},
+				ReturnedState: map[string]interface{}{
+					"f0": map[string]interface{}{"x": "val1"},
+					"id": "test-id",
+				},
+			},
+		}).Equal(t, result.PulumiUpgrades)
 	})
 }
 
@@ -888,7 +899,7 @@ func TestPFUpgrade_Object_0to1_Version(t *testing.T) {
 // invoked but Pulumi should handle the renaming seamlessly.
 func TestPFUpgrade_PulumiRenamesProperty(t *testing.T) {
 	t.Parallel()
-	skipUnlessLinux(t)
+	ct.SkipUnlessLinux(t)
 
 	sch := func(version int64) schema.Schema {
 		return schema.Schema{
@@ -909,7 +920,7 @@ func TestPFUpgrade_PulumiRenamesProperty(t *testing.T) {
 			return map[int64]resource.StateUpgrader{
 				0: {
 					PriorSchema:   &res1.ResourceSchema,
-					StateUpgrader: nopUpgrade,
+					StateUpgrader: ct.NopUpgrader,
 				},
 			}
 		},
@@ -922,7 +933,7 @@ func TestPFUpgrade_PulumiRenamesProperty(t *testing.T) {
 	}
 
 	t.Run("same", func(t *testing.T) {
-		result := runUpgradeStateTest(t, upgradeStateTestCase{
+		tc := ct.UpgradeStateTestCase{
 			Resource1:     &res1,
 			Resource2:     &res2,
 			Inputs1:       cty.ObjectVal(map[string]cty.Value{"f0": cty.StringVal("val")}),
@@ -930,19 +941,20 @@ func TestPFUpgrade_PulumiRenamesProperty(t *testing.T) {
 			Inputs2:       cty.ObjectVal(map[string]cty.Value{"f0": cty.StringVal("val")}),
 			InputsMap2:    presource.PropertyMap{"f1": presource.NewStringProperty("val")},
 			ResourceInfo2: res2Info,
-		})
+		}
+		result := tc.Run(t)
 
-		assert.Equal(t, result.tfUpgrades, result.pulumiUpgrades)
-		autogold.Expect([]upgradeStateTrace{}).Equal(t, result.pulumiUpgrades)
+		assert.Equal(t, result.TFUpgrades, result.PulumiUpgrades)
+		autogold.Expect([]ct.UpgradeStateTrace{}).Equal(t, result.PulumiUpgrades)
 
-		autogold.Expect(&map[string]int{"same": 2}).Equal(t, result.pulumiRefreshResult.Summary.ResourceChanges)
+		autogold.Expect(&map[string]int{"same": 2}).Equal(t, result.PulumiRefreshResult.Summary.ResourceChanges)
 
 		// TODO[pulumi/pulumi-terraform-bridge#1667] this should be a no-changes diff.
-		autogold.Expect(&map[string]int{"same": 1, "update": 1}).Equal(t, result.pulumiUpResult.Summary.ResourceChanges)
+		autogold.Expect(&map[string]int{"same": 1, "update": 1}).Equal(t, result.PulumiUpResult.Summary.ResourceChanges)
 	})
 
 	t.Run("different", func(t *testing.T) {
-		result := runUpgradeStateTest(t, upgradeStateTestCase{
+		tc := ct.UpgradeStateTestCase{
 			Resource1:     &res1,
 			Resource2:     &res2,
 			Inputs1:       cty.ObjectVal(map[string]cty.Value{"f0": cty.StringVal("val1")}),
@@ -950,13 +962,14 @@ func TestPFUpgrade_PulumiRenamesProperty(t *testing.T) {
 			Inputs2:       cty.ObjectVal(map[string]cty.Value{"f0": cty.StringVal("val2")}),
 			InputsMap2:    presource.PropertyMap{"f1": presource.NewStringProperty("val2")},
 			ResourceInfo2: res2Info,
-		})
+		}
+		result := tc.Run(t)
 
-		assert.Equal(t, result.tfUpgrades, result.pulumiUpgrades)
-		autogold.Expect([]upgradeStateTrace{}).Equal(t, result.pulumiUpgrades)
+		assert.Equal(t, result.TFUpgrades, result.PulumiUpgrades)
+		autogold.Expect([]ct.UpgradeStateTrace{}).Equal(t, result.PulumiUpgrades)
 
-		autogold.Expect(&map[string]int{"same": 2}).Equal(t, result.pulumiRefreshResult.Summary.ResourceChanges)
-		autogold.Expect(&map[string]int{"same": 1, "update": 1}).Equal(t, result.pulumiUpResult.Summary.ResourceChanges)
+		autogold.Expect(&map[string]int{"same": 2}).Equal(t, result.PulumiRefreshResult.Summary.ResourceChanges)
+		autogold.Expect(&map[string]int{"same": 1, "update": 1}).Equal(t, result.PulumiUpResult.Summary.ResourceChanges)
 	})
 }
 
@@ -964,7 +977,7 @@ func TestPFUpgrade_PulumiRenamesProperty(t *testing.T) {
 // reinterpreting a string as a number for example.
 func TestPFUpgrade_PulumiChangesPropertyType(t *testing.T) {
 	t.Parallel()
-	skipUnlessLinux(t)
+	ct.SkipUnlessLinux(t)
 
 	sch := func(version int64) schema.Schema {
 		return schema.Schema{
@@ -985,7 +998,7 @@ func TestPFUpgrade_PulumiChangesPropertyType(t *testing.T) {
 			return map[int64]resource.StateUpgrader{
 				0: {
 					PriorSchema:   &res1.ResourceSchema,
-					StateUpgrader: nopUpgrade,
+					StateUpgrader: ct.NopUpgrader,
 				},
 			}
 		},
@@ -998,7 +1011,7 @@ func TestPFUpgrade_PulumiChangesPropertyType(t *testing.T) {
 	}
 
 	t.Run("same", func(t *testing.T) {
-		result := runUpgradeStateTest(t, upgradeStateTestCase{
+		tc := ct.UpgradeStateTestCase{
 			Resource1:     &res1,
 			Resource2:     &res2,
 			Inputs1:       cty.ObjectVal(map[string]cty.Value{"f0": cty.StringVal("42")}),
@@ -1006,17 +1019,18 @@ func TestPFUpgrade_PulumiChangesPropertyType(t *testing.T) {
 			Inputs2:       cty.ObjectVal(map[string]cty.Value{"f0": cty.StringVal("42")}),
 			InputsMap2:    presource.PropertyMap{"f0": presource.NewNumberProperty(42)},
 			ResourceInfo2: res2Info,
-		})
+		}
+		result := tc.Run(t)
 
-		assert.Equal(t, result.tfUpgrades, result.pulumiUpgrades)
-		autogold.Expect([]upgradeStateTrace{}).Equal(t, result.pulumiUpgrades)
+		assert.Equal(t, result.TFUpgrades, result.PulumiUpgrades)
+		autogold.Expect([]ct.UpgradeStateTrace{}).Equal(t, result.PulumiUpgrades)
 
-		autogold.Expect(&map[string]int{"same": 2}).Equal(t, result.pulumiRefreshResult.Summary.ResourceChanges)
-		autogold.Expect(&map[string]int{"same": 2}).Equal(t, result.pulumiUpResult.Summary.ResourceChanges)
+		autogold.Expect(&map[string]int{"same": 2}).Equal(t, result.PulumiRefreshResult.Summary.ResourceChanges)
+		autogold.Expect(&map[string]int{"same": 2}).Equal(t, result.PulumiUpResult.Summary.ResourceChanges)
 	})
 
 	t.Run("different", func(t *testing.T) {
-		result := runUpgradeStateTest(t, upgradeStateTestCase{
+		tc := ct.UpgradeStateTestCase{
 			Resource1:     &res1,
 			Resource2:     &res2,
 			Inputs1:       cty.ObjectVal(map[string]cty.Value{"f0": cty.StringVal("42")}),
@@ -1024,20 +1038,21 @@ func TestPFUpgrade_PulumiChangesPropertyType(t *testing.T) {
 			Inputs2:       cty.ObjectVal(map[string]cty.Value{"f0": cty.StringVal("7")}),
 			InputsMap2:    presource.PropertyMap{"f0": presource.NewNumberProperty(7)},
 			ResourceInfo2: res2Info,
-		})
+		}
+		result := tc.Run(t)
 
-		assert.Equal(t, result.tfUpgrades, result.pulumiUpgrades)
-		autogold.Expect([]upgradeStateTrace{}).Equal(t, result.pulumiUpgrades)
+		assert.Equal(t, result.TFUpgrades, result.PulumiUpgrades)
+		autogold.Expect([]ct.UpgradeStateTrace{}).Equal(t, result.PulumiUpgrades)
 
-		autogold.Expect(&map[string]int{"same": 2}).Equal(t, result.pulumiRefreshResult.Summary.ResourceChanges)
-		autogold.Expect(&map[string]int{"same": 1, "update": 1}).Equal(t, result.pulumiUpResult.Summary.ResourceChanges)
+		autogold.Expect(&map[string]int{"same": 2}).Equal(t, result.PulumiRefreshResult.Summary.ResourceChanges)
+		autogold.Expect(&map[string]int{"same": 1, "update": 1}).Equal(t, result.PulumiUpResult.Summary.ResourceChanges)
 	})
 }
 
 // When downgrading to a lower schema, TF fails.
 func TestPFUpgrade_Downgrading(t *testing.T) {
 	t.Parallel()
-	skipUnlessLinux(t)
+	ct.SkipUnlessLinux(t)
 
 	sch := func(version int64) schema.Schema {
 		return schema.Schema{
@@ -1058,7 +1073,7 @@ func TestPFUpgrade_Downgrading(t *testing.T) {
 			return map[int64]resource.StateUpgrader{
 				0: {
 					PriorSchema:   &res1.ResourceSchema,
-					StateUpgrader: nopUpgrade,
+					StateUpgrader: ct.NopUpgrader,
 				},
 			}
 		},
@@ -1066,31 +1081,31 @@ func TestPFUpgrade_Downgrading(t *testing.T) {
 
 	// Check when the values themselves are not changing.
 	t.Run("same", func(t *testing.T) {
-		result := runUpgradeStateTest(t, upgradeStateTestCase{
+		tc := ct.UpgradeStateTestCase{
 			Resource1:     &res1,
 			Resource2:     &res2,
 			Inputs1:       cty.ObjectVal(map[string]cty.Value{"f0": cty.StringVal("val")}),
 			Inputs2:       cty.ObjectVal(map[string]cty.Value{"f0": cty.StringVal("val")}),
 			ExpectFailure: true,
 			SkipPulumi:    "TODO[pulumi-terraform-bridge#3009]",
-		})
-
-		assert.Equal(t, result.tfUpgrades, result.pulumiUpgrades)
-		autogold.Expect([]upgradeStateTrace{}).Equal(t, result.pulumiUpgrades)
+		}
+		result := tc.Run(t)
+		assert.Equal(t, result.TFUpgrades, result.PulumiUpgrades)
+		autogold.Expect([]ct.UpgradeStateTrace{}).Equal(t, result.PulumiUpgrades)
 	})
 
 	// Check when the values are changing, and it is an effective update.
 	t.Run("different", func(t *testing.T) {
-		result := runUpgradeStateTest(t, upgradeStateTestCase{
+		tc := ct.UpgradeStateTestCase{
 			Resource1:     &res1,
 			Resource2:     &res2,
 			Inputs1:       cty.ObjectVal(map[string]cty.Value{"f0": cty.StringVal("val1")}),
 			Inputs2:       cty.ObjectVal(map[string]cty.Value{"f0": cty.StringVal("val2")}),
 			ExpectFailure: true,
 			SkipPulumi:    "TODO[pulumi-terraform-bridge#3009]",
-		})
-
-		assert.Equal(t, result.tfUpgrades, result.pulumiUpgrades)
-		autogold.Expect([]upgradeStateTrace{}).Equal(t, result.pulumiUpgrades)
+		}
+		result := tc.Run(t)
+		assert.Equal(t, result.TFUpgrades, result.PulumiUpgrades)
+		autogold.Expect([]ct.UpgradeStateTrace{}).Equal(t, result.PulumiUpgrades)
 	})
 }

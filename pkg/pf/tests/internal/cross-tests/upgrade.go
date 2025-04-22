@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 
-package tfbridgetests
+package crosstests
 
 import (
 	"bytes"
@@ -20,9 +20,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strconv"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -62,7 +60,7 @@ import (
 //  2. build the provider based on Resource2 schema
 //  3. refresh with the Resource2 provider
 //  4. update to Inputs2 with the Resource2 provider
-type upgradeStateTestCase struct {
+type UpgradeStateTestCase struct {
 	Resource1     *pb.Resource
 	ResourceInfo1 *info.Resource
 	Inputs1       cty.Value
@@ -79,44 +77,44 @@ type upgradeStateTestCase struct {
 	SkipSchemaVersionAfterUpdateCheck bool
 }
 
-func (upgradeStateTestCase) tfProviderName() string {
+func (UpgradeStateTestCase) tfProviderName() string {
 	return "upgradeprovider"
 }
 
-type upgradeStateTestPhase string
+type UpgradeStateTestPhase string
 
 const (
-	createPhase  upgradeStateTestPhase = "create"
-	refreshPhase upgradeStateTestPhase = "refresh"
-	previewPhase upgradeStateTestPhase = "preview"
-	updatePhase  upgradeStateTestPhase = "update"
+	createPhase  UpgradeStateTestPhase = "create"
+	refreshPhase UpgradeStateTestPhase = "refresh"
+	previewPhase UpgradeStateTestPhase = "preview"
+	updatePhase  UpgradeStateTestPhase = "update"
 )
 
 // Represents an observed call to a state upgrade function.
-type upgradeStateTrace struct {
-	Phase         upgradeStateTestPhase // Phase in the test when the upgrader was called
+type UpgradeStateTrace struct {
+	Phase         UpgradeStateTestPhase // Phase in the test when the upgrader was called
 	Upgrader      int64                 // StateUpgrader identified by target version
 	PriorState    any
 	ReturnedState any
 	ReturnedError bool
 }
 
-type upgradeStateResult struct {
-	pulumiUpgrades      []upgradeStateTrace
-	tfUpgrades          []upgradeStateTrace
-	pulumiRefreshResult auto.RefreshResult
-	pulumiPreviewResult auto.PreviewResult
-	pulumiUpResult      auto.UpResult
+type UpgradeStateTestResult struct {
+	PulumiUpgrades      []UpgradeStateTrace
+	TFUpgrades          []UpgradeStateTrace
+	PulumiRefreshResult auto.RefreshResult
+	PulumiPreviewResult auto.PreviewResult
+	PulumiUpResult      auto.UpResult
 }
 
-func runUpgradeStateTest(t *testing.T, tc upgradeStateTestCase) upgradeStateResult {
+func (tc UpgradeStateTestCase) Run(t *testing.T) UpgradeStateTestResult {
 	t.Helper()
-	result := upgradeStateResult{}
+	result := UpgradeStateTestResult{}
 
 	t.Run("tf", func(t *testing.T) {
 		tcTF := instrumentModifyPlan(t, tc)
 		tcTF = instrumentUpdate(t, tcTF)
-		result.tfUpgrades = runUpgradeStateTestTF(t, tcTF)
+		result.TFUpgrades = runUpgradeStateTestTF(t, tcTF)
 	})
 
 	t.Run("pulumi", func(t *testing.T) {
@@ -126,17 +124,17 @@ func runUpgradeStateTest(t *testing.T, tc upgradeStateTestCase) upgradeStateResu
 		tcPulumi := instrumentModifyPlan(t, tc)
 		tcPulumi = instrumentUpdate(t, tcPulumi)
 		resultPulumi := runUpgradeTestStatePulumi(t, tcPulumi)
-		result.pulumiUpgrades = resultPulumi.pulumiUpgrades
-		result.pulumiRefreshResult = resultPulumi.pulumiRefreshResult
-		result.pulumiPreviewResult = resultPulumi.pulumiPreviewResult
-		result.pulumiUpResult = resultPulumi.pulumiUpResult
+		result.PulumiUpgrades = resultPulumi.PulumiUpgrades
+		result.PulumiRefreshResult = resultPulumi.PulumiRefreshResult
+		result.PulumiPreviewResult = resultPulumi.PulumiPreviewResult
+		result.PulumiUpResult = resultPulumi.PulumiUpResult
 	})
 
 	return result
 }
 
 // Making sure the State.Raw received is of an appropriate type.
-func checkRawState(t *testing.T, tc upgradeStateTestCase, receivedRawState tftypes.Value, method string) {
+func checkRawState(t *testing.T, tc UpgradeStateTestCase, receivedRawState tftypes.Value, method string) {
 	if tc.ExpectedRawStateType == nil {
 		return
 	}
@@ -149,7 +147,7 @@ func checkRawState(t *testing.T, tc upgradeStateTestCase, receivedRawState tftyp
 		receivedRawState.String())
 }
 
-func instrumentModifyPlan(t *testing.T, tc upgradeStateTestCase) upgradeStateTestCase {
+func instrumentModifyPlan(t *testing.T, tc UpgradeStateTestCase) UpgradeStateTestCase {
 	counter := new(atomic.Int32)
 	require.Nilf(t, tc.Resource2.ModifyPlanFunc, "ModifyPlanFunc resources cannot yet be used in these tests")
 
@@ -173,7 +171,7 @@ func instrumentModifyPlan(t *testing.T, tc upgradeStateTestCase) upgradeStateTes
 	return tc
 }
 
-func instrumentUpdate(t *testing.T, tc upgradeStateTestCase) upgradeStateTestCase {
+func instrumentUpdate(t *testing.T, tc UpgradeStateTestCase) UpgradeStateTestCase {
 	r2m := *tc.Resource2
 	upd := r2m.UpdateFunc
 	r2m.UpdateFunc = func(ctx context.Context, req rschema.UpdateRequest, resp *rschema.UpdateResponse) {
@@ -187,8 +185,8 @@ func instrumentUpdate(t *testing.T, tc upgradeStateTestCase) upgradeStateTestCas
 }
 
 type upgraderTracker struct {
-	phase upgradeStateTestPhase
-	trace []upgradeStateTrace
+	phase UpgradeStateTestPhase
+	trace []UpgradeStateTrace
 	mu    sync.Mutex
 }
 
@@ -235,7 +233,7 @@ func (t *upgraderTracker) instrumentUpgrader(ver int64, u rschema.StateUpgrader)
 				return
 			}
 
-			t.trace = append(t.trace, upgradeStateTrace{
+			t.trace = append(t.trace, UpgradeStateTrace{
 				Phase:         t.phase,
 				Upgrader:      ver,
 				PriorState:    priorState,
@@ -291,8 +289,8 @@ func getVersionInState(t *testing.T, stack apitype.UntypedDeployment) int64 {
 
 func upgradeTestBrigedProvider(
 	t *testing.T,
-	tc upgradeStateTestCase,
-	r rschema.Resource,
+	tc UpgradeStateTestCase,
+	r *pb.Resource,
 	ri *info.Resource,
 ) info.Provider {
 	tn := getResourceTypeName(tc.tfProviderName(), r)
@@ -312,7 +310,7 @@ func getSchemaVersion(res rschema.Resource) int64 {
 	return resp.Schema.Version
 }
 
-func runUpgradeTestStatePulumi(t *testing.T, tc upgradeStateTestCase) upgradeStateResult {
+func runUpgradeTestStatePulumi(t *testing.T, tc UpgradeStateTestCase) UpgradeStateTestResult {
 	res1 := tc.Resource1
 	res2, tracker := instrumentUpgraders(tc.Resource2)
 
@@ -385,63 +383,23 @@ func runUpgradeTestStatePulumi(t *testing.T, tc upgradeStateTestCase) upgradeSta
 			"bad getVersionInState result for update")
 	}
 
-	return upgradeStateResult{
-		pulumiUpgrades:      tracker.trace,
-		pulumiPreviewResult: previewResult,
-		pulumiRefreshResult: refreshResult,
-		pulumiUpResult:      updateResult,
+	return UpgradeStateTestResult{
+		PulumiUpgrades:      tracker.trace,
+		PulumiPreviewResult: previewResult,
+		PulumiRefreshResult: refreshResult,
+		PulumiUpResult:      updateResult,
 	}
 }
 
-func (tc upgradeStateTestCase) tfProvider(resource rschema.Resource) *upgradeStateTFProvider {
-	return &upgradeStateTFProvider{
-		resource: resource,
-		name:     tc.tfProviderName(),
-		version:  "0.0.1",
-	}
+func (tc UpgradeStateTestCase) tfProvider(resource *pb.Resource) *pb.Provider {
+	return pb.NewProvider(pb.NewProviderArgs{
+		TypeName:     tc.tfProviderName(),
+		Version:      "0.0.1",
+		AllResources: []pb.Resource{*resource},
+	})
 }
 
-type upgradeStateTFProvider struct {
-	resource rschema.Resource
-	name     string
-	version  string
-}
-
-func (p *upgradeStateTFProvider) Metadata(
-	_ context.Context,
-	_ provider.MetadataRequest,
-	resp *provider.MetadataResponse,
-) {
-	resp.TypeName = p.name
-	resp.Version = p.version
-}
-
-func (p *upgradeStateTFProvider) Schema(context.Context, provider.SchemaRequest, *provider.SchemaResponse) {
-}
-
-func (p *upgradeStateTFProvider) Configure(context.Context, provider.ConfigureRequest, *provider.ConfigureResponse) {
-}
-
-func (p *upgradeStateTFProvider) DataSources(context.Context) []func() datasource.DataSource {
-	return nil
-}
-
-func (p *upgradeStateTFProvider) Resources(context.Context) []func() rschema.Resource {
-	return []func() rschema.Resource{
-		func() rschema.Resource {
-			return p.resource
-		},
-	}
-}
-
-var _ provider.Provider = &upgradeStateTFProvider{}
-
-func (p *upgradeStateTFProvider) GRPCProvider() tfprotov6.ProviderServer {
-	mkProvider := providerserver.NewProtocol6(p)
-	return mkProvider()
-}
-
-func runUpgradeStateTestTF(t *testing.T, tc upgradeStateTestCase) []upgradeStateTrace {
+func runUpgradeStateTestTF(t *testing.T, tc UpgradeStateTestCase) []UpgradeStateTrace {
 	t.Logf("Checking TF behavior")
 
 	tfwd := t.TempDir()
@@ -505,7 +463,7 @@ func runUpgradeStateTestTF(t *testing.T, tc upgradeStateTestCase) []upgradeState
 	return tracker.trace
 }
 
-func upgradeStateWriteHCL(t *testing.T, tc upgradeStateTestCase, pwd string, res rschema.Resource, v cty.Value) {
+func upgradeStateWriteHCL(t *testing.T, tc UpgradeStateTestCase, pwd string, res rschema.Resource, v cty.Value) {
 	var buf bytes.Buffer
 	tn := getResourceTypeName(tc.tfProviderName(), res)
 	hclWriteResource(t, &buf, tn, res, "example", v)
@@ -516,7 +474,7 @@ func upgradeStateWriteHCL(t *testing.T, tc upgradeStateTestCase, pwd string, res
 
 func upgradeStateYAML(
 	t *testing.T,
-	tc upgradeStateTestCase,
+	tc UpgradeStateTestCase,
 	info info.Provider,
 	resourceConfig resource.PropertyMap,
 ) []byte {
@@ -548,12 +506,6 @@ func upgradeStateYAML(
 	return b
 }
 
-func skipUnlessLinux(t *testing.T) {
-	if ci, ok := os.LookupEnv("CI"); ok && ci == "true" && !strings.Contains(strings.ToLower(runtime.GOOS), "linux") {
-		t.Skip("Skipping on non-Linux platforms as our CI does not yet install Terraform CLI required for these tests")
-	}
-}
-
 func getResourceTypeName(providerTypeName string, res rschema.Resource) string {
 	resp := &rschema.MetadataResponse{}
 	res.Metadata(context.Background(), rschema.MetadataRequest{
@@ -563,7 +515,7 @@ func getResourceTypeName(providerTypeName string, res rschema.Resource) string {
 }
 
 // State upgrader implementation that does not do anything.
-func nopUpgrade(ctx context.Context, req rschema.UpgradeStateRequest, resp *rschema.UpgradeStateResponse) {
+func NopUpgrader(_ context.Context, req rschema.UpgradeStateRequest, resp *rschema.UpgradeStateResponse) {
 	contract.Assertf(req.State != nil, "expected UpgradeStateRequest with a non-nil State")
 	resp.State = *req.State
 }
