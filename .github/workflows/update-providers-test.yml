@@ -42,23 +42,6 @@ jobs:
     runs-on: ubuntu-latest
     name: Test upgrading ${{ matrix.provider }} to pulumi-terraform-bridge ${{ github.sha }}
     steps:
-      - name: Check for provider hotfixes
-        id: hotfix_check
-        run: |
-          # Get the latest release notes using gh CLI
-          RELEASE_NOTES=$(gh release view --repo pulumi/pulumi-terraform-bridge --json body --jq '.body')
-          
-          # Check for [PROVIDER HOTFIX] in release notes
-          if echo "$RELEASE_NOTES" | grep -q "\[PROVIDER HOTFIX\]"; then
-            echo "has_hotfix=true" >> $GITHUB_OUTPUT
-            echo "Found provider hotfix in release notes. Will trigger provider releases"
-          else
-            echo "has_hotfix=false" >> $GITHUB_OUTPUT
-            echo "No provider hotfix found. Will not trigger provider releases"
-          fi
-        env:
-          GH_TOKEN: ${{ github.token }}
-
       - name: Trigger upgrade
         uses: peter-evans/repository-dispatch@v3
         with:
@@ -72,8 +55,7 @@ jobs:
                "pr-reviewers": ${{ toJSON( github.triggering_actor || 't0yv0' ) }},
                "pr-description": "This PR was created to test a pulumi/pulumi-terraform-bridge feature.\n\n- pulumi/pulumi-terraform-bridge#${{ github.event.number }}\n\n- https://github.com/pulumi/pulumi-terraform-bridge/commit/${{github.sha}}\n\nDO NOT MERGE.",
                "automerge": false,
-               "pr-title-prefix": "[DOWNSTREAM TEST][BRIDGE]",
-               "patch-release": ${{ steps.hotfix_check.outputs.has_hotfix }}
+               "pr-title-prefix": "[DOWNSTREAM TEST][BRIDGE]"
             }
     needs: generate-providers-list
     strategy:
