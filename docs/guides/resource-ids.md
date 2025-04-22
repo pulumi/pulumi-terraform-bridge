@@ -80,3 +80,24 @@ Otherwise you can pass in any function that complies with:
 ```go
 func(ctx context.Context, state resource.PropertyMap) (resource.ID, error)
 ```
+
+
+### ID field is of input type
+
+```
+error: Resource test_res has a problem: an "id" input attribute is not allowed. To map this resource specify SchemaInfo.Name and ResourceInfo.ComputeID
+```
+
+If the resource has an `"id"` attribute but it is Optional or Required on the TF side, that makes it invalid for use in Pulumi. This can be worked around by renaming the field and specifying the `ResourceInfo.ComputeID` field for the resource:
+
+```go
+"test_res": {
+	Fields: map[string]*info.Schema{
+		"id": {
+			Name: "idProperty",
+		},
+	},
+	ComputeID: tfbridge.DelegateIDField(resource.PropertyKey("idProperty"),
+		"testprovider", "https://github.com/pulumi/pulumi-testprovider"),
+},
+```
