@@ -331,7 +331,10 @@ func (p *provider) returnTerraformConfig() (resource.PropertyMap, error) {
 	}
 
 	if !tfConfigValue.IsFullyKnown() {
-		return nil, fmt.Errorf("cannot use terraformConfig that contains unknown tftype values")
+		msg := fmt.Sprintf("It looks like you're trying to use the provider's terraformConfig function. " +
+			"The result of this function is meant for use as the config value of a required provider for a " +
+			"Pulumi Terraform Module. All inputs to provider configuration must be known for this feature to work.")
+		return nil, fmt.Errorf(msg)
 	}
 	// use valueshim package to marshal tfConfigValue into raw json,
 	// which can be unmarshaled into a map[string]interface{}
