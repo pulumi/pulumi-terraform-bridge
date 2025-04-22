@@ -1792,7 +1792,14 @@ func (p *Provider) returnTerraformConfig(ctx context.Context) (resource.Property
 		return nil, fmt.Errorf("error unmarshaling JSON: %v", err)
 	}
 
-	return resource.NewPropertyMapFromMap(jsonConfigMap), nil
+	originalMap := resource.NewPropertyMapFromMap(jsonConfigMap)
+	returnMap := resource.PropertyMap{}
+	// Make the map entries secret to avoid leaking sensitive information
+	for key, val := range originalMap {
+		returnMap[key] = resource.MakeSecret(val)
+	}
+
+	return returnMap, nil
 }
 
 // Call dynamically executes a method in the provider.
