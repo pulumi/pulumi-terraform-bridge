@@ -402,6 +402,8 @@ func TestDiffConfig(t *testing.T) {
 
 func TestBuildConfig(t *testing.T) {
 	t.Parallel()
+
+	testTFProvider := testprovider.ProviderV1()
 	provider := &Provider{
 		tf:     shimv1.NewProvider(testTFProvider),
 		config: shimv1.NewSchemaMap(testTFProvider.Schema),
@@ -508,6 +510,8 @@ func testIgnoreChanges(t *testing.T, provider *Provider) {
 
 func TestIgnoreChanges(t *testing.T) {
 	t.Parallel()
+	testTFProvider := testprovider.ProviderV1()
+
 	provider := &Provider{
 		tf:     shimv1.NewProvider(testTFProvider),
 		config: shimv1.NewSchemaMap(testTFProvider.Schema),
@@ -524,10 +528,12 @@ func TestIgnoreChanges(t *testing.T) {
 
 func TestIgnoreChangesV2(t *testing.T) {
 	t.Parallel()
+	testTFProviderV2 := testprovider.ProviderV2()
 	testIgnoreChangesV2(t, shimv2.NewProvider(testTFProviderV2))
 }
 
 func testIgnoreChangesV2(t *testing.T, prov shim.Provider) {
+	testTFProviderV2 := testprovider.ProviderV2()
 	provider := &Provider{
 		tf:     prov,
 		config: shimv2.NewSchemaMap(testTFProviderV2.Schema),
@@ -546,6 +552,7 @@ func testIgnoreChangesV2(t *testing.T, prov shim.Provider) {
 
 func TestProviderPreview(t *testing.T) {
 	t.Parallel()
+	testTFProvider := testprovider.ProviderV1()
 	provider := &Provider{
 		tf:     shimv1.NewProvider(testTFProvider),
 		config: shimv1.NewSchemaMap(testTFProvider.Schema),
@@ -667,6 +674,7 @@ func TestProviderPreview(t *testing.T) {
 
 func TestProviderPreviewV2(t *testing.T) {
 	t.Parallel()
+	testTFProviderV2 := testprovider.ProviderV2()
 	shimProvider := shimv2.NewProvider(testTFProviderV2)
 	provider := &Provider{
 		tf:     shimProvider,
@@ -802,6 +810,8 @@ func TestProviderPreviewV2(t *testing.T) {
 
 func TestProviderCheckWithAutonaming(t *testing.T) {
 	t.Parallel()
+	testTFProvider := testprovider.ProviderV1()
+	testTFProviderV2 := testprovider.ProviderV2()
 	provider := &Provider{
 		tf:     shimv2.NewProvider(testTFProviderV2),
 		config: shimv2.NewSchemaMap(testTFProviderV2.Schema),
@@ -1091,6 +1101,8 @@ func testProviderRead(t *testing.T, provider *Provider, typeName tokens.Type, ch
 
 func TestProviderReadV1(t *testing.T) {
 	t.Parallel()
+	testTFProvider := testprovider.ProviderV1()
+
 	provider := &Provider{
 		tf:     shimv1.NewProvider(testTFProvider),
 		config: shimv1.NewSchemaMap(testTFProvider.Schema),
@@ -1109,6 +1121,8 @@ func TestProviderReadV1(t *testing.T) {
 
 func TestProviderReadV2(t *testing.T) {
 	t.Parallel()
+
+	testTFProviderV2 := testprovider.ProviderV2()
 	shimProvider := shimv2.NewProvider(testTFProviderV2)
 	provider := &Provider{
 		tf:     shimProvider,
@@ -1174,6 +1188,9 @@ func testProviderReadNestedSecret(t *testing.T, provider *Provider, typeName tok
 
 func TestProviderReadNestedSecretV1(t *testing.T) {
 	t.Parallel()
+
+	testTFProvider := testprovider.ProviderV1()
+
 	provider := &Provider{
 		tf:     shimv1.NewProvider(testTFProvider),
 		config: shimv1.NewSchemaMap(testTFProvider.Schema),
@@ -1192,6 +1209,9 @@ func TestProviderReadNestedSecretV1(t *testing.T) {
 
 func TestProviderReadNestedSecretV2(t *testing.T) {
 	t.Parallel()
+
+	testTFProviderV2 := testprovider.ProviderV2()
+
 	shimProvider := shimv2.NewProvider(testTFProviderV2)
 	provider := &Provider{
 		tf:     shimProvider,
@@ -1211,6 +1231,8 @@ func TestProviderReadNestedSecretV2(t *testing.T) {
 func TestCheck(t *testing.T) {
 	t.Parallel()
 	t.Run("Default application can consult prior state in Check", func(t *testing.T) {
+		testTFProviderV2 := testprovider.ProviderV2()
+
 		shimProvider := shimv2.NewProvider(testTFProviderV2)
 		provider := &Provider{
 			tf:     shimProvider,
@@ -1486,6 +1508,8 @@ This will become a hard error in the future.
 func TestCheckConfig(t *testing.T) {
 	t.Parallel()
 	t.Run("minimal", func(t *testing.T) {
+		testTFProviderV2 := testprovider.ProviderV2()
+
 		// Ensure the method is minimally implemented. Pulumi will be passing a provider version. Make sure it
 		// is mirrored back.
 		provider := &Provider{
@@ -1511,6 +1535,8 @@ func TestCheckConfig(t *testing.T) {
 	})
 
 	t.Run("config_value", func(t *testing.T) {
+		testTFProviderV2 := testprovider.ProviderV2()
+
 		provider := &Provider{
 			tf:     shimv2.NewProvider(testTFProviderV2),
 			config: shimv2.NewSchemaMap(testTFProviderV2.Schema),
@@ -1581,6 +1607,8 @@ func TestCheckConfig(t *testing.T) {
 	})
 
 	t.Run("config_changed", func(t *testing.T) {
+		testTFProviderV2 := testprovider.ProviderV2()
+
 		provider := &Provider{
 			tf:     shimv2.NewProvider(testTFProviderV2),
 			config: shimv2.NewSchemaMap(testTFProviderV2.Schema),
@@ -2090,6 +2118,8 @@ func TestConfigureContextCapture(t *testing.T) {
 func TestPreConfigureCallback(t *testing.T) {
 	t.Parallel()
 	t.Run("PreConfigureCallback called by CheckConfig", func(t *testing.T) {
+		testTFProviderV2 := testprovider.ProviderV2()
+
 		callCounter := 0
 		provider := &Provider{
 			tf:     shimv2.NewProvider(testTFProviderV2),
@@ -2125,6 +2155,8 @@ func TestPreConfigureCallback(t *testing.T) {
 		require.Equalf(t, 1, callCounter, "PreConfigureCallback should be called once")
 	})
 	t.Run("PreConfigureCallbackWithLoggger called by CheckConfig", func(t *testing.T) {
+		testTFProviderV2 := testprovider.ProviderV2()
+
 		callCounter := 0
 		provider := &Provider{
 			tf:     shimv2.NewProvider(testTFProviderV2),
@@ -2165,6 +2197,8 @@ func TestPreConfigureCallback(t *testing.T) {
 		require.Equalf(t, 1, callCounter, "PreConfigureCallbackWithLogger should be called once")
 	})
 	t.Run("PreConfigureCallback can modify config values", func(t *testing.T) {
+		testTFProviderV2 := testprovider.ProviderV2()
+
 		provider := &Provider{
 			tf:     shimv2.NewProvider(testTFProviderV2),
 			config: shimv2.NewSchemaMap(testTFProviderV2.Schema),
@@ -2194,6 +2228,8 @@ func TestPreConfigureCallback(t *testing.T) {
 		}`)
 	})
 	t.Run("PreConfigureCallbackWithLogger can modify config values", func(t *testing.T) {
+		testTFProviderV2 := testprovider.ProviderV2()
+
 		provider := &Provider{
 			tf:     shimv2.NewProvider(testTFProviderV2),
 			config: shimv2.NewSchemaMap(testTFProviderV2.Schema),
@@ -2228,6 +2264,8 @@ func TestPreConfigureCallback(t *testing.T) {
 		}`)
 	})
 	t.Run("PreConfigureCallback not called at preview with unknown values", func(t *testing.T) {
+		testTFProviderV2 := testprovider.ProviderV2()
+
 		provider := &Provider{
 			tf:     shimv2.NewProvider(testTFProviderV2),
 			config: shimv2.NewSchemaMap(testTFProviderV2.Schema),
@@ -2275,6 +2313,8 @@ func TestPreConfigureCallback(t *testing.T) {
 func TestInvoke(t *testing.T) {
 	t.Parallel()
 	t.Run("preserve_program_secrets", func(t *testing.T) {
+		testTFProviderV2 := testprovider.ProviderV2()
+
 		// Currently the provider is unable to preserve secret-ness of values marked as secrets. Returning
 		// secrets makes SDKs unable to consume the provider. Therefore currently the secrets are stripped.
 		//
@@ -2341,6 +2381,9 @@ func TestInvoke(t *testing.T) {
 
 func TestTransformOutputs(t *testing.T) {
 	t.Parallel()
+
+	testTFProviderV2 := testprovider.ProviderV2()
+
 	shimProvider := shimv2.NewProvider(testTFProviderV2)
 	provider := &Provider{
 		tf:     shimProvider,

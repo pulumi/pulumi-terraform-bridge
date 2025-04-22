@@ -1184,6 +1184,7 @@ func TestComputedAsset(t *testing.T) {
 	}
 	inputs, assets, err := makeTerraformInputsNoDefaults(olds, props, tfs, ps)
 	assert.NoError(t, err)
+	testTFProvider := testprovider.ProviderV1()
 	outputs := MakeTerraformOutputs(ctx, shimv1.NewProvider(testTFProvider), inputs, tfs, ps, assets, true)
 	assert.Equal(t, resource.PropertyMap{
 		"zzz": resource.PropertyValue{V: resource.Computed{Element: resource.PropertyValue{V: ""}}},
@@ -1192,6 +1193,8 @@ func TestComputedAsset(t *testing.T) {
 
 func TestInvalidAsset(t *testing.T) {
 	t.Parallel()
+	testTFProvider := testprovider.ProviderV1()
+
 	ctx := context.Background()
 	tfs := shimv1.NewSchemaMap(map[string]*schemav1.Schema{
 		"zzz": {Type: schemav1.TypeString},
@@ -1327,6 +1330,7 @@ func TestOverridingTFSchema(t *testing.T) {
 			t.Run("MakeTerraformOutputs", func(t *testing.T) {
 				t.Parallel()
 
+				testTFProvider := testprovider.ProviderV1()
 				ctx := context.Background()
 				result := MakeTerraformOutputs(
 					ctx,
@@ -1408,6 +1412,7 @@ func TestArchiveAsAsset(t *testing.T) {
 	}
 	inputs, assets, err := makeTerraformInputsNoDefaults(olds, props, tfs, ps)
 	assert.NoError(t, err)
+	testTFProvider := testprovider.ProviderV1()
 	outputs := MakeTerraformOutputs(ctx, shimv1.NewProvider(testTFProvider), inputs, tfs, ps, assets, true)
 	assert.True(t, arch.DeepEquals(outputs["zzz"]))
 }
@@ -1764,6 +1769,7 @@ func makeTestTFProviderV2(
 func TestStringOutputsWithSchema(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
+	testTFProvider := testprovider.ProviderV1()
 	result := MakeTerraformOutputs(
 		ctx,
 		shimv1.NewProvider(testTFProvider),
@@ -3002,6 +3008,7 @@ func TestOutputNumberTypes(t *testing.T) {
 		"fff": float32(50),
 		"ggg": float64(50),
 	}
+	testTFProvider := testprovider.ProviderV1()
 	outputs := MakeTerraformOutputs(
 		ctx,
 		shimv1.NewProvider(testTFProvider),

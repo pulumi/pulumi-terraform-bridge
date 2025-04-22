@@ -21,11 +21,6 @@ func schemaMap(m map[string]*schema.Schema) shim.SchemaMap {
 	return mm
 }
 
-var (
-	testTFProvider   = testprovider.ProviderV1()
-	testTFProviderV2 = testprovider.ProviderV2()
-)
-
 type shimFactory interface {
 	SDKVersion() string
 	NewSchema(s *schema.Schema) shim.Schema
@@ -141,6 +136,7 @@ func (f shimv1Factory) NewInstanceState(id string) shim.InstanceState {
 }
 
 func (f shimv1Factory) NewTestProvider() shim.Provider {
+	testTFProvider := testprovider.ProviderV1()
 	return shimv1.NewProvider(testTFProvider)
 }
 
@@ -253,6 +249,7 @@ func (f shimv2Factory) NewInstanceState(id string) shim.InstanceState {
 }
 
 func (f shimv2Factory) NewTestProvider() shim.Provider {
+	testTFProviderV2 := testprovider.ProviderV2()
 	return shimv2.NewProvider(testTFProviderV2)
 }
 

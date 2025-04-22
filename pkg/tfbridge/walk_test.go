@@ -23,6 +23,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/internal/testprovider"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
@@ -285,6 +286,8 @@ func TestLookupSchemaInfoMapPath(t *testing.T) {
 
 func TestTraverseProperties(t *testing.T) {
 	t.Parallel()
+	testTFProviderV2 := testprovider.ProviderV2()
+
 	prov := &ProviderInfo{
 		P:              shimv2.NewProvider(testTFProviderV2),
 		IgnoreMappings: []string{"nested_secret_resource"},
@@ -405,6 +408,8 @@ func TestTraverseProperties(t *testing.T) {
 func TestTraversePropertiesSchemaInfo(t *testing.T) {
 	t.Parallel()
 	md := NewProviderMetadata(nil)
+	testTFProviderV2 := testprovider.ProviderV2()
+
 	prov := &ProviderInfo{
 		P:            shimv2.NewProvider(testTFProviderV2),
 		MetadataInfo: md,
