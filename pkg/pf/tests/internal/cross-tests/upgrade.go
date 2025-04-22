@@ -17,7 +17,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -40,8 +39,8 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests"
 	crosstestsimpl "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests/impl"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/pulcheck"
 	pb "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/providerbuilder"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/pulcheck"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/reservedkeys"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/tfcheck"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
@@ -322,14 +321,15 @@ func runUpgradeTestStatePulumi(t *testing.T, tc UpgradeStateTestCase) UpgradeSta
 		pm1 = crosstestsimpl.InferPulumiValue(t, sch, info, tc.Inputs1)
 	}
 
-	pt := pulcheck.PulCheck(t, prov1, string(upgradeStateYAML(t, tc, prov1, pm1)))
+	pt1, err := pulcheck.PulCheck(t, prov1, string(upgradeStateYAML(t, tc, prov1, pm1)))
+	require.NoError(t, err)
 
 	t.Logf("#### create")
 	tracker.phase = createPhase
-	createResult := pt.Up(t)
+	createResult := pt1.Up(t)
 	t.Logf("%s", createResult.StdOut+createResult.StdErr)
 
-	createdState := pt.ExportStack(t)
+	createdState := pt1.ExportStack(t)
 
 	schemaVersion1 := getVersionInState(t, createdState)
 	require.Equalf(t, getSchemaVersion(tc.Resource1), schemaVersion1, "bad getVersionInState result for create")
@@ -341,38 +341,42 @@ func runUpgradeTestStatePulumi(t *testing.T, tc UpgradeStateTestCase) UpgradeSta
 		pm2 = crosstestsimpl.InferPulumiValue(t, sch, info, tc.Inputs2)
 	}
 
-	p := filepath.Join(pt.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml")
-	err := os.WriteFile(p, upgradeStateYAML(t, tc, prov2, pm2), 0o600)
+	p := filepath.Join(pt1.CurrentStack().Workspace().WorkDir(), "Pulumi.yaml")
+	err = os.WriteFile(p, upgradeStateYAML(t, tc, prov2, pm2), 0o600)
 	require.NoErrorf(t, err, "writing Pulumi.yaml")
 
-	handle, err := pulcheck.StartPulumiProvider(context.Background(), prov2)
+	// handle, err := pulcheck.StartPulumiProvider(context.Background(), prov2)
+	// require.NoError(t, err)
+	// pt.CurrentStack().Workspace().SetEnvVar("PULUMI_DEBUG_PROVIDERS",
+	// 	fmt.Sprintf("%s:%d", tc.tfProviderName(), handle.Port))
+
+	pt2, err := pulcheck.PulCheck(t, prov2, string(upgradeStateYAML(t, tc, prov2, pm2)))
 	require.NoError(t, err)
-	pt.CurrentStack().Workspace().SetEnvVar("PULUMI_DEBUG_PROVIDERS",
-		fmt.Sprintf("%s:%d", tc.tfProviderName(), handle.Port))
+	pt2.ImportStack(t, createdState)
 
 	t.Logf("#### refresh")
 	tracker.phase = refreshPhase
-	refreshResult := pt.Refresh(t)
+	refreshResult := pt2.Refresh(t)
 	t.Logf("%s", refreshResult.StdOut+refreshResult.StdErr)
 
-	schemaVersionR := getVersionInState(t, pt.ExportStack(t))
+	schemaVersionR := getVersionInState(t, pt2.ExportStack(t))
 	t.Logf("schema version after refresh is %d", schemaVersionR)
 	require.Equalf(t, getSchemaVersion(tc.Resource2), schemaVersionR, "bad getVersionInState result for refresh")
 
 	// Reset to created state as refresh may have edited it.
-	pt.ImportStack(t, createdState)
+	pt2.ImportStack(t, createdState)
 
 	t.Logf("#### preview")
 	tracker.phase = previewPhase
-	previewResult := pt.Preview(t, optpreview.Diff())
+	previewResult := pt2.Preview(t, optpreview.Diff())
 	t.Logf("%s", previewResult.StdOut+previewResult.StdErr)
 
 	t.Logf("#### update")
 	tracker.phase = updatePhase
-	updateResult := pt.Up(t) // --skip-preview would be nice here
+	updateResult := pt2.Up(t) // --skip-preview would be nice here
 	t.Logf("%s", updateResult.StdOut+updateResult.StdErr)
 
-	schemaVersionU := getVersionInState(t, pt.ExportStack(t))
+	schemaVersionU := getVersionInState(t, pt2.ExportStack(t))
 	t.Logf("schema version after update is %d", schemaVersionU)
 	if !tc.SkipSchemaVersionAfterUpdateCheck {
 		require.Equalf(t, getSchemaVersion(tc.Resource2), schemaVersionU,
