@@ -6,7 +6,11 @@ import (
 )
 
 func objectFromCtyValue(val cty.Value) map[string]any {
-	return objectFromCtyValueInner(val).(map[string]any)
+	res := objectFromCtyValueInner(val)
+	if res == nil {
+		return nil
+	}
+	return res.(map[string]any)
 }
 
 func objectFromCtyValueInner(val cty.Value) any {
