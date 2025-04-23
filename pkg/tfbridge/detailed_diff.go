@@ -311,6 +311,7 @@ func makeSingleTerraformInput(
 		ApplyTFDefaults:       false,
 		Assets:                AssetTable{},
 		UseTFSetTypes:         true,
+		DropUnknowns:          true,
 	}
 
 	return cctx.makeTerraformInput(name, resource.NewNullProperty(), val, tfs, ps)

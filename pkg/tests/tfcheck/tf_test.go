@@ -267,7 +267,7 @@ func TestTFSetHashNil(t *testing.T) {
 		},
 	}
 
-	driver := NewTfDriver(t, t.TempDir(), "test", &prov)
+	driver := NewTfDriver(t, t.TempDir(), "test", NewTFDriverOpts{SDKProvider: &prov})
 
 	driver.Write(t, `
 resource "test_resource" "test" {
