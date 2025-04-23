@@ -31,6 +31,7 @@ import (
 func TestUpgrade_StateUpgraders(t *testing.T) {
 	t.Parallel()
 	skipUnlessLinux(t)
+	skipUnlessDeltasEnabled(t)
 
 	resourceBefore := &schema.Resource{
 		Schema: map[string]*schema.Schema{
@@ -81,7 +82,7 @@ func TestUpgrade_StateUpgraders(t *testing.T) {
 		Inputs1:    map[string]any{"prop": "one,two,three"},
 		InputsMap1: resource.PropertyMap{"prop": resource.NewStringProperty("one,two,three")},
 		Inputs2:    map[string]any{"prop": []any{int(1), int(2), int(3)}},
-		InputsMap2: resource.PropertyMap{"prop": resource.NewArrayProperty([]resource.PropertyValue{
+		InputsMap2: resource.PropertyMap{"props": resource.NewArrayProperty([]resource.PropertyValue{
 			resource.NewNumberProperty(1),
 			resource.NewNumberProperty(2),
 			resource.NewNumberProperty(3),
@@ -90,10 +91,45 @@ func TestUpgrade_StateUpgraders(t *testing.T) {
 		// Apparently in this case TF expects RawState to be received on the new schema.
 		ExpectedRawStateType: resourceAfter.CoreConfigSchema().ImpliedType(),
 
-		SkipPulumi: "TODO[pulumi/pulumi-terraform-bridge#1667] raw state does not parse properly",
+		// Pulumi does not upgrade this resource to V2 because of a no-op update plan.
+		// TODO[pulumi/pulumi-terraform-bridge#3008]
+		SkipSchemaVersionAfterUpdateCheck: true,
+
+		SkipPulumiRefresh: "TODO[pulumi/pulumi-terraform-bridge#3024]",
 	})
 
-	autogold.Expect([]upgradeStateTrace{}).Equal(t, result.pulumiUpgrades)
+	autogold.Expect([]upgradeStateTrace{
+		{
+			Phase: upgradeStateTestPhase("preview"),
+			RawState: map[string]interface{}{
+				"id":   "newid",
+				"prop": "one,two,three",
+			},
+			Result: map[string]interface{}{
+				"id": "newid",
+				"prop": []int{
+					1,
+					2,
+					3,
+				},
+			},
+		},
+		{
+			Phase: upgradeStateTestPhase("update"),
+			RawState: map[string]interface{}{
+				"id":   "newid",
+				"prop": "one,two,three",
+			},
+			Result: map[string]interface{}{
+				"id": "newid",
+				"prop": []int{
+					1,
+					2,
+					3,
+				},
+			},
+		},
+	}).Equal(t, result.pulumiUpgrades)
 	autogold.Expect([]upgradeStateTrace{
 		{
 			Phase: upgradeStateTestPhase("refresh"),
