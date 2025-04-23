@@ -304,10 +304,11 @@ func runUpgradeTestStatePulumi(t T, tc upgradeStateTestCase) upgradeStateResult 
 	pt.CurrentStack().Workspace().SetEnvVar("PULUMI_DEBUG_PROVIDERS",
 		fmt.Sprintf("%s:%d", defProviderShortName, handle.Port))
 
+	var refreshResult auto.RefreshResult
 	if tc.SkipPulumiRefresh == "" {
 		t.Logf("#### refresh")
 		tracker.phase = refreshPhase
-		refreshResult := pt.Refresh(t)
+		refreshResult = pt.Refresh(t)
 		t.Logf("%s", refreshResult.StdOut+refreshResult.StdErr)
 
 		schemaVersionR := getVersionInState(t, pt.ExportStack(t))
@@ -342,8 +343,8 @@ func runUpgradeTestStatePulumi(t T, tc upgradeStateTestCase) upgradeStateResult 
 	return upgradeStateResult{
 		pulumiUpgrades:      tracker.trace,
 		pulumiPreviewResult: previewResult,
-		// pulumiRefreshResult: refreshResult,
-		pulumiUpResult: updateResult,
+		pulumiRefreshResult: refreshResult,
+		pulumiUpResult:      updateResult,
 	}
 }
 

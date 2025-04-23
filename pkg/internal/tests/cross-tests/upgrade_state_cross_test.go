@@ -168,6 +168,7 @@ func TestUpgrade_StateUpgraders(t *testing.T) {
 func TestUpgrade_Pulumi_Removes_MaxItems1(t *testing.T) {
 	t.Parallel()
 	skipUnlessLinux(t)
+	skipUnlessDeltasEnabled(t)
 
 	sch := map[string]*schema.Schema{
 		"obj": {
