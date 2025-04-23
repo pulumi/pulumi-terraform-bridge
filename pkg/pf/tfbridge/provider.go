@@ -350,12 +350,16 @@ func (p *provider) returnTerraformConfig() (resource.PropertyMap, error) {
 		return nil, fmt.Errorf("error unmarshaling JSON: %v", err)
 	}
 	originalMap := resource.NewPropertyMapFromMap(jsonConfigMap)
-	returnMap := resource.PropertyMap{}
+	configsMap := resource.PropertyMap{}
 	// Make the map entries secret to avoid leaking sensitive information
 	for key, val := range originalMap {
-		returnMap[key] = resource.MakeSecret(val)
+		configsMap[key] = resource.MakeSecret(val)
 	}
-	return returnMap, nil
+	resultMap := resource.PropertyMap{
+		"result": resource.NewObjectProperty(configsMap),
+	}
+
+	return resultMap, nil
 }
 
 func (p *provider) CallWithContext(ctx context.Context,

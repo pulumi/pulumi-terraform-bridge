@@ -1793,13 +1793,16 @@ func (p *Provider) returnTerraformConfig(ctx context.Context) (resource.Property
 	}
 
 	originalMap := resource.NewPropertyMapFromMap(jsonConfigMap)
-	returnMap := resource.PropertyMap{}
+	configsMap := resource.PropertyMap{}
 	// Make the map entries secret to avoid leaking sensitive information
 	for key, val := range originalMap {
-		returnMap[key] = resource.MakeSecret(val)
+		configsMap[key] = resource.MakeSecret(val)
 	}
 
-	return returnMap, nil
+	resultMap := resource.PropertyMap{
+		"result": resource.NewObjectProperty(configsMap),
+	}
+	return resultMap, nil
 }
 
 // Call dynamically executes a method in the provider.
@@ -1816,7 +1819,7 @@ func (p *Provider) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulum
 		if err != nil {
 			return nil, err
 		}
-		outputResult, err := plugin.MarshalProperties(tfConfigOutput, plugin.MarshalOptions{})
+		outputResult, err := plugin.MarshalProperties(tfConfigOutput, plugin.MarshalOptions{KeepSecrets: true})
 		if err != nil {
 			return nil, err
 		}
