@@ -312,6 +312,7 @@ func TestUpgrade_Pulumi_Adds_MaxItems1(t *testing.T) {
 		ExpectedRawStateType: resourceBeforeAndAfter.CoreConfigSchema().ImpliedType(),
 	})
 
+	// TODO why is there a refresh update? Is it an incomplete Read test implementation?
 	autogold.Expect(&map[string]int{"same": 1, "update": 1}).Equal(t, result.pulumiRefreshResult.Summary.ResourceChanges)
 	autogold.Expect(map[apitype.OpType]int{apitype.OpType("same"): 2}).Equal(t, result.pulumiPreviewResult.ChangeSummary)
 	autogold.Expect(&map[string]int{"same": 2}).Equal(t, result.pulumiUpResult.Summary.ResourceChanges)
@@ -324,6 +325,7 @@ func TestUpgrade_Pulumi_Adds_MaxItems1(t *testing.T) {
 func TestUpgrade_Upstream_Adds_MaxItems1(t *testing.T) {
 	t.Parallel()
 	skipUnlessLinux(t)
+	skipUnlessDeltasEnabled(t)
 
 	sch := func(maxItems int) map[string]*schema.Schema {
 		return map[string]*schema.Schema{
@@ -383,13 +385,12 @@ func TestUpgrade_Upstream_Adds_MaxItems1(t *testing.T) {
 		Inputs2:              tfInputs,
 		InputsMap2:           pmAfter,
 		ExpectedRawStateType: resourceAfter.CoreConfigSchema().ImpliedType(),
-		SkipPulumi:           "TODO[pulumi/pulumi-terraform-bridge#1667] unexpected changes",
 	})
 
-	autogold.Expect((*map[string]int)(nil)).Equal(t, result.pulumiRefreshResult.Summary.ResourceChanges)
-	// TODO[pulumi/pulumi-terraform-bridge#1667] there should not be any changes here.
-	autogold.Expect(map[apitype.OpType]int{}).Equal(t, result.pulumiPreviewResult.ChangeSummary)
-	autogold.Expect((*map[string]int)(nil)).Equal(t, result.pulumiUpResult.Summary.ResourceChanges)
+	// TODO why is there a refresh update? Is it an incomplete Read test implementation?
+	autogold.Expect(&map[string]int{"same": 1, "update": 1}).Equal(t, result.pulumiRefreshResult.Summary.ResourceChanges)
+	autogold.Expect(map[apitype.OpType]int{apitype.OpType("same"): 2}).Equal(t, result.pulumiPreviewResult.ChangeSummary)
+	autogold.Expect(&map[string]int{"same": 2}).Equal(t, result.pulumiUpResult.Summary.ResourceChanges)
 
 	autogold.Expect([]upgradeStateTrace{}).Equal(t, result.pulumiUpgrades)
 	autogold.Expect([]upgradeStateTrace{}).Equal(t, result.tfUpgrades)
