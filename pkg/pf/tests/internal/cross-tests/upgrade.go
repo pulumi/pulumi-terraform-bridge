@@ -345,11 +345,6 @@ func runUpgradeTestStatePulumi(t *testing.T, tc UpgradeStateTestCase) UpgradeSta
 	err = os.WriteFile(p, upgradeStateYAML(t, tc, prov2, pm2), 0o600)
 	require.NoErrorf(t, err, "writing Pulumi.yaml")
 
-	// handle, err := pulcheck.StartPulumiProvider(context.Background(), prov2)
-	// require.NoError(t, err)
-	// pt.CurrentStack().Workspace().SetEnvVar("PULUMI_DEBUG_PROVIDERS",
-	// 	fmt.Sprintf("%s:%d", tc.tfProviderName(), handle.Port))
-
 	pt2, err := pulcheck.PulCheck(t, prov2, string(upgradeStateYAML(t, tc, prov2, pm2)))
 	require.NoError(t, err)
 	pt2.ImportStack(t, createdState)
