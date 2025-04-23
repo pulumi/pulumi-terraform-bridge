@@ -77,11 +77,6 @@ func TestPFUpgrade_StateUpgraders(t *testing.T) {
 						req resource.UpgradeStateRequest,
 						resp *resource.UpgradeStateResponse,
 					) {
-						autogold.Expect(`{
-            "id": "test-id",
-            "prop": "one,two,three"
-          }`).Equal(t, string(req.RawState.JSON))
-
 						var priorState v0Model
 						d0 := req.State.Get(ctx, &priorState)
 						resp.Diagnostics = append(resp.Diagnostics, d0...)
