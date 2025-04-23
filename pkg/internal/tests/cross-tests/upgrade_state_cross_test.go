@@ -94,8 +94,6 @@ func TestUpgrade_StateUpgraders(t *testing.T) {
 		// Pulumi does not upgrade this resource to V2 because of a no-op update plan.
 		// TODO[pulumi/pulumi-terraform-bridge#3008]
 		SkipSchemaVersionAfterUpdateCheck: true,
-
-		SkipPulumiRefresh: "TODO[pulumi/pulumi-terraform-bridge#3024]",
 	})
 
 	autogold.Expect([]upgradeStateTrace{
@@ -234,7 +232,6 @@ func TestUpgrade_Pulumi_Removes_MaxItems1(t *testing.T) {
 		ExpectedRawStateType: resourceBeforeAndAfter.CoreConfigSchema().ImpliedType(),
 	})
 
-	autogold.Expect(&map[string]int{"same": 2}).Equal(t, result.pulumiRefreshResult.Summary.ResourceChanges)
 	autogold.Expect(map[apitype.OpType]int{apitype.OpType("same"): 2}).Equal(t, result.pulumiPreviewResult.ChangeSummary)
 	autogold.Expect(&map[string]int{"same": 2}).Equal(t, result.pulumiUpResult.Summary.ResourceChanges)
 
@@ -312,8 +309,6 @@ func TestUpgrade_Pulumi_Adds_MaxItems1(t *testing.T) {
 		ExpectedRawStateType: resourceBeforeAndAfter.CoreConfigSchema().ImpliedType(),
 	})
 
-	// TODO why is there a refresh update? Is it an incomplete Read test implementation?
-	autogold.Expect(&map[string]int{"same": 1, "update": 1}).Equal(t, result.pulumiRefreshResult.Summary.ResourceChanges)
 	autogold.Expect(map[apitype.OpType]int{apitype.OpType("same"): 2}).Equal(t, result.pulumiPreviewResult.ChangeSummary)
 	autogold.Expect(&map[string]int{"same": 2}).Equal(t, result.pulumiUpResult.Summary.ResourceChanges)
 
@@ -387,8 +382,6 @@ func TestUpgrade_Upstream_Adds_MaxItems1(t *testing.T) {
 		ExpectedRawStateType: resourceAfter.CoreConfigSchema().ImpliedType(),
 	})
 
-	// TODO why is there a refresh update? Is it an incomplete Read test implementation?
-	autogold.Expect(&map[string]int{"same": 1, "update": 1}).Equal(t, result.pulumiRefreshResult.Summary.ResourceChanges)
 	autogold.Expect(map[apitype.OpType]int{apitype.OpType("same"): 2}).Equal(t, result.pulumiPreviewResult.ChangeSummary)
 	autogold.Expect(&map[string]int{"same": 2}).Equal(t, result.pulumiUpResult.Summary.ResourceChanges)
 
@@ -462,7 +455,6 @@ func TestUpgrade_Upstream_Removes_MaxItems1(t *testing.T) {
 		ExpectedRawStateType: resourceAfter.CoreConfigSchema().ImpliedType(),
 	})
 
-	autogold.Expect(&map[string]int{"same": 2}).Equal(t, result.pulumiRefreshResult.Summary.ResourceChanges)
 	autogold.Expect(map[apitype.OpType]int{apitype.OpType("same"): 2}).Equal(t, result.pulumiPreviewResult.ChangeSummary)
 	autogold.Expect(&map[string]int{"same": 2}).Equal(t, result.pulumiUpResult.Summary.ResourceChanges)
 
@@ -590,17 +582,6 @@ func TestUpgrade_String_0to1_Version(t *testing.T) {
 
 		autogold.Expect([]upgradeStateTrace{
 			{
-				Phase: upgradeStateTestPhase("refresh"),
-				RawState: map[string]interface{}{
-					"f0": "val",
-					"id": "newid",
-				},
-				Result: map[string]interface{}{
-					"f0": "val",
-					"id": "newid",
-				},
-			},
-			{
 				Phase: upgradeStateTestPhase("preview"),
 				RawState: map[string]interface{}{
 					"f0": "val",
@@ -661,17 +642,6 @@ func TestUpgrade_String_0to1_Version(t *testing.T) {
 
 		// Upgrade calls similar but Pulumi calls the upgrader a few times too many.
 		autogold.Expect([]upgradeStateTrace{
-			{
-				Phase: upgradeStateTestPhase("refresh"),
-				RawState: map[string]interface{}{
-					"f0": "val1",
-					"id": "newid",
-				},
-				Result: map[string]interface{}{
-					"f0": "val1",
-					"id": "newid",
-				},
-			},
 			{
 				Phase: upgradeStateTestPhase("preview"),
 				RawState: map[string]interface{}{
@@ -795,17 +765,6 @@ func TestUpgrade_Object_0to1_Version(t *testing.T) {
 		}).Equal(t, result.tfUpgrades)
 		autogold.Expect([]upgradeStateTrace{
 			{
-				Phase: upgradeStateTestPhase("refresh"),
-				RawState: map[string]interface{}{
-					"f0": []interface{}{map[string]interface{}{"x": "val"}},
-					"id": "newid",
-				},
-				Result: map[string]interface{}{
-					"f0": []interface{}{map[string]interface{}{"x": "val"}},
-					"id": "newid",
-				},
-			},
-			{
 				Phase: upgradeStateTestPhase("preview"),
 				RawState: map[string]interface{}{
 					"f0": []interface{}{map[string]interface{}{"x": "val"}},
@@ -865,17 +824,6 @@ func TestUpgrade_Object_0to1_Version(t *testing.T) {
 			},
 		}).Equal(t, result.tfUpgrades)
 		autogold.Expect([]upgradeStateTrace{
-			{
-				Phase: upgradeStateTestPhase("refresh"),
-				RawState: map[string]interface{}{
-					"f0": []interface{}{map[string]interface{}{"x": "val1"}},
-					"id": "newid",
-				},
-				Result: map[string]interface{}{
-					"f0": []interface{}{map[string]interface{}{"x": "val1"}},
-					"id": "newid",
-				},
-			},
 			{
 				Phase: upgradeStateTestPhase("preview"),
 				RawState: map[string]interface{}{
@@ -971,7 +919,6 @@ func TestUpgrade_PulumiRenamesProperty(t *testing.T) {
 		assert.Equal(t, result.tfUpgrades, result.pulumiUpgrades)
 		autogold.Expect([]upgradeStateTrace{}).Equal(t, result.pulumiUpgrades)
 
-		autogold.Expect(&map[string]int{"same": 2}).Equal(t, result.pulumiRefreshResult.Summary.ResourceChanges)
 		autogold.Expect(&map[string]int{"same": 2}).Equal(t, result.pulumiUpResult.Summary.ResourceChanges)
 	})
 
@@ -987,7 +934,6 @@ func TestUpgrade_PulumiRenamesProperty(t *testing.T) {
 		assert.Equal(t, result.tfUpgrades, result.pulumiUpgrades)
 		autogold.Expect([]upgradeStateTrace{}).Equal(t, result.pulumiUpgrades)
 
-		autogold.Expect(&map[string]int{"same": 2}).Equal(t, result.pulumiRefreshResult.Summary.ResourceChanges)
 		autogold.Expect(&map[string]int{"same": 1, "update": 1}).Equal(t, result.pulumiUpResult.Summary.ResourceChanges)
 	})
 }
@@ -1041,7 +987,6 @@ func TestUpgrade_PulumiChangesPropertyType(t *testing.T) {
 		assert.Equal(t, result.tfUpgrades, result.pulumiUpgrades)
 		autogold.Expect([]upgradeStateTrace{}).Equal(t, result.pulumiUpgrades)
 
-		autogold.Expect(&map[string]int{"same": 2}).Equal(t, result.pulumiRefreshResult.Summary.ResourceChanges)
 		autogold.Expect(&map[string]int{"same": 2}).Equal(t, result.pulumiUpResult.Summary.ResourceChanges)
 	})
 
@@ -1059,7 +1004,6 @@ func TestUpgrade_PulumiChangesPropertyType(t *testing.T) {
 		assert.Equal(t, result.tfUpgrades, result.pulumiUpgrades)
 		autogold.Expect([]upgradeStateTrace{}).Equal(t, result.pulumiUpgrades)
 
-		autogold.Expect(&map[string]int{"same": 2}).Equal(t, result.pulumiRefreshResult.Summary.ResourceChanges)
 		autogold.Expect(&map[string]int{"same": 1, "update": 1}).Equal(t, result.pulumiUpResult.Summary.ResourceChanges)
 	})
 }
