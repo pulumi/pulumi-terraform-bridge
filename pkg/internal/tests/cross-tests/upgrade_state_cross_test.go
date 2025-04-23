@@ -997,6 +997,7 @@ func TestUpgrade_PulumiRenamesProperty(t *testing.T) {
 func TestUpgrade_PulumiChangesPropertyType(t *testing.T) {
 	t.Parallel()
 	skipUnlessLinux(t)
+	skipUnlessDeltasEnabled(t)
 
 	sch := map[string]*schema.Schema{
 		"f0": {
