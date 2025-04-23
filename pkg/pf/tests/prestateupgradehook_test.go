@@ -57,7 +57,7 @@ func TestPreStateUpgradeHook(t *testing.T) {
 	  "response": {
 	    "properties": {
 	      "__meta": "{\"schema_version\":\"2\"}",
-	      "__pulumi_raw_state_delta": "*",
+	      "*": "*",
 	      "id": "*",
 	      "length": 2,
 	      "lower": true,

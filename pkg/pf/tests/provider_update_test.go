@@ -46,7 +46,7 @@ func TestUpdateWritesSchemaVersion(t *testing.T) {
 	  "response": {
 	    "properties": {
 	      "__meta": "{\"schema_version\":\"2\"}",
-              "__pulumi_raw_state_delta": "*",
+              "*": "*",
 	      "id": "*",
 	      "length": 2,
 	      "lower": true,
@@ -86,7 +86,7 @@ func TestUpdateWithIntID(t *testing.T) {
           "response": {
             "properties": {
               "id": "90",
-              "__pulumi_raw_state_delta": "*"
+              "*": "*"
             }
           }
         }

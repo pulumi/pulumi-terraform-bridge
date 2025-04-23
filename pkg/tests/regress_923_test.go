@@ -161,7 +161,7 @@ func TestRegress923(t *testing.T) {
             "properties": {
               "id": "*",
               "__meta": "*",
-              "__pulumi_raw_state_delta": "*",
+              "*": "*",
               "name": "webhookname"
             }
           }

@@ -78,7 +78,7 @@ func TestTransformOutputs(t *testing.T) {
 		    "properties": {
 		      "id": "*",
 		      "ecdsacurve": "TRANSFORMED",
-                      "__pulumi_raw_state_delta": "*"
+                      "*": "*"
 		    }
 		  }
 		}`)
@@ -127,7 +127,7 @@ func TestTransformOutputs(t *testing.T) {
 		    "properties": {
 		      "id": "*",
 	              "ecdsacurve": "TRANSFORMED",
-                      "__pulumi_raw_state_delta": "*"
+                      "*": "*"
 		    }
 		  }
 		}`)
@@ -148,7 +148,7 @@ func TestTransformOutputs(t *testing.T) {
 		    "properties": {
 			"id": "*",
                         "ecdsacurve": "TRANSFORMED",
-                        "__pulumi_raw_state_delta": "*"
+                        "*": "*"
 		    }
 		  }
 		}`)
@@ -253,7 +253,7 @@ func TestTransformFromState(t *testing.T) {
 		  },
 		  "response": {
 		    "properties": {
-                     "__pulumi_raw_state_delta": "*",
+                     "*": "*",
 		      "stringPropertyValue": "SET"
 		    }
 		  }
@@ -312,7 +312,7 @@ func TestTransformFromState(t *testing.T) {
 		    "properties": {
                         "id": "0",
 			"stringPropertyValue": "SET",
-                        "__pulumi_raw_state_delta": "*"
+                        "*": "*"
 		    }
 		  }
 		}`)

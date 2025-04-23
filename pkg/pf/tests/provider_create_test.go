@@ -45,7 +45,7 @@ func TestCreateWithComputedOptionals(t *testing.T) {
             "properties": {
               "ecdsacurve": "P384",
               "id": "r1",
-              "__pulumi_raw_state_delta": "*"
+              "*": "*"
             }
           }
         }
@@ -69,7 +69,7 @@ func TestCreateWithIntID(t *testing.T) {
             "id": "1234",
             "properties": {
               "id": "1234",
-              "__pulumi_raw_state_delta": "*"
+              "*": "*"
             }
           }
         }
@@ -95,7 +95,7 @@ func TestCreateWritesSchemaVersion(t *testing.T) {
 	    "id": "*",
 	    "properties": {
 	      "__meta": "{\"schema_version\":\"2\"}",
-              "__pulumi_raw_state_delta": "*",
+              "*": "*",
 	      "id": "*",
 	      "result": "*",
 	      "length": 1,
@@ -167,7 +167,7 @@ func TestMuxedAliasCreate(t *testing.T) {
 	      "number": 4,
 	      "suggestionUpdated": false,
               "suggestion": "*",
-              "__pulumi_raw_state_delta": "*"
+              "*": "*"
 	    }
 	  },
 	  "metadata": {
@@ -247,7 +247,7 @@ func TestCreateWithSchemaBasedSecrets(t *testing.T) {
 	      "id": "none",
 	      "properties": {
 		"__meta": "{\"schema_version\":\"3\"}",
-                "__pulumi_raw_state_delta": "*",
+                "*": "*",
 		"bcryptHash": {
 		  "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
 		  "value": "*"
@@ -304,7 +304,7 @@ func TestCreateSupportsCustomID(t *testing.T) {
               "id": "customID2",
               "length": 2,
               "separator": "BbAXG:}h",
-              "__pulumi_raw_state_delta": "*"
+              "*": "*"
             }
           }
 	}`

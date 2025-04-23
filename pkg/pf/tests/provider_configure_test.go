@@ -506,7 +506,7 @@ func TestConfigureToCreate(t *testing.T) {
 	      "properties": {
 		"configCopy": "example",
 		"id": "id-1",
-                 "__pulumi_raw_state_delta": "*"
+                "*": "*"
 	      }
 	    }
 	  }
@@ -654,7 +654,7 @@ func TestJSONNestedConfigureWithSecrets(t *testing.T) {
       "properties": {
         "configCopy": "secret-example",
         "id": "id-1",
-        "__pulumi_raw_state_delta": "*"
+        "*": "*"
       }
     }
   }
@@ -708,7 +708,7 @@ func TestConfigureWithSecrets(t *testing.T) {
       "properties": {
         "configCopy": "secret-example",
         "id": "id-1",
-        "__pulumi_raw_state_delta": "*"
+        "*": "*"
       }
     }
   }
