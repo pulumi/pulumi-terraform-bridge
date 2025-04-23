@@ -5873,21 +5873,27 @@ func TestProviderCallTerraformConfig(t *testing.T) {
 	require.NotNil(t, callResp)
 
 	// Assert our return object is as expected, with terraform_cased keys
-	callReturnProperties, err := plugin.UnmarshalProperties(callResp.GetReturn(), plugin.MarshalOptions{})
+	callReturnProperties, err := plugin.UnmarshalProperties(callResp.GetReturn(), plugin.MarshalOptions{KeepSecrets: true})
 	require.NoError(t, err)
-	autogold.Expect(resource.PropertyMap{
-		"ignore_tags": resource.PropertyValue{
-			V: []resource.PropertyValue{{
-				V: resource.PropertyMap{"key_prefixes": resource.PropertyValue{
-					V: []resource.PropertyValue{
-						{V: "dev"},
-						{V: "staging"},
-					},
+	autogold.Expect(resource.PropertyMap{resource.PropertyKey("result"): resource.PropertyValue{
+		V: resource.PropertyMap{
+			resource.PropertyKey("ignore_tags"): resource.PropertyValue{
+				V: &resource.Secret{Element: resource.PropertyValue{
+					V: []resource.PropertyValue{{
+						V: resource.PropertyMap{resource.PropertyKey("key_prefixes"): resource.PropertyValue{
+							V: []resource.PropertyValue{
+								{
+									V: "dev",
+								},
+								{V: "staging"},
+							},
+						}},
+					}},
 				}},
-			}},
+			},
+			resource.PropertyKey("region"): resource.PropertyValue{V: &resource.Secret{Element: resource.PropertyValue{V: "us-west-space-odyssey-2000"}}},
 		},
-		"region": resource.PropertyValue{V: "us-west-space-odyssey-2000"},
-	}).Equal(t, callReturnProperties)
+	}}).Equal(t, callReturnProperties)
 
 	// Assert invalid method token results in error
 	reqInvalidToken := &pulumirpc.CallRequest{
