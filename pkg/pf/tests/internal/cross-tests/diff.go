@@ -51,7 +51,7 @@ func yamlResource(t T, properties resource.PropertyMap) map[string]any {
 //
 // Diff should be safe to run in parallel.
 func Diff(t T, res pb.Resource, tfConfig1, tfConfig2 map[string]cty.Value, options ...DiffOption) crosstestsimpl.DiffResult {
-	skipUnlessLinux(t)
+	SkipUnlessLinux(t)
 
 	var opts diffOpts
 	for _, f := range options {
@@ -137,11 +137,13 @@ func Diff(t T, res pb.Resource, tfConfig1, tfConfig2 map[string]cty.Value, optio
 }
 
 func runTFPlanApply(t T, pb *pb.Provider, wd string, hcl string) (tfcheck.TFChange, string) {
-	driver := tfcheck.NewTfDriver(t, wd, pb.TypeName, pb)
+	driver := tfcheck.NewTfDriver(t, wd, pb.TypeName, tfcheck.NewTFDriverOpts{
+		V6Provider: pb,
+	})
 	driver.Write(t, hcl)
 	plan, err := driver.Plan(t)
 	require.NoError(t, err)
-	err = driver.Apply(t, plan)
+	err = driver.ApplyPlan(t, plan)
 	require.NoError(t, err)
 	return driver.ParseChangesFromTFPlan(plan), plan.StdOut
 }

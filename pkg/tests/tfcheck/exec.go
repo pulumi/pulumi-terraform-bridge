@@ -29,7 +29,11 @@ func (d *TFDriver) execTf(t pulcheck.T, args ...string) ([]byte, error) {
 	if stderr := cmd.Stderr.(*bytes.Buffer).String(); len(stderr) > 0 {
 		t.Logf("%q stderr:\n%s\n", cmd.String(), stderr)
 	}
-	return cmd.Stdout.(*bytes.Buffer).Bytes(), err
+	stdout := cmd.Stdout.(*bytes.Buffer).Bytes()
+	if d.logOutput {
+		t.Logf("%q stdout:\n%s\n", cmd.String(), string(stdout))
+	}
+	return stdout, err
 }
 
 func execCmd(t pulcheck.T, wdir string, environ []string, program string, args ...string) (*exec.Cmd, error) {

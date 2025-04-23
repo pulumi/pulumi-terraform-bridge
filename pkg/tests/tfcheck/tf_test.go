@@ -32,7 +32,9 @@ func TestTfComputed(t *testing.T) {
 		},
 	}
 
-	driver := NewTfDriver(t, t.TempDir(), "test", &prov)
+	driver := NewTfDriver(t, t.TempDir(), "test", NewTFDriverOpts{
+		SDKProvider: &prov,
+	})
 
 	driver.Write(t, `
 resource "test_resource" "test" {
@@ -44,7 +46,7 @@ resource "test_resource" "test" {
 	plan, err := driver.Plan(t)
 	require.NoError(t, err)
 	t.Log(driver.Show(t, plan.PlanFile))
-	err = driver.Apply(t, plan)
+	err = driver.ApplyPlan(t, plan)
 	require.NoError(t, err)
 
 	t.Log(driver.GetState(t))
@@ -54,7 +56,7 @@ resource "test_resource" "test" {
 
 	t.Log(driver.Show(t, plan.PlanFile))
 
-	err = driver.Apply(t, newPlan)
+	err = driver.ApplyPlan(t, newPlan)
 	require.NoError(t, err)
 
 	t.Log(driver.GetState(t))
@@ -95,7 +97,9 @@ func TestTfMapMissingElem(t *testing.T) {
 		},
 	}
 
-	driver := NewTfDriver(t, t.TempDir(), "test", &prov)
+	driver := NewTfDriver(t, t.TempDir(), "test", NewTFDriverOpts{
+		SDKProvider: &prov,
+	})
 
 	driver.Write(t, `
 resource "test_resource" "test" {
@@ -111,7 +115,7 @@ resource "test_resource" "test" {
 	require.NoError(t, err)
 
 	t.Log(driver.Show(t, plan.PlanFile))
-	err = driver.Apply(t, plan)
+	err = driver.ApplyPlan(t, plan)
 	require.NoError(t, err)
 
 	t.Log(driver.GetState(t))
@@ -121,7 +125,7 @@ resource "test_resource" "test" {
 
 	t.Log(driver.Show(t, plan.PlanFile))
 
-	err = driver.Apply(t, newPlan)
+	err = driver.ApplyPlan(t, newPlan)
 	require.NoError(t, err)
 
 	t.Log(driver.GetState(t))
@@ -177,7 +181,7 @@ func TestTfUnknownObjects(t *testing.T) {
 		},
 	}
 
-	driver := NewTfDriver(t, t.TempDir(), "test", &prov)
+	driver := NewTfDriver(t, t.TempDir(), "test", NewTFDriverOpts{SDKProvider: &prov})
 
 	knownProgram := `
 resource "test_resource" "test" {
@@ -203,7 +207,7 @@ resource "test_resource" "test" {
 
 	t.Log(driver.Show(t, plan.PlanFile))
 
-	err = driver.Apply(t, plan)
+	err = driver.ApplyPlan(t, plan)
 	require.NoError(t, err)
 	t.Log(driver.GetState(t))
 
@@ -213,7 +217,7 @@ resource "test_resource" "test" {
 
 	t.Log(driver.Show(t, plan.PlanFile))
 
-	err = driver.Apply(t, plan)
+	err = driver.ApplyPlan(t, plan)
 	require.NoError(t, err)
 	t.Log(driver.GetState(t))
 }

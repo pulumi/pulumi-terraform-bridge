@@ -115,7 +115,7 @@ func TestConfigureCrossTest(t *testing.T) {
 			},
 		}
 
-		tfdriver := tfcheck.NewTfDriver(t, t.TempDir(), "prov", tfp)
+		tfdriver := tfcheck.NewTfDriver(t, t.TempDir(), "prov", tfcheck.NewTFDriverOpts{SDKProvider: tfp})
 		tfdriver.Write(t, tfProgram)
 		_, err := tfdriver.Plan(t)
 		require.NoError(t, err)

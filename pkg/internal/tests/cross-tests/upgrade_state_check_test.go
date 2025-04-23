@@ -382,7 +382,7 @@ func runUpgradeStateTestTF(t T, tc upgradeStateTestCase) []upgradeStateTrace {
 
 	t.Logf("#### apply (similar to update)")
 	tracker.phase = updatePhase
-	err = tfd2.driver.Apply(t, plan)
+	err = tfd2.driver.ApplyPlan(t, plan)
 	require.NoError(t, err)
 
 	return tracker.trace

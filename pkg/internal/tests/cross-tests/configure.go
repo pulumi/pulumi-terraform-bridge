@@ -109,11 +109,13 @@ func Configure(
 		}
 	}
 	tfProvider := makeProvider(&tfResult)
-	tfd := tfcheck.NewTfDriver(t, tfwd, defProviderShortName, tfProvider)
+	tfd := tfcheck.NewTfDriver(t, tfwd, defProviderShortName, tfcheck.NewTFDriverOpts{
+		SDKProvider: tfProvider,
+	})
 	tfd.Write(t, providerHCLProgram(t, defProviderShortName, tfProvider, tfConfig))
 	plan, err := tfd.Plan(t)
 	require.NoError(t, err)
-	require.NoError(t, tfd.Apply(t, plan))
+	require.NoError(t, tfd.ApplyPlan(t, plan))
 
 	require.True(t, tfResult.wasSet, "terraform configure result was not set")
 	require.True(t, tfResult.resourceCreated, "terraform resource result was not set")

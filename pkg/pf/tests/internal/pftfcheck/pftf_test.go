@@ -26,7 +26,9 @@ func TestBasic(t *testing.T) {
 		},
 	})
 
-	driver := tfcheck.NewTfDriver(t, t.TempDir(), prov.TypeName, prov)
+	driver := tfcheck.NewTfDriver(t, t.TempDir(), prov.TypeName, tfcheck.NewTFDriverOpts{
+		V6Provider: prov,
+	})
 
 	driver.Write(t, `
 resource "testprovider_res" "test" {
@@ -39,7 +41,7 @@ output "s_val" {
 
 	plan, err := driver.Plan(t)
 	require.NoError(t, err)
-	err = driver.Apply(t, plan)
+	err = driver.ApplyPlan(t, plan)
 	require.NoError(t, err)
 
 	require.Equal(t, "hello", driver.GetOutput(t, "s_val"))
@@ -64,7 +66,9 @@ func TestDefaults(t *testing.T) {
 		},
 	})
 
-	driver := tfcheck.NewTfDriver(t, t.TempDir(), prov.TypeName, prov)
+	driver := tfcheck.NewTfDriver(t, t.TempDir(), prov.TypeName, tfcheck.NewTFDriverOpts{
+		V6Provider: prov,
+	})
 
 	driver.Write(t, `
 resource "testprovider_res" "test" {}
@@ -75,7 +79,7 @@ output "s_val" {
 
 	plan, err := driver.Plan(t)
 	require.NoError(t, err)
-	err = driver.Apply(t, plan)
+	err = driver.ApplyPlan(t, plan)
 	require.NoError(t, err)
 
 	require.Equal(t, "Default val", driver.GetOutput(t, "s_val"))

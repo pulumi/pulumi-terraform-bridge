@@ -30,6 +30,7 @@ type TFDriver struct {
 	cwd            string
 	providerName   string
 	reattachConfig *plugin.ReattachConfig
+	logOutput      bool
 }
 
 type TFPlan struct {
@@ -58,19 +59,32 @@ func disableTFLogging() {
 	os.Setenv("TF_LOG_SDK_PROTO", "off")
 }
 
-type providerv6 interface {
-	GRPCProvider() tfprotov6.ProviderServer
+type NewTFDriverOpts struct {
+	// Either [V6Provider] or [SDKProvider] must be est.
+	SDKProvider *schema.Provider
+
+	// Either [V6Provider] or [SDKProvider] must be est.
+	V6Provider interface {
+		GRPCProvider() tfprotov6.ProviderServer
+	}
+
+	// If set, log underlying CLI operation output.
+	LogOutput bool
 }
 
 // This takes a sdkv2 schema.Provider or a providerv6
-func NewTfDriver(t pulcheck.T, dir, providerName string, prov any) *TFDriver {
-	switch p := prov.(type) {
-	case *schema.Provider:
-		return newTfDriverSDK(t, dir, providerName, p)
-	case providerv6:
-		return newTFDriverV6(t, dir, providerName, p.GRPCProvider())
+func NewTfDriver(t pulcheck.T, dir, providerName string, opts NewTFDriverOpts) *TFDriver {
+	switch {
+	case opts.SDKProvider != nil:
+		d := newTfDriverSDK(t, dir, providerName, opts.SDKProvider)
+		d.logOutput = opts.LogOutput
+		return d
+	case opts.V6Provider != nil:
+		d := newTFDriverV6(t, dir, providerName, opts.V6Provider.GRPCProvider())
+		d.logOutput = opts.LogOutput
+		return d
 	default:
-		contract.Failf("unsupported provider type %T", prov)
+		contract.Failf("one of V6Provider or SDKProvider settings must be set")
 		return nil
 	}
 }
@@ -121,6 +135,8 @@ func (d *TFDriver) Write(t pulcheck.T, program string) {
 	require.NoErrorf(t, err, "writing test.tf")
 }
 
+// Plans an operation. This sets -refresh=false which is not the default behavior in Terraform but it better matches
+// the target behavior that bridged providers currently emulate.
 func (d *TFDriver) Plan(t pulcheck.T) (*TFPlan, error) {
 	planFile := filepath.Join(d.cwd, "test.tfplan")
 	planStdoutBytes, err := d.execTf(t, "plan", "-refresh=false", "-out", planFile, "-no-color")
@@ -136,7 +152,16 @@ func (d *TFDriver) Plan(t pulcheck.T) (*TFPlan, error) {
 	return &tp, nil
 }
 
-func (d *TFDriver) Apply(t pulcheck.T, plan *TFPlan) error {
+// Executes apply. This sets -refresh=false which is not the default behavior in Terraform but it better matches the
+// target behavior that bridged providers currently emulate. Unlike [ApplyPlan] this operation will recompute the plan
+// on the fly.
+func (d *TFDriver) Apply(t pulcheck.T) error {
+	_, err := d.execTf(t, "apply", "-auto-approve", "-refresh=false")
+	return err
+}
+
+// Apply a given plan.
+func (d *TFDriver) ApplyPlan(t pulcheck.T, plan *TFPlan) error {
 	_, err := d.execTf(t, "apply", "-auto-approve", "-refresh=false", plan.PlanFile)
 	return err
 }
