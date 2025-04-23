@@ -15,6 +15,9 @@ env:
 jobs:
   test:
     strategy:
+      # Collect all test failures instead of stopping when only one test is failing.
+      fail-fast: false
+
       matrix:
         # To avoid depending on features introduced in newer golang versions, we need to
         # test our minimum supported golang versions.
@@ -26,8 +29,6 @@ jobs:
         feature-flags: ["DEFAULT"]
         # Needs to match TOTAL_SHARDS
         shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
-        # Collect all test failures instead of stopping when only one test is failing.
-        fail-fast: false
         exclude:
           # Windows and mac test runs do not need to be sharded as they are fast enough.
           # In order to do that we will skip all except the 0-th shard.
