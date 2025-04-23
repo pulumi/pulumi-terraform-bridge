@@ -14,7 +14,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/zclconf/go-cty/cty"
 
+	crosstests "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/pulcheck"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
@@ -430,4 +432,187 @@ func TestSDKv2AliasesRenameWithAlias(t *testing.T) {
 	res := pt2.Up(t)
 
 	autogold.Expect(&map[string]int{"same": 2}).Equal(t, res.Summary.ResourceChanges)
+}
+
+func TestPreviewSetElementWithUnknownBool(t *testing.T) {
+	t.Parallel()
+
+	fillBars := func(rd *schema.ResourceData) {
+		setVal := rd.Get("test")
+		if setVal == nil {
+			return
+		}
+		set := setVal.(*schema.Set)
+		setSlice := set.List()
+		if len(setSlice) == 0 {
+			return
+		}
+		newSetSlice := make([]interface{}, len(setSlice))
+		for i, setElem := range setSlice {
+			elemMap := setElem.(map[string]interface{})
+			// bar is computed, so we need to set it
+			elemMap["bar"] = false
+			newSetSlice[i] = elemMap
+		}
+		setVal = schema.NewSet(set.F, newSetSlice)
+		err := rd.Set("test", setVal)
+		require.NoError(t, err)
+	}
+
+	prov := &schema.Provider{
+		ResourcesMap: map[string]*schema.Resource{
+			"prov_test": {
+				Schema: map[string]*schema.Schema{
+					"test": {
+						Type:     schema.TypeSet,
+						Optional: true,
+						Elem: &schema.Resource{
+							Schema: map[string]*schema.Schema{
+								"bar": {
+									Type:     schema.TypeBool,
+									Computed: true,
+									Optional: true,
+								},
+								"baz": {
+									Type:     schema.TypeString,
+									Optional: true,
+								},
+							},
+						},
+					},
+				},
+				CreateContext: func(ctx context.Context, rd *schema.ResourceData, i interface{}) diag.Diagnostics {
+					rd.SetId("1")
+					fillBars(rd)
+					return nil
+				},
+				UpdateContext: func(ctx context.Context, rd *schema.ResourceData, i interface{}) diag.Diagnostics {
+					fillBars(rd)
+					return nil
+				},
+			},
+		},
+	}
+
+	bridgedProvider := pulcheck.BridgedProvider(t, "prov", prov)
+
+	pt := pulcheck.PulCheck(t, bridgedProvider, `
+    name: test
+    runtime: yaml
+    resources:
+      mainRes:
+        type: prov:index/test:Test
+        properties:
+          tests:
+            - baz: "hello"`,
+	)
+	resUp := pt.Up(t)
+
+	require.NotContains(t, resUp.StdErr, "Failed to calculate preview")
+	require.NotContains(t, resUp.StdOut, "Failed to calculate preview")
+
+	program2 := `
+    name: test
+    runtime: yaml
+    resources:
+      mainRes:
+        type: prov:index/test:Test
+        properties:
+          tests:
+            - baz: "hello"
+            - baz: "world"`
+
+	pt.WritePulumiYaml(t, program2)
+	res := pt.Preview(t)
+
+	require.NotContains(t, res.StdErr, "Failed to calculate preview")
+	require.NotContains(t, res.StdOut, "Failed to calculate preview")
+}
+
+// The set hash function should never be called with nil, even if it is in the state.
+func TestDiffSetHashFailsOnNil(t *testing.T) {
+	t.Parallel()
+
+	fillBars := func(rd *schema.ResourceData) {
+		setVal := rd.Get("test")
+		if setVal == nil {
+			return
+		}
+		set := setVal.(*schema.Set)
+		setSlice := set.List()
+		if len(setSlice) == 0 {
+			return
+		}
+		newSetSlice := make([]interface{}, len(setSlice))
+		for i, setElem := range setSlice {
+			elemMap := setElem.(map[string]interface{})
+			// bar is computed, so we need to set it
+			elemMap["bar"] = true
+			newSetSlice[i] = elemMap
+		}
+		setVal = schema.NewSet(set.F, newSetSlice)
+		err := rd.Set("test", setVal)
+		require.NoError(t, err)
+	}
+
+	elemSch := &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"bar": {
+				Type:     schema.TypeBool,
+				Computed: true,
+				Optional: true,
+			},
+			"bar2": {
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
+			"baz": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+		},
+	}
+
+	res := schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"test": {
+				Type:     schema.TypeSet,
+				Optional: true,
+				Elem:     elemSch,
+				Set: func(v interface{}) int {
+					if v == nil {
+						panic("trying to hash nil")
+					}
+					return schema.HashResource(elemSch)(v)
+				},
+			},
+		},
+		CreateContext: func(ctx context.Context, rd *schema.ResourceData, i interface{}) diag.Diagnostics {
+			rd.SetId("1")
+			fillBars(rd)
+			return nil
+		},
+		UpdateContext: func(ctx context.Context, rd *schema.ResourceData, i interface{}) diag.Diagnostics {
+			fillBars(rd)
+			return nil
+		},
+	}
+
+	crosstests.Diff(t, &res, map[string]cty.Value{
+		"test": cty.ListVal([]cty.Value{
+			cty.ObjectVal(map[string]cty.Value{
+				"baz": cty.StringVal("hello"),
+			}),
+		}),
+	}, map[string]cty.Value{
+		"test": cty.ListVal([]cty.Value{
+			cty.ObjectVal(map[string]cty.Value{
+				"baz": cty.StringVal("hello"),
+			}),
+			cty.ObjectVal(map[string]cty.Value{
+				"baz": cty.StringVal("world"),
+			}),
+		}),
+	},
+	)
 }

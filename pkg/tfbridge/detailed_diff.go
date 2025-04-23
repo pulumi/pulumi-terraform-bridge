@@ -370,7 +370,10 @@ func (differ detailedDiffer) calculateSetHashIndexMap(
 						path.String(), r))
 				}
 			}()
-			return tfs.SetHash(newElem)
+			setConfig, err := tfs.SetElement(newElem)
+			contract.AssertNoErrorf(
+				err, "Failed to calculate preview for element in %s: Failed to convert set element", path.String())
+			return tfs.SetHash(setConfig)
 		}()
 		identities[setHash(elementHash)] = arrayIndex(i)
 	}

@@ -3031,6 +3031,40 @@ func Test_calculateSetHashIndexMap(t *testing.T) {
 
 		require.Contains(t, buf.String(), "Failed to calculate preview for element in foo")
 	})
+
+	t.Run("set with unknown bool value", func(t *testing.T) {
+		t.Parallel()
+		tfs := shimv2.NewSchemaMap(map[string]*schema.Schema{
+			"foo": {Type: schema.TypeSet, Elem: &schema.Resource{
+				Schema: map[string]*schema.Schema{
+					"bar": {Type: schema.TypeBool, Computed: true, Optional: true},
+				},
+			}},
+		})
+
+		buf := &bytes.Buffer{}
+		ctx := logging.InitLogging(context.Background(), logging.LogOptions{
+			LogSink: &testLogSink{buf: buf},
+		})
+
+		differ := detailedDiffer{
+			ctx: ctx,
+			tfs: tfs,
+			ps:  nil,
+		}
+
+		res := differ.calculateSetHashIndexMap(
+			newPropertyPath("foo"),
+			[]resource.PropertyValue{resource.NewObjectProperty(resource.PropertyMap{
+				"bar": resource.NewComputedProperty(resource.Computed{
+					Element: resource.NewStringProperty(""),
+				}),
+			})},
+		)
+
+		require.NotContains(t, buf.String(), "Failed to calculate preview for element")
+		autogold.Expect(hashIndexMap{setHash(3593176713): arrayIndex(0)}).Equal(t, res)
+	})
 }
 
 func TestDetailedDiffReplaceOverrideFalse(t *testing.T) {
