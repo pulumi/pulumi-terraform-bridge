@@ -1034,7 +1034,11 @@ func MakeTerraformResult(
 	if state != nil && len(state.Meta()) != 0 {
 		metaJSON, err := json.Marshal(state.Meta())
 		contract.Assertf(err == nil, "err == nil")
-		outMap[reservedkeys.Meta] = resource.NewStringProperty(string(metaJSON))
+		payload := string(metaJSON)
+		// Default payloads may be omitted.
+		if payload != `{"schema_version":"0"}` {
+			outMap[reservedkeys.Meta] = resource.NewStringProperty(payload)
+		}
 	}
 
 	return outMap, nil
