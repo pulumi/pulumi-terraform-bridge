@@ -1,0 +1,12 @@
+# .github/release.yml
+#
+# This file configures automated release note generation to reduce noise and exclude pulumi-bot changes from the notes.
+#
+# See https://docs.github.com/en/repositories/releasing-projects-on-github/automatically-generated-release-notes#example-configurations
+
+changelog:
+  exclude:
+    labels:
+      - impact/no-changelog-required
+    authors:
+      - pulumi-bot
