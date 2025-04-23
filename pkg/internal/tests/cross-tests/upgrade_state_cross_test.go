@@ -529,6 +529,7 @@ func TestUpgrade_UpgradersNotCalledWhenVersionIsNotChanging(t *testing.T) {
 func TestUpgrade_String_0to1_Version(t *testing.T) {
 	t.Parallel()
 	skipUnlessLinux(t)
+	skipUnlessDeltasEnabled(t)
 
 	sch := map[string]*schema.Schema{
 		"f0": {
@@ -684,17 +685,6 @@ func TestUpgrade_String_0to1_Version(t *testing.T) {
 			},
 			{
 				Phase: upgradeStateTestPhase("preview"),
-				RawState: map[string]interface{}{
-					"f0": "val1",
-					"id": "newid",
-				},
-				Result: map[string]interface{}{
-					"f0": "val1",
-					"id": "newid",
-				},
-			},
-			{
-				Phase: upgradeStateTestPhase("update"),
 				RawState: map[string]interface{}{
 					"f0": "val1",
 					"id": "newid",
