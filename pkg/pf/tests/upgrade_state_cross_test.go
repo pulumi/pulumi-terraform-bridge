@@ -16,6 +16,7 @@ package tfbridgetests
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 	"testing"
 
@@ -30,14 +31,17 @@ import (
 	"github.com/zclconf/go-cty/cty"
 
 	pb "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/providerbuilder"
+	crosstests "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/cross-tests"
 	ct "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/cross-tests"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
 // Check a scenario where a schema change is accompanied by a migration function that compensates.
 func TestPFUpgrade_StateUpgraders(t *testing.T) {
 	t.Parallel()
 	ct.SkipUnlessLinux(t)
+	skipUnlessDeltasEnabled(t)
 
 	resourceBefore := pb.NewResource(pb.NewResourceArgs{
 		ResourceSchema: schema.Schema{
@@ -116,7 +120,7 @@ func TestPFUpgrade_StateUpgraders(t *testing.T) {
 			cty.NumberIntVal(2),
 			cty.NumberIntVal(3),
 		})}),
-		InputsMap2: presource.PropertyMap{"prop": presource.NewArrayProperty([]presource.PropertyValue{
+		InputsMap2: presource.PropertyMap{"props": presource.NewArrayProperty([]presource.PropertyValue{
 			presource.NewNumberProperty(1),
 			presource.NewNumberProperty(2),
 			presource.NewNumberProperty(3),
@@ -125,12 +129,45 @@ func TestPFUpgrade_StateUpgraders(t *testing.T) {
 		// Apparently in this case TF expects RawState to be received on the new schema.
 		ExpectedRawStateType: resourceAfter.ResourceSchema.Type().TerraformType(context.Background()),
 
-		SkipPulumi: "TODO[pulumi/pulumi-terraform-bridge#1667] raw state does not parse properly",
+		// Pulumi does not upgrade this resource to V2 because of a no-op update plan.
+		// TODO[pulumi/pulumi-terraform-bridge#3008]
+		SkipSchemaVersionAfterUpdateCheck: true,
 	}
 
 	result := tc.Run(t)
 
-	autogold.Expect([]ct.UpgradeStateTrace{}).Equal(t, result.PulumiUpgrades)
+	autogold.Expect([]crosstests.UpgradeStateTrace{
+		{
+			Phase: crosstests.UpgradeStateTestPhase("preview"),
+			PriorState: map[string]interface{}{
+				"id":   "test-id",
+				"prop": "one,two,three",
+			},
+			ReturnedState: map[string]interface{}{
+				"id": "test-id",
+				"prop": []interface{}{
+					1,
+					2,
+					3,
+				},
+			},
+		},
+		{
+			Phase: crosstests.UpgradeStateTestPhase("update"),
+			PriorState: map[string]interface{}{
+				"id":   "test-id",
+				"prop": "one,two,three",
+			},
+			ReturnedState: map[string]interface{}{
+				"id": "test-id",
+				"prop": []interface{}{
+					1,
+					2,
+					3,
+				},
+			},
+		},
+	}).Equal(t, result.PulumiUpgrades)
 	autogold.Expect([]ct.UpgradeStateTrace{
 		{
 			Phase: ct.UpgradeStateTestPhase("refresh"),
@@ -184,6 +221,7 @@ func TestPFUpgrade_StateUpgraders(t *testing.T) {
 func TestPFUpgrade_Pulumi_Removes_MaxItems1(t *testing.T) {
 	t.Parallel()
 	ct.SkipUnlessLinux(t)
+	skipUnlessDeltasEnabled(t)
 
 	resourceBeforeAndAfter := pb.NewResource(pb.NewResourceArgs{
 		ResourceSchema: schema.Schema{
@@ -246,11 +284,8 @@ func TestPFUpgrade_Pulumi_Removes_MaxItems1(t *testing.T) {
 	}
 	result := testCase.Run(t)
 
-	autogold.Expect(&map[string]int{"same": 2}).Equal(t, result.PulumiRefreshResult.Summary.ResourceChanges)
-
-	// TODO[pulumi/pulumi-terraform-bridge#1667] this should be a no-changes diff.
-	autogold.Expect(map[apitype.OpType]int{apitype.OpType("same"): 1, apitype.OpType("update"): 1}).Equal(t, result.PulumiPreviewResult.ChangeSummary)
-	autogold.Expect(&map[string]int{"same": 1, "update": 1}).Equal(t, result.PulumiUpResult.Summary.ResourceChanges)
+	autogold.Expect(map[apitype.OpType]int{apitype.OpType("same"): 2}).Equal(t, result.PulumiPreviewResult.ChangeSummary)
+	autogold.Expect(&map[string]int{"same": 2}).Equal(t, result.PulumiUpResult.Summary.ResourceChanges)
 
 	autogold.Expect([]ct.UpgradeStateTrace{}).Equal(t, result.PulumiUpgrades)
 	autogold.Expect([]ct.UpgradeStateTrace{}).Equal(t, result.TFUpgrades)
@@ -260,6 +295,7 @@ func TestPFUpgrade_Pulumi_Removes_MaxItems1(t *testing.T) {
 func TestPFUpgrade_Pulumi_Adds_MaxItems1(t *testing.T) {
 	t.Parallel()
 	ct.SkipUnlessLinux(t)
+	skipUnlessDeltasEnabled(t)
 
 	resourceBeforeAndAfter := pb.NewResource(pb.NewResourceArgs{
 		ResourceSchema: schema.Schema{
@@ -323,11 +359,8 @@ func TestPFUpgrade_Pulumi_Adds_MaxItems1(t *testing.T) {
 
 	result := testCase.Run(t)
 
-	autogold.Expect(&map[string]int{"same": 2}).Equal(t, result.PulumiRefreshResult.Summary.ResourceChanges)
-
-	// TODO[pulumi/pulumi-terraform-bridge#1667] this should be a no-changes diff.
-	autogold.Expect(map[apitype.OpType]int{apitype.OpType("same"): 1, apitype.OpType("update"): 1}).Equal(t, result.PulumiPreviewResult.ChangeSummary)
-	autogold.Expect(&map[string]int{"same": 1, "update": 1}).Equal(t, result.PulumiUpResult.Summary.ResourceChanges)
+	autogold.Expect(map[apitype.OpType]int{apitype.OpType("same"): 2}).Equal(t, result.PulumiPreviewResult.ChangeSummary)
+	autogold.Expect(&map[string]int{"same": 2}).Equal(t, result.PulumiUpResult.Summary.ResourceChanges)
 
 	autogold.Expect([]ct.UpgradeStateTrace{}).Equal(t, result.PulumiUpgrades)
 	autogold.Expect([]ct.UpgradeStateTrace{}).Equal(t, result.TFUpgrades)
@@ -336,6 +369,7 @@ func TestPFUpgrade_Pulumi_Adds_MaxItems1(t *testing.T) {
 func TestPFUpgrade_UpgradersNotCalledWhenVersionIsNotChanging(t *testing.T) {
 	t.Parallel()
 	ct.SkipUnlessLinux(t)
+	skipUnlessDeltasEnabled(t)
 
 	sch := func(version int64) schema.Schema {
 		return schema.Schema{
@@ -413,6 +447,7 @@ func TestPFUpgrade_UpgradersNotCalledWhenVersionIsNotChanging(t *testing.T) {
 func TestPFUpgrade_String_0to1_Version(t *testing.T) {
 	t.Parallel()
 	ct.SkipUnlessLinux(t)
+	skipUnlessDeltasEnabled(t)
 
 	sch := func(version int64) schema.Schema {
 		return schema.Schema{
@@ -505,9 +540,9 @@ func TestPFUpgrade_String_0to1_Version(t *testing.T) {
 			},
 		}).Equal(t, result.TFUpgrades)
 
-		autogold.Expect([]ct.UpgradeStateTrace{
+		autogold.Expect([]crosstests.UpgradeStateTrace{
 			{
-				Phase: ct.UpgradeStateTestPhase("refresh"),
+				Phase: crosstests.UpgradeStateTestPhase("preview"),
 				PriorState: map[string]interface{}{
 					"f0": "val",
 					"id": "test-id",
@@ -518,18 +553,7 @@ func TestPFUpgrade_String_0to1_Version(t *testing.T) {
 				},
 			},
 			{
-				Phase: ct.UpgradeStateTestPhase("preview"),
-				PriorState: map[string]interface{}{
-					"f0": "val",
-					"id": "test-id",
-				},
-				ReturnedState: map[string]interface{}{
-					"f0": "val",
-					"id": "test-id",
-				},
-			},
-			{
-				Phase: ct.UpgradeStateTestPhase("update"),
+				Phase: crosstests.UpgradeStateTestPhase("update"),
 				PriorState: map[string]interface{}{
 					"f0": "val",
 					"id": "test-id",
@@ -591,9 +615,9 @@ func TestPFUpgrade_String_0to1_Version(t *testing.T) {
 		}).Equal(t, result.TFUpgrades)
 
 		// Upgrade calls similar but Pulumi calls the upgrader a few times too many.
-		autogold.Expect([]ct.UpgradeStateTrace{
+		autogold.Expect([]crosstests.UpgradeStateTrace{
 			{
-				Phase: ct.UpgradeStateTestPhase("refresh"),
+				Phase: crosstests.UpgradeStateTestPhase("preview"),
 				PriorState: map[string]interface{}{
 					"f0": "val1",
 					"id": "test-id",
@@ -604,7 +628,7 @@ func TestPFUpgrade_String_0to1_Version(t *testing.T) {
 				},
 			},
 			{
-				Phase: ct.UpgradeStateTestPhase("preview"),
+				Phase: crosstests.UpgradeStateTestPhase("preview"),
 				PriorState: map[string]interface{}{
 					"f0": "val1",
 					"id": "test-id",
@@ -615,7 +639,7 @@ func TestPFUpgrade_String_0to1_Version(t *testing.T) {
 				},
 			},
 			{
-				Phase: ct.UpgradeStateTestPhase("preview"),
+				Phase: crosstests.UpgradeStateTestPhase("update"),
 				PriorState: map[string]interface{}{
 					"f0": "val1",
 					"id": "test-id",
@@ -626,18 +650,7 @@ func TestPFUpgrade_String_0to1_Version(t *testing.T) {
 				},
 			},
 			{
-				Phase: ct.UpgradeStateTestPhase("update"),
-				PriorState: map[string]interface{}{
-					"f0": "val1",
-					"id": "test-id",
-				},
-				ReturnedState: map[string]interface{}{
-					"f0": "val1",
-					"id": "test-id",
-				},
-			},
-			{
-				Phase: ct.UpgradeStateTestPhase("update"),
+				Phase: crosstests.UpgradeStateTestPhase("update"),
 				PriorState: map[string]interface{}{
 					"f0": "val1",
 					"id": "test-id",
@@ -655,6 +668,7 @@ func TestPFUpgrade_String_0to1_Version(t *testing.T) {
 func TestPFUpgrade_Object_0to1_Version(t *testing.T) {
 	t.Parallel()
 	ct.SkipUnlessLinux(t)
+	skipUnlessDeltasEnabled(t)
 
 	sch := func(version int64) schema.Schema {
 		return schema.Schema{
@@ -750,9 +764,9 @@ func TestPFUpgrade_Object_0to1_Version(t *testing.T) {
 				},
 			},
 		}).Equal(t, result.TFUpgrades)
-		autogold.Expect([]ct.UpgradeStateTrace{
+		autogold.Expect([]crosstests.UpgradeStateTrace{
 			{
-				Phase: ct.UpgradeStateTestPhase("refresh"),
+				Phase: crosstests.UpgradeStateTestPhase("preview"),
 				PriorState: map[string]interface{}{
 					"f0": map[string]interface{}{"x": "val"},
 					"id": "test-id",
@@ -763,18 +777,7 @@ func TestPFUpgrade_Object_0to1_Version(t *testing.T) {
 				},
 			},
 			{
-				Phase: ct.UpgradeStateTestPhase("preview"),
-				PriorState: map[string]interface{}{
-					"f0": map[string]interface{}{"x": "val"},
-					"id": "test-id",
-				},
-				ReturnedState: map[string]interface{}{
-					"f0": map[string]interface{}{"x": "val"},
-					"id": "test-id",
-				},
-			},
-			{
-				Phase: ct.UpgradeStateTestPhase("update"),
+				Phase: crosstests.UpgradeStateTestPhase("update"),
 				PriorState: map[string]interface{}{
 					"f0": map[string]interface{}{"x": "val"},
 					"id": "test-id",
@@ -835,9 +838,9 @@ func TestPFUpgrade_Object_0to1_Version(t *testing.T) {
 				},
 			},
 		}).Equal(t, result.TFUpgrades)
-		autogold.Expect([]ct.UpgradeStateTrace{
+		autogold.Expect([]crosstests.UpgradeStateTrace{
 			{
-				Phase: ct.UpgradeStateTestPhase("refresh"),
+				Phase: crosstests.UpgradeStateTestPhase("preview"),
 				PriorState: map[string]interface{}{
 					"f0": map[string]interface{}{"x": "val1"},
 					"id": "test-id",
@@ -848,7 +851,7 @@ func TestPFUpgrade_Object_0to1_Version(t *testing.T) {
 				},
 			},
 			{
-				Phase: ct.UpgradeStateTestPhase("preview"),
+				Phase: crosstests.UpgradeStateTestPhase("preview"),
 				PriorState: map[string]interface{}{
 					"f0": map[string]interface{}{"x": "val1"},
 					"id": "test-id",
@@ -859,7 +862,7 @@ func TestPFUpgrade_Object_0to1_Version(t *testing.T) {
 				},
 			},
 			{
-				Phase: ct.UpgradeStateTestPhase("preview"),
+				Phase: crosstests.UpgradeStateTestPhase("update"),
 				PriorState: map[string]interface{}{
 					"f0": map[string]interface{}{"x": "val1"},
 					"id": "test-id",
@@ -870,18 +873,7 @@ func TestPFUpgrade_Object_0to1_Version(t *testing.T) {
 				},
 			},
 			{
-				Phase: ct.UpgradeStateTestPhase("update"),
-				PriorState: map[string]interface{}{
-					"f0": map[string]interface{}{"x": "val1"},
-					"id": "test-id",
-				},
-				ReturnedState: map[string]interface{}{
-					"f0": map[string]interface{}{"x": "val1"},
-					"id": "test-id",
-				},
-			},
-			{
-				Phase: ct.UpgradeStateTestPhase("update"),
+				Phase: crosstests.UpgradeStateTestPhase("update"),
 				PriorState: map[string]interface{}{
 					"f0": map[string]interface{}{"x": "val1"},
 					"id": "test-id",
@@ -900,6 +892,7 @@ func TestPFUpgrade_Object_0to1_Version(t *testing.T) {
 func TestPFUpgrade_PulumiRenamesProperty(t *testing.T) {
 	t.Parallel()
 	ct.SkipUnlessLinux(t)
+	skipUnlessDeltasEnabled(t)
 
 	sch := func(version int64) schema.Schema {
 		return schema.Schema{
@@ -947,10 +940,7 @@ func TestPFUpgrade_PulumiRenamesProperty(t *testing.T) {
 		assert.Equal(t, result.TFUpgrades, result.PulumiUpgrades)
 		autogold.Expect([]ct.UpgradeStateTrace{}).Equal(t, result.PulumiUpgrades)
 
-		autogold.Expect(&map[string]int{"same": 2}).Equal(t, result.PulumiRefreshResult.Summary.ResourceChanges)
-
-		// TODO[pulumi/pulumi-terraform-bridge#1667] this should be a no-changes diff.
-		autogold.Expect(&map[string]int{"same": 1, "update": 1}).Equal(t, result.PulumiUpResult.Summary.ResourceChanges)
+		autogold.Expect(&map[string]int{"same": 2}).Equal(t, result.PulumiUpResult.Summary.ResourceChanges)
 	})
 
 	t.Run("different", func(t *testing.T) {
@@ -968,7 +958,6 @@ func TestPFUpgrade_PulumiRenamesProperty(t *testing.T) {
 		assert.Equal(t, result.TFUpgrades, result.PulumiUpgrades)
 		autogold.Expect([]ct.UpgradeStateTrace{}).Equal(t, result.PulumiUpgrades)
 
-		autogold.Expect(&map[string]int{"same": 2}).Equal(t, result.PulumiRefreshResult.Summary.ResourceChanges)
 		autogold.Expect(&map[string]int{"same": 1, "update": 1}).Equal(t, result.PulumiUpResult.Summary.ResourceChanges)
 	})
 }
@@ -978,6 +967,7 @@ func TestPFUpgrade_PulumiRenamesProperty(t *testing.T) {
 func TestPFUpgrade_PulumiChangesPropertyType(t *testing.T) {
 	t.Parallel()
 	ct.SkipUnlessLinux(t)
+	skipUnlessDeltasEnabled(t)
 
 	sch := func(version int64) schema.Schema {
 		return schema.Schema{
@@ -1025,7 +1015,6 @@ func TestPFUpgrade_PulumiChangesPropertyType(t *testing.T) {
 		assert.Equal(t, result.TFUpgrades, result.PulumiUpgrades)
 		autogold.Expect([]ct.UpgradeStateTrace{}).Equal(t, result.PulumiUpgrades)
 
-		autogold.Expect(&map[string]int{"same": 2}).Equal(t, result.PulumiRefreshResult.Summary.ResourceChanges)
 		autogold.Expect(&map[string]int{"same": 2}).Equal(t, result.PulumiUpResult.Summary.ResourceChanges)
 	})
 
@@ -1044,7 +1033,6 @@ func TestPFUpgrade_PulumiChangesPropertyType(t *testing.T) {
 		assert.Equal(t, result.TFUpgrades, result.PulumiUpgrades)
 		autogold.Expect([]ct.UpgradeStateTrace{}).Equal(t, result.PulumiUpgrades)
 
-		autogold.Expect(&map[string]int{"same": 2}).Equal(t, result.PulumiRefreshResult.Summary.ResourceChanges)
 		autogold.Expect(&map[string]int{"same": 1, "update": 1}).Equal(t, result.PulumiUpResult.Summary.ResourceChanges)
 	})
 }
@@ -1108,4 +1096,10 @@ func TestPFUpgrade_Downgrading(t *testing.T) {
 		assert.Equal(t, result.TFUpgrades, result.PulumiUpgrades)
 		autogold.Expect([]ct.UpgradeStateTrace{}).Equal(t, result.PulumiUpgrades)
 	})
+}
+
+func skipUnlessDeltasEnabled(t *testing.T) {
+	if d, ok := os.LookupEnv("PULUMI_RAW_STATE_DELTA_ENABLED"); !ok || !cmdutil.IsTruthy(d) {
+		t.Skip("This test requires PULUMI_RAW_STATE_DELTA_ENABLED=true environment")
+	}
 }

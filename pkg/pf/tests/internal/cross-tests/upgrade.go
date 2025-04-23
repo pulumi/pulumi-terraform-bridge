@@ -70,6 +70,12 @@ type UpgradeStateTestCase struct {
 
 	SkipPulumi                        string // Reason to skip Pulumi side of the test
 	SkipSchemaVersionAfterUpdateCheck bool
+
+	// Turning this on would check what would happen if `pulumi refresh` ran a Resource2-style provider against a
+	// Resource1-style state. This is not currently how Pulumi works in production though, as `pulumi refresh`
+	// would always pick the provider version recorded in the state to perform operations against. So these checks
+	// are possibly moot, but might be useful in the future if Pulumi behavior around refresh changes.
+	ExperimentalPulumiRefresh bool
 }
 
 func (UpgradeStateTestCase) tfProviderName() string {
@@ -349,17 +355,21 @@ func runUpgradeTestStatePulumi(t *testing.T, tc UpgradeStateTestCase) UpgradeSta
 	require.NoError(t, err)
 	pt2.ImportStack(t, createdState)
 
-	t.Logf("#### refresh")
-	tracker.phase = refreshPhase
-	refreshResult := pt2.Refresh(t)
-	t.Logf("%s", refreshResult.StdOut+refreshResult.StdErr)
+	var refreshResult auto.RefreshResult
+	if tc.ExperimentalPulumiRefresh {
+		t.Logf("#### refresh")
+		tracker.phase = refreshPhase
+		refreshResult = pt2.Refresh(t)
+		t.Logf("%s", refreshResult.StdOut+refreshResult.StdErr)
 
-	schemaVersionR := getVersionInState(t, pt2.ExportStack(t))
-	t.Logf("schema version after refresh is %d", schemaVersionR)
-	require.Equalf(t, getSchemaVersion(tc.Resource2), schemaVersionR, "bad getVersionInState result for refresh")
+		schemaVersionR := getVersionInState(t, pt2.ExportStack(t))
+		t.Logf("schema version after refresh is %d", schemaVersionR)
+		require.Equalf(t, getSchemaVersion(tc.Resource2), schemaVersionR,
+			"bad getVersionInState result for refresh")
 
-	// Reset to created state as refresh may have edited it.
-	pt2.ImportStack(t, createdState)
+		// Reset to created state as refresh may have edited it.
+		pt2.ImportStack(t, createdState)
+	}
 
 	t.Logf("#### preview")
 	tracker.phase = previewPhase
