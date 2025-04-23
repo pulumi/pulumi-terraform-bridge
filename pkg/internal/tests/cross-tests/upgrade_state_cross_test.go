@@ -400,6 +400,7 @@ func TestUpgrade_Upstream_Adds_MaxItems1(t *testing.T) {
 func TestUpgrade_Upstream_Removes_MaxItems1(t *testing.T) {
 	t.Parallel()
 	skipUnlessLinux(t)
+	skipUnlessDeltasEnabled(t)
 
 	sch := func(maxItems int) map[string]*schema.Schema {
 		return map[string]*schema.Schema{
