@@ -203,10 +203,13 @@ func (p *provider) parseAndUpgradeResourceState(
 		return nil, err
 	}
 
+	// The version in state starts off with the value from parsedMeta, but may be modified by PreStateUpgradeHook.
 	stateVersion := parsedMeta.SchemaVersion
 
 	if rh.pulumiResourceInfo.PreStateUpgradeHook != nil {
 		var err error
+
+		// Possibly modify stateVersion.
 		stateVersion, props, err = rh.pulumiResourceInfo.PreStateUpgradeHook(tfbridge.PreStateUpgradeHookArgs{
 			ResourceSchemaVersion:   rh.schema.ResourceSchemaVersion(),
 			PriorState:              props.Copy(),
@@ -244,7 +247,7 @@ func (p *provider) parseAndUpgradeResourceState(
 		}
 
 		// Always call the upgrade method, even if at current schema version.
-		return p.upgradeResourceState(ctx, rh, rawState, parsedMeta)
+		return p.upgradeResourceState(ctx, rh, rawState, parsedMeta.PrivateState, stateVersion)
 	}
 
 	// Otherwise fallback to imprecise legacy parsing.
@@ -269,7 +272,7 @@ func (p *provider) parseAndUpgradeResourceState(
 		}, nil
 	}
 
-	return p.upgradeResourceState(ctx, rh, rawState, parsedMeta)
+	return p.upgradeResourceState(ctx, rh, rawState, parsedMeta.PrivateState, stateVersion)
 }
 
 // Wraps running state migration via the underlying TF upgradeResourceState method.
@@ -277,12 +280,13 @@ func (p *provider) upgradeResourceState(
 	ctx context.Context,
 	rh *resourceHandle,
 	rawState *tfprotov6.RawState,
-	meta metaState,
+	privateState []byte,
+	stateVersion int64,
 ) (*upgradedResourceState, error) {
 	tfType := rh.schema.Type(ctx).(tftypes.Object)
 	req := &tfprotov6.UpgradeResourceStateRequest{
 		TypeName: rh.terraformResourceName,
-		Version:  meta.SchemaVersion,
+		Version:  stateVersion,
 		RawState: rawState,
 	}
 
@@ -320,7 +324,7 @@ func (p *provider) upgradeResourceState(
 	return &upgradedResourceState{
 		TFSchemaVersion: rh.schema.ResourceSchemaVersion(),
 		Value:           v,
-		Private:         meta.PrivateState,
+		Private:         privateState,
 	}, nil
 }
 

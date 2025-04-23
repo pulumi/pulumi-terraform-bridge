@@ -33,7 +33,7 @@ func TestPreStateUpgradeHook(t *testing.T) {
 		if args.PriorStateSchemaVersion == 0 {
 			return 2, args.PriorState, nil
 		}
-		// Otherwise proceed as ususal without modification.
+		// Otherwise proceed as usual without modification.
 		return args.PriorStateSchemaVersion, args.PriorState, nil
 	}
 
