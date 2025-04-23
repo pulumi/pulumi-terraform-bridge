@@ -69,7 +69,14 @@ type RawStateDelta struct {
 func (d RawStateDelta) Recover(pv resource.PropertyValue) (rawstate.RawState, error) {
 	b, err := d.recoverRepr(pv)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Data integrity error: %q does not apply cleanly to the resource state\n\n"+
+			"If you are editing the state manually, try removing the %q key and run Pulumi again.\n\n"+
+			"If no manual state edits were involved, please report this as a bug\n\n"+
+			"    https://github.com/pulumi/pulumi-terraform-bridge/issues\n\n"+
+			"Detail: %w",
+			reservedkeys.RawStateDelta,
+			reservedkeys.RawStateDelta,
+			err)
 	}
 	return b.Build(), nil
 }
