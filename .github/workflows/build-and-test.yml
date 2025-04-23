@@ -15,6 +15,9 @@ env:
 jobs:
   test:
     strategy:
+      # Collect all test failures instead of stopping when only one test is failing.
+      fail-fast: false
+
       matrix:
         # To avoid depending on features introduced in newer golang versions, we need to
         # test our minimum supported golang versions.
