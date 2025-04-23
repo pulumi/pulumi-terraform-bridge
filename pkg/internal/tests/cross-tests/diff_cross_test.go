@@ -1836,6 +1836,7 @@ func TestStateUpgradeSet(t *testing.T) {
 
 func TestDiffProviderUpgradeMaxItemsOneChanged(t *testing.T) {
 	t.Parallel()
+	skipUnlessDeltasEnabled(t)
 
 	resWithMaxItemsOne := &schema.Resource{
 		Schema: map[string]*schema.Schema{"prop": {

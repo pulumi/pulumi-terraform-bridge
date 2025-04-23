@@ -2461,7 +2461,7 @@ func TestTransformOutputs(t *testing.T) {
                       "stringPropertyValue": "TRANSFORMED",
 		      "boolPropertyValue": "*",
 		      "__meta": "*",
-                      "__pulumi_raw_state_delta": "*",
+                      "*": "*",
 		      "objectPropertyValue": "*",
 		      "floatPropertyValue": "*",
 		      "stringPropertyValue": "*",
@@ -2498,7 +2498,7 @@ func TestTransformOutputs(t *testing.T) {
 		      "id": "*",
                       "stringPropertyValue": "TRANSFORMED",
 		      "__meta": "*",
-                      "__pulumi_raw_state_delta": "*",
+                      "*": "*",
 		      "objectPropertyValue": "*",
 		      "floatPropertyValue": "*",
 		      "stringPropertyValue": "*",
@@ -2535,7 +2535,7 @@ func TestTransformOutputs(t *testing.T) {
 		      "stringPropertyValue": "TRANSFORMED",
 		      "boolPropertyValue": "*",
 		      "__meta": "*",
-                      "__pulumi_raw_state_delta": "*",
+                      "*": "*",
 
 		      "objectPropertyValue": "*",
 		      "floatPropertyValue": "*",
@@ -2567,7 +2567,7 @@ func TestTransformOutputs(t *testing.T) {
 			"stringPropertyValue": "TRANSFORMED",
 			"boolPropertyValue": "*",
 			"__meta": "*",
-                        "__pulumi_raw_state_delta": "*",
+                        "*": "*",
 			"objectPropertyValue": "*",
 			"floatPropertyValue": "*",
 			"arrayPropertyValues": "*",
@@ -2752,7 +2752,7 @@ func TestTransformFromState(t *testing.T) {
 		      "id": "*",
                       "stringPropertyValue": "NEW",
 		      "__meta": "*",
-		      "__pulumi_raw_state_delta": "*"
+		      "*": "*"
 		    }
 		  }
 		}`)
@@ -2777,7 +2777,7 @@ func TestTransformFromState(t *testing.T) {
 		      "id": "*",
 		      "stringPropertyValue": "SET",
 		      "__meta": "*",
-		      "__pulumi_raw_state_delta": "*"
+		      "*": "*"
 		    }
 		  }
 		}`)
@@ -2837,7 +2837,7 @@ func TestTransformFromState(t *testing.T) {
 			"id": "*",
 			"stringPropertyValue": "SET",
 			"__meta": "*",
-                        "__pulumi_raw_state_delta": "*"
+                        "*": "*"
 		    }
 		  }
 		}`)
@@ -3439,7 +3439,7 @@ func testImport(t *testing.T, newProvider func(*schema.Provider) shim.Provider) 
 		      "id": "res1",
 		      "stringPropertyValue": "imported",
 		      "__meta": "*",
-                      "__pulumi_raw_state_delta": "*"
+                      "*": "*"
 		    },
 		    "id": "res1"
 		  }
@@ -3525,7 +3525,7 @@ func testRefresh(t *testing.T, newProvider func(*schema.Provider) shim.Provider)
 		      "id": "res1",
 		      "stringPropertyValue": "imported",
 		      "__meta": "*",
-                      "__pulumi_raw_state_delta": "*"
+                      "*": "*"
 		    },
 		    "id": "res1"
 		  }
@@ -3590,7 +3590,7 @@ func testRefresh(t *testing.T, newProvider func(*schema.Provider) shim.Provider)
 		    "properties": {
                       "id": "someres",
                       "__meta": "*",
-                      "__pulumi_raw_state_delta": "*",
+                      "*": "*",
 		      "stringPropertyValue": {
 			"4dabf18193072939515e22adb298388d": "c44067f5952c0a294b673a41bacd8c17",
 			"hash": "a72e573d8c91ec1c6bb0dfdf641bc2de1e2417c0d980ecfcdf039c2a9bcbbf67"

@@ -14,6 +14,7 @@ import (
 	"github.com/hexops/autogold/v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
@@ -65,6 +66,8 @@ func TestStacktraceDisplayed(t *testing.T) {
 func TestPrimitiveTypes(t *testing.T) {
 	t.Parallel()
 	skipWindows(t)
+	skipUnlessDeltasEnabled(t)
+
 	ctx := context.Background()
 
 	grpc := grpcTestServer(ctx, t)
@@ -204,6 +207,12 @@ func TestPrimitiveTypes(t *testing.T) {
 		Id:  "example-read-id",
 		Urn: urn,
 	}, noParallel))
+}
+
+func skipUnlessDeltasEnabled(t *testing.T) {
+	if d, ok := os.LookupEnv("PULUMI_RAW_STATE_DELTA_ENABLED"); !ok || !cmdutil.IsTruthy(d) {
+		t.Skip("This test requires PULUMI_RAW_STATE_DELTA_ENABLED=true environment")
+	}
 }
 
 func TestConfigure(t *testing.T) {
