@@ -28,7 +28,6 @@ import (
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	pbstruct "github.com/golang/protobuf/ptypes/struct"
 	"github.com/hashicorp/go-multierror"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -52,7 +51,6 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/typechecker"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/walk"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/valueshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/x/muxer"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/propertyvalue"
@@ -1768,28 +1766,22 @@ func (p *Provider) returnTerraformConfig(ctx context.Context) (resource.Property
 		return nil, fmt.Errorf("error building Terraform config: %v", err)
 	}
 
-	var rawConfig terraform.ResourceConfig
+	jsonConfigMap := map[string]any{}
+	containsUnknowns := false
 
-	if cfg, ok := resConfig.(shim.ResourceConfigWithGetterForSdkV2); ok {
-		rawConfig = cfg.GetTFConfig()
+	if cfg, ok := resConfig.(shim.ResourceConfigWithGetterForRawConfigMap); ok {
+		jsonConfigMap, containsUnknowns, err = cfg.GetRawConfigMapWithUnknown()
 	}
 
-	if !rawConfig.CtyValue.IsWhollyKnown() {
+	if err != nil {
+		return nil, err
+	}
+
+	if containsUnknowns {
 		msg := fmt.Sprintf("It looks like you're trying to use the provider's terraformConfig function. " +
 			"The result of this function is meant for use as the config value of a required provider for a " +
 			"Pulumi Terraform Module. All inputs to provider configuration must be known for this feature to work.")
 		return nil, errors.New(msg)
-	}
-
-	configJSONMessage, err := valueshim.FromHCtyValue(rawConfig.CtyValue).Marshal()
-	if err != nil {
-		return nil, fmt.Errorf("error marshaling into raw JSON message: %v", err)
-	}
-
-	jsonConfigMap := map[string]any{}
-	err = json.Unmarshal(configJSONMessage, &jsonConfigMap)
-	if err != nil {
-		return nil, fmt.Errorf("error unmarshaling JSON: %v", err)
 	}
 
 	originalMap := resource.NewPropertyMapFromMap(jsonConfigMap)

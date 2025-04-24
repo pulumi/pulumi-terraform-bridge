@@ -1,14 +1,22 @@
 package sdkv2
 
 import (
+	"encoding/json"
+	"fmt"
+
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/valueshim"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
+// Interface assertions to ensure v2ResourceConfig implements the required interfaces
 var (
-	_                                       = shim.ResourceConfig(v2ResourceConfig{})
-	_ shim.ResourceConfigWithGetterForSdkV2 = (*v2ResourceConfig)(nil)
+	// Ensure v2ResourceConfig struct implements shim.ResourceConfig
+	_ shim.ResourceConfig = v2ResourceConfig{}
+
+	// Ensure *v2ResourceConfig pointer implements shim.ResourceConfigWithGetterForRawConfigMap
+	_ shim.ResourceConfigWithGetterForRawConfigMap = (*v2ResourceConfig)(nil)
 )
 
 type v2ResourceConfig struct {
@@ -31,6 +39,18 @@ func (c v2ResourceConfig) IsSet(key string) bool {
 	return false
 }
 
-func (c v2ResourceConfig) GetTFConfig() terraform.ResourceConfig {
-	return *c.tf
+func (c v2ResourceConfig) GetRawConfigMapWithUnknown() (map[string]any, bool, error) {
+	var containsUnknowns bool
+	jsonConfigMap := map[string]any{}
+	ctyValue := c.tf.CtyValue
+	if !ctyValue.IsWhollyKnown() {
+		containsUnknowns = true
+	}
+	configJsonMessage, err := valueshim.FromHCtyValue(ctyValue).Marshal()
+	if err != nil {
+		return nil, containsUnknowns, fmt.Errorf("error marshaling into raw JSON message: %v", err) //TODO: add err
+	}
+
+	err = json.Unmarshal(configJsonMessage, &jsonConfigMap)
+	return jsonConfigMap, containsUnknowns, nil
 }

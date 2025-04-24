@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
-
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
@@ -14,9 +12,9 @@ type ResourceConfig interface {
 	IsSet(k string) bool
 }
 
-type ResourceConfigWithGetterForSdkV2 interface {
+type ResourceConfigWithGetterForRawConfigMap interface {
 	ResourceConfig
-	GetTFConfig() terraform.ResourceConfig
+	GetRawConfigMapWithUnknown() (map[string]any, bool, error)
 }
 
 type InstanceState interface {
