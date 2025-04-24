@@ -425,7 +425,7 @@ func TestTranslateCodeBlocks(t *testing.T) {
 		contentStr string
 		g          *Generator
 	}
-	p := tfbridge.ProviderInfo{
+	providerInfo := tfbridge.ProviderInfo{
 		Name: "simple",
 		P: sdkv2.NewProvider(&schema.Provider{
 			ResourcesMap: map[string]*schema.Resource{
@@ -464,60 +464,37 @@ func TestTranslateCodeBlocks(t *testing.T) {
 			},
 		},
 	}
-	pclsMap := make(map[string]translatedExample)
+	generator, err := NewGenerator(GeneratorOptions{
+		Language:     RegistryDocs,
+		PluginHost:   &testPluginHost{},
+		ProviderInfo: providerInfo,
+	})
+	assert.NoError(t, err)
 
 	testCases := []testCase{
 		{
 			name:       "configuration",
 			desc:       "Translates HCL from examples ",
 			contentStr: readfile(t, "test_data/installation-docs/configuration.md"),
-			g: &Generator{
-				sink: mockSink{},
-				cliConverterState: &cliConverter{
-					info: p,
-					pcls: pclsMap,
-				},
-				language: RegistryDocs,
-			},
+			g:          generator,
 		},
 		{
 			name:       "invalid-example",
 			desc:       "Does not translate an invalid example and leaves example block blank",
 			contentStr: readfile(t, "test_data/installation-docs/invalid-example.md"),
-			g: &Generator{
-				sink: mockSink{},
-				cliConverterState: &cliConverter{
-					info: p,
-					pcls: pclsMap,
-				},
-				language: RegistryDocs,
-			},
+			g:          generator,
 		},
 		{
 			name:       "provider-config-only",
 			desc:       "Translates standalone provider config into Pulumi config YAML",
 			contentStr: readfile(t, "test_data/installation-docs/provider-config-only.md"),
-			g: &Generator{
-				sink: mockSink{},
-				cliConverterState: &cliConverter{
-					info: p,
-					pcls: pclsMap,
-				},
-				language: RegistryDocs,
-			},
+			g:          generator,
 		},
 		{
 			name:       "example-only",
 			desc:       "Translates standalone example into languages",
 			contentStr: readfile(t, "test_data/installation-docs/example-only.md"),
-			g: &Generator{
-				sink: mockSink{},
-				cliConverterState: &cliConverter{
-					info: p,
-					pcls: pclsMap,
-				},
-				language: RegistryDocs,
-			},
+			g:          generator,
 		},
 	}
 
