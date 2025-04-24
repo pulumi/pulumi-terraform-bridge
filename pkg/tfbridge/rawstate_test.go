@@ -1112,7 +1112,7 @@ func Test_rawstate_against_MakeTerraformOutputs(t *testing.T) {
 			state, err := p.Apply(ctx, tok, nil, instanceDiff)
 			require.NoError(t, err)
 
-			stateWithValue, ok := state.(shim.InstanceStateWithCtyValue)
+			stateWithValue, ok := state.(shim.InstanceStateWithTypedValue)
 			require.Truef(t, ok, "shim.InstanceStateWithCtyValue cast failed")
 			stateValue := stateWithValue.Value()
 
@@ -1132,14 +1132,14 @@ func Test_rawstate_against_MakeTerraformOutputs(t *testing.T) {
 
 			pv := resource.NewObjectProperty(outMap)
 
-			delta := ih.delta(pv, valueshim.FromHCtyValue(stateValue))
+			delta := ih.delta(pv, stateValue)
 
 			deltaPV := delta.Marshal()
 			deltaJSON, err := json.MarshalIndent(deltaPV.Mappable(), "", "  ")
 			require.NoError(t, err)
 			tc.infl.Equal(t, string(deltaJSON))
 
-			err = delta.turnaroundCheck(ctx, newRawStateFromValue(valueshim.FromHCtyValue(stateValue)), pv)
+			err = delta.turnaroundCheck(ctx, newRawStateFromValue(stateValue), pv)
 			assert.NoError(t, err)
 		})
 	}

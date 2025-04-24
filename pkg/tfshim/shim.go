@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/hashicorp/go-cty/cty"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/rawstate"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/valueshim"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
@@ -27,9 +27,9 @@ type InstanceState interface {
 	Meta() map[string]interface{}
 }
 
-// Newer versions of the bridge want to interact with a cty.Value representation of the state.
-type InstanceStateWithCtyValue interface {
-	Value() cty.Value
+// Newer versions of the bridge want to interact with a typed representation of the state.
+type InstanceStateWithTypedValue interface {
+	Value() valueshim.Value
 }
 
 type DiffAttrType byte

@@ -462,11 +462,11 @@ func RawStateInjectDelta(
 		return nil
 	}
 
-	instanceStateCty, ok := instanceState.(shim.InstanceStateWithCtyValue)
+	instanceStateCty, ok := instanceState.(shim.InstanceStateWithTypedValue)
 	if !ok {
 		return nil
 	}
-	v := valueshim.FromHCtyValue(instanceStateCty.Value())
+	v := instanceStateCty.Value()
 	d, err := RawStateComputeDelta(ctx, schemaMap, schemaInfos, outMap, v)
 	if err != nil {
 		return err

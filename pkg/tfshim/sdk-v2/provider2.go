@@ -24,6 +24,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/rawstate"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/log"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/valueshim"
 )
 
 type v2Resource2 struct {
@@ -85,8 +86,8 @@ type v2InstanceState2 struct {
 }
 
 var (
-	_ shim.InstanceState             = (*v2InstanceState2)(nil)
-	_ shim.InstanceStateWithCtyValue = (*v2InstanceState2)(nil)
+	_ shim.InstanceState               = (*v2InstanceState2)(nil)
+	_ shim.InstanceStateWithTypedValue = (*v2InstanceState2)(nil)
 )
 
 func newNonUpgradedInstanceState(resourceType string, stateValue cty.Value, meta map[string]any) *v2InstanceState2 {
@@ -141,8 +142,8 @@ func (s *v2InstanceState2) Meta() map[string]interface{} {
 	return s.meta
 }
 
-func (s *v2InstanceState2) Value() cty.Value {
-	return s.stateValue
+func (s *v2InstanceState2) Value() valueshim.Value {
+	return valueshim.FromHCtyValue(s.stateValue)
 }
 
 type v2InstanceDiff2 struct {
@@ -463,7 +464,7 @@ func (p *v2Provider) providerMeta() (*cty.Value, error) {
 	// TODO[pulumi/pulumi-terraform-bridge#1827]: We do not believe that this is load bearing in any providers.
 }
 
-func (*v2Provider) unpackDiff(ty cty.Type, d shim.InstanceDiff) *v2InstanceDiff2 {
+func (*v2Provider) unpackDiff(_ cty.Type, d shim.InstanceDiff) *v2InstanceDiff2 {
 	switch d := d.(type) {
 	case nil:
 		contract.Failf("Unexpected nil InstanceDiff")
