@@ -580,8 +580,10 @@ func TestDiffSetHashFailsOnNil(t *testing.T) {
 				Optional: true,
 				Elem:     elemSch,
 				Set: func(v interface{}) int {
-					if v == nil {
-						panic("trying to hash nil")
+					for _, subV := range v.(map[string]interface{}) {
+						if subV == nil {
+							panic("nil value in hash func")
+						}
 					}
 					return schema.HashResource(elemSch)(v)
 				},

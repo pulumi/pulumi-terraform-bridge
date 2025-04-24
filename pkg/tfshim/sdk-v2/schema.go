@@ -129,6 +129,15 @@ func (s v2Schema) WriteOnly() bool {
 }
 
 func (s v2Schema) SetElement(v interface{}) (interface{}, error) {
+	// The plugin-sdk does some pre-processing on the set element values before
+	// calling the hash function on them. Some examples of that are:
+	// - dropping unknowns
+	// - defaulting null values (false for bools, 0 for ints, "" for strings)
+	// Instead of trying to reverse that, we'll just call the plugin-sdk's
+	// code for accessing set elements which handles this pre-processing.
+	// This ensures that the hash functions receives the values it expects.
+	// See [pkg/tests/tfcheck/tf_test.go:TestTFSetHashNil] for an example of
+	// this behaviour in TF.
 	sch := map[string]*schema.Schema{"e": s.tf}
 	setWriter := &schema.MapFieldWriter{Schema: sch}
 	err := setWriter.WriteField([]string{"e"}, []interface{}{v})
