@@ -129,6 +129,8 @@ func (s v2Schema) WriteOnly() bool {
 	return s.tf.WriteOnly
 }
 
+// SetElement expects a set element without any unknown values.
+// The value passed here can contain golang types or a plugin-sdk schema.Set.
 func (s v2Schema) SetElement(v interface{}) (interface{}, error) {
 	// The plugin-sdk does some pre-processing on the set element values before
 	// calling the hash function on them. Some examples of that are:

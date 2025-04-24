@@ -202,6 +202,8 @@ type SchemaWithUnknownCollectionSupported interface {
 
 type SchemaWithSetElementHash interface {
 	Schema
+	// SetElementHash returns a hash of the given set element.
+	// Note that it expects a set element without any unknown values.
 	SetElementHash(v interface{}) (int, error)
 }
 
