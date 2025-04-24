@@ -3,8 +3,8 @@ Use the navigation to the left to read about the available resources.
 ## Example Usage
 
 ```hcl
-# Configure the OpenStack Provider
-provider "simple-provider" {
+# Configure the Simple Provider
+provider "simple" {
   user_name   = "admin"
   tenant_name = "admin"
   password    = "pwd"
