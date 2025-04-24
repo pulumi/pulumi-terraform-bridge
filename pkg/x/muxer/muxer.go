@@ -97,7 +97,7 @@ type (
 )
 
 func (m *muxer) getFunction(token string) server {
-	// TODO: Verify this is safe to do
+	// TODO[pulumi/pulumi-terraform-bridge#3032] return a provider that we know implements the terraformConfig function
 	if strings.Contains(token, "terraformConfig") {
 		return m.servers[0]
 	}
