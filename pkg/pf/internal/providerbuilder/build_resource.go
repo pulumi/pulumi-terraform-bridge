@@ -26,9 +26,12 @@ import (
 )
 
 type NewResourceArgs struct {
-	// Name is the name of the resource. Defaults to "test".
-	Name           string
+	Name string
+
 	ResourceSchema schema.Schema
+
+	// Do not inject a Computed String "id" attribute into the schema.
+	CustomID bool
 
 	CreateFunc       func(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse)
 	ReadFunc         func(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse)
@@ -49,7 +52,7 @@ func NewResource(args NewResourceArgs) Resource {
 		args.ResourceSchema.Attributes = map[string]schema.Attribute{}
 	}
 
-	if args.ResourceSchema.Attributes["id"] == nil {
+	if args.ResourceSchema.Attributes["id"] == nil && !args.CustomID {
 		args.ResourceSchema.Attributes["id"] = schema.StringAttribute{
 			Computed: true,
 			PlanModifiers: []planmodifier.String{
@@ -79,12 +82,23 @@ func NewResource(args NewResourceArgs) Resource {
 			return nil
 		}
 	}
-	return Resource(args)
+	return Resource{
+		Name:             args.Name,
+		ResourceSchema:   args.ResourceSchema,
+		CreateFunc:       args.CreateFunc,
+		ReadFunc:         args.ReadFunc,
+		UpdateFunc:       args.UpdateFunc,
+		DeleteFunc:       args.DeleteFunc,
+		ImportStateFunc:  args.ImportStateFunc,
+		UpgradeStateFunc: args.UpgradeStateFunc,
+		ModifyPlanFunc:   args.ModifyPlanFunc,
+	}
 }
 
 // Resource is a utility type that helps define PF resources. Prefer creating via NewResource.
 type Resource struct {
-	Name           string
+	Name string
+
 	ResourceSchema schema.Schema
 
 	CreateFunc       func(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse)

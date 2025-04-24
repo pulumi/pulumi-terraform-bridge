@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/rawstate"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/valueshim"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
@@ -23,6 +25,11 @@ type InstanceState interface {
 
 	Object(sch SchemaMap) (map[string]interface{}, error)
 	Meta() map[string]interface{}
+}
+
+// Newer versions of the bridge want to interact with a typed representation of the state.
+type InstanceStateWithTypedValue interface {
+	Value() valueshim.Value
 }
 
 type DiffAttrType byte
@@ -55,7 +62,10 @@ const (
 type InstanceDiff interface {
 	Attribute(key string) *ResourceAttrDiff
 	HasNoChanges() bool
+
+	// When planning resource creation, pass nil to priorState.
 	ProposedState(res Resource, priorState InstanceState) (InstanceState, error)
+
 	Destroy() bool
 	RequiresNew() bool
 
@@ -230,7 +240,11 @@ type Resource interface {
 	DeprecationMessage() string
 	Timeouts() *ResourceTimeout
 
+	// Recovers an InstanceState from data originating from a Pulumi statefile.
+	//
+	// Newer versions of the bridge prefer to call UpgradeState instead whenever raw state is available.
 	InstanceState(id string, object, meta map[string]interface{}) (InstanceState, error)
+
 	DecodeTimeouts(config ResourceConfig) (*ResourceTimeout, error)
 }
 
@@ -277,7 +291,7 @@ type Provider interface {
 	Diff(
 		ctx context.Context,
 		t string,
-		s InstanceState,
+		s InstanceState, // may be nil when planning Create
 		c ResourceConfig,
 		opts DiffOptions,
 	) (InstanceDiff, error)
@@ -343,3 +357,15 @@ type DiffOptions struct {
 //
 // https://www.pulumi.com/docs/concepts/options/ignorechanges/
 type IgnoreChanges = func() map[string]struct{}
+
+type ProviderWithRawStateSupport interface {
+	Provider
+
+	// Ensure raw state is upgraded to the current resource schema version.
+	UpgradeState(
+		ctx context.Context,
+		t string,
+		state rawstate.RawState,
+		meta map[string]any,
+	) (InstanceState, error)
+}

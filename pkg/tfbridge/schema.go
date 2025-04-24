@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/reservedkeys"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/log"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 )
@@ -711,7 +712,7 @@ func buildConflictsWith(result map[string]interface{}, tfs shim.SchemaMap) map[s
 
 func (ctx *conversionContext) applyDefaults(
 	result map[string]interface{},
-	olds, news resource.PropertyMap,
+	olds, _news resource.PropertyMap,
 	tfs shim.SchemaMap,
 	ps map[string]*SchemaInfo,
 ) error {
@@ -1007,6 +1008,8 @@ func makeTerraformUnknown(tfs shim.Schema) interface{} {
 
 // MakeTerraformResult expands a Terraform state into an expanded Pulumi resource property map.  This respects
 // the property maps so that results end up with their correct Pulumi names when shipping back to the engine.
+//
+// May be called with unknowns during preview.
 func MakeTerraformResult(
 	ctx context.Context,
 	p shim.Provider,
@@ -1031,7 +1034,11 @@ func MakeTerraformResult(
 	if state != nil && len(state.Meta()) != 0 {
 		metaJSON, err := json.Marshal(state.Meta())
 		contract.Assertf(err == nil, "err == nil")
-		outMap[reservedkeys.Meta] = resource.NewStringProperty(string(metaJSON))
+		payload := string(metaJSON)
+		// Default payloads may be omitted.
+		if payload != `{"schema_version":"0"}` {
+			outMap[reservedkeys.Meta] = resource.NewStringProperty(payload)
+		}
 	}
 
 	return outMap, nil
@@ -1295,10 +1302,8 @@ type makeTerraformStateOptions struct {
 	defaultZeroSchemaVersion bool
 }
 
-func makeTerraformStateWithOpts(
-	ctx context.Context, res Resource, id string, m resource.PropertyMap, opts makeTerraformStateOptions,
-) (shim.InstanceState, error) {
-	// Parse out any metadata from the state.
+// Parse out any metadata from the state.
+func parseMeta(m resource.PropertyMap, res Resource, opts makeTerraformStateOptions) (map[string]interface{}, error) {
 	var meta map[string]interface{}
 	if metaProperty, hasMeta := m[reservedkeys.Meta]; hasMeta && metaProperty.IsString() {
 		if err := json.Unmarshal([]byte(metaProperty.StringValue()), &meta); err != nil {
@@ -1314,7 +1319,36 @@ func makeTerraformStateWithOpts(
 		}
 		meta = map[string]interface{}{"schema_version": defaultSchemaVersion}
 	}
+	return meta, nil
+}
 
+// Check if makeTerraformStateViaUpgrade is enabled and applicable. If so return a non-nil provider handle.
+func makeTerraformStateViaUpgradeEnabled(
+	providerInfo ProviderInfo,
+	p shim.Provider,
+	pm resource.PropertyMap,
+) (shim.ProviderWithRawStateSupport, bool) {
+	if !providerInfo.RawStateDeltaEnabled() {
+		return nil, false
+	}
+	pp, ok := p.(shim.ProviderWithRawStateSupport)
+	if !ok {
+		return nil, false
+	}
+	if _, ok := pm[reservedkeys.RawStateDelta]; !ok {
+		return nil, false
+	}
+	return pp, true
+}
+
+// The old method used when [makeTerraformStateViaUpgrade] is not available.
+func makeTerraformStateWithOpts(
+	ctx context.Context,
+	res Resource,
+	id string,
+	m resource.PropertyMap,
+	opts makeTerraformStateOptions,
+) (shim.InstanceState, error) {
 	// Turn the resource properties into a map. For the most part, this is a straight
 	// Mappable, but we use MapReplace because we use float64s and Terraform uses
 	// ints, to represent numbers.
@@ -1323,8 +1357,57 @@ func makeTerraformStateWithOpts(
 	if err != nil {
 		return nil, err
 	}
-
+	meta, err := parseMeta(m, res, opts)
+	if err != nil {
+		return nil, err
+	}
 	return res.TF.InstanceState(id, inputs, meta)
+}
+
+// The preferred method for recreating TF state that is used when the Pulumi state was written with a recent enough
+// bridge code is to reconstruct the TF raw state and pass it to the state upgrade TF life-cycle method. This most
+// closely approximates how TF runs internally.
+func makeTerraformStateViaUpgrade(
+	ctx context.Context,
+	p shim.ProviderWithRawStateSupport,
+	res Resource,
+	m resource.PropertyMap,
+) (shim.InstanceState, error) {
+	// Only log error details at Debug level to avoid leaking secrets to errors.
+	logger := log.TryGetLogger(ctx)
+	if logger == nil {
+		logger = log.NewDiscardLogger()
+	}
+
+	deltaValue, ok := m[reservedkeys.RawStateDelta]
+	contract.Assertf(ok, "makeTerraformStateViaUpgrade should only be called if %s key is set",
+		reservedkeys.RawStateDelta)
+
+	delta, err := UnmarshalRawStateDelta(deltaValue)
+	if err != nil {
+		logger.Debug(fmt.Sprintf("Failed to parse raw state markers:\n"+
+			"  %q: %#v\n"+
+			"  error: %v",
+			reservedkeys.RawStateDelta,
+			delta.Marshal().String(),
+			err))
+		contract.AssertNoErrorf(err, "Failed to parse raw state markers")
+	}
+	recoveredRawState, err := delta.Recover(resource.NewObjectProperty(m))
+	if err != nil {
+		logger.Debug(fmt.Sprintf("Failed recover raw state:\n"+
+			"  %q: %#v\n"+
+			"  error: %v",
+			reservedkeys.RawStateDelta,
+			delta.Marshal().String(),
+			err))
+		contract.AssertNoErrorf(err, "Failed to recover raw state")
+	}
+	meta, err := parseMeta(m, res, makeTerraformStateOptions{defaultZeroSchemaVersion: true})
+	if err != nil {
+		return nil, err
+	}
+	return p.UpgradeState(ctx, res.TFName, recoveredRawState, meta)
 }
 
 // MakeTerraformState converts a Pulumi property bag into its Terraform equivalent.  This requires
@@ -1337,13 +1420,10 @@ func MakeTerraformState(
 	return makeTerraformStateWithOpts(ctx, res, id, m, makeTerraformStateOptions{})
 }
 
-type unmarshalTerraformStateOptions struct {
-	defaultZeroSchemaVersion bool
-}
-
-func unmarshalTerraformStateWithOpts(
+// UnmarshalTerraformState unmarshals a Terraform instance state from an RPC property map.
+// Deprecated: See [transformFromState] and [makeTerraformStateWithOpts] instead.
+func UnmarshalTerraformState(
 	ctx context.Context, r Resource, id string, m *pbstruct.Struct, l string,
-	opts unmarshalTerraformStateOptions,
 ) (shim.InstanceState, error) {
 	props, err := plugin.UnmarshalProperties(m, plugin.MarshalOptions{
 		Label:     fmt.Sprintf("%s.state", l),
@@ -1358,17 +1438,7 @@ func unmarshalTerraformStateWithOpts(
 		return nil, err
 	}
 
-	return makeTerraformStateWithOpts(ctx, r, id, props,
-		makeTerraformStateOptions(opts),
-	)
-}
-
-// UnmarshalTerraformState unmarshals a Terraform instance state from an RPC property map.
-// Deprecated: Use unmarshalTerraformStateWithOpts instead.
-func UnmarshalTerraformState(
-	ctx context.Context, r Resource, id string, m *pbstruct.Struct, l string,
-) (shim.InstanceState, error) {
-	return unmarshalTerraformStateWithOpts(ctx, r, id, m, l, unmarshalTerraformStateOptions{})
+	return makeTerraformStateWithOpts(ctx, r, id, props, makeTerraformStateOptions{})
 }
 
 // IsMaxItemsOne returns true if the schema/info pair represents a TypeList or TypeSet which should project
@@ -1616,7 +1686,7 @@ func extractInputsObject(
 	return oldInput, possibleDefault || !hasOldDefaults
 }
 
-func getDefaultValue(tfs shim.Schema, ps *SchemaInfo) interface{} {
+func getDefaultValue(tfs shim.Schema, _ *SchemaInfo) interface{} {
 	dv, err := tfs.DefaultValue()
 	if err != nil {
 		if errors.Is(err, ErrSchemaDefaultValue) {

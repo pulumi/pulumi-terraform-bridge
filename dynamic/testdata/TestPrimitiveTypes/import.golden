@@ -7,6 +7,37 @@
     "attrStringRequired": "imported value"
   },
   "properties": {
+    "__pulumi_raw_state_delta": {
+      "obj": {
+        "ps": {
+          "attrBoolComputed": {
+            "replace": {
+              "raw": null
+            }
+          },
+          "attrNumberComputed": {
+            "replace": {
+              "raw": null
+            }
+          },
+          "attrStringComputed": {
+            "replace": {
+              "raw": null
+            }
+          },
+          "attrStringDefault": {
+            "replace": {
+              "raw": null
+            }
+          },
+          "attrStringDefaultOverridden": {
+            "replace": {
+              "raw": null
+            }
+          }
+        }
+      }
+    },
     "attrBoolRequired": true,
     "attrIntComputed": 10000,
     "attrIntRequired": 1234,

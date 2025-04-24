@@ -668,8 +668,10 @@ func TestMetaProperties(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, props)
 
+			resInst := Resource{TF: res, Schema: &ResourceInfo{}, TFName: resName}
+
 			state, err = makeTerraformStateWithOpts(
-				ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props,
+				ctx, resInst, state.ID(), props,
 				makeTerraformStateOptions{defaultZeroSchemaVersion: true})
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
@@ -685,12 +687,13 @@ func TestMetaProperties(t *testing.T) {
 			delete(props, reservedkeys.Meta)
 
 			state, err = makeTerraformStateWithOpts(
-				ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props,
+				ctx, resInst, state.ID(), props,
 				makeTerraformStateOptions{defaultZeroSchemaVersion: true})
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 
-			assert.Equal(t, "0", state.Meta()["schema_version"])
+			// SDKv2 and SDKv1 do not agree on whether the above code runs migrations or not.
+			assert.Contains(t, []string{"0", "1"}, state.Meta()["schema_version"])
 
 			// Ensure that timeouts are populated and preserved.
 			cfg := prov.NewResourceConfig(ctx, map[string]interface{}{})
@@ -715,7 +718,7 @@ func TestMetaProperties(t *testing.T) {
 			assert.NotNil(t, props)
 
 			state, err = makeTerraformStateWithOpts(
-				ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props,
+				ctx, resInst, state.ID(), props,
 				makeTerraformStateOptions{defaultZeroSchemaVersion: true})
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
@@ -745,8 +748,10 @@ func TestInjectingCustomTimeouts(t *testing.T) {
 			assert.NoError(t, err)
 			assert.NotNil(t, props)
 
+			resInst := Resource{TF: res, Schema: &ResourceInfo{}, TFName: resName}
+
 			state, err = makeTerraformStateWithOpts(
-				ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props,
+				ctx, resInst, state.ID(), props,
 				makeTerraformStateOptions{defaultZeroSchemaVersion: true})
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
@@ -762,12 +767,14 @@ func TestInjectingCustomTimeouts(t *testing.T) {
 			delete(props, reservedkeys.Meta)
 
 			state, err = makeTerraformStateWithOpts(
-				ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props,
+				ctx, resInst, state.ID(), props,
 				makeTerraformStateOptions{defaultZeroSchemaVersion: true})
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
 
-			assert.Equal(t, "0", state.Meta()["schema_version"])
+			// A bit of discrepancy here: sdkv2 will upgrade the resource state but sdk1 will not;
+			// Since second_resource specifies SchemaVersion: 1, the upgraded result is 1.
+			assert.Contains(t, []string{"0", "1"}, state.Meta()["schema_version"])
 
 			// Ensure that timeouts are populated and preserved.
 			cfg := prov.NewResourceConfig(ctx, map[string]interface{}{})
@@ -795,7 +802,7 @@ func TestInjectingCustomTimeouts(t *testing.T) {
 			assert.NotNil(t, props)
 
 			state, err = makeTerraformStateWithOpts(
-				ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props,
+				ctx, resInst, state.ID(), props,
 				makeTerraformStateOptions{defaultZeroSchemaVersion: true})
 			assert.NoError(t, err)
 			assert.NotNil(t, state)
@@ -843,7 +850,8 @@ func TestResultAttributesRoundTrip(t *testing.T) {
 		assert.NotNil(t, props)
 
 		state, err = makeTerraformStateWithOpts(
-			ctx, Resource{TF: res, Schema: &ResourceInfo{}}, state.ID(), props,
+			ctx, Resource{TF: res, Schema: &ResourceInfo{}, TFName: resName},
+			state.ID(), props,
 			makeTerraformStateOptions{defaultZeroSchemaVersion: true})
 		assert.NoError(t, err)
 		assert.NotNil(t, state)
@@ -873,7 +881,7 @@ func TestResultAttributesRoundTrip(t *testing.T) {
 			if !ok {
 				assert.True(t, strings.HasSuffix(k, ".%"))
 			} else {
-				assert.Equal(t, expected, v)
+				assert.Equalf(t, expected, v, "attribute: %q", k)
 			}
 		}
 	})
@@ -893,7 +901,7 @@ func TestResultAttributesRoundTrip(t *testing.T) {
 			if !ok {
 				assert.True(t, strings.HasSuffix(k, ".%"))
 			} else {
-				assert.Equal(t, expected, v)
+				assert.Equalf(t, expected, v, "attribute: %q", k)
 			}
 		}
 	})
@@ -2879,8 +2887,7 @@ func TestExtractSchemaInputsNestedMaxItemsOne(t *testing.T) {
 		{
 			name: "no overrides",
 			expectedOutputs: resource.PropertyMap{
-				"id":              resource.NewProperty("MyID"),
-				reservedkeys.Meta: resource.NewStringProperty("{\"schema_version\":\"0\"}"),
+				"id": resource.NewProperty("MyID"),
 				"listObjectMaxitems": resource.NewProperty(resource.PropertyMap{
 					"field1":     resource.NewProperty(true),
 					"listScalar": resource.NewProperty(2.0),
@@ -2928,8 +2935,7 @@ func TestExtractSchemaInputsNestedMaxItemsOne(t *testing.T) {
 				},
 			},
 			expectedOutputs: resource.PropertyMap{
-				"id":              resource.NewProperty("MyID"),
-				reservedkeys.Meta: resource.NewStringProperty("{\"schema_version\":\"0\"}"),
+				"id": resource.NewProperty("MyID"),
 				"listObject": resource.NewProperty(resource.PropertyMap{
 					"field1": resource.NewProperty(false),
 					"listScalars": resource.NewProperty([]resource.PropertyValue{
@@ -2978,6 +2984,10 @@ func TestExtractSchemaInputsNestedMaxItemsOne(t *testing.T) {
 
 			outs, err := plugin.UnmarshalProperties(resp.GetProperties(), plugin.MarshalOptions{})
 			assert.NoError(t, err)
+
+			// Ignore RawStateDelta to not complicate the test.
+			delete(outs, reservedkeys.RawStateDelta)
+
 			assert.Equal(t, tt.expectedOutputs, outs, "outputs")
 
 			ins, err := plugin.UnmarshalProperties(resp.GetInputs(), plugin.MarshalOptions{})

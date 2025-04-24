@@ -33,7 +33,7 @@ func TestPreStateUpgradeHook(t *testing.T) {
 		if args.PriorStateSchemaVersion == 0 {
 			return 2, args.PriorState, nil
 		}
-		// Otherwise proceed as ususal without modification.
+		// Otherwise proceed as usual without modification.
 		return args.PriorStateSchemaVersion, args.PriorState, nil
 	}
 
@@ -47,7 +47,8 @@ func TestPreStateUpgradeHook(t *testing.T) {
 	    "urn": "urn:pulumi:dev::repro-pulumi-random::random:index/randomString:RandomString::s",
 	    "olds": {
 	      "length": 1,
-	      "result": "x"
+	      "result": "x",
+              "id": "old-id"
 	    },
 	    "news": {
 	      "length": 2
@@ -56,6 +57,7 @@ func TestPreStateUpgradeHook(t *testing.T) {
 	  "response": {
 	    "properties": {
 	      "__meta": "{\"schema_version\":\"2\"}",
+	      "*": "*",
 	      "id": "*",
 	      "length": 2,
 	      "lower": true,

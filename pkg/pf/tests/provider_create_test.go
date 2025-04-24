@@ -44,7 +44,8 @@ func TestCreateWithComputedOptionals(t *testing.T) {
             "id": "r1",
             "properties": {
               "ecdsacurve": "P384",
-              "id": "r1"
+              "id": "r1",
+              "*": "*"
             }
           }
         }
@@ -67,7 +68,8 @@ func TestCreateWithIntID(t *testing.T) {
           "response": {
             "id": "1234",
             "properties": {
-              "id": "1234"
+              "id": "1234",
+              "*": "*"
             }
           }
         }
@@ -93,6 +95,7 @@ func TestCreateWritesSchemaVersion(t *testing.T) {
 	    "id": "*",
 	    "properties": {
 	      "__meta": "{\"schema_version\":\"2\"}",
+              "*": "*",
 	      "id": "*",
 	      "result": "*",
 	      "length": 1,
@@ -163,7 +166,8 @@ func TestMuxedAliasCreate(t *testing.T) {
 	      "fair": true,
 	      "number": 4,
 	      "suggestionUpdated": false,
-		  "suggestion": "*"
+              "suggestion": "*",
+              "*": "*"
 	    }
 	  },
 	  "metadata": {
@@ -243,6 +247,7 @@ func TestCreateWithSchemaBasedSecrets(t *testing.T) {
 	      "id": "none",
 	      "properties": {
 		"__meta": "{\"schema_version\":\"3\"}",
+                "*": "*",
 		"bcryptHash": {
 		  "4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
 		  "value": "*"
@@ -298,7 +303,8 @@ func TestCreateSupportsCustomID(t *testing.T) {
             "properties": {
               "id": "customID2",
               "length": 2,
-              "separator": "BbAXG:}h"
+              "separator": "BbAXG:}h",
+              "*": "*"
             }
           }
 	}`

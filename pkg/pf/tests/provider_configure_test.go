@@ -505,7 +505,8 @@ func TestConfigureToCreate(t *testing.T) {
 	      "id": "id-1",
 	      "properties": {
 		"configCopy": "example",
-		"id": "id-1"
+		"id": "id-1",
+                "*": "*"
 	      }
 	    }
 	  }
@@ -652,7 +653,8 @@ func TestJSONNestedConfigureWithSecrets(t *testing.T) {
       "id": "id-1",
       "properties": {
         "configCopy": "secret-example",
-        "id": "id-1"
+        "id": "id-1",
+        "*": "*"
       }
     }
   }
@@ -705,7 +707,8 @@ func TestConfigureWithSecrets(t *testing.T) {
       "id": "id-1",
       "properties": {
         "configCopy": "secret-example",
-        "id": "id-1"
+        "id": "id-1",
+        "*": "*"
       }
     }
   }

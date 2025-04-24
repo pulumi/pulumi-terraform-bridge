@@ -596,7 +596,8 @@ func TestProviderPreview(t *testing.T) {
 
 	outs, err := plugin.UnmarshalProperties(createResp.GetProperties(), plugin.MarshalOptions{KeepUnknowns: true})
 	assert.NoError(t, err)
-	assert.True(t, resource.PropertyMap{
+
+	expected := resource.PropertyMap{
 		"id":                  resource.NewStringProperty(""),
 		"stringPropertyValue": resource.NewStringProperty("foo"),
 		"setPropertyValues":   resource.NewArrayProperty([]resource.PropertyValue{resource.NewStringProperty("foo")}),
@@ -607,7 +608,11 @@ func TestProviderPreview(t *testing.T) {
 			}),
 			"optBool": resource.NewBoolProperty(false),
 		}),
-	}.DeepEquals(outs))
+	}
+	assert.Truef(t, expected.DeepEquals(outs), "expected: %s\nactual: %s\n",
+		resource.NewObjectProperty(expected).String(),
+		resource.NewObjectProperty(outs).String(),
+	)
 
 	// Step 2b: actually create the resource.
 	pulumiIns, err = plugin.MarshalProperties(resource.NewPropertyMapFromMap(map[string]interface{}{
@@ -2456,6 +2461,7 @@ func TestTransformOutputs(t *testing.T) {
                       "stringPropertyValue": "TRANSFORMED",
 		      "boolPropertyValue": "*",
 		      "__meta": "*",
+                      "*": "*",
 		      "objectPropertyValue": "*",
 		      "floatPropertyValue": "*",
 		      "stringPropertyValue": "*",
@@ -2492,6 +2498,7 @@ func TestTransformOutputs(t *testing.T) {
 		      "id": "*",
                       "stringPropertyValue": "TRANSFORMED",
 		      "__meta": "*",
+                      "*": "*",
 		      "objectPropertyValue": "*",
 		      "floatPropertyValue": "*",
 		      "stringPropertyValue": "*",
@@ -2528,6 +2535,8 @@ func TestTransformOutputs(t *testing.T) {
 		      "stringPropertyValue": "TRANSFORMED",
 		      "boolPropertyValue": "*",
 		      "__meta": "*",
+                      "*": "*",
+
 		      "objectPropertyValue": "*",
 		      "floatPropertyValue": "*",
 		      "arrayPropertyValues": "*",
@@ -2535,7 +2544,7 @@ func TestTransformOutputs(t *testing.T) {
 		      "numberPropertyValue": "*",
 		      "setPropertyValues": "*",
 		      "stringWithBadInterpolation": "*",
-			  "nilPropertyValue": "*"
+                      "nilPropertyValue": "*"
 		    }
 		  }
 		}`)
@@ -2558,6 +2567,7 @@ func TestTransformOutputs(t *testing.T) {
 			"stringPropertyValue": "TRANSFORMED",
 			"boolPropertyValue": "*",
 			"__meta": "*",
+                        "*": "*",
 			"objectPropertyValue": "*",
 			"floatPropertyValue": "*",
 			"arrayPropertyValues": "*",
@@ -2565,7 +2575,7 @@ func TestTransformOutputs(t *testing.T) {
 			"numberPropertyValue": "*",
 			"setPropertyValues": "*",
 			"stringWithBadInterpolation": "*",
-			  "nilPropertyValue": "*"
+                        "nilPropertyValue": "*"
 		    }
 		  }
 		}`)
@@ -2741,7 +2751,8 @@ func TestTransformFromState(t *testing.T) {
 		    "properties": {
 		      "id": "*",
                       "stringPropertyValue": "NEW",
-		      "__meta": "*"
+		      "__meta": "*",
+		      "*": "*"
 		    }
 		  }
 		}`)
@@ -2765,7 +2776,8 @@ func TestTransformFromState(t *testing.T) {
 		    "properties": {
 		      "id": "*",
 		      "stringPropertyValue": "SET",
-		      "__meta": "*"
+		      "__meta": "*",
+		      "*": "*"
 		    }
 		  }
 		}`)
@@ -2824,7 +2836,8 @@ func TestTransformFromState(t *testing.T) {
 		    "properties": {
 			"id": "*",
 			"stringPropertyValue": "SET",
-			"__meta": "*"
+			"__meta": "*",
+                        "*": "*"
 		    }
 		  }
 		}`)
@@ -3425,7 +3438,8 @@ func testImport(t *testing.T, newProvider func(*schema.Provider) shim.Provider) 
 		    "properties": {
 		      "id": "res1",
 		      "stringPropertyValue": "imported",
-		      "__meta": "{\"e2bfb730-ecaa-11e6-8f88-34363bc7c4c0\":{\"create\":120000000000},\"schema_version\":\"1\"}"
+		      "__meta": "*",
+                      "*": "*"
 		    },
 		    "id": "res1"
 		  }
@@ -3510,7 +3524,8 @@ func testRefresh(t *testing.T, newProvider func(*schema.Provider) shim.Provider)
 		    "properties": {
 		      "id": "res1",
 		      "stringPropertyValue": "imported",
-		      "__meta": "{\"schema_version\":\"1\"}"
+		      "__meta": "*",
+                      "*": "*"
 		    },
 		    "id": "res1"
 		  }
@@ -3575,6 +3590,7 @@ func testRefresh(t *testing.T, newProvider func(*schema.Provider) shim.Provider)
 		    "properties": {
                       "id": "someres",
                       "__meta": "*",
+                      "*": "*",
 		      "stringPropertyValue": {
 			"4dabf18193072939515e22adb298388d": "c44067f5952c0a294b673a41bacd8c17",
 			"hash": "a72e573d8c91ec1c6bb0dfdf641bc2de1e2417c0d980ecfcdf039c2a9bcbbf67"

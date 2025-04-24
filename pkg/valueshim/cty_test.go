@@ -263,3 +263,11 @@ func Test_HCtyType(t *testing.T) {
 	assert.True(t, valueshim.FromHCtyType(x).IsObjectType())
 	assert.Equal(t, `cty.Object(map[string]cty.Type{"x":cty.Number})`, valueshim.FromHCtyType(x).GoString())
 }
+
+func Test_HCty_ToX(t *testing.T) {
+	t.Parallel()
+
+	assert.Equal(t, "OK", valueshim.FromHCtyValue(cty.StringVal("OK")).StringValue())
+	assert.Equal(t, 42.41, valueshim.FromHCtyValue(cty.NumberFloatVal(42.41)).NumberValue())
+	assert.Equal(t, true, valueshim.FromHCtyValue(cty.BoolVal(true)).BoolValue())
+}

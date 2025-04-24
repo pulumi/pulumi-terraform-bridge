@@ -11,6 +11,7 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/hashicorp/go-cty/cty"
+	ctyjson "github.com/hashicorp/go-cty/cty/json"
 	"github.com/hashicorp/go-cty/cty/msgpack"
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov5"
@@ -20,8 +21,10 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/rawstate"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/log"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/valueshim"
 )
 
 type v2Resource2 struct {
@@ -39,6 +42,7 @@ func (r *v2Resource2) Importer() shim.ImportFunc {
 	return r.importer
 }
 
+// The the legacy method of reconstructing an InstanceState. For new providers prefer UpgradeState method.
 func (r *v2Resource2) InstanceState(
 	id string, object, meta map[string]interface{},
 ) (shim.InstanceState, error) {
@@ -50,8 +54,6 @@ func (r *v2Resource2) InstanceState(
 		copy["id"] = id
 		object = copy
 	}
-	// TODO[pulumi/pulumi-terraform-bridge#1667]: This is not right since it uses the
-	// current schema. 1667 should make this redundant
 	s, err := recoverAndCoerceCtyValueWithSchema(r.v2Resource.tf.CoreConfigSchema(), object)
 	if err != nil {
 		glog.V(9).Infof("failed to coerce config: %v, proceeding with imprecise value", err)
@@ -60,11 +62,8 @@ func (r *v2Resource2) InstanceState(
 	}
 	s = normalizeBlockCollections(s, r.tf)
 
-	return &v2InstanceState2{
-		stateValue:   s,
-		resourceType: r.resourceType,
-		meta:         meta,
-	}, nil
+	// This state has not passed through the upgrade method and is marked as such.
+	return newNonUpgradedInstanceState(r.resourceType, s, meta), nil
 }
 
 func (r *v2Resource2) Timeouts() *shim.ResourceTimeout {
@@ -78,11 +77,42 @@ func (r *v2Resource2) DecodeTimeouts(config shim.ResourceConfig) (*shim.Resource
 type v2InstanceState2 struct {
 	resourceType string
 	stateValue   cty.Value
+
 	// Also known as private state.
 	meta map[string]interface{}
+
+	// The state has passed through the state upgrade method and does not need to do it again.
+	isUpgraded bool
 }
 
-var _ shim.InstanceState = (*v2InstanceState2)(nil)
+var (
+	_ shim.InstanceState               = (*v2InstanceState2)(nil)
+	_ shim.InstanceStateWithTypedValue = (*v2InstanceState2)(nil)
+)
+
+func newNonUpgradedInstanceState(resourceType string, stateValue cty.Value, meta map[string]any) *v2InstanceState2 {
+	return &v2InstanceState2{
+		resourceType: resourceType,
+		stateValue:   stateValue,
+		isUpgraded:   false,
+		meta:         meta,
+	}
+}
+
+func newUpgradedInstanceState(resourceType string, stateValue cty.Value, meta map[string]any) *v2InstanceState2 {
+	return &v2InstanceState2{
+		resourceType: resourceType,
+		stateValue:   stateValue,
+		isUpgraded:   true,
+		meta:         meta,
+	}
+}
+
+func (s *v2InstanceState2) markUpgraded() *v2InstanceState2 {
+	copy := *s
+	copy.isUpgraded = true
+	return &copy
+}
 
 func (s *v2InstanceState2) Type() string {
 	return s.resourceType
@@ -112,9 +142,14 @@ func (s *v2InstanceState2) Meta() map[string]interface{} {
 	return s.meta
 }
 
+func (s *v2InstanceState2) Value() valueshim.Value {
+	return valueshim.FromHCtyValue(s.stateValue)
+}
+
 type v2InstanceDiff2 struct {
 	v2InstanceDiff
 
+	resourceType              string
 	config                    cty.Value
 	plannedState              cty.Value
 	plannedPrivate            map[string]interface{}
@@ -146,10 +181,9 @@ var _ shim.InstanceDiff = (*v2InstanceDiff2)(nil)
 func (d *v2InstanceDiff2) ProposedState(
 	res shim.Resource, priorState shim.InstanceState,
 ) (shim.InstanceState, error) {
-	return &v2InstanceState2{
-		stateValue: d.plannedState,
-		meta:       d.v2InstanceDiff.tf.Meta,
-	}, nil
+	// The proposed state is always upgraded, which is a bit of a technicality since the code will not try
+	// upgrading it anyway.
+	return newUpgradedInstanceState(d.resourceType, d.plannedState, d.v2InstanceDiff.tf.Meta), nil
 }
 
 func (d *v2InstanceDiff2) PriorState() (shim.InstanceState, error) {
@@ -238,7 +272,7 @@ func (p v2Provider) Diff(
 	c shim.ResourceConfig,
 	opts shim.DiffOptions,
 ) (shim.InstanceDiff, error) {
-	s, err := p.upgradeState(ctx, t, s)
+	s, err := p.ensureStateIsUpgraded(ctx, t, s)
 	if err != nil {
 		return nil, err
 	}
@@ -300,6 +334,7 @@ func (p v2Provider) Diff(
 		},
 		config:                    cfg,
 		plannedState:              plannedState,
+		resourceType:              t,
 		diffEqualDecisionOverride: diffOverride,
 		plannedPrivate:            plan.PlannedPrivate,
 		prior:                     st,
@@ -319,7 +354,7 @@ func (p v2Provider) Apply(
 ) (shim.InstanceState, error) {
 	res := p.tf.ResourcesMap[t]
 	ty := res.CoreConfigSchema().ImpliedType()
-	s, err := p.upgradeState(ctx, t, s)
+	s, err := p.ensureStateIsUpgraded(ctx, t, s)
 	if err != nil {
 		return nil, err
 	}
@@ -355,7 +390,7 @@ func (p v2Provider) Refresh(
 ) (shim.InstanceState, error) {
 	res := p.tf.ResourcesMap[t]
 	ty := res.CoreConfigSchema().ImpliedType()
-	s, err := p.upgradeState(ctx, t, s)
+	s, err := p.ensureStateIsUpgraded(ctx, t, s)
 	if err != nil {
 		return nil, err
 	}
@@ -375,11 +410,7 @@ func (p v2Provider) Refresh(
 	if rr.stateValue.IsNull() {
 		return nil, nil
 	}
-	return &v2InstanceState2{
-		resourceType: rr.resourceType,
-		stateValue:   rr.stateValue,
-		meta:         rr.meta,
-	}, nil
+	return newUpgradedInstanceState(rr.resourceType, rr.stateValue, rr.meta), nil
 }
 
 func (p v2Provider) NewDestroyDiff(
@@ -392,6 +423,7 @@ func (p v2Provider) NewDestroyDiff(
 	dd.applyTimeoutOptions(opts)
 
 	return &v2InstanceDiff2{
+		resourceType:   t,
 		v2InstanceDiff: dd,
 		config:         cty.NullVal(ty),
 		plannedState:   cty.NullVal(ty),
@@ -432,7 +464,7 @@ func (p *v2Provider) providerMeta() (*cty.Value, error) {
 	// TODO[pulumi/pulumi-terraform-bridge#1827]: We do not believe that this is load bearing in any providers.
 }
 
-func (*v2Provider) unpackDiff(ty cty.Type, d shim.InstanceDiff) *v2InstanceDiff2 {
+func (*v2Provider) unpackDiff(_ cty.Type, d shim.InstanceDiff) *v2InstanceDiff2 {
 	switch d := d.(type) {
 	case nil:
 		contract.Failf("Unexpected nil InstanceDiff")
@@ -445,17 +477,10 @@ func (*v2Provider) unpackDiff(ty cty.Type, d shim.InstanceDiff) *v2InstanceDiff2
 	}
 }
 
-func (p *v2Provider) unpackInstanceState(
-	t string, s shim.InstanceState,
-) *v2InstanceState2 {
+func (p *v2Provider) unpackInstanceState(t string, s shim.InstanceState) *v2InstanceState2 {
 	switch s := s.(type) {
 	case nil:
-		res := p.tf.ResourcesMap[t]
-		ty := res.CoreConfigSchema().ImpliedType()
-		return &v2InstanceState2{
-			resourceType: t,
-			stateValue:   cty.NullVal(ty),
-		}
+		return p.newEmptyStateImpl(t)
 	case *v2InstanceState2:
 		return s
 	}
@@ -463,31 +488,63 @@ func (p *v2Provider) unpackInstanceState(
 	return nil
 }
 
-// Wrapping the pre-existing upgradeInstanceState method here. Since the method is written against
-// terraform.InstanceState interface some adapters are needed to convert to/from cty.Value and meta
-// private bag.
-func (p *v2Provider) upgradeState(
+func (p *v2Provider) ensureStateIsUpgraded(
 	ctx context.Context,
-	t string, s shim.InstanceState,
+	t string,
+	s shim.InstanceState,
 ) (shim.InstanceState, error) {
 	res := p.tf.ResourcesMap[t]
 	state := p.unpackInstanceState(t, s)
 
-	// In the case of Create, prior state is encoded as Null and should not be subject to upgrades.
-	if state.stateValue.IsNull() {
-		return s, nil
+	// If it has already been upgraded, nothing is to be done here.
+	if state.isUpgraded {
+		return state, nil
 	}
 
-	newState, newMeta, err := upgradeResourceStateGRPC(ctx, t, res, state.stateValue, state.meta, p.server.gserver)
+	// In the case of Create, prior state is encoded as Null and should not be subject to upgrades.
+	if state.stateValue.IsNull() {
+		// An empty state counts as an upgraded state.
+		return state.markUpgraded(), nil
+	}
+
+	// Otherwise translate to shim.RawState and pass through an gRPC TF upgrade method.
+	rawState := state.stateValue
+
+	jsonBytes, err := ctyjson.Marshal(rawState, rawState.Type())
 	if err != nil {
 		return nil, err
 	}
 
-	return &v2InstanceState2{
-		resourceType: t,
-		stateValue:   newState,
-		meta:         newMeta,
-	}, nil
+	newState, newMeta, err := upgradeResourceStateGRPCInner(ctx, t, res, jsonBytes, state.meta, p.server.gserver)
+	if err != nil {
+		return nil, err
+	}
+
+	return newUpgradedInstanceState(t, newState, newMeta), nil
+}
+
+// New-style constructor for empty states.
+func (p v2Provider) newEmptyStateImpl(t string) *v2InstanceState2 {
+	res := p.tf.ResourcesMap[t]
+	ty := res.CoreConfigSchema().ImpliedType()
+	return newUpgradedInstanceState(t, cty.NullVal(ty), nil)
+}
+
+// New-style upgrade method exposed through the shim layer. Should never be called on creates with nil state.
+func (p v2Provider) UpgradeState(
+	ctx context.Context,
+	t string,
+	s rawstate.RawState,
+	meta map[string]any,
+) (shim.InstanceState, error) {
+	res := p.tf.ResourcesMap[t]
+
+	newState, newMeta, err := upgradeResourceStateGRPC(ctx, t, res, s, meta, p.server.gserver)
+	if err != nil {
+		return nil, err
+	}
+
+	return newUpgradedInstanceState(t, newState, newMeta), nil
 }
 
 // Helper to unwrap gRPC types from GRPCProviderServer.
@@ -686,11 +743,7 @@ func (s *grpcServer) ApplyResourceChange(
 	if newState.IsNull() {
 		return nil, returnErr
 	}
-	return &v2InstanceState2{
-		resourceType: typeName,
-		stateValue:   newState,
-		meta:         meta,
-	}, returnErr
+	return newUpgradedInstanceState(typeName, newState, meta), returnErr
 }
 
 func (s *grpcServer) ReadResource(
@@ -737,11 +790,7 @@ func (s *grpcServer) ReadResource(
 			return nil, err
 		}
 	}
-	return &v2InstanceState2{
-		resourceType: typeName,
-		stateValue:   newState,
-		meta:         meta2,
-	}, nil
+	return newUpgradedInstanceState(typeName, newState, meta2), nil
 }
 
 func (s *grpcServer) ImportResourceState(

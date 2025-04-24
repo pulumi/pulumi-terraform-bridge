@@ -1,8 +1,8 @@
 module github.com/pulumi/pulumi-terraform-bridge/v3
 
-go 1.22.3
+go 1.23
 
-toolchain go1.23.2
+toolchain go1.23.7
 
 require (
 	github.com/apparentlymart/go-cidr v1.1.0
@@ -44,7 +44,7 @@ require (
 	github.com/opentofu/registry-address v0.0.0-20230922120653-901b9ae4061a
 	github.com/pkg/errors v0.9.1
 	github.com/pulumi/inflector v0.1.1
-	github.com/pulumi/providertest v0.1.3
+	github.com/pulumi/providertest v0.3.0
 	github.com/pulumi/pulumi-java/pkg v1.8.0
 	github.com/pulumi/pulumi-yaml v1.15.1
 	github.com/pulumi/schema-tools v0.1.2

@@ -1836,6 +1836,7 @@ func TestStateUpgradeSet(t *testing.T) {
 
 func TestDiffProviderUpgradeMaxItemsOneChanged(t *testing.T) {
 	t.Parallel()
+	skipUnlessDeltasEnabled(t)
 
 	resWithMaxItemsOne := &schema.Resource{
 		Schema: map[string]*schema.Schema{"prop": {
@@ -1871,8 +1872,6 @@ func TestDiffProviderUpgradeMaxItemsOneChanged(t *testing.T) {
 			map[string]cty.Value{"prop": cty.ListVal([]cty.Value{cty.StringVal("a")})},
 			map[string]cty.Value{"prop": cty.ListVal([]cty.Value{cty.StringVal("a")})},
 			DiffProviderUpgradedSchema(resWithMaxItemsOne),
-			// Note we produce a diff here while TF does not.
-			DiffSkipDiffEquivalenceCheck(),
 		)
 
 		autogold.ExpectFile(t, res.PulumiOut)

@@ -161,6 +161,7 @@ func TestRegress923(t *testing.T) {
             "properties": {
               "id": "*",
               "__meta": "*",
+              "*": "*",
               "name": "webhookname"
             }
           }

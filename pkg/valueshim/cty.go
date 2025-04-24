@@ -51,6 +51,19 @@ func (v ctyValueShim) Type() Type {
 	return FromHCtyType(v.val().Type())
 }
 
+func (v ctyValueShim) StringValue() string {
+	return v.val().AsString()
+}
+
+func (v ctyValueShim) BoolValue() bool {
+	return v.val().True()
+}
+
+func (v ctyValueShim) NumberValue() float64 {
+	f, _ := v.val().AsBigFloat().Float64()
+	return f
+}
+
 func (v ctyValueShim) AsValueSlice() []Value {
 	s := v.val().AsValueSlice()
 	res := make([]Value, len(s))

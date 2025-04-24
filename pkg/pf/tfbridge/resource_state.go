@@ -1,4 +1,4 @@
-// Copyright 2016-2023, Pulumi Corporation.
+// Copyright 2016-2025, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,40 +19,41 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"strconv"
 
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/convert"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/pfutils"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/reservedkeys"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/valueshim"
 )
 
-type resourceState struct {
+// Resource state where UpgradeResourceState has been already done if necessary.
+type upgradedResourceState struct {
 	TFSchemaVersion int64
 	Value           tftypes.Value
 	Private         []byte
 }
 
-// Resource state where UpgradeResourceState has been already done if necessary.
-type upgradedResourceState struct {
-	state *resourceState
-}
-
 func (u *upgradedResourceState) PrivateState() []byte {
-	return u.state.Private
+	return u.Private
 }
 
 func (u *upgradedResourceState) ToPropertyMap(ctx context.Context, rh *resourceHandle) (resource.PropertyMap, error) {
-	propMap, err := convert.DecodePropertyMap(ctx, rh.decoder, u.state.Value)
+	propMap, err := convert.DecodePropertyMap(ctx, rh.decoder, u.Value)
 	if err != nil {
 		return nil, err
 	}
 	return updateMeta(propMap, metaState{
-		SchemaVersion: u.state.TFSchemaVersion,
-		PrivateState:  u.state.Private,
+		SchemaVersion: u.TFSchemaVersion,
+		PrivateState:  u.Private,
 	})
 }
 
@@ -61,49 +62,10 @@ func newResourceState(ctx context.Context, rh *resourceHandle, private []byte) *
 	value := tftypes.NewValue(tfType, nil)
 	schemaVersion := rh.schema.ResourceSchemaVersion()
 	return &upgradedResourceState{
-		&resourceState{
-			Value:           value,
-			TFSchemaVersion: schemaVersion,
-			Private:         private,
-		},
-	}
-}
-
-func parseResourceState(rh *resourceHandle, props resource.PropertyMap) (*resourceState, error) {
-	parsedMeta, err := parseMeta(props)
-	if err != nil {
-		return nil, err
-	}
-	stateVersion := parsedMeta.SchemaVersion
-
-	if rh.pulumiResourceInfo.PreStateUpgradeHook != nil {
-		var err error
-		stateVersion, props, err = rh.pulumiResourceInfo.PreStateUpgradeHook(tfbridge.PreStateUpgradeHookArgs{
-			ResourceSchemaVersion:   rh.schema.ResourceSchemaVersion(),
-			PriorState:              props.Copy(),
-			PriorStateSchemaVersion: parsedMeta.SchemaVersion,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("PreStateUpgradeHook failed: %w", err)
-		}
-		props, err = updateMeta(props, metaState{
-			SchemaVersion: stateVersion,
-			PrivateState:  parsedMeta.PrivateState,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("PreStateUpgradeHook failed to update schema version: %w", err)
-		}
-	}
-
-	value, err := convert.EncodePropertyMap(rh.encoder, props)
-	if err != nil {
-		return nil, err
-	}
-	return &resourceState{
 		Value:           value,
-		TFSchemaVersion: stateVersion,
-		Private:         parsedMeta.PrivateState,
-	}, nil
+		TFSchemaVersion: schemaVersion,
+		Private:         private,
+	}
 }
 
 func parseResourceStateFromTF(
@@ -117,13 +79,13 @@ func parseResourceStateFromTF(
 }
 
 func parseResourceStateFromTFInner(
-	ctx context.Context,
+	_ context.Context,
 	resourceTerraformType tftypes.Type,
 	resourceSchemaVersion int64,
 	state *tfprotov6.DynamicValue,
 	private []byte,
 ) (*upgradedResourceState, error) {
-	rs := &resourceState{
+	rs := &upgradedResourceState{
 		TFSchemaVersion: resourceSchemaVersion,
 		Private:         private,
 	}
@@ -136,7 +98,7 @@ func parseResourceStateFromTFInner(
 		}
 		rs.Value = v
 	}
-	return &upgradedResourceState{state: rs}, nil
+	return rs, nil
 }
 
 type metaState struct {
@@ -216,4 +178,164 @@ func updateMeta(m resource.PropertyMap, newMeta metaState) (resource.PropertyMap
 	c := m.Copy()
 	c[reservedkeys.Meta] = resource.NewStringProperty(string(updatedMeta))
 	return c, nil
+}
+
+// Stores delta under reservedkeys.RawStateDelta; should be called right before returning to the engine.
+func insertRawStateDelta(ctx context.Context, rh *resourceHandle, pm resource.PropertyMap, state tftypes.Value) error {
+	schemaInfos := rh.pulumiResourceInfo.GetFields()
+	v := valueshim.FromTValue(state)
+
+	delta, err := tfbridge.RawStateComputeDelta(ctx, rh.schema.Shim(), schemaInfos, pm, v)
+	if err != nil {
+		return err
+	}
+	pm[reservedkeys.RawStateDelta] = delta.Marshal()
+	return nil
+}
+
+func (p *provider) parseAndUpgradeResourceState(
+	ctx context.Context,
+	rh *resourceHandle,
+	props resource.PropertyMap,
+) (*upgradedResourceState, error) {
+	parsedMeta, err := parseMeta(props)
+	if err != nil {
+		return nil, err
+	}
+
+	// The version in state starts off with the value from parsedMeta, but may be modified by PreStateUpgradeHook.
+	stateVersion := parsedMeta.SchemaVersion
+
+	if rh.pulumiResourceInfo.PreStateUpgradeHook != nil {
+		var err error
+
+		// Possibly modify stateVersion.
+		stateVersion, props, err = rh.pulumiResourceInfo.PreStateUpgradeHook(tfbridge.PreStateUpgradeHookArgs{
+			ResourceSchemaVersion:   rh.schema.ResourceSchemaVersion(),
+			PriorState:              props.Copy(),
+			PriorStateSchemaVersion: parsedMeta.SchemaVersion,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("PreStateUpgradeHook failed: %w", err)
+		}
+		props, err = updateMeta(props, metaState{
+			SchemaVersion: stateVersion,
+			PrivateState:  parsedMeta.PrivateState,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("PreStateUpgradeHook failed to update schema version: %w", err)
+		}
+	}
+
+	if stateVersion > rh.schema.ResourceSchemaVersion() {
+		return nil, fmt.Errorf("The current state of %s was created by a newer provider version "+
+			" and cannot be downgraded from resource schema version %d to %d. Please upgrade the provider",
+			rh.token, stateVersion, rh.schema.ResourceSchemaVersion())
+	}
+
+	// States written by newer version of the bridge should be able to recover the raw state.
+	if delta, hasDelta := props[reservedkeys.RawStateDelta]; hasDelta && p.info.RawStateDeltaEnabled() {
+		rawState, err := recoverRawState(props, delta)
+		if err != nil {
+			// Log details at Debug level since they may contain secrets.
+			tflog.Debug(ctx, "[pf/tfbridge] Failed to recover raw state for Plugin Framework",
+				map[string]any{
+					"token": rh.token,
+					"props": props.Mappable(),
+				})
+			return nil, fmt.Errorf("[pf/tfbridge] Failed to recover raw state for Plugin Framework")
+		}
+
+		// Always call the upgrade method, even if at current schema version.
+		return p.upgradeResourceState(ctx, rh, rawState, parsedMeta.PrivateState, stateVersion)
+	}
+
+	// Otherwise fallback to imprecise legacy parsing.
+	tfType := rh.schema.Type(ctx).(tftypes.Object)
+	value, err := convert.EncodePropertyMap(rh.encoder, props)
+	if err != nil {
+		return nil, fmt.Errorf("[pf/tfbridge] Error calling EncodePropertyMap: %w", err)
+	}
+	rawState, err := pfutils.NewRawState(tfType, value)
+	if err != nil {
+		return nil, fmt.Errorf("[pf/tfbridge] Error calling NewRawState: %w", err)
+	}
+
+	// Before EnableRawStateDelta rollout, the behavior used to be to skip the upgrade method in case of an exact
+	// version match. This seems incorrect, but to derisk fixing this problem it is flagged together with
+	// EnableRawStateDelta so it participates in the phased rollout. Remove once rollout completes.
+	if stateVersion == rh.schema.ResourceSchemaVersion() && !p.info.RawStateDeltaEnabled() {
+		return &upgradedResourceState{
+			TFSchemaVersion: stateVersion,
+			Private:         parsedMeta.PrivateState,
+			Value:           value,
+		}, nil
+	}
+
+	return p.upgradeResourceState(ctx, rh, rawState, parsedMeta.PrivateState, stateVersion)
+}
+
+// Wraps running state migration via the underlying TF upgradeResourceState method.
+func (p *provider) upgradeResourceState(
+	ctx context.Context,
+	rh *resourceHandle,
+	rawState *tfprotov6.RawState,
+	privateState []byte,
+	stateVersion int64,
+) (*upgradedResourceState, error) {
+	tfType := rh.schema.Type(ctx).(tftypes.Object)
+	req := &tfprotov6.UpgradeResourceStateRequest{
+		TypeName: rh.terraformResourceName,
+		Version:  stateVersion,
+		RawState: rawState,
+	}
+
+	resp, err := p.tfServer.UpgradeResourceState(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("error calling UpgradeResourceState: %w", err)
+	}
+	if err := p.processDiagnostics(resp.Diagnostics); err != nil {
+		return nil, err
+	}
+	v, err := resp.UpgradedState.Unmarshal(tfType)
+	if err != nil {
+		return nil, fmt.Errorf("error unmarshalling the response from UpgradeResourceState: %w", err)
+	}
+
+	if p.info.RawStateDeltaEnabled() {
+		// Downgrade float precision to 53. This is important because pulumi.PropertyValue stores float64, and
+		// tftypes.Value originating from Pulumi would have this precision, but the native precision coming
+		// from UpgradeResourceState is 512. Mismatches in precision may lead to spurious diffs.
+		v, err = tftypes.Transform(v, func(ap *tftypes.AttributePath, v tftypes.Value) (tftypes.Value, error) {
+			if v.IsKnown() && !v.IsNull() && v.Type().Is(tftypes.Number) {
+				var n big.Float
+				err := v.As(&n)
+				contract.AssertNoErrorf(err, "Values of tftypes.Number type should unpack to big.Float")
+				if n.Prec() != 53 {
+					v2 := tftypes.NewValue(tftypes.Number, new(big.Float).Copy(&n).SetPrec(53))
+					return v2, nil
+				}
+			}
+			return v, nil
+		})
+		contract.AssertNoErrorf(err, "float precision downgrade transform should not fail")
+	}
+
+	return &upgradedResourceState{
+		TFSchemaVersion: rh.schema.ResourceSchemaVersion(),
+		Value:           v,
+		Private:         privateState,
+	}, nil
+}
+
+func recoverRawState(props resource.PropertyMap, deltaPV resource.PropertyValue) (*tfprotov6.RawState, error) {
+	delta, err := tfbridge.UnmarshalRawStateDelta(deltaPV)
+	if err != nil {
+		return nil, fmt.Errorf("NewRawStateDeltaFromPropertyValue failed: %w", err)
+	}
+	stateValue, err := delta.Recover(resource.NewObjectProperty(props))
+	if err != nil {
+		return nil, fmt.Errorf("delta.Recover failed: %w", err)
+	}
+	return &tfprotov6.RawState{JSON: stateValue}, nil
 }

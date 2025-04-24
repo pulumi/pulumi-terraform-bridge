@@ -155,6 +155,7 @@ func TestMuxWithProvider(t *testing.T) {
 			"response": {
 				"id": "1",
 				"properties": {
+                                        "*": "*",
 					"id": "1",
 					"seed": 15,
 					"value": 150
@@ -203,6 +204,7 @@ func TestMuxWithProvider(t *testing.T) {
 			"response": {
 				"id": "1",
 				"properties": {
+                                        "*": "*",
 					"id": "1",
 					"seed": 15,
 					"value": 150

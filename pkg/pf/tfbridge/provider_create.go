@@ -78,7 +78,7 @@ func (p *provider) CreateWithContext(
 		return "", plannedStatePropertyMap, resource.StatusOK, nil
 	}
 
-	priorStateValue, configValue, err := makeDynamicValues2(priorState.state.Value, checkedInputsValue)
+	priorStateValue, configValue, err := makeDynamicValues2(priorState.Value, checkedInputsValue)
 	if err != nil {
 		return "", nil, 0, err
 	}
@@ -125,6 +125,12 @@ func (p *provider) CreateWithContext(
 	createdID, err := extractID(ctx, rn, rh.pulumiResourceInfo, createdStateMap)
 	if err != nil {
 		return "", nil, 0, err
+	}
+
+	if p.info.RawStateDeltaEnabled() {
+		if err := insertRawStateDelta(ctx, &rh, createdStateMap, createdState.Value); err != nil {
+			return "", nil, 0, err
+		}
 	}
 
 	return createdID, createdStateMap, resource.StatusOK, nil

@@ -61,12 +61,7 @@ func (p *provider) DiffWithContext(
 		return plugin.DiffResult{}, fmt.Errorf("failed to apply ignore changes: %w", err)
 	}
 
-	rawPriorState, err := parseResourceState(&rh, priorStateMap)
-	if err != nil {
-		return plugin.DiffResult{}, err
-	}
-
-	priorState, err := p.UpgradeResourceState(ctx, &rh, rawPriorState)
+	priorState, err := p.parseAndUpgradeResourceState(ctx, &rh, priorStateMap)
 	if err != nil {
 		return plugin.DiffResult{}, err
 	}
@@ -98,7 +93,7 @@ func (p *provider) DiffWithContext(
 		return plugin.DiffResult{}, err
 	}
 
-	tfDiff, err := priorState.state.Value.Diff(plannedStateValue)
+	tfDiff, err := priorState.Value.Diff(plannedStateValue)
 	if err != nil {
 		return plugin.DiffResult{}, err
 	}
@@ -152,7 +147,7 @@ func calculateDetailedDiff(
 	ctx context.Context, rh *resourceHandle, priorState *upgradedResourceState,
 	plannedStateValue tftypes.Value, checkedInputs resource.PropertyMap, replaceOverride *bool,
 ) (map[string]plugin.PropertyDiff, error) {
-	priorProps, err := convert.DecodePropertyMap(ctx, rh.decoder, priorState.state.Value)
+	priorProps, err := convert.DecodePropertyMap(ctx, rh.decoder, priorState.Value)
 	if err != nil {
 		return nil, err
 	}

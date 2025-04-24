@@ -32,6 +32,10 @@ type Value interface {
 
 	// Removes a top-level property from an Object.
 	Remove(key string) Value
+
+	StringValue() string
+	NumberValue() float64
+	BoolValue() bool
 }
 
 type Type interface {

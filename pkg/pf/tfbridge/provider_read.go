@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 
@@ -55,6 +56,7 @@ func (p *provider) ReadWithContext(
 	isRefresh := len(currentStateMap) != 0
 
 	var result plugin.ReadResult
+	var resultingState *tftypes.Value
 
 	if isRefresh {
 		// If we are in a refresh, then currentStateMap was read from the state
@@ -64,9 +66,9 @@ func (p *provider) ReadWithContext(
 			return plugin.ReadResult{}, 0, err
 		}
 
-		result, err = p.readResource(ctx, &rh, currentStateMap)
+		result, resultingState, err = p.refreshResource(ctx, &rh, currentStateMap)
 	} else {
-		result, err = p.importResource(ctx, &rh, id)
+		result, resultingState, err = p.importResource(ctx, &rh, id)
 	}
 	if err != nil {
 		return result, ignoredStatus, err
@@ -95,6 +97,12 @@ func (p *provider) ReadWithContext(
 		deleteDefaultsKey(result.Inputs)
 	}
 
+	if resultingState != nil && p.info.RawStateDeltaEnabled() {
+		if err := insertRawStateDelta(ctx, &rh, result.Outputs, *resultingState); err != nil {
+			return result, ignoredStatus, err
+		}
+	}
+
 	return result, ignoredStatus, err
 }
 
@@ -120,25 +128,29 @@ func deleteDefaultsKey(inputs resource.PropertyMap) {
 	}
 }
 
+// Executes the `pulumi refresh` scenario: upgrades the resource state map first and then passes it to the PF
+// ReadResource method.
+func (p *provider) refreshResource(
+	ctx context.Context,
+	rh *resourceHandle,
+	currentStateMap resource.PropertyMap,
+) (plugin.ReadResult, *tftypes.Value, error) {
+	currentState, err := p.parseAndUpgradeResourceState(ctx, rh, currentStateMap)
+	if err != nil {
+		return plugin.ReadResult{}, nil, fmt.Errorf("failed to get current raw state: %w", err)
+	}
+	return p.readResource(ctx, rh, currentState)
+}
+
 // readResource calls the PF's ReadResource method on the given resource.
 func (p *provider) readResource(
 	ctx context.Context,
 	rh *resourceHandle,
-	currentStateMap resource.PropertyMap,
-) (plugin.ReadResult, error) {
-	currentStateRaw, err := parseResourceState(rh, currentStateMap)
+	currentState *upgradedResourceState,
+) (plugin.ReadResult, *tftypes.Value, error) {
+	currentStateDV, err := makeDynamicValue(currentState.Value)
 	if err != nil {
-		return plugin.ReadResult{}, fmt.Errorf("failed to get current raw state: %w", err)
-	}
-
-	currentState, err := p.UpgradeResourceState(ctx, rh, currentStateRaw)
-	if err != nil {
-		return plugin.ReadResult{}, fmt.Errorf("failed to get current state: %w", err)
-	}
-
-	currentStateDV, err := makeDynamicValue(currentState.state.Value)
-	if err != nil {
-		return plugin.ReadResult{}, fmt.Errorf("failed to get dynamic value: %w", err)
+		return plugin.ReadResult{}, nil, fmt.Errorf("failed to get dynamic value: %w", err)
 	}
 
 	req := tfprotov6.ReadResourceRequest{
@@ -151,30 +163,30 @@ func (p *provider) readResource(
 
 	resp, err := p.tfServer.ReadResource(ctx, &req)
 	if err != nil {
-		return plugin.ReadResult{}, err
+		return plugin.ReadResult{}, nil, err
 	}
 
 	if err := p.processDiagnostics(resp.Diagnostics); err != nil {
-		return plugin.ReadResult{}, err
+		return plugin.ReadResult{}, nil, err
 	}
 
 	if resp.NewState == nil {
-		return plugin.ReadResult{}, nil
+		return plugin.ReadResult{}, nil, nil
 	}
 
 	readState, err := parseResourceStateFromTF(ctx, rh, resp.NewState, resp.Private)
 	if err != nil {
-		return plugin.ReadResult{}, fmt.Errorf("parsing resource state: %w", err)
+		return plugin.ReadResult{}, nil, fmt.Errorf("parsing resource state: %w", err)
 	}
 
 	// TF interprets a null new state as an indication that the resource does not exist in the cloud provider.
-	if readState.state.Value.IsNull() {
-		return plugin.ReadResult{}, nil
+	if readState.Value.IsNull() {
+		return plugin.ReadResult{}, nil, nil
 	}
 
 	readStateMap, err := readState.ToPropertyMap(ctx, rh)
 	if err != nil {
-		return plugin.ReadResult{}, fmt.Errorf("converting to property map: %w", err)
+		return plugin.ReadResult{}, nil, fmt.Errorf("converting to property map: %w", err)
 	}
 
 	readID, err := extractID(ctx, rh.terraformResourceName, rh.pulumiResourceInfo, readStateMap)
@@ -185,7 +197,7 @@ func (p *provider) readResource(
 	return plugin.ReadResult{
 		ID:      readID,
 		Outputs: readStateMap,
-	}, nil
+	}, &readState.Value, nil
 }
 
 // Execute a Pulumi import against a PF resource.
@@ -212,7 +224,7 @@ func (p *provider) importResource(
 	ctx context.Context,
 	rh *resourceHandle,
 	id resource.ID,
-) (plugin.ReadResult, error) {
+) (plugin.ReadResult, *tftypes.Value, error) {
 	// TODO[pulumi/pulumi-terraform-bridge#794] set ProviderMeta
 	req := tfprotov6.ImportResourceStateRequest{
 		TypeName: rh.terraformResourceName,
@@ -221,21 +233,21 @@ func (p *provider) importResource(
 
 	resp, err := p.tfServer.ImportResourceState(ctx, &req)
 	if err != nil {
-		return plugin.ReadResult{}, err
+		return plugin.ReadResult{}, nil, err
 	}
 
 	if err := p.processDiagnostics(resp.Diagnostics); err != nil {
-		return plugin.ReadResult{}, err
+		return plugin.ReadResult{}, nil, err
 	}
 
 	if len(resp.ImportedResources) > 1 {
-		return plugin.ReadResult{},
+		return plugin.ReadResult{}, nil,
 			fmt.Errorf("ImportResourceState returned more than one result, " +
 				"but reading only one is supported by Pulumi")
 	}
 
 	if len(resp.ImportedResources) == 0 {
-		return plugin.ReadResult{},
+		return plugin.ReadResult{}, nil,
 			fmt.Errorf("ImportResourceState failed to return a result")
 	}
 
@@ -243,26 +255,21 @@ func (p *provider) importResource(
 
 	readState, err := parseResourceStateFromTF(ctx, rh, r.State, r.Private)
 	if err != nil {
-		return plugin.ReadResult{}, err
-	}
-
-	readStateMap, err := readState.ToPropertyMap(ctx, rh)
-	if err != nil {
-		return plugin.ReadResult{}, err
+		return plugin.ReadResult{}, nil, err
 	}
 
 	isNull, err := r.State.IsNull()
 	if err != nil {
-		return plugin.ReadResult{}, err
+		return plugin.ReadResult{}, nil, err
 	}
 
 	// If the resulting map is null
 	if isNull {
 		// Returning a result where plugin.ReadResult.Outputs is nil indicates
 		// that the found resource does not exist.
-		return plugin.ReadResult{}, nil
+		return plugin.ReadResult{}, nil, nil
 	}
 
 	// Now that the resource has been translated to TF state, read it.
-	return p.readResource(ctx, rh, readStateMap)
+	return p.readResource(ctx, rh, readState)
 }

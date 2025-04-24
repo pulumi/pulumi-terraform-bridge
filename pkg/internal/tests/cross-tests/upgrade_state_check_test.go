@@ -33,6 +33,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -63,8 +64,14 @@ type upgradeStateTestCase struct {
 	ExpectFailure        bool // expect the test to fail, as in downgrades
 	ExpectedRawStateType cty.Type
 
-	SkipPulumi                        string // Reason to skip Pulumi side of the test
+	SkipPulumi                        string // Reason to skip all Pulumi parts of the test
 	SkipSchemaVersionAfterUpdateCheck bool
+
+	// Turning this on would check what would happen if `pulumi refresh` ran a Resource2-style provider against a
+	// Resource1-style state. This is not currently how Pulumi works in production though, as `pulumi refresh`
+	// would always pick the provider version recorded in the state to perform operations against. So these checks
+	// are possibly moot, but might be useful in the future if Pulumi behavior around refresh changes.
+	ExperimentalPulumiRefresh bool
 }
 
 type upgradeStateTestPhase string
@@ -280,6 +287,8 @@ func runUpgradeTestStatePulumi(t T, tc upgradeStateTestCase) upgradeStateResult 
 
 	createdState := pt.ExportStack(t)
 
+	t.Logf("createdState: %v", string(createdState.Deployment))
+
 	schemaVersion1 := getVersionInState(t, createdState)
 	require.Equalf(t, tc.Resource1.SchemaVersion, schemaVersion1, "bad getVersionInState result for create")
 
@@ -300,14 +309,18 @@ func runUpgradeTestStatePulumi(t T, tc upgradeStateTestCase) upgradeStateResult 
 	pt.CurrentStack().Workspace().SetEnvVar("PULUMI_DEBUG_PROVIDERS",
 		fmt.Sprintf("%s:%d", defProviderShortName, handle.Port))
 
-	t.Logf("#### refresh")
-	tracker.phase = refreshPhase
-	refreshResult := pt.Refresh(t)
-	t.Logf("%s", refreshResult.StdOut+refreshResult.StdErr)
+	var refreshResult auto.RefreshResult
+	if tc.ExperimentalPulumiRefresh {
+		t.Logf("#### refresh")
+		tracker.phase = refreshPhase
+		refreshResult = pt.Refresh(t)
+		t.Logf("%s", refreshResult.StdOut+refreshResult.StdErr)
 
-	schemaVersionR := getVersionInState(t, pt.ExportStack(t))
-	t.Logf("schema version after refresh is %d", schemaVersionR)
-	require.Equalf(t, tc.Resource2.SchemaVersion, schemaVersionR, "bad getVersionInState result for refresh")
+		schemaVersionR := getVersionInState(t, pt.ExportStack(t))
+		t.Logf("schema version after refresh is %d", schemaVersionR)
+		require.Equalf(t, tc.Resource2.SchemaVersion, schemaVersionR,
+			"bad getVersionInState result for refresh")
+	}
 
 	// Reset to created state as refresh may have edited it.
 	pt.ImportStack(t, createdState)
@@ -399,5 +412,11 @@ func nopUpgrade(
 func skipUnlessLinux(t T) {
 	if ci, ok := os.LookupEnv("CI"); ok && ci == "true" && !strings.Contains(strings.ToLower(runtime.GOOS), "linux") {
 		t.Skip("Skipping on non-Linux platforms as our CI does not yet install Terraform CLI required for these tests")
+	}
+}
+
+func skipUnlessDeltasEnabled(t T) {
+	if d, ok := os.LookupEnv("PULUMI_RAW_STATE_DELTA_ENABLED"); !ok || !cmdutil.IsTruthy(d) {
+		t.Skip("This test requires PULUMI_RAW_STATE_DELTA_ENABLED=true environment")
 	}
 }

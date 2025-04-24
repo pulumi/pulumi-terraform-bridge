@@ -113,6 +113,7 @@ func TestReadFromRefresh(t *testing.T) {
 	    "id": "none",
 	    "properties": {
 	      "__meta": "{\"schema_version\":\"3\"}",
+              "*": "*",
 	      "bcryptHash": {
 		"4dabf18193072939515e22adb298388d": "1b47061264138c4ac30d75fd1eb44270",
 		"value": "$2a$10$HHwx0gQztkpPIc7WkE4Wt.v7ibWT9Ug24/F5XLa6xNm/gOuyS5WRa"
@@ -168,6 +169,7 @@ func TestImportRandomPassword(t *testing.T) {
 	    "id": "none",
 	    "properties": {
 	      "__meta": "{\"schema_version\":\"3\"}",
+              "*": "*",
 	      "bcryptHash": "*",
 	      "id": "none",
 	      "length": 11,
@@ -214,6 +216,7 @@ func TestImportingResourcesWithBlocks(t *testing.T) {
             "inputs": "*",
             "properties": {
               "id": "*",
+              "*": "*",
               "rules": [
                 {
                   "protocol": "some-string"
@@ -251,6 +254,7 @@ func TestImportingResourcesWithoutDefaults(t *testing.T) {
             },
             "properties": {
               "id": "*",
+              "*": "*",
               "rules": [
                 {
                   "protocol": "some-string"
@@ -304,7 +308,8 @@ func TestImportingResourcesWithNestedAttributes(t *testing.T) {
             "inputs": "*",
             "properties": {
               "id": "zone/929e99f1a4152bfe415bbb3b29d1a227/my-ruleset-id",
-              "services": []
+              "services": [],
+              "*": "*"
             }
           }
         }`
@@ -490,6 +495,7 @@ func TestRefreshSupportsCustomID(t *testing.T) {
 	    "id": "customID",
 	    "properties": {
 	      "__meta": "*",
+              "*": "*",
 	      "bcryptHash": "*",
 	      "id": "customID",
 	      "length": 8,
@@ -535,6 +541,7 @@ func TestImportSupportsCustomID(t *testing.T) {
 	    "id": "customID",
 	    "properties": {
 	      "__meta": "{\"schema_version\":\"3\"}",
+              "*": "*",
 	      "bcryptHash": "*",
 	      "id": "customID",
 	      "length": 11,

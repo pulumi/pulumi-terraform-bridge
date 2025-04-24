@@ -42,9 +42,23 @@ type Log interface {
 
 // Get access to the [Logger] associated with this context.
 func GetLogger(ctx context.Context) Logger {
-	logger := ctx.Value(logging.CtxKey)
+	logger := TryGetLogger(ctx)
 	contract.Assertf(logger != nil, "Cannot call GetLogger on a context that is not equipped with a Logger")
+	return logger
+}
+
+// Like [Logger] but may return nil if no logging has been setup.
+func TryGetLogger(ctx context.Context) Logger {
+	logger := ctx.Value(logging.CtxKey)
+	if logger == nil {
+		return nil
+	}
 	return newLoggerAdapter(logger)
+}
+
+// Create a logger that ignores all messages.
+func NewDiscardLogger() Logger {
+	return &discardLogger{}
 }
 
 func newLoggerAdapter(logger any) Logger {
@@ -72,3 +86,13 @@ type untypedLogger interface {
 	Log
 	StatusUntyped() any
 }
+
+type discardLogger struct{}
+
+var _ Logger = (*discardLogger)(nil)
+
+func (dl *discardLogger) Status() Log   { return dl }
+func (*discardLogger) Debug(msg string) {}
+func (*discardLogger) Info(msg string)  {}
+func (*discardLogger) Warn(msg string)  {}
+func (*discardLogger) Error(msg string) {}
