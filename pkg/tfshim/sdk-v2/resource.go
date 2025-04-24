@@ -1,11 +1,11 @@
 package sdkv2
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
@@ -31,41 +31,11 @@ func (r v2Resource) SchemaVersion() int {
 	return r.tf.SchemaVersion
 }
 
-//nolint:staticcheck
 func (r v2Resource) Importer() shim.ImportFunc {
-	if r.tf.Importer == nil {
-		return nil
-	}
-	return func(t, id string, meta interface{}) ([]shim.InstanceState, error) {
-		data := r.tf.Data(nil)
-		data.SetId(id)
-		data.SetType(t)
-
-		var v2Results []*schema.ResourceData
-		var err error
-		switch {
-		case r.tf.Importer.State != nil:
-			v2Results, err = r.tf.Importer.State(data, meta)
-		case r.tf.Importer.StateContext != nil:
-			v2Results, err = r.tf.Importer.StateContext(context.TODO(), data, meta)
-		}
-		if err != nil {
-			return nil, err
-		}
-		results := make([]shim.InstanceState, len(v2Results))
-		for i, v := range v2Results {
-			s := v.State()
-			if s == nil {
-				return nil, fmt.Errorf("importer for %s returned a empty resource state. This is always "+
-					"the result of a bug in the resource provider - please report this "+
-					"as a bug in the Pulumi provider repository.", id)
-			}
-			if s.Attributes != nil {
-				results[i] = v2InstanceState{r.tf, s, nil}
-			}
-		}
-		return results, nil
-	}
+	// When v2Resource represents resources, it is wrapped in v2Resource2 and v2Resource2.Importer() is called.
+	// The residual use case is v2Resource representing data sources, but those do not support importers.
+	contract.Failf("v2Resource.Importer() should not be called directly")
+	return nil
 }
 
 func (r v2Resource) DeprecationMessage() string {
