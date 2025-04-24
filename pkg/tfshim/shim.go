@@ -180,9 +180,9 @@ type Schema interface {
 	Deprecated() string
 	Removed() string
 	Sensitive() bool
-	// Deprecated: use SchemaWithSetElementHash and SetElementHash instead.
+	// Deprecated: use [SchemaWithSetElementHash] and [SetElementHash] instead.
 	SetElement(config interface{}) (interface{}, error)
-	// Deprecated: use SchemaWithSetElementHash and SetElementHash instead.
+	// Deprecated: use [SchemaWithSetElementHash] and [SetElementHash] instead.
 	SetHash(v interface{}) int
 }
 
