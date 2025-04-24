@@ -293,6 +293,8 @@ type conversionContext struct {
 	// the same values: schema.NewSet([]interface{}{"val1", "val2"}).
 	// Note that this only works for schemas which implement shim.SchemaWithNewSet.
 	UseTFSetTypes bool
+	// DropUnknowns will drop unknown values from the input.
+	DropUnknowns bool
 }
 
 type makeTerraformInputsOptions struct {
@@ -534,6 +536,9 @@ func (ctx *conversionContext) makeTerraformInput(
 		// If any variables are unknown, we need to mark them in the inputs so the config map treats it right.  This
 		// requires the use of the special UnknownVariableValue sentinel in Terraform, which is how it internally stores
 		// interpolated variables whose inputs are currently unknown.
+		if ctx.DropUnknowns {
+			return nil, nil
+		}
 		return makeTerraformUnknown(tfs), nil
 	default:
 		contract.Failf("Unexpected value marshaled: %v", v)
@@ -979,7 +984,7 @@ func makeTerraformUnknownElement(elem interface{}) interface{} {
 // makeTerraformUnknown creates an unknown value with the shape indicated by the given schema.
 //
 // It is important that we use the TF schema (if available) to decide what shape the unknown value should have:
-// e.g. TF does not play nicely with unknown lists, instead expecting a list of unknowns.
+// e.g. the TF plugin SDKv1 does not play nicely with unknown lists, instead expecting a list of unknowns.
 func makeTerraformUnknown(tfs shim.Schema) interface{} {
 	_, unknownCollectionsSupported := tfs.(shim.SchemaWithUnknownCollectionSupported)
 	if unknownCollectionsSupported {
@@ -991,7 +996,8 @@ func makeTerraformUnknown(tfs shim.Schema) interface{} {
 
 	switch tfs.Type() {
 	case shim.TypeList, shim.TypeSet:
-		// TF does not accept unknown lists or sets. Instead, it accepts lists or sets of unknowns.
+		// Schemas without SchemaWithUnknownCollectionSupported do not accept
+		// unknown lists or sets. Instead, it accepts lists or sets of unknowns.
 		count := 1
 		if tfs.MinItems() > 0 {
 			count = tfs.MinItems()

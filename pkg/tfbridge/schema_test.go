@@ -4056,7 +4056,7 @@ func TestMakeSingleTerraformInput(t *testing.T) {
 
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			result, err := makeSingleTerraformInput(
+			result, err := makeSetElementTerraformInput(
 				context.Background(), "name", tc.prop, shimv2.NewSchema(tc.schema), nil)
 			require.NoError(t, err)
 			assert.Equal(t, tc.expected, result)
@@ -4081,7 +4081,7 @@ func TestMakeSingleTerraformInputSets(t *testing.T) {
 		resource.NewStringProperty("baz"),
 	})
 
-	result, err := makeSingleTerraformInput(
+	result, err := makeSetElementTerraformInput(
 		context.Background(), "name", prop, shimv2.NewSchema(sch), nil)
 	require.NoError(t, err)
 	setRes := result.(*schemav2.Set)

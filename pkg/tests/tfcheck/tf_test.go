@@ -221,3 +221,62 @@ resource "test_resource" "test" {
 	require.NoError(t, err)
 	t.Log(driver.GetState(t))
 }
+
+// TF Never calls the SetHash function with nil values.
+// Instead it assumes zero values for the unknowns and nils in the plan.
+func TestTFSetHashNil(t *testing.T) {
+	t.Parallel()
+
+	resSch := &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"name": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+			"bool": {
+				Type:     schema.TypeBool,
+				Optional: true,
+			},
+			"computed_bool": {
+				Type:     schema.TypeBool,
+				Computed: true,
+				Optional: true,
+			},
+		},
+	}
+
+	prov := schema.Provider{
+		ResourcesMap: map[string]*schema.Resource{
+			"test_resource": {
+				Schema: map[string]*schema.Schema{
+					"set": {
+						Type:     schema.TypeSet,
+						Optional: true,
+						Elem:     resSch,
+						Set: func(i interface{}) int {
+							for _, v := range i.(map[string]interface{}) {
+								if v == nil {
+									panic("nil value in hash func")
+								}
+							}
+							return schema.HashResource(resSch)(i)
+						},
+					},
+				},
+			},
+		},
+	}
+
+	driver := NewTfDriver(t, t.TempDir(), "test", NewTFDriverOpts{SDKProvider: &prov})
+
+	driver.Write(t, `
+resource "test_resource" "test" {
+	set {
+		name = "foo"
+	}
+}
+	`)
+
+	_, err := driver.Plan(t)
+	require.NoError(t, err)
+}

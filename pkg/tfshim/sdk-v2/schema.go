@@ -2,7 +2,6 @@ package sdkv2
 
 import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
@@ -13,6 +12,7 @@ var (
 	_ = shim.SchemaWithUnknownCollectionSupported(v2Schema{})
 	_ = shim.SchemaMap(v2SchemaMap{})
 	_ = shim.SchemaWithWriteOnly(v2Schema{})
+	_ = shim.SchemaWithSetElementHash(v2Schema{})
 )
 
 // UnknownVariableValue is the sentinal defined in github.com/hashicorp/terraform/configs/hcl2shim,
@@ -129,12 +129,29 @@ func (s v2Schema) WriteOnly() bool {
 	return s.tf.WriteOnly
 }
 
+// SetElement expects a set element without any unknown values.
+// The value passed here can contain golang types or a plugin-sdk schema.Set.
 func (s v2Schema) SetElement(v interface{}) (interface{}, error) {
-	raw := map[string]interface{}{"e": []interface{}{v}}
-	reader := &schema.ConfigFieldReader{
-		Config: &terraform.ResourceConfig{Raw: raw, Config: raw},
-		Schema: map[string]*schema.Schema{"e": s.tf},
+	// The plugin-sdk does some pre-processing on the set element values before
+	// calling the hash function on them. Some examples of that are:
+	// - dropping unknowns
+	// - defaulting null values (false for bools, 0 for ints, "" for strings)
+	// Instead of trying to reverse that, we'll just call the plugin-sdk's
+	// code for accessing set elements which handles this pre-processing.
+	// This ensures that the hash functions receives the values it expects.
+	// See [pkg/tests/tfcheck/tf_test.go:TestTFSetHashNil] for an example of
+	// this behaviour in TF.
+	sch := map[string]*schema.Schema{"e": s.tf}
+	setWriter := &schema.MapFieldWriter{Schema: sch}
+	err := setWriter.WriteField([]string{"e"}, []interface{}{v})
+	if err != nil {
+		return nil, err
 	}
+	reader := &schema.MapFieldReader{
+		Schema: sch,
+		Map:    schema.BasicMapReader(setWriter.Map()),
+	}
+
 	field, err := reader.ReadField([]string{"e"})
 	if err != nil {
 		return nil, err
@@ -150,6 +167,14 @@ func (s v2Schema) SetHash(v interface{}) int {
 		return -code
 	}
 	return code
+}
+
+func (s v2Schema) SetElementHash(v interface{}) (int, error) {
+	v, err := s.SetElement(v)
+	if err != nil {
+		return 0, err
+	}
+	return s.SetHash(v), nil
 }
 
 func (s v2Schema) NewSet(v []interface{}) interface{} {

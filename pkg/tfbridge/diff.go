@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
@@ -108,16 +109,19 @@ func visitPropertyValue(
 				}
 
 				if !e.IsComputed() && !e.IsOutput() {
-					if ev, err = tfs.SetElement(makeConfig(ev)); err != nil {
-						return
-					}
+					tfs, ok := tfs.(shim.SchemaWithSetElementHash)
+					contract.Assertf(ok, "expected SchemaWithSetElementHash")
 
 					// We cannot compute the hash for computed values because they are represented by the UnknownVariableValue
 					// sentinel string, which may not be a legal value of the corresponding schema type, and SetHash does not
 					// account for computed values. Skipping this for unknown values will result in computing a diff only on the
 					// set itself, instead of on the set element, which matches the InstanceDiff returned by Terraform,
 					// which is a diff only on the count (and to an unknown value) of the set.
-					ti = strconv.FormatInt(int64(tfs.SetHash(ev)), 10)
+					setHash, err := tfs.SetElementHash(makeConfig(ev))
+					if err != nil {
+						return
+					}
+					ti = strconv.FormatInt(int64(setHash), 10)
 					if containsComputedValues(e) {
 						// TF adds a '~' prefix to the hash code for any set element that contains computed values.
 						ti = "~" + ti
