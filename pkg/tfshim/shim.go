@@ -180,7 +180,9 @@ type Schema interface {
 	Deprecated() string
 	Removed() string
 	Sensitive() bool
+	// Deprecated: use SchemaWithSetElementHash and SetElementHash instead.
 	SetElement(config interface{}) (interface{}, error)
+	// Deprecated: use SchemaWithSetElementHash and SetElementHash instead.
 	SetHash(v interface{}) int
 }
 
@@ -196,6 +198,11 @@ type SchemaWithNewSet interface {
 type SchemaWithUnknownCollectionSupported interface {
 	Schema
 	SupportsUnknownCollections()
+}
+
+type SchemaWithSetElementHash interface {
+	Schema
+	SetElementHash(v interface{}) (int, error)
 }
 
 type SchemaMap interface {

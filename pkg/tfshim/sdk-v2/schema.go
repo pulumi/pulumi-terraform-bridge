@@ -12,6 +12,7 @@ var (
 	_ = shim.SchemaWithUnknownCollectionSupported(v2Schema{})
 	_ = shim.SchemaMap(v2SchemaMap{})
 	_ = shim.SchemaWithWriteOnly(v2Schema{})
+	_ = shim.SchemaWithSetElementHash(v2Schema{})
 )
 
 // UnknownVariableValue is the sentinal defined in github.com/hashicorp/terraform/configs/hcl2shim,
@@ -164,6 +165,14 @@ func (s v2Schema) SetHash(v interface{}) int {
 		return -code
 	}
 	return code
+}
+
+func (s v2Schema) SetElementHash(v interface{}) (int, error) {
+	v, err := s.SetElement(v)
+	if err != nil {
+		return 0, err
+	}
+	return s.SetHash(v), nil
 }
 
 func (s v2Schema) NewSet(v []interface{}) interface{} {

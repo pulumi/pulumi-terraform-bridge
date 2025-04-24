@@ -297,10 +297,13 @@ func (differ detailedDiffer) isForceNew(path propertyPath) bool {
 	return isForceNew(tfs, ps)
 }
 
-// makeSingleTerraformInput converts a single Pulumi property value into a plain go value suitable for use by Terraform.
-// makeSingleTerraformInput does not apply any defaults or other transformations.
-// Note that makeSingleTerraformInput uses UseTFSetTypes=true, so it will return a TF Set for any sets it encounters.
-func makeSingleTerraformInput(
+// makeSetElementTerraformInput converts a single Pulumi property value into a plain go value
+// suitable for use by Terraform.
+// makeSetElementTerraformInput does not apply any defaults or other transformations.
+// Note that makeSetElementTerraformInput uses UseTFSetTypes=true, so it will return a TF Set for
+// any sets it encounters.
+// Note also that it drops unknown values.
+func makeSetElementTerraformInput(
 	ctx context.Context, name string, val resource.PropertyValue, tfs shim.Schema, ps *SchemaInfo,
 ) (interface{}, error) {
 	cctx := &conversionContext{
@@ -349,7 +352,7 @@ func (differ detailedDiffer) calculateSetHashIndexMap(
 	convertedElements := []interface{}{}
 
 	for _, elem := range setElements {
-		convertedElem, err := makeSingleTerraformInput(
+		convertedElem, err := makeSetElementTerraformInput(
 			differ.ctx, elementPath.String(), elem, etfs, eps)
 		if err != nil {
 			GetLogger(differ.ctx).Warn(fmt.Sprintf(
@@ -359,6 +362,9 @@ func (differ detailedDiffer) calculateSetHashIndexMap(
 		}
 		convertedElements = append(convertedElements, convertedElem)
 	}
+
+	tfsh, ok := tfs.(shim.SchemaWithSetElementHash)
+	contract.Assertf(ok, "expected SchemaWithSetElementHash")
 
 	// Calculate the identity of each element. Note that the SetHash function can panic
 	// in the case of custom SetHash functions which get unexpected inputs.
@@ -371,10 +377,10 @@ func (differ detailedDiffer) calculateSetHashIndexMap(
 						path.String(), r))
 				}
 			}()
-			setConfig, err := tfs.SetElement(newElem)
+			setHash, err := tfsh.SetElementHash(newElem)
 			contract.AssertNoErrorf(
 				err, "Failed to calculate preview for element in %s: Failed to convert set element", path.String())
-			return tfs.SetHash(setConfig)
+			return setHash
 		}()
 		identities[setHash(elementHash)] = arrayIndex(i)
 	}

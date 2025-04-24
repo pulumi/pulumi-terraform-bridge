@@ -10,6 +10,7 @@ import (
 var (
 	_ = shim.Schema(v1Schema{})
 	_ = shim.SchemaWithNewSet(v1Schema{})
+	_ = shim.SchemaWithSetElementHash(v1Schema{})
 	_ = shim.SchemaMap(v1SchemaMap{})
 )
 
@@ -142,6 +143,14 @@ func (s v1Schema) SetHash(v interface{}) int {
 		return -code
 	}
 	return code
+}
+
+func (s v1Schema) SetElementHash(v interface{}) (int, error) {
+	v, err := s.SetElement(v)
+	if err != nil {
+		return 0, err
+	}
+	return s.SetHash(v), nil
 }
 
 func (s v1Schema) NewSet(v []interface{}) interface{} {
