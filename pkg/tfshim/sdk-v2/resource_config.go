@@ -5,9 +5,9 @@ import (
 	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/valueshim"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/valueshim"
 )
 
 // Interface assertions to ensure v2ResourceConfig implements the required interfaces
@@ -46,11 +46,14 @@ func (c v2ResourceConfig) GetRawConfigMapWithUnknown() (map[string]any, bool, er
 	if !ctyValue.IsWhollyKnown() {
 		containsUnknowns = true
 	}
-	configJsonMessage, err := valueshim.FromHCtyValue(ctyValue).Marshal()
+	configJSONMessage, err := valueshim.FromHCtyValue(ctyValue).Marshal()
 	if err != nil {
-		return nil, containsUnknowns, fmt.Errorf("error marshaling into raw JSON message: %v", err) //TODO: add err
+		return nil, containsUnknowns, fmt.Errorf("error marshaling into raw JSON message: %v", err) // TODO: add err
 	}
 
-	err = json.Unmarshal(configJsonMessage, &jsonConfigMap)
+	err = json.Unmarshal(configJSONMessage, &jsonConfigMap)
+	if err != nil {
+		return nil, containsUnknowns, err
+	}
 	return jsonConfigMap, containsUnknowns, nil
 }

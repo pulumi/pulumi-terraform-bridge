@@ -5873,7 +5873,8 @@ func TestProviderCallTerraformConfig(t *testing.T) {
 	require.NotNil(t, callResp)
 
 	// Assert our return object is as expected, with terraform_cased keys
-	callReturnProperties, err := plugin.UnmarshalProperties(callResp.GetReturn(), plugin.MarshalOptions{KeepSecrets: true})
+	callReturnProperties, err := plugin.UnmarshalProperties(callResp.GetReturn(),
+		plugin.MarshalOptions{KeepSecrets: true})
 	require.NoError(t, err)
 	autogold.Expect(resource.PropertyMap{resource.PropertyKey("result"): resource.PropertyValue{
 		V: resource.PropertyMap{
@@ -5891,7 +5892,13 @@ func TestProviderCallTerraformConfig(t *testing.T) {
 					}},
 				}},
 			},
-			resource.PropertyKey("region"): resource.PropertyValue{V: &resource.Secret{Element: resource.PropertyValue{V: "us-west-space-odyssey-2000"}}},
+			resource.PropertyKey("region"): resource.PropertyValue{
+				V: &resource.Secret{
+					Element: resource.PropertyValue{
+						V: "us-west-space-odyssey-2000",
+					},
+				},
+			},
 		},
 	}}).Equal(t, callReturnProperties)
 

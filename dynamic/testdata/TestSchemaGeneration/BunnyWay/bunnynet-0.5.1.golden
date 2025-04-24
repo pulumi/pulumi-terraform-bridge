@@ -3906,7 +3906,10 @@
             "outputs": {
                 "properties": {
                     "result": {
-                        "type": "string"
+                        "additionalProperties": {
+                            "$ref": "pulumi.json#/Any"
+                        },
+                        "type": "object"
                     }
                 },
                 "required": [
