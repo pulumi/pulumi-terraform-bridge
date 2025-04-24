@@ -2,7 +2,6 @@ package sdkv2
 
 import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
@@ -130,11 +129,17 @@ func (s v2Schema) WriteOnly() bool {
 }
 
 func (s v2Schema) SetElement(v interface{}) (interface{}, error) {
-	raw := map[string]interface{}{"e": []interface{}{v}}
-	reader := &schema.ConfigFieldReader{
-		Config: &terraform.ResourceConfig{Raw: raw, Config: raw},
-		Schema: map[string]*schema.Schema{"e": s.tf},
+	sch := map[string]*schema.Schema{"e": s.tf}
+	setWriter := &schema.MapFieldWriter{Schema: sch}
+	err := setWriter.WriteField([]string{"e"}, []interface{}{v})
+	if err != nil {
+		return nil, err
 	}
+	reader := &schema.MapFieldReader{
+		Schema: sch,
+		Map:    schema.BasicMapReader(setWriter.Map()),
+	}
+
 	field, err := reader.ReadField([]string{"e"})
 	if err != nil {
 		return nil, err
