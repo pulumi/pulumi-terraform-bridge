@@ -3,6 +3,7 @@ package tfbridgetests
 import (
 	"context"
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
@@ -11,16 +12,22 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/zclconf/go-cty/cty"
 
 	pb "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/providerbuilder"
 	crosstests "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/cross-tests"
 )
 
+func skipUnlessDeltasEnabled(t *testing.T) {
+	if d, ok := os.LookupEnv("PULUMI_RAW_STATE_DELTA_ENABLED"); !ok || !cmdutil.IsTruthy(d) {
+		t.Skip("This test requires PULUMI_RAW_STATE_DELTA_ENABLED=true environment")
+	}
+}
+
 func TestPFUpgradeRenamedProp(t *testing.T) {
-	// TODO[pulumi/pulumi-terraform-bridge#2960]
-	t.Skip("State upgrades are broken")
 	t.Parallel()
+	skipUnlessDeltasEnabled(t)
 
 	dataV0 := tftypes.Object{
 		AttributeTypes: map[string]tftypes.Type{
@@ -91,9 +98,8 @@ func TestPFUpgradeRenamedProp(t *testing.T) {
 }
 
 func TestPFUpgradeMovedProp(t *testing.T) {
-	// TODO[pulumi/pulumi-terraform-bridge#2960]
-	t.Skip("State upgrades are broken")
 	t.Parallel()
+	skipUnlessDeltasEnabled(t)
 
 	dataV0 := tftypes.Object{
 		AttributeTypes: map[string]tftypes.Type{
