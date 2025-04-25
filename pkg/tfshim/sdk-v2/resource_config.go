@@ -10,12 +10,8 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/valueshim"
 )
 
-// Interface assertions to ensure v2ResourceConfig implements the required interfaces
 var (
-	// Ensure v2ResourceConfig struct implements shim.ResourceConfig
-	_ shim.ResourceConfig = v2ResourceConfig{}
-
-	// Ensure *v2ResourceConfig pointer implements shim.ResourceConfigWithGetterForRawConfigMap
+	_ shim.ResourceConfig                          = v2ResourceConfig{}
 	_ shim.ResourceConfigWithGetterForRawConfigMap = (*v2ResourceConfig)(nil)
 )
 
