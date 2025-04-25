@@ -1767,21 +1767,13 @@ func (p *Provider) returnTerraformConfig(ctx context.Context) (resource.Property
 	}
 
 	jsonConfigMap := map[string]any{}
-	containsUnknowns := false
 
 	if cfg, ok := resConfig.(shim.ResourceConfigWithGetterForRawConfigMap); ok {
-		jsonConfigMap, containsUnknowns, err = cfg.GetRawConfigMapWithUnknown()
+		jsonConfigMap, err = cfg.GetRawConfigMapWithUnknown()
 	}
 
 	if err != nil {
 		return nil, err
-	}
-
-	if containsUnknowns {
-		msg := fmt.Sprintf("It looks like you're trying to use the provider's terraformConfig function. " +
-			"The result of this function is meant for use as the config value of a required provider for a " +
-			"Pulumi Terraform Module. All inputs to provider configuration must be known for this feature to work.")
-		return nil, errors.New(msg)
 	}
 
 	originalMap := resource.NewPropertyMapFromMap(jsonConfigMap)
