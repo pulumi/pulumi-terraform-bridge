@@ -51,10 +51,6 @@
           "type": "string"
         }
       },
-      "requiredInputs": [
-        "name",
-        "otherName"
-      ],
       "stateInputs": {
         "description": "Input properties used for looking up and filtering Res resources.\n",
         "properties": {

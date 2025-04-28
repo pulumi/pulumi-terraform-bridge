@@ -865,7 +865,9 @@ func (g *schemaGenerator) genResourceType(mod tokens.Module, res *resourceType) 
 		}
 		spec.InputProperties[prop.name] = g.genProperty(prop)
 
-		if !prop.optional() {
+		hasDefault := prop.schema.Default() != nil || prop.schema.DefaultFunc() != nil || prop.info.HasDefault()
+
+		if !prop.optional() && !hasDefault {
 			spec.RequiredInputs = append(spec.RequiredInputs, prop.name)
 		}
 	}
