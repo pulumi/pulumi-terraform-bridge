@@ -35,13 +35,11 @@ func (c v2ResourceConfig) IsSet(key string) bool {
 	return false
 }
 
-func (c v2ResourceConfig) GetRawConfigMapWithUnknown() (map[string]any, error) {
+func (c v2ResourceConfig) GetRawConfigMap() (map[string]any, error) {
 	jsonConfigMap := map[string]any{}
 	ctyValue := c.tf.CtyValue
 	if !ctyValue.IsWhollyKnown() {
-		msg := fmt.Sprintf("It looks like you're trying to use the provider's terraformConfig function. " +
-			"The result of this function is meant for use as the config value of a required provider for a " +
-			"Pulumi Terraform Module. All inputs to provider configuration must be known for this feature to work.")
+		msg := "ConfigMap contains unknowns"
 		return nil, fmt.Errorf("%s", msg)
 	}
 	configJSONMessage, err := valueshim.FromHCtyValue(ctyValue).Marshal()

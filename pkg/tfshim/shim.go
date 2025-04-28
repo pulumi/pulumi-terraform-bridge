@@ -14,7 +14,7 @@ type ResourceConfig interface {
 
 type ResourceConfigWithGetterForRawConfigMap interface {
 	ResourceConfig
-	GetRawConfigMapWithUnknown() (map[string]any, error)
+	GetRawConfigMap() (map[string]any, error)
 }
 
 type InstanceState interface {
