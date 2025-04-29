@@ -27,6 +27,7 @@ import (
 	pschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hexops/autogold/v2"
@@ -513,6 +514,45 @@ func TestWriteOnlyOmit(t *testing.T) {
 			SchemaPostProcessor: func(p *pulumischema.PackageSpec) {
 				p.Language = nil
 				p.Provider.Description = ""
+			},
+		},
+	})
+	require.NoError(t, err)
+	var b bytes.Buffer
+	require.NoError(t, json.Indent(&b, res.ProviderMetadata.PackageSchema, "", "    "))
+	autogold.ExpectFile(t, autogold.Raw(b.String()))
+}
+
+func TestPFRequiredInputWithDefault(t *testing.T) {
+	t.Parallel()
+
+	schema := rschema.Schema{
+		Attributes: map[string]rschema.Attribute{
+			"id": rschema.StringAttribute{Computed: true},
+			"a1": rschema.StringAttribute{
+				Required: true,
+				Default:  stringdefault.StaticString("default"),
+			},
+		},
+	}
+
+	info := &tfbridge.ResourceInfo{
+		Tok:  "testprovider:index:Res",
+		Docs: &tfbridge.DocInfo{Markdown: []byte{' '}},
+	}
+
+	res, err := GenerateSchema(context.Background(), GenerateSchemaOptions{
+		ProviderInfo: tfbridge.ProviderInfo{
+			Name:             "testprovider",
+			UpstreamRepoPath: ".", // no invalid mappings warnings
+			// TODO: This uses a fake provider and does not actually test the right thing.
+			P: pftfbridge.ShimProvider(&schemaTestProvider{
+				resources: map[string]rschema.Schema{
+					"res": schema,
+				},
+			}),
+			Resources: map[string]*tfbridge.ResourceInfo{
+				"test_res": info,
 			},
 		},
 	})
