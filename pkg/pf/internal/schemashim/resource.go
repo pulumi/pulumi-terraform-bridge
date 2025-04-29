@@ -29,8 +29,8 @@ func (r *schemaOnlyResource) Schema() shim.SchemaMap {
 	return r.tf.Shim()
 }
 
-func (*schemaOnlyResource) SchemaVersion() int {
-	panic("SchemaVersion() should not be called on a Resource during schema generation")
+func (r *schemaOnlyResource) SchemaVersion() int {
+	return int(r.tf.ResourceSchemaVersion())
 }
 
 func (r *schemaOnlyResource) DeprecationMessage() string {
