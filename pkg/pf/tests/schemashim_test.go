@@ -1161,13 +1161,16 @@ func stdProvider(resourceSchema schema.Schema) *pb.Provider {
 func TestSchemaVersionAccessible(t *testing.T) {
 	t.Parallel()
 
-	provider := stdProvider(schema.Schema{
-		Attributes: map[string]schema.Attribute{
-			"a1": schema.StringAttribute{
-				Required: true,
-			},
+	res := pb.NewResource(pb.NewResourceArgs{
+		Name: "r1",
+		ResourceSchema: schema.Schema{
+			Version: 2,
 		},
-		Version: 2,
+	})
+
+	provider := pb.NewProvider(pb.NewProviderArgs{
+		TypeName:     "testprov",
+		AllResources: []pb.Resource{res},
 	})
 
 	shimmedProvider := schemashim.ShimSchemaOnlyProvider(context.Background(), provider)

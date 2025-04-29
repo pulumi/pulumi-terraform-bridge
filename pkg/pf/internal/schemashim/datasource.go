@@ -30,7 +30,7 @@ func (r *schemaOnlyDataSource) Schema() shim.SchemaMap {
 }
 
 func (r *schemaOnlyDataSource) SchemaVersion() int {
-	return int(r.tf.ResourceSchemaVersion())
+	panic("datasources do not have schema versions")
 }
 
 func (r *schemaOnlyDataSource) DeprecationMessage() string {
