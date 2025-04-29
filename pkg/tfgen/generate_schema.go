@@ -332,6 +332,55 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg, sink diag.Sink) (pschema.Pac
 		}
 		spec.Provider = g.genResourceType(indexModToken, pack.provider)
 
+		// For pulumi-terraform-module, we would like to have a Terraform Config method on the provider.
+		// To do so, we Add a Function to this spec, and then add the Function to the provider's Methods,
+		// which will expose it to the provider server's Call() gRPC method.
+		providerSelfRef := "#/resources/pulumi:providers:" + pack.name.String()
+		terraformConfigFunctionToken := "pulumi:providers:" + pack.name.String() + "/terraformConfig"
+		terraformConfig := pschema.FunctionSpec{
+			Description: "This function returns a Terraform config object with terraform-namecased keys," +
+				"to be used with the Terraform Module Provider.",
+			Inputs: &pschema.ObjectTypeSpec{
+				Type: terraformConfigFunctionToken,
+				Properties: map[string]pschema.PropertySpec{
+					"__self__": {
+						TypeSpec: pschema.TypeSpec{
+							Type: "ref",
+							Ref:  providerSelfRef,
+						},
+					},
+				},
+				Required: []string{"__self__"},
+			},
+
+			MultiArgumentInputs: nil,
+			Outputs:             nil,
+			ReturnType: &pschema.ReturnTypeSpec{
+				ObjectTypeSpec: &pschema.ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]pschema.PropertySpec{
+						"result": {
+							TypeSpec: pschema.TypeSpec{
+								Type: "object",
+								AdditionalProperties: &pschema.TypeSpec{
+									Ref: "pulumi.json#/Any",
+								},
+							},
+						},
+					},
+					Required: []string{"result"},
+				},
+			},
+			DeprecationMessage:        "",
+			Language:                  nil,
+			IsOverlay:                 false,
+			OverlaySupportedLanguages: nil,
+		}
+
+		spec.Functions[terraformConfigFunctionToken] = terraformConfig
+		methods := map[string]string{"terraformConfig": terraformConfigFunctionToken}
+		spec.Provider.Methods = methods
+
 		// Ensure that input properties are mirrored as output properties, but without fields set which
 		// are only meaningful for input properties.
 		spec.Provider.Required = spec.Provider.RequiredInputs

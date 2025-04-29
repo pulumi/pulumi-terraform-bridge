@@ -19,7 +19,10 @@
   },
   "config": {},
   "provider": {
-    "description": "The provider type for the simple package. By default, resources use package-wide configuration\nsettings, however an explicit `Provider` instance may be created and passed during resource\nconstruction to achieve fine-grained programmatic control over provider settings. See the\n[documentation](https://www.pulumi.com/docs/reference/programming-model/#providers) for more information.\n"
+    "description": "The provider type for the simple package. By default, resources use package-wide configuration\nsettings, however an explicit `Provider` instance may be created and passed during resource\nconstruction to achieve fine-grained programmatic control over provider settings. See the\n[documentation](https://www.pulumi.com/docs/reference/programming-model/#providers) for more information.\n",
+    "methods": {
+      "terraformConfig": "pulumi:providers:simple/terraformConfig"
+    }
   },
   "resources": {
     "simple:index:resource": {
@@ -63,6 +66,35 @@
     }
   },
   "functions": {
+    "pulumi:providers:simple/terraformConfig": {
+      "description": "This function returns a Terraform config object with terraform-namecased keys,to be used with the Terraform Module Provider.",
+      "inputs": {
+        "properties": {
+          "__self__": {
+            "type": "ref",
+            "$ref": "#/resources/pulumi:providers:simple"
+          }
+        },
+        "type": "pulumi:providers:simple/terraformConfig",
+        "required": [
+          "__self__"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "additionalProperties": {
+              "$ref": "pulumi.json#/Any"
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
+      }
+    },
     "simple:index:data_source": {
       "inputs": {
         "description": "A collection of arguments for invoking data_source.\n",

@@ -27,7 +27,10 @@
     },
     "config": {},
     "provider": {
-        "description": "The provider type for the muxedrandom package. By default, resources use package-wide configuration\nsettings, however an explicit `Provider` instance may be created and passed during resource\nconstruction to achieve fine-grained programmatic control over provider settings. See the\n[documentation](https://www.pulumi.com/docs/reference/programming-model/#providers) for more information.\n"
+        "description": "The provider type for the muxedrandom package. By default, resources use package-wide configuration\nsettings, however an explicit `Provider` instance may be created and passed during resource\nconstruction to achieve fine-grained programmatic control over provider settings. See the\n[documentation](https://www.pulumi.com/docs/reference/programming-model/#providers) for more information.\n",
+        "methods": {
+            "terraformConfig": "pulumi:providers:muxedrandom/terraformConfig"
+        }
     },
     "resources": {
         "muxedrandom:index/myNumber:MyNumber": {
@@ -1007,6 +1010,37 @@
                         "description": "The generated uuid presented in string format.\n"
                     }
                 },
+                "type": "object"
+            }
+        }
+    },
+    "functions": {
+        "pulumi:providers:muxedrandom/terraformConfig": {
+            "description": "This function returns a Terraform config object with terraform-namecased keys,to be used with the Terraform Module Provider.",
+            "inputs": {
+                "properties": {
+                    "__self__": {
+                        "type": "ref",
+                        "$ref": "#/resources/pulumi:providers:muxedrandom"
+                    }
+                },
+                "type": "pulumi:providers:muxedrandom/terraformConfig",
+                "required": [
+                    "__self__"
+                ]
+            },
+            "outputs": {
+                "properties": {
+                    "result": {
+                        "additionalProperties": {
+                            "$ref": "pulumi.json#/Any"
+                        },
+                        "type": "object"
+                    }
+                },
+                "required": [
+                    "result"
+                ],
                 "type": "object"
             }
         }

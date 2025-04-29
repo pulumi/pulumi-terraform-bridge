@@ -607,6 +607,9 @@
                 "type": "string",
                 "description": "B2 endpoint - production or custom URL (B2_ENDPOINT env)\n"
             }
+        },
+        "methods": {
+            "terraformConfig": "pulumi:providers:b2/terraformConfig"
         }
     },
     "resources": {
@@ -1459,6 +1462,35 @@
                     "fileVersions",
                     "id"
                 ]
+            }
+        },
+        "pulumi:providers:b2/terraformConfig": {
+            "description": "This function returns a Terraform config object with terraform-namecased keys,to be used with the Terraform Module Provider.",
+            "inputs": {
+                "properties": {
+                    "__self__": {
+                        "type": "ref",
+                        "$ref": "#/resources/pulumi:providers:b2"
+                    }
+                },
+                "type": "pulumi:providers:b2/terraformConfig",
+                "required": [
+                    "__self__"
+                ]
+            },
+            "outputs": {
+                "properties": {
+                    "result": {
+                        "additionalProperties": {
+                            "$ref": "pulumi.json#/Any"
+                        },
+                        "type": "object"
+                    }
+                },
+                "required": [
+                    "result"
+                ],
+                "type": "object"
             }
         }
     },

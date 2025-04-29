@@ -466,6 +466,9 @@
                 "type": "boolean",
                 "description": "Validate that nested values are received as expected.\n"
             }
+        },
+        "methods": {
+            "terraformConfig": "pulumi:providers:testbridge/terraformConfig"
         }
     },
     "resources": {
@@ -1028,6 +1031,35 @@
         }
     },
     "functions": {
+        "pulumi:providers:testbridge/terraformConfig": {
+            "description": "This function returns a Terraform config object with terraform-namecased keys,to be used with the Terraform Module Provider.",
+            "inputs": {
+                "properties": {
+                    "__self__": {
+                        "type": "ref",
+                        "$ref": "#/resources/pulumi:providers:testbridge"
+                    }
+                },
+                "type": "pulumi:providers:testbridge/terraformConfig",
+                "required": [
+                    "__self__"
+                ]
+            },
+            "outputs": {
+                "properties": {
+                    "result": {
+                        "additionalProperties": {
+                            "$ref": "pulumi.json#/Any"
+                        },
+                        "type": "object"
+                    }
+                },
+                "required": [
+                    "result"
+                ],
+                "type": "object"
+            }
+        },
         "testbridge:index/echo:Echo": {
             "inputs": {
                 "description": "A collection of arguments for invoking Echo.\n",

@@ -14,6 +14,11 @@ type ResourceConfig interface {
 	IsSet(k string) bool
 }
 
+type ResourceConfigWithGetterForRawConfigMap interface {
+	ResourceConfig
+	GetRawConfigMap() (map[string]any, error)
+}
+
 type InstanceState interface {
 	Type() string
 

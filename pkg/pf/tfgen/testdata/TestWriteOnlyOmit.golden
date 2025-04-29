@@ -5,7 +5,11 @@
         "moduleFormat": "(.*)(?:/[^/]*)"
     },
     "config": {},
-    "provider": {},
+    "provider": {
+        "methods": {
+            "terraformConfig": "pulumi:providers:testprovider/terraformConfig"
+        }
+    },
     "resources": {
         "testprovider:index:Res": {
             "properties": {
@@ -25,6 +29,37 @@
                         "type": "string"
                     }
                 },
+                "type": "object"
+            }
+        }
+    },
+    "functions": {
+        "pulumi:providers:testprovider/terraformConfig": {
+            "description": "This function returns a Terraform config object with terraform-namecased keys,to be used with the Terraform Module Provider.",
+            "inputs": {
+                "properties": {
+                    "__self__": {
+                        "type": "ref",
+                        "$ref": "#/resources/pulumi:providers:testprovider"
+                    }
+                },
+                "type": "pulumi:providers:testprovider/terraformConfig",
+                "required": [
+                    "__self__"
+                ]
+            },
+            "outputs": {
+                "properties": {
+                    "result": {
+                        "additionalProperties": {
+                            "$ref": "pulumi.json#/Any"
+                        },
+                        "type": "object"
+                    }
+                },
+                "required": [
+                    "result"
+                ],
                 "type": "object"
             }
         }
