@@ -47,5 +47,9 @@ func resourceRequiredInputWithDefaultSchema() map[string]*schema.Schema {
 			Required: true,
 			Default:  "default",
 		},
+		"req": {
+			Type:     schema.TypeString,
+			Required: true,
+		},
 	}
 }

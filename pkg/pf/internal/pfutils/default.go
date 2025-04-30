@@ -68,31 +68,31 @@ type attributeLikeWithDynamicDefaultValue interface {
 }
 
 func hasDefault(attr AttrLike) bool {
-	switch attr.(type) {
+	switch a := attr.(type) {
 	case attributeLikeWithBoolDefaultValue:
-		return true
+		return a.BoolDefaultValue() != nil
 	case attributeLikeWithFloat32DefaultValue:
-		return true
+		return a.Float32DefaultValue() != nil
 	case attributeLikeWithFloat64DefaultValue:
-		return true
+		return a.Float64DefaultValue() != nil
 	case attributeLikeWithInt32DefaultValue:
-		return true
+		return a.Int32DefaultValue() != nil
 	case attributeLikeWithInt64DefaultValue:
-		return true
+		return a.Int64DefaultValue() != nil
 	case attributeLikeWithListDefaultValue:
-		return true
+		return a.ListDefaultValue() != nil
 	case attributeLikeWithMapDefaultValue:
-		return true
+		return a.MapDefaultValue() != nil
 	case attributeLikeWithNumberDefaultValue:
-		return true
+		return a.NumberDefaultValue() != nil
 	case attributeLikeWithObjectDefaultValue:
-		return true
+		return a.ObjectDefaultValue() != nil
 	case attributeLikeWithSetDefaultValue:
-		return true
+		return a.SetDefaultValue() != nil
 	case attributeLikeWithStringDefaultValue:
-		return true
+		return a.StringDefaultValue() != nil
 	case attributeLikeWithDynamicDefaultValue:
-		return true
+		return a.DynamicDefaultValue() != nil
 	default:
 		return false
 	}

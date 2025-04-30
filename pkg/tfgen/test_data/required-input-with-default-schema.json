@@ -40,11 +40,15 @@
         },
         "otherName": {
           "type": "string"
+        },
+        "req": {
+          "type": "string"
         }
       },
       "required": [
         "name",
-        "otherName"
+        "otherName",
+        "req"
       ],
       "inputProperties": {
         "name": {
@@ -52,8 +56,14 @@
         },
         "otherName": {
           "type": "string"
+        },
+        "req": {
+          "type": "string"
         }
       },
+      "requiredInputs": [
+        "req"
+      ],
       "stateInputs": {
         "description": "Input properties used for looking up and filtering Res resources.\n",
         "properties": {
@@ -61,6 +71,9 @@
             "type": "string"
           },
           "otherName": {
+            "type": "string"
+          },
+          "req": {
             "type": "string"
           }
         },

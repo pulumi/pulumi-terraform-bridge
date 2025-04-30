@@ -28,20 +28,33 @@
             "properties": {
                 "a1": {
                     "type": "string"
+                },
+                "a2": {
+                    "type": "string"
                 }
             },
             "required": [
-                "a1"
+                "a1",
+                "a2"
             ],
             "inputProperties": {
                 "a1": {
                     "type": "string"
+                },
+                "a2": {
+                    "type": "string"
                 }
             },
+            "requiredInputs": [
+                "a2"
+            ],
             "stateInputs": {
                 "description": "Input properties used for looking up and filtering Res resources.\n",
                 "properties": {
                     "a1": {
+                        "type": "string"
+                    },
+                    "a2": {
                         "type": "string"
                     }
                 },

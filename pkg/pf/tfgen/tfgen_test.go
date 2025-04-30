@@ -533,6 +533,9 @@ func TestPFRequiredInputWithDefault(t *testing.T) {
 				Required: true,
 				Default:  stringdefault.StaticString("default"),
 			},
+			"a2": rschema.StringAttribute{
+				Required: true,
+			},
 		},
 	}
 
