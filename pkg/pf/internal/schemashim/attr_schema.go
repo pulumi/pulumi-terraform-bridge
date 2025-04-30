@@ -142,11 +142,7 @@ func (s *attrSchema) Sensitive() bool {
 }
 
 func (s *attrSchema) WriteOnly() bool {
-	schema, ok := s.attr.(pfutils.AttrLikeWithWriteOnly)
-	if ok {
-		return schema.IsWriteOnly()
-	}
-	return false
+	return s.attr.IsWriteOnly()
 }
 
 func (*attrSchema) SetElement(config interface{}) (interface{}, error) {
