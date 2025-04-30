@@ -420,8 +420,9 @@ func (p *providerServer) Create(ctx context.Context, req *pulumirpc.CreateReques
 	}
 
 	return &pulumirpc.CreateResponse{
-		Id:         string(id),
-		Properties: rpcState,
+		Id:                  string(id),
+		Properties:          rpcState,
+		RefreshBeforeUpdate: true,
 	}, nil
 }
 
@@ -454,9 +455,10 @@ func (p *providerServer) Read(ctx context.Context, req *pulumirpc.ReadRequest) (
 	}
 
 	return &pulumirpc.ReadResponse{
-		Id:         string(result.ID),
-		Properties: rpcState,
-		Inputs:     rpcInputs,
+		Id:                  string(result.ID),
+		Properties:          rpcState,
+		Inputs:              rpcInputs,
+		RefreshBeforeUpdate: true,
 	}, nil
 }
 
@@ -484,7 +486,10 @@ func (p *providerServer) Update(ctx context.Context, req *pulumirpc.UpdateReques
 		return nil, err
 	}
 
-	return &pulumirpc.UpdateResponse{Properties: rpcState}, nil
+	return &pulumirpc.UpdateResponse{
+		Properties:          rpcState,
+		RefreshBeforeUpdate: true,
+	}, nil
 }
 
 func (p *providerServer) Delete(ctx context.Context, req *pulumirpc.DeleteRequest) (*pbempty.Empty, error) {
