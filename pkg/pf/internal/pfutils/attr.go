@@ -45,15 +45,11 @@ type AttrLike interface {
 	IsOptional() bool
 	IsRequired() bool
 	IsSensitive() bool
+	IsWriteOnly() bool
 	GetDeprecationMessage() string
 	GetDescription() string
 	GetMarkdownDescription() string
 	GetType() attr.Type
-}
-
-type AttrLikeWithWriteOnly interface {
-	AttrLike
-	IsWriteOnly() bool
 }
 
 func FromProviderAttribute(x pschema.Attribute) Attr {
