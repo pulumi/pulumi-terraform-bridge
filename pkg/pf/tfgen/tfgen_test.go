@@ -545,7 +545,6 @@ func TestPFRequiredInputWithDefault(t *testing.T) {
 		ProviderInfo: tfbridge.ProviderInfo{
 			Name:             "testprovider",
 			UpstreamRepoPath: ".", // no invalid mappings warnings
-			// TODO: This uses a fake provider and does not actually test the right thing.
 			P: pftfbridge.ShimProvider(&schemaTestProvider{
 				resources: map[string]rschema.Schema{
 					"res": schema,

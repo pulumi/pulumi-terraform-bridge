@@ -445,6 +445,7 @@ func TestRequiredInputWithDefault(t *testing.T) {
 		Color: colors.Never,
 	}))
 	require.NoError(t, err)
+	require.Empty(t, schema.Resources["testprovider:index:Res"].RequiredInputs)
 	bridgetesting.AssertEqualsJSONFile(t, "test_data/required-input-with-default-schema.json", schema)
 }
 

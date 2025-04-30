@@ -13,6 +13,7 @@ var (
 	_ = shim.SchemaMap(v2SchemaMap{})
 	_ = shim.SchemaWithWriteOnly(v2Schema{})
 	_ = shim.SchemaWithSetElementHash(v2Schema{})
+	_ = shim.SchemaWithHasDefault(v2Schema{})
 )
 
 // UnknownVariableValue is the sentinal defined in github.com/hashicorp/terraform/configs/hcl2shim,
@@ -68,6 +69,11 @@ func (s v2Schema) DefaultFunc() shim.SchemaDefaultFunc {
 
 func (s v2Schema) DefaultValue() (interface{}, error) {
 	return withPatchedDefaults(s.tf).DefaultValue()
+}
+
+func (s v2Schema) HasDefault() bool {
+	sch := withPatchedDefaults(s.tf)
+	return sch.Default != nil || sch.DefaultFunc != nil
 }
 
 func (s v2Schema) Description() string {
