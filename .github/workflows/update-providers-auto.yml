@@ -1,3 +1,4 @@
+permissions: write-all # Equivalent to default permissions plus id-token: write
 name: Update Providers with new bridge version upon release
 on:
   push:
@@ -8,6 +9,11 @@ on:
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  ESC_ACTION_OIDC_AUTH: true
+  ESC_ACTION_OIDC_ORGANIZATION: pulumi
+  ESC_ACTION_OIDC_REQUESTED_TOKEN_TYPE: urn:pulumi:token-type:access_token:organization
+  ESC_ACTION_ENVIRONMENT: imports/github-secrets
+  ESC_ACTION_EXPORT_ENVIRONMENT_VARIABLES: false
 
 jobs:
   generate-providers-list:
@@ -22,6 +28,9 @@ jobs:
     runs-on: ubuntu-latest
     name: Upgrade ${{ matrix.provider }} to pulumi-terraform-bridge to the latest version automatically
     steps:
+      - name: Fetch secrets from ESC
+        id: esc-secrets
+        uses: pulumi/esc-action@v1
       - name: Check for provider hotfixes
         id: hotfix_check
         run: |
@@ -42,7 +51,7 @@ jobs:
       - name: Trigger upgrade
         uses: peter-evans/repository-dispatch@v3
         with:
-          token: ${{ secrets.PULUMI_BOT_TOKEN }}
+          token: ${{ steps.esc-secrets.outputs.PULUMI_BOT_TOKEN }}
           repository: pulumi/pulumi-${{ matrix.provider }}
           event-type: upgrade-bridge
           # Not specifying target-bridge-version in the payload will make it upgrade to the latest.

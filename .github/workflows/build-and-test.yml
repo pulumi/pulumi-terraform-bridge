@@ -1,3 +1,4 @@
+permissions: write-all # Equivalent to default permissions plus id-token: write
 name: Build and Test
 
 on:
@@ -11,6 +12,11 @@ env:
   # Note this needs to match the shard input to the test matrix below as well as pattern in exclude.
   # see jobs.test.strategy.matrix.{shard,exclude}
   TOTAL_SHARDS: 15
+  ESC_ACTION_OIDC_AUTH: true
+  ESC_ACTION_OIDC_ORGANIZATION: pulumi
+  ESC_ACTION_OIDC_REQUESTED_TOKEN_TYPE: urn:pulumi:token-type:access_token:organization
+  ESC_ACTION_ENVIRONMENT: imports/github-secrets
+  ESC_ACTION_EXPORT_ENVIRONMENT_VARIABLES: false
 
 jobs:
   test:
@@ -90,6 +96,9 @@ jobs:
             shard: 14
     runs-on: ${{ matrix.platform }}
     steps:
+      - name: Fetch secrets from ESC
+        id: esc-secrets
+        uses: pulumi/esc-action@v1
       - name: Install terraform
         uses: hashicorp/setup-terraform@v3
         with:
@@ -129,7 +138,7 @@ jobs:
         if: ${{ env.CODECOV_TOKEN != '' }}
         uses: codecov/codecov-action@v4
         env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+          CODECOV_TOKEN: ${{ steps.esc-secrets.outputs.CODECOV_TOKEN }}
   lint:
     runs-on: ubuntu-latest
     steps:
@@ -150,8 +159,7 @@ jobs:
         run: make lint
   sentinel:
     name: sentinel
-    if: github.event_name == 'repository_dispatch' ||
-      github.event.pull_request.head.repo.full_name == github.repository
+    if: github.event_name == 'repository_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
     permissions:
       statuses: write
     needs:
