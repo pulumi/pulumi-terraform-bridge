@@ -526,6 +526,10 @@ func TestWriteOnlyOmit(t *testing.T) {
 func TestPFRequiredInputWithDefault(t *testing.T) {
 	t.Parallel()
 
+	if runtime.GOOS == "windows" {
+		t.Skipf("Skipping on windows - tests cases need to be made robust to newline handling")
+	}
+
 	schema := rschema.Schema{
 		Attributes: map[string]rschema.Attribute{
 			"id": rschema.StringAttribute{Computed: true},
