@@ -9,15 +9,15 @@ Use the navigation to the left to read about the available resources.
 name: configuration-example
 runtime: nodejs
 config:
-    simple-provider:authUrl:
+    simple:authUrl:
         value: http://myauthurl:5000/v3
-    simple-provider:password:
+    simple:password:
         value: pwd
-    simple-provider:region:
+    simple:region:
         value: RegionOne
-    simple-provider:tenantName:
+    simple:tenantName:
         value: admin
-    simple-provider:userName:
+    simple:userName:
         value: admin
 
 ```
@@ -39,15 +39,15 @@ export const someOutput = aResource.result;
 name: configuration-example
 runtime: python
 config:
-    simple-provider:authUrl:
+    simple:authUrl:
         value: http://myauthurl:5000/v3
-    simple-provider:password:
+    simple:password:
         value: pwd
-    simple-provider:region:
+    simple:region:
         value: RegionOne
-    simple-provider:tenantName:
+    simple:tenantName:
         value: admin
-    simple-provider:userName:
+    simple:userName:
         value: admin
 
 ```
@@ -68,15 +68,15 @@ pulumi.export("someOutput", a_resource["result"])
 name: configuration-example
 runtime: dotnet
 config:
-    simple-provider:authUrl:
+    simple:authUrl:
         value: http://myauthurl:5000/v3
-    simple-provider:password:
+    simple:password:
         value: pwd
-    simple-provider:region:
+    simple:region:
         value: RegionOne
-    simple-provider:tenantName:
+    simple:tenantName:
         value: admin
-    simple-provider:userName:
+    simple:userName:
         value: admin
 
 ```
@@ -109,15 +109,15 @@ return await Deployment.RunAsync(() =>
 name: configuration-example
 runtime: go
 config:
-    simple-provider:authUrl:
+    simple:authUrl:
         value: http://myauthurl:5000/v3
-    simple-provider:password:
+    simple:password:
         value: pwd
-    simple-provider:region:
+    simple:region:
         value: RegionOne
-    simple-provider:tenantName:
+    simple:tenantName:
         value: admin
-    simple-provider:userName:
+    simple:userName:
         value: admin
 
 ```
@@ -151,15 +151,15 @@ func main() {
 name: configuration-example
 runtime: yaml
 config:
-    simple-provider:authUrl:
+    simple:authUrl:
         value: http://myauthurl:5000/v3
-    simple-provider:password:
+    simple:password:
         value: pwd
-    simple-provider:region:
+    simple:region:
         value: RegionOne
-    simple-provider:tenantName:
+    simple:tenantName:
         value: admin
-    simple-provider:userName:
+    simple:userName:
         value: admin
 
 ```
@@ -182,15 +182,15 @@ outputs:
 name: configuration-example
 runtime: java
 config:
-    simple-provider:authUrl:
+    simple:authUrl:
         value: http://myauthurl:5000/v3
-    simple-provider:password:
+    simple:password:
         value: pwd
-    simple-provider:region:
+    simple:region:
         value: RegionOne
-    simple-provider:tenantName:
+    simple:tenantName:
         value: admin
-    simple-provider:userName:
+    simple:userName:
         value: admin
 
 ```

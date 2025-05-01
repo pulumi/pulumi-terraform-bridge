@@ -7,15 +7,15 @@ This example should translate at least the Pulumi config
 name: configuration-example
 runtime: 
 config:
-    simple-provider:authUrl:
+    simple:authUrl:
         value: http://myauthurl:5000/v3
-    simple-provider:password:
+    simple:password:
         value: pwd
-    simple-provider:region:
+    simple:region:
         value: RegionOne
-    simple-provider:tenantName:
+    simple:tenantName:
         value: admin
-    simple-provider:userName:
+    simple:userName:
         value: admin
 
 ```
