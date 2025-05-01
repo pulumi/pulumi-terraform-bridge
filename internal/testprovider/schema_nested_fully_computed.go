@@ -48,6 +48,27 @@ func resourceNestedFullyComputedSchema() map[string]*schema.Schema {
 						Type:     schema.TypeString,
 						Optional: true,
 					},
+					"a3": {
+						Type:     schema.TypeString,
+						Required: true,
+					},
+				},
+			},
+		},
+		"other_block": {
+			Type:     schema.TypeList,
+			Optional: true,
+			MaxItems: 1,
+			Elem: &schema.Resource{
+				Schema: map[string]*schema.Schema{
+					"b1": {
+						Type:     schema.TypeString,
+						Computed: true,
+					},
+					"b2": {
+						Type:     schema.TypeString,
+						Required: true,
+					},
 				},
 			},
 		},
