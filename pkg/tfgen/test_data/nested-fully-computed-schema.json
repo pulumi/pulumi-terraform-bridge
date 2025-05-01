@@ -43,10 +43,30 @@
       ],
       "language": {
         "nodejs": {
-          "requiredOutputs": [
-            "a1",
-            "a3"
-          ]
+          "requiredOutputs": []
+        }
+      }
+    },
+    "testprovider:index/ResBlockOutput:ResBlockOutput": {
+      "properties": {
+        "a1": {
+          "type": "string"
+        },
+        "a2": {
+          "type": "string"
+        },
+        "a3": {
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "required": [
+        "a1",
+        "a3"
+      ],
+      "language": {
+        "nodejs": {
+          "requiredInputs": []
         }
       }
     },
@@ -65,10 +85,27 @@
       ],
       "language": {
         "nodejs": {
-          "requiredOutputs": [
-            "b1",
-            "b2"
-          ]
+          "requiredOutputs": []
+        }
+      }
+    },
+    "testprovider:index/ResOtherBlockOutput:ResOtherBlockOutput": {
+      "properties": {
+        "b1": {
+          "type": "string"
+        },
+        "b2": {
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "required": [
+        "b1",
+        "b2"
+      ],
+      "language": {
+        "nodejs": {
+          "requiredInputs": []
         }
       }
     }
@@ -85,11 +122,11 @@
         "blocks": {
           "type": "array",
           "items": {
-            "$ref": "#/types/testprovider:index/ResBlock:ResBlock"
+            "$ref": "#/types/testprovider:index/ResBlockOutput:ResBlockOutputOutput"
           }
         },
         "otherBlock": {
-          "$ref": "#/types/testprovider:index/ResOtherBlock:ResOtherBlock"
+          "$ref": "#/types/testprovider:index/ResOtherBlockOutput:ResOtherBlockOutputOutput"
         }
       },
       "required": [

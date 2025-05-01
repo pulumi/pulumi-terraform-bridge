@@ -136,6 +136,10 @@ func (nt *schemaNestedTypes) declareType(typePath paths.TypePath, declarer decla
 		typeName = typ.nestedType.Name().String()
 	}
 
+	if !isInput {
+		typeName += "Output"
+	}
+
 	typ.name = typeName
 
 	required := codegen.StringSet{}
@@ -1097,6 +1101,9 @@ func (g *schemaGenerator) schemaType(path paths.TypePath, typ *propertyType, out
 	case kindObject:
 		mod := modulePlacementForType(g.pkg, path)
 		ref := fmt.Sprintf("#/types/%s/%s:%s", mod.String(), typ.name, typ.name)
+		if out {
+			ref += "Output"
+		}
 		return pschema.TypeSpec{Ref: ref}
 	default:
 		contract.Failf("Unrecognized type kind: %v", typ.kind)

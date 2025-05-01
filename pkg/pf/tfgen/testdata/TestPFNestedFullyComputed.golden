@@ -27,12 +27,24 @@
                     "type": "string"
                 }
             },
+            "type": "object"
+        },
+        "testprovider:index/ResB1Output:ResB1Output": {
+            "properties": {
+                "a1": {
+                    "type": "string"
+                },
+                "a2": {
+                    "type": "string"
+                }
+            },
             "type": "object",
+            "required": [
+                "a1"
+            ],
             "language": {
                 "nodejs": {
-                    "requiredOutputs": [
-                        "a1"
-                    ]
+                    "requiredInputs": []
                 }
             }
         }
@@ -47,7 +59,7 @@
         "testprovider:index:Res": {
             "properties": {
                 "b1": {
-                    "$ref": "#/types/testprovider:index/ResB1:ResB1"
+                    "$ref": "#/types/testprovider:index/ResB1Output:ResB1OutputOutput"
                 }
             },
             "inputProperties": {
