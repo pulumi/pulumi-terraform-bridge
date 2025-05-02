@@ -1,10 +1,10 @@
 permissions: write-all # Equivalent to default permissions plus id-token: write
-name: Master and Tag Builds
+name: Main and Tag Builds
 
 on:
   push:
     branches:
-      - master
+      - main
     tags:
       - v*
     paths-ignore:
