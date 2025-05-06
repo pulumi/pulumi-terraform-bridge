@@ -867,7 +867,7 @@ func (g *schemaGenerator) genResourceType(mod tokens.Module, res *resourceType) 
 		spec.InputProperties[prop.name] = g.genProperty(prop)
 
 		hasDefault := false
-		if s, ok := prop.schema.(shim.SchemaWithHasDefault); ok {
+		if s, ok := prop.schema.(shim.SchemaWithHasDefault); ok && !g.info.DisableRequiredWithDefaultTurningOptional {
 			hasDefault = s.HasDefault()
 		}
 
