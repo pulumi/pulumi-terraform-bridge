@@ -567,3 +567,45 @@ func TestPFRequiredInputWithDefault(t *testing.T) {
 	require.NoError(t, json.Indent(&b, res.ProviderMetadata.PackageSchema, "", "    "))
 	autogold.ExpectFile(t, autogold.Raw(b.String()))
 }
+
+func TestPFNestedFullyComputed(t *testing.T) {
+	t.Parallel()
+
+	schema := rschema.Schema{
+		Attributes: map[string]rschema.Attribute{
+			"id": rschema.StringAttribute{Computed: true},
+		},
+		Blocks: map[string]rschema.Block{
+			"b1": rschema.SingleNestedBlock{
+				Attributes: map[string]rschema.Attribute{
+					"a1": rschema.StringAttribute{Computed: true},
+					"a2": rschema.StringAttribute{Optional: true},
+				},
+			},
+		},
+	}
+
+	info := &tfbridge.ResourceInfo{
+		Tok:  "testprovider:index:Res",
+		Docs: &tfbridge.DocInfo{Markdown: []byte{' '}},
+	}
+
+	res, err := GenerateSchema(context.Background(), GenerateSchemaOptions{
+		ProviderInfo: tfbridge.ProviderInfo{
+			Name:             "testprovider",
+			UpstreamRepoPath: ".", // no invalid mappings warnings
+			P: pftfbridge.ShimProvider(&schemaTestProvider{
+				resources: map[string]rschema.Schema{
+					"res": schema,
+				},
+			}),
+			Resources: map[string]*tfbridge.ResourceInfo{
+				"test_res": info,
+			},
+		},
+	})
+	require.NoError(t, err)
+	var b bytes.Buffer
+	require.NoError(t, json.Indent(&b, res.ProviderMetadata.PackageSchema, "", "    "))
+	autogold.ExpectFile(t, autogold.Raw(b.String()))
+}

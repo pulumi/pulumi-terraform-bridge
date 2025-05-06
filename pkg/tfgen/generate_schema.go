@@ -136,6 +136,7 @@ func (nt *schemaNestedTypes) declareType(typePath paths.TypePath, declarer decla
 		typeName = typ.nestedType.Name().String()
 	}
 
+
 	typ.name = typeName
 
 	required := codegen.StringSet{}
