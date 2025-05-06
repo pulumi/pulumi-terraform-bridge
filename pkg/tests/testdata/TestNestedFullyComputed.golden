@@ -1,0 +1,79 @@
+{
+  "name": "testprovider",
+  "version": "0.0.1",
+  "attribution": "This Pulumi package is based on the [`testprovider` Terraform Provider](https://github.com/terraform-providers/terraform-provider-testprovider).",
+  "meta": {
+    "moduleFormat": "(.*)(?:/[^/]*)"
+  },
+  "language": {
+    "nodejs": {
+      "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-testprovider)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e please consult the source [`terraform-provider-testprovider` repo](https://github.com/terraform-providers/terraform-provider-testprovider/issues).",
+      "compatibility": "tfbridge20",
+      "disableUnionOutputTypes": true
+    },
+    "python": {
+      "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-testprovider)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e please consult the source [`terraform-provider-testprovider` repo](https://github.com/terraform-providers/terraform-provider-testprovider/issues).",
+      "compatibility": "tfbridge20",
+      "pyproject": {}
+    }
+  },
+  "config": {},
+  "types": {
+    "testprovider:index/ResListBlock:ResListBlock": {
+      "properties": {
+        "a2": {
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "language": {
+        "nodejs": {
+          "requiredOutputs": [
+            "a1"
+          ]
+        }
+      }
+    }
+  },
+  "provider": {
+    "description": "The provider type for the testprovider package. By default, resources use package-wide configuration\nsettings, however an explicit `Provider` instance may be created and passed during resource\nconstruction to achieve fine-grained programmatic control over provider settings. See the\n[documentation](https://www.pulumi.com/docs/reference/programming-model/#providers) for more information.\n"
+  },
+  "resources": {
+    "testprovider:index/res:Res": {
+      "properties": {
+        "listBlocks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/testprovider:index/ResListBlock:ResListBlock"
+          }
+        }
+      },
+      "required": [
+        "listBlocks"
+      ],
+      "inputProperties": {
+        "listBlocks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/testprovider:index/ResListBlock:ResListBlock"
+          }
+        }
+      },
+      "requiredInputs": [
+        "listBlocks"
+      ],
+      "stateInputs": {
+        "description": "Input properties used for looking up and filtering Res resources.\n",
+        "properties": {
+          "listBlocks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/types/testprovider:index/ResListBlock:ResListBlock"
+            }
+          }
+        },
+        "type": "object"
+      }
+    }
+  }
+}

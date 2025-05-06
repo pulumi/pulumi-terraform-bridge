@@ -1798,6 +1798,10 @@ func (g *Generator) propertyVariable(parentPath paths.TypePath, key string,
 			varInfo = info[key]
 		}
 
+		if !input(shimSchema, varInfo) && !out {
+			return nil, nil
+		}
+
 		// If a variable is marked as omitted, omit it.
 		//
 		// Because the recursive traversal into the fields used by this type are
