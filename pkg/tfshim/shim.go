@@ -222,6 +222,11 @@ type SchemaWithSetElementHash interface {
 	SetElementHash(v interface{}) (int, error)
 }
 
+type SchemaWithHasDefault interface {
+	Schema
+	HasDefault() bool
+}
+
 type SchemaMap interface {
 	Len() int
 	Get(key string) Schema

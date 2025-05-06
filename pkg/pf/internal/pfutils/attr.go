@@ -31,13 +31,14 @@ import (
 // attrLike exposes these methods.
 //
 // GetAttributes method is special since it returns a NestedAttributes interface that is also internal and cannot be
-// linked to. Instead, NestedAttriutes information is recorded in a dedicated new field.
+// linked to. Instead, NestedAttributes information is recorded in a dedicated new field.
 type Attr interface {
 	AttrLike
 	IsNested() bool
 	Nested() map[string]Attr
 	NestingMode() NestingMode
 	HasNestedObject() bool
+	HasDefault() bool
 }
 
 type AttrLike interface {
@@ -66,9 +67,11 @@ func FromResourceAttribute(x rschema.Attribute) Attr {
 
 func FromAttrLike(attrLike AttrLike) Attr {
 	nested, nestingMode := extractNestedAttributes(attrLike)
+	hasDefault := hasDefault(attrLike)
 	return &attrAdapter{
 		nested:      nested,
 		nestingMode: nestingMode,
+		hasDefault:  hasDefault,
 		AttrLike:    attrLike,
 	}
 }
@@ -76,6 +79,7 @@ func FromAttrLike(attrLike AttrLike) Attr {
 type attrAdapter struct {
 	nested      map[string]Attr
 	nestingMode NestingMode
+	hasDefault  bool
 	AttrLike
 }
 
@@ -100,6 +104,10 @@ func (a *attrAdapter) Nested() map[string]Attr {
 
 func (a *attrAdapter) NestingMode() NestingMode {
 	return a.nestingMode
+}
+
+func (a *attrAdapter) HasDefault() bool {
+	return a.hasDefault
 }
 
 type NestingMode uint8
