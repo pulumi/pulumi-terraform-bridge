@@ -438,17 +438,6 @@ func TestNestedDescriptions(t *testing.T) {
 	bridgetesting.AssertEqualsJSONFile(t, "test_data/nested-descriptions-schema.json", schema)
 }
 
-func TestRequiredInputWithDefault(t *testing.T) {
-	t.Parallel()
-	provider := testprovider.ProviderRequiredInputWithDefaultFunc()
-	schema, err := GenerateSchema(provider, diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
-		Color: colors.Never,
-	}))
-	require.NoError(t, err)
-	require.Empty(t, schema.Resources["testprovider:index:Res"].RequiredInputs)
-	bridgetesting.AssertEqualsJSONFile(t, "test_data/required-input-with-default-schema.json", schema)
-}
-
 func TestAppendExample_InsertMiddle(t *testing.T) {
 	t.Parallel()
 	descTmpl := `Description text

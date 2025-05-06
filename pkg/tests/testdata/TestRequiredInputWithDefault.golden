@@ -1,26 +1,18 @@
 {
   "name": "testprovider",
-  "description": "A Pulumi package to safely use testprovider in Pulumi programs.",
-  "keywords": [
-    "pulumi",
-    "testprovider"
-  ],
-  "homepage": "https://pulumi.io",
-  "license": "Apache-2.0",
+  "version": "0.0.1",
   "attribution": "This Pulumi package is based on the [`testprovider` Terraform Provider](https://github.com/terraform-providers/terraform-provider-testprovider).",
-  "repository": "https://github.com/pulumi/pulumi-testprovider",
   "meta": {
     "moduleFormat": "(.*)(?:/[^/]*)"
   },
   "language": {
     "nodejs": {
-      "packageDescription": "A Pulumi package to safely use testprovider in Pulumi programs.",
-      "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-testprovider)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e first check the [`pulumi-testprovider` repo](https://github.com/pulumi/pulumi-testprovider/issues); however, if that doesn't turn up anything,\n\u003e please consult the source [`terraform-provider-testprovider` repo](https://github.com/terraform-providers/terraform-provider-testprovider/issues).",
+      "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-testprovider)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e please consult the source [`terraform-provider-testprovider` repo](https://github.com/terraform-providers/terraform-provider-testprovider/issues).",
       "compatibility": "tfbridge20",
       "disableUnionOutputTypes": true
     },
     "python": {
-      "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-testprovider)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e first check the [`pulumi-testprovider` repo](https://github.com/pulumi/pulumi-testprovider/issues); however, if that doesn't turn up anything,\n\u003e please consult the source [`terraform-provider-testprovider` repo](https://github.com/terraform-providers/terraform-provider-testprovider/issues).",
+      "readme": "\u003e This provider is a derived work of the [Terraform Provider](https://github.com/terraform-providers/terraform-provider-testprovider)\n\u003e distributed under [MPL 2.0](https://www.mozilla.org/en-US/MPL/2.0/). If you encounter a bug or missing feature,\n\u003e please consult the source [`terraform-provider-testprovider` repo](https://github.com/terraform-providers/terraform-provider-testprovider/issues).",
       "compatibility": "tfbridge20",
       "pyproject": {}
     }
@@ -38,23 +30,16 @@
         "name": {
           "type": "string"
         },
-        "otherName": {
-          "type": "string"
-        },
         "req": {
           "type": "string"
         }
       },
       "required": [
         "name",
-        "otherName",
         "req"
       ],
       "inputProperties": {
         "name": {
-          "type": "string"
-        },
-        "otherName": {
           "type": "string"
         },
         "req": {
@@ -68,9 +53,6 @@
         "description": "Input properties used for looking up and filtering Res resources.\n",
         "properties": {
           "name": {
-            "type": "string"
-          },
-          "otherName": {
             "type": "string"
           },
           "req": {
