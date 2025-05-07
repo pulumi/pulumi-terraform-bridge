@@ -442,7 +442,9 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg, sink diag.Sink) (pschema.Pac
 	}
 
 	// Validate the schema.
-	_, diags, err := pschema.BindSpec(spec, nil)
+	_, diags, err := pschema.BindSpec(spec, nil, pschema.ValidationOptions{
+		AllowDanglingReferences: true,
+	})
 	if err != nil {
 		return pschema.PackageSpec{}, err
 	}
