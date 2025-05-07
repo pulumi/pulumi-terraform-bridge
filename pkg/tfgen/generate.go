@@ -23,6 +23,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
 	"sort"
@@ -33,11 +34,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	pkgerrors "github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
-	dotnetgen "github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
-	gogen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
-	nodejsgen "github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
-	pygen "github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -115,6 +112,60 @@ func (l Language) shouldConvertExamples() bool {
 	return false
 }
 
+func runPulumiPackageGenSDK(l Language, pkg *pschema.Package, extraFiles map[string][]byte) (map[string][]byte, error) {
+	// turn extraFiles into a folder with files
+	overlayDir := os.TempDir()
+	overlayDir = filepath.Join(overlayDir, "pulumi-package-gen-sdk")
+	err := os.MkdirAll(overlayDir, 0o755)
+	if err != nil {
+		return nil, err
+	}
+
+	for name, content := range extraFiles {
+		err := os.WriteFile(filepath.Join(overlayDir, name), content, 0o600)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// write the schema to a file
+	schemaFile := filepath.Join(os.TempDir(), "schema.json")
+	schemaBytes, err := pkg.MarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	err = os.WriteFile(schemaFile, schemaBytes, 0o600)
+	if err != nil {
+		return nil, err
+	}
+
+	outDir := os.TempDir()
+
+	// #nosec G204 -- arguments are controlled and not user input
+	out, err := exec.Command(
+		"pulumi", "package", "gen-sdk", "--language", string(l),
+		"--schema", schemaFile, "--overlays", overlayDir, "--out", outDir).Output()
+	if err != nil {
+		return nil, errors.New(string(out) + "\n" + err.Error())
+	}
+
+	files, err := os.ReadDir(outDir)
+	if err != nil {
+		return nil, err
+	}
+
+	results := make(map[string][]byte)
+	for _, file := range files {
+		content, err := os.ReadFile(filepath.Join(outDir, file.Name()))
+		if err != nil {
+			return nil, err
+		}
+		results[file.Name()] = content
+	}
+
+	return results, nil
+}
+
 func (l Language) emitSDK(pkg *pschema.Package, info tfbridge.ProviderInfo, root afero.Fs,
 	loader pschema.ReferenceLoader,
 ) (map[string][]byte, error) {
@@ -135,7 +186,7 @@ func (l Language) emitSDK(pkg *pschema.Package, info tfbridge.ProviderInfo, root
 			return nil, err
 		}
 
-		m, err := gogen.GeneratePackage(tfgen, pkg, nil)
+		m, err := runPulumiPackageGenSDK(l, pkg, extraFiles)
 		if err != nil {
 			return nil, err
 		}
@@ -167,7 +218,7 @@ func (l Language) emitSDK(pkg *pschema.Package, info tfbridge.ProviderInfo, root
 		if err != nil && !os.IsNotExist(err) {
 			return nil, err
 		}
-		return nodejsgen.GeneratePackage(tfgen, pkg, extraFiles, nil, false, loader)
+		return runPulumiPackageGenSDK(l, pkg, extraFiles)
 	case Python:
 		if psi := info.Python; psi != nil && psi.Overlay != nil {
 			extraFiles, err = getOverlayFiles(psi.Overlay, ".py", root)
@@ -182,7 +233,7 @@ func (l Language) emitSDK(pkg *pschema.Package, info tfbridge.ProviderInfo, root
 		if err != nil && !os.IsNotExist(err) {
 			return nil, err
 		}
-		return pygen.GeneratePackage(tfgen, pkg, extraFiles, loader)
+		return runPulumiPackageGenSDK(l, pkg, extraFiles)
 	case CSharp:
 		if psi := info.CSharp; psi != nil && psi.Overlay != nil {
 			extraFiles, err = getOverlayFiles(psi.Overlay, ".cs", root)
@@ -194,7 +245,7 @@ func (l Language) emitSDK(pkg *pschema.Package, info tfbridge.ProviderInfo, root
 		if err != nil && !os.IsNotExist(err) {
 			return nil, err
 		}
-		return dotnetgen.GeneratePackage(tfgen, pkg, extraFiles, nil)
+		return runPulumiPackageGenSDK(l, pkg, extraFiles)
 	default:
 		return nil, fmt.Errorf("%v does not support SDK generation", l)
 	}
