@@ -160,11 +160,8 @@ func (b *Bridge[CPS, PPS, CTFS, PTFS]) ReadForRefresh(
 ) (PulumiInput[CPS], PulumiOutput[CPS]) {
 	tfState := b.tfRawStateFromPulumiOutput(state)
 	tfUpgradedState := b.TFProvider.UpgradeState(tfState)
-
 	tfNewState := b.TFProvider.ReadResource(tfUpgradedState)
-
 	newPulumiState := b.tfStateToPulumiOutput(tfNewState)
-
 	newPulumiInputs := b.extractInputsFromOutputs(inputs, newPulumiState)
 	return newPulumiInputs, newPulumiState
 }
