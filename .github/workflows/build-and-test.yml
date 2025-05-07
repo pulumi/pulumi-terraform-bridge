@@ -157,6 +157,63 @@ jobs:
           version: v1.62
       - name: Lint
         run: make lint
+  version-check:
+    name: Verify Pulumi Version Consistency
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          check-latest: true
+      
+      - name: Check versions
+        id: version-check
+        shell: bash
+        run: |
+          set -eo pipefail # Exit on error and error on pipeline failures
+          # Get version from .pulumi.version file
+          if [ ! -f .pulumi.version ]; then
+            echo "::error::.pulumi.version file not found"
+            exit 1
+          fi
+          
+          PULUMI_VERSION=$(cat .pulumi.version)
+          echo "Pulumi version from .pulumi.version: $PULUMI_VERSION"
+          echo "pulumi_version=$PULUMI_VERSION" >> $GITHUB_OUTPUT
+          
+          # Get version from Go modules
+          if ! GO_MODULE_VERSION=$(go list -m -f '{{.Version}}' github.com/pulumi/pulumi/pkg/v3); then
+            echo "::error::Failed to get Pulumi version from Go modules"
+            exit 1
+          fi
+          
+          GO_VERSION=$(echo "$GO_MODULE_VERSION" | sed 's/^v//')
+          echo "Pulumi version from Go modules: $GO_VERSION"
+          echo "go_version=$GO_VERSION" >> $GITHUB_OUTPUT
+          
+          # Compare versions
+          if [ "$PULUMI_VERSION" = "$GO_VERSION" ]; then
+            echo "✅ Versions match: $PULUMI_VERSION"
+            echo "versions_match=true" >> $GITHUB_OUTPUT
+          else
+            echo "::error::Version mismatch: .pulumi.version ($PULUMI_VERSION) does not match Go modules version ($GO_VERSION)"
+            echo "versions_match=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+      # Example of using the outputs from the previous step
+      - name: Report version check result
+        run: |
+          echo "Version check completed successfully"
+          echo "Pulumi version: ${{ steps.version-check.outputs.pulumi_version }}"
+          echo "Go modules version: ${{ steps.version-check.outputs.go_version }}"
+          echo "Versions match: ${{ steps.version-check.outputs.versions_match }}"
+        shell: bash
+      
   sentinel:
     name: sentinel
     if: github.event_name == 'repository_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
