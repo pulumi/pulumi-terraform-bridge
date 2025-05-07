@@ -1836,7 +1836,6 @@ func TestStateUpgradeSet(t *testing.T) {
 
 func TestDiffProviderUpgradeMaxItemsOneChanged(t *testing.T) {
 	t.Parallel()
-	skipUnlessDeltasEnabled(t)
 
 	resWithMaxItemsOne := &schema.Resource{
 		Schema: map[string]*schema.Schema{"prop": {
@@ -1867,6 +1866,7 @@ func TestDiffProviderUpgradeMaxItemsOneChanged(t *testing.T) {
 	})
 
 	t.Run("max items one added", func(t *testing.T) {
+		skipUnlessDeltasEnabled(t)
 		t.Parallel()
 		res := Diff(t, resWithoutMaxItemsOne,
 			map[string]cty.Value{"prop": cty.ListVal([]cty.Value{cty.StringVal("a")})},
@@ -1875,5 +1875,16 @@ func TestDiffProviderUpgradeMaxItemsOneChanged(t *testing.T) {
 		)
 
 		autogold.ExpectFile(t, res.PulumiOut)
+	})
+
+	// This is a weaker assert that the transition works even without deltas enabled.
+	t.Run("max items one added weaker assert", func(t *testing.T) {
+		t.Parallel()
+		Diff(t, resWithoutMaxItemsOne,
+			map[string]cty.Value{"prop": cty.ListVal([]cty.Value{cty.StringVal("a")})},
+			map[string]cty.Value{"prop": cty.ListVal([]cty.Value{cty.StringVal("a")})},
+			DiffProviderUpgradedSchema(resWithMaxItemsOne),
+			DiffSkipDiffEquivalenceCheck(),
+		)
 	})
 }
