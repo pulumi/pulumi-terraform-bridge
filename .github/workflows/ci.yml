@@ -25,6 +25,7 @@ jobs:
             **/go.sum
       - name: Find pulumi version
         id: pulumi_version
+        shell: bash
         run: |
           GO_MODULE_VERSION=$(go list -m -f '{{.Version}}' github.com/pulumi/pulumi/pkg/v3)
           GO_VERSION=$(echo "$GO_MODULE_VERSION" | sed 's/^v//')
