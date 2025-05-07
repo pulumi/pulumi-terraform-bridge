@@ -17,6 +17,12 @@ jobs:
     steps:
       - name: Check out source code
         uses: actions/checkout@master
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.23.x
+          cache-dependency-path: |
+            **/go.sum
       - name: Find pulumi version
         id: pulumi_version
         run: |
@@ -28,12 +34,6 @@ jobs:
         uses: pulumi/actions@v5
         with:
           pulumi-version: ${{ steps.pulumi_version.outputs.pulumi_version }}
-      - name: Install Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: 1.23.x
-          cache-dependency-path: |
-            **/go.sum
       - run: make -C pkg/pf build.testproviders
       - name: Ensure Clean Repo
         run: git diff-files --quiet
