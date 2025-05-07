@@ -79,7 +79,7 @@ jobs:
       uses: repo-sync/pull-request@v2.6.2
       with:
         source_branch: update-pulumi/${{ github.run_id }}-${{ github.run_number }}
-        destination_branch: master
+        destination_branch: main
         pr_title: Automated Pulumi/Pulumi upgrade
         github_token: ${{ steps.esc-secrets.outputs.PULUMI_BOT_TOKEN }}
       env:
