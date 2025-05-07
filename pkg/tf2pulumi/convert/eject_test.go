@@ -58,9 +58,7 @@ func (l *testLoader) LoadPackage(pkg string, version *semver.Version) (*schema.P
 		return nil, err
 	}
 
-	schemaPackage, diags, err := schema.BindSpec(spec, l, schema.ValidationOptions{
-		AllowDanglingReferences: true,
-	})
+	schemaPackage, diags, err := schema.BindSpec(spec, l)
 	if err != nil {
 		return nil, err
 	}

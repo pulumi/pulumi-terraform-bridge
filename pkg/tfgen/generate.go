@@ -1041,9 +1041,7 @@ func (g *Generator) UnstableGenerateFromSchema(genSchemaResult *GenerateSchemaRe
 			files[path] = code
 		}
 	default:
-		pulumiPackage, diags, err := pschema.BindSpec(pulumiPackageSpec, nil, pschema.ValidationOptions{
-			AllowDanglingReferences: true,
-		})
+		pulumiPackage, diags, err := pschema.BindSpec(pulumiPackageSpec, nil)
 		if err != nil {
 			return nil, pkgerrors.Wrapf(err, "failed to import Pulumi schema")
 		}
