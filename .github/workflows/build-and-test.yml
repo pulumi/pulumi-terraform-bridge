@@ -105,10 +105,6 @@ jobs:
           terraform_wrapper: false
       - name: Check out source code
         uses: actions/checkout@master
-      - name: Install pulumi
-        uses: pulumi/actions@v5
-        with:
-          pulumi-version-file: .pulumi.version
       - name: Install Go
         uses: actions/setup-go@v5
         with:
@@ -118,6 +114,18 @@ jobs:
           # disable caching on windows because it's very slow
           # see https://github.com/actions/setup-go/issues/495
           cache: ${{ matrix.platform != 'windows-latest' }}
+      - name: Find pulumi version
+        id: pulumi_version
+        shell: bash
+        run: |
+          GO_MODULE_VERSION=$(go list -m -f '{{.Version}}' github.com/pulumi/pulumi/pkg/v3)
+          GO_VERSION=$(echo "$GO_MODULE_VERSION" | sed 's/^v//')
+          echo "pulumi_version=$GO_VERSION"
+          echo "pulumi_version=$GO_VERSION" >> $GITHUB_OUTPUT
+      - name: Install pulumi
+        uses: pulumi/actions@v5
+        with:
+          pulumi-version: ${{ steps.pulumi_version.outputs.pulumi_version }}
       - name: export feature flags
         run: echo ${{ matrix.feature-flags }}=true >> $GITHUB_ENV
         if: ${{ matrix.platform != 'windows-latest' && matrix.feature-flags != 'DEFAULT' }}
@@ -157,6 +165,18 @@ jobs:
           version: v1.62
       - name: Lint
         run: make lint
+  version-check:
+    name: Verify Pulumi Version Consistency
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          check-latest: true
   sentinel:
     name: sentinel
     if: github.event_name == 'repository_dispatch' || github.event.pull_request.head.repo.full_name == github.repository

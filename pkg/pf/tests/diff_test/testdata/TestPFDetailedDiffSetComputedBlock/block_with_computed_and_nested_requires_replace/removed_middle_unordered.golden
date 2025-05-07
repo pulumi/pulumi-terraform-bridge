@@ -50,14 +50,14 @@ Plan: 1 to add, 0 to change, 1 to destroy.
     +-testprovider:index/test:Test: (replace)
         [id=test-id]
         [urn=urn:pulumi:test::project::testprovider:index/test:Test::p]
-      ~ id  : "test-id" => output<string>
+      ~ id  : "test-id" => [unknown]
       ~ keys: [
           ~ [0]: {
-                  ~ computed: "computed-val1" => output<string>
+                  ~ computed: "computed-val1" => [unknown]
                     nested  : "val1"
                 }
           ~ [1]: {
-                  ~ computed: "computed-val2" => output<string>
+                  ~ computed: "computed-val2" => [unknown]
                   ~ nested  : "val2" => "val3"
                 }
           - [2]: {
