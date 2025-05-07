@@ -15,14 +15,10 @@
 package sdkv2
 
 import (
-	"bytes"
-	"encoding/json"
 	"strings"
 
-	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	diff_reader "github.com/pulumi/terraform-diff-reader/sdk-v2"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
@@ -65,34 +61,6 @@ func (s v2InstanceState) ID() string {
 
 func (s v2InstanceState) Object(sch shim.SchemaMap) (map[string]interface{}, error) {
 	return s.objectV1(sch)
-}
-
-// This is needed because json.Unmarshal uses float64 for numbers by default which truncates int64 numbers.
-func unmarshalJSON(data []byte, v interface{}) error {
-	dec := json.NewDecoder(bytes.NewReader(data))
-	dec.UseNumber()
-	return dec.Decode(v)
-}
-
-// objectFromCtyValue takes a cty.Value and converts it to JSON object.
-// We do not care about type checking the values, we just want to do our best to recursively convert
-// the cty.Value to the underlying value
-//
-// NOTE: one of the transforms this needs to handle is converting unknown values.
-// cty.Value that are also unknown cannot be converted to their underlying value. To get
-// around this we just convert to a sentinel, which so far does not seem to cause any issues downstream
-func objectFromCtyValue(v cty.Value) map[string]interface{} {
-	var path cty.Path
-	buf := &bytes.Buffer{}
-	// The round trip here to JSON is redundant, we could instead convert from cty to map[string]interface{} directly
-	err := marshal(v, v.Type(), path, buf)
-	contract.AssertNoErrorf(err, "Failed to marshal cty.Value to a JSON string value")
-
-	var m map[string]interface{}
-	err = unmarshalJSON(buf.Bytes(), &m)
-	contract.AssertNoErrorf(err, "failed to unmarshal: %s", buf.String())
-
-	return m
 }
 
 // The legacy version of Object used custom Pulumi code forked from TF sources.
