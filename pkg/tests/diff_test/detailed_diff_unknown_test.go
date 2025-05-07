@@ -64,7 +64,7 @@ outputs:
 	pt := pulcheck.PulCheck(t, bridgedProvider, program)
 	res := pt.Preview(t, optpreview.Diff())
 	// Test that the test property is unknown at preview time
-	require.Contains(t, res.StdOut, "test      : output<string>")
+	require.Contains(t, res.StdOut, "test      : [unknown]")
 	resUp := pt.Up(t)
 	// assert that the property gets resolved
 	require.Equal(t, "aux", resUp.Outputs["testOut"].Value)
@@ -246,7 +246,7 @@ resources:
         [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
     + prov:index/test:Test: (create)
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-        tests     : output<string>
+        tests     : [unknown]
 `),
 			autogold.Expect(`
     + prov:index/aux:Aux: (create)
@@ -259,7 +259,7 @@ resources:
               - testProp: "known_val"
             }
         ]
-      + tests: output<string>
+      + tests: [unknown]
 `),
 		},
 		{
@@ -287,7 +287,7 @@ resources:
     + prov:index/test:Test: (create)
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
         tests     : [
-            [0]: output<string>
+            [0]: [unknown]
         ]
 `),
 			autogold.Expect(`
@@ -300,7 +300,7 @@ resources:
           - [0]: {
                   - testProp: "known_val"
                 }
-          + [0]: output<string>
+          + [0]: [unknown]
         ]
 `),
 		},
@@ -330,7 +330,7 @@ resources:
     + prov:index/test:Test: (create)
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
         tests     : [
-            [0]: output<string>
+            [0]: [unknown]
             [1]: {
                 testProp  : "val"
             }
@@ -346,7 +346,7 @@ resources:
           - [0]: {
                   - testProp: "known_val"
                 }
-          + [0]: output<string>
+          + [0]: [unknown]
           + [1]: {
                   + testProp  : "val"
                 }
@@ -375,7 +375,7 @@ resources:
         [urn=urn:pulumi:test::test::prov:index/aux:Aux::auxRes]
     + prov:index/nestedTest:NestedTest: (create)
         [urn=urn:pulumi:test::test::prov:index/nestedTest:NestedTest::mainRes]
-        tests     : output<string>
+        tests     : [unknown]
 `),
 			autogold.Expect(`
     + prov:index/aux:Aux: (create)
@@ -394,7 +394,7 @@ resources:
                 ]
             }
         ]
-      + tests: output<string>
+      + tests: [unknown]
 `),
 		},
 		{
@@ -421,7 +421,7 @@ resources:
     + prov:index/nestedTest:NestedTest: (create)
         [urn=urn:pulumi:test::test::prov:index/nestedTest:NestedTest::mainRes]
         tests     : [
-            [0]: output<string>
+            [0]: [unknown]
         ]
 `),
 			autogold.Expect(`
@@ -440,7 +440,7 @@ resources:
                         }
                     ]
                 }
-          + [0]: output<string>
+          + [0]: [unknown]
         ]
 `),
 		},
@@ -469,7 +469,7 @@ resources:
         [urn=urn:pulumi:test::test::prov:index/nestedTest:NestedTest::mainRes]
         tests     : [
             [0]: {
-                nestedProps: output<string>
+                nestedProps: [unknown]
             }
         ]
 `),
@@ -488,7 +488,7 @@ resources:
                             ]
                         }
                     ]
-                  + nestedProps: output<string>
+                  + nestedProps: [unknown]
                 }
         ]
 `),
@@ -520,7 +520,7 @@ resources:
         tests     : [
             [0]: {
                 nestedProps: [
-                    [0]: output<string>
+                    [0]: [unknown]
                 ]
             }
         ]
@@ -539,7 +539,7 @@ resources:
                               -     [0]: "known_val"
                                 ]
                             }
-                      + [0]: output<string>
+                      + [0]: [unknown]
                     ]
                 }
         ]
@@ -573,7 +573,7 @@ resources:
             [0]: {
                 nestedProps: [
                     [0]: {
-                        testProps : output<string>
+                        testProps : [unknown]
                     }
                 ]
             }
@@ -592,7 +592,7 @@ resources:
                               - testProps: [
                               -     [0]: "known_val"
                                 ]
-                              + testProps: output<string>
+                              + testProps: [unknown]
                             }
                     ]
                 }
@@ -629,7 +629,7 @@ resources:
                 nestedProps: [
                     [0]: {
                         testProps : [
-                            [0]: output<string>
+                            [0]: [unknown]
                         ]
                     }
                 ]
@@ -647,7 +647,7 @@ resources:
                   ~ nestedProps: [
                       ~ [0]: {
                               ~ testProps: [
-                                  ~ [0]: "known_val" => output<string>
+                                  ~ [0]: "known_val" => [unknown]
                                 ]
                             }
                     ]
@@ -827,7 +827,7 @@ func TestUnknownCollectionForceNewDetailedDiff(t *testing.T) {
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ tests: [
           ~ [0]: {
-                  ~ prop: "value" => output<string>
+                  ~ prop: "value" => [unknown]
                 }
         ]
 `))
@@ -845,7 +845,7 @@ func TestUnknownCollectionForceNewDetailedDiff(t *testing.T) {
           - [0]: {
                   - prop: "value"
                 }
-          + [0]: output<string>
+          + [0]: [unknown]
         ]
 `))
 		})
@@ -863,7 +863,7 @@ func TestUnknownCollectionForceNewDetailedDiff(t *testing.T) {
               - prop: "value"
             }
         ]
-      + tests: output<string>
+      + tests: [unknown]
 `))
 		})
 	})
@@ -890,7 +890,7 @@ func TestUnknownCollectionForceNewDetailedDiff(t *testing.T) {
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ tests: [
           ~ [0]: {
-                  ~ prop: "value" => output<string>
+                  ~ prop: "value" => [unknown]
                 }
         ]
 `))
@@ -908,7 +908,7 @@ func TestUnknownCollectionForceNewDetailedDiff(t *testing.T) {
           - [0]: {
                   - prop: "value"
                 }
-          + [0]: output<string>
+          + [0]: [unknown]
         ]
 `))
 		})
@@ -926,7 +926,7 @@ func TestUnknownCollectionForceNewDetailedDiff(t *testing.T) {
               - prop: "value"
             }
         ]
-      + tests: output<string>
+      + tests: [unknown]
 `))
 		})
 	})
@@ -953,7 +953,7 @@ func TestUnknownCollectionForceNewDetailedDiff(t *testing.T) {
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ tests: [
           ~ [0]: {
-                  ~ prop: "value" => output<string>
+                  ~ prop: "value" => [unknown]
                 }
         ]
 `))
@@ -971,7 +971,7 @@ func TestUnknownCollectionForceNewDetailedDiff(t *testing.T) {
           - [0]: {
                   - prop: "value"
                 }
-          + [0]: output<string>
+          + [0]: [unknown]
         ]
 `))
 		})
@@ -989,7 +989,7 @@ func TestUnknownCollectionForceNewDetailedDiff(t *testing.T) {
               - prop: "value"
             }
         ]
-      + tests: output<string>
+      + tests: [unknown]
 `))
 		})
 	})
@@ -1016,7 +1016,7 @@ func TestUnknownCollectionForceNewDetailedDiff(t *testing.T) {
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ tests: [
           ~ [0]: {
-                  ~ prop: "value" => output<string>
+                  ~ prop: "value" => [unknown]
                 }
         ]
 `))
@@ -1034,7 +1034,7 @@ func TestUnknownCollectionForceNewDetailedDiff(t *testing.T) {
           - [0]: {
                   - prop: "value"
                 }
-          + [0]: output<string>
+          + [0]: [unknown]
         ]
 `))
 		})
@@ -1052,7 +1052,7 @@ func TestUnknownCollectionForceNewDetailedDiff(t *testing.T) {
               - prop: "value"
             }
         ]
-      + tests: output<string>
+      + tests: [unknown]
 `))
 		})
 	})
@@ -1170,10 +1170,10 @@ func TestDetailedDiffUnknownSetAttributeElement(t *testing.T) {
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       + tests: [
-      +     [0]: output<string>
+      +     [0]: [unknown]
         ]
     --outputs:--
-  + testOut: output<string>
+  + testOut: [unknown]
 `),
 			autogold.Expect(map[string]interface{}{"tests": map[string]interface{}{}}))
 	})
@@ -1189,7 +1189,7 @@ func TestDetailedDiffUnknownSetAttributeElement(t *testing.T) {
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ tests: [
-          ~ [0]: "val1" => output<string>
+          ~ [0]: "val1" => [unknown]
         ]
 `),
 			autogold.Expect(map[string]interface{}{"tests": map[string]interface{}{"kind": "UPDATE"}}))
@@ -1206,7 +1206,7 @@ func TestDetailedDiffUnknownSetAttributeElement(t *testing.T) {
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ tests: [
-          ~ [0]: "val2" => output<string>
+          ~ [0]: "val2" => [unknown]
           ~ [1]: "val3" => "val2"
           + [2]: "val3"
         ]
@@ -1227,7 +1227,7 @@ func TestDetailedDiffUnknownSetAttributeElement(t *testing.T) {
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ tests: [
             [0]: "val1"
-          ~ [1]: "val3" => output<string>
+          ~ [1]: "val3" => [unknown]
           + [2]: "val3"
         ]
 `),
@@ -1248,7 +1248,7 @@ func TestDetailedDiffUnknownSetAttributeElement(t *testing.T) {
       ~ tests: [
             [0]: "val1"
             [1]: "val2"
-          + [2]: output<string>
+          + [2]: [unknown]
         ]
 `),
 			autogold.Expect(map[string]interface{}{"tests": map[string]interface{}{"kind": "UPDATE"}}),
@@ -1267,7 +1267,7 @@ func TestDetailedDiffUnknownSetAttributeElement(t *testing.T) {
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ tests: [
             [0]: "val1"
-          ~ [1]: "val2" => output<string>
+          ~ [1]: "val2" => [unknown]
             [2]: "val3"
         ]
 `),
@@ -1286,7 +1286,7 @@ func TestDetailedDiffUnknownSetAttributeElement(t *testing.T) {
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ tests: [
-          ~ [0]: "val2" => output<string>
+          ~ [0]: "val2" => [unknown]
             [1]: "val3"
           + [2]: "val2"
         ]
@@ -1307,7 +1307,7 @@ func TestDetailedDiffUnknownSetAttributeElement(t *testing.T) {
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
       ~ tests: [
           ~ [0]: "val1" => "val3"
-          ~ [1]: "val3" => output<string>
+          ~ [1]: "val3" => [unknown]
           + [2]: "val1"
         ]
 `),
@@ -1328,7 +1328,7 @@ func TestDetailedDiffUnknownSetAttributeElement(t *testing.T) {
       ~ tests: [
           ~ [0]: "val1" => "val2"
           ~ [1]: "val2" => "val1"
-          + [2]: output<string>
+          + [2]: [unknown]
         ]
 `),
 			autogold.Expect(map[string]interface{}{"tests": map[string]interface{}{"kind": "UPDATE"}}),
@@ -1380,9 +1380,9 @@ func TestUnknownSetAttributeDiff(t *testing.T) {
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-      + tests: output<string>
+      + tests: [unknown]
     --outputs:--
-  + testOut: output<string>
+  + testOut: [unknown]
 `),
 			autogold.Expect(map[string]interface{}{"tests": map[string]interface{}{}}),
 		)
@@ -1401,7 +1401,7 @@ func TestUnknownSetAttributeDiff(t *testing.T) {
       - tests: [
       -     [0]: "val"
         ]
-      + tests: output<string>
+      + tests: [unknown]
 `),
 			autogold.Expect(map[string]interface{}{"tests": map[string]interface{}{"kind": "UPDATE"}}),
 		)
