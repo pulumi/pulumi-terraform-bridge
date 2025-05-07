@@ -17,10 +17,17 @@ jobs:
     steps:
       - name: Check out source code
         uses: actions/checkout@master
+      - name: Find pulumi version
+        id: pulumi_version
+        run: |
+          GO_MODULE_VERSION=$(go list -m -f '{{.Version}}' github.com/pulumi/pulumi/pkg/v3)
+          GO_VERSION=$(echo "$GO_MODULE_VERSION" | sed 's/^v//')
+          echo "pulumi_version=$GO_VERSION"
+          echo "pulumi_version=$GO_VERSION" >> $GITHUB_OUTPUT
       - name: Install pulumi
         uses: pulumi/actions@v5
         with:
-          pulumi-version-file: .pulumi.version
+          pulumi-version: ${{ steps.pulumi_version.outputs.pulumi_version }}
       - name: Install Go
         uses: actions/setup-go@v5
         with:

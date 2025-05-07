@@ -39,10 +39,6 @@ func usage() {
 func updatePulumiDeps() {
 	ver := os.Args[2]
 	ver = strings.TrimPrefix(ver, "v")
-	err := os.WriteFile(".pulumi.version", []byte(ver), 0o600)
-	if err != nil {
-		log.Fatal(err)
-	}
 	roots := findGoModuleRoots()
 	for _, m := range roots {
 		edited := false
