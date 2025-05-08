@@ -5,8 +5,16 @@ import requests
 
 NOT_BRIDGED_PROVIDERS = [
     "aws-apigateway",
+    "aws-native",
     "awsx",
+    "command",
+    "docker-build",
     "eks",
+    "kubernetes",
+    "kubernetes-cert-manager",
+    "kubernetes-coredns",
+    "kubernetes-ingress-nginx",
+    "terraform",
     "terraform-module",
 ]
 
