@@ -618,3 +618,162 @@ func TestDiffSetHashFailsOnNil(t *testing.T) {
 	},
 	)
 }
+
+func TestDefaultsChanges(t *testing.T) {
+	t.Parallel()
+
+	for _, defVal := range []string{"hello", ""} {
+		t.Run(fmt.Sprintf("default value %q", defVal), func(t *testing.T) {
+			t.Parallel()
+
+			for _, useDefaultFunc := range []bool{true, false} {
+				t.Run(fmt.Sprintf("useDefaultFunc %t", useDefaultFunc), func(t *testing.T) {
+					t.Parallel()
+					defaultFunc := func() (interface{}, error) {
+						return defVal, nil
+					}
+
+					var def any = defVal
+
+					if !useDefaultFunc {
+						defaultFunc = nil
+					} else {
+						def = nil
+					}
+
+					res := &schema.Resource{
+						Schema: map[string]*schema.Schema{
+							"test": {
+								Type:        schema.TypeString,
+								Optional:    true,
+								DefaultFunc: defaultFunc,
+								Default:     def,
+							},
+						},
+					}
+
+					configNoValue := map[string]cty.Value{}
+					configWithValue := map[string]cty.Value{
+						"test": cty.StringVal("world"),
+					}
+					configWithDefaultValue := map[string]cty.Value{
+						"test": cty.StringVal(defVal),
+					}
+
+					t.Run("value removed from config", func(t *testing.T) {
+						t.Parallel()
+
+						crosstests.Diff(t, res, configWithValue, configNoValue)
+					})
+
+					t.Run("default value removed from config", func(t *testing.T) {
+						t.Parallel()
+
+						crosstests.Diff(t, res, configWithDefaultValue, configNoValue)
+					})
+
+					t.Run("default value added to config", func(t *testing.T) {
+						t.Parallel()
+
+						crosstests.Diff(t, res, configNoValue, configWithDefaultValue)
+					})
+
+					t.Run("value added to config", func(t *testing.T) {
+						t.Parallel()
+
+						crosstests.Diff(t, res, configNoValue, configWithValue)
+					})
+				})
+			}
+		})
+	}
+}
+
+func TestDefaultSchemaChanged(t *testing.T) {
+	t.Parallel()
+
+	res1 := &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"test": {
+				Type:     schema.TypeString,
+				Default:  "hello",
+				Optional: true,
+			},
+		},
+	}
+
+	res2 := &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"test": {
+				Type:     schema.TypeString,
+				Default:  "world",
+				Optional: true,
+			},
+		},
+	}
+
+	res3 := &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"test": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+		},
+	}
+	noValue := map[string]cty.Value{}
+	default1Value := map[string]cty.Value{
+		"test": cty.StringVal("hello"),
+	}
+	default2Value := map[string]cty.Value{
+		"test": cty.StringVal("world"),
+	}
+
+	valuePairs := []struct {
+		name   string
+		before map[string]cty.Value
+		after  map[string]cty.Value
+	}{
+		// TODO[pulumi/pulumi-terraform-bridge#3060]: Changing schema defaults is a DIFF_SOME in TF and a DIFF_NONE in Pulumi.
+		// {name: "no value", before: noValue, after: noValue},
+		{name: "no value, default1", before: noValue, after: default1Value},
+		{name: "no value, default2", before: noValue, after: default2Value},
+		{name: "default1, no value", before: default1Value, after: noValue},
+		{name: "default1, default1", before: default1Value, after: default1Value},
+		{name: "default1, default2", before: default1Value, after: default2Value},
+		{name: "default2, no value", before: default2Value, after: noValue},
+		{name: "default2, default1", before: default2Value, after: default1Value},
+		{name: "default2, default2", before: default2Value, after: default2Value},
+	}
+
+	schemaPairs := []struct {
+		name   string
+		before *schema.Resource
+		after  *schema.Resource
+	}{
+		{name: "res1, res1", before: res1, after: res1},
+		{name: "res1, res2", before: res1, after: res2},
+		{name: "res1, res3", before: res1, after: res3},
+		{name: "res2, res1", before: res2, after: res1},
+		{name: "res2, res2", before: res2, after: res2},
+		{name: "res2, res3", before: res2, after: res3},
+		{name: "res3, res1", before: res3, after: res1},
+		{name: "res3, res2", before: res3, after: res2},
+		{name: "res3, res3", before: res3, after: res3},
+	}
+
+	for _, valuePair := range valuePairs {
+		for _, schemaPair := range schemaPairs {
+			t.Run(fmt.Sprintf("%s, %s", valuePair.name, schemaPair.name), func(t *testing.T) {
+				t.Parallel()
+
+				crosstests.Diff(
+					t,
+					schemaPair.before,
+					valuePair.before,
+					valuePair.after,
+					crosstests.DiffProviderUpgradedSchema(schemaPair.after),
+				)
+			})
+		}
+	}
+}
