@@ -618,3 +618,35 @@ func TestDiffSetHashFailsOnNil(t *testing.T) {
 	},
 	)
 }
+
+func TestDefaultApplication(t *testing.T) {
+	t.Parallel()
+
+	t.Run("non-empty default", func(t *testing.T) {
+		t.Parallel()
+
+		res := map[string]*schema.Schema{
+			"test": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Default:  "hello",
+			},
+		}
+
+		crosstests.Create(t, res, cty.ObjectVal(map[string]cty.Value{}))
+	})
+
+	t.Run("empty default", func(t *testing.T) {
+		t.Parallel()
+
+		res := map[string]*schema.Schema{
+			"test": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Default:  "",
+			},
+		}
+
+		crosstests.Create(t, res, cty.ObjectVal(map[string]cty.Value{}))
+	})
+}
