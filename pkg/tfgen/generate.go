@@ -112,63 +112,148 @@ func (l Language) shouldConvertExamples() bool {
 	return false
 }
 
-func runPulumiPackageGenSDK(l Language, pkg *pschema.Package, extraFiles map[string][]byte) (map[string][]byte, error) {
-	// turn extraFiles into a folder with files
-	overlayDir := os.TempDir()
-	overlayDir = filepath.Join(overlayDir, "pulumi-package-gen-sdk")
-	err := os.MkdirAll(overlayDir, 0o755)
-	if err != nil {
-		return nil, err
-	}
-
-	for name, content := range extraFiles {
-		err := os.WriteFile(filepath.Join(overlayDir, name), content, 0o600)
+func copyDirAfero(srcFs afero.Fs, dstFs afero.Fs, srcDir, dstDir string) error {
+	return afero.Walk(srcFs, srcDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			return nil, err
+			return err
 		}
+		relPath, err := filepath.Rel(srcDir, path)
+		if err != nil {
+			return err
+		}
+		if relPath == "." {
+			// Skip the root directory itself, but ensure dstDir exists.
+			return dstFs.MkdirAll(dstDir, 0o755)
+		}
+		dstPath := filepath.Join(dstDir, relPath)
+		if info.IsDir() {
+			return dstFs.MkdirAll(dstPath, 0o755)
+		}
+		content, err := afero.ReadFile(srcFs, path)
+		if err != nil {
+			return err
+		}
+		return afero.WriteFile(dstFs, dstPath, content, 0o600)
+	})
+}
+
+func aferoDirToBytesMap(fs afero.Fs, dir string) (map[string][]byte, error) {
+	result := make(map[string][]byte)
+	err := afero.Walk(fs, dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return nil
+		}
+		relPath, err := filepath.Rel(dir, path)
+		if err != nil {
+			return err
+		}
+		if relPath == "." {
+			return nil
+		}
+		content, err := afero.ReadFile(fs, path)
+		if err != nil {
+			return err
+		}
+		result[relPath] = content
+		return nil
+	})
+	return result, err
+}
+
+func runPulumiPackageGenSDK(l Language, pkg *pschema.Package, extraFiles map[string][]byte) (afero.Fs, string, error) {
+	var err error
+
+	fs := afero.NewOsFs()
+	outDir, err := afero.TempDir(fs, "", "pulumi-package-gen-sdk")
+	if err != nil {
+		return nil, "", pkgerrors.Wrap(err, "failed to create temp dir")
+	}
+	defer func() {
+		rmErr := fs.RemoveAll(outDir)
+		if rmErr != nil {
+			err = multierror.Append(err, rmErr)
+		}
+	}()
+
+	args := []string{"package", "gen-sdk", "--language", string(l), "--out", outDir}
+
+	// turn extraFiles into a folder with files
+	if len(extraFiles) > 0 {
+		overlayDir, err := afero.TempDir(fs, "", "pulumi-package-gen-sdk-overlays")
+		if err != nil {
+			return nil, "", pkgerrors.Wrap(err, "failed to create temp dir")
+		}
+		defer func() {
+			rmErr := fs.RemoveAll(overlayDir)
+			if rmErr != nil {
+				err = multierror.Append(err, rmErr)
+			}
+		}()
+		dest := filepath.Join(overlayDir, string(l))
+		err = fs.MkdirAll(dest, 0o755)
+		if err != nil {
+			return nil, "", pkgerrors.Wrap(err, "failed to create temp dir")
+		}
+		for name, content := range extraFiles {
+			dir := filepath.Dir(name)
+			if dir != "." {
+				err = fs.MkdirAll(filepath.Join(dest, dir), 0o755)
+				if err != nil {
+					return nil, "", pkgerrors.Wrap(err, "failed to create temp dir")
+				}
+			}
+			err := afero.WriteFile(fs, filepath.Join(dest, name), content, 0o600)
+			if err != nil {
+				return nil, "", pkgerrors.Wrap(err, "failed to write file")
+			}
+		}
+
+		args = append(args, "--overlays", overlayDir)
 	}
 
 	// write the schema to a file
-	schemaFile := filepath.Join(os.TempDir(), "schema.json")
+	schemaDir, err := afero.TempDir(fs, "", "schema")
+	if err != nil {
+		return nil, "", err
+	}
+	schemaFile := filepath.Join(schemaDir, "schema.json")
 	schemaBytes, err := pkg.MarshalJSON()
 	if err != nil {
-		return nil, err
+		return nil, "", pkgerrors.Wrap(err, "failed to marshal schema")
 	}
-	err = os.WriteFile(schemaFile, schemaBytes, 0o600)
+	err = afero.WriteFile(fs, schemaFile, schemaBytes, 0o600)
 	if err != nil {
-		return nil, err
+		return nil, "", pkgerrors.Wrap(err, "failed to write schema")
 	}
 
-	outDir := os.TempDir()
+	args = append(args, schemaFile)
 
-	// #nosec G204 -- arguments are controlled and not user input
-	out, err := exec.Command(
-		"pulumi", "package", "gen-sdk", "--language", string(l),
-		"--schema", schemaFile, "--overlays", overlayDir, "--out", outDir).Output()
+	cmd := exec.Command("pulumi", args...)
+	out, err := cmd.Output()
 	if err != nil {
-		return nil, errors.New(string(out) + "\n" + err.Error())
-	}
-
-	files, err := os.ReadDir(outDir)
-	if err != nil {
-		return nil, err
-	}
-
-	results := make(map[string][]byte)
-	for _, file := range files {
-		content, err := os.ReadFile(filepath.Join(outDir, file.Name()))
-		if err != nil {
-			return nil, err
+		stderr := ""
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			stderr = string(exitErr.Stderr)
 		}
-		results[file.Name()] = content
+		return nil, "", pkgerrors.New(string(out) + "\n" + stderr + "\n" + err.Error())
 	}
 
-	return results, nil
+	resultsFs := afero.NewMemMapFs()
+	retDir := "out"
+	err = copyDirAfero(fs, resultsFs, outDir, retDir)
+	if err != nil {
+		return nil, "", pkgerrors.Wrap(err, "failed to copy dir")
+	}
+
+	return resultsFs, retDir, nil
 }
 
 func (l Language) emitSDK(pkg *pschema.Package, info tfbridge.ProviderInfo, root afero.Fs,
 	loader pschema.ReferenceLoader,
-) (map[string][]byte, error) {
+) (afero.Fs, string, error) {
 	var extraFiles map[string][]byte
 	var err error
 
@@ -177,34 +262,41 @@ func (l Language) emitSDK(pkg *pschema.Package, info tfbridge.ProviderInfo, root
 		if psi := info.Golang; psi != nil && psi.Overlay != nil {
 			extraFiles, err = getOverlayFiles(psi.Overlay, ".go", root)
 			if err != nil {
-				return nil, err
+				return nil, "", err
 			}
 		}
 
 		err = cleanDir(root, pkg.Name, nil)
 		if err != nil && !os.IsNotExist(err) {
-			return nil, err
+			return nil, "", err
 		}
 
-		m, err := runPulumiPackageGenSDK(l, pkg, extraFiles)
+		m, retDir, err := runPulumiPackageGenSDK(l, pkg, extraFiles)
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
 		var errs multierror.Error
+
 		for k, v := range extraFiles {
-			f := m[k]
-			if f != nil {
+			exists, err := afero.Exists(m, k)
+			if err != nil {
+				return nil, "", err
+			}
+			if exists {
 				errs.Errors = append(errs.Errors,
 					fmt.Errorf("overlay conflicts with generated file at '%s'", k))
 			}
-			m[k] = v
+			err = afero.WriteFile(m, k, v, 0o600)
+			if err != nil {
+				return nil, "", err
+			}
 		}
-		return m, errs.ErrorOrNil()
+		return m, retDir, errs.ErrorOrNil()
 	case NodeJS:
 		if psi := info.JavaScript; psi != nil && psi.Overlay != nil {
 			extraFiles, err = getOverlayFiles(psi.Overlay, ".ts", root)
 			if err != nil {
-				return nil, err
+				return nil, "", err
 			}
 		}
 		// We exclude the "tests" directory because some nodejs package dirs (e.g. pulumi-docker)
@@ -216,14 +308,14 @@ func (l Language) emitSDK(pkg *pschema.Package, info tfbridge.ProviderInfo, root
 		// into memory so deleting the files is not a problem.
 		err = cleanDir(root, "", exclusions)
 		if err != nil && !os.IsNotExist(err) {
-			return nil, err
+			return nil, "", err
 		}
 		return runPulumiPackageGenSDK(l, pkg, extraFiles)
 	case Python:
 		if psi := info.Python; psi != nil && psi.Overlay != nil {
 			extraFiles, err = getOverlayFiles(psi.Overlay, ".py", root)
 			if err != nil {
-				return nil, err
+				return nil, "", err
 			}
 		}
 
@@ -231,23 +323,23 @@ func (l Language) emitSDK(pkg *pschema.Package, info tfbridge.ProviderInfo, root
 		pyOutDir := fmt.Sprintf("pulumi_%s", pkg.Name)
 		err = cleanDir(root, pyOutDir, nil)
 		if err != nil && !os.IsNotExist(err) {
-			return nil, err
+			return nil, "", err
 		}
 		return runPulumiPackageGenSDK(l, pkg, extraFiles)
 	case CSharp:
 		if psi := info.CSharp; psi != nil && psi.Overlay != nil {
 			extraFiles, err = getOverlayFiles(psi.Overlay, ".cs", root)
 			if err != nil {
-				return nil, err
+				return nil, "", err
 			}
 		}
 		err = cleanDir(root, "", nil)
 		if err != nil && !os.IsNotExist(err) {
-			return nil, err
+			return nil, "", err
 		}
 		return runPulumiPackageGenSDK(l, pkg, extraFiles)
 	default:
-		return nil, fmt.Errorf("%v does not support SDK generation", l)
+		return nil, "", fmt.Errorf("%v does not support SDK generation", l)
 	}
 }
 
@@ -1102,8 +1194,13 @@ func (g *Generator) UnstableGenerateFromSchema(genSchemaResult *GenerateSchemaRe
 			return nil, err
 		}
 		loader := pschema.NewPluginLoader(g.pluginHost)
-		if files, err = g.language.emitSDK(pulumiPackage, g.info, g.root, loader); err != nil {
+		fs, retDir, err := g.language.emitSDK(pulumiPackage, g.info, g.root, loader)
+		if err != nil {
 			return nil, pkgerrors.Wrapf(err, "failed to generate package")
+		}
+		files, err = aferoDirToBytesMap(fs, retDir)
+		if err != nil {
+			return nil, pkgerrors.Wrapf(err, "failed to read generated package")
 		}
 	}
 
