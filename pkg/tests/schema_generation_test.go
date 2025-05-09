@@ -145,7 +145,6 @@ func Test_Generate(t *testing.T) {
 
 	outDir := t.TempDir()
 
-	// Create the output directory.
 	var root afero.Fs
 	if outDir != "" {
 		absOutDir, err := filepath.Abs(outDir)
@@ -240,7 +239,6 @@ func Test_GenerateWithOverlay(t *testing.T) {
 		},
 	}
 
-	// Create the output directory.
 	root := afero.NewMemMapFs()
 
 	err := afero.WriteFile(root, overlayFileName, overlayFileContent, 0o600)

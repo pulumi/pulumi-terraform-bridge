@@ -112,7 +112,7 @@ func (l Language) shouldConvertExamples() bool {
 	return false
 }
 
-func aferoDirToBytesMap(fs afero.Fs, dir string) (map[string][]byte, error) {
+func dirToBytesMap(fs afero.Fs, dir string) (map[string][]byte, error) {
 	result := make(map[string][]byte)
 	err := afero.Walk(fs, dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -138,6 +138,27 @@ func aferoDirToBytesMap(fs afero.Fs, dir string) (map[string][]byte, error) {
 	return result, err
 }
 
+func writeBytesMapToDir(fs afero.Fs, dir string, files map[string][]byte) error {
+	err := fs.MkdirAll(dir, 0o755)
+	if err != nil {
+		return pkgerrors.Wrap(err, "failed to create dir")
+	}
+	for name, content := range files {
+		srcDir := filepath.Dir(name)
+		if srcDir != "." {
+			err = fs.MkdirAll(filepath.Join(dir, srcDir), 0o755)
+			if err != nil {
+				return pkgerrors.Wrap(err, "failed to create dir")
+			}
+		}
+		err := afero.WriteFile(fs, filepath.Join(dir, name), content, 0o600)
+		if err != nil {
+			return pkgerrors.Wrap(err, "failed to write file")
+		}
+	}
+	return nil
+}
+
 func runPulumiPackageGenSDK(l Language, pkg *pschema.Package, extraFiles map[string][]byte) (map[string][]byte, error) {
 	var err error
 
@@ -155,7 +176,6 @@ func runPulumiPackageGenSDK(l Language, pkg *pschema.Package, extraFiles map[str
 
 	args := []string{"package", "gen-sdk", "--language", string(l), "--out", outDir}
 
-	// turn extraFiles into a folder with files
 	if len(extraFiles) > 0 {
 		overlayDir, err := afero.TempDir(fs, "", "pulumi-package-gen-sdk-overlays")
 		if err != nil {
@@ -168,28 +188,14 @@ func runPulumiPackageGenSDK(l Language, pkg *pschema.Package, extraFiles map[str
 			}
 		}()
 		dest := filepath.Join(overlayDir, string(l))
-		err = fs.MkdirAll(dest, 0o755)
+		err = writeBytesMapToDir(fs, dest, extraFiles)
 		if err != nil {
-			return nil, pkgerrors.Wrap(err, "failed to create temp dir")
-		}
-		for name, content := range extraFiles {
-			dir := filepath.Dir(name)
-			if dir != "." {
-				err = fs.MkdirAll(filepath.Join(dest, dir), 0o755)
-				if err != nil {
-					return nil, pkgerrors.Wrap(err, "failed to create temp dir")
-				}
-			}
-			err := afero.WriteFile(fs, filepath.Join(dest, name), content, 0o600)
-			if err != nil {
-				return nil, pkgerrors.Wrap(err, "failed to write file")
-			}
+			return nil, pkgerrors.Wrap(err, "failed to write overlay files")
 		}
 
 		args = append(args, "--overlays", overlayDir)
 	}
 
-	// write the schema to a file
 	schemaDir, err := afero.TempDir(fs, "", "schema")
 	if err != nil {
 		return nil, pkgerrors.Wrap(err, "failed to create temp dir")
@@ -216,7 +222,7 @@ func runPulumiPackageGenSDK(l Language, pkg *pschema.Package, extraFiles map[str
 		return nil, pkgerrors.New(string(out) + "\n" + stderr + "\n" + err.Error())
 	}
 
-	return aferoDirToBytesMap(fs, outDir)
+	return dirToBytesMap(fs, outDir)
 }
 
 func (l Language) emitSDK(pkg *pschema.Package, info tfbridge.ProviderInfo, root afero.Fs,
