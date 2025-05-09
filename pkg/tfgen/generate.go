@@ -222,11 +222,10 @@ func runPulumiPackageGenSDK(l Language, pkg *pschema.Package, extraFiles map[str
 		return nil, pkgerrors.New(string(out) + "\n" + stderr + "\n" + err.Error())
 	}
 
-	return dirToBytesMap(fs, outDir)
+	return dirToBytesMap(fs, filepath.Join(outDir, string(l)))
 }
 
 func (l Language) emitSDK(pkg *pschema.Package, info tfbridge.ProviderInfo, root afero.Fs,
-	loader pschema.ReferenceLoader,
 ) (map[string][]byte, error) {
 	var extraFiles map[string][]byte
 	var err error
@@ -1160,8 +1159,7 @@ func (g *Generator) UnstableGenerateFromSchema(genSchemaResult *GenerateSchemaRe
 		if diags.HasErrors() {
 			return nil, err
 		}
-		loader := pschema.NewPluginLoader(g.pluginHost)
-		if files, err = g.language.emitSDK(pulumiPackage, g.info, g.root, loader); err != nil {
+		if files, err = g.language.emitSDK(pulumiPackage, g.info, g.root); err != nil {
 			return nil, pkgerrors.Wrapf(err, "failed to generate package")
 		}
 	}
