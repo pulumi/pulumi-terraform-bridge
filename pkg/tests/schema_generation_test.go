@@ -121,8 +121,15 @@ func TestRequiredInputWithDefaultFlagDisabled(t *testing.T) {
 	require.Contains(t, resourceSchema.RequiredInputs, "name")
 }
 
+func skipOnWindows(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skipf("Skipping on windows - tests cases need to be made robust to newline handling")
+	}
+}
+
 func Test_Generate(t *testing.T) {
 	t.Parallel()
+	skipOnWindows(t)
 
 	p := pulcheck.BridgedProvider(t, "prov", &schema.Provider{
 		ResourcesMap: map[string]*schema.Resource{
@@ -184,6 +191,7 @@ func Test_Generate(t *testing.T) {
 
 func Test_GenerateWithOverlay(t *testing.T) {
 	t.Parallel()
+	skipOnWindows(t)
 
 	p := pulcheck.BridgedProvider(t, "prov", &schema.Provider{
 		ResourcesMap: map[string]*schema.Resource{
