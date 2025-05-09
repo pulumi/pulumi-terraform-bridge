@@ -170,6 +170,11 @@ func Test_Generate(t *testing.T) {
 	_, err = gen.Generate()
 	require.NoError(t, err)
 
+	_, err = afero.ReadFile(root, "test.ts")
+	require.NoError(t, err)
+	_, err = afero.ReadFile(root, "package.json")
+	require.NoError(t, err)
+
 	err = afero.Walk(root, ".", func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -264,11 +269,11 @@ func Test_GenerateWithOverlay(t *testing.T) {
 	_, err = gen.Generate()
 	require.NoError(t, err)
 
-	content, err := afero.ReadFile(root, filepath.Join(string(language), overlayFileName))
+	content, err := afero.ReadFile(root, overlayFileName)
 	require.NoError(t, err)
 	require.Equal(t, overlayFileContent, content)
 
-	content, err = afero.ReadFile(root, filepath.Join(string(language), moduleName, overlayModFileName))
+	content, err = afero.ReadFile(root, filepath.Join(moduleName, overlayModFileName))
 	require.NoError(t, err)
 	require.Equal(t, overlayModFileContent, content)
 
