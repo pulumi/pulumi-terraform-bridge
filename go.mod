@@ -2,7 +2,7 @@ module github.com/pulumi/pulumi-terraform-bridge/v3
 
 go 1.23.0
 
-toolchain go1.24.3
+toolchain go1.23.7
 
 require (
 	github.com/apparentlymart/go-cidr v1.1.0
