@@ -676,37 +676,37 @@ func Test_aferoDirToBytesMap(t *testing.T) {
 	fs := afero.NewMemMapFs()
 
 	t.Run("happy path", func(t *testing.T) {
-		err := afero.WriteFile(fs, "/root/file1.txt", []byte("hello world"), 0o600)
+		err := afero.WriteFile(fs, filepath.Join("root", "file1.txt"), []byte("hello world"), 0o600)
 		require.NoError(t, err)
-		err = afero.WriteFile(fs, "/root/dir1/file2.txt", []byte("foo bar"), 0o600)
+		err = afero.WriteFile(fs, filepath.Join("root", "dir1", "file2.txt"), []byte("foo bar"), 0o600)
 		require.NoError(t, err)
-		err = afero.WriteFile(fs, "/root/dir1/file3.txt", []byte("baz"), 0o600)
+		err = afero.WriteFile(fs, filepath.Join("root", "dir1", "file3.txt"), []byte("baz"), 0o600)
 		require.NoError(t, err)
-		err = afero.WriteFile(fs, "/root/dir2/file4.txt", []byte("qux"), 0o600)
+		err = afero.WriteFile(fs, filepath.Join("root", "dir2", "file4.txt"), []byte("qux"), 0o600)
 		require.NoError(t, err)
 
-		result, err := dirToBytesMap(fs, "/root")
+		result, err := dirToBytesMap(fs, "root")
 		require.NoError(t, err)
 
 		expected := map[string][]byte{
-			"file1.txt":      []byte("hello world"),
-			"dir1/file2.txt": []byte("foo bar"),
-			"dir1/file3.txt": []byte("baz"),
-			"dir2/file4.txt": []byte("qux"),
+			"file1.txt":                        []byte("hello world"),
+			filepath.Join("dir1", "file2.txt"): []byte("foo bar"),
+			filepath.Join("dir1", "file3.txt"): []byte("baz"),
+			filepath.Join("dir2", "file4.txt"): []byte("qux"),
 		}
 		require.Equal(t, expected, result)
 	})
 
 	t.Run("empty directory", func(t *testing.T) {
-		err := afero.WriteFile(fs, "/emptydir/.keep", []byte{}, 0o600)
+		err := afero.WriteFile(fs, filepath.Join("emptydir", ".keep"), []byte{}, 0o600)
 		require.NoError(t, err)
-		res, err := dirToBytesMap(fs, "/emptydir")
+		res, err := dirToBytesMap(fs, "emptydir")
 		require.NoError(t, err)
 		require.Equal(t, map[string][]byte{".keep": {}}, res)
 	})
 
 	t.Run("non-existent directory", func(t *testing.T) {
-		_, err := dirToBytesMap(fs, "/doesnotexist")
+		_, err := dirToBytesMap(fs, "doesnotexist")
 		require.Error(t, err, "file does not exist")
 	})
 }
@@ -716,12 +716,12 @@ func Test_writeBytesMapToDir(t *testing.T) {
 	fs := afero.NewMemMapFs()
 
 	t.Run("happy path", func(t *testing.T) {
-		dir := "/root"
+		dir := "root"
 		files := map[string][]byte{
-			"file1.txt":      []byte("hello world"),
-			"dir1/file2.txt": []byte("foo bar"),
-			"dir1/file3.txt": []byte("baz"),
-			"dir2/file4.txt": []byte("qux"),
+			"file1.txt":                        []byte("hello world"),
+			filepath.Join("dir1", "file2.txt"): []byte("foo bar"),
+			filepath.Join("dir1", "file3.txt"): []byte("baz"),
+			filepath.Join("dir2", "file4.txt"): []byte("qux"),
 		}
 		err := writeBytesMapToDir(fs, dir, files)
 		require.NoError(t, err)
@@ -733,7 +733,7 @@ func Test_writeBytesMapToDir(t *testing.T) {
 	})
 
 	t.Run("empty map", func(t *testing.T) {
-		dir := "/emptydir"
+		dir := "emptydir"
 		err := writeBytesMapToDir(fs, dir, map[string][]byte{})
 		require.NoError(t, err)
 		exists, err := afero.DirExists(fs, dir)
