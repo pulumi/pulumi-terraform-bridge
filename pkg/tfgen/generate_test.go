@@ -37,6 +37,7 @@ import (
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	shimschema "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 	shimv1 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v1"
+	"github.com/spf13/afero"
 )
 
 func Test_DeprecationMessage(t *testing.T) {
@@ -668,4 +669,44 @@ func TestGetUniqueLeafDocsDescriptions(t *testing.T) {
 			assert.Equal(t, tc.expected, actual)
 		})
 	}
+}
+
+func Test_aferoDirToBytesMap(t *testing.T) {
+	t.Parallel()
+	fs := afero.NewMemMapFs()
+
+	t.Run("happy path", func(t *testing.T) {
+		err := afero.WriteFile(fs, "/root/file1.txt", []byte("hello world"), 0o600)
+		require.NoError(t, err)
+		err = afero.WriteFile(fs, "/root/dir1/file2.txt", []byte("foo bar"), 0o600)
+		require.NoError(t, err)
+		err = afero.WriteFile(fs, "/root/dir1/file3.txt", []byte("baz"), 0o600)
+		require.NoError(t, err)
+		err = afero.WriteFile(fs, "/root/dir2/file4.txt", []byte("qux"), 0o600)
+		require.NoError(t, err)
+
+		result, err := aferoDirToBytesMap(fs, "/root")
+		require.NoError(t, err)
+
+		expected := map[string][]byte{
+			"file1.txt":      []byte("hello world"),
+			"dir1/file2.txt": []byte("foo bar"),
+			"dir1/file3.txt": []byte("baz"),
+			"dir2/file4.txt": []byte("qux"),
+		}
+		require.Equal(t, expected, result)
+	})
+
+	t.Run("empty directory", func(t *testing.T) {
+		err := afero.WriteFile(fs, "/emptydir/.keep", []byte{}, 0o600)
+		require.NoError(t, err)
+		res, err := aferoDirToBytesMap(fs, "/emptydir")
+		require.NoError(t, err)
+		require.Equal(t, map[string][]byte{".keep": {}}, res)
+	})
+
+	t.Run("non-existent directory", func(t *testing.T) {
+		_, err := aferoDirToBytesMap(fs, "/doesnotexist")
+		require.Error(t, err, "file does not exist")
+	})
 }
