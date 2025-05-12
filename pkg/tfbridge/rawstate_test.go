@@ -1280,31 +1280,70 @@ func Test_rawStateDelta_PropertyValue_serialization(t *testing.T) {
 	}
 }
 
-func Test_isFloatExactlyEqual(t *testing.T) {
+func Test_isSimilarNumber(t *testing.T) {
 	t.Parallel()
 
-	t.Run("valid float64 isFloatExactlyEqual to big.Float", func(t *testing.T) {
-		for _, v := range []float64{0, 0.5, -3.14, 12.5, 2495055709147740} {
-			t.Run(fmt.Sprintf("%v", v), func(t *testing.T) {
-				n := new(big.Float).SetFloat64(v)
-				f64, _ := n.Float64()
-				assert.True(t, isFloatExactlyEqual(f64, n))
-			})
-		}
-	})
+	type testCase struct {
+		f64     float64
+		bigNum  string
+		similar bool
+	}
 
-	t.Run("overflowing big.Float !isFloatExactlyEqual to the corresponding float64", func(t *testing.T) {
-		for _, ns := range []string{
-			"2495055709147741000",
-			"2495055709147741188",
-			"2495055709147741188.3245",
-		} {
-			t.Run(fmt.Sprintf("%v", ns), func(t *testing.T) {
-				n, _, err := new(big.Float).Parse(ns, 10)
-				require.NoError(t, err)
-				f64, _ := n.Float64()
-				assert.False(t, isFloatExactlyEqual(f64, n))
-			})
-		}
-	})
+	testCases := []testCase{
+		{
+			f64:     0,
+			bigNum:  "0",
+			similar: true,
+		},
+		{
+			f64:     0.5,
+			bigNum:  "0.5",
+			similar: true,
+		},
+		{
+			f64:     3.14,
+			bigNum:  "3.14",
+			similar: true,
+		},
+		{
+			f64:     2495055709147741000,
+			bigNum:  "2495055709147741000",
+			similar: true,
+		},
+		{
+			f64:    2495055709147741000,
+			bigNum: "2495055709147741188",
+			// Rounding occurred on something that could be an ID; must mark as similar: false.
+			similar: false,
+		},
+		{
+			f64:    2495055709147741188,
+			bigNum: "2495055709147741188",
+			// Rounding occurs here as well as the literal does not represent cleanly in float64.
+			similar: false,
+		},
+		{
+			f64:    2495055709147741000.32,
+			bigNum: "2495055709147741000.32",
+			// There is rounding here but the literal is not an integer and unlikely an ID; either value of
+			// similar: false or similar: true may be acceptable.
+			similar: false,
+		},
+		{
+			f64: 2495055709147741000.123456,
+			// This accidentally parses as an integer in big.Float;
+			// Can remove this test case or can decide similar=false - not essential.
+			bigNum:  "2495055709147741000.123456",
+			similar: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("isSimilarNumber(%v, parse(%q))", tc.f64, tc.bigNum), func(t *testing.T) {
+			bn, _, err := new(big.Float).Parse(tc.bigNum, 10)
+			require.NoError(t, err)
+			t.Logf("Parsed as %q", bn.Text('f', -1))
+			assert.Equal(t, tc.similar, isSimilarNumber(tc.f64, bn))
+		})
+	}
 }

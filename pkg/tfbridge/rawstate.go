@@ -657,7 +657,7 @@ func (ih *rawStateDeltaHelper) computeDeltaAt(
 	case v.Type().IsBooleanType() && pv.IsBool() && pv.BoolValue() == v.BoolValue():
 		return RawStateDelta{}, nil
 
-	case v.Type().IsNumberType() && pv.IsNumber() && isFloatExactlyEqual(pv.NumberValue(), v.BigFloatValue()):
+	case v.Type().IsNumberType() && pv.IsNumber() && isSimilarNumber(pv.NumberValue(), v.BigFloatValue()):
 		return RawStateDelta{}, nil
 
 	case v.Type().IsNumberType() && pv.IsString():
@@ -840,7 +840,9 @@ func newRawStateFromValue(v valueshim.Value) rawstate.RawState {
 	return rawstate.RawState(raw)
 }
 
-// Check if the float64 value fully represents the big.Float; if there is any rounding involved, return false.
-func isFloatExactlyEqual(expected float64, got *big.Float) bool {
-	return new(big.Float).SetFloat64(expected).Cmp(got) == 0
+// Check if two numbers are close enough that their big.Float representation is going to be rendered identically. This
+// balances making sure that overflowing integers that may be representing IDs but are float64 in Pulumi generate a
+// delta and are preserved correctly, vs generating too many deltas for simple floats like 3.64 where it is immaterial.
+func isSimilarNumber(expected float64, got *big.Float) bool {
+	return new(big.Float).SetFloat64(expected).Text('f', -1) == got.Text('f', -1)
 }
