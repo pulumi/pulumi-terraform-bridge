@@ -16,6 +16,7 @@ package valueshim
 
 import (
 	"encoding/json"
+	"math/big"
 
 	"github.com/hashicorp/go-cty/cty"
 	ctyjson "github.com/hashicorp/go-cty/cty/json"
@@ -60,8 +61,13 @@ func (v ctyValueShim) BoolValue() bool {
 }
 
 func (v ctyValueShim) NumberValue() float64 {
-	f, _ := v.val().AsBigFloat().Float64()
+	bf := v.BigFloatValue()
+	f, _ := bf.Float64()
 	return f
+}
+
+func (v ctyValueShim) BigFloatValue() *big.Float {
+	return v.val().AsBigFloat()
 }
 
 func (v ctyValueShim) AsValueSlice() []Value {

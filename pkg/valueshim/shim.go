@@ -16,6 +16,7 @@ package valueshim
 
 import (
 	"encoding/json"
+	"math/big"
 )
 
 // Allows abstracting over cty.Value and tftypes.Value for purposes of computing raw state deltas. In particular for
@@ -35,6 +36,7 @@ type Value interface {
 
 	StringValue() string
 	NumberValue() float64
+	BigFloatValue() *big.Float
 	BoolValue() bool
 }
 

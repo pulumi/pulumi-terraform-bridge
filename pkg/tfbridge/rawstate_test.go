@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -183,7 +184,7 @@ func Test_rawstate_delta_turnaround(t *testing.T) {
 			})),
 		},
 		{
-			name: "bigint",
+			name: "bigint-as-string-in-pulumi",
 			schema: &schema.Schema{
 				Type:     schema.TypeInt,
 				Optional: true,
@@ -192,13 +193,39 @@ func Test_rawstate_delta_turnaround(t *testing.T) {
 			cv: cty.MustParseNumberVal("12345678901234567890"),
 		},
 		{
-			name: "bignum",
+			name: "bigint-as-f64-in-pulumi",
+			schema: &schema.Schema{
+				Type:     schema.TypeInt,
+				Optional: true,
+			},
+			pv: func() resource.PropertyValue {
+				v, err := strconv.ParseFloat("2495055709147741188", 64)
+				require.NoError(t, err)
+				return resource.NewNumberProperty(v)
+			}(),
+			cv: cty.MustParseNumberVal("2495055709147741188"),
+		},
+		{
+			name: "bignum-as-string-in-pulumi",
 			schema: &schema.Schema{
 				Type:     schema.TypeFloat,
 				Optional: true,
 			},
-			pv: resource.NewStringProperty("12345678.901234567890"),
-			cv: cty.MustParseNumberVal("12345678.901234567890"),
+			pv: resource.NewStringProperty("12345678.90123456789"),
+			cv: cty.MustParseNumberVal("12345678.90123456789"),
+		},
+		{
+			name: "bignum-as-f64-in-pulumi",
+			schema: &schema.Schema{
+				Type:     schema.TypeFloat,
+				Optional: true,
+			},
+			pv: func() resource.PropertyValue {
+				v, err := strconv.ParseFloat("12345678.90123456789", 64)
+				require.NoError(t, err)
+				return resource.NewNumberProperty(v)
+			}(),
+			cv: cty.MustParseNumberVal("12345678.90123456789"),
 		},
 		{
 			name: "empty-set",
@@ -406,9 +433,11 @@ func Test_rawstate_delta_turnaround(t *testing.T) {
 			cvJSON, err := ctyjson.Marshal(cv, cv.Type())
 			require.NoError(t, err)
 
+			t.Logf("cvJSON: %s", string(cvJSON))
 			t.Logf("recoveredValueJSON: %s", string(recoveredValueJSON))
 
-			require.JSONEq(t, string(cvJSON), string(recoveredValueJSON))
+			// NOTE: require.JSONEq is not precise enough as it rounds numbers to f64.
+			require.Equal(t, string(cvJSON), string(recoveredValueJSON))
 		})
 	}
 }
@@ -1249,4 +1278,33 @@ func Test_rawStateDelta_PropertyValue_serialization(t *testing.T) {
 			require.Equal(t, tc.rsd.Replace, back.Replace)
 		})
 	}
+}
+
+func Test_isFloatExactlyEqual(t *testing.T) {
+	t.Parallel()
+
+	t.Run("valid float64 isFloatExactlyEqual to big.Float", func(t *testing.T) {
+		for _, v := range []float64{0, 0.5, -3.14, 12.5, 2495055709147740} {
+			t.Run(fmt.Sprintf("%v", v), func(t *testing.T) {
+				n := new(big.Float).SetFloat64(v)
+				f64, _ := n.Float64()
+				assert.True(t, isFloatExactlyEqual(f64, n))
+			})
+		}
+	})
+
+	t.Run("overflowing big.Float !isFloatExactlyEqual to the corresponding float64", func(t *testing.T) {
+		for _, ns := range []string{
+			"2495055709147741000",
+			"2495055709147741188",
+			"2495055709147741188.3245",
+		} {
+			t.Run(fmt.Sprintf("%v", ns), func(t *testing.T) {
+				n, _, err := new(big.Float).Parse(ns, 10)
+				require.NoError(t, err)
+				f64, _ := n.Float64()
+				assert.False(t, isFloatExactlyEqual(f64, n))
+			})
+		}
+	})
 }

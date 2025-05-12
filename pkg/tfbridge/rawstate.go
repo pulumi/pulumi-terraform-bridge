@@ -657,7 +657,7 @@ func (ih *rawStateDeltaHelper) computeDeltaAt(
 	case v.Type().IsBooleanType() && pv.IsBool() && pv.BoolValue() == v.BoolValue():
 		return RawStateDelta{}, nil
 
-	case v.Type().IsNumberType() && pv.IsNumber() && pv.NumberValue() == v.NumberValue():
+	case v.Type().IsNumberType() && pv.IsNumber() && isFloatExactlyEqual(pv.NumberValue(), v.BigFloatValue()):
 		return RawStateDelta{}, nil
 
 	case v.Type().IsNumberType() && pv.IsString():
@@ -838,4 +838,9 @@ func newRawStateFromValue(v valueshim.Value) rawstate.RawState {
 	raw, err := v.Marshal()
 	contract.AssertNoErrorf(err, "v.Marshal() failed")
 	return rawstate.RawState(raw)
+}
+
+// Check if the float64 value fully represents the big.Float; if there is any rounding involved, return false.
+func isFloatExactlyEqual(expected float64, got *big.Float) bool {
+	return new(big.Float).SetFloat64(expected).Cmp(got) == 0
 }
