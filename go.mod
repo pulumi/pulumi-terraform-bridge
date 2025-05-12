@@ -1,6 +1,6 @@
 module github.com/pulumi/pulumi-terraform-bridge/v3
 
-go 1.23
+go 1.23.0
 
 toolchain go1.23.7
 
@@ -45,7 +45,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/pulumi/inflector v0.1.1
 	github.com/pulumi/providertest v0.3.0
-	github.com/pulumi/pulumi-java/pkg v1.10.1-0.20250501085720-de3b4406576e
+	github.com/pulumi/pulumi-java/pkg v1.11.0
 	github.com/pulumi/pulumi-yaml v1.15.1
 	github.com/pulumi/schema-tools v0.1.2
 	github.com/pulumi/terraform-diff-reader v0.0.2
@@ -57,10 +57,10 @@ require (
 	github.com/terraform-providers/terraform-provider-random v1.3.2-0.20231204135814-c6e90de46687
 	github.com/yuin/goldmark v1.7.4
 	github.com/zclconf/go-cty v1.16.2
-	golang.org/x/crypto v0.33.0
+	golang.org/x/crypto v0.38.0
 	golang.org/x/mod v0.22.0
-	golang.org/x/net v0.35.0
-	golang.org/x/text v0.22.0
+	golang.org/x/net v0.40.0
+	golang.org/x/text v0.25.0
 	google.golang.org/grpc v1.69.4
 	google.golang.org/protobuf v1.36.3
 	gotest.tools v2.2.0+incompatible
@@ -220,8 +220,8 @@ require (
 	github.com/pkg/term v1.1.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/posener/complete v1.2.3 // indirect
-	github.com/pulumi/pulumi/pkg/v3 v3.166.0
-	github.com/pulumi/pulumi/sdk/v3 v3.166.0
+	github.com/pulumi/pulumi/pkg/v3 v3.169.0
+	github.com/pulumi/pulumi/sdk/v3 v3.169.0
 	github.com/rivo/uniseg v0.4.4 // indirect
 	github.com/rogpeppe/go-internal v1.12.0 // indirect
 	github.com/ryanuber/go-glob v1.0.0 // indirect
@@ -248,9 +248,9 @@ require (
 	gocloud.dev v0.37.0 // indirect
 	gocloud.dev/secrets/hashivault v0.37.0 // indirect
 	golang.org/x/oauth2 v0.23.0 // indirect
-	golang.org/x/sync v0.11.0 // indirect
-	golang.org/x/sys v0.30.0 // indirect
-	golang.org/x/term v0.29.0 // indirect
+	golang.org/x/sync v0.14.0 // indirect
+	golang.org/x/sys v0.33.0 // indirect
+	golang.org/x/term v0.32.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028 // indirect
 	google.golang.org/api v0.169.0 // indirect
