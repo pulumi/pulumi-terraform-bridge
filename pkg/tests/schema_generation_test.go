@@ -216,81 +216,206 @@ func Test_GenerateWithOverlay(t *testing.T) {
 		Color: colors.Never,
 	})
 
-	language := tfgen.NodeJS
-
-	overlayFileName := "hello.ts"
-	overlayFileContent := []byte(`
+	overlayFileNameTs := "hello.ts"
+	overlayFileContentTs := []byte(`
 	export const hello = "world";
 	`)
 
-	overlayModFileName := "helloMod.ts"
-	overlayModFileContent := []byte(`
+	overlayModFileNameTs := "helloMod.ts"
+	overlayModFileContentTs := []byte(`
 	export const helloMod = "worldMod";
 	`)
 
-	if p.JavaScript == nil {
-		p.JavaScript = &info.JavaScript{}
-	}
-	p.JavaScript.Overlay = &info.Overlay{
-		DestFiles: []string{
-			overlayFileName,
-		},
-		Modules: map[string]*info.Overlay{
-			moduleName: {
-				DestFiles: []string{
-					overlayModFileName,
+	p.JavaScript = &info.JavaScript{
+		Overlay: &info.Overlay{
+			DestFiles: []string{
+				overlayFileNameTs,
+			},
+			Modules: map[string]*info.Overlay{
+				moduleName: {
+					DestFiles: []string{
+						overlayModFileNameTs,
+					},
 				},
 			},
 		},
 	}
 
-	root := afero.NewMemMapFs()
+	overlayFileNamePy := "hello.py"
+	overlayFileContentPy := []byte(`
+	hello = "world"
+	`)
 
-	err := afero.WriteFile(root, overlayFileName, overlayFileContent, 0o600)
-	require.NoError(t, err)
+	overlayModFileNamePy := "helloMod.py"
+	overlayModFileContentPy := []byte(`
+	helloMod = "worldMod"
+	`)
+	p.Python = &info.Python{
+		Overlay: &info.Overlay{
+			DestFiles: []string{
+				overlayFileNamePy,
+			},
+			Modules: map[string]*info.Overlay{
+				moduleName: {
+					DestFiles: []string{
+						overlayModFileNamePy,
+					},
+				},
+			},
+		},
+	}
 
-	err = afero.WriteFile(root, filepath.Join(moduleName, overlayModFileName), overlayModFileContent, 0o600)
-	require.NoError(t, err)
+	overlayFileNameGo := "hello.go"
+	overlayFileContentGo := []byte(`
+	package main
 
-	gen, err := tfgen.NewGenerator(tfgen.GeneratorOptions{
-		Package:       "prov",
-		Version:       "0.0.1",
-		ProviderInfo:  p,
-		Root:          root,
-		Language:      language,
-		XInMemoryDocs: true,
-		SkipDocs:      true,
-		SkipExamples:  true,
-		Sink:          sink,
-		Debug:         true,
-	})
-	require.NoError(t, err)
+	func hello() {
+		fmt.Println("Hello, World!")
+	}`)
 
-	_, err = gen.Generate()
-	require.NoError(t, err)
+	overlayModFileNameGo := "helloMod.go"
+	overlayModFileContentGo := []byte(`
+	package main
 
-	content, err := afero.ReadFile(root, overlayFileName)
-	require.NoError(t, err)
-	require.Equal(t, overlayFileContent, content)
+	func helloMod() {
+		fmt.Println("Hello, World!")
+	}`)
 
-	content, err = afero.ReadFile(root, filepath.Join(moduleName, overlayModFileName))
-	require.NoError(t, err)
-	require.Equal(t, overlayModFileContent, content)
+	p.Golang = &info.Golang{
+		Overlay: &info.Overlay{
+			DestFiles: []string{
+				overlayFileNameGo,
+			},
+			Modules: map[string]*info.Overlay{
+				moduleName: {
+					DestFiles: []string{
+						overlayModFileNameGo,
+					},
+				},
+			},
+		},
+	}
 
-	err = afero.Walk(root, ".", func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
+	overlayFileNameCs := "hello.cs"
+	overlayFileContentCs := []byte(`
+	public class Hello {
+		public static void Main(string[] args) {
+			Console.WriteLine("Hello, World!");
 		}
-		if info.IsDir() {
-			return nil
+	}`)
+
+	overlayModFileNameCs := "helloMod.cs"
+	overlayModFileContentCs := []byte(`
+	public class HelloMod {
+		public static void Main(string[] args) {
+			Console.WriteLine("Hello, World!");
 		}
-		content, err := afero.ReadFile(root, path)
-		if err != nil {
-			return err
-		}
-		t.Logf("file: %s", path)
-		t.Logf("content: %s", string(content))
-		return nil
-	})
-	require.NoError(t, err)
+	}`)
+
+	p.CSharp = &info.CSharp{
+		Overlay: &info.Overlay{
+			DestFiles: []string{
+				overlayFileNameCs,
+			},
+			Modules: map[string]*info.Overlay{
+				moduleName: {
+					DestFiles: []string{
+						overlayModFileNameCs,
+					},
+				},
+			},
+		},
+	}
+
+	testCases := []struct {
+		name                  string
+		language              tfgen.Language
+		overlayFileName       string
+		overlayModFileName    string
+		overlayFileContent    []byte
+		overlayModFileContent []byte
+	}{
+		{
+			name: "NodeJS", language: tfgen.NodeJS,
+			overlayFileName:       overlayFileNameTs,
+			overlayModFileName:    overlayModFileNameTs,
+			overlayFileContent:    overlayFileContentTs,
+			overlayModFileContent: overlayModFileContentTs,
+		},
+		{
+			name: "Python", language: tfgen.Python,
+			overlayFileName:       overlayFileNamePy,
+			overlayModFileName:    overlayModFileNamePy,
+			overlayFileContent:    overlayFileContentPy,
+			overlayModFileContent: overlayModFileContentPy,
+		},
+		{
+			name: "Golang", language: tfgen.Golang,
+			overlayFileName:       overlayFileNameGo,
+			overlayModFileName:    overlayModFileNameGo,
+			overlayFileContent:    overlayFileContentGo,
+			overlayModFileContent: overlayModFileContentGo,
+		},
+		{
+			name: "CSharp", language: tfgen.CSharp,
+			overlayFileName:       overlayFileNameCs,
+			overlayModFileName:    overlayModFileNameCs,
+			overlayFileContent:    overlayFileContentCs,
+			overlayModFileContent: overlayModFileContentCs,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			root := afero.NewMemMapFs()
+
+			err := afero.WriteFile(root, tc.overlayFileName, tc.overlayFileContent, 0o600)
+			require.NoError(t, err)
+
+			err = afero.WriteFile(root, filepath.Join(moduleName, tc.overlayModFileName), tc.overlayModFileContent, 0o600)
+			require.NoError(t, err)
+
+			gen, err := tfgen.NewGenerator(tfgen.GeneratorOptions{
+				Package:       "prov",
+				Version:       "0.0.1",
+				ProviderInfo:  p,
+				Root:          root,
+				Language:      tc.language,
+				XInMemoryDocs: true,
+				SkipDocs:      true,
+				SkipExamples:  true,
+				Sink:          sink,
+				Debug:         true,
+			})
+			require.NoError(t, err)
+
+			_, err = gen.Generate()
+			require.NoError(t, err)
+
+			content, err := afero.ReadFile(root, tc.overlayFileName)
+			require.NoError(t, err)
+			require.Equal(t, tc.overlayFileContent, content)
+
+			content, err = afero.ReadFile(root, filepath.Join(moduleName, tc.overlayModFileName))
+			require.NoError(t, err)
+			require.Equal(t, tc.overlayModFileContent, content)
+
+			err = afero.Walk(root, ".", func(path string, info os.FileInfo, err error) error {
+				if err != nil {
+					return err
+				}
+				if info.IsDir() {
+					return nil
+				}
+				content, err := afero.ReadFile(root, path)
+				if err != nil {
+					return err
+				}
+				t.Logf("file: %s", path)
+				t.Logf("content: %s", string(content))
+				return nil
+			})
+			require.NoError(t, err)
+		})
+	}
 }

@@ -244,6 +244,7 @@ func (l Language) emitSDK(pkg *pschema.Package, info tfbridge.ProviderInfo, root
 			return nil, err
 		}
 
+		// codegen does not support overlays for go
 		m, err := runPulumiPackageGenSDK(l, pkg, nil)
 		if err != nil {
 			return nil, err
