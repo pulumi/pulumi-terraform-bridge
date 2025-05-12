@@ -244,7 +244,7 @@ func (l Language) emitSDK(pkg *pschema.Package, info tfbridge.ProviderInfo, root
 			return nil, err
 		}
 
-		m, err := runPulumiPackageGenSDK(l, pkg, extraFiles)
+		m, err := runPulumiPackageGenSDK(l, pkg, nil)
 		if err != nil {
 			return nil, err
 		}
