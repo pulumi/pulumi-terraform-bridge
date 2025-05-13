@@ -44,6 +44,7 @@ import (
 	sdkv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/x/muxer"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
 // TestRegress611 tests against test_data/regress-611-schema.json.
@@ -286,7 +287,6 @@ func TestTypeSharing(t *testing.T) {
 
 	bytes, err := json.MarshalIndent(schema, "", "  ")
 	require.NoError(t, err)
-
 	autogold.ExpectFile(t, autogold.Raw(string(bytes)))
 }
 
@@ -874,4 +874,112 @@ func (c *captureDiagSink) Logf(s diag.Severity, d *diag.Diag, a ...any) {
 
 func (c *captureDiagSink) Stringify(diag.Severity, *diag.Diag, ...any) (string, string) {
 	panic("unimplemented")
+}
+
+func TestAltTypeRefs(t *testing.T) {
+	t.Parallel()
+
+	// Create a provider with a resource that has a property referencing another resource, and a "regular" custom type
+	// for comparison
+	provider := tfbridge.ProviderInfo{
+		Name: "testprov",
+		P: sdkv2.NewProvider(&schema.Provider{
+			ResourcesMap: map[string]*schema.Resource{
+				"testprov_parent": {
+					Schema: map[string]*schema.Schema{
+						"child": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"customType": {
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+					},
+				},
+				"testprov_child": {
+					Schema: map[string]*schema.Schema{
+						"name": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
+					},
+				},
+			},
+		}),
+		Resources: map[string]*tfbridge.ResourceInfo{
+			"testprov_parent": {
+				Tok: "testprov:index:Parent",
+				Fields: map[string]*tfbridge.SchemaInfo{
+					"child": {
+						Type:     "string",
+						AltTypes: []tokens.Type{"testprov:index:Child"},
+					},
+					"customType": {
+						Type:     "string",
+						AltTypes: []tokens.Type{"testprov:index:CustomType"},
+					},
+				},
+			},
+			"testprov_child": {
+				Tok: "testprov:index:Child",
+			},
+		},
+		ExtraTypes: map[string]pschema.ComplexTypeSpec{
+			"testprov:index:CustomType": {
+				ObjectTypeSpec: pschema.ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]pschema.PropertySpec{
+						"value": {TypeSpec: pschema.TypeSpec{Type: "string"}},
+					},
+				},
+			},
+		},
+	}
+
+	// Generate the schema
+	var buf bytes.Buffer
+	schema, err := GenerateSchema(provider, diag.DefaultSink(&buf, &buf, diag.FormatOptions{
+		Color: colors.Never,
+	}))
+	require.NoError(t, err)
+
+	parentResource := schema.Resources["testprov:index:Parent"]
+	childProp := parentResource.InputProperties["child"]
+
+	// The type should be a string with a oneOf that includes the resource reference
+	require.Equal(t, "string", childProp.Type)
+	require.NotNil(t, childProp.OneOf)
+	require.Len(t, childProp.OneOf, 2)
+
+	hasStringType := false
+	hasResourceRef := false
+	for _, t := range childProp.OneOf {
+		if t.Type == "string" && t.Ref == "" {
+			hasStringType = true
+		}
+		if t.Type == "string" && t.Ref == "#/resources/testprov:index:Child" {
+			hasResourceRef = true
+		}
+	}
+	require.True(t, hasStringType, "Should have string type in oneOf")
+	require.True(t, hasResourceRef, "Should have resource reference in oneOf")
+
+	// The customType should be a string with a oneOf that includes a type reference
+	customTypeProp := parentResource.InputProperties["customType"]
+	require.NotNil(t, customTypeProp.OneOf)
+	require.Len(t, customTypeProp.OneOf, 2)
+
+	hasStringType = false
+	hasTypeRef := false
+	for _, t := range customTypeProp.OneOf {
+		if t.Type == "string" && t.Ref == "" {
+			hasStringType = true
+		}
+		if t.Type == "string" && t.Ref == "#/types/testprov:index:CustomType" {
+			hasTypeRef = true
+		}
+	}
+	require.True(t, hasStringType, "Should have string type in oneOf")
+	require.True(t, hasTypeRef, "Should have type reference in oneOf")
 }

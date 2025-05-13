@@ -1002,9 +1002,17 @@ func (g *schemaGenerator) schemaType(path paths.TypePath, typ *propertyType, out
 				if tPkg == g.pkg {
 					pkg = ""
 				}
+				refPrefix := "#/types/"
+				// Check if this token is already a resource token.
+				// If yes, we have a resource reference in the schema and want to express that, to avoid dangling refs.
+				for _, resource := range g.info.Resources {
+					if resource.Tok.String() == strings.TrimSuffix(string(t), "[]") {
+						refPrefix = "#/resources/"
+					}
+				}
 				spec := pschema.TypeSpec{
 					Type: defaultType,
-					Ref:  fmt.Sprintf("%s#/types/%s", pkg, strings.TrimSuffix(string(t), "[]")),
+					Ref:  fmt.Sprintf("%s%s%s", pkg, refPrefix, strings.TrimSuffix(string(t), "[]")),
 				}
 				if strings.HasSuffix(string(t), "[]") {
 					items := spec
