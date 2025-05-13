@@ -10,7 +10,7 @@ import (
 )
 
 func TestInterpolationWalker_detect(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	cases := []struct {
 		Input  interface{}
 		Result []string
@@ -107,7 +107,7 @@ func TestInterpolationWalker_detect(t *testing.T) {
 }
 
 func TestInterpolationWalker_replace(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	cases := []struct {
 		Input  interface{}
 		Output interface{}

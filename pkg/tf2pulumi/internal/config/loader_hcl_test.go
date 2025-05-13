@@ -5,6 +5,6 @@ import (
 )
 
 func TestHCLConfigurableConfigurable(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	var _ configurable = new(hclConfigurable)
 }

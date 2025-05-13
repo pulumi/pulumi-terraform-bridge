@@ -16,12 +16,14 @@ package tfbridge
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/convert"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 
 // Create allocates a new instance of the provided resource and returns its unique resource ID.
@@ -103,6 +105,21 @@ func (p *provider) CreateWithContext(
 		return "", nil, 0, err
 	}
 
+	// Use Terraform's AssertObjectCompatible for inconsistency detection
+	if !preview {
+		if err := detectAndReportPFInconsistenciesWithTerraform(
+			ctx,
+			rh.terraformResourceName,
+			planResp.PlannedState,
+			resp.NewState,
+			rh.schema,
+		); err != nil {
+			// Log error but don't fail the operation
+			logger := tfbridge.GetLogger(ctx)
+			logger.Warn(fmt.Sprintf("Error during inconsistency detection: %v", err))
+		}
+	}
+
 	createdState, err := parseResourceStateFromTF(ctx, &rh, resp.NewState, resp.Private)
 	if err != nil {
 		return "", nil, 0, err
@@ -121,15 +138,19 @@ func (p *provider) CreateWithContext(
 		}
 	}
 
-	rn := rh.terraformResourceName
-	createdID, err := extractID(ctx, rn, rh.pulumiResourceInfo, createdStateMap)
-	if err != nil {
-		return "", nil, 0, err
+	// Extract ID from state
+	resourceID := resource.ID("")
+	if id, has := createdStateMap["id"]; has {
+		resourceID = resource.ID(id.StringValue())
+	}
+
+	if resourceID == "" {
+		return "", nil, 0, fmt.Errorf("Create of resource returned empty ID; this is always a Terraform provider bug")
 	}
 
 	if err := insertRawStateDelta(ctx, &rh, createdStateMap, createdState.Value); err != nil {
 		return "", nil, 0, err
 	}
 
-	return createdID, createdStateMap, resource.StatusOK, nil
+	return resourceID, createdStateMap, resource.StatusOK, nil
 }

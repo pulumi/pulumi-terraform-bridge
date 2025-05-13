@@ -10,7 +10,6 @@ import (
 	"net/http"
 
 	cleanhttp "github.com/hashicorp/go-cleanhttp"
-	
 )
 
 // New returns the DefaultPooledClient from the cleanhttp

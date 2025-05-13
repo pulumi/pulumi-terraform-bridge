@@ -6,7 +6,7 @@ import (
 )
 
 func TestTargetContains(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	for _, test := range []struct {
 		addr, other Targetable
 		expect      bool
@@ -212,7 +212,7 @@ func TestTargetContains(t *testing.T) {
 }
 
 func TestResourceContains(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	for _, test := range []struct {
 		in, other Targetable
 		expect    bool
