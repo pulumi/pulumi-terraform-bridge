@@ -1284,57 +1284,66 @@ func Test_isSimilarNumber(t *testing.T) {
 	t.Parallel()
 
 	type testCase struct {
-		f64     float64
-		bigNum  string
-		similar bool
+		f64       float64
+		bigNum    string
+		bigNumStr autogold.Value
+		similar   bool
 	}
 
 	testCases := []testCase{
 		{
-			f64:     0,
-			bigNum:  "0",
-			similar: true,
+			f64:       0,
+			bigNum:    "0",
+			similar:   true,
+			bigNumStr: autogold.Expect("0"),
 		},
 		{
-			f64:     0.5,
-			bigNum:  "0.5",
-			similar: true,
+			f64:       0.5,
+			bigNum:    "0.5",
+			similar:   true,
+			bigNumStr: autogold.Expect("0.5"),
 		},
 		{
-			f64:     3.14,
-			bigNum:  "3.14",
-			similar: true,
+			f64:       3.14,
+			bigNum:    "3.14",
+			similar:   true,
+			bigNumStr: autogold.Expect("3.14"),
 		},
 		{
-			f64:     2495055709147741000,
-			bigNum:  "2495055709147741000",
-			similar: true,
+			f64:       2495055709147741000,
+			bigNum:    "2495055709147741000",
+			similar:   true,
+			bigNumStr: autogold.Expect("2495055709147741000"),
 		},
 		{
 			f64:    2495055709147741000,
 			bigNum: "2495055709147741188",
 			// Rounding occurred on something that could be an ID; must mark as similar: false.
-			similar: false,
+			similar:   false,
+			bigNumStr: autogold.Expect("2495055709147741188"),
 		},
 		{
 			f64:    2495055709147741188,
 			bigNum: "2495055709147741188",
 			// Rounding occurs here as well as the literal does not represent cleanly in float64.
-			similar: false,
+			similar:   false,
+			bigNumStr: autogold.Expect("2495055709147741188"),
 		},
 		{
 			f64:    2495055709147741000.32,
 			bigNum: "2495055709147741000.32",
 			// There is rounding here but the literal is not an integer and unlikely an ID; either value of
 			// similar: false or similar: true may be acceptable.
-			similar: false,
+			similar:   false,
+			bigNumStr: autogold.Expect("2495055709147741000.2"),
 		},
 		{
 			f64: 2495055709147741000.123456,
 			// This accidentally parses as an integer in big.Float;
 			// Can remove this test case or can decide similar=false - not essential.
-			bigNum:  "2495055709147741000.123456",
-			similar: true,
+			bigNum:    "2495055709147741000.123456",
+			similar:   true,
+			bigNumStr: autogold.Expect("2495055709147741000"),
 		},
 	}
 
@@ -1343,6 +1352,7 @@ func Test_isSimilarNumber(t *testing.T) {
 			bn, _, err := new(big.Float).Parse(tc.bigNum, 10)
 			require.NoError(t, err)
 			t.Logf("Parsed as %q", bn.Text('f', -1))
+			tc.bigNumStr.Equal(t, bn.Text('f', -1))
 			assert.Equal(t, tc.similar, isSimilarNumber(tc.f64, bn))
 		})
 	}
