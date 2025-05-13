@@ -35,7 +35,7 @@ func (enc *dynamicEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.
 	case propertyValueIsUnknown(p):
 		return tftypes.NewValue(tftypes.Object{} /* arbitrary type */, tftypes.UnknownValue), nil
 	case p.IsNull():
-		return tftypes.NewValue(tftypes.Object{} /* arbitrary type */, nil), nil
+		return tftypes.NewValue(tftypes.DynamicPseudoType, nil), nil
 	case p.IsBool():
 		return tftypes.NewValue(tftypes.Bool, p.BoolValue()), nil
 	case p.IsNumber():

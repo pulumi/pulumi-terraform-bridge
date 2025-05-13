@@ -334,3 +334,26 @@ func TestPFCrossTestCreateBasic(t *testing.T) {
 		"hello": cty.StringVal("world"),
 	})
 }
+
+func TestPFCreateDynamicAttribute(t *testing.T) {
+	t.Parallel()
+
+	res := pb.NewResource(
+		pb.NewResourceArgs{
+			ResourceSchema: schema.Schema{
+				Attributes: map[string]schema.Attribute{
+					"hello": schema.StringAttribute{
+						Optional: true,
+					},
+					"dynamic": schema.DynamicAttribute{
+						Optional: true,
+					},
+				},
+			},
+		},
+	)
+
+	crosstests.Create(t, res, map[string]cty.Value{
+		"hello": cty.StringVal("world"),
+	})
+}
