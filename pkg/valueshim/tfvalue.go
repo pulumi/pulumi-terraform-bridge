@@ -125,11 +125,16 @@ func (v tValueShim) BoolValue() bool {
 }
 
 func (v tValueShim) NumberValue() float64 {
+	result := v.BigFloatValue()
+	f, _ := result.Float64()
+	return f
+}
+
+func (v tValueShim) BigFloatValue() *big.Float {
 	var result big.Float
 	err := v.val().As(&result)
 	contract.AssertNoErrorf(err, "Cannot cast value as NumberValue")
-	f, _ := result.Float64()
-	return f
+	return &result
 }
 
 func (v tValueShim) StringValue() string {
