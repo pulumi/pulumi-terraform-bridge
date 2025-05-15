@@ -874,11 +874,12 @@ func NewGenerator(opts GeneratorOptions) (*Generator, error) {
 			return nil, err
 		}
 
-		ctx, err := plugin.NewContext(sink, sink, nil, nil, cwd, nil, false, nil)
+		ctx := context.Background()
+		pluginContext, err := plugin.NewContext(ctx, sink, sink, nil, nil, cwd, nil, false, nil)
 		if err != nil {
 			return nil, err
 		}
-		pluginHost = ctx.Host
+		pluginHost = pluginContext.Host
 	}
 
 	infoSources := append([]il.ProviderInfoSource{}, opts.ProviderInfoSource, il.PluginProviderInfoSource)
@@ -1041,7 +1042,7 @@ func (g *Generator) UnstableGenerateFromSchema(genSchemaResult *GenerateSchemaRe
 			files[path] = code
 		}
 	default:
-		pulumiPackage, diags, err := pschema.BindSpec(pulumiPackageSpec, nil)
+		pulumiPackage, diags, err := pschema.BindSpec(pulumiPackageSpec, nil, pschema.ValidationOptions{})
 		if err != nil {
 			return nil, pkgerrors.Wrapf(err, "failed to import Pulumi schema")
 		}

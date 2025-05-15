@@ -15,6 +15,7 @@
 package testutil
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -35,7 +36,9 @@ func RandomProvider(t *testing.T) integration.LocalDependency {
 }
 
 func pluginDependency(t *testing.T, name string, version semver.Version) integration.LocalDependency {
+	ctx := context.Background()
 	path, err := workspace.GetPluginPath(
+		ctx,
 		diag.DefaultSink(os.Stdout, os.Stderr, diag.FormatOptions{
 			Color: colors.Never,
 		}),

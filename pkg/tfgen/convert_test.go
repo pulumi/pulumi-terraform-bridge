@@ -15,6 +15,7 @@
 package tfgen
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"runtime"
@@ -39,8 +40,9 @@ func TestConvert(t *testing.T) {
 	cwd, err := os.Getwd()
 	require.NoError(t, err)
 
+	ctx := context.Background()
 	pluginContext, err := plugin.NewContext(
-		nil, nil, nil, nil,
+		ctx, nil, nil, nil, nil,
 		cwd, nil, false, nil)
 	require.NoError(t, err)
 	defer contract.IgnoreClose(pluginContext)
