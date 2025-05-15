@@ -92,6 +92,10 @@ func (p *provider) DiffWithContext(
 	if err != nil {
 		return plugin.DiffResult{}, err
 	}
+	checkedRequiresReplace, err := checkRequiresReplace(priorState, plannedStateValue, planResp.RequiresReplace)
+	if err != nil {
+		return plugin.DiffResult{}, err
+	}
 
 	tfDiff, err := priorState.Value.Diff(plannedStateValue)
 	if err != nil {
@@ -100,7 +104,7 @@ func (p *provider) DiffWithContext(
 
 	resSchemaMap := rh.schemaOnlyShimResource.Schema()
 	resFields := rh.pulumiResourceInfo.GetFields()
-	replaceKeys := topLevelPropertyKeySet(resSchemaMap, resFields, planResp.RequiresReplace)
+	replaceKeys := topLevelPropertyKeySet(resSchemaMap, resFields, checkedRequiresReplace)
 	changedKeys := topLevelPropertyKeySet(resSchemaMap, resFields, diffAttributePaths(tfDiff))
 
 	// TODO[pulumi/pulumi-terraform-bridge#823] nameRequiresDeleteBeforeReplace intricacies
@@ -207,4 +211,38 @@ func diffAttributePaths(tfDiff []tftypes.ValueDiff) []*tftypes.AttributePath {
 		paths = append(paths, diff.Path)
 	}
 	return paths
+}
+
+// checkRequiresReplace checks if the planned state is different from the prior state for the given attribute paths.
+// Returns the attribute paths that are indeed different.
+func checkRequiresReplace(
+	priorState *upgradedResourceState, plannedState tftypes.Value, replaceKeys []*tftypes.AttributePath) (
+	[]*tftypes.AttributePath, error,
+) {
+	//nolint:lll
+	// adapted from https://github.com/opentofu/opentofu/blob/76d388b34051b2dcf7b21d2d6d15e0c4dcb48734/internal/tofu/node_resource_abstract_instance.go#L1116
+	checkedRequiresReplace := []*tftypes.AttributePath{}
+	for _, replace := range replaceKeys {
+		priorValAny, _, err := tftypes.WalkAttributePath(priorState.Value, replace)
+		if err != nil {
+			return nil, fmt.Errorf("failed to walk attribute path: %w", err)
+		}
+		priorVal, ok := priorValAny.(tftypes.Value)
+		if !ok {
+			return nil, fmt.Errorf("failed to convert priorVal to tftypes.Value: %w", err)
+		}
+		plannedValAny, _, err := tftypes.WalkAttributePath(plannedState, replace)
+		if err != nil {
+			return nil, fmt.Errorf("failed to walk attribute path: %w", err)
+		}
+		plannedVal, ok := plannedValAny.(tftypes.Value)
+		if !ok {
+			return nil, fmt.Errorf("failed to convert plannedVal to tftypes.Value: %w", err)
+		}
+
+		if !priorVal.Equal(plannedVal) {
+			checkedRequiresReplace = append(checkedRequiresReplace, replace)
+		}
+	}
+	return checkedRequiresReplace, nil
 }
