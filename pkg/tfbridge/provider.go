@@ -1340,6 +1340,22 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 			return nil, fmt.Errorf("expected non-empty ID for new state during Create of %s", urn)
 		}
 
+		// Add inconsistency detection
+		if ShouldDetectInconsistentApply(res.TFName) {
+			// Get planned state from the diff
+			plannedState, pErr := diff.ProposedState(res.TF, nil)
+			if pErr == nil {
+				// Create filter and check for inconsistencies
+				filter := GetInconsistencyFilter(p.info.InconsistencyFilter)
+				
+				result := detectInconsistentApply(ctx, res.TFName, diff, plannedState, newstate, filter)
+				if result.Detected {
+					logger := GetLogger(ctx)
+					logger.Warn(formatInconsistencyMessage(result))
+				}
+			}
+		}
+
 		if err != nil {
 			reasons = append(reasons, errors.Wrapf(err, "creating %s", urn).Error())
 		}
@@ -1720,6 +1736,23 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 		if newstate.ID() == "" {
 			return nil, fmt.Errorf("expected non-empty ID for new state during Update of %s", urn)
 		}
+
+		// Add inconsistency detection
+		if ShouldDetectInconsistentApply(res.TFName) {
+			// Get planned state from the diff
+			plannedState, pErr := diff.ProposedState(res.TF, state)
+			if pErr == nil {
+				// Create filter and check for inconsistencies
+				filter := GetInconsistencyFilter(p.info.InconsistencyFilter)
+				
+				result := detectInconsistentApply(ctx, res.TFName, diff, plannedState, newstate, filter)
+				if result.Detected {
+					logger := GetLogger(ctx)
+					logger.Warn(formatInconsistencyMessage(result))
+				}
+			}
+		}
+
 		if err != nil {
 			reasons = append(reasons, errors.Wrapf(err, "updating %s", urn).Error())
 		}
