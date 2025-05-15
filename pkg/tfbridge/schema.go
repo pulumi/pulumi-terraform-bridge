@@ -1777,11 +1777,10 @@ func extractSchemaInputs(
 				return resource.NewProperty(
 					extractSchemaInputsObject(state.ObjectValue(), e.Schema(), ps.Fields),
 				)
-			} else {
-				// The shape of state and tfs have de-synchronized, so we
-				// just return state as is.
-				return state
 			}
+			// The shape of state and tfs have de-synchronized, so we
+			// just return state as is.
+			return state
 		}
 	}
 
