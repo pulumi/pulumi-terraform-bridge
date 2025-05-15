@@ -44,6 +44,7 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/internal/paths"
+	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/x/muxer"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 )
@@ -332,6 +333,55 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg, sink diag.Sink) (pschema.Pac
 		}
 		spec.Provider = g.genResourceType(indexModToken, pack.provider)
 
+		// For pulumi-terraform-module, we would like to have a Terraform Config method on the provider.
+		// To do so, we Add a Function to this spec, and then add the Function to the provider's Methods,
+		// which will expose it to the provider server's Call() gRPC method.
+		providerSelfRef := "#/resources/pulumi:providers:" + pack.name.String()
+		terraformConfigFunctionToken := "pulumi:providers:" + pack.name.String() + "/terraformConfig"
+		terraformConfig := pschema.FunctionSpec{
+			Description: "This function returns a Terraform config object with terraform-namecased keys," +
+				"to be used with the Terraform Module Provider.",
+			Inputs: &pschema.ObjectTypeSpec{
+				Type: terraformConfigFunctionToken,
+				Properties: map[string]pschema.PropertySpec{
+					"__self__": {
+						TypeSpec: pschema.TypeSpec{
+							Type: "ref",
+							Ref:  providerSelfRef,
+						},
+					},
+				},
+				Required: []string{"__self__"},
+			},
+
+			MultiArgumentInputs: nil,
+			Outputs:             nil,
+			ReturnType: &pschema.ReturnTypeSpec{
+				ObjectTypeSpec: &pschema.ObjectTypeSpec{
+					Type: "object",
+					Properties: map[string]pschema.PropertySpec{
+						"result": {
+							TypeSpec: pschema.TypeSpec{
+								Type: "object",
+								AdditionalProperties: &pschema.TypeSpec{
+									Ref: "pulumi.json#/Any",
+								},
+							},
+						},
+					},
+					Required: []string{"result"},
+				},
+			},
+			DeprecationMessage:        "",
+			Language:                  nil,
+			IsOverlay:                 false,
+			OverlaySupportedLanguages: nil,
+		}
+
+		spec.Functions[terraformConfigFunctionToken] = terraformConfig
+		methods := map[string]string{"terraformConfig": terraformConfigFunctionToken}
+		spec.Provider.Methods = methods
+
 		// Ensure that input properties are mirrored as output properties, but without fields set which
 		// are only meaningful for input properties.
 		spec.Provider.Required = spec.Provider.RequiredInputs
@@ -393,7 +443,7 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg, sink diag.Sink) (pschema.Pac
 	}
 
 	// Validate the schema.
-	_, diags, err := pschema.BindSpec(spec, nil, pschema.ValidationOptions{})
+	_, diags, err := pschema.BindSpec(spec, nil, pschema.ValidationOptions{AllowDanglingReferences: true})
 	if err != nil {
 		return pschema.PackageSpec{}, err
 	}
@@ -816,7 +866,12 @@ func (g *schemaGenerator) genResourceType(mod tokens.Module, res *resourceType) 
 		}
 		spec.InputProperties[prop.name] = g.genProperty(prop)
 
-		if !prop.optional() {
+		hasDefault := false
+		if s, ok := prop.schema.(shim.SchemaWithHasDefault); ok && !g.info.DisableRequiredWithDefaultTurningOptional {
+			hasDefault = s.HasDefault()
+		}
+
+		if !prop.optional() && !hasDefault {
 			spec.RequiredInputs = append(spec.RequiredInputs, prop.name)
 		}
 	}

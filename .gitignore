@@ -17,3 +17,5 @@ pf/tests/coverage.out
 pulumi-hcl-lint
 
 .envrc
+.env
+.aider*

@@ -145,6 +145,37 @@
             "strConfigProp": {
                 "type": "string"
             }
+        },
+        "methods": {
+            "terraformConfig": "pulumi:providers:tpsdkv2/terraformConfig"
+        }
+    },
+    "functions": {
+        "pulumi:providers:tpsdkv2/terraformConfig": {
+            "description": "This function returns a Terraform config object with terraform-namecased keys,to be used with the Terraform Module Provider.",
+            "inputs": {
+                "properties": {
+                    "__self__": {
+                        "type": "ref",
+                        "$ref": "#/resources/pulumi:providers:tpsdkv2"
+                    }
+                },
+                "type": "pulumi:providers:tpsdkv2/terraformConfig",
+                "required": [
+                    "__self__"
+                ]
+            },
+            "outputs": {
+                "properties": {
+                    "result": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "result"
+                ],
+                "type": "object"
+            }
         }
     }
 }

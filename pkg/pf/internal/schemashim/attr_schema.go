@@ -32,6 +32,8 @@ var _ shim.Schema = (*attrSchema)(nil)
 
 var _ shim.SchemaWithWriteOnly = (*attrSchema)(nil)
 
+var _ shim.SchemaWithHasDefault = (*attrSchema)(nil)
+
 func (s *attrSchema) Type() shim.ValueType {
 	ty := s.attr.GetType()
 	vt, err := convertType(ty)
@@ -61,6 +63,10 @@ func (*attrSchema) DefaultValue() (interface{}, error) {
 	// DefaultValue() should not be called by tfgen, but it currently may be called by ExtractInputsFromOutputs, so
 	// returning nil is better than a panic.
 	return nil, bridge.ErrSchemaDefaultValue
+}
+
+func (s *attrSchema) HasDefault() bool {
+	return s.attr.HasDefault()
 }
 
 func (s *attrSchema) Description() string {
@@ -142,11 +148,7 @@ func (s *attrSchema) Sensitive() bool {
 }
 
 func (s *attrSchema) WriteOnly() bool {
-	schema, ok := s.attr.(pfutils.AttrLikeWithWriteOnly)
-	if ok {
-		return schema.IsWriteOnly()
-	}
-	return false
+	return s.attr.IsWriteOnly()
 }
 
 func (*attrSchema) SetElement(config interface{}) (interface{}, error) {

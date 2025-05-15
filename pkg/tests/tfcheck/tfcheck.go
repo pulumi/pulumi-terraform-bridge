@@ -130,7 +130,6 @@ func newTFDriverV6(t pulcheck.T, dir, providerName string, prov tfprotov6.Provid
 }
 
 func (d *TFDriver) Write(t pulcheck.T, program string) {
-	t.Logf("HCL: \n%s\n", program)
 	err := os.WriteFile(filepath.Join(d.cwd, "test.tf"), []byte(program), 0o600)
 	require.NoErrorf(t, err, "writing test.tf")
 }

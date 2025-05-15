@@ -1832,9 +1832,62 @@ func (p *Provider) Construct(context.Context, *pulumirpc.ConstructRequest) (*pul
 	return nil, status.Error(codes.Unimplemented, "Construct is not yet implemented")
 }
 
-// Call dynamically executes a method in the provider associated with a component resource.
+func (p *Provider) returnTerraformConfig(ctx context.Context) (resource.PropertyMap, error) {
+	resConfig, err := buildTerraformConfig(ctx, p, p.configValues)
+	if err != nil {
+		return nil, fmt.Errorf("error building Terraform config: %v", err)
+	}
+
+	jsonConfigMap := map[string]any{}
+
+	if cfg, ok := resConfig.(shim.ResourceConfigWithGetterForRawConfigMap); ok {
+		jsonConfigMap, err = cfg.GetRawConfigMap()
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("it looks like you're trying to use the provider's terraformConfig function. "+
+			"The result of this function is meant for use as the config value of a required provider for a "+
+			"Pulumi Terraform Module. All inputs to provider configuration must be known for this feature to work: %v",
+			err)
+	}
+
+	originalMap := resource.NewPropertyMapFromMap(jsonConfigMap)
+	configsMap := resource.PropertyMap{}
+	// Make the map entries secret to avoid leaking sensitive information
+	for key, val := range originalMap {
+		configsMap[key] = resource.MakeSecret(val)
+	}
+
+	resultMap := resource.PropertyMap{
+		"result": resource.NewObjectProperty(configsMap),
+	}
+	return resultMap, nil
+}
+
+// Call dynamically executes a method in the provider.
 func (p *Provider) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "Call is not yet implemented")
+	ctx = p.loggingContext(ctx, "")
+
+	_, functionName, found := strings.Cut(req.GetTok(), "/")
+	if !found {
+		return nil, fmt.Errorf("error getting method name from method token %q", req.GetTok())
+	}
+	switch functionName {
+	case "terraformConfig":
+		tfConfigOutput, err := p.returnTerraformConfig(ctx)
+		if err != nil {
+			return nil, err
+		}
+		outputResult, err := plugin.MarshalProperties(tfConfigOutput, plugin.MarshalOptions{KeepSecrets: true})
+		if err != nil {
+			return nil, err
+		}
+		return &pulumirpc.CallResponse{
+			Return: outputResult,
+		}, nil
+	default:
+		return nil, fmt.Errorf("unknown method token for Call %s", req.GetTok())
+	}
 }
 
 // Invoke dynamically executes a built-in function in the provider.

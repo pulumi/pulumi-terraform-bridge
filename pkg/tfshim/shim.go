@@ -14,6 +14,11 @@ type ResourceConfig interface {
 	IsSet(k string) bool
 }
 
+type ResourceConfigWithGetterForRawConfigMap interface {
+	ResourceConfig
+	GetRawConfigMap() (map[string]any, error)
+}
+
 type InstanceState interface {
 	Type() string
 
@@ -215,6 +220,11 @@ type SchemaWithSetElementHash interface {
 	// SetElementHash returns a hash of the given set element.
 	// Note that it expects a set element without any unknown values.
 	SetElementHash(v interface{}) (int, error)
+}
+
+type SchemaWithHasDefault interface {
+	Schema
+	HasDefault() bool
 }
 
 type SchemaMap interface {

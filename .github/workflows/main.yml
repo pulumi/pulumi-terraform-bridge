@@ -1,0 +1,24 @@
+permissions: write-all # Equivalent to default permissions plus id-token: write
+name: Main and Tag Builds
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - v*
+    paths-ignore:
+      - '.github/workflows/update-providers.yml'
+      - 'README.md'
+
+env:
+  ESC_ACTION_OIDC_AUTH: true
+  ESC_ACTION_OIDC_ORGANIZATION: pulumi
+  ESC_ACTION_OIDC_REQUESTED_TOKEN_TYPE: urn:pulumi:token-type:access_token:organization
+  ESC_ACTION_ENVIRONMENT: imports/github-secrets
+  ESC_ACTION_EXPORT_ENVIRONMENT_VARIABLES: GITHUB_TOKEN=PULUMI_BOT_TOKEN
+
+jobs:
+  build:
+    uses: ./.github/workflows/build-and-test.yml
+    secrets: inherit

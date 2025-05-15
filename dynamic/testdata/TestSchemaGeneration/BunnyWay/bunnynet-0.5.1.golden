@@ -282,6 +282,9 @@
                 "type": "string",
                 "description": "Optional. The Stream API URL. Defaults to `https://video.bunnycdn.com`.\n"
             }
+        },
+        "methods": {
+            "terraformConfig": "pulumi:providers:bunnynet/terraformConfig"
         }
     },
     "resources": {
@@ -3884,6 +3887,35 @@
                     "transcribingAccuracy",
                     "id"
                 ]
+            }
+        },
+        "pulumi:providers:bunnynet/terraformConfig": {
+            "description": "This function returns a Terraform config object with terraform-namecased keys,to be used with the Terraform Module Provider.",
+            "inputs": {
+                "properties": {
+                    "__self__": {
+                        "type": "ref",
+                        "$ref": "#/resources/pulumi:providers:bunnynet"
+                    }
+                },
+                "type": "pulumi:providers:bunnynet/terraformConfig",
+                "required": [
+                    "__self__"
+                ]
+            },
+            "outputs": {
+                "properties": {
+                    "result": {
+                        "additionalProperties": {
+                            "$ref": "pulumi.json#/Any"
+                        },
+                        "type": "object"
+                    }
+                },
+                "required": [
+                    "result"
+                ],
+                "type": "object"
             }
         }
     },

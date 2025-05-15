@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -183,7 +184,7 @@ func Test_rawstate_delta_turnaround(t *testing.T) {
 			})),
 		},
 		{
-			name: "bigint",
+			name: "bigint-as-string-in-pulumi",
 			schema: &schema.Schema{
 				Type:     schema.TypeInt,
 				Optional: true,
@@ -192,13 +193,39 @@ func Test_rawstate_delta_turnaround(t *testing.T) {
 			cv: cty.MustParseNumberVal("12345678901234567890"),
 		},
 		{
-			name: "bignum",
+			name: "bigint-as-f64-in-pulumi",
+			schema: &schema.Schema{
+				Type:     schema.TypeInt,
+				Optional: true,
+			},
+			pv: func() resource.PropertyValue {
+				v, err := strconv.ParseFloat("2495055709147741188", 64)
+				require.NoError(t, err)
+				return resource.NewNumberProperty(v)
+			}(),
+			cv: cty.MustParseNumberVal("2495055709147741188"),
+		},
+		{
+			name: "bignum-as-string-in-pulumi",
 			schema: &schema.Schema{
 				Type:     schema.TypeFloat,
 				Optional: true,
 			},
-			pv: resource.NewStringProperty("12345678.901234567890"),
-			cv: cty.MustParseNumberVal("12345678.901234567890"),
+			pv: resource.NewStringProperty("12345678.90123456789"),
+			cv: cty.MustParseNumberVal("12345678.90123456789"),
+		},
+		{
+			name: "bignum-as-f64-in-pulumi",
+			schema: &schema.Schema{
+				Type:     schema.TypeFloat,
+				Optional: true,
+			},
+			pv: func() resource.PropertyValue {
+				v, err := strconv.ParseFloat("12345678.90123456789", 64)
+				require.NoError(t, err)
+				return resource.NewNumberProperty(v)
+			}(),
+			cv: cty.MustParseNumberVal("12345678.90123456789"),
 		},
 		{
 			name: "empty-set",
@@ -406,9 +433,11 @@ func Test_rawstate_delta_turnaround(t *testing.T) {
 			cvJSON, err := ctyjson.Marshal(cv, cv.Type())
 			require.NoError(t, err)
 
+			t.Logf("cvJSON: %s", string(cvJSON))
 			t.Logf("recoveredValueJSON: %s", string(recoveredValueJSON))
 
-			require.JSONEq(t, string(cvJSON), string(recoveredValueJSON))
+			// NOTE: require.JSONEq is not precise enough as it rounds numbers to f64.
+			require.Equal(t, string(cvJSON), string(recoveredValueJSON))
 		})
 	}
 }
@@ -1247,6 +1276,84 @@ func Test_rawStateDelta_PropertyValue_serialization(t *testing.T) {
 			back, err := UnmarshalRawStateDelta(pv)
 			require.NoError(t, err)
 			require.Equal(t, tc.rsd.Replace, back.Replace)
+		})
+	}
+}
+
+func Test_isSimilarNumber(t *testing.T) {
+	t.Parallel()
+
+	type testCase struct {
+		f64       float64
+		bigNum    string
+		bigNumStr autogold.Value
+		similar   bool
+	}
+
+	testCases := []testCase{
+		{
+			f64:       0,
+			bigNum:    "0",
+			similar:   true,
+			bigNumStr: autogold.Expect("0"),
+		},
+		{
+			f64:       0.5,
+			bigNum:    "0.5",
+			similar:   true,
+			bigNumStr: autogold.Expect("0.5"),
+		},
+		{
+			f64:       3.14,
+			bigNum:    "3.14",
+			similar:   true,
+			bigNumStr: autogold.Expect("3.14"),
+		},
+		{
+			f64:       2495055709147741000,
+			bigNum:    "2495055709147741000",
+			similar:   true,
+			bigNumStr: autogold.Expect("2495055709147741000"),
+		},
+		{
+			f64:    2495055709147741000,
+			bigNum: "2495055709147741188",
+			// Rounding occurred on something that could be an ID; must mark as similar: false.
+			similar:   false,
+			bigNumStr: autogold.Expect("2495055709147741188"),
+		},
+		{
+			f64:    2495055709147741188,
+			bigNum: "2495055709147741188",
+			// Rounding occurs here as well as the literal does not represent cleanly in float64.
+			similar:   false,
+			bigNumStr: autogold.Expect("2495055709147741188"),
+		},
+		{
+			f64:    2495055709147741000.32,
+			bigNum: "2495055709147741000.32",
+			// There is rounding here but the literal is not an integer and unlikely an ID; either value of
+			// similar: false or similar: true may be acceptable.
+			similar:   false,
+			bigNumStr: autogold.Expect("2495055709147741000.2"),
+		},
+		{
+			f64: 2495055709147741000.123456,
+			// This accidentally parses as an integer in big.Float;
+			// Can remove this test case or can decide similar=false - not essential.
+			bigNum:    "2495055709147741000.123456",
+			similar:   true,
+			bigNumStr: autogold.Expect("2495055709147741000"),
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(fmt.Sprintf("isSimilarNumber(%v, parse(%q))", tc.f64, tc.bigNum), func(t *testing.T) {
+			bn, _, err := new(big.Float).Parse(tc.bigNum, 10)
+			require.NoError(t, err)
+			t.Logf("Parsed as %q", bn.Text('f', -1))
+			tc.bigNumStr.Equal(t, bn.Text('f', -1))
+			assert.Equal(t, tc.similar, isSimilarNumber(tc.f64, bn))
 		})
 	}
 }

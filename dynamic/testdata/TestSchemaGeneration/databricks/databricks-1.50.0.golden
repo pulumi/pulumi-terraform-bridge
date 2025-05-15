@@ -15899,6 +15899,9 @@
             "warehouseId": {
                 "type": "string"
             }
+        },
+        "methods": {
+            "terraformConfig": "pulumi:providers:databricks/terraformConfig"
         }
     },
     "resources": {
@@ -30167,6 +30170,35 @@
                     "id",
                     "zones"
                 ]
+            }
+        },
+        "pulumi:providers:databricks/terraformConfig": {
+            "description": "This function returns a Terraform config object with terraform-namecased keys,to be used with the Terraform Module Provider.",
+            "inputs": {
+                "properties": {
+                    "__self__": {
+                        "type": "ref",
+                        "$ref": "#/resources/pulumi:providers:databricks"
+                    }
+                },
+                "type": "pulumi:providers:databricks/terraformConfig",
+                "required": [
+                    "__self__"
+                ]
+            },
+            "outputs": {
+                "properties": {
+                    "result": {
+                        "additionalProperties": {
+                            "$ref": "pulumi.json#/Any"
+                        },
+                        "type": "object"
+                    }
+                },
+                "required": [
+                    "result"
+                ],
+                "type": "object"
             }
         }
     },

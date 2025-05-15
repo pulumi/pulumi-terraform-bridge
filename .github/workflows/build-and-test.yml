@@ -1,3 +1,4 @@
+permissions: write-all # Equivalent to default permissions plus id-token: write
 name: Build and Test
 
 on:
@@ -11,6 +12,11 @@ env:
   # Note this needs to match the shard input to the test matrix below as well as pattern in exclude.
   # see jobs.test.strategy.matrix.{shard,exclude}
   TOTAL_SHARDS: 15
+  ESC_ACTION_OIDC_AUTH: true
+  ESC_ACTION_OIDC_ORGANIZATION: pulumi
+  ESC_ACTION_OIDC_REQUESTED_TOKEN_TYPE: urn:pulumi:token-type:access_token:organization
+  ESC_ACTION_ENVIRONMENT: imports/github-secrets
+  ESC_ACTION_EXPORT_ENVIRONMENT_VARIABLES: false
 
 jobs:
   test:
@@ -24,7 +30,7 @@ jobs:
         #
         # When we decide to bump our minimum go version, we need to remember to bump the
         # go version in our go.mod files.
-        go-version: [1.22.x, 1.23.x]
+        go-version: [1.23.x, 1.24.x]
         platform: [ubuntu-latest, macos-latest, windows-latest]
         feature-flags: ["DEFAULT", "PULUMI_RAW_STATE_DELTA_ENABLED"]
         # Needs to match TOTAL_SHARDS
@@ -90,16 +96,15 @@ jobs:
             shard: 14
     runs-on: ${{ matrix.platform }}
     steps:
+      - name: Fetch secrets from ESC
+        id: esc-secrets
+        uses: pulumi/esc-action@v1
       - name: Install terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_wrapper: false
       - name: Check out source code
         uses: actions/checkout@master
-      - name: Install pulumi
-        uses: pulumi/actions@v5
-        with:
-          pulumi-version-file: .pulumi.version
       - name: Install Go
         uses: actions/setup-go@v5
         with:
@@ -109,6 +114,18 @@ jobs:
           # disable caching on windows because it's very slow
           # see https://github.com/actions/setup-go/issues/495
           cache: ${{ matrix.platform != 'windows-latest' }}
+      - name: Find pulumi version
+        id: pulumi_version
+        shell: bash
+        run: |
+          GO_MODULE_VERSION=$(go list -m -f '{{.Version}}' github.com/pulumi/pulumi/pkg/v3)
+          GO_VERSION=$(echo "$GO_MODULE_VERSION" | sed 's/^v//')
+          echo "pulumi_version=$GO_VERSION"
+          echo "pulumi_version=$GO_VERSION" >> $GITHUB_OUTPUT
+      - name: Install pulumi
+        uses: pulumi/actions@v5
+        with:
+          pulumi-version: ${{ steps.pulumi_version.outputs.pulumi_version }}
       - name: export feature flags
         run: echo ${{ matrix.feature-flags }}=true >> $GITHUB_ENV
         if: ${{ matrix.platform != 'windows-latest' && matrix.feature-flags != 'DEFAULT' }}
@@ -129,7 +146,7 @@ jobs:
         if: ${{ env.CODECOV_TOKEN != '' }}
         uses: codecov/codecov-action@v4
         env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+          CODECOV_TOKEN: ${{ steps.esc-secrets.outputs.CODECOV_TOKEN }}
   lint:
     runs-on: ubuntu-latest
     steps:
@@ -148,10 +165,21 @@ jobs:
           version: v1.62
       - name: Lint
         run: make lint
+  version-check:
+    name: Verify Pulumi Version Consistency
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          check-latest: true
   sentinel:
     name: sentinel
-    if: github.event_name == 'repository_dispatch' ||
-      github.event.pull_request.head.repo.full_name == github.repository
+    if: github.event_name == 'repository_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
     permissions:
       statuses: write
     needs:

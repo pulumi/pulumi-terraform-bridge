@@ -324,6 +324,9 @@
         "description": "Skip static validation of region name. Used by users of alternative AWS-like APIs or users w/ access to regions that are\nnot public (yet).\n",
         "default": true
       }
+    },
+    "methods": {
+      "terraformConfig": "pulumi:providers:aws/terraformConfig"
     }
   },
   "resources": {
@@ -4179,6 +4182,35 @@
           "json",
           "id"
         ]
+      }
+    },
+    "pulumi:providers:aws/terraformConfig": {
+      "description": "This function returns a Terraform config object with terraform-namecased keys,to be used with the Terraform Module Provider.",
+      "inputs": {
+        "properties": {
+          "__self__": {
+            "type": "ref",
+            "$ref": "#/resources/pulumi:providers:aws"
+          }
+        },
+        "type": "pulumi:providers:aws/terraformConfig",
+        "required": [
+          "__self__"
+        ]
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "additionalProperties": {
+              "$ref": "pulumi.json#/Any"
+            },
+            "type": "object"
+          }
+        },
+        "required": [
+          "result"
+        ],
+        "type": "object"
       }
     }
   }

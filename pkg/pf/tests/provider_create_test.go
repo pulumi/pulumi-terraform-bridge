@@ -19,10 +19,14 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	testutils "github.com/pulumi/providertest/replay"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/require"
+	"github.com/zclconf/go-cty/cty"
 
+	pb "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/providerbuilder"
+	crosstests "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/cross-tests"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/testprovider"
 )
 
@@ -309,4 +313,47 @@ func TestCreateSupportsCustomID(t *testing.T) {
           }
 	}`
 	testutils.Replay(t, server, testCase)
+}
+
+func TestPFCrossTestCreateBasic(t *testing.T) {
+	t.Parallel()
+
+	res := pb.NewResource(
+		pb.NewResourceArgs{
+			ResourceSchema: schema.Schema{
+				Attributes: map[string]schema.Attribute{
+					"hello": schema.StringAttribute{
+						Optional: true,
+					},
+				},
+			},
+		},
+	)
+
+	crosstests.Create(t, res, map[string]cty.Value{
+		"hello": cty.StringVal("world"),
+	})
+}
+
+func TestPFCreateDynamicAttribute(t *testing.T) {
+	t.Parallel()
+
+	res := pb.NewResource(
+		pb.NewResourceArgs{
+			ResourceSchema: schema.Schema{
+				Attributes: map[string]schema.Attribute{
+					"hello": schema.StringAttribute{
+						Optional: true,
+					},
+					"dynamic": schema.DynamicAttribute{
+						Optional: true,
+					},
+				},
+			},
+		},
+	)
+
+	crosstests.Create(t, res, map[string]cty.Value{
+		"hello": cty.StringVal("world"),
+	})
 }

@@ -1,10 +1,15 @@
+permissions: write-all # Equivalent to default permissions plus id-token: write
 name: weekly-pulumi-update
 on:
   schedule:
   - cron: 35 12 * * 4
   workflow_dispatch: {}
 env:
-  GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
+  ESC_ACTION_OIDC_AUTH: true
+  ESC_ACTION_OIDC_ORGANIZATION: pulumi
+  ESC_ACTION_OIDC_REQUESTED_TOKEN_TYPE: urn:pulumi:token-type:access_token:organization
+  ESC_ACTION_ENVIRONMENT: imports/github-secrets
+  ESC_ACTION_EXPORT_ENVIRONMENT_VARIABLES: GITHUB_TOKEN=PULUMI_BOT_TOKEN
 jobs:
   weekly-pulumi-update:
     runs-on: ubuntu-latest
@@ -14,6 +19,9 @@ jobs:
         goversion:
         - 1.23.x
     steps:
+    - name: Fetch secrets from ESC
+      id: esc-secrets
+      uses: pulumi/esc-action@v1
     - name: Checkout Repo
       uses: actions/checkout@v3
       with:
@@ -71,11 +79,11 @@ jobs:
       uses: repo-sync/pull-request@v2.6.2
       with:
         source_branch: update-pulumi/${{ github.run_id }}-${{ github.run_number }}
-        destination_branch: master
+        destination_branch: main
         pr_title: Automated Pulumi/Pulumi upgrade
-        github_token: ${{ secrets.PULUMI_BOT_TOKEN }}
+        github_token: ${{ steps.esc-secrets.outputs.PULUMI_BOT_TOKEN }}
       env:
-        GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
+        GITHUB_TOKEN: ${{ steps.esc-secrets.outputs.PULUMI_BOT_TOKEN }}
     - name: "Set PR to auto-merge"
       if: steps.gomod.outputs.changes != 0
       run: "gh pr merge --auto --squash ${{ steps.create-pr.outputs.pr_url }}"

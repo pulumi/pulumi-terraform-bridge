@@ -17,6 +17,8 @@ package tfbridgetests
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"math/big"
 	"testing"
 
@@ -27,7 +29,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 
@@ -40,7 +41,7 @@ func TestCreateResourceWithDynamicAttribute(t *testing.T) {
 		name                     string                 // test case name
 		manifestToSend           any                    // assumes a Pulumi YAML expression
 		expectedManifestReceived basetypes.DynamicValue // how PF sees the decoded manifest
-		expectedManifestMatches  func(t *testing.T, v basetypes.DynamicValue)
+		expectedManifestMatches  func(v basetypes.DynamicValue) error
 		expectedManifestOutput   any // value received back through the output machinery
 		expectedStateMatches     func(t *testing.T, state apitype.UntypedDeployment)
 	}
@@ -49,19 +50,19 @@ func TestCreateResourceWithDynamicAttribute(t *testing.T) {
 		{
 			name:           "null",
 			manifestToSend: nil,
-			expectedManifestMatches: func(t *testing.T, v basetypes.DynamicValue) {
-				// Somehow v.IsNull()==false, but v.IsUnderlyingValueNull()==true, probably OK.
-				require.True(t, v.IsUnderlyingValueNull())
+			expectedManifestMatches: func(v basetypes.DynamicValue) error {
+				if !v.IsNull() {
+					return errors.New("expected null dynamic value")
+				}
+				return nil
 			},
 			expectedManifestOutput: nil,
 		},
 		{
-			name:           "unknown",
-			manifestToSend: "${r0.u}",
-			expectedManifestMatches: func(t *testing.T, v basetypes.DynamicValue) {
-				t.Logf("Received %v", v)
-			},
-			expectedManifestOutput: "U",
+			name:                    "unknown",
+			manifestToSend:          "${r0.u}",
+			expectedManifestMatches: func(v basetypes.DynamicValue) error { return nil },
+			expectedManifestOutput:  "U",
 		},
 		{
 			name: "secret",
@@ -119,15 +120,21 @@ func TestCreateResourceWithDynamicAttribute(t *testing.T) {
 		{
 			name:           "number",
 			manifestToSend: float64(42.0),
-			expectedManifestMatches: func(t *testing.T, v basetypes.DynamicValue) {
-				t.Logf("Received %v", v)
+			expectedManifestMatches: func(v basetypes.DynamicValue) error {
 				var r big.Float
 				vv, err := v.UnderlyingValue().ToTerraformValue(context.Background())
-				require.NoError(t, err)
+				if err != nil {
+					return err
+				}
 				err = vv.As(&r)
-				require.NoError(t, err)
+				if err != nil {
+					return err
+				}
 				f, _ := r.Float64()
-				require.Equal(t, 42.0, f)
+				if f != 42.0 {
+					return fmt.Errorf("expected 42.0, got %f", f)
+				}
+				return nil
 			},
 			expectedManifestOutput: float64(42.0),
 		},
@@ -145,12 +152,10 @@ func TestCreateResourceWithDynamicAttribute(t *testing.T) {
 			expectedManifestOutput: []any{"a", "b", "c"},
 		},
 		{
-			name:           "heterogeneous-array",
-			manifestToSend: []any{"a", []any{"1", "2"}, map[string]any{"a": "1"}},
-			expectedManifestMatches: func(t *testing.T, v basetypes.DynamicValue) {
-				t.Logf("Received: %v", v)
-			},
-			expectedManifestOutput: []any{"a", []any{"1", "2"}, map[string]any{"a": "1"}},
+			name:                    "heterogeneous-array",
+			manifestToSend:          []any{"a", []any{"1", "2"}, map[string]any{"a": "1"}},
+			expectedManifestMatches: func(v basetypes.DynamicValue) error { return nil },
+			expectedManifestOutput:  []any{"a", []any{"1", "2"}, map[string]any{"a": "1"}},
 		},
 		{
 			name:           "empty-array",
@@ -167,14 +172,23 @@ func TestCreateResourceWithDynamicAttribute(t *testing.T) {
 				"a": "1",
 				"b": "2",
 			},
-			expectedManifestMatches: func(t *testing.T, v basetypes.DynamicValue) {
+			expectedManifestMatches: func(v basetypes.DynamicValue) error {
 				vv, err := v.ToTerraformValue(context.Background())
-				require.NoError(t, err)
+				if err != nil {
+					return err
+				}
 				var parts map[string]tftypes.Value
 				err = vv.As(&parts)
-				require.NoError(t, err)
-				assert.Equal(t, `tftypes.String<"1">`, parts["a"].String())
-				assert.Equal(t, `tftypes.String<"2">`, parts["b"].String())
+				if err != nil {
+					return err
+				}
+				if parts["a"].String() != `tftypes.String<"1">` {
+					return fmt.Errorf("expected a=1, got %s", parts["a"].String())
+				}
+				if parts["b"].String() != `tftypes.String<"2">` {
+					return fmt.Errorf("expected b=2, got %s", parts["b"].String())
+				}
+				return nil
 			},
 			expectedManifestOutput: map[string]any{
 				"a": "1",
@@ -184,13 +198,20 @@ func TestCreateResourceWithDynamicAttribute(t *testing.T) {
 		{
 			name:           "empty-map",
 			manifestToSend: map[string]any{},
-			expectedManifestMatches: func(t *testing.T, v basetypes.DynamicValue) {
+			expectedManifestMatches: func(v basetypes.DynamicValue) error {
 				vv, err := v.ToTerraformValue(context.Background())
-				require.NoError(t, err)
+				if err != nil {
+					return err
+				}
 				var parts map[string]tftypes.Value
 				err = vv.As(&parts)
-				require.NoError(t, err)
-				assert.Equal(t, 0, len(parts))
+				if err != nil {
+					return err
+				}
+				if len(parts) != 0 {
+					return fmt.Errorf("expected empty map, got %v", parts)
+				}
+				return nil
 			},
 			expectedManifestOutput: map[string]any{},
 		},
@@ -204,9 +225,7 @@ func TestCreateResourceWithDynamicAttribute(t *testing.T) {
 					"bb": "2",
 				},
 			},
-			expectedManifestMatches: func(t *testing.T, v basetypes.DynamicValue) {
-				t.Logf("Received: %v", v)
-			},
+			expectedManifestMatches: func(v basetypes.DynamicValue) error { return nil },
 			expectedManifestOutput: map[string]any{
 				"a": "1",
 				"b": []any{"x", "y"},
@@ -240,23 +259,19 @@ func TestCreateResourceWithDynamicAttribute(t *testing.T) {
 				) {
 					var model ResourceModel
 					diags := req.Config.Get(ctx, &model)
-					if diags.HasError() {
-						for _, d := range diags {
-							t.Logf("%s: %s", d.Summary(), d.Detail())
-						}
-						panic("req.Config.Get failed")
-					}
 					if tc.expectedManifestMatches != nil {
-						tc.expectedManifestMatches(t, model.Manifest)
+						if err := tc.expectedManifestMatches(model.Manifest); err != nil {
+							diags.AddError(err.Error(), "")
+						}
 					} else {
-						require.Equal(t, tc.expectedManifestReceived, model.Manifest)
+						if !tc.expectedManifestReceived.Equal(model.Manifest) {
+							diags.AddError(fmt.Sprintf("expected manifest does not equal observed one %+v, %+v", tc.expectedManifestReceived, model.Manifest), "")
+						}
 					}
-
-					t.Logf("Create called with manifest as: %+v", model.Manifest)
 
 					model.ID = basetypes.NewStringValue("id0")
 
-					diags = resp.State.Set(ctx, &model)
+					diags.Append(resp.State.Set(ctx, &model)...)
 					resp.Diagnostics = append(resp.Diagnostics, diags...)
 				},
 				ResourceSchema: schema.Schema{
@@ -278,17 +293,9 @@ func TestCreateResourceWithDynamicAttribute(t *testing.T) {
 				) {
 					var model ResourceModelR0
 					diags := req.Config.Get(ctx, &model)
-					if diags.HasError() {
-						for _, d := range diags {
-							t.Logf("%s: %s", d.Summary(), d.Detail())
-						}
-						panic("req.Config.Get failed")
-					}
-
 					model.ID = basetypes.NewStringValue("r00")
 					model.U = basetypes.NewStringValue("U")
-
-					diags = resp.State.Set(ctx, &model)
+					diags.Append(resp.State.Set(ctx, &model)...)
 					resp.Diagnostics = append(resp.Diagnostics, diags...)
 				},
 				ResourceSchema: schema.Schema{
