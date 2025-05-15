@@ -8,7 +8,7 @@ import (
 )
 
 func TestProviderString(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	tests := []struct {
 		Input Provider
 		Want  string
@@ -56,7 +56,7 @@ func TestProviderString(t *testing.T) {
 }
 
 func TestProviderDisplay(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	tests := []struct {
 		Input Provider
 		Want  string
@@ -96,7 +96,7 @@ func TestProviderDisplay(t *testing.T) {
 }
 
 func TestProviderIsDefault(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	tests := []struct {
 		Input Provider
 		Want  bool
@@ -136,7 +136,7 @@ func TestProviderIsDefault(t *testing.T) {
 }
 
 func TestProviderIsBuiltIn(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	tests := []struct {
 		Input Provider
 		Want  bool
@@ -208,7 +208,7 @@ func TestProviderIsBuiltIn(t *testing.T) {
 }
 
 func TestProviderIsLegacy(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	tests := []struct {
 		Input Provider
 		Want  bool
@@ -248,7 +248,7 @@ func TestProviderIsLegacy(t *testing.T) {
 }
 
 func TestParseProviderSourceStr(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	tests := map[string]struct {
 		Want Provider
 		Err  bool
@@ -395,7 +395,7 @@ func TestParseProviderSourceStr(t *testing.T) {
 	for name, test := range tests {
 		got, diags := ParseProviderSourceString(name)
 		for _, problem := range deep.Equal(got, test.Want) {
-			t.Errorf(problem)
+			t.Errorf("problem: %s", problem)
 		}
 		if len(diags) > 0 {
 			if test.Err == false {
@@ -410,7 +410,7 @@ func TestParseProviderSourceStr(t *testing.T) {
 }
 
 func TestParseProviderPart(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	tests := map[string]struct {
 		Want  string
 		Error string
@@ -490,7 +490,7 @@ func TestParseProviderPart(t *testing.T) {
 }
 
 func TestProviderEquals(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	tests := []struct {
 		InputP Provider
 		OtherP Provider

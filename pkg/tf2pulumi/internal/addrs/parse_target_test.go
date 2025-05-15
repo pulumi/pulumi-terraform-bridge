@@ -9,7 +9,7 @@ import (
 )
 
 func TestParseTarget(t *testing.T) {
-    t.Parallel()
+	t.Parallel()
 	tests := []struct {
 		Input   string
 		Want    *Target
@@ -381,7 +381,7 @@ func TestParseTarget(t *testing.T) {
 			}
 
 			for _, problem := range deep.Equal(got, test.Want) {
-				t.Errorf(problem)
+				t.Errorf("there was a problem: %s", problem)
 			}
 		})
 	}
