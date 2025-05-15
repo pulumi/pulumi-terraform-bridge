@@ -46,10 +46,10 @@ issues:
     - "redefines-builtin-id:"
     - "exhaustive"
   exclude-dirs:
-    - pkg/tf2pulumi/internal/addrs/*
-    - pkg/tf2pulumi/internal/config/*
-    - pkg/tf2pulumi/internal/configs/*
-    - pkg/vendored/*
+    - pkg/tf2pulumi/internal/addrs
+    - pkg/tf2pulumi/internal/config
+    - pkg/tf2pulumi/internal/configs
+    - pkg/vendored
     # TODO(https://github.com/pulumi/pulumi-terraform-bridge/issues/2474)
 linters-settings:
   gci:
