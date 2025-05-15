@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -97,7 +98,7 @@ func (b *Backend) Rehash() uint64 {
 
 func (b *Backend) Validate() []error {
 	if len(b.RawConfig.Interpolations) > 0 {
-		return []error{fmt.Errorf(strings.TrimSpace(errBackendInterpolations))}
+		return []error{errors.New(strings.TrimSpace(errBackendInterpolations))}
 	}
 
 	return nil

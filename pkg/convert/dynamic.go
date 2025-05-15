@@ -15,7 +15,7 @@
 package convert
 
 import (
-	"fmt"
+	"errors"
 	"math/big"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
@@ -57,19 +57,19 @@ func (enc *dynamicEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.
 		// errors, this approach seems to be the best workaround for now.
 		if commonTy, err := tftypes.TypeFromElements(result); err == nil {
 			return tftypes.NewValue(tftypes.List{ElementType: commonTy}, result), nil
-		} else {
-			types := []tftypes.Type{}
-			for _, r := range result {
-				types = append(types, r.Type())
-			}
-			return tftypes.NewValue(tftypes.Tuple{ElementTypes: types}, result), nil
 		}
+		types := []tftypes.Type{}
+		for _, r := range result {
+			types = append(types, r.Type())
+		}
+		return tftypes.NewValue(tftypes.Tuple{ElementTypes: types}, result), nil
+
 	case p.IsAsset():
-		return tftypes.Value{}, fmt.Errorf("Assets inside dynamically typed blocks are not yet supported")
+		return tftypes.Value{}, errors.New("assets inside dynamically typed blocks are not yet supported")
 	case p.IsArchive():
-		return tftypes.Value{}, fmt.Errorf("Archives inside dynamically typed blocks are not yet supported")
+		return tftypes.Value{}, errors.New("archives inside dynamically typed blocks are not yet supported")
 	case p.IsSecret() || p.IsOutput() && p.OutputValue().Secret:
-		return tftypes.Value{}, fmt.Errorf("Secrets inside dynamically typed blocks are not yet supported")
+		return tftypes.Value{}, errors.New("secrets inside dynamically typed blocks are not yet supported")
 	case p.IsOutput():
 		o := p.OutputValue()
 		contract.Assertf(o.Known && !o.Secret,
@@ -90,7 +90,7 @@ func (enc *dynamicEncoder) fromPropertyValue(p resource.PropertyValue) (tftypes.
 		}
 		return tftypes.NewValue(objT, result), nil
 	case p.IsResourceReference():
-		return tftypes.Value{}, fmt.Errorf("Resource references inside dynamically typed blocks are not yet supported")
+		return tftypes.Value{}, errors.New("resource references inside dynamically typed blocks are not yet supported")
 	default:
 		contract.Failf("Unexpected PropertyValue case: %v", p)
 		panic("Unreachable")

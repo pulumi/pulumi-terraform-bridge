@@ -874,11 +874,12 @@ func NewGenerator(opts GeneratorOptions) (*Generator, error) {
 			return nil, err
 		}
 
-		ctx, err := plugin.NewContext(sink, sink, nil, nil, cwd, nil, false, nil)
+		ctx := context.Background()
+		pluginContext, err := plugin.NewContext(ctx, sink, sink, nil, nil, cwd, nil, false, nil)
 		if err != nil {
 			return nil, err
 		}
-		pluginHost = ctx.Host
+		pluginHost = pluginContext.Host
 	}
 
 	infoSources := append([]il.ProviderInfoSource{}, opts.ProviderInfoSource, il.PluginProviderInfoSource)
