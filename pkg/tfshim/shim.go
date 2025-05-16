@@ -263,6 +263,7 @@ type Resource interface {
 
 	DecodeTimeouts(config ResourceConfig) (*ResourceTimeout, error)
 
+	SchemaType() valueshim.Type
 	// This is a no-op internal interface to prevent external users from implementing the interface.
 	internalinter.InternalInterface
 }

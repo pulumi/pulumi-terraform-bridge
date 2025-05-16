@@ -454,6 +454,7 @@ func RawStateInjectDelta(
 	schemaMap shim.SchemaMap, // top-level schema for a resource
 	schemaInfos map[string]*SchemaInfo, // top-level schema overrides for a resource
 	outMap resource.PropertyMap,
+	schemaType valueshim.Type,
 	instanceState shim.InstanceState,
 ) error {
 	// If called in a pulumi preview e.g. Create(preview=true) or in a continue-on-error scenario, bail because the
@@ -467,7 +468,7 @@ func RawStateInjectDelta(
 		return nil
 	}
 	v := instanceStateCty.Value()
-	d, err := RawStateComputeDelta(ctx, schemaMap, schemaInfos, outMap, v)
+	d, err := RawStateComputeDelta(ctx, schemaMap, schemaInfos, outMap, schemaType, v)
 	if err != nil {
 		return err
 	}
@@ -480,6 +481,7 @@ func RawStateComputeDelta(
 	schemaMap shim.SchemaMap, // top-level schema for a resource
 	schemaInfos map[string]*SchemaInfo, // top-level schema overrides for a resource
 	outMap resource.PropertyMap,
+	schemaType valueshim.Type,
 	v valueshim.Value,
 ) (RawStateDelta, error) {
 	ih := &rawStateDeltaHelper{
@@ -491,7 +493,7 @@ func RawStateComputeDelta(
 
 	vWithoutTimeouts := v.Remove("timeouts")
 	delta := ih.delta(pv, vWithoutTimeouts)
-	err := delta.turnaroundCheck(ctx, newRawStateFromValue(vWithoutTimeouts), pv)
+	err := delta.turnaroundCheck(ctx, newRawStateFromValue(schemaType, vWithoutTimeouts), pv)
 	if err != nil {
 		return RawStateDelta{}, err
 	}
@@ -571,6 +573,7 @@ type rawStateDeltaHelper struct {
 	schemaMap   shim.SchemaMap         // top-level schema for a resource
 	schemaInfos map[string]*SchemaInfo // top-level schema overrides for a resource
 	logger      log.Logger
+	schemaType  valueshim.Type
 }
 
 func (ih *rawStateDeltaHelper) delta(pv resource.PropertyValue, v valueshim.Value) RawStateDelta {
@@ -603,7 +606,14 @@ func (ih *rawStateDeltaHelper) replaceDeltaAt(
 			err,
 		))
 	}
-	return RawStateDelta{Replace: &replaceDelta{Raw: newRawStateFromValue(v)}}
+
+	relevantSchemaType, err := walk.LookupType(path, ih.schemaType)
+	if err != nil {
+		// If lookup failed, ignore the schema type; will only affect DynamicPseudoType.
+		relevantSchemaType = v.Type()
+	}
+
+	return RawStateDelta{Replace: &replaceDelta{Raw: newRawStateFromValue(relevantSchemaType, v)}}
 }
 
 // Errors returned from this inner function are simply missed opportunities for optimization, as [deltaAt] will always
@@ -834,8 +844,8 @@ func (ih *rawStateDeltaHelper) computeDeltaAt(
 	}
 }
 
-func newRawStateFromValue(v valueshim.Value) rawstate.RawState {
-	raw, err := v.Marshal()
+func newRawStateFromValue(schemaType valueshim.Type, v valueshim.Value) rawstate.RawState {
+	raw, err := v.Marshal(schemaType)
 	contract.AssertNoErrorf(err, "v.Marshal() failed")
 	return rawstate.RawState(raw)
 }
