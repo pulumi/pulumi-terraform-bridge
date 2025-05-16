@@ -29,7 +29,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/convert"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/pfutils"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/reservedkeys"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/valueshim"
@@ -257,10 +256,11 @@ func (p *provider) parseAndUpgradeResourceState(
 	if err != nil {
 		return nil, fmt.Errorf("[pf/tfbridge] Error calling EncodePropertyMap: %w", err)
 	}
-	rawState, err := pfutils.NewRawState(tfType, value)
+	rawStateBytes, err := valueshim.FromTValue(value).Marshal(valueshim.FromTType(tfType))
 	if err != nil {
 		return nil, fmt.Errorf("[pf/tfbridge] Error calling NewRawState: %w", err)
 	}
+	rawState := &tfprotov6.RawState{JSON: []byte(rawStateBytes)}
 
 	// Before EnableRawStateDelta rollout, the behavior used to be to skip the upgrade method in case of an exact
 	// version match. This seems incorrect, but to derisk fixing this problem it is flagged together with
