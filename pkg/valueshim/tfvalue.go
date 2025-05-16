@@ -190,3 +190,28 @@ func (t tTypeShim) IsObjectType() bool {
 func (t tTypeShim) GoString() string {
 	return t.ty().String()
 }
+
+func (t tTypeShim) AttributeType(name string) (Type, bool) {
+	if !t.IsObjectType() {
+		return nil, false
+	}
+	tt := t.ty()
+	attr, ok := tt.(tftypes.Object).AttributeTypes[name]
+	if !ok {
+		return nil, false
+	}
+	return FromTType(attr), true
+}
+
+func (t tTypeShim) ElementType() (Type, bool) {
+	tt := t.ty()
+	switch {
+	case tt.Is(tftypes.Map{}):
+		return FromTType(tt.(tftypes.Map).ElementType), true
+	case tt.Is(tftypes.List{}):
+		return FromTType(tt.(tftypes.List).ElementType), true
+	case tt.Is(tftypes.Set{}):
+		return FromTType(tt.(tftypes.Set).ElementType), true
+	}
+	return nil, false
+}

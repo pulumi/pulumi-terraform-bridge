@@ -314,3 +314,31 @@ func Test_HCty_ToX(t *testing.T) {
 	assert.Equal(t, 42.41, valueshim.FromHCtyValue(cty.NumberFloatVal(42.41)).NumberValue())
 	assert.Equal(t, true, valueshim.FromHCtyValue(cty.BoolVal(true)).BoolValue())
 }
+
+func Test_HCtyType_AttributeType(t *testing.T) {
+	objTy := cty.Object(map[string]cty.Type{"x": cty.String})
+
+	ty, ok := valueshim.FromHCtyType(objTy).AttributeType("x")
+	assert.True(t, ok)
+	assert.Equal(t, valueshim.FromHCtyType(cty.String), ty)
+
+	_, ok = valueshim.FromHCtyType(objTy).AttributeType("y")
+	assert.False(t, ok)
+}
+
+func Test_HCtyType_ElementType(t *testing.T) {
+	ty, ok := valueshim.FromHCtyType(cty.Set(cty.Number)).ElementType()
+	assert.True(t, ok)
+	assert.Equal(t, valueshim.FromHCtyType(cty.Number), ty)
+
+	ty, ok = valueshim.FromHCtyType(cty.List(cty.Number)).ElementType()
+	assert.True(t, ok)
+	assert.Equal(t, valueshim.FromHCtyType(cty.Number), ty)
+
+	ty, ok = valueshim.FromHCtyType(cty.Map(cty.Number)).ElementType()
+	assert.True(t, ok)
+	assert.Equal(t, valueshim.FromHCtyType(cty.Number), ty)
+
+	ty, ok = valueshim.FromHCtyType(cty.String).ElementType()
+	assert.False(t, ok)
+}
