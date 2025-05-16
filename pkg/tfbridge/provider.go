@@ -1371,7 +1371,8 @@ func (p *Provider) Create(ctx context.Context, req *pulumirpc.CreateRequest) (*p
 	}
 
 	if p.info.RawStateDeltaEnabled() {
-		if err := RawStateInjectDelta(ctx, res.TF.Schema(), res.Schema.Fields, props, newstate); err != nil {
+		s := res.TF.SchemaType()
+		if err := RawStateInjectDelta(ctx, res.TF.Schema(), res.Schema.Fields, props, s, newstate); err != nil {
 			return nil, err
 		}
 	}
@@ -1521,7 +1522,8 @@ func (p *Provider) Read(ctx context.Context, req *pulumirpc.ReadRequest) (*pulum
 		}
 
 		if p.info.RawStateDeltaEnabled() {
-			err := RawStateInjectDelta(ctx, res.TF.Schema(), res.Schema.Fields, props, newstate)
+			s := res.TF.SchemaType()
+			err := RawStateInjectDelta(ctx, res.TF.Schema(), res.Schema.Fields, props, s, newstate)
 			if err != nil {
 				return nil, err
 			}
@@ -1750,7 +1752,8 @@ func (p *Provider) Update(ctx context.Context, req *pulumirpc.UpdateRequest) (*p
 	}
 
 	if p.info.RawStateDeltaEnabled() {
-		if err := RawStateInjectDelta(ctx, res.TF.Schema(), res.Schema.Fields, props, newstate); err != nil {
+		s := res.TF.SchemaType()
+		if err := RawStateInjectDelta(ctx, res.TF.Schema(), res.Schema.Fields, props, s, newstate); err != nil {
 			return nil, err
 		}
 	}

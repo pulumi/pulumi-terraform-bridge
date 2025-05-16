@@ -20,6 +20,7 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/internalinter"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/valueshim"
 )
 
 var (
@@ -31,6 +32,11 @@ type object struct {
 	pseudoResource
 	obj tfprotov6.SchemaObject
 	internalinter.Internal
+}
+
+func (o object) SchemaType() valueshim.Type {
+	ty := o.obj.ValueType()
+	return valueshim.FromTType(ty)
 }
 
 func (o object) Schema() shim.SchemaMap {

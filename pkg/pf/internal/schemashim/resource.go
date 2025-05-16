@@ -15,9 +15,13 @@
 package schemashim
 
 import (
+	"context"
+
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/internalinter"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/runtypes"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/valueshim"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 type schemaOnlyResource struct {
@@ -41,6 +45,12 @@ func (r *schemaOnlyResource) SchemaVersion() int {
 
 func (r *schemaOnlyResource) DeprecationMessage() string {
 	return r.tf.DeprecationMessage()
+}
+
+func (r *schemaOnlyResource) SchemaType() valueshim.Type {
+	s, err := r.tf.ResourceProtoSchema(context.Background())
+	contract.AssertNoErrorf(err, "failed to extract schema")
+	return valueshim.FromTType(s.ValueType())
 }
 
 func (*schemaOnlyResource) Importer() shim.ImportFunc {
