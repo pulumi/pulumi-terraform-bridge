@@ -17,11 +17,17 @@ package proto
 import (
 	// "github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/valueshim"
 )
 
 // pseudoResource represents a type that must pretent to be a [shim.Resource], but does not represent a resource.
 type pseudoResource struct{}
+
+func (pseudoResource) SchemaType() valueshim.Type {
+	return valueshim.FromTType(tftypes.Object{}) // not a top-level resource
+}
 
 func (pseudoResource) SchemaVersion() int              { return 0 }
 func (pseudoResource) Importer() shim.ImportFunc       { return nil }

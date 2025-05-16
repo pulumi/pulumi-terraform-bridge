@@ -8,6 +8,7 @@ import (
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/valueshim"
 )
 
 var (
@@ -22,6 +23,10 @@ type resource struct {
 	ctyType       cty.Type
 	schema        schema.SchemaMap
 	schemaVersion int
+}
+
+func (r *resource) SchemaType() valueshim.Type {
+	return valueshim.FromHCtyType(r.ctyType)
 }
 
 func (r *resource) Schema() shim.SchemaMap {

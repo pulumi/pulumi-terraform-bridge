@@ -260,6 +260,8 @@ type Resource interface {
 	InstanceState(id string, object, meta map[string]interface{}) (InstanceState, error)
 
 	DecodeTimeouts(config ResourceConfig) (*ResourceTimeout, error)
+
+	SchemaType() valueshim.Type
 }
 
 type ResourceMap interface {

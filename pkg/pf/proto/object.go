@@ -19,6 +19,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/valueshim"
 )
 
 var (
@@ -29,6 +30,11 @@ var (
 type object struct {
 	pseudoResource
 	obj tfprotov6.SchemaObject
+}
+
+func (o object) SchemaType() valueshim.Type {
+	ty := o.obj.ValueType()
+	return valueshim.FromTType(ty)
 }
 
 func (o object) Schema() shim.SchemaMap {
