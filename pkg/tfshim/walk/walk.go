@@ -27,6 +27,7 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/valueshim"
 )
 
 // Represents locations in a tfshim.Schema value as a sequence of steps to locate it.
@@ -172,6 +173,32 @@ func LookupSchemaPath(path SchemaPath, schema shim.Schema) (shim.Schema, error) 
 // Similar to LookupSchemaPath but starts the initial step from a SchemaMap.
 func LookupSchemaMapPath(path SchemaPath, schemaMap shim.SchemaMap) (shim.Schema, error) {
 	return LookupSchemaPath(path, wrapSchemaMap(schemaMap))
+}
+
+// Finds a nested Type at a given path.
+func LookupType(path SchemaPath, ty valueshim.Type) (valueshim.Type, error) {
+	current := ty
+	for i, step := range path {
+		var subPath SchemaPath = path[0:i]
+		switch step := step.(type) {
+		case GetAttrStep:
+			attr, ok := current.AttributeType(step.Name)
+			if !ok {
+				return nil, fmt.Errorf("LookupType mismatch: no attribute %q at path %v",
+					step.Name, subPath)
+			}
+			current = attr
+		case ElementStep:
+			el, ok := current.ElementType()
+			if !ok {
+				return nil, fmt.Errorf("LookupType mismatch: no element type at path %v", subPath)
+			}
+			current = el
+		default:
+			contract.Failf("unexpected SchemaPathStep case")
+		}
+	}
+	return current, nil
 }
 
 // Represents elements of a SchemaPath.
