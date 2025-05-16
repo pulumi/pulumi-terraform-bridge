@@ -109,8 +109,10 @@ func Test_HCtyValue_Marshal(t *testing.T) {
 	tupType := cty.Tuple([]cty.Type{cty.String, cty.Number})
 
 	type testCase struct {
-		v      cty.Value
-		expect autogold.Value
+		v             cty.Value
+		expect        autogold.Value
+		schemaType    cty.Type
+		hasSchemaType bool
 	}
 
 	testCases := []testCase{
@@ -210,10 +212,51 @@ func Test_HCtyValue_Marshal(t *testing.T) {
 			v:      cty.TupleVal([]cty.Value{ok, n42}),
 			expect: autogold.Expect(`["OK",42]`),
 		},
+		{
+			v:             cty.NullVal(cty.String),
+			schemaType:    cty.DynamicPseudoType,
+			hasSchemaType: true,
+			expect:        autogold.Expect(`{"value":null,"type":"string"}`),
+		},
+		{
+			v:             cty.StringVal("foo"),
+			schemaType:    cty.DynamicPseudoType,
+			hasSchemaType: true,
+			expect:        autogold.Expect(`{"value":"foo","type":"string"}`),
+		},
+		{
+			v:             cty.NumberIntVal(42),
+			schemaType:    cty.DynamicPseudoType,
+			hasSchemaType: true,
+			expect:        autogold.Expect(`{"value":42,"type":"number"}`),
+		},
+		{
+			v:             cty.BoolVal(true),
+			schemaType:    cty.DynamicPseudoType,
+			hasSchemaType: true,
+			expect:        autogold.Expect(`{"value":true,"type":"bool"}`),
+		},
+		{
+			v:             cty.ListVal([]cty.Value{cty.StringVal("A")}),
+			schemaType:    cty.DynamicPseudoType,
+			hasSchemaType: true,
+			expect:        autogold.Expect(`{"value":["A"],"type":["list","string"]}`),
+		},
+		{
+			v:             cty.MapVal(map[string]cty.Value{"x": ok, "y": ok2}),
+			schemaType:    cty.DynamicPseudoType,
+			hasSchemaType: true,
+			expect:        autogold.Expect(`{"value":{"x":"OK","y":"OK2"},"type":["map","string"]}`),
+		},
 	}
 
 	for _, tc := range testCases {
-		raw, err := valueshim.FromHCtyValue(tc.v).Marshal()
+		ty := tc.schemaType
+		if !tc.hasSchemaType {
+			ty = tc.v.Type()
+		}
+		vv := valueshim.FromHCtyValue(tc.v)
+		raw, err := vv.Marshal(valueshim.FromHCtyType(ty))
 		require.NoError(t, err)
 		tc.expect.Equal(t, string(raw))
 	}
