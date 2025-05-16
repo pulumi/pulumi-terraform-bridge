@@ -313,6 +313,34 @@ func Test_TType(t *testing.T) {
 	assert.Equal(t, "tftypes.Object[]", valueshim.FromTType(tftypes.Object{}).GoString())
 }
 
+func Test_TType_AttributeType(t *testing.T) {
+	objTy := tftypes.Object{AttributeTypes: map[string]tftypes.Type{"x": tftypes.String}}
+
+	ty, ok := valueshim.FromTType(objTy).AttributeType("x")
+	assert.True(t, ok)
+	assert.Equal(t, valueshim.FromTType(tftypes.String), ty)
+
+	_, ok = valueshim.FromTType(objTy).AttributeType("y")
+	assert.False(t, ok)
+}
+
+func Test_TType_ElementType(t *testing.T) {
+	ty, ok := valueshim.FromTType(tftypes.Set{ElementType: tftypes.Number}).ElementType()
+	assert.True(t, ok)
+	assert.Equal(t, valueshim.FromTType(tftypes.Number), ty)
+
+	ty, ok = valueshim.FromTType(tftypes.List{ElementType: tftypes.Number}).ElementType()
+	assert.True(t, ok)
+	assert.Equal(t, valueshim.FromTType(tftypes.Number), ty)
+
+	ty, ok = valueshim.FromTType(tftypes.Map{ElementType: tftypes.Number}).ElementType()
+	assert.True(t, ok)
+	assert.Equal(t, valueshim.FromTType(tftypes.Number), ty)
+
+	ty, ok = valueshim.FromTType(tftypes.String).ElementType()
+	assert.False(t, ok)
+}
+
 func Test_TValue_ToX(t *testing.T) {
 	t.Parallel()
 

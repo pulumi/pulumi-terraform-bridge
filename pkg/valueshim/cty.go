@@ -155,6 +155,25 @@ func (t ctyTypeShim) IsObjectType() bool {
 	return t.ty().IsObjectType()
 }
 
+func (t ctyTypeShim) AttributeType(name string) (Type, bool) {
+	tt := t.ty()
+	if !tt.IsObjectType() {
+		return nil, false
+	}
+	if !tt.HasAttribute(name) {
+		return nil, false
+	}
+	return FromHCtyType(tt.AttributeType(name)), true
+}
+
+func (t ctyTypeShim) ElementType() (Type, bool) {
+	tt := t.ty()
+	if !tt.IsCollectionType() {
+		return nil, false
+	}
+	return FromHCtyType(tt.ElementType()), true
+}
+
 func (t ctyTypeShim) GoString() string {
 	return t.ty().GoString()
 }
