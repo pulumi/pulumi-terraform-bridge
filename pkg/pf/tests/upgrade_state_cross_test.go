@@ -1092,6 +1092,62 @@ func TestPFUpgrade_Downgrading(t *testing.T) {
 	})
 }
 
+// Test when a dynamic pseudo type value is being sent through a state upgrader.
+func TestPFUpgrade_DynamicPseudoType(t *testing.T) {
+	t.Parallel()
+	ct.SkipUnlessLinux(t)
+	//skipUnlessDeltasEnabled(t)
+
+	resourceBefore := pb.NewResource(pb.NewResourceArgs{
+		ResourceSchema: schema.Schema{
+			Attributes: map[string]schema.Attribute{
+				"dyn": schema.DynamicAttribute{Optional: true},
+			},
+		},
+	})
+
+	resourceAfter := pb.NewResource(pb.NewResourceArgs{
+		UpgradeStateFunc: func(ctx context.Context) map[int64]resource.StateUpgrader {
+			return map[int64]resource.StateUpgrader{
+				0: {
+					PriorSchema:   &resourceBefore.ResourceSchema,
+					StateUpgrader: ct.NopUpgrader,
+				},
+			}
+		},
+		ResourceSchema: schema.Schema{
+			Attributes: map[string]schema.Attribute{
+				"dyn": schema.DynamicAttribute{Optional: true},
+			},
+			Version: 1,
+		},
+	})
+
+	tfInputsBefore := cty.ObjectVal(map[string]cty.Value{"dyn": cty.StringVal("str")})
+	tfInputsAfter := cty.ObjectVal(map[string]cty.Value{"dyn": cty.NumberIntVal(42)})
+	pmBefore := presource.NewPropertyMapFromMap(map[string]any{"dyn": "str"})
+	pmAfter := presource.NewPropertyMapFromMap(map[string]any{"dyn": 42})
+
+	testCase := ct.UpgradeStateTestCase{
+		Resource1:  &resourceBefore,
+		Resource2:  &resourceAfter,
+		Inputs1:    tfInputsBefore,
+		InputsMap1: pmBefore,
+		Inputs2:    tfInputsAfter,
+		InputsMap2: pmAfter,
+		//ExpectedRawStateType: resourceBeforeAndAfter.ResourceSchema.Type().TerraformType(context.Background()),
+		SkipPulumi: "TODO",
+	}
+
+	_ = testCase.Run(t)
+
+	// autogold.Expect(map[apitype.OpType]int{apitype.OpType("same"): 2}).Equal(t, result.PulumiPreviewResult.ChangeSummary)
+	// autogold.Expect(&map[string]int{"same": 2}).Equal(t, result.PulumiUpResult.Summary.ResourceChanges)
+
+	// autogold.Expect([]ct.UpgradeStateTrace{}).Equal(t, result.PulumiUpgrades)
+	// autogold.Expect([]ct.UpgradeStateTrace{}).Equal(t, result.TFUpgrades)
+}
+
 func skipUnlessDeltasEnabled(t *testing.T) {
 	if d, ok := os.LookupEnv("PULUMI_RAW_STATE_DELTA_ENABLED"); !ok || !cmdutil.IsTruthy(d) {
 		t.Skip("This test requires PULUMI_RAW_STATE_DELTA_ENABLED=true environment")
