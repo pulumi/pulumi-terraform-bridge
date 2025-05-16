@@ -16,6 +16,7 @@ package valueshim
 
 import (
 	"encoding/json"
+	"fmt"
 	"math/big"
 
 	"github.com/hashicorp/go-cty/cty"
@@ -103,18 +104,24 @@ func (v ctyValueShim) Remove(key string) Value {
 	}
 }
 
-func (v ctyValueShim) Marshal() (json.RawMessage, error) {
+func (v ctyValueShim) Marshal(schemaType Type) (json.RawMessage, error) {
 	vv := v.val()
-	raw, err := ctyjson.Marshal(vv, vv.Type())
+	tt, ok := schemaType.(ctyTypeShim)
+	if !ok {
+		return nil, fmt.Errorf("Cannot marshal to RawState: "+
+			"expected schemaType to be of type ctyTypeShim, got %#T",
+			schemaType)
+	}
+	raw, err := ctyjson.Marshal(vv, tt.ty())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Cannot marshal to RawState: %w", err)
 	}
 	return json.RawMessage(raw), nil
 }
 
 type ctyTypeShim cty.Type
 
-var _ Type = (*ctyTypeShim)(nil)
+var _ Type = ctyTypeShim{}
 
 func (t ctyTypeShim) ty() cty.Type {
 	return cty.Type(t)

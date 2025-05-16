@@ -104,8 +104,10 @@ func Test_TValue_Marshal(t *testing.T) {
 	tupType := tftypes.Tuple{ElementTypes: []tftypes.Type{tftypes.String, tftypes.Number}}
 
 	type testCase struct {
-		v      tftypes.Value
-		expect autogold.Value
+		v             tftypes.Value
+		schemaType    tftypes.Type
+		hasSchemaType bool
+		expect        autogold.Value
 	}
 
 	testCases := []testCase{
@@ -207,10 +209,54 @@ func Test_TValue_Marshal(t *testing.T) {
 			v:      tftypes.NewValue(tupType, []tftypes.Value{ok, n42}),
 			expect: autogold.Expect(`["OK",42]`),
 		},
+		{
+			v:             tftypes.NewValue(tftypes.String, nil),
+			schemaType:    tftypes.DynamicPseudoType,
+			hasSchemaType: true,
+			expect:        autogold.Expect(`{"value":null,"type":"string"}`),
+		},
+		{
+			v:             tftypes.NewValue(tftypes.String, "foo"),
+			schemaType:    tftypes.DynamicPseudoType,
+			hasSchemaType: true,
+			expect:        autogold.Expect(`{"value":"foo","type":"string"}`),
+		},
+		{
+			v:             tftypes.NewValue(tftypes.Number, 42),
+			schemaType:    tftypes.DynamicPseudoType,
+			hasSchemaType: true,
+			expect:        autogold.Expect(`{"value":42,"type":"number"}`),
+		},
+		{
+			v:             tftypes.NewValue(tftypes.Bool, true),
+			schemaType:    tftypes.DynamicPseudoType,
+			hasSchemaType: true,
+			expect:        autogold.Expect(`{"value":true,"type":"bool"}`),
+		},
+		{
+			v: tftypes.NewValue(tftypes.List{ElementType: tftypes.String}, []tftypes.Value{
+				tftypes.NewValue(tftypes.String, "OK"),
+			}),
+			schemaType:    tftypes.DynamicPseudoType,
+			hasSchemaType: true,
+			expect:        autogold.Expect(`{"value":["OK"],"type":["list","string"]}`),
+		},
+		{
+			v: tftypes.NewValue(tftypes.Map{ElementType: tftypes.String}, map[string]tftypes.Value{
+				"foo": tftypes.NewValue(tftypes.String, "OK"),
+			}),
+			schemaType:    tftypes.DynamicPseudoType,
+			hasSchemaType: true,
+			expect:        autogold.Expect(`{"value":{"foo":"OK"},"type":["map","string"]}`),
+		},
 	}
 
 	for _, tc := range testCases {
-		raw, err := valueshim.FromTValue(tc.v).Marshal()
+		ty := tc.schemaType
+		if !tc.hasSchemaType {
+			ty = tc.v.Type()
+		}
+		raw, err := valueshim.FromTValue(tc.v).Marshal(valueshim.FromTType(ty))
 		require.NoError(t, err)
 		tc.expect.Equal(t, string(raw))
 	}
