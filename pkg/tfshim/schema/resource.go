@@ -5,6 +5,7 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/internalinter"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/valueshim"
 )
 
 var _ = shim.ResourceMap(ResourceMap{})
@@ -15,6 +16,7 @@ type Resource struct {
 	Importer           shim.ImportFunc
 	DeprecationMessage string
 	Timeouts           *shim.ResourceTimeout
+	SchemaType         valueshim.Type
 }
 
 func (r *Resource) Shim() shim.Resource {
@@ -40,6 +42,10 @@ func (r ResourceShim) Importer() shim.ImportFunc {
 
 func (r ResourceShim) DeprecationMessage() string {
 	return r.V.DeprecationMessage
+}
+
+func (r ResourceShim) SchemaType() valueshim.Type {
+	return r.V.SchemaType
 }
 
 func (r ResourceShim) Timeouts() *shim.ResourceTimeout {

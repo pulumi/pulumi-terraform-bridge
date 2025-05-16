@@ -185,7 +185,8 @@ func insertRawStateDelta(ctx context.Context, rh *resourceHandle, pm resource.Pr
 	schemaInfos := rh.pulumiResourceInfo.GetFields()
 	v := valueshim.FromTValue(state)
 
-	delta, err := tfbridge.RawStateComputeDelta(ctx, rh.schema.Shim(), schemaInfos, pm, v)
+	st := valueshim.FromTType(rh.schema.Type(ctx))
+	delta, err := tfbridge.RawStateComputeDelta(ctx, rh.schema.Shim(), schemaInfos, pm, st, v)
 	if err != nil {
 		return err
 	}
