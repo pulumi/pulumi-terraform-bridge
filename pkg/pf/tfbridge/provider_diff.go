@@ -217,20 +217,12 @@ func trimElementKeyValueFromTFPath(path *tftypes.AttributePath) *tftypes.Attribu
 	// trims everything after an ElementKeyValue path step from the replaceKeys paths
 	//nolint:lll
 	// see `convert.AttributePathToPath` used here: https://github.com/opentofu/opentofu/blob/5968e195b0f6e1ecb4381afa26abb95c636fe755/internal/plugin6/grpc_provider.go#L503
-	trimmedPath := tftypes.NewAttributePath()
-	for _, step := range path.Steps() {
-		switch s := step.(type) {
-		case tftypes.AttributeName:
-			trimmedPath = trimmedPath.WithAttributeName(string(s))
-		case tftypes.ElementKeyString:
-			trimmedPath = trimmedPath.WithElementKeyString(string(s))
-		case tftypes.ElementKeyInt:
-			trimmedPath = trimmedPath.WithElementKeyInt(int(s))
-		default:
-			return trimmedPath
+	for i, step := range path.Steps() {
+		if _, ok := step.(tftypes.ElementKeyValue); ok {
+			return tftypes.NewAttributePathWithSteps(path.Steps()[:i])
 		}
 	}
-	return trimmedPath
+	return path
 }
 
 // checkRequiresReplace checks if the planned state is different from the prior state for the given attribute paths.
