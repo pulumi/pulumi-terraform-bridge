@@ -254,14 +254,27 @@ func checkRequiresReplace(
 		if priorErr != nil && plannedErr != nil {
 			return nil, fmt.Errorf("failed to walk attribute path: %s, %w, %w", replace.String(), priorErr, plannedErr)
 		}
-		priorVal, ok := priorValAny.(tftypes.Value)
-		if !ok {
-			return nil, fmt.Errorf("failed to convert priorVal to tftypes.Value")
+
+		var priorVal tftypes.Value
+		if priorErr != nil {
+			priorVal = tftypes.NewValue(priorState.Value.Type(), nil)
+		} else {
+			var ok bool
+			priorVal, ok = priorValAny.(tftypes.Value)
+			if !ok {
+				return nil, fmt.Errorf("failed to convert priorVal to tftypes.Value")
+			}
 		}
 
-		plannedVal, ok := plannedValAny.(tftypes.Value)
-		if !ok {
-			return nil, fmt.Errorf("failed to convert plannedVal to tftypes.Value")
+		var plannedVal tftypes.Value
+		if plannedErr != nil {
+			plannedVal = tftypes.NewValue(plannedState.Type(), nil)
+		} else {
+			var ok bool
+			plannedVal, ok = plannedValAny.(tftypes.Value)
+			if !ok {
+				return nil, fmt.Errorf("failed to convert plannedVal to tftypes.Value")
+			}
 		}
 
 		if !plannedVal.IsKnown() || !priorVal.Equal(plannedVal) {
