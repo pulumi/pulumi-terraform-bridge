@@ -213,34 +213,66 @@ func diffAttributePaths(tfDiff []tftypes.ValueDiff) []*tftypes.AttributePath {
 	return paths
 }
 
+func trimElementKeyValueFromTFPath(path *tftypes.AttributePath) *tftypes.AttributePath {
+	// trims everything after an ElementKeyValue path step from the replaceKeys paths
+	//nolint:lll
+	// see `convert.AttributePathToPath` used here: https://github.com/opentofu/opentofu/blob/5968e195b0f6e1ecb4381afa26abb95c636fe755/internal/plugin6/grpc_provider.go#L503
+	trimmedPath := tftypes.NewAttributePath()
+	for _, step := range path.Steps() {
+		switch s := step.(type) {
+		case tftypes.AttributeName:
+			trimmedPath = trimmedPath.WithAttributeName(string(s))
+		case tftypes.ElementKeyString:
+			trimmedPath = trimmedPath.WithElementKeyString(string(s))
+		case tftypes.ElementKeyInt:
+			trimmedPath = trimmedPath.WithElementKeyInt(int(s))
+		default:
+			return trimmedPath
+		}
+	}
+	return trimmedPath
+}
+
 // checkRequiresReplace checks if the planned state is different from the prior state for the given attribute paths.
 // Returns the attribute paths that are indeed different.
 func checkRequiresReplace(
 	priorState *upgradedResourceState, plannedState tftypes.Value, replaceKeys []*tftypes.AttributePath) (
 	[]*tftypes.AttributePath, error,
 ) {
+	trimmedReplaceKeys := []*tftypes.AttributePath{}
+	existingReplaceKeys := map[string]struct{}{}
+	for _, replaceKey := range replaceKeys {
+		trimmedKey := trimElementKeyValueFromTFPath(replaceKey)
+		if _, ok := existingReplaceKeys[trimmedKey.String()]; !ok {
+			trimmedReplaceKeys = append(trimmedReplaceKeys, trimmedKey)
+			existingReplaceKeys[trimmedKey.String()] = struct{}{}
+		}
+	}
+
 	//nolint:lll
 	// adapted from https://github.com/opentofu/opentofu/blob/76d388b34051b2dcf7b21d2d6d15e0c4dcb48734/internal/tofu/node_resource_abstract_instance.go#L1116
 	checkedRequiresReplace := []*tftypes.AttributePath{}
-	for _, replace := range replaceKeys {
-		priorValAny, _, err := tftypes.WalkAttributePath(priorState.Value, replace)
-		if err != nil {
-			return nil, fmt.Errorf("failed to walk attribute path: %w", err)
+	if priorState.Value.IsNull() {
+		return checkedRequiresReplace, nil
+	}
+
+	for _, replace := range trimmedReplaceKeys {
+		priorValAny, _, priorErr := tftypes.WalkAttributePath(priorState.Value, replace)
+		plannedValAny, _, plannedErr := tftypes.WalkAttributePath(plannedState, replace)
+		if priorErr != nil && plannedErr != nil {
+			return nil, fmt.Errorf("failed to walk attribute path: %s, %w, %w", replace.String(), priorErr, plannedErr)
 		}
 		priorVal, ok := priorValAny.(tftypes.Value)
 		if !ok {
-			return nil, fmt.Errorf("failed to convert priorVal to tftypes.Value: %w", err)
-		}
-		plannedValAny, _, err := tftypes.WalkAttributePath(plannedState, replace)
-		if err != nil {
-			return nil, fmt.Errorf("failed to walk attribute path: %w", err)
-		}
-		plannedVal, ok := plannedValAny.(tftypes.Value)
-		if !ok {
-			return nil, fmt.Errorf("failed to convert plannedVal to tftypes.Value: %w", err)
+			return nil, fmt.Errorf("failed to convert priorVal to tftypes.Value")
 		}
 
-		if !priorVal.Equal(plannedVal) {
+		plannedVal, ok := plannedValAny.(tftypes.Value)
+		if !ok {
+			return nil, fmt.Errorf("failed to convert plannedVal to tftypes.Value")
+		}
+
+		if !plannedVal.IsKnown() || !priorVal.Equal(plannedVal) {
 			checkedRequiresReplace = append(checkedRequiresReplace, replace)
 		}
 	}

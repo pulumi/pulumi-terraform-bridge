@@ -787,7 +787,7 @@ resources:
 	require.Zero(t, res.ChangeSummary["replace"])
 }
 
-func TestCrossTestRequiresReplaceAndUseStateForUnknown(t *testing.T) {
+func TestCrossTestRequiresReplaceAndUseStateForUnknownBasic(t *testing.T) {
 	t.Parallel()
 
 	res := providerbuilder.NewResource(providerbuilder.NewResourceArgs{
