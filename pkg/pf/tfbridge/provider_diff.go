@@ -215,8 +215,7 @@ func diffAttributePaths(tfDiff []tftypes.ValueDiff) []*tftypes.AttributePath {
 
 func trimElementKeyValueFromTFPath(path *tftypes.AttributePath) *tftypes.AttributePath {
 	// trims everything after an ElementKeyValue path step from the replaceKeys paths
-	//nolint:lll
-	// see `convert.AttributePathToPath` used here: https://github.com/opentofu/opentofu/blob/5968e195b0f6e1ecb4381afa26abb95c636fe755/internal/plugin6/grpc_provider.go#L503
+	// see https://github.com/hashicorp/terraform-plugin-go/blob/main/tfprotov6/internal/toproto/attribute_path.go
 	for i, step := range path.Steps() {
 		if _, ok := step.(tftypes.ElementKeyValue); ok {
 			return tftypes.NewAttributePathWithSteps(path.Steps()[:i])

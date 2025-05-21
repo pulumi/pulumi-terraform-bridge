@@ -109,7 +109,7 @@ func TestTrimElementKeyValueFromTFPath(t *testing.T) {
 			expect: tftypes.NewAttributePath().WithAttributeName("foo").WithElementKeyInt(42),
 		},
 		{
-			name: "stops at unknown step (ElementKeyValue)",
+			name: "path with ElementKeyValue truncated",
 			input: func() *tftypes.AttributePath {
 				steps := []tftypes.AttributePathStep{
 					tftypes.AttributeName("foo"),
