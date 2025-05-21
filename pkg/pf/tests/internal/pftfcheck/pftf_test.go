@@ -11,7 +11,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tests/tfcheck"
 )
 
-func TestBasic(t *testing.T) {
+func TestTFBasic(t *testing.T) {
 	t.Parallel()
 	prov := pb.NewProvider(pb.NewProviderArgs{
 		AllResources: []pb.Resource{
@@ -47,7 +47,7 @@ output "s_val" {
 	require.Equal(t, "hello", driver.GetOutput(t, "s_val"))
 }
 
-func TestDefaults(t *testing.T) {
+func TestTFDefaults(t *testing.T) {
 	t.Parallel()
 	prov := pb.NewProvider(pb.NewProviderArgs{
 		AllResources: []pb.Resource{

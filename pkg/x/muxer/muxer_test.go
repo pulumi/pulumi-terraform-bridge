@@ -29,7 +29,7 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 )
 
-func TestAttach(t *testing.T) {
+func TestMuxerAttach(t *testing.T) {
 	t.Parallel()
 	req := &pulumirpc.PluginAttach{Address: "test"}
 	ctx := context.Background()
@@ -93,7 +93,7 @@ func (h *host) Log(context.Context, diag.Severity, urn.URN, string) error {
 	return nil
 }
 
-func TestDiffConfig(t *testing.T) {
+func TestMuxerDiffConfig(t *testing.T) {
 	t.Parallel()
 	type testCase struct {
 		name           string

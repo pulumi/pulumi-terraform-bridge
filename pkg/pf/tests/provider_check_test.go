@@ -35,7 +35,7 @@ import (
 	tfbridge0 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 
-func TestCheck(t *testing.T) {
+func TestPFCheck(t *testing.T) {
 	t.Parallel()
 	type testCase struct {
 		name        string

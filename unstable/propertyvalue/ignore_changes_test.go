@@ -22,7 +22,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestIgnoreChanges(t *testing.T) {
+func TestPVIgnoreChanges(t *testing.T) {
 	t.Parallel()
 	old := func() resource.PropertyMap {
 		return resource.PropertyMap{

@@ -26,7 +26,7 @@ func ref[T any](t T) *T {
 	return &t
 }
 
-func TestBasic(t *testing.T) {
+func TestSDKv2Basic(t *testing.T) {
 	t.Parallel()
 	resMap := map[string]*schema.Resource{
 		"prov_test": {

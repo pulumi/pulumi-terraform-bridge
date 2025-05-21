@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestToInstanceState(t *testing.T) {
+func TestSDKv1ToInstanceState(t *testing.T) {
 	t.Parallel()
 	res := NewResource(&schema.Resource{
 		Schema: map[string]*schema.Schema{
@@ -169,7 +169,7 @@ func TestToInstanceState(t *testing.T) {
 }
 
 // Test that an unset list still generates a length attribute.
-func TestEmptyListAttribute(t *testing.T) {
+func TestSDKv1EmptyListAttribute(t *testing.T) {
 	t.Parallel()
 	res := NewResource(&schema.Resource{
 		Schema: map[string]*schema.Schema{
@@ -184,7 +184,7 @@ func TestEmptyListAttribute(t *testing.T) {
 	})
 }
 
-func TestObjectFromInstanceDiff(t *testing.T) {
+func TestSDKv1ObjectFromInstanceDiff(t *testing.T) {
 	t.Parallel()
 	res := NewResource(&schema.Resource{
 		Schema: map[string]*schema.Schema{

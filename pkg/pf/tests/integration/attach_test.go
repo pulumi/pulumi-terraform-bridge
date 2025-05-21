@@ -24,7 +24,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestAttach(t *testing.T) {
+func TestPFAttach(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
 		t.Skip()
@@ -41,7 +41,7 @@ func TestAttach(t *testing.T) {
 	pt.Preview(t)
 }
 
-func TestAttachMuxed(t *testing.T) {
+func TestPFAttachMuxed(t *testing.T) {
 	t.Parallel()
 	if testing.Short() {
 		t.Skip()
