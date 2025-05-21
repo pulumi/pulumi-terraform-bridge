@@ -56,210 +56,184 @@ func TestUnchangedBasicObject(t *testing.T) {
 	})
 }
 
-func TestDiffBasicTypes(t *testing.T) {
-	t.Parallel()
+func runBasicTypeTest(t *testing.T, config1, config2 any, prop *schema.Schema) {
+	res := func(forceNew bool) *schema.Resource {
+		res := &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				"other_prop": {
+					Type:     schema.TypeString,
+					Optional: true,
+				},
+				"prop": prop,
+			},
+		}
 
-	typeCases := []struct {
-		name             string
-		config1, config2 any
-		prop             *schema.Schema
-	}{
-		{
-			name:    "string",
-			config1: map[string]any{"prop": "A"},
-			config2: map[string]any{"prop": "B"},
-			prop: &schema.Schema{
-				Type:     schema.TypeString,
-				Optional: true,
-			},
-		},
-		{
-			name:    "int",
-			config1: map[string]any{"prop": 1},
-			config2: map[string]any{"prop": 2},
-			prop: &schema.Schema{
-				Type:     schema.TypeInt,
-				Optional: true,
-			},
-		},
-		{
-			name:    "float",
-			config1: map[string]any{"prop": 1.1},
-			config2: map[string]any{"prop": 2.2},
-			prop: &schema.Schema{
-				Type:     schema.TypeFloat,
-				Optional: true,
-			},
-		},
-		{
-			name:    "bool",
-			config1: map[string]any{"prop": true},
-			config2: map[string]any{"prop": false},
-			prop: &schema.Schema{
-				Type:     schema.TypeBool,
-				Optional: true,
-			},
-		},
-		{
-			name:    "list attr",
-			config1: map[string]any{"prop": []any{"A", "B"}},
-			config2: map[string]any{"prop": []any{"A", "C"}},
-			prop: &schema.Schema{
-				Type:     schema.TypeList,
-				Optional: true,
-				Elem: &schema.Schema{
-					Type: schema.TypeString,
-				},
-			},
-		},
-		{
-			name:    "set attr",
-			config1: map[string]any{"prop": []any{"A", "B"}},
-			config2: map[string]any{"prop": []any{"A", "C"}},
-			prop: &schema.Schema{
-				Type:     schema.TypeSet,
-				Optional: true,
-				Elem: &schema.Schema{
-					Type: schema.TypeString,
-				},
-			},
-		},
-		{
-			name:    "map attr",
-			config1: map[string]any{"prop": map[string]any{"A": "B"}},
-			config2: map[string]any{"prop": map[string]any{"A": "C"}},
-			prop: &schema.Schema{
-				Type:     schema.TypeMap,
-				Optional: true,
-				Elem: &schema.Schema{
-					Type: schema.TypeString,
-				},
-			},
-		},
-		{
-			name: "list block",
-			config1: map[string]any{
-				"prop": []any{map[string]any{"x": "A"}, map[string]any{"x": "B"}},
-			},
-			config2: map[string]any{
-				"prop": []any{map[string]any{"x": "A"}, map[string]any{"x": "C"}},
-			},
-			prop: &schema.Schema{
-				Type:     schema.TypeList,
-				Optional: true,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"x": {Optional: true, Type: schema.TypeString},
-					},
-				},
-			},
-		},
-		{
-			name: "set block",
-			config1: map[string]any{
-				"prop": []any{map[string]any{"x": "A"}, map[string]any{"x": "B"}},
-			},
-			config2: map[string]any{
-				"prop": []any{map[string]any{"x": "A"}, map[string]any{"x": "C"}},
-			},
-			prop: &schema.Schema{
-				Type:     schema.TypeSet,
-				Optional: true,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"x": {Optional: true, Type: schema.TypeString},
-					},
-				},
-			},
-		},
-	}
-
-	for _, tc := range typeCases {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-			res := func(forceNew bool) *schema.Resource {
-				res := &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"other_prop": {
-							Type:     schema.TypeString,
-							Optional: true,
-						},
-						"prop": tc.prop,
-					},
-				}
-
-				if forceNew {
-					res.Schema["prop"].ForceNew = true
-					if nestedRes, ok := res.Schema["prop"].Elem.(*schema.Resource); ok {
-						nestedRes.Schema["x"].ForceNew = true
-					}
-				}
-
-				return res
+		if forceNew {
+			res.Schema["prop"].ForceNew = true
+			if nestedRes, ok := res.Schema["prop"].Elem.(*schema.Resource); ok {
+				nestedRes.Schema["x"].ForceNew = true
 			}
+		}
 
-			t.Run("no diff", func(t *testing.T) {
-				tfAction := runDiffCheck(t, diffTestCase{
-					Resource: res(false),
-					Config1:  tc.config1,
-					Config2:  tc.config1,
-				})
-
-				require.Equal(t, []string{"no-op"}, tfAction.TFDiff.Actions)
-			})
-
-			t.Run("diff", func(t *testing.T) {
-				tfAction := runDiffCheck(t, diffTestCase{
-					Resource: res(false),
-					Config1:  tc.config1,
-					Config2:  tc.config2,
-				})
-
-				require.Equal(t, []string{"update"}, tfAction.TFDiff.Actions)
-			})
-
-			t.Run("create", func(t *testing.T) {
-				tfAction := runDiffCheck(t, diffTestCase{
-					Resource: res(false),
-					Config1:  nil,
-					Config2:  tc.config1,
-				})
-
-				require.Equal(t, []string{"create"}, tfAction.TFDiff.Actions)
-			})
-
-			t.Run("delete", func(t *testing.T) {
-				tfAction := runDiffCheck(t, diffTestCase{
-					Resource: res(false),
-					Config1:  tc.config1,
-					Config2:  nil,
-				})
-
-				require.Equal(t, []string{"delete"}, tfAction.TFDiff.Actions)
-			})
-
-			t.Run("replace", func(t *testing.T) {
-				tfAction := runDiffCheck(t, diffTestCase{
-					Resource: res(true),
-					Config1:  tc.config1,
-					Config2:  tc.config2,
-				})
-
-				require.Equal(t, []string{"create", "delete"}, tfAction.TFDiff.Actions)
-			})
-
-			t.Run("replace delete first", func(t *testing.T) {
-				tfAction := runDiffCheck(t, diffTestCase{
-					Resource:            res(true),
-					Config1:             tc.config1,
-					Config2:             tc.config2,
-					DeleteBeforeReplace: true,
-				})
-
-				require.Equal(t, []string{"delete", "create"}, tfAction.TFDiff.Actions)
-			})
-		})
+		return res
 	}
+
+	t.Run("no diff", func(t *testing.T) {
+		tfAction := runDiffCheck(t, diffTestCase{
+			Resource: res(false),
+			Config1:  config1,
+			Config2:  config1,
+		})
+
+		require.Equal(t, []string{"no-op"}, tfAction.TFDiff.Actions)
+	})
+
+	t.Run("diff", func(t *testing.T) {
+		tfAction := runDiffCheck(t, diffTestCase{
+			Resource: res(false),
+			Config1:  config1,
+			Config2:  config2,
+		})
+
+		require.Equal(t, []string{"update"}, tfAction.TFDiff.Actions)
+	})
+
+	t.Run("create", func(t *testing.T) {
+		tfAction := runDiffCheck(t, diffTestCase{
+			Resource: res(false),
+			Config1:  nil,
+			Config2:  config1,
+		})
+
+		require.Equal(t, []string{"create"}, tfAction.TFDiff.Actions)
+	})
+
+	t.Run("delete", func(t *testing.T) {
+		tfAction := runDiffCheck(t, diffTestCase{
+			Resource: res(false),
+			Config1:  config1,
+			Config2:  nil,
+		})
+
+		require.Equal(t, []string{"delete"}, tfAction.TFDiff.Actions)
+	})
+
+	t.Run("replace", func(t *testing.T) {
+		tfAction := runDiffCheck(t, diffTestCase{
+			Resource: res(true),
+			Config1:  config1,
+			Config2:  config2,
+		})
+
+		require.Equal(t, []string{"create", "delete"}, tfAction.TFDiff.Actions)
+	})
+
+	t.Run("replace delete first", func(t *testing.T) {
+		tfAction := runDiffCheck(t, diffTestCase{
+			Resource:            res(true),
+			Config1:             config1,
+			Config2:             config2,
+			DeleteBeforeReplace: true,
+		})
+
+		require.Equal(t, []string{"delete", "create"}, tfAction.TFDiff.Actions)
+	})
+}
+
+func TestDiffBasicTypeString(t *testing.T) {
+	t.Parallel()
+	runBasicTypeTest(t,
+		map[string]any{"prop": "A"},
+		map[string]any{"prop": "B"},
+		&schema.Schema{Type: schema.TypeString, Optional: true},
+	)
+}
+
+func TestDiffBasicTypeInt(t *testing.T) {
+	t.Parallel()
+	runBasicTypeTest(t,
+		map[string]any{"prop": 1},
+		map[string]any{"prop": 2},
+		&schema.Schema{Type: schema.TypeInt, Optional: true},
+	)
+}
+
+func TestDiffBasicTypeFloat(t *testing.T) {
+	t.Parallel()
+	runBasicTypeTest(t,
+		map[string]any{"prop": 1.1},
+		map[string]any{"prop": 2.2},
+		&schema.Schema{Type: schema.TypeFloat, Optional: true},
+	)
+}
+
+func TestDiffBasicTypeBool(t *testing.T) {
+	t.Parallel()
+	runBasicTypeTest(t,
+		map[string]any{"prop": true},
+		map[string]any{"prop": false},
+		&schema.Schema{Type: schema.TypeBool, Optional: true},
+	)
+}
+
+func TestDiffBasicTypeListAttr(t *testing.T) {
+	t.Parallel()
+	runBasicTypeTest(t,
+		map[string]any{"prop": []any{"A", "B"}},
+		map[string]any{"prop": []any{"A", "C"}},
+		&schema.Schema{Type: schema.TypeList, Optional: true, Elem: &schema.Schema{Type: schema.TypeString}},
+	)
+}
+
+func TestDiffBasicTypeSetAttr(t *testing.T) {
+	t.Parallel()
+	runBasicTypeTest(t,
+		map[string]any{"prop": []any{"A", "B"}},
+		map[string]any{"prop": []any{"A", "C"}},
+		&schema.Schema{Type: schema.TypeSet, Optional: true, Elem: &schema.Schema{Type: schema.TypeString}},
+	)
+}
+
+func TestDiffBasicTypeMapAttr(t *testing.T) {
+	t.Parallel()
+	runBasicTypeTest(t,
+		map[string]any{"prop": map[string]any{"A": "B"}},
+		map[string]any{"prop": map[string]any{"A": "C"}},
+		&schema.Schema{Type: schema.TypeMap, Optional: true, Elem: &schema.Schema{Type: schema.TypeString}},
+	)
+}
+
+func TestDiffBasicTypeListBlock(t *testing.T) {
+	t.Parallel()
+	prop := &schema.Schema{
+		Type:     schema.TypeList,
+		Optional: true,
+		Elem:     &schema.Resource{Schema: map[string]*schema.Schema{"x": {Optional: true, Type: schema.TypeString}}},
+	}
+	runBasicTypeTest(t,
+		map[string]any{"prop": []any{map[string]any{"x": "A"}, map[string]any{"x": "B"}}},
+		map[string]any{"prop": []any{map[string]any{"x": "A"}, map[string]any{"x": "C"}}},
+		prop,
+	)
+}
+
+func TestDiffBasicTypeSetBlock(t *testing.T) {
+	t.Parallel()
+	prop := &schema.Schema{
+		Type:     schema.TypeSet,
+		Optional: true,
+		Elem: &schema.Resource{
+			Schema: map[string]*schema.Schema{
+				"x": {Optional: true, Type: schema.TypeString},
+			},
+		},
+	}
+
+	runBasicTypeTest(t,
+		map[string]any{"prop": []any{map[string]any{"x": "A"}, map[string]any{"x": "B"}}},
+		map[string]any{"prop": []any{map[string]any{"x": "A"}, map[string]any{"x": "C"}}},
+		prop,
+	)
 }
 
 func TestSetReordering(t *testing.T) {
@@ -1060,195 +1034,507 @@ func findKeyInPulumiDetailedDiff(detailedDiff map[string]interface{}, key string
 	return false
 }
 
-func TestNilVsEmptyNestedCollections(t *testing.T) {
+func TestNilVsEmptyListMaxItemsOne(t *testing.T) {
 	t.Parallel()
-	for _, MaxItems := range []int{0, 1} {
-		t.Run(fmt.Sprintf("MaxItems=%d", MaxItems), func(t *testing.T) {
-			res := &schema.Resource{
-				Schema: map[string]*schema.Schema{
-					"list": {
-						Type:     schema.TypeList,
-						Optional: true,
-						MaxItems: MaxItems,
-						Elem: &schema.Resource{
-							Schema: map[string]*schema.Schema{
-								"x": {
-									Type:     schema.TypeList,
-									Optional: true,
-									Elem: &schema.Schema{
-										Type: schema.TypeString,
-									},
-								},
-							},
-						},
-					},
-					"set": {
-						Type:     schema.TypeSet,
-						Optional: true,
-						MaxItems: MaxItems,
-						Elem: &schema.Resource{
-							Schema: map[string]*schema.Schema{
-								"x": {
-									Type:     schema.TypeList,
-									Optional: true,
-									Elem: &schema.Schema{
-										Type: schema.TypeString,
-									},
-								},
+
+	res := &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"list": {
+				Type:     schema.TypeList,
+				Optional: true,
+				MaxItems: 1,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"x": {
+							Type:     schema.TypeList,
+							Optional: true,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
 							},
 						},
 					},
 				},
-			}
-
-			t.Run("nil to empty list", func(t *testing.T) {
-				diff := runDiffCheck(t, diffTestCase{
-					Resource: res,
-					Config1:  map[string]any{},
-					Config2:  map[string]any{"list": []any{}},
-				})
-
-				require.Equal(t, []string{"no-op"}, diff.TFDiff.Actions)
-			})
-
-			t.Run("nil to empty set", func(t *testing.T) {
-				diff := runDiffCheck(t, diffTestCase{
-					Resource: res,
-					Config1:  map[string]any{},
-					Config2:  map[string]any{"set": []any{}},
-				})
-				require.Equal(t, []string{"no-op"}, diff.TFDiff.Actions)
-			})
-
-			t.Run("empty to nil list", func(t *testing.T) {
-				diff := runDiffCheck(t, diffTestCase{
-					Resource: res,
-					Config1:  map[string]any{"list": []any{}},
-					Config2:  map[string]any{},
-				})
-				require.Equal(t, []string{"no-op"}, diff.TFDiff.Actions)
-			})
-
-			t.Run("empty to nil set", func(t *testing.T) {
-				diff := runDiffCheck(t, diffTestCase{
-					Resource: res,
-					Config1:  map[string]any{"set": []any{}},
-					Config2:  map[string]any{},
-				})
-				require.Equal(t, []string{"no-op"}, diff.TFDiff.Actions)
-			})
-
-			listOfStrType := tftypes.List{ElementType: tftypes.String}
-
-			objType := tftypes.Object{
-				AttributeTypes: map[string]tftypes.Type{
-					"x": listOfStrType,
-				},
-			}
-
-			listType := tftypes.List{ElementType: objType}
-
-			listVal := tftypes.NewValue(
-				listType,
-				[]tftypes.Value{
-					tftypes.NewValue(
-						objType,
-						map[string]tftypes.Value{
-							"x": tftypes.NewValue(listOfStrType,
-								[]tftypes.Value{}),
-						},
-					),
-				},
-			)
-
-			listConfig := tftypes.NewValue(
-				tftypes.Object{
-					AttributeTypes: map[string]tftypes.Type{
-						"list": listType,
-					},
-				},
-				map[string]tftypes.Value{
-					"list": listVal,
-				},
-			)
-
-			t.Run("nil to empty list in list", func(t *testing.T) {
-				diff := runDiffCheck(t, diffTestCase{
-					Resource: res,
-					Config1:  map[string]any{},
-					Config2:  listConfig,
-				})
-
-				require.Equal(t, []string{"update"}, diff.TFDiff.Actions)
-				require.NotEqual(t, diff.TFDiff.Before, diff.TFDiff.After)
-				require.True(t, findKindInPulumiDetailedDiff(diff.PulumiDiff.DetailedDiff, "ADD"))
-			})
-
-			t.Run("empty list in list to nil", func(t *testing.T) {
-				diff := runDiffCheck(t, diffTestCase{
-					Resource: res,
-					Config1:  listConfig,
-					Config2:  map[string]any{},
-				})
-
-				require.Equal(t, []string{"update"}, diff.TFDiff.Actions)
-				require.NotEqual(t, diff.TFDiff.Before, diff.TFDiff.After)
-				require.True(t, findKindInPulumiDetailedDiff(diff.PulumiDiff.DetailedDiff, "DELETE"))
-			})
-
-			setType := tftypes.Set{ElementType: objType}
-
-			setVal := tftypes.NewValue(
-				setType,
-				[]tftypes.Value{
-					tftypes.NewValue(
-						objType,
-						map[string]tftypes.Value{
-							"x": tftypes.NewValue(listOfStrType,
-								[]tftypes.Value{}),
-						},
-					),
-				},
-			)
-
-			setConfig := tftypes.NewValue(
-				tftypes.Object{
-					AttributeTypes: map[string]tftypes.Type{
-						"set": setType,
-					},
-				},
-				map[string]tftypes.Value{
-					"set": setVal,
-				},
-			)
-
-			t.Run("nil to empty list in set", func(t *testing.T) {
-				diff := runDiffCheck(t, diffTestCase{
-					Resource: res,
-					Config1:  map[string]any{},
-					Config2:  setConfig,
-				})
-
-				require.Equal(t, []string{"update"}, diff.TFDiff.Actions)
-				require.NotEqual(t, diff.TFDiff.Before, diff.TFDiff.After)
-				t.Log(diff.PulumiDiff.DetailedDiff)
-				require.True(t, findKindInPulumiDetailedDiff(diff.PulumiDiff.DetailedDiff, "ADD"))
-			})
-
-			t.Run("empty list in set to nil", func(t *testing.T) {
-				diff := runDiffCheck(t, diffTestCase{
-					Resource: res,
-					Config1:  setConfig,
-					Config2:  map[string]any{},
-				})
-
-				require.Equal(t, []string{"no-op"}, diff.TFDiff.Actions)
-			})
-		})
+			},
+		},
 	}
+
+	t.Run("nil to empty list", func(t *testing.T) {
+		diff := runDiffCheck(t, diffTestCase{
+			Resource: res,
+			Config1:  map[string]any{},
+			Config2:  map[string]any{"list": []any{}},
+		})
+
+		require.Equal(t, []string{"no-op"}, diff.TFDiff.Actions)
+	})
+
+	t.Run("empty to nil list", func(t *testing.T) {
+		diff := runDiffCheck(t, diffTestCase{
+			Resource: res,
+			Config1:  map[string]any{"list": []any{}},
+			Config2:  map[string]any{},
+		})
+		require.Equal(t, []string{"no-op"}, diff.TFDiff.Actions)
+	})
 }
 
-func TestAttributeCollectionForceNew(t *testing.T) {
+func TestNilVsEmptyListNoMaxItemsOne(t *testing.T) {
+	t.Parallel()
+
+	res := &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"list": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"x": {
+							Type:     schema.TypeList,
+							Optional: true,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	t.Run("nil to empty list", func(t *testing.T) {
+		diff := runDiffCheck(t, diffTestCase{
+			Resource: res,
+			Config1:  map[string]any{},
+			Config2:  map[string]any{"list": []any{}},
+		})
+
+		require.Equal(t, []string{"no-op"}, diff.TFDiff.Actions)
+	})
+
+	t.Run("empty to nil list", func(t *testing.T) {
+		diff := runDiffCheck(t, diffTestCase{
+			Resource: res,
+			Config1:  map[string]any{"list": []any{}},
+			Config2:  map[string]any{},
+		})
+		require.Equal(t, []string{"no-op"}, diff.TFDiff.Actions)
+	})
+}
+
+func TestNilVsEmptyNestedListMaxItemsOne(t *testing.T) {
+	t.Parallel()
+
+	res := &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"list": {
+				Type:     schema.TypeList,
+				Optional: true,
+				MaxItems: 1,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"x": {
+							Type:     schema.TypeList,
+							Optional: true,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	listOfStrType := tftypes.List{ElementType: tftypes.String}
+
+	objType := tftypes.Object{
+		AttributeTypes: map[string]tftypes.Type{
+			"x": listOfStrType,
+		},
+	}
+
+	listType := tftypes.List{ElementType: objType}
+
+	listVal := tftypes.NewValue(
+		listType,
+		[]tftypes.Value{
+			tftypes.NewValue(
+				objType,
+				map[string]tftypes.Value{
+					"x": tftypes.NewValue(listOfStrType,
+						[]tftypes.Value{}),
+				},
+			),
+		},
+	)
+
+	listConfig := tftypes.NewValue(
+		tftypes.Object{
+			AttributeTypes: map[string]tftypes.Type{
+				"list": listType,
+			},
+		},
+		map[string]tftypes.Value{
+			"list": listVal,
+		},
+	)
+
+	t.Run("nil to empty list in list", func(t *testing.T) {
+		diff := runDiffCheck(t, diffTestCase{
+			Resource: res,
+			Config1:  map[string]any{},
+			Config2:  listConfig,
+		})
+
+		require.Equal(t, []string{"update"}, diff.TFDiff.Actions)
+		require.NotEqual(t, diff.TFDiff.Before, diff.TFDiff.After)
+		require.True(t, findKindInPulumiDetailedDiff(diff.PulumiDiff.DetailedDiff, "ADD"))
+	})
+
+	t.Run("empty list in list to nil", func(t *testing.T) {
+		diff := runDiffCheck(t, diffTestCase{
+			Resource: res,
+			Config1:  listConfig,
+			Config2:  map[string]any{},
+		})
+
+		require.Equal(t, []string{"update"}, diff.TFDiff.Actions)
+		require.NotEqual(t, diff.TFDiff.Before, diff.TFDiff.After)
+		require.True(t, findKindInPulumiDetailedDiff(diff.PulumiDiff.DetailedDiff, "DELETE"))
+	})
+}
+
+func TestNilVsEmptyNestedListNoMaxItemsOne(t *testing.T) {
+	t.Parallel()
+
+	res := &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"list": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"x": {
+							Type:     schema.TypeList,
+							Optional: true,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	listOfStrType := tftypes.List{ElementType: tftypes.String}
+
+	objType := tftypes.Object{
+		AttributeTypes: map[string]tftypes.Type{
+			"x": listOfStrType,
+		},
+	}
+
+	listType := tftypes.List{ElementType: objType}
+
+	listVal := tftypes.NewValue(
+		listType,
+		[]tftypes.Value{
+			tftypes.NewValue(
+				objType,
+				map[string]tftypes.Value{
+					"x": tftypes.NewValue(listOfStrType,
+						[]tftypes.Value{}),
+				},
+			),
+		},
+	)
+
+	listConfig := tftypes.NewValue(
+		tftypes.Object{
+			AttributeTypes: map[string]tftypes.Type{
+				"list": listType,
+			},
+		},
+		map[string]tftypes.Value{
+			"list": listVal,
+		},
+	)
+
+	t.Run("nil to empty list in list", func(t *testing.T) {
+		diff := runDiffCheck(t, diffTestCase{
+			Resource: res,
+			Config1:  map[string]any{},
+			Config2:  listConfig,
+		})
+
+		require.Equal(t, []string{"update"}, diff.TFDiff.Actions)
+		require.NotEqual(t, diff.TFDiff.Before, diff.TFDiff.After)
+		require.True(t, findKindInPulumiDetailedDiff(diff.PulumiDiff.DetailedDiff, "ADD"))
+	})
+
+	t.Run("empty list in list to nil", func(t *testing.T) {
+		diff := runDiffCheck(t, diffTestCase{
+			Resource: res,
+			Config1:  listConfig,
+			Config2:  map[string]any{},
+		})
+
+		require.Equal(t, []string{"update"}, diff.TFDiff.Actions)
+		require.NotEqual(t, diff.TFDiff.Before, diff.TFDiff.After)
+		require.True(t, findKindInPulumiDetailedDiff(diff.PulumiDiff.DetailedDiff, "DELETE"))
+	})
+}
+
+func TestNilVsEmptySetMaxItemsOne(t *testing.T) {
+	t.Parallel()
+
+	res := &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"set": {
+				Type:     schema.TypeSet,
+				Optional: true,
+				MaxItems: 1,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"x": {
+							Type:     schema.TypeList,
+							Optional: true,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	t.Run("nil to empty set", func(t *testing.T) {
+		diff := runDiffCheck(t, diffTestCase{
+			Resource: res,
+			Config1:  map[string]any{},
+			Config2:  map[string]any{"set": []any{}},
+		})
+
+		require.Equal(t, []string{"no-op"}, diff.TFDiff.Actions)
+	})
+
+	t.Run("empty to nil set", func(t *testing.T) {
+		diff := runDiffCheck(t, diffTestCase{
+			Resource: res,
+			Config1:  map[string]any{"set": []any{}},
+			Config2:  map[string]any{},
+		})
+		require.Equal(t, []string{"no-op"}, diff.TFDiff.Actions)
+	})
+}
+
+func TestNilVsEmptySettNoMaxItemsOne(t *testing.T) {
+	t.Parallel()
+
+	res := &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"set": {
+				Type:     schema.TypeSet,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"x": {
+							Type:     schema.TypeList,
+							Optional: true,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	t.Run("nil to empty set", func(t *testing.T) {
+		diff := runDiffCheck(t, diffTestCase{
+			Resource: res,
+			Config1:  map[string]any{},
+			Config2:  map[string]any{"set": []any{}},
+		})
+
+		require.Equal(t, []string{"no-op"}, diff.TFDiff.Actions)
+	})
+
+	t.Run("empty to nil set", func(t *testing.T) {
+		diff := runDiffCheck(t, diffTestCase{
+			Resource: res,
+			Config1:  map[string]any{"set": []any{}},
+			Config2:  map[string]any{},
+		})
+		require.Equal(t, []string{"no-op"}, diff.TFDiff.Actions)
+	})
+}
+
+func TestNilVsEmptyNestedSetMaxItemsOne(t *testing.T) {
+	t.Parallel()
+
+	res := &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"set": {
+				Type:     schema.TypeSet,
+				Optional: true,
+				MaxItems: 1,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"x": {
+							Type:     schema.TypeList,
+							Optional: true,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	listOfStrType := tftypes.List{ElementType: tftypes.String}
+
+	objType := tftypes.Object{
+		AttributeTypes: map[string]tftypes.Type{
+			"x": listOfStrType,
+		},
+	}
+	setType := tftypes.Set{ElementType: objType}
+
+	setVal := tftypes.NewValue(
+		setType,
+		[]tftypes.Value{
+			tftypes.NewValue(
+				objType,
+				map[string]tftypes.Value{
+					"x": tftypes.NewValue(listOfStrType,
+						[]tftypes.Value{}),
+				},
+			),
+		},
+	)
+
+	setConfig := tftypes.NewValue(
+		tftypes.Object{
+			AttributeTypes: map[string]tftypes.Type{
+				"set": setType,
+			},
+		},
+		map[string]tftypes.Value{
+			"set": setVal,
+		},
+	)
+
+	t.Run("nil to empty list in set", func(t *testing.T) {
+		diff := runDiffCheck(t, diffTestCase{
+			Resource: res,
+			Config1:  map[string]any{},
+			Config2:  setConfig,
+		})
+
+		require.Equal(t, []string{"update"}, diff.TFDiff.Actions)
+		require.NotEqual(t, diff.TFDiff.Before, diff.TFDiff.After)
+		t.Log(diff.PulumiDiff.DetailedDiff)
+		require.True(t, findKindInPulumiDetailedDiff(diff.PulumiDiff.DetailedDiff, "ADD"))
+	})
+
+	t.Run("empty list in set to nil", func(t *testing.T) {
+		diff := runDiffCheck(t, diffTestCase{
+			Resource: res,
+			Config1:  setConfig,
+			Config2:  map[string]any{},
+		})
+
+		require.Equal(t, []string{"no-op"}, diff.TFDiff.Actions)
+	})
+}
+
+func TestNilVsEmptyNestedSetNoMaxItemsOne(t *testing.T) {
+	t.Parallel()
+
+	res := &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"set": {
+				Type:     schema.TypeSet,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"x": {
+							Type:     schema.TypeList,
+							Optional: true,
+							Elem: &schema.Schema{
+								Type: schema.TypeString,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	listOfStrType := tftypes.List{ElementType: tftypes.String}
+
+	objType := tftypes.Object{
+		AttributeTypes: map[string]tftypes.Type{
+			"x": listOfStrType,
+		},
+	}
+	setType := tftypes.Set{ElementType: objType}
+
+	setVal := tftypes.NewValue(
+		setType,
+		[]tftypes.Value{
+			tftypes.NewValue(
+				objType,
+				map[string]tftypes.Value{
+					"x": tftypes.NewValue(listOfStrType,
+						[]tftypes.Value{}),
+				},
+			),
+		},
+	)
+
+	setConfig := tftypes.NewValue(
+		tftypes.Object{
+			AttributeTypes: map[string]tftypes.Type{
+				"set": setType,
+			},
+		},
+		map[string]tftypes.Value{
+			"set": setVal,
+		},
+	)
+
+	t.Run("nil to empty list in set", func(t *testing.T) {
+		diff := runDiffCheck(t, diffTestCase{
+			Resource: res,
+			Config1:  map[string]any{},
+			Config2:  setConfig,
+		})
+
+		require.Equal(t, []string{"update"}, diff.TFDiff.Actions)
+		require.NotEqual(t, diff.TFDiff.Before, diff.TFDiff.After)
+		t.Log(diff.PulumiDiff.DetailedDiff)
+		require.True(t, findKindInPulumiDetailedDiff(diff.PulumiDiff.DetailedDiff, "ADD"))
+	})
+
+	t.Run("empty list in set to nil", func(t *testing.T) {
+		diff := runDiffCheck(t, diffTestCase{
+			Resource: res,
+			Config1:  setConfig,
+			Config2:  map[string]any{},
+		})
+
+		require.Equal(t, []string{"no-op"}, diff.TFDiff.Actions)
+	})
+}
+
+func TestAttributeListForceNew(t *testing.T) {
 	t.Parallel()
 	res := &schema.Resource{
 		Schema: map[string]*schema.Schema{
@@ -1260,6 +1546,50 @@ func TestAttributeCollectionForceNew(t *testing.T) {
 					Type: schema.TypeString,
 				},
 			},
+		},
+	}
+
+	t.Run("changed non-empty", func(t *testing.T) {
+		t.Parallel()
+		res := runDiffCheck(t, diffTestCase{
+			Resource: res,
+			Config1:  map[string]any{"list": []any{"A"}},
+			Config2:  map[string]any{"list": []any{"B"}},
+		})
+
+		require.Equal(t, []string{"create", "delete"}, res.TFDiff.Actions)
+		require.True(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "UPDATE_REPLACE"))
+	})
+
+	t.Run("changed to empty", func(t *testing.T) {
+		t.Parallel()
+		res := runDiffCheck(t, diffTestCase{
+			Resource: res,
+			Config1:  map[string]any{"list": []any{"A"}},
+			Config2:  map[string]any{"list": []any{}},
+		})
+
+		require.Equal(t, []string{"create", "delete"}, res.TFDiff.Actions)
+		require.True(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "DELETE_REPLACE"))
+	})
+
+	t.Run("changed from empty", func(t *testing.T) {
+		t.Parallel()
+		res := runDiffCheck(t, diffTestCase{
+			Resource: res,
+			Config1:  map[string]any{"list": []any{}},
+			Config2:  map[string]any{"list": []any{"A"}},
+		})
+
+		require.Equal(t, []string{"create", "delete"}, res.TFDiff.Actions)
+		require.True(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "ADD_REPLACE"))
+	})
+}
+
+func TestAttributeSetForceNew(t *testing.T) {
+	t.Parallel()
+	res := &schema.Resource{
+		Schema: map[string]*schema.Schema{
 			"set": {
 				Type:     schema.TypeSet,
 				Optional: true,
@@ -1268,6 +1598,50 @@ func TestAttributeCollectionForceNew(t *testing.T) {
 					Type: schema.TypeString,
 				},
 			},
+		},
+	}
+
+	t.Run("changed non-empty", func(t *testing.T) {
+		t.Parallel()
+		res := runDiffCheck(t, diffTestCase{
+			Resource: res,
+			Config1:  map[string]any{"set": []any{"A"}},
+			Config2:  map[string]any{"set": []any{"B"}},
+		})
+
+		require.Equal(t, []string{"create", "delete"}, res.TFDiff.Actions)
+		require.True(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "UPDATE_REPLACE"))
+	})
+
+	t.Run("changed to empty", func(t *testing.T) {
+		t.Parallel()
+		res := runDiffCheck(t, diffTestCase{
+			Resource: res,
+			Config1:  map[string]any{"set": []any{"A"}},
+			Config2:  map[string]any{"set": []any{}},
+		})
+
+		require.Equal(t, []string{"create", "delete"}, res.TFDiff.Actions)
+		require.True(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "DELETE_REPLACE"))
+	})
+
+	t.Run("changed from empty", func(t *testing.T) {
+		t.Parallel()
+		res := runDiffCheck(t, diffTestCase{
+			Resource: res,
+			Config1:  map[string]any{"set": []any{}},
+			Config2:  map[string]any{"set": []any{"A"}},
+		})
+
+		require.Equal(t, []string{"create", "delete"}, res.TFDiff.Actions)
+		require.True(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "ADD_REPLACE"))
+	})
+}
+
+func TestAttributeMapForceNew(t *testing.T) {
+	t.Parallel()
+	res := &schema.Resource{
+		Schema: map[string]*schema.Schema{
 			"map": {
 				Type:     schema.TypeMap,
 				Optional: true,
@@ -1279,120 +1653,40 @@ func TestAttributeCollectionForceNew(t *testing.T) {
 		},
 	}
 
-	t.Run("list", func(t *testing.T) {
-		t.Run("changed non-empty", func(t *testing.T) {
-			t.Parallel()
-			res := runDiffCheck(t, diffTestCase{
-				Resource: res,
-				Config1:  map[string]any{"list": []any{"A"}},
-				Config2:  map[string]any{"list": []any{"B"}},
-			})
-
-			require.Equal(t, []string{"create", "delete"}, res.TFDiff.Actions)
-			require.True(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "UPDATE_REPLACE"))
+	t.Run("changed non-empty", func(t *testing.T) {
+		t.Parallel()
+		res := runDiffCheck(t, diffTestCase{
+			Resource: res,
+			Config1:  map[string]any{"map": map[string]any{"A": "A"}},
+			Config2:  map[string]any{"map": map[string]any{"A": "B"}},
 		})
 
-		t.Run("changed to empty", func(t *testing.T) {
-			t.Parallel()
-			res := runDiffCheck(t, diffTestCase{
-				Resource: res,
-				Config1:  map[string]any{"list": []any{"A"}},
-				Config2:  map[string]any{"list": []any{}},
-			})
-
-			require.Equal(t, []string{"create", "delete"}, res.TFDiff.Actions)
-			require.True(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "DELETE_REPLACE"))
-		})
-
-		t.Run("changed from empty", func(t *testing.T) {
-			t.Parallel()
-			res := runDiffCheck(t, diffTestCase{
-				Resource: res,
-				Config1:  map[string]any{"list": []any{}},
-				Config2:  map[string]any{"list": []any{"A"}},
-			})
-
-			require.Equal(t, []string{"create", "delete"}, res.TFDiff.Actions)
-			require.True(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "ADD_REPLACE"))
-		})
+		require.Equal(t, []string{"create", "delete"}, res.TFDiff.Actions)
+		require.True(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "UPDATE_REPLACE"))
 	})
 
-	t.Run("set", func(t *testing.T) {
+	t.Run("changed to empty", func(t *testing.T) {
 		t.Parallel()
-		t.Run("changed non-empty", func(t *testing.T) {
-			t.Parallel()
-			res := runDiffCheck(t, diffTestCase{
-				Resource: res,
-				Config1:  map[string]any{"set": []any{"A"}},
-				Config2:  map[string]any{"set": []any{"B"}},
-			})
-
-			require.Equal(t, []string{"create", "delete"}, res.TFDiff.Actions)
-			require.True(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "UPDATE_REPLACE"))
+		res := runDiffCheck(t, diffTestCase{
+			Resource: res,
+			Config1:  map[string]any{"map": map[string]any{"A": "A"}},
+			Config2:  map[string]any{"map": map[string]any{}},
 		})
 
-		t.Run("changed to empty", func(t *testing.T) {
-			t.Parallel()
-			res := runDiffCheck(t, diffTestCase{
-				Resource: res,
-				Config1:  map[string]any{"set": []any{"A"}},
-				Config2:  map[string]any{"set": []any{}},
-			})
-
-			require.Equal(t, []string{"create", "delete"}, res.TFDiff.Actions)
-			require.True(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "DELETE_REPLACE"))
-		})
-
-		t.Run("changed from empty", func(t *testing.T) {
-			t.Parallel()
-			res := runDiffCheck(t, diffTestCase{
-				Resource: res,
-				Config1:  map[string]any{"set": []any{}},
-				Config2:  map[string]any{"set": []any{"A"}},
-			})
-
-			require.Equal(t, []string{"create", "delete"}, res.TFDiff.Actions)
-			require.True(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "ADD_REPLACE"))
-		})
+		require.Equal(t, []string{"create", "delete"}, res.TFDiff.Actions)
+		require.True(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "DELETE_REPLACE"))
 	})
 
-	t.Run("map", func(t *testing.T) {
+	t.Run("changed from empty", func(t *testing.T) {
 		t.Parallel()
-		t.Run("changed non-empty", func(t *testing.T) {
-			t.Parallel()
-			res := runDiffCheck(t, diffTestCase{
-				Resource: res,
-				Config1:  map[string]any{"map": map[string]any{"A": "A"}},
-				Config2:  map[string]any{"map": map[string]any{"A": "B"}},
-			})
-
-			require.Equal(t, []string{"create", "delete"}, res.TFDiff.Actions)
-			require.True(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "UPDATE_REPLACE"))
+		res := runDiffCheck(t, diffTestCase{
+			Resource: res,
+			Config1:  map[string]any{"map": map[string]any{}},
+			Config2:  map[string]any{"map": map[string]any{"A": "A"}},
 		})
 
-		t.Run("changed to empty", func(t *testing.T) {
-			t.Parallel()
-			res := runDiffCheck(t, diffTestCase{
-				Resource: res,
-				Config1:  map[string]any{"map": map[string]any{"A": "A"}},
-				Config2:  map[string]any{"map": map[string]any{}},
-			})
-
-			require.Equal(t, []string{"create", "delete"}, res.TFDiff.Actions)
-			require.True(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "DELETE_REPLACE"))
-		})
-
-		t.Run("changed from empty", func(t *testing.T) {
-			t.Parallel()
-			res := runDiffCheck(t, diffTestCase{
-				Resource: res,
-				Config1:  map[string]any{"map": map[string]any{}},
-				Config2:  map[string]any{"map": map[string]any{"A": "A"}},
-			})
-
-			require.Equal(t, []string{"create", "delete"}, res.TFDiff.Actions)
-			require.True(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "ADD_REPLACE"))
-		})
+		require.Equal(t, []string{"create", "delete"}, res.TFDiff.Actions)
+		require.True(t, findKindInPulumiDetailedDiff(res.PulumiDiff.DetailedDiff, "ADD_REPLACE"))
 	})
 }
 
