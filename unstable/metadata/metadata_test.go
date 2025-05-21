@@ -21,7 +21,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestMarshal(t *testing.T) {
+func TestMarshalBasic(t *testing.T) {
 	t.Parallel()
 	data, err := New(nil)
 	require.NoError(t, err)

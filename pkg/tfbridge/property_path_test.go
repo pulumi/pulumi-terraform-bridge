@@ -308,7 +308,7 @@ func TestWalkTwoPropertyValues(t *testing.T) {
 	})
 }
 
-func TestPropertyPath(t *testing.T) {
+func TestPropertyPathBasic(t *testing.T) {
 	t.Parallel()
 	require.Equal(t, newPropertyPath("foo").Subpath("bar").Key(), detailedDiffKey("foo.bar"))
 }

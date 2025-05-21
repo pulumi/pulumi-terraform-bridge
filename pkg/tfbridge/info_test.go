@@ -65,7 +65,7 @@ func TestMakeDataSource(t *testing.T) {
 		MakeDataSource("package", "module", "GetSomething").String())
 }
 
-func TestMakeResource(t *testing.T) {
+func TestInfoMakeResource(t *testing.T) {
 	t.Parallel()
 	assert.Equal(t, "package:module/myResource:MyResource", MakeResource("package", "module", "MyResource").String())
 }

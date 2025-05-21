@@ -133,7 +133,7 @@ func TestMissingIDUnmapped(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestSensitiveID(t *testing.T) {
+func TestSensitiveIDNoOverride(t *testing.T) {
 	t.Parallel()
 	stderr, err := test(t, tfbridge.ProviderInfo{
 		P: pfbridge.ShimProvider(testProvider{sensitiveID: true}),

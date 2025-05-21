@@ -30,7 +30,7 @@ import (
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
 
-func TestPulumiToTerraformName(t *testing.T) {
+func TestPulumiToTerraformNameBasic(t *testing.T) {
 	t.Parallel()
 	assert.Equal(t, "", PulumiToTerraformName("", nil, nil))
 	assert.Equal(t, "test", PulumiToTerraformName("test", nil, nil))
@@ -41,7 +41,7 @@ func TestPulumiToTerraformName(t *testing.T) {
 	assert.Equal(t, "t_e_s_t_n_a_m_e", PulumiToTerraformName("TESTNAME", nil, nil))
 }
 
-func TestTerraformToPulumiName(t *testing.T) {
+func TestTerraformToPulumiNameBasic(t *testing.T) {
 	t.Parallel()
 	assert.Equal(t, "", TerraformToPulumiName("", nil, nil, false))
 	assert.Equal(t, "test", TerraformToPulumiName("test", nil, nil, false))
@@ -128,7 +128,7 @@ func TestPluralize(t *testing.T) {
 	assert.Equal(t, "all_things", pulumiToTerraformName("allThings"))
 }
 
-func TestFromName(t *testing.T) {
+func TestFromNameBasic(t *testing.T) {
 	t.Parallel()
 	res1 := &PulumiResource{
 		URN: "urn:pulumi:test::test::pkgA:index:t1::n1",

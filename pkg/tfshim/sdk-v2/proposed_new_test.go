@@ -24,7 +24,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestProposedNew(t *testing.T) {
+func TestProposedNewBasic(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
 		name   string

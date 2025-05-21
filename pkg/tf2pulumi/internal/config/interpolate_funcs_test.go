@@ -777,7 +777,7 @@ func TestInterpolateFuncCidrSubnet(t *testing.T) {
 	})
 }
 
-func TestInterpolateFuncCoalesce(t *testing.T) {
+func TestInterpolateFuncCoalesceBasic(t *testing.T) {
     t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Cases: []testFunctionCase{
@@ -1260,7 +1260,7 @@ func TestInterpolateFuncFile(t *testing.T) {
 	})
 }
 
-func TestInterpolateFuncFormat(t *testing.T) {
+func TestInterpolateFuncFormatBasic(t *testing.T) {
     t.Parallel()
 	testFunction(t, testFunctionConfig{
 		Cases: []testFunctionCase{

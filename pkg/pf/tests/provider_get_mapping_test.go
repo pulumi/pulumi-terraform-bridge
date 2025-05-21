@@ -29,7 +29,7 @@ import (
 	tfbridge0 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 
-func TestGetMapping(t *testing.T) {
+func TestPFGetMapping(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	info := testprovider.RandomProvider()

@@ -29,7 +29,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
 )
 
-func TestSchemaGen(t *testing.T) {
+func TestSchemaGenBasic(t *testing.T) {
 	t.Parallel()
 	t.Run("random", func(t *testing.T) {
 		_, err := genMetadata(t, testprovider.RandomProvider())

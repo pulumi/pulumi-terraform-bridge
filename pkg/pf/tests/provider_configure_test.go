@@ -34,7 +34,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
-func TestConfigure(t *testing.T) {
+func TestPFConfigureBasic(t *testing.T) {
 	t.Parallel()
 
 	t.Run("string", testConfigurePrimitive{
@@ -535,7 +535,7 @@ func TestConfigureBooleans(t *testing.T) {
 	}`)
 }
 
-func TestConfigureErrorReplacement(t *testing.T) {
+func TestPFConfigureErrorReplacement(t *testing.T) {
 	t.Parallel()
 	t.Run("replace_config_properties", func(t *testing.T) {
 		errString := `some error with "config_property" and "config" but not config`
@@ -595,7 +595,7 @@ func TestConfigureErrorReplacement(t *testing.T) {
 	})
 }
 
-func TestJSONNestedConfigure(t *testing.T) {
+func TestJSONNestedConfigureBasic(t *testing.T) {
 	t.Parallel()
 	p := testprovider.SyntheticTestBridgeProvider()
 	server, err := newProviderServer(t, p)

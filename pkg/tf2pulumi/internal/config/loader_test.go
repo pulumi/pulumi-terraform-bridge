@@ -13,7 +13,7 @@ func TestErrNoConfigsFound_impl(t *testing.T) {
 	var _ error = new(ErrNoConfigsFound)
 }
 
-func TestIsEmptyDir(t *testing.T) {
+func TestIsEmptyDirBasic(t *testing.T) {
     t.Parallel()
 	val, err := IsEmptyDir(fixtureDir)
 	if err != nil {
@@ -185,7 +185,7 @@ func TestLoadFileEscapedQuotes(t *testing.T) {
 	}
 }
 
-func TestLoadFileBasic(t *testing.T) {
+func TestLoadFileBasic_basic(t *testing.T) {
     t.Parallel()
 	c, err := LoadFile(filepath.Join(fixtureDir, "basic.tf"))
 	if err != nil {
@@ -277,7 +277,7 @@ func TestLoadFileBasic_import(t *testing.T) {
 	}
 }
 
-func TestLoadFileBasic_json(t *testing.T) {
+func TestLoadFileBasic_jsonNamed(t *testing.T) {
     t.Parallel()
 	c, err := LoadFile(filepath.Join(fixtureDir, "basic.tf.json"))
 	if err != nil {
@@ -377,7 +377,7 @@ func TestLoadFile_outputDependsOn(t *testing.T) {
 	}
 }
 
-func TestLoadFile_terraformBackend(t *testing.T) {
+func TestLoadFile_terraformBackendBasic(t *testing.T) {
     t.Parallel()
 	c, err := LoadFile(filepath.Join(fixtureDir, "terraform-backend.tf"))
 	if err != nil {
@@ -403,7 +403,7 @@ backend (s3)
 	}
 }
 
-func TestLoadFile_terraformBackendJSON(t *testing.T) {
+func TestLoadFile_terraformBackendJSON1(t *testing.T) {
     t.Parallel()
 	c, err := LoadFile(filepath.Join(fixtureDir, "terraform-backend.tf.json"))
 	if err != nil {
@@ -669,7 +669,7 @@ func TestLoadDir_noMerge(t *testing.T) {
 	}
 }
 
-func TestLoadDir_override(t *testing.T) {
+func TestLoadDir_overrideNoVars(t *testing.T) {
     t.Parallel()
 	c, err := LoadDir(filepath.Join(fixtureDir, "dir-override"))
 	if err != nil {
@@ -731,7 +731,7 @@ func TestLoadFile_variableNoName(t *testing.T) {
 	}
 }
 
-func TestLoadFile_provisioners(t *testing.T) {
+func TestLoadFile_provisionersBasic(t *testing.T) {
     t.Parallel()
 	c, err := LoadFile(filepath.Join(fixtureDir, "provisioners.tf"))
 	if err != nil {

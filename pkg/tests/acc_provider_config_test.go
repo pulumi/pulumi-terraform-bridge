@@ -23,7 +23,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/testutil"
 )
 
-func TestAccProviderConfig(t *testing.T) { //nolint:paralleltest // integration.ProgramTest already is parallel
+func TestAccProviderConfigBasic(t *testing.T) { //nolint:paralleltest // integration.ProgramTest already is parallel
 	opts := accTestOptions(t).With(integration.ProgramTestOptions{
 		Dir: "provider-config",
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {

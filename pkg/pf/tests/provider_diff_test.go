@@ -24,7 +24,7 @@ import (
 )
 
 // Test that preview diff in presence of computed attributes results in an empty diff.
-func TestEmptyTestresDiff(t *testing.T) {
+func TestEmptyTestresDiffNoComputed(t *testing.T) {
 	t.Parallel()
 	server, err := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
 	require.NoError(t, err)
@@ -209,7 +209,7 @@ func TestDiffVersionUpgrade(t *testing.T) {
 	testutils.Replay(t, server, testCase)
 }
 
-func TestSetNestedObjectAdded(t *testing.T) {
+func TestSetNestedObjectAddedBasic(t *testing.T) {
 	t.Parallel()
 	server, err := newProviderServer(t, testprovider.SyntheticTestBridgeProvider())
 	require.NoError(t, err)

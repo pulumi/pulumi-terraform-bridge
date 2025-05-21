@@ -8,7 +8,7 @@ import (
 	"github.com/hashicorp/hil/ast"
 )
 
-func TestNewRawConfig(t *testing.T) {
+func TestNewRawConfigBasic(t *testing.T) {
     t.Parallel()
 	raw := map[string]interface{}{
 		"foo": "${var.bar}",
@@ -244,7 +244,7 @@ func TestRawConfig_syntax(t *testing.T) {
 	}
 }
 
-func TestRawConfig_unknown(t *testing.T) {
+func TestRawConfig_unknownBasic(t *testing.T) {
     t.Parallel()
 	raw := map[string]interface{}{
 		"foo": "${var.bar}",
@@ -278,7 +278,7 @@ func TestRawConfig_unknown(t *testing.T) {
 	}
 }
 
-func TestRawConfig_unknownPartial(t *testing.T) {
+func TestRawConfig_unknownPartialBasic(t *testing.T) {
     t.Parallel()
 	raw := map[string]interface{}{
 		"foo": "${var.bar}/32",

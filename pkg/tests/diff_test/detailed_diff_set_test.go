@@ -111,7 +111,7 @@ func TestSDKv2DetailedDiffSetAttribute(t *testing.T) {
 	runSDKv2TestMatrix(t, diffSchemaValueMakerPairs, setScenarios())
 }
 
-func TestSDKv2DetailedDiffSetBlock(t *testing.T) {
+func TestSDKv2DetailedDiffSetBlockBasic(t *testing.T) {
 	t.Parallel()
 
 	blockSchema := schema.Resource{

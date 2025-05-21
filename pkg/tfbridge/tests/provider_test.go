@@ -296,7 +296,7 @@ func TestReproMinimalDiffCycle(t *testing.T) {
 	}`)
 }
 
-func TestValidateConfig(t *testing.T) {
+func TestValidateConfigBasic(t *testing.T) {
 	ctx := context.Background()
 	p := newTestProvider(ctx, tfbridge.ProviderInfo{
 		P: shimv2.NewProvider(&schema.Provider{

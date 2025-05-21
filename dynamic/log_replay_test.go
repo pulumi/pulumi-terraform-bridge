@@ -23,7 +23,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
-func TestLogReplayProvider(t *testing.T) {
+func TestLogReplayProviderBasic(t *testing.T) {
 	t.Parallel()
 	grpcLogs, err := os.ReadFile("./testdata/TestLogReplayProvider/grpc_log_random.json")
 	require.NoError(t, err)

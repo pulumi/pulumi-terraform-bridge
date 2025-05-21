@@ -85,7 +85,7 @@ func TestConfigCopy(t *testing.T) {
 
 }
 
-func TestConfigCount(t *testing.T) {
+func TestConfigCount_int(t *testing.T) {
     t.Parallel()
 	c := testConfig(t, "count-int")
 	actual, err := c.Resources[0].Count()

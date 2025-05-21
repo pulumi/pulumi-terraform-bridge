@@ -97,7 +97,7 @@ func TestUpdateProgram(t *testing.T) {
 	})
 }
 
-func TestDefaultInfo(t *testing.T) {
+func TestDefaultInfoBasic(t *testing.T) {
 	if testing.Short() {
 		t.Skip()
 	}

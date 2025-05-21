@@ -385,7 +385,7 @@ func TestEmptyDiff(t *testing.T) {
 		pulumirpc.DiffResponse_DIFF_NONE)
 }
 
-func TestSimpleAdd(t *testing.T) {
+func TestSimpleAddNoReplace(t *testing.T) {
 	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
@@ -423,7 +423,7 @@ func TestSimpleAddReplace(t *testing.T) {
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
-func TestSimpleDelete(t *testing.T) {
+func TestSimpleDeleteNoReplace(t *testing.T) {
 	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
@@ -459,7 +459,7 @@ func TestSimpleDeleteReplace(t *testing.T) {
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
-func TestSimpleUpdate(t *testing.T) {
+func TestSimpleUpdateNoReplace(t *testing.T) {
 	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
@@ -499,7 +499,7 @@ func TestSimpleUpdateReplace(t *testing.T) {
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
-func TestNestedAdd(t *testing.T) {
+func TestNestedAddNoReplace(t *testing.T) {
 	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
@@ -537,7 +537,7 @@ func TestNestedAddReplace(t *testing.T) {
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
-func TestNestedDelete(t *testing.T) {
+func TestNestedDeleteNoReplace(t *testing.T) {
 	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
@@ -573,7 +573,7 @@ func TestNestedDeleteReplace(t *testing.T) {
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
-func TestNestedUpdate(t *testing.T) {
+func TestNestedUpdateNoReplace(t *testing.T) {
 	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
@@ -632,7 +632,7 @@ func TestNestedIgnore(t *testing.T) {
 		"prop")
 }
 
-func TestListAdd(t *testing.T) {
+func TestListAddNoReplace(t *testing.T) {
 	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
@@ -670,7 +670,7 @@ func TestListAddReplace(t *testing.T) {
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
-func TestListDelete(t *testing.T) {
+func TestListDeleteNoReplace(t *testing.T) {
 	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
@@ -706,7 +706,7 @@ func TestListDeleteReplace(t *testing.T) {
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
-func TestListUpdate(t *testing.T) {
+func TestListUpdateNoReplace(t *testing.T) {
 	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
@@ -765,7 +765,7 @@ func TestListIgnore(t *testing.T) {
 		"prop")
 }
 
-func TestMaxItemsOneListAdd(t *testing.T) {
+func TestMaxItemsOneListAddNoReplace(t *testing.T) {
 	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
@@ -805,7 +805,7 @@ func TestMaxItemsOneListAddReplace(t *testing.T) {
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
-func TestMaxItemsOneListDelete(t *testing.T) {
+func TestMaxItemsOneListDeleteNoReplace(t *testing.T) {
 	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
@@ -841,7 +841,7 @@ func TestMaxItemsOneListDeleteReplace(t *testing.T) {
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
-func TestMaxItemsOneListUpdate(t *testing.T) {
+func TestMaxItemsOneListUpdateNoReplace(t *testing.T) {
 	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
@@ -900,7 +900,7 @@ func TestMaxItemsOneListIgnore(t *testing.T) {
 		"prop")
 }
 
-func TestSetAdd(t *testing.T) {
+func TestSetAddNoReplace(t *testing.T) {
 	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
@@ -947,7 +947,7 @@ func TestSetAddReplace(t *testing.T) {
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
-func TestSetDelete(t *testing.T) {
+func TestSetDeleteNoReplace(t *testing.T) {
 	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
@@ -992,7 +992,7 @@ func TestSetDeleteReplace(t *testing.T) {
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
-func TestSetUpdate(t *testing.T) {
+func TestSetUpdateNoReplace(t *testing.T) {
 	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
@@ -1051,7 +1051,7 @@ func TestSetUpdateReplace(t *testing.T) {
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
-func TestMaxItemsOneSetAdd(t *testing.T) {
+func TestMaxItemsOneSetAddNoReplace(t *testing.T) {
 	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
@@ -1102,7 +1102,7 @@ func TestMaxItemsOneSetAddReplace(t *testing.T) {
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
-func TestMaxItemsOneSetDelete(t *testing.T) {
+func TestMaxItemsOneSetDeleteNoReplace(t *testing.T) {
 	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
@@ -1149,7 +1149,7 @@ func TestMaxItemsOneSetDeleteReplace(t *testing.T) {
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
-func TestMaxItemsOneSetUpdate(t *testing.T) {
+func TestMaxItemsOneSetUpdateNoReplace(t *testing.T) {
 	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
@@ -1208,7 +1208,7 @@ func TestMaxItemsOneSetUpdateReplace(t *testing.T) {
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
-func TestSetNestedUpdate(t *testing.T) {
+func TestSetNestedUpdateNoReplace(t *testing.T) {
 	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
@@ -1290,7 +1290,7 @@ func TestSetNestedIgnore(t *testing.T) {
 	}
 }
 
-func TestComputedSimpleUpdate(t *testing.T) {
+func TestComputedSimpleUpdateNoReplace(t *testing.T) {
 	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
@@ -1350,7 +1350,7 @@ func TestComputedMapUpdate(t *testing.T) {
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
-func TestComputedNestedUpdate(t *testing.T) {
+func TestComputedNestedUpdateNoReplace(t *testing.T) {
 	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
@@ -1429,7 +1429,7 @@ func TestComputedListUpdate(t *testing.T) {
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
-func TestComputedListElementUpdate(t *testing.T) {
+func TestComputedListElementUpdateNoReplace(t *testing.T) {
 	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
@@ -1488,7 +1488,7 @@ func TestComputedListElementIgnore(t *testing.T) {
 		"prop")
 }
 
-func TestComputedSetUpdate(t *testing.T) {
+func TestComputedSetUpdateBasic(t *testing.T) {
 	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
@@ -1508,7 +1508,7 @@ func TestComputedSetUpdate(t *testing.T) {
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
-func TestNestedComputedSetUpdate(t *testing.T) {
+func TestNestedComputedSetUpdateNoReplace(t *testing.T) {
 	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
@@ -1570,7 +1570,7 @@ func TestNestedComputedSetUpdateReplace(t *testing.T) {
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
-func TestNestedComputedSetIntUpdate(t *testing.T) {
+func TestNestedComputedSetIntUpdateNoReplace(t *testing.T) {
 	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{
@@ -1652,7 +1652,7 @@ func TestComputedSetUpdateReplace(t *testing.T) {
 		pulumirpc.DiffResponse_DIFF_SOME)
 }
 
-func TestComputedSetNestedUpdate(t *testing.T) {
+func TestComputedSetNestedUpdateNoReplace(t *testing.T) {
 	t.Parallel()
 	diffTest(t,
 		map[string]*v2Schema.Schema{

@@ -227,7 +227,7 @@ func TestTimeouts(t *testing.T) {
 	)
 }
 
-func TestMap(t *testing.T) {
+func TestCreateMap(t *testing.T) {
 	t.Parallel()
 
 	crosstests.Create(t,

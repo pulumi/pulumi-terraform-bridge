@@ -119,7 +119,7 @@ func TestCheckConfigOneErrorReturned(t *testing.T) {
 		))
 }
 
-func TestConfigure(t *testing.T) {
+func TestMuxerConfigure(t *testing.T) {
 	t.Parallel()
 	var m muxer.DispatchTable
 	m.Resources = map[string]int{
@@ -204,7 +204,7 @@ func TestDivergentCheckConfig(t *testing.T) {
 	mux(t, m).replay(e)
 }
 
-func TestGetMapping(t *testing.T) {
+func TestMuxerGetMapping(t *testing.T) {
 	t.Parallel()
 	t.Run("single-responding-server", func(t *testing.T) {
 		var m muxer.DispatchTable

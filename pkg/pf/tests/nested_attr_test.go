@@ -27,7 +27,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/testprovider"
 )
 
-func TestNestedType(t *testing.T) {
+func TestPFNestedType(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
 	info := testprovider.SyntheticTestBridgeProvider()

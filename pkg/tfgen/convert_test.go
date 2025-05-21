@@ -30,7 +30,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tf2pulumi/convert"
 )
 
-func TestConvert(t *testing.T) {
+func TestTFGenConvert(t *testing.T) {
 	t.Parallel()
 	if runtime.GOOS == "windows" {
 		// TODO[pulumi/pulumi-terraform-bridge#408]

@@ -62,7 +62,7 @@ func TestAccProviderSecrets(t *testing.T) { //nolint:paralleltest // [integratio
 //
 // This tests exercise the bridge and Pulumi CLI together intentionally as secret handling for nested properties
 // historically had some quirks in the Pulumi CLI.
-func TestAccProviderConfigureSecrets(t *testing.T) {
+func TestAccProviderConfigureSecretsSDKv2(t *testing.T) {
 	t.Parallel()
 
 	type configSetter func(ctx context.Context, t *testing.T, stack *auto.Stack, basePath string, secret bool)
