@@ -29,9 +29,11 @@ import (
 	presource "github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/zclconf/go-cty/cty"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/providerbuilder"
 	pb "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/providerbuilder"
+	crosstests "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/cross-tests"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/pulcheck"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
@@ -725,4 +727,98 @@ func TestPFResourceWithNullId(t *testing.T) {
 	pt, err := pulcheck.PulCheck(t, prov, program)
 	require.NoError(t, err)
 	pt.Up(t)
+}
+
+func TestRequiresReplaceAndUseStateForUnknown(t *testing.T) {
+	t.Parallel()
+
+	provBuilder := providerbuilder.NewProvider(providerbuilder.NewProviderArgs{
+		AllResources: []providerbuilder.Resource{
+			providerbuilder.NewResource(providerbuilder.NewResourceArgs{
+				ResourceSchema: rschema.Schema{
+					Attributes: map[string]rschema.Attribute{
+						"test": rschema.StringAttribute{
+							Optional: true,
+							PlanModifiers: []planmodifier.String{
+								stringplanmodifier.RequiresReplace(),
+								stringplanmodifier.UseStateForUnknown(),
+							},
+							Computed: true,
+						},
+						"other": rschema.StringAttribute{
+							Optional: true,
+						},
+					},
+				},
+				CreateFunc: func(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+					resp.State = tfsdk.State(req.Plan)
+					resp.State.SetAttribute(ctx, path.Root("id"), "test-id")
+					resp.State.SetAttribute(ctx, path.Root("test"), "computed-value")
+				},
+			}),
+		},
+	})
+
+	prov := provBuilder.ToProviderInfo()
+
+	program := `
+name: test
+runtime: yaml
+resources:
+    mainRes:
+        type: testprovider:index/test:Test
+        properties:
+            other: "hello"`
+
+	pt, err := pulcheck.PulCheck(t, prov, program)
+	require.NoError(t, err)
+	pt.Up(t)
+
+	pt.WritePulumiYaml(t, `
+name: test
+runtime: yaml
+resources:
+    mainRes:
+        type: testprovider:index/test:Test
+        properties:
+            other: "world"`)
+
+	res := pt.Preview(t, optpreview.Diff())
+	require.Zero(t, res.ChangeSummary["replace"])
+}
+
+func TestCrossTestRequiresReplaceAndUseStateForUnknownBasic(t *testing.T) {
+	t.Parallel()
+
+	res := providerbuilder.NewResource(providerbuilder.NewResourceArgs{
+		ResourceSchema: rschema.Schema{
+			Attributes: map[string]rschema.Attribute{
+				"test": rschema.StringAttribute{
+					Optional: true,
+					PlanModifiers: []planmodifier.String{
+						stringplanmodifier.RequiresReplace(),
+						stringplanmodifier.UseStateForUnknown(),
+					},
+					Computed: true,
+				},
+				"other": rschema.StringAttribute{
+					Optional: true,
+				},
+			},
+		},
+		CreateFunc: func(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+			resp.State = tfsdk.State(req.Plan)
+			resp.State.SetAttribute(ctx, path.Root("id"), "test-id")
+			resp.State.SetAttribute(ctx, path.Root("test"), "computed-value")
+		},
+	})
+
+	crosstests.Diff(t, res,
+		map[string]cty.Value{
+			"other": cty.StringVal("hello"),
+		},
+		map[string]cty.Value{
+			"other": cty.StringVal("world"),
+		},
+	)
 }

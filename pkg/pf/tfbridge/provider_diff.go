@@ -92,6 +92,10 @@ func (p *provider) DiffWithContext(
 	if err != nil {
 		return plugin.DiffResult{}, err
 	}
+	checkedRequiresReplace, err := checkRequiresReplace(priorState, plannedStateValue, planResp.RequiresReplace)
+	if err != nil {
+		return plugin.DiffResult{}, err
+	}
 
 	tfDiff, err := priorState.Value.Diff(plannedStateValue)
 	if err != nil {
@@ -100,7 +104,7 @@ func (p *provider) DiffWithContext(
 
 	resSchemaMap := rh.schemaOnlyShimResource.Schema()
 	resFields := rh.pulumiResourceInfo.GetFields()
-	replaceKeys := topLevelPropertyKeySet(resSchemaMap, resFields, planResp.RequiresReplace)
+	replaceKeys := topLevelPropertyKeySet(resSchemaMap, resFields, checkedRequiresReplace)
 	changedKeys := topLevelPropertyKeySet(resSchemaMap, resFields, diffAttributePaths(tfDiff))
 
 	// TODO[pulumi/pulumi-terraform-bridge#823] nameRequiresDeleteBeforeReplace intricacies
@@ -207,4 +211,74 @@ func diffAttributePaths(tfDiff []tftypes.ValueDiff) []*tftypes.AttributePath {
 		paths = append(paths, diff.Path)
 	}
 	return paths
+}
+
+func trimElementKeyValueFromTFPath(path *tftypes.AttributePath) *tftypes.AttributePath {
+	// trims everything after an ElementKeyValue path step from the replaceKeys paths
+	// see https://github.com/hashicorp/terraform-plugin-go/blob/main/tfprotov6/internal/toproto/attribute_path.go
+	for i, step := range path.Steps() {
+		if _, ok := step.(tftypes.ElementKeyValue); ok {
+			return tftypes.NewAttributePathWithSteps(path.Steps()[:i])
+		}
+	}
+	return path
+}
+
+// checkRequiresReplace checks if the planned state is different from the prior state for the given attribute paths.
+// Returns the attribute paths that are indeed different.
+func checkRequiresReplace(
+	priorState *upgradedResourceState, plannedState tftypes.Value, replaceKeys []*tftypes.AttributePath) (
+	[]*tftypes.AttributePath, error,
+) {
+	trimmedReplaceKeys := []*tftypes.AttributePath{}
+	existingReplaceKeys := map[string]struct{}{}
+	for _, replaceKey := range replaceKeys {
+		trimmedKey := trimElementKeyValueFromTFPath(replaceKey)
+		if _, ok := existingReplaceKeys[trimmedKey.String()]; !ok {
+			trimmedReplaceKeys = append(trimmedReplaceKeys, trimmedKey)
+			existingReplaceKeys[trimmedKey.String()] = struct{}{}
+		}
+	}
+
+	//nolint:lll
+	// adapted from https://github.com/opentofu/opentofu/blob/76d388b34051b2dcf7b21d2d6d15e0c4dcb48734/internal/tofu/node_resource_abstract_instance.go#L1116
+	checkedRequiresReplace := []*tftypes.AttributePath{}
+	if priorState.Value.IsNull() {
+		return checkedRequiresReplace, nil
+	}
+
+	for _, replace := range trimmedReplaceKeys {
+		priorValAny, _, priorErr := tftypes.WalkAttributePath(priorState.Value, replace)
+		plannedValAny, _, plannedErr := tftypes.WalkAttributePath(plannedState, replace)
+		if priorErr != nil && plannedErr != nil {
+			return nil, fmt.Errorf("failed to walk attribute path: %s, %w, %w", replace.String(), priorErr, plannedErr)
+		}
+
+		var priorVal tftypes.Value
+		if priorErr != nil {
+			priorVal = tftypes.NewValue(priorState.Value.Type(), nil)
+		} else {
+			var ok bool
+			priorVal, ok = priorValAny.(tftypes.Value)
+			if !ok {
+				return nil, fmt.Errorf("failed to convert priorVal to tftypes.Value")
+			}
+		}
+
+		var plannedVal tftypes.Value
+		if plannedErr != nil {
+			plannedVal = tftypes.NewValue(plannedState.Type(), nil)
+		} else {
+			var ok bool
+			plannedVal, ok = plannedValAny.(tftypes.Value)
+			if !ok {
+				return nil, fmt.Errorf("failed to convert plannedVal to tftypes.Value")
+			}
+		}
+
+		if !plannedVal.IsKnown() || !priorVal.Equal(plannedVal) {
+			checkedRequiresReplace = append(checkedRequiresReplace, replace)
+		}
+	}
+	return checkedRequiresReplace, nil
 }

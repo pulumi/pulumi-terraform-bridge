@@ -85,3 +85,131 @@ func TestTopLevelPropertyKeySet(t *testing.T) {
 		})
 	}
 }
+
+func TestTrimElementKeyValueFromTFPath(t *testing.T) {
+	t.Parallel()
+	testCases := []struct {
+		name   string
+		input  *tftypes.AttributePath
+		expect *tftypes.AttributePath
+	}{
+		{
+			name:   "single attribute name",
+			input:  tftypes.NewAttributePath().WithAttributeName("foo"),
+			expect: tftypes.NewAttributePath().WithAttributeName("foo"),
+		},
+		{
+			name:   "attribute name and string key",
+			input:  tftypes.NewAttributePath().WithAttributeName("foo").WithElementKeyString("bar"),
+			expect: tftypes.NewAttributePath().WithAttributeName("foo").WithElementKeyString("bar"),
+		},
+		{
+			name:   "attribute name and int key",
+			input:  tftypes.NewAttributePath().WithAttributeName("foo").WithElementKeyInt(42),
+			expect: tftypes.NewAttributePath().WithAttributeName("foo").WithElementKeyInt(42),
+		},
+		{
+			name: "path with ElementKeyValue truncated",
+			input: func() *tftypes.AttributePath {
+				steps := []tftypes.AttributePathStep{
+					tftypes.AttributeName("foo"),
+					tftypes.ElementKeyValue(tftypes.NewValue(tftypes.String, "bar")),
+				}
+				return tftypes.NewAttributePathWithSteps(steps)
+			}(),
+			expect: tftypes.NewAttributePath().WithAttributeName("foo"),
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			actual := trimElementKeyValueFromTFPath(tc.input)
+			require.Equal(t, tc.expect.String(), actual.String())
+		})
+	}
+}
+
+func TestCheckRequiresReplace(t *testing.T) {
+	t.Parallel()
+
+	type testCase struct {
+		name           string
+		priorVal       interface{}
+		plannedVal     interface{}
+		replacePaths   []*tftypes.AttributePath
+		expectPaths    []*tftypes.AttributePath
+		plannedIsKnown bool
+	}
+
+	objectType := tftypes.Object{AttributeTypes: map[string]tftypes.Type{"attr": tftypes.String}}
+
+	makeValue := func(typ tftypes.Type, val interface{}, isKnown bool) tftypes.Value {
+		v := tftypes.NewValue(typ, val)
+		if !isKnown {
+			return tftypes.NewValue(typ, tftypes.UnknownValue)
+		}
+		return v
+	}
+
+	testCases := []testCase{
+		{
+			name:         "null prior state returns empty",
+			priorVal:     nil,
+			plannedVal:   map[string]tftypes.Value{"attr": tftypes.NewValue(tftypes.String, "foo")},
+			replacePaths: []*tftypes.AttributePath{tftypes.NewAttributePath().WithAttributeName("attr")},
+			expectPaths:  []*tftypes.AttributePath{},
+		},
+		{
+			name:         "empty replace keys returns empty",
+			priorVal:     map[string]tftypes.Value{"attr": tftypes.NewValue(tftypes.String, "foo")},
+			plannedVal:   map[string]tftypes.Value{"attr": tftypes.NewValue(tftypes.String, "bar")},
+			replacePaths: []*tftypes.AttributePath{},
+			expectPaths:  []*tftypes.AttributePath{},
+		},
+		{
+			name:         "value differs triggers replace",
+			priorVal:     map[string]tftypes.Value{"attr": tftypes.NewValue(tftypes.String, "foo")},
+			plannedVal:   map[string]tftypes.Value{"attr": tftypes.NewValue(tftypes.String, "bar")},
+			replacePaths: []*tftypes.AttributePath{tftypes.NewAttributePath().WithAttributeName("attr")},
+			expectPaths:  []*tftypes.AttributePath{tftypes.NewAttributePath().WithAttributeName("attr")},
+		},
+		{
+			name:         "value equal does not trigger replace",
+			priorVal:     map[string]tftypes.Value{"attr": tftypes.NewValue(tftypes.String, "foo")},
+			plannedVal:   map[string]tftypes.Value{"attr": tftypes.NewValue(tftypes.String, "foo")},
+			replacePaths: []*tftypes.AttributePath{tftypes.NewAttributePath().WithAttributeName("attr")},
+			expectPaths:  []*tftypes.AttributePath{},
+		},
+		{
+			name:           "planned value unknown triggers replace",
+			priorVal:       map[string]tftypes.Value{"attr": tftypes.NewValue(tftypes.String, "foo")},
+			plannedVal:     nil,
+			replacePaths:   []*tftypes.AttributePath{tftypes.NewAttributePath().WithAttributeName("attr")},
+			expectPaths:    []*tftypes.AttributePath{tftypes.NewAttributePath().WithAttributeName("attr")},
+			plannedIsKnown: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			priorVal := makeValue(objectType, tc.priorVal, true)
+			if tc.priorVal == nil {
+				priorVal = tftypes.NewValue(objectType, nil)
+			}
+			plannedVal := makeValue(objectType, tc.plannedVal, tc.plannedIsKnown || tc.plannedVal != nil)
+			priorState := &upgradedResourceState{Value: priorVal}
+			paths, err := checkRequiresReplace(priorState, plannedVal, tc.replacePaths)
+			require.NoError(t, err)
+			require.ElementsMatch(t, tc.expectPaths, paths)
+		})
+	}
+
+	t.Run("error walking attribute path", func(t *testing.T) {
+		priorVal := tftypes.NewValue(objectType, map[string]tftypes.Value{"attr": tftypes.NewValue(tftypes.String, "foo")})
+		plannedVal := tftypes.NewValue(objectType, map[string]tftypes.Value{"attr": tftypes.NewValue(tftypes.String, "bar")})
+		priorState := &upgradedResourceState{Value: priorVal}
+		badPath := tftypes.NewAttributePath().WithAttributeName("doesnotexist")
+		_, err := checkRequiresReplace(priorState, plannedVal, []*tftypes.AttributePath{badPath})
+		require.Error(t, err)
+	})
+}
