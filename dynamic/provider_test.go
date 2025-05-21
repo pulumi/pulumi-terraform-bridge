@@ -215,7 +215,7 @@ func skipUnlessDeltasEnabled(t *testing.T) {
 	}
 }
 
-func TestConfigure(t *testing.T) {
+func TestDynamicConfigure(t *testing.T) {
 	t.Parallel()
 	skipWindows(t)
 
@@ -255,7 +255,7 @@ func TestConfigure(t *testing.T) {
 }`)))(t)
 }
 
-func TestCheckConfig(t *testing.T) {
+func TestDynamicCheckConfig(t *testing.T) {
 	t.Parallel()
 	skipWindows(t)
 
@@ -413,7 +413,7 @@ func skipWindows(t *testing.T) {
 	t.Skipf("autogold does not play nice with windows newlines")
 }
 
-func TestSchemaGeneration(t *testing.T) { //nolint:paralleltest
+func TestSchemaGenerationBasic(t *testing.T) { //nolint:paralleltest
 	skipWindows(t)
 
 	t.Run("unparameterized", func(t *testing.T) {

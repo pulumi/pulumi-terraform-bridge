@@ -100,7 +100,7 @@ func TestReformatText(t *testing.T) {
 	}
 }
 
-func TestArgumentRegex(t *testing.T) {
+func TestArgumentRegexNoAuto(t *testing.T) {
 	t.Parallel()
 	tests := []struct {
 		name     string
@@ -1609,7 +1609,7 @@ func TestParseArgFromMarkdownLine(t *testing.T) {
 	}
 }
 
-func TestParseAttributesReferenceSection(t *testing.T) {
+func TestParseAttributesReferenceSectionBasic(t *testing.T) {
 	t.Parallel()
 	ret := entityDocs{
 		Arguments:  make(map[docsPath]*argumentDocs),
@@ -1626,7 +1626,7 @@ func TestParseAttributesReferenceSection(t *testing.T) {
 	assert.Len(t, ret.Attributes, 4)
 }
 
-func TestParseAttributesReferenceSectionParsesNested(t *testing.T) {
+func TestParseAttributesReferenceSectionParsesNestedOrdered(t *testing.T) {
 	t.Parallel()
 	ret := entityDocs{
 		Arguments:  make(map[docsPath]*argumentDocs),
@@ -1951,7 +1951,7 @@ func TestParseImports_WithOverride(t *testing.T) {
 
 func ref[T any](t T) *T { return &t }
 
-func TestConvertExamples(t *testing.T) {
+func TestConvertExamplesBasic(t *testing.T) {
 	t.Parallel()
 	if runtime.GOOS == "windows" {
 		t.Skipf("Skipping on windows to avoid failing on incorrect newline handling")

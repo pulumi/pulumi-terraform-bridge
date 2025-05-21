@@ -68,7 +68,7 @@ func TestRegressMiniRandom(t *testing.T) {
 	bridgetesting.AssertEqualsJSONFile(t, "test_data/regress-minirandom-schema.json", schema)
 }
 
-func TestMiniMuxed(t *testing.T) {
+func TestMiniMuxedNoReplace(t *testing.T) {
 	t.Parallel()
 	provider := testprovider.ProviderMiniMuxed()
 	provider.MetadataInfo = tfbridge.NewProviderMetadata(nil)
@@ -531,7 +531,7 @@ example usage content
 
 // There are resources (or more commonly, functions) that do not have ## Example Usage in the in the source description.
 // Therefore, we need to add the H2 if none exists to emit a well-formed doc page.
-func TestAppendExample_NoExampleUsage(t *testing.T) {
+func TestAppendExample_NoExampleUsageBasic(t *testing.T) {
 	t.Parallel()
 	input := "Description Text"
 	markdownTmpl := `### My Example

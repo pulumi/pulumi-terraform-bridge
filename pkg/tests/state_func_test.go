@@ -39,7 +39,7 @@ func TestStateFuncProviderNotAffected(t *testing.T) {
 	)
 }
 
-func TestStateFunc(t *testing.T) {
+func TestStateFuncBasic(t *testing.T) {
 	t.Parallel()
 	resMap := map[string]*schema.Resource{
 		"prov_test": {

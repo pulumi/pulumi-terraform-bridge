@@ -29,7 +29,7 @@ func marshalPackageSpec(spec pschema.PackageSpec) (string, error) {
 	return buf.String(), nil
 }
 
-func TestRequiredInputWithDefault(t *testing.T) {
+func TestRequiredInputWithDefaultEnabled(t *testing.T) {
 	t.Parallel()
 
 	if runtime.GOOS == "windows" {

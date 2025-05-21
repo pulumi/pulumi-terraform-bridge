@@ -21,7 +21,7 @@ import (
 	"pgregory.net/rapid"
 )
 
-func TestDiffAppliesCorrectly(t *testing.T) {
+func TestDiffTDiffAppliesCorrectly(t *testing.T) {
 	t.Parallel()
 	rapid.Check(t, func(t *rapid.T) {
 		s1 := rapid.StringMatching(`^[abc]{0,5}`).Draw(t, "s1")
@@ -50,7 +50,7 @@ func TestDiffAppliesCorrectly(t *testing.T) {
 	})
 }
 
-func TestDiff(t *testing.T) {
+func TestDiffTDiffBasic(t *testing.T) {
 	t.Parallel()
 	eq := func(a, b byte) bool {
 		return a == b

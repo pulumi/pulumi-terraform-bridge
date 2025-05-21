@@ -284,7 +284,7 @@ func TestLookupSchemaInfoMapPath(t *testing.T) {
 	}
 }
 
-func TestTraverseProperties(t *testing.T) {
+func TestTraversePropertiesBasic(t *testing.T) {
 	t.Parallel()
 	testTFProviderV2 := testprovider.ProviderV2()
 
@@ -464,7 +464,7 @@ func TestTraversePropertiesSchemaInfo(t *testing.T) {
 		Fields["configuration"])
 }
 
-func TestLookupSchemas(t *testing.T) {
+func TestLookupSchemasBasic(t *testing.T) {
 	t.Parallel()
 
 	t.Run("string schema", func(t *testing.T) {

@@ -102,7 +102,7 @@ func TestNewInterpolatedVariable(t *testing.T) {
 	}
 }
 
-func TestNewResourceVariable(t *testing.T) {
+func TestNewResourceVariableBasic(t *testing.T) {
     t.Parallel()
 	v, err := NewResourceVariable("foo.bar.baz")
 	if err != nil {
@@ -158,7 +158,7 @@ func TestNewResourceVariableData(t *testing.T) {
 	}
 }
 
-func TestNewUserVariable(t *testing.T) {
+func TestNewUserVariableBasic(t *testing.T) {
     t.Parallel()
 	v, err := NewUserVariable("var.bar")
 	if err != nil {
@@ -186,7 +186,7 @@ func TestResourceVariable_impl(t *testing.T) {
 	var _ InterpolatedVariable = new(ResourceVariable)
 }
 
-func TestResourceVariable_Multi(t *testing.T) {
+func TestResourceVariable_MultiBasic(t *testing.T) {
     t.Parallel()
 	v, err := NewResourceVariable("foo.bar.*.baz")
 	if err != nil {

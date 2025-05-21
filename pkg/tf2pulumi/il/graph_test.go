@@ -56,7 +56,7 @@ func TestLocalForwardReferences(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestMetaProperties(t *testing.T) {
+func TestTF2PulumiMetaProperties(t *testing.T) {
 	t.Parallel()
 	info := test.NewProviderInfoSource("../testdata/providers")
 

@@ -20,7 +20,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestIntrinsicApply(t *testing.T) {
+func TestIntrinsicApplyNoArgs(t *testing.T) {
 	t.Parallel()
 	args := []*BoundVariableAccess{
 		{},

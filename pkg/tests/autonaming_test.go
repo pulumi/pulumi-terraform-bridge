@@ -11,7 +11,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 
-func TestAutonaming(t *testing.T) {
+func TestSDKv2Autonaming(t *testing.T) {
 	t.Parallel()
 	resMap := map[string]*schema.Resource{
 		"prov_test": {

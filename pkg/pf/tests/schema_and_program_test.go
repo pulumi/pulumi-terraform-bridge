@@ -43,7 +43,7 @@ func ref[T any](t T) *T {
 	return &t
 }
 
-func TestBasic(t *testing.T) {
+func TestPFBasic(t *testing.T) {
 	t.Parallel()
 	provBuilder := providerbuilder.NewProvider(
 		providerbuilder.NewProviderArgs{
@@ -322,7 +322,7 @@ resources:
 	}
 }
 
-func TestDefaults(t *testing.T) {
+func TestPFDefaults(t *testing.T) {
 	t.Parallel()
 	provBuilder := pb.NewProvider(pb.NewProviderArgs{
 		AllResources: []providerbuilder.Resource{
@@ -455,7 +455,7 @@ func stringToInt64Legacy(_ context.Context, s types.String, diags *diag.Diagnost
 	return types.Int64Value(v)
 }
 
-func TestStateUpgrade(t *testing.T) {
+func TestPFStateUpgrade(t *testing.T) {
 	t.Parallel()
 	provBuilder := providerbuilder.NewProvider(
 		providerbuilder.NewProviderArgs{

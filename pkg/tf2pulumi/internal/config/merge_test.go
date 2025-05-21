@@ -8,7 +8,7 @@ import (
 	"github.com/davecgh/go-spew/spew"
 )
 
-func TestMerge(t *testing.T) {
+func TestTF2PulumiMerge(t *testing.T) {
     t.Parallel()
 	cases := []struct {
 		c1, c2, result *Config

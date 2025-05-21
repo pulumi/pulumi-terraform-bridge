@@ -30,7 +30,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 
-func TestTransformOutputs(t *testing.T) {
+func TestPFTransformOutputs(t *testing.T) {
 	t.Parallel()
 	p := testprovider.SyntheticTestBridgeProvider()
 
@@ -155,7 +155,7 @@ func TestTransformOutputs(t *testing.T) {
 	})
 }
 
-func TestTransformFromState(t *testing.T) {
+func TestPFTransformFromState(t *testing.T) {
 	t.Parallel()
 	provider := func(t *testing.T) pulumirpc.ResourceProviderServer {
 		p := testprovider.AssertProvider(func(config tfsdk.Config, old, new *tfsdk.State) {

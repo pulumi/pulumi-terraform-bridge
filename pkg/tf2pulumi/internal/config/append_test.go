@@ -8,7 +8,7 @@ import (
 	"github.com/davecgh/go-spew/spew"
 )
 
-func TestAppend(t *testing.T) {
+func TestAppendTf2Pulumi(t *testing.T) {
     t.Parallel()
 	cases := []struct {
 		c1, c2, result *Config

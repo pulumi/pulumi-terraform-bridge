@@ -365,7 +365,7 @@ func TestSchemaLookupMaxItemsOnePlain(t *testing.T) {
 	require.Equal(t, sch.Type(), shim.TypeList)
 }
 
-func TestSchemaLookupMaxItemsOne(t *testing.T) {
+func TestSchemaLookupMaxItemsOneBasic(t *testing.T) {
 	t.Parallel()
 	res := schema.Resource{
 		Schema: map[string]*schema.Schema{
@@ -1208,7 +1208,7 @@ func TestDetailedDiffMap(t *testing.T) {
 	})
 }
 
-func TestDetailedDiffSet(t *testing.T) {
+func TestDetailedDiffSetBasic(t *testing.T) {
 	t.Parallel()
 	sdkv2Schema := map[string]*schema.Schema{
 		"foo": {
@@ -2478,7 +2478,7 @@ func TestDetailedDiffSetAttribute(t *testing.T) {
 	})
 }
 
-func TestDetailedDiffSetBlock(t *testing.T) {
+func TestDetailedDiffSetBlockBasic(t *testing.T) {
 	t.Parallel()
 	propertyMapElems := func(elems ...string) resource.PropertyMap {
 		var elemMaps []map[string]interface{}

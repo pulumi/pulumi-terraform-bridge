@@ -148,7 +148,7 @@ func TestTokensCornerCases(t *testing.T) {
 	}
 }
 
-func TestTokensKnownModules(t *testing.T) {
+func TestTokensKnownModulesBasic(t *testing.T) {
 	t.Parallel()
 	info := tfbridge.ProviderInfo{
 		P: (&schema.Provider{
@@ -208,7 +208,7 @@ func TestTokensKnownModulesAlreadyMapped(t *testing.T) {
 	}, info.Resources)
 }
 
-func TestTokensMappedModules(t *testing.T) {
+func TestTokensMappedModulesBasic(t *testing.T) {
 	t.Parallel()
 	info := tfbridge.ProviderInfo{
 		P: (&schema.Provider{
@@ -574,7 +574,7 @@ func makeAutoAliasing(t *testing.T) (
 	}
 }
 
-func TestTokenAliasing(t *testing.T) { //nolint:paralleltest
+func TestTokenAliasingMultiple(t *testing.T) { //nolint:paralleltest
 	// We run this test multiple times to guard against nondeterminism.
 	//
 	// See https://github.com/pulumi/pulumi-terraform-bridge/issues/1286.
@@ -739,7 +739,7 @@ func testTokenAliasing(t *testing.T) {
 }
 
 //nolint:paralleltest // This tests is flaky in parallel
-func TestMaxItemsOneAliasing(t *testing.T) {
+func TestMaxItemsOneAliasingBasic(t *testing.T) {
 	provider := func(f1, f2 bool) *tfbridge.ProviderInfo {
 		prov := &tfbridge.ProviderInfo{
 			P: (&schema.Provider{
