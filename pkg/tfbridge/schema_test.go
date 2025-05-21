@@ -648,7 +648,7 @@ func TestTerraformOutputsWithSecretsUnsupported(t *testing.T) {
 }
 
 // Test that meta-properties are correctly produced.
-func TestMetaProperties(t *testing.T) {
+func TestSDKv2MetaProperties(t *testing.T) {
 	t.Parallel()
 	for _, f := range factories {
 		t.Run(f.SDKVersion(), func(t *testing.T) {
@@ -917,7 +917,7 @@ func fixedDefault(value interface{}) func() (interface{}, error) {
 	return func() (interface{}, error) { return value, nil }
 }
 
-func TestDefaults(t *testing.T) {
+func TestSDKv2Defaults(t *testing.T) {
 	ctx := context.Background()
 	for _, f := range factories {
 		t.Run(f.SDKVersion(), func(t *testing.T) {

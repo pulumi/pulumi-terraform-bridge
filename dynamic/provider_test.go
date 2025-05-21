@@ -215,7 +215,7 @@ func skipUnlessDeltasEnabled(t *testing.T) {
 	}
 }
 
-func TestConfigure(t *testing.T) {
+func TestDynamicConfigure(t *testing.T) {
 	t.Parallel()
 	skipWindows(t)
 
@@ -255,7 +255,7 @@ func TestConfigure(t *testing.T) {
 }`)))(t)
 }
 
-func TestCheckConfig(t *testing.T) {
+func TestDynamicCheckConfig(t *testing.T) {
 	t.Parallel()
 	skipWindows(t)
 
