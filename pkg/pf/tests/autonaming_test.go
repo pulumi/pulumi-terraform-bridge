@@ -12,7 +12,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
 
-func TestAutonaming(t *testing.T) {
+func TestPFAutonaming(t *testing.T) {
 	t.Parallel()
 	provBuilder := providerbuilder.NewProvider(
 		providerbuilder.NewProviderArgs{

@@ -188,7 +188,7 @@ func TestCamelPascalPulumiName(t *testing.T) {
 	})
 }
 
-func TestDiffConfig(t *testing.T) {
+func TestSDKv2DiffConfig(t *testing.T) {
 	t.Parallel()
 	yes := true
 	tfProvider := shimv2.NewProvider(&schema.Provider{
@@ -508,7 +508,7 @@ func testIgnoreChanges(t *testing.T, provider *Provider) {
 	}).DeepEquals(outs["setPropertyValues"]))
 }
 
-func TestIgnoreChanges(t *testing.T) {
+func TestSDKv2IgnoreChanges(t *testing.T) {
 	t.Parallel()
 	testTFProvider := testprovider.ProviderV1()
 
@@ -1233,7 +1233,7 @@ func TestProviderReadNestedSecretV2(t *testing.T) {
 	testProviderReadNestedSecret(t, provider, "NestedSecretResource")
 }
 
-func TestCheck(t *testing.T) {
+func TestSDKv2Check(t *testing.T) {
 	t.Parallel()
 	t.Run("Default application can consult prior state in Check", func(t *testing.T) {
 		testTFProviderV2 := testprovider.ProviderV2()
@@ -1510,7 +1510,7 @@ This will become a hard error in the future.
 `).Equal(t, logs.String())
 }
 
-func TestCheckConfig(t *testing.T) {
+func TestSDKv2CheckConfig(t *testing.T) {
 	t.Parallel()
 	t.Run("minimal", func(t *testing.T) {
 		testTFProviderV2 := testprovider.ProviderV2()
@@ -1949,7 +1949,7 @@ func TestCheckConfig(t *testing.T) {
 	})
 }
 
-func TestConfigure(t *testing.T) {
+func TestSDKv2Configure(t *testing.T) {
 	t.Parallel()
 	t.Run("handle_secret_nested_objects", func(t *testing.T) {
 		p := testprovider.ProviderV2()
@@ -2022,7 +2022,7 @@ func TestConfigure(t *testing.T) {
 	})
 }
 
-func TestConfigureErrorReplacement(t *testing.T) {
+func TestSDKv2ConfigureErrorReplacement(t *testing.T) {
 	t.Parallel()
 	t.Run("replace_config_properties", func(t *testing.T) {
 		p := testprovider.ProviderV2()
@@ -2120,7 +2120,7 @@ func TestConfigureContextCapture(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestPreConfigureCallback(t *testing.T) {
+func TestSDKv2PreConfigureCallback(t *testing.T) {
 	t.Parallel()
 	t.Run("PreConfigureCallback called by CheckConfig", func(t *testing.T) {
 		testTFProviderV2 := testprovider.ProviderV2()
@@ -2384,7 +2384,7 @@ func TestInvoke(t *testing.T) {
 	})
 }
 
-func TestTransformOutputs(t *testing.T) {
+func TestSDKv2TransformOutputs(t *testing.T) {
 	t.Parallel()
 
 	testTFProviderV2 := testprovider.ProviderV2()
@@ -2672,7 +2672,7 @@ func TestSkipDetailedDiff(t *testing.T) {
 	})
 }
 
-func TestTransformFromState(t *testing.T) {
+func TestSDKv2TransformFromState(t *testing.T) {
 	t.Parallel()
 	provider := func(t *testing.T) *Provider {
 		p := testprovider.AssertProvider(func(data *schema.ResourceData) {

@@ -45,7 +45,7 @@ import (
 	shimschema "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 )
 
-func TestCheckConfig(t *testing.T) {
+func TestPFCheckConfig(t *testing.T) {
 	t.Parallel()
 	t.Run("minimal", func(t *testing.T) {
 		schema := schema.Schema{}
@@ -471,7 +471,7 @@ func TestCheckConfig(t *testing.T) {
 	})
 }
 
-func TestPreConfigureCallback(t *testing.T) {
+func TestPFPreConfigureCallback(t *testing.T) {
 	t.Parallel()
 	t.Run("PreConfigureCallback called by CheckConfig", func(t *testing.T) {
 		schema := schema.Schema{

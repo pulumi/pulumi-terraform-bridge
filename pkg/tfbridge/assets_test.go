@@ -27,7 +27,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestBasic(t *testing.T) {
+func TestAssetsBasic(t *testing.T) {
 	t.Parallel()
 	t1 := &AssetTranslation{Kind: FileAsset}
 	assert.True(t, t1.IsAsset())
