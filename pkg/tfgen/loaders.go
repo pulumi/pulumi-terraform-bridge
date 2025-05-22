@@ -48,6 +48,7 @@ func (l *loader) LoadPackage(name string, ver *semver.Version) (*schema.Package,
 			Version: ver,
 		}, nil
 	}
+	//nolint:staticcheck // SA1019 using deprecated method to implement the interface
 	return l.innerLoader.LoadPackage(name, ver)
 }
 

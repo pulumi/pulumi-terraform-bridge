@@ -535,6 +535,6 @@ func (*testPluginHost) ResolvePlugin(spec workspace.PluginSpec) (*workspace.Plug
 func (*testPluginHost) GetProjectPlugins() []workspace.ProjectPlugin { panic("Unexpected call") }
 func (*testPluginHost) SignalCancellation() error                    { panic("Unexpected call") }
 func (*testPluginHost) Close() error                                 { return nil }
-func (*testPluginHost) AttachDebugger() bool                         { return false }
+func (*testPluginHost) AttachDebugger(spec plugin.DebugSpec) bool    { return false }
 
 var _ plugin.Host = (*testPluginHost)(nil)
