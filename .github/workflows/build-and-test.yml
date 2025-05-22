@@ -134,7 +134,7 @@ jobs:
       - name: Build PF
         run: cd pkg/pf && make build
       - name: Shard tests
-        run: echo "RUN_TEST_CMD=$(go run github.com/pulumi/shard@5b6297aaffa0c06291fb8231968d7a9f4e6832e6 --total ${{ env.TOTAL_SHARDS }} --index ${{ matrix.shard }} --seed 314)" >> $GITHUB_ENV
+        run: echo "RUN_TEST_CMD=$(go run github.com/pulumi/shard@0c8eaa6 --total ${{ env.TOTAL_SHARDS }} --index ${{ matrix.shard }} --seed 314 --error-on-name-clash)" >> $GITHUB_ENV
         if: ${{ matrix.platform == 'ubuntu-latest' }}
       - name: Test
         run: make test
