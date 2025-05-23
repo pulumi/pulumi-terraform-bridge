@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -668,4 +669,75 @@ func TestGetUniqueLeafDocsDescriptions(t *testing.T) {
 			assert.Equal(t, tc.expected, actual)
 		})
 	}
+}
+
+func Test_aferoDirToBytesMap(t *testing.T) {
+	t.Parallel()
+	fs := afero.NewMemMapFs()
+
+	t.Run("happy path", func(t *testing.T) {
+		err := afero.WriteFile(fs, filepath.Join("root", "file1.txt"), []byte("hello world"), 0o600)
+		require.NoError(t, err)
+		err = afero.WriteFile(fs, filepath.Join("root", "dir1", "file2.txt"), []byte("foo bar"), 0o600)
+		require.NoError(t, err)
+		err = afero.WriteFile(fs, filepath.Join("root", "dir1", "file3.txt"), []byte("baz"), 0o600)
+		require.NoError(t, err)
+		err = afero.WriteFile(fs, filepath.Join("root", "dir2", "file4.txt"), []byte("qux"), 0o600)
+		require.NoError(t, err)
+
+		result, err := dirToBytesMap(fs, "root")
+		require.NoError(t, err)
+
+		expected := map[string][]byte{
+			"file1.txt":                        []byte("hello world"),
+			filepath.Join("dir1", "file2.txt"): []byte("foo bar"),
+			filepath.Join("dir1", "file3.txt"): []byte("baz"),
+			filepath.Join("dir2", "file4.txt"): []byte("qux"),
+		}
+		require.Equal(t, expected, result)
+	})
+
+	t.Run("empty directory", func(t *testing.T) {
+		err := afero.WriteFile(fs, filepath.Join("emptydir", ".keep"), []byte{}, 0o600)
+		require.NoError(t, err)
+		res, err := dirToBytesMap(fs, "emptydir")
+		require.NoError(t, err)
+		require.Equal(t, map[string][]byte{".keep": {}}, res)
+	})
+
+	t.Run("non-existent directory", func(t *testing.T) {
+		_, err := dirToBytesMap(fs, "doesnotexist")
+		require.Error(t, err, "file does not exist")
+	})
+}
+
+func Test_writeBytesMapToDir(t *testing.T) {
+	t.Parallel()
+	fs := afero.NewMemMapFs()
+
+	t.Run("happy path", func(t *testing.T) {
+		dir := "root"
+		files := map[string][]byte{
+			"file1.txt":                        []byte("hello world"),
+			filepath.Join("dir1", "file2.txt"): []byte("foo bar"),
+			filepath.Join("dir1", "file3.txt"): []byte("baz"),
+			filepath.Join("dir2", "file4.txt"): []byte("qux"),
+		}
+		err := writeBytesMapToDir(fs, dir, files)
+		require.NoError(t, err)
+		for name, content := range files {
+			actual, err := afero.ReadFile(fs, filepath.Join(dir, name))
+			require.NoError(t, err)
+			require.Equal(t, content, actual)
+		}
+	})
+
+	t.Run("empty map", func(t *testing.T) {
+		dir := "emptydir"
+		err := writeBytesMapToDir(fs, dir, map[string][]byte{})
+		require.NoError(t, err)
+		exists, err := afero.DirExists(fs, dir)
+		require.NoError(t, err)
+		require.True(t, exists)
+	})
 }
