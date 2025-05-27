@@ -160,19 +160,11 @@ func writeBytesMapToDir(fs afero.Fs, dir string, files map[string][]byte) error 
 }
 
 func runPulumiPackageGenSDK(l Language, pkg *pschema.Package, extraFiles map[string][]byte) (map[string][]byte, error) {
-	var err error
-
 	fs := afero.NewOsFs()
 	outDir, err := afero.TempDir(fs, "", "pulumi-package-gen-sdk")
 	if err != nil {
 		return nil, pkgerrors.Wrap(err, "failed to create temp dir")
 	}
-	defer func() {
-		rmErr := fs.RemoveAll(outDir)
-		if rmErr != nil {
-			err = multierror.Append(err, rmErr)
-		}
-	}()
 
 	args := []string{"package", "gen-sdk", "--language", string(l), "--out", outDir}
 
@@ -181,12 +173,6 @@ func runPulumiPackageGenSDK(l Language, pkg *pschema.Package, extraFiles map[str
 		if err != nil {
 			return nil, pkgerrors.Wrap(err, "failed to create temp dir")
 		}
-		defer func() {
-			rmErr := fs.RemoveAll(overlayDir)
-			if rmErr != nil {
-				err = multierror.Append(err, rmErr)
-			}
-		}()
 		dest := filepath.Join(overlayDir, string(l))
 		err = writeBytesMapToDir(fs, dest, extraFiles)
 		if err != nil {
@@ -219,7 +205,7 @@ func runPulumiPackageGenSDK(l Language, pkg *pschema.Package, extraFiles map[str
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			stderr = string(exitErr.Stderr)
 		}
-		return nil, pkgerrors.New(string(out) + "\n" + stderr + "\n" + err.Error())
+		return nil, pkgerrors.New(cmd.String() + "\n" + string(out) + "\n" + stderr + "\n" + err.Error())
 	}
 
 	return dirToBytesMap(fs, filepath.Join(outDir, string(l)))
