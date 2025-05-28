@@ -20,9 +20,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
-	pschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
+	prschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
@@ -70,7 +69,7 @@ func (p *assertProvider) Metadata(_ context.Context, _ provider.MetadataRequest,
 }
 
 func (p *assertProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp *provider.SchemaResponse) {
-	resp.Schema = pschema.Schema{Attributes: map[string]pschema.Attribute{}}
+	resp.Schema = prschema.Schema{Attributes: map[string]prschema.Attribute{}}
 }
 
 func (p *assertProvider) Configure(
@@ -91,13 +90,13 @@ type assertRes struct{ p *assertProvider }
 func (e *assertRes) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = rschema.Schema{
 		Attributes: map[string]rschema.Attribute{
-			"id": schema.StringAttribute{
+			"id": rschema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
-			"string_property_value": schema.StringAttribute{
+			"string_property_value": rschema.StringAttribute{
 				Optional: true,
 			},
 		},

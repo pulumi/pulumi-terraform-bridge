@@ -24,7 +24,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
-	pschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
+	prschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 
@@ -152,71 +152,71 @@ func (p *syntheticProvider) Metadata(_ context.Context, _ provider.MetadataReque
 }
 
 func (p *syntheticProvider) Schema(_ context.Context, _ provider.SchemaRequest, resp *provider.SchemaResponse) {
-	resp.Schema = pschema.Schema{
-		Attributes: map[string]pschema.Attribute{
-			"string_config_prop": pschema.StringAttribute{
+	resp.Schema = prschema.Schema{
+		Attributes: map[string]prschema.Attribute{
+			"string_config_prop": prschema.StringAttribute{
 				Optional: true,
 			},
-			"bool_config_prop": pschema.BoolAttribute{
+			"bool_config_prop": prschema.BoolAttribute{
 				Optional: true,
 			},
-			"string_defaultinfo_config_prop": pschema.StringAttribute{
+			"string_defaultinfo_config_prop": prschema.StringAttribute{
 				Optional:    true,
 				Description: "Used for testing DefaultInfo default application support",
 			},
-			"skip_metadata_api_check": pschema.StringAttribute{
+			"skip_metadata_api_check": prschema.StringAttribute{
 				Optional: true,
 				Description: "Example taken from pulumi-aws; used to validate string properties " +
 					"remapped to bool type during briding",
 			},
 
-			"validate_nested": pschema.BoolAttribute{
+			"validate_nested": prschema.BoolAttribute{
 				Optional:    true,
 				Description: "Validate that nested values are received as expected.",
 			},
 
-			"map_nested_prop": pschema.MapAttribute{
+			"map_nested_prop": prschema.MapAttribute{
 				Optional:    true,
 				ElementType: types.Int64Type,
 			},
-			"list_nested_prop": pschema.ListAttribute{
+			"list_nested_prop": prschema.ListAttribute{
 				Optional:    true,
 				ElementType: types.BoolType,
 			},
 		},
-		Blocks: map[string]pschema.Block{
-			"single_nested": pschema.SingleNestedBlock{
-				Attributes: map[string]pschema.Attribute{
-					"string_prop": pschema.StringAttribute{
+		Blocks: map[string]prschema.Block{
+			"single_nested": prschema.SingleNestedBlock{
+				Attributes: map[string]prschema.Attribute{
+					"string_prop": prschema.StringAttribute{
 						Optional: true,
 					},
-					"bool_prop": pschema.BoolAttribute{
+					"bool_prop": prschema.BoolAttribute{
 						Optional: true,
 					},
-					"map_nested_prop": pschema.MapAttribute{
+					"map_nested_prop": prschema.MapAttribute{
 						Optional:    true,
 						ElementType: types.Int64Type,
 					},
-					"list_nested_prop": pschema.ListAttribute{
+					"list_nested_prop": prschema.ListAttribute{
 						Optional:    true,
 						ElementType: types.BoolType,
 					},
 				},
 			},
-			"list_nested": pschema.ListNestedBlock{
-				NestedObject: pschema.NestedBlockObject{
-					Attributes: map[string]pschema.Attribute{
-						"string_prop": pschema.StringAttribute{
+			"list_nested": prschema.ListNestedBlock{
+				NestedObject: prschema.NestedBlockObject{
+					Attributes: map[string]prschema.Attribute{
+						"string_prop": prschema.StringAttribute{
 							Optional: true,
 						},
-						"bool_prop": pschema.BoolAttribute{
+						"bool_prop": prschema.BoolAttribute{
 							Optional: true,
 						},
-						"map_nested_prop": pschema.MapAttribute{
+						"map_nested_prop": prschema.MapAttribute{
 							Optional:    true,
 							ElementType: types.Int64Type,
 						},
-						"list_nested_prop": pschema.ListAttribute{
+						"list_nested_prop": prschema.ListAttribute{
 							Optional:    true,
 							ElementType: types.BoolType,
 						},

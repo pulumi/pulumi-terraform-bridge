@@ -10,7 +10,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/providerbuilder"
 	pb "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/providerbuilder"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/pulcheck"
 	tfbridge0 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
@@ -19,10 +18,10 @@ import (
 
 func TestPFSecretBasic(t *testing.T) {
 	t.Parallel()
-	provBuilder := providerbuilder.NewProvider(
-		providerbuilder.NewProviderArgs{
-			AllResources: []providerbuilder.Resource{
-				providerbuilder.NewResource(providerbuilder.NewResourceArgs{
+	provBuilder := pb.NewProvider(
+		pb.NewProviderArgs{
+			AllResources: []pb.Resource{
+				pb.NewResource(pb.NewResourceArgs{
 					ResourceSchema: rschema.Schema{
 						Attributes: map[string]rschema.Attribute{
 							"s": rschema.StringAttribute{Optional: true},
@@ -68,8 +67,8 @@ func TestSecretSet(t *testing.T) {
 	t.Parallel()
 
 	provBuilder := pb.NewProvider(pb.NewProviderArgs{
-		AllResources: []providerbuilder.Resource{
-			providerbuilder.NewResource(providerbuilder.NewResourceArgs{
+		AllResources: []pb.Resource{
+			pb.NewResource(pb.NewResourceArgs{
 				ResourceSchema: rschema.Schema{
 					Attributes: map[string]rschema.Attribute{
 						"keys": rschema.SetAttribute{
@@ -161,8 +160,8 @@ func TestPFSecretObjectBlock(t *testing.T) {
 	t.Parallel()
 
 	provBuilder := pb.NewProvider(pb.NewProviderArgs{
-		AllResources: []providerbuilder.Resource{
-			providerbuilder.NewResource(providerbuilder.NewResourceArgs{
+		AllResources: []pb.Resource{
+			pb.NewResource(pb.NewResourceArgs{
 				ResourceSchema: rschema.Schema{
 					Blocks: map[string]rschema.Block{
 						"key": rschema.SingleNestedBlock{
@@ -262,8 +261,8 @@ func TestPFSecretPulumiSchema(t *testing.T) {
 	t.Parallel()
 
 	provBuilder := pb.NewProvider(pb.NewProviderArgs{
-		AllResources: []providerbuilder.Resource{
-			providerbuilder.NewResource(providerbuilder.NewResourceArgs{
+		AllResources: []pb.Resource{
+			pb.NewResource(pb.NewResourceArgs{
 				ResourceSchema: rschema.Schema{
 					Attributes: map[string]rschema.Attribute{
 						"s": rschema.StringAttribute{Optional: true},

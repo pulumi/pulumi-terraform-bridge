@@ -644,7 +644,7 @@ func traverseSchemaMap(
 		if result.HasEffect && !forEffect {
 			effects = append(effects, p)
 		}
-		contract.Assertf(!(forEffect && !result.HasEffect),
+		contract.Assertf(!forEffect || result.HasEffect,
 			"A runtime traversal did not request an effect. This indicates a provider bug.")
 	}
 

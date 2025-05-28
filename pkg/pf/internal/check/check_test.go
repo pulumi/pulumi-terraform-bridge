@@ -374,9 +374,9 @@ func (i testIDResource) Schema(_ context.Context, _ resource.SchemaRequest, resp
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
-				Computed: i.idSchema.computed,
-				Required: i.idSchema.required,
-				Optional: i.idSchema.optional,
+				Computed: i.computed,
+				Required: i.required,
+				Optional: i.optional,
 			},
 		},
 	}

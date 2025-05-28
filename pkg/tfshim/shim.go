@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/rawstate"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/valueshim"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
 type ResourceConfig interface {

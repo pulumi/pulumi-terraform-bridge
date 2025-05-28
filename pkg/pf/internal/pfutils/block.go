@@ -21,7 +21,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	dschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
-	pschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
+	prschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -46,7 +46,7 @@ type BlockLike interface {
 	Type() attr.Type
 }
 
-func FromProviderBlock(x pschema.Block) Block {
+func FromProviderBlock(x prschema.Block) Block {
 	return FromBlockLike(x)
 }
 

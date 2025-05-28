@@ -37,7 +37,7 @@ func marshal(val cty.Value, t cty.Type, path cty.Path, b *bytes.Buffer) error {
 	// an unknown map, list, etc, but it is not possible to further recurse on an Unknown type
 	// so the best we can do is just convert it to a string sentinel
 	if !val.IsKnown() {
-		b.WriteString(fmt.Sprintf("%q", terraformUnknownVariableValue))
+		fmt.Fprintf(b, "%q", terraformUnknownVariableValue)
 		return nil
 	}
 

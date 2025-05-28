@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/provider"
-	pschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
+	prschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -47,8 +47,8 @@ func TestAccProviderConfigureSecretsPluginFramework(t *testing.T) {
 		yamlLiteral         string
 		valueInTF           tftypes.Value
 		configSetter        configSetter
-		attrSchema          pschema.Attribute
-		sensitiveAttrSchema pschema.Attribute
+		attrSchema          prschema.Attribute
+		sensitiveAttrSchema prschema.Attribute
 	}
 
 	setConfigValue := func(cv auto.ConfigValue) configSetter {
@@ -67,10 +67,10 @@ func TestAccProviderConfigureSecretsPluginFramework(t *testing.T) {
 			capitalizedName: "String",
 			yamlLiteral:     `"SECRET"`,
 			valueInTF:       tftypes.NewValue(tftypes.String, "SECRET"),
-			attrSchema: pschema.StringAttribute{
+			attrSchema: prschema.StringAttribute{
 				Optional: true,
 			},
-			sensitiveAttrSchema: pschema.StringAttribute{
+			sensitiveAttrSchema: prschema.StringAttribute{
 				Optional:  true,
 				Sensitive: true,
 			},
@@ -83,10 +83,10 @@ func TestAccProviderConfigureSecretsPluginFramework(t *testing.T) {
 			capitalizedName: "Int",
 			yamlLiteral:     `42`,
 			valueInTF:       tftypes.NewValue(tftypes.Number, 42),
-			attrSchema: pschema.Int64Attribute{
+			attrSchema: prschema.Int64Attribute{
 				Optional: true,
 			},
-			sensitiveAttrSchema: pschema.Int64Attribute{
+			sensitiveAttrSchema: prschema.Int64Attribute{
 				Optional:  true,
 				Sensitive: true,
 			},
@@ -99,10 +99,10 @@ func TestAccProviderConfigureSecretsPluginFramework(t *testing.T) {
 			capitalizedName: "Bool",
 			yamlLiteral:     `false`,
 			valueInTF:       tftypes.NewValue(tftypes.Bool, false),
-			attrSchema: pschema.BoolAttribute{
+			attrSchema: prschema.BoolAttribute{
 				Optional: true,
 			},
-			sensitiveAttrSchema: pschema.BoolAttribute{
+			sensitiveAttrSchema: prschema.BoolAttribute{
 				Optional:  true,
 				Sensitive: true,
 			},
@@ -121,11 +121,11 @@ func TestAccProviderConfigureSecretsPluginFramework(t *testing.T) {
 					tftypes.NewValue(tftypes.String, "B"),
 				},
 			),
-			attrSchema: pschema.ListAttribute{
+			attrSchema: prschema.ListAttribute{
 				Optional:    true,
 				ElementType: types.StringType,
 			},
-			sensitiveAttrSchema: pschema.ListAttribute{
+			sensitiveAttrSchema: prschema.ListAttribute{
 				Optional:    true,
 				ElementType: types.StringType,
 				Sensitive:   true,
@@ -419,9 +419,9 @@ func TestAccProviderConfigureSecretsPluginFramework(t *testing.T) {
 		})
 	}
 
-	nestedObjS := pschema.SingleNestedAttribute{
+	nestedObjS := prschema.SingleNestedAttribute{
 		Optional:   true,
-		Attributes: map[string]pschema.Attribute{},
+		Attributes: map[string]prschema.Attribute{},
 	}
 
 	for _, ty := range primTypes {
@@ -429,8 +429,8 @@ func TestAccProviderConfigureSecretsPluginFramework(t *testing.T) {
 		nestedObjS.Attributes[fmt.Sprintf("nested_secret_%s_config", ty.name)] = ty.sensitiveAttrSchema
 	}
 
-	configSchema := pschema.Schema{
-		Attributes: map[string]pschema.Attribute{
+	configSchema := prschema.Schema{
+		Attributes: map[string]prschema.Attribute{
 			"obj": nestedObjS,
 		},
 	}

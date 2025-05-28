@@ -35,7 +35,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/structpb"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/providerbuilder"
 	pb "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/providerbuilder"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/pulcheck"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
@@ -811,10 +810,10 @@ func makeProviderServer(
 func TestExtraConfig(t *testing.T) {
 	t.Parallel()
 
-	provBuilder := providerbuilder.NewProvider(
-		providerbuilder.NewProviderArgs{
-			AllResources: []providerbuilder.Resource{
-				providerbuilder.NewResource(providerbuilder.NewResourceArgs{
+	provBuilder := pb.NewProvider(
+		pb.NewProviderArgs{
+			AllResources: []pb.Resource{
+				pb.NewResource(pb.NewResourceArgs{
 					ResourceSchema: rschema.Schema{
 						Attributes: map[string]rschema.Attribute{
 							"s": rschema.StringAttribute{Optional: true},

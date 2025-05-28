@@ -20,7 +20,6 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
@@ -39,13 +38,13 @@ func newIntIDRes() resource.Resource {
 func (*intIDRes) schema() rschema.Schema {
 	return rschema.Schema{
 		Attributes: map[string]rschema.Attribute{
-			"id": schema.Int64Attribute{
+			"id": rschema.Int64Attribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.Int64{
 					int64planmodifier.UseStateForUnknown(),
 				},
 			},
-			"name": schema.StringAttribute{
+			"name": rschema.StringAttribute{
 				Required: true,
 			},
 		},

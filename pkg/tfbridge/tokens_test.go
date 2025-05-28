@@ -29,7 +29,6 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/tokens"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 	md "github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 )
 
@@ -564,7 +563,7 @@ func TestTokensInferredModules(t *testing.T) {
 func makeAutoAliasing(t *testing.T) (
 	*md.Data, func(*tfbridge.ProviderInfo, tfbridge.ProviderMetadata),
 ) {
-	metadata, err := metadata.New(nil)
+	metadata, err := md.New(nil)
 	require.NoError(t, err)
 
 	return metadata, func(prov *tfbridge.ProviderInfo, metadata tfbridge.ProviderMetadata) {
@@ -1059,7 +1058,7 @@ func TestMaxItemsOneAliasingNested(t *testing.T) {
 //nolint:paralleltest // This tests is flaky in parallel
 func TestMaxItemsOneAliasingWithAutoNaming(t *testing.T) {
 	provider := func() *tfbridge.ProviderInfo {
-		info, err := metadata.New(nil)
+		info, err := md.New(nil)
 		require.NoError(t, err)
 
 		prov := &tfbridge.ProviderInfo{
@@ -1143,7 +1142,7 @@ func TestMaxItemsOneAliasingWithAutoNaming(t *testing.T) {
 //nolint:paralleltest // This tests is flaky in parallel
 func TestMaxItemsOneDataSourceAliasing(t *testing.T) {
 	provider := func() *tfbridge.ProviderInfo {
-		info, err := metadata.New(nil)
+		info, err := md.New(nil)
 		require.NoError(t, err)
 
 		prov := &tfbridge.ProviderInfo{
@@ -1226,7 +1225,7 @@ func TestMaxItemsOneDataSourceAliasing(t *testing.T) {
 func TestAutoAliasingChangeDataSources(t *testing.T) { //nolint:paralleltest
 	provider := func(t *testing.T, meta string, n int) *tfbridge.ProviderInfo {
 		dsName := ptokens.ModuleMember(fmt.Sprintf("pkg:index:getD%d", n))
-		info, err := metadata.New([]byte(meta))
+		info, err := md.New([]byte(meta))
 		require.NoError(t, err)
 
 		prov := &tfbridge.ProviderInfo{
@@ -1393,7 +1392,7 @@ func TestAutoAliasingChangeDataSources(t *testing.T) { //nolint:paralleltest
 //nolint:paralleltest // This tests is flaky in parallel
 func TestDeletedResourcesAutoAliasing(t *testing.T) {
 	provider := func(t *testing.T, tok string, resourceMap schema.ResourceMap, meta []byte) *tfbridge.ProviderInfo {
-		info, err := metadata.New(meta)
+		info, err := md.New(meta)
 		require.NoError(t, err)
 
 		prov := &tfbridge.ProviderInfo{

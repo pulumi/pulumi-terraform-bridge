@@ -21,7 +21,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
@@ -41,21 +40,21 @@ func (*privst) schema() rschema.Schema {
 	return rschema.Schema{
 		Description: `testbridge_privst resource  tests PrivateState support`,
 		Attributes: map[string]rschema.Attribute{
-			"id": schema.StringAttribute{
+			"id": rschema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
-			"target_private_state": schema.StringAttribute{
+			"target_private_state": rschema.StringAttribute{
 				Optional:    true,
 				Description: "The value of this attribute is stored in PrivateState",
 			},
-			"observed_private_state_before": schema.StringAttribute{
+			"observed_private_state_before": rschema.StringAttribute{
 				Computed:    true,
 				Description: "Exports current PrivateState before the update to help test it",
 			},
-			"observed_private_state_after": schema.StringAttribute{
+			"observed_private_state_after": rschema.StringAttribute{
 				Computed:    true,
 				Description: "Exports current PrivateState after the update to help test it",
 			},

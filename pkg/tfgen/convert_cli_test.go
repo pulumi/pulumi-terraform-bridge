@@ -40,7 +40,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
-	sdkv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
 
@@ -66,7 +65,7 @@ output "some_output" {
 
 	p := tfbridge.ProviderInfo{
 		Name: "simple",
-		P: sdkv2.NewProvider(&schema.Provider{
+		P: shimv2.NewProvider(&schema.Provider{
 			ResourcesMap: map[string]*schema.Resource{
 				"simple_resource": {
 					Schema: map[string]*schema.Schema{

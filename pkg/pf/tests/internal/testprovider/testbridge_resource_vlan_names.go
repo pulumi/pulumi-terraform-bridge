@@ -19,7 +19,6 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
@@ -38,25 +37,25 @@ func newVlanNamesRes() resource.Resource {
 func (*vlanNamesRes) schema() rschema.Schema {
 	return rschema.Schema{
 		Attributes: map[string]rschema.Attribute{
-			"id": schema.StringAttribute{
+			"id": rschema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
-			"other": schema.StringAttribute{Optional: true},
+			"other": rschema.StringAttribute{Optional: true},
 			// borrowed from https://github.com/cisco-open/terraform-provider-meraki/blob/7b3e63a22f6706c110957609ef608e81956b7166/internal/provider/resource_meraki_networks_vlan_profiles.go#L120
-			"vlan_names": schema.SetNestedAttribute{
+			"vlan_names": rschema.SetNestedAttribute{
 				MarkdownDescription: `An array of named VLANs`,
 				Optional:            true,
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						"name": schema.StringAttribute{
+				NestedObject: rschema.NestedAttributeObject{
+					Attributes: map[string]rschema.Attribute{
+						"name": rschema.StringAttribute{
 							MarkdownDescription: `Name of the VLAN, string length must be from 1 to 32 characters`,
 							Computed:            true,
 							Optional:            true,
 						},
-						"vlan_id": schema.StringAttribute{
+						"vlan_id": rschema.StringAttribute{
 							MarkdownDescription: `VLAN ID`,
 							Computed:            true,
 							Optional:            true,

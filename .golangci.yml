@@ -1,79 +1,99 @@
-run:
-  timeout: 10m
-
+version: "2"
 linters:
-  enable-all: false
   enable:
     - durationcheck
-    - errcheck
-    - gci
-    - gofumpt
     - goheader
     - goprintffuncname
     - gosec
-    - gosimple
-    - govet
     - importas
-    - ineffassign
     - lll
     - misspell
     - nakedret
     - nolintlint
-    - revive
-    - staticcheck
-    - tenv
-    - unconvert
-    - unused
     - paralleltest
+    - revive
+    - unconvert
     - wastedassign
     - whitespace
-issues:
-  exclude-rules:
-    # Exclude some linters from running on tests files.
-    - path: pkg/pf/tests
-      linters:
-        - lll
-        - paralleltest
-    - path: pkg/tests
-      linters:
-        - lll
-    - path: pkg/pf/tests
-      linters:
-        - lll
-        - paralleltest
-  exclude:
-    - "unused-parameter: parameter"
-    - "redefines-builtin-id:"
-    - "exhaustive"
-  exclude-dirs:
-    - pkg/tf2pulumi/internal/addrs
-    - pkg/tf2pulumi/internal/config
-    - pkg/tf2pulumi/internal/configs
-    - pkg/vendored
-    # TODO(https://github.com/pulumi/pulumi-terraform-bridge/issues/2474)
-linters-settings:
-  gci:
-    sections:
-      - standard
-      - default
-      - prefix(github.com/pulumi/pulumi-terraform-bridge)
-    skip-generated: true
-  paralleltest:
-    ignore-missing-subtests: true
-  nakedret:
-    # Make an issue if func has more lines of code than this setting, and it has naked returns.
-    # Default: 30
-    max-func-lines: 60
-  govet:
-    enable:
-      - nilness
-      # Reject comparisons of reflect.Value with DeepEqual or '=='.
-      - reflectvaluecompare
-      # Reject sort.Slice calls with a non-slice argument.
-      - sortslice
-      # Detect write to struct/arrays by-value that aren't read again.
-      - unusedwrite
-  importas:
-    alias:
-    - pkg: github.com/pulumi/pulumi/sdk/v3/proto/go
-      alias: pulumirpc
+  settings:
+    govet:
+      enable:
+        - nilness
+        - reflectvaluecompare
+        - sortslice
+        - unusedwrite
+    importas:
+      alias:
+        - pkg: github.com/pulumi/pulumi/sdk/v3/proto/go
+          alias: pulumirpc
+        - pkg: github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/providerbuilder
+          alias: pb
+        - pkg: github.com/hashicorp/terraform-plugin-framework/resource/schema
+          alias: rschema
+        - pkg: github.com/hashicorp/terraform-plugin-framework/provider/schema
+          alias: prschema
+        - pkg: github.com/hashicorp/terraform-plugin-framework/datasource/schema
+          alias: dschema
+        - pkg: github.com/pulumi/pulumi/pkg/v3/codegen/schema
+          alias: pschema
+    nakedret:
+      max-func-lines: 60
+    paralleltest:
+      ignore-missing-subtests: true
+    staticcheck:
+      checks:
+        - 'SA1019'
+        - '-ST1005' # error strings should not be capitalized
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - lll
+          - paralleltest
+        path: pkg/pf/tests
+      - linters:
+          - lll
+        path: pkg/tests
+      - linters:
+          - lll
+          - paralleltest
+        path: pkg/pf/tests
+      - path: (.+)\.go$
+        text: 'unused-parameter: parameter'
+      - path: (.+)\.go$
+        text: 'redefines-builtin-id:'
+      - path: (.+)\.go$
+        text: exhaustive
+    paths:
+      - pkg/tf2pulumi/internal/addrs
+      - pkg/tf2pulumi/internal/config
+      - pkg/tf2pulumi/internal/configs
+      - pkg/vendored
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gci
+    - gofumpt
+  settings:
+    gci:
+      sections:
+        - standard
+        - default
+        - prefix(github.com/pulumi/pulumi-terraform-bridge)
+  exclusions:
+    generated: lax
+    paths:
+      - pkg/tf2pulumi/internal/addrs
+      - pkg/tf2pulumi/internal/config
+      - pkg/tf2pulumi/internal/configs
+      - pkg/vendored
+      - third_party$
+      - builtin$
+      - examples$

@@ -111,9 +111,9 @@ resource "prov_test" "mainRes" {
 	}
 
 	oneSecString := "1s"
-	oneSec := 1 * time.Second
+	one := 1 * time.Second
 	// twoSecString := "2s"
-	twoSec := 2 * time.Second
+	two := 2 * time.Second
 
 	tests := []struct {
 		name                string
@@ -124,23 +124,23 @@ resource "prov_test" "mainRes" {
 	}{
 		{
 			"schema specified timeout",
-			&oneSec,
+			&one,
 			nil,
-			oneSec,
+			one,
 			false,
 		},
 		{
 			"program specified timeout",
-			&twoSec,
+			&two,
 			&oneSecString,
-			oneSec,
+			one,
 			false,
 		},
 		{
 			"program specified without schema timeout",
 			nil,
 			&oneSecString,
-			oneSec,
+			one,
 			true,
 		},
 	}

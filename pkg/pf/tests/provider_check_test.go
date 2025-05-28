@@ -20,7 +20,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
-	pschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
+	prschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	testutils "github.com/pulumi/providertest/replay"
@@ -28,7 +28,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/providerbuilder"
 	pb "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/providerbuilder"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/testprovider"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
@@ -314,14 +313,14 @@ func TestPFCheck(t *testing.T) {
 
 		t.Run(tc.name, func(t *testing.T) {
 			testProvider := pb.NewProvider(pb.NewProviderArgs{
-				ProviderSchema: pschema.Schema{
-					Attributes: map[string]pschema.Attribute{
-						"prop": pschema.StringAttribute{
+				ProviderSchema: prschema.Schema{
+					Attributes: map[string]prschema.Attribute{
+						"prop": prschema.StringAttribute{
 							Optional: true,
 						},
 					},
 				},
-				AllResources: []providerbuilder.Resource{
+				AllResources: []pb.Resource{
 					pb.NewResource(pb.NewResourceArgs{
 						Name:           "res",
 						ResourceSchema: tc.schema,

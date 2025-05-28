@@ -29,7 +29,7 @@ func TestInferType(t *testing.T) {
 		elem interface{}
 	}
 
-	var res shim.Resource = (&schema.Resource{
+	res := (&schema.Resource{
 		Schema: &schema.SchemaMap{
 			"x": (&schema.Schema{Type: shim.TypeString}).Shim(),
 			"y": (&schema.Schema{Type: shim.TypeInt, Optional: true}).Shim(),

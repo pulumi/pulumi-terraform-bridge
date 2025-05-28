@@ -1,7 +1,7 @@
 package crosstests
 
 import (
-	pschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
+	prschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
@@ -32,20 +32,20 @@ func pfNestingToShim(nesting pfNestingMode) hclwrite.Nesting {
 	}
 }
 
-func pSchemaBlockToObject(block pschema.Block) pschema.NestedBlockObject {
+func pSchemaBlockToObject(block prschema.Block) prschema.NestedBlockObject {
 	switch block := block.(type) {
-	case pschema.ListNestedBlock:
+	case prschema.ListNestedBlock:
 		return block.NestedObject
-	case pschema.SetNestedBlock:
+	case prschema.SetNestedBlock:
 		return block.NestedObject
-	case pschema.SingleNestedBlock:
-		return pschema.NestedBlockObject{
+	case prschema.SingleNestedBlock:
+		return prschema.NestedBlockObject{
 			Attributes: block.Attributes,
 			Blocks:     block.Blocks,
 		}
 	default:
 		contract.Failf("Unknown block type: %T", block)
-		return pschema.NestedBlockObject{}
+		return prschema.NestedBlockObject{}
 	}
 }
 
@@ -66,7 +66,7 @@ func rSchemaBlockToObject(block rschema.Block) rschema.NestedBlockObject {
 	return rschema.NestedBlockObject{}
 }
 
-type hclSchemaPFProvider pschema.Schema
+type hclSchemaPFProvider prschema.Schema
 
 var _ hclwrite.ShimHCLSchema = hclSchemaPFProvider{}
 
@@ -90,7 +90,7 @@ func (s hclSchemaPFProvider) GetBlocks() map[string]hclwrite.ShimHCLBlock {
 }
 
 type hclBlockPFProvider struct {
-	nestedObject pschema.NestedBlockObject
+	nestedObject prschema.NestedBlockObject
 	nesting      hclwrite.Nesting
 }
 

@@ -22,7 +22,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	schema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hexops/autogold/v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
@@ -32,7 +32,6 @@ import (
 	"github.com/zclconf/go-cty/cty"
 
 	pb "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/providerbuilder"
-	crosstests "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/cross-tests"
 	ct "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/cross-tests"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
@@ -44,9 +43,9 @@ func TestPFUpgrade_StateUpgraders(t *testing.T) {
 	skipUnlessDeltasEnabled(t)
 
 	resourceBefore := pb.NewResource(pb.NewResourceArgs{
-		ResourceSchema: schema.Schema{
-			Attributes: map[string]schema.Attribute{
-				"prop": schema.StringAttribute{Optional: true},
+		ResourceSchema: rschema.Schema{
+			Attributes: map[string]rschema.Attribute{
+				"prop": rschema.StringAttribute{Optional: true},
 			},
 		},
 	})
@@ -62,9 +61,9 @@ func TestPFUpgrade_StateUpgraders(t *testing.T) {
 	}
 
 	resourceAfter := pb.NewResource(pb.NewResourceArgs{
-		ResourceSchema: schema.Schema{
-			Attributes: map[string]schema.Attribute{
-				"prop": schema.ListAttribute{Optional: true, ElementType: basetypes.Int64Type{}},
+		ResourceSchema: rschema.Schema{
+			Attributes: map[string]rschema.Attribute{
+				"prop": rschema.ListAttribute{Optional: true, ElementType: basetypes.Int64Type{}},
 			},
 			Version: 1,
 		},
@@ -131,9 +130,9 @@ func TestPFUpgrade_StateUpgraders(t *testing.T) {
 
 	result := tc.Run(t)
 
-	autogold.Expect([]crosstests.UpgradeStateTrace{
+	autogold.Expect([]ct.UpgradeStateTrace{
 		{
-			Phase: crosstests.UpgradeStateTestPhase("preview"),
+			Phase: ct.UpgradeStateTestPhase("preview"),
 			PriorState: map[string]interface{}{
 				"id":   "test-id",
 				"prop": "one,two,three",
@@ -148,7 +147,7 @@ func TestPFUpgrade_StateUpgraders(t *testing.T) {
 			},
 		},
 		{
-			Phase: crosstests.UpgradeStateTestPhase("update"),
+			Phase: ct.UpgradeStateTestPhase("update"),
 			PriorState: map[string]interface{}{
 				"id":   "test-id",
 				"prop": "one,two,three",
@@ -219,14 +218,14 @@ func TestPFUpgrade_Pulumi_Removes_MaxItems1(t *testing.T) {
 	skipUnlessDeltasEnabled(t)
 
 	resourceBeforeAndAfter := pb.NewResource(pb.NewResourceArgs{
-		ResourceSchema: schema.Schema{
-			Attributes: map[string]schema.Attribute{
-				"obj": schema.ListNestedAttribute{
+		ResourceSchema: rschema.Schema{
+			Attributes: map[string]rschema.Attribute{
+				"obj": rschema.ListNestedAttribute{
 					Optional: true,
-					NestedObject: schema.NestedAttributeObject{
-						Attributes: map[string]schema.Attribute{
-							"str":  schema.StringAttribute{Optional: true},
-							"bool": schema.BoolAttribute{Optional: true},
+					NestedObject: rschema.NestedAttributeObject{
+						Attributes: map[string]rschema.Attribute{
+							"str":  rschema.StringAttribute{Optional: true},
+							"bool": rschema.BoolAttribute{Optional: true},
 						},
 					},
 				},
@@ -293,14 +292,14 @@ func TestPFUpgrade_Pulumi_Adds_MaxItems1(t *testing.T) {
 	skipUnlessDeltasEnabled(t)
 
 	resourceBeforeAndAfter := pb.NewResource(pb.NewResourceArgs{
-		ResourceSchema: schema.Schema{
-			Attributes: map[string]schema.Attribute{
-				"obj": schema.ListNestedAttribute{
+		ResourceSchema: rschema.Schema{
+			Attributes: map[string]rschema.Attribute{
+				"obj": rschema.ListNestedAttribute{
 					Optional: true,
-					NestedObject: schema.NestedAttributeObject{
-						Attributes: map[string]schema.Attribute{
-							"str":  schema.StringAttribute{Optional: true},
-							"bool": schema.BoolAttribute{Optional: true},
+					NestedObject: rschema.NestedAttributeObject{
+						Attributes: map[string]rschema.Attribute{
+							"str":  rschema.StringAttribute{Optional: true},
+							"bool": rschema.BoolAttribute{Optional: true},
 						},
 					},
 				},
@@ -366,10 +365,10 @@ func TestPFUpgrade_UpgradersNotCalledWhenVersionIsNotChanging(t *testing.T) {
 	ct.SkipUnlessLinux(t)
 	skipUnlessDeltasEnabled(t)
 
-	sch := func(version int64) schema.Schema {
-		return schema.Schema{
-			Attributes: map[string]schema.Attribute{
-				"f0": schema.StringAttribute{
+	sch := func(version int64) rschema.Schema {
+		return rschema.Schema{
+			Attributes: map[string]rschema.Attribute{
+				"f0": rschema.StringAttribute{
 					Optional: true,
 				},
 			},
@@ -444,10 +443,10 @@ func TestPFUpgrade_String_0to1_Version(t *testing.T) {
 	ct.SkipUnlessLinux(t)
 	skipUnlessDeltasEnabled(t)
 
-	sch := func(version int64) schema.Schema {
-		return schema.Schema{
-			Attributes: map[string]schema.Attribute{
-				"f0": schema.StringAttribute{
+	sch := func(version int64) rschema.Schema {
+		return rschema.Schema{
+			Attributes: map[string]rschema.Attribute{
+				"f0": rschema.StringAttribute{
 					Optional: true,
 				},
 			},
@@ -535,9 +534,9 @@ func TestPFUpgrade_String_0to1_Version(t *testing.T) {
 			},
 		}).Equal(t, result.TFUpgrades)
 
-		autogold.Expect([]crosstests.UpgradeStateTrace{
+		autogold.Expect([]ct.UpgradeStateTrace{
 			{
-				Phase: crosstests.UpgradeStateTestPhase("preview"),
+				Phase: ct.UpgradeStateTestPhase("preview"),
 				PriorState: map[string]interface{}{
 					"f0": "val",
 					"id": "test-id",
@@ -548,7 +547,7 @@ func TestPFUpgrade_String_0to1_Version(t *testing.T) {
 				},
 			},
 			{
-				Phase: crosstests.UpgradeStateTestPhase("update"),
+				Phase: ct.UpgradeStateTestPhase("update"),
 				PriorState: map[string]interface{}{
 					"f0": "val",
 					"id": "test-id",
@@ -610,9 +609,9 @@ func TestPFUpgrade_String_0to1_Version(t *testing.T) {
 		}).Equal(t, result.TFUpgrades)
 
 		// Upgrade calls similar but Pulumi calls the upgrader a few times too many.
-		autogold.Expect([]crosstests.UpgradeStateTrace{
+		autogold.Expect([]ct.UpgradeStateTrace{
 			{
-				Phase: crosstests.UpgradeStateTestPhase("preview"),
+				Phase: ct.UpgradeStateTestPhase("preview"),
 				PriorState: map[string]interface{}{
 					"f0": "val1",
 					"id": "test-id",
@@ -623,7 +622,7 @@ func TestPFUpgrade_String_0to1_Version(t *testing.T) {
 				},
 			},
 			{
-				Phase: crosstests.UpgradeStateTestPhase("preview"),
+				Phase: ct.UpgradeStateTestPhase("preview"),
 				PriorState: map[string]interface{}{
 					"f0": "val1",
 					"id": "test-id",
@@ -634,7 +633,7 @@ func TestPFUpgrade_String_0to1_Version(t *testing.T) {
 				},
 			},
 			{
-				Phase: crosstests.UpgradeStateTestPhase("update"),
+				Phase: ct.UpgradeStateTestPhase("update"),
 				PriorState: map[string]interface{}{
 					"f0": "val1",
 					"id": "test-id",
@@ -645,7 +644,7 @@ func TestPFUpgrade_String_0to1_Version(t *testing.T) {
 				},
 			},
 			{
-				Phase: crosstests.UpgradeStateTestPhase("update"),
+				Phase: ct.UpgradeStateTestPhase("update"),
 				PriorState: map[string]interface{}{
 					"f0": "val1",
 					"id": "test-id",
@@ -665,10 +664,10 @@ func TestPFUpgrade_Object_0to1_Version(t *testing.T) {
 	ct.SkipUnlessLinux(t)
 	skipUnlessDeltasEnabled(t)
 
-	sch := func(version int64) schema.Schema {
-		return schema.Schema{
-			Attributes: map[string]schema.Attribute{
-				"f0": schema.ObjectAttribute{
+	sch := func(version int64) rschema.Schema {
+		return rschema.Schema{
+			Attributes: map[string]rschema.Attribute{
+				"f0": rschema.ObjectAttribute{
 					Required: true,
 					AttributeTypes: map[string]attr.Type{
 						"x": basetypes.StringType{},
@@ -759,9 +758,9 @@ func TestPFUpgrade_Object_0to1_Version(t *testing.T) {
 				},
 			},
 		}).Equal(t, result.TFUpgrades)
-		autogold.Expect([]crosstests.UpgradeStateTrace{
+		autogold.Expect([]ct.UpgradeStateTrace{
 			{
-				Phase: crosstests.UpgradeStateTestPhase("preview"),
+				Phase: ct.UpgradeStateTestPhase("preview"),
 				PriorState: map[string]interface{}{
 					"f0": map[string]interface{}{"x": "val"},
 					"id": "test-id",
@@ -772,7 +771,7 @@ func TestPFUpgrade_Object_0to1_Version(t *testing.T) {
 				},
 			},
 			{
-				Phase: crosstests.UpgradeStateTestPhase("update"),
+				Phase: ct.UpgradeStateTestPhase("update"),
 				PriorState: map[string]interface{}{
 					"f0": map[string]interface{}{"x": "val"},
 					"id": "test-id",
@@ -833,9 +832,9 @@ func TestPFUpgrade_Object_0to1_Version(t *testing.T) {
 				},
 			},
 		}).Equal(t, result.TFUpgrades)
-		autogold.Expect([]crosstests.UpgradeStateTrace{
+		autogold.Expect([]ct.UpgradeStateTrace{
 			{
-				Phase: crosstests.UpgradeStateTestPhase("preview"),
+				Phase: ct.UpgradeStateTestPhase("preview"),
 				PriorState: map[string]interface{}{
 					"f0": map[string]interface{}{"x": "val1"},
 					"id": "test-id",
@@ -846,7 +845,7 @@ func TestPFUpgrade_Object_0to1_Version(t *testing.T) {
 				},
 			},
 			{
-				Phase: crosstests.UpgradeStateTestPhase("preview"),
+				Phase: ct.UpgradeStateTestPhase("preview"),
 				PriorState: map[string]interface{}{
 					"f0": map[string]interface{}{"x": "val1"},
 					"id": "test-id",
@@ -857,7 +856,7 @@ func TestPFUpgrade_Object_0to1_Version(t *testing.T) {
 				},
 			},
 			{
-				Phase: crosstests.UpgradeStateTestPhase("update"),
+				Phase: ct.UpgradeStateTestPhase("update"),
 				PriorState: map[string]interface{}{
 					"f0": map[string]interface{}{"x": "val1"},
 					"id": "test-id",
@@ -868,7 +867,7 @@ func TestPFUpgrade_Object_0to1_Version(t *testing.T) {
 				},
 			},
 			{
-				Phase: crosstests.UpgradeStateTestPhase("update"),
+				Phase: ct.UpgradeStateTestPhase("update"),
 				PriorState: map[string]interface{}{
 					"f0": map[string]interface{}{"x": "val1"},
 					"id": "test-id",
@@ -889,10 +888,10 @@ func TestPFUpgrade_PulumiRenamesProperty(t *testing.T) {
 	ct.SkipUnlessLinux(t)
 	skipUnlessDeltasEnabled(t)
 
-	sch := func(version int64) schema.Schema {
-		return schema.Schema{
-			Attributes: map[string]schema.Attribute{
-				"f0": schema.StringAttribute{Optional: true},
+	sch := func(version int64) rschema.Schema {
+		return rschema.Schema{
+			Attributes: map[string]rschema.Attribute{
+				"f0": rschema.StringAttribute{Optional: true},
 			},
 			Version: version,
 		}
@@ -964,10 +963,10 @@ func TestPFUpgrade_PulumiChangesPropertyType(t *testing.T) {
 	ct.SkipUnlessLinux(t)
 	skipUnlessDeltasEnabled(t)
 
-	sch := func(version int64) schema.Schema {
-		return schema.Schema{
-			Attributes: map[string]schema.Attribute{
-				"f0": schema.StringAttribute{Optional: true},
+	sch := func(version int64) rschema.Schema {
+		return rschema.Schema{
+			Attributes: map[string]rschema.Attribute{
+				"f0": rschema.StringAttribute{Optional: true},
 			},
 			Version: version,
 		}
@@ -1037,10 +1036,10 @@ func TestPFUpgrade_Downgrading(t *testing.T) {
 	t.Parallel()
 	ct.SkipUnlessLinux(t)
 
-	sch := func(version int64) schema.Schema {
-		return schema.Schema{
-			Attributes: map[string]schema.Attribute{
-				"f0": schema.StringAttribute{Optional: true},
+	sch := func(version int64) rschema.Schema {
+		return rschema.Schema{
+			Attributes: map[string]rschema.Attribute{
+				"f0": rschema.StringAttribute{Optional: true},
 			},
 			Version: version,
 		}

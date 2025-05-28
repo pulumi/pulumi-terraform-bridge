@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"testing"
 
-	pschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
+	prschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hexops/autogold/v2"
 	"github.com/stretchr/testify/require"
@@ -19,7 +19,7 @@ func TestWritePFHCLProvider(t *testing.T) {
 	tests := []struct {
 		name   string
 		value  map[string]cty.Value
-		schema pschema.Schema
+		schema prschema.Schema
 		expect autogold.Value
 	}{
 		{
@@ -27,9 +27,9 @@ func TestWritePFHCLProvider(t *testing.T) {
 			value: map[string]cty.Value{
 				"key": cty.StringVal("value"),
 			},
-			schema: pschema.Schema{
-				Attributes: map[string]pschema.Attribute{
-					"key": pschema.StringAttribute{Optional: true},
+			schema: prschema.Schema{
+				Attributes: map[string]prschema.Attribute{
+					"key": prschema.StringAttribute{Optional: true},
 				},
 			},
 			expect: autogold.Expect(`provider "test" {
@@ -42,9 +42,9 @@ func TestWritePFHCLProvider(t *testing.T) {
 			value: map[string]cty.Value{
 				"key": cty.BoolVal(true),
 			},
-			schema: pschema.Schema{
-				Attributes: map[string]pschema.Attribute{
-					"key": pschema.BoolAttribute{Optional: true},
+			schema: prschema.Schema{
+				Attributes: map[string]prschema.Attribute{
+					"key": prschema.BoolAttribute{Optional: true},
 				},
 			},
 			expect: autogold.Expect(`provider "test" {
@@ -57,9 +57,9 @@ func TestWritePFHCLProvider(t *testing.T) {
 			value: map[string]cty.Value{
 				"key": cty.NullVal(cty.String),
 			},
-			schema: pschema.Schema{
-				Attributes: map[string]pschema.Attribute{
-					"key": pschema.StringAttribute{Optional: true},
+			schema: prschema.Schema{
+				Attributes: map[string]prschema.Attribute{
+					"key": prschema.StringAttribute{Optional: true},
 				},
 			},
 			expect: autogold.Expect(`provider "test" {
@@ -77,14 +77,14 @@ func TestWritePFHCLProvider(t *testing.T) {
 					}),
 				}),
 			},
-			schema: pschema.Schema{
-				Attributes: map[string]pschema.Attribute{
-					"key": pschema.SingleNestedAttribute{
-						Attributes: map[string]pschema.Attribute{
-							"n1": pschema.NumberAttribute{Optional: true},
-							"n2": pschema.SingleNestedAttribute{
-								Attributes: map[string]pschema.Attribute{
-									"dn1": pschema.BoolAttribute{Optional: true},
+			schema: prschema.Schema{
+				Attributes: map[string]prschema.Attribute{
+					"key": prschema.SingleNestedAttribute{
+						Attributes: map[string]prschema.Attribute{
+							"n1": prschema.NumberAttribute{Optional: true},
+							"n2": prschema.SingleNestedAttribute{
+								Attributes: map[string]prschema.Attribute{
+									"dn1": prschema.BoolAttribute{Optional: true},
 								},
 							},
 						},
@@ -111,16 +111,16 @@ func TestWritePFHCLProvider(t *testing.T) {
 					}),
 				}),
 			},
-			schema: pschema.Schema{
-				Blocks: map[string]pschema.Block{
-					"key": pschema.SingleNestedBlock{
-						Attributes: map[string]pschema.Attribute{
-							"n1": pschema.NumberAttribute{Optional: true},
+			schema: prschema.Schema{
+				Blocks: map[string]prschema.Block{
+					"key": prschema.SingleNestedBlock{
+						Attributes: map[string]prschema.Attribute{
+							"n1": prschema.NumberAttribute{Optional: true},
 						},
-						Blocks: map[string]pschema.Block{
-							"n2": pschema.SingleNestedBlock{
-								Attributes: map[string]pschema.Attribute{
-									"dn1": pschema.BoolAttribute{Optional: true},
+						Blocks: map[string]prschema.Block{
+							"n2": prschema.SingleNestedBlock{
+								Attributes: map[string]prschema.Attribute{
+									"dn1": prschema.BoolAttribute{Optional: true},
 								},
 							},
 						},
@@ -149,12 +149,12 @@ func TestWritePFHCLProvider(t *testing.T) {
 					}),
 				}),
 			},
-			schema: pschema.Schema{
-				Blocks: map[string]pschema.Block{
-					"key": pschema.ListNestedBlock{
-						NestedObject: pschema.NestedBlockObject{
-							Attributes: map[string]pschema.Attribute{
-								"dn1": pschema.BoolAttribute{Optional: true},
+			schema: prschema.Schema{
+				Blocks: map[string]prschema.Block{
+					"key": prschema.ListNestedBlock{
+						NestedObject: prschema.NestedBlockObject{
+							Attributes: map[string]prschema.Attribute{
+								"dn1": prschema.BoolAttribute{Optional: true},
 							},
 						},
 					},

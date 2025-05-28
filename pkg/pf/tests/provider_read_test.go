@@ -20,7 +20,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	fwres "github.com/hashicorp/terraform-plugin-framework/resource"
-	fwsch "github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	testutils "github.com/pulumi/providertest/replay"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/require"
@@ -353,10 +353,10 @@ func TestRefreshResourceNotFound(t *testing.T) {
 	t.Parallel()
 	r := pb.NewResource(pb.NewResourceArgs{
 		Name: "resource",
-		ResourceSchema: fwsch.Schema{
-			Attributes: map[string]fwsch.Attribute{
-				"id": fwsch.StringAttribute{Optional: true, Computed: true},
-				"x":  fwsch.StringAttribute{Optional: true},
+		ResourceSchema: rschema.Schema{
+			Attributes: map[string]rschema.Attribute{
+				"id": rschema.StringAttribute{Optional: true, Computed: true},
+				"x":  rschema.StringAttribute{Optional: true},
 			},
 		},
 		ReadFunc: func(ctx context.Context, req fwres.ReadRequest, resp *fwres.ReadResponse) {

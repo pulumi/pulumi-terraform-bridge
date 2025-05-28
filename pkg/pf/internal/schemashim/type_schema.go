@@ -68,7 +68,7 @@ func (s *typeSchema) Elem() interface{} {
 			"s.t==%T should not have any s.nested attrs", s.t)
 		return newTypeSchema(typeWithElementType.ElementType(), nil)
 	case pfattr.TypeWithElementTypes:
-		var pseudoResource shim.Resource = newTuplePseudoResource(tt)
+		pseudoResource := newTuplePseudoResource(tt)
 		return pseudoResource
 	default:
 		return nil

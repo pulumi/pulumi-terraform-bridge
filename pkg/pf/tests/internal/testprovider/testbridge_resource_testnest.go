@@ -19,7 +19,6 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
@@ -40,28 +39,28 @@ func newTestnest() resource.Resource {
 func (*testnest) schema() rschema.Schema {
 	return rschema.Schema{
 		Attributes: map[string]rschema.Attribute{
-			"id": schema.StringAttribute{
+			"id": rschema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
 			// Example borrowed from https://github.com/fly-apps/terraform-provider-fly/blob/28438713f2bdf08dbd0aa2fae9d74baaca9845f1/internal/provider/machine_resource.go#L176
-			"services": schema.ListNestedAttribute{
+			"services": rschema.ListNestedAttribute{
 				MarkdownDescription: "services: tests ListNestedAttributes support",
 				Optional:            true,
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						"ports": schema.ListNestedAttribute{
+				NestedObject: rschema.NestedAttributeObject{
+					Attributes: map[string]rschema.Attribute{
+						"ports": rschema.ListNestedAttribute{
 							MarkdownDescription: "External ports and handlers",
 							Required:            true,
-							NestedObject: schema.NestedAttributeObject{
-								Attributes: map[string]schema.Attribute{
-									"port": schema.Int64Attribute{
+							NestedObject: rschema.NestedAttributeObject{
+								Attributes: map[string]rschema.Attribute{
+									"port": rschema.Int64Attribute{
 										MarkdownDescription: "External port",
 										Required:            true,
 									},
-									"handlers": schema.ListAttribute{
+									"handlers": rschema.ListAttribute{
 										ElementType:         types.StringType,
 										MarkdownDescription: "How the edge should process requests",
 										Optional:            true,
@@ -69,13 +68,13 @@ func (*testnest) schema() rschema.Schema {
 								},
 							},
 						},
-						"protocol": schema.StringAttribute{
+						"protocol": rschema.StringAttribute{
 							MarkdownDescription: "network protocol",
 							Required:            true,
 						},
 						// TODO internal_port gets mangled to internalPort by Pulumi renaming and does
 						// not work end-to-end yet.
-						"intport": schema.Int64Attribute{
+						"intport": rschema.Int64Attribute{
 							MarkdownDescription: "Port application listens on internally",
 							Required:            true,
 						},
@@ -83,29 +82,29 @@ func (*testnest) schema() rschema.Schema {
 				},
 			},
 		},
-		Blocks: map[string]schema.Block{
-			"rules": schema.ListNestedBlock{
+		Blocks: map[string]rschema.Block{
+			"rules": rschema.ListNestedBlock{
 				MarkdownDescription: "List of rules to apply to the ruleset.",
-				NestedObject: schema.NestedBlockObject{
-					Attributes: map[string]schema.Attribute{
-						"protocol": schema.StringAttribute{
+				NestedObject: rschema.NestedBlockObject{
+					Attributes: map[string]rschema.Attribute{
+						"protocol": rschema.StringAttribute{
 							MarkdownDescription: "network protocol",
 							Optional:            true,
 						},
 					},
-					Blocks: map[string]schema.Block{
-						"action_parameters": schema.ListNestedBlock{
+					Blocks: map[string]rschema.Block{
+						"action_parameters": rschema.ListNestedBlock{
 							MarkdownDescription: "List of parameters that configure the behavior of the ruleset rule action.",
-							NestedObject: schema.NestedBlockObject{
-								Blocks: map[string]schema.Block{
-									"phases": schema.ListNestedBlock{
-										NestedObject: schema.NestedBlockObject{
-											Attributes: map[string]schema.Attribute{
-												"p1": schema.BoolAttribute{
+							NestedObject: rschema.NestedBlockObject{
+								Blocks: map[string]rschema.Block{
+									"phases": rschema.ListNestedBlock{
+										NestedObject: rschema.NestedBlockObject{
+											Attributes: map[string]rschema.Attribute{
+												"p1": rschema.BoolAttribute{
 													Optional:            true,
 													MarkdownDescription: "The first phase.",
 												},
-												"p2": schema.BoolAttribute{
+												"p2": rschema.BoolAttribute{
 													Optional:            true,
 													MarkdownDescription: "The second phase.",
 												},
@@ -113,12 +112,12 @@ func (*testnest) schema() rschema.Schema {
 										},
 									},
 								},
-								Attributes: map[string]schema.Attribute{
-									"automatic_https_rewrites": schema.BoolAttribute{
+								Attributes: map[string]rschema.Attribute{
+									"automatic_https_rewrites": rschema.BoolAttribute{
 										Optional:            true,
 										MarkdownDescription: "Turn on or off Cloudflare Automatic HTTPS rewrites.",
 									},
-									"bic": schema.BoolAttribute{
+									"bic": rschema.BoolAttribute{
 										Optional:            true,
 										MarkdownDescription: "Inspect the visitor's browser for headers commonly associated with spammers and certain bots.",
 									},

@@ -308,7 +308,7 @@ func (o *output) SyntaxNode() hclsyntax.Node {
 	return o.syntax
 }
 
-//nolint:structcheck, unused
+//nolint:unused
 type module struct {
 	syntax *hclsyntax.Block
 

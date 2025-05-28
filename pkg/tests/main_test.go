@@ -98,14 +98,14 @@ func ensureCompiledTestProviders(wd string) error {
 		},
 	}
 
-	runcmd := func(cmd *exec.Cmd) (error, string, string) {
+	runcmd := func(cmd *exec.Cmd) (string, string, error) {
 		var stdout, stderr bytes.Buffer
 		cmd.Stdout = &stdout
 		cmd.Stderr = &stderr
 		if err := cmd.Run(); err != nil {
-			return err, stdout.String(), stderr.String()
+			return stdout.String(), stderr.String(), err
 		}
-		return nil, "", ""
+		return "", "", nil
 	}
 
 	var suffix string
@@ -119,7 +119,7 @@ func ensureCompiledTestProviders(wd string) error {
 			tfgenExe := filepath.Join(bin, fmt.Sprintf("pulumi-tfgen-%s%s", p.name, suffix))
 			cmd := exec.Command("go", "build", "-o", tfgenExe)
 			cmd.Dir = p.tfgenSource
-			if err, stdout, stderr := runcmd(cmd); err != nil {
+			if stdout, stderr, err := runcmd(cmd); err != nil {
 				fmt.Println(stdout)
 				fmt.Println(stderr)
 				return fmt.Errorf("tfgen build failed for %s: %w", p.name, err)
@@ -131,7 +131,7 @@ func ensureCompiledTestProviders(wd string) error {
 			exe := filepath.Join(bin, fmt.Sprintf("pulumi-tfgen-%s%s", p.name, suffix))
 			cmd := exec.Command(exe, "schema", "--out", p.source)
 			cmd.Dir = bin
-			if err, stdout, stderr := runcmd(cmd); err != nil {
+			if stdout, stderr, err := runcmd(cmd); err != nil {
 				if p.expectTfgenError != nil {
 					if !strings.Contains(stderr, *p.expectTfgenError) {
 						fmt.Println(stdout)
@@ -151,7 +151,7 @@ func ensureCompiledTestProviders(wd string) error {
 			tfgenExe := filepath.Join(bin, fmt.Sprintf("pulumi-resource-%s%s", p.name, suffix))
 			cmd := exec.Command("go", "build", "-o", tfgenExe)
 			cmd.Dir = p.source
-			if err, stdout, stderr := runcmd(cmd); err != nil {
+			if stdout, stderr, err := runcmd(cmd); err != nil {
 				fmt.Println(stdout)
 				fmt.Println(stderr)
 				return fmt.Errorf("provider build failed for %s: %w", p.name, err)
