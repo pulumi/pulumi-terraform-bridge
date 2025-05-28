@@ -140,7 +140,7 @@ func (enc *ConfigEncoding) UnfoldProperties(m resource.PropertyMap) (resource.Pr
 			continue
 		}
 
-		contract.Assertf(!v.IsSecret() && !(v.IsOutput() && v.OutputValue().Secret),
+		contract.Assertf(!v.IsSecret() && (!v.IsOutput() || !v.OutputValue().Secret),
 			"The bridge does not accept secrets, so we should not encounter them here")
 
 		if v.IsString() {

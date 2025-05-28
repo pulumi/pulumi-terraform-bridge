@@ -163,7 +163,7 @@ func Test_GenerateTestDataSchemas(t *testing.T) {
 	for _, info := range infos {
 		t.Run(info.Name(), func(t *testing.T) {
 			// Strip off the .json part to make the package name
-			pkg := strings.Replace(info.Name(), filepath.Ext(info.Name()), "", -1)
+			pkg := strings.ReplaceAll(info.Name(), filepath.Ext(info.Name()), "")
 			provInfo, err := providerInfoSource.GetProviderInfo("", "", pkg, "")
 			require.NoError(t, err)
 			provInfo.Repository = "https://github.com/pulumi/pulumi-" + pkg

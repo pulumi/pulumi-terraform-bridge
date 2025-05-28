@@ -1730,7 +1730,7 @@ func isDefaultOrZeroValue(tfs shim.Schema, ps *SchemaInfo, v resource.PropertyVa
 		return true
 	case v.IsBool():
 		//nolint:gosimple // This expression is clearer than !v.BoolValue()
-		return v.BoolValue() == false
+		return !v.BoolValue()
 	case v.IsNumber():
 		return v.NumberValue() == 0
 	case v.IsString():
@@ -1838,7 +1838,7 @@ func extractSchemaInputsObject(
 		//
 		// Since Pulumi is so schema based, it might be better to error on
 		// !typeKnown instead of dropping a field.
-		if !typeKnown || !(etfs.Optional() || etfs.Required()) {
+		if !typeKnown || (!etfs.Optional() && !etfs.Required()) {
 			glog.V(9).Infof("skipping '%v' (not an input)", k)
 			continue
 		}

@@ -54,7 +54,7 @@ func (r *v2Resource2) InstanceState(
 		copy["id"] = id
 		object = copy
 	}
-	s, err := recoverAndCoerceCtyValueWithSchema(r.v2Resource.tf.CoreConfigSchema(), object)
+	s, err := recoverAndCoerceCtyValueWithSchema(r.tf.CoreConfigSchema(), object)
 	if err != nil {
 		glog.V(9).Infof("failed to coerce config: %v, proceeding with imprecise value", err)
 		original := schema.HCL2ValueFromConfigValue(object)
@@ -173,7 +173,7 @@ func (d *v2InstanceDiff2) GoString() string {
     config:         %#v,
     plannedState:   %#v,
     plannedPrivate:    %#v,
-}`, d.v2InstanceDiff.tf, d.config, d.plannedState, d.plannedPrivate)
+}`, d.tf, d.config, d.plannedState, d.plannedPrivate)
 }
 
 var _ shim.InstanceDiff = (*v2InstanceDiff2)(nil)
@@ -183,7 +183,7 @@ func (d *v2InstanceDiff2) ProposedState(
 ) (shim.InstanceState, error) {
 	// The proposed state is always upgraded, which is a bit of a technicality since the code will not try
 	// upgrading it anyway.
-	return newUpgradedInstanceState(d.resourceType, d.plannedState, d.v2InstanceDiff.tf.Meta), nil
+	return newUpgradedInstanceState(d.resourceType, d.plannedState, d.tf.Meta), nil
 }
 
 func (d *v2InstanceDiff2) PriorState() (shim.InstanceState, error) {
@@ -372,8 +372,8 @@ func (p v2Provider) Apply(
 	if len(diff.plannedPrivate) > 0 {
 		maps.Copy(priv, diff.plannedPrivate)
 	}
-	if len(diff.v2InstanceDiff.tf.Meta) > 0 {
-		maps.Copy(priv, diff.v2InstanceDiff.tf.Meta)
+	if len(diff.tf.Meta) > 0 {
+		maps.Copy(priv, diff.tf.Meta)
 	}
 
 	return p.server.ApplyResourceChange(ctx, t, ty, cfg, st, pl, priv, meta)

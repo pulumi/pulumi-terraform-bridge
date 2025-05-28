@@ -234,7 +234,7 @@ func (m *muxer) DiffConfig(ctx context.Context, req *pulumirpc.DiffRequest) (*pu
 		diffs    = make(set[string]) // The AND of each server, sans replaces
 		stables  = make(set[string]) // The AND of each server, sans replaces and diffs
 
-		changes pulumirpc.DiffResponse_DiffChanges = pulumirpc.DiffResponse_DIFF_NONE
+		changes = pulumirpc.DiffResponse_DIFF_NONE
 
 		errs = new(multierror.Error)
 	)

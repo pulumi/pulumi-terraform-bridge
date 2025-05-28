@@ -103,7 +103,7 @@ func (s *attrSchema) Elem() interface{} {
 		var res shim.Resource = newObjectPseudoResource(t, s.attr.Nested(), nil)
 		return res
 	case pfattr.TypeWithElementTypes:
-		var res shim.Resource = newTuplePseudoResource(t)
+		res := newTuplePseudoResource(t)
 		return res
 	case pfattr.TypeWithElementType:
 		return shim.Schema(newTypeSchema(t.ElementType(), s.attr.Nested()))

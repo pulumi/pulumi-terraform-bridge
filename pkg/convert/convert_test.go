@@ -293,7 +293,7 @@ func arrayPV[T any](topv func(T) resource.PropertyValue) func(data []T) resource
 
 func mapPV[T any](topv func(T) resource.PropertyValue) func(data map[string]T) resource.PropertyValue {
 	return func(data map[string]T) resource.PropertyValue {
-		var entries resource.PropertyMap = make(resource.PropertyMap)
+		entries := make(resource.PropertyMap)
 		for k, v := range data {
 			entries[resource.PropertyKey(k)] = topv(v)
 		}

@@ -43,7 +43,7 @@ func (p *provider) ReadWithContext(
 	var err error
 
 	// Returning Status is required by the signature but ignored by the server implementation.
-	var ignoredStatus resource.Status = resource.StatusOK
+	ignoredStatus := resource.StatusOK
 
 	// TODO[pulumi/pulumi-terraform-bridge#793] Add a test for Read handling a not-found resource
 

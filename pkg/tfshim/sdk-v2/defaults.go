@@ -21,7 +21,7 @@ import (
 
 func withPatchedDefaults(s *schema.Schema) *schema.Schema {
 	if hasInvalidDefault(s) {
-		var schema schema.Schema = *s
+		schema := *s
 		schema.Default = nil
 		return &schema
 	}

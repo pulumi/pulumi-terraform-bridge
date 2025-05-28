@@ -51,7 +51,7 @@ func (p *provider) GetMappingWithContext(ctx context.Context, key, provider stri
 }
 
 func (p *provider) marshalProviderInfo(ctx context.Context) *tfbridge.MarshallableProviderInfo {
-	var providerInfoCopy tfbridge.ProviderInfo = p.info
+	providerInfoCopy := p.info
 	providerInfoCopy.P = p.info.P
 	return tfbridge.MarshalProviderInfo(&providerInfoCopy)
 }

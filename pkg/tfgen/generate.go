@@ -1841,7 +1841,7 @@ func (g *Generator) emitProjectMetadata(name tokens.Package, language Language) 
 // input checks whether the given property is supplied by the user (versus being always computed).
 func input(sch shim.Schema, info *tfbridge.SchemaInfo) bool {
 	return (sch.Optional() || sch.Required()) &&
-		!(info != nil && info.MarkAsComputedOnly != nil && *info.MarkAsComputedOnly)
+		(info == nil || info.MarkAsComputedOnly == nil || !*info.MarkAsComputedOnly)
 }
 
 // propertyName translates a Terraform underscore_cased_property_name into a JavaScript camelCasedPropertyName.

@@ -131,7 +131,7 @@ func applyPragmas(src io.Reader, dst io.Writer, isExperimental bool) error {
 			continue
 		}
 		if trimLine == "#endif" {
-			if !(inElse || inIf) {
+			if !inElse && !inIf {
 				return fmt.Errorf("Saw #endif while not in an if or else block")
 			}
 			inIf = false
@@ -299,7 +299,7 @@ func TestEject(t *testing.T) {
 				require.NoError(t, err)
 				for filename, source := range program.Source() {
 					// normalize windows newlines to unix ones
-					expectedPcl := []byte(strings.Replace(source, "\r\n", "\n", -1))
+					expectedPcl := []byte(strings.ReplaceAll(source, "\r\n", "\n"))
 					err := os.WriteFile(filepath.Join(pclPath, filename), expectedPcl, 0o600)
 					require.NoError(t, err)
 				}
@@ -310,8 +310,8 @@ func TestEject(t *testing.T) {
 				pclBytes, err := os.ReadFile(filepath.Join(pclPath, filename))
 				if assert.NoError(t, err) {
 					// normalize windows newlines
-					expectedPcl := strings.Replace(string(pclBytes), "\r\n", "\n", -1)
-					source = strings.Replace(source, "\r\n", "\n", -1)
+					expectedPcl := strings.ReplaceAll(string(pclBytes), "\r\n", "\n")
+					source = strings.ReplaceAll(source, "\r\n", "\n")
 					assert.Equal(t, expectedPcl, source)
 					delete(pclFiles, filename)
 				}

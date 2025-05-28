@@ -22,8 +22,8 @@ import (
 
 func isPresent(val resource.PropertyValue) bool {
 	return !val.IsNull() &&
-		!(val.IsArray() && val.ArrayValue() == nil) &&
-		!(val.IsObject() && val.ObjectValue() == nil)
+		(!val.IsArray() || val.ArrayValue() != nil) &&
+		(!val.IsObject() || val.ObjectValue() != nil)
 }
 
 func sortedMergedKeys[K cmp.Ordered, V any, M ~map[K]V](a, b M) []K {

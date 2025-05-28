@@ -213,7 +213,7 @@ func TestTracePropagation(t *testing.T) {
 		for _, s := range spans {
 			s := s
 			tr, err := FindTrace(store, func(tr *appdash.Trace) bool {
-				return tr.Span.Name() == s
+				return tr.Name() == s
 			})
 			require.NoError(t, err)
 			assert.NotNilf(t, tr, "Expected to find a trace span with the %q label", s)

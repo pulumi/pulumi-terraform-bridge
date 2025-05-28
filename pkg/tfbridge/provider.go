@@ -62,7 +62,7 @@ type providerOptions struct {
 
 type providerOption func(providerOptions) (providerOptions, error)
 
-func WithDefaultZeroSchemaVersion() providerOption {
+func WithDefaultZeroSchemaVersion() providerOption { //nolint:revive
 	return func(opts providerOptions) (providerOptions, error) {
 		opts.defaultZeroSchemaVersion = true
 		return opts, nil

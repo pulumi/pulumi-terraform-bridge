@@ -108,20 +108,20 @@ func (prov *provider) Handshake(ctx context.Context,
 func (prov *provider) Parameterize(
 	ctx context.Context, req plugin.ParameterizeRequest,
 ) (plugin.ParameterizeResponse, error) {
-	return prov.ProviderWithContext.ParameterizeWithContext(ctx, req)
+	return prov.ParameterizeWithContext(ctx, req)
 }
 
 func (prov *provider) GetSchema(
 	ctx context.Context, req plugin.GetSchemaRequest,
 ) (plugin.GetSchemaResponse, error) {
-	schema, err := prov.ProviderWithContext.GetSchemaWithContext(ctx, req)
+	schema, err := prov.GetSchemaWithContext(ctx, req)
 	return plugin.GetSchemaResponse{Schema: schema}, err
 }
 
 func (prov *provider) CheckConfig(
 	ctx context.Context, req plugin.CheckConfigRequest,
 ) (plugin.CheckConfigResponse, error) {
-	c, f, err := prov.ProviderWithContext.CheckConfigWithContext(
+	c, f, err := prov.CheckConfigWithContext(
 		ctx, req.URN, req.Olds, req.News, req.AllowUnknowns)
 	return plugin.CheckConfigResponse{
 		Properties: c,
@@ -132,14 +132,14 @@ func (prov *provider) CheckConfig(
 func (prov *provider) DiffConfig(
 	ctx context.Context, req plugin.DiffConfigRequest,
 ) (plugin.DiffConfigResponse, error) {
-	return prov.ProviderWithContext.DiffConfigWithContext(
+	return prov.DiffConfigWithContext(
 		ctx, req.URN, req.OldInputs, req.OldOutputs, req.NewInputs, req.AllowUnknowns, req.IgnoreChanges)
 }
 
 func (prov *provider) Configure(
 	ctx context.Context, req plugin.ConfigureRequest,
 ) (plugin.ConfigureResponse, error) {
-	return plugin.ConfigureResponse{}, prov.ProviderWithContext.ConfigureWithContext(ctx, req.Inputs)
+	return plugin.ConfigureResponse{}, prov.ConfigureWithContext(ctx, req.Inputs)
 }
 
 func (prov *provider) Check(
@@ -152,7 +152,7 @@ func (prov *provider) Check(
 			Mode:         info.ComputeDefaultAutonamingOptionsMode(req.Autonaming.Mode),
 		}
 	}
-	c, f, err := prov.ProviderWithContext.CheckWithContext(
+	c, f, err := prov.CheckWithContext(
 		ctx, req.URN, req.Olds, req.News, req.AllowUnknowns, req.RandomSeed, autonaming)
 	return plugin.CheckResponse{Properties: c, Failures: f}, err
 }
@@ -160,14 +160,14 @@ func (prov *provider) Check(
 func (prov *provider) Diff(
 	ctx context.Context, req plugin.DiffRequest,
 ) (plugin.DiffResponse, error) {
-	return prov.ProviderWithContext.DiffWithContext(ctx,
+	return prov.DiffWithContext(ctx,
 		req.URN, req.ID, req.OldOutputs, req.NewInputs, req.AllowUnknowns, req.IgnoreChanges)
 }
 
 func (prov *provider) Create(
 	ctx context.Context, req plugin.CreateRequest,
 ) (plugin.CreateResponse, error) {
-	id, p, s, err := prov.ProviderWithContext.CreateWithContext(ctx,
+	id, p, s, err := prov.CreateWithContext(ctx,
 		req.URN, req.Properties, req.Timeout, req.Preview)
 	return plugin.CreateResponse{ID: id, Properties: p, Status: s}, err
 }
@@ -175,14 +175,14 @@ func (prov *provider) Create(
 func (prov *provider) Read(
 	ctx context.Context, req plugin.ReadRequest,
 ) (plugin.ReadResponse, error) {
-	r, s, err := prov.ProviderWithContext.ReadWithContext(ctx, req.URN, req.ID, req.Inputs, req.State)
+	r, s, err := prov.ReadWithContext(ctx, req.URN, req.ID, req.Inputs, req.State)
 	return plugin.ReadResponse{ReadResult: r, Status: s}, err
 }
 
 func (prov *provider) Update(
 	ctx context.Context, req plugin.UpdateRequest,
 ) (plugin.UpdateResponse, error) {
-	p, s, err := prov.ProviderWithContext.UpdateWithContext(ctx,
+	p, s, err := prov.UpdateWithContext(ctx,
 		req.URN, req.ID, req.OldOutputs, req.NewInputs, req.Timeout, req.IgnoreChanges, req.Preview)
 	return plugin.UpdateResponse{Properties: p, Status: s}, err
 }
@@ -190,7 +190,7 @@ func (prov *provider) Update(
 func (prov *provider) Delete(
 	ctx context.Context, req plugin.DeleteRequest,
 ) (plugin.DeleteResponse, error) {
-	s, err := prov.ProviderWithContext.DeleteWithContext(ctx,
+	s, err := prov.DeleteWithContext(ctx,
 		req.URN, req.ID, req.Inputs, req.Outputs, req.Timeout)
 	return plugin.DeleteResponse{Status: s}, err
 }
@@ -198,41 +198,41 @@ func (prov *provider) Delete(
 func (prov *provider) Construct(
 	ctx context.Context, req plugin.ConstructRequest,
 ) (plugin.ConstructResponse, error) {
-	return prov.ProviderWithContext.ConstructWithContext(ctx,
+	return prov.ConstructWithContext(ctx,
 		req.Info, req.Type, tokens.QName(req.Name), req.Parent, req.Inputs, req.Options)
 }
 
 func (prov *provider) Invoke(
 	ctx context.Context, req plugin.InvokeRequest,
 ) (plugin.InvokeResponse, error) {
-	p, f, err := prov.ProviderWithContext.InvokeWithContext(ctx, req.Tok, req.Args)
+	p, f, err := prov.InvokeWithContext(ctx, req.Tok, req.Args)
 	return plugin.InvokeResponse{Properties: p, Failures: f}, err
 }
 
 func (prov *provider) Call(
 	ctx context.Context, req plugin.CallRequest,
 ) (plugin.CallResponse, error) {
-	return prov.ProviderWithContext.CallWithContext(ctx, req.Tok, req.Args, req.Info, req.Options)
+	return prov.CallWithContext(ctx, req.Tok, req.Args, req.Info, req.Options)
 }
 
 func (prov *provider) GetPluginInfo(ctx context.Context) (workspace.PluginInfo, error) {
-	return prov.ProviderWithContext.GetPluginInfoWithContext(ctx)
+	return prov.GetPluginInfoWithContext(ctx)
 }
 
 func (prov *provider) SignalCancellation(ctx context.Context) error {
-	return prov.ProviderWithContext.SignalCancellationWithContext(ctx)
+	return prov.SignalCancellationWithContext(ctx)
 }
 
 func (prov *provider) GetMapping(
 	ctx context.Context, req plugin.GetMappingRequest,
 ) (plugin.GetMappingResponse, error) {
-	d, p, err := prov.ProviderWithContext.GetMappingWithContext(ctx, req.Key, req.Provider)
+	d, p, err := prov.GetMappingWithContext(ctx, req.Key, req.Provider)
 	return plugin.GetMappingResponse{Data: d, Provider: p}, err
 }
 
 func (prov *provider) GetMappings(
 	ctx context.Context, req plugin.GetMappingsRequest,
 ) (plugin.GetMappingsResponse, error) {
-	k, err := prov.ProviderWithContext.GetMappingsWithContext(ctx, req.Key)
+	k, err := prov.GetMappingsWithContext(ctx, req.Key)
 	return plugin.GetMappingsResponse{Keys: k}, err
 }

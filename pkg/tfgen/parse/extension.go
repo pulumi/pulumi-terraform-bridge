@@ -212,10 +212,8 @@ func (tableRenderer *tableRenderer) renderCell(
 		var cell bytes.Buffer
 		textBlock := ast.NewTextBlock()
 		child := n.FirstChild()
-		for {
-			if child == nil {
-				break
-			}
+		for child != nil {
+
 			next := child.NextSibling()
 			textBlock.AppendChild(textBlock, child)
 			child = next

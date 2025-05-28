@@ -161,7 +161,7 @@ func TestMarshalElem(t *testing.T) {
 	})
 
 	t.Run("emptySchema", func(t *testing.T) {
-		var emptySchema shim.Schema = (&shimschema.Schema{}).Shim()
+		emptySchema := (&shimschema.Schema{}).Shim()
 		actual := turnaround(emptySchema)
 		s, ok := actual.(shim.Schema)
 		assert.True(t, ok)
@@ -169,7 +169,7 @@ func TestMarshalElem(t *testing.T) {
 	})
 
 	t.Run("simpleSchema", func(t *testing.T) {
-		var simpleSchema shim.Schema = (&shimschema.Schema{
+		simpleSchema := (&shimschema.Schema{
 			Type: shim.TypeInt,
 		}).Shim()
 		actual := turnaround(simpleSchema)
@@ -179,7 +179,7 @@ func TestMarshalElem(t *testing.T) {
 	})
 
 	t.Run("emptyResource", func(t *testing.T) {
-		var emptyResource shim.Resource = (&shimschema.Resource{}).Shim()
+		emptyResource := (&shimschema.Resource{}).Shim()
 		actual := turnaround(emptyResource)
 		r, ok := actual.(shim.Resource)
 		assert.True(t, ok)
@@ -187,7 +187,7 @@ func TestMarshalElem(t *testing.T) {
 	})
 
 	t.Run("simpleResource", func(t *testing.T) {
-		var simpleResource shim.Resource = (&shimschema.Resource{
+		simpleResource := (&shimschema.Resource{
 			SchemaVersion: 1,
 			Schema: (&shimschema.SchemaMap{
 				"k": (&shimschema.Schema{
