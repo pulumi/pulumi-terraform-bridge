@@ -367,9 +367,14 @@ func Test_GenerateWithOverlay(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			root := afero.NewMemMapFs()
+			osFs := afero.NewOsFs()
+			tempDir := t.TempDir()
+			root := afero.NewBasePathFs(osFs, tempDir)
 
 			err := afero.WriteFile(root, tc.overlayFileName, tc.overlayFileContent, 0o600)
+			require.NoError(t, err)
+
+			err = root.MkdirAll(moduleName, 0o700)
 			require.NoError(t, err)
 
 			err = afero.WriteFile(root, filepath.Join(moduleName, tc.overlayModFileName), tc.overlayModFileContent, 0o600)
