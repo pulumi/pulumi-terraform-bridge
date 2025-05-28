@@ -35,7 +35,6 @@ import (
 	hcl2nodejs "github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/pcl"
 	hcl2python "github.com/pulumi/pulumi/pkg/v3/codegen/python"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -84,7 +83,7 @@ type cliConverter struct {
 		getOrCreateExamplesCache() *examplesCache
 	}
 
-	loader schema.Loader
+	loader pschema.Loader
 
 	convertExamplesList []struct {
 		docs string
@@ -456,7 +455,7 @@ func (cc *cliConverter) convertViaPulumiCLIStep(
 	if err := cmd.Run(); err != nil {
 		return nil, fmt.Errorf("convertViaPulumiCLI: pulumi command failed: %w\n"+
 			"Stdout:\n%s\n\n"+
-			"Stderr:\n%s\n\n",
+			"Stderr:\n%s",
 			err, stdout.String(), stderr.String())
 	}
 
@@ -556,10 +555,10 @@ func (cc *cliConverter) convertPCL(
 		generatedFiles, genDiags, err = hcl2java.GenerateProgram(program)
 		diagnostics = append(diagnostics, genDiags...)
 	default:
-		err = fmt.Errorf("Unsupported language: %q", languageName)
+		err = fmt.Errorf("unsupported language: %q", languageName)
 	}
 	if err != nil {
-		return "", diagnostics, fmt.Errorf("GenerateProgram failed: %w", err)
+		return "", diagnostics, fmt.Errorf("generate program failed: %w", err)
 	}
 	if len(generatedFiles) != 1 {
 		err := fmt.Errorf("expected 1 file to be generated, got %d", len(generatedFiles))

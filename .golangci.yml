@@ -26,10 +26,24 @@ linters:
       alias:
         - pkg: github.com/pulumi/pulumi/sdk/v3/proto/go
           alias: pulumirpc
+        - pkg: github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/providerbuilder
+          alias: pb
+        - pkg: github.com/hashicorp/terraform-plugin-framework/resource/schema
+          alias: rschema
+        - pkg: github.com/hashicorp/terraform-plugin-framework/provider/schema
+          alias: prschema
+        - pkg: github.com/hashicorp/terraform-plugin-framework/datasource/schema
+          alias: dschema
+        - pkg: github.com/pulumi/pulumi/pkg/v3/codegen/schema
+          alias: pschema
     nakedret:
       max-func-lines: 60
     paralleltest:
       ignore-missing-subtests: true
+    staticcheck:
+      checks:
+        - 'SA1019'
+        - '-ST1005' # error strings should not be capitalized
   exclusions:
     generated: lax
     presets:

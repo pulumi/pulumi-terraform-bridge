@@ -26,7 +26,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/muxer"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/providerbuilder"
 	pb "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/providerbuilder"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen"
@@ -44,7 +43,7 @@ func TestRenameResourceWithAliasInAugmentedProvider(t *testing.T) {
 	baselineProvider := (&helper.Provider{}).Shim()
 	pfProvider := pb.NewProvider(pb.NewProviderArgs{
 		TypeName: providerID,
-		AllResources: []providerbuilder.Resource{
+		AllResources: []pb.Resource{
 			pb.NewResource(pb.NewResourceArgs{
 				Name: resourceID,
 			}),
@@ -78,7 +77,7 @@ func TestRenameMuxedDataSourceWithAliasInAugmentedProvider(t *testing.T) {
 	baselineProvider := (&helper.Provider{}).Shim()
 	pfProvider := pb.NewProvider(pb.NewProviderArgs{
 		TypeName: providerID,
-		AllDataSources: []providerbuilder.DataSource{
+		AllDataSources: []pb.DataSource{
 			{Name: dataSourceID},
 		},
 	})

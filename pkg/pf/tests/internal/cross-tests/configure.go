@@ -22,7 +22,7 @@ import (
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/provider"
-	pschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
+	prschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/tfsdk"
 	"github.com/pulumi/providertest/providers"
 	"github.com/pulumi/providertest/pulumitest"
@@ -54,7 +54,7 @@ import (
 //	}
 //
 // For details on the test itself, see [Configure].
-func MakeConfigure(schema pschema.Schema, tfConfig map[string]cty.Value, options ...ConfigureOption) func(t *testing.T) {
+func MakeConfigure(schema prschema.Schema, tfConfig map[string]cty.Value, options ...ConfigureOption) func(t *testing.T) {
 	return func(t *testing.T) {
 		t.Parallel()
 		Configure(t, schema, tfConfig, options...)
@@ -85,7 +85,7 @@ func MakeConfigure(schema pschema.Schema, tfConfig map[string]cty.Value, options
 //	+--------------------+                      +---------------------+
 //
 // Configure should be safe to run in parallel.
-func Configure(t T, schema pschema.Schema, tfConfig map[string]cty.Value, options ...ConfigureOption) {
+func Configure(t T, schema prschema.Schema, tfConfig map[string]cty.Value, options ...ConfigureOption) {
 	SkipUnlessLinux(t)
 
 	var opts configureOpts

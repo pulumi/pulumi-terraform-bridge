@@ -40,7 +40,6 @@ import (
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 	shimv1 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v1"
-	sdkv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
 
@@ -4106,7 +4105,7 @@ func Test_makeTerraformStateWithOptsMaxItemsOneRemoved(t *testing.T) {
 			},
 		}
 
-		sch2 := sdkv2.NewSchemaMap(map[string]*schemav2.Schema{
+		sch2 := shimv2.NewSchemaMap(map[string]*schemav2.Schema{
 			"prop": sch,
 		})
 
@@ -4137,7 +4136,7 @@ func Test_makeTerraformStateWithOptsMaxItemsOneRemoved(t *testing.T) {
 			},
 		}
 
-		sch2 := sdkv2.NewSchemaMap(map[string]*schemav2.Schema{
+		sch2 := shimv2.NewSchemaMap(map[string]*schemav2.Schema{
 			"prop": sch,
 		})
 
@@ -4174,7 +4173,7 @@ func Test_makeTerraformStateWithOptsMaxItemsOneRemoved(t *testing.T) {
 			},
 		}
 
-		sch2 := sdkv2.NewSchemaMap(map[string]*schemav2.Schema{
+		sch2 := shimv2.NewSchemaMap(map[string]*schemav2.Schema{
 			"prop": sch,
 		})
 
@@ -4212,7 +4211,7 @@ func Test_makeTerraformStateWithOptsMaxItemsOneAdded(t *testing.T) {
 			},
 		}
 
-		sch2 := sdkv2.NewSchemaMap(map[string]*schemav2.Schema{
+		sch2 := shimv2.NewSchemaMap(map[string]*schemav2.Schema{
 			"prop": sch,
 		})
 

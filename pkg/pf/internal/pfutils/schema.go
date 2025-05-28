@@ -19,7 +19,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	dschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
-	pschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
+	prschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
@@ -48,7 +48,7 @@ type Schema interface {
 	ResourceProtoSchema(ctx context.Context) (*tfprotov6.Schema, error)
 }
 
-func FromProviderSchema(x pschema.Schema) Schema {
+func FromProviderSchema(x prschema.Schema) Schema {
 	attrs := convertMap(FromProviderAttribute, x.Attributes)
 	blocks := convertMap(FromProviderBlock, x.Blocks)
 	return newSchemaAdapter(x, x.Type(), x.DeprecationMessage, attrs, blocks, nil)

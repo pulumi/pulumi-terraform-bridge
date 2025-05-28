@@ -26,7 +26,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/boolplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listplanmodifier"
@@ -62,13 +61,13 @@ The CRUD model is as simple as possible. Update and Create replace the cloud sta
 removes the cloud state, and Read copies it.
 `,
 		Attributes: map[string]rschema.Attribute{
-			"id": schema.StringAttribute{
+			"id": rschema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
-			"statedir": schema.StringAttribute{
+			"statedir": rschema.StringAttribute{
 				Required:    true,
 				Description: "Dir to store pseudo-cloud state in.",
 				PlanModifiers: []planmodifier.String{
@@ -76,20 +75,20 @@ removes the cloud state, and Read copies it.
 					stringplanmodifier.RequiresReplace(),
 				},
 			},
-			"required_input_string": schema.StringAttribute{
+			"required_input_string": rschema.StringAttribute{
 				Required: true,
 			},
-			"optional_input_string": schema.StringAttribute{
+			"optional_input_string": rschema.StringAttribute{
 				Optional: true,
 			},
-			"required_input_string_copy": schema.StringAttribute{
+			"required_input_string_copy": rschema.StringAttribute{
 				Computed:    true,
 				Description: "Computed as a copy of required_input_string",
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
-			"optional_input_string_copy": schema.StringAttribute{
+			"optional_input_string_copy": rschema.StringAttribute{
 				Computed:    true,
 				Description: "Computed as a copy of optional_input_string",
 				PlanModifiers: []planmodifier.String{
@@ -97,10 +96,10 @@ removes the cloud state, and Read copies it.
 					PropagatesNullFrom{"optional_input_string"},
 				},
 			},
-			"optional_input_number": schema.NumberAttribute{
+			"optional_input_number": rschema.NumberAttribute{
 				Optional: true,
 			},
-			"optional_input_number_copy": schema.NumberAttribute{
+			"optional_input_number_copy": rschema.NumberAttribute{
 				Computed:    true,
 				Description: "Computed as a copy of optional_input_number",
 				PlanModifiers: []planmodifier.Number{
@@ -108,10 +107,10 @@ removes the cloud state, and Read copies it.
 					PropagatesNullFrom{"optional_input_number"},
 				},
 			},
-			"optional_input_bool": schema.BoolAttribute{
+			"optional_input_bool": rschema.BoolAttribute{
 				Optional: true,
 			},
-			"optional_input_bool_copy": schema.BoolAttribute{
+			"optional_input_bool_copy": rschema.BoolAttribute{
 				Computed:    true,
 				Description: "Computed as a copy of optional_input_bool",
 				PlanModifiers: []planmodifier.Bool{
@@ -119,11 +118,11 @@ removes the cloud state, and Read copies it.
 					PropagatesNullFrom{"optional_input_bool"},
 				},
 			},
-			"optional_input_string_list": schema.ListAttribute{
+			"optional_input_string_list": rschema.ListAttribute{
 				ElementType: types.StringType,
 				Optional:    true,
 			},
-			"optional_input_string_list_copy": schema.ListAttribute{
+			"optional_input_string_list_copy": rschema.ListAttribute{
 				ElementType: types.StringType,
 				Computed:    true,
 				Description: "Computed as a copy of optional_input_string_list",
@@ -132,11 +131,11 @@ removes the cloud state, and Read copies it.
 					PropagatesNullFrom{"optional_input_string_list"},
 				},
 			},
-			"optional_input_string_map": schema.MapAttribute{
+			"optional_input_string_map": rschema.MapAttribute{
 				ElementType: types.StringType,
 				Optional:    true,
 			},
-			"optional_input_string_map_copy": schema.MapAttribute{
+			"optional_input_string_map_copy": rschema.MapAttribute{
 				ElementType: types.StringType,
 				Computed:    true,
 				Description: "Computed as a copy of optional_input_string_map",
@@ -145,7 +144,7 @@ removes the cloud state, and Read copies it.
 					PropagatesNullFrom{"optional_input_string_map"},
 				},
 			},
-			"single_nested_attr": schema.SingleNestedAttribute{
+			"single_nested_attr": rschema.SingleNestedAttribute{
 				MarkdownDescription: "single_nested_attr: tests SingleNestedAttribute support",
 				Optional:            true,
 				Attributes: map[string]rschema.Attribute{
@@ -157,7 +156,7 @@ removes the cloud state, and Read copies it.
 					},
 				},
 			},
-			"single_nested_attr_json_copy": schema.StringAttribute{
+			"single_nested_attr_json_copy": rschema.StringAttribute{
 				Computed:    true,
 				Description: "Computed as a JSON-ified copy of single_nested_attr input",
 				PlanModifiers: []planmodifier.String{
@@ -166,21 +165,21 @@ removes the cloud state, and Read copies it.
 				},
 			},
 			// Example borrowed from https://github.com/fly-apps/terraform-provider-fly/blob/28438713f2bdf08dbd0aa2fae9d74baaca9845f1/internal/provider/machine_resource.go#L176
-			"services": schema.ListNestedAttribute{
+			"services": rschema.ListNestedAttribute{
 				MarkdownDescription: "services: tests ListNestedAttributes support",
 				Optional:            true,
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						"ports": schema.ListNestedAttribute{
+				NestedObject: rschema.NestedAttributeObject{
+					Attributes: map[string]rschema.Attribute{
+						"ports": rschema.ListNestedAttribute{
 							MarkdownDescription: "External ports and handlers",
 							Required:            true,
-							NestedObject: schema.NestedAttributeObject{
-								Attributes: map[string]schema.Attribute{
-									"port": schema.Int64Attribute{
+							NestedObject: rschema.NestedAttributeObject{
+								Attributes: map[string]rschema.Attribute{
+									"port": rschema.Int64Attribute{
 										MarkdownDescription: "External port",
 										Required:            true,
 									},
-									"handlers": schema.ListAttribute{
+									"handlers": rschema.ListAttribute{
 										ElementType:         types.StringType,
 										MarkdownDescription: "How the edge should process requests",
 										Optional:            true,
@@ -188,20 +187,20 @@ removes the cloud state, and Read copies it.
 								},
 							},
 						},
-						"protocol": schema.StringAttribute{
+						"protocol": rschema.StringAttribute{
 							MarkdownDescription: "network protocol",
 							Required:            true,
 						},
 						// TODO internal_port gets mangled to internalPort by Pulumi renaming and does
 						// not work end-to-end yet.
-						"intport": schema.Int64Attribute{
+						"intport": rschema.Int64Attribute{
 							MarkdownDescription: "Port application listens on internally",
 							Required:            true,
 						},
 					},
 				},
 			},
-			"services_json_copy": schema.StringAttribute{
+			"services_json_copy": rschema.StringAttribute{
 				Computed:    true,
 				Description: "Computed as a JSON-ified copy of services input",
 				PlanModifiers: []planmodifier.String{
@@ -209,7 +208,7 @@ removes the cloud state, and Read copies it.
 					PropagatesNullFrom{"services"},
 				},
 			},
-			"tuples_optional": schema.ListAttribute{
+			"tuples_optional": rschema.ListAttribute{
 				ElementType: TupleType{
 					Types: []attr.Type{
 						basetypes.BoolType{},
@@ -219,7 +218,7 @@ removes the cloud state, and Read copies it.
 				Optional:    true,
 				Description: "A list that takes a tuple",
 			},
-			"set_optional": schema.SetAttribute{
+			"set_optional": rschema.SetAttribute{
 				ElementType: basetypes.StringType{},
 				Optional:    true,
 				Description: "A set",

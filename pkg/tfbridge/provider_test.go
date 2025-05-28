@@ -25,13 +25,11 @@ import (
 
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	schemav2 "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hexops/autogold/v2"
 	"github.com/pkg/errors"
 	testutils "github.com/pulumi/providertest/replay"
 	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	hostclient "github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	pdiag "github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -191,14 +189,14 @@ func TestCamelPascalPulumiName(t *testing.T) {
 func TestSDKv2DiffConfig(t *testing.T) {
 	t.Parallel()
 	yes := true
-	tfProvider := shimv2.NewProvider(&schema.Provider{
-		Schema: map[string]*schema.Schema{
+	tfProvider := shimv2.NewProvider(&schemav2.Provider{
+		Schema: map[string]*schemav2.Schema{
 			"access_key": {
-				Type:     schema.TypeString,
+				Type:     schemav2.TypeString,
 				Optional: true,
 			},
 			"region": {
-				Type:     schema.TypeString,
+				Type:     schemav2.TypeString,
 				Optional: true,
 			},
 		},
@@ -1376,27 +1374,27 @@ func TestCheckWarnings(t *testing.T) {
 		Schema: map[string]*schemav2.Schema{},
 		ResourcesMap: map[string]*schemav2.Resource{
 			"example_resource": {
-				Schema: map[string]*schema.Schema{
+				Schema: map[string]*schemav2.Schema{
 					"network_configuration": {
-						Type:     schema.TypeList,
+						Type:     schemav2.TypeList,
 						Optional: true,
 						MaxItems: 1,
-						Elem: &schema.Resource{
-							Schema: map[string]*schema.Schema{
+						Elem: &schemav2.Resource{
+							Schema: map[string]*schemav2.Schema{
 								"assign_public_ip": {
-									Type:     schema.TypeBool,
+									Type:     schemav2.TypeBool,
 									Optional: true,
 									Default:  false,
 								},
 								"security_groups": {
-									Type:     schema.TypeSet,
+									Type:     schemav2.TypeSet,
 									Optional: true,
-									Elem:     &schema.Schema{Type: schema.TypeString},
+									Elem:     &schemav2.Schema{Type: schemav2.TypeString},
 								},
 								"subnets": {
-									Type:     schema.TypeSet,
+									Type:     schemav2.TypeSet,
 									Required: true,
-									Elem:     &schema.Schema{Type: schema.TypeString},
+									Elem:     &schemav2.Schema{Type: schemav2.TypeString},
 								},
 							},
 						},
@@ -1574,11 +1572,11 @@ func TestSDKv2CheckConfig(t *testing.T) {
 
 		p := testprovider.ProviderV2()
 
-		p.Schema["scopes"] = &schema.Schema{
-			Type:     schema.TypeList,
+		p.Schema["scopes"] = &schemav2.Schema{
+			Type:     schemav2.TypeList,
 			Required: true,
-			Elem: &schema.Schema{
-				Type: schema.TypeString,
+			Elem: &schemav2.Schema{
+				Type: schemav2.TypeString,
 			},
 		}
 
@@ -1644,14 +1642,14 @@ func TestSDKv2CheckConfig(t *testing.T) {
 
 	t.Run("invalid_config_value", func(t *testing.T) {
 		p := testprovider.ProviderV2()
-		p.Schema["assume_role"] = &schema.Schema{
-			Type:     schema.TypeList,
+		p.Schema["assume_role"] = &schemav2.Schema{
+			Type:     schemav2.TypeList,
 			Optional: true,
 			MaxItems: 1,
-			Elem: &schema.Resource{
-				Schema: map[string]*schema.Schema{
+			Elem: &schemav2.Resource{
+				Schema: map[string]*schemav2.Schema{
 					"role_arn": {
-						Type:     schema.TypeString,
+						Type:     schemav2.TypeString,
 						Optional: true,
 					},
 				},
@@ -1730,8 +1728,8 @@ func TestSDKv2CheckConfig(t *testing.T) {
 
 	t.Run("missing_required_config_value_explicit_provider", func(t *testing.T) {
 		p := testprovider.ProviderV2()
-		p.Schema["req_prop"] = &schema.Schema{
-			Type:        schema.TypeString,
+		p.Schema["req_prop"] = &schemav2.Schema{
+			Type:        schemav2.TypeString,
 			Required:    true,
 			Description: "A very important required attribute",
 		}
@@ -1760,8 +1758,8 @@ func TestSDKv2CheckConfig(t *testing.T) {
 
 	t.Run("missing_required_config_value_default_provider", func(t *testing.T) {
 		p := testprovider.ProviderV2()
-		p.Schema["req_prop"] = &schema.Schema{
-			Type:        schema.TypeString,
+		p.Schema["req_prop"] = &schemav2.Schema{
+			Type:        schemav2.TypeString,
 			Required:    true,
 			Description: "A very important required attribute",
 		}
@@ -1797,24 +1795,24 @@ func TestSDKv2CheckConfig(t *testing.T) {
 		p := testprovider.ProviderV2()
 
 		// Examples here are taken from pulumi-gcp, scopes is a list and batching is a nested object.
-		p.Schema["scopes"] = &schema.Schema{
-			Type:     schema.TypeList,
+		p.Schema["scopes"] = &schemav2.Schema{
+			Type:     schemav2.TypeList,
 			Optional: true,
-			Elem:     &schema.Schema{Type: schema.TypeString},
+			Elem:     &schemav2.Schema{Type: schemav2.TypeString},
 		}
 
-		p.Schema["batching"] = &schema.Schema{
-			Type:     schema.TypeList,
+		p.Schema["batching"] = &schemav2.Schema{
+			Type:     schemav2.TypeList,
 			Optional: true,
 			MaxItems: 1,
-			Elem: &schema.Resource{
-				Schema: map[string]*schema.Schema{
+			Elem: &schemav2.Resource{
+				Schema: map[string]*schemav2.Schema{
 					"send_after": {
-						Type:     schema.TypeString,
+						Type:     schemav2.TypeString,
 						Optional: true,
 					},
 					"enable_batching": {
-						Type:     schema.TypeBool,
+						Type:     schemav2.TypeBool,
 						Optional: true,
 					},
 				},
@@ -1852,8 +1850,8 @@ func TestSDKv2CheckConfig(t *testing.T) {
 		// If the schema marks a config property as sensitive, enforce the secret bit on that property.
 		p := testprovider.ProviderV2()
 
-		p.Schema["mysecret"] = &schema.Schema{
-			Type:      schema.TypeString,
+		p.Schema["mysecret"] = &schemav2.Schema{
+			Type:      schemav2.TypeString,
 			Optional:  true,
 			Sensitive: true,
 		}
@@ -1893,25 +1891,25 @@ func TestSDKv2CheckConfig(t *testing.T) {
 		// sensitive.
 		p := testprovider.ProviderV2()
 
-		p.Schema["scopes"] = &schema.Schema{
-			Type:     schema.TypeList,
+		p.Schema["scopes"] = &schemav2.Schema{
+			Type:     schemav2.TypeList,
 			Optional: true,
-			Elem:     &schema.Schema{Type: schema.TypeString},
+			Elem:     &schemav2.Schema{Type: schemav2.TypeString},
 		}
 
-		p.Schema["batching"] = &schema.Schema{
-			Type:     schema.TypeList,
+		p.Schema["batching"] = &schemav2.Schema{
+			Type:     schemav2.TypeList,
 			Optional: true,
 			MaxItems: 1,
-			Elem: &schema.Resource{
-				Schema: map[string]*schema.Schema{
+			Elem: &schemav2.Resource{
+				Schema: map[string]*schemav2.Schema{
 					"send_after": {
-						Type:      schema.TypeString,
+						Type:      schemav2.TypeString,
 						Sensitive: true,
 						Optional:  true,
 					},
 					"enable_batching": {
-						Type:     schema.TypeBool,
+						Type:     schemav2.TypeBool,
 						Optional: true,
 					},
 				},
@@ -1954,7 +1952,7 @@ func TestSDKv2Configure(t *testing.T) {
 	t.Run("handle_secret_nested_objects", func(t *testing.T) {
 		p := testprovider.ProviderV2()
 
-		p.ConfigureContextFunc = func(_ context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
+		p.ConfigureContextFunc = func(_ context.Context, d *schemav2.ResourceData) (interface{}, diag.Diagnostics) {
 			batching, ok := d.GetOk("batching")
 			require.Truef(t, ok, "Configure expected to receive batching data but did not")
 			batchingList, ok := batching.([]any)
@@ -1968,25 +1966,25 @@ func TestSDKv2Configure(t *testing.T) {
 			return nil, nil
 		}
 
-		p.Schema["scopes"] = &schema.Schema{
-			Type:     schema.TypeList,
+		p.Schema["scopes"] = &schemav2.Schema{
+			Type:     schemav2.TypeList,
 			Optional: true,
-			Elem:     &schema.Schema{Type: schema.TypeString},
+			Elem:     &schemav2.Schema{Type: schemav2.TypeString},
 		}
 
-		p.Schema["batching"] = &schema.Schema{
-			Type:     schema.TypeList,
+		p.Schema["batching"] = &schemav2.Schema{
+			Type:     schemav2.TypeList,
 			Optional: true,
 			MaxItems: 1,
-			Elem: &schema.Resource{
-				Schema: map[string]*schema.Schema{
+			Elem: &schemav2.Resource{
+				Schema: map[string]*schemav2.Schema{
 					"send_after": {
-						Type:      schema.TypeString,
+						Type:      schemav2.TypeString,
 						Sensitive: true,
 						Optional:  true,
 					},
 					"enable_batching": {
-						Type:     schema.TypeBool,
+						Type:     schemav2.TypeBool,
 						Optional: true,
 					},
 				},
@@ -2026,11 +2024,11 @@ func TestSDKv2ConfigureErrorReplacement(t *testing.T) {
 	t.Parallel()
 	t.Run("replace_config_properties", func(t *testing.T) {
 		p := testprovider.ProviderV2()
-		p.ConfigureContextFunc = func(_ context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
+		p.ConfigureContextFunc = func(_ context.Context, d *schemav2.ResourceData) (interface{}, diag.Diagnostics) {
 			return nil, diag.Errorf(`some error with "config_property" and "config" but not config`)
 		}
-		p.Schema["config_property"] = &schema.Schema{Type: schema.TypeString}
-		p.Schema["config"] = &schema.Schema{Type: schema.TypeString}
+		p.Schema["config_property"] = &schemav2.Schema{Type: schemav2.TypeString}
+		p.Schema["config"] = &schemav2.Schema{Type: schemav2.TypeString}
 
 		shimProv := shimv2.NewProvider(p)
 		provider := &Provider{
@@ -2065,10 +2063,10 @@ func TestConfigureContextCapture(t *testing.T) {
 	t.Parallel()
 	var clientContext context.Context
 
-	configure := func(ctx context.Context, rd *schema.ResourceData) (interface{}, diag.Diagnostics) {
+	configure := func(ctx context.Context, rd *schemav2.ResourceData) (interface{}, diag.Diagnostics) {
 		// StopContext is deprecated but still used in GCP for example:
 		// https://github.com/hashicorp/terraform-provider-google-beta/blob/master/google-beta/provider/provider.go#L2258
-		stopCtx, ok := schema.StopContext(ctx) //nolint
+		stopCtx, ok := schemav2.StopContext(ctx) //nolint:staticcheck
 		if !ok {
 			stopCtx = ctx
 		}
@@ -2076,7 +2074,7 @@ func TestConfigureContextCapture(t *testing.T) {
 		return nil, nil
 	}
 
-	createR1 := func(_ context.Context, rd *schema.ResourceData, _ interface{}) diag.Diagnostics {
+	createR1 := func(_ context.Context, rd *schemav2.ResourceData, _ interface{}) diag.Diagnostics {
 		fail := false
 		go func() {
 			<-clientContext.Done()
@@ -2088,10 +2086,10 @@ func TestConfigureContextCapture(t *testing.T) {
 		return nil
 	}
 
-	sProvider := &schema.Provider{
-		Schema:               map[string]*schema.Schema{},
+	sProvider := &schemav2.Provider{
+		Schema:               map[string]*schemav2.Schema{},
 		ConfigureContextFunc: configure,
-		ResourcesMap: map[string]*schema.Resource{
+		ResourcesMap: map[string]*schemav2.Resource{
 			"p_r1": {CreateContext: createR1},
 		},
 	}
@@ -2585,7 +2583,7 @@ func TestSDKv2TransformOutputs(t *testing.T) {
 func TestSkipDetailedDiff(t *testing.T) {
 	t.Parallel()
 	provider := func() *Provider {
-		p := testprovider.CustomizedDiffProvider(func(data *schema.ResourceData) {})
+		p := testprovider.CustomizedDiffProvider(func(data *schemav2.ResourceData) {})
 		shimProvider := shimv2.NewProvider(p)
 		return &Provider{
 			tf:     shimProvider,
@@ -2675,7 +2673,7 @@ func TestSkipDetailedDiff(t *testing.T) {
 func TestSDKv2TransformFromState(t *testing.T) {
 	t.Parallel()
 	provider := func(t *testing.T) *Provider {
-		p := testprovider.AssertProvider(func(data *schema.ResourceData) {
+		p := testprovider.AssertProvider(func(data *schemav2.ResourceData) {
 			// GetRawState is not available during deletes.
 			if raw := data.GetRawState(); !raw.IsNull() {
 				assert.Equal(t, "TRANSFORMED", raw.AsValueMap()["string_property_value"].AsString())
@@ -3260,7 +3258,7 @@ func TestPreConfigureCallbackEmitsFailures(t *testing.T) {
 				P: shimProv,
 				PreConfigureCallbackWithLogger: func(
 					ctx context.Context,
-					host *provider.HostClient, vars resource.PropertyMap,
+					host *hostclient.HostClient, vars resource.PropertyMap,
 					config shim.ResourceConfig,
 				) error {
 					return CheckFailureError{
@@ -3303,7 +3301,7 @@ func TestPreConfigureCallbackEmitsFailures(t *testing.T) {
 				P: shimProv,
 				PreConfigureCallbackWithLogger: func(
 					ctx context.Context,
-					host *provider.HostClient, vars resource.PropertyMap,
+					host *hostclient.HostClient, vars resource.PropertyMap,
 					config shim.ResourceConfig,
 				) error {
 					return CheckFailureError{
@@ -3355,7 +3353,7 @@ func TestPreConfigureCallbackEmitsFailures(t *testing.T) {
 				P: shimProv,
 				PreConfigureCallbackWithLogger: func(
 					ctx context.Context,
-					host *provider.HostClient, vars resource.PropertyMap,
+					host *hostclient.HostClient, vars resource.PropertyMap,
 					config shim.ResourceConfig,
 				) error {
 					return fmt.Errorf("error")
@@ -3379,22 +3377,23 @@ func TestPreConfigureCallbackEmitsFailures(t *testing.T) {
 func TestImport(t *testing.T) {
 	t.Parallel()
 
-	testImport(t, func(p *schema.Provider) shim.Provider {
+	testImport(t, func(p *schemav2.Provider) shim.Provider {
 		return shimv2.NewProvider(p)
 	})
 }
 
-func testImport(t *testing.T, newProvider func(*schema.Provider) shim.Provider) {
-	init := func(rcf schema.ReadContextFunc) *Provider {
+func testImport(t *testing.T, newProvider func(*schemav2.Provider) shim.Provider) {
+	init := func(rcf schemav2.ReadContextFunc) *Provider {
 		p := testprovider.ProviderV2()
 		er := p.ResourcesMap["example_resource"]
-		er.Read = nil //nolint
+		//nolint:staticcheck
+		er.Read = nil
 		er.ReadContext = rcf
-		er.Importer = &schema.ResourceImporter{
-			StateContext: schema.ImportStatePassthroughContext,
+		er.Importer = &schemav2.ResourceImporter{
+			StateContext: schemav2.ImportStatePassthroughContext,
 		}
-		er.Schema = map[string]*schema.Schema{
-			"string_property_value": {Type: schema.TypeString, Optional: true},
+		er.Schema = map[string]*schemav2.Schema{
+			"string_property_value": {Type: schemav2.TypeString, Optional: true},
 		}
 		shimProv := newProvider(p)
 		provider := &Provider{
@@ -3416,7 +3415,7 @@ func testImport(t *testing.T, newProvider func(*schema.Provider) shim.Provider) 
 
 	t.Run("import", func(t *testing.T) {
 		provider := init(func(
-			ctx context.Context, rd *schema.ResourceData, i interface{},
+			ctx context.Context, rd *schemav2.ResourceData, i interface{},
 		) diag.Diagnostics {
 			require.NoError(t, rd.Set("string_property_value", "imported"))
 			return diag.Diagnostics{}
@@ -3448,7 +3447,7 @@ func testImport(t *testing.T, newProvider func(*schema.Provider) shim.Provider) 
 
 	t.Run("import-not-found", func(t *testing.T) {
 		provider := init(func(
-			ctx context.Context, rd *schema.ResourceData, i interface{},
+			ctx context.Context, rd *schemav2.ResourceData, i interface{},
 		) diag.Diagnostics {
 			rd.SetId("") // emulate not found
 			return diag.Diagnostics{}
@@ -3468,19 +3467,20 @@ func testImport(t *testing.T, newProvider func(*schema.Provider) shim.Provider) 
 
 func TestRefresh(t *testing.T) {
 	t.Parallel()
-	testRefresh(t, func(p *schema.Provider) shim.Provider {
+	testRefresh(t, func(p *schemav2.Provider) shim.Provider {
 		return shimv2.NewProvider(p)
 	})
 }
 
-func testRefresh(t *testing.T, newProvider func(*schema.Provider) shim.Provider) {
-	init := func(rcf schema.ReadContextFunc) *Provider {
+func testRefresh(t *testing.T, newProvider func(*schemav2.Provider) shim.Provider) {
+	init := func(rcf schemav2.ReadContextFunc) *Provider {
 		p := testprovider.ProviderV2()
 		er := p.ResourcesMap["example_resource"]
-		er.Read = nil //nolint
+		//nolint:staticcheck
+		er.Read = nil
 		er.ReadContext = rcf
-		er.Schema = map[string]*schema.Schema{
-			"string_property_value": {Type: schema.TypeString, Optional: true},
+		er.Schema = map[string]*schemav2.Schema{
+			"string_property_value": {Type: schemav2.TypeString, Optional: true},
 		}
 		shimProv := newProvider(p)
 		provider := &Provider{
@@ -3502,7 +3502,7 @@ func testRefresh(t *testing.T, newProvider func(*schema.Provider) shim.Provider)
 
 	t.Run("refresh", func(t *testing.T) {
 		provider := init(func(
-			ctx context.Context, rd *schema.ResourceData, i interface{},
+			ctx context.Context, rd *schemav2.ResourceData, i interface{},
 		) diag.Diagnostics {
 			require.NoError(t, rd.Set("string_property_value", "imported"))
 			return diag.Diagnostics{}
@@ -3534,7 +3534,7 @@ func testRefresh(t *testing.T, newProvider func(*schema.Provider) shim.Provider)
 
 	t.Run("refresh-not-found", func(t *testing.T) {
 		provider := init(func(
-			ctx context.Context, rd *schema.ResourceData, i interface{},
+			ctx context.Context, rd *schemav2.ResourceData, i interface{},
 		) diag.Diagnostics {
 			rd.SetId("") // emulate not found
 			return diag.Diagnostics{}
@@ -3554,7 +3554,7 @@ func testRefresh(t *testing.T, newProvider func(*schema.Provider) shim.Provider)
 
 	t.Run("refresh-read-unchanged-archive", func(t *testing.T) {
 		provider := init(func(
-			ctx context.Context, rd *schema.ResourceData, i interface{},
+			ctx context.Context, rd *schemav2.ResourceData, i interface{},
 		) diag.Diagnostics {
 			return diag.Diagnostics{}
 		})
@@ -3610,19 +3610,20 @@ func testRefresh(t *testing.T, newProvider func(*schema.Provider) shim.Provider)
 func TestDestroy(t *testing.T) {
 	t.Parallel()
 
-	testDestroy(t, func(p *schema.Provider) shim.Provider {
+	testDestroy(t, func(p *schemav2.Provider) shim.Provider {
 		return shimv2.NewProvider(p)
 	})
 }
 
-func testDestroy(t *testing.T, newProvider func(*schema.Provider) shim.Provider) {
-	init := func(dcf schema.DeleteContextFunc) *Provider {
+func testDestroy(t *testing.T, newProvider func(*schemav2.Provider) shim.Provider) {
+	init := func(dcf schemav2.DeleteContextFunc) *Provider {
 		p := testprovider.ProviderV2()
 		er := p.ResourcesMap["example_resource"]
-		er.Schema = map[string]*schema.Schema{
-			"string_property_value": {Type: schema.TypeString, Optional: true},
+		er.Schema = map[string]*schemav2.Schema{
+			"string_property_value": {Type: schemav2.TypeString, Optional: true},
 		}
-		er.Delete = nil //nolint
+		//nolint:staticcheck
+		er.Delete = nil
 		er.DeleteContext = dcf
 		shimProv := newProvider(p)
 		provider := &Provider{
@@ -3645,7 +3646,7 @@ func testDestroy(t *testing.T, newProvider func(*schema.Provider) shim.Provider)
 	t.Run("destroy", func(t *testing.T) {
 		called := 0
 		provider := init(func(
-			ctx context.Context, rd *schema.ResourceData, i interface{},
+			ctx context.Context, rd *schemav2.ResourceData, i interface{},
 		) diag.Diagnostics {
 			called++
 			return diag.Diagnostics{}
@@ -3678,7 +3679,7 @@ func TestSchemaFuncsNotCalledDuringRuntime(t *testing.T) {
 	}
 
 	t.Run("Schema func not called if validate disabled", func(t *testing.T) {
-		schema.RunProviderInternalValidation = false
+		schemav2.RunProviderInternalValidation = false
 		testutils.Replay(t, provider, `
 		{
 			"method": "/pulumirpc.ResourceProvider/CheckConfig",
@@ -3696,7 +3697,7 @@ func TestSchemaFuncsNotCalledDuringRuntime(t *testing.T) {
 	})
 
 	t.Run("Schema func panic if validate enabled", func(t *testing.T) {
-		schema.RunProviderInternalValidation = true
+		schemav2.RunProviderInternalValidation = true
 		defer func() {
 			r := recover()
 			if r.(string) != "schema func panic" {
@@ -3834,8 +3835,8 @@ func TestMinMaxItemsOneOptional(t *testing.T) {
 		ResourcesMap: map[string]*schemav2.Resource{
 			"res": {
 				Schema: map[string]*schemav2.Schema{
-					"max_items_one_prop": &schema.Schema{
-						Type:     schema.TypeSet,
+					"max_items_one_prop": {
+						Type:     schemav2.TypeSet,
 						Optional: true,
 						MaxItems: 1,
 						MinItems: 1,
@@ -3938,11 +3939,11 @@ func TestComputedMaxItemsOneNotSpecified(t *testing.T) {
 					"specs": {
 						Computed: true,
 						MaxItems: 1,
-						Type:     schema.TypeList,
-						Elem: &schema.Resource{
-							Schema: map[string]*schema.Schema{
+						Type:     schemav2.TypeList,
+						Elem: &schemav2.Resource{
+							Schema: map[string]*schemav2.Schema{
 								"disk": {
-									Type:     schema.TypeInt,
+									Type:     schemav2.TypeInt,
 									Computed: true,
 								},
 							},
@@ -4098,11 +4099,11 @@ func TestMaxItemsOnePropCheckResponseNoNulls(t *testing.T) {
 						Computed: true,
 						Optional: true,
 						MaxItems: 1,
-						Type:     schema.TypeList,
-						Elem: &schema.Resource{
-							Schema: map[string]*schema.Schema{
+						Type:     schemav2.TypeList,
+						Elem: &schemav2.Resource{
+							Schema: map[string]*schemav2.Schema{
 								"defaultAction": {
-									Type:     schema.TypeString,
+									Type:     schemav2.TypeString,
 									Required: true,
 								},
 							},
@@ -4202,40 +4203,40 @@ func TestCustomTimeouts(t *testing.T) {
 		urn := fmt.Sprintf("urn:pulumi:dev::teststack::%s::testresource", tok)
 		id := "r1"
 
-		upstreamProvider := &schema.Provider{
-			ResourcesMap: map[string]*schema.Resource{
+		upstreamProvider := &schemav2.Provider{
+			ResourcesMap: map[string]*schemav2.Resource{
 				"testprov_testres": {
-					Schema: map[string]*schema.Schema{
+					Schema: map[string]*schemav2.Schema{
 						"x": {
-							Type:     schema.TypeString,
+							Type:     schemav2.TypeString,
 							Optional: true,
 						},
 					},
-					Timeouts: &schema.ResourceTimeout{
+					Timeouts: &schemav2.ResourceTimeout{
 						Default: tc.schemaTimeout,
 						Create:  tc.schemaTimeout,
 						Update:  tc.schemaTimeout,
 						Delete:  tc.schemaTimeout,
 					},
 					CreateContext: func(
-						ctx context.Context, rd *schema.ResourceData, i interface{},
+						ctx context.Context, rd *schemav2.ResourceData, i interface{},
 					) diag.Diagnostics {
-						t := rd.Timeout(schema.TimeoutCreate)
+						t := rd.Timeout(schemav2.TimeoutCreate)
 						capturedTimeout = &t
 						rd.SetId(id)
 						return diag.Diagnostics{}
 					},
 					UpdateContext: func(
-						ctx context.Context, rd *schema.ResourceData, i interface{},
+						ctx context.Context, rd *schemav2.ResourceData, i interface{},
 					) diag.Diagnostics {
-						t := rd.Timeout(schema.TimeoutUpdate)
+						t := rd.Timeout(schemav2.TimeoutUpdate)
 						capturedTimeout = &t
 						return diag.Diagnostics{}
 					},
 					DeleteContext: func(
-						ctx context.Context, rd *schema.ResourceData, i interface{},
+						ctx context.Context, rd *schemav2.ResourceData, i interface{},
 					) diag.Diagnostics {
-						t := rd.Timeout(schema.TimeoutDelete)
+						t := rd.Timeout(schemav2.TimeoutDelete)
 						capturedTimeout = &t
 						return diag.Diagnostics{}
 					},
@@ -4423,14 +4424,15 @@ func TestProviderMetaPlanResourceChangeNoError(t *testing.T) {
 	p := testprovider.ProviderV2()
 	er := p.ResourcesMap["example_resource"]
 	er.Schema = map[string]*schemav2.Schema{
-		"string_property_value": {Type: schema.TypeString, Optional: true},
+		"string_property_value": {Type: schemav2.TypeString, Optional: true},
 	}
-	er.Create = nil //nolint:all
-	er.CreateContext = func(ctx context.Context, rd *schema.ResourceData, i interface{}) diag.Diagnostics {
+	//nolint:staticcheck
+	er.Create = nil
+	er.CreateContext = func(ctx context.Context, rd *schemav2.ResourceData, i interface{}) diag.Diagnostics {
 		rd.SetId("r1")
 		return diag.Diagnostics{}
 	}
-	// In GCP the meta we receive is not even close to the schema.
+	// In GCP the meta we receive is not even close to the schemav2.
 	// We should make sure this does not cause issues.
 	p.ProviderMetaSchema = map[string]*schemav2.Schema{
 		"module_name": {
@@ -4486,35 +4488,35 @@ func TestStringValForOtherProperty(t *testing.T) {
 				Schema: map[string]*schemav2.Schema{
 					"int_prop": {
 						Optional: true,
-						Type:     schema.TypeInt,
+						Type:     schemav2.TypeInt,
 					},
 					"float_prop": {
 						Optional: true,
-						Type:     schema.TypeFloat,
+						Type:     schemav2.TypeFloat,
 					},
 					"bool_prop": {
 						Optional: true,
-						Type:     schema.TypeBool,
+						Type:     schemav2.TypeBool,
 					},
 					"nested_int": {
 						Optional: true,
-						Type:     schema.TypeList,
+						Type:     schemav2.TypeList,
 						Elem: &schemav2.Schema{
-							Type: schema.TypeInt,
+							Type: schemav2.TypeInt,
 						},
 					},
 					"nested_float": {
 						Optional: true,
-						Type:     schema.TypeList,
+						Type:     schemav2.TypeList,
 						Elem: &schemav2.Schema{
-							Type: schema.TypeFloat,
+							Type: schemav2.TypeFloat,
 						},
 					},
 					"nested_bool": {
 						Optional: true,
-						Type:     schema.TypeList,
+						Type:     schemav2.TypeList,
 						Elem: &schemav2.Schema{
-							Type: schema.TypeBool,
+							Type: schemav2.TypeBool,
 						},
 					},
 				},
@@ -4764,64 +4766,64 @@ func UnknownsSchema() map[string]*schemav2.Resource {
 		"example_resource": {
 			Schema: map[string]*schemav2.Schema{
 				"set_prop": {
-					Type:     schema.TypeSet,
+					Type:     schemav2.TypeSet,
 					Optional: true,
 					Elem:     &schemav2.Schema{Type: schemav2.TypeString},
 				},
 				"set_block_prop": {
-					Type:     schema.TypeSet,
+					Type:     schemav2.TypeSet,
 					Optional: true,
 					Elem: &schemav2.Resource{
 						Schema: map[string]*schemav2.Schema{
 							"prop": {
-								Type:     schema.TypeString,
+								Type:     schemav2.TypeString,
 								Optional: true,
 							},
 						},
 					},
 				},
 				"string_prop": {
-					Type:     schema.TypeString,
+					Type:     schemav2.TypeString,
 					Optional: true,
 				},
 				"list_prop": {
-					Type:     schema.TypeList,
+					Type:     schemav2.TypeList,
 					Optional: true,
 					Elem:     &schemav2.Schema{Type: schemav2.TypeString},
 				},
 				"list_block_prop": {
-					Type:     schema.TypeList,
+					Type:     schemav2.TypeList,
 					Optional: true,
 					Elem: &schemav2.Resource{
 						Schema: map[string]*schemav2.Schema{
 							"prop": {
-								Type:     schema.TypeString,
+								Type:     schemav2.TypeString,
 								Optional: true,
 							},
 						},
 					},
 				},
 				"nested_list_prop": {
-					Type:     schema.TypeList,
+					Type:     schemav2.TypeList,
 					Optional: true,
 					Elem: &schemav2.Schema{
-						Type:     schema.TypeList,
+						Type:     schemav2.TypeList,
 						Optional: true,
 						Elem:     &schemav2.Schema{Type: schemav2.TypeString},
 					},
 				},
 				"nested_list_block_prop": {
-					Type:     schema.TypeList,
+					Type:     schemav2.TypeList,
 					Optional: true,
 					Elem: &schemav2.Resource{
 						Schema: map[string]*schemav2.Schema{
 							"nested_prop": {
-								Type:     schema.TypeList,
+								Type:     schemav2.TypeList,
 								Optional: true,
 								Elem: &schemav2.Resource{
 									Schema: map[string]*schemav2.Schema{
 										"prop": {
-											Type:     schema.TypeString,
+											Type:     schemav2.TypeString,
 											Optional: true,
 										},
 									},
@@ -4831,19 +4833,19 @@ func UnknownsSchema() map[string]*schemav2.Resource {
 					},
 				},
 				"max_items_one_prop": {
-					Type:     schema.TypeList,
+					Type:     schemav2.TypeList,
 					Optional: true,
 					MaxItems: 1,
 					Elem:     &schemav2.Schema{Type: schemav2.TypeString},
 				},
 				"max_items_one_block_prop": {
-					Type:     schema.TypeList,
+					Type:     schemav2.TypeList,
 					Optional: true,
 					MaxItems: 1,
 					Elem: &schemav2.Resource{
 						Schema: map[string]*schemav2.Schema{
 							"prop": {
-								Type:     schema.TypeString,
+								Type:     schemav2.TypeString,
 								Optional: true,
 							},
 						},
@@ -4857,7 +4859,7 @@ func UnknownsSchema() map[string]*schemav2.Resource {
 func TestUnknowns(t *testing.T) {
 	t.Parallel()
 	// Related to [pulumi/pulumi-terraform-bridge#1885]
-	// This test is to ensure that we can handle unknowns in the schema.
+	// This test is to ensure that we can handle unknowns in the schemav2.
 	// Note that the behaviour here might not match TF and can NOT match TF completely
 	// as HCL has no way of expressing unknown blocks.
 	// We currently have a workaround in makeTerraformInputs where we convert unknown blocks
@@ -5441,8 +5443,8 @@ func TestSetDuplicatedDiffEntries(t *testing.T) {
 		ResourcesMap: map[string]*schemav2.Resource{
 			"example_resource": {
 				Schema: map[string]*schemav2.Schema{
-					"privileges": &schema.Schema{
-						Type:     schema.TypeSet,
+					"privileges": {
+						Type:     schemav2.TypeSet,
 						Optional: true,
 						Elem:     &schemav2.Schema{Type: schemav2.TypeString},
 					},
@@ -5538,8 +5540,8 @@ func TestProcessImportValidationErrors(t *testing.T) {
 		{
 			name:     "TypeString no validate",
 			cloudVal: "ABC",
-			schema: schema.Schema{
-				Type:     schema.TypeString,
+			schema: schemav2.Schema{
+				Type:     schemav2.TypeString,
 				Computed: true,
 				Optional: true,
 			},
@@ -5550,8 +5552,8 @@ func TestProcessImportValidationErrors(t *testing.T) {
 		},
 		{
 			name: "Secret value",
-			schema: schema.Schema{
-				Type:      schema.TypeString,
+			schema: schemav2.Schema{
+				Type:      schemav2.TypeString,
 				Optional:  true,
 				Sensitive: true,
 				Computed:  true,
@@ -5567,8 +5569,8 @@ func TestProcessImportValidationErrors(t *testing.T) {
 		{
 			name:     "TypeString ValidateFunc does not error",
 			cloudVal: "ABC",
-			schema: schema.Schema{
-				Type:     schema.TypeString,
+			schema: schemav2.Schema{
+				Type:     schemav2.TypeString,
 				Optional: true,
 				Computed: true,
 				ValidateFunc: func(i interface{}, s string) ([]string, []error) {
@@ -5583,8 +5585,8 @@ func TestProcessImportValidationErrors(t *testing.T) {
 		{
 			name:     "TypeString ValidateDiagFunc does not error",
 			cloudVal: "ABC",
-			schema: schema.Schema{
-				Type:     schema.TypeString,
+			schema: schemav2.Schema{
+				Type:     schemav2.TypeString,
 				Optional: true,
 				Computed: true,
 				ValidateDiagFunc: func(i interface{}, p cty.Path) diag.Diagnostics {
@@ -5599,8 +5601,8 @@ func TestProcessImportValidationErrors(t *testing.T) {
 		{
 			name:     "TypeString ValidateDiagFunc returns error",
 			cloudVal: "ABC",
-			schema: schema.Schema{
-				Type:     schema.TypeString,
+			schema: schemav2.Schema{
+				Type:     schemav2.TypeString,
 				Optional: true,
 				Computed: true,
 				ValidateDiagFunc: func(i interface{}, p cty.Path) diag.Diagnostics {
@@ -5616,15 +5618,15 @@ func TestProcessImportValidationErrors(t *testing.T) {
 				"nestedProp":      "ABC",
 				"nestedOtherProp": "value",
 			},
-			schema: schema.Schema{
-				Type:     schema.TypeMap,
+			schema: schemav2.Schema{
+				Type:     schemav2.TypeMap,
 				Optional: true,
 				Computed: true,
 				ValidateDiagFunc: func(i interface{}, p cty.Path) diag.Diagnostics {
 					return diag.Errorf("Error")
 				},
-				Elem: &schema.Schema{
-					Type:     schema.TypeString,
+				Elem: &schemav2.Schema{
+					Type:     schemav2.TypeString,
 					Optional: true,
 				},
 			},
@@ -5637,15 +5639,15 @@ func TestProcessImportValidationErrors(t *testing.T) {
 				"nestedProp":      "ABC",
 				"nestedOtherProp": "value",
 			},
-			schema: schema.Schema{
-				Type:     schema.TypeMap,
+			schema: schemav2.Schema{
+				Type:     schemav2.TypeMap,
 				Optional: true,
 				Computed: false,
 				ValidateDiagFunc: func(i interface{}, p cty.Path) diag.Diagnostics {
 					return diag.Errorf("Error")
 				},
-				Elem: &schema.Schema{
-					Type:     schema.TypeString,
+				Elem: &schemav2.Schema{
+					Type:     schemav2.TypeString,
 					Optional: true,
 				},
 			},
@@ -5666,14 +5668,14 @@ func TestProcessImportValidationErrors(t *testing.T) {
 				"nestedProp":      "ABC",
 				"nestedOtherProp": "value",
 			},
-			schema: schema.Schema{
-				Type:     schema.TypeMap,
+			schema: schemav2.Schema{
+				Type:     schemav2.TypeMap,
 				Required: true,
 				ValidateDiagFunc: func(i interface{}, p cty.Path) diag.Diagnostics {
 					return diag.Errorf("Error")
 				},
-				Elem: &schema.Schema{
-					Type:     schema.TypeString,
+				Elem: &schemav2.Schema{
+					Type:     schemav2.TypeString,
 					Optional: true,
 				},
 			},
@@ -5688,8 +5690,8 @@ func TestProcessImportValidationErrors(t *testing.T) {
 		{
 			name:     "TypeString ValidateFunc returns error",
 			cloudVal: "ABC",
-			schema: schema.Schema{
-				Type:     schema.TypeString,
+			schema: schemav2.Schema{
+				Type:     schemav2.TypeString,
 				Optional: true,
 				Computed: true,
 				ValidateFunc: func(i interface{}, s string) ([]string, []error) {
@@ -5702,8 +5704,8 @@ func TestProcessImportValidationErrors(t *testing.T) {
 		{
 			name:     "TypeString ValidateFunc does not drop required fields",
 			cloudVal: "ABC",
-			schema: schema.Schema{
-				Type:     schema.TypeString,
+			schema: schemav2.Schema{
+				Type:     schemav2.TypeString,
 				Required: true,
 				ValidateFunc: func(i interface{}, s string) ([]string, []error) {
 					return []string{}, []error{errors.New("Error")}
@@ -5720,12 +5722,12 @@ func TestProcessImportValidationErrors(t *testing.T) {
 			cloudVal: []interface{}{
 				"ABC", "value",
 			},
-			schema: schema.Schema{
-				Type:     schema.TypeSet,
+			schema: schemav2.Schema{
+				Type:     schemav2.TypeSet,
 				Optional: true,
 				Computed: true,
-				Elem: &schema.Schema{
-					Type: schema.TypeString,
+				Elem: &schemav2.Schema{
+					Type: schemav2.TypeString,
 					ValidateDiagFunc: func(i interface{}, p cty.Path) diag.Diagnostics {
 						if val, ok := i.(string); ok && val != "ABC" {
 							return diag.Errorf("Error")
@@ -5742,7 +5744,7 @@ func TestProcessImportValidationErrors(t *testing.T) {
 
 		// ValidateDiagFunc & ValidateFunc are not supported for TypeList &
 		// TypeSet, but they are supported on the nested elements. For now we are
-		// not processing the results of those with `schema.Resource` elements
+		// not processing the results of those with `schemav2.Resource` elements
 		// since it can get complicated. Nothing will get dropped and the
 		// validation error will pass through
 		{
@@ -5753,21 +5755,21 @@ func TestProcessImportValidationErrors(t *testing.T) {
 					"nestedOtherProp": "ABC",
 				},
 			},
-			schema: schema.Schema{
-				Type:     schema.TypeList,
+			schema: schemav2.Schema{
+				Type:     schemav2.TypeList,
 				Required: true,
 				MaxItems: 1,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
+				Elem: &schemav2.Resource{
+					Schema: map[string]*schemav2.Schema{
 						"nested_prop": {
-							Type:     schema.TypeString,
+							Type:     schemav2.TypeString,
 							Optional: true,
 							ValidateDiagFunc: func(i interface{}, p cty.Path) diag.Diagnostics {
 								return diag.Errorf("Error")
 							},
 						},
 						"nested_other_prop": {
-							Type:     schema.TypeString,
+							Type:     schemav2.TypeString,
 							Optional: true,
 							ValidateDiagFunc: func(i interface{}, p cty.Path) diag.Diagnostics {
 								return nil
@@ -5793,13 +5795,13 @@ func TestProcessImportValidationErrors(t *testing.T) {
 					"nestedProp": "ABC",
 				},
 			},
-			schema: schema.Schema{
-				Type:     schema.TypeSet,
+			schema: schemav2.Schema{
+				Type:     schemav2.TypeSet,
 				Required: true,
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
+				Elem: &schemav2.Resource{
+					Schema: map[string]*schemav2.Schema{
 						"nested_prop": {
-							Type:     schema.TypeString,
+							Type:     schemav2.TypeString,
 							Required: true,
 							ValidateFunc: func(i interface{}, s string) ([]string, []error) {
 								return []string{}, []error{errors.New("Error")}
@@ -5827,13 +5829,13 @@ func TestProcessImportValidationErrors(t *testing.T) {
 			sch := map[string]*schemav2.Schema{
 				"collection_prop": &tc.schema,
 				"other_prop": {
-					Type:     schema.TypeString,
+					Type:     schemav2.TypeString,
 					Optional: true,
 				},
 			}
 			schemaMap := shimv2.NewSchemaMap(sch)
-			tfProvider := shimv2.NewProvider(&schema.Provider{
-				Schema: map[string]*schema.Schema{},
+			tfProvider := shimv2.NewProvider(&schemav2.Provider{
+				Schema: map[string]*schemav2.Schema{},
 				ResourcesMap: map[string]*schemav2.Resource{
 					"prov_test": {
 						Schema: sch,
@@ -5847,7 +5849,7 @@ func TestProcessImportValidationErrors(t *testing.T) {
 				inputs = resource.NewPropertyValue(tc.cloudVal)
 			}
 			plural := ""
-			if (tc.schema.Type == schema.TypeList || tc.schema.Type == schema.TypeSet) && tc.schema.MaxItems != 1 {
+			if (tc.schema.Type == schemav2.TypeList || tc.schema.Type == schemav2.TypeSet) && tc.schema.MaxItems != 1 {
 				plural = "s"
 			}
 			inputsMap := resource.PropertyMap{
@@ -5871,22 +5873,22 @@ func TestProcessImportValidationErrors(t *testing.T) {
 func TestProviderCallTerraformConfig(t *testing.T) {
 	t.Parallel()
 	// Setup: Give our test provider a more interesting schema
-	nestedConfigSchema := map[string]*schema.Schema{
+	nestedConfigSchema := map[string]*schemav2.Schema{
 		"region": {
-			Type:     schema.TypeString,
+			Type:     schemav2.TypeString,
 			Optional: true,
 		},
 		"ignore_tags": {
-			Type:     schema.TypeList,
+			Type:     schemav2.TypeList,
 			Optional: true,
 			MaxItems: 1,
-			Elem: &schema.Resource{
-				Schema: map[string]*schema.Schema{
+			Elem: &schemav2.Resource{
+				Schema: map[string]*schemav2.Schema{
 					"key_prefixes": {
-						Type:     schema.TypeList,
+						Type:     schemav2.TypeList,
 						Optional: true,
-						Elem: &schema.Schema{
-							Type: schema.TypeString,
+						Elem: &schemav2.Schema{
+							Type: schemav2.TypeString,
 						},
 					},
 				},

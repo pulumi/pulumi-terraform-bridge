@@ -18,7 +18,6 @@ import (
 	"context"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
@@ -40,28 +39,28 @@ func newTestnestattr() resource.Resource {
 func (*testnestattr) schema() rschema.Schema {
 	return rschema.Schema{
 		Attributes: map[string]rschema.Attribute{
-			"id": schema.StringAttribute{
+			"id": rschema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),
 				},
 			},
 			// Example borrowed from https://github.com/fly-apps/terraform-provider-fly/blob/28438713f2bdf08dbd0aa2fae9d74baaca9845f1/internal/provider/machine_resource.go#L176
-			"services": schema.ListNestedAttribute{
+			"services": rschema.ListNestedAttribute{
 				MarkdownDescription: "services: tests ListNestedAttributes support",
 				Optional:            true,
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						"ports": schema.ListNestedAttribute{
+				NestedObject: rschema.NestedAttributeObject{
+					Attributes: map[string]rschema.Attribute{
+						"ports": rschema.ListNestedAttribute{
 							MarkdownDescription: "External ports and handlers",
 							Required:            true,
-							NestedObject: schema.NestedAttributeObject{
-								Attributes: map[string]schema.Attribute{
-									"port": schema.Int64Attribute{
+							NestedObject: rschema.NestedAttributeObject{
+								Attributes: map[string]rschema.Attribute{
+									"port": rschema.Int64Attribute{
 										MarkdownDescription: "External port",
 										Required:            true,
 									},
-									"handlers": schema.ListAttribute{
+									"handlers": rschema.ListAttribute{
 										ElementType:         types.StringType,
 										MarkdownDescription: "How the edge should process requests",
 										Optional:            true,
@@ -69,13 +68,13 @@ func (*testnestattr) schema() rschema.Schema {
 								},
 							},
 						},
-						"protocol": schema.StringAttribute{
+						"protocol": rschema.StringAttribute{
 							MarkdownDescription: "network protocol",
 							Required:            true,
 						},
 						// TODO internal_port gets mangled to internalPort by Pulumi renaming and does
 						// not work end-to-end yet.
-						"intport": schema.Int64Attribute{
+						"intport": rschema.Int64Attribute{
 							MarkdownDescription: "Port application listens on internally",
 							Required:            true,
 							PlanModifiers: []planmodifier.Int64{

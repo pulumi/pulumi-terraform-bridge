@@ -213,7 +213,6 @@ func (tableRenderer *tableRenderer) renderCell(
 		textBlock := ast.NewTextBlock()
 		child := n.FirstChild()
 		for child != nil {
-
 			next := child.NextSibling()
 			textBlock.AppendChild(textBlock, child)
 			child = next

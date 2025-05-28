@@ -11,7 +11,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/path"
-	pschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
+	prschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
@@ -31,7 +31,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/zclconf/go-cty/cty"
 
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/providerbuilder"
 	pb "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/providerbuilder"
 	crosstests "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/internal/cross-tests"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tests/pulcheck"
@@ -45,10 +44,10 @@ func ref[T any](t T) *T {
 
 func TestPFBasic(t *testing.T) {
 	t.Parallel()
-	provBuilder := providerbuilder.NewProvider(
-		providerbuilder.NewProviderArgs{
-			AllResources: []providerbuilder.Resource{
-				providerbuilder.NewResource(providerbuilder.NewResourceArgs{
+	provBuilder := pb.NewProvider(
+		pb.NewProviderArgs{
+			AllResources: []pb.Resource{
+				pb.NewResource(pb.NewResourceArgs{
 					ResourceSchema: rschema.Schema{
 						Attributes: map[string]rschema.Attribute{
 							"s": rschema.StringAttribute{Optional: true},
@@ -79,8 +78,8 @@ func TestComputedSetNoDiffWhenElementRemoved(t *testing.T) {
 	t.Parallel()
 	// Regression test for [pulumi/pulumi-terraform-bridge#2192]
 	provBuilder := pb.NewProvider(pb.NewProviderArgs{
-		AllResources: []providerbuilder.Resource{
-			providerbuilder.NewResource(providerbuilder.NewResourceArgs{
+		AllResources: []pb.Resource{
+			pb.NewResource(pb.NewResourceArgs{
 				ResourceSchema: rschema.Schema{
 					Attributes: map[string]rschema.Attribute{
 						"vlan_names": rschema.SetNestedAttribute{
@@ -246,12 +245,12 @@ func TestIDAttribute(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			provBuilder := providerbuilder.Provider{
+			provBuilder := pb.Provider{
 				TypeName:       "prov",
 				Version:        "0.0.1",
-				ProviderSchema: pschema.Schema{},
-				AllResources: []providerbuilder.Resource{
-					providerbuilder.NewResource(providerbuilder.NewResourceArgs{
+				ProviderSchema: prschema.Schema{},
+				AllResources: []pb.Resource{
+					pb.NewResource(pb.NewResourceArgs{
 						ResourceSchema: rschema.Schema{
 							Attributes: map[string]rschema.Attribute{
 								"id": tc.attribute,
@@ -325,8 +324,8 @@ resources:
 func TestPFDefaults(t *testing.T) {
 	t.Parallel()
 	provBuilder := pb.NewProvider(pb.NewProviderArgs{
-		AllResources: []providerbuilder.Resource{
-			providerbuilder.NewResource(providerbuilder.NewResourceArgs{
+		AllResources: []pb.Resource{
+			pb.NewResource(pb.NewResourceArgs{
 				ResourceSchema: rschema.Schema{
 					Attributes: map[string]rschema.Attribute{
 						"other_prop": rschema.StringAttribute{
@@ -385,8 +384,8 @@ func (c changeReasonPlanModifier) MarkdownDescription(context.Context) string {
 func TestPlanModifiers(t *testing.T) {
 	t.Parallel()
 	provBuilder := pb.NewProvider(pb.NewProviderArgs{
-		AllResources: []providerbuilder.Resource{
-			providerbuilder.NewResource(providerbuilder.NewResourceArgs{
+		AllResources: []pb.Resource{
+			pb.NewResource(pb.NewResourceArgs{
 				ResourceSchema: rschema.Schema{
 					Attributes: map[string]rschema.Attribute{
 						"other_prop": rschema.StringAttribute{
@@ -457,10 +456,10 @@ func stringToInt64Legacy(_ context.Context, s types.String, diags *diag.Diagnost
 
 func TestStateUpgrade(t *testing.T) {
 	t.Parallel()
-	provBuilder := providerbuilder.NewProvider(
-		providerbuilder.NewProviderArgs{
-			AllResources: []providerbuilder.Resource{
-				providerbuilder.NewResource(providerbuilder.NewResourceArgs{
+	provBuilder := pb.NewProvider(
+		pb.NewProviderArgs{
+			AllResources: []pb.Resource{
+				pb.NewResource(pb.NewResourceArgs{
 					UpgradeStateFunc: func(ctx context.Context) map[int64]resource.StateUpgrader {
 						return map[int64]resource.StateUpgrader{
 							0: {
@@ -563,8 +562,8 @@ func TestPFAliasesSchemaUpgrade(t *testing.T) {
 	t.Parallel()
 
 	prov1 := pb.NewProvider(pb.NewProviderArgs{
-		AllResources: []providerbuilder.Resource{
-			providerbuilder.NewResource(providerbuilder.NewResourceArgs{
+		AllResources: []pb.Resource{
+			pb.NewResource(pb.NewResourceArgs{
 				Name: "test",
 				ResourceSchema: rschema.Schema{
 					Attributes: map[string]rschema.Attribute{
@@ -576,8 +575,8 @@ func TestPFAliasesSchemaUpgrade(t *testing.T) {
 	})
 
 	prov2 := pb.NewProvider(pb.NewProviderArgs{
-		AllResources: []providerbuilder.Resource{
-			providerbuilder.NewResource(providerbuilder.NewResourceArgs{
+		AllResources: []pb.Resource{
+			pb.NewResource(pb.NewResourceArgs{
 				Name: "test2",
 				ResourceSchema: rschema.Schema{
 					Attributes: map[string]rschema.Attribute{
@@ -631,8 +630,8 @@ func TestPFAliasesRenameWithAlias(t *testing.T) {
 	t.Parallel()
 
 	prov1 := pb.NewProvider(pb.NewProviderArgs{
-		AllResources: []providerbuilder.Resource{
-			providerbuilder.NewResource(providerbuilder.NewResourceArgs{
+		AllResources: []pb.Resource{
+			pb.NewResource(pb.NewResourceArgs{
 				Name: "test",
 				ResourceSchema: rschema.Schema{
 					Attributes: map[string]rschema.Attribute{
@@ -644,8 +643,8 @@ func TestPFAliasesRenameWithAlias(t *testing.T) {
 	})
 
 	prov2 := pb.NewProvider(pb.NewProviderArgs{
-		AllResources: []providerbuilder.Resource{
-			providerbuilder.NewResource(providerbuilder.NewResourceArgs{
+		AllResources: []pb.Resource{
+			pb.NewResource(pb.NewResourceArgs{
 				Name: "test2",
 				ResourceSchema: rschema.Schema{
 					Attributes: map[string]rschema.Attribute{
@@ -693,9 +692,9 @@ func TestPFAliasesRenameWithAlias(t *testing.T) {
 func TestPFResourceWithNullId(t *testing.T) {
 	t.Parallel()
 
-	provBuilder := providerbuilder.NewProvider(providerbuilder.NewProviderArgs{
-		AllResources: []providerbuilder.Resource{
-			providerbuilder.NewResource(providerbuilder.NewResourceArgs{
+	provBuilder := pb.NewProvider(pb.NewProviderArgs{
+		AllResources: []pb.Resource{
+			pb.NewResource(pb.NewResourceArgs{
 				Name: "test",
 				ResourceSchema: rschema.Schema{
 					Attributes: map[string]rschema.Attribute{
@@ -732,9 +731,9 @@ func TestPFResourceWithNullId(t *testing.T) {
 func TestRequiresReplaceAndUseStateForUnknown(t *testing.T) {
 	t.Parallel()
 
-	provBuilder := providerbuilder.NewProvider(providerbuilder.NewProviderArgs{
-		AllResources: []providerbuilder.Resource{
-			providerbuilder.NewResource(providerbuilder.NewResourceArgs{
+	provBuilder := pb.NewProvider(pb.NewProviderArgs{
+		AllResources: []pb.Resource{
+			pb.NewResource(pb.NewResourceArgs{
 				ResourceSchema: rschema.Schema{
 					Attributes: map[string]rschema.Attribute{
 						"test": rschema.StringAttribute{
@@ -790,7 +789,7 @@ resources:
 func TestCrossTestRequiresReplaceAndUseStateForUnknownBasic(t *testing.T) {
 	t.Parallel()
 
-	res := providerbuilder.NewResource(providerbuilder.NewResourceArgs{
+	res := pb.NewResource(pb.NewResourceArgs{
 		ResourceSchema: rschema.Schema{
 			Attributes: map[string]rschema.Attribute{
 				"test": rschema.StringAttribute{

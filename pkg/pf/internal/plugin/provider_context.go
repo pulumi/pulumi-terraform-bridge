@@ -20,7 +20,6 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
-	p "github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"google.golang.org/grpc/codes"
@@ -38,25 +37,25 @@ type ProviderWithContext interface {
 	GetSchemaWithContext(ctx context.Context, req plugin.GetSchemaRequest) ([]byte, error)
 
 	CheckConfigWithContext(ctx context.Context, urn resource.URN, olds, news resource.PropertyMap,
-		allowUnknowns bool) (resource.PropertyMap, []p.CheckFailure, error)
+		allowUnknowns bool) (resource.PropertyMap, []plugin.CheckFailure, error)
 
 	DiffConfigWithContext(ctx context.Context, urn resource.URN, oldInputs, olds, news resource.PropertyMap,
-		allowUnknowns bool, ignoreChanges []string) (p.DiffResult, error)
+		allowUnknowns bool, ignoreChanges []string) (plugin.DiffResult, error)
 
 	ConfigureWithContext(ctx context.Context, inputs resource.PropertyMap) error
 
 	CheckWithContext(ctx context.Context, urn resource.URN, olds, news resource.PropertyMap,
 		allowUnknowns bool, randomSeed []byte, autonaming *info.ComputeDefaultAutonamingOptions,
-	) (resource.PropertyMap, []p.CheckFailure, error)
+	) (resource.PropertyMap, []plugin.CheckFailure, error)
 
 	DiffWithContext(ctx context.Context, urn resource.URN, id resource.ID, olds resource.PropertyMap,
-		news resource.PropertyMap, allowUnknowns bool, ignoreChanges []string) (p.DiffResult, error)
+		news resource.PropertyMap, allowUnknowns bool, ignoreChanges []string) (plugin.DiffResult, error)
 
 	CreateWithContext(ctx context.Context, urn resource.URN, news resource.PropertyMap, timeout float64,
 		preview bool) (resource.ID, resource.PropertyMap, resource.Status, error)
 
 	ReadWithContext(ctx context.Context, urn resource.URN, id resource.ID,
-		inputs, state resource.PropertyMap) (p.ReadResult, resource.Status, error)
+		inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error)
 
 	UpdateWithContext(ctx context.Context, urn resource.URN, id resource.ID,
 		olds resource.PropertyMap, news resource.PropertyMap, timeout float64,
@@ -65,15 +64,15 @@ type ProviderWithContext interface {
 	DeleteWithContext(ctx context.Context, urn resource.URN, id resource.ID,
 		inputs, outputs resource.PropertyMap, timeout float64) (resource.Status, error)
 
-	ConstructWithContext(ctx context.Context, info p.ConstructInfo, typ tokens.Type, name tokens.QName,
+	ConstructWithContext(ctx context.Context, info plugin.ConstructInfo, typ tokens.Type, name tokens.QName,
 		parent resource.URN, inputs resource.PropertyMap,
-		options p.ConstructOptions) (p.ConstructResult, error)
+		options plugin.ConstructOptions) (plugin.ConstructResult, error)
 
 	InvokeWithContext(ctx context.Context, tok tokens.ModuleMember,
-		args resource.PropertyMap) (resource.PropertyMap, []p.CheckFailure, error)
+		args resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error)
 
-	CallWithContext(ctx context.Context, tok tokens.ModuleMember, args resource.PropertyMap, info p.CallInfo,
-		options p.CallOptions) (p.CallResult, error)
+	CallWithContext(ctx context.Context, tok tokens.ModuleMember, args resource.PropertyMap, info plugin.CallInfo,
+		options plugin.CallOptions) (plugin.CallResult, error)
 
 	GetPluginInfoWithContext(ctx context.Context) (workspace.PluginInfo, error)
 

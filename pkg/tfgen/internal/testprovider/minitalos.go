@@ -16,7 +16,7 @@ package testprovider
 
 import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	cschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	pschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
@@ -59,9 +59,9 @@ func ProviderMiniTalos() tfbridge.ProviderInfo {
 				},
 			},
 		},
-		ExtraTypes: map[string]cschema.ComplexTypeSpec{
+		ExtraTypes: map[string]pschema.ComplexTypeSpec{
 			"talos:machine/generated:MachineSecrets": {
-				ObjectTypeSpec: cschema.ObjectTypeSpec{
+				ObjectTypeSpec: pschema.ObjectTypeSpec{
 					Type: "object",
 				},
 			},

@@ -18,7 +18,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
@@ -808,7 +807,7 @@ func TestProposedNewWithPortedCases(t *testing.T) {
 					"bloop": rschema.SetNestedAttribute{
 						NestedObject: rschema.NestedAttributeObject{
 							Attributes: map[string]rschema.Attribute{
-								"blop": schema.StringAttribute{
+								"blop": rschema.StringAttribute{
 									Required: true,
 								},
 							},

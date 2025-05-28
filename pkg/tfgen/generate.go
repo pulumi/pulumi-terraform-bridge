@@ -159,7 +159,9 @@ func writeBytesMapToDir(fs afero.Fs, dir string, files map[string][]byte) error 
 	return nil
 }
 
-func runPulumiPackageGenSDK(l Language, pkg *pschema.Package, extraFiles map[string][]byte) (map[string][]byte, error) {
+func runPulumiPackageGenSDK(
+	l Language, pkg *pschema.Package, extraFiles map[string][]byte,
+) (map[string][]byte, error) {
 	fs := afero.NewOsFs()
 	outDir, err := afero.TempDir(fs, "", "pulumi-package-gen-sdk")
 	if err != nil {

@@ -37,7 +37,6 @@ import (
 	bf "github.com/russross/blackfriday/v2"
 	"github.com/spf13/afero"
 	"github.com/yuin/goldmark"
-	"github.com/yuin/goldmark/ast"
 	gmast "github.com/yuin/goldmark/ast"
 	gmtext "github.com/yuin/goldmark/text"
 	"golang.org/x/text/cases"
@@ -1558,7 +1557,7 @@ func findCodeBlocks(docs []byte) []codeBlock {
 		Parser().Parse(gmtext.NewReader(docs))
 
 	var codeBlocks []codeBlock
-	parse.WalkNode(rootNode, func(cb *ast.FencedCodeBlock) {
+	parse.WalkNode(rootNode, func(cb *gmast.FencedCodeBlock) {
 		lines := cb.Lines()
 
 		headerStart := -1

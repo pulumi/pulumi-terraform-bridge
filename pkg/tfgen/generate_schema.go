@@ -1110,7 +1110,9 @@ func (g *Generator) convertExamplesInPropertySpec(path examplePath, spec pschema
 	return spec
 }
 
-func (g *Generator) convertExamplesInObjectSpec(path examplePath, spec pschema.ObjectTypeSpec) pschema.ObjectTypeSpec {
+func (g *Generator) convertExamplesInObjectSpec(
+	path examplePath, spec pschema.ObjectTypeSpec,
+) pschema.ObjectTypeSpec {
 	spec.Description = g.convertExamples(spec.Description, path)
 	for name, prop := range spec.Properties {
 		spec.Properties[name] = g.convertExamplesInPropertySpec(path.Property(name), prop)

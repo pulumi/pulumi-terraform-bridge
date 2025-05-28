@@ -19,7 +19,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	dschema "github.com/hashicorp/terraform-plugin-framework/datasource/schema"
-	pschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
+	prschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 )
@@ -53,7 +53,7 @@ type AttrLike interface {
 	GetType() attr.Type
 }
 
-func FromProviderAttribute(x pschema.Attribute) Attr {
+func FromProviderAttribute(x prschema.Attribute) Attr {
 	return FromAttrLike(x)
 }
 

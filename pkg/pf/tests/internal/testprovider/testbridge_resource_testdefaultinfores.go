@@ -19,7 +19,6 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
@@ -33,10 +32,10 @@ func newTestDefaultInfoRes() resource.Resource {
 	return &testDefaultInfoRes{}
 }
 
-func (*testDefaultInfoRes) schema() schema.Schema {
+func (*testDefaultInfoRes) schema() rschema.Schema {
 	return rschema.Schema{
 		Attributes: map[string]rschema.Attribute{
-			"id": schema.StringAttribute{
+			"id": rschema.StringAttribute{
 				Computed: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.UseStateForUnknown(),

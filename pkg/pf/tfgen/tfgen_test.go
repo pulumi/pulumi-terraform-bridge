@@ -24,15 +24,14 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework-validators/listvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
-	pschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
+	prschema "github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/schema/validator"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hexops/autogold/v2"
-	pulumiSchema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	pulumischema "github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	puschema "github.com/pulumi/pulumi/pkg/v3/codegen/schema" //nolint:importas
 	"github.com/stretchr/testify/require"
 
 	pftfbridge "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
@@ -44,15 +43,15 @@ import (
 func TestMaxItemsOne(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
-	s := pschema.Schema{
-		Blocks: map[string]pschema.Block{
-			"assume_role": pschema.ListNestedBlock{
+	s := prschema.Schema{
+		Blocks: map[string]prschema.Block{
+			"assume_role": prschema.ListNestedBlock{
 				Validators: []validator.List{
 					listvalidator.SizeAtMost(1),
 				},
-				NestedObject: pschema.NestedBlockObject{
-					Attributes: map[string]pschema.Attribute{
-						"external_id": pschema.StringAttribute{
+				NestedObject: prschema.NestedBlockObject{
+					Attributes: map[string]prschema.Attribute{
+						"external_id": prschema.StringAttribute{
 							Optional:    true,
 							Description: "A unique identifier that might be required when you assume a role in another account.",
 						},
@@ -69,7 +68,7 @@ func TestMaxItemsOne(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	var schema pulumiSchema.PackageSpec
+	var schema puschema.PackageSpec
 	if err := json.Unmarshal(res.ProviderMetadata.PackageSchema, &schema); err != nil {
 		t.Fatal(err)
 	}
@@ -79,7 +78,7 @@ func TestMaxItemsOne(t *testing.T) {
 }
 
 type schemaTestProvider struct {
-	schema    pschema.Schema
+	schema    prschema.Schema
 	resources map[string]rschema.Schema
 }
 
@@ -454,7 +453,7 @@ func TestTypeOverride(t *testing.T) {
 						"test_res": tt.info,
 					},
 					// Trim the schema for easier comparison
-					SchemaPostProcessor: func(p *pulumischema.PackageSpec) {
+					SchemaPostProcessor: func(p *puschema.PackageSpec) {
 						p.Language = nil
 						p.Provider.Description = ""
 					},
@@ -511,7 +510,7 @@ func TestWriteOnlyOmit(t *testing.T) {
 				"test_res": info,
 			},
 			// Trim the schema for easier comparison
-			SchemaPostProcessor: func(p *pulumischema.PackageSpec) {
+			SchemaPostProcessor: func(p *puschema.PackageSpec) {
 				p.Language = nil
 				p.Provider.Description = ""
 			},

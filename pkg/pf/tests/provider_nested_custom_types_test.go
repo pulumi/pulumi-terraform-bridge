@@ -17,7 +17,6 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/convert"
-	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/providerbuilder"
 	pb "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/providerbuilder"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
 	tfbridge0 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
@@ -28,7 +27,7 @@ func TestNestedCustomTypeEncoding(t *testing.T) {
 
 	testProvider := pb.NewProvider(pb.NewProviderArgs{
 		// This resource is modified from AWS Bedrockagent.
-		AllResources: []providerbuilder.Resource{
+		AllResources: []pb.Resource{
 			pb.NewResource(pb.NewResourceArgs{
 				Name: "bedrockagent",
 				ResourceSchema: schema.Schema{
