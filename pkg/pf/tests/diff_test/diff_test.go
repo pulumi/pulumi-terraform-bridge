@@ -1,6 +1,7 @@
 package tfbridgetests
 
 import (
+	"math/big"
 	"testing"
 
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
@@ -175,4 +176,40 @@ func TestPFDetailedDiffStringAttribute(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestPFDetailedDiffDynamicType(t *testing.T) {
+	t.Parallel()
+
+	attributeSchema := rschema.Schema{
+		Attributes: map[string]rschema.Attribute{
+			"key": rschema.DynamicAttribute{
+				Optional: true,
+			},
+		},
+	}
+
+	t.Run("no change", func(t *testing.T) {
+		crosstests.Diff(t, pb.NewResource(pb.NewResourceArgs{
+			ResourceSchema: attributeSchema,
+		}), map[string]cty.Value{"key": cty.StringVal("value")}, map[string]cty.Value{"key": cty.StringVal("value")})
+	})
+
+	t.Run("change", func(t *testing.T) {
+		crosstests.Diff(t, pb.NewResource(pb.NewResourceArgs{
+			ResourceSchema: attributeSchema,
+		}), map[string]cty.Value{"key": cty.StringVal("value")}, map[string]cty.Value{"key": cty.StringVal("value1")})
+	})
+
+	t.Run("int no change", func(t *testing.T) {
+		crosstests.Diff(t, pb.NewResource(pb.NewResourceArgs{
+			ResourceSchema: attributeSchema,
+		}), map[string]cty.Value{"key": cty.NumberVal(big.NewFloat(1))}, map[string]cty.Value{"key": cty.NumberVal(big.NewFloat(1))})
+	})
+
+	t.Run("type change", func(t *testing.T) {
+		crosstests.Diff(t, pb.NewResource(pb.NewResourceArgs{
+			ResourceSchema: attributeSchema,
+		}), map[string]cty.Value{"key": cty.StringVal("value")}, map[string]cty.Value{"key": cty.NumberVal(big.NewFloat(1))})
+	})
 }
