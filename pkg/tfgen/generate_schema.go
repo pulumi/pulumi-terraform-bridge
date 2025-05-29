@@ -44,7 +44,6 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfgen/internal/paths"
-	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/x/muxer"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
 )
@@ -867,8 +866,8 @@ func (g *schemaGenerator) genResourceType(mod tokens.Module, res *resourceType) 
 		spec.InputProperties[prop.name] = g.genProperty(prop)
 
 		hasDefault := false
-		if s, ok := prop.schema.(shim.SchemaWithHasDefault); ok && !g.info.DisableRequiredWithDefaultTurningOptional {
-			hasDefault = s.HasDefault()
+		if !g.info.DisableRequiredWithDefaultTurningOptional {
+			hasDefault = prop.schema.HasDefault()
 		}
 
 		if !prop.optional() && !hasDefault {

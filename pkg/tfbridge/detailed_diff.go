@@ -363,9 +363,6 @@ func (differ detailedDiffer) calculateSetHashIndexMap(
 		convertedElements = append(convertedElements, convertedElem)
 	}
 
-	tfsh, ok := tfs.(shim.SchemaWithSetElementHash)
-	contract.Assertf(ok, "expected SchemaWithSetElementHash")
-
 	// Calculate the identity of each element. Note that the SetHash function can panic
 	// in the case of custom SetHash functions which get unexpected inputs.
 	for i, newElem := range convertedElements {
@@ -377,7 +374,7 @@ func (differ detailedDiffer) calculateSetHashIndexMap(
 						path.String(), r))
 				}
 			}()
-			setHash, err := tfsh.SetElementHash(newElem)
+			setHash, err := tfs.SetElementHash(newElem)
 			contract.AssertNoErrorf(
 				err, "Failed to calculate preview for element in %s: Failed to convert set element", path.String())
 			return setHash

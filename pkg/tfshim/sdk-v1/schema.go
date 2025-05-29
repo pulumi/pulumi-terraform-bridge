@@ -10,8 +10,6 @@ import (
 
 var (
 	_ = shim.Schema(v1Schema{})
-	_ = shim.SchemaWithNewSet(v1Schema{})
-	_ = shim.SchemaWithSetElementHash(v1Schema{})
 	_ = shim.SchemaMap(v1SchemaMap{})
 )
 
@@ -69,6 +67,10 @@ func (s v1Schema) DefaultFunc() shim.SchemaDefaultFunc {
 
 func (s v1Schema) DefaultValue() (interface{}, error) {
 	return s.tf.DefaultValue()
+}
+
+func (s v1Schema) HasDefault() bool {
+	return s.tf.Default != nil || s.tf.DefaultFunc != nil
 }
 
 func (s v1Schema) Description() string {
@@ -157,6 +159,10 @@ func (s v1Schema) SetElementHash(v interface{}) (int, error) {
 
 func (s v1Schema) NewSet(v []interface{}) interface{} {
 	return schema.NewSet(s.SetHash, v)
+}
+
+func (s v1Schema) WriteOnly() bool {
+	return false
 }
 
 type v1SchemaMap map[string]*schema.Schema

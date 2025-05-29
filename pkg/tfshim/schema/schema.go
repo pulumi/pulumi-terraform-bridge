@@ -1,6 +1,8 @@
 package schema
 
 import (
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/internalinter"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
@@ -74,6 +76,10 @@ func (s SchemaShim) DefaultValue() (interface{}, error) {
 	return nil, nil
 }
 
+func (s SchemaShim) HasDefault() bool {
+	return s.V.Default != nil || s.V.DefaultFunc != nil
+}
+
 func (s SchemaShim) Description() string {
 	return s.V.Description
 }
@@ -132,6 +138,18 @@ func (s SchemaShim) SetElement(v interface{}) (interface{}, error) {
 
 func (s SchemaShim) SetHash(v interface{}) int {
 	return 0
+}
+
+func (s SchemaShim) NewSet(v []interface{}) interface{} {
+	return schema.NewSet(s.SetHash, v)
+}
+
+func (s SchemaShim) SetElementHash(v interface{}) (int, error) {
+	v, err := s.SetElement(v)
+	if err != nil {
+		return 0, err
+	}
+	return s.SetHash(v), nil
 }
 
 //nolint:revive
