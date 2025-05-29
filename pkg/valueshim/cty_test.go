@@ -316,6 +316,7 @@ func Test_HCty_ToX(t *testing.T) {
 }
 
 func Test_HCtyType_AttributeType(t *testing.T) {
+	t.Parallel()
 	objTy := cty.Object(map[string]cty.Type{"x": cty.String})
 
 	ty, ok := valueshim.FromHCtyType(objTy).AttributeType("x")
@@ -327,6 +328,7 @@ func Test_HCtyType_AttributeType(t *testing.T) {
 }
 
 func Test_HCtyType_ElementType(t *testing.T) {
+	t.Parallel()
 	ty, ok := valueshim.FromHCtyType(cty.Set(cty.Number)).ElementType()
 	assert.True(t, ok)
 	assert.Equal(t, valueshim.FromHCtyType(cty.Number), ty)
@@ -339,6 +341,6 @@ func Test_HCtyType_ElementType(t *testing.T) {
 	assert.True(t, ok)
 	assert.Equal(t, valueshim.FromHCtyType(cty.Number), ty)
 
-	ty, ok = valueshim.FromHCtyType(cty.String).ElementType()
+	_, ok = valueshim.FromHCtyType(cty.String).ElementType()
 	assert.False(t, ok)
 }

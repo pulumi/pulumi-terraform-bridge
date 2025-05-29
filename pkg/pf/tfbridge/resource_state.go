@@ -256,7 +256,6 @@ func (p *provider) parseAndUpgradeResourceState(
 		return nil, fmt.Errorf("[pf/tfbridge] Error calling EncodePropertyMap: %w", err)
 	}
 
-
 	// Before EnableRawStateDelta rollout, the behavior used to be to skip the upgrade method in case of an exact
 	// version match. This seems incorrect, but to derisk fixing this problem it is flagged together with
 	// EnableRawStateDelta so it participates in the phased rollout. Remove once rollout completes.
