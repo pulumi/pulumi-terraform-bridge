@@ -179,7 +179,7 @@ func LookupSchemaMapPath(path SchemaPath, schemaMap shim.SchemaMap) (shim.Schema
 func LookupType(path SchemaPath, ty valueshim.Type) (valueshim.Type, error) {
 	current := ty
 	for i, step := range path {
-		var subPath SchemaPath = path[0:i]
+		subPath := path[0:i]
 		switch step := step.(type) {
 		case GetAttrStep:
 			attr, ok := current.AttributeType(step.Name)

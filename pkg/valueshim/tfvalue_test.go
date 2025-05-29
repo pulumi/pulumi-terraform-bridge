@@ -314,6 +314,7 @@ func Test_TType(t *testing.T) {
 }
 
 func Test_TType_AttributeType(t *testing.T) {
+	t.Parallel()
 	objTy := tftypes.Object{AttributeTypes: map[string]tftypes.Type{"x": tftypes.String}}
 
 	ty, ok := valueshim.FromTType(objTy).AttributeType("x")
@@ -325,6 +326,7 @@ func Test_TType_AttributeType(t *testing.T) {
 }
 
 func Test_TType_ElementType(t *testing.T) {
+	t.Parallel()
 	ty, ok := valueshim.FromTType(tftypes.Set{ElementType: tftypes.Number}).ElementType()
 	assert.True(t, ok)
 	assert.Equal(t, valueshim.FromTType(tftypes.Number), ty)
@@ -337,7 +339,7 @@ func Test_TType_ElementType(t *testing.T) {
 	assert.True(t, ok)
 	assert.Equal(t, valueshim.FromTType(tftypes.Number), ty)
 
-	ty, ok = valueshim.FromTType(tftypes.String).ElementType()
+	_, ok = valueshim.FromTType(tftypes.String).ElementType()
 	assert.False(t, ok)
 }
 
