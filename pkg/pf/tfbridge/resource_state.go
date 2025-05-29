@@ -251,14 +251,9 @@ func (p *provider) parseAndUpgradeResourceState(
 	}
 
 	// Otherwise fallback to imprecise legacy parsing.
-	tfType := rh.schema.Type(ctx).(tftypes.Object)
 	value, err := convert.EncodePropertyMap(rh.encoder, props)
 	if err != nil {
 		return nil, fmt.Errorf("[pf/tfbridge] Error calling EncodePropertyMap: %w", err)
-	}
-	rawState, err := pfutils.NewRawState(tfType, value)
-	if err != nil {
-		return nil, fmt.Errorf("[pf/tfbridge] Error calling NewRawState: %w", err)
 	}
 
 	// Before EnableRawStateDelta rollout, the behavior used to be to skip the upgrade method in case of an exact
@@ -270,6 +265,12 @@ func (p *provider) parseAndUpgradeResourceState(
 			Private:         parsedMeta.PrivateState,
 			Value:           value,
 		}, nil
+	}
+
+	tfType := rh.schema.Type(ctx).(tftypes.Object)
+	rawState, err := pfutils.NewRawState(tfType, value)
+	if err != nil {
+		return nil, fmt.Errorf("[pf/tfbridge] Error calling NewRawState: %w", err)
 	}
 
 	return p.upgradeResourceState(ctx, rh, rawState, parsedMeta.PrivateState, stateVersion)
