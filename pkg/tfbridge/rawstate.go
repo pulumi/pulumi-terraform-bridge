@@ -488,6 +488,7 @@ func RawStateComputeDelta(
 		schemaMap:   schemaMap,
 		schemaInfos: schemaInfos,
 		logger:      log.TryGetLogger(ctx),
+		schemaType:  schemaType,
 	}
 	pv := resource.NewObjectProperty(outMap)
 
