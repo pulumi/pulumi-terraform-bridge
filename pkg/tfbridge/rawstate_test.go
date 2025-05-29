@@ -416,6 +416,7 @@ func Test_rawstate_delta_turnaround(t *testing.T) {
 					"prop": {Name: "prop"},
 				}
 			}
+			ih.schemaType = valueshim.FromHCtyType(cv.Type())
 
 			t.Logf("pv: %v", pv.String())
 			t.Logf("cv: %v", cv.GoString())
@@ -1168,7 +1169,7 @@ func Test_rawstate_against_MakeTerraformOutputs(t *testing.T) {
 			require.NoError(t, err)
 			tc.infl.Equal(t, string(deltaJSON))
 
-			err = delta.turnaroundCheck(ctx, newRawStateFromValue(stateValue), pv)
+			err = delta.turnaroundCheck(ctx, newRawStateFromValue(stateValue.Type(), stateValue), pv)
 			assert.NoError(t, err)
 		})
 	}

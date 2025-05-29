@@ -28,6 +28,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/internalinter"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/pfutils"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/valueshim"
 )
 
 // An Object type that masquerades as a Resource. This is a workaround to reusing tfgen code for generating schemas,
@@ -75,6 +76,10 @@ func (r *objectPseudoResource) Validate() error {
 
 func (r *objectPseudoResource) Schema() shim.SchemaMap {
 	return r
+}
+
+func (r *objectPseudoResource) SchemaType() valueshim.Type {
+	return valueshim.FromTType(tftypes.Object{})
 }
 
 func (*objectPseudoResource) SchemaVersion() int {
@@ -198,6 +203,10 @@ func newTuplePseudoResource(t attr.TypeWithElementTypes) shim.Resource {
 		attrs:      attrs,
 		tuple:      t,
 	}
+}
+
+func (r *tuplePseudoResource) SchemaType() valueshim.Type {
+	return valueshim.FromTType(tftypes.Object{})
 }
 
 func (*tuplePseudoResource) SchemaVersion() int         { panic("TODO") }
