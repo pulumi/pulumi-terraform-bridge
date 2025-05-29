@@ -17,6 +17,7 @@ package proto
 import (
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/internalinter"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
@@ -28,10 +29,17 @@ var (
 type element struct {
 	typ      tftypes.Type
 	optional bool
+	internalinter.Internal
 }
+
+func newElement(typ tftypes.Type, optional bool) *element {
+	return &element{typ, optional, internalinter.Internal{}}
+}
+
 type elementObject struct {
 	pseudoResource
 	typ tftypes.Object
+	internalinter.Internal
 }
 
 type elementObjectMap tftypes.Object
@@ -111,13 +119,13 @@ func (m elementObjectMap) GetOk(key string) (shim.Schema, bool) {
 		return nil, false
 	}
 	_, optional := m.OptionalAttributes[key]
-	return element{v, optional}, true
+	return newElement(v, optional), true
 }
 
 func (m elementObjectMap) Range(each func(key string, value shim.Schema) bool) {
 	for k, v := range m.AttributeTypes {
 		_, optional := m.OptionalAttributes[k]
-		if !each(k, element{v, optional}) {
+		if !each(k, newElement(v, optional)) {
 			return
 		}
 	}

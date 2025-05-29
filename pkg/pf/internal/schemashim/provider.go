@@ -23,6 +23,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/internalinter"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/pfutils"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/runtypes"
@@ -36,6 +37,7 @@ type SchemaOnlyProvider struct {
 	tf            pfprovider.Provider
 	resourceMap   schemaOnlyResourceMap
 	dataSourceMap schemaOnlyDataSourceMap
+	internalinter.Internal
 }
 
 func (p *SchemaOnlyProvider) Server(ctx context.Context) (tfprotov6.ProviderServer, error) {

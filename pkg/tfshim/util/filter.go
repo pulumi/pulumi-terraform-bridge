@@ -17,6 +17,7 @@ package util
 import (
 	"context"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/internalinter"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
@@ -43,6 +44,7 @@ type FilteringProvider struct {
 	Provider         shim.Provider
 	ResourceFilter   func(token string) bool
 	DataSourceFilter func(token string) bool
+	internalinter.Internal
 }
 
 var _ = (shim.Provider)((*FilteringProvider)(nil))

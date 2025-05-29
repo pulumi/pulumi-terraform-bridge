@@ -51,7 +51,7 @@ func TestCustomTypeEmbeddingObjectType(t *testing.T) {
 		},
 	}
 
-	shimmed := &blockSchema{"key", pfutils.FromBlockLike(raw)}
+	shimmed := newBlockSchema("key", pfutils.FromBlockLike(raw))
 	assert.Equal(t, shim.TypeMap, shimmed.Type())
 	assert.NotNil(t, shimmed.Elem())
 	_, isPseudoResource := shimmed.Elem().(shim.Resource)
@@ -80,7 +80,7 @@ func TestCustomListType(t *testing.T) {
 		},
 	}
 
-	shimmed := &blockSchema{"key", pfutils.FromBlockLike(raw)}
+	shimmed := newBlockSchema("key", pfutils.FromBlockLike(raw))
 	assert.Equal(t, shim.TypeList, shimmed.Type())
 	assert.NotNil(t, shimmed.Elem())
 	_, isPseudoResource := shimmed.Elem().(shim.Resource)
@@ -109,7 +109,7 @@ func TestCustomListAttribute(t *testing.T) {
 		},
 	}
 
-	shimmed := &attrSchema{"key", pfutils.FromAttrLike(raw)}
+	shimmed := newAttrSchema("key", pfutils.FromAttrLike(raw))
 	assert.Equal(t, shim.TypeList, shimmed.Type())
 	assert.NotNil(t, shimmed.Elem())
 	_, isPseudoResource := shimmed.Elem().(shim.Schema)
@@ -138,7 +138,7 @@ func TestCustomSetType(t *testing.T) {
 		},
 	}
 
-	shimmed := &blockSchema{"key", pfutils.FromBlockLike(raw)}
+	shimmed := newBlockSchema("key", pfutils.FromBlockLike(raw))
 	assert.Equal(t, shim.TypeSet, shimmed.Type())
 	assert.NotNil(t, shimmed.Elem())
 	_, isPseudoResource := shimmed.Elem().(shim.Resource)

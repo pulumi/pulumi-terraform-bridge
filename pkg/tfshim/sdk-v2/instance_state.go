@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	diff_reader "github.com/pulumi/terraform-diff-reader/sdk-v2"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/internalinter"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
@@ -34,6 +35,7 @@ type v2InstanceState struct {
 	resource *schema.Resource
 	tf       *terraform.InstanceState
 	diff     *terraform.InstanceDiff
+	internalinter.Internal
 }
 
 func NewInstanceState(s *terraform.InstanceState) shim.InstanceState {

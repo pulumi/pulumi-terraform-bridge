@@ -6,6 +6,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/terraform"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/internalinter"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
@@ -16,10 +17,11 @@ var (
 
 type v1Resource struct {
 	tf *schema.Resource
+	internalinter.Internal
 }
 
 func NewResource(r *schema.Resource) shim.Resource {
-	return v1Resource{r}
+	return v1Resource{tf: r}
 }
 
 func (r v1Resource) Schema() shim.SchemaMap {
@@ -52,7 +54,7 @@ func (r v1Resource) Importer() shim.ImportFunc {
 					"as a bug in the Pulumi provider repository.", id)
 			}
 			if s.Attributes != nil {
-				results[i] = v1InstanceState{s, nil}
+				results[i] = v1InstanceState{tf: s}
 			}
 		}
 		return results, nil
@@ -96,11 +98,11 @@ func (r v1Resource) InstanceState(id string, object, meta map[string]interface{}
 		flattenValue(attributes, k, f.Value)
 	}
 
-	return v1InstanceState{&terraform.InstanceState{
+	return v1InstanceState{tf: &terraform.InstanceState{
 		ID:         id,
 		Attributes: attributes,
 		Meta:       meta,
-	}, nil}, nil
+	}}, nil
 }
 
 func (r v1Resource) DecodeTimeouts(config shim.ResourceConfig) (*shim.ResourceTimeout, error) {
@@ -131,14 +133,14 @@ func (m v1ResourceMap) Get(key string) shim.Resource {
 
 func (m v1ResourceMap) GetOk(key string) (shim.Resource, bool) {
 	if r, ok := m[key]; ok {
-		return v1Resource{r}, true
+		return v1Resource{tf: r}, true
 	}
 	return nil, false
 }
 
 func (m v1ResourceMap) Range(each func(key string, value shim.Resource) bool) {
 	for key, value := range m {
-		if !each(key, v1Resource{value}) {
+		if !each(key, v1Resource{tf: value}) {
 			return
 		}
 	}

@@ -20,6 +20,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/internalinter"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/pfutils"
 	bridge "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
@@ -28,10 +29,11 @@ import (
 type blockSchema struct {
 	key   string
 	block pfutils.Block
+	internalinter.Internal
 }
 
 func newBlockSchema(key string, block pfutils.Block) *blockSchema {
-	return &blockSchema{key, block}
+	return &blockSchema{key, block, internalinter.Internal{}}
 }
 
 var _ shim.Schema = (*blockSchema)(nil)

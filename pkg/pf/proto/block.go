@@ -20,6 +20,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/internalinter"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
@@ -42,6 +43,7 @@ var (
 type blockResource struct {
 	pseudoResource
 	block *tfprotov6.SchemaBlock
+	internalinter.Internal
 }
 
 func (b blockResource) Schema() shim.SchemaMap     { return blockMap{b.block} }
@@ -56,13 +58,13 @@ func (m blockMap) Get(key string) shim.Schema { return getSchemaMap(m, key) }
 func (m blockMap) GetOk(key string) (shim.Schema, bool) {
 	for _, a := range m.block.Attributes {
 		if a.Name == key {
-			return attribute{*a}, true
+			return newAttribute(*a), true
 		}
 	}
 
 	for _, b := range m.block.BlockTypes {
 		if b.TypeName == key {
-			return blockSchema{*b}, true
+			return newBlockSchema(*b), true
 		}
 	}
 
@@ -71,13 +73,13 @@ func (m blockMap) GetOk(key string) (shim.Schema, bool) {
 
 func (m blockMap) Range(each func(key string, value shim.Schema) bool) {
 	for _, a := range m.block.Attributes {
-		if !each(a.Name, attribute{*a}) {
+		if !each(a.Name, newAttribute(*a)) {
 			return
 		}
 	}
 
 	for _, b := range m.block.BlockTypes {
-		if !each(b.TypeName, blockSchema{*b}) {
+		if !each(b.TypeName, newBlockSchema(*b)) {
 			return
 		}
 	}
@@ -85,7 +87,14 @@ func (m blockMap) Range(each func(key string, value shim.Schema) bool) {
 
 func (m blockMap) Validate() error { return nil }
 
-type blockSchema struct{ block tfprotov6.SchemaNestedBlock }
+type blockSchema struct {
+	block tfprotov6.SchemaNestedBlock
+	internalinter.Internal
+}
+
+func newBlockSchema(block tfprotov6.SchemaNestedBlock) *blockSchema {
+	return &blockSchema{block, internalinter.Internal{}}
+}
 
 func (m blockSchema) Type() shim.ValueType {
 	switch m.block.Nesting {
@@ -108,7 +117,7 @@ func (m blockSchema) Elem() interface{} {
 	case tfprotov6.SchemaNestedBlockNestingModeMap:
 		contract.Assertf(m.Type() == shim.TypeMap, "this must be a map")
 		m.block.Nesting = tfprotov6.SchemaNestedBlockNestingModeSingle
-		return blockSchema{m.block}
+		return newBlockSchema(m.block)
 	default:
 		return blockResource{block: m.block.Block}
 	}

@@ -25,6 +25,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/internalinter"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/pfutils"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
@@ -38,6 +39,7 @@ type objectPseudoResource struct {
 	nestedAttrs  map[string]pfutils.Attr
 	nestedBlocks map[string]pfutils.Block // should have disjoint keys from nestedAttrs
 	allAttrNames []string
+	internalinter.Internal
 }
 
 func newObjectPseudoResource(t basetypes.ObjectTypable,
@@ -127,7 +129,7 @@ func (r *objectPseudoResource) GetOk(key string) (shim.Schema, bool) {
 	// and recurse using attrSchema. This information may be coming out of band from the ObjectTypeable value itself
 	// when using blocks, see TestCustomTypeEmbeddingObjectType.
 	if attr, ok := r.nestedAttrs[key]; ok {
-		return &attrSchema{key, attr}, true
+		return newAttrSchema(key, attr), true
 	}
 
 	// Nested blocks are similar to attributes:
@@ -169,6 +171,7 @@ type tuplePseudoResource struct {
 	schemaOnly
 	attrs map[string]pfutils.Attr
 	tuple attr.TypeWithElementTypes
+	internalinter.Internal
 }
 
 type tupElementAttr struct{ e attr.Type }

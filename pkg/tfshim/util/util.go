@@ -17,13 +17,16 @@ package util
 import (
 	"context"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/internalinter"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
 var _ = (shim.Provider)((*UnimplementedProvider)(nil))
 
 // An embed-able unimplemented Provider for use in testing.
-type UnimplementedProvider struct{}
+type UnimplementedProvider struct {
+	internalinter.Internal
+}
 
 func (UnimplementedProvider) Schema() shim.SchemaMap           { panic("unimplemented") }
 func (UnimplementedProvider) ResourcesMap() shim.ResourceMap   { panic("unimplemented") }
