@@ -1099,9 +1099,9 @@ func TestPFUpgrade_DynamicPseudoType(t *testing.T) {
 	//skipUnlessDeltasEnabled(t)
 
 	resourceBefore := pb.NewResource(pb.NewResourceArgs{
-		ResourceSchema: schema.Schema{
-			Attributes: map[string]schema.Attribute{
-				"dyn": schema.DynamicAttribute{Optional: true},
+		ResourceSchema: rschema.Schema{
+			Attributes: map[string]rschema.Attribute{
+				"dyn": rschema.DynamicAttribute{Optional: true},
 			},
 		},
 	})
@@ -1115,9 +1115,9 @@ func TestPFUpgrade_DynamicPseudoType(t *testing.T) {
 				},
 			}
 		},
-		ResourceSchema: schema.Schema{
-			Attributes: map[string]schema.Attribute{
-				"dyn": schema.DynamicAttribute{Optional: true},
+		ResourceSchema: rschema.Schema{
+			Attributes: map[string]rschema.Attribute{
+				"dyn": rschema.DynamicAttribute{Optional: true},
 			},
 			Version: 1,
 		},
