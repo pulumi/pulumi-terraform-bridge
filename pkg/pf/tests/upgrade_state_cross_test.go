@@ -1096,7 +1096,7 @@ func TestPFUpgrade_Downgrading(t *testing.T) {
 func TestPFUpgrade_DynamicPseudoType(t *testing.T) {
 	t.Parallel()
 	ct.SkipUnlessLinux(t)
-	//skipUnlessDeltasEnabled(t)
+	// skipUnlessDeltasEnabled(t)
 
 	resourceBefore := pb.NewResource(pb.NewResourceArgs{
 		ResourceSchema: rschema.Schema{
@@ -1135,7 +1135,7 @@ func TestPFUpgrade_DynamicPseudoType(t *testing.T) {
 		InputsMap1: pmBefore,
 		Inputs2:    tfInputsAfter,
 		InputsMap2: pmAfter,
-		//ExpectedRawStateType: resourceBeforeAndAfter.ResourceSchema.Type().TerraformType(context.Background()),
+		// ExpectedRawStateType: resourceBeforeAndAfter.ResourceSchema.Type().TerraformType(context.Background()),
 		SkipPulumi: "TODO",
 	}
 
