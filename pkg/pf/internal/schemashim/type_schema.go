@@ -94,6 +94,10 @@ func (*typeSchema) DefaultValue() (interface{}, error) {
 	return nil, bridge.ErrSchemaDefaultValue
 }
 
+func (*typeSchema) HasDefault() bool {
+	return false
+}
+
 func (*typeSchema) Description() string {
 	return ""
 }
@@ -119,4 +123,16 @@ func (*typeSchema) SetElement(config interface{}) (interface{}, error) {
 
 func (*typeSchema) SetHash(v interface{}) int {
 	panic("SetHash() should not be called during schema generation")
+}
+
+func (*typeSchema) SetElementHash(v interface{}) (int, error) {
+	panic("SetElementHash() should not be called during schema generation")
+}
+
+func (*typeSchema) NewSet(v []interface{}) interface{} {
+	panic("NewSet() should not be called during schema generation")
+}
+
+func (*typeSchema) WriteOnly() bool {
+	return false
 }
