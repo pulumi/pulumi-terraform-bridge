@@ -273,7 +273,6 @@ func (p *provider) parseAndUpgradeResourceState(
 		return nil, fmt.Errorf("[pf/tfbridge] Error calling NewRawState: %w", err)
 	}
 
-
 	return p.upgradeResourceState(ctx, rh, rawState, parsedMeta.PrivateState, stateVersion)
 }
 
