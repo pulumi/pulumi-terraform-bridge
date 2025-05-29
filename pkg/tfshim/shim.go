@@ -209,34 +209,19 @@ type Schema interface {
 	SetElement(config interface{}) (interface{}, error)
 	// Deprecated: use [SchemaWithSetElementHash] and [SetElementHash] instead.
 	SetHash(v interface{}) int
+	NewSet(v []interface{}) interface{}
+	// SetElementHash returns a hash of the given set element.
+	// Note that it expects a set element without any unknown values.
+	SetElementHash(v interface{}) (int, error)
+	WriteOnly() bool
+	HasDefault() bool
 	// This is a no-op internal interface to prevent external users from implementing the interface.
 	internalinter.InternalInterface
 }
 
-type SchemaWithWriteOnly interface {
-	Schema
-	WriteOnly() bool
-}
-
-type SchemaWithNewSet interface {
-	Schema
-	NewSet(v []interface{}) interface{}
-}
 type SchemaWithUnknownCollectionSupported interface {
 	Schema
 	SupportsUnknownCollections()
-}
-
-type SchemaWithSetElementHash interface {
-	Schema
-	// SetElementHash returns a hash of the given set element.
-	// Note that it expects a set element without any unknown values.
-	SetElementHash(v interface{}) (int, error)
-}
-
-type SchemaWithHasDefault interface {
-	Schema
-	HasDefault() bool
 }
 
 type SchemaMap interface {

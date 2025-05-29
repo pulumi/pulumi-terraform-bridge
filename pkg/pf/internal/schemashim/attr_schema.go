@@ -36,10 +36,6 @@ func newAttrSchema(key string, attr pfutils.Attr) *attrSchema {
 
 var _ shim.Schema = (*attrSchema)(nil)
 
-var _ shim.SchemaWithWriteOnly = (*attrSchema)(nil)
-
-var _ shim.SchemaWithHasDefault = (*attrSchema)(nil)
-
 func (s *attrSchema) Type() shim.ValueType {
 	ty := s.attr.GetType()
 	vt, err := convertType(ty)
@@ -163,4 +159,12 @@ func (*attrSchema) SetElement(config interface{}) (interface{}, error) {
 
 func (*attrSchema) SetHash(v interface{}) int {
 	panic("SetHash() should not be called during schema generation")
+}
+
+func (*attrSchema) SetElementHash(v interface{}) (int, error) {
+	panic("SetElementHash() should not be called during schema generation")
+}
+
+func (*attrSchema) NewSet(v []interface{}) interface{} {
+	panic("NewSet() should not be called during schema generation")
 }

@@ -21,7 +21,6 @@ import (
 	"strings"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
@@ -109,9 +108,6 @@ func visitPropertyValue(
 				}
 
 				if !e.IsComputed() && !e.IsOutput() {
-					tfs, ok := tfs.(shim.SchemaWithSetElementHash)
-					contract.Assertf(ok, "expected SchemaWithSetElementHash")
-
 					// We cannot compute the hash for computed values because they are represented by the UnknownVariableValue
 					// sentinel string, which may not be a legal value of the corresponding schema type, and SetHash does not
 					// account for computed values. Skipping this for unknown values will result in computing a diff only on the
