@@ -1168,7 +1168,7 @@ func Test_rawstate_against_MakeTerraformOutputs(t *testing.T) {
 			require.NoError(t, err)
 			tc.infl.Equal(t, string(deltaJSON))
 
-			err = delta.turnaroundCheck(ctx, newRawStateFromValue(stateValue), pv)
+			err = delta.turnaroundCheck(ctx, newRawStateFromValue(stateValue.Type(), stateValue), pv)
 			assert.NoError(t, err)
 		})
 	}
