@@ -3,6 +3,7 @@ package tfbridgetests
 import (
 	"context"
 	"math/big"
+	"os"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -10,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
 	"github.com/hexops/autogold/v2"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/zclconf/go-cty/cty"
 
 	pb "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/providerbuilder"
@@ -182,6 +184,10 @@ func TestPFDetailedDiffStringAttribute(t *testing.T) {
 
 func TestPFDetailedDiffDynamicType(t *testing.T) {
 	t.Parallel()
+	if d, ok := os.LookupEnv("PULUMI_RAW_STATE_DELTA_ENABLED"); ok && cmdutil.IsTruthy(d) {
+		// TODO[pulumi/pulumi-terraform-bridge#3078]
+		t.Skip("Does not work with PULUMI_RAW_STATE_DELTA_ENABLED=true")
+	}
 
 	attributeSchema := rschema.Schema{
 		Attributes: map[string]rschema.Attribute{
