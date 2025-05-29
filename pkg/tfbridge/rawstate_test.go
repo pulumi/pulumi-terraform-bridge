@@ -416,6 +416,7 @@ func Test_rawstate_delta_turnaround(t *testing.T) {
 					"prop": {Name: "prop"},
 				}
 			}
+			ih.schemaType = valueshim.FromHCtyType(cv.Type())
 
 			t.Logf("pv: %v", pv.String())
 			t.Logf("cv: %v", cv.GoString())
