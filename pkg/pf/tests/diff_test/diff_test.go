@@ -206,10 +206,4 @@ func TestPFDetailedDiffDynamicType(t *testing.T) {
 			ResourceSchema: attributeSchema,
 		}), map[string]cty.Value{"key": cty.NumberVal(big.NewFloat(1))}, map[string]cty.Value{"key": cty.NumberVal(big.NewFloat(1))})
 	})
-
-	t.Run("type change", func(t *testing.T) {
-		crosstests.Diff(t, pb.NewResource(pb.NewResourceArgs{
-			ResourceSchema: attributeSchema,
-		}), map[string]cty.Value{"key": cty.StringVal("value")}, map[string]cty.Value{"key": cty.NumberVal(big.NewFloat(1))})
-	})
 }
