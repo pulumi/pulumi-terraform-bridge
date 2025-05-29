@@ -104,10 +104,8 @@ func (a attribute) StateFunc() shim.SchemaStateFunc { return nil }
 func (a attribute) ConflictsWith() []string         { return nil }
 func (a attribute) ExactlyOneOf() []string          { return nil }
 
-func (a attribute) SetElement(config interface{}) (interface{}, error) {
-	panic("UNIMPLIMENTED")
-}
-
-func (a attribute) SetHash(v interface{}) int                 { panic("UNIMPLIMENTED") }
-func (a attribute) SetElementHash(v interface{}) (int, error) { panic("UNIMPLIMENTED") }
-func (a attribute) NewSet(v []interface{}) interface{}        { panic("UNIMPLIMENTED") }
+// Set functions are unused for PF - could be needed if PF opts into detailed diffs
+func (a attribute) SetElement(config interface{}) (interface{}, error) { panic("UNIMPLIMENTED") }
+func (a attribute) SetHash(v interface{}) int                          { panic("UNIMPLIMENTED") }
+func (a attribute) SetElementHash(v interface{}) (int, error)          { panic("UNIMPLIMENTED") }
+func (a attribute) NewSet(v []interface{}) interface{}                 { panic("UNIMPLIMENTED") }
