@@ -62,7 +62,8 @@ func (p shimProvider) GetResourceIdentitySchemas(
 	ctx context.Context,
 	_ *tfprotov6.GetResourceIdentitySchemasRequest,
 ) (*tfprotov6.GetResourceIdentitySchemasResponse, error) {
-	// TODO: implement this property via the remote provider.
+	// TODO: implement this properly via the remote provider.
+	// https://github.com/pulumi/pulumi-terraform-bridge/issues/3106
 	return &tfprotov6.GetResourceIdentitySchemasResponse{
 		IdentitySchemas: map[string]*tfprotov6.ResourceIdentitySchema{},
 		Diagnostics:     nil,
@@ -73,7 +74,8 @@ func (p shimProvider) UpgradeResourceIdentity(
 	ctx context.Context,
 	req *tfprotov6.UpgradeResourceIdentityRequest,
 ) (*tfprotov6.UpgradeResourceIdentityResponse, error) {
-	// TODO: implement this property via the remote provider.
+	// TODO: implement this properly via the remote provider.
+	// https://github.com/pulumi/pulumi-terraform-bridge/issues/3106
 	return &tfprotov6.UpgradeResourceIdentityResponse{
 		UpgradedIdentity: nil,
 		Diagnostics:      nil,
