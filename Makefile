@@ -56,7 +56,7 @@ tidy::
 # on windows.
 pin_upstream_sdk: UpstreamPluginSDK=github.com/hashicorp/terraform-plugin-sdk/v2
 pin_upstream_sdk: OurPluginSDK=github.com/pulumi/terraform-plugin-sdk/v2
-pin_upstream_sdk: PluginSDKVersion=v2.0.0-20240520223432-0c0bf0d65f10
+pin_upstream_sdk: PluginSDKVersion=v2.0.0-20250530111747-935112552988
 pin_upstream_sdk:
 	# /x/muxer doesn't depend on the rest of the bridge or any TF libraries, so it
 	# doesn't need this replace.
