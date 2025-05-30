@@ -58,6 +58,28 @@ func (p shimProvider) GetProviderSchema(
 		translate.GetProviderSchemaResponse)
 }
 
+func (p shimProvider) GetResourceIdentitySchemas(
+	ctx context.Context,
+	_ *tfprotov6.GetResourceIdentitySchemasRequest,
+) (*tfprotov6.GetResourceIdentitySchemasResponse, error) {
+	// TODO: implement this property via the remote provider.
+	return &tfprotov6.GetResourceIdentitySchemasResponse{
+		IdentitySchemas: map[string]*tfprotov6.ResourceIdentitySchema{},
+		Diagnostics:     nil,
+	}, nil
+}
+
+func (p shimProvider) UpgradeResourceIdentity(
+	ctx context.Context,
+	req *tfprotov6.UpgradeResourceIdentityRequest,
+) (*tfprotov6.UpgradeResourceIdentityResponse, error) {
+	// TODO: implement this property via the remote provider.
+	return &tfprotov6.UpgradeResourceIdentityResponse{
+		UpgradedIdentity: nil,
+		Diagnostics:      nil,
+	}, nil
+}
+
 func (p shimProvider) ValidateProviderConfig(
 	ctx context.Context, req *tfprotov6.ValidateProviderConfigRequest,
 ) (*tfprotov6.ValidateProviderConfigResponse, error) {
