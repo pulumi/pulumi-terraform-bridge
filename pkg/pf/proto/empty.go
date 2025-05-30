@@ -42,6 +42,18 @@ func (emptyServer) GetProviderSchema(
 	return &tfprotov6.GetProviderSchemaResponse{}, nil
 }
 
+func (emptyServer) GetResourceIdentitySchemas(
+	context.Context, *tfprotov6.GetResourceIdentitySchemasRequest,
+) (*tfprotov6.GetResourceIdentitySchemasResponse, error) {
+	return &tfprotov6.GetResourceIdentitySchemasResponse{}, nil
+}
+
+func (emptyServer) UpgradeResourceIdentity(
+	context.Context, *tfprotov6.UpgradeResourceIdentityRequest,
+) (*tfprotov6.UpgradeResourceIdentityResponse, error) {
+	return &tfprotov6.UpgradeResourceIdentityResponse{}, nil
+}
+
 func (emptyServer) ValidateProviderConfig(
 	context.Context, *tfprotov6.ValidateProviderConfigRequest,
 ) (*tfprotov6.ValidateProviderConfigResponse, error) {

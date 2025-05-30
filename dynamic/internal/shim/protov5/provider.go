@@ -58,6 +58,29 @@ func (p provider) GetProviderSchema(
 		translate.GetProviderSchemaResponse)
 }
 
+func (p provider) GetResourceIdentitySchemas(
+	ctx context.Context,
+	_ *tfprotov5.GetResourceIdentitySchemasRequest,
+) (*tfprotov5.GetResourceIdentitySchemasResponse, error) {
+	// implement this properly via the remote provider.
+	// TODO[pulumi/pulumi-terraform-bridge#3106]
+	return &tfprotov5.GetResourceIdentitySchemasResponse{
+		IdentitySchemas: map[string]*tfprotov5.ResourceIdentitySchema{},
+		Diagnostics:     nil,
+	}, nil
+}
+
+func (p provider) UpgradeResourceIdentity(
+	ctx context.Context, req *tfprotov5.UpgradeResourceIdentityRequest,
+) (*tfprotov5.UpgradeResourceIdentityResponse, error) {
+	// implement this properly via the remote provider.
+	// TODO[pulumi/pulumi-terraform-bridge#3106]
+	return &tfprotov5.UpgradeResourceIdentityResponse{
+		Diagnostics:      nil,
+		UpgradedIdentity: nil,
+	}, nil
+}
+
 func (p provider) PrepareProviderConfig(
 	ctx context.Context, req *tfprotov5.PrepareProviderConfigRequest,
 ) (*tfprotov5.PrepareProviderConfigResponse, error) {
