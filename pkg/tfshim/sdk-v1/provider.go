@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/terraform"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/internalinter"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
@@ -34,7 +35,7 @@ func stateToShim(s *terraform.InstanceState) shim.InstanceState {
 	if s == nil {
 		return nil
 	}
-	return v1InstanceState{s, nil}
+	return v1InstanceState{tf: s}
 }
 
 func diffFromShim(d shim.InstanceDiff) *terraform.InstanceDiff {
@@ -48,15 +49,16 @@ func diffToShim(d *terraform.InstanceDiff) shim.InstanceDiff {
 	if d == nil {
 		return nil
 	}
-	return v1InstanceDiff{d}
+	return v1InstanceDiff{tf: d}
 }
 
 type v1Provider struct {
 	tf *schema.Provider
+	internalinter.Internal
 }
 
 func NewProvider(p *schema.Provider) shim.Provider {
-	return v1Provider{p}
+	return v1Provider{tf: p}
 }
 
 func (p v1Provider) Schema() shim.SchemaMap {
@@ -157,7 +159,7 @@ func (p v1Provider) InitLogging(_ context.Context) {
 }
 
 func (p v1Provider) NewDestroyDiff(_ context.Context, t string, opts shim.TimeoutOptions) shim.InstanceDiff {
-	d := v1InstanceDiff{&terraform.InstanceDiff{Destroy: true}}
+	d := v1InstanceDiff{tf: &terraform.InstanceDiff{Destroy: true}}
 	d.applyTimeoutOptions(opts)
 	return d
 }

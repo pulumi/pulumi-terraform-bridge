@@ -18,6 +18,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/internalinter"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
@@ -29,6 +30,7 @@ var (
 type object struct {
 	pseudoResource
 	obj tfprotov6.SchemaObject
+	internalinter.Internal
 }
 
 func (o object) Schema() shim.SchemaMap {
@@ -54,12 +56,12 @@ func (m attrMap) GetOk(key string) (shim.Schema, bool) {
 	if !ok {
 		return nil, false
 	}
-	return attribute{*v}, true
+	return newAttribute(*v), true
 }
 
 func (m attrMap) Range(each func(key string, value shim.Schema) bool) {
 	for k, v := range m {
-		if !each(k, attribute{*v}) {
+		if !each(k, newAttribute(*v)) {
 			return
 		}
 	}

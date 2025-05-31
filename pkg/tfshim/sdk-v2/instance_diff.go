@@ -9,6 +9,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/internalinter"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
@@ -32,6 +33,7 @@ func resourceAttrDiffToShim(d *terraform.ResourceAttrDiff) *shim.ResourceAttrDif
 
 type v2InstanceDiff struct {
 	tf *terraform.InstanceDiff
+	internalinter.Internal
 }
 
 func (d v2InstanceDiff) DiffEqualDecisionOverride() shim.DiffOverride {

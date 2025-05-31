@@ -17,6 +17,7 @@ package schemashim
 import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/internalinter"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/runtypes"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
@@ -27,7 +28,7 @@ func newSchemaOnlyDataSourceMap(dataSources runtypes.DataSources) schemaOnlyData
 	for _, name := range dataSources.All() {
 		key := string(name)
 		v := dataSources.Schema(name)
-		m[key] = &schemaOnlyDataSource{v}
+		m[key] = &schemaOnlyDataSource{v, internalinter.Internal{}}
 	}
 	return m
 }

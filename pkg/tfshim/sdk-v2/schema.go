@@ -3,6 +3,7 @@ package sdkv2
 import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/internalinter"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
@@ -24,10 +25,11 @@ const UnknownVariableValue = "74D93920-ED26-11E3-AC10-0800200C9A66"
 
 type v2Schema struct {
 	tf *schema.Schema
+	internalinter.Internal
 }
 
 func NewSchema(s *schema.Schema) shim.Schema {
-	return v2Schema{s}
+	return v2Schema{tf: s}
 }
 
 func (s v2Schema) Type() shim.ValueType {
@@ -95,9 +97,9 @@ func (s v2Schema) StateFunc() shim.SchemaStateFunc {
 func (s v2Schema) Elem() interface{} {
 	switch e := s.tf.Elem.(type) {
 	case *schema.Resource:
-		return v2Resource{e}
+		return v2Resource{tf: e}
 	case *schema.Schema:
-		return v2Schema{e}
+		return v2Schema{tf: e}
 	default:
 		return nil
 	}
@@ -212,14 +214,14 @@ func (m v2SchemaMap) Get(key string) shim.Schema {
 
 func (m v2SchemaMap) GetOk(key string) (shim.Schema, bool) {
 	if s, ok := m[key]; ok {
-		return v2Schema{s}, true
+		return v2Schema{tf: s}, true
 	}
 	return nil, false
 }
 
 func (m v2SchemaMap) Range(each func(key string, value shim.Schema) bool) {
 	for key, value := range m {
-		if !each(key, v2Schema{value}) {
+		if !each(key, v2Schema{tf: value}) {
 			return
 		}
 	}

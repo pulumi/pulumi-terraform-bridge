@@ -18,6 +18,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/internalinter"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
@@ -26,7 +27,14 @@ var (
 	_ = shim.SchemaWithWriteOnly(attribute{})
 )
 
-type attribute struct{ attr tfprotov6.SchemaAttribute }
+type attribute struct {
+	attr tfprotov6.SchemaAttribute
+	internalinter.Internal
+}
+
+func newAttribute(attr tfprotov6.SchemaAttribute) *attribute {
+	return &attribute{attr, internalinter.Internal{}}
+}
 
 // Simple schema options
 
@@ -85,7 +93,7 @@ func (a attribute) Elem() interface{} {
 			contract.Failf("Invalid attribute nesting: %s", a.attr.NestedType.Nesting)
 		}
 	}
-	return element{a.attr.ValueType(), a.Optional()}.Elem()
+	return newElement(a.attr.ValueType(), a.Optional()).Elem()
 }
 
 // Defaults are applied in the provider binary, not here

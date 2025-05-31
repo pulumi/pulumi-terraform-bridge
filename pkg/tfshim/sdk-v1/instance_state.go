@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/terraform"
 	diff_reader "github.com/pulumi/terraform-diff-reader/sdk-v1"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/internalinter"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
@@ -15,10 +16,11 @@ var _ = shim.InstanceState(v1InstanceState{})
 type v1InstanceState struct {
 	tf   *terraform.InstanceState
 	diff *terraform.InstanceDiff
+	internalinter.Internal
 }
 
 func NewInstanceState(s *terraform.InstanceState) shim.InstanceState {
-	return v1InstanceState{s, nil}
+	return v1InstanceState{tf: s}
 }
 
 func IsInstanceState(s shim.InstanceState) (*terraform.InstanceState, bool) {

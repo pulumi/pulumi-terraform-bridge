@@ -17,22 +17,26 @@ package schemashim
 import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/internalinter"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/runtypes"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
 // Resource map needs to support Set (mutability) for RenameResourceWithAlias.
 func newSchemaOnlyResourceMap(resources runtypes.Resources) schemaOnlyResourceMap {
-	m := schemaOnlyResourceMap{}
+	m := schemaOnlyResourceMap{Map: make(map[string]*schemaOnlyResource)}
 	for _, name := range resources.All() {
 		key := string(name)
 		v := resources.Schema(name)
-		m[key] = &schemaOnlyResource{v}
+		m.Map[key] = newSchemaOnlyResource(v)
 	}
 	return m
 }
 
-type schemaOnlyResourceMap map[string]*schemaOnlyResource
+type schemaOnlyResourceMap struct {
+	internalinter.Internal
+	Map map[string]*schemaOnlyResource
+}
 
 var (
 	_ shim.ResourceMap   = schemaOnlyResourceMap{}
@@ -40,20 +44,20 @@ var (
 )
 
 func (m schemaOnlyResourceMap) Len() int {
-	return len(m)
+	return len(m.Map)
 }
 
 func (m schemaOnlyResourceMap) Get(key string) shim.Resource {
-	return m[key]
+	return m.Map[key]
 }
 
 func (m schemaOnlyResourceMap) GetOk(key string) (shim.Resource, bool) {
-	v, ok := m[key]
+	v, ok := m.Map[key]
 	return v, ok
 }
 
 func (m schemaOnlyResourceMap) Range(each func(key string, value shim.Resource) bool) {
-	for k, v := range m {
+	for k, v := range m.Map {
 		if !each(k, v) {
 			return
 		}
@@ -63,24 +67,24 @@ func (m schemaOnlyResourceMap) Range(each func(key string, value shim.Resource) 
 func (m schemaOnlyResourceMap) Set(key string, value shim.Resource) {
 	v, ok := value.(*schemaOnlyResource)
 	contract.Assertf(ok, "Set must be a %T, found a %T", v, value)
-	m[key] = v
+	m.Map[key] = v
 }
 
 func (m schemaOnlyResourceMap) All() []runtypes.TypeOrRenamedEntityName {
-	arr := make([]runtypes.TypeOrRenamedEntityName, 0, len(m))
-	for k := range m {
+	arr := make([]runtypes.TypeOrRenamedEntityName, 0, len(m.Map))
+	for k := range m.Map {
 		arr = append(arr, runtypes.TypeOrRenamedEntityName(k))
 	}
 	return arr
 }
 
 func (m schemaOnlyResourceMap) Has(key runtypes.TypeOrRenamedEntityName) bool {
-	_, ok := m[string(key)]
+	_, ok := m.Map[string(key)]
 	return ok
 }
 
 func (m schemaOnlyResourceMap) Schema(key runtypes.TypeOrRenamedEntityName) runtypes.Schema {
-	return m[string(key)].tf
+	return m.Map[string(key)].tf
 }
 
 func (m schemaOnlyResourceMap) IsResources() {}

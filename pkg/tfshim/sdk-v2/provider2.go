@@ -21,6 +21,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/internalinter"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/rawstate"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/log"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
@@ -67,11 +68,11 @@ func (r *v2Resource2) InstanceState(
 }
 
 func (r *v2Resource2) Timeouts() *shim.ResourceTimeout {
-	return v2Resource{r.tf}.Timeouts()
+	return v2Resource{tf: r.tf}.Timeouts()
 }
 
 func (r *v2Resource2) DecodeTimeouts(config shim.ResourceConfig) (*shim.ResourceTimeout, error) {
-	return v2Resource{r.tf}.DecodeTimeouts(config)
+	return v2Resource{tf: r.tf}.DecodeTimeouts(config)
 }
 
 type v2InstanceState2 struct {
@@ -83,6 +84,7 @@ type v2InstanceState2 struct {
 
 	// The state has passed through the state upgrade method and does not need to do it again.
 	isUpgraded bool
+	internalinter.Internal
 }
 
 var (
@@ -419,7 +421,7 @@ func (p v2Provider) NewDestroyDiff(
 	res := p.tf.ResourcesMap[t]
 	ty := res.CoreConfigSchema().ImpliedType()
 
-	dd := v2InstanceDiff{&terraform.InstanceDiff{Destroy: true}}
+	dd := v2InstanceDiff{tf: &terraform.InstanceDiff{Destroy: true}}
 	dd.applyTimeoutOptions(opts)
 
 	return &v2InstanceDiff2{
@@ -609,7 +611,7 @@ func (s *grpcServer) PlanResourceChange(
 			Config:           &tfprotov5.DynamicValue{MsgPack: configVal},
 		},
 		TransformInstanceDiff: func(d *terraform.InstanceDiff) *terraform.InstanceDiff {
-			dd := &v2InstanceDiff{d}
+			dd := &v2InstanceDiff{tf: d}
 			if ignores != nil {
 				dd.processIgnoreChanges(ignores)
 			}
@@ -838,7 +840,7 @@ func (p v2Provider) ResourcesMap() shim.ResourceMap {
 		resources: p.tf.ResourcesMap,
 		pack: func(token string, res *schema.Resource) shim.Resource {
 			i := p.Importer(token)
-			return &v2Resource2{v2Resource{res}, i, token}
+			return &v2Resource2{v2Resource{tf: res}, i, token}
 		},
 	}
 }

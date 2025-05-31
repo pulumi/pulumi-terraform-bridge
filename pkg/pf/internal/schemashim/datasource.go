@@ -15,12 +15,14 @@
 package schemashim
 
 import (
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/internalinter"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/runtypes"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
 type schemaOnlyDataSource struct {
 	tf runtypes.Schema
+	internalinter.Internal
 }
 
 var _ shim.Resource = (*schemaOnlyDataSource)(nil)

@@ -18,6 +18,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/internalinter"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
@@ -43,12 +44,12 @@ func (m resourceMap) GetOk(key string) (shim.Resource, bool) {
 	if !ok {
 		return nil, false
 	}
-	return resource{v}, true
+	return newResource(v), true
 }
 
 func (m resourceMap) Range(each func(key string, value shim.Resource) bool) {
 	for k, v := range m {
-		if !each(k, resource{v}) {
+		if !each(k, newResource(v)) {
 			return
 		}
 	}
@@ -60,7 +61,14 @@ func (m resourceMap) Set(key string, value shim.Resource) {
 	m[key] = v.r
 }
 
-type resource struct{ r *tfprotov6.Schema }
+type resource struct {
+	r *tfprotov6.Schema
+	internalinter.Internal
+}
+
+func newResource(r *tfprotov6.Schema) *resource {
+	return &resource{r, internalinter.Internal{}}
+}
 
 func (r resource) Schema() shim.SchemaMap {
 	return blockMap{r.r.Block}
