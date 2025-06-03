@@ -22,10 +22,7 @@ import (
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
-var (
-	_ = shim.Schema(attribute{})
-	_ = shim.SchemaWithWriteOnly(attribute{})
-)
+var _ = shim.Schema(attribute{})
 
 type attribute struct {
 	attr tfprotov6.SchemaAttribute
@@ -101,13 +98,14 @@ func (a attribute) Elem() interface{} {
 func (a attribute) Default() interface{}                { return nil }
 func (a attribute) DefaultFunc() shim.SchemaDefaultFunc { return nil }
 func (a attribute) DefaultValue() (interface{}, error)  { return nil, nil }
+func (a attribute) HasDefault() bool                    { return false }
 
 func (a attribute) StateFunc() shim.SchemaStateFunc { return nil }
 func (a attribute) ConflictsWith() []string         { return nil }
 func (a attribute) ExactlyOneOf() []string          { return nil }
 
-func (a attribute) SetElement(config interface{}) (interface{}, error) {
-	panic("UNIMPLIMENTED")
-}
-
-func (a attribute) SetHash(v interface{}) int { panic("UNIMPLIMENTED") }
+// Set functions are unused for PF - could be needed if PF opts into detailed diffs
+func (a attribute) SetElement(config interface{}) (interface{}, error) { panic("UNIMPLIMENTED") }
+func (a attribute) SetHash(v interface{}) int                          { panic("UNIMPLIMENTED") }
+func (a attribute) SetElementHash(v interface{}) (int, error)          { panic("UNIMPLIMENTED") }
+func (a attribute) NewSet(v []interface{}) interface{}                 { panic("UNIMPLIMENTED") }

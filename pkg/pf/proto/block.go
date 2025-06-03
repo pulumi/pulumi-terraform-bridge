@@ -134,6 +134,7 @@ func (m blockSchema) Required() bool {
 func (m blockSchema) Default() interface{}                { return nil }
 func (m blockSchema) DefaultFunc() shim.SchemaDefaultFunc { return nil }
 func (m blockSchema) DefaultValue() (interface{}, error)  { return nil, nil }
+func (m blockSchema) HasDefault() bool                    { return false }
 func (m blockSchema) Description() string                 { return m.block.Block.Description }
 func (m blockSchema) Computed() bool                      { return false }
 func (m blockSchema) ForceNew() bool                      { return false }
@@ -150,3 +151,12 @@ func (m blockSchema) SetElement(config interface{}) (interface{}, error) {
 	panic("Cannot set a an element for a map type")
 }
 func (m blockSchema) SetHash(v interface{}) int { panic("Cannot set an hash for an object type") }
+func (m blockSchema) SetElementHash(v interface{}) (int, error) {
+	panic("UNIMPLIMENTED")
+}
+
+func (m blockSchema) NewSet(v []interface{}) interface{} {
+	panic("UNIMPLIMENTED")
+}
+
+func (m blockSchema) WriteOnly() bool { return false }

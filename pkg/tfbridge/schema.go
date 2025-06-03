@@ -291,7 +291,6 @@ type conversionContext struct {
 	// UseTFSetTypes will output TF Set types when converting sets.
 	// For example, if called on []string{"val1", "val2"}, it will output a TF Set with
 	// the same values: schema.NewSet([]interface{}{"val1", "val2"}).
-	// Note that this only works for schemas which implement shim.SchemaWithNewSet.
 	UseTFSetTypes bool
 	// DropUnknowns will drop unknown values from the input.
 	DropUnknowns bool
@@ -471,9 +470,8 @@ func (ctx *conversionContext) makeTerraformInput(
 			}
 		}
 
-		newSetSchema, ok := tfs.(shim.SchemaWithNewSet)
-		if ok && tfs.Type() == shim.TypeSet && ctx.UseTFSetTypes {
-			return newSetSchema.NewSet(arr), nil
+		if tfs.Type() == shim.TypeSet && ctx.UseTFSetTypes {
+			return tfs.NewSet(arr), nil
 		}
 
 		return arr, nil

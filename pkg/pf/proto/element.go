@@ -90,6 +90,7 @@ func (e element) Required() bool                              { return false }
 func (e element) Default() interface{}                        { return nil }
 func (e element) DefaultFunc() shim.SchemaDefaultFunc         { return nil }
 func (e element) DefaultValue() (interface{}, error)          { return nil, nil }
+func (e element) HasDefault() bool                            { return false }
 func (e element) Description() string                         { return "" }
 func (e element) Computed() bool                              { return false }
 func (e element) ForceNew() bool                              { return false }
@@ -103,6 +104,9 @@ func (e element) Removed() string                             { return "" }
 func (e element) Sensitive() bool                             { return false }
 func (e element) SetElement(interface{}) (interface{}, error) { return nil, nil }
 func (e element) SetHash(interface{}) int                     { return 0 }
+func (e element) SetElementHash(interface{}) (int, error)     { return 0, nil }
+func (e element) NewSet([]interface{}) interface{}            { return nil }
+func (e element) WriteOnly() bool                             { return false }
 
 func (o elementObject) DeprecationMessage() string { return "" }
 func (o elementObject) Schema() shim.SchemaMap {

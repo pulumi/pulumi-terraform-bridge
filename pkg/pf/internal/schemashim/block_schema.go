@@ -136,6 +136,10 @@ func (*blockSchema) DefaultValue() (interface{}, error) {
 	return nil, bridge.ErrSchemaDefaultValue
 }
 
+func (s *blockSchema) HasDefault() bool {
+	return false
+}
+
 func (*blockSchema) ExactlyOneOf() []string {
 	panic("ExactlyOneOf() should not be called during schema generation")
 }
@@ -148,6 +152,18 @@ func (*blockSchema) SetHash(v interface{}) int {
 	panic("SetHash() should not be called during schema generation")
 }
 
+func (*blockSchema) SetElementHash(v interface{}) (int, error) {
+	panic("SetElementHash() should not be called during schema generation")
+}
+
+func (*blockSchema) NewSet(v []interface{}) interface{} {
+	panic("NewSet() should not be called during schema generation")
+}
+
 func (*blockSchema) StateFunc() shim.SchemaStateFunc {
 	panic("StateFunc() should not be called during schema generation")
+}
+
+func (*blockSchema) WriteOnly() bool {
+	return false
 }
