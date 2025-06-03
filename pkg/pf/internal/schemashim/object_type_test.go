@@ -37,7 +37,7 @@ func TestObjectAttribute(t *testing.T) {
 			"s": basetypes.StringType{},
 		},
 	}
-	shimmed := &attrSchema{"key", pfutils.FromAttrLike(objectAttr)}
+	shimmed := newAttrSchema("key", pfutils.FromAttrLike(objectAttr))
 	assertIsObjectType(t, shimmed)
 	s := shimmed.Elem().(shim.Resource).Schema().Get("s")
 	assert.Equal(t, shim.TypeString, s.Type())
@@ -57,7 +57,7 @@ func TestSingleNestedBlock(t *testing.T) {
 	b := schema.SingleNestedBlock{
 		Attributes: simpleObjectAttributes(),
 	}
-	shimmed := &blockSchema{"key", pfutils.FromResourceBlock(b)}
+	shimmed := newBlockSchema("key", pfutils.FromResourceBlock(b))
 	assertIsObjectType(t, shimmed)
 	assert.Equal(t, "obj[c=str,co=str,desc=str,o=str,r=str]", schemaLogicalType(shimmed).String())
 	r, ok := shimmed.Elem().(shim.Resource)
@@ -72,7 +72,7 @@ func TestListNestedBlock(t *testing.T) {
 			Attributes: simpleObjectAttributes(),
 		},
 	}
-	shimmed := &blockSchema{"key", pfutils.FromResourceBlock(b)}
+	shimmed := newBlockSchema("key", pfutils.FromResourceBlock(b))
 	assert.Equal(t, "list[obj[c=str,co=str,desc=str,o=str,r=str]]", schemaLogicalType(shimmed).String())
 	r, ok := shimmed.Elem().(shim.Resource)
 	require.True(t, ok, "List-nested TF blocks should be represented as Elem() shim.Resource")
@@ -86,7 +86,7 @@ func TestSetNestedBlock(t *testing.T) {
 			Attributes: simpleObjectAttributes(),
 		},
 	}
-	shimmed := &blockSchema{"key", pfutils.FromResourceBlock(b)}
+	shimmed := newBlockSchema("key", pfutils.FromResourceBlock(b))
 	assert.Equal(t, "set[obj[c=str,co=str,desc=str,o=str,r=str]]", schemaLogicalType(shimmed).String())
 	r, ok := shimmed.Elem().(shim.Resource)
 	require.True(t, ok, "Set-nested TF blocks should be represented as Elem() shim.Resource")

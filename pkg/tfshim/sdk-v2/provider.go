@@ -11,6 +11,7 @@ import (
 	testing "github.com/mitchellh/go-testing-interface"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/internalinter"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
@@ -41,7 +42,7 @@ func diffToShim(d *terraform.InstanceDiff) shim.InstanceDiff {
 	if d == nil {
 		return nil
 	}
-	return v2InstanceDiff{d}
+	return v2InstanceDiff{tf: d}
 }
 
 type v2Provider struct {
@@ -50,6 +51,7 @@ type v2Provider struct {
 
 	server       *grpcServer
 	planEditFunc PlanStateEditFunc
+	internalinter.Internal
 }
 
 var (

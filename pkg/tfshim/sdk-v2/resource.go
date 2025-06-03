@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/internalinter"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
@@ -17,10 +18,11 @@ var (
 
 type v2Resource struct {
 	tf *schema.Resource
+	internalinter.Internal
 }
 
 func NewResource(r *schema.Resource) shim.Resource {
-	return v2Resource{r}
+	return v2Resource{tf: r}
 }
 
 func (r v2Resource) Schema() shim.SchemaMap {
@@ -76,12 +78,12 @@ func (r v2Resource) InstanceState(id string, object, meta map[string]interface{}
 	}
 
 	return v2InstanceState{
-		r.tf,
-		&terraform.InstanceState{
+		resource: r.tf,
+		tf: &terraform.InstanceState{
 			ID:         id,
 			Attributes: attributes,
 			Meta:       meta,
-		}, nil,
+		},
 	}, nil
 }
 
@@ -113,14 +115,14 @@ func (m v2ResourceMap) Get(key string) shim.Resource {
 
 func (m v2ResourceMap) GetOk(key string) (shim.Resource, bool) {
 	if r, ok := m[key]; ok {
-		return v2Resource{r}, true
+		return v2Resource{tf: r}, true
 	}
 	return nil, false
 }
 
 func (m v2ResourceMap) Range(each func(key string, value shim.Resource) bool) {
 	for key, value := range m {
-		if !each(key, v2Resource{value}) {
+		if !each(key, v2Resource{tf: value}) {
 			return
 		}
 	}

@@ -7,6 +7,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/internalinter"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
@@ -16,7 +17,7 @@ func TestMapAttribute(t *testing.T) {
 		Optional:    true,
 		ElementType: basetypes.StringType{},
 	}
-	shimmed := &typeSchema{mapAttr.GetType(), nil}
+	shimmed := &typeSchema{mapAttr.GetType(), nil, internalinter.Internal{}}
 	assertIsMapType(t, shimmed)
 	s := shimmed.Elem().(*typeSchema)
 	assert.Equal(t, shim.TypeString, s.Type())
@@ -31,18 +32,18 @@ func assertIsMapType(t *testing.T, shimmed shim.Schema) {
 
 func TestInt32Type(t *testing.T) {
 	t.Parallel()
-	shimmed := &typeSchema{basetypes.Int32Type{}, nil}
+	shimmed := &typeSchema{basetypes.Int32Type{}, nil, internalinter.Internal{}}
 	assert.Equal(t, shim.TypeInt, shimmed.Type())
 }
 
 func TestInt64Type(t *testing.T) {
 	t.Parallel()
-	shimmed := &typeSchema{basetypes.Int64Type{}, nil}
+	shimmed := &typeSchema{basetypes.Int64Type{}, nil, internalinter.Internal{}}
 	assert.Equal(t, shim.TypeInt, shimmed.Type())
 }
 
 func TestNumberType(t *testing.T) {
 	t.Parallel()
-	shimmed := &typeSchema{basetypes.NumberType{}, nil}
+	shimmed := &typeSchema{basetypes.NumberType{}, nil, internalinter.Internal{}}
 	assert.Equal(t, shim.TypeFloat, shimmed.Type())
 }

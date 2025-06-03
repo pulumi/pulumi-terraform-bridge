@@ -1,6 +1,7 @@
 package schema
 
 import (
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/internalinter"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
@@ -28,12 +29,13 @@ type Schema struct {
 }
 
 func (s *Schema) Shim() shim.Schema {
-	return SchemaShim{s}
+	return SchemaShim{s, internalinter.Internal{}}
 }
 
 //nolint:revive
 type SchemaShim struct {
 	V *Schema
+	internalinter.Internal
 }
 
 func (s SchemaShim) Type() shim.ValueType {

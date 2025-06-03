@@ -7,6 +7,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/internalinter"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/rawstate"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/valueshim"
 )
@@ -31,11 +32,17 @@ type InstanceState interface {
 
 	Object(sch SchemaMap) (map[string]interface{}, error)
 	Meta() map[string]interface{}
+
+	// This is a no-op internal interface to prevent external users from implementing the interface.
+	internalinter.InternalInterface
 }
 
 // Newer versions of the bridge want to interact with a typed representation of the state.
 type InstanceStateWithTypedValue interface {
 	Value() valueshim.Value
+
+	// This is a no-op internal interface to prevent external users from implementing the interface.
+	internalinter.InternalInterface
 }
 
 type DiffAttrType byte
@@ -81,6 +88,8 @@ type InstanceDiff interface {
 	DiffEqualDecisionOverride() DiffOverride
 	// Required if DiffEqualDecisionOverride is enabled.
 	PriorState() (InstanceState, error)
+	// This is a no-op internal interface to prevent external users from implementing the interface.
+	internalinter.InternalInterface
 }
 
 type ValueType int
@@ -200,6 +209,8 @@ type Schema interface {
 	SetElement(config interface{}) (interface{}, error)
 	// Deprecated: use [SchemaWithSetElementHash] and [SetElementHash] instead.
 	SetHash(v interface{}) int
+	// This is a no-op internal interface to prevent external users from implementing the interface.
+	internalinter.InternalInterface
 }
 
 type SchemaWithWriteOnly interface {
@@ -266,6 +277,9 @@ type Resource interface {
 	InstanceState(id string, object, meta map[string]interface{}) (InstanceState, error)
 
 	DecodeTimeouts(config ResourceConfig) (*ResourceTimeout, error)
+
+	// This is a no-op internal interface to prevent external users from implementing the interface.
+	internalinter.InternalInterface
 }
 
 type ResourceMap interface {
@@ -343,6 +357,8 @@ type Provider interface {
 	// SupportsUnknownCollections returns false if the provider needs special handling of unknown collections.
 	// False for the sdkv1 provider.
 	SupportsUnknownCollections() bool
+	// This is a no-op internal interface to prevent external users from implementing the interface.
+	internalinter.InternalInterface
 }
 
 type TimeoutOptions struct {

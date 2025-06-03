@@ -3,6 +3,7 @@ package schema
 import (
 	"fmt"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/internalinter"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
@@ -22,6 +23,7 @@ func (r *Resource) Shim() shim.Resource {
 
 type ResourceShim struct {
 	V *Resource
+	internalinter.Internal
 }
 
 func (r ResourceShim) Schema() shim.SchemaMap {

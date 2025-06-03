@@ -3,6 +3,7 @@ package schema
 import (
 	"context"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/internalinter"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 )
 
@@ -10,6 +11,7 @@ type Provider struct {
 	Schema         shim.SchemaMap
 	ResourcesMap   shim.ResourceMap
 	DataSourcesMap shim.ResourceMap
+	internalinter.Internal
 }
 
 func (p *Provider) Shim() shim.Provider {
@@ -23,11 +25,16 @@ func (p *Provider) Shim() shim.Provider {
 	if c.DataSourcesMap == nil {
 		c.DataSourcesMap = ResourceMap{}
 	}
-	return ProviderShim{c}
+	return newProviderShim(c)
 }
 
 type ProviderShim struct {
 	V *Provider
+	internalinter.Internal
+}
+
+func newProviderShim(p *Provider) *ProviderShim {
+	return &ProviderShim{p, internalinter.Internal{}}
 }
 
 func (s ProviderShim) Schema() shim.SchemaMap {

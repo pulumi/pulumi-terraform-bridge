@@ -18,6 +18,7 @@ import (
 	pfattr "github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/internalinter"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/pfutils"
 	bridge "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
@@ -26,6 +27,11 @@ import (
 type attrSchema struct {
 	key  string
 	attr pfutils.Attr
+	internalinter.Internal
+}
+
+func newAttrSchema(key string, attr pfutils.Attr) *attrSchema {
+	return &attrSchema{key, attr, internalinter.Internal{}}
 }
 
 var _ shim.Schema = (*attrSchema)(nil)
