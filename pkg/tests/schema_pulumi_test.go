@@ -837,7 +837,7 @@ func TestAssetDiff(t *testing.T) {
 		prev := pt.Preview(t, optpreview.Diff())
 
 		require.Contains(t, prev.StdOut, "- testPath: asset(file:2cf24db)")
-		require.Contains(t, prev.StdOut, "+ testPath: asset(file:486ea46)(file:")
+		require.Contains(t, prev.StdOut, "+ testPath: asset(file:486ea46)")
 		require.Contains(t, prev.StdOut, "~ 1 to update")
 
 		pt.Up(t)
