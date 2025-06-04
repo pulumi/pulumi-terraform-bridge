@@ -11,6 +11,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hexops/autogold/v2"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -776,4 +777,256 @@ func TestDefaultSchemaChanged(t *testing.T) {
 			})
 		}
 	}
+}
+
+func TestAssetDiff(t *testing.T) {
+	t.Parallel()
+
+	res := &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"test_path": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+		},
+	}
+	tfp := &schema.Provider{
+		ResourcesMap: map[string]*schema.Resource{
+			"prov_test": res,
+		},
+	}
+	resInfo := &info.Resource{
+		Fields: map[string]*info.Schema{
+			"test_path": {
+				Asset: &info.AssetTranslation{
+					Kind: info.FileAsset,
+				},
+			},
+		},
+	}
+	infoMap := map[string]*info.Resource{
+		"prov_test": resInfo,
+	}
+
+	bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp, pulcheck.WithResourceInfo(infoMap))
+
+	t.Run("file asset", func(t *testing.T) {
+		tempDir := t.TempDir()
+		assetPath := filepath.Join(tempDir, "asset.txt")
+		err := os.WriteFile(assetPath, []byte("hello"), 0o600)
+		require.NoError(t, err)
+
+		pt := pulcheck.PulCheck(t, bridgedProvider, fmt.Sprintf(`
+        name: test
+        runtime: yaml
+        variables:
+            fileAsset:
+                fn::fileAsset: %s
+        resources:
+            mainRes:
+                type: prov:index:Test
+                properties:
+                    testPath: ${fileAsset}
+	`, assetPath))
+
+		pt.Up(t)
+
+		err = os.WriteFile(assetPath, []byte("world"), 0o600)
+		require.NoError(t, err)
+
+		prev := pt.Preview(t, optpreview.Diff())
+
+		autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+        testPath  : asset(file:2cf24db) { /var/folders/82/nqnqw81s1h56l5nv940f9mq00000gn/T/TestAssetDifffile_asset290578291/001/asset.txt }
+Resources:
+    ~ 1 to update
+    1 unchanged
+`).Equal(t, prev.StdOut)
+		pt.Up(t)
+	})
+
+	t.Run("string asset", func(t *testing.T) {
+		pt := pulcheck.PulCheck(t, bridgedProvider, `
+        name: test
+        runtime: yaml
+        variables:
+            stringAsset:
+                fn::stringAsset: hello
+        resources:
+            mainRes:
+                type: prov:index:Test
+                properties:
+                    testPath: ${stringAsset}`)
+		pt.Up(t)
+
+		pt.WritePulumiYaml(t, `
+        name: test
+        runtime: yaml
+        variables:
+            stringAsset:
+                fn::stringAsset: world
+        resources:
+            mainRes:
+                type: prov:index:Test
+                properties:
+                    testPath: ${stringAsset}`)
+
+		prev := pt.Preview(t, optpreview.Diff())
+
+		autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+        testPath  : asset(text:2cf24db) {
+            <contents elided>
+        }
+Resources:
+    ~ 1 to update
+    1 unchanged
+`).Equal(t, prev.StdOut)
+		pt.Up(t)
+	})
+}
+
+func TestArchiveDiff(t *testing.T) {
+	t.Parallel()
+
+	res := &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"test_path": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+		},
+	}
+	tfp := &schema.Provider{
+		ResourcesMap: map[string]*schema.Resource{
+			"prov_test": res,
+		},
+	}
+	resInfo := &info.Resource{
+		Fields: map[string]*info.Schema{
+			"test_path": {
+				Asset: &info.AssetTranslation{
+					Kind:   info.FileArchive,
+					Format: resource.ZIPArchive,
+				},
+			},
+		},
+	}
+	infoMap := map[string]*info.Resource{
+		"prov_test": resInfo,
+	}
+
+	bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp, pulcheck.WithResourceInfo(infoMap))
+
+	t.Run("file archive", func(t *testing.T) {
+		tempDir := t.TempDir()
+		assetPath := filepath.Join(tempDir, "asset")
+		err := os.Mkdir(assetPath, 0o700)
+		require.NoError(t, err)
+		file1Path := filepath.Join(assetPath, "file1.txt")
+		file2Path := filepath.Join(assetPath, "file2.txt")
+		err = os.WriteFile(file1Path, []byte("hello"), 0o600)
+		require.NoError(t, err)
+		err = os.WriteFile(file2Path, []byte("world"), 0o600)
+		require.NoError(t, err)
+
+		pt := pulcheck.PulCheck(t, bridgedProvider, fmt.Sprintf(`
+        name: test
+        runtime: yaml
+        variables:
+            archiveAsset:
+                fn::fileArchive: %s
+        resources:
+            mainRes:
+                type: prov:index:Test
+                properties:
+                    testPath: ${archiveAsset}`, assetPath))
+		pt.Up(t)
+
+		err = os.WriteFile(file1Path, []byte("hello1"), 0o600)
+		require.NoError(t, err)
+		err = os.WriteFile(file2Path, []byte("world1"), 0o600)
+		require.NoError(t, err)
+
+		prev := pt.Preview(t, optpreview.Diff())
+
+		autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+        testPath  : archive(file:8933f25) { /var/folders/82/nqnqw81s1h56l5nv940f9mq00000gn/T/TestArchiveDifffile_archive1715993383/001/asset }
+Resources:
+    ~ 1 to update
+    1 unchanged
+`).Equal(t, prev.StdOut)
+		pt.Up(t)
+	})
+
+	t.Run("asset archive", func(t *testing.T) {
+		pt := pulcheck.PulCheck(t, bridgedProvider, `
+        name: test
+        runtime: yaml
+        variables:
+            assetArchive:
+                fn::assetArchive:
+                    file1:
+                        fn::stringAsset: hello
+                    file2:
+                        fn::stringAsset: world
+        resources:
+            mainRes:
+                type: prov:index:Test
+                properties:
+                    testPath: ${assetArchive}`)
+		pt.Up(t)
+
+		pt.WritePulumiYaml(t, `
+        name: test
+        runtime: yaml
+        variables:
+            assetArchive:
+                fn::assetArchive:
+                    file1:
+                        fn::stringAsset: hello1
+                    file2:
+                        fn::stringAsset: world1
+        resources:
+            mainRes:
+                type: prov:index:Test
+                properties:
+                    testPath: ${assetArchive}`)
+
+		prev := pt.Preview(t, optpreview.Diff())
+
+		autogold.Expect(`Previewing update (test):
+  pulumi:pulumi:Stack: (same)
+    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
+    ~ prov:index/test:Test: (update)
+        [id=newid]
+        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
+        testPath  : archive(assets:2a03253) {
+            "file1": asset(text:2cf24db) {
+                <contents elided>
+            }
+            "file2": asset(text:486ea46) {
+                <contents elided>
+            }
+        }
+Resources:
+    ~ 1 to update
+    1 unchanged
+`).Equal(t, prev.StdOut)
+		pt.Up(t)
+	})
 }
