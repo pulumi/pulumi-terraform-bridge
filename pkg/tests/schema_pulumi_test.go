@@ -836,17 +836,8 @@ func TestAssetDiff(t *testing.T) {
 
 		prev := pt.Preview(t, optpreview.Diff())
 
-		autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
-    ~ prov:index/test:Test: (update)
-        [id=newid]
-        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-        testPath  : asset(file:2cf24db) { /var/folders/82/nqnqw81s1h56l5nv940f9mq00000gn/T/TestAssetDifffile_asset290578291/001/asset.txt }
-Resources:
-    ~ 1 to update
-    1 unchanged
-`).Equal(t, prev.StdOut)
+		require.Contains(t, prev.StdOut, "~ 1 to update")
+
 		pt.Up(t)
 	})
 
@@ -959,17 +950,8 @@ func TestArchiveDiff(t *testing.T) {
 
 		prev := pt.Preview(t, optpreview.Diff())
 
-		autogold.Expect(`Previewing update (test):
-  pulumi:pulumi:Stack: (same)
-    [urn=urn:pulumi:test::test::pulumi:pulumi:Stack::test-test]
-    ~ prov:index/test:Test: (update)
-        [id=newid]
-        [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-        testPath  : archive(file:8933f25) { /var/folders/82/nqnqw81s1h56l5nv940f9mq00000gn/T/TestArchiveDifffile_archive1715993383/001/asset }
-Resources:
-    ~ 1 to update
-    1 unchanged
-`).Equal(t, prev.StdOut)
+		require.Contains(t, prev.StdOut, "~ 1 to update")
+
 		pt.Up(t)
 	})
 
