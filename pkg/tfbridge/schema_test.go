@@ -4222,3 +4222,115 @@ func Test_makeTerraformStateWithOptsMaxItemsOneAdded(t *testing.T) {
 		autogold.Expect(map[string]interface{}{"props": []interface{}{"X"}}).Equal(t, inputs)
 	})
 }
+
+func TestGetAssetTable(t *testing.T) {
+	t.Parallel()
+
+	t.Run("simple asset", func(t *testing.T) {
+		asset, err := resource.NewTextAsset("hello world")
+		require.NoError(t, err)
+		assetProp := resource.NewAssetProperty(asset)
+		props := resource.PropertyMap{"foo": assetProp}
+		ps := map[string]*SchemaInfo{"foo": {Asset: &AssetTranslation{Kind: FileAsset}}}
+		assets, err := getAssetTable(props, ps)
+		assert.NoError(t, err)
+		require.Len(t, assets, 1)
+		for info, v := range assets {
+			assert.Same(t, ps["foo"], info)
+			assert.True(t, v.DeepEquals(assetProp))
+		}
+	})
+
+	t.Run("no assets present", func(t *testing.T) {
+		props := resource.PropertyMap{"bar": resource.NewStringProperty("baz")}
+		ps := map[string]*SchemaInfo{"bar": {}}
+		assets, err := getAssetTable(props, ps)
+		assert.NoError(t, err)
+		assert.Empty(t, assets)
+	})
+
+	t.Run("archive present", func(t *testing.T) {
+		asset, err := resource.NewTextAsset("hello world")
+		require.NoError(t, err)
+		archive, err := resource.NewAssetArchive(map[string]interface{}{"file.txt": asset})
+		require.NoError(t, err)
+		archiveProp := resource.NewArchiveProperty(archive)
+		props := resource.PropertyMap{"arch": archiveProp}
+		ps := map[string]*SchemaInfo{"arch": {Asset: &AssetTranslation{Kind: FileArchive}}}
+		assets, err := getAssetTable(props, ps)
+		assert.NoError(t, err)
+		require.Len(t, assets, 1)
+		for info, v := range assets {
+			assert.Same(t, ps["arch"], info)
+			assert.True(t, v.DeepEquals(archiveProp))
+		}
+	})
+
+	t.Run("asset with no matching SchemaInfo", func(t *testing.T) {
+		asset, err := resource.NewTextAsset("hello world")
+		require.NoError(t, err)
+		assetProp := resource.NewAssetProperty(asset)
+		props := resource.PropertyMap{"missing": assetProp}
+		ps := map[string]*SchemaInfo{}
+		_, err = getAssetTable(props, ps)
+		assert.Error(t, err)
+	})
+
+	t.Run("nested asset", func(t *testing.T) {
+		asset, err := resource.NewTextAsset("hello world")
+		require.NoError(t, err)
+		nestedAsset := resource.NewAssetProperty(asset)
+		nestedProps := resource.PropertyMap{"outer": resource.NewObjectProperty(resource.PropertyMap{"inner": nestedAsset})}
+		nestedPS := map[string]*SchemaInfo{
+			"outer": {Fields: map[string]*SchemaInfo{"inner": {Asset: &AssetTranslation{Kind: FileAsset}}}},
+		}
+		assets, err := getAssetTable(nestedProps, nestedPS)
+		assert.NoError(t, err)
+		found := false
+		for info, v := range assets {
+			if info == nestedPS["outer"].Fields["inner"] && v.DeepEquals(nestedAsset) {
+				found = true
+			}
+		}
+		assert.True(t, found)
+	})
+
+	t.Run("multiple assets", func(t *testing.T) {
+		asset1, err := resource.NewTextAsset("hello world")
+		require.NoError(t, err)
+		asset2, err := resource.NewTextAsset("another asset")
+		require.NoError(t, err)
+		assetProp1 := resource.NewAssetProperty(asset1)
+		assetProp2 := resource.NewAssetProperty(asset2)
+		props := resource.PropertyMap{"foo": assetProp1, "bar": assetProp2}
+		ps := map[string]*SchemaInfo{
+			"foo": {Asset: &AssetTranslation{Kind: FileAsset}},
+			"bar": {Asset: &AssetTranslation{Kind: FileAsset}},
+		}
+		assets, err := getAssetTable(props, ps)
+		assert.NoError(t, err)
+		assert.Len(t, assets, 2)
+		assert.Contains(t, assets, ps["foo"])
+		assert.Contains(t, assets, ps["bar"])
+		assert.True(t, assets[ps["foo"]].DeepEquals(assetProp1))
+		assert.True(t, assets[ps["bar"]].DeepEquals(assetProp2))
+	})
+
+	t.Run("asset with nil SchemaInfo", func(t *testing.T) {
+		asset, err := resource.NewTextAsset("hello world")
+		require.NoError(t, err)
+		assetProp := resource.NewAssetProperty(asset)
+		props := resource.PropertyMap{"foo": assetProp}
+		ps := map[string]*SchemaInfo{"foo": nil}
+		_, err = getAssetTable(props, ps)
+		assert.Error(t, err)
+	})
+
+	t.Run("non-asset value with asset SchemaInfo", func(t *testing.T) {
+		props := resource.PropertyMap{"foo": resource.NewStringProperty("not an asset")}
+		ps := map[string]*SchemaInfo{"foo": {Asset: &AssetTranslation{Kind: FileAsset}}}
+		assets, err := getAssetTable(props, ps)
+		assert.NoError(t, err)
+		assert.Empty(t, assets)
+	})
+}

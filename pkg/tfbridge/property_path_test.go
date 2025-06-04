@@ -8,6 +8,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	shimv2 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v2"
 )
@@ -311,6 +312,101 @@ func TestWalkTwoPropertyValues(t *testing.T) {
 func TestPropertyPath(t *testing.T) {
 	t.Parallel()
 	require.Equal(t, newPropertyPath("foo").Subpath("bar").Key(), detailedDiffKey("foo.bar"))
+}
+
+func TestGetFromSchemaInfo(t *testing.T) {
+	t.Parallel()
+
+	t.Run("top-level string property", func(t *testing.T) {
+		ps := map[string]*info.Schema{
+			"foo": {Name: "foo"},
+		}
+		path := newPropertyPath("foo")
+		sch, err := path.GetFromSchemaInfo(ps)
+		require.NoError(t, err)
+		require.NotNil(t, sch)
+		require.Equal(t, "foo", sch.Name)
+	})
+
+	t.Run("nested property", func(t *testing.T) {
+		ps := map[string]*info.Schema{
+			"parent": {
+				Name: "parent",
+				Fields: map[string]*info.Schema{
+					"child": {Name: "child"},
+				},
+			},
+		}
+		path := newPropertyPath("parent").Subpath("child")
+		sch, err := path.GetFromSchemaInfo(ps)
+		require.NoError(t, err)
+		require.NotNil(t, sch)
+		require.Equal(t, "child", sch.Name)
+	})
+
+	t.Run("list element property", func(t *testing.T) {
+		ps := map[string]*info.Schema{
+			"list": {
+				Name: "list",
+				Elem: &info.Schema{
+					Name: "elem",
+				},
+			},
+		}
+		path := newPropertyPath("list").Index(0)
+		sch, err := path.GetFromSchemaInfo(ps)
+		require.NoError(t, err)
+		require.NotNil(t, sch)
+		require.Equal(t, "elem", sch.Name)
+	})
+
+	t.Run("nested list element property", func(t *testing.T) {
+		ps := map[string]*info.Schema{
+			"list": {
+				Name: "list",
+				Elem: &info.Schema{
+					Fields: map[string]*info.Schema{
+						"foo": {Name: "foo"},
+					},
+				},
+			},
+		}
+		path := newPropertyPath("list").Index(0).Subpath("foo")
+		sch, err := path.GetFromSchemaInfo(ps)
+		require.NoError(t, err)
+		require.NotNil(t, sch)
+		require.Equal(t, "foo", sch.Name)
+	})
+
+	t.Run("returns nil for missing property", func(t *testing.T) {
+		ps := map[string]*info.Schema{
+			"foo": {Name: "foo"},
+		}
+		path := newPropertyPath("bar")
+		sch, err := path.GetFromSchemaInfo(ps)
+		require.NoError(t, err)
+		require.Nil(t, sch)
+	})
+
+	t.Run("returns error for non-string top element", func(t *testing.T) {
+		ps := map[string]*info.Schema{
+			"foo": {Name: "foo"},
+		}
+		path := propertyPath{123}
+		sch, err := path.GetFromSchemaInfo(ps)
+		require.Error(t, err)
+		require.Nil(t, sch)
+	})
+
+	t.Run("returns error for unexpected path element type", func(t *testing.T) {
+		ps := map[string]*info.Schema{
+			"foo": {Name: "foo"},
+		}
+		path := propertyPath{"foo", 1.23}
+		sch, err := path.GetFromSchemaInfo(ps)
+		require.Error(t, err)
+		require.Nil(t, sch)
+	})
 }
 
 func TestLookupSchemasPropertyPath(t *testing.T) {
