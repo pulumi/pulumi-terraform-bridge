@@ -1133,7 +1133,7 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 		}
 
 		if res.Schema != nil {
-			oldAssets, err = getAssetTable(olds, res.Schema.Fields)
+			oldAssets, err = getAssetTable(olds, res.Schema.Fields, res.TF.Schema())
 			if err != nil {
 				return nil, err
 			}

@@ -1884,20 +1884,15 @@ func ExtractInputsFromOutputs(oldInputs, outs resource.PropertyMap,
 	return extractSchemaInputsObject(outs, tfs, ps), nil
 }
 
-func getAssetTable(m resource.PropertyMap, ps map[string]*SchemaInfo) (AssetTable, error) {
+func getAssetTable(m resource.PropertyMap, ps map[string]*SchemaInfo, tfs shim.SchemaMap) (AssetTable, error) {
 	assets := AssetTable{}
 	val := resource.NewObjectProperty(m)
 	_, err := propertyvalue.TransformPropertyValue(
 		resource.PropertyPath{},
 		func(p resource.PropertyPath, v resource.PropertyValue) (resource.PropertyValue, error) {
 			if v.IsAsset() || v.IsArchive() {
-				info, err := propertyPath(p).GetFromSchemaInfo(ps)
-				if err != nil {
-					return v, err
-				}
-				if info == nil {
-					return v, fmt.Errorf("unexpected archive %s", p.String())
-				}
+				schPath := PropertyPathToSchemaPath(p, tfs, ps)
+				info := LookupSchemaInfoMapPath(schPath, ps)
 				assets[info] = v
 			}
 			return v, nil

@@ -4232,7 +4232,7 @@ func TestGetAssetTable(t *testing.T) {
 		assetProp := resource.NewAssetProperty(asset)
 		props := resource.PropertyMap{"foo": assetProp}
 		ps := map[string]*SchemaInfo{"foo": {Asset: &AssetTranslation{Kind: FileAsset}}}
-		assets, err := getAssetTable(props, ps)
+		assets, err := getAssetTable(props, ps, nil)
 		assert.NoError(t, err)
 		require.Len(t, assets, 1)
 		for info, v := range assets {
@@ -4244,7 +4244,7 @@ func TestGetAssetTable(t *testing.T) {
 	t.Run("no assets present", func(t *testing.T) {
 		props := resource.PropertyMap{"bar": resource.NewStringProperty("baz")}
 		ps := map[string]*SchemaInfo{"bar": {}}
-		assets, err := getAssetTable(props, ps)
+		assets, err := getAssetTable(props, ps, nil)
 		assert.NoError(t, err)
 		assert.Empty(t, assets)
 	})
@@ -4257,7 +4257,7 @@ func TestGetAssetTable(t *testing.T) {
 		archiveProp := resource.NewArchiveProperty(archive)
 		props := resource.PropertyMap{"arch": archiveProp}
 		ps := map[string]*SchemaInfo{"arch": {Asset: &AssetTranslation{Kind: FileArchive}}}
-		assets, err := getAssetTable(props, ps)
+		assets, err := getAssetTable(props, ps, nil)
 		assert.NoError(t, err)
 		require.Len(t, assets, 1)
 		for info, v := range assets {
@@ -4272,7 +4272,7 @@ func TestGetAssetTable(t *testing.T) {
 		assetProp := resource.NewAssetProperty(asset)
 		props := resource.PropertyMap{"missing": assetProp}
 		ps := map[string]*SchemaInfo{}
-		_, err = getAssetTable(props, ps)
+		_, err = getAssetTable(props, ps, nil)
 		assert.Error(t, err)
 	})
 
@@ -4284,7 +4284,7 @@ func TestGetAssetTable(t *testing.T) {
 		nestedPS := map[string]*SchemaInfo{
 			"outer": {Fields: map[string]*SchemaInfo{"inner": {Asset: &AssetTranslation{Kind: FileAsset}}}},
 		}
-		assets, err := getAssetTable(nestedProps, nestedPS)
+		assets, err := getAssetTable(nestedProps, nestedPS, nil)
 		assert.NoError(t, err)
 		found := false
 		for info, v := range assets {
@@ -4307,7 +4307,7 @@ func TestGetAssetTable(t *testing.T) {
 			"foo": {Asset: &AssetTranslation{Kind: FileAsset}},
 			"bar": {Asset: &AssetTranslation{Kind: FileAsset}},
 		}
-		assets, err := getAssetTable(props, ps)
+		assets, err := getAssetTable(props, ps, nil)
 		assert.NoError(t, err)
 		assert.Len(t, assets, 2)
 		assert.Contains(t, assets, ps["foo"])
@@ -4322,14 +4322,14 @@ func TestGetAssetTable(t *testing.T) {
 		assetProp := resource.NewAssetProperty(asset)
 		props := resource.PropertyMap{"foo": assetProp}
 		ps := map[string]*SchemaInfo{"foo": nil}
-		_, err = getAssetTable(props, ps)
+		_, err = getAssetTable(props, ps, nil)
 		assert.Error(t, err)
 	})
 
 	t.Run("non-asset value with asset SchemaInfo", func(t *testing.T) {
 		props := resource.PropertyMap{"foo": resource.NewStringProperty("not an asset")}
 		ps := map[string]*SchemaInfo{"foo": {Asset: &AssetTranslation{Kind: FileAsset}}}
-		assets, err := getAssetTable(props, ps)
+		assets, err := getAssetTable(props, ps, nil)
 		assert.NoError(t, err)
 		assert.Empty(t, assets)
 	})

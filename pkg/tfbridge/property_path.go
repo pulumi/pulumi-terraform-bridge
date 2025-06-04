@@ -1,8 +1,6 @@
 package tfbridge
 
 import (
-	"fmt"
-
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -61,40 +59,6 @@ func (k propertyPath) IsReservedKey() bool {
 func (k propertyPath) GetFromMap(v resource.PropertyMap) (resource.PropertyValue, bool) {
 	path := resource.PropertyPath(k)
 	return path.Get(resource.NewProperty(v))
-}
-
-// GetFromSchemaInfo looks up the schema info for the given path.
-// It returns nil if the path is not found in the schema info map.
-// It returns an error if the path is not a valid property path.
-func (k propertyPath) GetFromSchemaInfo(ps map[string]*info.Schema) (*info.Schema, error) {
-	var info *info.Schema
-	top := k[0]
-	stringTop, ok := top.(string)
-	if !ok {
-		return nil, fmt.Errorf("expected path to start with a string, got %T, %v", top, top)
-	}
-
-	info = ps[stringTop]
-	for _, p := range k[1:] {
-		if info == nil {
-			return nil, nil
-		}
-		if stringP, ok := p.(string); ok {
-			if info.Fields == nil {
-				return nil, nil
-			}
-			info = info.Fields[stringP]
-		} else if _, ok := p.(int); ok {
-			if info.Elem == nil {
-				return nil, nil
-			}
-			info = info.Elem
-		} else {
-			return nil, fmt.Errorf("unexpected path element %T, %v", p, p)
-		}
-	}
-
-	return info, nil
 }
 
 func lookupSchemas(
