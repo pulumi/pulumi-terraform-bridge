@@ -1125,13 +1125,22 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 	}
 
 	var state shim.InstanceState
+	var oldAssets AssetTable
 	if pNew, enabled := makeTerraformStateViaUpgradeEnabled(p.info, p.tf, olds); enabled {
 		state, err = makeTerraformStateViaUpgrade(ctx, pNew, res, olds)
 		if err != nil {
 			return nil, errors.Wrapf(err, "unmarshaling %s's instance state via upgrade", urn)
 		}
+
+		if res.Schema != nil {
+			oldAssets, err = getAssetTable(olds, res.Schema.Fields)
+			if err != nil {
+				return nil, err
+			}
+		}
 	} else {
-		state, err = makeTerraformStateWithOpts(ctx, res, req.GetId(), olds, makeTerraformStateOptions(opts))
+		state, oldAssets, err = makeTerraformStateWithAssetsWithOpts(
+			ctx, res, req.GetId(), olds, makeTerraformStateOptions(opts))
 		if err != nil {
 			return nil, errors.Wrapf(err, "unmarshaling %s's instance state", urn)
 		}
@@ -1176,7 +1185,7 @@ func (p *Provider) Diff(ctx context.Context, req *pulumirpc.DiffRequest) (*pulum
 
 		replaceDecision := diff.RequiresNew()
 		detailedDiff, err = makeDetailedDiffV2(
-			ctx, schema, fields, res.TF, p.tf, state, diff, assets, p.supportsSecrets, news, &replaceDecision)
+			ctx, schema, fields, res.TF, p.tf, state, diff, assets, oldAssets, p.supportsSecrets, news, &replaceDecision)
 		if err != nil {
 			return nil, err
 		}

@@ -829,6 +829,7 @@ func makeDetailedDiffV2(
 	state shim.InstanceState,
 	diff shim.InstanceDiff,
 	assets AssetTable,
+	oldAssets AssetTable,
 	supportsSecrets bool,
 	newInputs resource.PropertyMap,
 	replaceOverride *bool,
@@ -848,7 +849,7 @@ func makeDetailedDiffV2(
 	if err != nil {
 		return nil, err
 	}
-	priorProps, err := MakeTerraformResult(ctx, prov, prior, tfs, ps, assets, supportsSecrets)
+	priorProps, err := MakeTerraformResult(ctx, prov, prior, tfs, ps, oldAssets, supportsSecrets)
 	if err != nil {
 		return nil, err
 	}
