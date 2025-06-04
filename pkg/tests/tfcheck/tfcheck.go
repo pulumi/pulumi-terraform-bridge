@@ -135,11 +135,11 @@ func (d *TFDriver) Write(t pulcheck.T, program string) {
 	require.NoErrorf(t, err, "writing test.tf")
 }
 
-// Plans an operation. This sets -refresh=false which is not the default behavior in Terraform but it better matches
+// Plans an operation. This sets  which is not the default behavior in Terraform but it better matches
 // the target behavior that bridged providers currently emulate.
 func (d *TFDriver) Plan(t pulcheck.T) (*TFPlan, error) {
 	planFile := filepath.Join(d.cwd, "test.tfplan")
-	planStdoutBytes, err := d.execTf(t, "plan", "-refresh=false", "-out", planFile, "-no-color")
+	planStdoutBytes, err := d.execTf(t, "plan", "-out", planFile, "-no-color")
 	if err != nil {
 		return nil, err
 	}
@@ -152,18 +152,22 @@ func (d *TFDriver) Plan(t pulcheck.T) (*TFPlan, error) {
 	return &tp, nil
 }
 
-// Executes apply. This sets -refresh=false which is not the default behavior in Terraform but it better matches the
+// Executes apply. This sets  which is not the default behavior in Terraform but it better matches the
 // target behavior that bridged providers currently emulate. Unlike [ApplyPlan] this operation will recompute the plan
 // on the fly.
 func (d *TFDriver) Apply(t pulcheck.T) error {
-	_, err := d.execTf(t, "apply", "-auto-approve", "-refresh=false")
+	_, err := d.execTf(t, "apply", "-auto-approve")
 	return err
 }
 
 // Apply a given plan.
 func (d *TFDriver) ApplyPlan(t pulcheck.T, plan *TFPlan) error {
-	_, err := d.execTf(t, "apply", "-auto-approve", "-refresh=false", plan.PlanFile)
+	_, err := d.execTf(t, "apply", "-auto-approve", plan.PlanFile)
 	return err
+}
+
+func (d *TFDriver) ApplyPlanReturnStdOut(t pulcheck.T, plan *TFPlan) ([]byte, error) {
+	return d.execTf(t, "apply", "-auto-approve", plan.PlanFile)
 }
 
 func (d *TFDriver) Refresh(t pulcheck.T) error {

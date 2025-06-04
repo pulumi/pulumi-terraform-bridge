@@ -159,8 +159,8 @@ func getRepoPath(gitHost string, org string, provider string, version string) (_
 	command.Dir = curWd
 	output, err := command.CombinedOutput()
 	if err != nil {
-		msg := "error running 'go mod download -json' in %q dir for module: %w\n\nOutput: %s"
-		return "", fmt.Errorf(msg, curWd, err, output)
+		msg := "error running 'go mod download -json %q' in %q dir for module: %w\n\nOutput: %s"
+		return "", fmt.Errorf(msg, moduleCoordinates, curWd, err, output)
 	}
 
 	target := struct {
@@ -170,7 +170,8 @@ func getRepoPath(gitHost string, org string, provider string, version string) (_
 	}{}
 
 	if err := json.Unmarshal(output, &target); err != nil {
-		return "", fmt.Errorf("error parsing output of 'go mod download -json' for module: %w", err)
+		return "", fmt.Errorf("error parsing output of 'go mod download -json %q' for module: %w",
+			moduleCoordinates, err)
 	}
 
 	if target.Error != "" {
