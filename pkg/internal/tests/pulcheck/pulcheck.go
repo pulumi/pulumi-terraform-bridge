@@ -99,12 +99,12 @@ func WithValidProvider(t T, tfp *schema.Provider) *schema.Provider {
 		// This is necessary to work around a bug in the TF SDK schema validation where some resources which
 		// do need an Update method will instead be flagged as not needing an Update method.
 		// See https://github.com/pulumi/pulumi-terraform-bridge/pull/2723#issuecomment-2541518646
-		if !resourceNeedsUpdate(r) {
-			r.Schema["update_prop"] = &schema.Schema{
-				Type:     schema.TypeString,
-				Optional: true,
-			}
-		}
+		// if !resourceNeedsUpdate(r) {
+		// 	r.Schema["update_prop"] = &schema.Schema{
+		// 		Type:     schema.TypeString,
+		// 		Optional: true,
+		// 	}
+		// }
 
 		if r.ReadContext == nil {
 			r.ReadContext = func(_ context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
@@ -130,13 +130,13 @@ func WithValidProvider(t T, tfp *schema.Provider) *schema.Provider {
 
 		// Because of the no-op update_prop property added above, all resources will now
 		// need an Update method.
-		if r.UpdateContext == nil {
-			r.UpdateContext = func(
-				ctx context.Context, rd *schema.ResourceData, i interface{},
-			) diag.Diagnostics {
-				return diag.Diagnostics{}
-			}
-		}
+		// if r.UpdateContext == nil {
+		// 	r.UpdateContext = func(
+		// 		ctx context.Context, rd *schema.ResourceData, i interface{},
+		// 	) diag.Diagnostics {
+		// 		return diag.Diagnostics{}
+		// 	}
+		// }
 	}
 	require.NoError(t, tfp.InternalValidate())
 

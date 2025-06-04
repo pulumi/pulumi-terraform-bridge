@@ -72,6 +72,9 @@ type upgradeStateTestCase struct {
 	// would always pick the provider version recorded in the state to perform operations against. So these checks
 	// are possibly moot, but might be useful in the future if Pulumi behavior around refresh changes.
 	ExperimentalPulumiRefresh bool
+
+	// Do not auto-generate an Update function to test resources that do not support Update.
+	DoesNotSupportUpdate bool
 }
 
 type upgradeStateTestPhase string
@@ -164,6 +167,15 @@ func instrumentCustomizeDiff(t *testing.T, tc upgradeStateTestCase) upgradeState
 }
 
 func instrumentUpdate(t *testing.T, tc upgradeStateTestCase) upgradeStateTestCase {
+	if tc.DoesNotSupportUpdate {
+		r1 := *tc.Resource1
+		require.Nilf(t, r1.UpdateContext, "Resource1.UpdateContext is not compatible with DoesNotSupportUpdate")
+		r2 := *tc.Resource2
+		require.Nilf(t, r2.UpdateContext, "Resource2.UpdateContext is not compatible with DoesNotSupportUpdate")
+
+		return tc
+	}
+
 	r2 := *tc.Resource2
 	require.Nilf(t, r2.UpdateContext, "Resource2.UpdateContext cannot yet be set in tests")
 
@@ -388,15 +400,17 @@ func runUpgradeStateTestTF(t T, tc upgradeStateTestCase) []upgradeStateTrace {
 	tracker.phase = previewPhase
 	plan, err := tfd2.writePlanErr(t, tc.Resource2.Schema, defRtype, rname, inputs2, lifecycleArgs{})
 	if tc.ExpectFailure {
-		require.Errorf(t, err, "refresh should have failed")
+		require.Errorf(t, err, "plan should have failed")
 		return tracker.trace
 	}
-	require.NoErrorf(t, err, "refresh should not have failed")
+	require.NoErrorf(t, err, "plan should not have failed")
+	t.Logf("plan.StdOut: %s", plan.StdOut)
 
 	t.Logf("#### apply (similar to update)")
 	tracker.phase = updatePhase
-	err = tfd2.driver.ApplyPlan(t, plan)
+	applyStdout, err := tfd2.driver.ApplyPlanReturnStdOut(t, plan)
 	require.NoError(t, err)
+	t.Logf("applyStdout: %s", string(applyStdout))
 
 	return tracker.trace
 }
