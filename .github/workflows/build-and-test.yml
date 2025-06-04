@@ -20,6 +20,22 @@ env:
   PULUMI_SKIP_UPDATE_CHECK: true
 
 jobs:
+  install-plugins:
+    strategy:
+      matrix:
+        platform: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - name: Install plugins
+        run: make install_plugins
+      # cache the plugins
+      - name: Cache plugins
+        uses: actions/cache@v4
+        with:
+          path: ~/.pulumi/plugins
+          key: ${{ runner.os }}-plugins
+          restore-keys: |
+            ${{ runner.os }}-plugins
   test:
     strategy:
       # Collect all test failures instead of stopping when only one test is failing.
@@ -197,6 +213,13 @@ jobs:
       - name: Shard tests
         run: echo "RUN_TEST_CMD=$(go run github.com/pulumi/shard@0c8eaa6 --total ${{ env.TOTAL_SHARDS }} --index ${{ matrix.shard }} --seed 314 --error-on-name-clash)" >> $GITHUB_ENV
         if: ${{ matrix.platform == 'ubuntu-latest' }}
+      - name: Restore plugins
+        uses: actions/cache@v4
+        with:
+          path: ~/.pulumi/plugins
+          key: ${{ matrix.platform }}-plugins
+          restore-keys: |
+            ${{ matrix.platform }}-plugins
       - name: Test
         run: make test
       - name: Upload coverage reports to Codecov
