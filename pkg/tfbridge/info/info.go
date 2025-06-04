@@ -186,6 +186,9 @@ type Provider struct {
 
 	// DisableRequiredWithDefaultTurningOptional disables making required properties optional if they have a default value.
 	DisableRequiredWithDefaultTurningOptional bool
+
+	// Check generated schema for dangling references. Newer providers should opt into this.
+	NoDanglingReferences bool
 }
 
 // HclExampler represents a supplemental HCL example for a given resource or function.
