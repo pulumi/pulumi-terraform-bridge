@@ -3399,3 +3399,106 @@ func TestMakeSetDiffElementResult(t *testing.T) {
 		})
 	}
 }
+
+func TestDetailedDiffAssets(t *testing.T) {
+	t.Parallel()
+
+	schMap := map[string]*schema.Schema{
+		"path": {
+			Type:     schema.TypeString,
+			Optional: true,
+		},
+	}
+	tfs := shimv2.NewSchemaMap(schMap)
+
+	t.Run("file asset", func(t *testing.T) {
+		ps := map[string]*info.Schema{
+			"path": {
+				Fields: map[string]*info.Schema{
+					"path": {
+						Asset: &info.AssetTranslation{
+							Kind: info.FileAsset,
+						},
+					},
+				},
+			},
+		}
+
+		oldAsset, err := resource.NewTextAsset("old")
+		require.NoError(t, err)
+
+		old := resource.PropertyMap{
+			"path": resource.NewAssetProperty(oldAsset),
+		}
+
+		newAsset, err := resource.NewTextAsset("new")
+		require.NoError(t, err)
+
+		new := resource.PropertyMap{
+			"path": resource.NewAssetProperty(newAsset),
+		}
+
+		runDetailedDiffTest(t, old, new, tfs, ps,
+			map[string]*pulumirpc.PropertyDiff{
+				"path": {Kind: pulumirpc.PropertyDiff_UPDATE},
+			},
+		)
+	})
+
+	t.Run("archive asset", func(t *testing.T) {
+		ps := map[string]*info.Schema{
+			"path": {
+				Fields: map[string]*info.Schema{
+					"path": {
+						Asset: &info.AssetTranslation{
+							Kind:   info.FileArchive,
+							Format: resource.ZIPArchive,
+						},
+					},
+				},
+			},
+		}
+
+		file1Asset, err := resource.NewTextAsset("file1")
+		require.NoError(t, err)
+
+		file2Asset, err := resource.NewTextAsset("file2")
+		require.NoError(t, err)
+
+		archive1 := map[string]interface{}{
+			"file1": file1Asset,
+			"file2": file2Asset,
+		}
+
+		oldAsset, err := resource.NewAssetArchive(archive1)
+		require.NoError(t, err)
+
+		old := resource.PropertyMap{
+			"path": resource.NewArchiveProperty(oldAsset),
+		}
+
+		file1AssetNew, err := resource.NewTextAsset("file1New")
+		require.NoError(t, err)
+
+		file2AssetNew, err := resource.NewTextAsset("file2New")
+		require.NoError(t, err)
+
+		archive2 := map[string]interface{}{
+			"file1": file1AssetNew,
+			"file2": file2AssetNew,
+		}
+
+		newAsset, err := resource.NewAssetArchive(archive2)
+		require.NoError(t, err)
+
+		new := resource.PropertyMap{
+			"path": resource.NewArchiveProperty(newAsset),
+		}
+
+		runDetailedDiffTest(t, old, new, tfs, ps,
+			map[string]*pulumirpc.PropertyDiff{
+				"path": {Kind: pulumirpc.PropertyDiff_UPDATE},
+			},
+		)
+	})
+}
