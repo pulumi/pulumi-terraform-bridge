@@ -1893,6 +1893,9 @@ func getAssetTable(m resource.PropertyMap, ps map[string]*SchemaInfo, tfs shim.S
 			if v.IsAsset() || v.IsArchive() {
 				schPath := PropertyPathToSchemaPath(p, tfs, ps)
 				info := LookupSchemaInfoMapPath(schPath, ps)
+				if info == nil {
+					return v, fmt.Errorf("unexpected asset %s", p.String())
+				}
 				assets[info] = v
 			}
 			return v, nil

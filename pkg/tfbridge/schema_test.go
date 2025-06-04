@@ -37,6 +37,7 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/internal/testprovider"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/reservedkeys"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 	shimv1 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v1"
@@ -4232,7 +4233,13 @@ func TestGetAssetTable(t *testing.T) {
 		assetProp := resource.NewAssetProperty(asset)
 		props := resource.PropertyMap{"foo": assetProp}
 		ps := map[string]*SchemaInfo{"foo": {Asset: &AssetTranslation{Kind: FileAsset}}}
-		assets, err := getAssetTable(props, ps, nil)
+		tfs := shimv2.NewSchemaMap(map[string]*schemav2.Schema{
+			"foo": {
+				Type:     schemav2.TypeString,
+				Optional: true,
+			},
+		})
+		assets, err := getAssetTable(props, ps, tfs)
 		assert.NoError(t, err)
 		require.Len(t, assets, 1)
 		for info, v := range assets {
@@ -4244,7 +4251,13 @@ func TestGetAssetTable(t *testing.T) {
 	t.Run("no assets present", func(t *testing.T) {
 		props := resource.PropertyMap{"bar": resource.NewStringProperty("baz")}
 		ps := map[string]*SchemaInfo{"bar": {}}
-		assets, err := getAssetTable(props, ps, nil)
+		tfs := shimv2.NewSchemaMap(map[string]*schemav2.Schema{
+			"bar": {
+				Type:     schemav2.TypeString,
+				Optional: true,
+			},
+		})
+		assets, err := getAssetTable(props, ps, tfs)
 		assert.NoError(t, err)
 		assert.Empty(t, assets)
 	})
@@ -4257,7 +4270,13 @@ func TestGetAssetTable(t *testing.T) {
 		archiveProp := resource.NewArchiveProperty(archive)
 		props := resource.PropertyMap{"arch": archiveProp}
 		ps := map[string]*SchemaInfo{"arch": {Asset: &AssetTranslation{Kind: FileArchive}}}
-		assets, err := getAssetTable(props, ps, nil)
+		tfs := shimv2.NewSchemaMap(map[string]*schemav2.Schema{
+			"arch": {
+				Type:     schemav2.TypeString,
+				Optional: true,
+			},
+		})
+		assets, err := getAssetTable(props, ps, tfs)
 		assert.NoError(t, err)
 		require.Len(t, assets, 1)
 		for info, v := range assets {
@@ -4272,7 +4291,13 @@ func TestGetAssetTable(t *testing.T) {
 		assetProp := resource.NewAssetProperty(asset)
 		props := resource.PropertyMap{"missing": assetProp}
 		ps := map[string]*SchemaInfo{}
-		_, err = getAssetTable(props, ps, nil)
+		tfs := shimv2.NewSchemaMap(map[string]*schemav2.Schema{
+			"bar": {
+				Type:     schemav2.TypeString,
+				Optional: true,
+			},
+		})
+		_, err = getAssetTable(props, ps, tfs)
 		assert.Error(t, err)
 	})
 
@@ -4282,13 +4307,29 @@ func TestGetAssetTable(t *testing.T) {
 		nestedAsset := resource.NewAssetProperty(asset)
 		nestedProps := resource.PropertyMap{"outer": resource.NewObjectProperty(resource.PropertyMap{"inner": nestedAsset})}
 		nestedPS := map[string]*SchemaInfo{
-			"outer": {Fields: map[string]*SchemaInfo{"inner": {Asset: &AssetTranslation{Kind: FileAsset}}}},
+			"outer": {
+				Elem: &info.Schema{Fields: map[string]*SchemaInfo{
+					"inner": {Asset: &AssetTranslation{Kind: FileAsset}},
+				}},
+			},
 		}
-		assets, err := getAssetTable(nestedProps, nestedPS, nil)
+		tfs := shimv2.NewSchemaMap(map[string]*schemav2.Schema{
+			"outer": {
+				Type:     schemav2.TypeList,
+				Optional: true,
+				MaxItems: 1,
+				Elem: &schemav2.Resource{
+					Schema: map[string]*schemav2.Schema{
+						"inner": {Type: schemav2.TypeString, Optional: true},
+					},
+				},
+			},
+		})
+		assets, err := getAssetTable(nestedProps, nestedPS, tfs)
 		assert.NoError(t, err)
 		found := false
 		for info, v := range assets {
-			if info == nestedPS["outer"].Fields["inner"] && v.DeepEquals(nestedAsset) {
+			if info == nestedPS["outer"].Elem.Fields["inner"] && v.DeepEquals(nestedAsset) {
 				found = true
 			}
 		}
@@ -4307,7 +4348,11 @@ func TestGetAssetTable(t *testing.T) {
 			"foo": {Asset: &AssetTranslation{Kind: FileAsset}},
 			"bar": {Asset: &AssetTranslation{Kind: FileAsset}},
 		}
-		assets, err := getAssetTable(props, ps, nil)
+		tfs := shimv2.NewSchemaMap(map[string]*schemav2.Schema{
+			"foo": {Type: schemav2.TypeString, Optional: true},
+			"bar": {Type: schemav2.TypeString, Optional: true},
+		})
+		assets, err := getAssetTable(props, ps, tfs)
 		assert.NoError(t, err)
 		assert.Len(t, assets, 2)
 		assert.Contains(t, assets, ps["foo"])
@@ -4322,14 +4367,20 @@ func TestGetAssetTable(t *testing.T) {
 		assetProp := resource.NewAssetProperty(asset)
 		props := resource.PropertyMap{"foo": assetProp}
 		ps := map[string]*SchemaInfo{"foo": nil}
-		_, err = getAssetTable(props, ps, nil)
+		tfs := shimv2.NewSchemaMap(map[string]*schemav2.Schema{
+			"foo": {Type: schemav2.TypeString, Optional: true},
+		})
+		_, err = getAssetTable(props, ps, tfs)
 		assert.Error(t, err)
 	})
 
 	t.Run("non-asset value with asset SchemaInfo", func(t *testing.T) {
 		props := resource.PropertyMap{"foo": resource.NewStringProperty("not an asset")}
 		ps := map[string]*SchemaInfo{"foo": {Asset: &AssetTranslation{Kind: FileAsset}}}
-		assets, err := getAssetTable(props, ps, nil)
+		tfs := shimv2.NewSchemaMap(map[string]*schemav2.Schema{
+			"foo": {Type: schemav2.TypeString, Optional: true},
+		})
+		assets, err := getAssetTable(props, ps, tfs)
 		assert.NoError(t, err)
 		assert.Empty(t, assets)
 	})
