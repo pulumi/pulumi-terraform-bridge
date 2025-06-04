@@ -28,11 +28,13 @@ import (
 
 	crosstestsimpl "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/cross-tests/impl"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/pulcheck"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 )
 
 type diffTestCase struct {
 	// Schema for the resource to test diffing on.
-	Resource *schema.Resource
+	Resource     *schema.Resource
+	ResourceInfo *info.Resource
 
 	// Two resource configurations to simulate an Update from the desired state of Config1 to Config2.
 	//
@@ -49,6 +51,9 @@ type diffTestCase struct {
 
 	// Optional second schema to use as an upgrade test with a different schema.
 	Resource2 *schema.Resource
+
+	// Optional second resource info to use as an upgrade test with a different schema.
+	ResourceInfo2Override *info.Resource
 
 	// Whether to skip the diff equivalence check.
 	SkipDiffEquivalenceCheck bool
@@ -76,8 +81,16 @@ func runDiffCheck(t T, tc diffTestCase) crosstestsimpl.DiffResult {
 	tfp1 := &schema.Provider{ResourcesMap: map[string]*schema.Resource{defRtype: resource1}}
 	tfp2 := &schema.Provider{ResourcesMap: map[string]*schema.Resource{defRtype: resource2}}
 
-	bridgedProvider1 := pulcheck.BridgedProvider(t, defProviderShortName, tfp1)
-	bridgedProvider2 := pulcheck.BridgedProvider(t, defProviderShortName, tfp2)
+	resourceInfo1 := tc.ResourceInfo
+	resourceInfo2 := tc.ResourceInfo
+	if tc.ResourceInfo2Override != nil {
+		resourceInfo2 = tc.ResourceInfo2Override
+	}
+
+	bridgedProvider1 := pulcheck.BridgedProvider(t, defProviderShortName, tfp1,
+		pulcheck.WithResourceInfo(map[string]*info.Resource{defRtype: resourceInfo1}))
+	bridgedProvider2 := pulcheck.BridgedProvider(t, defProviderShortName, tfp2,
+		pulcheck.WithResourceInfo(map[string]*info.Resource{defRtype: resourceInfo2}))
 	if tc.DeleteBeforeReplace {
 		bridgedProvider1.Resources[defRtype].DeleteBeforeReplace = true
 		bridgedProvider2.Resources[defRtype].DeleteBeforeReplace = true
