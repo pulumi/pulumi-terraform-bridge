@@ -836,6 +836,8 @@ func TestAssetDiff(t *testing.T) {
 
 		prev := pt.Preview(t, optpreview.Diff())
 
+		require.Contains(t, prev.StdOut, "- testPath: asset(file:2cf24db)")
+		require.Contains(t, prev.StdOut, "+ testPath: asset(file:486ea46)")
 		require.Contains(t, prev.StdOut, "~ 1 to update")
 
 		pt.Up(t)
@@ -875,7 +877,10 @@ func TestAssetDiff(t *testing.T) {
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-        testPath  : asset(text:2cf24db) {
+      - testPath: asset(text:2cf24db) {
+            <contents elided>
+        }
+      + testPath: asset(text:486ea46) {
             <contents elided>
         }
 Resources:
@@ -950,6 +955,7 @@ func TestArchiveDiff(t *testing.T) {
 
 		prev := pt.Preview(t, optpreview.Diff())
 
+		require.Contains(t, prev.StdOut, "~ testPath: archive(file:8933f25->e22d32b)")
 		require.Contains(t, prev.StdOut, "~ 1 to update")
 
 		pt.Up(t)
@@ -997,12 +1003,10 @@ func TestArchiveDiff(t *testing.T) {
     ~ prov:index/test:Test: (update)
         [id=newid]
         [urn=urn:pulumi:test::test::prov:index/test:Test::mainRes]
-        testPath  : archive(assets:2a03253) {
-            "file1": asset(text:2cf24db) {
-                <contents elided>
+      ~ testPath: archive(assets:2a03253->4c74cbf) {
+          ~ "file1": asset(text:2cf24db->91e9240) {"<contents elided>" => "<contents elided>"
             }
-            "file2": asset(text:486ea46) {
-                <contents elided>
+          ~ "file2": asset(text:486ea46->da4c6d4) {"<contents elided>" => "<contents elided>"
             }
         }
 Resources:

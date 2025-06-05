@@ -35,6 +35,7 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/log"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/propertyvalue"
 )
 
 // This file deals with translating between the Pulumi representations of a resource's configuration and state and the
@@ -1345,6 +1346,33 @@ func makeTerraformStateViaUpgradeEnabled(
 	return pp, true
 }
 
+// makeTerraformStateWithAssetsWithOpts is used in Diff when [makeTerraformStateViaUpgrade] is not available.
+func makeTerraformStateWithAssetsWithOpts(
+	ctx context.Context,
+	res Resource,
+	id string,
+	m resource.PropertyMap,
+	opts makeTerraformStateOptions,
+) (shim.InstanceState, AssetTable, error) {
+	// Turn the resource properties into a map. For the most part, this is a straight
+	// Mappable, but we use MapReplace because we use float64s and Terraform uses
+	// ints, to represent numbers.
+	inputs, assets, err := makeTerraformInputsWithOptions(ctx, nil, nil, nil, m, res.TF.Schema(), res.Schema.Fields,
+		makeTerraformInputsOptions{DisableDefaults: true, DisableTFDefaults: true})
+	if err != nil {
+		return nil, nil, err
+	}
+	meta, err := parseMeta(m, res, opts)
+	if err != nil {
+		return nil, nil, err
+	}
+	instanceState, err := res.TF.InstanceState(id, inputs, meta)
+	if err != nil {
+		return nil, nil, err
+	}
+	return instanceState, assets, nil
+}
+
 // The old method used when [makeTerraformStateViaUpgrade] is not available.
 func makeTerraformStateWithOpts(
 	ctx context.Context,
@@ -1353,19 +1381,8 @@ func makeTerraformStateWithOpts(
 	m resource.PropertyMap,
 	opts makeTerraformStateOptions,
 ) (shim.InstanceState, error) {
-	// Turn the resource properties into a map. For the most part, this is a straight
-	// Mappable, but we use MapReplace because we use float64s and Terraform uses
-	// ints, to represent numbers.
-	inputs, _, err := makeTerraformInputsWithOptions(ctx, nil, nil, nil, m, res.TF.Schema(), res.Schema.Fields,
-		makeTerraformInputsOptions{DisableDefaults: true, DisableTFDefaults: true})
-	if err != nil {
-		return nil, err
-	}
-	meta, err := parseMeta(m, res, opts)
-	if err != nil {
-		return nil, err
-	}
-	return res.TF.InstanceState(id, inputs, meta)
+	state, _, err := makeTerraformStateWithAssetsWithOpts(ctx, res, id, m, opts)
+	return state, err
 }
 
 // The preferred method for recreating TF state that is used when the Pulumi state was written with a recent enough
@@ -1865,4 +1882,24 @@ func ExtractInputsFromOutputs(oldInputs, outs resource.PropertyMap,
 	}
 	// Otherwise, take a schema-directed approach that fills out all input-only properties.
 	return extractSchemaInputsObject(outs, tfs, ps), nil
+}
+
+func getAssetTable(m resource.PropertyMap, ps map[string]*SchemaInfo, tfs shim.SchemaMap) AssetTable {
+	assets := AssetTable{}
+	val := resource.NewObjectProperty(m)
+	_, err := propertyvalue.TransformPropertyValue(
+		resource.PropertyPath{},
+		func(p resource.PropertyPath, v resource.PropertyValue) (resource.PropertyValue, error) {
+			if v.IsAsset() || v.IsArchive() {
+				schPath := PropertyPathToSchemaPath(p, tfs, ps)
+				info := LookupSchemaInfoMapPath(schPath, ps)
+				contract.Assertf(info != nil, "unexpected asset %s", p.String())
+				assets[info] = v
+			}
+			return v, nil
+		},
+		val,
+	)
+	contract.AssertNoErrorf(err, "failed to transform property value")
+	return assets
 }

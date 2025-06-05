@@ -11,6 +11,8 @@ import (
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/propertyvalue"
 )
 
+// propertyPath is a wrapper around resource.PropertyPath that adds some convenience methods.
+// If the path is constructed using the propertyPath methods, it will only have string and int elements.
 type propertyPath resource.PropertyPath
 
 func isForceNew(tfs shim.Schema, ps *SchemaInfo) bool {

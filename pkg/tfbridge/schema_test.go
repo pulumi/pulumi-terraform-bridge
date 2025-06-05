@@ -37,6 +37,7 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/internal/testprovider"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/reservedkeys"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge/info"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 	shimv1 "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/sdk-v1"
@@ -4220,5 +4221,169 @@ func Test_makeTerraformStateWithOptsMaxItemsOneAdded(t *testing.T) {
 		require.NoError(t, err)
 
 		autogold.Expect(map[string]interface{}{"props": []interface{}{"X"}}).Equal(t, inputs)
+	})
+}
+
+func TestGetAssetTable(t *testing.T) {
+	t.Parallel()
+
+	t.Run("simple asset", func(t *testing.T) {
+		asset, err := resource.NewTextAsset("hello world")
+		require.NoError(t, err)
+		assetProp := resource.NewAssetProperty(asset)
+		props := resource.PropertyMap{"foo": assetProp}
+		ps := map[string]*SchemaInfo{"foo": {Asset: &AssetTranslation{Kind: FileAsset}}}
+		tfs := shimv2.NewSchemaMap(map[string]*schemav2.Schema{
+			"foo": {
+				Type:     schemav2.TypeString,
+				Optional: true,
+			},
+		})
+		assets := getAssetTable(props, ps, tfs)
+		require.Len(t, assets, 1)
+		for info, v := range assets {
+			assert.Same(t, ps["foo"], info)
+			assert.True(t, v.DeepEquals(assetProp))
+		}
+	})
+
+	t.Run("no assets present", func(t *testing.T) {
+		props := resource.PropertyMap{"bar": resource.NewStringProperty("baz")}
+		ps := map[string]*SchemaInfo{"bar": {}}
+		tfs := shimv2.NewSchemaMap(map[string]*schemav2.Schema{
+			"bar": {
+				Type:     schemav2.TypeString,
+				Optional: true,
+			},
+		})
+		assets := getAssetTable(props, ps, tfs)
+		assert.Empty(t, assets)
+	})
+
+	t.Run("archive present", func(t *testing.T) {
+		asset, err := resource.NewTextAsset("hello world")
+		require.NoError(t, err)
+		archive, err := resource.NewAssetArchive(map[string]interface{}{"file.txt": asset})
+		require.NoError(t, err)
+		archiveProp := resource.NewArchiveProperty(archive)
+		props := resource.PropertyMap{"arch": archiveProp}
+		ps := map[string]*SchemaInfo{"arch": {Asset: &AssetTranslation{Kind: FileArchive}}}
+		tfs := shimv2.NewSchemaMap(map[string]*schemav2.Schema{
+			"arch": {
+				Type:     schemav2.TypeString,
+				Optional: true,
+			},
+		})
+		assets := getAssetTable(props, ps, tfs)
+		require.Len(t, assets, 1)
+		for info, v := range assets {
+			assert.Same(t, ps["arch"], info)
+			assert.True(t, v.DeepEquals(archiveProp))
+		}
+	})
+
+	t.Run("asset with no matching SchemaInfo", func(t *testing.T) {
+		asset, err := resource.NewTextAsset("hello world")
+		require.NoError(t, err)
+		assetProp := resource.NewAssetProperty(asset)
+		props := resource.PropertyMap{"missing": assetProp}
+		ps := map[string]*SchemaInfo{}
+		tfs := shimv2.NewSchemaMap(map[string]*schemav2.Schema{
+			"bar": {
+				Type:     schemav2.TypeString,
+				Optional: true,
+			},
+		})
+		defer func() {
+			if r := recover(); r == nil {
+				assert.Fail(t, "panic did not occur", r)
+			}
+		}()
+		getAssetTable(props, ps, tfs)
+	})
+
+	t.Run("nested asset", func(t *testing.T) {
+		asset, err := resource.NewTextAsset("hello world")
+		require.NoError(t, err)
+		nestedAsset := resource.NewAssetProperty(asset)
+		nestedProps := resource.PropertyMap{"outer": resource.NewObjectProperty(resource.PropertyMap{"inner": nestedAsset})}
+		nestedPS := map[string]*SchemaInfo{
+			"outer": {
+				Elem: &info.Schema{Fields: map[string]*SchemaInfo{
+					"inner": {Asset: &AssetTranslation{Kind: FileAsset}},
+				}},
+			},
+		}
+		tfs := shimv2.NewSchemaMap(map[string]*schemav2.Schema{
+			"outer": {
+				Type:     schemav2.TypeList,
+				Optional: true,
+				MaxItems: 1,
+				Elem: &schemav2.Resource{
+					Schema: map[string]*schemav2.Schema{
+						"inner": {Type: schemav2.TypeString, Optional: true},
+					},
+				},
+			},
+		})
+		assets := getAssetTable(nestedProps, nestedPS, tfs)
+		found := false
+		for info, v := range assets {
+			if info == nestedPS["outer"].Elem.Fields["inner"] && v.DeepEquals(nestedAsset) {
+				found = true
+			}
+		}
+		assert.True(t, found)
+	})
+
+	t.Run("multiple assets", func(t *testing.T) {
+		asset1, err := resource.NewTextAsset("hello world")
+		require.NoError(t, err)
+		asset2, err := resource.NewTextAsset("another asset")
+		require.NoError(t, err)
+		assetProp1 := resource.NewAssetProperty(asset1)
+		assetProp2 := resource.NewAssetProperty(asset2)
+		props := resource.PropertyMap{"foo": assetProp1, "bar": assetProp2}
+		ps := map[string]*SchemaInfo{
+			"foo": {Asset: &AssetTranslation{Kind: FileAsset}},
+			"bar": {Asset: &AssetTranslation{Kind: FileAsset}},
+		}
+		tfs := shimv2.NewSchemaMap(map[string]*schemav2.Schema{
+			"foo": {Type: schemav2.TypeString, Optional: true},
+			"bar": {Type: schemav2.TypeString, Optional: true},
+		})
+		assets := getAssetTable(props, ps, tfs)
+		assert.Len(t, assets, 2)
+		assert.Contains(t, assets, ps["foo"])
+		assert.Contains(t, assets, ps["bar"])
+		assert.True(t, assets[ps["foo"]].DeepEquals(assetProp1))
+		assert.True(t, assets[ps["bar"]].DeepEquals(assetProp2))
+	})
+
+	t.Run("asset with nil SchemaInfo", func(t *testing.T) {
+		asset, err := resource.NewTextAsset("hello world")
+		require.NoError(t, err)
+		assetProp := resource.NewAssetProperty(asset)
+		props := resource.PropertyMap{"foo": assetProp}
+		ps := map[string]*SchemaInfo{"foo": nil}
+		tfs := shimv2.NewSchemaMap(map[string]*schemav2.Schema{
+			"foo": {Type: schemav2.TypeString, Optional: true},
+		})
+		defer func() {
+			if r := recover(); r == nil {
+				assert.Fail(t, "panic did not occur", r)
+			}
+		}()
+		getAssetTable(props, ps, tfs)
+	})
+
+	t.Run("non-asset value with asset SchemaInfo", func(t *testing.T) {
+		props := resource.PropertyMap{"foo": resource.NewStringProperty("not an asset")}
+		ps := map[string]*SchemaInfo{"foo": {Asset: &AssetTranslation{Kind: FileAsset}}}
+		tfs := shimv2.NewSchemaMap(map[string]*schemav2.Schema{
+			"foo": {Type: schemav2.TypeString, Optional: true},
+		})
+		assets := getAssetTable(props, ps, tfs)
+		assert.Empty(t, assets)
 	})
 }
