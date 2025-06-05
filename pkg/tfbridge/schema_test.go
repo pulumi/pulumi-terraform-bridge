@@ -4239,8 +4239,7 @@ func TestGetAssetTable(t *testing.T) {
 				Optional: true,
 			},
 		})
-		assets, err := getAssetTable(props, ps, tfs)
-		assert.NoError(t, err)
+		assets := getAssetTable(props, ps, tfs)
 		require.Len(t, assets, 1)
 		for info, v := range assets {
 			assert.Same(t, ps["foo"], info)
@@ -4257,8 +4256,7 @@ func TestGetAssetTable(t *testing.T) {
 				Optional: true,
 			},
 		})
-		assets, err := getAssetTable(props, ps, tfs)
-		assert.NoError(t, err)
+		assets := getAssetTable(props, ps, tfs)
 		assert.Empty(t, assets)
 	})
 
@@ -4276,8 +4274,7 @@ func TestGetAssetTable(t *testing.T) {
 				Optional: true,
 			},
 		})
-		assets, err := getAssetTable(props, ps, tfs)
-		assert.NoError(t, err)
+		assets := getAssetTable(props, ps, tfs)
 		require.Len(t, assets, 1)
 		for info, v := range assets {
 			assert.Same(t, ps["arch"], info)
@@ -4297,8 +4294,12 @@ func TestGetAssetTable(t *testing.T) {
 				Optional: true,
 			},
 		})
-		_, err = getAssetTable(props, ps, tfs)
-		assert.Error(t, err)
+		defer func() {
+			if r := recover(); r == nil {
+				assert.Fail(t, "panic did not occur", r)
+			}
+		}()
+		getAssetTable(props, ps, tfs)
 	})
 
 	t.Run("nested asset", func(t *testing.T) {
@@ -4325,8 +4326,7 @@ func TestGetAssetTable(t *testing.T) {
 				},
 			},
 		})
-		assets, err := getAssetTable(nestedProps, nestedPS, tfs)
-		assert.NoError(t, err)
+		assets := getAssetTable(nestedProps, nestedPS, tfs)
 		found := false
 		for info, v := range assets {
 			if info == nestedPS["outer"].Elem.Fields["inner"] && v.DeepEquals(nestedAsset) {
@@ -4352,8 +4352,7 @@ func TestGetAssetTable(t *testing.T) {
 			"foo": {Type: schemav2.TypeString, Optional: true},
 			"bar": {Type: schemav2.TypeString, Optional: true},
 		})
-		assets, err := getAssetTable(props, ps, tfs)
-		assert.NoError(t, err)
+		assets := getAssetTable(props, ps, tfs)
 		assert.Len(t, assets, 2)
 		assert.Contains(t, assets, ps["foo"])
 		assert.Contains(t, assets, ps["bar"])
@@ -4370,8 +4369,12 @@ func TestGetAssetTable(t *testing.T) {
 		tfs := shimv2.NewSchemaMap(map[string]*schemav2.Schema{
 			"foo": {Type: schemav2.TypeString, Optional: true},
 		})
-		_, err = getAssetTable(props, ps, tfs)
-		assert.Error(t, err)
+		defer func() {
+			if r := recover(); r == nil {
+				assert.Fail(t, "panic did not occur", r)
+			}
+		}()
+		getAssetTable(props, ps, tfs)
 	})
 
 	t.Run("non-asset value with asset SchemaInfo", func(t *testing.T) {
@@ -4380,8 +4383,7 @@ func TestGetAssetTable(t *testing.T) {
 		tfs := shimv2.NewSchemaMap(map[string]*schemav2.Schema{
 			"foo": {Type: schemav2.TypeString, Optional: true},
 		})
-		assets, err := getAssetTable(props, ps, tfs)
-		assert.NoError(t, err)
+		assets := getAssetTable(props, ps, tfs)
 		assert.Empty(t, assets)
 	})
 }

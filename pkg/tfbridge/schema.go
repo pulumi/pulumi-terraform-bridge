@@ -1884,7 +1884,7 @@ func ExtractInputsFromOutputs(oldInputs, outs resource.PropertyMap,
 	return extractSchemaInputsObject(outs, tfs, ps), nil
 }
 
-func getAssetTable(m resource.PropertyMap, ps map[string]*SchemaInfo, tfs shim.SchemaMap) (AssetTable, error) {
+func getAssetTable(m resource.PropertyMap, ps map[string]*SchemaInfo, tfs shim.SchemaMap) AssetTable {
 	assets := AssetTable{}
 	val := resource.NewObjectProperty(m)
 	_, err := propertyvalue.TransformPropertyValue(
@@ -1893,14 +1893,13 @@ func getAssetTable(m resource.PropertyMap, ps map[string]*SchemaInfo, tfs shim.S
 			if v.IsAsset() || v.IsArchive() {
 				schPath := PropertyPathToSchemaPath(p, tfs, ps)
 				info := LookupSchemaInfoMapPath(schPath, ps)
-				if info == nil {
-					return v, fmt.Errorf("unexpected asset %s", p.String())
-				}
+				contract.Assertf(info != nil, "unexpected asset %s", p.String())
 				assets[info] = v
 			}
 			return v, nil
 		},
 		val,
 	)
-	return assets, err
+	contract.AssertNoErrorf(err, "failed to transform property value")
+	return assets
 }
