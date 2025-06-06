@@ -22,6 +22,7 @@ import (
 	terraformv1 "github.com/hashicorp/terraform-plugin-sdk/terraform"
 	schemav2 "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	terraformv2 "github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 type Settable interface {
@@ -52,7 +53,7 @@ func Timeout(d time.Duration) *time.Duration {
 }
 
 func ProviderV1() *schemav1.Provider {
-	return &schemav1.Provider{
+	prov := &schemav1.Provider{
 		Schema: map[string]*schemav1.Schema{
 			"config_value": {Type: schemav1.TypeString, Optional: true},
 		},
@@ -429,10 +430,13 @@ func ProviderV1() *schemav1.Provider {
 			return nil, nil
 		},
 	}
+
+	contract.AssertNoErrorf(prov.InternalValidate(), "InternalValidate failed")
+	return prov
 }
 
 func ProviderV2() *schemav2.Provider {
-	return &schemav2.Provider{
+	prov := &schemav2.Provider{
 		Schema: map[string]*schemav2.Schema{
 			"config_value": {Type: schemav2.TypeString, Optional: true},
 		},
@@ -832,6 +836,9 @@ func ProviderV2() *schemav2.Provider {
 			return nil, nil
 		},
 	}
+	contract.AssertNoErrorf(prov.InternalValidate(), "InternalValidate failed")
+
+	return prov
 }
 
 func AssertProvider(f func(data *schemav2.ResourceData)) *schemav2.Provider {

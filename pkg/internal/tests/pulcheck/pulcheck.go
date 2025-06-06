@@ -86,13 +86,6 @@ func WithValidProvider(t T, tfp *schema.Provider) *schema.Provider {
 	// Now ensure that tfp is valid
 
 	for _, r := range tfp.ResourcesMap {
-		if r.Schema["id"] == nil {
-			r.Schema["id"] = &schema.Schema{
-				Type:     schema.TypeString,
-				Computed: true,
-			}
-		}
-
 		// If the resource will be flagged as not needing an Update method by the TF SDK schema
 		// validation then add a no-op update_prop property that will instead force the resource
 		// to need an Update method.
