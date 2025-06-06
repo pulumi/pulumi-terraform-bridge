@@ -644,6 +644,7 @@ func (ih *rawStateDeltaHelper) computeDeltaAt(
 
 	schType, err := walk.LookupType(path, ih.schemaType)
 	if err == nil {
+		contract.Assertf(schType != nil, "schType is nil")
 		if schType.IsDynamicType() {
 			return RawStateDelta{Replace: &replaceDelta{Raw: newRawStateFromValue(schType, v)}}, nil
 		}
