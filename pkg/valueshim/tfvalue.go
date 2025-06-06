@@ -192,6 +192,10 @@ func (t tTypeShim) IsObjectType() bool {
 	return t.ty().Is(tftypes.Object{})
 }
 
+func (t tTypeShim) IsDynamicType() bool {
+	return t.ty().Is(tftypes.DynamicPseudoType)
+}
+
 func (t tTypeShim) GoString() string {
 	return t.ty().String()
 }
