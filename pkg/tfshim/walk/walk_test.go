@@ -18,11 +18,13 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-go/tftypes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/valueshim"
 )
 
 var strSchema = (&schema.Schema{
@@ -164,6 +166,107 @@ func TestEncodeDecodeSchemaPath(t *testing.T) {
 				require.NoError(t, err)
 				require.Equal(t, tc.s, ep)
 				require.Equal(t, tc.p, DecodeSchemaPath(ep))
+			}
+		})
+	}
+}
+
+func TestLookupType(t *testing.T) {
+	t.Parallel()
+
+	type testCase struct {
+		p            SchemaPath
+		toplevelType valueshim.Type
+		expectedType valueshim.Type
+		isErr        bool
+	}
+
+	testCases := []testCase{
+		{
+			p: NewSchemaPath(),
+			toplevelType: valueshim.FromTType(tftypes.Object{
+				AttributeTypes: map[string]tftypes.Type{
+					"x": tftypes.String,
+				},
+			}),
+			expectedType: valueshim.FromTType(tftypes.Object{
+				AttributeTypes: map[string]tftypes.Type{
+					"x": tftypes.String,
+				},
+			}),
+		},
+		{
+			p: NewSchemaPath().GetAttr("x"),
+			toplevelType: valueshim.FromTType(tftypes.Object{
+				AttributeTypes: map[string]tftypes.Type{
+					"x": tftypes.String,
+				},
+			}),
+			expectedType: valueshim.FromTType(tftypes.String),
+		},
+		{
+			p: NewSchemaPath().GetAttr("y"),
+			toplevelType: valueshim.FromTType(tftypes.Object{
+				AttributeTypes: map[string]tftypes.Type{
+					"x": tftypes.String,
+				},
+			}),
+			isErr: true,
+		},
+		{
+			p: NewSchemaPath().GetAttr("x").GetAttr("y"),
+			toplevelType: valueshim.FromTType(tftypes.Object{
+				AttributeTypes: map[string]tftypes.Type{
+					"x": tftypes.Object{
+						AttributeTypes: map[string]tftypes.Type{
+							"y": tftypes.String,
+						},
+					},
+				},
+			}),
+			expectedType: valueshim.FromTType(tftypes.String),
+		},
+		{
+			p: NewSchemaPath().Element(),
+			toplevelType: valueshim.FromTType(tftypes.Object{
+				AttributeTypes: map[string]tftypes.Type{
+					"x": tftypes.String,
+				},
+			}),
+			isErr: true,
+		},
+		{
+			p: NewSchemaPath().Element(),
+			toplevelType: valueshim.FromTType(tftypes.Map{
+				ElementType: tftypes.String,
+			}),
+			expectedType: valueshim.FromTType(tftypes.String),
+		},
+		{
+			p: NewSchemaPath().Element(),
+			toplevelType: valueshim.FromTType(tftypes.Set{
+				ElementType: tftypes.String,
+			}),
+			expectedType: valueshim.FromTType(tftypes.String),
+		},
+		{
+			p: NewSchemaPath().Element(),
+			toplevelType: valueshim.FromTType(tftypes.List{
+				ElementType: tftypes.String,
+			}),
+			expectedType: valueshim.FromTType(tftypes.String),
+		},
+	}
+
+	for i, tc := range testCases {
+		t.Run(fmt.Sprintf("%d", i), func(t *testing.T) {
+			actualType, err := LookupType(tc.p, tc.toplevelType)
+			if tc.isErr {
+				require.NotNil(t, err)
+				t.Logf("ERROR: %v", err)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tc.expectedType, actualType)
 			}
 		})
 	}

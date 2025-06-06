@@ -339,7 +339,8 @@ func (p *provider) returnTerraformConfig() (resource.PropertyMap, error) {
 	}
 	// use valueshim package to marshal tfConfigValue into raw json,
 	// which can be unmarshaled into a map[string]interface{}
-	configJSONMessage, err := valueshim.FromTValue(tfConfigValue).Marshal()
+	value := valueshim.FromTValue(tfConfigValue)
+	configJSONMessage, err := value.Marshal(value.Type())
 	if err != nil {
 		return nil, fmt.Errorf("error marshaling into raw JSON message: %v", err)
 	}
