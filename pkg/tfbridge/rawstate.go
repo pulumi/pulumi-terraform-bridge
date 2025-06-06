@@ -643,28 +643,29 @@ func (ih *rawStateDeltaHelper) computeDeltaAt(
 		}
 	}
 
-	tfs, ps, err := LookupSchemas(path, ih.schemaMap, ih.schemaInfos)
-	contract.AssertNoErrorf(err, "LookupSchemas failed")
+	tfs, _, err := LookupSchemas(path, ih.schemaMap, ih.schemaInfos)
+	if err == nil {
+		if tfs.Type() == shim.TypeDynamic {
+			relevantSchemaType, err := walk.LookupType(path, ih.schemaType)
+			contract.AssertNoErrorf(err, "LookupType failed")
+	
+			return RawStateDelta{Replace: &replaceDelta{Raw: newRawStateFromValue(relevantSchemaType, v)}}, nil
+		}
+	}
 
 	// For assets and archives, save their AssetTranslation, so that at read time this AssetTranslation can be
 	// invoked to TranslateAsset or TranslateArchive.
 	if pv.IsAsset() || pv.IsArchive() {
-		contract.Assertf(ps != nil && ps.Asset != nil,
+		schemaInfo := LookupSchemaInfoMapPath(path, ih.schemaInfos)
+		contract.Assertf(schemaInfo != nil && schemaInfo.Asset != nil,
 			"Assets must be matched with SchemaInfo with AssetTranslation [%q]",
 			path.MustEncodeSchemaPath())
-		at := ps.Asset
+		at := schemaInfo.Asset
 		return RawStateDelta{Asset: &assetDelta{
 			Kind:      at.Kind,
 			Format:    at.Format,
 			HashField: at.HashField,
 		}}, nil
-	}
-
-	if tfs.Type() == shim.TypeDynamic {
-		relevantSchemaType, err := walk.LookupType(path, ih.schemaType)
-		contract.AssertNoErrorf(err, "LookupType failed")
-
-		return RawStateDelta{Replace: &replaceDelta{Raw: newRawStateFromValue(relevantSchemaType, v)}}, nil
 	}
 
 	switch {
