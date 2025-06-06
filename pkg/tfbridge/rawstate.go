@@ -643,19 +643,28 @@ func (ih *rawStateDeltaHelper) computeDeltaAt(
 		}
 	}
 
+	tfs, ps, err := LookupSchemas(path, ih.schemaMap, ih.schemaInfos)
+	contract.AssertNoErrorf(err, "LookupSchemas failed")
+
 	// For assets and archives, save their AssetTranslation, so that at read time this AssetTranslation can be
 	// invoked to TranslateAsset or TranslateArchive.
 	if pv.IsAsset() || pv.IsArchive() {
-		schemaInfo := LookupSchemaInfoMapPath(path, ih.schemaInfos)
-		contract.Assertf(schemaInfo != nil && schemaInfo.Asset != nil,
+		contract.Assertf(ps != nil && ps.Asset != nil,
 			"Assets must be matched with SchemaInfo with AssetTranslation [%q]",
 			path.MustEncodeSchemaPath())
-		at := schemaInfo.Asset
+		at := ps.Asset
 		return RawStateDelta{Asset: &assetDelta{
 			Kind:      at.Kind,
 			Format:    at.Format,
 			HashField: at.HashField,
 		}}, nil
+	}
+
+	if tfs.Type() == shim.TypeDynamic {
+		relevantSchemaType, err := walk.LookupType(path, ih.schemaType)
+		contract.AssertNoErrorf(err, "LookupType failed")
+
+		return RawStateDelta{Replace: &replaceDelta{Raw: newRawStateFromValue(relevantSchemaType, v)}}, nil
 	}
 
 	switch {
