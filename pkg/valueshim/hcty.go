@@ -154,6 +154,10 @@ func (t hctyTypeShim) IsObjectType() bool {
 	return t.ty().IsObjectType()
 }
 
+func (t hctyTypeShim) IsDynamicType() bool {
+	return t.ty().Equals(cty.DynamicPseudoType)
+}
+
 func (t hctyTypeShim) AttributeType(name string) (Type, bool) {
 	tt := t.ty()
 	if !tt.IsObjectType() {

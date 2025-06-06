@@ -57,6 +57,7 @@ type Type interface {
 	IsMapType() bool
 	IsSetType() bool
 	IsObjectType() bool
+	IsDynamicType() bool
 	AttributeType(name string) (Type, bool)
 	ElementType() (Type, bool)
 	GoString() string
