@@ -1155,9 +1155,11 @@ func Test_rawstate_against_MakeTerraformOutputs(t *testing.T) {
 
 			outMap := MakeTerraformOutputs(ctx, p, stateObj, tfs, tc.ps, assets, supportsSecrets)
 
+			schemaType := p.ResourcesMap().Get(tok).SchemaType()
 			ih := &rawStateDeltaHelper{
 				schemaMap:   tfs,
 				schemaInfos: tc.ps,
+				schemaType:  schemaType,
 			}
 
 			pv := resource.NewObjectProperty(outMap)
@@ -1168,8 +1170,7 @@ func Test_rawstate_against_MakeTerraformOutputs(t *testing.T) {
 			deltaJSON, err := json.MarshalIndent(deltaPV.Mappable(), "", "  ")
 			require.NoError(t, err)
 			tc.infl.Equal(t, string(deltaJSON))
-
-			err = delta.turnaroundCheck(ctx, newRawStateFromValue(stateValue.Type(), stateValue), pv)
+			err = delta.turnaroundCheck(ctx, newRawStateFromValue(schemaType, stateValue), pv)
 			assert.NoError(t, err)
 		})
 	}
