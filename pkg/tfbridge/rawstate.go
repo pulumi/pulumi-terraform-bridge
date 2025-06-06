@@ -643,13 +643,10 @@ func (ih *rawStateDeltaHelper) computeDeltaAt(
 		}
 	}
 
-	tfs, _, err := LookupSchemas(path, ih.schemaMap, ih.schemaInfos)
+	schType, err := walk.LookupType(path, ih.schemaType)
 	if err == nil {
-		if tfs.Type() == shim.TypeDynamic {
-			relevantSchemaType, err := walk.LookupType(path, ih.schemaType)
-			contract.AssertNoErrorf(err, "LookupType failed")
-	
-			return RawStateDelta{Replace: &replaceDelta{Raw: newRawStateFromValue(relevantSchemaType, v)}}, nil
+		if schType.IsDynamicType() {
+			return RawStateDelta{Replace: &replaceDelta{Raw: newRawStateFromValue(schType, v)}}, nil
 		}
 	}
 
