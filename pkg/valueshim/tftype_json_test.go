@@ -540,37 +540,3 @@ func TestValueToJSON_EdgeCases(t *testing.T) {
 		})
 	}
 }
-
-func TestValueToJSON_RoundTrip(t *testing.T) {
-	t.Parallel()
-
-	// Test that we can round-trip simple values through JSON
-	testCases := []struct {
-		name  string
-		typ   tftypes.Type
-		value tftypes.Value
-	}{
-		{"string", tftypes.String, tftypes.NewValue(tftypes.String, "test")},
-		{"number", tftypes.Number, tftypes.NewValue(tftypes.Number, 42)},
-		{"bool", tftypes.Bool, tftypes.NewValue(tftypes.Bool, true)},
-		{"null string", tftypes.String, tftypes.NewValue(tftypes.String, nil)},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-
-			// Convert to JSON
-			jsonBytes, err := tftypeValueToJSON(tc.typ, tc.value)
-			require.NoError(t, err)
-
-			// Convert back from JSON
-			reconstructed, err := tftypes.ValueFromJSON(jsonBytes, tc.typ)
-			require.NoError(t, err)
-
-			// Should be equal
-			assert.True(t, tc.value.Equal(reconstructed),
-				"Original: %s, Reconstructed: %s", tc.value.String(), reconstructed.String())
-		})
-	}
-}

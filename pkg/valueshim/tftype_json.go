@@ -91,6 +91,7 @@ func jsonMarshalBool(v tftypes.Value, typ tftypes.Type, p *tftypes.AttributePath
 
 func jsonMarshalDynamicPseudoType(v tftypes.Value, _ tftypes.Type, p *tftypes.AttributePath) (interface{}, error) {
 	valType := v.Type()
+	//nolint:staticcheck // the method isn't really deprecated but rather internal
 	typeJSON, err := valType.MarshalJSON()
 	if err != nil {
 		return nil, p.NewError(err)
