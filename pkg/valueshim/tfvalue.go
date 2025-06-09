@@ -17,7 +17,6 @@ package valueshim
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"math/big"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
@@ -81,15 +80,11 @@ func (v tValueShim) Marshal(schemaType Type) (json.RawMessage, error) {
 	if !ok {
 		return nil, errors.New("Cannot marshal to RawState: expected schemaType to be of type tTypeShim")
 	}
-	ctyType, err := toCtyType(tt.ty())
+	raw, err := tftypeValueToJSON(tt.ty(), v.val())
 	if err != nil {
-		return nil, fmt.Errorf("Cannot marshal to RawState. Error converting to cty.Type: %w", err)
+		return nil, err
 	}
-	cty, err := toCtyValue(tt.ty(), ctyType, v.val())
-	if err != nil {
-		return nil, fmt.Errorf("Cannot marshal to RawState. Error converting to cty.Value: %w", err)
-	}
-	return FromHCtyValue(cty).Marshal(FromHCtyType(ctyType))
+	return json.RawMessage(raw), nil
 }
 
 func (v tValueShim) Remove(prop string) Value {
