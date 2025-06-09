@@ -121,9 +121,9 @@ func TestValueToJSON(t *testing.T) {
 			expectJSON: autogold.Expect("null"),
 		},
 		{
-			name:  "list empty",
-			typ:   tftypes.List{ElementType: tftypes.String},
-			value: tftypes.NewValue(tftypes.List{ElementType: tftypes.String}, []tftypes.Value{}),
+			name:       "list empty",
+			typ:        tftypes.List{ElementType: tftypes.String},
+			value:      tftypes.NewValue(tftypes.List{ElementType: tftypes.String}, []tftypes.Value{}),
 			expectJSON: autogold.Expect("[]"),
 		},
 		{
@@ -165,9 +165,9 @@ func TestValueToJSON(t *testing.T) {
 			expectJSON: autogold.Expect("null"),
 		},
 		{
-			name:  "set empty",
-			typ:   tftypes.Set{ElementType: tftypes.String},
-			value: tftypes.NewValue(tftypes.Set{ElementType: tftypes.String}, []tftypes.Value{}),
+			name:       "set empty",
+			typ:        tftypes.Set{ElementType: tftypes.String},
+			value:      tftypes.NewValue(tftypes.Set{ElementType: tftypes.String}, []tftypes.Value{}),
 			expectJSON: autogold.Expect("[]"),
 		},
 		{
