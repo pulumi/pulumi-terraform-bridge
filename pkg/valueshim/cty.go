@@ -19,17 +19,17 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/zclconf/go-cty/cty"
-	ctyjson "github.com/zclconf/go-cty/cty/json"
+	"github.com/hashicorp/go-cty/cty"
+	ctyjson "github.com/hashicorp/go-cty/cty/json"
 )
 
 // Wrap a cty.Value as Value.
-func FromCtyValue(v cty.Value) Value {
+func FromHCtyValue(v cty.Value) Value {
 	return ctyValueShim(v)
 }
 
 // Wrap a cty.Type as Type.
-func FromCtyType(v cty.Type) Type {
+func FromHCtyType(v cty.Type) Type {
 	return ctyTypeShim(v)
 }
 
@@ -50,7 +50,7 @@ func (v ctyValueShim) GoString() string {
 }
 
 func (v ctyValueShim) Type() Type {
-	return FromCtyType(v.val().Type())
+	return FromHCtyType(v.val().Type())
 }
 
 func (v ctyValueShim) StringValue() string {
@@ -62,8 +62,7 @@ func (v ctyValueShim) BoolValue() bool {
 }
 
 func (v ctyValueShim) NumberValue() float64 {
-	bf := v.BigFloatValue()
-	f, _ := bf.Float64()
+	f, _ := v.val().AsBigFloat().Float64()
 	return f
 }
 
@@ -109,7 +108,7 @@ func (v ctyValueShim) Marshal(schemaType Type) (json.RawMessage, error) {
 	tt, ok := schemaType.(ctyTypeShim)
 	if !ok {
 		return nil, fmt.Errorf("Cannot marshal to RawState: "+
-			"expected schemaType to be of type ctyTypeShim, got %#T",
+			"expected schemaType to be of type hctyTypeShim, got %#T",
 			schemaType)
 	}
 	raw, err := ctyjson.Marshal(vv, tt.ty())
@@ -167,7 +166,7 @@ func (t ctyTypeShim) AttributeType(name string) (Type, bool) {
 	if !tt.HasAttribute(name) {
 		return nil, false
 	}
-	return FromCtyType(tt.AttributeType(name)), true
+	return FromHCtyType(tt.AttributeType(name)), true
 }
 
 func (t ctyTypeShim) ElementType() (Type, bool) {
@@ -175,7 +174,7 @@ func (t ctyTypeShim) ElementType() (Type, bool) {
 	if !tt.IsCollectionType() {
 		return nil, false
 	}
-	return FromCtyType(tt.ElementType()), true
+	return FromHCtyType(tt.ElementType()), true
 }
 
 func (t ctyTypeShim) GoString() string {
