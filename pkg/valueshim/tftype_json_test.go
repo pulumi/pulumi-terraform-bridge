@@ -367,7 +367,7 @@ func TestValueToJSON_DynamicPseudoType(t *testing.T) {
 	require.NoError(t, err)
 
 	// The result should be a JSON object with type and value fields
-	expected := `{"type":"\"string\"","value":"dynamic content"}`
+	expected := `{"type":"string","value":"dynamic content"}`
 	assert.JSONEq(t, expected, string(result))
 
 	// Also test with other types
@@ -375,14 +375,14 @@ func TestValueToJSON_DynamicPseudoType(t *testing.T) {
 	result, err = tftypeValueToJSON(tftypes.DynamicPseudoType, numberValue)
 	require.NoError(t, err)
 
-	expected = `{"type":"\"number\"","value":42}`
+	expected = `{"type":"number","value":42}`
 	assert.JSONEq(t, expected, string(result))
 
 	boolValue := tftypes.NewValue(tftypes.Bool, true)
 	result, err = tftypeValueToJSON(tftypes.DynamicPseudoType, boolValue)
 	require.NoError(t, err)
 
-	expected = `{"type":"\"bool\"","value":true}`
+	expected = `{"type":"bool","value":true}`
 	assert.JSONEq(t, expected, string(result))
 }
 

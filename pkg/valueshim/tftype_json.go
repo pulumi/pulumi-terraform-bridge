@@ -16,6 +16,7 @@ package valueshim
 
 import (
 	"encoding/json"
+	"fmt"
 	"math/big"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
@@ -31,11 +32,14 @@ func tftypeValueToJSON(typ tftypes.Type, v tftypes.Value) ([]byte, error) {
 }
 
 func jsonMarshal(v tftypes.Value, typ tftypes.Type, p *tftypes.AttributePath) (interface{}, error) {
-	if v.IsNull() {
-		return nil, nil
-	}
 	if !v.IsKnown() {
 		return nil, p.NewErrorf("unknown values cannot be serialized to JSON")
+	}
+	if typ.Is(tftypes.DynamicPseudoType) {
+		return jsonMarshalDynamicPseudoType(v, typ, p)
+	}
+	if v.IsNull() {
+		return nil, nil
 	}
 	switch {
 	case typ.Is(tftypes.String):
@@ -44,8 +48,6 @@ func jsonMarshal(v tftypes.Value, typ tftypes.Type, p *tftypes.AttributePath) (i
 		return jsonMarshalNumber(v, typ, p)
 	case typ.Is(tftypes.Bool):
 		return jsonMarshalBool(v, typ, p)
-	case typ.Is(tftypes.DynamicPseudoType):
-		return jsonMarshalDynamicPseudoType(v, typ, p)
 	case typ.Is(tftypes.List{}):
 		return jsonMarshalList(v, typ.(tftypes.List).ElementType, p)
 	case typ.Is(tftypes.Set{}):
@@ -99,10 +101,11 @@ func jsonMarshalDynamicPseudoType(v tftypes.Value, _ tftypes.Type, p *tftypes.At
 	if err != nil {
 		return nil, p.NewError(err)
 	}
-	return map[string]interface{}{
-		"type":  string(typeJSON),
-		"value": valJSON,
-	}, nil
+	marshalledValJSON, err := json.Marshal(valJSON)
+	if err != nil {
+		return nil, p.NewError(err)
+	}
+	return json.RawMessage(fmt.Sprintf(`{"value": %s, "type": %s}`, marshalledValJSON, typeJSON)), nil
 }
 
 func jsonMarshalList(v tftypes.Value, elementType tftypes.Type, p *tftypes.AttributePath) (interface{}, error) {
