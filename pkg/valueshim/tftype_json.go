@@ -76,8 +76,7 @@ func jsonMarshalNumber(v tftypes.Value, typ tftypes.Type, p *tftypes.AttributePa
 	if err != nil {
 		return nil, p.NewError(err)
 	}
-	f64, _ := n.Float64()
-	return f64, nil
+	return json.Number(n.Text('f', -1)), nil
 }
 
 func jsonMarshalBool(v tftypes.Value, typ tftypes.Type, p *tftypes.AttributePath) (interface{}, error) {
