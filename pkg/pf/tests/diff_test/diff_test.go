@@ -218,7 +218,7 @@ func TestPFDetailedDiffDynamicType(t *testing.T) {
 	})
 
 	t.Run("type change", func(t *testing.T) {
-		// TODO[pulumi/pulumi-terraform-bridge#3078]
+		// TODO[pulumi/pulumi-terraform-bridge#3122]
 		t.Skip(`Error converting tftypes.Number<"1"> (value2) at "AttributeName(\"key\")": can't unmarshal tftypes.Number into *string, expected string`)
 		crosstests.Diff(t, res,
 			map[string]cty.Value{"key": cty.StringVal("value")},
@@ -266,7 +266,7 @@ func TestPFDetailedDiffNestedDynamicType(t *testing.T) {
 	})
 
 	t.Run("type change", func(t *testing.T) {
-		// TODO[pulumi/pulumi-terraform-bridge#3078]
+		// TODO[pulumi/pulumi-terraform-bridge#3122]
 		t.Skip(`Error converting tftypes.Number<"1"> (value2) at "AttributeName(\"key\")": can't unmarshal tftypes.Number into *string, expected string`)
 		crosstests.Diff(t, res,
 			map[string]cty.Value{"key": cty.ObjectVal(map[string]cty.Value{"nested": cty.StringVal("value")})},
