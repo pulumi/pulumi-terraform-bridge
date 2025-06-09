@@ -124,8 +124,7 @@ func TestValueToJSON(t *testing.T) {
 			name:  "list empty",
 			typ:   tftypes.List{ElementType: tftypes.String},
 			value: tftypes.NewValue(tftypes.List{ElementType: tftypes.String}, []tftypes.Value{}),
-			// Empty lists serialize to null, not []
-			expectJSON: autogold.Expect("null"),
+			expectJSON: autogold.Expect("[]"),
 		},
 		{
 			name: "list of strings",
@@ -169,8 +168,7 @@ func TestValueToJSON(t *testing.T) {
 			name:  "set empty",
 			typ:   tftypes.Set{ElementType: tftypes.String},
 			value: tftypes.NewValue(tftypes.Set{ElementType: tftypes.String}, []tftypes.Value{}),
-			// Empty sets serialize to null, not []
-			expectJSON: autogold.Expect("null"),
+			expectJSON: autogold.Expect("[]"),
 		},
 		{
 			name: "set of strings",

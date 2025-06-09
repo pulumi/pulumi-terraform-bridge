@@ -111,14 +111,14 @@ func jsonMarshalList(v tftypes.Value, elementType tftypes.Type, p *tftypes.Attri
 	if err != nil {
 		return nil, p.NewError(err)
 	}
-	var res []interface{}
+	res := make([]interface{}, len(vs))
 	for i, v := range vs {
 		ep := p.WithElementKeyInt(i)
 		e, err := jsonMarshal(v, elementType, ep)
 		if err != nil {
 			return nil, ep.NewError(err)
 		}
-		res = append(res, e)
+		res[i] = e
 	}
 	return res, nil
 }
@@ -129,14 +129,14 @@ func jsonMarshalSet(v tftypes.Value, elementType tftypes.Type, p *tftypes.Attrib
 	if err != nil {
 		return nil, p.NewError(err)
 	}
-	var res []interface{}
-	for _, v := range vs {
+	res := make([]interface{}, len(vs))
+	for i, v := range vs {
 		ep := p.WithElementKeyValue(v)
 		e, err := jsonMarshal(v, elementType, ep)
 		if err != nil {
 			return nil, ep.NewError(err)
 		}
-		res = append(res, e)
+		res[i] = e
 	}
 	return res, nil
 }
@@ -147,7 +147,7 @@ func jsonMarshalMap(v tftypes.Value, elementType tftypes.Type, p *tftypes.Attrib
 	if err != nil {
 		return nil, p.NewError(err)
 	}
-	res := map[string]interface{}{}
+	res := make(map[string]interface{}, len(vs))
 	for k, v := range vs {
 		ep := p.WithElementKeyValue(v)
 		e, err := jsonMarshal(v, elementType, ep)
