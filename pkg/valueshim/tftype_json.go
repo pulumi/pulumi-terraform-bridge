@@ -97,14 +97,22 @@ func jsonMarshalDynamicPseudoType(v tftypes.Value, _ tftypes.Type, p *tftypes.At
 	if err != nil {
 		return nil, p.NewError(err)
 	}
-	valJSON, err := jsonMarshal(v, valType, p)
-	if err != nil {
-		return nil, p.NewError(err)
+
+	var marshalledValJSON []byte
+	// The null case is handled separately to prevent infinite recursion.
+	if v.IsNull() {
+		marshalledValJSON = []byte("null")
+	} else {
+		valJSON, err := jsonMarshal(v, v.Type(), p)
+		if err != nil {
+			return nil, p.NewError(err)
+		}
+		marshalledValJSON, err = json.Marshal(valJSON)
+		if err != nil {
+			return nil, p.NewError(err)
+		}
 	}
-	marshalledValJSON, err := json.Marshal(valJSON)
-	if err != nil {
-		return nil, p.NewError(err)
-	}
+
 	return json.RawMessage(fmt.Sprintf(`{"value": %s, "type": %s}`, marshalledValJSON, typeJSON)), nil
 }
 
