@@ -76,7 +76,7 @@ func (r *v2Resource2) DecodeTimeouts(config shim.ResourceConfig) (*shim.Resource
 }
 
 func (r *v2Resource2) SchemaType() valueshim.Type {
-	return valueshim.FromHCtyType(r.tf.CoreConfigSchema().ImpliedType())
+	return valueshim.FromHctyResourceType(r.tf.CoreConfigSchema().ImpliedType())
 }
 
 type v2InstanceState2 struct {

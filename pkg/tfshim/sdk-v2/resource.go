@@ -35,7 +35,7 @@ func (r v2Resource) SchemaVersion() int {
 }
 
 func (r v2Resource) SchemaType() valueshim.Type {
-	return valueshim.FromHCtyType(r.tf.CoreConfigSchema().ImpliedType())
+	return valueshim.FromHctyResourceType(r.tf.CoreConfigSchema().ImpliedType())
 }
 
 func (r v2Resource) Importer() shim.ImportFunc {

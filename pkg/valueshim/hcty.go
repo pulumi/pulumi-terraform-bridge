@@ -28,6 +28,19 @@ func FromHCtyValue(v cty.Value) Value {
 	return hctyValueShim(v)
 }
 
+func FromHctyResourceType(v cty.Type) Type {
+	if v.IsObjectType() {
+		// remove the timeouts attribute
+		attrsCopy := make(map[string]cty.Type, len(v.AttributeTypes()))
+		for k, v := range v.AttributeTypes() {
+			attrsCopy[k] = v
+		}
+		delete(attrsCopy, "timeouts")
+		v = cty.Object(attrsCopy)
+	}
+	return hctyTypeShim(v)
+}
+
 // Wrap a cty.Type as Type.
 func FromHCtyType(v cty.Type) Type {
 	return hctyTypeShim(v)

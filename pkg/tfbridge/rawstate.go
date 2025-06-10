@@ -828,9 +828,15 @@ func (ih *rawStateDeltaHelper) computeDeltaAt(
 			if subPV, isIntersectingKey := pvElements[key]; isIntersectingKey {
 				delta = ih.deltaAt(subPath, subPV, v)
 			} else {
-				// Missing matching PropertyValue for key, generate a replace delta.
-				n := resource.NewNullProperty()
-				delta = ih.replaceDeltaAt(subPath, n, v, fmt.Errorf("No PropertyValue at key"))
+				if len(path) == 0 && key == "timeouts" {
+					// Timeouts are a special property that accidentally gets pushed here for historical reasons; it is not
+					// relevant for the permanent RawState storage. Ignore it for now.
+					delta = RawStateDelta{}
+				} else {
+					// Missing matching PropertyValue for key, generate a replace delta.
+					n := resource.NewNullProperty()
+					delta = ih.replaceDeltaAt(subPath, n, v, fmt.Errorf("No PropertyValue at key"))
+				}
 			}
 			oDelta.set(k, key, delta)
 			handledKeys[key] = struct{}{}

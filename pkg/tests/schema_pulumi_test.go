@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -1015,4 +1016,50 @@ Resources:
 `).Equal(t, prev.StdOut)
 		pt.Up(t)
 	})
+}
+
+func TestTimeoutsHandling(t *testing.T) {
+	t.Parallel()
+
+	res := &schema.Resource{
+		Schema: map[string]*schema.Schema{
+			"test": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
+		},
+		Timeouts: &schema.ResourceTimeout{
+			Create: schema.DefaultTimeout(time.Second * 10),
+			Update: schema.DefaultTimeout(time.Second * 10),
+		},
+	}
+
+	tfp := &schema.Provider{
+		ResourcesMap: map[string]*schema.Resource{
+			"prov_test": res,
+		},
+	}
+
+	bridgedProvider := pulcheck.BridgedProvider(t, "prov", tfp)
+
+	pt := pulcheck.PulCheck(t, bridgedProvider, `
+        name: test
+        runtime: yaml
+        resources:
+            mainRes:
+                type: prov:index:Test
+                properties:
+                    test: hello`)
+	// we just check that no errors occur.
+	pt.Up(t)
+
+	pt.WritePulumiYaml(t, `
+        name: test
+        runtime: yaml
+        resources:
+            mainRes:
+                type: prov:index:Test
+                properties:
+                    test: hello1`)
+	pt.Up(t)
 }
