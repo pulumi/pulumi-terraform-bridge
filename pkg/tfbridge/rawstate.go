@@ -493,7 +493,8 @@ func RawStateComputeDelta(
 	pv := resource.NewObjectProperty(outMap)
 
 	delta := ih.delta(pv, v)
-	err := delta.turnaroundCheck(ctx, newRawStateFromValue(schemaType, v), pv)
+	vWithoutTimeouts := v.Remove("timeouts")
+	err := delta.turnaroundCheck(ctx, newRawStateFromValue(schemaType, vWithoutTimeouts), pv)
 	if err != nil {
 		return RawStateDelta{}, err
 	}
