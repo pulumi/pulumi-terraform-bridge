@@ -15,9 +15,14 @@
 package schemashim
 
 import (
+	"context"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/internalinter"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/runtypes"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/valueshim"
 )
 
 type schemaOnlyDataSource struct {
@@ -26,6 +31,12 @@ type schemaOnlyDataSource struct {
 }
 
 var _ shim.Resource = (*schemaOnlyDataSource)(nil)
+
+func (r *schemaOnlyDataSource) SchemaType() valueshim.Type {
+	protoSchema, err := r.tf.ResourceProtoSchema(context.Background())
+	contract.AssertNoErrorf(err, "ResourceProtoSchema failed")
+	return valueshim.FromTType(protoSchema.ValueType())
+}
 
 func (r *schemaOnlyDataSource) Schema() shim.SchemaMap {
 	return r.tf.Shim()

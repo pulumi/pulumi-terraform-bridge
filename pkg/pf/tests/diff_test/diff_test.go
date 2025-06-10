@@ -3,15 +3,15 @@ package tfbridgetests
 import (
 	"context"
 	"math/big"
-	"os"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	rschema "github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hexops/autogold/v2"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/zclconf/go-cty/cty"
 
 	pb "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/internal/providerbuilder"
@@ -184,10 +184,6 @@ func TestPFDetailedDiffStringAttribute(t *testing.T) {
 
 func TestPFDetailedDiffDynamicType(t *testing.T) {
 	t.Parallel()
-	if d, ok := os.LookupEnv("PULUMI_RAW_STATE_DELTA_ENABLED"); ok && cmdutil.IsTruthy(d) {
-		// TODO[pulumi/pulumi-terraform-bridge#3078]
-		t.Skip("Does not work with PULUMI_RAW_STATE_DELTA_ENABLED=true")
-	}
 
 	attributeSchema := rschema.Schema{
 		Attributes: map[string]rschema.Attribute{
@@ -222,7 +218,7 @@ func TestPFDetailedDiffDynamicType(t *testing.T) {
 	})
 
 	t.Run("type change", func(t *testing.T) {
-		// TODO[pulumi/pulumi-terraform-bridge#3078]
+		// TODO[pulumi/pulumi-terraform-bridge#3122]
 		t.Skip(`Error converting tftypes.Number<"1"> (value2) at "AttributeName(\"key\")": can't unmarshal tftypes.Number into *string, expected string`)
 		crosstests.Diff(t, res,
 			map[string]cty.Value{"key": cty.StringVal("value")},
@@ -231,10 +227,56 @@ func TestPFDetailedDiffDynamicType(t *testing.T) {
 	})
 }
 
+func TestPFDetailedDiffNestedDynamicType(t *testing.T) {
+	t.Parallel()
+
+	attributeSchema := rschema.Schema{
+		Attributes: map[string]rschema.Attribute{
+			"key": rschema.ObjectAttribute{
+				Optional: true,
+				AttributeTypes: map[string]attr.Type{
+					"nested": types.DynamicType,
+				},
+			},
+		},
+	}
+	res := pb.NewResource(pb.NewResourceArgs{
+		ResourceSchema: attributeSchema,
+	})
+
+	t.Run("no change", func(t *testing.T) {
+		crosstests.Diff(t, res,
+			map[string]cty.Value{"key": cty.ObjectVal(map[string]cty.Value{"nested": cty.StringVal("value")})},
+			map[string]cty.Value{"key": cty.ObjectVal(map[string]cty.Value{"nested": cty.StringVal("value")})},
+		)
+	})
+
+	t.Run("change", func(t *testing.T) {
+		crosstests.Diff(t, res,
+			map[string]cty.Value{"key": cty.ObjectVal(map[string]cty.Value{"nested": cty.StringVal("value")})},
+			map[string]cty.Value{"key": cty.ObjectVal(map[string]cty.Value{"nested": cty.StringVal("value1")})},
+		)
+	})
+
+	t.Run("int no change", func(t *testing.T) {
+		crosstests.Diff(t, res,
+			map[string]cty.Value{"key": cty.ObjectVal(map[string]cty.Value{"nested": cty.NumberVal(big.NewFloat(1))})},
+			map[string]cty.Value{"key": cty.ObjectVal(map[string]cty.Value{"nested": cty.NumberVal(big.NewFloat(1))})},
+		)
+	})
+
+	t.Run("type change", func(t *testing.T) {
+		// TODO[pulumi/pulumi-terraform-bridge#3122]
+		t.Skip(`Error converting tftypes.Number<"1"> (value2) at "AttributeName(\"key\")": can't unmarshal tftypes.Number into *string, expected string`)
+		crosstests.Diff(t, res,
+			map[string]cty.Value{"key": cty.ObjectVal(map[string]cty.Value{"nested": cty.StringVal("value")})},
+			map[string]cty.Value{"key": cty.ObjectVal(map[string]cty.Value{"nested": cty.NumberVal(big.NewFloat(1))})},
+		)
+	})
+}
+
 func TestPFDetailedDiffDynamicTypeWithMigration(t *testing.T) {
 	t.Parallel()
-	// TODO[pulumi/pulumi-terraform-bridge#3078]
-	t.Skip("DynamicPseudoType is not supported")
 
 	attributeSchema := rschema.Schema{
 		Attributes: map[string]rschema.Attribute{

@@ -29,7 +29,16 @@ type Value interface {
 	AsValueMap() map[string]Value
 
 	// Marshals into the "raw state" JSON representation.
-	Marshal() (json.RawMessage, error)
+	//
+	// This is the representation expected on the TF protocol UpgradeResourceState method.
+	//
+	// For correctly encoding DynamicPseudoType values to {"type": "...", "value": "..."} structures, the
+	// schemaType is needed. This encoding will be used when the schema a type is a DynamicPseudoType but
+	// the value type is a concrete type.
+	//
+	// In situations where the DynamicPseudoType encoding is not needed, you can also call Marshal with
+	// value.Type() to assume the intrinsic type of the value.
+	Marshal(schemaType Type) (json.RawMessage, error)
 
 	// Removes a top-level property from an Object.
 	Remove(key string) Value
@@ -48,5 +57,8 @@ type Type interface {
 	IsMapType() bool
 	IsSetType() bool
 	IsObjectType() bool
+	IsDynamicType() bool
+	AttributeType(name string) (Type, bool)
+	ElementType() (Type, bool)
 	GoString() string
 }

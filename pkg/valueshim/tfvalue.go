@@ -16,6 +16,7 @@ package valueshim
 
 import (
 	"encoding/json"
+	"errors"
 	"math/big"
 
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
@@ -74,12 +75,16 @@ func (v tValueShim) AsValueMap() map[string]Value {
 	return res
 }
 
-func (v tValueShim) Marshal() (json.RawMessage, error) {
-	inmem, err := jsonMarshal(v.val(), tftypes.NewAttributePath())
+func (v tValueShim) Marshal(schemaType Type) (json.RawMessage, error) {
+	tt, ok := schemaType.(tTypeShim)
+	if !ok {
+		return nil, errors.New("Cannot marshal to RawState: expected schemaType to be of type tTypeShim")
+	}
+	raw, err := tftypeValueToJSON(tt.ty(), v.val())
 	if err != nil {
 		return nil, err
 	}
-	return json.Marshal(inmem)
+	return json.RawMessage(raw), nil
 }
 
 func (v tValueShim) Remove(prop string) Value {
@@ -144,159 +149,11 @@ func (v tValueShim) StringValue() string {
 	return result
 }
 
-func jsonMarshal(v tftypes.Value, p *tftypes.AttributePath) (interface{}, error) {
-	if v.IsNull() {
-		return nil, nil
-	}
-	if !v.IsKnown() {
-		return nil, p.NewErrorf("unknown values cannot be serialized to JSON")
-	}
-	typ := v.Type()
-	switch {
-	case typ.Is(tftypes.String):
-		return jsonMarshalString(v, p)
-	case typ.Is(tftypes.Number):
-		return jsonMarshalNumber(v, p)
-	case typ.Is(tftypes.Bool):
-		return jsonMarshalBool(v, p)
-	case typ.Is(tftypes.List{}):
-		return jsonMarshalList(v, p)
-	case typ.Is(tftypes.Set{}):
-		return jsonMarshalSet(v, p)
-	case typ.Is(tftypes.Map{}):
-		return jsonMarshalMap(v, p)
-	case typ.Is(tftypes.Tuple{}):
-		return jsonMarshalTuple(v, p)
-	case typ.Is(tftypes.Object{}):
-		return jsonMarshalObject(v, p)
-	}
-
-	return nil, p.NewErrorf("unknown type %s", typ)
-}
-
-func jsonMarshalString(v tftypes.Value, p *tftypes.AttributePath) (interface{}, error) {
-	var stringValue string
-	err := v.As(&stringValue)
-	if err != nil {
-		return nil, p.NewError(err)
-	}
-	return stringValue, nil
-}
-
-func jsonMarshalNumber(v tftypes.Value, p *tftypes.AttributePath) (interface{}, error) {
-	var n big.Float
-	err := v.As(&n)
-	if err != nil {
-		return nil, p.NewError(err)
-	}
-	return json.Number(n.Text('f', -1)), nil
-}
-
-func jsonMarshalBool(v tftypes.Value, p *tftypes.AttributePath) (interface{}, error) {
-	var b bool
-	err := v.As(&b)
-	if err != nil {
-		return nil, p.NewError(err)
-	}
-	return b, nil
-}
-
-func jsonMarshalList(v tftypes.Value, p *tftypes.AttributePath) (interface{}, error) {
-	var vs []tftypes.Value
-	err := v.As(&vs)
-	if err != nil {
-		return nil, p.NewError(err)
-	}
-	res := make([]any, len(vs))
-	for i, v := range vs {
-		ep := p.WithElementKeyInt(i)
-		e, err := jsonMarshal(v, ep)
-		if err != nil {
-			return nil, ep.NewError(err)
-		}
-		res[i] = e
-	}
-	return res, nil
-}
-
-// Important to preserve original order of tftypes.Value here.
-func jsonMarshalSet(v tftypes.Value, p *tftypes.AttributePath) (interface{}, error) {
-	var vs []tftypes.Value
-	err := v.As(&vs)
-	if err != nil {
-		return nil, p.NewError(err)
-	}
-	res := make([]any, len(vs))
-	for i, v := range vs {
-		ep := p.WithElementKeyValue(v)
-		e, err := jsonMarshal(v, ep)
-		if err != nil {
-			return nil, ep.NewError(err)
-		}
-		res[i] = e
-	}
-	return res, nil
-}
-
-func jsonMarshalMap(v tftypes.Value, p *tftypes.AttributePath) (interface{}, error) {
-	var vs map[string]tftypes.Value
-	err := v.As(&vs)
-	if err != nil {
-		return nil, p.NewError(err)
-	}
-	res := make(map[string]any, len(vs))
-	for k, v := range vs {
-		ep := p.WithElementKeyValue(v)
-		e, err := jsonMarshal(v, ep)
-		if err != nil {
-			return nil, ep.NewError(err)
-		}
-		res[k] = e
-	}
-	return res, nil
-}
-
-func jsonMarshalTuple(v tftypes.Value, p *tftypes.AttributePath) (interface{}, error) {
-	var vs []tftypes.Value
-	err := v.As(&vs)
-	if err != nil {
-		return nil, p.NewError(err)
-	}
-	res := make([]any, len(vs))
-	for i, v := range vs {
-		ep := p.WithElementKeyInt(i)
-		e, err := jsonMarshal(v, ep)
-		if err != nil {
-			return nil, ep.NewError(err)
-		}
-		res[i] = e
-	}
-	return res, nil
-}
-
-func jsonMarshalObject(v tftypes.Value, p *tftypes.AttributePath) (interface{}, error) {
-	var vs map[string]tftypes.Value
-	err := v.As(&vs)
-	if err != nil {
-		return nil, p.NewError(err)
-	}
-	res := make(map[string]any, len(vs))
-	for k, v := range vs {
-		ep := p.WithAttributeName(k)
-		e, err := jsonMarshal(v, ep)
-		if err != nil {
-			return nil, ep.NewError(err)
-		}
-		res[k] = e
-	}
-	return res, nil
-}
-
 type tTypeShim struct {
 	t tftypes.Type
 }
 
-var _ Type = (*tTypeShim)(nil)
+var _ Type = tTypeShim{}
 
 func (t tTypeShim) ty() tftypes.Type {
 	return t.t
@@ -330,6 +187,35 @@ func (t tTypeShim) IsObjectType() bool {
 	return t.ty().Is(tftypes.Object{})
 }
 
+func (t tTypeShim) IsDynamicType() bool {
+	return t.ty().Is(tftypes.DynamicPseudoType)
+}
+
 func (t tTypeShim) GoString() string {
 	return t.ty().String()
+}
+
+func (t tTypeShim) AttributeType(name string) (Type, bool) {
+	if !t.IsObjectType() {
+		return nil, false
+	}
+	tt := t.ty()
+	attr, ok := tt.(tftypes.Object).AttributeTypes[name]
+	if !ok {
+		return nil, false
+	}
+	return FromTType(attr), true
+}
+
+func (t tTypeShim) ElementType() (Type, bool) {
+	tt := t.ty()
+	switch {
+	case tt.Is(tftypes.Map{}):
+		return FromTType(tt.(tftypes.Map).ElementType), true
+	case tt.Is(tftypes.List{}):
+		return FromTType(tt.(tftypes.List).ElementType), true
+	case tt.Is(tftypes.Set{}):
+		return FromTType(tt.(tftypes.Set).ElementType), true
+	}
+	return nil, false
 }

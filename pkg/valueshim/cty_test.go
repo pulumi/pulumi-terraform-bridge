@@ -109,8 +109,10 @@ func Test_HCtyValue_Marshal(t *testing.T) {
 	tupType := cty.Tuple([]cty.Type{cty.String, cty.Number})
 
 	type testCase struct {
-		v      cty.Value
-		expect autogold.Value
+		v             cty.Value
+		expect        autogold.Value
+		schemaType    cty.Type
+		hasSchemaType bool
 	}
 
 	testCases := []testCase{
@@ -210,10 +212,51 @@ func Test_HCtyValue_Marshal(t *testing.T) {
 			v:      cty.TupleVal([]cty.Value{ok, n42}),
 			expect: autogold.Expect(`["OK",42]`),
 		},
+		{
+			v:             cty.NullVal(cty.String),
+			schemaType:    cty.DynamicPseudoType,
+			hasSchemaType: true,
+			expect:        autogold.Expect(`{"value":null,"type":"string"}`),
+		},
+		{
+			v:             cty.StringVal("foo"),
+			schemaType:    cty.DynamicPseudoType,
+			hasSchemaType: true,
+			expect:        autogold.Expect(`{"value":"foo","type":"string"}`),
+		},
+		{
+			v:             cty.NumberIntVal(42),
+			schemaType:    cty.DynamicPseudoType,
+			hasSchemaType: true,
+			expect:        autogold.Expect(`{"value":42,"type":"number"}`),
+		},
+		{
+			v:             cty.BoolVal(true),
+			schemaType:    cty.DynamicPseudoType,
+			hasSchemaType: true,
+			expect:        autogold.Expect(`{"value":true,"type":"bool"}`),
+		},
+		{
+			v:             cty.ListVal([]cty.Value{cty.StringVal("A")}),
+			schemaType:    cty.DynamicPseudoType,
+			hasSchemaType: true,
+			expect:        autogold.Expect(`{"value":["A"],"type":["list","string"]}`),
+		},
+		{
+			v:             cty.MapVal(map[string]cty.Value{"x": ok, "y": ok2}),
+			schemaType:    cty.DynamicPseudoType,
+			hasSchemaType: true,
+			expect:        autogold.Expect(`{"value":{"x":"OK","y":"OK2"},"type":["map","string"]}`),
+		},
 	}
 
 	for _, tc := range testCases {
-		raw, err := valueshim.FromHCtyValue(tc.v).Marshal()
+		ty := tc.schemaType
+		if !tc.hasSchemaType {
+			ty = tc.v.Type()
+		}
+		vv := valueshim.FromHCtyValue(tc.v)
+		raw, err := vv.Marshal(valueshim.FromHCtyType(ty))
 		require.NoError(t, err)
 		tc.expect.Equal(t, string(raw))
 	}
@@ -270,4 +313,34 @@ func Test_HCty_ToX(t *testing.T) {
 	assert.Equal(t, "OK", valueshim.FromHCtyValue(cty.StringVal("OK")).StringValue())
 	assert.Equal(t, 42.41, valueshim.FromHCtyValue(cty.NumberFloatVal(42.41)).NumberValue())
 	assert.Equal(t, true, valueshim.FromHCtyValue(cty.BoolVal(true)).BoolValue())
+}
+
+func Test_HCtyType_AttributeType(t *testing.T) {
+	t.Parallel()
+	objTy := cty.Object(map[string]cty.Type{"x": cty.String})
+
+	ty, ok := valueshim.FromHCtyType(objTy).AttributeType("x")
+	assert.True(t, ok)
+	assert.Equal(t, valueshim.FromHCtyType(cty.String), ty)
+
+	_, ok = valueshim.FromHCtyType(objTy).AttributeType("y")
+	assert.False(t, ok)
+}
+
+func Test_HCtyType_ElementType(t *testing.T) {
+	t.Parallel()
+	ty, ok := valueshim.FromHCtyType(cty.Set(cty.Number)).ElementType()
+	assert.True(t, ok)
+	assert.Equal(t, valueshim.FromHCtyType(cty.Number), ty)
+
+	ty, ok = valueshim.FromHCtyType(cty.List(cty.Number)).ElementType()
+	assert.True(t, ok)
+	assert.Equal(t, valueshim.FromHCtyType(cty.Number), ty)
+
+	ty, ok = valueshim.FromHCtyType(cty.Map(cty.Number)).ElementType()
+	assert.True(t, ok)
+	assert.Equal(t, valueshim.FromHCtyType(cty.Number), ty)
+
+	_, ok = valueshim.FromHCtyType(cty.String).ElementType()
+	assert.False(t, ok)
 }

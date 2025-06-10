@@ -454,6 +454,7 @@ func RawStateInjectDelta(
 	schemaMap shim.SchemaMap, // top-level schema for a resource
 	schemaInfos map[string]*SchemaInfo, // top-level schema overrides for a resource
 	outMap resource.PropertyMap,
+	schemaType valueshim.Type,
 	instanceState shim.InstanceState,
 ) error {
 	// If called in a pulumi preview e.g. Create(preview=true) or in a continue-on-error scenario, bail because the
@@ -467,7 +468,7 @@ func RawStateInjectDelta(
 		return nil
 	}
 	v := instanceStateCty.Value()
-	d, err := RawStateComputeDelta(ctx, schemaMap, schemaInfos, outMap, v)
+	d, err := RawStateComputeDelta(ctx, schemaMap, schemaInfos, outMap, schemaType, v)
 	if err != nil {
 		return err
 	}
@@ -480,18 +481,20 @@ func RawStateComputeDelta(
 	schemaMap shim.SchemaMap, // top-level schema for a resource
 	schemaInfos map[string]*SchemaInfo, // top-level schema overrides for a resource
 	outMap resource.PropertyMap,
+	schemaType valueshim.Type,
 	v valueshim.Value,
 ) (RawStateDelta, error) {
 	ih := &rawStateDeltaHelper{
 		schemaMap:   schemaMap,
 		schemaInfos: schemaInfos,
 		logger:      log.TryGetLogger(ctx),
+		schemaType:  schemaType,
 	}
 	pv := resource.NewObjectProperty(outMap)
 
+	delta := ih.delta(pv, v)
 	vWithoutTimeouts := v.Remove("timeouts")
-	delta := ih.delta(pv, vWithoutTimeouts)
-	err := delta.turnaroundCheck(ctx, newRawStateFromValue(vWithoutTimeouts), pv)
+	err := delta.turnaroundCheck(ctx, newRawStateFromValue(schemaType, vWithoutTimeouts), pv)
 	if err != nil {
 		return RawStateDelta{}, err
 	}
@@ -571,6 +574,7 @@ type rawStateDeltaHelper struct {
 	schemaMap   shim.SchemaMap         // top-level schema for a resource
 	schemaInfos map[string]*SchemaInfo // top-level schema overrides for a resource
 	logger      log.Logger
+	schemaType  valueshim.Type
 }
 
 func (ih *rawStateDeltaHelper) delta(pv resource.PropertyValue, v valueshim.Value) RawStateDelta {
@@ -603,7 +607,14 @@ func (ih *rawStateDeltaHelper) replaceDeltaAt(
 			err,
 		))
 	}
-	return RawStateDelta{Replace: &replaceDelta{Raw: newRawStateFromValue(v)}}
+
+	relevantSchemaType, err := walk.LookupType(path, ih.schemaType)
+	if err != nil {
+		// If lookup failed, ignore the schema type; will only affect DynamicPseudoType.
+		relevantSchemaType = v.Type()
+	}
+
+	return RawStateDelta{Replace: &replaceDelta{Raw: newRawStateFromValue(relevantSchemaType, v)}}
 }
 
 // Errors returned from this inner function are simply missed opportunities for optimization, as [deltaAt] will always
@@ -629,6 +640,14 @@ func (ih *rawStateDeltaHelper) computeDeltaAt(
 			if step.Name == "timeouts" {
 				return RawStateDelta{}, nil
 			}
+		}
+	}
+
+	schType, err := walk.LookupType(path, ih.schemaType)
+	if err == nil {
+		contract.Assertf(schType != nil, "schType is nil")
+		if schType.IsDynamicType() {
+			return RawStateDelta{Replace: &replaceDelta{Raw: newRawStateFromValue(schType, v)}}, nil
 		}
 	}
 
@@ -809,9 +828,15 @@ func (ih *rawStateDeltaHelper) computeDeltaAt(
 			if subPV, isIntersectingKey := pvElements[key]; isIntersectingKey {
 				delta = ih.deltaAt(subPath, subPV, v)
 			} else {
-				// Missing matching PropertyValue for key, generate a replace delta.
-				n := resource.NewNullProperty()
-				delta = ih.replaceDeltaAt(subPath, n, v, fmt.Errorf("No PropertyValue at key"))
+				if len(path) == 0 && key == "timeouts" {
+					// Timeouts are a special property that accidentally gets pushed here for historical reasons; it is not
+					// relevant for the permanent RawState storage. Ignore it for now.
+					delta = RawStateDelta{}
+				} else {
+					// Missing matching PropertyValue for key, generate a replace delta.
+					n := resource.NewNullProperty()
+					delta = ih.replaceDeltaAt(subPath, n, v, fmt.Errorf("No PropertyValue at key"))
+				}
 			}
 			oDelta.set(k, key, delta)
 			handledKeys[key] = struct{}{}
@@ -834,8 +859,8 @@ func (ih *rawStateDeltaHelper) computeDeltaAt(
 	}
 }
 
-func newRawStateFromValue(v valueshim.Value) rawstate.RawState {
-	raw, err := v.Marshal()
+func newRawStateFromValue(schemaType valueshim.Type, v valueshim.Value) rawstate.RawState {
+	raw, err := v.Marshal(schemaType)
 	contract.AssertNoErrorf(err, "v.Marshal() failed")
 	return rawstate.RawState(raw)
 }

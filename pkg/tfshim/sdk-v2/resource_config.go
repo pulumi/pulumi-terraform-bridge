@@ -42,7 +42,8 @@ func (c v2ResourceConfig) GetRawConfigMap() (map[string]any, error) {
 		msg := "ConfigMap contains unknowns"
 		return nil, fmt.Errorf("%s", msg)
 	}
-	configJSONMessage, err := valueshim.FromHCtyValue(ctyValue).Marshal()
+	value := valueshim.FromHCtyValue(ctyValue)
+	configJSONMessage, err := value.Marshal(value.Type())
 	if err != nil {
 		return nil, fmt.Errorf("error marshaling into raw JSON message: %v", err)
 	}

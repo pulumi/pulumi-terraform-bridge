@@ -16,19 +16,20 @@ package valueshim
 
 import (
 	"encoding/json"
+	"fmt"
 	"math/big"
 
-	"github.com/hashicorp/go-cty/cty"
-	ctyjson "github.com/hashicorp/go-cty/cty/json"
+	"github.com/zclconf/go-cty/cty"
+	ctyjson "github.com/zclconf/go-cty/cty/json"
 )
 
 // Wrap a cty.Value as Value.
-func FromHCtyValue(v cty.Value) Value {
+func FromCtyValue(v cty.Value) Value {
 	return ctyValueShim(v)
 }
 
 // Wrap a cty.Type as Type.
-func FromHCtyType(v cty.Type) Type {
+func FromCtyType(v cty.Type) Type {
 	return ctyTypeShim(v)
 }
 
@@ -49,7 +50,7 @@ func (v ctyValueShim) GoString() string {
 }
 
 func (v ctyValueShim) Type() Type {
-	return FromHCtyType(v.val().Type())
+	return FromCtyType(v.val().Type())
 }
 
 func (v ctyValueShim) StringValue() string {
@@ -103,18 +104,24 @@ func (v ctyValueShim) Remove(key string) Value {
 	}
 }
 
-func (v ctyValueShim) Marshal() (json.RawMessage, error) {
+func (v ctyValueShim) Marshal(schemaType Type) (json.RawMessage, error) {
 	vv := v.val()
-	raw, err := ctyjson.Marshal(vv, vv.Type())
+	tt, ok := schemaType.(ctyTypeShim)
+	if !ok {
+		return nil, fmt.Errorf("Cannot marshal to RawState: "+
+			"expected schemaType to be of type ctyTypeShim, got %#T",
+			schemaType)
+	}
+	raw, err := ctyjson.Marshal(vv, tt.ty())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Cannot marshal to RawState: %w", err)
 	}
 	return json.RawMessage(raw), nil
 }
 
 type ctyTypeShim cty.Type
 
-var _ Type = (*ctyTypeShim)(nil)
+var _ Type = ctyTypeShim{}
 
 func (t ctyTypeShim) ty() cty.Type {
 	return cty.Type(t)
@@ -146,6 +153,29 @@ func (t ctyTypeShim) IsSetType() bool {
 
 func (t ctyTypeShim) IsObjectType() bool {
 	return t.ty().IsObjectType()
+}
+
+func (t ctyTypeShim) IsDynamicType() bool {
+	return t.ty().Equals(cty.DynamicPseudoType)
+}
+
+func (t ctyTypeShim) AttributeType(name string) (Type, bool) {
+	tt := t.ty()
+	if !tt.IsObjectType() {
+		return nil, false
+	}
+	if !tt.HasAttribute(name) {
+		return nil, false
+	}
+	return FromCtyType(tt.AttributeType(name)), true
+}
+
+func (t ctyTypeShim) ElementType() (Type, bool) {
+	tt := t.ty()
+	if !tt.IsCollectionType() {
+		return nil, false
+	}
+	return FromCtyType(tt.ElementType()), true
 }
 
 func (t ctyTypeShim) GoString() string {

@@ -19,6 +19,7 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/internalinter"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/valueshim"
 )
 
 var (
@@ -111,6 +112,10 @@ func (e element) WriteOnly() bool                             { return false }
 func (o elementObject) DeprecationMessage() string { return "" }
 func (o elementObject) Schema() shim.SchemaMap {
 	return elementObjectMap(o.typ)
+}
+
+func (o elementObject) SchemaType() valueshim.Type {
+	return valueshim.FromTType(o.typ)
 }
 
 func (m elementObjectMap) Len() int { return len(m.AttributeTypes) }

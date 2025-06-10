@@ -8,6 +8,7 @@ import (
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/internalinter"
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
+	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/valueshim"
 )
 
 var (
@@ -30,6 +31,10 @@ func (r v1Resource) Schema() shim.SchemaMap {
 
 func (r v1Resource) SchemaVersion() int {
 	return r.tf.SchemaVersion
+}
+
+func (r v1Resource) SchemaType() valueshim.Type {
+	return valueshim.FromCtyType(r.tf.CoreConfigSchema().ImpliedType())
 }
 
 func (r v1Resource) Importer() shim.ImportFunc {
