@@ -36,7 +36,7 @@ Follow these steps to bridge a Terraform Provider to Pulumi.
     import (
         _ "embed"
         "github.com/hashicorp/terraform-plugin-framework/provider"
-        pf "github.com/pulumi/pulumi-terraform-bridge/v3/pf/tfbridge"
+        pf "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/pf/tfbridge"
         "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
     )
 
