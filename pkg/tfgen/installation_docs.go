@@ -180,6 +180,7 @@ func getDeprecatedProviderNames() []string {
 		"civo",
 		"rke",
 		"libvirt",
+		"sumologic",
 	}
 	return providerNames
 }
