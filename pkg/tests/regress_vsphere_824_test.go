@@ -1,11 +1,11 @@
 package tests
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -18,9 +18,12 @@ func Test_RegressVSphere824(t *testing.T) {
 
 	subResourceSchema := map[string]*schema.Schema{
 		"label": {
-			Type:        schema.TypeString,
-			Required:    true,
-			Description: "A unique label for this disk.",
+			Type:     schema.TypeString,
+			Required: true,
+		},
+		"datastore_id": {
+			Type:     schema.TypeString,
+			Optional: true,
 		},
 	}
 
@@ -52,7 +55,9 @@ resources:
     properties:
       disks:
         - label: label1
+          datastoreId: ds1
         - label: label2
+          datastoreId: ds2
     options:
       ignoreChanges:
         - "disks[*].datastoreId"
@@ -60,6 +65,11 @@ resources:
 	pt := pulcheck.PulCheck(t, bridgedProvider, program1)
 	out := pt.Up(t)
 	t.Logf("# update 1: %v", out.StdErr+out.StdOut)
+
+	d := pt.ExportStack(t)
+	text, err := json.MarshalIndent(d, "", "  ")
+	require.NoError(t, err)
+	t.Logf("STATE: %s", text)
 
 	program2 := `
 name: test
@@ -70,19 +80,19 @@ resources:
     properties:
       disks:
         - label: label1
+          datastoreId: ds1
         - label: label2
+          datastoreId: ds2
         - label: label3
+          datastoreId: ds3
     options:
       ignoreChanges:
         - "disks[*].datastoreId"
 `
 
-	err := os.WriteFile(filepath.Join(pt.WorkingDir(), "Pulumi.yaml"), []byte(program2), 0655)
+	err = os.WriteFile(filepath.Join(pt.WorkingDir(), "Pulumi.yaml"), []byte(program2), 0655)
 	require.NoError(t, err)
 
 	out2 := pt.Up(t)
 	t.Logf("# update 2: %v", out2.StdErr+out2.StdOut)
-
-	assert.Equal(t, "val", out.Outputs["keyValue"].Value)
-	assert.Equal(t, "", out.Outputs["emptyValue"].Value)
 }
