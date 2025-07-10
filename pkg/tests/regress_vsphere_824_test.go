@@ -1,6 +1,8 @@
 package tests
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -90,9 +92,31 @@ resources:
         - "disks[*].datastoreId"
 `
 
+	pp := func(j json.RawMessage) string {
+		var buf bytes.Buffer
+		err := json.Indent(&buf, j, "", "  ")
+		require.NoError(t, err)
+		return buf.String()
+	}
+
+	for _, e := range pt.GrpcLog(t).Entries {
+		t.Logf("%q:\n  %s\n  <-- %s", e.Method, pp(e.Request), pp(e.Response))
+	}
+
 	err = os.WriteFile(filepath.Join(pt.WorkingDir(), "Pulumi.yaml"), []byte(program2), 0655)
 	require.NoError(t, err)
 
-	out2 := pt.Up(t)
+	pt.ClearGrpcLog(t)
+
+	out2, err := pt.CurrentStack().Up(context.Background())
+
+	t.Logf("GRPC entries: %d", len(pt.GrpcLog(t).Entries))
+
+	for _, e := range pt.GrpcLog(t).Entries {
+		t.Logf("%q:\n  %s\n  <-- %s", e.Method, pp(e.Request), pp(e.Response))
+	}
+
 	t.Logf("# update 2: %v", out2.StdErr+out2.StdOut)
+
+	require.NoError(t, err)
 }
