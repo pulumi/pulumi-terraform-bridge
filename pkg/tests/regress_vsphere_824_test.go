@@ -12,6 +12,8 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/internal/tests/pulcheck"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/debug"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optup"
 )
 
 // The test is set up to reproduce https://github.com/pulumi/pulumi-vsphere/issues/824
@@ -110,7 +112,20 @@ resources:
 
 	pt.ClearGrpcLog(t)
 
-	out2, err := pt.CurrentStack().Up(context.Background())
+	var debugOpts debug.LoggingOptions
+
+	// To enable debug logging in this test, un-comment:
+	logLevel := uint(13)
+	debugOpts = debug.LoggingOptions{
+		LogLevel:      &logLevel,
+		LogToStdErr:   true,
+		FlowToPlugins: true,
+		Debug:         true,
+	}
+
+	out2, err := pt.CurrentStack().Up(context.Background(),
+		optup.DebugLogging(debugOpts),
+	)
 
 	t.Logf("GRPC entries: %d", len(pt.GrpcLog(t).Entries))
 
