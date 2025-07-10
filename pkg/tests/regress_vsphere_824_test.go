@@ -95,12 +95,14 @@ resources:
 	pp := func(j json.RawMessage) string {
 		var buf bytes.Buffer
 		err := json.Indent(&buf, j, "", "  ")
-		require.NoError(t, err)
+		if err != nil {
+			return string(j)
+		}
 		return buf.String()
 	}
 
 	for _, e := range pt.GrpcLog(t).Entries {
-		t.Logf("%q:\n  %s\n  <-- %s", e.Method, pp(e.Request), pp(e.Response))
+		t.Logf("%q:\n%s\n=> %s", e.Method, pp(e.Request), pp(e.Response))
 	}
 
 	err = os.WriteFile(filepath.Join(pt.WorkingDir(), "Pulumi.yaml"), []byte(program2), 0655)
@@ -113,7 +115,7 @@ resources:
 	t.Logf("GRPC entries: %d", len(pt.GrpcLog(t).Entries))
 
 	for _, e := range pt.GrpcLog(t).Entries {
-		t.Logf("%q:\n  %s\n  <-- %s", e.Method, pp(e.Request), pp(e.Response))
+		t.Logf("%q:\n%s\n=> %s", e.Method, pp(e.Request), pp(e.Response))
 	}
 
 	t.Logf("# update 2: %v", out2.StdErr+out2.StdOut)
