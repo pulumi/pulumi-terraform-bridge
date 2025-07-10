@@ -67,6 +67,7 @@ resources:
         - "disks[*].datastoreId"
 `
 	pt := pulcheck.PulCheck(t, bridgedProvider, program1)
+
 	out := pt.Up(t)
 	t.Logf("# update 1: %v", out.StdErr+out.StdOut)
 
@@ -115,13 +116,13 @@ resources:
 	var debugOpts debug.LoggingOptions
 
 	// To enable debug logging in this test, un-comment:
-	logLevel := uint(13)
-	debugOpts = debug.LoggingOptions{
-		LogLevel:      &logLevel,
-		LogToStdErr:   true,
-		FlowToPlugins: true,
-		Debug:         true,
-	}
+	// logLevel := uint(13)
+	// debugOpts = debug.LoggingOptions{
+	// 	LogLevel:      &logLevel,
+	// 	LogToStdErr:   true,
+	// 	FlowToPlugins: true,
+	// 	Debug:         true,
+	// }
 
 	out2, err := pt.CurrentStack().Up(context.Background(),
 		optup.DebugLogging(debugOpts),
@@ -135,5 +136,6 @@ resources:
 
 	t.Logf("# update 2: %v", out2.StdErr+out2.StdOut)
 
+	t.Logf("PULUMI VERSION %v", pt.CurrentStack().Workspace().PulumiCommand().Version())
 	require.NoError(t, err)
 }
