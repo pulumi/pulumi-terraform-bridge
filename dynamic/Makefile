@@ -1,7 +1,9 @@
-build: bin
-	go build \
-		-o bin/pulumi-resource-terraform-provider \
-		github.com/pulumi/pulumi-terraform-bridge/v3/dynamic
+build: bin/pulumi-resource-terraform-provider
+
+_ := $(shell mkdir -p bin)
+
+bin/pulumi-resource-terraform-provider:
+	go build -o $@ github.com/pulumi/pulumi-terraform-bridge/v3/dynamic
 
 install: build
 	pulumi plugin rm resource terraform-provider --all --yes
@@ -19,7 +21,4 @@ test:
 test_accept:
 	go test -v ./... -update
 
-bin:
-	mkdir bin
-
-.PHONY: test
+.PHONY: bin/pulumi-resource-terraform-provider install build test_unit test test_acccept
