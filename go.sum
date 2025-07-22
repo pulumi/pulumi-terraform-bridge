@@ -2231,10 +2231,10 @@ github.com/pulumi/pulumi-java/pkg v1.12.0 h1:T7yFnFr0bgqy6huVUANMyUeGO1/Y3r2CJJ6
 github.com/pulumi/pulumi-java/pkg v1.12.0/go.mod h1:g8QQjEgB5wTsZptyf1vbIcI/pgYEGJObnihAEgymkAo=
 github.com/pulumi/pulumi-yaml v1.19.1 h1:Y92eTQv07p5RbbNj6s/54+ibdPgvndLJ2Lb1IjYffng=
 github.com/pulumi/pulumi-yaml v1.19.1/go.mod h1:n1JTtfUXR1IWVJ86HvMvQglK5mrDeDduxsLifGW1WIA=
-github.com/pulumi/pulumi/pkg/v3 v3.183.0 h1:nvUs2oko5peIdrDYmLn1RRDW+sO38/PfHo78Peu5lFk=
-github.com/pulumi/pulumi/pkg/v3 v3.183.0/go.mod h1:Jd6IpgYooIih0IzADV9mZ03eOE4yWxSVB5H58toP/Rw=
-github.com/pulumi/pulumi/sdk/v3 v3.183.0 h1:6yIEg4Gpv7wLlaIxZrVGzOPLQz5b0EZPLbUU2thhrlU=
-github.com/pulumi/pulumi/sdk/v3 v3.183.0/go.mod h1:YS7uQ+eoIV/Fco804Upv3jmz5pwo/MkLYmbGH3VgA9c=
+github.com/pulumi/pulumi/pkg/v3 v3.185.0 h1:5QzUo48Sg9hz43fGnkatRJKU7X/NsVvgQg5yAA/1aNQ=
+github.com/pulumi/pulumi/pkg/v3 v3.185.0/go.mod h1:196jVMW0esXqDO+VQDy5g/py66aoRQxHeqZ+P0uNmHI=
+github.com/pulumi/pulumi/sdk/v3 v3.185.0 h1:+pEMQxo2VvZFjSNw5EkpOdEUu87WflApTK9X/Zej8/Y=
+github.com/pulumi/pulumi/sdk/v3 v3.185.0/go.mod h1:YS7uQ+eoIV/Fco804Upv3jmz5pwo/MkLYmbGH3VgA9c=
 github.com/pulumi/schema-tools v0.1.2 h1:Fd9xvUjgck4NA+7/jSk7InqCUT4Kj940+EcnbQKpfZo=
 github.com/pulumi/schema-tools v0.1.2/go.mod h1:62lgj52Tzq11eqWTIaKd+EVyYAu5dEcDJxMhTjvMO/k=
 github.com/pulumi/terraform-diff-reader v0.0.2 h1:kTE4nEXU3/SYXESvAIem+wyHMI3abqkI3OhJ0G04LLI=
@@ -2719,8 +2719,8 @@ golang.org/x/oauth2 v0.20.0/go.mod h1:XYTD2NtWslqkgxebSiOHnXEap4TF09sJSc7H1sXbht
 golang.org/x/oauth2 v0.22.0/go.mod h1:XYTD2NtWslqkgxebSiOHnXEap4TF09sJSc7H1sXbhtI=
 golang.org/x/oauth2 v0.24.0/go.mod h1:XYTD2NtWslqkgxebSiOHnXEap4TF09sJSc7H1sXbhtI=
 golang.org/x/oauth2 v0.26.0/go.mod h1:XYTD2NtWslqkgxebSiOHnXEap4TF09sJSc7H1sXbhtI=
-golang.org/x/oauth2 v0.27.0 h1:da9Vo7/tDv5RH/7nZDz1eMGS/q1Vv1N/7FCrBhI9I3M=
-golang.org/x/oauth2 v0.27.0/go.mod h1:onh5ek6nERTohokkhCD/y2cV4Do3fxFHFuAejCkRWT8=
+golang.org/x/oauth2 v0.30.0 h1:dnDm7JmhM45NNpd8FDDeLhK6FwqbOf4MLCM9zb1BOHI=
+golang.org/x/oauth2 v0.30.0/go.mod h1:B++QgG3ZKulg6sRPGD/mqlHQs5rB3Ml9erfeDY7xKlU=
 golang.org/x/sync v0.0.0-20180314180146-1d60e4601c6f/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
 golang.org/x/sync v0.0.0-20181108010431-42b317875d0f/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
 golang.org/x/sync v0.0.0-20181221193216-37e7f081c4d4/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
