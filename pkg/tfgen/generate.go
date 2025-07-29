@@ -1532,13 +1532,20 @@ func (g *Generator) gatherResource(rawname string,
 		properties: res.inprops,
 	}
 
+	// Determine if we should error on extraneous mappings
+	failBuildOnExtraMapError := cmdutil.IsTruthy(os.Getenv("PULUMI_EXTRA_MAPPING_ERROR"))
+	// For pulumi-owned providers, we always want to fail on extraneous mappings. They should be removed.
+	if g.info.GitHubOrg == "pulumi" {
+		failBuildOnExtraMapError = true
+	}
+
 	// Ensure there weren't any custom fields that were unrecognized.
 	var errs []error
 	for key := range info.Fields {
 		if _, has := schema.Schema().GetOk(key); !has {
 			msg := fmt.Sprintf("there is a custom mapping on resource '%s' for field '%s', but the field was not "+
 				"found in the Terraform metadata and will be ignored. To fix, remove the mapping.", rawname, key)
-			if cmdutil.IsTruthy(os.Getenv("PULUMI_EXTRA_MAPPING_ERROR")) {
+			if failBuildOnExtraMapError {
 				errs = append(errs, errors.New(msg))
 			} else {
 				g.warn(msg)
@@ -1559,7 +1566,12 @@ func (g *Generator) gatherDataSources() (moduleMap, error) {
 
 	skipFailBuildOnMissingMapError := cmdutil.IsTruthy(os.Getenv("PULUMI_SKIP_MISSING_MAPPING_ERROR")) ||
 		cmdutil.IsTruthy(os.Getenv("PULUMI_SKIP_PROVIDER_MAP_ERROR"))
+
 	failBuildOnExtraMapError := cmdutil.IsTruthy(os.Getenv("PULUMI_EXTRA_MAPPING_ERROR"))
+	// For pulumi-owned providers, we always want to fail on extraneous mappings. They should be removed.
+	if g.info.GitHubOrg == "pulumi" {
+		failBuildOnExtraMapError = true
+	}
 
 	// let's keep a list of TF mapping errors that we can present to the user
 	var dataSourceMappingErrors error
