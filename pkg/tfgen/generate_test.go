@@ -809,6 +809,23 @@ func TestExtraMappingError(t *testing.T) {
 		P: mockProvider,
 	}
 
+	// Create provider info with extra field mappings that don't exist in the schema
+	infoWithExtraFields := tfbridge.ProviderInfo{
+		Name:    "test",
+		Version: "1.0.0",
+		Resources: map[string]*tfbridge.ResourceInfo{
+			"existing_resource": {
+				Tok: tokens.Type("test:index:ExistingResource"),
+				Fields: map[string]*tfbridge.SchemaInfo{
+					"unmapped_field": {
+						Name: "unmappedField",
+					},
+				},
+			},
+		},
+		P: mockProvider,
+	}
+
 	testCases := []struct {
 		name           string
 		envVars        map[string]string
@@ -849,6 +866,14 @@ func TestExtraMappingError(t *testing.T) {
 			},
 			expectError: false,
 			info:        infoWithDataSources,
+		},
+		{
+			name:        "Pulumi providers should error on extra field mapping during validation, not during generation",
+			expectError: true,
+			expectedErrors: []string{
+				"existing_resource: [{unmapped_field}]: overriding non-existent field",
+			},
+			info: infoWithExtraFields,
 		},
 	}
 

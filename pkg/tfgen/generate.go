@@ -1532,21 +1532,7 @@ func (g *Generator) gatherResource(rawname string,
 		properties: res.inprops,
 	}
 
-	// Ensure there weren't any custom fields that were unrecognized.
-	var errs []error
-	for key := range info.Fields {
-		if _, has := schema.Schema().GetOk(key); !has {
-			msg := fmt.Sprintf("there is a custom mapping on resource '%s' for field '%s', but the field was not "+
-				"found in the Terraform metadata and will be ignored. To fix, remove the mapping.", rawname, key)
-			if !cmdutil.IsTruthy(os.Getenv("PULUMI_SKIP_EXTRA_MAPPING_ERROR")) {
-				errs = append(errs, errors.New(msg))
-			} else {
-				g.warn(msg)
-			}
-		}
-	}
-
-	return res, errors.Join(errs...)
+	return res, nil
 }
 
 func (g *Generator) gatherDataSources() (moduleMap, error) {
