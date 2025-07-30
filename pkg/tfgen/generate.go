@@ -1393,7 +1393,7 @@ func (g *Generator) gatherResources() (moduleMap, error) {
 			if !skipFailBuildOnExtraMapError {
 				resourceMappingErrors = multierror.Append(resourceMappingErrors,
 					fmt.Errorf("Pulumi token %q is mapped to TF provider resource %q, but no such "+
-						"resource found. The mapping will be ignored in the generated provider",
+						"resource found. Remove the mapping and try again",
 						g.info.Resources[name].Tok, name))
 			} else {
 				g.warn("Pulumi token %q is mapped to TF provider resource %q, but no such "+
@@ -1532,20 +1532,13 @@ func (g *Generator) gatherResource(rawname string,
 		properties: res.inprops,
 	}
 
-	// Determine if we should error on extraneous mappings
-	failBuildOnExtraMapError := cmdutil.IsTruthy(os.Getenv("PULUMI_EXTRA_MAPPING_ERROR"))
-	// For pulumi-owned providers, we always want to fail on extraneous mappings. They should be removed.
-	if isOwnedByPulumi(g.info.Repository) {
-		failBuildOnExtraMapError = true
-	}
-
 	// Ensure there weren't any custom fields that were unrecognized.
 	var errs []error
 	for key := range info.Fields {
 		if _, has := schema.Schema().GetOk(key); !has {
 			msg := fmt.Sprintf("there is a custom mapping on resource '%s' for field '%s', but the field was not "+
 				"found in the Terraform metadata and will be ignored. To fix, remove the mapping.", rawname, key)
-			if failBuildOnExtraMapError {
+			if !cmdutil.IsTruthy(os.Getenv("PULUMI_SKIP_EXTRA_MAPPING_ERROR")) {
 				errs = append(errs, errors.New(msg))
 			} else {
 				g.warn(msg)
@@ -1566,12 +1559,7 @@ func (g *Generator) gatherDataSources() (moduleMap, error) {
 
 	skipFailBuildOnMissingMapError := cmdutil.IsTruthy(os.Getenv("PULUMI_SKIP_MISSING_MAPPING_ERROR")) ||
 		cmdutil.IsTruthy(os.Getenv("PULUMI_SKIP_PROVIDER_MAP_ERROR"))
-
-	failBuildOnExtraMapError := cmdutil.IsTruthy(os.Getenv("PULUMI_EXTRA_MAPPING_ERROR"))
-	// For pulumi-owned providers, we always want to fail on extraneous mappings. They should be removed.
-	if isOwnedByPulumi(g.info.GitHubOrg) {
-		failBuildOnExtraMapError = true
-	}
+	skipFailBuildOnExtraMapError := cmdutil.IsTruthy(os.Getenv("PULUMI_SKIP_EXTRA_MAPPING_ERROR"))
 
 	// let's keep a list of TF mapping errors that we can present to the user
 	var dataSourceMappingErrors error
@@ -1618,7 +1606,7 @@ func (g *Generator) gatherDataSources() (moduleMap, error) {
 	sort.Strings(names)
 	for _, name := range names {
 		if !seen[name] {
-			if failBuildOnExtraMapError {
+			if !skipFailBuildOnExtraMapError {
 				dataSourceMappingErrors = multierror.Append(dataSourceMappingErrors,
 					fmt.Errorf("Pulumi token %q is mapped to TF provider data source %q, but no such "+
 						"data source found. Remove the mapping and try again",
@@ -2234,16 +2222,6 @@ func sliceContains[T comparable](slice []T, target T) bool {
 		if v == target {
 			return true
 		}
-	}
-	return false
-}
-
-func isOwnedByPulumi(repo string) bool {
-	// g.info.Repository is the full GH repo name that contains the github org that maintains this provider
-	// For example: https://github.com/pulumi/pulumi-vsphere
-	after, found := strings.CutPrefix(repo, "https://github.com/")
-	if found && strings.HasPrefix(after, "pulumi") {
-		return true
 	}
 	return false
 }
