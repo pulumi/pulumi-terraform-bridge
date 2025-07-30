@@ -742,10 +742,9 @@ func Test_writeBytesMapToDir(t *testing.T) {
 	})
 }
 
-func TestPulumiOwnedProviderExtraMappingError(t *testing.T) {
+func TestExtraMappingError(t *testing.T) {
 	t.Parallel()
 
-	// Create a mock provider with existing resources and datasources
 	mockProvider := shimv1.NewProvider(&schema.Provider{
 		ResourcesMap: map[string]*schema.Resource{
 			"existing_resource": {
@@ -781,33 +780,37 @@ func TestPulumiOwnedProviderExtraMappingError(t *testing.T) {
 				Tok: tokens.Type("test:index:UnmappedResource"),
 			},
 		},
+		DataSources: map[string]*tfbridge.DataSourceInfo{
+			"existing_datasource": {
+				Tok: tokens.ModuleMember("test:index:existingDatasource"),
+			},
+		},
 		P: mockProvider,
 	}
 
-	//// Create provider info with mappings for existing resources and extra mappings that don't exist
-	//infoWithDataSources := tfbridge.ProviderInfo{
-	//	Name:    "test",
-	//	Version: "1.0.0",
-	//	Resources: map[string]*tfbridge.ResourceInfo{
-	//		"existing_resource": {
-	//			Tok: tokens.Type("test:index:ExistingResource"),
-	//		},
-	//	},
-	//	DataSources: map[string]*tfbridge.DataSourceInfo{
-	//		"existing_datasource": {
-	//			Tok: tokens.ModuleMember("test:index:existingDatasource"),
-	//		},
-	//		"unmapped_datasource": {
-	//			Tok: tokens.ModuleMember("test:index:unmappedDatasource"),
-	//		},
-	//	},
-	//	P: mockProvider,
-	//}
+	// Create provider info with mappings for existing resources and extra data source mappings that don't exist
+	// this is necessary because Generate() exits early if Resources fail.
+	infoWithDataSources := tfbridge.ProviderInfo{
+		Name:    "test",
+		Version: "1.0.0",
+		Resources: map[string]*tfbridge.ResourceInfo{
+			"existing_resource": {
+				Tok: tokens.Type("test:index:ExistingResource"),
+			},
+		},
+		DataSources: map[string]*tfbridge.DataSourceInfo{
+			"existing_datasource": {
+				Tok: tokens.ModuleMember("test:index:existingDatasource"),
+			},
+			"unmapped_datasource": {
+				Tok: tokens.ModuleMember("test:index:unmappedDatasource"),
+			},
+		},
+		P: mockProvider,
+	}
 
-	// Test cases for different provider ownership scenarios
 	testCases := []struct {
 		name           string
-		repository     string
 		envVars        map[string]string
 		expectError    bool
 		expectedErrors []string
@@ -815,7 +818,6 @@ func TestPulumiOwnedProviderExtraMappingError(t *testing.T) {
 	}{
 		{
 			name:        "Pulumi providers should error on extra resource mapping",
-			repository:  "https://github.com/pulumi/pulumi-aws",
 			expectError: true,
 			expectedErrors: []string{
 				"failed to gather package metadata: problem gathering resources: 1 error occurred:\n" +
@@ -824,13 +826,29 @@ func TestPulumiOwnedProviderExtraMappingError(t *testing.T) {
 			info: infoWithResources,
 		},
 		{
-			name:       "Provider should not error when we skip the extra mapping error",
-			repository: "https://github.com/pulumi/pulumi-aws",
+			name:        "Pulumi providers should error on extra data source mapping",
+			expectError: true,
+			expectedErrors: []string{
+				"failed to gather package metadata: problem gathering data sources: 1 error occurred:\n" +
+					"	* Pulumi token \"test:index:unmappedDatasource\" is mapped to TF provider data source \"unmapped_datasource\", but no such data source found. Remove the mapping and try again\n\n",
+			},
+			info: infoWithDataSources,
+		},
+		{
+			name: "Provider should not error on resources when we skip the extra mapping error",
 			envVars: map[string]string{
 				"PULUMI_SKIP_EXTRA_MAPPING_ERROR": "true",
 			},
 			expectError: false,
 			info:        infoWithResources,
+		},
+		{
+			name: "Provider should not error on data sources when we skip the extra mapping error",
+			envVars: map[string]string{
+				"PULUMI_SKIP_EXTRA_MAPPING_ERROR": "true",
+			},
+			expectError: false,
+			info:        infoWithDataSources,
 		},
 	}
 
@@ -842,9 +860,7 @@ func TestPulumiOwnedProviderExtraMappingError(t *testing.T) {
 				defer os.Unsetenv(k)
 			}
 
-			// Create provider info with mappings for existing resources and extra mappings that don't exist
 			info := tc.info
-			info.Repository = tc.repository
 
 			// Create generator
 			g, err := NewGenerator(GeneratorOptions{
