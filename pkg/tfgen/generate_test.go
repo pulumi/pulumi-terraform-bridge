@@ -834,25 +834,27 @@ func TestExtraMappingError(t *testing.T) {
 		info           tfbridge.ProviderInfo
 	}{
 		{
-			name:        "Pulumi providers should error on extra resource mapping",
+			name:        "Providers should error on extra resource mapping",
 			expectError: true,
 			expectedErrors: []string{
 				"failed to gather package metadata: problem gathering resources: 1 error occurred:\n" +
-					"	* Pulumi token \"test:index:UnmappedResource\" is mapped to TF provider resource \"unmapped_resource\", but no such resource found. Remove the mapping and try again\n\n",
+					"	* Pulumi token \"test:index:UnmappedResource\" is mapped to TF provider resource " +
+					"\"unmapped_resource\", but no such resource found. Remove the mapping and try again\n\n",
 			},
 			info: infoWithResources,
 		},
 		{
-			name:        "Pulumi providers should error on extra data source mapping",
+			name:        "Providers should error on extra data source mapping",
 			expectError: true,
 			expectedErrors: []string{
 				"failed to gather package metadata: problem gathering data sources: 1 error occurred:\n" +
-					"	* Pulumi token \"test:index:unmappedDatasource\" is mapped to TF provider data source \"unmapped_datasource\", but no such data source found. Remove the mapping and try again\n\n",
+					"	* Pulumi token \"test:index:unmappedDatasource\" is mapped to TF provider data source " +
+					"\"unmapped_datasource\", but no such data source found. Remove the mapping and try again\n\n",
 			},
 			info: infoWithDataSources,
 		},
 		{
-			name: "Provider should not error on resources when we skip the extra mapping error",
+			name: "Providers should not error on resources when we skip the extra mapping error",
 			envVars: map[string]string{
 				"PULUMI_SKIP_EXTRA_MAPPING_ERROR": "true",
 			},
@@ -860,7 +862,7 @@ func TestExtraMappingError(t *testing.T) {
 			info:        infoWithResources,
 		},
 		{
-			name: "Provider should not error on data sources when we skip the extra mapping error",
+			name: "Providers should not error on data sources when we skip the extra mapping error",
 			envVars: map[string]string{
 				"PULUMI_SKIP_EXTRA_MAPPING_ERROR": "true",
 			},
@@ -868,7 +870,7 @@ func TestExtraMappingError(t *testing.T) {
 			info:        infoWithDataSources,
 		},
 		{
-			name:        "Pulumi providers should error on extra field mapping during validation, not during generation",
+			name:        "Providers should error on extra field mapping during validation, not during generation",
 			expectError: true,
 			expectedErrors: []string{
 				"existing_resource: [{unmapped_field}]: overriding non-existent field",
