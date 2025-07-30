@@ -1535,7 +1535,7 @@ func (g *Generator) gatherResource(rawname string,
 	// Determine if we should error on extraneous mappings
 	failBuildOnExtraMapError := cmdutil.IsTruthy(os.Getenv("PULUMI_EXTRA_MAPPING_ERROR"))
 	// For pulumi-owned providers, we always want to fail on extraneous mappings. They should be removed.
-	if g.info.GitHubOrg == "pulumi" {
+	if isOwnedByPulumi(g.info.Repository) {
 		failBuildOnExtraMapError = true
 	}
 
@@ -1569,7 +1569,7 @@ func (g *Generator) gatherDataSources() (moduleMap, error) {
 
 	failBuildOnExtraMapError := cmdutil.IsTruthy(os.Getenv("PULUMI_EXTRA_MAPPING_ERROR"))
 	// For pulumi-owned providers, we always want to fail on extraneous mappings. They should be removed.
-	if g.info.GitHubOrg == "pulumi" {
+	if isOwnedByPulumi(g.info.GitHubOrg) {
 		failBuildOnExtraMapError = true
 	}
 
@@ -2234,6 +2234,16 @@ func sliceContains[T comparable](slice []T, target T) bool {
 		if v == target {
 			return true
 		}
+	}
+	return false
+}
+
+func isOwnedByPulumi(repo string) bool {
+	// g.info.Repository is the full GH repo name that contains the github org that maintains this provider
+	// For example: https://github.com/pulumi/pulumi-vsphere
+	after, found := strings.CutPrefix(repo, "https://github.com/")
+	if found && strings.HasPrefix(after, "pulumi") {
+		return true
 	}
 	return false
 }
