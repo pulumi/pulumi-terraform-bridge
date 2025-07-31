@@ -741,3 +741,177 @@ func Test_writeBytesMapToDir(t *testing.T) {
 		require.True(t, exists)
 	})
 }
+
+func TestExtraMappingError(t *testing.T) {
+	t.Parallel()
+
+	mockProvider := shimv1.NewProvider(&schema.Provider{
+		ResourcesMap: map[string]*schema.Resource{
+			"existing_resource": {
+				Schema: map[string]*schema.Schema{
+					"id": {
+						Type:     schema.TypeString,
+						Computed: true,
+					},
+				},
+			},
+		},
+		DataSourcesMap: map[string]*schema.Resource{
+			"existing_datasource": {
+				Schema: map[string]*schema.Schema{
+					"id": {
+						Type:     schema.TypeString,
+						Computed: true,
+					},
+				},
+			},
+		},
+	})
+
+	// Create provider info with mappings for existing resources and extra mappings that don't exist
+	infoWithResources := tfbridge.ProviderInfo{
+		Name:    "test",
+		Version: "1.0.0",
+		Resources: map[string]*tfbridge.ResourceInfo{
+			"existing_resource": {
+				Tok: tokens.Type("test:index:ExistingResource"),
+			},
+			"unmapped_resource": {
+				Tok: tokens.Type("test:index:UnmappedResource"),
+			},
+		},
+		DataSources: map[string]*tfbridge.DataSourceInfo{
+			"existing_datasource": {
+				Tok: tokens.ModuleMember("test:index:existingDatasource"),
+			},
+		},
+		P: mockProvider,
+	}
+
+	// Create provider info with mappings for existing resources and extra data source mappings that don't exist
+	// this is necessary because Generate() exits early if Resources fail.
+	infoWithDataSources := tfbridge.ProviderInfo{
+		Name:    "test",
+		Version: "1.0.0",
+		Resources: map[string]*tfbridge.ResourceInfo{
+			"existing_resource": {
+				Tok: tokens.Type("test:index:ExistingResource"),
+			},
+		},
+		DataSources: map[string]*tfbridge.DataSourceInfo{
+			"existing_datasource": {
+				Tok: tokens.ModuleMember("test:index:existingDatasource"),
+			},
+			"unmapped_datasource": {
+				Tok: tokens.ModuleMember("test:index:unmappedDatasource"),
+			},
+		},
+		P: mockProvider,
+	}
+
+	// Create provider info with extra field mappings that don't exist in the schema
+	infoWithExtraFields := tfbridge.ProviderInfo{
+		Name:    "test",
+		Version: "1.0.0",
+		Resources: map[string]*tfbridge.ResourceInfo{
+			"existing_resource": {
+				Tok: tokens.Type("test:index:ExistingResource"),
+				Fields: map[string]*tfbridge.SchemaInfo{
+					"unmapped_field": {
+						Name: "unmappedField",
+					},
+				},
+			},
+		},
+		P: mockProvider,
+	}
+
+	testCases := []struct {
+		name           string
+		envVars        map[string]string
+		expectError    bool
+		expectedErrors []string
+		info           tfbridge.ProviderInfo
+	}{
+		{
+			name:        "Providers should error on extra resource mapping",
+			expectError: true,
+			expectedErrors: []string{
+				"failed to gather package metadata: problem gathering resources: 1 error occurred:\n" +
+					"	* Pulumi token \"test:index:UnmappedResource\" is mapped to TF provider resource " +
+					"\"unmapped_resource\", but no such resource found. Remove the mapping and try again\n\n",
+			},
+			info: infoWithResources,
+		},
+		{
+			name:        "Providers should error on extra data source mapping",
+			expectError: true,
+			expectedErrors: []string{
+				"failed to gather package metadata: problem gathering data sources: 1 error occurred:\n" +
+					"	* Pulumi token \"test:index:unmappedDatasource\" is mapped to TF provider data source " +
+					"\"unmapped_datasource\", but no such data source found. Remove the mapping and try again\n\n",
+			},
+			info: infoWithDataSources,
+		},
+		{
+			name: "Providers should not error on resources when we skip the extra mapping error",
+			envVars: map[string]string{
+				"PULUMI_SKIP_EXTRA_MAPPING_ERROR": "true",
+			},
+			expectError: false,
+			info:        infoWithResources,
+		},
+		{
+			name: "Providers should not error on data sources when we skip the extra mapping error",
+			envVars: map[string]string{
+				"PULUMI_SKIP_EXTRA_MAPPING_ERROR": "true",
+			},
+			expectError: false,
+			info:        infoWithDataSources,
+		},
+		{
+			name:        "Providers should error on extra field mapping during validation, not during generation",
+			expectError: true,
+			expectedErrors: []string{
+				"existing_resource: [{unmapped_field}]: overriding non-existent field",
+			},
+			info: infoWithExtraFields,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Set up environment variables
+			for k, v := range tc.envVars {
+				os.Setenv(k, v)
+				defer os.Unsetenv(k)
+			}
+
+			info := tc.info
+
+			// Create generator
+			g, err := NewGenerator(GeneratorOptions{
+				Package:      "test",
+				Version:      "1.0.0",
+				Language:     Schema,
+				ProviderInfo: info,
+				Root:         afero.NewMemMapFs(),
+				Sink:         diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{Color: colors.Never}),
+			})
+			require.NoError(t, err)
+
+			// Generate schema
+			_, err = g.Generate()
+
+			if tc.expectError {
+				require.Error(t, err)
+				errStr := err.Error()
+				for _, expectedErr := range tc.expectedErrors {
+					assert.Equal(t, errStr, expectedErr)
+				}
+			} else {
+				require.NoError(t, err)
+			}
+		})
+	}
+}
