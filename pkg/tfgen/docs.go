@@ -2183,39 +2183,93 @@ func (c infoContext) fixupPropertyReference(text string) string {
 			// This is a resource name
 			resname, mod := resourceName(c.info.GetResourcePrefix(), name, resInfo, false)
 			modname := formatModulePrefix(parentModuleName(mod))
-			switch c.language {
-			case Golang, Python:
-				// Use `ec2.Instance` format
-				return open + modname + resname.String() + close
-			default:
-				// Use `aws.ec2.Instance` format
-				return open + c.pkg.String() + "." + modname + resname.String() + close
-			}
+
+			// Build our span
+			// <span pulumi-lang-typescript="firstProperty" pulumi-lang-go="FirstProperty" ...>firstProperty</span>
+			// Use `ec2.Instance` format
+			goAndPy := open + modname + resname.String() + close
+			// Use `aws.ec2.Instance` format
+			allOtherLangs := open + c.pkg.String() + "." + modname + resname.String() + close
+			span := fmt.Sprintf(`<span pulumi-lang-typescript="%s" pulumi-lang-dotnet="%s" pulumi-lang-go="%s" pulumi-lang-python="%s" pulumi-lang-yaml="%s" pulumi-lang-java="%s">%s</span>`,
+				allOtherLangs,
+				allOtherLangs,
+				goAndPy,
+				goAndPy,
+				allOtherLangs,
+				allOtherLangs,
+				allOtherLangs,
+			)
+			return span
+
+			//switch c.language {
+			//case Golang, Python:
+			//	// Use `ec2.Instance` format
+			//	return open + modname + resname.String() + close
+			//default:
+			//	// Use `aws.ec2.Instance` format
+			//	return open + c.pkg.String() + "." + modname + resname.String() + close
+			//}
 		} else if dataInfo, hasDatasourceInfo := c.info.DataSources[name]; hasDatasourceInfo {
 			// This is a data source name
 			getname, mod := dataSourceName(c.info.GetResourcePrefix(), name, dataInfo)
 			modname := formatModulePrefix(parentModuleName(mod))
-			switch c.language {
-			case Golang:
-				// Use `ec2.getAmi` format
-				return open + modname + getname.String() + close
-			case Python:
-				// Use `ec2.get_ami` format
-				return open + python.PyName(modname+getname.String()) + close
-			default:
-				// Use `aws.ec2.getAmi` format
-				return open + c.pkg.String() + "." + modname + getname.String() + close
-			}
+
+			// Build our span
+			// <span pulumi-lang-typescript="firstProperty" pulumi-lang-go="FirstProperty" ...>firstProperty</span>
+
+			goFormat := open + modname + getname.String() + close
+			pyFormat := open + python.PyName(modname+getname.String()) + close
+			// Use `aws.ec2.Instance` format
+			allOtherLangs := open + c.pkg.String() + "." + modname + getname.String() + close
+			span := fmt.Sprintf(`<span pulumi-lang-typescript="%s" pulumi-lang-dotnet="%s" pulumi-lang-go="%s" pulumi-lang-python="%s" pulumi-lang-yaml="%s" pulumi-lang-java="%s">%s</span>`,
+				allOtherLangs,
+				allOtherLangs,
+				goFormat,
+				pyFormat,
+				allOtherLangs,
+				allOtherLangs,
+				allOtherLangs,
+			)
+			return span
+
+			//switch c.language {
+			//case Golang:
+			//	// Use `ec2.getAmi` format
+			//	return open + modname + getname.String() + close
+			//case Python:
+			//	// Use `ec2.get_ami` format
+			//	return open + python.PyName(modname+getname.String()) + close
+			//default:
+			//	// Use `aws.ec2.getAmi` format
+			//	return open + c.pkg.String() + "." + modname + getname.String() + close
+			//}
 		}
 		// Else just treat as a property name
-		switch c.language {
-		case NodeJS, Golang:
-			// Use `camelCase` format
-			pname := propertyName(name, nil, nil)
-			return open + pname + close
-		default:
-			return match
-		}
+		pname := propertyName(name, nil, nil)
+		typescriptOrGo := open + pname + close
+		allOtherLangs := match
+
+		// Make span, again
+
+		span := fmt.Sprintf(`<span pulumi-lang-typescript="%s" pulumi-lang-dotnet="%s" pulumi-lang-go="%s" pulumi-lang-python="%s" pulumi-lang-yaml="%s" pulumi-lang-java="%s">%s</span>`,
+			typescriptOrGo,
+			allOtherLangs,
+			typescriptOrGo,
+			allOtherLangs,
+			allOtherLangs,
+			allOtherLangs,
+			allOtherLangs,
+		)
+		return span
+
+		//switch c.language {
+		//case NodeJS, Golang:
+		//	// Use `camelCase` format
+		//	pname := propertyName(name, nil, nil)
+		//	return open + pname + close
+		//default:
+		//	return match
+		//}
 	})
 }
 
