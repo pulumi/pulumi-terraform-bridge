@@ -1032,6 +1032,19 @@ type GenerateOptions struct {
 // Generate creates Pulumi packages from the information it was initialized with.
 func (g *Generator) Generate() (*GenerateSchemaResult, error) {
 	genSchemaResult, err := g.generateSchemaResult(context.Background())
+
+	if g.language != "schema" {
+		// TODO: remove this; it is for grokking this nonsense.
+		bytes, err := json.MarshalIndent(genSchemaResult.PackageSpec, "", "    ")
+		if err != nil {
+			return nil, pkgerrors.Wrapf(err, "failed to marshal schema")
+		}
+		os.WriteFile("test-python-span.json", bytes, 0666)
+
+		//panic("Generator language: " + g.language)
+
+	}
+
 	if err != nil {
 		return nil, err
 	}
@@ -1212,6 +1225,7 @@ func (g *Generator) gatherPackage() (*pkg, error) {
 		pack.addModule(cfg)
 	}
 
+	// TODO: add a debug panic here
 	// Gather the provider type for this package.
 	provider, err := g.gatherProvider()
 	if err != nil {
@@ -1277,6 +1291,7 @@ func (g *Generator) gatherConfig() (*module, error) {
 			info:     g.info,
 		}
 		fakeFooterLinks := map[string]string{}
+		// TODO: this should get done in the real
 		rawdoc, _ := reformatText(docsInfoCtx, sch.Description(), fakeFooterLinks)
 		prop, err := g.propertyVariable(cfgPath,
 			key, cfg, custom, "", rawdoc, true /*out*/, entityDocs{})
