@@ -1072,7 +1072,7 @@ func (g *Generator) FilterSchemaByLanguage(genSchemaResult *GenerateSchemaResult
 		_, after, found := strings.Cut(match, languageKey)
 		q.Q(after)
 		if !found {
-			return "EARLY BANANAS (green bananas?)"
+			return "BANANAS"
 		}
 		q.Q(after)
 
@@ -1096,7 +1096,7 @@ func (g *Generator) FilterSchemaByLanguage(genSchemaResult *GenerateSchemaResult
 	})
 
 	// Write to file to debug Al
-	os.WriteFile("is-al-fucking-with-me.json", []byte(schemaStr), 0666)
+	//os.WriteFile("is-al-fucking-with-me.json", []byte(schemaStr), 0666)
 
 	// Parse the filtered schema back into PackageSpec
 	var filteredPackageSpec pschema.PackageSpec
@@ -1114,10 +1114,35 @@ func (g *Generator) FilterSchemaByLanguage(genSchemaResult *GenerateSchemaResult
 
 // Generate creates Pulumi packages from the information it was initialized with.
 func (g *Generator) Generate() (*GenerateSchemaResult, error) {
-	genSchemaResult, err := g.generateSchemaResult(context.Background())
+
+	var genSchemaResult *GenerateSchemaResult
+	var err error
+
+	if g.language == "schema" || g.language == "registry-docs" || g.language == "pulumi" {
+		genSchemaResult, err = g.generateSchemaResult(context.Background())
+		if err != nil {
+			panic("FAILED TO MAKE DOCS SCHEMA AND EXAMPLES AND WHATNOT: " + err.Error())
+		}
+	}
 
 	// Filter by language now, but only SDK languages
 	if !(g.language == "schema" || g.language == "registry-docs" || g.language == "pulumi") {
+
+		// Read the schema from file!
+		bytes, err := os.ReadFile("provider/cmd/pulumi-resource-random/schema.json")
+		if err != nil {
+			panic("FAILED TO READ SCHEMA: " + err.Error())
+		}
+
+		var unfilteredPackageSpec pschema.PackageSpec
+		err = json.Unmarshal(bytes, &unfilteredPackageSpec)
+		if err != nil {
+			panic("FAILED TO UNMARSHAL SCHEMA: " + err.Error())
+		}
+
+		genSchemaResult = &GenerateSchemaResult{
+			PackageSpec: unfilteredPackageSpec,
+		}
 
 		genSchemaResult, err = g.FilterSchemaByLanguage(genSchemaResult)
 		if err != nil {
@@ -1131,7 +1156,7 @@ func (g *Generator) Generate() (*GenerateSchemaResult, error) {
 		if err != nil {
 			return nil, pkgerrors.Wrapf(err, "failed to marshal schema")
 		}
-		os.WriteFile("test-python-span-with-filter.json", bytes, 0666)
+		os.WriteFile("test-python-span-with-filter-and-actually-reading-from-schema-file.json", bytes, 0666)
 
 		//panic("Generator language: " + g.language)
 
