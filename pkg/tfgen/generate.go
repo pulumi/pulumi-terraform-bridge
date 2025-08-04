@@ -51,6 +51,7 @@ import (
 	shim "github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfshim/schema"
 	"github.com/pulumi/pulumi-terraform-bridge/v3/unstable/metadata"
+	"github.com/ryboe/q"
 )
 
 const (
@@ -1039,39 +1040,63 @@ func (g *Generator) FilterSchemaByLanguage(genSchemaResult *GenerateSchemaResult
 		return nil, err
 	}
 
-	// Convert bytes to string for regex processing
+	// TODO: regex can do bytes als, Al, weshould do bytes. But for future.
 	schemaStr := string(bytes)
+
+	// The span string looks as follows:
+	// <span pulumi-lang-typescript="firstProperty" pulumi-lang-go="FirstProperty" ...>firstProperty</span>
+	// When rendered in schema it uses escapes:
+	// \u003cspan pulumi-lang-typescript=\"`random.RandomBytes`\" pulumi-lang-dotnet=\"`random.RandomBytes`\" pulumi-lang-go=\"`RandomBytes`\" pulumi-lang-python=\"`RandomBytes`\" pulumi-lang-yaml=\"`random.RandomBytes`\" pulumi-lang-java=\"`random.RandomBytes`\"\u003e`random.RandomBytes`\u003c/span\u003e
 
 	// Regex to find span tags with language-specific attributes
 	// Matches: <span pulumi-lang-typescript="..." pulumi-lang-python="..." ...>content</span>
 	// Note: HTML entities are escaped as \u003c and \u003e, and content can span multiple lines
-	spanRegex := regexp.MustCompile(`\\u003cspan[^\\u003e]*pulumi-lang-([^=]+)=\\"([^\\"]*)\\"[^\\u003e]*\\u003e([^\\u003c]*)\\u003c/span\\u003e`)
 
-	// Process each match
+	// \\u003cspan pulumi-lang-typescript=\\"`[^`]*`\\" pulumi-lang-dotnet=\\"`[^`]*`\\" pulumi-lang-go=\\"`[^`]*`\\" pulumi-lang-python=\\"`[^`]*`\\" pulumi-lang-yaml=\\"`[^`]*`\\" pulumi-lang-java=\\"`[^`]*`\\"\\u003e`[^`]*`\\u003c/span\\u003e
+	spanRegex := regexp.MustCompile("\\\\u003cspan pulumi-lang-typescript=\\\\\"`[^`]*`\\\\\" pulumi-lang-dotnet=\\\\\"`[^`]*`\\\\\" pulumi-lang-go=\\\\\"`[^`]*`\\\\\" pulumi-lang-python=\\\\\"`[^`]*`\\\\\" pulumi-lang-yaml=\\\\\"`[^`]*`\\\\\" pulumi-lang-java=\\\\\"`[^`]*`\\\\\"\\\\u003e`[^`]*`\\\\u003c/span\\\\u003e") // Process each match
+
 	schemaStr = spanRegex.ReplaceAllStringFunc(schemaStr, func(match string) string {
-		// Look for the specific language we want in this span
-		langPattern := fmt.Sprintf(`pulumi-lang-%s=\\"([^\\"]*)\\"`, string(g.language))
-		langRegex := regexp.MustCompile(langPattern)
-		langMatches := langRegex.FindStringSubmatch(match)
+		q.Q("in match func for " + g.language)
+		q.Q(match)
 
-		if len(langMatches) >= 2 {
-			// Found the target language, return its value
-			return langMatches[1]
+		// We know that each language has its version after "pulumi-lang-foo=".
+		// TODO: fix naming for node/typescript
+		l := g.language
+		if l == "nodejs" {
+			l = "typescript"
 		}
 
-		// If target language not found, extract the original content
-		contentRegex := regexp.MustCompile(`\\u003cspan[^\\u003e]*\\u003e([^\\u003c]*)\\u003c/span\\u003e`)
-		contentMatches := contentRegex.FindStringSubmatch(match)
-		if len(contentMatches) >= 2 {
-			return contentMatches[1]
-		}
+		languageKey := fmt.Sprintf("pulumi-lang-%s=\\\"", l)
+		q.Q(languageKey)
 
-		// Fallback to original match
-		return match
+		_, after, found := strings.Cut(match, languageKey)
+		q.Q(after)
+		if !found {
+			return "EARLY BANANAS (green bananas?)"
+		}
+		q.Q(after)
+
+		before, _, found := strings.Cut(after, "\\\"")
+		return before
+
+		//// Look for the specific language we want in this span
+		//langRegex := regexp.MustCompile(fmt.Sprintf("pulumi-lang-%s=\\\\\"`[^`]*`\\\\\"", string(g.language)))
+		//langMatches := langRegex.FindStringSubmatch(match)
+		//q.Q(langMatches)
+		//q.Q(len(langMatches))
+		//
+		//if len(langMatches) >= 2 {
+		//	// Found the target language, return its value
+		//	q.Q("returning stuff")
+		//	return langMatches[1]
+		//}
+		//q.Q("we're not returning bananas however so wtf gives")
+		//return "BANANAS"
+
 	})
 
 	// Write to file to debug Al
-	os.WriteFile("is-al-fucking-with-meq.json", []byte(schemaStr), 0666)
+	os.WriteFile("is-al-fucking-with-me.json", []byte(schemaStr), 0666)
 
 	// Parse the filtered schema back into PackageSpec
 	var filteredPackageSpec pschema.PackageSpec
