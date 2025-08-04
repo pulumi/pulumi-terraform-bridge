@@ -1029,9 +1029,20 @@ type GenerateOptions struct {
 	ModuleFormat string
 }
 
+// TODO: finish me
+func (g *Generator) FilterSchemaByLanguage(genSchemaResult *GenerateSchemaResult) *GenerateSchemaResult {
+	// Get the schema bytes
+	bytes, err := json.MarshalIndent(genSchemaResult.PackageSpec, "", "    ")
+	// TODO: find the span tag and replace it with the language specified
+	// note: if we do this and pass the top-level schema, we WILL have code choosers handed to sedk gen so I'm not sure what's going on there yet
+
+}
+
 // Generate creates Pulumi packages from the information it was initialized with.
 func (g *Generator) Generate() (*GenerateSchemaResult, error) {
 	genSchemaResult, err := g.generateSchemaResult(context.Background())
+
+	//
 
 	if g.language != "schema" {
 		// TODO: remove this; it is for grokking this nonsense.
