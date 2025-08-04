@@ -1035,8 +1035,7 @@ func (g *Generator) FilterSchemaByLanguage(genSchemaResult *GenerateSchemaResult
 	// Get the schema bytes
 	bytes, err := json.MarshalIndent(genSchemaResult.PackageSpec, "", "    ")
 	if err != nil {
-		// Return original if marshaling fails
-
+		// Return error if marshaling fails
 		return nil, err
 	}
 
@@ -1045,35 +1044,38 @@ func (g *Generator) FilterSchemaByLanguage(genSchemaResult *GenerateSchemaResult
 
 	// Regex to find span tags with language-specific attributes
 	// Matches: <span pulumi-lang-typescript="..." pulumi-lang-python="..." ...>content</span>
-	spanRegex := regexp.MustCompile(`<span[^>]*pulumi-lang-([^=]+)="([^"]*)"[^>]*>([^<]*)</span>`)
+	// Note: HTML entities are escaped as \u003c and \u003e
+	spanRegex := regexp.MustCompile(`\\u003cspan[^\\u003e]*pulumi-lang-([^=]+)=\\"([^\\"]*)\\"[^\\u003e]*\\u003e([^\\u003c]*)\\u003c/span\\u003e`)
 
 	// Process each match
 	schemaStr = spanRegex.ReplaceAllStringFunc(schemaStr, func(match string) string {
-		// Extract the language and value from the span
+		// Extract the language and value from the match
 		matches := spanRegex.FindStringSubmatch(match)
 		if len(matches) < 4 {
-			return match // Return original if regex doesn't match expected groups
+			return match // Return original if we can't parse it
 		}
 
-		// Check if this span contains the target language
-		langPattern := fmt.Sprintf(`pulumi-lang-%s="([^"]*)"`, string(g.language))
-		langRegex := regexp.MustCompile(langPattern)
-		langMatches := langRegex.FindStringSubmatch(match)
+		lang := matches[1]            // e.g., "python"
+		value := matches[2]           // e.g., "`RandomBytes`"
+		originalContent := matches[3] // e.g., "`random.RandomBytes`"
 
-		if len(langMatches) >= 2 {
-			// Found the target language, return its value
-			return langMatches[1]
+		// If this is the target language, use the language-specific value
+		if lang == string(g.language) {
+			return value
 		}
 
-		// If target language not found, return the original content
-		return matches[3]
+		// Otherwise, use the original content
+		return originalContent
 	})
+
+	// Write to file to debug Al
+	os.WriteFile("is-al-fucking-with-meq.json", []byte(schemaStr), 0666)
 
 	// Parse the filtered schema back into PackageSpec
 	var filteredPackageSpec pschema.PackageSpec
 	err = json.Unmarshal([]byte(schemaStr), &filteredPackageSpec)
 	if err != nil {
-		// Return original if unmarshaling fails
+		// Return error if unmarshaling fails
 		return nil, err
 	}
 
