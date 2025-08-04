@@ -1044,28 +1044,30 @@ func (g *Generator) FilterSchemaByLanguage(genSchemaResult *GenerateSchemaResult
 
 	// Regex to find span tags with language-specific attributes
 	// Matches: <span pulumi-lang-typescript="..." pulumi-lang-python="..." ...>content</span>
-	// Note: HTML entities are escaped as \u003c and \u003e
+	// Note: HTML entities are escaped as \u003c and \u003e, and content can span multiple lines
 	spanRegex := regexp.MustCompile(`\\u003cspan[^\\u003e]*pulumi-lang-([^=]+)=\\"([^\\"]*)\\"[^\\u003e]*\\u003e([^\\u003c]*)\\u003c/span\\u003e`)
 
 	// Process each match
 	schemaStr = spanRegex.ReplaceAllStringFunc(schemaStr, func(match string) string {
-		// Extract the language and value from the match
-		matches := spanRegex.FindStringSubmatch(match)
-		if len(matches) < 4 {
-			return match // Return original if we can't parse it
+		// Look for the specific language we want in this span
+		langPattern := fmt.Sprintf(`pulumi-lang-%s=\\"([^\\"]*)\\"`, string(g.language))
+		langRegex := regexp.MustCompile(langPattern)
+		langMatches := langRegex.FindStringSubmatch(match)
+
+		if len(langMatches) >= 2 {
+			// Found the target language, return its value
+			return langMatches[1]
 		}
 
-		lang := matches[1]            // e.g., "python"
-		value := matches[2]           // e.g., "`RandomBytes`"
-		originalContent := matches[3] // e.g., "`random.RandomBytes`"
-
-		// If this is the target language, use the language-specific value
-		if lang == string(g.language) {
-			return value
+		// If target language not found, extract the original content
+		contentRegex := regexp.MustCompile(`\\u003cspan[^\\u003e]*\\u003e([^\\u003c]*)\\u003c/span\\u003e`)
+		contentMatches := contentRegex.FindStringSubmatch(match)
+		if len(contentMatches) >= 2 {
+			return contentMatches[1]
 		}
 
-		// Otherwise, use the original content
-		return originalContent
+		// Fallback to original match
+		return match
 	})
 
 	// Write to file to debug Al
