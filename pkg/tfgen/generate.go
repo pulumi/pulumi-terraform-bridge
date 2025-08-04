@@ -1032,16 +1032,9 @@ type GenerateOptions struct {
 }
 
 // note: if we do this and pass the top-level schema, we WILL have code choosers and translated examples handed to sdk gen so I'm not sure what's going on there yet
-func (g *Generator) FilterSchemaByLanguage(genSchemaResult *GenerateSchemaResult) (*GenerateSchemaResult, error) {
-	// Get the schema bytes
-	bytes, err := json.MarshalIndent(genSchemaResult.PackageSpec, "", "    ")
-	if err != nil {
-		// Return error if marshaling fails
-		return nil, err
-	}
-
+func (g *Generator) FilterSchemaByLanguage(schemaBytes []byte) (*GenerateSchemaResult, error) {
 	// TODO: regex can do bytes als, Al, weshould do bytes. But for future.
-	schemaStr := string(bytes)
+	schemaStr := string(schemaBytes)
 
 	// The span string looks as follows:
 	// <span pulumi-lang-typescript="firstProperty" pulumi-lang-go="FirstProperty" ...>firstProperty</span>
@@ -1056,8 +1049,8 @@ func (g *Generator) FilterSchemaByLanguage(genSchemaResult *GenerateSchemaResult
 	spanRegex := regexp.MustCompile("\\\\u003cspan pulumi-lang-typescript=\\\\\"`[^`]*`\\\\\" pulumi-lang-dotnet=\\\\\"`[^`]*`\\\\\" pulumi-lang-go=\\\\\"`[^`]*`\\\\\" pulumi-lang-python=\\\\\"`[^`]*`\\\\\" pulumi-lang-yaml=\\\\\"`[^`]*`\\\\\" pulumi-lang-java=\\\\\"`[^`]*`\\\\\"\\\\u003e`[^`]*`\\\\u003c/span\\\\u003e") // Process each match
 
 	schemaStr = spanRegex.ReplaceAllStringFunc(schemaStr, func(match string) string {
-		q.Q("in match func for " + g.language)
-		q.Q(match)
+		//q.Q("in match func for " + g.language)
+		//q.Q(match)
 
 		// We know that each language has its version after "pulumi-lang-foo=".
 		// TODO: fix naming for node/typescript
@@ -1067,14 +1060,14 @@ func (g *Generator) FilterSchemaByLanguage(genSchemaResult *GenerateSchemaResult
 		}
 
 		languageKey := fmt.Sprintf("pulumi-lang-%s=\\\"", l)
-		q.Q(languageKey)
+		//q.Q(languageKey)
 
 		_, after, found := strings.Cut(match, languageKey)
-		q.Q(after)
+		//q.Q(after)
 		if !found {
 			return "BANANAS"
 		}
-		q.Q(after)
+		//q.Q(after)
 
 		before, _, found := strings.Cut(after, "\\\"")
 		return before
@@ -1100,7 +1093,7 @@ func (g *Generator) FilterSchemaByLanguage(genSchemaResult *GenerateSchemaResult
 
 	// Parse the filtered schema back into PackageSpec
 	var filteredPackageSpec pschema.PackageSpec
-	err = json.Unmarshal([]byte(schemaStr), &filteredPackageSpec)
+	err := json.Unmarshal([]byte(schemaStr), &filteredPackageSpec)
 	if err != nil {
 		// Return error if unmarshaling fails
 		return nil, err
@@ -1129,22 +1122,13 @@ func (g *Generator) Generate() (*GenerateSchemaResult, error) {
 	if !(g.language == "schema" || g.language == "registry-docs" || g.language == "pulumi") {
 
 		// Read the schema from file!
-		bytes, err := os.ReadFile("provider/cmd/pulumi-resource-random/schema.json")
+		schemaBytes, err := os.ReadFile("provider/cmd/pulumi-resource-random/schema.json")
 		if err != nil {
 			panic("FAILED TO READ SCHEMA: " + err.Error())
 		}
+		q.Q("read schema from file")
 
-		var unfilteredPackageSpec pschema.PackageSpec
-		err = json.Unmarshal(bytes, &unfilteredPackageSpec)
-		if err != nil {
-			panic("FAILED TO UNMARSHAL SCHEMA: " + err.Error())
-		}
-
-		genSchemaResult = &GenerateSchemaResult{
-			PackageSpec: unfilteredPackageSpec,
-		}
-
-		genSchemaResult, err = g.FilterSchemaByLanguage(genSchemaResult)
+		genSchemaResult, err = g.FilterSchemaByLanguage(schemaBytes)
 		if err != nil {
 			panic("STOP HALT AL IS STUPID")
 		}
