@@ -27,6 +27,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/ryboe/q"
+
 	"github.com/hashicorp/go-multierror"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/inflector"
@@ -692,22 +694,79 @@ func (g *schemaGenerator) genRawDocComment(comment string) string {
 	}
 
 	buffer := &bytes.Buffer{}
+	if strings.Contains(comment, "Random permutation of the list of strings given in") {
+		q.Q(comment)
+	}
 
+	// Split the text into tokens, treating spans as atomic units
+	var tokens []string
+	remaining := comment
+	for {
+		spanStart := strings.Index(remaining, "<span")
+		if spanStart == -1 {
+			// No more spans, add remaining text
+			if len(remaining) > 0 {
+				tokens = append(tokens, remaining)
+			}
+			break
+		}
+
+		// Add text before the span
+		if spanStart > 0 {
+			tokens = append(tokens, remaining[:spanStart])
+		}
+
+		// Find the end of the span
+		spanEnd := strings.Index(remaining[spanStart:], "</span>")
+		if spanEnd == -1 {
+			// Malformed span, treat as regular text
+			tokens = append(tokens, remaining)
+			break
+		}
+
+		// Extract the complete span
+		spanEnd += spanStart + len("</span>")
+		tokens = append(tokens, remaining[spanStart:spanEnd])
+
+		// Continue with remaining text
+		remaining = remaining[spanEnd:]
+	}
+
+	// Now do word wrapping on the tokens, treating spans as atomic
 	curr := 0
-	for _, word := range strings.Fields(comment) {
-		if curr > 0 {
-			if curr+len(word)+1 > maxWidth {
-				curr = 0
+	for _, token := range tokens {
+		// If this token is a span, treat it as atomic
+		if strings.HasPrefix(token, "<span") {
+			// If adding this span would exceed the line width, start a new line
+			if curr > 0 && curr+len(token) > maxWidth {
 				fmt.Fprintf(buffer, "\n")
-			} else {
-				fmt.Fprintf(buffer, " ")
-				curr++
+				curr = 0
+			}
+			fmt.Fprintf(buffer, "%s", token)
+			curr += len(token)
+		} else {
+			// Regular text - split into words and wrap normally
+			words := strings.Fields(token)
+			for _, word := range words {
+				if curr > 0 {
+					if curr+len(word)+1 > maxWidth {
+						curr = 0
+						fmt.Fprintf(buffer, "\n")
+					} else {
+						fmt.Fprintf(buffer, " ")
+						curr++
+					}
+				}
+				fmt.Fprintf(buffer, "%s", word)
+				curr += len(word)
 			}
 		}
-		fmt.Fprintf(buffer, "%s", word)
-		curr += len(word)
 	}
 	fmt.Fprintf(buffer, "\n")
+
+	if strings.Contains(comment, "Random permutation of the list of strings given in") {
+		q.Q(buffer.String())
+	}
 	return buffer.String()
 }
 

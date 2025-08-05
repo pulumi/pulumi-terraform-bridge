@@ -1042,12 +1042,10 @@ func (g *Generator) FilterSchemaByLanguage(schemaBytes []byte) (*GenerateSchemaR
 	// \u003cspan pulumi-lang-typescript=\"`random.RandomBytes`\" pulumi-lang-dotnet=\"`random.RandomBytes`\" pulumi-lang-go=\"`RandomBytes`\" pulumi-lang-python=\"`RandomBytes`\" pulumi-lang-yaml=\"`random.RandomBytes`\" pulumi-lang-java=\"`random.RandomBytes`\"\u003e`random.RandomBytes`\u003c/span\u003e
 
 	// Regex to find span tags with language-specific attributes
-	// Matches: <span pulumi-lang-typescript="..." pulumi-lang-python="..." ...>content</span>
-	// Note: HTML entities are escaped as \u003c and \u003e, and content can span multiple lines
+	// Now that we fixed word wrapping, spans are single-line
+	spanRegex := regexp.MustCompile("\\\\u003cspan pulumi-lang-typescript=\\\\\"`[^`]*`\\\\\" pulumi-lang-dotnet=\\\\\"`[^`]*`\\\\\" pulumi-lang-go=\\\\\"`[^`]*`\\\\\" pulumi-lang-python=\\\\\"`[^`]*`\\\\\" pulumi-lang-yaml=\\\\\"`[^`]*`\\\\\" pulumi-lang-java=\\\\\"`[^`]*`\\\\\"\\\\u003e`[^`]*`\\\\u003c/span\\\\u003e")
 
-	// \\u003cspan pulumi-lang-typescript=\\"`[^`]*`\\" pulumi-lang-dotnet=\\"`[^`]*`\\" pulumi-lang-go=\\"`[^`]*`\\" pulumi-lang-python=\\"`[^`]*`\\" pulumi-lang-yaml=\\"`[^`]*`\\" pulumi-lang-java=\\"`[^`]*`\\"\\u003e`[^`]*`\\u003c/span\\u003e
-	spanRegex := regexp.MustCompile("\\\\u003cspan pulumi-lang-typescript=\\\\\"`[^`]*`\\\\\" pulumi-lang-dotnet=\\\\\"`[^`]*`\\\\\" pulumi-lang-go=\\\\\"`[^`]*`\\\\\" pulumi-lang-python=\\\\\"`[^`]*`\\\\\" pulumi-lang-yaml=\\\\\"`[^`]*`\\\\\" pulumi-lang-java=\\\\\"`[^`]*`\\\\\"\\\\u003e`[^`]*`\\\\u003c/span\\\\u003e") // Process each match
-
+	// Process each match
 	schemaStr = spanRegex.ReplaceAllStringFunc(schemaStr, func(match string) string {
 		//q.Q("in match func for " + g.language)
 		//q.Q(match)
@@ -1230,6 +1228,14 @@ func (g *Generator) UnstableGenerateFromSchema(genSchemaResult *GenerateSchemaRe
 	case Schema:
 		// Omit the version so that the spec is stable if the version is e.g. derived from the current Git commit hash.
 		pulumiPackageSpec.Version = ""
+
+		//q.Q(pulumiPackageSpec)
+
+		simpleBytes, err := json.Marshal(pulumiPackageSpec)
+		if err != nil {
+			return nil, pkgerrors.Wrapf(err, "failed to marshal schema")
+		}
+		os.WriteFile("test-schema-no-indent-marshaled.json", simpleBytes, 0666)
 
 		bytes, err := json.MarshalIndent(pulumiPackageSpec, "", "    ")
 		if err != nil {
