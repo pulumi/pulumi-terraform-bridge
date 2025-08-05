@@ -35,6 +35,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	bf "github.com/russross/blackfriday/v2"
+	"github.com/ryboe/q"
 	"github.com/spf13/afero"
 	"github.com/yuin/goldmark"
 	gmast "github.com/yuin/goldmark/ast"
@@ -2177,6 +2178,11 @@ func (c infoContext) fixupPropertyReference(text string) string {
 	}
 
 	return codeLikeSingleWord.ReplaceAllStringFunc(text, func(match string) string {
+
+		//if strings.Contains(text, "Random permutation of the list of strings given") {
+		//	panic(text)
+		//}
+
 		parts := codeLikeSingleWord.FindStringSubmatch(match)
 
 		var open, name, close string
@@ -2197,7 +2203,7 @@ func (c infoContext) fixupPropertyReference(text string) string {
 			goAndPy := open + modname + resname.String() + close
 			// Use `aws.ec2.Instance` format
 			allOtherLangs := open + c.pkg.String() + "." + modname + resname.String() + close
-			span := fmt.Sprintf(`<span pulumi-lang-typescript="%s" pulumi-lang-dotnet="%s" pulumi-lang-go="%s" pulumi-lang-python="%s" pulumi-lang-yaml="%s" pulumi-lang-java="%s">%s</span>`,
+			span := fmt.Sprintf(`<span pulumi-lang-nodejs="%s" pulumi-lang-dotnet="%s" pulumi-lang-go="%s" pulumi-lang-python="%s" pulumi-lang-yaml="%s" pulumi-lang-java="%s">%s</span>`,
 				allOtherLangs,
 				allOtherLangs,
 				goAndPy,
@@ -2228,7 +2234,7 @@ func (c infoContext) fixupPropertyReference(text string) string {
 			pyFormat := open + python.PyName(modname+getname.String()) + close
 			// Use `aws.ec2.Instance` format
 			allOtherLangs := open + c.pkg.String() + "." + modname + getname.String() + close
-			span := fmt.Sprintf(`<span pulumi-lang-typescript="%s" pulumi-lang-dotnet="%s" pulumi-lang-go="%s" pulumi-lang-python="%s" pulumi-lang-yaml="%s" pulumi-lang-java="%s">%s</span>`,
+			span := fmt.Sprintf(`<span pulumi-lang-nodejs="%s" pulumi-lang-dotnet="%s" pulumi-lang-go="%s" pulumi-lang-python="%s" pulumi-lang-yaml="%s" pulumi-lang-java="%s">%s</span>`,
 				allOtherLangs,
 				allOtherLangs,
 				goFormat,
@@ -2258,7 +2264,7 @@ func (c infoContext) fixupPropertyReference(text string) string {
 
 		// Make span, again
 
-		span := fmt.Sprintf(`<span pulumi-lang-typescript="%s" pulumi-lang-dotnet="%s" pulumi-lang-go="%s" pulumi-lang-python="%s" pulumi-lang-yaml="%s" pulumi-lang-java="%s">%s</span>`,
+		span := fmt.Sprintf(`<span pulumi-lang-nodejs="%s" pulumi-lang-dotnet="%s" pulumi-lang-go="%s" pulumi-lang-python="%s" pulumi-lang-yaml="%s" pulumi-lang-java="%s">%s</span>`,
 			typescriptOrGo,
 			allOtherLangs,
 			typescriptOrGo,
@@ -2267,6 +2273,10 @@ func (c infoContext) fixupPropertyReference(text string) string {
 			allOtherLangs,
 			allOtherLangs,
 		)
+		if strings.Contains(text, "Random permutation of the list of strings given") {
+			q.Q(span)
+		}
+
 		return span
 
 		//switch c.language {
