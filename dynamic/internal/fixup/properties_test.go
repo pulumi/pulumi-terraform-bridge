@@ -334,3 +334,88 @@ func TestFixPropertyNamedPulumiRenamedPulumiInfo(t *testing.T) {
 	assert.NotNil(t, p.Resources["test_res"])
 	assert.Equal(t, "pulumiInfo", p.Resources["test_res"].Fields["pulumi"].Name)
 }
+
+func TestFixPropertyConflictWithIgnoredMappings(t *testing.T) {
+	t.Parallel()
+
+	p := info.Provider{
+		Name: "test",
+		P: (&schema.Provider{
+			ResourcesMap: schema.ResourceMap{
+				"test_ignored": (&schema.Resource{
+					Schema: schema.SchemaMap{
+						"urn": (&schema.Schema{
+							Type: shim.TypeString,
+						}).Shim(),
+						"id": (&schema.Schema{
+							Type:     shim.TypeString,
+							Computed: true,
+						}).Shim(),
+					},
+				}).Shim(),
+				"test_processed": (&schema.Resource{
+					Schema: schema.SchemaMap{
+						"urn": (&schema.Schema{
+							Type: shim.TypeString,
+						}).Shim(),
+						"id": (&schema.Schema{
+							Type:     shim.TypeString,
+							Computed: true,
+						}).Shim(),
+					},
+				}).Shim(),
+			},
+		}).Shim(),
+		IgnoreMappings: []string{"test_ignored"},
+	}
+
+	err := fixup.Default(&p)
+	require.NoError(t, err)
+
+	// Ignored resource should not be processed or added to Resources map
+	assert.NotContains(t, p.Resources, "test_ignored")
+
+	// Non-ignored resource should be processed and have property conflicts fixed
+	assert.Contains(t, p.Resources, "test_processed")
+	processedRes := p.Resources["test_processed"]
+	assert.NotNil(t, processedRes.Fields)
+	assert.Equal(t, "testUrn", processedRes.Fields["urn"].Name)
+}
+
+func TestFixMissingIDsWithIgnoredMappings(t *testing.T) {
+	t.Parallel()
+
+	p := info.Provider{
+		Name: "test",
+		P: (&schema.Provider{
+			ResourcesMap: schema.ResourceMap{
+				"test_ignored": (&schema.Resource{
+					Schema: schema.SchemaMap{
+						"some_property": (&schema.Schema{
+							Type: shim.TypeString,
+						}).Shim(),
+					},
+				}).Shim(),
+				"test_processed": (&schema.Resource{
+					Schema: schema.SchemaMap{
+						"some_property": (&schema.Schema{
+							Type: shim.TypeString,
+						}).Shim(),
+					},
+				}).Shim(),
+			},
+		}).Shim(),
+		IgnoreMappings: []string{"test_ignored"},
+	}
+
+	err := fixup.Default(&p)
+	require.NoError(t, err)
+
+	// Ignored resource should not be processed or added to Resources map
+	assert.NotContains(t, p.Resources, "test_ignored")
+
+	// Non-ignored resource should be processed and have ComputeID set for missing ID
+	assert.Contains(t, p.Resources, "test_processed")
+	processedRes := p.Resources["test_processed"]
+	assert.NotNil(t, processedRes.ComputeID, "expected ComputeID to be set for missing ID")
+}

@@ -41,11 +41,24 @@ import (
 // The set of fixups applied may expand over time, but it should not effect providers that
 // correctly compile in all languages.
 func Default(p *info.Provider) error {
+	fixCtx := newFixCtx(p)
 	return errors.Join(
-		fixPropertyConflict(p),
-		fixMissingIDs(p),
+		fixPropertyConflict(fixCtx, p),
+		fixMissingIDs(fixCtx, p),
 		fixProviderResource(p),
 	)
+}
+
+func newFixCtx(p *info.Provider) fixCtx {
+	ignoredMappings := make(map[string]struct{}, len(p.IgnoreMappings))
+	for _, v := range p.IgnoreMappings {
+		ignoredMappings[v] = struct{}{}
+	}
+	return fixCtx{ignoredMappings}
+}
+
+type fixCtx struct {
+	ignoredMappings map[string]struct{}
 }
 
 // fixProviderResource renames any resource that would otherwise be called `Provider`,
@@ -73,7 +86,7 @@ func fixProviderResource(p *info.Provider) error {
 	).Resource(p.GetResourcePrefix()+"_"+p.Name+"_provider", res)
 }
 
-func fixMissingIDs(p *info.Provider) error {
+func fixMissingIDs(fixCtx fixCtx, p *info.Provider) error {
 	getIDType := func(r *info.Resource) tokens.Type {
 		s := r.Fields["id"]
 		if s == nil {
@@ -81,7 +94,7 @@ func fixMissingIDs(p *info.Provider) error {
 		}
 		return s.Type
 	}
-	return walkResources(p, func(r tfbridge.Resource) error {
+	return walkResources(fixCtx, p, func(r tfbridge.Resource) error {
 		id, hasID := r.TF.Schema().GetOk("id")
 		ok := hasID &&
 			(id.Type() == shim.TypeString || getIDType(r.Schema) == "string") &&
@@ -97,11 +110,11 @@ func missingID(context.Context, resource.PropertyMap) (resource.ID, error) {
 	return "missing ID", nil
 }
 
-func fixPropertyConflict(p *info.Provider) error {
+func fixPropertyConflict(fixCtx fixCtx, p *info.Provider) error {
 	if p.Name == "" {
 		return fmt.Errorf("must set p.Name")
 	}
-	return walkResources(p, func(r tfbridge.Resource) error {
+	return walkResources(fixCtx, p, func(r tfbridge.Resource) error {
 		var retError []error
 		r.TF.Schema().Range(func(key string, value shim.Schema) bool {
 			if fix := badPropertyName(p.Name, p.GetResourcePrefix(), key); fix != nil {
@@ -250,10 +263,14 @@ func ensureResources(p *info.Provider) map[string]*info.Resource {
 	return p.Resources
 }
 
-func walkResources(p *info.Provider, f func(tfbridge.Resource) error) error {
+func walkResources(fixCtx fixCtx, p *info.Provider, f func(tfbridge.Resource) error) error {
 	var errs []error
 
-	p.P.ResourcesMap().Range(func(key string, tf shim.Resource) bool {
+	for key, tf := range p.P.ResourcesMap().Range {
+		// Skip ignored resources
+		if _, ok := fixCtx.ignoredMappings[key]; ok {
+			continue
+		}
 		res, isPresent := p.Resources[key]
 		if !isPresent {
 			res = &info.Resource{}
@@ -276,9 +293,7 @@ func walkResources(p *info.Provider, f func(tfbridge.Resource) error) error {
 		if !isPresent && !reflect.ValueOf(*res).IsZero() {
 			ensureResources(p)[key] = res
 		}
-
-		return true
-	})
+	}
 
 	return errors.Join(errs...)
 }
