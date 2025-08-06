@@ -123,20 +123,6 @@ func providerInfo(ctx context.Context, p run.Provider, value parameterize.Value)
 		}
 
 		prov.IgnoreMappings = ignoreMappings
-
-		// Remove ignored resources from the maps (fixup may have pre-populated them)
-		//
-		// TODO: fixup.Default should ignore ignored mappings, so we shouldn't need this.
-		if prov.Resources != nil {
-			for _, ignored := range ignoreMappings {
-				delete(prov.Resources, ignored)
-			}
-		}
-		if prov.DataSources != nil {
-			for _, ignored := range ignoreMappings {
-				delete(prov.DataSources, ignored)
-			}
-		}
 	}
 
 	if err := fixup.Default(&prov); err != nil {
