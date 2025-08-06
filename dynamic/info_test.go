@@ -165,7 +165,7 @@ func TestResourceFiltering(t *testing.T) {
 
 	t.Run("filter specific resources", func(t *testing.T) {
 		// Test filtering to include only specific resources
-		info, err := providerInfo(t.Context(), provider, parameterize.Value{
+		info, err := providerInfo(context.Background(), provider, parameterize.Value{
 			Resources: []string{"test_resource_a", "test_data_a"},
 		})
 		require.NoError(t, err)
@@ -188,7 +188,7 @@ func TestResourceFiltering(t *testing.T) {
 
 	t.Run("empty resources includes all", func(t *testing.T) {
 		// Test empty resources (should include all - existing behavior)
-		info, err := providerInfo(t.Context(), provider, parameterize.Value{})
+		info, err := providerInfo(context.Background(), provider, parameterize.Value{})
 		require.NoError(t, err)
 		assert.Empty(t, info.IgnoreMappings)
 
@@ -206,7 +206,7 @@ func TestResourceFiltering(t *testing.T) {
 
 	t.Run("nil resources includes all", func(t *testing.T) {
 		// Test nil resources (should include all - existing behavior)
-		info, err := providerInfo(t.Context(), provider, parameterize.Value{
+		info, err := providerInfo(context.Background(), provider, parameterize.Value{
 			Resources: nil,
 		})
 		require.NoError(t, err)
@@ -226,7 +226,7 @@ func TestResourceFiltering(t *testing.T) {
 
 	t.Run("single resource filter", func(t *testing.T) {
 		// Test filtering to a single resource
-		info, err := providerInfo(t.Context(), provider, parameterize.Value{
+		info, err := providerInfo(context.Background(), provider, parameterize.Value{
 			Resources: []string{"test_resource_b"},
 		})
 		require.NoError(t, err)
@@ -248,7 +248,7 @@ func TestResourceFiltering(t *testing.T) {
 
 	t.Run("non-existent resource", func(t *testing.T) {
 		// Test filtering with non-existent resource (should ignore all actual resources)
-		info, err := providerInfo(t.Context(), provider, parameterize.Value{
+		info, err := providerInfo(context.Background(), provider, parameterize.Value{
 			Resources: []string{"non_existent_resource"},
 		})
 		require.NoError(t, err)
