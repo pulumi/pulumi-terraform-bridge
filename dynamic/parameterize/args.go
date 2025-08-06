@@ -35,6 +35,9 @@ type Args struct {
 	// Includes is the list of resource and datasource TF tokens to include in the
 	// provider.  If empty, all resources and datasources are included.
 	Includes []string
+	// ProviderName is the custom name for the generated provider.
+	// If empty, the default Terraform provider name is used.
+	ProviderName string
 }
 
 // RemoteArgs represents a TF provider referenced by name.
@@ -68,11 +71,12 @@ func ParseArgs(ctx context.Context, a []string) (Args, error) {
 	var upstreamRepoPath string
 	var indexDocOutDir string
 	var includes []string
+	var providerName string
 	cmd := cobra.Command{
 		Use: "./local | remote version",
 		RunE: func(cmd *cobra.Command, a []string) error {
 			var err error
-			args, err = parseArgs(cmd.Context(), a, fullDocs, upstreamRepoPath, indexDocOutDir, includes)
+			args, err = parseArgs(cmd.Context(), a, fullDocs, upstreamRepoPath, indexDocOutDir, includes, providerName)
 			return err
 		},
 		Args: cobra.RangeArgs(1, 2),
@@ -89,6 +93,8 @@ func ParseArgs(ctx context.Context, a []string) (Args, error) {
 			`(e.g. aws_instance,aws_vpc).
 
 If no include filter is specified, all resources and datasources are mapped.`)
+	cmd.Flags().StringVar(&providerName, "provider-name", "",
+		"Custom name for the generated provider to avoid name collisions")
 
 	// We hide docs flags since they are not intended for end users, and they may not be stable.
 	if !env.Dev.Value() {
@@ -128,6 +134,7 @@ func parseArgs(
 	fullDocs bool,
 	upstreamRepoPath, indexDocOutDir string,
 	includes []string,
+	providerName string,
 ) (Args, error) {
 	// If we see a local prefix (starts with '.' or '/'), parse args for a local provider
 	if strings.HasPrefix(args[0], ".") || strings.HasPrefix(args[0], "/") {
@@ -147,7 +154,8 @@ func parseArgs(
 				UpstreamRepoPath: upstreamRepoPath,
 				IndexDocOutDir:   indexDocOutDir,
 			},
-			Includes: includes,
+			Includes:     includes,
+			ProviderName: providerName,
 		}, nil
 	}
 
@@ -169,5 +177,5 @@ func parseArgs(
 		Version:        version,
 		Docs:           fullDocs,
 		IndexDocOutDir: indexDocOutDir,
-	}, Includes: includes}, nil
+	}, Includes: includes, ProviderName: providerName}, nil
 }

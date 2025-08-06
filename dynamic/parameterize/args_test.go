@@ -174,6 +174,46 @@ func TestParseArgs(t *testing.T) {
 				Includes: []string{"res_a", "res_b", "res_c"},
 			},
 		},
+		{
+			name: "local with provider name",
+			args: []string{"./my-provider", "--provider-name=custom-provider"},
+			expect: Args{
+				Local:        &LocalArgs{Path: "./my-provider"},
+				ProviderName: "custom-provider",
+			},
+		},
+		{
+			name: "remote with provider name",
+			args: []string{"registry/provider", "1.2.3", "--provider-name=my-custom-provider"},
+			expect: Args{
+				Remote: &RemoteArgs{
+					Name:    "registry/provider",
+					Version: "1.2.3",
+				},
+				ProviderName: "my-custom-provider",
+			},
+		},
+		{
+			name: "provider name with resources",
+			args: []string{"registry/provider", "--provider-name=aliased-provider", "--resources=res_a,res_b"},
+			expect: Args{
+				Remote: &RemoteArgs{
+					Name: "registry/provider",
+				},
+				ProviderName: "aliased-provider",
+				Includes:     []string{"res_a", "res_b"},
+			},
+		},
+		{
+			name: "empty provider name flag",
+			args: []string{"registry/provider", "--provider-name="},
+			expect: Args{
+				Remote: &RemoteArgs{
+					Name: "registry/provider",
+				},
+				ProviderName: "",
+			},
+		},
 	}
 
 	for _, tt := range tests {
