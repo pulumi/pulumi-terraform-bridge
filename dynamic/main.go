@@ -172,7 +172,8 @@ func initialSetup() (info.Provider, pfbridge.ProviderMetadata, func() error) {
 			}
 
 			value := parameterize.Value{
-				Includes: args.Includes,
+				Includes:     args.Includes,
+				ProviderName: args.ProviderName,
 			}
 			if args.Local != nil {
 				value.Local = &parameterize.LocalValue{
@@ -238,8 +239,13 @@ func initialSetup() (info.Provider, pfbridge.ProviderMetadata, func() error) {
 				}
 			}
 
+			responseProviderName := p.Name()
+			if args.ProviderName != "" {
+				responseProviderName = args.ProviderName
+			}
+
 			return plugin.ParameterizeResponse{
-				Name:    p.Name(),
+				Name:    responseProviderName,
 				Version: v,
 			}, nil
 		},

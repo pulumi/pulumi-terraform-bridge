@@ -20,6 +20,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 	"github.com/hashicorp/terraform-plugin-go/tftypes"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -308,6 +309,44 @@ func TestIncludeFilter(t *testing.T) {
 		}
 		assert.ElementsMatch(t, expectedDataSources, actualDataSources)
 		assert.Empty(t, info.Resources, "Should have no resources")
+	})
+}
+
+func TestProviderNameOverride(t *testing.T) {
+	t.Parallel()
+
+	provider := schemaOnlyProvider{
+		name:    "original",
+		version: "1.0.0",
+		schema: &tfprotov6.GetProviderSchemaResponse{
+			ResourceSchemas: map[string]*tfprotov6.Schema{
+				"original_resource": {Block: &tfprotov6.SchemaBlock{}},
+			},
+		},
+	}
+
+	t.Run("default provider name", func(t *testing.T) {
+		// Test with empty ProviderName (should use default)
+		info, err := providerInfo(context.Background(), provider, parameterize.Value{})
+		require.NoError(t, err)
+
+		assert.Equal(t, "original", info.Name)
+		assert.Equal(t, "original", info.Golang.RootPackageName)
+		assert.Equal(t, "github.com/pulumi/pulumi-terraform-provider/sdks/go/original/original", info.Golang.ImportBasePath)
+	})
+
+	t.Run("custom provider name", func(t *testing.T) {
+		// Test with custom ProviderName
+		info, err := providerInfo(context.Background(), provider, parameterize.Value{
+			ProviderName: "override",
+		})
+		require.NoError(t, err)
+
+		assert.Equal(t, "override", info.Name)
+		assert.Equal(t, "override", info.Golang.RootPackageName)
+		assert.Equal(t, "github.com/pulumi/pulumi-terraform-provider/sdks/go/override/override", info.Golang.ImportBasePath)
+
+		assert.Equal(t, tokens.Type("override:index/resource:Resource"), info.Resources["original_resource"].Tok)
 	})
 }
 

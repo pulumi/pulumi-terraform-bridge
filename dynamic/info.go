@@ -34,9 +34,14 @@ import (
 func providerInfo(ctx context.Context, p run.Provider, value parameterize.Value) (tfbridge.ProviderInfo, error) {
 	provider := proto.New(ctx, p)
 
+	providerName := p.Name()
+	if value.ProviderName != "" {
+		providerName = value.ProviderName
+	}
+
 	prov := tfbridge.ProviderInfo{
 		P:              provider,
-		Name:           p.Name(),
+		Name:           providerName,
 		Version:        p.Version(),
 		Description:    "A Pulumi provider dynamically bridged from " + p.Name() + ".",
 		ResourcePrefix: inferResourcePrefix(provider),
@@ -61,11 +66,11 @@ func providerInfo(ctx context.Context, p run.Provider, value parameterize.Value)
 		Golang: &tfbridge.GolangInfo{
 			ImportBasePath: path.Join(
 				"github.com/pulumi/pulumi-terraform-provider/sdks/go",
-				p.Name(),
+				providerName,
 				tfbridge.GetModuleMajorVersion(p.Version()),
-				p.Name(),
+				providerName,
 			),
-			RootPackageName:              p.Name(),
+			RootPackageName:              providerName,
 			LiftSingleValueMethodReturns: true,
 			GenerateExtraInputTypes:      true,
 			RespectSchemaVersion:         true,
@@ -130,7 +135,7 @@ func providerInfo(ctx context.Context, p run.Provider, value parameterize.Value)
 	}
 
 	err := prov.ComputeTokens(tokens.SingleModule(
-		prov.GetResourcePrefix(), "index", tokens.MakeStandard(p.Name())))
+		prov.GetResourcePrefix(), "index", tokens.MakeStandard(providerName)))
 	if err != nil {
 		return prov, err
 	}
