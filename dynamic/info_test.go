@@ -144,7 +144,7 @@ func TestFixHyphenToken(t *testing.T) {
 	}, p.Resources)
 }
 
-func TestResourceFiltering(t *testing.T) {
+func TestIncludeFilter(t *testing.T) {
 	t.Parallel()
 
 	provider := schemaOnlyProvider{
@@ -163,14 +163,14 @@ func TestResourceFiltering(t *testing.T) {
 		},
 	}
 
-	t.Run("filter specific resources", func(t *testing.T) {
-		// Test filtering to include only specific resources
+	t.Run("include specific resources and datasources", func(t *testing.T) {
+		// Test including only specific resources and datasources
 		info, err := providerInfo(context.Background(), provider, parameterize.Value{
 			Includes: []string{"test_resource_a", "test_data_a"},
 		})
 		require.NoError(t, err)
 
-		// Should ignore all resources/datasources NOT in the Resources list
+		// Should ignore all resources/datasources NOT in the includes list
 		expectedIgnored := []string{"test_resource_b", "test_resource_c", "test_data_b"}
 		assert.ElementsMatch(t, expectedIgnored, info.IgnoreMappings)
 
@@ -186,8 +186,8 @@ func TestResourceFiltering(t *testing.T) {
 		assert.ElementsMatch(t, expectedResources, actualResources)
 	})
 
-	t.Run("empty resources includes all", func(t *testing.T) {
-		// Test empty resources (should include all - existing behavior)
+	t.Run("empty includes list includes all", func(t *testing.T) {
+		// Test empty includes list (should include all - existing behavior)
 		info, err := providerInfo(context.Background(), provider, parameterize.Value{})
 		require.NoError(t, err)
 		assert.Empty(t, info.IgnoreMappings)
@@ -204,8 +204,8 @@ func TestResourceFiltering(t *testing.T) {
 		assert.ElementsMatch(t, expectedResources, actualResources)
 	})
 
-	t.Run("nil resources includes all", func(t *testing.T) {
-		// Test nil resources (should include all - existing behavior)
+	t.Run("nil includes list includes all", func(t *testing.T) {
+		// Test nil includes list (should include all - existing behavior)
 		info, err := providerInfo(context.Background(), provider, parameterize.Value{
 			Includes: nil,
 		})
@@ -224,8 +224,8 @@ func TestResourceFiltering(t *testing.T) {
 		assert.ElementsMatch(t, expectedResources, actualResources)
 	})
 
-	t.Run("single resource filter has single resource", func(t *testing.T) {
-		// Test filtering to a single resource
+	t.Run("single include has single resource", func(t *testing.T) {
+		// Test including only a single resource
 		info, err := providerInfo(context.Background(), provider, parameterize.Value{
 			Includes: []string{"test_resource_b"},
 		})
@@ -246,8 +246,8 @@ func TestResourceFiltering(t *testing.T) {
 		assert.ElementsMatch(t, expectedResources, actualResources)
 	})
 
-	t.Run("non-existent resource does not affect filter", func(t *testing.T) {
-		// Test filtering with non-existent resource (should ignore all actual resources)
+	t.Run("non-existent resource in includes list", func(t *testing.T) {
+		// Test including non-existent resource (should ignore all actual resources)
 		info, err := providerInfo(context.Background(), provider, parameterize.Value{
 			Includes: []string{"non_existent_resource"},
 		})
@@ -266,6 +266,48 @@ func TestResourceFiltering(t *testing.T) {
 			actualResources = append(actualResources, tfName)
 		}
 		assert.Empty(t, actualResources)
+	})
+
+	t.Run("include only resources", func(t *testing.T) {
+		// Test including only resources (no datasources)
+		info, err := providerInfo(context.Background(), provider, parameterize.Value{
+			Includes: []string{"test_resource_a", "test_resource_b"},
+		})
+		require.NoError(t, err)
+
+		// Should ignore all datasources and the unspecified resource
+		expectedIgnored := []string{"test_resource_c", "test_data_a", "test_data_b"}
+		assert.ElementsMatch(t, expectedIgnored, info.IgnoreMappings)
+
+		// Should only have the specified resources, no datasources
+		expectedResources := []string{"test_resource_a", "test_resource_b"}
+		actualResources := make([]string, 0, len(info.Resources))
+		for tfName := range info.Resources {
+			actualResources = append(actualResources, tfName)
+		}
+		assert.ElementsMatch(t, expectedResources, actualResources)
+		assert.Empty(t, info.DataSources, "Should have no datasources")
+	})
+
+	t.Run("include only datasources", func(t *testing.T) {
+		// Test including only datasources (no resources)
+		info, err := providerInfo(context.Background(), provider, parameterize.Value{
+			Includes: []string{"test_data_a", "test_data_b"},
+		})
+		require.NoError(t, err)
+
+		// Should ignore all resources
+		expectedIgnored := []string{"test_resource_a", "test_resource_b", "test_resource_c"}
+		assert.ElementsMatch(t, expectedIgnored, info.IgnoreMappings)
+
+		// Should only have datasources, no resources
+		expectedDataSources := []string{"test_data_a", "test_data_b"}
+		actualDataSources := make([]string, 0, len(info.DataSources))
+		for tfName := range info.DataSources {
+			actualDataSources = append(actualDataSources, tfName)
+		}
+		assert.ElementsMatch(t, expectedDataSources, actualDataSources)
+		assert.Empty(t, info.Resources, "Should have no resources")
 	})
 }
 
