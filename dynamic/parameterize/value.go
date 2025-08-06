@@ -28,6 +28,9 @@ import (
 type Value struct {
 	Remote *RemoteValue `json:"remote,omitempty"`
 	Local  *LocalValue  `json:"local,omitempty"`
+	// Includes is the list of resource and datasource names to include in the
+	// provider.  If empty, all resources are included.
+	Includes []string `json:"includes,omitempty"`
 }
 
 type RemoteValue struct {
@@ -97,10 +100,10 @@ func (p *Value) IntoArgs() Args {
 	if p.Local != nil {
 		return Args{Local: &LocalArgs{
 			Path: p.Local.Path,
-		}}
+		}, Includes: p.Includes}
 	}
 	return Args{Remote: &RemoteArgs{
 		Name:    p.Remote.URL,
 		Version: p.Remote.Version,
-	}}
+	}, Includes: p.Includes}
 }

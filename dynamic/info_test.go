@@ -144,6 +144,173 @@ func TestFixHyphenToken(t *testing.T) {
 	}, p.Resources)
 }
 
+func TestIncludeFilter(t *testing.T) {
+	t.Parallel()
+
+	provider := schemaOnlyProvider{
+		name:    "test",
+		version: "1.0.0",
+		schema: &tfprotov6.GetProviderSchemaResponse{
+			ResourceSchemas: map[string]*tfprotov6.Schema{
+				"test_resource_a": {Block: &tfprotov6.SchemaBlock{}},
+				"test_resource_b": {Block: &tfprotov6.SchemaBlock{}},
+				"test_resource_c": {Block: &tfprotov6.SchemaBlock{}},
+			},
+			DataSourceSchemas: map[string]*tfprotov6.Schema{
+				"test_data_a": {Block: &tfprotov6.SchemaBlock{}},
+				"test_data_b": {Block: &tfprotov6.SchemaBlock{}},
+			},
+		},
+	}
+
+	t.Run("include specific resources and datasources", func(t *testing.T) {
+		// Test including only specific resources and datasources
+		info, err := providerInfo(context.Background(), provider, parameterize.Value{
+			Includes: []string{"test_resource_a", "test_data_a"},
+		})
+		require.NoError(t, err)
+
+		// Should ignore all resources/datasources NOT in the includes list
+		expectedIgnored := []string{"test_resource_b", "test_resource_c", "test_data_b"}
+		assert.ElementsMatch(t, expectedIgnored, info.IgnoreMappings)
+
+		// Should only have the specified resources in the Resources map
+		expectedResources := []string{"test_resource_a", "test_data_a"}
+		actualResources := make([]string, 0, len(info.Resources)+len(info.DataSources))
+		for tfName := range info.Resources {
+			actualResources = append(actualResources, tfName)
+		}
+		for tfName := range info.DataSources {
+			actualResources = append(actualResources, tfName)
+		}
+		assert.ElementsMatch(t, expectedResources, actualResources)
+	})
+
+	t.Run("empty includes list includes all", func(t *testing.T) {
+		// Test empty includes list (should include all - existing behavior)
+		info, err := providerInfo(context.Background(), provider, parameterize.Value{})
+		require.NoError(t, err)
+		assert.Empty(t, info.IgnoreMappings)
+
+		// Should have all resources in the Resources and DataSources maps
+		expectedResources := []string{"test_resource_a", "test_resource_b", "test_resource_c", "test_data_a", "test_data_b"}
+		actualResources := make([]string, 0, len(info.Resources)+len(info.DataSources))
+		for tfName := range info.Resources {
+			actualResources = append(actualResources, tfName)
+		}
+		for tfName := range info.DataSources {
+			actualResources = append(actualResources, tfName)
+		}
+		assert.ElementsMatch(t, expectedResources, actualResources)
+	})
+
+	t.Run("nil includes list includes all", func(t *testing.T) {
+		// Test nil includes list (should include all - existing behavior)
+		info, err := providerInfo(context.Background(), provider, parameterize.Value{
+			Includes: nil,
+		})
+		require.NoError(t, err)
+		assert.Empty(t, info.IgnoreMappings)
+
+		// Should have all resources in the Resources and DataSources maps
+		expectedResources := []string{"test_resource_a", "test_resource_b", "test_resource_c", "test_data_a", "test_data_b"}
+		actualResources := make([]string, 0, len(info.Resources)+len(info.DataSources))
+		for tfName := range info.Resources {
+			actualResources = append(actualResources, tfName)
+		}
+		for tfName := range info.DataSources {
+			actualResources = append(actualResources, tfName)
+		}
+		assert.ElementsMatch(t, expectedResources, actualResources)
+	})
+
+	t.Run("single include has single resource", func(t *testing.T) {
+		// Test including only a single resource
+		info, err := providerInfo(context.Background(), provider, parameterize.Value{
+			Includes: []string{"test_resource_b"},
+		})
+		require.NoError(t, err)
+
+		expectedIgnored := []string{"test_resource_a", "test_resource_c", "test_data_a", "test_data_b"}
+		assert.ElementsMatch(t, expectedIgnored, info.IgnoreMappings)
+
+		// Should only have the single specified resource
+		expectedResources := []string{"test_resource_b"}
+		actualResources := make([]string, 0, len(info.Resources)+len(info.DataSources))
+		for tfName := range info.Resources {
+			actualResources = append(actualResources, tfName)
+		}
+		for tfName := range info.DataSources {
+			actualResources = append(actualResources, tfName)
+		}
+		assert.ElementsMatch(t, expectedResources, actualResources)
+	})
+
+	t.Run("non-existent resource in includes list", func(t *testing.T) {
+		// Test including non-existent resource (should ignore all actual resources)
+		info, err := providerInfo(context.Background(), provider, parameterize.Value{
+			Includes: []string{"non_existent_resource"},
+		})
+		require.NoError(t, err)
+
+		// All actual resources should be ignored
+		expectedIgnored := []string{"test_resource_a", "test_resource_b", "test_resource_c", "test_data_a", "test_data_b"}
+		assert.ElementsMatch(t, expectedIgnored, info.IgnoreMappings)
+
+		// Should have no resources in the Resources and DataSources maps
+		actualResources := make([]string, 0, len(info.Resources)+len(info.DataSources))
+		for tfName := range info.Resources {
+			actualResources = append(actualResources, tfName)
+		}
+		for tfName := range info.DataSources {
+			actualResources = append(actualResources, tfName)
+		}
+		assert.Empty(t, actualResources)
+	})
+
+	t.Run("include only resources", func(t *testing.T) {
+		// Test including only resources (no datasources)
+		info, err := providerInfo(context.Background(), provider, parameterize.Value{
+			Includes: []string{"test_resource_a", "test_resource_b"},
+		})
+		require.NoError(t, err)
+
+		// Should ignore all datasources and the unspecified resource
+		expectedIgnored := []string{"test_resource_c", "test_data_a", "test_data_b"}
+		assert.ElementsMatch(t, expectedIgnored, info.IgnoreMappings)
+
+		// Should only have the specified resources, no datasources
+		expectedResources := []string{"test_resource_a", "test_resource_b"}
+		actualResources := make([]string, 0, len(info.Resources))
+		for tfName := range info.Resources {
+			actualResources = append(actualResources, tfName)
+		}
+		assert.ElementsMatch(t, expectedResources, actualResources)
+		assert.Empty(t, info.DataSources, "Should have no datasources")
+	})
+
+	t.Run("include only datasources", func(t *testing.T) {
+		// Test including only datasources (no resources)
+		info, err := providerInfo(context.Background(), provider, parameterize.Value{
+			Includes: []string{"test_data_a", "test_data_b"},
+		})
+		require.NoError(t, err)
+
+		// Should ignore all resources
+		expectedIgnored := []string{"test_resource_a", "test_resource_b", "test_resource_c"}
+		assert.ElementsMatch(t, expectedIgnored, info.IgnoreMappings)
+
+		// Should only have datasources, no resources
+		expectedDataSources := []string{"test_data_a", "test_data_b"}
+		actualDataSources := make([]string, 0, len(info.DataSources))
+		for tfName := range info.DataSources {
+			actualDataSources = append(actualDataSources, tfName)
+		}
+		assert.ElementsMatch(t, expectedDataSources, actualDataSources)
+		assert.Empty(t, info.Resources, "Should have no resources")
+	})
+}
+
 type schemaOnlyProvider struct {
 	run.Provider
 	name, url, version string

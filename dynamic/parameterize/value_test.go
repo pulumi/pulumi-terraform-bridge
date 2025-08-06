@@ -40,6 +40,27 @@ func TestMarshalValue(t *testing.T) {
 		}}.Marshal()))
 	})
 
+	t.Run("remote with includes", func(t *testing.T) {
+		autogold.Expect(
+			`{"remote":{"url":"registry/owner/type","version":"1.2.3"},"includes":["res1","res2"]}`,
+		).Equal(t, string(Value{
+			Remote: &RemoteValue{
+				URL:     "registry/owner/type",
+				Version: "1.2.3",
+			},
+			Includes: []string{"res1", "res2"},
+		}.Marshal()))
+	})
+
+	t.Run("local with includes", func(t *testing.T) {
+		autogold.Expect(`{"local":{"path":"./path"},"includes":["resource_a","resource_b"]}`).Equal(t, string(Value{
+			Local: &LocalValue{
+				Path: "./path",
+			},
+			Includes: []string{"resource_a", "resource_b"},
+		}.Marshal()))
+	})
+
 	// Invalid values of Value should panic to help catch bugs early.
 	shouldPanicOnMarshal := []struct {
 		name string
@@ -100,6 +121,27 @@ func TestUnmarshal(t *testing.T) {
 			input: `{}`,
 			err:   true,
 		},
+		{
+			name:  "remote with includes",
+			input: `{"remote":{"url":"registry/owner/type","version":"1.2.3"},"includes":["res1","res2"]}`,
+			expect: Value{
+				Remote: &RemoteValue{
+					URL:     "registry/owner/type",
+					Version: "1.2.3",
+				},
+				Includes: []string{"res1", "res2"},
+			},
+		},
+		{
+			name:  "local with includes",
+			input: `{"local":{"path":"./path"},"includes":["resource_a"]}`,
+			expect: Value{
+				Local: &LocalValue{
+					Path: "./path",
+				},
+				Includes: []string{"resource_a"},
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -145,6 +187,38 @@ func TestValueIntoArgs(t *testing.T) {
 			args: Args{Local: &LocalArgs{
 				Path: "./a/b/c",
 			}},
+		},
+		{
+			name: "remote with includes",
+			value: Value{
+				Remote: &RemoteValue{
+					URL:     "a/b/c",
+					Version: "1.2.3",
+				},
+				Includes: []string{"res1", "res2"},
+			},
+			args: Args{
+				Remote: &RemoteArgs{
+					Name:    "a/b/c",
+					Version: "1.2.3",
+				},
+				Includes: []string{"res1", "res2"},
+			},
+		},
+		{
+			name: "local with includes",
+			value: Value{
+				Local: &LocalValue{
+					Path: "./a/b/c",
+				},
+				Includes: []string{"local_res"},
+			},
+			args: Args{
+				Local: &LocalArgs{
+					Path: "./a/b/c",
+				},
+				Includes: []string{"local_res"},
+			},
 		},
 	}
 
