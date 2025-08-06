@@ -125,6 +125,55 @@ func TestParseArgs(t *testing.T) {
 				"unknown flag: --invalid",
 			),
 		},
+		{
+			name: "local with resources",
+			args: []string{"./my-provider", "--resources=resource1,resource2"},
+			expect: Args{
+				Local:     &LocalArgs{Path: "./my-provider"},
+				Resources: []string{"resource1", "resource2"},
+			},
+		},
+		{
+			name: "remote with resources",
+			args: []string{"registry/provider", "1.2.3", "--resources=res_a,res_b,res_c"},
+			expect: Args{
+				Remote: &RemoteArgs{
+					Name:    "registry/provider",
+					Version: "1.2.3",
+				},
+				Resources: []string{"res_a", "res_b", "res_c"},
+			},
+		},
+		{
+			name: "single resource",
+			args: []string{"registry/provider", "--resources=single_resource"},
+			expect: Args{
+				Remote: &RemoteArgs{
+					Name: "registry/provider",
+				},
+				Resources: []string{"single_resource"},
+			},
+		},
+		{
+			name: "empty resources flag",
+			args: []string{"registry/provider", "--resources="},
+			expect: Args{
+				Remote: &RemoteArgs{
+					Name: "registry/provider",
+				},
+				Resources: []string{},
+			},
+		},
+		{
+			name: "multiple invocations",
+			args: []string{"registry/provider", "--resources", "res_a", "--resources", "res_b", "--resources", "res_c"},
+			expect: Args{
+				Remote: &RemoteArgs{
+					Name: "registry/provider",
+				},
+				Resources: []string{"res_a", "res_b", "res_c"},
+			},
+		},
 	}
 
 	for _, tt := range tests {

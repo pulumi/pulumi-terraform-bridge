@@ -171,7 +171,9 @@ func initialSetup() (info.Provider, pfbridge.ProviderMetadata, func() error) {
 				return plugin.ParameterizeResponse{}, err
 			}
 
-			var value parameterize.Value
+			value := parameterize.Value{
+				Resources: args.Resources,
+			}
 			if args.Local != nil {
 				value.Local = &parameterize.LocalValue{
 					Path: args.Local.Path,
