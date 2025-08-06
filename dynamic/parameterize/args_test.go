@@ -126,52 +126,52 @@ func TestParseArgs(t *testing.T) {
 			),
 		},
 		{
-			name: "local with resources",
-			args: []string{"./my-provider", "--resources=resource1,resource2"},
+			name: "local with includes",
+			args: []string{"./my-provider", "--include=resource1,resource2"},
 			expect: Args{
-				Local:     &LocalArgs{Path: "./my-provider"},
-				Resources: []string{"resource1", "resource2"},
+				Local:    &LocalArgs{Path: "./my-provider"},
+				Includes: []string{"resource1", "resource2"},
 			},
 		},
 		{
-			name: "remote with resources",
-			args: []string{"registry/provider", "1.2.3", "--resources=res_a,res_b,res_c"},
+			name: "remote with includes",
+			args: []string{"registry/provider", "1.2.3", "--include=res_a,res_b,res_c"},
 			expect: Args{
 				Remote: &RemoteArgs{
 					Name:    "registry/provider",
 					Version: "1.2.3",
 				},
-				Resources: []string{"res_a", "res_b", "res_c"},
+				Includes: []string{"res_a", "res_b", "res_c"},
 			},
 		},
 		{
-			name: "single resource",
-			args: []string{"registry/provider", "--resources=single_resource"},
+			name: "single include",
+			args: []string{"registry/provider", "--include=single_resource"},
 			expect: Args{
 				Remote: &RemoteArgs{
 					Name: "registry/provider",
 				},
-				Resources: []string{"single_resource"},
+				Includes: []string{"single_resource"},
 			},
 		},
 		{
-			name: "empty resources flag",
-			args: []string{"registry/provider", "--resources="},
+			name: "empty include flag",
+			args: []string{"registry/provider", "--include="},
 			expect: Args{
 				Remote: &RemoteArgs{
 					Name: "registry/provider",
 				},
-				Resources: []string{},
+				Includes: []string{},
 			},
 		},
 		{
 			name: "multiple invocations",
-			args: []string{"registry/provider", "--resources", "res_a", "--resources", "res_b", "--resources", "res_c"},
+			args: []string{"registry/provider", "--include", "res_a", "--include", "res_b", "--include", "res_c"},
 			expect: Args{
 				Remote: &RemoteArgs{
 					Name: "registry/provider",
 				},
-				Resources: []string{"res_a", "res_b", "res_c"},
+				Includes: []string{"res_a", "res_b", "res_c"},
 			},
 		},
 	}

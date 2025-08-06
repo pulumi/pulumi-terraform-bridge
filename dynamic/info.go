@@ -101,10 +101,10 @@ func providerInfo(ctx context.Context, p run.Provider, value parameterize.Value)
 	}
 
 	// Apply resource filtering if specified
-	if len(value.Resources) > 0 {
+	if len(value.Includes) > 0 {
 		// Create a set of resources to include
 		includeSet := make(map[string]bool)
-		for _, resource := range value.Resources {
+		for _, resource := range value.Includes {
 			includeSet[resource] = true
 		}
 

@@ -172,7 +172,7 @@ func initialSetup() (info.Provider, pfbridge.ProviderMetadata, func() error) {
 			}
 
 			value := parameterize.Value{
-				Resources: args.Resources,
+				Includes: args.Includes,
 			}
 			if args.Local != nil {
 				value.Local = &parameterize.LocalValue{

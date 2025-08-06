@@ -166,7 +166,7 @@ func TestResourceFiltering(t *testing.T) {
 	t.Run("filter specific resources", func(t *testing.T) {
 		// Test filtering to include only specific resources
 		info, err := providerInfo(context.Background(), provider, parameterize.Value{
-			Resources: []string{"test_resource_a", "test_data_a"},
+			Includes: []string{"test_resource_a", "test_data_a"},
 		})
 		require.NoError(t, err)
 
@@ -207,7 +207,7 @@ func TestResourceFiltering(t *testing.T) {
 	t.Run("nil resources includes all", func(t *testing.T) {
 		// Test nil resources (should include all - existing behavior)
 		info, err := providerInfo(context.Background(), provider, parameterize.Value{
-			Resources: nil,
+			Includes: nil,
 		})
 		require.NoError(t, err)
 		assert.Empty(t, info.IgnoreMappings)
@@ -224,10 +224,10 @@ func TestResourceFiltering(t *testing.T) {
 		assert.ElementsMatch(t, expectedResources, actualResources)
 	})
 
-	t.Run("single resource filter", func(t *testing.T) {
+	t.Run("single resource filter has single resource", func(t *testing.T) {
 		// Test filtering to a single resource
 		info, err := providerInfo(context.Background(), provider, parameterize.Value{
-			Resources: []string{"test_resource_b"},
+			Includes: []string{"test_resource_b"},
 		})
 		require.NoError(t, err)
 
@@ -246,10 +246,10 @@ func TestResourceFiltering(t *testing.T) {
 		assert.ElementsMatch(t, expectedResources, actualResources)
 	})
 
-	t.Run("non-existent resource", func(t *testing.T) {
+	t.Run("non-existent resource does not affect filter", func(t *testing.T) {
 		// Test filtering with non-existent resource (should ignore all actual resources)
 		info, err := providerInfo(context.Background(), provider, parameterize.Value{
-			Resources: []string{"non_existent_resource"},
+			Includes: []string{"non_existent_resource"},
 		})
 		require.NoError(t, err)
 

@@ -40,24 +40,24 @@ func TestMarshalValue(t *testing.T) {
 		}}.Marshal()))
 	})
 
-	t.Run("remote with resources", func(t *testing.T) {
+	t.Run("remote with includes", func(t *testing.T) {
 		autogold.Expect(
-			`{"remote":{"url":"registry/owner/type","version":"1.2.3"},"resources":["res1","res2"]}`,
+			`{"remote":{"url":"registry/owner/type","version":"1.2.3"},"includes":["res1","res2"]}`,
 		).Equal(t, string(Value{
 			Remote: &RemoteValue{
 				URL:     "registry/owner/type",
 				Version: "1.2.3",
 			},
-			Resources: []string{"res1", "res2"},
+			Includes: []string{"res1", "res2"},
 		}.Marshal()))
 	})
 
-	t.Run("local with resources", func(t *testing.T) {
-		autogold.Expect(`{"local":{"path":"./path"},"resources":["resource_a","resource_b"]}`).Equal(t, string(Value{
+	t.Run("local with includes", func(t *testing.T) {
+		autogold.Expect(`{"local":{"path":"./path"},"includes":["resource_a","resource_b"]}`).Equal(t, string(Value{
 			Local: &LocalValue{
 				Path: "./path",
 			},
-			Resources: []string{"resource_a", "resource_b"},
+			Includes: []string{"resource_a", "resource_b"},
 		}.Marshal()))
 	})
 
@@ -122,24 +122,24 @@ func TestUnmarshal(t *testing.T) {
 			err:   true,
 		},
 		{
-			name:  "remote with resources",
-			input: `{"remote":{"url":"registry/owner/type","version":"1.2.3"},"resources":["res1","res2"]}`,
+			name:  "remote with includes",
+			input: `{"remote":{"url":"registry/owner/type","version":"1.2.3"},"includes":["res1","res2"]}`,
 			expect: Value{
 				Remote: &RemoteValue{
 					URL:     "registry/owner/type",
 					Version: "1.2.3",
 				},
-				Resources: []string{"res1", "res2"},
+				Includes: []string{"res1", "res2"},
 			},
 		},
 		{
-			name:  "local with resources",
-			input: `{"local":{"path":"./path"},"resources":["resource_a"]}`,
+			name:  "local with includes",
+			input: `{"local":{"path":"./path"},"includes":["resource_a"]}`,
 			expect: Value{
 				Local: &LocalValue{
 					Path: "./path",
 				},
-				Resources: []string{"resource_a"},
+				Includes: []string{"resource_a"},
 			},
 		},
 	}
@@ -189,35 +189,35 @@ func TestValueIntoArgs(t *testing.T) {
 			}},
 		},
 		{
-			name: "remote with resources",
+			name: "remote with includes",
 			value: Value{
 				Remote: &RemoteValue{
 					URL:     "a/b/c",
 					Version: "1.2.3",
 				},
-				Resources: []string{"res1", "res2"},
+				Includes: []string{"res1", "res2"},
 			},
 			args: Args{
 				Remote: &RemoteArgs{
 					Name:    "a/b/c",
 					Version: "1.2.3",
 				},
-				Resources: []string{"res1", "res2"},
+				Includes: []string{"res1", "res2"},
 			},
 		},
 		{
-			name: "local with resources",
+			name: "local with includes",
 			value: Value{
 				Local: &LocalValue{
 					Path: "./a/b/c",
 				},
-				Resources: []string{"local_res"},
+				Includes: []string{"local_res"},
 			},
 			args: Args{
 				Local: &LocalArgs{
 					Path: "./a/b/c",
 				},
-				Resources: []string{"local_res"},
+				Includes: []string{"local_res"},
 			},
 		},
 	}

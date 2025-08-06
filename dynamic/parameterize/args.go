@@ -32,9 +32,9 @@ import (
 type Args struct {
 	Remote *RemoteArgs
 	Local  *LocalArgs
-	// Resources is the list of resource names to include in the provider.
-	// If empty, all resources are included.
-	Resources []string
+	// Includes is the list of resource and datasource TF tokens to include in the
+	// provider.  If empty, all resources and datasources are included.
+	Includes []string
 }
 
 // RemoteArgs represents a TF provider referenced by name.
@@ -67,12 +67,12 @@ func ParseArgs(ctx context.Context, a []string) (Args, error) {
 	var fullDocs bool
 	var upstreamRepoPath string
 	var indexDocOutDir string
-	var resources []string
+	var includes []string
 	cmd := cobra.Command{
 		Use: "./local | remote version",
 		RunE: func(cmd *cobra.Command, a []string) error {
 			var err error
-			args, err = parseArgs(cmd.Context(), a, fullDocs, upstreamRepoPath, indexDocOutDir, resources)
+			args, err = parseArgs(cmd.Context(), a, fullDocs, upstreamRepoPath, indexDocOutDir, includes)
 			return err
 		},
 		Args: cobra.RangeArgs(1, 2),
@@ -84,8 +84,11 @@ func ParseArgs(ctx context.Context, a []string) (Args, error) {
 		"Specify a local file path to the root of the Git repository of the provider being dynamically bridged")
 	cmd.Flags().StringVar(&indexDocOutDir, "indexDocOutDir", "",
 		"Specify a local output directory for the provider's _index.md file")
-	cmd.Flags().StringSliceVar(&resources, "resources", nil,
-		"Comma-separated list of resource names to include in the provider (e.g. aws_instance,aws_vpc)")
+	cmd.Flags().StringSliceVar(&includes, "include", nil,
+		`Comma-separated list of resource and datasource Terraform tokens to include in the provider `+
+			`(e.g. aws_instance,aws_vpc).
+
+If no include filter is specified, all resources and datasources are mapped.`)
 
 	// We hide docs flags since they are not intended for end users, and they may not be stable.
 	if !env.Dev.Value() {
@@ -124,7 +127,7 @@ func parseArgs(
 	args []string,
 	fullDocs bool,
 	upstreamRepoPath, indexDocOutDir string,
-	resources []string,
+	includes []string,
 ) (Args, error) {
 	// If we see a local prefix (starts with '.' or '/'), parse args for a local provider
 	if strings.HasPrefix(args[0], ".") || strings.HasPrefix(args[0], "/") {
@@ -144,7 +147,7 @@ func parseArgs(
 				UpstreamRepoPath: upstreamRepoPath,
 				IndexDocOutDir:   indexDocOutDir,
 			},
-			Resources: resources,
+			Includes: includes,
 		}, nil
 	}
 
@@ -166,5 +169,5 @@ func parseArgs(
 		Version:        version,
 		Docs:           fullDocs,
 		IndexDocOutDir: indexDocOutDir,
-	}, Resources: resources}, nil
+	}, Includes: includes}, nil
 }
