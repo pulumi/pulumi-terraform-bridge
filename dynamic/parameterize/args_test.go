@@ -69,17 +69,17 @@ func TestParseArgs(t *testing.T) {
 		{
 			name:   "no args",
 			args:   []string{},
-			errMsg: autogold.Expect("accepts between 1 and 2 arg(s), received 0"),
+			errMsg: autogold.Expect("rpc error: code = InvalidArgument desc = accepts between 1 and 2 arg(s), received 0"),
 		},
 		{
 			name:   "too many args",
 			args:   []string{"arg1", "arg2", "arg3", "arg4"},
-			errMsg: autogold.Expect("accepts between 1 and 2 arg(s), received 4"),
+			errMsg: autogold.Expect("rpc error: code = InvalidArgument desc = accepts between 1 and 2 arg(s), received 4"),
 		},
 		{
 			name:   "invalid third arg",
 			args:   []string{"arg1", "arg2", "arg3"},
-			errMsg: autogold.Expect(`accepts between 1 and 2 arg(s), received 3`),
+			errMsg: autogold.Expect("rpc error: code = InvalidArgument desc = accepts between 1 and 2 arg(s), received 3"),
 		},
 		{
 			name: "empty fullDocs flag defaults false",
@@ -195,7 +195,7 @@ func TestParseArgs(t *testing.T) {
 		},
 		{
 			name: "provider name with resources",
-			args: []string{"registry/provider", "--provider-name=aliased-provider", "--resources=res_a,res_b"},
+			args: []string{"registry/provider", "--provider-name=aliased-provider", "--include=res_a,res_b"},
 			expect: Args{
 				Remote: &RemoteArgs{
 					Name: "registry/provider",
@@ -213,6 +213,11 @@ func TestParseArgs(t *testing.T) {
 				},
 				ProviderName: "",
 			},
+		},
+		{
+			name:   "--help does not panic",
+			args:   []string{"--help"},
+			errMsg: autogold.Expect("help text displayed"),
 		},
 	}
 
