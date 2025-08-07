@@ -67,7 +67,7 @@ type LocalArgs struct {
 	IndexDocOutDir string
 }
 
-func ParseArgs(ctx context.Context, a []string) (Args, error) {
+func ParseArgs(ctx context.Context, cliArgs []string) (Args, error) {
 	var args Args
 	var fullDocs bool
 	var upstreamRepoPath string
@@ -90,10 +90,10 @@ func ParseArgs(ctx context.Context, a []string) (Args, error) {
 		},
 		Args: func(cmd *cobra.Command, args []string) error {
 			err := cobra.RangeArgs(1, 2)(cmd, args)
-			if err == nil {
-				return nil
+			if err != nil {
+				return status.Error(codes.InvalidArgument, err.Error())
 			}
-			return status.Error(codes.InvalidArgument, err.Error())
+			return nil
 		},
 	}
 
@@ -123,7 +123,7 @@ If no include filter is specified, all resources and datasources are mapped.`)
 		)
 	}
 
-	cmd.SetArgs(a)
+	cmd.SetArgs(cliArgs)
 
 	// We want to show the stdout of this command to the user, if there is
 	// any. pulumi/pulumi#17943 started hiding unstructured output by default. This
