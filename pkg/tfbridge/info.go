@@ -394,9 +394,6 @@ func ConfigBoolValue(vars resource.PropertyMap, prop resource.PropertyKey, envs 
 	return false
 }
 
-// EXPERIMENTAL: the signature may change in minor releases.
-type SkipExamplesArgs = info.SkipExamplesArgs
-
 // If specified, the hook will run just prior to executing Terraform state upgrades to transform the resource state as
 // stored in Pulumi. It can be used to perform idempotent corrections on corrupt state and to compensate for
 // Terraform-level state upgrade not working as expected. Returns the corrected resource state and version. To be used

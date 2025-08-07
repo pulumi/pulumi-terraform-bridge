@@ -1474,15 +1474,6 @@ func (g *Generator) convertExamples(docs string, path examplePath) string {
 		return ""
 	}
 
-	if g.info.SkipExamples != nil {
-		if g.info.SkipExamples(tfbridge.SkipExamplesArgs{
-			Token:       path.Token(),
-			ExamplePath: path.String(),
-		}) {
-			return ""
-		}
-	}
-
 	if strings.Contains(docs, "{{% examples %}}") {
 		// The provider author has explicitly written an entire markdown document including examples.
 		// We'll just return it as is.
