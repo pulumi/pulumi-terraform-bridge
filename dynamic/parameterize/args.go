@@ -24,6 +24,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/env"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/spf13/cobra"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/pulumi/pulumi-terraform-bridge/v3/pkg/tfbridge"
 )
@@ -72,14 +74,27 @@ func ParseArgs(ctx context.Context, a []string) (Args, error) {
 	var indexDocOutDir string
 	var includes []string
 	var providerName string
+
+	// If --help is included in `a`, then `RunE` will never be executed.
+	//
+	// We detect that and make sure we return an error instead of continuing.
+	var cmdWasRun bool
+
 	cmd := cobra.Command{
 		Use: "./local | remote version",
 		RunE: func(cmd *cobra.Command, a []string) error {
+			cmdWasRun = true
 			var err error
 			args, err = parseArgs(cmd.Context(), a, fullDocs, upstreamRepoPath, indexDocOutDir, includes, providerName)
 			return err
 		},
-		Args: cobra.RangeArgs(1, 2),
+		Args: func(cmd *cobra.Command, args []string) error {
+			err := cobra.RangeArgs(1, 2)(cmd, args)
+			if err == nil {
+				return nil
+			}
+			return status.Error(codes.InvalidArgument, err.Error())
+		},
 	}
 
 	cmd.Flags().BoolVar(&fullDocs, "fullDocs", false,
@@ -125,7 +140,15 @@ If no include filter is specified, all resources and datasources are mapped.`)
 		tfbridge.GetLogger(ctx).Info(out.String())
 	}()
 
-	return args, cmd.ExecuteContext(ctx)
+	err := cmd.ExecuteContext(ctx)
+	if err != nil {
+		return args, err
+	}
+	if !cmdWasRun {
+		return args, errors.New("help text displayed")
+	}
+
+	return args, nil
 }
 
 func parseArgs(
