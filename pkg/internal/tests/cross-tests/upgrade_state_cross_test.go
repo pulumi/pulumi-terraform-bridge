@@ -1065,3 +1065,68 @@ func TestUpgrade_Downgrading(t *testing.T) {
 		autogold.Expect([]upgradeStateTrace{}).Equal(t, result.pulumiUpgrades)
 	})
 }
+
+// See https://github.com/pulumi/pulumi-gcp/issues/3236
+func TestUpgrade_FieldsAddedButUpdateNotSupported(t *testing.T) {
+	t.Parallel()
+	skipUnlessLinux(t)
+	//skipUnlessDeltasEnabled(t)
+
+	sch1 := map[string]*schema.Schema{
+		"name": {
+			Required: true,
+			ForceNew: true,
+			Type:     schema.TypeString,
+		},
+	}
+
+	sch2 := map[string]*schema.Schema{
+		"name": {
+			Required: true,
+			ForceNew: true,
+			Type:     schema.TypeString,
+		},
+		"as_paths": {
+			Type:     schema.TypeList,
+			Computed: true,
+			Elem: &schema.Resource{
+				Schema: map[string]*schema.Schema{
+					"as_lists": {
+						Type:     schema.TypeList,
+						Computed: true,
+						Elem: &schema.Schema{
+							Type: schema.TypeInt,
+						},
+					},
+					"path_segment_type": {
+						Type:     schema.TypeString,
+						Computed: true,
+					},
+				},
+			},
+		},
+	}
+
+	res1 := &schema.Resource{Schema: sch1}
+	res2 := &schema.Resource{Schema: sch2}
+
+	configVal := func() map[string]any {
+		return map[string]any{
+			"name": "resource-1",
+		}
+	}
+
+	t.Run("same", func(t *testing.T) {
+		result := runUpgradeStateTest(t, upgradeStateTestCase{
+			Resource1: res1,
+			Resource2: res2,
+			Inputs1:   configVal(),
+			Inputs2:   configVal(),
+
+			DoesNotSupportUpdate:              true,
+			SkipSchemaVersionAfterUpdateCheck: true,
+		})
+
+		autogold.Expect((*map[string]int)(nil)).Equal(t, result.pulumiUpResult.Summary.ResourceChanges)
+	})
+}
