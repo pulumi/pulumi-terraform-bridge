@@ -257,7 +257,7 @@ func (w *logSinkWriter) Write(p []byte) (n int, err error) {
 		return
 	}
 
-	raw := string(p)
+	raw := strings.TrimSuffix(string(p), "\n")
 	level, raw := parseLevelFromRawString(raw)
 
 	if level < w.desiredLevel {
