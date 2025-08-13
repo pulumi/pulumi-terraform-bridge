@@ -28,7 +28,10 @@ import (
 )
 
 func TestLogging(t *testing.T) {
-	urn := resource.URN("urn:pulumi:prod::web::custom:resources:Resource$random:index/password:Password::my-pw")
+	// Some characters cause the values in the key=value pairs to be quoted, for example `$`.
+	// https://github.com/hashicorp/go-hclog/blob/51a34ed3823a210e2e396aea9e5757d85b3c29d7/intlogger.go#L282
+	urnQuoted := resource.URN("urn:pulumi:prod::web::custom:resources:Resource$random:index/password:Password::my-pw")
+	urnUnquoted := resource.URN("aws:s3/bucketObject:BucketObject::my-bucket-object")
 
 	warn := map[string]string{"TF_LOG": "WARN"}
 
@@ -112,13 +115,22 @@ func TestLogging(t *testing.T) {
 			},
 		},
 		{
-			name: "URN propagates when set",
-			opts: LogOptions{URN: urn},
+			name: "Quoted URN propagates when set",
+			opts: LogOptions{URN: urnQuoted},
 			env:  warn,
 			emit: func(ctx context.Context) {
 				tflog.Warn(ctx, "OK")
 			},
-			logs: []log{{sev: diag.Warning, msg: `OK`, urn: urn}},
+			logs: []log{{sev: diag.Warning, msg: `OK`, urn: urnQuoted}},
+		},
+		{
+			name: "Unquoated URN propagates when set",
+			opts: LogOptions{URN: urnUnquoted},
+			env:  warn,
+			emit: func(ctx context.Context) {
+				tflog.Warn(ctx, "OK")
+			},
+			logs: []log{{sev: diag.Warning, msg: `OK`, urn: urnUnquoted}},
 		},
 		{
 			name: "Provider propagates when set",
@@ -141,7 +153,7 @@ func TestLogging(t *testing.T) {
 		{
 			name: "User Logging",
 			env:  warn,
-			opts: LogOptions{URN: urn},
+			opts: LogOptions{URN: urnQuoted},
 			emit: func(ctx context.Context) {
 				log := getLogger(ctx)
 				log.Warn("warn")
@@ -149,12 +161,12 @@ func TestLogging(t *testing.T) {
 			},
 			logs: []log{
 				{
-					urn: urn,
+					urn: urnQuoted,
 					msg: "warn",
 					sev: diag.Warning,
 				},
 				{
-					urn:       urn,
+					urn:       urnQuoted,
 					msg:       "info - status",
 					sev:       diag.Info,
 					ephemeral: true,
