@@ -4190,7 +4190,7 @@
         "properties": {
           "__self__": {
             "type": "ref",
-            "$ref": "#/resources/pulumi:providers:aws"
+            "$ref": "#/provider"
           }
         },
         "type": "pulumi:providers:aws/terraformConfig",

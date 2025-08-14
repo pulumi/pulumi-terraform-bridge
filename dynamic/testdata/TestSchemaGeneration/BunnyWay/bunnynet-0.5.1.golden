@@ -3895,7 +3895,7 @@
                 "properties": {
                     "__self__": {
                         "type": "ref",
-                        "$ref": "#/resources/pulumi:providers:bunnynet"
+                        "$ref": "#/provider"
                     }
                 },
                 "type": "pulumi:providers:bunnynet/terraformConfig",

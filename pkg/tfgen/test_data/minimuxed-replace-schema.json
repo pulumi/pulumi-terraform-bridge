@@ -89,7 +89,7 @@
         "properties": {
           "__self__": {
             "type": "ref",
-            "$ref": "#/resources/pulumi:providers:minimuxed"
+            "$ref": "#/provider"
           }
         },
         "type": "pulumi:providers:minimuxed/terraformConfig",

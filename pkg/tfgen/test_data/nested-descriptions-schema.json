@@ -145,7 +145,7 @@
         "properties": {
           "__self__": {
             "type": "ref",
-            "$ref": "#/resources/pulumi:providers:cloudflare"
+            "$ref": "#/provider"
           }
         },
         "type": "pulumi:providers:cloudflare/terraformConfig",

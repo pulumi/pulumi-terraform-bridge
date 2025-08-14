@@ -135,7 +135,7 @@
         "properties": {
           "__self__": {
             "type": "ref",
-            "$ref": "#/resources/pulumi:providers:random"
+            "$ref": "#/provider"
           }
         },
         "type": "pulumi:providers:random/terraformConfig",
