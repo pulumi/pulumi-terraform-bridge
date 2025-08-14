@@ -157,7 +157,7 @@
                 "properties": {
                     "__self__": {
                         "type": "ref",
-                        "$ref": "#/resources/pulumi:providers:tpsdkv2"
+                        "$ref": "#/provider"
                     }
                 },
                 "type": "pulumi:providers:tpsdkv2/terraformConfig",

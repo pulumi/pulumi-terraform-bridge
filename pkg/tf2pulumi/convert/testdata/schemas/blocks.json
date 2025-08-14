@@ -127,7 +127,7 @@
         "properties": {
           "__self__": {
             "type": "ref",
-            "$ref": "#/resources/pulumi:providers:blocks"
+            "$ref": "#/provider"
           }
         },
         "type": "pulumi:providers:blocks/terraformConfig",

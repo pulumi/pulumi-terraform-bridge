@@ -1470,7 +1470,7 @@
                 "properties": {
                     "__self__": {
                         "type": "ref",
-                        "$ref": "#/resources/pulumi:providers:b2"
+                        "$ref": "#/provider"
                     }
                 },
                 "type": "pulumi:providers:b2/terraformConfig",

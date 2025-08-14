@@ -172,7 +172,7 @@
         "properties": {
           "__self__": {
             "type": "ref",
-            "$ref": "#/resources/pulumi:providers:testprov"
+            "$ref": "#/provider"
           }
         },
         "type": "pulumi:providers:testprov/terraformConfig",

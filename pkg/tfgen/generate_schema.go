@@ -335,7 +335,6 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg, sink diag.Sink) (pschema.Pac
 		// For pulumi-terraform-module, we would like to have a Terraform Config method on the provider.
 		// To do so, we Add a Function to this spec, and then add the Function to the provider's Methods,
 		// which will expose it to the provider server's Call() gRPC method.
-		providerSelfRef := "#/resources/pulumi:providers:" + pack.name.String()
 		terraformConfigFunctionToken := "pulumi:providers:" + pack.name.String() + "/terraformConfig"
 		terraformConfig := pschema.FunctionSpec{
 			Description: "This function returns a Terraform config object with terraform-namecased keys," +
@@ -346,7 +345,7 @@ func (g *schemaGenerator) genPackageSpec(pack *pkg, sink diag.Sink) (pschema.Pac
 					"__self__": {
 						TypeSpec: pschema.TypeSpec{
 							Type: "ref",
-							Ref:  providerSelfRef,
+							Ref:  "#/provider",
 						},
 					},
 				},

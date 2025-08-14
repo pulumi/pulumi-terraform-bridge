@@ -90,7 +90,7 @@
         "properties": {
           "__self__": {
             "type": "ref",
-            "$ref": "#/resources/pulumi:providers:renames"
+            "$ref": "#/provider"
           }
         },
         "type": "pulumi:providers:renames/terraformConfig",
