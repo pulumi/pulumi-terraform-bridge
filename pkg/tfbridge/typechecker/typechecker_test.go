@@ -1520,7 +1520,10 @@ func TestValidateInputType_toplevel(t *testing.T) {
 				ResourcePath: "secret_nested_mismatch_redacted.inner",
 			}}),
 			inputProperties: map[string]pschema.PropertySpec{
-				"secret_nested_mismatch_redacted": {TypeSpec: pschema.TypeSpec{Type: "object", AdditionalProperties: &pschema.TypeSpec{Type: "string"}}},
+				"secret_nested_mismatch_redacted": {TypeSpec: pschema.TypeSpec{
+					Type:                 "object",
+					AdditionalProperties: &pschema.TypeSpec{Type: "string"},
+				}},
 			},
 		},
 		{
