@@ -1496,6 +1496,34 @@ func TestValidateInputType_toplevel(t *testing.T) {
 			},
 		},
 		{
+			name: "secret_type_mismatch_redacted",
+			input: resource.NewSecretProperty(&resource.Secret{
+				Element: resource.NewObjectProperty(
+					resource.NewPropertyMapFromMap(map[string]interface{}{"password": "SuperSecretValue123"}),
+				),
+			}),
+			failures: autogold.Expect([]Failure{{
+				Reason:       "expected string type, got secret(<redacted>) of type object",
+				ResourcePath: "secret_type_mismatch_redacted",
+			}}),
+			inputProperties: map[string]pschema.PropertySpec{
+				"secret_type_mismatch_redacted": {TypeSpec: pschema.TypeSpec{Type: "string"}},
+			},
+		},
+		{
+			name: "secret_nested_mismatch_redacted",
+			input: resource.NewSecretProperty(&resource.Secret{
+				Element: resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]interface{}{"inner": []int{42}})),
+			}),
+			failures: autogold.Expect([]Failure{{
+				Reason:       "expected string type, got secret(<redacted>) of type []",
+				ResourcePath: "secret_nested_mismatch_redacted.inner",
+			}}),
+			inputProperties: map[string]pschema.PropertySpec{
+				"secret_nested_mismatch_redacted": {TypeSpec: pschema.TypeSpec{Type: "object", AdditionalProperties: &pschema.TypeSpec{Type: "string"}}},
+			},
+		},
+		{
 			name:  "output_type_success",
 			input: resource.NewOutputProperty(resource.Output{Element: resource.NewStringProperty("foo")}),
 			inputProperties: map[string]pschema.PropertySpec{

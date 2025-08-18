@@ -56,6 +56,7 @@ func (v *TypeChecker) validatePropertyMap(
 	propertyMap resource.PropertyMap,
 	propertyTypes map[string]pschema.PropertySpec,
 	propertyPath resource.PropertyPath,
+	isSecret bool,
 ) []Failure {
 	stableKeys := propertyMap.StableKeys()
 	failures := []Failure{}
@@ -77,7 +78,7 @@ func (v *TypeChecker) validatePropertyMap(
 			continue
 		}
 		subPropertyPath := append(propertyPath, string(objectKey))
-		failure := v.validatePropertyValue(objectValue, objType.TypeSpec, subPropertyPath)
+		failure := v.validatePropertyValue(objectValue, objType.TypeSpec, subPropertyPath, isSecret)
 		if failure != nil {
 			failures = append(failures, failure...)
 		}
@@ -91,6 +92,7 @@ func (v *TypeChecker) validatePropertyValue(
 	propertyValue resource.PropertyValue,
 	typeSpec pschema.TypeSpec,
 	propertyPath resource.PropertyPath,
+	isSecret bool,
 ) []Failure {
 	// don't type check
 	// - resource references (not yet)
@@ -111,13 +113,13 @@ func (v *TypeChecker) validatePropertyValue(
 	// for known first-class outputs simply validate their known value
 	if propertyValue.IsOutput() && propertyValue.OutputValue().Known {
 		elementValue := propertyValue.OutputValue().Element
-		return v.validatePropertyValue(elementValue, typeSpec, propertyPath)
+		return v.validatePropertyValue(elementValue, typeSpec, propertyPath, isSecret)
 	}
 
 	// for secrets validate their inner value
 	if propertyValue.IsSecret() {
 		elementValue := propertyValue.SecretValue().Element
-		return v.validatePropertyValue(elementValue, typeSpec, propertyPath)
+		return v.validatePropertyValue(elementValue, typeSpec, propertyPath, true)
 	}
 
 	// now we are going to switch on the desired type
@@ -141,13 +143,14 @@ func (v *TypeChecker) validatePropertyValue(
 		}
 
 		if !propertyValue.IsObject() {
-			return []Failure{newTypeFailure(propertyPath, "object", propertyValue)}
+			return []Failure{newTypeFailure(propertyPath, "object", propertyValue, isSecret)}
 		}
 
 		return v.validatePropertyMap(
 			propertyValue.ObjectValue(),
 			objType.Properties,
 			propertyPath,
+			isSecret,
 		)
 	}
 
@@ -173,19 +176,19 @@ func (v *TypeChecker) validatePropertyValue(
 			}
 		}
 		if !propertyValue.IsBool() && !boolString {
-			return []Failure{newTypeFailure(propertyPath, typeSpec.Type, propertyValue)}
+			return []Failure{newTypeFailure(propertyPath, typeSpec.Type, propertyValue, isSecret)}
 		}
 		return nil
 	case "integer", "number":
 		// The bridge permits coalescing strings to numbers, hence skip strings.
 		if !propertyValue.IsNumber() && !propertyValue.IsString() {
-			return []Failure{newTypeFailure(propertyPath, typeSpec.Type, propertyValue)}
+			return []Failure{newTypeFailure(propertyPath, typeSpec.Type, propertyValue, isSecret)}
 		}
 		return nil
 	case "string":
 		// The bridge permits coalescing numbers and booleans to strings, hence skip these.
 		if !propertyValue.IsString() && !propertyValue.IsNumber() && !propertyValue.IsBool() {
-			return []Failure{newTypeFailure(propertyPath, typeSpec.Type, propertyValue)}
+			return []Failure{newTypeFailure(propertyPath, typeSpec.Type, propertyValue, isSecret)}
 		}
 		return nil
 	case "array":
@@ -198,14 +201,14 @@ func (v *TypeChecker) validatePropertyValue(
 			failures := []Failure{}
 			for idx, arrayValue := range propertyValue.ArrayValue() {
 				pb := append(propertyPath, idx)
-				failure := v.validatePropertyValue(arrayValue, *typeSpec.Items, pb)
+				failure := v.validatePropertyValue(arrayValue, *typeSpec.Items, pb, isSecret)
 				if failure != nil {
 					failures = append(failures, failure...)
 				}
 			}
 			return failures
 		}
-		return []Failure{newTypeFailure(propertyPath, typeSpec.Type, propertyValue)}
+		return []Failure{newTypeFailure(propertyPath, typeSpec.Type, propertyValue, isSecret)}
 	case "object":
 		// This is not really an object but a map type with some element type, which is assumed to be string if
 		// unspecified. Check accordingly. This should be very similar to the "array" case.
@@ -223,14 +226,14 @@ func (v *TypeChecker) validatePropertyValue(
 					continue
 				}
 				pb := append(propertyPath, string(propertyKey))
-				failure := v.validatePropertyValue(objectValue[propertyKey], *typeSpec.AdditionalProperties, pb)
+				failure := v.validatePropertyValue(objectValue[propertyKey], *typeSpec.AdditionalProperties, pb, isSecret)
 				if failure != nil {
 					failures = append(failures, failure...)
 				}
 			}
 			return failures
 		}
-		return []Failure{newTypeFailure(propertyPath, typeSpec.Type, propertyValue)}
+		return []Failure{newTypeFailure(propertyPath, typeSpec.Type, propertyValue, isSecret)}
 	default:
 		// Unrecognized type, assume no errors.
 		return nil
@@ -240,11 +243,17 @@ func (v *TypeChecker) validatePropertyValue(
 func newTypeFailure(
 	path resource.PropertyPath,
 	expectedType string, actualValue resource.PropertyValue,
+	isSecret bool,
 ) Failure {
+	actualValueType := actualValue.TypeString()
+	if isSecret {
+		actualValue = resource.MakeSecret(actualValue)
+	}
+	actualPreview := previewPropertyValue(actualValue)
 	return Failure{
 		ResourcePath: path.String(),
 		Reason: fmt.Sprintf("expected %s type, got %s of type %s",
-			expectedType, previewPropertyValue(actualValue), actualValue.TypeString(),
+			expectedType, actualPreview, actualValueType,
 		),
 	}
 }
@@ -256,7 +265,7 @@ func previewPropertyValue(v resource.PropertyValue) string {
 	case v.IsComputed():
 		return "(unknown value)"
 	case v.IsSecret():
-		return "secret(" + previewPropertyValue(v.SecretValue().Element) + ")"
+		return "secret(<redacted>)"
 	case v.IsString():
 		preview = fmt.Sprintf("%q", v.StringValue())
 	default:
@@ -296,6 +305,7 @@ func (v *TypeChecker) ValidateInputs(resourceToken tokens.Type, inputs resource.
 		inputs,
 		resourceSpec.InputProperties,
 		resource.PropertyPath{},
+		false,
 	)
 }
 
@@ -314,5 +324,6 @@ func (v *TypeChecker) ValidateConfig(inputs resource.PropertyMap) []Failure {
 		inputsToValidate,
 		v.schema.Config.Variables,
 		resource.PropertyPath{},
+		false,
 	)
 }
