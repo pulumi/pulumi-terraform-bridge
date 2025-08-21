@@ -31,7 +31,7 @@
       "region": {
         "type": "string",
         "$ref": "#/types/aws:index/region:Region",
-        "description": "The region where AWS operations will take place. Examples are us-east-1, us-west-2, etc.\n",
+        "description": "The region where AWS operations will take place. Examples\nare us-east-1, us-west-2, etc.",
         "defaultInfo": {
           "environment": [
             "AWS_REGION",
@@ -41,22 +41,22 @@
       },
       "skipCredentialsValidation": {
         "type": "boolean",
-        "description": "Skip the credentials validation via STS API. Used for AWS API implementations that do not have STS\navailable/implemented.\n",
+        "description": "Skip the credentials validation via STS API. Used for AWS API implementations that do not have STS available/implemented.",
         "default": false
       },
       "skipGetEc2Platforms": {
         "type": "boolean",
-        "description": "Skip getting the supported EC2 platforms. Used by users that don't have ec2:DescribeAccountAttributes permissions.\n",
+        "description": "Skip getting the supported EC2 platforms. Used by users that don't have ec2:DescribeAccountAttributes permissions.",
         "default": true
       },
       "skipMetadataApiCheck": {
         "type": "boolean",
-        "description": "Skip the AWS Metadata API check. Used for AWS API implementations that do not have a metadata api endpoint.\n",
+        "description": "Skip the AWS Metadata API check. Used for AWS API implementations that do not have a metadata api endpoint.",
         "default": true
       },
       "skipRegionValidation": {
         "type": "boolean",
-        "description": "Skip static validation of region name. Used by users of alternative AWS-like APIs or users w/ access to regions that are\nnot public (yet).\n",
+        "description": "Skip static validation of region name. Used by users of alternative AWS-like APIs or users w/ access to regions that are not public (yet).",
         "default": true
       }
     }
@@ -273,30 +273,30 @@
       "region": {
         "type": "string",
         "$ref": "#/types/aws:index/region:Region",
-        "description": "The region where AWS operations will take place. Examples are us-east-1, us-west-2, etc.\n"
+        "description": "The region where AWS operations will take place. Examples\nare us-east-1, us-west-2, etc."
       },
       "skipCredentialsValidation": {
         "type": "boolean",
-        "description": "Skip the credentials validation via STS API. Used for AWS API implementations that do not have STS\navailable/implemented.\n"
+        "description": "Skip the credentials validation via STS API. Used for AWS API implementations that do not have STS available/implemented."
       },
       "skipGetEc2Platforms": {
         "type": "boolean",
-        "description": "Skip getting the supported EC2 platforms. Used by users that don't have ec2:DescribeAccountAttributes permissions.\n"
+        "description": "Skip getting the supported EC2 platforms. Used by users that don't have ec2:DescribeAccountAttributes permissions."
       },
       "skipMetadataApiCheck": {
         "type": "boolean",
-        "description": "Skip the AWS Metadata API check. Used for AWS API implementations that do not have a metadata api endpoint.\n"
+        "description": "Skip the AWS Metadata API check. Used for AWS API implementations that do not have a metadata api endpoint."
       },
       "skipRegionValidation": {
         "type": "boolean",
-        "description": "Skip static validation of region name. Used by users of alternative AWS-like APIs or users w/ access to regions that are\nnot public (yet).\n"
+        "description": "Skip static validation of region name. Used by users of alternative AWS-like APIs or users w/ access to regions that are not public (yet)."
       }
     },
     "inputProperties": {
       "region": {
         "type": "string",
         "$ref": "#/types/aws:index/region:Region",
-        "description": "The region where AWS operations will take place. Examples are us-east-1, us-west-2, etc.\n",
+        "description": "The region where AWS operations will take place. Examples\nare us-east-1, us-west-2, etc.",
         "defaultInfo": {
           "environment": [
             "AWS_REGION",
@@ -306,22 +306,22 @@
       },
       "skipCredentialsValidation": {
         "type": "boolean",
-        "description": "Skip the credentials validation via STS API. Used for AWS API implementations that do not have STS\navailable/implemented.\n",
+        "description": "Skip the credentials validation via STS API. Used for AWS API implementations that do not have STS available/implemented.",
         "default": false
       },
       "skipGetEc2Platforms": {
         "type": "boolean",
-        "description": "Skip getting the supported EC2 platforms. Used by users that don't have ec2:DescribeAccountAttributes permissions.\n",
+        "description": "Skip getting the supported EC2 platforms. Used by users that don't have ec2:DescribeAccountAttributes permissions.",
         "default": true
       },
       "skipMetadataApiCheck": {
         "type": "boolean",
-        "description": "Skip the AWS Metadata API check. Used for AWS API implementations that do not have a metadata api endpoint.\n",
+        "description": "Skip the AWS Metadata API check. Used for AWS API implementations that do not have a metadata api endpoint.",
         "default": true
       },
       "skipRegionValidation": {
         "type": "boolean",
-        "description": "Skip static validation of region name. Used by users of alternative AWS-like APIs or users w/ access to regions that are\nnot public (yet).\n",
+        "description": "Skip static validation of region name. Used by users of alternative AWS-like APIs or users w/ access to regions that are not public (yet).",
         "default": true
       }
     },
@@ -2764,7 +2764,7 @@
           },
           "id": {
             "type": "string",
-            "description": "The provider-assigned unique ID for this managed resource.\n"
+            "description": "The provider-assigned unique ID for this managed resource."
           }
         },
         "type": "object",
@@ -2801,7 +2801,7 @@
           },
           "id": {
             "type": "string",
-            "description": "The provider-assigned unique ID for this managed resource.\n"
+            "description": "The provider-assigned unique ID for this managed resource."
           },
           "path": {
             "type": "string"
@@ -2848,7 +2848,7 @@
           },
           "id": {
             "type": "string",
-            "description": "The provider-assigned unique ID for this managed resource.\n"
+            "description": "The provider-assigned unique ID for this managed resource."
           },
           "name": {
             "type": "string"
@@ -2903,7 +2903,7 @@
           },
           "id": {
             "type": "string",
-            "description": "The provider-assigned unique ID for this managed resource.\n"
+            "description": "The provider-assigned unique ID for this managed resource."
           },
           "names": {
             "type": "array",
@@ -2964,7 +2964,7 @@
           },
           "id": {
             "type": "string",
-            "description": "The provider-assigned unique ID for this managed resource.\n"
+            "description": "The provider-assigned unique ID for this managed resource."
           },
           "tags": {
             "type": "object",
@@ -3026,7 +3026,7 @@
           },
           "id": {
             "type": "string",
-            "description": "The provider-assigned unique ID for this managed resource.\n"
+            "description": "The provider-assigned unique ID for this managed resource."
           },
           "name": {
             "type": "string"
@@ -3099,7 +3099,7 @@
           },
           "id": {
             "type": "string",
-            "description": "The provider-assigned unique ID for this managed resource.\n"
+            "description": "The provider-assigned unique ID for this managed resource."
           },
           "maxSessionDuration": {
             "type": "integer"
@@ -3163,7 +3163,7 @@
           },
           "id": {
             "type": "string",
-            "description": "The provider-assigned unique ID for this managed resource.\n"
+            "description": "The provider-assigned unique ID for this managed resource."
           },
           "nameRegex": {
             "type": "string"
@@ -3216,7 +3216,7 @@
           },
           "id": {
             "type": "string",
-            "description": "The provider-assigned unique ID for this managed resource.\n"
+            "description": "The provider-assigned unique ID for this managed resource."
           },
           "name": {
             "type": "string"
@@ -3282,7 +3282,7 @@
           },
           "id": {
             "type": "string",
-            "description": "The provider-assigned unique ID for this managed resource.\n"
+            "description": "The provider-assigned unique ID for this managed resource."
           },
           "latest": {
             "type": "boolean"
@@ -3337,7 +3337,7 @@
           },
           "id": {
             "type": "string",
-            "description": "The provider-assigned unique ID for this managed resource.\n"
+            "description": "The provider-assigned unique ID for this managed resource."
           },
           "issuerArn": {
             "type": "string"
@@ -3390,7 +3390,7 @@
           },
           "id": {
             "type": "string",
-            "description": "The provider-assigned unique ID for this managed resource.\n"
+            "description": "The provider-assigned unique ID for this managed resource."
           },
           "path": {
             "type": "string"
@@ -3455,7 +3455,7 @@
           },
           "id": {
             "type": "string",
-            "description": "The provider-assigned unique ID for this managed resource.\n"
+            "description": "The provider-assigned unique ID for this managed resource."
           },
           "publicKey": {
             "type": "string"
@@ -3506,7 +3506,7 @@
           },
           "id": {
             "type": "string",
-            "description": "The provider-assigned unique ID for this managed resource.\n"
+            "description": "The provider-assigned unique ID for this managed resource."
           },
           "nameRegex": {
             "type": "string"
@@ -3553,7 +3553,7 @@
           },
           "id": {
             "type": "string",
-            "description": "The provider-assigned unique ID for this managed resource.\n"
+            "description": "The provider-assigned unique ID for this managed resource."
           },
           "partition": {
             "type": "string"
@@ -3622,7 +3622,7 @@
           },
           "id": {
             "type": "string",
-            "description": "The provider-assigned unique ID for this managed resource.\n"
+            "description": "The provider-assigned unique ID for this managed resource."
           },
           "name": {
             "type": "string"
@@ -3735,7 +3735,7 @@
           },
           "id": {
             "type": "string",
-            "description": "The provider-assigned unique ID for this managed resource.\n"
+            "description": "The provider-assigned unique ID for this managed resource."
           },
           "names": {
             "type": "array",
@@ -3771,7 +3771,7 @@
           },
           "id": {
             "type": "string",
-            "description": "The provider-assigned unique ID for this managed resource.\n"
+            "description": "The provider-assigned unique ID for this managed resource."
           }
         },
         "type": "object",
@@ -3793,7 +3793,7 @@
           },
           "id": {
             "type": "string",
-            "description": "The provider-assigned unique ID for this managed resource.\n"
+            "description": "The provider-assigned unique ID for this managed resource."
           },
           "userId": {
             "type": "string"
@@ -3826,7 +3826,7 @@
         "properties": {
           "id": {
             "type": "string",
-            "description": "The provider-assigned unique ID for this managed resource.\n"
+            "description": "The provider-assigned unique ID for this managed resource."
           },
           "tags": {
             "type": "object",
@@ -3881,7 +3881,7 @@
           },
           "id": {
             "type": "string",
-            "description": "The provider-assigned unique ID for this managed resource.\n"
+            "description": "The provider-assigned unique ID for this managed resource."
           },
           "ipv6CidrBlocks": {
             "type": "array",
@@ -3928,7 +3928,7 @@
           },
           "id": {
             "type": "string",
-            "description": "The provider-assigned unique ID for this managed resource.\n"
+            "description": "The provider-assigned unique ID for this managed resource."
           },
           "partition": {
             "type": "string"
@@ -3970,7 +3970,7 @@
           },
           "id": {
             "type": "string",
-            "description": "The provider-assigned unique ID for this managed resource.\n"
+            "description": "The provider-assigned unique ID for this managed resource."
           },
           "name": {
             "type": "string"
@@ -4015,7 +4015,7 @@
           },
           "id": {
             "type": "string",
-            "description": "The provider-assigned unique ID for this managed resource.\n"
+            "description": "The provider-assigned unique ID for this managed resource."
           },
           "names": {
             "type": "array",
@@ -4061,7 +4061,7 @@
           },
           "id": {
             "type": "string",
-            "description": "The provider-assigned unique ID for this managed resource.\n"
+            "description": "The provider-assigned unique ID for this managed resource."
           },
           "partition": {
             "type": "string"
@@ -4139,7 +4139,7 @@
         "properties": {
           "id": {
             "type": "string",
-            "description": "The provider-assigned unique ID for this managed resource.\n"
+            "description": "The provider-assigned unique ID for this managed resource."
           },
           "json": {
             "type": "string"
