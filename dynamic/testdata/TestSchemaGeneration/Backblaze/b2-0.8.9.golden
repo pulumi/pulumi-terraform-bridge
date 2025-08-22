@@ -48,17 +48,17 @@
         "variables": {
             "applicationKey": {
                 "type": "string",
-                "description": "B2 Application Key (B2_APPLICATION_KEY env)\n",
+                "description": "B2 Application Key (B2_APPLICATION_KEY env)",
                 "secret": true
             },
             "applicationKeyId": {
                 "type": "string",
-                "description": "B2 Application Key ID (B2_APPLICATION_KEY_ID env)\n",
+                "description": "B2 Application Key ID (B2_APPLICATION_KEY_ID env)",
                 "secret": true
             },
             "endpoint": {
                 "type": "string",
-                "description": "B2 endpoint - production or custom URL (B2_ENDPOINT env)\n"
+                "description": "B2 endpoint - production or custom URL (B2_ENDPOINT env)"
             }
         }
     },
@@ -579,33 +579,33 @@
         "properties": {
             "applicationKey": {
                 "type": "string",
-                "description": "B2 Application Key (B2_APPLICATION_KEY env)\n",
+                "description": "B2 Application Key (B2_APPLICATION_KEY env)",
                 "secret": true
             },
             "applicationKeyId": {
                 "type": "string",
-                "description": "B2 Application Key ID (B2_APPLICATION_KEY_ID env)\n",
+                "description": "B2 Application Key ID (B2_APPLICATION_KEY_ID env)",
                 "secret": true
             },
             "endpoint": {
                 "type": "string",
-                "description": "B2 endpoint - production or custom URL (B2_ENDPOINT env)\n"
+                "description": "B2 endpoint - production or custom URL (B2_ENDPOINT env)"
             }
         },
         "inputProperties": {
             "applicationKey": {
                 "type": "string",
-                "description": "B2 Application Key (B2_APPLICATION_KEY env)\n",
+                "description": "B2 Application Key (B2_APPLICATION_KEY env)",
                 "secret": true
             },
             "applicationKeyId": {
                 "type": "string",
-                "description": "B2 Application Key ID (B2_APPLICATION_KEY_ID env)\n",
+                "description": "B2 Application Key ID (B2_APPLICATION_KEY_ID env)",
                 "secret": true
             },
             "endpoint": {
                 "type": "string",
-                "description": "B2 endpoint - production or custom URL (B2_ENDPOINT env)\n"
+                "description": "B2 endpoint - production or custom URL (B2_ENDPOINT env)"
             }
         },
         "methods": {
@@ -617,41 +617,41 @@
             "properties": {
                 "applicationKey": {
                     "type": "string",
-                    "description": "The key.\n",
+                    "description": "The key.",
                     "secret": true
                 },
                 "applicationKeyId": {
                     "type": "string",
-                    "description": "The ID of the newly created key.\n"
+                    "description": "The ID of the newly created key."
                 },
                 "b2ApplicationKeyId": {
                     "type": "string"
                 },
                 "bucketId": {
                     "type": "string",
-                    "description": "When present, restricts access to one bucket.\n"
+                    "description": "When present, restricts access to one bucket."
                 },
                 "capabilities": {
                     "type": "array",
                     "items": {
                         "type": "string"
                     },
-                    "description": "A set of strings, each one naming a capability the key has.\n"
+                    "description": "A set of strings, each one naming a capability the key has."
                 },
                 "keyName": {
                     "type": "string",
-                    "description": "The name of the key.\n"
+                    "description": "The name of the key."
                 },
                 "namePrefix": {
                     "type": "string",
-                    "description": "When present, restricts access to files whose names start with the prefix.\n"
+                    "description": "When present, restricts access to files whose names start with the prefix."
                 },
                 "options": {
                     "type": "array",
                     "items": {
                         "type": "string"
                     },
-                    "description": "List of application key options.\n"
+                    "description": "List of application key options."
                 }
             },
             "required": [
@@ -668,22 +668,22 @@
                 },
                 "bucketId": {
                     "type": "string",
-                    "description": "When present, restricts access to one bucket.\n"
+                    "description": "When present, restricts access to one bucket."
                 },
                 "capabilities": {
                     "type": "array",
                     "items": {
                         "type": "string"
                     },
-                    "description": "A set of strings, each one naming a capability the key has.\n"
+                    "description": "A set of strings, each one naming a capability the key has."
                 },
                 "keyName": {
                     "type": "string",
-                    "description": "The name of the key.\n"
+                    "description": "The name of the key."
                 },
                 "namePrefix": {
                     "type": "string",
-                    "description": "When present, restricts access to files whose names start with the prefix.\n"
+                    "description": "When present, restricts access to files whose names start with the prefix."
                 }
             },
             "requiredInputs": [
@@ -695,41 +695,41 @@
                 "properties": {
                     "applicationKey": {
                         "type": "string",
-                        "description": "The key.\n",
+                        "description": "The key.",
                         "secret": true
                     },
                     "applicationKeyId": {
                         "type": "string",
-                        "description": "The ID of the newly created key.\n"
+                        "description": "The ID of the newly created key."
                     },
                     "b2ApplicationKeyId": {
                         "type": "string"
                     },
                     "bucketId": {
                         "type": "string",
-                        "description": "When present, restricts access to one bucket.\n"
+                        "description": "When present, restricts access to one bucket."
                     },
                     "capabilities": {
                         "type": "array",
                         "items": {
                             "type": "string"
                         },
-                        "description": "A set of strings, each one naming a capability the key has.\n"
+                        "description": "A set of strings, each one naming a capability the key has."
                     },
                     "keyName": {
                         "type": "string",
-                        "description": "The name of the key.\n"
+                        "description": "The name of the key."
                     },
                     "namePrefix": {
                         "type": "string",
-                        "description": "When present, restricts access to files whose names start with the prefix.\n"
+                        "description": "When present, restricts access to files whose names start with the prefix."
                     },
                     "options": {
                         "type": "array",
                         "items": {
                             "type": "string"
                         },
-                        "description": "List of application key options.\n"
+                        "description": "List of application key options."
                     }
                 },
                 "type": "object"
@@ -739,65 +739,65 @@
             "properties": {
                 "accountId": {
                     "type": "string",
-                    "description": "Account ID that the bucket belongs to.\n"
+                    "description": "Account ID that the bucket belongs to."
                 },
                 "b2BucketId": {
                     "type": "string"
                 },
                 "bucketId": {
                     "type": "string",
-                    "description": "The ID of the bucket.\n"
+                    "description": "The ID of the bucket."
                 },
                 "bucketInfo": {
                     "type": "object",
                     "additionalProperties": {
                         "type": "string"
                     },
-                    "description": "User-defined information to be stored with the bucket.\n"
+                    "description": "User-defined information to be stored with the bucket."
                 },
                 "bucketName": {
                     "type": "string",
-                    "description": "The name of the bucket.\n"
+                    "description": "The name of the bucket."
                 },
                 "bucketType": {
                     "type": "string",
-                    "description": "The bucket type. Either 'allPublic', meaning that files in this bucket can be downloaded by anybody, or 'allPrivate'.\n"
+                    "description": "The bucket type. Either 'allPublic', meaning that files in this bucket can be downloaded by anybody, or 'allPrivate'."
                 },
                 "corsRules": {
                     "type": "array",
                     "items": {
                         "$ref": "#/types/b2:index/BucketCorsRule:BucketCorsRule"
                     },
-                    "description": "The initial list of CORS rules for this bucket.\n"
+                    "description": "The initial list of CORS rules for this bucket."
                 },
                 "defaultServerSideEncryption": {
                     "$ref": "#/types/b2:index/BucketDefaultServerSideEncryption:BucketDefaultServerSideEncryption",
-                    "description": "The default server-side encryption settings for this bucket.\n"
+                    "description": "The default server-side encryption settings for this bucket."
                 },
                 "fileLockConfigurations": {
                     "type": "array",
                     "items": {
                         "$ref": "#/types/b2:index/BucketFileLockConfiguration:BucketFileLockConfiguration"
                     },
-                    "description": "File lock enabled flag, and default retention settings.\n"
+                    "description": "File lock enabled flag, and default retention settings."
                 },
                 "lifecycleRules": {
                     "type": "array",
                     "items": {
                         "$ref": "#/types/b2:index/BucketLifecycleRule:BucketLifecycleRule"
                     },
-                    "description": "The initial list of lifecycle rules for this bucket.\n"
+                    "description": "The initial list of lifecycle rules for this bucket."
                 },
                 "options": {
                     "type": "array",
                     "items": {
                         "type": "string"
                     },
-                    "description": "List of bucket options.\n"
+                    "description": "List of bucket options."
                 },
                 "revision": {
                     "type": "number",
-                    "description": "Bucket revision.\n"
+                    "description": "Bucket revision."
                 }
             },
             "required": [
@@ -818,40 +818,40 @@
                     "additionalProperties": {
                         "type": "string"
                     },
-                    "description": "User-defined information to be stored with the bucket.\n"
+                    "description": "User-defined information to be stored with the bucket."
                 },
                 "bucketName": {
                     "type": "string",
-                    "description": "The name of the bucket.\n"
+                    "description": "The name of the bucket."
                 },
                 "bucketType": {
                     "type": "string",
-                    "description": "The bucket type. Either 'allPublic', meaning that files in this bucket can be downloaded by anybody, or 'allPrivate'.\n"
+                    "description": "The bucket type. Either 'allPublic', meaning that files in this bucket can be downloaded by anybody, or 'allPrivate'."
                 },
                 "corsRules": {
                     "type": "array",
                     "items": {
                         "$ref": "#/types/b2:index/BucketCorsRule:BucketCorsRule"
                     },
-                    "description": "The initial list of CORS rules for this bucket.\n"
+                    "description": "The initial list of CORS rules for this bucket."
                 },
                 "defaultServerSideEncryption": {
                     "$ref": "#/types/b2:index/BucketDefaultServerSideEncryption:BucketDefaultServerSideEncryption",
-                    "description": "The default server-side encryption settings for this bucket.\n"
+                    "description": "The default server-side encryption settings for this bucket."
                 },
                 "fileLockConfigurations": {
                     "type": "array",
                     "items": {
                         "$ref": "#/types/b2:index/BucketFileLockConfiguration:BucketFileLockConfiguration"
                     },
-                    "description": "File lock enabled flag, and default retention settings.\n"
+                    "description": "File lock enabled flag, and default retention settings."
                 },
                 "lifecycleRules": {
                     "type": "array",
                     "items": {
                         "$ref": "#/types/b2:index/BucketLifecycleRule:BucketLifecycleRule"
                     },
-                    "description": "The initial list of lifecycle rules for this bucket.\n"
+                    "description": "The initial list of lifecycle rules for this bucket."
                 }
             },
             "requiredInputs": [
@@ -863,65 +863,65 @@
                 "properties": {
                     "accountId": {
                         "type": "string",
-                        "description": "Account ID that the bucket belongs to.\n"
+                        "description": "Account ID that the bucket belongs to."
                     },
                     "b2BucketId": {
                         "type": "string"
                     },
                     "bucketId": {
                         "type": "string",
-                        "description": "The ID of the bucket.\n"
+                        "description": "The ID of the bucket."
                     },
                     "bucketInfo": {
                         "type": "object",
                         "additionalProperties": {
                             "type": "string"
                         },
-                        "description": "User-defined information to be stored with the bucket.\n"
+                        "description": "User-defined information to be stored with the bucket."
                     },
                     "bucketName": {
                         "type": "string",
-                        "description": "The name of the bucket.\n"
+                        "description": "The name of the bucket."
                     },
                     "bucketType": {
                         "type": "string",
-                        "description": "The bucket type. Either 'allPublic', meaning that files in this bucket can be downloaded by anybody, or 'allPrivate'.\n"
+                        "description": "The bucket type. Either 'allPublic', meaning that files in this bucket can be downloaded by anybody, or 'allPrivate'."
                     },
                     "corsRules": {
                         "type": "array",
                         "items": {
                             "$ref": "#/types/b2:index/BucketCorsRule:BucketCorsRule"
                         },
-                        "description": "The initial list of CORS rules for this bucket.\n"
+                        "description": "The initial list of CORS rules for this bucket."
                     },
                     "defaultServerSideEncryption": {
                         "$ref": "#/types/b2:index/BucketDefaultServerSideEncryption:BucketDefaultServerSideEncryption",
-                        "description": "The default server-side encryption settings for this bucket.\n"
+                        "description": "The default server-side encryption settings for this bucket."
                     },
                     "fileLockConfigurations": {
                         "type": "array",
                         "items": {
                             "$ref": "#/types/b2:index/BucketFileLockConfiguration:BucketFileLockConfiguration"
                         },
-                        "description": "File lock enabled flag, and default retention settings.\n"
+                        "description": "File lock enabled flag, and default retention settings."
                     },
                     "lifecycleRules": {
                         "type": "array",
                         "items": {
                             "$ref": "#/types/b2:index/BucketLifecycleRule:BucketLifecycleRule"
                         },
-                        "description": "The initial list of lifecycle rules for this bucket.\n"
+                        "description": "The initial list of lifecycle rules for this bucket."
                     },
                     "options": {
                         "type": "array",
                         "items": {
                             "type": "string"
                         },
-                        "description": "List of bucket options.\n"
+                        "description": "List of bucket options."
                     },
                     "revision": {
                         "type": "number",
-                        "description": "Bucket revision.\n"
+                        "description": "Bucket revision."
                     }
                 },
                 "type": "object"
@@ -931,57 +931,57 @@
             "properties": {
                 "action": {
                     "type": "string",
-                    "description": "One of 'start', 'upload', 'hide', 'folder', or other values added in the future.\n"
+                    "description": "One of 'start', 'upload', 'hide', 'folder', or other values added in the future."
                 },
                 "bucketFileVersionId": {
                     "type": "string"
                 },
                 "bucketId": {
                     "type": "string",
-                    "description": "The ID of the bucket.\n"
+                    "description": "The ID of the bucket."
                 },
                 "contentMd5": {
                     "type": "string",
-                    "description": "MD5 sum of the content.\n"
+                    "description": "MD5 sum of the content."
                 },
                 "contentSha1": {
                     "type": "string",
-                    "description": "SHA1 hash of the content.\n"
+                    "description": "SHA1 hash of the content."
                 },
                 "contentType": {
                     "type": "string",
-                    "description": "Content type. If not set, it will be set based on the file extension.\n"
+                    "description": "Content type. If not set, it will be set based on the file extension."
                 },
                 "fileId": {
                     "type": "string",
-                    "description": "The unique identifier for this version of this file.\n"
+                    "description": "The unique identifier for this version of this file."
                 },
                 "fileInfo": {
                     "type": "object",
                     "additionalProperties": {
                         "type": "string"
                     },
-                    "description": "The custom information that is uploaded with the file.\n"
+                    "description": "The custom information that is uploaded with the file."
                 },
                 "fileName": {
                     "type": "string",
-                    "description": "The name of the B2 file.\n"
+                    "description": "The name of the B2 file."
                 },
                 "serverSideEncryption": {
                     "$ref": "#/types/b2:index/BucketFileVersionServerSideEncryption:BucketFileVersionServerSideEncryption",
-                    "description": "Server-side encryption settings.\n"
+                    "description": "Server-side encryption settings."
                 },
                 "size": {
                     "type": "number",
-                    "description": "The file size.\n"
+                    "description": "The file size."
                 },
                 "source": {
                     "type": "string",
-                    "description": "Path to the local file.\n"
+                    "description": "Path to the local file."
                 },
                 "uploadTimestamp": {
                     "type": "number",
-                    "description": "This is a UTC time when this file was uploaded.\n"
+                    "description": "This is a UTC time when this file was uploaded."
                 }
             },
             "required": [
@@ -1003,30 +1003,30 @@
                 },
                 "bucketId": {
                     "type": "string",
-                    "description": "The ID of the bucket.\n"
+                    "description": "The ID of the bucket."
                 },
                 "contentType": {
                     "type": "string",
-                    "description": "Content type. If not set, it will be set based on the file extension.\n"
+                    "description": "Content type. If not set, it will be set based on the file extension."
                 },
                 "fileInfo": {
                     "type": "object",
                     "additionalProperties": {
                         "type": "string"
                     },
-                    "description": "The custom information that is uploaded with the file.\n"
+                    "description": "The custom information that is uploaded with the file."
                 },
                 "fileName": {
                     "type": "string",
-                    "description": "The name of the B2 file.\n"
+                    "description": "The name of the B2 file."
                 },
                 "serverSideEncryption": {
                     "$ref": "#/types/b2:index/BucketFileVersionServerSideEncryption:BucketFileVersionServerSideEncryption",
-                    "description": "Server-side encryption settings.\n"
+                    "description": "Server-side encryption settings."
                 },
                 "source": {
                     "type": "string",
-                    "description": "Path to the local file.\n"
+                    "description": "Path to the local file."
                 }
             },
             "requiredInputs": [
@@ -1039,57 +1039,57 @@
                 "properties": {
                     "action": {
                         "type": "string",
-                        "description": "One of 'start', 'upload', 'hide', 'folder', or other values added in the future.\n"
+                        "description": "One of 'start', 'upload', 'hide', 'folder', or other values added in the future."
                     },
                     "bucketFileVersionId": {
                         "type": "string"
                     },
                     "bucketId": {
                         "type": "string",
-                        "description": "The ID of the bucket.\n"
+                        "description": "The ID of the bucket."
                     },
                     "contentMd5": {
                         "type": "string",
-                        "description": "MD5 sum of the content.\n"
+                        "description": "MD5 sum of the content."
                     },
                     "contentSha1": {
                         "type": "string",
-                        "description": "SHA1 hash of the content.\n"
+                        "description": "SHA1 hash of the content."
                     },
                     "contentType": {
                         "type": "string",
-                        "description": "Content type. If not set, it will be set based on the file extension.\n"
+                        "description": "Content type. If not set, it will be set based on the file extension."
                     },
                     "fileId": {
                         "type": "string",
-                        "description": "The unique identifier for this version of this file.\n"
+                        "description": "The unique identifier for this version of this file."
                     },
                     "fileInfo": {
                         "type": "object",
                         "additionalProperties": {
                             "type": "string"
                         },
-                        "description": "The custom information that is uploaded with the file.\n"
+                        "description": "The custom information that is uploaded with the file."
                     },
                     "fileName": {
                         "type": "string",
-                        "description": "The name of the B2 file.\n"
+                        "description": "The name of the B2 file."
                     },
                     "serverSideEncryption": {
                         "$ref": "#/types/b2:index/BucketFileVersionServerSideEncryption:BucketFileVersionServerSideEncryption",
-                        "description": "Server-side encryption settings.\n"
+                        "description": "Server-side encryption settings."
                     },
                     "size": {
                         "type": "number",
-                        "description": "The file size.\n"
+                        "description": "The file size."
                     },
                     "source": {
                         "type": "string",
-                        "description": "Path to the local file.\n"
+                        "description": "Path to the local file."
                     },
                     "uploadTimestamp": {
                         "type": "number",
-                        "description": "This is a UTC time when this file was uploaded.\n"
+                        "description": "This is a UTC time when this file was uploaded."
                     }
                 },
                 "type": "object"
