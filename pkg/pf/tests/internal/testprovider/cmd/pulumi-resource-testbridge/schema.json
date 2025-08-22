@@ -49,7 +49,7 @@
             },
             "skipMetadataApiCheck": {
                 "type": "boolean",
-                "description": "Example taken from pulumi-aws; used to validate string properties remapped to bool type during briding\n",
+                "description": "Example taken from pulumi-aws; used to validate string properties remapped to bool type during briding",
                 "default": true
             },
             "stringConfigProp": {
@@ -57,12 +57,12 @@
             },
             "stringDefaultinfoConfigProp": {
                 "type": "string",
-                "description": "Used for testing DefaultInfo default application support\n",
+                "description": "Used for testing DefaultInfo default application support",
                 "default": "DEFAULT"
             },
             "validateNested": {
                 "type": "boolean",
-                "description": "Validate that nested values are received as expected.\n"
+                "description": "Validate that nested values are received as expected."
             }
         }
     },
@@ -410,18 +410,18 @@
             },
             "skipMetadataApiCheck": {
                 "type": "boolean",
-                "description": "Example taken from pulumi-aws; used to validate string properties remapped to bool type during briding\n"
+                "description": "Example taken from pulumi-aws; used to validate string properties remapped to bool type during briding"
             },
             "stringConfigProp": {
                 "type": "string"
             },
             "stringDefaultinfoConfigProp": {
                 "type": "string",
-                "description": "Used for testing DefaultInfo default application support\n"
+                "description": "Used for testing DefaultInfo default application support"
             },
             "validateNested": {
                 "type": "boolean",
-                "description": "Validate that nested values are received as expected.\n"
+                "description": "Validate that nested values are received as expected."
             }
         },
         "inputProperties": {
@@ -451,7 +451,7 @@
             },
             "skipMetadataApiCheck": {
                 "type": "boolean",
-                "description": "Example taken from pulumi-aws; used to validate string properties remapped to bool type during briding\n",
+                "description": "Example taken from pulumi-aws; used to validate string properties remapped to bool type during briding",
                 "default": true
             },
             "stringConfigProp": {
@@ -459,12 +459,12 @@
             },
             "stringDefaultinfoConfigProp": {
                 "type": "string",
-                "description": "Used for testing DefaultInfo default application support\n",
+                "description": "Used for testing DefaultInfo default application support",
                 "default": "DEFAULT"
             },
             "validateNested": {
                 "type": "boolean",
-                "description": "Validate that nested values are received as expected.\n"
+                "description": "Validate that nested values are received as expected."
             }
         },
         "methods": {
@@ -503,14 +503,14 @@
                     "items": {
                         "$ref": "#/types/testbridge:index/TestnestRule:TestnestRule"
                     },
-                    "description": "List of rules to apply to the ruleset.\n"
+                    "description": "List of rules to apply to the ruleset."
                 },
                 "services": {
                     "type": "array",
                     "items": {
                         "$ref": "#/types/testbridge:index/TestnestService:TestnestService"
                     },
-                    "description": "services: tests ListNestedAttributes support\n"
+                    "description": "services: tests ListNestedAttributes support"
                 }
             },
             "inputProperties": {
@@ -519,14 +519,14 @@
                     "items": {
                         "$ref": "#/types/testbridge:index/TestnestRule:TestnestRule"
                     },
-                    "description": "List of rules to apply to the ruleset.\n"
+                    "description": "List of rules to apply to the ruleset."
                 },
                 "services": {
                     "type": "array",
                     "items": {
                         "$ref": "#/types/testbridge:index/TestnestService:TestnestService"
                     },
-                    "description": "services: tests ListNestedAttributes support\n"
+                    "description": "services: tests ListNestedAttributes support"
                 }
             },
             "stateInputs": {
@@ -537,14 +537,14 @@
                         "items": {
                             "$ref": "#/types/testbridge:index/TestnestRule:TestnestRule"
                         },
-                        "description": "List of rules to apply to the ruleset.\n"
+                        "description": "List of rules to apply to the ruleset."
                     },
                     "services": {
                         "type": "array",
                         "items": {
                             "$ref": "#/types/testbridge:index/TestnestService:TestnestService"
                         },
-                        "description": "services: tests ListNestedAttributes support\n"
+                        "description": "services: tests ListNestedAttributes support"
                     }
                 },
                 "type": "object"
@@ -557,7 +557,7 @@
                     "items": {
                         "$ref": "#/types/testbridge:index/TestnestattrService:TestnestattrService"
                     },
-                    "description": "services: tests ListNestedAttributes support\n"
+                    "description": "services: tests ListNestedAttributes support"
                 }
             },
             "inputProperties": {
@@ -566,7 +566,7 @@
                     "items": {
                         "$ref": "#/types/testbridge:index/TestnestattrService:TestnestattrService"
                     },
-                    "description": "services: tests ListNestedAttributes support\n"
+                    "description": "services: tests ListNestedAttributes support"
                 }
             },
             "stateInputs": {
@@ -577,7 +577,7 @@
                         "items": {
                             "$ref": "#/types/testbridge:index/TestnestattrService:TestnestattrService"
                         },
-                        "description": "services: tests ListNestedAttributes support\n"
+                        "description": "services: tests ListNestedAttributes support"
                     }
                 },
                 "type": "object"
@@ -587,7 +587,7 @@
             "properties": {
                 "name": {
                     "type": "string",
-                    "description": "Test AutoNaming; Pulumi makes this property optional\n"
+                    "description": "Test AutoNaming; Pulumi makes this property optional"
                 }
             },
             "required": [
@@ -596,7 +596,7 @@
             "inputProperties": {
                 "name": {
                     "type": "string",
-                    "description": "Test AutoNaming; Pulumi makes this property optional\n"
+                    "description": "Test AutoNaming; Pulumi makes this property optional"
                 }
             },
             "stateInputs": {
@@ -604,7 +604,7 @@
                 "properties": {
                     "name": {
                         "type": "string",
-                        "description": "Test AutoNaming; Pulumi makes this property optional\n"
+                        "description": "Test AutoNaming; Pulumi makes this property optional"
                     }
                 },
                 "type": "object"
@@ -614,15 +614,15 @@
             "properties": {
                 "observedPrivateStateAfter": {
                     "type": "string",
-                    "description": "Exports current PrivateState after the update to help test it\n"
+                    "description": "Exports current PrivateState after the update to help test it"
                 },
                 "observedPrivateStateBefore": {
                     "type": "string",
-                    "description": "Exports current PrivateState before the update to help test it\n"
+                    "description": "Exports current PrivateState before the update to help test it"
                 },
                 "targetPrivateState": {
                     "type": "string",
-                    "description": "The value of this attribute is stored in PrivateState\n"
+                    "description": "The value of this attribute is stored in PrivateState"
                 }
             },
             "required": [
@@ -632,7 +632,7 @@
             "inputProperties": {
                 "targetPrivateState": {
                     "type": "string",
-                    "description": "The value of this attribute is stored in PrivateState\n"
+                    "description": "The value of this attribute is stored in PrivateState"
                 }
             },
             "stateInputs": {
@@ -640,15 +640,15 @@
                 "properties": {
                     "observedPrivateStateAfter": {
                         "type": "string",
-                        "description": "Exports current PrivateState after the update to help test it\n"
+                        "description": "Exports current PrivateState after the update to help test it"
                     },
                     "observedPrivateStateBefore": {
                         "type": "string",
-                        "description": "Exports current PrivateState before the update to help test it\n"
+                        "description": "Exports current PrivateState before the update to help test it"
                     },
                     "targetPrivateState": {
                         "type": "string",
-                        "description": "The value of this attribute is stored in PrivateState\n"
+                        "description": "The value of this attribute is stored in PrivateState"
                     }
                 },
                 "type": "object"
@@ -731,28 +731,28 @@
                 },
                 "optionalInputBoolCopy": {
                     "type": "boolean",
-                    "description": "Computed as a copy of optional_input_bool\n"
+                    "description": "Computed as a copy of optional_input_bool"
                 },
                 "optionalInputNumber": {
                     "type": "number"
                 },
                 "optionalInputNumberCopy": {
                     "type": "number",
-                    "description": "Computed as a copy of optional_input_number\n"
+                    "description": "Computed as a copy of optional_input_number"
                 },
                 "optionalInputString": {
                     "type": "string"
                 },
                 "optionalInputStringCopy": {
                     "type": "string",
-                    "description": "Computed as a copy of optional_input_string\n"
+                    "description": "Computed as a copy of optional_input_string"
                 },
                 "optionalInputStringListCopies": {
                     "type": "array",
                     "items": {
                         "type": "string"
                     },
-                    "description": "Computed as a copy of optional_input_string_list\n"
+                    "description": "Computed as a copy of optional_input_string_list"
                 },
                 "optionalInputStringLists": {
                     "type": "array",
@@ -771,51 +771,51 @@
                     "additionalProperties": {
                         "type": "string"
                     },
-                    "description": "Computed as a copy of optional_input_string_map\n"
+                    "description": "Computed as a copy of optional_input_string_map"
                 },
                 "requiredInputString": {
                     "type": "string"
                 },
                 "requiredInputStringCopy": {
                     "type": "string",
-                    "description": "Computed as a copy of required_input_string\n"
+                    "description": "Computed as a copy of required_input_string"
                 },
                 "services": {
                     "type": "array",
                     "items": {
                         "$ref": "#/types/testbridge:index/TestresService:TestresService"
                     },
-                    "description": "services: tests ListNestedAttributes support\n"
+                    "description": "services: tests ListNestedAttributes support"
                 },
                 "servicesJsonCopy": {
                     "type": "string",
-                    "description": "Computed as a JSON-ified copy of services input\n"
+                    "description": "Computed as a JSON-ified copy of services input"
                 },
                 "setOptionals": {
                     "type": "array",
                     "items": {
                         "type": "string"
                     },
-                    "description": "A set\n"
+                    "description": "A set"
                 },
                 "singleNestedAttr": {
                     "$ref": "#/types/testbridge:index/TestresSingleNestedAttr:TestresSingleNestedAttr",
-                    "description": "single_nested_attr: tests SingleNestedAttribute support\n"
+                    "description": "single_nested_attr: tests SingleNestedAttribute support"
                 },
                 "singleNestedAttrJsonCopy": {
                     "type": "string",
-                    "description": "Computed as a JSON-ified copy of single_nested_attr input\n"
+                    "description": "Computed as a JSON-ified copy of single_nested_attr input"
                 },
                 "statedir": {
                     "type": "string",
-                    "description": "Dir to store pseudo-cloud state in.\n"
+                    "description": "Dir to store pseudo-cloud state in."
                 },
                 "tuplesOptionals": {
                     "type": "array",
                     "items": {
                         "$ref": "#/types/testbridge:index/TestresTuplesOptional:TestresTuplesOptional"
                     },
-                    "description": "A list that takes a tuple\n"
+                    "description": "A list that takes a tuple"
                 }
             },
             "required": [
@@ -860,29 +860,29 @@
                     "items": {
                         "$ref": "#/types/testbridge:index/TestresService:TestresService"
                     },
-                    "description": "services: tests ListNestedAttributes support\n"
+                    "description": "services: tests ListNestedAttributes support"
                 },
                 "setOptionals": {
                     "type": "array",
                     "items": {
                         "type": "string"
                     },
-                    "description": "A set\n"
+                    "description": "A set"
                 },
                 "singleNestedAttr": {
                     "$ref": "#/types/testbridge:index/TestresSingleNestedAttr:TestresSingleNestedAttr",
-                    "description": "single_nested_attr: tests SingleNestedAttribute support\n"
+                    "description": "single_nested_attr: tests SingleNestedAttribute support"
                 },
                 "statedir": {
                     "type": "string",
-                    "description": "Dir to store pseudo-cloud state in.\n"
+                    "description": "Dir to store pseudo-cloud state in."
                 },
                 "tuplesOptionals": {
                     "type": "array",
                     "items": {
                         "$ref": "#/types/testbridge:index/TestresTuplesOptional:TestresTuplesOptional"
                     },
-                    "description": "A list that takes a tuple\n"
+                    "description": "A list that takes a tuple"
                 }
             },
             "requiredInputs": [
@@ -897,28 +897,28 @@
                     },
                     "optionalInputBoolCopy": {
                         "type": "boolean",
-                        "description": "Computed as a copy of optional_input_bool\n"
+                        "description": "Computed as a copy of optional_input_bool"
                     },
                     "optionalInputNumber": {
                         "type": "number"
                     },
                     "optionalInputNumberCopy": {
                         "type": "number",
-                        "description": "Computed as a copy of optional_input_number\n"
+                        "description": "Computed as a copy of optional_input_number"
                     },
                     "optionalInputString": {
                         "type": "string"
                     },
                     "optionalInputStringCopy": {
                         "type": "string",
-                        "description": "Computed as a copy of optional_input_string\n"
+                        "description": "Computed as a copy of optional_input_string"
                     },
                     "optionalInputStringListCopies": {
                         "type": "array",
                         "items": {
                             "type": "string"
                         },
-                        "description": "Computed as a copy of optional_input_string_list\n"
+                        "description": "Computed as a copy of optional_input_string_list"
                     },
                     "optionalInputStringLists": {
                         "type": "array",
@@ -937,51 +937,51 @@
                         "additionalProperties": {
                             "type": "string"
                         },
-                        "description": "Computed as a copy of optional_input_string_map\n"
+                        "description": "Computed as a copy of optional_input_string_map"
                     },
                     "requiredInputString": {
                         "type": "string"
                     },
                     "requiredInputStringCopy": {
                         "type": "string",
-                        "description": "Computed as a copy of required_input_string\n"
+                        "description": "Computed as a copy of required_input_string"
                     },
                     "services": {
                         "type": "array",
                         "items": {
                             "$ref": "#/types/testbridge:index/TestresService:TestresService"
                         },
-                        "description": "services: tests ListNestedAttributes support\n"
+                        "description": "services: tests ListNestedAttributes support"
                     },
                     "servicesJsonCopy": {
                         "type": "string",
-                        "description": "Computed as a JSON-ified copy of services input\n"
+                        "description": "Computed as a JSON-ified copy of services input"
                     },
                     "setOptionals": {
                         "type": "array",
                         "items": {
                             "type": "string"
                         },
-                        "description": "A set\n"
+                        "description": "A set"
                     },
                     "singleNestedAttr": {
                         "$ref": "#/types/testbridge:index/TestresSingleNestedAttr:TestresSingleNestedAttr",
-                        "description": "single_nested_attr: tests SingleNestedAttribute support\n"
+                        "description": "single_nested_attr: tests SingleNestedAttribute support"
                     },
                     "singleNestedAttrJsonCopy": {
                         "type": "string",
-                        "description": "Computed as a JSON-ified copy of single_nested_attr input\n"
+                        "description": "Computed as a JSON-ified copy of single_nested_attr input"
                     },
                     "statedir": {
                         "type": "string",
-                        "description": "Dir to store pseudo-cloud state in.\n"
+                        "description": "Dir to store pseudo-cloud state in."
                     },
                     "tuplesOptionals": {
                         "type": "array",
                         "items": {
                             "$ref": "#/types/testbridge:index/TestresTuplesOptional:TestresTuplesOptional"
                         },
-                        "description": "A list that takes a tuple\n"
+                        "description": "A list that takes a tuple"
                     }
                 },
                 "type": "object"
@@ -997,7 +997,7 @@
                     "items": {
                         "$ref": "#/types/testbridge:index/VlanNamesResVlanName:VlanNamesResVlanName"
                     },
-                    "description": "An array of named VLANs\n"
+                    "description": "An array of named VLANs"
                 }
             },
             "inputProperties": {
@@ -1009,7 +1009,7 @@
                     "items": {
                         "$ref": "#/types/testbridge:index/VlanNamesResVlanName:VlanNamesResVlanName"
                     },
-                    "description": "An array of named VLANs\n"
+                    "description": "An array of named VLANs"
                 }
             },
             "stateInputs": {
@@ -1023,7 +1023,7 @@
                         "items": {
                             "$ref": "#/types/testbridge:index/VlanNamesResVlanName:VlanNamesResVlanName"
                         },
-                        "description": "An array of named VLANs\n"
+                        "description": "An array of named VLANs"
                     }
                 },
                 "type": "object"
@@ -1078,7 +1078,7 @@
                 "properties": {
                     "id": {
                         "type": "string",
-                        "description": "The provider-assigned unique ID for this managed resource.\n"
+                        "description": "The provider-assigned unique ID for this managed resource."
                     },
                     "input": {
                         "type": "string"
@@ -1106,7 +1106,7 @@
                 "properties": {
                     "id": {
                         "type": "string",
-                        "description": "The provider-assigned unique ID for this managed resource.\n"
+                        "description": "The provider-assigned unique ID for this managed resource."
                     },
                     "skipMetadataApiCheck": {
                         "type": "string"
@@ -1135,7 +1135,7 @@
                 "properties": {
                     "id": {
                         "type": "string",
-                        "description": "The provider-assigned unique ID for this managed resource.\n"
+                        "description": "The provider-assigned unique ID for this managed resource."
                     },
                     "input": {
                         "type": "string",

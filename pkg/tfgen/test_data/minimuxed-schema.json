@@ -54,23 +54,23 @@
           "additionalProperties": {
             "type": "string"
           },
-          "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for\nmore information.\n"
+          "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for more information."
         },
         "max": {
           "type": "integer",
-          "description": "The maximum inclusive value of the range.\n"
+          "description": "The maximum inclusive value of the range."
         },
         "min": {
           "type": "integer",
-          "description": "The minimum inclusive value of the range.\n"
+          "description": "The minimum inclusive value of the range."
         },
         "result": {
           "type": "integer",
-          "description": "The random integer result.\n"
+          "description": "The random integer result."
         },
         "seed": {
           "type": "string",
-          "description": "A custom seed to always produce the same value.\n"
+          "description": "A custom seed to always produce the same value."
         }
       },
       "required": [
@@ -84,22 +84,22 @@
           "additionalProperties": {
             "type": "string"
           },
-          "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for\nmore information.\n",
+          "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for more information.",
           "willReplaceOnChanges": true
         },
         "max": {
           "type": "integer",
-          "description": "The maximum inclusive value of the range.\n",
+          "description": "The maximum inclusive value of the range.",
           "willReplaceOnChanges": true
         },
         "min": {
           "type": "integer",
-          "description": "The minimum inclusive value of the range.\n",
+          "description": "The minimum inclusive value of the range.",
           "willReplaceOnChanges": true
         },
         "seed": {
           "type": "string",
-          "description": "A custom seed to always produce the same value.\n",
+          "description": "A custom seed to always produce the same value.",
           "willReplaceOnChanges": true
         }
       },
@@ -115,26 +115,26 @@
             "additionalProperties": {
               "type": "string"
             },
-            "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for\nmore information.\n",
+            "description": "Arbitrary map of values that, when changed, will trigger recreation of resource. See the main provider documentation for more information.",
             "willReplaceOnChanges": true
           },
           "max": {
             "type": "integer",
-            "description": "The maximum inclusive value of the range.\n",
+            "description": "The maximum inclusive value of the range.",
             "willReplaceOnChanges": true
           },
           "min": {
             "type": "integer",
-            "description": "The minimum inclusive value of the range.\n",
+            "description": "The minimum inclusive value of the range.",
             "willReplaceOnChanges": true
           },
           "result": {
             "type": "integer",
-            "description": "The random integer result.\n"
+            "description": "The random integer result."
           },
           "seed": {
             "type": "string",
-            "description": "A custom seed to always produce the same value.\n",
+            "description": "A custom seed to always produce the same value.",
             "willReplaceOnChanges": true
           }
         },
