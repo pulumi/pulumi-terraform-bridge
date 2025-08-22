@@ -619,7 +619,7 @@
                     "items": {
                         "type": "string"
                     },
-                    "description": "Random permutation of the list of strings given in `input`. The number of elements is determined by `result_count` if\nset, or the number of elements in `input`.\n"
+                    "description": "Random permutation of the list of strings given in `input`. The number of elements is determined by `result_count` if set, or the number of elements in `input`."
                 },
                 "seed": {
                     "type": "string",
@@ -683,7 +683,7 @@
                         "items": {
                             "type": "string"
                         },
-                        "description": "Random permutation of the list of strings given in `input`. The number of elements is determined by `result_count` if\nset, or the number of elements in `input`.\n"
+                        "description": "Random permutation of the list of strings given in `input`. The number of elements is determined by `result_count` if set, or the number of elements in `input`."
                     },
                     "seed": {
                         "type": "string",
